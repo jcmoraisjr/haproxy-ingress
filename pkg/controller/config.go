@@ -41,16 +41,18 @@ func newConfig(cfg *ingress.Configuration, data map[string]string) *configuratio
 		UDPEndpoints:        cfg.UPDEndpoints,
 		PassthroughBackends: cfg.PassthroughBackends,
 	}
-	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-		WeaklyTypedInput: true,
-		Result:           &conf,
-		TagName:          "json",
-	})
-	if err != nil {
-		glog.Warningf("error configuring decoder: %v", err)
-	}
-	if err = decoder.Decode(data); err != nil {
-		glog.Warningf("error decoding config: %v", err)
+	if data != nil {
+		decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+			WeaklyTypedInput: true,
+			Result:           &conf,
+			TagName:          "json",
+		})
+		if err != nil {
+			glog.Warningf("error configuring decoder: %v", err)
+		}
+		if err = decoder.Decode(data); err != nil {
+			glog.Warningf("error decoding config: %v", err)
+		}
 	}
 	return &conf
 }

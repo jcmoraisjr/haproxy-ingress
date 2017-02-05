@@ -83,7 +83,12 @@ func (haproxy *haproxyController) BackendDefaults() defaults.Backend {
 }
 
 func (haproxy *haproxyController) OnUpdate(cfg ingress.Configuration) ([]byte, error) {
-	conf := newConfig(&cfg, haproxy.configMap.Data)
+	var conf *configuration
+	if haproxy.configMap != nil {
+		conf = newConfig(&cfg, haproxy.configMap.Data)
+	} else {
+		conf = newConfig(&cfg, nil)
+	}
 	data, err := haproxy.template.execute(conf)
 	if err != nil {
 		return nil, err
