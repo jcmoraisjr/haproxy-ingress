@@ -63,9 +63,16 @@ frontend httpfront
 {{ end }}
 {{ end }}
 {{ end }}
+{{ range $server := $cfg.Servers }}
+{{ if eq $server.Hostname "_" }}
+{{ range $location := $server.Locations }}
+    default_backend {{ $location.Backend }}
+{{ end }}
+{{ end }}
+{{ end }}
 
 ######
-###### HTTPS frontends (tcp mode)
+###### HTTPS frontend (tcp mode)
 ######
 frontend httpsfront
     bind :443
@@ -77,18 +84,20 @@ frontend httpsfront
     use_backend httpsback-{{ $server.Hostname }} if { req.ssl_sni -i {{ $server.Hostname }} }
 {{ end }}
 {{ end }}
+    default_backend httpsback-_
 
 {{ range $server := $cfg.Servers }}
-{{ if and (ne $server.Hostname "_") (ne $server.SSLCertificate "") }}
+{{ if ne $server.SSLCertificate "" }}
+{{ $host := $server.Hostname }}
 ##
-## {{ $server.Hostname }}
-backend httpsback-{{ $server.Hostname }}
+## {{ $host }}
+backend httpsback-{{ $host }}
     mode tcp
-    server {{ $server.Hostname }} unix@/var/run/haproxy-{{ $server.Hostname }}.sock send-proxy-v2
+    server {{ $host }} unix@/var/run/haproxy-{{ $host }}.sock send-proxy-v2
 
-frontend httpsfront-{{ $server.Hostname }}
+frontend httpsfront-{{ $host }}
     # CRT PEM checksum: {{ $server.SSLPemChecksum }}
-    bind unix@/var/run/haproxy-{{ $server.Hostname }}.sock ssl crt {{ $server.SSLCertificate }} no-sslv3 accept-proxy
+    bind unix@/var/run/haproxy-{{ $host }}.sock ssl crt {{ $server.SSLCertificate }} no-sslv3 accept-proxy
     mode http
 {{ if ne $cfg.Syslog "" }}
     option httplog
