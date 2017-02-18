@@ -38,7 +38,7 @@ func newConfig(cfg *ingress.Configuration, data map[string]string) *configuratio
 		Backends:            cfg.Backends,
 		Servers:             cfg.Servers,
 		TCPEndpoints:        cfg.TCPEndpoints,
-		UDPEndpoints:        cfg.UPDEndpoints,
+		UDPEndpoints:        cfg.UDPEndpoints,
 		PassthroughBackends: cfg.PassthroughBackends,
 	}
 	if data != nil {

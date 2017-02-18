@@ -76,11 +76,13 @@ type GenericController struct {
 	ingController  *cache.Controller
 	endpController *cache.Controller
 	svcController  *cache.Controller
+	nodeController *cache.Controller
 	secrController *cache.Controller
 	mapController  *cache.Controller
 
 	ingLister  cache_store.StoreToIngressLister
 	svcLister  cache.StoreToServiceLister
+	nodeLister cache.StoreToNodeLister
 	endpLister cache.StoreToEndpointsLister
 	secrLister cache_store.StoreToSecretsLister
 	mapLister  cache_store.StoreToConfigmapLister
@@ -173,7 +175,7 @@ func newIngressController(config *Configuration) *GenericController {
 		DeleteFunc: func(obj interface{}) {
 			delIng := obj.(*extensions.Ingress)
 			if !IsValidClass(delIng, config.IngressClass) {
-				glog.Infof("ignoring add for ingress %v based on annotation %v", delIng.Name, ingressClassKey)
+				glog.Infof("ignoring delete for ingress %v based on annotation %v", delIng.Name, ingressClassKey)
 				return
 			}
 			ic.recorder.Eventf(delIng, api.EventTypeNormal, "DELETE", fmt.Sprintf("Ingress %s/%s", delIng.Namespace, delIng.Name))
@@ -182,7 +184,7 @@ func newIngressController(config *Configuration) *GenericController {
 		UpdateFunc: func(old, cur interface{}) {
 			oldIng := old.(*extensions.Ingress)
 			curIng := cur.(*extensions.Ingress)
-			if !IsValidClass(curIng, config.IngressClass) {
+			if !IsValidClass(curIng, config.IngressClass) && !IsValidClass(oldIng, config.IngressClass) {
 				return
 			}
 
@@ -292,6 +294,10 @@ func newIngressController(config *Configuration) *GenericController {
 		cache.ResourceEventHandlerFuncs{},
 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 
+	ic.nodeLister.Store, ic.nodeController = cache.NewInformer(
+		cache.NewListWatchFromClient(ic.cfg.Client.Core().RESTClient(), "nodes", ic.cfg.Namespace, fields.Everything()),
+		&api.Node{}, ic.cfg.ResyncPeriod, eventHandler)
+
 	if config.UpdateStatus {
 		ic.syncStatus = status.NewStatusSyncer(status.Config{
 			Client:         config.Client,
@@ -303,6 +309,15 @@ func newIngressController(config *Configuration) *GenericController {
 	}
 
 	ic.annotations = newAnnotationExtractor(ic)
+
+	ic.cfg.Backend.SetListers(ingress.StoreLister{
+		Ingress:   ic.ingLister,
+		Service:   ic.svcLister,
+		Node:      ic.nodeLister,
+		Endpoint:  ic.endpLister,
+		Secret:    ic.secrLister,
+		ConfigMap: ic.mapLister,
+	})
 
 	return &ic
 }
@@ -330,7 +345,7 @@ func (ic GenericController) GetDefaultBackend() defaults.Backend {
 	return ic.cfg.Backend.BackendDefaults()
 }
 
-// GetSecret searchs for a secret in the local secrets Store
+// GetSecret searches for a secret in the local secrets Store
 func (ic GenericController) GetSecret(name string) (*api.Secret, error) {
 	s, exists, err := ic.secrLister.Store.GetByKey(name)
 	if err != nil {
@@ -390,8 +405,8 @@ func (ic *GenericController) sync(key interface{}) error {
 	data, err := ic.cfg.Backend.OnUpdate(ingress.Configuration{
 		Backends:            upstreams,
 		Servers:             servers,
-		TCPEndpoints:        ic.getTCPServices(),
-		UPDEndpoints:        ic.getUDPServices(),
+		TCPEndpoints:        ic.getStreamServices(ic.cfg.TCPConfigMapName, api.ProtocolTCP),
+		UDPEndpoints:        ic.getStreamServices(ic.cfg.UDPConfigMapName, api.ProtocolUDP),
 		PassthroughBackends: passUpstreams,
 	})
 	if err != nil {
@@ -411,54 +426,31 @@ func (ic *GenericController) sync(key interface{}) error {
 	return nil
 }
 
-func (ic *GenericController) getTCPServices() []*ingress.Location {
-	if ic.cfg.TCPConfigMapName == "" {
-		// no configmap for TCP services
+func (ic *GenericController) getStreamServices(configmapName string, proto api.Protocol) []*ingress.Location {
+	if configmapName == "" {
+		// no configmap configured
 		return []*ingress.Location{}
 	}
 
-	ns, name, err := k8s.ParseNameNS(ic.cfg.TCPConfigMapName)
+	ns, name, err := k8s.ParseNameNS(configmapName)
 	if err != nil {
-		glog.Warningf("%v", err)
+		glog.Errorf("unexpected error reading configmap %v: %v", name, err)
 		return []*ingress.Location{}
 	}
-	tcpMap, err := ic.getConfigMap(ns, name)
+
+	configmap, err := ic.getConfigMap(ns, name)
 	if err != nil {
-		glog.V(5).Infof("no configured tcp services found: %v", err)
+		glog.Errorf("unexpected error reading configmap %v: %v", name, err)
 		return []*ingress.Location{}
 	}
 
-	return ic.getStreamServices(tcpMap.Data, api.ProtocolTCP)
-}
-
-func (ic *GenericController) getUDPServices() []*ingress.Location {
-	if ic.cfg.UDPConfigMapName == "" {
-		// no configmap for TCP services
-		return []*ingress.Location{}
-	}
-
-	ns, name, err := k8s.ParseNameNS(ic.cfg.UDPConfigMapName)
-	if err != nil {
-		glog.Warningf("%v", err)
-		return []*ingress.Location{}
-	}
-	tcpMap, err := ic.getConfigMap(ns, name)
-	if err != nil {
-		glog.V(3).Infof("no configured tcp services found: %v", err)
-		return []*ingress.Location{}
-	}
-
-	return ic.getStreamServices(tcpMap.Data, api.ProtocolUDP)
-}
-
-func (ic *GenericController) getStreamServices(data map[string]string, proto api.Protocol) []*ingress.Location {
 	var svcs []*ingress.Location
 	// k -> port to expose
 	// v -> <namespace>/<service name>:<port from service to be used>
-	for k, v := range data {
+	for k, v := range configmap.Data {
 		_, err := strconv.Atoi(k)
 		if err != nil {
-			glog.Warningf("%v is not valid as a TCP port", k)
+			glog.Warningf("%v is not valid as a TCP/UDP port", k)
 			continue
 		}
 
@@ -586,6 +578,10 @@ func (ic *GenericController) getBackendServers() ([]*ingress.Backend, []*ingress
 
 	for _, ingIf := range ings {
 		ing := ingIf.(*extensions.Ingress)
+
+		if !IsValidClass(ing, ic.cfg.IngressClass) {
+			continue
+		}
 
 		anns := ic.annotations.Extract(ing)
 
@@ -721,8 +717,13 @@ func (ic *GenericController) createUpstreams(data []interface{}) map[string]*ing
 	for _, ingIf := range data {
 		ing := ingIf.(*extensions.Ingress)
 
+		if !IsValidClass(ing, ic.cfg.IngressClass) {
+			continue
+		}
+
 		secUpstream := ic.annotations.SecureUpstream(ing)
 		hz := ic.annotations.HealthCheck(ing)
+		affinity := ic.annotations.SessionAffinity(ing)
 
 		var defBackend string
 		if ing.Spec.Backend != nil {
@@ -762,6 +763,14 @@ func (ic *GenericController) createUpstreams(data []interface{}) map[string]*ing
 				if !upstreams[name].Secure {
 					upstreams[name].Secure = secUpstream
 				}
+				if upstreams[name].SessionAffinity.AffinityType == "" {
+					upstreams[name].SessionAffinity.AffinityType = affinity.AffinityType
+					if affinity.AffinityType == "cookie" {
+						upstreams[name].SessionAffinity.CookieSessionAffinity.Name = affinity.CookieConfig.Name
+						upstreams[name].SessionAffinity.CookieSessionAffinity.Hash = affinity.CookieConfig.Hash
+					}
+				}
+
 				svcKey := fmt.Sprintf("%v/%v", ing.GetNamespace(), path.Backend.ServiceName)
 				endp, err := ic.serviceEndpoints(svcKey, path.Backend.ServicePort.String(), hz)
 				if err != nil {
@@ -863,6 +872,10 @@ func (ic *GenericController) createServers(data []interface{}, upstreams map[str
 	// initialize all the servers
 	for _, ingIf := range data {
 		ing := ingIf.(*extensions.Ingress)
+		if !IsValidClass(ing, ic.cfg.IngressClass) {
+			continue
+		}
+
 		// check if ssl passthrough is configured
 		sslpt := ic.annotations.SSLPassthrough(ing)
 
@@ -891,6 +904,9 @@ func (ic *GenericController) createServers(data []interface{}, upstreams map[str
 	// configure default location and SSL
 	for _, ingIf := range data {
 		ing := ingIf.(*extensions.Ingress)
+		if !IsValidClass(ing, ic.cfg.IngressClass) {
+			continue
+		}
 
 		for _, rule := range ing.Spec.Rules {
 			host := rule.Host
@@ -1039,6 +1055,7 @@ func (ic GenericController) Start() {
 	go ic.ingController.Run(ic.stopCh)
 	go ic.endpController.Run(ic.stopCh)
 	go ic.svcController.Run(ic.stopCh)
+	go ic.nodeController.Run(ic.stopCh)
 	go ic.secrController.Run(ic.stopCh)
 	go ic.mapController.Run(ic.stopCh)
 

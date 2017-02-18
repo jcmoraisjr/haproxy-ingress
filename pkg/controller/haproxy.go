@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/version"
+	"github.com/spf13/pflag"
 	"io/ioutil"
 	"k8s.io/ingress/core/pkg/ingress"
 	"k8s.io/ingress/core/pkg/ingress/controller"
@@ -72,6 +73,12 @@ func (haproxy *haproxyController) Name() string {
 
 func (haproxy *haproxyController) Check(_ *http.Request) error {
 	return nil
+}
+
+func (haproxy *haproxyController) SetListers(ingress.StoreLister) {
+}
+
+func (haproxy *haproxyController) OverrideFlags(*pflag.FlagSet) {
 }
 
 func (haproxy *haproxyController) SetConfig(configMap *api.ConfigMap) {
