@@ -25,18 +25,38 @@ import (
 type (
 	configuration struct {
 		Backends            []*ingress.Backend
-		Servers             []*ingress.Server
+		DefaultServer       *haproxyServer
+		HTTPServers         []*haproxyServer
+		HTTPSServers        []*haproxyServer
 		TCPEndpoints        []*ingress.Location
 		UDPEndpoints        []*ingress.Location
 		PassthroughBackends []*ingress.SSLPassthroughBackend
 		Syslog              string `json:"syslog-endpoint"`
 	}
+	// haproxyServer and haproxyLocation build some missing pieces
+	// from ingress.Server used by HAProxy
+	haproxyServer struct {
+		IsDefaultServer bool               `json:"isDefaultServer"`
+		Hostname        string             `json:"hostname"`
+		SSLCertificate  string             `json:"sslCertificate"`
+		SSLPemChecksum  string             `json:"sslPemChecksum"`
+		RootLocation    *haproxyLocation   `json:"defaultLocation"`
+		Locations       []*haproxyLocation `json:"locations,omitempty"`
+	}
+	haproxyLocation struct {
+		IsRootLocation bool   `json:"isDefaultLocation"`
+		Path           string `json:"path"`
+		Backend        string `json:"backend"`
+	}
 )
 
 func newConfig(cfg *ingress.Configuration, data map[string]string) *configuration {
+	haHTTPServers, haHTTPSServers, haDefaultServer := newHAProxyServers(cfg.Servers)
 	conf := configuration{
 		Backends:            cfg.Backends,
-		Servers:             cfg.Servers,
+		HTTPServers:         haHTTPServers,
+		HTTPSServers:        haHTTPSServers,
+		DefaultServer:       haDefaultServer,
 		TCPEndpoints:        cfg.TCPEndpoints,
 		UDPEndpoints:        cfg.UDPEndpoints,
 		PassthroughBackends: cfg.PassthroughBackends,
@@ -55,4 +75,45 @@ func newConfig(cfg *ingress.Configuration, data map[string]string) *configuratio
 		}
 	}
 	return &conf
+}
+
+func newHAProxyServers(servers []*ingress.Server) (haHTTPServers []*haproxyServer, haHTTPSServers []*haproxyServer, haDefaultServer *haproxyServer) {
+	haHTTPServers = make([]*haproxyServer, 0, len(servers))
+	haHTTPSServers = make([]*haproxyServer, 0, len(servers))
+	for _, server := range servers {
+		haLocations, haRootLocation := newHAProxyLocations(server)
+		haServer := haproxyServer{
+			IsDefaultServer: server.Hostname == "_",
+			Hostname:        server.Hostname,
+			SSLCertificate:  server.SSLCertificate,
+			SSLPemChecksum:  server.SSLPemChecksum,
+			RootLocation:    haRootLocation,
+			Locations:       haLocations,
+		}
+		if haServer.IsDefaultServer {
+			haDefaultServer = &haServer
+		} else if haServer.SSLCertificate == "" {
+			haHTTPServers = append(haHTTPServers, &haServer)
+		} else {
+			haHTTPSServers = append(haHTTPSServers, &haServer)
+		}
+	}
+	return
+}
+
+func newHAProxyLocations(server *ingress.Server) (haLocations []*haproxyLocation, haRootLocation *haproxyLocation) {
+	locations := server.Locations
+	haLocations = make([]*haproxyLocation, 0, len(locations))
+	for _, location := range locations {
+		haLocation := haproxyLocation{
+			IsRootLocation: location.Path == "/",
+			Path:           location.Path,
+			Backend:        location.Backend,
+		}
+		if haLocation.IsRootLocation {
+			haRootLocation = &haLocation
+		}
+		haLocations = append(haLocations, &haLocation)
+	}
+	return
 }
