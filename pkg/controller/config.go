@@ -47,6 +47,7 @@ type (
 		IsRootLocation bool   `json:"isDefaultLocation"`
 		Path           string `json:"path"`
 		Backend        string `json:"backend"`
+		HAMatchPath    string `json:"haMatchPath"`
 	}
 )
 
@@ -104,16 +105,25 @@ func newHAProxyServers(servers []*ingress.Server) (haHTTPServers []*haproxyServe
 func newHAProxyLocations(server *ingress.Server) (haLocations []*haproxyLocation, haRootLocation *haproxyLocation) {
 	locations := server.Locations
 	haLocations = make([]*haproxyLocation, len(locations))
+	otherPaths := ""
 	for i, location := range locations {
 		haLocation := haproxyLocation{
 			IsRootLocation: location.Path == "/",
 			Path:           location.Path,
 			Backend:        location.Backend,
 		}
+		// RootLocation `/` means "any other URL" on Ingress.
+		// HAMatchPath build this strategy on HAProxy.
 		if haLocation.IsRootLocation {
 			haRootLocation = &haLocation
+		} else {
+			otherPaths = otherPaths + " " + location.Path
+			haLocation.HAMatchPath = " { path_beg " + haLocation.Path + " }"
 		}
 		haLocations[i] = &haLocation
+	}
+	if haRootLocation != nil && otherPaths != "" {
+		haRootLocation.HAMatchPath = " !{ path_beg" + otherPaths + " }"
 	}
 	return
 }
