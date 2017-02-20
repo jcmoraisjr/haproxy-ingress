@@ -103,8 +103,8 @@ func newHAProxyServers(servers []*ingress.Server) (haHTTPServers []*haproxyServe
 
 func newHAProxyLocations(server *ingress.Server) (haLocations []*haproxyLocation, haRootLocation *haproxyLocation) {
 	locations := server.Locations
-	haLocations = make([]*haproxyLocation, 0, len(locations))
-	for _, location := range locations {
+	haLocations = make([]*haproxyLocation, len(locations))
+	for i, location := range locations {
 		haLocation := haproxyLocation{
 			IsRootLocation: location.Path == "/",
 			Path:           location.Path,
@@ -113,7 +113,7 @@ func newHAProxyLocations(server *ingress.Server) (haLocations []*haproxyLocation
 		if haLocation.IsRootLocation {
 			haRootLocation = &haLocation
 		}
-		haLocations = append(haLocations, &haLocation)
+		haLocations[i] = &haLocation
 	}
 	return
 }
