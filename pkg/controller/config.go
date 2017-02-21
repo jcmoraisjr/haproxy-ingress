@@ -48,6 +48,7 @@ type (
 		Path           string `json:"path"`
 		Backend        string `json:"backend"`
 		HAMatchPath    string `json:"haMatchPath"`
+		HAWhitelist    string `json:"whitelist,omitempty"`
 	}
 )
 
@@ -107,10 +108,15 @@ func newHAProxyLocations(server *ingress.Server) (haLocations []*haproxyLocation
 	haLocations = make([]*haproxyLocation, len(locations))
 	otherPaths := ""
 	for i, location := range locations {
+		haWhitelist := ""
+		for _, cidr := range location.Whitelist.CIDR {
+			haWhitelist = haWhitelist + " " + cidr
+		}
 		haLocation := haproxyLocation{
 			IsRootLocation: location.Path == "/",
 			Path:           location.Path,
 			Backend:        location.Backend,
+			HAWhitelist:    haWhitelist,
 		}
 		// RootLocation `/` means "any other URL" on Ingress.
 		// HAMatchPath build this strategy on HAProxy.
