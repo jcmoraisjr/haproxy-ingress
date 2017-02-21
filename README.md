@@ -2,6 +2,15 @@
 
 [Ingress](https://kubernetes.io/docs/user-guide/ingress/) controller implementation for [HAProxy](http://www.haproxy.org/) loadbalancer.
 
+[![Build Status](https://travis-ci.org/jcmoraisjr/haproxy-ingress.svg?branch=master)](https://travis-ci.org/jcmoraisjr/haproxy-ingress) [![Docker Repository on Quay](https://quay.io/repository/jcmoraisjr/haproxy-ingress/status "Docker Repository on Quay")](https://quay.io/repository/jcmoraisjr/haproxy-ingress)
+
+# Releases
+
+HAProxy Ingress images are built by [Travis CI](https://travis-ci.org/jcmoraisjr/haproxy-ingress) and the
+image is deployed from Travis CI to [Quay.io](https://quay.io/repository/jcmoraisjr/haproxy-ingress?tag=latest&tab=tags)
+whenever a tag is applied. The `latest` tag will always point to the latest stable version while
+`canary` tag will always point to the latest deployed version.
+
 # Usage
 
 All docs are maintained on Ingress repository:
