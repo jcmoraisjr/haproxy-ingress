@@ -58,11 +58,21 @@ frontend httpfront
 {{ end }}
 {{ end }}
 {{ range $server := $cfg.HTTPSServers }}
+{{ if $server.SSLRedirect }}
     redirect scheme https if { hdr(host) {{ $server.Hostname }} }
+{{ else }}
+{{ range $location := $server.Locations }}
+{{ if $location.Redirect.SSLRedirect }}
+    redirect scheme https if { hdr(host) {{ $server.Hostname }} }{{ $location.HAMatchPath }}
+{{ end }}
+{{ end }}
+{{ end }}
 {{ end }}
 {{ range $server := $cfg.HTTPServers }}
 {{ range $location := $server.Locations }}
+{{ if not $location.Redirect.SSLRedirect }}
     use_backend {{ $location.Backend }} if { hdr(host) {{ $server.Hostname }} }{{ if not $location.IsRootLocation }} { path_beg {{ $location.Path }} }{{ end }}
+{{ end }}
 {{ end }}
 {{ end }}
     default_backend {{ $cfg.DefaultServer.RootLocation.Backend }}
@@ -96,7 +106,7 @@ frontend httpsfront-{{ $host }}
     option httplog
 {{ end }}
     option forwardfor
-    rspadd  Strict-Transport-Security:\ max-age=15768000
+    rspadd Strict-Transport-Security:\ max-age=15768000
 {{ range $location := $server.Locations }}
 {{ if ne $location.HAWhitelist "" }}
     http-request deny if{{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }

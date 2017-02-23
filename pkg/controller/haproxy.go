@@ -86,7 +86,11 @@ func (haproxy *haproxyController) SetConfig(configMap *api.ConfigMap) {
 }
 
 func (haproxy *haproxyController) BackendDefaults() defaults.Backend {
-	return defaults.Backend{}
+	def := newDefaultConfig()
+	if haproxy.configMap != nil {
+		mergeMap(haproxy.configMap.Data, &def)
+	}
+	return def
 }
 
 func (haproxy *haproxyController) OnUpdate(cfg ingress.Configuration) ([]byte, error) {

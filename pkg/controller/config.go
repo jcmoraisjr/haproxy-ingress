@@ -20,6 +20,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/mitchellh/mapstructure"
 	"k8s.io/ingress/core/pkg/ingress"
+	"k8s.io/ingress/core/pkg/ingress/annotations/rewrite"
+	"k8s.io/ingress/core/pkg/ingress/defaults"
 )
 
 type (
@@ -42,15 +44,36 @@ type (
 		SSLPemChecksum  string             `json:"sslPemChecksum"`
 		RootLocation    *haproxyLocation   `json:"defaultLocation"`
 		Locations       []*haproxyLocation `json:"locations,omitempty"`
+		SSLRedirect     bool               `json:"sslRedirect"`
 	}
 	haproxyLocation struct {
-		IsRootLocation bool   `json:"isDefaultLocation"`
-		Path           string `json:"path"`
-		Backend        string `json:"backend"`
-		HAMatchPath    string `json:"haMatchPath"`
-		HAWhitelist    string `json:"whitelist,omitempty"`
+		IsRootLocation bool             `json:"isDefaultLocation"`
+		Path           string           `json:"path"`
+		Backend        string           `json:"backend"`
+		Redirect       rewrite.Redirect `json:"redirect,omitempty"`
+		HAMatchPath    string           `json:"haMatchPath"`
+		HAWhitelist    string           `json:"whitelist,omitempty"`
 	}
 )
+
+func mergeMap(data map[string]string, resultTo interface{}) error {
+	if data != nil {
+		decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+			WeaklyTypedInput: true,
+			Result:           resultTo,
+			TagName:          "json",
+		})
+		if err != nil {
+			glog.Warningf("error configuring decoder: %v", err)
+		} else {
+			if err = decoder.Decode(data); err != nil {
+				glog.Warningf("error decoding config: %v", err)
+			}
+		}
+		return err
+	}
+	return nil
+}
 
 func newConfig(cfg *ingress.Configuration, data map[string]string) *configuration {
 	haHTTPServers, haHTTPSServers, haDefaultServer := newHAProxyServers(cfg.Servers)
@@ -63,19 +86,7 @@ func newConfig(cfg *ingress.Configuration, data map[string]string) *configuratio
 		UDPEndpoints:        cfg.UDPEndpoints,
 		PassthroughBackends: cfg.PassthroughBackends,
 	}
-	if data != nil {
-		decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-			WeaklyTypedInput: true,
-			Result:           &conf,
-			TagName:          "json",
-		})
-		if err != nil {
-			glog.Warningf("error configuring decoder: %v", err)
-		}
-		if err = decoder.Decode(data); err != nil {
-			glog.Warningf("error decoding config: %v", err)
-		}
-	}
+	mergeMap(data, &conf)
 	return &conf
 }
 
@@ -85,12 +96,14 @@ func newHAProxyServers(servers []*ingress.Server) (haHTTPServers []*haproxyServe
 	for _, server := range servers {
 		haLocations, haRootLocation := newHAProxyLocations(server)
 		haServer := haproxyServer{
+			// Ingress uses `_` hostname as default server
 			IsDefaultServer: server.Hostname == "_",
 			Hostname:        server.Hostname,
 			SSLCertificate:  server.SSLCertificate,
 			SSLPemChecksum:  server.SSLPemChecksum,
 			RootLocation:    haRootLocation,
 			Locations:       haLocations,
+			SSLRedirect:     serverSSLRedirect(server),
 		}
 		if haServer.IsDefaultServer {
 			haDefaultServer = &haServer
@@ -98,6 +111,9 @@ func newHAProxyServers(servers []*ingress.Server) (haHTTPServers []*haproxyServe
 			haHTTPServers = append(haHTTPServers, &haServer)
 		} else {
 			haHTTPSServers = append(haHTTPSServers, &haServer)
+			if !haServer.SSLRedirect {
+				haHTTPServers = append(haHTTPServers, &haServer)
+			}
 		}
 	}
 	return
@@ -116,6 +132,7 @@ func newHAProxyLocations(server *ingress.Server) (haLocations []*haproxyLocation
 			IsRootLocation: location.Path == "/",
 			Path:           location.Path,
 			Backend:        location.Backend,
+			Redirect:       location.Redirect,
 			HAWhitelist:    haWhitelist,
 		}
 		// RootLocation `/` means "any other URL" on Ingress.
@@ -132,4 +149,19 @@ func newHAProxyLocations(server *ingress.Server) (haLocations []*haproxyLocation
 		haRootLocation.HAMatchPath = " !{ path_beg" + otherPaths + " }"
 	}
 	return
+}
+
+func serverSSLRedirect(server *ingress.Server) bool {
+	for _, location := range server.Locations {
+		if !location.Redirect.SSLRedirect {
+			return false
+		}
+	}
+	return true
+}
+
+func newDefaultConfig() defaults.Backend {
+	return defaults.Backend{
+		SSLRedirect: true,
+	}
 }
