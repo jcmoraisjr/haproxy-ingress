@@ -13,25 +13,25 @@ whenever a tag is applied. The `latest` tag will always point to the latest stab
 
 # Usage
 
-All docs are maintained on Ingress repository:
+Usage docs are maintained on Ingress repository:
 
 * Start with [deployment](https://github.com/kubernetes/ingress/tree/master/examples/deployment/haproxy) instructions
-* See  [TLS termination](https://github.com/kubernetes/ingress/tree/master/examples/tls-termination/haproxy) on how to enable `https` url
+* See [TLS termination](https://github.com/kubernetes/ingress/tree/master/examples/tls-termination/haproxy) on how to enable `https` url
 
 # Configuration
 
 HAProxy Ingress can be configured per ingress resource using annotations, or globally
-using ConfigMap. It is also possible to change de default template mounting a new
+using ConfigMap. It is also possible to change the default template mounting a new
 template file at `/usr/local/etc/haproxy/haproxy.tmpl`.
 
 ## Annotations
 
 The following annotations are supported:
 
-|Name|Type|
-|---|---|
-|`ingress.kubernetes.io/ssl-redirect`|true / false|
-|`ingress.kubernetes.io/whitelist-source-range`|CIDR|
+|Name|Type|Usage|
+|---|---|---|
+|`ingress.kubernetes.io/ssl-redirect`|true / false|-|
+|`ingress.kubernetes.io/whitelist-source-range`|CIDR|-|
 
 Details about the supported options can be found at Ingress Controller
 [annotations doc](https://github.com/kubernetes/ingress/blob/master/controllers/nginx/configuration.md#annotations).
@@ -44,18 +44,16 @@ A ConfigMap can be created with `kubectl create configmap`.
 
 The following parameters are supported:
 
-|Name|Type|
-|---|---|
-|[`ssl-redirect`](#ssl-redirect)|true / false|
-|[`syslog-endpoint`](#syslog-endpoint)|UDP IP:port|
+|Name|Type|Default|
+|---|---|---|
+|[`ssl-redirect`](#ssl-redirect)|true / false|`true`|
+|[`syslog-endpoint`](#syslog-endpoint)|UDP IP:port|do not log|
 
 ### ssl-redirect
 
 A global configuration of SSL redirect used as default value if ingress resource
 doesn't use `ssl-redirect` annotation. If true HAProxy Ingress sends a `302 redirect`
 to https if TLS is configured.
-
-Default value: `true`
 
 ### syslog-endpoint
 
