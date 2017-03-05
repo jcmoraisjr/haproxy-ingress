@@ -27,6 +27,18 @@ defaults
     timeout tunnel          1h
     timeout http-keep-alive 60s
 
+{{ if ne (len $cfg.Userlists) 0 }}
+######
+###### Userlists
+######
+{{ range $userlist := $cfg.Userlists }}
+userlist {{ $userlist.ListName }}
+{{ range $user := $userlist.Users }}
+    user {{ $user.Username }} {{ if $user.Encrypted }}password{{ else }}insecure-password{{ end }} {{ $user.Password }}
+{{ end }}
+{{ end }}
+{{ end }}
+
 ######
 ###### Backends
 ######
@@ -54,6 +66,11 @@ frontend httpfront
 {{ range $location := $server.Locations }}
 {{ if ne $location.HAWhitelist "" }}
     http-request deny if { hdr(host) {{ $server.Hostname }} }{{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }
+{{ end }}
+{{ $listName := $location.Userlist.ListName }}
+{{ if ne $listName "" }}
+    {{ $realm := $location.Userlist.Realm }}
+    http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if { hdr(host) {{ $server.Hostname }} }{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
 {{ end }}
 {{ end }}
 {{ end }}
@@ -110,6 +127,11 @@ frontend httpsfront-{{ $host }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.HAWhitelist "" }}
     http-request deny if{{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }
+{{ end }}
+{{ $listName := $location.Userlist.ListName }}
+{{ if ne $listName "" }}
+    {{ $realm := $location.Userlist.Realm }}
+    http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
 {{ end }}
 {{ end }}
 {{ range $location := $server.Locations }}

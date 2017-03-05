@@ -30,6 +30,9 @@ The following annotations are supported:
 
 |Name|Type|Usage|
 |---|---|---|
+|`ingress.kubernetes.io/auth-type`|"basic"|-|
+|`ingress.kubernetes.io/auth-secret`|secretName|-|
+|`ingress.kubernetes.io/auth-realm`|realm string|-|
 |`ingress.kubernetes.io/ssl-redirect`|true / false|-|
 |`ingress.kubernetes.io/whitelist-source-range`|CIDR|-|
 

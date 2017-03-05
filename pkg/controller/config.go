@@ -17,15 +17,19 @@ limitations under the License.
 package main
 
 import (
+	"bufio"
 	"github.com/golang/glog"
 	"github.com/mitchellh/mapstructure"
 	"k8s.io/ingress/core/pkg/ingress"
 	"k8s.io/ingress/core/pkg/ingress/annotations/rewrite"
 	"k8s.io/ingress/core/pkg/ingress/defaults"
+	"os"
+	"strings"
 )
 
 type (
 	configuration struct {
+		Userlists           map[string]userlist
 		Backends            []*ingress.Backend
 		DefaultServer       *haproxyServer
 		HTTPServers         []*haproxyServer
@@ -34,6 +38,16 @@ type (
 		UDPEndpoints        []*ingress.Location
 		PassthroughBackends []*ingress.SSLPassthroughBackend
 		Syslog              string `json:"syslog-endpoint"`
+	}
+	userlist struct {
+		ListName string
+		Realm    string
+		Users    []authUser
+	}
+	authUser struct {
+		Username  string
+		Password  string
+		Encrypted bool
 	}
 	// haproxyServer and haproxyLocation build some missing pieces
 	// from ingress.Server used by HAProxy
@@ -51,6 +65,7 @@ type (
 		Path           string           `json:"path"`
 		Backend        string           `json:"backend"`
 		Redirect       rewrite.Redirect `json:"redirect,omitempty"`
+		Userlist       userlist         `json:"userlist,omitempty"`
 		HAMatchPath    string           `json:"haMatchPath"`
 		HAWhitelist    string           `json:"whitelist,omitempty"`
 	}
@@ -76,8 +91,10 @@ func mergeMap(data map[string]string, resultTo interface{}) error {
 }
 
 func newConfig(cfg *ingress.Configuration, data map[string]string) *configuration {
-	haHTTPServers, haHTTPSServers, haDefaultServer := newHAProxyServers(cfg.Servers)
+	userlists := newUserlists(cfg.Servers)
+	haHTTPServers, haHTTPSServers, haDefaultServer := newHAProxyServers(userlists, cfg.Servers)
 	conf := configuration{
+		Userlists:           userlists,
 		Backends:            cfg.Backends,
 		HTTPServers:         haHTTPServers,
 		HTTPSServers:        haHTTPSServers,
@@ -90,11 +107,11 @@ func newConfig(cfg *ingress.Configuration, data map[string]string) *configuratio
 	return &conf
 }
 
-func newHAProxyServers(servers []*ingress.Server) (haHTTPServers []*haproxyServer, haHTTPSServers []*haproxyServer, haDefaultServer *haproxyServer) {
+func newHAProxyServers(userlists map[string]userlist, servers []*ingress.Server) (haHTTPServers []*haproxyServer, haHTTPSServers []*haproxyServer, haDefaultServer *haproxyServer) {
 	haHTTPServers = make([]*haproxyServer, 0, len(servers))
 	haHTTPSServers = make([]*haproxyServer, 0, len(servers))
 	for _, server := range servers {
-		haLocations, haRootLocation := newHAProxyLocations(server)
+		haLocations, haRootLocation := newHAProxyLocations(userlists, server)
 		haServer := haproxyServer{
 			// Ingress uses `_` hostname as default server
 			IsDefaultServer: server.Hostname == "_",
@@ -119,7 +136,7 @@ func newHAProxyServers(servers []*ingress.Server) (haHTTPServers []*haproxyServe
 	return
 }
 
-func newHAProxyLocations(server *ingress.Server) (haLocations []*haproxyLocation, haRootLocation *haproxyLocation) {
+func newHAProxyLocations(userlists map[string]userlist, server *ingress.Server) (haLocations []*haproxyLocation, haRootLocation *haproxyLocation) {
 	locations := server.Locations
 	haLocations = make([]*haproxyLocation, len(locations))
 	otherPaths := ""
@@ -128,11 +145,16 @@ func newHAProxyLocations(server *ingress.Server) (haLocations []*haproxyLocation
 		for _, cidr := range location.Whitelist.CIDR {
 			haWhitelist = haWhitelist + " " + cidr
 		}
+		users, ok := userlists[location.BasicDigestAuth.File]
+		if !ok {
+			users = userlist{}
+		}
 		haLocation := haproxyLocation{
 			IsRootLocation: location.Path == "/",
 			Path:           location.Path,
 			Backend:        location.Backend,
 			Redirect:       location.Redirect,
+			Userlist:       users,
 			HAWhitelist:    haWhitelist,
 		}
 		// RootLocation `/` means "any other URL" on Ingress.
@@ -149,6 +171,80 @@ func newHAProxyLocations(server *ingress.Server) (haLocations []*haproxyLocation
 		haRootLocation.HAMatchPath = " !{ path_beg" + otherPaths + " }"
 	}
 	return
+}
+
+// This could be improved creating a list of auth secrets (or even configMaps)
+// on Ingress and saving usr(s)/pwd in auth.BasicDigest struct
+func newUserlists(servers []*ingress.Server) map[string]userlist {
+	userlists := map[string]userlist{}
+	for _, server := range servers {
+		for _, location := range server.Locations {
+			fileName := location.BasicDigestAuth.File
+			authType := location.BasicDigestAuth.Type
+			if fileName != "" && authType != "digest" {
+				_, ok := userlists[fileName]
+				if !ok {
+					slashPos := strings.LastIndex(fileName, "/")
+					dotPos := strings.LastIndex(fileName, ".")
+					listName := fileName[slashPos+1 : dotPos]
+					users, err := readUsers(fileName, listName)
+					if err != nil {
+						glog.Errorf("Unexpected error reading %v: %v", listName, err)
+						break
+					}
+					userlists[fileName] = userlist{
+						ListName: listName,
+						Realm:    location.BasicDigestAuth.Realm,
+						Users:    users,
+					}
+				}
+			}
+		}
+	}
+	return userlists
+}
+
+func readUsers(fileName string, listName string) ([]authUser, error) {
+	file, err := os.Open(fileName)
+	if err != nil {
+		return nil, err
+	}
+	scanner := bufio.NewScanner(file)
+	users := []authUser{}
+	for scanner.Scan() {
+		line := scanner.Text()
+		sep := strings.Index(line, ":")
+		if sep == -1 {
+			glog.Warningf("Missing ':' on userlist '%v'", listName)
+			break
+		}
+		userName := line[0:sep]
+		if userName == "" {
+			glog.Warningf("Missing username on userlist '%v'", listName)
+			break
+		}
+		if sep == len(line)-1 || line[sep:] == "::" {
+			glog.Warningf("Missing '%v' password on userlist '%v'", userName, listName)
+			break
+		}
+		user := authUser{}
+		// if usr::pwd
+		if string(line[sep+1]) == ":" {
+			user = authUser{
+				Username:  userName,
+				Password:  line[sep+2:],
+				Encrypted: false,
+			}
+		} else {
+			user = authUser{
+				Username:  userName,
+				Password:  line[sep+1:],
+				Encrypted: true,
+			}
+		}
+		users = append(users, user)
+	}
+	return users, nil
 }
 
 func serverSSLRedirect(server *ingress.Server) bool {
