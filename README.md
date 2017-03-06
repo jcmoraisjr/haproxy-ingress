@@ -29,11 +29,11 @@ template file at `/usr/local/etc/haproxy/haproxy.tmpl`.
 The following annotations are supported:
 
 |Name|Type|Usage|
-|---|---|---|
-|`ingress.kubernetes.io/auth-type`|"basic"|-|
-|`ingress.kubernetes.io/auth-secret`|secretName|-|
-|`ingress.kubernetes.io/auth-realm`|realm string|-|
-|`ingress.kubernetes.io/ssl-redirect`|true / false|-|
+|---|---|:---:|
+|`ingress.kubernetes.io/auth-type`|"basic"|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
+|`ingress.kubernetes.io/auth-secret`|secret name|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
+|`ingress.kubernetes.io/auth-realm`|realm string|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
+|`ingress.kubernetes.io/ssl-redirect`|[true\|false]|-|
 |`ingress.kubernetes.io/whitelist-source-range`|CIDR|-|
 
 Details about the supported options can be found at Ingress Controller
@@ -49,8 +49,8 @@ The following parameters are supported:
 
 |Name|Type|Default|
 |---|---|---|
-|[`ssl-redirect`](#ssl-redirect)|true / false|`true`|
-|[`syslog-endpoint`](#syslog-endpoint)|UDP IP:port|do not log|
+|[`ssl-redirect`](#ssl-redirect)|[true\|false]|`true`|
+|[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
 
 ### ssl-redirect
 
