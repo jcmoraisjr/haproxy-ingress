@@ -21,6 +21,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/mitchellh/mapstructure"
 	"k8s.io/ingress/core/pkg/ingress"
+	"k8s.io/ingress/core/pkg/ingress/annotations/authtls"
 	"k8s.io/ingress/core/pkg/ingress/annotations/rewrite"
 	"k8s.io/ingress/core/pkg/ingress/defaults"
 	"os"
@@ -61,13 +62,14 @@ type (
 		SSLRedirect     bool               `json:"sslRedirect"`
 	}
 	haproxyLocation struct {
-		IsRootLocation bool             `json:"isDefaultLocation"`
-		Path           string           `json:"path"`
-		Backend        string           `json:"backend"`
-		Redirect       rewrite.Redirect `json:"redirect,omitempty"`
-		Userlist       userlist         `json:"userlist,omitempty"`
-		HAMatchPath    string           `json:"haMatchPath"`
-		HAWhitelist    string           `json:"whitelist,omitempty"`
+		IsRootLocation  bool                  `json:"isDefaultLocation"`
+		Path            string                `json:"path"`
+		Backend         string                `json:"backend"`
+		Redirect        rewrite.Redirect      `json:"redirect,omitempty"`
+		Userlist        userlist              `json:"userlist,omitempty"`
+		CertificateAuth authtls.AuthSSLConfig `json:"certificateAuth,omitempty"`
+		HAMatchPath     string                `json:"haMatchPath"`
+		HAWhitelist     string                `json:"whitelist,omitempty"`
 	}
 )
 
@@ -150,12 +152,13 @@ func newHAProxyLocations(userlists map[string]userlist, server *ingress.Server) 
 			users = userlist{}
 		}
 		haLocation := haproxyLocation{
-			IsRootLocation: location.Path == "/",
-			Path:           location.Path,
-			Backend:        location.Backend,
-			Redirect:       location.Redirect,
-			Userlist:       users,
-			HAWhitelist:    haWhitelist,
+			IsRootLocation:  location.Path == "/",
+			Path:            location.Path,
+			Backend:         location.Backend,
+			Redirect:        location.Redirect,
+			CertificateAuth: location.CertificateAuth,
+			Userlist:        users,
+			HAWhitelist:     haWhitelist,
 		}
 		// RootLocation `/` means "any other URL" on Ingress.
 		// HAMatchPath build this strategy on HAProxy.
@@ -181,7 +184,7 @@ func newUserlists(servers []*ingress.Server) map[string]userlist {
 		for _, location := range server.Locations {
 			fileName := location.BasicDigestAuth.File
 			authType := location.BasicDigestAuth.Type
-			if fileName != "" && authType != "digest" {
+			if fileName != "" && authType == "basic" {
 				_, ok := userlists[fileName]
 				if !ok {
 					slashPos := strings.LastIndex(fileName, "/")

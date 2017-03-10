@@ -116,8 +116,12 @@ backend httpsback-{{ $host }}
     server {{ $host }} unix@/var/run/haproxy-host-{{ $host }}.sock send-proxy-v2
 
 frontend httpsfront-{{ $host }}
+    {{ $authSSLCert := $server.RootLocation.CertificateAuth.AuthSSLCert }}
     # CRT PEM checksum: {{ $server.SSLPemChecksum }}
-    bind unix@/var/run/haproxy-host-{{ $host }}.sock ssl crt {{ $server.SSLCertificate }} no-sslv3 accept-proxy
+{{ if ne $authSSLCert.PemSHA "" }}
+    # CA PEM checksum: {{ $authSSLCert.PemSHA }}
+{{ end }}
+    bind unix@/var/run/haproxy-host-{{ $host }}.sock ssl crt {{ $server.SSLCertificate }}{{ if ne $authSSLCert.CAFileName "" }} ca-file {{ $authSSLCert.CAFileName }} verify required{{ end }} no-sslv3 accept-proxy
     mode http
 {{ if ne $cfg.Syslog "" }}
     option httplog
