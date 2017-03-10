@@ -22,16 +22,17 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/cache"
 	"k8s.io/kubernetes/pkg/healthz"
+	"k8s.io/kubernetes/pkg/util/intstr"
 
 	cache_store "k8s.io/ingress/core/pkg/cache"
 	"k8s.io/ingress/core/pkg/ingress/annotations/auth"
 	"k8s.io/ingress/core/pkg/ingress/annotations/authreq"
+	"k8s.io/ingress/core/pkg/ingress/annotations/authtls"
 	"k8s.io/ingress/core/pkg/ingress/annotations/ipwhitelist"
 	"k8s.io/ingress/core/pkg/ingress/annotations/proxy"
 	"k8s.io/ingress/core/pkg/ingress/annotations/ratelimit"
 	"k8s.io/ingress/core/pkg/ingress/annotations/rewrite"
 	"k8s.io/ingress/core/pkg/ingress/defaults"
-	"k8s.io/ingress/core/pkg/ingress/resolver"
 )
 
 var (
@@ -95,6 +96,8 @@ type Controller interface {
 	Info() *BackendInfo
 	// OverrideFlags allow the customization of the flags in the backend
 	OverrideFlags(*pflag.FlagSet)
+	// DefaultIngressClass just return the default ingress class
+	DefaultIngressClass() string
 }
 
 // StoreLister returns the configured stores for ingresses, services,
@@ -132,10 +135,10 @@ type Configuration struct {
 	Servers []*Server `json:"servers"`
 	// TCPEndpoints contain endpoints for tcp streams handled by this backend
 	// +optional
-	TCPEndpoints []*Location `json:"tcpEndpoints,omitempty"`
+	TCPEndpoints []L4Service `json:"tcpEndpoints,omitempty"`
 	// UDPEndpoints contain endpoints for udp streams handled by this backend
 	// +optional
-	UDPEndpoints []*Location `json:"udpEndpoints,omitempty"`
+	UDPEndpoints []L4Service `json:"udpEndpoints,omitempty"`
 	// PassthroughBackend contains the backends used for SSL passthrough.
 	// It contains information about the associated Server Name Indication (SNI).
 	// +optional
@@ -273,10 +276,13 @@ type Location struct {
 	// CertificateAuth indicates the access to this location requires
 	// external authentication
 	// +optional
-	CertificateAuth resolver.AuthSSLCert `json:"certificateAuth,omitempty"`
+	CertificateAuth authtls.AuthSSLConfig `json:"certificateAuth,omitempty"`
 	// UsePortInRedirects indicates if redirects must specify the port
 	// +optional
 	UsePortInRedirects bool `json:"use-port-in-redirects"`
+	// ConfigurationSnippet contains additional configuration for the backend
+	// to be considered in the configuration of the location
+	ConfigurationSnippet string `json:"configuration-snippet"`
 }
 
 // SSLPassthroughBackend describes a SSL upstream server configured
@@ -288,4 +294,22 @@ type SSLPassthroughBackend struct {
 	Backend string `json:"namespace,omitempty"`
 	// Hostname returns the FQDN of the server
 	Hostname string `json:"hostname"`
+}
+
+// L4Service describes a L4 Ingress service.
+type L4Service struct {
+	// Port external port to expose
+	Port int `json:"port"`
+	// Backend of the service
+	Backend L4Backend `json:"backend"`
+	// Endpoints active endpoints of the service
+	Endpoints []Endpoint `json:"endpoins"`
+}
+
+// L4Backend describes the kubernetes service behind L4 Ingress service
+type L4Backend struct {
+	Port      intstr.IntOrString `json:"port"`
+	Name      string             `json:"name"`
+	Namespace string             `json:"namespace"`
+	Protocol  api.Protocol       `json:"protocol"`
 }

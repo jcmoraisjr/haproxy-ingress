@@ -82,6 +82,8 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 
 		updateStatus = flags.Bool("update-status", true, `Indicates if the 
 		ingress controller should update the Ingress status IP/hostname. Default is true`)
+
+		electionID = flags.String("election-id", "ingress-controller-leader", `Election id to use for status update.`)
 	)
 
 	backend.OverrideFlags(flags)
@@ -133,14 +135,19 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		}
 	}
 
-	os.MkdirAll(ingress.DefaultSSLDirectory, 0655)
+	err = os.MkdirAll(ingress.DefaultSSLDirectory, 0655)
+	if err != nil {
+		glog.Errorf("Failed to mkdir SSL directory: %v", err)
+	}
 
 	config := &Configuration{
 		UpdateStatus:          *updateStatus,
+		ElectionID:            *electionID,
 		Client:                kubeClient,
 		ResyncPeriod:          *resyncPeriod,
 		DefaultService:        *defaultSvc,
 		IngressClass:          *ingressClass,
+		DefaultIngressClass:   backend.DefaultIngressClass(),
 		Namespace:             *watchNamespace,
 		ConfigMapName:         *configMap,
 		TCPConfigMapName:      *tcpConfigMapName,

@@ -34,8 +34,8 @@ type (
 		DefaultServer       *haproxyServer
 		HTTPServers         []*haproxyServer
 		HTTPSServers        []*haproxyServer
-		TCPEndpoints        []*ingress.Location
-		UDPEndpoints        []*ingress.Location
+		TCPEndpoints        []ingress.L4Service
+		UDPEndpoints        []ingress.L4Service
 		PassthroughBackends []*ingress.SSLPassthroughBackend
 		Syslog              string `json:"syslog-endpoint"`
 	}

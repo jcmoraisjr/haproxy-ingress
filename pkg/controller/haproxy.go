@@ -71,6 +71,10 @@ func (haproxy *haproxyController) Name() string {
 	return "HAProxy Ingress Controller"
 }
 
+func (haproxy *haproxyController) DefaultIngressClass() string {
+	return "haproxy"
+}
+
 func (haproxy *haproxyController) Check(_ *http.Request) error {
 	return nil
 }
