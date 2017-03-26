@@ -74,6 +74,12 @@ frontend httpfront
 {{ end }}
 {{ end }}
 {{ end }}
+{{ range $server := $cfg.HTTPServers }}
+{{ $appRoot := $server.RootLocation.Redirect.AppRoot }}
+{{ if ne $appRoot "" }}
+    redirect location {{ $appRoot }} if { hdr(host) {{ $server.Hostname }} } { path / }
+{{ end }}
+{{ end }}
 {{ range $server := $cfg.HTTPSServers }}
 {{ if $server.SSLRedirect }}
     redirect scheme https if { hdr(host) {{ $server.Hostname }} }
@@ -137,6 +143,10 @@ frontend httpsfront-{{ $host }}
     {{ $realm := $location.Userlist.Realm }}
     http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
 {{ end }}
+{{ end }}
+{{ $appRoot := $server.RootLocation.Redirect.AppRoot }}
+{{ if ne $appRoot "" }}
+    redirect location {{ $appRoot }} if { path / }
 {{ end }}
 {{ range $location := $server.Locations }}
 {{ if not $location.IsRootLocation }}

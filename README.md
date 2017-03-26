@@ -16,7 +16,7 @@ whenever a tag is applied. The `latest` tag will always point to the latest stab
 Usage docs are maintained on Ingress repository:
 
 * Start with [deployment](https://github.com/kubernetes/ingress/tree/master/examples/deployment/haproxy) instructions
-* See [TLS termination](https://github.com/kubernetes/ingress/tree/master/examples/tls-termination/haproxy) on how to enable `https` url
+* See [TLS termination](https://github.com/kubernetes/ingress/tree/master/examples/tls-termination/haproxy) on how to enable `https`
 
 # Configuration
 
@@ -28,13 +28,14 @@ template file at `/usr/local/etc/haproxy/haproxy.tmpl`.
 
 The following annotations are supported:
 
-|Name|Type|Usage|
+|Name|Data|Usage|
 |---|---|:---:|
 |`ingress.kubernetes.io/auth-type`|"basic"|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
 |`ingress.kubernetes.io/auth-secret`|secret name|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
 |`ingress.kubernetes.io/auth-realm`|realm string|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
 |`ingress.kubernetes.io/auth-tls-secret`|namespace/secret name|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/client-certs/haproxy)|
 |`ingress.kubernetes.io/ssl-redirect`|[true\|false]|-|
+|`ingress.kubernetes.io/app-root`|/url|-|
 |`ingress.kubernetes.io/whitelist-source-range`|CIDR|-|
 
 ## ConfigMap
