@@ -1,4 +1,5 @@
-{{ $cfg := . }}
+{{ $ing := . }}
+{{ $cfg := .Cfg }}
 global
     daemon
     stats socket /tmp/haproxy
@@ -27,11 +28,11 @@ defaults
     timeout tunnel          1h
     timeout http-keep-alive 60s
 
-{{ if ne (len $cfg.Userlists) 0 }}
+{{ if ne (len $ing.Userlists) 0 }}
 ######
 ###### Userlists
 ######
-{{ range $userlist := $cfg.Userlists }}
+{{ range $userlist := $ing.Userlists }}
 userlist {{ $userlist.ListName }}
 {{ range $user := $userlist.Users }}
     user {{ $user.Username }} {{ if $user.Encrypted }}password{{ else }}insecure-password{{ end }} {{ $user.Password }}
@@ -42,7 +43,7 @@ userlist {{ $userlist.ListName }}
 ######
 ###### Backends
 ######
-{{ range $backend := $cfg.Backends }}
+{{ range $backend := $ing.Backends }}
 backend {{ $backend.Name }}
     mode http
     balance roundrobin
@@ -62,7 +63,7 @@ frontend httpfront
     option httplog
 {{ end }}
     option forwardfor
-{{ range $server := $cfg.HTTPServers }}
+{{ range $server := $ing.HTTPServers }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.HAWhitelist "" }}
     http-request deny if { hdr(host) {{ $server.Hostname }} }{{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }
@@ -74,13 +75,13 @@ frontend httpfront
 {{ end }}
 {{ end }}
 {{ end }}
-{{ range $server := $cfg.HTTPServers }}
+{{ range $server := $ing.HTTPServers }}
 {{ $appRoot := $server.RootLocation.Redirect.AppRoot }}
 {{ if ne $appRoot "" }}
     redirect location {{ $appRoot }} if { hdr(host) {{ $server.Hostname }} } { path / }
 {{ end }}
 {{ end }}
-{{ range $server := $cfg.HTTPSServers }}
+{{ range $server := $ing.HTTPSServers }}
 {{ if $server.SSLRedirect }}
     redirect scheme https if { hdr(host) {{ $server.Hostname }} }
 {{ else }}
@@ -91,14 +92,14 @@ frontend httpfront
 {{ end }}
 {{ end }}
 {{ end }}
-{{ range $server := $cfg.HTTPServers }}
+{{ range $server := $ing.HTTPServers }}
 {{ range $location := $server.Locations }}
 {{ if or (eq $server.SSLCertificate "") (not $location.Redirect.SSLRedirect) }}
     use_backend {{ $location.Backend }} if { hdr(host) {{ $server.Hostname }} }{{ if not $location.IsRootLocation }} { path_beg {{ $location.Path }} }{{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
-    default_backend {{ $cfg.DefaultServer.RootLocation.Backend }}
+    default_backend {{ $ing.DefaultServer.RootLocation.Backend }}
 
 ######
 ###### HTTPS frontend (tcp mode)
@@ -108,12 +109,12 @@ frontend httpsfront
     mode tcp
     tcp-request inspect-delay 5s
     tcp-request content accept if { req.ssl_hello_type 1 }
-{{ range $server := $cfg.HTTPSServers }}
+{{ range $server := $ing.HTTPSServers }}
     use_backend httpsback-{{ $server.Hostname }} if { req.ssl_sni -i {{ $server.Hostname }} }
 {{ end }}
     default_backend httpsback-default-backend
 
-{{ range $server := $cfg.HTTPSServers }}
+{{ range $server := $ing.HTTPSServers }}
 {{ $host := $server.Hostname }}
 ##
 ## {{ $host }}
@@ -159,7 +160,7 @@ frontend httpsfront-{{ $host }}
 
 ##
 ## Default backend (tcp mode)
-{{ $server := $cfg.DefaultServer }}
+{{ $server := $ing.DefaultServer }}
 {{ $location := $server.RootLocation }}
 {{ $host := "default_backend" }}
 backend httpsback-default-backend

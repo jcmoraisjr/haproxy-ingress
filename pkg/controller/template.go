@@ -14,11 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package controller
 
 import (
 	"bytes"
 	"github.com/golang/glog"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"os/exec"
 	gotemplate "text/template"
 )
@@ -41,10 +42,10 @@ func newTemplate(name string, file string) *template {
 	}
 }
 
-func (t *template) execute(conf *configuration) ([]byte, error) {
+func (t *template) execute(cfg *types.ControllerConfig) ([]byte, error) {
 	t.rawConfig.Reset()
 	t.fmtConfig.Reset()
-	if err := t.tmpl.Execute(t.rawConfig, conf); err != nil {
+	if err := t.tmpl.Execute(t.rawConfig, cfg); err != nil {
 		return nil, err
 	}
 	cmd := exec.Command("sed", "/^ *$/d")

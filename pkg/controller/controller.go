@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package controller
 
 import (
 	"bytes"
@@ -31,7 +31,8 @@ import (
 	"os/exec"
 )
 
-type haproxyController struct {
+// HAProxyController has internal data of a HAProxyController instance
+type HAProxyController struct {
 	controller *controller.GenericController
 	configMap  *api.ConfigMap
 	command    string
@@ -39,15 +40,17 @@ type haproxyController struct {
 	template   *template
 }
 
-func newHAProxyController() *haproxyController {
-	return &haproxyController{
+// NewHAProxyController constructor
+func NewHAProxyController() *HAProxyController {
+	return &HAProxyController{
 		command:    "/haproxy-wrapper",
 		configFile: "/usr/local/etc/haproxy/haproxy.cfg",
 		template:   newTemplate("haproxy.tmpl", "/usr/local/etc/haproxy/haproxy.tmpl"),
 	}
 }
 
-func (haproxy *haproxyController) Info() *ingress.BackendInfo {
+// Info provides controller name and repository infos
+func (haproxy *HAProxyController) Info() *ingress.BackendInfo {
 	return &ingress.BackendInfo{
 		Name:       "HAProxy",
 		Release:    version.RELEASE,
@@ -56,62 +59,62 @@ func (haproxy *haproxyController) Info() *ingress.BackendInfo {
 	}
 }
 
-func (haproxy *haproxyController) Start() {
-	controller := controller.NewIngressController(haproxy)
-	haproxy.controller = controller
+// Start starts the controller
+func (haproxy *HAProxyController) Start() {
+	haproxy.controller = controller.NewIngressController(haproxy)
 	haproxy.controller.Start()
 }
 
-func (haproxy *haproxyController) Stop() error {
+// Stop shutdown the controller process
+func (haproxy *HAProxyController) Stop() error {
 	err := haproxy.controller.Stop()
 	return err
 }
 
-func (haproxy *haproxyController) Name() string {
+// Name provides the complete name of the controller
+func (haproxy *HAProxyController) Name() string {
 	return "HAProxy Ingress Controller"
 }
 
-func (haproxy *haproxyController) DefaultIngressClass() string {
+// DefaultIngressClass returns the ingress class name
+func (haproxy *HAProxyController) DefaultIngressClass() string {
 	return "haproxy"
 }
 
-func (haproxy *haproxyController) Check(_ *http.Request) error {
+// Check health check implementation
+func (haproxy *HAProxyController) Check(_ *http.Request) error {
 	return nil
 }
 
-func (haproxy *haproxyController) SetListers(ingress.StoreLister) {
+// SetListers give access to the store listers
+func (haproxy *HAProxyController) SetListers(ingress.StoreLister) {
 }
 
-func (haproxy *haproxyController) OverrideFlags(*pflag.FlagSet) {
+// OverrideFlags allows controller to override command line parameter flags
+func (haproxy *HAProxyController) OverrideFlags(*pflag.FlagSet) {
 }
 
-func (haproxy *haproxyController) SetConfig(configMap *api.ConfigMap) {
+// SetConfig receives the ConfigMap the user has configured
+func (haproxy *HAProxyController) SetConfig(configMap *api.ConfigMap) {
 	haproxy.configMap = configMap
 }
 
-func (haproxy *haproxyController) BackendDefaults() defaults.Backend {
-	def := newDefaultConfig()
-	if haproxy.configMap != nil {
-		mergeMap(haproxy.configMap.Data, &def)
-	}
-	return def
+// BackendDefaults defines default values to the ingress core
+func (haproxy *HAProxyController) BackendDefaults() defaults.Backend {
+	return newHAProxyConfig(haproxy.configMap).Backend
 }
 
-func (haproxy *haproxyController) OnUpdate(cfg ingress.Configuration) ([]byte, error) {
-	var conf *configuration
-	if haproxy.configMap != nil {
-		conf = newConfig(&cfg, haproxy.configMap.Data)
-	} else {
-		conf = newConfig(&cfg, nil)
-	}
-	data, err := haproxy.template.execute(conf)
+// OnUpdate regenerate the configuration file of the backend
+func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) ([]byte, error) {
+	data, err := haproxy.template.execute(newControllerConfig(&cfg, haproxy.configMap))
 	if err != nil {
 		return nil, err
 	}
 	return data, nil
 }
 
-func (haproxy *haproxyController) Reload(data []byte) ([]byte, bool, error) {
+// Reload reload the backend if the configuration file has changed
+func (haproxy *HAProxyController) Reload(data []byte) ([]byte, bool, error) {
 	if !haproxy.configChanged(data) {
 		return nil, false, nil
 	}
@@ -127,7 +130,7 @@ func (haproxy *haproxyController) Reload(data []byte) ([]byte, bool, error) {
 	return out, true, err
 }
 
-func (haproxy *haproxyController) configChanged(data []byte) bool {
+func (haproxy *HAProxyController) configChanged(data []byte) bool {
 	if _, err := os.Stat(haproxy.configFile); os.IsNotExist(err) {
 		return true
 	}
@@ -138,7 +141,7 @@ func (haproxy *haproxyController) configChanged(data []byte) bool {
 	return !bytes.Equal(cfg, data)
 }
 
-func (haproxy *haproxyController) reloadHaproxy() ([]byte, error) {
+func (haproxy *HAProxyController) reloadHaproxy() ([]byte, error) {
 	out, err := exec.Command(haproxy.command, haproxy.configFile).CombinedOutput()
 	return out, err
 }

@@ -14,33 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package utils
 
 import (
 	"github.com/golang/glog"
-	"os"
-	"os/signal"
-	"syscall"
+	"github.com/mitchellh/mapstructure"
 )
 
-func main() {
-	hc := newHAProxyController()
-	errCh := make(chan error)
-	go handleSignal(hc, errCh)
-	hc.Start()
-	code := 0
-	err := <-errCh
-	if err != nil {
-		glog.Warningf("Error stopping Ingress: %v", err)
-		code++
+// MergeMap copy keys from a `data` map to a `resultTo` tagged object
+func MergeMap(data map[string]string, resultTo interface{}) error {
+	if data != nil {
+		decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+			WeaklyTypedInput: true,
+			Result:           resultTo,
+			TagName:          "json",
+		})
+		if err != nil {
+			glog.Warningf("error configuring decoder: %v", err)
+		} else {
+			if err = decoder.Decode(data); err != nil {
+				glog.Warningf("error decoding config: %v", err)
+			}
+		}
+		return err
 	}
-	glog.Infof("Exiting (%v)", code)
-	os.Exit(code)
-}
-
-func handleSignal(hc *haproxyController, err chan error) {
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGTERM, syscall.SIGINT)
-	glog.Infof("Shutting down with signal %v", <-sig)
-	err <- hc.Stop()
+	return nil
 }

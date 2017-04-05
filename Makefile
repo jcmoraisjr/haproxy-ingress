@@ -17,4 +17,4 @@ build:
 	  -installsuffix cgo \
 	  -ldflags "-s -w -X $(ROOT_PKG)/version.RELEASE=$(TAG) -X $(ROOT_PKG)/version.COMMIT=$(GIT_COMMIT) -X $(ROOT_PKG)/version.REPO=$(GIT_REPO)" \
 	  -o rootfs/haproxy-ingress-controller \
-	  $(ROOT_PKG)/controller
+	  $(ROOT_PKG)

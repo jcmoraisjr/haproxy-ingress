@@ -14,88 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package controller
 
 import (
 	"bufio"
 	"github.com/golang/glog"
-	"github.com/mitchellh/mapstructure"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	"k8s.io/ingress/core/pkg/ingress"
-	"k8s.io/ingress/core/pkg/ingress/annotations/authtls"
-	"k8s.io/ingress/core/pkg/ingress/annotations/rewrite"
 	"k8s.io/ingress/core/pkg/ingress/defaults"
+	"k8s.io/kubernetes/pkg/api"
 	"os"
 	"strings"
 )
 
-type (
-	configuration struct {
-		Userlists           map[string]userlist
-		Backends            []*ingress.Backend
-		DefaultServer       *haproxyServer
-		HTTPServers         []*haproxyServer
-		HTTPSServers        []*haproxyServer
-		TCPEndpoints        []ingress.L4Service
-		UDPEndpoints        []ingress.L4Service
-		PassthroughBackends []*ingress.SSLPassthroughBackend
-		Syslog              string `json:"syslog-endpoint"`
-	}
-	userlist struct {
-		ListName string
-		Realm    string
-		Users    []authUser
-	}
-	authUser struct {
-		Username  string
-		Password  string
-		Encrypted bool
-	}
-	// haproxyServer and haproxyLocation build some missing pieces
-	// from ingress.Server used by HAProxy
-	haproxyServer struct {
-		IsDefaultServer bool               `json:"isDefaultServer"`
-		Hostname        string             `json:"hostname"`
-		SSLCertificate  string             `json:"sslCertificate"`
-		SSLPemChecksum  string             `json:"sslPemChecksum"`
-		RootLocation    *haproxyLocation   `json:"defaultLocation"`
-		Locations       []*haproxyLocation `json:"locations,omitempty"`
-		SSLRedirect     bool               `json:"sslRedirect"`
-	}
-	haproxyLocation struct {
-		IsRootLocation  bool                  `json:"isDefaultLocation"`
-		Path            string                `json:"path"`
-		Backend         string                `json:"backend"`
-		Redirect        rewrite.Redirect      `json:"redirect,omitempty"`
-		Userlist        userlist              `json:"userlist,omitempty"`
-		CertificateAuth authtls.AuthSSLConfig `json:"certificateAuth,omitempty"`
-		HAMatchPath     string                `json:"haMatchPath"`
-		HAWhitelist     string                `json:"whitelist,omitempty"`
-	}
-)
-
-func mergeMap(data map[string]string, resultTo interface{}) error {
-	if data != nil {
-		decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-			WeaklyTypedInput: true,
-			Result:           resultTo,
-			TagName:          "json",
-		})
-		if err != nil {
-			glog.Warningf("error configuring decoder: %v", err)
-		} else {
-			if err = decoder.Decode(data); err != nil {
-				glog.Warningf("error decoding config: %v", err)
-			}
-		}
-		return err
-	}
-	return nil
-}
-
-func newConfig(cfg *ingress.Configuration, data map[string]string) *configuration {
+func newControllerConfig(cfg *ingress.Configuration, configMap *api.ConfigMap) *types.ControllerConfig {
 	userlists := newUserlists(cfg.Servers)
 	haHTTPServers, haHTTPSServers, haDefaultServer := newHAProxyServers(userlists, cfg.Servers)
-	conf := configuration{
+	conf := types.ControllerConfig{
 		Userlists:           userlists,
 		Backends:            cfg.Backends,
 		HTTPServers:         haHTTPServers,
@@ -104,17 +40,31 @@ func newConfig(cfg *ingress.Configuration, data map[string]string) *configuratio
 		TCPEndpoints:        cfg.TCPEndpoints,
 		UDPEndpoints:        cfg.UDPEndpoints,
 		PassthroughBackends: cfg.PassthroughBackends,
+		Cfg:                 newHAProxyConfig(configMap),
 	}
-	mergeMap(data, &conf)
 	return &conf
 }
 
-func newHAProxyServers(userlists map[string]userlist, servers []*ingress.Server) (haHTTPServers []*haproxyServer, haHTTPSServers []*haproxyServer, haDefaultServer *haproxyServer) {
-	haHTTPServers = make([]*haproxyServer, 0, len(servers))
-	haHTTPSServers = make([]*haproxyServer, 0, len(servers))
+func newHAProxyConfig(configMap *api.ConfigMap) *types.HAProxyConfig {
+	conf := types.HAProxyConfig{
+		Backend: defaults.Backend{
+			SSLRedirect: true,
+		},
+		Syslog: "",
+	}
+	if configMap.Data != nil {
+		utils.MergeMap(configMap.Data, &conf)
+	}
+	return &conf
+}
+
+func newHAProxyServers(userlists map[string]types.Userlist, servers []*ingress.Server) ([]*types.HAProxyServer, []*types.HAProxyServer, *types.HAProxyServer) {
+	haHTTPServers := make([]*types.HAProxyServer, 0, len(servers))
+	haHTTPSServers := make([]*types.HAProxyServer, 0, len(servers))
+	var haDefaultServer *types.HAProxyServer
 	for _, server := range servers {
 		haLocations, haRootLocation := newHAProxyLocations(userlists, server)
-		haServer := haproxyServer{
+		haServer := types.HAProxyServer{
 			// Ingress uses `_` hostname as default server
 			IsDefaultServer: server.Hostname == "_",
 			Hostname:        server.Hostname,
@@ -135,12 +85,13 @@ func newHAProxyServers(userlists map[string]userlist, servers []*ingress.Server)
 			}
 		}
 	}
-	return
+	return haHTTPServers, haHTTPSServers, haDefaultServer
 }
 
-func newHAProxyLocations(userlists map[string]userlist, server *ingress.Server) (haLocations []*haproxyLocation, haRootLocation *haproxyLocation) {
+func newHAProxyLocations(userlists map[string]types.Userlist, server *ingress.Server) ([]*types.HAProxyLocation, *types.HAProxyLocation) {
 	locations := server.Locations
-	haLocations = make([]*haproxyLocation, len(locations))
+	haLocations := make([]*types.HAProxyLocation, len(locations))
+	var haRootLocation *types.HAProxyLocation
 	otherPaths := ""
 	for i, location := range locations {
 		haWhitelist := ""
@@ -149,9 +100,9 @@ func newHAProxyLocations(userlists map[string]userlist, server *ingress.Server) 
 		}
 		users, ok := userlists[location.BasicDigestAuth.File]
 		if !ok {
-			users = userlist{}
+			users = types.Userlist{}
 		}
-		haLocation := haproxyLocation{
+		haLocation := types.HAProxyLocation{
 			IsRootLocation:  location.Path == "/",
 			Path:            location.Path,
 			Backend:         location.Backend,
@@ -173,13 +124,13 @@ func newHAProxyLocations(userlists map[string]userlist, server *ingress.Server) 
 	if haRootLocation != nil && otherPaths != "" {
 		haRootLocation.HAMatchPath = " !{ path_beg" + otherPaths + " }"
 	}
-	return
+	return haLocations, haRootLocation
 }
 
 // This could be improved creating a list of auth secrets (or even configMaps)
 // on Ingress and saving usr(s)/pwd in auth.BasicDigest struct
-func newUserlists(servers []*ingress.Server) map[string]userlist {
-	userlists := map[string]userlist{}
+func newUserlists(servers []*ingress.Server) map[string]types.Userlist {
+	userlists := map[string]types.Userlist{}
 	for _, server := range servers {
 		for _, location := range server.Locations {
 			fileName := location.BasicDigestAuth.File
@@ -195,7 +146,7 @@ func newUserlists(servers []*ingress.Server) map[string]userlist {
 						glog.Errorf("Unexpected error reading %v: %v", listName, err)
 						break
 					}
-					userlists[fileName] = userlist{
+					userlists[fileName] = types.Userlist{
 						ListName: listName,
 						Realm:    location.BasicDigestAuth.Realm,
 						Users:    users,
@@ -207,13 +158,13 @@ func newUserlists(servers []*ingress.Server) map[string]userlist {
 	return userlists
 }
 
-func readUsers(fileName string, listName string) ([]authUser, error) {
+func readUsers(fileName string, listName string) ([]types.AuthUser, error) {
 	file, err := os.Open(fileName)
 	if err != nil {
 		return nil, err
 	}
 	scanner := bufio.NewScanner(file)
-	users := []authUser{}
+	users := []types.AuthUser{}
 	for scanner.Scan() {
 		line := scanner.Text()
 		sep := strings.Index(line, ":")
@@ -230,16 +181,16 @@ func readUsers(fileName string, listName string) ([]authUser, error) {
 			glog.Warningf("Missing '%v' password on userlist '%v'", userName, listName)
 			break
 		}
-		user := authUser{}
+		user := types.AuthUser{}
 		// if usr::pwd
 		if string(line[sep+1]) == ":" {
-			user = authUser{
+			user = types.AuthUser{
 				Username:  userName,
 				Password:  line[sep+2:],
 				Encrypted: false,
 			}
 		} else {
-			user = authUser{
+			user = types.AuthUser{
 				Username:  userName,
 				Password:  line[sep+1:],
 				Encrypted: true,
@@ -261,10 +212,4 @@ func serverSSLRedirect(server *ingress.Server) bool {
 		}
 	}
 	return true
-}
-
-func newDefaultConfig() defaults.Backend {
-	return defaults.Backend{
-		SSLRedirect: true,
-	}
 }
