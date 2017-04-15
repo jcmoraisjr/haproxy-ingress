@@ -52,7 +52,7 @@ func newHAProxyConfig(configMap *api.ConfigMap) *types.HAProxyConfig {
 		},
 		Syslog: "",
 	}
-	if configMap.Data != nil {
+	if configMap != nil && configMap.Data != nil {
 		utils.MergeMap(configMap.Data, &conf)
 	}
 	return &conf
