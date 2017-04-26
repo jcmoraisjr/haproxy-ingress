@@ -62,8 +62,8 @@ The following parameters are supported:
 |`[1]`|[`ssl-dh-param`](#ssl-dh-param)|namespace/secret name|no custom DH param|
 |`[1]`|[`ssl-options`](#ssl-options)|space-separated list|`no-sslv3` `no-tls-tickets`|
 ||[`ssl-redirect`](#ssl-redirect)|[true\|false]|`true`|
-|`[1]`|[`stat-auth`](#stat)|user:passwd|no auth|
-|`[1]`|[`stat-port`](#stat)|port number|`1936`|
+|`[1]`|[`stats-auth`](#stats)|user:passwd|no auth|
+|`[1]`|[`stats-port`](#stats)|port number|`1936`|
 ||[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
 |`[1]`|[`timeout-client`](#timeout)|time with suffix|`50s`|
 |`[1]`|[`timeout-client-fin`](#timeout)|time with suffix|`50s`|
@@ -144,7 +144,7 @@ A global configuration of SSL redirect used as default value if ingress resource
 doesn't use `ssl-redirect` annotation. If true HAProxy Ingress sends a `302 redirect`
 to https if TLS is configured.
 
-### stat
+### stats
 
 Configurations of the HAProxy status page:
 
