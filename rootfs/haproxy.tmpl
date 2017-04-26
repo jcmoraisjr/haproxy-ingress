@@ -9,9 +9,14 @@ global
     log {{ $cfg.Syslog }} format rfc5424 local0
     log-tag ingress
 {{ end }}
-    tune.ssl.default-dh-param 1024
-    ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!3DES:!MD5:!PSK
-    ssl-default-bind-options no-tls-tickets
+{{ if ne $cfg.SSLDHParam.Filename "" }}
+    # DH PEM checksum: {{ $cfg.SSLDHParam.PemSHA }}
+    ssl-dh-param-file {{ $cfg.SSLDHParam.Filename }}
+{{ else }}
+    tune.ssl.default-dh-param {{ $cfg.SSLDHParam.DefaultMaxSize }}
+{{ end }}
+    ssl-default-bind-ciphers {{ $cfg.SSLCiphers }}
+    ssl-default-bind-options {{ $cfg.SSLOptions }}
 
 defaults
     log global
@@ -20,13 +25,15 @@ defaults
     option dontlognull
     option http-server-close
     option http-keep-alive
-    timeout http-request    5s
-    timeout connect         5s
-    timeout client          50s
-    timeout client-fin      50s
-    timeout server          50s
-    timeout tunnel          1h
-    timeout http-keep-alive 60s
+    maxconn {{ $cfg.MaxConn }}
+    timeout http-request    {{ $cfg.TimeoutHTTPRequest }}
+    timeout connect         {{ $cfg.TimeoutConnect }}
+    timeout client          {{ $cfg.TimeoutClient }}
+    timeout client-fin      {{ $cfg.TimeoutClientFin }}
+    timeout server          {{ $cfg.TimeoutServer }}
+    timeout server-fin      {{ $cfg.TimeoutServerFin }}
+    timeout tunnel          {{ $cfg.TimeoutTunnel }}
+    timeout http-keep-alive {{ $cfg.TimeoutKeepAlive }}
 
 {{ if ne (len $ing.Userlists) 0 }}
 ######
@@ -35,7 +42,7 @@ defaults
 {{ range $userlist := $ing.Userlists }}
 userlist {{ $userlist.ListName }}
 {{ range $user := $userlist.Users }}
-    user {{ $user.Username }} {{ if $user.Encrypted }}password{{ else }}insecure-password{{ end }} {{ $user.Password }}
+    user {{ $user.Username }} {{ if not $user.Encrypted }}insecure-{{ end }}password {{ $user.Password }}
 {{ end }}
 {{ end }}
 {{ end }}
@@ -46,10 +53,10 @@ userlist {{ $userlist.ListName }}
 {{ range $backend := $ing.Backends }}
 backend {{ $backend.Name }}
     mode http
-    balance roundrobin
+    balance {{ $cfg.BalanceAlgorithm }}
 {{ range $endpoint := $backend.Endpoints }}
 {{ $target := (print $endpoint.Address ":" $endpoint.Port) }}
-    server {{ $target }} {{ $target }} check port {{ $endpoint.Port }} inter 2s
+    server {{ $target }} {{ $target }} check port {{ $endpoint.Port }} inter {{ $cfg.BackendCheckInterval }}
 {{ end }}
 {{ end }}
 
@@ -128,13 +135,15 @@ frontend httpsfront-{{ $host }}
 {{ if ne $authSSLCert.PemSHA "" }}
     # CA PEM checksum: {{ $authSSLCert.PemSHA }}
 {{ end }}
-    bind unix@/var/run/haproxy-host-{{ $host }}.sock ssl crt {{ $server.SSLCertificate }}{{ if ne $authSSLCert.CAFileName "" }} ca-file {{ $authSSLCert.CAFileName }} verify required{{ end }} no-sslv3 accept-proxy
+    bind unix@/var/run/haproxy-host-{{ $host }}.sock ssl crt {{ $server.SSLCertificate }}{{ if ne $authSSLCert.CAFileName "" }} ca-file {{ $authSSLCert.CAFileName }} verify required{{ end }} accept-proxy
     mode http
 {{ if ne $cfg.Syslog "" }}
     option httplog
 {{ end }}
     option forwardfor
-    rspadd Strict-Transport-Security:\ max-age=15768000
+{{ if $cfg.HSTS }}
+    rspadd "Strict-Transport-Security: max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}"
+{{ end }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.HAWhitelist "" }}
     http-request deny if{{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }
@@ -169,7 +178,7 @@ backend httpsback-default-backend
 
 frontend httpsfront-default-backend
     # CRT PEM checksum: {{ $server.SSLPemChecksum }}
-    bind unix@/var/run/haproxy-{{ $host }}.sock ssl crt {{ $server.SSLCertificate }} no-sslv3 accept-proxy
+    bind unix@/var/run/haproxy-{{ $host }}.sock ssl crt {{ $server.SSLCertificate }} accept-proxy
     mode http
 {{ if ne $cfg.Syslog "" }}
     option httplog
@@ -179,12 +188,15 @@ frontend httpsfront-default-backend
     default_backend {{ $location.Backend }}
 
 ######
-###### Status page
+###### Stats page
 ######
 listen stats
-    bind *:1936
+    bind *:{{ $cfg.StatsPort }}
     mode http
     stats enable
-    stats realm Haproxy\ Statistics
+    stats realm HAProxy\ Statistics
+{{ if ne $cfg.StatsAuth "" }}
+    stats auth {{ $cfg.StatsAuth }}
+{{ end }}
     stats uri /
     no log

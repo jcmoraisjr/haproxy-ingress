@@ -46,10 +46,97 @@ A ConfigMap can be created with `kubectl create configmap`.
 
 The following parameters are supported:
 
-|Name|Type|Default|
-|---|---|---|
-|[`ssl-redirect`](#ssl-redirect)|[true\|false]|`true`|
-|[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
+`[1]` only on repository
+
+||Name|Type|Default|
+|---|---|---|---|
+|`[1]`|[`balance-algorithm`](#balance-algorithm)|algorithm name|`roundrobin`|
+|`[1]`|[`backend-check-interval`](#backend-check-interval)|time with suffix|`2s`|
+|`[1]`|[`hsts`](#hsts)|[true\|false]|`true`|
+|`[1]`|[`hsts-include-subdomains`](#hsts)|[true\|false]|`false`|
+|`[1]`|[`hsts-max-age`](#hsts)|number of seconds|`15768000`|
+|`[1]`|[`hsts-preload`](#hsts)|[true\|false]|`false`|
+|`[1]`|[`max-connections`](#max-connections)|number|`2000`|
+|`[1]`|[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/master/pkg/types/types.go#L33)|
+|`[1]`|[`ssl-dh-default-max-size`](#ssl-dh-default-max-size)|number|`1024`|
+|`[1]`|[`ssl-dh-param`](#ssl-dh-param)|namespace/secret name|no custom DH param|
+|`[1]`|[`ssl-options`](#ssl-options)|space-separated list|`no-sslv3` `no-tls-tickets`|
+||[`ssl-redirect`](#ssl-redirect)|[true\|false]|`true`|
+|`[1]`|[`stat-auth`](#stat)|user:passwd|no auth|
+|`[1]`|[`stat-port`](#stat)|port number|`1936`|
+||[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
+|`[1]`|[`timeout-client`](#timeout)|time with suffix|`50s`|
+|`[1]`|[`timeout-client-fin`](#timeout)|time with suffix|`50s`|
+|`[1]`|[`timeout-connect`](#timeout)|time with suffix|`5s`|
+|`[1]`|[`timeout-http-request`](#timeout)|time with suffix|`5s`|
+|`[1]`|[`timeout-keep-alive`](#timeout)|time with suffix|`1m`|
+|`[1]`|[`timeout-server`](#timeout)|time with suffix|`50s`|
+|`[1]`|[`timeout-server-fin`](#timeout)|time with suffix|`50s`|
+|`[1]`|[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
+
+### balance-algorithm
+
+Define a load balancing algorithm.
+
+http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-balance
+
+### backend-check-interval
+
+Define the interval between TCP health checks to the backend using `inter` option.
+
+http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.2-inter
+
+### hsts
+
+Configure HSTS - HTTP Strict Transport Security.
+
+* `hsts`: `true` if HSTS response header should be added
+* `hsts-include-subdomains`: `true` if it should apply to subdomains as well
+* `hsts-max-age`: time in seconds the browser should remember this configuration
+* `hsts-preload`: `true` if the browser should include the domain to [HSTS preload list](https://hstspreload.org/)
+
+https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security
+
+### max-connections
+
+Define the maximum number of concurrent connections. Defaults to `2000` connections,
+which is also the HAProxy default configuration.
+
+http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.2-maxconn
+
+### ssl-ciphers
+
+Set the list of cipher algorithms used during the SSL/TLS handshake.
+
+http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#3.1-ssl-default-bind-ciphers
+
+### ssl-dh-default-max-size
+
+Define the maximum size of a temporary DH parameters used for key exchange.
+Only used if `ssl-dh-param` isn't provided.
+
+http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#tune.ssl.default-dh-param
+
+### ssl-dh-param
+
+Define DH parameters file used on ephemeral Diffie-Hellman key exchange during
+the SSL/TLS handshake.
+
+http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#3.1-ssl-dh-param-file
+
+### ssl-options
+
+Define a space-separated list of options on SSL/TLS connections:
+
+* `force-sslv3`: Enforces use of SSLv3 only
+* `force-tlsv10`: Enforces use of TLSv1.0 only
+* `force-tlsv11`: Enforces use of TLSv1.1 only
+* `force-tlsv12`: Enforces use of TLSv1.2 only
+* `no-sslv3`: Disables support for SSLv3
+* `no-tls-tickets`: Enforces the use of stateful session resumption
+* `no-tlsv10`: Disables support for TLSv1.0
+* `no-tlsv11`: Disables support for TLSv1.1
+* `no-tlsv12`: Disables support for TLSv1.2
 
 ### ssl-redirect
 
@@ -57,6 +144,26 @@ A global configuration of SSL redirect used as default value if ingress resource
 doesn't use `ssl-redirect` annotation. If true HAProxy Ingress sends a `302 redirect`
 to https if TLS is configured.
 
+### stat
+
+Configurations of the HAProxy status page:
+
+* `stats-auth`: Enable basic authentication with clear-text password - `<user>:<passwd>`
+* `stats-port`: Change the port HAProxy should listen to requests
+
 ### syslog-endpoint
 
 Configure the UDP syslog endpoint where HAProxy should send access logs.
+
+### timeout
+
+Define timeout configurations:
+
+* `timeout-client`: Maximum inactivity time on the client side
+* `timeout-client-fin`: Maximum inactivity time on the client side for half-closed connections - FIN_WAIT state
+* `timeout-connect`: Maximum time to wait for a connection to a backend
+* `timeout-http-request`: Maximum time to wait for a complete HTTP request
+* `timeout-keep-alive`: Maximum time to wait for a new HTTP request on keep-alive connections
+* `timeout-server`: Maximum inactivity time on the backend side
+* `timeout-server-fin`: Maximum inactivity time on the backend side for half-closed connections - FIN_WAIT state
+* `timeout-tunnel`: Maximum inactivity time on the client and backend side for tunnels

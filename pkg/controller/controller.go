@@ -33,11 +33,12 @@ import (
 
 // HAProxyController has internal data of a HAProxyController instance
 type HAProxyController struct {
-	controller *controller.GenericController
-	configMap  *api.ConfigMap
-	command    string
-	configFile string
-	template   *template
+	controller  *controller.GenericController
+	configMap   *api.ConfigMap
+	storeLister *ingress.StoreLister
+	command     string
+	configFile  string
+	template    *template
 }
 
 // NewHAProxyController constructor
@@ -87,7 +88,8 @@ func (haproxy *HAProxyController) Check(_ *http.Request) error {
 }
 
 // SetListers give access to the store listers
-func (haproxy *HAProxyController) SetListers(ingress.StoreLister) {
+func (haproxy *HAProxyController) SetListers(lister ingress.StoreLister) {
+	haproxy.storeLister = &lister
 }
 
 // OverrideFlags allows controller to override command line parameter flags
@@ -101,12 +103,12 @@ func (haproxy *HAProxyController) SetConfig(configMap *api.ConfigMap) {
 
 // BackendDefaults defines default values to the ingress core
 func (haproxy *HAProxyController) BackendDefaults() defaults.Backend {
-	return newHAProxyConfig(haproxy.configMap).Backend
+	return newHAProxyConfig(haproxy).Backend
 }
 
 // OnUpdate regenerate the configuration file of the backend
 func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) ([]byte, error) {
-	data, err := haproxy.template.execute(newControllerConfig(&cfg, haproxy.configMap))
+	data, err := haproxy.template.execute(newControllerConfig(&cfg, haproxy))
 	if err != nil {
 		return nil, err
 	}

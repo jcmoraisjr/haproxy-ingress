@@ -39,8 +39,28 @@ type (
 	}
 	// HAProxyConfig has HAProxy specific configurations from ConfigMap
 	HAProxyConfig struct {
-		defaults.Backend `json:",squash"`
-		Syslog           string `json:"syslog-endpoint"`
+		defaults.Backend      `json:",squash"`
+		SSLCiphers            string `json:"ssl-ciphers"`
+		SSLOptions            string `json:"ssl-options"`
+		SSLDHParam            `json:",squash"`
+		TimeoutHTTPRequest    string `json:"timeout-http-request"`
+		TimeoutConnect        string `json:"timeout-connect"`
+		TimeoutClient         string `json:"timeout-client"`
+		TimeoutClientFin      string `json:"timeout-client-fin"`
+		TimeoutServer         string `json:"timeout-server"`
+		TimeoutServerFin      string `json:"timeout-server-fin"`
+		TimeoutTunnel         string `json:"timeout-tunnel"`
+		TimeoutKeepAlive      string `json:"timeout-keep-alive"`
+		Syslog                string `json:"syslog-endpoint"`
+		BalanceAlgorithm      string `json:"balance-algorithm"`
+		BackendCheckInterval  string `json:"backend-check-interval"`
+		MaxConn               int    `json:"max-connections"`
+		HSTS                  bool   `json:"hsts"`
+		HSTSMaxAge            string `json:"hsts-max-age"`
+		HSTSIncludeSubdomains bool   `json:"hsts-include-subdomains"`
+		HSTSPreload           bool   `json:"hsts-preload"`
+		StatsPort             int    `json:"stats-port"`
+		StatsAuth             string `json:"stats-auth"`
 	}
 	// Userlist list of users for basic authentication
 	Userlist struct {
@@ -53,6 +73,13 @@ type (
 		Username  string
 		Password  string
 		Encrypted bool
+	}
+	// SSLDHParam Diffie-Hellman related options
+	SSLDHParam struct {
+		DefaultMaxSize int    `json:"ssl-dh-default-max-size"`
+		SecretName     string `json:"ssl-dh-param"`
+		Filename       string
+		PemSHA         string
 	}
 	// HAProxyServer and HAProxyLocation build some missing pieces
 	// from ingress.Server used by HAProxy

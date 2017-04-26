@@ -24,11 +24,17 @@ import (
 	api "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/ingress/core/pkg/ingress"
 	"k8s.io/ingress/core/pkg/ingress/defaults"
+	"k8s.io/ingress/core/pkg/net/ssl"
 	"os"
 	"strings"
 )
 
-func newControllerConfig(cfg *ingress.Configuration, configMap *api.ConfigMap) *types.ControllerConfig {
+const (
+	defaultSSLCiphers = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!3DES:!MD5:!PSK"
+	dhparamFilename   = "dhparam.pem"
+)
+
+func newControllerConfig(cfg *ingress.Configuration, haproxy *HAProxyController) *types.ControllerConfig {
 	userlists := newUserlists(cfg.Servers)
 	haHTTPServers, haHTTPSServers, haDefaultServer := newHAProxyServers(userlists, cfg.Servers)
 	conf := types.ControllerConfig{
@@ -40,21 +46,69 @@ func newControllerConfig(cfg *ingress.Configuration, configMap *api.ConfigMap) *
 		TCPEndpoints:        cfg.TCPEndpoints,
 		UDPEndpoints:        cfg.UDPEndpoints,
 		PassthroughBackends: cfg.PassthroughBackends,
-		Cfg:                 newHAProxyConfig(configMap),
+		Cfg:                 newHAProxyConfig(haproxy),
 	}
 	return &conf
 }
 
-func newHAProxyConfig(configMap *api.ConfigMap) *types.HAProxyConfig {
+func newHAProxyConfig(haproxy *HAProxyController) *types.HAProxyConfig {
 	conf := types.HAProxyConfig{
 		Backend: defaults.Backend{
 			SSLRedirect: true,
 		},
-		Syslog: "",
+		SSLCiphers: defaultSSLCiphers,
+		SSLOptions: "no-sslv3 no-tls-tickets",
+		SSLDHParam: types.SSLDHParam{
+			DefaultMaxSize: 1024,
+			SecretName:     "",
+		},
+		TimeoutHTTPRequest:    "5s",
+		TimeoutConnect:        "5s",
+		TimeoutClient:         "50s",
+		TimeoutClientFin:      "50s",
+		TimeoutServer:         "50s",
+		TimeoutServerFin:      "50s",
+		TimeoutTunnel:         "1h",
+		TimeoutKeepAlive:      "1m",
+		Syslog:                "",
+		BalanceAlgorithm:      "roundrobin",
+		BackendCheckInterval:  "2s",
+		MaxConn:               2000,
+		HSTS:                  true,
+		HSTSMaxAge:            "15768000",
+		HSTSIncludeSubdomains: false,
+		HSTSPreload:           false,
+		StatsPort:             1936,
+		StatsAuth:             "",
 	}
-	if configMap != nil && configMap.Data != nil {
-		utils.MergeMap(configMap.Data, &conf)
+	if haproxy.configMap != nil {
+		utils.MergeMap(haproxy.configMap.Data, &conf)
 	}
+
+	// TODO Ingress core should provide this
+	// read ssl-dh-param secret
+	if conf.SSLDHParam.SecretName != "" {
+		secretName := conf.SSLDHParam.SecretName
+		secret, exists, err := haproxy.storeLister.Secret.GetByKey(secretName)
+		if err != nil {
+			glog.Warningf("error reading secret %v: %v", secretName, err)
+		} else if exists {
+			if dh, ok := secret.(*api.Secret).Data[dhparamFilename]; ok {
+				pem := strings.Replace(secretName, "/", "-", -1)
+				if pemFileName, err := ssl.AddOrUpdateDHParam(pem, dh); err == nil {
+					conf.SSLDHParam.Filename = pemFileName
+					conf.SSLDHParam.PemSHA = ssl.PemSHA1(pemFileName)
+				} else {
+					glog.Warningf("error creating dh-param file %v: %v", pem, err)
+				}
+			} else {
+				glog.Warningf("secret %v does not contain file %v", secretName, dhparamFilename)
+			}
+		} else {
+			glog.Warningf("secret not found: %v", secretName)
+		}
+	}
+
 	return &conf
 }
 
