@@ -57,7 +57,7 @@ The following parameters are supported:
 |`[1]`|[`hsts-max-age`](#hsts)|number of seconds|`15768000`|
 |`[1]`|[`hsts-preload`](#hsts)|[true\|false]|`false`|
 |`[1]`|[`max-connections`](#max-connections)|number|`2000`|
-|`[1]`|[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/master/pkg/types/types.go#L33)|
+|`[1]`|[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/master/pkg/controller/config.go#L33)|
 |`[1]`|[`ssl-dh-default-max-size`](#ssl-dh-default-max-size)|number|`1024`|
 |`[1]`|[`ssl-dh-param`](#ssl-dh-param)|namespace/secret name|no custom DH param|
 |`[1]`|[`ssl-options`](#ssl-options)|space-separated list|`no-sslv3` `no-tls-tickets`|
