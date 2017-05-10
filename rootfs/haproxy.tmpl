@@ -61,6 +61,7 @@ frontend httpfront
 {{ if ne $cfg.Syslog "" }}
     option httplog
 {{ end }}
+    reqidel ^X-Forwarded-For:.*
     option forwardfor
 {{ range $server := $cfg.HTTPServers }}
 {{ range $location := $server.Locations }}
@@ -132,6 +133,7 @@ frontend httpsfront-{{ $host }}
 {{ if ne $cfg.Syslog "" }}
     option httplog
 {{ end }}
+    reqidel ^X-Forwarded-For:.*
     option forwardfor
     rspadd Strict-Transport-Security:\ max-age=15768000
 {{ range $location := $server.Locations }}
@@ -173,6 +175,7 @@ frontend httpsfront-default-backend
 {{ if ne $cfg.Syslog "" }}
     option httplog
 {{ end }}
+    reqidel ^X-Forwarded-For:.*
     option forwardfor
     rspadd Strict-Transport-Security:\ max-age=15768000
     default_backend {{ $location.Backend }}
