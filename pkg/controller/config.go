@@ -73,6 +73,7 @@ func newHAProxyConfig(haproxy *HAProxyController) *types.HAProxyConfig {
 		Syslog:                "",
 		BalanceAlgorithm:      "roundrobin",
 		BackendCheckInterval:  "2s",
+		Forwardfor:            "add",
 		MaxConn:               2000,
 		HSTS:                  true,
 		HSTSMaxAge:            "15768000",
@@ -83,10 +84,15 @@ func newHAProxyConfig(haproxy *HAProxyController) *types.HAProxyConfig {
 	}
 	if haproxy.configMap != nil {
 		utils.MergeMap(haproxy.configMap.Data, &conf)
+		configDHParam(haproxy, &conf)
+		configForwardfor(&conf)
 	}
+	return &conf
+}
 
-	// TODO Ingress core should provide this
-	// read ssl-dh-param secret
+// TODO Ingress core should provide this
+// read ssl-dh-param secret
+func configDHParam(haproxy *HAProxyController, conf *types.HAProxyConfig) {
 	if conf.SSLDHParam.SecretName != "" {
 		secretName := conf.SSLDHParam.SecretName
 		secret, exists, err := haproxy.storeLister.Secret.GetByKey(secretName)
@@ -108,8 +114,13 @@ func newHAProxyConfig(haproxy *HAProxyController) *types.HAProxyConfig {
 			glog.Warningf("secret not found: %v", secretName)
 		}
 	}
+}
 
-	return &conf
+func configForwardfor(conf *types.HAProxyConfig) {
+	if conf.Forwardfor != "add" && conf.Forwardfor != "ignore" && conf.Forwardfor != "ifmissing" {
+		glog.Warningf("Invalid forwardfor value option on configmap: %v. Using 'add' instead", conf.Forwardfor)
+		conf.Forwardfor = "add"
+	}
 }
 
 func newHAProxyServers(userlists map[string]types.Userlist, servers []*ingress.Server) ([]*types.HAProxyServer, []*types.HAProxyServer, *types.HAProxyServer) {

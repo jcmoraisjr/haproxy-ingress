@@ -69,8 +69,12 @@ frontend httpfront
 {{ if ne $cfg.Syslog "" }}
     option httplog
 {{ end }}
+{{ if eq $cfg.Forwardfor "add" }}
     reqidel ^X-Forwarded-For:.*
     option forwardfor
+{{ else if eq $cfg.Forwardfor "ifmissing" }}
+    option forwardfor if-none
+{{ end }}
 {{ range $server := $ing.HTTPServers }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.HAWhitelist "" }}
@@ -141,8 +145,12 @@ frontend httpsfront-{{ $host }}
 {{ if ne $cfg.Syslog "" }}
     option httplog
 {{ end }}
+{{ if eq $cfg.Forwardfor "add" }}
     reqidel ^X-Forwarded-For:.*
     option forwardfor
+{{ else if eq $cfg.Forwardfor "ifmissing" }}
+    option forwardfor if-none
+{{ end }}
 {{ if $cfg.HSTS }}
     rspadd "Strict-Transport-Security: max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}"
 {{ end }}
@@ -185,8 +193,12 @@ frontend httpsfront-default-backend
 {{ if ne $cfg.Syslog "" }}
     option httplog
 {{ end }}
+{{ if eq $cfg.Forwardfor "add" }}
     reqidel ^X-Forwarded-For:.*
     option forwardfor
+{{ else if eq $cfg.Forwardfor "ifmissing" }}
+    option forwardfor if-none
+{{ end }}
     rspadd Strict-Transport-Security:\ max-age=15768000
     default_backend {{ $location.Backend }}
 

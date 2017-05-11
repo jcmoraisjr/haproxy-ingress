@@ -54,6 +54,7 @@ type (
 		Syslog                string `json:"syslog-endpoint"`
 		BalanceAlgorithm      string `json:"balance-algorithm"`
 		BackendCheckInterval  string `json:"backend-check-interval"`
+		Forwardfor            string `json:"forwardfor"`
 		MaxConn               int    `json:"max-connections"`
 		HSTS                  bool   `json:"hsts"`
 		HSTSMaxAge            string `json:"hsts-max-age"`

@@ -52,6 +52,7 @@ The following parameters are supported:
 |---|---|---|---|
 |`[1]`|[`balance-algorithm`](#balance-algorithm)|algorithm name|`roundrobin`|
 |`[1]`|[`backend-check-interval`](#backend-check-interval)|time with suffix|`2s`|
+|`[1]`|[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
 |`[1]`|[`hsts`](#hsts)|[true\|false]|`true`|
 |`[1]`|[`hsts-include-subdomains`](#hsts)|[true\|false]|`false`|
 |`[1]`|[`hsts-max-age`](#hsts)|number of seconds|`15768000`|
@@ -85,6 +86,19 @@ http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-balance
 Define the interval between TCP health checks to the backend using `inter` option.
 
 http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.2-inter
+
+### forwardfor
+
+Define if `X-Forwarded-For` header should be added always, added if missing or
+ignored from incomming requests. Default is `add` which means HAProxy will itself
+generate a `X-Forwarded-For` header with client's IP address and remove this same
+header from incomming requests.
+
+Use `ignore` to skip any check. `ifmissing` should be used to add
+`X-Forwarded-For` with client's IP address only if this header is not defined.
+Only use `ignore` or `ifmissing` on trusted networks.
+
+http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-option%20forwardfor
 
 ### hsts
 
