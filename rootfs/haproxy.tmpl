@@ -199,7 +199,9 @@ frontend httpsfront-default-backend
 {{ else if eq $cfg.Forwardfor "ifmissing" }}
     option forwardfor if-none
 {{ end }}
-    rspadd Strict-Transport-Security:\ max-age=15768000
+{{ if $cfg.HSTS }}
+    rspadd "Strict-Transport-Security: max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}"
+{{ end }}
     default_backend {{ $location.Backend }}
 
 ######
