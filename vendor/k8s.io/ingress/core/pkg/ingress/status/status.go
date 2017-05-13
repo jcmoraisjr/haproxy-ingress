@@ -17,6 +17,7 @@ limitations under the License.
 package status
 
 import (
+	"fmt"
 	"net"
 	"sort"
 	"sync"
@@ -111,6 +112,11 @@ func (s statusSync) Shutdown() {
 		return
 	}
 
+	if s.isRunningMultiplePods() {
+		glog.V(2).Infof("skipping Ingress status update (multiple pods running - another one will be elected as master)")
+		return
+	}
+
 	glog.Infof("removing address from ingress status (%v)", addrs)
 	s.updateStatus([]api_v1.LoadBalancerIngress{})
 }
@@ -182,7 +188,14 @@ func NewStatusSyncer(config Config) Sync {
 	}
 	st.syncQueue = task.NewCustomTaskQueue(st.sync, st.keyfunc)
 
-	le, err := NewElection(config.ElectionID,
+	// we need to use the defined ingress class to allow multiple leaders
+	// in order to update information about ingress status
+	id := fmt.Sprintf("%v-%v", config.ElectionID, config.DefaultIngressClass)
+	if config.IngressClass != "" {
+		id = fmt.Sprintf("%v-%v", config.ElectionID, config.IngressClass)
+	}
+
+	le, err := NewElection(id,
 		pod.Name, pod.Namespace, 30*time.Second,
 		st.callback, config.Client)
 	if err != nil {
@@ -232,6 +245,17 @@ func (s *statusSync) runningAddresess() ([]string, error) {
 	return addrs, nil
 }
 
+func (s *statusSync) isRunningMultiplePods() bool {
+	pods, err := s.Client.Core().Pods(s.pod.Namespace).List(meta_v1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(s.pod.Labels).String(),
+	})
+	if err != nil {
+		return false
+	}
+
+	return len(pods.Items) > 1
+}
+
 // sliceToStatus converts a slice of IP and/or hostnames to LoadBalancerIngress
 func sliceToStatus(endpoints []string) []api_v1.LoadBalancerIngress {
 	lbi := []api_v1.LoadBalancerIngress{}
@@ -271,7 +295,7 @@ func (s *statusSync) updateStatus(newIPs []api_v1.LoadBalancerIngress) {
 			curIPs := currIng.Status.LoadBalancer.Ingress
 			sort.Sort(loadBalancerIngressByIP(curIPs))
 			if ingressSliceEqual(newIPs, curIPs) {
-				glog.V(3).Infof("skipping update of Ingress %v/%v (there is no change)", currIng.Namespace, currIng.Name)
+				glog.V(3).Infof("skipping update of Ingress %v/%v (no change)", currIng.Namespace, currIng.Name)
 				return
 			}
 
