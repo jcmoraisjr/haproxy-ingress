@@ -34,24 +34,36 @@ const (
 	dhparamFilename   = "dhparam.pem"
 )
 
-func newControllerConfig(cfg *ingress.Configuration, haproxy *HAProxyController) *types.ControllerConfig {
-	userlists := newUserlists(cfg.Servers)
-	haHTTPServers, haHTTPSServers, haDefaultServer := newHAProxyServers(userlists, cfg.Servers)
-	conf := types.ControllerConfig{
-		Userlists:           userlists,
-		Backends:            cfg.Backends,
-		HTTPServers:         haHTTPServers,
-		HTTPSServers:        haHTTPSServers,
-		DefaultServer:       haDefaultServer,
-		TCPEndpoints:        cfg.TCPEndpoints,
-		UDPEndpoints:        cfg.UDPEndpoints,
-		PassthroughBackends: cfg.PassthroughBackends,
-		Cfg:                 newHAProxyConfig(haproxy),
-	}
-	return &conf
+type haConfig struct {
+	ingress           *ingress.Configuration
+	haproxyController *HAProxyController
+	userlists         map[string]types.Userlist
+	haHTTPServers     []*types.HAProxyServer
+	haHTTPSServers    []*types.HAProxyServer
+	haDefaultServer   *types.HAProxyServer
+	haproxyConfig     *types.HAProxyConfig
 }
 
-func newHAProxyConfig(haproxy *HAProxyController) *types.HAProxyConfig {
+func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController *HAProxyController) *types.ControllerConfig {
+	cfg := &haConfig{}
+	cfg.ingress = ingressConfig
+	cfg.haproxyController = haproxyController
+	cfg.createUserlists()
+	cfg.createHAProxyServers()
+	return &types.ControllerConfig{
+		Userlists:           cfg.userlists,
+		Backends:            cfg.ingress.Backends,
+		HTTPServers:         cfg.haHTTPServers,
+		HTTPSServers:        cfg.haHTTPSServers,
+		DefaultServer:       cfg.haDefaultServer,
+		TCPEndpoints:        cfg.ingress.TCPEndpoints,
+		UDPEndpoints:        cfg.ingress.UDPEndpoints,
+		PassthroughBackends: cfg.ingress.PassthroughBackends,
+		Cfg:                 newHAProxyConfig(haproxyController),
+	}
+}
+
+func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig {
 	conf := types.HAProxyConfig{
 		Backend: defaults.Backend{
 			SSLRedirect: true,
@@ -82,9 +94,9 @@ func newHAProxyConfig(haproxy *HAProxyController) *types.HAProxyConfig {
 		StatsPort:             1936,
 		StatsAuth:             "",
 	}
-	if haproxy.configMap != nil {
-		utils.MergeMap(haproxy.configMap.Data, &conf)
-		configDHParam(haproxy, &conf)
+	if haproxyController.configMap != nil {
+		utils.MergeMap(haproxyController.configMap.Data, &conf)
+		configDHParam(haproxyController, &conf)
 		configForwardfor(&conf)
 	}
 	return &conf
@@ -92,10 +104,10 @@ func newHAProxyConfig(haproxy *HAProxyController) *types.HAProxyConfig {
 
 // TODO Ingress core should provide this
 // read ssl-dh-param secret
-func configDHParam(haproxy *HAProxyController, conf *types.HAProxyConfig) {
+func configDHParam(haproxyController *HAProxyController, conf *types.HAProxyConfig) {
 	if conf.SSLDHParam.SecretName != "" {
 		secretName := conf.SSLDHParam.SecretName
-		secret, exists, err := haproxy.storeLister.Secret.GetByKey(secretName)
+		secret, exists, err := haproxyController.storeLister.Secret.GetByKey(secretName)
 		if err != nil {
 			glog.Warningf("error reading secret %v: %v", secretName, err)
 		} else if exists {
@@ -123,12 +135,12 @@ func configForwardfor(conf *types.HAProxyConfig) {
 	}
 }
 
-func newHAProxyServers(userlists map[string]types.Userlist, servers []*ingress.Server) ([]*types.HAProxyServer, []*types.HAProxyServer, *types.HAProxyServer) {
-	haHTTPServers := make([]*types.HAProxyServer, 0, len(servers))
-	haHTTPSServers := make([]*types.HAProxyServer, 0, len(servers))
+func (cfg *haConfig) createHAProxyServers() {
+	haHTTPServers := make([]*types.HAProxyServer, 0, len(cfg.ingress.Servers))
+	haHTTPSServers := make([]*types.HAProxyServer, 0, len(cfg.ingress.Servers))
 	var haDefaultServer *types.HAProxyServer
-	for _, server := range servers {
-		haLocations, haRootLocation := newHAProxyLocations(userlists, server)
+	for _, server := range cfg.ingress.Servers {
+		haLocations, haRootLocation := cfg.newHAProxyLocations(server)
 		haServer := types.HAProxyServer{
 			// Ingress uses `_` hostname as default server
 			IsDefaultServer: server.Hostname == "_",
@@ -150,10 +162,12 @@ func newHAProxyServers(userlists map[string]types.Userlist, servers []*ingress.S
 			}
 		}
 	}
-	return haHTTPServers, haHTTPSServers, haDefaultServer
+	cfg.haHTTPServers = haHTTPServers
+	cfg.haHTTPSServers = haHTTPSServers
+	cfg.haDefaultServer = haDefaultServer
 }
 
-func newHAProxyLocations(userlists map[string]types.Userlist, server *ingress.Server) ([]*types.HAProxyLocation, *types.HAProxyLocation) {
+func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAProxyLocation, *types.HAProxyLocation) {
 	locations := server.Locations
 	haLocations := make([]*types.HAProxyLocation, len(locations))
 	var haRootLocation *types.HAProxyLocation
@@ -163,7 +177,7 @@ func newHAProxyLocations(userlists map[string]types.Userlist, server *ingress.Se
 		for _, cidr := range location.Whitelist.CIDR {
 			haWhitelist = haWhitelist + " " + cidr
 		}
-		users, ok := userlists[location.BasicDigestAuth.File]
+		users, ok := cfg.userlists[location.BasicDigestAuth.File]
 		if !ok {
 			users = types.Userlist{}
 		}
@@ -194,9 +208,9 @@ func newHAProxyLocations(userlists map[string]types.Userlist, server *ingress.Se
 
 // This could be improved creating a list of auth secrets (or even configMaps)
 // on Ingress and saving usr(s)/pwd in auth.BasicDigest struct
-func newUserlists(servers []*ingress.Server) map[string]types.Userlist {
+func (cfg *haConfig) createUserlists() {
 	userlists := map[string]types.Userlist{}
-	for _, server := range servers {
+	for _, server := range cfg.ingress.Servers {
 		for _, location := range server.Locations {
 			fileName := location.BasicDigestAuth.File
 			authType := location.BasicDigestAuth.Type
@@ -220,7 +234,7 @@ func newUserlists(servers []*ingress.Server) map[string]types.Userlist {
 			}
 		}
 	}
-	return userlists
+	cfg.userlists = userlists
 }
 
 func readUsers(fileName string, listName string) ([]types.AuthUser, error) {
