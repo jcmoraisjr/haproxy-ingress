@@ -69,12 +69,6 @@ frontend httpfront
 {{ if ne $cfg.Syslog "" }}
     option httplog
 {{ end }}
-{{ if eq $cfg.Forwardfor "add" }}
-    reqidel ^X-Forwarded-For:.*
-    option forwardfor
-{{ else if eq $cfg.Forwardfor "ifmissing" }}
-    option forwardfor if-none
-{{ end }}
 {{ range $server := $ing.HTTPServers }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.HAWhitelist "" }}
@@ -86,6 +80,12 @@ frontend httpfront
     http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if { hdr(host) {{ $server.Hostname }} }{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
 {{ end }}
 {{ end }}
+{{ end }}
+{{ if eq $cfg.Forwardfor "add" }}
+    reqidel ^X-Forwarded-For:.*
+    option forwardfor
+{{ else if eq $cfg.Forwardfor "ifmissing" }}
+    option forwardfor if-none
 {{ end }}
 {{ range $server := $ing.HTTPServers }}
 {{ $appRoot := $server.RootLocation.Redirect.AppRoot }}
@@ -145,15 +145,6 @@ frontend httpsfront-{{ $host }}
 {{ if ne $cfg.Syslog "" }}
     option httplog
 {{ end }}
-{{ if eq $cfg.Forwardfor "add" }}
-    reqidel ^X-Forwarded-For:.*
-    option forwardfor
-{{ else if eq $cfg.Forwardfor "ifmissing" }}
-    option forwardfor if-none
-{{ end }}
-{{ if $cfg.HSTS }}
-    rspadd "Strict-Transport-Security: max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}"
-{{ end }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.HAWhitelist "" }}
     http-request deny if{{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }
@@ -163,6 +154,15 @@ frontend httpsfront-{{ $host }}
     {{ $realm := $location.Userlist.Realm }}
     http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
 {{ end }}
+{{ end }}
+{{ if eq $cfg.Forwardfor "add" }}
+    reqidel ^X-Forwarded-For:.*
+    option forwardfor
+{{ else if eq $cfg.Forwardfor "ifmissing" }}
+    option forwardfor if-none
+{{ end }}
+{{ if $cfg.HSTS }}
+    rspadd "Strict-Transport-Security: max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}"
 {{ end }}
 {{ $appRoot := $server.RootLocation.Redirect.AppRoot }}
 {{ if ne $appRoot "" }}
