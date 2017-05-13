@@ -181,10 +181,11 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 		if !ok {
 			users = types.Userlist{}
 		}
+		// TODO ingress.Location.Backend should be *ingress.Backend type
 		haLocation := types.HAProxyLocation{
 			IsRootLocation:  location.Path == "/",
 			Path:            location.Path,
-			Backend:         location.Backend,
+			Backend:         cfg.findBackend(location.Backend),
 			Redirect:        location.Redirect,
 			CertificateAuth: location.CertificateAuth,
 			Userlist:        users,
@@ -204,6 +205,16 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 		haRootLocation.HAMatchPath = " !{ path_beg" + otherPaths + " }"
 	}
 	return haLocations, haRootLocation
+}
+
+func (cfg *haConfig) findBackend(name string) *ingress.Backend {
+	for _, backend := range cfg.ingress.Backends {
+		if backend.Name == name {
+			return backend
+		}
+	}
+	glog.Warningf("backend name wasn't found: %v", name)
+	return cfg.haDefaultServer.RootLocation.Backend
 }
 
 // This could be improved creating a list of auth secrets (or even configMaps)

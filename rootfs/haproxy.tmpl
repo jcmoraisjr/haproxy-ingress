@@ -107,11 +107,11 @@ frontend httpfront
 {{ range $server := $ing.HTTPServers }}
 {{ range $location := $server.Locations }}
 {{ if or (eq $server.SSLCertificate "") (not $location.Redirect.SSLRedirect) }}
-    use_backend {{ $location.Backend }} if { hdr(host) {{ $server.Hostname }} }{{ if not $location.IsRootLocation }} { path_beg {{ $location.Path }} }{{ end }}
+    use_backend {{ $location.Backend.Name }} if { hdr(host) {{ $server.Hostname }} }{{ if not $location.IsRootLocation }} { path_beg {{ $location.Path }} }{{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
-    default_backend {{ $ing.DefaultServer.RootLocation.Backend }}
+    default_backend {{ $ing.DefaultServer.RootLocation.Backend.Name }}
 
 ######
 ###### HTTPS frontend (tcp mode)
@@ -170,9 +170,9 @@ frontend httpsfront-{{ $host }}
 {{ end }}
 {{ range $location := $server.Locations }}
 {{ if not $location.IsRootLocation }}
-    use_backend {{ $location.Backend }} if { path_beg {{ $location.Path }} }
+    use_backend {{ $location.Backend.Name }} if { path_beg {{ $location.Path }} }
 {{ else }}
-    default_backend {{ $location.Backend }}
+    default_backend {{ $location.Backend.Name }}
 {{ end }}
 {{ end }}
 {{ end }}
@@ -202,7 +202,7 @@ frontend httpsfront-default-backend
 {{ if $cfg.HSTS }}
     rspadd "Strict-Transport-Security: max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}"
 {{ end }}
-    default_backend {{ $location.Backend }}
+    default_backend {{ $location.Backend.Name }}
 
 ######
 ###### Stats page
