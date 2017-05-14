@@ -140,6 +140,10 @@ func (cfg *haConfig) createHAProxyServers() {
 	haHTTPSServers := make([]*types.HAProxyServer, 0, len(cfg.ingress.Servers))
 	var haDefaultServer *types.HAProxyServer
 	for _, server := range cfg.ingress.Servers {
+		if server.SSLPassthrough {
+			// remove SSLPassthrough hosts from http and https slices
+			continue
+		}
 		haLocations, haRootLocation := cfg.newHAProxyLocations(server)
 		haServer := types.HAProxyServer{
 			// Ingress uses `_` hostname as default server

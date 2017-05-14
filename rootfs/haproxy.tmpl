@@ -52,7 +52,7 @@ userlist {{ $userlist.ListName }}
 ######
 {{ range $backend := $ing.Backends }}
 backend {{ $backend.Name }}
-    mode http
+    mode {{ if $backend.SSLPassthrough }}tcp{{ else }}http{{ end }}
     balance {{ $cfg.BalanceAlgorithm }}
 {{ range $endpoint := $backend.Endpoints }}
 {{ $target := (print $endpoint.Address ":" $endpoint.Port) }}
@@ -121,6 +121,9 @@ frontend httpsfront
     mode tcp
     tcp-request inspect-delay 5s
     tcp-request content accept if { req.ssl_hello_type 1 }
+{{ range $server := $ing.PassthroughBackends }}
+    use_backend {{ $server.Backend }} if { req.ssl_sni -i {{ $server.Hostname }} }
+{{ end }}
 {{ range $server := $ing.HTTPSServers }}
     use_backend httpsback-{{ $server.Hostname }} if { req.ssl_sni -i {{ $server.Hostname }} }
 {{ end }}
