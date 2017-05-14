@@ -97,7 +97,7 @@ type (
 	HAProxyLocation struct {
 		IsRootLocation  bool                  `json:"isDefaultLocation"`
 		Path            string                `json:"path"`
-		Backend         *ingress.Backend      `json:"backend"`
+		Backend         string                `json:"backend"`
 		Redirect        rewrite.Redirect      `json:"redirect,omitempty"`
 		Userlist        Userlist              `json:"userlist,omitempty"`
 		CertificateAuth authtls.AuthSSLConfig `json:"certificateAuth,omitempty"`
