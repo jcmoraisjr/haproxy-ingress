@@ -22,7 +22,8 @@ Usage docs are maintained on Ingress repository:
 
 HAProxy Ingress can be configured per ingress resource using annotations, or globally
 using ConfigMap. It is also possible to change the default template mounting a new
-template file at `/usr/local/etc/haproxy/haproxy.tmpl`.
+template file at `/usr/local/etc/haproxy/haproxy.tmpl` (changing to
+`/etc/haproxy/template/haproxy.tmpl` on 0.3 - not yet released).
 
 ## Annotations
 

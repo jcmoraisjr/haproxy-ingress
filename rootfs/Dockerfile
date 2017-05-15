@@ -21,8 +21,6 @@ RUN wget -O/dumb-init https://github.com/Yelp/dumb-init/releases/download/v1.2.0
  && echo "$DUMB_INIT_SHA256  /dumb-init" | sha256sum -c -\
  && chmod +x /dumb-init
 
-COPY haproxy-ingress-controller /
-COPY haproxy-wrapper /
-COPY haproxy.tmpl /usr/local/etc/haproxy/
+COPY . /
 
 ENTRYPOINT ["/dumb-init", "--", "/haproxy-ingress-controller"]

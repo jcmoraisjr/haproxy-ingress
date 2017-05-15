@@ -45,8 +45,8 @@ type HAProxyController struct {
 func NewHAProxyController() *HAProxyController {
 	return &HAProxyController{
 		command:    "/haproxy-wrapper",
-		configFile: "/usr/local/etc/haproxy/haproxy.cfg",
-		template:   newTemplate("haproxy.tmpl", "/usr/local/etc/haproxy/haproxy.tmpl"),
+		configFile: "/etc/haproxy/haproxy.cfg",
+		template:   newTemplate("haproxy.tmpl", "/etc/haproxy/template/haproxy.tmpl"),
 	}
 }
 
