@@ -138,6 +138,7 @@ func (haproxy *HAProxyController) configChanged(data []byte) bool {
 	}
 	cfg, err := ioutil.ReadFile(haproxy.configFile)
 	if err != nil {
+		glog.Warningf("error reading haproxy config: %v")
 		return false
 	}
 	return !bytes.Equal(cfg, data)
