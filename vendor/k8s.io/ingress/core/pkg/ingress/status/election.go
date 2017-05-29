@@ -26,7 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	client "k8s.io/client-go/kubernetes"
-	def_api "k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/kubernetes/scheme"
 	api "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/tools/record"
 
@@ -96,13 +96,13 @@ func NewElection(electionID,
 	if err != nil {
 		return nil, err
 	}
-	recorder := broadcaster.NewRecorder(def_api.Scheme, api.EventSource{
+	recorder := broadcaster.NewRecorder(scheme.Scheme, api.EventSource{
 		Component: "ingress-leader-elector",
 		Host:      hostname,
 	})
 
-	lock := resourcelock.EndpointsLock{
-		EndpointsMeta: meta_v1.ObjectMeta{Namespace: namespace, Name: electionID},
+	lock := resourcelock.ConfigMapLock{
+		ConfigMapMeta: meta_v1.ObjectMeta{Namespace: namespace, Name: electionID},
 		Client:        c,
 		LockConfig: resourcelock.ResourceLockConfig{
 			Identity:      id,

@@ -89,6 +89,11 @@ func (haproxy *HAProxyController) SetListers(lister ingress.StoreLister) {
 	haproxy.storeLister = &lister
 }
 
+// ConfigureFlags allow to configure more flags before the parsing of
+// command line arguments
+func (haproxy *HAProxyController) ConfigureFlags(flags *pflag.FlagSet) {
+}
+
 // OverrideFlags allows controller to override command line parameter flags
 func (haproxy *HAProxyController) OverrideFlags(flags *pflag.FlagSet) {
 	// TODO Fix Ingress core and configure this flag properly

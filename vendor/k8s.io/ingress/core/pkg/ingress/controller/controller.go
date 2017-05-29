@@ -32,8 +32,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	unversionedcore "k8s.io/client-go/kubernetes/typed/core/v1"
-	def_api "k8s.io/client-go/pkg/api"
 	api "k8s.io/client-go/pkg/api/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/tools/cache"
@@ -45,7 +45,6 @@ import (
 	"k8s.io/ingress/core/pkg/ingress/annotations/healthcheck"
 	"k8s.io/ingress/core/pkg/ingress/annotations/parser"
 	"k8s.io/ingress/core/pkg/ingress/annotations/proxy"
-	"k8s.io/ingress/core/pkg/ingress/annotations/service"
 	"k8s.io/ingress/core/pkg/ingress/defaults"
 	"k8s.io/ingress/core/pkg/ingress/resolver"
 	"k8s.io/ingress/core/pkg/ingress/status"
@@ -154,7 +153,7 @@ func newIngressController(config *Configuration) *GenericController {
 		stopLock:        &sync.Mutex{},
 		stopCh:          make(chan struct{}),
 		syncRateLimiter: flowcontrol.NewTokenBucketRateLimiter(0.5, 1),
-		recorder: eventBroadcaster.NewRecorder(def_api.Scheme, api.EventSource{
+		recorder: eventBroadcaster.NewRecorder(scheme.Scheme, api.EventSource{
 			Component: "ingress-controller",
 		}),
 		sslCertTracker: newSSLCertTracker(),
@@ -714,6 +713,10 @@ func (ic *GenericController) getBackendServers() ([]*ingress.Backend, []*ingress
 
 // GetAuthCertificate ...
 func (ic GenericController) GetAuthCertificate(secretName string) (*resolver.AuthSSLCert, error) {
+	if _, exists := ic.secretTracker.Get(secretName); !exists {
+		ic.secretTracker.Add(secretName, secretName)
+	}
+
 	_, err := ic.GetSecret(secretName)
 	if err != nil {
 		return &resolver.AuthSSLCert{}, fmt.Errorf("unexpected error: %v", err)
@@ -1046,31 +1049,7 @@ func (ic *GenericController) getEndpoints(
 
 	// ExternalName services
 	if s.Spec.Type == api.ServiceTypeExternalName {
-		var targetPort int
-
-		switch servicePort.Type {
-		case intstr.Int:
-			targetPort = servicePort.IntValue()
-		case intstr.String:
-			port, err := service.GetPortMapping(servicePort.StrVal, s)
-			if err == nil {
-				targetPort = int(port)
-				break
-			}
-
-			glog.Warningf("error mapping service port: %v", err)
-			err = ic.checkSvcForUpdate(s)
-			if err != nil {
-				glog.Warningf("error mapping service ports: %v", err)
-				return upsServers
-			}
-
-			port, err = service.GetPortMapping(servicePort.StrVal, s)
-			if err == nil {
-				targetPort = int(port)
-			}
-		}
-
+		targetPort := servicePort.IntValue()
 		// check for invalid port value
 		if targetPort <= 0 {
 			return upsServers
@@ -1106,22 +1085,8 @@ func (ic *GenericController) getEndpoints(
 					targetPort = epPort.Port
 				}
 			case intstr.String:
-				port, err := service.GetPortMapping(servicePort.StrVal, s)
-				if err == nil {
-					targetPort = port
-					break
-				}
-
-				glog.Warningf("error mapping service port: %v", err)
-				err = ic.checkSvcForUpdate(s)
-				if err != nil {
-					glog.Warningf("error mapping service ports: %v", err)
-					continue
-				}
-
-				port, err = service.GetPortMapping(servicePort.StrVal, s)
-				if err == nil {
-					targetPort = port
+				if epPort.Name == servicePort.StrVal {
+					targetPort = epPort.Port
 				}
 			}
 
@@ -1153,16 +1118,6 @@ func (ic *GenericController) getEndpoints(
 
 // extractSecretNames extracts information about secrets inside the Ingress rule
 func (ic GenericController) extractSecretNames(ing *extensions.Ingress) {
-	if ic.annotations.ContainsCertificateAuth(ing) {
-		key, _ := parser.GetStringAnnotation("ingress.kubernetes.io/auth-tls-secret", ing)
-		if key != "" {
-			_, exists := ic.secretTracker.Get(key)
-			if !exists {
-				ic.secretTracker.Add(key, key)
-			}
-		}
-	}
-
 	for _, tls := range ing.Spec.TLS {
 		if tls.SecretName == "" {
 			continue
