@@ -18,6 +18,17 @@ Usage docs are maintained on Ingress repository:
 * Start with [deployment](https://github.com/kubernetes/ingress/tree/master/examples/deployment/haproxy) instructions
 * See [TLS termination](https://github.com/kubernetes/ingress/tree/master/examples/tls-termination/haproxy) on how to enable `https`
 
+# Reload strategy
+
+The `--reload-strategy` command-line argument is used to select which reload strategy
+HAProxy should use. The following options are available:
+
+Note: at this moment this implementation is only on the repository.
+
+* `native`: Uses native HAProxy reload option `-sf`. This is the default option.
+* `multibinder`: Uses GitHub's [multibinder](https://github.com/github/multibinder). This [link](https://githubengineering.com/glb-part-2-haproxy-zero-downtime-zero-delay-reloads-with-multibinder/)
+describes how it works.
+
 # Configuration
 
 HAProxy Ingress can be configured per ingress resource using annotations, or globally
