@@ -37,7 +37,7 @@ type HAProxyController struct {
 	configMap      *api.ConfigMap
 	storeLister    *ingress.StoreLister
 	command        string
-	reloadStrategy string
+	reloadStrategy *string
 	configFile     string
 	template       *template
 }
@@ -92,26 +92,22 @@ func (haproxy *HAProxyController) SetListers(lister ingress.StoreLister) {
 // ConfigureFlags allow to configure more flags before the parsing of
 // command line arguments
 func (haproxy *HAProxyController) ConfigureFlags(flags *pflag.FlagSet) {
+	haproxy.reloadStrategy = flags.String("reload-strategy", "native",
+		`Name of the reload strategy. Options are: native (default) or multibinder`)
 }
 
 // OverrideFlags allows controller to override command line parameter flags
 func (haproxy *HAProxyController) OverrideFlags(flags *pflag.FlagSet) {
-	// TODO Fix Ingress core and configure this flag properly
-	// reloadStrategy := flags.String("reload-strategy", "native",
-	// 	`Name of the reload strategy. Options are: native (default) or multibinder`)
-	r := os.Getenv("HA_RELOAD_STRATEGY")
-	reloadStrategy := &r
-	if *reloadStrategy == "native" {
+	if *haproxy.reloadStrategy == "native" {
 		haproxy.configFile = "/etc/haproxy/haproxy.cfg"
 		haproxy.template = newTemplate("haproxy.tmpl", "/etc/haproxy/template/haproxy.tmpl")
-	} else if *reloadStrategy == "multibinder" {
+	} else if *haproxy.reloadStrategy == "multibinder" {
 		haproxy.configFile = "/etc/haproxy/haproxy.cfg.erb"
 		haproxy.template = newTemplate("haproxy.cfg.erb.tmpl", "/etc/haproxy/haproxy.cfg.erb.tmpl")
 	} else {
-		glog.Fatalf("Unsupported reload strategy: %v", *reloadStrategy)
+		glog.Fatalf("Unsupported reload strategy: %v", *haproxy.reloadStrategy)
 	}
 	haproxy.command = "/haproxy-reload.sh"
-	haproxy.reloadStrategy = *reloadStrategy
 }
 
 // SetConfig receives the ConfigMap the user has configured
@@ -163,6 +159,6 @@ func (haproxy *HAProxyController) configChanged(data []byte) bool {
 }
 
 func (haproxy *HAProxyController) reloadHaproxy() ([]byte, error) {
-	out, err := exec.Command(haproxy.command, haproxy.reloadStrategy, haproxy.configFile).CombinedOutput()
+	out, err := exec.Command(haproxy.command, *haproxy.reloadStrategy, haproxy.configFile).CombinedOutput()
 	return out, err
 }

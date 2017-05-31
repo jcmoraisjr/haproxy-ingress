@@ -21,13 +21,11 @@ init() {
         exec "$@"
         exit 0
     fi
-    if [ "${1%%=*}" = "--reload-strategy" ]; then
-        HA_RELOAD_STRATEGY="${1#*=}"
-        shift
-    else
-        HA_RELOAD_STRATEGY=native
-    fi
-    case "$HA_RELOAD_STRATEGY" in
+    reloadStrategy=$(
+        echo "$*" | sed -nr 's/.*--reload-strategy[ =]([^ ]+).*/\1/p'
+    )
+    reloadStrategy="${reloadStrategy:-native}"
+    case "$reloadStrategy" in
         native)
             ;;
         multibinder)
@@ -40,10 +38,11 @@ init() {
             start_multibinder
             ;;
         *)
-            echo "Unsupported reload strategy: $HA_RELOAD_STRATEGY"
+            echo "Unsupported reload strategy: $reloadStrategy"
+            exit 1
             ;;
     esac
-    export HA_RELOAD_STRATEGY
+    echo "Reload strategy: $reloadStrategy"
     exec /haproxy-ingress-controller "$@"
 }
 
