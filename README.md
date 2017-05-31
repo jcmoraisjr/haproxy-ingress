@@ -76,6 +76,7 @@ The following parameters are supported:
 |`[1]`|[`hsts-max-age`](#hsts)|number of seconds|`15768000`|
 |`[1]`|[`hsts-preload`](#hsts)|[true\|false]|`false`|
 |`[1]`|[`max-connections`](#max-connections)|number|`2000`|
+|`[1]`|[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
 |`[1]`|[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/master/pkg/controller/config.go#L33)|
 |`[1]`|[`ssl-dh-default-max-size`](#ssl-dh-default-max-size)|number|`1024`|
 |`[1]`|[`ssl-dh-param`](#ssl-dh-param)|namespace/secret name|no custom DH param|
@@ -135,6 +136,14 @@ Define the maximum number of concurrent connections. Defaults to `2000` connecti
 which is also the HAProxy default configuration.
 
 http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.2-maxconn
+
+### proxy-body-size
+
+Define the maximum number of bytes HAProxy will allow on the body of requests. Default is
+to not check, which means requests of unlimited size. This limit can be changed per ingress
+resource.
+
+http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#7.3.6-req.body_size
 
 ### ssl-ciphers
 

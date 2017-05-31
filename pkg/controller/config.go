@@ -66,7 +66,8 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig {
 	conf := types.HAProxyConfig{
 		Backend: defaults.Backend{
-			SSLRedirect: true,
+			ProxyBodySize: "",
+			SSLRedirect:   true,
 		},
 		SSLCiphers: defaultSSLCiphers,
 		SSLOptions: "no-sslv3 no-tls-tickets",
