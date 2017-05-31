@@ -115,9 +115,7 @@ frontend httpfront
 {{ end }}
 {{ end }}
 {{ range $location := $server.Locations }}
-{{ if or (eq $server.SSLCertificate "") (not $location.Redirect.SSLRedirect) }}
-    use_backend {{ $location.Backend }} if { hdr(host) {{ $server.Hostname }} }{{ if not $location.IsRootLocation }} { path_beg {{ $location.Path }} }{{ end }}
-{{ end }}
+    use_backend {{ $location.Backend }} if { hdr(host) {{ $server.Hostname }} } { path_beg {{ $location.Path }} }
 {{ end }}
 {{ end }}
     default_backend {{ $ing.DefaultServer.RootLocation.Backend }}
