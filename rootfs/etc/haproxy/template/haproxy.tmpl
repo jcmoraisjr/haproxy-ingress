@@ -54,9 +54,13 @@ userlist {{ $userlist.ListName }}
 backend {{ $backend.Name }}
     mode {{ if $backend.SSLPassthrough }}tcp{{ else }}http{{ end }}
     balance {{ $cfg.BalanceAlgorithm }}
+{{ $cacert := $backend.SecureCACert }}
+{{ if ne $cacert.PemSHA "" }}
+    # CA PEM checksum: {{ $cacert.PemSHA }}
+{{ end }}
 {{ range $endpoint := $backend.Endpoints }}
 {{ $target := (print $endpoint.Address ":" $endpoint.Port) }}
-    server {{ $target }} {{ $target }} check port {{ $endpoint.Port }} inter {{ $cfg.BackendCheckInterval }}
+    server {{ $target }} {{ $target }} {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}check port {{ $endpoint.Port }} inter {{ $cfg.BackendCheckInterval }}
 {{ end }}
 {{ end }}
 
