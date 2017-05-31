@@ -1,6 +1,7 @@
 # HAProxy Ingress controller
 
-[Ingress](https://kubernetes.io/docs/user-guide/ingress/) controller implementation for [HAProxy](http://www.haproxy.org/) loadbalancer.
+[Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) controller
+implementation for [HAProxy](http://www.haproxy.org/) loadbalancer.
 
 [![Build Status](https://travis-ci.org/jcmoraisjr/haproxy-ingress.svg?branch=master)](https://travis-ci.org/jcmoraisjr/haproxy-ingress) [![Docker Repository on Quay](https://quay.io/repository/jcmoraisjr/haproxy-ingress/status "Docker Repository on Quay")](https://quay.io/repository/jcmoraisjr/haproxy-ingress)
 
