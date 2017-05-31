@@ -19,6 +19,7 @@ package types
 import (
 	"k8s.io/ingress/core/pkg/ingress"
 	"k8s.io/ingress/core/pkg/ingress/annotations/authtls"
+	"k8s.io/ingress/core/pkg/ingress/annotations/proxy"
 	"k8s.io/ingress/core/pkg/ingress/annotations/rewrite"
 	"k8s.io/ingress/core/pkg/ingress/defaults"
 )
@@ -100,6 +101,7 @@ type (
 		Backend         string                `json:"backend"`
 		Redirect        rewrite.Redirect      `json:"redirect,omitempty"`
 		Userlist        Userlist              `json:"userlist,omitempty"`
+		Proxy           proxy.Configuration   `json:"proxy,omitempty"`
 		CertificateAuth authtls.AuthSSLConfig `json:"certificateAuth,omitempty"`
 		HAMatchPath     string                `json:"haMatchPath"`
 		HAWhitelist     string                `json:"whitelist,omitempty"`

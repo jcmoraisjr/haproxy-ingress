@@ -110,6 +110,11 @@ frontend httpfront
 {{ end }}
 {{ range $server := $ing.HTTPServers }}
 {{ range $location := $server.Locations }}
+{{ if ne $location.Proxy.BodySize "" }}
+    use_backend error413 if { hdr(host) {{ $server.Hostname }} } { path_beg {{ $location.Path }} } { req.body_size gt {{ $location.Proxy.BodySize }} }
+{{ end }}
+{{ end }}
+{{ range $location := $server.Locations }}
 {{ if or (eq $server.SSLCertificate "") (not $location.Redirect.SSLRedirect) }}
     use_backend {{ $location.Backend }} if { hdr(host) {{ $server.Hostname }} }{{ if not $location.IsRootLocation }} { path_beg {{ $location.Path }} }{{ end }}
 {{ end }}
@@ -176,6 +181,11 @@ frontend httpsfront-{{ $host }}
     redirect location {{ $appRoot }} if { path / }
 {{ end }}
 {{ range $location := $server.Locations }}
+{{ if ne $location.Proxy.BodySize "" }}
+    use_backend error413 if { path_beg {{ $location.Path }} } { req.body_size gt {{ $location.Proxy.BodySize }} }
+{{ end }}
+{{ end }}
+{{ range $location := $server.Locations }}
 {{ if not $location.IsRootLocation }}
     use_backend {{ $location.Backend }} if { path_beg {{ $location.Path }} }
 {{ else }}
@@ -210,6 +220,14 @@ frontend httpsfront-default-backend
     rspadd "Strict-Transport-Security: max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}"
 {{ end }}
     default_backend {{ $location.Backend }}
+
+######
+###### Error pages
+######
+backend error413
+    mode http
+    errorfile 400 /usr/local/etc/haproxy/errors/413.http
+    http-request deny deny_status 400
 
 ######
 ###### Stats page

@@ -182,6 +182,7 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 			Path:            location.Path,
 			Backend:         location.Backend,
 			Redirect:        location.Redirect,
+			Proxy:           location.Proxy,
 			CertificateAuth: location.CertificateAuth,
 		}
 		for _, cidr := range location.Whitelist.CIDR {
