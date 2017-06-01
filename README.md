@@ -24,7 +24,7 @@ Usage docs are maintained on Ingress repository:
 The `--reload-strategy` command-line argument is used to select which reload strategy
 HAProxy should use. The following options are available:
 
-Note: at this moment this implementation is only on the repository.
+Note: at this moment this implementation is only on the `canary` tag.
 
 * `native`: Uses native HAProxy reload option `-sf`. This is the default option.
 * `multibinder`: Uses GitHub's [multibinder](https://github.com/github/multibinder). This [link](https://githubengineering.com/glb-part-2-haproxy-zero-downtime-zero-delay-reloads-with-multibinder/)
@@ -35,13 +35,13 @@ describes how it works.
 HAProxy Ingress can be configured per ingress resource using annotations, or globally
 using ConfigMap. It is also possible to change the default template mounting a new
 template file at `/usr/local/etc/haproxy/haproxy.tmpl` (changing to
-`/etc/haproxy/template/haproxy.tmpl` on 0.3 - not yet released).
+`/etc/haproxy/template/haproxy.tmpl` on 0.3 - current `canary` version).
 
 ## Annotations
 
 The following annotations are supported:
 
-`[1]` only on repository
+`[0]` only on `canary` tag
 
 ||Name|Data|Usage|
 |---|---|---|:---:|
@@ -49,10 +49,10 @@ The following annotations are supported:
 ||`ingress.kubernetes.io/auth-secret`|secret name|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
 ||`ingress.kubernetes.io/auth-realm`|realm string|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
 ||`ingress.kubernetes.io/auth-tls-secret`|namespace/secret name|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/client-certs/haproxy)|
-|`[1]`|`ingress.kubernetes.io/proxy-body-size`|size (bytes)|-|
-|`[1]`|`ingress.kubernetes.io/secure-backends`|[true\|false]|-|
-|`[1]`|`ingress.kubernetes.io/secure-verify-ca-secret`|secret name|-|
-|`[1]`|`ingress.kubernetes.io/ssl-passthrough`|[true\|false]|-|
+|`[0]`|`ingress.kubernetes.io/proxy-body-size`|size (bytes)|-|
+|`[0]`|`ingress.kubernetes.io/secure-backends`|[true\|false]|-|
+|`[0]`|`ingress.kubernetes.io/secure-verify-ca-secret`|secret name|-|
+|`[0]`|`ingress.kubernetes.io/ssl-passthrough`|[true\|false]|-|
 ||`ingress.kubernetes.io/ssl-redirect`|[true\|false]|[doc](https://github.com/kubernetes/ingress/tree/master/examples/rewrite/haproxy)|
 ||`ingress.kubernetes.io/app-root`|/url|[doc](https://github.com/kubernetes/ingress/tree/master/examples/rewrite/haproxy)|
 ||`ingress.kubernetes.io/whitelist-source-range`|CIDR|-|
@@ -65,35 +65,35 @@ A ConfigMap can be created with `kubectl create configmap`.
 
 The following parameters are supported:
 
-`[1]` only on repository
+`[0]` only on `canary` tag
 
 ||Name|Type|Default|
 |---|---|---|---|
-|`[1]`|[`balance-algorithm`](#balance-algorithm)|algorithm name|`roundrobin`|
-|`[1]`|[`backend-check-interval`](#backend-check-interval)|time with suffix|`2s`|
-|`[1]`|[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
-|`[1]`|[`hsts`](#hsts)|[true\|false]|`true`|
-|`[1]`|[`hsts-include-subdomains`](#hsts)|[true\|false]|`false`|
-|`[1]`|[`hsts-max-age`](#hsts)|number of seconds|`15768000`|
-|`[1]`|[`hsts-preload`](#hsts)|[true\|false]|`false`|
-|`[1]`|[`max-connections`](#max-connections)|number|`2000`|
-|`[1]`|[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
-|`[1]`|[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/master/pkg/controller/config.go#L33)|
-|`[1]`|[`ssl-dh-default-max-size`](#ssl-dh-default-max-size)|number|`1024`|
-|`[1]`|[`ssl-dh-param`](#ssl-dh-param)|namespace/secret name|no custom DH param|
-|`[1]`|[`ssl-options`](#ssl-options)|space-separated list|`no-sslv3` `no-tls-tickets`|
+|`[0]`|[`balance-algorithm`](#balance-algorithm)|algorithm name|`roundrobin`|
+|`[0]`|[`backend-check-interval`](#backend-check-interval)|time with suffix|`2s`|
+|`[0]`|[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
+|`[0]`|[`hsts`](#hsts)|[true\|false]|`true`|
+|`[0]`|[`hsts-include-subdomains`](#hsts)|[true\|false]|`false`|
+|`[0]`|[`hsts-max-age`](#hsts)|number of seconds|`15768000`|
+|`[0]`|[`hsts-preload`](#hsts)|[true\|false]|`false`|
+|`[0]`|[`max-connections`](#max-connections)|number|`2000`|
+|`[0]`|[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
+|`[0]`|[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/master/pkg/controller/config.go#L33)|
+|`[0]`|[`ssl-dh-default-max-size`](#ssl-dh-default-max-size)|number|`1024`|
+|`[0]`|[`ssl-dh-param`](#ssl-dh-param)|namespace/secret name|no custom DH param|
+|`[0]`|[`ssl-options`](#ssl-options)|space-separated list|`no-sslv3` `no-tls-tickets`|
 ||[`ssl-redirect`](#ssl-redirect)|[true\|false]|`true`|
-|`[1]`|[`stats-auth`](#stats)|user:passwd|no auth|
-|`[1]`|[`stats-port`](#stats)|port number|`1936`|
+|`[0]`|[`stats-auth`](#stats)|user:passwd|no auth|
+|`[0]`|[`stats-port`](#stats)|port number|`1936`|
 ||[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
-|`[1]`|[`timeout-client`](#timeout)|time with suffix|`50s`|
-|`[1]`|[`timeout-client-fin`](#timeout)|time with suffix|`50s`|
-|`[1]`|[`timeout-connect`](#timeout)|time with suffix|`5s`|
-|`[1]`|[`timeout-http-request`](#timeout)|time with suffix|`5s`|
-|`[1]`|[`timeout-keep-alive`](#timeout)|time with suffix|`1m`|
-|`[1]`|[`timeout-server`](#timeout)|time with suffix|`50s`|
-|`[1]`|[`timeout-server-fin`](#timeout)|time with suffix|`50s`|
-|`[1]`|[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
+|`[0]`|[`timeout-client`](#timeout)|time with suffix|`50s`|
+|`[0]`|[`timeout-client-fin`](#timeout)|time with suffix|`50s`|
+|`[0]`|[`timeout-connect`](#timeout)|time with suffix|`5s`|
+|`[0]`|[`timeout-http-request`](#timeout)|time with suffix|`5s`|
+|`[0]`|[`timeout-keep-alive`](#timeout)|time with suffix|`1m`|
+|`[0]`|[`timeout-server`](#timeout)|time with suffix|`50s`|
+|`[0]`|[`timeout-server-fin`](#timeout)|time with suffix|`50s`|
+|`[0]`|[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
 
 ### balance-algorithm
 
