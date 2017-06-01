@@ -184,7 +184,7 @@ Define a space-separated list of options on SSL/TLS connections:
 
 A global configuration of SSL redirect used as default value if ingress resource
 doesn't use `ssl-redirect` annotation. If true HAProxy Ingress sends a `302 redirect`
-to https if TLS is configured.
+to https if TLS is [configured](https://github.com/kubernetes/ingress/tree/master/examples/tls-termination/haproxy).
 
 ### stats
 
