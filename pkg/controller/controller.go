@@ -94,6 +94,11 @@ func (haproxy *HAProxyController) SetListers(lister ingress.StoreLister) {
 func (haproxy *HAProxyController) ConfigureFlags(flags *pflag.FlagSet) {
 	haproxy.reloadStrategy = flags.String("reload-strategy", "native",
 		`Name of the reload strategy. Options are: native (default) or multibinder`)
+	ingressClass := flags.Lookup("ingress-class")
+	if ingressClass != nil {
+		ingressClass.Value.Set("haproxy")
+		ingressClass.DefValue = "haproxy"
+	}
 }
 
 // OverrideFlags allows controller to override command line parameter flags
