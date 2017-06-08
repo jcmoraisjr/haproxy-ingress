@@ -37,6 +37,7 @@ type (
 		UDPEndpoints        []ingress.L4Service
 		PassthroughBackends []*ingress.SSLPassthroughBackend
 		Cfg                 *HAProxyConfig
+		BackendSlots        map[string]HAProxyBackendSlots
 	}
 	// HAProxyConfig has HAProxy specific configurations from ConfigMap
 	HAProxyConfig struct {
@@ -63,6 +64,8 @@ type (
 		HSTSPreload           bool   `json:"hsts-preload"`
 		StatsPort             int    `json:"stats-port"`
 		StatsAuth             string `json:"stats-auth"`
+		BackendSlotIncrement  int    `json:"backend-slot-increment"`
+		StatsSocket           string `json:"stats-socket"`
 	}
 	// Userlist list of users for basic authentication
 	Userlist struct {
@@ -105,5 +108,15 @@ type (
 		CertificateAuth authtls.AuthSSLConfig `json:"certificateAuth,omitempty"`
 		HAMatchPath     string                `json:"haMatchPath"`
 		HAWhitelist     string                `json:"whitelist,omitempty"`
+	}
+	HAProxyBackendSlots struct {
+		// map from ip:port to server name
+		FullSlots map[string]HAProxyBackendSlot
+		// list of unused server names
+		EmptySlots []string
+	}
+	HAProxyBackendSlot struct {
+		BackendSrvName  string
+		BackendEndpoint *ingress.Endpoint
 	}
 )
