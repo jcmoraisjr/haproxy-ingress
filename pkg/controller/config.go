@@ -94,8 +94,9 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		HSTSPreload:           false,
 		StatsPort:             1936,
 		StatsAuth:             "",
-		BackendSlotIncrement:  32,
-		StatsSocket:           "/tmp/haproxy",
+		DynamicScaling:        true,
+		BackendSlotsIncrement: 32,
+		StatsSocket:           "/var/run/haproxy-stats.sock",
 	}
 	if haproxyController.configMap != nil {
 		utils.MergeMap(haproxyController.configMap.Data, &conf)

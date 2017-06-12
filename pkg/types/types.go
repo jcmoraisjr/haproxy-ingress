@@ -64,8 +64,9 @@ type (
 		HSTSPreload           bool   `json:"hsts-preload"`
 		StatsPort             int    `json:"stats-port"`
 		StatsAuth             string `json:"stats-auth"`
-		BackendSlotIncrement  int    `json:"backend-slot-increment"`
-		StatsSocket           string `json:"stats-socket"`
+		DynamicScaling        bool   `json:"dynamic-scaling"`
+		BackendSlotsIncrement int    `json:"backend-slots-increment"`
+		StatsSocket           string
 	}
 	// Userlist list of users for basic authentication
 	Userlist struct {
@@ -116,7 +117,7 @@ type (
 		EmptySlots []string
 	}
 	HAProxyBackendSlot struct {
-		BackendSrvName  string
-		BackendEndpoint *ingress.Endpoint
+		BackendServerName string
+		BackendEndpoint   *ingress.Endpoint
 	}
 )
