@@ -98,8 +98,8 @@ func reconfigureBackends(haproxy *HAProxyController, updatedConfig *types.Contro
 
 						updLen := len(updBackendsMap[backendName].Endpoints)
 						totalSlots := len(curBackendSlots[backendName].EmptySlots) + len(curBackendSlots[backendName].FullSlots)
-						if updLen > totalSlots || updLen < (totalSlots-updatedConfig.Cfg.BackendSlotsIncrement) {
-							// need to resize number of empty slots by BackendSlotsIncrement amount
+						if updLen > totalSlots || updLen < (totalSlots-updatedConfig.Cfg.BackendServerSlotsIncrement) {
+							// need to resize number of empty slots by BackendServerSlotsIncrement amount
 							reconfigureEmptySlots = true
 						} else {
 							// everything fits so reconfigure endpoints without reloading
@@ -174,9 +174,9 @@ func reconfigureBackends(haproxy *HAProxyController, updatedConfig *types.Contro
 				}
 			}
 			if updatedConfig.Cfg.DynamicScaling {
-				// add up to BackendSlotsIncrement empty slots
+				// add up to BackendServerSlotsIncrement empty slots
 				fullSlotCnt := len(newBackend.FullSlots)
-				extraSlotCnt := (int(fullSlotCnt/updatedConfig.Cfg.BackendSlotsIncrement)+1)*updatedConfig.Cfg.BackendSlotsIncrement - fullSlotCnt
+				extraSlotCnt := (int(fullSlotCnt/updatedConfig.Cfg.BackendServerSlotsIncrement)+1)*updatedConfig.Cfg.BackendServerSlotsIncrement - fullSlotCnt
 				for i := 0; i < extraSlotCnt; i++ {
 					newBackend.EmptySlots = append(newBackend.EmptySlots, fmt.Sprintf("server%04d", i+fullSlotCnt))
 				}

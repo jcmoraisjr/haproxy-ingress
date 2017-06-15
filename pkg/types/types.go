@@ -41,32 +41,32 @@ type (
 	}
 	// HAProxyConfig has HAProxy specific configurations from ConfigMap
 	HAProxyConfig struct {
-		defaults.Backend      `json:",squash"`
-		SSLCiphers            string `json:"ssl-ciphers"`
-		SSLOptions            string `json:"ssl-options"`
-		SSLDHParam            `json:",squash"`
-		TimeoutHTTPRequest    string `json:"timeout-http-request"`
-		TimeoutConnect        string `json:"timeout-connect"`
-		TimeoutClient         string `json:"timeout-client"`
-		TimeoutClientFin      string `json:"timeout-client-fin"`
-		TimeoutServer         string `json:"timeout-server"`
-		TimeoutServerFin      string `json:"timeout-server-fin"`
-		TimeoutTunnel         string `json:"timeout-tunnel"`
-		TimeoutKeepAlive      string `json:"timeout-keep-alive"`
-		Syslog                string `json:"syslog-endpoint"`
-		BalanceAlgorithm      string `json:"balance-algorithm"`
-		BackendCheckInterval  string `json:"backend-check-interval"`
-		Forwardfor            string `json:"forwardfor"`
-		MaxConn               int    `json:"max-connections"`
-		HSTS                  bool   `json:"hsts"`
-		HSTSMaxAge            string `json:"hsts-max-age"`
-		HSTSIncludeSubdomains bool   `json:"hsts-include-subdomains"`
-		HSTSPreload           bool   `json:"hsts-preload"`
-		StatsPort             int    `json:"stats-port"`
-		StatsAuth             string `json:"stats-auth"`
-		DynamicScaling        bool   `json:"dynamic-scaling"`
-		BackendSlotsIncrement int    `json:"backend-slots-increment"`
-		StatsSocket           string
+		defaults.Backend            `json:",squash"`
+		SSLCiphers                  string `json:"ssl-ciphers"`
+		SSLOptions                  string `json:"ssl-options"`
+		SSLDHParam                  `json:",squash"`
+		TimeoutHTTPRequest          string `json:"timeout-http-request"`
+		TimeoutConnect              string `json:"timeout-connect"`
+		TimeoutClient               string `json:"timeout-client"`
+		TimeoutClientFin            string `json:"timeout-client-fin"`
+		TimeoutServer               string `json:"timeout-server"`
+		TimeoutServerFin            string `json:"timeout-server-fin"`
+		TimeoutTunnel               string `json:"timeout-tunnel"`
+		TimeoutKeepAlive            string `json:"timeout-keep-alive"`
+		Syslog                      string `json:"syslog-endpoint"`
+		BalanceAlgorithm            string `json:"balance-algorithm"`
+		BackendCheckInterval        string `json:"backend-check-interval"`
+		Forwardfor                  string `json:"forwardfor"`
+		MaxConn                     int    `json:"max-connections"`
+		HSTS                        bool   `json:"hsts"`
+		HSTSMaxAge                  string `json:"hsts-max-age"`
+		HSTSIncludeSubdomains       bool   `json:"hsts-include-subdomains"`
+		HSTSPreload                 bool   `json:"hsts-preload"`
+		StatsPort                   int    `json:"stats-port"`
+		StatsAuth                   string `json:"stats-auth"`
+		DynamicScaling              bool   `json:"dynamic-scaling"`
+		BackendServerSlotsIncrement int    `json:"backend-server-slots-increment"`
+		StatsSocket                 string
 	}
 	// Userlist list of users for basic authentication
 	Userlist struct {
