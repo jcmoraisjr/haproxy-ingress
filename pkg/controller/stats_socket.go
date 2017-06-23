@@ -127,7 +127,6 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 						for k, endpoint := range toAddEndpoints {
 							// rearrange slots
 							backendSlots.FullSlots[k] = types.HAProxyBackendSlot{
-								//backendSlots.EmptySlots[len(backendSlots.EmptySlots)-1],
 								BackendServerName: backendSlots.EmptySlots[0],
 								BackendEndpoint:   endpoint,
 							}
@@ -156,41 +155,45 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 		currentConfig.BackendSlots = curBackendSlots
 	}
 
-	// fill-out backends with available endpoints, add empty slots if required
 	if currentConfig == nil || reconfigureEmptySlots {
+		fillBackendServerSlots(updatedConfig)
 		reloadRequired = true
-		updBackendsMap, updKeys := ingressBackendsRemap(updatedConfig.Backends)
-		updatedConfig.BackendSlots = map[string]types.HAProxyBackendSlots{}
-
-		for _, backendName := range updKeys {
-			newBackend := types.HAProxyBackendSlots{}
-			newBackend.FullSlots = map[string]types.HAProxyBackendSlot{}
-			if updatedConfig.Cfg.DynamicScaling {
-				for i, endpoint := range updBackendsMap[backendName].Endpoints {
-					newBackend.FullSlots[fmt.Sprintf("%s:%s", endpoint.Address, endpoint.Port)] = types.HAProxyBackendSlot{
-						BackendServerName: fmt.Sprintf("server%04d", i),
-						BackendEndpoint:   &endpoint,
-					}
-				}
-				// add up to BackendServerSlotsIncrement empty slots
-				fullSlotCnt := len(newBackend.FullSlots)
-				extraSlotCnt := (int(fullSlotCnt/updatedConfig.Cfg.BackendServerSlotsIncrement)+1)*updatedConfig.Cfg.BackendServerSlotsIncrement - fullSlotCnt
-				for i := 0; i < extraSlotCnt; i++ {
-					newBackend.EmptySlots = append(newBackend.EmptySlots, fmt.Sprintf("server%04d", i+fullSlotCnt))
-				}
-			} else {
-				// use addr:port as BackendServerName, don't generate empty slots
-				for _, endpoint := range updBackendsMap[backendName].Endpoints {
-					target := fmt.Sprintf("%s:%s", endpoint.Address, endpoint.Port)
-					newBackend.FullSlots[target] = types.HAProxyBackendSlot{
-						BackendServerName: target,
-						BackendEndpoint:   &endpoint,
-					}
-				}
-			}
-			updatedConfig.BackendSlots[backendName] = newBackend
-		}
 	}
 
 	return reloadRequired
+}
+
+// fill-out backends with available endpoints, add empty slots if required
+func fillBackendServerSlots(updatedConfig *types.ControllerConfig) {
+	updBackendsMap, updKeys := ingressBackendsRemap(updatedConfig.Backends)
+	updatedConfig.BackendSlots = map[string]types.HAProxyBackendSlots{}
+
+	for _, backendName := range updKeys {
+		newBackend := types.HAProxyBackendSlots{}
+		newBackend.FullSlots = map[string]types.HAProxyBackendSlot{}
+		if updatedConfig.Cfg.DynamicScaling {
+			for i, endpoint := range updBackendsMap[backendName].Endpoints {
+				newBackend.FullSlots[fmt.Sprintf("%s:%s", endpoint.Address, endpoint.Port)] = types.HAProxyBackendSlot{
+					BackendServerName: fmt.Sprintf("server%04d", i),
+					BackendEndpoint:   &endpoint,
+				}
+			}
+			// add up to BackendServerSlotsIncrement empty slots
+			fullSlotCnt := len(newBackend.FullSlots)
+			extraSlotCnt := (int(fullSlotCnt/updatedConfig.Cfg.BackendServerSlotsIncrement)+1)*updatedConfig.Cfg.BackendServerSlotsIncrement - fullSlotCnt
+			for i := 0; i < extraSlotCnt; i++ {
+				newBackend.EmptySlots = append(newBackend.EmptySlots, fmt.Sprintf("server%04d", i+fullSlotCnt))
+			}
+		} else {
+			// use addr:port as BackendServerName, don't generate empty slots
+			for _, endpoint := range updBackendsMap[backendName].Endpoints {
+				target := fmt.Sprintf("%s:%s", endpoint.Address, endpoint.Port)
+				newBackend.FullSlots[target] = types.HAProxyBackendSlot{
+					BackendServerName: target,
+					BackendEndpoint:   &endpoint,
+				}
+			}
+		}
+		updatedConfig.BackendSlots[backendName] = newBackend
+	}
 }
