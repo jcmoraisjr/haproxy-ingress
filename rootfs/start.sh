@@ -17,7 +17,7 @@
 set -e
 
 init() {
-    if [ $# -gt 0 ] && [ "${1:0:2}" != "--" ]; then
+    if [ $# -gt 0 ] && [ "$(echo $1 | cut -b1-2)" != "--" ]; then
         exec "$@"
         exit 0
     fi
