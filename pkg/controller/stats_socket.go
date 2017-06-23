@@ -60,107 +60,105 @@ func endpointsSubtract(s1, s2 map[string]*ingress.Endpoint) map[string]*ingress.
 }
 
 // populate template variables and optionally issue socket commands to reconfigure haproxy without reloading
-func reconfigureBackends(haproxy *HAProxyController, updatedConfig *types.ControllerConfig) {
-	haproxy.ReloadRequired = true
+func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) bool {
+	reloadRequired := true
 	reconfigureEmptySlots := false
 
 	if !updatedConfig.Cfg.DynamicScaling {
 		reconfigureEmptySlots = true
-	} else {
-		if haproxy.CurrentConfig != nil {
-			// store backend lists for retrieval
-			curBackends := haproxy.CurrentConfig.Backends
-			updBackends := updatedConfig.Backends
-			// store BackendSlots for retrieval
-			curBackendSlots := haproxy.CurrentConfig.BackendSlots
+	} else if currentConfig != nil {
+		// store backend lists for retrieval
+		curBackends := currentConfig.Backends
+		updBackends := updatedConfig.Backends
+		// store BackendSlots for retrieval
+		curBackendSlots := currentConfig.BackendSlots
 
-			// exclude backend lists and slots from reflect.DeepEqual
-			updatedConfig.Backends = []*ingress.Backend{}
-			haproxy.CurrentConfig.Backends = updatedConfig.Backends
-			haproxy.CurrentConfig.BackendSlots = updatedConfig.BackendSlots
+		// exclude backend lists and slots from reflect.DeepEqual
+		updatedConfig.Backends = []*ingress.Backend{}
+		currentConfig.Backends = updatedConfig.Backends
+		currentConfig.BackendSlots = updatedConfig.BackendSlots
 
-			// check equality of everything but backends
-			if !reflect.DeepEqual(updatedConfig, haproxy.CurrentConfig) {
+		// check equality of everything but backends
+		if !reflect.DeepEqual(updatedConfig, currentConfig) {
+			reconfigureEmptySlots = true
+		} else {
+			// set up maps
+			curBackendsMap, curKeys := ingressBackendsRemap(curBackends)
+			updBackendsMap, updKeys := ingressBackendsRemap(updBackends)
+
+			if !reflect.DeepEqual(curKeys, updKeys) {
+				// backend names or number of backends is different
 				reconfigureEmptySlots = true
 			} else {
-				// set up maps
-				curBackendsMap, curKeys := ingressBackendsRemap(curBackends)
-				updBackendsMap, updKeys := ingressBackendsRemap(updBackends)
+				// same names and nr of backends, we can modify existing HAProxyBackendSlots, should not need reloading
+				reloadRequired = false
+				updatedConfig.BackendSlots = curBackendSlots
+				for _, backendName := range curKeys {
 
-				if !reflect.DeepEqual(curKeys, updKeys) {
-					// backend names or number of backends is different
-					reconfigureEmptySlots = true
-				} else {
-					// same names and nr of backends, we can modify existing HAProxyBackendSlots, should not need reloading
-					haproxy.ReloadRequired = false
-					updatedConfig.BackendSlots = curBackendSlots
-					for _, backendName := range curKeys {
+					updLen := len(updBackendsMap[backendName].Endpoints)
+					totalSlots := len(curBackendSlots[backendName].EmptySlots) + len(curBackendSlots[backendName].FullSlots)
+					if updLen > totalSlots || updLen < (totalSlots-updatedConfig.Cfg.BackendServerSlotsIncrement) {
+						// need to resize number of empty slots by BackendServerSlotsIncrement amount
+						reconfigureEmptySlots = true
+					} else {
+						// everything fits so reconfigure endpoints without reloading
+						// do it with maps posing as sets
+						curEndpoints := ingressEndpointsRemap(curBackendsMap[backendName].Endpoints)
+						updEndpoints := ingressEndpointsRemap(updBackendsMap[backendName].Endpoints)
 
-						updLen := len(updBackendsMap[backendName].Endpoints)
-						totalSlots := len(curBackendSlots[backendName].EmptySlots) + len(curBackendSlots[backendName].FullSlots)
-						if updLen > totalSlots || updLen < (totalSlots-updatedConfig.Cfg.BackendServerSlotsIncrement) {
-							// need to resize number of empty slots by BackendServerSlotsIncrement amount
-							reconfigureEmptySlots = true
-						} else {
-							// everything fits so reconfigure endpoints without reloading
-							// do it with maps posing as sets
-							curEndpoints := ingressEndpointsRemap(curBackendsMap[backendName].Endpoints)
-							updEndpoints := ingressEndpointsRemap(updBackendsMap[backendName].Endpoints)
+						toRemoveEndpoints := endpointsSubtract(curEndpoints, updEndpoints)
+						toAddEndpoints := endpointsSubtract(updEndpoints, curEndpoints)
 
-							toRemoveEndpoints := endpointsSubtract(curEndpoints, updEndpoints)
-							toAddEndpoints := endpointsSubtract(updEndpoints, curEndpoints)
-
-							// check for new/removed entries in this backend, issue socket commands
-							backendSlots := updatedConfig.BackendSlots[backendName]
-							// remove endpoints
-							for k := range toRemoveEndpoints {
-								err := utils.SendToSocket(haproxy.CurrentConfig.Cfg.StatsSocket,
-									fmt.Sprintf("set server %s/%s state maint\n", backendName, backendSlots.FullSlots[k].BackendServerName))
-								if err != nil {
-									glog.Warningln("failed socket command srv remove")
-									haproxy.ReloadRequired = true
-								}
-								backendSlots.EmptySlots = append(backendSlots.EmptySlots, backendSlots.FullSlots[k].BackendServerName)
-								delete(backendSlots.FullSlots, k)
+						// check for new/removed entries in this backend, issue socket commands
+						backendSlots := updatedConfig.BackendSlots[backendName]
+						// remove endpoints
+						for k := range toRemoveEndpoints {
+							err := utils.SendToSocket(currentConfig.Cfg.StatsSocket,
+								fmt.Sprintf("set server %s/%s state maint\n", backendName, backendSlots.FullSlots[k].BackendServerName))
+							if err != nil {
+								glog.Warningln("failed socket command srv remove")
+								reloadRequired = true
 							}
-							sort.Strings(backendSlots.EmptySlots)
-							// add endpoints
-							for k, endpoint := range toAddEndpoints {
-								// rearrange slots
-								backendSlots.FullSlots[k] = types.HAProxyBackendSlot{
-									//backendSlots.EmptySlots[len(backendSlots.EmptySlots)-1],
-									BackendServerName: backendSlots.EmptySlots[0],
-									BackendEndpoint:   endpoint,
-								}
-								backendSlots.EmptySlots = backendSlots.EmptySlots[1:]
-
-								// send socket commands
-								err1 := utils.SendToSocket(haproxy.CurrentConfig.Cfg.StatsSocket,
-									fmt.Sprintf("set server %s/%s addr %s port %s\n", backendName, backendSlots.FullSlots[k].BackendServerName, endpoint.Address, endpoint.Port))
-								err2 := utils.SendToSocket(haproxy.CurrentConfig.Cfg.StatsSocket,
-									fmt.Sprintf("set server %s/%s state ready\n", backendName, backendSlots.FullSlots[k].BackendServerName))
-								if err1 != nil || err2 != nil {
-									glog.Warningln("failed socket command srv add")
-									haproxy.ReloadRequired = true
-								}
-							}
-							updatedConfig.BackendSlots[backendName] = backendSlots
-							// reload if any socket commands were unsuccessful
+							backendSlots.EmptySlots = append(backendSlots.EmptySlots, backendSlots.FullSlots[k].BackendServerName)
+							delete(backendSlots.FullSlots, k)
 						}
+						sort.Strings(backendSlots.EmptySlots)
+						// add endpoints
+						for k, endpoint := range toAddEndpoints {
+							// rearrange slots
+							backendSlots.FullSlots[k] = types.HAProxyBackendSlot{
+								//backendSlots.EmptySlots[len(backendSlots.EmptySlots)-1],
+								BackendServerName: backendSlots.EmptySlots[0],
+								BackendEndpoint:   endpoint,
+							}
+							backendSlots.EmptySlots = backendSlots.EmptySlots[1:]
+
+							// send socket commands
+							err1 := utils.SendToSocket(currentConfig.Cfg.StatsSocket,
+								fmt.Sprintf("set server %s/%s addr %s port %s\n", backendName, backendSlots.FullSlots[k].BackendServerName, endpoint.Address, endpoint.Port))
+							err2 := utils.SendToSocket(currentConfig.Cfg.StatsSocket,
+								fmt.Sprintf("set server %s/%s state ready\n", backendName, backendSlots.FullSlots[k].BackendServerName))
+							if err1 != nil || err2 != nil {
+								glog.Warningln("failed socket command srv add")
+								reloadRequired = true
+							}
+						}
+						updatedConfig.BackendSlots[backendName] = backendSlots
+						// reload if any socket commands were unsuccessful
 					}
 				}
 			}
-			// restore backend lists
-			haproxy.CurrentConfig.Backends = curBackends
-			updatedConfig.Backends = updBackends
-			// restore backend slots
-			haproxy.CurrentConfig.BackendSlots = curBackendSlots
 		}
+		// restore backend lists
+		currentConfig.Backends = curBackends
+		updatedConfig.Backends = updBackends
+		// restore backend slots
+		currentConfig.BackendSlots = curBackendSlots
 	}
 
 	// fill-out backends with available endpoints, add empty slots if required
-	if haproxy.CurrentConfig == nil || reconfigureEmptySlots {
-		haproxy.ReloadRequired = true
+	if currentConfig == nil || reconfigureEmptySlots {
+		reloadRequired = true
 		updBackendsMap, updKeys := ingressBackendsRemap(updatedConfig.Backends)
 		updatedConfig.BackendSlots = map[string]types.HAProxyBackendSlots{}
 
@@ -185,5 +183,5 @@ func reconfigureBackends(haproxy *HAProxyController, updatedConfig *types.Contro
 		}
 	}
 
-	haproxy.CurrentConfig = updatedConfig
+	return reloadRequired
 }

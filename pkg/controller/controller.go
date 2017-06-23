@@ -39,8 +39,8 @@ type HAProxyController struct {
 	reloadStrategy *string
 	configFile     string
 	template       *template
-	CurrentConfig  *types.ControllerConfig
-	ReloadRequired bool
+	currentConfig  *types.ControllerConfig
+	reloadRequired bool
 }
 
 // NewHAProxyController constructor
@@ -130,7 +130,8 @@ func (haproxy *HAProxyController) BackendDefaults() defaults.Backend {
 func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) ([]byte, error) {
 	updatedConfig := newControllerConfig(&cfg, haproxy)
 
-	reconfigureBackends(haproxy, updatedConfig)
+	haproxy.reloadRequired = reconfigureBackends(haproxy.currentConfig, updatedConfig)
+	haproxy.currentConfig = updatedConfig
 
 	data, err := haproxy.template.execute(updatedConfig)
 	if err != nil {
@@ -152,7 +153,7 @@ func (haproxy *HAProxyController) Reload(data []byte) ([]byte, bool, error) {
 		return nil, false, err
 	}
 
-	if !haproxy.ReloadRequired {
+	if !haproxy.reloadRequired {
 		glog.Infoln("reload not required")
 		return nil, false, nil
 	}
@@ -160,7 +161,7 @@ func (haproxy *HAProxyController) Reload(data []byte) ([]byte, bool, error) {
 
 	out, err := haproxy.reloadHaproxy()
 	if err == nil {
-		haproxy.ReloadRequired = false
+		haproxy.reloadRequired = false
 	}
 	if len(out) > 0 {
 		glog.Infof("HAProxy output:\n%v", string(out))
