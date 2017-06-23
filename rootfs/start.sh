@@ -17,7 +17,7 @@
 set -e
 
 init() {
-    if [ $# -gt 0 ] && [ "$(echo $1 | awk '{s=substr($0, 1, 2); print s}')" != "--" ]; then
+    if [ $# -gt 0 ] && [ "$(echo $1 | cut -b1-2)" != "--" ]; then
         exec "$@"
         exit 0
     fi
