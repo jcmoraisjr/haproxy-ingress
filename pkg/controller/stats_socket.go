@@ -165,18 +165,27 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 		for _, backendName := range updKeys {
 			newBackend := types.HAProxyBackendSlots{}
 			newBackend.FullSlots = map[string]types.HAProxyBackendSlot{}
-			for i, endpoint := range updBackendsMap[backendName].Endpoints {
-				newBackend.FullSlots[fmt.Sprintf("%s:%s", endpoint.Address, endpoint.Port)] = types.HAProxyBackendSlot{
-					BackendServerName: fmt.Sprintf("server%04d", i),
-					BackendEndpoint:   &endpoint,
-				}
-			}
 			if updatedConfig.Cfg.DynamicScaling {
+				for i, endpoint := range updBackendsMap[backendName].Endpoints {
+					newBackend.FullSlots[fmt.Sprintf("%s:%s", endpoint.Address, endpoint.Port)] = types.HAProxyBackendSlot{
+						BackendServerName: fmt.Sprintf("server%04d", i),
+						BackendEndpoint:   &endpoint,
+					}
+				}
 				// add up to BackendServerSlotsIncrement empty slots
 				fullSlotCnt := len(newBackend.FullSlots)
 				extraSlotCnt := (int(fullSlotCnt/updatedConfig.Cfg.BackendServerSlotsIncrement)+1)*updatedConfig.Cfg.BackendServerSlotsIncrement - fullSlotCnt
 				for i := 0; i < extraSlotCnt; i++ {
 					newBackend.EmptySlots = append(newBackend.EmptySlots, fmt.Sprintf("server%04d", i+fullSlotCnt))
+				}
+			} else {
+				// use addr:port as BackendServerName, don't generate empty slots
+				for _, endpoint := range updBackendsMap[backendName].Endpoints {
+					target := fmt.Sprintf("%s:%s", endpoint.Address, endpoint.Port)
+					newBackend.FullSlots[target] = types.HAProxyBackendSlot{
+						BackendServerName: target,
+						BackendEndpoint:   &endpoint,
+					}
 				}
 			}
 			updatedConfig.BackendSlots[backendName] = newBackend
