@@ -129,8 +129,8 @@ func reconfigureBackends(haproxy *HAProxyController, updatedConfig *types.Contro
 								// rearrange slots
 								backendSlots.FullSlots[k] = types.HAProxyBackendSlot{
 									//backendSlots.EmptySlots[len(backendSlots.EmptySlots)-1],
-									backendSlots.EmptySlots[0],
-									endpoint,
+									BackendServerName: backendSlots.EmptySlots[0],
+									BackendEndpoint:   endpoint,
 								}
 								backendSlots.EmptySlots = backendSlots.EmptySlots[1:]
 
@@ -169,8 +169,8 @@ func reconfigureBackends(haproxy *HAProxyController, updatedConfig *types.Contro
 			newBackend.FullSlots = map[string]types.HAProxyBackendSlot{}
 			for i, endpoint := range updBackendsMap[backendName].Endpoints {
 				newBackend.FullSlots[fmt.Sprintf("%s:%s", endpoint.Address, endpoint.Port)] = types.HAProxyBackendSlot{
-					fmt.Sprintf("server%04d", i),
-					&endpoint,
+					BackendServerName: fmt.Sprintf("server%04d", i),
+					BackendEndpoint:   &endpoint,
 				}
 			}
 			if updatedConfig.Cfg.DynamicScaling {

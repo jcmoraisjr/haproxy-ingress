@@ -110,12 +110,14 @@ type (
 		HAMatchPath     string                `json:"haMatchPath"`
 		HAWhitelist     string                `json:"whitelist,omitempty"`
 	}
+	// HAProxyBackendSlots contains used and empty backend server definitions
 	HAProxyBackendSlots struct {
 		// map from ip:port to server name
 		FullSlots map[string]HAProxyBackendSlot
 		// list of unused server names
 		EmptySlots []string
 	}
+	// HAProxyBackendSlot combines BackendServerName with an ingress.Endpoint
 	HAProxyBackendSlot struct {
 		BackendServerName string
 		BackendEndpoint   *ingress.Endpoint

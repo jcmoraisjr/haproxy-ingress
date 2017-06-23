@@ -42,23 +42,22 @@ func MergeMap(data map[string]string, resultTo interface{}) error {
 	return nil
 }
 
+// SendToSocket send strings to a unix socket specified
 func SendToSocket(socket string, command string) error {
 	c, err := net.Dial("unix", socket)
 	if err != nil {
 		glog.Warningf("error sending to unix socket: %v", err)
 		return err
-	} else {
-		// glog.Infoln("sending command ", command)
-		sent, err := c.Write([]byte(command))
-		if err != nil || sent != len(command) {
-			glog.Warningf("error sending to unix socket %s", socket)
-			return err
-		}
-		readBuffer := make([]byte, 2048)
-		rcvd, err := c.Read(readBuffer)
-		if rcvd > 2 {
-			glog.Infof("haproxy stat socket response: \"%s\"", string(readBuffer[:rcvd-2]))
-		}
+	}
+	sent, err := c.Write([]byte(command))
+	if err != nil || sent != len(command) {
+		glog.Warningf("error sending to unix socket %s", socket)
+		return err
+	}
+	readBuffer := make([]byte, 2048)
+	rcvd, err := c.Read(readBuffer)
+	if rcvd > 2 {
+		glog.Infof("haproxy stat socket response: \"%s\"", string(readBuffer[:rcvd-2]))
 	}
 	return nil
 }
