@@ -37,32 +37,36 @@ type (
 		UDPEndpoints        []ingress.L4Service
 		PassthroughBackends []*ingress.SSLPassthroughBackend
 		Cfg                 *HAProxyConfig
+		BackendSlots        map[string]HAProxyBackendSlots
 	}
 	// HAProxyConfig has HAProxy specific configurations from ConfigMap
 	HAProxyConfig struct {
-		defaults.Backend      `json:",squash"`
-		SSLCiphers            string `json:"ssl-ciphers"`
-		SSLOptions            string `json:"ssl-options"`
-		SSLDHParam            `json:",squash"`
-		TimeoutHTTPRequest    string `json:"timeout-http-request"`
-		TimeoutConnect        string `json:"timeout-connect"`
-		TimeoutClient         string `json:"timeout-client"`
-		TimeoutClientFin      string `json:"timeout-client-fin"`
-		TimeoutServer         string `json:"timeout-server"`
-		TimeoutServerFin      string `json:"timeout-server-fin"`
-		TimeoutTunnel         string `json:"timeout-tunnel"`
-		TimeoutKeepAlive      string `json:"timeout-keep-alive"`
-		Syslog                string `json:"syslog-endpoint"`
-		BalanceAlgorithm      string `json:"balance-algorithm"`
-		BackendCheckInterval  string `json:"backend-check-interval"`
-		Forwardfor            string `json:"forwardfor"`
-		MaxConn               int    `json:"max-connections"`
-		HSTS                  bool   `json:"hsts"`
-		HSTSMaxAge            string `json:"hsts-max-age"`
-		HSTSIncludeSubdomains bool   `json:"hsts-include-subdomains"`
-		HSTSPreload           bool   `json:"hsts-preload"`
-		StatsPort             int    `json:"stats-port"`
-		StatsAuth             string `json:"stats-auth"`
+		defaults.Backend            `json:",squash"`
+		SSLCiphers                  string `json:"ssl-ciphers"`
+		SSLOptions                  string `json:"ssl-options"`
+		SSLDHParam                  `json:",squash"`
+		TimeoutHTTPRequest          string `json:"timeout-http-request"`
+		TimeoutConnect              string `json:"timeout-connect"`
+		TimeoutClient               string `json:"timeout-client"`
+		TimeoutClientFin            string `json:"timeout-client-fin"`
+		TimeoutServer               string `json:"timeout-server"`
+		TimeoutServerFin            string `json:"timeout-server-fin"`
+		TimeoutTunnel               string `json:"timeout-tunnel"`
+		TimeoutKeepAlive            string `json:"timeout-keep-alive"`
+		Syslog                      string `json:"syslog-endpoint"`
+		BalanceAlgorithm            string `json:"balance-algorithm"`
+		BackendCheckInterval        string `json:"backend-check-interval"`
+		Forwardfor                  string `json:"forwardfor"`
+		MaxConn                     int    `json:"max-connections"`
+		HSTS                        bool   `json:"hsts"`
+		HSTSMaxAge                  string `json:"hsts-max-age"`
+		HSTSIncludeSubdomains       bool   `json:"hsts-include-subdomains"`
+		HSTSPreload                 bool   `json:"hsts-preload"`
+		StatsPort                   int    `json:"stats-port"`
+		StatsAuth                   string `json:"stats-auth"`
+		DynamicScaling              bool   `json:"dynamic-scaling"`
+		BackendServerSlotsIncrement int    `json:"backend-server-slots-increment"`
+		StatsSocket                 string
 	}
 	// Userlist list of users for basic authentication
 	Userlist struct {
@@ -105,5 +109,17 @@ type (
 		CertificateAuth authtls.AuthSSLConfig `json:"certificateAuth,omitempty"`
 		HAMatchPath     string                `json:"haMatchPath"`
 		HAWhitelist     string                `json:"whitelist,omitempty"`
+	}
+	// HAProxyBackendSlots contains used and empty backend server definitions
+	HAProxyBackendSlots struct {
+		// map from ip:port to server name
+		FullSlots map[string]HAProxyBackendSlot
+		// list of unused server names
+		EmptySlots []string
+	}
+	// HAProxyBackendSlot combines BackendServerName with an ingress.Endpoint
+	HAProxyBackendSlot struct {
+		BackendServerName string
+		BackendEndpoint   *ingress.Endpoint
 	}
 )

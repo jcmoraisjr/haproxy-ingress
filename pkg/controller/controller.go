@@ -17,8 +17,8 @@ limitations under the License.
 package controller
 
 import (
-	"bytes"
 	"github.com/golang/glog"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/version"
 	"github.com/spf13/pflag"
 	"io/ioutil"
@@ -27,7 +27,6 @@ import (
 	"k8s.io/ingress/core/pkg/ingress/controller"
 	"k8s.io/ingress/core/pkg/ingress/defaults"
 	"net/http"
-	"os"
 	"os/exec"
 )
 
@@ -40,6 +39,8 @@ type HAProxyController struct {
 	reloadStrategy *string
 	configFile     string
 	template       *template
+	currentConfig  *types.ControllerConfig
+	reloadRequired bool
 }
 
 // NewHAProxyController constructor
@@ -127,40 +128,39 @@ func (haproxy *HAProxyController) BackendDefaults() defaults.Backend {
 
 // OnUpdate regenerate the configuration file of the backend
 func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) ([]byte, error) {
-	data, err := haproxy.template.execute(newControllerConfig(&cfg, haproxy))
+	updatedConfig := newControllerConfig(&cfg, haproxy)
+
+	haproxy.reloadRequired = reconfigureBackends(haproxy.currentConfig, updatedConfig)
+	haproxy.currentConfig = updatedConfig
+
+	data, err := haproxy.template.execute(updatedConfig)
 	if err != nil {
 		return nil, err
 	}
 	return data, nil
 }
 
-// Reload reload the backend if the configuration file has changed
+// Reload the backend if the configuration has changed
 func (haproxy *HAProxyController) Reload(data []byte) ([]byte, bool, error) {
-	if !haproxy.configChanged(data) {
-		return nil, false, nil
-	}
 	// TODO missing HAProxy validation before overwrite and try to reload
 	err := ioutil.WriteFile(haproxy.configFile, data, 0644)
 	if err != nil {
 		return nil, false, err
 	}
+
+	if !haproxy.reloadRequired {
+		glog.Infoln("HAProxy updated through socket, reload not required")
+		return nil, false, nil
+	}
+
 	out, err := haproxy.reloadHaproxy()
+	if err == nil {
+		haproxy.reloadRequired = false
+	}
 	if len(out) > 0 {
 		glog.Infof("HAProxy output:\n%v", string(out))
 	}
 	return out, true, err
-}
-
-func (haproxy *HAProxyController) configChanged(data []byte) bool {
-	if _, err := os.Stat(haproxy.configFile); os.IsNotExist(err) {
-		return true
-	}
-	cfg, err := ioutil.ReadFile(haproxy.configFile)
-	if err != nil {
-		glog.Warningf("error reading haproxy config: %v")
-		return false
-	}
-	return !bytes.Equal(cfg, data)
 }
 
 func (haproxy *HAProxyController) reloadHaproxy() ([]byte, error) {

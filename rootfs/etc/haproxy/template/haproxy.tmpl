@@ -2,7 +2,7 @@
 {{ $cfg := .Cfg }}
 global
     daemon
-    stats socket /tmp/haproxy
+    stats socket {{ $cfg.StatsSocket }} level admin
     #server-state-file global
     #server-state-base /var/state/haproxy/
 {{ if ne $cfg.Syslog "" }}
@@ -58,9 +58,12 @@ backend {{ $backend.Name }}
 {{ if ne $cacert.PemSHA "" }}
     # CA PEM checksum: {{ $cacert.PemSHA }}
 {{ end }}
-{{ range $endpoint := $backend.Endpoints }}
-{{ $target := (print $endpoint.Address ":" $endpoint.Port) }}
-    server {{ $target }} {{ $target }} {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}check port {{ $endpoint.Port }} inter {{ $cfg.BackendCheckInterval }}
+{{ $BackendSlots := index $ing.BackendSlots $backend.Name }}
+{{ range $target, $slot := $BackendSlots.FullSlots }}
+    server {{ $slot.BackendServerName }} {{ $target }} {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}check port {{ $slot.BackendEndpoint.Port }} inter {{ $cfg.BackendCheckInterval }}
+{{ end }}
+{{ range $empty := $BackendSlots.EmptySlots }}
+    server {{ $empty }} 127.0.0.1:81 {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}check disabled inter {{ $cfg.BackendCheckInterval }}
 {{ end }}
 {{ end }}
 

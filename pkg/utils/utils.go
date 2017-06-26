@@ -19,6 +19,7 @@ package utils
 import (
 	"github.com/golang/glog"
 	"github.com/mitchellh/mapstructure"
+	"net"
 )
 
 // MergeMap copy keys from a `data` map to a `resultTo` tagged object
@@ -37,6 +38,26 @@ func MergeMap(data map[string]string, resultTo interface{}) error {
 			}
 		}
 		return err
+	}
+	return nil
+}
+
+// SendToSocket send strings to a unix socket specified
+func SendToSocket(socket string, command string) error {
+	c, err := net.Dial("unix", socket)
+	if err != nil {
+		glog.Warningf("error sending to unix socket: %v", err)
+		return err
+	}
+	sent, err := c.Write([]byte(command))
+	if err != nil || sent != len(command) {
+		glog.Warningf("error sending to unix socket %s", socket)
+		return err
+	}
+	readBuffer := make([]byte, 2048)
+	rcvd, err := c.Read(readBuffer)
+	if rcvd > 2 {
+		glog.Infof("haproxy stat socket response: \"%s\"", string(readBuffer[:rcvd-2]))
 	}
 	return nil
 }
