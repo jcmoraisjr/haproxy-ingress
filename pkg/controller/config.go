@@ -94,7 +94,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		HSTSPreload:                 false,
 		StatsPort:                   1936,
 		StatsAuth:                   "",
-		DynamicScaling:              true,
+		DynamicScaling:              false,
 		BackendServerSlotsIncrement: 32,
 		StatsSocket:                 "/var/run/haproxy-stats.sock",
 	}

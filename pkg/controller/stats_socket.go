@@ -118,7 +118,6 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 				reloadRequired = false
 				updatedConfig.BackendSlots = curBackendSlots
 				for _, backendName := range curKeys {
-
 					updLen := len(updBackendsMap[backendName].Endpoints)
 					totalSlots := len(curBackendSlots[backendName].EmptySlots) + len(curBackendSlots[backendName].FullSlots)
 					if updLen > totalSlots || updLen < (totalSlots-updatedConfig.Cfg.BackendServerSlotsIncrement) {
@@ -153,7 +152,6 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 							reloadRequired = !addEndpoint(currentConfig.Cfg.StatsSocket, backendName, backendSlots.FullSlots[k].BackendServerName, endpoint.Address, endpoint.Port)
 						}
 						updatedConfig.BackendSlots[backendName] = backendSlots
-						// reload if any socket commands were unsuccessful
 					}
 				}
 			}
