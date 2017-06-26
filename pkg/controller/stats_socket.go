@@ -59,6 +59,30 @@ func endpointsSubtract(s1, s2 map[string]*ingress.Endpoint) map[string]*ingress.
 	return s3
 }
 
+// remove Ingress Endpoint from a backend by disabling a specific server slot
+func removeEndpoint(statsSocket, backendName, backendServerName string) bool {
+	err := utils.SendToSocket(statsSocket,
+		fmt.Sprintf("set server %s/%s state maint\n", backendName, backendServerName))
+	if err != nil {
+		glog.Warningln("failed socket command srv remove")
+		return false
+	}
+	return true
+}
+
+// add Ingress Endpoint to a backend in a specific server slot
+func addEndpoint(statsSocket, backendName, backendServerName, address, port string) bool {
+	err1 := utils.SendToSocket(statsSocket,
+		fmt.Sprintf("set server %s/%s addr %s port %s\n", backendName, backendServerName, address, port))
+	err2 := utils.SendToSocket(statsSocket,
+		fmt.Sprintf("set server %s/%s state ready\n", backendName, backendServerName))
+	if err1 != nil || err2 != nil {
+		glog.Warningln("failed socket command srv add")
+		return false
+	}
+	return true
+}
+
 // populate template variables and optionally issue socket commands to reconfigure haproxy without reloading
 func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) bool {
 	reloadRequired := true
@@ -113,12 +137,7 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 						backendSlots := updatedConfig.BackendSlots[backendName]
 						// remove endpoints
 						for k := range toRemoveEndpoints {
-							err := utils.SendToSocket(currentConfig.Cfg.StatsSocket,
-								fmt.Sprintf("set server %s/%s state maint\n", backendName, backendSlots.FullSlots[k].BackendServerName))
-							if err != nil {
-								glog.Warningln("failed socket command srv remove")
-								reloadRequired = true
-							}
+							reloadRequired = !removeEndpoint(currentConfig.Cfg.StatsSocket, backendName, backendSlots.FullSlots[k].BackendServerName)
 							backendSlots.EmptySlots = append(backendSlots.EmptySlots, backendSlots.FullSlots[k].BackendServerName)
 							delete(backendSlots.FullSlots, k)
 						}
@@ -131,16 +150,7 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 								BackendEndpoint:   endpoint,
 							}
 							backendSlots.EmptySlots = backendSlots.EmptySlots[1:]
-
-							// send socket commands
-							err1 := utils.SendToSocket(currentConfig.Cfg.StatsSocket,
-								fmt.Sprintf("set server %s/%s addr %s port %s\n", backendName, backendSlots.FullSlots[k].BackendServerName, endpoint.Address, endpoint.Port))
-							err2 := utils.SendToSocket(currentConfig.Cfg.StatsSocket,
-								fmt.Sprintf("set server %s/%s state ready\n", backendName, backendSlots.FullSlots[k].BackendServerName))
-							if err1 != nil || err2 != nil {
-								glog.Warningln("failed socket command srv add")
-								reloadRequired = true
-							}
+							reloadRequired = !addEndpoint(currentConfig.Cfg.StatsSocket, backendName, backendSlots.FullSlots[k].BackendServerName, endpoint.Address, endpoint.Port)
 						}
 						updatedConfig.BackendSlots[backendName] = backendSlots
 						// reload if any socket commands were unsuccessful

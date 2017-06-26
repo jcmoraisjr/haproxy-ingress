@@ -149,10 +149,9 @@ func (haproxy *HAProxyController) Reload(data []byte) ([]byte, bool, error) {
 	}
 
 	if !haproxy.reloadRequired {
-		glog.Infoln("reload not required")
+		glog.Infoln("HAProxy updated through socket, reload not required")
 		return nil, false, nil
 	}
-	glog.Infoln("reload is required")
 
 	out, err := haproxy.reloadHaproxy()
 	if err == nil {
