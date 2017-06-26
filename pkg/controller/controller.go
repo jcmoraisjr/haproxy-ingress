@@ -142,11 +142,6 @@ func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) ([]byte, e
 
 // Reload the backend if the configuration has changed
 func (haproxy *HAProxyController) Reload(data []byte) ([]byte, bool, error) {
-	/*
-		if !haproxy.configChanged(data) {
-			return nil, false, nil
-		}
-	*/
 	// TODO missing HAProxy validation before overwrite and try to reload
 	err := ioutil.WriteFile(haproxy.configFile, data, 0644)
 	if err != nil {
@@ -168,20 +163,6 @@ func (haproxy *HAProxyController) Reload(data []byte) ([]byte, bool, error) {
 	}
 	return out, true, err
 }
-
-/*
-func (haproxy *HAProxyController) configChanged(data []byte) bool {
-	if _, err := os.Stat(haproxy.configFile); os.IsNotExist(err) {
-		return true
-	}
-	cfg, err := ioutil.ReadFile(haproxy.configFile)
-	if err != nil {
-		glog.Warningf("error reading haproxy config: %v")
-		return false
-	}
-	return !bytes.Equal(cfg, data)
-}
-*/
 
 func (haproxy *HAProxyController) reloadHaproxy() ([]byte, error) {
 	out, err := exec.Command(haproxy.command, *haproxy.reloadStrategy, haproxy.configFile).CombinedOutput()
