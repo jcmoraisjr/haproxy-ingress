@@ -40,7 +40,6 @@ type HAProxyController struct {
 	configFile     string
 	template       *template
 	currentConfig  *types.ControllerConfig
-	reloadRequired bool
 }
 
 // NewHAProxyController constructor
@@ -127,40 +126,36 @@ func (haproxy *HAProxyController) BackendDefaults() defaults.Backend {
 }
 
 // OnUpdate regenerate the configuration file of the backend
-func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) ([]byte, error) {
+func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) error {
 	updatedConfig := newControllerConfig(&cfg, haproxy)
 
-	haproxy.reloadRequired = reconfigureBackends(haproxy.currentConfig, updatedConfig)
+	reloadRequired := reconfigureBackends(haproxy.currentConfig, updatedConfig)
 	haproxy.currentConfig = updatedConfig
 
 	data, err := haproxy.template.execute(updatedConfig)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return data, nil
-}
 
-// Reload the backend if the configuration has changed
-func (haproxy *HAProxyController) Reload(data []byte) ([]byte, bool, error) {
-	// TODO missing HAProxy validation before overwrite and try to reload
-	err := ioutil.WriteFile(haproxy.configFile, data, 0644)
+	// TODO missing HAProxy validation on native reaload-strategy
+	// before overwrite and try to reload
+	err = ioutil.WriteFile(haproxy.configFile, data, 0644)
 	if err != nil {
-		return nil, false, err
+		return err
 	}
 
-	if !haproxy.reloadRequired {
+	// TODO if reload is not required, only a haproxy.cfg.erb will be
+	// updated on mutibinder reload-strategy
+	if !reloadRequired {
 		glog.Infoln("HAProxy updated through socket, reload not required")
-		return nil, false, nil
+		return nil
 	}
 
 	out, err := haproxy.reloadHaproxy()
-	if err == nil {
-		haproxy.reloadRequired = false
-	}
 	if len(out) > 0 {
 		glog.Infof("HAProxy output:\n%v", string(out))
 	}
-	return out, true, err
+	return err
 }
 
 func (haproxy *HAProxyController) reloadHaproxy() ([]byte, error) {
