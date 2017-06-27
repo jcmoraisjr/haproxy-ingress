@@ -43,7 +43,6 @@ case "$1" in
         HAPROXY=/usr/local/sbin/haproxy
         CONFIG="$2"
         WRAPPER_PID=/var/run/wrapper.pid
-        multibinder-haproxy-erb "$HAPROXY" -f "$CONFIG" -c -q
         kill -USR2 $(cat "$WRAPPER_PID")
         ;;
     *)

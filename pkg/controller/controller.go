@@ -19,9 +19,9 @@ package controller
 import (
 	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/version"
 	"github.com/spf13/pflag"
-	"io/ioutil"
 	api "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/ingress/core/pkg/ingress"
 	"k8s.io/ingress/core/pkg/ingress/controller"
@@ -137,15 +137,11 @@ func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) error {
 		return err
 	}
 
-	// TODO missing HAProxy validation on native reaload-strategy
-	// before overwrite and try to reload
-	err = ioutil.WriteFile(haproxy.configFile, data, 0644)
+	err = utils.RewriteConfigFiles(data, *haproxy.reloadStrategy, haproxy.configFile)
 	if err != nil {
 		return err
 	}
 
-	// TODO if reload is not required, only a haproxy.cfg.erb will be
-	// updated on mutibinder reload-strategy
 	if !reloadRequired {
 		glog.Infoln("HAProxy updated through socket, reload not required")
 		return nil
