@@ -78,8 +78,9 @@ func checkValidity(configFile string) error {
 
 // multibinderERBOnly generates a config file from ERB template by invoking multibinder-haproxy-erb
 func multibinderERBOnly(configFile string) (string, error) {
-	_, err := exec.Command("multibinder-haproxy-erb", "/usr/local/sbin/haproxy", "-f", configFile, "--erb-write-only").CombinedOutput()
+	out, err := exec.Command("multibinder-haproxy-erb", "/usr/local/sbin/haproxy", "-f", configFile, "-c", "-q").CombinedOutput()
 	if err != nil {
+		glog.Warningf("Error validating config file:\n%v", string(out))
 		return "", err
 	}
 	return configFile[:strings.LastIndex(configFile, ".erb")], nil
@@ -96,13 +97,11 @@ func RewriteConfigFiles(data []byte, reloadStrategy, configFile string) error {
 	}
 
 	if reloadStrategy == "multibinder" {
-		unverified, err := multibinderERBOnly(tmpf)
+		generated, err := multibinderERBOnly(tmpf)
 		if err != nil {
-			glog.Warningln("Error generating file contents from ERB template")
 			return err
 		}
-		// multibinder haproxy configuration file will not pass validation due to file descriptors so it is skipped
-		err = os.Rename(unverified, "/etc/haproxy/haproxy.cfg")
+		err = os.Rename(generated, "/etc/haproxy/haproxy.cfg")
 		if err != nil {
 			glog.Warningln("Error updating config file")
 			return err
