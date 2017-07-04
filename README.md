@@ -10,7 +10,11 @@ implementation for [HAProxy](http://www.haproxy.org/) loadbalancer.
 HAProxy Ingress images are built by [Travis CI](https://travis-ci.org/jcmoraisjr/haproxy-ingress) and the
 image is deployed from Travis CI to [Quay.io](https://quay.io/repository/jcmoraisjr/haproxy-ingress?tag=latest&tab=tags)
 whenever a tag is applied. The `latest` tag will always point to the latest stable version while
-`canary` tag will always point to the latest deployed version.
+`canary` tag will always point to the latest beta-quality and release-candidate versions.
+
+Before the beta-quality releases, the source code could also be tagged and images deployed.
+The `snapshot` tag will always point to the latest tagged version, which could be a release,
+a beta-quality or a development version.
 
 # Usage
 
