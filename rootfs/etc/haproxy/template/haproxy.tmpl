@@ -71,7 +71,7 @@ backend {{ $backend.Name }}
 ###### HTTP frontend
 ######
 frontend httpfront
-    bind *:80
+    bind *:80{{ if $cfg.UseProxyProtocol }} accept-proxy{{ end }}
     mode http
 {{ if ne $cfg.Syslog "" }}
     option httplog
@@ -127,7 +127,7 @@ frontend httpfront
 ###### HTTPS frontend (tcp mode)
 ######
 frontend httpsfront
-    bind *:443
+    bind *:443{{ if $cfg.UseProxyProtocol }} accept-proxy{{ end }}
     mode tcp
     tcp-request inspect-delay 5s
     tcp-request content accept if { req.ssl_hello_type 1 }

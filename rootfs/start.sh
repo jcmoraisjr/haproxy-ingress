@@ -59,7 +59,9 @@ listen main
 EOF
 
     # Add erb code to a new template file
-    sed "/^    bind \+\*\?:/s/\*\?:\(.*\)/<%= bind_tcp('0.0.0.0', \1) %>/" \
+    # - [0-9]* will match actual ports, for example 443 in bind *:443
+    # - {{[^}]*}} will match when the port is templatized, for example {{ $cfg.StatsPort }} in bind *:{{ $cfg.StatsPort }}
+    sed "/^    bind \+\*\?:/s/\*\?:\(\([0-9]*\)\|\({{[^}]*}}\)\)/<%= bind_tcp('0.0.0.0', \1) %>/" \
         "$TEMPLATE" > "${CONFIG}.tmpl"
 }
 
