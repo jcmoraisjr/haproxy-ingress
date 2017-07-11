@@ -79,12 +79,16 @@ frontend httpfront
 {{ range $server := $ing.HTTPServers }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.HAWhitelist "" }}
-    http-request deny if { hdr(host) {{ $server.Hostname }} }{{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }
+    {{ range $host := $server.Hostnames }}
+    http-request deny if { hdr(host) {{ $host }} }{{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }
+    {{ end }}
 {{ end }}
 {{ $listName := $location.Userlist.ListName }}
 {{ if ne $listName "" }}
     {{ $realm := $location.Userlist.Realm }}
-    http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if { hdr(host) {{ $server.Hostname }} }{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
+    {{ range $host := $server.Hostnames }}
+    http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if { hdr(host) {{ $host }} }{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
+    {{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
@@ -97,16 +101,22 @@ frontend httpfront
 {{ range $server := $ing.HTTPServers }}
 {{ $appRoot := $server.RootLocation.Redirect.AppRoot }}
 {{ if ne $appRoot "" }}
-    redirect location {{ $appRoot }} if { hdr(host) {{ $server.Hostname }} } { path / }
+    {{ range $host := $server.Hostnames }}
+    redirect location {{ $appRoot }} if { hdr(host) {{ $host }} } { path / }
+    {{ end }}
 {{ end }}
 {{ end }}
 {{ range $server := $ing.HTTPSServers }}
 {{ if $server.SSLRedirect }}
-    redirect scheme https if { hdr(host) {{ $server.Hostname }} }
+    {{ range $host := $server.Hostnames }}
+    redirect scheme https if { hdr(host) {{ $host }} }
+    {{ end }}
 {{ else }}
 {{ range $location := $server.Locations }}
 {{ if $location.Redirect.SSLRedirect }}
-    redirect scheme https if { hdr(host) {{ $server.Hostname }} }{{ $location.HAMatchPath }}
+    {{ range $host := $server.Hostnames }}
+    redirect scheme https if { hdr(host) {{ $host }} }{{ $location.HAMatchPath }}
+    {{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
@@ -114,11 +124,15 @@ frontend httpfront
 {{ range $server := $ing.HTTPServers }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.Proxy.BodySize "" }}
-    use_backend error413 if { hdr(host) {{ $server.Hostname }} } { path_beg {{ $location.Path }} } { req.body_size gt {{ $location.Proxy.BodySize }} }
+    {{ range $host := $server.Hostnames }}
+    use_backend error413 if { hdr(host) {{ $host }} } { path_beg {{ $location.Path }} } { req.body_size gt {{ $location.Proxy.BodySize }} }
+    {{ end }}
 {{ end }}
 {{ end }}
 {{ range $location := $server.Locations }}
-    use_backend {{ $location.Backend }} if { hdr(host) {{ $server.Hostname }} } { path_beg {{ $location.Path }} }
+    {{ range $host := $server.Hostnames }}
+    use_backend {{ $location.Backend }} if { hdr(host) {{ $host }} } { path_beg {{ $location.Path }} }
+    {{ end }}
 {{ end }}
 {{ end }}
     default_backend {{ $ing.DefaultServer.RootLocation.Backend }}
@@ -132,15 +146,19 @@ frontend httpsfront
     tcp-request inspect-delay 5s
     tcp-request content accept if { req.ssl_hello_type 1 }
 {{ range $server := $ing.PassthroughBackends }}
-    use_backend {{ $server.Backend }} if { req.ssl_sni -i {{ $server.Hostname }} }
+    {{ range $host := $server.Hostnames }}
+    use_backend {{ $server.Backend }} if { req.ssl_sni -i {{ $host }} }
+    {{ end }}
 {{ end }}
 {{ range $server := $ing.HTTPSServers }}
-    use_backend httpsback-{{ $server.Hostname }} if { req.ssl_sni -i {{ $server.Hostname }} }
+    {{ range $host := $server.Hostnames }}
+    use_backend httpsback-{{ $host }} if { req.ssl_sni -i {{ $host }} }
+    {{ end }}
 {{ end }}
     default_backend httpsback-default-backend
 
 {{ range $server := $ing.HTTPSServers }}
-{{ $host := $server.Hostname }}
+{{ range $host := $server.Hostnames }}
 ##
 ## {{ $host }}
 backend httpsback-{{ $host }}
@@ -191,6 +209,7 @@ frontend httpsfront-{{ $host }}
     use_backend {{ $location.Backend }} if { path_beg {{ $location.Path }} }
 {{ else }}
     default_backend {{ $location.Backend }}
+{{ end }}
 {{ end }}
 {{ end }}
 {{ end }}

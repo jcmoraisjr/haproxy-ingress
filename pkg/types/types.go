@@ -17,11 +17,13 @@ limitations under the License.
 package types
 
 import (
+	"regexp"
 	"k8s.io/ingress/core/pkg/ingress"
 	"k8s.io/ingress/core/pkg/ingress/annotations/authtls"
 	"k8s.io/ingress/core/pkg/ingress/annotations/proxy"
 	"k8s.io/ingress/core/pkg/ingress/annotations/rewrite"
 	"k8s.io/ingress/core/pkg/ingress/defaults"
+	"fmt"
 )
 
 type (
@@ -124,3 +126,11 @@ type (
 		BackendEndpoint   *ingress.Endpoint
 	}
 )
+
+func (s HAProxyServer) Hostnames() []string {
+	matched, _ := regexp.MatchString(".*:[0-9]+", s.Hostname)
+	if matched {
+		return []string{s.Hostname}
+	}
+	return []string{s.Hostname, fmt.Sprintf("%s:80", s.Hostname)}
+}
