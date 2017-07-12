@@ -76,15 +76,20 @@ frontend httpfront
 {{ if ne $cfg.Syslog "" }}
     option httplog
 {{ end }}
+{{ range $server := $ing.Servers }}
+{{ if ne $server.Hostname "_" }}
+    acl ishost-{{ $server.Hostname }} hdr(host) {{ $server.Hostname }} {{ $server.Hostname }}:80
+{{ end }}
+{{ end }}
 {{ range $server := $ing.HTTPServers }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.HAWhitelist "" }}
-    http-request deny if { hdr(host) {{ $server.Hostname }} }{{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }
+    http-request deny if ishost-{{ $server.Hostname }}{{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }
 {{ end }}
 {{ $listName := $location.Userlist.ListName }}
 {{ if ne $listName "" }}
     {{ $realm := $location.Userlist.Realm }}
-    http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if { hdr(host) {{ $server.Hostname }} }{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
+    http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if ishost-{{ $server.Hostname }}{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
 {{ end }}
 {{ end }}
 {{ end }}
@@ -97,16 +102,16 @@ frontend httpfront
 {{ range $server := $ing.HTTPServers }}
 {{ $appRoot := $server.RootLocation.Redirect.AppRoot }}
 {{ if ne $appRoot "" }}
-    redirect location {{ $appRoot }} if { hdr(host) {{ $server.Hostname }} } { path / }
+    redirect location {{ $appRoot }} if ishost-{{ $server.Hostname }} { path / }
 {{ end }}
 {{ end }}
 {{ range $server := $ing.HTTPSServers }}
 {{ if $server.SSLRedirect }}
-    redirect scheme https if { hdr(host) {{ $server.Hostname }} }
+    redirect scheme https if ishost-{{ $server.Hostname }}
 {{ else }}
 {{ range $location := $server.Locations }}
 {{ if $location.Redirect.SSLRedirect }}
-    redirect scheme https if { hdr(host) {{ $server.Hostname }} }{{ $location.HAMatchPath }}
+    redirect scheme https if ishost-{{ $server.Hostname }}{{ $location.HAMatchPath }}
 {{ end }}
 {{ end }}
 {{ end }}
@@ -114,11 +119,11 @@ frontend httpfront
 {{ range $server := $ing.HTTPServers }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.Proxy.BodySize "" }}
-    use_backend error413 if { hdr(host) {{ $server.Hostname }} } { path_beg {{ $location.Path }} } { req.body_size gt {{ $location.Proxy.BodySize }} }
+    use_backend error413 if ishost-{{ $server.Hostname }} { path_beg {{ $location.Path }} } { req.body_size gt {{ $location.Proxy.BodySize }} }
 {{ end }}
 {{ end }}
 {{ range $location := $server.Locations }}
-    use_backend {{ $location.Backend }} if { hdr(host) {{ $server.Hostname }} } { path_beg {{ $location.Path }} }
+    use_backend {{ $location.Backend }} if ishost-{{ $server.Hostname }} { path_beg {{ $location.Path }} }
 {{ end }}
 {{ end }}
     default_backend {{ $ing.DefaultServer.RootLocation.Backend }}

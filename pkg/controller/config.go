@@ -52,6 +52,7 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 	cfg.createHAProxyServers()
 	return &types.ControllerConfig{
 		Userlists:           cfg.userlists,
+		Servers:             cfg.ingress.Servers,
 		Backends:            cfg.ingress.Backends,
 		HTTPServers:         cfg.haHTTPServers,
 		HTTPSServers:        cfg.haHTTPSServers,

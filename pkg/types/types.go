@@ -29,6 +29,7 @@ type (
 	// compatible with HAProxy
 	ControllerConfig struct {
 		Userlists           map[string]Userlist
+		Servers             []*ingress.Server
 		Backends            []*ingress.Backend
 		DefaultServer       *HAProxyServer
 		HTTPServers         []*HAProxyServer
@@ -67,7 +68,7 @@ type (
 		DynamicScaling              bool   `json:"dynamic-scaling"`
 		BackendServerSlotsIncrement int    `json:"backend-server-slots-increment"`
 		StatsSocket                 string
-		UseProxyProtocol						bool    `json:"use-proxy-protocol"`
+		UseProxyProtocol            bool `json:"use-proxy-protocol"`
 	}
 	// Userlist list of users for basic authentication
 	Userlist struct {
