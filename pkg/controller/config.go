@@ -93,6 +93,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		HSTSMaxAge:                  "15768000",
 		HSTSIncludeSubdomains:       false,
 		HSTSPreload:                 false,
+		HealthzPort:                 10253,
 		StatsPort:                   1936,
 		StatsAuth:                   "",
 		DynamicScaling:              false,

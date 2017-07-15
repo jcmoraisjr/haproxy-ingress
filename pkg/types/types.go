@@ -63,6 +63,7 @@ type (
 		HSTSMaxAge                  string `json:"hsts-max-age"`
 		HSTSIncludeSubdomains       bool   `json:"hsts-include-subdomains"`
 		HSTSPreload                 bool   `json:"hsts-preload"`
+		HealthzPort                 int    `json:"healthz-port"`
 		StatsPort                   int    `json:"stats-port"`
 		StatsAuth                   string `json:"stats-auth"`
 		DynamicScaling              bool   `json:"dynamic-scaling"`
