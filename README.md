@@ -69,13 +69,17 @@ A ConfigMap can be created with `kubectl create configmap`.
 
 The following parameters are supported:
 
-`[0]` only on `canary` tag
+* `[0]` only on `canary` tag
+* `[1]` only on `snapshot` tag
 
 ||Name|Type|Default|
 |---|---|---|---|
 |`[0]`|[`balance-algorithm`](#balance-algorithm)|algorithm name|`roundrobin`|
 |`[0]`|[`backend-check-interval`](#backend-check-interval)|time with suffix|`2s`|
+|`[1]`|[`backend-server-slots-increment`](#dynamic-scaling)|number of slots|`32`|
+|`[1]`|[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`false`|
 |`[0]`|[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
+|`[1]`|[`healthz-port`](#healthz-port)|port number|`10253`|
 |`[0]`|[`hsts`](#hsts)|[true\|false]|`true`|
 |`[0]`|[`hsts-include-subdomains`](#hsts)|[true\|false]|`false`|
 |`[0]`|[`hsts-max-age`](#hsts)|number of seconds|`15768000`|
@@ -98,6 +102,7 @@ The following parameters are supported:
 |`[0]`|[`timeout-server`](#timeout)|time with suffix|`50s`|
 |`[0]`|[`timeout-server-fin`](#timeout)|time with suffix|`50s`|
 |`[0]`|[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
+|`[1]`|[`use-proxy-protocol`](#proxy-protocol)|[true\|false]|`false`|
 
 ### balance-algorithm
 
@@ -111,6 +116,19 @@ Define the interval between TCP health checks to the backend using `inter` optio
 
 http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.2-inter
 
+### dynamic-scaling
+
+The `dynamic-scaling` option defines if backend updates should be made starting a
+new HAProxy instance that will read the new config file (`false`), or updating the
+running HAProxy via a Unix socket (`true`). Despite the configuration, the config
+file will stay in sync with in memory config.
+
+If `true` HAProxy Ingress will create at least `backend-server-slots-increment`
+servers on each backend and update them via a Unix socket without reloading HAProxy.
+Unused servers will stay in a disabled state.
+
+http://cbonte.github.io/haproxy-dconv/1.7/management.html#9.3
+
 ### forwardfor
 
 Define if `X-Forwarded-For` header should be added always, added if missing or
@@ -123,6 +141,13 @@ Use `ignore` to skip any check. `ifmissing` should be used to add
 Only use `ignore` or `ifmissing` on trusted networks.
 
 http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-option%20forwardfor
+
+### healthz
+
+Define the port number HAProxy should listen to in order to answer for health checking
+requests.
+
+http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-monitor-uri
 
 ### hsts
 
@@ -149,6 +174,14 @@ to not check, which means requests of unlimited size. This limit can be changed 
 resource.
 
 http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#7.3.6-req.body_size
+
+### proxy-protocol
+
+Define if HAProxy is behind another proxy that use the PROXY protocol. If `true`, ports
+`80`, `443` and stats (defaults to `1936`) will enforce the PROXY protocol.
+
+* http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.1-accept-proxy
+* http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
 
 ### ssl-ciphers
 
