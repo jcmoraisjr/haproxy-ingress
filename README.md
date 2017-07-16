@@ -38,14 +38,11 @@ describes how it works.
 
 HAProxy Ingress can be configured per ingress resource using annotations, or globally
 using ConfigMap. It is also possible to change the default template mounting a new
-template file at `/usr/local/etc/haproxy/haproxy.tmpl` (changing to
-`/etc/haproxy/template/haproxy.tmpl` on 0.3 - current `canary` version).
+template file at `/etc/haproxy/template/haproxy.tmpl`.
 
 ## Annotations
 
 The following annotations are supported:
-
-`[0]` only on `canary` tag
 
 ||Name|Data|Usage|
 |---|---|---|:---:|
@@ -53,10 +50,10 @@ The following annotations are supported:
 ||`ingress.kubernetes.io/auth-secret`|secret name|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
 ||`ingress.kubernetes.io/auth-realm`|realm string|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
 ||`ingress.kubernetes.io/auth-tls-secret`|namespace/secret name|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/client-certs/haproxy)|
-|`[0]`|`ingress.kubernetes.io/proxy-body-size`|size (bytes)|-|
-|`[0]`|`ingress.kubernetes.io/secure-backends`|[true\|false]|-|
-|`[0]`|`ingress.kubernetes.io/secure-verify-ca-secret`|secret name|-|
-|`[0]`|`ingress.kubernetes.io/ssl-passthrough`|[true\|false]|-|
+||`ingress.kubernetes.io/proxy-body-size`|size (bytes)|-|
+||`ingress.kubernetes.io/secure-backends`|[true\|false]|-|
+||`ingress.kubernetes.io/secure-verify-ca-secret`|secret name|-|
+||`ingress.kubernetes.io/ssl-passthrough`|[true\|false]|-|
 ||`ingress.kubernetes.io/ssl-redirect`|[true\|false]|[doc](https://github.com/kubernetes/ingress/tree/master/examples/rewrite/haproxy)|
 ||`ingress.kubernetes.io/app-root`|/url|[doc](https://github.com/kubernetes/ingress/tree/master/examples/rewrite/haproxy)|
 ||`ingress.kubernetes.io/whitelist-source-range`|CIDR|-|
@@ -69,39 +66,38 @@ A ConfigMap can be created with `kubectl create configmap`.
 
 The following parameters are supported:
 
-* `[0]` only on `canary` tag
 * `[1]` only on `snapshot` tag
 
 ||Name|Type|Default|
 |---|---|---|---|
-|`[0]`|[`balance-algorithm`](#balance-algorithm)|algorithm name|`roundrobin`|
-|`[0]`|[`backend-check-interval`](#backend-check-interval)|time with suffix|`2s`|
+||[`balance-algorithm`](#balance-algorithm)|algorithm name|`roundrobin`|
+||[`backend-check-interval`](#backend-check-interval)|time with suffix|`2s`|
 |`[1]`|[`backend-server-slots-increment`](#dynamic-scaling)|number of slots|`32`|
 |`[1]`|[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`false`|
-|`[0]`|[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
+||[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
 |`[1]`|[`healthz-port`](#healthz-port)|port number|`10253`|
-|`[0]`|[`hsts`](#hsts)|[true\|false]|`true`|
-|`[0]`|[`hsts-include-subdomains`](#hsts)|[true\|false]|`false`|
-|`[0]`|[`hsts-max-age`](#hsts)|number of seconds|`15768000`|
-|`[0]`|[`hsts-preload`](#hsts)|[true\|false]|`false`|
-|`[0]`|[`max-connections`](#max-connections)|number|`2000`|
-|`[0]`|[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
-|`[0]`|[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/master/pkg/controller/config.go#L33)|
-|`[0]`|[`ssl-dh-default-max-size`](#ssl-dh-default-max-size)|number|`1024`|
-|`[0]`|[`ssl-dh-param`](#ssl-dh-param)|namespace/secret name|no custom DH param|
-|`[0]`|[`ssl-options`](#ssl-options)|space-separated list|`no-sslv3` `no-tls-tickets`|
+||[`hsts`](#hsts)|[true\|false]|`true`|
+||[`hsts-include-subdomains`](#hsts)|[true\|false]|`false`|
+||[`hsts-max-age`](#hsts)|number of seconds|`15768000`|
+||[`hsts-preload`](#hsts)|[true\|false]|`false`|
+||[`max-connections`](#max-connections)|number|`2000`|
+||[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
+||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/master/pkg/controller/config.go#L33)|
+||[`ssl-dh-default-max-size`](#ssl-dh-default-max-size)|number|`1024`|
+||[`ssl-dh-param`](#ssl-dh-param)|namespace/secret name|no custom DH param|
+||[`ssl-options`](#ssl-options)|space-separated list|`no-sslv3` `no-tls-tickets`|
 ||[`ssl-redirect`](#ssl-redirect)|[true\|false]|`true`|
-|`[0]`|[`stats-auth`](#stats)|user:passwd|no auth|
-|`[0]`|[`stats-port`](#stats)|port number|`1936`|
+||[`stats-auth`](#stats)|user:passwd|no auth|
+||[`stats-port`](#stats)|port number|`1936`|
 ||[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
-|`[0]`|[`timeout-client`](#timeout)|time with suffix|`50s`|
-|`[0]`|[`timeout-client-fin`](#timeout)|time with suffix|`50s`|
-|`[0]`|[`timeout-connect`](#timeout)|time with suffix|`5s`|
-|`[0]`|[`timeout-http-request`](#timeout)|time with suffix|`5s`|
-|`[0]`|[`timeout-keep-alive`](#timeout)|time with suffix|`1m`|
-|`[0]`|[`timeout-server`](#timeout)|time with suffix|`50s`|
-|`[0]`|[`timeout-server-fin`](#timeout)|time with suffix|`50s`|
-|`[0]`|[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
+||[`timeout-client`](#timeout)|time with suffix|`50s`|
+||[`timeout-client-fin`](#timeout)|time with suffix|`50s`|
+||[`timeout-connect`](#timeout)|time with suffix|`5s`|
+||[`timeout-http-request`](#timeout)|time with suffix|`5s`|
+||[`timeout-keep-alive`](#timeout)|time with suffix|`1m`|
+||[`timeout-server`](#timeout)|time with suffix|`50s`|
+||[`timeout-server-fin`](#timeout)|time with suffix|`50s`|
+||[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
 |`[1]`|[`use-proxy-protocol`](#proxy-protocol)|[true\|false]|`false`|
 
 ### balance-algorithm
