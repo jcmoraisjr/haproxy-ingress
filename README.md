@@ -28,8 +28,6 @@ Usage docs are maintained on Ingress repository:
 The `--reload-strategy` command-line argument is used to select which reload strategy
 HAProxy should use. The following options are available:
 
-Note: at this moment this implementation is only on the `canary` tag.
-
 * `native`: Uses native HAProxy reload option `-sf`. This is the default option.
 * `multibinder`: Uses GitHub's [multibinder](https://github.com/github/multibinder). This [link](https://githubengineering.com/glb-part-2-haproxy-zero-downtime-zero-delay-reloads-with-multibinder/)
 describes how it works.
