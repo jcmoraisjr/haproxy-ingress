@@ -87,6 +87,7 @@ The following parameters are supported:
 ||[`ssl-redirect`](#ssl-redirect)|[true\|false]|`true`|
 ||[`stats-auth`](#stats)|user:passwd|no auth|
 ||[`stats-port`](#stats)|port number|`1936`|
+|`[1]`|[`stats-proxy-protocol`](#stats)|[true\|false]|`false`|
 ||[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
 ||[`timeout-client`](#timeout)|time with suffix|`50s`|
 ||[`timeout-client-fin`](#timeout)|time with suffix|`50s`|
@@ -96,7 +97,7 @@ The following parameters are supported:
 ||[`timeout-server`](#timeout)|time with suffix|`50s`|
 ||[`timeout-server-fin`](#timeout)|time with suffix|`50s`|
 ||[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
-|`[1]`|[`use-proxy-protocol`](#proxy-protocol)|[true\|false]|`false`|
+|`[1]`|[`use-proxy-protocol`](#use-proxy-protocol)|[true\|false]|`false`|
 
 ### balance-algorithm
 
@@ -169,14 +170,6 @@ resource.
 
 http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#7.3.6-req.body_size
 
-### proxy-protocol
-
-Define if HAProxy is behind another proxy that use the PROXY protocol. If `true`, ports
-`80`, `443` and stats (defaults to `1936`) will enforce the PROXY protocol.
-
-* http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.1-accept-proxy
-* http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
-
 ### ssl-ciphers
 
 Set the list of cipher algorithms used during the SSL/TLS handshake.
@@ -223,6 +216,7 @@ Configurations of the HAProxy status page:
 
 * `stats-auth`: Enable basic authentication with clear-text password - `<user>:<passwd>`
 * `stats-port`: Change the port HAProxy should listen to requests
+* `stats-proxy-protocol`: Define if the stats endpoint should enforce the PROXY protocol
 
 ### syslog-endpoint
 
@@ -240,3 +234,14 @@ Define timeout configurations:
 * `timeout-server`: Maximum inactivity time on the backend side
 * `timeout-server-fin`: Maximum inactivity time on the backend side for half-closed connections - FIN_WAIT state
 * `timeout-tunnel`: Maximum inactivity time on the client and backend side for tunnels
+
+### use-proxy-protocol
+
+Define if HAProxy is behind another proxy that use the PROXY protocol. If `true`, ports
+`80` and `443` will enforce the PROXY protocol.
+
+The stats endpoint (defaults to port `1936`) has it's own [`stats-proxy-protocol`](#stats)
+configuration.
+
+* http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.1-accept-proxy
+* http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
