@@ -122,6 +122,9 @@ If `true` HAProxy Ingress will create at least `backend-server-slots-increment`
 servers on each backend and update them via a Unix socket without reloading HAProxy.
 Unused servers will stay in a disabled state.
 
+* `dynamic-scaling`: Define if dynamic scaling should be used whenever possible
+* `backend-server-slots-increment`: Configures the minimum number of servers, the size of the increment when growing and the size of the decrement when shrinking of each HAProxy backend
+
 http://cbonte.github.io/haproxy-dconv/1.7/management.html#9.3
 
 ### forwardfor
