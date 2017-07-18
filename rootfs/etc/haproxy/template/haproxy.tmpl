@@ -239,7 +239,7 @@ backend error413
 ###### Stats page
 ######
 listen stats
-    bind *:{{ $cfg.StatsPort }}{{ if $cfg.UseProxyProtocol }} accept-proxy{{ end }}
+    bind *:{{ $cfg.StatsPort }}{{ if $cfg.StatsProxyProtocol }} accept-proxy{{ end }}
     mode http
     stats enable
     stats realm HAProxy\ Statistics

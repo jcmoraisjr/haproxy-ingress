@@ -70,6 +70,7 @@ type (
 		BackendServerSlotsIncrement int    `json:"backend-server-slots-increment"`
 		StatsSocket                 string
 		UseProxyProtocol            bool `json:"use-proxy-protocol"`
+		StatsProxyProtocol          bool `json:"stats-proxy-protocol"`
 	}
 	// Userlist list of users for basic authentication
 	Userlist struct {
