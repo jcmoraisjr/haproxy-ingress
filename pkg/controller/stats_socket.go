@@ -136,7 +136,7 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 						backendSlots := updatedConfig.BackendSlots[backendName]
 						// remove endpoints
 						for k := range toRemoveEndpoints {
-							reloadRequired = !removeEndpoint(currentConfig.Cfg.StatsSocket, backendName, backendSlots.FullSlots[k].BackendServerName)
+							reloadRequired = reloadRequired || !removeEndpoint(currentConfig.Cfg.StatsSocket, backendName, backendSlots.FullSlots[k].BackendServerName)
 							backendSlots.EmptySlots = append(backendSlots.EmptySlots, backendSlots.FullSlots[k].BackendServerName)
 							delete(backendSlots.FullSlots, k)
 						}
@@ -149,7 +149,7 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 								BackendEndpoint:   endpoint,
 							}
 							backendSlots.EmptySlots = backendSlots.EmptySlots[1:]
-							reloadRequired = !addEndpoint(currentConfig.Cfg.StatsSocket, backendName, backendSlots.FullSlots[k].BackendServerName, endpoint.Address, endpoint.Port)
+							reloadRequired = reloadRequired || !addEndpoint(currentConfig.Cfg.StatsSocket, backendName, backendSlots.FullSlots[k].BackendServerName, endpoint.Address, endpoint.Port)
 						}
 						updatedConfig.BackendSlots[backendName] = backendSlots
 					}
