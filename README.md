@@ -42,8 +42,11 @@ template file at `/etc/haproxy/template/haproxy.tmpl`.
 
 The following annotations are supported:
 
+* `[1]` only in `snapshot` tag
+
 ||Name|Data|Usage|
 |---|---|---|:---:|
+|`[1]`|[`ingress.kubernetes.io/affinity`](#affinity)|affinity type|-|
 ||`ingress.kubernetes.io/auth-type`|"basic"|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
 ||`ingress.kubernetes.io/auth-secret`|secret name|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
 ||`ingress.kubernetes.io/auth-realm`|realm string|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
@@ -51,10 +54,28 @@ The following annotations are supported:
 ||`ingress.kubernetes.io/proxy-body-size`|size (bytes)|-|
 ||`ingress.kubernetes.io/secure-backends`|[true\|false]|-|
 ||`ingress.kubernetes.io/secure-verify-ca-secret`|secret name|-|
+|`[1]`|[`ingress.kubernetes.io/session-cookie-name`](#affinity)|cookie name|-|
 ||`ingress.kubernetes.io/ssl-passthrough`|[true\|false]|-|
 ||`ingress.kubernetes.io/ssl-redirect`|[true\|false]|[doc](https://github.com/kubernetes/ingress/tree/master/examples/rewrite/haproxy)|
 ||`ingress.kubernetes.io/app-root`|/url|[doc](https://github.com/kubernetes/ingress/tree/master/examples/rewrite/haproxy)|
 ||`ingress.kubernetes.io/whitelist-source-range`|CIDR|-|
+
+### Affinity
+
+Configure if HAProxy should maintain client requests to the same backend server.
+
+* `ingress.kubernetes.io/affinity`: the only supported option is `cookie`. If declared, clients will receive a cookie with a hash of the server it should be fidelized to.
+* `ingress.kubernetes.io/session-cookie-name`: the name of the cookie. `INGRESSCOOKIE` is the default value if not declared.
+
+Note for `dynamic-scaling` users only: the hash of the server is built based on it's name.
+When the slots are scaled down, the remaining servers might change it's server name on
+HAProxy configuration. In order to circumvent this, always configure the slot increment at
+least as much as the number of replicas of the deployment that need to use affinity. This
+limitation will be removed when HAProxy version is updated to `1.8`.
+
+* http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-cookie
+* http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.2-cookie
+* https://www.haproxy.com/blog/load-balancing-affinity-persistence-sticky-sessions-what-you-need-to-know/
 
 ## ConfigMap
 
@@ -64,7 +85,7 @@ A ConfigMap can be created with `kubectl create configmap`.
 
 The following parameters are supported:
 
-* `[1]` only on `snapshot` tag
+* `[1]` only in `snapshot` tag
 
 ||Name|Type|Default|
 |---|---|---|---|

@@ -54,16 +54,20 @@ userlist {{ $userlist.ListName }}
 backend {{ $backend.Name }}
     mode {{ if $backend.SSLPassthrough }}tcp{{ else }}http{{ end }}
     balance {{ $cfg.BalanceAlgorithm }}
+{{ $sticky := $backend.SessionAffinity }}
+{{ if eq $sticky.AffinityType "cookie" }}
+    cookie {{ $sticky.CookieSessionAffinity.Name }} insert indirect nocache
+{{ end }}
 {{ $cacert := $backend.SecureCACert }}
 {{ if ne $cacert.PemSHA "" }}
     # CA PEM checksum: {{ $cacert.PemSHA }}
 {{ end }}
 {{ $BackendSlots := index $ing.BackendSlots $backend.Name }}
 {{ range $target, $slot := $BackendSlots.FullSlots }}
-    server {{ $slot.BackendServerName }} {{ $target }} {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}check port {{ $slot.BackendEndpoint.Port }} inter {{ $cfg.BackendCheckInterval }}
+    server {{ $slot.BackendServerName }} {{ $target }} {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}check port {{ $slot.BackendEndpoint.Port }} inter {{ $cfg.BackendCheckInterval }}{{ if eq $sticky.AffinityType "cookie" }} cookie {{ backendHash $slot.BackendServerName }}{{ end }}
 {{ end }}
 {{ range $empty := $BackendSlots.EmptySlots }}
-    server {{ $empty }} 127.0.0.1:81 {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}check disabled inter {{ $cfg.BackendCheckInterval }}
+    server {{ $empty }} 127.0.0.1:81 {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}check disabled inter {{ $cfg.BackendCheckInterval }}{{ if eq $sticky.AffinityType "cookie" }} cookie {{ backendHash $empty }}{{ end }}
 {{ end }}
 {{ end }}
 

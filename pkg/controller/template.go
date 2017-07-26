@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	"os/exec"
 	gotemplate "text/template"
 )
@@ -30,8 +31,18 @@ type template struct {
 	fmtConfig *bytes.Buffer
 }
 
+var funcMap = gotemplate.FuncMap{
+	"backendHash": func(input interface{}) string {
+		if endpoint, ok := input.(string); ok {
+			return utils.BackendHash(endpoint)
+		}
+		glog.Error("invalid type conversion on backendHash template function")
+		return ""
+	},
+}
+
 func newTemplate(name string, file string) *template {
-	tmpl, err := gotemplate.New(name).ParseFiles(file)
+	tmpl, err := gotemplate.New(name).Funcs(funcMap).ParseFiles(file)
 	if err != nil {
 		glog.Fatalf("Cannot read template file: %v", err)
 	}
