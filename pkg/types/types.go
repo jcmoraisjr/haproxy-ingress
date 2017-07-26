@@ -71,6 +71,8 @@ type (
 		StatsSocket                 string
 		UseProxyProtocol            bool `json:"use-proxy-protocol"`
 		StatsProxyProtocol          bool `json:"stats-proxy-protocol"`
+		HTTPLogFormat               string `json:"http-log-format"`
+		TCPLogFormat                string `json:"tcp-log-format"`
 	}
 	// Userlist list of users for basic authentication
 	Userlist struct {

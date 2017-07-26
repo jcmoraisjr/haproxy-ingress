@@ -75,6 +75,9 @@ frontend httpfront
     mode http
 {{ if ne $cfg.Syslog "" }}
     option httplog
+    {{ if ne $cfg.HTTPLogFormat "" }}
+    log-format {{ $cfg.HTTPLogFormat }}
+    {{ end }}
 {{ end }}
 {{ range $server := $ing.Servers }}
 {{ if ne $server.Hostname "_" }}
@@ -143,6 +146,9 @@ frontend httpsfront
     use_backend httpsback-{{ $server.Hostname }} if { req.ssl_sni -i {{ $server.Hostname }} }
 {{ end }}
     default_backend httpsback-default-backend
+{{ if ne $cfg.TCPLogFormat "" }}
+    log-format {{ $cfg.TCPLogFormat }}
+{{ end }}
 
 {{ range $server := $ing.HTTPSServers }}
 {{ $host := $server.Hostname }}
@@ -162,6 +168,9 @@ frontend httpsfront-{{ $host }}
     mode http
 {{ if ne $cfg.Syslog "" }}
     option httplog
+    {{ if ne $cfg.HTTPLogFormat "" }}
+    log-format {{ $cfg.HTTPLogFormat }}
+    {{ end }}
 {{ end }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.HAWhitelist "" }}
@@ -215,6 +224,9 @@ frontend httpsfront-default-backend
     mode http
 {{ if ne $cfg.Syslog "" }}
     option httplog
+    {{ if ne $cfg.HTTPLogFormat "" }}
+    log-format {{ $cfg.HTTPLogFormat }}
+    {{ end }}
 {{ end }}
 {{ if eq $cfg.Forwardfor "add" }}
     reqidel ^X-Forwarded-For:.*
