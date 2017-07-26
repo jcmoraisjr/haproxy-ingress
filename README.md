@@ -78,6 +78,7 @@ The following parameters are supported:
 ||[`hsts-include-subdomains`](#hsts)|[true\|false]|`false`|
 ||[`hsts-max-age`](#hsts)|number of seconds|`15768000`|
 ||[`hsts-preload`](#hsts)|[true\|false]|`false`|
+|`[1]`|[`http-log-format`](#http-log-format)|http log format|HAProxy default log format|
 ||[`max-connections`](#max-connections)|number|`2000`|
 ||[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
 ||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/master/pkg/controller/config.go#L33)|
@@ -89,6 +90,7 @@ The following parameters are supported:
 ||[`stats-port`](#stats)|port number|`1936`|
 |`[1]`|[`stats-proxy-protocol`](#stats)|[true\|false]|`false`|
 ||[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
+|`[1]`|[`tcp-log-format`](#tcp-log-format)|tcp log format|HAProxy default log format|
 ||[`timeout-client`](#timeout)|time with suffix|`50s`|
 ||[`timeout-client-fin`](#timeout)|time with suffix|`50s`|
 ||[`timeout-connect`](#timeout)|time with suffix|`5s`|
@@ -157,6 +159,18 @@ Configure HSTS - HTTP Strict Transport Security.
 * `hsts-preload`: `true` if the browser should include the domain to [HSTS preload list](https://hstspreload.org/)
 
 https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security
+
+### http-log-format
+
+Customize the http log format using log format variables. Default to the HAProxy default log format
+
+https://cbonte.github.io/haproxy-dconv/1.7/configuration.html#8.2.4
+
+### tcp-log-format
+
+Customize the tcp log format using log format variables. Default to the HAProxy default log format
+
+https://cbonte.github.io/haproxy-dconv/1.7/configuration.html#8.2.4
 
 ### max-connections
 

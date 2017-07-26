@@ -101,6 +101,8 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		StatsSocket:                 "/var/run/haproxy-stats.sock",
 		UseProxyProtocol:            false,
 		StatsProxyProtocol:          false,
+		HTTPLogFormat:               "",
+		TCPLogFormat:                "",
 	}
 	if haproxyController.configMap != nil {
 		utils.MergeMap(haproxyController.configMap.Data, &conf)
