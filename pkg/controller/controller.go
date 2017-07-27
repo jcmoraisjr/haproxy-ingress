@@ -22,7 +22,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/version"
 	"github.com/spf13/pflag"
-	api "k8s.io/client-go/pkg/api/v1"
+	api "k8s.io/api/core/v1"
 	"k8s.io/ingress/core/pkg/ingress"
 	"k8s.io/ingress/core/pkg/ingress/controller"
 	"k8s.io/ingress/core/pkg/ingress/defaults"
