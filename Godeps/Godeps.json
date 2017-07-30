@@ -747,143 +747,143 @@
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/annotations/auth",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/annotations/authreq",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/annotations/authtls",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/annotations/class",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/annotations/cors",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/annotations/healthcheck",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/annotations/ipwhitelist",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/annotations/parser",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/annotations/portinredirect",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/annotations/proxy",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/annotations/ratelimit",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/annotations/rewrite",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/annotations/secureupstream",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/annotations/serviceupstream",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/annotations/sessionaffinity",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/annotations/snippet",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/annotations/sslpassthrough",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/controller",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/defaults",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/errors",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/resolver",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/status",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/ingress/store",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/k8s",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/net/ssl",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/strings",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/ingress/core/pkg/task",
-			"Comment": "nginx-0.9.0-beta.11-36-g16a213c0",
-			"Rev": "16a213c07611b27be5ef9f4eced6ccc4f20c47cd"
+			"Comment": "nginx-0.9.0-beta.11-59-g65e8cecb",
+			"Rev": "65e8cecbac3fc5b46fae69147ded9cd000b27672"
 		},
 		{
 			"ImportPath": "k8s.io/kubernetes/pkg/util/net/sets",

@@ -23,6 +23,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/version"
 	"github.com/spf13/pflag"
 	api "k8s.io/api/core/v1"
+	extensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/ingress/core/pkg/ingress"
 	"k8s.io/ingress/core/pkg/ingress/controller"
 	"k8s.io/ingress/core/pkg/ingress/defaults"
@@ -87,6 +88,12 @@ func (haproxy *HAProxyController) Check(_ *http.Request) error {
 // SetListers give access to the store listers
 func (haproxy *HAProxyController) SetListers(lister ingress.StoreLister) {
 	haproxy.storeLister = &lister
+}
+
+// UpdateIngressStatus custom callback used to update the status in an Ingress rule
+// If the function returns nil the standard functions will be executed.
+func (haproxy *HAProxyController) UpdateIngressStatus(*extensions.Ingress) []api.LoadBalancerIngress {
+	return nil
 }
 
 // ConfigureFlags allow to configure more flags before the parsing of
