@@ -85,7 +85,11 @@ frontend httpfront
 {{ end }}
 {{ range $server := $ing.Servers }}
 {{ if ne $server.Hostname "_" }}
+{{ if isWildcardHostname $server.Hostname }}
     acl ishost-{{ labelize $server.Hostname }} hdr_reg(host) {{ hostnameRegex $server.Hostname }} {{ hostnameRegex $server.Hostname }}:80
+{{ else }}
+    acl ishost-{{ labelize $server.Hostname }} hdr(host) {{ $server.Hostname }} {{ $server.Hostname }}:80
+{{ end }}
 {{ end }}
 {{ end }}
 {{ range $server := $ing.HTTPServers }}
@@ -144,10 +148,18 @@ frontend httpsfront
     tcp-request inspect-delay 5s
     tcp-request content accept if { req.ssl_hello_type 1 }
 {{ range $server := $ing.PassthroughBackends }}
+{{ if isWildcardHostname $server.Hostname }}
     use_backend {{ $server.Backend }} if { req.ssl_sni -m reg -i {{ hostnameRegex $server.Hostname }} }
+{{ else }}
+    use_backend {{ $server.Backend }} if { req.ssl_sni -i {{ $server.Hostname }} }
+{{ end }}
 {{ end }}
 {{ range $server := $ing.HTTPSServers }}
+{{ if isWildcardHostname $server.Hostname }}
     use_backend httpsback-{{ labelize $server.Hostname }} if { req.ssl_sni -m reg -i {{ hostnameRegex $server.Hostname }} }
+{{ else }}
+    use_backend httpsback-{{ labelize $server.Hostname }} if { req.ssl_sni -i {{ $server.Hostname }} }
+{{ end }}
 {{ end }}
     default_backend httpsback-default-backend
 {{ if ne $cfg.TCPLogFormat "" }}

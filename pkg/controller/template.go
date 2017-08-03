@@ -49,6 +49,9 @@ var funcMap = gotemplate.FuncMap{
 		re := regexp.MustCompile(`[^a-zA-Z0-9:_\-.]`)
 		return re.ReplaceAllLiteralString(identifier, "_")
 	},
+	"isWildcardHostname": func(identifier string) bool {
+		return regexp.MustCompile(`^\*\.`).MatchString(identifier)
+	},
 }
 
 func newTemplate(name string, file string) *template {
