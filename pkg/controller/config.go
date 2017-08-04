@@ -22,6 +22,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	api "k8s.io/api/core/v1"
+	"k8s.io/ingress/core/pkg/file"
 	"k8s.io/ingress/core/pkg/ingress"
 	"k8s.io/ingress/core/pkg/ingress/defaults"
 	"k8s.io/ingress/core/pkg/net/ssl"
@@ -125,7 +126,7 @@ func configDHParam(haproxyController *HAProxyController, conf *types.HAProxyConf
 				pem := strings.Replace(secretName, "/", "-", -1)
 				if pemFileName, err := ssl.AddOrUpdateDHParam(pem, dh); err == nil {
 					conf.SSLDHParam.Filename = pemFileName
-					conf.SSLDHParam.PemSHA = ssl.PemSHA1(pemFileName)
+					conf.SSLDHParam.PemSHA = file.SHA1(pemFileName)
 				} else {
 					glog.Warningf("error creating dh-param file %v: %v", pem, err)
 				}
