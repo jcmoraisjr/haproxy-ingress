@@ -23,6 +23,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	"os/exec"
 	gotemplate "text/template"
+	"regexp"
 )
 
 type template struct {
@@ -38,6 +39,18 @@ var funcMap = gotemplate.FuncMap{
 		}
 		glog.Error("invalid type conversion on backendHash template function")
 		return ""
+	},
+	"hostnameRegex": func(hostname string) string {
+		rtn := regexp.MustCompile(`\.`).ReplaceAllLiteralString(hostname, "\\.")
+		rtn = regexp.MustCompile(`\*`).ReplaceAllLiteralString(rtn, "([^\\.]+)")
+		return "^" + rtn
+	},
+	"labelize": func (identifier string) string {
+		re := regexp.MustCompile(`[^a-zA-Z0-9:_\-.]`)
+		return re.ReplaceAllLiteralString(identifier, "_")
+	},
+	"isWildcardHostname": func(identifier string) bool {
+		return regexp.MustCompile(`^\*\.`).MatchString(identifier)
 	},
 }
 

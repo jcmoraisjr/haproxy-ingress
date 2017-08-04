@@ -79,24 +79,28 @@ frontend httpfront
     mode http
 {{ if ne $cfg.Syslog "" }}
     option httplog
-    {{ if ne $cfg.HTTPLogFormat "" }}
+{{ if ne $cfg.HTTPLogFormat "" }}
     log-format {{ $cfg.HTTPLogFormat }}
-    {{ end }}
+{{ end }}
 {{ end }}
 {{ range $server := $ing.Servers }}
 {{ if ne $server.Hostname "_" }}
-    acl ishost-{{ $server.Hostname }} hdr(host) {{ $server.Hostname }} {{ $server.Hostname }}:80
+{{ if isWildcardHostname $server.Hostname }}
+    acl ishost-{{ labelize $server.Hostname }} hdr_reg(host) {{ hostnameRegex $server.Hostname }} {{ hostnameRegex $server.Hostname }}:80
+{{ else }}
+    acl ishost-{{ labelize $server.Hostname }} hdr(host) {{ $server.Hostname }} {{ $server.Hostname }}:80
+{{ end }}
 {{ end }}
 {{ end }}
 {{ range $server := $ing.HTTPServers }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.HAWhitelist "" }}
-    http-request deny if ishost-{{ $server.Hostname }}{{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }
+    http-request deny if ishost-{{ labelize $server.Hostname }}{{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }
 {{ end }}
 {{ $listName := $location.Userlist.ListName }}
 {{ if ne $listName "" }}
     {{ $realm := $location.Userlist.Realm }}
-    http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if ishost-{{ $server.Hostname }}{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
+    http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if ishost-{{ labelize $server.Hostname }}{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
 {{ end }}
 {{ end }}
 {{ end }}
@@ -109,16 +113,16 @@ frontend httpfront
 {{ range $server := $ing.HTTPServers }}
 {{ $appRoot := $server.RootLocation.Redirect.AppRoot }}
 {{ if ne $appRoot "" }}
-    redirect location {{ $appRoot }} if ishost-{{ $server.Hostname }} { path / }
+    redirect location {{ $appRoot }} if ishost-{{ labelize $server.Hostname }} { path / }
 {{ end }}
 {{ end }}
 {{ range $server := $ing.HTTPSServers }}
 {{ if $server.SSLRedirect }}
-    redirect scheme https if ishost-{{ $server.Hostname }}
+    redirect scheme https if ishost-{{ labelize $server.Hostname }}
 {{ else }}
 {{ range $location := $server.Locations }}
 {{ if $location.Redirect.SSLRedirect }}
-    redirect scheme https if ishost-{{ $server.Hostname }}{{ $location.HAMatchPath }}
+    redirect scheme https if ishost-{{ labelize $server.Hostname }}{{ $location.HAMatchPath }}
 {{ end }}
 {{ end }}
 {{ end }}
@@ -126,11 +130,11 @@ frontend httpfront
 {{ range $server := $ing.HTTPServers }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.Proxy.BodySize "" }}
-    use_backend error413 if ishost-{{ $server.Hostname }} { path_beg {{ $location.Path }} } { req.body_size gt {{ $location.Proxy.BodySize }} }
+    use_backend error413 if ishost-{{ labelize $server.Hostname }} { path_beg {{ $location.Path }} } { req.body_size gt {{ $location.Proxy.BodySize }} }
 {{ end }}
 {{ end }}
 {{ range $location := $server.Locations }}
-    use_backend {{ $location.Backend }} if ishost-{{ $server.Hostname }} { path_beg {{ $location.Path }} }
+    use_backend {{ $location.Backend }} if ishost-{{ labelize $server.Hostname }} { path_beg {{ $location.Path }} }
 {{ end }}
 {{ end }}
     default_backend {{ $ing.DefaultServer.RootLocation.Backend }}
@@ -144,10 +148,18 @@ frontend httpsfront
     tcp-request inspect-delay 5s
     tcp-request content accept if { req.ssl_hello_type 1 }
 {{ range $server := $ing.PassthroughBackends }}
+{{ if isWildcardHostname $server.Hostname }}
+    use_backend {{ $server.Backend }} if { req.ssl_sni -m reg -i {{ hostnameRegex $server.Hostname }} }
+{{ else }}
     use_backend {{ $server.Backend }} if { req.ssl_sni -i {{ $server.Hostname }} }
 {{ end }}
+{{ end }}
 {{ range $server := $ing.HTTPSServers }}
-    use_backend httpsback-{{ $server.Hostname }} if { req.ssl_sni -i {{ $server.Hostname }} }
+{{ if isWildcardHostname $server.Hostname }}
+    use_backend httpsback-{{ labelize $server.Hostname }} if { req.ssl_sni -m reg -i {{ hostnameRegex $server.Hostname }} }
+{{ else }}
+    use_backend httpsback-{{ labelize $server.Hostname }} if { req.ssl_sni -i {{ $server.Hostname }} }
+{{ end }}
 {{ end }}
     default_backend httpsback-default-backend
 {{ if ne $cfg.TCPLogFormat "" }}
@@ -155,7 +167,7 @@ frontend httpsfront
 {{ end }}
 
 {{ range $server := $ing.HTTPSServers }}
-{{ $host := $server.Hostname }}
+{{ $host := labelize $server.Hostname }}
 ##
 ## {{ $host }}
 backend httpsback-{{ $host }}
@@ -172,9 +184,9 @@ frontend httpsfront-{{ $host }}
     mode http
 {{ if ne $cfg.Syslog "" }}
     option httplog
-    {{ if ne $cfg.HTTPLogFormat "" }}
+{{ if ne $cfg.HTTPLogFormat "" }}
     log-format {{ $cfg.HTTPLogFormat }}
-    {{ end }}
+{{ end }}
 {{ end }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.HAWhitelist "" }}
