@@ -163,7 +163,7 @@ Only use `ignore` or `ifmissing` on trusted networks.
 
 http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-option%20forwardfor
 
-### healthz
+### healthz-port
 
 Define the port number HAProxy should listen to in order to answer for health checking
 requests.
