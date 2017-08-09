@@ -263,6 +263,11 @@ backend error413
     errorfile 400 /usr/local/etc/haproxy/errors/413.http
     http-request deny deny_status 400
 
+listen error503noendpoints
+    bind *:8181
+    mode http
+    errorfile 503 /usr/local/etc/haproxy/errors/503noendpoints.http
+
 ######
 ###### Stats page
 ######
