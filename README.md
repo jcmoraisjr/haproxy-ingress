@@ -166,7 +166,7 @@ http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-option%20forwardf
 ### healthz-port
 
 Define the port number HAProxy should listen to in order to answer for health checking
-requests.
+requests. Use `/healthz` as the request path.
 
 http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-monitor-uri
 
