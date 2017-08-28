@@ -90,11 +90,11 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 			`Force namespace isolation. This flag is required to avoid the reference of secrets or 
 		configmaps located in a different namespace than the specified in the flag --watch-namespace.`)
 
-		UpdateStatusOnShutdown = flags.Bool("update-status-on-shutdown", true, `Indicates if the 
+		updateStatusOnShutdown = flags.Bool("update-status-on-shutdown", true, `Indicates if the 
 		ingress controller should update the Ingress status IP/hostname when the controller 
 		is being stopped. Default is true`)
 
-		SortBackends = flags.Bool("sort-backends", false,
+		sortBackends = flags.Bool("sort-backends", false,
 			`Defines if backends and it's endpoints should be sorted`)
 	)
 
@@ -133,13 +133,16 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		}
 
 		if len(svc.Status.LoadBalancer.Ingress) == 0 {
-			// We could poll here, but we instead just exit and rely on k8s to restart us
-			glog.Fatalf("service %s does not (yet) have ingress points", *publishSvc)
+			if len(svc.Spec.ExternalIPs) > 0 {
+				glog.Infof("service %v validated as assigned with externalIP", *publishSvc)
+			} else {
+				// We could poll here, but we instead just exit and rely on k8s to restart us
+				glog.Fatalf("service %s does not (yet) have ingress points", *publishSvc)
+			}
+		} else {
+			glog.Infof("service %v validated as source of Ingress status", *publishSvc)
 		}
-
-		glog.Infof("service %v validated as source of Ingress status", *publishSvc)
 	}
-
 	if *watchNamespace != "" {
 
 		_, err = k8s.IsValidNamespace(kubeClient, *watchNamespace)
@@ -175,8 +178,8 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		PublishService:          *publishSvc,
 		Backend:                 backend,
 		ForceNamespaceIsolation: *forceIsolation,
-		UpdateStatusOnShutdown:  *UpdateStatusOnShutdown,
-		SortBackends:            *SortBackends,
+		UpdateStatusOnShutdown:  *updateStatusOnShutdown,
+		SortBackends:            *sortBackends,
 	}
 
 	ic := newIngressController(config)

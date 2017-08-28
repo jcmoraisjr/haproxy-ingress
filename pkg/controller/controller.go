@@ -132,6 +132,16 @@ func (haproxy *HAProxyController) BackendDefaults() defaults.Backend {
 	return newHAProxyConfig(haproxy).Backend
 }
 
+// DefaultEndpoint returns the Endpoint to use as default when the
+// referenced service does not exists
+func (haproxy *HAProxyController) DefaultEndpoint() ingress.Endpoint {
+	return ingress.Endpoint{
+		Address: "127.0.0.1",
+		Port:    "8181",
+		Target:  &api.ObjectReference{},
+	}
+}
+
 // OnUpdate regenerate the configuration file of the backend
 func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) error {
 	updatedConfig := newControllerConfig(&cfg, haproxy)

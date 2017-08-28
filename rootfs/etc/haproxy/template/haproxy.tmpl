@@ -111,7 +111,7 @@ frontend httpfront
     option forwardfor if-none
 {{ end }}
 {{ range $server := $ing.HTTPServers }}
-{{ $appRoot := $server.RootLocation.Redirect.AppRoot }}
+{{ $appRoot := $server.RootLocation.Rewrite.AppRoot }}
 {{ if ne $appRoot "" }}
     redirect location {{ $appRoot }} if ishost-{{ labelize $server.Hostname }} { path / }
 {{ end }}
@@ -121,7 +121,7 @@ frontend httpfront
     redirect scheme https if ishost-{{ labelize $server.Hostname }}
 {{ else }}
 {{ range $location := $server.Locations }}
-{{ if $location.Redirect.SSLRedirect }}
+{{ if $location.Rewrite.SSLRedirect }}
     redirect scheme https if ishost-{{ labelize $server.Hostname }}{{ $location.HAMatchPath }}
 {{ end }}
 {{ end }}
@@ -175,7 +175,7 @@ backend httpsback-{{ $host }}
     server {{ $host }} unix@/var/run/haproxy-host-{{ $host }}.sock send-proxy-v2
 
 frontend httpsfront-{{ $host }}
-    {{ $authSSLCert := $server.RootLocation.CertificateAuth.AuthSSLCert }}
+    {{ $authSSLCert := $server.CertificateAuth.AuthSSLCert }}
     # CRT PEM checksum: {{ $server.SSLPemChecksum }}
 {{ if ne $authSSLCert.PemSHA "" }}
     # CA PEM checksum: {{ $authSSLCert.PemSHA }}
@@ -207,7 +207,7 @@ frontend httpsfront-{{ $host }}
 {{ if $cfg.HSTS }}
     rspadd "Strict-Transport-Security: max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}"
 {{ end }}
-{{ $appRoot := $server.RootLocation.Redirect.AppRoot }}
+{{ $appRoot := $server.RootLocation.Rewrite.AppRoot }}
 {{ if ne $appRoot "" }}
     redirect location {{ $appRoot }} if { path / }
 {{ end }}

@@ -165,6 +165,7 @@ func (cfg *haConfig) createHAProxyServers() {
 			RootLocation:    haRootLocation,
 			Locations:       haLocations,
 			SSLRedirect:     serverSSLRedirect(server),
+			CertificateAuth: server.CertificateAuth,
 		}
 		if haServer.IsDefaultServer {
 			haDefaultServer = &haServer
@@ -189,12 +190,12 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 	otherPaths := ""
 	for i, location := range locations {
 		haLocation := types.HAProxyLocation{
-			IsRootLocation:  location.Path == "/",
-			Path:            location.Path,
-			Backend:         location.Backend,
-			Redirect:        location.Redirect,
-			Proxy:           location.Proxy,
-			CertificateAuth: location.CertificateAuth,
+			IsRootLocation: location.Path == "/",
+			Path:           location.Path,
+			Backend:        location.Backend,
+			Rewrite:        location.Rewrite,
+			Redirect:       location.Redirect,
+			Proxy:          location.Proxy,
 		}
 		for _, cidr := range location.Whitelist.CIDR {
 			haLocation.HAWhitelist = haLocation.HAWhitelist + " " + cidr
@@ -300,7 +301,7 @@ func readUsers(fileName string, listName string) ([]types.AuthUser, error) {
 // also a default backend (eg. undeclared root context)
 func serverSSLRedirect(server *ingress.Server) bool {
 	for _, location := range server.Locations {
-		if !location.Redirect.SSLRedirect && !location.IsDefBackend {
+		if !location.Rewrite.SSLRedirect && !location.IsDefBackend {
 			return false
 		}
 	}

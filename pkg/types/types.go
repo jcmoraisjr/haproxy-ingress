@@ -20,6 +20,7 @@ import (
 	"k8s.io/ingress/core/pkg/ingress"
 	"k8s.io/ingress/core/pkg/ingress/annotations/authtls"
 	"k8s.io/ingress/core/pkg/ingress/annotations/proxy"
+	"k8s.io/ingress/core/pkg/ingress/annotations/redirect"
 	"k8s.io/ingress/core/pkg/ingress/annotations/rewrite"
 	"k8s.io/ingress/core/pkg/ingress/defaults"
 )
@@ -69,8 +70,8 @@ type (
 		DynamicScaling              bool   `json:"dynamic-scaling"`
 		BackendServerSlotsIncrement int    `json:"backend-server-slots-increment"`
 		StatsSocket                 string
-		UseProxyProtocol            bool `json:"use-proxy-protocol"`
-		StatsProxyProtocol          bool `json:"stats-proxy-protocol"`
+		UseProxyProtocol            bool   `json:"use-proxy-protocol"`
+		StatsProxyProtocol          bool   `json:"stats-proxy-protocol"`
 		HTTPLogFormat               string `json:"http-log-format"`
 		TCPLogFormat                string `json:"tcp-log-format"`
 	}
@@ -96,25 +97,26 @@ type (
 	// HAProxyServer and HAProxyLocation build some missing pieces
 	// from ingress.Server used by HAProxy
 	HAProxyServer struct {
-		IsDefaultServer bool               `json:"isDefaultServer"`
-		Hostname        string             `json:"hostname"`
-		SSLCertificate  string             `json:"sslCertificate"`
-		SSLPemChecksum  string             `json:"sslPemChecksum"`
-		RootLocation    *HAProxyLocation   `json:"defaultLocation"`
-		Locations       []*HAProxyLocation `json:"locations,omitempty"`
-		SSLRedirect     bool               `json:"sslRedirect"`
+		IsDefaultServer bool                  `json:"isDefaultServer"`
+		Hostname        string                `json:"hostname"`
+		SSLCertificate  string                `json:"sslCertificate"`
+		SSLPemChecksum  string                `json:"sslPemChecksum"`
+		RootLocation    *HAProxyLocation      `json:"defaultLocation"`
+		Locations       []*HAProxyLocation    `json:"locations,omitempty"`
+		SSLRedirect     bool                  `json:"sslRedirect"`
+		CertificateAuth authtls.AuthSSLConfig `json:"certificateAuth,omitempty"`
 	}
 	// HAProxyLocation has location data as a HAProxy friendly syntax
 	HAProxyLocation struct {
-		IsRootLocation  bool                  `json:"isDefaultLocation"`
-		Path            string                `json:"path"`
-		Backend         string                `json:"backend"`
-		Redirect        rewrite.Redirect      `json:"redirect,omitempty"`
-		Userlist        Userlist              `json:"userlist,omitempty"`
-		Proxy           proxy.Configuration   `json:"proxy,omitempty"`
-		CertificateAuth authtls.AuthSSLConfig `json:"certificateAuth,omitempty"`
-		HAMatchPath     string                `json:"haMatchPath"`
-		HAWhitelist     string                `json:"whitelist,omitempty"`
+		IsRootLocation bool                `json:"isDefaultLocation"`
+		Path           string              `json:"path"`
+		Backend        string              `json:"backend"`
+		Rewrite        rewrite.Redirect    `json:"rewrite,omitempty"`
+		Redirect       redirect.Redirect   `json:"redirect,omitempty"`
+		Userlist       Userlist            `json:"userlist,omitempty"`
+		Proxy          proxy.Configuration `json:"proxy,omitempty"`
+		HAMatchPath    string              `json:"haMatchPath"`
+		HAWhitelist    string              `json:"whitelist,omitempty"`
 	}
 	// HAProxyBackendSlots contains used and empty backend server definitions
 	HAProxyBackendSlots struct {
