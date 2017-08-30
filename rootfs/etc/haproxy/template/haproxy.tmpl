@@ -83,6 +83,9 @@ frontend httpfront
     log-format {{ $cfg.HTTPLogFormat }}
 {{ end }}
 {{ end }}
+{{ if $cfg.ForceSSLRedirect }}
+redirect scheme https
+{{ else }}
 {{ range $server := $ing.Servers }}
 {{ if ne $server.Hostname "_" }}
 {{ if isWildcardHostname $server.Hostname }}
@@ -142,7 +145,7 @@ frontend httpfront
 {{ end }}
 {{ end }}
     default_backend {{ $ing.DefaultServer.RootLocation.Backend }}
-
+{{ end }}
 
 ######
 ###### HTTPS to HTTP frontend

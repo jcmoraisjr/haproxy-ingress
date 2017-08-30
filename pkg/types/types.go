@@ -74,6 +74,7 @@ type (
 		StatsProxyProtocol          bool   `json:"stats-proxy-protocol"`
 		HTTPLogFormat               string `json:"http-log-format"`
 		TCPLogFormat                string `json:"tcp-log-format"`
+		ForceSSLRedirect            bool   `json:"force-ssl-redirect"`
 	}
 	// Userlist list of users for basic authentication
 	Userlist struct {
