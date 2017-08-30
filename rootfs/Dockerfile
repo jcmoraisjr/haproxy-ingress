@@ -13,6 +13,7 @@
 # limitations under the License.
 
 FROM haproxy:1.7-alpine
+STOPSIGNAL SIGUSR1
 RUN apk --no-cache add openssl ruby ruby-json\
  && gem install --no-ri --no-rdoc multibinder:0.0.4
 
