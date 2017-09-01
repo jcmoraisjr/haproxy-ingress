@@ -62,7 +62,7 @@ func endpointsSubtract(s1, s2 map[string]*ingress.Endpoint) map[string]*ingress.
 // remove Ingress Endpoint from a backend by disabling a specific server slot
 func removeEndpoint(statsSocket, backendName, backendServerName string) bool {
 	err := utils.SendToSocket(statsSocket,
-		fmt.Sprintf("set server %s/%s state maint\n", backendName, backendServerName))
+		fmt.Sprintf("set server %s/%s state drain\n", backendName, backendServerName))
 	if err != nil {
 		glog.Warningln("failed socket command srv remove")
 		return false
