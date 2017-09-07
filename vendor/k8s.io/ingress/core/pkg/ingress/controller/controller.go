@@ -39,6 +39,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	unversionedcore "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
+	fcache "k8s.io/client-go/tools/cache/testing"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/ingress/core/pkg/ingress"
@@ -130,6 +131,7 @@ type Configuration struct {
 	ConfigMapName  string
 
 	ForceNamespaceIsolation bool
+	DisableNodeList         bool
 
 	// optional
 	TCPConfigMapName string
@@ -187,7 +189,20 @@ func newIngressController(config *Configuration) *GenericController {
 			ic.syncQueue.Enqueue(obj)
 		},
 		DeleteFunc: func(obj interface{}) {
-			delIng := obj.(*extensions.Ingress)
+			delIng, ok := obj.(*extensions.Ingress)
+			if !ok {
+				// If we reached here it means the ingress was deleted but its final state is unrecorded.
+				tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+				if !ok {
+					glog.Errorf("couldn't get object from tombstone %#v", obj)
+					return
+				}
+				delIng, ok = tombstone.Obj.(*extensions.Ingress)
+				if !ok {
+					glog.Errorf("Tombstone contained object that is not an Ingress: %#v", obj)
+					return
+				}
+			}
 			if !class.IsValid(delIng, ic.cfg.IngressClass, ic.cfg.DefaultIngressClass) {
 				glog.Infof("ignoring delete for ingress %v based on annotation %v", delIng.Name, class.IngressKey)
 				return
@@ -223,7 +238,20 @@ func newIngressController(config *Configuration) *GenericController {
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			sec := obj.(*api.Secret)
+			sec, ok := obj.(*api.Secret)
+			if !ok {
+				// If we reached here it means the secret was deleted but its final state is unrecorded.
+				tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+				if !ok {
+					glog.Errorf("couldn't get object from tombstone %#v", obj)
+					return
+				}
+				sec, ok = tombstone.Obj.(*api.Secret)
+				if !ok {
+					glog.Errorf("Tombstone contained object that is not a Secret: %#v", obj)
+					return
+				}
+			}
 			key := fmt.Sprintf("%v/%v", sec.Namespace, sec.Name)
 			ic.sslCertTracker.DeleteAll(key)
 		},
@@ -298,8 +326,14 @@ func newIngressController(config *Configuration) *GenericController {
 		cache.NewListWatchFromClient(ic.cfg.Client.CoreV1().RESTClient(), "services", ic.cfg.Namespace, fields.Everything()),
 		&api.Service{}, ic.cfg.ResyncPeriod, cache.ResourceEventHandlerFuncs{})
 
+	var nodeListerWatcher cache.ListerWatcher
+	if config.DisableNodeList {
+		nodeListerWatcher = fcache.NewFakeControllerSource()
+	} else {
+		nodeListerWatcher = cache.NewListWatchFromClient(ic.cfg.Client.CoreV1().RESTClient(), "nodes", api.NamespaceAll, fields.Everything())
+	}
 	ic.nodeLister.Store, ic.nodeController = cache.NewInformer(
-		cache.NewListWatchFromClient(ic.cfg.Client.CoreV1().RESTClient(), "nodes", api.NamespaceAll, fields.Everything()),
+		nodeListerWatcher,
 		&api.Node{}, ic.cfg.ResyncPeriod, cache.ResourceEventHandlerFuncs{})
 
 	if config.UpdateStatus {
@@ -1143,7 +1177,12 @@ func (ic *GenericController) createServers(data []interface{},
 			servers[host].Alias = aliasAnnotation
 
 			// only add a certificate if the server does not have one previously configured
-			if len(ing.Spec.TLS) == 0 || servers[host].SSLCertificate != "" {
+			if servers[host].SSLCertificate != "" {
+				continue
+			}
+
+			if len(ing.Spec.TLS) == 0 {
+				glog.V(3).Infof("ingress %v/%v for host %v does not contains a TLS section", ing.Namespace, ing.Name, host)
 				continue
 			}
 
@@ -1157,9 +1196,9 @@ func (ic *GenericController) createServers(data []interface{},
 				}
 			}
 
-			// the current ing.Spec.Rules[].Host doesn't have an entry at
-			// ing.Spec.TLS[].Hosts[] skipping to the next Rule
 			if !found {
+				glog.Warningf("ingress %v/%v for host %v contains a TLS section but none of the host match",
+					ing.Namespace, ing.Name, host)
 				continue
 			}
 
@@ -1173,7 +1212,7 @@ func (ic *GenericController) createServers(data []interface{},
 			key := fmt.Sprintf("%v/%v", ing.Namespace, tlsSecretName)
 			bc, exists := ic.sslCertTracker.Get(key)
 			if !exists {
-				glog.Infof("ssl certificate \"%v\" does not exist in local store", key)
+				glog.Warningf("ssl certificate \"%v\" does not exist in local store", key)
 				continue
 			}
 
