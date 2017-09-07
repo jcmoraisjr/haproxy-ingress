@@ -19,16 +19,18 @@ package controller
 import (
 	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/version"
 	"github.com/spf13/pflag"
+	"io/ioutil"
 	api "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/ingress/core/pkg/ingress"
 	"k8s.io/ingress/core/pkg/ingress/controller"
 	"k8s.io/ingress/core/pkg/ingress/defaults"
 	"net/http"
+	"os"
 	"os/exec"
+	"strings"
 )
 
 // HAProxyController has internal data of a HAProxyController instance
@@ -154,7 +156,7 @@ func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) error {
 		return err
 	}
 
-	err = utils.RewriteConfigFiles(data, *haproxy.reloadStrategy, haproxy.configFile)
+	err = rewriteConfigFiles(data, *haproxy.reloadStrategy, haproxy.configFile)
 	if err != nil {
 		return err
 	}
@@ -169,6 +171,61 @@ func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) error {
 		glog.Infof("HAProxy output:\n%v", string(out))
 	}
 	return err
+}
+
+// RewriteConfigFiles safely replaces configuration files with new contents after validation
+func rewriteConfigFiles(data []byte, reloadStrategy, configFile string) error {
+	tmpf := "/etc/haproxy/new_cfg.erb"
+
+	err := ioutil.WriteFile(tmpf, data, 644)
+	if err != nil {
+		glog.Warningln("Error writing rendered template to file")
+		return err
+	}
+
+	if reloadStrategy == "multibinder" {
+		generated, err := multibinderERBOnly(tmpf)
+		if err != nil {
+			return err
+		}
+		err = os.Rename(generated, "/etc/haproxy/haproxy.cfg")
+		if err != nil {
+			glog.Warningln("Error updating config file")
+			return err
+		}
+	} else {
+		err = checkValidity(tmpf)
+		if err != nil {
+			return err
+		}
+	}
+	err = os.Rename(tmpf, configFile)
+	if err != nil {
+		glog.Warningln("Error updating config file")
+		return err
+	}
+
+	return nil
+}
+
+// multibinderERBOnly generates a config file from ERB template by invoking multibinder-haproxy-erb
+func multibinderERBOnly(configFile string) (string, error) {
+	out, err := exec.Command("multibinder-haproxy-erb", "/usr/local/sbin/haproxy", "-f", configFile, "-c", "-q").CombinedOutput()
+	if err != nil {
+		glog.Warningf("Error validating config file:\n%v", string(out))
+		return "", err
+	}
+	return configFile[:strings.LastIndex(configFile, ".erb")], nil
+}
+
+// checkValidity runs a HAProxy configuration validity check on a file
+func checkValidity(configFile string) error {
+	out, err := exec.Command("haproxy", "-c", "-f", configFile).CombinedOutput()
+	if err != nil {
+		glog.Warningf("Error validating config file:\n%v", string(out))
+		return err
+	}
+	return nil
 }
 
 func (haproxy *HAProxyController) reloadHaproxy() ([]byte, error) {

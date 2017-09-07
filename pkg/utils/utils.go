@@ -22,12 +22,8 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/mitchellh/mapstructure"
-	"io/ioutil"
 	"net"
-	"os"
-	"os/exec"
 	"strconv"
-	"strings"
 )
 
 // MergeMap copy keys from a `data` map to a `resultTo` tagged object
@@ -104,60 +100,5 @@ func SendToSocket(socket string, command string) error {
 	if rcvd > 2 {
 		glog.Infof("haproxy stat socket response: \"%s\"", string(readBuffer[:rcvd-2]))
 	}
-	return nil
-}
-
-// checkValidity runs a HAProxy configuration validity check on a file
-func checkValidity(configFile string) error {
-	out, err := exec.Command("haproxy", "-c", "-f", configFile).CombinedOutput()
-	if err != nil {
-		glog.Warningf("Error validating config file:\n%v", string(out))
-		return err
-	}
-	return nil
-}
-
-// multibinderERBOnly generates a config file from ERB template by invoking multibinder-haproxy-erb
-func multibinderERBOnly(configFile string) (string, error) {
-	out, err := exec.Command("multibinder-haproxy-erb", "/usr/local/sbin/haproxy", "-f", configFile, "-c", "-q").CombinedOutput()
-	if err != nil {
-		glog.Warningf("Error validating config file:\n%v", string(out))
-		return "", err
-	}
-	return configFile[:strings.LastIndex(configFile, ".erb")], nil
-}
-
-// RewriteConfigFiles safely replaces configuration files with new contents after validation
-func RewriteConfigFiles(data []byte, reloadStrategy, configFile string) error {
-	tmpf := "/etc/haproxy/new_cfg.erb"
-
-	err := ioutil.WriteFile(tmpf, data, 644)
-	if err != nil {
-		glog.Warningln("Error writing rendered template to file")
-		return err
-	}
-
-	if reloadStrategy == "multibinder" {
-		generated, err := multibinderERBOnly(tmpf)
-		if err != nil {
-			return err
-		}
-		err = os.Rename(generated, "/etc/haproxy/haproxy.cfg")
-		if err != nil {
-			glog.Warningln("Error updating config file")
-			return err
-		}
-	} else {
-		err = checkValidity(tmpf)
-		if err != nil {
-			return err
-		}
-	}
-	err = os.Rename(tmpf, configFile)
-	if err != nil {
-		glog.Warningln("Error updating config file")
-		return err
-	}
-
 	return nil
 }
