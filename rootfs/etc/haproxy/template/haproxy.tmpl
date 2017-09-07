@@ -130,7 +130,7 @@ frontend httpfront
 {{ range $server := $ing.HTTPServers }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.Proxy.BodySize "" }}
-    use_backend error413 if ishost-{{ labelize $server.Hostname }} { path_beg {{ $location.Path }} } { req.body_size gt {{ $location.Proxy.BodySize }} }
+    use_backend error413 if ishost-{{ labelize $server.Hostname }} { path_beg {{ $location.Path }} } { req.body_size gt {{ sizeSuffix $location.Proxy.BodySize }} }
 {{ end }}
 {{ end }}
 {{ range $location := $server.Locations }}
@@ -213,7 +213,7 @@ frontend httpsfront-{{ $host }}
 {{ end }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.Proxy.BodySize "" }}
-    use_backend error413 if { path_beg {{ $location.Path }} } { req.body_size gt {{ $location.Proxy.BodySize }} }
+    use_backend error413 if { path_beg {{ $location.Path }} } { req.body_size gt {{ sizeSuffix $location.Proxy.BodySize }} }
 {{ end }}
 {{ end }}
 {{ range $location := $server.Locations }}

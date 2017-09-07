@@ -22,8 +22,9 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	"os/exec"
-	gotemplate "text/template"
 	"regexp"
+	"strconv"
+	gotemplate "text/template"
 )
 
 type template struct {
@@ -45,12 +46,20 @@ var funcMap = gotemplate.FuncMap{
 		rtn = regexp.MustCompile(`\*`).ReplaceAllLiteralString(rtn, "([^\\.]+)")
 		return "^" + rtn
 	},
-	"labelize": func (identifier string) string {
+	"labelize": func(identifier string) string {
 		re := regexp.MustCompile(`[^a-zA-Z0-9:_\-.]`)
 		return re.ReplaceAllLiteralString(identifier, "_")
 	},
 	"isWildcardHostname": func(identifier string) bool {
 		return regexp.MustCompile(`^\*\.`).MatchString(identifier)
+	},
+	"sizeSuffix": func(size string) string {
+		value, err := utils.SizeSuffixToInt64(size)
+		if err != nil {
+			glog.Errorf("Error converting %v: %v", size, err)
+			return size
+		}
+		return strconv.FormatInt(value, 10)
 	},
 }
 

@@ -19,12 +19,14 @@ package utils
 import (
 	"crypto/md5"
 	"encoding/base64"
+	"fmt"
 	"github.com/golang/glog"
 	"github.com/mitchellh/mapstructure"
 	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -53,6 +55,36 @@ func MergeMap(data map[string]string, resultTo interface{}) error {
 func BackendHash(endpoint string) string {
 	hash := md5.Sum([]byte(endpoint))
 	return base64.StdEncoding.EncodeToString(hash[:8])
+}
+
+// SizeSuffixToInt64 converts a size in string format with suffix
+// into int64
+func SizeSuffixToInt64(size string) (int64, error) {
+	value, err := strconv.ParseInt(size, 10, 64)
+	if err == nil {
+		return value, nil
+	}
+	if len(size) == 0 {
+		return 0, fmt.Errorf("Cannot convert empty string to int64")
+	}
+	valueStr := size[:len(size)-1]
+	value, err = strconv.ParseInt(valueStr, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("Cannot convert %v to int64", valueStr)
+	}
+	suffix := size[len(size)-1:]
+	var mult int64
+	switch suffix {
+	case "k", "K":
+		mult = 1024
+	case "m", "M":
+		mult = 1024 * 1024
+	case "g", "G":
+		mult = 1024 * 1024 * 1024
+	default:
+		return value, fmt.Errorf("Invalid suffix: %v", suffix)
+	}
+	return value * mult, nil
 }
 
 // SendToSocket send strings to a unix socket specified
