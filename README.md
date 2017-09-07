@@ -51,7 +51,7 @@ The following annotations are supported:
 ||`ingress.kubernetes.io/auth-secret`|secret name|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
 ||`ingress.kubernetes.io/auth-realm`|realm string|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
 ||`ingress.kubernetes.io/auth-tls-secret`|namespace/secret name|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/client-certs/haproxy)|
-||`ingress.kubernetes.io/proxy-body-size`|size (bytes)|-|
+||[`ingress.kubernetes.io/proxy-body-size`](#proxy-body-size)|size (bytes)|-|
 ||`ingress.kubernetes.io/secure-backends`|[true\|false]|-|
 ||`ingress.kubernetes.io/secure-verify-ca-secret`|secret name|-|
 |`[1]`|[`ingress.kubernetes.io/session-cookie-name`](#affinity)|cookie name|-|
@@ -205,6 +205,9 @@ http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.2-maxconn
 Define the maximum number of bytes HAProxy will allow on the body of requests. Default is
 to not check, which means requests of unlimited size. This limit can be changed per ingress
 resource.
+
+Since 0.4 (currently snapshot) a suffix can be added to the size, so `10m` means
+`10 * 1024 * 1024` bytes. Supported suffix are: `k`, `m` and `g`.
 
 http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#7.3.6-req.body_size
 
