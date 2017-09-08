@@ -205,8 +205,12 @@ frontend httpsfront-{{ $host }}
     option forwardfor if-none
 {{ end }}
 {{ if ne $authSSLCert.CAFileName "" }}
+{{ if eq $server.CertificateAuth.ErrorPage "" }}
     use_backend error495 if { ssl_c_ca_err gt 0 } || { ssl_c_err gt 0 }
     use_backend error496 if !{ ssl_fc_has_crt }
+{{ else }}
+    redirect location {{ $server.CertificateAuth.ErrorPage }} if !{ ssl_fc_has_crt } || { ssl_c_ca_err gt 0 } || { ssl_c_err gt 0 }
+{{ end }}
 {{ end }}
 {{ if $cfg.HSTS }}
     rspadd "Strict-Transport-Security: max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}"

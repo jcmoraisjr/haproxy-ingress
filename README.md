@@ -50,6 +50,7 @@ The following annotations are supported:
 ||`ingress.kubernetes.io/auth-type`|"basic"|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
 ||`ingress.kubernetes.io/auth-secret`|secret name|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
 ||`ingress.kubernetes.io/auth-realm`|realm string|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
+|`[1]`|`ingress.kubernetes.io/auth-tls-error-page`|url|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/client-certs/haproxy)|
 ||`ingress.kubernetes.io/auth-tls-secret`|namespace/secret name|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/client-certs/haproxy)|
 ||[`ingress.kubernetes.io/proxy-body-size`](#proxy-body-size)|size (bytes)|-|
 ||`ingress.kubernetes.io/secure-backends`|[true\|false]|-|
