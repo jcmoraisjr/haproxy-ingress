@@ -175,12 +175,12 @@ backend httpsback-{{ $host }}
     server {{ $host }} unix@/var/run/haproxy-host-{{ $host }}.sock send-proxy-v2
 
 frontend httpsfront-{{ $host }}
-    {{ $authSSLCert := $server.CertificateAuth.AuthSSLCert }}
+{{ $authSSLCert := $server.CertificateAuth.AuthSSLCert }}
     # CRT PEM checksum: {{ $server.SSLPemChecksum }}
 {{ if ne $authSSLCert.PemSHA "" }}
     # CA PEM checksum: {{ $authSSLCert.PemSHA }}
 {{ end }}
-    bind unix@/var/run/haproxy-host-{{ $host }}.sock ssl crt {{ $server.SSLCertificate }}{{ if ne $authSSLCert.CAFileName "" }} ca-file {{ $authSSLCert.CAFileName }} verify required{{ end }} accept-proxy
+    bind unix@/var/run/haproxy-host-{{ $host }}.sock ssl crt {{ $server.SSLCertificate }}{{ if ne $authSSLCert.CAFileName "" }} ca-file {{ $authSSLCert.CAFileName }} verify optional ca-ignore-err all crt-ignore-err all{{ end }} accept-proxy
     mode http
 {{ if ne $cfg.Syslog "" }}
     option httplog
@@ -203,6 +203,10 @@ frontend httpsfront-{{ $host }}
     option forwardfor
 {{ else if eq $cfg.Forwardfor "ifmissing" }}
     option forwardfor if-none
+{{ end }}
+{{ if ne $authSSLCert.CAFileName "" }}
+    use_backend error495 if { ssl_c_ca_err gt 0 } || { ssl_c_err gt 0 }
+    use_backend error496 if !{ ssl_fc_has_crt }
 {{ end }}
 {{ if $cfg.HSTS }}
     rspadd "Strict-Transport-Security: max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}"
@@ -262,7 +266,14 @@ backend error413
     mode http
     errorfile 400 /usr/local/etc/haproxy/errors/413.http
     http-request deny deny_status 400
-
+backend error495
+    mode http
+    errorfile 400 /usr/local/etc/haproxy/errors/495.http
+    http-request deny deny_status 400
+backend error496
+    mode http
+    errorfile 400 /usr/local/etc/haproxy/errors/496.http
+    http-request deny deny_status 400
 listen error503noendpoints
     bind *:8181
     mode http
