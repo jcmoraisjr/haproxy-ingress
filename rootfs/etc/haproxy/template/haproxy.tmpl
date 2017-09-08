@@ -83,6 +83,9 @@ frontend httpfront
     log-format {{ $cfg.HTTPLogFormat }}
 {{ end }}
 {{ end }}
+{{ if $cfg.ForceSSLRedirect }}
+redirect scheme https
+{{ else }}
 {{ range $server := $ing.Servers }}
 {{ if ne $server.Hostname "_" }}
 {{ if isWildcardHostname $server.Hostname }}
@@ -131,6 +134,71 @@ frontend httpfront
 {{ range $location := $server.Locations }}
 {{ if ne $location.Proxy.BodySize "" }}
     use_backend error413 if ishost-{{ labelize $server.Hostname }} { path_beg {{ $location.Path }} } { req.body_size gt {{ sizeSuffix $location.Proxy.BodySize }} }
+{{ end }}
+{{ end }}
+{{ range $location := $server.Locations }}
+{{ if $location.Rewrite.ForceSSLRedirect }}
+    redirect scheme https if ishost-{{ labelize $server.Hostname }}{{ $location.HAMatchPath }}
+{{ else }}
+    use_backend {{ $location.Backend }} if ishost-{{ labelize $server.Hostname }} { path_beg {{ $location.Path }} }
+{{ end }}
+{{ end }}
+{{ end }}
+    default_backend {{ $ing.DefaultServer.RootLocation.Backend }}
+{{ end }}
+
+######
+###### HTTPS to HTTP frontend
+######
+frontend https2httpfront
+    bind *:81{{ if $cfg.UseProxyProtocol }} accept-proxy{{ end }}
+    mode http
+{{ if ne $cfg.Syslog "" }}
+    option httplog
+{{ if ne $cfg.HTTPLogFormat "" }}
+    log-format {{ $cfg.HTTPLogFormat }}
+{{ end }}
+{{ end }}
+{{ range $server := $ing.Servers }}
+{{ if ne $server.Hostname "_" }}
+{{ if isWildcardHostname $server.Hostname }}
+    acl ishost-{{ labelize $server.Hostname }} hdr_reg(host) {{ hostnameRegex $server.Hostname }} {{ hostnameRegex $server.Hostname }}:80
+{{ else }}
+    acl ishost-{{ labelize $server.Hostname }} hdr(host) {{ $server.Hostname }} {{ $server.Hostname }}:80
+{{ end }}
+{{ end }}
+{{ end }}
+{{ range $server := $ing.HTTPServers }}
+{{ range $location := $server.Locations }}
+{{ if ne $location.HAWhitelist "" }}
+    http-request deny if ishost-{{ labelize $server.Hostname }}{{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }
+{{ end }}
+{{ $listName := $location.Userlist.ListName }}
+{{ if ne $listName "" }}
+    {{ $realm := $location.Userlist.Realm }}
+    http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if ishost-{{ labelize $server.Hostname }}{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
+{{ end }}
+{{ end }}
+{{ end }}
+{{ if eq $cfg.Forwardfor "add" }}
+    reqidel ^X-Forwarded-For:.*
+    option forwardfor
+{{ else if eq $cfg.Forwardfor "ifmissing" }}
+    option forwardfor if-none
+{{ end }}
+{{ range $server := $ing.HTTPServers }}
+{{ $appRoot := $server.RootLocation.Rewrite.AppRoot }}
+{{ if ne $appRoot "" }}
+    redirect location {{ $appRoot }} if ishost-{{ labelize $server.Hostname }} { path / }
+{{ end }}
+{{ end }}
+{{ if $cfg.HSTS }}
+    rspadd "Strict-Transport-Security: max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}"
+{{ end }}
+{{ range $server := $ing.HTTPServers }}
+{{ range $location := $server.Locations }}
+{{ if ne $location.Proxy.BodySize "" }}
+    use_backend error413 if ishost-{{ labelize $server.Hostname }} { path_beg {{ $location.Path }} } { req.body_size gt {{ $location.Proxy.BodySize }} }
 {{ end }}
 {{ end }}
 {{ range $location := $server.Locations }}
