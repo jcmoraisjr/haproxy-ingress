@@ -27,6 +27,7 @@ import (
 	"k8s.io/ingress/core/pkg/ingress/defaults"
 	"k8s.io/ingress/core/pkg/net/ssl"
 	"os"
+	"regexp"
 	"strings"
 )
 
@@ -158,6 +159,7 @@ func (cfg *haConfig) createHAProxyServers() {
 			UseHTTP:         server.SSLCertificate == "" || !sslRedirect,
 			UseHTTPS:        server.SSLCertificate != "",
 			Hostname:        server.Hostname,
+			HostnameLabel:   labelize(server.Hostname),
 			SSLCertificate:  server.SSLCertificate,
 			SSLPemChecksum:  server.SSLPemChecksum,
 			RootLocation:    haRootLocation,
@@ -212,6 +214,11 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 		haRootLocation.HAMatchPath = " !{ path_beg" + otherPaths + " }"
 	}
 	return haLocations, haRootLocation
+}
+
+func labelize(identifier string) string {
+	re := regexp.MustCompile(`[^a-zA-Z0-9:_\-.]`)
+	return re.ReplaceAllLiteralString(identifier, "_")
 }
 
 // This could be improved creating a list of auth secrets (or even configMaps)

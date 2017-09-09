@@ -100,6 +100,7 @@ type (
 		UseHTTP         bool                  `json:"useHTTP"`
 		UseHTTPS        bool                  `json:"useHTTPS"`
 		Hostname        string                `json:"hostname"`
+		HostnameLabel   string                `json:"hostnameLabel"`
 		SSLCertificate  string                `json:"sslCertificate"`
 		SSLPemChecksum  string                `json:"sslPemChecksum"`
 		RootLocation    *HAProxyLocation      `json:"defaultLocation"`

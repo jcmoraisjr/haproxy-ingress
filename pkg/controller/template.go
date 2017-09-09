@@ -46,10 +46,6 @@ var funcMap = gotemplate.FuncMap{
 		rtn = regexp.MustCompile(`\*`).ReplaceAllLiteralString(rtn, "([^\\.]+)")
 		return "^" + rtn
 	},
-	"labelize": func(identifier string) string {
-		re := regexp.MustCompile(`[^a-zA-Z0-9:_\-.]`)
-		return re.ReplaceAllLiteralString(identifier, "_")
-	},
 	"isWildcardHostname": func(identifier string) bool {
 		return regexp.MustCompile(`^\*\.`).MatchString(identifier)
 	},

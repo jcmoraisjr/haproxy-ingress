@@ -85,21 +85,21 @@ frontend httpfront
 {{ end }}
 {{ range $server := $ing.HAServers }}
 {{ if isWildcardHostname $server.Hostname }}
-    acl ishost-{{ labelize $server.Hostname }} hdr_reg(host) {{ hostnameRegex $server.Hostname }} {{ hostnameRegex $server.Hostname }}:80
+    acl ishost-{{ $server.HostnameLabel }} hdr_reg(host) {{ hostnameRegex $server.Hostname }} {{ hostnameRegex $server.Hostname }}:80
 {{ else }}
-    acl ishost-{{ labelize $server.Hostname }} hdr(host) {{ $server.Hostname }} {{ $server.Hostname }}:80
+    acl ishost-{{ $server.HostnameLabel }} hdr(host) {{ $server.Hostname }} {{ $server.Hostname }}:80
 {{ end }}
 {{ end }}
 {{ range $server := $ing.HAServers }}
 {{ if $server.UseHTTP }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.HAWhitelist "" }}
-    http-request deny if ishost-{{ labelize $server.Hostname }}{{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }
+    http-request deny if ishost-{{ $server.HostnameLabel }}{{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }
 {{ end }}
 {{ $listName := $location.Userlist.ListName }}
 {{ if ne $listName "" }}
     {{ $realm := $location.Userlist.Realm }}
-    http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if ishost-{{ labelize $server.Hostname }}{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
+    http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if ishost-{{ $server.HostnameLabel }}{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
 {{ end }}
 {{ end }}
 {{ end }}
@@ -114,18 +114,18 @@ frontend httpfront
 {{ if $server.UseHTTP }}
 {{ $appRoot := $server.RootLocation.Rewrite.AppRoot }}
 {{ if ne $appRoot "" }}
-    redirect location {{ $appRoot }} if ishost-{{ labelize $server.Hostname }} { path / }
+    redirect location {{ $appRoot }} if ishost-{{ $server.HostnameLabel }} { path / }
 {{ end }}
 {{ end }}
 {{ end }}
 {{ range $server := $ing.HAServers }}
 {{ if $server.UseHTTPS }}
 {{ if $server.SSLRedirect }}
-    redirect scheme https if ishost-{{ labelize $server.Hostname }}
+    redirect scheme https if ishost-{{ $server.HostnameLabel }}
 {{ else }}
 {{ range $location := $server.Locations }}
 {{ if $location.Rewrite.SSLRedirect }}
-    redirect scheme https if ishost-{{ labelize $server.Hostname }}{{ $location.HAMatchPath }}
+    redirect scheme https if ishost-{{ $server.HostnameLabel }}{{ $location.HAMatchPath }}
 {{ end }}
 {{ end }}
 {{ end }}
@@ -135,11 +135,11 @@ frontend httpfront
 {{ if $server.UseHTTP }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.Proxy.BodySize "" }}
-    use_backend error413 if ishost-{{ labelize $server.Hostname }} { path_beg {{ $location.Path }} } { req.body_size gt {{ sizeSuffix $location.Proxy.BodySize }} }
+    use_backend error413 if ishost-{{ $server.HostnameLabel }} { path_beg {{ $location.Path }} } { req.body_size gt {{ sizeSuffix $location.Proxy.BodySize }} }
 {{ end }}
 {{ end }}
 {{ range $location := $server.Locations }}
-    use_backend {{ $location.Backend }} if ishost-{{ labelize $server.Hostname }} { path_beg {{ $location.Path }} }
+    use_backend {{ $location.Backend }} if ishost-{{ $server.HostnameLabel }} { path_beg {{ $location.Path }} }
 {{ end }}
 {{ end }}
 {{ end }}
@@ -163,9 +163,9 @@ frontend httpsfront
 {{ range $server := $ing.HAServers }}
 {{ if $server.UseHTTPS }}
 {{ if isWildcardHostname $server.Hostname }}
-    use_backend httpsback-{{ labelize $server.Hostname }} if { req.ssl_sni -m reg -i {{ hostnameRegex $server.Hostname }} }
+    use_backend httpsback-{{ $server.HostnameLabel }} if { req.ssl_sni -m reg -i {{ hostnameRegex $server.Hostname }} }
 {{ else }}
-    use_backend httpsback-{{ labelize $server.Hostname }} if { req.ssl_sni -i {{ $server.Hostname }} }
+    use_backend httpsback-{{ $server.HostnameLabel }} if { req.ssl_sni -i {{ $server.Hostname }} }
 {{ end }}
 {{ end }}
 {{ end }}
@@ -176,9 +176,9 @@ frontend httpsfront
 
 {{ range $server := $ing.HAServers }}
 {{ if $server.UseHTTPS }}
-{{ $host := labelize $server.Hostname }}
+{{ $host := $server.HostnameLabel }}
 ##
-## {{ $host }}
+## {{ $server.Hostname }}
 backend httpsback-{{ $host }}
     mode tcp
     server {{ $host }} unix@/var/run/haproxy-host-{{ $host }}.sock send-proxy-v2
