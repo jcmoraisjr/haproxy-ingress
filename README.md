@@ -101,9 +101,10 @@ The following parameters are supported:
 ||[`hsts-max-age`](#hsts)|number of seconds|`15768000`|
 ||[`hsts-preload`](#hsts)|[true\|false]|`false`|
 |`[1]`|[`http-log-format`](#http-log-format)|http log format|HAProxy default log format|
+|`[1]`|[`https-to-http-port`](#https-to-http-port)|port number|0 (do not listen)|
 ||[`max-connections`](#max-connections)|number|`2000`|
 ||[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
-||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/master/pkg/controller/config.go#L33)|
+||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/master/pkg/controller/config.go#L34)|
 ||[`ssl-dh-default-max-size`](#ssl-dh-default-max-size)|number|`1024`|
 ||[`ssl-dh-param`](#ssl-dh-param)|namespace/secret name|no custom DH param|
 ||[`ssl-options`](#ssl-options)|space-separated list|`no-sslv3` `no-tls-tickets`|
@@ -187,6 +188,17 @@ https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Secur
 Customize the http log format using log format variables. Default to the HAProxy default log format
 
 https://cbonte.github.io/haproxy-dconv/1.7/configuration.html#8.2.4
+
+### https-to-http-port
+
+A port number to listen http requests from another load balancer that does the ssl offload.
+Requests won't be redirected to https and HSTS will be provided if configured.
+
+HAProxy will behave as expected if either the `X-Forwarded-Proto` is set to `https` or the
+destination port is the configured port number. If the header isn't defined (eg when using
+proxy protocol) and, at the same time, there is another proxy in front of HAProxy Ingress
+(eg a Kubernetes Service) listening another port number, this configuration will not work
+and will either loop because of https redirect or HSTS header will not be added.
 
 ### tcp-log-format
 

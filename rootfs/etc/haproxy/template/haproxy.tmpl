@@ -74,14 +74,23 @@ backend {{ $backend.Name }}
 ######
 ###### HTTP frontend
 ######
+{{ $hasHTTPStoHTTP := gt $cfg.HTTPStoHTTPPort 0 }}
 frontend httpfront
     bind *:80{{ if $cfg.UseProxyProtocol }} accept-proxy{{ end }}
+{{ if $hasHTTPStoHTTP }}
+    bind *:{{ $cfg.HTTPStoHTTPPort }}{{ if $cfg.UseProxyProtocol }} accept-proxy{{ end }}
+{{ end }}
     mode http
 {{ if ne $cfg.Syslog "" }}
     option httplog
 {{ if ne $cfg.HTTPLogFormat "" }}
     log-format {{ $cfg.HTTPLogFormat }}
 {{ end }}
+{{ end }}
+{{ if $hasHTTPStoHTTP }}
+    http-request set-var(txn.hdr_proto) hdr(x-forwarded-proto)
+    acl is-https-to-http dst_port eq {{ $cfg.HTTPStoHTTPPort }}
+    acl is-https-to-http var(txn.hdr_proto) eq https
 {{ end }}
 {{ range $server := $ing.HAServers }}
 {{ if isWildcardHostname $server.Hostname }}
@@ -118,21 +127,24 @@ frontend httpfront
 {{ end }}
 {{ end }}
 {{ end }}
+{{ if and $hasHTTPStoHTTP $cfg.HSTS }}
+    rspadd "Strict-Transport-Security: max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}" if is-https-to-http
+{{ end }}
 {{ range $server := $ing.HAServers }}
 {{ if $server.UseHTTPS }}
 {{ if $server.SSLRedirect }}
-    redirect scheme https if ishost-{{ $server.HostnameLabel }}
+    redirect scheme https if ishost-{{ $server.HostnameLabel }}{{ if $hasHTTPStoHTTP }} !is-https-to-http{{ end }}
 {{ else }}
 {{ range $location := $server.Locations }}
 {{ if $location.Rewrite.SSLRedirect }}
-    redirect scheme https if ishost-{{ $server.HostnameLabel }}{{ $location.HAMatchPath }}
+    redirect scheme https if ishost-{{ $server.HostnameLabel }}{{ $location.HAMatchPath }}{{ if $hasHTTPStoHTTP }} !is-https-to-http{{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
 {{ range $server := $ing.HAServers }}
-{{ if $server.UseHTTP }}
+{{ if or $server.UseHTTP $hasHTTPStoHTTP }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.Proxy.BodySize "" }}
     use_backend error413 if ishost-{{ $server.HostnameLabel }} { path_beg {{ $location.Path }} } { req.body_size gt {{ sizeSuffix $location.Proxy.BodySize }} }

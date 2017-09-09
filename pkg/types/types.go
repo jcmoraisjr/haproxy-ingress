@@ -64,6 +64,7 @@ type (
 		HSTSIncludeSubdomains       bool   `json:"hsts-include-subdomains"`
 		HSTSPreload                 bool   `json:"hsts-preload"`
 		HealthzPort                 int    `json:"healthz-port"`
+		HTTPStoHTTPPort             int    `json:"https-to-http-port"`
 		StatsPort                   int    `json:"stats-port"`
 		StatsAuth                   string `json:"stats-auth"`
 		DynamicScaling              bool   `json:"dynamic-scaling"`

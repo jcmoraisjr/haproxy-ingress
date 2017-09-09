@@ -94,6 +94,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		HSTSIncludeSubdomains:       false,
 		HSTSPreload:                 false,
 		HealthzPort:                 10253,
+		HTTPStoHTTPPort:             0,
 		StatsPort:                   1936,
 		StatsAuth:                   "",
 		DynamicScaling:              false,
