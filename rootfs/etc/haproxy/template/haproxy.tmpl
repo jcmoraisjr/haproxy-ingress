@@ -94,7 +94,7 @@ frontend httpfront
 {{ end }}
 {{ range $server := $ing.HAServers }}
 {{ if isWildcardHostname $server.Hostname }}
-    acl ishost-{{ $server.HostnameLabel }} hdr_reg(host) {{ hostnameRegex $server.Hostname }} {{ hostnameRegex $server.Hostname }}:80
+    acl ishost-{{ $server.HostnameLabel }} hdr_reg(host) {{ hostnameRegex $server.Hostname }}
 {{ else }}
     acl ishost-{{ $server.HostnameLabel }} hdr(host) {{ $server.Hostname }} {{ $server.Hostname }}:80
 {{ end }}

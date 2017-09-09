@@ -44,7 +44,7 @@ var funcMap = gotemplate.FuncMap{
 	"hostnameRegex": func(hostname string) string {
 		rtn := regexp.MustCompile(`\.`).ReplaceAllLiteralString(hostname, "\\.")
 		rtn = regexp.MustCompile(`\*`).ReplaceAllLiteralString(rtn, "([^\\.]+)")
-		return "^" + rtn
+		return "^" + rtn + "(:[0-9]+)?$"
 	},
 	"isWildcardHostname": func(identifier string) bool {
 		return regexp.MustCompile(`^\*\.`).MatchString(identifier)
