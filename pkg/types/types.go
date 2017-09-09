@@ -33,8 +33,7 @@ type (
 		Servers             []*ingress.Server
 		Backends            []*ingress.Backend
 		DefaultServer       *HAProxyServer
-		HTTPServers         []*HAProxyServer
-		HTTPSServers        []*HAProxyServer
+		HAServers           []*HAProxyServer
 		TCPEndpoints        []ingress.L4Service
 		UDPEndpoints        []ingress.L4Service
 		PassthroughBackends []*ingress.SSLPassthroughBackend
@@ -98,6 +97,8 @@ type (
 	// from ingress.Server used by HAProxy
 	HAProxyServer struct {
 		IsDefaultServer bool                  `json:"isDefaultServer"`
+		UseHTTP         bool                  `json:"useHTTP"`
+		UseHTTPS        bool                  `json:"useHTTPS"`
 		Hostname        string                `json:"hostname"`
 		SSLCertificate  string                `json:"sslCertificate"`
 		SSLPemChecksum  string                `json:"sslPemChecksum"`

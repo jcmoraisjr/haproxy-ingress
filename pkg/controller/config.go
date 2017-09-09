@@ -39,8 +39,7 @@ type haConfig struct {
 	ingress           *ingress.Configuration
 	haproxyController *HAProxyController
 	userlists         map[string]types.Userlist
-	haHTTPServers     []*types.HAProxyServer
-	haHTTPSServers    []*types.HAProxyServer
+	haServers         []*types.HAProxyServer
 	haDefaultServer   *types.HAProxyServer
 	haproxyConfig     *types.HAProxyConfig
 }
@@ -55,8 +54,7 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 		Userlists:           cfg.userlists,
 		Servers:             cfg.ingress.Servers,
 		Backends:            cfg.ingress.Backends,
-		HTTPServers:         cfg.haHTTPServers,
-		HTTPSServers:        cfg.haHTTPSServers,
+		HAServers:           cfg.haServers,
 		DefaultServer:       cfg.haDefaultServer,
 		TCPEndpoints:        cfg.ingress.TCPEndpoints,
 		UDPEndpoints:        cfg.ingress.UDPEndpoints,
@@ -147,39 +145,34 @@ func configForwardfor(conf *types.HAProxyConfig) {
 }
 
 func (cfg *haConfig) createHAProxyServers() {
-	haHTTPServers := make([]*types.HAProxyServer, 0, len(cfg.ingress.Servers))
-	haHTTPSServers := make([]*types.HAProxyServer, 0, len(cfg.ingress.Servers))
+	haServers := make([]*types.HAProxyServer, 0, len(cfg.ingress.Servers))
 	var haDefaultServer *types.HAProxyServer
 	for _, server := range cfg.ingress.Servers {
 		if server.SSLPassthrough {
-			// remove SSLPassthrough hosts from http and https slices
+			// remove SSLPassthrough hosts from haServers array
 			continue
 		}
 		haLocations, haRootLocation := cfg.newHAProxyLocations(server)
+		sslRedirect := serverSSLRedirect(server)
 		haServer := types.HAProxyServer{
-			// Ingress uses `_` hostname as default server
-			IsDefaultServer: server.Hostname == "_",
+			UseHTTP:         server.SSLCertificate == "" || !sslRedirect,
+			UseHTTPS:        server.SSLCertificate != "",
 			Hostname:        server.Hostname,
 			SSLCertificate:  server.SSLCertificate,
 			SSLPemChecksum:  server.SSLPemChecksum,
 			RootLocation:    haRootLocation,
 			Locations:       haLocations,
-			SSLRedirect:     serverSSLRedirect(server),
+			SSLRedirect:     sslRedirect,
 			CertificateAuth: server.CertificateAuth,
 		}
-		if haServer.IsDefaultServer {
+		// Ingress uses `_` hostname as default server
+		if server.Hostname == "_" {
 			haDefaultServer = &haServer
-		} else if haServer.SSLCertificate == "" {
-			haHTTPServers = append(haHTTPServers, &haServer)
 		} else {
-			haHTTPSServers = append(haHTTPSServers, &haServer)
-			if !haServer.SSLRedirect {
-				haHTTPServers = append(haHTTPServers, &haServer)
-			}
+			haServers = append(haServers, &haServer)
 		}
 	}
-	cfg.haHTTPServers = haHTTPServers
-	cfg.haHTTPSServers = haHTTPSServers
+	cfg.haServers = haServers
 	cfg.haDefaultServer = haDefaultServer
 }
 

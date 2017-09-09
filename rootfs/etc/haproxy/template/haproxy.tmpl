@@ -83,16 +83,15 @@ frontend httpfront
     log-format {{ $cfg.HTTPLogFormat }}
 {{ end }}
 {{ end }}
-{{ range $server := $ing.Servers }}
-{{ if ne $server.Hostname "_" }}
+{{ range $server := $ing.HAServers }}
 {{ if isWildcardHostname $server.Hostname }}
     acl ishost-{{ labelize $server.Hostname }} hdr_reg(host) {{ hostnameRegex $server.Hostname }} {{ hostnameRegex $server.Hostname }}:80
 {{ else }}
     acl ishost-{{ labelize $server.Hostname }} hdr(host) {{ $server.Hostname }} {{ $server.Hostname }}:80
 {{ end }}
 {{ end }}
-{{ end }}
-{{ range $server := $ing.HTTPServers }}
+{{ range $server := $ing.HAServers }}
+{{ if $server.UseHTTP }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.HAWhitelist "" }}
     http-request deny if ishost-{{ labelize $server.Hostname }}{{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }
@@ -104,19 +103,23 @@ frontend httpfront
 {{ end }}
 {{ end }}
 {{ end }}
+{{ end }}
 {{ if eq $cfg.Forwardfor "add" }}
     reqidel ^X-Forwarded-For:.*
     option forwardfor
 {{ else if eq $cfg.Forwardfor "ifmissing" }}
     option forwardfor if-none
 {{ end }}
-{{ range $server := $ing.HTTPServers }}
+{{ range $server := $ing.HAServers }}
+{{ if $server.UseHTTP }}
 {{ $appRoot := $server.RootLocation.Rewrite.AppRoot }}
 {{ if ne $appRoot "" }}
     redirect location {{ $appRoot }} if ishost-{{ labelize $server.Hostname }} { path / }
 {{ end }}
 {{ end }}
-{{ range $server := $ing.HTTPSServers }}
+{{ end }}
+{{ range $server := $ing.HAServers }}
+{{ if $server.UseHTTPS }}
 {{ if $server.SSLRedirect }}
     redirect scheme https if ishost-{{ labelize $server.Hostname }}
 {{ else }}
@@ -127,7 +130,9 @@ frontend httpfront
 {{ end }}
 {{ end }}
 {{ end }}
-{{ range $server := $ing.HTTPServers }}
+{{ end }}
+{{ range $server := $ing.HAServers }}
+{{ if $server.UseHTTP }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.Proxy.BodySize "" }}
     use_backend error413 if ishost-{{ labelize $server.Hostname }} { path_beg {{ $location.Path }} } { req.body_size gt {{ sizeSuffix $location.Proxy.BodySize }} }
@@ -135,6 +140,7 @@ frontend httpfront
 {{ end }}
 {{ range $location := $server.Locations }}
     use_backend {{ $location.Backend }} if ishost-{{ labelize $server.Hostname }} { path_beg {{ $location.Path }} }
+{{ end }}
 {{ end }}
 {{ end }}
     default_backend {{ $ing.DefaultServer.RootLocation.Backend }}
@@ -154,11 +160,13 @@ frontend httpsfront
     use_backend {{ $server.Backend }} if { req.ssl_sni -i {{ $server.Hostname }} }
 {{ end }}
 {{ end }}
-{{ range $server := $ing.HTTPSServers }}
+{{ range $server := $ing.HAServers }}
+{{ if $server.UseHTTPS }}
 {{ if isWildcardHostname $server.Hostname }}
     use_backend httpsback-{{ labelize $server.Hostname }} if { req.ssl_sni -m reg -i {{ hostnameRegex $server.Hostname }} }
 {{ else }}
     use_backend httpsback-{{ labelize $server.Hostname }} if { req.ssl_sni -i {{ $server.Hostname }} }
+{{ end }}
 {{ end }}
 {{ end }}
     default_backend httpsback-default-backend
@@ -166,14 +174,14 @@ frontend httpsfront
     log-format {{ $cfg.TCPLogFormat }}
 {{ end }}
 
-{{ range $server := $ing.HTTPSServers }}
+{{ range $server := $ing.HAServers }}
+{{ if $server.UseHTTPS }}
 {{ $host := labelize $server.Hostname }}
 ##
 ## {{ $host }}
 backend httpsback-{{ $host }}
     mode tcp
     server {{ $host }} unix@/var/run/haproxy-host-{{ $host }}.sock send-proxy-v2
-
 frontend httpsfront-{{ $host }}
 {{ $authSSLCert := $server.CertificateAuth.AuthSSLCert }}
     # CRT PEM checksum: {{ $server.SSLPemChecksum }}
@@ -229,6 +237,7 @@ frontend httpsfront-{{ $host }}
     use_backend {{ $location.Backend }} if { path_beg {{ $location.Path }} }
 {{ else }}
     default_backend {{ $location.Backend }}
+{{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
