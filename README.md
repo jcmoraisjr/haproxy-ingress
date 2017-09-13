@@ -60,6 +60,7 @@ The following annotations are supported:
 ||`ingress.kubernetes.io/ssl-redirect`|[true\|false]|[doc](https://github.com/kubernetes/ingress/tree/master/examples/rewrite/haproxy)|
 ||`ingress.kubernetes.io/app-root`|/url|[doc](https://github.com/kubernetes/ingress/tree/master/examples/rewrite/haproxy)|
 ||`ingress.kubernetes.io/whitelist-source-range`|CIDR|-|
+|`[1]`|[`ingress.kubernetes.io/server-alias`](#server-alias)|domain name or regex|-|
 
 ### Affinity
 
@@ -77,6 +78,15 @@ limitation will be removed when HAProxy version is updated to `1.8`.
 * http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-cookie
 * http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.2-cookie
 * https://www.haproxy.com/blog/load-balancing-affinity-persistence-sticky-sessions-what-you-need-to-know/
+
+### Server Alias
+
+Creates an alias of the server that annotation belongs to.
+It'll be using the same backend but different ACL.
+Alias rules will be checked at the very end of list or rules.
+It is allowed to be a regex.
+
+Note: `^` and `$` cannot be used because they are already included in ACL.
 
 ## ConfigMap
 
