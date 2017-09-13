@@ -108,6 +108,7 @@ type (
 		Locations       []*HAProxyLocation    `json:"locations,omitempty"`
 		SSLRedirect     bool                  `json:"sslRedirect"`
 		CertificateAuth authtls.AuthSSLConfig `json:"certificateAuth,omitempty"`
+		Alias           string                `json:"alias,omitempty"`
 	}
 	// HAProxyLocation has location data as a HAProxy friendly syntax
 	HAProxyLocation struct {
