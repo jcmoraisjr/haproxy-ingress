@@ -167,6 +167,7 @@ func (cfg *haConfig) createHAProxyServers() {
 			Locations:       haLocations,
 			SSLRedirect:     sslRedirect,
 			CertificateAuth: server.CertificateAuth,
+			Alias:           server.Alias,
 		}
 		// Ingress uses `_` hostname as default server
 		if server.Hostname == "_" {

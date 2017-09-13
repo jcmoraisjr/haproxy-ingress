@@ -98,6 +98,9 @@ frontend httpfront
 {{ else }}
     acl ishost-{{ $server.HostnameLabel }} hdr(host) {{ $server.Hostname }} {{ $server.Hostname }}:80
 {{ end }}
+{{ if ne $server.Alias "" }}
+    acl ishost-{{ $server.HostnameLabel }}-alias {{ if isRegexHostname $server.Alias }}hdr_reg(host) '{{ aliasRegex $server.Alias }}'{{ else }}hdr(host) {{ $server.Alias }} {{ $server.Alias }}:80{{ end }}
+{{ end }}
 {{ end }}
 {{ range $server := $ing.HAServers }}
 {{ if $server.UseHTTP }}
@@ -143,6 +146,22 @@ frontend httpfront
 {{ end }}
 {{ end }}
 {{ end }}
+{{/* Aliases loop */}}
+{{ range $server := $ing.HAServers }}
+{{ if ne $server.Alias "" }}
+{{ if $server.UseHTTPS }}
+{{ if $server.SSLRedirect }}
+    redirect scheme https if ishost-{{ $server.HostnameLabel }}-alias{{ if $hasHTTPStoHTTP }} !is-https-to-http{{ end }}
+{{ else }}
+{{ range $location := $server.Locations }}
+{{ if $location.Rewrite.SSLRedirect }}
+    redirect scheme https if ishost-{{ $server.HostnameLabel }}-alias{{ $location.HAMatchPath }}{{ if $hasHTTPStoHTTP }} !is-https-to-http{{ end }}
+{{ end }}
+{{ end }}
+{{ end }}
+{{ end }}
+{{ end }}
+{{ end }}
 {{ range $server := $ing.HAServers }}
 {{ if or $server.UseHTTP $hasHTTPStoHTTP }}
 {{ range $location := $server.Locations }}
@@ -152,6 +171,16 @@ frontend httpfront
 {{ end }}
 {{ range $location := $server.Locations }}
     use_backend {{ $location.Backend }} if ishost-{{ $server.HostnameLabel }} { path_beg {{ $location.Path }} }
+{{ end }}
+{{ end }}
+{{ end }}
+{{/* Aliases loop */}}
+{{ range $server := $ing.HAServers }}
+{{ if or $server.UseHTTP $hasHTTPStoHTTP }}
+{{ range $location := $server.Locations }}
+{{ if ne $server.Alias "" }}
+    use_backend {{ $location.Backend }} if ishost-{{ $server.HostnameLabel }}-alias { path_beg {{ $location.Path }} }
+{{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
@@ -178,6 +207,14 @@ frontend httpsfront
     use_backend httpsback-{{ $server.HostnameLabel }} if { req.ssl_sni -m reg -i {{ hostnameRegex $server.Hostname }} }
 {{ else }}
     use_backend httpsback-{{ $server.HostnameLabel }} if { req.ssl_sni -i {{ $server.Hostname }} }
+{{ end }}
+{{ end }}
+{{ end }}
+{{/* Aliases loop */}}
+{{ range $server := $ing.HAServers }}
+{{ if $server.UseHTTPS }}
+{{ if ne $server.Alias "" }}
+    use_backend httpsback-{{ $server.HostnameLabel }} if { req.ssl_sni -i {{ if isRegexHostname $server.Alias }}-m reg '{{ aliasRegex $server.Alias }}'{{ else }}{{ $server.Alias }}{{ end }} }
 {{ end }}
 {{ end }}
 {{ end }}
