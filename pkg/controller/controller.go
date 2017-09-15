@@ -103,10 +103,9 @@ func (haproxy *HAProxyController) UpdateIngressStatus(*extensions.Ingress) []api
 func (haproxy *HAProxyController) ConfigureFlags(flags *pflag.FlagSet) {
 	haproxy.reloadStrategy = flags.String("reload-strategy", "native",
 		`Name of the reload strategy. Options are: native (default) or multibinder`)
-	ingressClass := flags.Lookup("ingress-class")
-	if ingressClass != nil {
-		ingressClass.Value.Set("haproxy")
-		ingressClass.DefValue = "haproxy"
+	ingressClass, _ := flags.GetString("ingress-class")
+	if ingressClass == "" {
+		flags.Set("ingress-class", "haproxy")
 	}
 }
 
