@@ -122,6 +122,11 @@ func (haproxy *HAProxyController) OverrideFlags(flags *pflag.FlagSet) {
 		glog.Fatalf("Unsupported reload strategy: %v", *haproxy.reloadStrategy)
 	}
 	haproxy.command = "/haproxy-reload.sh"
+
+	ingressClass, _ := flags.GetString("ingress-class")
+	if ingressClass == "" {
+		flags.Set("ingress-class", "haproxy")
+	}
 }
 
 // SetConfig receives the ConfigMap the user has configured
