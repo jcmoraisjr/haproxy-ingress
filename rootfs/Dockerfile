@@ -14,7 +14,7 @@
 
 FROM haproxy:1.7-alpine
 RUN apk --no-cache add openssl ruby ruby-json\
- && gem install --no-ri --no-rdoc multibinder:0.0.4
+ && gem install --no-ri --no-rdoc multibinder:0.0.5
 
 # dumb-init kindly manages SIGCHLD from forked HAProxy processes
 ARG DUMB_INIT_SHA256=81231da1cd074fdc81af62789fead8641ef3f24b6b07366a1c34e5b059faf363
