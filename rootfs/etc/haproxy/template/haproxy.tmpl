@@ -91,9 +91,9 @@ frontend httpfront
 {{ if $hasHTTPStoHTTP }}
     http-request set-var(txn.hdr_proto) hdr(x-forwarded-proto)
 {{ if not $reuseHTTPPort }}
-    acl is-https-to-http dst_port eq {{ $cfg.HTTPStoHTTPPort }}
+    acl from-https dst_port eq {{ $cfg.HTTPStoHTTPPort }}
 {{ end }}
-    acl is-https-to-http var(txn.hdr_proto) eq https
+    acl from-https var(txn.hdr_proto) eq https
 {{ end }}
 {{ range $server := $ing.HAServers }}
 {{ if isWildcardHostname $server.Hostname }}
@@ -134,16 +134,16 @@ frontend httpfront
 {{ end }}
 {{ end }}
 {{ if and $hasHTTPStoHTTP $cfg.HSTS }}
-    rspadd "Strict-Transport-Security: max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}" if is-https-to-http
+    rspadd "Strict-Transport-Security: max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}" if from-https
 {{ end }}
 {{ range $server := $ing.HAServers }}
 {{ if or $server.UseHTTPS $hasHTTPStoHTTP }}
 {{ if $server.SSLRedirect }}
-    redirect scheme https if ishost-{{ $server.HostnameLabel }}{{ if $hasHTTPStoHTTP }} !is-https-to-http{{ end }}
+    redirect scheme https if ishost-{{ $server.HostnameLabel }}{{ if $hasHTTPStoHTTP }} !from-https{{ end }}
 {{ else }}
 {{ range $location := $server.Locations }}
 {{ if $location.Rewrite.SSLRedirect }}
-    redirect scheme https if ishost-{{ $server.HostnameLabel }}{{ $location.HAMatchPath }}{{ if $hasHTTPStoHTTP }} !is-https-to-http{{ end }}
+    redirect scheme https if ishost-{{ $server.HostnameLabel }}{{ $location.HAMatchPath }}{{ if $hasHTTPStoHTTP }} !from-https{{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
@@ -154,11 +154,11 @@ frontend httpfront
 {{ if ne $server.Alias "" }}
 {{ if or $server.UseHTTPS $hasHTTPStoHTTP }}
 {{ if $server.SSLRedirect }}
-    redirect scheme https if ishost-{{ $server.HostnameLabel }}-alias{{ if $hasHTTPStoHTTP }} !is-https-to-http{{ end }}
+    redirect scheme https if ishost-{{ $server.HostnameLabel }}-alias{{ if $hasHTTPStoHTTP }} !from-https{{ end }}
 {{ else }}
 {{ range $location := $server.Locations }}
 {{ if $location.Rewrite.SSLRedirect }}
-    redirect scheme https if ishost-{{ $server.HostnameLabel }}-alias{{ $location.HAMatchPath }}{{ if $hasHTTPStoHTTP }} !is-https-to-http{{ end }}
+    redirect scheme https if ishost-{{ $server.HostnameLabel }}-alias{{ $location.HAMatchPath }}{{ if $hasHTTPStoHTTP }} !from-https{{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
