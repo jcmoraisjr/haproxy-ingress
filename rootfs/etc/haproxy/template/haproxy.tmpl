@@ -75,9 +75,10 @@ backend {{ $backend.Name }}
 ###### HTTP frontend
 ######
 {{ $hasHTTPStoHTTP := gt $cfg.HTTPStoHTTPPort 0 }}
+{{ $reuseHTTPPort := eq $cfg.HTTPStoHTTPPort 80 }}
 frontend httpfront
     bind *:80{{ if $cfg.UseProxyProtocol }} accept-proxy{{ end }}
-{{ if $hasHTTPStoHTTP }}
+{{ if and $hasHTTPStoHTTP (not $reuseHTTPPort) }}
     bind *:{{ $cfg.HTTPStoHTTPPort }}{{ if $cfg.UseProxyProtocol }} accept-proxy{{ end }}
 {{ end }}
     mode http
@@ -89,7 +90,9 @@ frontend httpfront
 {{ end }}
 {{ if $hasHTTPStoHTTP }}
     http-request set-var(txn.hdr_proto) hdr(x-forwarded-proto)
+{{ if not $reuseHTTPPort }}
     acl is-https-to-http dst_port eq {{ $cfg.HTTPStoHTTPPort }}
+{{ end }}
     acl is-https-to-http var(txn.hdr_proto) eq https
 {{ end }}
 {{ range $server := $ing.HAServers }}
