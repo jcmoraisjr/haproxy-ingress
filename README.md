@@ -202,13 +202,19 @@ https://cbonte.github.io/haproxy-dconv/1.7/configuration.html#8.2.4
 ### https-to-http-port
 
 A port number to listen http requests from another load balancer that does the ssl offload.
-Requests won't be redirected to https and HSTS will be provided if configured.
 
-HAProxy will behave as expected if either the `X-Forwarded-Proto` is set to `https` or the
-destination port is the configured port number. If the header isn't defined (eg when using
-proxy protocol) and, at the same time, there is another proxy in front of HAProxy Ingress
-(eg a Kubernetes Service) listening another port number, this configuration will not work
-and will either loop because of https redirect or HSTS header will not be added.
+How it works: HAProxy will define if the request came from a HTTPS connection reading the
+`X-Forwarded-Proto` HTTP header or the port number the client used to connect. If the
+header is `https` or the port number matches `https-to-http-port`, HAProxy will behave
+just like itself did the ssl offload: HSTS header will be provided if configured and no
+https redirect will be done. There is only one exception: if `https-to-http-port` is `80`,
+only the header will be checked.
+
+The `X-Forwarded-Proto` header is optional in the following conditions:
+
+* The `https-to-http-port` should not match HTTP port `80`; and
+* The load balancer should connect to the same `https-to-http-port` number, eg cannot
+have any proxy like Kubernetes' `NodePort` between the load balancer and HAProxy
 
 ### tcp-log-format
 
