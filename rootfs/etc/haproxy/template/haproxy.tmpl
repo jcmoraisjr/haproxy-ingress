@@ -121,7 +121,12 @@ frontend httpfront
 {{ end }}
 {{ end }}
 {{ end }}
-
+{{ if eq $cfg.Forwardfor "add" }}
+    http-request del-header x-forwarded-for
+    option forwardfor
+{{ else if eq $cfg.Forwardfor "ifmissing" }}
+    option forwardfor if-none
+{{ end }}
 {{ range $server := $ing.HAServers }}
 {{ if $server.UseHTTP }}
 {{ range $location := $server.Locations }}
@@ -133,13 +138,6 @@ frontend httpfront
 {{ end }}
 {{ end }}
 {{ end }}
-
-{{ if eq $cfg.Forwardfor "add" }}
-    reqidel ^X-Forwarded-For:.*
-    option forwardfor
-{{ else if eq $cfg.Forwardfor "ifmissing" }}
-    option forwardfor if-none
-{{ end }}
 {{ range $server := $ing.HAServers }}
 {{ if $server.UseHTTP }}
 {{ $appRoot := $server.RootLocation.Rewrite.AppRoot }}
@@ -149,7 +147,7 @@ frontend httpfront
 {{ end }}
 {{ end }}
 {{ if and $hasHTTPStoHTTP $cfg.HSTS }}
-    rspadd "Strict-Transport-Security: max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}" if from-https
+    http-response set-header Strict-Transport-Security "max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}" if from-https
 {{ end }}
 {{ range $server := $ing.HAServers }}
 {{ if or $server.UseHTTPS $hasHTTPStoHTTP }}
@@ -281,7 +279,7 @@ frontend httpsfront-{{ $host }}
     http-request set-header X-Forwarded-Proto https
     http-request set-var(req.path) path
 {{ if eq $cfg.Forwardfor "add" }}
-    reqidel ^X-Forwarded-For:.*
+    http-request del-header x-forwarded-for
     option forwardfor
 {{ else if eq $cfg.Forwardfor "ifmissing" }}
     option forwardfor if-none
@@ -295,7 +293,7 @@ frontend httpsfront-{{ $host }}
 {{ end }}
 {{ end }}
 {{ if $cfg.HSTS }}
-    rspadd "Strict-Transport-Security: max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}"
+    http-response set-header Strict-Transport-Security "max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}"
 {{ end }}
 
 {{ $appRoot := $server.RootLocation.Rewrite.AppRoot }}
@@ -347,13 +345,13 @@ frontend httpsfront-default-backend
     {{ end }}
 {{ end }}
 {{ if eq $cfg.Forwardfor "add" }}
-    reqidel ^X-Forwarded-For:.*
+    http-request del-header x-forwarded-for
     option forwardfor
 {{ else if eq $cfg.Forwardfor "ifmissing" }}
     option forwardfor if-none
 {{ end }}
 {{ if $cfg.HSTS }}
-    rspadd "Strict-Transport-Security: max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}"
+    http-response set-header Strict-Transport-Security "max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}"
 {{ end }}
     default_backend {{ $location.Backend }}
 
