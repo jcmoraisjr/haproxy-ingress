@@ -21,7 +21,7 @@ import (
 
 	"github.com/spf13/pflag"
 
-	api "k8s.io/api/core/v1"
+	apiv1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apiserver/pkg/server/healthz"
@@ -78,10 +78,10 @@ type Controller interface {
 	//
 	OnUpdate(Configuration) error
 	// ConfigMap content of --configmap
-	SetConfig(*api.ConfigMap)
+	SetConfig(*apiv1.ConfigMap)
 	// SetListers allows the access of store listers present in the generic controller
 	// This avoid the use of the kubernetes client.
-	SetListers(StoreLister)
+	SetListers(*StoreLister)
 	// BackendDefaults returns the minimum settings required to configure the
 	// communication to endpoints
 	BackendDefaults() defaults.Backend
@@ -97,7 +97,7 @@ type Controller interface {
 	// UpdateIngressStatus custom callback used to update the status in an Ingress rule
 	// This allows custom implementations
 	// If the function returns nil the standard functions will be executed.
-	UpdateIngressStatus(*extensions.Ingress) []api.LoadBalancerIngress
+	UpdateIngressStatus(*extensions.Ingress) []apiv1.LoadBalancerIngress
 	// DefaultEndpoint returns the Endpoint to use as default when the
 	// referenced service does not exists. This should return the content
 	// of to the default backend
@@ -152,9 +152,9 @@ type Configuration struct {
 // Backend describes one or more remote server/s (endpoints) associated with a service
 // +k8s:deepcopy-gen=true
 type Backend struct {
-	// Name represents an unique api.Service name formatted as <namespace>-<name>-<port>
+	// Name represents an unique apiv1.Service name formatted as <namespace>-<name>-<port>
 	Name    string             `json:"name"`
-	Service *api.Service       `json:"service,omitempty"`
+	Service *apiv1.Service     `json:"service,omitempty"`
 	Port    intstr.IntOrString `json:"port"`
 	// This indicates if the communication protocol between the backend and the endpoint is HTTP or HTTPS
 	// Allowing the use of HTTPS
@@ -208,7 +208,7 @@ type Endpoint struct {
 	// to consider the endpoint unavailable
 	FailTimeout int `json:"failTimeout"`
 	// Target returns a reference to the object providing the endpoint
-	Target *api.ObjectReference `json:"target,omipempty"`
+	Target *apiv1.ObjectReference `json:"target,omipempty"`
 }
 
 // Server describes a website
@@ -236,6 +236,10 @@ type Server struct {
 	// CertificateAuth indicates the this server requires mutual authentication
 	// +optional
 	CertificateAuth authtls.AuthSSLConfig `json:"certificateAuth"`
+
+	// ServerSnippet returns the snippet of server
+	// +optional
+	ServerSnippet string `json:"serverSnippet"`
 }
 
 // Location describes an URI inside a server.
@@ -270,7 +274,7 @@ type Location struct {
 	// Backend describes the name of the backend to use.
 	Backend string `json:"backend"`
 	// Service describes the referenced services from the ingress
-	Service *api.Service `json:"service,omitempty"`
+	Service *apiv1.Service `json:"service,omitempty"`
 	// Port describes to which port from the service
 	Port intstr.IntOrString `json:"port"`
 	// Overwrite the Host header passed into the backend. Defaults to
@@ -309,10 +313,14 @@ type Location struct {
 	// Proxy contains information about timeouts and buffer sizes
 	// to be used in connections against endpoints
 	// +optional
-	Proxy proxy.Configuration `json:"proxy,omitempty"`
+	Proxy *proxy.Configuration `json:"proxy,omitempty"`
 	// UsePortInRedirects indicates if redirects must specify the port
 	// +optional
 	UsePortInRedirects bool `json:"usePortInRedirects"`
+	// VtsFilterKey contains the vts filter key on the location level
+	// https://github.com/vozlt/nginx-module-vts#vhost_traffic_status_filter_by_set_key
+	// +optional
+	VtsFilterKey string `json:"vtsFilterKey,omitempty"`
 	// ConfigurationSnippet contains additional configuration for the backend
 	// to be considered in the configuration of the location
 	ConfigurationSnippet string `json:"configurationSnippet"`
@@ -322,7 +330,7 @@ type Location struct {
 	ClientBodyBufferSize string `json:"clientBodyBufferSize,omitempty"`
 	// DefaultBackend allows the use of a custom default backend for this location.
 	// +optional
-	DefaultBackend *api.Service `json:"defaultBackend,omitempty"`
+	DefaultBackend *apiv1.Service `json:"defaultBackend,omitempty"`
 }
 
 // SSLPassthroughBackend describes a SSL upstream server configured
@@ -330,7 +338,7 @@ type Location struct {
 // The endpoints must provide the TLS termination exposing the required SSL certificate.
 // The ingress controller only pipes the underlying TCP connection
 type SSLPassthroughBackend struct {
-	Service *api.Service       `json:"service,omitEmpty"`
+	Service *apiv1.Service     `json:"service,omitEmpty"`
 	Port    intstr.IntOrString `json:"port"`
 	// Backend describes the endpoints to use.
 	Backend string `json:"namespace,omitempty"`
@@ -353,7 +361,13 @@ type L4Backend struct {
 	Port      intstr.IntOrString `json:"port"`
 	Name      string             `json:"name"`
 	Namespace string             `json:"namespace"`
-	Protocol  api.Protocol       `json:"protocol"`
+	Protocol  apiv1.Protocol     `json:"protocol"`
 	// +optional
-	UseProxyProtocol bool `json:"useProxyProtocol"`
+	ProxyProtocol ProxyProtocol `json:"proxyProtocol"`
+}
+
+// ProxyProtocol describes the proxy protocol configuration
+type ProxyProtocol struct {
+	Decode bool `json:"decode"`
+	Encode bool `json:"encode"`
 }

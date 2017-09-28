@@ -23,7 +23,7 @@ import (
 
 	"github.com/golang/glog"
 
-	api "k8s.io/api/core/v1"
+	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 
 	"k8s.io/ingress/core/pkg/ingress"
@@ -52,6 +52,11 @@ func (ic *GenericController) syncSecret(key string) {
 		}
 		glog.Infof("updating secret %v in the local store", key)
 		ic.sslCertTracker.Update(key, cert)
+		// we need to force the sync of the secret to disk
+		ic.syncSecret(key)
+		// this update must trigger an update
+		// (like an update event from a change in Ingress)
+		ic.syncIngress("secret-update")
 		return
 	}
 
@@ -62,41 +67,52 @@ func (ic *GenericController) syncSecret(key string) {
 // getPemCertificate receives a secret, and creates a ingress.SSLCert as return.
 // It parses the secret and verifies if it's a keypair, or a 'ca.crt' secret only.
 func (ic *GenericController) getPemCertificate(secretName string) (*ingress.SSLCert, error) {
-	secretInterface, exists, err := ic.secrLister.Store.GetByKey(secretName)
+	secret, err := ic.listers.Secret.GetByName(secretName)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving secret %v: %v", secretName, err)
 	}
-	if !exists {
-		return nil, fmt.Errorf("secret named %v does not exist", secretName)
-	}
 
-	secret := secretInterface.(*api.Secret)
-	cert, okcert := secret.Data[api.TLSCertKey]
-	key, okkey := secret.Data[api.TLSPrivateKeyKey]
-
+	cert, okcert := secret.Data[apiv1.TLSCertKey]
+	key, okkey := secret.Data[apiv1.TLSPrivateKeyKey]
 	ca := secret.Data["ca.crt"]
 
+	// namespace/secretName -> namespace-secretName
 	nsSecName := strings.Replace(secretName, "/", "-", -1)
 
 	var s *ingress.SSLCert
 	if okcert && okkey {
+		if cert == nil {
+			return nil, fmt.Errorf("secret %v has no 'tls.crt'", secretName)
+		}
+		if key == nil {
+			return nil, fmt.Errorf("secret %v has no 'tls.key'", secretName)
+		}
+
+		// If 'ca.crt' is also present, it will allow this secret to be used in the
+		// 'ingress.kubernetes.io/auth-tls-secret' annotation
 		s, err = ssl.AddOrUpdateCertAndKey(nsSecName, cert, key, ca)
 		if err != nil {
-			return nil, fmt.Errorf("unexpected error creating pem file %v", err)
+			return nil, fmt.Errorf("unexpected error creating pem file: %v", err)
 		}
-		glog.V(3).Infof("found certificate and private key, configuring %v as a TLS Secret (CN: %v)", secretName, s.CN)
+
+		glog.V(3).Infof("found 'tls.crt' and 'tls.key', configuring %v as a TLS Secret (CN: %v)", secretName, s.CN)
+		if ca != nil {
+			glog.V(3).Infof("found 'ca.crt', secret %v can also be used for Certificate Authentication", secretName)
+		}
+
 	} else if ca != nil {
-		glog.V(3).Infof("found only ca.crt, configuring %v as an Certificate Authentication secret", secretName)
 		s, err = ssl.AddCertAuth(nsSecName, ca)
+
 		if err != nil {
-			return nil, fmt.Errorf("unexpected error creating pem file %v", err)
+			return nil, fmt.Errorf("unexpected error creating pem file: %v", err)
 		}
+
+		// makes this secret in 'syncSecret' to be used for Certificate Authentication
+		// this does not enable Certificate Authentication
+		glog.V(3).Infof("found only 'ca.crt', configuring %v as an Certificate Authentication Secret", secretName)
+
 	} else {
 		return nil, fmt.Errorf("no keypair or CA cert could be found in %v", secretName)
-	}
-
-	if err != nil {
-		return nil, err
 	}
 
 	s.Name = secret.Name

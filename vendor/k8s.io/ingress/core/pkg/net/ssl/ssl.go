@@ -36,6 +36,7 @@ import (
 	"github.com/golang/glog"
 
 	"k8s.io/apimachinery/pkg/util/sets"
+
 	"k8s.io/ingress/core/pkg/file"
 	"k8s.io/ingress/core/pkg/ingress"
 )
@@ -270,7 +271,7 @@ func AddCertAuth(name string, ca []byte) (*ingress.SSLCert, error) {
 		return nil, fmt.Errorf("could not write CA file %v: %v", caFileName, err)
 	}
 
-	glog.V(3).Infof("Created CA Certificate for authentication: %v", caFileName)
+	glog.V(3).Infof("Created CA Certificate for Authentication: %v", caFileName)
 	return &ingress.SSLCert{
 		CAFileName:  caFileName,
 		PemFileName: caFileName,

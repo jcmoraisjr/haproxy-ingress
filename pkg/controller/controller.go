@@ -88,8 +88,8 @@ func (haproxy *HAProxyController) Check(_ *http.Request) error {
 }
 
 // SetListers give access to the store listers
-func (haproxy *HAProxyController) SetListers(lister ingress.StoreLister) {
-	haproxy.storeLister = &lister
+func (haproxy *HAProxyController) SetListers(lister *ingress.StoreLister) {
+	haproxy.storeLister = lister
 }
 
 // UpdateIngressStatus custom callback used to update the status in an Ingress rule
