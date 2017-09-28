@@ -258,6 +258,11 @@ frontend httpsfront-{{ $host }}
     http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
 {{ end }}
 {{ end }}
+{{ if ne $authSSLCert.CAFileName "" }}
+    http-request set-header X-SSL-Client-SHA1  %{+Q}[ssl_c_sha1,hex]
+    http-request set-header X-SSL-Client-DN    %{+Q}[ssl_c_s_dn]
+    http-request set-header X-SSL-Client-CN    %{+Q}[ssl_c_s_dn(cn)]
+{{ end }}
 {{ if eq $cfg.Forwardfor "add" }}
     reqidel ^X-Forwarded-For:.*
     option forwardfor
