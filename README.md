@@ -110,7 +110,7 @@ The following parameters are supported:
 ||[`hsts-include-subdomains`](#hsts)|[true\|false]|`false`|
 ||[`hsts-max-age`](#hsts)|number of seconds|`15768000`|
 ||[`hsts-preload`](#hsts)|[true\|false]|`false`|
-|`[1]`|[`http-log-format`](#http-log-format)|http log format|HAProxy default log format|
+|`[1]`|[`http-log-format`](#log-format)|http log format|HAProxy default log format|
 |`[1]`|[`https-to-http-port`](#https-to-http-port)|port number|0 (do not listen)|
 ||[`max-connections`](#max-connections)|number|`2000`|
 ||[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
@@ -123,7 +123,7 @@ The following parameters are supported:
 ||[`stats-port`](#stats)|port number|`1936`|
 |`[1]`|[`stats-proxy-protocol`](#stats)|[true\|false]|`false`|
 ||[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
-|`[1]`|[`tcp-log-format`](#tcp-log-format)|tcp log format|HAProxy default log format|
+|`[1]`|[`tcp-log-format`](#log-format)|tcp log format|HAProxy default log format|
 ||[`timeout-client`](#timeout)|time with suffix|`50s`|
 ||[`timeout-client-fin`](#timeout)|time with suffix|`50s`|
 ||[`timeout-connect`](#timeout)|time with suffix|`5s`|
@@ -193,12 +193,6 @@ Configure HSTS - HTTP Strict Transport Security.
 
 https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security
 
-### http-log-format
-
-Customize the http log format using log format variables. Default to the HAProxy default log format
-
-https://cbonte.github.io/haproxy-dconv/1.7/configuration.html#8.2.4
-
 ### https-to-http-port
 
 A port number to listen http requests from another load balancer that does the ssl offload.
@@ -216,9 +210,12 @@ The `X-Forwarded-Proto` header is optional in the following conditions:
 * The load balancer should connect to the same `https-to-http-port` number, eg cannot
 have any proxy like Kubernetes' `NodePort` between the load balancer and HAProxy
 
-### tcp-log-format
+### log-format
 
-Customize the tcp log format using log format variables. Default to the HAProxy default log format
+Customize the http/tcp log format using log format variables. Default to the HAProxy default log format.
+
+* `http-log-format`
+* `tcp-log-format`
 
 https://cbonte.github.io/haproxy-dconv/1.7/configuration.html#8.2.4
 
