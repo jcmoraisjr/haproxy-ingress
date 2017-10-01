@@ -42,25 +42,25 @@ template file at `/etc/haproxy/template/haproxy.tmpl`.
 
 The following annotations are supported:
 
-* `[1]` only in `snapshot` tag
+* `[0]` only in `canary` tag
 
 ||Name|Data|Usage|
 |---|---|---|:---:|
-|`[1]`|[`ingress.kubernetes.io/affinity`](#affinity)|affinity type|-|
+|`[0]`|[`ingress.kubernetes.io/affinity`](#affinity)|affinity type|-|
 ||`ingress.kubernetes.io/auth-type`|"basic"|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
 ||`ingress.kubernetes.io/auth-secret`|secret name|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
 ||`ingress.kubernetes.io/auth-realm`|realm string|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
-|`[1]`|`ingress.kubernetes.io/auth-tls-error-page`|url|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/client-certs/haproxy)|
+|`[0]`|`ingress.kubernetes.io/auth-tls-error-page`|url|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/client-certs/haproxy)|
 ||`ingress.kubernetes.io/auth-tls-secret`|namespace/secret name|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/client-certs/haproxy)|
 ||[`ingress.kubernetes.io/proxy-body-size`](#proxy-body-size)|size (bytes)|-|
 ||`ingress.kubernetes.io/secure-backends`|[true\|false]|-|
 ||`ingress.kubernetes.io/secure-verify-ca-secret`|secret name|-|
-|`[1]`|[`ingress.kubernetes.io/session-cookie-name`](#affinity)|cookie name|-|
+|`[0]`|[`ingress.kubernetes.io/session-cookie-name`](#affinity)|cookie name|-|
 ||`ingress.kubernetes.io/ssl-passthrough`|[true\|false]|-|
 ||`ingress.kubernetes.io/ssl-redirect`|[true\|false]|[doc](https://github.com/kubernetes/ingress/tree/master/examples/rewrite/haproxy)|
 ||`ingress.kubernetes.io/app-root`|/url|[doc](https://github.com/kubernetes/ingress/tree/master/examples/rewrite/haproxy)|
 ||`ingress.kubernetes.io/whitelist-source-range`|CIDR|-|
-|`[1]`|[`ingress.kubernetes.io/server-alias`](#server-alias)|domain name or regex|-|
+|`[0]`|[`ingress.kubernetes.io/server-alias`](#server-alias)|domain name or regex|-|
 
 ### Affinity
 
@@ -96,22 +96,22 @@ A ConfigMap can be created with `kubectl create configmap`.
 
 The following parameters are supported:
 
-* `[1]` only in `snapshot` tag
+* `[0]` only in `canary` tag
 
 ||Name|Type|Default|
 |---|---|---|---|
 ||[`balance-algorithm`](#balance-algorithm)|algorithm name|`roundrobin`|
 ||[`backend-check-interval`](#backend-check-interval)|time with suffix|`2s`|
-|`[1]`|[`backend-server-slots-increment`](#dynamic-scaling)|number of slots|`32`|
-|`[1]`|[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`false`|
+|`[0]`|[`backend-server-slots-increment`](#dynamic-scaling)|number of slots|`32`|
+|`[0]`|[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`false`|
 ||[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
-|`[1]`|[`healthz-port`](#healthz-port)|port number|`10253`|
+|`[0]`|[`healthz-port`](#healthz-port)|port number|`10253`|
 ||[`hsts`](#hsts)|[true\|false]|`true`|
 ||[`hsts-include-subdomains`](#hsts)|[true\|false]|`false`|
 ||[`hsts-max-age`](#hsts)|number of seconds|`15768000`|
 ||[`hsts-preload`](#hsts)|[true\|false]|`false`|
-|`[1]`|[`http-log-format`](#log-format)|http log format|HAProxy default log format|
-|`[1]`|[`https-to-http-port`](#https-to-http-port)|port number|0 (do not listen)|
+|`[0]`|[`http-log-format`](#log-format)|http log format|HAProxy default log format|
+|`[0]`|[`https-to-http-port`](#https-to-http-port)|port number|0 (do not listen)|
 ||[`max-connections`](#max-connections)|number|`2000`|
 ||[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
 ||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/master/pkg/controller/config.go#L34)|
@@ -121,9 +121,9 @@ The following parameters are supported:
 ||[`ssl-redirect`](#ssl-redirect)|[true\|false]|`true`|
 ||[`stats-auth`](#stats)|user:passwd|no auth|
 ||[`stats-port`](#stats)|port number|`1936`|
-|`[1]`|[`stats-proxy-protocol`](#stats)|[true\|false]|`false`|
+|`[0]`|[`stats-proxy-protocol`](#stats)|[true\|false]|`false`|
 ||[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
-|`[1]`|[`tcp-log-format`](#log-format)|tcp log format|HAProxy default log format|
+|`[0]`|[`tcp-log-format`](#log-format)|tcp log format|HAProxy default log format|
 ||[`timeout-client`](#timeout)|time with suffix|`50s`|
 ||[`timeout-client-fin`](#timeout)|time with suffix|`50s`|
 ||[`timeout-connect`](#timeout)|time with suffix|`5s`|
@@ -132,7 +132,7 @@ The following parameters are supported:
 ||[`timeout-server`](#timeout)|time with suffix|`50s`|
 ||[`timeout-server-fin`](#timeout)|time with suffix|`50s`|
 ||[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
-|`[1]`|[`use-proxy-protocol`](#use-proxy-protocol)|[true\|false]|`false`|
+|`[0]`|[`use-proxy-protocol`](#use-proxy-protocol)|[true\|false]|`false`|
 
 ### balance-algorithm
 
@@ -232,7 +232,7 @@ Define the maximum number of bytes HAProxy will allow on the body of requests. D
 to not check, which means requests of unlimited size. This limit can be changed per ingress
 resource.
 
-Since 0.4 (currently snapshot) a suffix can be added to the size, so `10m` means
+Since 0.4 (currently canary/beta) a suffix can be added to the size, so `10m` means
 `10 * 1024 * 1024` bytes. Supported suffix are: `k`, `m` and `g`.
 
 http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#7.3.6-req.body_size

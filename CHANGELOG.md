@@ -1,5 +1,36 @@
 # CHANGELOG
 
+## v0.4-beta.1
+
+Changes and improvements since `v0.3`
+
+* Add dynamic scaling - [doc](https://github.com/jcmoraisjr/haproxy-ingress#dynamic-scaling)
+* Add monitoring URI - [doc](https://github.com/jcmoraisjr/haproxy-ingress#healthz-port)
+* Add [PROXY](http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt) protocol configmap options - [doc](https://github.com/jcmoraisjr/haproxy-ingress#use-proxy-protocol)
+  * `UseProxyProtocol`
+  * `StatsProxyProtocol`
+* Add log format configmap options - [doc](https://github.com/jcmoraisjr/haproxy-ingress#log-format)
+  * `HTTPLogFormat`
+  * `TCPLogFormat`
+* Add stick session ingress annotations - [doc](https://github.com/jcmoraisjr/haproxy-ingress#affinity)
+  * `ingress.kubernetes.io/affinity`
+  * `ingress.kubernetes.io/session-cookie-name`
+* Support for wildcard hostnames
+* Better and faster synchronization after resource updates
+* Support `k`, `m` and `g` suffix on `proxy-body-size` annotation and configmap option - [doc](https://github.com/jcmoraisjr/haproxy-ingress#proxy-body-size)
+* HTTP 495 and 496 error pages on auth TLS errors
+* Add TLS error page ingress annotation
+  * `ingress.kubernetes.io/auth-tls-error-page`
+* Add support to SSL/TLS offload outside HAProxy on a configmap option - [doc](https://github.com/jcmoraisjr/haproxy-ingress#https-to-http-port)
+  * `https-to-http-port`
+* Add support to host alias on ingress annotation - [doc](https://github.com/jcmoraisjr/haproxy-ingress#server-alias)
+  * `ingress.kubernetes.io/server-alias`
+* Fix multibinder goes zombie [#51](https://github.com/jcmoraisjr/haproxy-ingress/issues/51) updating to multibinder 0.0.5
+* Add `X-SSL` headers on client authentication with TLS
+  * `X-SSL-Client-SHA1`
+  * `X-SSL-Client-DN`
+  * `X-SSL-Client-CN`
+
 ## v0.3
 
 Changes and improvements since `v0.2.1`
