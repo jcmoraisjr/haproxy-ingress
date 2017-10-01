@@ -34,12 +34,8 @@ type template struct {
 }
 
 var funcMap = gotemplate.FuncMap{
-	"backendHash": func(input interface{}) string {
-		if endpoint, ok := input.(string); ok {
-			return utils.BackendHash(endpoint)
-		}
-		glog.Error("invalid type conversion on backendHash template function")
-		return ""
+	"backendHash": func(endpoint string) string {
+		return utils.BackendHash(endpoint)
 	},
 	"hostnameRegex": func(hostname string) string {
 		rtn := regexp.MustCompile(`\.`).ReplaceAllLiteralString(hostname, "\\.")
