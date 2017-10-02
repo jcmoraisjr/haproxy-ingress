@@ -97,12 +97,12 @@ frontend httpfront
 {{ end }}
 {{ range $server := $ing.HAServers }}
 {{ if isWildcardHostname $server.Hostname }}
-    acl ishost-{{ $server.HostnameLabel }} hdr_reg(host) {{ hostnameRegex $server.Hostname }}
+    acl host-{{ $server.HostnameLabel }} hdr_reg(host) {{ hostnameRegex $server.Hostname }}
 {{ else }}
-    acl ishost-{{ $server.HostnameLabel }} hdr(host) {{ $server.Hostname }} {{ $server.Hostname }}:80
+    acl host-{{ $server.HostnameLabel }} hdr(host) {{ $server.Hostname }} {{ $server.Hostname }}:80
 {{ end }}
 {{ if ne $server.Alias "" }}
-    acl ishost-{{ $server.HostnameLabel }}-alias {{ if isRegexHostname $server.Alias }}hdr_reg(host) '{{ aliasRegex $server.Alias }}'{{ else }}hdr(host) {{ $server.Alias }} {{ $server.Alias }}:80{{ end }}
+    acl alias-{{ $server.HostnameLabel }} {{ if isRegexHostname $server.Alias }}hdr_reg(host) '{{ aliasRegex $server.Alias }}'{{ else }}hdr(host) {{ $server.Alias }} {{ $server.Alias }}:80{{ end }}
 {{ end }}
 {{ end }}
 
@@ -111,12 +111,12 @@ frontend httpfront
 {{ if $server.UseHTTP }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.HAWhitelist "" }}
-    http-request deny if ishost-{{ $server.HostnameLabel }}{{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }
+    http-request deny if host-{{ $server.HostnameLabel }}{{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }
 {{ end }}
 {{ $listName := $location.Userlist.ListName }}
 {{ if ne $listName "" }}
     {{ $realm := $location.Userlist.Realm }}
-    http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if ishost-{{ $server.HostnameLabel }}{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
+    http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if host-{{ $server.HostnameLabel }}{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
 {{ end }}
 {{ end }}
 {{ end }}
@@ -132,8 +132,8 @@ frontend httpfront
 {{ range $location := $server.Locations }}
 {{ $rewriteTarget := $location.Rewrite.Target }}
 {{ if ne $rewriteTarget "" }}
-    reqrep ^([^\ :]*)\ {{ $location.Path }}/(.*$) \1\ {{ if eq $rewriteTarget "/" }}/{{ else }}{{ $rewriteTarget }}/{{ end }}\2 if { var(req.path) -m beg {{ $location.Path }} } {{ if ne $server.Alias "" }} ishost-{{ $server.HostnameLabel }} or ishost-{{ $server.HostnameLabel }}-alias {{ else }} ishost-{{ $server.HostnameLabel }} {{ end }}
-    reqrep ^([^\ :]*)\ {{ $location.Path }}(.*$) \1\ {{ $rewriteTarget }}\2 if { var(req.path) -m beg {{ $location.Path }} } {{ if ne $server.Alias "" }} ishost-{{ $server.HostnameLabel }} or ishost-{{ $server.HostnameLabel }}-alias {{ else }} ishost-{{ $server.HostnameLabel }} {{ end }}
+    reqrep ^([^\ :]*)\ {{ $location.Path }}/(.*$) \1\ {{ if eq $rewriteTarget "/" }}/{{ else }}{{ $rewriteTarget }}/{{ end }}\2 if { var(req.path) -m beg {{ $location.Path }} } {{ if ne $server.Alias "" }} host-{{ $server.HostnameLabel }} or alias-{{ $server.HostnameLabel }} {{ else }} host-{{ $server.HostnameLabel }} {{ end }}
+    reqrep ^([^\ :]*)\ {{ $location.Path }}(.*$) \1\ {{ $rewriteTarget }}\2 if { var(req.path) -m beg {{ $location.Path }} } {{ if ne $server.Alias "" }} host-{{ $server.HostnameLabel }} or alias-{{ $server.HostnameLabel }} {{ else }} host-{{ $server.HostnameLabel }} {{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
@@ -142,7 +142,7 @@ frontend httpfront
 {{ if $server.UseHTTP }}
 {{ $appRoot := $server.RootLocation.Rewrite.AppRoot }}
 {{ if ne $appRoot "" }}
-    redirect location {{ $appRoot }} if ishost-{{ $server.HostnameLabel }} { var(req.path) -m str / }
+    redirect location {{ $appRoot }} if host-{{ $server.HostnameLabel }} { var(req.path) -m str / }
 {{ end }}
 {{ end }}
 {{ end }}
@@ -152,11 +152,11 @@ frontend httpfront
 {{ range $server := $ing.HAServers }}
 {{ if or $server.UseHTTPS $hasHTTPStoHTTP }}
 {{ if $server.SSLRedirect }}
-    redirect scheme https if ishost-{{ $server.HostnameLabel }}{{ if $hasHTTPStoHTTP }} !from-https{{ end }}
+    redirect scheme https if host-{{ $server.HostnameLabel }}{{ if $hasHTTPStoHTTP }} !from-https{{ end }}
 {{ else }}
 {{ range $location := $server.Locations }}
 {{ if $location.Rewrite.SSLRedirect }}
-    redirect scheme https if ishost-{{ $server.HostnameLabel }}{{ $location.HAMatchPath }}{{ if $hasHTTPStoHTTP }} !from-https{{ end }}
+    redirect scheme https if host-{{ $server.HostnameLabel }}{{ $location.HAMatchPath }}{{ if $hasHTTPStoHTTP }} !from-https{{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
@@ -167,11 +167,11 @@ frontend httpfront
 {{ if ne $server.Alias "" }}
 {{ if or $server.UseHTTPS $hasHTTPStoHTTP }}
 {{ if $server.SSLRedirect }}
-    redirect scheme https if ishost-{{ $server.HostnameLabel }}-alias{{ if $hasHTTPStoHTTP }} !from-https{{ end }}
+    redirect scheme https if alias-{{ $server.HostnameLabel }}{{ if $hasHTTPStoHTTP }} !from-https{{ end }}
 {{ else }}
 {{ range $location := $server.Locations }}
 {{ if $location.Rewrite.SSLRedirect }}
-    redirect scheme https if ishost-{{ $server.HostnameLabel }}-alias{{ $location.HAMatchPath }}{{ if $hasHTTPStoHTTP }} !from-https{{ end }}
+    redirect scheme https if alias-{{ $server.HostnameLabel }}{{ $location.HAMatchPath }}{{ if $hasHTTPStoHTTP }} !from-https{{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
@@ -182,11 +182,11 @@ frontend httpfront
 {{ if or $server.UseHTTP $hasHTTPStoHTTP }}
 {{ range $location := $server.Locations }}
 {{ if ne $location.Proxy.BodySize "" }}
-    use_backend error413 if ishost-{{ $server.HostnameLabel }} { var(req.path) -m beg {{ $location.Path }} } { req.body_size gt {{ sizeSuffix $location.Proxy.BodySize }} }
+    use_backend error413 if host-{{ $server.HostnameLabel }} { var(req.path) -m beg {{ $location.Path }} } { req.body_size gt {{ sizeSuffix $location.Proxy.BodySize }} }
 {{ end }}
 {{ end }}
 {{ range $location := $server.Locations }}
-    use_backend {{ $location.Backend }} if ishost-{{ $server.HostnameLabel }} { var(req.path) -m beg {{ $location.Path }} }
+    use_backend {{ $location.Backend }} if host-{{ $server.HostnameLabel }} { var(req.path) -m beg {{ $location.Path }} }
 {{ end }}
 {{ end }}
 {{ end }}
@@ -195,7 +195,7 @@ frontend httpfront
 {{ if or $server.UseHTTP $hasHTTPStoHTTP }}
 {{ range $location := $server.Locations }}
 {{ if ne $server.Alias "" }}
-    use_backend {{ $location.Backend }} if ishost-{{ $server.HostnameLabel }}-alias { var(req.path) -m beg {{ $location.Path }} }
+    use_backend {{ $location.Backend }} if alias-{{ $server.HostnameLabel }} { var(req.path) -m beg {{ $location.Path }} }
 {{ end }}
 {{ end }}
 {{ end }}
