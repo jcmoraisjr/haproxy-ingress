@@ -221,10 +221,10 @@ https://cbonte.github.io/haproxy-dconv/1.7/configuration.html#8.2.4
 
 ### max-connections
 
-Define the maximum number of concurrent connections. Defaults to `2000` connections,
-which is also the HAProxy default configuration.
+Define the maximum number of concurrent connections on all proxies.
+Defaults to `2000` connections, which is also the HAProxy default configuration.
 
-http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.2-maxconn
+http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#3.2-maxconn
 
 ### proxy-body-size
 

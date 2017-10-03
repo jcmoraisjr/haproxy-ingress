@@ -5,6 +5,7 @@ global
     stats socket {{ $cfg.StatsSocket }} level admin
     #server-state-file global
     #server-state-base /var/state/haproxy/
+    maxconn {{ $cfg.MaxConn }}
 {{ if ne $cfg.Syslog "" }}
     log {{ $cfg.Syslog }} format rfc5424 local0
     log-tag ingress
@@ -25,7 +26,6 @@ defaults
     option dontlognull
     option http-server-close
     option http-keep-alive
-    maxconn {{ $cfg.MaxConn }}
     timeout http-request    {{ $cfg.TimeoutHTTPRequest }}
     timeout connect         {{ $cfg.TimeoutConnect }}
     timeout client          {{ $cfg.TimeoutClient }}
