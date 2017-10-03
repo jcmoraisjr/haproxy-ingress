@@ -208,12 +208,12 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 			haRootLocation = &haLocation
 		} else {
 			otherPaths = otherPaths + " " + location.Path
-			haLocation.HAMatchPath = " { path_beg " + haLocation.Path + " }"
+			haLocation.HAMatchPath = " { var(req.path) -m beg " + haLocation.Path + " }"
 		}
 		haLocations[i] = &haLocation
 	}
 	if haRootLocation != nil && otherPaths != "" {
-		haRootLocation.HAMatchPath = " !{ path_beg" + otherPaths + " }"
+		haRootLocation.HAMatchPath = " !{ var(req.path) -m beg " + otherPaths + " }"
 	}
 	return haLocations, haRootLocation
 }
