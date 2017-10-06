@@ -20,6 +20,7 @@ import (
 	"k8s.io/ingress/core/pkg/ingress"
 	"k8s.io/ingress/core/pkg/ingress/annotations/authtls"
 	"k8s.io/ingress/core/pkg/ingress/annotations/proxy"
+	"k8s.io/ingress/core/pkg/ingress/annotations/ratelimit"
 	"k8s.io/ingress/core/pkg/ingress/annotations/redirect"
 	"k8s.io/ingress/core/pkg/ingress/annotations/rewrite"
 	"k8s.io/ingress/core/pkg/ingress/defaults"
@@ -107,20 +108,23 @@ type (
 		RootLocation    *HAProxyLocation      `json:"defaultLocation"`
 		Locations       []*HAProxyLocation    `json:"locations,omitempty"`
 		SSLRedirect     bool                  `json:"sslRedirect"`
+		HasRateLimit    bool                  `json:"hasRateLimit"`
 		CertificateAuth authtls.AuthSSLConfig `json:"certificateAuth,omitempty"`
 		Alias           string                `json:"alias,omitempty"`
 	}
 	// HAProxyLocation has location data as a HAProxy friendly syntax
 	HAProxyLocation struct {
-		IsRootLocation bool                 `json:"isDefaultLocation"`
-		Path           string               `json:"path"`
-		Backend        string               `json:"backend"`
-		Rewrite        rewrite.Redirect     `json:"rewrite,omitempty"`
-		Redirect       redirect.Redirect    `json:"redirect,omitempty"`
-		Userlist       Userlist             `json:"userlist,omitempty"`
-		Proxy          *proxy.Configuration `json:"proxy,omitempty"`
-		HAMatchPath    string               `json:"haMatchPath"`
-		HAWhitelist    string               `json:"whitelist,omitempty"`
+		IsRootLocation       bool                 `json:"isDefaultLocation"`
+		Path                 string               `json:"path"`
+		Backend              string               `json:"backend"`
+		Rewrite              rewrite.Redirect     `json:"rewrite,omitempty"`
+		Redirect             redirect.Redirect    `json:"redirect,omitempty"`
+		Userlist             Userlist             `json:"userlist,omitempty"`
+		Proxy                *proxy.Configuration `json:"proxy,omitempty"`
+		RateLimit            ratelimit.RateLimit  `json:"rateLimit,omitempty"`
+		HAMatchPath          string               `json:"haMatchPath"`
+		HAWhitelist          string               `json:"whitelist,omitempty"`
+		HARateLimitWhiteList string               `json:"rateLimitWhiteList,omitempty"`
 	}
 	// HAProxyBackendSlots contains used and empty backend server definitions
 	HAProxyBackendSlots struct {

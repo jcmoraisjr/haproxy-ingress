@@ -261,6 +261,19 @@ frontend httpsfront-{{ $host }}
     log-format {{ $cfg.HTTPLogFormat }}
 {{ end }}
 {{ end }}
+
+{{ if $server.HasRateLimit }}
+    stick-table type ip size 200k expire 5m store conn_cur,conn_rate(1s)
+    tcp-request content track-sc1 src
+{{ range $location := $server.Locations }}
+{{ $conn_cur_limit := $location.RateLimit.Connections.Limit }}
+{{ $conn_rate_limit := $location.RateLimit.RPS.Limit }}
+{{ if or (gt $conn_cur_limit 0) (gt $conn_rate_limit 0) }}
+    tcp-request content reject if{{ $location.HAMatchPath }}{{ if ne $location.HARateLimitWhiteList "" }} !{ src{{ $location.HARateLimitWhiteList }} }{{ end }}{{ if gt $conn_cur_limit 0 }} { sc1_conn_cur gt {{ $conn_cur_limit }} } ||{{ end }}{{ if gt $conn_rate_limit 0 }} { sc1_conn_rate gt {{ $conn_rate_limit }} } ||{{ end }} { always_false }
+{{ end }}
+{{ end }}
+{{ end }}
+
 {{ range $location := $server.Locations }}
 {{ if ne $location.HAWhitelist "" }}
     http-request deny if{{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }

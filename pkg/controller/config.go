@@ -166,6 +166,7 @@ func (cfg *haConfig) createHAProxyServers() {
 			RootLocation:    haRootLocation,
 			Locations:       haLocations,
 			SSLRedirect:     sslRedirect,
+			HasRateLimit:    serverHasRateLimit(server),
 			CertificateAuth: server.CertificateAuth,
 			Alias:           server.Alias,
 		}
@@ -193,9 +194,13 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 			Rewrite:        location.Rewrite,
 			Redirect:       location.Redirect,
 			Proxy:          location.Proxy,
+			RateLimit:      location.RateLimit,
 		}
 		for _, cidr := range location.Whitelist.CIDR {
 			haLocation.HAWhitelist = haLocation.HAWhitelist + " " + cidr
+		}
+		for _, cidr := range location.RateLimit.Whitelist {
+			haLocation.HARateLimitWhiteList = haLocation.HARateLimitWhiteList + " " + cidr
 		}
 		if userList, ok := cfg.userlists[location.BasicDigestAuth.File]; ok {
 			haLocation.Userlist = userList
@@ -308,4 +313,13 @@ func serverSSLRedirect(server *ingress.Server) bool {
 		}
 	}
 	return true
+}
+
+func serverHasRateLimit(server *ingress.Server) bool {
+	for _, location := range server.Locations {
+		if location.RateLimit.Connections.Limit > 0 || location.RateLimit.RPS.Limit > 0 {
+			return true
+		}
+	}
+	return false
 }

@@ -43,7 +43,7 @@ template file at `/etc/haproxy/template/haproxy.tmpl`.
 The following annotations are supported:
 
 * `[0]` only in `canary` tag
-* `[1]` only in `shanpshot` tag
+* `[1]` only in `snapshot` tag
 
 ||Name|Data|Usage|
 |---|---|---|:---:|
@@ -53,6 +53,9 @@ The following annotations are supported:
 ||`ingress.kubernetes.io/auth-realm`|realm string|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
 |`[0]`|`ingress.kubernetes.io/auth-tls-error-page`|url|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/client-certs/haproxy)|
 ||`ingress.kubernetes.io/auth-tls-secret`|namespace/secret name|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/client-certs/haproxy)|
+|`[1]`|[`ingress.kubernetes.io/limit-connections`](#limit)|qty|-|
+|`[1]`|[`ingress.kubernetes.io/limit-rps`](#limit)|rate per second|-|
+|`[1]`|[`ingress.kubernetes.io/limit-whitelist`](#limit)|cidr list|-|
 ||[`ingress.kubernetes.io/proxy-body-size`](#proxy-body-size)|size (bytes)|-|
 ||`ingress.kubernetes.io/secure-backends`|[true\|false]|-|
 ||`ingress.kubernetes.io/secure-verify-ca-secret`|secret name|-|
@@ -80,6 +83,18 @@ limitation will be removed when HAProxy version is updated to `1.8`.
 * http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-cookie
 * http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.2-cookie
 * https://www.haproxy.com/blog/load-balancing-affinity-persistence-sticky-sessions-what-you-need-to-know/
+
+### Limit
+
+Configure rate limit and concurrent connections per client IP address in order to mitigate DDoS attack.
+If several users are hidden behind the same IP (NAT or proxy), this configuration may have a negative
+impact for them. Whitelist can be used to these IPs.
+
+The following annotations are supported:
+
+* `ingress.kubernetes.io/limit-connections`: Maximum number os concurrent connections per client IP
+* `ingress.kubernetes.io/limit-rps`: Maximum number of connections per second of the same IP
+* `ingress.kubernetes.io/limit-whitelist`: Comma separated list of CIDRs that should be removed from the rate limit and concurrent connections check
 
 ### Server Alias
 
