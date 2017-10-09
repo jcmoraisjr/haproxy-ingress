@@ -21,7 +21,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
-	"os/exec"
 	"regexp"
 	"strconv"
 	gotemplate "text/template"
@@ -30,7 +29,6 @@ import (
 type template struct {
 	tmpl      *gotemplate.Template
 	rawConfig *bytes.Buffer
-	fmtConfig *bytes.Buffer
 }
 
 var funcMap = gotemplate.FuncMap{
@@ -70,23 +68,13 @@ func newTemplate(name string, file string) *template {
 	return &template{
 		tmpl:      tmpl,
 		rawConfig: bytes.NewBuffer(make([]byte, 0, 16384)),
-		fmtConfig: bytes.NewBuffer(make([]byte, 0, 16384)),
 	}
 }
 
 func (t *template) execute(cfg *types.ControllerConfig) ([]byte, error) {
 	t.rawConfig.Reset()
-	t.fmtConfig.Reset()
 	if err := t.tmpl.Execute(t.rawConfig, cfg); err != nil {
 		return nil, err
 	}
-	cmd := exec.Command("sed", "/^ *$/d")
-	cmd.Stdin = t.rawConfig
-	cmd.Stdout = t.fmtConfig
-	if err := cmd.Run(); err != nil {
-		glog.Errorf("Template cleaning has failed: %v", err)
-		// TODO recover and return raw buffer
-		return nil, err
-	}
-	return t.fmtConfig.Bytes(), nil
+	return t.rawConfig.Bytes(), nil
 }
