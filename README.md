@@ -20,8 +20,8 @@ a beta-quality or a development version.
 
 Usage docs are maintained on Ingress repository:
 
-* Start with [deployment](https://github.com/kubernetes/ingress/tree/master/examples/deployment/haproxy) instructions
-* See [TLS termination](https://github.com/kubernetes/ingress/tree/master/examples/tls-termination/haproxy) on how to enable `https`
+* Start with [deployment](/examples/deployment) instructions
+* See [TLS termination](/examples/tls-termination) on how to enable `https`
 
 # Reload strategy
 
@@ -48,11 +48,11 @@ The following annotations are supported:
 ||Name|Data|Usage|
 |---|---|---|:---:|
 |`[0]`|[`ingress.kubernetes.io/affinity`](#affinity)|affinity type|-|
-||`ingress.kubernetes.io/auth-type`|"basic"|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
-||`ingress.kubernetes.io/auth-secret`|secret name|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
-||`ingress.kubernetes.io/auth-realm`|realm string|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/basic/haproxy)|
-|`[0]`|`ingress.kubernetes.io/auth-tls-error-page`|url|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/client-certs/haproxy)|
-||`ingress.kubernetes.io/auth-tls-secret`|namespace/secret name|[doc](https://github.com/kubernetes/ingress/tree/master/examples/auth/client-certs/haproxy)|
+||`ingress.kubernetes.io/auth-type`|"basic"|[doc](/examples/auth/basic)|
+||`ingress.kubernetes.io/auth-secret`|secret name|[doc](/examples/auth/basic)|
+||`ingress.kubernetes.io/auth-realm`|realm string|[doc](/examples/auth/basic)|
+|`[0]`|`ingress.kubernetes.io/auth-tls-error-page`|url|[doc](/examples/auth/client-certs)|
+||`ingress.kubernetes.io/auth-tls-secret`|namespace/secret name|[doc](/examples/auth/client-certs)|
 |`[1]`|[`ingress.kubernetes.io/limit-connections`](#limit)|qty|-|
 |`[1]`|[`ingress.kubernetes.io/limit-rps`](#limit)|rate per second|-|
 |`[1]`|[`ingress.kubernetes.io/limit-whitelist`](#limit)|cidr list|-|
@@ -61,8 +61,8 @@ The following annotations are supported:
 ||`ingress.kubernetes.io/secure-verify-ca-secret`|secret name|-|
 |`[0]`|[`ingress.kubernetes.io/session-cookie-name`](#affinity)|cookie name|-|
 ||`ingress.kubernetes.io/ssl-passthrough`|[true\|false]|-|
-||`ingress.kubernetes.io/ssl-redirect`|[true\|false]|[doc](https://github.com/kubernetes/ingress/tree/master/examples/rewrite/haproxy)|
-||`ingress.kubernetes.io/app-root`|/url|[doc](https://github.com/kubernetes/ingress/tree/master/examples/rewrite/haproxy)|
+||`ingress.kubernetes.io/ssl-redirect`|[true\|false]|[doc](/examples/rewrite)|
+||`ingress.kubernetes.io/app-root`|/url|[doc](/examples/rewrite)|
 ||`ingress.kubernetes.io/whitelist-source-range`|CIDR|-|
 |`[1]`|[`ingress.kubernetes.io/rewrite-target`](#rewrite-target)|path string|-|
 |`[0]`|[`ingress.kubernetes.io/server-alias`](#server-alias)|domain name or regex|-|
