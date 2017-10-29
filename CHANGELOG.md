@@ -2,7 +2,7 @@
 
 ## v0.4-beta.1
 
-Changes and improvements since `v0.3`
+Fixes and improvements since `v0.3`
 
 * Add dynamic scaling - [doc](https://github.com/jcmoraisjr/haproxy-ingress#dynamic-scaling)
 * Add monitoring URI - [doc](https://github.com/jcmoraisjr/haproxy-ingress#healthz-port)
@@ -33,21 +33,21 @@ Changes and improvements since `v0.3`
 
 ## v0.3
 
-Changes and improvements since `v0.2.1`
+Fixes and improvements since `v0.2.1`
 
 * [v0.3-beta.1](#v03-beta1) changelog - see notes about backward compatibility
 * [v0.3-beta.2](#v03-beta2) changelog
 
 ## v0.3-beta.2
 
-Changes and improvements since `v0.3-beta.1`
+Fixes and improvements since `v0.3-beta.1`
 
 * Add `haproxy` as the default value of `--ingress-class` parameter
 * Fix create/remove ingress based on ingress-class annotation
 
 ## v0.3-beta.1
 
-Changes and improvements since `v0.2.1`
+Fixes and improvements since `v0.2.1`
 
 Breaking backward compatibility:
 
@@ -90,13 +90,13 @@ Other changes and improvements:
 
 ## v0.2.1
 
-Changes and improvements since `v0.2`
+Fixes and improvements since `v0.2`
 
 * Fixes [#14](https://github.com/jcmoraisjr/haproxy-ingress/issues/14) (Incorrect `X-Forwarded-For` handling)
 
 ## v0.2
 
-Changes and improvements since `v0.1`
+Fixes and improvements since `v0.1`
 
 * White list source IP range
 * Optionally force TLS connection
