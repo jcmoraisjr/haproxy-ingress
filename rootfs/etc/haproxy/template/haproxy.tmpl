@@ -250,8 +250,8 @@ frontend httpfront-{{ $host }}
     acl from-https var(txn.hdr_proto) https
 {{- end }}
     acl from-https ssl_fc
-    acl ssl-offload ssl_fc
 {{- end }}
+    acl ssl-offload ssl_fc
 
 {{- range $location := $server.Locations }}
 {{- if ne $location.HAWhitelist "" }}
@@ -272,6 +272,10 @@ frontend httpfront-{{ $host }}
     http-request set-header X-SSL-Client-SHA1  %{+Q}[ssl_c_sha1,hex]  if ssl-offload
     http-request set-header X-SSL-Client-DN    %{+Q}[ssl_c_s_dn]      if ssl-offload
     http-request set-header X-SSL-Client-CN    %{+Q}[ssl_c_s_dn(cn)]  if ssl-offload
+{{- else }}
+    http-request del-header X-SSL-Client-SHA1  if ssl-offload
+    http-request del-header X-SSL-Client-DN    if ssl-offload
+    http-request del-header X-SSL-Client-CN    if ssl-offload
 {{- end }}
     http-request set-var(req.path) path
 
