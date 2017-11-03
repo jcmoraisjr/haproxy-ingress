@@ -124,6 +124,7 @@ A ConfigMap can be created with `kubectl create configmap`.
 The following parameters are supported:
 
 * `[0]` only in `canary` tag
+* `[1]` only in `snapshot` tag
 
 ||Name|Type|Default|
 |---|---|---|---|
@@ -144,6 +145,7 @@ The following parameters are supported:
 ||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/master/pkg/controller/config.go#L34)|
 ||[`ssl-dh-default-max-size`](#ssl-dh-default-max-size)|number|`1024`|
 ||[`ssl-dh-param`](#ssl-dh-param)|namespace/secret name|no custom DH param|
+|`[1]`|[`ssl-headers-prefix`](#ssl-headers-prefix)|prefix|`X-SSL`|
 ||[`ssl-options`](#ssl-options)|space-separated list|`no-sslv3` `no-tls-tickets`|
 ||[`ssl-redirect`](#ssl-redirect)|[true\|false]|`true`|
 ||[`stats-auth`](#stats)|user:passwd|no auth|
@@ -283,6 +285,16 @@ Define DH parameters file used on ephemeral Diffie-Hellman key exchange during
 the SSL/TLS handshake.
 
 http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#3.1-ssl-dh-param-file
+
+### ssl-headers-prefix
+
+Define the http header prefix that should be used with certificate parameters such as
+DN and SHA1 on client cert authentication. The default value is `X-SSL` which
+will create a `X-SSL-Client-DN` header with the DN of the certificate.
+
+Since [RFC 6648](http://tools.ietf.org/html/rfc6648) `X-` prefix on unstandardized
+headers changed from a convention to deprecation. This configuration allows to
+select which pattern should be used on SSL/TLS headers.
 
 ### ssl-options
 
