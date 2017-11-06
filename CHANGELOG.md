@@ -2,7 +2,7 @@
 
 ## v0.4-beta.2
 
-Fixes and improvements since `v0.3-beta.1`
+Fixes and improvements since `v0.4-beta.1`
 
 * Fix global `maxconn` configuration
 * Add `X-Forwarded-Proto: https` header on ssl/tls connections
