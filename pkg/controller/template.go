@@ -23,6 +23,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	"regexp"
 	"strconv"
+	"strings"
 	gotemplate "text/template"
 )
 
@@ -57,6 +58,9 @@ var funcMap = gotemplate.FuncMap{
 			return size
 		}
 		return strconv.FormatInt(value, 10)
+	},
+	"hasSuffix": func(s, suffix string) bool {
+		return strings.HasSuffix(s, suffix)
 	},
 }
 

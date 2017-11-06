@@ -310,8 +310,11 @@ frontend httpfront-{{ $host }}
 {{- range $location := $server.Locations }}
 {{- $rewriteTarget := $location.Rewrite.Target }}
 {{- if ne $rewriteTarget "" }}
-    reqrep ^([^\ :]*)\ {{ $location.Path }}/(.*$) \1\ {{ if eq $rewriteTarget "/" }}/{{ else }}{{ $rewriteTarget }}/{{ end }}\2 if { var(req.path) -m beg {{ $location.Path }} }
-    reqrep ^([^\ :]*)\ {{ $location.Path }}(.*$) \1\ {{ $rewriteTarget }}\2 if { var(req.path) -m beg {{ $location.Path }} }
+{{- if eq $rewriteTarget "/" }}
+    reqrep ^([^\ :]*)\ {{ $location.Path }}/?(.*$) \1\ {{ $rewriteTarget }}\2 if { var(req.path) -m beg {{ $location.Path }} }
+{{- else }}
+    reqrep ^([^\ :]*)\ {{ $location.Path }}(.*$) \1\ {{ $rewriteTarget }}{{ if hasSuffix $location.Path "/" }}/{{ end }}\2 if { var(req.path) -m beg {{ $location.Path }} }
+{{- end }}
 {{- end }}
 {{- end }}
 
