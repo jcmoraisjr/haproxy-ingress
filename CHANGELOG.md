@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v0.4
+
+Fixes and improvements since `v0.3`
+
+* [v0.4-beta.1](#v04-beta1) changelog
+* [v0.4-beta.2](#v04-beta2) changelog
+
 ## v0.4-beta.2
 
 Fixes and improvements since `v0.4-beta.1`
