@@ -42,16 +42,15 @@ template file at `/etc/haproxy/template/haproxy.tmpl`.
 
 The following annotations are supported:
 
-* `[0]` only in `canary` tag
 * `[1]` only in `snapshot` tag
 
 ||Name|Data|Usage|
 |---|---|---|:---:|
-|`[0]`|[`ingress.kubernetes.io/affinity`](#affinity)|affinity type|-|
+||[`ingress.kubernetes.io/affinity`](#affinity)|affinity type|-|
 ||`ingress.kubernetes.io/auth-type`|"basic"|[doc](/examples/auth/basic)|
 ||`ingress.kubernetes.io/auth-secret`|secret name|[doc](/examples/auth/basic)|
 ||`ingress.kubernetes.io/auth-realm`|realm string|[doc](/examples/auth/basic)|
-|`[0]`|`ingress.kubernetes.io/auth-tls-error-page`|url|[doc](/examples/auth/client-certs)|
+||`ingress.kubernetes.io/auth-tls-error-page`|url|[doc](/examples/auth/client-certs)|
 ||`ingress.kubernetes.io/auth-tls-secret`|namespace/secret name|[doc](/examples/auth/client-certs)|
 |`[1]`|[`ingress.kubernetes.io/limit-connections`](#limit)|qty|-|
 |`[1]`|[`ingress.kubernetes.io/limit-rps`](#limit)|rate per second|-|
@@ -59,13 +58,13 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/proxy-body-size`](#proxy-body-size)|size (bytes)|-|
 ||`ingress.kubernetes.io/secure-backends`|[true\|false]|-|
 ||`ingress.kubernetes.io/secure-verify-ca-secret`|secret name|-|
-|`[0]`|[`ingress.kubernetes.io/session-cookie-name`](#affinity)|cookie name|-|
+||[`ingress.kubernetes.io/session-cookie-name`](#affinity)|cookie name|-|
 ||`ingress.kubernetes.io/ssl-passthrough`|[true\|false]|-|
 ||`ingress.kubernetes.io/ssl-redirect`|[true\|false]|[doc](/examples/rewrite)|
 ||`ingress.kubernetes.io/app-root`|/url|[doc](/examples/rewrite)|
 ||`ingress.kubernetes.io/whitelist-source-range`|CIDR|-|
 |`[1]`|[`ingress.kubernetes.io/rewrite-target`](#rewrite-target)|path string|-|
-|`[0]`|[`ingress.kubernetes.io/server-alias`](#server-alias)|domain name or regex|-|
+||[`ingress.kubernetes.io/server-alias`](#server-alias)|domain name or regex|-|
 
 ### Affinity
 
@@ -123,23 +122,22 @@ A ConfigMap can be created with `kubectl create configmap`.
 
 The following parameters are supported:
 
-* `[0]` only in `canary` tag
 * `[1]` only in `snapshot` tag
 
 ||Name|Type|Default|
 |---|---|---|---|
 ||[`balance-algorithm`](#balance-algorithm)|algorithm name|`roundrobin`|
 ||[`backend-check-interval`](#backend-check-interval)|time with suffix|`2s`|
-|`[0]`|[`backend-server-slots-increment`](#dynamic-scaling)|number of slots|`32`|
-|`[0]`|[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`false`|
+||[`backend-server-slots-increment`](#dynamic-scaling)|number of slots|`32`|
+||[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`false`|
 ||[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
-|`[0]`|[`healthz-port`](#healthz-port)|port number|`10253`|
+||[`healthz-port`](#healthz-port)|port number|`10253`|
 ||[`hsts`](#hsts)|[true\|false]|`true`|
 ||[`hsts-include-subdomains`](#hsts)|[true\|false]|`false`|
 ||[`hsts-max-age`](#hsts)|number of seconds|`15768000`|
 ||[`hsts-preload`](#hsts)|[true\|false]|`false`|
-|`[0]`|[`http-log-format`](#log-format)|http log format|HAProxy default log format|
-|`[0]`|[`https-to-http-port`](#https-to-http-port)|port number|0 (do not listen)|
+||[`http-log-format`](#log-format)|http log format|HAProxy default log format|
+||[`https-to-http-port`](#https-to-http-port)|port number|0 (do not listen)|
 ||[`max-connections`](#max-connections)|number|`2000`|
 ||[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
 ||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/master/pkg/controller/config.go#L34)|
@@ -150,9 +148,9 @@ The following parameters are supported:
 ||[`ssl-redirect`](#ssl-redirect)|[true\|false]|`true`|
 ||[`stats-auth`](#stats)|user:passwd|no auth|
 ||[`stats-port`](#stats)|port number|`1936`|
-|`[0]`|[`stats-proxy-protocol`](#stats)|[true\|false]|`false`|
+||[`stats-proxy-protocol`](#stats)|[true\|false]|`false`|
 ||[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
-|`[0]`|[`tcp-log-format`](#log-format)|tcp log format|HAProxy default log format|
+||[`tcp-log-format`](#log-format)|tcp log format|HAProxy default log format|
 ||[`timeout-client`](#timeout)|time with suffix|`50s`|
 ||[`timeout-client-fin`](#timeout)|time with suffix|`50s`|
 ||[`timeout-connect`](#timeout)|time with suffix|`5s`|
@@ -161,7 +159,7 @@ The following parameters are supported:
 ||[`timeout-server`](#timeout)|time with suffix|`50s`|
 ||[`timeout-server-fin`](#timeout)|time with suffix|`50s`|
 ||[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
-|`[0]`|[`use-proxy-protocol`](#use-proxy-protocol)|[true\|false]|`false`|
+||[`use-proxy-protocol`](#use-proxy-protocol)|[true\|false]|`false`|
 
 ### balance-algorithm
 
