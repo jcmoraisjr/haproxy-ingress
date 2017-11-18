@@ -74,6 +74,7 @@ type (
 		StatsSocket                 string
 		UseProxyProtocol            bool   `json:"use-proxy-protocol"`
 		StatsProxyProtocol          bool   `json:"stats-proxy-protocol"`
+		UseHostOnHTTPS              bool   `json:"use-host-on-https"`
 		HTTPLogFormat               string `json:"http-log-format"`
 		TCPLogFormat                string `json:"tcp-log-format"`
 	}

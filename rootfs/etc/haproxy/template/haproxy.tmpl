@@ -71,16 +71,24 @@ backend {{ $backend.Name }}
 {{- end }}
 {{- end }}
 
-{{- $hasHTTPStoHTTP := gt $cfg.HTTPStoHTTPPort 0 }}
+{{- $hasHTTPStoHTTP := or (gt $cfg.HTTPStoHTTPPort 0) $cfg.UseHostOnHTTPS }}
 {{- $reuseHTTPPort := eq $cfg.HTTPStoHTTPPort 80 }}
 
 ######
 ###### HTTP frontend
 ######
+{{- if $cfg.UseHostOnHTTPS }}
+backend http-backend
+    mode http
+    server http-front unix@/var/run/haproxy-http.sock send-proxy-v2
+{{- end }}
 frontend httpfront
     bind *:80{{ if $cfg.UseProxyProtocol }} accept-proxy{{ end }}
-{{- if and $hasHTTPStoHTTP (not $reuseHTTPPort) }}
+{{- if and (gt $cfg.HTTPStoHTTPPort 0) (not $reuseHTTPPort) }}
     bind *:{{ $cfg.HTTPStoHTTPPort }}{{ if $cfg.UseProxyProtocol }} accept-proxy{{ end }}
+{{- end }}
+{{- if $cfg.UseHostOnHTTPS }}
+    bind unix@/var/run/haproxy-http.sock accept-proxy
 {{- end }}
     mode http
 
@@ -101,7 +109,7 @@ frontend httpfront
 
 {{- if $hasHTTPStoHTTP }}
     acl from-https hdr(x-forwarded-proto) https
-{{- if not $reuseHTTPPort }}
+{{- if and (gt $cfg.HTTPStoHTTPPort 0) (not $reuseHTTPPort) }}
     acl from-https dst_port eq {{ $cfg.HTTPStoHTTPPort }}
     http-request set-header X-Forwarded-Proto https if from-https
 {{- end }}
@@ -344,6 +352,11 @@ frontend httpsfront-default-backend
     # CRT PEM checksum: {{ $server.SSLPemChecksum }}
     bind unix@/var/run/haproxy-{{ $host }}.sock ssl crt {{ $server.SSLCertificate }} accept-proxy
     mode http
+
+{{- if $cfg.UseHostOnHTTPS }}
+    http-request set-header X-Forwarded-Proto https
+    default_backend http-backend
+{{- else }}    
 {{- if ne $cfg.Syslog "" }}
     option httplog
 {{- if ne $cfg.HTTPLogFormat "" }}
@@ -361,6 +374,7 @@ frontend httpsfront-default-backend
     http-response set-header Strict-Transport-Security "max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}"
 {{- end }}
     default_backend {{ $location.Backend }}
+{{- end }}
 
 ######
 ###### Error pages
