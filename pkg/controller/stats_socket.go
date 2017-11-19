@@ -21,7 +21,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
-	"k8s.io/ingress/core/pkg/ingress"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"reflect"
 	"sort"
 )

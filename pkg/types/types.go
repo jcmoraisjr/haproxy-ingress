@@ -17,13 +17,13 @@ limitations under the License.
 package types
 
 import (
-	"k8s.io/ingress/core/pkg/ingress"
-	"k8s.io/ingress/core/pkg/ingress/annotations/authtls"
-	"k8s.io/ingress/core/pkg/ingress/annotations/proxy"
-	"k8s.io/ingress/core/pkg/ingress/annotations/ratelimit"
-	"k8s.io/ingress/core/pkg/ingress/annotations/redirect"
-	"k8s.io/ingress/core/pkg/ingress/annotations/rewrite"
-	"k8s.io/ingress/core/pkg/ingress/defaults"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/authtls"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxy"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/ratelimit"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/redirect"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/rewrite"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/defaults"
 )
 
 type (
