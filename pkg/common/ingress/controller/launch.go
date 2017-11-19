@@ -101,11 +101,26 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 
 		sortBackends = flags.Bool("sort-backends", false,
 			`Defines if backends and it's endpoints should be sorted`)
+
+		useNodeInternalIP = flags.Bool("report-node-internal-ip-address", false,
+			`Defines if the nodes IP address to be returned in the ingress status should be the internal instead of the external IP address`)
+
+		showVersion = flags.Bool("version", false,
+			`Shows release information about the NGINX Ingress controller`)
 	)
 
 	flags.AddGoFlagSet(flag.CommandLine)
 	backend.ConfigureFlags(flags)
 	flags.Parse(os.Args)
+	// Workaround for this issue:
+	// https://github.com/kubernetes/kubernetes/issues/17162
+	flag.CommandLine.Parse([]string{})
+
+	if *showVersion {
+		fmt.Println(backend.Info().String())
+		os.Exit(0)
+	}
+
 	backend.OverrideFlags(flags)
 
 	flag.Set("logtostderr", "true")
@@ -198,6 +213,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		DisableNodeList:         *disableNodeList,
 		UpdateStatusOnShutdown:  *updateStatusOnShutdown,
 		SortBackends:            *sortBackends,
+		UseNodeInternalIP:       *useNodeInternalIP,
 	}
 
 	ic := newIngressController(config)
@@ -315,5 +331,5 @@ func handleFatalInitError(err error) {
 		"This most likely means that the cluster is misconfigured (e.g., it has "+
 		"invalid apiserver certificates or service accounts configuration). Reason: %s\n"+
 		"Refer to the troubleshooting guide for more information: "+
-		"https://github.com/kubernetes/ingress/blob/master/docs/troubleshooting.md", err)
+		"https://github.com/kubernetes/ingress-nginx/blob/master/docs/troubleshooting.md", err)
 }

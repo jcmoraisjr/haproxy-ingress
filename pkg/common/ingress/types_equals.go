@@ -173,6 +173,9 @@ func (b1 *Backend) Equal(b2 *Backend) bool {
 	if !(&b1.SessionAffinity).Equal(&b2.SessionAffinity) {
 		return false
 	}
+	if b1.UpstreamHashBy != b2.UpstreamHashBy {
+		return false
+	}
 
 	if len(b1.Endpoints) != len(b2.Endpoints) {
 		return false
@@ -352,7 +355,7 @@ func (l1 *Location) Equal(l2 *Location) bool {
 	if l1.Denied != l2.Denied {
 		return false
 	}
-	if l1.EnableCORS != l2.EnableCORS {
+	if !(&l1.CorsConfig).Equal(&l2.CorsConfig) {
 		return false
 	}
 	if !(&l1.ExternalAuth).Equal(&l2.ExternalAuth) {
@@ -370,7 +373,7 @@ func (l1 *Location) Equal(l2 *Location) bool {
 	if !(&l1.Whitelist).Equal(&l2.Whitelist) {
 		return false
 	}
-	if !(l1.Proxy).Equal(l2.Proxy) {
+	if !(&l1.Proxy).Equal(&l2.Proxy) {
 		return false
 	}
 	if l1.UsePortInRedirects != l2.UsePortInRedirects {
@@ -380,6 +383,9 @@ func (l1 *Location) Equal(l2 *Location) bool {
 		return false
 	}
 	if l1.ClientBodyBufferSize != l2.ClientBodyBufferSize {
+		return false
+	}
+	if l1.UpstreamVhost != l2.UpstreamVhost {
 		return false
 	}
 

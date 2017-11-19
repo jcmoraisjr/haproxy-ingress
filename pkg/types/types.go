@@ -116,17 +116,17 @@ type (
 	}
 	// HAProxyLocation has location data as a HAProxy friendly syntax
 	HAProxyLocation struct {
-		IsRootLocation       bool                 `json:"isDefaultLocation"`
-		Path                 string               `json:"path"`
-		Backend              string               `json:"backend"`
-		Rewrite              rewrite.Redirect     `json:"rewrite,omitempty"`
-		Redirect             redirect.Redirect    `json:"redirect,omitempty"`
-		Userlist             Userlist             `json:"userlist,omitempty"`
-		Proxy                *proxy.Configuration `json:"proxy,omitempty"`
-		RateLimit            ratelimit.RateLimit  `json:"rateLimit,omitempty"`
-		HAMatchPath          string               `json:"haMatchPath"`
-		HAWhitelist          string               `json:"whitelist,omitempty"`
-		HARateLimitWhiteList string               `json:"rateLimitWhiteList,omitempty"`
+		IsRootLocation       bool                `json:"isDefaultLocation"`
+		Path                 string              `json:"path"`
+		Backend              string              `json:"backend"`
+		Rewrite              rewrite.Redirect    `json:"rewrite,omitempty"`
+		Redirect             redirect.Redirect   `json:"redirect,omitempty"`
+		Userlist             Userlist            `json:"userlist,omitempty"`
+		Proxy                proxy.Configuration `json:"proxy,omitempty"`
+		RateLimit            ratelimit.RateLimit `json:"rateLimit,omitempty"`
+		HAMatchPath          string              `json:"haMatchPath"`
+		HAWhitelist          string              `json:"whitelist,omitempty"`
+		HARateLimitWhiteList string              `json:"rateLimitWhiteList,omitempty"`
 	}
 	// HAProxyBackendSlots contains used and empty backend server definitions
 	HAProxyBackendSlots struct {

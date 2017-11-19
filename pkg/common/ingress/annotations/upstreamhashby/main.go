@@ -1,5 +1,5 @@
 /*
-Copyright 2017 The Kubernetes Authors.
+Copyright 2016 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,25 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package serviceupstream
+package upstreamhashby
 
 import (
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/parser"
 	extensions "k8s.io/api/extensions/v1beta1"
+
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/parser"
 )
 
 const (
-	annotationServiceUpstream = "ingress.kubernetes.io/service-upstream"
+	annotation = "ingress.kubernetes.io/upstream-hash-by"
 )
 
-type serviceUpstream struct {
+type upstreamhashby struct {
 }
 
-// NewParser creates a new serviceUpstream annotation parser
+// NewParser creates a new CORS annotation parser
 func NewParser() parser.IngressAnnotation {
-	return serviceUpstream{}
+	return upstreamhashby{}
 }
 
-func (s serviceUpstream) Parse(ing *extensions.Ingress) (interface{}, error) {
-	return parser.GetBoolAnnotation(annotationServiceUpstream, ing)
+// Parse parses the annotations contained in the ingress rule
+// used to indicate if the location/s contains a fragment of
+// configuration to be included inside the paths of the rules
+func (a upstreamhashby) Parse(ing *extensions.Ingress) (interface{}, error) {
+	return parser.GetStringAnnotation(annotation, ing)
 }

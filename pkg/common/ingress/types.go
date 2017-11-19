@@ -17,6 +17,7 @@ limitations under the License.
 package ingress
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/spf13/pflag"
@@ -29,6 +30,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/auth"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/authreq"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/authtls"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/ipwhitelist"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxy"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/ratelimit"
@@ -129,6 +131,15 @@ type BackendInfo struct {
 	Repository string `json:"repository"`
 }
 
+func (bi BackendInfo) String() string {
+	return fmt.Sprintf(`
+Name:       %v
+Release:    %v
+Build:      %v
+Repository: %v
+`, bi.Name, bi.Release, bi.Build, bi.Repository)
+}
+
 // Configuration holds the definition of all the parts required to describe all
 // ingresses reachable by the ingress controller (using a filter by namespace)
 type Configuration struct {
@@ -170,6 +181,8 @@ type Backend struct {
 	Endpoints []Endpoint `json:"endpoints,omitempty"`
 	// StickySessionAffinitySession contains the StickyConfig object with stickness configuration
 	SessionAffinity SessionAffinityConfig `json:"sessionAffinityConfig"`
+	// Consistent hashing by NGINX variable
+	UpstreamHashBy string `json:"upstream-hash-by,omitempty"`
 }
 
 // SessionAffinityConfig describes different affinity configurations for new sessions.
@@ -220,6 +233,9 @@ type Server struct {
 	SSLPassthrough bool `json:"sslPassthrough"`
 	// SSLCertificate path to the SSL certificate on disk
 	SSLCertificate string `json:"sslCertificate"`
+	// SSLFullChainCertificate path to the SSL certificate on disk
+	// This certificate contains the full chain (ca + intermediates + cert)
+	SSLFullChainCertificate string `json:"sslFullChainCertificate"`
 	// SSLExpireTime has the expire date of this certificate
 	SSLExpireTime time.Time `json:"sslExpireTime"`
 	// SSLPemChecksum returns the checksum of the certificate file on disk.
@@ -288,9 +304,9 @@ type Location struct {
 	// Denied returns an error when this location cannot not be allowed
 	// Requesting a denied location should return HTTP code 403.
 	Denied error `json:"denied,omitempty"`
-	// EnableCORS indicates if path must support CORS
+	// CorsConfig returns the Cors Configration for the ingress rule
 	// +optional
-	EnableCORS bool `json:"enableCors,omitempty"`
+	CorsConfig cors.CorsConfig `json:"corsConfig,omitempty"`
 	// ExternalAuth indicates the access to this location requires
 	// authentication using an external provider
 	// +optional
@@ -313,7 +329,7 @@ type Location struct {
 	// Proxy contains information about timeouts and buffer sizes
 	// to be used in connections against endpoints
 	// +optional
-	Proxy *proxy.Configuration `json:"proxy,omitempty"`
+	Proxy proxy.Configuration `json:"proxy,omitempty"`
 	// UsePortInRedirects indicates if redirects must specify the port
 	// +optional
 	UsePortInRedirects bool `json:"usePortInRedirects"`

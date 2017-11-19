@@ -19,7 +19,6 @@ package controller
 import (
 	"github.com/golang/glog"
 
-	extensions "k8s.io/api/extensions/v1beta1"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/alias"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/auth"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/authreq"
@@ -41,10 +40,12 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/sessionaffinity"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/snippet"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/sslpassthrough"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/upstreamhashby"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/upstreamvhost"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/vtsfilterkey"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/errors"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/resolver"
+	extensions "k8s.io/api/extensions/v1beta1"
 )
 
 type extractorConfig interface {
@@ -66,7 +67,7 @@ func newAnnotationExtractor(cfg extractorConfig) annotationExtractor {
 			"BasicDigestAuth":      auth.NewParser(auth.AuthDirectory, cfg),
 			"ExternalAuth":         authreq.NewParser(),
 			"CertificateAuth":      authtls.NewParser(cfg),
-			"EnableCORS":           cors.NewParser(),
+			"CorsConfig":           cors.NewParser(),
 			"HealthCheck":          healthcheck.NewParser(cfg),
 			"Whitelist":            ipwhitelist.NewParser(cfg),
 			"UsePortInRedirects":   portinredirect.NewParser(cfg),
@@ -82,6 +83,7 @@ func newAnnotationExtractor(cfg extractorConfig) annotationExtractor {
 			"Alias":                alias.NewParser(),
 			"ClientBodyBufferSize": clientbodybuffersize.NewParser(),
 			"DefaultBackend":       defaultbackend.NewParser(cfg),
+			"UpstreamHashBy":       upstreamhashby.NewParser(),
 			"UpstreamVhost":        upstreamvhost.NewParser(),
 			"VtsFilterKey":         vtsfilterkey.NewParser(),
 			"ServerSnippet":        serversnippet.NewParser(),
@@ -128,9 +130,11 @@ const (
 	sessionAffinity      = "SessionAffinity"
 	serviceUpstream      = "ServiceUpstream"
 	serverAlias          = "Alias"
+	corsConfig           = "CorsConfig"
 	clientBodyBufferSize = "ClientBodyBufferSize"
 	certificateAuth      = "CertificateAuth"
 	serverSnippet        = "ServerSnippet"
+	upstreamHashBy       = "UpstreamHashBy"
 )
 
 func (e *annotationExtractor) ServiceUpstream(ing *extensions.Ingress) bool {
@@ -172,6 +176,11 @@ func (e *annotationExtractor) SessionAffinity(ing *extensions.Ingress) *sessiona
 	return val.(*sessionaffinity.AffinityConfig)
 }
 
+func (e *annotationExtractor) Cors(ing *extensions.Ingress) *cors.CorsConfig {
+	val, _ := e.annotations[corsConfig].Parse(ing)
+	return val.(*cors.CorsConfig)
+}
+
 func (e *annotationExtractor) CertificateAuth(ing *extensions.Ingress) *authtls.AuthSSLConfig {
 	val, err := e.annotations[certificateAuth].Parse(ing)
 	if errors.IsMissingAnnotations(err) {
@@ -187,5 +196,10 @@ func (e *annotationExtractor) CertificateAuth(ing *extensions.Ingress) *authtls.
 
 func (e *annotationExtractor) ServerSnippet(ing *extensions.Ingress) string {
 	val, _ := e.annotations[serverSnippet].Parse(ing)
+	return val.(string)
+}
+
+func (e *annotationExtractor) UpstreamHashBy(ing *extensions.Ingress) string {
+	val, _ := e.annotations[upstreamHashBy].Parse(ing)
 	return val.(string)
 }
