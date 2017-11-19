@@ -40,10 +40,6 @@
 			"Rev": "ff4f55a206334ef123e4f79bbf348980da81ca46"
 		},
 		{
-			"ImportPath": "github.com/fullsailor/pkcs7",
-			"Rev": "a009d8d7de53d9503c797cb8ec66fa3b21eed209"
-		},
-		{
 			"ImportPath": "github.com/ghodss/yaml",
 			"Rev": "73d445a93680fa1a78ae23a5839bad48f32ba1ee"
 		},
@@ -205,11 +201,6 @@
 		{
 			"ImportPath": "github.com/ugorji/go/codec",
 			"Rev": "ded73eae5db7e7a0ef6f55aace87a2873c5d2b74"
-		},
-		{
-			"ImportPath": "github.com/zakjan/cert-chain-resolver/certUtil",
-			"Comment": "1.0.1",
-			"Rev": "c222fb53d84f5c835aab8027b5d422d4089f9d29"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/ssh/terminal",

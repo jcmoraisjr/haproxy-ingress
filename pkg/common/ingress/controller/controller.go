@@ -1109,7 +1109,6 @@ func (ic *GenericController) createServers(data []*extensions.Ingress,
 			}
 
 			servers[host].SSLCertificate = cert.PemFileName
-			servers[host].SSLFullChainCertificate = cert.FullChainPemFileName
 			servers[host].SSLPemChecksum = cert.PemSHA
 			servers[host].SSLExpireTime = cert.ExpireTime
 
