@@ -602,47 +602,18 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 		for _, server := range servers {
 			for _, location := range server.Locations {
 				if upstream.Name == location.Backend {
-					if len(upstream.Endpoints) == 0 {
-						glog.V(3).Infof("upstream %v does not have any active endpoints.", upstream.Name)
-						location.Backend = ""
-
-						// check if the location contains endpoints and a custom default backend
-						if location.DefaultBackend != nil {
-							sp := location.DefaultBackend.Spec.Ports[0]
-							endps := ic.getEndpoints(location.DefaultBackend, &sp, apiv1.ProtocolTCP, &healthcheck.Upstream{})
-							if len(endps) > 0 {
-								glog.V(3).Infof("using custom default backend in server %v location %v (service %v/%v)",
-									server.Hostname, location.Path, location.DefaultBackend.Namespace, location.DefaultBackend.Name)
-								b, err := cloner.DeepCopy(upstream)
-								if err != nil {
-									glog.Errorf("unexpected error copying Upstream: %v", err)
-								} else {
-									name := fmt.Sprintf("custom-default-backend-%v", upstream.Name)
-									nb := b.(*ingress.Backend)
-									nb.Name = name
-									nb.Endpoints = endps
-									aUpstreams = append(aUpstreams, nb)
-									location.Backend = name
-								}
-							}
-						}
-					}
-
-					// Configure Backends[].SSLPassthrough
 					if server.SSLPassthrough {
 						if location.Path == rootLocation {
 							if location.Backend == defUpstreamName {
 								glog.Warningf("ignoring ssl passthrough of %v as it doesn't have a default backend (root context)", server.Hostname)
 								continue
 							}
-
 							isHTTPSfrom = append(isHTTPSfrom, server)
 						}
 					}
 				}
 			}
 		}
-
 		if len(isHTTPSfrom) > 0 {
 			upstream.SSLPassthrough = true
 		}
@@ -867,6 +838,7 @@ func (ic *GenericController) serviceEndpoints(svcKey, backendPort string,
 			endps := ic.getEndpoints(svc, &servicePort, apiv1.ProtocolTCP, hz)
 			if len(endps) == 0 {
 				glog.Warningf("service %v does not have any active endpoints", svcKey)
+				endps = []ingress.Endpoint{ic.cfg.Backend.DefaultEndpoint()}
 			}
 
 			if ic.cfg.SortBackends {
