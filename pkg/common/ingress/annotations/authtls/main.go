@@ -30,6 +30,7 @@ import (
 const (
 	// name of the secret
 	annotationAuthTLSSecret    = "ingress.kubernetes.io/auth-tls-secret"
+	annotationCertHeader       = "ingress.kubernetes.io/auth-tls-cert-header"
 	annotationAuthVerifyClient = "ingress.kubernetes.io/auth-tls-verify-client"
 	annotationAuthTLSDepth     = "ingress.kubernetes.io/auth-tls-verify-depth"
 	annotationAuthTLSErrorPage = "ingress.kubernetes.io/auth-tls-error-page"
@@ -45,6 +46,7 @@ var (
 // and the configured ValidationDepth
 type AuthSSLConfig struct {
 	resolver.AuthSSLCert
+	CertHeader      bool   `json:"certHeader"`
 	VerifyClient    string `json:"verify_client"`
 	ValidationDepth int    `json:"validationDepth"`
 	ErrorPage       string `json:"errorPage"`
@@ -56,6 +58,9 @@ func (assl1 *AuthSSLConfig) Equal(assl2 *AuthSSLConfig) bool {
 		return true
 	}
 	if assl1 == nil || assl2 == nil {
+		return false
+	}
+	if &assl1.CertHeader != &assl2.CertHeader {
 		return false
 	}
 	if !(&assl1.AuthSSLCert).Equal(&assl2.AuthSSLCert) {
@@ -100,6 +105,11 @@ func (a authTLS) Parse(ing *extensions.Ingress) (interface{}, error) {
 		return &AuthSSLConfig{}, ing_errors.NewLocationDenied(err.Error())
 	}
 
+	certHeader, err := parser.GetBoolAnnotation(annotationCertHeader, ing)
+	if err != nil {
+		certHeader = false
+	}
+
 	tlsVerifyClient, err := parser.GetStringAnnotation(annotationAuthVerifyClient, ing)
 	if err != nil || !authVerifyClientRegex.MatchString(tlsVerifyClient) {
 		tlsVerifyClient = defaultAuthVerifyClient
@@ -124,6 +134,7 @@ func (a authTLS) Parse(ing *extensions.Ingress) (interface{}, error) {
 
 	return &AuthSSLConfig{
 		AuthSSLCert:     *authCert,
+		CertHeader:      certHeader,
 		VerifyClient:    tlsVerifyClient,
 		ValidationDepth: tlsdepth,
 		ErrorPage:       errorpage,

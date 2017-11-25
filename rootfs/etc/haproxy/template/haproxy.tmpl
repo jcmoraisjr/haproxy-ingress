@@ -277,10 +277,16 @@ frontend httpfront-{{ $host }}
 {{- end }}
 
 {{- if and $server.UseHTTPS (ne $authSSLCert.CAFileName "") }}
-    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-SHA1  %{+Q}[ssl_c_sha1,hex]  if ssl-offload
-    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-DN    %{+Q}[ssl_c_s_dn]      if ssl-offload
-    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-CN    %{+Q}[ssl_c_s_dn(cn)]  if ssl-offload
+    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-SHA1  %{+Q}[ssl_c_sha1,hex]   if ssl-offload
+    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-DN    %{+Q}[ssl_c_s_dn]       if ssl-offload
+    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-CN    %{+Q}[ssl_c_s_dn(cn)]   if ssl-offload
+{{- if $server.CertificateAuth.CertHeader }}
+    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-Cert  %{+Q}[ssl_c_der,base64] if ssl-offload
 {{- else }}
+    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-Cert  if ssl-offload
+{{- end }}
+{{- else }}
+    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-Cert  if ssl-offload
     http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-SHA1  if ssl-offload
     http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-DN    if ssl-offload
     http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-CN    if ssl-offload
