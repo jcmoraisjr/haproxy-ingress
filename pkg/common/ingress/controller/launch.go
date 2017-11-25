@@ -67,6 +67,11 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		service with the format namespace/serviceName and the port of the service could be a
 		number of the name of the port.`)
 
+		rateLimitUpdate = flags.Float32("rate-limit-update", 0.5,
+			`Maximum of updates per second this controller should perform.
+		Default is 0.5, which means wait 2 seconds between Ingress updates in order
+		to add more changes in a single reload`)
+
 		resyncPeriod = flags.Duration("sync-period", 600*time.Second,
 			`Relist and confirm cloud resources this often. Default is 10 minutes`)
 
@@ -184,6 +189,19 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		}
 	}
 
+	if *rateLimitUpdate <= 0 {
+		glog.Fatalf("rate limit must be greater than zero")
+	}
+
+	if *rateLimitUpdate < 0.05 {
+		glog.Fatalf("rate limit update (%v) is too low: %v seconds between Ingress reloads. Use at least 0.05, which means 20 seconds between reloads",
+			*rateLimitUpdate, 1.0 / *rateLimitUpdate)
+	}
+
+	if *rateLimitUpdate > 10 {
+		glog.Fatalf("rate limit update is too high: up to %v Ingress reloads per second (max is 10)", *rateLimitUpdate)
+	}
+
 	if resyncPeriod.Seconds() < 10 {
 		glog.Fatalf("resync period (%vs) is too low", resyncPeriod.Seconds())
 	}
@@ -197,6 +215,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		UpdateStatus:            *updateStatus,
 		ElectionID:              *electionID,
 		Client:                  kubeClient,
+		RateLimitUpdate:         *rateLimitUpdate,
 		ResyncPeriod:            *resyncPeriod,
 		DefaultService:          *defaultSvc,
 		IngressClass:            *ingressClass,

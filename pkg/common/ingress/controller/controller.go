@@ -112,7 +112,9 @@ type GenericController struct {
 type Configuration struct {
 	Client clientset.Interface
 
-	ResyncPeriod   time.Duration
+	RateLimitUpdate float32
+	ResyncPeriod    time.Duration
+
 	DefaultService string
 	IngressClass   string
 	Namespace      string
@@ -155,7 +157,7 @@ func newIngressController(config *Configuration) *GenericController {
 		cfg:             config,
 		stopLock:        &sync.Mutex{},
 		stopCh:          make(chan struct{}),
-		syncRateLimiter: flowcontrol.NewTokenBucketRateLimiter(0.3, 1),
+		syncRateLimiter: flowcontrol.NewTokenBucketRateLimiter(config.RateLimitUpdate, 1),
 		recorder: eventBroadcaster.NewRecorder(scheme.Scheme, apiv1.EventSource{
 			Component: "ingress-controller",
 		}),
