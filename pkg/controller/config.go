@@ -76,6 +76,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 			DefaultMaxSize: 1024,
 			SecretName:     "",
 		},
+		LoadServerState:             false,
 		TimeoutHTTPRequest:          "5s",
 		TimeoutConnect:              "5s",
 		TimeoutClient:               "50s",

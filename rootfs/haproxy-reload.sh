@@ -33,6 +33,14 @@
 
 set -e
 
+HAPROXY_SOCKET=/var/run/haproxy-stats.sock
+HAPROXY_STATE=/var/lib/haproxy/state-global
+mkdir -p /var/lib/haproxy
+if [ -S $HAPROXY_SOCKET ]; then
+    echo "show servers state" | socat $HAPROXY_SOCKET - > $HAPROXY_STATE
+else
+    echo "#" > $HAPROXY_STATE
+fi
 case "$1" in
     native)
         CONFIG="$2"

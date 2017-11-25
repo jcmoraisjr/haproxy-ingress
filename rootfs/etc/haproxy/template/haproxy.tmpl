@@ -3,8 +3,10 @@
 global
     daemon
     stats socket {{ $cfg.StatsSocket }} level admin
-    #server-state-file global
-    #server-state-base /var/state/haproxy/
+{{- if $cfg.LoadServerState }}
+    server-state-file state-global
+    server-state-base /var/lib/haproxy/
+{{- end}}
     maxconn {{ $cfg.MaxConn }}
 {{- if ne $cfg.Syslog "" }}
     log {{ $cfg.Syslog }} format rfc5424 local0
@@ -21,7 +23,9 @@ global
 
 defaults
     log global
-    #load-server-state-from-file global
+{{- if $cfg.LoadServerState }}
+    load-server-state-from-file global
+{{- end }}
     option redispatch
     option dontlognull
     option http-server-close

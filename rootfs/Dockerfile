@@ -13,7 +13,7 @@
 # limitations under the License.
 
 FROM haproxy:1.7-alpine
-RUN apk --no-cache add openssl ruby ruby-json\
+RUN apk --no-cache add socat openssl ruby ruby-json\
  && gem install --no-ri --no-rdoc multibinder:0.0.5
 
 # dumb-init kindly manages SIGCHLD from forked HAProxy processes

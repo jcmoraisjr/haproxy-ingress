@@ -47,6 +47,7 @@ type (
 		SSLCiphers                  string `json:"ssl-ciphers"`
 		SSLOptions                  string `json:"ssl-options"`
 		SSLDHParam                  `json:",squash"`
+		LoadServerState             bool   `json:"load-server-state"`
 		TimeoutHTTPRequest          string `json:"timeout-http-request"`
 		TimeoutConnect              string `json:"timeout-connect"`
 		TimeoutClient               string `json:"timeout-client"`
