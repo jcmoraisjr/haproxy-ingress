@@ -60,7 +60,7 @@ func (assl1 *AuthSSLConfig) Equal(assl2 *AuthSSLConfig) bool {
 	if assl1 == nil || assl2 == nil {
 		return false
 	}
-	if &assl1.CertHeader != &assl2.CertHeader {
+	if assl1.CertHeader != assl2.CertHeader {
 		return false
 	}
 	if !(&assl1.AuthSSLCert).Equal(&assl2.AuthSSLCert) {
