@@ -97,6 +97,10 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 			`Force namespace isolation. This flag is required to avoid the reference of secrets or
 		configmaps located in a different namespace than the specified in the flag --watch-namespace.`)
 
+		allowCrossNamespace = flags.Bool("allow-cross-namespace", false,
+			`Defines if the ingress controller can reference resources of another namespaces.
+		Cannot be used if force-namespace-isolation is true`)
+
 		disableNodeList = flags.Bool("disable-node-list", false,
 			`Disable querying nodes. If --force-namespace-isolation is true, this should also be set.`)
 
@@ -211,6 +215,10 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		glog.Errorf("Failed to mkdir SSL directory: %v", err)
 	}
 
+	if *forceIsolation && *allowCrossNamespace {
+		glog.Fatal("Cannot use --allow-cross-namespace if --force-namespace-isolation is true")
+	}
+
 	config := &Configuration{
 		UpdateStatus:            *updateStatus,
 		ElectionID:              *electionID,
@@ -229,6 +237,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		PublishService:          *publishSvc,
 		Backend:                 backend,
 		ForceNamespaceIsolation: *forceIsolation,
+		AllowCrossNamespace:     *allowCrossNamespace,
 		DisableNodeList:         *disableNodeList,
 		UpdateStatusOnShutdown:  *updateStatusOnShutdown,
 		SortBackends:            *sortBackends,

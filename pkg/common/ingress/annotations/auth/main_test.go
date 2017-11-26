@@ -66,7 +66,15 @@ func buildIngress() *extensions.Ingress {
 	}
 }
 
-type mockSecret struct {
+type (
+	mockConfig struct {
+	}
+	mockSecret struct {
+	}
+)
+
+func (m mockConfig) GetFullResourceName(name, currentNamespace string) string {
+	return fmt.Sprintf("%v/%v", currentNamespace, name)
 }
 
 func (m mockSecret) GetSecret(name string) (*api.Secret, error) {
@@ -87,7 +95,7 @@ func TestIngressWithoutAuth(t *testing.T) {
 	ing := buildIngress()
 	_, dir, _ := dummySecretContent(t)
 	defer os.RemoveAll(dir)
-	_, err := NewParser(dir, mockSecret{}).Parse(ing)
+	_, err := NewParser(dir, mockConfig{}, mockSecret{}).Parse(ing)
 	if err == nil {
 		t.Error("Expected error with ingress without annotations")
 	}
@@ -105,7 +113,7 @@ func TestIngressAuth(t *testing.T) {
 	_, dir, _ := dummySecretContent(t)
 	defer os.RemoveAll(dir)
 
-	i, err := NewParser(dir, mockSecret{}).Parse(ing)
+	i, err := NewParser(dir, mockConfig{}, mockSecret{}).Parse(ing)
 	if err != nil {
 		t.Errorf("Uxpected error with ingress: %v", err)
 	}
@@ -136,7 +144,7 @@ func TestIngressAuthWithoutSecret(t *testing.T) {
 	_, dir, _ := dummySecretContent(t)
 	defer os.RemoveAll(dir)
 
-	_, err := NewParser(dir, mockSecret{}).Parse(ing)
+	_, err := NewParser(dir, mockConfig{}, mockSecret{}).Parse(ing)
 	if err == nil {
 		t.Errorf("expected an error with invalid secret name")
 	}

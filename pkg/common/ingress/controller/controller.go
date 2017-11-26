@@ -121,6 +121,7 @@ type Configuration struct {
 	ConfigMapName  string
 
 	ForceNamespaceIsolation bool
+	AllowCrossNamespace     bool
 	DisableNodeList         bool
 
 	// optional
@@ -673,6 +674,27 @@ func (ic GenericController) GetAuthCertificate(name string) (*resolver.AuthSSLCe
 	}, nil
 }
 
+// GetFullResourceName add the currentNamespace prefix if name doesn't provide one
+// and AllowCrossNamespace is allowing this
+func (ic GenericController) GetFullResourceName(name, currentNamespace string) string {
+	if name == "" {
+		return ""
+	}
+	if strings.Index(name, "/") == -1 {
+		// there isn't a slash, just the resourcename
+		return fmt.Sprintf("%v/%v", currentNamespace, name)
+	} else if !ic.cfg.AllowCrossNamespace {
+		// there IS a slash: namespace/resourcename
+		// and cross namespace isn't allowed
+		ns := strings.Split(name, "/")[0]
+		if ns != currentNamespace {
+			// concat currentNamespace in order to fail resource reading
+			return fmt.Sprintf("%v/%v", currentNamespace, name)
+		}
+	}
+	return name
+}
+
 // createUpstreams creates the NGINX upstreams for each service referenced in
 // Ingress rules. The servers inside the upstream are endpoints.
 func (ic *GenericController) createUpstreams(data []*extensions.Ingress, du *ingress.Backend) map[string]*ingress.Backend {
@@ -1068,7 +1090,7 @@ func (ic *GenericController) createServers(data []*extensions.Ingress,
 				continue
 			}
 
-			key := fmt.Sprintf("%v/%v", ing.Namespace, tlsSecretName)
+			key := ic.GetFullResourceName(tlsSecretName, ing.Namespace)
 			bc, exists := ic.sslCertTracker.Get(key)
 			if !exists {
 				glog.Warningf("ssl certificate \"%v\" does not exist in local store", key)
@@ -1196,19 +1218,15 @@ func (ic *GenericController) getEndpoints(
 // readSecrets extracts information about secrets from an Ingress rule
 func (ic *GenericController) readSecrets(ing *extensions.Ingress) {
 	for _, tls := range ing.Spec.TLS {
-		if tls.SecretName == "" {
-			continue
+		if tls.SecretName != "" {
+			key := ic.GetFullResourceName(tls.SecretName, ing.Namespace)
+			ic.syncSecret(key)
 		}
-
-		key := fmt.Sprintf("%v/%v", ing.Namespace, tls.SecretName)
+	}
+	if name, _ := parser.GetStringAnnotation("ingress.kubernetes.io/auth-tls-secret", ing); name != "" {
+		key := ic.GetFullResourceName(name, ing.Namespace)
 		ic.syncSecret(key)
 	}
-
-	key, _ := parser.GetStringAnnotation("ingress.kubernetes.io/auth-tls-secret", ing)
-	if key == "" {
-		return
-	}
-	ic.syncSecret(key)
 }
 
 // Stop stops the loadbalancer controller.

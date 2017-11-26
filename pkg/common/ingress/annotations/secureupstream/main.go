@@ -17,8 +17,6 @@ limitations under the License.
 package secureupstream
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 	extensions "k8s.io/api/extensions/v1beta1"
 
@@ -38,13 +36,15 @@ type Secure struct {
 }
 
 type su struct {
+	cfg          resolver.Configuration
 	certResolver resolver.AuthCertificate
 }
 
 // NewParser creates a new secure upstream annotation parser
-func NewParser(resolver resolver.AuthCertificate) parser.IngressAnnotation {
+func NewParser(cfg resolver.Configuration, crt resolver.AuthCertificate) parser.IngressAnnotation {
 	return su{
-		certResolver: resolver,
+		cfg:          cfg,
+		certResolver: crt,
 	}
 }
 
@@ -52,19 +52,20 @@ func NewParser(resolver resolver.AuthCertificate) parser.IngressAnnotation {
 // rule used to indicate if the upstream servers should use SSL
 func (a su) Parse(ing *extensions.Ingress) (interface{}, error) {
 	s, _ := parser.GetBoolAnnotation(secureUpstream, ing)
-	ca, _ := parser.GetStringAnnotation(secureVerifyCASecret, ing)
+	CA, _ := parser.GetStringAnnotation(secureVerifyCASecret, ing)
+	caKey := a.cfg.GetFullResourceName(CA, ing.Namespace)
 	secure := &Secure{
 		Secure: s,
 		CACert: resolver.AuthSSLCert{},
 	}
-	if !s && ca != "" {
+	if !s && caKey != "" {
 		return secure,
-			errors.Errorf("trying to use CA from secret %v/%v on a non secure backend", ing.Namespace, ca)
+			errors.Errorf("trying to use CA from secret %v on a non secure backend", caKey)
 	}
-	if ca == "" {
+	if caKey == "" {
 		return secure, nil
 	}
-	caCert, err := a.certResolver.GetAuthCertificate(fmt.Sprintf("%v/%v", ing.Namespace, ca))
+	caCert, err := a.certResolver.GetAuthCertificate(caKey)
 	if err != nil {
 		return secure, errors.Wrap(err, "error obtaining certificate")
 	}

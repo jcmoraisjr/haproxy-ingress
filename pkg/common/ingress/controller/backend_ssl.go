@@ -140,7 +140,7 @@ func (ic *GenericController) checkMissingSecrets() {
 				continue
 			}
 
-			key := fmt.Sprintf("%v/%v", ing.Namespace, tls.SecretName)
+			key := ic.GetFullResourceName(tls.SecretName, ing.Namespace)
 			if _, ok := ic.sslCertTracker.Get(key); !ok {
 				ic.syncSecret(key)
 			}

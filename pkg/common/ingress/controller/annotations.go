@@ -52,6 +52,7 @@ type extractorConfig interface {
 	resolver.AuthCertificate
 	resolver.DefaultBackend
 	resolver.Secret
+	resolver.Configuration
 	resolver.Service
 }
 
@@ -64,7 +65,7 @@ func newAnnotationExtractor(cfg extractorConfig) annotationExtractor {
 	return annotationExtractor{
 		cfg,
 		map[string]parser.IngressAnnotation{
-			"BasicDigestAuth":      auth.NewParser(auth.AuthDirectory, cfg),
+			"BasicDigestAuth":      auth.NewParser(auth.AuthDirectory, cfg, cfg),
 			"ExternalAuth":         authreq.NewParser(),
 			"CertificateAuth":      authtls.NewParser(cfg),
 			"CorsConfig":           cors.NewParser(),
@@ -75,7 +76,7 @@ func newAnnotationExtractor(cfg extractorConfig) annotationExtractor {
 			"RateLimit":            ratelimit.NewParser(cfg),
 			"Redirect":             redirect.NewParser(),
 			"Rewrite":              rewrite.NewParser(cfg),
-			"SecureUpstream":       secureupstream.NewParser(cfg),
+			"SecureUpstream":       secureupstream.NewParser(cfg, cfg),
 			"ServiceUpstream":      serviceupstream.NewParser(),
 			"SessionAffinity":      sessionaffinity.NewParser(),
 			"SSLPassthrough":       sslpassthrough.NewParser(),

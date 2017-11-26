@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"fmt"
 	"testing"
 
 	apiv1 "k8s.io/api/core/v1"
@@ -50,6 +51,10 @@ const (
 type mockCfg struct {
 	MockSecrets  map[string]*apiv1.Secret
 	MockServices map[string]*apiv1.Service
+}
+
+func (m mockCfg) GetFullResourceName(name, currentNamespace string) string {
+	return fmt.Sprintf("%v/%v", currentNamespace, name)
 }
 
 func (m mockCfg) GetDefaultBackend() defaults.Backend {

@@ -68,6 +68,10 @@ type mockCfg struct {
 	certs map[string]resolver.AuthSSLCert
 }
 
+func (cfg mockCfg) GetFullResourceName(name, currentNamespace string) string {
+	return fmt.Sprintf("%v/%v", currentNamespace, name)
+}
+
 func (cfg mockCfg) GetAuthCertificate(secret string) (*resolver.AuthSSLCert, error) {
 	if cert, ok := cfg.certs[secret]; ok {
 		return &cert, nil
@@ -82,7 +86,7 @@ func TestAnnotations(t *testing.T) {
 	data[secureVerifyCASecret] = "secure-verify-ca"
 	ing.SetAnnotations(data)
 
-	_, err := NewParser(mockCfg{
+	_, err := NewParser(mockCfg{}, mockCfg{
 		certs: map[string]resolver.AuthSSLCert{
 			"default/secure-verify-ca": {},
 		},
@@ -98,7 +102,7 @@ func TestSecretNotFound(t *testing.T) {
 	data[secureUpstream] = "true"
 	data[secureVerifyCASecret] = "secure-verify-ca"
 	ing.SetAnnotations(data)
-	_, err := NewParser(mockCfg{}).Parse(ing)
+	_, err := NewParser(mockCfg{}, mockCfg{}).Parse(ing)
 	if err == nil {
 		t.Error("Expected secret not found error on ingress")
 	}
@@ -110,7 +114,7 @@ func TestSecretOnNonSecure(t *testing.T) {
 	data[secureUpstream] = "false"
 	data[secureVerifyCASecret] = "secure-verify-ca"
 	ing.SetAnnotations(data)
-	_, err := NewParser(mockCfg{
+	_, err := NewParser(mockCfg{}, mockCfg{
 		certs: map[string]resolver.AuthSSLCert{
 			"default/secure-verify-ca": {},
 		},

@@ -28,6 +28,11 @@ type DefaultBackend interface {
 	GetDefaultBackend() defaults.Backend
 }
 
+// Configuration has methods of Ingress Controller configurations
+type Configuration interface {
+	GetFullResourceName(name, currentNamespace string) string
+}
+
 // Secret has a method that searches for secrets contenating
 // the namespace and name using a the character /
 type Secret interface {

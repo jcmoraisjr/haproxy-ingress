@@ -83,12 +83,13 @@ func (bd1 *BasicDigest) Equal(bd2 *BasicDigest) bool {
 }
 
 type auth struct {
+	cfg            resolver.Configuration
 	secretResolver resolver.Secret
 	authDirectory  string
 }
 
 // NewParser creates a new authentication annotation parser
-func NewParser(authDirectory string, sr resolver.Secret) parser.IngressAnnotation {
+func NewParser(authDirectory string, cfg resolver.Configuration, sr resolver.Secret) parser.IngressAnnotation {
 	os.MkdirAll(authDirectory, 0755)
 
 	currPath := authDirectory
@@ -100,7 +101,7 @@ func NewParser(authDirectory string, sr resolver.Secret) parser.IngressAnnotatio
 		}
 	}
 
-	return auth{sr, authDirectory}
+	return auth{cfg, sr, authDirectory}
 }
 
 // Parse parses the annotations contained in the ingress
@@ -124,7 +125,7 @@ func (a auth) Parse(ing *extensions.Ingress) (interface{}, error) {
 		}
 	}
 
-	name := fmt.Sprintf("%v/%v", ing.Namespace, s)
+	name := a.cfg.GetFullResourceName(s, ing.Namespace)
 	secret, err := a.secretResolver.GetSecret(name)
 	if err != nil {
 		return nil, ing_errors.LocationDenied{
