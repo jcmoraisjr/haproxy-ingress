@@ -51,6 +51,24 @@ userlist {{ $userlist.ListName }}
 {{- end }}
 {{- end }}
 
+{{- if ne (len $ing.TCPEndpoints) 0 }}
+
+######
+###### TCP services
+######
+{{- range $tcp := $ing.TCPEndpoints }}
+listen tcp-{{ $tcp.Port }}
+{{- $inProxyProt := $tcp.Backend.ProxyProtocol.Decode }}
+{{- $outProxyProt := $tcp.Backend.ProxyProtocol.Encode }}
+    bind *:{{ $tcp.Port }}{{ if $inProxyProt }} accept-proxy{{ end }}
+    mode tcp
+{{- range $endpoint := $tcp.Endpoints }}
+{{- $target := (print $endpoint.Address ":" $endpoint.Port) }}
+    server  {{ $target }} {{ $target }} check port {{ $endpoint.Port }} inter {{ $cfg.BackendCheckInterval }}{{ if $outProxyProt }} send-proxy-v2{{ end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
 ######
 ###### Backends
 ######
