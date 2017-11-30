@@ -15,6 +15,20 @@ type Backend struct {
 	// By default this is disabled
 	CustomHTTPErrors []int `json:"custom-http-errors,-"`
 
+	// Enable HSTS on response headers
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security
+	HSTS bool `json:"hsts"`
+
+	// How many time browsers should cache hsts configuration
+	HSTSMaxAge string `json:"hsts-max-age"`
+
+	// True if HSTS should apply to subdomains as well
+	HSTSIncludeSubdomains bool `json:"hsts-include-subdomains"`
+
+	// True if the browser should include the domain to HSTS preload list
+	// https://hstspreload.org
+	HSTSPreload bool `json:"hsts-preload"`
+
 	// http://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size
 	// Sets the maximum allowed size of the client request body
 	ProxyBodySize string `json:"proxy-body-size"`

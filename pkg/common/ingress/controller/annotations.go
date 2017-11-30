@@ -27,6 +27,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/defaultbackend"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/healthcheck"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/ipwhitelist"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/parser"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/portinredirect"
@@ -70,6 +71,7 @@ func newAnnotationExtractor(cfg extractorConfig) annotationExtractor {
 			"CertificateAuth":      authtls.NewParser(cfg),
 			"CorsConfig":           cors.NewParser(),
 			"HealthCheck":          healthcheck.NewParser(cfg),
+			"HSTS":                 hsts.NewParser(cfg),
 			"Whitelist":            ipwhitelist.NewParser(cfg),
 			"UsePortInRedirects":   portinredirect.NewParser(cfg),
 			"Proxy":                proxy.NewParser(cfg),

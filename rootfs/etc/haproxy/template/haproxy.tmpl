@@ -313,7 +313,7 @@ frontend httpfront-{{ $host }}
     http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-DN    if ssl-offload
     http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-CN    if ssl-offload
 {{- end }}
-    http-request set-var(req.path) path
+    http-request set-var(txn.path) path
 
 {{- if eq $cfg.Forwardfor "add" }}
     http-request del-header x-forwarded-for
@@ -334,33 +334,45 @@ frontend httpfront-{{ $host }}
 
 {{- range $location := $server.Locations }}
 {{- if ne $location.Proxy.BodySize "" }}
-    use_backend error413 if { var(req.path) -m beg {{ $location.Path }} } { req.body_size gt {{ sizeSuffix $location.Proxy.BodySize }} }
+    use_backend error413 if { var(txn.path) -m beg {{ $location.Path }} } { req.body_size gt {{ sizeSuffix $location.Proxy.BodySize }} }
 {{- end }}
 {{- end }}
 
 {{- $appRoot := $server.RootLocation.Rewrite.AppRoot }}
 {{- if ne $appRoot "" }}
-    redirect location {{ $appRoot }} if { var(req.path) -m str / }
+    redirect location {{ $appRoot }} if { var(txn.path) -m str / }
 {{- end }}
 
 {{- range $location := $server.Locations }}
 {{- $rewriteTarget := $location.Rewrite.Target }}
 {{- if ne $rewriteTarget "" }}
 {{- if eq $rewriteTarget "/" }}
-    reqrep ^([^\ :]*)\ {{ $location.Path }}/?(.*$) \1\ {{ $rewriteTarget }}\2 if { var(req.path) -m beg {{ $location.Path }} }
+    reqrep ^([^\ :]*)\ {{ $location.Path }}/?(.*$) \1\ {{ $rewriteTarget }}\2 if { var(txn.path) -m beg {{ $location.Path }} }
 {{- else }}
-    reqrep ^([^\ :]*)\ {{ $location.Path }}(.*$) \1\ {{ $rewriteTarget }}{{ if hasSuffix $location.Path "/" }}/{{ end }}\2 if { var(req.path) -m beg {{ $location.Path }} }
+    reqrep ^([^\ :]*)\ {{ $location.Path }}(.*$) \1\ {{ $rewriteTarget }}{{ if hasSuffix $location.Path "/" }}/{{ end }}\2 if { var(txn.path) -m beg {{ $location.Path }} }
 {{- end }}
 {{- end }}
 {{- end }}
 
-{{- if and $sslconn $cfg.HSTS }}
-    http-response set-header Strict-Transport-Security "max-age={{ $cfg.HSTSMaxAge }}{{ if $cfg.HSTSIncludeSubdomains }}; includeSubDomains{{ end }}{{ if $cfg.HSTSPreload }}; preload{{ end }}" if from-https
+{{- if $sslconn }}
+{{- if $server.HSTS }}
+{{- $hsts := $server.HSTS }}
+{{- if $hsts.Enable }}
+    http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}{{ if $hsts.Subdomains }}; includeSubDomains{{ end }}{{ if $hsts.Preload }}; preload{{ end }}" if from-https
+{{- end }}
+{{- else }}
+{{- range $location := $server.Locations }}
+{{- $hsts := $location.HSTS }}
+{{- if $hsts.Enable }}
+    http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}{{ if $hsts.Subdomains }}; includeSubDomains{{ end }}{{ if $hsts.Preload }}; preload{{ end }}" if from-https{{ $location.HAMatchPath }}
+{{- end }}
+{{- end }}
+{{- end }}
 {{- end }}
 
 {{- range $location := $server.Locations }}
 {{- if not $location.IsRootLocation }}
-    use_backend {{ $location.Backend }} if { var(req.path) -m beg {{ $location.Path }} }
+    use_backend {{ $location.Backend }} if { var(txn.path) -m beg {{ $location.Path }} }
 {{- else }}
     default_backend {{ $location.Backend }}
 {{- end }}

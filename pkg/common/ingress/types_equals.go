@@ -355,6 +355,9 @@ func (l1 *Location) Equal(l2 *Location) bool {
 	if l1.Denied != l2.Denied {
 		return false
 	}
+	if !(&l1.HSTS).Equal(&l2.HSTS) {
+		return false
+	}
 	if !(&l1.CorsConfig).Equal(&l2.CorsConfig) {
 		return false
 	}

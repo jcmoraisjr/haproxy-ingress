@@ -19,13 +19,14 @@ package controller
 import (
 	"bufio"
 	"github.com/golang/glog"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/file"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/defaults"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	api "k8s.io/api/core/v1"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/file"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/defaults"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
 	"os"
 	"regexp"
 	"strings"
@@ -67,8 +68,12 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig {
 	conf := types.HAProxyConfig{
 		Backend: defaults.Backend{
-			ProxyBodySize: "",
-			SSLRedirect:   true,
+			HSTS:                  true,
+			HSTSMaxAge:            "15768000",
+			HSTSIncludeSubdomains: false,
+			HSTSPreload:           false,
+			ProxyBodySize:         "",
+			SSLRedirect:           true,
 		},
 		SSLCiphers: defaultSSLCiphers,
 		SSLOptions: "no-sslv3 no-tls-tickets",
@@ -90,10 +95,6 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		BackendCheckInterval:        "2s",
 		Forwardfor:                  "add",
 		MaxConn:                     2000,
-		HSTS:                        true,
-		HSTSMaxAge:                  "15768000",
-		HSTSIncludeSubdomains:       false,
-		HSTSPreload:                 false,
 		SSLHeadersPrefix:            "X-SSL",
 		HealthzPort:                 10253,
 		HTTPStoHTTPPort:             0,
@@ -169,6 +170,7 @@ func (cfg *haConfig) createHAProxyServers() {
 			RootLocation:    haRootLocation,
 			Locations:       haLocations,
 			SSLRedirect:     sslRedirect,
+			HSTS:            serverHSTS(server),
 			HasRateLimit:    serverHasRateLimit(server),
 			CertificateAuth: server.CertificateAuth,
 			Alias:           server.Alias,
@@ -194,6 +196,7 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 			IsRootLocation: location.Path == "/",
 			Path:           location.Path,
 			Backend:        location.Backend,
+			HSTS:           location.HSTS,
 			Rewrite:        location.Rewrite,
 			Redirect:       location.Redirect,
 			Proxy:          location.Proxy,
@@ -216,12 +219,12 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 			haRootLocation = &haLocation
 		} else {
 			otherPaths = otherPaths + " " + location.Path
-			haLocation.HAMatchPath = " { var(req.path) -m beg " + haLocation.Path + " }"
+			haLocation.HAMatchPath = " { var(txn.path) -m beg " + haLocation.Path + " }"
 		}
 		haLocations[i] = &haLocation
 	}
 	if haRootLocation != nil && otherPaths != "" {
-		haRootLocation.HAMatchPath = " !{ var(req.path) -m beg " + otherPaths + " }"
+		haRootLocation.HAMatchPath = " !{ var(txn.path) -m beg " + otherPaths + " }"
 	}
 	return haLocations, haRootLocation
 }
@@ -316,6 +319,22 @@ func serverSSLRedirect(server *ingress.Server) bool {
 		}
 	}
 	return true
+}
+
+// serverHSTS return a common hsts.Config between all locations
+// if such configurations exists, otherwise return nil which
+// mean difference on at least one location
+func serverHSTS(server *ingress.Server) *hsts.Config {
+	var hsts *hsts.Config
+	hsts = nil
+	for _, location := range server.Locations {
+		if hsts == nil {
+			hsts = &location.HSTS
+		} else if !location.HSTS.Equal(hsts) {
+			return nil
+		}
+	}
+	return hsts
 }
 
 func serverHasRateLimit(server *ingress.Server) bool {

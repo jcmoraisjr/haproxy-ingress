@@ -18,6 +18,7 @@ package ingress
 
 import (
 	"fmt"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
 	"time"
 
 	"github.com/spf13/pflag"
@@ -301,6 +302,8 @@ type Location struct {
 	// Denied returns an error when this location cannot not be allowed
 	// Requesting a denied location should return HTTP code 403.
 	Denied error `json:"denied,omitempty"`
+	// HSTS defines per Location HTTP Strict Transport Security
+	HSTS hsts.Config `json:"hsts,omitempty"`
 	// CorsConfig returns the Cors Configration for the ingress rule
 	// +optional
 	CorsConfig cors.CorsConfig `json:"corsConfig,omitempty"`

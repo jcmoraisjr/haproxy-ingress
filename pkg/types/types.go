@@ -19,6 +19,7 @@ package types
 import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/authtls"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxy"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/ratelimit"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/redirect"
@@ -61,10 +62,6 @@ type (
 		BackendCheckInterval        string `json:"backend-check-interval"`
 		Forwardfor                  string `json:"forwardfor"`
 		MaxConn                     int    `json:"max-connections"`
-		HSTS                        bool   `json:"hsts"`
-		HSTSMaxAge                  string `json:"hsts-max-age"`
-		HSTSIncludeSubdomains       bool   `json:"hsts-include-subdomains"`
-		HSTSPreload                 bool   `json:"hsts-preload"`
 		SSLHeadersPrefix            string `json:"ssl-headers-prefix"`
 		HealthzPort                 int    `json:"healthz-port"`
 		HTTPStoHTTPPort             int    `json:"https-to-http-port"`
@@ -111,6 +108,7 @@ type (
 		RootLocation    *HAProxyLocation      `json:"defaultLocation"`
 		Locations       []*HAProxyLocation    `json:"locations,omitempty"`
 		SSLRedirect     bool                  `json:"sslRedirect"`
+		HSTS            *hsts.Config          `json:"hsts"`
 		HasRateLimit    bool                  `json:"hasRateLimit"`
 		CertificateAuth authtls.AuthSSLConfig `json:"certificateAuth,omitempty"`
 		Alias           string                `json:"alias,omitempty"`
@@ -120,6 +118,7 @@ type (
 		IsRootLocation       bool                `json:"isDefaultLocation"`
 		Path                 string              `json:"path"`
 		Backend              string              `json:"backend"`
+		HSTS                 hsts.Config         `json:"hsts"`
 		Rewrite              rewrite.Redirect    `json:"rewrite,omitempty"`
 		Redirect             redirect.Redirect   `json:"redirect,omitempty"`
 		Userlist             Userlist            `json:"userlist,omitempty"`
