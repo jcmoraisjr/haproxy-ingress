@@ -129,6 +129,7 @@ type Configuration struct {
 	// optional
 	UDPConfigMapName      string
 	DefaultSSLCertificate string
+	VerifyHostname        bool
 	DefaultHealthzURL     string
 	DefaultIngressClass   string
 	// optional
@@ -1098,10 +1099,12 @@ func (ic *GenericController) createServers(data []*extensions.Ingress,
 			}
 
 			cert := bc.(*ingress.SSLCert)
-			err = cert.Certificate.VerifyHostname(host)
-			if err != nil {
-				glog.Warningf("ssl certificate %v does not contain a Common Name or Subject Alternative Name for host %v", key, host)
-				continue
+			if ic.cfg.VerifyHostname {
+				err = cert.Certificate.VerifyHostname(host)
+				if err != nil {
+					glog.Warningf("ssl certificate %v does not contain a Subject Alternative Name for host %v", key, host)
+					continue
+				}
 			}
 
 			servers[host].SSLCertificate = cert.PemFileName
