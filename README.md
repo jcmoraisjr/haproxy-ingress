@@ -26,7 +26,7 @@ Usage docs are maintained on Ingress repository:
 # Configuration
 
 HAProxy Ingress has two types of dynamic configurations: per ingress resource using
-[annotations](#annotations), or globally using a [ConfigMap](#ConfigMap) resource.
+[annotations](#annotations), or globally using a [ConfigMap](#configmap) resource.
 The controller has also static [command-line](#command-line) arguments.
 
 It is also possible to change the default template mounting a new template file at

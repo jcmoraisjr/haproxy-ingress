@@ -1,5 +1,46 @@
 # CHANGELOG
 
+## Current snapshot tag
+
+Breaking backward compatibility from `v0.4`:
+
+* TLS certificate validation using only SAN extension - common Name (CN) isn't used anymore. Add `--verify-hostname=false` command-line option to bypass hostname verification
+* `ingress.kubernetes.io/auth-tls-secret` annotation cannot reference another namespace without `--allow-cross-namespace` command-line option
+
+Fixes and improvements since `v0.4`
+
+* Change from Go 1.8.1 to 1.9.2
+* New annotations:
+  * Rewrite path support - [doc](/README.md#rewrite-target)
+    * `ingress.kubernetes.io/rewrite-target`
+  * Rate limit support - [doc](/README.md#limit)
+    * `ingress.kubernetes.io/limit-connections`
+    * `ingress.kubernetes.io/limit-rps`
+    * `ingress.kubernetes.io/limit-whitelist`
+  * Option to include the X509 certificate on requests with client certificate - [doc](/README.md#auth-tls)
+    * `ingress.kubernetes.io/auth-tls-cert-header`
+  * HSTS support per host and location - [doc](/README.md#hsts)
+    * `ingress.kubernetes.io/hsts`
+    * `ingress.kubernetes.io/hsts-include-subdomains`
+    * `ingress.kubernetes.io/hsts-max-age`
+    * `ingress.kubernetes.io/hsts-preload`
+* New configmap options:
+  * Option to load the server state between HAProxy reloads - [doc](/README.md#load-server-state)
+    * `load-server-state`
+  * Custom prefix of client certificate headers - [doc](/README.md#ssl-headers-prefix)
+    * `ssl-headers-prefix`
+  * Support of `Host` header on TLS requests without SNI extension - [doc](/README.md#use-host-on-https)
+    * `use-host-on-https`
+* New command-line options:
+  * Custom rate limit of HAProxy reloads - [doc](/README.md#rate-limit-update)
+    * `--rate-limit-update`
+  * Support of loading secrets between another namespaces - [doc](/README.md#allow-cross-namespace)
+    * `--allow-cross-namespace`
+  * TCP services - [doc](/README.md#tcp-services-configmap)
+    * `--tcp-services-configmap`
+  * Option to skip X509 certificate verification of the hostname - [doc](/README.md#verify-hostname)
+    * `--verify-hostname`
+
 ## v0.4
 
 Fixes and improvements since `v0.3`
