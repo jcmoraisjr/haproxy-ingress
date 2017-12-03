@@ -23,20 +23,15 @@ Usage docs are maintained on Ingress repository:
 * Start with [deployment](/examples/deployment) instructions
 * See [TLS termination](/examples/tls-termination) on how to enable `https`
 
-# Reload strategy
-
-The `--reload-strategy` command-line argument is used to select which reload strategy
-HAProxy should use. The following options are available:
-
-* `native`: Uses native HAProxy reload option `-sf`. This is the default option.
-* `multibinder`: Uses GitHub's [multibinder](https://github.com/github/multibinder). This [link](https://githubengineering.com/glb-part-2-haproxy-zero-downtime-zero-delay-reloads-with-multibinder/)
-describes how it works.
-
 # Configuration
 
-HAProxy Ingress can be configured per ingress resource using annotations, or globally
-using ConfigMap. It is also possible to change the default template mounting a new
-template file at `/etc/haproxy/template/haproxy.tmpl`.
+HAProxy Ingress has two types of dynamic configurations: per ingress resource using
+[annotations](#annotations), or globally using a [ConfigMap](#ConfigMap) resource.
+The controller has also static [command-line](#command-line) arguments.
+
+It is also possible to change the default template mounting a new template file at
+`/etc/haproxy/template/haproxy.tmpl`. This is the only file in the directory, so create a
+configmap with `haproxy.tmpl` key mounting into `/etc/haproxy/template` will work.
 
 ## Annotations
 
@@ -50,8 +45,13 @@ The following annotations are supported:
 ||`ingress.kubernetes.io/auth-type`|"basic"|[doc](/examples/auth/basic)|
 ||`ingress.kubernetes.io/auth-secret`|secret name|[doc](/examples/auth/basic)|
 ||`ingress.kubernetes.io/auth-realm`|realm string|[doc](/examples/auth/basic)|
-||`ingress.kubernetes.io/auth-tls-error-page`|url|[doc](/examples/auth/client-certs)|
-||`ingress.kubernetes.io/auth-tls-secret`|namespace/secret name|[doc](/examples/auth/client-certs)|
+|`[1]`|[`ingress.kubernetes.io/auth-tls-cert-header`](#auth-tls)|[true\|false]|[doc](/examples/auth/client-certs)|
+||[`ingress.kubernetes.io/auth-tls-error-page`](#auth-tls)|url|[doc](/examples/auth/client-certs)|
+||[`ingress.kubernetes.io/auth-tls-secret`](#auth-tls)|namespace/secret name|[doc](/examples/auth/client-certs)|
+|`[1]`|[`ingress.kubernetes.io/hsts`](#hsts)|[true\|false]|-|
+|`[1]`|[`ingress.kubernetes.io/hsts-include-subdomains`](#hsts)|[true\|false]|-|
+|`[1]`|[`ingress.kubernetes.io/hsts-max-age`](#hsts)|qty of seconds|-|
+|`[1]`|[`ingress.kubernetes.io/hsts-preload`](#hsts)|[true\|false]|-|
 |`[1]`|[`ingress.kubernetes.io/limit-connections`](#limit)|qty|-|
 |`[1]`|[`ingress.kubernetes.io/limit-rps`](#limit)|rate per second|-|
 |`[1]`|[`ingress.kubernetes.io/limit-whitelist`](#limit)|cidr list|-|
@@ -83,6 +83,24 @@ limitation will be removed when HAProxy version is updated to `1.8`.
 * http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.2-cookie
 * https://www.haproxy.com/blog/load-balancing-affinity-persistence-sticky-sessions-what-you-need-to-know/
 
+### Auth TLS
+
+Configure client authentication with X509 certificate. The following headers are added to the request:
+
+* `X-SSL-Client-SHA1`: Hex encoding of the SHA-1 fingerprint of the X509 certificate
+* `X-SSL-Client-DN`: Distinguished name of the certificate
+* `X-SSL-Client-CN`: Common name of the certificate
+
+The prefix of the header name can be configured with [`ssl-headers-prefix`](#ssl-headers-prefix) configmap option, which defaults to `X-SSL`.
+
+The following annotations are supported:
+
+* `ingress.kubernetes.io/auth-tls-cert-header`: if true HAProxy will add `X-SSL-Client-Cert` http header with a base64 encoding of the X509 certificate provided by the client. Default is to not provide the client certificate.
+* `ingress.kubernetes.io/auth-tls-error-page`: optional URL of the page to redirect the user if he doesn't provide a certificate or the certificate is invalid.
+* `ingress.kubernetes.io/auth-tls-secret`: mandatory secret name with `ca` key providing all certificate authority bundles used to validate client certificates.
+
+See also client cert [sample](/examples/auth/client-certs).
+
 ### Limit
 
 Configure rate limit and concurrent connections per client IP address in order to mitigate DDoS attack.
@@ -106,13 +124,20 @@ Note: `^` and `$` cannot be used because they are already included in ACL.
 
 ### Rewrite Target
 
-Supported rewrite annotations:
+Configures how URI of the requests should be rewritten before send the request to the backend.
+The following table shows some examples:
 
-* `/`
-* `/path1`
-* `/path1/path2`
-
-Trailing slashes on rewrite target annotations are not supported.
+|ingress path|request path|rewrite target|output|
+|---|---|---|---|
+|/abc|/abc|/|/|
+|/abc|/abc/|/|/|
+|/abc|/abc/x|/|/x|
+|/abc|/abc|/y|/y|
+|/abc|/abc/|/y|/y/|
+|/abc|/abc/x|/y|/y/x|
+|/abc/|/abc|/|**404**|
+|/abc/|/abc/|/|/|
+|/abc/|/abc/x|/|/x|
 
 ## ConfigMap
 
@@ -138,6 +163,7 @@ The following parameters are supported:
 ||[`hsts-preload`](#hsts)|[true\|false]|`false`|
 ||[`http-log-format`](#log-format)|http log format|HAProxy default log format|
 ||[`https-to-http-port`](#https-to-http-port)|port number|0 (do not listen)|
+|`[1]`|[`load-server-state`](#load-server-state) (experimental)|[true\|false]|`false`|
 ||[`max-connections`](#max-connections)|number|`2000`|
 ||[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
 ||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/master/pkg/controller/config.go#L34)|
@@ -159,6 +185,7 @@ The following parameters are supported:
 ||[`timeout-server`](#timeout)|time with suffix|`50s`|
 ||[`timeout-server-fin`](#timeout)|time with suffix|`50s`|
 ||[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
+|`[1]`|[`use-host-on-https`](#use-host-on-https)|[true\|false]|`false`|
 ||[`use-proxy-protocol`](#use-proxy-protocol)|[true\|false]|`false`|
 
 ### balance-algorithm
@@ -211,12 +238,21 @@ http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-monitor-uri
 
 ### hsts
 
-Configure HSTS - HTTP Strict Transport Security.
+Configure global (configmap) or per host or location (annotation) HSTS - HTTP Strict Transport Security. Annotations has precedence over global configuration.
+
+Global configmap options:
 
 * `hsts`: `true` if HSTS response header should be added
 * `hsts-include-subdomains`: `true` if it should apply to subdomains as well
 * `hsts-max-age`: time in seconds the browser should remember this configuration
 * `hsts-preload`: `true` if the browser should include the domain to [HSTS preload list](https://hstspreload.org/)
+
+Annotations on ingress resources:
+
+* `ingress.kubernetes.io/hsts`
+* `ingress.kubernetes.io/hsts-include-subdomains`
+* `ingress.kubernetes.io/hsts-max-age`
+* `ingress.kubernetes.io/hsts-preload`
 
 https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security
 
@@ -236,6 +272,17 @@ The `X-Forwarded-Proto` header is optional in the following conditions:
 * The `https-to-http-port` should not match HTTP port `80`; and
 * The load balancer should connect to the same `https-to-http-port` number, eg cannot
 have any proxy like Kubernetes' `NodePort` between the load balancer and HAProxy
+
+### load-server-state
+
+Define if HAProxy should save and reload it's current state between server reloads, like
+uptime of backends, qty of requests and so on.
+
+This is an experimental feature and has currently some issues if using with `dynamic-scaling`:
+an old state with disabled servers will disable them in the new configuration.
+
+* http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#3.1-server-state-file
+* http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-load-server-state-from-file
 
 ### log-format
 
@@ -339,6 +386,17 @@ Define timeout configurations:
 * `timeout-server-fin`: Maximum inactivity time on the backend side for half-closed connections - FIN_WAIT state
 * `timeout-tunnel`: Maximum inactivity time on the client and backend side for tunnels
 
+### use-host-on-https
+
+On TLS connections HAProxy will choose the backend based on the TLS's SNI extension. If SNI
+wasn't provided or the hostname provided wasn't found, the default behavior is to use the
+default backend providing eg a 404 error page. The default TLS certificate is used.
+
+If `use-host-on-https` confimap option is declared as `true`, HAProxy will use the `Host` header
+provided in the request. In this case the default backend will only be used if the hostname provided
+by the `Host` header wasn't found. Note that the TLS handshake is finished before HAProxy is aware of
+the hostname, because of that only the default X509 certificate can be used.
+
 ### use-proxy-protocol
 
 Define if HAProxy is behind another proxy that use the PROXY protocol. If `true`, ports
@@ -349,3 +407,129 @@ configuration.
 
 * http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.1-accept-proxy
 * http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
+
+## Command-line
+
+The following command-line arguments are supported:
+
+* `[1]` only in `snapshot` tag
+
+||Name|Type|Default|
+|---|---|---|---|
+|`[1]`|[`allow-cross-namespace`](#allow-cross-namespace)|[true\|false]|`false`|
+||[`default-backend-service`](#default-backend-service)|namespace/servicename|(mandatory)|
+||[`default-ssl-certificate`](#default-ssl-certificate)|namespace/secretname|(mandatory)|
+||[`ingress-class`](#ingress-class)|name|`haproxy`|
+||[`kubeconfig`](#kubeconfig)|/path/to/kubeconfig|in cluster config|
+|`[1]`|[`rate-limit-update`](#rate-limit-update)|uploads per second (float)|`0.5`|
+||[`reload-strategy`](#reload-strategy)|[native\|multibinder]|`native`|
+||[`sort-backends`](#sort-backends)|[true\|false]|`false`|
+|`[1]`|[`tcp-services-configmap`](#tcp-services-configmap)|namespace/configmapname|no tcp svc|
+|`[1]`|[`verify-hostname`](#verify-hostname)|[true\|false]|`true`|
+
+### allow-cross-namespace
+
+`--allow-cross-namespace` argument, if added, will allow reading secrets from one namespace to an
+ingress resource of another namespace. The default behavior is to deny such cross namespace reading.
+This adds a breaking change from `v0.4` to `v0.5` on `ingress.kubernetes.io/auth-tls-secret`
+annotation, where cross namespace reading were allowed without any configuration.
+
+### default-backend-service
+
+Defines the `namespace/servicename` that should be used if the incomming request doesn't match any
+hostname, or the requested path doesn't match any location within the desired hostname.
+
+This is a mandatory argument used in the [deployment](/examples/deployment) example page.
+
+### default-ssl-certificate
+
+Defines the `namespace/secretname` of the default certificate that should be used if ingress
+resources using TLS configuration doesn't provide it's own certificate.
+
+This is a mandatory argument used in the [deployment](/examples/deployment) and
+[TLS termination](/examples/tls-termination) example pages.
+
+### ingress-class
+
+More than one ingress controller is supported per Kubernetes cluster. The `--ingress-class`
+argument allow to override the class name of ingress resources that this instance of the
+controller should listen to. Class names that match will be used in the HAProxy configuration.
+Other classes will be ignored.
+
+The ingress resource must use the `kubernetes.io/ingress.class` annotation to name it's
+ingress class.
+
+### kubeconfig
+
+Ingress controller will try to connect to the Kubernetes master using environment variables and a
+service account. This behavior can be changed using `--kubeconfig` argument that reference a
+kubeconfig file with master endpoint and credentials. This is a mandatory argument if the controller
+is deployed outside of the Kubernetes cluster.
+
+### rate-limit-update
+
+Use `--rate-limit-update` to change how much time to wait between HAProxy reloads. Note that the first
+update is always immediate, the delay will only prevent two or more updates in the same time frame.
+Moreover reloads will only occur if the cluster configuration has changed, otherwise no reload will
+occur despite of the rate limit configuration.
+
+This argument receives the allowed reloads per second. The default value is `0.5` which means no more
+than one reload will occur within `2` seconds. The lower limit is `0.05` which means one reload within
+`20` seconds. The highest one is `10` which will allow ingress controller to reload HAProxy up to 10
+times per second.
+
+### reload-strategy
+
+The `--reload-strategy` command-line argument is used to select which reload strategy
+HAProxy should use. The following options are available:
+
+* `native`: Uses native HAProxy reload option `-sf`. This is the default option.
+* `multibinder`: Uses GitHub's [multibinder](https://github.com/github/multibinder). This [link](https://githubengineering.com/glb-part-2-haproxy-zero-downtime-zero-delay-reloads-with-multibinder/)
+describes how it works.
+
+### sort-backends
+
+Ingress will randomly shuffle backends and server endpoints on each reload in order to avoid
+requesting always the same backends just after reloads, depending on the balancing algorithm.
+Use `--sort-backends` to avoid this behavior and always declare backends and upstream servers
+in the same order.
+
+### tcp-services-configmap
+
+Configure `--tcp-services-configmap` argument with `namespace/configmapname` resource with TCP
+services and ports that HAProxy should listen to. Use the HAProxy's port number as the key of the
+configmap.
+
+The value of the configmap entry has the following syntax: `<namespace>/<servicename>:<portnumber>[:[<in-proxy][:<out-proxy]]`, where:
+
+* `<namespace>/<servicename>` is the well known notation of the service that will receive incomming connections.
+* `<portnumber>` is the port number the upstream service is listening - this is not related to the listening port of HAProxy.
+* `<in-proxy>` should be defined as `PROXY` if HAProxy should expect requests using the [PROXY](http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt) protocol. This is usually true only if there is another load balancer in front of HAProxy which supports the PROXY protocol.
+* `<out-proxy>` should be defined as `PROXY` if the upstream service expect connections using the PROXY protocol.
+
+In the example below:
+
+```
+...
+data:
+  "5432": "default/pgsql:5432"
+  "9900": "system-prod/admin:9900:PROXY"
+  "9990": "system-prod/admin:9999::PROXY"
+  "9999": "system-prod/admin:9999:PROXY:PROXY"
+```
+
+HAProxy will listen 4 new ports:
+
+* `5432` will proxy to a `pgsql` service on `default` namespace.
+* `9900` will proxy to `admin` service, port `9900`, on the `system-prod` namespace. Clients should connect using the PROXY protocol.
+* `9990` and `9999` will proxy to the same `admin` service and `9990` port and the upstream service will expect connections using the PROXY protocol. The HAProxy frontend, however, will only expect PROXY protocol on it's port `9999`.
+
+### verify-hostname
+
+Ingress resources has `spec/tls[]/secretName` attribute to override the default X509 certificate.
+As a default behavior the certificates are validated against the hostname in order to match the
+SAN extension or CN (CN only up to `v0.4`). Invalid certificates, ie certificates which doesn't
+match the hostname are discarded and a warning is logged into the ingress controller logging.
+
+Use `--verify-hostname=false` argument to bypass this validation. If used, HAProxy will provide
+the certificate declared in the `secretName` ignoring if the certificate is or is not valid.
