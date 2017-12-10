@@ -358,6 +358,11 @@ frontend httpfront-{{ $host }}
 {{- end }}
 {{- end }}
 
+{{- $appRoot := $server.RootLocation.Rewrite.AppRoot }}
+{{- if ne $appRoot "" }}
+    redirect location {{ $appRoot }} if { var(txn.path) -m str / }
+{{- end }}
+
 {{- if and $server.IsDefaultServer (and $server.UseHTTPS $cfg.UseHostOnHTTPS) }}
     use_backend http-backend if ssl-offload
 {{- end }}
@@ -366,11 +371,6 @@ frontend httpfront-{{ $host }}
 {{- if ne $location.Proxy.BodySize "" }}
     use_backend error413 if { var(txn.path) -m beg {{ $location.Path }} } { req.body_size gt {{ sizeSuffix $location.Proxy.BodySize }} }
 {{- end }}
-{{- end }}
-
-{{- $appRoot := $server.RootLocation.Rewrite.AppRoot }}
-{{- if ne $appRoot "" }}
-    redirect location {{ $appRoot }} if { var(txn.path) -m str / }
 {{- end }}
 
 {{- range $location := $server.Locations }}
