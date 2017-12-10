@@ -109,6 +109,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		StatsProxyProtocol:          false,
 		UseHostOnHTTPS:              false,
 		HTTPLogFormat:               "",
+		HTTPSLogFormat:              "",
 		TCPLogFormat:                "",
 	}
 	if haproxyController.configMap != nil {

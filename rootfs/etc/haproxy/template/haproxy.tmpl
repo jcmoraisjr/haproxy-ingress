@@ -62,9 +62,16 @@ listen tcp-{{ $tcp.Port }}
 {{- $outProxyProt := $tcp.Backend.ProxyProtocol.Encode }}
     bind *:{{ $tcp.Port }}{{ if $inProxyProt }} accept-proxy{{ end }}
     mode tcp
+{{- if ne $cfg.Syslog "" }}
+{{- if eq $cfg.TCPLogFormat "" }}
+    option tcplog
+{{- else }}
+    log-format {{ $cfg.TCPLogFormat }}
+{{- end }}
+{{- end }}
 {{- range $endpoint := $tcp.Endpoints }}
 {{- $target := (print $endpoint.Address ":" $endpoint.Port) }}
-    server  {{ $target }} {{ $target }} check port {{ $endpoint.Port }} inter {{ $cfg.BackendCheckInterval }}{{ if $outProxyProt }} send-proxy-v2{{ end }}
+    server {{ $target }} {{ $target }} check port {{ $endpoint.Port }} inter {{ $cfg.BackendCheckInterval }}{{ if $outProxyProt }} send-proxy-v2{{ end }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -188,6 +195,13 @@ frontend httpfront
 frontend httpsfront
     bind *:443{{ if $cfg.UseProxyProtocol }} accept-proxy{{ end }}
     mode tcp
+{{- if ne $cfg.Syslog "" }}
+{{- if eq $cfg.HTTPSLogFormat "default" }}
+    option tcplog
+{{- else if ne $cfg.HTTPSLogFormat "" }}
+    log-format {{ $cfg.HTTPSLogFormat }}
+{{- end }}
+{{- end }}
     tcp-request inspect-delay 5s
     tcp-request content accept if { req.ssl_hello_type 1 }
 {{- range $server := $ing.PassthroughBackends }}
@@ -215,9 +229,6 @@ frontend httpsfront
 {{- end }}
 {{- end }}
     default_backend httpsback-default-backend
-{{- if ne $cfg.TCPLogFormat "" }}
-    log-format {{ $cfg.TCPLogFormat }}
-{{- end }}
 
 ######
 ###### HTTP(S) proxies per host
@@ -256,8 +267,9 @@ frontend httpfront-{{ $host }}
     mode http
 
 {{- if ne $cfg.Syslog "" }}
+{{- if eq $cfg.HTTPLogFormat "" }}
     option httplog
-{{- if ne $cfg.HTTPLogFormat "" }}
+{{- else }}
     log-format {{ $cfg.HTTPLogFormat }}
 {{- end }}
 {{- end }}
