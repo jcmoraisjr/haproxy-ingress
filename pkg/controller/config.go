@@ -42,6 +42,7 @@ type haConfig struct {
 	haproxyController *HAProxyController
 	userlists         map[string]types.Userlist
 	haServers         []*types.HAProxyServer
+	haProxies         []*types.HAProxyServer
 	haDefaultServer   *types.HAProxyServer
 	haproxyConfig     *types.HAProxyConfig
 }
@@ -57,6 +58,7 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 		Servers:             cfg.ingress.Servers,
 		Backends:            cfg.ingress.Backends,
 		HAServers:           cfg.haServers,
+		HAProxies:           cfg.haProxies,
 		DefaultServer:       cfg.haDefaultServer,
 		TCPEndpoints:        cfg.ingress.TCPEndpoints,
 		UDPEndpoints:        cfg.ingress.UDPEndpoints,
@@ -160,11 +162,13 @@ func (cfg *haConfig) createHAProxyServers() {
 		}
 		haLocations, haRootLocation := cfg.newHAProxyLocations(server)
 		sslRedirect := serverSSLRedirect(server)
+		isDefaultServer := server.Hostname == "_"
 		haServer := types.HAProxyServer{
-			UseHTTP:         server.SSLCertificate == "" || !sslRedirect,
-			UseHTTPS:        server.SSLCertificate != "",
+			IsDefaultServer: isDefaultServer,
+			UseHTTP:         server.SSLCertificate == "" || !sslRedirect || isDefaultServer,
+			UseHTTPS:        server.SSLCertificate != "" || isDefaultServer,
 			Hostname:        server.Hostname,
-			HostnameLabel:   labelize(server.Hostname),
+			HostnameLabel:   labelizeHostname(server.Hostname),
 			SSLCertificate:  server.SSLCertificate,
 			SSLPemChecksum:  server.SSLPemChecksum,
 			RootLocation:    haRootLocation,
@@ -175,14 +179,14 @@ func (cfg *haConfig) createHAProxyServers() {
 			CertificateAuth: server.CertificateAuth,
 			Alias:           server.Alias,
 		}
-		// Ingress uses `_` hostname as default server
-		if server.Hostname == "_" {
+		if isDefaultServer {
 			haDefaultServer = &haServer
 		} else {
 			haServers = append(haServers, &haServer)
 		}
 	}
 	cfg.haServers = haServers
+	cfg.haProxies = append(haServers, haDefaultServer)
 	cfg.haDefaultServer = haDefaultServer
 }
 
@@ -229,9 +233,12 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 	return haLocations, haRootLocation
 }
 
-func labelize(identifier string) string {
+func labelizeHostname(hostname string) string {
+	if hostname == "_" {
+		return "default-backend"
+	}
 	re := regexp.MustCompile(`[^a-zA-Z0-9:_\-.]`)
-	return re.ReplaceAllLiteralString(identifier, "_")
+	return re.ReplaceAllLiteralString(hostname, "_")
 }
 
 // This could be improved creating a list of auth secrets (or even configMaps)
