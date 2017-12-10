@@ -451,3 +451,4 @@ frontend healthz
     bind *:{{ $cfg.HealthzPort }}
     mode http
     monitor-uri /healthz
+    no log
