@@ -606,6 +606,10 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 		for _, server := range servers {
 			for _, location := range server.Locations {
 				if upstream.Name == location.Backend {
+					if len(upstream.Endpoints) == 0 {
+						glog.V(3).Infof("upstream %v does not have any active endpoints. Using default backend", upstream.Name)
+						location.Backend = defUpstreamName
+					}
 					if server.SSLPassthrough {
 						if location.Path == rootLocation {
 							if location.Backend == defUpstreamName {
