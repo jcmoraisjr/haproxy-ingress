@@ -6,10 +6,13 @@ Breaking backward compatibility from `v0.4`:
 
 * TLS certificate validation using only SAN extension - common Name (CN) isn't used anymore. Add `--verify-hostname=false` command-line option to bypass hostname verification
 * `ingress.kubernetes.io/auth-tls-secret` annotation cannot reference another namespace without `--allow-cross-namespace` command-line option
+* `tcp-log-format` configmap option now customizes log of TCP proxies, use `https-log-format` instead to configure log of SNI inspection (https/tcp frontend)
 
 Fixes and improvements since `v0.4`
 
 * Change from Go 1.8.1 to 1.9.2
+* Implement full config of default backend - [#73](https://github.com/jcmoraisjr/haproxy-ingress/issues/73)
+* Fix removal of TLS if failing to read the secretName - [#78](https://github.com/jcmoraisjr/haproxy-ingress/issues/78)
 * New annotations:
   * Rewrite path support - [doc](/README.md#rewrite-target)
     * `ingress.kubernetes.io/rewrite-target`
@@ -25,6 +28,8 @@ Fixes and improvements since `v0.4`
     * `ingress.kubernetes.io/hsts-max-age`
     * `ingress.kubernetes.io/hsts-preload`
 * New configmap options:
+  * Option to add and customize log of SNI inspection - https/tcp frontend - [doc](/README.md#log-format)
+    * `https-log-format`
   * Option to load the server state between HAProxy reloads - [doc](/README.md#load-server-state)
     * `load-server-state`
   * Custom prefix of client certificate headers - [doc](/README.md#ssl-headers-prefix)

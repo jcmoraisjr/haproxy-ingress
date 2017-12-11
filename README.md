@@ -162,6 +162,7 @@ The following parameters are supported:
 ||[`hsts-max-age`](#hsts)|number of seconds|`15768000`|
 ||[`hsts-preload`](#hsts)|[true\|false]|`false`|
 ||[`http-log-format`](#log-format)|http log format|HAProxy default log format|
+|`[1]`|[`https-log-format`](#log-format)|https(tcp) log format\|`default`|do not log|
 ||[`https-to-http-port`](#https-to-http-port)|port number|0 (do not listen)|
 |`[1]`|[`load-server-state`](#load-server-state) (experimental)|[true\|false]|`false`|
 ||[`max-connections`](#max-connections)|number|`2000`|
@@ -286,10 +287,12 @@ an old state with disabled servers will disable them in the new configuration.
 
 ### log-format
 
-Customize the http/tcp log format using log format variables. Default to the HAProxy default log format.
+Customize the tcp, http or https log format using log format variables. Only used if
+[syslog-endpoint](#syslog-endpoint) is also configured.
 
-* `http-log-format`
-* `tcp-log-format`
+* `tcp-log-format`: log format of TCP proxies, defaults to HAProxy default TCP log format. See also [TCP services configmap](#tcp-services-configmap) command-line option.
+* `http-log-format`: log format of all HTTP proxies, defaults to HAProxy default HTTP log format.
+* `https-log-format`: log format of TCP proxy used to inspect SNI extention. Use `default` to configure default TCP log format, defaults to not log.
 
 https://cbonte.github.io/haproxy-dconv/1.7/configuration.html#8.2.4
 
@@ -390,7 +393,7 @@ Define timeout configurations:
 
 On TLS connections HAProxy will choose the backend based on the TLS's SNI extension. If SNI
 wasn't provided or the hostname provided wasn't found, the default behavior is to use the
-default backend providing eg a 404 error page. The default TLS certificate is used.
+default backend. The default TLS certificate is used.
 
 If `use-host-on-https` confimap option is declared as `true`, HAProxy will use the `Host` header
 provided in the request. In this case the default backend will only be used if the hostname provided
