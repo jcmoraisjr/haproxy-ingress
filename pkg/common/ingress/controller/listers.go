@@ -145,7 +145,7 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 			}
 			key := fmt.Sprintf("%v/%v", sec.Namespace, sec.Name)
 			ic.sslCertTracker.DeleteAll(key)
-			ic.syncQueue.Enqueue(key)
+			ic.syncQueue.Enqueue(sec)
 		},
 	}
 

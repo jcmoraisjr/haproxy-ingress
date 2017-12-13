@@ -41,7 +41,8 @@ func (ic *GenericController) syncSecret(key string) {
 
 	cert, err := ic.getPemCertificate(key)
 	if err != nil {
-		glog.Warningf("error obtaining PEM from secret %v: %v", key, err)
+		glog.V(3).Infof("syncing a non ca/crt secret %v", key)
+		ic.syncQueue.Enqueue(&extensions.Ingress{})
 		return
 	}
 
