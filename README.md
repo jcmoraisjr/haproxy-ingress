@@ -37,7 +37,7 @@ configmap with `haproxy.tmpl` key mounting into `/etc/haproxy/template` will wor
 
 The following annotations are supported:
 
-* `[1]` only in `snapshot` tag
+* `[0]` only in `canary` tag
 
 ||Name|Data|Usage|
 |---|---|---|:---:|
@@ -45,16 +45,16 @@ The following annotations are supported:
 ||`ingress.kubernetes.io/auth-type`|"basic"|[doc](/examples/auth/basic)|
 ||`ingress.kubernetes.io/auth-secret`|secret name|[doc](/examples/auth/basic)|
 ||`ingress.kubernetes.io/auth-realm`|realm string|[doc](/examples/auth/basic)|
-|`[1]`|[`ingress.kubernetes.io/auth-tls-cert-header`](#auth-tls)|[true\|false]|[doc](/examples/auth/client-certs)|
+|`[0]`|[`ingress.kubernetes.io/auth-tls-cert-header`](#auth-tls)|[true\|false]|[doc](/examples/auth/client-certs)|
 ||[`ingress.kubernetes.io/auth-tls-error-page`](#auth-tls)|url|[doc](/examples/auth/client-certs)|
 ||[`ingress.kubernetes.io/auth-tls-secret`](#auth-tls)|namespace/secret name|[doc](/examples/auth/client-certs)|
-|`[1]`|[`ingress.kubernetes.io/hsts`](#hsts)|[true\|false]|-|
-|`[1]`|[`ingress.kubernetes.io/hsts-include-subdomains`](#hsts)|[true\|false]|-|
-|`[1]`|[`ingress.kubernetes.io/hsts-max-age`](#hsts)|qty of seconds|-|
-|`[1]`|[`ingress.kubernetes.io/hsts-preload`](#hsts)|[true\|false]|-|
-|`[1]`|[`ingress.kubernetes.io/limit-connections`](#limit)|qty|-|
-|`[1]`|[`ingress.kubernetes.io/limit-rps`](#limit)|rate per second|-|
-|`[1]`|[`ingress.kubernetes.io/limit-whitelist`](#limit)|cidr list|-|
+|`[0]`|[`ingress.kubernetes.io/hsts`](#hsts)|[true\|false]|-|
+|`[0]`|[`ingress.kubernetes.io/hsts-include-subdomains`](#hsts)|[true\|false]|-|
+|`[0]`|[`ingress.kubernetes.io/hsts-max-age`](#hsts)|qty of seconds|-|
+|`[0]`|[`ingress.kubernetes.io/hsts-preload`](#hsts)|[true\|false]|-|
+|`[0]`|[`ingress.kubernetes.io/limit-connections`](#limit)|qty|-|
+|`[0]`|[`ingress.kubernetes.io/limit-rps`](#limit)|rate per second|-|
+|`[0]`|[`ingress.kubernetes.io/limit-whitelist`](#limit)|cidr list|-|
 ||[`ingress.kubernetes.io/proxy-body-size`](#proxy-body-size)|size (bytes)|-|
 ||`ingress.kubernetes.io/secure-backends`|[true\|false]|-|
 ||`ingress.kubernetes.io/secure-verify-ca-secret`|secret name|-|
@@ -63,7 +63,7 @@ The following annotations are supported:
 ||`ingress.kubernetes.io/ssl-redirect`|[true\|false]|[doc](/examples/rewrite)|
 ||`ingress.kubernetes.io/app-root`|/url|[doc](/examples/rewrite)|
 ||`ingress.kubernetes.io/whitelist-source-range`|CIDR|-|
-|`[1]`|[`ingress.kubernetes.io/rewrite-target`](#rewrite-target)|path string|-|
+|`[0]`|[`ingress.kubernetes.io/rewrite-target`](#rewrite-target)|path string|-|
 ||[`ingress.kubernetes.io/server-alias`](#server-alias)|domain name or regex|-|
 
 ### Affinity
@@ -147,7 +147,7 @@ A ConfigMap can be created with `kubectl create configmap`.
 
 The following parameters are supported:
 
-* `[1]` only in `snapshot` tag
+* `[0]` only in `canary` tag
 
 ||Name|Type|Default|
 |---|---|---|---|
@@ -162,15 +162,15 @@ The following parameters are supported:
 ||[`hsts-max-age`](#hsts)|number of seconds|`15768000`|
 ||[`hsts-preload`](#hsts)|[true\|false]|`false`|
 ||[`http-log-format`](#log-format)|http log format|HAProxy default log format|
-|`[1]`|[`https-log-format`](#log-format)|https(tcp) log format\|`default`|do not log|
+|`[0]`|[`https-log-format`](#log-format)|https(tcp) log format\|`default`|do not log|
 ||[`https-to-http-port`](#https-to-http-port)|port number|0 (do not listen)|
-|`[1]`|[`load-server-state`](#load-server-state) (experimental)|[true\|false]|`false`|
+|`[0]`|[`load-server-state`](#load-server-state) (experimental)|[true\|false]|`false`|
 ||[`max-connections`](#max-connections)|number|`2000`|
 ||[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
 ||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/master/pkg/controller/config.go#L34)|
 ||[`ssl-dh-default-max-size`](#ssl-dh-default-max-size)|number|`1024`|
 ||[`ssl-dh-param`](#ssl-dh-param)|namespace/secret name|no custom DH param|
-|`[1]`|[`ssl-headers-prefix`](#ssl-headers-prefix)|prefix|`X-SSL`|
+|`[0]`|[`ssl-headers-prefix`](#ssl-headers-prefix)|prefix|`X-SSL`|
 ||[`ssl-options`](#ssl-options)|space-separated list|`no-sslv3` `no-tls-tickets`|
 ||[`ssl-redirect`](#ssl-redirect)|[true\|false]|`true`|
 ||[`stats-auth`](#stats)|user:passwd|no auth|
@@ -186,7 +186,7 @@ The following parameters are supported:
 ||[`timeout-server`](#timeout)|time with suffix|`50s`|
 ||[`timeout-server-fin`](#timeout)|time with suffix|`50s`|
 ||[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
-|`[1]`|[`use-host-on-https`](#use-host-on-https)|[true\|false]|`false`|
+|`[0]`|[`use-host-on-https`](#use-host-on-https)|[true\|false]|`false`|
 ||[`use-proxy-protocol`](#use-proxy-protocol)|[true\|false]|`false`|
 
 ### balance-algorithm
@@ -309,7 +309,7 @@ Define the maximum number of bytes HAProxy will allow on the body of requests. D
 to not check, which means requests of unlimited size. This limit can be changed per ingress
 resource.
 
-Since 0.4 (currently canary/beta) a suffix can be added to the size, so `10m` means
+Since 0.4 a suffix can be added to the size, so `10m` means
 `10 * 1024 * 1024` bytes. Supported suffix are: `k`, `m` and `g`.
 
 http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#7.3.6-req.body_size
@@ -415,20 +415,20 @@ configuration.
 
 The following command-line arguments are supported:
 
-* `[1]` only in `snapshot` tag
+* `[0]` only in `canary` tag
 
 ||Name|Type|Default|
 |---|---|---|---|
-|`[1]`|[`allow-cross-namespace`](#allow-cross-namespace)|[true\|false]|`false`|
+|`[0]`|[`allow-cross-namespace`](#allow-cross-namespace)|[true\|false]|`false`|
 ||[`default-backend-service`](#default-backend-service)|namespace/servicename|(mandatory)|
 ||[`default-ssl-certificate`](#default-ssl-certificate)|namespace/secretname|(mandatory)|
 ||[`ingress-class`](#ingress-class)|name|`haproxy`|
 ||[`kubeconfig`](#kubeconfig)|/path/to/kubeconfig|in cluster config|
-|`[1]`|[`rate-limit-update`](#rate-limit-update)|uploads per second (float)|`0.5`|
+|`[0]`|[`rate-limit-update`](#rate-limit-update)|uploads per second (float)|`0.5`|
 ||[`reload-strategy`](#reload-strategy)|[native\|multibinder]|`native`|
 ||[`sort-backends`](#sort-backends)|[true\|false]|`false`|
-|`[1]`|[`tcp-services-configmap`](#tcp-services-configmap)|namespace/configmapname|no tcp svc|
-|`[1]`|[`verify-hostname`](#verify-hostname)|[true\|false]|`true`|
+|`[0]`|[`tcp-services-configmap`](#tcp-services-configmap)|namespace/configmapname|no tcp svc|
+|`[0]`|[`verify-hostname`](#verify-hostname)|[true\|false]|`true`|
 
 ### allow-cross-namespace
 
