@@ -26,7 +26,7 @@ init() {
     )
     reloadStrategy="${reloadStrategy:-native}"
     case "$reloadStrategy" in
-        native)
+        native|reusesocket)
             ;;
         multibinder)
             HAPROXY=/usr/local/sbin/haproxy

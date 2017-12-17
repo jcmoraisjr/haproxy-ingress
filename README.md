@@ -487,6 +487,7 @@ The `--reload-strategy` command-line argument is used to select which reload str
 HAProxy should use. The following options are available:
 
 * `native`: Uses native HAProxy reload option `-sf`. This is the default option.
+* `reusesocket`: (starting on v0.6) Uses HAProxy `-x` command-line option to pass the listening sockets between old and new HAProxy process, allowing hitless reloads.
 * `multibinder`: Uses GitHub's [multibinder](https://github.com/github/multibinder). This [link](https://githubengineering.com/glb-part-2-haproxy-zero-downtime-zero-delay-reloads-with-multibinder/)
 describes how it works.
 

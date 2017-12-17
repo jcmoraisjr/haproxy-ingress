@@ -102,7 +102,7 @@ func (haproxy *HAProxyController) UpdateIngressStatus(*extensions.Ingress) []api
 // command line arguments
 func (haproxy *HAProxyController) ConfigureFlags(flags *pflag.FlagSet) {
 	haproxy.reloadStrategy = flags.String("reload-strategy", "native",
-		`Name of the reload strategy. Options are: native (default) or multibinder`)
+		`Name of the reload strategy. Options are: native (default), reusesocket or multibinder`)
 	ingressClass := flags.Lookup("ingress-class")
 	if ingressClass != nil {
 		ingressClass.Value.Set("haproxy")
@@ -112,7 +112,7 @@ func (haproxy *HAProxyController) ConfigureFlags(flags *pflag.FlagSet) {
 
 // OverrideFlags allows controller to override command line parameter flags
 func (haproxy *HAProxyController) OverrideFlags(flags *pflag.FlagSet) {
-	if *haproxy.reloadStrategy == "native" {
+	if *haproxy.reloadStrategy == "native" || *haproxy.reloadStrategy == "reusesocket" {
 		haproxy.configFile = "/etc/haproxy/haproxy.cfg"
 		haproxy.template = newTemplate("haproxy.tmpl", "/etc/haproxy/template/haproxy.tmpl")
 	} else if *haproxy.reloadStrategy == "multibinder" {

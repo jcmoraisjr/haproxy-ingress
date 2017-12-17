@@ -20,6 +20,9 @@
 #  native <.cfg>
 #    Uses native HAProxy soft restart. Running it for the first time starts
 #    HAProxy, each subsequent invocation will perform a soft-reload.
+#  reusesocket <.cfg>
+#    Pass the listening sockets to the new HAProxy process instead of
+#    rebinding them, allowing hitless reloads.
 #  multibinder <.cfg.erb>
 #    Used on multibinder deployment. Send USR2 to the
 #    multibinder-haproxy-wrapper process.
@@ -30,6 +33,7 @@
 #  -D run as daemon
 #  -sf soft reload, wait for pids to finish handling requests
 #      send pids a resume signal if reload of new config fails
+#  -x get the listening sockets from the old HAProxy process
 
 set -e
 
@@ -46,6 +50,16 @@ case "$1" in
         CONFIG="$2"
         HAPROXY_PID=/var/run/haproxy.pid
         haproxy -f "$CONFIG" -p "$HAPROXY_PID" -D -sf $(cat "$HAPROXY_PID" 2>/dev/null || :)
+        ;;
+    reusesocket)
+        CONFIG="$2"
+        HAPROXY_PID=/var/run/haproxy.pid
+        OLD_PID=$(cat "$HAPROXY_PID" 2>/dev/null || :)
+        if [ -S "$HAPROXY_SOCKET" ]; then
+            haproxy -f "$CONFIG" -p "$HAPROXY_PID" -sf $OLD_PID -x "$HAPROXY_SOCKET"
+        else
+            haproxy -f "$CONFIG" -p "$HAPROXY_PID" -sf $OLD_PID
+        fi
         ;;
     multibinder)
         HAPROXY=/usr/local/sbin/haproxy

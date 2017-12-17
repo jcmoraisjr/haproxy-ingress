@@ -2,7 +2,7 @@
 {{- $cfg := .Cfg -}}
 global
     daemon
-    stats socket {{ $cfg.StatsSocket }} level admin
+    stats socket {{ $cfg.StatsSocket }} level admin expose-fd listeners
 {{- if $cfg.LoadServerState }}
     server-state-file state-global
     server-state-base /var/lib/haproxy/
