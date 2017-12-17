@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM haproxy:1.7-alpine
+FROM haproxy:1.8-alpine
 RUN apk --no-cache add socat openssl ruby ruby-json\
  && gem install --no-ri --no-rdoc multibinder:0.0.5
 
