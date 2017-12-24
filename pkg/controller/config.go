@@ -213,7 +213,7 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 		for _, cidr := range location.RateLimit.Whitelist {
 			haLocation.HARateLimitWhiteList = haLocation.HARateLimitWhiteList + " " + cidr
 		}
-		if userList, ok := cfg.userlists[location.BasicDigestAuth.File]; ok {
+		if userList, ok := cfg.userlists[location.BasicDigestAuth.ListName]; ok {
 			haLocation.Userlist = userList
 		} else {
 			haLocation.Userlist = types.Userlist{}
@@ -248,20 +248,17 @@ func (cfg *haConfig) createUserlists() {
 	userlists := map[string]types.Userlist{}
 	for _, server := range cfg.ingress.Servers {
 		for _, location := range server.Locations {
+			listName := location.BasicDigestAuth.ListName
 			fileName := location.BasicDigestAuth.File
 			authType := location.BasicDigestAuth.Type
-			if fileName != "" && authType == "basic" {
-				_, ok := userlists[fileName]
-				if !ok {
-					slashPos := strings.LastIndex(fileName, "/")
-					dotPos := strings.LastIndex(fileName, ".")
-					listName := fileName[slashPos+1 : dotPos]
+			if authType == "basic" {
+				if _, ok := userlists[listName]; !ok {
 					users, err := readUsers(fileName, listName)
 					if err != nil {
-						glog.Errorf("Unexpected error reading %v: %v", listName, err)
-						break
+						glog.Errorf("unexpected error reading userlist %v: %v", listName, err)
+						users = []types.AuthUser{}
 					}
-					userlists[fileName] = types.Userlist{
+					userlists[listName] = types.Userlist{
 						ListName: listName,
 						Realm:    location.BasicDigestAuth.Realm,
 						Users:    users,
@@ -274,6 +271,9 @@ func (cfg *haConfig) createUserlists() {
 }
 
 func readUsers(fileName string, listName string) ([]types.AuthUser, error) {
+	if fileName == "" {
+		return []types.AuthUser{}, nil
+	}
 	file, err := os.Open(fileName)
 	if err != nil {
 		return nil, err
@@ -284,16 +284,16 @@ func readUsers(fileName string, listName string) ([]types.AuthUser, error) {
 		line := scanner.Text()
 		sep := strings.Index(line, ":")
 		if sep == -1 {
-			glog.Warningf("Missing ':' on userlist '%v'", listName)
+			glog.Warningf("missing ':' in userlist '%v'", listName)
 			break
 		}
 		userName := line[0:sep]
 		if userName == "" {
-			glog.Warningf("Missing username on userlist '%v'", listName)
+			glog.Warningf("missing username in userlist '%v'", listName)
 			break
 		}
 		if sep == len(line)-1 || line[sep:] == "::" {
-			glog.Warningf("Missing '%v' password on userlist '%v'", userName, listName)
+			glog.Warningf("missing '%v' password in userlist '%v'", userName, listName)
 			break
 		}
 		user := types.AuthUser{}

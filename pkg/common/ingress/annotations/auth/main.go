@@ -18,6 +18,7 @@ package auth
 
 import (
 	"fmt"
+	"github.com/golang/glog"
 	"io/ioutil"
 	"os"
 	"path"
@@ -40,7 +41,7 @@ const (
 )
 
 var (
-	authTypeRegex = regexp.MustCompile(`basic|digest`)
+	authTypeRegex = regexp.MustCompile(`^(basic)$`)
 	// AuthDirectory default directory used to store files
 	// to authenticate request
 	AuthDirectory = "/etc/ingress-controller/auth"
@@ -48,11 +49,12 @@ var (
 
 // BasicDigest returns authentication configuration for an Ingress rule
 type BasicDigest struct {
-	Type    string `json:"type"`
-	Realm   string `json:"realm"`
-	File    string `json:"file"`
-	Secured bool   `json:"secured"`
-	FileSHA string `json:"fileSha"`
+	Type     string `json:"type"`
+	Realm    string `json:"realm"`
+	ListName string `json:"listName"`
+	File     string `json:"file"`
+	Secured  bool   `json:"secured"`
+	FileSHA  string `json:"fileSha"`
 }
 
 // Equal tests for equality between two BasicDigest types
@@ -118,35 +120,38 @@ func (a auth) Parse(ing *extensions.Ingress) (interface{}, error) {
 		return nil, ing_errors.NewLocationDenied("invalid authentication type")
 	}
 
-	s, err := parser.GetStringAnnotation(authSecret, ing)
-	if err != nil {
-		return nil, ing_errors.LocationDenied{
-			Reason: errors.Wrap(err, "error reading secret name from annotation"),
+	passFile := ""
+	listName := fmt.Sprintf("%v-%v", ing.GetNamespace(), ing.GetName())
+	if s, err := parser.GetStringAnnotation(authSecret, ing); err == nil {
+		name := a.cfg.GetFullResourceName(s, ing.Namespace)
+		if secret, err := a.secretResolver.GetSecret(name); err == nil {
+			passFile = fmt.Sprintf("%v/%v.passwd", a.authDirectory, listName)
+			err = dumpSecret(passFile, secret)
+			if err != nil {
+				glog.Errorf("unexpected error writing auth file %v: %v", passFile, err)
+				passFile = ""
+			}
+		} else {
+			glog.Errorf("unexpected error reading secret %v: %v", name, err)
 		}
-	}
-
-	name := a.cfg.GetFullResourceName(s, ing.Namespace)
-	secret, err := a.secretResolver.GetSecret(name)
-	if err != nil {
-		return nil, ing_errors.LocationDenied{
-			Reason: errors.Wrapf(err, "unexpected error reading secret %v", name),
-		}
+	} else {
+		glog.Errorf("error reading secret name from annotation: %v", err)
 	}
 
 	realm, _ := parser.GetStringAnnotation(authRealm, ing)
 
-	passFile := fmt.Sprintf("%v/%v-%v.passwd", a.authDirectory, ing.GetNamespace(), ing.GetName())
-	err = dumpSecret(passFile, secret)
-	if err != nil {
-		return nil, err
+	fileSHA := ""
+	if passFile != "" {
+		fileSHA = file.SHA1(passFile)
 	}
 
 	return &BasicDigest{
-		Type:    at,
-		Realm:   realm,
-		File:    passFile,
-		Secured: true,
-		FileSHA: file.SHA1(passFile),
+		Type:     at,
+		Realm:    realm,
+		ListName: listName,
+		File:     passFile,
+		Secured:  true,
+		FileSHA:  fileSHA,
 	}, nil
 }
 
