@@ -181,9 +181,10 @@ func fillBackendServerSlots(updatedConfig *types.ControllerConfig) {
 		newBackend.FullSlots = map[string]types.HAProxyBackendSlot{}
 		if updatedConfig.Cfg.DynamicScaling {
 			for i, endpoint := range updBackendsMap[backendName].Endpoints {
+				curEndpoint := endpoint
 				newBackend.FullSlots[fmt.Sprintf("%s:%s", endpoint.Address, endpoint.Port)] = types.HAProxyBackendSlot{
 					BackendServerName: fmt.Sprintf("server%04d", i),
-					BackendEndpoint:   &endpoint,
+					BackendEndpoint:   &curEndpoint,
 				}
 			}
 			// add up to BackendServerSlotsIncrement empty slots
