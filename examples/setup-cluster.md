@@ -95,6 +95,55 @@ for detailed instructions.
 You can deploy an ingress controller on the cluster setup in the previous step
 [like this](/examples/deployment).
 
+### Five minutes deployment
+
+The following steps will create an HAProxy Ingress with the following configurations:
+
+* Create and use `ingress-controller` namespace
+* Create `ingress-controller` service account and rbac permissions - this will also work if the cluster doesn't use rbac authorization
+* In-cluster configuration and service account token
+* Default TLS certificate is self signed and created on the fly
+* Deployed on every node labeled with `role=ingress-controller` via DaemonSet
+* Use `hostNetwork`, so the node should not be using the following ports: `80`, `443`, `1936`, `8181`, `10253` and `10254`
+
+Tests was made on Kubernetes 1.6 to 1.9
+
+Create all the resources:
+
+```console
+$ kubectl create -f https://raw.githubusercontent.com/jcmoraisjr/haproxy-ingress/master/docs/haproxy-ingress.yaml
+```
+
+Optional - edit any default configuration:
+
+```console
+$ kubectl -n ingress-controller edit configmap haproxy-ingress
+$ kubectl -n ingress-controller edit ds haproxy-ingress
+```
+
+Label at least one node, otherwise the controller won't run:
+
+```console
+$ kubectl get node
+NAME             STATUS    AGE       VERSION
+192.168.100.11   Ready     33m       v1.6.13
+
+$ kubectl label node 192.168.100.11 role=ingress-controller
+```
+
+Now HAProxy Ingress should be up and running:
+
+```console
+$ kubectl -n ingress-controller get ds
+NAME              DESIRED   CURRENT   READY     UP-TO-DATE   AVAILABLE   NODE-SELECTOR             AGE
+haproxy-ingress   1         1         1         1            1           role=ingress-controller   3m
+
+$ kubectl -n ingress-controller get pod
+NAME                                       READY     STATUS    RESTARTS   AGE
+haproxy-ingress-gfhdg                      1/1       Running   0          2m
+ingress-default-backend-1408147194-ljw4x   1/1       Running   0          4m
+```
+
 ## Run against a remote cluster
 
 If the controller you're interested in using supports a "dry-run" flag, you can
