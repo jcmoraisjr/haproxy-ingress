@@ -85,7 +85,7 @@ backend {{ $backend.Name }}
     balance {{ $cfg.BalanceAlgorithm }}
 {{- $sticky := $backend.SessionAffinity }}
 {{- if eq $sticky.AffinityType "cookie" }}
-    cookie {{ $sticky.CookieSessionAffinity.Name }} insert indirect nocache
+    cookie {{ $sticky.CookieSessionAffinity.Name }} {{ $sticky.CookieSessionAffinity.Strategy }} {{ if eq $sticky.CookieSessionAffinity.Strategy "insert" }}indirect nocache{{ end }}
 {{- end }}
 {{- $cacert := $backend.SecureCACert }}
 {{- if ne $cacert.PemSHA "" }}

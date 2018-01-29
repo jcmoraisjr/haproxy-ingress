@@ -226,6 +226,9 @@ func (csa1 *CookieSessionAffinity) Equal(csa2 *CookieSessionAffinity) bool {
 	if csa1.Name != csa2.Name {
 		return false
 	}
+	if csa1.Strategy != csa2.Strategy {
+		return false
+	}
 	if csa1.Hash != csa2.Hash {
 		return false
 	}

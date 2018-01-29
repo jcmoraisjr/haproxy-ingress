@@ -32,6 +32,9 @@ const (
 	// its value is used as an index into the list of available backends.
 	annotationAffinityCookieName = "ingress.kubernetes.io/session-cookie-name"
 	defaultAffinityCookieName    = "INGRESSCOOKIE"
+	// The cookie strategy to use: insert, prefix, or rewrite
+	annotationAffinityCookieStrategy = "ingress.kubernetes.io/session-cookie-strategy"
+	defaultAffinityCookieStrategy    = "insert"
 	// This is the algorithm used by nginx to generate a value for the session cookie, if
 	// one isn't supplied and affinity is set to "cookie".
 	annotationAffinityCookieHash = "ingress.kubernetes.io/session-cookie-hash"
@@ -40,6 +43,7 @@ const (
 
 var (
 	affinityCookieHashRegex = regexp.MustCompile(`^(index|md5|sha1)$`)
+	affinityCookieStrategyRegex = regexp.MustCompile(`^(insert|prefix|rewrite)`)
 )
 
 // AffinityConfig describes the per ingress session affinity config
@@ -53,6 +57,8 @@ type AffinityConfig struct {
 type CookieConfig struct {
 	// The name of the cookie that will be used in case of cookie affinity type.
 	Name string `json:"name"`
+	// The cookie strategy that will be used in case of cookie affinity type.
+	Strategy string `json:"strategy"`
 	// The hash that will be used to encode the cookie in case of cookie affinity type
 	Hash string `json:"hash"`
 }
@@ -68,6 +74,13 @@ func CookieAffinityParse(ing *extensions.Ingress) *CookieConfig {
 		sn = defaultAffinityCookieName
 	}
 
+	ss, err := parser.GetStringAnnotation(annotationAffinityCookieStrategy, ing)
+
+	if err != nil || !affinityCookieStrategyRegex.MatchString(ss) {
+		glog.V(3).Infof("Invalid or no annotation value found in Ingress %v: %v. Setting it to default %v", ing.Name, annotationAffinityCookieStrategy, defaultAffinityCookieStrategy)
+		ss = defaultAffinityCookieStrategy
+	}
+
 	sh, err := parser.GetStringAnnotation(annotationAffinityCookieHash, ing)
 
 	if err != nil || !affinityCookieHashRegex.MatchString(sh) {
@@ -77,6 +90,7 @@ func CookieAffinityParse(ing *extensions.Ingress) *CookieConfig {
 
 	return &CookieConfig{
 		Name: sn,
+		Strategy: ss,
 		Hash: sh,
 	}
 }

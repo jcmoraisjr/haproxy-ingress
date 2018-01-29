@@ -586,6 +586,7 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 
 				if affinity.AffinityType == "cookie" {
 					ups.SessionAffinity.CookieSessionAffinity.Name = affinity.CookieConfig.Name
+					ups.SessionAffinity.CookieSessionAffinity.Strategy = affinity.CookieConfig.Strategy
 					ups.SessionAffinity.CookieSessionAffinity.Hash = affinity.CookieConfig.Hash
 
 					locs := ups.SessionAffinity.CookieSessionAffinity.Locations
