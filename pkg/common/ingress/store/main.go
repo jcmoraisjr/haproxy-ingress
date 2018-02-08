@@ -21,6 +21,7 @@ import (
 
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/kubernetes/pkg/util/node"
 )
 
 // IngressLister makes a Store that lists Ingress.
@@ -98,5 +99,37 @@ func (s *EndpointLister) GetServiceEndpoints(svc *apiv1.Service) (ep apiv1.Endpo
 		}
 	}
 	err = fmt.Errorf("could not find endpoints for service: %v", svc.Name)
+	return
+}
+
+// PodLister makes a store that lists Pods.
+type PodLister struct {
+	cache.Store
+}
+
+// GetServicePods returns the pods that are terminating and belong (based on the Spec.Selector) to the supplied service.
+func (s *PodLister) GetTerminatingServicePods(svc *apiv1.Service) (pl []apiv1.Pod, err error) {
+	list := s.Store.List()
+	for _, m := range list {
+		p := *m.(*apiv1.Pod)
+		if isTerminatingServicePod(svc, &p) {
+			pl = append(pl, p)
+		}
+	}
+	err = nil
+	return
+}
+
+// Indicates whether or not pod belongs to svc, and is in the process of terminating
+func isTerminatingServicePod(svc *apiv1.Service, pod *apiv1.Pod) (termSvcPod bool) {
+	termSvcPod = false
+	for selectorLabel, selectorValue := range svc.Spec.Selector {
+		if labelValue, present := pod.Labels[selectorLabel]; !present || selectorValue != labelValue {
+			return
+		}
+	}
+	if pod.DeletionTimestamp != nil && pod.Status.Reason != node.NodeUnreachablePodReason && pod.Status.PodIP != "" {
+		termSvcPod = true
+	}
 	return
 }

@@ -41,6 +41,7 @@ type cacheController struct {
 	Node      cache.Controller
 	Secret    cache.Controller
 	Configmap cache.Controller
+	Pod       cache.Controller
 }
 
 func (c *cacheController) Run(stopCh chan struct{}) {
@@ -50,6 +51,7 @@ func (c *cacheController) Run(stopCh chan struct{}) {
 	go c.Node.Run(stopCh)
 	go c.Secret.Run(stopCh)
 	go c.Configmap.Run(stopCh)
+	go c.Pod.Run(stopCh)
 
 	// Wait for all involved caches to be synced, before processing items from the queue is started
 	if !cache.WaitForCacheSync(stopCh,
@@ -59,8 +61,9 @@ func (c *cacheController) Run(stopCh chan struct{}) {
 		c.Node.HasSynced,
 		c.Secret.HasSynced,
 		c.Configmap.HasSynced,
+		c.Pod.HasSynced,
 	) {
-		runtime.HandleError(fmt.Errorf("Timed out waiting for caches to sync"))
+		runtime.HandleError(fmt.Errorf("timed out waiting for caches to sync"))
 	}
 }
 
@@ -193,6 +196,19 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 		},
 	}
 
+	podEventHandler := cache.ResourceEventHandlerFuncs{
+		DeleteFunc: func (obj interface{}) {
+			ic.syncQueue.Enqueue(obj)
+		},
+		UpdateFunc: func(old, cur interface{}) {
+			oldPod := old.(*apiv1.Pod)
+			newPod := cur.(*apiv1.Pod)
+			if oldPod.DeletionTimestamp != newPod.DeletionTimestamp {
+				ic.syncQueue.Enqueue(cur)
+			}
+		},
+	}
+
 	watchNs := apiv1.NamespaceAll
 	if ic.cfg.ForceNamespaceIsolation && ic.cfg.Namespace != apiv1.NamespaceAll {
 		watchNs = ic.cfg.Namespace
@@ -221,6 +237,10 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 	lister.Service.Store, controller.Service = cache.NewInformer(
 		cache.NewListWatchFromClient(ic.cfg.Client.CoreV1().RESTClient(), "services", ic.cfg.Namespace, fields.Everything()),
 		&apiv1.Service{}, ic.cfg.ResyncPeriod, cache.ResourceEventHandlerFuncs{})
+
+	lister.Pod.Store, controller.Pod = cache.NewInformer(
+		cache.NewListWatchFromClient(ic.cfg.Client.CoreV1().RESTClient(), "pods", ic.cfg.Namespace, fields.Everything()),
+		&apiv1.Pod{}, ic.cfg.ResyncPeriod, podEventHandler)
 
 	var nodeListerWatcher cache.ListerWatcher
 	if disableNodeLister {

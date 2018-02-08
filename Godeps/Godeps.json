@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/jcmoraisjr/haproxy-ingress",
 	"GoVersion": "go1.9",
-	"GodepVersion": "v79",
+	"GodepVersion": "v80",
 	"Packages": [
 		"./..."
 	],
@@ -1061,6 +1061,16 @@
 		},
 		{
 			"ImportPath": "k8s.io/kubernetes/pkg/api",
+			"Comment": "v1.8.3",
+			"Rev": "f0efb3cb883751c5ffdbe6d515f3cb4fbe7b7acd"
+		},
+		{
+			"ImportPath": "k8s.io/kubernetes/pkg/kubelet/apis",
+			"Comment": "v1.8.3",
+			"Rev": "f0efb3cb883751c5ffdbe6d515f3cb4fbe7b7acd"
+		},
+		{
+			"ImportPath": "k8s.io/kubernetes/pkg/util/node",
 			"Comment": "v1.8.3",
 			"Rev": "f0efb3cb883751c5ffdbe6d515f3cb4fbe7b7acd"
 		}

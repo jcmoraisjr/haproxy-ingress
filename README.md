@@ -151,6 +151,7 @@ A ConfigMap can be created with `kubectl create configmap`.
 The following parameters are supported:
 
 * `[0]` only in `canary` tag
+* `[1]` only in `snapshot` tag
 
 ||Name|Type|Default|
 |---|---|---|---|
@@ -191,6 +192,7 @@ The following parameters are supported:
 ||[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
 |`[0]`|[`use-host-on-https`](#use-host-on-https)|[true\|false]|`false`|
 ||[`use-proxy-protocol`](#use-proxy-protocol)|[true\|false]|`false`|
+|`[1]`|[`drain-support`](#drain-support)|[true\|false]|`false`|
 
 ### balance-algorithm
 
@@ -413,6 +415,13 @@ configuration.
 
 * http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.1-accept-proxy
 * http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
+
+### drain-support
+
+Set to true if you wish to use HAProxy's drain support for pods that are NotReady (e.g., failing a
+k8s readiness check) or are in the process of terminating. This option only makes sense with
+cookie affinity configured as it allows persistent traffic to be directed to pods that are in a
+not ready or terminating state.
 
 ## Command-line
 

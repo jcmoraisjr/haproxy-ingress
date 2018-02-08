@@ -140,6 +140,7 @@ func (haproxy *HAProxyController) DefaultEndpoint() ingress.Endpoint {
 	return ingress.Endpoint{
 		Address: "127.0.0.1",
 		Port:    "8181",
+		Draining:false,
 		Target:  &api.ObjectReference{},
 	}
 }
