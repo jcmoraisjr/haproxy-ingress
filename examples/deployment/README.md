@@ -25,10 +25,17 @@ $ kubectl create secret tls tls-secret --cert=tls.crt --key=tls.key
 $ rm -v tls.crt tls.key
 ```
 
+Create the ingress-controller namespace:
+
+```console
+kubectl create ns ingress-controller
+```
+
 The optional web app can be created as follow:
 
 ```console
 $ kubectl run http-svc \
+  --namespace=ingress-controller \
   --image=gcr.io/google_containers/echoserver:1.3 \
   --port=8080 \
   --replicas=1 \
@@ -41,6 +48,7 @@ Deploy a default backend used to serve `404 Not Found` pages:
 
 ```console
 $ kubectl run ingress-default-backend \
+  --namespace=ingress-controller \
   --image=gcr.io/google_containers/defaultbackend:1.0 \
   --port=8080 \
   --limits=cpu=10m,memory=20Mi \
@@ -50,7 +58,7 @@ $ kubectl run ingress-default-backend \
 Check if the default backend is up and running:
 
 ```console
-$ kubectl get pod
+$ kubectl --namespace=ingress-controller get pod
 NAME                                       READY     STATUS    RESTARTS   AGE
 ingress-default-backend-1110790216-gqr61   1/1       Running   0          10s
 ```
@@ -60,7 +68,7 @@ ingress-default-backend-1110790216-gqr61   1/1       Running   0          10s
 Create a configmap named `haproxy-ingress`:
 
 ```console
-$ kubectl create configmap haproxy-ingress
+$ kubectl --namespace=ingress-controller create configmap haproxy-ingress
 configmap "haproxy-ingress" created
 ```
 
@@ -80,13 +88,13 @@ Check the [RBAC sample](/examples/rbac) if deploying on a cluster with
 Deploy HAProxy Ingress:
 
 ```console
-$ kubectl create -f haproxy-ingress.yaml
+$ kubectl --namespace=ingress-controller create -f haproxy-ingress.yaml
 ```
 
 Check if the controller was successfully deployed:
 
 ```console
-$ kubectl get pod -w
+$ kubectl --namespace=ingress-controller get pod -w
 NAME                                       READY     STATUS    RESTARTS   AGE
 haproxy-ingress-2556761959-tv20k           1/1       Running   0          12s
 ingress-default-backend-1110790216-gqr61   1/1       Running   0          3m
@@ -98,7 +106,7 @@ ingress-default-backend-1110790216-gqr61   1/1       Running   0          3m
 From now the optional web app should be deployed. Deploy an ingress resource to expose this app:
 
 ```console
-$ kubectl create -f - <<EOF
+$ kubectl --namespace=ingress-controller create -f - <<EOF
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -118,8 +126,8 @@ EOF
 Expose the Ingress controller as a `type=NodePort` service:
 
 ```console
-$ kubectl expose deploy/haproxy-ingress --type=NodePort
-$ kubectl get svc/haproxy-ingress -oyaml
+$ kubectl --namespace=ingress-controller expose deploy/haproxy-ingress --type=NodePort
+$ kubectl --namespace=ingress-controller get svc/haproxy-ingress -oyaml
 ```
 
 Look for `nodePort` field next to `port: 80`.
@@ -163,11 +171,11 @@ request_uri=http://foo.bar:8080/
 If you have any problem, check logs and events of HAProxy Ingress POD:
 
 ```console
-$ kubectl get pod
+$ kubectl --namespace=ingress-controller get pod -l run=haproxy-ingress
 NAME                                       READY     STATUS    RESTARTS   AGE
 haproxy-ingress-2556761959-tv20k           1/1       Running   0          9m
 ...
 
-$ kubectl logs haproxy-ingress-2556761959-tv20k
-$ kubectl describe pod/haproxy-ingress-2556761959-tv20k
+$ kubectl --namespace=ingress-controller logs -l run=haproxy-ingress
+$ kubectl --namespace=ingress-controller describe pod -l run=haproxy-ingress
 ```

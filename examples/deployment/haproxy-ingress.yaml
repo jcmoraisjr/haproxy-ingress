@@ -1,4 +1,5 @@
-apiVersion: extensions/v1beta1
+# see https://kubernetes.io/docs/reference/workloads-18-19
+apiVersion: apps/v1beta2
 kind: Deployment
 metadata:
   labels:
