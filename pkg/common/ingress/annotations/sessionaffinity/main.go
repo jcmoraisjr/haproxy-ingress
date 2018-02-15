@@ -43,7 +43,7 @@ const (
 
 var (
 	affinityCookieHashRegex = regexp.MustCompile(`^(index|md5|sha1)$`)
-	affinityCookieStrategyRegex = regexp.MustCompile(`^(insert|prefix|rewrite)`)
+	affinityCookieStrategyRegex = regexp.MustCompile(`^(insert|prefix|rewrite)$`)
 )
 
 // AffinityConfig describes the per ingress session affinity config
