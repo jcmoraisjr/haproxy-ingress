@@ -38,6 +38,7 @@ configmap with `haproxy.tmpl` key mounting into `/etc/haproxy/template` will wor
 The following annotations are supported:
 
 * `[0]` only in `canary` tag
+* `[1]` only in `snapshot` tag
 
 ||Name|Data|Usage|
 |---|---|---|:---:|
@@ -59,7 +60,7 @@ The following annotations are supported:
 ||`ingress.kubernetes.io/secure-backends`|[true\|false]|-|
 ||`ingress.kubernetes.io/secure-verify-ca-secret`|secret name|-|
 ||[`ingress.kubernetes.io/session-cookie-name`](#affinity)|cookie name|-|
-|`[0]`|[`ingress.kubernetes.io/session-cookie-strategy`](#affinity)|cookie strategy|-|
+|`[1]`|[`ingress.kubernetes.io/session-cookie-strategy`](#affinity)|[insert\|prefix\|rewrite]|-|
 ||`ingress.kubernetes.io/ssl-passthrough`|[true\|false]|-|
 ||`ingress.kubernetes.io/ssl-redirect`|[true\|false]|[doc](/examples/rewrite)|
 ||`ingress.kubernetes.io/app-root`|/url|[doc](/examples/rewrite)|

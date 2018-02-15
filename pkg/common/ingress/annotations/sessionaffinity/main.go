@@ -77,7 +77,11 @@ func CookieAffinityParse(ing *extensions.Ingress) *CookieConfig {
 	ss, err := parser.GetStringAnnotation(annotationAffinityCookieStrategy, ing)
 
 	if err != nil || !affinityCookieStrategyRegex.MatchString(ss) {
-		glog.V(3).Infof("Invalid or no annotation value found in Ingress %v: %v. Setting it to default %v", ing.Name, annotationAffinityCookieStrategy, defaultAffinityCookieStrategy)
+		if ss != "" {
+			glog.Warningf("Invalid annotation value found in Ingress %v: %v. Setting it to default %v", ing.Name, annotationAffinityCookieStrategy, defaultAffinityCookieStrategy)
+		} else {
+			glog.V(3).Infof("No annotation value found in Ingress %v: %v. Setting it to default %v", ing.Name, annotationAffinityCookieStrategy, defaultAffinityCookieStrategy)
+		}
 		ss = defaultAffinityCookieStrategy
 	}
 

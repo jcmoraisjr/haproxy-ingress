@@ -85,10 +85,10 @@ func TestIngressAffinityCookieConfig(t *testing.T) {
 	}
 
 	if nginxAffinity.CookieConfig.Name != "INGRESSCOOKIE" {
-		t.Errorf("expected route as sticky-name but returned %v", nginxAffinity.CookieConfig.Name)
+		t.Errorf("expected INGRESSCOOKIE as sticky-name but returned %v", nginxAffinity.CookieConfig.Name)
 	}
 
 	if nginxAffinity.CookieConfig.Strategy != "insert" {
-		t.Errorf("expected route as sticky-strategy but returned %v", nginxAffinity.CookieConfig.Strategy)
+		t.Errorf("expected insert as sticky-strategy but returned %v", nginxAffinity.CookieConfig.Strategy)
 	}
 }
