@@ -202,6 +202,7 @@ type SessionAffinityConfig struct {
 // +k8s:deepcopy-gen=true
 type CookieSessionAffinity struct {
 	Name      string              `json:"name"`
+	Strategy  string              `json:"strategy"`
 	Hash      string              `json:"hash"`
 	Locations map[string][]string `json:"locations,omitempty"`
 }
@@ -222,7 +223,7 @@ type Endpoint struct {
 	// to consider the endpoint unavailable
 	FailTimeout int `json:"failTimeout"`
 	// Target returns a reference to the object providing the endpoint
-	Target *apiv1.ObjectReference `json:"target,omipempty"`
+	Target *apiv1.ObjectReference `json:"target,omitempty"`
 }
 
 // Server describes a website

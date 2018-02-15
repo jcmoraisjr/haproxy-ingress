@@ -27,6 +27,7 @@
 			"name": "",
 			"CookieSessionAffinity": {
 				"name": "",
+				"strategy": "",
 				"hash": ""
 			}
 		}
@@ -81,6 +82,7 @@
 			"name": "",
 			"CookieSessionAffinity": {
 				"name": "",
+				"strategy": "",
 				"hash": ""
 			}
 		}

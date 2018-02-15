@@ -38,6 +38,7 @@ configmap with `haproxy.tmpl` key mounting into `/etc/haproxy/template` will wor
 The following annotations are supported:
 
 * `[0]` only in `canary` tag
+* `[1]` only in `snapshot` tag
 
 ||Name|Data|Usage|
 |---|---|---|:---:|
@@ -59,6 +60,7 @@ The following annotations are supported:
 ||`ingress.kubernetes.io/secure-backends`|[true\|false]|-|
 ||`ingress.kubernetes.io/secure-verify-ca-secret`|secret name|-|
 ||[`ingress.kubernetes.io/session-cookie-name`](#affinity)|cookie name|-|
+|`[1]`|[`ingress.kubernetes.io/session-cookie-strategy`](#affinity)|[insert\|prefix\|rewrite]|-|
 ||`ingress.kubernetes.io/ssl-passthrough`|[true\|false]|-|
 ||`ingress.kubernetes.io/ssl-redirect`|[true\|false]|[doc](/examples/rewrite)|
 ||`ingress.kubernetes.io/app-root`|/url|[doc](/examples/rewrite)|
@@ -72,6 +74,7 @@ Configure if HAProxy should maintain client requests to the same backend server.
 
 * `ingress.kubernetes.io/affinity`: the only supported option is `cookie`. If declared, clients will receive a cookie with a hash of the server it should be fidelized to.
 * `ingress.kubernetes.io/session-cookie-name`: the name of the cookie. `INGRESSCOOKIE` is the default value if not declared.
+* `ingress.kubernetes.io/session-cookie-strategy`: the cookie strategy to use (insert, rewrite, prefix). `insert` is the default value if not declared.
 
 Note for `dynamic-scaling` users only: the hash of the server is built based on it's name.
 When the slots are scaled down, the remaining servers might change it's server name on

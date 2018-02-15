@@ -30,22 +30,23 @@ import (
 )
 
 const (
-	annotationSecureUpstream       = "ingress.kubernetes.io/secure-backends"
-	annotationSecureVerifyCACert   = "ingress.kubernetes.io/secure-verify-ca-secret"
-	annotationUpsMaxFails          = "ingress.kubernetes.io/upstream-max-fails"
-	annotationUpsFailTimeout       = "ingress.kubernetes.io/upstream-fail-timeout"
-	annotationPassthrough          = "ingress.kubernetes.io/ssl-passthrough"
-	annotationAffinityType         = "ingress.kubernetes.io/affinity"
-	annotationCorsEnabled          = "ingress.kubernetes.io/enable-cors"
-	annotationCorsAllowOrigin      = "ingress.kubernetes.io/cors-allow-origin"
-	annotationCorsAllowMethods     = "ingress.kubernetes.io/cors-allow-methods"
-	annotationCorsAllowHeaders     = "ingress.kubernetes.io/cors-allow-headers"
-	annotationCorsAllowCredentials = "ingress.kubernetes.io/cors-allow-credentials"
-	defaultCorsMethods             = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
-	defaultCorsHeaders             = "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
-	annotationAffinityCookieName   = "ingress.kubernetes.io/session-cookie-name"
-	annotationAffinityCookieHash   = "ingress.kubernetes.io/session-cookie-hash"
-	annotationUpstreamHashBy       = "ingress.kubernetes.io/upstream-hash-by"
+	annotationSecureUpstream         = "ingress.kubernetes.io/secure-backends"
+	annotationSecureVerifyCACert     = "ingress.kubernetes.io/secure-verify-ca-secret"
+	annotationUpsMaxFails            = "ingress.kubernetes.io/upstream-max-fails"
+	annotationUpsFailTimeout         = "ingress.kubernetes.io/upstream-fail-timeout"
+	annotationPassthrough            = "ingress.kubernetes.io/ssl-passthrough"
+	annotationAffinityType           = "ingress.kubernetes.io/affinity"
+	annotationCorsEnabled            = "ingress.kubernetes.io/enable-cors"
+	annotationCorsAllowOrigin        = "ingress.kubernetes.io/cors-allow-origin"
+	annotationCorsAllowMethods       = "ingress.kubernetes.io/cors-allow-methods"
+	annotationCorsAllowHeaders       = "ingress.kubernetes.io/cors-allow-headers"
+	annotationCorsAllowCredentials   = "ingress.kubernetes.io/cors-allow-credentials"
+	defaultCorsMethods               = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+	defaultCorsHeaders               = "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+	annotationAffinityCookieName     = "ingress.kubernetes.io/session-cookie-name"
+	annotationAffinityCookieStrategy = "ingress.kubernetes.io/session-cookie-strategy"
+	annotationAffinityCookieHash     = "ingress.kubernetes.io/session-cookie-hash"
+	annotationUpstreamHashBy         = "ingress.kubernetes.io/upstream-hash-by"
 )
 
 type mockCfg struct {
@@ -279,18 +280,19 @@ func TestAffinitySession(t *testing.T) {
 		affinitytype string
 		hash         string
 		name         string
+		strategy     string
 	}{
-		{map[string]string{annotationAffinityType: "cookie", annotationAffinityCookieHash: "md5", annotationAffinityCookieName: "route"}, "cookie", "md5", "route"},
-		{map[string]string{annotationAffinityType: "cookie", annotationAffinityCookieHash: "xpto", annotationAffinityCookieName: "route1"}, "cookie", "md5", "route1"},
-		{map[string]string{annotationAffinityType: "cookie", annotationAffinityCookieHash: "", annotationAffinityCookieName: ""}, "cookie", "md5", "INGRESSCOOKIE"},
-		{map[string]string{}, "", "", ""},
-		{nil, "", "", ""},
+		{map[string]string{annotationAffinityType: "cookie", annotationAffinityCookieHash: "md5", annotationAffinityCookieName: "route", annotationAffinityCookieStrategy: "prefix"}, "cookie", "md5", "route", "prefix"},
+		{map[string]string{annotationAffinityType: "cookie", annotationAffinityCookieHash: "xpto", annotationAffinityCookieName: "route1", annotationAffinityCookieStrategy: "rewrite"}, "cookie", "md5", "route1", "rewrite"},
+		{map[string]string{annotationAffinityType: "cookie", annotationAffinityCookieHash: "", annotationAffinityCookieName: "", annotationAffinityCookieStrategy: ""}, "cookie", "md5", "INGRESSCOOKIE", "insert"},
+		{map[string]string{}, "", "", "", ""},
+		{nil, "", "", "", ""},
 	}
 
 	for _, foo := range fooAnns {
 		ing.SetAnnotations(foo.annotations)
 		r := ec.SessionAffinity(ing)
-		t.Logf("Testing pass %v %v %v", foo.affinitytype, foo.hash, foo.name)
+		t.Logf("Testing pass %v %v %v %v", foo.affinitytype, foo.hash, foo.name, foo.strategy)
 		if r == nil {
 			t.Errorf("Returned nil but expected a SessionAffinity.AffinityConfig")
 			continue
@@ -302,6 +304,10 @@ func TestAffinitySession(t *testing.T) {
 
 		if r.CookieConfig.Name != foo.name {
 			t.Errorf("Returned %v but expected %v for Name", r.CookieConfig.Name, foo.name)
+		}
+
+		if r.CookieConfig.Strategy != foo.strategy {
+			t.Errorf("Returned %v but expected %v for Strategy", r.CookieConfig.Strategy, foo.strategy)
 		}
 	}
 }
