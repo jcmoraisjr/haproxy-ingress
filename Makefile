@@ -19,6 +19,11 @@ build:
 	  -o rootfs/haproxy-ingress-controller \
 	  $(ROOT_PKG)
 
+.PHONY: test
+test:
+	## fix race and add -race param
+	go test -tags cgo $(ROOT_PKG)/...
+
 .PHONY: install
 install:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go install \
