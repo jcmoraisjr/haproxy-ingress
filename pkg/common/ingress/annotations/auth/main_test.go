@@ -144,9 +144,13 @@ func TestIngressAuthWithoutSecret(t *testing.T) {
 	_, dir, _ := dummySecretContent(t)
 	defer os.RemoveAll(dir)
 
-	_, err := NewParser(dir, mockConfig{}, mockSecret{}).Parse(ing)
-	if err == nil {
-		t.Errorf("expected an error with invalid secret name")
+	s, _ := NewParser(dir, mockConfig{}, mockSecret{}).Parse(ing)
+	secret := s.(*BasicDigest)
+	if secret.Type != "basic" {
+		t.Errorf("expected auth of type basic")
+	}
+	if secret.File != "" {
+		t.Errorf("expected clean filename with invalid secret name")
 	}
 }
 
