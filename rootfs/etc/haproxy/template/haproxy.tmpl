@@ -100,172 +100,13 @@ backend {{ $backend.Name }}
 {{- end }}
 {{- end }}
 
-{{- $hasHTTPStoHTTP := or (gt $cfg.HTTPStoHTTPPort 0) $cfg.UseHostOnHTTPS }}
-{{- $reuseHTTPPort := eq $cfg.HTTPStoHTTPPort 80 }}
-
 ######
-###### HTTP frontend
+###### HTTP(S) frontend
 ######
-{{- if $cfg.UseHostOnHTTPS }}
-backend http-backend
-    mode http
-    server http-front unix@/var/run/haproxy-http.sock send-proxy-v2
-{{- end }}
 frontend httpfront
+    mode http
     bind *:80{{ if $cfg.UseProxyProtocol }} accept-proxy{{ end }}
-{{- if and (gt $cfg.HTTPStoHTTPPort 0) (not $reuseHTTPPort) }}
-    bind *:{{ $cfg.HTTPStoHTTPPort }}{{ if $cfg.UseProxyProtocol }} accept-proxy{{ end }}
-{{- end }}
-{{- if $cfg.UseHostOnHTTPS }}
-    bind unix@/var/run/haproxy-http.sock accept-proxy
-{{- end }}
-    mode http
-
-{{- range $server := $ing.HAServers }}
-{{- if isWildcardHostname $server.Hostname }}
-    acl host-{{ $server.HostnameLabel }} hdr_reg(host) {{ hostnameRegex $server.Hostname }}
-{{- else }}
-    acl host-{{ $server.HostnameLabel }} hdr(host) {{ $server.Hostname }} {{ $server.Hostname }}:80
-{{- end }}
-{{- if ne $server.Alias "" }}
-{{- if isRegexHostname $server.Alias }}
-    acl alias-{{ $server.HostnameLabel }} hdr_reg(host) '{{ aliasRegex $server.Alias }}'
-{{- else }}
-    acl alias-{{ $server.HostnameLabel }} hdr(host) {{ $server.Alias }} {{ $server.Alias }}:80
-{{- end }}
-{{- end }}
-{{- end }}
-
-{{- if $hasHTTPStoHTTP }}
-    acl from-https hdr(x-forwarded-proto) https
-{{- if and (gt $cfg.HTTPStoHTTPPort 0) (not $reuseHTTPPort) }}
-    acl from-https dst_port eq {{ $cfg.HTTPStoHTTPPort }}
-    http-request set-header X-Forwarded-Proto https if from-https
-{{- end }}
-{{- end }}
-
-{{- range $server := $ing.HAServers }}
-{{- if or $server.UseHTTPS $hasHTTPStoHTTP }}
-{{- if $server.SSLRedirect }}
-    redirect scheme https if host-{{ $server.HostnameLabel }}{{ if $hasHTTPStoHTTP }} !from-https{{ end }}
-{{- else }}
-{{- range $location := $server.Locations }}
-{{- if $location.Rewrite.SSLRedirect }}
-    redirect scheme https if host-{{ $server.HostnameLabel }}{{ $location.HAMatchPath }}{{ if $hasHTTPStoHTTP }} !from-https{{ end }}
-{{- end }}
-{{- end }}
-{{- end }}
-{{- end }}
-{{- end }}
-
-{{- range $server := $ing.HAServers }}
-{{- if ne $server.Alias "" }}
-{{- if or $server.UseHTTPS $hasHTTPStoHTTP }}
-{{- if $server.SSLRedirect }}
-    redirect scheme https if alias-{{ $server.HostnameLabel }}{{ if $hasHTTPStoHTTP }} !from-https{{ end }}
-{{- else }}
-{{- range $location := $server.Locations }}
-{{- if $location.Rewrite.SSLRedirect }}
-    redirect scheme https if alias-{{ $server.HostnameLabel }}{{ $location.HAMatchPath }}{{ if $hasHTTPStoHTTP }} !from-https{{ end }}
-{{- end }}
-{{- end }}
-{{- end }}
-{{- end }}
-{{- end }}
-{{- end }}
-
-{{- range $server := $ing.HAServers }}
-{{- if or $server.UseHTTP $hasHTTPStoHTTP }}
-    use_backend httpback-{{ $server.HostnameLabel }} if host-{{ $server.HostnameLabel }}
-{{- end }}
-{{- end }}
-
-{{- range $server := $ing.HAServers }}
-{{- if or $server.UseHTTP $hasHTTPStoHTTP }}
-{{- if ne $server.Alias "" }}
-    use_backend httpback-{{ $server.HostnameLabel }} if alias-{{ $server.HostnameLabel }}
-{{- end }}
-{{- end }}
-{{- end }}
-    default_backend httpback-default-backend
-
-######
-###### HTTPS frontend (tcp mode)
-######
-frontend httpsfront
-    bind *:443{{ if $cfg.UseProxyProtocol }} accept-proxy{{ end }}
-    mode tcp
-{{- if ne $cfg.Syslog "" }}
-{{- if eq $cfg.HTTPSLogFormat "default" }}
-    option tcplog
-{{- else if ne $cfg.HTTPSLogFormat "" }}
-    log-format {{ $cfg.HTTPSLogFormat }}
-{{- end }}
-{{- end }}
-    tcp-request inspect-delay 5s
-    tcp-request content accept if { req.ssl_hello_type 1 }
-{{- range $server := $ing.PassthroughBackends }}
-{{- if isWildcardHostname $server.Hostname }}
-    use_backend {{ $server.Backend }} if { req.ssl_sni -m reg -i {{ hostnameRegex $server.Hostname }} }
-{{- else }}
-    use_backend {{ $server.Backend }} if { req.ssl_sni -i {{ $server.Hostname }} }
-{{- end }}
-{{- end }}
-{{- range $server := $ing.HAServers }}
-{{- if $server.UseHTTPS }}
-{{- if isWildcardHostname $server.Hostname }}
-    use_backend httpsback-{{ $server.HostnameLabel }} if { req.ssl_sni -m reg -i {{ hostnameRegex $server.Hostname }} }
-{{- else }}
-    use_backend httpsback-{{ $server.HostnameLabel }} if { req.ssl_sni -i {{ $server.Hostname }} }
-{{- end }}
-{{- end }}
-{{- end }}
-{{- /* Aliases loop */}}
-{{- range $server := $ing.HAServers }}
-{{- if $server.UseHTTPS }}
-{{- if ne $server.Alias "" }}
-    use_backend httpsback-{{ $server.HostnameLabel }} if { req.ssl_sni -i {{ if isRegexHostname $server.Alias }}-m reg '{{ aliasRegex $server.Alias }}'{{ else }}{{ $server.Alias }}{{ end }} }
-{{- end }}
-{{- end }}
-{{- end }}
-    default_backend httpsback-default-backend
-
-######
-###### HTTP(S) proxies per host
-######
-{{- range $server := $ing.HAProxies }}
-{{- $host := $server.HostnameLabel }}
-{{- $sock := iif (lt (len $host) 65) $host $server.HostnameHash }}
-##
-## {{ if $server.IsDefaultServer }}Default backend{{ else }}{{ $server.Hostname }}{{ end }}
-
-{{- if or $server.UseHTTP $hasHTTPStoHTTP }}
-backend httpback-{{ $host }}
-    mode http
-    server {{ $host }} unix@/var/run/haproxy-http-{{ $sock }}.sock send-proxy-v2
-{{- end }}
-
-{{- if $server.UseHTTPS }}
-backend httpsback-{{ $host }}
-    mode tcp
-    server {{ $host }} unix@/var/run/haproxy-https-{{ $sock }}.sock send-proxy-v2
-{{- end }}
-
-{{- $sslconn := or $server.UseHTTPS $hasHTTPStoHTTP }}
-{{- $authSSLCert := $server.CertificateAuth.AuthSSLCert }}
-frontend httpfront-{{ $host }}
-{{- if or $server.UseHTTP $hasHTTPStoHTTP }}
-    bind unix@/var/run/haproxy-http-{{ $sock }}.sock accept-proxy
-{{- end }}
-
-{{- if $server.UseHTTPS }}
-    # CRT PEM checksum: {{ $server.SSLPemChecksum }}
-{{- if ne $authSSLCert.PemSHA "" }}
-    # CA PEM checksum: {{ $authSSLCert.PemSHA }}
-{{- end }}
-    bind unix@/var/run/haproxy-https-{{ $sock }}.sock ssl crt {{ $server.SSLCertificate }}{{ if ne $authSSLCert.CAFileName "" }} ca-file {{ $authSSLCert.CAFileName }} verify optional ca-ignore-err all crt-ignore-err all{{ end }} accept-proxy
-{{- end }}
-    mode http
+    bind *:443 ssl crt /ingress-controller/ssl {{ if $cfg.UseProxyProtocol }} accept-proxy{{ end }}
 
 {{- if ne $cfg.Syslog "" }}
 {{- if eq $cfg.HTTPLogFormat "" }}
@@ -275,57 +116,13 @@ frontend httpfront-{{ $host }}
 {{- end }}
 {{- end }}
 
-{{- if $server.HasRateLimit }}
-    stick-table type ip size 200k expire 5m store conn_cur,conn_rate(1s)
-    tcp-request content track-sc1 src
-{{- range $location := $server.Locations }}
-{{- $conn_cur_limit := $location.RateLimit.Connections.Limit }}
-{{- $conn_rate_limit := $location.RateLimit.RPS.Limit }}
-{{- if or (gt $conn_cur_limit 0) (gt $conn_rate_limit 0) }}
-    tcp-request content reject if{{ $location.HAMatchPath }}{{ if ne $location.HARateLimitWhiteList "" }} !{ src{{ $location.HARateLimitWhiteList }} }{{ end }}{{ if gt $conn_cur_limit 0 }} { sc1_conn_cur gt {{ $conn_cur_limit }} } ||{{ end }}{{ if gt $conn_rate_limit 0 }} { sc1_conn_rate gt {{ $conn_rate_limit }} } ||{{ end }} { always_false }
-{{- end }}
-{{- end }}
-{{- end }}
-
-{{- if $sslconn }}
-{{- if $hasHTTPStoHTTP }}
-    http-request set-var(txn.hdr_proto) hdr(x-forwarded-proto)
-    acl from-https var(txn.hdr_proto) https
-{{- end }}
     acl from-https ssl_fc
-{{- end }}
-    acl ssl-offload ssl_fc
 
-{{- range $location := $server.Locations }}
-{{- if ne $location.HAWhitelist "" }}
-    http-request deny if{{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }
-{{- end }}
-{{- $listName := $location.Userlist.ListName }}
-{{- if ne $listName "" }}
-{{- $realm := $location.Userlist.Realm }}
-    http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
-{{- end }}
-{{- end }}
-
-{{- if $sslconn }}
-    http-request set-header X-Forwarded-Proto https if ssl-offload
-{{- end }}
-
-{{- if and $server.UseHTTPS (ne $authSSLCert.CAFileName "") }}
-    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-SHA1  %{+Q}[ssl_c_sha1,hex]   if ssl-offload
-    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-DN    %{+Q}[ssl_c_s_dn]       if ssl-offload
-    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-CN    %{+Q}[ssl_c_s_dn(cn)]   if ssl-offload
-{{- if $server.CertificateAuth.CertHeader }}
-    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-Cert  %{+Q}[ssl_c_der,base64] if ssl-offload
-{{- else }}
-    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-Cert  if ssl-offload
-{{- end }}
-{{- else }}
-    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-Cert  if ssl-offload
-    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-SHA1  if ssl-offload
-    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-DN    if ssl-offload
-    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-CN    if ssl-offload
-{{- end }}
+    http-request set-header X-Forwarded-Proto https if from-https
+    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-Cert  if from-https
+    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-SHA1  if from-https
+    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-DN    if from-https
+    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-CN    if from-https
     http-request set-var(txn.path) path
 
 {{- if eq $cfg.Forwardfor "add" }}
@@ -333,75 +130,81 @@ frontend httpfront-{{ $host }}
     option forwardfor
 {{- else if eq $cfg.Forwardfor "ifmissing" }}
     option forwardfor if-none
+{{- end }}{{/* if eq $cfg.Forwardfor "add" */}}
+
+{{- range $server := $ing.HAServers }}
+{{- $host := $server.HostnameLabel }}
+{{- $hostAcl := printf "host-%v" $server.HostnameLabel }}
+
+# {{ $server.Hostname }}
+{{- if isWildcardHostname $server.Hostname }}
+    acl {{ $hostAcl }} hdr_reg(host) {{ hostnameRegex $server.Hostname }}
+{{- else }}
+    acl {{ $hostAcl }} hdr(host) {{ $server.Hostname }} {{ $server.Hostname }}:80 {{ $server.Hostname }}:443
+{{- end }}{{/* if isWildcardHostname $server.Hostname */}}
+
+{{- if $server.HasRateLimit }}
+stick-table type ip size 200k expire 5m store conn_cur,conn_rate(1s)
+tcp-request content track-sc1 src
+{{- range $location := $server.Locations }}
+{{- $conn_cur_limit := $location.RateLimit.Connections.Limit }}
+{{- $conn_rate_limit := $location.RateLimit.RPS.Limit }}
+{{- if or (gt $conn_cur_limit 0) (gt $conn_rate_limit 0) }}
+tcp-request content reject if {{ $hostAcl }} {{ $location.HAMatchPath }}{{ if ne $location.HARateLimitWhiteList "" }} !{ src{{ $location.HARateLimitWhiteList }} }{{ end }}{{ if gt $conn_cur_limit 0 }} { sc1_conn_cur gt {{ $conn_cur_limit }} } ||{{ end }}{{ if gt $conn_rate_limit 0 }} { sc1_conn_rate gt {{ $conn_rate_limit }} } ||{{ end }} { always_false }
 {{- end }}
+{{- end }}
+{{- end }}{{/* $server.HasRateLimit */}}
+
+{{- if $server.UseHTTPS }}
+{{- if $server.SSLRedirect }}
+    redirect scheme https if {{ $hostAcl }}
+{{- else }}
+{{- range $location := $server.Locations }}
+{{- if $location.Rewrite.SSLRedirect }}
+    redirect scheme https if {{ $hostAcl }}{{ $location.HAMatchPath }}
+{{- end }}{{/* $location.Rewrite.SSLRedirect */}}
+{{- end }}{{/* range $location := $server.Locations */}}
+{{- end }}{{/* if $server.SSLRedirect */}}
+{{- end }}{{/* if $server.UseHTTPS */}}
+
+{{- range $location := $server.Locations }}
+{{- if ne $location.HAWhitelist "" }}
+    http-request deny if {{ $hostAcl}} {{ $location.HAMatchPath }} !{ src{{ $location.HAWhitelist }} }
+{{- end }}{{/* if ne $location.HAWhitelist "" */}}
+{{- $listName := $location.Userlist.ListName }}
+{{- if ne $listName "" }}
+{{- $realm := $location.Userlist.Realm }}
+    http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if {{ $hostAcl}} {{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
+{{- end }}{{/* if ne $listName "" */}}
+{{- end }}{{/* range $location := $server.Locations */}}
+
+{{- $appRoot := $server.RootLocation.Rewrite.AppRoot }}
+{{- if ne $appRoot "" }}
+    redirect location {{ $appRoot }} if {{ $hostAcl}} { var(txn.path) -m str / }
+{{- end }}{{/* if ne $appRoot "" */}}
+
+{{- range $location := $server.Locations }}
+{{- if ne $location.Proxy.BodySize "" }}
+    use_backend error413 if {{ $hostAcl}} { var(txn.path) -m beg {{ $location.Path }} } { req.body_size gt {{ sizeSuffix $location.Proxy.BodySize }} }
+{{- end }}{{/* if */}}
+{{- end }}{{/* range $location := $server.Locations */}}
 
 {{- range $location := $server.Locations }}
 {{- $rewriteTarget := $location.Rewrite.Target }}
 {{- if ne $rewriteTarget "" }}
 {{- if eq $rewriteTarget "/" }}
-    reqrep ^([^\ :]*)\ {{ $location.Path }}/?(.*$) \1\ {{ $rewriteTarget }}\2 if { var(txn.path) -m beg {{ $location.Path }} }
+    reqrep ^([^\ :]*)\ {{ $location.Path }}/?(.*$) \1\ {{ $rewriteTarget }}\2 if {{ $hostAcl}} { var(txn.path) -m beg {{ $location.Path }} }
 {{- else }}
-    reqrep ^([^\ :]*)\ {{ $location.Path }}(.*$) \1\ {{ $rewriteTarget }}{{ if hasSuffix $location.Path "/" }}/{{ end }}\2 if { var(txn.path) -m beg {{ $location.Path }} }
-{{- end }}
-{{- end }}
-{{- end }}
+    reqrep ^([^\ :]*)\ {{ $location.Path }}(.*$) \1\ {{ $rewriteTarget }}{{ if hasSuffix $location.Path "/" }}/{{ end }}\2 if {{ $hostAcl}} { var(txn.path) -m beg {{ $location.Path }} }
+{{- end }}{{/* if eq $rewriteTarget */}}
+{{- end }}{{/* if ne $rewriteTarget */}}
+{{- end }}{{/* range $location := $server.Locations */}}
 
-{{- if $server.IsDefaultServer }}
-
-{{- if $server.SSLRedirect }}
-    redirect scheme https if !from-https
-{{- else }}
-{{- range $location := $server.Locations }}
-{{- if $location.Rewrite.SSLRedirect }}
-    redirect scheme https if{{ $location.HAMatchTxnPath }} !from-https
-{{- end }}
-{{- end }}
-{{- end }}
-
-{{- if ne $server.Alias "" }}
-{{- if $server.SSLRedirect }}
-    redirect scheme https if !from-https
-{{- else }}
-{{- range $location := $server.Locations }}
-{{- if $location.Rewrite.SSLRedirect }}
-    redirect scheme https if{{ $location.HAMatchTxnPath }} !from-https
-{{- end }}
-{{- end }}
-{{- end }}
-{{- end }}
-
-{{- end }}{{/* if IsDefaultServer */}}
-
-{{- if and $server.UseHTTPS (ne $authSSLCert.CAFileName "") }}
-{{- if eq $server.CertificateAuth.ErrorPage "" }}
-    use_backend error495 if { ssl_c_ca_err gt 0 } || { ssl_c_err gt 0 }
-    use_backend error496 if ssl-offload !{ ssl_c_used }
-{{- else }}
-    redirect location {{ $server.CertificateAuth.ErrorPage }} if { ssl_c_ca_err gt 0 } || { ssl_c_err gt 0 }
-    redirect location {{ $server.CertificateAuth.ErrorPage }} if ssl-offload !{ ssl_c_used }
-{{- end }}
-{{- end }}
-
-{{- $appRoot := $server.RootLocation.Rewrite.AppRoot }}
-{{- if ne $appRoot "" }}
-    redirect location {{ $appRoot }} if { var(txn.path) -m str / }
-{{- end }}
-
-{{- if and $server.IsDefaultServer (and $server.UseHTTPS $cfg.UseHostOnHTTPS) }}
-    use_backend http-backend if ssl-offload
-{{- end }}
-
-{{- range $location := $server.Locations }}
-{{- if ne $location.Proxy.BodySize "" }}
-    use_backend error413 if { var(txn.path) -m beg {{ $location.Path }} } { req.body_size gt {{ sizeSuffix $location.Proxy.BodySize }} }
-{{- end }}
-{{- end }}
-
-{{- if $sslconn }}
+{{- if $server.UseHTTP }}
 {{- if $server.HSTS }}
 {{- $hsts := $server.HSTS }}
 {{- if $hsts.Enable }}
-    http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}{{ if $hsts.Subdomains }}; includeSubDomains{{ end }}{{ if $hsts.Preload }}; preload{{ end }}" if from-https
+    http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}{{ if $hsts.Subdomains }}; includeSubDomains{{ end }}{{ if $hsts.Preload }}; preload{{ end }}" if {{ $hostAcl}} from-https
 {{- end }}
 {{- else }}
 {{- range $location := $server.Locations }}
@@ -409,19 +212,20 @@ frontend httpfront-{{ $host }}
 {{- if $hsts.Enable }}
     http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}{{ if $hsts.Subdomains }}; includeSubDomains{{ end }}{{ if $hsts.Preload }}; preload{{ end }}" if from-https{{ $location.HAMatchTxnPath }}
 {{- end }}
-{{- end }}
-{{- end }}
-{{- end }}
+{{- end }}{{/* range $location := $server.Locations */}}
+{{- end }}{{/* if $server.HSTS */}}
+{{- end }}{{/* if $server.UseHttp */}}
 
 {{- range $location := $server.Locations }}
 {{- if not $location.IsRootLocation }}
-    use_backend {{ $location.Backend }} if { var(txn.path) -m beg {{ $location.Path }} }
+    use_backend {{ $location.Backend }} if {{ $hostAcl}} { var(txn.path) -m beg {{ $location.Path }} }
 {{- else }}
-    default_backend {{ $location.Backend }}
-{{- end }}
-{{- end }}
+    use_backend {{ $location.Backend }} if {{ $hostAcl}}
+{{- end }}{{/* not $location.IsRootLocation */}}
+{{- end }}{{/* range $location := $server.Locations */}}
 
-{{- end }}
+{{- end }}{{/* $server := $ing.HAServers */}}
+    default_backend upstream-default-backend
 
 ######
 ###### Error pages
