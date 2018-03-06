@@ -121,6 +121,7 @@ frontend httpfront
 {{- end }}
     mode http
 
+    http-request set-var(txn.path) path
 {{- range $server := $ing.HAServers }}
 {{- if isWildcardHostname $server.Hostname }}
     acl host-{{ $server.HostnameLabel }} hdr_reg(host) {{ hostnameRegex $server.Hostname }}
