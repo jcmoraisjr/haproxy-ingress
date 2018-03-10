@@ -121,6 +121,7 @@ frontend httpfront
 {{- end }}
     mode http
 
+    http-request set-var(txn.path) path
 {{- range $server := $ing.HAServers }}
 {{- if isWildcardHostname $server.Hostname }}
     acl host-{{ $server.HostnameLabel }} hdr_reg(host) {{ hostnameRegex $server.Hostname }}
@@ -274,6 +275,8 @@ frontend httpfront-{{ $host }}
 {{- end }}
 {{- end }}
 
+    http-request set-var(txn.path) path
+
 {{- if $server.HasRateLimit }}
     stick-table type ip size 200k expire 5m store conn_cur,conn_rate(1s)
     tcp-request content track-sc1 src
@@ -325,7 +328,6 @@ frontend httpfront-{{ $host }}
     http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-DN    if ssl-offload
     http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-CN    if ssl-offload
 {{- end }}
-    http-request set-var(txn.path) path
 
 {{- if eq $cfg.Forwardfor "add" }}
     http-request del-header x-forwarded-for
