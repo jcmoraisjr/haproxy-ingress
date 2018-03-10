@@ -16,9 +16,18 @@ Before the beta-quality releases, the source code could also be tagged and image
 The `snapshot` tag will always point to the latest tagged version, which could be a release,
 a beta-quality or a development version.
 
-# Usage
+# Installation
 
-Usage docs are maintained on Ingress repository:
+## The five minutes deployment
+
+Follow the detailed instructions [here](/examples/setup-cluster.md#five-minutes-deployment) or, in short:
+
+```
+kubectl create -f https://raw.githubusercontent.com/jcmoraisjr/haproxy-ingress/master/docs/haproxy-ingress.yaml
+kubectl label node <node-name> role=ingress-controller
+```
+
+## Deployment from examples
 
 * Start with [deployment](/examples/deployment) instructions
 * See [TLS termination](/examples/tls-termination) on how to enable `https`
