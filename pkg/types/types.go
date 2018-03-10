@@ -127,6 +127,7 @@ type (
 		Proxy                proxy.Configuration `json:"proxy,omitempty"`
 		RateLimit            ratelimit.RateLimit `json:"rateLimit,omitempty"`
 		HAMatchPath          string              `json:"haMatchPath"`
+		HAMatchTxnPath       string              `json:"haMatchTxnPath"`
 		HAWhitelist          string              `json:"whitelist,omitempty"`
 		HARateLimitWhiteList string              `json:"rateLimitWhiteList,omitempty"`
 	}
