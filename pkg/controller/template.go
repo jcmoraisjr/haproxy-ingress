@@ -33,6 +33,12 @@ type template struct {
 }
 
 var funcMap = gotemplate.FuncMap{
+	"iif": func(q bool, o1, o2 string) string {
+		if q {
+			return o1
+		}
+		return o2
+	},
 	"backendHash": func(endpoint string) string {
 		return utils.BackendHash(endpoint)
 	},

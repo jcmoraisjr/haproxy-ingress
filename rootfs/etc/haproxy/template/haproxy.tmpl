@@ -235,26 +235,27 @@ frontend httpsfront
 ######
 {{- range $server := $ing.HAProxies }}
 {{- $host := $server.HostnameLabel }}
+{{- $sock := iif (lt (len $host) 65) $host $server.HostnameHash }}
 ##
 ## {{ if $server.IsDefaultServer }}Default backend{{ else }}{{ $server.Hostname }}{{ end }}
 
 {{- if or $server.UseHTTP $hasHTTPStoHTTP }}
 backend httpback-{{ $host }}
     mode http
-    server {{ $host }} unix@/var/run/haproxy-http-{{ $host }}.sock send-proxy-v2
+    server {{ $host }} unix@/var/run/haproxy-http-{{ $sock }}.sock send-proxy-v2
 {{- end }}
 
 {{- if $server.UseHTTPS }}
 backend httpsback-{{ $host }}
     mode tcp
-    server {{ $host }} unix@/var/run/haproxy-https-{{ $host }}.sock send-proxy-v2
+    server {{ $host }} unix@/var/run/haproxy-https-{{ $sock }}.sock send-proxy-v2
 {{- end }}
 
 {{- $sslconn := or $server.UseHTTPS $hasHTTPStoHTTP }}
 {{- $authSSLCert := $server.CertificateAuth.AuthSSLCert }}
 frontend httpfront-{{ $host }}
 {{- if or $server.UseHTTP $hasHTTPStoHTTP }}
-    bind unix@/var/run/haproxy-http-{{ $host }}.sock accept-proxy
+    bind unix@/var/run/haproxy-http-{{ $sock }}.sock accept-proxy
 {{- end }}
 
 {{- if $server.UseHTTPS }}
@@ -262,7 +263,7 @@ frontend httpfront-{{ $host }}
 {{- if ne $authSSLCert.PemSHA "" }}
     # CA PEM checksum: {{ $authSSLCert.PemSHA }}
 {{- end }}
-    bind unix@/var/run/haproxy-https-{{ $host }}.sock ssl crt {{ $server.SSLCertificate }}{{ if ne $authSSLCert.CAFileName "" }} ca-file {{ $authSSLCert.CAFileName }} verify optional ca-ignore-err all crt-ignore-err all{{ end }} accept-proxy
+    bind unix@/var/run/haproxy-https-{{ $sock }}.sock ssl crt {{ $server.SSLCertificate }}{{ if ne $authSSLCert.CAFileName "" }} ca-file {{ $authSSLCert.CAFileName }} verify optional ca-ignore-err all crt-ignore-err all{{ end }} accept-proxy
 {{- end }}
     mode http
 
