@@ -18,6 +18,8 @@ package controller
 
 import (
 	"bufio"
+	"crypto/md5"
+	"fmt"
 	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/file"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
@@ -170,6 +172,7 @@ func (cfg *haConfig) createHAProxyServers() {
 			UseHTTPS:        server.SSLCertificate != "" || isDefaultServer,
 			Hostname:        server.Hostname,
 			HostnameLabel:   labelizeHostname(server.Hostname),
+			HostnameHash:    hashHostname(server.Hostname),
 			SSLCertificate:  server.SSLCertificate,
 			SSLPemChecksum:  server.SSLPemChecksum,
 			RootLocation:    haRootLocation,
@@ -242,6 +245,10 @@ func labelizeHostname(hostname string) string {
 	}
 	re := regexp.MustCompile(`[^a-zA-Z0-9:_\-.]`)
 	return re.ReplaceAllLiteralString(hostname, "_")
+}
+
+func hashHostname(hostname string) string {
+	return fmt.Sprintf("%x", md5.Sum([]byte(hostname)))
 }
 
 // This could be improved creating a list of auth secrets (or even configMaps)
