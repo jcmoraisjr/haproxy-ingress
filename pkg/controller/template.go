@@ -39,9 +39,6 @@ var funcMap = gotemplate.FuncMap{
 		}
 		return o2
 	},
-	"backendHash": func(endpoint string) string {
-		return utils.BackendHash(endpoint)
-	},
 	"hostnameRegex": func(hostname string) string {
 		rtn := regexp.MustCompile(`\.`).ReplaceAllLiteralString(hostname, "\\.")
 		rtn = regexp.MustCompile(`\*`).ReplaceAllLiteralString(rtn, "([^\\.]+)")

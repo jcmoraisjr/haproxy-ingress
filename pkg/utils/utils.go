@@ -17,8 +17,6 @@ limitations under the License.
 package utils
 
 import (
-	"crypto/md5"
-	"encoding/base64"
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/mitchellh/mapstructure"
@@ -44,13 +42,6 @@ func MergeMap(data map[string]string, resultTo interface{}) error {
 		return err
 	}
 	return nil
-}
-
-// BackendHash calc a base64 encoding of a partial hash of an endpoint
-// to be used as a cookie value of the backend on sticky session conf
-func BackendHash(endpoint string) string {
-	hash := md5.Sum([]byte(endpoint))
-	return base64.StdEncoding.EncodeToString(hash[:8])
 }
 
 // SizeSuffixToInt64 converts a size in string format with suffix

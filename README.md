@@ -160,12 +160,14 @@ A ConfigMap can be created with `kubectl create configmap`.
 The following parameters are supported:
 
 * `[0]` only in `canary` tag
+* `[1]` only in `snapshot` tag
 
 ||Name|Type|Default|
 |---|---|---|---|
 ||[`balance-algorithm`](#balance-algorithm)|algorithm name|`roundrobin`|
 ||[`backend-check-interval`](#backend-check-interval)|time with suffix|`2s`|
 ||[`backend-server-slots-increment`](#dynamic-scaling)|number of slots|`32`|
+|`[1]`|[`cookie-key`](#cookie-key)|secret key|`Ingress`|
 ||[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`false`|
 ||[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
 ||[`healthz-port`](#healthz-port)|port number|`10253`|
@@ -212,6 +214,14 @@ http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-balance
 Define the interval between TCP health checks to the backend using `inter` option.
 
 http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.2-inter
+
+### cookie-key
+
+Define a secret key used with the IP address and port number of a backend server
+to dynamically create a cookie to that server. Only useful on cookie based
+server affinity. See also [affinity](#affinity) annotations.
+
+http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#dynamic-cookie-key
 
 ### dynamic-scaling
 

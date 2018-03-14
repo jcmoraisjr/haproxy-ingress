@@ -104,6 +104,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		HTTPStoHTTPPort:             0,
 		StatsPort:                   1936,
 		StatsAuth:                   "",
+		CookieKey:                   "Ingress",
 		DynamicScaling:              false,
 		BackendServerSlotsIncrement: 32,
 		StatsSocket:                 "/var/run/haproxy-stats.sock",

@@ -68,6 +68,7 @@ type (
 		HTTPStoHTTPPort             int    `json:"https-to-http-port"`
 		StatsPort                   int    `json:"stats-port"`
 		StatsAuth                   string `json:"stats-auth"`
+		CookieKey                   string `json:"cookie-key"`
 		DynamicScaling              bool   `json:"dynamic-scaling"`
 		BackendServerSlotsIncrement int    `json:"backend-server-slots-increment"`
 		StatsSocket                 string
