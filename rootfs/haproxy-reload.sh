@@ -49,12 +49,12 @@ case "$1" in
     native)
         CONFIG="$2"
         HAPROXY_PID=/var/run/haproxy.pid
-        haproxy -f "$CONFIG" -p "$HAPROXY_PID" -D -sf $(cat "$HAPROXY_PID" 2>/dev/null || :)
+        haproxy -f "$CONFIG" -p "$HAPROXY_PID" -D -sf $(pidof haproxy 2>/dev/null || :)
         ;;
     reusesocket)
         CONFIG="$2"
         HAPROXY_PID=/var/run/haproxy.pid
-        OLD_PID=$(cat "$HAPROXY_PID" 2>/dev/null || :)
+        OLD_PID=$(pidof haproxy 2>/dev/null || :)
         if [ -S "$HAPROXY_SOCKET" ]; then
             haproxy -f "$CONFIG" -p "$HAPROXY_PID" -sf $OLD_PID -x "$HAPROXY_SOCKET"
         else
