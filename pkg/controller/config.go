@@ -328,11 +328,9 @@ func readUsers(fileName string, listName string) ([]types.AuthUser, error) {
 
 // serverSSLRedirect Configure a global (per hostname) ssl redirect only if
 // all locations also configure ssl redirect.
-// A location that doesn't configure ssl redirect will be ignored if it is
-// also a default backend (eg. undeclared root context)
 func serverSSLRedirect(server *ingress.Server) bool {
 	for _, location := range server.Locations {
-		if !location.Rewrite.SSLRedirect && !location.IsDefBackend {
+		if !location.Rewrite.SSLRedirect {
 			return false
 		}
 	}
