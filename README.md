@@ -58,6 +58,7 @@ The following annotations are supported:
 |`[0]`|[`ingress.kubernetes.io/auth-tls-cert-header`](#auth-tls)|[true\|false]|[doc](/examples/auth/client-certs)|
 ||[`ingress.kubernetes.io/auth-tls-error-page`](#auth-tls)|url|[doc](/examples/auth/client-certs)|
 ||[`ingress.kubernetes.io/auth-tls-secret`](#auth-tls)|namespace/secret name|[doc](/examples/auth/client-certs)|
+|`[1]`|[`ingress.kubernetes.io/blue-green-deploy`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
 |`[0]`|[`ingress.kubernetes.io/hsts`](#hsts)|[true\|false]|-|
 |`[0]`|[`ingress.kubernetes.io/hsts-include-subdomains`](#hsts)|[true\|false]|-|
 |`[0]`|[`ingress.kubernetes.io/hsts-max-age`](#hsts)|qty of seconds|-|
@@ -112,6 +113,34 @@ The following annotations are supported:
 * `ingress.kubernetes.io/auth-tls-secret`: mandatory secret name with `ca` key providing all certificate authority bundles used to validate client certificates.
 
 See also client cert [sample](/examples/auth/client-certs).
+
+### Blue-green
+
+Configure weight of a blue/green deployment. The annotation accepts a comma separated list of label
+name/value pair and a numeric weight. Concatenate label name, label value and weight with an equal
+sign, without spaces. The label name/value pair will be used to match corresponding pods.
+
+The endpoints of a single backend are selected using service selectors, which also uses labels.
+Because of that, in order to use blue/green deployment, the deployment, daemon set or replication
+controller template should have at least two label name/value pairs - one that matches the service
+selector and another that matches the blue/green selector.
+
+The following configuration `group=blue=1,group=green=4` will redirect 20% of the load to the
+`group=blue` pods and 80% of the load to the `group=green` if they have the same number of replicas.
+
+Note that this configuration is related to every single pod. On the configuration above, if
+`group=blue` has two replicas and `group=green` has just one, green would receive only the double
+of the number of requests dedicated to blue. This can be adjusted using higher numbers - eg `10/40`
+instead of `1/4` - and divided by the number of replicas of each deployment - eg `5/40` instead of
+`10/40`.
+
+Value of `0` (zero) can also be used. This will let the endpoint configured in the backend accepting
+persistent connections - see [affinity](#affinity) - but will not participate in the load balancing.
+The maximum weight value is `256`.
+
+See also the [example](/examples/blue-green) page.
+
+http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-weight
 
 ### Limit
 

@@ -71,12 +71,12 @@ func removeEndpoint(statsSocket, backendName, backendServerName string) bool {
 }
 
 // add Ingress Endpoint to a backend in a specific server slot
-func addEndpoint(statsSocket, backendName, backendServerName, address, port string, draining bool) bool {
-	weight := 100
-	state := "ready"
+func addEndpoint(statsSocket, backendName, backendServerName, address, port string, weight int, draining bool) bool {
+	var state string
 	if draining {
-		weight = 0
 		state = "drain"
+	} else {
+		state = "ready"
 	}
 
 	err1 := utils.SendToSocket(statsSocket,
@@ -92,12 +92,12 @@ func addEndpoint(statsSocket, backendName, backendServerName, address, port stri
 	return true
 }
 
-func setEndpointDrainState(statsSocket, backendName, backendServerName string, draining bool) bool {
-	weight := 100
-	state := "ready"
+func setEndpointDrainState(statsSocket, backendName, backendServerName string, weight int, draining bool) bool {
+	var state string
 	if draining {
-		weight = 0
 		state = "drain"
+	} else {
+		state = "ready"
 	}
 	err := utils.SendToSocket(statsSocket, fmt.Sprintf("set server %s/%s weight %d\nset server %s/%s state %s\n",
 		backendName, backendServerName, weight, backendName, backendServerName, state))
@@ -127,7 +127,7 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 			if !reflect.DeepEqual(curKeys, updKeys) {
 				// backend names or number of backends is different
 				reconfigureEmptySlots = true
-			} else if updatedConfig.Cfg.DrainSupport && onlyDrainStateChanged(curBackendsMap, updBackendsMap) {
+			} else if onlyDrainStateChanged(curBackendsMap, updBackendsMap) {
 				// Everything is the same except for the server's weight, so we can use the stats socket to update all of the server weights.
 				reloadRequired = false
 				updatedConfig.BackendSlots = currentConfig.BackendSlots
@@ -141,7 +141,7 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 								BackendServerName: backendServerName,
 								BackendEndpoint:   endpoint,
 							}
-							reloadRequired = reloadRequired || !setEndpointDrainState(currentConfig.Cfg.StatsSocket, backendName, backendServerName, endpoint.Draining)
+							reloadRequired = reloadRequired || !setEndpointDrainState(currentConfig.Cfg.StatsSocket, backendName, backendServerName, endpoint.Weight, endpoint.Draining)
 						}
 					}
 				}
@@ -181,7 +181,7 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 								BackendEndpoint:   endpoint,
 							}
 							backendSlots.EmptySlots = backendSlots.EmptySlots[1:]
-							reloadRequired = reloadRequired || !addEndpoint(currentConfig.Cfg.StatsSocket, backendName, backendSlots.FullSlots[k].BackendServerName, endpoint.Address, endpoint.Port, endpoint.Draining)
+							reloadRequired = reloadRequired || !addEndpoint(currentConfig.Cfg.StatsSocket, backendName, backendSlots.FullSlots[k].BackendServerName, endpoint.Address, endpoint.Port, endpoint.Weight, endpoint.Draining)
 						}
 						updatedConfig.BackendSlots[backendName] = backendSlots
 					}
@@ -200,7 +200,7 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 	return reloadRequired
 }
 
-// Determines whether or not the endpoints lists in curBackendsMap and updBackendsMap differ only in state of Draining.
+// Determines whether or not the endpoints lists in curBackendsMap and updBackendsMap differ only in state of Weight and Draining.
 // NOTE: This function assumes that the keys in the incoming maps are identical
 func onlyDrainStateChanged(curBackendsMap, updBackendsMap map[string]*ingress.Backend) bool {
 	for name, curBackend := range curBackendsMap {
@@ -222,6 +222,7 @@ func onlyDrainStateChanged(curBackendsMap, updBackendsMap map[string]*ingress.Ba
 				ce := curBackend.Endpoints[i]
 				ueCopy := *ue
 				ueCopy.Draining = ce.Draining
+				ueCopy.Weight = ce.Weight
 				if !ce.Equal(&ueCopy) {
 					return false
 				}
