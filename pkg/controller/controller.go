@@ -33,7 +33,6 @@ import (
 	"strings"
 	"time"
 	"sort"
-	"strconv"
 )
 
 // HAProxyController has internal data of a HAProxyController instance
@@ -46,7 +45,7 @@ type HAProxyController struct {
 	configDir     string
 	configFilePrefix     string
 	configFileSuffix     string
-	maxOldConfigFiles     int
+	maxOldConfigFiles     *int
 	template       *template
 	currentConfig  *types.ControllerConfig
 }
@@ -109,6 +108,8 @@ func (haproxy *HAProxyController) UpdateIngressStatus(*extensions.Ingress) []api
 func (haproxy *HAProxyController) ConfigureFlags(flags *pflag.FlagSet) {
 	haproxy.reloadStrategy = flags.String("reload-strategy", "native",
 		`Name of the reload strategy. Options are: native (default), reusesocket or multibinder`)
+	haproxy.maxOldConfigFiles = flags.Int("max-old-config-files", 0,
+		`Maximum old haproxy timestamped config files to allow before being cleaned up. A value <= 0 indicates a single non-timestamped config file will be used`)
 	ingressClass := flags.Lookup("ingress-class")
 	if ingressClass != nil {
 		ingressClass.Value.Set("haproxy")
@@ -121,7 +122,6 @@ func (haproxy *HAProxyController) OverrideFlags(flags *pflag.FlagSet) {
 	haproxy.configDir = "/etc/haproxy"
 	haproxy.configFilePrefix = "haproxy"
 	haproxy.configFileSuffix = ".cfg"
-	haproxy.template = newTemplate("haproxy.tmpl", "/etc/haproxy/template/haproxy.tmpl")
 
 	if !(*haproxy.reloadStrategy == "native" || *haproxy.reloadStrategy == "reusesocket" || *haproxy.reloadStrategy == "multibinder") {
 		glog.Fatalf("Unsupported reload strategy: %v", *haproxy.reloadStrategy)
@@ -129,14 +129,10 @@ func (haproxy *HAProxyController) OverrideFlags(flags *pflag.FlagSet) {
 	
 	if *haproxy.reloadStrategy == "multibinder" {
 		haproxy.template = newTemplate("haproxy.cfg.erb.tmpl", "/etc/haproxy/haproxy.cfg.erb.tmpl")
+	} else {
+		haproxy.template = newTemplate("haproxy.tmpl", "/etc/haproxy/template/haproxy.tmpl")
 	}
 	haproxy.command = "/haproxy-reload.sh"
-
-	haproxy.maxOldConfigFiles = 1000
-	envVar := os.Getenv("MAX_OLD_CONFIG_FILES")
-	if maxOldConfigFiles, err := strconv.Atoi(envVar); err == nil {
-		haproxy.maxOldConfigFiles = maxOldConfigFiles
-	}
 }
 
 // SetConfig receives the ConfigMap the user has configured
@@ -181,7 +177,7 @@ func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) error {
 		return nil
 	}
 
-	reloadCmd := haproxy.reloadHaproxy(configFile)
+	reloadCmd := exec.Command(haproxy.command, *haproxy.reloadStrategy, configFile)
 	out, err := reloadCmd.CombinedOutput()
 	if len(out) > 0 {
 		glog.Infof("HAProxy[pid=%v] output:\n%v", reloadCmd.Process.Pid, string(out))
@@ -193,8 +189,8 @@ func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) error {
 func (haproxy *HAProxyController) rewriteConfigFiles(data []byte) (string, error) {
 	// Include timestamp in config file name to aid troubleshooting. When using a single, ever-changing config file it
 	// was difficult to know what config was loaded by any given haproxy process
-	timestamp := time.Now().Format("-060102-150405.0000")
-	if *haproxy.reloadStrategy == "multibinder" {
+	timestamp := time.Now().Format("-20060102-150405.000")
+	if *haproxy.maxOldConfigFiles <= 0 || *haproxy.reloadStrategy == "multibinder" {
 		// multibinder currently limited to fixed config file path
 		timestamp = ""
 	}
@@ -225,11 +221,16 @@ func (haproxy *HAProxyController) rewriteConfigFiles(data []byte) (string, error
 		}
 	}
 
-	haproxy.removeOldConfigFiles(haproxy.configFileSuffix)
+	if *haproxy.maxOldConfigFiles > 0 {
+		if err := haproxy.removeOldConfigFiles(); err != nil {
+			glog.Warningf("Problem removing old config files, but continuing in case it was a fluke. err=%v", err)
+		}
+	}
+
 	return configFile, nil
 }
 
-func (haproxy *HAProxyController) removeOldConfigFiles(suffix string) error {
+func (haproxy *HAProxyController) removeOldConfigFiles() error {
 	files, err := ioutil.ReadDir(haproxy.configDir)
 	if err != nil {
 		return err
@@ -242,12 +243,14 @@ func (haproxy *HAProxyController) removeOldConfigFiles(suffix string) error {
 
 	matchesFound := 0
 	for _, f := range files {
-		if !f.IsDir() && strings.HasPrefix(f.Name(), haproxy.configFilePrefix) && strings.HasSuffix(f.Name(), suffix) {
+		if !f.IsDir() && strings.HasPrefix(f.Name(), haproxy.configFilePrefix) && strings.HasSuffix(f.Name(), haproxy.configFileSuffix) {
 			matchesFound = matchesFound + 1
-			if matchesFound > haproxy.maxOldConfigFiles {
+			if matchesFound > *haproxy.maxOldConfigFiles {
 				filePath := haproxy.configDir + "/" + f.Name()
-				glog.Infof("Removing old config file (%v). maxOldConfigFiles=%v", filePath, haproxy.maxOldConfigFiles)
-				os.Remove(filePath)
+				glog.Infof("Removing old config file (%v). maxOldConfigFiles=%v", filePath, *haproxy.maxOldConfigFiles)
+				if err := os.Remove(filePath); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -272,8 +275,4 @@ func checkValidity(configFile string) error {
 		return err
 	}
 	return nil
-}
-
-func (haproxy *HAProxyController) reloadHaproxy(configFile string) (*exec.Cmd) {
-	return exec.Command(haproxy.command, *haproxy.reloadStrategy, configFile)
 }
