@@ -31,6 +31,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
+	"sort"
 )
 
 // HAProxyController has internal data of a HAProxyController instance
@@ -40,7 +42,10 @@ type HAProxyController struct {
 	storeLister    *ingress.StoreLister
 	command        string
 	reloadStrategy *string
-	configFile     string
+	configDir     string
+	configFilePrefix     string
+	configFileSuffix     string
+	maxOldConfigFiles     *int
 	template       *template
 	currentConfig  *types.ControllerConfig
 }
@@ -103,6 +108,8 @@ func (haproxy *HAProxyController) UpdateIngressStatus(*extensions.Ingress) []api
 func (haproxy *HAProxyController) ConfigureFlags(flags *pflag.FlagSet) {
 	haproxy.reloadStrategy = flags.String("reload-strategy", "native",
 		`Name of the reload strategy. Options are: native (default), reusesocket or multibinder`)
+	haproxy.maxOldConfigFiles = flags.Int("max-old-config-files", 0,
+		`Maximum old haproxy timestamped config files to allow before being cleaned up. A value <= 0 indicates a single non-timestamped config file will be used`)
 	ingressClass := flags.Lookup("ingress-class")
 	if ingressClass != nil {
 		ingressClass.Value.Set("haproxy")
@@ -112,14 +119,18 @@ func (haproxy *HAProxyController) ConfigureFlags(flags *pflag.FlagSet) {
 
 // OverrideFlags allows controller to override command line parameter flags
 func (haproxy *HAProxyController) OverrideFlags(flags *pflag.FlagSet) {
-	if *haproxy.reloadStrategy == "native" || *haproxy.reloadStrategy == "reusesocket" {
-		haproxy.configFile = "/etc/haproxy/haproxy.cfg"
-		haproxy.template = newTemplate("haproxy.tmpl", "/etc/haproxy/template/haproxy.tmpl")
-	} else if *haproxy.reloadStrategy == "multibinder" {
-		haproxy.configFile = "/etc/haproxy/haproxy.cfg.erb"
+	haproxy.configDir = "/etc/haproxy"
+	haproxy.configFilePrefix = "haproxy"
+	haproxy.configFileSuffix = ".cfg"
+
+	if !(*haproxy.reloadStrategy == "native" || *haproxy.reloadStrategy == "reusesocket" || *haproxy.reloadStrategy == "multibinder") {
+		glog.Fatalf("Unsupported reload strategy: %v", *haproxy.reloadStrategy)
+	}
+	
+	if *haproxy.reloadStrategy == "multibinder" {
 		haproxy.template = newTemplate("haproxy.cfg.erb.tmpl", "/etc/haproxy/haproxy.cfg.erb.tmpl")
 	} else {
-		glog.Fatalf("Unsupported reload strategy: %v", *haproxy.reloadStrategy)
+		haproxy.template = newTemplate("haproxy.tmpl", "/etc/haproxy/template/haproxy.tmpl")
 	}
 	haproxy.command = "/haproxy-reload.sh"
 }
@@ -156,7 +167,7 @@ func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) error {
 		return err
 	}
 
-	err = rewriteConfigFiles(data, *haproxy.reloadStrategy, haproxy.configFile)
+	configFile, err := haproxy.rewriteConfigFiles(data)
 	if err != nil {
 		return err
 	}
@@ -166,56 +177,94 @@ func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) error {
 		return nil
 	}
 
-	out, err := haproxy.reloadHaproxy()
+	reloadCmd := exec.Command(haproxy.command, *haproxy.reloadStrategy, configFile)
+	out, err := reloadCmd.CombinedOutput()
 	if len(out) > 0 {
-		glog.Infof("HAProxy output:\n%v", string(out))
+		glog.Infof("HAProxy[pid=%v] output:\n%v", reloadCmd.Process.Pid, string(out))
 	}
 	return err
 }
 
 // RewriteConfigFiles safely replaces configuration files with new contents after validation
-func rewriteConfigFiles(data []byte, reloadStrategy, configFile string) error {
-	tmpf := "/etc/haproxy/new_cfg.erb"
-
-	err := ioutil.WriteFile(tmpf, data, 644)
-	if err != nil {
-		glog.Warningln("Error writing rendered template to file")
-		return err
+func (haproxy *HAProxyController) rewriteConfigFiles(data []byte) (string, error) {
+	// Include timestamp in config file name to aid troubleshooting. When using a single, ever-changing config file it
+	// was difficult to know what config was loaded by any given haproxy process
+	timestamp := time.Now().Format("-20060102-150405.000")
+	if *haproxy.maxOldConfigFiles <= 0 || *haproxy.reloadStrategy == "multibinder" {
+		// multibinder currently limited to fixed config file path
+		timestamp = ""
 	}
+	configFile := haproxy.configDir + "/" + haproxy.configFilePrefix + timestamp + haproxy.configFileSuffix
 
-	if reloadStrategy == "multibinder" {
-		generated, err := multibinderERBOnly(tmpf)
-		if err != nil {
-			return err
+	if *haproxy.reloadStrategy == "multibinder" {
+		erbFile := configFile + ".erb"
+		// Write to ERB template file
+		if err := ioutil.WriteFile(erbFile, data, 644); err != nil {
+			glog.Warningln("Error writing rendered template to file")
+			return "", err
 		}
-		err = os.Rename(generated, "/etc/haproxy/haproxy.cfg")
-		if err != nil {
-			glog.Warningln("Error updating config file")
-			return err
+
+		// Generate configFile contents by processing ERB template (also validates haproxy config)
+		if err := multibinderERBOnly(erbFile); err != nil {
+			return "", err
 		}
 	} else {
-		err = checkValidity(tmpf)
-		if err != nil {
-			return err
+		// Write directly to configFile
+		if err := ioutil.WriteFile(configFile, data, 644); err != nil {
+			glog.Warningln("Error writing rendered template to file")
+			return "", err
+		}
+
+		// Validate haproxy config
+		if err := checkValidity(configFile); err != nil {
+			return "", err
 		}
 	}
-	err = os.Rename(tmpf, configFile)
+
+	if *haproxy.maxOldConfigFiles > 0 {
+		if err := haproxy.removeOldConfigFiles(); err != nil {
+			glog.Warningf("Problem removing old config files, but continuing in case it was a fluke. err=%v", err)
+		}
+	}
+
+	return configFile, nil
+}
+
+func (haproxy *HAProxyController) removeOldConfigFiles() error {
+	files, err := ioutil.ReadDir(haproxy.configDir)
 	if err != nil {
-		glog.Warningln("Error updating config file")
 		return err
 	}
 
+	// Sort with most recently modified first
+	sort.Slice(files, func(i,j int) bool{
+		return files[i].ModTime().After(files[j].ModTime())
+	})
+
+	matchesFound := 0
+	for _, f := range files {
+		if !f.IsDir() && strings.HasPrefix(f.Name(), haproxy.configFilePrefix) && strings.HasSuffix(f.Name(), haproxy.configFileSuffix) {
+			matchesFound = matchesFound + 1
+			if matchesFound > *haproxy.maxOldConfigFiles {
+				filePath := haproxy.configDir + "/" + f.Name()
+				glog.Infof("Removing old config file (%v). maxOldConfigFiles=%v", filePath, *haproxy.maxOldConfigFiles)
+				if err := os.Remove(filePath); err != nil {
+					return err
+				}
+			}
+		}
+	}
 	return nil
 }
 
 // multibinderERBOnly generates a config file from ERB template by invoking multibinder-haproxy-erb
-func multibinderERBOnly(configFile string) (string, error) {
+func multibinderERBOnly(configFile string) error {
 	out, err := exec.Command("multibinder-haproxy-erb", "/usr/local/sbin/haproxy", "-f", configFile, "-c", "-q").CombinedOutput()
 	if err != nil {
 		glog.Warningf("Error validating config file:\n%v", string(out))
-		return "", err
+		return err
 	}
-	return configFile[:strings.LastIndex(configFile, ".erb")], nil
+	return nil
 }
 
 // checkValidity runs a HAProxy configuration validity check on a file
@@ -226,9 +275,4 @@ func checkValidity(configFile string) error {
 		return err
 	}
 	return nil
-}
-
-func (haproxy *HAProxyController) reloadHaproxy() ([]byte, error) {
-	out, err := exec.Command(haproxy.command, *haproxy.reloadStrategy, haproxy.configFile).CombinedOutput()
-	return out, err
 }
