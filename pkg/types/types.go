@@ -102,11 +102,13 @@ type (
 	// from ingress.Server used by HAProxy
 	HAProxyServer struct {
 		IsDefaultServer bool                  `json:"isDefaultServer"`
+		IsCACert        bool                  `json:"isCACert"`
 		UseHTTP         bool                  `json:"useHTTP"`
 		UseHTTPS        bool                  `json:"useHTTPS"`
 		Hostname        string                `json:"hostname"`
 		HostnameLabel   string                `json:"hostnameLabel"`
-		HostnameHash    string                `json:"hostnameHash"`
+		HostnameSocket  string                `json:"hostnameSocket"`
+		ACLLabel        string                `json:"aclLabel"`
 		SSLCertificate  string                `json:"sslCertificate"`
 		SSLPemChecksum  string                `json:"sslPemChecksum"`
 		RootLocation    *HAProxyLocation      `json:"defaultLocation"`

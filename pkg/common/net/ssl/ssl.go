@@ -250,7 +250,7 @@ func parseSANExtension(value []byte) (dnsNames, emailAddresses []string, ipAddre
 func AddCertAuth(name string, ca []byte) (*ingress.SSLCert, error) {
 
 	caName := fmt.Sprintf("ca-%v.pem", name)
-	caFileName := fmt.Sprintf("%v/%v", ingress.DefaultSSLDirectory, caName)
+	caFileName := fmt.Sprintf("%v/%v", ingress.DefaultCACertsDirectory, caName)
 
 	pemCABlock, _ := pem.Decode(ca)
 	if pemCABlock == nil {

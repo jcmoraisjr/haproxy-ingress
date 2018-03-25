@@ -62,6 +62,7 @@ func TestAddOrUpdateCertAndKey(t *testing.T) {
 		t.Fatalf("Unexpected error creating temporal directory: %v", err)
 	}
 	ingress.DefaultSSLDirectory = td
+	ingress.DefaultCACertsDirectory = td
 
 	cert, _, err := generateRSACerts("echoheaders")
 	if err != nil {
@@ -97,6 +98,7 @@ func TestCACert(t *testing.T) {
 		t.Fatalf("Unexpected error creating temporal directory: %v", err)
 	}
 	ingress.DefaultSSLDirectory = td
+	ingress.DefaultCACertsDirectory = td
 
 	cert, CA, err := generateRSACerts("echoheaders")
 	if err != nil {
@@ -134,6 +136,7 @@ func TestAddCertAuth(t *testing.T) {
 		t.Fatalf("Unexpected error creating temporal directory: %v", err)
 	}
 	ingress.DefaultSSLDirectory = td
+	ingress.DefaultCACertsDirectory = td
 
 	cn := "demo-ca"
 	_, ca, err := generateRSACerts(cn)

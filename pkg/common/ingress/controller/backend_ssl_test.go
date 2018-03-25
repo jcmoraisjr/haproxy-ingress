@@ -124,6 +124,7 @@ func buildCrtKeyAndCA() ([]byte, []byte, []byte, error) {
 		return nil, nil, nil, fmt.Errorf("error occurs while creating temp directory: %v", err)
 	}
 	ingress.DefaultSSLDirectory = td
+	ingress.DefaultCACertsDirectory = td
 
 	dCrt, err := base64.StdEncoding.DecodeString(tlsCrt)
 	if err != nil {

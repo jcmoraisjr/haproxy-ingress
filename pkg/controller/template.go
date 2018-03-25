@@ -18,6 +18,7 @@ package controller
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
@@ -38,6 +39,28 @@ var funcMap = gotemplate.FuncMap{
 			return o1
 		}
 		return o2
+	},
+	"isShared": func(singleServer *types.HAProxyServer) bool {
+		return singleServer == nil
+	},
+	"isCACert": func(singleServer *types.HAProxyServer) bool {
+		return singleServer != nil && singleServer.IsCACert
+	},
+	"isDefault": func(singleServer *types.HAProxyServer) bool {
+		return singleServer != nil && singleServer.IsDefaultServer
+	},
+	"getServers": func(servers []*types.HAProxyServer, singleServer *types.HAProxyServer) []*types.HAProxyServer {
+		if singleServer != nil {
+			return []*types.HAProxyServer{singleServer}
+		}
+		return servers
+	},
+	"map": func(v ...interface{}) map[string]interface{} {
+		d := make(map[string]interface{}, len(v))
+		for i := range v {
+			d[fmt.Sprintf("p%v", i+1)] = v[i]
+		}
+		return d
 	},
 	"hostnameRegex": func(hostname string) string {
 		rtn := regexp.MustCompile(`\.`).ReplaceAllLiteralString(hostname, "\\.")
