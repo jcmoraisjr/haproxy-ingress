@@ -123,6 +123,9 @@ func (s *PodLister) GetTerminatingServicePods(svc *apiv1.Service) (pl []apiv1.Po
 // Indicates whether or not pod belongs to svc, and is in the process of terminating
 func isTerminatingServicePod(svc *apiv1.Service, pod *apiv1.Pod) (termSvcPod bool) {
 	termSvcPod = false
+	if svc.GetNamespace() != pod.GetNamespace() {
+		return
+	}
 	for selectorLabel, selectorValue := range svc.Spec.Selector {
 		if labelValue, present := pod.Labels[selectorLabel]; !present || selectorValue != labelValue {
 			return

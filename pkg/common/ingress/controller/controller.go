@@ -1206,39 +1206,43 @@ func (ic *GenericController) getEndpoints(
 			}
 
 			upsServers = addIngressEndpoint(ss.Addresses, false, targetPort, adus, hz, upsServers)
-			upsServers = addIngressEndpoint(ss.NotReadyAddresses, true, targetPort, adus, hz, upsServers)
+			if ic.cfg.Backend.DrainSupport() {
+				upsServers = addIngressEndpoint(ss.NotReadyAddresses, true, targetPort, adus, hz, upsServers)
+			}
 		}
 	}
 
-	terminatingPods, err := ic.listers.Pod.GetTerminatingServicePods(s)
-	if err != nil {
-		glog.Warningf("unexpected error obtaining terminating pods for service: %v", err)
-		return upsServers
-	}
+	if ic.cfg.Backend.DrainSupport() {
+		terminatingPods, err := ic.listers.Pod.GetTerminatingServicePods(s)
+		if err != nil {
+			glog.Warningf("unexpected error obtaining terminating pods for service: %v", err)
+			return upsServers
+		}
 
-	// For each pod associated with this service that is in the terminating state, add it to the output in the draining state
-	// This will allow persistent traffic to be sent to the server during the termination grace period.
-	for _, tp := range terminatingPods {
-		ep := fmt.Sprintf("%v:%v", tp.Status.PodIP, servicePort.TargetPort.IntValue())
-		if _, exists := adus[ep]; exists {
-			continue
+		// For each pod associated with this service that is in the terminating state, add it to the output in the draining state
+		// This will allow persistent traffic to be sent to the server during the termination grace period.
+		for _, tp := range terminatingPods {
+			ep := fmt.Sprintf("%v:%v", tp.Status.PodIP, servicePort.TargetPort.IntValue())
+			if _, exists := adus[ep]; exists {
+				continue
+			}
+			ups := ingress.Endpoint{
+				Address:     tp.Status.PodIP,
+				Port:        fmt.Sprintf("%v", servicePort.TargetPort.IntValue()),
+				Draining:    true,
+				MaxFails:    hz.MaxFails,
+				FailTimeout: hz.FailTimeout,
+				Target: &apiv1.ObjectReference{
+					Kind:            tp.Kind,
+					Namespace:       tp.Namespace,
+					Name:            tp.Name,
+					UID:             tp.UID,
+					ResourceVersion: tp.ResourceVersion,
+				},
+			}
+			upsServers = append(upsServers, ups)
+			adus[ep] = true
 		}
-		ups := ingress.Endpoint{
-			Address:     tp.Status.PodIP,
-			Port:        fmt.Sprintf("%v", servicePort.TargetPort.IntValue()),
-			Draining:    true,
-			MaxFails:    hz.MaxFails,
-			FailTimeout: hz.FailTimeout,
-			Target:      &apiv1.ObjectReference{
-				Kind:            tp.Kind,
-				Namespace:       tp.Namespace,
-				Name:            tp.Name,
-				UID:             tp.UID,
-				ResourceVersion: tp.ResourceVersion,
-			},
-		}
-		upsServers = append(upsServers, ups)
-		adus[ep] = true
 	}
 
 	glog.V(3).Infof("endpoints found: %v", upsServers)

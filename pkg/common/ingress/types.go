@@ -105,6 +105,10 @@ type Controller interface {
 	// referenced service does not exists. This should return the content
 	// of to the default backend
 	DefaultEndpoint() Endpoint
+	// Indicates whether or not this controller supports a "drain" mode where unavailable
+	// and terminating pods are included in the list of returned pods and used to direct
+	// certain traffic (e.g., traffic using persistence) to terminating/unavailable pods.
+	DrainSupport() bool
 }
 
 // StoreLister returns the configured stores for ingresses, services,
