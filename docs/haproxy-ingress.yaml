@@ -203,6 +203,7 @@ spec:
         args:
         - --default-backend-service=$(POD_NAMESPACE)/ingress-default-backend
         - --configmap=$(POD_NAMESPACE)/haproxy-ingress
+        - --sort-backends
         ports:
         - name: http
           containerPort: 80

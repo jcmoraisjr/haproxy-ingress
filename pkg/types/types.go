@@ -68,6 +68,7 @@ type (
 		HTTPStoHTTPPort             int    `json:"https-to-http-port"`
 		StatsPort                   int    `json:"stats-port"`
 		StatsAuth                   string `json:"stats-auth"`
+		CookieKey                   string `json:"cookie-key"`
 		DynamicScaling              bool   `json:"dynamic-scaling"`
 		BackendServerSlotsIncrement int    `json:"backend-server-slots-increment"`
 		StatsSocket                 string
@@ -106,6 +107,7 @@ type (
 		UseHTTPS        bool                  `json:"useHTTPS"`
 		Hostname        string                `json:"hostname"`
 		HostnameLabel   string                `json:"hostnameLabel"`
+		HostnameHash    string                `json:"hostnameHash"`
 		SSLCertificate  string                `json:"sslCertificate"`
 		SSLPemChecksum  string                `json:"sslPemChecksum"`
 		RootLocation    *HAProxyLocation      `json:"defaultLocation"`
@@ -128,6 +130,7 @@ type (
 		Proxy                proxy.Configuration `json:"proxy,omitempty"`
 		RateLimit            ratelimit.RateLimit `json:"rateLimit,omitempty"`
 		HAMatchPath          string              `json:"haMatchPath"`
+		HAMatchTxnPath       string              `json:"haMatchTxnPath"`
 		HAWhitelist          string              `json:"whitelist,omitempty"`
 		HARateLimitWhiteList string              `json:"rateLimitWhiteList,omitempty"`
 	}

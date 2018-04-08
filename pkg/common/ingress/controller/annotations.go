@@ -105,6 +105,7 @@ func (e *annotationExtractor) Extract(ing *extensions.Ingress) map[string]interf
 			}
 
 			if !errors.IsLocationDenied(err) {
+				glog.Errorf("error parsing annotation %v/%v: %v", ing.Namespace, ing.Name, err)
 				continue
 			}
 

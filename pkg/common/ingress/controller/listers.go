@@ -124,6 +124,9 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 	}
 
 	secrEventHandler := cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			ic.syncQueue.Enqueue(obj)
+		},
 		UpdateFunc: func(old, cur interface{}) {
 			if !reflect.DeepEqual(old, cur) {
 				sec := cur.(*apiv1.Secret)

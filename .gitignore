@@ -1,2 +1,11 @@
 .vscode
 rootfs/haproxy-ingress-controller
+
+# IntelliJ
+.idea/
+.ideaDataSources/
+.shelf/
+.iwsBackup/
+*.ipr
+*.iws
+*.iml

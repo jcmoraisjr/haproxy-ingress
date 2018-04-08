@@ -18,6 +18,8 @@ package controller
 
 import (
 	"bufio"
+	"crypto/md5"
+	"fmt"
 	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/file"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
@@ -102,6 +104,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		HTTPStoHTTPPort:             0,
 		StatsPort:                   1936,
 		StatsAuth:                   "",
+		CookieKey:                   "Ingress",
 		DynamicScaling:              false,
 		BackendServerSlotsIncrement: 32,
 		StatsSocket:                 "/var/run/haproxy-stats.sock",
@@ -171,6 +174,7 @@ func (cfg *haConfig) createHAProxyServers() {
 			UseHTTPS:        server.SSLCertificate != "" || isDefaultServer,
 			Hostname:        server.Hostname,
 			HostnameLabel:   labelizeHostname(server.Hostname),
+			HostnameHash:    hashHostname(server.Hostname),
 			SSLCertificate:  server.SSLCertificate,
 			SSLPemChecksum:  server.SSLPemChecksum,
 			RootLocation:    haRootLocation,
@@ -225,12 +229,14 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 			haRootLocation = &haLocation
 		} else {
 			otherPaths = otherPaths + " " + location.Path
-			haLocation.HAMatchPath = " { var(txn.path) -m beg " + haLocation.Path + " }"
+			haLocation.HAMatchPath = " { path -m beg " + haLocation.Path + " }"
+			haLocation.HAMatchTxnPath = " { var(txn.path) -m beg " + haLocation.Path + " }"
 		}
 		haLocations[i] = &haLocation
 	}
 	if haRootLocation != nil && otherPaths != "" {
-		haRootLocation.HAMatchPath = " !{ var(txn.path) -m beg " + otherPaths + " }"
+		haRootLocation.HAMatchPath = " !{ path -m beg " + otherPaths + " }"
+		haRootLocation.HAMatchTxnPath = " !{ var(txn.path) -m beg " + otherPaths + " }"
 	}
 	return haLocations, haRootLocation
 }
@@ -241,6 +247,10 @@ func labelizeHostname(hostname string) string {
 	}
 	re := regexp.MustCompile(`[^a-zA-Z0-9:_\-.]`)
 	return re.ReplaceAllLiteralString(hostname, "_")
+}
+
+func hashHostname(hostname string) string {
+	return fmt.Sprintf("%x", md5.Sum([]byte(hostname)))
 }
 
 // This could be improved creating a list of auth secrets (or even configMaps)
@@ -319,11 +329,9 @@ func readUsers(fileName string, listName string) ([]types.AuthUser, error) {
 
 // serverSSLRedirect Configure a global (per hostname) ssl redirect only if
 // all locations also configure ssl redirect.
-// A location that doesn't configure ssl redirect will be ignored if it is
-// also a default backend (eg. undeclared root context)
 func serverSSLRedirect(server *ingress.Server) bool {
 	for _, location := range server.Locations {
-		if !location.Rewrite.SSLRedirect && !location.IsDefBackend {
+		if !location.Rewrite.SSLRedirect {
 			return false
 		}
 	}

@@ -89,7 +89,8 @@ backend {{ $backend.Name }}
     balance {{ $cfg.BalanceAlgorithm }}
 {{- $sticky := $backend.SessionAffinity }}
 {{- if eq $sticky.AffinityType "cookie" }}
-    cookie {{ $sticky.CookieSessionAffinity.Name }} {{ $sticky.CookieSessionAffinity.Strategy }} {{ if eq $sticky.CookieSessionAffinity.Strategy "insert" }}indirect nocache{{ end }}
+    cookie {{ $sticky.CookieSessionAffinity.Name }} {{ $sticky.CookieSessionAffinity.Strategy }} {{ if eq $sticky.CookieSessionAffinity.Strategy "insert" }}indirect nocache{{ end }} dynamic
+    dynamic-cookie-key "{{ $cfg.CookieKey }}"
 {{- end }}
 {{- $cacert := $backend.SecureCACert }}
 {{- if ne $cacert.PemSHA "" }}
@@ -97,10 +98,10 @@ backend {{ $backend.Name }}
 {{- end }}
 {{- $BackendSlots := index $ing.BackendSlots $backend.Name }}
 {{- range $target, $slot := $BackendSlots.FullSlots }}
-    server {{ $slot.BackendServerName }} {{ $target }} {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}{{ if $cfg.DrainSupport }}weight {{ if $slot.BackendEndpoint.Draining }}0 {{ else }}100 {{ end }}{{ end }}check port {{ $slot.BackendEndpoint.Port }} inter {{ $cfg.BackendCheckInterval }}{{ if eq $sticky.AffinityType "cookie" }} cookie {{ backendHash $slot.BackendServerName }}{{ end }}
+    server {{ $slot.BackendServerName }} {{ $target }} {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}{{ if $cfg.DrainSupport }}weight {{ if $slot.BackendEndpoint.Draining }}0 {{ else }}100 {{ end }}{{ end }}check port {{ $slot.BackendEndpoint.Port }} inter {{ $cfg.BackendCheckInterval }}
 {{- end }}
 {{- range $empty := $BackendSlots.EmptySlots }}
-    server {{ $empty }} 127.0.0.1:81 {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}check disabled inter {{ $cfg.BackendCheckInterval }}{{ if eq $sticky.AffinityType "cookie" }} cookie {{ backendHash $empty }}{{ end }}
+    server {{ $empty }} 127.0.0.1:81 {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}check disabled inter {{ $cfg.BackendCheckInterval }}
 {{- end }}
 {{- end }}
 
@@ -239,26 +240,27 @@ frontend httpsfront
 ######
 {{- range $server := $ing.HAProxies }}
 {{- $host := $server.HostnameLabel }}
+{{- $sock := iif (lt (len $host) 65) $host $server.HostnameHash }}
 ##
 ## {{ if $server.IsDefaultServer }}Default backend{{ else }}{{ $server.Hostname }}{{ end }}
 
 {{- if or $server.UseHTTP $hasHTTPStoHTTP }}
 backend httpback-{{ $host }}
     mode http
-    server {{ $host }} unix@/var/run/haproxy-http-{{ $host }}.sock send-proxy-v2
+    server {{ $host }} unix@/var/run/haproxy-http-{{ $sock }}.sock send-proxy-v2
 {{- end }}
 
 {{- if $server.UseHTTPS }}
 backend httpsback-{{ $host }}
     mode tcp
-    server {{ $host }} unix@/var/run/haproxy-https-{{ $host }}.sock send-proxy-v2
+    server {{ $host }} unix@/var/run/haproxy-https-{{ $sock }}.sock send-proxy-v2
 {{- end }}
 
 {{- $sslconn := or $server.UseHTTPS $hasHTTPStoHTTP }}
 {{- $authSSLCert := $server.CertificateAuth.AuthSSLCert }}
 frontend httpfront-{{ $host }}
 {{- if or $server.UseHTTP $hasHTTPStoHTTP }}
-    bind unix@/var/run/haproxy-http-{{ $host }}.sock accept-proxy
+    bind unix@/var/run/haproxy-http-{{ $sock }}.sock accept-proxy
 {{- end }}
 
 {{- if $server.UseHTTPS }}
@@ -266,7 +268,7 @@ frontend httpfront-{{ $host }}
 {{- if ne $authSSLCert.PemSHA "" }}
     # CA PEM checksum: {{ $authSSLCert.PemSHA }}
 {{- end }}
-    bind unix@/var/run/haproxy-https-{{ $host }}.sock ssl crt {{ $server.SSLCertificate }}{{ if ne $authSSLCert.CAFileName "" }} ca-file {{ $authSSLCert.CAFileName }} verify optional ca-ignore-err all crt-ignore-err all{{ end }} accept-proxy
+    bind unix@/var/run/haproxy-https-{{ $sock }}.sock ssl crt {{ $server.SSLCertificate }} alpn h2,http/1.1{{ if ne $authSSLCert.CAFileName "" }} ca-file {{ $authSSLCert.CAFileName }} verify optional ca-ignore-err all crt-ignore-err all{{ end }} accept-proxy
 {{- end }}
     mode http
 
@@ -338,6 +340,17 @@ frontend httpfront-{{ $host }}
     option forwardfor if-none
 {{- end }}
 
+{{- range $location := $server.Locations }}
+{{- $rewriteTarget := $location.Rewrite.Target }}
+{{- if ne $rewriteTarget "" }}
+{{- if eq $rewriteTarget "/" }}
+    reqrep ^([^\ :]*)\ {{ $location.Path }}/?(.*$) \1\ {{ $rewriteTarget }}\2 if { var(txn.path) -m beg {{ $location.Path }} }
+{{- else }}
+    reqrep ^([^\ :]*)\ {{ $location.Path }}(.*$) \1\ {{ $rewriteTarget }}{{ if hasSuffix $location.Path "/" }}/{{ end }}\2 if { var(txn.path) -m beg {{ $location.Path }} }
+{{- end }}
+{{- end }}
+{{- end }}
+
 {{- if $server.IsDefaultServer }}
 
 {{- if $server.SSLRedirect }}
@@ -345,7 +358,7 @@ frontend httpfront-{{ $host }}
 {{- else }}
 {{- range $location := $server.Locations }}
 {{- if $location.Rewrite.SSLRedirect }}
-    redirect scheme https if{{ $location.HAMatchPath }} !from-https
+    redirect scheme https if{{ $location.HAMatchTxnPath }} !from-https
 {{- end }}
 {{- end }}
 {{- end }}
@@ -356,7 +369,7 @@ frontend httpfront-{{ $host }}
 {{- else }}
 {{- range $location := $server.Locations }}
 {{- if $location.Rewrite.SSLRedirect }}
-    redirect scheme https if{{ $location.HAMatchPath }} !from-https
+    redirect scheme https if{{ $location.HAMatchTxnPath }} !from-https
 {{- end }}
 {{- end }}
 {{- end }}
@@ -389,17 +402,6 @@ frontend httpfront-{{ $host }}
 {{- end }}
 {{- end }}
 
-{{- range $location := $server.Locations }}
-{{- $rewriteTarget := $location.Rewrite.Target }}
-{{- if ne $rewriteTarget "" }}
-{{- if eq $rewriteTarget "/" }}
-    reqrep ^([^\ :]*)\ {{ $location.Path }}/?(.*$) \1\ {{ $rewriteTarget }}\2 if { var(txn.path) -m beg {{ $location.Path }} }
-{{- else }}
-    reqrep ^([^\ :]*)\ {{ $location.Path }}(.*$) \1\ {{ $rewriteTarget }}{{ if hasSuffix $location.Path "/" }}/{{ end }}\2 if { var(txn.path) -m beg {{ $location.Path }} }
-{{- end }}
-{{- end }}
-{{- end }}
-
 {{- if $sslconn }}
 {{- if $server.HSTS }}
 {{- $hsts := $server.HSTS }}
@@ -410,7 +412,7 @@ frontend httpfront-{{ $host }}
 {{- range $location := $server.Locations }}
 {{- $hsts := $location.HSTS }}
 {{- if $hsts.Enable }}
-    http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}{{ if $hsts.Subdomains }}; includeSubDomains{{ end }}{{ if $hsts.Preload }}; preload{{ end }}" if from-https{{ $location.HAMatchPath }}
+    http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}{{ if $hsts.Subdomains }}; includeSubDomains{{ end }}{{ if $hsts.Preload }}; preload{{ end }}" if from-https{{ $location.HAMatchTxnPath }}
 {{- end }}
 {{- end }}
 {{- end }}

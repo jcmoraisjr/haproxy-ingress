@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v0.5-beta.3
+
+Fixes and improvements since `v0.5-beta.2`
+
+* Fix sync of excluded secrets - [#102](https://github.com/jcmoraisjr/haproxy-ingress/issues/102)
+* Fix config with long fqdn - [#112](https://github.com/jcmoraisjr/haproxy-ingress/issues/112)
+* Fix non ssl redirect on default backend - [#120](https://github.com/jcmoraisjr/haproxy-ingress/issues/120)
+
+## v0.5-beta.2
+
+Fixes and improvements since `v0.5-beta.1`
+
+* Fix reading of txn.path on http-request keywords - [#102](https://github.com/jcmoraisjr/haproxy-ingress/issues/102)
+
 ## v0.5-beta.1
 
 Breaking backward compatibility from `v0.4`:

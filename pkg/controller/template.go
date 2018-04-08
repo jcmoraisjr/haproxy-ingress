@@ -33,8 +33,11 @@ type template struct {
 }
 
 var funcMap = gotemplate.FuncMap{
-	"backendHash": func(endpoint string) string {
-		return utils.BackendHash(endpoint)
+	"iif": func(q bool, o1, o2 string) string {
+		if q {
+			return o1
+		}
+		return o2
 	},
 	"hostnameRegex": func(hostname string) string {
 		rtn := regexp.MustCompile(`\.`).ReplaceAllLiteralString(hostname, "\\.")
