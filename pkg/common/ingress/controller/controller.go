@@ -603,7 +603,7 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 	aUpstreams := make([]*ingress.Backend, 0, len(upstreams))
 
 	for _, upstream := range upstreams {
-		isHTTPSfrom := []*ingress.Server{}
+		var isHTTPSfrom []*ingress.Server
 		for _, server := range servers {
 			for _, location := range server.Locations {
 				if upstream.Name == location.Backend {
@@ -821,7 +821,7 @@ func (ic *GenericController) getServiceClusterEndpoint(svcKey string, backend *e
 
 	svc := svcObj.(*apiv1.Service)
 	if svc.Spec.ClusterIP == "" || svc.Spec.ClusterIP == "None" {
-		return endpoint, fmt.Errorf("No ClusterIP found for service %s", svcKey)
+		return endpoint, fmt.Errorf("no ClusterIP found for service %s", svcKey)
 	}
 
 	endpoint.Address = svc.Spec.ClusterIP
@@ -1142,7 +1142,7 @@ func (ic *GenericController) getEndpoints(
 	proto apiv1.Protocol,
 	hz *healthcheck.Upstream) []ingress.Endpoint {
 
-	upsServers := []ingress.Endpoint{}
+	var upsServers []ingress.Endpoint
 
 	// avoid duplicated upstream servers when the service
 	// contains multiple port definitions sharing the same
@@ -1171,6 +1171,7 @@ func (ic *GenericController) getEndpoints(
 		return append(upsServers, ingress.Endpoint{
 			Address:     s.Spec.ExternalName,
 			Port:        fmt.Sprintf("%v", targetPort),
+			Draining:    false,
 			MaxFails:    hz.MaxFails,
 			FailTimeout: hz.FailTimeout,
 		})
@@ -1204,25 +1205,72 @@ func (ic *GenericController) getEndpoints(
 				continue
 			}
 
-			for _, epAddress := range ss.Addresses {
-				ep := fmt.Sprintf("%v:%v", epAddress.IP, targetPort)
-				if _, exists := adus[ep]; exists {
-					continue
-				}
-				ups := ingress.Endpoint{
-					Address:     epAddress.IP,
-					Port:        fmt.Sprintf("%v", targetPort),
-					MaxFails:    hz.MaxFails,
-					FailTimeout: hz.FailTimeout,
-					Target:      epAddress.TargetRef,
-				}
-				upsServers = append(upsServers, ups)
-				adus[ep] = true
+			upsServers = addIngressEndpoint(ss.Addresses, false, targetPort, adus, hz, upsServers)
+			if ic.cfg.Backend.DrainSupport() {
+				upsServers = addIngressEndpoint(ss.NotReadyAddresses, true, targetPort, adus, hz, upsServers)
 			}
 		}
 	}
 
+	if ic.cfg.Backend.DrainSupport() {
+		terminatingPods, err := ic.listers.Pod.GetTerminatingServicePods(s)
+		if err != nil {
+			glog.Warningf("unexpected error obtaining terminating pods for service: %v", err)
+			return upsServers
+		}
+
+		// For each pod associated with this service that is in the terminating state, add it to the output in the draining state
+		// This will allow persistent traffic to be sent to the server during the termination grace period.
+		for _, tp := range terminatingPods {
+			ep := fmt.Sprintf("%v:%v", tp.Status.PodIP, servicePort.TargetPort.IntValue())
+			if _, exists := adus[ep]; exists {
+				continue
+			}
+			ups := ingress.Endpoint{
+				Address:     tp.Status.PodIP,
+				Port:        fmt.Sprintf("%v", servicePort.TargetPort.IntValue()),
+				Draining:    true,
+				MaxFails:    hz.MaxFails,
+				FailTimeout: hz.FailTimeout,
+				Target: &apiv1.ObjectReference{
+					Kind:            tp.Kind,
+					Namespace:       tp.Namespace,
+					Name:            tp.Name,
+					UID:             tp.UID,
+					ResourceVersion: tp.ResourceVersion,
+				},
+			}
+			upsServers = append(upsServers, ups)
+			adus[ep] = true
+		}
+	}
+
 	glog.V(3).Infof("endpoints found: %v", upsServers)
+	return upsServers
+}
+
+func addIngressEndpoint(addresses []apiv1.EndpointAddress,
+	draining bool,
+	targetPort int32,
+	adus map[string]bool,
+	hz *healthcheck.Upstream,
+	upsServers []ingress.Endpoint) []ingress.Endpoint {
+	for _, epAddress := range addresses {
+		ep := fmt.Sprintf("%v:%v", epAddress.IP, targetPort)
+		if _, exists := adus[ep]; exists {
+			continue
+		}
+		ups := ingress.Endpoint{
+			Address:     epAddress.IP,
+			Port:        fmt.Sprintf("%v", targetPort),
+			Draining:    draining,
+			MaxFails:    hz.MaxFails,
+			FailTimeout: hz.FailTimeout,
+			Target:      epAddress.TargetRef,
+		}
+		upsServers = append(upsServers, ups)
+		adus[ep] = true
+	}
 	return upsServers
 }
 

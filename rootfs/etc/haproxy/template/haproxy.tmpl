@@ -26,7 +26,11 @@ defaults
 {{- if $cfg.LoadServerState }}
     load-server-state-from-file global
 {{- end }}
+{{- if $cfg.DrainSupport }}
+    option persist
+{{- else }}
     option redispatch
+{{- end }}
     option dontlognull
     option http-server-close
     option http-keep-alive
@@ -94,7 +98,7 @@ backend {{ $backend.Name }}
 {{- end }}
 {{- $BackendSlots := index $ing.BackendSlots $backend.Name }}
 {{- range $target, $slot := $BackendSlots.FullSlots }}
-    server {{ $slot.BackendServerName }} {{ $target }} {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}check port {{ $slot.BackendEndpoint.Port }} inter {{ $cfg.BackendCheckInterval }}
+    server {{ $slot.BackendServerName }} {{ $target }} {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}{{ if $cfg.DrainSupport }}weight {{ if $slot.BackendEndpoint.Draining }}0 {{ else }}100 {{ end }}{{ end }}check port {{ $slot.BackendEndpoint.Port }} inter {{ $cfg.BackendCheckInterval }}
 {{- end }}
 {{- range $empty := $BackendSlots.EmptySlots }}
     server {{ $empty }} 127.0.0.1:81 {{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}check disabled inter {{ $cfg.BackendCheckInterval }}

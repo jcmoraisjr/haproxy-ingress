@@ -105,6 +105,10 @@ type Controller interface {
 	// referenced service does not exists. This should return the content
 	// of to the default backend
 	DefaultEndpoint() Endpoint
+	// Indicates whether or not this controller supports a "drain" mode where unavailable
+	// and terminating pods are included in the list of returned pods and used to direct
+	// certain traffic (e.g., traffic using persistence) to terminating/unavailable pods.
+	DrainSupport() bool
 }
 
 // StoreLister returns the configured stores for ingresses, services,
@@ -116,6 +120,7 @@ type StoreLister struct {
 	Endpoint  store.EndpointLister
 	Secret    store.SecretLister
 	ConfigMap store.ConfigMapLister
+	Pod       store.PodLister
 }
 
 // BackendInfo returns information about the backend.
@@ -180,7 +185,7 @@ type Backend struct {
 	SSLPassthrough bool `json:"sslPassthrough"`
 	// Endpoints contains the list of endpoints currently running
 	Endpoints []Endpoint `json:"endpoints,omitempty"`
-	// StickySessionAffinitySession contains the StickyConfig object with stickness configuration
+	// StickySessionAffinitySession contains the StickyConfig object with stickiness configuration
 	SessionAffinity SessionAffinityConfig `json:"sessionAffinityConfig"`
 	// Consistent hashing by NGINX variable
 	UpstreamHashBy string `json:"upstream-hash-by,omitempty"`
@@ -215,13 +220,15 @@ type Endpoint struct {
 	// Port number of the TCP port
 	Port string `json:"port"`
 	// MaxFails returns the number of unsuccessful attempts to communicate
-	// allowed before this should be considered dow.
+	// allowed before this should be considered down.
 	// Setting 0 indicates that the check is performed by a Kubernetes probe
 	MaxFails int `json:"maxFails"`
 	// FailTimeout returns the time in seconds during which the specified number
 	// of unsuccessful attempts to communicate with the server should happen
 	// to consider the endpoint unavailable
 	FailTimeout int `json:"failTimeout"`
+	// Indicates whether or not this endpoint is currently draining (not available or terminating)
+	Draining bool `json:"draining"`
 	// Target returns a reference to the object providing the endpoint
 	Target *apiv1.ObjectReference `json:"target,omitempty"`
 }
