@@ -159,8 +159,11 @@ func (haproxy *HAProxyController) DefaultEndpoint() ingress.Endpoint {
 // Indicates whether or not this controller supports a "drain" mode where unavailable
 // and terminating pods are included in the list of returned pods and used to direct
 // certain traffic (e.g., traffic using persistence) to terminating/unavailable pods.
-func (haproxy *HAProxyController) DrainSupport() bool {
-	return haproxy.currentConfig.Cfg.DrainSupport
+func (haproxy *HAProxyController) DrainSupport() (drainSupport bool) {
+	if haproxy.currentConfig != nil {
+		drainSupport = haproxy.currentConfig.Cfg.DrainSupport
+	}
+	return
 }
 
 // OnUpdate regenerate the configuration file of the backend
