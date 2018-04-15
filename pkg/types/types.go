@@ -36,7 +36,6 @@ type (
 		Backends            []*ingress.Backend
 		DefaultServer       *HAProxyServer
 		HAServers           []*HAProxyServer
-		HAProxies           []*HAProxyServer
 		TCPEndpoints        []ingress.L4Service
 		UDPEndpoints        []ingress.L4Service
 		PassthroughBackends []*ingress.SSLPassthroughBackend

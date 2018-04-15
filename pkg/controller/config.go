@@ -44,7 +44,6 @@ type haConfig struct {
 	haproxyController *HAProxyController
 	userlists         map[string]types.Userlist
 	haServers         []*types.HAProxyServer
-	haProxies         []*types.HAProxyServer
 	haDefaultServer   *types.HAProxyServer
 	haproxyConfig     *types.HAProxyConfig
 }
@@ -64,7 +63,6 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 		Servers:             cfg.ingress.Servers,
 		Backends:            cfg.ingress.Backends,
 		HAServers:           cfg.haServers,
-		HAProxies:           cfg.haProxies,
 		DefaultServer:       cfg.haDefaultServer,
 		TCPEndpoints:        cfg.ingress.TCPEndpoints,
 		UDPEndpoints:        cfg.ingress.UDPEndpoints,
@@ -198,7 +196,6 @@ func (cfg *haConfig) createHAProxyServers() {
 		}
 	}
 	cfg.haServers = haServers
-	cfg.haProxies = append(haServers, haDefaultServer)
 	cfg.haDefaultServer = haDefaultServer
 }
 
