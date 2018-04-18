@@ -259,19 +259,6 @@ func (e1 *Endpoint) Equal(e2 *Endpoint) bool {
 	if e1.Draining != e2.Draining {
 		return false
 	}
-
-	if e1.Target != e2.Target {
-		if e1.Target == nil || e2.Target == nil {
-			return false
-		}
-		if e1.Target.UID != e2.Target.UID {
-			return false
-		}
-		if e1.Target.ResourceVersion != e2.Target.ResourceVersion {
-			return false
-		}
-	}
-
 	return true
 }
 

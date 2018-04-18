@@ -19,9 +19,9 @@ package controller
 import (
 	"fmt"
 	"github.com/golang/glog"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"reflect"
 	"sort"
 )
@@ -114,30 +114,15 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 	reconfigureEmptySlots := false
 
 	if currentConfig != nil {
-		// store backend lists for retrieval
-		curBackends := currentConfig.Backends
-		updBackends := updatedConfig.Backends
-		// store BackendSlots for retrieval
-		curBackendSlots := currentConfig.BackendSlots
-
-		// exclude backend lists and slots from reflect.DeepEqual
-		updatedConfig.Backends = []*ingress.Backend{}
-		currentConfig.Backends = updatedConfig.Backends
-		currentConfig.BackendSlots = updatedConfig.BackendSlots
-
-		// check equality of everything but backends and Ingress status
-		// Ingress status can change on us, but that change is meaningless for our purposes, so copy that (and the ResourceVersion which will update
-		// along with it) from the new to the old config to exclude it from the comparison.
-		if len(currentConfig.Servers) > 0 && len(currentConfig.Servers[0].Locations) > 0 && len(updatedConfig.Servers) > 0 && len(updatedConfig.Servers[0].Locations) > 0 {
-			currentConfig.Servers[0].Locations[0].Ingress.ObjectMeta.ResourceVersion = updatedConfig.Servers[0].Locations[0].Ingress.ObjectMeta.ResourceVersion
-			currentConfig.Servers[0].Locations[0].Ingress.Status.LoadBalancer.Ingress = updatedConfig.Servers[0].Locations[0].Ingress.Status.LoadBalancer.Ingress
-		}
-		if !reflect.DeepEqual(updatedConfig, currentConfig) {
+		// check equality of everything but backends
+		currentConfigCopy := *currentConfig
+		currentConfigCopy.Backends = updatedConfig.Backends
+		if !updatedConfig.Equal(&currentConfigCopy) {
 			reconfigureEmptySlots = true
 		} else {
 			// set up maps
-			curBackendsMap, curKeys := ingressBackendsRemap(curBackends)
-			updBackendsMap, updKeys := ingressBackendsRemap(updBackends)
+			curBackendsMap, curKeys := ingressBackendsRemap(currentConfig.Backends)
+			updBackendsMap, updKeys := ingressBackendsRemap(updatedConfig.Backends)
 
 			if !reflect.DeepEqual(curKeys, updKeys) {
 				// backend names or number of backends is different
@@ -145,7 +130,7 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 			} else if updatedConfig.Cfg.DrainSupport && onlyDrainStateChanged(curBackendsMap, updBackendsMap) {
 				// Everything is the same except for the server's weight, so we can use the stats socket to update all of the server weights.
 				reloadRequired = false
-				updatedConfig.BackendSlots = curBackendSlots
+				updatedConfig.BackendSlots = currentConfig.BackendSlots
 				for _, backendName := range curKeys {
 					backendSlots := updatedConfig.BackendSlots[backendName]
 					updEndpoints := ingressEndpointsRemap(updBackendsMap[backendName].Endpoints)
@@ -163,10 +148,10 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 			} else if updatedConfig.Cfg.DynamicScaling {
 				// same names and nr of backends, we can modify existing HAProxyBackendSlots, should not need reloading
 				reloadRequired = false
-				updatedConfig.BackendSlots = curBackendSlots
+				updatedConfig.BackendSlots = currentConfig.BackendSlots
 				for _, backendName := range curKeys {
 					updLen := len(updBackendsMap[backendName].Endpoints)
-					totalSlots := len(curBackendSlots[backendName].EmptySlots) + len(curBackendSlots[backendName].FullSlots)
+					totalSlots := len(currentConfig.BackendSlots[backendName].EmptySlots) + len(currentConfig.BackendSlots[backendName].FullSlots)
 					if updLen > totalSlots || updLen < (totalSlots-updatedConfig.Cfg.BackendServerSlotsIncrement) {
 						// need to resize number of empty slots by BackendServerSlotsIncrement amount
 						reconfigureEmptySlots = true
@@ -205,11 +190,6 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 				reconfigureEmptySlots = true
 			}
 		}
-		// restore backend lists
-		currentConfig.Backends = curBackends
-		updatedConfig.Backends = updBackends
-		// restore backend slots
-		currentConfig.BackendSlots = curBackendSlots
 	}
 
 	if currentConfig == nil || reconfigureEmptySlots {
@@ -224,33 +204,25 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 // NOTE: This function assumes that the keys in the incoming maps are identical
 func onlyDrainStateChanged(curBackendsMap, updBackendsMap map[string]*ingress.Backend) bool {
 	for name, curBackend := range curBackendsMap {
-		// If the backend structs differ in something other than endpoints, then we can abort early
-		tmpEndpoints := curBackend.Endpoints
-		curBackend.Endpoints = updBackendsMap[name].Endpoints
-		backendsEqual := reflect.DeepEqual(curBackend, updBackendsMap[name])
-		curBackend.Endpoints = tmpEndpoints
-		if !backendsEqual {
-			return false
-		}
-
+		updBackend := updBackendsMap[name]
 		// If the endpoints length changed, then we can abort early
-		if len(curBackend.Endpoints) != len(updBackendsMap[name].Endpoints) {
+		if len(curBackend.Endpoints) != len(updBackend.Endpoints) {
 			return false
 		}
-
-		updEndpoints := ingressEndpointsRemap(updBackendsMap[name].Endpoints)
+		updBackendCopy := *updBackend
+		updBackendCopy.Endpoints = curBackend.Endpoints
+		// If the backend structs differ in something other than endpoints, then we can abort early
+		if !curBackend.Equal(&updBackendCopy) {
+			return false
+		}
+		updEndpoints := ingressEndpointsRemap(updBackend.Endpoints)
 		for i, e := range curBackend.Endpoints {
 			key := fmt.Sprintf("%s:%s", e.Address, e.Port)
 			if ue, ok := updEndpoints[key]; ok {
 				ce := curBackend.Endpoints[i]
-				ce.Draining = ue.Draining
-				// On delete, Kind can be updated from 'Pod' to empty string. This also causes a bump in ResourceVersion.
-				// We want to ignore these changes for our comparison.
-				tmpTarget := *ce.Target
-				tmpTarget.Kind = ue.Target.Kind
-				tmpTarget.ResourceVersion = ue.Target.ResourceVersion
-				ce.Target = &tmpTarget
-				if !reflect.DeepEqual(&ce, ue) {
+				ueCopy := *ue
+				ueCopy.Draining = ce.Draining
+				if !ce.Equal(&ueCopy) {
 					return false
 				}
 			} else {
