@@ -68,6 +68,9 @@ func (haproxy *HAProxyController) Info() *ingress.BackendInfo {
 // Start starts the controller
 func (haproxy *HAProxyController) Start() {
 	haproxy.controller = controller.NewIngressController(haproxy)
+	if *haproxy.reloadStrategy == "multibinder" {
+		glog.Warningf("multibinder is deprecated, using reusesocket strategy instead. update your deployment configuration")
+	}
 	haproxy.controller.Start()
 }
 
@@ -107,7 +110,7 @@ func (haproxy *HAProxyController) UpdateIngressStatus(*extensions.Ingress) []api
 // command line arguments
 func (haproxy *HAProxyController) ConfigureFlags(flags *pflag.FlagSet) {
 	haproxy.reloadStrategy = flags.String("reload-strategy", "native",
-		`Name of the reload strategy. Options are: native (default), reusesocket or multibinder`)
+		`Name of the reload strategy. Options are: native (default) or reusesocket`)
 	haproxy.maxOldConfigFiles = flags.Int("max-old-config-files", 0,
 		`Maximum old haproxy timestamped config files to allow before being cleaned up. A value <= 0 indicates a single non-timestamped config file will be used`)
 	ingressClass := flags.Lookup("ingress-class")
@@ -122,17 +125,12 @@ func (haproxy *HAProxyController) OverrideFlags(flags *pflag.FlagSet) {
 	haproxy.configDir = "/etc/haproxy"
 	haproxy.configFilePrefix = "haproxy"
 	haproxy.configFileSuffix = ".cfg"
+	haproxy.template = newTemplate("haproxy.tmpl", "/etc/haproxy/template/haproxy.tmpl")
+	haproxy.command = "/haproxy-reload.sh"
 
 	if !(*haproxy.reloadStrategy == "native" || *haproxy.reloadStrategy == "reusesocket" || *haproxy.reloadStrategy == "multibinder") {
 		glog.Fatalf("Unsupported reload strategy: %v", *haproxy.reloadStrategy)
 	}
-
-	if *haproxy.reloadStrategy == "multibinder" {
-		haproxy.template = newTemplate("haproxy.cfg.erb.tmpl", "/etc/haproxy/haproxy.cfg.erb.tmpl")
-	} else {
-		haproxy.template = newTemplate("haproxy.tmpl", "/etc/haproxy/template/haproxy.tmpl")
-	}
-	haproxy.command = "/haproxy-reload.sh"
 }
 
 // SetConfig receives the ConfigMap the user has configured
@@ -149,16 +147,16 @@ func (haproxy *HAProxyController) BackendDefaults() defaults.Backend {
 // referenced service does not exists
 func (haproxy *HAProxyController) DefaultEndpoint() ingress.Endpoint {
 	return ingress.Endpoint{
-		Address: "127.0.0.1",
-		Port:    "8181",
-		Draining:false,
-		Target:  &api.ObjectReference{},
+		Address:  "127.0.0.1",
+		Port:     "8181",
+		Draining: false,
+		Target:   &api.ObjectReference{},
 	}
 }
 
-// Indicates whether or not this controller supports a "drain" mode where unavailable
-// and terminating pods are included in the list of returned pods and used to direct
-// certain traffic (e.g., traffic using persistence) to terminating/unavailable pods.
+// DrainSupport indicates whether or not this controller supports a "drain" mode where
+// unavailable and terminating pods are included in the list of returned pods and used to
+// direct certain traffic (e.g., traffic using persistence) to terminating/unavailable pods.
 func (haproxy *HAProxyController) DrainSupport() (drainSupport bool) {
 	if haproxy.currentConfig != nil {
 		drainSupport = haproxy.currentConfig.Cfg.DrainSupport
@@ -203,36 +201,21 @@ func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) error {
 func (haproxy *HAProxyController) rewriteConfigFiles(data []byte) (string, error) {
 	// Include timestamp in config file name to aid troubleshooting. When using a single, ever-changing config file it
 	// was difficult to know what config was loaded by any given haproxy process
-	timestamp := time.Now().Format("-20060102-150405.000")
-	if *haproxy.maxOldConfigFiles <= 0 || *haproxy.reloadStrategy == "multibinder" {
-		// multibinder currently limited to fixed config file path
-		timestamp = ""
+	timestamp := ""
+	if *haproxy.maxOldConfigFiles > 0 {
+		timestamp = time.Now().Format("-20060102-150405.000")
 	}
 	configFile := haproxy.configDir + "/" + haproxy.configFilePrefix + timestamp + haproxy.configFileSuffix
 
-	if *haproxy.reloadStrategy == "multibinder" {
-		erbFile := configFile + ".erb"
-		// Write to ERB template file
-		if err := ioutil.WriteFile(erbFile, data, 644); err != nil {
-			glog.Warningln("Error writing rendered template to file")
-			return "", err
-		}
+	// Write directly to configFile
+	if err := ioutil.WriteFile(configFile, data, 644); err != nil {
+		glog.Warningln("Error writing rendered template to file")
+		return "", err
+	}
 
-		// Generate configFile contents by processing ERB template (also validates haproxy config)
-		if err := multibinderERBOnly(erbFile); err != nil {
-			return "", err
-		}
-	} else {
-		// Write directly to configFile
-		if err := ioutil.WriteFile(configFile, data, 644); err != nil {
-			glog.Warningln("Error writing rendered template to file")
-			return "", err
-		}
-
-		// Validate haproxy config
-		if err := checkValidity(configFile); err != nil {
-			return "", err
-		}
+	// Validate haproxy config
+	if err := checkValidity(configFile); err != nil {
+		return "", err
 	}
 
 	if *haproxy.maxOldConfigFiles > 0 {
@@ -267,16 +250,6 @@ func (haproxy *HAProxyController) removeOldConfigFiles() error {
 				}
 			}
 		}
-	}
-	return nil
-}
-
-// multibinderERBOnly generates a config file from ERB template by invoking multibinder-haproxy-erb
-func multibinderERBOnly(configFile string) error {
-	out, err := exec.Command("multibinder-haproxy-erb", "/usr/local/sbin/haproxy", "-f", configFile, "-c", "-q").CombinedOutput()
-	if err != nil {
-		glog.Warningf("Error validating config file:\n%v", string(out))
-		return err
 	}
 	return nil
 }
