@@ -173,9 +173,6 @@ func (b1 *Backend) Equal(b2 *Backend) bool {
 	if !(&b1.SessionAffinity).Equal(&b2.SessionAffinity) {
 		return false
 	}
-	if !(&b1.BlueGreen).Equal(&b2.BlueGreen) {
-		return false
-	}
 	if b1.UpstreamHashBy != b2.UpstreamHashBy {
 		return false
 	}
@@ -257,9 +254,6 @@ func (e1 *Endpoint) Equal(e2 *Endpoint) bool {
 		return false
 	}
 	if e1.FailTimeout != e2.FailTimeout {
-		return false
-	}
-	if e1.Draining != e2.Draining {
 		return false
 	}
 	if e1.Weight != e2.Weight {

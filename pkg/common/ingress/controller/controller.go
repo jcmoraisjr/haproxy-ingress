@@ -647,6 +647,11 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 				ep.Weight = -1
 				continue
 			}
+			if ep.Draining {
+				// draining state always set Weight to 0
+				ep.Weight = 0
+				continue
+			}
 			podName := ep.Target.Name
 			weight := -1
 			if pod, err := ic.listers.Pod.GetPod(podNamespace, podName); err == nil {

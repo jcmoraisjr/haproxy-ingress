@@ -67,13 +67,14 @@ func removeEndpoint(statsSocket, backendName, backendServerName string) bool {
 		glog.Warningln("failed socket command srv remove")
 		return false
 	}
+	glog.V(2).Infof("removed endpoint %v from backend %v", backendServerName, backendName)
 	return true
 }
 
 // add Ingress Endpoint to a backend in a specific server slot
-func addEndpoint(statsSocket, backendName, backendServerName, address, port string, weight int, draining bool) bool {
+func addEndpoint(statsSocket, backendName, backendServerName, address, port string, weight int) bool {
 	var state string
-	if draining {
+	if weight == 0 {
 		state = "drain"
 	} else {
 		state = "ready"
@@ -89,12 +90,13 @@ func addEndpoint(statsSocket, backendName, backendServerName, address, port stri
 		glog.Warningln("failed socket command srv add")
 		return false
 	}
+	glog.V(2).Infof("added endpoint %v:%v to server %v/%v", address, port, backendName, backendServerName)
 	return true
 }
 
-func setEndpointDrainState(statsSocket, backendName, backendServerName string, weight int, draining bool) bool {
+func setEndpointWeight(statsSocket, backendName, backendServerName string, weight int) bool {
 	var state string
-	if draining {
+	if weight == 0 {
 		state = "drain"
 	} else {
 		state = "ready"
@@ -105,6 +107,7 @@ func setEndpointDrainState(statsSocket, backendName, backendServerName string, w
 		glog.Warningln("failed socket command srv weight")
 		return false
 	}
+	glog.V(2).Infof("updated weight of %v/%v to %v", backendName, backendServerName, weight)
 	return true
 }
 
@@ -127,21 +130,22 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 			if !reflect.DeepEqual(curKeys, updKeys) {
 				// backend names or number of backends is different
 				reconfigureEmptySlots = true
-			} else if onlyDrainStateChanged(curBackendsMap, updBackendsMap) {
+			} else if onlyWeightChanged(curBackendsMap, updBackendsMap) {
 				// Everything is the same except for the server's weight, so we can use the stats socket to update all of the server weights.
 				reloadRequired = false
 				updatedConfig.BackendSlots = currentConfig.BackendSlots
 				for _, backendName := range curKeys {
 					backendSlots := updatedConfig.BackendSlots[backendName]
 					updEndpoints := ingressEndpointsRemap(updBackendsMap[backendName].Endpoints)
-					for name, endpoint := range updEndpoints {
-						if backendSlots.FullSlots[name].BackendEndpoint.Draining != endpoint.Draining {
+					for name, updEndpoint := range updEndpoints {
+						curEndpoint := backendSlots.FullSlots[name].BackendEndpoint
+						if curEndpoint.Weight != updEndpoint.Weight {
 							backendServerName := backendSlots.FullSlots[name].BackendServerName
 							backendSlots.FullSlots[name] = types.HAProxyBackendSlot{
 								BackendServerName: backendServerName,
-								BackendEndpoint:   endpoint,
+								BackendEndpoint:   updEndpoint,
 							}
-							reloadRequired = reloadRequired || !setEndpointDrainState(currentConfig.Cfg.StatsSocket, backendName, backendServerName, endpoint.Weight, endpoint.Draining)
+							reloadRequired = reloadRequired || !setEndpointWeight(currentConfig.Cfg.StatsSocket, backendName, backendServerName, updEndpoint.Weight)
 						}
 					}
 				}
@@ -181,7 +185,7 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 								BackendEndpoint:   endpoint,
 							}
 							backendSlots.EmptySlots = backendSlots.EmptySlots[1:]
-							reloadRequired = reloadRequired || !addEndpoint(currentConfig.Cfg.StatsSocket, backendName, backendSlots.FullSlots[k].BackendServerName, endpoint.Address, endpoint.Port, endpoint.Weight, endpoint.Draining)
+							reloadRequired = reloadRequired || !addEndpoint(currentConfig.Cfg.StatsSocket, backendName, backendSlots.FullSlots[k].BackendServerName, endpoint.Address, endpoint.Port, endpoint.Weight)
 						}
 						updatedConfig.BackendSlots[backendName] = backendSlots
 					}
@@ -200,9 +204,10 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 	return reloadRequired
 }
 
-// Determines whether or not the endpoints lists in curBackendsMap and updBackendsMap differ only in state of Weight and Draining.
+// Determines whether or not the endpoints lists in curBackendsMap and updBackendsMap
+// differ only in state of Weight.
 // NOTE: This function assumes that the keys in the incoming maps are identical
-func onlyDrainStateChanged(curBackendsMap, updBackendsMap map[string]*ingress.Backend) bool {
+func onlyWeightChanged(curBackendsMap, updBackendsMap map[string]*ingress.Backend) bool {
 	for name, curBackend := range curBackendsMap {
 		updBackend := updBackendsMap[name]
 		// If the endpoints length changed, then we can abort early
@@ -221,7 +226,6 @@ func onlyDrainStateChanged(curBackendsMap, updBackendsMap map[string]*ingress.Ba
 			if ue, ok := updEndpoints[key]; ok {
 				ce := curBackend.Endpoints[i]
 				ueCopy := *ue
-				ueCopy.Draining = ce.Draining
 				ueCopy.Weight = ce.Weight
 				if !ce.Equal(&ueCopy) {
 					return false
