@@ -643,8 +643,8 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 				continue
 			}
 			if len(deployWeight) == 0 {
-				// no blue/green config, removing weight config and skipping to the next
-				ep.Weight = -1
+				// no blue/green config, using default Weight config as 1 and skipping to the next
+				ep.Weight = 1
 				continue
 			}
 			if ep.Draining {

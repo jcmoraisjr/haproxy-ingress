@@ -224,10 +224,7 @@ type Endpoint struct {
 	// Port number of the TCP port
 	Port string `json:"port"`
 	// Weight is the blue/green deployment weight this endpoint should
-	// configure. A negative value should remove the weight configuration
-	// from the load balancer and if one endpoint has a negative weight,
-	// all of them from the same backend should have as well.
-	// A positive value represents the proportional load this endpoint
+	// configure. It represents the proportional load this endpoint
 	// should receive relative to the sum of all weights. A value of
 	// zero means the server will not receive any request.
 	// Note that this is a per-endpoint configuration, so different
@@ -241,7 +238,8 @@ type Endpoint struct {
 	// of unsuccessful attempts to communicate with the server should happen
 	// to consider the endpoint unavailable
 	FailTimeout int `json:"failTimeout"`
-	// Indicates whether or not this endpoint is currently draining (not available or terminating)
+	// Indicates whether or not this endpoint is currently draining (not available
+	// or terminating). This is a transient value that configures Weight as zero.
 	Draining bool `json:"draining"`
 	// Target returns a reference to the object providing the endpoint
 	Target *apiv1.ObjectReference `json:"target,omitempty"`
