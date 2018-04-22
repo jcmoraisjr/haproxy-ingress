@@ -23,9 +23,6 @@
 #  reusesocket <.cfg>
 #    Pass the listening sockets to the new HAProxy process instead of
 #    rebinding them, allowing hitless reloads.
-#  multibinder <.cfg.erb>
-#    Used on multibinder deployment. Send USR2 to the
-#    multibinder-haproxy-wrapper process.
 #
 # HAProxy options:
 #  -f config file
@@ -51,7 +48,8 @@ case "$1" in
         HAPROXY_PID=/var/run/haproxy.pid
         haproxy -f "$CONFIG" -p "$HAPROXY_PID" -D -sf $(cat "$HAPROXY_PID" 2>/dev/null || :)
         ;;
-    reusesocket)
+    reusesocket|multibinder)
+        # multibinder is now deprecated and, if used, is an alias to reusesocket
         CONFIG="$2"
         HAPROXY_PID=/var/run/haproxy.pid
         OLD_PID=$(cat "$HAPROXY_PID" 2>/dev/null || :)
@@ -60,12 +58,6 @@ case "$1" in
         else
             haproxy -f "$CONFIG" -p "$HAPROXY_PID" -sf $OLD_PID
         fi
-        ;;
-    multibinder)
-        HAPROXY=/usr/local/sbin/haproxy
-        CONFIG="$2"
-        WRAPPER_PID=/var/run/wrapper.pid
-        kill -USR2 $(cat "$WRAPPER_PID")
         ;;
     *)
         echo "Unsupported reload strategy: $1"
