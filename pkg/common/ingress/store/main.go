@@ -29,7 +29,7 @@ type IngressLister struct {
 	cache.Store
 }
 
-// SecretsLister makes a Store that lists Secrets.
+// SecretLister makes a Store that lists Secrets.
 type SecretLister struct {
 	cache.Store
 }
@@ -107,7 +107,8 @@ type PodLister struct {
 	cache.Store
 }
 
-// GetServicePods returns the pods that are terminating and belong (based on the Spec.Selector) to the supplied service.
+// GetTerminatingServicePods returns the pods that are terminating and belong
+// (based on the Spec.Selector) to the supplied service.
 func (s *PodLister) GetTerminatingServicePods(svc *apiv1.Service) (pl []apiv1.Pod, err error) {
 	list := s.Store.List()
 	for _, m := range list {
@@ -135,4 +136,16 @@ func isTerminatingServicePod(svc *apiv1.Service, pod *apiv1.Pod) (termSvcPod boo
 		termSvcPod = true
 	}
 	return
+}
+
+// GetPod returns the pod given it's namespace and name.
+func (s *PodLister) GetPod(namespace, name string) (*apiv1.Pod, error) {
+	for _, m := range s.Store.List() {
+		pod := *m.(*apiv1.Pod)
+		if pod.Name == name && pod.Namespace == namespace {
+			return &pod, nil
+		}
+	}
+	err := fmt.Errorf("could not find pod %v/%v", namespace, name)
+	return nil, err
 }

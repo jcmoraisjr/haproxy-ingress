@@ -493,6 +493,7 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 
 	for _, ing := range ingresses {
 		affinity := ic.annotations.SessionAffinity(ing)
+		blueGreen := ic.annotations.BlueGreen(ing)
 		anns := ic.annotations.Extract(ing)
 
 		for _, rule := range ing.Spec.Rules {
@@ -596,11 +597,13 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 
 					locs[host] = append(locs[host], path.Path)
 				}
+
+				if len(ups.BlueGreen.DeployWeight) == 0 {
+					ups.BlueGreen = *blueGreen
+				}
 			}
 		}
 	}
-
-	aUpstreams := make([]*ingress.Backend, 0, len(upstreams))
 
 	for _, upstream := range upstreams {
 		var isHTTPSfrom []*ingress.Server
@@ -628,6 +631,56 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 		}
 	}
 
+	// calc deployment weight of a blue/green deployment
+	for _, upstream := range upstreams {
+		svc := upstream.Service
+		podNamespace := svc.Namespace
+		deployWeight := upstream.BlueGreen.DeployWeight
+		for epID := range upstream.Endpoints {
+			ep := &upstream.Endpoints[epID]
+			if ep.Target == nil {
+				glog.Warningf("ignoring blue/green config due to empty object reference on endpoint %v/%v", podNamespace, upstream.Name)
+				continue
+			}
+			if len(deployWeight) == 0 {
+				// no blue/green config, removing weight config and skipping to the next
+				ep.Weight = -1
+				continue
+			}
+			if ep.Draining {
+				// draining state always set Weight to 0
+				ep.Weight = 0
+				continue
+			}
+			podName := ep.Target.Name
+			weight := -1
+			if pod, err := ic.listers.Pod.GetPod(podNamespace, podName); err == nil {
+				for _, weightConfig := range deployWeight {
+					if label, found := pod.Labels[weightConfig.LabelName]; found {
+						if label == weightConfig.LabelValue {
+							if weight < 0 {
+								weight = weightConfig.Weight
+							} else if weightConfig.Weight != weight {
+								glog.Warningf("deployment weight %v to service %v/%v is duplicated and was ignored", weightConfig.Weight, podNamespace, svc.Name)
+							}
+						}
+					} else {
+						glog.Warningf("pod %v/%v does not have label %v used on blue/green deployment", podNamespace, podName, weightConfig.LabelName)
+					}
+				}
+			} else {
+				glog.Warningf("could not calc weight of pod %v/%v: %v", podNamespace, podName, err)
+			}
+			// weight wasn't assigned, set as zero to remove all the traffic
+			// without removing from the balancer
+			if weight < 0 {
+				weight = 0
+			}
+			ep.Weight = weight
+		}
+	}
+
+	aUpstreams := make([]*ingress.Backend, 0, len(upstreams))
 	// create the list of upstreams and skip those without endpoints
 	for _, upstream := range upstreams {
 		if len(upstream.Endpoints) == 0 {

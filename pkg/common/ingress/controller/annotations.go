@@ -23,6 +23,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/auth"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/authreq"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/authtls"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/bluegreen"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/clientbodybuffersize"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/defaultbackend"
@@ -81,6 +82,7 @@ func newAnnotationExtractor(cfg extractorConfig) annotationExtractor {
 			"SecureUpstream":       secureupstream.NewParser(cfg, cfg),
 			"ServiceUpstream":      serviceupstream.NewParser(),
 			"SessionAffinity":      sessionaffinity.NewParser(),
+			"BlueGreen":            bluegreen.NewParser(),
 			"SSLPassthrough":       sslpassthrough.NewParser(),
 			"ConfigurationSnippet": snippet.NewParser(),
 			"Alias":                alias.NewParser(),
@@ -130,6 +132,7 @@ func (e *annotationExtractor) Extract(ing *extensions.Ingress) map[string]interf
 const (
 	secureUpstream       = "SecureUpstream"
 	healthCheck          = "HealthCheck"
+	blueGreen            = "BlueGreen"
 	sslPassthrough       = "SSLPassthrough"
 	sessionAffinity      = "SessionAffinity"
 	serviceUpstream      = "ServiceUpstream"
@@ -158,6 +161,16 @@ func (e *annotationExtractor) SecureUpstream(ing *extensions.Ingress) *secureups
 func (e *annotationExtractor) HealthCheck(ing *extensions.Ingress) *healthcheck.Upstream {
 	val, _ := e.annotations[healthCheck].Parse(ing)
 	return val.(*healthcheck.Upstream)
+}
+
+func (e *annotationExtractor) BlueGreen(ing *extensions.Ingress) *bluegreen.Config {
+	val, err := e.annotations[blueGreen].Parse(ing)
+	if err != nil {
+		return &bluegreen.Config{
+			DeployWeight: []bluegreen.DeployWeight{},
+		}
+	}
+	return val.(*bluegreen.Config)
 }
 
 func (e *annotationExtractor) SSLPassthrough(ing *extensions.Ingress) bool {

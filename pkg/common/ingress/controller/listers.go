@@ -200,7 +200,7 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 	}
 
 	podEventHandler := cache.ResourceEventHandlerFuncs{
-		DeleteFunc: func (obj interface{}) {
+		DeleteFunc: func(obj interface{}) {
 			ic.syncQueue.Enqueue(obj)
 		},
 		UpdateFunc: func(old, cur interface{}) {

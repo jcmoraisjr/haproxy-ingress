@@ -256,7 +256,7 @@ func (e1 *Endpoint) Equal(e2 *Endpoint) bool {
 	if e1.FailTimeout != e2.FailTimeout {
 		return false
 	}
-	if e1.Draining != e2.Draining {
+	if e1.Weight != e2.Weight {
 		return false
 	}
 	return true

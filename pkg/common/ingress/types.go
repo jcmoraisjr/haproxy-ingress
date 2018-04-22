@@ -31,6 +31,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/auth"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/authreq"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/authtls"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/bluegreen"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/ipwhitelist"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxy"
@@ -188,6 +189,8 @@ type Backend struct {
 	Endpoints []Endpoint `json:"endpoints,omitempty"`
 	// StickySessionAffinitySession contains the StickyConfig object with stickiness configuration
 	SessionAffinity SessionAffinityConfig `json:"sessionAffinityConfig"`
+	// BlueGreen has the blue/green deployment configuration
+	BlueGreen bluegreen.Config `json:"blueGreen"`
 	// Consistent hashing by NGINX variable
 	UpstreamHashBy string `json:"upstream-hash-by,omitempty"`
 }
@@ -220,6 +223,16 @@ type Endpoint struct {
 	Address string `json:"address"`
 	// Port number of the TCP port
 	Port string `json:"port"`
+	// Weight is the blue/green deployment weight this endpoint should
+	// configure. A negative value should remove the weight configuration
+	// from the load balancer and if one endpoint has a negative weight,
+	// all of them from the same backend should have as well.
+	// A positive value represents the proportional load this endpoint
+	// should receive relative to the sum of all weights. A value of
+	// zero means the server will not receive any request.
+	// Note that this is a per-endpoint configuration, so different
+	// number of replicas need to be adjusted accordingly.
+	Weight int `json:"weight"`
 	// MaxFails returns the number of unsuccessful attempts to communicate
 	// allowed before this should be considered down.
 	// Setting 0 indicates that the check is performed by a Kubernetes probe
