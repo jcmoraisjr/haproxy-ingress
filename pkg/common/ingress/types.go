@@ -47,7 +47,8 @@ var (
 	// This directory contains all the SSL certificates that are specified in Ingress rules.
 	// The name of each file is <namespace>-<secret name>.pem. The content is the concatenated
 	// certificate and key.
-	DefaultSSLDirectory = "/ingress-controller/ssl"
+	DefaultSSLDirectory     = "/ingress-controller/ssl"
+	DefaultCACertsDirectory = "/ingress-controller/cacerts"
 )
 
 // Controller holds the methods to handle an Ingress backend

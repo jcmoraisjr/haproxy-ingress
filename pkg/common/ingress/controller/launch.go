@@ -216,7 +216,11 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 
 	err = os.MkdirAll(ingress.DefaultSSLDirectory, 0655)
 	if err != nil {
-		glog.Errorf("Failed to mkdir SSL directory: %v", err)
+		glog.Fatalf("Failed to mkdir SSL directory: %v", err)
+	}
+	err = os.MkdirAll(ingress.DefaultCACertsDirectory, 0655)
+	if err != nil {
+		glog.Fatalf("Failed to mkdir cacerts directory: %v", err)
 	}
 
 	if *forceIsolation && *allowCrossNamespace {

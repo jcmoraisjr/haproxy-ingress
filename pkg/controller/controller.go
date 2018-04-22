@@ -30,24 +30,24 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
-	"sort"
 )
 
 // HAProxyController has internal data of a HAProxyController instance
 type HAProxyController struct {
-	controller     *controller.GenericController
-	configMap      *api.ConfigMap
-	storeLister    *ingress.StoreLister
-	command        string
-	reloadStrategy *string
-	configDir     string
-	configFilePrefix     string
-	configFileSuffix     string
-	maxOldConfigFiles     *int
-	template       *template
-	currentConfig  *types.ControllerConfig
+	controller        *controller.GenericController
+	configMap         *api.ConfigMap
+	storeLister       *ingress.StoreLister
+	command           string
+	reloadStrategy    *string
+	configDir         string
+	configFilePrefix  string
+	configFileSuffix  string
+	maxOldConfigFiles *int
+	template          *template
+	currentConfig     *types.ControllerConfig
 }
 
 // NewHAProxyController constructor
@@ -126,7 +126,7 @@ func (haproxy *HAProxyController) OverrideFlags(flags *pflag.FlagSet) {
 	if !(*haproxy.reloadStrategy == "native" || *haproxy.reloadStrategy == "reusesocket" || *haproxy.reloadStrategy == "multibinder") {
 		glog.Fatalf("Unsupported reload strategy: %v", *haproxy.reloadStrategy)
 	}
-	
+
 	if *haproxy.reloadStrategy == "multibinder" {
 		haproxy.template = newTemplate("haproxy.cfg.erb.tmpl", "/etc/haproxy/haproxy.cfg.erb.tmpl")
 	} else {
@@ -168,7 +168,10 @@ func (haproxy *HAProxyController) DrainSupport() (drainSupport bool) {
 
 // OnUpdate regenerate the configuration file of the backend
 func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) error {
-	updatedConfig := newControllerConfig(&cfg, haproxy)
+	updatedConfig, err := newControllerConfig(&cfg, haproxy)
+	if err != nil {
+		return err
+	}
 
 	reloadRequired := reconfigureBackends(haproxy.currentConfig, updatedConfig)
 	haproxy.currentConfig = updatedConfig
@@ -248,7 +251,7 @@ func (haproxy *HAProxyController) removeOldConfigFiles() error {
 	}
 
 	// Sort with most recently modified first
-	sort.Slice(files, func(i,j int) bool{
+	sort.Slice(files, func(i, j int) bool {
 		return files[i].ModTime().After(files[j].ModTime())
 	})
 

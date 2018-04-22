@@ -44,29 +44,31 @@ type haConfig struct {
 	haproxyController *HAProxyController
 	userlists         map[string]types.Userlist
 	haServers         []*types.HAProxyServer
-	haProxies         []*types.HAProxyServer
 	haDefaultServer   *types.HAProxyServer
 	haproxyConfig     *types.HAProxyConfig
 }
 
-func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController *HAProxyController) *types.ControllerConfig {
+func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController *HAProxyController) (*types.ControllerConfig, error) {
 	cfg := &haConfig{}
 	cfg.ingress = ingressConfig
 	cfg.haproxyController = haproxyController
 	cfg.createUserlists()
 	cfg.createHAProxyServers()
+	err := cfg.createDefaultCert()
+	if err != nil {
+		return &types.ControllerConfig{}, err
+	}
 	return &types.ControllerConfig{
 		Userlists:           cfg.userlists,
 		Servers:             cfg.ingress.Servers,
 		Backends:            cfg.ingress.Backends,
 		HAServers:           cfg.haServers,
-		HAProxies:           cfg.haProxies,
 		DefaultServer:       cfg.haDefaultServer,
 		TCPEndpoints:        cfg.ingress.TCPEndpoints,
 		UDPEndpoints:        cfg.ingress.UDPEndpoints,
 		PassthroughBackends: cfg.ingress.PassthroughBackends,
 		Cfg:                 newHAProxyConfig(haproxyController),
-	}
+	}, nil
 }
 
 func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig {
@@ -168,13 +170,16 @@ func (cfg *haConfig) createHAProxyServers() {
 		haLocations, haRootLocation := cfg.newHAProxyLocations(server)
 		sslRedirect := serverSSLRedirect(server)
 		isDefaultServer := server.Hostname == "_"
+		isCACert := server.CertificateAuth.AuthSSLCert.CAFileName != ""
 		haServer := types.HAProxyServer{
 			IsDefaultServer: isDefaultServer,
+			IsCACert:        isCACert,
 			UseHTTP:         server.SSLCertificate == "" || !sslRedirect || isDefaultServer,
 			UseHTTPS:        server.SSLCertificate != "" || isDefaultServer,
 			Hostname:        server.Hostname,
 			HostnameLabel:   labelizeHostname(server.Hostname),
-			HostnameHash:    hashHostname(server.Hostname),
+			HostnameSocket:  sockHostname(labelizeHostname(server.Hostname)),
+			ACLLabel:        labelizeACL(server.Hostname),
 			SSLCertificate:  server.SSLCertificate,
 			SSLPemChecksum:  server.SSLPemChecksum,
 			RootLocation:    haRootLocation,
@@ -192,8 +197,15 @@ func (cfg *haConfig) createHAProxyServers() {
 		}
 	}
 	cfg.haServers = haServers
-	cfg.haProxies = append(haServers, haDefaultServer)
 	cfg.haDefaultServer = haDefaultServer
+}
+
+func (cfg *haConfig) createDefaultCert() error {
+	// HAProxy uses the first file from ssldir as the default certificate
+	defaultCert := fmt.Sprintf("%v/%v", ingress.DefaultSSLDirectory, "+default.pem")
+	os.Remove(defaultCert)
+	err := os.Link(cfg.haDefaultServer.SSLCertificate, defaultCert)
+	return err
 }
 
 func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAProxyLocation, *types.HAProxyLocation) {
@@ -249,8 +261,18 @@ func labelizeHostname(hostname string) string {
 	return re.ReplaceAllLiteralString(hostname, "_")
 }
 
-func hashHostname(hostname string) string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(hostname)))
+func labelizeACL(hostname string) string {
+	if hostname == "_" {
+		return ""
+	}
+	return fmt.Sprintf("host-%v", labelizeHostname(hostname))
+}
+
+func sockHostname(hostname string) string {
+	if len(hostname) > 65 {
+		return fmt.Sprintf("%x", md5.Sum([]byte(hostname)))
+	}
+	return hostname
 }
 
 // This could be improved creating a list of auth secrets (or even configMaps)
