@@ -152,7 +152,7 @@ func reconfigureBackends(currentConfig, updatedConfig *types.ControllerConfig) b
 				for _, backendName := range curKeys {
 					updLen := len(updBackendsMap[backendName].Endpoints)
 					totalSlots := len(currentConfig.BackendSlots[backendName].EmptySlots) + len(currentConfig.BackendSlots[backendName].FullSlots)
-					if updLen > totalSlots || updLen < (totalSlots-updatedConfig.Cfg.BackendServerSlotsIncrement) {
+					if updLen > totalSlots {
 						// need to resize number of empty slots by BackendServerSlotsIncrement amount
 						reconfigureEmptySlots = true
 					} else {
