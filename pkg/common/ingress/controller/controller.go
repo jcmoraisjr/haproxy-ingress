@@ -631,15 +631,16 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 		}
 	}
 
-	// calc deployment weight of a blue/green deployment
+	// calc deployment weight based on blue/green config or draining state
 	for _, upstream := range upstreams {
 		svc := upstream.Service
 		podNamespace := svc.Namespace
 		deployWeight := upstream.BlueGreen.DeployWeight
 		for epID := range upstream.Endpoints {
 			ep := &upstream.Endpoints[epID]
-			if ep.Target == nil {
-				glog.Warningf("ignoring blue/green config due to empty object reference on endpoint %v/%v", podNamespace, upstream.Name)
+			if ep.Draining {
+				// draining state always set Weight to 0, independent of a blue/green config
+				ep.Weight = 0
 				continue
 			}
 			if len(deployWeight) == 0 {
@@ -647,9 +648,8 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 				ep.Weight = 1
 				continue
 			}
-			if ep.Draining {
-				// draining state always set Weight to 0
-				ep.Weight = 0
+			if ep.Target == nil {
+				glog.Warningf("ignoring blue/green config due to empty object reference on endpoint %v/%v", podNamespace, upstream.Name)
 				continue
 			}
 			podName := ep.Target.Name
