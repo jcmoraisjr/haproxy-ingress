@@ -171,7 +171,7 @@ func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) error {
 		return err
 	}
 
-	reloadRequired := reconfigureBackends(haproxy.currentConfig, updatedConfig)
+	reloadRequired := !ConfigBackends(haproxy.currentConfig, updatedConfig)
 	haproxy.currentConfig = updatedConfig
 
 	data, err := haproxy.template.execute(updatedConfig)
