@@ -26,6 +26,7 @@ defaults
 {{- if $cfg.LoadServerState }}
     load-server-state-from-file global
 {{- end }}
+    maxconn {{ $cfg.MaxConn }}
 {{- if $cfg.DrainSupport }}
     option persist
 {{- else }}
