@@ -58,6 +58,7 @@ The following annotations are supported:
 |`[0]`|[`ingress.kubernetes.io/auth-tls-cert-header`](#auth-tls)|[true\|false]|[doc](/examples/auth/client-certs)|
 ||[`ingress.kubernetes.io/auth-tls-error-page`](#auth-tls)|url|[doc](/examples/auth/client-certs)|
 ||[`ingress.kubernetes.io/auth-tls-secret`](#auth-tls)|namespace/secret name|[doc](/examples/auth/client-certs)|
+|`[1]`|[`ingress.kubernetes.io/balance-algorithm`](#balance-algorithm)|algorithm name|-|
 |`[1]`|[`ingress.kubernetes.io/blue-green-deploy`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
 |`[0]`|[`ingress.kubernetes.io/hsts`](#hsts)|[true\|false]|-|
 |`[0]`|[`ingress.kubernetes.io/hsts-include-subdomains`](#hsts)|[true\|false]|-|
@@ -235,7 +236,16 @@ The following parameters are supported:
 
 ### balance-algorithm
 
-Define a load balancing algorithm.
+Define a load balancing algorithm. Use a configmap option to define a default value,
+and an ingress annotation to define a per backend configuration.
+
+Global configmap option:
+
+* `balance-algorithm`: algorithm name, default value is `roundrobin`
+
+Annotation on ingress resources:
+
+* `ingress.kubernetes.io/balance-algorithm`
 
 http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-balance
 

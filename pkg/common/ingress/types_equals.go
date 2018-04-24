@@ -181,6 +181,10 @@ func (b1 *Backend) Equal(b2 *Backend) bool {
 		return false
 	}
 
+	if b1.BalanceAlgorithm != b2.BalanceAlgorithm {
+		return false
+	}
+
 	for _, udp1 := range b1.Endpoints {
 		found := false
 		for _, udp2 := range b2.Endpoints {

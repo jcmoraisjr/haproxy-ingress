@@ -189,6 +189,8 @@ type Backend struct {
 	Endpoints []Endpoint `json:"endpoints,omitempty"`
 	// StickySessionAffinitySession contains the StickyConfig object with stickiness configuration
 	SessionAffinity SessionAffinityConfig `json:"sessionAffinityConfig"`
+	// BalanceAlgorithm has the per backend load balancing algorithm
+	BalanceAlgorithm string `json:"balanceAlgorithm"`
 	// BlueGreen has the blue/green deployment configuration
 	BlueGreen bluegreen.Config `json:"blueGreen"`
 	// Consistent hashing by NGINX variable

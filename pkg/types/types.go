@@ -58,7 +58,6 @@ type (
 		TimeoutTunnel               string `json:"timeout-tunnel"`
 		TimeoutKeepAlive            string `json:"timeout-keep-alive"`
 		Syslog                      string `json:"syslog-endpoint"`
-		BalanceAlgorithm            string `json:"balance-algorithm"`
 		BackendCheckInterval        string `json:"backend-check-interval"`
 		Forwardfor                  string `json:"forwardfor"`
 		MaxConn                     int    `json:"max-connections"`
@@ -77,7 +76,7 @@ type (
 		HTTPLogFormat               string `json:"http-log-format"`
 		HTTPSLogFormat              string `json:"https-log-format"`
 		TCPLogFormat                string `json:"tcp-log-format"`
-		DrainSupport				bool   `json:"drain-support"`
+		DrainSupport                bool   `json:"drain-support"`
 	}
 	// Userlist list of users for basic authentication
 	Userlist struct {
