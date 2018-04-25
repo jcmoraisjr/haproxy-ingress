@@ -21,6 +21,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/controller"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/defaults"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/dynconfig"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/version"
 	"github.com/spf13/pflag"
@@ -171,7 +172,7 @@ func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) error {
 		return err
 	}
 
-	reloadRequired := reconfigureBackends(haproxy.currentConfig, updatedConfig)
+	reloadRequired := !dynconfig.ConfigBackends(haproxy.currentConfig, updatedConfig)
 	haproxy.currentConfig = updatedConfig
 
 	data, err := haproxy.template.execute(updatedConfig)

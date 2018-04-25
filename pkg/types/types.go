@@ -40,7 +40,7 @@ type (
 		UDPEndpoints        []ingress.L4Service
 		PassthroughBackends []*ingress.SSLPassthroughBackend
 		Cfg                 *HAProxyConfig
-		BackendSlots        map[string]HAProxyBackendSlots
+		BackendSlots        map[string]*HAProxyBackendSlots
 	}
 	// HAProxyConfig has HAProxy specific configurations from ConfigMap
 	HAProxyConfig struct {
@@ -77,7 +77,7 @@ type (
 		HTTPLogFormat               string `json:"http-log-format"`
 		HTTPSLogFormat              string `json:"https-log-format"`
 		TCPLogFormat                string `json:"tcp-log-format"`
-		DrainSupport				bool   `json:"drain-support"`
+		DrainSupport                bool   `json:"drain-support"`
 	}
 	// Userlist list of users for basic authentication
 	Userlist struct {
