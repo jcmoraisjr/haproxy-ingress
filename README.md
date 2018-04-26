@@ -93,8 +93,8 @@ HAProxy configuration. In order to circumvent this, always configure the slot in
 least as much as the number of replicas of the deployment that need to use affinity. This
 limitation will be removed when HAProxy version is updated to `1.8`.
 
-* http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-cookie
-* http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.2-cookie
+* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-cookie
+* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-cookie
 * https://www.haproxy.com/blog/load-balancing-affinity-persistence-sticky-sessions-what-you-need-to-know/
 
 ### Auth TLS
@@ -247,13 +247,13 @@ Annotation on ingress resources:
 
 * `ingress.kubernetes.io/balance-algorithm`
 
-http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-balance
+http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-balance
 
 ### backend-check-interval
 
 Define the interval between TCP health checks to the backend using `inter` option.
 
-http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.2-inter
+http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-inter
 
 ### cookie-key
 
@@ -274,10 +274,12 @@ If `true` HAProxy Ingress will create at least `backend-server-slots-increment`
 servers on each backend and update them via a Unix socket without reloading HAProxy.
 Unused servers will stay in a disabled state.
 
+There is two changes ... v0.6
+
 * `dynamic-scaling`: Define if dynamic scaling should be used whenever possible
 * `backend-server-slots-increment`: Configures the minimum number of servers, the size of the increment when growing and the size of the decrement when shrinking of each HAProxy backend
 
-http://cbonte.github.io/haproxy-dconv/1.7/management.html#9.3
+http://cbonte.github.io/haproxy-dconv/1.8/management.html#9.3
 
 ### forwardfor
 
@@ -290,14 +292,14 @@ Use `ignore` to skip any check. `ifmissing` should be used to add
 `X-Forwarded-For` with client's IP address only if this header is not defined.
 Only use `ignore` or `ifmissing` on trusted networks.
 
-http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-option%20forwardfor
+http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-option%20forwardfor
 
 ### healthz-port
 
 Define the port number HAProxy should listen to in order to answer for health checking
 requests. Use `/healthz` as the request path.
 
-http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-monitor-uri
+http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-monitor-uri
 
 ### hsts
 
@@ -344,8 +346,8 @@ uptime of backends, qty of requests and so on.
 This is an experimental feature and has currently some issues if using with `dynamic-scaling`:
 an old state with disabled servers will disable them in the new configuration.
 
-* http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#3.1-server-state-file
-* http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-load-server-state-from-file
+* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-server-state-file
+* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-load-server-state-from-file
 
 ### log-format
 
@@ -356,14 +358,14 @@ Customize the tcp, http or https log format using log format variables. Only use
 * `http-log-format`: log format of all HTTP proxies, defaults to HAProxy default HTTP log format.
 * `https-log-format`: log format of TCP proxy used to inspect SNI extention. Use `default` to configure default TCP log format, defaults to not log.
 
-https://cbonte.github.io/haproxy-dconv/1.7/configuration.html#8.2.4
+https://cbonte.github.io/haproxy-dconv/1.8/configuration.html#8.2.4
 
 ### max-connections
 
 Define the maximum number of concurrent connections on all proxies.
 Defaults to `2000` connections, which is also the HAProxy default configuration.
 
-http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#3.2-maxconn
+http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.2-maxconn
 
 ### proxy-body-size
 
@@ -374,27 +376,27 @@ resource.
 Since 0.4 a suffix can be added to the size, so `10m` means
 `10 * 1024 * 1024` bytes. Supported suffix are: `k`, `m` and `g`.
 
-http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#7.3.6-req.body_size
+http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#7.3.6-req.body_size
 
 ### ssl-ciphers
 
 Set the list of cipher algorithms used during the SSL/TLS handshake.
 
-http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#3.1-ssl-default-bind-ciphers
+http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-ssl-default-bind-ciphers
 
 ### ssl-dh-default-max-size
 
 Define the maximum size of a temporary DH parameters used for key exchange.
 Only used if `ssl-dh-param` isn't provided.
 
-http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#tune.ssl.default-dh-param
+http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#tune.ssl.default-dh-param
 
 ### ssl-dh-param
 
 Define DH parameters file used on ephemeral Diffie-Hellman key exchange during
 the SSL/TLS handshake.
 
-http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#3.1-ssl-dh-param-file
+http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-ssl-dh-param-file
 
 ### ssl-headers-prefix
 
@@ -470,7 +472,7 @@ Define if HAProxy is behind another proxy that use the PROXY protocol. If `true`
 The stats endpoint (defaults to port `1936`) has it's own [`stats-proxy-protocol`](#stats)
 configuration.
 
-* http://cbonte.github.io/haproxy-dconv/1.7/configuration.html#5.1-accept-proxy
+* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.1-accept-proxy
 * http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
 
 ### drain-support
