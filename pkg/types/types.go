@@ -58,7 +58,6 @@ type (
 		TimeoutTunnel               string `json:"timeout-tunnel"`
 		TimeoutKeepAlive            string `json:"timeout-keep-alive"`
 		Syslog                      string `json:"syslog-endpoint"`
-		BalanceAlgorithm            string `json:"balance-algorithm"`
 		BackendCheckInterval        string `json:"backend-check-interval"`
 		Forwardfor                  string `json:"forwardfor"`
 		MaxConn                     int    `json:"max-connections"`

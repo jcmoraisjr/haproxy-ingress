@@ -87,7 +87,7 @@ listen tcp-{{ $tcp.Port }}
 {{- range $backend := $ing.Backends }}
 backend {{ $backend.Name }}
     mode {{ if $backend.SSLPassthrough }}tcp{{ else }}http{{ end }}
-    balance {{ $cfg.BalanceAlgorithm }}
+    balance {{ $backend.BalanceAlgorithm }}
 {{- $sticky := $backend.SessionAffinity }}
 {{- if eq $sticky.AffinityType "cookie" }}
     cookie {{ $sticky.CookieSessionAffinity.Name }} {{ $sticky.CookieSessionAffinity.Strategy }} {{ if eq $sticky.CookieSessionAffinity.Strategy "insert" }}indirect nocache{{ end }} dynamic

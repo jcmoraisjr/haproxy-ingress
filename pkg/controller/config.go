@@ -74,6 +74,7 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig {
 	conf := types.HAProxyConfig{
 		Backend: defaults.Backend{
+			BalanceAlgorithm:      "roundrobin",
 			HSTS:                  true,
 			HSTSMaxAge:            "15768000",
 			HSTSIncludeSubdomains: false,
@@ -97,7 +98,6 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		TimeoutTunnel:               "1h",
 		TimeoutKeepAlive:            "1m",
 		Syslog:                      "",
-		BalanceAlgorithm:            "roundrobin",
 		BackendCheckInterval:        "2s",
 		Forwardfor:                  "add",
 		MaxConn:                     2000,

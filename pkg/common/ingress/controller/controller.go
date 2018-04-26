@@ -456,7 +456,8 @@ func (ic *GenericController) getStreamServices(configmapName string, proto apiv1
 // configure the upstream to return http code 503.
 func (ic *GenericController) getDefaultUpstream() *ingress.Backend {
 	upstream := &ingress.Backend{
-		Name: defUpstreamName,
+		Name:             defUpstreamName,
+		BalanceAlgorithm: ic.GetDefaultBackend().BalanceAlgorithm,
 	}
 	svcKey := ic.cfg.DefaultService
 	svcObj, svcExists, err := ic.listers.Service.GetByKey(svcKey)
@@ -493,6 +494,7 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 
 	for _, ing := range ingresses {
 		affinity := ic.annotations.SessionAffinity(ing)
+		balance := ic.annotations.BalanceAlgorithm(ing)
 		blueGreen := ic.annotations.BlueGreen(ing)
 		anns := ic.annotations.Extract(ing)
 
@@ -596,6 +598,10 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 					}
 
 					locs[host] = append(locs[host], path.Path)
+				}
+
+				if ups.BalanceAlgorithm == "" {
+					ups.BalanceAlgorithm = balance
 				}
 
 				if len(ups.BlueGreen.DeployWeight) == 0 {

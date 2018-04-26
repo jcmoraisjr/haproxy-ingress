@@ -9,6 +9,11 @@ type Backend struct {
 	// AppRoot contains the AppRoot for apps that doesn't exposes its content in the 'root' context
 	AppRoot string `json:"app-root"`
 
+	// BalanceAlgorithm has the name of the default load balancing algorithm to use.
+	// The algorithm can be changed per backend with annotation.
+	// http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-balance
+	BalanceAlgorithm string `json:"balance-algorithm"`
+
 	// enables which HTTP codes should be passed for processing with the error_page directive
 	// http://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_intercept_errors
 	// http://nginx.org/en/docs/http/ngx_http_core_module.html#error_page
