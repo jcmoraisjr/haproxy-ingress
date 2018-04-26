@@ -495,7 +495,7 @@ The following command-line arguments are supported:
 ||[`kubeconfig`](#kubeconfig)|/path/to/kubeconfig|in cluster config|
 |`[1]`|[`max-old-config-files`](#max-old-config-files)|num of files|`0`|
 |`[0]`|[`rate-limit-update`](#rate-limit-update)|uploads per second (float)|`0.5`|
-||[`reload-strategy`](#reload-strategy)|[native\|reusesocket\|multibinder]|`native`|
+||[`reload-strategy`](#reload-strategy)|[native\|reusesocket]|`native`|
 ||[`sort-backends`](#sort-backends)|[true\|false]|`false`|
 |`[0]`|[`tcp-services-configmap`](#tcp-services-configmap)|namespace/configmapname|no tcp svc|
 |`[0]`|[`verify-hostname`](#verify-hostname)|[true\|false]|`true`|

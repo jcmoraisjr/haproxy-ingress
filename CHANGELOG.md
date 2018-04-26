@@ -5,6 +5,7 @@
 Breaking backward compatibility from `v0.5`:
 
 * Usage of header `Host` to match https requests instead of using just sni extension, deprecating `use-host-on-https` - [#130](https://github.com/jcmoraisjr/haproxy-ingress/pull/130)
+* Multibinder is deprecated, use `reusesocket` reload strategy instead - [#139](https://github.com/jcmoraisjr/haproxy-ingress/pull/139)
 
 Fixes and improvements since `v0.5`
 
