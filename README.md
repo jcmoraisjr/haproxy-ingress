@@ -320,7 +320,7 @@ just like itself did the ssl offload: HSTS header will be provided if configured
 https redirect will be done. There is only one exception: if `https-to-http-port` is `80`,
 only the header will be checked.
 
-The `X-Forwarded-Proto` header is optional in the following conditions:
+The `X-Forwarded-Proto` header is optional in the following condition:
 
 * The `https-to-http-port` should not match HTTP port `80`; and
 * The load balancer should connect to the same `https-to-http-port` number, eg cannot
@@ -483,6 +483,7 @@ The following command-line arguments are supported:
 ||[`default-ssl-certificate`](#default-ssl-certificate)|namespace/secretname|(mandatory)|
 ||[`ingress-class`](#ingress-class)|name|`haproxy`|
 ||[`kubeconfig`](#kubeconfig)|/path/to/kubeconfig|in cluster config|
+|`[1]`|[`max-old-config-files`](#max-old-config-files)|num of files|`0`|
 |`[0]`|[`rate-limit-update`](#rate-limit-update)|uploads per second (float)|`0.5`|
 ||[`reload-strategy`](#reload-strategy)|[native\|reusesocket\|multibinder]|`native`|
 ||[`sort-backends`](#sort-backends)|[true\|false]|`false`|
@@ -527,6 +528,13 @@ Ingress controller will try to connect to the Kubernetes master using environmen
 service account. This behavior can be changed using `--kubeconfig` argument that reference a
 kubeconfig file with master endpoint and credentials. This is a mandatory argument if the controller
 is deployed outside of the Kubernetes cluster.
+
+### max-old-config-files
+
+Everytime a configuration change need to update HAProxy, a configuration file is rewritten even if
+dynamic update is used. By default the same file is recreated and the old configuration is lost.
+Use `--max-old-config-files` to configure after how much files Ingress controller should start to
+remove old configuration files. If `0`, the default value, a single `haproxy.cfg` is used.
 
 ### rate-limit-update
 

@@ -1,5 +1,34 @@
 # CHANGELOG
 
+## Current snapshot tag
+
+Breaking backward compatibility from `v0.5`:
+
+* Usage of header `Host` to match https requests instead of using just sni extension, deprecating `use-host-on-https` - [#130](https://github.com/jcmoraisjr/haproxy-ingress/pull/130)
+
+Fixes and improvements since `v0.5`
+
+* HAProxy 1.8
+* Dynamic cookies on cookie based server affinity
+* HTTP/2 support - [#129](https://github.com/jcmoraisjr/haproxy-ingress/pull/129)
+* Share http/s connections on the same frontend/socket - [#130](https://github.com/jcmoraisjr/haproxy-ingress/pull/130)
+* Add clear userlist on misconfigured basic auth - [#71](https://github.com/jcmoraisjr/haproxy-ingress/issues/71)
+* Fix copy endpoints to fullslots - [#84](https://github.com/jcmoraisjr/haproxy-ingress/issues/84)
+* Equality improvement on dynamic scaling  - [#138](https://github.com/jcmoraisjr/haproxy-ingress/issues/138) and [#140](https://github.com/jcmoraisjr/haproxy-ingress/issues/140)
+* New annotations:
+  * Cookie persistence strategy [#89](https://github.com/jcmoraisjr/haproxy-ingress/pull/89) - [doc](/README.md#affinity)
+    * `ingress.kubernetes.io/session-cookie-strategy`
+  * Blue/green deployment [#125](https://github.com/jcmoraisjr/haproxy-ingress/pull/125) - [doc](/README.md#blue-green)
+    * `ingress.kubernetes.io/blue-green-deploy`
+  * Load balancing algorithm [#144](https://github.com/jcmoraisjr/haproxy-ingress/pull/144)
+    * `ingress.kubernetes.io/balance-algorithm`
+* New configmap options:
+  * Drain support for NotReady pods on cookie affinity backends [#95](https://github.com/jcmoraisjr/haproxy-ingress/pull/95) - [doc](/README.md#drain-support)
+    * `drain-support`
+* New command-line options:
+  * Maximum timestamped config files [#123](https://github.com/jcmoraisjr/haproxy-ingress/pull/123) - [doc](/README.md#max-old-config-files)
+    * `--max-old-config-files`
+
 ## v0.5-beta.3
 
 Fixes and improvements since `v0.5-beta.2`
