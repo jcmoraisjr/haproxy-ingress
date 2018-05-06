@@ -399,13 +399,13 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
 {{- $fetch := .p3 }}
 {{- $needport := .p4 }}
 {{- if ne $server.ACLLabel "" }}
-{{- if isWildcardHostname $server.Hostname }}
+{{- if $server.HostnameIsWildcard }}
     acl {{ $server.ACLLabel }} {{ $fetch }} -m reg -i {{ hostnameRegex $server.Hostname }}
 {{- else }}
     acl {{ $server.ACLLabel }} {{ $fetch }} -i {{ $server.Hostname }}{{ if $needport }} {{ $server.Hostname }}:80 {{ $server.Hostname }}:443{{ if and $cfg.HTTPStoHTTPPort (ne $cfg.HTTPStoHTTPPort 80) }} {{ $server.Hostname }}:{{ $cfg.HTTPStoHTTPPort }}{{ end }}{{ end }}
 {{- end }}
 {{- if ne $server.Alias "" }}
-{{- if isRegexHostname $server.Alias }}
+{{- if $server.AliasIsRegex }}
     acl {{ $server.ACLLabel }} {{ $fetch }} -m reg -i '{{ aliasRegex $server.Alias }}'
 {{- else }}
     acl {{ $server.ACLLabel }} {{ $fetch }} -i {{ $server.Alias }}{{ if $needport }} {{ $server.Alias }}:80 {{ $server.Alias }}:443{{ end }}

@@ -31,6 +31,7 @@ import (
 	api "k8s.io/api/core/v1"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -172,23 +173,25 @@ func (cfg *haConfig) createHAProxyServers() {
 		isDefaultServer := server.Hostname == "_"
 		isCACert := server.CertificateAuth.AuthSSLCert.CAFileName != ""
 		haServer := types.HAProxyServer{
-			IsDefaultServer: isDefaultServer,
-			IsCACert:        isCACert,
-			UseHTTP:         server.SSLCertificate == "" || !sslRedirect || isDefaultServer,
-			UseHTTPS:        server.SSLCertificate != "" || isDefaultServer,
-			Hostname:        server.Hostname,
-			HostnameLabel:   labelizeHostname(server.Hostname),
-			HostnameSocket:  sockHostname(labelizeHostname(server.Hostname)),
-			ACLLabel:        labelizeACL(server.Hostname),
-			SSLCertificate:  server.SSLCertificate,
-			SSLPemChecksum:  server.SSLPemChecksum,
-			RootLocation:    haRootLocation,
-			Locations:       haLocations,
-			SSLRedirect:     sslRedirect,
-			HSTS:            serverHSTS(server),
-			HasRateLimit:    serverHasRateLimit(server),
-			CertificateAuth: server.CertificateAuth,
-			Alias:           server.Alias,
+			IsDefaultServer:    isDefaultServer,
+			IsCACert:           isCACert,
+			UseHTTP:            server.SSLCertificate == "" || !sslRedirect || isDefaultServer,
+			UseHTTPS:           server.SSLCertificate != "" || isDefaultServer,
+			Hostname:           server.Hostname,
+			HostnameIsWildcard: idHasWildcard(server.Hostname),
+			HostnameLabel:      labelizeHostname(server.Hostname),
+			HostnameSocket:     sockHostname(labelizeHostname(server.Hostname)),
+			ACLLabel:           labelizeACL(server.Hostname),
+			SSLCertificate:     server.SSLCertificate,
+			SSLPemChecksum:     server.SSLPemChecksum,
+			RootLocation:       haRootLocation,
+			Locations:          haLocations,
+			SSLRedirect:        sslRedirect,
+			HSTS:               serverHSTS(server),
+			HasRateLimit:       serverHasRateLimit(server),
+			CertificateAuth:    server.CertificateAuth,
+			Alias:              server.Alias,
+			AliasIsRegex:       idHasRegex(server.Alias),
 		}
 		if isDefaultServer {
 			haDefaultServer = &haServer
@@ -196,6 +199,23 @@ func (cfg *haConfig) createHAProxyServers() {
 			haServers = append(haServers, &haServer)
 		}
 	}
+	sort.SliceStable(haServers, func(i, j int) bool {
+		// Move hosts without wildcard and alias without regex to the top,
+		// following are hosts without wildcard whose alias has regex, and
+		// finally with the least precedence are hosts with wildcards
+		a, b := 0, 0
+		if haServers[i].HostnameIsWildcard {
+			a = 2
+		} else if haServers[i].AliasIsRegex {
+			a = 1
+		}
+		if haServers[j].HostnameIsWildcard {
+			b = 2
+		} else if haServers[j].AliasIsRegex {
+			b = 1
+		}
+		return a < b
+	})
 	cfg.haServers = haServers
 	cfg.haDefaultServer = haDefaultServer
 }
@@ -273,6 +293,19 @@ func sockHostname(hostname string) string {
 		return fmt.Sprintf("%x", md5.Sum([]byte(hostname)))
 	}
 	return hostname
+}
+
+var (
+	regexHasWildcard  = regexp.MustCompile(`^\*\.`)
+	regexIsValidIdent = regexp.MustCompile(`^[a-zA-Z0-9\-.]+$`)
+)
+
+func idHasWildcard(identifier string) bool {
+	return regexHasWildcard.MatchString(identifier)
+}
+
+func idHasRegex(identifier string) bool {
+	return identifier != "" && !regexIsValidIdent.MatchString(identifier)
 }
 
 // This could be improved creating a list of auth secrets (or even configMaps)
