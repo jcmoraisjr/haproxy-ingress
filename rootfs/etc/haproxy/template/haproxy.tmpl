@@ -8,6 +8,9 @@ global
     server-state-base /var/lib/haproxy/
 {{- end}}
     maxconn {{ $cfg.MaxConn }}
+{{- if ne $cfg.TimeoutStop "" }}
+    hard-stop-after {{ $cfg.TimeoutStop }}
+{{- end }}
 {{- if ne $cfg.Syslog "" }}
     log {{ $cfg.Syslog }} format rfc5424 local0
     log-tag ingress

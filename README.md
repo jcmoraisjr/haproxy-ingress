@@ -229,6 +229,7 @@ The following parameters are supported:
 ||[`timeout-keep-alive`](#timeout)|time with suffix|`1m`|
 ||[`timeout-server`](#timeout)|time with suffix|`50s`|
 ||[`timeout-server-fin`](#timeout)|time with suffix|`50s`|
+|`[1]`|[`timeout-stop`](#timeout)|time with suffix|no timeout|
 ||[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
 |`[0]`|[`use-host-on-https`](#use-host-on-https)|[true\|false]|`false`|
 ||[`use-proxy-protocol`](#use-proxy-protocol)|[true\|false]|`false`|
@@ -453,7 +454,12 @@ Define timeout configurations:
 * `timeout-keep-alive`: Maximum time to wait for a new HTTP request on keep-alive connections
 * `timeout-server`: Maximum inactivity time on the backend side
 * `timeout-server-fin`: Maximum inactivity time on the backend side for half-closed connections - FIN_WAIT state
+* `timeout-stop`: Maximum time to wait for long lived connections to finish, eg websocket, before hard-stop a HAProxy process due to a reload
 * `timeout-tunnel`: Maximum inactivity time on the client and backend side for tunnels
+
+Docs:
+
+* `timeout-stop` - http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-hard-stop-after
 
 ### use-host-on-https
 

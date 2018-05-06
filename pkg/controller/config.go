@@ -95,6 +95,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		TimeoutClientFin:            "50s",
 		TimeoutServer:               "50s",
 		TimeoutServerFin:            "50s",
+		TimeoutStop:                 "",
 		TimeoutTunnel:               "1h",
 		TimeoutKeepAlive:            "1m",
 		Syslog:                      "",

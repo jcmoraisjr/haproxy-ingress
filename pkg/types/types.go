@@ -55,6 +55,7 @@ type (
 		TimeoutClientFin            string `json:"timeout-client-fin"`
 		TimeoutServer               string `json:"timeout-server"`
 		TimeoutServerFin            string `json:"timeout-server-fin"`
+		TimeoutStop                 string `json:"timeout-stop"`
 		TimeoutTunnel               string `json:"timeout-tunnel"`
 		TimeoutKeepAlive            string `json:"timeout-keep-alive"`
 		Syslog                      string `json:"syslog-endpoint"`
