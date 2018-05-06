@@ -67,6 +67,9 @@ The following annotations are supported:
 |`[0]`|[`ingress.kubernetes.io/limit-connections`](#limit)|qty|-|
 |`[0]`|[`ingress.kubernetes.io/limit-rps`](#limit)|rate per second|-|
 |`[0]`|[`ingress.kubernetes.io/limit-whitelist`](#limit)|cidr list|-|
+|`[1]`|[`ingress.kubernetes.io/maxconn-server`](#connection)|qty|-|
+|`[1]`|[`ingress.kubernetes.io/maxqueue-server`](#connection)|qty|-|
+|`[1]`|[`ingress.kubernetes.io/timeout-queue`](#connection)|qty|-|
 ||[`ingress.kubernetes.io/proxy-body-size`](#proxy-body-size)|size (bytes)|-|
 ||`ingress.kubernetes.io/secure-backends`|[true\|false]|-|
 ||`ingress.kubernetes.io/secure-verify-ca-secret`|secret name|-|
@@ -155,6 +158,19 @@ The following annotations are supported:
 * `ingress.kubernetes.io/limit-rps`: Maximum number of connections per second of the same IP
 * `ingress.kubernetes.io/limit-whitelist`: Comma separated list of CIDRs that should be removed from the rate limit and concurrent connections check
 
+### Connection
+
+Cconfigurations of connection limit and timeout.
+
+* `ingress.kubernetes.io/maxconn-server`: Defines the maximum concurrent connections each server of a backend should receive. If not specified or a value lesser than or equal zero is used, an unlimited number of connections will be allowed. When the limit is reached, new connections will wait on a queue.
+* `ingress.kubernetes.io/maxqueue-server`: Defines the maximum number of connections should wait in the queue of a server. When this number is reached, new requests will be redispached to another server, breaking sticky session if configured. The queue will be unlimited if the annotation is not specified or a value lesser than or equal zero is used.
+* `ingress.kubernetes.io/timeout-queue`: Defines how much time a connection should wait on a queue before a 503 error is returned to the client. The unit defaults to milliseconds if missing, change the unit with `s`, `m`, `h`, ... suffix. The configmap `timeout-queue` option is used as the default value.
+
+* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-maxconn
+* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-maxqueue
+* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-timeout%20queue
+* Time suffix: http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#2.4
+
 ### Server Alias
 
 Creates an alias of the server that annotation belongs to.
@@ -227,6 +243,7 @@ The following parameters are supported:
 ||[`timeout-connect`](#timeout)|time with suffix|`5s`|
 ||[`timeout-http-request`](#timeout)|time with suffix|`5s`|
 ||[`timeout-keep-alive`](#timeout)|time with suffix|`1m`|
+||[`timeout-queue`](#timeout)|time with suffix|`5s`|
 ||[`timeout-server`](#timeout)|time with suffix|`50s`|
 ||[`timeout-server-fin`](#timeout)|time with suffix|`50s`|
 ||[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
@@ -451,6 +468,7 @@ Define timeout configurations:
 * `timeout-connect`: Maximum time to wait for a connection to a backend
 * `timeout-http-request`: Maximum time to wait for a complete HTTP request
 * `timeout-keep-alive`: Maximum time to wait for a new HTTP request on keep-alive connections
+* `timeout-queue`: Maximum time a connection should wait on a server queue before return a 503 error to the client
 * `timeout-server`: Maximum inactivity time on the backend side
 * `timeout-server-fin`: Maximum inactivity time on the backend side for half-closed connections - FIN_WAIT state
 * `timeout-tunnel`: Maximum inactivity time on the client and backend side for tunnels

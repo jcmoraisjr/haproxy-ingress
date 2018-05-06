@@ -32,6 +32,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/authreq"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/authtls"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/bluegreen"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/connection"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/ipwhitelist"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxy"
@@ -193,6 +194,8 @@ type Backend struct {
 	BalanceAlgorithm string `json:"balanceAlgorithm"`
 	// BlueGreen has the blue/green deployment configuration
 	BlueGreen bluegreen.Config `json:"blueGreen"`
+	// Connection has backend or server connection limits and timeouts
+	Connection connection.Config `json:"connection"`
 	// Consistent hashing by NGINX variable
 	UpstreamHashBy string `json:"upstream-hash-by,omitempty"`
 }
