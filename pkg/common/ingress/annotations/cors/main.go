@@ -30,9 +30,11 @@ const (
 	annotationCorsAllowMethods     = "ingress.kubernetes.io/cors-allow-methods"
 	annotationCorsAllowHeaders     = "ingress.kubernetes.io/cors-allow-headers"
 	annotationCorsAllowCredentials = "ingress.kubernetes.io/cors-allow-credentials"
+	annotationCorsMaxAge           = "ingress.kubernetes.io/cors-max-age"
 	// Default values
 	defaultCorsMethods = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
 	defaultCorsHeaders = "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+	defaultCorsMaxAge  = 1728000
 )
 
 var (
@@ -58,6 +60,7 @@ type CorsConfig struct {
 	CorsAllowMethods     string `json:"corsAllowMethods"`
 	CorsAllowHeaders     string `json:"corsAllowHeaders"`
 	CorsAllowCredentials bool   `json:"corsAllowCredentials"`
+	CorsMaxAge           int    `json:"corsMaxAge"`
 }
 
 // NewParser creates a new CORS annotation parser
@@ -88,6 +91,9 @@ func (c1 *CorsConfig) Equal(c2 *CorsConfig) bool {
 	if c1.CorsEnabled != c2.CorsEnabled {
 		return false
 	}
+	if c1.CorsMaxAge != c2.CorsMaxAge {
+		return false
+	}
 
 	return true
 }
@@ -95,9 +101,15 @@ func (c1 *CorsConfig) Equal(c2 *CorsConfig) bool {
 // Parse parses the annotations contained in the ingress
 // rule used to indicate if the location/s should allows CORS
 func (a cors) Parse(ing *extensions.Ingress) (interface{}, error) {
-	corsenabled, err := parser.GetBoolAnnotation(annotationCorsEnabled, ing)
-	if err != nil {
-		corsenabled = false
+	if corsenabled, err := parser.GetBoolAnnotation(annotationCorsEnabled, ing); !corsenabled || err != nil {
+		return &CorsConfig{
+			CorsEnabled:          false,
+			CorsAllowOrigin:      "",
+			CorsAllowHeaders:     "",
+			CorsAllowMethods:     "",
+			CorsAllowCredentials: false,
+			CorsMaxAge:           0,
+		}, nil
 	}
 
 	corsalloworigin, err := parser.GetStringAnnotation(annotationCorsAllowOrigin, ing)
@@ -120,12 +132,18 @@ func (a cors) Parse(ing *extensions.Ingress) (interface{}, error) {
 		corsallowcredentials = true
 	}
 
+	corsMaxAge, err := parser.GetIntAnnotation(annotationCorsMaxAge, ing)
+	if err != nil {
+		corsMaxAge = defaultCorsMaxAge
+	}
+
 	return &CorsConfig{
-		CorsEnabled:          corsenabled,
+		CorsEnabled:          true,
 		CorsAllowOrigin:      corsalloworigin,
 		CorsAllowHeaders:     corsallowheaders,
 		CorsAllowMethods:     corsallowmethods,
 		CorsAllowCredentials: corsallowcredentials,
+		CorsMaxAge:           corsMaxAge,
 	}, nil
 
 }

@@ -15,6 +15,7 @@ global
     log {{ $cfg.Syslog }} format rfc5424 local0
     log-tag ingress
 {{- end }}
+    lua-load /usr/local/etc/haproxy/lua/send-response.lua
 {{- if ne $cfg.SSLDHParam.Filename "" }}
     # DH PEM checksum: {{ $cfg.SSLDHParam.PemSHA }}
     ssl-dh-param-file {{ $cfg.SSLDHParam.Filename }}
@@ -309,6 +310,16 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
 
 {{- /*------------------------------------*/}}
 {{- range $server := $servers }}
+{{- if $server.CORS }}
+{{- if $server.CORS.CorsEnabled }}
+    # skip backend on CORS preflight - {{ $server.Hostname }}
+    http-request use-service lua.send-response if METH_OPTIONS {{ $server.ACLLabel }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- range $server := $servers }}
 {{- range $location := $server.Locations }}
 {{- $rewriteTarget := $location.Rewrite.Target }}
 {{- if ne $rewriteTarget "" }}
@@ -376,8 +387,32 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
     http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}{{ if $hsts.Subdomains }}; includeSubDomains{{ end }}{{ if $hsts.Preload }}; preload{{ end }}" if from-https {{ $server.ACLLabel }}{{ $location.HAMatchTxnPath }}
 {{- end }}
 {{- end }}
+{{- end }}{{/* if/else $server.HSTS */}}
+{{- if $server.CORS }}
+{{- $cors := $server.CORS }}
+{{- if $cors.CorsEnabled }}
+    # start CORS preflight - {{ $server.Hostname }}
+    http-response set-header Access-Control-Allow-Origin      "{{ $cors.CorsAllowOrigin }}" if METH_OPTIONS {{ $server.ACLLabel }}
+    http-response set-header Access-Control-Allow-Methods     "{{ $cors.CorsAllowMethods }}" if METH_OPTIONS {{ $server.ACLLabel }}
+    http-response set-header Access-Control-Allow-Headers     "{{ $cors.CorsAllowHeaders }}" if METH_OPTIONS {{ $server.ACLLabel }}
+{{- if $cors.CorsAllowCredentials }}
+    http-response set-header Access-Control-Allow-Credentials "{{ $cors.CorsAllowCredentials }}" if METH_OPTIONS {{ $server.ACLLabel }}
 {{- end }}
+    http-response set-header Access-Control-Max-Age           "{{ $cors.CorsMaxAge }}" if METH_OPTIONS {{ $server.ACLLabel }}
+    http-response set-header Content-Type                     "text/plain" if METH_OPTIONS {{ $server.ACLLabel }}
+    http-response set-header Content-Length                   "0" if METH_OPTIONS {{ $server.ACLLabel }}
+    http-response set-status 204 reason "No Content" if METH_OPTIONS {{ $server.ACLLabel }}
+    # end CORS preflight - {{ $server.Hostname }}
+    http-response set-header Access-Control-Allow-Origin      "{{ $cors.CorsAllowOrigin }}" if {{ $server.ACLLabel }}
+{{- if $cors.CorsAllowCredentials }}
+    http-response set-header Access-Control-Allow-Credentials "{{ $cors.CorsAllowCredentials }}" if {{ $server.ACLLabel }}
 {{- end }}
+    http-response set-header Access-Control-Allow-Methods     "{{ $cors.CorsAllowMethods }}" if {{ $server.ACLLabel }}
+    http-response set-header Access-Control-Allow-Headers     "{{ $cors.CorsAllowHeaders }}" if {{ $server.ACLLabel }}
+    # end CORS - {{ $server.Hostname }}
+{{- end }}{{/* if $cors.CorsEnabled */}}
+{{- end }}{{/* if/else $server.CORS */}}
+{{- end }}{{/* range $servers */}}
 
 {{- /*------------------------------------*/}}
 {{- range $server := $servers }}

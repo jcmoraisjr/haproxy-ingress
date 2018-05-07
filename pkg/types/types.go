@@ -19,6 +19,7 @@ package types
 import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/authtls"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxy"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/ratelimit"
@@ -117,6 +118,7 @@ type (
 		Locations          []*HAProxyLocation    `json:"locations,omitempty"`
 		SSLRedirect        bool                  `json:"sslRedirect"`
 		HSTS               *hsts.Config          `json:"hsts"`
+		CORS               *cors.CorsConfig      `json:"cors"`
 		HasRateLimit       bool                  `json:"hasRateLimit"`
 		CertificateAuth    authtls.AuthSSLConfig `json:"certificateAuth,omitempty"`
 		Alias              string                `json:"alias,omitempty"`

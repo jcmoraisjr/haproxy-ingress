@@ -23,6 +23,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/file"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/defaults"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
@@ -190,6 +191,7 @@ func (cfg *haConfig) createHAProxyServers() {
 			Locations:          haLocations,
 			SSLRedirect:        sslRedirect,
 			HSTS:               serverHSTS(server),
+			CORS:               serverCORS(server),
 			HasRateLimit:       serverHasRateLimit(server),
 			CertificateAuth:    server.CertificateAuth,
 			Alias:              server.Alias,
@@ -409,6 +411,19 @@ func serverHSTS(server *ingress.Server) *hsts.Config {
 		}
 	}
 	return hsts
+}
+
+func serverCORS(server *ingress.Server) *cors.CorsConfig {
+	var cors *cors.CorsConfig
+	cors = nil
+	for _, location := range server.Locations {
+		if cors == nil {
+			cors = &location.CorsConfig
+		} else if !location.CorsConfig.Equal(cors) {
+			return nil
+		}
+	}
+	return cors
 }
 
 func serverHasRateLimit(server *ingress.Server) bool {
