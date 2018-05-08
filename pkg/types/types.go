@@ -54,6 +54,7 @@ type (
 		TimeoutClient               string `json:"timeout-client"`
 		TimeoutClientFin            string `json:"timeout-client-fin"`
 		TimeoutServer               string `json:"timeout-server"`
+		TimeoutQueue                string `json:"timeout-queue"`
 		TimeoutServerFin            string `json:"timeout-server-fin"`
 		TimeoutTunnel               string `json:"timeout-tunnel"`
 		TimeoutKeepAlive            string `json:"timeout-keep-alive"`

@@ -497,6 +497,7 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 		balance := ic.annotations.BalanceAlgorithm(ing)
 		blueGreen := ic.annotations.BlueGreen(ing)
 		anns := ic.annotations.Extract(ing)
+		conn := ic.annotations.Connection(ing)
 
 		for _, rule := range ing.Spec.Rules {
 			host := rule.Host
@@ -606,6 +607,16 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 
 				if len(ups.BlueGreen.DeployWeight) == 0 {
 					ups.BlueGreen = *blueGreen
+				}
+
+				if ups.Connection.MaxConnServer == 0 {
+					ups.Connection.MaxConnServer = conn.MaxConnServer
+				}
+				if ups.Connection.MaxQueueServer == 0 {
+					ups.Connection.MaxQueueServer = conn.MaxQueueServer
+				}
+				if ups.Connection.TimeoutQueue == "" {
+					ups.Connection.TimeoutQueue = conn.TimeoutQueue
 				}
 			}
 		}

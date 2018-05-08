@@ -26,6 +26,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/balance"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/bluegreen"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/clientbodybuffersize"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/connection"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/defaultbackend"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/healthcheck"
@@ -79,6 +80,7 @@ func newAnnotationExtractor(cfg extractorConfig) annotationExtractor {
 			"UsePortInRedirects":   portinredirect.NewParser(cfg),
 			"Proxy":                proxy.NewParser(cfg),
 			"RateLimit":            ratelimit.NewParser(cfg),
+			"Connection":           connection.NewParser(),
 			"Redirect":             redirect.NewParser(),
 			"Rewrite":              rewrite.NewParser(cfg),
 			"SecureUpstream":       secureupstream.NewParser(cfg, cfg),
@@ -139,6 +141,7 @@ const (
 	sslPassthrough       = "SSLPassthrough"
 	sessionAffinity      = "SessionAffinity"
 	serviceUpstream      = "ServiceUpstream"
+	conn                 = "Connection"
 	serverAlias          = "Alias"
 	corsConfig           = "CorsConfig"
 	clientBodyBufferSize = "ClientBodyBufferSize"
@@ -164,6 +167,11 @@ func (e *annotationExtractor) SecureUpstream(ing *extensions.Ingress) *secureups
 	}
 	secure := val.(*secureupstream.Secure)
 	return secure
+}
+
+func (e *annotationExtractor) Connection(ing *extensions.Ingress) *connection.Config {
+	val, _ := e.annotations[conn].Parse(ing)
+	return val.(*connection.Config)
 }
 
 func (e *annotationExtractor) HealthCheck(ing *extensions.Ingress) *healthcheck.Upstream {

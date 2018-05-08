@@ -185,6 +185,10 @@ func (b1 *Backend) Equal(b2 *Backend) bool {
 		return false
 	}
 
+	if !b1.Connection.Equal(&b2.Connection) {
+		return false
+	}
+
 	for _, udp1 := range b1.Endpoints {
 		found := false
 		for _, udp2 := range b2.Endpoints {
