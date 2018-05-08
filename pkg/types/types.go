@@ -102,23 +102,25 @@ type (
 	// HAProxyServer and HAProxyLocation build some missing pieces
 	// from ingress.Server used by HAProxy
 	HAProxyServer struct {
-		IsDefaultServer bool                  `json:"isDefaultServer"`
-		IsCACert        bool                  `json:"isCACert"`
-		UseHTTP         bool                  `json:"useHTTP"`
-		UseHTTPS        bool                  `json:"useHTTPS"`
-		Hostname        string                `json:"hostname"`
-		HostnameLabel   string                `json:"hostnameLabel"`
-		HostnameSocket  string                `json:"hostnameSocket"`
-		ACLLabel        string                `json:"aclLabel"`
-		SSLCertificate  string                `json:"sslCertificate"`
-		SSLPemChecksum  string                `json:"sslPemChecksum"`
-		RootLocation    *HAProxyLocation      `json:"defaultLocation"`
-		Locations       []*HAProxyLocation    `json:"locations,omitempty"`
-		SSLRedirect     bool                  `json:"sslRedirect"`
-		HSTS            *hsts.Config          `json:"hsts"`
-		HasRateLimit    bool                  `json:"hasRateLimit"`
-		CertificateAuth authtls.AuthSSLConfig `json:"certificateAuth,omitempty"`
-		Alias           string                `json:"alias,omitempty"`
+		IsDefaultServer    bool                  `json:"isDefaultServer"`
+		IsCACert           bool                  `json:"isCACert"`
+		UseHTTP            bool                  `json:"useHTTP"`
+		UseHTTPS           bool                  `json:"useHTTPS"`
+		Hostname           string                `json:"hostname"`
+		HostnameIsWildcard bool                  `json:"hostnameIsWildcard"`
+		HostnameLabel      string                `json:"hostnameLabel"`
+		HostnameSocket     string                `json:"hostnameSocket"`
+		ACLLabel           string                `json:"aclLabel"`
+		SSLCertificate     string                `json:"sslCertificate"`
+		SSLPemChecksum     string                `json:"sslPemChecksum"`
+		RootLocation       *HAProxyLocation      `json:"defaultLocation"`
+		Locations          []*HAProxyLocation    `json:"locations,omitempty"`
+		SSLRedirect        bool                  `json:"sslRedirect"`
+		HSTS               *hsts.Config          `json:"hsts"`
+		HasRateLimit       bool                  `json:"hasRateLimit"`
+		CertificateAuth    authtls.AuthSSLConfig `json:"certificateAuth,omitempty"`
+		Alias              string                `json:"alias,omitempty"`
+		AliasIsRegex       bool                  `json:"aliasIsRegex"`
 	}
 	// HAProxyLocation has location data as a HAProxy friendly syntax
 	HAProxyLocation struct {
