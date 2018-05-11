@@ -26,6 +26,10 @@ import (
 	"sort"
 )
 
+const (
+	useResolverAnnotation = "ingress.kubernetes.io/haproxy-use-resolver"
+)
+
 // DynConfig has configurations used to update a running HAProxy instance
 type DynConfig struct {
 	currentConfig  *types.ControllerConfig
@@ -188,10 +192,14 @@ func (d *DynConfig) dynamicUpdateBackends() bool {
 	d.updatedConfig.BackendSlots = backendSlots
 	for _, backendName := range d.curKeys {
 		updLen := len(d.updBackendsMap[backendName].Endpoints)
-		totalSlots := len(backendSlots[backendName].EmptySlots) + len(backendSlots[backendName].FullSlots)
+		totalSlots := backendSlots[backendName].TotalSlots
 		if updLen > totalSlots {
 			// need to resize number of empty slots by SlotsIncrement amount
 			reloadRequired = true
+			continue
+		}
+		if _, ok := d.updBackendsMap[backendName].Service.Annotations[useResolverAnnotation]; ok {
+			glog.Infof("DNS used for %s\n", backendName)
 			continue
 		}
 		curBackend := d.curBackendsMap[backendName]
@@ -286,10 +294,28 @@ func (d *DynConfig) dynamicUpdateEndpoints(backendName string, updEndpoints map[
 
 // fill-out backends with available endpoints, add empty slots if required
 func (d *DynConfig) fillBackendServerSlots() {
+
 	d.updatedConfig.BackendSlots = map[string]*types.HAProxyBackendSlots{}
+
 	for _, backendName := range d.updKeys {
 		newBackend := types.HAProxyBackendSlots{}
 		newBackend.FullSlots = map[string]types.HAProxyBackendSlot{}
+
+		if resolver, ok := d.updBackendsMap[backendName].Service.Annotations[useResolverAnnotation]; ok {
+			// glog.Infof("%s configured resolvers %v\n", backendName, updatedConfig.DNSResolvers)
+			if DNSResolver, ok := d.updatedConfig.DNSResolvers[resolver]; ok {
+				fullSlotCnt := len(d.updBackendsMap[backendName].Endpoints)
+				newBackend.TotalSlots = (int(fullSlotCnt/d.updatedConfig.Cfg.BackendServerSlotsIncrement) + 1) * d.updatedConfig.Cfg.BackendServerSlotsIncrement
+				DNSResolver.ResolutionPoolSize += newBackend.TotalSlots
+				// glog.Infof("updating resolver %s, pool size now %d\n", DNSResolver.Name, DNSResolver.ResolutionPoolSize)
+				d.updatedConfig.DNSResolvers[resolver] = DNSResolver
+				newBackend.UseResolver = resolver
+			} else {
+				glog.Infof("Backend %s DNSResolver %s not found, not using DNS\n", backendName, resolver)
+				newBackend.UseResolver = ""
+			}
+		}
+
 		if d.dynamicScaling {
 			for i, endpoint := range d.updBackendsMap[backendName].Endpoints {
 				curEndpoint := endpoint
@@ -304,6 +330,14 @@ func (d *DynConfig) fillBackendServerSlots() {
 			extraSlotCnt := (int(fullSlotCnt/increment)+1)*increment - fullSlotCnt
 			for i := 0; i < extraSlotCnt; i++ {
 				newBackend.EmptySlots = append(newBackend.EmptySlots, fmt.Sprintf("server%04d", i+fullSlotCnt))
+			}
+			newBackend.TotalSlots = fullSlotCnt + extraSlotCnt
+			if resolver, ok := d.updBackendsMap[backendName].Service.Annotations[useResolverAnnotation]; ok {
+				if DNSResolver, ok := d.updatedConfig.DNSResolvers[resolver]; ok {
+					DNSResolver.ResolutionPoolSize += newBackend.TotalSlots
+					d.updatedConfig.DNSResolvers[resolver] = DNSResolver
+					newBackend.UseResolver = resolver
+				}
 			}
 		} else {
 			// use addr:port as BackendServerName, don't generate empty slots

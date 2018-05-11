@@ -48,6 +48,20 @@ defaults
     timeout server-fin      {{ $cfg.TimeoutServerFin }}
     timeout tunnel          {{ $cfg.TimeoutTunnel }}
     timeout http-keep-alive {{ $cfg.TimeoutKeepAlive }}
+{{- if ne (len $ing.DNSResolvers) 0 }}
+
+######
+###### DNS Resolvers
+######
+{{- range $name, $resolver := $ing.DNSResolvers }}
+resolvers {{ $name }}
+    nameserver ns {{ $resolver.IP }}:{{ $resolver.Port}}
+    timeout retry {{ $resolver.TimeoutRetry}}s
+    hold obsolete {{ $resolver.HoldObsolete}}s
+    hold valid 1s
+    accepted_payload_size {{ $resolver.AcceptedPayloadSize }}
+{{- end }}
+{{- end }}
 {{- if ne (len $ing.Userlists) 0 }}
 
 ######
@@ -60,7 +74,6 @@ userlist {{ $userlist.ListName }}
 {{- end }}
 {{- end }}
 {{- end }}
-
 {{- if ne (len $ing.TCPEndpoints) 0 }}
 
 ######
@@ -109,12 +122,16 @@ backend {{ $backend.Name }}
     # CA PEM checksum: {{ $cacert.PemSHA }}
 {{- end }}
 {{- $BackendSlots := index $ing.BackendSlots $backend.Name }}
+{{- if $BackendSlots.UseResolver }}
+    server-template server-dns {{ $BackendSlots.TotalSlots }} {{$backend.Service.Name }}.{{ $backend.Service.Namespace }}.svc.cluster.local:{{ $backend.Port }} resolvers {{ $BackendSlots.UseResolver }} inter 1s check resolve-prefer ipv4 init-addr none
+{{- else }}
 {{- range $target, $slot := $BackendSlots.FullSlots }}
     server {{ $slot.BackendServerName }} {{ $target }} {{ if gt $backend.Connection.MaxConnServer 0 }}maxconn {{ $backend.Connection.MaxConnServer }} {{ end }}{{ if gt $backend.Connection.MaxQueueServer 0 }}maxqueue {{ $backend.Connection.MaxQueueServer }} {{ end }}{{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}{{ if ge $slot.BackendEndpoint.Weight 0 }}weight {{ $slot.BackendEndpoint.Weight }} {{ end }}check port {{ $slot.BackendEndpoint.Port }} inter {{ $cfg.BackendCheckInterval }}
 {{- end }}
 {{- range $empty := $BackendSlots.EmptySlots }}
     server {{ $empty }} 127.0.0.1:81 {{ if gt $backend.Connection.MaxConnServer 0 }}maxconn {{ $backend.Connection.MaxConnServer }} {{ end }}{{ if gt $backend.Connection.MaxQueueServer 0 }}maxqueue {{ $backend.Connection.MaxQueueServer }} {{ end }}{{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}check disabled inter {{ $cfg.BackendCheckInterval }}
 {{- end }}
+{{- end }}{{/* if $BackendSlots.UseResolver */}}
 {{- end }}{{/* range Backends */}}
 
 ######
@@ -514,6 +531,8 @@ listen stats
 {{- end }}
     stats uri /
     no log
+    option forceclose
+    stats show-legends
 
 ######
 ###### Monitor URI

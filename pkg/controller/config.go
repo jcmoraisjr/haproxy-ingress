@@ -48,6 +48,7 @@ type haConfig struct {
 	haServers         []*types.HAProxyServer
 	haDefaultServer   *types.HAProxyServer
 	haproxyConfig     *types.HAProxyConfig
+	DNSResolvers      map[string]types.DNSResolver
 }
 
 func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController *HAProxyController) (*types.ControllerConfig, error) {
@@ -62,6 +63,7 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 	if err != nil {
 		return &types.ControllerConfig{}, err
 	}
+	cfg.createDNSResolvers()
 	return &types.ControllerConfig{
 		Userlists:           cfg.userlists,
 		Servers:             cfg.ingress.Servers,
@@ -72,6 +74,7 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 		UDPEndpoints:        cfg.ingress.UDPEndpoints,
 		PassthroughBackends: cfg.ingress.PassthroughBackends,
 		Cfg:                 cfg.haproxyConfig,
+		DNSResolvers:        cfg.DNSResolvers,
 	}, nil
 }
 
@@ -168,6 +171,29 @@ func configForwardfor(conf *types.HAProxyConfig) {
 		glog.Warningf("Invalid forwardfor value option on configmap: %v. Using 'add' instead", conf.Forwardfor)
 		conf.Forwardfor = "add"
 	}
+}
+
+func (cfg *haConfig) createDNSResolvers() {
+	// TODO: parse out multiple resolvers
+	DNSResolvers := map[string]types.DNSResolver{}
+	//glog.Infof("from config: %v", cfg.haproxyController.configMap.Data)
+	if resolvers, ok := cfg.haproxyController.configMap.Data["dns-resolver"]; ok {
+		list := strings.Split(resolvers, ":")
+		if len(list)%3 == 0 {
+			for index := 0; index < len(list)/3; index++ {
+				DNSResolvers[list[index]] = types.DNSResolver{
+					Name:                list[index],
+					IP:                  list[index+1],
+					Port:                list[index+2],
+					TimeoutRetry:        1,
+					HoldObsolete:        0,
+					ResolutionPoolSize:  0,
+					AcceptedPayloadSize: 8192,
+				}
+			}
+		}
+	}
+	cfg.DNSResolvers = DNSResolvers
 }
 
 func (cfg *haConfig) createHAProxyServers() {

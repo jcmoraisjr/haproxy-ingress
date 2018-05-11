@@ -42,6 +42,7 @@ type (
 		PassthroughBackends []*ingress.SSLPassthroughBackend
 		Cfg                 *HAProxyConfig
 		BackendSlots        map[string]*HAProxyBackendSlots
+		DNSResolvers        map[string]DNSResolver
 	}
 	// HAProxyConfig has HAProxy specific configurations from ConfigMap
 	HAProxyConfig struct {
@@ -84,6 +85,7 @@ type (
 		HTTPSLogFormat       string `json:"https-log-format"`
 		TCPLogFormat         string `json:"tcp-log-format"`
 		DrainSupport         bool   `json:"drain-support"`
+		DNSResolver          string `json:"dns-resolver"`
 	}
 	// Userlist list of users for basic authentication
 	Userlist struct {
@@ -146,12 +148,26 @@ type (
 		HAWhitelist          string              `json:"whitelist,omitempty"`
 		HARateLimitWhiteList string              `json:"rateLimitWhiteList,omitempty"`
 	}
+	// Resolver information
+	DNSResolver struct {
+		Name                string
+		IP                  string
+		Port                string
+		TimeoutRetry        int
+		HoldObsolete        int
+		ResolutionPoolSize  int
+		AcceptedPayloadSize int
+	}
 	// HAProxyBackendSlots contains used and empty backend server definitions
 	HAProxyBackendSlots struct {
 		// map from ip:port to server name
 		FullSlots map[string]HAProxyBackendSlot
 		// list of unused server names
 		EmptySlots []string
+		// resolver name used for this Backend definition
+		UseResolver string
+		// total slots for backend
+		TotalSlots       int
 	}
 	// HAProxyBackendSlot combines BackendServerName with an ingress.Endpoint
 	HAProxyBackendSlot struct {
