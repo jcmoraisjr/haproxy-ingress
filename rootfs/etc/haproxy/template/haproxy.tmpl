@@ -315,6 +315,13 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
     # skip backend on CORS preflight - {{ $server.Hostname }}
     http-request use-service lua.send-response if METH_OPTIONS {{ $server.ACLLabel }}
 {{- end }}
+{{- else }}
+{{- range $location := $server.Locations }}
+{{- if $location.CORS.CorsEnabled }}
+    # skip backend on CORS preflight - {{ $server.Hostname }}/{{ $location.Path }}
+    http-request use-service lua.send-response if METH_OPTIONS {{ $server.ACLLabel }}{{ $location.HAMatchTxnPath }}
+{{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
 
@@ -390,7 +397,13 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
 {{- end }}{{/* if/else $server.HSTS */}}
 {{- if $server.CORS }}
 {{- if $server.CORS.CorsEnabled }}
-    {{- template "CORS" map $server.CORS $server }}
+    {{- template "CORS" map $server.CORS $server false }}
+{{- end }}
+{{- else }}
+{{- range $location := $server.Locations }}
+{{- if $location.CORS.CorsEnabled }}
+    {{- template "CORS" map $location.CORS $server $location }}
+{{- end }}
 {{- end }}{{/* if $cors.CorsEnabled */}}
 {{- end }}{{/* if/else $server.CORS */}}
 {{- end }}{{/* range $servers */}}
@@ -412,6 +425,7 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
 {{- else if $isCACert }}
     default_backend httpback-shared-backend
 {{- end }}
+
 {{- end }}{{/* define "http_front" */}}
 
 {{- /*------------------------------------*/}}
@@ -442,25 +456,26 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
 {{- define "CORS" }}
 {{- $cors := .p1 }}
 {{- $server := .p2 }}
-    # start CORS preflight - {{ $server.Hostname }}
-    http-response set-header Access-Control-Allow-Origin      "{{ $cors.CorsAllowOrigin }}" if METH_OPTIONS {{ $server.ACLLabel }}
-    http-response set-header Access-Control-Allow-Methods     "{{ $cors.CorsAllowMethods }}" if METH_OPTIONS {{ $server.ACLLabel }}
-    http-response set-header Access-Control-Allow-Headers     "{{ $cors.CorsAllowHeaders }}" if METH_OPTIONS {{ $server.ACLLabel }}
+{{- $location := .p3 }}
+    # start CORS preflight - {{ $server.Hostname }}{{ if $location }}{{ $location.Path }}{{ end }}
+    http-response set-header Access-Control-Allow-Origin      "{{ $cors.CorsAllowOrigin }}" if METH_OPTIONS {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
+    http-response set-header Access-Control-Allow-Methods     "{{ $cors.CorsAllowMethods }}" if METH_OPTIONS {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
+    http-response set-header Access-Control-Allow-Headers     "{{ $cors.CorsAllowHeaders }}" if METH_OPTIONS {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
 {{- if $cors.CorsAllowCredentials }}
-    http-response set-header Access-Control-Allow-Credentials "{{ $cors.CorsAllowCredentials }}" if METH_OPTIONS {{ $server.ACLLabel }}
+    http-response set-header Access-Control-Allow-Credentials "{{ $cors.CorsAllowCredentials }}" if METH_OPTIONS {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
 {{- end }}
-    http-response set-header Access-Control-Max-Age           "{{ $cors.CorsMaxAge }}" if METH_OPTIONS {{ $server.ACLLabel }}
-    http-response set-header Content-Type                     "text/plain" if METH_OPTIONS {{ $server.ACLLabel }}
-    http-response set-header Content-Length                   "0" if METH_OPTIONS {{ $server.ACLLabel }}
-    http-response set-status 204 reason "No Content" if METH_OPTIONS {{ $server.ACLLabel }}
-    # end CORS preflight - {{ $server.Hostname }}
-    http-response set-header Access-Control-Allow-Origin      "{{ $cors.CorsAllowOrigin }}" if {{ $server.ACLLabel }}
+    http-response set-header Access-Control-Max-Age           "{{ $cors.CorsMaxAge }}" if METH_OPTIONS {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
+    http-response set-header Content-Type                     "text/plain" if METH_OPTIONS {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
+    http-response set-header Content-Length                   "0" if METH_OPTIONS {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
+    http-response set-status 204 reason "No Content" if METH_OPTIONS {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
+    # end CORS preflight - {{ $server.Hostname }}{{ if $location }}{{ $location.Path }}{{ end }}
+    http-response set-header Access-Control-Allow-Origin      "{{ $cors.CorsAllowOrigin }}" if {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
 {{- if $cors.CorsAllowCredentials }}
-    http-response set-header Access-Control-Allow-Credentials "{{ $cors.CorsAllowCredentials }}" if {{ $server.ACLLabel }}
+    http-response set-header Access-Control-Allow-Credentials "{{ $cors.CorsAllowCredentials }}" if {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
 {{- end }}
-    http-response set-header Access-Control-Allow-Methods     "{{ $cors.CorsAllowMethods }}" if {{ $server.ACLLabel }}
-    http-response set-header Access-Control-Allow-Headers     "{{ $cors.CorsAllowHeaders }}" if {{ $server.ACLLabel }}
-    # end CORS - {{ $server.Hostname }}
+    http-response set-header Access-Control-Allow-Methods     "{{ $cors.CorsAllowMethods }}" if {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
+    http-response set-header Access-Control-Allow-Headers     "{{ $cors.CorsAllowHeaders }}" if {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
+    # end CORS - {{ $server.Hostname }}{{ if $location }}{{ $location.Path }}{{ end }}
 {{- end }}{{/* define "CORS" */}}
 
 ######

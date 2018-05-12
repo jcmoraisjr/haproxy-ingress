@@ -129,6 +129,7 @@ type (
 		IsRootLocation       bool                `json:"isDefaultLocation"`
 		Path                 string              `json:"path"`
 		Backend              string              `json:"backend"`
+		CORS                 cors.CorsConfig     `json:"cors"`
 		HSTS                 hsts.Config         `json:"hsts"`
 		Rewrite              rewrite.Redirect    `json:"rewrite,omitempty"`
 		Redirect             redirect.Redirect   `json:"redirect,omitempty"`

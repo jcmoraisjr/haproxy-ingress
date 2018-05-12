@@ -242,6 +242,7 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 			IsRootLocation: location.Path == "/",
 			Path:           location.Path,
 			Backend:        location.Backend,
+			CORS:           location.CorsConfig,
 			HSTS:           location.HSTS,
 			Rewrite:        location.Rewrite,
 			Redirect:       location.Redirect,
