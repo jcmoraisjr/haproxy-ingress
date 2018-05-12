@@ -149,7 +149,7 @@ func TestSkipEnqueue(t *testing.T) {
 	q.Enqueue(mo)
 	q.Enqueue(mo)
 	// wait for 'mockSynFn'
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 100)
 	if atomic.LoadUint32(&sr) != 1 {
 		t.Errorf("sr should be 1, but is %d", sr)
 	}
