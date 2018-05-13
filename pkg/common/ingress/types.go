@@ -19,6 +19,7 @@ package ingress
 import (
 	"fmt"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/snippet"
 	"time"
 
 	"github.com/spf13/pflag"
@@ -194,6 +195,8 @@ type Backend struct {
 	BalanceAlgorithm string `json:"balanceAlgorithm"`
 	// BlueGreen has the blue/green deployment configuration
 	BlueGreen bluegreen.Config `json:"blueGreen"`
+	// ConfigurationSnippet contains additional configuration to be considered in the backend configuration
+	ConfigurationSnippet snippet.Config `json:"configurationSnippet"`
 	// Connection has backend or server connection limits and timeouts
 	Connection connection.Config `json:"connection"`
 	// Consistent hashing by NGINX variable
@@ -364,7 +367,7 @@ type Location struct {
 	VtsFilterKey string `json:"vtsFilterKey,omitempty"`
 	// ConfigurationSnippet contains additional configuration for the backend
 	// to be considered in the configuration of the location
-	ConfigurationSnippet string `json:"configurationSnippet"`
+	ConfigurationSnippet snippet.Config `json:"configurationSnippet"`
 	// ClientBodyBufferSize allows for the configuration of the client body
 	// buffer size for a specific location.
 	// +optional
