@@ -25,7 +25,8 @@ import (
 )
 
 const (
-	annotationCorsEnabled          = "ingress.kubernetes.io/enable-cors"
+	annotationCorsEnabledDepr      = "ingress.kubernetes.io/enable-cors"
+	annotationCorsEnabled          = "ingress.kubernetes.io/cors-enable"
 	annotationCorsAllowOrigin      = "ingress.kubernetes.io/cors-allow-origin"
 	annotationCorsAllowMethods     = "ingress.kubernetes.io/cors-allow-methods"
 	annotationCorsAllowHeaders     = "ingress.kubernetes.io/cors-allow-headers"
@@ -34,7 +35,7 @@ const (
 	// Default values
 	defaultCorsMethods = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
 	defaultCorsHeaders = "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
-	defaultCorsMaxAge  = 1728000
+	defaultCorsMaxAge  = 86400
 )
 
 var (
@@ -101,14 +102,13 @@ func (c1 *CorsConfig) Equal(c2 *CorsConfig) bool {
 // Parse parses the annotations contained in the ingress
 // rule used to indicate if the location/s should allows CORS
 func (a cors) Parse(ing *extensions.Ingress) (interface{}, error) {
-	if corsenabled, err := parser.GetBoolAnnotation(annotationCorsEnabled, ing); !corsenabled || err != nil {
+	corsenabled, err := parser.GetBoolAnnotation(annotationCorsEnabled, ing)
+	if err != nil {
+		corsenabled, _ = parser.GetBoolAnnotation(annotationCorsEnabledDepr, ing)
+	}
+	if !corsenabled {
 		return &CorsConfig{
-			CorsEnabled:          false,
-			CorsAllowOrigin:      "",
-			CorsAllowHeaders:     "",
-			CorsAllowMethods:     "",
-			CorsAllowCredentials: false,
-			CorsMaxAge:           0,
+			CorsEnabled: false,
 		}, nil
 	}
 
