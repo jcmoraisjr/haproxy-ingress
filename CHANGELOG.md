@@ -7,6 +7,7 @@ Breaking backward compatibility from `v0.5`:
 * Usage of header `Host` to match https requests instead of using just sni extension, deprecating `use-host-on-https` - [#130](https://github.com/jcmoraisjr/haproxy-ingress/pull/130)
 * Multibinder is deprecated, use `reusesocket` reload strategy instead - [#139](https://github.com/jcmoraisjr/haproxy-ingress/pull/139)
 * Dynamic scaling do not reload HAProxy if the number of servers of a backend could be reduced
+* Added `timeout-queue` configmap option which defaults to `5s`. `timeout-queue` didn't exist before v0.6 and its value inherits from the `timeout-connect` configuration. Starting on v0.6, changing `timeout-connect` will not change `timeout-queue` default value.
 
 Fixes and improvements since `v0.5`
 
@@ -17,6 +18,8 @@ Fixes and improvements since `v0.5`
 * Add clear userlist on misconfigured basic auth - [#71](https://github.com/jcmoraisjr/haproxy-ingress/issues/71)
 * Fix copy endpoints to fullslots - [#84](https://github.com/jcmoraisjr/haproxy-ingress/issues/84)
 * Equality improvement on dynamic scaling  - [#138](https://github.com/jcmoraisjr/haproxy-ingress/issues/138) and [#140](https://github.com/jcmoraisjr/haproxy-ingress/issues/140)
+* Fix precedence of hosts without wildcard and alias without regex - [#149](https://github.com/jcmoraisjr/haproxy-ingress/pull/149)
+* Add v1 as a PROXY protocol option on tcp-services - [#156](https://github.com/jcmoraisjr/haproxy-ingress/pull/156)
 * New annotations:
   * Cookie persistence strategy [#89](https://github.com/jcmoraisjr/haproxy-ingress/pull/89) - [doc](/README.md#affinity)
     * `ingress.kubernetes.io/session-cookie-strategy`
@@ -24,9 +27,27 @@ Fixes and improvements since `v0.5`
     * `ingress.kubernetes.io/blue-green-deploy`
   * Load balancing algorithm [#144](https://github.com/jcmoraisjr/haproxy-ingress/pull/144)
     * `ingress.kubernetes.io/balance-algorithm`
+  * Connection limits and timeout [#148](https://github.com/jcmoraisjr/haproxy-ingress/pull/148) - [doc](/README.md#connection)
+    * `ingress.kubernetes.io/maxconn-server`
+    * `ingress.kubernetes.io/maxqueue-server`
+    * `ingress.kubernetes.io/timeout-queue`
+  * CORS [#151](https://github.com/jcmoraisjr/haproxy-ingress/pull/151) - [doc](/README.md#cors)
+    * `ingress.kubernetes.io/cors-allow-origin`
+    * `ingress.kubernetes.io/cors-allow-methods`
+    * `ingress.kubernetes.io/cors-allow-headers`
+    * `ingress.kubernetes.io/cors-allow-credentials`
+    * `ingress.kubernetes.io/cors-enable`
+    * `ingress.kubernetes.io/cors-max-age`
+  * Configuration snippet [#155](https://github.com/jcmoraisjr/haproxy-ingress/pull/155) - [doc](/README.md#configuration-snippet)
+    * `ingress.kubernetes.io/config-backend`
+    * `ingress.kubernetes.io/config-frontend`
 * New configmap options:
   * Drain support for NotReady pods on cookie affinity backends [#95](https://github.com/jcmoraisjr/haproxy-ingress/pull/95) - [doc](/README.md#drain-support)
     * `drain-support`
+  * Timeout queue [#148](https://github.com/jcmoraisjr/haproxy-ingress/pull/148) - [doc](/README.md#timeout)
+    * `timeout-queue`
+  * Time to wait for long lived connections to finish before hard-stop a HAProxy process [#150](https://github.com/jcmoraisjr/haproxy-ingress/pull/150) - [doc](/README.md#timeout)
+    * `timeout-stop`
 * New command-line options:
   * Maximum timestamped config files [#123](https://github.com/jcmoraisjr/haproxy-ingress/pull/123) - [doc](/README.md#max-old-config-files)
     * `--max-old-config-files`
