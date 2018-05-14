@@ -17,10 +17,10 @@ limitations under the License.
 package controller
 
 import (
+	"strings"
+
 	"github.com/golang/glog"
-
 	"github.com/imdario/mergo"
-
 	api "k8s.io/api/core/v1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
@@ -52,4 +52,14 @@ func mergeLocationAnnotations(loc *ingress.Location, anns map[string]interface{}
 	if err != nil {
 		glog.Errorf("unexpected error merging extracted annotations in location type: %v", err)
 	}
+}
+
+func proxyProtocolParamToVersion(str string) string {
+	switch strings.ToUpper(str) {
+	case "PROXY", "PROXY-V2":
+		return "v2"
+	case "PROXY-V1":
+		return "v1"
+	}
+	return ""
 }

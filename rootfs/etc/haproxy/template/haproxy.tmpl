@@ -69,7 +69,7 @@ userlist {{ $userlist.ListName }}
 {{- range $tcp := $ing.TCPEndpoints }}
 listen tcp-{{ $tcp.Port }}
 {{- $inProxyProt := $tcp.Backend.ProxyProtocol.Decode }}
-{{- $outProxyProt := $tcp.Backend.ProxyProtocol.Encode }}
+{{- $outProxyProtVersion := $tcp.Backend.ProxyProtocol.EncodeVersion }}
     bind *:{{ $tcp.Port }}{{ if $inProxyProt }} accept-proxy{{ end }}
     mode tcp
 {{- if ne $cfg.Syslog "" }}
@@ -81,7 +81,7 @@ listen tcp-{{ $tcp.Port }}
 {{- end }}
 {{- range $endpoint := $tcp.Endpoints }}
 {{- $target := (print $endpoint.Address ":" $endpoint.Port) }}
-    server {{ $target }} {{ $target }} check port {{ $endpoint.Port }} inter {{ $cfg.BackendCheckInterval }}{{ if $outProxyProt }} send-proxy-v2{{ end }}
+    server {{ $target }} {{ $target }} check port {{ $endpoint.Port }} inter {{ $cfg.BackendCheckInterval }}{{ if eq $outProxyProtVersion "v1" }} send-proxy{{ else if eq $outProxyProtVersion "v2" }} send-proxy-v2{{ end }}
 {{- end }}
 {{- end }}{{/* range TCP services */}}
 {{- end }}{{/* if has TCP services */}}

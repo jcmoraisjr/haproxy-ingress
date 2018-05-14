@@ -486,6 +486,20 @@ func (l4b1 *L4Backend) Equal(l4b2 *L4Backend) bool {
 	if l4b1.Protocol != l4b2.Protocol {
 		return false
 	}
+	if !l4b1.ProxyProtocol.Equal(&l4b2.ProxyProtocol) {
+		return false
+	}
 
+	return true
+}
+
+// Equal tests for equality between two ProxyProtocol types
+func (l4b1 *ProxyProtocol) Equal(l4b2 *ProxyProtocol) bool {
+	if l4b1.Decode != l4b2.Decode {
+		return false
+	}
+	if l4b1.EncodeVersion != l4b2.EncodeVersion {
+		return false
+	}
 	return true
 }

@@ -18,6 +18,7 @@ package utils
 
 import (
 	"reflect"
+	"strings"
 )
 
 // DeepEqualUnsorted check equality of unsorted arrays.
@@ -41,4 +42,27 @@ func DeepEqualUnsorted(p1, p2 interface{}, equal func(i1, i2 int) bool) bool {
 		}
 	}
 	return true
+}
+
+// StringInSlice check whether string a is a member of slice.
+func StringInSlice(a string, slice []string) bool {
+	for _, b := range slice {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+// SplitMin slices string in at least min items
+func SplitMin(str string, sub string, min int) []string {
+	slice := strings.Split(str, sub)
+	if len(slice) >= min {
+		return slice
+	}
+	minSlice := make([]string, min)
+	for i := range slice {
+		minSlice[i] = slice[i]
+	}
+	return minSlice
 }

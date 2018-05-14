@@ -42,8 +42,8 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/class"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/store"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/k8s"
-	ingress_strings "github.com/jcmoraisjr/haproxy-ingress/pkg/common/strings"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/task"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/utils"
 )
 
 const (
@@ -270,7 +270,7 @@ func (s *statusSync) runningAddresses() ([]string, error) {
 	addrs := []string{}
 	for _, pod := range pods.Items {
 		name := k8s.GetNodeIP(s.Client, pod.Spec.NodeName, s.UseNodeInternalIP)
-		if !ingress_strings.StringInSlice(name, addrs) {
+		if !utils.StringInSlice(name, addrs) {
 			addrs = append(addrs, name)
 		}
 	}
