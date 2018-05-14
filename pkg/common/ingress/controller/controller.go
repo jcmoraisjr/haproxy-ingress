@@ -52,8 +52,8 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/status"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/k8s"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
-	local_strings "github.com/jcmoraisjr/haproxy-ingress/pkg/common/strings"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/task"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/utils"
 )
 
 const (
@@ -347,7 +347,6 @@ func (ic *GenericController) getStreamServices(configmapName string, proto apiv1
 	}
 
 	var svcs []ingress.L4Service
-	var svcProxyProtocol ingress.ProxyProtocol
 	// k -> port to expose
 	// v -> <namespace>/<service name>:<port from service to be used>
 	for k, v := range configmap.Data {
@@ -358,30 +357,25 @@ func (ic *GenericController) getStreamServices(configmapName string, proto apiv1
 		}
 
 		// this ports used by the backend
-		if local_strings.StringInSlice(k, reservedPorts) {
+		if utils.StringInSlice(k, reservedPorts) {
 			glog.Warningf("port %v cannot be used for TCP or UDP services. It is reserved for the Ingress controller", k)
 			continue
 		}
 
-		nsSvcPort := strings.Split(v, ":")
-		if len(nsSvcPort) < 2 {
-			glog.Warningf("invalid format (namespace/name:port:[PROXY]:[PROXY]) '%v'", k)
-			continue
-		}
+		nsSvcPort := utils.SplitMin(v, ":", 4)
 
 		nsName := nsSvcPort[0]
 		svcPort := nsSvcPort[1]
-		svcProxyProtocol.Decode = false
-		svcProxyProtocol.Encode = false
+		if nsName == "" || svcPort == "" {
+			glog.Warningf("invalid format (namespace/name:port:[PROXY]:[PROXY[-V1|-V2]]) '%v'", v)
+			continue
+		}
 
-		// Proxy protocol is possible if the service is TCP
-		if len(nsSvcPort) >= 3 && proto == apiv1.ProtocolTCP {
-			if len(nsSvcPort) >= 3 && strings.ToUpper(nsSvcPort[2]) == "PROXY" {
-				svcProxyProtocol.Decode = true
-			}
-			if len(nsSvcPort) == 4 && strings.ToUpper(nsSvcPort[3]) == "PROXY" {
-				svcProxyProtocol.Encode = true
-			}
+		svcProxyProtocol := ingress.ProxyProtocol{}
+		// Proxy protocol is only possible if the service is TCP
+		if proto == apiv1.ProtocolTCP {
+			svcProxyProtocol.Decode = strings.ToUpper(nsSvcPort[2]) == "PROXY"
+			svcProxyProtocol.EncodeVersion = proxyProtocolParamToVersion(nsSvcPort[3])
 		}
 
 		svcNs, svcName, err := k8s.ParseNameNS(nsName)

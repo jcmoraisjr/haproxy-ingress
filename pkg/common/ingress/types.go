@@ -407,8 +407,11 @@ type L4Backend struct {
 	ProxyProtocol ProxyProtocol `json:"proxyProtocol"`
 }
 
-// ProxyProtocol describes the proxy protocol configuration
+// ProxyProtocol describes if the proxy protocol should be configured
+// on decoding (receiving a connection from a client) and encoding (send
+// a connection to a backend service). If EncodeVersion is empty, proxy
+// protocol should not be used
 type ProxyProtocol struct {
-	Decode bool `json:"decode"`
-	Encode bool `json:"encode"`
+	Decode        bool   `json:"decode"`
+	EncodeVersion string `json:"encode"`
 }

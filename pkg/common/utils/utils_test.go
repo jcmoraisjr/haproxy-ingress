@@ -55,3 +55,32 @@ func TestDeepEqualUnsortedUnmatch(t *testing.T) {
 		t.Errorf("expected a3 and a4 not equals")
 	}
 }
+
+func TestSliceMin(t *testing.T) {
+	testCases := []struct {
+		data      string
+		separator string
+		min       int
+		expected  []string
+	}{
+		{"a,b,c", ",", 3, []string{"a", "b", "c"}},
+		{"a-b", "-", 3, []string{"a", "b", ""}},
+		{"a;b", ";", 1, []string{"a", "b"}},
+		{"a;b", ",", 1, []string{"a;b"}},
+	}
+	for _, test := range testCases {
+		split := SplitMin(test.data, test.separator, test.min)
+		if len(split) != len(test.expected) {
+			t.Errorf("expected len(%v),%v == %v but was %v", test.data, test.min, len(test.expected), len(split))
+		}
+		for i := range split {
+			if i >= len(test.expected) {
+				if split[i] != "" {
+					t.Errorf("expected empty string but was %v", split[i])
+				} else if split[i] != test.expected[i] {
+					t.Errorf("'%v' and '%v' should be equals", split[i], test.expected[i])
+				}
+			}
+		}
+	}
+}
