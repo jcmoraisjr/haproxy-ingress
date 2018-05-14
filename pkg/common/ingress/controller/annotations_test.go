@@ -327,8 +327,8 @@ func TestCors(t *testing.T) {
 		{map[string]string{annotationCorsEnabled: "true"}, true, defaultCorsMethods, defaultCorsHeaders, "*", true},
 		{map[string]string{annotationCorsEnabled: "true", annotationCorsAllowMethods: "POST, GET, OPTIONS", annotationCorsAllowHeaders: "$nginx_version", annotationCorsAllowCredentials: "false"}, true, "POST, GET, OPTIONS", defaultCorsHeaders, "*", false},
 		{map[string]string{annotationCorsEnabled: "true", annotationCorsAllowCredentials: "false"}, true, defaultCorsMethods, defaultCorsHeaders, "*", false},
-		{map[string]string{}, false, defaultCorsMethods, defaultCorsHeaders, "*", true},
-		{nil, false, defaultCorsMethods, defaultCorsHeaders, "*", true},
+		{map[string]string{}, false, "", "", "", false},
+		{nil, false, "", "", "", false},
 	}
 
 	for _, foo := range fooAnns {

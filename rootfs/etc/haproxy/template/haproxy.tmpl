@@ -15,6 +15,7 @@ global
     log {{ $cfg.Syslog }} format rfc5424 local0
     log-tag ingress
 {{- end }}
+    lua-load /usr/local/etc/haproxy/lua/send-response.lua
 {{- if ne $cfg.SSLDHParam.Filename "" }}
     # DH PEM checksum: {{ $cfg.SSLDHParam.PemSHA }}
     ssl-dh-param-file {{ $cfg.SSLDHParam.Filename }}
@@ -132,7 +133,7 @@ frontend httpsfront
 
 {{- range $server := $ing.HAServers }}
 {{- if $server.IsCACert }}
-{{- template "acl" map $cfg $server "req.ssl_sni" false }}
+    {{- template "acl" map $cfg $server "req.ssl_sni" false }}
 {{- end }}
 {{- end }}
 
@@ -156,7 +157,7 @@ backend httpback-shared-backend
 backend httpsback-shared-backend
     mode tcp
     server shared-https-frontend unix@/var/run/haproxy-https.sock send-proxy-v2
-{{- template "http_front" map $ing $cfg nil }}
+    {{- template "http_front" map $ing $cfg nil }}
 
 {{- range $server := $ing.HAServers }}
 {{- if $server.IsCACert }}
@@ -167,7 +168,7 @@ backend httpsback-shared-backend
 backend httpsback-{{ $server.HostnameLabel }}
     mode tcp
     server {{ $server.HostnameLabel }} unix@/var/run/haproxy-https-{{ $server.HostnameSocket }}.sock send-proxy-v2
-{{- template "http_front" map $ing $cfg $server }}
+    {{- template "http_front" map $ing $cfg $server }}
 {{- end }}
 {{- end }}
 
@@ -177,7 +178,7 @@ backend httpsback-{{ $server.HostnameLabel }}
 backend httpback-default-backend
     mode http
     server shared-http-frontend unix@/var/run/haproxy-http-{{ $ing.DefaultServer.HostnameSocket }}.sock send-proxy-v2
-{{- template "http_front" map $ing $cfg $ing.DefaultServer }}
+    {{- template "http_front" map $ing $cfg $ing.DefaultServer }}
 
 {{- /*------------------------------------*/}}
 {{- /*------------------------------------*/}}
@@ -235,7 +236,7 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
 
 {{- /*------------------------------------*/}}
 {{- range $server := $servers }}
-{{- template "acl" map $cfg $server "var(txn.hdr_host)" true }}
+    {{- template "acl" map $cfg $server "var(txn.hdr_host)" true }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -309,6 +310,23 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
 
 {{- /*------------------------------------*/}}
 {{- range $server := $servers }}
+{{- if $server.CORS }}
+{{- if $server.CORS.CorsEnabled }}
+    # skip backend on CORS preflight - {{ $server.Hostname }}
+    http-request use-service lua.send-response if METH_OPTIONS {{ $server.ACLLabel }}
+{{- end }}
+{{- else }}
+{{- range $location := $server.Locations }}
+{{- if $location.CORS.CorsEnabled }}
+    # skip backend on CORS preflight - {{ $server.Hostname }}/{{ $location.Path }}
+    http-request use-service lua.send-response if METH_OPTIONS {{ $server.ACLLabel }}{{ $location.HAMatchTxnPath }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- range $server := $servers }}
 {{- range $location := $server.Locations }}
 {{- $rewriteTarget := $location.Rewrite.Target }}
 {{- if ne $rewriteTarget "" }}
@@ -376,8 +394,19 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
     http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}{{ if $hsts.Subdomains }}; includeSubDomains{{ end }}{{ if $hsts.Preload }}; preload{{ end }}" if from-https {{ $server.ACLLabel }}{{ $location.HAMatchTxnPath }}
 {{- end }}
 {{- end }}
+{{- end }}{{/* if/else $server.HSTS */}}
+{{- if $server.CORS }}
+{{- if $server.CORS.CorsEnabled }}
+    {{- template "CORS" map $server.CORS $server false }}
 {{- end }}
+{{- else }}
+{{- range $location := $server.Locations }}
+{{- if $location.CORS.CorsEnabled }}
+    {{- template "CORS" map $location.CORS $server $location }}
 {{- end }}
+{{- end }}{{/* if $cors.CorsEnabled */}}
+{{- end }}{{/* if/else $server.CORS */}}
+{{- end }}{{/* range $servers */}}
 
 {{- /*------------------------------------*/}}
 {{- range $server := $servers }}
@@ -396,6 +425,7 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
 {{- else if $isCACert }}
     default_backend httpback-shared-backend
 {{- end }}
+
 {{- end }}{{/* define "http_front" */}}
 
 {{- /*------------------------------------*/}}
@@ -420,6 +450,33 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
 {{- end }}
 {{- end }}
 {{- end }}{{/* define "acl" */}}
+
+{{- /*------------------------------------*/}}
+{{- /*------------------------------------*/}}
+{{- define "CORS" }}
+{{- $cors := .p1 }}
+{{- $server := .p2 }}
+{{- $location := .p3 }}
+    # start CORS preflight - {{ $server.Hostname }}{{ if $location }}{{ $location.Path }}{{ end }}
+    http-response set-header Access-Control-Allow-Origin      "{{ $cors.CorsAllowOrigin }}" if METH_OPTIONS {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
+    http-response set-header Access-Control-Allow-Methods     "{{ $cors.CorsAllowMethods }}" if METH_OPTIONS {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
+    http-response set-header Access-Control-Allow-Headers     "{{ $cors.CorsAllowHeaders }}" if METH_OPTIONS {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
+{{- if $cors.CorsAllowCredentials }}
+    http-response set-header Access-Control-Allow-Credentials "{{ $cors.CorsAllowCredentials }}" if METH_OPTIONS {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
+{{- end }}
+    http-response set-header Access-Control-Max-Age           "{{ $cors.CorsMaxAge }}" if METH_OPTIONS {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
+    http-response set-header Content-Type                     "text/plain" if METH_OPTIONS {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
+    http-response set-header Content-Length                   "0" if METH_OPTIONS {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
+    http-response set-status 204 reason "No Content" if METH_OPTIONS {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
+    # end CORS preflight - {{ $server.Hostname }}{{ if $location }}{{ $location.Path }}{{ end }}
+    http-response set-header Access-Control-Allow-Origin      "{{ $cors.CorsAllowOrigin }}" if {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
+{{- if $cors.CorsAllowCredentials }}
+    http-response set-header Access-Control-Allow-Credentials "{{ $cors.CorsAllowCredentials }}" if {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
+{{- end }}
+    http-response set-header Access-Control-Allow-Methods     "{{ $cors.CorsAllowMethods }}" if {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
+    http-response set-header Access-Control-Allow-Headers     "{{ $cors.CorsAllowHeaders }}" if {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
+    # end CORS - {{ $server.Hostname }}{{ if $location }}{{ $location.Path }}{{ end }}
+{{- end }}{{/* define "CORS" */}}
 
 ######
 ###### Error pages

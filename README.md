@@ -60,6 +60,12 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/auth-tls-secret`](#auth-tls)|namespace/secret name|[doc](/examples/auth/client-certs)|
 |`[1]`|[`ingress.kubernetes.io/balance-algorithm`](#balance-algorithm)|algorithm name|-|
 |`[1]`|[`ingress.kubernetes.io/blue-green-deploy`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
+|`[1]`|[`ingress.kubernetes.io/cors-allow-origin`](#cors)|URL|-|
+|`[1]`|[`ingress.kubernetes.io/cors-allow-methods`](#cors)|methods list|-|
+|`[1]`|[`ingress.kubernetes.io/cors-allow-headers`](#cors)|headers list|-|
+|`[1]`|[`ingress.kubernetes.io/cors-allow-credentials`](#cors)|[true\|false]|-|
+|`[1]`|[`ingress.kubernetes.io/cors-enable`](#cors)|[true\|false]|-|
+|`[1]`|[`ingress.kubernetes.io/cors-max-age`](#cors)|time (seconds)|-|
 |`[0]`|[`ingress.kubernetes.io/hsts`](#hsts)|[true\|false]|-|
 |`[0]`|[`ingress.kubernetes.io/hsts-include-subdomains`](#hsts)|[true\|false]|-|
 |`[0]`|[`ingress.kubernetes.io/hsts-max-age`](#hsts)|qty of seconds|-|
@@ -145,6 +151,19 @@ The maximum weight value is `256`.
 See also the [example](/examples/blue-green) page.
 
 http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-weight
+
+### CORS
+
+Add CORS headers on OPTIONS http command (preflight) and reponses.
+
+* `ingress.kubernetes.io/cors-enable`: Enable CORS if defined as `true`.
+* `ingress.kubernetes.io/cors-allow-origin`: Optional, configures `Access-Control-Allow-Origin` header which defines the URL that may access the resource. Defaults to `*`.
+* `ingress.kubernetes.io/cors-allow-methods`: Optional, configures `Access-Control-Allow-Methods` header which defines the allowed methods. See defaults [here](/pkg/common/ingress/annotations/cors/main.go#L34).
+* `ingress.kubernetes.io/cors-allow-headers`: Optional, configures `Access-Control-Allow-Headers` header which defines the allowed headers. See defaults [here](/pkg/common/ingress/annotations/cors/main.go#L34).
+* `ingress.kubernetes.io/cors-allow-credentials`: Optional, configures `Access-Control-Allow-Credentials` header which defines whether or not credentials (cookies, authorization headers or client certificates) should be exposed. Defaults to `true`.
+* `ingress.kubernetes.io/cors-max-age`: Optional, configures `Access-Control-Max-Age` header which defines the time in seconds the result should be cached. Defaults to `86400` (1 day).
+
+https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
 
 ### Limit
 
