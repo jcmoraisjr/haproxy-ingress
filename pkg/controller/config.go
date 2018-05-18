@@ -131,6 +131,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		HTTPSLogFormat:       "",
 		TCPLogFormat:         "",
 		DrainSupport:         false,
+        DNSResolver:		  "",
 	}
 	if haproxyController.configMap != nil {
 		utils.MergeMap(haproxyController.configMap.Data, &conf)
@@ -174,22 +175,32 @@ func configForwardfor(conf *types.HAProxyConfig) {
 }
 
 func (cfg *haConfig) createDNSResolvers() {
-	// TODO: parse out multiple resolvers
 	DNSResolvers := map[string]types.DNSResolver{}
-	//glog.Infof("from config: %v", cfg.haproxyController.configMap.Data)
-	if resolvers, ok := cfg.haproxyController.configMap.Data["dns-resolver"]; ok {
-		list := strings.Split(resolvers, ":")
-		if len(list)%3 == 0 {
-			for index := 0; index < len(list)/3; index++ {
-				DNSResolvers[list[index]] = types.DNSResolver{
-					Name:                list[index],
-					IP:                  list[index+1],
-					Port:                list[index+2],
-					TimeoutRetry:        1,
-					HoldObsolete:        0,
-					ResolutionPoolSize:  0,
-					AcceptedPayloadSize: 8192,
+	if cfg.haproxyConfig.DNSResolver != "" {
+		resolvers := strings.Split(cfg.haproxyConfig.DNSResolver, ";")
+		for _, resolver := range resolvers {
+			resolverData := strings.Split(resolver, "=")
+			if len(resolverData) != 2 {
+				glog.Infof("misconfigured DNS resolver: %s", resolver)
+				continue
+			}
+			nameservers := map[string]string{}
+			nameserversData := strings.Split(resolverData[1], ",")
+			for _, nameserver := range nameserversData {
+				nameserverData := strings.Split(nameserver, ":")
+				if len(nameserverData) == 1 {
+					nameservers[nameserverData[0]] = "53"
+				} else {
+					nameservers[nameserverData[0]] = nameserverData[1]
 				}
+			}
+			DNSResolvers[resolverData[0]] = types.DNSResolver{
+				Name:                resolverData[0],
+				Nameservers:         nameservers,
+				TimeoutRetry:        1,
+				HoldObsolete:        0,
+				HoldValid:           1,
+				AcceptedPayloadSize: 8192,
 			}
 		}
 	}

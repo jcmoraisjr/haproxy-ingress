@@ -306,8 +306,6 @@ func (d *DynConfig) fillBackendServerSlots() {
 			if DNSResolver, ok := d.updatedConfig.DNSResolvers[resolver]; ok {
 				fullSlotCnt := len(d.updBackendsMap[backendName].Endpoints)
 				newBackend.TotalSlots = (int(fullSlotCnt/d.updatedConfig.Cfg.BackendServerSlotsIncrement) + 1) * d.updatedConfig.Cfg.BackendServerSlotsIncrement
-				DNSResolver.ResolutionPoolSize += newBackend.TotalSlots
-				// glog.Infof("updating resolver %s, pool size now %d\n", DNSResolver.Name, DNSResolver.ResolutionPoolSize)
 				d.updatedConfig.DNSResolvers[resolver] = DNSResolver
 				newBackend.UseResolver = resolver
 			} else {
@@ -316,37 +314,32 @@ func (d *DynConfig) fillBackendServerSlots() {
 			}
 		}
 
-		if d.dynamicScaling {
-			for i, endpoint := range d.updBackendsMap[backendName].Endpoints {
-				curEndpoint := endpoint
-				newBackend.FullSlots[fmt.Sprintf("%s:%s", endpoint.Address, endpoint.Port)] = types.HAProxyBackendSlot{
-					BackendServerName: fmt.Sprintf("server%04d", i),
-					BackendEndpoint:   &curEndpoint,
+		if newBackend.UseResolver == "" {
+			if d.dynamicScaling {
+				for i, endpoint := range d.updBackendsMap[backendName].Endpoints {
+					curEndpoint := endpoint
+					newBackend.FullSlots[fmt.Sprintf("%s:%s", endpoint.Address, endpoint.Port)] = types.HAProxyBackendSlot{
+						BackendServerName: fmt.Sprintf("server%04d", i),
+						BackendEndpoint:   &curEndpoint,
+					}
 				}
-			}
-			// add up to SlotsIncrement empty slots
-			increment := d.updBackendsMap[backendName].SlotsIncrement
-			fullSlotCnt := len(newBackend.FullSlots)
-			extraSlotCnt := (int(fullSlotCnt/increment)+1)*increment - fullSlotCnt
-			for i := 0; i < extraSlotCnt; i++ {
-				newBackend.EmptySlots = append(newBackend.EmptySlots, fmt.Sprintf("server%04d", i+fullSlotCnt))
-			}
-			newBackend.TotalSlots = fullSlotCnt + extraSlotCnt
-			if resolver, ok := d.updBackendsMap[backendName].Service.Annotations[useResolverAnnotation]; ok {
-				if DNSResolver, ok := d.updatedConfig.DNSResolvers[resolver]; ok {
-					DNSResolver.ResolutionPoolSize += newBackend.TotalSlots
-					d.updatedConfig.DNSResolvers[resolver] = DNSResolver
-					newBackend.UseResolver = resolver
+				// add up to SlotsIncrement empty slots
+				increment := d.updBackendsMap[backendName].SlotsIncrement
+				fullSlotCnt := len(newBackend.FullSlots)
+				extraSlotCnt := (int(fullSlotCnt/increment)+1)*increment - fullSlotCnt
+				for i := 0; i < extraSlotCnt; i++ {
+					newBackend.EmptySlots = append(newBackend.EmptySlots, fmt.Sprintf("server%04d", i+fullSlotCnt))
 				}
-			}
-		} else {
-			// use addr:port as BackendServerName, don't generate empty slots
-			for _, endpoint := range d.updBackendsMap[backendName].Endpoints {
-				curEndpoint := endpoint
-				target := fmt.Sprintf("%s:%s", endpoint.Address, endpoint.Port)
-				newBackend.FullSlots[target] = types.HAProxyBackendSlot{
-					BackendServerName: target,
-					BackendEndpoint:   &curEndpoint,
+				newBackend.TotalSlots = fullSlotCnt + extraSlotCnt
+			} else {
+				// use addr:port as BackendServerName, don't generate empty slots
+				for _, endpoint := range d.updBackendsMap[backendName].Endpoints {
+					curEndpoint := endpoint
+					target := fmt.Sprintf("%s:%s", endpoint.Address, endpoint.Port)
+					newBackend.FullSlots[target] = types.HAProxyBackendSlot{
+						BackendServerName: target,
+						BackendEndpoint:   &curEndpoint,
+					}
 				}
 			}
 		}

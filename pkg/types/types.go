@@ -151,11 +151,10 @@ type (
 	// Resolver information
 	DNSResolver struct {
 		Name                string
-		IP                  string
-		Port                string
+		Nameservers         map[string]string
 		TimeoutRetry        int
 		HoldObsolete        int
-		ResolutionPoolSize  int
+		HoldValid           int
 		AcceptedPayloadSize int
 	}
 	// HAProxyBackendSlots contains used and empty backend server definitions

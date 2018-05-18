@@ -55,10 +55,12 @@ defaults
 ######
 {{- range $name, $resolver := $ing.DNSResolvers }}
 resolvers {{ $name }}
-    nameserver ns {{ $resolver.IP }}:{{ $resolver.Port}}
+    {{- range $IP, $Port := $resolver.Nameservers }}
+    nameserver ns_{{- $IP -}}_{{- $Port }} {{ $IP }}:{{ $Port}}
+    {{- end }}
     timeout retry {{ $resolver.TimeoutRetry}}s
     hold obsolete {{ $resolver.HoldObsolete}}s
-    hold valid 1s
+    hold valid {{ $resolver.HoldValid}}s
     accepted_payload_size {{ $resolver.AcceptedPayloadSize }}
 {{- end }}
 {{- end }}
