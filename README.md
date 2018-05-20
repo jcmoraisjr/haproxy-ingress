@@ -245,6 +245,7 @@ The following parameters are supported:
 ||[`https-to-http-port`](#https-to-http-port)|port number|0 (do not listen)|
 |`[0]`|[`load-server-state`](#load-server-state) (experimental)|[true\|false]|`false`|
 ||[`max-connections`](#max-connections)|number|`2000`|
+|`[1]`|[`no-tls-redirect-locations`](#no-tls-redirect-locations)|comma-separated list of url|`/.well-known/acme-challenge`|
 ||[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
 ||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/v0.4/pkg/controller/config.go#L35)|
 ||[`ssl-dh-default-max-size`](#ssl-dh-default-max-size)|number|`1024`|
@@ -405,6 +406,14 @@ Define the maximum number of concurrent connections on all proxies.
 Defaults to `2000` connections, which is also the HAProxy default configuration.
 
 http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.2-maxconn
+
+### no-tls-redirect-locations
+
+Define a comma-separated list of URLs that should be removed from the TLS redirect.
+Requests to `:80` http port and starting with one of the URLs from the list will
+not be redirected to https despite of the TLS redirect configuration.
+
+This option defaults to `/.well-known/acme-challenge`, used by ACME protocol.
 
 ### proxy-body-size
 

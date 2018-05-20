@@ -64,6 +64,7 @@ type (
 		BackendCheckInterval        string `json:"backend-check-interval"`
 		Forwardfor                  string `json:"forwardfor"`
 		MaxConn                     int    `json:"max-connections"`
+		NoTLSRedirect               string `json:"no-tls-redirect-locations"`
 		SSLHeadersPrefix            string `json:"ssl-headers-prefix"`
 		HealthzPort                 int    `json:"healthz-port"`
 		HTTPStoHTTPPort             int    `json:"https-to-http-port"`
@@ -136,6 +137,7 @@ type (
 		Userlist             Userlist            `json:"userlist,omitempty"`
 		Proxy                proxy.Configuration `json:"proxy,omitempty"`
 		RateLimit            ratelimit.RateLimit `json:"rateLimit,omitempty"`
+		SSLRedirect          bool                `json:"sslRedirect,omitempty"`
 		HAMatchPath          string              `json:"haMatchPath"`
 		HAMatchTxnPath       string              `json:"haMatchTxnPath"`
 		HAWhitelist          string              `json:"whitelist,omitempty"`
