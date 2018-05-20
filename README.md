@@ -60,6 +60,7 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/auth-tls-secret`](#auth-tls)|namespace/secret name|[doc](/examples/auth/client-certs)|
 |`[1]`|[`ingress.kubernetes.io/balance-algorithm`](#balance-algorithm)|algorithm name|-|
 |`[1]`|[`ingress.kubernetes.io/blue-green-deploy`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
+|`[1]`|[`ingress.kubernetes.io/config-backend`](#configuration-snippet)|multiline HAProxy backend config|-|
 |`[1]`|[`ingress.kubernetes.io/cors-allow-origin`](#cors)|URL|-|
 |`[1]`|[`ingress.kubernetes.io/cors-allow-methods`](#cors)|methods list|-|
 |`[1]`|[`ingress.kubernetes.io/cors-allow-headers`](#cors)|headers list|-|
@@ -151,6 +152,22 @@ The maximum weight value is `256`.
 See also the [example](/examples/blue-green) page.
 
 http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-weight
+
+### Configuration snippet
+
+Add HAProxy configuration snippet to the configuration file. Use multiline content to add more than one
+line of configuration.
+
+Example:
+
+```yaml
+    annotations:
+      ingress.kubernetes.io/config-backend: |
+        acl bar-url path /bar
+        http-request deny if bar-url
+```
+
+* `ingress.kubernetes.io/config-backend`: Add configuration snippet to the HAProxy backend section.
 
 ### CORS
 
