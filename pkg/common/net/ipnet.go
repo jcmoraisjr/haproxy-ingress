@@ -17,6 +17,7 @@ limitations under the License.
 package net
 
 import (
+	"fmt"
 	"net"
 	"strings"
 )
@@ -31,6 +32,7 @@ type IP map[string]net.IP
 func ParseIPNets(specs ...string) (IPNet, IP, error) {
 	ipnetset := make(IPNet)
 	ipset := make(IP)
+	invalidSpec := []string{}
 
 	for _, spec := range specs {
 		spec = strings.TrimSpace(spec)
@@ -38,16 +40,19 @@ func ParseIPNets(specs ...string) (IPNet, IP, error) {
 		if err != nil {
 			ip := net.ParseIP(spec)
 			if ip == nil {
-				return nil, nil, err
+				invalidSpec = append(invalidSpec, spec)
+				continue
 			}
 			i := ip.String()
 			ipset[i] = ip
 			continue
 		}
-
 		k := ipnet.String()
 		ipnetset[k] = ipnet
 	}
 
+	if len(invalidSpec) > 0 {
+		return ipnetset, ipset, fmt.Errorf("invalid CIDR or IP address: %v", strings.Join(invalidSpec, ", "))
+	}
 	return ipnetset, ipset, nil
 }

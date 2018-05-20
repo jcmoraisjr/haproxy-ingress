@@ -17,6 +17,7 @@ limitations under the License.
 package ipwhitelist
 
 import (
+	"github.com/golang/glog"
 	"sort"
 	"strings"
 
@@ -93,10 +94,13 @@ func (a ipwhitelist) Parse(ing *extensions.Ingress) (interface{}, error) {
 
 	values := strings.Split(val, ",")
 	ipnets, ips, err := net.ParseIPNets(values...)
-	if err != nil && len(ips) == 0 {
-		return &SourceRange{CIDR: defBackend.WhitelistSourceRange}, ing_errors.LocationDenied{
-			Reason: errors.Wrap(err, "the annotation does not contain a valid IP address or network"),
+	if err != nil {
+		if len(ipnets) == 0 && len(ips) == 0 {
+			return &SourceRange{CIDR: defBackend.WhitelistSourceRange}, ing_errors.LocationDenied{
+				Reason: errors.Wrap(err, "the annotation does not contain a valid IP address or network"),
+			}
 		}
+		glog.Warningf("error parsing %v/%v whitelist-source-range: %v", ing.Namespace, ing.Name, err)
 	}
 
 	cidrs := []string{}

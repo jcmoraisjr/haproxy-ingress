@@ -26,9 +26,25 @@ func TestNewIPSet(t *testing.T) {
 		t.Errorf("error parsing IPNets: %v", err)
 	}
 	if len(ipsets) != 2 {
-		t.Errorf("Expected len=2: %d", len(ipsets))
+		t.Errorf("Expected len(ipsets)=2: %d", len(ipsets))
 	}
 	if len(ips) != 1 {
-		t.Errorf("Expected len=1: %d", len(ips))
+		t.Errorf("Expected len(ips)=1: %d", len(ips))
+	}
+}
+
+func TestPartialIPParsing(t *testing.T) {
+	ipsets, ips, err := ParseIPNets("1.355.0.0", "2.0.0.0/8", "3.0.0.0/33")
+	if err == nil {
+		t.Error("expected error parsing IPs")
+	}
+	if len(ipsets) != 1 {
+		t.Errorf("expected len(ipsets)=1: %d -- %v", len(ipsets), ipsets)
+	}
+	if _, ok := ipsets["2.0.0.0/8"]; !ok {
+		t.Errorf("expected ipsets['2.0.0.0/8'], was %v", ipsets)
+	}
+	if len(ips) != 0 {
+		t.Errorf("expected len(ips)=0: %d -- %v", len(ips), ips)
 	}
 }
