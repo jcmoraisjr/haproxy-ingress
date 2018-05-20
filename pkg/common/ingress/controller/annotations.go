@@ -139,6 +139,7 @@ const (
 	healthCheck          = "HealthCheck"
 	blueGreen            = "BlueGreen"
 	sslPassthrough       = "SSLPassthrough"
+	configSnippet        = "ConfigurationSnippet"
 	sessionAffinity      = "SessionAffinity"
 	serviceUpstream      = "ServiceUpstream"
 	conn                 = "Connection"
@@ -192,6 +193,11 @@ func (e *annotationExtractor) BlueGreen(ing *extensions.Ingress) *bluegreen.Conf
 func (e *annotationExtractor) SSLPassthrough(ing *extensions.Ingress) bool {
 	val, _ := e.annotations[sslPassthrough].Parse(ing)
 	return val.(bool)
+}
+
+func (e *annotationExtractor) ConfigurationSnippet(ing *extensions.Ingress) snippet.Config {
+	val, _ := e.annotations[configSnippet].Parse(ing)
+	return val.(snippet.Config)
 }
 
 func (e *annotationExtractor) Alias(ing *extensions.Ingress) string {

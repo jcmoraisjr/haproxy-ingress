@@ -189,6 +189,12 @@ func (b1 *Backend) Equal(b2 *Backend) bool {
 		return false
 	}
 
+	if !b1.ConfigurationSnippet.Equal(&b2.ConfigurationSnippet) {
+		return false
+	}
+
+	// BlueGreen doesn't need to be compared - its configuration will change Endpoint.Weight
+
 	for _, udp1 := range b1.Endpoints {
 		found := false
 		for _, udp2 := range b2.Endpoints {
@@ -383,7 +389,7 @@ func (l1 *Location) Equal(l2 *Location) bool {
 	if l1.UsePortInRedirects != l2.UsePortInRedirects {
 		return false
 	}
-	if l1.ConfigurationSnippet != l2.ConfigurationSnippet {
+	if !l1.ConfigurationSnippet.Equal(&l2.ConfigurationSnippet) {
 		return false
 	}
 	if l1.ClientBodyBufferSize != l2.ClientBodyBufferSize {

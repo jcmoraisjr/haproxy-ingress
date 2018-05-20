@@ -17,16 +17,24 @@ limitations under the License.
 package snippet
 
 import (
-	extensions "k8s.io/api/extensions/v1beta1"
-
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/parser"
+	extensions "k8s.io/api/extensions/v1beta1"
+	"strings"
 )
 
 const (
-	annotation = "ingress.kubernetes.io/configuration-snippet"
+	configFrontendAnn = "ingress.kubernetes.io/config-frontend"
+	configBackendAnn  = "ingress.kubernetes.io/config-backend"
 )
 
 type snippet struct {
+}
+
+// Config has the snippet configurations. This struct is used in both
+// frontend (locations) and backend structs.
+type Config struct {
+	Frontend []string
+	Backend  []string
 }
 
 // NewParser creates a new CORS annotation parser
@@ -35,8 +43,39 @@ func NewParser() parser.IngressAnnotation {
 }
 
 // Parse parses the annotations contained in the ingress rule
-// used to indicate if the location/s contains a fragment of
-// configuration to be included inside the paths of the rules
+// used to indicate if the frontend and/or the backend contains
+// a fragment of configuration to be included
 func (a snippet) Parse(ing *extensions.Ingress) (interface{}, error) {
-	return parser.GetStringAnnotation(annotation, ing)
+	f, _ := parser.GetStringAnnotation(configFrontendAnn, ing)
+	b, _ := parser.GetStringAnnotation(configBackendAnn, ing)
+	config := Config{
+		Frontend: linebreakToSlice(f),
+		Backend:  linebreakToSlice(b),
+	}
+	return config, nil
+}
+
+func linebreakToSlice(s string) []string {
+	if s == "" {
+		return []string{}
+	}
+	return strings.Split(strings.TrimRight(s, "\n"), "\n")
+}
+
+// Equal tests equality between two Config structs
+func (c1 *Config) Equal(c2 *Config) bool {
+	if len(c1.Frontend) != len(c2.Frontend) || len(c1.Backend) != len(c2.Backend) {
+		return false
+	}
+	for i := range c1.Frontend {
+		if c1.Frontend[i] != c2.Frontend[i] {
+			return false
+		}
+	}
+	for i := range c1.Backend {
+		if c1.Backend[i] != c2.Backend[i] {
+			return false
+		}
+	}
+	return true
 }

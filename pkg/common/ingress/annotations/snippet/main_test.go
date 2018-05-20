@@ -32,12 +32,12 @@ func TestParse(t *testing.T) {
 
 	testCases := []struct {
 		annotations map[string]string
-		expected    string
+		expected    Config
 	}{
-		{map[string]string{annotation: "more_headers"}, "more_headers"},
-		{map[string]string{annotation: "false"}, "false"},
-		{map[string]string{}, ""},
-		{nil, ""},
+		{map[string]string{configFrontendAnn: "acl\nreject\n"}, Config{[]string{"acl", "reject"}, []string{}}},
+		{map[string]string{configBackendAnn: "more_headers"}, Config{[]string{}, []string{"more_headers"}}},
+		{map[string]string{}, Config{}},
+		{nil, Config{}},
 	}
 
 	ing := &extensions.Ingress{
@@ -50,9 +50,10 @@ func TestParse(t *testing.T) {
 
 	for _, testCase := range testCases {
 		ing.SetAnnotations(testCase.annotations)
-		result, _ := ap.Parse(ing)
-		if result != testCase.expected {
-			t.Errorf("expected %v but returned %v, annotations: %s", testCase.expected, result, testCase.annotations)
+		val, _ := ap.Parse(ing)
+		config := val.(Config)
+		if !config.Equal(&testCase.expected) {
+			t.Errorf("expected %v but returned %v, annotations: %s", testCase.expected, config, testCase.annotations)
 		}
 	}
 }

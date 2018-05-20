@@ -101,6 +101,9 @@ backend {{ $backend.Name }}
     cookie {{ $sticky.CookieSessionAffinity.Name }} {{ $sticky.CookieSessionAffinity.Strategy }} {{ if eq $sticky.CookieSessionAffinity.Strategy "insert" }}indirect nocache{{ end }} dynamic
     dynamic-cookie-key "{{ $cfg.CookieKey }}"
 {{- end }}
+{{- range $snippet := $backend.ConfigurationSnippet.Backend }}
+    {{ $snippet }}
+{{- end }}
 {{- $cacert := $backend.SecureCACert }}
 {{- if ne $cacert.PemSHA "" }}
     # CA PEM checksum: {{ $cacert.PemSHA }}
