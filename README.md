@@ -249,6 +249,10 @@ The following parameters are supported:
 ||[`balance-algorithm`](#balance-algorithm)|algorithm name|`roundrobin`|
 ||[`backend-check-interval`](#backend-check-interval)|time with suffix|`2s`|
 ||[`backend-server-slots-increment`](#dynamic-scaling)|number of slots|`32`|
+|`[1]`|[`bind-ip-addr-healthz`](#bind-ip-addr)|IP address|`*`|
+|`[1]`|[`bind-ip-addr-http`](#bind-ip-addr)|IP address|`*`|
+|`[1]`|[`bind-ip-addr-stats`](#bind-ip-addr)|IP address|`*`|
+|`[1]`|[`bind-ip-addr-tcp`](#bind-ip-addr)|IP address|`*`|
 |`[1]`|[`cookie-key`](#cookie-key)|secret key|`Ingress`|
 ||[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`false`|
 ||[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
@@ -308,6 +312,17 @@ http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-balance
 Define the interval between TCP health checks to the backend using `inter` option.
 
 http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-inter
+
+### bind-ip-addr
+
+Define listening IPv4/IPv6 address on several HAProxy frontends. All IP addresses defaults to IPv4 `*` if not declared.
+
+`bind-ip-addr-tcp`: IP address of all TCP services declared on [`tcp-services`](#tcp-services-configmap) configmap option.
+`bind-ip-addr-http`: IP address of all HTTP/s frontends, port `:80` and `:443`, and also [`https-to-http-port`](#https-to-http-port) if declared.
+`bind-ip-addr-healthz`: IP address of the health check URL. See also [`healthz-port`](#healthz-port).
+`bind-ip-addr-stats`: IP address of the statistics page. See also [`stats-port`](#stats).
+
+http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-bind
 
 ### cookie-key
 
