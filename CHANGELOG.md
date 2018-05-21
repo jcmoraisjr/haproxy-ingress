@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Current snapshot tag
+## v0.6-beta.1
 
 Breaking backward compatibility from `v0.5`:
 

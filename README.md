@@ -46,7 +46,7 @@ configmap with `haproxy.tmpl` key mounting into `/etc/haproxy/template` will wor
 
 The following annotations are supported:
 
-* `[1]` only in `snapshot` tag
+* `[0]` only in `canary` tag
 
 ||Name|Data|Usage|
 |---|---|---|:---:|
@@ -57,15 +57,15 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/auth-tls-cert-header`](#auth-tls)|[true\|false]|[doc](/examples/auth/client-certs)|
 ||[`ingress.kubernetes.io/auth-tls-error-page`](#auth-tls)|url|[doc](/examples/auth/client-certs)|
 ||[`ingress.kubernetes.io/auth-tls-secret`](#auth-tls)|namespace/secret name|[doc](/examples/auth/client-certs)|
-|`[1]`|[`ingress.kubernetes.io/balance-algorithm`](#balance-algorithm)|algorithm name|-|
-|`[1]`|[`ingress.kubernetes.io/blue-green-deploy`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
-|`[1]`|[`ingress.kubernetes.io/config-backend`](#configuration-snippet)|multiline HAProxy backend config|-|
-|`[1]`|[`ingress.kubernetes.io/cors-allow-origin`](#cors)|URL|-|
-|`[1]`|[`ingress.kubernetes.io/cors-allow-methods`](#cors)|methods list|-|
-|`[1]`|[`ingress.kubernetes.io/cors-allow-headers`](#cors)|headers list|-|
-|`[1]`|[`ingress.kubernetes.io/cors-allow-credentials`](#cors)|[true\|false]|-|
-|`[1]`|[`ingress.kubernetes.io/cors-enable`](#cors)|[true\|false]|-|
-|`[1]`|[`ingress.kubernetes.io/cors-max-age`](#cors)|time (seconds)|-|
+|`[0]`|[`ingress.kubernetes.io/balance-algorithm`](#balance-algorithm)|algorithm name|-|
+|`[0]`|[`ingress.kubernetes.io/blue-green-deploy`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
+|`[0]`|[`ingress.kubernetes.io/config-backend`](#configuration-snippet)|multiline HAProxy backend config|-|
+|`[0]`|[`ingress.kubernetes.io/cors-allow-origin`](#cors)|URL|-|
+|`[0]`|[`ingress.kubernetes.io/cors-allow-methods`](#cors)|methods list|-|
+|`[0]`|[`ingress.kubernetes.io/cors-allow-headers`](#cors)|headers list|-|
+|`[0]`|[`ingress.kubernetes.io/cors-allow-credentials`](#cors)|[true\|false]|-|
+|`[0]`|[`ingress.kubernetes.io/cors-enable`](#cors)|[true\|false]|-|
+|`[0]`|[`ingress.kubernetes.io/cors-max-age`](#cors)|time (seconds)|-|
 ||[`ingress.kubernetes.io/hsts`](#hsts)|[true\|false]|-|
 ||[`ingress.kubernetes.io/hsts-include-subdomains`](#hsts)|[true\|false]|-|
 ||[`ingress.kubernetes.io/hsts-max-age`](#hsts)|qty of seconds|-|
@@ -73,15 +73,15 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/limit-connections`](#limit)|qty|-|
 ||[`ingress.kubernetes.io/limit-rps`](#limit)|rate per second|-|
 ||[`ingress.kubernetes.io/limit-whitelist`](#limit)|cidr list|-|
-|`[1]`|[`ingress.kubernetes.io/maxconn-server`](#connection)|qty|-|
-|`[1]`|[`ingress.kubernetes.io/maxqueue-server`](#connection)|qty|-|
-|`[1]`|[`ingress.kubernetes.io/slots-increment`](#dynamic-scaling)|qty|-|
-|`[1]`|[`ingress.kubernetes.io/timeout-queue`](#connection)|qty|-|
+|`[0]`|[`ingress.kubernetes.io/maxconn-server`](#connection)|qty|-|
+|`[0]`|[`ingress.kubernetes.io/maxqueue-server`](#connection)|qty|-|
+|`[0]`|[`ingress.kubernetes.io/slots-increment`](#dynamic-scaling)|qty|-|
+|`[0]`|[`ingress.kubernetes.io/timeout-queue`](#connection)|qty|-|
 ||[`ingress.kubernetes.io/proxy-body-size`](#proxy-body-size)|size (bytes)|-|
 ||`ingress.kubernetes.io/secure-backends`|[true\|false]|-|
 ||`ingress.kubernetes.io/secure-verify-ca-secret`|secret name|-|
 ||[`ingress.kubernetes.io/session-cookie-name`](#affinity)|cookie name|-|
-|`[1]`|[`ingress.kubernetes.io/session-cookie-strategy`](#affinity)|[insert\|prefix\|rewrite]|-|
+|`[0]`|[`ingress.kubernetes.io/session-cookie-strategy`](#affinity)|[insert\|prefix\|rewrite]|-|
 ||`ingress.kubernetes.io/ssl-passthrough`|[true\|false]|-|
 ||`ingress.kubernetes.io/ssl-redirect`|[true\|false]|[doc](/examples/rewrite)|
 ||`ingress.kubernetes.io/app-root`|/url|[doc](/examples/rewrite)|
@@ -241,18 +241,18 @@ A ConfigMap can be created with `kubectl create configmap`.
 
 The following parameters are supported:
 
-* `[1]` only in `snapshot` tag
+* `[0]` only in `canary` tag
 
 ||Name|Type|Default|
 |---|---|---|---|
 ||[`balance-algorithm`](#balance-algorithm)|algorithm name|`roundrobin`|
 ||[`backend-check-interval`](#backend-check-interval)|time with suffix|`2s`|
 ||[`backend-server-slots-increment`](#dynamic-scaling)|number of slots|`32`|
-|`[1]`|[`bind-ip-addr-healthz`](#bind-ip-addr)|IP address|`*`|
-|`[1]`|[`bind-ip-addr-http`](#bind-ip-addr)|IP address|`*`|
-|`[1]`|[`bind-ip-addr-stats`](#bind-ip-addr)|IP address|`*`|
-|`[1]`|[`bind-ip-addr-tcp`](#bind-ip-addr)|IP address|`*`|
-|`[1]`|[`cookie-key`](#cookie-key)|secret key|`Ingress`|
+|`[0]`|[`bind-ip-addr-healthz`](#bind-ip-addr)|IP address|`*`|
+|`[0]`|[`bind-ip-addr-http`](#bind-ip-addr)|IP address|`*`|
+|`[0]`|[`bind-ip-addr-stats`](#bind-ip-addr)|IP address|`*`|
+|`[0]`|[`bind-ip-addr-tcp`](#bind-ip-addr)|IP address|`*`|
+|`[0]`|[`cookie-key`](#cookie-key)|secret key|`Ingress`|
 ||[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`false`|
 ||[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
 ||[`healthz-port`](#healthz-port)|port number|`10253`|
@@ -265,7 +265,7 @@ The following parameters are supported:
 ||[`https-to-http-port`](#https-to-http-port)|port number|0 (do not listen)|
 ||[`load-server-state`](#load-server-state) (experimental)|[true\|false]|`false`|
 ||[`max-connections`](#max-connections)|number|`2000`|
-|`[1]`|[`no-tls-redirect-locations`](#no-tls-redirect-locations)|comma-separated list of url|`/.well-known/acme-challenge`|
+|`[0]`|[`no-tls-redirect-locations`](#no-tls-redirect-locations)|comma-separated list of url|`/.well-known/acme-challenge`|
 ||[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
 ||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/v0.4/pkg/controller/config.go#L35)|
 ||[`ssl-dh-default-max-size`](#ssl-dh-default-max-size)|number|`1024`|
@@ -286,11 +286,11 @@ The following parameters are supported:
 ||[`timeout-queue`](#timeout)|time with suffix|`5s`|
 ||[`timeout-server`](#timeout)|time with suffix|`50s`|
 ||[`timeout-server-fin`](#timeout)|time with suffix|`50s`|
-|`[1]`|[`timeout-stop`](#timeout)|time with suffix|no timeout|
+|`[0]`|[`timeout-stop`](#timeout)|time with suffix|no timeout|
 ||[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
 ||[`use-host-on-https`](#use-host-on-https)|[true\|false]|`false`|
 ||[`use-proxy-protocol`](#use-proxy-protocol)|[true\|false]|`false`|
-|`[1]`|[`drain-support`](#drain-support)|[true\|false]|`false`|
+|`[0]`|[`drain-support`](#drain-support)|[true\|false]|`false`|
 
 ### balance-algorithm
 
@@ -577,7 +577,7 @@ not ready or terminating state.
 
 The following command-line arguments are supported:
 
-* `[1]` only in `snapshot` tag
+* `[0]` only in `canary` tag
 
 ||Name|Type|Default|
 |---|---|---|---|
@@ -586,7 +586,7 @@ The following command-line arguments are supported:
 ||[`default-ssl-certificate`](#default-ssl-certificate)|namespace/secretname|(mandatory)|
 ||[`ingress-class`](#ingress-class)|name|`haproxy`|
 ||[`kubeconfig`](#kubeconfig)|/path/to/kubeconfig|in cluster config|
-|`[1]`|[`max-old-config-files`](#max-old-config-files)|num of files|`0`|
+|`[0]`|[`max-old-config-files`](#max-old-config-files)|num of files|`0`|
 ||[`rate-limit-update`](#rate-limit-update)|uploads per second (float)|`0.5`|
 ||[`reload-strategy`](#reload-strategy)|[native\|reusesocket]|`native`|
 ||[`sort-backends`](#sort-backends)|[true\|false]|`false`|
