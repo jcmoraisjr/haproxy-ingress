@@ -452,6 +452,7 @@ func (ic *GenericController) getDefaultUpstream() *ingress.Backend {
 	upstream := &ingress.Backend{
 		Name:             defUpstreamName,
 		BalanceAlgorithm: ic.GetDefaultBackend().BalanceAlgorithm,
+		SlotsIncrement:   ic.GetDefaultBackend().BackendServerSlotsIncrement,
 	}
 	svcKey := ic.cfg.DefaultService
 	svcObj, svcExists, err := ic.listers.Service.GetByKey(svcKey)
@@ -493,6 +494,7 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 		snippet := ic.annotations.ConfigurationSnippet(ing)
 		anns := ic.annotations.Extract(ing)
 		conn := ic.annotations.Connection(ing)
+		slotsInc := ic.annotations.SlotsIncrement(ing)
 
 		for _, rule := range ing.Spec.Rules {
 			host := rule.Host
@@ -616,6 +618,10 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 				}
 				if ups.Connection.TimeoutQueue == "" {
 					ups.Connection.TimeoutQueue = conn.TimeoutQueue
+				}
+
+				if ups.SlotsIncrement == 0 {
+					ups.SlotsIncrement = slotsInc
 				}
 			}
 		}

@@ -76,6 +76,7 @@ The following annotations are supported:
 |`[0]`|[`ingress.kubernetes.io/limit-whitelist`](#limit)|cidr list|-|
 |`[1]`|[`ingress.kubernetes.io/maxconn-server`](#connection)|qty|-|
 |`[1]`|[`ingress.kubernetes.io/maxqueue-server`](#connection)|qty|-|
+|`[1]`|[`ingress.kubernetes.io/slots-increment`](#dynamic-scaling)|qty|-|
 |`[1]`|[`ingress.kubernetes.io/timeout-queue`](#connection)|qty|-|
 ||[`ingress.kubernetes.io/proxy-body-size`](#proxy-body-size)|size (bytes)|-|
 ||`ingress.kubernetes.io/secure-backends`|[true\|false]|-|
@@ -348,8 +349,14 @@ Starting on v0.6, `dynamic-scaling` config will only force a reloading of HAProx
 the number of servers on a backend need to be increased. Before v0.6 a reload will
 also happen when the number of servers could be reduced.
 
+Global configmap options:
+
 * `dynamic-scaling`: Define if dynamic scaling should be used whenever possible
 * `backend-server-slots-increment`: Configures the minimum number of servers, the size of the increment when growing and the size of the decrement when shrinking of each HAProxy backend
+
+Annotations on ingress resources:
+
+* `ingress.kubernetes.io/slots-increment`: A per backend slot increment
 
 http://cbonte.github.io/haproxy-dconv/1.8/management.html#9.3
 

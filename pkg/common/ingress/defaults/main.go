@@ -9,6 +9,10 @@ type Backend struct {
 	// AppRoot contains the AppRoot for apps that doesn't exposes its content in the 'root' context
 	AppRoot string `json:"app-root"`
 
+	// BackendServerSlotsIncrement defines the size of the increment when the number
+	// of servers of the backend need to grow
+	BackendServerSlotsIncrement int `json:"backend-server-slots-increment"`
+
 	// BalanceAlgorithm has the name of the default load balancing algorithm to use.
 	// The algorithm can be changed per backend with annotation.
 	// http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-balance

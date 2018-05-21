@@ -35,7 +35,6 @@ type DynConfig struct {
 	curKeys        []string
 	updKeys        []string
 	dynamicScaling bool
-	slotsIncrement int
 	statsSocket    string
 	slotsUpdated   bool
 }
@@ -147,7 +146,6 @@ func ConfigBackends(curCfg, updCfg *types.ControllerConfig) bool {
 		curKeys:        ck,
 		updKeys:        uk,
 		dynamicScaling: updCfg.Cfg.DynamicScaling,
-		slotsIncrement: updCfg.Cfg.BackendServerSlotsIncrement,
 		statsSocket:    updCfg.Cfg.StatsSocket,
 		slotsUpdated:   false,
 	}
@@ -192,7 +190,7 @@ func (d *DynConfig) dynamicUpdateBackends() bool {
 		updLen := len(d.updBackendsMap[backendName].Endpoints)
 		totalSlots := len(backendSlots[backendName].EmptySlots) + len(backendSlots[backendName].FullSlots)
 		if updLen > totalSlots {
-			// need to resize number of empty slots by BackendServerSlotsIncrement amount
+			// need to resize number of empty slots by SlotsIncrement amount
 			reloadRequired = true
 			continue
 		}
@@ -300,9 +298,10 @@ func (d *DynConfig) fillBackendServerSlots() {
 					BackendEndpoint:   &curEndpoint,
 				}
 			}
-			// add up to BackendServerSlotsIncrement empty slots
+			// add up to SlotsIncrement empty slots
+			increment := d.updBackendsMap[backendName].SlotsIncrement
 			fullSlotCnt := len(newBackend.FullSlots)
-			extraSlotCnt := (int(fullSlotCnt/d.slotsIncrement)+1)*d.slotsIncrement - fullSlotCnt
+			extraSlotCnt := (int(fullSlotCnt/increment)+1)*increment - fullSlotCnt
 			for i := 0; i < extraSlotCnt; i++ {
 				newBackend.EmptySlots = append(newBackend.EmptySlots, fmt.Sprintf("server%04d", i+fullSlotCnt))
 			}
