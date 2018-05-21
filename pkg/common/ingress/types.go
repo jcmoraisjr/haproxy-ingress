@@ -193,6 +193,8 @@ type Backend struct {
 	SessionAffinity SessionAffinityConfig `json:"sessionAffinityConfig"`
 	// BalanceAlgorithm has the per backend load balancing algorithm
 	BalanceAlgorithm string `json:"balanceAlgorithm"`
+	// SlotsIncrement defines the size of the increment when the number of servers of the backend need to grow
+	SlotsIncrement int `json:"slotsIncrement"`
 	// BlueGreen has the blue/green deployment configuration
 	BlueGreen bluegreen.Config `json:"blueGreen"`
 	// ConfigurationSnippet contains additional configuration to be considered in the backend configuration

@@ -42,6 +42,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/serversnippet"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/serviceupstream"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/sessionaffinity"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/slotsincrement"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/snippet"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/sslpassthrough"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/upstreamhashby"
@@ -86,6 +87,7 @@ func newAnnotationExtractor(cfg extractorConfig) annotationExtractor {
 			"SecureUpstream":       secureupstream.NewParser(cfg, cfg),
 			"ServiceUpstream":      serviceupstream.NewParser(),
 			"SessionAffinity":      sessionaffinity.NewParser(),
+			"SlotsIncrement":       slotsincrement.NewParser(cfg),
 			"BlueGreen":            bluegreen.NewParser(),
 			"SSLPassthrough":       sslpassthrough.NewParser(),
 			"ConfigurationSnippet": snippet.NewParser(),
@@ -142,6 +144,7 @@ const (
 	configSnippet        = "ConfigurationSnippet"
 	sessionAffinity      = "SessionAffinity"
 	serviceUpstream      = "ServiceUpstream"
+	slotsIncrement       = "SlotsIncrement"
 	conn                 = "Connection"
 	serverAlias          = "Alias"
 	corsConfig           = "CorsConfig"
@@ -168,6 +171,11 @@ func (e *annotationExtractor) SecureUpstream(ing *extensions.Ingress) *secureups
 	}
 	secure := val.(*secureupstream.Secure)
 	return secure
+}
+
+func (e *annotationExtractor) SlotsIncrement(ing *extensions.Ingress) int {
+	val, _ := e.annotations[slotsIncrement].Parse(ing)
+	return val.(int)
 }
 
 func (e *annotationExtractor) Connection(ing *extensions.Ingress) *connection.Config {
