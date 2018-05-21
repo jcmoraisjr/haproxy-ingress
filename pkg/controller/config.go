@@ -51,9 +51,11 @@ type haConfig struct {
 }
 
 func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController *HAProxyController) (*types.ControllerConfig, error) {
-	cfg := &haConfig{}
-	cfg.ingress = ingressConfig
-	cfg.haproxyController = haproxyController
+	cfg := &haConfig{
+		ingress:           ingressConfig,
+		haproxyController: haproxyController,
+		haproxyConfig:     newHAProxyConfig(haproxyController),
+	}
 	cfg.createUserlists()
 	cfg.createHAProxyServers()
 	err := cfg.createDefaultCert()
@@ -69,7 +71,7 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 		TCPEndpoints:        cfg.ingress.TCPEndpoints,
 		UDPEndpoints:        cfg.ingress.UDPEndpoints,
 		PassthroughBackends: cfg.ingress.PassthroughBackends,
-		Cfg:                 newHAProxyConfig(haproxyController),
+		Cfg:                 cfg.haproxyConfig,
 	}, nil
 }
 
@@ -109,6 +111,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		BackendCheckInterval:        "2s",
 		Forwardfor:                  "add",
 		MaxConn:                     2000,
+		NoTLSRedirect:               "/.well-known/acme-challenge",
 		SSLHeadersPrefix:            "X-SSL",
 		HealthzPort:                 10253,
 		HTTPStoHTTPPort:             0,
@@ -176,7 +179,7 @@ func (cfg *haConfig) createHAProxyServers() {
 			continue
 		}
 		haLocations, haRootLocation := cfg.newHAProxyLocations(server)
-		sslRedirect := serverSSLRedirect(server)
+		sslRedirect := serverSSLRedirect(haLocations)
 		isDefaultServer := server.Hostname == "_"
 		isCACert := server.CertificateAuth.AuthSSLCert.CAFileName != ""
 		haServer := types.HAProxyServer{
@@ -250,6 +253,7 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 			HSTS:           location.HSTS,
 			Rewrite:        location.Rewrite,
 			Redirect:       location.Redirect,
+			SSLRedirect:    location.Rewrite.SSLRedirect && cfg.allowRedirect(location.Path),
 			Proxy:          location.Proxy,
 			RateLimit:      location.RateLimit,
 		}
@@ -280,6 +284,15 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 		haRootLocation.HAMatchTxnPath = " !{ var(txn.path) -m beg " + otherPaths + " }"
 	}
 	return haLocations, haRootLocation
+}
+
+func (cfg *haConfig) allowRedirect(path string) bool {
+	for _, restrictPath := range strings.Split(cfg.haproxyConfig.NoTLSRedirect, ",") {
+		if restrictPath != "" && strings.HasPrefix(path, restrictPath) {
+			return false
+		}
+	}
+	return true
 }
 
 func labelizeHostname(hostname string) string {
@@ -393,9 +406,9 @@ func readUsers(fileName string, listName string) ([]types.AuthUser, error) {
 
 // serverSSLRedirect Configure a global (per hostname) ssl redirect only if
 // all locations also configure ssl redirect.
-func serverSSLRedirect(server *ingress.Server) bool {
-	for _, location := range server.Locations {
-		if !location.Rewrite.SSLRedirect {
+func serverSSLRedirect(locations []*types.HAProxyLocation) bool {
+	for _, location := range locations {
+		if !location.SSLRedirect {
 			return false
 		}
 	}

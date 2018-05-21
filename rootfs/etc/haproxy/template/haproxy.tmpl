@@ -348,7 +348,7 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
     redirect scheme https if !from-https {{ $server.ACLLabel }}
 {{- else }}
 {{- range $location := $server.Locations }}
-{{- if $location.Rewrite.SSLRedirect }}
+{{- if $location.SSLRedirect }}
     redirect scheme https if !from-https {{ $server.ACLLabel }}{{ $location.HAMatchTxnPath }}
 {{- end }}
 {{- end }}
