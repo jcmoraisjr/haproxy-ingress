@@ -63,6 +63,14 @@ Fixes and improvements since `v0.5`
   * Maximum timestamped config files [#123](https://github.com/jcmoraisjr/haproxy-ingress/pull/123) - [doc](/README.md#max-old-config-files)
     * `--max-old-config-files`
 
+## v0.5
+
+Fixes and improvements since `v0.4`
+
+* [v0.5-beta.1](#v05-beta1) changelog
+* [v0.5-beta.2](#v05-beta2) changelog
+* [v0.5-beta.3](#v05-beta3) changelog
+
 ## v0.5-beta.3
 
 Fixes and improvements since `v0.5-beta.2`

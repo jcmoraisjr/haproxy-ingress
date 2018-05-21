@@ -46,7 +46,6 @@ configmap with `haproxy.tmpl` key mounting into `/etc/haproxy/template` will wor
 
 The following annotations are supported:
 
-* `[0]` only in `canary` tag
 * `[1]` only in `snapshot` tag
 
 ||Name|Data|Usage|
@@ -55,7 +54,7 @@ The following annotations are supported:
 ||`ingress.kubernetes.io/auth-type`|"basic"|[doc](/examples/auth/basic)|
 ||`ingress.kubernetes.io/auth-secret`|secret name|[doc](/examples/auth/basic)|
 ||`ingress.kubernetes.io/auth-realm`|realm string|[doc](/examples/auth/basic)|
-|`[0]`|[`ingress.kubernetes.io/auth-tls-cert-header`](#auth-tls)|[true\|false]|[doc](/examples/auth/client-certs)|
+||[`ingress.kubernetes.io/auth-tls-cert-header`](#auth-tls)|[true\|false]|[doc](/examples/auth/client-certs)|
 ||[`ingress.kubernetes.io/auth-tls-error-page`](#auth-tls)|url|[doc](/examples/auth/client-certs)|
 ||[`ingress.kubernetes.io/auth-tls-secret`](#auth-tls)|namespace/secret name|[doc](/examples/auth/client-certs)|
 |`[1]`|[`ingress.kubernetes.io/balance-algorithm`](#balance-algorithm)|algorithm name|-|
@@ -67,13 +66,13 @@ The following annotations are supported:
 |`[1]`|[`ingress.kubernetes.io/cors-allow-credentials`](#cors)|[true\|false]|-|
 |`[1]`|[`ingress.kubernetes.io/cors-enable`](#cors)|[true\|false]|-|
 |`[1]`|[`ingress.kubernetes.io/cors-max-age`](#cors)|time (seconds)|-|
-|`[0]`|[`ingress.kubernetes.io/hsts`](#hsts)|[true\|false]|-|
-|`[0]`|[`ingress.kubernetes.io/hsts-include-subdomains`](#hsts)|[true\|false]|-|
-|`[0]`|[`ingress.kubernetes.io/hsts-max-age`](#hsts)|qty of seconds|-|
-|`[0]`|[`ingress.kubernetes.io/hsts-preload`](#hsts)|[true\|false]|-|
-|`[0]`|[`ingress.kubernetes.io/limit-connections`](#limit)|qty|-|
-|`[0]`|[`ingress.kubernetes.io/limit-rps`](#limit)|rate per second|-|
-|`[0]`|[`ingress.kubernetes.io/limit-whitelist`](#limit)|cidr list|-|
+||[`ingress.kubernetes.io/hsts`](#hsts)|[true\|false]|-|
+||[`ingress.kubernetes.io/hsts-include-subdomains`](#hsts)|[true\|false]|-|
+||[`ingress.kubernetes.io/hsts-max-age`](#hsts)|qty of seconds|-|
+||[`ingress.kubernetes.io/hsts-preload`](#hsts)|[true\|false]|-|
+||[`ingress.kubernetes.io/limit-connections`](#limit)|qty|-|
+||[`ingress.kubernetes.io/limit-rps`](#limit)|rate per second|-|
+||[`ingress.kubernetes.io/limit-whitelist`](#limit)|cidr list|-|
 |`[1]`|[`ingress.kubernetes.io/maxconn-server`](#connection)|qty|-|
 |`[1]`|[`ingress.kubernetes.io/maxqueue-server`](#connection)|qty|-|
 |`[1]`|[`ingress.kubernetes.io/slots-increment`](#dynamic-scaling)|qty|-|
@@ -87,7 +86,7 @@ The following annotations are supported:
 ||`ingress.kubernetes.io/ssl-redirect`|[true\|false]|[doc](/examples/rewrite)|
 ||`ingress.kubernetes.io/app-root`|/url|[doc](/examples/rewrite)|
 ||`ingress.kubernetes.io/whitelist-source-range`|CIDR|-|
-|`[0]`|[`ingress.kubernetes.io/rewrite-target`](#rewrite-target)|path string|-|
+||[`ingress.kubernetes.io/rewrite-target`](#rewrite-target)|path string|-|
 ||[`ingress.kubernetes.io/server-alias`](#server-alias)|domain name or regex|-|
 
 ### Affinity
@@ -102,7 +101,7 @@ Note for `dynamic-scaling` users only: the hash of the server is built based on 
 When the slots are scaled down, the remaining servers might change it's server name on
 HAProxy configuration. In order to circumvent this, always configure the slot increment at
 least as much as the number of replicas of the deployment that need to use affinity. This
-limitation will be removed when HAProxy version is updated to `1.8`.
+limitation was removed on v0.6.
 
 * http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-cookie
 * http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-cookie
@@ -242,7 +241,6 @@ A ConfigMap can be created with `kubectl create configmap`.
 
 The following parameters are supported:
 
-* `[0]` only in `canary` tag
 * `[1]` only in `snapshot` tag
 
 ||Name|Type|Default|
@@ -263,16 +261,16 @@ The following parameters are supported:
 ||[`hsts-max-age`](#hsts)|number of seconds|`15768000`|
 ||[`hsts-preload`](#hsts)|[true\|false]|`false`|
 ||[`http-log-format`](#log-format)|http log format|HAProxy default log format|
-|`[0]`|[`https-log-format`](#log-format)|https(tcp) log format\|`default`|do not log|
+||[`https-log-format`](#log-format)|https(tcp) log format\|`default`|do not log|
 ||[`https-to-http-port`](#https-to-http-port)|port number|0 (do not listen)|
-|`[0]`|[`load-server-state`](#load-server-state) (experimental)|[true\|false]|`false`|
+||[`load-server-state`](#load-server-state) (experimental)|[true\|false]|`false`|
 ||[`max-connections`](#max-connections)|number|`2000`|
 |`[1]`|[`no-tls-redirect-locations`](#no-tls-redirect-locations)|comma-separated list of url|`/.well-known/acme-challenge`|
 ||[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
 ||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/v0.4/pkg/controller/config.go#L35)|
 ||[`ssl-dh-default-max-size`](#ssl-dh-default-max-size)|number|`1024`|
 ||[`ssl-dh-param`](#ssl-dh-param)|namespace/secret name|no custom DH param|
-|`[0]`|[`ssl-headers-prefix`](#ssl-headers-prefix)|prefix|`X-SSL`|
+||[`ssl-headers-prefix`](#ssl-headers-prefix)|prefix|`X-SSL`|
 ||[`ssl-options`](#ssl-options)|space-separated list|`no-sslv3` `no-tls-tickets`|
 ||[`ssl-redirect`](#ssl-redirect)|[true\|false]|`true`|
 ||[`stats-auth`](#stats)|user:passwd|no auth|
@@ -290,7 +288,7 @@ The following parameters are supported:
 ||[`timeout-server-fin`](#timeout)|time with suffix|`50s`|
 |`[1]`|[`timeout-stop`](#timeout)|time with suffix|no timeout|
 ||[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
-|`[0]`|[`use-host-on-https`](#use-host-on-https)|[true\|false]|`false`|
+||[`use-host-on-https`](#use-host-on-https)|[true\|false]|`false`|
 ||[`use-proxy-protocol`](#use-proxy-protocol)|[true\|false]|`false`|
 |`[1]`|[`drain-support`](#drain-support)|[true\|false]|`false`|
 
@@ -579,21 +577,21 @@ not ready or terminating state.
 
 The following command-line arguments are supported:
 
-* `[0]` only in `canary` tag
+* `[1]` only in `snapshot` tag
 
 ||Name|Type|Default|
 |---|---|---|---|
-|`[0]`|[`allow-cross-namespace`](#allow-cross-namespace)|[true\|false]|`false`|
+||[`allow-cross-namespace`](#allow-cross-namespace)|[true\|false]|`false`|
 ||[`default-backend-service`](#default-backend-service)|namespace/servicename|(mandatory)|
 ||[`default-ssl-certificate`](#default-ssl-certificate)|namespace/secretname|(mandatory)|
 ||[`ingress-class`](#ingress-class)|name|`haproxy`|
 ||[`kubeconfig`](#kubeconfig)|/path/to/kubeconfig|in cluster config|
 |`[1]`|[`max-old-config-files`](#max-old-config-files)|num of files|`0`|
-|`[0]`|[`rate-limit-update`](#rate-limit-update)|uploads per second (float)|`0.5`|
+||[`rate-limit-update`](#rate-limit-update)|uploads per second (float)|`0.5`|
 ||[`reload-strategy`](#reload-strategy)|[native\|reusesocket]|`native`|
 ||[`sort-backends`](#sort-backends)|[true\|false]|`false`|
-|`[0]`|[`tcp-services-configmap`](#tcp-services-configmap)|namespace/configmapname|no tcp svc|
-|`[0]`|[`verify-hostname`](#verify-hostname)|[true\|false]|`true`|
+||[`tcp-services-configmap`](#tcp-services-configmap)|namespace/configmapname|no tcp svc|
+||[`verify-hostname`](#verify-hostname)|[true\|false]|`true`|
 
 ### allow-cross-namespace
 
