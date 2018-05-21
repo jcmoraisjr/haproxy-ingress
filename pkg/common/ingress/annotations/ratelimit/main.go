@@ -19,6 +19,7 @@ package ratelimit
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/golang/glog"
 	"sort"
 	"strings"
 
@@ -181,7 +182,10 @@ func (a ratelimit) Parse(ing *extensions.Ingress) (interface{}, error) {
 
 	cidrs, err := parseCIDRs(val)
 	if err != nil {
-		return nil, err
+		if len(cidrs) == 0 {
+			return nil, err
+		}
+		glog.Warningf("error parsing %v/%v limit-whitelist: %v", ing.Namespace, ing.Name, err)
 	}
 
 	if rpm == 0 && rps == 0 && conn == 0 {
@@ -231,8 +235,8 @@ func parseCIDRs(s string) ([]string, error) {
 	values := strings.Split(s, ",")
 
 	ipnets, ips, err := net.ParseIPNets(values...)
-	if err != nil {
-		return nil, err
+	if err != nil && len(ipnets) == 0 && len(ips) == 0 {
+		return []string{}, err
 	}
 
 	cidrs := []string{}
@@ -246,7 +250,7 @@ func parseCIDRs(s string) ([]string, error) {
 
 	sort.Strings(cidrs)
 
-	return cidrs, nil
+	return cidrs, err
 }
 
 func encode(s string) string {
