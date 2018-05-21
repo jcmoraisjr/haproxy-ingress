@@ -60,6 +60,10 @@ type (
 		TimeoutStop                 string `json:"timeout-stop"`
 		TimeoutTunnel               string `json:"timeout-tunnel"`
 		TimeoutKeepAlive            string `json:"timeout-keep-alive"`
+		BindIPAddrTCP               string `json:"bind-ip-addr-tcp"`
+		BindIPAddrHTTP              string `json:"bind-ip-addr-http"`
+		BindIPAddrStats             string `json:"bind-ip-addr-stats"`
+		BindIPAddrHealthz           string `json:"bind-ip-addr-healthz"`
 		Syslog                      string `json:"syslog-endpoint"`
 		BackendCheckInterval        string `json:"backend-check-interval"`
 		Forwardfor                  string `json:"forwardfor"`
