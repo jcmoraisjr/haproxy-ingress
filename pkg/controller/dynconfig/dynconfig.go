@@ -20,14 +20,11 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/dnsresolvers"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	"reflect"
 	"sort"
-)
-
-const (
-	useResolverAnnotation = "ingress.kubernetes.io/haproxy-use-resolver"
 )
 
 // DynConfig has configurations used to update a running HAProxy instance
@@ -198,7 +195,7 @@ func (d *DynConfig) dynamicUpdateBackends() bool {
 			reloadRequired = true
 			continue
 		}
-		if _, ok := d.updBackendsMap[backendName].Service.Annotations[useResolverAnnotation]; ok {
+		if _, ok := d.updBackendsMap[backendName].Service.Annotations[dnsresolvers.UseResolverAnn]; ok {
 			glog.Infof("DNS used for %s\n", backendName)
 			continue
 		}
@@ -301,8 +298,8 @@ func (d *DynConfig) fillBackendServerSlots() {
 		newBackend := types.HAProxyBackendSlots{}
 		newBackend.FullSlots = map[string]types.HAProxyBackendSlot{}
 
-		if resolver, ok := d.updBackendsMap[backendName].Service.Annotations[useResolverAnnotation]; ok {
-			// glog.Infof("%s configured resolvers %v\n", backendName, updatedConfig.DNSResolvers)
+		if resolver, ok := d.updBackendsMap[backendName].Service.Annotations[dnsresolvers.UseResolverAnn]; ok {
+			d.updatedConfig.DNSResolvers.Merge(d.updBackendsMap[backendName].DNSResolvers)
 			if DNSResolver, ok := d.updatedConfig.DNSResolvers[resolver]; ok {
 				fullSlotCnt := len(d.updBackendsMap[backendName].Endpoints)
 				newBackend.TotalSlots = (int(fullSlotCnt/d.updatedConfig.Cfg.BackendServerSlotsIncrement) + 1) * d.updatedConfig.Cfg.BackendServerSlotsIncrement

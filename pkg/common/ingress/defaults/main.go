@@ -24,6 +24,10 @@ type Backend struct {
 	// By default this is disabled
 	CustomHTTPErrors []int `json:"custom-http-errors,-"`
 
+	// DNSResolvers has all dns resolvers HAProxy uses.
+	// https://cbonte.github.io/haproxy-dconv/1.8/configuration.html#resolvers%20(The%20resolvers%20section)
+	DNSResolvers string `json:"dns-resolvers"`
+
 	// Enable HSTS on response headers
 	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security
 	HSTS bool `json:"hsts"`

@@ -17,6 +17,9 @@ limitations under the License.
 package types
 
 import (
+	"strings"
+	"github.com/golang/glog"
+
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/authtls"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
@@ -42,7 +45,7 @@ type (
 		PassthroughBackends []*ingress.SSLPassthroughBackend
 		Cfg                 *HAProxyConfig
 		BackendSlots        map[string]*HAProxyBackendSlots
-		DNSResolvers        map[string]DNSResolver
+		DNSResolvers        DNSResolverMap
 	}
 	// HAProxyConfig has HAProxy specific configurations from ConfigMap
 	HAProxyConfig struct {
@@ -85,7 +88,7 @@ type (
 		HTTPSLogFormat       string `json:"https-log-format"`
 		TCPLogFormat         string `json:"tcp-log-format"`
 		DrainSupport         bool   `json:"drain-support"`
-		DNSResolver          string `json:"dns-resolver"`
+		DNSResolvers         string `json:"dns-resolvers"`
 	}
 	// Userlist list of users for basic authentication
 	Userlist struct {
@@ -174,3 +177,37 @@ type (
 		BackendEndpoint   *ingress.Endpoint
 	}
 )
+
+type DNSResolverMap map[string]DNSResolver
+
+func (r *DNSResolverMap) Merge(resolvers string) *DNSResolverMap{
+	if resolvers != "" {
+		resolvers := strings.Split(resolvers, ";")
+		for _, resolver := range resolvers {
+			resolverData := strings.Split(resolver, "=")
+			if len(resolverData) != 2 {
+				glog.Infof("misconfigured DNS resolver: %s", resolver)
+				continue
+			}
+			nameservers := map[string]string{}
+			nameserversData := strings.Split(resolverData[1], ",")
+			for _, nameserver := range nameserversData {
+				nameserverData := strings.Split(nameserver, ":")
+				if len(nameserverData) == 1 {
+					nameservers[nameserverData[0]] = "53"
+				} else {
+					nameservers[nameserverData[0]] = nameserverData[1]
+				}
+			}
+			(*r)[resolverData[0]] = DNSResolver{
+				Name:                resolverData[0],
+				Nameservers:         nameservers,
+				TimeoutRetry:        1,
+				HoldObsolete:        0,
+				HoldValid:           1,
+				AcceptedPayloadSize: 8192,
+			}
+		}
+	}
+	return r
+}
