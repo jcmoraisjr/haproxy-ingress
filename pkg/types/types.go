@@ -182,11 +182,13 @@ type DNSResolverMap map[string]DNSResolver
 
 func (r *DNSResolverMap) Merge(resolvers string) *DNSResolverMap{
 	if resolvers != "" {
-		resolvers := strings.Split(resolvers, ";")
+		resolvers := strings.Split(resolvers, "\n")
 		for _, resolver := range resolvers {
 			resolverData := strings.Split(resolver, "=")
 			if len(resolverData) != 2 {
-				glog.Infof("misconfigured DNS resolver: %s", resolver)
+				if len(resolver) != 0 {
+					glog.Infof("misconfigured DNS resolver: %s", resolver)
+				}
 				continue
 			}
 			nameservers := map[string]string{}

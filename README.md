@@ -66,6 +66,7 @@ The following annotations are supported:
 |`[0]`|[`ingress.kubernetes.io/cors-allow-credentials`](#cors)|[true\|false]|-|
 |`[0]`|[`ingress.kubernetes.io/cors-enable`](#cors)|[true\|false]|-|
 |`[0]`|[`ingress.kubernetes.io/cors-max-age`](#cors)|time (seconds)|-|
+|`[0]`|[`ingress.kubernetes.io/dns-resolvers`](#dns-service-discovery)|multiline resolver=ip[:port]|[doc](/examples/dns-service-discovery)|
 ||[`ingress.kubernetes.io/hsts`](#hsts)|[true\|false]|-|
 ||[`ingress.kubernetes.io/hsts-include-subdomains`](#hsts)|[true\|false]|-|
 ||[`ingress.kubernetes.io/hsts-max-age`](#hsts)|qty of seconds|-|
@@ -182,6 +183,19 @@ Add CORS headers on OPTIONS http command (preflight) and reponses.
 
 https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
 
+### DNS Service Discovery
+
+Configure when we need to use HAProxy DNS service discovery (for non kubernetes workload) 
+* `ingress.kubernetes.io/dns-resolver`: Multiline list of DNS resolvers in `resolvername=ip:port` format
+
+Service can use that resolvers with:
+* `haproxy.kubernetes.io/use-resolver`: Name of the resolver 
+
+**NOTE**: It is important to use this only with **headless** services [doc](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
+
+Example: [doc](/examples/dns-service-discovery)
+
+
 ### Limit
 
 Configure rate limit and concurrent connections per client IP address in order to mitigate DDoS attack.
@@ -253,6 +267,7 @@ The following parameters are supported:
 |`[0]`|[`bind-ip-addr-stats`](#bind-ip-addr)|IP address|`*`|
 |`[0]`|[`bind-ip-addr-tcp`](#bind-ip-addr)|IP address|`*`|
 |`[0]`|[`cookie-key`](#cookie-key)|secret key|`Ingress`|
+|`[0]`|[`dns-resolvers`](#dns-resolvers)|multiline resolver=ip[:port]|``|
 ||[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`false`|
 ||[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
 ||[`healthz-port`](#healthz-port)|port number|`10253`|
@@ -331,6 +346,15 @@ to dynamically create a cookie to that server. Only useful on cookie based
 server affinity. See also [affinity](#affinity) annotations.
 
 http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#dynamic-cookie-key
+
+### dns-resolvers
+Define a list of HAProxy DNS resolvers
+
+Multiline list of DNS resolvers in `resolvername=ip:port` format 
+
+https://cbonte.github.io/haproxy-dconv/1.8/configuration.html#resolvers%20(The%20resolvers%20section)
+
+Example: [doc](/examples/dns-service-discovery)
 
 ### dynamic-scaling
 
