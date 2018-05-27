@@ -290,6 +290,12 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if ne $cfg.ModSecurity "" }}
+    filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
+    http-request deny if { var(txn.modsec.code) -m int gt 0 }
+{{- end }}
+
+{{- /*------------------------------------*/}}
     http-request set-var(txn.hdr_host) req.hdr(host)
 {{- if $hasHTTPStoHTTP }}
     http-request set-var(txn.hdr_proto) hdr(x-forwarded-proto)
@@ -512,6 +518,20 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
     http-response set-header Access-Control-Allow-Headers     "{{ $cors.CorsAllowHeaders }}" if {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
     # end CORS - {{ $server.Hostname }}{{ if $location }}{{ $location.Path }}{{ end }}
 {{- end }}{{/* define "CORS" */}}
+
+{{- if ne $cfg.ModSecurity "" }}
+
+######
+###### ModSecurity agent
+######
+backend spoe-modsecurity
+    mode tcp
+    timeout connect 5s
+    timeout server  5s
+{{- range $i, $endpoint := split $cfg.ModSecurity "," }}
+    server modsec-spoa{{ $i }} {{ $endpoint }}
+{{- end }}
+{{- end }}
 
 ######
 ###### Error pages

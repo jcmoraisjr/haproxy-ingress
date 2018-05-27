@@ -117,6 +117,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		BindIPAddrStats:        "*",
 		BindIPAddrHealthz:      "*",
 		Syslog:                 "",
+		ModSecurity:            "",
 		BackendCheckInterval:   "2s",
 		ConfigFrontend:         "",
 		Forwardfor:             "add",

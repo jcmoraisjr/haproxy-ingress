@@ -79,6 +79,9 @@ var funcMap = gotemplate.FuncMap{
 		}
 		return strconv.FormatInt(value, 10)
 	},
+	"split": func(str, sep string) []string {
+		return strings.Split(str, sep)
+	},
 	"hasSuffix": func(s, suffix string) bool {
 		return strings.HasSuffix(s, suffix)
 	},
