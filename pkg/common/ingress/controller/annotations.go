@@ -254,7 +254,11 @@ func (e *annotationExtractor) UpstreamHashBy(ing *extensions.Ingress) string {
 	return val.(string)
 }
 
-func (e *annotationExtractor) DNSResolvers(ing *extensions.Ingress) string {
-	val, _ := e.annotations[dnsResolvers].Parse(ing)
-	return val.(string)
+func (e *annotationExtractor) DNSResolvers(ing *extensions.Ingress) *dnsresolvers.Config {
+	val, err := e.annotations[dnsResolvers].Parse(ing)
+	if (err != nil){
+		glog.Errorf("error parsing DNSResolvers: %v", err)
+		return nil
+	}
+	return val.(*dnsresolvers.Config)
 }

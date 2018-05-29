@@ -6,7 +6,7 @@ metadata:
     name: web
     app: demo
   annotations:
-    haproxy.kubernetes.io/use-resolver: kubernetes
+    ingress.kubernetes.io/use-resolver: kubernetes
 spec:
   clusterIP: None
   selector:

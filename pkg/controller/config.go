@@ -24,6 +24,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/file"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/dnsresolvers"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/defaults"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
@@ -48,7 +49,7 @@ type haConfig struct {
 	haServers         []*types.HAProxyServer
 	haDefaultServer   *types.HAProxyServer
 	haproxyConfig     *types.HAProxyConfig
-	DNSResolvers      map[string]types.DNSResolver
+	DNSResolvers      map[string]dnsresolvers.DNSResolver
 }
 
 func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController *HAProxyController) (*types.ControllerConfig, error) {
@@ -175,9 +176,15 @@ func configForwardfor(conf *types.HAProxyConfig) {
 }
 
 func (cfg *haConfig) createDNSResolvers() {
-	DNSResolvers := types.DNSResolverMap{}
-	DNSResolvers.Merge(cfg.haproxyConfig.DNSResolvers)
-	cfg.DNSResolvers = DNSResolvers
+	resolvers := dnsresolvers.ParseDNSResolvers(cfg.haproxyConfig.DNSResolvers)
+	for _, backend := range cfg.ingress.Backends {
+		for resolverName, resolverData := range backend.DNSResolvers.DNSResolvers {
+			if _, ok := resolvers[resolverName]; !ok {
+				resolvers[resolverName] = resolverData
+			}
+		}
+	}
+	cfg.DNSResolvers = resolvers
 }
 
 func (cfg *haConfig) createHAProxyServers() {

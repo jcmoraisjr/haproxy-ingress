@@ -17,12 +17,10 @@ limitations under the License.
 package types
 
 import (
-	"strings"
-	"github.com/golang/glog"
-
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/authtls"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/dnsresolvers"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxy"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/ratelimit"
@@ -45,7 +43,7 @@ type (
 		PassthroughBackends []*ingress.SSLPassthroughBackend
 		Cfg                 *HAProxyConfig
 		BackendSlots        map[string]*HAProxyBackendSlots
-		DNSResolvers        DNSResolverMap
+		DNSResolvers        map[string]dnsresolvers.DNSResolver
 	}
 	// HAProxyConfig has HAProxy specific configurations from ConfigMap
 	HAProxyConfig struct {
@@ -151,15 +149,6 @@ type (
 		HAWhitelist          string              `json:"whitelist,omitempty"`
 		HARateLimitWhiteList string              `json:"rateLimitWhiteList,omitempty"`
 	}
-	// Resolver information
-	DNSResolver struct {
-		Name                string
-		Nameservers         map[string]string
-		TimeoutRetry        int
-		HoldObsolete        int
-		HoldValid           int
-		AcceptedPayloadSize int
-	}
 	// HAProxyBackendSlots contains used and empty backend server definitions
 	HAProxyBackendSlots struct {
 		// map from ip:port to server name
@@ -177,39 +166,3 @@ type (
 		BackendEndpoint   *ingress.Endpoint
 	}
 )
-
-type DNSResolverMap map[string]DNSResolver
-
-func (r *DNSResolverMap) Merge(resolvers string) *DNSResolverMap{
-	if resolvers != "" {
-		resolvers := strings.Split(resolvers, "\n")
-		for _, resolver := range resolvers {
-			resolverData := strings.Split(resolver, "=")
-			if len(resolverData) != 2 {
-				if len(resolver) != 0 {
-					glog.Infof("misconfigured DNS resolver: %s", resolver)
-				}
-				continue
-			}
-			nameservers := map[string]string{}
-			nameserversData := strings.Split(resolverData[1], ",")
-			for _, nameserver := range nameserversData {
-				nameserverData := strings.Split(nameserver, ":")
-				if len(nameserverData) == 1 {
-					nameservers[nameserverData[0]] = "53"
-				} else {
-					nameservers[nameserverData[0]] = nameserverData[1]
-				}
-			}
-			(*r)[resolverData[0]] = DNSResolver{
-				Name:                resolverData[0],
-				Nameservers:         nameservers,
-				TimeoutRetry:        1,
-				HoldObsolete:        0,
-				HoldValid:           1,
-				AcceptedPayloadSize: 8192,
-			}
-		}
-	}
-	return r
-}
