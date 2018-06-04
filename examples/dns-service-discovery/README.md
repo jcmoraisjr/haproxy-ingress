@@ -24,14 +24,14 @@ $ kubectl apply -f haproxy-config-map.yml
 $ kubectl apply -f 2.web-rc.yml
 ```
 
-* Install [service](/examples/dns-service-discovery/3.web-svc.yml)
+* Configure ingress 
 
 ```console
-$ kubectl apply -f 3.web-svc.yml
+$ kubectl annotate ingress/app --overwrite ingress.kubernetes.io/use-resolver=kubernetes
 ```
 
 Two important settings:
-- `haproxy.kubernetes.io/use-resolver: kubernetes`: resolver with name kubernetes
+- `ingress.kubernetes.io/use-resolver: kubernetes`: resolver with name kubernetes
 - `clusterIP: None`: service must be **headless**
 
 
@@ -44,6 +44,10 @@ DNS resolvers can be written in multiple ways:
 * `resolver=ip:port`
 * `resolver=ip[:port],ip[:port]` port is optional
 
-### service
+### activating
 
-`haproxy.kubernetes.io/use-resolver: resolvername` 
+`ingress.kubernetes.io/use-resolver: resolvername` 
+
+### ingress
+
+`ingress.kubernetes.io/cluster-dns-domain` can be used if kubedns does not points to cluster.local 

@@ -28,6 +28,7 @@ import (
 const (
 	DNSResolversAnn = "ingress.kubernetes.io/dns-resolvers"
 	UseResolverAnn  = "ingress.kubernetes.io/use-resolver"
+	ClusterDnsDomain  = "ingress.kubernetes.io/cluster-dns-domain"
 )
 
 type dnsresolvers struct {
@@ -49,6 +50,7 @@ type DNSResolver struct {
 type Config struct {
 	DNSResolvers map[string]DNSResolver
 	UseResolver  string
+	ClusterDnsDomain string
 }
 
 // NewParser creates a new dns-resolvers annotation parser
@@ -62,10 +64,22 @@ func (b dnsresolvers) Parse(ing *extensions.Ingress) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	u, _ := parser.GetStringAnnotation(UseResolverAnn, ing)
+	resolvers := ParseDNSResolvers(s)
+	useResolver, _ := parser.GetStringAnnotation(UseResolverAnn, ing)
+	if useResolver != "" {
+		if _, ok := resolvers[useResolver]; !ok {
+			glog.Warningf("DNSResolver %s not found, not using DNS\n", useResolver)
+			useResolver = ""
+		}
+	}
+	clusterDnsDomain, err := parser.GetStringAnnotation(ClusterDnsDomain, ing)
+	if err != nil {
+		clusterDnsDomain = "cluster.local"
+	}
 	cfg := &Config{
-		DNSResolvers: ParseDNSResolvers(s),
-		UseResolver: u,
+		DNSResolvers: resolvers,
+		UseResolver: useResolver,
+		ClusterDnsDomain: clusterDnsDomain,
 	}
 	return cfg, nil
 }
@@ -83,6 +97,12 @@ func (c1 *Config) Equal(c2 *Config) bool {
 		} else {
 			return false
 		}
+	}
+	if c1.UseResolver != c2.UseResolver {
+		return false
+	}
+	if c1.ClusterDnsDomain != c2.ClusterDnsDomain {
+		return false
 	}
 	return true
 }

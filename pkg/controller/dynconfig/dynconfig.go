@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/dnsresolvers"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	"reflect"
@@ -195,12 +194,16 @@ func (d *DynConfig) dynamicUpdateBackends() bool {
 			reloadRequired = true
 			continue
 		}
-		if _, ok := d.updBackendsMap[backendName].Service.Annotations[dnsresolvers.UseResolverAnn]; ok {
-			glog.Infof("DNS used for %s\n", backendName)
-			continue
-		}
 		curBackend := d.curBackendsMap[backendName]
 		updBackend := d.updBackendsMap[backendName]
+
+		if updBackend.DNSResolvers.UseResolver != curBackend.DNSResolvers.UseResolver {
+			if updBackend.DNSResolvers.UseResolver != "" {
+				glog.Infof("DNS used for %s\n", backendName)
+			}
+			reloadRequired = true
+			continue
+		}
 
 		if !reloadRequired {
 			// check if everything but endpoints are equal
@@ -298,18 +301,14 @@ func (d *DynConfig) fillBackendServerSlots() {
 		newBackend := types.HAProxyBackendSlots{}
 		newBackend.FullSlots = map[string]types.HAProxyBackendSlot{}
 
-		if resolver, ok := d.updBackendsMap[backendName].Service.Annotations[dnsresolvers.UseResolverAnn]; ok {
-			if DNSResolver, ok := d.updatedConfig.DNSResolvers[resolver]; ok {
+		if resolver := d.updBackendsMap[backendName].DNSResolvers.UseResolver; resolver != "" {
 				fullSlotCnt := len(d.updBackendsMap[backendName].Endpoints)
 				newBackend.TotalSlots = (int(fullSlotCnt/d.updBackendsMap[backendName].SlotsIncrement) + 1) * d.updBackendsMap[backendName].SlotsIncrement
-				d.updatedConfig.DNSResolvers[resolver] = DNSResolver
+				d.updatedConfig.DNSResolvers[resolver] = d.updBackendsMap[backendName].DNSResolvers.DNSResolvers[resolver]
 				newBackend.UseResolver = resolver
+				newBackend.ClusterDnsDomain = d.updBackendsMap[backendName].DNSResolvers.ClusterDnsDomain
 				d.updatedConfig.BackendSlots[backendName] = &newBackend
 				continue
-			} else {
-				glog.Infof("Backend %s DNSResolver %s not found, not using DNS\n", backendName, resolver)
-				newBackend.UseResolver = ""
-			}
 		}
 
 		if d.dynamicScaling {

@@ -125,7 +125,7 @@ backend {{ $backend.Name }}
 {{- end }}
 {{- $BackendSlots := index $ing.BackendSlots $backend.Name }}
 {{- if $BackendSlots.UseResolver }}
-    server-template server-dns {{ $BackendSlots.TotalSlots }} {{$backend.Service.Name }}.{{ $backend.Service.Namespace }}.svc.cluster.local:{{ $backend.Port }} resolvers {{ $BackendSlots.UseResolver }} inter {{ $cfg.BackendCheckInterval }} check resolve-prefer ipv4 init-addr none
+    server-template server-dns {{ $BackendSlots.TotalSlots }} {{$backend.Service.Name }}.{{ $backend.Service.Namespace }}.svc.{{- $BackendSlots.ClusterDnsDomain -}}:{{ $backend.Port }} resolvers {{ $BackendSlots.UseResolver }} inter {{ $cfg.BackendCheckInterval }} check resolve-prefer ipv4 init-addr none
 {{- else }}
 {{- range $target, $slot := $BackendSlots.FullSlots }}
     server {{ $slot.BackendServerName }} {{ $target }} {{ if gt $backend.Connection.MaxConnServer 0 }}maxconn {{ $backend.Connection.MaxConnServer }} {{ end }}{{ if gt $backend.Connection.MaxQueueServer 0 }}maxqueue {{ $backend.Connection.MaxQueueServer }} {{ end }}{{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}{{ if ge $slot.BackendEndpoint.Weight 0 }}weight {{ $slot.BackendEndpoint.Weight }} {{ end }}check port {{ $slot.BackendEndpoint.Port }} inter {{ $cfg.BackendCheckInterval }}

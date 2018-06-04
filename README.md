@@ -189,7 +189,10 @@ Configure when we need to use HAProxy DNS service discovery (for non kubernetes 
 * `ingress.kubernetes.io/dns-resolver`: Multiline list of DNS resolvers in `resolvername=ip:port` format
 
 Service can use that resolvers with:
-* `haproxy.kubernetes.io/use-resolver`: Name of the resolver 
+* `ingress.kubernetes.io/use-resolver`: Name of the resolver that services use
+
+You can also configure:
+* `ingress.kubernetes.io/cluster-dns-domain` name of kubernetes dns cluster, defaults to `cluster.local`
 
 **NOTE**: It is important to use this only with **headless** services [doc](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
 

@@ -157,6 +157,8 @@ type (
 		EmptySlots []string
 		// resolver name used for this Backend definition
 		UseResolver string
+		// cluster dns domain
+		ClusterDnsDomain string
 		// total slots for backend
 		TotalSlots       int
 	}
