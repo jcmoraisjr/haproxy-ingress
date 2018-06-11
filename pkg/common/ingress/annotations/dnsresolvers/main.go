@@ -45,8 +45,7 @@ type DNSResolver struct {
 	AcceptedPayloadSize int
 }
 
-// Config has the snippet configurations. This struct is used in both
-// frontend (locations) and backend structs.
+// Config has the dns resolvers configurations.
 type Config struct {
 	DNSResolvers map[string]DNSResolver
 	UseResolver  string
@@ -61,17 +60,8 @@ func NewParser(resolvers resolver.DefaultBackend) parser.IngressAnnotation {
 // Parse parses dns-resolvers annotation
 func (b dnsresolvers) Parse(ing *extensions.Ingress) (interface{}, error) {
 	s, err := parser.GetStringAnnotation(DNSResolversAnn, ing)
-	if err != nil {
-		return nil, err
-	}
 	resolvers := ParseDNSResolvers(s)
 	useResolver, _ := parser.GetStringAnnotation(UseResolverAnn, ing)
-	if useResolver != "" {
-		if _, ok := resolvers[useResolver]; !ok {
-			glog.Warningf("DNSResolver %s not found, not using DNS\n", useResolver)
-			useResolver = ""
-		}
-	}
 	clusterDnsDomain, err := parser.GetStringAnnotation(ClusterDnsDomain, ing)
 	if err != nil {
 		clusterDnsDomain = "cluster.local"

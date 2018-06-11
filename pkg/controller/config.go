@@ -178,6 +178,13 @@ func configForwardfor(conf *types.HAProxyConfig) {
 func (cfg *haConfig) createDNSResolvers() {
 	resolvers := dnsresolvers.ParseDNSResolvers(cfg.haproxyConfig.DNSResolvers)
 	for _, backend := range cfg.ingress.Backends {
+		if _, ok := backend.DNSResolvers.DNSResolvers[backend.DNSResolvers.UseResolver]; !ok {
+			if resolverData, ok := resolvers[backend.DNSResolvers.UseResolver]; ok {
+				backend.DNSResolvers.DNSResolvers[backend.DNSResolvers.UseResolver] = resolverData
+			} else if backend.DNSResolvers.UseResolver != "" {
+				backend.DNSResolvers.UseResolver = ""
+			}
+		}
 		for resolverName, resolverData := range backend.DNSResolvers.DNSResolvers {
 			if _, ok := resolvers[resolverName]; !ok {
 				resolvers[resolverName] = resolverData

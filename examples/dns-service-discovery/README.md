@@ -12,16 +12,16 @@ This document has the following prerequisites:
 
 Example - using internal kubernetes resources
 
-* Update ingress [configmap](/examples/dns-service-discovery/1.haproxy-config-map.yml)
+* Update ingress [configmap](/examples/dns-service-discovery/haproxy-config-map.yml)
 
 ```console
 $ kubectl apply -f haproxy-config-map.yml
 ```
 
-* Install pods [replication-controler](/examples/dns-service-discovery/2.web-rc.yml)
+* Install pods [replication-controler](/examples/dns-service-discovery/web-rc.yml)
 
 ```console
-$ kubectl apply -f 2.web-rc.yml
+$ kubectl apply -f web-rc.yml
 ```
 
 * Configure ingress 
@@ -32,7 +32,7 @@ $ kubectl annotate ingress/app --overwrite ingress.kubernetes.io/use-resolver=ku
 
 Two important settings:
 - `ingress.kubernetes.io/use-resolver: kubernetes`: resolver with name kubernetes
-- `clusterIP: None`: service must be **headless**
+- `clusterIP: None`: service must be [**headless**](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services). See also [dns headless doc](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/).
 
 
 ## Annotations

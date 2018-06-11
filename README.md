@@ -66,7 +66,7 @@ The following annotations are supported:
 |`[0]`|[`ingress.kubernetes.io/cors-allow-credentials`](#cors)|[true\|false]|-|
 |`[0]`|[`ingress.kubernetes.io/cors-enable`](#cors)|[true\|false]|-|
 |`[0]`|[`ingress.kubernetes.io/cors-max-age`](#cors)|time (seconds)|-|
-|`[0]`|[`ingress.kubernetes.io/dns-resolvers`](#dns-service-discovery)|multiline resolver=ip[:port]|[doc](/examples/dns-service-discovery)|
+|`[1]`|[`ingress.kubernetes.io/dns-resolvers`](#dns-service-discovery)|multiline resolver=ip[:port]|[doc](/examples/dns-service-discovery)|
 ||[`ingress.kubernetes.io/hsts`](#hsts)|[true\|false]|-|
 ||[`ingress.kubernetes.io/hsts-include-subdomains`](#hsts)|[true\|false]|-|
 ||[`ingress.kubernetes.io/hsts-max-age`](#hsts)|qty of seconds|-|
