@@ -197,14 +197,6 @@ func (d *DynConfig) dynamicUpdateBackends() bool {
 		curBackend := d.curBackendsMap[backendName]
 		updBackend := d.updBackendsMap[backendName]
 
-		if updBackend.DNSResolvers.UseResolver != curBackend.DNSResolvers.UseResolver {
-			if updBackend.DNSResolvers.UseResolver != "" {
-				glog.Infof("DNS used for %s\n", backendName)
-			}
-			reloadRequired = true
-			continue
-		}
-
 		if !reloadRequired {
 			// check if everything but endpoints are equal
 			updBackendCopy := *updBackend
@@ -306,7 +298,6 @@ func (d *DynConfig) fillBackendServerSlots() {
 				newBackend.TotalSlots = (int(fullSlotCnt/d.updBackendsMap[backendName].SlotsIncrement) + 1) * d.updBackendsMap[backendName].SlotsIncrement
 				d.updatedConfig.DNSResolvers[resolver] = d.updBackendsMap[backendName].DNSResolvers.DNSResolvers[resolver]
 				newBackend.UseResolver = resolver
-				newBackend.ClusterDnsDomain = d.updBackendsMap[backendName].DNSResolvers.ClusterDnsDomain
 				d.updatedConfig.BackendSlots[backendName] = &newBackend
 				continue
 		}

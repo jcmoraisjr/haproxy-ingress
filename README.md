@@ -191,9 +191,6 @@ Configure when we need to use HAProxy DNS service discovery (for non kubernetes 
 Service can use that resolvers with:
 * `ingress.kubernetes.io/use-resolver`: Name of the resolver that services use
 
-You can also configure:
-* `ingress.kubernetes.io/cluster-dns-domain` name of kubernetes dns cluster, defaults to `cluster.local`
-
 **NOTE**: It is important to use this only with **headless** services [doc](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
 
 Example: [doc](/examples/dns-service-discovery)
@@ -270,7 +267,12 @@ The following parameters are supported:
 |`[0]`|[`bind-ip-addr-stats`](#bind-ip-addr)|IP address|`*`|
 |`[0]`|[`bind-ip-addr-tcp`](#bind-ip-addr)|IP address|`*`|
 |`[0]`|[`cookie-key`](#cookie-key)|secret key|`Ingress`|
-|`[0]`|[`dns-resolvers`](#dns-resolvers)|multiline resolver=ip[:port]|``|
+|`[1]`|[`dns-resolvers`](#dns-resolvers)|multiline resolver=ip[:port]|``|
+|`[1]`|[`dns-timeout-retry`](#dns-resolvers)|time with suffix|`1s`|
+|`[1]`|[`dns-hold-obsolete`](#dns-resolvers)|time with suffix|`0s`|
+|`[1]`|[`dns-hold-valid`](#dns-resolvers)|time with suffix|`1s`|
+|`[1]`|[`dns-accepted-payload-size`](#dns-resolvers)|number|`8192`|
+|`[1]`|[`dns-cluster-domain`](#dns-resolvers)|cluster name|`cluster.local`|
 ||[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`false`|
 ||[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
 ||[`healthz-port`](#healthz-port)|port number|`10253`|

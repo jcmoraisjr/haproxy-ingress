@@ -26,9 +26,8 @@ import (
 )
 
 const (
-	DNSResolversAnn = "ingress.kubernetes.io/dns-resolvers"
-	UseResolverAnn  = "ingress.kubernetes.io/use-resolver"
-	ClusterDnsDomain  = "ingress.kubernetes.io/cluster-dns-domain"
+	dNSResolversAnn = "ingress.kubernetes.io/dns-resolvers"
+	useResolverAnn  = "ingress.kubernetes.io/use-resolver"
 )
 
 type dnsresolvers struct {
@@ -39,17 +38,12 @@ type dnsresolvers struct {
 type DNSResolver struct {
 	Name                string
 	Nameservers         map[string]string
-	TimeoutRetry        int
-	HoldObsolete        int
-	HoldValid           int
-	AcceptedPayloadSize int
 }
 
-// Config has the dns resolvers configurations.
+// Config has the dns resolvers configuration.
 type Config struct {
 	DNSResolvers map[string]DNSResolver
 	UseResolver  string
-	ClusterDnsDomain string
 }
 
 // NewParser creates a new dns-resolvers annotation parser
@@ -59,17 +53,12 @@ func NewParser(resolvers resolver.DefaultBackend) parser.IngressAnnotation {
 
 // Parse parses dns-resolvers annotation
 func (b dnsresolvers) Parse(ing *extensions.Ingress) (interface{}, error) {
-	s, err := parser.GetStringAnnotation(DNSResolversAnn, ing)
+	s, _ := parser.GetStringAnnotation(dNSResolversAnn, ing)
 	resolvers := ParseDNSResolvers(s)
-	useResolver, _ := parser.GetStringAnnotation(UseResolverAnn, ing)
-	clusterDnsDomain, err := parser.GetStringAnnotation(ClusterDnsDomain, ing)
-	if err != nil {
-		clusterDnsDomain = "cluster.local"
-	}
+	useResolver, _ := parser.GetStringAnnotation(useResolverAnn, ing)
 	cfg := &Config{
 		DNSResolvers: resolvers,
 		UseResolver: useResolver,
-		ClusterDnsDomain: clusterDnsDomain,
 	}
 	return cfg, nil
 }
@@ -89,9 +78,6 @@ func (c1 *Config) Equal(c2 *Config) bool {
 		}
 	}
 	if c1.UseResolver != c2.UseResolver {
-		return false
-	}
-	if c1.ClusterDnsDomain != c2.ClusterDnsDomain {
 		return false
 	}
 	return true
@@ -125,10 +111,6 @@ func ParseDNSResolvers(dnsresolvers string) (map[string]DNSResolver) {
 		result[resolverData[0]] = DNSResolver{
 			Name:                resolverData[0],
 			Nameservers:         nameservers,
-			TimeoutRetry:        1,
-			HoldObsolete:        0,
-			HoldValid:           1,
-			AcceptedPayloadSize: 8192,
 		}
 	}
 	return result

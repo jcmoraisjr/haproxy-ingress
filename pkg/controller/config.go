@@ -97,42 +97,47 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 			DefaultMaxSize: 1024,
 			SecretName:     "",
 		},
-		LoadServerState:      false,
-		TimeoutHTTPRequest:   "5s",
-		TimeoutConnect:       "5s",
-		TimeoutClient:        "50s",
-		TimeoutClientFin:     "50s",
-		TimeoutQueue:         "5s",
-		TimeoutServer:        "50s",
-		TimeoutServerFin:     "50s",
-		TimeoutStop:          "",
-		TimeoutTunnel:        "1h",
-		TimeoutKeepAlive:     "1m",
-		BindIPAddrTCP:        "*",
-		BindIPAddrHTTP:       "*",
-		BindIPAddrStats:      "*",
-		BindIPAddrHealthz:    "*",
-		Syslog:               "",
-		BackendCheckInterval: "2s",
-		Forwardfor:           "add",
-		MaxConn:              2000,
-		NoTLSRedirect:        "/.well-known/acme-challenge",
-		SSLHeadersPrefix:     "X-SSL",
-		HealthzPort:          10253,
-		HTTPStoHTTPPort:      0,
-		StatsPort:            1936,
-		StatsAuth:            "",
-		CookieKey:            "Ingress",
-		DynamicScaling:       false,
-		StatsSocket:          "/var/run/haproxy-stats.sock",
-		UseProxyProtocol:     false,
-		StatsProxyProtocol:   false,
-		UseHostOnHTTPS:       false,
-		HTTPLogFormat:        "",
-		HTTPSLogFormat:       "",
-		TCPLogFormat:         "",
-		DrainSupport:         false,
-        DNSResolvers:		  "",
+		LoadServerState:        false,
+		TimeoutHTTPRequest:     "5s",
+		TimeoutConnect:         "5s",
+		TimeoutClient:          "50s",
+		TimeoutClientFin:       "50s",
+		TimeoutQueue:           "5s",
+		TimeoutServer:          "50s",
+		TimeoutServerFin:       "50s",
+		TimeoutStop:            "",
+		TimeoutTunnel:          "1h",
+		TimeoutKeepAlive:       "1m",
+		BindIPAddrTCP:          "*",
+		BindIPAddrHTTP:         "*",
+		BindIPAddrStats:        "*",
+		BindIPAddrHealthz:      "*",
+		Syslog:                 "",
+		BackendCheckInterval:   "2s",
+		Forwardfor:             "add",
+		MaxConn:                2000,
+		NoTLSRedirect:          "/.well-known/acme-challenge",
+		SSLHeadersPrefix:       "X-SSL",
+		HealthzPort:            10253,
+		HTTPStoHTTPPort:        0,
+		StatsPort:              1936,
+		StatsAuth:              "",
+		CookieKey:              "Ingress",
+		DynamicScaling:         false,
+		StatsSocket:            "/var/run/haproxy-stats.sock",
+		UseProxyProtocol:       false,
+		StatsProxyProtocol:     false,
+		UseHostOnHTTPS:         false,
+		HTTPLogFormat:          "",
+		HTTPSLogFormat:         "",
+		TCPLogFormat:           "",
+		DrainSupport:           false,
+        DNSResolvers:		    "",
+		DNSTimeoutRetry:        "1s",
+		DNSHoldObsolete:        "0s",
+		DNSHoldValid:           "1s",
+		DNSAcceptedPayloadSize: 8192,
+		DNSClusterDomain:       "cluster.local",
 	}
 	if haproxyController.configMap != nil {
 		utils.MergeMap(haproxyController.configMap.Data, &conf)
@@ -178,16 +183,16 @@ func configForwardfor(conf *types.HAProxyConfig) {
 func (cfg *haConfig) createDNSResolvers() {
 	resolvers := dnsresolvers.ParseDNSResolvers(cfg.haproxyConfig.DNSResolvers)
 	for _, backend := range cfg.ingress.Backends {
-		if _, ok := backend.DNSResolvers.DNSResolvers[backend.DNSResolvers.UseResolver]; !ok {
-			if resolverData, ok := resolvers[backend.DNSResolvers.UseResolver]; ok {
-				backend.DNSResolvers.DNSResolvers[backend.DNSResolvers.UseResolver] = resolverData
-			} else if backend.DNSResolvers.UseResolver != "" {
-				backend.DNSResolvers.UseResolver = ""
-			}
-		}
+		backendUseResolver := backend.DNSResolvers.UseResolver
 		for resolverName, resolverData := range backend.DNSResolvers.DNSResolvers {
-			if _, ok := resolvers[resolverName]; !ok {
-				resolvers[resolverName] = resolverData
+			resolvers[resolverName] = resolverData
+		}
+		if _, ok := backend.DNSResolvers.DNSResolvers[backendUseResolver]; !ok {
+			if resolverData, ok := resolvers[backendUseResolver]; ok {
+				backend.DNSResolvers.DNSResolvers[backendUseResolver] = resolverData
+			} else if backendUseResolver != "" {
+				glog.Warningf("resolver name %s not found", backendUseResolver)
+				backend.DNSResolvers.UseResolver = ""
 			}
 		}
 	}
