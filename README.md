@@ -196,7 +196,7 @@ The following annotations are supported:
 
 ### Connection
 
-Cconfigurations of connection limit and timeout.
+Configurations of connection limit and timeout.
 
 * `ingress.kubernetes.io/maxconn-server`: Defines the maximum concurrent connections each server of a backend should receive. If not specified or a value lesser than or equal zero is used, an unlimited number of connections will be allowed. When the limit is reached, new connections will wait on a queue.
 * `ingress.kubernetes.io/maxqueue-server`: Defines the maximum number of connections should wait in the queue of a server. When this number is reached, new requests will be redispached to another server, breaking sticky session if configured. The queue will be unlimited if the annotation is not specified or a value lesser than or equal zero is used.
