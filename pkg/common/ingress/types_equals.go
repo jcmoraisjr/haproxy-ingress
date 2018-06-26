@@ -185,7 +185,7 @@ func (b1 *Backend) Equal(b2 *Backend) bool {
 		return false
 	}
 
-	if !(&b1.DNSResolvers).Equal(&b2.DNSResolvers) {
+	if b1.UseResolver != b2.UseResolver {
 		return false
 	}
 

@@ -495,7 +495,7 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 		anns := ic.annotations.Extract(ing)
 		conn := ic.annotations.Connection(ing)
 		slotsInc := ic.annotations.SlotsIncrement(ing)
-		dnsresolvers := ic.annotations.DNSResolvers(ing)
+		useresolver := ic.annotations.UseResolver(ing)
 
 		for _, rule := range ing.Spec.Rules {
 			host := rule.Host
@@ -625,8 +625,8 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 					ups.SlotsIncrement = slotsInc
 				}
 
-				if dnsresolvers != nil && len(ups.DNSResolvers.DNSResolvers) == 0 {
-					ups.DNSResolvers = *dnsresolvers
+				if ups.UseResolver == "" {
+					ups.UseResolver = useresolver
 				}
 			}
 		}

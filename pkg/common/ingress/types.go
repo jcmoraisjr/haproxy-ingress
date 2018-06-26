@@ -34,7 +34,6 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/authtls"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/bluegreen"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/connection"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/dnsresolvers"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/ipwhitelist"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxy"
@@ -205,7 +204,7 @@ type Backend struct {
 	// Consistent hashing by NGINX variable
 	UpstreamHashBy string `json:"upstream-hash-by,omitempty"`
 	// Haproxy DNS resolver
-	DNSResolvers dnsresolvers.Config `json:"dnsResolver,omitempty"`
+	UseResolver string `json:"useResolver"`
 }
 
 // SessionAffinityConfig describes different affinity configurations for new sessions.

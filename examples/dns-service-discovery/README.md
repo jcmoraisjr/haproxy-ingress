@@ -12,6 +12,8 @@ This document has the following prerequisites:
 
 Example - using internal kubernetes resources
 
+*Note: Configure IP address of your cluster DNS server*
+
 * Update ingress with simple [configmap](/examples/dns-service-discovery/haproxy-config-map.yml)
 
 ```console
@@ -23,6 +25,8 @@ $ kubectl apply -f haproxy-config-map.yml
 ```console
 $ kubectl apply -f all-options-haproxy-config-map.yml
 ```
+
+*Note: If using kube-dns, the cache ttl defaults to 30s. Add --max-ttl and --max-cache-ttl to the dns container to a proper value, otherwise the HAProxy backend could take up to 30s to update*
 
 * Install pods [replication-controler](/examples/dns-service-discovery/web-rc.yml)
 
@@ -41,19 +45,21 @@ Two important settings:
 - `clusterIP: None`: service must be [**headless**](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services). See also [dns headless doc](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/).
 
 
+## Configmap options
+
+* `cluster-dns-domain` can be used if kubedns does not points to cluster.local
+* `dns-resolvers` multiline list of DNS resolvers
+  * DNS resolver can be written in multiple ways:
+    * `resolver=ip`
+    * `resolver=ip:port`
+    * `resolver=ip[:port],ip[:port]` where port is optional
+
+* `dns-timeout-retry` default: 1s
+* `dns-hold-obsolete`default: 0s
+* `dns-hold-valid` default: 1s
+* `dns-accepted-payload-size` default: 8192
+
 ## Annotations
 
-### configmap
-
-DNS resolvers can be written in multiple ways:
-* `resolver=ip`
-* `resolver=ip:port`
-* `resolver=ip[:port],ip[:port]` port is optional
-
-### activating
-
 `ingress.kubernetes.io/use-resolver: resolvername` 
-
-### ingress
-
-`ingress.kubernetes.io/cluster-dns-domain` can be used if kubedns does not points to cluster.local 
+ 

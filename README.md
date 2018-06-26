@@ -66,7 +66,6 @@ The following annotations are supported:
 |`[0]`|[`ingress.kubernetes.io/cors-allow-credentials`](#cors)|[true\|false]|-|
 |`[0]`|[`ingress.kubernetes.io/cors-enable`](#cors)|[true\|false]|-|
 |`[0]`|[`ingress.kubernetes.io/cors-max-age`](#cors)|time (seconds)|-|
-|`[1]`|[`ingress.kubernetes.io/dns-resolvers`](#dns-service-discovery)|multiline resolver=ip[:port]|[doc](/examples/dns-service-discovery)|
 ||[`ingress.kubernetes.io/hsts`](#hsts)|[true\|false]|-|
 ||[`ingress.kubernetes.io/hsts-include-subdomains`](#hsts)|[true\|false]|-|
 ||[`ingress.kubernetes.io/hsts-max-age`](#hsts)|qty of seconds|-|
@@ -89,6 +88,7 @@ The following annotations are supported:
 ||`ingress.kubernetes.io/whitelist-source-range`|CIDR|-|
 ||[`ingress.kubernetes.io/rewrite-target`](#rewrite-target)|path string|-|
 ||[`ingress.kubernetes.io/server-alias`](#server-alias)|domain name or regex|-|
+|`[1]`|[`ingress.kubernetes.io/use-resolver`](#dns-service-discovery)|resolver name]|[doc](/examples/dns-service-discovery)|
 
 ### Affinity
 
@@ -185,10 +185,7 @@ https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
 
 ### DNS Service Discovery
 
-Configure when we need to use HAProxy DNS service discovery (for non kubernetes workload) 
-* `ingress.kubernetes.io/dns-resolver`: Multiline list of DNS resolvers in `resolvername=ip:port` format
-
-Service can use that resolvers with:
+Service can use resolver with:
 * `ingress.kubernetes.io/use-resolver`: Name of the resolver that services use
 
 **NOTE**: It is important to use this only with **headless** services [doc](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
@@ -358,6 +355,8 @@ Define a list of HAProxy DNS resolvers
 Multiline list of DNS resolvers in `resolvername=ip:port` format 
 
 https://cbonte.github.io/haproxy-dconv/1.8/configuration.html#resolvers%20(The%20resolvers%20section)
+
+*Note: Is using kube-dns beware of cache, see [doc](/examples/dns-service-discovery)*
 
 Example: [doc](/examples/dns-service-discovery)
 

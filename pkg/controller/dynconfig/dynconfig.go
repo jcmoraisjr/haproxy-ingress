@@ -229,7 +229,7 @@ func (d *DynConfig) dynamicUpdateBackends() bool {
 		}
 
 		// add endpoints only work if using dynamic scaling
-		if d.dynamicScaling {
+		if d.dynamicScaling && len(backendSlots.EmptySlots) > 0{
 			// add endpoints
 			sort.Strings(backendSlots.EmptySlots)
 			toAddEndpoints := endpointsSubtract(updEndpoints, curEndpoints)
@@ -293,10 +293,9 @@ func (d *DynConfig) fillBackendServerSlots() {
 		newBackend := types.HAProxyBackendSlots{}
 		newBackend.FullSlots = map[string]types.HAProxyBackendSlot{}
 
-		if resolver := d.updBackendsMap[backendName].DNSResolvers.UseResolver; resolver != "" {
+		if resolver := d.updBackendsMap[backendName].UseResolver; resolver != "" {
 				fullSlotCnt := len(d.updBackendsMap[backendName].Endpoints)
 				newBackend.TotalSlots = (int(fullSlotCnt/d.updBackendsMap[backendName].SlotsIncrement) + 1) * d.updBackendsMap[backendName].SlotsIncrement
-				d.updatedConfig.DNSResolvers[resolver] = d.updBackendsMap[backendName].DNSResolvers.DNSResolvers[resolver]
 				newBackend.UseResolver = resolver
 				d.updatedConfig.BackendSlots[backendName] = &newBackend
 				continue

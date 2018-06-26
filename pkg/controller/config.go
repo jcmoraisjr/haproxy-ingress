@@ -181,19 +181,41 @@ func configForwardfor(conf *types.HAProxyConfig) {
 }
 
 func (cfg *haConfig) createDNSResolvers() {
-	resolvers := dnsresolvers.ParseDNSResolvers(cfg.haproxyConfig.DNSResolvers)
-	for _, backend := range cfg.ingress.Backends {
-		backendUseResolver := backend.DNSResolvers.UseResolver
-		for resolverName, resolverData := range backend.DNSResolvers.DNSResolvers {
-			resolvers[resolverName] = resolverData
-		}
-		if _, ok := backend.DNSResolvers.DNSResolvers[backendUseResolver]; !ok {
-			if resolverData, ok := resolvers[backendUseResolver]; ok {
-				backend.DNSResolvers.DNSResolvers[backendUseResolver] = resolverData
-			} else if backendUseResolver != "" {
-				glog.Warningf("resolver name %s not found", backendUseResolver)
-				backend.DNSResolvers.UseResolver = ""
+	resolvers := map[string]dnsresolvers.DNSResolver{}
+	data := strings.Split(cfg.haproxyConfig.DNSResolvers, "\n")
+	for _, resolver := range data {
+		resolverData := strings.Split(resolver, "=")
+		if len(resolverData) != 2 {
+			if len(resolver) != 0 {
+				glog.Infof("misconfigured DNS resolver: %s", resolver)
 			}
+			continue
+		}
+		nameservers := map[string]string{}
+		nameserversData := strings.Split(resolverData[1], ",")
+		for _, nameserver := range nameserversData {
+			nameserverData := strings.Split(nameserver, ":")
+			if len(nameserverData) == 1 {
+				nameservers[nameserverData[0]] = "53"
+			} else {
+				nameservers[nameserverData[0]] = nameserverData[1]
+			}
+		}
+		resolvers[resolverData[0]] = dnsresolvers.DNSResolver{
+			Name:                resolverData[0],
+			Nameservers:         nameservers,
+		}
+	}
+
+	//resolvers := dnsresolvers.ParseDNSResolvers(cfg.haproxyConfig.DNSResolvers)
+	for _, backend := range cfg.ingress.Backends {
+		backendUseResolver := backend.UseResolver
+		if backendUseResolver == "" {
+			continue
+		}
+		if _, ok := resolvers[backendUseResolver]; !ok {
+			glog.Warningf("resolver name %s not found, not using DNS resolving", backendUseResolver)
+			backend.UseResolver = ""
 		}
 	}
 	cfg.DNSResolvers = resolvers

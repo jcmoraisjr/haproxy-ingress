@@ -76,7 +76,7 @@ func newAnnotationExtractor(cfg extractorConfig) annotationExtractor {
 			"ExternalAuth":         authreq.NewParser(),
 			"CertificateAuth":      authtls.NewParser(cfg),
 			"CorsConfig":           cors.NewParser(),
-			"DNSResolvers":         dnsresolvers.NewParser(cfg),
+			"UseResolver":          dnsresolvers.NewParser(cfg),
 			"HealthCheck":          healthcheck.NewParser(cfg),
 			"HSTS":                 hsts.NewParser(cfg),
 			"Whitelist":            ipwhitelist.NewParser(cfg),
@@ -154,7 +154,7 @@ const (
 	certificateAuth      = "CertificateAuth"
 	serverSnippet        = "ServerSnippet"
 	upstreamHashBy       = "UpstreamHashBy"
-	dnsResolvers         = "DNSResolvers"
+	useResolver          = "UseResolver"
 )
 
 func (e *annotationExtractor) BalanceAlgorithm(ing *extensions.Ingress) string {
@@ -254,10 +254,7 @@ func (e *annotationExtractor) UpstreamHashBy(ing *extensions.Ingress) string {
 	return val.(string)
 }
 
-func (e *annotationExtractor) DNSResolvers(ing *extensions.Ingress) *dnsresolvers.Config {
-	val, err := e.annotations[dnsResolvers].Parse(ing)
-	if (err != nil){
-		return nil
-	}
-	return val.(*dnsresolvers.Config)
+func (e *annotationExtractor) UseResolver(ing *extensions.Ingress) string {
+	val, _ := e.annotations[useResolver].Parse(ing)
+	return val.(string)
 }
