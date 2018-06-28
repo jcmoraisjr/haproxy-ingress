@@ -330,6 +330,9 @@ http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-balance
 
 Define the interval between TCP health checks to the backend using `inter` option.
 
+Default value is `2s` - two seconds between two consecutive checks. Configure an
+empty string to disable health checks.
+
 http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-inter
 
 ### bind-ip-addr
