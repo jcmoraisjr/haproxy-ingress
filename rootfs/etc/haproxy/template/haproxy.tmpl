@@ -141,7 +141,7 @@ frontend httpsfront
 {{- end }}
 
 {{- range $server := $ing.PassthroughBackends }}
-    use_backend {{ $server.Backend }} if {{ $server.ACLLabel }}
+    use_backend {{ $server.Backend }} if { req.ssl_sni -i {{ $server.Hostname }} }
 {{- end }}
 
 {{- range $server := $ing.HAServers }}
