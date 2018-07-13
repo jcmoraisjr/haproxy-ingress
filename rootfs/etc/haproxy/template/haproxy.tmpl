@@ -334,9 +334,9 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
 {{- $rewriteTarget := $location.Rewrite.Target }}
 {{- if ne $rewriteTarget "" }}
 {{- if eq $rewriteTarget "/" }}
-    reqrep ^([^\ :]*)\ {{ $location.Path }}/?(.*$) \1\ {{ $rewriteTarget }}\2 if {{ $server.ACLLabel }} { var(txn.path) -m beg {{ $location.Path }} }
+    reqrep ^([^\ :]*)\ {{ $location.Path }}/?(.*$) \1\ {{ $rewriteTarget }}\2 if {{ if $location.SSLRedirect }}from-https {{ end }}{{ $server.ACLLabel }} { var(txn.path) -m beg {{ $location.Path }} }
 {{- else }}
-    reqrep ^([^\ :]*)\ {{ $location.Path }}(.*$) \1\ {{ $rewriteTarget }}{{ if hasSuffix $location.Path "/" }}/{{ end }}\2 if {{ $server.ACLLabel }} { var(txn.path) -m beg {{ $location.Path }} }
+    reqrep ^([^\ :]*)\ {{ $location.Path }}(.*$) \1\ {{ $rewriteTarget }}{{ if hasSuffix $location.Path "/" }}/{{ end }}\2 if {{ if $location.SSLRedirect }}from-https {{ end }}{{ $server.ACLLabel }} { var(txn.path) -m beg {{ $location.Path }} }
 {{- end }}
 {{- end }}
 {{- end }}
