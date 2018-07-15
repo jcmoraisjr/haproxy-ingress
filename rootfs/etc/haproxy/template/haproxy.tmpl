@@ -140,8 +140,12 @@ frontend httpsfront
 {{- end }}
 {{- end }}
 
-{{- range $server := $ing.PassthroughBackends }}
+{{- range $server := $ing.HAPassthrough }}
+{{- if $server.HostnameIsWildcard }}
+    use_backend {{ $server.Backend }} if { req.ssl_sni -m reg -i {{ hostnameRegex $server.Hostname }} }
+{{- else }}
     use_backend {{ $server.Backend }} if { req.ssl_sni -i {{ $server.Hostname }} }
+{{- end }}
 {{- end }}
 
 {{- range $server := $ing.HAServers }}

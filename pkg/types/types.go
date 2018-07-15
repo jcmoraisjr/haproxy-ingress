@@ -40,6 +40,7 @@ type (
 		TCPEndpoints        []ingress.L4Service
 		UDPEndpoints        []ingress.L4Service
 		PassthroughBackends []*ingress.SSLPassthroughBackend
+		HAPassthrough       []*HAProxyPassthrough
 		Cfg                 *HAProxyConfig
 		BackendSlots        map[string]*HAProxyBackendSlots
 	}
@@ -145,6 +146,12 @@ type (
 		HAMatchTxnPath       string              `json:"haMatchTxnPath"`
 		HAWhitelist          string              `json:"whitelist,omitempty"`
 		HARateLimitWhiteList string              `json:"rateLimitWhiteList,omitempty"`
+	}
+	// HAProxyPassthrough has SSL passthrough configurations
+	HAProxyPassthrough struct {
+		Hostname           string `json:"hostname"`
+		Backend            string `json:"backend"`
+		HostnameIsWildcard bool   `json:"hostnameIsWildcard"`
 	}
 	// HAProxyBackendSlots contains used and empty backend server definitions
 	HAProxyBackendSlots struct {

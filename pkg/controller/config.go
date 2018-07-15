@@ -47,6 +47,7 @@ type haConfig struct {
 	userlists         map[string]types.Userlist
 	haServers         []*types.HAProxyServer
 	haDefaultServer   *types.HAProxyServer
+	haPassthrough     []*types.HAProxyPassthrough
 	haproxyConfig     *types.HAProxyConfig
 }
 
@@ -71,6 +72,7 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 		TCPEndpoints:        cfg.ingress.TCPEndpoints,
 		UDPEndpoints:        cfg.ingress.UDPEndpoints,
 		PassthroughBackends: cfg.ingress.PassthroughBackends,
+		HAPassthrough:       cfg.haPassthrough,
 		Cfg:                 cfg.haproxyConfig,
 	}, nil
 }
@@ -172,7 +174,16 @@ func configForwardfor(conf *types.HAProxyConfig) {
 
 func (cfg *haConfig) createHAProxyServers() {
 	haServers := make([]*types.HAProxyServer, 0, len(cfg.ingress.Servers))
+	haPassthrough := make([]*types.HAProxyPassthrough, 0, len(cfg.ingress.PassthroughBackends))
 	var haDefaultServer *types.HAProxyServer
+	for _, server := range cfg.ingress.PassthroughBackends {
+		haServer := &types.HAProxyPassthrough{
+			Hostname:           server.Hostname,
+			Backend:            server.Backend,
+			HostnameIsWildcard: idHasWildcard(server.Hostname),
+		}
+		haPassthrough = append(haPassthrough, haServer)
+	}
 	for _, server := range cfg.ingress.Servers {
 		if server.SSLPassthrough {
 			// remove SSLPassthrough hosts from haServers array
@@ -227,7 +238,13 @@ func (cfg *haConfig) createHAProxyServers() {
 		}
 		return a < b
 	})
+	sort.SliceStable(haPassthrough, func(i, j int) bool {
+		// Move hosts without wildcard to the top
+		// if not isWildcard means priority, if isWildcard means less priority
+		return !haPassthrough[i].HostnameIsWildcard && haPassthrough[j].HostnameIsWildcard
+	})
 	cfg.haServers = haServers
+	cfg.haPassthrough = haPassthrough
 	cfg.haDefaultServer = haDefaultServer
 }
 
