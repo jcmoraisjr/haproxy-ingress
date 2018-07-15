@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v0.6-beta.2
+
+Fixes and improvements since `v0.6-beta.1`
+
+* Fix redirect https if path changed with rewrite-target - [#179](https://github.com/jcmoraisjr/haproxy-ingress/pull/179)
+* Fix ssl-passthrough annotation - [#183](https://github.com/jcmoraisjr/haproxy-ingress/pull/183) and [#187](https://github.com/jcmoraisjr/haproxy-ingress/pull/187)
+
 ## v0.6-beta.1
 
 Breaking backward compatibility from `v0.5`:
