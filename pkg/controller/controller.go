@@ -186,7 +186,7 @@ func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) error {
 	}
 
 	if !reloadRequired {
-		glog.Infoln("HAProxy updated through socket, reload not required")
+		glog.Infoln("HAProxy updated without needing to reload")
 		return nil
 	}
 

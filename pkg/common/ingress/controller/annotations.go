@@ -28,6 +28,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/clientbodybuffersize"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/connection"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/dnsresolvers"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/defaultbackend"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/healthcheck"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
@@ -75,6 +76,7 @@ func newAnnotationExtractor(cfg extractorConfig) annotationExtractor {
 			"ExternalAuth":         authreq.NewParser(),
 			"CertificateAuth":      authtls.NewParser(cfg),
 			"CorsConfig":           cors.NewParser(),
+			"UseResolver":          dnsresolvers.NewParser(cfg),
 			"HealthCheck":          healthcheck.NewParser(cfg),
 			"HSTS":                 hsts.NewParser(cfg),
 			"Whitelist":            ipwhitelist.NewParser(cfg),
@@ -152,6 +154,7 @@ const (
 	certificateAuth      = "CertificateAuth"
 	serverSnippet        = "ServerSnippet"
 	upstreamHashBy       = "UpstreamHashBy"
+	useResolver          = "UseResolver"
 )
 
 func (e *annotationExtractor) BalanceAlgorithm(ing *extensions.Ingress) string {
@@ -248,5 +251,10 @@ func (e *annotationExtractor) ServerSnippet(ing *extensions.Ingress) string {
 
 func (e *annotationExtractor) UpstreamHashBy(ing *extensions.Ingress) string {
 	val, _ := e.annotations[upstreamHashBy].Parse(ing)
+	return val.(string)
+}
+
+func (e *annotationExtractor) UseResolver(ing *extensions.Ingress) string {
+	val, _ := e.annotations[useResolver].Parse(ing)
 	return val.(string)
 }

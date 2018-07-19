@@ -203,6 +203,8 @@ type Backend struct {
 	Connection connection.Config `json:"connection"`
 	// Consistent hashing by NGINX variable
 	UpstreamHashBy string `json:"upstream-hash-by,omitempty"`
+	// Haproxy DNS resolver
+	UseResolver string `json:"useResolver"`
 }
 
 // SessionAffinityConfig describes different affinity configurations for new sessions.

@@ -24,6 +24,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/file"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/dnsresolvers"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/defaults"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
@@ -49,6 +50,7 @@ type haConfig struct {
 	haDefaultServer   *types.HAProxyServer
 	haPassthrough     []*types.HAProxyPassthrough
 	haproxyConfig     *types.HAProxyConfig
+	DNSResolvers      map[string]dnsresolvers.DNSResolver
 }
 
 func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController *HAProxyController) (*types.ControllerConfig, error) {
@@ -63,6 +65,7 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 	if err != nil {
 		return &types.ControllerConfig{}, err
 	}
+	cfg.createDNSResolvers()
 	return &types.ControllerConfig{
 		Userlists:           cfg.userlists,
 		Servers:             cfg.ingress.Servers,
@@ -74,6 +77,7 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 		PassthroughBackends: cfg.ingress.PassthroughBackends,
 		HAPassthrough:       cfg.haPassthrough,
 		Cfg:                 cfg.haproxyConfig,
+		DNSResolvers:        cfg.DNSResolvers,
 	}, nil
 }
 
@@ -95,41 +99,47 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 			DefaultMaxSize: 1024,
 			SecretName:     "",
 		},
-		LoadServerState:      false,
-		TimeoutHTTPRequest:   "5s",
-		TimeoutConnect:       "5s",
-		TimeoutClient:        "50s",
-		TimeoutClientFin:     "50s",
-		TimeoutQueue:         "5s",
-		TimeoutServer:        "50s",
-		TimeoutServerFin:     "50s",
-		TimeoutStop:          "",
-		TimeoutTunnel:        "1h",
-		TimeoutKeepAlive:     "1m",
-		BindIPAddrTCP:        "*",
-		BindIPAddrHTTP:       "*",
-		BindIPAddrStats:      "*",
-		BindIPAddrHealthz:    "*",
-		Syslog:               "",
-		BackendCheckInterval: "2s",
-		Forwardfor:           "add",
-		MaxConn:              2000,
-		NoTLSRedirect:        "/.well-known/acme-challenge",
-		SSLHeadersPrefix:     "X-SSL",
-		HealthzPort:          10253,
-		HTTPStoHTTPPort:      0,
-		StatsPort:            1936,
-		StatsAuth:            "",
-		CookieKey:            "Ingress",
-		DynamicScaling:       false,
-		StatsSocket:          "/var/run/haproxy-stats.sock",
-		UseProxyProtocol:     false,
-		StatsProxyProtocol:   false,
-		UseHostOnHTTPS:       false,
-		HTTPLogFormat:        "",
-		HTTPSLogFormat:       "",
-		TCPLogFormat:         "",
-		DrainSupport:         false,
+		LoadServerState:        false,
+		TimeoutHTTPRequest:     "5s",
+		TimeoutConnect:         "5s",
+		TimeoutClient:          "50s",
+		TimeoutClientFin:       "50s",
+		TimeoutQueue:           "5s",
+		TimeoutServer:          "50s",
+		TimeoutServerFin:       "50s",
+		TimeoutStop:            "",
+		TimeoutTunnel:          "1h",
+		TimeoutKeepAlive:       "1m",
+		BindIPAddrTCP:          "*",
+		BindIPAddrHTTP:         "*",
+		BindIPAddrStats:        "*",
+		BindIPAddrHealthz:      "*",
+		Syslog:                 "",
+		BackendCheckInterval:   "2s",
+		Forwardfor:             "add",
+		MaxConn:                2000,
+		NoTLSRedirect:          "/.well-known/acme-challenge",
+		SSLHeadersPrefix:       "X-SSL",
+		HealthzPort:            10253,
+		HTTPStoHTTPPort:        0,
+		StatsPort:              1936,
+		StatsAuth:              "",
+		CookieKey:              "Ingress",
+		DynamicScaling:         false,
+		StatsSocket:            "/var/run/haproxy-stats.sock",
+		UseProxyProtocol:       false,
+		StatsProxyProtocol:     false,
+		UseHostOnHTTPS:         false,
+		HTTPLogFormat:          "",
+		HTTPSLogFormat:         "",
+		TCPLogFormat:           "",
+		DrainSupport:           false,
+        DNSResolvers:		    "",
+		DNSTimeoutRetry:        "1s",
+		DNSHoldObsolete:        "0s",
+		DNSHoldValid:           "1s",
+		DNSAcceptedPayloadSize: 8192,
+		DNSClusterDomain:       "cluster.local",
 	}
 	if haproxyController.configMap != nil {
 		utils.MergeMap(haproxyController.configMap.Data, &conf)
@@ -170,6 +180,47 @@ func configForwardfor(conf *types.HAProxyConfig) {
 		glog.Warningf("Invalid forwardfor value option on configmap: %v. Using 'add' instead", conf.Forwardfor)
 		conf.Forwardfor = "add"
 	}
+}
+
+func (cfg *haConfig) createDNSResolvers() {
+	resolvers := map[string]dnsresolvers.DNSResolver{}
+	data := strings.Split(cfg.haproxyConfig.DNSResolvers, "\n")
+	for _, resolver := range data {
+		resolverData := strings.Split(resolver, "=")
+		if len(resolverData) != 2 {
+			if len(resolver) != 0 {
+				glog.Infof("misconfigured DNS resolver: %s", resolver)
+			}
+			continue
+		}
+		nameservers := map[string]string{}
+		nameserversData := strings.Split(resolverData[1], ",")
+		for _, nameserver := range nameserversData {
+			nameserverData := strings.Split(nameserver, ":")
+			if len(nameserverData) == 1 {
+				nameservers[nameserverData[0]] = "53"
+			} else {
+				nameservers[nameserverData[0]] = nameserverData[1]
+			}
+		}
+		resolvers[resolverData[0]] = dnsresolvers.DNSResolver{
+			Name:                resolverData[0],
+			Nameservers:         nameservers,
+		}
+	}
+
+	//resolvers := dnsresolvers.ParseDNSResolvers(cfg.haproxyConfig.DNSResolvers)
+	for _, backend := range cfg.ingress.Backends {
+		backendUseResolver := backend.UseResolver
+		if backendUseResolver == "" {
+			continue
+		}
+		if _, ok := resolvers[backendUseResolver]; !ok {
+			glog.Warningf("resolver name %s not found, not using DNS resolving", backendUseResolver)
+			backend.UseResolver = ""
+		}
+	}
+	cfg.DNSResolvers = resolvers
 }
 
 func (cfg *haConfig) createHAProxyServers() {

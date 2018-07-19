@@ -188,7 +188,7 @@ func (d *DynConfig) dynamicUpdateBackends() bool {
 	d.updatedConfig.BackendSlots = backendSlots
 	for _, backendName := range d.curKeys {
 		updLen := len(d.updBackendsMap[backendName].Endpoints)
-		totalSlots := len(backendSlots[backendName].EmptySlots) + len(backendSlots[backendName].FullSlots)
+		totalSlots := backendSlots[backendName].TotalSlots
 		if updLen > totalSlots {
 			// need to resize number of empty slots by SlotsIncrement amount
 			reloadRequired = true
@@ -229,7 +229,7 @@ func (d *DynConfig) dynamicUpdateBackends() bool {
 		}
 
 		// add endpoints only work if using dynamic scaling
-		if d.dynamicScaling {
+		if d.dynamicScaling && len(backendSlots.EmptySlots) > 0{
 			// add endpoints
 			sort.Strings(backendSlots.EmptySlots)
 			toAddEndpoints := endpointsSubtract(updEndpoints, curEndpoints)
@@ -286,10 +286,21 @@ func (d *DynConfig) dynamicUpdateEndpoints(backendName string, updEndpoints map[
 
 // fill-out backends with available endpoints, add empty slots if required
 func (d *DynConfig) fillBackendServerSlots() {
+
 	d.updatedConfig.BackendSlots = map[string]*types.HAProxyBackendSlots{}
+
 	for _, backendName := range d.updKeys {
 		newBackend := types.HAProxyBackendSlots{}
 		newBackend.FullSlots = map[string]types.HAProxyBackendSlot{}
+
+		if resolver := d.updBackendsMap[backendName].UseResolver; resolver != "" {
+				fullSlotCnt := len(d.updBackendsMap[backendName].Endpoints)
+				newBackend.TotalSlots = (int(fullSlotCnt/d.updBackendsMap[backendName].SlotsIncrement) + 1) * d.updBackendsMap[backendName].SlotsIncrement
+				newBackend.UseResolver = resolver
+				d.updatedConfig.BackendSlots[backendName] = &newBackend
+				continue
+		}
+
 		if d.dynamicScaling {
 			for i, endpoint := range d.updBackendsMap[backendName].Endpoints {
 				curEndpoint := endpoint
@@ -305,6 +316,7 @@ func (d *DynConfig) fillBackendServerSlots() {
 			for i := 0; i < extraSlotCnt; i++ {
 				newBackend.EmptySlots = append(newBackend.EmptySlots, fmt.Sprintf("server%04d", i+fullSlotCnt))
 			}
+			newBackend.TotalSlots = fullSlotCnt + extraSlotCnt
 		} else {
 			// use addr:port as BackendServerName, don't generate empty slots
 			for _, endpoint := range d.updBackendsMap[backendName].Endpoints {

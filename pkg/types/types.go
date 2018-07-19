@@ -20,6 +20,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/authtls"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/dnsresolvers"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxy"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/ratelimit"
@@ -43,48 +44,55 @@ type (
 		HAPassthrough       []*HAProxyPassthrough
 		Cfg                 *HAProxyConfig
 		BackendSlots        map[string]*HAProxyBackendSlots
+		DNSResolvers        map[string]dnsresolvers.DNSResolver
 	}
 	// HAProxyConfig has HAProxy specific configurations from ConfigMap
 	HAProxyConfig struct {
-		defaults.Backend     `json:",squash"`
-		SSLCiphers           string `json:"ssl-ciphers"`
-		SSLOptions           string `json:"ssl-options"`
-		SSLDHParam           `json:",squash"`
-		LoadServerState      bool   `json:"load-server-state"`
-		TimeoutHTTPRequest   string `json:"timeout-http-request"`
-		TimeoutConnect       string `json:"timeout-connect"`
-		TimeoutClient        string `json:"timeout-client"`
-		TimeoutClientFin     string `json:"timeout-client-fin"`
-		TimeoutServer        string `json:"timeout-server"`
-		TimeoutQueue         string `json:"timeout-queue"`
-		TimeoutServerFin     string `json:"timeout-server-fin"`
-		TimeoutStop          string `json:"timeout-stop"`
-		TimeoutTunnel        string `json:"timeout-tunnel"`
-		TimeoutKeepAlive     string `json:"timeout-keep-alive"`
-		BindIPAddrTCP        string `json:"bind-ip-addr-tcp"`
-		BindIPAddrHTTP       string `json:"bind-ip-addr-http"`
-		BindIPAddrStats      string `json:"bind-ip-addr-stats"`
-		BindIPAddrHealthz    string `json:"bind-ip-addr-healthz"`
-		Syslog               string `json:"syslog-endpoint"`
-		BackendCheckInterval string `json:"backend-check-interval"`
-		Forwardfor           string `json:"forwardfor"`
-		MaxConn              int    `json:"max-connections"`
-		NoTLSRedirect        string `json:"no-tls-redirect-locations"`
-		SSLHeadersPrefix     string `json:"ssl-headers-prefix"`
-		HealthzPort          int    `json:"healthz-port"`
-		HTTPStoHTTPPort      int    `json:"https-to-http-port"`
-		StatsPort            int    `json:"stats-port"`
-		StatsAuth            string `json:"stats-auth"`
-		CookieKey            string `json:"cookie-key"`
-		DynamicScaling       bool   `json:"dynamic-scaling"`
-		StatsSocket          string
-		UseProxyProtocol     bool   `json:"use-proxy-protocol"`
-		StatsProxyProtocol   bool   `json:"stats-proxy-protocol"`
-		UseHostOnHTTPS       bool   `json:"use-host-on-https"`
-		HTTPLogFormat        string `json:"http-log-format"`
-		HTTPSLogFormat       string `json:"https-log-format"`
-		TCPLogFormat         string `json:"tcp-log-format"`
-		DrainSupport         bool   `json:"drain-support"`
+		defaults.Backend       `json:",squash"`
+		SSLCiphers             string `json:"ssl-ciphers"`
+		SSLOptions             string `json:"ssl-options"`
+		SSLDHParam             `json:",squash"`
+		LoadServerState        bool   `json:"load-server-state"`
+		TimeoutHTTPRequest     string `json:"timeout-http-request"`
+		TimeoutConnect         string `json:"timeout-connect"`
+		TimeoutClient          string `json:"timeout-client"`
+		TimeoutClientFin       string `json:"timeout-client-fin"`
+		TimeoutServer          string `json:"timeout-server"`
+		TimeoutQueue           string `json:"timeout-queue"`
+		TimeoutServerFin       string `json:"timeout-server-fin"`
+		TimeoutStop            string `json:"timeout-stop"`
+		TimeoutTunnel          string `json:"timeout-tunnel"`
+		TimeoutKeepAlive       string `json:"timeout-keep-alive"`
+		BindIPAddrTCP          string `json:"bind-ip-addr-tcp"`
+		BindIPAddrHTTP         string `json:"bind-ip-addr-http"`
+		BindIPAddrStats        string `json:"bind-ip-addr-stats"`
+		BindIPAddrHealthz      string `json:"bind-ip-addr-healthz"`
+		Syslog                 string `json:"syslog-endpoint"`
+		BackendCheckInterval   string `json:"backend-check-interval"`
+		Forwardfor             string `json:"forwardfor"`
+		MaxConn                int    `json:"max-connections"`
+		NoTLSRedirect          string `json:"no-tls-redirect-locations"`
+		SSLHeadersPrefix       string `json:"ssl-headers-prefix"`
+		HealthzPort            int    `json:"healthz-port"`
+		HTTPStoHTTPPort        int    `json:"https-to-http-port"`
+		StatsPort              int    `json:"stats-port"`
+		StatsAuth              string `json:"stats-auth"`
+		CookieKey              string `json:"cookie-key"`
+		DynamicScaling         bool   `json:"dynamic-scaling"`
+		StatsSocket            string
+		UseProxyProtocol       bool   `json:"use-proxy-protocol"`
+		StatsProxyProtocol     bool   `json:"stats-proxy-protocol"`
+		UseHostOnHTTPS         bool   `json:"use-host-on-https"`
+		HTTPLogFormat          string `json:"http-log-format"`
+		HTTPSLogFormat         string `json:"https-log-format"`
+		TCPLogFormat           string `json:"tcp-log-format"`
+		DrainSupport           bool   `json:"drain-support"`
+		DNSResolvers           string `json:"dns-resolvers"`
+		DNSTimeoutRetry        string `json:"dns-timeout-retry"`
+		DNSHoldObsolete        string `json:"dns-hold-obsolete"`
+		DNSHoldValid           string `json:"dns-hold-valid"`
+		DNSAcceptedPayloadSize int    `json:"dns-accepted-payload-size"`
+		DNSClusterDomain       string `json:"dns-cluster-domain"`
 	}
 	// Userlist list of users for basic authentication
 	Userlist struct {
@@ -159,6 +167,10 @@ type (
 		FullSlots map[string]HAProxyBackendSlot
 		// list of unused server names
 		EmptySlots []string
+		// resolver name used for this Backend definition
+		UseResolver string
+		// total slots for backend
+		TotalSlots       int
 	}
 	// HAProxyBackendSlot combines BackendServerName with an ingress.Endpoint
 	HAProxyBackendSlot struct {
