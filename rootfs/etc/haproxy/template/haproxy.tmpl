@@ -140,7 +140,7 @@ backend {{ $backend.Name }}
 ###### HTTPS frontend (tcp mode)
 ######
 frontend httpsfront
-    bind {{ $cfg.BindIPAddrHTTP }}:443{{ if $cfg.UseProxyProtocol }} accept-proxy{{ end }}
+    bind {{ $cfg.BindIPAddrHTTP }}:{{ $cfg.HTTPSPort }}{{ if $cfg.UseProxyProtocol }} accept-proxy{{ end }}
     mode tcp
 
 {{- if ne $cfg.Syslog "" }}
@@ -217,10 +217,10 @@ backend httpback-default-backend
 {{- $isCACert := isCACert $singleserver }}
 {{- $servers := getServers $ing.HAServers $singleserver }}
 {{- $hasHTTPStoHTTP := gt $cfg.HTTPStoHTTPPort 0 }}
-{{- $reuseHTTPPort := eq $cfg.HTTPStoHTTPPort 80 }}
+{{- $reuseHTTPPort := eq $cfg.HTTPStoHTTPPort $cfg.HTTPPort }}
 frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}default-backend{{ else }}{{ $singleserver.Hostname }}{{ end }}
 {{- if $isShared }}
-    bind {{ $cfg.BindIPAddrHTTP }}:80{{ if $cfg.UseProxyProtocol }} accept-proxy{{ end }}
+    bind {{ $cfg.BindIPAddrHTTP }}:{{ $cfg.HTTPPort }}{{ if $cfg.UseProxyProtocol }} accept-proxy{{ end }}
 {{- if and $hasHTTPStoHTTP (not $reuseHTTPPort) }}
     bind {{ $cfg.BindIPAddrHTTP }}:{{ $cfg.HTTPStoHTTPPort }}{{ if $cfg.UseProxyProtocol }} accept-proxy{{ end }}
 {{- end }}
@@ -465,13 +465,13 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
 {{- if $server.HostnameIsWildcard }}
     acl {{ $server.ACLLabel }} {{ $fetch }} -m reg -i {{ hostnameRegex $server.Hostname }}
 {{- else }}
-    acl {{ $server.ACLLabel }} {{ $fetch }} -i {{ $server.Hostname }}{{ if $needport }} {{ $server.Hostname }}:80 {{ $server.Hostname }}:443{{ if and $cfg.HTTPStoHTTPPort (ne $cfg.HTTPStoHTTPPort 80) }} {{ $server.Hostname }}:{{ $cfg.HTTPStoHTTPPort }}{{ end }}{{ end }}
+    acl {{ $server.ACLLabel }} {{ $fetch }} -i {{ $server.Hostname }}{{ if $needport }} {{ $server.Hostname }}:{{ $cfg.HTTPPort }} {{ $server.Hostname }}:{{ $cfg.HTTPSPort }}{{ if and $cfg.HTTPStoHTTPPort (ne $cfg.HTTPStoHTTPPort $cfg.HTTPPort) }} {{ $server.Hostname }}:{{ $cfg.HTTPStoHTTPPort }}{{ end }}{{ end }}
 {{- end }}
 {{- if ne $server.Alias "" }}
 {{- if $server.AliasIsRegex }}
     acl {{ $server.ACLLabel }} {{ $fetch }} -m reg -i '{{ aliasRegex $server.Alias }}'
 {{- else }}
-    acl {{ $server.ACLLabel }} {{ $fetch }} -i {{ $server.Alias }}{{ if $needport }} {{ $server.Alias }}:80 {{ $server.Alias }}:443{{ end }}
+    acl {{ $server.ACLLabel }} {{ $fetch }} -i {{ $server.Alias }}{{ if $needport }} {{ $server.Alias }}:{{ $cfg.HTTPPort }} {{ $server.Alias }}:{{ $cfg.HTTPSPort }}{{ end }}
 {{- end }}
 {{- end }}
 {{- end }}
