@@ -739,25 +739,31 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 
 // GetAuthCertificate is used by the auth-tls annotations to get a cert from a secret
 func (ic GenericController) GetAuthCertificate(name string) (*resolver.AuthSSLCert, error) {
-	if _, exists := ic.sslCertTracker.Get(name); !exists {
-		ic.syncSecret(name)
-	}
-
-	_, err := ic.listers.Secret.GetByName(name)
+	cert, err := ic.GetCertificate(name)
 	if err != nil {
-		return &resolver.AuthSSLCert{}, fmt.Errorf("unexpected error: %v", err)
+		return &resolver.AuthSSLCert{}, err
 	}
-
-	bc, exists := ic.sslCertTracker.Get(name)
-	if !exists {
-		return &resolver.AuthSSLCert{}, fmt.Errorf("secret %v does not exist", name)
-	}
-	cert := bc.(*ingress.SSLCert)
 	return &resolver.AuthSSLCert{
 		Secret:     name,
 		CAFileName: cert.CAFileName,
 		PemSHA:     cert.PemSHA,
 	}, nil
+}
+
+// GetCertificate get a SSLCert object from a secret name
+func (ic *GenericController) GetCertificate(name string) (*ingress.SSLCert, error) {
+	crt, exists := ic.sslCertTracker.Get(name)
+	if !exists {
+		ic.syncSecret(name)
+		crt, exists = ic.sslCertTracker.Get(name)
+	}
+	if exists {
+		return crt.(*ingress.SSLCert), nil
+	}
+	if _, err := ic.listers.Secret.GetByName(name); err != nil {
+		return nil, err
+	}
+	return nil, fmt.Errorf("secret '%v' have neither ca.crt nor tls.crt/tls.key pair", name)
 }
 
 // GetFullResourceName add the currentNamespace prefix if name doesn't provide one

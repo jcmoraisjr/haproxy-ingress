@@ -76,6 +76,7 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 		UDPEndpoints:        cfg.ingress.UDPEndpoints,
 		PassthroughBackends: cfg.ingress.PassthroughBackends,
 		HAPassthrough:       cfg.haPassthrough,
+		StatsSSLCert:        cfg.statsSSLCert(),
 		Cfg:                 cfg.haproxyConfig,
 		DNSResolvers:        cfg.DNSResolvers,
 	}, nil
@@ -124,6 +125,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		HTTPStoHTTPPort:        0,
 		StatsPort:              1936,
 		StatsAuth:              "",
+		StatsSSLCert:           "",
 		CookieKey:              "Ingress",
 		DynamicScaling:         false,
 		StatsSocket:            "/var/run/haproxy-stats.sock",
@@ -223,6 +225,19 @@ func (cfg *haConfig) createDNSResolvers() {
 		}
 	}
 	cfg.DNSResolvers = resolvers
+}
+
+func (cfg *haConfig) statsSSLCert() *ingress.SSLCert {
+	secretName := cfg.haproxyConfig.StatsSSLCert
+	if secretName == "" {
+		return &ingress.SSLCert{}
+	}
+	sslCert, err := cfg.haproxyController.controller.GetCertificate(secretName)
+	if err != nil {
+		glog.Warningf("error loading stats cert/key: %v", err)
+		return &ingress.SSLCert{}
+	}
+	return sslCert
 }
 
 func (cfg *haConfig) createHAProxyServers() {

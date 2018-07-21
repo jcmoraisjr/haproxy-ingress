@@ -51,5 +51,8 @@ func (c1 *ControllerConfig) Equal(c2 *ControllerConfig) bool {
 	if !reflect.DeepEqual(c1.Cfg, c2.Cfg) {
 		return false
 	}
+	if !c1.StatsSSLCert.Equal(c2.StatsSSLCert) {
+		return false
+	}
 	return true
 }
