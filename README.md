@@ -711,12 +711,15 @@ Configure `--tcp-services-configmap` argument with `namespace/configmapname` res
 services and ports that HAProxy should listen to. Use the HAProxy's port number as the key of the
 configmap.
 
-The value of the configmap entry has the following syntax: `<namespace>/<servicename>:<portnumber>[:[<in-proxy>][:<out-proxy>]]`, where:
+The value of the configmap entry is a colon separated list of the following items:
 
-* `<namespace>/<servicename>` is the well known notation of the service that will receive incomming connections.
-* `<portnumber>` is the port number the upstream service is listening - this is not related to the listening port of HAProxy.
-* `<in-proxy>` should be defined as `PROXY` if HAProxy should expect requests using the [PROXY](http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt) protocol. This is usually true only if there is another load balancer in front of HAProxy which supports the PROXY protocol. PROXY protocol v1 and v2 are supported.
-* `<out-proxy>` should be defined as `PROXY` or `PROXY-V2` if the upstream service expect connections using the PROXY protocol v2. Use `PROXY-V1` instead if the upstream service only support v1 protocol.
+1. `<namespace>/<service-name>`, mandatory, is the well known notation of the service that will receive incomming connections.
+2. `<portnumber>`, mandatory, is the port number the upstream service is listening - this is not related to the listening port of HAProxy.
+3. `<in-proxy>`, optional, should be defined as `PROXY` if HAProxy should expect requests using the [PROXY](http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt) protocol. Leave empty to not use PROXY protocol. This is usually used only if there is another load balancer in front of HAProxy which supports the PROXY protocol. PROXY protocol v1 and v2 are supported.
+4. `<out-proxy>`, optional, should be defined as `PROXY` or `PROXY-V2` if the upstream service expect connections using the PROXY protocol v2. Use `PROXY-V1` instead if the upstream service only support v1 protocol. Leave empty to connect without using the PROXY protocol.
+5. `<namespace/secret-name>`, optional, used to configure SSL/TLS over the TCP connection. Secret should have `tls.crt` and `tls.key` pair used on TLS handshake. Leave empty to not use ssl-offload.
+
+Optional fields should be skipped using two consecutive colons.
 
 In the example below:
 
@@ -725,7 +728,7 @@ In the example below:
 data:
   "5432": "default/pgsql:5432"
   "8000": "system-prod/http:8000::PROXY-V1"
-  "9900": "system-prod/admin:9900:PROXY"
+  "9900": "system-prod/admin:9900:PROXY::system-prod/tcp-9900"
   "9990": "system-prod/admin:9999::PROXY-V2"
   "9999": "system-prod/admin:9999:PROXY:PROXY"
 ```
@@ -734,7 +737,7 @@ HAProxy will listen 5 new ports:
 
 * `5432` will proxy to a `pgsql` service on `default` namespace.
 * `8000` will proxy to `http` service, port `8000`, on the `system-prod` namespace. The upstream service will expect connections using the PROXY protocol but it only supports v1.
-* `9900` will proxy to `admin` service, port `9900`, on the `system-prod` namespace. Clients should connect using the PROXY protocol v1 or v2.
+* `9900` will proxy to `admin` service, port `9900`, on the `system-prod` namespace. Clients should connect using the PROXY protocol v1 or v2. Upcoming connections should be encrypted, HAProxy will ssl-offload data using crt/key provided by `system-prod/tcp-9900` secret.
 * `9990` and `9999` will proxy to the same `admin` service and `9999` port and the upstream service will expect connections using the PROXY protocol v2. The HAProxy frontend, however, will only expect PROXY protocol v1 or v2 on it's port `9999`.
 
 ### verify-hostname
