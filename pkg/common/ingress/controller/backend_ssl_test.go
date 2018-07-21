@@ -215,7 +215,7 @@ func TestGetPemCertificate(t *testing.T) {
 			secret := buildSecretForBackendSSL()
 			secret.Data = foo.Data
 			ic.listers.Secret.Add(secret)
-			sslCert, err := ic.getPemCertificate(foo.secretName)
+			sslCert, err := ic.getPemCertificate(secret)
 
 			if foo.eErr {
 				if err == nil {
