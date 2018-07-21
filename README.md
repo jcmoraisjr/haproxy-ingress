@@ -155,22 +155,6 @@ See also the [example](/examples/blue-green) page.
 
 http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-weight
 
-### Configuration snippet
-
-Add HAProxy configuration snippet to the configuration file. Use multiline content to add more than one
-line of configuration.
-
-Example:
-
-```yaml
-    annotations:
-      ingress.kubernetes.io/config-backend: |
-        acl bar-url path /bar
-        http-request deny if bar-url
-```
-
-* `ingress.kubernetes.io/config-backend`: Add configuration snippet to the HAProxy backend section.
-
 ### CORS
 
 Add CORS headers on OPTIONS http command (preflight) and reponses.
@@ -265,6 +249,7 @@ The following parameters are supported:
 |`[0]`|[`bind-ip-addr-http`](#bind-ip-addr)|IP address|`*`|
 |`[0]`|[`bind-ip-addr-stats`](#bind-ip-addr)|IP address|`*`|
 |`[0]`|[`bind-ip-addr-tcp`](#bind-ip-addr)|IP address|`*`|
+|`[1]`|[`config-frontend`](#configuration-snippet)|multiline HAProxy frontend config||
 |`[0]`|[`cookie-key`](#cookie-key)|secret key|`Ingress`|
 |`[1]`|[`dns-accepted-payload-size`](#dns-resolvers)|number|`8192`|
 |`[1]`|[`dns-cluster-domain`](#dns-resolvers)|cluster name|`cluster.local`|
@@ -348,6 +333,35 @@ Define listening IPv4/IPv6 address on several HAProxy frontends. All IP addresse
 `bind-ip-addr-stats`: IP address of the statistics page. See also [`stats-port`](#stats).
 
 http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-bind
+
+### Configuration snippet
+
+Add HAProxy configuration snippet to the configuration file. Use multiline content to add more than one
+line of configuration.
+
+Examples - configmap:
+
+```yaml
+    config-frontend: |
+      capture request header X-User-Id len 32
+```
+
+Ingress annotation:
+
+```yaml
+    annotations:
+      ingress.kubernetes.io/config-backend: |
+        acl bar-url path /bar
+        http-request deny if bar-url
+```
+
+Global configmap option:
+
+* `config-frontend`: Add configuration snippet to all frontend sections.
+
+Annotation option:
+
+* `ingress.kubernetes.io/config-backend`: Add configuration snippet to the HAProxy backend section.
 
 ### cookie-key
 
