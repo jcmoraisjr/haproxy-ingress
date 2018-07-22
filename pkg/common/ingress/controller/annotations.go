@@ -28,8 +28,8 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/clientbodybuffersize"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/connection"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/dnsresolvers"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/defaultbackend"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/dnsresolvers"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/healthcheck"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/ipwhitelist"
@@ -49,6 +49,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/upstreamhashby"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/upstreamvhost"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/vtsfilterkey"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/waf"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/errors"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/resolver"
 	extensions "k8s.io/api/extensions/v1beta1"
@@ -90,6 +91,7 @@ func newAnnotationExtractor(cfg extractorConfig) annotationExtractor {
 			"ServiceUpstream":      serviceupstream.NewParser(),
 			"SessionAffinity":      sessionaffinity.NewParser(),
 			"SlotsIncrement":       slotsincrement.NewParser(cfg),
+			"WAF":                  waf.NewParser(),
 			"BlueGreen":            bluegreen.NewParser(),
 			"SSLPassthrough":       sslpassthrough.NewParser(),
 			"ConfigurationSnippet": snippet.NewParser(),

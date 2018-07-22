@@ -26,6 +26,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/ratelimit"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/redirect"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/rewrite"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/waf"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/defaults"
 )
 
@@ -139,6 +140,7 @@ type (
 		SSLRedirect        bool                  `json:"sslRedirect"`
 		HSTS               *hsts.Config          `json:"hsts"`
 		CORS               *cors.CorsConfig      `json:"cors"`
+		WAF                *waf.Config           `json:"waf"`
 		HasRateLimit       bool                  `json:"hasRateLimit"`
 		CertificateAuth    authtls.AuthSSLConfig `json:"certificateAuth,omitempty"`
 		Alias              string                `json:"alias,omitempty"`
@@ -151,6 +153,7 @@ type (
 		Backend              string              `json:"backend"`
 		CORS                 cors.CorsConfig     `json:"cors"`
 		HSTS                 hsts.Config         `json:"hsts"`
+		WAF                  waf.Config          `json:"waf"`
 		Rewrite              rewrite.Redirect    `json:"rewrite,omitempty"`
 		Redirect             redirect.Redirect   `json:"redirect,omitempty"`
 		Userlist             Userlist            `json:"userlist,omitempty"`

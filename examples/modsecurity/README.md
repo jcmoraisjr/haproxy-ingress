@@ -75,7 +75,8 @@ $ kubectl run echo \
   --expose
 ```
 
-... and create its ingress resource. No need to use a valid domain, `echo.domain` below is fine:
+... and create its ingress resource. Remember to annotate waf as `modsecurity`.
+No need to use a valid domain, `echo.domain` below is fine:
 
 ```console
 $ kubectl create -f - <<EOF
@@ -84,6 +85,7 @@ kind: Ingress
 metadata:
   annotations:
     ingress.kubernetes.io/ssl-redirect: "false"
+    ingress.kubernetes.io/waf: "modsecurity"
   name: echo
 spec:
   rules:
@@ -110,7 +112,7 @@ Content-Type: text/plain
 Test now with a malicious request:
 
 ```
-curl -i '192.168.100.99?p=../../etc/passwd' -H 'Host: echo.domain'
+curl -i '192.168.100.99?p=/etc/passwd' -H 'Host: echo.domain'
 HTTP/1.0 403 Forbidden
 Cache-Control: no-cache
 Connection: close
@@ -134,10 +136,10 @@ $ kubectl -n ingress-controller logs --tail=10 modsecurity-spoa-5g5h2
 1527464273.942819 [00] [client 127.0.0.1] ModSecurity: Access denied with code 403 (phase 2). Matche
 d phrase "etc/passwd" at ARGS:p. [file "/etc/modsecurity/owasp-modsecurity-crs/rules/REQUEST-930-APP
 LICATION-ATTACK-LFI.conf"] [line "108"] [id "930120"] [rev "4"] [msg "OS File Access Attempt"] [data
- "Matched Data: etc/passwd found within ARGS:p: ../../etc/passwd"] [severity "CRITICAL"] [ver "OWASP
-_CRS/3.0.0"] [maturity "9"] [accuracy "9"] [tag "application-multi"] [tag "language-multi"] [tag "pl
-atform-multi"] [tag "attack-lfi"] [tag "OWASP_CRS/WEB_ATTACK/FILE_INJECTION"] [tag "WASCTC/WASC-33"]
- [tag "OWASP_TOP_10/A4"] [tag "PCI/6.5.4"] [hostname "ingress.localdomain"] [uri "http://echo.domain
-/"] [unique_id ""]
+ "Matched Data: etc/passwd found within ARGS:p: /etc/passwd"] [severity "CRITICAL"] [ver "OWASP_CRS/
+3.0.0"] [maturity "9"] [accuracy "9"] [tag "application-multi"] [tag "language-multi"] [tag "platfor
+m-multi"] [tag "attack-lfi"] [tag "OWASP_CRS/WEB_ATTACK/FILE_INJECTION"] [tag "WASCTC/WASC-33"] [tag
+ "OWASP_TOP_10/A4"] [tag "PCI/6.5.4"] [hostname "ingress.localdomain"] [uri "http://echo.domain/"] [
+unique_id ""]
 ...
 ```

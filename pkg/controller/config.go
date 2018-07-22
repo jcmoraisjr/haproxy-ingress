@@ -26,6 +26,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/dnsresolvers"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/waf"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/defaults"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
@@ -289,6 +290,7 @@ func (cfg *haConfig) createHAProxyServers() {
 			SSLRedirect:        sslRedirect,
 			HSTS:               serverHSTS(server),
 			CORS:               serverCORS(server),
+			WAF:                serverWAF(server),
 			HasRateLimit:       serverHasRateLimit(server),
 			CertificateAuth:    server.CertificateAuth,
 			Alias:              server.Alias,
@@ -347,6 +349,7 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 			Backend:        location.Backend,
 			CORS:           location.CorsConfig,
 			HSTS:           location.HSTS,
+			WAF:            location.WAF,
 			Rewrite:        location.Rewrite,
 			Redirect:       location.Redirect,
 			SSLRedirect:    location.Rewrite.SSLRedirect && cfg.allowRedirect(location.Path),
@@ -538,6 +541,19 @@ func serverCORS(server *ingress.Server) *cors.CorsConfig {
 		}
 	}
 	return cors
+}
+
+func serverWAF(server *ingress.Server) *waf.Config {
+	var waf *waf.Config
+	waf = nil
+	for _, location := range server.Locations {
+		if waf == nil {
+			waf = &location.WAF
+		} else if !location.WAF.Equal(waf) {
+			return nil
+		}
+	}
+	return waf
 }
 
 func serverHasRateLimit(server *ingress.Server) bool {

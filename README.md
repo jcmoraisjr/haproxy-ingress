@@ -90,6 +90,7 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/rewrite-target`](#rewrite-target)|path string|-|
 ||[`ingress.kubernetes.io/server-alias`](#server-alias)|domain name or regex|-|
 |`[1]`|[`ingress.kubernetes.io/use-resolver`](#dns-service-discovery)|resolver name]|[doc](/examples/dns-service-discovery)|
+|`[1]`|[`ingress.kubernetes.io/waf`](#waf)|"modsecurity"|[doc](/examples/modsecurity)|
 
 ### Affinity
 
@@ -228,6 +229,15 @@ The following table shows some examples:
 |/abc/|/abc|/|**404**|
 |/abc/|/abc/|/|/|
 |/abc/|/abc/x|/|/x|
+
+### WAF
+
+Defines which web application firewall (WAF) implementation should be used
+to validate requests. Currently the only supported value is `modsecurity`.
+See also [modsecurity-endpoints](#modsecurity-endpoints) configmap option.
+
+This annotation has no effect if the target web application firewall isn't
+configured.
 
 ## ConfigMap
 
@@ -500,7 +510,15 @@ http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.2-maxconn
 Configure a comma-separated list of `IP:port` of HAProxy agents (SPOA) for ModSecurity.
 The default configuration expects the `contrib/modsecurity` implementation from HAProxy source code.
 
-See also the [example](/examples/modsecurity) page.
+Currently all http requests will be parsed by the ModSecurity agent, even if the ingress resource
+wasn't configured to deny requests based on ModSecurity response.
+
+See also:
+
+* [`ingress.kubernetes.io/waf`](#waf) annotation
+* [example](/examples/modsecurity) page
+
+Reference:
 
 * http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#9.3
 * https://www.haproxy.org/download/1.8/doc/SPOE.txt
