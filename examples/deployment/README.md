@@ -42,27 +42,6 @@ $ kubectl run http-svc \
   --expose
 ```
 
-## Default backend
-
-Deploy a default backend used to serve `404 Not Found` pages:
-
-```console
-$ kubectl run ingress-default-backend \
-  --namespace=ingress-controller \
-  --image=gcr.io/google_containers/defaultbackend:1.0 \
-  --port=8080 \
-  --limits=cpu=10m,memory=20Mi \
-  --expose
-```
-
-Check if the default backend is up and running:
-
-```console
-$ kubectl --namespace=ingress-controller get pod
-NAME                                       READY     STATUS    RESTARTS   AGE
-ingress-default-backend-1110790216-gqr61   1/1       Running   0          10s
-```
-
 ## Configmap
 
 Create a configmap named `haproxy-ingress`:

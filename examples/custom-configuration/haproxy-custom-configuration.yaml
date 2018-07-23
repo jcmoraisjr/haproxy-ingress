@@ -20,6 +20,7 @@ spec:
         - --default-backend-service=$(POD_NAMESPACE)/ingress-default-backend
         - --default-ssl-certificate=$(POD_NAMESPACE)/tls-secret
         - --configmap=$(POD_NAMESPACE)/haproxy-ingress
+        - --healthz-port=10254
         ports:
         - name: http
           containerPort: 80
@@ -27,6 +28,17 @@ spec:
           containerPort: 443
         - name: stat
           containerPort: 1936
+        - name: healthz-haproxy
+          containerPort: 10253
+        - name: healthz-ingress
+          containerPort: 10254
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 10253
+            scheme: HTTP
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
         env:
         - name: POD_NAME
           valueFrom:

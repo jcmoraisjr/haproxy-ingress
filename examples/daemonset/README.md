@@ -23,24 +23,6 @@ $ kubectl create secret tls tls-secret --cert=tls.crt --key=tls.key
 $ rm -v tls.crt tls.key
 ```
 
-## Default Backend
-
-The default backend is a service of handling all url paths and hosts the haproxy controller doesn't understand. Deploy the default-http-backend as follow:
-
-```console
-$ kubectl apply -f ../../deployment/nginx/default-backend.yaml 
-deployment "default-http-backend" configured
-service "default-http-backend" configured
-
-$ kubectl -n kube-system get svc
-NAME                   CLUSTER-IP    EXTERNAL-IP   PORT(S)   AGE
-default-http-backend   192.168.3.4   <none>        80/TCP    30m
-
-$ kubectl -n kube-system get pods
-NAME                                    READY     STATUS    RESTARTS   AGE
-default-http-backend-q5sb6              1/1       Running   0          30m
-```
-
 ## RBAC Authorization
 
 Check the [RBAC sample](/examples/rbac) if deploying on a cluster with
@@ -62,6 +44,5 @@ haproxy-ingress   2         2         2         <none>          45s
 
 $ kubectl -n kube-system get pods
 NAME                                    READY     STATUS    RESTARTS   AGE
-default-http-backend-q5sb6              1/1       Running   0          45m
 haproxy-ingress-km32x                   1/1       Running   0          1m
 ```
