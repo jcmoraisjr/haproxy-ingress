@@ -1033,10 +1033,12 @@ func (ic *GenericController) createServers(data []*extensions.Ingress,
 
 	// Tries to fetch the default Certificate from nginx configuration.
 	// If it does not exists, use the ones generated on Start()
-	defaultCertificate, err := ic.getPemCertificate(ic.cfg.DefaultSSLCertificate)
-	if err == nil {
-		defaultPemFileName = defaultCertificate.PemFileName
-		defaultPemSHA = defaultCertificate.PemSHA
+	if secret, err := ic.listers.Secret.GetByName(ic.cfg.DefaultSSLCertificate); err == nil {
+		defaultCertificate, err := ic.getPemCertificate(secret)
+		if err == nil {
+			defaultPemFileName = defaultCertificate.PemFileName
+			defaultPemSHA = defaultCertificate.PemSHA
+		}
 	}
 
 	// initialize the default server
@@ -1188,7 +1190,7 @@ func (ic *GenericController) createServers(data []*extensions.Ingress,
 
 			cert := bc.(*ingress.SSLCert)
 			if ic.cfg.VerifyHostname {
-				err = cert.Certificate.VerifyHostname(host)
+				err := cert.Certificate.VerifyHostname(host)
 				if err != nil {
 					glog.Warningf("ssl certificate %v does not contain a Subject Alternative Name for host %v. Using the default cert", key, host)
 					continue

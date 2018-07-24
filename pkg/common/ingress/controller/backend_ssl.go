@@ -39,7 +39,13 @@ import (
 func (ic *GenericController) syncSecret(key string) {
 	glog.V(3).Infof("starting syncing of secret %v", key)
 
-	cert, err := ic.getPemCertificate(key)
+	secret, err := ic.listers.Secret.GetByName(key)
+	if err != nil {
+		glog.Warningf("error retrieving secret %v: %v", key, err)
+		return
+	}
+
+	cert, err := ic.getPemCertificate(secret)
 	if err != nil {
 		glog.V(3).Infof("syncing a non ca/crt secret %v", key)
 		ic.syncQueue.Enqueue(&extensions.Ingress{})
@@ -71,12 +77,8 @@ func (ic *GenericController) syncSecret(key string) {
 
 // getPemCertificate receives a secret, and creates a ingress.SSLCert as return.
 // It parses the secret and verifies if it's a keypair, or a 'ca.crt' secret only.
-func (ic *GenericController) getPemCertificate(secretName string) (*ingress.SSLCert, error) {
-	secret, err := ic.listers.Secret.GetByName(secretName)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving secret %v: %v", secretName, err)
-	}
-
+func (ic *GenericController) getPemCertificate(secret *apiv1.Secret) (*ingress.SSLCert, error) {
+	secretName := fmt.Sprintf("%v/%v", secret.Namespace, secret.Name)
 	cert, okcert := secret.Data[apiv1.TLSCertKey]
 	key, okkey := secret.Data[apiv1.TLSPrivateKeyKey]
 	ca := secret.Data["ca.crt"]
@@ -85,6 +87,7 @@ func (ic *GenericController) getPemCertificate(secretName string) (*ingress.SSLC
 	nsSecName := strings.Replace(secretName, "/", "-", -1)
 
 	var s *ingress.SSLCert
+	var err error
 	if okcert && okkey {
 		if cert == nil {
 			return nil, fmt.Errorf("secret %v has no 'tls.crt'", secretName)
