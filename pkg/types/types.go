@@ -83,7 +83,9 @@ type (
 		UseProxyProtocol       bool   `json:"use-proxy-protocol"`
 		StatsProxyProtocol     bool   `json:"stats-proxy-protocol"`
 		UseHostOnHTTPS         bool   `json:"use-host-on-https"`
+		HTTPPort               int    `json:"http-port"`
 		HTTPLogFormat          string `json:"http-log-format"`
+		HTTPSPort              int    `json:"https-port"`
 		HTTPSLogFormat         string `json:"https-log-format"`
 		TCPLogFormat           string `json:"tcp-log-format"`
 		DrainSupport           bool   `json:"drain-support"`
@@ -170,7 +172,7 @@ type (
 		// resolver name used for this Backend definition
 		UseResolver string
 		// total slots for backend
-		TotalSlots       int
+		TotalSlots int
 	}
 	// HAProxyBackendSlot combines BackendServerName with an ingress.Endpoint
 	HAProxyBackendSlot struct {

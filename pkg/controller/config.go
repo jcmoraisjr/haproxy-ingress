@@ -130,11 +130,13 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		UseProxyProtocol:       false,
 		StatsProxyProtocol:     false,
 		UseHostOnHTTPS:         false,
+		HTTPPort:               80,
 		HTTPLogFormat:          "",
+		HTTPSPort:              443,
 		HTTPSLogFormat:         "",
 		TCPLogFormat:           "",
 		DrainSupport:           false,
-        DNSResolvers:		    "",
+		DNSResolvers:           "",
 		DNSTimeoutRetry:        "1s",
 		DNSHoldObsolete:        "0s",
 		DNSHoldValid:           "1s",
@@ -204,8 +206,8 @@ func (cfg *haConfig) createDNSResolvers() {
 			}
 		}
 		resolvers[resolverData[0]] = dnsresolvers.DNSResolver{
-			Name:                resolverData[0],
-			Nameservers:         nameservers,
+			Name:        resolverData[0],
+			Nameservers: nameservers,
 		}
 	}
 

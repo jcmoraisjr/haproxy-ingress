@@ -256,20 +256,21 @@ The following parameters are supported:
 
 ||Name|Type|Default|
 |---|---|---|---|
-||[`balance-algorithm`](#balance-algorithm)|algorithm name|`roundrobin`|
 ||[`backend-check-interval`](#backend-check-interval)|time with suffix|`2s`|
 ||[`backend-server-slots-increment`](#dynamic-scaling)|number of slots|`32`|
+||[`balance-algorithm`](#balance-algorithm)|algorithm name|`roundrobin`|
 |`[0]`|[`bind-ip-addr-healthz`](#bind-ip-addr)|IP address|`*`|
 |`[0]`|[`bind-ip-addr-http`](#bind-ip-addr)|IP address|`*`|
 |`[0]`|[`bind-ip-addr-stats`](#bind-ip-addr)|IP address|`*`|
 |`[0]`|[`bind-ip-addr-tcp`](#bind-ip-addr)|IP address|`*`|
 |`[0]`|[`cookie-key`](#cookie-key)|secret key|`Ingress`|
-|`[1]`|[`dns-resolvers`](#dns-resolvers)|multiline resolver=ip[:port]|``|
-|`[1]`|[`dns-timeout-retry`](#dns-resolvers)|time with suffix|`1s`|
-|`[1]`|[`dns-hold-obsolete`](#dns-resolvers)|time with suffix|`0s`|
-|`[1]`|[`dns-hold-valid`](#dns-resolvers)|time with suffix|`1s`|
 |`[1]`|[`dns-accepted-payload-size`](#dns-resolvers)|number|`8192`|
 |`[1]`|[`dns-cluster-domain`](#dns-resolvers)|cluster name|`cluster.local`|
+|`[1]`|[`dns-hold-obsolete`](#dns-resolvers)|time with suffix|`0s`|
+|`[1]`|[`dns-hold-valid`](#dns-resolvers)|time with suffix|`1s`|
+|`[1]`|[`dns-resolvers`](#dns-resolvers)|multiline resolver=ip[:port]|``|
+|`[1]`|[`dns-timeout-retry`](#dns-resolvers)|time with suffix|`1s`|
+|`[0]`|[`drain-support`](#drain-support)|[true\|false]|`false`|
 ||[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`false`|
 ||[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
 ||[`healthz-port`](#healthz-port)|port number|`10253`|
@@ -278,7 +279,9 @@ The following parameters are supported:
 ||[`hsts-max-age`](#hsts)|number of seconds|`15768000`|
 ||[`hsts-preload`](#hsts)|[true\|false]|`false`|
 ||[`http-log-format`](#log-format)|http log format|HAProxy default log format|
+|`[1]`|[`http-port`](#bind-ip-addr)|port number|`80`|
 ||[`https-log-format`](#log-format)|https(tcp) log format\|`default`|do not log|
+|`[1]`|[`https-port`](#bind-ip-addr)|port number|`443`|
 ||[`https-to-http-port`](#https-to-http-port)|port number|0 (do not listen)|
 ||[`load-server-state`](#load-server-state) (experimental)|[true\|false]|`false`|
 ||[`max-connections`](#max-connections)|number|`2000`|
@@ -295,19 +298,18 @@ The following parameters are supported:
 ||[`stats-proxy-protocol`](#stats)|[true\|false]|`false`|
 ||[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
 ||[`tcp-log-format`](#log-format)|tcp log format|HAProxy default log format|
-||[`timeout-client`](#timeout)|time with suffix|`50s`|
 ||[`timeout-client-fin`](#timeout)|time with suffix|`50s`|
+||[`timeout-client`](#timeout)|time with suffix|`50s`|
 ||[`timeout-connect`](#timeout)|time with suffix|`5s`|
 ||[`timeout-http-request`](#timeout)|time with suffix|`5s`|
 ||[`timeout-keep-alive`](#timeout)|time with suffix|`1m`|
 ||[`timeout-queue`](#timeout)|time with suffix|`5s`|
-||[`timeout-server`](#timeout)|time with suffix|`50s`|
 ||[`timeout-server-fin`](#timeout)|time with suffix|`50s`|
+||[`timeout-server`](#timeout)|time with suffix|`50s`|
 |`[0]`|[`timeout-stop`](#timeout)|time with suffix|no timeout|
 ||[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
 ||[`use-host-on-https`](#use-host-on-https)|[true\|false]|`false`|
 ||[`use-proxy-protocol`](#use-proxy-protocol)|[true\|false]|`false`|
-|`[0]`|[`drain-support`](#drain-support)|[true\|false]|`false`|
 
 ### balance-algorithm
 
@@ -352,7 +354,7 @@ http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#dynamic-cookie-key
 ### dns-resolvers
 Define a list of HAProxy DNS resolvers
 
-Multiline list of DNS resolvers in `resolvername=ip:port` format 
+Multiline list of DNS resolvers in `resolvername=ip:port` format
 
 https://cbonte.github.io/haproxy-dconv/1.8/configuration.html#resolvers%20(The%20resolvers%20section)
 
