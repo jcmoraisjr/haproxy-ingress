@@ -25,21 +25,7 @@ $ rm -v tls.crt tls.key
 
 ## Default Backend
 
-The default backend is a service of handling all url paths and hosts the haproxy controller doesn't understand. Deploy the default-http-backend as follow:
-
-```console
-$ kubectl create -f default-backend.yaml 
-deployment "default-http-backend" created
-service "default-http-backend" created
-
-$ kubectl get svc
-NAME                   CLUSTER-IP    EXTERNAL-IP   PORT(S)   AGE
-default-http-backend   192.168.3.4   <none>        80/TCP    30m
-
-$ kubectl get pods
-NAME                                    READY     STATUS    RESTARTS   AGE
-default-http-backend-q5sb6              1/1       Running   0          30m
-```
+The default backend is a service of handling all url paths and hosts the haproxy controller doesn't understand. Ingress controller healthz port used for that.
 
 ## RBAC Authorization
 
