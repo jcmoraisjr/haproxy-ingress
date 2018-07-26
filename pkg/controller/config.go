@@ -67,6 +67,7 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 	}
 	cfg.createDNSResolvers()
 	return &types.ControllerConfig{
+		ConfigFrontend:      cfg.configFrontend(),
 		Userlists:           cfg.userlists,
 		Servers:             cfg.ingress.Servers,
 		Backends:            cfg.ingress.Backends,
@@ -117,6 +118,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		BindIPAddrHealthz:      "*",
 		Syslog:                 "",
 		BackendCheckInterval:   "2s",
+		ConfigFrontend:         "",
 		Forwardfor:             "add",
 		MaxConn:                2000,
 		NoTLSRedirect:          "/.well-known/acme-challenge",
@@ -238,6 +240,14 @@ func (cfg *haConfig) statsSSLCert() *ingress.SSLCert {
 		return &ingress.SSLCert{}
 	}
 	return sslCert
+}
+
+func (cfg *haConfig) configFrontend() []string {
+	config := cfg.haproxyConfig.ConfigFrontend
+	if config == "" {
+		return []string{}
+	}
+	return strings.Split(strings.TrimRight(config, "\n"), "\n")
 }
 
 func (cfg *haConfig) createHAProxyServers() {

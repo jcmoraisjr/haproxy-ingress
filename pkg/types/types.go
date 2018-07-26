@@ -33,6 +33,7 @@ type (
 	// ControllerConfig has ingress generated and some transformations
 	// compatible with HAProxy
 	ControllerConfig struct {
+		ConfigFrontend      []string
 		Userlists           map[string]Userlist
 		Servers             []*ingress.Server
 		Backends            []*ingress.Backend
@@ -70,6 +71,7 @@ type (
 		BindIPAddrHealthz      string `json:"bind-ip-addr-healthz"`
 		Syslog                 string `json:"syslog-endpoint"`
 		BackendCheckInterval   string `json:"backend-check-interval"`
+		ConfigFrontend         string `json:"config-frontend"`
 		Forwardfor             string `json:"forwardfor"`
 		MaxConn                int    `json:"max-connections"`
 		NoTLSRedirect          string `json:"no-tls-redirect-locations"`
