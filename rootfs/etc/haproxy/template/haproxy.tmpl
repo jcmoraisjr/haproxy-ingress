@@ -96,7 +96,7 @@ listen tcp-{{ $tcp.Port }}
 {{- end }}
 {{- range $endpoint := $tcp.Endpoints }}
 {{- $target := (print $endpoint.Address ":" $endpoint.Port) }}
-    server {{ $target }} {{ $target }} check port {{ $endpoint.Port }} inter {{ $cfg.BackendCheckInterval }}{{ if eq $outProxyProtVersion "v1" }} send-proxy{{ else if eq $outProxyProtVersion "v2" }} send-proxy-v2{{ end }}
+    server {{ $target }} {{ $target }}{{ if ne $cfg.BackendCheckInterval "" }} check port {{ $endpoint.Port }} inter {{ $cfg.BackendCheckInterval }}{{ end }}{{ if eq $outProxyProtVersion "v1" }} send-proxy{{ else if eq $outProxyProtVersion "v2" }} send-proxy-v2{{ end }}
 {{- end }}
 {{- end }}{{/* range TCP services */}}
 {{- end }}{{/* if has TCP services */}}
@@ -125,13 +125,13 @@ backend {{ $backend.Name }}
 {{- end }}
 {{- $BackendSlots := index $ing.BackendSlots $backend.Name }}
 {{- if $BackendSlots.UseResolver }}
-    server-template server-dns {{ $BackendSlots.TotalSlots }} {{$backend.Service.Name }}.{{ $backend.Service.Namespace }}.svc.{{- $cfg.DNSClusterDomain -}}:{{ $backend.Port }} resolvers {{ $BackendSlots.UseResolver }} inter {{ $cfg.BackendCheckInterval }} check resolve-prefer ipv4 init-addr none
+    server-template server-dns {{ $BackendSlots.TotalSlots }} {{$backend.Service.Name }}.{{ $backend.Service.Namespace }}.svc.{{- $cfg.DNSClusterDomain -}}:{{ $backend.Port }} resolvers {{ $BackendSlots.UseResolver }}{{ if ne $cfg.BackendCheckInterval "" }} check inter {{ $cfg.BackendCheckInterval }}{{ end }} resolve-prefer ipv4 init-addr none
 {{- else }}
 {{- range $target, $slot := $BackendSlots.FullSlots }}
-    server {{ $slot.BackendServerName }} {{ $target }} {{ if gt $backend.Connection.MaxConnServer 0 }}maxconn {{ $backend.Connection.MaxConnServer }} {{ end }}{{ if gt $backend.Connection.MaxQueueServer 0 }}maxqueue {{ $backend.Connection.MaxQueueServer }} {{ end }}{{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}{{ if ge $slot.BackendEndpoint.Weight 0 }}weight {{ $slot.BackendEndpoint.Weight }} {{ end }}check port {{ $slot.BackendEndpoint.Port }} inter {{ $cfg.BackendCheckInterval }}
+    server {{ $slot.BackendServerName }} {{ $target }} {{ if gt $backend.Connection.MaxConnServer 0 }}maxconn {{ $backend.Connection.MaxConnServer }} {{ end }}{{ if gt $backend.Connection.MaxQueueServer 0 }}maxqueue {{ $backend.Connection.MaxQueueServer }} {{ end }}{{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}{{ if ge $slot.BackendEndpoint.Weight 0 }}weight {{ $slot.BackendEndpoint.Weight }} {{ end }}{{ if ne $cfg.BackendCheckInterval "" }}check inter {{ $cfg.BackendCheckInterval }}{{ end }}
 {{- end }}
 {{- range $empty := $BackendSlots.EmptySlots }}
-    server {{ $empty }} 127.0.0.1:81 {{ if gt $backend.Connection.MaxConnServer 0 }}maxconn {{ $backend.Connection.MaxConnServer }} {{ end }}{{ if gt $backend.Connection.MaxQueueServer 0 }}maxqueue {{ $backend.Connection.MaxQueueServer }} {{ end }}{{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}check disabled inter {{ $cfg.BackendCheckInterval }}
+    server {{ $empty }} 127.0.0.1:81 {{ if gt $backend.Connection.MaxConnServer 0 }}maxconn {{ $backend.Connection.MaxConnServer }} {{ end }}{{ if gt $backend.Connection.MaxQueueServer 0 }}maxqueue {{ $backend.Connection.MaxQueueServer }} {{ end }}{{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}{{ if ne $cfg.BackendCheckInterval "" }}check inter {{ $cfg.BackendCheckInterval }} {{ end }}disabled
 {{- end }}
 {{- end }}{{/* if $BackendSlots.UseResolver */}}
 {{- end }}{{/* range Backends */}}
