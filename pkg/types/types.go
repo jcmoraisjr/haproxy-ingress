@@ -42,6 +42,7 @@ type (
 		UDPEndpoints        []ingress.L4Service
 		PassthroughBackends []*ingress.SSLPassthroughBackend
 		HAPassthrough       []*HAProxyPassthrough
+		StatsSSLCert        *ingress.SSLCert
 		Cfg                 *HAProxyConfig
 		BackendSlots        map[string]*HAProxyBackendSlots
 		DNSResolvers        map[string]dnsresolvers.DNSResolver
@@ -77,6 +78,7 @@ type (
 		HTTPStoHTTPPort        int    `json:"https-to-http-port"`
 		StatsPort              int    `json:"stats-port"`
 		StatsAuth              string `json:"stats-auth"`
+		StatsSSLCert           string `json:"stats-ssl-cert"`
 		CookieKey              string `json:"cookie-key"`
 		DynamicScaling         bool   `json:"dynamic-scaling"`
 		StatsSocket            string

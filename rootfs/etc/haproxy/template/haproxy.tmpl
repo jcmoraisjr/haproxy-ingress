@@ -528,7 +528,11 @@ listen error503noendpoints
 ###### Stats page
 ######
 listen stats
-    bind {{ $cfg.BindIPAddrStats }}:{{ $cfg.StatsPort }}{{ if $cfg.StatsProxyProtocol }} accept-proxy{{ end }}
+{{- $ssl := $ing.StatsSSLCert }}
+{{- if ne $ssl.PemSHA "" }}
+    # CRT PEM checksum: {{ $ssl.PemSHA }}
+{{- end }}
+    bind {{ $cfg.BindIPAddrStats }}:{{ $cfg.StatsPort }}{{ if ne $ssl.PemFileName "" }} ssl crt {{ $ssl.PemFileName }}{{ end }}{{ if $cfg.StatsProxyProtocol }} accept-proxy{{ end }}
     mode http
     stats enable
     stats realm HAProxy\ Statistics

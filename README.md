@@ -47,6 +47,7 @@ configmap with `haproxy.tmpl` key mounting into `/etc/haproxy/template` will wor
 The following annotations are supported:
 
 * `[0]` only in `canary` tag
+* `[1]` only in `snapshot` tag
 
 ||Name|Data|Usage|
 |---|---|---|:---:|
@@ -253,6 +254,7 @@ A ConfigMap can be created with `kubectl create configmap`.
 The following parameters are supported:
 
 * `[0]` only in `canary` tag
+* `[1]` only in `snapshot` tag
 
 ||Name|Type|Default|
 |---|---|---|---|
@@ -296,6 +298,7 @@ The following parameters are supported:
 ||[`stats-auth`](#stats)|user:passwd|no auth|
 ||[`stats-port`](#stats)|port number|`1936`|
 ||[`stats-proxy-protocol`](#stats)|[true\|false]|`false`|
+|`[1]`|[`stats-ssl-cert`](#stats)|namespace/secret name|no ssl/plain http|
 ||[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
 ||[`tcp-log-format`](#log-format)|tcp log format|HAProxy default log format|
 ||[`timeout-client-fin`](#timeout)|time with suffix|`50s`|
@@ -545,11 +548,12 @@ to https if TLS is [configured](https://github.com/kubernetes/ingress/tree/maste
 
 ### stats
 
-Configurations of the HAProxy status page:
+Configurations of the HAProxy statistics page:
 
 * `stats-auth`: Enable basic authentication with clear-text password - `<user>:<passwd>`
 * `stats-port`: Change the port HAProxy should listen to requests
 * `stats-proxy-protocol`: Define if the stats endpoint should enforce the PROXY protocol
+* `stats-ssl-cert`: Optional namespace/secret-name of `tls.crt` and `tls.key` pair used to enable SSL on stats page. Plain http will be used if not provided, the secret wasn't found or the secret doesn't have a crt/key pair.
 
 ### syslog-endpoint
 

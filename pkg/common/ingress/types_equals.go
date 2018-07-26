@@ -513,3 +513,11 @@ func (l4b1 *ProxyProtocol) Equal(l4b2 *ProxyProtocol) bool {
 	}
 	return true
 }
+
+// Equal tests for equality between two SSLCert types
+func (c1 *SSLCert) Equal(c2 *SSLCert) bool {
+	if c1.PemSHA != c2.PemSHA {
+		return false
+	}
+	return true
+}
