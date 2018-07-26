@@ -412,6 +412,7 @@ type L4Backend struct {
 	Protocol  apiv1.Protocol     `json:"protocol"`
 	// +optional
 	ProxyProtocol ProxyProtocol `json:"proxyProtocol"`
+	SSLCert       SSLCert       `json:"sslCert"`
 }
 
 // ProxyProtocol describes if the proxy protocol should be configured

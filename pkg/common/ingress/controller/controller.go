@@ -362,12 +362,17 @@ func (ic *GenericController) getStreamServices(configmapName string, proto apiv1
 			continue
 		}
 
-		nsSvcPort := utils.SplitMin(v, ":", 4)
+		// 1: namespace/name of the target service
+		// 2: port number
+		// 3: "PROXY" means accept proxy protocol
+		// 4: "PROXY[-V1|V2]" means send proxy protocol, defaults to V2
+		// 5: namespace/name of crt/key secret if should ssl-offload
+		nsSvcPort := utils.SplitMin(v, ":", 5)
 
 		nsName := nsSvcPort[0]
 		svcPort := nsSvcPort[1]
 		if nsName == "" || svcPort == "" {
-			glog.Warningf("invalid format (namespace/name:port:[PROXY]:[PROXY[-V1|-V2]]) '%v'", v)
+			glog.Warningf("invalid format (namespace/service-name:port:[PROXY]:[PROXY[-V1|-V2]]:namespace/secret-name) '%v'", v)
 			continue
 		}
 
@@ -376,6 +381,17 @@ func (ic *GenericController) getStreamServices(configmapName string, proto apiv1
 		if proto == apiv1.ProtocolTCP {
 			svcProxyProtocol.Decode = strings.ToUpper(nsSvcPort[2]) == "PROXY"
 			svcProxyProtocol.EncodeVersion = proxyProtocolParamToVersion(nsSvcPort[3])
+		} else if nsSvcPort[2] != "" || nsSvcPort[3] != "" {
+			glog.Warningf("ignoring PROXY protocol on non TCP service %v:%v", nsName, svcPort)
+		}
+
+		crtSecret := nsSvcPort[4]
+		if crtSecret != "" {
+			_, _, err = k8s.ParseNameNS(crtSecret)
+			if err != nil {
+				glog.Warningf("%v", err)
+				continue
+			}
 		}
 
 		svcNs, svcName, err := k8s.ParseNameNS(nsName)
@@ -396,6 +412,15 @@ func (ic *GenericController) getStreamServices(configmapName string, proto apiv1
 		}
 
 		svc := svcObj.(*apiv1.Service)
+
+		crt := &ingress.SSLCert{}
+		if crtSecret != "" {
+			crt, err = ic.GetCertificate(crtSecret)
+			if err != nil {
+				glog.Errorf("error reading crt/key of TCP service %v/%v: %v", nsName, svcPort, err)
+				continue
+			}
+		}
 
 		var endps []ingress.Endpoint
 		targetPort, err := strconv.Atoi(svcPort)
@@ -437,6 +462,7 @@ func (ic *GenericController) getStreamServices(configmapName string, proto apiv1
 				Port:          intstr.FromString(svcPort),
 				Protocol:      proto,
 				ProxyProtocol: svcProxyProtocol,
+				SSLCert:       *crt,
 			},
 			Endpoints: endps,
 		})

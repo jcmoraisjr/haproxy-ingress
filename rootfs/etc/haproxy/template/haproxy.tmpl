@@ -85,7 +85,11 @@ userlist {{ $userlist.ListName }}
 listen tcp-{{ $tcp.Port }}
 {{- $inProxyProt := $tcp.Backend.ProxyProtocol.Decode }}
 {{- $outProxyProtVersion := $tcp.Backend.ProxyProtocol.EncodeVersion }}
-    bind {{ $cfg.BindIPAddrTCP }}:{{ $tcp.Port }}{{ if $inProxyProt }} accept-proxy{{ end }}
+{{- $ssl := $tcp.Backend.SSLCert }}
+{{- if ne $ssl.PemSHA "" }}
+    # CRT PEM checksum: {{ $ssl.PemSHA }}
+{{- end }}
+    bind {{ $cfg.BindIPAddrTCP }}:{{ $tcp.Port }}{{ if ne $ssl.PemSHA "" }} ssl crt {{ $ssl.PemFileName }}{{ end }}{{ if $inProxyProt }} accept-proxy{{ end }}
     mode tcp
 {{- if ne $cfg.Syslog "" }}
 {{- if eq $cfg.TCPLogFormat "" }}
