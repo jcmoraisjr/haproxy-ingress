@@ -40,6 +40,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/ratelimit"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/redirect"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/rewrite"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/waf"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/defaults"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/resolver"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/store"
@@ -369,6 +370,8 @@ type Location struct {
 	// https://github.com/vozlt/nginx-module-vts#vhost_traffic_status_filter_by_set_key
 	// +optional
 	VtsFilterKey string `json:"vtsFilterKey,omitempty"`
+	// WAF has per location web application firewall configs
+	WAF waf.Config `json:"waf"`
 	// ConfigurationSnippet contains additional configuration for the backend
 	// to be considered in the configuration of the location
 	ConfigurationSnippet snippet.Config `json:"configurationSnippet"`

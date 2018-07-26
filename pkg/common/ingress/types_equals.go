@@ -393,6 +393,9 @@ func (l1 *Location) Equal(l2 *Location) bool {
 	if l1.UsePortInRedirects != l2.UsePortInRedirects {
 		return false
 	}
+	if !l1.WAF.Equal(&l2.WAF) {
+		return false
+	}
 	if !l1.ConfigurationSnippet.Equal(&l2.ConfigurationSnippet) {
 		return false
 	}

@@ -299,6 +299,24 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if ne $cfg.ModSecurity "" }}
+    filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
+{{- range $server := $servers }}
+{{- if $server.WAF }}
+{{- if eq $server.WAF.Mode "modsecurity" }}
+    http-request deny if {{ $server.ACLLabel }} { var(txn.modsec.code) -m int gt 0 }
+{{- end }}
+{{- else }}{{/* this range only makes sense if $server.WAF is nil */}}
+{{- range $location := $server.Locations }}
+{{- if eq $location.WAF.Mode "modsecurity" }}
+    http-request deny if {{ $server.ACLLabel }}{{ $location.HAMatchPath }} { var(txn.modsec.code) -m int gt 0 }
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
 {{- range $server := $servers }}
 {{- if and $server.IsCACert (not $isCACert) }}
     http-request deny if from-https {{ $server.ACLLabel }}
@@ -512,6 +530,20 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
     http-response set-header Access-Control-Allow-Headers     "{{ $cors.CorsAllowHeaders }}" if {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
     # end CORS - {{ $server.Hostname }}{{ if $location }}{{ $location.Path }}{{ end }}
 {{- end }}{{/* define "CORS" */}}
+
+{{- if ne $cfg.ModSecurity "" }}
+
+######
+###### ModSecurity agent
+######
+backend spoe-modsecurity
+    mode tcp
+    timeout connect 5s
+    timeout server  5s
+{{- range $i, $endpoint := split $cfg.ModSecurity "," }}
+    server modsec-spoa{{ $i }} {{ $endpoint }}
+{{- end }}
+{{- end }}
 
 ######
 ###### Error pages
