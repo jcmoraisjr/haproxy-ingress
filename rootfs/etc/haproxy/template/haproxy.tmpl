@@ -301,7 +301,7 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- if and $hasBalance $hasHTTPStoHTTP (not $reuseHTTPPort) }}
     acl from-https dst_port eq {{ $cfg.HTTPStoHTTPPort }}
 {{- end }}
-{{- if $hasSSL }}
+{{- if and $hasSSL $hasBalance }}
     acl from-https ssl_fc
     acl ssl-offload ssl_fc
 {{- end }}
@@ -343,7 +343,7 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
     http-request set-var(txn.hdr_proto) hdr(x-forwarded-proto)
 {{- end }}
 {{- if not $reuseHTTPPort }}
-    http-request set-header X-Forwarded-Proto https if from-https
+    http-request set-header X-Forwarded-Proto https{{ if $hasBalance }} if from-https{{ end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -389,19 +389,19 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- /*------------------------------------*/}}
 {{- if $hasSSL }}
 {{- if $isCACert }}
-    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-SHA1  %{+Q}[ssl_c_sha1,hex]   if ssl-offload
-    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-DN    %{+Q}[ssl_c_s_dn]       if ssl-offload
-    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-CN    %{+Q}[ssl_c_s_dn(cn)]   if ssl-offload
+    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-SHA1  %{+Q}[ssl_c_sha1,hex]{{ if $hasBalance}}   if ssl-offload{{ end }}
+    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-DN    %{+Q}[ssl_c_s_dn]{{ if $hasBalance}}       if ssl-offload{{ end }}
+    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-CN    %{+Q}[ssl_c_s_dn(cn)]{{ if $hasBalance}}   if ssl-offload{{ end }}
 {{- if $singleserver.CertificateAuth.CertHeader }}
-    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-Cert  %{+Q}[ssl_c_der,base64] if ssl-offload
+    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-Cert  %{+Q}[ssl_c_der,base64]{{ if $hasBalance}} if ssl-offload{{ end }}
 {{- else }}
-    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-Cert  if ssl-offload
+    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-Cert{{ if $hasBalance}}  if ssl-offload{{ end }}
 {{- end }}
 {{- else }}
-    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-Cert  if ssl-offload
-    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-SHA1  if ssl-offload
-    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-DN    if ssl-offload
-    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-CN    if ssl-offload
+    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-Cert{{ if $hasBalance}}  if ssl-offload{{ end }}
+    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-SHA1{{ if $hasBalance}}  if ssl-offload{{ end }}
+    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-DN{{ if $hasBalance}}    if ssl-offload{{ end }}
+    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-CN{{ if $hasBalance}}    if ssl-offload{{ end }}
 {{- end }}
 {{- end }}
 
@@ -470,10 +470,10 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- if and $hasSSL $isCACert }}
 {{- if eq $singleserver.CertificateAuth.ErrorPage "" }}
     use_backend error495 if { ssl_c_ca_err gt 0 } || { ssl_c_err gt 0 }
-    use_backend error496 if ssl-offload !{ ssl_c_used }
+    use_backend error496 if { ssl_fc } !{ ssl_c_used }
 {{- else }}
     redirect location {{ $singleserver.CertificateAuth.ErrorPage }} if { ssl_c_ca_err gt 0 } || { ssl_c_err gt 0 }
-    redirect location {{ $singleserver.CertificateAuth.ErrorPage }} if ssl-offload !{ ssl_c_used }
+    redirect location {{ $singleserver.CertificateAuth.ErrorPage }} if { ssl_fc } !{ ssl_c_used }
 {{- end }}
 {{- end }}
 
