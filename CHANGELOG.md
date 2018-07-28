@@ -1,5 +1,42 @@
 # CHANGELOG
 
+## Current snapshot tag (v0.7)
+
+Fixes and improvements since `v0.6`
+
+* Add SSL config on TCP services [#192](https://github.com/jcmoraisjr/haproxy-ingress/pull/192) - [doc](/README.md#tcp-services-configmap)
+* Disable health check of backends [#195](https://github.com/jcmoraisjr/haproxy-ingress/pull/195)
+* Fix endless loop if SSL/TLS secret does not exist [#191](https://github.com/jcmoraisjr/haproxy-ingress/pull/191)
+* DNS discovery of backend servers [#154](https://github.com/jcmoraisjr/haproxy-ingress/pull/154) - [doc](/README.md#dns-resolvers)
+  * Annotations:
+    * `ingress.kubernetes.io/use-resolver`
+  * Configmap options:
+    * `dns-accepted-payload-size`
+    * `dns-cluster-domain`
+    * `dns-hold-obsolete`
+    * `dns-hold-valid`
+    * `dns-resolvers`
+    * `dns-timeout-retry`
+* ModSecurity web application firewall [#166](https://github.com/jcmoraisjr/haproxy-ingress/pull/166)
+  * Annotations:
+    * `ingress.kubernetes.io/waf` - [doc](/README.md#waf)
+  * Configmap options:
+    * `modsecurity-endpoints` - [doc](/README.md#modsecurity-endpoints)
+* Multi process and multi thread support [#172](https://github.com/jcmoraisjr/haproxy-ingress/pull/172)
+  * Configmap options:
+    * `nbproc-ssl` - [doc](/README.md#nbproc)
+    * `nbthread` - [doc](/README.md#nbthread)
+* Add frontend configuration snippet [#194](https://github.com/jcmoraisjr/haproxy-ingress/pull/194) - [doc](/README.md#configuration-snippet)
+  * Configmap options:
+    * `config-frontend`
+* Add SSL config on stats endpoint [#193](https://github.com/jcmoraisjr/haproxy-ingress/pull/193) - [doc](/README.md#stats)
+  * Configmap options:
+    * `stats-ssl-cert`
+* Add custom http and https port numbers [#190](https://github.com/jcmoraisjr/haproxy-ingress/pull/190)
+  * Configmap options:
+    * `http-port`
+    * `https-port`
+
 ## v0.6-beta.2
 
 Fixes and improvements since `v0.6-beta.1`
@@ -9,7 +46,7 @@ Fixes and improvements since `v0.6-beta.1`
 
 ## v0.6-beta.1
 
-Breaking backward compatibility from `v0.5`:
+Breaking backward compatibility from `v0.5`
 
 * Usage of header `Host` to match https requests instead of using just sni extension, deprecating `use-host-on-https` - [#130](https://github.com/jcmoraisjr/haproxy-ingress/pull/130)
 * Multibinder is deprecated, use `reusesocket` reload strategy instead - [#139](https://github.com/jcmoraisjr/haproxy-ingress/pull/139)
@@ -94,7 +131,7 @@ Fixes and improvements since `v0.5-beta.1`
 
 ## v0.5-beta.1
 
-Breaking backward compatibility from `v0.4`:
+Breaking backward compatibility from `v0.4`
 
 * TLS certificate validation using only SAN extension - common Name (CN) isn't used anymore. Add `--verify-hostname=false` command-line option to bypass hostname verification
 * `ingress.kubernetes.io/auth-tls-secret` annotation cannot reference another namespace without `--allow-cross-namespace` command-line option
