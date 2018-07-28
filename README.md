@@ -283,6 +283,8 @@ The following parameters are supported:
 ||[`load-server-state`](#load-server-state) (experimental)|[true\|false]|`false`|
 ||[`max-connections`](#max-connections)|number|`2000`|
 |`[1]`|[`modsecurity-endpoints`](#modsecurity-endpoints)|comma-separated list of IP:port (spoa)|no waf config|
+|`[1]`|[`nbproc-ssl`](#nbproc)|number of process|`0`|
+|`[1]`|[`nbthread`](#nbthread)|number of threads|`1`|
 |`[0]`|[`no-tls-redirect-locations`](#no-tls-redirect-locations)|comma-separated list of url|`/.well-known/acme-challenge`|
 ||[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
 ||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/v0.4/pkg/controller/config.go#L35)|
@@ -524,6 +526,48 @@ Reference:
 * https://www.haproxy.org/download/1.8/doc/SPOE.txt
 * https://github.com/jcmoraisjr/modsecurity-spoa
 
+### nbproc
+
+Define the number of dedicated HAProxy process to the SSL/TLS handshake and
+offloading. The default value is 0 (zero) which means HAProxy should process all
+the SSL/TLS offloading, as well as the header inspection and load balancing
+within the same HAProxy process.
+
+The recommended value depends on how much CPU a single HAProxy process is
+spending. Use 0 (zero) if the amount of processing has low CPU usage. This will
+avoid a more complex topology and an inter-process communication. Use the number
+of cores of a dedicated host minus 1 (one) to distribute the SSL/TLS offloading
+process. Leave one core dedicated to header inspection and load balancing.
+
+If splitting HAProxy into two or more process and the number of threads is one,
+`cpu-map` is used to bind each process on its own CPU core.
+
+See also [nbthread](#nbthread).
+
+* `nbproc-ssl`: number of dedicated process to SSL/TLS offloading
+
+Referece:
+
+* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-nbproc
+* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-bind-process
+* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-cpu-map
+
+### nbthread
+
+Define the number of threads a single HAProxy process should use to all its
+processing. If using with [nbproc](#nbproc), every single HAProxy process will
+share this same configuration.
+
+If using two or more threads on a single HAProxy process, `cpu-map` is used to
+bind each thread on its own CPU core.
+
+Note that multithreaded process is a HAProxy experimental feature!
+
+Reference:
+
+* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-nbthread
+* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-cpu-map
+
 ### no-tls-redirect-locations
 
 Define a comma-separated list of URLs that should be removed from the TLS redirect.
@@ -621,7 +665,7 @@ Define timeout configurations:
 * `timeout-stop`: Maximum time to wait for long lived connections to finish, eg websocket, before hard-stop a HAProxy process due to a reload
 * `timeout-tunnel`: Maximum inactivity time on the client and backend side for tunnels
 
-Docs:
+Reference:
 
 * `timeout-stop` - http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-hard-stop-after
 
