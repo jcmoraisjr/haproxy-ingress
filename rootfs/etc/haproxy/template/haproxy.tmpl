@@ -100,7 +100,7 @@ listen tcp-{{ $tcp.Port }}
 {{- end }}
     bind {{ $cfg.BindIPAddrTCP }}:{{ $tcp.Port }}{{ if ne $ssl.PemSHA "" }} ssl crt {{ $ssl.PemFileName }}{{ end }}{{ if $inProxyProt }} accept-proxy{{ end }}
 {{- if gt $ing.Procs.Nbproc 1 }}
-    bind-process {{ $ing.Procs.BindprocBalance }}
+    bind-process {{ if ne $ssl.PemSHA "" }}{{ $ing.Procs.BindprocSSL }}{{ else }}{{ $ing.Procs.BindprocBalance }}{{ end }}
 {{- end }}
     mode tcp
 {{- if ne $cfg.Syslog "" }}
@@ -283,9 +283,8 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- end }}
     mode http
 
-{{- if $hasBalance }}{{- /* this `if` is closed in the end of this `define "http_front"` */}}
-
 {{- /*------------------------------------*/}}
+{{- if $hasBalance }}
 {{- if ne $cfg.Syslog "" }}
 {{- if eq $cfg.HTTPLogFormat "" }}
     option httplog
@@ -293,23 +292,29 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
     log-format {{ $cfg.HTTPLogFormat }}
 {{- end }}
 {{- end }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $hasHTTPStoHTTP }}
+{{- if or (and $hasBalance $hasHTTPStoHTTP) (not $hasSSL) }}
     acl from-https var(txn.hdr_proto) https
-{{- if not $reuseHTTPPort }}
+{{- end }}
+{{- if and $hasBalance $hasHTTPStoHTTP (not $reuseHTTPPort) }}
     acl from-https dst_port eq {{ $cfg.HTTPStoHTTPPort }}
 {{- end }}
-{{- end }}
+{{- if $hasSSL }}
     acl from-https ssl_fc
     acl ssl-offload ssl_fc
+{{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $hasBalance }}
 {{- range $server := $servers }}
     {{- template "acl" map $cfg $server "var(txn.hdr_host)" true }}
 {{- end }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $hasBalance }}
 {{- if or $isShared $singleserver.HasRateLimit }}
     stick-table type ip size 200k expire 5m store conn_cur,conn_rate(1s)
     tcp-request content track-sc1 src
@@ -323,22 +328,26 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- end }}
 {{- end }}
 {{- end }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $hasBalance }}
 {{- range $snippet := $ing.ConfigFrontend }}
     {{ $snippet }}
 {{- end }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $hasBalance }}
     http-request set-var(txn.hdr_host) req.hdr(host)
-{{- if $hasHTTPStoHTTP }}
     http-request set-var(txn.hdr_proto) hdr(x-forwarded-proto)
+{{- end }}
 {{- if not $reuseHTTPPort }}
     http-request set-header X-Forwarded-Proto https if from-https
 {{- end }}
-{{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $hasBalance }}
 {{- if ne $cfg.ModSecurity "" }}
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
 {{- range $server := $servers }}
@@ -355,8 +364,10 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- end }}
 {{- end }}
 {{- end }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $hasBalance }}
 {{- range $server := $servers }}
 {{- if and $server.IsCACert (not $isCACert) }}
     http-request deny if from-https {{ $server.ACLLabel }}
@@ -373,17 +384,18 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- end }}
 {{- end }}
 {{- end }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
-    http-request set-header X-Forwarded-Proto https if ssl-offload
+{{- if $hasSSL }}
 {{- if $isCACert }}
-    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-SHA1  %{+Q}[ssl_c_sha1,hex]   if {{ $singleserver.ACLLabel }} ssl-offload
-    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-DN    %{+Q}[ssl_c_s_dn]       if {{ $singleserver.ACLLabel }} ssl-offload
-    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-CN    %{+Q}[ssl_c_s_dn(cn)]   if {{ $singleserver.ACLLabel }} ssl-offload
+    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-SHA1  %{+Q}[ssl_c_sha1,hex]   if ssl-offload
+    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-DN    %{+Q}[ssl_c_s_dn]       if ssl-offload
+    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-CN    %{+Q}[ssl_c_s_dn(cn)]   if ssl-offload
 {{- if $singleserver.CertificateAuth.CertHeader }}
-    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-Cert  %{+Q}[ssl_c_der,base64] if {{ $singleserver.ACLLabel }} ssl-offload
+    http-request set-header {{ $cfg.SSLHeadersPrefix }}-Client-Cert  %{+Q}[ssl_c_der,base64] if ssl-offload
 {{- else }}
-    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-Cert  if {{ $singleserver.ACLLabel }} ssl-offload
+    http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-Cert  if ssl-offload
 {{- end }}
 {{- else }}
     http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-Cert  if ssl-offload
@@ -391,17 +403,21 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
     http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-DN    if ssl-offload
     http-request del-header {{ $cfg.SSLHeadersPrefix }}-Client-CN    if ssl-offload
 {{- end }}
-    http-request set-var(txn.path) path
+{{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $hasBalance }}
+    http-request set-var(txn.path) path
 {{- if eq $cfg.Forwardfor "add" }}
     http-request del-header x-forwarded-for
     option forwardfor
 {{- else if eq $cfg.Forwardfor "ifmissing" }}
     option forwardfor if-none
 {{- end }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $hasBalance }}
 {{- range $server := $servers }}
 {{- if $server.CORS }}
 {{- if $server.CORS.CorsEnabled }}
@@ -417,8 +433,10 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- end }}
 {{- end }}
 {{- end }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $hasBalance }}
 {{- range $server := $servers }}
 {{- range $location := $server.Locations }}
 {{- $rewriteTarget := $location.Rewrite.Target }}
@@ -431,8 +449,10 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- end }}
 {{- end }}
 {{- end }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $hasBalance }}
 {{- range $server := $servers }}
 {{- if $server.SSLRedirect }}
     redirect scheme https if !from-https {{ $server.ACLLabel }}
@@ -444,27 +464,31 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- end }}
 {{- end }}
 {{- end }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $isCACert }}
+{{- if and $hasSSL $isCACert }}
 {{- if eq $singleserver.CertificateAuth.ErrorPage "" }}
-    use_backend error495 if {{ $singleserver.ACLLabel }} { ssl_c_ca_err gt 0 } || { ssl_c_err gt 0 }
-    use_backend error496 if {{ $singleserver.ACLLabel }} ssl-offload !{ ssl_c_used }
+    use_backend error495 if { ssl_c_ca_err gt 0 } || { ssl_c_err gt 0 }
+    use_backend error496 if ssl-offload !{ ssl_c_used }
 {{- else }}
-    redirect location {{ $singleserver.CertificateAuth.ErrorPage }} if {{ $singleserver.ACLLabel }} { ssl_c_ca_err gt 0 } || { ssl_c_err gt 0 }
-    redirect location {{ $singleserver.CertificateAuth.ErrorPage }} if {{ $singleserver.ACLLabel }} ssl-offload !{ ssl_c_used }
+    redirect location {{ $singleserver.CertificateAuth.ErrorPage }} if { ssl_c_ca_err gt 0 } || { ssl_c_err gt 0 }
+    redirect location {{ $singleserver.CertificateAuth.ErrorPage }} if ssl-offload !{ ssl_c_used }
 {{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $hasBalance }}
 {{- range $server := $servers }}
 {{- $appRoot := $server.RootLocation.Rewrite.AppRoot }}
 {{- if ne $appRoot "" }}
     redirect location {{ $appRoot }} if {{ $server.ACLLabel }} { var(txn.path) -m str / }
 {{- end }}
 {{- end }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $hasBalance }}
 {{- range $server := $servers }}
 {{- range $location := $server.Locations }}
 {{- if ne $location.Proxy.BodySize "" }}
@@ -472,8 +496,10 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- end }}
 {{- end }}
 {{- end }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $hasBalance }}
 {{- range $server := $servers }}
 {{- if $server.HSTS }}
 {{- $hsts := $server.HSTS }}
@@ -500,8 +526,10 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- end }}{{/* if $cors.CorsEnabled */}}
 {{- end }}{{/* if/else $server.CORS */}}
 {{- end }}{{/* range $servers */}}
+{{- end }}{{/* if $hasBalance */}}
 
 {{- /*------------------------------------*/}}
+{{- if $hasBalance }}
 {{- range $server := $servers }}
 {{- range $location := $server.Locations }}
 {{- if not $location.IsRootLocation }}
@@ -518,16 +546,16 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- else if $isCACert }}
     default_backend httpback-shared-backend
 {{- end }}
+{{- end }}
 
-{{- else }}{{/* if $hasBalance -- ssl-offload only process */}}
-
+{{- /*------------------------------------*/}}
+{{- if not $hasBalance }}
 {{- if $isShared }}
     default_backend httpback-shared-backend
 {{- else if $isCACert }}
     default_backend httpback-{{ $singleserver.HostnameLabel }}
 {{- end }}
-
-{{- end }}{{/* if $hasBalance */}}
+{{- end }}
 
 {{- end }}{{/* define "http_front" */}}
 
