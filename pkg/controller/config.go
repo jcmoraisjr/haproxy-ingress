@@ -52,6 +52,7 @@ type haConfig struct {
 	haPassthrough     []*types.HAProxyPassthrough
 	haproxyConfig     *types.HAProxyConfig
 	DNSResolvers      map[string]dnsresolvers.DNSResolver
+	procs             *types.HAProxyProcs
 }
 
 func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController *HAProxyController) (*types.ControllerConfig, error) {
@@ -67,6 +68,7 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 		return &types.ControllerConfig{}, err
 	}
 	cfg.createDNSResolvers()
+	cfg.createProcs()
 	return &types.ControllerConfig{
 		ConfigFrontend:      cfg.configFrontend(),
 		Userlists:           cfg.userlists,
@@ -79,6 +81,7 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 		PassthroughBackends: cfg.ingress.PassthroughBackends,
 		HAPassthrough:       cfg.haPassthrough,
 		StatsSSLCert:        cfg.statsSSLCert(),
+		Procs:               cfg.procs,
 		Cfg:                 cfg.haproxyConfig,
 		DNSResolvers:        cfg.DNSResolvers,
 	}, nil
@@ -102,6 +105,9 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 			DefaultMaxSize: 1024,
 			SecretName:     "",
 		},
+		NbprocBalance:          1,
+		NbprocSSL:              0,
+		Nbthread:               1,
 		LoadServerState:        false,
 		TimeoutHTTPRequest:     "5s",
 		TimeoutConnect:         "5s",
@@ -335,6 +341,60 @@ func (cfg *haConfig) createDefaultCert() error {
 	os.Remove(defaultCert)
 	err := os.Link(cfg.haDefaultServer.SSLCertificate, defaultCert)
 	return err
+}
+
+func (cfg *haConfig) createProcs() {
+	balance := cfg.haproxyConfig.NbprocBalance
+	if balance < 1 {
+		glog.Warningf("invalid value of nbproc-balance configmap option (%v), using 1", balance)
+		balance = 1
+	}
+	if balance > 1 {
+		// need to visit (at least) statistics and healthz bindings as well
+		// as admin socket before using more than one balance backend
+		glog.Warningf("nbproc-balance configmap option (%v) greater than 1 is not yet supported, using 1", balance)
+		balance = 1
+	}
+	ssl := cfg.haproxyConfig.NbprocSSL
+	if ssl < 0 {
+		glog.Warningf("invalid value of nbproc-ssl configmap option (%v), using 0", ssl)
+		ssl = 0
+	}
+	procs := balance + ssl
+	threads := cfg.haproxyConfig.Nbthread
+	if threads < 1 {
+		glog.Warningf("invalid value of nbthread configmap option (%v), using 1", threads)
+		threads = 1
+	}
+	bindprocBalance := "1"
+	if balance > 1 {
+		bindprocBalance = fmt.Sprintf("1-%v", balance)
+	}
+	bindprocSSL := ""
+	if ssl == 0 {
+		bindprocSSL = bindprocBalance
+	} else if ssl == 1 {
+		bindprocSSL = fmt.Sprintf("%v", balance+1)
+	} else if ssl > 1 {
+		bindprocSSL = fmt.Sprintf("%v-%v", balance+1, procs)
+	}
+	cpumap := ""
+	if threads > 1 {
+		if procs == 1 {
+			cpumap = fmt.Sprintf("auto:1/1-%v 0-%v", threads, threads-1)
+		}
+	} else if procs > 1 {
+		cpumap = fmt.Sprintf("auto:1-%v 0-%v", procs, procs-1)
+	}
+	cfg.procs = &types.HAProxyProcs{
+		Nbproc:          procs,
+		NbprocBalance:   balance,
+		NbprocSSL:       ssl,
+		Nbthread:        threads,
+		BindprocBalance: bindprocBalance,
+		BindprocSSL:     bindprocSSL,
+		CPUMap:          cpumap,
+	}
 }
 
 func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAProxyLocation, *types.HAProxyLocation) {
