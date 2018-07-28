@@ -89,7 +89,7 @@ The following annotations are supported:
 ||`ingress.kubernetes.io/whitelist-source-range`|CIDR|-|
 ||[`ingress.kubernetes.io/rewrite-target`](#rewrite-target)|path string|-|
 ||[`ingress.kubernetes.io/server-alias`](#server-alias)|domain name or regex|-|
-|`[1]`|[`ingress.kubernetes.io/use-resolver`](#dns-service-discovery)|resolver name]|[doc](/examples/dns-service-discovery)|
+|`[1]`|[`ingress.kubernetes.io/use-resolver`](#dns-resolvers)|resolver name]|[doc](/examples/dns-service-discovery)|
 |`[1]`|[`ingress.kubernetes.io/waf`](#waf)|"modsecurity"|[doc](/examples/modsecurity)|
 
 ### Affinity
@@ -168,16 +168,6 @@ Add CORS headers on OPTIONS http command (preflight) and reponses.
 * `ingress.kubernetes.io/cors-max-age`: Optional, configures `Access-Control-Max-Age` header which defines the time in seconds the result should be cached. Defaults to `86400` (1 day).
 
 https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
-
-### DNS Service Discovery
-
-Service can use resolver with:
-* `ingress.kubernetes.io/use-resolver`: Name of the resolver that services use
-
-**NOTE**: It is important to use this only with **headless** services [doc](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
-
-Example: [doc](/examples/dns-service-discovery)
-
 
 ### Limit
 
@@ -385,15 +375,35 @@ server affinity. See also [affinity](#affinity) annotations.
 http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#dynamic-cookie-key
 
 ### dns-resolvers
-Define a list of HAProxy DNS resolvers
 
-Multiline list of DNS resolvers in `resolvername=ip:port` format
+Configure dynamic backend server update using DNS service discovery.
 
-https://cbonte.github.io/haproxy-dconv/1.8/configuration.html#resolvers%20(The%20resolvers%20section)
+Global configmap options:
 
-*Note: Is using kube-dns beware of cache, see [doc](/examples/dns-service-discovery)*
+* `dns-resolvers`: Multiline list of DNS resolvers in `resolvername=ip:port` format
+* `dns-accepted-payload-size`: Maximum payload size announced to the name servers
+* `dns-timeout-retry`: Time between two consecutive queries when no valid response was received, defaults to `1s`
+* `dns-hold-valid`: Time a resolution is considered valid. Keep in sync with DNS cache timeout. Defaults to `1s`
+* `dns-hold-obsolete`: Time to keep valid a missing IP from a new DNS query, defaults to `0s`
+* `dns-cluster-domain`: K8s cluster domain, defaults to `cluster.local`
 
-Example: [doc](/examples/dns-service-discovery)
+Annotations on ingress resources:
+
+* `ingress.kubernetes.io/use-resolver`: Name of the resolver that the backend should use
+
+Important advices!
+
+* Use resolver with **headless** services, see [k8s doc](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services), otherwise HAProxy will reference the service IP instead of the endpoints.
+* Beware of DNS cache, eg kube-dns has `--max-ttl` and `--max-cache-ttl` to change its default cache of `30s`.
+
+See also the [example](/examples/dns-service-discovery) page.
+
+Reference:
+
+* https://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.3.2
+* https://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-resolvers
+* https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/
+* https://kubernetes.io/docs/concepts/services-networking/service/#headless-services
 
 ### dynamic-scaling
 
@@ -635,7 +645,7 @@ Define a space-separated list of options on SSL/TLS connections:
 
 A global configuration of SSL redirect used as default value if ingress resource
 doesn't use `ssl-redirect` annotation. If true HAProxy Ingress sends a `302 redirect`
-to https if TLS is [configured](https://github.com/kubernetes/ingress/tree/master/examples/tls-termination/haproxy).
+to https if TLS is [configured](/examples/tls-termination).
 
 ### stats
 
