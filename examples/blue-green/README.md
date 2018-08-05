@@ -8,7 +8,9 @@ on HAProxy Ingress controller.
 
 This document has the following prerequisite:
 
-* A Kubernetes cluster with a running HAProxy Ingress controller. See the [five minutes deployment](/examples/setup-cluster.md#five-minutes-deployment) or the [deployment example](/examples/deployment)
+* A Kubernetes cluster with a running HAProxy Ingress controller v0.6 or above.
+See the [five minutes deployment](/examples/setup-cluster.md#five-minutes-deployment)
+or the [deployment example](/examples/deployment)
 
 ## Deploying applications
 
@@ -74,7 +76,7 @@ apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   annotations:
-    ingress.kubernetes.io/blue-green-balance: group=blue=1,group=green=1
+    ingress.kubernetes.io/blue-green-deploy: group=blue=1,group=green=1
     ingress.kubernetes.io/blue-green-mode: pod
     ingress.kubernetes.io/ssl-redirect: "false"
   name: bluegreen
@@ -169,7 +171,7 @@ Changing now the balance to 1/3 blue and 2/3 green:
 
 ```
 $ kubectl annotate --overwrite ingress bluegreen \
-  ingress.kubernetes.io/blue-green-balance=group=blue=1,group=green=2
+  ingress.kubernetes.io/blue-green-deploy=group=blue=1,group=green=2
 ```
 
 * BG Mode: deploy
