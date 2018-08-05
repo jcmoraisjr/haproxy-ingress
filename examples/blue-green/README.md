@@ -20,17 +20,17 @@ and `group` label as the blue/green deployment selector:
 
 ```
 $ kubectl run blue \
-  --image=gcr.io/google_containers/echoserver:1.3 \
-  --port=8080 --labels=run=bluegreen,group=blue
+  --image=jcmoraisjr/whoami \
+  --port=8000 --labels=run=bluegreen,group=blue
 deployment "blue" created
 
 $ kubectl run green \
-  --image=gcr.io/google_containers/echoserver:1.3 \
-  --port=8080 --labels=run=bluegreen,group=green
+  --image=jcmoraisjr/whoami \
+  --port=8000 --labels=run=bluegreen,group=green
 deployment "green" created
 ```
 
-Certify if the pods are running and have the correct labels. Note that both `group` and `run`
+Certify that the pods are running and have the correct labels. Note that both `group` and `run`
 labels were applied:
 
 ```
@@ -40,7 +40,7 @@ blue-79c9b67d5b-5hd2r    1/1       Running   0          35s       group=blue,pod
 green-7546d648c4-p7pmz   1/1       Running   0          28s       group=green,pod-template-hash=3102820470,run=bluegreen
 ```
 
-# Configure
+## Configure
 
 Create a service that bind both deployments together using the `run` label. The expose command need
 a deployment object, take anyone, we will override it's selector:
@@ -58,7 +58,7 @@ Check also the endpoints, it should list both blue and green pods:
 ```
 $ kubectl get ep bluegreen
 NAME         ENDPOINTS                           AGE
-bluegreen    172.17.0.11:8080,172.17.0.19:8080   2m
+bluegreen    172.17.0.11:8000,172.17.0.19:8000   2m
 
 $ kubectl get pod -lrun=bluegreen -owide
 NAME                     READY     STATUS    RESTARTS   AGE       IP            NODE
@@ -66,7 +66,7 @@ blue-79c9b67d5b-5hd2r    1/1       Running   0          2m        172.17.0.11   
 green-7546d648c4-p7pmz   1/1       Running   0          2m        172.17.0.19   192.168.100.99
 ```
 
-Configure the ingress resource:
+Configure the ingress resource. No need to change the host below, `bluegreen.example.com` is fine:
 
 ```
 $ kubectl create -f - <<EOF
@@ -74,41 +74,131 @@ apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   annotations:
+    ingress.kubernetes.io/blue-green-balance: group=blue=1,group=green=1
+    ingress.kubernetes.io/blue-green-mode: pod
     ingress.kubernetes.io/ssl-redirect: "false"
-    ingress.kubernetes.io/blue-green-deploy: group=blue=1,group=green=4
   name: bluegreen
 spec:
   rules:
-  - host: example.com
+  - host: bluegreen.example.com
     http:
       paths:
       - backend:
           serviceName: bluegreen
-          servicePort: 8080
+          servicePort: 8000
         path: /
 EOF
 ```
 
 ```
 $ kubectl get ing
-NAME        HOSTS         ADDRESS   PORTS     AGE
-bluegreen   example.com             80        11s
+NAME        HOSTS                   ADDRESS   PORTS     AGE
+bluegreen   bluegreen.example.com             80        11s
 ```
 
-Lets test! Change the IP below to your HAProxy Ingress controller:
+# Test
+
+Lets test! The following snippets use an alias `hareq` declared below.
+Change `IP` to your HAProxy Ingress controller IP address:
 
 ```
-$ for i in `seq 1 50`; do
-    echo -n "."
-    curl -s 192.168.100.99 -H 'Host: example.com' >/dev/null
-  done
-..................................................
+$ IP=192.168.100.99
+$ alias hareq='echo Running 100 requests...; for i in `seq 1 100`; do
+    curl -fsS $IP -H "Host: bluegreen.example.com" | cut -d- -f1
+  done | sort | uniq -c'
 ```
 
-Now check `<ingress-ip>:1936` - the stats page has a `<namespace>-bluegreen-8080` card
-with backend stats. The column Session/Total should have about 20% of the deployments
-on one endpoint and 80% on another.
+* BG Mode: pod
+* BG Balance: blue=1, green=1
+* Replicas: blue=1, green=1
 
-The blue/green configuration is related to every single pod - if the number of replicas change,
-the load will also change between blue and green groups. Have a look at the
-[doc](/README.md#blue-green) on how it works.
+```
+$ hareq
+Running 100 requests...
+  50 blue
+  50 green
+```
+
+---
+
+Now changing green replicas to 3 and wait all the replicas to be running.
+BG Mode is pod, so the number of replicas will increase the load of the green deployment.
+
+```
+$ kubectl scale deploy green --replicas=3
+$ kubectl get pod -w
+```
+
+* BG Mode: pod
+* BG Balance: blue=1, green=1
+* Replicas: blue=1, green=3
+
+```
+$ hareq
+Running 100 requests...
+  25 blue
+  75 green
+```
+
+---
+
+Changing to deploy mode. This mode targets the balance config to the whole deployment
+instead of single pods.
+
+**Note:** BG mode was added on v0.7. On v0.6, the only supported mode is `pod`.
+
+```
+$ kubectl annotate --overwrite ingress bluegreen \
+  ingress.kubernetes.io/blue-green-mode=deploy
+```
+
+* BG Mode: deploy
+* BG Balance: blue=1, green=1
+* Replicas: blue=1, green=3
+
+```
+$ hareq
+Running 100 requests...
+  50 blue
+  50 green
+```
+
+---
+
+Changing now the balance to 1/3 blue and 2/3 green:
+
+```
+$ kubectl annotate --overwrite ingress bluegreen \
+  ingress.kubernetes.io/blue-green-balance=group=blue=1,group=green=2
+```
+
+* BG Mode: deploy
+* BG Balance: blue=1, green=2
+* Replicas: blue=1, green=3
+
+```
+$ hareq
+Running 100 requests...
+  33 blue
+  67 green
+```
+
+---
+
+The balance will be the same despite the number of replicas:
+
+```
+$ kubectl scale deploy green --replicas=6
+$ kubectl get pod -w
+```
+
+* BG Mode: deploy
+* BG Balance: blue=1, green=2
+* Replicas: blue=1, green=6
+
+```
+$ hareq
+Running 100 requests...
+  33 blue
+  67 green
+```
