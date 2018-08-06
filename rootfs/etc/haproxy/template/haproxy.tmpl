@@ -213,7 +213,7 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
 {{- end }}
 {{- end }}
 {{- if $isCACert }}
-    # CA PEM checksum: {{ $singleserver.CertificateAuth.AuthSSLCert.CAFileName }}
+    # CA PEM checksum: {{ $singleserver.CertificateAuth.AuthSSLCert.PemSHA }}
 {{- end }}
 {{- if $isDefault }}
     bind unix@/var/run/haproxy-http-{{ $singleserver.HostnameSocket }}.sock accept-proxy
