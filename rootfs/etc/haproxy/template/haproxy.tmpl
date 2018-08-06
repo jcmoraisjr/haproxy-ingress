@@ -250,15 +250,6 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
 {{- if or $isShared $singleserver.HasRateLimit }}
     stick-table type ip size 200k expire 5m store conn_cur,conn_rate(1s)
     tcp-request content track-sc1 src
-{{- range $server := $servers }}
-{{- range $location := $server.Locations }}
-{{- $conn_cur_limit := $location.RateLimit.Connections.Limit }}
-{{- $conn_rate_limit := $location.RateLimit.RPS.Limit }}
-{{- if or (gt $conn_cur_limit 0) (gt $conn_rate_limit 0) }}
-    tcp-request content reject if {{ $server.ACLLabel }}{{ $location.HAMatchPath }}{{ if ne $location.HARateLimitWhiteList "" }} !{ src{{ $location.HARateLimitWhiteList }} }{{ end }}{{ if gt $conn_cur_limit 0 }} { sc1_conn_cur gt {{ $conn_cur_limit }} } ||{{ end }}{{ if gt $conn_rate_limit 0 }} { sc1_conn_rate gt {{ $conn_rate_limit }} } ||{{ end }} { always_false }
-{{- end }}
-{{- end }}
-{{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -267,6 +258,20 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
     http-request set-var(txn.hdr_proto) hdr(x-forwarded-proto)
 {{- if not $reuseHTTPPort }}
     http-request set-header X-Forwarded-Proto https if from-https
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- range $server := $servers }}
+{{- range $location := $server.Locations }}
+{{- $conn_cur_limit := $location.RateLimit.Connections.Limit }}
+{{- $conn_rate_limit := $location.RateLimit.RPS.Limit }}
+{{- if gt $conn_cur_limit 0 }}
+    http-request deny if {{ $server.ACLLabel }}{{ $location.HAMatchPath }}{{ if ne $location.HARateLimitWhiteList "" }} !{ src{{ $location.HARateLimitWhiteList }} }{{ end }} { sc1_conn_cur gt {{ $conn_cur_limit }} }
+{{- end }}
+{{- if gt $conn_rate_limit 0 }}
+    http-request deny if {{ $server.ACLLabel }}{{ $location.HAMatchPath }}{{ if ne $location.HARateLimitWhiteList "" }} !{ src{{ $location.HARateLimitWhiteList }} }{{ end }} { sc1_conn_rate gt {{ $conn_rate_limit }} }
+{{- end }}
 {{- end }}
 {{- end }}
 
