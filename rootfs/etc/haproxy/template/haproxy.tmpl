@@ -266,7 +266,7 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- end }}
 {{- end }}
 {{- if and $hasSSL $isCACert }}
-    # CA PEM checksum: {{ $singleserver.CertificateAuth.AuthSSLCert.CAFileName }}
+    # CA PEM checksum: {{ $singleserver.CertificateAuth.AuthSSLCert.PemSHA }}
 {{- end }}
 {{- if or $isDefault (and $isCACert (not $hasSSL)) }}
     bind unix@/var/run/haproxy-http-{{ $singleserver.HostnameSocket }}.sock accept-proxy
