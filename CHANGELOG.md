@@ -37,6 +37,12 @@ Fixes and improvements since `v0.6`
     * `http-port`
     * `https-port`
 
+## v0.6-beta.3
+
+Fixes and improvements since `v0.6-beta.2`
+
+* Fix host match of rate limit on shared frontend - [#202](https://github.com/jcmoraisjr/haproxy-ingress/pull/202)
+
 ## v0.6-beta.2
 
 Fixes and improvements since `v0.6-beta.1`
