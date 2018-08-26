@@ -59,11 +59,13 @@ func TestWeightBalance(t *testing.T) {
 		"b06-01": buildBackend("v=1=50,v=2=25", ",pod0102-01", "deploy"),
 		"b07-01": buildBackend("v=1=50,v=non=25", "pod0101-01,pod0102-01", "deploy"),
 		"b07-02": buildBackend("v=1=50,v=non=25", "pod0101-01,pod0102-01", "pod"),
-		"b07-03": buildBackend("v=1=50,v=2=25", "pod0101-01,pod0102-non", "deploy"),
-		"b07-04": buildBackend("v=1=50,v=2=25", "pod0101-01,pod0102-non", "pod"),
+		"b07-03": buildBackend("v=1=50,non=2=25", "pod0101-01,pod0102-01", "deploy"),
+		"b07-04": buildBackend("v=1=50,v=2=25", "pod0101-01,pod0102-non", "deploy"),
+		"b07-05": buildBackend("v=1=50,v=2=25", "pod0101-01,pod0102-non", "pod"),
 		"b08-01": buildBackend("v=1=50,v=2=25,v=3=25", "pod0101-01,pod0102-01,pod0102-02,pod0103-01", "deploy"),
 		"b08-02": buildBackend("v=1=50,v=2=0,v=3=25", "pod0101-01,pod0102-01,pod0102-02,pod0103-01", "deploy"),
 		"b09-01": buildBackend("v=1=50,v=2=0,v=3=25", "", "deploy"),
+		"b10-01": buildBackend("v=1=0,v=2=0", "pod0101-01,pod0102-01", "deploy"),
 	}
 	testExpectedWeight := map[string][]int{
 		"b01-01": {1, 1},
@@ -83,10 +85,12 @@ func TestWeightBalance(t *testing.T) {
 		"b07-01": {1, 0},
 		"b07-02": {50, 0},
 		"b07-03": {1, 0},
-		"b07-04": {50, 0},
+		"b07-04": {1, 0},
+		"b07-05": {50, 0},
 		"b08-01": {4, 1, 1, 2},
 		"b08-02": {2, 0, 0, 1},
 		"b09-01": {},
+		"b10-01": {0, 0},
 	}
 	weightBalance(&testUpstreams, podLister)
 	for name, upstream := range testUpstreams {

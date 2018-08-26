@@ -2,6 +2,10 @@
 
 ## Current snapshot tag (v0.7)
 
+Breaking backward compatibility from `v0.6`
+
+* Default blue/green deployment mode changed from `pod` to `deploy`. Use `ingress.kubernetes.io/blue-green-mode` annotation to change to the v0.6 behavior. See also the blue/green deployment [doc](/README.md#blue-green).
+
 Fixes and improvements since `v0.6`
 
 * Add SSL config on TCP services [#192](https://github.com/jcmoraisjr/haproxy-ingress/pull/192) - [doc](/README.md#tcp-services-configmap)
@@ -36,6 +40,10 @@ Fixes and improvements since `v0.6`
   * Configmap options:
     * `http-port`
     * `https-port`
+* Add blue/green balance mode [#201](https://github.com/jcmoraisjr/haproxy-ingress/pull/201) - [doc](/README.md#blue-green)
+  * Annotations:
+    * `ingress.kubernetes.io/blue-green-balance`
+    * `ingress.kubernetes.io/blue-green-mode`
 
 ## v0.6-beta.2
 

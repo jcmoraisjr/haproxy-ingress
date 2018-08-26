@@ -144,7 +144,7 @@ Running 100 requests...
 
 ---
 
-Changing to deploy mode. This mode targets the balance config to the whole deployment
+Changing to *deploy* mode. This mode targets the balance config to the whole deployment
 instead of single pods.
 
 **Note:** BG mode was added on v0.7. On v0.6, the only supported mode is `pod`.

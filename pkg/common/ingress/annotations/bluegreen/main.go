@@ -99,9 +99,9 @@ func (bg bgdeploy) Parse(ing *extensions.Ingress) (interface{}, error) {
 	mode, _ := parser.GetStringAnnotation(blueGreenModeAnn, ing)
 	if !modeAnnRegex.MatchString(mode) {
 		if mode != "" {
-			glog.Warningf("unsupported blue/green mode '%v' on '%v/%v', falling back to 'pod'", mode, ing.Namespace, ing.Name)
+			glog.Warningf("unsupported blue/green mode '%v' on '%v/%v', falling back to 'deploy'", mode, ing.Namespace, ing.Name)
 		}
-		mode = "pod"
+		mode = "deploy"
 	}
 	return &Config{
 		DeployWeight: dw,

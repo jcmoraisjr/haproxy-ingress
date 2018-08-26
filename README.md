@@ -144,7 +144,7 @@ selector and another that matches the blue/green selector.
 
 * `ingress.kubernetes.io/blue-green-balance`: comma separated list of labels and weights
 * `ingress.kubernetes.io/blue-green-deploy`: deprecated on v0.7, this is an alias to `ingress.kubernetes.io/blue-green-balance`.
-* `ingress.kubernetes.io/blue-green-mode`: how to apply the weights, might be `pod` or `deploy`
+* `ingress.kubernetes.io/blue-green-mode`: defaults to `deploy` on v0.7, defines how to apply the weights, might be `pod` or `deploy`
 
 The following configuration `group=blue=1,group=green=4` will redirect 20% of the load to the
 `group=blue` group and 80% of the load to `group=green` group.
