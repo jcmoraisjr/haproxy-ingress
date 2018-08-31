@@ -727,6 +727,8 @@ The following command-line arguments are supported:
 ||[`sort-backends`](#sort-backends)|[true\|false]|`false`|
 ||[`tcp-services-configmap`](#tcp-services-configmap)|namespace/configmapname|no tcp svc|
 ||[`verify-hostname`](#verify-hostname)|[true\|false]|`true`|
+|`[0]`|[`publish-service`](#publish-service)|namespace/servicename|``|
+
 
 ### allow-cross-namespace
 
@@ -847,3 +849,17 @@ match the hostname are discarded and a warning is logged into the ingress contro
 
 Use `--verify-hostname=false` argument to bypass this validation. If used, HAProxy will provide
 the certificate declared in the `secretName` ignoring if the certificate is or is not valid.
+
+### publish-service
+
+Some infrastructure tools like `external-DNS` relay in the ingress status to created access routes to the services exposed with ingress object.
+```
+apiVersion: extensions/v1beta1
+kind: Ingress
+...
+status:
+  loadBalancer:
+    ingress:
+    - hostname: <ingressControllerLoadbalancerFQDN>
+```
+Use `--publish-service=namespace/servicename` to indicate the services fronting the ingress controller. The controller mirrors the address of this service's endpoints to the load-balancer status of all Ingress objects it satisfies.
