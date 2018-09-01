@@ -43,10 +43,14 @@ import (
 	"k8s.io/client-go/util/flowcontrol"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/bluegreen"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/class"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/connection"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/healthcheck"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/parser"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxy"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/sessionaffinity"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/snippet"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/defaults"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/resolver"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/status"
@@ -506,6 +510,29 @@ func (ic *GenericController) getDefaultUpstream() *ingress.Backend {
 	return upstream
 }
 
+type backendContext struct {
+	ing         *extensions.Ingress
+	affinity    *sessionaffinity.AffinityConfig
+	balance     string
+	blueGreen   *bluegreen.Config
+	snippet     snippet.Config
+	conn        *connection.Config
+	slotsInc    int
+	useresolver string
+}
+
+func (ic *GenericController) createBackendContext(ing *extensions.Ingress) *backendContext {
+	return &backendContext{
+		affinity:    ic.annotations.SessionAffinity(ing),
+		balance:     ic.annotations.BalanceAlgorithm(ing),
+		blueGreen:   ic.annotations.BlueGreen(ing),
+		snippet:     ic.annotations.ConfigurationSnippet(ing),
+		conn:        ic.annotations.Connection(ing),
+		slotsInc:    ic.annotations.SlotsIncrement(ing),
+		useresolver: ic.annotations.UseResolver(ing),
+	}
+}
+
 // getBackendServers returns a list of Upstream and Server to be used by the backend
 // An upstream can be used in multiple servers if the namespace, service name and port are the same
 func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) ([]*ingress.Backend, []*ingress.Server) {
@@ -514,14 +541,18 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 	servers := ic.createServers(ingresses, upstreams, du)
 
 	for _, ing := range ingresses {
-		affinity := ic.annotations.SessionAffinity(ing)
-		balance := ic.annotations.BalanceAlgorithm(ing)
-		blueGreen := ic.annotations.BlueGreen(ing)
-		snippet := ic.annotations.ConfigurationSnippet(ing)
+
+		ctx := ic.createBackendContext(ing)
+
+		if ing.Spec.Backend != nil {
+			upsName := fmt.Sprintf("%v-%v-%v",
+				ing.GetNamespace(),
+				ing.Spec.Backend.ServiceName,
+				ing.Spec.Backend.ServicePort.String())
+			ctx.copyBackendAnnotations(upstreams[upsName])
+		}
+
 		anns := ic.annotations.Extract(ing)
-		conn := ic.annotations.Connection(ing)
-		slotsInc := ic.annotations.SlotsIncrement(ing)
-		useresolver := ic.annotations.UseResolver(ing)
 
 		for _, rule := range ing.Spec.Rules {
 			host := rule.Host
@@ -608,51 +639,15 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 					server.Locations = append(server.Locations, loc)
 				}
 
-				if ups.SessionAffinity.AffinityType == "" {
-					ups.SessionAffinity.AffinityType = affinity.AffinityType
-				}
+				ctx.copyBackendAnnotations(upstreams[upsName])
 
-				if affinity.AffinityType == "cookie" {
-					ups.SessionAffinity.CookieSessionAffinity.Name = affinity.CookieConfig.Name
-					ups.SessionAffinity.CookieSessionAffinity.Strategy = affinity.CookieConfig.Strategy
-					ups.SessionAffinity.CookieSessionAffinity.Hash = affinity.CookieConfig.Hash
-
+				if ctx.affinity.AffinityType == "cookie" {
 					locs := ups.SessionAffinity.CookieSessionAffinity.Locations
 					if _, ok := locs[host]; !ok {
 						locs[host] = []string{}
 					}
 
 					locs[host] = append(locs[host], path.Path)
-				}
-
-				if ups.BalanceAlgorithm == "" {
-					ups.BalanceAlgorithm = balance
-				}
-
-				if len(ups.BlueGreen.DeployWeight) == 0 {
-					ups.BlueGreen = *blueGreen
-				}
-
-				if len(ups.ConfigurationSnippet.Backend) == 0 {
-					ups.ConfigurationSnippet = snippet
-				}
-
-				if ups.Connection.MaxConnServer == 0 {
-					ups.Connection.MaxConnServer = conn.MaxConnServer
-				}
-				if ups.Connection.MaxQueueServer == 0 {
-					ups.Connection.MaxQueueServer = conn.MaxQueueServer
-				}
-				if ups.Connection.TimeoutQueue == "" {
-					ups.Connection.TimeoutQueue = conn.TimeoutQueue
-				}
-
-				if ups.SlotsIncrement == 0 {
-					ups.SlotsIncrement = slotsInc
-				}
-
-				if ups.UseResolver == "" {
-					ups.UseResolver = useresolver
 				}
 			}
 		}
@@ -761,6 +756,49 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 	})
 
 	return aUpstreams, aServers
+}
+
+func (ctx *backendContext) copyBackendAnnotations(backend *ingress.Backend) {
+
+	if backend.SessionAffinity.AffinityType == "" {
+		backend.SessionAffinity.AffinityType = ctx.affinity.AffinityType
+	}
+
+	if ctx.affinity.AffinityType == "cookie" {
+		backend.SessionAffinity.CookieSessionAffinity.Name = ctx.affinity.CookieConfig.Name
+		backend.SessionAffinity.CookieSessionAffinity.Strategy = ctx.affinity.CookieConfig.Strategy
+		backend.SessionAffinity.CookieSessionAffinity.Hash = ctx.affinity.CookieConfig.Hash
+	}
+
+	if backend.BalanceAlgorithm == "" {
+		backend.BalanceAlgorithm = ctx.balance
+	}
+
+	if len(backend.BlueGreen.DeployWeight) == 0 {
+		backend.BlueGreen = *ctx.blueGreen
+	}
+
+	if len(backend.ConfigurationSnippet.Backend) == 0 {
+		backend.ConfigurationSnippet = ctx.snippet
+	}
+
+	if backend.Connection.MaxConnServer == 0 {
+		backend.Connection.MaxConnServer = ctx.conn.MaxConnServer
+	}
+	if backend.Connection.MaxQueueServer == 0 {
+		backend.Connection.MaxQueueServer = ctx.conn.MaxQueueServer
+	}
+	if backend.Connection.TimeoutQueue == "" {
+		backend.Connection.TimeoutQueue = ctx.conn.TimeoutQueue
+	}
+
+	if backend.SlotsIncrement == 0 {
+		backend.SlotsIncrement = ctx.slotsInc
+	}
+
+	if backend.UseResolver == "" {
+		backend.UseResolver = ctx.useresolver
+	}
 }
 
 // GetAuthCertificate is used by the auth-tls annotations to get a cert from a secret
