@@ -45,6 +45,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/class"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/healthcheck"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/parser"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxy"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/defaults"
@@ -1047,7 +1048,7 @@ func (ic *GenericController) createServers(data []*extensions.Ingress,
 	aliases := make(map[string]string, len(data))
 
 	bdef := ic.GetDefaultBackend()
-	ngxProxy := proxy.Configuration{
+	proxyCfg := proxy.Configuration{
 		BodySize:         bdef.ProxyBodySize,
 		ConnectTimeout:   bdef.ProxyConnectTimeout,
 		SendTimeout:      bdef.ProxySendTimeout,
@@ -1057,6 +1058,12 @@ func (ic *GenericController) createServers(data []*extensions.Ingress,
 		CookiePath:       bdef.ProxyCookiePath,
 		NextUpstream:     bdef.ProxyNextUpstream,
 		RequestBuffering: bdef.ProxyRequestBuffering,
+	}
+	hstsCfg := hsts.Config{
+		Enable:     bdef.HSTS,
+		Subdomains: bdef.HSTSIncludeSubdomains,
+		MaxAge:     bdef.HSTSMaxAge,
+		Preload:    bdef.HSTSPreload,
 	}
 
 	// generated on Start() with createDefaultSSLCertificate()
@@ -1083,7 +1090,8 @@ func (ic *GenericController) createServers(data []*extensions.Ingress,
 				Path:         rootLocation,
 				IsDefBackend: true,
 				Backend:      du.Name,
-				Proxy:        ngxProxy,
+				Proxy:        proxyCfg,
+				HSTS:         hstsCfg,
 				Service:      du.Service,
 			},
 		}}
@@ -1132,7 +1140,8 @@ func (ic *GenericController) createServers(data []*extensions.Ingress,
 						Path:         rootLocation,
 						IsDefBackend: true,
 						Backend:      un,
-						Proxy:        ngxProxy,
+						Proxy:        proxyCfg,
+						HSTS:         hstsCfg,
 						Service:      &apiv1.Service{},
 					},
 				},
