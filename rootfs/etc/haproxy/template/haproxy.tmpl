@@ -543,7 +543,7 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- range $location := $server.Locations }}
 {{- if not $location.IsRootLocation }}
     use_backend {{ $location.Backend }} if {{ $server.ACLLabel }} { var(txn.path) -m beg {{ $location.Path }} }
-{{- else if $server.ACLLabel }}
+{{- else if and $server.ACLLabel (or $cfg.StrictHost (not $location.IsDefBackend)) }}
     use_backend {{ $location.Backend }} if {{ $server.ACLLabel }}
 {{- end }}
 {{- end }}

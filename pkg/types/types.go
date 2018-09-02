@@ -88,6 +88,7 @@ type (
 		StatsAuth              string `json:"stats-auth"`
 		StatsSSLCert           string `json:"stats-ssl-cert"`
 		CookieKey              string `json:"cookie-key"`
+		StrictHost             bool   `json:"strict-host"`
 		DynamicScaling         bool   `json:"dynamic-scaling"`
 		StatsSocket            string
 		UseProxyProtocol       bool   `json:"use-proxy-protocol"`
@@ -152,7 +153,8 @@ type (
 	}
 	// HAProxyLocation has location data as a HAProxy friendly syntax
 	HAProxyLocation struct {
-		IsRootLocation       bool                `json:"isDefaultLocation"`
+		IsRootLocation       bool                `json:"isRootLocation"`
+		IsDefBackend         bool                `json:"isDefBackend"`
 		Path                 string              `json:"path"`
 		Backend              string              `json:"backend"`
 		CORS                 cors.CorsConfig     `json:"cors"`
