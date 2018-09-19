@@ -135,7 +135,11 @@ backend {{ $backend.Name }}
 {{- range $snippet := $backend.ConfigurationSnippet.Backend }}
     {{ $snippet }}
 {{- end }}
-{{- $cacert := $backend.SecureCACert }}
+{{- $clcert := $backend.Secure.Cert }}
+{{- $cacert := $backend.Secure.CACert }}
+{{- if ne $clcert.PemSHA "" }}
+    # Cli cert PEM checksum: {{ $clcert.PemSHA }}
+{{- end }}
 {{- if ne $cacert.PemSHA "" }}
     # CA PEM checksum: {{ $cacert.PemSHA }}
 {{- end }}
@@ -159,10 +163,12 @@ backend {{ $backend.Name }}
 {{- define "backend" }}
     {{- $cfg := .p1 }}
     {{- $backend := .p2 }}
-    {{- $cacert := $backend.SecureCACert }}
+    {{- $clcert := $backend.Secure.Cert }}
+    {{- $cacert := $backend.Secure.CACert }}
     {{- if gt $backend.Connection.MaxConnServer 0 }} maxconn {{ $backend.Connection.MaxConnServer }}{{ end }}
     {{- if gt $backend.Connection.MaxQueueServer 0 }} maxqueue {{ $backend.Connection.MaxQueueServer }}{{ end }}
-    {{- if $backend.Secure }} ssl
+    {{- if $backend.Secure.IsSecure }} ssl
+        {{- if ne $clcert.CrtFileName "" }} crt {{ $clcert.CrtFileName }}{{ end }}
         {{- if ne $cacert.CAFileName "" }} verify required ca-file {{ $cacert.CAFileName }}
         {{- else }} verify none{{ end }}
     {{- end }}

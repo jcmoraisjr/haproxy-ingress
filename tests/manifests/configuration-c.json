@@ -3,11 +3,18 @@
 		"name": "upstream-default-backend",
 		"service": null,
 		"port": 0,
-		"secure": false,
-		"secureCert": {
-			"secret": "",
-			"caFilename": "",
-			"pemSha": ""
+		"secure": {
+			"IsSecure": false,
+			"Cert": {
+				"secret": "",
+				"caFilename": "",
+				"pemSha": ""
+			},
+			"CACert": {
+				"secret": "",
+				"caFilename": "",
+				"pemSha": ""
+			}
 		},
 		"sslPassthrough": false,
 		"endpoints": [{
@@ -65,11 +72,18 @@
 			}
 		},
 		"port": 8000,
-		"secure": false,
-		"secureCert": {
-			"secret": "",
-			"caFilename": "",
-			"pemSha": ""
+		"secure": {
+			"IsSecure": false,
+			"Cert": {
+				"secret": "",
+				"caFilename": "",
+				"pemSha": ""
+			},
+			"CACert": {
+				"secret": "",
+				"caFilename": "",
+				"pemSha": ""
+			}
 		},
 		"sslPassthrough": false,
 		"endpoints": [{

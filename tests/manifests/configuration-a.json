@@ -32,11 +32,18 @@
 		},
 		"port": 0,
 		"upstream-hash-by": "$request_uri",
-		"secure": false,
-		"secureCert": {
-			"secret": "",
-			"caFilename": "",
-			"pemSha": ""
+		"secure": {
+			"IsSecure": false,
+			"Cert": {
+				"secret": "",
+				"caFilename": "",
+				"pemSha": ""
+			},
+			"CACert": {
+				"secret": "",
+				"caFilename": "",
+				"pemSha": ""
+			}
 		},
 		"sslPassthrough": false,
 		"endpoints": [{
@@ -93,11 +100,18 @@
 			}
 		},
 		"port": 80,
-		"secure": false,
-		"secureCert": {
-			"secret": "",
-			"caFilename": "",
-			"pemSha": ""
+		"secure": {
+			"IsSecure": false,
+			"Cert": {
+				"secret": "",
+				"caFilename": "",
+				"pemSha": ""
+			},
+			"CACert": {
+				"secret": "",
+				"caFilename": "",
+				"pemSha": ""
+			}
 		},
 		"sslPassthrough": false,
 		"endpoints": [{
@@ -171,11 +185,18 @@
 			}
 		},
 		"port": 80,
-		"secure": false,
-		"secureCert": {
-			"secret": "",
-			"caFilename": "",
-			"pemSha": ""
+		"secure": {
+			"IsSecure": false,
+			"Cert": {
+				"secret": "",
+				"caFilename": "",
+				"pemSha": ""
+			},
+			"CACert": {
+				"secret": "",
+				"caFilename": "",
+				"pemSha": ""
+			}
 		},
 		"sslPassthrough": false,
 		"endpoints": [{

@@ -79,8 +79,9 @@ The following annotations are supported:
 |`[0]`|[`ingress.kubernetes.io/slots-increment`](#dynamic-scaling)|qty|-|
 |`[0]`|[`ingress.kubernetes.io/timeout-queue`](#connection)|qty|-|
 ||[`ingress.kubernetes.io/proxy-body-size`](#proxy-body-size)|size (bytes)|-|
-||`ingress.kubernetes.io/secure-backends`|[true\|false]|-|
-||`ingress.kubernetes.io/secure-verify-ca-secret`|secret name|-|
+||[`ingress.kubernetes.io/secure-backends`](#secure-backend)|[true\|false]|-|
+||[`ingress.kubernetes.io/secure-crt-secret`](#secure-backend)|secret name|-|
+||[`ingress.kubernetes.io/secure-verify-ca-secret`](#secure-backend)|secret name|-|
 ||[`ingress.kubernetes.io/session-cookie-name`](#affinity)|cookie name|-|
 |`[0]`|[`ingress.kubernetes.io/session-cookie-strategy`](#affinity)|[insert\|prefix\|rewrite]|-|
 ||`ingress.kubernetes.io/ssl-passthrough`|[true\|false]|-|
@@ -193,6 +194,14 @@ Configurations of connection limit and timeout.
 * http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-maxqueue
 * http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-timeout%20queue
 * Time suffix: http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#2.4
+
+### Secure Backend
+
+Configure secure (TLS) connection to the backends.
+
+* `ingress.kubernetes.io/secure-backends`: Define as true if the backend provide a TLS connection.
+* `ingress.kubernetes.io/secure-crt-secret`: Optional secret name of client certificate and key. This cert/key pair must be provided if the backend requests a client certificate. Expected secret keys are `tls.crt` and `tls.key`, the same used if secret is built with `kubectl create secret tls <name>`.
+* `ingress.kubernetes.io/secure-verify-ca-secret`: Optional secret name with certificate authority bundle used to validate server certificate, preventing man-in-the-middle attacks. Expected secret key is `ca.crt`.
 
 ### Server Alias
 
