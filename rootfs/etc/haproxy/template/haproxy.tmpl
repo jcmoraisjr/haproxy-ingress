@@ -141,16 +141,33 @@ backend {{ $backend.Name }}
 {{- end }}
 {{- $BackendSlots := index $ing.BackendSlots $backend.Name }}
 {{- if $BackendSlots.UseResolver }}
-    server-template server-dns {{ $BackendSlots.TotalSlots }} {{$backend.Service.Name }}.{{ $backend.Service.Namespace }}.svc.{{- $cfg.DNSClusterDomain -}}:{{ $backend.Port }} resolvers {{ $BackendSlots.UseResolver }}{{ if ne $cfg.BackendCheckInterval "" }} check inter {{ $cfg.BackendCheckInterval }}{{ end }} resolve-prefer ipv4 init-addr none
+    server-template server-dns {{ $BackendSlots.TotalSlots }} {{ $backend.Service.Name }}.{{ $backend.Service.Namespace }}.svc.{{ $cfg.DNSClusterDomain }}:{{ $backend.Port }} resolvers {{ $BackendSlots.UseResolver }} resolve-prefer ipv4 init-addr none
+        {{- template "backend" map $cfg $backend }}
 {{- else }}
 {{- range $target, $slot := $BackendSlots.FullSlots }}
-    server {{ $slot.BackendServerName }} {{ $target }} {{ if gt $backend.Connection.MaxConnServer 0 }}maxconn {{ $backend.Connection.MaxConnServer }} {{ end }}{{ if gt $backend.Connection.MaxQueueServer 0 }}maxqueue {{ $backend.Connection.MaxQueueServer }} {{ end }}{{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}{{ if ge $slot.BackendEndpoint.Weight 0 }}weight {{ $slot.BackendEndpoint.Weight }} {{ end }}{{ if ne $cfg.BackendCheckInterval "" }}check inter {{ $cfg.BackendCheckInterval }}{{ end }}
+    server {{ $slot.BackendServerName }} {{ $target }}
+        {{- if ge $slot.BackendEndpoint.Weight 0 }} weight {{ $slot.BackendEndpoint.Weight }}{{ end }}
+        {{- template "backend" map $cfg $backend }}
 {{- end }}
 {{- range $empty := $BackendSlots.EmptySlots }}
-    server {{ $empty }} 127.0.0.1:81 {{ if gt $backend.Connection.MaxConnServer 0 }}maxconn {{ $backend.Connection.MaxConnServer }} {{ end }}{{ if gt $backend.Connection.MaxQueueServer 0 }}maxqueue {{ $backend.Connection.MaxQueueServer }} {{ end }}{{ if $backend.Secure }}ssl {{ if ne $cacert.CAFileName "" }}verify required ca-file {{ $cacert.CAFileName }} {{ else }}verify none {{ end }}{{ end }}{{ if ne $cfg.BackendCheckInterval "" }}check inter {{ $cfg.BackendCheckInterval }} {{ end }}disabled
+    server {{ $empty }} 127.0.0.1:81 disabled
+        {{- template "backend" map $cfg $backend }}
 {{- end }}
 {{- end }}{{/* if $BackendSlots.UseResolver */}}
 {{- end }}{{/* range Backends */}}
+
+{{- define "backend" }}
+    {{- $cfg := .p1 }}
+    {{- $backend := .p2 }}
+    {{- $cacert := $backend.SecureCACert }}
+    {{- if gt $backend.Connection.MaxConnServer 0 }} maxconn {{ $backend.Connection.MaxConnServer }}{{ end }}
+    {{- if gt $backend.Connection.MaxQueueServer 0 }} maxqueue {{ $backend.Connection.MaxQueueServer }}{{ end }}
+    {{- if $backend.Secure }} ssl
+        {{- if ne $cacert.CAFileName "" }} verify required ca-file {{ $cacert.CAFileName }}
+        {{- else }} verify none{{ end }}
+    {{- end }}
+    {{- if ne $cfg.BackendCheckInterval "" }} check inter {{ $cfg.BackendCheckInterval }}{{ end }}
+{{- end }}
 
 ######
 ###### HTTPS frontend (tcp mode)
