@@ -102,7 +102,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		SSLCiphers: defaultSSLCiphers,
 		SSLOptions: "no-sslv3 no-tls-tickets",
 		SSLDHParam: types.SSLDHParam{
-			DefaultMaxSize: 1024,
+			DefaultMaxSize: 2048,
 			SecretName:     "",
 		},
 		NbprocBalance:          1,
