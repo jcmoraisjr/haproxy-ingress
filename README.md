@@ -617,6 +617,20 @@ the SSL/TLS handshake.
 
 http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-ssl-dh-param-file
 
+Example DH parameters secret file:
+
+```
+apiVersion: v1
+data:
+  dhparam.pem: **DH_SECRET_HERE**
+kind: Secret
+metadata:
+  name: ingress-dh-param
+type: Opaque
+```
+
+With `ssl-dh-param` referencing the resulting secret in the haproxy-ingress configuration.
+
 ### ssl-headers-prefix
 
 Define the http header prefix that should be used with certificate parameters such as
