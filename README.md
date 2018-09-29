@@ -722,11 +722,13 @@ The following command-line arguments are supported:
 ||[`ingress-class`](#ingress-class)|name|`haproxy`|
 ||[`kubeconfig`](#kubeconfig)|/path/to/kubeconfig|in cluster config|
 |`[0]`|[`max-old-config-files`](#max-old-config-files)|num of files|`0`|
+||[`publish-service`](#publish-service)|namespace/servicename|``|
 ||[`rate-limit-update`](#rate-limit-update)|uploads per second (float)|`0.5`|
 ||[`reload-strategy`](#reload-strategy)|[native\|reusesocket]|`native`|
 ||[`sort-backends`](#sort-backends)|[true\|false]|`false`|
 ||[`tcp-services-configmap`](#tcp-services-configmap)|namespace/configmapname|no tcp svc|
 ||[`verify-hostname`](#verify-hostname)|[true\|false]|`true`|
+
 
 ### allow-cross-namespace
 
@@ -773,6 +775,20 @@ Everytime a configuration change need to update HAProxy, a configuration file is
 dynamic update is used. By default the same file is recreated and the old configuration is lost.
 Use `--max-old-config-files` to configure after how much files Ingress controller should start to
 remove old configuration files. If `0`, the default value, a single `haproxy.cfg` is used.
+
+### publish-service
+
+Some infrastructure tools like `external-DNS` relay in the ingress status to created access routes to the services exposed with ingress object.
+```
+apiVersion: extensions/v1beta1
+kind: Ingress
+...
+status:
+  loadBalancer:
+    ingress:
+    - hostname: <ingressControllerLoadbalancerFQDN>
+```
+Use `--publish-service=namespace/servicename` to indicate the services fronting the ingress controller. The controller mirrors the address of this service's endpoints to the load-balancer status of all Ingress objects it satisfies.
 
 ### rate-limit-update
 
