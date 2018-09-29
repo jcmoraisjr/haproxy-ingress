@@ -66,7 +66,7 @@ const (
 
 var (
 	// list of ports that cannot be used by TCP or UDP services
-	reservedPorts = []string{"80", "443", "8181", "18080"}
+	reservedPorts = []string{"8181", "18080"}
 
 	fakeCertificatePath = ""
 	fakeCertificateSHA  = ""
