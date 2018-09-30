@@ -5,6 +5,7 @@
 Breaking backward compatibility from `v0.6`
 
 * Default blue/green deployment mode changed from `pod` to `deploy`. Use `ingress.kubernetes.io/blue-green-mode` annotation to change to the v0.6 behavior. See also the blue/green deployment [doc](/README.md#blue-green).
+* Changed default maximum ephemeral DH key size from 1024 to 2048, which might break old TLS clients. Use `ssl-dh-default-max-size` configmap option to change back to 1024 if needed.
 
 Fixes and improvements since `v0.6`
 
@@ -30,9 +31,14 @@ Fixes and improvements since `v0.6`
   * Configmap options:
     * `nbproc-ssl` - [doc](/README.md#nbproc)
     * `nbthread` - [doc](/README.md#nbthread)
+* Balance mode of blue/green deployment [#201](https://github.com/jcmoraisjr/haproxy-ingress/pull/201) - [doc](/README.md#blue-green)
+  * Annotations:
+    * `ingress.kubernetes.io/blue-green-balance`
+    * `ingress.kubernetes.io/blue-green-mode`
 * Add frontend configuration snippet [#194](https://github.com/jcmoraisjr/haproxy-ingress/pull/194) - [doc](/README.md#configuration-snippet)
   * Configmap options:
     * `config-frontend`
+* Add support to ingress/spec/backend [#212](https://github.com/jcmoraisjr/haproxy-ingress/pull/212)
 * Add SSL config on stats endpoint [#193](https://github.com/jcmoraisjr/haproxy-ingress/pull/193) - [doc](/README.md#stats)
   * Configmap options:
     * `stats-ssl-cert`
@@ -40,10 +46,16 @@ Fixes and improvements since `v0.6`
   * Configmap options:
     * `http-port`
     * `https-port`
-* Add blue/green balance mode [#201](https://github.com/jcmoraisjr/haproxy-ingress/pull/201) - [doc](/README.md#blue-green)
+* Add client cert auth for backend [#222](https://github.com/jcmoraisjr/haproxy-ingress/pull/222) - [doc](/README.md#secure-backend)
   * Annotations:
-    * `ingress.kubernetes.io/blue-green-balance`
-    * `ingress.kubernetes.io/blue-green-mode`
+    * `ingress.kubernetes.io/secure-crt-secret`
+* Add publish-service doc [#211](https://github.com/jcmoraisjr/haproxy-ingress/pull/211) - [doc](/README.md#publish-service)
+  * Command-line options:
+    * `--publish-service`
+* Add option to match URL path on wildcard hostnames [#213](https://github.com/jcmoraisjr/haproxy-ingress/pull/213) - [doc](/README.md#strict-host)
+  * Configmap options:
+    * `strict-host`
+* Add HSTS on default backend [#214](https://github.com/jcmoraisjr/haproxy-ingress/pull/214)
 
 ## v0.6-beta.3
 
