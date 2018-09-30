@@ -762,9 +762,10 @@ func (ic GenericController) GetAuthCertificate(name string) (*resolver.AuthSSLCe
 		return &resolver.AuthSSLCert{}, err
 	}
 	return &resolver.AuthSSLCert{
-		Secret:     name,
-		CAFileName: cert.CAFileName,
-		PemSHA:     cert.PemSHA,
+		Secret:      name,
+		CrtFileName: cert.PemFileName,
+		CAFileName:  cert.CAFileName,
+		PemSHA:      cert.PemSHA,
 	}, nil
 }
 
@@ -868,12 +869,8 @@ func (ic *GenericController) createUpstreams(data []*extensions.Ingress, du *ing
 				upstreams[name] = newUpstream(name)
 				upstreams[name].Port = path.Backend.ServicePort
 
-				if !upstreams[name].Secure {
-					upstreams[name].Secure = secUpstream.Secure
-				}
-
-				if upstreams[name].SecureCACert.Secret == "" {
-					upstreams[name].SecureCACert = secUpstream.CACert
+				if secUpstream != nil && !upstreams[name].Secure.IsSecure {
+					upstreams[name].Secure = *secUpstream
 				}
 
 				if upstreams[name].UpstreamHashBy == "" {

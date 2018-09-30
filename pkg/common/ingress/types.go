@@ -19,6 +19,7 @@ package ingress
 import (
 	"fmt"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/secureupstream"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/snippet"
 	"time"
 
@@ -42,7 +43,6 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/rewrite"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/waf"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/defaults"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/resolver"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/store"
 )
 
@@ -178,14 +178,11 @@ type Backend struct {
 	Name    string             `json:"name"`
 	Service *apiv1.Service     `json:"service,omitempty"`
 	Port    intstr.IntOrString `json:"port"`
-	// This indicates if the communication protocol between the backend and the endpoint is HTTP or HTTPS
-	// Allowing the use of HTTPS
-	// The endpoint/s must provide a TLS connection.
-	// The certificate used in the endpoint cannot be a self signed certificate
-	Secure bool `json:"secure"`
-	// SecureCACert has the filename and SHA1 of the certificate authorities used to validate
-	// a secured connection to the backend
-	SecureCACert resolver.AuthSSLCert `json:"secureCACert"`
+	// Secure indicates if the communication protocol between the backend and the endpoint
+	// is HTTP or HTTPS and also an optional client certificate for TLS authentication and
+	// the certificate authority bundle to validate server certificate. The endpoint/s must
+	// provide a TLS connection.
+	Secure secureupstream.Secure `json:"secure"`
 	// SSLPassthrough indicates that Ingress controller will delegate TLS termination to the endpoints.
 	SSLPassthrough bool `json:"sslPassthrough"`
 	// Endpoints contains the list of endpoints currently running

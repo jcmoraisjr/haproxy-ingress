@@ -69,6 +69,9 @@ type mockCfg struct {
 }
 
 func (cfg mockCfg) GetFullResourceName(name, currentNamespace string) string {
+	if name == "" {
+		return ""
+	}
 	return fmt.Sprintf("%v/%v", currentNamespace, name)
 }
 

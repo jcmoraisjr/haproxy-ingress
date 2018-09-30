@@ -55,6 +55,9 @@ type mockCfg struct {
 }
 
 func (m mockCfg) GetFullResourceName(name, currentNamespace string) string {
+	if name == "" {
+		return ""
+	}
 	return fmt.Sprintf("%v/%v", currentNamespace, name)
 }
 
@@ -78,7 +81,7 @@ func (m mockCfg) GetAuthCertificate(name string) (*resolver.AuthSSLCert, error) 
 			PemSHA:     "123",
 		}, nil
 	}
-	return nil, nil
+	return nil, fmt.Errorf("secret not found")
 }
 
 func TestAnnotationExtractor(t *testing.T) {
@@ -148,7 +151,7 @@ func TestSecureUpstream(t *testing.T) {
 	for _, foo := range fooAnns {
 		ing.SetAnnotations(foo.annotations)
 		r := ec.SecureUpstream(ing)
-		if r.Secure != foo.er {
+		if r.IsSecure != foo.er {
 			t.Errorf("Returned %v but expected %v", r, foo.er)
 		}
 	}

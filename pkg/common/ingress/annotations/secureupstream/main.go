@@ -26,13 +26,15 @@ import (
 
 const (
 	secureUpstream       = "ingress.kubernetes.io/secure-backends"
+	secureCrtSecret      = "ingress.kubernetes.io/secure-crt-secret"
 	secureVerifyCASecret = "ingress.kubernetes.io/secure-verify-ca-secret"
 )
 
 // Secure describes SSL backend configuration
 type Secure struct {
-	Secure bool                 `json:"secure"`
-	CACert resolver.AuthSSLCert `json:"caCert"`
+	IsSecure bool                 `json:"secure"`
+	Cert     resolver.AuthSSLCert `json:"cert"`
+	CACert   resolver.AuthSSLCert `json:"caCert"`
 }
 
 type su struct {
@@ -52,28 +54,49 @@ func NewParser(cfg resolver.Configuration, crt resolver.AuthCertificate) parser.
 // rule used to indicate if the upstream servers should use SSL
 func (a su) Parse(ing *extensions.Ingress) (interface{}, error) {
 	s, _ := parser.GetBoolAnnotation(secureUpstream, ing)
+	crt, _ := parser.GetStringAnnotation(secureCrtSecret, ing)
 	CA, _ := parser.GetStringAnnotation(secureVerifyCASecret, ing)
+	crtKey := a.cfg.GetFullResourceName(crt, ing.Namespace)
 	caKey := a.cfg.GetFullResourceName(CA, ing.Namespace)
 	secure := &Secure{
-		Secure: s,
-		CACert: resolver.AuthSSLCert{},
+		IsSecure: s,
+		Cert:     resolver.AuthSSLCert{},
+		CACert:   resolver.AuthSSLCert{},
 	}
-	if !s && caKey != "" {
+	if !s && (caKey != "" || crtKey != "") {
 		return secure,
-			errors.Errorf("trying to use CA from secret %v on a non secure backend", caKey)
+			errors.Errorf("trying to use crt or CA from secret %v on a non secure backend", caKey)
 	}
-	if caKey == "" {
-		return secure, nil
+	if crtKey != "" {
+		cert, err := a.certResolver.GetAuthCertificate(crtKey)
+		if err != nil {
+			return secure, errors.Wrap(err, "error obtaining certificate")
+		}
+		secure.Cert = *cert
 	}
-	caCert, err := a.certResolver.GetAuthCertificate(caKey)
-	if err != nil {
-		return secure, errors.Wrap(err, "error obtaining certificate")
+	if caKey != "" {
+		caCert, err := a.certResolver.GetAuthCertificate(caKey)
+		if err != nil {
+			return secure, errors.Wrap(err, "error obtaining certificate authorities")
+		}
+		secure.CACert = *caCert
 	}
-	if caCert == nil {
-		return secure, nil
+	return secure, nil
+}
+
+// Equal tests for equality between two Secure objects
+func (s1 *Secure) Equal(s2 *Secure) bool {
+	if s1 == nil || s2 == nil {
+		return s1 == s2
 	}
-	return &Secure{
-		Secure: s,
-		CACert: *caCert,
-	}, nil
+	if s1.IsSecure != s2.IsSecure {
+		return false
+	}
+	if !s1.Cert.Equal(&s2.Cert) {
+		return false
+	}
+	if !s1.CACert.Equal(&s2.CACert) {
+		return false
+	}
+	return true
 }
