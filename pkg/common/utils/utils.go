@@ -66,3 +66,17 @@ func SplitMin(str string, sub string, min int) []string {
 	}
 	return minSlice
 }
+
+// GCD calculates the Greatest Common Divisor between a and b
+func GCD(a, b int) int {
+	for b != 0 {
+		r := a % b
+		a, b = b, r
+	}
+	return a
+}
+
+// LCM calculates the Least Common Multiple between a and b
+func LCM(a, b int) int {
+	return a * (b / GCD(a, b))
+}

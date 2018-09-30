@@ -242,7 +242,8 @@ type Endpoint struct {
 	// zero means the server will not receive any request.
 	// Note that this is a per-endpoint configuration, so different
 	// number of replicas need to be adjusted accordingly.
-	Weight int `json:"weight"`
+	Weight    int `json:"weight"`
+	WeightRef *bluegreen.DeployWeight
 	// MaxFails returns the number of unsuccessful attempts to communicate
 	// allowed before this should be considered down.
 	// Setting 0 indicates that the check is performed by a Kubernetes probe

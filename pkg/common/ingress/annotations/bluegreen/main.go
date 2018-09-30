@@ -18,26 +18,37 @@ package bluegreen
 
 import (
 	"fmt"
+	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/parser"
 	extensions "k8s.io/api/extensions/v1beta1"
+	"regexp"
 	"strconv"
 	"strings"
 )
 
 const (
-	blueGreenAnn = "ingress.kubernetes.io/blue-green-deploy"
+	blueGreenBalanceAnn = "ingress.kubernetes.io/blue-green-balance"
+	blueGreenDeployAnn  = "ingress.kubernetes.io/blue-green-deploy"
+	blueGreenModeAnn    = "ingress.kubernetes.io/blue-green-mode"
+)
+
+var (
+	modeAnnRegex = regexp.MustCompile(`^(pod|deploy)$`)
 )
 
 // DeployWeight has one label name/value pair and it's weight
 type DeployWeight struct {
-	LabelName  string
-	LabelValue string
-	Weight     int
+	LabelName   string
+	LabelValue  string
+	PodWeight   int
+	PodCount    int
+	GroupWeight int
 }
 
 // Config is the blue/green deployment configuration
 type Config struct {
 	DeployWeight []DeployWeight
+	Mode         string
 }
 
 type bgdeploy struct {
@@ -50,9 +61,12 @@ func NewParser() parser.IngressAnnotation {
 
 // Parse parses blue/green annotation and create a Config struct
 func (bg bgdeploy) Parse(ing *extensions.Ingress) (interface{}, error) {
-	s, err := parser.GetStringAnnotation(blueGreenAnn, ing)
+	s, err := parser.GetStringAnnotation(blueGreenBalanceAnn, ing)
 	if err != nil {
-		return nil, err
+		s, _ = parser.GetStringAnnotation(blueGreenDeployAnn, ing)
+		if s == "" {
+			return nil, err
+		}
 	}
 	weights := strings.Split(s, ",")
 	var dw []DeployWeight
@@ -66,22 +80,40 @@ func (bg bgdeploy) Parse(ing *extensions.Ingress) (interface{}, error) {
 			return nil, fmt.Errorf("error reading blue/green config: %v", err)
 		}
 		if w < 0 {
+			glog.Warningf("invalid weight '%v' on '%v/%v', using '0'", w, ing.Namespace, ing.Name)
 			w = 0
 		}
+		if w > 256 {
+			glog.Warningf("invalid weight '%v' on '%v/%v', using '256'", w, ing.Namespace, ing.Name)
+			w = 256
+		}
 		dwItem := DeployWeight{
-			LabelName:  dwSlice[0],
-			LabelValue: dwSlice[1],
-			Weight:     int(w),
+			LabelName:   dwSlice[0],
+			LabelValue:  dwSlice[1],
+			PodWeight:   int(w),
+			PodCount:    0, // updated in the controller
+			GroupWeight: 0, // updated in the controller
 		}
 		dw = append(dw, dwItem)
 	}
+	mode, _ := parser.GetStringAnnotation(blueGreenModeAnn, ing)
+	if !modeAnnRegex.MatchString(mode) {
+		if mode != "" {
+			glog.Warningf("unsupported blue/green mode '%v' on '%v/%v', falling back to 'deploy'", mode, ing.Namespace, ing.Name)
+		}
+		mode = "deploy"
+	}
 	return &Config{
 		DeployWeight: dw,
+		Mode:         mode,
 	}, nil
 }
 
 // Equal tests equality between two Config objects
 func (b1 *Config) Equal(b2 *Config) bool {
+	if b1.Mode != b2.Mode {
+		return false
+	}
 	if len(b1.DeployWeight) != len(b2.DeployWeight) {
 		return false
 	}
@@ -108,7 +140,7 @@ func (dw1 *DeployWeight) Equal(dw2 *DeployWeight) bool {
 	if dw1.LabelValue != dw2.LabelValue {
 		return false
 	}
-	if dw1.Weight != dw2.Weight {
+	if dw1.PodWeight != dw2.PodWeight {
 		return false
 	}
 	return true

@@ -684,54 +684,7 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 		}
 	}
 
-	// calc deployment weight based on blue/green config or draining state
-	for _, upstream := range upstreams {
-		svc := upstream.Service
-		podNamespace := svc.Namespace
-		deployWeight := upstream.BlueGreen.DeployWeight
-		for epID := range upstream.Endpoints {
-			ep := &upstream.Endpoints[epID]
-			if ep.Draining {
-				// draining state always set Weight to 0, independent of a blue/green config
-				ep.Weight = 0
-				continue
-			}
-			if len(deployWeight) == 0 {
-				// no blue/green config, using default Weight config as 1 and skipping to the next
-				ep.Weight = 1
-				continue
-			}
-			if ep.Target == nil {
-				glog.Warningf("ignoring blue/green config due to empty object reference on endpoint %v/%v", podNamespace, upstream.Name)
-				continue
-			}
-			podName := ep.Target.Name
-			weight := -1
-			if pod, err := ic.listers.Pod.GetPod(podNamespace, podName); err == nil {
-				for _, weightConfig := range deployWeight {
-					if label, found := pod.Labels[weightConfig.LabelName]; found {
-						if label == weightConfig.LabelValue {
-							if weight < 0 {
-								weight = weightConfig.Weight
-							} else if weightConfig.Weight != weight {
-								glog.Warningf("deployment weight %v to service %v/%v is duplicated and was ignored", weightConfig.Weight, podNamespace, svc.Name)
-							}
-						}
-					} else {
-						glog.Warningf("pod %v/%v does not have label %v used on blue/green deployment", podNamespace, podName, weightConfig.LabelName)
-					}
-				}
-			} else {
-				glog.Warningf("could not calc weight of pod %v/%v: %v", podNamespace, podName, err)
-			}
-			// weight wasn't assigned, set as zero to remove all the traffic
-			// without removing from the balancer
-			if weight < 0 {
-				weight = 0
-			}
-			ep.Weight = weight
-		}
-	}
+	weightBalance(&upstreams, ic.listers.Pod)
 
 	aUpstreams := make([]*ingress.Backend, 0, len(upstreams))
 	// create the list of upstreams and skip those without endpoints
