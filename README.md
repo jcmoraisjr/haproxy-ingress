@@ -298,6 +298,7 @@ The following parameters are supported:
 ||[`stats-port`](#stats)|port number|`1936`|
 ||[`stats-proxy-protocol`](#stats)|[true\|false]|`false`|
 |`[1]`|[`stats-ssl-cert`](#stats)|namespace/secret name|no ssl/plain http|
+|`[1]`|[`strict-host`](#strict-host)|[true\|false]|`true`|
 ||[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
 ||[`tcp-log-format`](#log-format)|tcp log format|HAProxy default log format|
 ||[`timeout-client-fin`](#timeout)|time with suffix|`50s`|
@@ -666,6 +667,40 @@ Configurations of the HAProxy statistics page:
 * `stats-port`: Change the port HAProxy should listen to requests
 * `stats-proxy-protocol`: Define if the stats endpoint should enforce the PROXY protocol
 * `stats-ssl-cert`: Optional namespace/secret-name of `tls.crt` and `tls.key` pair used to enable SSL on stats page. Plain http will be used if not provided, the secret wasn't found or the secret doesn't have a crt/key pair.
+
+### strict-host
+
+Defines whether the path of another matching host/FQDN should be used to try
+to serve a request. The default value is `true`, which means a strict
+configuration and the `default-backend` should be used if a path couldn't be
+matched. If `false`, all matching wildcard hosts will be visited in order to
+try to match the path.
+
+Using the following configuration:
+
+```
+  spec:
+    rules:
+    - host: my.domain.com
+      http:
+        paths:
+        - path: /a
+          backend:
+            serviceName: svc1
+            servicePort: 8080
+    - host: *.domain.com
+      http:
+        paths:
+        - path: /
+          backend:
+            serviceName: svc2
+            servicePort: 8080
+```
+
+A request to `my.domain.com/b` would serve:
+
+* `default-backend` if `strict-host` is true, the default value
+* `svc2` if `strict-host` is false
 
 ### syslog-endpoint
 

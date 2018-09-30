@@ -137,6 +137,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		StatsAuth:              "",
 		StatsSSLCert:           "",
 		CookieKey:              "Ingress",
+		StrictHost:             true,
 		DynamicScaling:         false,
 		StatsSocket:            "/var/run/haproxy-stats.sock",
 		UseProxyProtocol:       false,
@@ -405,6 +406,7 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 	for i, location := range locations {
 		haLocation := types.HAProxyLocation{
 			IsRootLocation: location.Path == "/",
+			IsDefBackend:   location.IsDefBackend,
 			Path:           location.Path,
 			Backend:        location.Backend,
 			CORS:           location.CorsConfig,
