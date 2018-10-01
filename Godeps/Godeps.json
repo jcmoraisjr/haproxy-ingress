@@ -7,6 +7,16 @@
 	],
 	"Deps": [
 		{
+			"ImportPath": "github.com/Masterminds/semver",
+			"Comment": "v1.4.2-14-gc84ddcc",
+			"Rev": "c84ddcca87bf5a941b138dde832a7e20b0159ad8"
+		},
+		{
+			"ImportPath": "github.com/Masterminds/sprig",
+			"Comment": "v2.16.0",
+			"Rev": "15f9564e7e9cf0da02a48e0d25f12a7b83559aa6"
+		},
+		{
 			"ImportPath": "github.com/PuerkitoBio/purell",
 			"Comment": "v1.0.0",
 			"Rev": "8a290539e2e8629dbc4e6bad948158f790ec31f4"
@@ -14,6 +24,11 @@
 		{
 			"ImportPath": "github.com/PuerkitoBio/urlesc",
 			"Rev": "5bd2802263f21d8788851d5305584c82a5c75d7e"
+		},
+		{
+			"ImportPath": "github.com/aokoli/goutils",
+			"Comment": "v1.0.1",
+			"Rev": "3391d3790d23d03408670993e957e8f408993c34"
 		},
 		{
 			"ImportPath": "github.com/beorn7/perks/quantile",
@@ -106,6 +121,11 @@
 			"Rev": "44d81051d367757e1c7c6a5a86423ece9afcf63c"
 		},
 		{
+			"ImportPath": "github.com/google/uuid",
+			"Comment": "1.0.0-8-g9b3b1e0",
+			"Rev": "9b3b1e0f5f99ae461456d768e7d301a7acdaa2d8"
+		},
+		{
 			"ImportPath": "github.com/googleapis/gnostic/OpenAPIv2",
 			"Rev": "0c5108395e2debce0d731cf0287ddf7242066aba"
 		},
@@ -136,6 +156,11 @@
 		{
 			"ImportPath": "github.com/howeyc/gopass",
 			"Rev": "bf9dde6d0d2c004a008c27aaee91170c786f6db8"
+		},
+		{
+			"ImportPath": "github.com/huandu/xstrings",
+			"Comment": "v1.2.0-1-g8bbcf2f",
+			"Rev": "8bbcf2f9ccb55755e748b7644164cd4bdce94c1d"
 		},
 		{
 			"ImportPath": "github.com/imdario/mergo",
@@ -220,6 +245,14 @@
 			"ImportPath": "github.com/spf13/pflag",
 			"Comment": "v1.0.0",
 			"Rev": "e57e3eeb33f795204c1ca35f56c44f83227c6e66"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/pbkdf2",
+			"Rev": "81e90905daefcd6fd217b62423c0908922eadb30"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/scrypt",
+			"Rev": "81e90905daefcd6fd217b62423c0908922eadb30"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/ssh/terminal",
