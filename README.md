@@ -636,6 +636,25 @@ http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#tune.ssl.default-dh
 Define DH parameters file used on ephemeral Diffie-Hellman key exchange during
 the SSL/TLS handshake.
 
+When stored locally, the DH secret may look like:
+
+```
+-----BEGIN DH PARAMETERS-----
+MIICCAKCAgEAg9dDI+Z1dk7A0ctnFqPuS2cq8lIQLc36nvaLE5zcbI5IfiyxmxNh
+...
+-----END DH PARAMETERS-----
+```
+
+To create your secret you can define the secret with a template and a base64
+encoded copy of the DH parameter, or you can generate the secret with:
+
+```
+kubectl create secret generic ingress-dh-param --from-file dhparam.pem
+```
+
+Then, in the haproxy ingress configuration, `ssl-dh-param` should reference the
+resulting secret.
+
 http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-ssl-dh-param-file
 
 ### ssl-headers-prefix
