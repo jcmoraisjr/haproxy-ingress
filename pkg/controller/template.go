@@ -19,7 +19,9 @@ package controller
 import (
 	"bytes"
 	"fmt"
+	"github.com/Masterminds/sprig"
 	"github.com/golang/glog"
+	"github.com/imdario/mergo"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	"regexp"
@@ -88,6 +90,10 @@ var funcMap = gotemplate.FuncMap{
 }
 
 func newTemplate(name string, file string) *template {
+	if err := mergo.Merge(&funcMap, sprig.TxtFuncMap()); err != nil {
+		glog.Fatalf("Cannot merge funcMap and sprig.FuncMap(): %v", err)
+	}
+
 	tmpl, err := gotemplate.New(name).Funcs(funcMap).ParseFiles(file)
 	if err != nil {
 		glog.Fatalf("Cannot read template file: %v", err)
