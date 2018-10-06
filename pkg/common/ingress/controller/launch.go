@@ -98,8 +98,9 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		electionID = flags.String("election-id", "ingress-controller-leader", `Election id to use for status update.`)
 
 		forceIsolation = flags.Bool("force-namespace-isolation", false,
-			`Force namespace isolation. This flag is required to avoid the reference of secrets or
-		configmaps located in a different namespace than the specified in the flag --watch-namespace.`)
+			`Force namespace isolation. This flag is required to avoid the reference of secrets,
+		configmaps or the default backend service located in a different namespace than the specified
+		in the flag --watch-namespace.`)
 
 		allowCrossNamespace = flags.Bool("allow-cross-namespace", false,
 			`Defines if the ingress controller can reference resources of another namespaces.

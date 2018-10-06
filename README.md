@@ -787,6 +787,7 @@ not ready or terminating state.
 The following command-line arguments are supported:
 
 * `[0]` only in `canary` tag
+* `[1]` only in `snapshot` tag
 
 ||Name|Type|Default|
 |---|---|---|---|
@@ -802,7 +803,7 @@ The following command-line arguments are supported:
 ||[`sort-backends`](#sort-backends)|[true\|false]|`false`|
 ||[`tcp-services-configmap`](#tcp-services-configmap)|namespace/configmapname|no tcp svc|
 ||[`verify-hostname`](#verify-hostname)|[true\|false]|`true`|
-
+|`[1]`|[`watch-namespace`](#watch-namespace)|namespace|all namespaces|
 
 ### allow-cross-namespace
 
@@ -937,3 +938,9 @@ match the hostname are discarded and a warning is logged into the ingress contro
 
 Use `--verify-hostname=false` argument to bypass this validation. If used, HAProxy will provide
 the certificate declared in the `secretName` ignoring if the certificate is or is not valid.
+
+### watch-namespace
+
+By default the proxy will be configured using all namespaces from the Kubernetes cluster. Use
+`--watch-namespace` with the name of a namespace to watch and build the configuration of a
+single namespace.
