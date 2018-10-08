@@ -42,6 +42,11 @@ It is also possible to change the default template mounting a new template file 
 `/etc/haproxy/template/haproxy.tmpl`. This is the only file in the directory, so create a
 configmap with `haproxy.tmpl` key mounting into `/etc/haproxy/template` will work.
 
+The template supports [Sprig](http://masterminds.github.io/sprig/) template library. 
+This library provides a group of commonly used template functions to work with dictionaries, 
+lists, math etc.
+
+
 ## Annotations
 
 The following annotations are supported:
