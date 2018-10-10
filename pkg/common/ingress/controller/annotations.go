@@ -214,9 +214,9 @@ func (e *annotationExtractor) ProxyBackend(ing *extensions.Ingress) *proxybacken
 	return val.(*proxybackend.Config)
 }
 
-func (e *annotationExtractor) SSLPassthrough(ing *extensions.Ingress) bool {
+func (e *annotationExtractor) SSLPassthrough(ing *extensions.Ingress) *sslpassthrough.Config {
 	val, _ := e.annotations[sslPassthrough].Parse(ing)
-	return val.(bool)
+	return val.(*sslpassthrough.Config)
 }
 
 func (e *annotationExtractor) ConfigurationSnippet(ing *extensions.Ingress) snippet.Config {

@@ -92,7 +92,8 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/secure-verify-ca-secret`](#secure-backend)|secret name|-|
 ||[`ingress.kubernetes.io/session-cookie-name`](#affinity)|cookie name|-|
 |`[0]`|[`ingress.kubernetes.io/session-cookie-strategy`](#affinity)|[insert\|prefix\|rewrite]|-|
-||`ingress.kubernetes.io/ssl-passthrough`|[true\|false]|-|
+||[`ingress.kubernetes.io/ssl-passthrough`](#ssl-passthrough)|[true\|false]|-|
+|`[1]`|[`ingress.kubernetes.io/ssl-passthrough-http-port`](#ssl-passthrough)|backend port|-|
 ||`ingress.kubernetes.io/ssl-redirect`|[true\|false]|[doc](/examples/rewrite)|
 ||`ingress.kubernetes.io/app-root`|/url|[doc](/examples/rewrite)|
 ||`ingress.kubernetes.io/whitelist-source-range`|CIDR|-|
@@ -257,6 +258,17 @@ The following table shows some examples:
 |/abc/|/abc|/|**404**|
 |/abc/|/abc/|/|/|
 |/abc/|/abc/x|/|/x|
+
+### SSL passthrough
+
+Defines if HAProxy should work in TCP proxy mode and leave the SSL offload to the backend.
+SSL passthrough is a per domain configuration, which means that other domains can be
+configured to SSL offload on HAProxy.
+
+If using SSL passthrough, only root `/` path is supported.
+
+* `ingress.kubernetes.io/ssl-passthrough`: Enable ssl passthrough if defined as `True` and the backend is expected to SSL offload the incoming traffic. The default value is `False`, which means HAProxy should do the SSL handshake.
+* `ingress.kubernetes.io/ssl-passthrough-http-port`: Since v0.7. Optional HTTP port number of the backend. If defined, connections to the HAProxy HTTP port, default `80`, is sent to that port which expects to speak plain HTTP. If not defined, connections to the HTTP port will redirect connections to the HTTPS one.
 
 ### WAF
 

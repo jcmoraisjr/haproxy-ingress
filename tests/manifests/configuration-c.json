@@ -103,7 +103,10 @@
 	}],
 	"servers": [{
 		"hostname": "_",
-		"sslPassthrough": false,
+		"sslPassthrough": {
+			"hasSSLPassthrough": false,
+			"httpPort": 0
+		},
 		"sslCertificate": "/ingress-controller/ssl/default-fake-certificate.pem",
 		"sslExpireTime": "0001-01-01T00:00:00Z",
 		"sslPemChecksum": "123b44425920a2e4825ae779fba0e6e07fbac03d",
@@ -174,7 +177,10 @@
 		}]
 	}, {
 		"hostname": "deis.minikube",
-		"sslPassthrough": false,
+		"sslPassthrough": {
+			"hasSSLPassthrough": false,
+			"httpPort": 0
+		},
 		"sslCertificate": "",
 		"sslExpireTime": "0001-01-01T00:00:00Z",
 		"sslPemChecksum": "",

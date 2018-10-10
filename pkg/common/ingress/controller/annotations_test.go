@@ -18,6 +18,7 @@ package controller
 
 import (
 	"fmt"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/sslpassthrough"
 	"testing"
 
 	apiv1 "k8s.io/api/core/v1"
@@ -232,20 +233,38 @@ func TestSSLPassthrough(t *testing.T) {
 
 	fooAnns := []struct {
 		annotations map[string]string
-		er          bool
+		er          sslpassthrough.Config
 	}{
-		{map[string]string{annotationPassthrough: "true"}, true},
-		{map[string]string{annotationPassthrough: "false"}, false},
-		{map[string]string{annotationPassthrough + "_no": "true"}, false},
-		{map[string]string{}, false},
-		{nil, false},
+		{map[string]string{annotationPassthrough: "true"}, sslpassthrough.Config{
+			HasSSLPassthrough: true,
+			HTTPPort:          0},
+		},
+		{map[string]string{annotationPassthrough: "false"}, sslpassthrough.Config{
+			HasSSLPassthrough: false,
+			HTTPPort:          0},
+		},
+		{map[string]string{annotationPassthrough + "_no": "true"}, sslpassthrough.Config{
+			HasSSLPassthrough: false,
+			HTTPPort:          0},
+		},
+		{map[string]string{}, sslpassthrough.Config{
+			HasSSLPassthrough: false,
+			HTTPPort:          0},
+		},
+		{nil, sslpassthrough.Config{
+			HasSSLPassthrough: false,
+			HTTPPort:          0},
+		},
 	}
 
 	for _, foo := range fooAnns {
 		ing.SetAnnotations(foo.annotations)
 		r := ec.SSLPassthrough(ing)
-		if r != foo.er {
-			t.Errorf("Returned %v but expected %v", r, foo.er)
+		if r.HasSSLPassthrough != foo.er.HasSSLPassthrough {
+			t.Errorf("Returned %v but expected %v", r.HasSSLPassthrough, foo.er.HasSSLPassthrough)
+		}
+		if r.HTTPPort != foo.er.HTTPPort {
+			t.Errorf("Returned port %v but expected %v", r.HTTPPort, foo.er.HTTPPort)
 		}
 	}
 }

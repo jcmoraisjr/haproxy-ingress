@@ -285,13 +285,16 @@ func (cfg *haConfig) createHAProxyServers() {
 	for _, server := range cfg.ingress.PassthroughBackends {
 		haServer := &types.HAProxyPassthrough{
 			Hostname:           server.Hostname,
+			Alias:              false,
+			ACLLabel:           labelizeACL(server.Hostname),
 			Backend:            server.Backend,
+			HTTPPassBackend:    server.HTTPPassBackend,
 			HostnameIsWildcard: idHasWildcard(server.Hostname),
 		}
 		haPassthrough = append(haPassthrough, haServer)
 	}
 	for _, server := range cfg.ingress.Servers {
-		if server.SSLPassthrough {
+		if server.SSLPassthrough.HasSSLPassthrough {
 			// remove SSLPassthrough hosts from haServers array
 			continue
 		}

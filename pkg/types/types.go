@@ -174,7 +174,10 @@ type (
 	// HAProxyPassthrough has SSL passthrough configurations
 	HAProxyPassthrough struct {
 		Hostname           string `json:"hostname"`
+		Alias              bool   `json:"alias"`
+		ACLLabel           string `json:"aclLabel"`
 		Backend            string `json:"backend"`
+		HTTPPassBackend    string `json:"httpPassBackend"`
 		HostnameIsWildcard bool   `json:"hostnameIsWildcard"`
 	}
 	// HAProxyBackendSlots contains used and empty backend server definitions
