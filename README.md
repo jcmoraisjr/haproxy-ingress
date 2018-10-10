@@ -127,7 +127,7 @@ The following annotations are supported:
 
 * `ingress.kubernetes.io/auth-tls-cert-header`: if true HAProxy will add `X-SSL-Client-Cert` http header with a base64 encoding of the X509 certificate provided by the client. Default is to not provide the client certificate.
 * `ingress.kubernetes.io/auth-tls-error-page`: optional URL of the page to redirect the user if he doesn't provide a certificate or the certificate is invalid.
-* `ingress.kubernetes.io/auth-tls-secret`: mandatory secret name with `ca` key providing all certificate authority bundles used to validate client certificates.
+* `ingress.kubernetes.io/auth-tls-secret`: mandatory secret name with `ca.crt` key providing all certificate authority bundles used to validate client certificates.
 
 See also client cert [sample](/examples/auth/client-certs).
 
