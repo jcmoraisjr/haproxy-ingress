@@ -24,4 +24,5 @@ RUN wget -O/dumb-init https://github.com/Yelp/dumb-init/releases/download/v1.2.0
 
 COPY . /
 
+STOPSIGNAL SIGTERM
 ENTRYPOINT ["/dumb-init", "--", "/start.sh"]
