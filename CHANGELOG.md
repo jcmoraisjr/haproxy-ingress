@@ -57,6 +57,12 @@ Fixes and improvements since `v0.6`
     * `strict-host`
 * Add HSTS on default backend [#214](https://github.com/jcmoraisjr/haproxy-ingress/pull/214)
 
+## v0.6-beta.4
+
+* Fix permission denied to mkdir on OpenShift - [#205](https://github.com/jcmoraisjr/haproxy-ingress/issues/205)
+* Fix usage of custom DH params (only v0.6) - [#215](https://github.com/jcmoraisjr/haproxy-ingress/issues/215)
+* Fix redirect of non TLS hosts (only v0.6) - [#231](https://github.com/jcmoraisjr/haproxy-ingress/issues/231)
+
 ## v0.6-beta.3
 
 Fixes and improvements since `v0.6-beta.2`
