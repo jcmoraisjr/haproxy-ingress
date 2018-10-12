@@ -83,6 +83,8 @@ var (
 type GenericController struct {
 	cfg *Configuration
 
+	defaultBackend *defaults.Backend
+
 	listers         *ingress.StoreLister
 	cacheController *cacheController
 
@@ -190,7 +192,7 @@ func newIngressController(config *Configuration) *GenericController {
 	} else {
 		glog.Warning("Update of ingress status is disabled (flag --update-status=false was specified)")
 	}
-	ic.annotations = newAnnotationExtractor(ic)
+	ic.annotations = newAnnotationExtractor(&ic)
 
 	ic.cfg.Backend.SetListers(ic.listers)
 
@@ -210,8 +212,16 @@ func (ic GenericController) IngressClass() string {
 }
 
 // GetDefaultBackend returns the default backend
-func (ic GenericController) GetDefaultBackend() defaults.Backend {
-	return ic.cfg.Backend.BackendDefaults()
+func (ic *GenericController) GetDefaultBackend() defaults.Backend {
+	if ic.defaultBackend == nil {
+		defaultBackend := ic.cfg.Backend.BackendDefaults()
+		ic.defaultBackend = &defaultBackend
+	}
+	// this can cause a nil dereference due to nil assignment
+	// of ic.defaultBackend on syncIngress()
+	// we are safe here because all GetDefaultBackend() calls
+	// are in the same thread, coming from syncIngress()
+	return *ic.defaultBackend
 }
 
 // GetPublishService returns the configured service used to set ingress status
@@ -248,6 +258,10 @@ func (ic *GenericController) syncIngress(item interface{}) error {
 	if ic.syncQueue.IsShuttingDown() {
 		return nil
 	}
+
+	// force reload of default backend data
+	// see GetDefaultBackend()
+	ic.defaultBackend = nil
 
 	if element, ok := item.(task.Element); ok {
 		if name, ok := element.Key.(string); ok {
