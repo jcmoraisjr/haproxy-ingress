@@ -353,14 +353,12 @@ frontend httpfront-{{ if $isShared }}shared-frontend{{ else if $isDefault }}defa
 
 {{- /*------------------------------------*/}}
 {{- range $server := $servers }}
-{{- if $server.UseHTTPS }}
 {{- if $server.SSLRedirect }}
     redirect scheme https if !from-https {{ $server.ACLLabel }}
 {{- else }}
 {{- range $location := $server.Locations }}
 {{- if $location.SSLRedirect }}
     redirect scheme https if !from-https {{ $server.ACLLabel }}{{ $location.HAMatchTxnPath }}
-{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
