@@ -57,6 +57,12 @@ Fixes and improvements since `v0.6`
     * `strict-host`
 * Add HSTS on default backend [#214](https://github.com/jcmoraisjr/haproxy-ingress/pull/214)
 
+## v0.6-beta.6
+
+Fixes and improvements since `v0.6-beta.5`
+
+* Fix SSL redirect if no TLS config is used (only v0.6) - [#235](https://github.com/jcmoraisjr/haproxy-ingress/issues/235)
+
 ## v0.6-beta.5
 
 Fixes and improvements since `v0.6-beta.4`
