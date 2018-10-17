@@ -433,6 +433,10 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 	var haRootLocation *types.HAProxyLocation
 	otherPaths := ""
 	for i, location := range locations {
+		// Template trust only in the SSLRedirect attr to configure
+		// the redirect itself and the URL rewrite
+		// So turn SSLRedirect off despite of its original configuration
+		// if there isn't a certificate to this server
 		haLocation := types.HAProxyLocation{
 			IsRootLocation: location.Path == "/",
 			IsDefBackend:   location.IsDefBackend,
@@ -443,7 +447,7 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 			WAF:            location.WAF,
 			Rewrite:        location.Rewrite,
 			Redirect:       location.Redirect,
-			SSLRedirect:    location.Rewrite.SSLRedirect && cfg.allowRedirect(location.Path),
+			SSLRedirect:    location.Rewrite.SSLRedirect && server.SSLCertificate != "" && cfg.allowRedirect(location.Path),
 			Proxy:          location.Proxy,
 			RateLimit:      location.RateLimit,
 		}

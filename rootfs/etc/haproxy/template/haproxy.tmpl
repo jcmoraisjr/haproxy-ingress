@@ -486,14 +486,12 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- /*------------------------------------*/}}
 {{- if $hasBalance }}
 {{- range $server := $servers }}
-{{- if $server.UseHTTPS }}
 {{- if $server.SSLRedirect }}
     redirect scheme https if !from-https {{ $server.ACLLabel }}
 {{- else }}
 {{- range $location := $server.Locations }}
 {{- if $location.SSLRedirect }}
     redirect scheme https if !from-https {{ $server.ACLLabel }}{{ $location.HAMatchTxnPath }}
-{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
