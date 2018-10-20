@@ -190,6 +190,10 @@ func (b1 *Backend) Equal(b2 *Backend) bool {
 		return false
 	}
 
+	if !b1.Proxy.Equal(&b2.Proxy) {
+		return false
+	}
+
 	if !b1.ConfigurationSnippet.Equal(&b2.ConfigurationSnippet) {
 		return false
 	}

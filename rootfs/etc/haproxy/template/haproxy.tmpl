@@ -172,6 +172,11 @@ backend {{ $backend.Name }}
         {{- if ne $cacert.CAFileName "" }} verify required ca-file {{ $cacert.CAFileName }}
         {{- else }} verify none{{ end }}
     {{- end }}
+    {{- if eq $backend.Proxy.ProxyProtocol "v1" }} send-proxy
+        {{- else if eq $backend.Proxy.ProxyProtocol "v2" }} send-proxy-v2
+        {{- else if eq $backend.Proxy.ProxyProtocol "v2-ssl" }} send-proxy-v2-ssl
+        {{- else if eq $backend.Proxy.ProxyProtocol "v2-ssl-cn" }} send-proxy-v2-ssl-cn
+    {{- end }}
     {{- if ne $cfg.BackendCheckInterval "" }} check inter {{ $cfg.BackendCheckInterval }}{{ end }}
 {{- end }}
 

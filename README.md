@@ -83,6 +83,7 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/limit-whitelist`](#limit)|cidr list|-|
 |`[0]`|[`ingress.kubernetes.io/maxconn-server`](#connection)|qty|-|
 |`[0]`|[`ingress.kubernetes.io/maxqueue-server`](#connection)|qty|-|
+|`[1]`|[`ingress.kubernetes.io/proxy-protocol`](#proxy-protocol)|[v1\|v2\|v2-ssl\|v2-ssl-cn]|-|
 |`[0]`|[`ingress.kubernetes.io/slots-increment`](#dynamic-scaling)|qty|-|
 |`[0]`|[`ingress.kubernetes.io/timeout-queue`](#connection)|qty|-|
 ||[`ingress.kubernetes.io/proxy-body-size`](#proxy-body-size)|size (bytes)|-|
@@ -210,6 +211,18 @@ Configurations of connection limit and timeout.
 * http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-maxqueue
 * http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-timeout%20queue
 * Time suffix: http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#2.4
+
+### Proxy Protocol
+
+Define if the upstream backends support proxy protocol and what version of the protocol should be used.
+
+* `ingress.kubernetes.io/proxy-protocol`: The proxy protocol version the backend expect. Supported values are `v1`, `v2`, `v2-ssl`, `v2-ssl-cn` or `no`. The default behavior if not declared is that the protocol is not supported by the backends and should not be used.
+
+* http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
+* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-send-proxy
+* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-send-proxy-v2
+* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-send-proxy-v2-ssl
+* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-send-proxy-v2-ssl-cn
 
 ### Secure Backend
 
