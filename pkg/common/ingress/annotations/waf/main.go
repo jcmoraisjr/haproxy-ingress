@@ -50,7 +50,7 @@ func (w waf) Parse(ing *extensions.Ingress) (interface{}, error) {
 		return Config{}, nil
 	}
 	if !wafAnnRegex.MatchString(s) {
-		glog.Warningf("ignoring invalid WAF option: %v", s)
+		glog.Warningf("ignoring invalid WAF option '%v' on %v/%v", s, ing.Namespace, ing.Name)
 		return Config{}, nil
 	}
 	return Config{

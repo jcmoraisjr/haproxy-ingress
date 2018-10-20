@@ -23,9 +23,11 @@ import (
 	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/file"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/balance"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/dnsresolvers"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxy"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/waf"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/defaults"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
@@ -162,7 +164,23 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		configDHParam(haproxyController, &conf)
 		configForwardfor(&conf)
 	}
+	validateConfig(&conf)
 	return &conf
+}
+
+func validateConfig(conf *types.HAProxyConfig) {
+	b := conf.BalanceAlgorithm
+	if !balance.IsValidBalance(b) {
+		glog.Warningf("invalid default algorithm '%v', using roundrobin instead", b)
+		conf.BalanceAlgorithm = "roundrobin"
+	}
+	bs := conf.ProxyBodySize
+	if !proxy.IsValidProxyBodySize(bs) {
+		if bs != "unlimited" {
+			glog.Warningf("invalid proxy body size '%v', using unlimited", bs)
+		}
+		conf.ProxyBodySize = ""
+	}
 }
 
 // TODO Ingress core should provide this
