@@ -33,6 +33,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	api "k8s.io/api/core/v1"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -63,7 +64,7 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 	}
 	cfg.createUserlists()
 	cfg.createHAProxyServers()
-	err := cfg.createDefaultCert()
+	err := cfg.createFrontendCertsDir()
 	if err != nil {
 		return &types.ControllerConfig{}, err
 	}
@@ -336,12 +337,34 @@ func (cfg *haConfig) createHAProxyServers() {
 	cfg.haDefaultServer = haDefaultServer
 }
 
-func (cfg *haConfig) createDefaultCert() error {
+func (cfg *haConfig) createFrontendCertsDir() error {
 	// HAProxy uses the first file from ssldir as the default certificate
-	defaultCert := fmt.Sprintf("%v/%v", ingress.DefaultSSLDirectory, "+default.pem")
-	os.Remove(defaultCert)
-	err := os.Link(cfg.haDefaultServer.SSLCertificate, defaultCert)
-	return err
+	// TODO use a hash suffix and lazy removing in order to preserve
+	// the old configuration if parsing the new one does not work
+	certsDir := ingress.DefaultSSLDirectory + "/shared-frontend/"
+	if err := os.RemoveAll(certsDir); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(certsDir, 700); err != nil {
+		return err
+	}
+	defaultCertFile := cfg.haDefaultServer.SSLCertificate
+	if err := os.Link(defaultCertFile, certsDir+"+default.pem"); err != nil {
+		return err
+	}
+	certUsed := make(map[string]bool, len(cfg.haServers))
+	for _, server := range cfg.haServers {
+		certFile := server.SSLCertificate
+		// only if it's an unused non default certificate
+		if certFile != "" && !certUsed[certFile] && certFile != defaultCertFile {
+			certFileName := filepath.Base(certFile)
+			if err := os.Link(certFile, certsDir+certFileName); err != nil {
+				return err
+			}
+		}
+		certUsed[certFile] = true
+	}
+	return nil
 }
 
 func (cfg *haConfig) createProcs() {
