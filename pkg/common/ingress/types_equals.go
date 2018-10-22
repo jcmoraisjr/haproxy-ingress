@@ -376,6 +376,9 @@ func (l1 *Location) Equal(l2 *Location) bool {
 	if !(&l1.ExternalAuth).Equal(&l2.ExternalAuth) {
 		return false
 	}
+	if !l1.OAuth.Equal(&l2.OAuth) {
+		return false
+	}
 	if !(&l1.RateLimit).Equal(&l2.RateLimit) {
 		return false
 	}

@@ -22,6 +22,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/dnsresolvers"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/oauth"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxy"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/ratelimit"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/redirect"
@@ -147,6 +148,7 @@ type (
 		CORS               *cors.CorsConfig      `json:"cors"`
 		WAF                *waf.Config           `json:"waf"`
 		HasRateLimit       bool                  `json:"hasRateLimit"`
+		OAuth              *oauth.Config         `json:"oauth,omitempty"`
 		CertificateAuth    authtls.AuthSSLConfig `json:"certificateAuth,omitempty"`
 		Alias              string                `json:"alias,omitempty"`
 		AliasIsRegex       bool                  `json:"aliasIsRegex"`
@@ -157,6 +159,7 @@ type (
 		IsDefBackend         bool                `json:"isDefBackend"`
 		Path                 string              `json:"path"`
 		Backend              string              `json:"backend"`
+		OAuth                oauth.Config        `json:"oauth"`
 		CORS                 cors.CorsConfig     `json:"cors"`
 		HSTS                 hsts.Config         `json:"hsts"`
 		WAF                  waf.Config          `json:"waf"`

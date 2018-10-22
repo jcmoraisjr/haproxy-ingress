@@ -13,7 +13,7 @@
 # limitations under the License.
 
 FROM haproxy:1.8-alpine
-RUN apk --no-cache add socat openssl
+RUN apk --no-cache add socat openssl lua5.3 lua-socket
 
 # dumb-init kindly manages SIGCHLD from forked HAProxy processes
 ARG DUMB_INIT_SHA256=81231da1cd074fdc81af62789fead8641ef3f24b6b07366a1c34e5b059faf363

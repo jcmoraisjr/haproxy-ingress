@@ -1,0 +1,51 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    run: oauth2-proxy
+  name: oauth2-proxy
+spec:
+  selector:
+    matchLabels:
+      run: oauth2-proxy
+  template:
+    metadata:
+      labels:
+        run: oauth2-proxy
+    spec:
+      containers:
+      - name: oauth2-proxy
+        image: quay.io/jcmoraisjr/oauth2-proxy
+        imagePullPolicy: IfNotPresent
+        args:
+        - --http-address=http://:4180
+        - --upstream=file:///dev/null
+        - --provider=XXXXX
+        - --client-id=XXXXX
+        - --client-secret=XXXXX
+        - --proxy-prefix=/oauth2
+        - --redirect-url=/oauth2/callback
+        - --email-domain=*
+        - --cookie-name=_oauth2_proxy
+        - --cookie-secret=XXXXX
+        - --cookie-secure=true
+        - --cookie-expire=24h
+        - --set-xauthrequest=true
+        ports:
+        - containerPort: 4180
+          protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    run: oauth2-proxy
+  name: oauth2-proxy
+spec:
+  ports:
+  - port: 4180
+    protocol: TCP
+    targetPort: 4180
+  selector:
+    run: oauth2-proxy

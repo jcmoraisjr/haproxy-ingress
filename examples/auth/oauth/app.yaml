@@ -1,0 +1,23 @@
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    ingress.kubernetes.io/oauth: oauth2_proxy
+  name: app
+spec:
+  rules:
+  - host: app.192.168.100.99.nip.io
+    http:
+      paths:
+      - backend:
+          serviceName: oauth2-proxy
+          servicePort: 4180
+        path: /oauth2
+      - backend:
+          serviceName: echoserver
+          servicePort: 8080
+        path: /
+  tls:
+  - hosts:
+    - app.192.168.100.99.nip.io

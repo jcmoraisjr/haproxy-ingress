@@ -38,6 +38,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/connection"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/ipwhitelist"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/oauth"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxy"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/ratelimit"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/redirect"
@@ -345,6 +346,8 @@ type Location struct {
 	// authentication using an external provider
 	// +optional
 	ExternalAuth authreq.External `json:"externalAuth,omitempty"`
+	// OAuth has external oauth configuration
+	OAuth oauth.Config `json:"oauth,omitempty"`
 	// RateLimit describes a limit in the number of connections per IP
 	// address or connections per second.
 	// The Redirect annotation precedes RateLimit
