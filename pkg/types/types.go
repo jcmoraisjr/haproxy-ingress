@@ -187,6 +187,8 @@ type (
 	HAProxyBackendSlots struct {
 		// map from ip:port to server name
 		FullSlots map[string]HAProxyBackendSlot
+		// Keep track of the ordering of backends
+		FullSlotIndices []string
 		// list of unused server names
 		EmptySlots []string
 		// resolver name used for this Backend definition

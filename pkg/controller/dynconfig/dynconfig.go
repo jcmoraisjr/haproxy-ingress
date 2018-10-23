@@ -18,12 +18,13 @@ package dynconfig
 
 import (
 	"fmt"
+	"reflect"
+	"sort"
+
 	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
-	"reflect"
-	"sort"
 )
 
 // DynConfig has configurations used to update a running HAProxy instance
@@ -229,7 +230,7 @@ func (d *DynConfig) dynamicUpdateBackends() bool {
 		}
 
 		// add endpoints only work if using dynamic scaling
-		if d.dynamicScaling && len(backendSlots.EmptySlots) > 0{
+		if d.dynamicScaling && len(backendSlots.EmptySlots) > 0 {
 			// add endpoints
 			sort.Strings(backendSlots.EmptySlots)
 			toAddEndpoints := endpointsSubtract(updEndpoints, curEndpoints)
@@ -292,13 +293,14 @@ func (d *DynConfig) fillBackendServerSlots() {
 	for _, backendName := range d.updKeys {
 		newBackend := types.HAProxyBackendSlots{}
 		newBackend.FullSlots = map[string]types.HAProxyBackendSlot{}
+		newBackend.FullSlotIndices = []string{}
 
 		if resolver := d.updBackendsMap[backendName].UseResolver; resolver != "" {
-				fullSlotCnt := len(d.updBackendsMap[backendName].Endpoints)
-				newBackend.TotalSlots = (int(fullSlotCnt/d.updBackendsMap[backendName].SlotsIncrement) + 1) * d.updBackendsMap[backendName].SlotsIncrement
-				newBackend.UseResolver = resolver
-				d.updatedConfig.BackendSlots[backendName] = &newBackend
-				continue
+			fullSlotCnt := len(d.updBackendsMap[backendName].Endpoints)
+			newBackend.TotalSlots = (int(fullSlotCnt/d.updBackendsMap[backendName].SlotsIncrement) + 1) * d.updBackendsMap[backendName].SlotsIncrement
+			newBackend.UseResolver = resolver
+			d.updatedConfig.BackendSlots[backendName] = &newBackend
+			continue
 		}
 
 		if d.dynamicScaling {
@@ -327,6 +329,7 @@ func (d *DynConfig) fillBackendServerSlots() {
 					BackendEndpoint:   &curEndpoint,
 				}
 			}
+			newBackend.FullSlotIndices = append(newBackend.FullSlotIndices, target)
 		}
 		d.updatedConfig.BackendSlots[backendName] = &newBackend
 	}

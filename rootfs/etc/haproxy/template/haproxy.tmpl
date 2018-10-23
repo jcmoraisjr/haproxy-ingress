@@ -149,8 +149,9 @@ backend {{ $backend.Name }}
     server-template server-dns {{ $BackendSlots.TotalSlots }} {{ $backend.Service.Name }}.{{ $backend.Service.Namespace }}.svc.{{ $cfg.DNSClusterDomain }}:{{ $backend.Port }} resolvers {{ $BackendSlots.UseResolver }} resolve-prefer ipv4 init-addr none
         {{- template "backend" map $cfg $backend }}
 {{- else }}
-{{- range $target, $slot := $BackendSlots.FullSlots }}
-    server {{ $slot.BackendServerName }} {{ $target }}
+{{- range $value := $BackendSlots.FullSlotIndices }}
+        {{ $slot := index $BackendSlots.FullSlots  $value }}
+        server {{ $slot.BackendServerName }} {{ $value }}
         {{- if ge $slot.BackendEndpoint.Weight 0 }} weight {{ $slot.BackendEndpoint.Weight }}{{ end }}
         {{- template "backend" map $cfg $backend }}
 {{- end }}
