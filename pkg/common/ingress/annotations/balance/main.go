@@ -17,13 +17,19 @@ limitations under the License.
 package balance
 
 import (
+	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/parser"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/resolver"
 	extensions "k8s.io/api/extensions/v1beta1"
+	"regexp"
 )
 
 const (
 	balanceAnn = "ingress.kubernetes.io/balance-algorithm"
+)
+
+var (
+	balanceRegex = regexp.MustCompile(`^(roundrobin$|static-rr$|leastconn$|first$|source$|uri|url_param|hdr\(|rdp-cookie)`)
 )
 
 type balance struct {
@@ -38,8 +44,18 @@ func NewParser(resolver resolver.DefaultBackend) parser.IngressAnnotation {
 // Parse parses balance-algorithm annotation
 func (b balance) Parse(ing *extensions.Ingress) (interface{}, error) {
 	s, err := parser.GetStringAnnotation(balanceAnn, ing)
+	def := b.resolver.GetDefaultBackend().BalanceAlgorithm
 	if err != nil {
-		return b.resolver.GetDefaultBackend().BalanceAlgorithm, nil
+		return def, nil
+	}
+	if !balanceRegex.MatchString(s) {
+		glog.Warningf("invalid balance algorithm '%v' on %v/%v, using default: %v", s, ing.Namespace, ing.Name, def)
+		return def, nil
 	}
 	return s, nil
+}
+
+// IsValidBalance return true if b is a valid load balance algorithm
+func IsValidBalance(b string) bool {
+	return balanceRegex.MatchString(b)
 }

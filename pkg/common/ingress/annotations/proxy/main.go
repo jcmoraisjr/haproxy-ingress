@@ -17,7 +17,9 @@ limitations under the License.
 package proxy
 
 import (
+	"github.com/golang/glog"
 	extensions "k8s.io/api/extensions/v1beta1"
+	"regexp"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/parser"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/resolver"
@@ -34,6 +36,10 @@ const (
 	nextUpstream     = "ingress.kubernetes.io/proxy-next-upstream"
 	passParams       = "ingress.kubernetes.io/proxy-pass-params"
 	requestBuffering = "ingress.kubernetes.io/proxy-request-buffering"
+)
+
+var (
+	bodySizeRegex = regexp.MustCompile(`^(|([0-9]+[kmg]?))$`)
 )
 
 // Configuration returns the proxy timeout to use in the upstream server/s
@@ -140,6 +146,12 @@ func (a proxy) Parse(ing *extensions.Ingress) (interface{}, error) {
 	if err != nil || bs == "" {
 		bs = defBackend.ProxyBodySize
 	}
+	if !bodySizeRegex.MatchString(bs) {
+		if bs != "unlimited" {
+			glog.Warningf("ignoring invalid body size '%v' on %v/%v", bs, ing.Namespace, ing.Name)
+		}
+		bs = ""
+	}
 
 	nu, err := parser.GetStringAnnotation(nextUpstream, ing)
 	if err != nil || nu == "" {
@@ -157,4 +169,9 @@ func (a proxy) Parse(ing *extensions.Ingress) (interface{}, error) {
 	}
 
 	return &Configuration{bs, ct, st, rt, bufs, cd, cp, nu, pp, rb}, nil
+}
+
+// IsValidProxyBodySize return true if s is a valid proxy body size string
+func IsValidProxyBodySize(s string) bool {
+	return bodySizeRegex.MatchString(s)
 }

@@ -17,14 +17,20 @@ limitations under the License.
 package connection
 
 import (
+	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/parser"
 	extensions "k8s.io/api/extensions/v1beta1"
+	"regexp"
 )
 
 const (
 	maxconnServerAnn  = "ingress.kubernetes.io/maxconn-server"
 	maxqueueServerAnn = "ingress.kubernetes.io/maxqueue-server"
 	timeoutQueueAnn   = "ingress.kubernetes.io/timeout-queue"
+)
+
+var (
+	timeoutQueueRegex = regexp.MustCompile(`^([0-9]+(us|ms|[smhd])?)$`)
 )
 
 // Config is the connection configuration
@@ -54,6 +60,10 @@ func (c conn) Parse(ing *extensions.Ingress) (interface{}, error) {
 	}
 	timeoutqueue, err := parser.GetStringAnnotation(timeoutQueueAnn, ing)
 	if err != nil {
+		timeoutqueue = ""
+	}
+	if timeoutqueue != "" && !timeoutQueueRegex.MatchString(timeoutqueue) {
+		glog.Warningf("ignoring invalid timeout queue %v on %v/%v", timeoutqueue, ing.Namespace, ing.Name)
 		timeoutqueue = ""
 	}
 	return &Config{

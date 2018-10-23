@@ -621,6 +621,8 @@ resource.
 Since 0.4 a suffix can be added to the size, so `10m` means
 `10 * 1024 * 1024` bytes. Supported suffix are: `k`, `m` and `g`.
 
+Since 0.7 `unlimited` can be used to overwrite any global body size limit.
+
 http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#7.3.6-req.body_size
 
 ### ssl-ciphers
