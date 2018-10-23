@@ -50,7 +50,8 @@ func TestParseAnnotations(t *testing.T) {
 	}
 
 	data := map[string]string{}
-	data[passthrough] = "true"
+	data[passthroughAnn] = "true"
+	data[httpPortAnn] = "8000"
 	ing.SetAnnotations(data)
 	// test ingress using the annotation without a TLS section
 	_, err = NewParser().Parse(ing)
@@ -68,11 +69,14 @@ func TestParseAnnotations(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected error parsing ingress with sslpassthrough")
 	}
-	val, ok := i.(bool)
+	cfg, ok := i.(*Config)
 	if !ok {
-		t.Errorf("expected a bool type")
+		t.Errorf("expected a sslpassthrough.Config type")
 	}
-	if !val {
+	if !cfg.HasSSLPassthrough {
 		t.Errorf("expected true but false returned")
+	}
+	if cfg.HTTPPort != 8000 {
+		t.Errorf("expected 8000 but %v returned", cfg.HTTPPort)
 	}
 }

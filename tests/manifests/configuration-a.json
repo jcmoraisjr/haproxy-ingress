@@ -222,7 +222,10 @@
 	}],
 	"servers": [{
 		"hostname": "_",
-		"sslPassthrough": false,
+		"sslPassthrough": {
+			"hasSSLPassthrough": false,
+			"httpPort": 0
+		},
 		"sslCertificate": "/ingress-controller/ssl/default-fake-certificate.pem",
 		"sslExpireTime": "0001-01-01T00:00:00Z",
 		"sslPemChecksum": "84d4ecb651dae44d625531bf77b6265d660b60b2",
@@ -328,7 +331,10 @@
 		}]
 	}, {
 		"hostname": "dev.mycompany.com",
-		"sslPassthrough": false,
+		"sslPassthrough": {
+			"hasSSLPassthrough": false,
+			"httpPort": 0
+		},
 		"sslCertificate": "/ingress-controller/ssl/default-mycompany.pem",
 		"sslExpireTime": "2027-06-20T20:28:25Z",
 		"sslPemChecksum": "b9282485e120e4fad8c25d15dc1b7984fcde99ba",
@@ -515,7 +521,10 @@
 		}]
 	}, {
 		"hostname": "domain.tld",
-		"sslPassthrough": false,
+		"sslPassthrough": {
+			"hasSSLPassthrough": false,
+			"httpPort": 0
+		},
 		"sslCertificate": "",
 		"sslExpireTime": "0001-01-01T00:00:00Z",
 		"sslPemChecksum": "",

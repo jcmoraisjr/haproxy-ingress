@@ -17,6 +17,7 @@ limitations under the License.
 package sslpassthrough
 
 import (
+	"github.com/golang/glog"
 	extensions "k8s.io/api/extensions/v1beta1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/parser"
@@ -24,10 +25,16 @@ import (
 )
 
 const (
-	passthrough = "ingress.kubernetes.io/ssl-passthrough"
+	passthroughAnn = "ingress.kubernetes.io/ssl-passthrough"
+	httpPortAnn    = "ingress.kubernetes.io/ssl-passthrough-http-port"
 )
 
 type sslpt struct {
+}
+
+type Config struct {
+	HasSSLPassthrough bool
+	HTTPPort          int
 }
 
 // NewParser creates a new SSL passthrough annotation parser
@@ -39,8 +46,34 @@ func NewParser() parser.IngressAnnotation {
 // rule used to indicate if is required to configure
 func (a sslpt) Parse(ing *extensions.Ingress) (interface{}, error) {
 	if ing.GetAnnotations() == nil {
-		return false, ing_errors.ErrMissingAnnotations
+		return &Config{}, ing_errors.ErrMissingAnnotations
 	}
 
-	return parser.GetBoolAnnotation(passthrough, ing)
+	pass, _ := parser.GetBoolAnnotation(passthroughAnn, ing)
+	port, _ := parser.GetIntAnnotation(httpPortAnn, ing)
+
+	if !pass && port != 0 {
+		glog.Warningf("non ssl-passthrough with http-port on '%v/%v', ignoring", ing.Namespace, ing.Name)
+		port = 0
+	}
+	if port < 0 {
+		glog.Warningf("invalid port number '%v' on '%v/%v', ignoring", port, ing.Namespace, ing.Name)
+		port = 0
+	}
+
+	return &Config{
+		HasSSLPassthrough: pass,
+		HTTPPort:          port,
+	}, nil
+}
+
+// Equal tests equality between two Config structs
+func (c1 *Config) Equal(c2 *Config) bool {
+	if c1.HasSSLPassthrough != c2.HasSSLPassthrough {
+		return false
+	}
+	if c1.HTTPPort != c2.HTTPPort {
+		return false
+	}
+	return true
 }

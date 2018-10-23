@@ -295,7 +295,7 @@ func (s1 *Server) Equal(s2 *Server) bool {
 	if s1.Alias != s2.Alias {
 		return false
 	}
-	if s1.SSLPassthrough != s2.SSLPassthrough {
+	if !s1.SSLPassthrough.Equal(&s2.SSLPassthrough) {
 		return false
 	}
 	if s1.SSLCertificate != s2.SSLCertificate {

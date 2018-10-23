@@ -296,7 +296,7 @@ func (ic *GenericController) syncIngress(item interface{}) error {
 	var passUpstreams []*ingress.SSLPassthroughBackend
 
 	for _, server := range servers {
-		if !server.SSLPassthrough {
+		if !server.SSLPassthrough.HasSSLPassthrough {
 			continue
 		}
 
@@ -306,10 +306,11 @@ func (ic *GenericController) syncIngress(item interface{}) error {
 				continue
 			}
 			passUpstreams = append(passUpstreams, &ingress.SSLPassthroughBackend{
-				Backend:  loc.Backend,
-				Hostname: server.Hostname,
-				Service:  loc.Service,
-				Port:     loc.Port,
+				Backend:         loc.Backend,
+				HTTPPassBackend: loc.HTTPPassBackend,
+				Hostname:        server.Hostname,
+				Service:         loc.Service,
+				Port:            loc.Port,
 			})
 			break
 		}
@@ -609,6 +610,13 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 
 				ups := upstreams[upsName]
 
+				var upshttpPassName string
+				if server.SSLPassthrough.HasSSLPassthrough && server.SSLPassthrough.HTTPPort > 0 {
+					upshttpPassName = fmt.Sprintf("%v-%v-%v",
+						ing.GetNamespace(), path.Backend.ServiceName, server.SSLPassthrough.HTTPPort)
+					ctx.copyBackendAnnotations(upstreams[upshttpPassName])
+				}
+
 				// if there's no path defined we assume /
 				nginxPath := rootLocation
 				if path.Path != "" {
@@ -629,6 +637,7 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 						loc.Backend = ups.Name
 						loc.IsDefBackend = false
 						loc.Backend = ups.Name
+						loc.HTTPPassBackend = upshttpPassName
 						loc.Port = ups.Port
 						loc.Service = ups.Service
 						loc.Ingress = ing
@@ -643,12 +652,13 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 				if addLoc {
 					glog.V(3).Infof("adding location %v in ingress rule %v/%v upstream %v", nginxPath, ing.Namespace, ing.Name, ups.Name)
 					loc := &ingress.Location{
-						Path:         nginxPath,
-						Backend:      ups.Name,
-						IsDefBackend: false,
-						Service:      ups.Service,
-						Port:         ups.Port,
-						Ingress:      ing,
+						Path:            nginxPath,
+						Backend:         ups.Name,
+						HTTPPassBackend: upshttpPassName,
+						IsDefBackend:    false,
+						Service:         ups.Service,
+						Port:            ups.Port,
+						Ingress:         ing,
 					}
 					mergeLocationAnnotations(loc, anns)
 					if loc.Redirect.FromToWWW {
@@ -671,6 +681,7 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 		}
 	}
 
+	// update backends (upstreams) with passthrough config
 	for _, upstream := range upstreams {
 		var isHTTPSfrom []*ingress.Server
 		for _, server := range servers {
@@ -680,14 +691,12 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 						glog.V(3).Infof("upstream %v does not have any active endpoints. Using default backend", upstream.Name)
 						location.Backend = defUpstreamName
 					}
-					if server.SSLPassthrough {
-						if location.Path == rootLocation {
-							if location.Backend == defUpstreamName {
-								glog.Warningf("ignoring ssl passthrough of %v as it doesn't have a default backend (root context)", server.Hostname)
-								continue
-							}
-							isHTTPSfrom = append(isHTTPSfrom, server)
+					if server.SSLPassthrough.HasSSLPassthrough && location.Path == rootLocation {
+						if location.Backend == defUpstreamName {
+							glog.Warningf("ignoring ssl passthrough of %v as it doesn't have a default backend (root context)", server.Hostname)
+							continue
 						}
+						isHTTPSfrom = append(isHTTPSfrom, server)
 					}
 				}
 			}
@@ -838,6 +847,7 @@ func (ic *GenericController) createUpstreams(data []*extensions.Ingress, du *ing
 		hz := ic.annotations.HealthCheck(ing)
 		serviceUpstream := ic.annotations.ServiceUpstream(ing)
 		upstreamHashBy := ic.annotations.UpstreamHashBy(ing)
+		sslpt := ic.annotations.SSLPassthrough(ing)
 
 		var defBackend string
 		if ing.Spec.Backend != nil {
@@ -877,56 +887,78 @@ func (ic *GenericController) createUpstreams(data []*extensions.Ingress, du *ing
 			}
 
 			for _, path := range rule.HTTP.Paths {
-				name := fmt.Sprintf("%v-%v-%v",
-					ing.GetNamespace(),
-					path.Backend.ServiceName,
-					path.Backend.ServicePort.String())
-
-				if _, ok := upstreams[name]; ok {
-					continue
-				}
-
-				glog.V(3).Infof("creating upstream %v", name)
-				upstreams[name] = newUpstream(name)
-				upstreams[name].Port = path.Backend.ServicePort
-
-				if secUpstream != nil && !upstreams[name].Secure.IsSecure {
-					upstreams[name].Secure = *secUpstream
-				}
-
-				if upstreams[name].UpstreamHashBy == "" {
-					upstreams[name].UpstreamHashBy = upstreamHashBy
-				}
-
-				svcKey := fmt.Sprintf("%v/%v", ing.GetNamespace(), path.Backend.ServiceName)
-
-				// Add the service cluster endpoint as the upstream instead of individual endpoints
-				// if the serviceUpstream annotation is enabled
-				if serviceUpstream {
-					endpoint, err := ic.getServiceClusterEndpoint(svcKey, &path.Backend)
-					if err != nil {
-						glog.Errorf("failed to get service cluster endpoint for service %s: %v", svcKey, err)
-					} else {
-						upstreams[name].Endpoints = []ingress.Endpoint{endpoint}
-					}
-				}
-
-				if len(upstreams[name].Endpoints) == 0 {
-					endp, err := ic.serviceEndpoints(svcKey, path.Backend.ServicePort.String(), hz)
-					if err != nil {
-						glog.Warningf("error obtaining service endpoints: %v", err)
+				backends := []extensions.IngressBackend{path.Backend}
+				if sslpt.HasSSLPassthrough {
+					if path.Path != rootLocation {
+						glog.Warning(
+							"ignoring path '%v' from sslpassthrough ingress %v/%v",
+							path.Path, ing.Namespace, ing.Name)
 						continue
 					}
-					upstreams[name].Endpoints = endp
+					if sslpt.HTTPPort > 0 {
+						backends = append(backends, extensions.IngressBackend{
+							ServiceName: path.Backend.ServiceName,
+							ServicePort: intstr.FromInt(sslpt.HTTPPort),
+						})
+					}
 				}
 
-				s, err := ic.listers.Service.GetByName(svcKey)
-				if err != nil {
-					glog.Warningf("error obtaining service: %v", err)
-					continue
-				}
+				// a dumb loop just to avoid ctrl+c ctrl+v.
+				// syncIngress and core dependencies need
+				// to be rewritten from scratch in order
+				// to fix coupling and improve cohesion.
+				for _, backend := range backends {
+					name := fmt.Sprintf("%v-%v-%v",
+						ing.GetNamespace(),
+						backend.ServiceName,
+						backend.ServicePort.String())
 
-				upstreams[name].Service = s
+					if _, ok := upstreams[name]; ok {
+						continue
+					}
+
+					glog.V(3).Infof("creating upstream %v", name)
+					upstreams[name] = newUpstream(name)
+					upstreams[name].Port = backend.ServicePort
+
+					if secUpstream != nil && !upstreams[name].Secure.IsSecure {
+						upstreams[name].Secure = *secUpstream
+					}
+
+					if upstreams[name].UpstreamHashBy == "" {
+						upstreams[name].UpstreamHashBy = upstreamHashBy
+					}
+
+					svcKey := fmt.Sprintf("%v/%v", ing.GetNamespace(), backend.ServiceName)
+
+					// Add the service cluster endpoint as the upstream instead of individual endpoints
+					// if the serviceUpstream annotation is enabled
+					if serviceUpstream {
+						endpoint, err := ic.getServiceClusterEndpoint(svcKey, &backend)
+						if err != nil {
+							glog.Errorf("failed to get service cluster endpoint for service %s: %v", svcKey, err)
+						} else {
+							upstreams[name].Endpoints = []ingress.Endpoint{endpoint}
+						}
+					}
+
+					if len(upstreams[name].Endpoints) == 0 {
+						endp, err := ic.serviceEndpoints(svcKey, backend.ServicePort.String(), hz)
+						if err != nil {
+							glog.Warningf("error obtaining service endpoints: %v", err)
+							continue
+						}
+						upstreams[name].Endpoints = endp
+					}
+
+					s, err := ic.listers.Service.GetByName(svcKey)
+					if err != nil {
+						glog.Warningf("error obtaining service: %v", err)
+						continue
+					}
+
+					upstreams[name].Service = s
+				}
 			}
 		}
 	}
@@ -1154,7 +1186,7 @@ func (ic *GenericController) createServers(data []*extensions.Ingress,
 						Service:      &apiv1.Service{},
 					},
 				},
-				SSLPassthrough: sslpt,
+				SSLPassthrough: *sslpt,
 			}
 		}
 	}
@@ -1480,6 +1512,7 @@ func (ic *GenericController) isForceReload() bool {
 	return atomic.LoadInt32(&ic.forceReload) != 0
 }
 
+// SetForceReload ...
 func (ic *GenericController) SetForceReload(shouldReload bool) {
 	if shouldReload {
 		atomic.StoreInt32(&ic.forceReload, 1)
