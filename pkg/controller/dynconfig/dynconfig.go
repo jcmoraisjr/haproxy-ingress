@@ -328,8 +328,8 @@ func (d *DynConfig) fillBackendServerSlots() {
 					BackendServerName: target,
 					BackendEndpoint:   &curEndpoint,
 				}
+				newBackend.FullSlotIndices = append(newBackend.FullSlotIndices, target)
 			}
-			newBackend.FullSlotIndices = append(newBackend.FullSlotIndices, target)
 		}
 		d.updatedConfig.BackendSlots[backendName] = &newBackend
 	}
