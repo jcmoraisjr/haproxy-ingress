@@ -31,9 +31,9 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
-	"io/ioutil"
 	api "k8s.io/api/core/v1"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -64,7 +64,7 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 	}
 	cfg.createUserlists()
 	cfg.createHAProxyServers()
-	err := cfg.createDefaultCert()
+	err := cfg.createFrontendCertsDir()
 	if err != nil {
 		return &types.ControllerConfig{}, err
 	}
@@ -337,26 +337,19 @@ func (cfg *haConfig) createHAProxyServers() {
 	cfg.haDefaultServer = haDefaultServer
 }
 
-func (cfg *haConfig) createDefaultCert() error {
-	sharedCertsFile := fmt.Sprintf("%v/%v", ingress.DefaultSSLDirectory, "+default.pem")
-	sharedCerts, err := os.OpenFile(sharedCertsFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
+func (cfg *haConfig) createFrontendCertsDir() error {
+	// HAProxy uses the first file from ssldir as the default certificate
+	// TODO use a hash suffix and lazy removing in order to preserve
+	// the old configuration if parsing the new one does not work
+	certsDir := ingress.DefaultSSLDirectory + "/shared-frontend/"
+	if err := os.RemoveAll(certsDir); err != nil {
 		return err
 	}
-	cat := func(file *os.File, fileName string) error {
-		fileCat, err := ioutil.ReadFile(fileName)
-		if err != nil {
-			return err
-		}
-		_, err = file.Write(append(fileCat, byte(10)))
-		if err != nil {
-			return err
-		}
-		return nil
+	if err := os.MkdirAll(certsDir, 700); err != nil {
+		return err
 	}
-	defer sharedCerts.Close()
 	defaultCertFile := cfg.haDefaultServer.SSLCertificate
-	if err = cat(sharedCerts, defaultCertFile); err != nil {
+	if err := os.Link(defaultCertFile, certsDir+"+default.pem"); err != nil {
 		return err
 	}
 	certUsed := make(map[string]bool, len(cfg.haServers))
@@ -364,7 +357,8 @@ func (cfg *haConfig) createDefaultCert() error {
 		certFile := server.SSLCertificate
 		// only if it's an unused non default certificate
 		if certFile != "" && !certUsed[certFile] && certFile != defaultCertFile {
-			if err = cat(sharedCerts, certFile); err != nil {
+			certFileName := filepath.Base(certFile)
+			if err := os.Link(certFile, certsDir+certFileName); err != nil {
 				return err
 			}
 		}
