@@ -1448,7 +1448,7 @@ func (ic *GenericController) Start() {
 
 		if !class.IsValid(ing, ic.cfg.IngressClass, ic.cfg.DefaultIngressClass) {
 			a, _ := parser.GetStringAnnotation(class.IngressKey, ing)
-			glog.Infof("ignoring add for ingress %v based on annotation %v with value %v", ing.Name, class.IngressKey, a)
+			glog.V(2).Infof("ignoring add for ingress %v based on annotation %v with value %v", ing.Name, class.IngressKey, a)
 			continue
 		}
 

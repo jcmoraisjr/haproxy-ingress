@@ -29,6 +29,10 @@ func weightBalance(upstreams *map[string]*ingress.Backend, podLister store.PodLi
 	// calc deployment weight based on blue/green config or draining state
 	for _, upstream := range *upstreams {
 		svc := upstream.Service
+		if svc == nil {
+			// upstream has an invalid service
+			continue
+		}
 		podNamespace := svc.Namespace
 		deployWeight := upstream.BlueGreen.DeployWeight
 		hasBlueGreenDeploy := false

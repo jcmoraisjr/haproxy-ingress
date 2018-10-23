@@ -226,7 +226,7 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 		&extensions.Ingress{}, ic.cfg.ResyncPeriod, ingEventHandler)
 
 	lister.Endpoint.Store, controller.Endpoint = cache.NewInformer(
-		cache.NewListWatchFromClient(ic.cfg.Client.CoreV1().RESTClient(), "endpoints", ic.cfg.Namespace, fields.Everything()),
+		cache.NewListWatchFromClient(ic.cfg.Client.CoreV1().RESTClient(), "endpoints", watchNs, fields.Everything()),
 		&apiv1.Endpoints{}, ic.cfg.ResyncPeriod, eventHandler)
 
 	lister.Secret.Store, controller.Secret = cache.NewInformer(
@@ -238,7 +238,7 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 		&apiv1.ConfigMap{}, ic.cfg.ResyncPeriod, mapEventHandler)
 
 	lister.Service.Store, controller.Service = cache.NewInformer(
-		cache.NewListWatchFromClient(ic.cfg.Client.CoreV1().RESTClient(), "services", ic.cfg.Namespace, fields.Everything()),
+		cache.NewListWatchFromClient(ic.cfg.Client.CoreV1().RESTClient(), "services", watchNs, fields.Everything()),
 		&apiv1.Service{}, ic.cfg.ResyncPeriod, cache.ResourceEventHandlerFuncs{})
 
 	lister.Pod.Store, controller.Pod = cache.NewInformer(
