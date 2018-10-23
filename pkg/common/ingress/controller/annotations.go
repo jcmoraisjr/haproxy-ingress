@@ -18,6 +18,7 @@ package controller
 
 import (
 	"github.com/golang/glog"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxybackend"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/alias"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/auth"
@@ -83,6 +84,7 @@ func newAnnotationExtractor(cfg extractorConfig) annotationExtractor {
 			"Whitelist":            ipwhitelist.NewParser(cfg),
 			"UsePortInRedirects":   portinredirect.NewParser(cfg),
 			"Proxy":                proxy.NewParser(cfg),
+			"ProxyBackend":         proxybackend.NewParser(),
 			"RateLimit":            ratelimit.NewParser(cfg),
 			"Connection":           connection.NewParser(),
 			"Redirect":             redirect.NewParser(),
@@ -144,6 +146,7 @@ const (
 	secureUpstream       = "SecureUpstream"
 	healthCheck          = "HealthCheck"
 	blueGreen            = "BlueGreen"
+	proxyBackend         = "ProxyBackend"
 	sslPassthrough       = "SSLPassthrough"
 	configSnippet        = "ConfigurationSnippet"
 	sessionAffinity      = "SessionAffinity"
@@ -201,6 +204,14 @@ func (e *annotationExtractor) BlueGreen(ing *extensions.Ingress) *bluegreen.Conf
 		}
 	}
 	return val.(*bluegreen.Config)
+}
+
+func (e *annotationExtractor) ProxyBackend(ing *extensions.Ingress) *proxybackend.Config {
+	val, err := e.annotations[proxyBackend].Parse(ing)
+	if err != nil {
+		return &proxybackend.Config{}
+	}
+	return val.(*proxybackend.Config)
 }
 
 func (e *annotationExtractor) SSLPassthrough(ing *extensions.Ingress) bool {

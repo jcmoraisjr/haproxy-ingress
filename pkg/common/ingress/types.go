@@ -19,6 +19,7 @@ package ingress
 import (
 	"fmt"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxybackend"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/secureupstream"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/snippet"
 	"time"
@@ -195,6 +196,8 @@ type Backend struct {
 	SlotsIncrement int `json:"slotsIncrement"`
 	// BlueGreen has the blue/green deployment configuration
 	BlueGreen bluegreen.Config `json:"blueGreen"`
+	// Proxy has proxy configurations used on the backend, eg version of the proxy protocol
+	Proxy proxybackend.Config `json:"proxyBackend"`
 	// ConfigurationSnippet contains additional configuration to be considered in the backend configuration
 	ConfigurationSnippet snippet.Config `json:"configurationSnippet"`
 	// Connection has backend or server connection limits and timeouts

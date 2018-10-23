@@ -18,6 +18,7 @@ package controller
 
 import (
 	"fmt"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxybackend"
 	"math/rand"
 	"net"
 	"reflect"
@@ -530,6 +531,7 @@ type backendContext struct {
 	affinity    *sessionaffinity.AffinityConfig
 	balance     string
 	blueGreen   *bluegreen.Config
+	proxy       *proxybackend.Config
 	snippet     snippet.Config
 	conn        *connection.Config
 	slotsInc    int
@@ -541,6 +543,7 @@ func (ic *GenericController) createBackendContext(ing *extensions.Ingress) *back
 		affinity:    ic.annotations.SessionAffinity(ing),
 		balance:     ic.annotations.BalanceAlgorithm(ing),
 		blueGreen:   ic.annotations.BlueGreen(ing),
+		proxy:       ic.annotations.ProxyBackend(ing),
 		snippet:     ic.annotations.ConfigurationSnippet(ing),
 		conn:        ic.annotations.Connection(ing),
 		slotsInc:    ic.annotations.SlotsIncrement(ing),
@@ -744,6 +747,10 @@ func (ctx *backendContext) copyBackendAnnotations(backend *ingress.Backend) {
 
 	if len(backend.BlueGreen.DeployWeight) == 0 {
 		backend.BlueGreen = *ctx.blueGreen
+	}
+
+	if backend.Proxy.ProxyProtocol == "" {
+		backend.Proxy.ProxyProtocol = ctx.proxy.ProxyProtocol
 	}
 
 	if len(backend.ConfigurationSnippet.Backend) == 0 {
