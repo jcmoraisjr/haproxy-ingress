@@ -38,6 +38,7 @@ Fixes and improvements since `v0.6`
 * Add frontend configuration snippet [#194](https://github.com/jcmoraisjr/haproxy-ingress/pull/194) - [doc](/README.md#configuration-snippet)
   * Configmap options:
     * `config-frontend`
+* Add OAuth2 support [#239](https://github.com/jcmoraisjr/haproxy-ingress/pull/239) - [doc](/README.md#oauth)
 * Add support to ingress/spec/backend [#212](https://github.com/jcmoraisjr/haproxy-ingress/pull/212)
 * Add SSL config on stats endpoint [#193](https://github.com/jcmoraisjr/haproxy-ingress/pull/193) - [doc](/README.md#stats)
   * Configmap options:
@@ -56,6 +57,18 @@ Fixes and improvements since `v0.6`
   * Configmap options:
     * `strict-host`
 * Add HSTS on default backend [#214](https://github.com/jcmoraisjr/haproxy-ingress/pull/214)
+* Add Sprig template functions [#224](https://github.com/jcmoraisjr/haproxy-ingress/pull/224) - [Sprig doc](https://masterminds.github.io/sprig/)
+* Add watch-namespace command-line option [#227](https://github.com/jcmoraisjr/haproxy-ingress/pull/227) - [doc](/README.md#watch-namespace)
+  * Command-line options:
+    * `--watch-namespace`
+* Add http-port on ssl-passthrough [#228](https://github.com/jcmoraisjr/haproxy-ingress/pull/228) - [doc](/README.md#ssl-passthrough)
+  * Annotations:
+    * `ingress.kubernetes.io/ssl-passthrough-http-port`
+* Add proxy-protocol annotation [#236](https://github.com/jcmoraisjr/haproxy-ingress/pull/236) - [doc](/README.md#proxy-protocol)
+  * Annotations:
+    * `ingress.kubernetes.io/proxy-protocol`
+* Optimize reading of default backend [#234](https://github.com/jcmoraisjr/haproxy-ingress/pull/234)
+* Add annotation and configmap validations [#237](https://github.com/jcmoraisjr/haproxy-ingress/pull/237)
 
 ## v0.6-beta.6
 
