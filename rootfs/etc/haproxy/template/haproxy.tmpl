@@ -25,6 +25,7 @@ global
     log-tag ingress
 {{- end }}
     lua-load /usr/local/etc/haproxy/lua/send-response.lua
+    lua-load /usr/local/etc/haproxy/lua/auth-request.lua
 {{- if ne $cfg.SSLDHParam.Filename "" }}
     # DH PEM checksum: {{ $cfg.SSLDHParam.PemSHA }}
     ssl-dh-param-file {{ $cfg.SSLDHParam.Filename }}
@@ -417,6 +418,23 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- if ne $listName "" }}
 {{- $realm := $location.Userlist.Realm }}
     http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if {{ $server.ACLLabel }}{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $hasBalance }}
+{{- range $server := $servers }}
+{{- if $server.OAuth }}
+{{- $oauth := $server.OAuth }}
+{{- if eq $oauth.OAuthImpl "oauth2_proxy" }}
+    http-request set-header X-Real-IP %[src] if {{ $server.ACLLabel }}
+    http-request lua.auth-request {{ $oauth.BackendName }} {{ $oauth.URIPrefix }}/auth if {{ $server.ACLLabel }}
+    http-request redirect location {{ $oauth.URIPrefix }}/start?rd=%[path] if {{ $server.ACLLabel }} !{ path_beg {{ $oauth.URIPrefix }}/ } !{ var(txn.auth_response_successful) -m bool }
+{{- range $header, $attr := $oauth.Headers }}
+    http-request set-header {{ $header }} %[var(txn.{{ $attr }})] if {{ $server.ACLLabel }} { var(txn.{{ $attr }}) -m found }
 {{- end }}
 {{- end }}
 {{- end }}

@@ -83,6 +83,9 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/limit-whitelist`](#limit)|cidr list|-|
 |`[0]`|[`ingress.kubernetes.io/maxconn-server`](#connection)|qty|-|
 |`[0]`|[`ingress.kubernetes.io/maxqueue-server`](#connection)|qty|-|
+|`[1]`|[`ingress.kubernetes.io/oauth`](#oauth)|"oauth2_proxy"|[doc](/examples/auth/oauth)|
+|`[1]`|[`ingress.kubernetes.io/oauth-uri-prefix`](#oauth)|URI prefix|[doc](/examples/auth/oauth)|
+|`[1]`|[`ingress.kubernetes.io/oauth-headers`](#oauth)|`<header>:<var>,...`|[doc](/examples/auth/oauth)|
 |`[1]`|[`ingress.kubernetes.io/proxy-protocol`](#proxy-protocol)|[v1\|v2\|v2-ssl\|v2-ssl-cn]|-|
 |`[0]`|[`ingress.kubernetes.io/slots-increment`](#dynamic-scaling)|qty|-|
 |`[0]`|[`ingress.kubernetes.io/timeout-queue`](#connection)|qty|-|
@@ -211,6 +214,25 @@ Configurations of connection limit and timeout.
 * http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-maxqueue
 * http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-timeout%20queue
 * Time suffix: http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#2.4
+
+### OAuth
+
+Configure OAuth2 via Bitly's `oauth2_proxy`.
+
+* `ingress.kubernetes.io/oauth`: Defines the oauth implementation. The only supported option is `oauth2_proxy`.
+* `ingress.kubernetes.io/oauth-uri-prefix`: Defines the URI prefix of the oauth service. The default value is `/oauth2`. There should be a backend with this path in the ingress resource.
+* `ingress.kubernetes.io/oauth-headers`: Defines an optional comma-separated list of `<header>:<haproxy-var>` used to configure request headers to the upstream backends. The default value is `X-Auth-Request-Email:auth_response_email` which means configuring a header `X-Auth-Request-Email` with the value of the var `auth_response_email`. New variables can be added overwriting the default `auth-request.lua` script.
+
+The `oauth2_proxy` implementation expects Bitly's [oauth2_proxy](https://github.com/bitly/oauth2_proxy)
+running as a backend of the same domain that should be protected. `oauth2_proxy` has support
+to GitHub, Google, Facebook, OIDC and many others.
+
+All paths of a domain will have the same oauth configurations, despite if the path is configured
+on an ingress resource without oauth annotations. In other words, if two ingress resources share
+the same domain but only one has oauth annotations - the one that has at least the `oauth2_proxy`
+service - all paths from that domain will be protected.
+
+See also the [example](/examples/auth/oauth) page.
 
 ### Proxy Protocol
 

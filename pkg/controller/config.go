@@ -27,6 +27,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/cors"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/dnsresolvers"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/oauth"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxy"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/waf"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/defaults"
@@ -318,6 +319,7 @@ func (cfg *haConfig) createHAProxyServers() {
 			CORS:               serverCORS(server),
 			WAF:                serverWAF(server),
 			HasRateLimit:       serverHasRateLimit(server),
+			OAuth:              serverOAuth(server),
 			CertificateAuth:    server.CertificateAuth,
 			Alias:              server.Alias,
 			AliasIsRegex:       idHasRegex(server.Alias),
@@ -454,6 +456,7 @@ func (cfg *haConfig) newHAProxyLocations(server *ingress.Server) ([]*types.HAPro
 			IsDefBackend:   location.IsDefBackend,
 			Path:           location.Path,
 			Backend:        location.Backend,
+			OAuth:          location.OAuth,
 			CORS:           location.CorsConfig,
 			HSTS:           location.HSTS,
 			WAF:            location.WAF,
@@ -670,4 +673,13 @@ func serverHasRateLimit(server *ingress.Server) bool {
 		}
 	}
 	return false
+}
+
+func serverOAuth(server *ingress.Server) *oauth.Config {
+	for _, location := range server.Locations {
+		if location.OAuth.OAuthImpl != "" {
+			return &location.OAuth
+		}
+	}
+	return nil
 }
