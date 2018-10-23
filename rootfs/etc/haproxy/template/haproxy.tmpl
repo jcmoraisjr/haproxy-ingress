@@ -150,8 +150,8 @@ backend {{ $backend.Name }}
         {{- template "backend" map $cfg $backend }}
 {{- else }}
 {{- range $value := $BackendSlots.FullSlotIndices }}
-        {{ $slot := index $BackendSlots.FullSlots  $value }}
-        server {{ $slot.BackendServerName }} {{ $value }}
+{{ $slot := index $BackendSlots.FullSlots  $value }}
+    server {{ $slot.BackendServerName }} {{ $value }}
         {{- if ge $slot.BackendEndpoint.Weight 0 }} weight {{ $slot.BackendEndpoint.Weight }}{{ end }}
         {{- template "backend" map $cfg $backend }}
 {{- end }}
