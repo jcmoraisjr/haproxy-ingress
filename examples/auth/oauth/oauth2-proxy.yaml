@@ -19,6 +19,7 @@ spec:
         image: quay.io/jcmoraisjr/oauth2-proxy
         imagePullPolicy: IfNotPresent
         args:
+        - /oauth2-proxy
         - --http-address=http://:4180
         - --upstream=file:///dev/null
         - --provider=XXXXX

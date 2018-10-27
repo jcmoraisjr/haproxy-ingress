@@ -1,3 +1,9 @@
+-- From: https://raw.githubusercontent.com/TimWolla/haproxy-auth-request/a3392816dde80cc93448eabd3528deac8559f1a6/auth-request.lua
+
+-- Changes:
+-- 1. Add auth_response_email haproxy var from a response header
+--    txn:set_var("txn.auth_response_email", h["x-auth-request-email"])
+
 -- The MIT License (MIT)
 --
 -- Copyright (c) 2018 Tim Düsterhus
@@ -67,7 +73,8 @@ core.register_action("auth-request", { "http-req" }, function(txn, be, path)
 	-- are not `DOWN`.
 	local addr = nil
 	for name, server in pairs(core.backends[be].servers) do
-		if server:get_stats()['status'] == "UP" then
+		local status = server:get_stats()['status']
+		if status == "no check" or status:find("UP") == 1 then
 			addr = server:get_addr()
 			break
 		end
