@@ -1,3 +1,9 @@
+-- From: https://raw.githubusercontent.com/TimWolla/haproxy-auth-request/a3392816dde80cc93448eabd3528deac8559f1a6/auth-request.lua
+
+-- Changes:
+-- 1. Add auth_response_email haproxy var from a response header
+--    txn:set_var("txn.auth_response_email", h["x-auth-request-email"])
+
 -- The MIT License (MIT)
 --
 -- Copyright (c) 2018 Tim Düsterhus
