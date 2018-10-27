@@ -67,7 +67,8 @@ core.register_action("auth-request", { "http-req" }, function(txn, be, path)
 	-- are not `DOWN`.
 	local addr = nil
 	for name, server in pairs(core.backends[be].servers) do
-		if server:get_stats()['status'] == "UP" then
+		local status = server:get_stats()['status']
+		if status == "no check" or status:find("UP") == 1 then
 			addr = server:get_addr()
 			break
 		end
