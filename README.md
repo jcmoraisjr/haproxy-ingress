@@ -507,9 +507,9 @@ http://cbonte.github.io/haproxy-dconv/1.8/management.html#9.3
 ### forwardfor
 
 Define if `X-Forwarded-For` header should be added always, added if missing or
-ignored from incomming requests. Default is `add` which means HAProxy will itself
+ignored from incoming requests. Default is `add` which means HAProxy will itself
 generate a `X-Forwarded-For` header with client's IP address and remove this same
-header from incomming requests.
+header from incoming requests.
 
 Use `ignore` to skip any check. `ifmissing` should be used to add
 `X-Forwarded-For` with client's IP address only if this header is not defined.
@@ -868,7 +868,7 @@ annotation, where cross namespace reading were allowed without any configuration
 
 ### default-backend-service
 
-Defines the `namespace/servicename` that should be used if the incomming request doesn't match any
+Defines the `namespace/servicename` that should be used if the incoming request doesn't match any
 hostname, or the requested path doesn't match any location within the desired hostname.
 
 This is a mandatory argument used in the [deployment](/examples/deployment) example page.
@@ -956,7 +956,7 @@ configmap.
 
 The value of the configmap entry is a colon separated list of the following items:
 
-1. `<namespace>/<service-name>`, mandatory, is the well known notation of the service that will receive incomming connections.
+1. `<namespace>/<service-name>`, mandatory, is the well known notation of the service that will receive incoming connections.
 2. `<portnumber>`, mandatory, is the port number the upstream service is listening - this is not related to the listening port of HAProxy.
 3. `<in-proxy>`, optional, should be defined as `PROXY` if HAProxy should expect requests using the [PROXY](http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt) protocol. Leave empty to not use PROXY protocol. This is usually used only if there is another load balancer in front of HAProxy which supports the PROXY protocol. PROXY protocol v1 and v2 are supported.
 4. `<out-proxy>`, optional, should be defined as `PROXY` or `PROXY-V2` if the upstream service expect connections using the PROXY protocol v2. Use `PROXY-V1` instead if the upstream service only support v1 protocol. Leave empty to connect without using the PROXY protocol.
