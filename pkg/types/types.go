@@ -186,10 +186,10 @@ type (
 	// HAProxyBackendSlots contains used and empty backend server definitions
 	HAProxyBackendSlots struct {
 		// map from ip:port to server name
-		FullSlots []HAProxyBackendSlot
+		Slots []HAProxyBackendSlot
 		// resolver name used for this Backend definition
 		UseResolver string
-		// total slots for backend, even if FullSlots is empty, eg using resolver
+		// total slots for backend, even if Slots[] is empty, eg using resolver
 		TotalSlots int
 	}
 	// HAProxyBackendSlot combines BackendServerName with an ingress.Endpoint
