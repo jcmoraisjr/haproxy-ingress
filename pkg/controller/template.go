@@ -89,7 +89,7 @@ var funcMap = gotemplate.FuncMap{
 	},
 }
 
-func newTemplate(name string, file string) *template {
+func newTemplate(name string, file string, startingBufferSize int) *template {
 	if err := mergo.Merge(&funcMap, sprig.TxtFuncMap()); err != nil {
 		glog.Fatalf("Cannot merge funcMap and sprig.FuncMap(): %v", err)
 	}
@@ -100,7 +100,7 @@ func newTemplate(name string, file string) *template {
 	}
 	return &template{
 		tmpl:      tmpl,
-		rawConfig: bytes.NewBuffer(make([]byte, 0, 16384)),
+		rawConfig: bytes.NewBuffer(make([]byte, 0, startingBufferSize)),
 	}
 }
 

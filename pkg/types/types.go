@@ -77,6 +77,9 @@ type (
 		BindIPAddrHealthz      string `json:"bind-ip-addr-healthz"`
 		Syslog                 string `json:"syslog-endpoint"`
 		ModSecurity            string `json:"modsecurity-endpoints"`
+		ModSecTimeoutHello     string `json:"modsecurity-timeout-hello"`
+		ModSecTimeoutIdle      string `json:"modsecurity-timeout-idle"`
+		ModSecTimeoutProc      string `json:"modsecurity-timeout-processing"`
 		BackendCheckInterval   string `json:"backend-check-interval"`
 		ConfigFrontend         string `json:"config-frontend"`
 		Forwardfor             string `json:"forwardfor"`
