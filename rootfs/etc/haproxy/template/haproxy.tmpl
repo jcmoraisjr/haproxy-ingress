@@ -646,12 +646,15 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- else }}
     acl {{ $server.ACLLabel }} {{ $fetch }} -i {{ $server.Hostname }}{{ if $needport }} {{ $server.Hostname }}:{{ $cfg.HTTPPort }} {{ $server.Hostname }}:{{ $cfg.HTTPSPort }}{{ if and $cfg.HTTPStoHTTPPort (ne $cfg.HTTPStoHTTPPort $cfg.HTTPPort) }} {{ $server.Hostname }}:{{ $cfg.HTTPStoHTTPPort }}{{ end }}{{ end }}
 {{- end }}
-{{- if $server.Alias }}
-{{- if $server.AliasIsRegex }}
-    acl {{ $server.ACLLabel }} {{ $fetch }} -m reg -i '{{ aliasRegex $server.Alias }}'
+{{- if $server.AliasHost }}
+{{- if $server.AliasHostIsRegex }}
+    acl {{ $server.ACLLabel }} {{ $fetch }} -m reg -i '{{ hostnameRegex $server.AliasHost }}'
 {{- else }}
-    acl {{ $server.ACLLabel }} {{ $fetch }} -i {{ $server.Alias }}{{ if $needport }} {{ $server.Alias }}:{{ $cfg.HTTPPort }} {{ $server.Alias }}:{{ $cfg.HTTPSPort }}{{ end }}
+    acl {{ $server.ACLLabel }} {{ $fetch }} -i {{ $server.AliasHost }}{{ if $needport }} {{ $server.AliasHost }}:{{ $cfg.HTTPPort }} {{ $server.AliasHost }}:{{ $cfg.HTTPSPort }}{{ end }}
 {{- end }}
+{{- end }}
+{{- if $server.AliasRegex }}
+    acl {{ $server.ACLLabel }} {{ $fetch }} -m reg -i '{{ $server.AliasRegex }}'
 {{- end }}
 {{- end }}
 {{- end }}{{/* define "acl" */}}

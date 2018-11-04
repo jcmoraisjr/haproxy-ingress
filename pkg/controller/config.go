@@ -324,8 +324,9 @@ func (cfg *haConfig) createHAProxyServers() {
 			HasRateLimit:       serverHasRateLimit(server),
 			OAuth:              serverOAuth(server),
 			CertificateAuth:    server.CertificateAuth,
-			Alias:              server.Alias,
-			AliasIsRegex:       idHasRegex(server.Alias),
+			AliasHost:          server.Alias.Host,
+			AliasHostIsRegex:   idHasRegex(server.Alias.Host),
+			AliasRegex:         server.Alias.Regex,
 		}
 		if isDefaultServer {
 			haDefaultServer = &haServer
@@ -334,18 +335,18 @@ func (cfg *haConfig) createHAProxyServers() {
 		}
 	}
 	sort.SliceStable(haServers, func(i, j int) bool {
-		// Move hosts without wildcard and alias without regex to the top,
-		// following are hosts without wildcard whose alias has regex, and
-		// finally with the least precedence are hosts with wildcards
+		// Move hosts without wildcard and alias without regex/wildcard to the top,
+		// following are hosts without wildcard whose alias has regex or wildcard,
+		// and finally with the least precedence are hosts with wildcards
 		a, b := 0, 0
 		if haServers[i].HostnameIsWildcard {
 			a = 2
-		} else if haServers[i].AliasIsRegex {
+		} else if haServers[i].AliasHostIsRegex || haServers[i].AliasRegex != "" {
 			a = 1
 		}
 		if haServers[j].HostnameIsWildcard {
 			b = 2
-		} else if haServers[j].AliasIsRegex {
+		} else if haServers[j].AliasHostIsRegex || haServers[i].AliasRegex != "" {
 			b = 1
 		}
 		return a < b

@@ -69,10 +69,6 @@ var funcMap = gotemplate.FuncMap{
 		rtn = regexp.MustCompile(`\*`).ReplaceAllLiteralString(rtn, "([^\\.]+)")
 		return "^" + rtn + "(:[0-9]+)?$"
 	},
-	"aliasRegex": func(hostname string) string {
-		rtn := regexp.MustCompile(`\.`).ReplaceAllLiteralString(hostname, "\\.")
-		return "^" + rtn + "(:[0-9]+)?$"
-	},
 	"sizeSuffix": func(size string) string {
 		value, err := utils.SizeSuffixToInt64(size)
 		if err != nil {

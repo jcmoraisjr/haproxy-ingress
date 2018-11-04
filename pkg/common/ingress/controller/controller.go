@@ -1194,7 +1194,8 @@ func (ic *GenericController) createServers(data []*extensions.Ingress,
 	// configure default location, alias, and SSL
 	for _, ing := range data {
 		// setup server-alias based on annotations
-		aliasAnnotation := ic.annotations.Alias(ing)
+		aliasCfg := ic.annotations.Alias(ing)
+		aliasHost := aliasCfg.Host
 		srvsnippet := ic.annotations.ServerSnippet(ing)
 
 		for _, rule := range ing.Spec.Rules {
@@ -1204,16 +1205,22 @@ func (ic *GenericController) createServers(data []*extensions.Ingress,
 			}
 
 			// setup server aliases
-			if aliasAnnotation != "" {
-				if servers[host].Alias == "" {
-					servers[host].Alias = aliasAnnotation
-					if _, ok := aliases[aliasAnnotation]; !ok {
-						aliases[aliasAnnotation] = host
+			if aliasHost != "" {
+				if servers[host].Alias.Host == "" {
+					servers[host].Alias.Host = aliasHost
+					if _, ok := aliases[aliasHost]; !ok {
+						aliases[aliasHost] = host
 					}
 				} else {
 					glog.Warningf("ingress %v/%v for host %v contains an Alias but one has already been configured.",
 						ing.Namespace, ing.Name, host)
 				}
+			}
+			if servers[host].Alias.Regex == "" {
+				servers[host].Alias.Regex = aliasCfg.Regex
+			} else if aliasCfg.Regex != "" {
+				glog.Warningf("ingress %v/%v for host %v contains an Alias Regex but one has already been configured.",
+					ing.Namespace, ing.Name, host)
 			}
 
 			//notifying the user that it has already been configured.
@@ -1290,9 +1297,9 @@ func (ic *GenericController) createServers(data []*extensions.Ingress,
 	}
 
 	for alias, host := range aliases {
-		if _, ok := servers[alias]; ok {
+		if _, found := servers[alias]; found {
 			glog.Warningf("There is a conflict with server hostname '%v' and alias '%v' (in server %v). Removing alias to avoid conflicts.", alias, host)
-			servers[host].Alias = ""
+			servers[host].Alias.Host = ""
 		}
 	}
 

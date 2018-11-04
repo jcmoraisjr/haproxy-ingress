@@ -32,14 +32,14 @@ func TestParse(t *testing.T) {
 
 	testCases := []struct {
 		annotations map[string]string
-		expected    string
+		expected    Config
 	}{
-		{map[string]string{annotation: "www.example.com"}, "www.example.com"},
-		{map[string]string{annotation: "*.example.com www.example.*"}, "*.example.com www.example.*"},
-		{map[string]string{annotation: `~^www\d+\.example\.com$`}, `~^www\d+\.example\.com$`},
-		{map[string]string{annotation: ""}, ""},
-		{map[string]string{}, ""},
-		{nil, ""},
+		{map[string]string{aliasAnn: "www.example.com"}, Config{Host: "www.example.com"}},
+		{map[string]string{aliasAnn: "*.example.com www.example.*"}, Config{Host: "*.example.com www.example.*"}},
+		{map[string]string{aliasAnn: `~^www\d+\.example\.com$`}, Config{Host: `~^www\d+\.example\.com$`}},
+		{map[string]string{aliasAnn: ""}, Config{}},
+		{map[string]string{}, Config{}},
+		{nil, Config{}},
 	}
 
 	ing := &extensions.Ingress{
@@ -53,7 +53,7 @@ func TestParse(t *testing.T) {
 	for _, testCase := range testCases {
 		ing.SetAnnotations(testCase.annotations)
 		result, _ := ap.Parse(ing)
-		if result != testCase.expected {
+		if !result.(*Config).Equal(&testCase.expected) {
 			t.Errorf("expected %v but returned %v, annotations: %s", testCase.expected, result, testCase.annotations)
 		}
 	}

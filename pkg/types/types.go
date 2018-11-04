@@ -150,8 +150,9 @@ type (
 		HasRateLimit       bool                  `json:"hasRateLimit"`
 		OAuth              *oauth.Config         `json:"oauth,omitempty"`
 		CertificateAuth    authtls.AuthSSLConfig `json:"certificateAuth,omitempty"`
-		Alias              string                `json:"alias,omitempty"`
-		AliasIsRegex       bool                  `json:"aliasIsRegex"`
+		AliasHost          string                `json:"aliasHost,omitempty"`
+		AliasHostIsRegex   bool                  `json:"aliasHostIsRegex"`
+		AliasRegex         string                `json:"aliasRegex"`
 	}
 	// HAProxyLocation has location data as a HAProxy friendly syntax
 	HAProxyLocation struct {
