@@ -130,7 +130,7 @@ backend {{ $backend.Name }}
 {{- end }}
 {{- $sticky := $backend.SessionAffinity }}
 {{- if eq $sticky.AffinityType "cookie" }}
-    cookie {{ $sticky.CookieSessionAffinity.Name }} {{ $sticky.CookieSessionAffinity.Strategy }} {{ if eq $sticky.CookieSessionAffinity.Strategy "insert" }}indirect nocache{{ end }} dynamic
+    cookie {{ $sticky.CookieSessionAffinity.Name }} {{ $sticky.CookieSessionAffinity.Strategy }} {{ if eq $sticky.CookieSessionAffinity.Strategy "insert" }}indirect nocache httponly{{ end }} dynamic
     dynamic-cookie-key "{{ $cfg.CookieKey }}"
 {{- end }}
 {{- range $snippet := $backend.ConfigurationSnippet.Backend }}
