@@ -1,10 +1,11 @@
+{{- $cfg := .Cfg -}}
 [modsecurity]
 spoe-agent modsecurity-agent
     messages     check-request
     option       var-prefix  modsec
-    timeout      hello       100ms
-    timeout      idle        30s
-    timeout      processing  1s
+    timeout      hello       {{ $cfg.ModSecTimeoutHello }}
+    timeout      idle        {{ $cfg.ModSecTimeoutIdle }}
+    timeout      processing  {{ $cfg.ModSecTimeoutProc }}
     use-backend  spoe-modsecurity
 spoe-message check-request
     args   unique-id method path query req.ver req.hdrs_bin req.body_size req.body

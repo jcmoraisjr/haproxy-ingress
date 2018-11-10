@@ -47,7 +47,9 @@ type HAProxyController struct {
 	configFilePrefix  string
 	configFileSuffix  string
 	maxOldConfigFiles *int
-	template          *template
+	haproxyTemplate   *template
+	modsecConfigFile  string
+	modsecTemplate    *template
 	currentConfig     *types.ControllerConfig
 }
 
@@ -126,7 +128,9 @@ func (haproxy *HAProxyController) OverrideFlags(flags *pflag.FlagSet) {
 	haproxy.configDir = "/etc/haproxy"
 	haproxy.configFilePrefix = "haproxy"
 	haproxy.configFileSuffix = ".cfg"
-	haproxy.template = newTemplate("haproxy.tmpl", "/etc/haproxy/template/haproxy.tmpl")
+	haproxy.haproxyTemplate = newTemplate("haproxy.tmpl", "/etc/haproxy/template/haproxy.tmpl", 16384)
+	haproxy.modsecConfigFile = "/etc/haproxy/spoe-modsecurity.conf"
+	haproxy.modsecTemplate = newTemplate("spoe-modsecurity.tmpl", "/etc/haproxy/modsecurity/spoe-modsecurity.tmpl", 1024)
 	haproxy.command = "/haproxy-reload.sh"
 
 	if !(*haproxy.reloadStrategy == "native" || *haproxy.reloadStrategy == "reusesocket" || *haproxy.reloadStrategy == "multibinder") {
@@ -175,13 +179,22 @@ func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) error {
 	reloadRequired := !dynconfig.ConfigBackends(haproxy.currentConfig, updatedConfig)
 	haproxy.currentConfig = updatedConfig
 
-	data, err := haproxy.template.execute(updatedConfig)
+	data, err := haproxy.haproxyTemplate.execute(updatedConfig)
 	if err != nil {
 		return err
 	}
 
 	configFile, err := haproxy.rewriteConfigFiles(data)
 	if err != nil {
+		return err
+	}
+
+	modSecConf, err := haproxy.modsecTemplate.execute(updatedConfig)
+	if err != nil {
+		return err
+	}
+
+	if err := haproxy.writeModSecConfigFile(modSecConf); err != nil {
 		return err
 	}
 
@@ -198,6 +211,14 @@ func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) error {
 	return err
 }
 
+func (haproxy *HAProxyController) writeModSecConfigFile(data []byte) error {
+	if err := ioutil.WriteFile(haproxy.modsecConfigFile, data, 644); err != nil {
+		glog.Warningf("Error writing modsecurity config file: %v", err)
+		return err
+	}
+	return nil
+}
+
 // RewriteConfigFiles safely replaces configuration files with new contents after validation
 func (haproxy *HAProxyController) rewriteConfigFiles(data []byte) (string, error) {
 	// Include timestamp in config file name to aid troubleshooting. When using a single, ever-changing config file it
@@ -210,7 +231,7 @@ func (haproxy *HAProxyController) rewriteConfigFiles(data []byte) (string, error
 
 	// Write directly to configFile
 	if err := ioutil.WriteFile(configFile, data, 644); err != nil {
-		glog.Warningln("Error writing rendered template to file")
+		glog.Warningf("Error writing haproxy config file: %v", err)
 		return "", err
 	}
 
