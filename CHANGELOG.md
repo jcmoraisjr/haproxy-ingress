@@ -70,43 +70,13 @@ Fixes and improvements since `v0.6`
 * Optimize reading of default backend [#234](https://github.com/jcmoraisjr/haproxy-ingress/pull/234)
 * Add annotation and configmap validations [#237](https://github.com/jcmoraisjr/haproxy-ingress/pull/237)
 
-## v0.6-beta.6
+## v0.6
 
-Fixes and improvements since `v0.6-beta.5`
+Fixes and improvements since `v0.5`:
 
-* Fix SSL redirect if no TLS config is used (only v0.6) - [#235](https://github.com/jcmoraisjr/haproxy-ingress/issues/235)
+### v0.6-beta.1
 
-## v0.6-beta.5
-
-Fixes and improvements since `v0.6-beta.4`
-
-* Fix health check of dynamic reload - [#232](https://github.com/jcmoraisjr/haproxy-ingress/issues/232)
-* Fix stop/terminate signal of the controller process - [#233](https://github.com/jcmoraisjr/haproxy-ingress/issues/233)
-
-## v0.6-beta.4
-
-Fixes and improvements since `v0.6-beta.3`
-
-* Fix permission denied to mkdir on OpenShift - [#205](https://github.com/jcmoraisjr/haproxy-ingress/issues/205)
-* Fix usage of custom DH params (only v0.6) - [#215](https://github.com/jcmoraisjr/haproxy-ingress/issues/215)
-* Fix redirect of non TLS hosts (only v0.6) - [#231](https://github.com/jcmoraisjr/haproxy-ingress/issues/231)
-
-## v0.6-beta.3
-
-Fixes and improvements since `v0.6-beta.2`
-
-* Fix host match of rate limit on shared frontend - [#202](https://github.com/jcmoraisjr/haproxy-ingress/pull/202)
-
-## v0.6-beta.2
-
-Fixes and improvements since `v0.6-beta.1`
-
-* Fix redirect https if path changed with rewrite-target - [#179](https://github.com/jcmoraisjr/haproxy-ingress/pull/179)
-* Fix ssl-passthrough annotation - [#183](https://github.com/jcmoraisjr/haproxy-ingress/pull/183) and [#187](https://github.com/jcmoraisjr/haproxy-ingress/pull/187)
-
-## v0.6-beta.1
-
-Breaking backward compatibility from `v0.5`
+Breaking backward compatibility from `v0.5`:
 
 * Usage of header `Host` to match https requests instead of using just sni extension, deprecating `use-host-on-https` - [#130](https://github.com/jcmoraisjr/haproxy-ingress/pull/130)
 * Multibinder is deprecated, use `reusesocket` reload strategy instead - [#139](https://github.com/jcmoraisjr/haproxy-ingress/pull/139)
@@ -114,7 +84,7 @@ Breaking backward compatibility from `v0.5`
 * Broken CIDR lists - `whitelist-source-range` and `limit-whitelist` annotations - will add at least the valid CIDRs found in the list - [#163](https://github.com/jcmoraisjr/haproxy-ingress/pull/163)
 * Added `timeout-queue` configmap option which defaults to `5s`. `timeout-queue` didn't exist before v0.6 and its value inherits from the `timeout-connect` configuration. Starting on v0.6, changing `timeout-connect` will not change `timeout-queue` default value.
 
-Fixes and improvements since `v0.5`
+Fixes and improvements since `v0.5`:
 
 * HAProxy 1.8
 * Dynamic cookies on cookie based server affinity
@@ -166,6 +136,34 @@ Fixes and improvements since `v0.5`
 * New command-line options:
   * Maximum timestamped config files [#123](https://github.com/jcmoraisjr/haproxy-ingress/pull/123) - [doc](/README.md#max-old-config-files)
     * `--max-old-config-files`
+
+### v0.6-beta.2
+
+* Fix redirect https if path changed with rewrite-target - [#179](https://github.com/jcmoraisjr/haproxy-ingress/pull/179)
+* Fix ssl-passthrough annotation - [#183](https://github.com/jcmoraisjr/haproxy-ingress/pull/183) and [#187](https://github.com/jcmoraisjr/haproxy-ingress/pull/187)
+
+### v0.6-beta.3
+
+* Fix host match of rate limit on shared frontend - [#202](https://github.com/jcmoraisjr/haproxy-ingress/pull/202)
+
+### v0.6-beta.4
+
+* Fix permission denied to mkdir on OpenShift - [#205](https://github.com/jcmoraisjr/haproxy-ingress/issues/205)
+* Fix usage of custom DH params (only v0.6) - [#215](https://github.com/jcmoraisjr/haproxy-ingress/issues/215)
+* Fix redirect of non TLS hosts (only v0.6) - [#231](https://github.com/jcmoraisjr/haproxy-ingress/issues/231)
+
+### v0.6-beta.5
+
+* Fix health check of dynamic reload - [#232](https://github.com/jcmoraisjr/haproxy-ingress/issues/232)
+* Fix stop/terminate signal of the controller process - [#233](https://github.com/jcmoraisjr/haproxy-ingress/issues/233)
+
+### v0.6-beta.6
+
+* Fix SSL redirect if no TLS config is used (only v0.6) - [#235](https://github.com/jcmoraisjr/haproxy-ingress/issues/235)
+
+### v0.6-post-beta.6 (match v0.6)
+
+* Restrict access of sticky session cookie by client Javascript code - [#251](https://github.com/jcmoraisjr/haproxy-ingress/pull/251)
 
 ## v0.5
 
