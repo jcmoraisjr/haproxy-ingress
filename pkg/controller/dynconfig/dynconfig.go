@@ -72,6 +72,25 @@ func endpointsSubtract(s1, s2 map[string]*ingress.Endpoint) map[string]*ingress.
 	return s3
 }
 
+// return the backend slot with the required target
+func findSlot(slots []types.HAProxyBackendSlot, target string) (*types.HAProxyBackendSlot, int) {
+	for i, slot := range slots {
+		if slot.Target == target {
+			return &slot, i
+		}
+	}
+	return nil, -1
+}
+
+func findEmptySlot(slots []types.HAProxyBackendSlot) int {
+	for i := range slots {
+		if slots[i].Target == "" {
+			return i
+		}
+	}
+	return -1
+}
+
 // remove Ingress Endpoint from a backend by disabling a specific server slot
 func removeEndpoint(statsSocket, backendName, backendServerName string) bool {
 	err1 := utils.SendToSocket(statsSocket,
@@ -220,27 +239,28 @@ func (d *DynConfig) dynamicUpdateBackends() bool {
 			reloadRequired = !d.dynamicUpdateEndpoints(backendName, updEndpoints, backendSlots)
 		}
 
+		// if the backend use a resolver, add and remove endpoints are made via DNS
+		if updBackend.UseResolver != "" {
+			continue
+		}
+
 		// remove endpoints
 		toRemoveEndpoints := endpointsSubtract(curEndpoints, updEndpoints)
-		for k := range toRemoveEndpoints {
-			reloadRequired = reloadRequired || !removeEndpoint(d.statsSocket, backendName, backendSlots.FullSlots[k].BackendServerName)
-			backendSlots.EmptySlots = append(backendSlots.EmptySlots, backendSlots.FullSlots[k].BackendServerName)
-			delete(backendSlots.FullSlots, k)
+		for target := range toRemoveEndpoints {
+			slot, idx := findSlot(backendSlots.Slots, target)
+			reloadRequired = reloadRequired || !removeEndpoint(d.statsSocket, backendName, slot.BackendServerName)
+			backendSlots.Slots[idx].Target = ""
+			backendSlots.Slots[idx].BackendEndpoint = nil
 		}
 
 		// add endpoints only work if using dynamic scaling
-		if d.dynamicScaling && len(backendSlots.EmptySlots) > 0{
-			// add endpoints
-			sort.Strings(backendSlots.EmptySlots)
+		if d.dynamicScaling {
 			toAddEndpoints := endpointsSubtract(updEndpoints, curEndpoints)
-			for k, endpoint := range toAddEndpoints {
-				// rearrange slots
-				backendSlots.FullSlots[k] = types.HAProxyBackendSlot{
-					BackendServerName: backendSlots.EmptySlots[0],
-					BackendEndpoint:   endpoint,
-				}
-				backendSlots.EmptySlots = backendSlots.EmptySlots[1:]
-				reloadRequired = reloadRequired || !addEndpoint(d.statsSocket, backendName, backendSlots.FullSlots[k].BackendServerName, endpoint.Address, endpoint.Port, endpoint.Weight)
+			for target, endpoint := range toAddEndpoints {
+				idx := findEmptySlot(backendSlots.Slots)
+				backendSlots.Slots[idx].BackendEndpoint = endpoint
+				backendSlots.Slots[idx].Target = target
+				reloadRequired = reloadRequired || !addEndpoint(d.statsSocket, backendName, backendSlots.Slots[idx].BackendServerName, endpoint.Address, endpoint.Port, endpoint.Weight)
 			}
 			d.updatedConfig.BackendSlots[backendName] = backendSlots
 		}
@@ -251,9 +271,9 @@ func (d *DynConfig) dynamicUpdateBackends() bool {
 // dynamicUpdateEndpoint tries to update without reload
 // Return true if changing was sucessfully applied, false otherwise
 func (d *DynConfig) dynamicUpdateEndpoints(backendName string, updEndpoints map[string]*ingress.Endpoint, backendSlots *types.HAProxyBackendSlots) bool {
-	for name, updEndpoint := range updEndpoints {
-		backendSlot, found := backendSlots.FullSlots[name]
-		if !found {
+	for target, updEndpoint := range updEndpoints {
+		backendSlot, idx := findSlot(backendSlots.Slots, target)
+		if backendSlot == nil {
 			// new endpoint; if dynamic scaling, continue without invalidate,
 			// otherwise need to reload (return false)
 			if !d.dynamicScaling {
@@ -271,12 +291,9 @@ func (d *DynConfig) dynamicUpdateEndpoints(backendName string, updEndpoints map[
 		}
 
 		if curEndpoint.Weight != updEndpoint.Weight {
-			backendServerName := backendSlots.FullSlots[name].BackendServerName
-			backendSlots.FullSlots[name] = types.HAProxyBackendSlot{
-				BackendServerName: backendServerName,
-				BackendEndpoint:   updEndpoint,
-			}
-			if !setEndpointWeight(d.statsSocket, backendName, backendServerName, updEndpoint.Weight) {
+			backendSlots.Slots[idx].BackendEndpoint = updEndpoint
+			backendSlots.Slots[idx].Target = target
+			if !setEndpointWeight(d.statsSocket, backendName, backendSlots.Slots[idx].BackendServerName, updEndpoint.Weight) {
 				return false
 			}
 		}
@@ -291,41 +308,46 @@ func (d *DynConfig) fillBackendServerSlots() {
 
 	for _, backendName := range d.updKeys {
 		newBackend := types.HAProxyBackendSlots{}
-		newBackend.FullSlots = map[string]types.HAProxyBackendSlot{}
+		newBackend.Slots = []types.HAProxyBackendSlot{}
 
 		if resolver := d.updBackendsMap[backendName].UseResolver; resolver != "" {
-				fullSlotCnt := len(d.updBackendsMap[backendName].Endpoints)
-				newBackend.TotalSlots = (int(fullSlotCnt/d.updBackendsMap[backendName].SlotsIncrement) + 1) * d.updBackendsMap[backendName].SlotsIncrement
-				newBackend.UseResolver = resolver
-				d.updatedConfig.BackendSlots[backendName] = &newBackend
-				continue
+			backend := d.updBackendsMap[backendName]
+			newBackend.TotalSlots = (int(len(backend.Endpoints)/backend.SlotsIncrement) + 1) * backend.SlotsIncrement
+			newBackend.UseResolver = resolver
+			d.updatedConfig.BackendSlots[backendName] = &newBackend
+			continue
 		}
 
 		if d.dynamicScaling {
 			for i, endpoint := range d.updBackendsMap[backendName].Endpoints {
 				curEndpoint := endpoint
-				newBackend.FullSlots[fmt.Sprintf("%s:%s", endpoint.Address, endpoint.Port)] = types.HAProxyBackendSlot{
+				newBackend.Slots = append(newBackend.Slots, types.HAProxyBackendSlot{
 					BackendServerName: fmt.Sprintf("server%04d", i),
 					BackendEndpoint:   &curEndpoint,
-				}
+					Target:            fmt.Sprintf("%s:%s", endpoint.Address, endpoint.Port),
+				})
 			}
 			// add up to SlotsIncrement empty slots
 			increment := d.updBackendsMap[backendName].SlotsIncrement
-			fullSlotCnt := len(newBackend.FullSlots)
-			extraSlotCnt := (int(fullSlotCnt/increment)+1)*increment - fullSlotCnt
-			for i := 0; i < extraSlotCnt; i++ {
-				newBackend.EmptySlots = append(newBackend.EmptySlots, fmt.Sprintf("server%04d", i+fullSlotCnt))
+			totalSlotCnt := (int(len(newBackend.Slots)/increment) + 1) * increment
+			for i := len(newBackend.Slots); i < totalSlotCnt; i++ {
+				newBackend.Slots = append(newBackend.Slots, types.HAProxyBackendSlot{
+					BackendServerName: fmt.Sprintf("server%04d", i),
+					BackendEndpoint:   nil,
+					Target:            "",
+				})
 			}
-			newBackend.TotalSlots = fullSlotCnt + extraSlotCnt
+			newBackend.TotalSlots = totalSlotCnt
 		} else {
 			// use addr:port as BackendServerName, don't generate empty slots
 			for _, endpoint := range d.updBackendsMap[backendName].Endpoints {
 				curEndpoint := endpoint
 				target := fmt.Sprintf("%s:%s", endpoint.Address, endpoint.Port)
-				newBackend.FullSlots[target] = types.HAProxyBackendSlot{
+				newBackend.Slots = append(newBackend.Slots, types.HAProxyBackendSlot{
 					BackendServerName: target,
 					BackendEndpoint:   &curEndpoint,
-				}
+					Target:            target,
+				})
 			}
 		}
 		d.updatedConfig.BackendSlots[backendName] = &newBackend

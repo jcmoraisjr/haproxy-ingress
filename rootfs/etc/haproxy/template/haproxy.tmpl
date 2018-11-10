@@ -149,13 +149,11 @@ backend {{ $backend.Name }}
     server-template server-dns {{ $BackendSlots.TotalSlots }} {{ $backend.Service.Name }}.{{ $backend.Service.Namespace }}.svc.{{ $cfg.DNSClusterDomain }}:{{ $backend.Port }} resolvers {{ $BackendSlots.UseResolver }} resolve-prefer ipv4 init-addr none
         {{- template "backend" map $cfg $backend }}
 {{- else }}
-{{- range $target, $slot := $BackendSlots.FullSlots }}
-    server {{ $slot.BackendServerName }} {{ $target }}
-        {{- if ge $slot.BackendEndpoint.Weight 0 }} weight {{ $slot.BackendEndpoint.Weight }}{{ end }}
-        {{- template "backend" map $cfg $backend }}
-{{- end }}
-{{- range $empty := $BackendSlots.EmptySlots }}
-    server {{ $empty }} 127.0.0.1:81 disabled
+{{- range $slot := $BackendSlots.Slots }}
+    server {{ $slot.BackendServerName }}
+        {{- if $slot.Target }} {{ $slot.Target }}
+            {{- if ge $slot.BackendEndpoint.Weight 0 }} weight {{ $slot.BackendEndpoint.Weight }}{{ end }}
+        {{- else }} 127.0.0.1:81 disabled{{ end }}
         {{- template "backend" map $cfg $backend }}
 {{- end }}
 {{- end }}{{/* if $BackendSlots.UseResolver */}}
