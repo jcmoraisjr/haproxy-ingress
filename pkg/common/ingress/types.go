@@ -18,6 +18,7 @@ package ingress
 
 import (
 	"fmt"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/alias"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxybackend"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/secureupstream"
@@ -280,7 +281,7 @@ type Server struct {
 	// Locations list of URIs configured in the server.
 	Locations []*Location `json:"locations,omitempty"`
 	// Alias return the alias of the server name
-	Alias string `json:"alias,omitempty"`
+	Alias alias.Config `json:"alias,omitempty"`
 	// RedirectFromToWWW returns if a redirect to/from prefix www is required
 	RedirectFromToWWW bool `json:"redirectFromToWWW,omitempty"`
 	// CertificateAuth indicates the this server requires mutual authentication

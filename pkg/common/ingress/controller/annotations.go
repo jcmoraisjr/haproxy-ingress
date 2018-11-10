@@ -226,9 +226,9 @@ func (e *annotationExtractor) ConfigurationSnippet(ing *extensions.Ingress) snip
 	return val.(snippet.Config)
 }
 
-func (e *annotationExtractor) Alias(ing *extensions.Ingress) string {
+func (e *annotationExtractor) Alias(ing *extensions.Ingress) *alias.Config {
 	val, _ := e.annotations[serverAlias].Parse(ing)
-	return val.(string)
+	return val.(*alias.Config)
 }
 
 func (e *annotationExtractor) ClientBodyBufferSize(ing *extensions.Ingress) string {

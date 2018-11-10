@@ -292,7 +292,7 @@ func (s1 *Server) Equal(s2 *Server) bool {
 	if s1.Hostname != s2.Hostname {
 		return false
 	}
-	if s1.Alias != s2.Alias {
+	if !s1.Alias.Equal(&s2.Alias) {
 		return false
 	}
 	if !s1.SSLPassthrough.Equal(&s2.SSLPassthrough) {

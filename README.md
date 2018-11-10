@@ -256,12 +256,12 @@ Configure secure (TLS) connection to the backends.
 
 ### Server Alias
 
-Creates an alias of the server that annotation belongs to.
-It'll be using the same backend but different ACL.
-Alias rules will be checked at the very end of list or rules.
-It is allowed to be a regex.
+Configure hostname alias. All annotations will be combined together with the host
+attribute in the same ACL, and any of them might be used to match SNI extensions
+(TLS) or Host HTTP header. The matching is case insensitive.
 
-Note: `^` and `$` cannot be used because they are already included in ACL.
+* `ingress.kubernetes.io/server-alias`: Defines an alias with hostname-like syntax. On v0.6 and older, wildcard `*` wasn't converted to match a subdomain. Regular expression was also accepted but dots were escaped, making this alias less useful as a regex. Starting v0.7 the same hostname syntax is used, so `*.my.domain` will match `app.my.domain` but won't match `sub.app.my.domain`.
+* `ingress.kubernetes.io/server-alias-regex`: Only in v0.7 and newer. Match hostname using a POSIX extended regular expression. The regex will be used verbatim, so add `^` and `$` if strict hostname is desired and escape `\.` dots in order to strictly match them. Some HTTP clients add the port number in the Host header, so remember to add `(:[0-9]+)?$` in the end of the regex if a dollar sign `$` is being used to match the end of the string.
 
 ### Rewrite Target
 
