@@ -34,6 +34,9 @@ global
 {{- end }}
     ssl-default-bind-ciphers {{ $cfg.SSLCiphers }}
     ssl-default-bind-options {{ $cfg.SSLOptions }}
+{{- range $snippet := $ing.ConfigGlobal }}
+    {{ $snippet }}
+{{- end }}
 
 defaults
     log global
