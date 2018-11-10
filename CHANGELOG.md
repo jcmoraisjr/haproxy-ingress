@@ -6,6 +6,7 @@ Breaking backward compatibility from `v0.6`
 
 * Default blue/green deployment mode changed from `pod` to `deploy`. Use `ingress.kubernetes.io/blue-green-mode` annotation to change to the v0.6 behavior. See also the blue/green deployment [doc](/README.md#blue-green).
 * Changed default maximum ephemeral DH key size from 1024 to 2048, which might break old TLS clients. Use `ssl-dh-default-max-size` configmap option to change back to 1024 if needed.
+* Behavior of `ingress.kubernetes.io/server-alias` annotation was changed to mimic hostname syntax. Use `ingress.kubernetes.io/server-alias-regex` instead if need to use regex. See also the server-alias [doc](/README.md#server-alias)
 
 Fixes and improvements since `v0.6`
 
@@ -22,11 +23,15 @@ Fixes and improvements since `v0.6`
     * `dns-hold-valid`
     * `dns-resolvers`
     * `dns-timeout-retry`
-* ModSecurity web application firewall [#166](https://github.com/jcmoraisjr/haproxy-ingress/pull/166)
+* ModSecurity web application firewall [#166](https://github.com/jcmoraisjr/haproxy-ingress/pull/166) and [#248](https://github.com/jcmoraisjr/haproxy-ingress/pull/248)
+  * Template file - [doc](/README.md#configuration)
   * Annotations:
     * `ingress.kubernetes.io/waf` - [doc](/README.md#waf)
   * Configmap options:
     * `modsecurity-endpoints` - [doc](/README.md#modsecurity-endpoints)
+    * `modsecurity-timeout-hello` - [doc](/README.md#modsecurity)
+    * `modsecurity-timeout-idle` - [doc](/README.md#modsecurity)
+    * `modsecurity-timeout-processing` - [doc](/README.md#modsecurity)
 * Multi process and multi thread support [#172](https://github.com/jcmoraisjr/haproxy-ingress/pull/172)
   * Configmap options:
     * `nbproc-ssl` - [doc](/README.md#nbproc)
@@ -67,8 +72,12 @@ Fixes and improvements since `v0.6`
 * Add proxy-protocol annotation [#236](https://github.com/jcmoraisjr/haproxy-ingress/pull/236) - [doc](/README.md#proxy-protocol)
   * Annotations:
     * `ingress.kubernetes.io/proxy-protocol`
+* Add server-alias-regex annotation [#250](https://github.com/jcmoraisjr/haproxy-ingress/pull/250) - [doc](/README.md#server-alias)
+  * Annotations:
+    * `ingress.kubernetes.io/server-alias-regex`
 * Optimize reading of default backend [#234](https://github.com/jcmoraisjr/haproxy-ingress/pull/234)
 * Add annotation and configmap validations [#237](https://github.com/jcmoraisjr/haproxy-ingress/pull/237)
+* Fix sort-backends behavior [#247](https://github.com/jcmoraisjr/haproxy-ingress/pull/247)
 
 ## v0.6
 
