@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Current snapshot tag (v0.7)
+## v0.7-beta.1
 
 Breaking backward compatibility from `v0.6`
 
@@ -40,9 +40,10 @@ Fixes and improvements since `v0.6`
   * Annotations:
     * `ingress.kubernetes.io/blue-green-balance`
     * `ingress.kubernetes.io/blue-green-mode`
-* Add frontend configuration snippet [#194](https://github.com/jcmoraisjr/haproxy-ingress/pull/194) - [doc](/README.md#configuration-snippet)
+* Add configuration snippet options [#194](https://github.com/jcmoraisjr/haproxy-ingress/pull/194) and [#252](https://github.com/jcmoraisjr/haproxy-ingress/pull/252) - [doc](/README.md#configuration-snippet)
   * Configmap options:
     * `config-frontend`
+    * `config-global`
 * Add OAuth2 support [#239](https://github.com/jcmoraisjr/haproxy-ingress/pull/239) - [doc](/README.md#oauth)
 * Add support to ingress/spec/backend [#212](https://github.com/jcmoraisjr/haproxy-ingress/pull/212)
 * Add SSL config on stats endpoint [#193](https://github.com/jcmoraisjr/haproxy-ingress/pull/193) - [doc](/README.md#stats)
