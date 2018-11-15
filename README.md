@@ -60,7 +60,7 @@ lists, math etc.
 
 The following annotations are supported:
 
-* `[1]` only in `snapshot` tag
+* `[0]` only in `canary` tag
 
 ||Name|Data|Usage|
 |---|---|---|:---:|
@@ -73,8 +73,8 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/auth-tls-secret`](#auth-tls)|namespace/secret name|[doc](/examples/auth/client-certs)|
 ||[`ingress.kubernetes.io/balance-algorithm`](#balance-algorithm)|algorithm name|-|
 ||[`ingress.kubernetes.io/blue-green-deploy`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
-|`[1]`|[`ingress.kubernetes.io/blue-green-balance`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
-|`[1]`|[`ingress.kubernetes.io/blue-green-mode`](#blue-green)|[pod\|deploy]|[doc](/examples/blue-green)|
+|`[0]`|[`ingress.kubernetes.io/blue-green-balance`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
+|`[0]`|[`ingress.kubernetes.io/blue-green-mode`](#blue-green)|[pod\|deploy]|[doc](/examples/blue-green)|
 ||[`ingress.kubernetes.io/config-backend`](#configuration-snippet)|multiline HAProxy backend config|-|
 ||[`ingress.kubernetes.io/cors-allow-origin`](#cors)|URL|-|
 ||[`ingress.kubernetes.io/cors-allow-methods`](#cors)|methods list|-|
@@ -91,10 +91,10 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/limit-whitelist`](#limit)|cidr list|-|
 ||[`ingress.kubernetes.io/maxconn-server`](#connection)|qty|-|
 ||[`ingress.kubernetes.io/maxqueue-server`](#connection)|qty|-|
-|`[1]`|[`ingress.kubernetes.io/oauth`](#oauth)|"oauth2_proxy"|[doc](/examples/auth/oauth)|
-|`[1]`|[`ingress.kubernetes.io/oauth-uri-prefix`](#oauth)|URI prefix|[doc](/examples/auth/oauth)|
-|`[1]`|[`ingress.kubernetes.io/oauth-headers`](#oauth)|`<header>:<var>,...`|[doc](/examples/auth/oauth)|
-|`[1]`|[`ingress.kubernetes.io/proxy-protocol`](#proxy-protocol)|[v1\|v2\|v2-ssl\|v2-ssl-cn]|-|
+|`[0]`|[`ingress.kubernetes.io/oauth`](#oauth)|"oauth2_proxy"|[doc](/examples/auth/oauth)|
+|`[0]`|[`ingress.kubernetes.io/oauth-uri-prefix`](#oauth)|URI prefix|[doc](/examples/auth/oauth)|
+|`[0]`|[`ingress.kubernetes.io/oauth-headers`](#oauth)|`<header>:<var>,...`|[doc](/examples/auth/oauth)|
+|`[0]`|[`ingress.kubernetes.io/proxy-protocol`](#proxy-protocol)|[v1\|v2\|v2-ssl\|v2-ssl-cn]|-|
 ||[`ingress.kubernetes.io/slots-increment`](#dynamic-scaling)|qty|-|
 ||[`ingress.kubernetes.io/timeout-queue`](#connection)|qty|-|
 ||[`ingress.kubernetes.io/proxy-body-size`](#proxy-body-size)|size (bytes)|-|
@@ -104,14 +104,15 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/session-cookie-name`](#affinity)|cookie name|-|
 ||[`ingress.kubernetes.io/session-cookie-strategy`](#affinity)|[insert\|prefix\|rewrite]|-|
 ||[`ingress.kubernetes.io/ssl-passthrough`](#ssl-passthrough)|[true\|false]|-|
-|`[1]`|[`ingress.kubernetes.io/ssl-passthrough-http-port`](#ssl-passthrough)|backend port|-|
+|`[0]`|[`ingress.kubernetes.io/ssl-passthrough-http-port`](#ssl-passthrough)|backend port|-|
 ||`ingress.kubernetes.io/ssl-redirect`|[true\|false]|[doc](/examples/rewrite)|
 ||`ingress.kubernetes.io/app-root`|/url|[doc](/examples/rewrite)|
 ||`ingress.kubernetes.io/whitelist-source-range`|CIDR|-|
 ||[`ingress.kubernetes.io/rewrite-target`](#rewrite-target)|path string|-|
-||[`ingress.kubernetes.io/server-alias`](#server-alias)|domain name or regex|-|
-|`[1]`|[`ingress.kubernetes.io/use-resolver`](#dns-resolvers)|resolver name]|[doc](/examples/dns-service-discovery)|
-|`[1]`|[`ingress.kubernetes.io/waf`](#waf)|"modsecurity"|[doc](/examples/modsecurity)|
+||[`ingress.kubernetes.io/server-alias`](#server-alias)|domain name|-|
+|`[0]`|[`ingress.kubernetes.io/server-alias-regex`](#server-alias)|regex|-|
+|`[0]`|[`ingress.kubernetes.io/use-resolver`](#dns-resolvers)|resolver name]|[doc](/examples/dns-service-discovery)|
+|`[0]`|[`ingress.kubernetes.io/waf`](#waf)|"modsecurity"|[doc](/examples/modsecurity)|
 
 ### Affinity
 
@@ -317,7 +318,7 @@ A ConfigMap can be created with `kubectl create configmap`.
 
 The following parameters are supported:
 
-* `[1]` only in `snapshot` tag
+* `[0]` only in `canary` tag
 
 ||Name|Type|Default|
 |---|---|---|---|
@@ -328,15 +329,15 @@ The following parameters are supported:
 ||[`bind-ip-addr-http`](#bind-ip-addr)|IP address|`*`|
 ||[`bind-ip-addr-stats`](#bind-ip-addr)|IP address|`*`|
 ||[`bind-ip-addr-tcp`](#bind-ip-addr)|IP address|`*`|
-|`[1]`|[`config-frontend`](#configuration-snippet)|multiline HAProxy frontend config||
-|`[1]`|[`config-global`](#configuration-snippet)|multiline HAProxy global config||
+|`[0]`|[`config-frontend`](#configuration-snippet)|multiline HAProxy frontend config||
+|`[0]`|[`config-global`](#configuration-snippet)|multiline HAProxy global config||
 ||[`cookie-key`](#cookie-key)|secret key|`Ingress`|
-|`[1]`|[`dns-accepted-payload-size`](#dns-resolvers)|number|`8192`|
-|`[1]`|[`dns-cluster-domain`](#dns-resolvers)|cluster name|`cluster.local`|
-|`[1]`|[`dns-hold-obsolete`](#dns-resolvers)|time with suffix|`0s`|
-|`[1]`|[`dns-hold-valid`](#dns-resolvers)|time with suffix|`1s`|
-|`[1]`|[`dns-resolvers`](#dns-resolvers)|multiline resolver=ip[:port]|``|
-|`[1]`|[`dns-timeout-retry`](#dns-resolvers)|time with suffix|`1s`|
+|`[0]`|[`dns-accepted-payload-size`](#dns-resolvers)|number|`8192`|
+|`[0]`|[`dns-cluster-domain`](#dns-resolvers)|cluster name|`cluster.local`|
+|`[0]`|[`dns-hold-obsolete`](#dns-resolvers)|time with suffix|`0s`|
+|`[0]`|[`dns-hold-valid`](#dns-resolvers)|time with suffix|`1s`|
+|`[0]`|[`dns-resolvers`](#dns-resolvers)|multiline resolver=ip[:port]|``|
+|`[0]`|[`dns-timeout-retry`](#dns-resolvers)|time with suffix|`1s`|
 ||[`drain-support`](#drain-support)|[true\|false]|`false`|
 ||[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`false`|
 ||[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
@@ -346,18 +347,18 @@ The following parameters are supported:
 ||[`hsts-max-age`](#hsts)|number of seconds|`15768000`|
 ||[`hsts-preload`](#hsts)|[true\|false]|`false`|
 ||[`http-log-format`](#log-format)|http log format|HAProxy default log format|
-|`[1]`|[`http-port`](#bind-ip-addr)|port number|`80`|
+|`[0]`|[`http-port`](#bind-ip-addr)|port number|`80`|
 ||[`https-log-format`](#log-format)|https(tcp) log format\|`default`|do not log|
-|`[1]`|[`https-port`](#bind-ip-addr)|port number|`443`|
+|`[0]`|[`https-port`](#bind-ip-addr)|port number|`443`|
 ||[`https-to-http-port`](#https-to-http-port)|port number|0 (do not listen)|
 ||[`load-server-state`](#load-server-state) (experimental)|[true\|false]|`false`|
 ||[`max-connections`](#max-connections)|number|`2000`|
-|`[1]`|[`modsecurity-endpoints`](#modsecurity-endpoints)|comma-separated list of IP:port (spoa)|no waf config|
-|`[1]`|[`modsecurity-timeout-hello`](#modsecurity)|time with suffix|`100ms`|
-|`[1]`|[`modsecurity-timeout-idle`](#modsecurity)|time with suffix|`30s`|
-|`[1]`|[`modsecurity-timeout-processing`](#modsecurity)|time with suffix|`1s`|
-|`[1]`|[`nbproc-ssl`](#nbproc)|number of process|`0`|
-|`[1]`|[`nbthread`](#nbthread)|number of threads|`1`|
+|`[0]`|[`modsecurity-endpoints`](#modsecurity-endpoints)|comma-separated list of IP:port (spoa)|no waf config|
+|`[0]`|[`modsecurity-timeout-hello`](#modsecurity)|time with suffix|`100ms`|
+|`[0]`|[`modsecurity-timeout-idle`](#modsecurity)|time with suffix|`30s`|
+|`[0]`|[`modsecurity-timeout-processing`](#modsecurity)|time with suffix|`1s`|
+|`[0]`|[`nbproc-ssl`](#nbproc)|number of process|`0`|
+|`[0]`|[`nbthread`](#nbthread)|number of threads|`1`|
 ||[`no-tls-redirect-locations`](#no-tls-redirect-locations)|comma-separated list of url|`/.well-known/acme-challenge`|
 ||[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
 ||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/v0.6/pkg/controller/config.go#L40)|
@@ -369,8 +370,8 @@ The following parameters are supported:
 ||[`stats-auth`](#stats)|user:passwd|no auth|
 ||[`stats-port`](#stats)|port number|`1936`|
 ||[`stats-proxy-protocol`](#stats)|[true\|false]|`false`|
-|`[1]`|[`stats-ssl-cert`](#stats)|namespace/secret name|no ssl/plain http|
-|`[1]`|[`strict-host`](#strict-host)|[true\|false]|`true`|
+|`[0]`|[`stats-ssl-cert`](#stats)|namespace/secret name|no ssl/plain http|
+|`[0]`|[`strict-host`](#strict-host)|[true\|false]|`true`|
 ||[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
 ||[`tcp-log-format`](#log-format)|tcp log format|HAProxy default log format|
 ||[`timeout-client-fin`](#timeout)|time with suffix|`50s`|
@@ -860,7 +861,7 @@ not ready or terminating state.
 
 The following command-line arguments are supported:
 
-* `[1]` only in `snapshot` tag
+* `[0]` only in `canary` tag
 
 ||Name|Type|Default|
 |---|---|---|---|
@@ -876,7 +877,7 @@ The following command-line arguments are supported:
 ||[`sort-backends`](#sort-backends)|[true\|false]|`false`|
 ||[`tcp-services-configmap`](#tcp-services-configmap)|namespace/configmapname|no tcp svc|
 ||[`verify-hostname`](#verify-hostname)|[true\|false]|`true`|
-|`[1]`|[`watch-namespace`](#watch-namespace)|namespace|all namespaces|
+|`[0]`|[`watch-namespace`](#watch-namespace)|namespace|all namespaces|
 
 ### allow-cross-namespace
 
