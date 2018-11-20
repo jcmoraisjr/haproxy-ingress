@@ -35,6 +35,7 @@ type (
 	// ControllerConfig has ingress generated and some transformations
 	// compatible with HAProxy
 	ControllerConfig struct {
+		ConfigGlobal        []string
 		ConfigFrontend      []string
 		Userlists           map[string]Userlist
 		Servers             []*ingress.Server
@@ -81,6 +82,7 @@ type (
 		ModSecTimeoutIdle      string `json:"modsecurity-timeout-idle"`
 		ModSecTimeoutProc      string `json:"modsecurity-timeout-processing"`
 		BackendCheckInterval   string `json:"backend-check-interval"`
+		ConfigGlobal           string `json:"config-global"`
 		ConfigFrontend         string `json:"config-frontend"`
 		Forwardfor             string `json:"forwardfor"`
 		MaxConn                int    `json:"max-connections"`

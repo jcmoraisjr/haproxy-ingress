@@ -323,6 +323,7 @@ The following parameters are supported:
 ||[`bind-ip-addr-stats`](#bind-ip-addr)|IP address|`*`|
 ||[`bind-ip-addr-tcp`](#bind-ip-addr)|IP address|`*`|
 |`[1]`|[`config-frontend`](#configuration-snippet)|multiline HAProxy frontend config||
+|`[1]`|[`config-global`](#configuration-snippet)|multiline HAProxy global config||
 ||[`cookie-key`](#cookie-key)|secret key|`Ingress`|
 |`[1]`|[`dns-accepted-payload-size`](#dns-resolvers)|number|`8192`|
 |`[1]`|[`dns-cluster-domain`](#dns-resolvers)|cluster name|`cluster.local`|
@@ -422,6 +423,11 @@ line of configuration.
 Examples - configmap:
 
 ```yaml
+    config-global: |
+      tune.bufsize 32768
+```
+
+```yaml
     config-frontend: |
       capture request header X-User-Id len 32
 ```
@@ -435,8 +441,9 @@ Ingress annotation:
         http-request deny if bar-url
 ```
 
-Global configmap option:
+Global configmap options:
 
+* `config-global`: Add configuration snippet to the end of the global section.
 * `config-frontend`: Add configuration snippet to all frontend sections.
 
 Annotation option:

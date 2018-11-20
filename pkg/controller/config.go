@@ -74,7 +74,8 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 	cfg.createDNSResolvers()
 	cfg.createProcs()
 	return &types.ControllerConfig{
-		ConfigFrontend:      cfg.configFrontend(),
+		ConfigGlobal:        stringToArray(cfg.haproxyConfig.ConfigGlobal),
+		ConfigFrontend:      stringToArray(cfg.haproxyConfig.ConfigFrontend),
 		Userlists:           cfg.userlists,
 		Servers:             cfg.ingress.Servers,
 		Backends:            cfg.ingress.Backends,
@@ -133,6 +134,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		ModSecTimeoutIdle:      "30s",
 		ModSecTimeoutProc:      "1s",
 		BackendCheckInterval:   "2s",
+		ConfigGlobal:           "",
 		ConfigFrontend:         "",
 		Forwardfor:             "add",
 		MaxConn:                2000,
@@ -274,12 +276,11 @@ func (cfg *haConfig) statsSSLCert() *ingress.SSLCert {
 	return sslCert
 }
 
-func (cfg *haConfig) configFrontend() []string {
-	config := cfg.haproxyConfig.ConfigFrontend
-	if config == "" {
+func stringToArray(str string) []string {
+	if str == "" {
 		return []string{}
 	}
-	return strings.Split(strings.TrimRight(config, "\n"), "\n")
+	return strings.Split(strings.TrimRight(str, "\n"), "\n")
 }
 
 func (cfg *haConfig) createHAProxyServers() {
