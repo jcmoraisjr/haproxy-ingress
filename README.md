@@ -34,12 +34,18 @@ kubectl label node <node-name> role=ingress-controller
 
 # Configuration
 
-HAProxy Ingress has two types of dynamic configurations: per ingress resource using
-[annotations](#annotations), or globally using a [ConfigMap](#configmap) resource.
-The controller has also static [command-line](#command-line) arguments.
+HAProxy Ingress has the following configuration options:
 
-It's also possible to change the default templates mounting a new template file using
-a configmap:
+* Changing the default [Templates](#templates)
+* Per ingress resource [Annotations](#annotations)
+* Global configurations with [Configmap](#configmap)
+* Static [command-line](#command-line) arguments
+
+## Templates
+
+Change the default templates mounting a new template file using a configmap.
+Note that in the current version, updates to the configmap won't update the
+in-memory parsed template.
 
 |Mounting directory|Configmap keys (filenames)|Source (choose a proper tag)|
 |---|---|---|
@@ -115,7 +121,7 @@ Configure if HAProxy should maintain client requests to the same backend server.
 * `ingress.kubernetes.io/session-cookie-name`: the name of the cookie. `INGRESSCOOKIE` is the default value if not declared.
 * `ingress.kubernetes.io/session-cookie-strategy`: the cookie strategy to use (insert, rewrite, prefix). `insert` is the default value if not declared.
 
-Note for `dynamic-scaling` users only: the hash of the server is built based on it's name.
+Note for `dynamic-scaling` users only, v0.5 or older: the hash of the server is built based on it's name.
 When the slots are scaled down, the remaining servers might change it's server name on
 HAProxy configuration. In order to circumvent this, always configure the slot increment at
 least as much as the number of replicas of the deployment that need to use affinity. This
@@ -354,7 +360,7 @@ The following parameters are supported:
 |`[1]`|[`nbthread`](#nbthread)|number of threads|`1`|
 ||[`no-tls-redirect-locations`](#no-tls-redirect-locations)|comma-separated list of url|`/.well-known/acme-challenge`|
 ||[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
-||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/v0.4/pkg/controller/config.go#L35)|
+||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/v0.6/pkg/controller/config.go#L40)|
 ||[`ssl-dh-default-max-size`](#ssl-dh-default-max-size)|number|`1024`|
 ||[`ssl-dh-param`](#ssl-dh-param)|namespace/secret name|no custom DH param|
 ||[`ssl-headers-prefix`](#ssl-headers-prefix)|prefix|`X-SSL`|
@@ -377,7 +383,6 @@ The following parameters are supported:
 ||[`timeout-server`](#timeout)|time with suffix|`50s`|
 ||[`timeout-stop`](#timeout)|time with suffix|no timeout|
 ||[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
-||[`use-host-on-https`](#use-host-on-https)|[true\|false]|`false`|
 ||[`use-proxy-protocol`](#use-proxy-protocol)|[true\|false]|`false`|
 
 ### balance-algorithm
@@ -832,17 +837,6 @@ Define timeout configurations:
 Reference:
 
 * `timeout-stop` - http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-hard-stop-after
-
-### use-host-on-https
-
-On TLS connections HAProxy will choose the backend based on the TLS's SNI extension. If SNI
-wasn't provided or the hostname provided wasn't found, the default behavior is to use the
-default backend. The default TLS certificate is used.
-
-If `use-host-on-https` confimap option is declared as `true`, HAProxy will use the `Host` header
-provided in the request. In this case the default backend will only be used if the hostname provided
-by the `Host` header wasn't found. Note that the TLS handshake is finished before HAProxy is aware of
-the hostname, because of that only the default X509 certificate can be used.
 
 ### use-proxy-protocol
 
