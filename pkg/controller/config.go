@@ -290,11 +290,14 @@ func (cfg *haConfig) createHAProxyServers() {
 	for _, server := range cfg.ingress.PassthroughBackends {
 		haServer := &types.HAProxyPassthrough{
 			Hostname:           server.Hostname,
-			Alias:              false,
 			ACLLabel:           labelizeACL(server.Hostname),
 			Backend:            server.Backend,
 			HTTPPassBackend:    server.HTTPPassBackend,
 			HostnameIsWildcard: idHasWildcard(server.Hostname),
+			// implements the "interface" of the "acl" template
+			AliasHost:        false,
+			AliasHostIsRegex: false,
+			AliasRegex:       false,
 		}
 		haPassthrough = append(haPassthrough, haServer)
 	}
