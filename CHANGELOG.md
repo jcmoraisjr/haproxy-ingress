@@ -1,6 +1,8 @@
 # CHANGELOG
 
-## v0.7-beta.1
+## v0.7 (beta)
+
+### v0.7-beta.1
 
 Breaking backward compatibility from `v0.6`
 
@@ -80,9 +82,11 @@ Fixes and improvements since `v0.6`
 * Add annotation and configmap validations [#237](https://github.com/jcmoraisjr/haproxy-ingress/pull/237)
 * Fix sort-backends behavior [#247](https://github.com/jcmoraisjr/haproxy-ingress/pull/247)
 
-## v0.6
+### v0.7-beta.2
 
-Fixes and improvements since `v0.5`:
+* Fix ssl-passthrought (only v0.7) [#258](https://github.com/jcmoraisjr/haproxy-ingress/pull/258)
+
+## v0.6
 
 ### v0.6-beta.1
 
