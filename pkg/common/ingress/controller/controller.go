@@ -608,7 +608,11 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 					path.Backend.ServiceName,
 					path.Backend.ServicePort.String())
 
-				ups := upstreams[upsName]
+				ups, found := upstreams[upsName]
+				if !found {
+					// a skipped ssl-passthrough path, just ignore
+					continue
+				}
 
 				var upshttpPassName string
 				if server.SSLPassthrough.HasSSLPassthrough && server.SSLPassthrough.HTTPPort > 0 {
