@@ -890,7 +890,7 @@ func (ic *GenericController) createUpstreams(data []*extensions.Ingress, du *ing
 				backends := []extensions.IngressBackend{path.Backend}
 				if sslpt.HasSSLPassthrough {
 					if path.Path != "" && path.Path != rootLocation {
-						glog.Warning(
+						glog.Warningf(
 							"ignoring path '%v' from sslpassthrough ingress %v/%v",
 							path.Path, ing.Namespace, ing.Name)
 						continue
