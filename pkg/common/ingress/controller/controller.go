@@ -301,7 +301,7 @@ func (ic *GenericController) syncIngress(item interface{}) error {
 		}
 
 		for _, loc := range server.Locations {
-			if loc.Path != rootLocation {
+			if loc.Path != "" && loc.Path != rootLocation {
 				glog.Warningf("ignoring path %v of ssl passthrough host %v", loc.Path, server.Hostname)
 				continue
 			}
@@ -889,7 +889,7 @@ func (ic *GenericController) createUpstreams(data []*extensions.Ingress, du *ing
 			for _, path := range rule.HTTP.Paths {
 				backends := []extensions.IngressBackend{path.Backend}
 				if sslpt.HasSSLPassthrough {
-					if path.Path != rootLocation {
+					if path.Path != "" && path.Path != rootLocation {
 						glog.Warning(
 							"ignoring path '%v' from sslpassthrough ingress %v/%v",
 							path.Path, ing.Namespace, ing.Name)
