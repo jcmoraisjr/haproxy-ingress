@@ -611,10 +611,15 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 				ups := upstreams[upsName]
 
 				var upshttpPassName string
-				if server.SSLPassthrough.HasSSLPassthrough && server.SSLPassthrough.HTTPPort > 0 {
-					upshttpPassName = fmt.Sprintf("%v-%v-%v",
-						ing.GetNamespace(), path.Backend.ServiceName, server.SSLPassthrough.HTTPPort)
-					ctx.copyBackendAnnotations(upstreams[upshttpPassName])
+				if httpPort := server.SSLPassthrough.HTTPPort; server.SSLPassthrough.HasSSLPassthrough && httpPort > 0 {
+					if httpPort != path.Backend.ServicePort.IntValue() {
+						upshttpPassName = fmt.Sprintf("%v-%v-%v",
+							ing.GetNamespace(), path.Backend.ServiceName, httpPort)
+						ctx.copyBackendAnnotations(upstreams[upshttpPassName])
+					} else {
+						// cannot reuse the same port on ssl-passthrough (https) and http
+						glog.Warningf("ssl-passthrough http and https ports are the same, ignoring http port")
+					}
 				}
 
 				// if there's no path defined we assume /
@@ -698,6 +703,10 @@ func (ic *GenericController) getBackendServers(ingresses []*extensions.Ingress) 
 						}
 						isHTTPSfrom = append(isHTTPSfrom, server)
 					}
+				}
+				if upstream.Name == location.HTTPPassBackend && len(upstream.Endpoints) == 0 {
+					glog.V(3).Infof("upstream %v does not have any active endpoints. Using default backend", upstream.Name)
+					location.HTTPPassBackend = defUpstreamName
 				}
 			}
 		}
