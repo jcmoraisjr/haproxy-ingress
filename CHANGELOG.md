@@ -4,13 +4,13 @@
 
 ### v0.7-beta.1
 
-Breaking backward compatibility from `v0.6`
+Breaking backward compatibility from [v0.6](#v06):
 
 * Default blue/green deployment mode changed from `pod` to `deploy`. Use `ingress.kubernetes.io/blue-green-mode` annotation to change to the v0.6 behavior. See also the blue/green deployment [doc](/README.md#blue-green).
 * Changed default maximum ephemeral DH key size from 1024 to 2048, which might break old TLS clients. Use `ssl-dh-default-max-size` configmap option to change back to 1024 if needed.
 * Behavior of `ingress.kubernetes.io/server-alias` annotation was changed to mimic hostname syntax. Use `ingress.kubernetes.io/server-alias-regex` instead if need to use regex. See also the server-alias [doc](/README.md#server-alias)
 
-Fixes and improvements since `v0.6`
+Fixes and improvements since [v0.6](#v06):
 
 * Add SSL config on TCP services [#192](https://github.com/jcmoraisjr/haproxy-ingress/pull/192) - [doc](/README.md#tcp-services-configmap)
 * Disable health check of backends [#195](https://github.com/jcmoraisjr/haproxy-ingress/pull/195)
@@ -84,13 +84,15 @@ Fixes and improvements since `v0.6`
 
 ### v0.7-beta.2
 
+Fixes and improvements since [v0.7-beta.1](#v07-beta1):
+
 * Fix ssl-passthrought (only v0.7) [#258](https://github.com/jcmoraisjr/haproxy-ingress/pull/258)
 
 ## v0.6
 
 ### v0.6-beta.1
 
-Breaking backward compatibility from `v0.5`:
+Breaking backward compatibility from [v0.5](#v05):
 
 * Usage of header `Host` to match https requests instead of using just sni extension, deprecating `use-host-on-https` - [#130](https://github.com/jcmoraisjr/haproxy-ingress/pull/130)
 * Multibinder is deprecated, use `reusesocket` reload strategy instead - [#139](https://github.com/jcmoraisjr/haproxy-ingress/pull/139)
@@ -98,7 +100,7 @@ Breaking backward compatibility from `v0.5`:
 * Broken CIDR lists - `whitelist-source-range` and `limit-whitelist` annotations - will add at least the valid CIDRs found in the list - [#163](https://github.com/jcmoraisjr/haproxy-ingress/pull/163)
 * Added `timeout-queue` configmap option which defaults to `5s`. `timeout-queue` didn't exist before v0.6 and its value inherits from the `timeout-connect` configuration. Starting on v0.6, changing `timeout-connect` will not change `timeout-queue` default value.
 
-Fixes and improvements since `v0.5`:
+Fixes and improvements since [v0.5](#v05):
 
 * HAProxy 1.8
 * Dynamic cookies on cookie based server affinity
@@ -153,14 +155,20 @@ Fixes and improvements since `v0.5`:
 
 ### v0.6-beta.2
 
+Fixes and improvements since [v0.6-beta.1](#v06-beta1):
+
 * Fix redirect https if path changed with rewrite-target - [#179](https://github.com/jcmoraisjr/haproxy-ingress/pull/179)
 * Fix ssl-passthrough annotation - [#183](https://github.com/jcmoraisjr/haproxy-ingress/pull/183) and [#187](https://github.com/jcmoraisjr/haproxy-ingress/pull/187)
 
 ### v0.6-beta.3
 
+Fixes and improvements since [v0.6-beta.2](#v06-beta2):
+
 * Fix host match of rate limit on shared frontend - [#202](https://github.com/jcmoraisjr/haproxy-ingress/pull/202)
 
 ### v0.6-beta.4
+
+Fixes and improvements since [v0.6-beta.3](#v06-beta3):
 
 * Fix permission denied to mkdir on OpenShift - [#205](https://github.com/jcmoraisjr/haproxy-ingress/issues/205)
 * Fix usage of custom DH params (only v0.6) - [#215](https://github.com/jcmoraisjr/haproxy-ingress/issues/215)
@@ -168,14 +176,20 @@ Fixes and improvements since `v0.5`:
 
 ### v0.6-beta.5
 
+Fixes and improvements since [v0.6-beta.4](#v06-beta4):
+
 * Fix health check of dynamic reload - [#232](https://github.com/jcmoraisjr/haproxy-ingress/issues/232)
 * Fix stop/terminate signal of the controller process - [#233](https://github.com/jcmoraisjr/haproxy-ingress/issues/233)
 
 ### v0.6-beta.6
 
+Fixes and improvements since [v0.6-beta.5](#v06-beta5):
+
 * Fix SSL redirect if no TLS config is used (only v0.6) - [#235](https://github.com/jcmoraisjr/haproxy-ingress/issues/235)
 
 ### v0.6-post-beta.6 (match v0.6)
+
+Fixes and improvements since [v0.6-beta.6](#v06-beta6):
 
 * Restrict access of sticky session cookie by client Javascript code - [#251](https://github.com/jcmoraisjr/haproxy-ingress/pull/251)
 
