@@ -88,6 +88,13 @@ Fixes and improvements since [v0.7-beta.1](#v07-beta1):
 
 * Fix ssl-passthrought (only v0.7) [#258](https://github.com/jcmoraisjr/haproxy-ingress/pull/258)
 
+### v0.7-beta.3
+
+Fixes and improvements since [v0.7-beta.2](#v07-beta2):
+
+* Fix panic if an invalid path is used on ssl-passthrough (only v0.7) [#260](https://github.com/jcmoraisjr/haproxy-ingress/pull/260)
+* Add ssl-passthrough-http-port validations [#261](https://github.com/jcmoraisjr/haproxy-ingress/pull/261)
+
 ## v0.6
 
 ### v0.6-beta.1
