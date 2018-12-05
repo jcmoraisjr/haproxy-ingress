@@ -32,6 +32,12 @@ global
 {{- else }}
     tune.ssl.default-dh-param {{ $cfg.SSLDHParam.DefaultMaxSize }}
 {{- end }}
+{{- if ne $cfg.SSLEngine "" }}
+    ssl-engine {{ $cfg.SSLEngine }}
+{{- if $cfg.SSLModeAsync }}
+    ssl-mode-async
+{{- end }}
+{{- end }}
     ssl-default-bind-ciphers {{ $cfg.SSLCiphers }}
     ssl-default-bind-options {{ $cfg.SSLOptions }}
 {{- range $snippet := $ing.ConfigGlobal }}

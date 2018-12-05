@@ -148,6 +148,8 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		CookieKey:              "Ingress",
 		StrictHost:             true,
 		DynamicScaling:         false,
+		SSLEngine:              "",
+		SSLModeAsync:           false,
 		StatsSocket:            "/var/run/haproxy-stats.sock",
 		UseProxyProtocol:       false,
 		StatsProxyProtocol:     false,
