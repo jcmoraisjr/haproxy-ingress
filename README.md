@@ -197,6 +197,7 @@ Add CORS headers on OPTIONS http command (preflight) and reponses.
 * `ingress.kubernetes.io/cors-allow-headers`: Optional, configures `Access-Control-Allow-Headers` header which defines the allowed headers. See defaults [here](/pkg/common/ingress/annotations/cors/main.go#L34).
 * `ingress.kubernetes.io/cors-allow-credentials`: Optional, configures `Access-Control-Allow-Credentials` header which defines whether or not credentials (cookies, authorization headers or client certificates) should be exposed. Defaults to `true`.
 * `ingress.kubernetes.io/cors-max-age`: Optional, configures `Access-Control-Max-Age` header which defines the time in seconds the result should be cached. Defaults to `86400` (1 day).
+* `ingress.kubernetes.io/cors-expose-headers`: Options, configurs `Access-Control-Expose-Headers` header which defines what headers are allowed to be passed through to the CORS application. Defaults to `""`.
 
 https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
 
