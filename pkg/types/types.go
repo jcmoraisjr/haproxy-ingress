@@ -96,6 +96,8 @@ type (
 		CookieKey              string `json:"cookie-key"`
 		StrictHost             bool   `json:"strict-host"`
 		DynamicScaling         bool   `json:"dynamic-scaling"`
+		SSLEngine              string `json:"ssl-engine"`
+		SSLModeAsync           bool   `json:"ssl-mode-async"`
 		StatsSocket            string
 		UseProxyProtocol       bool   `json:"use-proxy-protocol"`
 		StatsProxyProtocol     bool   `json:"stats-proxy-protocol"`

@@ -365,7 +365,9 @@ The following parameters are supported:
 ||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/v0.6/pkg/controller/config.go#L40)|
 ||[`ssl-dh-default-max-size`](#ssl-dh-default-max-size)|number|`1024`|
 ||[`ssl-dh-param`](#ssl-dh-param)|namespace/secret name|no custom DH param|
+||[`ssl-engine`](#ssl-engine)|OpenSSL engine name and parameters|no engine set|
 ||[`ssl-headers-prefix`](#ssl-headers-prefix)|prefix|`X-SSL`|
+||[`ssl-mode-async`](#ssl-engine)|[true\|false]|`false`|
 ||[`ssl-options`](#ssl-options)|space-separated list|`no-sslv3` `no-tls-tickets`|
 ||[`ssl-redirect`](#ssl-redirect)|[true\|false]|`true`|
 ||[`stats-auth`](#stats)|user:passwd|no auth|
@@ -743,6 +745,19 @@ Then, in the haproxy ingress configuration, `ssl-dh-param` should reference the
 resulting secret.
 
 http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-ssl-dh-param-file
+
+### ssl-engine
+
+Set the name of the OpenSSL engine to use. The string shall include the engine name
+and its parameters.
+
+Additionally, ssl-mode-async can be set to enable asynchronous TLS I/O operations if
+the ssl-engine used supports it.
+
+Reference:
+
+* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#ssl-engine
+* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#ssl-mode-async
 
 ### ssl-headers-prefix
 
