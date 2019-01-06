@@ -31,11 +31,13 @@ const (
 	annotationCorsAllowMethods     = "ingress.kubernetes.io/cors-allow-methods"
 	annotationCorsAllowHeaders     = "ingress.kubernetes.io/cors-allow-headers"
 	annotationCorsAllowCredentials = "ingress.kubernetes.io/cors-allow-credentials"
+	annotationCorsExposeHeaders    = "ingress.kubernetes.io/cors-expose-headers"
 	annotationCorsMaxAge           = "ingress.kubernetes.io/cors-max-age"
 	// Default values
-	defaultCorsMethods = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
-	defaultCorsHeaders = "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
-	defaultCorsMaxAge  = 86400
+	defaultCorsMethods       = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+	defaultCorsHeaders       = "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+	defaultCorsExposeHeaders = ""
+	defaultCorsMaxAge        = 86400
 )
 
 var (
@@ -62,6 +64,7 @@ type CorsConfig struct {
 	CorsAllowHeaders     string `json:"corsAllowHeaders"`
 	CorsAllowCredentials bool   `json:"corsAllowCredentials"`
 	CorsMaxAge           int    `json:"corsMaxAge"`
+	CorsExposeHeaders    string `json:"corsExposeHeaders"`
 }
 
 // NewParser creates a new CORS annotation parser
@@ -93,6 +96,9 @@ func (c1 *CorsConfig) Equal(c2 *CorsConfig) bool {
 		return false
 	}
 	if c1.CorsMaxAge != c2.CorsMaxAge {
+		return false
+	}
+	if c1.CorsExposeHeaders != c2.CorsExposeHeaders {
 		return false
 	}
 
@@ -137,6 +143,11 @@ func (a cors) Parse(ing *extensions.Ingress) (interface{}, error) {
 		corsMaxAge = defaultCorsMaxAge
 	}
 
+	corsExposeHeaders, err := parser.GetStringAnnotation(annotationCorsExposeHeaders, ing)
+	if err != nil || corsExposeHeaders == "" || !corsHeadersRegex.MatchString(corsExposeHeaders) {
+		corsExposeHeaders = defaultCorsExposeHeaders
+	}
+
 	return &CorsConfig{
 		CorsEnabled:          true,
 		CorsAllowOrigin:      corsalloworigin,
@@ -144,6 +155,7 @@ func (a cors) Parse(ing *extensions.Ingress) (interface{}, error) {
 		CorsAllowMethods:     corsallowmethods,
 		CorsAllowCredentials: corsallowcredentials,
 		CorsMaxAge:           corsMaxAge,
+		CorsExposeHeaders:    corsExposeHeaders,
 	}, nil
 
 }

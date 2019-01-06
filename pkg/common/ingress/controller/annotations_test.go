@@ -42,8 +42,10 @@ const (
 	annotationCorsAllowMethods       = "ingress.kubernetes.io/cors-allow-methods"
 	annotationCorsAllowHeaders       = "ingress.kubernetes.io/cors-allow-headers"
 	annotationCorsAllowCredentials   = "ingress.kubernetes.io/cors-allow-credentials"
+	annotationCorsExposeHeaders      = "ingress.kubernetes.io/cors-expose-headers"
 	defaultCorsMethods               = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
 	defaultCorsHeaders               = "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+	defaultCorsExposeHeaders         = ""
 	annotationAffinityCookieName     = "ingress.kubernetes.io/session-cookie-name"
 	annotationAffinityCookieStrategy = "ingress.kubernetes.io/session-cookie-strategy"
 	annotationAffinityCookieHash     = "ingress.kubernetes.io/session-cookie-hash"
@@ -339,24 +341,26 @@ func TestCors(t *testing.T) {
 	ing := buildIngress()
 
 	fooAnns := []struct {
-		annotations map[string]string
-		corsenabled bool
-		methods     string
-		headers     string
-		origin      string
-		credentials bool
+		annotations   map[string]string
+		corsenabled   bool
+		methods       string
+		headers       string
+		origin        string
+		credentials   bool
+		exposeHeaders string
 	}{
-		{map[string]string{annotationCorsEnabled: "true"}, true, defaultCorsMethods, defaultCorsHeaders, "*", true},
-		{map[string]string{annotationCorsEnabled: "true", annotationCorsAllowMethods: "POST, GET, OPTIONS", annotationCorsAllowHeaders: "$nginx_version", annotationCorsAllowCredentials: "false"}, true, "POST, GET, OPTIONS", defaultCorsHeaders, "*", false},
-		{map[string]string{annotationCorsEnabled: "true", annotationCorsAllowCredentials: "false"}, true, defaultCorsMethods, defaultCorsHeaders, "*", false},
-		{map[string]string{}, false, "", "", "", false},
-		{nil, false, "", "", "", false},
+		{map[string]string{annotationCorsEnabled: "true"}, true, defaultCorsMethods, defaultCorsHeaders, "*", true, defaultCorsExposeHeaders},
+		{map[string]string{annotationCorsEnabled: "true", annotationCorsAllowMethods: "POST, GET, OPTIONS", annotationCorsAllowHeaders: "$nginx_version", annotationCorsAllowCredentials: "false"}, true, "POST, GET, OPTIONS", defaultCorsHeaders, "*", false, defaultCorsExposeHeaders},
+		{map[string]string{annotationCorsEnabled: "true", annotationCorsAllowCredentials: "false"}, true, defaultCorsMethods, defaultCorsHeaders, "*", false, defaultCorsExposeHeaders},
+		{map[string]string{annotationCorsEnabled: "true", annotationCorsExposeHeaders: "FOO, BAR, BAZ",}, true, defaultCorsMethods, defaultCorsHeaders, "*", true, "FOO, BAR, BAZ"},
+		{map[string]string{}, false, "", "", "", false, ""},
+		{nil, false, "", "", "", false, ""},
 	}
 
 	for _, foo := range fooAnns {
 		ing.SetAnnotations(foo.annotations)
 		r := ec.Cors(ing)
-		t.Logf("Testing pass %v %v %v %v %v", foo.corsenabled, foo.methods, foo.headers, foo.origin, foo.credentials)
+		t.Logf("Testing pass %v %v %v %v %v %v", foo.corsenabled, foo.methods, foo.headers, foo.origin, foo.credentials, foo.exposeHeaders)
 		if r == nil {
 			t.Errorf("Returned nil but expected a Cors.CorsConfig")
 			continue
@@ -382,5 +386,8 @@ func TestCors(t *testing.T) {
 			t.Errorf("Returned %v but expected %v for Cors Methods", r.CorsAllowCredentials, foo.credentials)
 		}
 
+		if r.CorsExposeHeaders != foo.exposeHeaders {
+			t.Errorf("Returned %v but expected %v for Cors Methods", r.CorsExposeHeaders, foo.exposeHeaders)
+		}
 	}
 }
