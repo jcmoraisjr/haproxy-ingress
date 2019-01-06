@@ -31,6 +31,8 @@ HAProxy evaluates encrypted passwords with
 [crypt](http://man7.org/linux/man-pages/man3/crypt.3.html) function. Use `mkpasswd` or
 `makepasswd` to create it. `mkpasswd` can be found on Alpine Linux container.
 
+The following `mkpasswd` can be changed to use different methods, as the insecure DES (`-m des`), MD5 (`-m md5`), SHA256 (`-m sha` or `-m sha256`) and SHA512 (`-m sha512`). The default behaviour is to use SHA256
+
 ## Configure
 
 Create a secret to our users:
@@ -39,7 +41,7 @@ Create a secret to our users:
 * `jane` and password `guest` using encrypted password
 
 ```console
-$ mkpasswd -m des ## a short, des encryption, syntax from Busybox on Alpine Linux
+$ mkpasswd ## a SHA256 password will be generated
 Password: (type 'guest' and press Enter)
 E5BrlrQ5IXYK2
 

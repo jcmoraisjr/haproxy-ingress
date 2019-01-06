@@ -23,6 +23,10 @@ spec:
           containerPort: 443
         - name: stat
           containerPort: 1936
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 10253
         env:
         - name: POD_NAME
           valueFrom:
