@@ -542,12 +542,18 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 
 {{- /*------------------------------------*/}}
 {{- if and $hasSSL $isCACert }}
+{{- if or ( eq $singleserver.CertificateAuth.VerifyClient "on" ) ( eq $singleserver.CertificateAuth.VerifyClient "optional" ) }}
 {{- if eq $singleserver.CertificateAuth.ErrorPage "" }}
     use_backend error495 if { ssl_c_ca_err gt 0 } || { ssl_c_err gt 0 }
+{{- if eq $singleserver.CertificateAuth.VerifyClient "on" }}
     use_backend error496 if { ssl_fc } !{ ssl_c_used }
+{{- end }}
 {{- else }}
     redirect location {{ $singleserver.CertificateAuth.ErrorPage }} if { ssl_c_ca_err gt 0 } || { ssl_c_err gt 0 }
+{{- if eq $singleserver.CertificateAuth.VerifyClient "on" }}
     redirect location {{ $singleserver.CertificateAuth.ErrorPage }} if { ssl_fc } !{ ssl_c_used }
+{{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
 
