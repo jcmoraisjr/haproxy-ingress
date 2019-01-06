@@ -60,26 +60,28 @@ lists, math etc.
 
 The following annotations are supported:
 
-* `[0]` only in `canary` tag
+* `[0]` only in `v0.7` (`snapshot`)
 
 ||Name|Data|Usage|
 |---|---|---|:---:|
 ||[`ingress.kubernetes.io/affinity`](#affinity)|affinity type|-|
-||`ingress.kubernetes.io/auth-type`|"basic"|[doc](/examples/auth/basic)|
-||`ingress.kubernetes.io/auth-secret`|secret name|[doc](/examples/auth/basic)|
+||`ingress.kubernetes.io/app-root`|/url|[doc](/examples/rewrite)|
 ||`ingress.kubernetes.io/auth-realm`|realm string|[doc](/examples/auth/basic)|
+||`ingress.kubernetes.io/auth-secret`|secret name|[doc](/examples/auth/basic)|
 ||[`ingress.kubernetes.io/auth-tls-cert-header`](#auth-tls)|[true\|false]|[doc](/examples/auth/client-certs)|
 ||[`ingress.kubernetes.io/auth-tls-error-page`](#auth-tls)|url|[doc](/examples/auth/client-certs)|
 ||[`ingress.kubernetes.io/auth-tls-secret`](#auth-tls)|namespace/secret name|[doc](/examples/auth/client-certs)|
+|`[0]`|[`ingress.kubernetes.io/auth-tls-verify-client`](#auth-tls)|[off\|optional\|on\|optional_no_ca]|-|
+||`ingress.kubernetes.io/auth-type`|"basic"|[doc](/examples/auth/basic)|
 ||[`ingress.kubernetes.io/balance-algorithm`](#balance-algorithm)|algorithm name|-|
-||[`ingress.kubernetes.io/blue-green-deploy`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
 |`[0]`|[`ingress.kubernetes.io/blue-green-balance`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
+||[`ingress.kubernetes.io/blue-green-deploy`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
 |`[0]`|[`ingress.kubernetes.io/blue-green-mode`](#blue-green)|[pod\|deploy]|[doc](/examples/blue-green)|
 ||[`ingress.kubernetes.io/config-backend`](#configuration-snippet)|multiline HAProxy backend config|-|
-||[`ingress.kubernetes.io/cors-allow-origin`](#cors)|URL|-|
-||[`ingress.kubernetes.io/cors-allow-methods`](#cors)|methods list|-|
-||[`ingress.kubernetes.io/cors-allow-headers`](#cors)|headers list|-|
 ||[`ingress.kubernetes.io/cors-allow-credentials`](#cors)|[true\|false]|-|
+||[`ingress.kubernetes.io/cors-allow-headers`](#cors)|headers list|-|
+||[`ingress.kubernetes.io/cors-allow-methods`](#cors)|methods list|-|
+||[`ingress.kubernetes.io/cors-allow-origin`](#cors)|URL|-|
 ||[`ingress.kubernetes.io/cors-enable`](#cors)|[true\|false]|-|
 ||[`ingress.kubernetes.io/cors-max-age`](#cors)|time (seconds)|-|
 ||[`ingress.kubernetes.io/hsts`](#hsts)|[true\|false]|-|
@@ -92,27 +94,26 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/maxconn-server`](#connection)|qty|-|
 ||[`ingress.kubernetes.io/maxqueue-server`](#connection)|qty|-|
 |`[0]`|[`ingress.kubernetes.io/oauth`](#oauth)|"oauth2_proxy"|[doc](/examples/auth/oauth)|
-|`[0]`|[`ingress.kubernetes.io/oauth-uri-prefix`](#oauth)|URI prefix|[doc](/examples/auth/oauth)|
 |`[0]`|[`ingress.kubernetes.io/oauth-headers`](#oauth)|`<header>:<var>,...`|[doc](/examples/auth/oauth)|
-|`[0]`|[`ingress.kubernetes.io/proxy-protocol`](#proxy-protocol)|[v1\|v2\|v2-ssl\|v2-ssl-cn]|-|
-||[`ingress.kubernetes.io/slots-increment`](#dynamic-scaling)|qty|-|
-||[`ingress.kubernetes.io/timeout-queue`](#connection)|qty|-|
+|`[0]`|[`ingress.kubernetes.io/oauth-uri-prefix`](#oauth)|URI prefix|[doc](/examples/auth/oauth)|
 ||[`ingress.kubernetes.io/proxy-body-size`](#proxy-body-size)|size (bytes)|-|
+|`[0]`|[`ingress.kubernetes.io/proxy-protocol`](#proxy-protocol)|[v1\|v2\|v2-ssl\|v2-ssl-cn]|-|
+||[`ingress.kubernetes.io/rewrite-target`](#rewrite-target)|path string|-|
 ||[`ingress.kubernetes.io/secure-backends`](#secure-backend)|[true\|false]|-|
 ||[`ingress.kubernetes.io/secure-crt-secret`](#secure-backend)|secret name|-|
 ||[`ingress.kubernetes.io/secure-verify-ca-secret`](#secure-backend)|secret name|-|
+||[`ingress.kubernetes.io/server-alias`](#server-alias)|domain name|-|
+|`[0]`|[`ingress.kubernetes.io/server-alias-regex`](#server-alias)|regex|-|
 ||[`ingress.kubernetes.io/session-cookie-name`](#affinity)|cookie name|-|
 ||[`ingress.kubernetes.io/session-cookie-strategy`](#affinity)|[insert\|prefix\|rewrite]|-|
+||[`ingress.kubernetes.io/slots-increment`](#dynamic-scaling)|qty|-|
 ||[`ingress.kubernetes.io/ssl-passthrough`](#ssl-passthrough)|[true\|false]|-|
 |`[0]`|[`ingress.kubernetes.io/ssl-passthrough-http-port`](#ssl-passthrough)|backend port|-|
 ||`ingress.kubernetes.io/ssl-redirect`|[true\|false]|[doc](/examples/rewrite)|
-||`ingress.kubernetes.io/app-root`|/url|[doc](/examples/rewrite)|
-||`ingress.kubernetes.io/whitelist-source-range`|CIDR|-|
-||[`ingress.kubernetes.io/rewrite-target`](#rewrite-target)|path string|-|
-||[`ingress.kubernetes.io/server-alias`](#server-alias)|domain name|-|
-|`[0]`|[`ingress.kubernetes.io/server-alias-regex`](#server-alias)|regex|-|
+||[`ingress.kubernetes.io/timeout-queue`](#connection)|qty|-|
 |`[0]`|[`ingress.kubernetes.io/use-resolver`](#dns-resolvers)|resolver name]|[doc](/examples/dns-service-discovery)|
 |`[0]`|[`ingress.kubernetes.io/waf`](#waf)|"modsecurity"|[doc](/examples/modsecurity)|
+||`ingress.kubernetes.io/whitelist-source-range`|CIDR|-|
 
 ### Affinity
 
@@ -147,9 +148,9 @@ The following annotations are supported:
 * `ingress.kubernetes.io/auth-tls-cert-header`: if true HAProxy will add `X-SSL-Client-Cert` http header with a base64 encoding of the X509 certificate provided by the client. Default is to not provide the client certificate.
 * `ingress.kubernetes.io/auth-tls-error-page`: optional URL of the page to redirect the user if he doesn't provide a certificate or the certificate is invalid.
 * `ingress.kubernetes.io/auth-tls-secret`: mandatory secret name with `ca.crt` key providing all certificate authority bundles used to validate client certificates.
-* `ingress.kubernetes.io/auth-tls-verify-client`: optional configuration of Client Verification behaviour. Supported values are `on`, `optional` and `optional_no_ca`
+* `ingress.kubernetes.io/auth-tls-verify-client`: optional configuration of Client Verification behavior. Supported values are `off`, `on`, `optional` and `optional_no_ca`. The default value is `on` if a valid secret is provided, `off` otherwise.
 
-See also client cert [sample](/examples/auth/client-certs).
+See also client cert [example](/examples/auth/client-certs).
 
 ### Blue-green
 
@@ -198,7 +199,7 @@ Add CORS headers on OPTIONS http command (preflight) and reponses.
 * `ingress.kubernetes.io/cors-allow-headers`: Optional, configures `Access-Control-Allow-Headers` header which defines the allowed headers. See defaults [here](/pkg/common/ingress/annotations/cors/main.go#L34).
 * `ingress.kubernetes.io/cors-allow-credentials`: Optional, configures `Access-Control-Allow-Credentials` header which defines whether or not credentials (cookies, authorization headers or client certificates) should be exposed. Defaults to `true`.
 * `ingress.kubernetes.io/cors-max-age`: Optional, configures `Access-Control-Max-Age` header which defines the time in seconds the result should be cached. Defaults to `86400` (1 day).
-* `ingress.kubernetes.io/cors-expose-headers`: Options, configurs `Access-Control-Expose-Headers` header which defines what headers are allowed to be passed through to the CORS application. Defaults to `""`.
+* `ingress.kubernetes.io/cors-expose-headers`: Optional, configures `Access-Control-Expose-Headers` header which defines what headers are allowed to be passed through to the CORS application. Defaults to not add the header.
 
 https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
 
@@ -320,7 +321,8 @@ A ConfigMap can be created with `kubectl create configmap`.
 
 The following parameters are supported:
 
-* `[0]` only in `canary` tag
+* `[0]` only in `v0.7` (`snapshot`)
+* `[1]` only in `v0.8`
 
 ||Name|Type|Default|
 |---|---|---|---|
@@ -366,9 +368,9 @@ The following parameters are supported:
 ||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/v0.6/pkg/controller/config.go#L40)|
 ||[`ssl-dh-default-max-size`](#ssl-dh-default-max-size)|number|`1024`|
 ||[`ssl-dh-param`](#ssl-dh-param)|namespace/secret name|no custom DH param|
-||[`ssl-engine`](#ssl-engine)|OpenSSL engine name and parameters|no engine set|
+|`[1]`|[`ssl-engine`](#ssl-engine)|OpenSSL engine name and parameters|no engine set|
 ||[`ssl-headers-prefix`](#ssl-headers-prefix)|prefix|`X-SSL`|
-||[`ssl-mode-async`](#ssl-engine)|[true\|false]|`false`|
+|`[1]`|[`ssl-mode-async`](#ssl-engine)|[true\|false]|`false`|
 ||[`ssl-options`](#ssl-options)|space-separated list|`no-sslv3` `no-tls-tickets`|
 ||[`ssl-redirect`](#ssl-redirect)|[true\|false]|`true`|
 ||[`stats-auth`](#stats)|user:passwd|no auth|
@@ -378,14 +380,14 @@ The following parameters are supported:
 |`[0]`|[`strict-host`](#strict-host)|[true\|false]|`true`|
 ||[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
 ||[`tcp-log-format`](#log-format)|tcp log format|HAProxy default log format|
-||[`timeout-client-fin`](#timeout)|time with suffix|`50s`|
 ||[`timeout-client`](#timeout)|time with suffix|`50s`|
+||[`timeout-client-fin`](#timeout)|time with suffix|`50s`|
 ||[`timeout-connect`](#timeout)|time with suffix|`5s`|
 ||[`timeout-http-request`](#timeout)|time with suffix|`5s`|
 ||[`timeout-keep-alive`](#timeout)|time with suffix|`1m`|
 ||[`timeout-queue`](#timeout)|time with suffix|`5s`|
-||[`timeout-server-fin`](#timeout)|time with suffix|`50s`|
 ||[`timeout-server`](#timeout)|time with suffix|`50s`|
+||[`timeout-server-fin`](#timeout)|time with suffix|`50s`|
 ||[`timeout-stop`](#timeout)|time with suffix|no timeout|
 ||[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
 ||[`use-proxy-protocol`](#use-proxy-protocol)|[true\|false]|`false`|
@@ -752,7 +754,7 @@ http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-ssl-dh-param-fi
 Set the name of the OpenSSL engine to use. The string shall include the engine name
 and its parameters.
 
-Additionally, ssl-mode-async can be set to enable asynchronous TLS I/O operations if
+Additionally, `ssl-mode-async` can be set to enable asynchronous TLS I/O operations if
 the ssl-engine used supports it.
 
 Reference:
