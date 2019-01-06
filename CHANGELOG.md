@@ -95,6 +95,13 @@ Fixes and improvements since [v0.7-beta.2](#v07-beta2):
 * Fix panic if an invalid path is used on ssl-passthrough (only v0.7) [#260](https://github.com/jcmoraisjr/haproxy-ingress/pull/260)
 * Add ssl-passthrough-http-port validations [#261](https://github.com/jcmoraisjr/haproxy-ingress/pull/261)
 
+### v0.7-beta.4
+
+Fixes and improvements since [v0.7-beta.3](#v07-beta3):
+
+* Update HAProxy from 1.8.14 to 1.8.16 - fix some DNS issues
+* Improve optional client cert auth [#275](https://github.com/jcmoraisjr/haproxy-ingress/pull/275)
+
 ## v0.6
 
 ### v0.6-beta.1
