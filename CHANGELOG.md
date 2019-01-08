@@ -102,6 +102,20 @@ Fixes and improvements since [v0.7-beta.3](#v07-beta3):
 * Update HAProxy from 1.8.14 to 1.8.16 - fix some DNS issues
 * Improve optional client cert auth [#275](https://github.com/jcmoraisjr/haproxy-ingress/pull/275)
 
+### v0.7-beta.5
+
+Fixes and improvements since [v0.7-beta.4](#v07-beta4):
+
+* Update HAProxy from 1.8.16 to 1.8.17 - fix CVE-2018-20615 ([release notes](https://www.mail-archive.com/haproxy@formilux.org/msg32304.html))
+
+## v0.6.1
+
+Fixes and improvements since [v0.6](#v06):
+
+* Update HAProxy from 1.8.14 to 1.8.17
+  * Fix some DNS issues
+  * Fix CVE-2018-20615 ([release notes](https://www.mail-archive.com/haproxy@formilux.org/msg32304.html))
+
 ## v0.6
 
 ### v0.6-beta.1
