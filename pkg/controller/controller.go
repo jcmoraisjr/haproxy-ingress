@@ -179,6 +179,15 @@ func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) error {
 	reloadRequired := !dynconfig.ConfigBackends(haproxy.currentConfig, updatedConfig)
 	haproxy.currentConfig = updatedConfig
 
+	modSecConf, err := haproxy.modsecTemplate.execute(updatedConfig)
+	if err != nil {
+		return err
+	}
+
+	if err := haproxy.writeModSecConfigFile(modSecConf); err != nil {
+		return err
+	}
+
 	data, err := haproxy.haproxyTemplate.execute(updatedConfig)
 	if err != nil {
 		return err
@@ -186,15 +195,6 @@ func (haproxy *HAProxyController) OnUpdate(cfg ingress.Configuration) error {
 
 	configFile, err := haproxy.rewriteConfigFiles(data)
 	if err != nil {
-		return err
-	}
-
-	modSecConf, err := haproxy.modsecTemplate.execute(updatedConfig)
-	if err != nil {
-		return err
-	}
-
-	if err := haproxy.writeModSecConfigFile(modSecConf); err != nil {
 		return err
 	}
 
