@@ -134,6 +134,7 @@ listen tcp-{{ $tcp.Port }}
 backend {{ $backend.Name }}
     mode {{ if $backend.SSLPassthrough }}tcp{{ else }}http{{ end }}
     balance {{ $backend.BalanceAlgorithm }}
+    tcp-request content set-var(txn.namespace) str("{{ $backend.Service.Namespace }}")
 {{- if ne $backend.Connection.TimeoutQueue "" }}
     timeout queue {{ $backend.Connection.TimeoutQueue }}
 {{- end }}
