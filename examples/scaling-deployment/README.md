@@ -11,7 +11,7 @@ Ingress resources target exactly one Ingress controller by specifying the
 
 This document has also the following prerequisites:
 
-* Create a [TLS secret](/examples/PREREQUISITES.md#tls-certificates) named `tls-secret` to be used as default TLS certificate
+* Create a [TLS secret](/examples/PREREQUISITES.md#tls-certificates) named `tls-secret` to be used as default TLS certificate. Here we're assuming you're using the namespace `ìngress-controller`, but it must be changed to reflect your environment.
 
 Creating the TLS secret:
 
@@ -19,7 +19,7 @@ Creating the TLS secret:
 $ openssl req \
   -x509 -newkey rsa:2048 -nodes -days 365 \
   -keyout tls.key -out tls.crt -subj '/CN=localhost'
-$ kubectl create secret tls tls-secret --cert=tls.crt --key=tls.key
+$ kubectl create secret tls tls-secret --cert=tls.crt --key=tls.key -n ingress-controller
 $ rm -v tls.crt tls.key
 ```
 
