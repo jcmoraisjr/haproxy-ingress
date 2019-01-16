@@ -108,6 +108,12 @@ Fixes and improvements since [v0.7-beta.4](#v07-beta4):
 
 * Update HAProxy from 1.8.16 to 1.8.17 - fix CVE-2018-20615 ([release notes](https://www.mail-archive.com/haproxy@formilux.org/msg32304.html))
 
+### v0.7-beta.6
+
+Fixes and improvements since [v0.7-beta.5](#v07-beta5):
+
+* Fix validation of mod security conf [#282](https://github.com/jcmoraisjr/haproxy-ingress/pull/282)
+
 ## v0.6.1
 
 Fixes and improvements since [v0.6](#v06):
