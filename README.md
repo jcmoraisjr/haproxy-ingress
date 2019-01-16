@@ -379,6 +379,7 @@ The following parameters are supported:
 |`[0]`|[`stats-ssl-cert`](#stats)|namespace/secret name|no ssl/plain http|
 |`[0]`|[`strict-host`](#strict-host)|[true\|false]|`true`|
 ||[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
+||[`syslog-format`](#syslog-format)|rfc5424\|rfc3164|rfc5424|
 ||[`tcp-log-format`](#log-format)|tcp log format|HAProxy default log format|
 ||[`timeout-client`](#timeout)|time with suffix|`50s`|
 ||[`timeout-client-fin`](#timeout)|time with suffix|`50s`|
@@ -838,6 +839,10 @@ A request to `my.domain.com/b` would serve:
 ### syslog-endpoint
 
 Configure the UDP syslog endpoint where HAProxy should send access logs.
+
+### syslog-format
+
+Configure the log format to be either rfc5424 ( default ) or rfc3164
 
 ### timeout
 
