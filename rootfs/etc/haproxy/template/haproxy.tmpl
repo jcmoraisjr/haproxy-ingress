@@ -155,7 +155,8 @@ backend {{ $backend.Name }}
 {{- end }}
 {{- $BackendSlots := index $ing.BackendSlots $backend.Name }}
 {{- if $BackendSlots.UseResolver }}
-    server-template server-dns {{ $BackendSlots.TotalSlots }} {{ $backend.Service.Name }}.{{ $backend.Service.Namespace }}.svc.{{ $cfg.DNSClusterDomain }}:{{ $backend.Port }} resolvers {{ $BackendSlots.UseResolver }} resolve-prefer ipv4 init-addr none
+{{- $portIsNumber := ne (int64 $backend.Port.String) 0 }}
+    server-template server-dns {{ $BackendSlots.TotalSlots }} {{ if not $portIsNumber }}_{{ $backend.Port }}._tcp.{{ end }}{{ $backend.Service.Name }}.{{ $backend.Service.Namespace }}.svc.{{ $cfg.DNSClusterDomain }}{{ if $portIsNumber }}:{{ $backend.Port }}{{ end }} resolvers {{ $BackendSlots.UseResolver }} resolve-prefer ipv4 init-addr none
         {{- template "backend" map $cfg $backend }}
 {{- else }}
 {{- range $slot := $BackendSlots.Slots }}
