@@ -198,6 +198,14 @@ func (b1 *Backend) Equal(b2 *Backend) bool {
 		return false
 	}
 
+	if !b1.HealthCheck.Equal(&b2.HealthCheck) {
+		return false
+	}
+
+	if !b1.AgentCheck.Equal(&b2.AgentCheck) {
+		return false
+	}
+
 	// BlueGreen doesn't need to be compared - its configuration will change Endpoint.Weight
 
 	for _, udp1 := range b1.Endpoints {
@@ -267,12 +275,6 @@ func (e1 *Endpoint) Equal(e2 *Endpoint) bool {
 		return false
 	}
 	if e1.Port != e2.Port {
-		return false
-	}
-	if e1.MaxFails != e2.MaxFails {
-		return false
-	}
-	if e1.FailTimeout != e2.FailTimeout {
 		return false
 	}
 	if e1.Weight != e2.Weight {

@@ -18,12 +18,15 @@ package dynconfig
 
 import (
 	"fmt"
-	"github.com/golang/glog"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	"reflect"
 	"sort"
+
+	"github.com/golang/glog"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/agentcheck"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/healthcheck"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
 // DynConfig has configurations used to update a running HAProxy instance
@@ -108,7 +111,7 @@ func removeEndpoint(statsSocket, backendName, backendServerName string) bool {
 }
 
 // add Ingress Endpoint to a backend in a specific server slot
-func addEndpoint(statsSocket, backendName, backendServerName, address, port string, weight int) bool {
+func addEndpoint(statsSocket, backendName, backendServerName, address, port string, weight int, healthCheck healthcheck.Config, agentCheck agentcheck.Config) bool {
 	var state string
 	if weight == 0 {
 		state = "drain"
@@ -122,7 +125,20 @@ func addEndpoint(statsSocket, backendName, backendServerName, address, port stri
 		fmt.Sprintf("set server %s/%s state %s\n", backendName, backendServerName, state))
 	err3 := utils.SendToSocket(statsSocket,
 		fmt.Sprintf("set server %s/%s weight %d\n", backendName, backendServerName, weight))
-	if err1 != nil || err2 != nil || err3 != nil {
+	var err error
+	if err == nil && healthCheck.Port != "" {
+		err = utils.SendToSocket(statsSocket,
+			fmt.Sprintf("set server %s/%s check-port %s\n", backendName, backendServerName, healthCheck.Port))
+	}
+	if err == nil && agentCheck.Addr != "" {
+		err = utils.SendToSocket(statsSocket,
+			fmt.Sprintf("set server %s/%s agent-addr %s\n", backendName, backendServerName, agentCheck.Addr))
+	}
+	if err == nil && agentCheck.Send != "" {
+		err = utils.SendToSocket(statsSocket,
+			fmt.Sprintf("set server %s/%s agent-send %s\n", backendName, backendServerName, agentCheck.Send))
+	}
+	if err1 != nil || err2 != nil || err3 != nil || err != nil {
 		glog.Warningln("failed socket command srv add")
 		return false
 	}
@@ -260,7 +276,7 @@ func (d *DynConfig) dynamicUpdateBackends() bool {
 				idx := findEmptySlot(backendSlots.Slots)
 				backendSlots.Slots[idx].BackendEndpoint = endpoint
 				backendSlots.Slots[idx].Target = target
-				reloadRequired = reloadRequired || !addEndpoint(d.statsSocket, backendName, backendSlots.Slots[idx].BackendServerName, endpoint.Address, endpoint.Port, endpoint.Weight)
+				reloadRequired = reloadRequired || !addEndpoint(d.statsSocket, backendName, backendSlots.Slots[idx].BackendServerName, endpoint.Address, endpoint.Port, endpoint.Weight, d.updBackendsMap[backendName].HealthCheck, d.updBackendsMap[backendName].AgentCheck)
 			}
 			d.updatedConfig.BackendSlots[backendName] = backendSlots
 		}

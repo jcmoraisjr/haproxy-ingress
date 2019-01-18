@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package healthcheck
+package agentcheck
 
 import (
 	"testing"
@@ -60,40 +60,32 @@ func buildIngress() *extensions.Ingress {
 	}
 }
 
-func TestIngressHealthCheck(t *testing.T) {
+func TestIngressAgentCheck(t *testing.T) {
 	ing := buildIngress()
 
 	data := map[string]string{}
-	data[healthCheckURI] = "/foo"
-	data[healthCheckAddr] = "1.2.3.4"
-	data[healthCheckPort] = "8080"
-	data[healthCheckInterval] = "7"
-	data[healthCheckRiseCount] = "8"
-	data[healthCheckFallCount] = "9"
+	data[agentCheckAddr] = "1.2.3.4"
+	data[agentCheckPort] = "8080"
+	data[agentCheckInterval] = "7"
+	data[agentCheckSend] = "hello\n"
 	ing.SetAnnotations(data)
 
 	hc, _ := NewParser().Parse(ing)
-	healthCheck, ok := hc.(*Config)
+	agentCheck, ok := hc.(*Config)
 	if !ok {
 		t.Errorf("expected a Config type")
 	}
 
-	if healthCheck.URI != "/foo" {
-		t.Errorf("expected /foo as URI but returned %v", healthCheck.URI)
+	if agentCheck.Addr != "1.2.3.4" {
+		t.Errorf("expected 1.2.3.4 as Addr but returned %v", agentCheck.Addr)
 	}
-	if healthCheck.Addr != "1.2.3.4" {
-		t.Errorf("expected 1.2.3.4 as Addr but returned %v", healthCheck.Addr)
+	if agentCheck.Port != "8080" {
+		t.Errorf("expected 8080 as port but returned %v", agentCheck.Port)
 	}
-	if healthCheck.Port != "8080" {
-		t.Errorf("expected 8080 as port but returned %v", healthCheck.Port)
+	if agentCheck.Interval != "7" {
+		t.Errorf("expected 7 as Interval but returned %v", agentCheck.Interval)
 	}
-	if healthCheck.Interval != "7" {
-		t.Errorf("expected 7 as Interval but returned %v", healthCheck.Interval)
-	}
-	if healthCheck.RiseCount != "8" {
-		t.Errorf("expected 8 as RiseCount but returned %v", healthCheck.RiseCount)
-	}
-	if healthCheck.FallCount != "9" {
-		t.Errorf("expected 9 as FallCount but returned %v", healthCheck.FallCount)
+	if agentCheck.Send != "hello\n" {
+		t.Errorf("expected hello\\n as Send but returned %v", agentCheck.Send)
 	}
 }

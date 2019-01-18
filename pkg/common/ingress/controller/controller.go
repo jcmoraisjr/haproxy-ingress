@@ -18,7 +18,6 @@ package controller
 
 import (
 	"fmt"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxybackend"
 	"math/rand"
 	"net"
 	"reflect"
@@ -28,6 +27,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/agentcheck"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxybackend"
 
 	"github.com/golang/glog"
 
@@ -446,11 +448,11 @@ func (ic *GenericController) getStreamServices(configmapName string, proto apiv1
 		var endps []ingress.Endpoint
 		targetPort, err := strconv.Atoi(svcPort)
 		if err != nil {
-			glog.V(3).Infof("searching service %v endpoints using the name '%v'", svcNs, svcName, svcPort)
+			glog.V(3).Infof("searching service %v endpoints using the name '%v' and port '%v", svcNs, svcName, svcPort)
 			for _, sp := range svc.Spec.Ports {
 				if sp.Name == svcPort {
 					if sp.Protocol == proto {
-						endps = ic.getEndpoints(svc, &sp, proto, &healthcheck.Upstream{})
+						endps = ic.getEndpoints(svc, &sp, proto)
 						break
 					}
 				}
@@ -461,7 +463,7 @@ func (ic *GenericController) getStreamServices(configmapName string, proto apiv1
 			for _, sp := range svc.Spec.Ports {
 				if sp.Port == int32(targetPort) {
 					if sp.Protocol == proto {
-						endps = ic.getEndpoints(svc, &sp, proto, &healthcheck.Upstream{})
+						endps = ic.getEndpoints(svc, &sp, proto)
 						break
 					}
 				}
@@ -516,7 +518,7 @@ func (ic *GenericController) getDefaultUpstream() *ingress.Backend {
 	}
 
 	svc := svcObj.(*apiv1.Service)
-	endps := ic.getEndpoints(svc, &svc.Spec.Ports[0], apiv1.ProtocolTCP, &healthcheck.Upstream{})
+	endps := ic.getEndpoints(svc, &svc.Spec.Ports[0], apiv1.ProtocolTCP)
 	if len(endps) == 0 {
 		glog.Warningf("service %v does not have any active endpoints", svcKey)
 		endps = []ingress.Endpoint{ic.cfg.Backend.DefaultEndpoint()}
@@ -537,6 +539,8 @@ type backendContext struct {
 	conn        *connection.Config
 	slotsInc    int
 	useresolver string
+	healthCheck *healthcheck.Config
+	agentCheck  *agentcheck.Config
 }
 
 func (ic *GenericController) createBackendContext(ing *extensions.Ingress) *backendContext {
@@ -549,6 +553,8 @@ func (ic *GenericController) createBackendContext(ing *extensions.Ingress) *back
 		conn:        ic.annotations.Connection(ing),
 		slotsInc:    ic.annotations.SlotsIncrement(ing),
 		useresolver: ic.annotations.UseResolver(ing),
+		healthCheck: ic.annotations.HealthCheck(ing),
+		agentCheck:  ic.annotations.AgentCheck(ing),
 	}
 }
 
@@ -796,6 +802,38 @@ func (ctx *backendContext) copyBackendAnnotations(backend *ingress.Backend) {
 	if backend.UseResolver == "" {
 		backend.UseResolver = ctx.useresolver
 	}
+
+	if backend.HealthCheck.URI == "" {
+		backend.HealthCheck.URI = ctx.healthCheck.URI
+	}
+	if backend.HealthCheck.Addr == "" {
+		backend.HealthCheck.Addr = ctx.healthCheck.Addr
+	}
+	if backend.HealthCheck.Port == "" {
+		backend.HealthCheck.Port = ctx.healthCheck.Port
+	}
+	if backend.HealthCheck.Interval == "" {
+		backend.HealthCheck.Interval = ctx.healthCheck.Interval
+	}
+	if backend.HealthCheck.RiseCount == "" {
+		backend.HealthCheck.RiseCount = ctx.healthCheck.RiseCount
+	}
+	if backend.HealthCheck.FallCount == "" {
+		backend.HealthCheck.FallCount = ctx.healthCheck.FallCount
+	}
+
+	if backend.AgentCheck.Addr == "" {
+		backend.AgentCheck.Addr = ctx.agentCheck.Addr
+	}
+	if backend.AgentCheck.Port == "" {
+		backend.AgentCheck.Port = ctx.agentCheck.Port
+	}
+	if backend.AgentCheck.Interval == "" {
+		backend.AgentCheck.Interval = ctx.agentCheck.Interval
+	}
+	if backend.AgentCheck.Send == "" {
+		backend.AgentCheck.Send = ctx.agentCheck.Send
+	}
 }
 
 // GetAuthCertificate is used by the auth-tls annotations to get a cert from a secret
@@ -857,7 +895,6 @@ func (ic *GenericController) createUpstreams(data []*extensions.Ingress, du *ing
 
 	for _, ing := range data {
 		secUpstream := ic.annotations.SecureUpstream(ing)
-		hz := ic.annotations.HealthCheck(ing)
 		serviceUpstream := ic.annotations.ServiceUpstream(ing)
 		upstreamHashBy := ic.annotations.UpstreamHashBy(ing)
 		sslpt := ic.annotations.SSLPassthrough(ing)
@@ -885,7 +922,7 @@ func (ic *GenericController) createUpstreams(data []*extensions.Ingress, du *ing
 			}
 
 			if len(upstreams[defBackend].Endpoints) == 0 {
-				endps, err := ic.serviceEndpoints(svcKey, ing.Spec.Backend.ServicePort.String(), hz)
+				endps, err := ic.serviceEndpoints(svcKey, ing.Spec.Backend.ServicePort.String())
 				upstreams[defBackend].Endpoints = append(upstreams[defBackend].Endpoints, endps...)
 				if err != nil {
 					glog.Warningf("error creating upstream %v: %v", defBackend, err)
@@ -956,7 +993,7 @@ func (ic *GenericController) createUpstreams(data []*extensions.Ingress, du *ing
 					}
 
 					if len(upstreams[name].Endpoints) == 0 {
-						endp, err := ic.serviceEndpoints(svcKey, backend.ServicePort.String(), hz)
+						endp, err := ic.serviceEndpoints(svcKey, backend.ServicePort.String())
 						if err != nil {
 							glog.Warningf("error obtaining service endpoints: %v", err)
 							continue
@@ -1016,8 +1053,7 @@ func (ic *GenericController) getServiceClusterEndpoint(svcKey string, backend *e
 
 // serviceEndpoints returns the upstream servers (endpoints) associated
 // to a service.
-func (ic *GenericController) serviceEndpoints(svcKey, backendPort string,
-	hz *healthcheck.Upstream) ([]ingress.Endpoint, error) {
+func (ic *GenericController) serviceEndpoints(svcKey, backendPort string) ([]ingress.Endpoint, error) {
 	svc, err := ic.listers.Service.GetByName(svcKey)
 
 	var upstreams []ingress.Endpoint
@@ -1032,7 +1068,7 @@ func (ic *GenericController) serviceEndpoints(svcKey, backendPort string,
 			servicePort.TargetPort.String() == backendPort ||
 			servicePort.Name == backendPort {
 
-			endps := ic.getEndpoints(svc, &servicePort, apiv1.ProtocolTCP, hz)
+			endps := ic.getEndpoints(svc, &servicePort, apiv1.ProtocolTCP)
 			if len(endps) == 0 {
 				glog.Warningf("service %v does not have any active endpoints", svcKey)
 				endps = []ingress.Endpoint{ic.cfg.Backend.DefaultEndpoint()}
@@ -1067,7 +1103,7 @@ func (ic *GenericController) serviceEndpoints(svcKey, backendPort string,
 			Port:       int32(externalPort),
 			TargetPort: intstr.FromString(backendPort),
 		}
-		endps := ic.getEndpoints(svc, &servicePort, apiv1.ProtocolTCP, hz)
+		endps := ic.getEndpoints(svc, &servicePort, apiv1.ProtocolTCP)
 		if len(endps) == 0 {
 			glog.Warningf("service %v does not have any active endpoints", svcKey)
 			return upstreams, nil
@@ -1311,7 +1347,7 @@ func (ic *GenericController) createServers(data []*extensions.Ingress,
 
 	for alias, host := range aliases {
 		if _, found := servers[alias]; found {
-			glog.Warningf("There is a conflict with server hostname '%v' and alias '%v' (in server %v). Removing alias to avoid conflicts.", alias, host)
+			glog.Warningf("There is a conflict with server hostname '%v' and alias '%v'. Removing alias to avoid conflicts.", alias, host)
 			servers[host].Alias.Host = ""
 		}
 	}
@@ -1323,8 +1359,7 @@ func (ic *GenericController) createServers(data []*extensions.Ingress,
 func (ic *GenericController) getEndpoints(
 	s *apiv1.Service,
 	servicePort *apiv1.ServicePort,
-	proto apiv1.Protocol,
-	hz *healthcheck.Upstream) []ingress.Endpoint {
+	proto apiv1.Protocol) []ingress.Endpoint {
 
 	var upsServers []ingress.Endpoint
 
@@ -1335,7 +1370,7 @@ func (ic *GenericController) getEndpoints(
 
 	// ExternalName services
 	if s.Spec.Type == apiv1.ServiceTypeExternalName {
-		glog.V(3).Info("Ingress using a service %v of type=ExternalName : %v", s.Name)
+		glog.V(3).Infof("Ingress using a service %v of type=ExternalName : %v", s.Name, s.Spec.ExternalName)
 
 		targetPort := servicePort.TargetPort.IntValue()
 		// check for invalid port value
@@ -1353,11 +1388,9 @@ func (ic *GenericController) getEndpoints(
 		}
 
 		return append(upsServers, ingress.Endpoint{
-			Address:     s.Spec.ExternalName,
-			Port:        fmt.Sprintf("%v", targetPort),
-			Draining:    false,
-			MaxFails:    hz.MaxFails,
-			FailTimeout: hz.FailTimeout,
+			Address:  s.Spec.ExternalName,
+			Port:     fmt.Sprintf("%v", targetPort),
+			Draining: false,
 		})
 	}
 
@@ -1389,9 +1422,9 @@ func (ic *GenericController) getEndpoints(
 				continue
 			}
 
-			upsServers = addIngressEndpoint(ss.Addresses, false, targetPort, adus, hz, upsServers)
+			upsServers = addIngressEndpoint(ss.Addresses, false, targetPort, adus, upsServers)
 			if ic.cfg.Backend.DrainSupport() {
-				upsServers = addIngressEndpoint(ss.NotReadyAddresses, true, targetPort, adus, hz, upsServers)
+				upsServers = addIngressEndpoint(ss.NotReadyAddresses, true, targetPort, adus, upsServers)
 			}
 		}
 	}
@@ -1411,11 +1444,9 @@ func (ic *GenericController) getEndpoints(
 				continue
 			}
 			ups := ingress.Endpoint{
-				Address:     tp.Status.PodIP,
-				Port:        fmt.Sprintf("%v", servicePort.TargetPort.IntValue()),
-				Draining:    true,
-				MaxFails:    hz.MaxFails,
-				FailTimeout: hz.FailTimeout,
+				Address:  tp.Status.PodIP,
+				Port:     fmt.Sprintf("%v", servicePort.TargetPort.IntValue()),
+				Draining: true,
 				Target: &apiv1.ObjectReference{
 					Kind:            tp.Kind,
 					Namespace:       tp.Namespace,
@@ -1437,7 +1468,6 @@ func addIngressEndpoint(addresses []apiv1.EndpointAddress,
 	draining bool,
 	targetPort int32,
 	adus map[string]bool,
-	hz *healthcheck.Upstream,
 	upsServers []ingress.Endpoint) []ingress.Endpoint {
 	for _, epAddress := range addresses {
 		ep := fmt.Sprintf("%v:%v", epAddress.IP, targetPort)
@@ -1445,12 +1475,10 @@ func addIngressEndpoint(addresses []apiv1.EndpointAddress,
 			continue
 		}
 		ups := ingress.Endpoint{
-			Address:     epAddress.IP,
-			Port:        fmt.Sprintf("%v", targetPort),
-			Draining:    draining,
-			MaxFails:    hz.MaxFails,
-			FailTimeout: hz.FailTimeout,
-			Target:      epAddress.TargetRef,
+			Address:  epAddress.IP,
+			Port:     fmt.Sprintf("%v", targetPort),
+			Draining: draining,
+			Target:   epAddress.TargetRef,
 		}
 		upsServers = append(upsServers, ups)
 		adus[ep] = true

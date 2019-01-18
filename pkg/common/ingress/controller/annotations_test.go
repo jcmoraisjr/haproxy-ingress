@@ -18,8 +18,9 @@ package controller
 
 import (
 	"fmt"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/sslpassthrough"
 	"testing"
+
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/sslpassthrough"
 
 	apiv1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
@@ -33,8 +34,6 @@ import (
 const (
 	annotationSecureUpstream         = "ingress.kubernetes.io/secure-backends"
 	annotationSecureVerifyCACert     = "ingress.kubernetes.io/secure-verify-ca-secret"
-	annotationUpsMaxFails            = "ingress.kubernetes.io/upstream-max-fails"
-	annotationUpsFailTimeout         = "ingress.kubernetes.io/upstream-fail-timeout"
 	annotationPassthrough            = "ingress.kubernetes.io/ssl-passthrough"
 	annotationAffinityType           = "ingress.kubernetes.io/affinity"
 	annotationCorsEnabled            = "ingress.kubernetes.io/enable-cors"
@@ -50,6 +49,16 @@ const (
 	annotationAffinityCookieStrategy = "ingress.kubernetes.io/session-cookie-strategy"
 	annotationAffinityCookieHash     = "ingress.kubernetes.io/session-cookie-hash"
 	annotationUpstreamHashBy         = "ingress.kubernetes.io/upstream-hash-by"
+	annotationHealthCheckURI         = "ingress.kubernetes.io/health-check-uri"
+	annotationHealthCheckAddr        = "ingress.kubernetes.io/health-check-addr"
+	annotationHealthCheckPort        = "ingress.kubernetes.io/health-check-port"
+	annotationHealthCheckInterval    = "ingress.kubernetes.io/health-check-interval"
+	annotationHealthCheckRiseCount   = "ingress.kubernetes.io/health-check-rise-count"
+	annotationHealthCheckFallCount   = "ingress.kubernetes.io/health-check-fall-count"
+	annotationAgentCheckAddr         = "ingress.kubernetes.io/agent-check-addr"
+	annotationAgentCheckPort         = "ingress.kubernetes.io/agent-check-port"
+	annotationAgentCheckInterval     = "ingress.kubernetes.io/agent-check-interval"
+	annotationAgentCheckSend         = "ingress.kubernetes.io/agent-check-send"
 )
 
 type mockCfg struct {
@@ -201,30 +210,50 @@ func TestHealthCheck(t *testing.T) {
 
 	fooAnns := []struct {
 		annotations map[string]string
-		eumf        int
-		euft        int
+		uri         string
+		addr        string
+		port        string
+		interval    string
+		riseCount   string
+		fallCount   string
 	}{
-		{map[string]string{annotationUpsMaxFails: "3", annotationUpsFailTimeout: "10"}, 3, 10},
-		{map[string]string{annotationUpsMaxFails: "3"}, 3, 0},
-		{map[string]string{annotationUpsFailTimeout: "10"}, 0, 10},
-		{map[string]string{}, 0, 0},
-		{nil, 0, 0},
+		{map[string]string{annotationHealthCheckURI: "/foo", annotationHealthCheckAddr: "1.2.3.4", annotationHealthCheckPort: "8080", annotationHealthCheckInterval: "10", annotationHealthCheckRiseCount: "5", annotationHealthCheckFallCount: "9"}, "/foo", "1.2.3.4", "8080", "10", "5", "9"},
+		{map[string]string{annotationHealthCheckURI: "/bar"}, "/bar", "", "", "", "", ""},
+		{map[string]string{annotationHealthCheckAddr: "1.2.3.4"}, "", "1.2.3.4", "", "", "", ""},
+		{map[string]string{annotationHealthCheckPort: "8180"}, "", "", "8180", "", "", ""},
+		{map[string]string{annotationHealthCheckInterval: "5"}, "", "", "", "5", "", ""},
+		{map[string]string{annotationHealthCheckRiseCount: "5"}, "", "", "", "", "5", ""},
+		{map[string]string{annotationHealthCheckFallCount: "5"}, "", "", "", "", "", "5"},
+		{map[string]string{}, "", "", "", "", "", ""},
+		{nil, "", "", "", "", "", ""},
 	}
 
 	for _, foo := range fooAnns {
 		ing.SetAnnotations(foo.annotations)
 		r := ec.HealthCheck(ing)
+		t.Logf("Testing pass %v %v %v %v %v %v", foo.uri, foo.addr, foo.port, foo.interval, foo.riseCount, foo.fallCount)
 		if r == nil {
-			t.Errorf("Returned nil but expected a healthcheck.Upstream")
+			t.Errorf("Returned nil but expected a healthcheck.Config")
 			continue
 		}
 
-		if r.FailTimeout != foo.euft {
-			t.Errorf("Returned %d but expected %d for FailTimeout", r.FailTimeout, foo.euft)
+		if r.URI != foo.uri {
+			t.Errorf("Returned %v but expected %v for URI", r.URI, foo.uri)
 		}
-
-		if r.MaxFails != foo.eumf {
-			t.Errorf("Returned %d but expected %d for MaxFails", r.MaxFails, foo.eumf)
+		if r.Addr != foo.addr {
+			t.Errorf("Returned %v but expected %v for Addr", r.Addr, foo.addr)
+		}
+		if r.Port != foo.port {
+			t.Errorf("Returned %v but expected %v for Port", r.Port, foo.port)
+		}
+		if r.Interval != foo.interval {
+			t.Errorf("Returned %v but expected %v for interval", r.Interval, foo.interval)
+		}
+		if r.RiseCount != foo.riseCount {
+			t.Errorf("Returned %v but expected %v for riseCount", r.RiseCount, foo.riseCount)
+		}
+		if r.FallCount != foo.fallCount {
+			t.Errorf("Returned %v but expected %v for fallCount", r.FallCount, foo.fallCount)
 		}
 	}
 }
@@ -388,6 +417,50 @@ func TestCors(t *testing.T) {
 
 		if r.CorsExposeHeaders != foo.exposeHeaders {
 			t.Errorf("Returned %v but expected %v for Cors Methods", r.CorsExposeHeaders, foo.exposeHeaders)
+		}
+	}
+}
+
+func TestAgentCheck(t *testing.T) {
+	ec := newAnnotationExtractor(mockCfg{})
+	ing := buildIngress()
+
+	fooAnns := []struct {
+		annotations map[string]string
+		addr        string
+		port        string
+		interval    string
+		send        string
+	}{
+		{map[string]string{annotationAgentCheckAddr: "1.2.3.4", annotationAgentCheckPort: "8080", annotationAgentCheckInterval: "10", annotationAgentCheckSend: "hello\n"}, "1.2.3.4", "8080", "10", "hello\n"},
+		{map[string]string{annotationAgentCheckAddr: "1.2.3.4"}, "1.2.3.4", "", "", ""},
+		{map[string]string{annotationAgentCheckPort: "8180"}, "", "8180", "", ""},
+		{map[string]string{annotationAgentCheckInterval: "5"}, "", "", "5", ""},
+		{map[string]string{annotationAgentCheckSend: "hello\n"}, "", "", "", "hello\n"},
+		{map[string]string{}, "", "", "", ""},
+		{nil, "", "", "", ""},
+	}
+
+	for _, foo := range fooAnns {
+		ing.SetAnnotations(foo.annotations)
+		r := ec.AgentCheck(ing)
+		t.Logf("Testing pass %v %v %v %v", foo.addr, foo.port, foo.interval, foo.send)
+		if r == nil {
+			t.Errorf("Returned nil but expected a agentcheck.Config")
+			continue
+		}
+
+		if r.Addr != foo.addr {
+			t.Errorf("Returned %v but expected %v for Addr", r.Addr, foo.addr)
+		}
+		if r.Port != foo.port {
+			t.Errorf("Returned %v but expected %v for Port", r.Port, foo.port)
+		}
+		if r.Interval != foo.interval {
+			t.Errorf("Returned %v but expected %v for interval", r.Interval, foo.interval)
+		}
+		if r.Send != foo.send {
+			t.Errorf("Returned %v but expected %v for send", r.Send, foo.send)
 		}
 	}
 }

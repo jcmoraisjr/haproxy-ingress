@@ -44,13 +44,17 @@ func weightBalance(upstreams *map[string]*ingress.Backend, podLister store.PodLi
 				continue
 			}
 			if len(deployWeight) == 0 {
-				// no blue/green config, using default Weight config as 1 and skipping to the next
-				ep.Weight = 1
+				// no blue/green config, using default Weight config as 100 and skipping to the next
+				// note: we use a weight of 100 to allow for agents to work -- if an agent returns a
+				//       weight that is a percentage, and we had the previous value of 1, then any
+				//       weight reported by the agent that is less than 100% would result in a numeric
+				//       weight of 0
+				ep.Weight = 100
 				continue
 			}
 			if ep.Target == nil {
 				glog.Warningf("ignoring blue/green config due to empty object reference on endpoint %v/%v", podNamespace, upstream.Name)
-				ep.Weight = 1
+				ep.Weight = 100
 				continue
 			}
 			podName := ep.Target.Name
