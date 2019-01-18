@@ -18,8 +18,9 @@ package controller
 
 import (
 	"fmt"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/sslpassthrough"
 	"testing"
+
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/sslpassthrough"
 
 	apiv1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
@@ -49,6 +50,7 @@ const (
 	annotationAffinityCookieName     = "ingress.kubernetes.io/session-cookie-name"
 	annotationAffinityCookieStrategy = "ingress.kubernetes.io/session-cookie-strategy"
 	annotationAffinityCookieHash     = "ingress.kubernetes.io/session-cookie-hash"
+	annotationAffinityCookieDynamic  = "ingress.kubernetes.io/session-cookie-dynamic"
 	annotationUpstreamHashBy         = "ingress.kubernetes.io/upstream-hash-by"
 )
 
@@ -305,18 +307,19 @@ func TestAffinitySession(t *testing.T) {
 		hash         string
 		name         string
 		strategy     string
+		dynamic      bool
 	}{
-		{map[string]string{annotationAffinityType: "cookie", annotationAffinityCookieHash: "md5", annotationAffinityCookieName: "route", annotationAffinityCookieStrategy: "prefix"}, "cookie", "md5", "route", "prefix"},
-		{map[string]string{annotationAffinityType: "cookie", annotationAffinityCookieHash: "xpto", annotationAffinityCookieName: "route1", annotationAffinityCookieStrategy: "rewrite"}, "cookie", "md5", "route1", "rewrite"},
-		{map[string]string{annotationAffinityType: "cookie", annotationAffinityCookieHash: "", annotationAffinityCookieName: "", annotationAffinityCookieStrategy: ""}, "cookie", "md5", "INGRESSCOOKIE", "insert"},
-		{map[string]string{}, "", "", "", ""},
-		{nil, "", "", "", ""},
+		{map[string]string{annotationAffinityType: "cookie", annotationAffinityCookieHash: "md5", annotationAffinityCookieName: "route", annotationAffinityCookieStrategy: "prefix", annotationAffinityCookieDynamic: "false"}, "cookie", "md5", "route", "prefix", false},
+		{map[string]string{annotationAffinityType: "cookie", annotationAffinityCookieHash: "xpto", annotationAffinityCookieName: "route1", annotationAffinityCookieStrategy: "rewrite", annotationAffinityCookieDynamic: "true"}, "cookie", "md5", "route1", "rewrite", true},
+		{map[string]string{annotationAffinityType: "cookie", annotationAffinityCookieHash: "", annotationAffinityCookieName: "", annotationAffinityCookieStrategy: ""}, "cookie", "md5", "INGRESSCOOKIE", "insert", true},
+		{map[string]string{}, "", "", "", "", true},
+		{nil, "", "", "", "", true},
 	}
 
 	for _, foo := range fooAnns {
 		ing.SetAnnotations(foo.annotations)
 		r := ec.SessionAffinity(ing)
-		t.Logf("Testing pass %v %v %v %v", foo.affinitytype, foo.hash, foo.name, foo.strategy)
+		t.Logf("Testing pass %v %v %v %v %v", foo.affinitytype, foo.hash, foo.name, foo.strategy, foo.dynamic)
 		if r == nil {
 			t.Errorf("Returned nil but expected a SessionAffinity.AffinityConfig")
 			continue
@@ -332,6 +335,10 @@ func TestAffinitySession(t *testing.T) {
 
 		if r.CookieConfig.Strategy != foo.strategy {
 			t.Errorf("Returned %v but expected %v for Strategy", r.CookieConfig.Strategy, foo.strategy)
+		}
+
+		if r.CookieConfig.Dynamic != foo.dynamic {
+			t.Errorf("Returned %v but expected %v for Dynamic", r.CookieConfig.Dynamic, foo.dynamic)
 		}
 	}
 }

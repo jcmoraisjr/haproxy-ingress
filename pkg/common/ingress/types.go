@@ -18,13 +18,14 @@ package ingress
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/alias"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxybackend"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/secureupstream"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/snippet"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/sslpassthrough"
-	"time"
 
 	"github.com/spf13/pflag"
 
@@ -229,6 +230,7 @@ type CookieSessionAffinity struct {
 	Name      string              `json:"name"`
 	Strategy  string              `json:"strategy"`
 	Hash      string              `json:"hash"`
+	Dynamic   bool                `json:"dynamic"`
 	Locations map[string][]string `json:"locations,omitempty"`
 }
 

@@ -18,12 +18,13 @@ package dynconfig
 
 import (
 	"fmt"
+	"reflect"
+	"sort"
+
 	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
-	"reflect"
-	"sort"
 )
 
 // DynConfig has configurations used to update a running HAProxy instance
@@ -339,12 +340,16 @@ func (d *DynConfig) fillBackendServerSlots() {
 			}
 			newBackend.TotalSlots = totalSlotCnt
 		} else {
-			// use addr:port as BackendServerName, don't generate empty slots
+			// use target name, else addr:port as BackendServerName, don't generate empty slots
 			for _, endpoint := range d.updBackendsMap[backendName].Endpoints {
 				curEndpoint := endpoint
 				target := fmt.Sprintf("%s:%s", endpoint.Address, endpoint.Port)
+				backendServerName := endpoint.Target.Name
+				if len(backendServerName) == 0 {
+					backendServerName = target
+				}
 				newBackend.Slots = append(newBackend.Slots, types.HAProxyBackendSlot{
-					BackendServerName: target,
+					BackendServerName: backendServerName,
 					BackendEndpoint:   &curEndpoint,
 					Target:            target,
 				})

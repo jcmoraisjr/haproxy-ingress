@@ -18,7 +18,6 @@ package controller
 
 import (
 	"fmt"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxybackend"
 	"math/rand"
 	"net"
 	"reflect"
@@ -28,6 +27,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxybackend"
 
 	"github.com/golang/glog"
 
@@ -446,7 +447,7 @@ func (ic *GenericController) getStreamServices(configmapName string, proto apiv1
 		var endps []ingress.Endpoint
 		targetPort, err := strconv.Atoi(svcPort)
 		if err != nil {
-			glog.V(3).Infof("searching service %v endpoints using the name '%v'", svcNs, svcName, svcPort)
+			glog.V(3).Infof("searching service %v endpoints using the name '%v'", svcNs, svcPort)
 			for _, sp := range svc.Spec.Ports {
 				if sp.Name == svcPort {
 					if sp.Protocol == proto {
@@ -761,6 +762,7 @@ func (ctx *backendContext) copyBackendAnnotations(backend *ingress.Backend) {
 		backend.SessionAffinity.CookieSessionAffinity.Name = ctx.affinity.CookieConfig.Name
 		backend.SessionAffinity.CookieSessionAffinity.Strategy = ctx.affinity.CookieConfig.Strategy
 		backend.SessionAffinity.CookieSessionAffinity.Hash = ctx.affinity.CookieConfig.Hash
+		backend.SessionAffinity.CookieSessionAffinity.Dynamic = ctx.affinity.CookieConfig.Dynamic
 	}
 
 	if backend.BalanceAlgorithm == "" {
@@ -1311,7 +1313,7 @@ func (ic *GenericController) createServers(data []*extensions.Ingress,
 
 	for alias, host := range aliases {
 		if _, found := servers[alias]; found {
-			glog.Warningf("There is a conflict with server hostname '%v' and alias '%v' (in server %v). Removing alias to avoid conflicts.", alias, host)
+			glog.Warningf("There is a conflict with server hostname '%v' and alias '%v'. Removing alias to avoid conflicts.", alias, host)
 			servers[host].Alias.Host = ""
 		}
 	}
@@ -1335,7 +1337,7 @@ func (ic *GenericController) getEndpoints(
 
 	// ExternalName services
 	if s.Spec.Type == apiv1.ServiceTypeExternalName {
-		glog.V(3).Info("Ingress using a service %v of type=ExternalName : %v", s.Name)
+		glog.V(3).Infof("Ingress using a service %v of type=ExternalName : %v", s.Name, s.Spec.ExternalName)
 
 		targetPort := servicePort.TargetPort.IntValue()
 		// check for invalid port value
