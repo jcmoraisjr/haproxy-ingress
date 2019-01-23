@@ -89,5 +89,5 @@ func New(m string) error {
 }
 
 func Errorf(format string, args ...interface{}) error {
-	return errors.Errorf(format, args)
+	return errors.Errorf(format, args...)
 }

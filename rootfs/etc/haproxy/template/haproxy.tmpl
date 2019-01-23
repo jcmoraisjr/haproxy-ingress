@@ -140,8 +140,10 @@ backend {{ $backend.Name }}
 {{- end }}
 {{- $sticky := $backend.SessionAffinity }}
 {{- if eq $sticky.AffinityType "cookie" }}
-    cookie {{ $sticky.CookieSessionAffinity.Name }} {{ $sticky.CookieSessionAffinity.Strategy }} {{ if eq $sticky.CookieSessionAffinity.Strategy "insert" }}indirect nocache httponly{{ end }} dynamic
+    cookie {{ $sticky.CookieSessionAffinity.Name }} {{ $sticky.CookieSessionAffinity.Strategy }} {{ if eq $sticky.CookieSessionAffinity.Strategy "insert" }}indirect nocache httponly{{ end }}{{ if $sticky.CookieSessionAffinity.Dynamic }} dynamic{{ end }}
+{{- if $sticky.CookieSessionAffinity.Dynamic }}
     dynamic-cookie-key "{{ $cfg.CookieKey }}"
+{{- end }}
 {{- end }}
 {{- range $snippet := $backend.ConfigurationSnippet.Backend }}
     {{ $snippet }}
@@ -165,6 +167,9 @@ backend {{ $backend.Name }}
             {{- if ge $slot.BackendEndpoint.Weight 0 }} weight {{ $slot.BackendEndpoint.Weight }}{{ end }}
         {{- else }} 127.0.0.1:81 disabled{{ end }}
         {{- template "backend" map $cfg $backend }}
+        {{- if eq $sticky.AffinityType "cookie" }}
+            {{- if not $sticky.CookieSessionAffinity.Dynamic }} cookie {{ $slot.BackendServerName }}{{ end }}
+        {{- end }}
 {{- end }}
 {{- end }}{{/* if $BackendSlots.UseResolver */}}
 {{- end }}{{/* range Backends */}}
