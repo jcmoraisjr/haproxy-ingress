@@ -376,7 +376,7 @@ func (cfg *haConfig) createFrontendCertsDir() error {
 	if err := os.RemoveAll(certsDir); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(certsDir, 700); err != nil {
+	if err := os.MkdirAll(certsDir, 0700); err != nil {
 		return err
 	}
 	defaultCertFile := cfg.haDefaultServer.SSLCertificate
