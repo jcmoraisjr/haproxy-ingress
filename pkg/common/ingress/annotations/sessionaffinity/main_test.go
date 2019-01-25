@@ -68,6 +68,7 @@ func TestIngressAffinityCookieConfig(t *testing.T) {
 	data[annotationAffinityCookieHash] = "sha123"
 	data[annotationAffinityCookieName] = "INGRESSCOOKIE"
 	data[annotationAffinityCookieStrategy] = "insert"
+	data[annotationAffinityCookieDynamic] = "false"
 	ing.SetAnnotations(data)
 
 	affin, _ := NewParser().Parse(ing)
@@ -90,5 +91,9 @@ func TestIngressAffinityCookieConfig(t *testing.T) {
 
 	if nginxAffinity.CookieConfig.Strategy != "insert" {
 		t.Errorf("expected insert as sticky-strategy but returned %v", nginxAffinity.CookieConfig.Strategy)
+	}
+
+	if nginxAffinity.CookieConfig.Dynamic {
+		t.Errorf("expected false as dynamic cookie type but returned %v", nginxAffinity.CookieConfig.Dynamic)
 	}
 }

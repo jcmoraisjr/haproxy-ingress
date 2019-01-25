@@ -448,7 +448,7 @@ func (ic *GenericController) getStreamServices(configmapName string, proto apiv1
 		var endps []ingress.Endpoint
 		targetPort, err := strconv.Atoi(svcPort)
 		if err != nil {
-			glog.V(3).Infof("searching service %v endpoints using the name '%v' and port '%v", svcNs, svcName, svcPort)
+			glog.V(3).Infof("searching service %v endpoints using the name '%v'", svcNs, svcPort)
 			for _, sp := range svc.Spec.Ports {
 				if sp.Name == svcPort {
 					if sp.Protocol == proto {
@@ -767,6 +767,7 @@ func (ctx *backendContext) copyBackendAnnotations(backend *ingress.Backend) {
 		backend.SessionAffinity.CookieSessionAffinity.Name = ctx.affinity.CookieConfig.Name
 		backend.SessionAffinity.CookieSessionAffinity.Strategy = ctx.affinity.CookieConfig.Strategy
 		backend.SessionAffinity.CookieSessionAffinity.Hash = ctx.affinity.CookieConfig.Hash
+		backend.SessionAffinity.CookieSessionAffinity.Dynamic = ctx.affinity.CookieConfig.Dynamic
 	}
 
 	if backend.BalanceAlgorithm == "" {

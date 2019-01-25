@@ -236,6 +236,7 @@ type CookieSessionAffinity struct {
 	Name      string              `json:"name"`
 	Strategy  string              `json:"strategy"`
 	Hash      string              `json:"hash"`
+	Dynamic   bool                `json:"dynamic"`
 	Locations map[string][]string `json:"locations,omitempty"`
 }
 

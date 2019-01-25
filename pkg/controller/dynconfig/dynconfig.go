@@ -355,12 +355,16 @@ func (d *DynConfig) fillBackendServerSlots() {
 			}
 			newBackend.TotalSlots = totalSlotCnt
 		} else {
-			// use addr:port as BackendServerName, don't generate empty slots
+			// use target name, else addr:port as BackendServerName, don't generate empty slots
 			for _, endpoint := range d.updBackendsMap[backendName].Endpoints {
 				curEndpoint := endpoint
 				target := fmt.Sprintf("%s:%s", endpoint.Address, endpoint.Port)
+				backendServerName := endpoint.Target.Name
+				if len(backendServerName) == 0 {
+					backendServerName = target
+				}
 				newBackend.Slots = append(newBackend.Slots, types.HAProxyBackendSlot{
-					BackendServerName: target,
+					BackendServerName: backendServerName,
 					BackendEndpoint:   &curEndpoint,
 					Target:            target,
 				})

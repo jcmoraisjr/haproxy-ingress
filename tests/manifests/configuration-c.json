@@ -35,7 +35,8 @@
 			"CookieSessionAffinity": {
 				"name": "",
 				"strategy": "",
-				"hash": ""
+				"hash": "",
+				"dynamic": false
 			}
 		}
 	}, {
@@ -97,7 +98,8 @@
 			"CookieSessionAffinity": {
 				"name": "",
 				"strategy": "",
-				"hash": ""
+				"hash": "",
+				"dynamic": false
 			}
 		}
 	}],

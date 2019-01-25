@@ -20,6 +20,12 @@ import (
 	"bufio"
 	"crypto/md5"
 	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
+
 	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/file"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
@@ -35,11 +41,6 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	api "k8s.io/api/core/v1"
-	"os"
-	"path/filepath"
-	"regexp"
-	"sort"
-	"strings"
 )
 
 const (
@@ -130,6 +131,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		BindIPAddrHealthz:      "*",
 		Syslog:                 "",
 		SyslogFormat:           "rfc5424",
+		SyslogTag:              "ingress",
 		ModSecurity:            "",
 		ModSecTimeoutHello:     "100ms",
 		ModSecTimeoutIdle:      "30s",
@@ -379,7 +381,7 @@ func (cfg *haConfig) createFrontendCertsDir() error {
 	if err := os.RemoveAll(certsDir); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(certsDir, 700); err != nil {
+	if err := os.MkdirAll(certsDir, 0700); err != nil {
 		return err
 	}
 	defaultCertFile := cfg.haDefaultServer.SSLCertificate

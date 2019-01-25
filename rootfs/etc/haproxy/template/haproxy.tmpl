@@ -22,7 +22,7 @@ global
 {{- end }}
 {{- if ne $cfg.Syslog "" }}
     log {{ $cfg.Syslog }} format {{ $cfg.SyslogFormat }} local0
-    log-tag ingress
+    log-tag {{ $cfg.SyslogTag }}
 {{- end }}
     lua-load /usr/local/etc/haproxy/lua/send-response.lua
     lua-load /usr/local/etc/haproxy/lua/auth-request.lua
@@ -143,8 +143,10 @@ backend {{ $backend.Name }}
 {{- end }}
 {{- $sticky := $backend.SessionAffinity }}
 {{- if eq $sticky.AffinityType "cookie" }}
-    cookie {{ $sticky.CookieSessionAffinity.Name }} {{ $sticky.CookieSessionAffinity.Strategy }} {{ if eq $sticky.CookieSessionAffinity.Strategy "insert" }}indirect nocache httponly{{ end }} dynamic
+    cookie {{ $sticky.CookieSessionAffinity.Name }} {{ $sticky.CookieSessionAffinity.Strategy }} {{ if eq $sticky.CookieSessionAffinity.Strategy "insert" }}indirect nocache httponly{{ end }}{{ if $sticky.CookieSessionAffinity.Dynamic }} dynamic{{ end }}
+{{- if $sticky.CookieSessionAffinity.Dynamic }}
     dynamic-cookie-key "{{ $cfg.CookieKey }}"
+{{- end }}
 {{- end }}
 {{- range $snippet := $backend.ConfigurationSnippet.Backend }}
     {{ $snippet }}
@@ -159,7 +161,8 @@ backend {{ $backend.Name }}
 {{- end }}
 {{- $BackendSlots := index $ing.BackendSlots $backend.Name }}
 {{- if $BackendSlots.UseResolver }}
-    server-template server-dns {{ $BackendSlots.TotalSlots }} {{ $backend.Service.Name }}.{{ $backend.Service.Namespace }}.svc.{{ $cfg.DNSClusterDomain }}:{{ $backend.Port }} resolvers {{ $BackendSlots.UseResolver }} resolve-prefer ipv4 init-addr none
+{{- $portIsNumber := ne (int64 $backend.Port.String) 0 }}
+    server-template server-dns {{ $BackendSlots.TotalSlots }} {{ if not $portIsNumber }}_{{ $backend.Port }}._tcp.{{ end }}{{ $backend.Service.Name }}.{{ $backend.Service.Namespace }}.svc.{{ $cfg.DNSClusterDomain }}{{ if $portIsNumber }}:{{ $backend.Port }}{{ end }} resolvers {{ $BackendSlots.UseResolver }} resolve-prefer ipv4 init-addr none
         {{- template "backend" map $cfg $backend }}
 {{- else }}
 {{- range $slot := $BackendSlots.Slots }}
@@ -168,6 +171,9 @@ backend {{ $backend.Name }}
             {{- if ge $slot.BackendEndpoint.Weight 0 }} weight {{ $slot.BackendEndpoint.Weight }}{{ end }}
         {{- else }} 127.0.0.1:81 disabled{{ end }}
         {{- template "backend" map $cfg $backend }}
+        {{- if eq $sticky.AffinityType "cookie" }}
+            {{- if not $sticky.CookieSessionAffinity.Dynamic }} cookie {{ $slot.BackendServerName }}{{ end }}
+        {{- end }}
 {{- end }}
 {{- end }}{{/* if $BackendSlots.UseResolver */}}
 {{- end }}{{/* range Backends */}}

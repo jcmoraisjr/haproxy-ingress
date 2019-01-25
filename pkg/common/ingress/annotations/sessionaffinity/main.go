@@ -39,10 +39,13 @@ const (
 	// one isn't supplied and affinity is set to "cookie".
 	annotationAffinityCookieHash = "ingress.kubernetes.io/session-cookie-hash"
 	defaultAffinityCookieHash    = "md5"
+	// This indicates whether or not dynamic cookies will be generated for each host
+	annotationAffinityCookieDynamic = "ingress.kubernetes.io/session-cookie-dynamic"
+	defaultAffinityCookieDynamic    = true
 )
 
 var (
-	affinityCookieHashRegex = regexp.MustCompile(`^(index|md5|sha1)$`)
+	affinityCookieHashRegex     = regexp.MustCompile(`^(index|md5|sha1)$`)
 	affinityCookieStrategyRegex = regexp.MustCompile(`^(insert|prefix|rewrite)$`)
 )
 
@@ -61,6 +64,8 @@ type CookieConfig struct {
 	Strategy string `json:"strategy"`
 	// The hash that will be used to encode the cookie in case of cookie affinity type
 	Hash string `json:"hash"`
+	// Indicates whether or not dynamic cookies will be generated.
+	Dynamic bool `json:"dynamic"`
 }
 
 // CookieAffinityParse gets the annotation values related to Cookie Affinity
@@ -92,10 +97,18 @@ func CookieAffinityParse(ing *extensions.Ingress) *CookieConfig {
 		sh = defaultAffinityCookieHash
 	}
 
+	sd, err := parser.GetBoolAnnotation(annotationAffinityCookieDynamic, ing)
+
+	if err != nil {
+		glog.V(3).Infof("Invalid or no annotation value found in Ingress %v: %v. Setting it to default %v", ing.Name, annotationAffinityCookieDynamic, defaultAffinityCookieDynamic)
+		sd = defaultAffinityCookieDynamic
+	}
+
 	return &CookieConfig{
-		Name: sn,
+		Name:     sn,
 		Strategy: ss,
-		Hash: sh,
+		Hash:     sh,
+		Dynamic:  sd,
 	}
 }
 
@@ -110,7 +123,7 @@ type affinity struct {
 // ParseAnnotations parses the annotations contained in the ingress
 // rule used to configure the affinity directives
 func (a affinity) Parse(ing *extensions.Ingress) (interface{}, error) {
-	cookieAffinityConfig := &CookieConfig{}
+	cookieAffinityConfig := &CookieConfig{Dynamic: defaultAffinityCookieDynamic}
 	// Check the type of affinity that will be used
 	at, err := parser.GetStringAnnotation(annotationAffinityType, ing)
 	if err != nil {

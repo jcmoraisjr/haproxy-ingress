@@ -78,6 +78,7 @@ type (
 		BindIPAddrHealthz      string `json:"bind-ip-addr-healthz"`
 		Syslog                 string `json:"syslog-endpoint"`
 		SyslogFormat           string `json:"syslog-format"`
+		SyslogTag              string `json:"syslog-tag"`
 		ModSecurity            string `json:"modsecurity-endpoints"`
 		ModSecTimeoutHello     string `json:"modsecurity-timeout-hello"`
 		ModSecTimeoutIdle      string `json:"modsecurity-timeout-idle"`
