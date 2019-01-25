@@ -114,6 +114,13 @@ Fixes and improvements since [v0.7-beta.5](#v07-beta5):
 
 * Fix validation of mod security conf [#282](https://github.com/jcmoraisjr/haproxy-ingress/pull/282)
 
+### v0.7-beta.7
+
+Fixes and improvements since [v0.7-beta.6](#v07-beta6):
+
+* Use SRV records on dns resolver if backend port isn’t a valid number [#285](https://github.com/jcmoraisjr/haproxy-ingress/pull/285)
+* Fix permission of frontend certs dir [#293](https://github.com/jcmoraisjr/haproxy-ingress/pull/293)
+
 ## v0.6.1
 
 Fixes and improvements since [v0.6](#v06):
