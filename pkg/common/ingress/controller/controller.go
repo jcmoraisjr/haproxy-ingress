@@ -154,6 +154,8 @@ type Configuration struct {
 	UpdateStatusOnShutdown bool
 
 	SortBackends bool
+
+	V07 bool
 }
 
 // newIngressController creates an Ingress controller
@@ -202,6 +204,11 @@ func newIngressController(config *Configuration) *GenericController {
 	cloner.RegisterDeepCopyFunc(ingress.GetGeneratedDeepCopyFuncs)
 
 	return &ic
+}
+
+// GetConfig expose the controller configuration
+func (ic *GenericController) GetConfig() *Configuration {
+	return ic.cfg
 }
 
 // Info returns information about the backend
@@ -259,6 +266,11 @@ func (ic *GenericController) syncIngress(item interface{}) error {
 	ic.syncRateLimiter.Accept()
 
 	if ic.syncQueue.IsShuttingDown() {
+		return nil
+	}
+
+	if !ic.cfg.V07 {
+		ic.cfg.Backend.SyncIngress(item)
 		return nil
 	}
 

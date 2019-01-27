@@ -92,6 +92,8 @@ type Controller interface {
 	// The backend returns an error if was not possible to update the configuration.
 	//
 	OnUpdate(Configuration) error
+	// SyncIngress sync load balancer config from a very early stage
+	SyncIngress(item interface{}) error
 	// ConfigMap content of --configmap
 	SetConfig(*apiv1.ConfigMap)
 	// SetListers allows the access of store listers present in the generic controller

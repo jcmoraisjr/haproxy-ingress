@@ -17,30 +17,39 @@ limitations under the License.
 package controller
 
 import (
-	"github.com/golang/glog"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/controller"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/defaults"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/dynconfig"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/version"
-	"github.com/spf13/pflag"
 	"io/ioutil"
-	api "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
 	"net/http"
 	"os"
 	"os/exec"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/golang/glog"
+	"github.com/spf13/pflag"
+	api "k8s.io/api/core/v1"
+	extensions "k8s.io/api/extensions/v1beta1"
+
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/class"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/controller"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/defaults"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/dynconfig"
+	ingressconverter "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress"
+	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/version"
 )
 
 // HAProxyController has internal data of a HAProxyController instance
 type HAProxyController struct {
+	instance          haproxy.Instance
 	controller        *controller.GenericController
+	cfg               *controller.Configuration
 	configMap         *api.ConfigMap
 	storeLister       *ingress.StoreLister
+	converterOptions  *ingtypes.ConverterOptions
 	command           string
 	reloadStrategy    *string
 	configDir         string
@@ -71,10 +80,36 @@ func (hc *HAProxyController) Info() *ingress.BackendInfo {
 // Start starts the controller
 func (hc *HAProxyController) Start() {
 	hc.controller = controller.NewIngressController(hc)
+	hc.configController()
+	hc.controller.Start()
+}
+
+func (hc *HAProxyController) configController() {
 	if *hc.reloadStrategy == "multibinder" {
 		glog.Warningf("multibinder is deprecated, using reusesocket strategy instead. update your deployment configuration")
 	}
-	hc.controller.Start()
+	hc.cfg = hc.controller.GetConfig()
+
+	if hc.cfg.V07 {
+		return
+	}
+
+	// starting v0.8 only config
+	logger := &logger{depth: 1}
+	hc.converterOptions = &ingtypes.ConverterOptions{
+		Logger:           logger,
+		Cache:            &cache{listers: hc.storeLister},
+		AnnotationPrefix: "ingress.kubernetes.io",
+		DefaultBackend:   hc.cfg.DefaultService,
+		DefaultSSLSecret: hc.cfg.DefaultSSLCertificate,
+	}
+	instanceOptions := haproxy.InstanceOptions{
+		HAProxyCmd:        "haproxy",
+		ReloadCmd:         "/haproxy-reload.sh",
+		HAProxyConfigFile: "/etc/haproxy/haproxy.cfg",
+		ReloadStrategy:    *hc.reloadStrategy,
+	}
+	hc.instance = haproxy.CreateInstance(logger, instanceOptions)
 }
 
 // Stop shutdown the controller process
@@ -128,9 +163,9 @@ func (hc *HAProxyController) OverrideFlags(flags *pflag.FlagSet) {
 	hc.configDir = "/etc/haproxy"
 	hc.configFilePrefix = "haproxy"
 	hc.configFileSuffix = ".cfg"
-	hc.haproxyTemplate = newTemplate("haproxy.tmpl", "/etc/haproxy/template/haproxy.tmpl", 16384)
+	hc.haproxyTemplate = newTemplate("haproxy-v07.tmpl", "/etc/haproxy/template/haproxy-v07.tmpl", 16384)
 	hc.modsecConfigFile = "/etc/haproxy/spoe-modsecurity.conf"
-	hc.modsecTemplate = newTemplate("spoe-modsecurity.tmpl", "/etc/haproxy/modsecurity/spoe-modsecurity.tmpl", 1024)
+	hc.modsecTemplate = newTemplate("spoe-modsecurity-v07.tmpl", "/etc/haproxy/modsecurity/spoe-modsecurity-v07.tmpl", 1024)
 	hc.command = "/haproxy-reload.sh"
 
 	if !(*hc.reloadStrategy == "native" || *hc.reloadStrategy == "reusesocket" || *hc.reloadStrategy == "multibinder") {
@@ -167,6 +202,34 @@ func (hc *HAProxyController) DrainSupport() (drainSupport bool) {
 		drainSupport = hc.currentConfig.Cfg.DrainSupport
 	}
 	return
+}
+
+// SyncIngress sync HAProxy config from a very early stage
+func (hc *HAProxyController) SyncIngress(item interface{}) error {
+	var ingress []*extensions.Ingress
+	for _, iing := range hc.storeLister.Ingress.List() {
+		ing := iing.(*extensions.Ingress)
+		if class.IsValid(ing, hc.cfg.IngressClass, hc.cfg.DefaultIngressClass) {
+			ingress = append(ingress, ing)
+		}
+	}
+	sort.SliceStable(ingress, func(i, j int) bool {
+		return ingress[i].ResourceVersion < ingress[j].ResourceVersion
+	})
+
+	var globalConfig map[string]string
+	if hc.configMap != nil {
+		globalConfig = hc.configMap.Data
+	}
+	converter := ingressconverter.NewIngressConverter(
+		hc.converterOptions,
+		hc.instance.CreateConfig(),
+		globalConfig,
+	)
+	converter.Sync(ingress)
+	hc.instance.Update()
+
+	return nil
 }
 
 // OnUpdate regenerate the configuration file of the backend
