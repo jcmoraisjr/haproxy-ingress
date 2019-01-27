@@ -23,10 +23,19 @@ import (
 	api "k8s.io/api/core/v1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/controller"
 )
 
 type cache struct {
-	listers *ingress.StoreLister
+	listers    *ingress.StoreLister
+	controller *controller.GenericController
+}
+
+func newCache(listers *ingress.StoreLister, controller *controller.GenericController) *cache {
+	return &cache{
+		listers:    listers,
+		controller: controller,
+	}
 }
 
 func (c *cache) GetService(serviceName string) (*api.Service, error) {
@@ -47,13 +56,35 @@ func (c *cache) GetPod(podName string) (*api.Pod, error) {
 }
 
 func (c *cache) GetTLSSecretPath(secretName string) (string, error) {
-	return "", fmt.Errorf("implement")
+	sslCert, err := c.controller.GetCertificate(secretName)
+	if err != nil {
+		return "", err
+	}
+	if sslCert.PemFileName == "" {
+		return "", fmt.Errorf("secret '%s' does not have tls/key pair", secretName)
+	}
+	return sslCert.PemFileName, nil
 }
 
 func (c *cache) GetCASecretPath(secretName string) (string, error) {
-	return "", fmt.Errorf("implement")
+	sslCert, err := c.controller.GetCertificate(secretName)
+	if err != nil {
+		return "", err
+	}
+	if sslCert.CAFileName == "" {
+		return "", fmt.Errorf("secret '%s' does not have ca.crt key", secretName)
+	}
+	return sslCert.CAFileName, nil
 }
 
 func (c *cache) GetSecretContent(secretName, keyName string) ([]byte, error) {
-	return []byte{}, fmt.Errorf("implement")
+	secret, err := c.listers.Secret.GetByName(secretName)
+	if err != nil {
+		return nil, err
+	}
+	data, found := secret.Data[keyName]
+	if !found {
+		return nil, fmt.Errorf("secret '%s' does not have key '%s'", secretName, keyName)
+	}
+	return data, nil
 }

@@ -98,7 +98,7 @@ func (hc *HAProxyController) configController() {
 	logger := &logger{depth: 1}
 	hc.converterOptions = &ingtypes.ConverterOptions{
 		Logger:           logger,
-		Cache:            &cache{listers: hc.storeLister},
+		Cache:            newCache(hc.storeLister, hc.controller),
 		AnnotationPrefix: "ingress.kubernetes.io",
 		DefaultBackend:   hc.cfg.DefaultService,
 		DefaultSSLSecret: hc.cfg.DefaultSSLCertificate,

@@ -1540,19 +1540,21 @@ func (ic *GenericController) Start() {
 
 	createDefaultSSLCertificate()
 
-	time.Sleep(5 * time.Second)
-	// initial sync of secrets to avoid unnecessary reloads
-	glog.Info("running initial sync of secrets")
-	for _, obj := range ic.listers.Ingress.List() {
-		ing := obj.(*extensions.Ingress)
+	if ic.cfg.V07 {
+		time.Sleep(5 * time.Second)
+		// initial sync of secrets to avoid unnecessary reloads
+		glog.Info("running initial sync of secrets")
+		for _, obj := range ic.listers.Ingress.List() {
+			ing := obj.(*extensions.Ingress)
 
-		if !class.IsValid(ing, ic.cfg.IngressClass, ic.cfg.DefaultIngressClass) {
-			a, _ := parser.GetStringAnnotation(class.IngressKey, ing)
-			glog.V(2).Infof("ignoring add for ingress %v based on annotation %v with value %v", ing.Name, class.IngressKey, a)
-			continue
+			if !class.IsValid(ing, ic.cfg.IngressClass, ic.cfg.DefaultIngressClass) {
+				a, _ := parser.GetStringAnnotation(class.IngressKey, ing)
+				glog.V(2).Infof("ignoring add for ingress %v based on annotation %v with value %v", ing.Name, class.IngressKey, a)
+				continue
+			}
+
+			ic.readSecrets(ing)
 		}
-
-		ic.readSecrets(ing)
 	}
 
 	go ic.syncQueue.Run(time.Second, ic.stopCh)
@@ -1561,7 +1563,9 @@ func (ic *GenericController) Start() {
 		go ic.syncStatus.Run(ic.stopCh)
 	}
 
-	go wait.Until(ic.checkMissingSecrets, 30*time.Second, ic.stopCh)
+	if ic.cfg.V07 {
+		go wait.Until(ic.checkMissingSecrets, 30*time.Second, ic.stopCh)
+	}
 
 	// force initial sync
 	ic.syncQueue.Enqueue(&extensions.Ingress{})
