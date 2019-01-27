@@ -18,8 +18,8 @@ package controller
 
 import (
 	"github.com/golang/glog"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxybackend"
 
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/agentcheck"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/alias"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/auth"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/authreq"
@@ -38,6 +38,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/parser"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/portinredirect"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxy"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxybackend"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/ratelimit"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/redirect"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/rewrite"
@@ -81,7 +82,7 @@ func newAnnotationExtractor(cfg extractorConfig) annotationExtractor {
 			"OAuth":                oauth.NewParser(),
 			"CorsConfig":           cors.NewParser(),
 			"UseResolver":          dnsresolvers.NewParser(cfg),
-			"HealthCheck":          healthcheck.NewParser(cfg),
+			"HealthCheck":          healthcheck.NewParser(),
 			"HSTS":                 hsts.NewParser(cfg),
 			"Whitelist":            ipwhitelist.NewParser(cfg),
 			"UsePortInRedirects":   portinredirect.NewParser(cfg),
@@ -106,6 +107,7 @@ func newAnnotationExtractor(cfg extractorConfig) annotationExtractor {
 			"UpstreamVhost":        upstreamvhost.NewParser(),
 			"VtsFilterKey":         vtsfilterkey.NewParser(),
 			"ServerSnippet":        serversnippet.NewParser(),
+			"AgentCheck":           agentcheck.NewParser(),
 		},
 	}
 }
@@ -162,6 +164,7 @@ const (
 	serverSnippet        = "ServerSnippet"
 	upstreamHashBy       = "UpstreamHashBy"
 	useResolver          = "UseResolver"
+	agentCheck           = "AgentCheck"
 )
 
 func (e *annotationExtractor) BalanceAlgorithm(ing *extensions.Ingress) string {
@@ -193,9 +196,9 @@ func (e *annotationExtractor) Connection(ing *extensions.Ingress) *connection.Co
 	return val.(*connection.Config)
 }
 
-func (e *annotationExtractor) HealthCheck(ing *extensions.Ingress) *healthcheck.Upstream {
+func (e *annotationExtractor) HealthCheck(ing *extensions.Ingress) *healthcheck.Config {
 	val, _ := e.annotations[healthCheck].Parse(ing)
-	return val.(*healthcheck.Upstream)
+	return val.(*healthcheck.Config)
 }
 
 func (e *annotationExtractor) BlueGreen(ing *extensions.Ingress) *bluegreen.Config {
@@ -272,4 +275,9 @@ func (e *annotationExtractor) UpstreamHashBy(ing *extensions.Ingress) string {
 func (e *annotationExtractor) UseResolver(ing *extensions.Ingress) string {
 	val, _ := e.annotations[useResolver].Parse(ing)
 	return val.(string)
+}
+
+func (e *annotationExtractor) AgentCheck(ing *extensions.Ingress) *agentcheck.Config {
+	val, _ := e.annotations[agentCheck].Parse(ing)
+	return val.(*agentcheck.Config)
 }

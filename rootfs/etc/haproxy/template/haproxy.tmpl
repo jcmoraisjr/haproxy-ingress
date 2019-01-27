@@ -138,6 +138,9 @@ backend {{ $backend.Name }}
 {{- if ne $backend.Connection.TimeoutQueue "" }}
     timeout queue {{ $backend.Connection.TimeoutQueue }}
 {{- end }}
+{{- if ne $backend.HealthCheck.URI "" }}
+    option httpchk {{ $backend.HealthCheck.URI }}
+{{- end }}
 {{- $sticky := $backend.SessionAffinity }}
 {{- if eq $sticky.AffinityType "cookie" }}
     cookie {{ $sticky.CookieSessionAffinity.Name }} {{ $sticky.CookieSessionAffinity.Strategy }} {{ if eq $sticky.CookieSessionAffinity.Strategy "insert" }}indirect nocache httponly{{ end }}{{ if $sticky.CookieSessionAffinity.Dynamic }} dynamic{{ end }}
@@ -192,7 +195,21 @@ backend {{ $backend.Name }}
         {{- else if eq $backend.Proxy.ProxyProtocol "v2-ssl" }} send-proxy-v2-ssl
         {{- else if eq $backend.Proxy.ProxyProtocol "v2-ssl-cn" }} send-proxy-v2-ssl-cn
     {{- end }}
-    {{- if ne $cfg.BackendCheckInterval "" }} check inter {{ $cfg.BackendCheckInterval }}{{ end }}
+    {{- $agent := $backend.AgentCheck }}
+    {{- $hc := $backend.HealthCheck }}
+    {{- $interval := default $cfg.BackendCheckInterval $hc.Interval }}
+    {{- if coalesce $interval $hc.Port $hc.Addr $hc.RiseCount $hc.FallCount }} check
+    {{- if $interval }} inter {{ $interval }}{{ end }}
+        {{- if $hc.Port }} port {{ $hc.Port }}{{ end }}
+        {{- if $hc.Addr }} addr {{ $hc.Addr }}{{ end }}
+        {{- if $hc.RiseCount }} rise {{ $hc.RiseCount }}{{ end }}
+        {{- if $hc.FallCount }} fall {{ $hc.FallCount }}{{ end }}
+    {{- end }}
+    {{- if $agent.Port }} agent-check agent-port {{ $agent.Port }}
+        {{- if $agent.Interval }} agent-inter {{ $agent.Interval }}{{ end }}
+        {{- if $agent.Addr }} agent-addr {{ $agent.Addr }}{{ end }}
+        {{- if $agent.Send }} agent-send {{ $agent.Send }}{{ end }}
+    {{- end }}
 {{- end }}
 
 ######

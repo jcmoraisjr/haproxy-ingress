@@ -17,50 +17,123 @@ limitations under the License.
 package healthcheck
 
 import (
+	"strconv"
+
 	extensions "k8s.io/api/extensions/v1beta1"
 
+	"github.com/golang/glog"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/parser"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/resolver"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/errors"
 )
 
 const (
-	upsMaxFails    = "ingress.kubernetes.io/upstream-max-fails"
-	upsFailTimeout = "ingress.kubernetes.io/upstream-fail-timeout"
+	healthCheckURI       = "ingress.kubernetes.io/health-check-uri"
+	healthCheckAddr      = "ingress.kubernetes.io/health-check-addr"
+	healthCheckPort      = "ingress.kubernetes.io/health-check-port"
+	healthCheckInterval  = "ingress.kubernetes.io/health-check-interval"
+	healthCheckRiseCount = "ingress.kubernetes.io/health-check-rise-count"
+	healthCheckFallCount = "ingress.kubernetes.io/health-check-fall-count"
 )
 
-// Upstream returns the URL and method to use check the status of
-// the upstream server/s
-type Upstream struct {
-	MaxFails    int `json:"maxFails"`
-	FailTimeout int `json:"failTimeout"`
+// Config contains the health check configuration for a backend
+type Config struct {
+	URI       string `json:"uri"`
+	Addr      string `json:"addr"`
+	Port      string `json:"port"`
+	Interval  string `json:"interval"`
+	RiseCount string `json:"rise-count"`
+	FallCount string `json:"fall-count"`
 }
 
-type healthCheck struct {
-	backendResolver resolver.DefaultBackend
+// Equal tests equality between two Config objects
+func (b1 *Config) Equal(b2 *Config) bool {
+	if b1.URI != b2.URI {
+		return false
+	}
+	if b1.Addr != b2.Addr {
+		return false
+	}
+	if b1.Port != b2.Port {
+		return false
+	}
+	if b1.Interval != b2.Interval {
+		return false
+	}
+	if b1.RiseCount != b2.RiseCount {
+		return false
+	}
+	if b1.FallCount != b2.FallCount {
+		return false
+	}
+	return true
 }
 
 // NewParser creates a new health check annotation parser
-func NewParser(br resolver.DefaultBackend) parser.IngressAnnotation {
-	return healthCheck{br}
+func NewParser() parser.IngressAnnotation {
+	return healthCheck{}
+}
+
+type healthCheck struct {
 }
 
 // ParseAnnotations parses the annotations contained in the ingress
-// rule used to configure upstream check parameters
+// rule used to configure health check parameters
 func (a healthCheck) Parse(ing *extensions.Ingress) (interface{}, error) {
-	defBackend := a.backendResolver.GetDefaultBackend()
-	if ing.GetAnnotations() == nil {
-		return &Upstream{defBackend.UpstreamMaxFails, defBackend.UpstreamFailTimeout}, nil
-	}
+	uri, _ := parser.GetStringAnnotation(healthCheckURI, ing)
 
-	mf, err := parser.GetIntAnnotation(upsMaxFails, ing)
+	addr, err := parser.GetStringAnnotation(healthCheckAddr, ing)
 	if err != nil {
-		mf = defBackend.UpstreamMaxFails
+		if err == errors.ErrMissingAnnotations {
+			glog.V(3).Infof("Ingress %v: No value found in annotation %v.", ing.Name, healthCheckAddr)
+		} else {
+			glog.Warningf("Invalid annotation value found in Ingress %v: %v. Ignoring.", ing.Name, healthCheckAddr)
+		}
 	}
 
-	ft, err := parser.GetIntAnnotation(upsFailTimeout, ing)
+	var port string
+	portInt, err := parser.GetIntAnnotation(healthCheckPort, ing)
 	if err != nil {
-		ft = defBackend.UpstreamFailTimeout
+		if err == errors.ErrMissingAnnotations {
+			glog.V(3).Infof("Ingress %v: No value found in annotation %v.", ing.Name, healthCheckPort)
+		} else {
+			glog.Warningf("Invalid annotation value found in Ingress %v: %v. Ignoring.", ing.Name, healthCheckPort)
+		}
+	} else {
+		port = strconv.Itoa(portInt)
 	}
 
-	return &Upstream{mf, ft}, nil
+	inter, err := parser.GetStringAnnotation(healthCheckInterval, ing)
+	if err != nil {
+		if err == errors.ErrMissingAnnotations {
+			glog.V(3).Infof("Ingress %v: No value found in annotation %v.", ing.Name, healthCheckInterval)
+		} else {
+			glog.Warningf("Invalid annotation value found in Ingress %v: %v. Ignoring.", ing.Name, healthCheckInterval)
+		}
+	}
+
+	var rise string
+	riseInt, err := parser.GetIntAnnotation(healthCheckRiseCount, ing)
+	if err != nil {
+		if err == errors.ErrMissingAnnotations {
+			glog.V(3).Infof("Ingress %v: No value found in annotation %v.", ing.Name, healthCheckRiseCount)
+		} else {
+			glog.Warningf("Invalid annotation value found in Ingress %v: %v. Ignoring.", ing.Name, healthCheckRiseCount)
+		}
+	} else {
+		rise = strconv.Itoa(riseInt)
+	}
+
+	var fall string
+	fallInt, err := parser.GetIntAnnotation(healthCheckFallCount, ing)
+	if err != nil {
+		if err == errors.ErrMissingAnnotations {
+			glog.V(3).Infof("Ingress %v: No value found in annotation %v.", ing.Name, healthCheckFallCount)
+		} else {
+			glog.Warningf("Invalid annotation value found in Ingress %v: %v. Ignoring.", ing.Name, healthCheckFallCount)
+		}
+	} else {
+		fall = strconv.Itoa(fallInt)
+	}
+
+	return &Config{uri, addr, port, inter, rise, fall}, nil
 }

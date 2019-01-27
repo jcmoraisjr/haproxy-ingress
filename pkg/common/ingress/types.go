@@ -20,7 +20,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/agentcheck"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/alias"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/healthcheck"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxybackend"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/secureupstream"
@@ -210,6 +212,10 @@ type Backend struct {
 	UpstreamHashBy string `json:"upstream-hash-by,omitempty"`
 	// Haproxy DNS resolver
 	UseResolver string `json:"useResolver"`
+	// Health check configuration for the back end
+	HealthCheck healthcheck.Config `json:"healthCheck"`
+	// Agent check configuration for the back end
+	AgentCheck agentcheck.Config `json:"agentCheck"`
 }
 
 // SessionAffinityConfig describes different affinity configurations for new sessions.
@@ -249,14 +255,6 @@ type Endpoint struct {
 	// number of replicas need to be adjusted accordingly.
 	Weight    int `json:"weight"`
 	WeightRef *bluegreen.DeployWeight
-	// MaxFails returns the number of unsuccessful attempts to communicate
-	// allowed before this should be considered down.
-	// Setting 0 indicates that the check is performed by a Kubernetes probe
-	MaxFails int `json:"maxFails"`
-	// FailTimeout returns the time in seconds during which the specified number
-	// of unsuccessful attempts to communicate with the server should happen
-	// to consider the endpoint unavailable
-	FailTimeout int `json:"failTimeout"`
 	// Indicates whether or not this endpoint is currently draining (not available
 	// or terminating). This is a transient value that configures Weight as zero.
 	Draining bool `json:"draining"`
