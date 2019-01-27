@@ -112,6 +112,7 @@ func weightBalance(upstreams *map[string]*ingress.Backend, podLister store.PodLi
 			continue
 		}
 		gcdGroupWeight := 0
+		minWeight := -1
 		maxWeight := 0
 		for _, weightConfig := range deployWeight {
 			if weightConfig.PodCount == 0 || weightConfig.PodWeight == 0 {
@@ -123,6 +124,9 @@ func weightBalance(upstreams *map[string]*ingress.Backend, podLister store.PodLi
 			} else {
 				gcdGroupWeight = groupWeight
 			}
+			if groupWeight < minWeight || minWeight < 0 {
+				minWeight = groupWeight
+			}
 			if groupWeight > maxWeight {
 				maxWeight = groupWeight
 			}
@@ -131,17 +135,22 @@ func weightBalance(upstreams *map[string]*ingress.Backend, podLister store.PodLi
 			// all PodWeight are zero, no need to rebalance
 			continue
 		}
+		// Agent works better if weight is 100 or at least the
+		// higher value weightFactor will let it to be
+		// weightFactorMin has how many times minWeight is lesser than 100.
+		weightFactorMin := 100 * float32(gcdGroupWeight) / float32(minWeight)
 		// HAProxy weight must be between 0..256.
 		// weightFactor has how many times the max weight is greater than 256.
-		weightFactor := float32(maxWeight) / float32(gcdGroupWeight) / float32(256)
+		weightFactor := weightFactorMin * float32(maxWeight) / float32(gcdGroupWeight) / float32(256)
 		// LCM of denominators and GCD of the results are known. Updating ep.Weight
 		for epID := range upstream.Endpoints {
 			ep := &upstream.Endpoints[epID]
 			if ep.WeightRef != nil {
 				wRef := ep.WeightRef
 				w := wRef.PodWeight * lcmPodCount / wRef.PodCount / gcdGroupWeight
+				w = int(float32(w)*weightFactorMin + 0.5)
 				if weightFactor > 1 {
-					propWeight := int(float32(w) / weightFactor)
+					propWeight := int(float32(w)/weightFactor + 0.5)
 					if propWeight == 0 && wRef.PodWeight > 0 {
 						propWeight = 1
 					}

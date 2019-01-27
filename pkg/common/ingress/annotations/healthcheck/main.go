@@ -102,16 +102,13 @@ func (a healthCheck) Parse(ing *extensions.Ingress) (interface{}, error) {
 		port = strconv.Itoa(portInt)
 	}
 
-	var inter string
-	interInt, err := parser.GetIntAnnotation(healthCheckInterval, ing)
+	inter, err := parser.GetStringAnnotation(healthCheckInterval, ing)
 	if err != nil {
 		if err == errors.ErrMissingAnnotations {
 			glog.V(3).Infof("Ingress %v: No value found in annotation %v.", ing.Name, healthCheckInterval)
 		} else {
 			glog.Warningf("Invalid annotation value found in Ingress %v: %v. Ignoring.", ing.Name, healthCheckInterval)
 		}
-	} else {
-		inter = strconv.Itoa(interInt)
 	}
 
 	var rise string

@@ -67,7 +67,7 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/affinity`](#affinity)|affinity type|-|
 |`[0]`|[`ingress.kubernetes.io/agent-check-addr`](#agent-check)|address for agent checks|-|
 |`[0]`|[`ingress.kubernetes.io/agent-check-port`](#agent-check)|backend agent listen port|-|
-|`[0]`|[`ingress.kubernetes.io/agent-check-inter`](#agent-check)|time (seconds) between agent checks|-|
+|`[0]`|[`ingress.kubernetes.io/agent-check-inter`](#agent-check)|time with suffix|-|
 |`[0]`|[`ingress.kubernetes.io/agent-check-send`](#agent-check)|string to send upon agent connection|-|
 ||`ingress.kubernetes.io/app-root`|/url|[doc](/examples/rewrite)|
 ||`ingress.kubernetes.io/auth-realm`|realm string|[doc](/examples/auth/basic)|
@@ -91,7 +91,7 @@ The following annotations are supported:
 |`[0]`|[`ingress.kubernetes.io/health-check-uri`](#health-check)|uri for http health checks|-|
 |`[0]`|[`ingress.kubernetes.io/health-check-addr`](#health-check)|address for health checks|-|
 |`[0]`|[`ingress.kubernetes.io/health-check-port`](#health-check)|port for health checks|-|
-|`[0]`|[`ingress.kubernetes.io/health-check-interval`](#health-check)|time (seconds)|-|
+|`[0]`|[`ingress.kubernetes.io/health-check-interval`](#health-check)|time with suffix|-|
 |`[0]`|[`ingress.kubernetes.io/health-check-fall-count`](#health-check)|number of failures|-|
 |`[0]`|[`ingress.kubernetes.io/health-check-rise-count`](#health-check)|number of successes|-|
 ||[`ingress.kubernetes.io/hsts`](#hsts)|[true\|false]|-|
@@ -336,12 +336,15 @@ check that is run independently of a regular health check and can be used to
 control the reported status of a server as well as the weight to be used for
 load balancing.
 
+**NOTE:** `agent-check-port` must be provided for any of the agent check
+options to be applied.
+
+* `ingress.kubernetes.io/agent-check-port`: Defines the port on which the agent is
+listening. This option is required in order to use an agent check.
+See also: http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-agent-port
 * `ingress.kubernetes.io/agent-check-addr`: Defines the address for agent checks.
 If omitted, the server address will be used.
 See also: http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-agent-check
-* `ingress.kubernetes.io/agent-check-port`: Defines the port on which the agent is
-listening. If omitted, the server port will be used.
-See also: http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-agent-port
 * `ingress.kubernetes.io/agent-check-interval`: Defines the interval between agent checks.
 If omitted, the default of 2 seconds will be used.
 See also: http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-agent-inter

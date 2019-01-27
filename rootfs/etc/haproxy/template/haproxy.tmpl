@@ -197,19 +197,18 @@ backend {{ $backend.Name }}
     {{- end }}
     {{- $agent := $backend.AgentCheck }}
     {{- $hc := $backend.HealthCheck }}
-    {{- $interval := default $hc.Interval $cfg.BackendCheckInterval }}
+    {{- $interval := default $cfg.BackendCheckInterval $hc.Interval }}
     {{- if coalesce $interval $hc.Port $hc.Addr $hc.RiseCount $hc.FallCount }} check
     {{- if $interval }} inter {{ $interval }}{{ end }}
-    {{- if $hc.Port }} port {{ $hc.Port }}{{ end }}
-    {{- if $hc.Addr }} addr {{ $hc.Addr }}{{ end }}
-    {{- if $hc.RiseCount }} rise {{ $hc.RiseCount }}{{ end }}
-    {{- if $hc.FallCount }} fall {{ $hc.FallCount }}{{ end }}
+        {{- if $hc.Port }} port {{ $hc.Port }}{{ end }}
+        {{- if $hc.Addr }} addr {{ $hc.Addr }}{{ end }}
+        {{- if $hc.RiseCount }} rise {{ $hc.RiseCount }}{{ end }}
+        {{- if $hc.FallCount }} fall {{ $hc.FallCount }}{{ end }}
     {{- end }}
-    {{- if coalesce $agent.Interval $agent.Addr $agent.Port $agent.Send }} agent-check
-    {{- if $agent.Interval }} agent-inter {{ $agent.Interval }}{{ end }}
-    {{- if $agent.Addr }} agent-addr {{ $agent.Addr }}{{ end }}
-    {{- if $agent.Port }} agent-port {{ $agent.Port }}{{ end }}
-    {{- if $agent.Send }} agent-send {{ $agent.Send }}{{ end }}
+    {{- if $agent.Port }} agent-check agent-port {{ $agent.Port }}
+        {{- if $agent.Interval }} agent-inter {{ $agent.Interval }}{{ end }}
+        {{- if $agent.Addr }} agent-addr {{ $agent.Addr }}{{ end }}
+        {{- if $agent.Send }} agent-send {{ $agent.Send }}{{ end }}
     {{- end }}
 {{- end }}
 

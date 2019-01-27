@@ -90,16 +90,13 @@ func (a agentCheck) Parse(ing *extensions.Ingress) (interface{}, error) {
 		port = strconv.Itoa(portInt)
 	}
 
-	var inter string
-	interInt, err := parser.GetIntAnnotation(agentCheckInterval, ing)
+	inter, err := parser.GetStringAnnotation(agentCheckInterval, ing)
 	if err != nil {
 		if err == errors.ErrMissingAnnotations {
 			glog.V(3).Infof("Ingress %v: No value found in annotation %v.", ing.Name, agentCheckInterval)
 		} else {
 			glog.Warningf("Invalid annotation value found in Ingress %v: %v. Ignoring.", ing.Name, agentCheckInterval)
 		}
-	} else {
-		inter = strconv.Itoa(interInt)
 	}
 
 	send, err := parser.GetStringAnnotation(agentCheckSend, ing)
