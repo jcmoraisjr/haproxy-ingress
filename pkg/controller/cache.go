@@ -24,6 +24,7 @@ import (
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/controller"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
 )
 
 type cache struct {
@@ -61,7 +62,7 @@ func (c *cache) GetTLSSecretPath(secretName string) (string, error) {
 		return "", err
 	}
 	if sslCert.PemFileName == "" {
-		return "", fmt.Errorf("secret '%s' does not have tls/key pair", secretName)
+		return "", fmt.Errorf("secret '%s' does not have keys 'tls.crt' and 'tls.key'", secretName)
 	}
 	return sslCert.PemFileName, nil
 }
@@ -72,9 +73,27 @@ func (c *cache) GetCASecretPath(secretName string) (string, error) {
 		return "", err
 	}
 	if sslCert.CAFileName == "" {
-		return "", fmt.Errorf("secret '%s' does not have ca.crt key", secretName)
+		return "", fmt.Errorf("secret '%s' does not have key 'ca.crt'", secretName)
 	}
 	return sslCert.CAFileName, nil
+}
+
+func (c *cache) GetDHSecretPath(secretName string) (string, error) {
+	secret, err := c.listers.Secret.GetByName(secretName)
+	if err != nil {
+		return "", err
+	}
+	dh, found := secret.Data[dhparamFilename]
+	if !found {
+		return "", fmt.Errorf("secret '%s' does not have key '%s'", secretName, dhparamFilename)
+	}
+	pem := strings.Replace(secretName, "/", "_", -1)
+	pemFileName, err := ssl.AddOrUpdateDHParam(pem, dh)
+	if err != nil {
+		return "", fmt.Errorf("error creating dh-param file '%s': %v", pem, err)
+	}
+	// file.SHA1(pemFileName)
+	return pemFileName, nil
 }
 
 func (c *cache) GetSecretContent(secretName, keyName string) ([]byte, error) {

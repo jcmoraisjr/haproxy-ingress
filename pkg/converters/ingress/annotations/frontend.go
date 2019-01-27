@@ -16,7 +16,7 @@ limitations under the License.
 
 package annotations
 
-func (c *updater) buildAuthTLS(d *frontData) {
+func (c *updater) buildFrontendAuthTLS(d *frontData) {
 	if d.ann.AuthTLSSecret == "" {
 		return
 	}
@@ -27,7 +27,7 @@ func (c *updater) buildAuthTLS(d *frontData) {
 	}
 }
 
-func (c *updater) buildSSLPassthrough(d *frontData) {
+func (c *updater) buildFrontendSSLPassthrough(d *frontData) {
 	if !d.ann.SSLPassthrough {
 		return
 	}

@@ -25,7 +25,7 @@ import (
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
-func (c *updater) buildAffinity(d *backData) {
+func (c *updater) buildBackendAffinity(d *backData) {
 	if d.ann.Affinity != "cookie" {
 		if d.ann.Affinity != "" {
 			c.logger.Error("unsupported affinity type on %v: %s", d.ann.Source, d.ann.Affinity)
@@ -50,7 +50,7 @@ func (c *updater) buildAffinity(d *backData) {
 	d.backend.Cookie.Key = d.ann.CookieKey
 }
 
-func (c *updater) buildAuthHTTP(d *backData) {
+func (c *updater) buildBackendAuthHTTP(d *backData) {
 	if d.ann.AuthType != "basic" {
 		if d.ann.AuthType != "" {
 			c.logger.Error("unsupported authentication type on %v: %s", d.ann.Source, d.ann.AuthType)
@@ -71,7 +71,7 @@ func (c *updater) buildAuthHTTP(d *backData) {
 			return
 		}
 		userstr := string(userb)
-		users, errs := c.buildAuthHTTPExtractUserlist(d.ann.Source.Name, secretName, userstr)
+		users, errs := c.buildBackendAuthHTTPExtractUserlist(d.ann.Source.Name, secretName, userstr)
 		for _, err := range errs {
 			c.logger.Warn("ignoring malformed usr/passwd on secret '%s', declared on %v: %v", secretName, d.ann.Source, err)
 		}
@@ -83,7 +83,7 @@ func (c *updater) buildAuthHTTP(d *backData) {
 	d.backend.HreqValidateUserlist(userlist)
 }
 
-func (c *updater) buildAuthHTTPExtractUserlist(source, secret, users string) ([]hatypes.User, []error) {
+func (c *updater) buildBackendAuthHTTPExtractUserlist(source, secret, users string) ([]hatypes.User, []error) {
 	var userlist []hatypes.User
 	var err []error
 	for i, usr := range strings.Split(users, "\n") {
@@ -125,7 +125,7 @@ func (c *updater) buildAuthHTTPExtractUserlist(source, secret, users string) ([]
 	return userlist, err
 }
 
-func (c *updater) buildBlueGreen(d *backData) {
+func (c *updater) buildBackendBlueGreen(d *backData) {
 	balance := d.ann.BlueGreenBalance
 	if balance == "" {
 		balance = d.ann.BlueGreenDeploy

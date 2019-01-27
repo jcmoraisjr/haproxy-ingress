@@ -69,6 +69,7 @@ type BackendAnnotations struct {
 	SecureBackends        bool   `json:"secure-backends"`
 	SecureCrtSecret       string `json:"secure-crt-secret"`
 	SecureVerifyCASecret  string `json:"secure-verify-ca-secret"`
+	SessionCookieDynamic  string `json:"session-cookie-dynamic"`
 	SessionCookieName     string `json:"session-cookie-name"`
 	SessionCookieStrategy string `json:"session-cookie-strategy"`
 	SSLRedirect           bool   `json:"ssl-redirect"`

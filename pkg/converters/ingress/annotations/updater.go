@@ -25,6 +25,7 @@ import (
 
 // Updater ...
 type Updater interface {
+	UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.Config)
 	UpdateFrontendConfig(frontend *hatypes.Frontend, ann *ingtypes.FrontendAnnotations)
 	UpdateBackendConfig(backend *hatypes.Backend, ann *ingtypes.BackendAnnotations)
 }
@@ -44,6 +45,11 @@ type updater struct {
 	logger  types.Logger
 }
 
+type globalData struct {
+	global *hatypes.Global
+	config *ingtypes.Config
+}
+
 type frontData struct {
 	frontend *hatypes.Frontend
 	ann      *ingtypes.FrontendAnnotations
@@ -52,6 +58,30 @@ type frontData struct {
 type backData struct {
 	backend *hatypes.Backend
 	ann     *ingtypes.BackendAnnotations
+}
+
+func copyHAProxyTime(dst *string, src string) {
+	// TODO validate
+	*dst = src
+}
+
+func (c *updater) UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.Config) {
+	data := &globalData{
+		global: global,
+		config: config,
+	}
+	global.Syslog.Endpoint = config.SyslogEndpoint
+	global.Syslog.Format = config.SyslogFormat
+	global.Syslog.Tag = config.SyslogTag
+	global.MaxConn = config.MaxConnections
+	global.DrainSupport = config.DrainSupport
+	global.LoadServerState = config.LoadServerState
+	global.StatsSocket = "/var/run/haproxy-stats.sock"
+	c.buildGlobalProc(data)
+	c.buildGlobalTimeout(data)
+	c.buildGlobalSSL(data)
+	c.buildGlobalModSecurity(data)
+	c.buildGlobalCustomConfig(data)
 }
 
 func (c *updater) UpdateFrontendConfig(frontend *hatypes.Frontend, ann *ingtypes.FrontendAnnotations) {
@@ -64,8 +94,8 @@ func (c *updater) UpdateFrontendConfig(frontend *hatypes.Frontend, ann *ingtypes
 	frontend.Alias.AliasRegex = ann.ServerAliasRegex
 	frontend.Timeout.Client = ann.TimeoutClient
 	frontend.Timeout.ClientFin = ann.TimeoutClientFin
-	c.buildAuthTLS(data)
-	c.buildSSLPassthrough(data)
+	c.buildFrontendAuthTLS(data)
+	c.buildFrontendSSLPassthrough(data)
 }
 
 func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, ann *ingtypes.BackendAnnotations) {
@@ -78,7 +108,7 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, ann *ingtypes.Ba
 	backend.MaxconnServer = ann.MaxconnServer
 	backend.ProxyBodySize = ann.ProxyBodySize
 	backend.SSLRedirect = ann.SSLRedirect
-	c.buildAffinity(data)
-	c.buildAuthHTTP(data)
-	c.buildBlueGreen(data)
+	c.buildBackendAffinity(data)
+	c.buildBackendAuthHTTP(data)
+	c.buildBackendBlueGreen(data)
 }

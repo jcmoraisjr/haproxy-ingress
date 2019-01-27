@@ -34,6 +34,7 @@ type Config interface {
 	AddUserlist(name string, users []hatypes.User) *hatypes.Userlist
 	FindUserlist(name string) *hatypes.Userlist
 	DefaultBackend() *hatypes.Backend
+	Global() *hatypes.Global
 	Frontends() []*hatypes.Frontend
 	Backends() []*hatypes.Backend
 	Userlists() []*hatypes.Userlist
@@ -41,6 +42,7 @@ type Config interface {
 }
 
 type config struct {
+	global         *hatypes.Global
 	frontends      []*hatypes.Frontend
 	backends       []*hatypes.Backend
 	userlists      []*hatypes.Userlist
@@ -48,7 +50,9 @@ type config struct {
 }
 
 func createConfig() Config {
-	return &config{}
+	return &config{
+		global: &hatypes.Global{},
+	}
 }
 
 func (c *config) AcquireFrontend(hostname string) *hatypes.Frontend {
@@ -146,6 +150,10 @@ func (c *config) FindUserlist(name string) *hatypes.Userlist {
 
 func (c *config) DefaultBackend() *hatypes.Backend {
 	return c.defaultBackend
+}
+
+func (c *config) Global() *hatypes.Global {
+	return c.global
 }
 
 func (c *config) Frontends() []*hatypes.Frontend {

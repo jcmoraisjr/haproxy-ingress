@@ -43,6 +43,7 @@ func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Con
 		options:             options,
 		logger:              options.Logger,
 		cache:               options.Cache,
+		updater:             annotations.NewUpdater(haproxy, options.Cache, options.Logger),
 		globalConfig:        mergeConfig(createDefaults(), globalConfig),
 		frontendAnnotations: map[string]*ingtypes.FrontendAnnotations{},
 		backendAnnotations:  map[string]*ingtypes.BackendAnnotations{},
@@ -60,6 +61,7 @@ type converter struct {
 	options             *ingtypes.ConverterOptions
 	logger              types.Logger
 	cache               ingtypes.Cache
+	updater             annotations.Updater
 	globalConfig        *ingtypes.Config
 	frontendAnnotations map[string]*ingtypes.FrontendAnnotations
 	backendAnnotations  map[string]*ingtypes.BackendAnnotations
@@ -139,15 +141,15 @@ func (c *converter) syncIngress(ing *extensions.Ingress) {
 }
 
 func (c *converter) syncAnnotations() {
-	updater := annotations.NewUpdater(c.haproxy, c.cache, c.logger)
+	c.updater.UpdateGlobalConfig(c.haproxy.Global(), c.globalConfig)
 	for _, frontend := range c.haproxy.Frontends() {
 		if ann, found := c.frontendAnnotations[frontend.Hostname]; found {
-			updater.UpdateFrontendConfig(frontend, ann)
+			c.updater.UpdateFrontendConfig(frontend, ann)
 		}
 	}
 	for _, backend := range c.haproxy.Backends() {
 		if ann, found := c.backendAnnotations[backend.ID]; found {
-			updater.UpdateBackendConfig(backend, ann)
+			c.updater.UpdateBackendConfig(backend, ann)
 		}
 	}
 }
@@ -212,7 +214,8 @@ func (c *converter) addBackend(fullSvcName string, svcPort int, ingAnn *ingtypes
 	// Merging Ingress annotations
 	skipped, _ := utils.UpdateStruct(c.globalConfig.ConfigDefaults, ingAnn, ann)
 	if len(skipped) > 0 {
-		c.logger.Info("skipping backend annotation(s) from %v due to conflict: %v", ingAnn.Source, skipped)
+		c.logger.Info("skipping backend '%s/%s:%d' annotation(s) from %v due to conflict: %v",
+			backend.Namespace, backend.Name, backend.Port, ingAnn.Source, skipped)
 	}
 	return backend, nil
 }

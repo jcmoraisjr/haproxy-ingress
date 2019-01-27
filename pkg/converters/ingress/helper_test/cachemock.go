@@ -33,6 +33,7 @@ type CacheMock struct {
 	PodList       map[string]*api.Pod
 	SecretTLSPath map[string]string
 	SecretCAPath  map[string]string
+	SecretDHPath  map[string]string
 	SecretContent SecretContent
 }
 
@@ -77,6 +78,14 @@ func (c *CacheMock) GetTLSSecretPath(secretName string) (string, error) {
 // GetCASecretPath ...
 func (c *CacheMock) GetCASecretPath(secretName string) (string, error) {
 	if path, found := c.SecretCAPath[secretName]; found {
+		return path, nil
+	}
+	return "", fmt.Errorf("secret not found: '%s'", secretName)
+}
+
+// GetDHSecretPath ...
+func (c *CacheMock) GetDHSecretPath(secretName string) (string, error) {
+	if path, found := c.SecretDHPath[secretName]; found {
 		return path, nil
 	}
 	return "", fmt.Errorf("secret not found: '%s'", secretName)

@@ -27,5 +27,6 @@ type Cache interface {
 	GetPod(podName string) (*api.Pod, error)
 	GetTLSSecretPath(secretName string) (string, error)
 	GetCASecretPath(secretName string) (string, error)
+	GetDHSecretPath(secretName string) (string, error)
 	GetSecretContent(secretName, keyName string) ([]byte, error)
 }

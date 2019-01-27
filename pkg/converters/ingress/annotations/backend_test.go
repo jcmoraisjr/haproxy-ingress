@@ -87,7 +87,7 @@ func TestAffinity(t *testing.T) {
 		c := setup(t)
 		u := c.createUpdater()
 		d := c.createBackendData("default", "ing1", &test.ann)
-		u.buildAffinity(d)
+		u.buildBackendAffinity(d)
 		if !reflect.DeepEqual(test.expCookie, d.backend.Cookie) {
 			t.Errorf("config %d differs - expected: %+v - actual: %+v", i, test.expCookie, d.backend.Cookie)
 		}
@@ -208,7 +208,7 @@ usr2::clearpwd2`)}},
 		}
 		c.cache.SecretContent = test.secrets
 		d := c.createBackendData(test.namespace, test.ingname, &test.ann)
-		u.buildAuthHTTP(d)
+		u.buildBackendAuthHTTP(d)
 		userlists := u.haproxy.Userlists()
 		httpRequests := d.backend.HTTPRequests
 		if len(userlists)+len(test.expUserlists) > 0 && !reflect.DeepEqual(test.expUserlists, userlists) {
@@ -489,7 +489,7 @@ INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not refe
 		d := c.createBackendData("default", "ing1", &test.ann)
 		d.backend.Endpoints = test.endpoints
 		u := c.createUpdater()
-		u.buildBlueGreen(d)
+		u.buildBackendBlueGreen(d)
 		weights := make([]int, len(d.backend.Endpoints))
 		for j, ep := range d.backend.Endpoints {
 			weights[j] = ep.Weight

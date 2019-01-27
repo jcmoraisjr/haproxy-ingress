@@ -16,6 +16,73 @@ limitations under the License.
 
 package types
 
+// Global ...
+type Global struct {
+	Procs           ProcsConfig
+	Syslog          SyslogConfig
+	MaxConn         int
+	Timeout         TimeoutConfig
+	SSL             SSLConfig
+	ModSecurity     ModSecurityConfig
+	DrainSupport    bool
+	LoadServerState bool
+	StatsSocket     string
+	CustomConfig    []string
+}
+
+// ProcsConfig ...
+type ProcsConfig struct {
+	Nbproc          int
+	Nbthread        int
+	NbprocBalance   int
+	NbprocSSL       int
+	BindprocBalance string
+	BindprocSSL     string
+	CPUMap          string
+}
+
+// SyslogConfig ...
+type SyslogConfig struct {
+	Endpoint string
+	Format   string
+	Tag      string
+}
+
+// TimeoutConfig ...
+type TimeoutConfig struct {
+	FrontendTimeoutConfig
+	BackendTimeoutConfig
+	Stop string
+}
+
+// SSLConfig ...
+type SSLConfig struct {
+	DHParam   DHParamConfig
+	Ciphers   string
+	Options   string
+	Engine    string
+	ModeAsync bool
+}
+
+// DHParamConfig ...
+type DHParamConfig struct {
+	Filename       string
+	DefaultMaxSize int
+}
+
+// ModSecurityConfig ...
+type ModSecurityConfig struct {
+	Endpoints []string
+	Timeout   ModSecurityTimeoutConfig
+}
+
+// ModSecurityTimeoutConfig ...
+type ModSecurityTimeoutConfig struct {
+	Hello      string
+	Idle       string
+	Processing string
+}
+
 // Frontend ...
 //
 // Wildcard `*` hostname is a catch all and will be used if no other hostname,
@@ -89,6 +156,17 @@ type Endpoint struct {
 	Port   int
 	Weight int
 	Target string
+}
+
+// BackendTimeoutConfig ...
+type BackendTimeoutConfig struct {
+	Connect     string
+	HTTPRequest string
+	KeepAlive   string
+	Queue       string
+	Server      string
+	ServerFin   string
+	Tunnel      string
 }
 
 // Cookie ...

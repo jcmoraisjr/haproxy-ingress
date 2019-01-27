@@ -830,7 +830,7 @@ func TestSyncAnnBackSvcIngConflict(t *testing.T) {
   balancealgorithm: leastconn`)
 
 	c.compareLogging(`
-INFO skipping backend annotation(s) from ingress 'default/echo' due to conflict: [balance-algorithm]`)
+INFO skipping backend 'default/echo:8080' annotation(s) from ingress 'default/echo' due to conflict: [balance-algorithm]`)
 }
 
 func TestSyncAnnBacksSvcIng(t *testing.T) {
@@ -930,7 +930,7 @@ func TestSyncAnnBackDefault(t *testing.T) {
   balancealgorithm: leastconn`)
 
 	c.compareLogging(`
-INFO skipping backend annotation(s) from ingress 'default/echo5' due to conflict: [balance-algorithm]`)
+INFO skipping backend 'default/echo5:8080' annotation(s) from ingress 'default/echo5' due to conflict: [balance-algorithm]`)
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -943,8 +943,9 @@ type testConfig struct {
 	t       *testing.T
 	decode  func(data []byte, defaults *schema.GroupVersionKind, into runtime.Object) (runtime.Object, *schema.GroupVersionKind, error)
 	hconfig haproxy.Config
-	cache   *ing_helper.CacheMock
 	logger  *types_helper.LoggerMock
+	cache   *ing_helper.CacheMock
+	updater *ing_helper.UpdaterMock
 }
 
 func setup(t *testing.T) *testConfig {
@@ -989,6 +990,7 @@ func (c *testConfig) SyncDef(config map[string]string, ing ...*extensions.Ingres
 		c.hconfig,
 		config,
 	).(*converter)
+	conv.updater = c.updater
 	conv.globalConfig = mergeConfig(&ingtypes.Config{}, config)
 	conv.Sync(ing)
 }
