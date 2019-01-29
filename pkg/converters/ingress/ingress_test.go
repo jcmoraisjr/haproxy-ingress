@@ -504,11 +504,11 @@ func TestSyncBackendDefault(t *testing.T) {
 	c.createSvc1Auto()
 	c.Sync(c.createIng2("default/echo", "echo:8080"))
 
-	c.compareConfigFront(`
-- hostname: '*'
-  paths:
-  - path: /
-    backend: default_echo_8080`)
+	c.compareConfigDefaultFront(`
+hostname: '*'
+paths:
+- path: /
+  backend: default_echo_8080`)
 
 	c.compareConfigBack(`
 - id: default_echo_8080
@@ -563,11 +563,11 @@ func TestSyncDefaultBackendReusedPath1(t *testing.T) {
 		c.createIng2("default/echo2", "echo2:8080"),
 	)
 
-	c.compareConfigFront(`
-- hostname: '*'
-  paths:
-  - path: /
-    backend: default_echo1_8080`)
+	c.compareConfigDefaultFront(`
+hostname: '*'
+paths:
+- path: /
+  backend: default_echo1_8080`)
 
 	c.compareConfigBack(`
 - id: default_echo1_8080
@@ -590,11 +590,11 @@ func TestSyncDefaultBackendReusedPath2(t *testing.T) {
 		c.createIng1("default/echo2", "'*'", "/", "echo2:8080"),
 	)
 
-	c.compareConfigFront(`
-- hostname: '*'
-  paths:
-  - path: /
-    backend: default_echo1_8080`)
+	c.compareConfigDefaultFront(`
+hostname: '*'
+paths:
+- path: /
+  backend: default_echo1_8080`)
 
 	c.compareConfigBack(`
 - id: default_echo1_8080
@@ -621,11 +621,11 @@ func TestSyncEmptyHost(t *testing.T) {
 	c.createSvc1Auto()
 	c.Sync(c.createIng1("default/echo", "", "/", "echo:8080"))
 
-	c.compareConfigFront(`
-- hostname: '*'
-  paths:
-  - path: /
-    backend: default_echo_8080`)
+	c.compareConfigDefaultFront(`
+hostname: '*'
+paths:
+- path: /
+  backend: default_echo_8080`)
 }
 
 func TestSyncMultiNamespace(t *testing.T) {
@@ -1179,9 +1179,9 @@ type (
 	}
 )
 
-func (c *testConfig) compareConfigFront(expected string) {
+func convertFrontend(hafronts ...*hatypes.Frontend) []frontendMock {
 	frontends := []frontendMock{}
-	for _, f := range c.hconfig.Frontends() {
+	for _, f := range hafronts {
 		paths := []pathMock{}
 		for _, p := range f.Paths {
 			paths = append(paths, pathMock{Path: p.Path, BackendID: p.BackendID})
@@ -1194,7 +1194,20 @@ func (c *testConfig) compareConfigFront(expected string) {
 			TLS:          tlsMock{TLSFilename: f.TLS.TLSFilename},
 		})
 	}
-	c.compareText(_yamlMarshal(frontends), expected)
+	return frontends
+}
+
+func (c *testConfig) compareConfigFront(expected string) {
+	c.compareText(_yamlMarshal(convertFrontend(c.hconfig.Frontends()...)), expected)
+}
+
+func (c *testConfig) compareConfigDefaultFront(expected string) {
+	frontend := c.hconfig.DefaultFrontend()
+	if frontend != nil {
+		c.compareText(_yamlMarshal(convertFrontend(frontend)[0]), expected)
+	} else {
+		c.compareText("[]", expected)
+	}
 }
 
 type (

@@ -33,6 +33,7 @@ type Config interface {
 	ConfigDefaultBackend(defaultBackend *hatypes.Backend)
 	AddUserlist(name string, users []hatypes.User) *hatypes.Userlist
 	FindUserlist(name string) *hatypes.Userlist
+	DefaultFrontend() *hatypes.Frontend
 	DefaultBackend() *hatypes.Backend
 	Global() *hatypes.Global
 	Frontends() []*hatypes.Frontend
@@ -42,11 +43,12 @@ type Config interface {
 }
 
 type config struct {
-	global         *hatypes.Global
-	frontends      []*hatypes.Frontend
-	backends       []*hatypes.Backend
-	userlists      []*hatypes.Userlist
-	defaultBackend *hatypes.Backend
+	global          *hatypes.Global
+	frontends       []*hatypes.Frontend
+	backends        []*hatypes.Backend
+	userlists       []*hatypes.Userlist
+	defaultFrontend *hatypes.Frontend
+	defaultBackend  *hatypes.Backend
 }
 
 func createConfig() Config {
@@ -60,14 +62,21 @@ func (c *config) AcquireFrontend(hostname string) *hatypes.Frontend {
 		return frontend
 	}
 	frontend := createFrontend(hostname)
-	c.frontends = append(c.frontends, frontend)
-	sort.Slice(c.frontends, func(i, j int) bool {
-		return c.frontends[i].Hostname < c.frontends[j].Hostname
-	})
+	if frontend.Hostname != "*" {
+		c.frontends = append(c.frontends, frontend)
+		sort.Slice(c.frontends, func(i, j int) bool {
+			return c.frontends[i].Hostname < c.frontends[j].Hostname
+		})
+	} else {
+		c.defaultFrontend = frontend
+	}
 	return frontend
 }
 
 func (c *config) FindFrontend(hostname string) *hatypes.Frontend {
+	if hostname == "*" && c.defaultFrontend != nil {
+		return c.defaultFrontend
+	}
 	for _, f := range c.frontends {
 		if f.Hostname == hostname {
 			return f
@@ -146,6 +155,10 @@ func (c *config) AddUserlist(name string, users []hatypes.User) *hatypes.Userlis
 
 func (c *config) FindUserlist(name string) *hatypes.Userlist {
 	return nil
+}
+
+func (c *config) DefaultFrontend() *hatypes.Frontend {
+	return c.defaultFrontend
 }
 
 func (c *config) DefaultBackend() *hatypes.Backend {
