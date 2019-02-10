@@ -45,8 +45,8 @@ func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Con
 		cache:              options.Cache,
 		updater:            annotations.NewUpdater(haproxy, options.Cache, options.Logger),
 		globalConfig:       mergeConfig(createDefaults(), globalConfig),
-		hostAnnotations:    map[string]*ingtypes.HostAnnotations{},
-		backendAnnotations: map[string]*ingtypes.BackendAnnotations{},
+		hostAnnotations:    map[*hatypes.Host]*ingtypes.HostAnnotations{},
+		backendAnnotations: map[*hatypes.Backend]*ingtypes.BackendAnnotations{},
 	}
 	if backend, err := c.addBackend(options.DefaultBackend, 0, &ingtypes.BackendAnnotations{}); err == nil {
 		haproxy.ConfigDefaultBackend(backend)
@@ -63,8 +63,8 @@ type converter struct {
 	cache              ingtypes.Cache
 	updater            annotations.Updater
 	globalConfig       *ingtypes.Config
-	hostAnnotations    map[string]*ingtypes.HostAnnotations
-	backendAnnotations map[string]*ingtypes.BackendAnnotations
+	hostAnnotations    map[*hatypes.Host]*ingtypes.HostAnnotations
+	backendAnnotations map[*hatypes.Backend]*ingtypes.BackendAnnotations
 }
 
 func (c *converter) Sync(ingress []*extensions.Ingress) {
@@ -143,12 +143,12 @@ func (c *converter) syncIngress(ing *extensions.Ingress) {
 func (c *converter) syncAnnotations() {
 	c.updater.UpdateGlobalConfig(c.haproxy.Global(), c.globalConfig)
 	for _, host := range c.haproxy.Hosts() {
-		if ann, found := c.hostAnnotations[host.Hostname]; found {
+		if ann, found := c.hostAnnotations[host]; found {
 			c.updater.UpdateHostConfig(host, ann)
 		}
 	}
 	for _, backend := range c.haproxy.Backends() {
-		if ann, found := c.backendAnnotations[backend.ID]; found {
+		if ann, found := c.backendAnnotations[backend]; found {
 			c.updater.UpdateBackendConfig(backend, ann)
 		}
 	}
@@ -171,13 +171,13 @@ func (c *converter) addDefaultHostBackend(fullSvcName string, svcPort int, ingFr
 
 func (c *converter) addHost(hostname string, ingAnn *ingtypes.HostAnnotations) *hatypes.Host {
 	host := c.haproxy.AcquireHost(hostname)
-	if ann, found := c.hostAnnotations[host.Hostname]; found {
+	if ann, found := c.hostAnnotations[host]; found {
 		skipped, _ := utils.UpdateStruct(c.globalConfig.ConfigDefaults, ingAnn, ann)
 		if len(skipped) > 0 {
 			c.logger.Info("skipping host annotation(s) from %v due to conflict: %v", ingAnn.Source, skipped)
 		}
 	} else {
-		c.hostAnnotations[host.Hostname] = ingAnn
+		c.hostAnnotations[host] = ingAnn
 	}
 	return host
 }
@@ -197,7 +197,7 @@ func (c *converter) addBackend(fullSvcName string, svcPort int, ingAnn *ingtypes
 		svcPort = svc.Spec.Ports[0].TargetPort.IntValue()
 	}
 	backend := c.haproxy.AcquireBackend(namespace, svcName, svcPort)
-	ann, found := c.backendAnnotations[backend.ID]
+	ann, found := c.backendAnnotations[backend]
 	if !found {
 		// New backend, configure endpoints and svc annotations
 		if err := c.addEndpoints(svc, svcPort, backend); err != nil {
@@ -209,7 +209,7 @@ func (c *converter) addBackend(fullSvcName string, svcPort int, ingAnn *ingtypes
 			Name:      svcName,
 			Type:      "service",
 		}, svc.Annotations)
-		c.backendAnnotations[backend.ID] = ann
+		c.backendAnnotations[backend] = ann
 	}
 	// Merging Ingress annotations
 	skipped, _ := utils.UpdateStruct(c.globalConfig.ConfigDefaults, ingAnn, ann)
