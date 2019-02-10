@@ -26,7 +26,7 @@ import (
 // Updater ...
 type Updater interface {
 	UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.Config)
-	UpdateFrontendConfig(frontend *hatypes.Frontend, ann *ingtypes.FrontendAnnotations)
+	UpdateHostConfig(host *hatypes.Host, ann *ingtypes.HostAnnotations)
 	UpdateBackendConfig(backend *hatypes.Backend, ann *ingtypes.BackendAnnotations)
 }
 
@@ -50,9 +50,9 @@ type globalData struct {
 	config *ingtypes.Config
 }
 
-type frontData struct {
-	frontend *hatypes.Frontend
-	ann      *ingtypes.FrontendAnnotations
+type hostData struct {
+	host *hatypes.Host
+	ann  *ingtypes.HostAnnotations
 }
 
 type backData struct {
@@ -84,18 +84,18 @@ func (c *updater) UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.Co
 	c.buildGlobalCustomConfig(data)
 }
 
-func (c *updater) UpdateFrontendConfig(frontend *hatypes.Frontend, ann *ingtypes.FrontendAnnotations) {
-	data := &frontData{
-		frontend: frontend,
-		ann:      ann,
+func (c *updater) UpdateHostConfig(host *hatypes.Host, ann *ingtypes.HostAnnotations) {
+	data := &hostData{
+		host: host,
+		ann:  ann,
 	}
-	frontend.RootRedirect = ann.AppRoot
-	frontend.Alias.AliasName = ann.ServerAlias
-	frontend.Alias.AliasRegex = ann.ServerAliasRegex
-	frontend.Timeout.Client = ann.TimeoutClient
-	frontend.Timeout.ClientFin = ann.TimeoutClientFin
-	c.buildFrontendAuthTLS(data)
-	c.buildFrontendSSLPassthrough(data)
+	host.RootRedirect = ann.AppRoot
+	host.Alias.AliasName = ann.ServerAlias
+	host.Alias.AliasRegex = ann.ServerAliasRegex
+	host.Timeout.Client = ann.TimeoutClient
+	host.Timeout.ClientFin = ann.TimeoutClientFin
+	c.buildHostAuthTLS(data)
+	c.buildHostSSLPassthrough(data)
 }
 
 func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, ann *ingtypes.BackendAnnotations) {

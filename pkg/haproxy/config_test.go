@@ -20,10 +20,10 @@ import (
 	"testing"
 )
 
-func TestAcquireFrontendDiff(t *testing.T) {
+func TestAcquireHostDiff(t *testing.T) {
 	c := createConfig()
-	f1 := c.AcquireFrontend("h1")
-	f2 := c.AcquireFrontend("h2")
+	f1 := c.AcquireHost("h1")
+	f2 := c.AcquireHost("h2")
 	if f1.Hostname != "h1" {
 		t.Errorf("expected %v but was %v", "h1", f1.Hostname)
 	}
@@ -32,12 +32,12 @@ func TestAcquireFrontendDiff(t *testing.T) {
 	}
 }
 
-func TestAcquireFrontendSame(t *testing.T) {
+func TestAcquireHostSame(t *testing.T) {
 	c := createConfig()
-	f1 := c.AcquireFrontend("h1")
-	f2 := c.AcquireFrontend("h1")
+	f1 := c.AcquireHost("h1")
+	f2 := c.AcquireHost("h1")
 	if f1 != f2 {
-		t.Errorf("expected same frontend but was different")
+		t.Errorf("expected same host but was different")
 	}
 }
 

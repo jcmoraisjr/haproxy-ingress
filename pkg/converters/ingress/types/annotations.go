@@ -16,8 +16,8 @@ limitations under the License.
 
 package types
 
-// FrontendAnnotations ...
-type FrontendAnnotations struct {
+// HostAnnotations ...
+type HostAnnotations struct {
 	Source                 Source `json:"-"`
 	AppRoot                string `json:"app-root"`
 	AuthTLSCertHeader      bool   `json:"auth-tls-cert-header"`

@@ -128,7 +128,7 @@ func TestSyncReuseBackend(t *testing.T) {
     port: 8080`)
 }
 
-func TestSyncReuseFrontend(t *testing.T) {
+func TestSyncReuseHost(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
@@ -205,7 +205,7 @@ func TestSyncRootPathLast(t *testing.T) {
     backend: default_echo_8080`)
 }
 
-func TestSyncFrontendSorted(t *testing.T) {
+func TestSyncHostSorted(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
@@ -709,7 +709,7 @@ func TestSyncAnnFrontsConflict(t *testing.T) {
     client: 1s`)
 
 	c.compareLogging(`
-INFO skipping frontend annotation(s) from ingress 'default/echo2' due to conflict: [timeout-client]`)
+INFO skipping host annotation(s) from ingress 'default/echo2' due to conflict: [timeout-client]`)
 }
 
 func TestSyncAnnFronts(t *testing.T) {
@@ -1170,7 +1170,7 @@ type (
 	tlsMock struct {
 		TLSFilename string `yaml:",omitempty"`
 	}
-	frontendMock struct {
+	hostMock struct {
 		Hostname     string
 		Paths        []pathMock
 		RootRedirect string      `yaml:",omitempty"`
@@ -1179,14 +1179,14 @@ type (
 	}
 )
 
-func convertFrontend(hafronts ...*hatypes.Frontend) []frontendMock {
-	frontends := []frontendMock{}
+func convertHost(hafronts ...*hatypes.Host) []hostMock {
+	hosts := []hostMock{}
 	for _, f := range hafronts {
 		paths := []pathMock{}
 		for _, p := range f.Paths {
 			paths = append(paths, pathMock{Path: p.Path, BackendID: p.BackendID})
 		}
-		frontends = append(frontends, frontendMock{
+		hosts = append(hosts, hostMock{
 			Hostname:     f.Hostname,
 			Paths:        paths,
 			RootRedirect: f.RootRedirect,
@@ -1194,17 +1194,17 @@ func convertFrontend(hafronts ...*hatypes.Frontend) []frontendMock {
 			TLS:          tlsMock{TLSFilename: f.TLS.TLSFilename},
 		})
 	}
-	return frontends
+	return hosts
 }
 
 func (c *testConfig) compareConfigFront(expected string) {
-	c.compareText(_yamlMarshal(convertFrontend(c.hconfig.Frontends()...)), expected)
+	c.compareText(_yamlMarshal(convertHost(c.hconfig.Hosts()...)), expected)
 }
 
 func (c *testConfig) compareConfigDefaultFront(expected string) {
-	frontend := c.hconfig.DefaultFrontend()
-	if frontend != nil {
-		c.compareText(_yamlMarshal(convertFrontend(frontend)[0]), expected)
+	host := c.hconfig.DefaultHost()
+	if host != nil {
+		c.compareText(_yamlMarshal(convertHost(host)[0]), expected)
 	} else {
 		c.compareText("[]", expected)
 	}

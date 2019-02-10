@@ -26,29 +26,29 @@ import (
 
 // Config ...
 type Config interface {
-	AcquireFrontend(hostname string) *hatypes.Frontend
-	FindFrontend(hostname string) *hatypes.Frontend
+	AcquireHost(hostname string) *hatypes.Host
+	FindHost(hostname string) *hatypes.Host
 	AcquireBackend(namespace, name string, port int) *hatypes.Backend
 	FindBackend(namespace, name string, port int) *hatypes.Backend
 	ConfigDefaultBackend(defaultBackend *hatypes.Backend)
 	AddUserlist(name string, users []hatypes.User) *hatypes.Userlist
 	FindUserlist(name string) *hatypes.Userlist
-	DefaultFrontend() *hatypes.Frontend
+	DefaultHost() *hatypes.Host
 	DefaultBackend() *hatypes.Backend
 	Global() *hatypes.Global
-	Frontends() []*hatypes.Frontend
+	Hosts() []*hatypes.Host
 	Backends() []*hatypes.Backend
 	Userlists() []*hatypes.Userlist
 	Equals(other Config) bool
 }
 
 type config struct {
-	global          *hatypes.Global
-	frontends       []*hatypes.Frontend
-	backends        []*hatypes.Backend
-	userlists       []*hatypes.Userlist
-	defaultFrontend *hatypes.Frontend
-	defaultBackend  *hatypes.Backend
+	global         *hatypes.Global
+	hosts          []*hatypes.Host
+	backends       []*hatypes.Backend
+	userlists      []*hatypes.Userlist
+	defaultHost    *hatypes.Host
+	defaultBackend *hatypes.Backend
 }
 
 func createConfig() Config {
@@ -57,27 +57,27 @@ func createConfig() Config {
 	}
 }
 
-func (c *config) AcquireFrontend(hostname string) *hatypes.Frontend {
-	if frontend := c.FindFrontend(hostname); frontend != nil {
-		return frontend
+func (c *config) AcquireHost(hostname string) *hatypes.Host {
+	if host := c.FindHost(hostname); host != nil {
+		return host
 	}
-	frontend := createFrontend(hostname)
-	if frontend.Hostname != "*" {
-		c.frontends = append(c.frontends, frontend)
-		sort.Slice(c.frontends, func(i, j int) bool {
-			return c.frontends[i].Hostname < c.frontends[j].Hostname
+	host := createHost(hostname)
+	if host.Hostname != "*" {
+		c.hosts = append(c.hosts, host)
+		sort.Slice(c.hosts, func(i, j int) bool {
+			return c.hosts[i].Hostname < c.hosts[j].Hostname
 		})
 	} else {
-		c.defaultFrontend = frontend
+		c.defaultHost = host
 	}
-	return frontend
+	return host
 }
 
-func (c *config) FindFrontend(hostname string) *hatypes.Frontend {
-	if hostname == "*" && c.defaultFrontend != nil {
-		return c.defaultFrontend
+func (c *config) FindHost(hostname string) *hatypes.Host {
+	if hostname == "*" && c.defaultHost != nil {
+		return c.defaultHost
 	}
-	for _, f := range c.frontends {
+	for _, f := range c.hosts {
 		if f.Hostname == hostname {
 			return f
 		}
@@ -85,8 +85,8 @@ func (c *config) FindFrontend(hostname string) *hatypes.Frontend {
 	return nil
 }
 
-func createFrontend(hostname string) *hatypes.Frontend {
-	return &hatypes.Frontend{
+func createHost(hostname string) *hatypes.Host {
+	return &hatypes.Host{
 		Hostname: hostname,
 	}
 }
@@ -157,8 +157,8 @@ func (c *config) FindUserlist(name string) *hatypes.Userlist {
 	return nil
 }
 
-func (c *config) DefaultFrontend() *hatypes.Frontend {
-	return c.defaultFrontend
+func (c *config) DefaultHost() *hatypes.Host {
+	return c.defaultHost
 }
 
 func (c *config) DefaultBackend() *hatypes.Backend {
@@ -169,8 +169,8 @@ func (c *config) Global() *hatypes.Global {
 	return c.global
 }
 
-func (c *config) Frontends() []*hatypes.Frontend {
-	return c.frontends
+func (c *config) Hosts() []*hatypes.Host {
+	return c.hosts
 }
 
 func (c *config) Backends() []*hatypes.Backend {

@@ -16,35 +16,35 @@ limitations under the License.
 
 package annotations
 
-func (c *updater) buildFrontendAuthTLS(d *frontData) {
+func (c *updater) buildHostAuthTLS(d *hostData) {
 	if d.ann.AuthTLSSecret == "" {
 		return
 	}
 	if cafile, err := c.cache.GetCASecretPath(d.ann.AuthTLSSecret); err == nil {
-		d.frontend.TLS.CAFilename = cafile
-		d.frontend.TLS.ErrorPage = d.ann.AuthTLSErrorPage
-		d.frontend.TLS.AddCertHeader = d.ann.AuthTLSCertHeader
+		d.host.TLS.CAFilename = cafile
+		d.host.TLS.ErrorPage = d.ann.AuthTLSErrorPage
+		d.host.TLS.AddCertHeader = d.ann.AuthTLSCertHeader
 	}
 }
 
-func (c *updater) buildFrontendSSLPassthrough(d *frontData) {
+func (c *updater) buildHostSSLPassthrough(d *hostData) {
 	if !d.ann.SSLPassthrough {
 		return
 	}
-	rootPath := d.frontend.FindPath("/")
+	rootPath := d.host.FindPath("/")
 	if rootPath == nil {
 		c.logger.Warn("skipping SSL of %s: root path was not configured", d.ann.Source)
 		return
 	}
-	for _, path := range d.frontend.Paths {
+	for _, path := range d.host.Paths {
 		if path.Path != "/" {
 			c.logger.Warn("ignoring path '%s' from '%s': ssl-passthrough only support root path", path.Path, d.ann.Source)
 		}
 	}
 	if d.ann.SSLPassthroughHTTPPort != 0 {
 		httpBackend := c.haproxy.FindBackend(rootPath.Backend.Namespace, rootPath.Backend.Name, d.ann.SSLPassthroughHTTPPort)
-		d.frontend.HTTPPassthroughBackend = httpBackend
+		d.host.HTTPPassthroughBackend = httpBackend
 	}
 	rootPath.Backend.ModeTCP = true
-	d.frontend.SSLPassthrough = true
+	d.host.SSLPassthrough = true
 }

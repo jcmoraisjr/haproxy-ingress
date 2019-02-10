@@ -21,8 +21,8 @@ import (
 )
 
 // FindPath ...
-func (f *Frontend) FindPath(path string) *FrontendPath {
-	for _, p := range f.Paths {
+func (h *Host) FindPath(path string) *HostPath {
+	for _, p := range h.Paths {
 		if p.Path == path {
 			return p
 		}
@@ -31,13 +31,13 @@ func (f *Frontend) FindPath(path string) *FrontendPath {
 }
 
 // AddPath ...
-func (f *Frontend) AddPath(backend *Backend, path string) {
-	f.Paths = append(f.Paths, &FrontendPath{
+func (h *Host) AddPath(backend *Backend, path string) {
+	h.Paths = append(h.Paths, &HostPath{
 		Path:      path,
 		Backend:   *backend,
 		BackendID: backend.ID,
 	})
-	sort.Slice(f.Paths, func(i, j int) bool {
-		return f.Paths[i].Path > f.Paths[j].Path
+	sort.Slice(h.Paths, func(i, j int) bool {
+		return h.Paths[i].Path > h.Paths[j].Path
 	})
 }

@@ -28,10 +28,10 @@ type UpdaterMock struct{}
 func (u *UpdaterMock) UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.Config) {
 }
 
-// UpdateFrontendConfig ...
-func (u *UpdaterMock) UpdateFrontendConfig(frontend *hatypes.Frontend, ann *ingtypes.FrontendAnnotations) {
-	frontend.Timeout.Client = ann.TimeoutClient
-	frontend.RootRedirect = ann.AppRoot
+// UpdateHostConfig ...
+func (u *UpdaterMock) UpdateHostConfig(host *hatypes.Host, ann *ingtypes.HostAnnotations) {
+	host.Timeout.Client = ann.TimeoutClient
+	host.RootRedirect = ann.AppRoot
 }
 
 // UpdateBackendConfig ...
