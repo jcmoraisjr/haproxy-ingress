@@ -130,7 +130,7 @@ func TestGetFakeSSLCert(t *testing.T) {
 	}
 }
 
-func TestAddCertAuth(t *testing.T) {
+func TestAddCertAuthNoCRL(t *testing.T) {
 	td, err := ioutil.TempDir("", "ssl")
 	if err != nil {
 		t.Fatalf("Unexpected error creating temporal directory: %v", err)
@@ -144,11 +144,58 @@ func TestAddCertAuth(t *testing.T) {
 		t.Fatalf("unexpected error creating SSL certificate: %v", err)
 	}
 	c := certutil.EncodeCertPEM(ca.Cert)
-	ic, err := AddCertAuth(cn, c)
+	ic, err := AddCertAuth(cn, c, []byte{})
 	if err != nil {
 		t.Fatalf("unexpected error creating SSL certificate: %v", err)
 	}
 	if ic.CAFileName == "" {
 		t.Fatalf("expected a valid CA file name")
+	}
+}
+
+func TestAddCertAuthWithCRL(t *testing.T) {
+	td, err := ioutil.TempDir("", "ssl")
+	if err != nil {
+		t.Fatalf("Unexpected error creating temporal directory: %v", err)
+	}
+	ingress.DefaultSSLDirectory = td
+	ingress.DefaultCACertsDirectory = td
+	ingress.DefaultCrlDirectory = td
+
+	cn := "demo-ca"
+	_, ca, err := generateRSACerts(cn)
+	if err != nil {
+		t.Fatalf("unexpected error creating SSL certificate: %v", err)
+	}
+	c := certutil.EncodeCertPEM(ca.Cert)
+
+	crl := []byte(`-----BEGIN X509 CRL-----
+MIIC6jCB0wIBATANBgkqhkiG9w0BAQsFADBvMQswCQYDVQQGEwJHQjEQMA4GA1UE
+CAwHRW5nbGFuZDEWMBQGA1UECgwNRmFrZSBPcmcgTHRkLjESMBAGA1UEAwwJRmFr
+ZSBSb290MSIwIAYJKoZIhvcNAQkBFhNmYWtlQHRlc3RlcnRvbnMuY29tFw0xOTAy
+MTgyMjQ1NTNaFw0xOTAzMjAyMjQ1NTNaoDAwLjAfBgNVHSMEGDAWgBQaog7kJ5Yn
+dBI9oD7YpFkVye9ICjALBgNVHRQEBAICEAAwDQYJKoZIhvcNAQELBQADggIBAFj7
+W3twbqXOjsyPWmiw0rMBzgYqfPFVB8Ox5sItO88SjobfYdt9HMr3tn7j5X4FhKyc
+HWXbclLY7vk0a8GMtxsqGgWZePFMQ5X/Af/JYz0UjBEUMLF2qqdNp9YOUZOorBTS
+YVMFMPu4sHC6Ub/2q9dhegXop9rS14dC8/QfExMw0VJturWQ107hZPVF+JUwPGcA
+a9WwYzPn3Tq1mIuLVo0L1nlG8L5FpkkeP27ot+K9VmfhhqKngTYZCnicoAqp9toQ
+Ass1RNFxHk726yDOtfN4EjxFAYmd0BPil+lV1MwsWvanwP//HDWccfs+uhRONPEc
+1qftNc+onxsFr+44PKCCwJEwhI7SDO460I1pE3FXSgSqjHrO6yb4EYmXZS1NJOqm
+oNgqAVl8sHjsabXpSJxpjmauR+OJyz0eknSdqFuN+2st83lbZNOVXb4Vaxq/CB9d
+ztrRPMqRjzJYKeYQOCNA7NRU8yiwO62oEMsB6EMVJJv+mWJQRWMcy1tV8l2AD6b+
+G1AfFHxBSaRZSC6hGzqgqn3dUEnyeK4/4j3gWMg53NrOrh58AdIJcqFdJ3p7Ew2B
+sSc/Li/1n53ehdXe5YiHk/oHrkBVWM01glk8OdREFAwpfPXguuLSi/m+r0LNZIXZ
+LzIFySlMeNl9yobJQr9dRw1rYpqnUZ6VOduAvIBw
+-----END X509 CRL-----`)
+
+	ic, err := AddCertAuth(cn, c, crl)
+	if err != nil {
+		t.Fatalf("unexpected error creating SSL certificate: %v", err)
+	}
+	if ic.CAFileName == "" {
+		t.Fatalf("expected a valid CA file name")
+	}
+	if ic.CRLFileName == "" {
+		t.Fatalf("expected a valid CRL file name")
 	}
 }

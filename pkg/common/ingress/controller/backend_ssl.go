@@ -111,7 +111,8 @@ func (ic *GenericController) getPemCertificate(secret *apiv1.Secret) (*ingress.S
 		}
 
 	} else if ca != nil {
-		s, err = ssl.AddCertAuth(nsSecName, ca)
+		crl, _ := secret.Data["ca.crl"]
+		s, err = ssl.AddCertAuth(nsSecName, ca, crl)
 
 		if err != nil {
 			return nil, fmt.Errorf("unexpected error creating pem file: %v", err)

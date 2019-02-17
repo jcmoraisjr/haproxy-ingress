@@ -61,8 +61,8 @@ in-memory parsed template.
 |`/etc/haproxy/template`|`haproxy.tmpl`|[haproxy.tmpl](/rootfs/etc/haproxy/template/haproxy.tmpl)|
 |`/etc/haproxy/modsecurity`|`spoe-modsecurity.tmpl`|[spoe-modsecurity.tmpl](/rootfs/etc/haproxy/modsecurity/spoe-modsecurity.tmpl)|
 
-All templates support [Sprig](http://masterminds.github.io/sprig/) template library. 
-This library provides a group of commonly used template functions to work with dictionaries, 
+All templates support [Sprig](http://masterminds.github.io/sprig/) template library.
+This library provides a group of commonly used template functions to work with dictionaries,
 lists, math etc.
 
 ## Annotations
@@ -173,7 +173,7 @@ The following annotations are supported:
 
 * `ingress.kubernetes.io/auth-tls-cert-header`: if true HAProxy will add `X-SSL-Client-Cert` http header with a base64 encoding of the X509 certificate provided by the client. Default is to not provide the client certificate.
 * `ingress.kubernetes.io/auth-tls-error-page`: optional URL of the page to redirect the user if he doesn't provide a certificate or the certificate is invalid.
-* `ingress.kubernetes.io/auth-tls-secret`: mandatory secret name with `ca.crt` key providing all certificate authority bundles used to validate client certificates.
+* `ingress.kubernetes.io/auth-tls-secret`: mandatory secret name with `ca.crt` key providing all certificate authority bundles used to validate client certificates, an optional `ca.crl` key can also provide a CRL in PEM format for the server to verify against.
 * `ingress.kubernetes.io/auth-tls-verify-client`: optional configuration of Client Verification behavior. Supported values are `off`, `on`, `optional` and `optional_no_ca`. The default value is `on` if a valid secret is provided, `off` otherwise.
 
 See also client cert [example](/examples/auth/client-certs).

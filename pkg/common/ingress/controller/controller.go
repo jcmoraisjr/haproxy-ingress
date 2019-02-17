@@ -859,6 +859,7 @@ func (ic GenericController) GetAuthCertificate(name string) (*resolver.AuthSSLCe
 		Secret:      name,
 		CrtFileName: cert.PemFileName,
 		CAFileName:  cert.CAFileName,
+		CRLFileName: cert.CRLFileName,
 		PemSHA:      cert.PemSHA,
 	}, nil
 }
