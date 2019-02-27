@@ -49,8 +49,8 @@ in-memory parsed template.
 
 |Mounting directory|Configmap keys (filenames)|Source (choose a proper tag)|
 |---|---|---|
-|`/etc/haproxy/template`|`haproxy.tmpl`|[haproxy.tmpl](/rootfs/etc/haproxy/template/haproxy.tmpl)|
-|`/etc/haproxy/modsecurity`|`spoe-modsecurity.tmpl`|[spoe-modsecurity.tmpl](/rootfs/etc/haproxy/modsecurity/spoe-modsecurity.tmpl)|
+|`/etc/haproxy/template`|`haproxy.tmpl`|[haproxy-v07.tmpl](/rootfs/etc/haproxy/template/haproxy-v07.tmpl)|
+|`/etc/haproxy/modsecurity`|`spoe-modsecurity.tmpl`|[spoe-modsecurity-v07.tmpl](/rootfs/etc/haproxy/modsecurity/spoe-modsecurity-v07.tmpl)|
 
 All templates support [Sprig](http://masterminds.github.io/sprig/) template library. 
 This library provides a group of commonly used template functions to work with dictionaries, 
