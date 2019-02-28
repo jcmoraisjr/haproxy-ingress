@@ -385,6 +385,7 @@ The following parameters are supported:
 ||[`timeout-server`](#timeout)|time with suffix|`50s`|
 ||[`timeout-stop`](#timeout)|time with suffix|no timeout|
 ||[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
+|`[0]`|[`tls-alpn`](#tls-alpn)|TLS ALPN advertisement|`h2,http/1.1`|
 ||[`use-proxy-protocol`](#use-proxy-protocol)|[true\|false]|`false`|
 
 ### balance-algorithm
@@ -839,6 +840,13 @@ Define timeout configurations:
 Reference:
 
 * `timeout-stop` - http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-hard-stop-after
+
+### tls-alpn
+
+Defines the TLS ALPN extension advertisement. The default value is `h2,http/1.1` which enables
+HTTP/2 on the client side.
+
+* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.1-alpn
 
 ### use-proxy-protocol
 

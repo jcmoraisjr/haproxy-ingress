@@ -110,6 +110,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 			DefaultMaxSize: 2048,
 			SecretName:     "",
 		},
+		TLSALPN:                "h2,http/1.1",
 		NbprocBalance:          1,
 		NbprocSSL:              0,
 		Nbthread:               1,
