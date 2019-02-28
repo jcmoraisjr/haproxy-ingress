@@ -332,7 +332,7 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
     bind unix@/var/run/haproxy-http-{{ $singleserver.HostnameSocket }}.sock accept-proxy
 {{- end }}
 {{- if $hasSSL }}
-    bind unix@/var/run/haproxy-https{{ if not $isShared }}-{{ $singleserver.HostnameSocket }}{{ end }}.sock ssl alpn h2,http/1.1 crt {{ if $isShared }}/ingress-controller/ssl/shared-frontend/{{ else }}{{ $singleserver.SSLCertificate }}{{ end }}{{ if $isCACert }} ca-file {{ $singleserver.CertificateAuth.AuthSSLCert.CAFileName }} verify optional ca-ignore-err all crt-ignore-err all{{ end }} accept-proxy
+    bind unix@/var/run/haproxy-https{{ if not $isShared }}-{{ $singleserver.HostnameSocket }}{{ end }}.sock ssl alpn {{ $cfg.TLSALPN }} crt {{ if $isShared }}/ingress-controller/ssl/shared-frontend/{{ else }}{{ $singleserver.SSLCertificate }}{{ end }}{{ if $isCACert }} ca-file {{ $singleserver.CertificateAuth.AuthSSLCert.CAFileName }} verify optional ca-ignore-err all crt-ignore-err all{{ end }} accept-proxy
 {{- end }}
 {{- if gt $ing.Procs.Nbproc 1 }}
 {{- if and $hasBalance (not $hasSSL) }}

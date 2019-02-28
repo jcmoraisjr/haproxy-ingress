@@ -58,6 +58,7 @@ type (
 		SSLCiphers             string `json:"ssl-ciphers"`
 		SSLOptions             string `json:"ssl-options"`
 		SSLDHParam             `json:",squash"`
+		TLSALPN                string `json:"tls-alpn"`
 		NbprocBalance          int    `json:"nbproc-balance"`
 		NbprocSSL              int    `json:"nbproc-ssl"`
 		Nbthread               int    `json:"nbthread"`
