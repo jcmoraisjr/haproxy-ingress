@@ -121,6 +121,14 @@ Fixes and improvements since [v0.7-beta.6](#v07-beta6):
 * Use SRV records on dns resolver if backend port isn’t a valid number [#285](https://github.com/jcmoraisjr/haproxy-ingress/pull/285)
 * Fix permission of frontend certs dir [#293](https://github.com/jcmoraisjr/haproxy-ingress/pull/293)
 
+### v0.7-beta.8
+
+Fixes and improvements since [v0.7-beta.7](#v07-beta7):
+
+* Update to HAProxy 1.8.19, which fixes some connection aborts on HTTP/2
+* Add TLS ALPN extension advertisement [#307](https://github.com/jcmoraisjr/haproxy-ingress/pull/307)
+* Fix overlapping configs on shared frontend [#308](https://github.com/jcmoraisjr/haproxy-ingress/pull/308)
+
 ## v0.6.1
 
 Fixes and improvements since [v0.6](#v06):
