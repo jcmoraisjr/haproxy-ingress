@@ -31,6 +31,7 @@ import (
 	ing_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/helper_test"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
+	ha_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/helper_test"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	types_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/types/helper_test"
 )
@@ -51,11 +52,7 @@ func TestSyncSvcNotFound(t *testing.T) {
 - hostname: echo.example.com
   paths: []`)
 
-	c.compareConfigDefaultBack(`
-id: system_default_8080
-endpoints:
-- ip: 172.17.0.99
-  port: 8080`)
+	c.compareConfigBack(defaultBackendConfig)
 
 	c.compareLogging(`
 WARN skipping backend config of ingress 'default/echo': service not found: 'default/notfound'`)
@@ -81,8 +78,6 @@ func TestSyncDefaultSvcNotFound(t *testing.T) {
   - ip: 172.17.0.11
     port: 8080`)
 
-	c.compareConfigDefaultBack(`[]`)
-
 	c.compareLogging(`
 ERROR error reading default service: service not found: 'system/default'`)
 }
@@ -106,7 +101,7 @@ func TestSyncSingle(t *testing.T) {
   - ip: 172.17.0.11
     port: 8080
   - ip: 172.17.0.28
-    port: 8080`)
+    port: 8080` + defaultBackendConfig)
 }
 
 func TestSyncReuseBackend(t *testing.T) {
@@ -125,7 +120,7 @@ func TestSyncReuseBackend(t *testing.T) {
   - ip: 172.17.0.10
     port: 8080
   - ip: 172.17.0.11
-    port: 8080`)
+    port: 8080` + defaultBackendConfig)
 }
 
 func TestSyncReuseHost(t *testing.T) {
@@ -162,7 +157,7 @@ func TestSyncNoEndpoint(t *testing.T) {
     backend: default_echo_8080`)
 
 	c.compareConfigBack(`
-- id: default_echo_8080`)
+- id: default_echo_8080` + defaultBackendConfig)
 }
 
 func TestSyncInvalidEndpoint(t *testing.T) {
@@ -180,7 +175,7 @@ func TestSyncInvalidEndpoint(t *testing.T) {
     backend: default_echo_8080`)
 
 	c.compareConfigBack(`
-- id: default_echo_8080`)
+- id: default_echo_8080` + defaultBackendConfig)
 
 	c.compareLogging(`
 ERROR error adding endpoints of service 'default/echo': could not find endpoints for service 'default/echo'`)
@@ -258,7 +253,7 @@ func TestSyncBackendSorted(t *testing.T) {
 - id: default_echo3_8080
   endpoints:
   - ip: 172.17.0.13
-    port: 8080`)
+    port: 8080` + defaultBackendConfig)
 }
 
 func TestSyncRedeclarePath(t *testing.T) {
@@ -282,7 +277,7 @@ func TestSyncRedeclarePath(t *testing.T) {
 - id: default_echo1_8080
   endpoints:
   - ip: 172.17.0.11
-    port: 8080`)
+    port: 8080` + defaultBackendConfig)
 
 	c.compareLogging(`
 WARN skipping redeclared path '/p1' of ingress 'default/echo1'`)
@@ -514,7 +509,7 @@ paths:
 - id: default_echo_8080
   endpoints:
   - ip: 172.17.0.11
-    port: 8080`)
+    port: 8080` + defaultBackendConfig)
 }
 
 func TestSyncBackendSvcNotFound(t *testing.T) {
@@ -525,7 +520,7 @@ func TestSyncBackendSvcNotFound(t *testing.T) {
 	c.Sync(c.createIng2("default/echo", "notfound:8080"))
 
 	c.compareConfigFront(`[]`)
-	c.compareConfigBack(`[]`)
+	c.compareConfigBack(defaultBackendConfig)
 
 	c.compareLogging(`
 WARN skipping default backend of ingress 'default/echo': service not found: 'default/notfound'`)
@@ -541,15 +536,10 @@ func TestSyncBackendReuseDefaultSvc(t *testing.T) {
 - hostname: default.example.com
   paths:
   - path: /app
-    backend: system_default_8080`)
+    backend: _default_backend`)
 
-	c.compareConfigBack(`[]`)
-
-	c.compareConfigDefaultBack(`
-id: system_default_8080
-endpoints:
-- ip: 172.17.0.99
-  port: 8080`)
+	c.compareConfigDefaultFront(`[]`)
+	c.compareConfigBack(defaultBackendConfig)
 }
 
 func TestSyncDefaultBackendReusedPath1(t *testing.T) {
@@ -573,7 +563,7 @@ paths:
 - id: default_echo1_8080
   endpoints:
   - ip: 172.17.0.11
-    port: 8080`)
+    port: 8080` + defaultBackendConfig)
 
 	c.compareLogging(`
 WARN skipping default backend of ingress 'default/echo2': path / was already defined on default host`)
@@ -600,7 +590,7 @@ paths:
 - id: default_echo1_8080
   endpoints:
   - ip: 172.17.0.11
-    port: 8080`)
+    port: 8080` + defaultBackendConfig)
 
 	c.compareLogging(`
 WARN skipping redeclared path '/' of ingress 'default/echo2'`)
@@ -656,7 +646,7 @@ func TestSyncMultiNamespace(t *testing.T) {
 - id: ns2_echo_8080
   endpoints:
   - ip: 172.17.0.12
-    port: 8080`)
+    port: 8080` + defaultBackendConfig)
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -791,7 +781,7 @@ func TestSyncAnnBack(t *testing.T) {
   endpoints:
   - ip: 172.17.0.11
     port: 8080
-  balancealgorithm: leastconn`)
+  balancealgorithm: leastconn` + defaultBackendConfig)
 }
 
 func TestSyncAnnBackSvc(t *testing.T) {
@@ -808,7 +798,7 @@ func TestSyncAnnBackSvc(t *testing.T) {
   endpoints:
   - ip: 172.17.0.11
     port: 8080
-  balancealgorithm: leastconn`)
+  balancealgorithm: leastconn` + defaultBackendConfig)
 }
 
 func TestSyncAnnBackSvcIngConflict(t *testing.T) {
@@ -827,7 +817,7 @@ func TestSyncAnnBackSvcIngConflict(t *testing.T) {
   endpoints:
   - ip: 172.17.0.11
     port: 8080
-  balancealgorithm: leastconn`)
+  balancealgorithm: leastconn` + defaultBackendConfig)
 
 	c.compareLogging(`
 INFO skipping backend 'default/echo:8080' annotation(s) from ingress 'default/echo' due to conflict: [balance-algorithm]`)
@@ -850,7 +840,7 @@ func TestSyncAnnBacksSvcIng(t *testing.T) {
   - ip: 172.17.0.11
     port: 8080
   balancealgorithm: leastconn
-  maxconnserver: 10`)
+  maxconnserver: 10` + defaultBackendConfig)
 }
 
 func TestSyncAnnBackDefault(t *testing.T) {
@@ -927,7 +917,7 @@ func TestSyncAnnBackDefault(t *testing.T) {
   endpoints:
   - ip: 172.17.0.17
     port: 8080
-  balancealgorithm: leastconn`)
+  balancealgorithm: leastconn` + defaultBackendConfig)
 
 	c.compareLogging(`
 INFO skipping backend 'default/echo5:8080' annotation(s) from ingress 'default/echo5' due to conflict: [balance-algorithm]`)
@@ -956,7 +946,7 @@ func setup(t *testing.T) *testConfig {
 	c := &testConfig{
 		t:       t,
 		decode:  scheme.Codecs.UniversalDeserializer().Decode,
-		hconfig: haproxy.CreateInstance(logger, haproxy.InstanceOptions{}).Config(),
+		hconfig: haproxy.CreateInstance(logger, &ha_helper.BindUtilsMock{}, haproxy.InstanceOptions{}).Config(),
 		cache: &ing_helper.CacheMock{
 			SvcList: []*api.Service{},
 			EpList:  map[string]*api.Endpoints{},
@@ -977,6 +967,12 @@ func (c *testConfig) teardown() {
 func (c *testConfig) Sync(ing ...*extensions.Ingress) {
 	c.SyncDef(map[string]string{}, ing...)
 }
+
+var defaultBackendConfig = `
+- id: _default_backend
+  endpoints:
+  - ip: 172.17.0.99
+    port: 8080`
 
 func (c *testConfig) SyncDef(config map[string]string, ing ...*extensions.Ingress) {
 	conv := NewIngressConverter(
@@ -1219,7 +1215,7 @@ type (
 		ID               string
 		Endpoints        []endpointMock `yaml:",omitempty"`
 		BalanceAlgorithm string         `yaml:",omitempty"`
-		MaxconnServer    int            `yaml:",omitempty"`
+		MaxConnServer    int            `yaml:",omitempty"`
 	}
 )
 
@@ -1234,7 +1230,7 @@ func convertBackend(habackends ...*hatypes.Backend) []backendMock {
 			ID:               b.ID,
 			Endpoints:        endpoints,
 			BalanceAlgorithm: b.BalanceAlgorithm,
-			MaxconnServer:    b.MaxconnServer,
+			MaxConnServer:    b.MaxConnServer,
 		})
 	}
 	return backends
@@ -1242,15 +1238,6 @@ func convertBackend(habackends ...*hatypes.Backend) []backendMock {
 
 func (c *testConfig) compareConfigBack(expected string) {
 	c.compareText(_yamlMarshal(convertBackend(c.hconfig.Backends()...)), expected)
-}
-
-func (c *testConfig) compareConfigDefaultBack(expected string) {
-	backend := c.hconfig.DefaultBackend()
-	if backend != nil {
-		c.compareText(_yamlMarshal(convertBackend(backend)[0]), expected)
-	} else {
-		c.compareText("[]", expected)
-	}
 }
 
 func (c *testConfig) compareLogging(expected string) {

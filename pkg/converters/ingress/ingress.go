@@ -48,10 +48,12 @@ func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Con
 		hostAnnotations:    map[*hatypes.Host]*ingtypes.HostAnnotations{},
 		backendAnnotations: map[*hatypes.Backend]*ingtypes.BackendAnnotations{},
 	}
-	if backend, err := c.addBackend(options.DefaultBackend, 0, &ingtypes.BackendAnnotations{}); err == nil {
-		haproxy.ConfigDefaultBackend(backend)
-	} else {
-		c.logger.Error("error reading default service: %v", err)
+	if options.DefaultBackend != "" {
+		if backend, err := c.addBackend(options.DefaultBackend, 0, &ingtypes.BackendAnnotations{}); err == nil {
+			haproxy.ConfigDefaultBackend(backend)
+		} else {
+			c.logger.Error("error reading default service: %v", err)
+		}
 	}
 	return c
 }

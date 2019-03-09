@@ -36,6 +36,6 @@ func (u *UpdaterMock) UpdateHostConfig(host *hatypes.Host, ann *ingtypes.HostAnn
 
 // UpdateBackendConfig ...
 func (u *UpdaterMock) UpdateBackendConfig(backend *hatypes.Backend, ann *ingtypes.BackendAnnotations) {
-	backend.MaxconnServer = ann.MaxconnServer
+	backend.MaxConnServer = ann.MaxconnServer
 	backend.BalanceAlgorithm = ann.BalanceAlgorithm
 }

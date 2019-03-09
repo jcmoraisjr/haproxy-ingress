@@ -108,8 +108,33 @@ func (hc *HAProxyController) configController() {
 		ReloadCmd:         "/haproxy-reload.sh",
 		HAProxyConfigFile: "/etc/haproxy/haproxy.cfg",
 		ReloadStrategy:    *hc.reloadStrategy,
+		MaxOldConfigFiles: *hc.maxOldConfigFiles,
 	}
-	hc.instance = haproxy.CreateInstance(logger, instanceOptions)
+	hc.instance = haproxy.CreateInstance(logger, hc, instanceOptions)
+	if err := hc.instance.ParseTemplates(); err != nil {
+		glog.Fatalf("error creating HAProxy instance: %v", err)
+	}
+}
+
+// CreateX509CertsDir hard link files from certs to a single directory.
+func (hc *HAProxyController) CreateX509CertsDir(bindName string, certs []string) (string, error) {
+	x509dir := "/var/haproxy/certs/" + bindName
+	if err := os.RemoveAll(x509dir); err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(x509dir, 0700); err != nil {
+		return "", err
+	}
+	for _, cert := range certs {
+		file, err := os.Stat(cert)
+		if err != nil {
+			return "", err
+		}
+		if err := os.Link(cert, x509dir+"/"+file.Name()); err != os.ErrExist {
+			return "", err
+		}
+	}
+	return x509dir, nil
 }
 
 // Stop shutdown the controller process
@@ -223,7 +248,7 @@ func (hc *HAProxyController) SyncIngress(item interface{}) error {
 	}
 	converter := ingressconverter.NewIngressConverter(
 		hc.converterOptions,
-		hc.instance.CreateConfig(),
+		hc.instance.Config(),
 		globalConfig,
 	)
 	converter.Sync(ingress)

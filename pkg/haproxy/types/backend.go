@@ -22,16 +22,17 @@ import (
 )
 
 // NewEndpoint ...
-func (b *Backend) NewEndpoint(ip string, port int, target string) *Endpoint {
+func (b *Backend) NewEndpoint(ip string, port int, targetRef string) *Endpoint {
 	endpoint := &Endpoint{
-		IP:     ip,
-		Port:   port,
-		Target: target,
-		Weight: 1,
+		Name:      fmt.Sprintf("%s:%d", ip, port),
+		IP:        ip,
+		Port:      port,
+		TargetRef: targetRef,
+		Weight:    1,
 	}
 	b.Endpoints = append(b.Endpoints, endpoint)
 	sort.Slice(b.Endpoints, func(i, j int) bool {
-		return b.Endpoints[i].IP < b.Endpoints[j].IP
+		return b.Endpoints[i].Name < b.Endpoints[j].Name
 	})
 	return endpoint
 }

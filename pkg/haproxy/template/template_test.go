@@ -35,11 +35,21 @@ type testConfig struct {
 	tempdirOutput  string
 }
 
+func TestEmpty(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+	if err := c.templateConfig.Write(nil); err != nil {
+		t.Errorf("error writing an empty template: %v", err)
+	}
+}
+
 func TestNewTemplateFileNotFound(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
-	c.templateConfig.NewTemplate("h.cfg", "/file", "/tmp/out", 0, 1024)
-	c.logger.CompareLogging("FATAL cannot read template file: open /file: no such file or directory")
+	err := c.templateConfig.NewTemplate("h.cfg", "/file", "/tmp/out", 0, 1024)
+	if err == nil {
+		t.Errorf("expected error")
+	}
 }
 
 func TestWrite(t *testing.T) {
@@ -259,7 +269,9 @@ func (c *testConfig) newTemplate(content string, rotate int) {
 	if err := ioutil.WriteFile(templatePath, []byte(content), 0644); err != nil {
 		c.t.Errorf("error writing template file: %v", err)
 	}
-	c.templateConfig.NewTemplate(templateFileName, templatePath, outputPath, rotate, 1024)
+	if err := c.templateConfig.NewTemplate(templateFileName, templatePath, outputPath, rotate, 1024); err != nil {
+		c.t.Errorf("error parsing %s: %v", templateFileName, err)
+	}
 }
 
 func (c *testConfig) outputs(index int) []string {
@@ -282,13 +294,11 @@ func setup(t *testing.T) *testConfig {
 		t.Errorf("error creating tempdir: %v", err)
 	}
 	return &testConfig{
-		t:      t,
-		logger: logger,
-		templateConfig: &Config{
-			Logger: logger,
-		},
-		tempdir:       tempdir,
-		tempdirOutput: tempdir,
+		t:              t,
+		logger:         logger,
+		templateConfig: CreateConfig(),
+		tempdir:        tempdir,
+		tempdirOutput:  tempdir,
 	}
 }
 

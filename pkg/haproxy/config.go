@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
@@ -31,8 +32,10 @@ type Config interface {
 	AcquireBackend(namespace, name string, port int) *hatypes.Backend
 	FindBackend(namespace, name string, port int) *hatypes.Backend
 	ConfigDefaultBackend(defaultBackend *hatypes.Backend)
+	ConfigDefaultX509Cert(filename string)
 	AddUserlist(name string, users []hatypes.User) *hatypes.Userlist
 	FindUserlist(name string) *hatypes.Userlist
+	BuildFrontendGroup() (*hatypes.FrontendGroup, error)
 	DefaultHost() *hatypes.Host
 	DefaultBackend() *hatypes.Backend
 	Global() *hatypes.Global
@@ -43,17 +46,33 @@ type Config interface {
 }
 
 type config struct {
-	global         *hatypes.Global
-	hosts          []*hatypes.Host
-	backends       []*hatypes.Backend
-	userlists      []*hatypes.Userlist
-	defaultHost    *hatypes.Host
-	defaultBackend *hatypes.Backend
+	bindUtils       hatypes.BindUtils
+	mapsTemplate    *template.Config
+	mapsDir         string
+	global          *hatypes.Global
+	hosts           []*hatypes.Host
+	backends        []*hatypes.Backend
+	userlists       []*hatypes.Userlist
+	defaultHost     *hatypes.Host
+	defaultBackend  *hatypes.Backend
+	defaultX509Cert string
 }
 
-func createConfig() Config {
+type options struct {
+	mapsTemplate *template.Config
+	mapsDir      string
+}
+
+func createConfig(bindUtils hatypes.BindUtils, options options) *config {
+	mapsTemplate := options.mapsTemplate
+	if mapsTemplate == nil {
+		mapsTemplate = template.CreateConfig()
+	}
 	return &config{
-		global: &hatypes.Global{},
+		bindUtils:    bindUtils,
+		global:       &hatypes.Global{},
+		mapsTemplate: mapsTemplate,
+		mapsDir:      options.mapsDir,
 	}
 }
 
@@ -91,23 +110,29 @@ func createHost(hostname string) *hatypes.Host {
 	}
 }
 
+func (c *config) sortBackends() {
+	sort.Slice(c.backends, func(i, j int) bool {
+		if c.backends[i] == c.defaultBackend {
+			return false
+		}
+		if c.backends[j] == c.defaultBackend {
+			return true
+		}
+		return c.backends[i].ID < c.backends[j].ID
+	})
+}
+
 func (c *config) AcquireBackend(namespace, name string, port int) *hatypes.Backend {
 	if backend := c.FindBackend(namespace, name, port); backend != nil {
 		return backend
 	}
 	backend := createBackend(namespace, name, port)
 	c.backends = append(c.backends, backend)
-	sort.Slice(c.backends, func(i, j int) bool {
-		return c.backends[i].ID < c.backends[j].ID
-	})
+	c.sortBackends()
 	return backend
 }
 
 func (c *config) FindBackend(namespace, name string, port int) *hatypes.Backend {
-	// TODO test missing `== port`
-	if c.defaultBackend != nil && c.defaultBackend.Namespace == namespace && c.defaultBackend.Name == name {
-		return c.defaultBackend
-	}
 	for _, b := range c.backends {
 		if b.Namespace == namespace && b.Name == name && b.Port == port {
 			return b
@@ -131,14 +156,19 @@ func buildID(namespace, name string, port int) string {
 }
 
 func (c *config) ConfigDefaultBackend(defaultBackend *hatypes.Backend) {
-	c.defaultBackend = defaultBackend
-	// remove the default backend from the list
-	for i, backend := range c.backends {
-		if backend.ID == defaultBackend.ID {
-			c.backends = append(c.backends[:i], c.backends[i+1:]...)
-			break
-		}
+	if c.defaultBackend != nil {
+		def := c.defaultBackend
+		def.ID = buildID(def.Namespace, def.Name, def.Port)
 	}
+	c.defaultBackend = defaultBackend
+	if c.defaultBackend != nil {
+		c.defaultBackend.ID = "_default_backend"
+	}
+	c.sortBackends()
+}
+
+func (c *config) ConfigDefaultX509Cert(filename string) {
+	c.defaultX509Cert = filename
 }
 
 func (c *config) AddUserlist(name string, users []hatypes.User) *hatypes.Userlist {
@@ -155,6 +185,156 @@ func (c *config) AddUserlist(name string, users []hatypes.User) *hatypes.Userlis
 
 func (c *config) FindUserlist(name string) *hatypes.Userlist {
 	return nil
+}
+
+func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
+	if len(c.hosts) == 0 {
+		return nil, fmt.Errorf("cannot create frontends without hosts")
+	}
+	frontends, sslpassthrough := hatypes.BuildRawFrontends(c.hosts)
+	for _, frontend := range frontends {
+		prefix := c.mapsDir + "/" + frontend.Name
+		frontend.BackendsMap = prefix + ".map"
+		frontend.TLSInvalidCrtErrorPagesMap = prefix + "_inv_crt.map"
+		frontend.TLSNoCrtErrorPagesMap = prefix + "_no_crt.map"
+		frontend.VarNamespaceMap = prefix + "_k8s_ns.map"
+	}
+	fgroup := &hatypes.FrontendGroup{
+		Frontends:         frontends,
+		HasSSLPassthrough: len(sslpassthrough) > 0,
+		HTTPFrontsMap:     c.mapsDir + "/http-front.map",
+		SSLPassthroughMap: c.mapsDir + "/sslpassthrough.map",
+	}
+	if fgroup.HasTCPProxy() {
+		// More than one HAProxy's frontend or bind, or using ssl-passthrough config,
+		// so need a `mode tcp` frontend with `inspect-delay` and `req.ssl_sni`
+		var i int
+		for _, frontend := range frontends {
+			for _, bind := range frontend.Binds {
+				var bindName string
+				if len(bind.Hosts) == 1 {
+					bindName = bind.Hosts[0].Hostname
+					bind.TLS.TLSCert = bind.Hosts[0].TLS.TLSFilename
+				} else {
+					i++
+					bindName = fmt.Sprintf("_socket%03d", i)
+					x509dir, err := c.createCertsDir(bindName, bind.Hosts)
+					if err != nil {
+						return nil, err
+					}
+					bind.TLS.TLSCert = c.defaultX509Cert
+					bind.TLS.TLSCertDir = x509dir
+				}
+				bind.Name = bindName
+				bind.Socket = fmt.Sprintf("unix@/var/run/front_%s.sock", bindName)
+				bind.AcceptProxy = true
+			}
+		}
+	} else {
+		// One single HAProxy's frontend and bind
+		bind := frontends[0].Binds[0]
+		bind.Name = "_public"
+		bind.Socket = ":443"
+		if len(bind.Hosts) == 1 {
+			bind.TLS.TLSCert = bind.Hosts[0].TLS.TLSFilename
+		} else {
+			x509dir, err := c.createCertsDir(bind.Name, bind.Hosts)
+			if err != nil {
+				return nil, err
+			}
+			tls := &frontends[0].Binds[0].TLS
+			tls.TLSCert = c.defaultX509Cert
+			tls.TLSCertDir = x509dir
+		}
+	}
+	type mapEntry struct {
+		Key   string
+		Value string
+	}
+	var sslpassthroughMap []mapEntry
+	var httpFront []mapEntry
+	for _, sslpassHost := range sslpassthrough {
+		rootPath := sslpassHost.FindPath("/")
+		if rootPath == nil {
+			return nil, fmt.Errorf("missing root path on host %s", sslpassHost.Hostname)
+		}
+		sslpassthroughMap = append(sslpassthroughMap, mapEntry{
+			Key:   sslpassHost.Hostname,
+			Value: rootPath.BackendID,
+		})
+		if sslpassHost.HTTPPassthroughBackend != nil {
+			httpFront = append(httpFront, mapEntry{
+				Key:   sslpassHost.Hostname + "/",
+				Value: sslpassHost.HTTPPassthroughBackend.ID,
+			})
+		} else {
+			fgroup.HasRedirectHTTPS = true
+		}
+	}
+	for _, f := range frontends {
+		var backendsMap []mapEntry
+		var invalidCrtMap []mapEntry
+		var noCrtMap []mapEntry
+		var varNamespaceMap []mapEntry
+		for _, host := range f.Hosts {
+			for _, path := range host.Paths {
+				entry := mapEntry{
+					Key:   host.Hostname + path.Path,
+					Value: path.BackendID,
+				}
+				backendsMap = append(backendsMap, entry)
+				if path.Backend.SSLRedirect {
+					fgroup.HasRedirectHTTPS = true
+				} else {
+					httpFront = append(httpFront, entry)
+				}
+				if host.VarNamespace {
+					entry.Value = path.Backend.Namespace
+				} else {
+					entry.Value = "-"
+				}
+				varNamespaceMap = append(varNamespaceMap, entry)
+			}
+			if host.HasTLSAuth() && host.TLS.CAErrorPage != "" {
+				entry := mapEntry{
+					Key:   host.Hostname,
+					Value: host.TLS.CAErrorPage,
+				}
+				invalidCrtMap = append(invalidCrtMap, entry)
+				noCrtMap = append(noCrtMap, entry)
+			}
+		}
+		if err := c.mapsTemplate.WriteOutput(backendsMap, f.BackendsMap); err != nil {
+			return nil, err
+		}
+		if err := c.mapsTemplate.WriteOutput(invalidCrtMap, f.TLSInvalidCrtErrorPagesMap); err != nil {
+			return nil, err
+		}
+		if err := c.mapsTemplate.WriteOutput(noCrtMap, f.TLSNoCrtErrorPagesMap); err != nil {
+			return nil, err
+		}
+		if err := c.mapsTemplate.WriteOutput(varNamespaceMap, f.VarNamespaceMap); err != nil {
+			return nil, err
+		}
+	}
+	if err := c.mapsTemplate.WriteOutput(sslpassthroughMap, fgroup.SSLPassthroughMap); err != nil {
+		return nil, err
+	}
+	if err := c.mapsTemplate.WriteOutput(httpFront, fgroup.HTTPFrontsMap); err != nil {
+		return nil, err
+	}
+	fgroup.HasHTTPHost = len(httpFront) > 0
+	return fgroup, nil
+}
+
+func (c *config) createCertsDir(bindName string, hosts []*hatypes.Host) (string, error) {
+	certs := make([]string, 0, len(hosts))
+	for _, host := range hosts {
+		if host.TLS.TLSFilename != "" {
+			certs = append(certs, host.TLS.TLSFilename)
+		}
+	}
+	return c.bindUtils.CreateX509CertsDir(bindName, certs)
 }
 
 func (c *config) DefaultHost() *hatypes.Host {

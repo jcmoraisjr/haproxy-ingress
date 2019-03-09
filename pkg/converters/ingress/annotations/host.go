@@ -22,7 +22,7 @@ func (c *updater) buildHostAuthTLS(d *hostData) {
 	}
 	if cafile, err := c.cache.GetCASecretPath(d.ann.AuthTLSSecret); err == nil {
 		d.host.TLS.CAFilename = cafile
-		d.host.TLS.ErrorPage = d.ann.AuthTLSErrorPage
+		d.host.TLS.CAErrorPage = d.ann.AuthTLSErrorPage
 		d.host.TLS.AddCertHeader = d.ann.AuthTLSCertHeader
 	}
 }

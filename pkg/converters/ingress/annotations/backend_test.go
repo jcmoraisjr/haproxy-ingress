@@ -243,12 +243,12 @@ func TestBlueGreen(t *testing.T) {
 	buildEndpoints := func(targets string) []*hatypes.Endpoint {
 		ep := []*hatypes.Endpoint{}
 		if targets != "" {
-			for _, target := range strings.Split(targets, ",") {
+			for _, targetRef := range strings.Split(targets, ",") {
 				ep = append(ep, &hatypes.Endpoint{
-					IP:     "172.17.0.11",
-					Port:   8080,
-					Weight: 1,
-					Target: target,
+					IP:        "172.17.0.11",
+					Port:      8080,
+					Weight:    1,
+					TargetRef: targetRef,
 				})
 			}
 		}

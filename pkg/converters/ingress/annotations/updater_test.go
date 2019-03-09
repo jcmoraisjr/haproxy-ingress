@@ -22,6 +22,7 @@ import (
 	ing_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/helper_test"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
+	ha_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/helper_test"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	types_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/types/helper_test"
 )
@@ -43,7 +44,7 @@ func setup(t *testing.T) *testConfig {
 	logger := &types_helper.LoggerMock{T: t}
 	return &testConfig{
 		t:       t,
-		haproxy: haproxy.CreateInstance(logger, haproxy.InstanceOptions{}).Config(),
+		haproxy: haproxy.CreateInstance(logger, &ha_helper.BindUtilsMock{}, haproxy.InstanceOptions{}).Config(),
 		cache:   &ing_helper.CacheMock{},
 		logger:  logger,
 	}

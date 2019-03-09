@@ -168,7 +168,7 @@ func (c *updater) buildBackendBlueGreen(d *backData) {
 	}
 	for _, ep := range d.backend.Endpoints {
 		hasLabel := false
-		if pod, err := c.cache.GetPod(ep.Target); err == nil {
+		if pod, err := c.cache.GetPod(ep.TargetRef); err == nil {
 			for _, dw := range deployWeights {
 				if label, found := pod.Labels[dw.labelName]; found {
 					if label == dw.labelValue {
@@ -181,7 +181,7 @@ func (c *updater) buildBackendBlueGreen(d *backData) {
 				}
 			}
 		} else {
-			if ep.Target == "" {
+			if ep.TargetRef == "" {
 				err = fmt.Errorf("endpoint does not reference a pod")
 			}
 			c.logger.Warn("endpoint '%s:%d' on %v was removed from balance: %v", ep.IP, ep.Port, d.ann.Source, err)

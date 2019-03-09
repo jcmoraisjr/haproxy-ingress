@@ -17,6 +17,7 @@ limitations under the License.
 package types
 
 import (
+	"fmt"
 	"sort"
 )
 
@@ -34,10 +35,20 @@ func (h *Host) FindPath(path string) *HostPath {
 func (h *Host) AddPath(backend *Backend, path string) {
 	h.Paths = append(h.Paths, &HostPath{
 		Path:      path,
-		Backend:   *backend,
+		Backend:   backend,
 		BackendID: backend.ID,
 	})
 	sort.Slice(h.Paths, func(i, j int) bool {
 		return h.Paths[i].Path > h.Paths[j].Path
 	})
+}
+
+// HasTLSAuth ...
+func (h *Host) HasTLSAuth() bool {
+	return h.TLS.CAHash != ""
+}
+
+// String ...
+func (h *Host) String() string {
+	return fmt.Sprintf("%+v", *h)
 }
