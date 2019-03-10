@@ -18,7 +18,7 @@ package helper_test
 
 // BindUtilsMock ...
 type BindUtilsMock struct {
-	CertDirs []*CertDir
+	CertDirs []CertDir
 }
 
 // CertDir ...
@@ -30,7 +30,7 @@ type CertDir struct {
 // CreateX509CertsDir ...
 func (b *BindUtilsMock) CreateX509CertsDir(bindName string, certs []string) (string, error) {
 	dir := "/var/haproxy/certs/" + bindName
-	b.CertDirs = append(b.CertDirs, &CertDir{
+	b.CertDirs = append(b.CertDirs, CertDir{
 		Dir:   dir,
 		Certs: certs,
 	})

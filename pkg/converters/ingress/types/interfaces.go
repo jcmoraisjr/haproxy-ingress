@@ -25,8 +25,8 @@ type Cache interface {
 	GetService(serviceName string) (*api.Service, error)
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
 	GetPod(podName string) (*api.Pod, error)
-	GetTLSSecretPath(secretName string) (string, error)
-	GetCASecretPath(secretName string) (string, error)
-	GetDHSecretPath(secretName string) (string, error)
+	GetTLSSecretPath(secretName string) (File, error)
+	GetCASecretPath(secretName string) (File, error)
+	GetDHSecretPath(secretName string) (File, error)
 	GetSecretContent(secretName, keyName string) ([]byte, error)
 }

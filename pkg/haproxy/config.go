@@ -193,11 +193,12 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 	}
 	frontends, sslpassthrough := hatypes.BuildRawFrontends(c.hosts)
 	for _, frontend := range frontends {
-		prefix := c.mapsDir + "/" + frontend.Name
-		frontend.BackendsMap = prefix + ".map"
-		frontend.TLSInvalidCrtErrorPagesMap = prefix + "_inv_crt.map"
-		frontend.TLSNoCrtErrorPagesMap = prefix + "_no_crt.map"
-		frontend.VarNamespaceMap = prefix + "_k8s_ns.map"
+		mapPrefix := c.mapsDir + "/" + frontend.Name
+		frontend.HostBackendsMap = mapPrefix + "_host.map"
+		frontend.SNIBackendsMap = mapPrefix + "_sni.map"
+		frontend.TLSInvalidCrtErrorPagesMap = mapPrefix + "_inv_crt.map"
+		frontend.TLSNoCrtErrorPagesMap = mapPrefix + "_no_crt.map"
+		frontend.VarNamespaceMap = mapPrefix + "_k8s_ns.map"
 	}
 	fgroup := &hatypes.FrontendGroup{
 		Frontends:         frontends,
@@ -214,7 +215,8 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 				var bindName string
 				if len(bind.Hosts) == 1 {
 					bindName = bind.Hosts[0].Hostname
-					bind.TLS.TLSCert = bind.Hosts[0].TLS.TLSFilename
+					bind.TLS.TLSCert = c.defaultX509Cert
+					bind.TLS.TLSCertDir = bind.Hosts[0].TLS.TLSFilename
 				} else {
 					i++
 					bindName = fmt.Sprintf("_socket%03d", i)
@@ -236,15 +238,15 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 		bind.Name = "_public"
 		bind.Socket = ":443"
 		if len(bind.Hosts) == 1 {
-			bind.TLS.TLSCert = bind.Hosts[0].TLS.TLSFilename
+			bind.TLS.TLSCert = c.defaultX509Cert
+			bind.TLS.TLSCertDir = bind.Hosts[0].TLS.TLSFilename
 		} else {
 			x509dir, err := c.createCertsDir(bind.Name, bind.Hosts)
 			if err != nil {
 				return nil, err
 			}
-			tls := &frontends[0].Binds[0].TLS
-			tls.TLSCert = c.defaultX509Cert
-			tls.TLSCertDir = x509dir
+			frontends[0].Binds[0].TLS.TLSCert = c.defaultX509Cert
+			frontends[0].Binds[0].TLS.TLSCertDir = x509dir
 		}
 	}
 	type mapEntry struct {
@@ -272,7 +274,8 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 		}
 	}
 	for _, f := range frontends {
-		var backendsMap []mapEntry
+		var hostBackendsMap []mapEntry
+		var sniBackendsMap []mapEntry
 		var invalidCrtMap []mapEntry
 		var noCrtMap []mapEntry
 		var varNamespaceMap []mapEntry
@@ -282,7 +285,11 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 					Key:   host.Hostname + path.Path,
 					Value: path.BackendID,
 				}
-				backendsMap = append(backendsMap, entry)
+				if host.HasTLSAuth() {
+					sniBackendsMap = append(sniBackendsMap, entry)
+				} else {
+					hostBackendsMap = append(hostBackendsMap, entry)
+				}
 				if path.Backend.SSLRedirect {
 					fgroup.HasRedirectHTTPS = true
 				} else {
@@ -301,10 +308,15 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 					Value: host.TLS.CAErrorPage,
 				}
 				invalidCrtMap = append(invalidCrtMap, entry)
-				noCrtMap = append(noCrtMap, entry)
+				if !host.TLS.CAVerifyOptional {
+					noCrtMap = append(noCrtMap, entry)
+				}
 			}
 		}
-		if err := c.mapsTemplate.WriteOutput(backendsMap, f.BackendsMap); err != nil {
+		if err := c.mapsTemplate.WriteOutput(hostBackendsMap, f.HostBackendsMap); err != nil {
+			return nil, err
+		}
+		if err := c.mapsTemplate.WriteOutput(sniBackendsMap, f.SNIBackendsMap); err != nil {
 			return nil, err
 		}
 		if err := c.mapsTemplate.WriteOutput(invalidCrtMap, f.TLSInvalidCrtErrorPagesMap); err != nil {
@@ -329,10 +341,16 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 
 func (c *config) createCertsDir(bindName string, hosts []*hatypes.Host) (string, error) {
 	certs := make([]string, 0, len(hosts))
+	added := map[string]bool{}
 	for _, host := range hosts {
-		if host.TLS.TLSFilename != "" {
+		filename := host.TLS.TLSFilename
+		if filename != "" && !added[filename] && filename != c.defaultX509Cert {
 			certs = append(certs, host.TLS.TLSFilename)
+			added[filename] = true
 		}
+	}
+	if len(certs) == 0 {
+		return "", nil
 	}
 	return c.bindUtils.CreateX509CertsDir(bindName, certs)
 }

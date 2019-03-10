@@ -22,6 +22,7 @@ type HostAnnotations struct {
 	AppRoot                string `json:"app-root"`
 	AuthTLSCertHeader      bool   `json:"auth-tls-cert-header"`
 	AuthTLSErrorPage       string `json:"auth-tls-error-page"`
+	AuthTLSVerifyClient    string `json:"auth-tls-verify-client"`
 	AuthTLSSecret          string `json:"auth-tls-secret"`
 	ServerAlias            string `json:"server-alias"`
 	ServerAliasRegex       string `json:"server-alias-regex"`

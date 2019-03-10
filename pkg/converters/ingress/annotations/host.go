@@ -20,10 +20,18 @@ func (c *updater) buildHostAuthTLS(d *hostData) {
 	if d.ann.AuthTLSSecret == "" {
 		return
 	}
+	verify := d.ann.AuthTLSVerifyClient
+	if verify == "off" {
+		return
+	}
 	if cafile, err := c.cache.GetCASecretPath(d.ann.AuthTLSSecret); err == nil {
-		d.host.TLS.CAFilename = cafile
+		d.host.TLS.CAFilename = cafile.Filename
+		d.host.TLS.CAHash = cafile.SHA1Hash
+		d.host.TLS.CAVerifyOptional = verify == "optional" || verify == "optional_no_ca"
 		d.host.TLS.CAErrorPage = d.ann.AuthTLSErrorPage
 		d.host.TLS.AddCertHeader = d.ann.AuthTLSCertHeader
+	} else {
+		c.logger.Error("error building TLS auth config: %v", err)
 	}
 }
 

@@ -90,8 +90,8 @@ func (c *updater) buildGlobalSSL(d *globalData) {
 	d.global.SSL.Ciphers = d.config.SSLCiphers
 	d.global.SSL.Options = d.config.SSLOptions
 	if d.config.SSLDHParam != "" {
-		if dhFilename, err := c.cache.GetDHSecretPath(d.config.SSLDHParam); err == nil {
-			d.global.SSL.DHParam.Filename = dhFilename
+		if dhFile, err := c.cache.GetDHSecretPath(d.config.SSLDHParam); err == nil {
+			d.global.SSL.DHParam.Filename = dhFile.Filename
 		} else {
 			c.logger.Error("error reading DH params: %v", err)
 		}

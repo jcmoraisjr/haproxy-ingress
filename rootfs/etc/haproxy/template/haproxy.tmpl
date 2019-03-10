@@ -252,7 +252,7 @@ listen _front__tls
 {{- range $bind := $frontend.Binds }}
     use-server _server_{{ $bind.Name }} if { req.ssl_sni -i
         {{- range $host := $bind.Hosts }} {{ $host.Hostname }}{{ end }} }
-    server _server_{{ $bind.Name }} {{ $bind.Socket }} send-proxy-v2
+    server _server_{{ $bind.Name }} {{ $bind.Socket }} send-proxy-v2 weight 0
 {{- end }}
 {{- end }}
     # TODO default backend
@@ -333,54 +333,62 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-    http-request set-var(req.backend) base
+    http-request set-var(req.hostbackend) base
         {{- if $frontend.ConvertLowercase }},lower{{ end }}
         {{- "" }},regsub(:[0-9]+/,/)
-        {{- "" }},map_beg({{ $frontend.BackendsMap }},_nomatch)
+        {{- "" }},map_beg({{ $frontend.HostBackendsMap }},_nomatch)
 
 {{- /*------------------------------------*/}}
 {{- if $frontend.HasTLSAuth }}
-{{- $optional := $frontend.HasTLSOptional }}
+{{- /* missing concat converter, fix after 1.9 */}}
+    http-request set-header x-ha-base %[ssl_fc_sni]%[path]
+    http-request set-var(req.snibackend) hdr(x-ha-base)
+        {{- if $frontend.ConvertLowercase }},lower{{ end }}
+        {{- "" }},regsub(:[0-9]+/,/)
+        {{- "" }},map_beg({{ $frontend.SNIBackendsMap }},_nomatch)
+{{- $mandatory := $frontend.HasTLSMandatory }}
     acl tls-invalid-crt ssl_c_ca_err gt 0
     acl tls-invalid-crt ssl_c_err gt 0
+{{- if $mandatory }}
     acl tls-has-crt ssl_c_used
-    http-request set-var(req.tls_invalid_redir) ssl_fc_sni
-        {{- if $frontend.ConvertLowercase }},lower{{ end }}
-        {{- "" }},map({{ $frontend.TLSInvalidCrtErrorPagesMap }},_internal)
-        {{- "" }} if tls-invalid-crt
-{{- if $optional }}
     http-request set-var(req.tls_nocrt_redir) ssl_fc_sni
         {{- if $frontend.ConvertLowercase }},lower{{ end }}
         {{- "" }},map({{ $frontend.TLSNoCrtErrorPagesMap }},_internal)
         {{- "" }} if !tls-has-crt
 {{- end }}
-{{- if $frontend.HasInvalidErrorPage }}
-    redirect location %[var(req.tls_invalid_redir)] code 303 if
-        {{- "" }} { var(req.tls_invalid_redir) -m found } !{ var(req.tls_invalid_redir) _internal }
-{{- end }}
-{{- if and $optional $frontend.HasNoCrtErrorPage }}
-    redirect location %[var(req.tls_nocrt_redir)] code 303 if
+    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni
+        {{- if $frontend.ConvertLowercase }},lower{{ end }}
+        {{- "" }},map({{ $frontend.TLSInvalidCrtErrorPagesMap }},_internal)
+        {{- "" }} if tls-invalid-crt
+{{- if and $mandatory $frontend.HasNoCrtErrorPage }}
+    http-request redirect location %[var(req.tls_nocrt_redir)] code 303 if
         {{- "" }} { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) _internal }
 {{- end }}
-    use_backend _error495 if
-        {{- "" }} { var(req.tls_invalid_redir) _internal }
-        {{- "" }} { ssl_fc_sni -i
-            {{- range $host := $frontend.Hosts }}
-                {{- if $host.HasTLSAuth }} {{ $host.Hostname }}{{ end }}
-            {{- end }} }
-{{- if $optional }}
+{{- if $frontend.HasInvalidErrorPage }}
+    http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if
+        {{- "" }} { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
+{{- end }}
+{{- if $mandatory }}
     use_backend _error496 if
         {{- "" }} { var(req.tls_nocrt_redir) _internal }
         {{- "" }} { ssl_fc_sni -i
             {{- range $host := $frontend.Hosts }}
-                {{- if and $host.HasTLSAuth $host.TLS.CAVerifyOptional }} {{ $host.Hostname }}{{ end }}
+                {{- if and $host.HasTLSAuth (not $host.TLS.CAVerifyOptional) }} {{ $host.Hostname }}{{ end }}
             {{- end }} }
 {{- end }}
+    use_backend _error495 if
+        {{- "" }} { var(req.tls_invalidcrt_redir) _internal }
+        {{- "" }} { ssl_fc_sni -i
+            {{- range $host := $frontend.Hosts }}
+                {{- if $host.HasTLSAuth }} {{ $host.Hostname }}{{ end }}
+            {{- end }} }
 {{- end }}
 
 {{- /*------------------------------------*/}}
-    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
-
+    use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
+{{- if $frontend.HasTLSAuth }}
+    use_backend %[var(req.snibackend)] unless { var(req.snibackend) _nomatch }
+{{- end }}
 {{- template "defaultbackend" map $cfg }}
 {{- end }}
 

@@ -22,9 +22,11 @@ import (
 
 	api "k8s.io/api/core/v1"
 
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/file"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/controller"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
+	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 )
 
 type cache struct {
@@ -56,44 +58,52 @@ func (c *cache) GetPod(podName string) (*api.Pod, error) {
 	return c.listers.Pod.GetPod(sname[0], sname[1])
 }
 
-func (c *cache) GetTLSSecretPath(secretName string) (string, error) {
+func (c *cache) GetTLSSecretPath(secretName string) (ingtypes.File, error) {
 	sslCert, err := c.controller.GetCertificate(secretName)
 	if err != nil {
-		return "", err
+		return ingtypes.File{}, err
 	}
 	if sslCert.PemFileName == "" {
-		return "", fmt.Errorf("secret '%s' does not have keys 'tls.crt' and 'tls.key'", secretName)
+		return ingtypes.File{}, fmt.Errorf("secret '%s' does not have keys 'tls.crt' and 'tls.key'", secretName)
 	}
-	return sslCert.PemFileName, nil
+	return ingtypes.File{
+		Filename: sslCert.PemFileName,
+		SHA1Hash: sslCert.PemSHA,
+	}, nil
 }
 
-func (c *cache) GetCASecretPath(secretName string) (string, error) {
+func (c *cache) GetCASecretPath(secretName string) (ingtypes.File, error) {
 	sslCert, err := c.controller.GetCertificate(secretName)
 	if err != nil {
-		return "", err
+		return ingtypes.File{}, err
 	}
 	if sslCert.CAFileName == "" {
-		return "", fmt.Errorf("secret '%s' does not have key 'ca.crt'", secretName)
+		return ingtypes.File{}, fmt.Errorf("secret '%s' does not have key 'ca.crt'", secretName)
 	}
-	return sslCert.CAFileName, nil
+	return ingtypes.File{
+		Filename: sslCert.CAFileName,
+		SHA1Hash: sslCert.PemSHA,
+	}, nil
 }
 
-func (c *cache) GetDHSecretPath(secretName string) (string, error) {
+func (c *cache) GetDHSecretPath(secretName string) (ingtypes.File, error) {
 	secret, err := c.listers.Secret.GetByName(secretName)
 	if err != nil {
-		return "", err
+		return ingtypes.File{}, err
 	}
 	dh, found := secret.Data[dhparamFilename]
 	if !found {
-		return "", fmt.Errorf("secret '%s' does not have key '%s'", secretName, dhparamFilename)
+		return ingtypes.File{}, fmt.Errorf("secret '%s' does not have key '%s'", secretName, dhparamFilename)
 	}
 	pem := strings.Replace(secretName, "/", "_", -1)
 	pemFileName, err := ssl.AddOrUpdateDHParam(pem, dh)
 	if err != nil {
-		return "", fmt.Errorf("error creating dh-param file '%s': %v", pem, err)
+		return ingtypes.File{}, fmt.Errorf("error creating dh-param file '%s': %v", pem, err)
 	}
-	// file.SHA1(pemFileName)
-	return pemFileName, nil
+	return ingtypes.File{
+		Filename: pemFileName,
+		SHA1Hash: file.SHA1(pemFileName),
+	}, nil
 }
 
 func (c *cache) GetSecretContent(secretName, keyName string) ([]byte, error) {

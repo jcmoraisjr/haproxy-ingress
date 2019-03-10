@@ -428,25 +428,7 @@ func TestSyncRedeclareTLSCustomFirst(t *testing.T) {
 WARN skipping default TLS secret of ingress 'default/echo2': TLS of host 'echo.example.com' was already assigned`)
 }
 
-func TestSyncNoDefaultNoTLS(t *testing.T) {
-	c := setup(t)
-	defer c.teardown()
-
-	c.cache.SecretTLSPath = map[string]string{}
-	c.createSvc1Auto()
-	c.Sync(c.createIngTLS1("default/echo", "echo.example.com", "/", "echo:8080", ""))
-
-	c.compareConfigFront(`
-- hostname: echo.example.com
-  paths:
-  - path: /
-    backend: default_echo_8080`)
-
-	c.compareLogging(`
-WARN skipping default TLS secret of ingress 'default/echo': secret not found: 'system/ingress-default'`)
-}
-
-func TestSyncNoDefaultInvalidTLS(t *testing.T) {
+func TestSyncInvalidTLS(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
@@ -458,10 +440,12 @@ func TestSyncNoDefaultInvalidTLS(t *testing.T) {
 - hostname: echo.example.com
   paths:
   - path: /
-    backend: default_echo_8080`)
+    backend: default_echo_8080
+  tls:
+    tlsfilename: /tls/tls-default.pem`)
 
 	c.compareLogging(`
-WARN skipping TLS secret 'tls-invalid' of ingress 'default/echo': failed to use custom and default certificate. custom: secret not found: 'default/tls-invalid'; default: secret not found: 'system/ingress-default'`)
+WARN using default certificate due to an error reading secret 'default/tls-invalid': secret not found: 'default/tls-invalid'`)
 }
 
 func TestSyncRootPathDefault(t *testing.T) {
@@ -977,10 +961,13 @@ var defaultBackendConfig = `
 func (c *testConfig) SyncDef(config map[string]string, ing ...*extensions.Ingress) {
 	conv := NewIngressConverter(
 		&ingtypes.ConverterOptions{
-			Cache:            c.cache,
-			Logger:           c.logger,
-			DefaultBackend:   "system/default",
-			DefaultSSLSecret: "system/ingress-default",
+			Cache:          c.cache,
+			Logger:         c.logger,
+			DefaultBackend: "system/default",
+			DefaultSSLFile: ingtypes.File{
+				Filename: "/tls/tls-default.pem",
+				SHA1Hash: "1",
+			},
 			AnnotationPrefix: "ingress.kubernetes.io",
 		},
 		c.hconfig,

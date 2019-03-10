@@ -60,10 +60,10 @@ func (f *Frontend) HasNoCrtErrorPage() bool {
 	return f.HasInvalidErrorPage()
 }
 
-// HasTLSOptional ...
-func (f *Frontend) HasTLSOptional() bool {
+// HasTLSMandatory ...
+func (f *Frontend) HasTLSMandatory() bool {
 	for _, host := range f.Hosts {
-		if host.TLS.CAVerifyOptional {
+		if !host.TLS.CAVerifyOptional {
 			return true
 		}
 	}

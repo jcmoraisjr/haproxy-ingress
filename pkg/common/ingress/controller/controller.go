@@ -1532,15 +1532,17 @@ func (ic GenericController) Stop() error {
 	return fmt.Errorf("shutdown already in progress")
 }
 
+// StartControllers ...
+func (ic *GenericController) StartControllers() {
+	ic.cacheController.Run(ic.stopCh)
+}
+
 // Start starts the Ingress controller.
 func (ic *GenericController) Start() {
 	glog.Infof("starting Ingress controller")
 
-	ic.cacheController.Run(ic.stopCh)
-
-	createDefaultSSLCertificate()
-
 	if ic.cfg.V07 {
+		ic.CreateDefaultSSLCertificate()
 		time.Sleep(5 * time.Second)
 		// initial sync of secrets to avoid unnecessary reloads
 		glog.Info("running initial sync of secrets")
@@ -1587,7 +1589,8 @@ func (ic *GenericController) SetForceReload(shouldReload bool) {
 	}
 }
 
-func createDefaultSSLCertificate() {
+// CreateDefaultSSLCertificate ...
+func (ic *GenericController) CreateDefaultSSLCertificate() (path, hash string) {
 	defCert, defKey := ssl.GetFakeSSLCert()
 	c, err := ssl.AddOrUpdateCertAndKey(fakeCertificate, defCert, defKey, []byte{})
 	if err != nil {
@@ -1596,4 +1599,6 @@ func createDefaultSSLCertificate() {
 
 	fakeCertificateSHA = c.PemSHA
 	fakeCertificatePath = c.PemFileName
+
+	return fakeCertificatePath, fakeCertificateSHA
 }

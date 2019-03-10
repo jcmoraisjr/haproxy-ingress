@@ -48,6 +48,7 @@ func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Con
 		hostAnnotations:    map[*hatypes.Host]*ingtypes.HostAnnotations{},
 		backendAnnotations: map[*hatypes.Backend]*ingtypes.BackendAnnotations{},
 	}
+	haproxy.ConfigDefaultX509Cert(options.DefaultSSLFile.Filename)
 	if options.DefaultBackend != "" {
 		if backend, err := c.addBackend(options.DefaultBackend, 0, &ingtypes.BackendAnnotations{}); err == nil {
 			haproxy.ConfigDefaultBackend(backend)
@@ -121,19 +122,16 @@ func (c *converter) syncIngress(ing *extensions.Ingress) {
 		for _, tls := range ing.Spec.TLS {
 			for _, tlshost := range tls.Hosts {
 				if tlshost == hostname {
-					tlsPath, err := c.addTLS(ing.Namespace, tls.SecretName)
-					if err == nil {
-						if host.TLS.TLSFilename == "" {
-							host.TLS.TLSFilename = tlsPath
-						} else if host.TLS.TLSFilename != tlsPath {
-							err = fmt.Errorf("TLS of host '%s' was already assigned", host.Hostname)
-						}
-					}
-					if err != nil {
+					tlsPath := c.addTLS(ing.Namespace, tls.SecretName)
+					if host.TLS.TLSHash == "" {
+						host.TLS.TLSFilename = tlsPath.Filename
+						host.TLS.TLSHash = tlsPath.SHA1Hash
+					} else if host.TLS.TLSHash != tlsPath.SHA1Hash {
+						msg := fmt.Sprintf("TLS of host '%s' was already assigned", host.Hostname)
 						if tls.SecretName != "" {
-							c.logger.Warn("skipping TLS secret '%s' of ingress '%s': %v", tls.SecretName, fullIngName, err)
+							c.logger.Warn("skipping TLS secret '%s' of ingress '%s': %s", tls.SecretName, fullIngName, msg)
 						} else {
-							c.logger.Warn("skipping default TLS secret of ingress '%s': %v", fullIngName, err)
+							c.logger.Warn("skipping default TLS secret of ingress '%s': %s", fullIngName, msg)
 						}
 					}
 				}
@@ -230,25 +228,16 @@ func (c *converter) addHTTPPassthrough(fullSvcName string, ingFrontAnn *ingtypes
 	}
 }
 
-func (c *converter) addTLS(namespace, secretName string) (string, error) {
-	defaultSecret := c.options.DefaultSSLSecret
-	tlsSecretName := defaultSecret
+func (c *converter) addTLS(namespace, secretName string) ingtypes.File {
 	if secretName != "" {
-		tlsSecretName = namespace + "/" + secretName
-	}
-	tlsPath, err := c.cache.GetTLSSecretPath(tlsSecretName)
-	if err != nil {
-		if tlsSecretName == defaultSecret {
-			return "", err
+		tlsSecretName := namespace + "/" + secretName
+		tlsFile, err := c.cache.GetTLSSecretPath(tlsSecretName)
+		if err == nil {
+			return tlsFile
 		}
-		tlsSecretErr := err
-		tlsPath, err = c.cache.GetTLSSecretPath(defaultSecret)
-		if err != nil {
-			return "", fmt.Errorf("failed to use custom and default certificate. custom: %v; default: %v", tlsSecretErr, err)
-		}
-		c.logger.Warn("using default certificate due to an error reading secret '%s': %v", tlsSecretName, tlsSecretErr)
+		c.logger.Warn("using default certificate due to an error reading secret '%s': %v", tlsSecretName, err)
 	}
-	return tlsPath, nil
+	return c.options.DefaultSSLFile
 }
 
 func (c *converter) addEndpoints(svc *api.Service, servicePort int, backend *hatypes.Backend) error {

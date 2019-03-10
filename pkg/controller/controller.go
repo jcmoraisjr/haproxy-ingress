@@ -80,6 +80,7 @@ func (hc *HAProxyController) Info() *ingress.BackendInfo {
 // Start starts the controller
 func (hc *HAProxyController) Start() {
 	hc.controller = controller.NewIngressController(hc)
+	hc.controller.StartControllers()
 	hc.configController()
 	hc.controller.Start()
 }
@@ -96,13 +97,6 @@ func (hc *HAProxyController) configController() {
 
 	// starting v0.8 only config
 	logger := &logger{depth: 1}
-	hc.converterOptions = &ingtypes.ConverterOptions{
-		Logger:           logger,
-		Cache:            newCache(hc.storeLister, hc.controller),
-		AnnotationPrefix: "ingress.kubernetes.io",
-		DefaultBackend:   hc.cfg.DefaultService,
-		DefaultSSLSecret: hc.cfg.DefaultSSLCertificate,
-	}
 	instanceOptions := haproxy.InstanceOptions{
 		HAProxyCmd:        "haproxy",
 		ReloadCmd:         "/haproxy-reload.sh",
@@ -114,6 +108,32 @@ func (hc *HAProxyController) configController() {
 	if err := hc.instance.ParseTemplates(); err != nil {
 		glog.Fatalf("error creating HAProxy instance: %v", err)
 	}
+	cache := newCache(hc.storeLister, hc.controller)
+	hc.converterOptions = &ingtypes.ConverterOptions{
+		Logger:           logger,
+		Cache:            cache,
+		AnnotationPrefix: "ingress.kubernetes.io",
+		DefaultBackend:   hc.cfg.DefaultService,
+		DefaultSSLFile:   hc.createDefaultSSLFile(cache),
+	}
+}
+
+func (hc *HAProxyController) createDefaultSSLFile(cache *cache) (tlsFile ingtypes.File) {
+	if hc.cfg.DefaultSSLCertificate != "" {
+		tlsFile, err := cache.GetTLSSecretPath(hc.cfg.DefaultSSLCertificate)
+		if err == nil {
+			return tlsFile
+		}
+		glog.Warningf("using auto generated fake certificate due to an error reading default TLS certificate: %v", err)
+	} else {
+		glog.Info("using auto generated fake certificate")
+	}
+	path, hash := hc.controller.CreateDefaultSSLCertificate()
+	tlsFile = ingtypes.File{
+		Filename: path,
+		SHA1Hash: hash,
+	}
+	return tlsFile
 }
 
 // CreateX509CertsDir hard link files from certs to a single directory.
@@ -126,11 +146,12 @@ func (hc *HAProxyController) CreateX509CertsDir(bindName string, certs []string)
 		return "", err
 	}
 	for _, cert := range certs {
-		file, err := os.Stat(cert)
+		srcFile, err := os.Stat(cert)
 		if err != nil {
 			return "", err
 		}
-		if err := os.Link(cert, x509dir+"/"+file.Name()); err != os.ErrExist {
+		dstFile := x509dir + "/" + srcFile.Name()
+		if err := os.Link(cert, dstFile); err != nil {
 			return "", err
 		}
 	}

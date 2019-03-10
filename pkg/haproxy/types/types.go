@@ -99,8 +99,9 @@ type Frontend struct {
 	Binds []*BindConfig
 	Hosts []*Host
 	//
-	BackendsMap                string
 	ConvertLowercase           bool
+	HostBackendsMap            string
+	SNIBackendsMap             string
 	Timeout                    HostTimeoutConfig
 	TLSInvalidCrtErrorPagesMap string
 	TLSNoCrtErrorPagesMap      string
