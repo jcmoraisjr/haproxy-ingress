@@ -250,8 +250,8 @@ listen _front__tls
 {{- range $frontend := $frontends }}
     ## {{ $frontend.Name }}
 {{- range $bind := $frontend.Binds }}
-    use-server _server_{{ $bind.Name }} if { req.ssl_sni -i
-        {{- range $host := $bind.Hosts }} {{ $host.Hostname }}{{ end }} }
+    use-server _server_{{ $bind.Name }} if
+        {{- "" }} { req.ssl_sni -i -f {{ $bind.UseServerList }} }
     server _server_{{ $bind.Name }} {{ $bind.Socket }} send-proxy-v2 weight 0
 {{- end }}
 {{- end }}
@@ -280,12 +280,8 @@ frontend _front__http
 
 {{- /*------------------------------------*/}}
 {{- if $hasredirect }}
-    redirect scheme https if { var(req.base) -i -m beg
-        {{- range $host := $cfg.Hosts }}
-        {{- range $path := $host.Paths }}
-            {{- if $path.Backend.SSLRedirect }} {{ $host.Hostname }}{{ $path.Path }}{{ end }}
-        {{- end }}
-        {{- end }} }
+    redirect scheme https if
+        {{- "" }} { var(req.base),map_beg({{ $fgroup.RedirectMap }},_nomatch) yes }
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -371,17 +367,11 @@ frontend {{ $frontend.Name }}
 {{- if $mandatory }}
     use_backend _error496 if
         {{- "" }} { var(req.tls_nocrt_redir) _internal }
-        {{- "" }} { ssl_fc_sni -i
-            {{- range $host := $frontend.Hosts }}
-                {{- if and $host.HasTLSAuth (not $host.TLS.CAVerifyOptional) }} {{ $host.Hostname }}{{ end }}
-            {{- end }} }
+        {{- "" }} { ssl_fc_sni -i -f {{ $frontend.TLSNoCrtErrorList }} }
 {{- end }}
     use_backend _error495 if
         {{- "" }} { var(req.tls_invalidcrt_redir) _internal }
-        {{- "" }} { ssl_fc_sni -i
-            {{- range $host := $frontend.Hosts }}
-                {{- if $host.HasTLSAuth }} {{ $host.Hostname }}{{ end }}
-            {{- end }} }
+        {{- "" }} { ssl_fc_sni -i -f {{ $frontend.TLSInvalidCrtErrorList }} }
 {{- end }}
 
 {{- /*------------------------------------*/}}

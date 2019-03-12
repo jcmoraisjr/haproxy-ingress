@@ -90,6 +90,7 @@ type FrontendGroup struct {
 	HasRedirectHTTPS  bool
 	HasSSLPassthrough bool
 	HTTPFrontsMap     string
+	RedirectMap       string
 	SSLPassthroughMap string
 }
 
@@ -103,6 +104,8 @@ type Frontend struct {
 	HostBackendsMap            string
 	SNIBackendsMap             string
 	Timeout                    HostTimeoutConfig
+	TLSInvalidCrtErrorList     string
+	TLSNoCrtErrorList          string
 	TLSInvalidCrtErrorPagesMap string
 	TLSNoCrtErrorPagesMap      string
 	VarNamespaceMap            string
@@ -114,8 +117,9 @@ type BindConfig struct {
 	Socket string
 	Hosts  []*Host
 	//
-	AcceptProxy bool
-	TLS         BindTLSConfig
+	AcceptProxy   bool
+	TLS           BindTLSConfig
+	UseServerList string
 }
 
 // BindTLSConfig ...

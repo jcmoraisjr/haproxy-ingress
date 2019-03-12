@@ -7,5 +7,5 @@
 # #
 #
 {{- range . }}
-{{ .Key }} {{ .Value }}
+{{ .Key }}{{ if .Value }} {{ .Value }}{{ end }}
 {{- end }}

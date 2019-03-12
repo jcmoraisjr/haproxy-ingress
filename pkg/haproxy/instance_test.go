@@ -142,7 +142,7 @@ frontend _front__http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    redirect scheme https if { var(req.base) -i -m beg d2.local/app }
+    redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/redirect.map,_nomatch) yes }
     use_backend d1_app_8080
 frontend https-front_d2.local
     mode http
@@ -157,6 +157,8 @@ frontend https-front_d2.local
 d2.local/app d2`)
 	c.checkMap("https-front_d2.local_host.map", `
 d2.local/app d2_app_8080`)
+	c.checkMap("redirect.map", `
+d2.local/app yes`)
 
 	c.logger.CompareLogging(defaultLogging)
 }
@@ -205,7 +207,7 @@ frontend _front__http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    redirect scheme https if { var(req.base) -i -m beg d1.local/ d2.local/app }
+    redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/redirect.map,_nomatch) yes }
     default_backend _default_backend
 frontend _front_001
     mode http
@@ -222,6 +224,9 @@ d2.local/app -`)
 	c.checkMap("_front_001_host.map", `
 d1.local/ d1_app_8080
 d2.local/app d2_app_8080`)
+	c.checkMap("redirect.map", `
+d1.local/ yes
+d2.local/app yes`)
 
 	c.checkCerts(`
 certdirs:
@@ -273,16 +278,16 @@ listen _front__tls
     tcp-request inspect-delay 5s
     tcp-request content accept if { req.ssl_hello_type 1 }
     ## _front_001
-    use-server _server_d1.local if { req.ssl_sni -i d1.local }
+    use-server _server_d1.local if { req.ssl_sni -i -f /etc/haproxy/maps/_front_001_bind_d1.local.list }
     server _server_d1.local unix@/var/run/front_d1.local.sock send-proxy-v2 weight 0
-    use-server _server_d2.local if { req.ssl_sni -i d2.local }
+    use-server _server_d2.local if { req.ssl_sni -i -f /etc/haproxy/maps/_front_001_bind_d2.local.list }
     server _server_d2.local unix@/var/run/front_d2.local.sock send-proxy-v2 weight 0
     # TODO default backend
 frontend _front__http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    redirect scheme https if { var(req.base) -i -m beg d1.local/ d2.local/ }
+    redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/redirect.map,_nomatch) yes }
     default_backend _default_backend
 frontend _front_001
     mode http
@@ -294,26 +299,39 @@ frontend _front_001
     acl tls-invalid-crt ssl_c_ca_err gt 0
     acl tls-invalid-crt ssl_c_err gt 0
     acl tls-has-crt ssl_c_used
-    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,map(/etc/haproxy/maps/_front_001_no_crt.map,_internal) if !tls-has-crt
-    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,map(/etc/haproxy/maps/_front_001_inv_crt.map,_internal) if tls-invalid-crt
+    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,map(/etc/haproxy/maps/_front_001_no_crt_redir.map,_internal) if !tls-has-crt
+    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,map(/etc/haproxy/maps/_front_001_inv_crt_redir.map,_internal) if tls-invalid-crt
     http-request redirect location %[var(req.tls_nocrt_redir)] code 303 if { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) _internal }
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
-    use_backend _error496 if { var(req.tls_nocrt_redir) _internal } { ssl_fc_sni -i d1.local d2.local }
-    use_backend _error495 if { var(req.tls_invalidcrt_redir) _internal } { ssl_fc_sni -i d1.local d2.local }
+    use_backend _error496 if { var(req.tls_nocrt_redir) _internal } { ssl_fc_sni -i -f /etc/haproxy/maps/_front_001_no_crt.list }
+    use_backend _error495 if { var(req.tls_invalidcrt_redir) _internal } { ssl_fc_sni -i -f /etc/haproxy/maps/_front_001_inv_crt.list }
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     use_backend %[var(req.snibackend)] unless { var(req.snibackend) _nomatch }
     default_backend _default_backend
 `)
 
-	c.checkMap("_front_001_inv_crt.map", `
+	c.checkMap("_front_001_inv_crt_redir.map", `
 d1.local http://d1.local/error.html`)
-	c.checkMap("_front_001_no_crt.map", `
+	c.checkMap("_front_001_inv_crt.list", `
+d1.local
+d2.local`)
+	c.checkMap("_front_001_no_crt_redir.map", `
 d1.local http://d1.local/error.html`)
+	c.checkMap("_front_001_no_crt.list", `
+d1.local
+d2.local`)
 	c.checkMap("_front_001_host.map", `
 `)
 	c.checkMap("_front_001_sni.map", `
 d1.local/ d_app_8080
 d2.local/ d_app_8080`)
+	c.checkMap("_front_001_bind_d1.local.list", `
+d1.local`)
+	c.checkMap("_front_001_bind_d2.local.list", `
+d2.local`)
+	c.checkMap("redirect.map", `
+d1.local/ yes
+d2.local/ yes`)
 
 	c.logger.CompareLogging(defaultLogging)
 }
@@ -387,12 +405,12 @@ listen _front__tls
     tcp-request inspect-delay 5s
     tcp-request content accept if { req.ssl_hello_type 1 }
     ## _front_001
-    use-server _server__socket001 if { req.ssl_sni -i d21.local d22.local }
+    use-server _server__socket001 if { req.ssl_sni -i -f /etc/haproxy/maps/_front_001_bind__socket001.list }
     server _server__socket001 unix@/var/run/front__socket001.sock send-proxy-v2 weight 0
-    use-server _server__socket002 if { req.ssl_sni -i d3.local d4.local }
+    use-server _server__socket002 if { req.ssl_sni -i -f /etc/haproxy/maps/_front_001_bind__socket002.list }
     server _server__socket002 unix@/var/run/front__socket002.sock send-proxy-v2 weight 0
     ## https-front_d1.local
-    use-server _server_d1.local if { req.ssl_sni -i d1.local }
+    use-server _server_d1.local if { req.ssl_sni -i -f /etc/haproxy/maps/https-front_d1.local_bind_d1.local.list }
     server _server_d1.local unix@/var/run/front_d1.local.sock send-proxy-v2 weight 0
     # TODO default backend
 frontend _front__http
@@ -400,7 +418,7 @@ frontend _front__http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http-front.map,_nomatch)
-    redirect scheme https if { var(req.base) -i -m beg d1.local/ d21.local/ d22.local/ }
+    redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/redirect.map,_nomatch) yes }
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _default_backend
 frontend _front_001
@@ -414,12 +432,12 @@ frontend _front_001
     acl tls-invalid-crt ssl_c_ca_err gt 0
     acl tls-invalid-crt ssl_c_err gt 0
     acl tls-has-crt ssl_c_used
-    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,map(/etc/haproxy/maps/_front_001_no_crt.map,_internal) if !tls-has-crt
-    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,map(/etc/haproxy/maps/_front_001_inv_crt.map,_internal) if tls-invalid-crt
+    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,map(/etc/haproxy/maps/_front_001_no_crt_redir.map,_internal) if !tls-has-crt
+    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,map(/etc/haproxy/maps/_front_001_inv_crt_redir.map,_internal) if tls-invalid-crt
     http-request redirect location %[var(req.tls_nocrt_redir)] code 303 if { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) _internal }
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
-    use_backend _error496 if { var(req.tls_nocrt_redir) _internal } { ssl_fc_sni -i d22.local }
-    use_backend _error495 if { var(req.tls_invalidcrt_redir) _internal } { ssl_fc_sni -i d21.local d22.local }
+    use_backend _error496 if { var(req.tls_nocrt_redir) _internal } { ssl_fc_sni -i -f /etc/haproxy/maps/_front_001_no_crt.list }
+    use_backend _error495 if { var(req.tls_invalidcrt_redir) _internal } { ssl_fc_sni -i -f /etc/haproxy/maps/_front_001_inv_crt.list }
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     use_backend %[var(req.snibackend)] unless { var(req.snibackend) _nomatch }
     default_backend _default_backend
@@ -432,9 +450,9 @@ frontend https-front_d1.local
     http-request set-var(req.snibackend) hdr(x-ha-base),regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/https-front_d1.local_sni.map,_nomatch)
     acl tls-invalid-crt ssl_c_ca_err gt 0
     acl tls-invalid-crt ssl_c_err gt 0
-    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,map(/etc/haproxy/maps/https-front_d1.local_inv_crt.map,_internal) if tls-invalid-crt
+    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,map(/etc/haproxy/maps/https-front_d1.local_inv_crt_redir.map,_internal) if tls-invalid-crt
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
-    use_backend _error495 if { var(req.tls_invalidcrt_redir) _internal } { ssl_fc_sni -i d1.local }
+    use_backend _error495 if { var(req.tls_invalidcrt_redir) _internal } { ssl_fc_sni -i -f /etc/haproxy/maps/https-front_d1.local_inv_crt.list }
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     use_backend %[var(req.snibackend)] unless { var(req.snibackend) _nomatch }
     default_backend _default_backend
@@ -443,27 +461,49 @@ frontend https-front_d1.local
 	c.checkMap("http-front.map", `
 d3.local/ d_app_8080
 d4.local/ d_app_8080`)
-	c.checkMap("_front_001_inv_crt.map", `
+	c.checkMap("_front_001_inv_crt_redir.map", `
 d21.local http://d21.local/error.html
 d22.local http://d22.local/error.html
 `)
-	c.checkMap("_front_001_no_crt.map", `
+	c.checkMap("_front_001_inv_crt.list", `
+d21.local
+d22.local`)
+	c.checkMap("_front_001_no_crt_redir.map", `
 d22.local http://d22.local/error.html
 `)
+	c.checkMap("_front_001_no_crt.list", `
+d22.local`)
 	c.checkMap("_front_001_host.map", `
 d3.local/ d_app_8080
 d4.local/ d_app_8080`)
 	c.checkMap("_front_001_sni.map", `
 d21.local/ d_appca_8080
 d22.local/ d_appca_8080`)
-	c.checkMap("https-front_d1.local_inv_crt.map", `
+	c.checkMap("_front_001_bind__socket001.list", `
+d21.local
+d22.local`)
+	c.checkMap("_front_001_bind__socket002.list", `
+d3.local
+d4.local`)
+	c.checkMap("https-front_d1.local_inv_crt_redir.map", `
 d1.local http://d1.local/error.html`)
-	c.checkMap("https-front_d1.local_no_crt.map", `
+	c.checkMap("https-front_d1.local_inv_crt.list", `
+d1.local`)
+	c.checkMap("https-front_d1.local_no_crt_redir.map", `
 `)
 	c.checkMap("https-front_d1.local_host.map", `
 `)
 	c.checkMap("https-front_d1.local_sni.map", `
 d1.local/ d_appca_8080`)
+	c.checkMap("https-front_d1.local_bind_d1.local.list", `
+d1.local`)
+	c.checkMap("redirect.map", `
+d21.local/ yes
+d22.local/ yes
+d3.local/ no
+d4.local/ no
+d1.local/ yes
+`)
 
 	c.checkCerts(`
 certdirs:
@@ -530,7 +570,7 @@ frontend _front__http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http-front.map,_nomatch)
-    redirect scheme https if { var(req.base) -i -m beg d.local/app d.local/ }
+    redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/redirect.map,_nomatch) yes }
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _default_backend
 frontend https-front_d.local
@@ -546,6 +586,11 @@ d.local/sub d_app3_8080
 d.local/app/sub d_app2_8080
 d.local/app d_app1_8080
 d.local/ d_app0_8080`)
+	c.checkMap("redirect.map", `
+d.local/sub no
+d.local/app/sub no
+d.local/app yes
+d.local/ yes`)
 
 	c.logger.CompareLogging(defaultLogging)
 }
@@ -605,7 +650,7 @@ frontend _front__http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http-front.map,_nomatch)
-    redirect scheme https if { var(req.base) -i -m beg d2.local/ }
+    redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/redirect.map,_nomatch) yes }
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _error404`)
 
@@ -614,6 +659,9 @@ d2.local d2_app_8080
 d3.local d3_app-ssl_8443`)
 	c.checkMap("http-front.map", `
 d3.local/ d3_app-http_8080`)
+	c.checkMap("redirect.map", `
+d2.local/ yes
+d3.local/ no`)
 
 	c.logger.CompareLogging(defaultLogging)
 }
