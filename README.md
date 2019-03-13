@@ -60,15 +60,16 @@ lists, math etc.
 
 The following annotations are supported:
 
-* `[0]` only in `v0.7` (`snapshot`)
+* `[0]` only in `v0.7` (`canary`)
+* `[1]` only in `v0.8` (`snapshot`)
 
 ||Name|Data|Usage|
 |---|---|---|:---:|
 ||[`ingress.kubernetes.io/affinity`](#affinity)|affinity type|-|
-|`[0]`|[`ingress.kubernetes.io/agent-check-addr`](#agent-check)|address for agent checks|-|
-|`[0]`|[`ingress.kubernetes.io/agent-check-port`](#agent-check)|backend agent listen port|-|
-|`[0]`|[`ingress.kubernetes.io/agent-check-inter`](#agent-check)|time with suffix|-|
-|`[0]`|[`ingress.kubernetes.io/agent-check-send`](#agent-check)|string to send upon agent connection|-|
+|`[1]`|[`ingress.kubernetes.io/agent-check-addr`](#agent-check)|address for agent checks|-|
+|`[1]`|[`ingress.kubernetes.io/agent-check-port`](#agent-check)|backend agent listen port|-|
+|`[1]`|[`ingress.kubernetes.io/agent-check-inter`](#agent-check)|time with suffix|-|
+|`[1]`|[`ingress.kubernetes.io/agent-check-send`](#agent-check)|string to send upon agent connection|-|
 ||`ingress.kubernetes.io/app-root`|/url|[doc](/examples/rewrite)|
 ||`ingress.kubernetes.io/auth-realm`|realm string|[doc](/examples/auth/basic)|
 ||`ingress.kubernetes.io/auth-secret`|secret name|[doc](/examples/auth/basic)|
@@ -88,12 +89,12 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/cors-allow-origin`](#cors)|URL|-|
 ||[`ingress.kubernetes.io/cors-enable`](#cors)|[true\|false]|-|
 ||[`ingress.kubernetes.io/cors-max-age`](#cors)|time (seconds)|-|
-|`[0]`|[`ingress.kubernetes.io/health-check-uri`](#health-check)|uri for http health checks|-|
-|`[0]`|[`ingress.kubernetes.io/health-check-addr`](#health-check)|address for health checks|-|
-|`[0]`|[`ingress.kubernetes.io/health-check-port`](#health-check)|port for health checks|-|
-|`[0]`|[`ingress.kubernetes.io/health-check-interval`](#health-check)|time with suffix|-|
-|`[0]`|[`ingress.kubernetes.io/health-check-fall-count`](#health-check)|number of failures|-|
-|`[0]`|[`ingress.kubernetes.io/health-check-rise-count`](#health-check)|number of successes|-|
+|`[1]`|[`ingress.kubernetes.io/health-check-uri`](#health-check)|uri for http health checks|-|
+|`[1]`|[`ingress.kubernetes.io/health-check-addr`](#health-check)|address for health checks|-|
+|`[1]`|[`ingress.kubernetes.io/health-check-port`](#health-check)|port for health checks|-|
+|`[1]`|[`ingress.kubernetes.io/health-check-interval`](#health-check)|time with suffix|-|
+|`[1]`|[`ingress.kubernetes.io/health-check-fall-count`](#health-check)|number of failures|-|
+|`[1]`|[`ingress.kubernetes.io/health-check-rise-count`](#health-check)|number of successes|-|
 ||[`ingress.kubernetes.io/hsts`](#hsts)|[true\|false]|-|
 ||[`ingress.kubernetes.io/hsts-include-subdomains`](#hsts)|[true\|false]|-|
 ||[`ingress.kubernetes.io/hsts-max-age`](#hsts)|qty of seconds|-|
@@ -116,7 +117,7 @@ The following annotations are supported:
 |`[0]`|[`ingress.kubernetes.io/server-alias-regex`](#server-alias)|regex|-|
 ||[`ingress.kubernetes.io/session-cookie-name`](#affinity)|cookie name|-|
 ||[`ingress.kubernetes.io/session-cookie-strategy`](#affinity)|[insert\|prefix\|rewrite]|-|
-|`[0]`|[`ingress.kubernetes.io/session-cookie-dynamic`](#affinity)|[true\|false]|-|
+|`[1]`|[`ingress.kubernetes.io/session-cookie-dynamic`](#affinity)|[true\|false]|-|
 ||[`ingress.kubernetes.io/slots-increment`](#dynamic-scaling)|qty|-|
 ||[`ingress.kubernetes.io/ssl-passthrough`](#ssl-passthrough)|[true\|false]|-|
 |`[0]`|[`ingress.kubernetes.io/ssl-passthrough-http-port`](#ssl-passthrough)|backend port|-|
@@ -383,8 +384,8 @@ A ConfigMap can be created with `kubectl create configmap`.
 
 The following parameters are supported:
 
-* `[0]` only in `v0.7` (`snapshot`)
-* `[1]` only in `v0.8`
+* `[0]` only in `v0.7` (`canary`)
+* `[1]` only in `v0.8` (`snapshot`)
 
 ||Name|Type|Default|
 |---|---|---|---|
@@ -441,8 +442,8 @@ The following parameters are supported:
 |`[0]`|[`stats-ssl-cert`](#stats)|namespace/secret name|no ssl/plain http|
 |`[0]`|[`strict-host`](#strict-host)|[true\|false]|`true`|
 ||[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
-||[`syslog-format`](#syslog-format)|rfc5424\|rfc3164|rfc5424|
-|`[0]`|[`syslog-tag`](#syslog-tag)|syslog tag field string|`ingress`|
+|`[1]`|[`syslog-format`](#syslog-format)|rfc5424\|rfc3164|rfc5424|
+|`[1]`|[`syslog-tag`](#syslog-tag)|syslog tag field string|`ingress`|
 ||[`tcp-log-format`](#log-format)|tcp log format|HAProxy default log format|
 ||[`timeout-client`](#timeout)|time with suffix|`50s`|
 ||[`timeout-client-fin`](#timeout)|time with suffix|`50s`|
