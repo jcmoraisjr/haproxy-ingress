@@ -5,6 +5,15 @@ implementation for [HAProxy](http://www.haproxy.org/) loadbalancer.
 
 [![Build Status](https://travis-ci.org/jcmoraisjr/haproxy-ingress.svg?branch=master)](https://travis-ci.org/jcmoraisjr/haproxy-ingress) [![Docker Repository on Quay](https://quay.io/repository/jcmoraisjr/haproxy-ingress/status "Docker Repository on Quay")](https://quay.io/repository/jcmoraisjr/haproxy-ingress)
 
+* [Release](#releases)
+* [Installation](#installation)
+* [Configuration](#configuration)
+  * [Templates](#templates)
+  * [Annotations](#annotations)
+  * [Configmap options](#configmap)
+  * [Command-line options](#command-line)
+* [Mailing list](#mailing-list)
+
 # Releases
 
 HAProxy Ingress images are built by [Travis CI](https://travis-ci.org/jcmoraisjr/haproxy-ingress) and the
@@ -1119,3 +1128,12 @@ the certificate declared in the `secretName` ignoring if the certificate is or i
 By default the proxy will be configured using all namespaces from the Kubernetes cluster. Use
 `--watch-namespace` with the name of a namespace to watch and build the configuration of a
 single namespace.
+
+# Mailing list
+
+Contact us through the mailing list:
+
+* Mailing list: haproxy-ingress@googlegroups.com (no need to be subscribed)
+* Subscribe: [here](https://groups.google.com/d/forum/haproxy-ingress) or send an empty email to haproxy-ingress+subscribe@googlegroups.com
+* Archive: https://groups.google.com/d/forum/haproxy-ingress
+* Unsubscribe: [here](https://groups.google.com/d/forum/haproxy-ingress) or send an empty email to haproxy-ingress+unsubscribe@googlegroups.com
