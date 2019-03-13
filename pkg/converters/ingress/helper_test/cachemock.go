@@ -17,10 +17,13 @@ limitations under the License.
 package helper_test
 
 import (
+	"crypto/sha1"
 	"fmt"
 	"strings"
 
 	api "k8s.io/api/core/v1"
+
+	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 )
 
 // SecretContent ...
@@ -33,6 +36,7 @@ type CacheMock struct {
 	PodList       map[string]*api.Pod
 	SecretTLSPath map[string]string
 	SecretCAPath  map[string]string
+	SecretDHPath  map[string]string
 	SecretContent SecretContent
 }
 
@@ -67,19 +71,36 @@ func (c *CacheMock) GetPod(podName string) (*api.Pod, error) {
 }
 
 // GetTLSSecretPath ...
-func (c *CacheMock) GetTLSSecretPath(secretName string) (string, error) {
+func (c *CacheMock) GetTLSSecretPath(secretName string) (ingtypes.File, error) {
 	if path, found := c.SecretTLSPath[secretName]; found {
-		return path, nil
+		return ingtypes.File{
+			Filename: path,
+			SHA1Hash: fmt.Sprintf("%x", sha1.Sum([]byte(path))),
+		}, nil
 	}
-	return "", fmt.Errorf("secret not found: '%s'", secretName)
+	return ingtypes.File{}, fmt.Errorf("secret not found: '%s'", secretName)
 }
 
 // GetCASecretPath ...
-func (c *CacheMock) GetCASecretPath(secretName string) (string, error) {
+func (c *CacheMock) GetCASecretPath(secretName string) (ingtypes.File, error) {
 	if path, found := c.SecretCAPath[secretName]; found {
-		return path, nil
+		return ingtypes.File{
+			Filename: path,
+			SHA1Hash: fmt.Sprintf("%x", sha1.Sum([]byte(path))),
+		}, nil
 	}
-	return "", fmt.Errorf("secret not found: '%s'", secretName)
+	return ingtypes.File{}, fmt.Errorf("secret not found: '%s'", secretName)
+}
+
+// GetDHSecretPath ...
+func (c *CacheMock) GetDHSecretPath(secretName string) (ingtypes.File, error) {
+	if path, found := c.SecretDHPath[secretName]; found {
+		return ingtypes.File{
+			Filename: path,
+			SHA1Hash: fmt.Sprintf("%x", sha1.Sum([]byte(path))),
+		}, nil
+	}
+	return ingtypes.File{}, fmt.Errorf("secret not found: '%s'", secretName)
 }
 
 // GetSecretContent ...

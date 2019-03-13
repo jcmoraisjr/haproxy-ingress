@@ -1,0 +1,399 @@
+  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# #
+# #   HAProxy Ingress Controller
+# #   --------------------------
+# #   This file is automatically updated, do not edit
+# #
+#
+{{- $cfg := . }}
+{{- $global := $cfg.Global }}
+global
+    daemon
+    quiet
+{{- if gt $global.Procs.Nbproc 1 }}
+    nbproc {{ $global.Procs.Nbproc }}
+{{- end }}
+{{- if gt $global.Procs.Nbthread 1 }}
+    nbthread {{ $global.Procs.Nbthread }}
+{{- end }}
+{{- if $global.Procs.CPUMap }}
+    cpu-map {{ $global.Procs.CPUMap }}
+{{- end }}
+    stats socket {{ default "--" $global.StatsSocket }} level admin expose-fd listeners
+        {{- if gt $global.Procs.Nbproc 1 }} process 1{{ end }}
+{{- if $global.LoadServerState }}
+    server-state-file state-global
+    server-state-base /var/lib/haproxy/
+{{- end }}
+    maxconn {{ $global.MaxConn }}
+{{- if $global.Timeout.Stop }}
+    hard-stop-after {{ $global.Timeout.Stop }}
+{{- end }}
+{{- if $global.Syslog.Endpoint }}
+    log {{ $global.Syslog.Endpoint }} format {{ $global.Syslog.Format }} local0
+    log-tag {{ $global.Syslog.Tag }}
+{{- end }}
+    lua-load /usr/local/etc/haproxy/lua/send-response.lua
+    lua-load /usr/local/etc/haproxy/lua/auth-request.lua
+{{- if $global.SSL.DHParam.Filename }}
+    ssl-dh-param-file {{ $global.SSL.DHParam.Filename }}
+{{- else }}
+    tune.ssl.default-dh-param {{ $global.SSL.DHParam.DefaultMaxSize }}
+{{- end }}
+{{- if $global.SSL.Engine }}
+    ssl-engine {{ $global.SSL.Engine }}
+{{- if $global.SSL.ModeAsync }}
+    ssl-mode-async
+{{- end }}
+{{- end }}
+{{- if $global.SSL.Ciphers }}
+    ssl-default-bind-ciphers {{ $global.SSL.Ciphers }}
+{{- end }}
+{{- if $global.SSL.Options }}
+    ssl-default-bind-options {{ $global.SSL.Options }}
+{{- end }}
+{{- range $snippet := $global.CustomConfig }}
+    {{ $snippet }}
+{{- end }}
+
+defaults
+    log global
+{{- if $global.LoadServerState }}
+    load-server-state-from-file global
+{{- end }}
+    maxconn {{ $global.MaxConn }}
+{{- if $global.DrainSupport }}
+    option persist
+{{- else }}
+    option redispatch
+{{- end }}
+    option dontlognull
+    option http-server-close
+    option http-keep-alive
+    timeout client          {{ default "--" $global.Timeout.Client }}
+{{- if $global.Timeout.ClientFin }}
+    timeout client-fin      {{ $global.Timeout.ClientFin }}
+{{- end }}
+    timeout connect         {{ default "--" $global.Timeout.Connect }}
+{{- if $global.Timeout.KeepAlive }}
+    timeout http-keep-alive {{ $global.Timeout.KeepAlive }}
+{{- end }}
+{{- if $global.Timeout.HTTPRequest }}
+    timeout http-request    {{ $global.Timeout.HTTPRequest }}
+{{- end }}
+{{- if $global.Timeout.Queue }}
+    timeout queue           {{ $global.Timeout.Queue }}
+{{- end }}
+    timeout server          {{ default "--" $global.Timeout.Server }}
+{{- if $global.Timeout.ServerFin }}
+    timeout server-fin      {{ $global.Timeout.ServerFin }}
+{{- end }}
+{{- if $global.Timeout.Tunnel }}
+    timeout tunnel          {{ $global.Timeout.Tunnel }}
+{{- end }}
+
+  # # # # # # # # # # # # # # # # # # #
+# #
+#     DNS RESOLVERS
+#
+
+# TODO
+
+{{- $userlists := $cfg.Userlists }}
+{{- if $userlists }}
+
+  # # # # # # # # # # # # # # # # # # #
+# #
+#     USER LISTS
+#
+{{- range $userlist := $userlists }}
+userlist {{ $userlist.Name }}
+{{- range $user := $userlist.Users }}
+    user {{ $user.Name }} {{ if not $user.Encrypted }}insecure-{{ end }}password {{ $user.Passwd }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+
+  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# #
+# #   TCP SERVICES
+# #
+#
+
+# TODO
+
+
+  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# #
+# #   BACKENDS
+# #
+#
+{{- range $backend := $cfg.Backends }}
+backend {{ $backend.ID }}
+    mode {{ if $backend.ModeTCP }}tcp{{ else }}http{{ end }}
+{{- if $backend.BalanceAlgorithm }}
+    balance {{ $backend.BalanceAlgorithm }}
+{{- end }}
+{{- $timeout := $backend.Timeout }}
+{{- if $timeout.Connect }}
+    timeout connect {{ $timeout.Connect }}
+{{- end }}
+{{- if $timeout.KeepAlive }}
+    timeout http-keep-alive {{ $timeout.KeepAlive }}
+{{- end }}
+{{- if $timeout.HTTPRequest }}
+    timeout http-request {{ $timeout.HTTPRequest }}
+{{- end }}
+{{- if $timeout.Queue }}
+    timeout queue {{ $timeout.Queue }}
+{{- end }}
+{{- if $timeout.Server }}
+    timeout server {{ $timeout.Server }}
+{{- end }}
+{{- if $timeout.ServerFin }}
+    timeout server-fin {{ $timeout.ServerFin }}
+{{- end }}
+{{- if $timeout.Tunnel }}
+    timeout tunnel {{ $timeout.Tunnel }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- range $snippet := $backend.CustomConfig }}
+    {{ $snippet }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- range $ep := $backend.Endpoints }}
+    server {{ $ep.Name }} {{ $ep.IP }}:{{ $ep.Port }}
+        {{- if $ep.Disabled }} disabled{{ end }}
+        {{- "" }} weight {{ $ep.Weight }}
+        {{- template "backend" map $backend }}
+{{- end }}
+{{- end }}
+
+{{- define "backend" }}
+    {{- $backend := .p1 }}
+    {{- if $backend.MaxConnServer }} maxconn {{ $backend.MaxConnServer }}{{ end }}
+    {{- if $backend.MaxQueueServer }} maxqueue {{ $backend.MaxQueueServer }}{{ end }}
+    {{- $ssl := $backend.SSL }}
+    {{- if $ssl.IsSecure }} ssl
+        {{- if $ssl.CertFilename }} crt {{ $ssl.CertFilename }}{{ end }}
+        {{- if $ssl.CAFilename }} verify required ca-file {{ $ssl.CAFilename }}
+            {{- else }} verify none
+        {{- end }}
+    {{- end }}
+    {{- if $backend.SendProxyProtocol }} {{ $backend.SendProxyProtocol }}{{ end }}
+    {{- $agent := $backend.AgentCheck }}
+    {{- $hc := $backend.HealthCheck }}
+    {{- if coalesce $hc.Port $hc.Addr $hc.Interval $hc.RiseCount $hc.FallCount }} check
+        {{- if $hc.Port }} port {{ $hc.Port }}{{ end }}
+        {{- if $hc.Addr }} addr {{ $hc.Addr }}{{ end }}
+        {{- if $hc.Interval }} inter {{ $hc.Interval }}{{ end }}
+        {{- if $hc.RiseCount }} rise {{ $hc.RiseCount }}{{ end }}
+        {{- if $hc.FallCount }} fall {{ $hc.FallCount }}{{ end }}
+    {{- end }}
+    {{- if $agent.Port }} agent-check agent-port {{ $agent.Port }}
+        {{- if $agent.Addr }} agent-addr {{ $agent.Addr }}{{ end }}
+        {{- if $agent.Interval }} agent-inter {{ $agent.Interval }}{{ end }}
+        {{- if $agent.Send }} agent-send {{ $agent.Send }}{{ end }}
+    {{- end }}
+{{- end }}
+
+  # # # # # # # # # # # # # # # # # # #
+# #
+#     Error pages
+#
+{{- if and (not $cfg.DefaultHost) (not $cfg.DefaultBackend) }}
+backend _error404
+    mode http
+    errorfile 400 /usr/local/etc/haproxy/errors/404.http
+    http-request deny deny_status 400
+{{- end }}
+backend _error495
+    mode http
+    errorfile 400 /usr/local/etc/haproxy/errors/495.http
+    http-request deny deny_status 400
+backend _error496
+    mode http
+    errorfile 400 /usr/local/etc/haproxy/errors/496.http
+    http-request deny deny_status 400
+
+
+  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# #
+# #   FRONTENDS
+# #
+#
+{{- $fgroup := $cfg.BuildFrontendGroup }}
+{{- $frontends := $fgroup.Frontends }}
+{{- if $fgroup.HasTCPProxy }}
+
+  # # # # # # # # # # # # # # # # # # #
+# #
+#     TCP/TLS frontend
+#
+listen _front__tls
+    mode tcp
+    bind :443
+    tcp-request inspect-delay 5s
+    tcp-request content accept if { req.ssl_hello_type 1 }
+{{- if $fgroup.HasSSLPassthrough }}
+    ## ssl-passthrough
+    tcp-request content set-var(req.backend) req.ssl_sni,lower,map({{ $fgroup.SSLPassthroughMap }},_nomatch)
+    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+{{- end }}
+{{- range $frontend := $frontends }}
+    ## {{ $frontend.Name }}
+{{- range $bind := $frontend.Binds }}
+    use-server _server_{{ $bind.Name }} if
+        {{- "" }} { req.ssl_sni -i -f {{ $bind.UseServerList }} }
+    server _server_{{ $bind.Name }} {{ $bind.Socket }} send-proxy-v2 weight 0
+{{- end }}
+{{- end }}
+    # TODO default backend
+{{- end }}
+
+  # # # # # # # # # # # # # # # # # # #
+# #
+#     HTTP frontend
+#
+frontend _front__http
+    mode http
+    bind :80
+
+{{- /*------------------------------------*/}}
+{{- $hasredirect := $fgroup.HasRedirectHTTPS }}
+{{- $hashttp := $fgroup.HasHTTPHost }}
+{{- if $hasredirect }}
+    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+{{- if $hashttp }}
+    http-request set-var(req.backend) var(req.base),map_beg({{ $fgroup.HTTPFrontsMap }},_nomatch)
+{{- end }}
+{{- else if $hashttp }}
+    http-request set-var(req.backend) base,regsub(:[0-9]+/,/),map_beg({{ $fgroup.HTTPFrontsMap }},_nomatch)
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $hasredirect }}
+    redirect scheme https if
+        {{- "" }} { var(req.base),map_beg({{ $fgroup.RedirectMap }},_nomatch) yes }
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $hashttp }}
+    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+{{- end }}
+
+{{- template "defaultbackend" map $cfg }}
+
+  # # # # # # # # # # # # # # # # # # #
+# #
+#     HTTPS frontends
+#
+{{- range $frontend := $frontends }}
+frontend {{ $frontend.Name }}
+    mode http
+
+{{- /*------------------------------------*/}}
+{{- range $bind := $frontend.Binds }}
+{{- if $bind.Socket }}
+{{- $tls := $bind.TLS }}
+    bind {{ $bind.Socket }}
+        {{- if $bind.AcceptProxy }} accept-proxy{{ end }}
+        {{- if or $tls.TLSCert $tls.TLSCertDir }}
+            {{- "" }} ssl alpn h2,http/1.1
+            {{- if $tls.TLSCert }} crt {{ $tls.TLSCert }}{{ end }}
+            {{- if $tls.TLSCertDir }} crt {{ $tls.TLSCertDir }}{{ end }}
+        {{- end }}
+        {{- if $tls.CAFilename }} ca-file {{ $tls.CAFilename }} verify optional ca-ignore-err all crt-ignore-err all{{ end }}
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $frontend.Timeout.Client }}
+    timeout client {{ $frontend.Timeout.Client }}
+{{- end }}
+{{- if $frontend.Timeout.ClientFin }}
+    timeout client-fin {{ $frontend.Timeout.ClientFin }}
+{{- end }}
+{{- if $frontend.HasVarNamespace }}
+    http-request set-var(txn.namespace) base
+        {{- if $frontend.ConvertLowercase }},lower{{ end }}
+        {{- "" }},regsub(:[0-9]+/,/)
+        {{- "" }},map_beg({{ $frontend.VarNamespaceMap }},-)
+{{- end }}
+
+{{- /*------------------------------------*/}}
+    http-request set-var(req.hostbackend) base
+        {{- if $frontend.ConvertLowercase }},lower{{ end }}
+        {{- "" }},regsub(:[0-9]+/,/)
+        {{- "" }},map_beg({{ $frontend.HostBackendsMap }},_nomatch)
+
+{{- /*------------------------------------*/}}
+{{- if $frontend.HasTLSAuth }}
+{{- /* missing concat converter, fix after 1.9 */}}
+    http-request set-header x-ha-base %[ssl_fc_sni]%[path]
+    http-request set-var(req.snibackend) hdr(x-ha-base)
+        {{- if $frontend.ConvertLowercase }},lower{{ end }}
+        {{- "" }},regsub(:[0-9]+/,/)
+        {{- "" }},map_beg({{ $frontend.SNIBackendsMap }},_nomatch)
+{{- $mandatory := $frontend.HasTLSMandatory }}
+    acl tls-invalid-crt ssl_c_ca_err gt 0
+    acl tls-invalid-crt ssl_c_err gt 0
+{{- if $mandatory }}
+    acl tls-has-crt ssl_c_used
+    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni
+        {{- if $frontend.ConvertLowercase }},lower{{ end }}
+        {{- "" }},map({{ $frontend.TLSNoCrtErrorPagesMap }},_internal)
+        {{- "" }} if !tls-has-crt
+{{- end }}
+    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni
+        {{- if $frontend.ConvertLowercase }},lower{{ end }}
+        {{- "" }},map({{ $frontend.TLSInvalidCrtErrorPagesMap }},_internal)
+        {{- "" }} if tls-invalid-crt
+{{- if and $mandatory $frontend.HasNoCrtErrorPage }}
+    http-request redirect location %[var(req.tls_nocrt_redir)] code 303 if
+        {{- "" }} { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) _internal }
+{{- end }}
+{{- if $frontend.HasInvalidErrorPage }}
+    http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if
+        {{- "" }} { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
+{{- end }}
+{{- if $mandatory }}
+    use_backend _error496 if
+        {{- "" }} { var(req.tls_nocrt_redir) _internal }
+        {{- "" }} { ssl_fc_sni -i -f {{ $frontend.TLSNoCrtErrorList }} }
+{{- end }}
+    use_backend _error495 if
+        {{- "" }} { var(req.tls_invalidcrt_redir) _internal }
+        {{- "" }} { ssl_fc_sni -i -f {{ $frontend.TLSInvalidCrtErrorList }} }
+{{- end }}
+
+{{- /*------------------------------------*/}}
+    use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
+{{- if $frontend.HasTLSAuth }}
+    use_backend %[var(req.snibackend)] unless { var(req.snibackend) _nomatch }
+{{- end }}
+{{- template "defaultbackend" map $cfg }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- /*------------------------------------*/}}
+{{- define "defaultbackend" }}
+{{- $cfg := .p1 }}
+{{- if $cfg.DefaultHost }}
+{{- range $path := $cfg.DefaultHost.Paths }}
+    use_backend {{ $path.BackendID }}
+        {{- if ne $path.Path "/" }} if { path_beg {{ $path.Path }} }{{ end }}
+{{- end }}
+{{- else if $cfg.DefaultBackend }}
+    default_backend {{ $cfg.DefaultBackend.ID }}
+{{- else }}
+    default_backend _error404
+{{- end }}
+{{- end }}

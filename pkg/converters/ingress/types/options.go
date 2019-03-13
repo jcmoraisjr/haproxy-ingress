@@ -20,11 +20,17 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )
 
+// File ...
+type File struct {
+	Filename string
+	SHA1Hash string
+}
+
 // ConverterOptions ...
 type ConverterOptions struct {
 	Logger           types.Logger
 	Cache            Cache
 	DefaultBackend   string
-	DefaultSSLSecret string
+	DefaultSSLFile   File
 	AnnotationPrefix string
 }

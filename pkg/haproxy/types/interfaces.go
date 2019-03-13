@@ -16,17 +16,7 @@ limitations under the License.
 
 package types
 
-import (
-	api "k8s.io/api/core/v1"
-)
-
-// Cache ...
-type Cache interface {
-	GetService(serviceName string) (*api.Service, error)
-	GetEndpoints(service *api.Service) (*api.Endpoints, error)
-	GetPod(podName string) (*api.Pod, error)
-	GetTLSSecretPath(secretName string) (File, error)
-	GetCASecretPath(secretName string) (File, error)
-	GetDHSecretPath(secretName string) (File, error)
-	GetSecretContent(secretName, keyName string) ([]byte, error)
+// BindUtils ...
+type BindUtils interface {
+	CreateX509CertsDir(bindName string, certs []string) (string, error)
 }

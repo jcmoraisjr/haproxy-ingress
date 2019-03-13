@@ -21,28 +21,34 @@ import (
 	"sort"
 )
 
-// NewEndpoint ...
-func (b *Backend) NewEndpoint(ip string, port int, targetRef string) *Endpoint {
-	endpoint := &Endpoint{
-		Name:      fmt.Sprintf("%s:%d", ip, port),
-		IP:        ip,
-		Port:      port,
-		TargetRef: targetRef,
-		Weight:    1,
+// FindPath ...
+func (h *Host) FindPath(path string) *HostPath {
+	for _, p := range h.Paths {
+		if p.Path == path {
+			return p
+		}
 	}
-	b.Endpoints = append(b.Endpoints, endpoint)
-	sort.Slice(b.Endpoints, func(i, j int) bool {
-		return b.Endpoints[i].Name < b.Endpoints[j].Name
+	return nil
+}
+
+// AddPath ...
+func (h *Host) AddPath(backend *Backend, path string) {
+	h.Paths = append(h.Paths, &HostPath{
+		Path:      path,
+		Backend:   backend,
+		BackendID: backend.ID,
 	})
-	return endpoint
+	sort.Slice(h.Paths, func(i, j int) bool {
+		return h.Paths[i].Path > h.Paths[j].Path
+	})
 }
 
-// HreqValidateUserlist ...
-func (b *Backend) HreqValidateUserlist(userlist *Userlist) {
-	// TODO implement
-	b.HTTPRequests = append(b.HTTPRequests, &HTTPRequest{})
+// HasTLSAuth ...
+func (h *Host) HasTLSAuth() bool {
+	return h.TLS.CAHash != ""
 }
 
-func (h *HTTPRequest) String() string {
+// String ...
+func (h *Host) String() string {
 	return fmt.Sprintf("%+v", *h)
 }

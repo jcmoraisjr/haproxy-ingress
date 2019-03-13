@@ -14,19 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package types
+package helper_test
 
-import (
-	api "k8s.io/api/core/v1"
-)
+// BindUtilsMock ...
+type BindUtilsMock struct {
+	CertDirs []CertDir
+}
 
-// Cache ...
-type Cache interface {
-	GetService(serviceName string) (*api.Service, error)
-	GetEndpoints(service *api.Service) (*api.Endpoints, error)
-	GetPod(podName string) (*api.Pod, error)
-	GetTLSSecretPath(secretName string) (File, error)
-	GetCASecretPath(secretName string) (File, error)
-	GetDHSecretPath(secretName string) (File, error)
-	GetSecretContent(secretName, keyName string) ([]byte, error)
+// CertDir ...
+type CertDir struct {
+	Dir   string
+	Certs []string
+}
+
+// CreateX509CertsDir ...
+func (b *BindUtilsMock) CreateX509CertsDir(bindName string, certs []string) (string, error) {
+	dir := "/var/haproxy/certs/" + bindName
+	b.CertDirs = append(b.CertDirs, CertDir{
+		Dir:   dir,
+		Certs: certs,
+	})
+	return dir, nil
 }

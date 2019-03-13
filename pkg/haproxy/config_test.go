@@ -18,12 +18,25 @@ package haproxy
 
 import (
 	"testing"
+
+	ha_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/helper_test"
 )
 
-func TestAcquireFrontendDiff(t *testing.T) {
-	c := createConfig()
-	f1 := c.AcquireFrontend("h1")
-	f2 := c.AcquireFrontend("h2")
+func TestEmptyFrontend(t *testing.T) {
+	c := createConfig(&ha_helper.BindUtilsMock{}, options{})
+	if _, err := c.BuildFrontendGroup(); err == nil {
+		t.Error("expected error creating empty frontend")
+	}
+	c.AcquireHost("empty")
+	if _, err := c.BuildFrontendGroup(); err != nil {
+		t.Errorf("error creating frontends: %v", err)
+	}
+}
+
+func TestAcquireHostDiff(t *testing.T) {
+	c := createConfig(&ha_helper.BindUtilsMock{}, options{})
+	f1 := c.AcquireHost("h1")
+	f2 := c.AcquireHost("h2")
 	if f1.Hostname != "h1" {
 		t.Errorf("expected %v but was %v", "h1", f1.Hostname)
 	}
@@ -32,12 +45,12 @@ func TestAcquireFrontendDiff(t *testing.T) {
 	}
 }
 
-func TestAcquireFrontendSame(t *testing.T) {
-	c := createConfig()
-	f1 := c.AcquireFrontend("h1")
-	f2 := c.AcquireFrontend("h1")
+func TestAcquireHostSame(t *testing.T) {
+	c := createConfig(&ha_helper.BindUtilsMock{}, options{})
+	f1 := c.AcquireHost("h1")
+	f2 := c.AcquireHost("h1")
 	if f1 != f2 {
-		t.Errorf("expected same frontend but was different")
+		t.Errorf("expected same host but was different")
 	}
 }
 
@@ -56,5 +69,52 @@ func TestBuildID(t *testing.T) {
 		if actual := buildID(test.namespace, test.name, test.port); actual != test.expected {
 			t.Errorf("expected '%s' but was '%s'", test.expected, actual)
 		}
+	}
+}
+
+func TestEqual(t *testing.T) {
+	c1 := createConfig(&ha_helper.BindUtilsMock{}, options{})
+	c2 := createConfig(&ha_helper.BindUtilsMock{}, options{})
+	if !c1.Equals(c2) {
+		t.Error("c1 and c2 should be equals (empty)")
+	}
+	c1.ConfigDefaultX509Cert("/var/default.pem")
+	if c1.Equals(c2) {
+		t.Error("c1 and c2 should not be equals (one default cert)")
+	}
+	c2.ConfigDefaultX509Cert("/var/default.pem")
+	if !c1.Equals(c2) {
+		t.Error("c1 and c2 should be equals (default cert)")
+	}
+	b1 := c1.AcquireBackend("d", "app1", 8080)
+	c1.AcquireBackend("d", "app2", 8080)
+	if c1.Equals(c2) {
+		t.Error("c1 and c2 should not be equals (backends on one side)")
+	}
+	c2.AcquireBackend("d", "app2", 8080)
+	b2 := c2.AcquireBackend("d", "app1", 8080)
+	if !c1.Equals(c2) {
+		t.Error("c1 and c2 should be equals (with backends)")
+	}
+	h1 := c1.AcquireHost("d")
+	h1.AddPath(b1, "/")
+	if c1.Equals(c2) {
+		t.Error("c1 and c2 should not be equals (hosts on one side)")
+	}
+	h2 := c2.AcquireHost("d")
+	h2.AddPath(b2, "/")
+	if !c1.Equals(c2) {
+		t.Error("c1 and c2 should be equals (with hosts)")
+	}
+	_, err1 := c1.BuildFrontendGroup()
+	_, err2 := c2.BuildFrontendGroup()
+	if err1 != nil {
+		t.Errorf("error building c1: %v", err1)
+	}
+	if err2 != nil {
+		t.Errorf("error building c2: %v", err2)
+	}
+	if !c1.Equals(c2) {
+		t.Error("c1 and c2 should be equals (after building frontends)")
 	}
 }

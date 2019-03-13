@@ -84,7 +84,9 @@ type ConfigGlobals struct {
 	StatsProxyProtocol           bool   `json:"stats-proxy-protocol"`
 	StatsSSLCert                 string `json:"stats-ssl-cert"`
 	StrictHost                   bool   `json:"strict-host"`
-	Syslog                       string `json:"syslog-endpoint"`
+	SyslogEndpoint               string `json:"syslog-endpoint"`
+	SyslogFormat                 string `json:"syslog-format"`
+	SyslogTag                    string `json:"syslog-tag"`
 	TCPLogFormat                 string `json:"tcp-log-format"`
 	TimeoutStop                  string `json:"timeout-stop"`
 	UseProxyProtocol             bool   `json:"use-proxy-protocol"`

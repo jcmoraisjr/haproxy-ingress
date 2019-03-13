@@ -20,7 +20,7 @@ ARG DUMB_INIT_SHA256=81231da1cd074fdc81af62789fead8641ef3f24b6b07366a1c34e5b059f
 RUN wget -O/dumb-init https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64\
  && echo "$DUMB_INIT_SHA256  /dumb-init" | sha256sum -c -\
  && chmod +x /dumb-init \
- && mkdir /ingress-controller
+ && mkdir -p /ingress-controller /etc/haproxy/maps
 
 COPY . /
 

@@ -22,76 +22,113 @@ import (
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/dynconfig"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
+	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )
 
 // InstanceOptions ...
 type InstanceOptions struct {
+	MaxOldConfigFiles int
 	HAProxyCmd        string
-	ReloadCmd         string
 	HAProxyConfigFile string
+	ReloadCmd         string
 	ReloadStrategy    string
 }
 
 // Instance ...
 type Instance interface {
-	CreateConfig() Config
+	ParseTemplates() error
 	Config() Config
-	Templates() *template.Config
 	Update()
 }
 
 // CreateInstance ...
-func CreateInstance(logger types.Logger, options InstanceOptions) Instance {
-	tmpl := &template.Config{
-		Logger: logger,
-	}
+func CreateInstance(logger types.Logger, bindUtils hatypes.BindUtils, options InstanceOptions) Instance {
 	dynconf := &dynconfig.Config{
 		Logger: logger,
 	}
 	return &instance{
-		logger:    logger,
-		options:   &options,
-		templates: tmpl,
-		dynconfig: dynconf,
-		curConfig: createConfig(),
+		logger:       logger,
+		bindUtils:    bindUtils,
+		options:      &options,
+		templates:    template.CreateConfig(),
+		mapsTemplate: template.CreateConfig(),
+		mapsDir:      "/etc/haproxy/maps",
+		dynconfig:    dynconf,
 	}
 }
 
 type instance struct {
-	logger    types.Logger
-	options   *InstanceOptions
-	templates *template.Config
-	dynconfig *dynconfig.Config
-	oldConfig Config
-	curConfig Config
+	logger       types.Logger
+	bindUtils    hatypes.BindUtils
+	options      *InstanceOptions
+	templates    *template.Config
+	mapsTemplate *template.Config
+	mapsDir      string
+	dynconfig    *dynconfig.Config
+	oldConfig    Config
+	curConfig    Config
 }
 
-func (i *instance) Templates() *template.Config {
-	return i.templates
-}
-
-func (i *instance) CreateConfig() Config {
-	i.releaseConfig()
-	i.oldConfig = i.curConfig
-	i.curConfig = createConfig()
-	return i.curConfig
+func (i *instance) ParseTemplates() error {
+	i.templates.ClearTemplates()
+	i.mapsTemplate.ClearTemplates()
+	if err := i.templates.NewTemplate(
+		"spoe-modsecurity.tmpl",
+		"/etc/haproxy/modsecurity/spoe-modsecurity.tmpl",
+		"/etc/haproxy/spoe-modsecurity.conf",
+		0,
+		1024,
+	); err != nil {
+		return err
+	}
+	if err := i.templates.NewTemplate(
+		"haproxy.tmpl",
+		"/etc/haproxy/template/haproxy.tmpl",
+		"/etc/haproxy/haproxy.cfg",
+		i.options.MaxOldConfigFiles,
+		16384,
+	); err != nil {
+		return err
+	}
+	err := i.mapsTemplate.NewTemplate(
+		"map.tmpl",
+		"/etc/haproxy/maptemplate/map.tmpl",
+		"",
+		0,
+		2048,
+	)
+	return err
 }
 
 func (i *instance) Config() Config {
+	if i.curConfig == nil {
+		config := createConfig(i.bindUtils, options{
+			mapsTemplate: i.mapsTemplate,
+			mapsDir:      i.mapsDir,
+		})
+		i.curConfig = config
+	}
 	return i.curConfig
 }
 
 func (i *instance) Update() {
+	if i.curConfig == nil {
+		i.logger.InfoV(2, "new configuration is empty")
+		return
+	}
 	if i.curConfig.Equals(i.oldConfig) {
 		i.logger.InfoV(2, "old and new configurations match, skipping reload")
+		i.clearConfig()
+		return
+	}
+	if err := i.templates.Write(i.curConfig); err != nil {
+		i.logger.Error("error writing configuration: %v", err)
+		i.clearConfig()
 		return
 	}
 	updated := i.dynconfig.Update()
-	if err := i.templates.Write(i.Config()); err != nil {
-		i.logger.Error("error writing configuration: %v", err)
-		return
-	}
+	i.clearConfig()
 	if err := i.check(); err != nil {
 		i.logger.Error("error validating config file:\n%v", err)
 		return
@@ -104,12 +141,15 @@ func (i *instance) Update() {
 		i.logger.Error("error reloading server:\n%v", err)
 		return
 	}
+	i.clearConfig()
 	i.logger.Info("HAProxy successfully reloaded")
 }
 
 func (i *instance) check() error {
-	i.logger.Info("VERIFIED! (skipped)")
-	return nil
+	if i.options.HAProxyCmd == "" {
+		i.logger.Info("(test) check was skipped")
+		return nil
+	}
 	out, err := exec.Command(i.options.HAProxyCmd, "-c", "-f", i.options.HAProxyConfigFile).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf(string(out))
@@ -118,8 +158,10 @@ func (i *instance) check() error {
 }
 
 func (i *instance) reload() error {
-	i.logger.Info("RELOADED! (skipped)")
-	return nil
+	if i.options.ReloadCmd == "" {
+		i.logger.Info("(test) reload was skipped")
+		return nil
+	}
 	out, err := exec.Command(i.options.ReloadCmd, i.options.ReloadStrategy, i.options.HAProxyConfigFile).CombinedOutput()
 	if len(out) > 0 {
 		return fmt.Errorf(string(out))
@@ -129,6 +171,8 @@ func (i *instance) reload() error {
 	return nil
 }
 
-func (i *instance) releaseConfig() {
-	// TODO
+func (i *instance) clearConfig() {
+	// TODO releaseConfig (old support files, ...)
+	i.oldConfig = i.curConfig
+	i.curConfig = nil
 }

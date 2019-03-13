@@ -1,0 +1,11 @@
+  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# #
+# #   HAProxy Ingress Controller
+# #   --------------------------
+# #   This file is automatically updated, do not edit
+# #
+#
+{{- range . }}
+{{ .Key }}{{ if .Value }} {{ .Value }}{{ end }}
+{{- end }}

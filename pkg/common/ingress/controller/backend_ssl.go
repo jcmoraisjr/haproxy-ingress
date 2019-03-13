@@ -84,7 +84,9 @@ func (ic *GenericController) getPemCertificate(secret *apiv1.Secret) (*ingress.S
 	ca := secret.Data["ca.crt"]
 
 	// namespace/secretName -> namespace-secretName
-	nsSecName := strings.Replace(secretName, "/", "-", -1)
+	// use `_` instead if v0.8+
+	sep := map[bool]string{true: "-", false: "_"}
+	nsSecName := strings.Replace(secretName, "/", sep[ic.cfg.V07], -1)
 
 	var s *ingress.SSLCert
 	var err error

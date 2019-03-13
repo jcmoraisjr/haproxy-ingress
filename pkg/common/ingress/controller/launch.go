@@ -148,7 +148,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		glog.Infof("Watching for ingress class: %s", *ingressClass)
 	}
 
-	if *defaultSvc == "" {
+	if *v07 && *defaultSvc == "" {
 		glog.Fatalf("Please specify --default-backend-service")
 	}
 
@@ -157,19 +157,21 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		handleFatalInitError(err)
 	}
 
-	ns, name, err := k8s.ParseNameNS(*defaultSvc)
-	if err != nil {
-		glog.Fatalf("invalid format for service %v: %v", *defaultSvc, err)
-	}
-
-	_, err = kubeClient.CoreV1().Services(ns).Get(name, metav1.GetOptions{})
-	if err != nil {
-		if strings.Contains(err.Error(), "cannot get services in the namespace") {
-			glog.Fatalf("✖ It seems the cluster it is running with Authorization enabled (like RBAC) and there is no permissions for the ingress controller. Please check the configuration")
+	if *defaultSvc != "" {
+		ns, name, err := k8s.ParseNameNS(*defaultSvc)
+		if err != nil {
+			glog.Fatalf("invalid format for service %v: %v", *defaultSvc, err)
 		}
-		glog.Fatalf("no service with name %v found: %v", *defaultSvc, err)
+
+		_, err = kubeClient.CoreV1().Services(ns).Get(name, metav1.GetOptions{})
+		if err != nil {
+			if strings.Contains(err.Error(), "cannot get services in the namespace") {
+				glog.Fatalf("✖ It seems the cluster it is running with Authorization enabled (like RBAC) and there is no permissions for the ingress controller. Please check the configuration")
+			}
+			glog.Fatalf("no service with name %v found: %v", *defaultSvc, err)
+		}
+		glog.Infof("validated %v as the default backend", *defaultSvc)
 	}
-	glog.Infof("validated %v as the default backend", *defaultSvc)
 
 	if *publishSvc != "" {
 		ns, name, err := k8s.ParseNameNS(*publishSvc)
@@ -198,6 +200,11 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		_, err = kubeClient.CoreV1().Namespaces().Get(*watchNamespace, metav1.GetOptions{})
 		if err != nil {
 			glog.Fatalf("no watchNamespace with name %v found: %v", *watchNamespace, err)
+		}
+	} else {
+		_, err = kubeClient.CoreV1().Services("default").Get("kubernetes", metav1.GetOptions{})
+		if err != nil {
+			glog.Fatalf("error connecting to the apiserver: %v", err)
 		}
 	}
 
