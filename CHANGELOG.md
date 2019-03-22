@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v0.7 (beta)
+## v0.7
 
 ### v0.7-beta.1
 
@@ -128,6 +128,12 @@ Fixes and improvements since [v0.7-beta.7](#v07-beta7):
 * Update to HAProxy 1.8.19, which fixes some connection aborts on HTTP/2
 * Add TLS ALPN extension advertisement [#307](https://github.com/jcmoraisjr/haproxy-ingress/pull/307)
 * Fix overlapping configs on shared frontend [#308](https://github.com/jcmoraisjr/haproxy-ingress/pull/308)
+
+## v0.6.2
+
+Fixes and improvements since [v0.6.1](#v061):
+
+* Update HAProxy from 1.8.17 to 1.8.19, which fixes some connection aborts on HTTP/2
 
 ## v0.6.1
 
