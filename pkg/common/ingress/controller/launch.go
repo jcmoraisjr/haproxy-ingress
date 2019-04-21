@@ -226,6 +226,10 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 	if err != nil {
 		glog.Fatalf("Failed to mkdir cacerts directory: %v", err)
 	}
+	err = os.MkdirAll(ingress.DefaultCrlDirectory, 0655)
+	if err != nil {
+		glog.Fatalf("Failed to mkdir crl directory: %v", err)
+	}
 
 	if *forceIsolation && *allowCrossNamespace {
 		glog.Fatal("Cannot use --allow-cross-namespace if --force-namespace-isolation is true")
