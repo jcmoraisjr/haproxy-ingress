@@ -18,7 +18,6 @@ package controller
 
 import (
 	"fmt"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxybackend"
 	"math/rand"
 	"net"
 	"reflect"
@@ -51,6 +50,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/hsts"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/parser"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxy"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/proxybackend"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/sessionaffinity"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/snippet"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/defaults"
@@ -1406,13 +1406,14 @@ func (ic *GenericController) getEndpoints(
 		// For each pod associated with this service that is in the terminating state, add it to the output in the draining state
 		// This will allow persistent traffic to be sent to the server during the termination grace period.
 		for _, tp := range terminatingPods {
-			ep := fmt.Sprintf("%v:%v", tp.Status.PodIP, servicePort.TargetPort.IntValue())
+			targetPort := determineTerminatingPodTargetPort(&tp, servicePort, proto)
+			ep := fmt.Sprintf("%v:%v", tp.Status.PodIP, targetPort)
 			if _, exists := adus[ep]; exists {
 				continue
 			}
 			ups := ingress.Endpoint{
 				Address:     tp.Status.PodIP,
-				Port:        fmt.Sprintf("%v", servicePort.TargetPort.IntValue()),
+				Port:        fmt.Sprintf("%v", targetPort),
 				Draining:    true,
 				MaxFails:    hz.MaxFails,
 				FailTimeout: hz.FailTimeout,
@@ -1431,6 +1432,37 @@ func (ic *GenericController) getEndpoints(
 
 	glog.V(3).Infof("endpoints found: %v", upsServers)
 	return upsServers
+}
+
+func determineTerminatingPodTargetPort(tp *apiv1.Pod, servicePort *apiv1.ServicePort, proto apiv1.Protocol) int32 {
+	// Use the int value of the target port by default
+	targetPort := int32(servicePort.TargetPort.IntValue())
+	// If the target port value is a string and the int value can't be computed,
+	// then look it up by iterating through the pod's containers looking for the match
+	if targetPort <= 0 {
+		portStr := servicePort.TargetPort.String()
+		glog.V(4).Infof("Searching for %v on %v", portStr, tp.Name)
+		for _, tpc := range tp.Spec.Containers {
+			for _, tpcPort := range tpc.Ports {
+				if !reflect.DeepEqual(tpcPort.Protocol, proto) {
+					continue
+				}
+				if portStr == tpcPort.Name {
+					targetPort = tpcPort.ContainerPort
+					glog.V(4).Infof("Found port match for %v on container %v port %v", portStr, tpc.Name, tpcPort)
+					break
+				}
+			}
+		}
+	}
+	// If we still couldn't find a target port by looking through the containers port definitions
+	// then use the port value from the service as a fallback.
+	if targetPort <= 0 {
+		targetPort = servicePort.Port
+		glog.Warningf("Using targetPort of %v for terminating pod %v since we were unable to find the named port %v on %v",
+			targetPort, tp.Name, servicePort.TargetPort.String(), tp)
+	}
+	return targetPort
 }
 
 func addIngressEndpoint(addresses []apiv1.EndpointAddress,
