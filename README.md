@@ -73,7 +73,6 @@ lists, math etc.
 
 The following annotations are supported:
 
-* `[0]` only in `v0.7` (`canary`)
 * `[1]` only in `v0.8` (`snapshot`)
 
 ||Name|Data|Usage|
@@ -89,12 +88,12 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/auth-tls-cert-header`](#auth-tls)|[true\|false]|[doc](/examples/auth/client-certs)|
 ||[`ingress.kubernetes.io/auth-tls-error-page`](#auth-tls)|url|[doc](/examples/auth/client-certs)|
 ||[`ingress.kubernetes.io/auth-tls-secret`](#auth-tls)|namespace/secret name|[doc](/examples/auth/client-certs)|
-|`[0]`|[`ingress.kubernetes.io/auth-tls-verify-client`](#auth-tls)|[off\|optional\|on\|optional_no_ca]|-|
+||[`ingress.kubernetes.io/auth-tls-verify-client`](#auth-tls)|[off\|optional\|on\|optional_no_ca]|-|
 ||`ingress.kubernetes.io/auth-type`|"basic"|[doc](/examples/auth/basic)|
 ||[`ingress.kubernetes.io/balance-algorithm`](#balance-algorithm)|algorithm name|-|
-|`[0]`|[`ingress.kubernetes.io/blue-green-balance`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
+||[`ingress.kubernetes.io/blue-green-balance`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
 ||[`ingress.kubernetes.io/blue-green-deploy`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
-|`[0]`|[`ingress.kubernetes.io/blue-green-mode`](#blue-green)|[pod\|deploy]|[doc](/examples/blue-green)|
+||[`ingress.kubernetes.io/blue-green-mode`](#blue-green)|[pod\|deploy]|[doc](/examples/blue-green)|
 ||[`ingress.kubernetes.io/config-backend`](#configuration-snippet)|multiline HAProxy backend config|-|
 ||[`ingress.kubernetes.io/cors-allow-credentials`](#cors)|[true\|false]|-|
 ||[`ingress.kubernetes.io/cors-allow-headers`](#cors)|headers list|-|
@@ -117,27 +116,27 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/limit-whitelist`](#limit)|cidr list|-|
 ||[`ingress.kubernetes.io/maxconn-server`](#connection)|qty|-|
 ||[`ingress.kubernetes.io/maxqueue-server`](#connection)|qty|-|
-|`[0]`|[`ingress.kubernetes.io/oauth`](#oauth)|"oauth2_proxy"|[doc](/examples/auth/oauth)|
-|`[0]`|[`ingress.kubernetes.io/oauth-headers`](#oauth)|`<header>:<var>,...`|[doc](/examples/auth/oauth)|
-|`[0]`|[`ingress.kubernetes.io/oauth-uri-prefix`](#oauth)|URI prefix|[doc](/examples/auth/oauth)|
+||[`ingress.kubernetes.io/oauth`](#oauth)|"oauth2_proxy"|[doc](/examples/auth/oauth)|
+||[`ingress.kubernetes.io/oauth-headers`](#oauth)|`<header>:<var>,...`|[doc](/examples/auth/oauth)|
+||[`ingress.kubernetes.io/oauth-uri-prefix`](#oauth)|URI prefix|[doc](/examples/auth/oauth)|
 ||[`ingress.kubernetes.io/proxy-body-size`](#proxy-body-size)|size (bytes)|-|
-|`[0]`|[`ingress.kubernetes.io/proxy-protocol`](#proxy-protocol)|[v1\|v2\|v2-ssl\|v2-ssl-cn]|-|
+||[`ingress.kubernetes.io/proxy-protocol`](#proxy-protocol)|[v1\|v2\|v2-ssl\|v2-ssl-cn]|-|
 ||[`ingress.kubernetes.io/rewrite-target`](#rewrite-target)|path string|-|
 ||[`ingress.kubernetes.io/secure-backends`](#secure-backend)|[true\|false]|-|
 ||[`ingress.kubernetes.io/secure-crt-secret`](#secure-backend)|secret name|-|
 ||[`ingress.kubernetes.io/secure-verify-ca-secret`](#secure-backend)|secret name|-|
 ||[`ingress.kubernetes.io/server-alias`](#server-alias)|domain name|-|
-|`[0]`|[`ingress.kubernetes.io/server-alias-regex`](#server-alias)|regex|-|
+||[`ingress.kubernetes.io/server-alias-regex`](#server-alias)|regex|-|
 ||[`ingress.kubernetes.io/session-cookie-name`](#affinity)|cookie name|-|
 ||[`ingress.kubernetes.io/session-cookie-strategy`](#affinity)|[insert\|prefix\|rewrite]|-|
 |`[1]`|[`ingress.kubernetes.io/session-cookie-dynamic`](#affinity)|[true\|false]|-|
 ||[`ingress.kubernetes.io/slots-increment`](#dynamic-scaling)|qty|-|
 ||[`ingress.kubernetes.io/ssl-passthrough`](#ssl-passthrough)|[true\|false]|-|
-|`[0]`|[`ingress.kubernetes.io/ssl-passthrough-http-port`](#ssl-passthrough)|backend port|-|
+||[`ingress.kubernetes.io/ssl-passthrough-http-port`](#ssl-passthrough)|backend port|-|
 ||`ingress.kubernetes.io/ssl-redirect`|[true\|false]|[doc](/examples/rewrite)|
 ||[`ingress.kubernetes.io/timeout-queue`](#connection)|qty|-|
-|`[0]`|[`ingress.kubernetes.io/use-resolver`](#dns-resolvers)|resolver name]|[doc](/examples/dns-service-discovery)|
-|`[0]`|[`ingress.kubernetes.io/waf`](#waf)|"modsecurity"|[doc](/examples/modsecurity)|
+||[`ingress.kubernetes.io/use-resolver`](#dns-resolvers)|resolver name]|[doc](/examples/dns-service-discovery)|
+||[`ingress.kubernetes.io/waf`](#waf)|"modsecurity"|[doc](/examples/modsecurity)|
 ||`ingress.kubernetes.io/whitelist-source-range`|CIDR|-|
 
 ### Affinity
@@ -397,7 +396,6 @@ A ConfigMap can be created with `kubectl create configmap`.
 
 The following parameters are supported:
 
-* `[0]` only in `v0.7` (`canary`)
 * `[1]` only in `v0.8` (`snapshot`)
 
 ||Name|Type|Default|
@@ -409,15 +407,15 @@ The following parameters are supported:
 ||[`bind-ip-addr-http`](#bind-ip-addr)|IP address|`*`|
 ||[`bind-ip-addr-stats`](#bind-ip-addr)|IP address|`*`|
 ||[`bind-ip-addr-tcp`](#bind-ip-addr)|IP address|`*`|
-|`[0]`|[`config-frontend`](#configuration-snippet)|multiline HAProxy frontend config||
-|`[0]`|[`config-global`](#configuration-snippet)|multiline HAProxy global config||
+||[`config-frontend`](#configuration-snippet)|multiline HAProxy frontend config||
+||[`config-global`](#configuration-snippet)|multiline HAProxy global config||
 ||[`cookie-key`](#cookie-key)|secret key|`Ingress`|
-|`[0]`|[`dns-accepted-payload-size`](#dns-resolvers)|number|`8192`|
-|`[0]`|[`dns-cluster-domain`](#dns-resolvers)|cluster name|`cluster.local`|
-|`[0]`|[`dns-hold-obsolete`](#dns-resolvers)|time with suffix|`0s`|
-|`[0]`|[`dns-hold-valid`](#dns-resolvers)|time with suffix|`1s`|
-|`[0]`|[`dns-resolvers`](#dns-resolvers)|multiline resolver=ip[:port]|``|
-|`[0]`|[`dns-timeout-retry`](#dns-resolvers)|time with suffix|`1s`|
+||[`dns-accepted-payload-size`](#dns-resolvers)|number|`8192`|
+||[`dns-cluster-domain`](#dns-resolvers)|cluster name|`cluster.local`|
+||[`dns-hold-obsolete`](#dns-resolvers)|time with suffix|`0s`|
+||[`dns-hold-valid`](#dns-resolvers)|time with suffix|`1s`|
+||[`dns-resolvers`](#dns-resolvers)|multiline resolver=ip[:port]|``|
+||[`dns-timeout-retry`](#dns-resolvers)|time with suffix|`1s`|
 ||[`drain-support`](#drain-support)|[true\|false]|`false`|
 ||[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`false`|
 ||[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
@@ -427,18 +425,18 @@ The following parameters are supported:
 ||[`hsts-max-age`](#hsts)|number of seconds|`15768000`|
 ||[`hsts-preload`](#hsts)|[true\|false]|`false`|
 ||[`http-log-format`](#log-format)|http log format|HAProxy default log format|
-|`[0]`|[`http-port`](#bind-ip-addr)|port number|`80`|
+||[`http-port`](#bind-ip-addr)|port number|`80`|
 ||[`https-log-format`](#log-format)|https(tcp) log format\|`default`|do not log|
-|`[0]`|[`https-port`](#bind-ip-addr)|port number|`443`|
+||[`https-port`](#bind-ip-addr)|port number|`443`|
 ||[`https-to-http-port`](#https-to-http-port)|port number|0 (do not listen)|
 ||[`load-server-state`](#load-server-state) (experimental)|[true\|false]|`false`|
 ||[`max-connections`](#max-connections)|number|`2000`|
-|`[0]`|[`modsecurity-endpoints`](#modsecurity-endpoints)|comma-separated list of IP:port (spoa)|no waf config|
-|`[0]`|[`modsecurity-timeout-hello`](#modsecurity)|time with suffix|`100ms`|
-|`[0]`|[`modsecurity-timeout-idle`](#modsecurity)|time with suffix|`30s`|
-|`[0]`|[`modsecurity-timeout-processing`](#modsecurity)|time with suffix|`1s`|
-|`[0]`|[`nbproc-ssl`](#nbproc)|number of process|`0`|
-|`[0]`|[`nbthread`](#nbthread)|number of threads|`1`|
+||[`modsecurity-endpoints`](#modsecurity-endpoints)|comma-separated list of IP:port (spoa)|no waf config|
+||[`modsecurity-timeout-hello`](#modsecurity)|time with suffix|`100ms`|
+||[`modsecurity-timeout-idle`](#modsecurity)|time with suffix|`30s`|
+||[`modsecurity-timeout-processing`](#modsecurity)|time with suffix|`1s`|
+||[`nbproc-ssl`](#nbproc)|number of process|`0`|
+||[`nbthread`](#nbthread)|number of threads|`1`|
 ||[`no-tls-redirect-locations`](#no-tls-redirect-locations)|comma-separated list of url|`/.well-known/acme-challenge`|
 ||[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
 ||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/v0.6/pkg/controller/config.go#L40)|
@@ -452,8 +450,8 @@ The following parameters are supported:
 ||[`stats-auth`](#stats)|user:passwd|no auth|
 ||[`stats-port`](#stats)|port number|`1936`|
 ||[`stats-proxy-protocol`](#stats)|[true\|false]|`false`|
-|`[0]`|[`stats-ssl-cert`](#stats)|namespace/secret name|no ssl/plain http|
-|`[0]`|[`strict-host`](#strict-host)|[true\|false]|`true`|
+||[`stats-ssl-cert`](#stats)|namespace/secret name|no ssl/plain http|
+||[`strict-host`](#strict-host)|[true\|false]|`true`|
 ||[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
 |`[1]`|[`syslog-format`](#syslog-format)|rfc5424\|rfc3164|rfc5424|
 |`[1]`|[`syslog-tag`](#syslog-tag)|syslog tag field string|`ingress`|
@@ -468,7 +466,7 @@ The following parameters are supported:
 ||[`timeout-server-fin`](#timeout)|time with suffix|`50s`|
 ||[`timeout-stop`](#timeout)|time with suffix|no timeout|
 ||[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
-|`[0]`|[`tls-alpn`](#tls-alpn)|TLS ALPN advertisement|`h2,http/1.1`|
+||[`tls-alpn`](#tls-alpn)|TLS ALPN advertisement|`h2,http/1.1`|
 ||[`use-proxy-protocol`](#use-proxy-protocol)|[true\|false]|`false`|
 
 ### balance-algorithm
@@ -975,8 +973,6 @@ not ready or terminating state.
 
 The following command-line arguments are supported:
 
-* `[0]` only in `canary` tag
-
 ||Name|Type|Default|
 |---|---|---|---|
 ||[`allow-cross-namespace`](#allow-cross-namespace)|[true\|false]|`false`|
@@ -991,7 +987,7 @@ The following command-line arguments are supported:
 ||[`sort-backends`](#sort-backends)|[true\|false]|`false`|
 ||[`tcp-services-configmap`](#tcp-services-configmap)|namespace/configmapname|no tcp svc|
 ||[`verify-hostname`](#verify-hostname)|[true\|false]|`true`|
-|`[0]`|[`watch-namespace`](#watch-namespace)|namespace|all namespaces|
+||[`watch-namespace`](#watch-namespace)|namespace|all namespaces|
 
 ### allow-cross-namespace
 
