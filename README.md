@@ -27,6 +27,10 @@ a beta-quality or a development version.
 
 # Installation
 
+## Helm chart
+
+See the HAProxy Ingress chart [documentation](https://github.com/helm/charts/tree/master/incubator/haproxy-ingress).
+
 ## The five minutes deployment
 
 Follow the detailed instructions [here](/examples/setup-cluster.md#five-minutes-deployment) or, in short:
