@@ -63,7 +63,7 @@ func (f *Frontend) HasNoCrtErrorPage() bool {
 // HasTLSMandatory ...
 func (f *Frontend) HasTLSMandatory() bool {
 	for _, host := range f.Hosts {
-		if !host.TLS.CAVerifyOptional {
+		if host.HasTLSAuth() && !host.TLS.CAVerifyOptional {
 			return true
 		}
 	}

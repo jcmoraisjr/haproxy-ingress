@@ -343,19 +343,23 @@ frontend {{ $frontend.Name }}
         {{- "" }},regsub(:[0-9]+/,/)
         {{- "" }},map_beg({{ $frontend.SNIBackendsMap }},_nomatch)
 {{- $mandatory := $frontend.HasTLSMandatory }}
-    acl tls-invalid-crt ssl_c_ca_err gt 0
-    acl tls-invalid-crt ssl_c_err gt 0
 {{- if $mandatory }}
     acl tls-has-crt ssl_c_used
+    acl tls-need-crt ssl_fc_sni -i -f {{ $frontend.TLSNoCrtErrorList }}
+{{- end }}
+    acl tls-has-invalid-crt ssl_c_ca_err gt 0
+    acl tls-has-invalid-crt ssl_c_err gt 0
+    acl tls-check-crt ssl_fc_sni -i -f {{ $frontend.TLSInvalidCrtErrorList }}
+{{- if $mandatory }}
     http-request set-var(req.tls_nocrt_redir) ssl_fc_sni
         {{- if $frontend.ConvertLowercase }},lower{{ end }}
         {{- "" }},map({{ $frontend.TLSNoCrtErrorPagesMap }},_internal)
-        {{- "" }} if !tls-has-crt
+        {{- "" }} if !tls-has-crt tls-need-crt
 {{- end }}
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni
         {{- if $frontend.ConvertLowercase }},lower{{ end }}
         {{- "" }},map({{ $frontend.TLSInvalidCrtErrorPagesMap }},_internal)
-        {{- "" }} if tls-invalid-crt
+        {{- "" }} if tls-has-invalid-crt tls-check-crt
 {{- if and $mandatory $frontend.HasNoCrtErrorPage }}
     http-request redirect location %[var(req.tls_nocrt_redir)] code 303 if
         {{- "" }} { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) _internal }
@@ -367,11 +371,9 @@ frontend {{ $frontend.Name }}
 {{- if $mandatory }}
     use_backend _error496 if
         {{- "" }} { var(req.tls_nocrt_redir) _internal }
-        {{- "" }} { ssl_fc_sni -i -f {{ $frontend.TLSNoCrtErrorList }} }
 {{- end }}
     use_backend _error495 if
         {{- "" }} { var(req.tls_invalidcrt_redir) _internal }
-        {{- "" }} { ssl_fc_sni -i -f {{ $frontend.TLSInvalidCrtErrorList }} }
 {{- end }}
 
 {{- /*------------------------------------*/}}
