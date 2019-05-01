@@ -14,9 +14,6 @@
 
 FROM haproxy:1.8.19-alpine
 RUN apk --no-cache add socat openssl
-## this `--upgrade add libssl/libcrypto` is a temporary upgrade
-## to fix a SIGSEGV starting HAProxy using some new CA bundles
-RUN apk --no-cache --upgrade add libssl1.1 libcrypto1.1
 
 # dumb-init kindly manages SIGCHLD from forked HAProxy processes
 ARG DUMB_INIT_SHA256=81231da1cd074fdc81af62789fead8641ef3f24b6b07366a1c34e5b059faf363
