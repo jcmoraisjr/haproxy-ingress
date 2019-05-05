@@ -50,7 +50,7 @@ func TestBuildFrontend(t *testing.T) {
 			hosts: []*Host{h10_1, h10_2},
 			expected: []*Frontend{
 				{
-					Name:    "_front_001",
+					Name:    "_front001",
 					Timeout: timeout10,
 					Hosts:   []*Host{h10_1, h10_2},
 					Binds: []*BindConfig{
@@ -66,7 +66,7 @@ func TestBuildFrontend(t *testing.T) {
 			hosts: []*Host{h10_1, h20_1, h10_2},
 			expected: []*Frontend{
 				{
-					Name:    "_front_001",
+					Name:    "_front001",
 					Timeout: timeout10,
 					Hosts:   []*Host{h10_1, h10_2},
 					Binds: []*BindConfig{
@@ -76,7 +76,7 @@ func TestBuildFrontend(t *testing.T) {
 					},
 				},
 				{
-					Name:    "https-front_h3.local",
+					Name:    "_front002",
 					Timeout: timeout20,
 					Hosts:   []*Host{h20_1},
 					Binds: []*BindConfig{
@@ -92,7 +92,7 @@ func TestBuildFrontend(t *testing.T) {
 			hosts: []*Host{h10CA1_1, h10CA2_1, h10CA2_2},
 			expected: []*Frontend{
 				{
-					Name:    "_front_001",
+					Name:    "_front001",
 					Timeout: timeout10,
 					Hosts:   []*Host{h10CA1_1, h10CA2_1, h10CA2_2},
 					Binds: []*BindConfig{
@@ -113,7 +113,7 @@ func TestBuildFrontend(t *testing.T) {
 			hosts: []*Host{h10_1, h10_2, h10CA2_1, h10CA2_2},
 			expected: []*Frontend{
 				{
-					Name:    "_front_001",
+					Name:    "_front001",
 					Timeout: timeout10,
 					Hosts:   []*Host{h10_1, h10_2, h10CA2_1, h10CA2_2},
 					Binds: []*BindConfig{

@@ -205,14 +205,12 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 		var i int
 		for _, frontend := range frontends {
 			for _, bind := range frontend.Binds {
-				var bindName string
+				i++
+				bindName := fmt.Sprintf("_socket%03d", i)
 				if len(bind.Hosts) == 1 {
-					bindName = bind.Hosts[0].Hostname
 					bind.TLS.TLSCert = c.defaultX509Cert
 					bind.TLS.TLSCertDir = bind.Hosts[0].TLS.TLSFilename
 				} else {
-					i++
-					bindName = fmt.Sprintf("_socket%03d", i)
 					x509dir, err := c.createCertsDir(bindName, bind.Hosts)
 					if err != nil {
 						return nil, err
@@ -221,7 +219,7 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 					bind.TLS.TLSCertDir = x509dir
 				}
 				bind.Name = bindName
-				bind.Socket = fmt.Sprintf("unix@/var/run/front_%s.sock", bindName)
+				bind.Socket = fmt.Sprintf("unix@/var/run/%s.sock", bindName)
 				bind.AcceptProxy = true
 			}
 		}
@@ -252,7 +250,7 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 		frontend.TLSNoCrtErrorPagesMap = mapsPrefix + "_no_crt_redir.map"
 		frontend.VarNamespaceMap = mapsPrefix + "_k8s_ns.map"
 		for _, bind := range frontend.Binds {
-			bind.UseServerList = mapsPrefix + "_bind_" + bind.Name + ".list"
+			bind.UseServerList = c.mapsDir + "/" + bind.Name + ".list"
 		}
 	}
 	type mapEntry struct {

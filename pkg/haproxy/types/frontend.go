@@ -115,12 +115,8 @@ func BuildRawFrontends(hosts []*Host) (frontends []*Frontend, sslpassthrough []*
 	// naming frontends
 	var i int
 	for _, frontend := range frontends {
-		if len(frontend.Hosts) == 1 {
-			frontend.Name = "https-front_" + frontend.Hosts[0].Hostname
-		} else {
-			i++
-			frontend.Name = fmt.Sprintf("_front_%03d", i)
-		}
+		i++
+		frontend.Name = fmt.Sprintf("_front%03d", i)
 	}
 	// sorting frontends
 	sort.Slice(frontends, func(i, j int) bool {

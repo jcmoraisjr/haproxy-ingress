@@ -250,9 +250,8 @@ listen _front__tls
 {{- range $frontend := $frontends }}
     ## {{ $frontend.Name }}
 {{- range $bind := $frontend.Binds }}
-    use-server _server_{{ $bind.Name }} if
-        {{- "" }} { req.ssl_sni -i -f {{ $bind.UseServerList }} }
-    server _server_{{ $bind.Name }} {{ $bind.Socket }} send-proxy-v2 weight 0
+    use-server _server{{ $bind.Name }} if { req.ssl_sni -i -f {{ $bind.UseServerList }} }
+    server _server{{ $bind.Name }} {{ $bind.Socket }} send-proxy-v2 weight 0
 {{- end }}
 {{- end }}
     # TODO default backend
