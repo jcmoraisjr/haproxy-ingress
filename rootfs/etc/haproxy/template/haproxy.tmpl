@@ -65,8 +65,12 @@ defaults
     maxconn {{ $global.MaxConn }}
 {{- if $global.DrainSupport }}
     option persist
-{{- end }}
+    {{- if $global.DrainSupportRedispatch }}
     option redispatch
+    {{- end }}
+{{- else }}
+    option redispatch
+{{- end }}
     option dontlognull
     option http-server-close
     option http-keep-alive

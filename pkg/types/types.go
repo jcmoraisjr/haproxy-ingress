@@ -111,6 +111,7 @@ type (
 		HTTPSLogFormat         string `json:"https-log-format"`
 		TCPLogFormat           string `json:"tcp-log-format"`
 		DrainSupport           bool   `json:"drain-support"`
+		DrainSupportRedispatch bool   `json:"drain-support-redispatch"`
 		DNSResolvers           string `json:"dns-resolvers"`
 		DNSTimeoutRetry        string `json:"dns-timeout-retry"`
 		DNSHoldObsolete        string `json:"dns-hold-obsolete"`

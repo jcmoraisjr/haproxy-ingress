@@ -417,6 +417,7 @@ The following parameters are supported:
 ||[`dns-resolvers`](#dns-resolvers)|multiline resolver=ip[:port]|``|
 ||[`dns-timeout-retry`](#dns-resolvers)|time with suffix|`1s`|
 ||[`drain-support`](#drain-support)|[true\|false]|`false`|
+||[`drain-support-redispatch`](#drain-support)|[true\|false]|`true`|
 ||[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`false`|
 ||[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
 ||[`healthz-port`](#healthz-port)|port number|`10253`|
@@ -968,6 +969,9 @@ Set to true if you wish to use HAProxy's drain support for pods that are NotRead
 k8s readiness check) or are in the process of terminating. This option only makes sense with
 cookie affinity configured as it allows persistent traffic to be directed to pods that are in a
 not ready or terminating state.
+
+By default, sessions will be redispatched on a failed upstream connection once the target pod is terminated.
+You can control this behavior by setting `drain-support-redispatch` flag to `false` to instead return a 503 failure.
 
 ## Command-line
 

@@ -52,8 +52,12 @@ defaults
     maxconn {{ $cfg.MaxConn }}
 {{- if $cfg.DrainSupport }}
     option persist
-{{- end }}
+    {{- if $cfg.DrainSupportRedispatch }}
     option redispatch
+    {{- end }}
+{{- else }}
+    option redispatch
+{{- end }}
     option dontlognull
     option http-server-close
     option http-keep-alive
