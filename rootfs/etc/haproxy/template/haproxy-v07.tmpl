@@ -67,6 +67,9 @@ defaults
     timeout server-fin      {{ $cfg.TimeoutServerFin }}
     timeout tunnel          {{ $cfg.TimeoutTunnel }}
     timeout http-keep-alive {{ $cfg.TimeoutKeepAlive }}
+{{- range $snippet := $ing.ConfigDefaults }}
+    {{ $snippet }}
+{{- end }}
 {{- if ne (len $ing.DNSResolvers) 0 }}
 
 ######

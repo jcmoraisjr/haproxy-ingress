@@ -28,6 +28,7 @@ type Global struct {
 	LoadServerState bool
 	StatsSocket     string
 	CustomConfig    []string
+	CustomDefaults  []string
 }
 
 // ProcsConfig ...

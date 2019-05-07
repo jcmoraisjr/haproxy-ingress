@@ -28,9 +28,9 @@ const (
 func createDefaults() *types.Config {
 	return &types.Config{
 		ConfigDefaults: types.ConfigDefaults{
-			BalanceAlgorithm: "roundrobin",
-			CookieKey:        "Ingress",
-			HSTS:             true,
+			BalanceAlgorithm:      "roundrobin",
+			CookieKey:             "Ingress",
+			HSTS:                  true,
 			HSTSIncludeSubdomains: false,
 			HSTSMaxAge:            "15768000",
 			HSTSPreload:           false,
@@ -55,6 +55,7 @@ func createDefaults() *types.Config {
 			BindIPAddrTCP:                "*",
 			ConfigFrontend:               "",
 			ConfigGlobal:                 "",
+			ConfigDefaults:               "",
 			DNSAcceptedPayloadSize:       8192,
 			DNSClusterDomain:             "cluster.local",
 			DNSHoldObsolete:              "0s",

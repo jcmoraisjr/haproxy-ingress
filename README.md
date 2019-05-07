@@ -408,6 +408,7 @@ The following parameters are supported:
 ||[`bind-ip-addr-stats`](#bind-ip-addr)|IP address|`*`|
 ||[`bind-ip-addr-tcp`](#bind-ip-addr)|IP address|`*`|
 ||[`config-frontend`](#configuration-snippet)|multiline HAProxy frontend config||
+|`[1]`|[`config-defaults`](#configuration-snippet)|multiline HAProxy config for the defaults section||
 ||[`config-global`](#configuration-snippet)|multiline HAProxy global config||
 ||[`cookie-key`](#cookie-key)|secret key|`Ingress`|
 ||[`dns-accepted-payload-size`](#dns-resolvers)|number|`8192`|
@@ -517,6 +518,11 @@ Examples - configmap:
 ```
 
 ```yaml
+    config-defaults: |
+      option redispatch
+```
+
+```yaml
     config-frontend: |
       capture request header X-User-Id len 32
 ```
@@ -533,6 +539,7 @@ Ingress annotation:
 Global configmap options:
 
 * `config-global`: Add configuration snippet to the end of the global section.
+* `config-defaults`: Add configuration snippet to the end of the defaults section.
 * `config-frontend`: Add configuration snippet to all frontend sections.
 
 Annotation option:
