@@ -22,6 +22,38 @@ import (
 	"sort"
 )
 
+// Append ...
+func (hm *HostsMap) Append(key, value string) {
+	hm.Entries = append(hm.Entries, &HostsMapEntry{
+		Key:   key,
+		Value: value,
+	})
+}
+
+// String ...
+func (hm *HostsMap) String() string {
+	return hm.Filename
+}
+
+// CreateMaps ...
+func CreateMaps() *HostsMaps {
+	return &HostsMaps{}
+}
+
+// AddMap ...
+func (hm *HostsMaps) AddMap(filename string) *HostsMap {
+	hmap := &HostsMap{
+		Filename: filename,
+	}
+	hm.Items = append(hm.Items, hmap)
+	return hmap
+}
+
+// HasHTTPHost ...
+func (fg *FrontendGroup) HasHTTPHost() bool {
+	return len(fg.HTTPFrontsMap.Entries) > 0
+}
+
 // HasTCPProxy ...
 func (fg *FrontendGroup) HasTCPProxy() bool {
 	// short-circuit saves:

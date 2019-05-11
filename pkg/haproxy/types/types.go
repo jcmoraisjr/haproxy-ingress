@@ -83,15 +83,34 @@ type ModSecurityTimeoutConfig struct {
 	Processing string
 }
 
+// HostsMapEntry ...
+type HostsMapEntry struct {
+	Key   string
+	Value string
+}
+
+// HostsMap ...
+type HostsMap struct {
+	Entries  []*HostsMapEntry
+	Filename string
+}
+
+// HostsMaps ...
+type HostsMaps struct {
+	Items []*HostsMap
+}
+
 // FrontendGroup ...
 type FrontendGroup struct {
-	Frontends         []*Frontend
-	HasHTTPHost       bool
+	Frontends []*Frontend
+	//
 	HasRedirectHTTPS  bool
 	HasSSLPassthrough bool
-	HTTPFrontsMap     string
-	RedirectMap       string
-	SSLPassthroughMap string
+	//
+	Maps              *HostsMaps
+	HTTPFrontsMap     *HostsMap
+	RedirectMap       *HostsMap
+	SSLPassthroughMap *HostsMap
 }
 
 // Frontend ...
@@ -100,15 +119,17 @@ type Frontend struct {
 	Binds []*BindConfig
 	Hosts []*Host
 	//
-	ConvertLowercase           bool
-	HostBackendsMap            string
-	SNIBackendsMap             string
-	Timeout                    HostTimeoutConfig
-	TLSInvalidCrtErrorList     string
-	TLSNoCrtErrorList          string
-	TLSInvalidCrtErrorPagesMap string
-	TLSNoCrtErrorPagesMap      string
-	VarNamespaceMap            string
+	ConvertLowercase bool
+	Timeout          HostTimeoutConfig
+	//
+	Maps                       *HostsMaps
+	HostBackendsMap            *HostsMap
+	SNIBackendsMap             *HostsMap
+	TLSInvalidCrtErrorList     *HostsMap
+	TLSInvalidCrtErrorPagesMap *HostsMap
+	TLSNoCrtErrorList          *HostsMap
+	TLSNoCrtErrorPagesMap      *HostsMap
+	VarNamespaceMap            *HostsMap
 }
 
 // BindConfig ...
@@ -117,9 +138,11 @@ type BindConfig struct {
 	Socket string
 	Hosts  []*Host
 	//
-	AcceptProxy   bool
-	TLS           BindTLSConfig
-	UseServerList string
+	AcceptProxy bool
+	TLS         BindTLSConfig
+	//
+	Maps          *HostsMaps
+	UseServerList *HostsMap
 }
 
 // BindTLSConfig ...
