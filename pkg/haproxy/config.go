@@ -197,9 +197,9 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 		Frontends:         frontends,
 		HasSSLPassthrough: len(sslpassthrough) > 0,
 		Maps:              fgroupMaps,
+		HTTPFrontsMap:     fgroupMaps.AddMap(c.mapsDir + "/http_front.map"),
+		HTTPSRedirMap:     fgroupMaps.AddMap(c.mapsDir + "/https_redir.map"),
 		SSLPassthroughMap: fgroupMaps.AddMap(c.mapsDir + "/sslpassthrough.map"),
-		RedirectMap:       fgroupMaps.AddMap(c.mapsDir + "/redirect.map"),
-		HTTPFrontsMap:     fgroupMaps.AddMap(c.mapsDir + "/http-front.map"),
 	}
 	if fgroup.HasTCPProxy() {
 		// More than one HAProxy's frontend or bind, or using ssl-passthrough config,
@@ -264,18 +264,18 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 			return nil, fmt.Errorf("missing root path on host %s", sslpassHost.Hostname)
 		}
 		fgroup.SSLPassthroughMap.AppendHostname(sslpassHost.Hostname, rootPath.BackendID)
-		fgroup.RedirectMap.AppendHostname(sslpassHost.Hostname+"/", yesno[sslpassHost.HTTPPassthroughBackend == nil])
+		fgroup.HTTPSRedirMap.AppendHostname(sslpassHost.Hostname+"/", yesno[sslpassHost.HTTPPassthroughBackend == nil])
 		if sslpassHost.HTTPPassthroughBackend != nil {
 			fgroup.HTTPFrontsMap.AppendHostname(sslpassHost.Hostname+"/", sslpassHost.HTTPPassthroughBackend.ID)
 		} else {
-			fgroup.HasRedirectHTTPS = true
+			fgroup.HasHTTPSRedir = true
 		}
 	}
 	for _, f := range frontends {
 		for _, host := range f.Hosts {
 			for _, path := range host.Paths {
 				// TODO use only root path if all uri has the same conf
-				fgroup.RedirectMap.AppendHostname(host.Hostname+path.Path, yesno[path.Backend.SSLRedirect])
+				fgroup.HTTPSRedirMap.AppendHostname(host.Hostname+path.Path, yesno[path.Backend.SSLRedirect])
 				base := host.Hostname + path.Path
 				back := path.BackendID
 				if host.HasTLSAuth() {
@@ -284,7 +284,7 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 					f.HostBackendsMap.AppendHostname(base, back)
 				}
 				if path.Backend.SSLRedirect {
-					fgroup.HasRedirectHTTPS = true
+					fgroup.HasHTTPSRedir = true
 				} else {
 					fgroup.HTTPFrontsMap.AppendHostname(base, back)
 				}

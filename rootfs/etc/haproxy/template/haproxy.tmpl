@@ -285,8 +285,7 @@ frontend _front_http
     bind :80
 
 {{- /*------------------------------------*/}}
-{{- $hasredirect := $fgroup.HasRedirectHTTPS }}
-{{- if or $hasredirect $fgroup.HTTPFrontsMap.HasRegex }}
+{{- if or $fgroup.HasHTTPSRedir $fgroup.HTTPFrontsMap.HasRegex }}
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
     http-request set-var(req.backend) var(req.base),map_beg({{ $fgroup.HTTPFrontsMap.MatchFile }},_nomatch)
 {{- else }}
@@ -299,15 +298,15 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $hasredirect }}
-{{- if $fgroup.RedirectMap.HasRegex }}
+{{- if $fgroup.HasHTTPSRedir }}
+{{- if $fgroup.HTTPSRedirMap.HasRegex }}
     http-request set-var(req.redir)
-        {{- "" }} var(req.base),map_beg({{ $fgroup.RedirectMap.MatchFile }},_nomatch)
+        {{- "" }} var(req.base),map_beg({{ $fgroup.HTTPSRedirMap.MatchFile }},_nomatch)
     redirect scheme https if { var(req.redir) yes }
     redirect scheme https if { var(req.redir) _nomatch }
-        {{- "" }} { var(req.base),map_reg({{ $fgroup.RedirectMap.RegexFile }},_nomatch) yes }
+        {{- "" }} { var(req.base),map_reg({{ $fgroup.HTTPSRedirMap.RegexFile }},_nomatch) yes }
 {{- else }}
-    redirect scheme https if { var(req.base),map_beg({{ $fgroup.RedirectMap.MatchFile }},_nomatch) yes }
+    redirect scheme https if { var(req.base),map_beg({{ $fgroup.HTTPSRedirMap.MatchFile }},_nomatch) yes }
 {{- end }}
 {{- end }}
 

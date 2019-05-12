@@ -78,7 +78,7 @@ backend _error496
 frontend _front_http
     mode http
     bind :80
-    http-request set-var(req.backend) base,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/http-front.map,_nomatch)
+    http-request set-var(req.backend) base,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
     use_backend %%[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _error404
 frontend _front001
@@ -93,7 +93,7 @@ frontend _front001
 	c.instance.Update()
 	c.checkConfigFull(fmt.Sprintf(template, "--", "--", "--", "--"))
 
-	c.checkMap("http-front.map", `
+	c.checkMap("http_front.map", `
 empty/ default_empty_8080`)
 	c.checkMap("_front001_host.map", `
 empty/ default_empty_8080`)
@@ -142,8 +142,8 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http-front.map,_nomatch)
-    redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/redirect.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
+    redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     use_backend d1_app_8080
 frontend _front001
@@ -156,9 +156,9 @@ frontend _front001
     use_backend d1_app_8080
 `)
 
-	c.checkMap("http-front.map", `
+	c.checkMap("http_front.map", `
 `)
-	c.checkMap("redirect.map", `
+	c.checkMap("https_redir.map", `
 d2.local/app yes
 `)
 	c.checkMap("_front001_k8s_ns.map", `
@@ -215,8 +215,8 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http-front.map,_nomatch)
-    redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/redirect.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
+    redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _default_backend
 frontend _front001
@@ -229,9 +229,9 @@ frontend _front001
     default_backend _default_backend
 `)
 
-	c.checkMap("http-front.map", `
+	c.checkMap("http_front.map", `
 `)
-	c.checkMap("redirect.map", `
+	c.checkMap("https_redir.map", `
 d1.local/ yes
 d2.local/app yes
 `)
@@ -304,8 +304,8 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http-front.map,_nomatch)
-    redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/redirect.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
+    redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _default_backend
 frontend _front001
@@ -337,9 +337,9 @@ d1.local
 	c.checkMap("_socket002.list", `
 d2.local
 `)
-	c.checkMap("http-front.map", `
+	c.checkMap("http_front.map", `
 `)
-	c.checkMap("redirect.map", `
+	c.checkMap("https_redir.map", `
 d1.local/ yes
 d2.local/ yes
 `)
@@ -449,8 +449,8 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http-front.map,_nomatch)
-    redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/redirect.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
+    redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _default_backend
 frontend _front001
@@ -504,11 +504,11 @@ d22.local
 d3.local
 d4.local
 `)
-	c.checkMap("http-front.map", `
+	c.checkMap("http_front.map", `
 d3.local/ d_app_8080
 d4.local/ d_app_8080
 `)
-	c.checkMap("redirect.map", `
+	c.checkMap("https_redir.map", `
 d1.local/ yes
 d21.local/ yes
 d22.local/ yes
@@ -612,8 +612,8 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http-front.map,_nomatch)
-    redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/redirect.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
+    redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _default_backend
 frontend _front001
@@ -624,11 +624,11 @@ frontend _front001
     default_backend _default_backend
 `)
 
-	c.checkMap("http-front.map", `
+	c.checkMap("http_front.map", `
 d.local/sub d_app3_8080
 d.local/app/sub d_app2_8080
 `)
-	c.checkMap("redirect.map", `
+	c.checkMap("https_redir.map", `
 d.local/sub no
 d.local/app/sub no
 d.local/app yes
@@ -698,17 +698,17 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http-front.map,_nomatch)
-    redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/redirect.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
+    redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _error404`)
 
 	c.checkMap("sslpassthrough.map", `
 d2.local d2_app_8080
 d3.local d3_app-ssl_8443`)
-	c.checkMap("http-front.map", `
+	c.checkMap("http_front.map", `
 d3.local/ d3_app-http_8080`)
-	c.checkMap("redirect.map", `
+	c.checkMap("https_redir.map", `
 d2.local/ yes
 d3.local/ no`)
 
@@ -785,11 +785,11 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http-front.map,_nomatch)
-    http-request set-var(req.backend) var(req.base),map_reg(/etc/haproxy/maps/http-front_regex.map,_nomatch) if { var(req.backend) _nomatch }
-    http-request set-var(req.redir) var(req.base),map_beg(/etc/haproxy/maps/redirect.map,_nomatch)
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
+    http-request set-var(req.backend) var(req.base),map_reg(/etc/haproxy/maps/http_front_regex.map,_nomatch) if { var(req.backend) _nomatch }
+    http-request set-var(req.redir) var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch)
     redirect scheme https if { var(req.redir) yes }
-    redirect scheme https if { var(req.redir) _nomatch } { var(req.base),map_reg(/etc/haproxy/maps/redirect_regex.map,_nomatch) yes }
+    redirect scheme https if { var(req.redir) _nomatch } { var(req.base),map_reg(/etc/haproxy/maps/https_redir_regex.map,_nomatch) yes }
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _error404
 frontend _front001
@@ -841,15 +841,15 @@ d1.local
 	c.checkMap("_socket003_regex.list", `
 ^[^.]+\.d2\.local$
 `)
-	c.checkMap("http-front.map", `
+	c.checkMap("http_front.map", `
 `)
-	c.checkMap("http-front_regex.map", `
+	c.checkMap("http_front_regex.map", `
 ^[^.]+\.d2\.local/ d2_app_8080
 `)
-	c.checkMap("redirect.map", `
+	c.checkMap("https_redir.map", `
 d1.local/ yes
 `)
-	c.checkMap("redirect_regex.map", `
+	c.checkMap("https_redir_regex.map", `
 ^[^.]+\.app\.d1\.local/ yes
 ^[^.]+\.sub\.d1\.local/ yes
 ^[^.]+\.d2\.local/ no

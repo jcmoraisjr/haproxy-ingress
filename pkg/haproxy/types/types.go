@@ -106,12 +106,12 @@ type HostsMaps struct {
 type FrontendGroup struct {
 	Frontends []*Frontend
 	//
-	HasRedirectHTTPS  bool
+	HasHTTPSRedir     bool
 	HasSSLPassthrough bool
 	//
 	Maps              *HostsMaps
 	HTTPFrontsMap     *HostsMap
-	RedirectMap       *HostsMap
+	HTTPSRedirMap     *HostsMap
 	SSLPassthroughMap *HostsMap
 }
 
