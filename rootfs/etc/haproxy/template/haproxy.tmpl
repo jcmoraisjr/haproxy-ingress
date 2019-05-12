@@ -10,7 +10,6 @@
 {{- $global := $cfg.Global }}
 global
     daemon
-    quiet
 {{- if gt $global.Procs.Nbproc 1 }}
     nbproc {{ $global.Procs.Nbproc }}
 {{- end }}

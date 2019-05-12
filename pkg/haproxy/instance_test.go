@@ -45,7 +45,6 @@ func TestInstanceEmpty(t *testing.T) {
 	template := `
 global
     daemon
-    quiet
     stats socket %s level admin expose-fd listeners
     maxconn 0
     lua-load /usr/local/etc/haproxy/lua/send-response.lua
@@ -1080,7 +1079,6 @@ func (c *testConfig) configGlobal() {
 var globalConfig = `
 global
     daemon
-    quiet
     stats socket /var/run/haproxy.sock level admin expose-fd listeners
     maxconn 2000
     hard-stop-after 15m

@@ -141,7 +141,6 @@ func (i *instance) Update() {
 		i.logger.Error("error reloading server:\n%v", err)
 		return
 	}
-	i.clearConfig()
 	i.logger.Info("HAProxy successfully reloaded")
 }
 
@@ -164,8 +163,9 @@ func (i *instance) reload() error {
 	}
 	out, err := exec.Command(i.options.ReloadCmd, i.options.ReloadStrategy, i.options.HAProxyConfigFile).CombinedOutput()
 	if len(out) > 0 {
-		return fmt.Errorf(string(out))
-	} else if err != nil {
+		i.logger.Warn("output from haproxy:\n%v", string(out))
+	}
+	if err != nil {
 		return err
 	}
 	return nil
