@@ -263,10 +263,10 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 		if rootPath == nil {
 			return nil, fmt.Errorf("missing root path on host %s", sslpassHost.Hostname)
 		}
-		fgroup.SSLPassthroughMap.Append(sslpassHost.Hostname, rootPath.BackendID)
-		fgroup.RedirectMap.Append(sslpassHost.Hostname+"/", yesno[sslpassHost.HTTPPassthroughBackend == nil])
+		fgroup.SSLPassthroughMap.AppendHostname(sslpassHost.Hostname, rootPath.BackendID)
+		fgroup.RedirectMap.AppendHostname(sslpassHost.Hostname+"/", yesno[sslpassHost.HTTPPassthroughBackend == nil])
 		if sslpassHost.HTTPPassthroughBackend != nil {
-			fgroup.HTTPFrontsMap.Append(sslpassHost.Hostname+"/", sslpassHost.HTTPPassthroughBackend.ID)
+			fgroup.HTTPFrontsMap.AppendHostname(sslpassHost.Hostname+"/", sslpassHost.HTTPPassthroughBackend.ID)
 		} else {
 			fgroup.HasRedirectHTTPS = true
 		}
@@ -275,18 +275,18 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 		for _, host := range f.Hosts {
 			for _, path := range host.Paths {
 				// TODO use only root path if all uri has the same conf
-				fgroup.RedirectMap.Append(host.Hostname+path.Path, yesno[path.Backend.SSLRedirect])
+				fgroup.RedirectMap.AppendHostname(host.Hostname+path.Path, yesno[path.Backend.SSLRedirect])
 				base := host.Hostname + path.Path
 				back := path.BackendID
 				if host.HasTLSAuth() {
-					f.SNIBackendsMap.Append(base, back)
+					f.SNIBackendsMap.AppendHostname(base, back)
 				} else {
-					f.HostBackendsMap.Append(base, back)
+					f.HostBackendsMap.AppendHostname(base, back)
 				}
 				if path.Backend.SSLRedirect {
 					fgroup.HasRedirectHTTPS = true
 				} else {
-					fgroup.HTTPFrontsMap.Append(base, back)
+					fgroup.HTTPFrontsMap.AppendHostname(base, back)
 				}
 				var ns string
 				if host.VarNamespace {
@@ -294,48 +294,56 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 				} else {
 					ns = "-"
 				}
-				f.VarNamespaceMap.Append(base, ns)
+				f.VarNamespaceMap.AppendHostname(base, ns)
 			}
 			if host.HasTLSAuth() {
-				f.TLSInvalidCrtErrorList.Append(host.Hostname, "")
+				f.TLSInvalidCrtErrorList.AppendHostname(host.Hostname, "")
 				if !host.TLS.CAVerifyOptional {
-					f.TLSNoCrtErrorList.Append(host.Hostname, "")
+					f.TLSNoCrtErrorList.AppendHostname(host.Hostname, "")
 				}
 				page := host.TLS.CAErrorPage
 				if page != "" {
-					f.TLSInvalidCrtErrorPagesMap.Append(host.Hostname, page)
+					f.TLSInvalidCrtErrorPagesMap.AppendHostname(host.Hostname, page)
 					if !host.TLS.CAVerifyOptional {
-						f.TLSNoCrtErrorPagesMap.Append(host.Hostname, page)
+						f.TLSNoCrtErrorPagesMap.AppendHostname(host.Hostname, page)
 					}
 				}
 			}
 		}
 		for _, bind := range f.Binds {
 			for _, host := range bind.Hosts {
-				bind.UseServerList.Append(host.Hostname, "")
+				bind.UseServerList.AppendHostname(host.Hostname, "")
 			}
 		}
 	}
-	for _, hmap := range fgroup.Maps.Items {
-		if err := c.mapsTemplate.WriteOutput(hmap.Entries, hmap.Filename); err != nil {
-			return nil, err
-		}
+	if err := writeMaps(fgroup.Maps, c.mapsTemplate); err != nil {
+		return nil, err
 	}
 	for _, f := range frontends {
-		for _, hmap := range f.Maps.Items {
-			if err := c.mapsTemplate.WriteOutput(hmap.Entries, hmap.Filename); err != nil {
-				return nil, err
-			}
+		if err := writeMaps(f.Maps, c.mapsTemplate); err != nil {
+			return nil, err
 		}
 		for _, bind := range f.Binds {
-			for _, hmap := range bind.Maps.Items {
-				if err := c.mapsTemplate.WriteOutput(hmap.Entries, hmap.Filename); err != nil {
-					return nil, err
-				}
+			if err := writeMaps(bind.Maps, c.mapsTemplate); err != nil {
+				return nil, err
 			}
 		}
 	}
 	return fgroup, nil
+}
+
+func writeMaps(maps *hatypes.HostsMaps, template *template.Config) error {
+	for _, hmap := range maps.Items {
+		if err := template.WriteOutput(hmap.Match, hmap.MatchFile); err != nil {
+			return err
+		}
+		if len(hmap.Regex) > 0 {
+			if err := template.WriteOutput(hmap.Regex, hmap.RegexFile); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (c *config) createCertsDir(bindName string, hosts []*hatypes.Host) (string, error) {

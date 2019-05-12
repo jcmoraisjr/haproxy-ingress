@@ -20,19 +20,36 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 )
 
-// Append ...
-func (hm *HostsMap) Append(key, value string) {
-	hm.Entries = append(hm.Entries, &HostsMapEntry{
-		Key:   key,
-		Value: value,
-	})
+// AppendHostname ...
+func (hm *HostsMap) AppendHostname(base, value string) {
+	if strings.HasPrefix(base, "*.") {
+		// *.example.local
+		key := "^" + strings.Replace(base, ".", "\\.", -1)
+		key = strings.Replace(key, "*", "[^.]+", 1)
+		if !strings.Contains(base, "/") {
+			// match eol if only the hostname is provided
+			// if has /path, need to match the begining of the string, a la map_beg() converter
+			key = key + "$"
+		}
+		hm.Regex = append(hm.Regex, &HostsMapEntry{
+			Key:   key,
+			Value: value,
+		})
+	} else {
+		// sub.example.local
+		hm.Match = append(hm.Match, &HostsMapEntry{
+			Key:   base,
+			Value: value,
+		})
+	}
 }
 
-// String ...
-func (hm *HostsMap) String() string {
-	return hm.Filename
+// HasRegex ...
+func (hm *HostsMap) HasRegex() bool {
+	return len(hm.Regex) > 0
 }
 
 // CreateMaps ...
@@ -42,16 +59,14 @@ func CreateMaps() *HostsMaps {
 
 // AddMap ...
 func (hm *HostsMaps) AddMap(filename string) *HostsMap {
+	matchFile := filename
+	regexFile := strings.Replace(filename, ".", "_regex.", 1)
 	hmap := &HostsMap{
-		Filename: filename,
+		MatchFile: matchFile,
+		RegexFile: regexFile,
 	}
 	hm.Items = append(hm.Items, hmap)
 	return hmap
-}
-
-// HasHTTPHost ...
-func (fg *FrontendGroup) HasHTTPHost() bool {
-	return len(fg.HTTPFrontsMap.Entries) > 0
 }
 
 // HasTCPProxy ...

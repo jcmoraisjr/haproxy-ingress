@@ -91,8 +91,10 @@ type HostsMapEntry struct {
 
 // HostsMap ...
 type HostsMap struct {
-	Entries  []*HostsMapEntry
-	Filename string
+	Match     []*HostsMapEntry
+	MatchFile string
+	Regex     []*HostsMapEntry
+	RegexFile string
 }
 
 // HostsMaps ...
