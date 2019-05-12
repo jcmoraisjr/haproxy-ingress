@@ -26,15 +26,15 @@ import (
 func TestAppendHostname(t *testing.T) {
 	testCases := []struct {
 		hostname      string
-		expectedMatch bool
+		expectedMatch string
 		expectedRegex string
 	}{
 		// 0
-		{hostname: "example.local", expectedMatch: true},
+		{hostname: "Example.Local", expectedMatch: "example.local"},
 		// 1
-		{hostname: "example.local/", expectedMatch: true},
+		{hostname: "example.local/", expectedMatch: "example.local/"},
 		// 2
-		{hostname: "*.example.local", expectedRegex: "^[^.]+\\.example\\.local$"},
+		{hostname: "*.Example.Local", expectedRegex: "^[^.]+\\.example\\.local$"},
 		// 3
 		{hostname: "*.example.local/", expectedRegex: "^[^.]+\\.example\\.local/"},
 		// 4
@@ -43,12 +43,12 @@ func TestAppendHostname(t *testing.T) {
 	for i, test := range testCases {
 		hm := &HostsMap{}
 		hm.AppendHostname(test.hostname, "backend")
-		if test.expectedMatch {
+		if test.expectedMatch != "" {
 			if len(hm.Match) != 1 || len(hm.Regex) != 0 {
 				t.Errorf("item %d, expected len(match)==1 and len(regex)==0, but was '%d' and '%d'", i, len(hm.Match), len(hm.Regex))
 				continue
 			}
-			if hm.Match[0].Key != test.hostname {
+			if hm.Match[0].Key != test.expectedMatch {
 				t.Errorf("item %d, expected key '%s', but was '%s'", i, test.hostname, hm.Match[0].Key)
 				continue
 			}

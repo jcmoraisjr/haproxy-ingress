@@ -349,15 +349,11 @@ frontend {{ $frontend.Name }}
 
 {{- /*------------------------------------*/}}
 {{- if or $frontend.HostBackendsMap.HasRegex $frontend.HasVarNamespace }}
-    http-request set-var(req.base) base
-        {{- if $frontend.ConvertLowercase }},lower{{ end }}
-        {{- "" }},regsub(:[0-9]+/,/)
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend)
         {{- "" }} var(req.base),map_beg({{ $frontend.HostBackendsMap.MatchFile }},_nomatch)
 {{- else }}
-    http-request set-var(req.hostbackend) base
-        {{- if $frontend.ConvertLowercase }},lower{{ end }}
-        {{- "" }},regsub(:[0-9]+/,/)
+    http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/)
         {{- "" }},map_beg({{ $frontend.HostBackendsMap.MatchFile }},_nomatch)
 {{- end }}
 {{- if $frontend.HostBackendsMap.HasRegex }}
@@ -382,17 +378,13 @@ frontend {{ $frontend.Name }}
 {{- /*** TODO missing concat converter, fix after 1.9 ***/}}
     http-request set-header x-ha-base %[ssl_fc_sni]%[path]
 {{- if $frontend.SNIBackendsMap.HasRegex }}
-    http-request set-var(req.snibase) hdr(x-ha-base)
-        {{- if $frontend.ConvertLowercase }},lower{{ end }}
-        {{- "" }},regsub(:[0-9]+/,/)
+    http-request set-var(req.snibase) hdr(x-ha-base),lower,regsub(:[0-9]+/,/)
     http-request set-var(req.snibackend) var(req.snibase)
         {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }},_nomatch)
     http-request set-var(req.snibackend) var(req.snibase)
         {{- "" }},map_reg({{ $frontend.SNIBackendsMap.RegexFile }},_nomatch) if { var(req.snibackend) _nomatch }
 {{- else }}
-    http-request set-var(req.snibackend) hdr(x-ha-base)
-        {{- if $frontend.ConvertLowercase }},lower{{ end }}
-        {{- "" }},regsub(:[0-9]+/,/)
+    http-request set-var(req.snibackend) hdr(x-ha-base),lower,regsub(:[0-9]+/,/)
         {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }},_nomatch)
 {{- end }}
 {{- $mandatory := $frontend.HasTLSMandatory }}
@@ -410,24 +402,20 @@ frontend {{ $frontend.Name }}
     acl tls-check-crt ssl_fc_sni -i -m reg -f {{ $frontend.TLSInvalidCrtErrorList.RegexFile }}
 {{- end }}
 {{- if $mandatory }}
-    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni
-        {{- if $frontend.ConvertLowercase }},lower{{ end }}
+    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower
         {{- "" }},map({{ $frontend.TLSNoCrtErrorPagesMap.MatchFile }},_internal)
         {{- "" }} if !tls-has-crt tls-need-crt
 {{- if $frontend.TLSNoCrtErrorPagesMap.HasRegex }}
-    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni
-        {{- if $frontend.ConvertLowercase }},lower{{ end }}
+    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower
         {{- "" }},map_reg({{ $frontend.TLSNoCrtErrorPagesMap.RegexFile }},_internal)
         {{- "" }} if { var(req.tls_nocrt_redir) _internal }
 {{- end }}
 {{- end }}
-    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni
-        {{- if $frontend.ConvertLowercase }},lower{{ end }}
+    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower
         {{- "" }},map({{ $frontend.TLSInvalidCrtErrorPagesMap.MatchFile }},_internal)
         {{- "" }} if tls-has-invalid-crt tls-check-crt
 {{- if $frontend.TLSInvalidCrtErrorPagesMap.HasRegex }}
-    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni
-        {{- if $frontend.ConvertLowercase }},lower{{ end }}
+    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower
         {{- "" }},map_reg({{ $frontend.TLSInvalidCrtErrorPagesMap.RegexFile }},_internal)
         {{- "" }} if { var(req.tls_invalidcrt_redir) _internal }
 {{- end }}

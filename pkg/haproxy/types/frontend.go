@@ -25,6 +25,8 @@ import (
 
 // AppendHostname ...
 func (hm *HostsMap) AppendHostname(base, value string) {
+	// always use case insensitive match
+	base = strings.ToLower(base)
 	if strings.HasPrefix(base, "*.") {
 		// *.example.local
 		key := "^" + strings.Replace(base, ".", "\\.", -1)

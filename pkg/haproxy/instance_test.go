@@ -84,7 +84,7 @@ frontend _front_http
 frontend _front001
     mode http
     bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
-    http-request set-var(req.hostbackend) base,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
+    http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     use_backend %%[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404
 `
@@ -149,7 +149,7 @@ frontend _front_http
 frontend _front001
     mode http
     bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-var(txn.namespace) var(req.base),map_beg(/etc/haproxy/maps/_front001_k8s_ns.map,-)
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
@@ -222,7 +222,7 @@ frontend _front_http
 frontend _front001
     mode http
     bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem crt /var/haproxy/certs/_public
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-var(txn.namespace) var(req.base),map_beg(/etc/haproxy/maps/_front001_k8s_ns.map,-)
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
@@ -312,16 +312,16 @@ frontend _front001
     mode http
     bind unix@/var/run/_socket001.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem ca-file /var/haproxy/ssl/ca/d1.local.pem verify optional ca-ignore-err all crt-ignore-err all
     bind unix@/var/run/_socket002.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem ca-file /var/haproxy/ssl/ca/d2.local.pem verify optional ca-ignore-err all crt-ignore-err all
-    http-request set-var(req.hostbackend) base,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
+    http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-header x-ha-base %[ssl_fc_sni]%[path]
-    http-request set-var(req.snibackend) hdr(x-ha-base),regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_sni.map,_nomatch)
+    http-request set-var(req.snibackend) hdr(x-ha-base),lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_sni.map,_nomatch)
     acl tls-has-crt ssl_c_used
     acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_no_crt.list
     acl tls-has-invalid-crt ssl_c_ca_err gt 0
     acl tls-has-invalid-crt ssl_c_err gt 0
     acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_inv_crt.list
-    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,map(/etc/haproxy/maps/_front001_no_crt_redir.map,_internal) if !tls-has-crt tls-need-crt
-    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,map(/etc/haproxy/maps/_front001_inv_crt_redir.map,_internal) if tls-has-invalid-crt tls-check-crt
+    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front001_no_crt_redir.map,_internal) if !tls-has-crt tls-need-crt
+    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front001_inv_crt_redir.map,_internal) if tls-has-invalid-crt tls-check-crt
     http-request redirect location %[var(req.tls_nocrt_redir)] code 303 if { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) _internal }
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
     use_backend _error496 if { var(req.tls_nocrt_redir) _internal }
@@ -457,13 +457,13 @@ frontend _front001
     mode http
     bind unix@/var/run/_socket001.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem ca-file /var/haproxy/ssl/ca/d1.local.pem verify optional ca-ignore-err all crt-ignore-err all
     timeout client 1s
-    http-request set-var(req.hostbackend) base,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
+    http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-header x-ha-base %[ssl_fc_sni]%[path]
-    http-request set-var(req.snibackend) hdr(x-ha-base),regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_sni.map,_nomatch)
+    http-request set-var(req.snibackend) hdr(x-ha-base),lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_sni.map,_nomatch)
     acl tls-has-invalid-crt ssl_c_ca_err gt 0
     acl tls-has-invalid-crt ssl_c_err gt 0
     acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_inv_crt.list
-    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,map(/etc/haproxy/maps/_front001_inv_crt_redir.map,_internal) if tls-has-invalid-crt tls-check-crt
+    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front001_inv_crt_redir.map,_internal) if tls-has-invalid-crt tls-check-crt
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
     use_backend _error495 if { var(req.tls_invalidcrt_redir) _internal }
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
@@ -474,16 +474,16 @@ frontend _front002
     bind unix@/var/run/_socket002.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem crt /var/haproxy/certs/_socket002 ca-file /var/haproxy/ssl/ca/d2.local.pem verify optional ca-ignore-err all crt-ignore-err all
     bind unix@/var/run/_socket003.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
     timeout client 2s
-    http-request set-var(req.hostbackend) base,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front002_host.map,_nomatch)
+    http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front002_host.map,_nomatch)
     http-request set-header x-ha-base %[ssl_fc_sni]%[path]
-    http-request set-var(req.snibackend) hdr(x-ha-base),regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front002_sni.map,_nomatch)
+    http-request set-var(req.snibackend) hdr(x-ha-base),lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front002_sni.map,_nomatch)
     acl tls-has-crt ssl_c_used
     acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front002_no_crt.list
     acl tls-has-invalid-crt ssl_c_ca_err gt 0
     acl tls-has-invalid-crt ssl_c_err gt 0
     acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front002_inv_crt.list
-    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,map(/etc/haproxy/maps/_front002_no_crt_redir.map,_internal) if !tls-has-crt tls-need-crt
-    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,map(/etc/haproxy/maps/_front002_inv_crt_redir.map,_internal) if tls-has-invalid-crt tls-check-crt
+    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front002_no_crt_redir.map,_internal) if !tls-has-crt tls-need-crt
+    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front002_inv_crt_redir.map,_internal) if tls-has-invalid-crt tls-check-crt
     http-request redirect location %[var(req.tls_nocrt_redir)] code 303 if { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) _internal }
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
     use_backend _error496 if { var(req.tls_nocrt_redir) _internal }
@@ -619,7 +619,7 @@ frontend _front_http
 frontend _front001
     mode http
     bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
-    http-request set-var(req.hostbackend) base,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
+    http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _default_backend
 `)
@@ -796,19 +796,19 @@ frontend _front001
     mode http
     bind unix@/var/run/_socket001.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
     bind unix@/var/run/_socket002.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem ca-file /var/haproxy/ssl/ca/d1.local.pem verify optional ca-ignore-err all crt-ignore-err all
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-var(req.hostbackend) var(req.base),map_reg(/etc/haproxy/maps/_front001_host_regex.map,_nomatch) if { var(req.hostbackend) _nomatch }
     http-request set-header x-ha-base %[ssl_fc_sni]%[path]
-    http-request set-var(req.snibase) hdr(x-ha-base),regsub(:[0-9]+/,/)
+    http-request set-var(req.snibase) hdr(x-ha-base),lower,regsub(:[0-9]+/,/)
     http-request set-var(req.snibackend) var(req.snibase),map_beg(/etc/haproxy/maps/_front001_sni.map,_nomatch)
     http-request set-var(req.snibackend) var(req.snibase),map_reg(/etc/haproxy/maps/_front001_sni_regex.map,_nomatch) if { var(req.snibackend) _nomatch }
     acl tls-has-invalid-crt ssl_c_ca_err gt 0
     acl tls-has-invalid-crt ssl_c_err gt 0
     acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_inv_crt.list
     acl tls-check-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front001_inv_crt_regex.list
-    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,map(/etc/haproxy/maps/_front001_inv_crt_redir.map,_internal) if tls-has-invalid-crt tls-check-crt
-    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,map_reg(/etc/haproxy/maps/_front001_inv_crt_redir_regex.map,_internal) if { var(req.tls_invalidcrt_redir) _internal }
+    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front001_inv_crt_redir.map,_internal) if tls-has-invalid-crt tls-check-crt
+    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map_reg(/etc/haproxy/maps/_front001_inv_crt_redir_regex.map,_internal) if { var(req.tls_invalidcrt_redir) _internal }
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
     use_backend _error495 if { var(req.tls_invalidcrt_redir) _internal }
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
@@ -818,7 +818,7 @@ frontend _front002
     mode http
     bind unix@/var/run/_socket003.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
     timeout client 10s
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front002_host.map,_nomatch)
     http-request set-var(req.hostbackend) var(req.base),map_reg(/etc/haproxy/maps/_front002_host_regex.map,_nomatch) if { var(req.hostbackend) _nomatch }
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }

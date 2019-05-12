@@ -121,8 +121,7 @@ type Frontend struct {
 	Binds []*BindConfig
 	Hosts []*Host
 	//
-	ConvertLowercase bool
-	Timeout          HostTimeoutConfig
+	Timeout HostTimeoutConfig
 	//
 	Maps                       *HostsMaps
 	HostBackendsMap            *HostsMap
