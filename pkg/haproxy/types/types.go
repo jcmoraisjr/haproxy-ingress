@@ -111,6 +111,7 @@ type FrontendGroup struct {
 	//
 	Maps              *HostsMaps
 	HTTPFrontsMap     *HostsMap
+	HTTPRootRedirMap  *HostsMap
 	HTTPSRedirMap     *HostsMap
 	SSLPassthroughMap *HostsMap
 }
@@ -125,6 +126,7 @@ type Frontend struct {
 	//
 	Maps                       *HostsMaps
 	HostBackendsMap            *HostsMap
+	RootRedirMap               *HostsMap
 	SNIBackendsMap             *HostsMap
 	TLSInvalidCrtErrorList     *HostsMap
 	TLSInvalidCrtErrorPagesMap *HostsMap

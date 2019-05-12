@@ -54,6 +54,11 @@ func (hm *HostsMap) HasRegex() bool {
 	return len(hm.Regex) > 0
 }
 
+// HasHost ...
+func (hm *HostsMap) HasHost() bool {
+	return len(hm.Regex) > 0 || len(hm.Match) > 0
+}
+
 // CreateMaps ...
 func CreateMaps() *HostsMaps {
 	return &HostsMaps{}

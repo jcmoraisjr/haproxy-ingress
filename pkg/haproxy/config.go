@@ -188,6 +188,8 @@ func (c *config) FindUserlist(name string) *hatypes.Userlist {
 }
 
 func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
+	// tested thanks to instance_test templating tests
+	// ideas to make a nice test or a nice refactor are welcome
 	if len(c.hosts) == 0 {
 		return nil, fmt.Errorf("cannot create frontends without hosts")
 	}
@@ -198,6 +200,7 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 		HasSSLPassthrough: len(sslpassthrough) > 0,
 		Maps:              fgroupMaps,
 		HTTPFrontsMap:     fgroupMaps.AddMap(c.mapsDir + "/http_front.map"),
+		HTTPRootRedirMap:  fgroupMaps.AddMap(c.mapsDir + "/http_root_redir.map"),
 		HTTPSRedirMap:     fgroupMaps.AddMap(c.mapsDir + "/https_redir.map"),
 		SSLPassthroughMap: fgroupMaps.AddMap(c.mapsDir + "/sslpassthrough.map"),
 	}
@@ -246,6 +249,7 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 		mapsPrefix := c.mapsDir + "/" + frontend.Name
 		frontend.Maps = hatypes.CreateMaps()
 		frontend.HostBackendsMap = frontend.Maps.AddMap(mapsPrefix + "_host.map")
+		frontend.RootRedirMap = frontend.Maps.AddMap(mapsPrefix + "_root_redir.map")
 		frontend.SNIBackendsMap = frontend.Maps.AddMap(mapsPrefix + "_sni.map")
 		frontend.TLSInvalidCrtErrorList = frontend.Maps.AddMap(mapsPrefix + "_inv_crt.list")
 		frontend.TLSInvalidCrtErrorPagesMap = frontend.Maps.AddMap(mapsPrefix + "_inv_crt_redir.map")
@@ -257,6 +261,10 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 			bind.UseServerList = bind.Maps.AddMap(c.mapsDir + "/" + bind.Name + ".list")
 		}
 	}
+	// Some maps use yes/no answers instead of a list with found/missing keys
+	// This approach avoid overlap:
+	//  1. match with path_beg/map_beg, /path has a feature and a declared /path/sub doesn't have
+	//  2. *.host.domain wildcard/alias/alias-regex has a feature and a declared sub.host.domain doesn't have
 	yesno := map[bool]string{true: "yes", false: "no"}
 	for _, sslpassHost := range sslpassthrough {
 		rootPath := sslpassHost.FindPath("/")
@@ -308,6 +316,12 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 						f.TLSNoCrtErrorPagesMap.AppendHostname(host.Hostname, page)
 					}
 				}
+			}
+			// TODO wildcard/alias/alias-regex hostname can overlap
+			// a configured domain which doesn't have rootRedirect
+			if host.RootRedirect != "" {
+				fgroup.HTTPRootRedirMap.AppendHostname(host.Hostname, host.RootRedirect)
+				f.RootRedirMap.AppendHostname(host.Hostname, host.RootRedirect)
 			}
 		}
 		for _, bind := range f.Binds {
