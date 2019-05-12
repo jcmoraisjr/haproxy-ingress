@@ -285,22 +285,9 @@ frontend _front_http
     bind :80
 
 {{- /*------------------------------------*/}}
-{{- if or $fgroup.HasHTTPSRedir $fgroup.HTTPFrontsMap.HasRegex }}
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request set-var(req.backend) var(req.base),map_beg({{ $fgroup.HTTPFrontsMap.MatchFile }},_nomatch)
-{{- else }}
-    http-request set-var(req.backend) base,regsub(:[0-9]+/,/),map_beg({{ $fgroup.HTTPFrontsMap.MatchFile }},_nomatch)
-{{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $fgroup.HTTPFrontsMap.HasRegex }}
-    http-request set-var(req.backend)
-        {{- "" }} var(req.base),map_reg({{ $fgroup.HTTPFrontsMap.RegexFile }},_nomatch)
-        {{- "" }} if { var(req.backend) _nomatch }
-{{- end }}
-
-{{- /*------------------------------------*/}}
-{{- if $fgroup.HasHTTPSRedir }}
 {{- if $fgroup.HTTPSRedirMap.HasRegex }}
     http-request set-var(req.redir)
         {{- "" }} var(req.base),map_beg({{ $fgroup.HTTPSRedirMap.MatchFile }},_nomatch)
@@ -309,7 +296,6 @@ frontend _front_http
         {{- "" }} { var(req.base),map_reg({{ $fgroup.HTTPSRedirMap.RegexFile }},_nomatch) yes }
 {{- else }}
     http-request redirect scheme https if { var(req.base),map_beg({{ $fgroup.HTTPSRedirMap.MatchFile }},_nomatch) yes }
-{{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -325,6 +311,12 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
+    http-request set-var(req.backend) var(req.base),map_beg({{ $fgroup.HTTPFrontsMap.MatchFile }},_nomatch)
+{{- if $fgroup.HTTPFrontsMap.HasRegex }}
+    http-request set-var(req.backend)
+        {{- "" }} var(req.base),map_reg({{ $fgroup.HTTPFrontsMap.RegexFile }},_nomatch)
+        {{- "" }} if { var(req.backend) _nomatch }
+{{- end }}
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
 
 {{- template "defaultbackend" map $cfg }}

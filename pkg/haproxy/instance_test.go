@@ -78,7 +78,9 @@ backend _error496
 frontend _front_http
     mode http
     bind :80
-    http-request set-var(req.backend) base,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
+    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
     use_backend %%[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _error404
 frontend _front001
@@ -142,8 +144,8 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     use_backend d1_app_8080
 frontend _front001
@@ -215,8 +217,8 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _default_backend
 frontend _front001
@@ -304,8 +306,8 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _default_backend
 frontend _front001
@@ -449,8 +451,8 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _default_backend
 frontend _front001
@@ -612,8 +614,8 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _default_backend
 frontend _front001
@@ -698,8 +700,8 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _error404`)
 
@@ -756,11 +758,11 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
     http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
     http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/http_root_redir.map,_nomatch)
     http-request redirect location %[var(req.rootredir)] if { path / } !{ var(req.rootredir) _nomatch }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _error404
 frontend _front001
@@ -870,8 +872,6 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
-    http-request set-var(req.backend) var(req.base),map_reg(/etc/haproxy/maps/http_front_regex.map,_nomatch) if { var(req.backend) _nomatch }
     http-request set-var(req.redir) var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch)
     http-request redirect scheme https if { var(req.redir) yes }
     http-request redirect scheme https if { var(req.redir) _nomatch } { var(req.base),map_reg(/etc/haproxy/maps/https_redir_regex.map,_nomatch) yes }
@@ -879,6 +879,8 @@ frontend _front_http
     http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/http_root_redir.map,_nomatch)
     http-request set-var(req.rootredir) var(req.host),map_reg(/etc/haproxy/maps/http_root_redir_regex.map,_nomatch) if { var(req.rootredir) _nomatch }
     http-request redirect location %[var(req.rootredir)] if { path / } !{ var(req.rootredir) _nomatch }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
+    http-request set-var(req.backend) var(req.base),map_reg(/etc/haproxy/maps/http_front_regex.map,_nomatch) if { var(req.backend) _nomatch }
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _error404
 frontend _front001

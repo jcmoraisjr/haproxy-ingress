@@ -275,8 +275,6 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 		fgroup.HTTPSRedirMap.AppendHostname(sslpassHost.Hostname+"/", yesno[sslpassHost.HTTPPassthroughBackend == nil])
 		if sslpassHost.HTTPPassthroughBackend != nil {
 			fgroup.HTTPFrontsMap.AppendHostname(sslpassHost.Hostname+"/", sslpassHost.HTTPPassthroughBackend.ID)
-		} else {
-			fgroup.HasHTTPSRedir = true
 		}
 	}
 	for _, f := range frontends {
@@ -291,9 +289,7 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 				} else {
 					f.HostBackendsMap.AppendHostname(base, back)
 				}
-				if path.Backend.SSLRedirect {
-					fgroup.HasHTTPSRedir = true
-				} else {
+				if !path.Backend.SSLRedirect {
 					fgroup.HTTPFrontsMap.AppendHostname(base, back)
 				}
 				var ns string
