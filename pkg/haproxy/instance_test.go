@@ -78,8 +78,8 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %%[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _error404
 frontend _front001
@@ -94,8 +94,10 @@ frontend _front001
 	c.instance.Update()
 	c.checkConfigFull(fmt.Sprintf(template, "--", "--", "--", "--"))
 
-	c.checkMap("http_front.map", `
+	c.checkMap("_global_http_front.map", `
 empty/ default_empty_8080`)
+	c.checkMap("_global_https_redir.map", `
+empty/ no`)
 	c.checkMap("_front001_host.map", `
 empty/ default_empty_8080`)
 
@@ -143,8 +145,8 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     use_backend d1_app_8080
 frontend _front001
@@ -157,9 +159,9 @@ frontend _front001
     use_backend d1_app_8080
 `)
 
-	c.checkMap("http_front.map", `
+	c.checkMap("_global_http_front.map", `
 `)
-	c.checkMap("https_redir.map", `
+	c.checkMap("_global_https_redir.map", `
 d2.local/app yes
 `)
 	c.checkMap("_front001_k8s_ns.map", `
@@ -216,8 +218,8 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _default_backend
 frontend _front001
@@ -230,9 +232,9 @@ frontend _front001
     default_backend _default_backend
 `)
 
-	c.checkMap("http_front.map", `
+	c.checkMap("_global_http_front.map", `
 `)
-	c.checkMap("https_redir.map", `
+	c.checkMap("_global_https_redir.map", `
 d1.local/ yes
 d2.local/app yes
 `)
@@ -305,8 +307,8 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _default_backend
 frontend _front001
@@ -338,9 +340,9 @@ d1.local
 	c.checkMap("_socket002.list", `
 d2.local
 `)
-	c.checkMap("http_front.map", `
+	c.checkMap("_global_http_front.map", `
 `)
-	c.checkMap("https_redir.map", `
+	c.checkMap("_global_https_redir.map", `
 d1.local/ yes
 d2.local/ yes
 `)
@@ -450,8 +452,8 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _default_backend
 frontend _front001
@@ -505,11 +507,11 @@ d22.local
 d3.local
 d4.local
 `)
-	c.checkMap("http_front.map", `
+	c.checkMap("_global_http_front.map", `
 d3.local/ d_app_8080
 d4.local/ d_app_8080
 `)
-	c.checkMap("https_redir.map", `
+	c.checkMap("_global_https_redir.map", `
 d1.local/ yes
 d21.local/ yes
 d22.local/ yes
@@ -613,8 +615,8 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _default_backend
 frontend _front001
@@ -625,11 +627,11 @@ frontend _front001
     default_backend _default_backend
 `)
 
-	c.checkMap("http_front.map", `
+	c.checkMap("_global_http_front.map", `
 d.local/sub d_app3_8080
 d.local/app/sub d_app2_8080
 `)
-	c.checkMap("https_redir.map", `
+	c.checkMap("_global_https_redir.map", `
 d.local/sub no
 d.local/app/sub no
 d.local/app yes
@@ -692,24 +694,24 @@ listen _front__tls
     tcp-request inspect-delay 5s
     tcp-request content accept if { req.ssl_hello_type 1 }
     ## ssl-passthrough
-    tcp-request content set-var(req.backend) req.ssl_sni,lower,map(/etc/haproxy/maps/sslpassthrough.map,_nomatch)
+    tcp-request content set-var(req.backend) req.ssl_sni,lower,map(/etc/haproxy/maps/_global_sslpassthrough.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     # TODO default backend
 frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _error404`)
 
-	c.checkMap("sslpassthrough.map", `
+	c.checkMap("_global_sslpassthrough.map", `
 d2.local d2_app_8080
 d3.local d3_app-ssl_8443`)
-	c.checkMap("http_front.map", `
+	c.checkMap("_global_http_front.map", `
 d3.local/ d3_app-http_8080`)
-	c.checkMap("https_redir.map", `
+	c.checkMap("_global_https_redir.map", `
 d2.local/ yes
 d3.local/ no`)
 
@@ -757,11 +759,11 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch) yes }
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
     http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
-    http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/http_root_redir.map,_nomatch)
+    http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/_global_http_root_redir.map,_nomatch)
     http-request redirect location %[var(req.rootredir)] if { path / } !{ var(req.rootredir) _nomatch }
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _error404
 frontend _front001
@@ -775,15 +777,15 @@ frontend _front001
     default_backend _error404
 `)
 
-	c.checkMap("http_front.map", `
+	c.checkMap("_global_http_front.map", `
 d1.local/ d1_app_8080
 `)
-	c.checkMap("https_redir.map", `
+	c.checkMap("_global_https_redir.map", `
 d1.local/ no
 d2.local/app2 yes
 d2.local/app1 yes
 `)
-	c.checkMap("http_root_redir.map", `
+	c.checkMap("_global_http_root_redir.map", `
 d1.local /app
 d2.local /app1
 `)
@@ -871,15 +873,15 @@ frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request set-var(req.redir) var(req.base),map_beg(/etc/haproxy/maps/https_redir.map,_nomatch)
+    http-request set-var(req.redir) var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch)
     http-request redirect scheme https if { var(req.redir) yes }
-    http-request redirect scheme https if { var(req.redir) _nomatch } { var(req.base),map_reg(/etc/haproxy/maps/https_redir_regex.map,_nomatch) yes }
+    http-request redirect scheme https if { var(req.redir) _nomatch } { var(req.base),map_reg(/etc/haproxy/maps/_global_https_redir_regex.map,_nomatch) yes }
     http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
-    http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/http_root_redir.map,_nomatch)
-    http-request set-var(req.rootredir) var(req.host),map_reg(/etc/haproxy/maps/http_root_redir_regex.map,_nomatch) if { var(req.rootredir) _nomatch }
+    http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/_global_http_root_redir.map,_nomatch)
+    http-request set-var(req.rootredir) var(req.host),map_reg(/etc/haproxy/maps/_global_http_root_redir_regex.map,_nomatch) if { var(req.rootredir) _nomatch }
     http-request redirect location %[var(req.rootredir)] if { path / } !{ var(req.rootredir) _nomatch }
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/http_front.map,_nomatch)
-    http-request set-var(req.backend) var(req.base),map_reg(/etc/haproxy/maps/http_front_regex.map,_nomatch) if { var(req.backend) _nomatch }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
+    http-request set-var(req.backend) var(req.base),map_reg(/etc/haproxy/maps/_global_http_front_regex.map,_nomatch) if { var(req.backend) _nomatch }
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _error404
 frontend _front001
@@ -935,22 +937,22 @@ d1.local
 	c.checkMap("_socket003_regex.list", `
 ^[^.]+\.d2\.local$
 `)
-	c.checkMap("http_front.map", `
+	c.checkMap("_global_http_front.map", `
 `)
-	c.checkMap("http_front_regex.map", `
+	c.checkMap("_global_http_front_regex.map", `
 ^[^.]+\.d2\.local/ d2_app_8080
 `)
-	c.checkMap("https_redir.map", `
+	c.checkMap("_global_https_redir.map", `
 d1.local/ yes
 `)
-	c.checkMap("https_redir_regex.map", `
+	c.checkMap("_global_https_redir_regex.map", `
 ^[^.]+\.app\.d1\.local/ yes
 ^[^.]+\.sub\.d1\.local/ yes
 ^[^.]+\.d2\.local/ no
 `)
-	c.checkMap("http_root_redir.map", `
+	c.checkMap("_global_http_root_redir.map", `
 `)
-	c.checkMap("http_root_redir_regex.map", `
+	c.checkMap("_global_http_root_redir_regex.map", `
 ^[^.]+\.d2\.local$ /app
 `)
 	c.checkMap("_front001_host.map", `

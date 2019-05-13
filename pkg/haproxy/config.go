@@ -199,10 +199,10 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 		Frontends:         frontends,
 		HasSSLPassthrough: len(sslpassthrough) > 0,
 		Maps:              fgroupMaps,
-		HTTPFrontsMap:     fgroupMaps.AddMap(c.mapsDir + "/http_front.map"),
-		HTTPRootRedirMap:  fgroupMaps.AddMap(c.mapsDir + "/http_root_redir.map"),
-		HTTPSRedirMap:     fgroupMaps.AddMap(c.mapsDir + "/https_redir.map"),
-		SSLPassthroughMap: fgroupMaps.AddMap(c.mapsDir + "/sslpassthrough.map"),
+		HTTPFrontsMap:     fgroupMaps.AddMap(c.mapsDir + "/_global_http_front.map"),
+		HTTPRootRedirMap:  fgroupMaps.AddMap(c.mapsDir + "/_global_http_root_redir.map"),
+		HTTPSRedirMap:     fgroupMaps.AddMap(c.mapsDir + "/_global_https_redir.map"),
+		SSLPassthroughMap: fgroupMaps.AddMap(c.mapsDir + "/_global_sslpassthrough.map"),
 	}
 	if fgroup.HasTCPProxy() {
 		// More than one HAProxy's frontend or bind, or using ssl-passthrough config,
