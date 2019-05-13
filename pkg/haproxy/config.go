@@ -283,11 +283,23 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 				// TODO use only root path if all uri has the same conf
 				fgroup.HTTPSRedirMap.AppendHostname(host.Hostname+path.Path, yesno[path.Backend.SSLRedirect])
 				base := host.Hostname + path.Path
+				var aliasName, aliasRegex string
+				// TODO warn in logs about ignoring alias name due to hostname colision
+				if host.Alias.AliasName != "" && c.FindHost(host.Alias.AliasName) == nil {
+					aliasName = host.Alias.AliasName + path.Path
+				}
+				if host.Alias.AliasRegex != "" {
+					aliasRegex = host.Alias.AliasRegex + path.Path
+				}
 				back := path.BackendID
 				if host.HasTLSAuth() {
 					f.SNIBackendsMap.AppendHostname(base, back)
+					f.SNIBackendsMap.AppendAliasName(aliasName, back)
+					f.SNIBackendsMap.AppendAliasRegex(aliasRegex, back)
 				} else {
 					f.HostBackendsMap.AppendHostname(base, back)
+					f.HostBackendsMap.AppendAliasName(aliasName, back)
+					f.HostBackendsMap.AppendAliasRegex(aliasRegex, back)
 				}
 				if !path.Backend.SSLRedirect {
 					fgroup.HTTPFrontsMap.AppendHostname(base, back)

@@ -27,11 +27,12 @@ import (
 func (hm *HostsMap) AppendHostname(base, value string) {
 	// always use case insensitive match
 	base = strings.ToLower(base)
+	isHostnameOnly := !strings.Contains(base, "/")
 	if strings.HasPrefix(base, "*.") {
 		// *.example.local
 		key := "^" + strings.Replace(base, ".", "\\.", -1)
 		key = strings.Replace(key, "*", "[^.]+", 1)
-		if !strings.Contains(base, "/") {
+		if isHostnameOnly {
 			// match eol if only the hostname is provided
 			// if has /path, need to match the begining of the string, a la map_beg() converter
 			key = key + "$"
@@ -43,6 +44,30 @@ func (hm *HostsMap) AppendHostname(base, value string) {
 	} else {
 		// sub.example.local
 		hm.Match = append(hm.Match, &HostsMapEntry{
+			Key:   base,
+			Value: value,
+		})
+		// Hostnames are already in alphabetical order but Alias are not
+		// Sort only hostname maps which uses ebtree search via map converter
+		if isHostnameOnly {
+			sort.Slice(hm.Match, func(i, j int) bool {
+				return hm.Match[i].Key < hm.Match[j].Key
+			})
+		}
+	}
+}
+
+// AppendAliasName ...
+func (hm *HostsMap) AppendAliasName(base, value string) {
+	if base != "" {
+		hm.AppendHostname(base, value)
+	}
+}
+
+// AppendAliasRegex ...
+func (hm *HostsMap) AppendAliasRegex(base, value string) {
+	if base != "" {
+		hm.Regex = append(hm.Regex, &HostsMapEntry{
 			Key:   base,
 			Value: value,
 		})

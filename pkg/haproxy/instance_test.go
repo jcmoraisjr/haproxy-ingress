@@ -802,6 +802,93 @@ d2.local /app1
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestInstanceAlias(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	c.configGlobal()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.AcquireBackend("d1", "app", 8080)
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	h = c.config.AcquireHost("d1.local")
+	h.AddPath(b, "/")
+	h.Alias.AliasName = "*.d1.local"
+
+	b = c.config.AcquireBackend("d2", "app", 8080)
+	b.Endpoints = []*hatypes.Endpoint{endpointS21}
+	h = c.config.AcquireHost("d2.local")
+	h.AddPath(b, "/")
+	h.Alias.AliasName = "sub.d2.local"
+	h.Alias.AliasRegex = "^[a-z]+\\.d2\\.local$"
+
+	b = c.config.AcquireBackend("d3", "app", 8080)
+	b.Endpoints = []*hatypes.Endpoint{endpointS31}
+	h = c.config.AcquireHost("d3.local")
+	h.AddPath(b, "/")
+	h.Alias.AliasRegex = ".*d3\\.local$"
+
+	c.instance.Update()
+	c.checkConfig(`
+backend d1_app_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+backend d2_app_8080
+    mode http
+    server s21 172.17.0.121:8080 weight 100
+backend d3_app_8080
+    mode http
+    server s31 172.17.0.131:8080 weight 100
+backend _error404
+    mode http
+    errorfile 400 /usr/local/etc/haproxy/errors/404.http
+    http-request deny deny_status 400`, `
+frontend _front_http
+    mode http
+    bind :80
+    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
+    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+    default_backend _error404
+frontend _front001
+    mode http
+    bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
+    http-request set-var(req.hostbackend) var(req.base),map_reg(/etc/haproxy/maps/_front001_host_regex.map,_nomatch) if { var(req.hostbackend) _nomatch }
+    use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
+    default_backend _error404
+`)
+
+	c.checkMap("_global_https_redir.map", `
+d1.local/ no
+d2.local/ no
+d3.local/ no
+`)
+	c.checkMap("_global_http_front.map", `
+d1.local/ d1_app_8080
+d2.local/ d2_app_8080
+d3.local/ d3_app_8080
+`)
+	c.checkMap("_front001_host.map", `
+d1.local/ d1_app_8080
+d2.local/ d2_app_8080
+sub.d2.local/ d2_app_8080
+d3.local/ d3_app_8080
+`)
+	c.checkMap("_front001_host_regex.map", `
+^[^.]+\.d1\.local/ d1_app_8080
+^[a-z]+\.d2\.local$/ d2_app_8080
+.*d3\.local$/ d3_app_8080
+`)
+
+	c.logger.CompareLogging(defaultLogging)
+
+}
+
 func TestInstanceWildcardHostname(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
