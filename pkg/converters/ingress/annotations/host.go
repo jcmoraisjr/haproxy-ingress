@@ -29,7 +29,6 @@ func (c *updater) buildHostAuthTLS(d *hostData) {
 		d.host.TLS.CAHash = cafile.SHA1Hash
 		d.host.TLS.CAVerifyOptional = verify == "optional" || verify == "optional_no_ca"
 		d.host.TLS.CAErrorPage = d.ann.AuthTLSErrorPage
-		d.host.TLS.AddCertHeader = d.ann.AuthTLSCertHeader
 	} else {
 		c.logger.Error("error building TLS auth config: %v", err)
 	}

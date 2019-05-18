@@ -99,6 +99,7 @@ func (c *updater) buildGlobalSSL(d *globalData) {
 	d.global.SSL.DHParam.DefaultMaxSize = d.config.SSLDHDefaultMaxSize
 	d.global.SSL.Engine = d.config.SSLEngine
 	d.global.SSL.ModeAsync = d.config.SSLModeAsync
+	d.global.SSL.HeadersPrefix = d.config.SSLHeadersPrefix
 }
 
 func (c *updater) buildGlobalModSecurity(d *globalData) {

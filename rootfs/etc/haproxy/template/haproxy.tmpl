@@ -7,6 +7,7 @@
 # #
 #
 {{- $cfg := . }}
+{{- $fgroup := $cfg.BuildFrontendGroup }}
 {{- $global := $cfg.Global }}
 global
     daemon
@@ -161,6 +162,16 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $backend.SSL.HasTLSAuth }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-CN   %{+Q}[ssl_c_s_dn(cn)]{{ if not $backend.SSLRedirect }}   if ssl_fc{{ end }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-DN   %{+Q}[ssl_c_s_dn]{{ if not $backend.SSLRedirect }}       if ssl_fc{{ end }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1 %{+Q}[ssl_c_sha1,hex]{{ if not $backend.SSLRedirect }}   if ssl_fc{{ end }}
+{{- if $backend.SSL.AddCertHeader }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-Cert %{+Q}[ssl_c_der,base64]{{ if not $backend.SSLRedirect }} if ssl_fc{{ end }}
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
 {{- range $snippet := $backend.CustomConfig }}
     {{ $snippet }}
 {{- end }}
@@ -228,7 +239,6 @@ backend _error496
 # #   FRONTENDS
 # #
 #
-{{- $fgroup := $cfg.BuildFrontendGroup }}
 {{- $frontends := $fgroup.Frontends }}
 {{- if $fgroup.HasTCPProxy }}
 
@@ -310,6 +320,12 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
+    http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-CN
+    http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-DN
+    http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1
+    http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-Cert
+
+{{- /*------------------------------------*/}}
     http-request set-var(req.backend) var(req.base),map_beg({{ $fgroup.HTTPFrontsMap.MatchFile }},_nomatch)
 {{- if $fgroup.HTTPFrontsMap.HasRegex }}
     http-request set-var(req.backend)
@@ -388,6 +404,12 @@ frontend {{ $frontend.Name }}
         {{- "" }} if { var(txn.namespace) - }
 {{- end }}
 {{- end }}
+
+{{- /*------------------------------------*/}}
+    http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-CN
+    http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-DN
+    http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1
+    http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-Cert
 
 {{- /*------------------------------------*/}}
 {{- if $frontend.HasTLSAuth }}

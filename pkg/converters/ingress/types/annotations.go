@@ -20,7 +20,6 @@ package types
 type HostAnnotations struct {
 	Source                 Source `json:"-"`
 	AppRoot                string `json:"app-root"`
-	AuthTLSCertHeader      bool   `json:"auth-tls-cert-header"`
 	AuthTLSErrorPage       string `json:"auth-tls-error-page"`
 	AuthTLSVerifyClient    string `json:"auth-tls-verify-client"`
 	AuthTLSSecret          string `json:"auth-tls-secret"`
@@ -38,6 +37,7 @@ type BackendAnnotations struct {
 	Affinity              string `json:"affinity"`
 	AuthRealm             string `json:"auth-realm"`
 	AuthSecret            string `json:"auth-secret"`
+	AuthTLSCertHeader     bool   `json:"auth-tls-cert-header"`
 	AuthType              string `json:"auth-type"`
 	BalanceAlgorithm      string `json:"balance-algorithm"`
 	BlueGreenBalance      string `json:"blue-green-balance"`

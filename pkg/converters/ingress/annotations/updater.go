@@ -108,6 +108,7 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, ann *ingtypes.Ba
 	backend.MaxConnServer = ann.MaxconnServer
 	backend.ProxyBodySize = ann.ProxyBodySize
 	backend.SSLRedirect = ann.SSLRedirect
+	backend.SSL.AddCertHeader = ann.AuthTLSCertHeader
 	c.buildBackendAffinity(data)
 	c.buildBackendAuthHTTP(data)
 	c.buildBackendBlueGreen(data)

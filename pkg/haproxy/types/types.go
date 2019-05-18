@@ -57,11 +57,12 @@ type TimeoutConfig struct {
 
 // SSLConfig ...
 type SSLConfig struct {
-	DHParam   DHParamConfig
-	Ciphers   string
-	Options   string
-	Engine    string
-	ModeAsync bool
+	DHParam       DHParamConfig
+	Ciphers       string
+	Options       string
+	Engine        string
+	ModeAsync     bool
+	HeadersPrefix string
 }
 
 // DHParamConfig ...
@@ -200,7 +201,6 @@ type HostTimeoutConfig struct {
 
 // HostTLSConfig ...
 type HostTLSConfig struct {
-	AddCertHeader    bool
 	CAErrorPage      string
 	CAFilename       string
 	CAHash           string
@@ -262,11 +262,13 @@ type HealthCheck struct {
 
 // SSLBackendConfig ...
 type SSLBackendConfig struct {
-	IsSecure     bool
-	CertFilename string
-	CertHash     string
-	CAFilename   string
-	CAHash       string
+	HasTLSAuth    bool
+	AddCertHeader bool
+	IsSecure      bool
+	CertFilename  string
+	CertHash      string
+	CAFilename    string
+	CAHash        string
 }
 
 // BackendTimeoutConfig ...

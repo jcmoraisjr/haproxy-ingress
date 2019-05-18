@@ -296,6 +296,7 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 					f.SNIBackendsMap.AppendHostname(base, back)
 					f.SNIBackendsMap.AppendAliasName(aliasName, back)
 					f.SNIBackendsMap.AppendAliasRegex(aliasRegex, back)
+					path.Backend.SSL.HasTLSAuth = true
 				} else {
 					f.HostBackendsMap.AppendHostname(base, back)
 					f.HostBackendsMap.AppendAliasName(aliasName, back)
