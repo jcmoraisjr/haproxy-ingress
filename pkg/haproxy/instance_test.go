@@ -17,7 +17,6 @@ limitations under the License.
 package haproxy
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -42,24 +41,36 @@ func TestInstanceEmpty(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	template := `
+	c.config.AcquireHost("empty").AddPath(c.config.AcquireBackend("default", "empty", 8080), "/")
+	c.instance.Update()
+
+	c.checkConfig(`
 global
     daemon
-    stats socket %s level admin expose-fd listeners
-    maxconn 0
+    stats socket /var/run/haproxy.sock level admin expose-fd listeners
+    maxconn 2000
+    hard-stop-after 15m
     lua-load /usr/local/etc/haproxy/lua/send-response.lua
     lua-load /usr/local/etc/haproxy/lua/auth-request.lua
-    tune.ssl.default-dh-param 0
+    ssl-dh-param-file /var/haproxy/tls/dhparam.pem
+    ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
+    ssl-default-bind-options no-sslv3
 defaults
     log global
-    maxconn 0
+    maxconn 2000
     option redispatch
     option dontlognull
     option http-server-close
     option http-keep-alive
-    timeout client          %s
-    timeout connect         %s
-    timeout server          %s
+    timeout client          50s
+    timeout client-fin      50s
+    timeout connect         5s
+    timeout http-keep-alive 1m
+    timeout http-request    5s
+    timeout queue           5s
+    timeout server          50s
+    timeout server-fin      50s
+    timeout tunnel          1h
 backend default_empty_8080
     mode http
 backend _error404
@@ -79,28 +90,18 @@ frontend _front_http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    http-request del-header -Client-CN
-    http-request del-header -Client-DN
-    http-request del-header -Client-SHA1
-    http-request del-header -Client-Cert
+    <<tls-del-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
-    use_backend %%[var(req.backend)] unless { var(req.backend) _nomatch }
+    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _error404
 frontend _front001
     mode http
     bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
-    http-request del-header -Client-CN
-    http-request del-header -Client-DN
-    http-request del-header -Client-SHA1
-    http-request del-header -Client-Cert
-    use_backend %%[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
+    <<tls-del-headers>>
+    use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404
-`
-
-	c.config.AcquireHost("empty").AddPath(c.config.AcquireBackend("default", "empty", 8080), "/")
-	c.instance.Update()
-	c.checkConfigFull(fmt.Sprintf(template, "--", "--", "--", "--"))
+`)
 
 	c.checkMap("_global_http_front.map", `
 empty/ default_empty_8080`)
@@ -116,7 +117,6 @@ func TestInstanceDefaultHost(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	c.configGlobal()
 	def := c.config.AcquireBackend("default", "default-backend", 8080)
 	def.Endpoints = []*hatypes.Endpoint{endpointS0}
 	c.config.ConfigDefaultBackend(def)
@@ -140,6 +140,8 @@ func TestInstanceDefaultHost(t *testing.T) {
 
 	c.instance.Update()
 	c.checkConfig(`
+<<global>>
+<<defaults>>
 backend d1_app_8080
     mode http
     server s1 172.17.0.11:8080 weight 100
@@ -148,16 +150,14 @@ backend d2_app_8080
     server s1 172.17.0.11:8080 weight 100
 backend _default_backend
     mode http
-    server s0 172.17.0.99:8080 weight 100`, `
+    server s0 172.17.0.99:8080 weight 100
+<<backend-errors>>
 frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<tls-del-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     use_backend d1_app_8080
@@ -167,10 +167,7 @@ frontend _front001
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-var(txn.namespace) var(req.base),map_beg(/etc/haproxy/maps/_front001_k8s_ns.map,-)
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     use_backend d1_app_8080
 `)
@@ -194,7 +191,6 @@ func TestInstanceSingleFrontendSingleBind(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	c.configGlobal()
 	def := c.config.AcquireBackend("default", "default-backend", 8080)
 	def.Endpoints = []*hatypes.Endpoint{endpointS0}
 	c.config.ConfigDefaultBackend(def)
@@ -221,6 +217,8 @@ func TestInstanceSingleFrontendSingleBind(t *testing.T) {
 
 	c.instance.Update()
 	c.checkConfig(`
+<<global>>
+<<defaults>>
 backend d1_app_8080
     mode http
     server s1 172.17.0.11:8080 weight 100
@@ -229,16 +227,14 @@ backend d2_app_8080
     server s1 172.17.0.11:8080 weight 100
 backend _default_backend
     mode http
-    server s0 172.17.0.99:8080 weight 100`, `
+    server s0 172.17.0.99:8080 weight 100
+<<backend-errors>>
 frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<tls-del-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _default_backend
@@ -248,10 +244,7 @@ frontend _front001
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-var(txn.namespace) var(req.base),map_beg(/etc/haproxy/maps/_front001_k8s_ns.map,-)
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _default_backend
 `)
@@ -285,7 +278,6 @@ func TestInstanceSingleFrontendTwoBindsCA(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	c.configGlobal()
 	def := c.config.AcquireBackend("default", "default-backend", 8080)
 	def.Endpoints = []*hatypes.Endpoint{endpointS0}
 	c.config.ConfigDefaultBackend(def)
@@ -310,6 +302,8 @@ func TestInstanceSingleFrontendTwoBindsCA(t *testing.T) {
 
 	c.instance.Update()
 	c.checkConfig(`
+<<global>>
+<<defaults>>
 backend d_app_8080
     mode http
     http-request set-header X-SSL-Client-CN   %{+Q}[ssl_c_s_dn(cn)]
@@ -319,7 +313,8 @@ backend d_app_8080
     server s1 172.17.0.11:8080 weight 100
 backend _default_backend
     mode http
-    server s0 172.17.0.99:8080 weight 100`, `
+    server s0 172.17.0.99:8080 weight 100
+<<backend-errors>>
 listen _front__tls
     mode tcp
     bind :443
@@ -337,10 +332,7 @@ frontend _front_http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<tls-del-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _default_backend
@@ -349,10 +341,7 @@ frontend _front001
     bind unix@/var/run/_socket001.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem ca-file /var/haproxy/ssl/ca/d1.local.pem verify optional ca-ignore-err all crt-ignore-err all
     bind unix@/var/run/_socket002.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem ca-file /var/haproxy/ssl/ca/d2.local.pem verify optional ca-ignore-err all crt-ignore-err all
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<tls-del-headers>>
     http-request set-header x-ha-base %[ssl_fc_sni]%[path]
     http-request set-var(req.snibackend) hdr(x-ha-base),lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_sni.map,_nomatch)
     acl tls-has-crt ssl_c_used
@@ -411,7 +400,6 @@ func TestInstanceTwoFrontendsThreeBindsCA(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	c.configGlobal()
 	def := c.config.AcquireBackend("default", "default-backend", 8080)
 	def.Endpoints = []*hatypes.Endpoint{endpointS0}
 	c.config.ConfigDefaultBackend(def)
@@ -460,6 +448,8 @@ func TestInstanceTwoFrontendsThreeBindsCA(t *testing.T) {
 
 	c.instance.Update()
 	c.checkConfig(`
+<<global>>
+<<defaults>>
 backend d_app_8080
     mode http
     server s21 172.17.0.121:8080 weight 100
@@ -471,7 +461,8 @@ backend d_appca_8080
     server s1 172.17.0.11:8080 weight 100
 backend _default_backend
     mode http
-    server s0 172.17.0.99:8080 weight 100`, `
+    server s0 172.17.0.99:8080 weight 100
+<<backend-errors>>
 listen _front__tls
     mode tcp
     bind :443
@@ -492,10 +483,7 @@ frontend _front_http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<tls-del-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _default_backend
@@ -504,10 +492,7 @@ frontend _front001
     bind unix@/var/run/_socket001.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem ca-file /var/haproxy/ssl/ca/d1.local.pem verify optional ca-ignore-err all crt-ignore-err all
     timeout client 1s
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<tls-del-headers>>
     http-request set-header x-ha-base %[ssl_fc_sni]%[path]
     http-request set-var(req.snibackend) hdr(x-ha-base),lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_sni.map,_nomatch)
     acl tls-has-invalid-crt ssl_c_ca_err gt 0
@@ -525,10 +510,7 @@ frontend _front002
     bind unix@/var/run/_socket003.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
     timeout client 2s
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front002_host.map,_nomatch)
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<tls-del-headers>>
     http-request set-header x-ha-base %[ssl_fc_sni]%[path]
     http-request set-var(req.snibackend) hdr(x-ha-base),lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front002_sni.map,_nomatch)
     acl tls-has-crt ssl_c_used
@@ -618,7 +600,6 @@ func TestInstanceSomePaths(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	c.configGlobal()
 	def := c.config.AcquireBackend("default", "default-backend", 8080)
 	def.Endpoints = []*hatypes.Endpoint{endpointS0}
 	c.config.ConfigDefaultBackend(def)
@@ -647,6 +628,8 @@ func TestInstanceSomePaths(t *testing.T) {
 
 	c.instance.Update()
 	c.checkConfig(`
+<<global>>
+<<defaults>>
 backend d_app0_8080
     mode http
     server s1 172.17.0.11:8080 weight 100
@@ -664,16 +647,14 @@ backend d_app3_8080
     server s33 172.17.0.133:8080 weight 100
 backend _default_backend
     mode http
-    server s0 172.17.0.99:8080 weight 100`, `
+    server s0 172.17.0.99:8080 weight 100
+<<backend-errors>>
 frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<tls-del-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _default_backend
@@ -681,10 +662,7 @@ frontend _front001
     mode http
     bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _default_backend
 `)
@@ -713,8 +691,6 @@ func TestInstanceSSLPassthrough(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	c.configGlobal()
-
 	var h *hatypes.Host
 	var b *hatypes.Backend
 
@@ -737,6 +713,8 @@ func TestInstanceSSLPassthrough(t *testing.T) {
 
 	c.instance.Update()
 	c.checkConfig(`
+<<global>>
+<<defaults>>
 backend d2_app_8080
     mode http
     server s31 172.17.0.131:8080 weight 100
@@ -749,7 +727,8 @@ backend d3_app-ssl_8443
 backend _error404
     mode http
     errorfile 400 /usr/local/etc/haproxy/errors/404.http
-    http-request deny deny_status 400`, `
+    http-request deny deny_status 400
+<<backend-errors>>
 listen _front__tls
     mode tcp
     bind :443
@@ -764,10 +743,7 @@ frontend _front_http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<tls-del-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _error404`)
@@ -787,8 +763,6 @@ d3.local/ no`)
 func TestInstanceRootRedirect(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
-
-	c.configGlobal()
 
 	var h *hatypes.Host
 	var b *hatypes.Backend
@@ -811,6 +785,8 @@ func TestInstanceRootRedirect(t *testing.T) {
 	c.instance.Update()
 
 	c.checkConfig(`
+<<global>>
+<<defaults>>
 backend d1_app_8080
     mode http
     server s1 172.17.0.11:8080 weight 100
@@ -820,7 +796,8 @@ backend d2_app_8080
 backend _error404
     mode http
     errorfile 400 /usr/local/etc/haproxy/errors/404.http
-    http-request deny deny_status 400`, `
+    http-request deny deny_status 400
+<<backend-errors>>
 frontend _front_http
     mode http
     bind :80
@@ -829,10 +806,7 @@ frontend _front_http
     http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
     http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/_global_http_root_redir.map,_nomatch)
     http-request redirect location %[var(req.rootredir)] if { path / } !{ var(req.rootredir) _nomatch }
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<tls-del-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _error404
@@ -843,10 +817,7 @@ frontend _front001
     http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
     http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/_front001_root_redir.map,_nomatch)
     http-request redirect location %[var(req.rootredir)] if { path / } !{ var(req.rootredir) _nomatch }
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404
 `)
@@ -880,8 +851,6 @@ func TestInstanceAlias(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	c.configGlobal()
-
 	var h *hatypes.Host
 	var b *hatypes.Backend
 
@@ -906,6 +875,8 @@ func TestInstanceAlias(t *testing.T) {
 
 	c.instance.Update()
 	c.checkConfig(`
+<<global>>
+<<defaults>>
 backend d1_app_8080
     mode http
     server s1 172.17.0.11:8080 weight 100
@@ -918,16 +889,14 @@ backend d3_app_8080
 backend _error404
     mode http
     errorfile 400 /usr/local/etc/haproxy/errors/404.http
-    http-request deny deny_status 400`, `
+    http-request deny deny_status 400
+<<backend-errors>>
 frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<tls-del-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _error404
@@ -937,10 +906,7 @@ frontend _front001
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-var(req.hostbackend) var(req.base),map_reg(/etc/haproxy/maps/_front001_host_regex.map,_nomatch) if { var(req.hostbackend) _nomatch }
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404
 `)
@@ -975,8 +941,6 @@ func TestInstanceWildcardHostname(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	c.configGlobal()
-
 	var h *hatypes.Host
 	var b *hatypes.Backend
 
@@ -1004,6 +968,8 @@ func TestInstanceWildcardHostname(t *testing.T) {
 
 	c.instance.Update()
 	c.checkConfig(`
+<<global>>
+<<defaults>>
 backend d1_app_8080
     mode http
     http-request set-header X-SSL-Client-CN   %{+Q}[ssl_c_s_dn(cn)]
@@ -1016,7 +982,8 @@ backend d2_app_8080
 backend _error404
     mode http
     errorfile 400 /usr/local/etc/haproxy/errors/404.http
-    http-request deny deny_status 400`, `
+    http-request deny deny_status 400
+<<backend-errors>>
 listen _front__tls
     mode tcp
     bind :443
@@ -1052,10 +1019,7 @@ frontend _front_http
     http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/_global_http_root_redir.map,_nomatch)
     http-request set-var(req.rootredir) var(req.host),map_reg(/etc/haproxy/maps/_global_http_root_redir_regex.map,_nomatch) if { var(req.rootredir) _nomatch }
     http-request redirect location %[var(req.rootredir)] if { path / } !{ var(req.rootredir) _nomatch }
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<tls-del-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     http-request set-var(req.backend) var(req.base),map_reg(/etc/haproxy/maps/_global_http_front_regex.map,_nomatch) if { var(req.backend) _nomatch }
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
@@ -1067,10 +1031,7 @@ frontend _front001
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-var(req.hostbackend) var(req.base),map_reg(/etc/haproxy/maps/_front001_host_regex.map,_nomatch) if { var(req.hostbackend) _nomatch }
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<tls-del-headers>>
     http-request set-header x-ha-base %[ssl_fc_sni]%[path]
     http-request set-var(req.snibase) hdr(x-ha-base),lower,regsub(:[0-9]+/,/)
     http-request set-var(req.snibackend) var(req.snibase),map_beg(/etc/haproxy/maps/_front001_sni.map,_nomatch)
@@ -1097,10 +1058,7 @@ frontend _front002
     http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/_front002_root_redir.map,_nomatch)
     http-request set-var(req.rootredir) var(req.host),map_reg(/etc/haproxy/maps/_front002_root_redir_regex.map,_nomatch) if { var(req.rootredir) _nomatch }
     http-request redirect location %[var(req.rootredir)] if { path / } !{ var(req.rootredir) _nomatch }
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404
 `)
@@ -1225,7 +1183,7 @@ func setup(t *testing.T) *testConfig {
 	})
 	instance.curConfig = config
 	config.ConfigDefaultX509Cert("/var/haproxy/ssl/certs/default.pem")
-	return &testConfig{
+	c := &testConfig{
 		t:          t,
 		logger:     logger,
 		bindUtils:  bindUtils,
@@ -1234,6 +1192,8 @@ func setup(t *testing.T) *testConfig {
 		tempdir:    tempdir,
 		configfile: configfile,
 	}
+	c.configGlobal()
+	return c
 }
 
 func (c *testConfig) teardown() {
@@ -1262,44 +1222,6 @@ func (c *testConfig) configGlobal() {
 	global.Timeout.Stop = "15m"
 	global.Timeout.Tunnel = "1h"
 }
-
-var globalConfig = `
-global
-    daemon
-    stats socket /var/run/haproxy.sock level admin expose-fd listeners
-    maxconn 2000
-    hard-stop-after 15m
-    lua-load /usr/local/etc/haproxy/lua/send-response.lua
-    lua-load /usr/local/etc/haproxy/lua/auth-request.lua
-    ssl-dh-param-file /var/haproxy/tls/dhparam.pem
-    ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
-    ssl-default-bind-options no-sslv3
-defaults
-    log global
-    maxconn 2000
-    option redispatch
-    option dontlognull
-    option http-server-close
-    option http-keep-alive
-    timeout client          50s
-    timeout client-fin      50s
-    timeout connect         5s
-    timeout http-keep-alive 1m
-    timeout http-request    5s
-    timeout queue           5s
-    timeout server          50s
-    timeout server-fin      50s
-    timeout tunnel          1h`
-
-var errorPages = `
-backend _error495
-    mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/495.http
-    http-request deny deny_status 400
-backend _error496
-    mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/496.http
-    http-request deny deny_status 400`
 
 var endpointS0 = &hatypes.Endpoint{
 	Name:   "s0",
@@ -1366,12 +1288,51 @@ func _yamlMarshal(in interface{}) string {
 	return string(out)
 }
 
-func (c *testConfig) checkConfig(backend, frontend string) {
-	c.checkConfigFull(globalConfig + backend + errorPages + frontend)
-}
-
-func (c *testConfig) checkConfigFull(expected string) {
+func (c *testConfig) checkConfig(expected string) {
 	actual := strings.Replace(c.readConfig(c.configfile), c.tempdir, "/etc/haproxy/maps", -1)
+	replace := map[string]string{
+		"<<global>>": `global
+    daemon
+    stats socket /var/run/haproxy.sock level admin expose-fd listeners
+    maxconn 2000
+    hard-stop-after 15m
+    lua-load /usr/local/etc/haproxy/lua/send-response.lua
+    lua-load /usr/local/etc/haproxy/lua/auth-request.lua
+    ssl-dh-param-file /var/haproxy/tls/dhparam.pem
+    ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
+    ssl-default-bind-options no-sslv3`,
+		"<<defaults>>": `defaults
+    log global
+    maxconn 2000
+    option redispatch
+    option dontlognull
+    option http-server-close
+    option http-keep-alive
+    timeout client          50s
+    timeout client-fin      50s
+    timeout connect         5s
+    timeout http-keep-alive 1m
+    timeout http-request    5s
+    timeout queue           5s
+    timeout server          50s
+    timeout server-fin      50s
+    timeout tunnel          1h`,
+		"<<backend-errors>>": `backend _error495
+    mode http
+    errorfile 400 /usr/local/etc/haproxy/errors/495.http
+    http-request deny deny_status 400
+backend _error496
+    mode http
+    errorfile 400 /usr/local/etc/haproxy/errors/496.http
+    http-request deny deny_status 400`,
+		"    <<tls-del-headers>>": `    http-request del-header X-SSL-Client-CN
+    http-request del-header X-SSL-Client-DN
+    http-request del-header X-SSL-Client-SHA1
+    http-request del-header X-SSL-Client-Cert`,
+	}
+	for old, new := range replace {
+		expected = strings.Replace(expected, old, new, -1)
+	}
 	c.compareText("haproxy.cfg", actual, expected)
 }
 
