@@ -63,6 +63,7 @@ func createDefaults() *types.Config {
 			DNSResolvers:                 "",
 			DNSTimeoutRetry:              "1s",
 			DrainSupport:                 false,
+			DrainSupportRedispatch:       true,
 			DynamicScaling:               false,
 			Forwardfor:                   "add",
 			HealthzPort:                  10253,

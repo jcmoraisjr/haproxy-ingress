@@ -55,6 +55,7 @@ type ConfigGlobals struct {
 	DNSResolvers                 string `json:"dns-resolvers"`
 	DNSTimeoutRetry              string `json:"dns-timeout-retry"`
 	DrainSupport                 bool   `json:"drain-support"`
+	DrainSupportRedispatch       bool   `json:"drain-support-redispatch"`
 	DynamicScaling               bool   `json:"dynamic-scaling"`
 	Forwardfor                   string `json:"forwardfor"`
 	HealthzPort                  int    `json:"healthz-port"`
