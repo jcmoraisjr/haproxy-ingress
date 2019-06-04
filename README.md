@@ -417,7 +417,7 @@ The following parameters are supported:
 ||[`dns-resolvers`](#dns-resolvers)|multiline resolver=ip[:port]|``|
 ||[`dns-timeout-retry`](#dns-resolvers)|time with suffix|`1s`|
 ||[`drain-support`](#drain-support)|[true\|false]|`false`|
-||[`drain-support-redispatch`](#drain-support)|[true\|false]|`true`|
+|`[1]`|[`drain-support-redispatch`](#drain-support)|[true\|false]|`true`|
 ||[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`false`|
 ||[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
 ||[`healthz-port`](#healthz-port)|port number|`10253`|
