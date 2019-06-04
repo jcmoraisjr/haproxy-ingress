@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v0.7.2
+
+Fixes and improvements since [v0.7.1](#v071):
+
+* Update HAProxy from 1.8.19 to 1.8.20
+* Fix port retrieval for terminatingPod with named targetPort [#331](https://github.com/jcmoraisjr/haproxy-ingress/pull/331)
+
 ## v0.7.1
 
 Fixes and improvements since [v0.7](#v07):
@@ -134,6 +141,13 @@ Fixes and improvements since [v0.7-beta.7](#v07-beta7):
 * Update to HAProxy 1.8.19, which fixes some connection aborts on HTTP/2
 * Add TLS ALPN extension advertisement [#307](https://github.com/jcmoraisjr/haproxy-ingress/pull/307)
 * Fix overlapping configs on shared frontend [#308](https://github.com/jcmoraisjr/haproxy-ingress/pull/308)
+
+## v0.6.4
+
+Fixes and improvements since [v0.6.3](#v063):
+
+* Update HAProxy from 1.8.19 to 1.8.20
+* Fix port retrieval for terminatingPod with named targetPort [#331](https://github.com/jcmoraisjr/haproxy-ingress/pull/331)
 
 ## v0.6.3
 
