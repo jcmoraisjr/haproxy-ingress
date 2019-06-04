@@ -18,16 +18,17 @@ package types
 
 // Global ...
 type Global struct {
-	Procs           ProcsConfig
-	Syslog          SyslogConfig
-	MaxConn         int
-	Timeout         TimeoutConfig
-	SSL             SSLConfig
-	ModSecurity     ModSecurityConfig
-	DrainSupport    bool
-	LoadServerState bool
-	StatsSocket     string
-	CustomConfig    []string
+	Procs                  ProcsConfig
+	Syslog                 SyslogConfig
+	MaxConn                int
+	Timeout                TimeoutConfig
+	SSL                    SSLConfig
+	ModSecurity            ModSecurityConfig
+	DrainSupport           bool
+	DrainSupportRedispatch bool
+	LoadServerState        bool
+	StatsSocket            string
+	CustomConfig           []string
 }
 
 // ProcsConfig ...

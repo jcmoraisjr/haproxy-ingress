@@ -164,6 +164,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		HTTPSLogFormat:         "",
 		TCPLogFormat:           "",
 		DrainSupport:           false,
+		DrainSupportRedispatch: true,
 		DNSResolvers:           "",
 		DNSTimeoutRetry:        "1s",
 		DNSHoldObsolete:        "0s",

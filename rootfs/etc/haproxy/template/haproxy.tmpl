@@ -65,6 +65,9 @@ defaults
     maxconn {{ $global.MaxConn }}
 {{- if $global.DrainSupport }}
     option persist
+    {{- if $global.DrainSupportRedispatch }}
+    option redispatch
+    {{- end }}
 {{- else }}
     option redispatch
 {{- end }}
