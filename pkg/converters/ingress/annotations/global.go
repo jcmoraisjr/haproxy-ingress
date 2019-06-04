@@ -111,5 +111,6 @@ func (c *updater) buildGlobalModSecurity(d *globalData) {
 func (c *updater) buildGlobalCustomConfig(d *globalData) {
 	if d.config.ConfigGlobal != "" {
 		d.global.CustomConfig = strings.Split(strings.TrimRight(d.config.ConfigGlobal, "\n"), "\n")
+		d.global.CustomDefaults = strings.Split(strings.TrimRight(d.config.ConfigGlobals.ConfigDefaults, "\n"), "\n")
 	}
 }

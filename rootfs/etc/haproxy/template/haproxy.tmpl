@@ -95,6 +95,9 @@ defaults
 {{- if $global.Timeout.Tunnel }}
     timeout tunnel          {{ $global.Timeout.Tunnel }}
 {{- end }}
+{{- range $snippet := $global.CustomDefaults }}
+    {{ $snippet }}
+{{- end }}
 
   # # # # # # # # # # # # # # # # # # #
 # #

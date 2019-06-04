@@ -45,6 +45,7 @@ type ConfigGlobals struct {
 	BindIPAddrHTTP               string `json:"bind-ip-addr-http"`
 	BindIPAddrStats              string `json:"bind-ip-addr-stats"`
 	BindIPAddrTCP                string `json:"bind-ip-addr-tcp"`
+	ConfigDefaults               string `json:"config-defaults"`
 	ConfigFrontend               string `json:"config-frontend"`
 	ConfigGlobal                 string `json:"config-global"`
 	DNSAcceptedPayloadSize       int    `json:"dns-accepted-payload-size"`
