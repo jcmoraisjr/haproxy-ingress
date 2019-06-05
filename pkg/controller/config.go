@@ -75,6 +75,7 @@ func newControllerConfig(ingressConfig *ingress.Configuration, haproxyController
 	cfg.createDNSResolvers()
 	cfg.createProcs()
 	return &types.ControllerConfig{
+		ConfigDefaults:      stringToArray(cfg.haproxyConfig.ConfigDefaults),
 		ConfigGlobal:        stringToArray(cfg.haproxyConfig.ConfigGlobal),
 		ConfigFrontend:      stringToArray(cfg.haproxyConfig.ConfigFrontend),
 		Userlists:           cfg.userlists,
@@ -138,6 +139,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		ModSecTimeoutIdle:      "30s",
 		ModSecTimeoutProc:      "1s",
 		BackendCheckInterval:   "2s",
+		ConfigDefaults:         "",
 		ConfigGlobal:           "",
 		ConfigFrontend:         "",
 		Forwardfor:             "add",
@@ -164,6 +166,7 @@ func newHAProxyConfig(haproxyController *HAProxyController) *types.HAProxyConfig
 		HTTPSLogFormat:         "",
 		TCPLogFormat:           "",
 		DrainSupport:           false,
+		DrainSupportRedispatch: true,
 		DNSResolvers:           "",
 		DNSTimeoutRetry:        "1s",
 		DNSHoldObsolete:        "0s",

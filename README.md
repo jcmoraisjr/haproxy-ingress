@@ -408,6 +408,7 @@ The following parameters are supported:
 ||[`bind-ip-addr-stats`](#bind-ip-addr)|IP address|`*`|
 ||[`bind-ip-addr-tcp`](#bind-ip-addr)|IP address|`*`|
 ||[`config-frontend`](#configuration-snippet)|multiline HAProxy frontend config||
+|`[1]`|[`config-defaults`](#configuration-snippet)|multiline HAProxy config for the defaults section||
 ||[`config-global`](#configuration-snippet)|multiline HAProxy global config||
 ||[`cookie-key`](#cookie-key)|secret key|`Ingress`|
 ||[`dns-accepted-payload-size`](#dns-resolvers)|number|`8192`|
@@ -417,6 +418,7 @@ The following parameters are supported:
 ||[`dns-resolvers`](#dns-resolvers)|multiline resolver=ip[:port]|``|
 ||[`dns-timeout-retry`](#dns-resolvers)|time with suffix|`1s`|
 ||[`drain-support`](#drain-support)|[true\|false]|`false`|
+|`[1]`|[`drain-support-redispatch`](#drain-support)|[true\|false]|`true`|
 ||[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`false`|
 ||[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
 ||[`healthz-port`](#healthz-port)|port number|`10253`|
@@ -517,6 +519,11 @@ Examples - configmap:
 ```
 
 ```yaml
+    config-defaults: |
+      option redispatch
+```
+
+```yaml
     config-frontend: |
       capture request header X-User-Id len 32
 ```
@@ -533,6 +540,7 @@ Ingress annotation:
 Global configmap options:
 
 * `config-global`: Add configuration snippet to the end of the global section.
+* `config-defaults`: Add configuration snippet to the end of the defaults section.
 * `config-frontend`: Add configuration snippet to all frontend sections.
 
 Annotation option:
@@ -968,6 +976,9 @@ Set to true if you wish to use HAProxy's drain support for pods that are NotRead
 k8s readiness check) or are in the process of terminating. This option only makes sense with
 cookie affinity configured as it allows persistent traffic to be directed to pods that are in a
 not ready or terminating state.
+
+By default, sessions will be redispatched on a failed upstream connection once the target pod is terminated.
+You can control this behavior by setting `drain-support-redispatch` flag to `false` to instead return a 503 failure.
 
 ## Command-line
 

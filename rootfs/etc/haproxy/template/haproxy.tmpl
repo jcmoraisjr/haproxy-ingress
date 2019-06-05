@@ -65,6 +65,9 @@ defaults
     maxconn {{ $global.MaxConn }}
 {{- if $global.DrainSupport }}
     option persist
+    {{- if $global.DrainSupportRedispatch }}
+    option redispatch
+    {{- end }}
 {{- else }}
     option redispatch
 {{- end }}
@@ -91,6 +94,9 @@ defaults
 {{- end }}
 {{- if $global.Timeout.Tunnel }}
     timeout tunnel          {{ $global.Timeout.Tunnel }}
+{{- end }}
+{{- range $snippet := $global.CustomDefaults }}
+    {{ $snippet }}
 {{- end }}
 
   # # # # # # # # # # # # # # # # # # #

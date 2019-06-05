@@ -45,6 +45,7 @@ type ConfigGlobals struct {
 	BindIPAddrHTTP               string `json:"bind-ip-addr-http"`
 	BindIPAddrStats              string `json:"bind-ip-addr-stats"`
 	BindIPAddrTCP                string `json:"bind-ip-addr-tcp"`
+	ConfigDefaults               string `json:"config-defaults"`
 	ConfigFrontend               string `json:"config-frontend"`
 	ConfigGlobal                 string `json:"config-global"`
 	DNSAcceptedPayloadSize       int    `json:"dns-accepted-payload-size"`
@@ -54,6 +55,7 @@ type ConfigGlobals struct {
 	DNSResolvers                 string `json:"dns-resolvers"`
 	DNSTimeoutRetry              string `json:"dns-timeout-retry"`
 	DrainSupport                 bool   `json:"drain-support"`
+	DrainSupportRedispatch       bool   `json:"drain-support-redispatch"`
 	DynamicScaling               bool   `json:"dynamic-scaling"`
 	Forwardfor                   string `json:"forwardfor"`
 	HealthzPort                  int    `json:"healthz-port"`

@@ -52,6 +52,9 @@ defaults
     maxconn {{ $cfg.MaxConn }}
 {{- if $cfg.DrainSupport }}
     option persist
+    {{- if $cfg.DrainSupportRedispatch }}
+    option redispatch
+    {{- end }}
 {{- else }}
     option redispatch
 {{- end }}
@@ -67,6 +70,9 @@ defaults
     timeout server-fin      {{ $cfg.TimeoutServerFin }}
     timeout tunnel          {{ $cfg.TimeoutTunnel }}
     timeout http-keep-alive {{ $cfg.TimeoutKeepAlive }}
+{{- range $snippet := $ing.ConfigDefaults }}
+    {{ $snippet }}
+{{- end }}
 {{- if ne (len $ing.DNSResolvers) 0 }}
 
 ######
