@@ -117,6 +117,11 @@ func (i *instance) Update() {
 		i.logger.InfoV(2, "new configuration is empty")
 		return
 	}
+	if err := i.curConfig.BuildFrontendGroup(); err != nil {
+		i.logger.Error("error building configuration group: %v", err)
+		i.clearConfig()
+		return
+	}
 	if i.curConfig.Equals(i.oldConfig) {
 		i.logger.InfoV(2, "old and new configurations match, skipping reload")
 		i.clearConfig()

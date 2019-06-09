@@ -7,7 +7,7 @@
 # #
 #
 {{- $cfg := . }}
-{{- $fgroup := $cfg.BuildFrontendGroup }}
+{{- $fgroup := $cfg.FrontendGroup }}
 {{- $global := $cfg.Global }}
 global
     daemon
@@ -65,9 +65,9 @@ defaults
     maxconn {{ $global.MaxConn }}
 {{- if $global.DrainSupport }}
     option persist
-    {{- if $global.DrainSupportRedispatch }}
+{{- if $global.DrainSupportRedispatch }}
     option redispatch
-    {{- end }}
+{{- end }}
 {{- else }}
     option redispatch
 {{- end }}

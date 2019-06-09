@@ -35,7 +35,8 @@ type Config interface {
 	ConfigDefaultX509Cert(filename string)
 	AddUserlist(name string, users []hatypes.User) *hatypes.Userlist
 	FindUserlist(name string) *hatypes.Userlist
-	BuildFrontendGroup() (*hatypes.FrontendGroup, error)
+	FrontendGroup() *hatypes.FrontendGroup
+	BuildFrontendGroup() error
 	DefaultHost() *hatypes.Host
 	DefaultBackend() *hatypes.Backend
 	Global() *hatypes.Global
@@ -46,6 +47,7 @@ type Config interface {
 }
 
 type config struct {
+	fgroup          *hatypes.FrontendGroup
 	bindUtils       hatypes.BindUtils
 	mapsTemplate    *template.Config
 	mapsDir         string
@@ -187,11 +189,15 @@ func (c *config) FindUserlist(name string) *hatypes.Userlist {
 	return nil
 }
 
-func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
+func (c *config) FrontendGroup() *hatypes.FrontendGroup {
+	return c.fgroup
+}
+
+func (c *config) BuildFrontendGroup() error {
 	// tested thanks to instance_test templating tests
 	// ideas to make a nice test or a nice refactor are welcome
 	if len(c.hosts) == 0 {
-		return nil, fmt.Errorf("cannot create frontends without hosts")
+		return fmt.Errorf("cannot create frontends without hosts")
 	}
 	frontends, sslpassthrough := hatypes.BuildRawFrontends(c.hosts)
 	fgroupMaps := hatypes.CreateMaps()
@@ -218,7 +224,7 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 				} else {
 					x509dir, err := c.createCertsDir(bindName, bind.Hosts)
 					if err != nil {
-						return nil, err
+						return err
 					}
 					bind.TLS.TLSCert = c.defaultX509Cert
 					bind.TLS.TLSCertDir = x509dir
@@ -239,7 +245,7 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 		} else {
 			x509dir, err := c.createCertsDir(bind.Name, bind.Hosts)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			frontends[0].Binds[0].TLS.TLSCert = c.defaultX509Cert
 			frontends[0].Binds[0].TLS.TLSCertDir = x509dir
@@ -269,7 +275,7 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 	for _, sslpassHost := range sslpassthrough {
 		rootPath := sslpassHost.FindPath("/")
 		if rootPath == nil {
-			return nil, fmt.Errorf("missing root path on host %s", sslpassHost.Hostname)
+			return fmt.Errorf("missing root path on host %s", sslpassHost.Hostname)
 		}
 		fgroup.SSLPassthroughMap.AppendHostname(sslpassHost.Hostname, rootPath.BackendID)
 		fgroup.HTTPSRedirMap.AppendHostname(sslpassHost.Hostname+"/", yesno[sslpassHost.HTTPPassthroughBackend == nil])
@@ -340,19 +346,20 @@ func (c *config) BuildFrontendGroup() (*hatypes.FrontendGroup, error) {
 		}
 	}
 	if err := writeMaps(fgroup.Maps, c.mapsTemplate); err != nil {
-		return nil, err
+		return err
 	}
 	for _, f := range frontends {
 		if err := writeMaps(f.Maps, c.mapsTemplate); err != nil {
-			return nil, err
+			return err
 		}
 		for _, bind := range f.Binds {
 			if err := writeMaps(bind.Maps, c.mapsTemplate); err != nil {
-				return nil, err
+				return err
 			}
 		}
 	}
-	return fgroup, nil
+	c.fgroup = fgroup
+	return nil
 }
 
 func writeMaps(maps *hatypes.HostsMaps, template *template.Config) error {
