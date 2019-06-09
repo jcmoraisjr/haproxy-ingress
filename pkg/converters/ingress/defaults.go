@@ -28,13 +28,14 @@ const (
 func createDefaults() *types.Config {
 	return &types.Config{
 		ConfigDefaults: types.ConfigDefaults{
-			BalanceAlgorithm:      "roundrobin",
-			CookieKey:             "Ingress",
-			HSTS:                  true,
+			BalanceAlgorithm: "roundrobin",
+			CookieKey:        "Ingress",
+			HSTS:             true,
 			HSTSIncludeSubdomains: false,
 			HSTSMaxAge:            "15768000",
 			HSTSPreload:           false,
 			ProxyBodySize:         "",
+			SessionCookieDynamic:  true,
 			SSLRedirect:           true,
 			TimeoutClient:         "50s",
 			TimeoutClientFin:      "50s",

@@ -44,7 +44,6 @@ type BackendAnnotations struct {
 	BlueGreenDeploy       string `json:"blue-green-deploy"`
 	BlueGreenMode         string `json:"blue-green-mode"`
 	ConfigBackend         string `json:"config-backend"`
-	CookieKey             string `json:"cookie-key"`
 	CorsAllowCredentials  bool   `json:"cors-allow-credentials"`
 	CorsAllowHeaders      string `json:"cors-allow-headers"`
 	CorsAllowMethods      string `json:"cors-allow-methods"`
@@ -70,7 +69,7 @@ type BackendAnnotations struct {
 	SecureBackends        bool   `json:"secure-backends"`
 	SecureCrtSecret       string `json:"secure-crt-secret"`
 	SecureVerifyCASecret  string `json:"secure-verify-ca-secret"`
-	SessionCookieDynamic  string `json:"session-cookie-dynamic"`
+	SessionCookieDynamic  bool   `json:"session-cookie-dynamic"`
 	SessionCookieName     string `json:"session-cookie-name"`
 	SessionCookieStrategy string `json:"session-cookie-strategy"`
 	SSLRedirect           bool   `json:"ssl-redirect"`

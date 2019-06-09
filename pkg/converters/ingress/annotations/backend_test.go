@@ -71,14 +71,14 @@ func TestAffinity(t *testing.T) {
 		},
 		// 6
 		{
-			ann:        types.BackendAnnotations{Affinity: "cookie", SessionCookieStrategy: "prefix"},
-			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "prefix"},
+			ann:        types.BackendAnnotations{Affinity: "cookie", SessionCookieStrategy: "prefix", SessionCookieDynamic: true},
+			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "prefix", Dynamic: true},
 			expLogging: "",
 		},
 		// 7
 		{
-			ann:        types.BackendAnnotations{Affinity: "cookie", CookieKey: "ha"},
-			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "insert", Key: "ha"},
+			ann:        types.BackendAnnotations{Affinity: "cookie", SessionCookieDynamic: false},
+			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "insert", Dynamic: false},
 			expLogging: "",
 		},
 	}

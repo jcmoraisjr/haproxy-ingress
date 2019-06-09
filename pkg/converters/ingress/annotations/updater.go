@@ -76,6 +76,7 @@ func (c *updater) UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.Co
 	global.MaxConn = config.MaxConnections
 	global.DrainSupport = config.DrainSupport
 	global.DrainSupportRedispatch = config.DrainSupportRedispatch
+	global.Cookie.Key = config.CookieKey
 	global.LoadServerState = config.LoadServerState
 	global.StatsSocket = "/var/run/haproxy-stats.sock"
 	c.buildGlobalProc(data)

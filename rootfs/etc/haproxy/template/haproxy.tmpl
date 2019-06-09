@@ -178,6 +178,17 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- $cookie := $backend.Cookie }}
+{{- if $cookie.Name }}
+    cookie {{ $cookie.Name }} {{ $cookie.Strategy }}
+        {{- if eq $cookie.Strategy "insert" }} indirect nocache httponly{{ end }}
+        {{- if $cookie.Dynamic }} dynamic{{ end }}
+{{- if $cookie.Dynamic }}
+    dynamic-cookie-key "{{ $global.Cookie.Key }}"
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
 {{- range $snippet := $backend.CustomConfig }}
     {{ $snippet }}
 {{- end }}
@@ -187,6 +198,7 @@ backend {{ $backend.ID }}
     server {{ $ep.Name }} {{ $ep.IP }}:{{ $ep.Port }}
         {{- if $ep.Disabled }} disabled{{ end }}
         {{- "" }} weight {{ $ep.Weight }}
+        {{- if and ($cookie.Name) (not $cookie.Dynamic) }} cookie {{ $ep.Name }}{{ end }}
         {{- template "backend" map $backend }}
 {{- end }}
 {{- end }}

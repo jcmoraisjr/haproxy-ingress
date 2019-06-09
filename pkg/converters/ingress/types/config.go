@@ -25,6 +25,7 @@ type ConfigDefaults struct {
 	HSTSMaxAge            string `json:"hsts-max-age"`
 	HSTSPreload           bool   `json:"hsts-preload"`
 	ProxyBodySize         string `json:"proxy-body-size"`
+	SessionCookieDynamic  bool   `json:"session-cookie-dynamic"`
 	SSLRedirect           bool   `json:"ssl-redirect"`
 	TimeoutClient         string `json:"timeout-client"`
 	TimeoutClientFin      string `json:"timeout-client-fin"`

@@ -47,7 +47,7 @@ func (c *updater) buildBackendAffinity(d *backData) {
 	}
 	d.backend.Cookie.Name = name
 	d.backend.Cookie.Strategy = strategy
-	d.backend.Cookie.Key = d.ann.CookieKey
+	d.backend.Cookie.Dynamic = d.ann.SessionCookieDynamic
 }
 
 func (c *updater) buildBackendAuthHTTP(d *backData) {

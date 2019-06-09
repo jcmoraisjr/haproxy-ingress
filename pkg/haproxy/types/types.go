@@ -24,6 +24,7 @@ type Global struct {
 	Timeout                TimeoutConfig
 	SSL                    SSLConfig
 	ModSecurity            ModSecurityConfig
+	Cookie                 CookieConfig
 	DrainSupport           bool
 	DrainSupportRedispatch bool
 	LoadServerState        bool
@@ -77,6 +78,11 @@ type DHParamConfig struct {
 type ModSecurityConfig struct {
 	Endpoints []string
 	Timeout   ModSecurityTimeoutConfig
+}
+
+// CookieConfig ...
+type CookieConfig struct {
+	Key string
 }
 
 // ModSecurityTimeoutConfig ...
@@ -288,7 +294,7 @@ type BackendTimeoutConfig struct {
 type Cookie struct {
 	Name     string
 	Strategy string
-	Key      string
+	Dynamic  bool
 }
 
 // HTTPRequest ...

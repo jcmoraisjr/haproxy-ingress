@@ -1132,6 +1132,68 @@ d1.local/ d1_app_8080
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestAffinity(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.AcquireBackend("d1", "app", 8080)
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	b.Cookie.Name = "ingress-controller"
+	b.Cookie.Strategy = "insert"
+	h = c.config.AcquireHost("d1.local")
+	h.AddPath(b, "/")
+
+	b = c.config.AcquireBackend("d2", "app", 8080)
+	b.Endpoints = []*hatypes.Endpoint{endpointS21}
+	b.Cookie.Name = "Ingress"
+	b.Cookie.Strategy = "prefix"
+	b.Cookie.Dynamic = true
+
+	h = c.config.AcquireHost("d2.local")
+	h.AddPath(b, "/")
+
+	c.instance.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    cookie ingress-controller insert indirect nocache httponly
+    server s1 172.17.0.11:8080 weight 100 cookie s1
+backend d2_app_8080
+    mode http
+    cookie Ingress prefix dynamic
+    dynamic-cookie-key "Ingress"
+    server s21 172.17.0.121:8080 weight 100
+backend _error404
+    mode http
+    errorfile 400 /usr/local/etc/haproxy/errors/404.http
+    http-request deny deny_status 400
+<<backend-errors>>
+frontend _front_http
+    mode http
+    bind :80
+    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
+    <<tls-del-headers>>
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
+    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+    default_backend _error404
+frontend _front001
+    mode http
+    bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
+    http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
+    <<tls-del-headers>>
+    use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
+    default_backend _error404
+`)
+
+	c.logger.CompareLogging(defaultLogging)
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *
  *  BUILDERS
@@ -1205,6 +1267,7 @@ func (c *testConfig) teardown() {
 
 func (c *testConfig) configGlobal() {
 	global := c.config.Global()
+	global.Cookie.Key = "Ingress"
 	global.MaxConn = 2000
 	global.SSL.Ciphers = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256"
 	global.SSL.DHParam.Filename = "/var/haproxy/tls/dhparam.pem"
