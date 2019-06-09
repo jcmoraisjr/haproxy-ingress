@@ -50,6 +50,18 @@ func (c *cache) GetEndpoints(service *api.Service) (*api.Endpoints, error) {
 	return &ep, err
 }
 
+func (c *cache) GetTerminatingPods(service *api.Service) ([]*api.Pod, error) {
+	pods, err := c.listers.Pod.GetTerminatingServicePods(service)
+	if err != nil {
+		return []*api.Pod{}, err
+	}
+	podRef := make([]*api.Pod, len(pods))
+	for i := range pods {
+		podRef[i] = &pods[i]
+	}
+	return podRef, err
+}
+
 func (c *cache) GetPod(podName string) (*api.Pod, error) {
 	sname := strings.Split(podName, "/")
 	if len(sname) != 2 {

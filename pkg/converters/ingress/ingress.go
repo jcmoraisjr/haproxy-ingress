@@ -247,14 +247,29 @@ func (c *converter) addEndpoints(svc *api.Service, servicePort int, backend *hat
 	}
 	// TODO ServiceTypeExternalName
 	// TODO ServiceUpstream - annotation nao documentada
-	// TODO DrainSupport
 	for _, subset := range endpoints.Subsets {
 		for _, port := range subset.Ports {
 			if int(port.Port) == servicePort && port.Protocol == api.ProtocolTCP {
 				for _, addr := range subset.Addresses {
 					backend.NewEndpoint(addr.IP, servicePort, addr.TargetRef.Namespace+"/"+addr.TargetRef.Name)
 				}
+				if c.globalConfig.DrainSupport {
+					for _, addr := range subset.NotReadyAddresses {
+						ep := backend.NewEndpoint(addr.IP, servicePort, addr.TargetRef.Namespace+"/"+addr.TargetRef.Name)
+						ep.Weight = 0
+					}
+				}
 			}
+		}
+	}
+	if c.globalConfig.DrainSupport {
+		pods, err := c.cache.GetTerminatingPods(svc)
+		if err != nil {
+			return err
+		}
+		for _, pod := range pods {
+			ep := backend.NewEndpoint(pod.Status.PodIP, servicePort, pod.Namespace+"/"+pod.Name)
+			ep.Weight = 0
 		}
 	}
 	return nil

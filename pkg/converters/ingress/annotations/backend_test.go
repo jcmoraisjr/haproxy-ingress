@@ -18,6 +18,7 @@ package annotations
 
 import (
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -244,11 +245,20 @@ func TestBlueGreen(t *testing.T) {
 		ep := []*hatypes.Endpoint{}
 		if targets != "" {
 			for _, targetRef := range strings.Split(targets, ",") {
+				targetWeight := strings.Split(targetRef, "=")
+				target := targetRef
+				weight := 1
+				if len(targetWeight) == 2 {
+					target = targetWeight[0]
+					if w, err := strconv.ParseInt(targetWeight[1], 10, 0); err == nil {
+						weight = int(w)
+					}
+				}
 				ep = append(ep, &hatypes.Endpoint{
 					IP:        "172.17.0.11",
 					Port:      8080,
-					Weight:    1,
-					TargetRef: targetRef,
+					Weight:    weight,
+					TargetRef: target,
 				})
 			}
 		}
@@ -479,6 +489,13 @@ INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not refe
 			ann:        buildAnn("v=1=255,v=2=2", "deploy"),
 			endpoints:  buildEndpoints("pod0101-01,pod0102-01,pod0102-02,pod0102-03,pod0102-04"),
 			expWeights: []int{256, 1, 1, 1, 1},
+			expLogging: "",
+		},
+		// 29
+		{
+			ann:        buildAnn("v=1=50,v=2=50", "deploy"),
+			endpoints:  buildEndpoints("pod0101-01,pod0101-02,pod0102-01,pod0102-02=0"),
+			expWeights: []int{1, 1, 2, 0},
 			expLogging: "",
 		},
 	}

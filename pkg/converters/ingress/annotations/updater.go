@@ -74,8 +74,8 @@ func (c *updater) UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.Co
 	global.Syslog.Format = config.SyslogFormat
 	global.Syslog.Tag = config.SyslogTag
 	global.MaxConn = config.MaxConnections
-	global.DrainSupport = config.DrainSupport
-	global.DrainSupportRedispatch = config.DrainSupportRedispatch
+	global.DrainSupport.Drain = config.DrainSupport
+	global.DrainSupport.Redispatch = config.DrainSupportRedispatch
 	global.Cookie.Key = config.CookieKey
 	global.LoadServerState = config.LoadServerState
 	global.StatsSocket = "/var/run/haproxy-stats.sock"

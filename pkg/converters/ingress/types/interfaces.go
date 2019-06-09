@@ -24,6 +24,7 @@ import (
 type Cache interface {
 	GetService(serviceName string) (*api.Service, error)
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
+	GetTerminatingPods(service *api.Service) ([]*api.Pod, error)
 	GetPod(podName string) (*api.Pod, error)
 	GetTLSSecretPath(secretName string) (File, error)
 	GetCASecretPath(secretName string) (File, error)

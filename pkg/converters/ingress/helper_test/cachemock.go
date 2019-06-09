@@ -33,6 +33,7 @@ type SecretContent map[string]map[string][]byte
 type CacheMock struct {
 	SvcList       []*api.Service
 	EpList        map[string]*api.Endpoints
+	TermPodList   map[string][]*api.Pod
 	PodList       map[string]*api.Pod
 	SecretTLSPath map[string]string
 	SecretCAPath  map[string]string
@@ -60,6 +61,15 @@ func (c *CacheMock) GetEndpoints(service *api.Service) (*api.Endpoints, error) {
 		return ep, nil
 	}
 	return nil, fmt.Errorf("could not find endpoints for service '%s'", serviceName)
+}
+
+// GetTerminatingPods ...
+func (c *CacheMock) GetTerminatingPods(service *api.Service) ([]*api.Pod, error) {
+	serviceName := service.Namespace + "/" + service.Name
+	if pods, found := c.TermPodList[serviceName]; found {
+		return pods, nil
+	}
+	return []*api.Pod{}, nil
 }
 
 // GetPod ...

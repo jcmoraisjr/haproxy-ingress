@@ -181,6 +181,51 @@ func TestSyncInvalidEndpoint(t *testing.T) {
 ERROR error adding endpoints of service 'default/echo': could not find endpoints for service 'default/echo'`)
 }
 
+func TestSyncDrainSupport(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	svc := c.createSvc1("default/echo", "8080", "172.17.1.101,172.17.1.102")
+	svcName := svc.Namespace + "/" + svc.Name
+	ep := c.cache.EpList[svcName]
+	ss := &ep.Subsets[0]
+	addr := ss.Addresses
+	ss.Addresses = []api.EndpointAddress{addr[0]}
+	ss.NotReadyAddresses = []api.EndpointAddress{addr[1]}
+	pod := c.createPod1("default/echo-xxxxx", "172.17.1.103")
+	c.cache.TermPodList[svcName] = []*api.Pod{pod}
+
+	c.SyncDef(
+		map[string]string{"drain-support": "true"},
+		c.createIng1("default/echo", "echo.example.com", "/", "echo:8080"),
+	)
+
+	c.compareConfigFront(`
+- hostname: echo.example.com
+  paths:
+  - path: /
+    backend: default_echo_8080
+`)
+	c.compareConfigBack(`
+- id: default_echo_8080
+  endpoints:
+  - ip: 172.17.1.101
+    port: 8080
+  - ip: 172.17.1.102
+    port: 8080
+    drain: true
+  - ip: 172.17.1.103
+    port: 8080
+    drain: true
+- id: _default_backend
+  endpoints:
+  - ip: 172.17.0.99
+    port: 8080
+`)
+
+	c.compareLogging(``)
+}
+
 func TestSyncRootPathLast(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
@@ -932,8 +977,9 @@ func setup(t *testing.T) *testConfig {
 		decode:  scheme.Codecs.UniversalDeserializer().Decode,
 		hconfig: haproxy.CreateInstance(logger, &ha_helper.BindUtilsMock{}, haproxy.InstanceOptions{}).Config(),
 		cache: &ing_helper.CacheMock{
-			SvcList: []*api.Service{},
-			EpList:  map[string]*api.Endpoints{},
+			SvcList:     []*api.Service{},
+			EpList:      map[string]*api.Endpoints{},
+			TermPodList: map[string][]*api.Pod{},
 			SecretTLSPath: map[string]string{
 				"system/ingress-default": "/tls/tls-default.pem",
 			},
@@ -1037,6 +1083,21 @@ subsets:
 	c.cache.EpList[name] = ep
 
 	return svc
+}
+
+func (c *testConfig) createPod1(name, ip string) *api.Pod {
+	pname := strings.Split(name, "/")
+
+	pod := c.createObject(`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ` + pname[1] + `
+  namespace: ` + pname[0] + `
+status:
+  podIP: ` + ip).(*api.Pod)
+
+	return pod
 }
 
 func (c *testConfig) createSecretTLS1(secretName string) {
@@ -1195,8 +1256,9 @@ func (c *testConfig) compareConfigDefaultFront(expected string) {
 
 type (
 	endpointMock struct {
-		IP   string
-		Port int
+		IP    string
+		Port  int
+		Drain bool `yaml:",omitempty"`
 	}
 	backendMock struct {
 		ID               string
@@ -1211,7 +1273,7 @@ func convertBackend(habackends ...*hatypes.Backend) []backendMock {
 	for _, b := range habackends {
 		endpoints := []endpointMock{}
 		for _, e := range b.Endpoints {
-			endpoints = append(endpoints, endpointMock{IP: e.IP, Port: e.Port})
+			endpoints = append(endpoints, endpointMock{IP: e.IP, Port: e.Port, Drain: e.Weight == 0})
 		}
 		backends = append(backends, backendMock{
 			ID:               b.ID,

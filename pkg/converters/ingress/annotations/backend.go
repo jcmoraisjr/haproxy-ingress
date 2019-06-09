@@ -167,6 +167,10 @@ func (c *updater) buildBackendBlueGreen(d *backData) {
 		deployWeights = append(deployWeights, dw)
 	}
 	for _, ep := range d.backend.Endpoints {
+		if ep.Weight == 0 {
+			// Draining endpoint, remove from blue/green calc
+			continue
+		}
 		hasLabel := false
 		if pod, err := c.cache.GetPod(ep.TargetRef); err == nil {
 			for _, dw := range deployWeights {

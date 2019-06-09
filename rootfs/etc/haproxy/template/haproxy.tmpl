@@ -63,9 +63,9 @@ defaults
     load-server-state-from-file global
 {{- end }}
     maxconn {{ $global.MaxConn }}
-{{- if $global.DrainSupport }}
+{{- if $global.DrainSupport.Drain }}
     option persist
-{{- if $global.DrainSupportRedispatch }}
+{{- if $global.DrainSupport.Redispatch }}
     option redispatch
 {{- end }}
 {{- else }}

@@ -18,19 +18,18 @@ package types
 
 // Global ...
 type Global struct {
-	Procs                  ProcsConfig
-	Syslog                 SyslogConfig
-	MaxConn                int
-	Timeout                TimeoutConfig
-	SSL                    SSLConfig
-	ModSecurity            ModSecurityConfig
-	Cookie                 CookieConfig
-	DrainSupport           bool
-	DrainSupportRedispatch bool
-	LoadServerState        bool
-	StatsSocket            string
-	CustomConfig           []string
-	CustomDefaults         []string
+	Procs           ProcsConfig
+	Syslog          SyslogConfig
+	MaxConn         int
+	Timeout         TimeoutConfig
+	SSL             SSLConfig
+	ModSecurity     ModSecurityConfig
+	Cookie          CookieConfig
+	DrainSupport    DrainConfig
+	LoadServerState bool
+	StatsSocket     string
+	CustomConfig    []string
+	CustomDefaults  []string
 }
 
 // ProcsConfig ...
@@ -83,6 +82,12 @@ type ModSecurityConfig struct {
 // CookieConfig ...
 type CookieConfig struct {
 	Key string
+}
+
+// DrainConfig ...
+type DrainConfig struct {
+	Drain      bool
+	Redispatch bool
 }
 
 // ModSecurityTimeoutConfig ...
