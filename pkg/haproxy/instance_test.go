@@ -724,11 +724,7 @@ backend d3_app-http_8080
 backend d3_app-ssl_8443
     mode http
     server s41s 172.17.0.141:8443 weight 100
-backend _error404
-    mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/404.http
-    http-request deny deny_status 400
-<<backend-errors>>
+<<backends-default>>
 listen _front__tls
     mode tcp
     bind :443
@@ -793,11 +789,7 @@ backend d1_app_8080
 backend d2_app_8080
     mode http
     server s21 172.17.0.121:8080 weight 100
-backend _error404
-    mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/404.http
-    http-request deny deny_status 400
-<<backend-errors>>
+<<backends-default>>
 frontend _front_http
     mode http
     bind :80
@@ -886,11 +878,7 @@ backend d2_app_8080
 backend d3_app_8080
     mode http
     server s31 172.17.0.131:8080 weight 100
-backend _error404
-    mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/404.http
-    http-request deny deny_status 400
-<<backend-errors>>
+<<backends-default>>
 frontend _front_http
     mode http
     bind :80
@@ -979,11 +967,7 @@ backend d1_app_8080
 backend d2_app_8080
     mode http
     server s21 172.17.0.121:8080 weight 100
-backend _error404
-    mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/404.http
-    http-request deny deny_status 400
-<<backend-errors>>
+<<backends-default>>
 listen _front__tls
     mode tcp
     bind :443
@@ -1168,27 +1152,8 @@ backend d2_app_8080
     cookie Ingress prefix dynamic
     dynamic-cookie-key "Ingress"
     server s21 172.17.0.121:8080 weight 100
-backend _error404
-    mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/404.http
-    http-request deny deny_status 400
-<<backend-errors>>
-frontend _front_http
-    mode http
-    bind :80
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    <<tls-del-headers>>
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
-    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
-    default_backend _error404
-frontend _front001
-    mode http
-    bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
-    http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
-    <<tls-del-headers>>
-    use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
-    default_backend _error404
+<<backends-default>>
+<<frontends-default>>
 `)
 
 	c.logger.CompareLogging(defaultLogging)
@@ -1230,27 +1195,8 @@ backend d1_app_8080
     http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
     http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
     server s1 172.17.0.11:8080 weight 100
-backend _error404
-    mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/404.http
-    http-request deny deny_status 400
-<<backend-errors>>
-frontend _front_http
-    mode http
-    bind :80
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    <<tls-del-headers>>
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
-    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
-    default_backend _error404
-frontend _front001
-    mode http
-    bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
-    http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
-    <<tls-del-headers>>
-    use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
-    default_backend _error404
+<<backends-default>>
+<<frontends-default>>
 `)
 
 	c.logger.CompareLogging(defaultLogging)
@@ -1450,13 +1396,44 @@ backend _error496
     mode http
     errorfile 400 /usr/local/etc/haproxy/errors/496.http
     http-request deny deny_status 400`,
+		"<<backends-default>>": `backend _error404
+    mode http
+    errorfile 400 /usr/local/etc/haproxy/errors/404.http
+    http-request deny deny_status 400
+<<backend-errors>>`,
 		"    <<tls-del-headers>>": `    http-request del-header X-SSL-Client-CN
     http-request del-header X-SSL-Client-DN
     http-request del-header X-SSL-Client-SHA1
     http-request del-header X-SSL-Client-Cert`,
+		"<<frontends-default>>": `frontend _front_http
+    mode http
+    bind :80
+    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
+    <<tls-del-headers>>
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
+    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+    default_backend _error404
+frontend _front001
+    mode http
+    bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
+    http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
+    <<tls-del-headers>>
+    use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
+    default_backend _error404`,
 	}
-	for old, new := range replace {
-		expected = strings.Replace(expected, old, new, -1)
+	for {
+		changed := false
+		for old, new := range replace {
+			after := strings.Replace(expected, old, new, -1)
+			if after != expected {
+				changed = true
+			}
+			expected = after
+		}
+		if !changed {
+			break
+		}
 	}
 	c.compareText("haproxy.cfg", actual, expected)
 }
