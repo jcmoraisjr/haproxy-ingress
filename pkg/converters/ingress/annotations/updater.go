@@ -114,4 +114,5 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, ann *ingtypes.Ba
 	c.buildBackendAffinity(data)
 	c.buildBackendAuthHTTP(data)
 	c.buildBackendBlueGreen(data)
+	c.buildBackendCors(data)
 }

@@ -49,6 +49,7 @@ type BackendAnnotations struct {
 	CorsAllowMethods      string `json:"cors-allow-methods"`
 	CorsAllowOrigin       string `json:"cors-allow-origin"`
 	CorsEnable            bool   `json:"cors-enable"`
+	CorsExposeHeaders     string `json:"cors-expose-headers"`
 	CorsMaxAge            int    `json:"cors-max-age"`
 	HSTS                  bool   `json:"hsts"`
 	HSTSIncludeSubdomains bool   `json:"hsts-include-subdomains"`

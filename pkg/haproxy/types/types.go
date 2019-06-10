@@ -233,6 +233,7 @@ type Backend struct {
 	AgentCheck        AgentCheck
 	BalanceAlgorithm  string
 	Cookie            Cookie
+	Cors              Cors
 	CustomConfig      []string
 	HealthCheck       HealthCheck
 	HTTPRequests      []*HTTPRequest
@@ -300,6 +301,18 @@ type Cookie struct {
 	Name     string
 	Strategy string
 	Dynamic  bool
+}
+
+// Cors ...
+type Cors struct {
+	Enabled bool
+	//
+	AllowCredentials bool
+	AllowHeaders     string
+	AllowMethods     string
+	AllowOrigin      string
+	ExposeHeaders    string
+	MaxAge           int
 }
 
 // HTTPRequest ...

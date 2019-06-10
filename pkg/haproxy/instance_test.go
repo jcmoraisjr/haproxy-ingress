@@ -1194,6 +1194,68 @@ frontend _front001
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestCors(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.AcquireBackend("d1", "app", 8080)
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	b.Cors.Enabled = true
+	b.Cors.AllowOrigin = "*"
+	b.Cors.AllowHeaders =
+		"DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+	b.Cors.AllowMethods = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+	b.Cors.MaxAge = 86400
+	h = c.config.AcquireHost("d1.local")
+	h.AddPath(b, "/")
+
+	c.instance.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    http-request use-service lua.send-response if METH_OPTIONS
+    http-response set-status 204 reason "No Content" if METH_OPTIONS
+    http-response set-header Content-Type                 "text/plain" if METH_OPTIONS
+    http-response set-header Content-Length               "0" if METH_OPTIONS
+    http-response set-header Access-Control-Allow-Origin  "*" if METH_OPTIONS
+    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if METH_OPTIONS
+    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if METH_OPTIONS
+    http-response set-header Access-Control-Max-Age       "86400" if METH_OPTIONS
+    http-response set-header Access-Control-Allow-Origin  "*"
+    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+    server s1 172.17.0.11:8080 weight 100
+backend _error404
+    mode http
+    errorfile 400 /usr/local/etc/haproxy/errors/404.http
+    http-request deny deny_status 400
+<<backend-errors>>
+frontend _front_http
+    mode http
+    bind :80
+    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
+    <<tls-del-headers>>
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
+    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+    default_backend _error404
+frontend _front001
+    mode http
+    bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
+    http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
+    <<tls-del-headers>>
+    use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
+    default_backend _error404
+`)
+
+	c.logger.CompareLogging(defaultLogging)
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *
  *  BUILDERS

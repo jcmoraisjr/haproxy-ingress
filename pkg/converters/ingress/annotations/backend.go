@@ -18,6 +18,7 @@ package annotations
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -263,5 +264,43 @@ func (c *updater) buildBackendBlueGreen(d *backData) {
 				ep.Weight = weight
 			}
 		}
+	}
+}
+
+var (
+	corsOriginRegex  = regexp.MustCompile(`^(https?://[A-Za-z0-9\-\.]*(:[0-9]+)?|\*)?$`)
+	corsMethodsRegex = regexp.MustCompile(`^([A-Za-z]+,?\s?)+$`)
+	corsHeadersRegex = regexp.MustCompile(`^([A-Za-z0-9\-\_]+,?\s?)+$`)
+)
+
+func (c *updater) buildBackendCors(d *backData) {
+	if !d.ann.CorsEnable {
+		return
+	}
+	d.backend.Cors.Enabled = true
+	if d.ann.CorsAllowOrigin != "" && corsOriginRegex.MatchString(d.ann.CorsAllowOrigin) {
+		d.backend.Cors.AllowOrigin = d.ann.CorsAllowOrigin
+	} else {
+		d.backend.Cors.AllowOrigin = "*"
+	}
+	if corsHeadersRegex.MatchString(d.ann.CorsAllowHeaders) {
+		d.backend.Cors.AllowHeaders = d.ann.CorsAllowHeaders
+	} else {
+		d.backend.Cors.AllowHeaders =
+			"DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+	}
+	if corsMethodsRegex.MatchString(d.ann.CorsAllowMethods) {
+		d.backend.Cors.AllowMethods = d.ann.CorsAllowMethods
+	} else {
+		d.backend.Cors.AllowMethods = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+	}
+	d.backend.Cors.AllowCredentials = d.ann.CorsAllowCredentials
+	if d.ann.CorsMaxAge > 0 {
+		d.backend.Cors.MaxAge = d.ann.CorsMaxAge
+	} else {
+		d.backend.Cors.MaxAge = 86400
+	}
+	if corsHeadersRegex.MatchString(d.ann.CorsExposeHeaders) {
+		d.backend.Cors.ExposeHeaders = d.ann.CorsExposeHeaders
 	}
 }
