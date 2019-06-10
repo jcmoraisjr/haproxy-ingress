@@ -167,13 +167,15 @@ backend {{ $backend.ID }}
     timeout tunnel {{ $timeout.Tunnel }}
 {{- end }}
 
+{{- if not $backend.ModeTCP }}
+
 {{- /*------------------------------------*/}}
 {{- if $backend.SSL.HasTLSAuth }}
-    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-CN   %{+Q}[ssl_c_s_dn(cn)]{{ if not $backend.SSLRedirect }}   if ssl_fc{{ end }}
-    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-DN   %{+Q}[ssl_c_s_dn]{{ if not $backend.SSLRedirect }}       if ssl_fc{{ end }}
-    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1 %{+Q}[ssl_c_sha1,hex]{{ if not $backend.SSLRedirect }}   if ssl_fc{{ end }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-CN   %{+Q}[ssl_c_s_dn(cn)]{{ if not $backend.SSLRedirect }}   if { ssl_fc }{{ end }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-DN   %{+Q}[ssl_c_s_dn]{{ if not $backend.SSLRedirect }}       if { ssl_fc }{{ end }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1 %{+Q}[ssl_c_sha1,hex]{{ if not $backend.SSLRedirect }}   if { ssl_fc }{{ end }}
 {{- if $backend.SSL.AddCertHeader }}
-    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-Cert %{+Q}[ssl_c_der,base64]{{ if not $backend.SSLRedirect }} if ssl_fc{{ end }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-Cert %{+Q}[ssl_c_der,base64]{{ if not $backend.SSLRedirect }} if { ssl_fc }{{ end }}
 {{- end }}
 {{- end }}
 
@@ -183,8 +185,8 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $backend.Cookie.Name }}
 {{- $cookie := $backend.Cookie }}
-{{- if $cookie.Name }}
     cookie {{ $cookie.Name }} {{ $cookie.Strategy }}
         {{- if eq $cookie.Strategy "insert" }} indirect nocache httponly{{ end }}
         {{- if $cookie.Dynamic }} dynamic{{ end }}
@@ -196,6 +198,14 @@ backend {{ $backend.ID }}
 {{- /*------------------------------------*/}}
 {{- range $snippet := $backend.CustomConfig }}
     {{ $snippet }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $backend.HSTS.Enabled }}
+{{- $hsts := $backend.HSTS }}
+    http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}
+        {{- if $hsts.Subdomains }}; includeSubDomains{{ end }}
+        {{- if $hsts.Preload }}; preload{{ end }}"{{ if not $backend.SSLRedirect }} if { ssl_fc }{{ end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -222,12 +232,14 @@ backend {{ $backend.ID }}
 {{- end }}
 {{- end }}
 
+{{- end }}{{/*** $backend.ModeTCP ***/}}
+
 {{- /*------------------------------------*/}}
 {{- range $ep := $backend.Endpoints }}
     server {{ $ep.Name }} {{ $ep.IP }}:{{ $ep.Port }}
         {{- if $ep.Disabled }} disabled{{ end }}
         {{- "" }} weight {{ $ep.Weight }}
-        {{- if and ($cookie.Name) (not $cookie.Dynamic) }} cookie {{ $ep.Name }}{{ end }}
+        {{- if and (not $backend.ModeTCP) ($backend.Cookie.Name) (not $backend.Cookie.Dynamic) }} cookie {{ $ep.Name }}{{ end }}
         {{- template "backend" map $backend }}
 {{- end }}
 {{- end }}

@@ -107,6 +107,10 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, ann *ingtypes.Ba
 	}
 	// TODO check ModeTCP with HTTP annotations
 	backend.BalanceAlgorithm = ann.BalanceAlgorithm
+	backend.HSTS.Enabled = ann.HSTS
+	backend.HSTS.MaxAge = ann.HSTSMaxAge
+	backend.HSTS.Preload = ann.HSTSPreload
+	backend.HSTS.Subdomains = ann.HSTSIncludeSubdomains
 	backend.MaxConnServer = ann.MaxconnServer
 	backend.ProxyBodySize = ann.ProxyBodySize
 	backend.SSLRedirect = ann.SSLRedirect

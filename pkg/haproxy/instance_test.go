@@ -455,9 +455,9 @@ backend d_app_8080
     server s21 172.17.0.121:8080 weight 100
 backend d_appca_8080
     mode http
-    http-request set-header X-SSL-Client-CN   %{+Q}[ssl_c_s_dn(cn)]   if ssl_fc
-    http-request set-header X-SSL-Client-DN   %{+Q}[ssl_c_s_dn]       if ssl_fc
-    http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex]   if ssl_fc
+    http-request set-header X-SSL-Client-CN   %{+Q}[ssl_c_s_dn(cn)]   if { ssl_fc }
+    http-request set-header X-SSL-Client-DN   %{+Q}[ssl_c_s_dn]       if { ssl_fc }
+    http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex]   if { ssl_fc }
     server s1 172.17.0.11:8080 weight 100
 backend _default_backend
     mode http
@@ -1194,6 +1194,37 @@ backend d1_app_8080
     http-response set-header Access-Control-Allow-Origin  "*"
     http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
     http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+<<frontends-default>>
+`)
+
+	c.logger.CompareLogging(defaultLogging)
+}
+
+func TestHSTS(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.AcquireBackend("d1", "app", 8080)
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	b.HSTS.Enabled = true
+	b.HSTS.MaxAge = 15768000
+	b.HSTS.Preload = true
+	b.HSTS.Subdomains = true
+	h = c.config.AcquireHost("d1.local")
+	h.AddPath(b, "/")
+
+	c.instance.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload" if { ssl_fc }
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
 <<frontends-default>>

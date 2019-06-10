@@ -237,6 +237,7 @@ type Backend struct {
 	CustomConfig      []string
 	HealthCheck       HealthCheck
 	HTTPRequests      []*HTTPRequest
+	HSTS              HSTS
 	MaxConnServer     int
 	MaxQueueServer    int
 	ModeTCP           bool
@@ -317,6 +318,14 @@ type Cors struct {
 
 // HTTPRequest ...
 type HTTPRequest struct {
+}
+
+// HSTS ...
+type HSTS struct {
+	Enabled    bool
+	MaxAge     int
+	Subdomains bool
+	Preload    bool
 }
 
 // Userlist ...
