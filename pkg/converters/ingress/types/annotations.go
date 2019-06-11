@@ -26,7 +26,7 @@ type HostAnnotations struct {
 	ServerAlias            string `json:"server-alias"`
 	ServerAliasRegex       string `json:"server-alias-regex"`
 	SSLPassthrough         bool   `json:"ssl-passthrough"`
-	SSLPassthroughHTTPPort int    `json:"ssl-passthrough-http-port"`
+	SSLPassthroughHTTPPort string `json:"ssl-passthrough-http-port"`
 	TimeoutClient          string `json:"timeout-client"`
 	TimeoutClientFin       string `json:"timeout-client-fin"`
 }

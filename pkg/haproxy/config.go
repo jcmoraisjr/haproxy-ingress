@@ -29,8 +29,8 @@ import (
 type Config interface {
 	AcquireHost(hostname string) *hatypes.Host
 	FindHost(hostname string) *hatypes.Host
-	AcquireBackend(namespace, name string, port int) *hatypes.Backend
-	FindBackend(namespace, name string, port int) *hatypes.Backend
+	AcquireBackend(namespace, name, port string) *hatypes.Backend
+	FindBackend(namespace, name, port string) *hatypes.Backend
 	ConfigDefaultBackend(defaultBackend *hatypes.Backend)
 	ConfigDefaultX509Cert(filename string)
 	AddUserlist(name string, users []hatypes.User) *hatypes.Userlist
@@ -124,7 +124,7 @@ func (c *config) sortBackends() {
 	})
 }
 
-func (c *config) AcquireBackend(namespace, name string, port int) *hatypes.Backend {
+func (c *config) AcquireBackend(namespace, name, port string) *hatypes.Backend {
 	if backend := c.FindBackend(namespace, name, port); backend != nil {
 		return backend
 	}
@@ -134,7 +134,7 @@ func (c *config) AcquireBackend(namespace, name string, port int) *hatypes.Backe
 	return backend
 }
 
-func (c *config) FindBackend(namespace, name string, port int) *hatypes.Backend {
+func (c *config) FindBackend(namespace, name, port string) *hatypes.Backend {
 	for _, b := range c.backends {
 		if b.Namespace == namespace && b.Name == name && b.Port == port {
 			return b
@@ -143,7 +143,7 @@ func (c *config) FindBackend(namespace, name string, port int) *hatypes.Backend 
 	return nil
 }
 
-func createBackend(namespace, name string, port int) *hatypes.Backend {
+func createBackend(namespace, name, port string) *hatypes.Backend {
 	return &hatypes.Backend{
 		ID:        buildID(namespace, name, port),
 		Namespace: namespace,
@@ -153,8 +153,8 @@ func createBackend(namespace, name string, port int) *hatypes.Backend {
 	}
 }
 
-func buildID(namespace, name string, port int) string {
-	return fmt.Sprintf("%s_%s_%d", namespace, name, port)
+func buildID(namespace, name, port string) string {
+	return fmt.Sprintf("%s_%s_%s", namespace, name, port)
 }
 
 func (c *config) ConfigDefaultBackend(defaultBackend *hatypes.Backend) {

@@ -227,7 +227,7 @@ type Backend struct {
 	ID        string
 	Namespace string
 	Name      string
-	Port      int
+	Port      string
 	Endpoints []*Endpoint
 	//
 	AgentCheck        AgentCheck

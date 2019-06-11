@@ -18,10 +18,12 @@ package ingress
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	api "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/annotations"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
@@ -50,7 +52,7 @@ func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Con
 	}
 	haproxy.ConfigDefaultX509Cert(options.DefaultSSLFile.Filename)
 	if options.DefaultBackend != "" {
-		if backend, err := c.addBackend(options.DefaultBackend, 0, &ingtypes.BackendAnnotations{}); err == nil {
+		if backend, err := c.addBackend(options.DefaultBackend, "", &ingtypes.BackendAnnotations{}); err == nil {
 			haproxy.ConfigDefaultBackend(backend)
 		} else {
 			c.logger.Error("error reading default service: %v", err)
@@ -154,7 +156,7 @@ func (c *converter) syncAnnotations() {
 	}
 }
 
-func (c *converter) addDefaultHostBackend(fullSvcName string, svcPort int, ingFrontAnn *ingtypes.HostAnnotations, ingBackAnn *ingtypes.BackendAnnotations) error {
+func (c *converter) addDefaultHostBackend(fullSvcName, svcPort string, ingFrontAnn *ingtypes.HostAnnotations, ingBackAnn *ingtypes.BackendAnnotations) error {
 	if fr := c.haproxy.FindHost("*"); fr != nil {
 		if fr.FindPath("/") != nil {
 			return fmt.Errorf("path / was already defined on default host")
@@ -182,7 +184,7 @@ func (c *converter) addHost(hostname string, ingAnn *ingtypes.HostAnnotations) *
 	return host
 }
 
-func (c *converter) addBackend(fullSvcName string, svcPort int, ingAnn *ingtypes.BackendAnnotations) (*hatypes.Backend, error) {
+func (c *converter) addBackend(fullSvcName, svcPort string, ingAnn *ingtypes.BackendAnnotations) (*hatypes.Backend, error) {
 	svc, err := c.cache.GetService(fullSvcName)
 	if err != nil {
 		return nil, err
@@ -190,17 +192,20 @@ func (c *converter) addBackend(fullSvcName string, svcPort int, ingAnn *ingtypes
 	ssvcName := strings.Split(fullSvcName, "/")
 	namespace := ssvcName[0]
 	svcName := ssvcName[1]
-	if svcPort == 0 {
+	if svcPort == "" {
 		// if the port wasn't specified, take the first one
 		// from the api.Service object
-		// TODO named port
-		svcPort = svc.Spec.Ports[0].TargetPort.IntValue()
+		svcPort = svc.Spec.Ports[0].TargetPort.String()
 	}
-	backend := c.haproxy.AcquireBackend(namespace, svcName, svcPort)
+	epport := findServicePort(svc, svcPort)
+	if epport.String() == "" {
+		return nil, fmt.Errorf("port not found: '%s'", svcPort)
+	}
+	backend := c.haproxy.AcquireBackend(namespace, svcName, epport.String())
 	ann, found := c.backendAnnotations[backend]
 	if !found {
 		// New backend, configure endpoints and svc annotations
-		if err := c.addEndpoints(svc, svcPort, backend); err != nil {
+		if err := c.addEndpoints(svc, epport, backend); err != nil {
 			c.logger.Error("error adding endpoints of service '%s': %v", fullSvcName, err)
 		}
 		// Initialize with service annotations, giving precedence
@@ -214,16 +219,39 @@ func (c *converter) addBackend(fullSvcName string, svcPort int, ingAnn *ingtypes
 	// Merging Ingress annotations
 	skipped, _ := utils.UpdateStruct(c.globalConfig.ConfigDefaults, ingAnn, ann)
 	if len(skipped) > 0 {
-		c.logger.Info("skipping backend '%s/%s:%d' annotation(s) from %v due to conflict: %v",
+		c.logger.Info("skipping backend '%s/%s:%s' annotation(s) from %v due to conflict: %v",
 			backend.Namespace, backend.Name, backend.Port, ingAnn.Source, skipped)
 	}
 	return backend, nil
 }
 
+func findServicePort(svc *api.Service, servicePort string) intstr.IntOrString {
+	for _, port := range svc.Spec.Ports {
+		if port.Name == servicePort {
+			return port.TargetPort
+		}
+	}
+	for _, port := range svc.Spec.Ports {
+		if port.TargetPort.String() == servicePort {
+			return port.TargetPort
+		}
+	}
+	svcPortNumber, err := strconv.ParseInt(servicePort, 10, 0)
+	if err != nil {
+		return intstr.FromString("")
+	}
+	for _, port := range svc.Spec.Ports {
+		if port.Port == int32(svcPortNumber) {
+			return port.TargetPort
+		}
+	}
+	return intstr.FromString("")
+}
+
 func (c *converter) addHTTPPassthrough(fullSvcName string, ingFrontAnn *ingtypes.HostAnnotations, ingBackAnn *ingtypes.BackendAnnotations) {
 	// a very specific use case of pre-parsing annotations:
 	// need to add a backend if ssl-passthrough-http-port assigned
-	if ingFrontAnn.SSLPassthrough && ingFrontAnn.SSLPassthroughHTTPPort != 0 {
+	if ingFrontAnn.SSLPassthrough && ingFrontAnn.SSLPassthroughHTTPPort != "" {
 		c.addBackend(fullSvcName, ingFrontAnn.SSLPassthroughHTTPPort, ingBackAnn)
 	}
 }
@@ -240,22 +268,24 @@ func (c *converter) addTLS(namespace, secretName string) ingtypes.File {
 	return c.options.DefaultSSLFile
 }
 
-func (c *converter) addEndpoints(svc *api.Service, servicePort int, backend *hatypes.Backend) error {
+func (c *converter) addEndpoints(svc *api.Service, svcPort intstr.IntOrString, backend *hatypes.Backend) error {
 	endpoints, err := c.cache.GetEndpoints(svc)
 	if err != nil {
 		return err
 	}
 	// TODO ServiceTypeExternalName
 	// TODO ServiceUpstream - annotation nao documentada
+	// TODO svcPort.IntValue() doesn't work if svc.targetPort is a pod's named port
 	for _, subset := range endpoints.Subsets {
 		for _, port := range subset.Ports {
-			if int(port.Port) == servicePort && port.Protocol == api.ProtocolTCP {
+			ssport := int(port.Port)
+			if ssport == svcPort.IntValue() && port.Protocol == api.ProtocolTCP {
 				for _, addr := range subset.Addresses {
-					backend.NewEndpoint(addr.IP, servicePort, addr.TargetRef.Namespace+"/"+addr.TargetRef.Name)
+					backend.NewEndpoint(addr.IP, ssport, addr.TargetRef.Namespace+"/"+addr.TargetRef.Name)
 				}
 				if c.globalConfig.DrainSupport {
 					for _, addr := range subset.NotReadyAddresses {
-						ep := backend.NewEndpoint(addr.IP, servicePort, addr.TargetRef.Namespace+"/"+addr.TargetRef.Name)
+						ep := backend.NewEndpoint(addr.IP, ssport, addr.TargetRef.Namespace+"/"+addr.TargetRef.Name)
 						ep.Weight = 0
 					}
 				}
@@ -268,7 +298,7 @@ func (c *converter) addEndpoints(svc *api.Service, servicePort int, backend *hat
 			return err
 		}
 		for _, pod := range pods {
-			ep := backend.NewEndpoint(pod.Status.PodIP, servicePort, pod.Namespace+"/"+pod.Name)
+			ep := backend.NewEndpoint(pod.Status.PodIP, svcPort.IntValue(), pod.Namespace+"/"+pod.Name)
 			ep.Weight = 0
 		}
 	}
@@ -297,8 +327,8 @@ func (c *converter) readAnnotations(source *ingtypes.Source, annotations map[str
 	return frontAnn, backAnn
 }
 
-func readServiceNamePort(backend *extensions.IngressBackend) (string, int) {
+func readServiceNamePort(backend *extensions.IngressBackend) (string, string) {
 	serviceName := backend.ServiceName
-	servicePort := backend.ServicePort.IntValue()
+	servicePort := backend.ServicePort.String()
 	return serviceName, servicePort
 }

@@ -48,7 +48,7 @@ func (c *updater) buildHostSSLPassthrough(d *hostData) {
 			c.logger.Warn("ignoring path '%s' from '%s': ssl-passthrough only support root path", path.Path, d.ann.Source)
 		}
 	}
-	if d.ann.SSLPassthroughHTTPPort != 0 {
+	if d.ann.SSLPassthroughHTTPPort != "" {
 		httpBackend := c.haproxy.FindBackend(rootPath.Backend.Namespace, rootPath.Backend.Name, d.ann.SSLPassthroughHTTPPort)
 		d.host.HTTPPassthroughBackend = httpBackend
 	}
