@@ -252,7 +252,9 @@ func (c *converter) addHTTPPassthrough(fullSvcName string, ingFrontAnn *ingtypes
 	// a very specific use case of pre-parsing annotations:
 	// need to add a backend if ssl-passthrough-http-port assigned
 	if ingFrontAnn.SSLPassthrough && ingFrontAnn.SSLPassthroughHTTPPort != "" {
-		c.addBackend(fullSvcName, ingFrontAnn.SSLPassthroughHTTPPort, ingBackAnn)
+		if _, err := c.addBackend(fullSvcName, ingFrontAnn.SSLPassthroughHTTPPort, ingBackAnn); err != nil {
+			c.logger.Warn("skipping http port config of ssl-passthrough: %v", err)
+		}
 	}
 }
 

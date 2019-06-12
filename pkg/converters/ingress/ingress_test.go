@@ -26,6 +26,7 @@ import (
 	extensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
 
 	ing_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/helper_test"
@@ -254,9 +255,8 @@ func TestSyncDrainSupport(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	svc := c.createSvc1("default/echo", "8080", "172.17.1.101,172.17.1.102")
+	svc, ep := c.createSvc1("default/echo", "8080", "172.17.1.101,172.17.1.102")
 	svcName := svc.Namespace + "/" + svc.Name
-	ep := c.cache.EpList[svcName]
 	ss := &ep.Subsets[0]
 	addr := ss.Addresses
 	ss.Addresses = []api.EndpointAddress{addr[0]}
@@ -1021,6 +1021,67 @@ func TestSyncAnnBackDefault(t *testing.T) {
 INFO skipping backend 'default/echo5:8080' annotation(s) from ingress 'default/echo5' due to conflict: [balance-algorithm]`)
 }
 
+func TestSyncAnnPassthrough(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	svc, ep := c.createSvc1("default/echo", "http:8080", "172.17.1.101")
+	svcPort := api.ServicePort{
+		Name:       "https",
+		Port:       8443,
+		TargetPort: intstr.FromInt(8443),
+	}
+	epPort := api.EndpointPort{
+		Name:     "https",
+		Port:     8443,
+		Protocol: api.ProtocolTCP,
+	}
+	svc.Spec.Ports = append(svc.Spec.Ports, svcPort)
+	ep.Subsets[0].Ports = append(ep.Subsets[0].Ports, epPort)
+	c.Sync(
+		c.createIng1Ann("default/echo1", "echo1.example.com", "/", "echo:8443",
+			map[string]string{
+				"ingress.kubernetes.io/ssl-passthrough":           "true",
+				"ingress.kubernetes.io/ssl-passthrough-http-port": "8080",
+			}),
+		c.createIng1Ann("default/echo2", "echo2.example.com", "/", "echo:8443",
+			map[string]string{
+				"ingress.kubernetes.io/ssl-passthrough":           "true",
+				"ingress.kubernetes.io/ssl-passthrough-http-port": "9000",
+			}),
+	)
+
+	c.compareConfigFront(`
+- hostname: echo1.example.com
+  paths:
+  - path: /
+    backend: default_echo_8443
+- hostname: echo2.example.com
+  paths:
+  - path: /
+    backend: default_echo_8443
+`)
+
+	c.compareConfigBack(`
+- id: default_echo_8080
+  endpoints:
+  - ip: 172.17.1.101
+    port: 8080
+- id: default_echo_8443
+  endpoints:
+  - ip: 172.17.1.101
+    port: 8443
+- id: _default_backend
+  endpoints:
+  - ip: 172.17.0.99
+    port: 8080
+`)
+
+	c.compareLogging(`
+WARN skipping http port config of ssl-passthrough: port not found: '9000'
+`)
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *
  *  BUILDERS
@@ -1093,23 +1154,23 @@ func (c *testConfig) SyncDef(config map[string]string, ing ...*extensions.Ingres
 	conv.Sync(ing)
 }
 
-func (c *testConfig) createSvc1Auto() *api.Service {
+func (c *testConfig) createSvc1Auto() (*api.Service, *api.Endpoints) {
 	return c.createSvc1("default/echo", "8080", "172.17.0.11")
 }
 
-func (c *testConfig) createSvc1AutoAnn(ann map[string]string) *api.Service {
-	svc := c.createSvc1Auto()
+func (c *testConfig) createSvc1AutoAnn(ann map[string]string) (*api.Service, *api.Endpoints) {
+	svc, ep := c.createSvc1Auto()
 	svc.SetAnnotations(ann)
-	return svc
+	return svc, ep
 }
 
-func (c *testConfig) createSvc1Ann(name, port, endpoints string, ann map[string]string) *api.Service {
-	svc := c.createSvc1(name, port, endpoints)
+func (c *testConfig) createSvc1Ann(name, port, endpoints string, ann map[string]string) (*api.Service, *api.Endpoints) {
+	svc, ep := c.createSvc1(name, port, endpoints)
 	svc.SetAnnotations(ann)
-	return svc
+	return svc, ep
 }
 
-func (c *testConfig) createSvc1(name, port, endpoints string) *api.Service {
+func (c *testConfig) createSvc1(name, port, endpoints string) (*api.Service, *api.Endpoints) {
 	sname := strings.Split(name, "/")
 	sport := strings.Split(port, ":")
 	if len(sport) < 2 {
@@ -1159,7 +1220,7 @@ subsets:
 	ep.Subsets[0].Addresses = addr
 	c.cache.EpList[name] = ep
 
-	return svc
+	return svc, ep
 }
 
 func (c *testConfig) createPod1(name, ip string) *api.Pod {
