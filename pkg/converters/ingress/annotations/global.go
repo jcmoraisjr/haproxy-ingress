@@ -18,6 +18,7 @@ package annotations
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -109,9 +110,26 @@ func (c *updater) buildGlobalModSecurity(d *globalData) {
 	d.global.ModSecurity.Timeout.Processing = d.config.ModsecurityTimeoutProcessing
 }
 
+var (
+	forwardRegex = regexp.MustCompile(`^(add|ignore|ifmissing)$`)
+)
+
+func (c *updater) buildGlobalForwardFor(d *globalData) {
+	if forwardRegex.MatchString(d.config.Forwardfor) {
+		d.global.ForwardFor = d.config.Forwardfor
+	} else {
+		if d.config.Forwardfor != "" {
+			c.logger.Warn("Invalid forwardfor value option on configmap: '%s'. Using 'add' instead", d.config.Forwardfor)
+		}
+		d.global.ForwardFor = "add"
+	}
+}
+
 func (c *updater) buildGlobalCustomConfig(d *globalData) {
 	if d.config.ConfigGlobal != "" {
 		d.global.CustomConfig = strings.Split(strings.TrimRight(d.config.ConfigGlobal, "\n"), "\n")
+	}
+	if d.config.ConfigGlobals.ConfigDefaults != "" {
 		d.global.CustomDefaults = strings.Split(strings.TrimRight(d.config.ConfigGlobals.ConfigDefaults, "\n"), "\n")
 	}
 }

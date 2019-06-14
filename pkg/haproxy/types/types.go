@@ -26,6 +26,7 @@ type Global struct {
 	ModSecurity     ModSecurityConfig
 	Cookie          CookieConfig
 	DrainSupport    DrainConfig
+	ForwardFor      string
 	LoadServerState bool
 	StatsSocket     string
 	CustomConfig    []string

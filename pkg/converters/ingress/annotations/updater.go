@@ -83,6 +83,7 @@ func (c *updater) UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.Co
 	c.buildGlobalTimeout(data)
 	c.buildGlobalSSL(data)
 	c.buildGlobalModSecurity(data)
+	c.buildGlobalForwardFor(data)
 	c.buildGlobalCustomConfig(data)
 }
 

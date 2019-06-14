@@ -73,3 +73,10 @@ func (c *testConfig) createBackendData(namespace, name string, ann *types.Backen
 		ann:     ann,
 	}
 }
+
+func (c *testConfig) createGlobalData(config *types.Config) *globalData {
+	return &globalData{
+		global: &hatypes.Global{},
+		config: config,
+	}
+}
