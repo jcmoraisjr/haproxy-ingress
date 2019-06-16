@@ -328,14 +328,31 @@ backend _error496
 listen _front__tls
     mode tcp
     bind :443
+
+{{- /*------------------------------------*/}}
+{{- if $global.Syslog.Endpoint }}
+{{- if eq $global.Syslog.HTTPSLogFormat "default" }}
+    option tcplog
+{{- else if $global.Syslog.HTTPSLogFormat }}
+    log-format {{ $global.Syslog.HTTPSLogFormat }}
+{{- else }}
+    no log
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
     tcp-request inspect-delay 5s
     tcp-request content accept if { req.ssl_hello_type 1 }
+
+{{- /*------------------------------------*/}}
 {{- if $fgroup.HasSSLPassthrough }}
     ## ssl-passthrough
     tcp-request content set-var(req.backend)
         {{- "" }} req.ssl_sni,lower,map({{ $fgroup.SSLPassthroughMap.MatchFile }},_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
 {{- end }}
+
+{{- /*------------------------------------*/}}
 {{- range $frontend := $frontends }}
 {{- range $bind := $frontend.Binds }}
     ## {{ $frontend.Name }}/{{ $bind.Name }}
@@ -344,12 +361,15 @@ listen _front__tls
 {{- end }}
 {{- end }}
 
+{{- /*------------------------------------*/}}
 {{- if $fgroup.SSLPassthroughMap.HasRegex }}
     ## ssl-passthrough wildcard
 {{- /*** TODO is map_reg() converter running on every request? ***/}}
     tcp-request content set-var(req.backend)
         {{- "" }} req.ssl_sni,lower,map_reg({{ $fgroup.SSLPassthroughMap.RegexFile }},_nomatch)
         {{- "" }} if { var(req.backend) _nomatch }
+
+{{- /*------------------------------------*/}}
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
 {{- end }}
 {{- range $frontend := $frontends }}
@@ -361,6 +381,8 @@ listen _front__tls
 {{- end }}
 {{- end }}
 {{- end }}
+
+{{- /*------------------------------------*/}}
     # TODO default backend
 {{- end }}
 
@@ -371,6 +393,15 @@ listen _front__tls
 frontend _front_http
     mode http
     bind :80
+
+{{- /*------------------------------------*/}}
+{{- if $global.Syslog.Endpoint }}
+{{- if $global.Syslog.HTTPLogFormat }}
+    log-format {{ $global.Syslog.HTTPLogFormat }}
+{{- else }}
+    option httplog
+{{- end }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
@@ -444,6 +475,15 @@ frontend {{ $frontend.Name }}
 {{- end }}
 {{- if $frontend.Timeout.ClientFin }}
     timeout client-fin {{ $frontend.Timeout.ClientFin }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $global.Syslog.Endpoint }}
+{{- if $global.Syslog.HTTPLogFormat }}
+    log-format {{ $global.Syslog.HTTPLogFormat }}
+{{- else }}
+    option httplog
+{{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}

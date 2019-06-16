@@ -73,6 +73,9 @@ func (c *updater) UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.Co
 	global.Syslog.Endpoint = config.SyslogEndpoint
 	global.Syslog.Format = config.SyslogFormat
 	global.Syslog.Tag = config.SyslogTag
+	global.Syslog.HTTPLogFormat = config.HTTPLogFormat
+	global.Syslog.HTTPSLogFormat = config.HTTPSLogFormat
+	global.Syslog.TCPLogFormat = config.TCPLogFormat
 	global.MaxConn = config.MaxConnections
 	global.DrainSupport.Drain = config.DrainSupport
 	global.DrainSupport.Redispatch = config.DrainSupportRedispatch

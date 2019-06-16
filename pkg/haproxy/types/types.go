@@ -46,9 +46,12 @@ type ProcsConfig struct {
 
 // SyslogConfig ...
 type SyslogConfig struct {
-	Endpoint string
-	Format   string
-	Tag      string
+	Endpoint       string
+	Format         string
+	HTTPLogFormat  string
+	HTTPSLogFormat string
+	Tag            string
+	TCPLogFormat   string
 }
 
 // TimeoutConfig ...
