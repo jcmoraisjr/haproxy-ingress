@@ -33,6 +33,111 @@ import (
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *
+ *  BACKEND TESTCASES
+ *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+func TestBackends(t *testing.T) {
+	testCases := []struct {
+		doconfig  func(g *hatypes.Global, b *hatypes.Backend)
+		srvsuffix string
+		expected  string
+	}{
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.Cookie.Name = "ingress-controller"
+				b.Cookie.Strategy = "insert"
+			},
+			srvsuffix: "cookie s1",
+			expected: `
+    cookie ingress-controller insert indirect nocache httponly`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.Cookie.Name = "Ingress"
+				b.Cookie.Strategy = "prefix"
+				b.Cookie.Dynamic = true
+			},
+			expected: `
+    cookie Ingress prefix dynamic
+    dynamic-cookie-key "Ingress"`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.Cors.Enabled = true
+				b.Cors.AllowOrigin = "*"
+				b.Cors.AllowHeaders =
+					"DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+				b.Cors.AllowMethods = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+				b.Cors.MaxAge = 86400
+			},
+			expected: `
+    http-request use-service lua.send-response if METH_OPTIONS
+    http-response set-status 204 reason "No Content" if METH_OPTIONS
+    http-response set-header Content-Type                 "text/plain" if METH_OPTIONS
+    http-response set-header Content-Length               "0" if METH_OPTIONS
+    http-response set-header Access-Control-Allow-Origin  "*" if METH_OPTIONS
+    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if METH_OPTIONS
+    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if METH_OPTIONS
+    http-response set-header Access-Control-Max-Age       "86400" if METH_OPTIONS
+    http-response set-header Access-Control-Allow-Origin  "*"
+    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.HSTS.Enabled = true
+				b.HSTS.MaxAge = 15768000
+				b.HSTS.Preload = true
+				b.HSTS.Subdomains = true
+			},
+			expected: `
+    http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload" if { ssl_fc }`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				g.ForwardFor = "add"
+			},
+			expected: `
+    http-request set-header X-Original-Forwarded-For %[hdr(x-forwarded-for)] if { hdr(x-forwarded-for) -m found }
+    http-request del-header x-forwarded-for
+    option forwardfor`,
+		},
+	}
+
+	for _, test := range testCases {
+		c := setup(t)
+
+		var h *hatypes.Host
+		var b *hatypes.Backend
+
+		b = c.config.AcquireBackend("d1", "app", "8080")
+		b.Endpoints = []*hatypes.Endpoint{endpointS1}
+		h = c.config.AcquireHost("d1.local")
+		h.AddPath(b, "/")
+		test.doconfig(c.config.Global(), b)
+		if test.srvsuffix != "" {
+			test.srvsuffix = " " + test.srvsuffix
+		}
+
+		c.instance.Update()
+		c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http` + test.expected + `
+    server s1 172.17.0.11:8080 weight 100` + test.srvsuffix + `
+<<backends-default>>
+<<frontends-default>>
+`)
+
+		c.logger.CompareLogging(defaultLogging)
+		c.teardown()
+	}
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *
  *  TEMPLATES
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -1111,153 +1216,6 @@ d1.local/ d1_app_8080
 `)
 	c.checkMap("_front002_root_redir_regex.map", `
 ^[^.]+\.d2\.local$ /app
-`)
-
-	c.logger.CompareLogging(defaultLogging)
-}
-
-func TestAffinity(t *testing.T) {
-	c := setup(t)
-	defer c.teardown()
-
-	var h *hatypes.Host
-	var b *hatypes.Backend
-
-	b = c.config.AcquireBackend("d1", "app", "8080")
-	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	b.Cookie.Name = "ingress-controller"
-	b.Cookie.Strategy = "insert"
-	h = c.config.AcquireHost("d1.local")
-	h.AddPath(b, "/")
-
-	b = c.config.AcquireBackend("d2", "app", "8080")
-	b.Endpoints = []*hatypes.Endpoint{endpointS21}
-	b.Cookie.Name = "Ingress"
-	b.Cookie.Strategy = "prefix"
-	b.Cookie.Dynamic = true
-
-	h = c.config.AcquireHost("d2.local")
-	h.AddPath(b, "/")
-
-	c.instance.Update()
-	c.checkConfig(`
-<<global>>
-<<defaults>>
-backend d1_app_8080
-    mode http
-    cookie ingress-controller insert indirect nocache httponly
-    server s1 172.17.0.11:8080 weight 100 cookie s1
-backend d2_app_8080
-    mode http
-    cookie Ingress prefix dynamic
-    dynamic-cookie-key "Ingress"
-    server s21 172.17.0.121:8080 weight 100
-<<backends-default>>
-<<frontends-default>>
-`)
-
-	c.logger.CompareLogging(defaultLogging)
-}
-
-func TestCors(t *testing.T) {
-	c := setup(t)
-	defer c.teardown()
-
-	var h *hatypes.Host
-	var b *hatypes.Backend
-
-	b = c.config.AcquireBackend("d1", "app", "8080")
-	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	b.Cors.Enabled = true
-	b.Cors.AllowOrigin = "*"
-	b.Cors.AllowHeaders =
-		"DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
-	b.Cors.AllowMethods = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
-	b.Cors.MaxAge = 86400
-	h = c.config.AcquireHost("d1.local")
-	h.AddPath(b, "/")
-
-	c.instance.Update()
-	c.checkConfig(`
-<<global>>
-<<defaults>>
-backend d1_app_8080
-    mode http
-    http-request use-service lua.send-response if METH_OPTIONS
-    http-response set-status 204 reason "No Content" if METH_OPTIONS
-    http-response set-header Content-Type                 "text/plain" if METH_OPTIONS
-    http-response set-header Content-Length               "0" if METH_OPTIONS
-    http-response set-header Access-Control-Allow-Origin  "*" if METH_OPTIONS
-    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if METH_OPTIONS
-    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if METH_OPTIONS
-    http-response set-header Access-Control-Max-Age       "86400" if METH_OPTIONS
-    http-response set-header Access-Control-Allow-Origin  "*"
-    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
-    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
-    server s1 172.17.0.11:8080 weight 100
-<<backends-default>>
-<<frontends-default>>
-`)
-
-	c.logger.CompareLogging(defaultLogging)
-}
-
-func TestHSTS(t *testing.T) {
-	c := setup(t)
-	defer c.teardown()
-
-	var h *hatypes.Host
-	var b *hatypes.Backend
-
-	b = c.config.AcquireBackend("d1", "app", "8080")
-	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	b.HSTS.Enabled = true
-	b.HSTS.MaxAge = 15768000
-	b.HSTS.Preload = true
-	b.HSTS.Subdomains = true
-	h = c.config.AcquireHost("d1.local")
-	h.AddPath(b, "/")
-
-	c.instance.Update()
-	c.checkConfig(`
-<<global>>
-<<defaults>>
-backend d1_app_8080
-    mode http
-    http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload" if { ssl_fc }
-    server s1 172.17.0.11:8080 weight 100
-<<backends-default>>
-<<frontends-default>>
-`)
-
-	c.logger.CompareLogging(defaultLogging)
-}
-
-func TestForwardFor(t *testing.T) {
-	c := setup(t)
-	defer c.teardown()
-
-	var h *hatypes.Host
-	var b *hatypes.Backend
-
-	b = c.config.AcquireBackend("d1", "app", "8080")
-	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	h = c.config.AcquireHost("d1.local")
-	h.AddPath(b, "/")
-	c.config.Global().ForwardFor = "add"
-
-	c.instance.Update()
-	c.checkConfig(`
-<<global>>
-<<defaults>>
-backend d1_app_8080
-    mode http
-    http-request set-header X-Original-Forwarded-For %[hdr(x-forwarded-for)] if { hdr(x-forwarded-for) -m found }
-    http-request del-header x-forwarded-for
-    option forwardfor
-    server s1 172.17.0.11:8080 weight 100
-<<backends-default>>
-<<frontends-default>>
 `)
 
 	c.logger.CompareLogging(defaultLogging)
