@@ -304,3 +304,18 @@ func (c *updater) buildBackendCors(d *backData) {
 		d.backend.Cors.ExposeHeaders = d.ann.CorsExposeHeaders
 	}
 }
+
+var (
+	rewriteURLRegex = regexp.MustCompile(`^[^"' ]+$`)
+)
+
+func (c *updater) buildRewriteURL(d *backData) {
+	if d.ann.RewriteTarget == "" {
+		return
+	}
+	if !rewriteURLRegex.MatchString(d.ann.RewriteTarget) {
+		c.logger.Warn("rewrite-target does not allow white spaces or single/double quotes on %v", d.ann.Source)
+		return
+	}
+	d.backend.RewriteURL = d.ann.RewriteTarget
+}

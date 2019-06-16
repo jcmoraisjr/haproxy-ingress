@@ -242,7 +242,9 @@ type Backend struct {
 	MaxConnServer     int
 	MaxQueueServer    int
 	ModeTCP           bool
+	Paths             []string
 	ProxyBodySize     string
+	RewriteURL        string
 	SendProxyProtocol string
 	SSL               SSLBackendConfig
 	SSLRedirect       bool

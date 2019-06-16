@@ -120,4 +120,5 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, ann *ingtypes.Ba
 	c.buildBackendAuthHTTP(data)
 	c.buildBackendBlueGreen(data)
 	c.buildBackendCors(data)
+	c.buildRewriteURL(data)
 }

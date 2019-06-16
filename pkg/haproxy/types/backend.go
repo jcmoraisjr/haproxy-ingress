@@ -37,6 +37,23 @@ func (b *Backend) NewEndpoint(ip string, port int, targetRef string) *Endpoint {
 	return endpoint
 }
 
+// AddPath ...
+func (b *Backend) AddPath(path string) {
+	for _, p := range b.Paths {
+		if p == path {
+			// add only unique paths
+			return
+		}
+	}
+	// host's paths that references this backend
+	// used on RewriteURL config
+	b.Paths = append(b.Paths, path)
+	// reverse order in order to avoid overlap of sub-paths
+	sort.Slice(b.Paths, func(i, j int) bool {
+		return b.Paths[i] > b.Paths[j]
+	})
+}
+
 // HreqValidateUserlist ...
 func (b *Backend) HreqValidateUserlist(userlist *Userlist) {
 	// TODO implement

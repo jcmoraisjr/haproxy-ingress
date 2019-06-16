@@ -40,6 +40,7 @@ import (
 func TestBackends(t *testing.T) {
 	testCases := []struct {
 		doconfig  func(g *hatypes.Global, b *hatypes.Backend)
+		path      []string
 		srvsuffix string
 		expected  string
 	}{
@@ -103,10 +104,42 @@ func TestBackends(t *testing.T) {
     http-request del-header x-forwarded-for
     option forwardfor`,
 		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.RewriteURL = "/"
+			},
+			path: []string{"/app"},
+			expected: `
+    reqrep ^([^:\ ]*)\ /app/?(.*)$     \1\ /\2`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.RewriteURL = "/other"
+			},
+			path: []string{"/app"},
+			expected: `
+    reqrep ^([^:\ ]*)\ /app(.*)$       \1\ /other\2`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.RewriteURL = "/other/"
+			},
+			path: []string{"/app", "/app/sub"},
+			expected: `
+    reqrep ^([^:\ ]*)\ /app/sub(.*)$       \1\ /other/\2
+    reqrep ^([^:\ ]*)\ /app(.*)$       \1\ /other/\2`,
+		},
 	}
 
 	for _, test := range testCases {
 		c := setup(t)
+
+		if len(test.path) == 0 {
+			test.path = []string{"/"}
+		}
+		if test.srvsuffix != "" {
+			test.srvsuffix = " " + test.srvsuffix
+		}
 
 		var h *hatypes.Host
 		var b *hatypes.Backend
@@ -114,11 +147,10 @@ func TestBackends(t *testing.T) {
 		b = c.config.AcquireBackend("d1", "app", "8080")
 		b.Endpoints = []*hatypes.Endpoint{endpointS1}
 		h = c.config.AcquireHost("d1.local")
-		h.AddPath(b, "/")
-		test.doconfig(c.config.Global(), b)
-		if test.srvsuffix != "" {
-			test.srvsuffix = " " + test.srvsuffix
+		for _, p := range test.path {
+			h.AddPath(b, p)
 		}
+		test.doconfig(c.config.Global(), b)
 
 		c.instance.Update()
 		c.checkConfig(`

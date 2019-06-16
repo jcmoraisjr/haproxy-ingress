@@ -518,3 +518,39 @@ INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not refe
 		c.teardown()
 	}
 }
+
+func TestRewriteURL(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected string
+		logging  string
+	}{
+		// 0
+		{
+			input:    ``,
+			expected: ``,
+		},
+		// 1
+		{
+			input:    `/"/`,
+			expected: ``,
+			logging:  `WARN rewrite-target does not allow white spaces or single/double quotes on ingress 'default/app'`,
+		},
+		// 2
+		{
+			input:    `/app`,
+			expected: `/app`,
+		},
+	}
+
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createBackendData("default", "app", &types.BackendAnnotations{RewriteTarget: test.input})
+		c.createUpdater().buildRewriteURL(d)
+		if d.backend.RewriteURL != test.expected {
+			t.Errorf("rewrite on %d differs - expected: %v - actual: %v", i, test.expected, d.backend.RewriteURL)
+		}
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}

@@ -210,6 +210,17 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $backend.RewriteURL }}
+{{- range $path := $backend.Paths }}
+{{- if eq $backend.RewriteURL "/" }}
+    reqrep ^([^:\ ]*)\ {{ $path }}/?(.*)$     \1\ {{ $backend.RewriteURL }}\2
+{{- else }}
+    reqrep ^([^:\ ]*)\ {{ $path }}(.*)$       \1\ {{ $backend.RewriteURL }}{{ if hasSuffix $path "/" }}/{{ end }}\2
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
 {{- if $backend.HSTS.Enabled }}
 {{- $hsts := $backend.HSTS }}
     http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}
