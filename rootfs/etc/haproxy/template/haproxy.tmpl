@@ -167,7 +167,17 @@ backend {{ $backend.ID }}
     timeout tunnel {{ $timeout.Tunnel }}
 {{- end }}
 
+{{- /*------------------------------------*/}}
+{{- if and $backend.ModeTCP $backend.Whitelist }}
+    tcp-request content reject if !{ src{{ range $cidr := $backend.Whitelist }} {{ $cidr }}{{ end }} }
+{{- end }}
+
 {{- if not $backend.ModeTCP }}
+
+{{- /*------------------------------------*/}}
+{{- if $backend.Whitelist }}
+    http-request deny if !{ src{{ range $cidr := $backend.Whitelist }} {{ $cidr }}{{ end }} }
+{{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $backend.SSL.HasTLSAuth }}

@@ -18,6 +18,7 @@ package annotations
 
 import (
 	"fmt"
+	"net"
 	"regexp"
 	"strconv"
 	"strings"
@@ -318,4 +319,19 @@ func (c *updater) buildRewriteURL(d *backData) {
 		return
 	}
 	d.backend.RewriteURL = d.ann.RewriteTarget
+}
+
+func (c *updater) buildWhitelist(d *backData) {
+	if d.ann.WhitelistSourceRange == "" {
+		return
+	}
+	var cidrlist []string
+	for _, cidr := range strings.Split(d.ann.WhitelistSourceRange, ",") {
+		if _, _, err := net.ParseCIDR(cidr); err != nil {
+			c.logger.Warn("skipping invalid cidr '%s' in whitelist config on %v", cidr, d.ann.Source)
+		} else {
+			cidrlist = append(cidrlist, cidr)
+		}
+	}
+	d.backend.Whitelist = cidrlist
 }

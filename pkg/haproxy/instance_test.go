@@ -129,8 +129,22 @@ func TestBackends(t *testing.T) {
     reqrep ^([^:\ ]*)\ /app/sub(.*)$       \1\ /other/\2
     reqrep ^([^:\ ]*)\ /app(.*)$       \1\ /other/\2`,
 		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.Whitelist = []string{"10.0.0.0/8", "192.168.0.0/16"}
+			},
+			expected: `
+    http-request deny if !{ src 10.0.0.0/8 192.168.0.0/16 }`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.Whitelist = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.ModeTCP = true
+			},
+			expected: `
+    tcp-request content reject if !{ src 10.0.0.0/8 192.168.0.0/16 }`,
+		},
 	}
-
 	for _, test := range testCases {
 		c := setup(t)
 
@@ -152,12 +166,19 @@ func TestBackends(t *testing.T) {
 		}
 		test.doconfig(c.config.Global(), b)
 
+		var mode string
+		if b.ModeTCP {
+			mode = "tcp"
+		} else {
+			mode = "http"
+		}
+
 		c.instance.Update()
 		c.checkConfig(`
 <<global>>
 <<defaults>>
 backend d1_app_8080
-    mode http` + test.expected + `
+    mode ` + mode + test.expected + `
     server s1 172.17.0.11:8080 weight 100` + test.srvsuffix + `
 <<backends-default>>
 <<frontends-default>>

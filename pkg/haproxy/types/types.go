@@ -252,6 +252,7 @@ type Backend struct {
 	SSL               SSLBackendConfig
 	SSLRedirect       bool
 	Timeout           BackendTimeoutConfig
+	Whitelist         []string
 }
 
 // Endpoint ...

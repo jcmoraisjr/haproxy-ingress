@@ -554,3 +554,43 @@ func TestRewriteURL(t *testing.T) {
 		c.teardown()
 	}
 }
+
+func TestWhitelist(t *testing.T) {
+	testCase := []struct {
+		cidrlist string
+		expected []string
+		logging  string
+	}{
+		// 0
+		{
+			cidrlist: "10.0.0.0/8,192.168.0.0/16",
+			expected: []string{"10.0.0.0/8", "192.168.0.0/16"},
+		},
+		// 1
+		{
+			cidrlist: "10.0.0.0/8,192.168.0/16",
+			expected: []string{"10.0.0.0/8"},
+			logging:  `WARN skipping invalid cidr '192.168.0/16' in whitelist config on ingress 'default/app'`,
+		},
+		// 2
+		{
+			cidrlist: "10.0.0/8,192.168.0/16",
+			expected: []string{},
+			logging: `
+WARN skipping invalid cidr '10.0.0/8' in whitelist config on ingress 'default/app'
+WARN skipping invalid cidr '192.168.0/16' in whitelist config on ingress 'default/app'`,
+		},
+	}
+	for i, test := range testCase {
+		c := setup(t)
+		d := c.createBackendData("default", "app", &types.BackendAnnotations{WhitelistSourceRange: test.cidrlist})
+		c.createUpdater().buildWhitelist(d)
+		if !reflect.DeepEqual(d.backend.Whitelist, test.expected) {
+			if len(d.backend.Whitelist) > 0 || len(test.expected) > 0 {
+				t.Errorf("whitelist on %d differs - expected: %v - actual: %v", i, test.expected, d.backend.Whitelist)
+			}
+		}
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
