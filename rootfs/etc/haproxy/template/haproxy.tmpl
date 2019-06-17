@@ -180,6 +180,13 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $backend.Userlist.Name }}
+    http-request auth
+        {{- if $backend.Userlist.Realm }} realm "{{ $backend.Userlist.Realm }}"{{ end }}
+        {{- "" }} if !{ http_auth({{ $backend.Userlist.Name }}) }
+{{- end }}
+
+{{- /*------------------------------------*/}}
 {{- if $backend.SSL.HasTLSAuth }}
     http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-CN   %{+Q}[ssl_c_s_dn(cn)]{{ if not $backend.SSLRedirect }}   if { ssl_fc }{{ end }}
     http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-DN   %{+Q}[ssl_c_s_dn]{{ if not $backend.SSLRedirect }}       if { ssl_fc }{{ end }}

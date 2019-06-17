@@ -17,6 +17,7 @@ limitations under the License.
 package haproxy
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -1081,6 +1082,110 @@ d3.local/ d3_app_8080
 
 	c.logger.CompareLogging(defaultLogging)
 
+}
+
+func TestUserlist(t *testing.T) {
+	type list struct {
+		name  string
+		users []hatypes.User
+	}
+	testCase := []struct {
+		lists    []list
+		listname string
+		realm    string
+		config   string
+	}{
+		{
+			lists: []list{
+				{
+					name: "default_usr",
+					users: []hatypes.User{
+						{Name: "usr1", Passwd: "clear1", Encrypted: false},
+					},
+				},
+			},
+			listname: "default_usr",
+			config: `
+userlist default_usr
+    user usr1 insecure-password clear1`,
+		},
+		{
+			lists: []list{
+				{
+					name: "default_auth",
+					users: []hatypes.User{
+						{Name: "usr1", Passwd: "clear1", Encrypted: false},
+						{Name: "usr2", Passwd: "xxxx", Encrypted: true},
+					},
+				},
+			},
+			listname: "default_auth",
+			realm:    "usrlist",
+			config: `
+userlist default_auth
+    user usr1 insecure-password clear1
+    user usr2 password xxxx`,
+		},
+		{
+			lists: []list{
+				{
+					name: "default_auth1",
+					users: []hatypes.User{
+						{Name: "usr1", Passwd: "clear1", Encrypted: false},
+					},
+				},
+				{
+					name: "default_auth2",
+					users: []hatypes.User{
+						{Name: "usr2", Passwd: "xxxx", Encrypted: true},
+					},
+				},
+			},
+			listname: "default_auth1",
+			realm:    "multi list",
+			config: `
+userlist default_auth1
+    user usr1 insecure-password clear1
+userlist default_auth2
+    user usr2 password xxxx`,
+		},
+	}
+	for _, test := range testCase {
+		c := setup(t)
+
+		var h *hatypes.Host
+		var b *hatypes.Backend
+
+		b = c.config.AcquireBackend("d1", "app", "8080")
+		b.Endpoints = []*hatypes.Endpoint{endpointS1}
+		h = c.config.AcquireHost("d1.local")
+		h.AddPath(b, "/")
+
+		for _, list := range test.lists {
+			c.config.AddUserlist(list.name, list.users)
+		}
+		b.Userlist.Name = test.listname
+		b.Userlist.Realm = test.realm
+
+		var realm string
+		if test.realm != "" {
+			realm = fmt.Sprintf(` realm "%s"`, test.realm)
+		}
+
+		c.instance.Update()
+		c.checkConfig(`
+<<global>>
+<<defaults>>` + test.config + `
+backend d1_app_8080
+    mode http
+    http-request auth` + realm + ` if !{ http_auth(` + test.listname + `) }
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+<<frontends-default>>
+`)
+		c.logger.CompareLogging(defaultLogging)
+		c.teardown()
+	}
 }
 
 func TestInstanceWildcardHostname(t *testing.T) {

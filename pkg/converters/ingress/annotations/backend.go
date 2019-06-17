@@ -82,7 +82,14 @@ func (c *updater) buildBackendAuthHTTP(d *backData) {
 			c.logger.Warn("userlist on %v for basic authentication is empty", d.ann.Source)
 		}
 	}
-	d.backend.HreqValidateUserlist(userlist)
+	d.backend.Userlist.Name = userlist.Name
+	realm := "localhost" // HAProxy's backend name would be used if missing
+	if strings.Index(d.ann.AuthRealm, `"`) >= 0 {
+		c.logger.Warn("ignoring auth-realm with quotes on %v", d.ann.Source)
+	} else if d.ann.AuthRealm != "" {
+		realm = d.ann.AuthRealm
+	}
+	d.backend.Userlist.Realm = realm
 }
 
 func (c *updater) buildBackendAuthHTTPExtractUserlist(source, secret, users string) ([]hatypes.User, []error) {

@@ -240,7 +240,6 @@ type Backend struct {
 	Cors              Cors
 	CustomConfig      []string
 	HealthCheck       HealthCheck
-	HTTPRequests      []*HTTPRequest
 	HSTS              HSTS
 	MaxConnServer     int
 	MaxQueueServer    int
@@ -252,6 +251,7 @@ type Backend struct {
 	SSL               SSLBackendConfig
 	SSLRedirect       bool
 	Timeout           BackendTimeoutConfig
+	Userlist          UserlistConfig
 	Whitelist         []string
 }
 
@@ -304,6 +304,11 @@ type BackendTimeoutConfig struct {
 	Tunnel      string
 }
 
+type UserlistConfig struct {
+	Name  string
+	Realm string
+}
+
 // Cookie ...
 type Cookie struct {
 	Name     string
@@ -321,10 +326,6 @@ type Cors struct {
 	AllowOrigin      string
 	ExposeHeaders    string
 	MaxAge           int
-}
-
-// HTTPRequest ...
-type HTTPRequest struct {
 }
 
 // HSTS ...

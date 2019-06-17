@@ -99,13 +99,12 @@ func TestAffinity(t *testing.T) {
 
 func TestAuthHTTP(t *testing.T) {
 	testCase := []struct {
-		namespace       string
-		ingname         string
-		ann             types.BackendAnnotations
-		secrets         ing_helper.SecretContent
-		expUserlists    []*hatypes.Userlist
-		expHTTPRequests []*hatypes.HTTPRequest
-		expLogging      string
+		namespace    string
+		ingname      string
+		ann          types.BackendAnnotations
+		secrets      ing_helper.SecretContent
+		expUserlists []*hatypes.Userlist
+		expLogging   string
 	}{
 		// 0
 		{
@@ -135,25 +134,32 @@ func TestAuthHTTP(t *testing.T) {
 		},
 		// 5
 		{
-			namespace:       "ns1",
-			ingname:         "i1",
-			ann:             types.BackendAnnotations{AuthType: "basic", AuthSecret: "mypwd"},
-			secrets:         ing_helper.SecretContent{"ns1/mypwd": {"auth": []byte{}}},
-			expUserlists:    []*hatypes.Userlist{&hatypes.Userlist{Name: "ns1_mypwd"}},
-			expHTTPRequests: []*hatypes.HTTPRequest{{}},
-			expLogging:      "WARN userlist on ingress 'ns1/i1' for basic authentication is empty",
+			ann:     types.BackendAnnotations{AuthType: "basic", AuthSecret: "mypwd", AuthRealm: `"a name"`},
+			secrets: ing_helper.SecretContent{"default/mypwd": {"auth": []byte("usr1::clear1")}},
+			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_mypwd", Users: []hatypes.User{
+				{Name: "usr1", Passwd: "clear1", Encrypted: false},
+			}}},
+			expLogging: "WARN ignoring auth-realm with quotes on ingress 'default/ing1'",
 		},
 		// 6
 		{
-			ann:             types.BackendAnnotations{AuthType: "basic", AuthSecret: "basicpwd"},
-			secrets:         ing_helper.SecretContent{"default/basicpwd": {"auth": []byte("fail")}},
-			expUserlists:    []*hatypes.Userlist{&hatypes.Userlist{Name: "default_basicpwd"}},
-			expHTTPRequests: []*hatypes.HTTPRequest{{}},
+			namespace:    "ns1",
+			ingname:      "i1",
+			ann:          types.BackendAnnotations{AuthType: "basic", AuthSecret: "mypwd"},
+			secrets:      ing_helper.SecretContent{"ns1/mypwd": {"auth": []byte{}}},
+			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "ns1_mypwd"}},
+			expLogging:   "WARN userlist on ingress 'ns1/i1' for basic authentication is empty",
+		},
+		// 7
+		{
+			ann:          types.BackendAnnotations{AuthType: "basic", AuthSecret: "basicpwd"},
+			secrets:      ing_helper.SecretContent{"default/basicpwd": {"auth": []byte("fail")}},
+			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_basicpwd"}},
 			expLogging: `
 WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ingress 'default/ing1': missing password of user 'fail' line 1
 WARN userlist on ingress 'default/ing1' for basic authentication is empty`,
 		},
-		// 7
+		// 8
 		{
 			ann: types.BackendAnnotations{AuthType: "basic", AuthSecret: "basicpwd"},
 			secrets: ing_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
@@ -162,10 +168,9 @@ nopwd`)}},
 			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_basicpwd", Users: []hatypes.User{
 				{Name: "usr1", Passwd: "clearpwd1", Encrypted: false},
 			}}},
-			expHTTPRequests: []*hatypes.HTTPRequest{{}},
-			expLogging:      "WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ingress 'default/ing1': missing password of user 'nopwd' line 3",
+			expLogging: "WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ingress 'default/ing1': missing password of user 'nopwd' line 3",
 		},
-		// 8
+		// 9
 		{
 			ann: types.BackendAnnotations{AuthType: "basic", AuthSecret: "basicpwd"},
 			secrets: ing_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
@@ -173,8 +178,7 @@ usrnopwd1:
 usrnopwd2::
 :encpwd3
 ::clearpwd4`)}},
-			expUserlists:    []*hatypes.Userlist{&hatypes.Userlist{Name: "default_basicpwd"}},
-			expHTTPRequests: []*hatypes.HTTPRequest{{}},
+			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_basicpwd"}},
 			expLogging: `
 WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ingress 'default/ing1': missing password of user 'usrnopwd1' line 2
 WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ingress 'default/ing1': missing password of user 'usrnopwd2' line 3
@@ -182,7 +186,7 @@ WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ing
 WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ingress 'default/ing1': missing username line 5
 WARN userlist on ingress 'default/ing1' for basic authentication is empty`,
 		},
-		// 9
+		// 10
 		{
 			ann: types.BackendAnnotations{AuthType: "basic", AuthSecret: "basicpwd"},
 			secrets: ing_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
@@ -192,8 +196,7 @@ usr2::clearpwd2`)}},
 				{Name: "usr1", Passwd: "encpwd1", Encrypted: true},
 				{Name: "usr2", Passwd: "clearpwd2", Encrypted: false},
 			}}},
-			expHTTPRequests: []*hatypes.HTTPRequest{{}},
-			expLogging:      "",
+			expLogging: "",
 		},
 	}
 
@@ -211,12 +214,8 @@ usr2::clearpwd2`)}},
 		d := c.createBackendData(test.namespace, test.ingname, &test.ann)
 		u.buildBackendAuthHTTP(d)
 		userlists := u.haproxy.Userlists()
-		httpRequests := d.backend.HTTPRequests
 		if len(userlists)+len(test.expUserlists) > 0 && !reflect.DeepEqual(test.expUserlists, userlists) {
 			t.Errorf("userlists config %d differs - expected: %+v - actual: %+v", i, test.expUserlists, userlists)
-		}
-		if len(httpRequests)+len(test.expHTTPRequests) > 0 && !reflect.DeepEqual(test.expHTTPRequests, httpRequests) {
-			t.Errorf("httprequest config %d differs - expected: %+v - actual: %+v", i, test.expHTTPRequests, httpRequests)
 		}
 		c.logger.CompareLogging(test.expLogging)
 		c.teardown()

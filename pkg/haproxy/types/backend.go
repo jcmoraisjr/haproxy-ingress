@@ -53,13 +53,3 @@ func (b *Backend) AddPath(path string) {
 		return b.Paths[i] > b.Paths[j]
 	})
 }
-
-// HreqValidateUserlist ...
-func (b *Backend) HreqValidateUserlist(userlist *Userlist) {
-	// TODO implement
-	b.HTTPRequests = append(b.HTTPRequests, &HTTPRequest{})
-}
-
-func (h *HTTPRequest) String() string {
-	return fmt.Sprintf("%+v", *h)
-}
