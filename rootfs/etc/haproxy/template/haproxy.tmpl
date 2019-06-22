@@ -168,11 +168,19 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if and $backend.ModeTCP $backend.Whitelist }}
+{{- /*              MODE TCP              */}}
+{{- /*------------------------------------*/}}
+{{- if $backend.ModeTCP }}
+
+{{- /*------------------------------------*/}}
+{{- if $backend.Whitelist }}
     tcp-request content reject if !{ src{{ range $cidr := $backend.Whitelist }} {{ $cidr }}{{ end }} }
 {{- end }}
 
-{{- if not $backend.ModeTCP }}
+{{- /*------------------------------------*/}}
+{{- /*             MODE HTTP              */}}
+{{- /*------------------------------------*/}}
+{{- else }}{{/*** if $backend.ModeTCP ***/}}
 
 {{- /*------------------------------------*/}}
 {{- if $backend.Whitelist }}
@@ -242,7 +250,8 @@ backend {{ $backend.ID }}
 {{- $hsts := $backend.HSTS }}
     http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}
         {{- if $hsts.Subdomains }}; includeSubDomains{{ end }}
-        {{- if $hsts.Preload }}; preload{{ end }}"{{ if not $backend.SSLRedirect }} if { ssl_fc }{{ end }}
+        {{- if $hsts.Preload }}; preload{{ end }}"
+        {{- if not $backend.SSLRedirect }} if { ssl_fc }{{ end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -269,7 +278,7 @@ backend {{ $backend.ID }}
 {{- end }}
 {{- end }}
 
-{{- end }}{{/*** if not $backend.ModeTCP ***/}}
+{{- end }}{{/*** if $backend.ModeTCP ***/}}
 
 {{- /*------------------------------------*/}}
 {{- range $ep := $backend.Endpoints }}
