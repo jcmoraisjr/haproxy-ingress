@@ -554,6 +554,40 @@ func TestRewriteURL(t *testing.T) {
 	}
 }
 
+func TestWAF(t *testing.T) {
+	testCase := []struct {
+		waf      string
+		expected string
+		logging  string
+	}{
+		{
+			waf:      "",
+			expected: "",
+			logging:  "",
+		},
+		{
+			waf:      "none",
+			expected: "",
+			logging:  "WARN ignoring invalid WAF mode: none",
+		},
+		{
+			waf:      "modsecurity",
+			expected: "modsecurity",
+			logging:  "",
+		},
+	}
+	for i, test := range testCase {
+		c := setup(t)
+		d := c.createBackendData("default", "app", &types.BackendAnnotations{WAF: test.waf})
+		c.createUpdater().buildWAF(d)
+		if d.backend.WAF != test.expected {
+			t.Errorf("WAF on %d differs - expected: %v - actual: %v", i, test.expected, d.backend.WAF)
+		}
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
 func TestWhitelist(t *testing.T) {
 	testCase := []struct {
 		cidrlist string

@@ -252,6 +252,7 @@ type Backend struct {
 	SSLRedirect       bool
 	Timeout           BackendTimeoutConfig
 	Userlist          UserlistConfig
+	WAF               string
 	Whitelist         []string
 }
 

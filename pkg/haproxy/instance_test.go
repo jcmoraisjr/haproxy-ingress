@@ -1188,6 +1188,83 @@ backend d1_app_8080
 	}
 }
 
+func TestModSecurity(t *testing.T) {
+	testCases := []struct {
+		waf        string
+		endpoints  []string
+		backendExp string
+		modsecExp  string
+	}{
+		{
+			waf:        "modsecurity",
+			endpoints:  []string{},
+			backendExp: ``,
+			modsecExp:  ``,
+		},
+		{
+			waf:        "",
+			endpoints:  []string{"10.0.0.101:12345"},
+			backendExp: ``,
+			modsecExp: `
+    server modsec-spoa0 10.0.0.101:12345`,
+		},
+		{
+			waf:       "modsecurity",
+			endpoints: []string{"10.0.0.101:12345"},
+			backendExp: `
+    filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
+    http-request deny if { var(txn.modsec.code) -m int gt 0 }`,
+			modsecExp: `
+    server modsec-spoa0 10.0.0.101:12345`,
+		},
+		{
+			waf:       "modsecurity",
+			endpoints: []string{"10.0.0.101:12345", "10.0.0.102:12345"},
+			backendExp: `
+    filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
+    http-request deny if { var(txn.modsec.code) -m int gt 0 }`,
+			modsecExp: `
+    server modsec-spoa0 10.0.0.101:12345
+    server modsec-spoa1 10.0.0.102:12345`,
+		},
+	}
+	for _, test := range testCases {
+		c := setup(t)
+
+		var h *hatypes.Host
+		var b *hatypes.Backend
+
+		b = c.config.AcquireBackend("d1", "app", "8080")
+		b.Endpoints = []*hatypes.Endpoint{endpointS1}
+		b.WAF = test.waf
+		h = c.config.AcquireHost("d1.local")
+		h.AddPath(b, "/")
+		c.config.Global().ModSecurity.Endpoints = test.endpoints
+
+		c.instance.Update()
+
+		var modsec string
+		if test.modsecExp != "" {
+			modsec = `
+backend spoe-modsecurity
+    mode tcp
+    timeout connect 5s
+    timeout server  5s` + test.modsecExp
+		}
+		c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http` + test.backendExp + `
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+<<frontends-default>>` + modsec)
+
+		c.logger.CompareLogging(defaultLogging)
+		c.teardown()
+	}
+}
+
 func TestInstanceWildcardHostname(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()

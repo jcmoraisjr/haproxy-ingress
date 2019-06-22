@@ -195,6 +195,12 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if and (eq $backend.WAF "modsecurity") $global.ModSecurity.Endpoints }}
+    filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
+    http-request deny if { var(txn.modsec.code) -m int gt 0 }
+{{- end }}
+
+{{- /*------------------------------------*/}}
 {{- if $backend.SSL.HasTLSAuth }}
     http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-CN   %{+Q}[ssl_c_s_dn(cn)]{{ if not $backend.SSLRedirect }}   if { ssl_fc }{{ end }}
     http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-DN   %{+Q}[ssl_c_s_dn]{{ if not $backend.SSLRedirect }}       if { ssl_fc }{{ end }}
@@ -640,4 +646,28 @@ frontend {{ $frontend.Name }}
 {{- else }}
     default_backend _error404
 {{- end }}
+{{- end }}
+
+
+  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# #
+# #   SUPPORT
+# #
+#
+
+{{- if $global.ModSecurity.Endpoints }}
+
+  # # # # # # # # # # # # # # # # # # #
+# #
+#     ModSecurity Agent
+#
+backend spoe-modsecurity
+    mode tcp
+    timeout connect 5s
+    timeout server  5s
+{{- range $i, $endpoint := $global.ModSecurity.Endpoints }}
+    server modsec-spoa{{ $i }} {{ $endpoint }}
+{{- end }}
+
 {{- end }}

@@ -328,6 +328,17 @@ func (c *updater) buildRewriteURL(d *backData) {
 	d.backend.RewriteURL = d.ann.RewriteTarget
 }
 
+func (c *updater) buildWAF(d *backData) {
+	if d.ann.WAF == "" {
+		return
+	}
+	if d.ann.WAF != "modsecurity" {
+		c.logger.Warn("ignoring invalid WAF mode: %s", d.ann.WAF)
+		return
+	}
+	d.backend.WAF = d.ann.WAF
+}
+
 func (c *updater) buildWhitelist(d *backData) {
 	if d.ann.WhitelistSourceRange == "" {
 		return

@@ -6,7 +6,7 @@
 # #   This file is automatically updated, do not edit
 # #
 #
-{{- $modsec := .Global.ModSecurity -}}
+{{- $modsec := .Global.ModSecurity }}
 [modsecurity]
 spoe-agent modsecurity-agent
     messages     check-request
@@ -17,4 +17,4 @@ spoe-agent modsecurity-agent
     use-backend  spoe-modsecurity
 spoe-message check-request
     args   unique-id method path query req.ver req.hdrs_bin req.body_size req.body
-    event  on-frontend-http-request
+    event  on-backend-http-request
