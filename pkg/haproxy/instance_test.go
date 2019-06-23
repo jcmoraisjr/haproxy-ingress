@@ -145,6 +145,19 @@ func TestBackends(t *testing.T) {
 			expected: `
     tcp-request content reject if !{ src 10.0.0.0/8 192.168.0.0/16 }`,
 		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.OAuth.Impl = "oauth2_proxy"
+				b.OAuth.BackendName = "system_oauth_4180"
+				b.OAuth.URIPrefix = "/oauth2"
+				b.OAuth.Headers = map[string]string{"X-Auth-Request-Email": "auth_response_email"}
+			},
+			expected: `
+    http-request set-header X-Real-IP %[src]
+    http-request lua.auth-request system_oauth_4180 /oauth2/auth
+    http-request redirect location /oauth2/start?rd=%[path] if !{ path_beg /oauth2/ } !{ var(txn.auth_response_successful) -m bool }
+    http-request set-header X-Auth-Request-Email %[var(txn.auth_response_email)] if { var(txn.auth_response_email) -m found }`,
+		},
 	}
 	for _, test := range testCases {
 		c := setup(t)

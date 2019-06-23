@@ -518,6 +518,132 @@ INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not refe
 	}
 }
 
+func TestOAuth(t *testing.T) {
+	testCases := []struct {
+		ann      types.BackendAnnotations
+		backend  string
+		oauthExp hatypes.OAuthConfig
+		logging  string
+	}{
+		// 0
+		{
+			ann:      types.BackendAnnotations{},
+			oauthExp: hatypes.OAuthConfig{},
+		},
+		// 1
+		{
+			ann:     types.BackendAnnotations{OAuth: "none"},
+			logging: "WARN ignoring invalid oauth implementation 'none' on ingress 'default/app'",
+		},
+		// 2
+		{
+			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy"},
+			logging: "ERROR path '/oauth2' was not found on namespace 'default'",
+		},
+		// 3
+		{
+			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy"},
+			backend: "default:back:/oauth2",
+			oauthExp: hatypes.OAuthConfig{
+				Impl:        "oauth2_proxy",
+				BackendName: "default_back_8080",
+				URIPrefix:   "/oauth2",
+				Headers:     map[string]string{"X-Auth-Request-Email": "auth_response_email"},
+			},
+		},
+		// 4
+		{
+			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy", OAuthURIPrefix: "/auth"},
+			backend: "default:back:/auth",
+			oauthExp: hatypes.OAuthConfig{
+				Impl:        "oauth2_proxy",
+				BackendName: "default_back_8080",
+				URIPrefix:   "/auth",
+				Headers:     map[string]string{"X-Auth-Request-Email": "auth_response_email"},
+			},
+		},
+		// 5
+		{
+			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy", OAuthHeaders: "X-Auth-New:attr_from_lua"},
+			backend: "default:back:/oauth2",
+			oauthExp: hatypes.OAuthConfig{
+				Impl:        "oauth2_proxy",
+				BackendName: "default_back_8080",
+				URIPrefix:   "/oauth2",
+				Headers:     map[string]string{"X-Auth-New": "attr_from_lua"},
+			},
+		},
+		// 6
+		{
+			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy", OAuthHeaders: "space before:attr"},
+			backend: "default:back:/oauth2",
+			oauthExp: hatypes.OAuthConfig{
+				Impl:        "oauth2_proxy",
+				BackendName: "default_back_8080",
+				URIPrefix:   "/oauth2",
+				Headers:     map[string]string{},
+			},
+			logging: "WARN invalid header format 'space before:attr' on ingress 'default/app'",
+		},
+		// 7
+		{
+			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy", OAuthHeaders: "no-colon"},
+			backend: "default:back:/oauth2",
+			oauthExp: hatypes.OAuthConfig{
+				Impl:        "oauth2_proxy",
+				BackendName: "default_back_8080",
+				URIPrefix:   "/oauth2",
+				Headers:     map[string]string{},
+			},
+			logging: "WARN invalid header format 'no-colon' on ingress 'default/app'",
+		},
+		// 8
+		{
+			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy", OAuthHeaders: "more:colons:unsupported"},
+			backend: "default:back:/oauth2",
+			oauthExp: hatypes.OAuthConfig{
+				Impl:        "oauth2_proxy",
+				BackendName: "default_back_8080",
+				URIPrefix:   "/oauth2",
+				Headers:     map[string]string{},
+			},
+			logging: "WARN invalid header format 'more:colons:unsupported' on ingress 'default/app'",
+		},
+		// 9
+		{
+			ann: types.BackendAnnotations{
+				OAuth:        "oauth2_proxy",
+				OAuthHeaders: ",,X-Auth-Request-Email:auth_response_email,,X-Auth-New:attr_from_lua,",
+			},
+			backend: "default:back:/oauth2",
+			oauthExp: hatypes.OAuthConfig{
+				Impl:        "oauth2_proxy",
+				BackendName: "default_back_8080",
+				URIPrefix:   "/oauth2",
+				Headers: map[string]string{
+					"X-Auth-Request-Email": "auth_response_email",
+					"X-Auth-New":           "attr_from_lua",
+				},
+			},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createBackendData("default", "app", &test.ann)
+		if test.backend != "" {
+			b := strings.Split(test.backend, ":")
+			backend := c.haproxy.AcquireBackend(b[0], b[1], "8080")
+			c.haproxy.AcquireHost("app.local").AddPath(backend, b[2])
+		}
+		c.createUpdater().buildOAuth(d)
+		if !reflect.DeepEqual(test.oauthExp, d.backend.OAuth) {
+			t.Errorf("oauth on %d differs - expected: %+v - actual: %+v", i, test.oauthExp, d.backend.OAuth)
+		}
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
 func TestRewriteURL(t *testing.T) {
 	testCases := []struct {
 		input    string

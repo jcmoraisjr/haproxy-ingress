@@ -244,6 +244,7 @@ type Backend struct {
 	MaxConnServer     int
 	MaxQueueServer    int
 	ModeTCP           bool
+	OAuth             OAuthConfig
 	Paths             []string
 	ProxyBodySize     string
 	RewriteURL        string
@@ -281,6 +282,14 @@ type HealthCheck struct {
 	Interval  string
 	Port      string
 	RiseCount string
+}
+
+// OAuthConfig ...
+type OAuthConfig struct {
+	Impl        string
+	BackendName string
+	URIPrefix   string
+	Headers     map[string]string
 }
 
 // SSLBackendConfig ...

@@ -225,6 +225,19 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $backend.OAuth.Impl }}
+{{- $oauth := $backend.OAuth }}
+{{- if eq $oauth.Impl "oauth2_proxy" }}
+    http-request set-header X-Real-IP %[src]
+    http-request lua.auth-request {{ $oauth.BackendName }} {{ $oauth.URIPrefix }}/auth
+    http-request redirect location {{ $oauth.URIPrefix }}/start?rd=%[path] if !{ path_beg {{ $oauth.URIPrefix }}/ } !{ var(txn.auth_response_successful) -m bool }
+{{- range $header, $attr := $oauth.Headers }}
+    http-request set-header {{ $header }} %[var(txn.{{ $attr }})] if { var(txn.{{ $attr }}) -m found }
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
 {{- if $backend.Cookie.Name }}
 {{- $cookie := $backend.Cookie }}
     cookie {{ $cookie.Name }} {{ $cookie.Strategy }}

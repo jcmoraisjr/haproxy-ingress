@@ -314,6 +314,62 @@ func (c *updater) buildBackendCors(d *backData) {
 }
 
 var (
+	oauthHeaderRegex = regexp.MustCompile(`^[A-Za-z0-9-]+:[A-Za-z0-9-_]+$`)
+)
+
+func (c *updater) buildOAuth(d *backData) {
+	if d.ann.OAuth == "" {
+		return
+	}
+	if d.ann.OAuth != "oauth2_proxy" {
+		c.logger.Warn("ignoring invalid oauth implementation '%s' on %v", d.ann.OAuth, d.ann.Source)
+		return
+	}
+	uriPrefix := "/oauth2"
+	headers := []string{"X-Auth-Request-Email:auth_response_email"}
+	if d.ann.OAuthURIPrefix != "" {
+		uriPrefix = d.ann.OAuthURIPrefix
+	}
+	if d.ann.OAuthHeaders != "" {
+		headers = strings.Split(d.ann.OAuthHeaders, ",")
+	}
+	uriPrefix = strings.TrimRight(uriPrefix, "/")
+	namespace := d.ann.Source.Namespace
+	backend := c.findBackend(namespace, uriPrefix)
+	if backend == nil {
+		c.logger.Error("path '%s' was not found on namespace '%s'", uriPrefix, namespace)
+		return
+	}
+	headersMap := make(map[string]string, len(headers))
+	for _, header := range headers {
+		if len(header) == 0 {
+			continue
+		}
+		if !oauthHeaderRegex.MatchString(header) {
+			c.logger.Warn("invalid header format '%s' on %v", header, d.ann.Source)
+			continue
+		}
+		h := strings.Split(header, ":")
+		headersMap[h[0]] = h[1]
+	}
+	d.backend.OAuth.Impl = d.ann.OAuth
+	d.backend.OAuth.BackendName = backend.ID
+	d.backend.OAuth.URIPrefix = uriPrefix
+	d.backend.OAuth.Headers = headersMap
+}
+
+func (c *updater) findBackend(namespace, uriPrefix string) *hatypes.Backend {
+	for _, host := range c.haproxy.Hosts() {
+		for _, path := range host.Paths {
+			if strings.TrimRight(path.Path, "/") == uriPrefix && path.Backend.Namespace == namespace {
+				return path.Backend
+			}
+		}
+	}
+	return nil
+}
+
+var (
 	rewriteURLRegex = regexp.MustCompile(`^[^"' ]+$`)
 )
 
