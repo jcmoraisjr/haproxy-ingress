@@ -20,7 +20,86 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 )
+
+// AppendHostname ...
+func (hm *HostsMap) AppendHostname(base, value string) {
+	// always use case insensitive match
+	base = strings.ToLower(base)
+	isHostnameOnly := !strings.Contains(base, "/")
+	if strings.HasPrefix(base, "*.") {
+		// *.example.local
+		key := "^" + strings.Replace(base, ".", "\\.", -1)
+		key = strings.Replace(key, "*", "[^.]+", 1)
+		if isHostnameOnly {
+			// match eol if only the hostname is provided
+			// if has /path, need to match the begining of the string, a la map_beg() converter
+			key = key + "$"
+		}
+		hm.Regex = append(hm.Regex, &HostsMapEntry{
+			Key:   key,
+			Value: value,
+		})
+	} else {
+		// sub.example.local
+		hm.Match = append(hm.Match, &HostsMapEntry{
+			Key:   base,
+			Value: value,
+		})
+		// Hostnames are already in alphabetical order but Alias are not
+		// Sort only hostname maps which uses ebtree search via map converter
+		if isHostnameOnly {
+			sort.Slice(hm.Match, func(i, j int) bool {
+				return hm.Match[i].Key < hm.Match[j].Key
+			})
+		}
+	}
+}
+
+// AppendAliasName ...
+func (hm *HostsMap) AppendAliasName(base, value string) {
+	if base != "" {
+		hm.AppendHostname(base, value)
+	}
+}
+
+// AppendAliasRegex ...
+func (hm *HostsMap) AppendAliasRegex(base, value string) {
+	if base != "" {
+		hm.Regex = append(hm.Regex, &HostsMapEntry{
+			Key:   base,
+			Value: value,
+		})
+	}
+}
+
+// HasRegex ...
+func (hm *HostsMap) HasRegex() bool {
+	return len(hm.Regex) > 0
+}
+
+// HasHost ...
+func (hm *HostsMap) HasHost() bool {
+	return len(hm.Regex) > 0 || len(hm.Match) > 0
+}
+
+// CreateMaps ...
+func CreateMaps() *HostsMaps {
+	return &HostsMaps{}
+}
+
+// AddMap ...
+func (hm *HostsMaps) AddMap(filename string) *HostsMap {
+	matchFile := filename
+	regexFile := strings.Replace(filename, ".", "_regex.", 1)
+	hmap := &HostsMap{
+		MatchFile: matchFile,
+		RegexFile: regexFile,
+	}
+	hm.Items = append(hm.Items, hmap)
+	return hmap
+}
 
 // HasTCPProxy ...
 func (fg *FrontendGroup) HasTCPProxy() bool {
@@ -63,7 +142,7 @@ func (f *Frontend) HasNoCrtErrorPage() bool {
 // HasTLSMandatory ...
 func (f *Frontend) HasTLSMandatory() bool {
 	for _, host := range f.Hosts {
-		if !host.TLS.CAVerifyOptional {
+		if host.HasTLSAuth() && !host.TLS.CAVerifyOptional {
 			return true
 		}
 	}
@@ -115,12 +194,8 @@ func BuildRawFrontends(hosts []*Host) (frontends []*Frontend, sslpassthrough []*
 	// naming frontends
 	var i int
 	for _, frontend := range frontends {
-		if len(frontend.Hosts) == 1 {
-			frontend.Name = "https-front_" + frontend.Hosts[0].Hostname
-		} else {
-			i++
-			frontend.Name = fmt.Sprintf("_front_%03d", i)
-		}
+		i++
+		frontend.Name = fmt.Sprintf("_front%03d", i)
 	}
 	// sorting frontends
 	sort.Slice(frontends, func(i, j int) bool {

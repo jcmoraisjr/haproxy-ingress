@@ -24,11 +24,11 @@ import (
 
 func TestEmptyFrontend(t *testing.T) {
 	c := createConfig(&ha_helper.BindUtilsMock{}, options{})
-	if _, err := c.BuildFrontendGroup(); err == nil {
+	if err := c.BuildFrontendGroup(); err == nil {
 		t.Error("expected error creating empty frontend")
 	}
 	c.AcquireHost("empty")
-	if _, err := c.BuildFrontendGroup(); err != nil {
+	if err := c.BuildFrontendGroup(); err != nil {
 		t.Errorf("error creating frontends: %v", err)
 	}
 }
@@ -58,11 +58,11 @@ func TestBuildID(t *testing.T) {
 	testCases := []struct {
 		namespace string
 		name      string
-		port      int
+		port      string
 		expected  string
 	}{
 		{
-			"default", "echo", 8080, "default_echo_8080",
+			"default", "echo", "8080", "default_echo_8080",
 		},
 	}
 	for _, test := range testCases {
@@ -86,13 +86,13 @@ func TestEqual(t *testing.T) {
 	if !c1.Equals(c2) {
 		t.Error("c1 and c2 should be equals (default cert)")
 	}
-	b1 := c1.AcquireBackend("d", "app1", 8080)
-	c1.AcquireBackend("d", "app2", 8080)
+	b1 := c1.AcquireBackend("d", "app1", "8080")
+	c1.AcquireBackend("d", "app2", "8080")
 	if c1.Equals(c2) {
 		t.Error("c1 and c2 should not be equals (backends on one side)")
 	}
-	c2.AcquireBackend("d", "app2", 8080)
-	b2 := c2.AcquireBackend("d", "app1", 8080)
+	c2.AcquireBackend("d", "app2", "8080")
+	b2 := c2.AcquireBackend("d", "app1", "8080")
 	if !c1.Equals(c2) {
 		t.Error("c1 and c2 should be equals (with backends)")
 	}
@@ -106,8 +106,8 @@ func TestEqual(t *testing.T) {
 	if !c1.Equals(c2) {
 		t.Error("c1 and c2 should be equals (with hosts)")
 	}
-	_, err1 := c1.BuildFrontendGroup()
-	_, err2 := c2.BuildFrontendGroup()
+	err1 := c1.BuildFrontendGroup()
+	err2 := c2.BuildFrontendGroup()
 	if err1 != nil {
 		t.Errorf("error building c1: %v", err1)
 	}

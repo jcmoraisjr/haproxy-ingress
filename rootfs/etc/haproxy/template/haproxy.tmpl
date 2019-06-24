@@ -7,10 +7,10 @@
 # #
 #
 {{- $cfg := . }}
+{{- $fgroup := $cfg.FrontendGroup }}
 {{- $global := $cfg.Global }}
 global
     daemon
-    quiet
 {{- if gt $global.Procs.Nbproc 1 }}
     nbproc {{ $global.Procs.Nbproc }}
 {{- end }}
@@ -63,11 +63,11 @@ defaults
     load-server-state-from-file global
 {{- end }}
     maxconn {{ $global.MaxConn }}
-{{- if $global.DrainSupport }}
+{{- if $global.DrainSupport.Drain }}
     option persist
-    {{- if $global.DrainSupportRedispatch }}
+{{- if $global.DrainSupport.Redispatch }}
     option redispatch
-    {{- end }}
+{{- end }}
 {{- else }}
     option redispatch
 {{- end }}
@@ -168,15 +168,143 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- /*              MODE TCP              */}}
+{{- /*------------------------------------*/}}
+{{- if $backend.ModeTCP }}
+
+{{- /*------------------------------------*/}}
+{{- if $backend.Whitelist }}
+    tcp-request content reject if !{ src{{ range $cidr := $backend.Whitelist }} {{ $cidr }}{{ end }} }
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- /*             MODE HTTP              */}}
+{{- /*------------------------------------*/}}
+{{- else }}{{/*** if $backend.ModeTCP ***/}}
+
+{{- /*------------------------------------*/}}
+{{- if $backend.Whitelist }}
+    http-request deny if !{ src{{ range $cidr := $backend.Whitelist }} {{ $cidr }}{{ end }} }
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $backend.Userlist.Name }}
+    http-request auth
+        {{- if $backend.Userlist.Realm }} realm "{{ $backend.Userlist.Realm }}"{{ end }}
+        {{- "" }} if !{ http_auth({{ $backend.Userlist.Name }}) }
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if and (eq $backend.WAF "modsecurity") $global.ModSecurity.Endpoints }}
+    filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
+    http-request deny if { var(txn.modsec.code) -m int gt 0 }
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $backend.SSL.HasTLSAuth }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-CN   %{+Q}[ssl_c_s_dn(cn)]{{ if not $backend.SSLRedirect }}   if { ssl_fc }{{ end }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-DN   %{+Q}[ssl_c_s_dn]{{ if not $backend.SSLRedirect }}       if { ssl_fc }{{ end }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1 %{+Q}[ssl_c_sha1,hex]{{ if not $backend.SSLRedirect }}   if { ssl_fc }{{ end }}
+{{- if $backend.SSL.AddCertHeader }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-Cert %{+Q}[ssl_c_der,base64]{{ if not $backend.SSLRedirect }} if { ssl_fc }{{ end }}
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $backend.Cors.Enabled }}
+    http-request use-service lua.send-response if METH_OPTIONS
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if eq $global.ForwardFor "add" }}
+    http-request set-header X-Original-Forwarded-For %[hdr(x-forwarded-for)] if { hdr(x-forwarded-for) -m found }
+    http-request del-header x-forwarded-for
+    option forwardfor
+{{- else if eq $global.ForwardFor "ifmissing" }}
+    option forwardfor if-none
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $backend.OAuth.Impl }}
+{{- $oauth := $backend.OAuth }}
+{{- if eq $oauth.Impl "oauth2_proxy" }}
+    http-request set-header X-Real-IP %[src]
+    http-request lua.auth-request {{ $oauth.BackendName }} {{ $oauth.URIPrefix }}/auth
+    http-request redirect location {{ $oauth.URIPrefix }}/start?rd=%[path] if !{ path_beg {{ $oauth.URIPrefix }}/ } !{ var(txn.auth_response_successful) -m bool }
+{{- range $header, $attr := $oauth.Headers }}
+    http-request set-header {{ $header }} %[var(txn.{{ $attr }})] if { var(txn.{{ $attr }}) -m found }
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $backend.Cookie.Name }}
+{{- $cookie := $backend.Cookie }}
+    cookie {{ $cookie.Name }} {{ $cookie.Strategy }}
+        {{- if eq $cookie.Strategy "insert" }} indirect nocache httponly{{ end }}
+        {{- if $cookie.Dynamic }} dynamic{{ end }}
+{{- if $cookie.Dynamic }}
+    dynamic-cookie-key "{{ $global.Cookie.Key }}"
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
 {{- range $snippet := $backend.CustomConfig }}
     {{ $snippet }}
 {{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $backend.RewriteURL }}
+{{- range $path := $backend.Paths }}
+{{- if eq $backend.RewriteURL "/" }}
+    reqrep ^([^:\ ]*)\ {{ $path }}/?(.*)$     \1\ {{ $backend.RewriteURL }}\2
+{{- else }}
+    reqrep ^([^:\ ]*)\ {{ $path }}(.*)$       \1\ {{ $backend.RewriteURL }}{{ if hasSuffix $path "/" }}/{{ end }}\2
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $backend.HSTS.Enabled }}
+{{- $hsts := $backend.HSTS }}
+    http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}
+        {{- if $hsts.Subdomains }}; includeSubDomains{{ end }}
+        {{- if $hsts.Preload }}; preload{{ end }}"
+        {{- if not $backend.SSLRedirect }} if { ssl_fc }{{ end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $backend.Cors.Enabled }}
+{{- $cors := $backend.Cors }}
+    http-response set-status 204 reason "No Content" if METH_OPTIONS
+    http-response set-header Content-Type                 "text/plain" if METH_OPTIONS
+    http-response set-header Content-Length               "0" if METH_OPTIONS
+    http-response set-header Access-Control-Allow-Origin  "{{ $cors.AllowOrigin }}" if METH_OPTIONS
+    http-response set-header Access-Control-Allow-Methods "{{ $cors.AllowMethods }}" if METH_OPTIONS
+    http-response set-header Access-Control-Allow-Headers "{{ $cors.AllowHeaders }}" if METH_OPTIONS
+{{- if $cors.AllowCredentials }}
+    http-response set-header Access-Control-Allow-Credentials "{{ $cors.AllowCredentials }}" if METH_OPTIONS
+{{- end }}
+    http-response set-header Access-Control-Max-Age       "{{ $cors.MaxAge }}" if METH_OPTIONS
+    http-response set-header Access-Control-Allow-Origin  "{{ $cors.AllowOrigin }}"
+    http-response set-header Access-Control-Allow-Methods "{{ $cors.AllowMethods }}"
+    http-response set-header Access-Control-Allow-Headers "{{ $cors.AllowHeaders }}"
+{{- if $cors.AllowCredentials }}
+    http-response set-header Access-Control-Allow-Credentials "{{ $cors.AllowCredentials }}"
+{{- end }}
+{{- if $cors.ExposeHeaders }}
+    http-response set-header Access-Control-Expose-Headers "{{ $cors.ExposeHeaders }}"
+{{- end }}
+{{- end }}
+
+{{- end }}{{/*** if $backend.ModeTCP ***/}}
 
 {{- /*------------------------------------*/}}
 {{- range $ep := $backend.Endpoints }}
     server {{ $ep.Name }} {{ $ep.IP }}:{{ $ep.Port }}
         {{- if $ep.Disabled }} disabled{{ end }}
         {{- "" }} weight {{ $ep.Weight }}
+        {{- if and (not $backend.ModeTCP) ($backend.Cookie.Name) (not $backend.Cookie.Dynamic) }} cookie {{ $ep.Name }}{{ end }}
         {{- template "backend" map $backend }}
 {{- end }}
 {{- end }}
@@ -235,7 +363,6 @@ backend _error496
 # #   FRONTENDS
 # #
 #
-{{- $fgroup := $cfg.BuildFrontendGroup }}
 {{- $frontends := $fgroup.Frontends }}
 {{- if $fgroup.HasTCPProxy }}
 
@@ -246,21 +373,61 @@ backend _error496
 listen _front__tls
     mode tcp
     bind :443
+
+{{- /*------------------------------------*/}}
+{{- if $global.Syslog.Endpoint }}
+{{- if eq $global.Syslog.HTTPSLogFormat "default" }}
+    option tcplog
+{{- else if $global.Syslog.HTTPSLogFormat }}
+    log-format {{ $global.Syslog.HTTPSLogFormat }}
+{{- else }}
+    no log
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
     tcp-request inspect-delay 5s
     tcp-request content accept if { req.ssl_hello_type 1 }
+
+{{- /*------------------------------------*/}}
 {{- if $fgroup.HasSSLPassthrough }}
     ## ssl-passthrough
-    tcp-request content set-var(req.backend) req.ssl_sni,lower,map({{ $fgroup.SSLPassthroughMap }},_nomatch)
+    tcp-request content set-var(req.backend)
+        {{- "" }} req.ssl_sni,lower,map({{ $fgroup.SSLPassthroughMap.MatchFile }},_nomatch)
+    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- range $frontend := $frontends }}
+{{- range $bind := $frontend.Binds }}
+    ## {{ $frontend.Name }}/{{ $bind.Name }}
+    use-server _server{{ $bind.Name }} if { req.ssl_sni -i -f {{ $bind.UseServerList.MatchFile }} }
+    server _server{{ $bind.Name }} {{ $bind.Socket }} send-proxy-v2 weight 0
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $fgroup.SSLPassthroughMap.HasRegex }}
+    ## ssl-passthrough wildcard
+{{- /*** TODO is map_reg() converter running on every request? ***/}}
+    tcp-request content set-var(req.backend)
+        {{- "" }} req.ssl_sni,lower,map_reg({{ $fgroup.SSLPassthroughMap.RegexFile }},_nomatch)
+        {{- "" }} if { var(req.backend) _nomatch }
+
+{{- /*------------------------------------*/}}
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
 {{- end }}
 {{- range $frontend := $frontends }}
-    ## {{ $frontend.Name }}
 {{- range $bind := $frontend.Binds }}
-    use-server _server_{{ $bind.Name }} if
-        {{- "" }} { req.ssl_sni -i -f {{ $bind.UseServerList }} }
-    server _server_{{ $bind.Name }} {{ $bind.Socket }} send-proxy-v2 weight 0
+{{- if $bind.UseServerList.HasRegex }}
+    ## {{ $frontend.Name }}/{{ $bind.Name }} wildcard
+    use-server _server{{ $bind.Name }}_wildcard if { req.ssl_sni -i -m reg -f {{ $bind.UseServerList.RegexFile }} }
+    server _server{{ $bind.Name }}_wildcard {{ $bind.Socket }} send-proxy-v2 weight 0
 {{- end }}
 {{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
     # TODO default backend
 {{- end }}
 
@@ -268,32 +435,59 @@ listen _front__tls
 # #
 #     HTTP frontend
 #
-frontend _front__http
+frontend _front_http
     mode http
     bind :80
 
 {{- /*------------------------------------*/}}
-{{- $hasredirect := $fgroup.HasRedirectHTTPS }}
-{{- $hashttp := $fgroup.HasHTTPHost }}
-{{- if $hasredirect }}
+{{- if $global.Syslog.Endpoint }}
+{{- if $global.Syslog.HTTPLogFormat }}
+    log-format {{ $global.Syslog.HTTPLogFormat }}
+{{- else }}
+    option httplog
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-{{- if $hashttp }}
-    http-request set-var(req.backend) var(req.base),map_beg({{ $fgroup.HTTPFrontsMap }},_nomatch)
-{{- end }}
-{{- else if $hashttp }}
-    http-request set-var(req.backend) base,regsub(:[0-9]+/,/),map_beg({{ $fgroup.HTTPFrontsMap }},_nomatch)
+
+{{- /*------------------------------------*/}}
+{{- if $fgroup.HTTPSRedirMap.HasRegex }}
+    http-request set-var(req.redir)
+        {{- "" }} var(req.base),map_beg({{ $fgroup.HTTPSRedirMap.MatchFile }},_nomatch)
+    http-request redirect scheme https if { var(req.redir) yes }
+    http-request redirect scheme https if { var(req.redir) _nomatch }
+        {{- "" }} { var(req.base),map_reg({{ $fgroup.HTTPSRedirMap.RegexFile }},_nomatch) yes }
+{{- else }}
+    http-request redirect scheme https if { var(req.base),map_beg({{ $fgroup.HTTPSRedirMap.MatchFile }},_nomatch) yes }
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $hasredirect }}
-    redirect scheme https if
-        {{- "" }} { var(req.base),map_beg({{ $fgroup.RedirectMap }},_nomatch) yes }
+{{- if $fgroup.HTTPRootRedirMap.HasHost }}
+    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.rootredir)
+        {{- "" }} var(req.host),map({{ $fgroup.HTTPRootRedirMap.MatchFile }},_nomatch)
+{{- if $fgroup.HTTPRootRedirMap.HasRegex }}
+    http-request set-var(req.rootredir)
+        {{- "" }} var(req.host),map_reg({{ $fgroup.HTTPRootRedirMap.RegexFile }},_nomatch) if { var(req.rootredir) _nomatch }
+{{- end }}
+    http-request redirect location %[var(req.rootredir)] if { path / } !{ var(req.rootredir) _nomatch }
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $hashttp }}
+    http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-CN
+    http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-DN
+    http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1
+    http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-Cert
+
+{{- /*------------------------------------*/}}
+    http-request set-var(req.backend) var(req.base),map_beg({{ $fgroup.HTTPFrontsMap.MatchFile }},_nomatch)
+{{- if $fgroup.HTTPFrontsMap.HasRegex }}
+    http-request set-var(req.backend)
+        {{- "" }} var(req.base),map_reg({{ $fgroup.HTTPFrontsMap.RegexFile }},_nomatch)
+        {{- "" }} if { var(req.backend) _nomatch }
+{{- end }}
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
-{{- end }}
 
 {{- template "defaultbackend" map $cfg }}
 
@@ -327,41 +521,106 @@ frontend {{ $frontend.Name }}
 {{- if $frontend.Timeout.ClientFin }}
     timeout client-fin {{ $frontend.Timeout.ClientFin }}
 {{- end }}
-{{- if $frontend.HasVarNamespace }}
-    http-request set-var(txn.namespace) base
-        {{- if $frontend.ConvertLowercase }},lower{{ end }}
-        {{- "" }},regsub(:[0-9]+/,/)
-        {{- "" }},map_beg({{ $frontend.VarNamespaceMap }},-)
+
+{{- /*------------------------------------*/}}
+{{- if $global.Syslog.Endpoint }}
+{{- if $global.Syslog.HTTPLogFormat }}
+    log-format {{ $global.Syslog.HTTPLogFormat }}
+{{- else }}
+    option httplog
+{{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-    http-request set-var(req.hostbackend) base
-        {{- if $frontend.ConvertLowercase }},lower{{ end }}
-        {{- "" }},regsub(:[0-9]+/,/)
-        {{- "" }},map_beg({{ $frontend.HostBackendsMap }},_nomatch)
+{{- if or $frontend.HostBackendsMap.HasRegex $frontend.HasVarNamespace }}
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.hostbackend)
+        {{- "" }} var(req.base),map_beg({{ $frontend.HostBackendsMap.MatchFile }},_nomatch)
+{{- else }}
+    http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/)
+        {{- "" }},map_beg({{ $frontend.HostBackendsMap.MatchFile }},_nomatch)
+{{- end }}
+{{- if $frontend.HostBackendsMap.HasRegex }}
+    http-request set-var(req.hostbackend)
+        {{- "" }} var(req.base),map_reg({{ $frontend.HostBackendsMap.RegexFile }},_nomatch)
+        {{- "" }} if { var(req.hostbackend) _nomatch }
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $frontend.RootRedirMap.HasHost }}
+    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.rootredir)
+        {{- "" }} var(req.host),map({{ $frontend.RootRedirMap.MatchFile }},_nomatch)
+{{- if $frontend.RootRedirMap.HasRegex }}
+    http-request set-var(req.rootredir)
+        {{- "" }} var(req.host),map_reg({{ $frontend.RootRedirMap.RegexFile }},_nomatch) if { var(req.rootredir) _nomatch }
+{{- end }}
+    http-request redirect location %[var(req.rootredir)] if { path / } !{ var(req.rootredir) _nomatch }
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $frontend.HasVarNamespace }}
+    http-request set-var(txn.namespace) 
+        {{- "" }} var(req.base),map_beg({{ $frontend.VarNamespaceMap.MatchFile }},-)
+{{- if $frontend.VarNamespaceMap.HasRegex }}
+    http-request set-var(txn.namespace) 
+        {{- "" }} var(req.base),map_reg({{ $frontend.VarNamespaceMap.RegexFile }},-)
+        {{- "" }} if { var(txn.namespace) - }
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+    http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-CN
+    http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-DN
+    http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1
+    http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-Cert
 
 {{- /*------------------------------------*/}}
 {{- if $frontend.HasTLSAuth }}
-{{- /* missing concat converter, fix after 1.9 */}}
+{{- /*** TODO missing concat converter, fix after 1.9 ***/}}
     http-request set-header x-ha-base %[ssl_fc_sni]%[path]
-    http-request set-var(req.snibackend) hdr(x-ha-base)
-        {{- if $frontend.ConvertLowercase }},lower{{ end }}
-        {{- "" }},regsub(:[0-9]+/,/)
-        {{- "" }},map_beg({{ $frontend.SNIBackendsMap }},_nomatch)
+{{- if $frontend.SNIBackendsMap.HasRegex }}
+    http-request set-var(req.snibase) hdr(x-ha-base),lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.snibackend) var(req.snibase)
+        {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }},_nomatch)
+    http-request set-var(req.snibackend) var(req.snibase)
+        {{- "" }},map_reg({{ $frontend.SNIBackendsMap.RegexFile }},_nomatch) if { var(req.snibackend) _nomatch }
+{{- else }}
+    http-request set-var(req.snibackend) hdr(x-ha-base),lower,regsub(:[0-9]+/,/)
+        {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }},_nomatch)
+{{- end }}
 {{- $mandatory := $frontend.HasTLSMandatory }}
-    acl tls-invalid-crt ssl_c_ca_err gt 0
-    acl tls-invalid-crt ssl_c_err gt 0
 {{- if $mandatory }}
     acl tls-has-crt ssl_c_used
-    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni
-        {{- if $frontend.ConvertLowercase }},lower{{ end }}
-        {{- "" }},map({{ $frontend.TLSNoCrtErrorPagesMap }},_internal)
-        {{- "" }} if !tls-has-crt
+    acl tls-need-crt ssl_fc_sni -i -f {{ $frontend.TLSNoCrtErrorList.MatchFile }}
+{{- if $frontend.TLSNoCrtErrorList.HasRegex }}
+    acl tls-need-crt ssl_fc_sni -i -m reg -f {{ $frontend.TLSNoCrtErrorList.RegexFile }}
 {{- end }}
-    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni
-        {{- if $frontend.ConvertLowercase }},lower{{ end }}
-        {{- "" }},map({{ $frontend.TLSInvalidCrtErrorPagesMap }},_internal)
-        {{- "" }} if tls-invalid-crt
+{{- end }}
+    acl tls-has-invalid-crt ssl_c_ca_err gt 0
+    acl tls-has-invalid-crt ssl_c_err gt 0
+    acl tls-check-crt ssl_fc_sni -i -f {{ $frontend.TLSInvalidCrtErrorList.MatchFile }}
+{{- if $frontend.TLSInvalidCrtErrorList.HasRegex }}
+    acl tls-check-crt ssl_fc_sni -i -m reg -f {{ $frontend.TLSInvalidCrtErrorList.RegexFile }}
+{{- end }}
+{{- if $mandatory }}
+    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower
+        {{- "" }},map({{ $frontend.TLSNoCrtErrorPagesMap.MatchFile }},_internal)
+        {{- "" }} if !tls-has-crt tls-need-crt
+{{- if $frontend.TLSNoCrtErrorPagesMap.HasRegex }}
+    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower
+        {{- "" }},map_reg({{ $frontend.TLSNoCrtErrorPagesMap.RegexFile }},_internal)
+        {{- "" }} if { var(req.tls_nocrt_redir) _internal }
+{{- end }}
+{{- end }}
+    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower
+        {{- "" }},map({{ $frontend.TLSInvalidCrtErrorPagesMap.MatchFile }},_internal)
+        {{- "" }} if tls-has-invalid-crt tls-check-crt
+{{- if $frontend.TLSInvalidCrtErrorPagesMap.HasRegex }}
+    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower
+        {{- "" }},map_reg({{ $frontend.TLSInvalidCrtErrorPagesMap.RegexFile }},_internal)
+        {{- "" }} if { var(req.tls_invalidcrt_redir) _internal }
+{{- end }}
 {{- if and $mandatory $frontend.HasNoCrtErrorPage }}
     http-request redirect location %[var(req.tls_nocrt_redir)] code 303 if
         {{- "" }} { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) _internal }
@@ -373,11 +632,9 @@ frontend {{ $frontend.Name }}
 {{- if $mandatory }}
     use_backend _error496 if
         {{- "" }} { var(req.tls_nocrt_redir) _internal }
-        {{- "" }} { ssl_fc_sni -i -f {{ $frontend.TLSNoCrtErrorList }} }
 {{- end }}
     use_backend _error495 if
         {{- "" }} { var(req.tls_invalidcrt_redir) _internal }
-        {{- "" }} { ssl_fc_sni -i -f {{ $frontend.TLSInvalidCrtErrorList }} }
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -402,4 +659,28 @@ frontend {{ $frontend.Name }}
 {{- else }}
     default_backend _error404
 {{- end }}
+{{- end }}
+
+
+  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# #
+# #   SUPPORT
+# #
+#
+
+{{- if $global.ModSecurity.Endpoints }}
+
+  # # # # # # # # # # # # # # # # # # #
+# #
+#     ModSecurity Agent
+#
+backend spoe-modsecurity
+    mode tcp
+    timeout connect 5s
+    timeout server  5s
+{{- range $i, $endpoint := $global.ModSecurity.Endpoints }}
+    server modsec-spoa{{ $i }} {{ $endpoint }}
+{{- end }}
+
 {{- end }}

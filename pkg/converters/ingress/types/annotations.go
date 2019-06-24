@@ -20,14 +20,13 @@ package types
 type HostAnnotations struct {
 	Source                 Source `json:"-"`
 	AppRoot                string `json:"app-root"`
-	AuthTLSCertHeader      bool   `json:"auth-tls-cert-header"`
 	AuthTLSErrorPage       string `json:"auth-tls-error-page"`
 	AuthTLSVerifyClient    string `json:"auth-tls-verify-client"`
 	AuthTLSSecret          string `json:"auth-tls-secret"`
 	ServerAlias            string `json:"server-alias"`
 	ServerAliasRegex       string `json:"server-alias-regex"`
 	SSLPassthrough         bool   `json:"ssl-passthrough"`
-	SSLPassthroughHTTPPort int    `json:"ssl-passthrough-http-port"`
+	SSLPassthroughHTTPPort string `json:"ssl-passthrough-http-port"`
 	TimeoutClient          string `json:"timeout-client"`
 	TimeoutClientFin       string `json:"timeout-client-fin"`
 }
@@ -38,18 +37,19 @@ type BackendAnnotations struct {
 	Affinity              string `json:"affinity"`
 	AuthRealm             string `json:"auth-realm"`
 	AuthSecret            string `json:"auth-secret"`
+	AuthTLSCertHeader     bool   `json:"auth-tls-cert-header"`
 	AuthType              string `json:"auth-type"`
 	BalanceAlgorithm      string `json:"balance-algorithm"`
 	BlueGreenBalance      string `json:"blue-green-balance"`
 	BlueGreenDeploy       string `json:"blue-green-deploy"`
 	BlueGreenMode         string `json:"blue-green-mode"`
 	ConfigBackend         string `json:"config-backend"`
-	CookieKey             string `json:"cookie-key"`
 	CorsAllowCredentials  bool   `json:"cors-allow-credentials"`
 	CorsAllowHeaders      string `json:"cors-allow-headers"`
 	CorsAllowMethods      string `json:"cors-allow-methods"`
 	CorsAllowOrigin       string `json:"cors-allow-origin"`
 	CorsEnable            bool   `json:"cors-enable"`
+	CorsExposeHeaders     string `json:"cors-expose-headers"`
 	CorsMaxAge            int    `json:"cors-max-age"`
 	HSTS                  bool   `json:"hsts"`
 	HSTSIncludeSubdomains bool   `json:"hsts-include-subdomains"`
@@ -70,7 +70,7 @@ type BackendAnnotations struct {
 	SecureBackends        bool   `json:"secure-backends"`
 	SecureCrtSecret       string `json:"secure-crt-secret"`
 	SecureVerifyCASecret  string `json:"secure-verify-ca-secret"`
-	SessionCookieDynamic  string `json:"session-cookie-dynamic"`
+	SessionCookieDynamic  bool   `json:"session-cookie-dynamic"`
 	SessionCookieName     string `json:"session-cookie-name"`
 	SessionCookieStrategy string `json:"session-cookie-strategy"`
 	SSLRedirect           bool   `json:"ssl-redirect"`

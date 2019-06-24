@@ -18,6 +18,7 @@ package annotations
 
 import (
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -71,14 +72,14 @@ func TestAffinity(t *testing.T) {
 		},
 		// 6
 		{
-			ann:        types.BackendAnnotations{Affinity: "cookie", SessionCookieStrategy: "prefix"},
-			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "prefix"},
+			ann:        types.BackendAnnotations{Affinity: "cookie", SessionCookieStrategy: "prefix", SessionCookieDynamic: true},
+			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "prefix", Dynamic: true},
 			expLogging: "",
 		},
 		// 7
 		{
-			ann:        types.BackendAnnotations{Affinity: "cookie", CookieKey: "ha"},
-			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "insert", Key: "ha"},
+			ann:        types.BackendAnnotations{Affinity: "cookie", SessionCookieDynamic: false},
+			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "insert", Dynamic: false},
 			expLogging: "",
 		},
 	}
@@ -98,13 +99,12 @@ func TestAffinity(t *testing.T) {
 
 func TestAuthHTTP(t *testing.T) {
 	testCase := []struct {
-		namespace       string
-		ingname         string
-		ann             types.BackendAnnotations
-		secrets         ing_helper.SecretContent
-		expUserlists    []*hatypes.Userlist
-		expHTTPRequests []*hatypes.HTTPRequest
-		expLogging      string
+		namespace    string
+		ingname      string
+		ann          types.BackendAnnotations
+		secrets      ing_helper.SecretContent
+		expUserlists []*hatypes.Userlist
+		expLogging   string
 	}{
 		// 0
 		{
@@ -134,25 +134,32 @@ func TestAuthHTTP(t *testing.T) {
 		},
 		// 5
 		{
-			namespace:       "ns1",
-			ingname:         "i1",
-			ann:             types.BackendAnnotations{AuthType: "basic", AuthSecret: "mypwd"},
-			secrets:         ing_helper.SecretContent{"ns1/mypwd": {"auth": []byte{}}},
-			expUserlists:    []*hatypes.Userlist{&hatypes.Userlist{Name: "ns1_mypwd"}},
-			expHTTPRequests: []*hatypes.HTTPRequest{{}},
-			expLogging:      "WARN userlist on ingress 'ns1/i1' for basic authentication is empty",
+			ann:     types.BackendAnnotations{AuthType: "basic", AuthSecret: "mypwd", AuthRealm: `"a name"`},
+			secrets: ing_helper.SecretContent{"default/mypwd": {"auth": []byte("usr1::clear1")}},
+			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_mypwd", Users: []hatypes.User{
+				{Name: "usr1", Passwd: "clear1", Encrypted: false},
+			}}},
+			expLogging: "WARN ignoring auth-realm with quotes on ingress 'default/ing1'",
 		},
 		// 6
 		{
-			ann:             types.BackendAnnotations{AuthType: "basic", AuthSecret: "basicpwd"},
-			secrets:         ing_helper.SecretContent{"default/basicpwd": {"auth": []byte("fail")}},
-			expUserlists:    []*hatypes.Userlist{&hatypes.Userlist{Name: "default_basicpwd"}},
-			expHTTPRequests: []*hatypes.HTTPRequest{{}},
+			namespace:    "ns1",
+			ingname:      "i1",
+			ann:          types.BackendAnnotations{AuthType: "basic", AuthSecret: "mypwd"},
+			secrets:      ing_helper.SecretContent{"ns1/mypwd": {"auth": []byte{}}},
+			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "ns1_mypwd"}},
+			expLogging:   "WARN userlist on ingress 'ns1/i1' for basic authentication is empty",
+		},
+		// 7
+		{
+			ann:          types.BackendAnnotations{AuthType: "basic", AuthSecret: "basicpwd"},
+			secrets:      ing_helper.SecretContent{"default/basicpwd": {"auth": []byte("fail")}},
+			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_basicpwd"}},
 			expLogging: `
 WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ingress 'default/ing1': missing password of user 'fail' line 1
 WARN userlist on ingress 'default/ing1' for basic authentication is empty`,
 		},
-		// 7
+		// 8
 		{
 			ann: types.BackendAnnotations{AuthType: "basic", AuthSecret: "basicpwd"},
 			secrets: ing_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
@@ -161,10 +168,9 @@ nopwd`)}},
 			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_basicpwd", Users: []hatypes.User{
 				{Name: "usr1", Passwd: "clearpwd1", Encrypted: false},
 			}}},
-			expHTTPRequests: []*hatypes.HTTPRequest{{}},
-			expLogging:      "WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ingress 'default/ing1': missing password of user 'nopwd' line 3",
+			expLogging: "WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ingress 'default/ing1': missing password of user 'nopwd' line 3",
 		},
-		// 8
+		// 9
 		{
 			ann: types.BackendAnnotations{AuthType: "basic", AuthSecret: "basicpwd"},
 			secrets: ing_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
@@ -172,8 +178,7 @@ usrnopwd1:
 usrnopwd2::
 :encpwd3
 ::clearpwd4`)}},
-			expUserlists:    []*hatypes.Userlist{&hatypes.Userlist{Name: "default_basicpwd"}},
-			expHTTPRequests: []*hatypes.HTTPRequest{{}},
+			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_basicpwd"}},
 			expLogging: `
 WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ingress 'default/ing1': missing password of user 'usrnopwd1' line 2
 WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ingress 'default/ing1': missing password of user 'usrnopwd2' line 3
@@ -181,7 +186,7 @@ WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ing
 WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ingress 'default/ing1': missing username line 5
 WARN userlist on ingress 'default/ing1' for basic authentication is empty`,
 		},
-		// 9
+		// 10
 		{
 			ann: types.BackendAnnotations{AuthType: "basic", AuthSecret: "basicpwd"},
 			secrets: ing_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
@@ -191,8 +196,7 @@ usr2::clearpwd2`)}},
 				{Name: "usr1", Passwd: "encpwd1", Encrypted: true},
 				{Name: "usr2", Passwd: "clearpwd2", Encrypted: false},
 			}}},
-			expHTTPRequests: []*hatypes.HTTPRequest{{}},
-			expLogging:      "",
+			expLogging: "",
 		},
 	}
 
@@ -210,12 +214,8 @@ usr2::clearpwd2`)}},
 		d := c.createBackendData(test.namespace, test.ingname, &test.ann)
 		u.buildBackendAuthHTTP(d)
 		userlists := u.haproxy.Userlists()
-		httpRequests := d.backend.HTTPRequests
 		if len(userlists)+len(test.expUserlists) > 0 && !reflect.DeepEqual(test.expUserlists, userlists) {
 			t.Errorf("userlists config %d differs - expected: %+v - actual: %+v", i, test.expUserlists, userlists)
-		}
-		if len(httpRequests)+len(test.expHTTPRequests) > 0 && !reflect.DeepEqual(test.expHTTPRequests, httpRequests) {
-			t.Errorf("httprequest config %d differs - expected: %+v - actual: %+v", i, test.expHTTPRequests, httpRequests)
 		}
 		c.logger.CompareLogging(test.expLogging)
 		c.teardown()
@@ -244,11 +244,20 @@ func TestBlueGreen(t *testing.T) {
 		ep := []*hatypes.Endpoint{}
 		if targets != "" {
 			for _, targetRef := range strings.Split(targets, ",") {
+				targetWeight := strings.Split(targetRef, "=")
+				target := targetRef
+				weight := 1
+				if len(targetWeight) == 2 {
+					target = targetWeight[0]
+					if w, err := strconv.ParseInt(targetWeight[1], 10, 0); err == nil {
+						weight = int(w)
+					}
+				}
 				ep = append(ep, &hatypes.Endpoint{
 					IP:        "172.17.0.11",
 					Port:      8080,
-					Weight:    1,
-					TargetRef: targetRef,
+					Weight:    weight,
+					TargetRef: target,
 				})
 			}
 		}
@@ -481,6 +490,13 @@ INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not refe
 			expWeights: []int{256, 1, 1, 1, 1},
 			expLogging: "",
 		},
+		// 29
+		{
+			ann:        buildAnn("v=1=50,v=2=50", "deploy"),
+			endpoints:  buildEndpoints("pod0101-01,pod0101-02,pod0102-01,pod0102-02=0"),
+			expWeights: []int{1, 1, 2, 0},
+			expLogging: "",
+		},
 	}
 
 	for i, test := range testCase {
@@ -498,6 +514,242 @@ INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not refe
 			t.Errorf("weight on %d differs - expected: %v - actual: %v", i, test.expWeights, weights)
 		}
 		c.logger.CompareLogging(test.expLogging)
+		c.teardown()
+	}
+}
+
+func TestOAuth(t *testing.T) {
+	testCases := []struct {
+		ann      types.BackendAnnotations
+		backend  string
+		oauthExp hatypes.OAuthConfig
+		logging  string
+	}{
+		// 0
+		{
+			ann:      types.BackendAnnotations{},
+			oauthExp: hatypes.OAuthConfig{},
+		},
+		// 1
+		{
+			ann:     types.BackendAnnotations{OAuth: "none"},
+			logging: "WARN ignoring invalid oauth implementation 'none' on ingress 'default/app'",
+		},
+		// 2
+		{
+			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy"},
+			logging: "ERROR path '/oauth2' was not found on namespace 'default'",
+		},
+		// 3
+		{
+			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy"},
+			backend: "default:back:/oauth2",
+			oauthExp: hatypes.OAuthConfig{
+				Impl:        "oauth2_proxy",
+				BackendName: "default_back_8080",
+				URIPrefix:   "/oauth2",
+				Headers:     map[string]string{"X-Auth-Request-Email": "auth_response_email"},
+			},
+		},
+		// 4
+		{
+			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy", OAuthURIPrefix: "/auth"},
+			backend: "default:back:/auth",
+			oauthExp: hatypes.OAuthConfig{
+				Impl:        "oauth2_proxy",
+				BackendName: "default_back_8080",
+				URIPrefix:   "/auth",
+				Headers:     map[string]string{"X-Auth-Request-Email": "auth_response_email"},
+			},
+		},
+		// 5
+		{
+			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy", OAuthHeaders: "X-Auth-New:attr_from_lua"},
+			backend: "default:back:/oauth2",
+			oauthExp: hatypes.OAuthConfig{
+				Impl:        "oauth2_proxy",
+				BackendName: "default_back_8080",
+				URIPrefix:   "/oauth2",
+				Headers:     map[string]string{"X-Auth-New": "attr_from_lua"},
+			},
+		},
+		// 6
+		{
+			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy", OAuthHeaders: "space before:attr"},
+			backend: "default:back:/oauth2",
+			oauthExp: hatypes.OAuthConfig{
+				Impl:        "oauth2_proxy",
+				BackendName: "default_back_8080",
+				URIPrefix:   "/oauth2",
+				Headers:     map[string]string{},
+			},
+			logging: "WARN invalid header format 'space before:attr' on ingress 'default/app'",
+		},
+		// 7
+		{
+			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy", OAuthHeaders: "no-colon"},
+			backend: "default:back:/oauth2",
+			oauthExp: hatypes.OAuthConfig{
+				Impl:        "oauth2_proxy",
+				BackendName: "default_back_8080",
+				URIPrefix:   "/oauth2",
+				Headers:     map[string]string{},
+			},
+			logging: "WARN invalid header format 'no-colon' on ingress 'default/app'",
+		},
+		// 8
+		{
+			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy", OAuthHeaders: "more:colons:unsupported"},
+			backend: "default:back:/oauth2",
+			oauthExp: hatypes.OAuthConfig{
+				Impl:        "oauth2_proxy",
+				BackendName: "default_back_8080",
+				URIPrefix:   "/oauth2",
+				Headers:     map[string]string{},
+			},
+			logging: "WARN invalid header format 'more:colons:unsupported' on ingress 'default/app'",
+		},
+		// 9
+		{
+			ann: types.BackendAnnotations{
+				OAuth:        "oauth2_proxy",
+				OAuthHeaders: ",,X-Auth-Request-Email:auth_response_email,,X-Auth-New:attr_from_lua,",
+			},
+			backend: "default:back:/oauth2",
+			oauthExp: hatypes.OAuthConfig{
+				Impl:        "oauth2_proxy",
+				BackendName: "default_back_8080",
+				URIPrefix:   "/oauth2",
+				Headers: map[string]string{
+					"X-Auth-Request-Email": "auth_response_email",
+					"X-Auth-New":           "attr_from_lua",
+				},
+			},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createBackendData("default", "app", &test.ann)
+		if test.backend != "" {
+			b := strings.Split(test.backend, ":")
+			backend := c.haproxy.AcquireBackend(b[0], b[1], "8080")
+			c.haproxy.AcquireHost("app.local").AddPath(backend, b[2])
+		}
+		c.createUpdater().buildOAuth(d)
+		if !reflect.DeepEqual(test.oauthExp, d.backend.OAuth) {
+			t.Errorf("oauth on %d differs - expected: %+v - actual: %+v", i, test.oauthExp, d.backend.OAuth)
+		}
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
+func TestRewriteURL(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected string
+		logging  string
+	}{
+		// 0
+		{
+			input:    ``,
+			expected: ``,
+		},
+		// 1
+		{
+			input:    `/"/`,
+			expected: ``,
+			logging:  `WARN rewrite-target does not allow white spaces or single/double quotes on ingress 'default/app'`,
+		},
+		// 2
+		{
+			input:    `/app`,
+			expected: `/app`,
+		},
+	}
+
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createBackendData("default", "app", &types.BackendAnnotations{RewriteTarget: test.input})
+		c.createUpdater().buildRewriteURL(d)
+		if d.backend.RewriteURL != test.expected {
+			t.Errorf("rewrite on %d differs - expected: %v - actual: %v", i, test.expected, d.backend.RewriteURL)
+		}
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
+func TestWAF(t *testing.T) {
+	testCase := []struct {
+		waf      string
+		expected string
+		logging  string
+	}{
+		{
+			waf:      "",
+			expected: "",
+			logging:  "",
+		},
+		{
+			waf:      "none",
+			expected: "",
+			logging:  "WARN ignoring invalid WAF mode: none",
+		},
+		{
+			waf:      "modsecurity",
+			expected: "modsecurity",
+			logging:  "",
+		},
+	}
+	for i, test := range testCase {
+		c := setup(t)
+		d := c.createBackendData("default", "app", &types.BackendAnnotations{WAF: test.waf})
+		c.createUpdater().buildWAF(d)
+		if d.backend.WAF != test.expected {
+			t.Errorf("WAF on %d differs - expected: %v - actual: %v", i, test.expected, d.backend.WAF)
+		}
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
+func TestWhitelist(t *testing.T) {
+	testCase := []struct {
+		cidrlist string
+		expected []string
+		logging  string
+	}{
+		// 0
+		{
+			cidrlist: "10.0.0.0/8,192.168.0.0/16",
+			expected: []string{"10.0.0.0/8", "192.168.0.0/16"},
+		},
+		// 1
+		{
+			cidrlist: "10.0.0.0/8,192.168.0/16",
+			expected: []string{"10.0.0.0/8"},
+			logging:  `WARN skipping invalid cidr '192.168.0/16' in whitelist config on ingress 'default/app'`,
+		},
+		// 2
+		{
+			cidrlist: "10.0.0/8,192.168.0/16",
+			expected: []string{},
+			logging: `
+WARN skipping invalid cidr '10.0.0/8' in whitelist config on ingress 'default/app'
+WARN skipping invalid cidr '192.168.0/16' in whitelist config on ingress 'default/app'`,
+		},
+	}
+	for i, test := range testCase {
+		c := setup(t)
+		d := c.createBackendData("default", "app", &types.BackendAnnotations{WhitelistSourceRange: test.cidrlist})
+		c.createUpdater().buildWhitelist(d)
+		if !reflect.DeepEqual(d.backend.Whitelist, test.expected) {
+			if len(d.backend.Whitelist) > 0 || len(test.expected) > 0 {
+				t.Errorf("whitelist on %d differs - expected: %v - actual: %v", i, test.expected, d.backend.Whitelist)
+			}
+		}
+		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
 }

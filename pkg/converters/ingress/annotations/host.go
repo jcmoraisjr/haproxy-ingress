@@ -29,7 +29,6 @@ func (c *updater) buildHostAuthTLS(d *hostData) {
 		d.host.TLS.CAHash = cafile.SHA1Hash
 		d.host.TLS.CAVerifyOptional = verify == "optional" || verify == "optional_no_ca"
 		d.host.TLS.CAErrorPage = d.ann.AuthTLSErrorPage
-		d.host.TLS.AddCertHeader = d.ann.AuthTLSCertHeader
 	} else {
 		c.logger.Error("error building TLS auth config: %v", err)
 	}
@@ -49,7 +48,7 @@ func (c *updater) buildHostSSLPassthrough(d *hostData) {
 			c.logger.Warn("ignoring path '%s' from '%s': ssl-passthrough only support root path", path.Path, d.ann.Source)
 		}
 	}
-	if d.ann.SSLPassthroughHTTPPort != 0 {
+	if d.ann.SSLPassthroughHTTPPort != "" {
 		httpBackend := c.haproxy.FindBackend(rootPath.Backend.Namespace, rootPath.Backend.Name, d.ann.SSLPassthroughHTTPPort)
 		d.host.HTTPPassthroughBackend = httpBackend
 	}

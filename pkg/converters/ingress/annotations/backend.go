@@ -18,6 +18,8 @@ package annotations
 
 import (
 	"fmt"
+	"net"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -47,7 +49,7 @@ func (c *updater) buildBackendAffinity(d *backData) {
 	}
 	d.backend.Cookie.Name = name
 	d.backend.Cookie.Strategy = strategy
-	d.backend.Cookie.Key = d.ann.CookieKey
+	d.backend.Cookie.Dynamic = d.ann.SessionCookieDynamic
 }
 
 func (c *updater) buildBackendAuthHTTP(d *backData) {
@@ -80,7 +82,14 @@ func (c *updater) buildBackendAuthHTTP(d *backData) {
 			c.logger.Warn("userlist on %v for basic authentication is empty", d.ann.Source)
 		}
 	}
-	d.backend.HreqValidateUserlist(userlist)
+	d.backend.Userlist.Name = userlist.Name
+	realm := "localhost" // HAProxy's backend name would be used if missing
+	if strings.Index(d.ann.AuthRealm, `"`) >= 0 {
+		c.logger.Warn("ignoring auth-realm with quotes on %v", d.ann.Source)
+	} else if d.ann.AuthRealm != "" {
+		realm = d.ann.AuthRealm
+	}
+	d.backend.Userlist.Realm = realm
 }
 
 func (c *updater) buildBackendAuthHTTPExtractUserlist(source, secret, users string) ([]hatypes.User, []error) {
@@ -167,6 +176,10 @@ func (c *updater) buildBackendBlueGreen(d *backData) {
 		deployWeights = append(deployWeights, dw)
 	}
 	for _, ep := range d.backend.Endpoints {
+		if ep.Weight == 0 {
+			// Draining endpoint, remove from blue/green calc
+			continue
+		}
 		hasLabel := false
 		if pod, err := c.cache.GetPod(ep.TargetRef); err == nil {
 			for _, dw := range deployWeights {
@@ -260,4 +273,139 @@ func (c *updater) buildBackendBlueGreen(d *backData) {
 			}
 		}
 	}
+}
+
+var (
+	corsOriginRegex  = regexp.MustCompile(`^(https?://[A-Za-z0-9\-\.]*(:[0-9]+)?|\*)?$`)
+	corsMethodsRegex = regexp.MustCompile(`^([A-Za-z]+,?\s?)+$`)
+	corsHeadersRegex = regexp.MustCompile(`^([A-Za-z0-9\-\_]+,?\s?)+$`)
+)
+
+func (c *updater) buildBackendCors(d *backData) {
+	if !d.ann.CorsEnable {
+		return
+	}
+	d.backend.Cors.Enabled = true
+	if d.ann.CorsAllowOrigin != "" && corsOriginRegex.MatchString(d.ann.CorsAllowOrigin) {
+		d.backend.Cors.AllowOrigin = d.ann.CorsAllowOrigin
+	} else {
+		d.backend.Cors.AllowOrigin = "*"
+	}
+	if corsHeadersRegex.MatchString(d.ann.CorsAllowHeaders) {
+		d.backend.Cors.AllowHeaders = d.ann.CorsAllowHeaders
+	} else {
+		d.backend.Cors.AllowHeaders =
+			"DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+	}
+	if corsMethodsRegex.MatchString(d.ann.CorsAllowMethods) {
+		d.backend.Cors.AllowMethods = d.ann.CorsAllowMethods
+	} else {
+		d.backend.Cors.AllowMethods = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+	}
+	d.backend.Cors.AllowCredentials = d.ann.CorsAllowCredentials
+	if d.ann.CorsMaxAge > 0 {
+		d.backend.Cors.MaxAge = d.ann.CorsMaxAge
+	} else {
+		d.backend.Cors.MaxAge = 86400
+	}
+	if corsHeadersRegex.MatchString(d.ann.CorsExposeHeaders) {
+		d.backend.Cors.ExposeHeaders = d.ann.CorsExposeHeaders
+	}
+}
+
+var (
+	oauthHeaderRegex = regexp.MustCompile(`^[A-Za-z0-9-]+:[A-Za-z0-9-_]+$`)
+)
+
+func (c *updater) buildOAuth(d *backData) {
+	if d.ann.OAuth == "" {
+		return
+	}
+	if d.ann.OAuth != "oauth2_proxy" {
+		c.logger.Warn("ignoring invalid oauth implementation '%s' on %v", d.ann.OAuth, d.ann.Source)
+		return
+	}
+	uriPrefix := "/oauth2"
+	headers := []string{"X-Auth-Request-Email:auth_response_email"}
+	if d.ann.OAuthURIPrefix != "" {
+		uriPrefix = d.ann.OAuthURIPrefix
+	}
+	if d.ann.OAuthHeaders != "" {
+		headers = strings.Split(d.ann.OAuthHeaders, ",")
+	}
+	uriPrefix = strings.TrimRight(uriPrefix, "/")
+	namespace := d.ann.Source.Namespace
+	backend := c.findBackend(namespace, uriPrefix)
+	if backend == nil {
+		c.logger.Error("path '%s' was not found on namespace '%s'", uriPrefix, namespace)
+		return
+	}
+	headersMap := make(map[string]string, len(headers))
+	for _, header := range headers {
+		if len(header) == 0 {
+			continue
+		}
+		if !oauthHeaderRegex.MatchString(header) {
+			c.logger.Warn("invalid header format '%s' on %v", header, d.ann.Source)
+			continue
+		}
+		h := strings.Split(header, ":")
+		headersMap[h[0]] = h[1]
+	}
+	d.backend.OAuth.Impl = d.ann.OAuth
+	d.backend.OAuth.BackendName = backend.ID
+	d.backend.OAuth.URIPrefix = uriPrefix
+	d.backend.OAuth.Headers = headersMap
+}
+
+func (c *updater) findBackend(namespace, uriPrefix string) *hatypes.Backend {
+	for _, host := range c.haproxy.Hosts() {
+		for _, path := range host.Paths {
+			if strings.TrimRight(path.Path, "/") == uriPrefix && path.Backend.Namespace == namespace {
+				return path.Backend
+			}
+		}
+	}
+	return nil
+}
+
+var (
+	rewriteURLRegex = regexp.MustCompile(`^[^"' ]+$`)
+)
+
+func (c *updater) buildRewriteURL(d *backData) {
+	if d.ann.RewriteTarget == "" {
+		return
+	}
+	if !rewriteURLRegex.MatchString(d.ann.RewriteTarget) {
+		c.logger.Warn("rewrite-target does not allow white spaces or single/double quotes on %v", d.ann.Source)
+		return
+	}
+	d.backend.RewriteURL = d.ann.RewriteTarget
+}
+
+func (c *updater) buildWAF(d *backData) {
+	if d.ann.WAF == "" {
+		return
+	}
+	if d.ann.WAF != "modsecurity" {
+		c.logger.Warn("ignoring invalid WAF mode: %s", d.ann.WAF)
+		return
+	}
+	d.backend.WAF = d.ann.WAF
+}
+
+func (c *updater) buildWhitelist(d *backData) {
+	if d.ann.WhitelistSourceRange == "" {
+		return
+	}
+	var cidrlist []string
+	for _, cidr := range strings.Split(d.ann.WhitelistSourceRange, ",") {
+		if _, _, err := net.ParseCIDR(cidr); err != nil {
+			c.logger.Warn("skipping invalid cidr '%s' in whitelist config on %v", cidr, d.ann.Source)
+		} else {
+			cidrlist = append(cidrlist, cidr)
+		}
+	}
+	d.backend.Whitelist = cidrlist
 }

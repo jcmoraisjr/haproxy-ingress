@@ -18,18 +18,19 @@ package types
 
 // Global ...
 type Global struct {
-	Procs                  ProcsConfig
-	Syslog                 SyslogConfig
-	MaxConn                int
-	Timeout                TimeoutConfig
-	SSL                    SSLConfig
-	ModSecurity            ModSecurityConfig
-	DrainSupport           bool
-	DrainSupportRedispatch bool
-	LoadServerState        bool
-	StatsSocket            string
-	CustomConfig           []string
-	CustomDefaults         []string
+	Procs           ProcsConfig
+	Syslog          SyslogConfig
+	MaxConn         int
+	Timeout         TimeoutConfig
+	SSL             SSLConfig
+	ModSecurity     ModSecurityConfig
+	Cookie          CookieConfig
+	DrainSupport    DrainConfig
+	ForwardFor      string
+	LoadServerState bool
+	StatsSocket     string
+	CustomConfig    []string
+	CustomDefaults  []string
 }
 
 // ProcsConfig ...
@@ -45,9 +46,12 @@ type ProcsConfig struct {
 
 // SyslogConfig ...
 type SyslogConfig struct {
-	Endpoint string
-	Format   string
-	Tag      string
+	Endpoint       string
+	Format         string
+	HTTPLogFormat  string
+	HTTPSLogFormat string
+	Tag            string
+	TCPLogFormat   string
 }
 
 // TimeoutConfig ...
@@ -59,11 +63,12 @@ type TimeoutConfig struct {
 
 // SSLConfig ...
 type SSLConfig struct {
-	DHParam   DHParamConfig
-	Ciphers   string
-	Options   string
-	Engine    string
-	ModeAsync bool
+	DHParam       DHParamConfig
+	Ciphers       string
+	Options       string
+	Engine        string
+	ModeAsync     bool
+	HeadersPrefix string
 }
 
 // DHParamConfig ...
@@ -78,6 +83,17 @@ type ModSecurityConfig struct {
 	Timeout   ModSecurityTimeoutConfig
 }
 
+// CookieConfig ...
+type CookieConfig struct {
+	Key string
+}
+
+// DrainConfig ...
+type DrainConfig struct {
+	Drain      bool
+	Redispatch bool
+}
+
 // ModSecurityTimeoutConfig ...
 type ModSecurityTimeoutConfig struct {
 	Hello      string
@@ -85,15 +101,36 @@ type ModSecurityTimeoutConfig struct {
 	Processing string
 }
 
+// HostsMapEntry ...
+type HostsMapEntry struct {
+	Key   string
+	Value string
+}
+
+// HostsMap ...
+type HostsMap struct {
+	Match     []*HostsMapEntry
+	MatchFile string
+	Regex     []*HostsMapEntry
+	RegexFile string
+}
+
+// HostsMaps ...
+type HostsMaps struct {
+	Items []*HostsMap
+}
+
 // FrontendGroup ...
 type FrontendGroup struct {
-	Frontends         []*Frontend
-	HasHTTPHost       bool
-	HasRedirectHTTPS  bool
+	Frontends []*Frontend
+	//
 	HasSSLPassthrough bool
-	HTTPFrontsMap     string
-	RedirectMap       string
-	SSLPassthroughMap string
+	//
+	Maps              *HostsMaps
+	HTTPFrontsMap     *HostsMap
+	HTTPRootRedirMap  *HostsMap
+	HTTPSRedirMap     *HostsMap
+	SSLPassthroughMap *HostsMap
 }
 
 // Frontend ...
@@ -102,15 +139,17 @@ type Frontend struct {
 	Binds []*BindConfig
 	Hosts []*Host
 	//
-	ConvertLowercase           bool
-	HostBackendsMap            string
-	SNIBackendsMap             string
-	Timeout                    HostTimeoutConfig
-	TLSInvalidCrtErrorList     string
-	TLSNoCrtErrorList          string
-	TLSInvalidCrtErrorPagesMap string
-	TLSNoCrtErrorPagesMap      string
-	VarNamespaceMap            string
+	Timeout HostTimeoutConfig
+	//
+	Maps                       *HostsMaps
+	HostBackendsMap            *HostsMap
+	RootRedirMap               *HostsMap
+	SNIBackendsMap             *HostsMap
+	TLSInvalidCrtErrorList     *HostsMap
+	TLSInvalidCrtErrorPagesMap *HostsMap
+	TLSNoCrtErrorList          *HostsMap
+	TLSNoCrtErrorPagesMap      *HostsMap
+	VarNamespaceMap            *HostsMap
 }
 
 // BindConfig ...
@@ -119,9 +158,11 @@ type BindConfig struct {
 	Socket string
 	Hosts  []*Host
 	//
-	AcceptProxy   bool
-	TLS           BindTLSConfig
-	UseServerList string
+	AcceptProxy bool
+	TLS         BindTLSConfig
+	//
+	Maps          *HostsMaps
+	UseServerList *HostsMap
 }
 
 // BindTLSConfig ...
@@ -177,7 +218,6 @@ type HostTimeoutConfig struct {
 
 // HostTLSConfig ...
 type HostTLSConfig struct {
-	AddCertHeader    bool
 	CAErrorPage      string
 	CAFilename       string
 	CAHash           string
@@ -191,23 +231,30 @@ type Backend struct {
 	ID        string
 	Namespace string
 	Name      string
-	Port      int
+	Port      string
 	Endpoints []*Endpoint
 	//
 	AgentCheck        AgentCheck
 	BalanceAlgorithm  string
 	Cookie            Cookie
+	Cors              Cors
 	CustomConfig      []string
 	HealthCheck       HealthCheck
-	HTTPRequests      []*HTTPRequest
+	HSTS              HSTS
 	MaxConnServer     int
 	MaxQueueServer    int
 	ModeTCP           bool
+	OAuth             OAuthConfig
+	Paths             []string
 	ProxyBodySize     string
+	RewriteURL        string
 	SendProxyProtocol string
 	SSL               SSLBackendConfig
 	SSLRedirect       bool
 	Timeout           BackendTimeoutConfig
+	Userlist          UserlistConfig
+	WAF               string
+	Whitelist         []string
 }
 
 // Endpoint ...
@@ -237,13 +284,23 @@ type HealthCheck struct {
 	RiseCount string
 }
 
+// OAuthConfig ...
+type OAuthConfig struct {
+	Impl        string
+	BackendName string
+	URIPrefix   string
+	Headers     map[string]string
+}
+
 // SSLBackendConfig ...
 type SSLBackendConfig struct {
-	IsSecure     bool
-	CertFilename string
-	CertHash     string
-	CAFilename   string
-	CAHash       string
+	HasTLSAuth    bool
+	AddCertHeader bool
+	IsSecure      bool
+	CertFilename  string
+	CertHash      string
+	CAFilename    string
+	CAHash        string
 }
 
 // BackendTimeoutConfig ...
@@ -257,15 +314,36 @@ type BackendTimeoutConfig struct {
 	Tunnel      string
 }
 
+type UserlistConfig struct {
+	Name  string
+	Realm string
+}
+
 // Cookie ...
 type Cookie struct {
 	Name     string
 	Strategy string
-	Key      string
+	Dynamic  bool
 }
 
-// HTTPRequest ...
-type HTTPRequest struct {
+// Cors ...
+type Cors struct {
+	Enabled bool
+	//
+	AllowCredentials bool
+	AllowHeaders     string
+	AllowMethods     string
+	AllowOrigin      string
+	ExposeHeaders    string
+	MaxAge           int
+}
+
+// HSTS ...
+type HSTS struct {
+	Enabled    bool
+	MaxAge     int
+	Subdomains bool
+	Preload    bool
 }
 
 // Userlist ...

@@ -26,6 +26,7 @@ import (
 	extensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
 
 	ing_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/helper_test"
@@ -80,6 +81,75 @@ func TestSyncDefaultSvcNotFound(t *testing.T) {
 
 	c.compareLogging(`
 ERROR error reading default service: service not found: 'system/default'`)
+}
+
+func TestSyncSvcPortNotFound(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	c.createSvc1Auto()
+	c.Sync(c.createIng1("default/echo", "echo.example.com", "/", "echo:non"))
+
+	c.compareConfigFront(`
+- hostname: echo.example.com
+  paths: []
+`)
+
+	c.compareConfigBack(`
+- id: _default_backend
+  endpoints:
+  - ip: 172.17.0.99
+    port: 8080
+`)
+
+	c.compareLogging(`
+WARN skipping backend config of ingress 'default/echo': port not found: 'non'
+`)
+}
+
+func TestSyncSvcNamedPort(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	c.createSvc1("default/echo", "httpsvc:1001:8080", "172.17.1.101")
+	c.Sync(
+		c.createIng1("default/echo1", "echo1.example.com", "/", "echo:httpsvc"),
+		c.createIng1("default/echo2", "echo2.example.com", "/", "echo:1001"),
+		c.createIng1("default/echo3", "echo3.example.com", "/", "echo:8080"),
+		c.createIng1("default/echo4", "echo4.example.com", "/", "echo:9000"),
+	)
+
+	c.compareConfigFront(`
+- hostname: echo1.example.com
+  paths:
+  - path: /
+    backend: default_echo_8080
+- hostname: echo2.example.com
+  paths:
+  - path: /
+    backend: default_echo_8080
+- hostname: echo3.example.com
+  paths:
+  - path: /
+    backend: default_echo_8080
+- hostname: echo4.example.com
+  paths: []
+`)
+
+	c.compareConfigBack(`
+- id: default_echo_8080
+  endpoints:
+  - ip: 172.17.1.101
+    port: 8080
+- id: _default_backend
+  endpoints:
+  - ip: 172.17.0.99
+    port: 8080
+`)
+
+	c.compareLogging(`
+WARN skipping backend config of ingress 'default/echo4': port not found: '9000'
+`)
 }
 
 func TestSyncSingle(t *testing.T) {
@@ -179,6 +249,50 @@ func TestSyncInvalidEndpoint(t *testing.T) {
 
 	c.compareLogging(`
 ERROR error adding endpoints of service 'default/echo': could not find endpoints for service 'default/echo'`)
+}
+
+func TestSyncDrainSupport(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	svc, ep := c.createSvc1("default/echo", "8080", "172.17.1.101,172.17.1.102")
+	svcName := svc.Namespace + "/" + svc.Name
+	ss := &ep.Subsets[0]
+	addr := ss.Addresses
+	ss.Addresses = []api.EndpointAddress{addr[0]}
+	ss.NotReadyAddresses = []api.EndpointAddress{addr[1]}
+	pod := c.createPod1("default/echo-xxxxx", "172.17.1.103")
+	c.cache.TermPodList[svcName] = []*api.Pod{pod}
+
+	c.SyncDef(
+		map[string]string{"drain-support": "true"},
+		c.createIng1("default/echo", "echo.example.com", "/", "echo:8080"),
+	)
+
+	c.compareConfigFront(`
+- hostname: echo.example.com
+  paths:
+  - path: /
+    backend: default_echo_8080
+`)
+	c.compareConfigBack(`
+- id: default_echo_8080
+  endpoints:
+  - ip: 172.17.1.101
+    port: 8080
+  - ip: 172.17.1.102
+    port: 8080
+    drain: true
+  - ip: 172.17.1.103
+    port: 8080
+    drain: true
+- id: _default_backend
+  endpoints:
+  - ip: 172.17.0.99
+    port: 8080
+`)
+
+	c.compareLogging(``)
 }
 
 func TestSyncRootPathLast(t *testing.T) {
@@ -907,6 +1021,67 @@ func TestSyncAnnBackDefault(t *testing.T) {
 INFO skipping backend 'default/echo5:8080' annotation(s) from ingress 'default/echo5' due to conflict: [balance-algorithm]`)
 }
 
+func TestSyncAnnPassthrough(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	svc, ep := c.createSvc1("default/echo", "http:8080", "172.17.1.101")
+	svcPort := api.ServicePort{
+		Name:       "https",
+		Port:       8443,
+		TargetPort: intstr.FromInt(8443),
+	}
+	epPort := api.EndpointPort{
+		Name:     "https",
+		Port:     8443,
+		Protocol: api.ProtocolTCP,
+	}
+	svc.Spec.Ports = append(svc.Spec.Ports, svcPort)
+	ep.Subsets[0].Ports = append(ep.Subsets[0].Ports, epPort)
+	c.Sync(
+		c.createIng1Ann("default/echo1", "echo1.example.com", "/", "echo:8443",
+			map[string]string{
+				"ingress.kubernetes.io/ssl-passthrough":           "true",
+				"ingress.kubernetes.io/ssl-passthrough-http-port": "8080",
+			}),
+		c.createIng1Ann("default/echo2", "echo2.example.com", "/", "echo:8443",
+			map[string]string{
+				"ingress.kubernetes.io/ssl-passthrough":           "true",
+				"ingress.kubernetes.io/ssl-passthrough-http-port": "9000",
+			}),
+	)
+
+	c.compareConfigFront(`
+- hostname: echo1.example.com
+  paths:
+  - path: /
+    backend: default_echo_8443
+- hostname: echo2.example.com
+  paths:
+  - path: /
+    backend: default_echo_8443
+`)
+
+	c.compareConfigBack(`
+- id: default_echo_8080
+  endpoints:
+  - ip: 172.17.1.101
+    port: 8080
+- id: default_echo_8443
+  endpoints:
+  - ip: 172.17.1.101
+    port: 8443
+- id: _default_backend
+  endpoints:
+  - ip: 172.17.0.99
+    port: 8080
+`)
+
+	c.compareLogging(`
+WARN skipping http port config of ssl-passthrough: port not found: '9000'
+`)
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *
  *  BUILDERS
@@ -932,8 +1107,9 @@ func setup(t *testing.T) *testConfig {
 		decode:  scheme.Codecs.UniversalDeserializer().Decode,
 		hconfig: haproxy.CreateInstance(logger, &ha_helper.BindUtilsMock{}, haproxy.InstanceOptions{}).Config(),
 		cache: &ing_helper.CacheMock{
-			SvcList: []*api.Service{},
-			EpList:  map[string]*api.Endpoints{},
+			SvcList:     []*api.Service{},
+			EpList:      map[string]*api.Endpoints{},
+			TermPodList: map[string][]*api.Pod{},
 			SecretTLSPath: map[string]string{
 				"system/ingress-default": "/tls/tls-default.pem",
 			},
@@ -978,24 +1154,30 @@ func (c *testConfig) SyncDef(config map[string]string, ing ...*extensions.Ingres
 	conv.Sync(ing)
 }
 
-func (c *testConfig) createSvc1Auto() *api.Service {
+func (c *testConfig) createSvc1Auto() (*api.Service, *api.Endpoints) {
 	return c.createSvc1("default/echo", "8080", "172.17.0.11")
 }
 
-func (c *testConfig) createSvc1AutoAnn(ann map[string]string) *api.Service {
-	svc := c.createSvc1Auto()
+func (c *testConfig) createSvc1AutoAnn(ann map[string]string) (*api.Service, *api.Endpoints) {
+	svc, ep := c.createSvc1Auto()
 	svc.SetAnnotations(ann)
-	return svc
+	return svc, ep
 }
 
-func (c *testConfig) createSvc1Ann(name, port, endpoints string, ann map[string]string) *api.Service {
-	svc := c.createSvc1(name, port, endpoints)
+func (c *testConfig) createSvc1Ann(name, port, endpoints string, ann map[string]string) (*api.Service, *api.Endpoints) {
+	svc, ep := c.createSvc1(name, port, endpoints)
 	svc.SetAnnotations(ann)
-	return svc
+	return svc, ep
 }
 
-func (c *testConfig) createSvc1(name, port, endpoints string) *api.Service {
+func (c *testConfig) createSvc1(name, port, endpoints string) (*api.Service, *api.Endpoints) {
 	sname := strings.Split(name, "/")
+	sport := strings.Split(port, ":")
+	if len(sport) < 2 {
+		sport = []string{"", port, port}
+	} else if len(sport) < 3 {
+		sport = []string{sport[0], sport[1], sport[1]}
+	}
 
 	svc := c.createObject(`
 apiVersion: v1
@@ -1005,8 +1187,9 @@ metadata:
   namespace: ` + sname[0] + `
 spec:
   ports:
-  - port: ` + port + `
-    targetPort: ` + port).(*api.Service)
+  - name: ` + sport[0] + `
+    port: ` + sport[1] + `
+    targetPort: ` + sport[2]).(*api.Service)
 
 	c.cache.SvcList = append(c.cache.SvcList, svc)
 
@@ -1019,7 +1202,8 @@ metadata:
 subsets:
 - addresses: []
   ports:
-  - port: ` + port + `
+  - name: ` + sport[0] + `
+    port: ` + sport[2] + `
     protocol: TCP`).(*api.Endpoints)
 
 	addr := []api.EndpointAddress{}
@@ -1036,7 +1220,22 @@ subsets:
 	ep.Subsets[0].Addresses = addr
 	c.cache.EpList[name] = ep
 
-	return svc
+	return svc, ep
+}
+
+func (c *testConfig) createPod1(name, ip string) *api.Pod {
+	pname := strings.Split(name, "/")
+
+	pod := c.createObject(`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ` + pname[1] + `
+  namespace: ` + pname[0] + `
+status:
+  podIP: ` + ip).(*api.Pod)
+
+	return pod
 }
 
 func (c *testConfig) createSecretTLS1(secretName string) {
@@ -1195,8 +1394,9 @@ func (c *testConfig) compareConfigDefaultFront(expected string) {
 
 type (
 	endpointMock struct {
-		IP   string
-		Port int
+		IP    string
+		Port  int
+		Drain bool `yaml:",omitempty"`
 	}
 	backendMock struct {
 		ID               string
@@ -1211,7 +1411,7 @@ func convertBackend(habackends ...*hatypes.Backend) []backendMock {
 	for _, b := range habackends {
 		endpoints := []endpointMock{}
 		for _, e := range b.Endpoints {
-			endpoints = append(endpoints, endpointMock{IP: e.IP, Port: e.Port})
+			endpoints = append(endpoints, endpointMock{IP: e.IP, Port: e.Port, Drain: e.Weight == 0})
 		}
 		backends = append(backends, backendMock{
 			ID:               b.ID,

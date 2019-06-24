@@ -73,15 +73,20 @@ func (c *updater) UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.Co
 	global.Syslog.Endpoint = config.SyslogEndpoint
 	global.Syslog.Format = config.SyslogFormat
 	global.Syslog.Tag = config.SyslogTag
+	global.Syslog.HTTPLogFormat = config.HTTPLogFormat
+	global.Syslog.HTTPSLogFormat = config.HTTPSLogFormat
+	global.Syslog.TCPLogFormat = config.TCPLogFormat
 	global.MaxConn = config.MaxConnections
-	global.DrainSupport = config.DrainSupport
-	global.DrainSupportRedispatch = config.DrainSupportRedispatch
+	global.DrainSupport.Drain = config.DrainSupport
+	global.DrainSupport.Redispatch = config.DrainSupportRedispatch
+	global.Cookie.Key = config.CookieKey
 	global.LoadServerState = config.LoadServerState
 	global.StatsSocket = "/var/run/haproxy-stats.sock"
 	c.buildGlobalProc(data)
 	c.buildGlobalTimeout(data)
 	c.buildGlobalSSL(data)
 	c.buildGlobalModSecurity(data)
+	c.buildGlobalForwardFor(data)
 	c.buildGlobalCustomConfig(data)
 }
 
@@ -106,10 +111,20 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, ann *ingtypes.Ba
 	}
 	// TODO check ModeTCP with HTTP annotations
 	backend.BalanceAlgorithm = ann.BalanceAlgorithm
+	backend.HSTS.Enabled = ann.HSTS
+	backend.HSTS.MaxAge = ann.HSTSMaxAge
+	backend.HSTS.Preload = ann.HSTSPreload
+	backend.HSTS.Subdomains = ann.HSTSIncludeSubdomains
 	backend.MaxConnServer = ann.MaxconnServer
 	backend.ProxyBodySize = ann.ProxyBodySize
 	backend.SSLRedirect = ann.SSLRedirect
+	backend.SSL.AddCertHeader = ann.AuthTLSCertHeader
 	c.buildBackendAffinity(data)
 	c.buildBackendAuthHTTP(data)
 	c.buildBackendBlueGreen(data)
+	c.buildBackendCors(data)
+	c.buildOAuth(data)
+	c.buildRewriteURL(data)
+	c.buildWAF(data)
+	c.buildWhitelist(data)
 }
