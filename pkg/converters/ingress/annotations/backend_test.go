@@ -727,11 +727,16 @@ func TestWhitelist(t *testing.T) {
 		},
 		// 1
 		{
+			cidrlist: "10.0.0.0/8, 192.168.0.0/16",
+			expected: []string{"10.0.0.0/8", "192.168.0.0/16"},
+		},
+		// 2
+		{
 			cidrlist: "10.0.0.0/8,192.168.0/16",
 			expected: []string{"10.0.0.0/8"},
 			logging:  `WARN skipping invalid cidr '192.168.0/16' in whitelist config on ingress 'default/app'`,
 		},
-		// 2
+		// 3
 		{
 			cidrlist: "10.0.0/8,192.168.0/16",
 			expected: []string{},
