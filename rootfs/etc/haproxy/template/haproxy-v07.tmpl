@@ -393,7 +393,7 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $hasBalance }}
+{{- if and $hasBalance (not $isDefault) }}
 {{- range $snippet := $ing.ConfigFrontend }}
     {{ $snippet }}
 {{- end }}
