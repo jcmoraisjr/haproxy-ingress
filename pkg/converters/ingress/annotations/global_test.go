@@ -17,10 +17,45 @@ limitations under the License.
 package annotations
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 )
+
+func TestModSecurity(t *testing.T) {
+	testCases := []struct {
+		endpoints string
+		expected  []string
+	}{
+		// 0
+		{
+			endpoints: "",
+			expected:  []string{},
+		},
+		// 1
+		{
+			endpoints: "127.0.0.1:12345",
+			expected:  []string{"127.0.0.1:12345"},
+		},
+		// 2
+		{
+			endpoints: "10.0.0.1:12345, 10.0.0.2:12345",
+			expected:  []string{"10.0.0.1:12345", "10.0.0.2:12345"},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		config := &types.Config{}
+		config.ModsecurityEndpoints = test.endpoints
+		d := c.createGlobalData(config)
+		c.createUpdater().buildGlobalModSecurity(d)
+		if !reflect.DeepEqual(test.expected, d.global.ModSecurity.Endpoints) {
+			t.Errorf("endpoints differ on %d - expected: %v - actual: %v", i, test.expected, d.global.ModSecurity.Endpoints)
+		}
+		c.teardown()
+	}
+}
 
 func TestForwardFor(t *testing.T) {
 	testCases := []struct {

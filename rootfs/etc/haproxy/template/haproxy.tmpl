@@ -664,14 +664,14 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 
+{{- if $global.ModSecurity.Endpoints }}
+
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # #
 # #   SUPPORT
 # #
 #
-
-{{- if $global.ModSecurity.Endpoints }}
 
   # # # # # # # # # # # # # # # # # # #
 # #

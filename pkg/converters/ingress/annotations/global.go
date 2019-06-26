@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
 func (c *updater) buildGlobalProc(d *globalData) {
@@ -104,7 +106,7 @@ func (c *updater) buildGlobalSSL(d *globalData) {
 }
 
 func (c *updater) buildGlobalModSecurity(d *globalData) {
-	d.global.ModSecurity.Endpoints = strings.Split(d.config.ModsecurityEndpoints, ",")
+	d.global.ModSecurity.Endpoints = utils.Split(d.config.ModsecurityEndpoints, ",")
 	d.global.ModSecurity.Timeout.Hello = d.config.ModsecurityTimeoutHello
 	d.global.ModSecurity.Timeout.Idle = d.config.ModsecurityTimeoutIdle
 	d.global.ModSecurity.Timeout.Processing = d.config.ModsecurityTimeoutProcessing
