@@ -134,11 +134,10 @@ func (i *instance) Update() {
 	}
 	updated := i.dynconfig.Update()
 	i.clearConfig()
-	if err := i.check(); err != nil {
-		i.logger.Error("error validating config file:\n%v", err)
-		return
-	}
 	if updated {
+		if err := i.check(); err != nil {
+			i.logger.Error("error validating config file:\n%v", err)
+		}
 		i.logger.Info("HAProxy updated without needing to reload")
 		return
 	}

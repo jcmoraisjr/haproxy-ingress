@@ -1616,7 +1616,6 @@ var endpointS41h = &hatypes.Endpoint{
 }
 
 var defaultLogging = `
-INFO (test) check was skipped
 INFO (test) reload was skipped
 INFO HAProxy successfully reloaded`
 
