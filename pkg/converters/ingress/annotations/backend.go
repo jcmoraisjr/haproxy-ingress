@@ -23,8 +23,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/utils"
+	ingutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/utils"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
 func (c *updater) buildBackendAffinity(d *backData) {
@@ -63,7 +64,7 @@ func (c *updater) buildBackendAuthHTTP(d *backData) {
 		c.logger.Error("missing secret name on basic authentication on %v", d.ann.Source)
 		return
 	}
-	secretName := utils.FullQualifiedName(d.ann.Source.Namespace, d.ann.AuthSecret)
+	secretName := ingutils.FullQualifiedName(d.ann.Source.Namespace, d.ann.AuthSecret)
 	listName := strings.Replace(secretName, "/", "_", 1)
 	userlist := c.haproxy.FindUserlist(listName)
 	if userlist == nil {
@@ -225,7 +226,7 @@ func (c *updater) buildBackendBlueGreen(d *backData) {
 			continue
 		}
 		if lcmCount > 0 {
-			lcmCount = utils.LCM(lcmCount, count)
+			lcmCount = ingutils.LCM(lcmCount, count)
 		} else {
 			lcmCount = count
 		}
@@ -243,7 +244,7 @@ func (c *updater) buildBackendBlueGreen(d *backData) {
 		}
 		groupWeight := dw.weight * lcmCount / count
 		if gcdGroupWeight > 0 {
-			gcdGroupWeight = utils.GCD(gcdGroupWeight, groupWeight)
+			gcdGroupWeight = ingutils.GCD(gcdGroupWeight, groupWeight)
 		} else {
 			gcdGroupWeight = groupWeight
 		}
@@ -400,7 +401,7 @@ func (c *updater) buildWhitelist(d *backData) {
 		return
 	}
 	var cidrlist []string
-	for _, cidr := range strings.Split(d.ann.WhitelistSourceRange, ",") {
+	for _, cidr := range utils.Split(d.ann.WhitelistSourceRange, ",") {
 		if _, _, err := net.ParseCIDR(cidr); err != nil {
 			c.logger.Warn("skipping invalid cidr '%s' in whitelist config on %v", cidr, d.ann.Source)
 		} else {

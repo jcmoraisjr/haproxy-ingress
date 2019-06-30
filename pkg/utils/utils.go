@@ -18,11 +18,27 @@ package utils
 
 import (
 	"fmt"
-	"github.com/golang/glog"
-	"github.com/mitchellh/mapstructure"
 	"net"
 	"strconv"
+	"strings"
+
+	"github.com/golang/glog"
+	"github.com/mitchellh/mapstructure"
 )
+
+// Split returns a slice of substrings from s, separated by sep.
+// If s is empty, Split returns an empty slice.
+// Split will also TrimSpace() all resulting substrings.
+func Split(s, sep string) []string {
+	if s == "" {
+		return []string{}
+	}
+	out := strings.Split(s, sep)
+	for i := range out {
+		out[i] = strings.TrimSpace(out[i])
+	}
+	return out
+}
 
 // MergeMap copy keys from a `data` map to a `resultTo` tagged object
 func MergeMap(data map[string]string, resultTo interface{}) error {

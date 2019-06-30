@@ -901,10 +901,9 @@ listen _front__tls
     mode tcp
     bind :443
     tcp-request inspect-delay 5s
+    tcp-request content set-var(req.sslpassback) req.ssl_sni,lower,map(/etc/haproxy/maps/_global_sslpassthrough.map,_nomatch)
     tcp-request content accept if { req.ssl_hello_type 1 }
-    ## ssl-passthrough
-    tcp-request content set-var(req.backend) req.ssl_sni,lower,map(/etc/haproxy/maps/_global_sslpassthrough.map,_nomatch)
-    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+    use_backend %[var(req.sslpassback)] unless { var(req.sslpassback) _nomatch }
     # TODO default backend
 frontend _front_http
     mode http
@@ -1617,7 +1616,6 @@ var endpointS41h = &hatypes.Endpoint{
 }
 
 var defaultLogging = `
-INFO (test) check was skipped
 INFO (test) reload was skipped
 INFO HAProxy successfully reloaded`
 
