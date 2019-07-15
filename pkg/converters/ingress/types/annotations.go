@@ -16,84 +16,86 @@ limitations under the License.
 
 package types
 
-// HostAnnotations ...
-type HostAnnotations struct {
-	Source                 Source `json:"-"`
-	AppRoot                string `json:"app-root"`
-	AuthTLSErrorPage       string `json:"auth-tls-error-page"`
-	AuthTLSVerifyClient    string `json:"auth-tls-verify-client"`
-	AuthTLSSecret          string `json:"auth-tls-secret"`
-	ServerAlias            string `json:"server-alias"`
-	ServerAliasRegex       string `json:"server-alias-regex"`
-	SSLPassthrough         bool   `json:"ssl-passthrough"`
-	SSLPassthroughHTTPPort string `json:"ssl-passthrough-http-port"`
-	TimeoutClient          string `json:"timeout-client"`
-	TimeoutClientFin       string `json:"timeout-client-fin"`
-}
+// Host Annotations
+const (
+	HostAppRoot                = "app-root"
+	HostAuthTLSErrorPage       = "auth-tls-error-page"
+	HostAuthTLSVerifyClient    = "auth-tls-verify-client"
+	HostAuthTLSSecret          = "auth-tls-secret"
+	HostServerAlias            = "server-alias"
+	HostServerAliasRegex       = "server-alias-regex"
+	HostSSLPassthrough         = "ssl-passthrough"
+	HostSSLPassthroughHTTPPort = "ssl-passthrough-http-port"
+	HostTimeoutClient          = "timeout-client"
+	HostTimeoutClientFin       = "timeout-client-fin"
+)
 
-// BackendAnnotations ...
-type BackendAnnotations struct {
-	Source                Source `json:"-"`
-	Affinity              string `json:"affinity"`
-	AuthRealm             string `json:"auth-realm"`
-	AuthSecret            string `json:"auth-secret"`
-	AuthTLSCertHeader     bool   `json:"auth-tls-cert-header"`
-	AuthType              string `json:"auth-type"`
-	BalanceAlgorithm      string `json:"balance-algorithm"`
-	BlueGreenBalance      string `json:"blue-green-balance"`
-	BlueGreenDeploy       string `json:"blue-green-deploy"`
-	BlueGreenMode         string `json:"blue-green-mode"`
-	ConfigBackend         string `json:"config-backend"`
-	CorsAllowCredentials  bool   `json:"cors-allow-credentials"`
-	CorsAllowHeaders      string `json:"cors-allow-headers"`
-	CorsAllowMethods      string `json:"cors-allow-methods"`
-	CorsAllowOrigin       string `json:"cors-allow-origin"`
-	CorsEnable            bool   `json:"cors-enable"`
-	CorsExposeHeaders     string `json:"cors-expose-headers"`
-	CorsMaxAge            int    `json:"cors-max-age"`
-	HSTS                  bool   `json:"hsts"`
-	HSTSIncludeSubdomains bool   `json:"hsts-include-subdomains"`
-	HSTSMaxAge            int    `json:"hsts-max-age"`
-	HSTSPreload           bool   `json:"hsts-preload"`
-	LimitConnections      int    `json:"limit-connections"`
-	LimitRPS              int    `json:"limit-rps"`
-	LimitWhitelist        string `json:"limit-whitelist"`
-	MaxconnServer         int    `json:"maxconn-server"`
-	MaxQueueServer        int    `json:"maxqueue-server"`
-	OAuth                 string `json:"oauth"`
-	OAuthHeaders          string `json:"oauth-headers"`
-	OAuthURIPrefix        string `json:"oauth-uri-prefix"`
-	ProxyBodySize         string `json:"proxy-body-size"`
-	ProxyProtocol         string `json:"proxy-protocol"`
-	RewriteTarget         string `json:"rewrite-target"`
-	SlotsIncrement        int    `json:"slots-increment"`
-	SecureBackends        bool   `json:"secure-backends"`
-	SecureCrtSecret       string `json:"secure-crt-secret"`
-	SecureVerifyCASecret  string `json:"secure-verify-ca-secret"`
-	SessionCookieDynamic  bool   `json:"session-cookie-dynamic"`
-	SessionCookieName     string `json:"session-cookie-name"`
-	SessionCookieStrategy string `json:"session-cookie-strategy"`
-	SSLRedirect           bool   `json:"ssl-redirect"`
-	TimeoutConnect        string `json:"timeout-connect"`
-	TimeoutHTTPRequest    string `json:"timeout-http-request"`
-	TimeoutKeepAlive      string `json:"timeout-keep-alive"`
-	TimeoutQueue          string `json:"timeout-queue"`
-	TimeoutServer         string `json:"timeout-server"`
-	TimeoutServerFin      string `json:"timeout-server-fin"`
-	TimeoutStop           string `json:"timeout-stop"`
-	TimeoutTunnel         string `json:"timeout-tunnel"`
-	UseResolver           string `json:"use-resolver"`
-	WAF                   string `json:"waf"`
-	WhitelistSourceRange  string `json:"whitelist-source-range"`
-}
+var (
+	// AnnHost ...
+	AnnHost = map[string]struct{}{
+		HostAppRoot:                {},
+		HostAuthTLSErrorPage:       {},
+		HostAuthTLSVerifyClient:    {},
+		HostAuthTLSSecret:          {},
+		HostServerAlias:            {},
+		HostServerAliasRegex:       {},
+		HostSSLPassthrough:         {},
+		HostSSLPassthroughHTTPPort: {},
+		HostTimeoutClient:          {},
+		HostTimeoutClientFin:       {},
+	}
+)
 
-// Source ...
-type Source struct {
-	Namespace string
-	Name      string
-	Type      string
-}
-
-func (s Source) String() string {
-	return s.Type + " '" + s.Namespace + "/" + s.Name + "'"
-}
+// Backend Annotations
+const (
+	BackAffinity              = "affinity"
+	BackAuthRealm             = "auth-realm"
+	BackAuthSecret            = "auth-secret"
+	BackAuthTLSCertHeader     = "auth-tls-cert-header"
+	BackAuthType              = "auth-type"
+	BackBalanceAlgorithm      = "balance-algorithm"
+	BackBlueGreenBalance      = "blue-green-balance"
+	BackBlueGreenDeploy       = "blue-green-deploy"
+	BackBlueGreenMode         = "blue-green-mode"
+	BackConfigBackend         = "config-backend"
+	BackCorsAllowCredentials  = "cors-allow-credentials"
+	BackCorsAllowHeaders      = "cors-allow-headers"
+	BackCorsAllowMethods      = "cors-allow-methods"
+	BackCorsAllowOrigin       = "cors-allow-origin"
+	BackCorsEnable            = "cors-enable"
+	BackCorsExposeHeaders     = "cors-expose-headers"
+	BackCorsMaxAge            = "cors-max-age"
+	BackHSTS                  = "hsts"
+	BackHSTSIncludeSubdomains = "hsts-include-subdomains"
+	BackHSTSMaxAge            = "hsts-max-age"
+	BackHSTSPreload           = "hsts-preload"
+	BackLimitConnections      = "limit-connections"
+	BackLimitRPS              = "limit-rps"
+	BackLimitWhitelist        = "limit-whitelist"
+	BackMaxconnServer         = "maxconn-server"
+	BackMaxQueueServer        = "maxqueue-server"
+	BackOAuth                 = "oauth"
+	BackOAuthHeaders          = "oauth-headers"
+	BackOAuthURIPrefix        = "oauth-uri-prefix"
+	BackProxyBodySize         = "proxy-body-size"
+	BackProxyProtocol         = "proxy-protocol"
+	BackRewriteTarget         = "rewrite-target"
+	BackSlotsIncrement        = "slots-increment"
+	BackSecureBackends        = "secure-backends"
+	BackSecureCrtSecret       = "secure-crt-secret"
+	BackSecureVerifyCASecret  = "secure-verify-ca-secret"
+	BackSessionCookieDynamic  = "session-cookie-dynamic"
+	BackSessionCookieName     = "session-cookie-name"
+	BackSessionCookieStrategy = "session-cookie-strategy"
+	BackSSLRedirect           = "ssl-redirect"
+	BackTimeoutConnect        = "timeout-connect"
+	BackTimeoutHTTPRequest    = "timeout-http-request"
+	BackTimeoutKeepAlive      = "timeout-keep-alive"
+	BackTimeoutQueue          = "timeout-queue"
+	BackTimeoutServer         = "timeout-server"
+	BackTimeoutServerFin      = "timeout-server-fin"
+	BackTimeoutTunnel         = "timeout-tunnel"
+	BackUseResolver           = "use-resolver"
+	BackWAF                   = "waf"
+	BackWhitelistSourceRange  = "whitelist-source-range"
+)

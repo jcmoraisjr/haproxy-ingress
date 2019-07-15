@@ -30,6 +30,7 @@ type File struct {
 type ConverterOptions struct {
 	Logger           types.Logger
 	Cache            Cache
+	DefaultConfig    func() (ann map[string]string, global *ConfigGlobals)
 	DefaultBackend   string
 	DefaultSSLFile   File
 	AnnotationPrefix string

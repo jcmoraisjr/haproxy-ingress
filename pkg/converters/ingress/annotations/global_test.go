@@ -46,7 +46,7 @@ func TestModSecurity(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		config := &types.Config{}
+		config := &types.ConfigGlobals{}
 		config.ModsecurityEndpoints = test.endpoints
 		d := c.createGlobalData(config)
 		c.createUpdater().buildGlobalModSecurity(d)
@@ -97,10 +97,8 @@ func TestForwardFor(t *testing.T) {
 	for i, test := range testCases {
 		c := setup(t)
 		u := c.createUpdater()
-		d := c.createGlobalData(&types.Config{
-			ConfigGlobals: types.ConfigGlobals{
-				Forwardfor: test.conf,
-			},
+		d := c.createGlobalData(&types.ConfigGlobals{
+			Forwardfor: test.conf,
 		})
 		u.buildGlobalForwardFor(d)
 		if d.global.ForwardFor != test.expected {

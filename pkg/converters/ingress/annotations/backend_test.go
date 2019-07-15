@@ -26,59 +26,79 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	ing_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/helper_test"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
+	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
 func TestAffinity(t *testing.T) {
 	testCase := []struct {
-		ann        types.BackendAnnotations
+		ann        map[string]string
 		expCookie  hatypes.Cookie
 		expLogging string
 	}{
 		// 0
 		{
-			ann:        types.BackendAnnotations{},
+			ann:        map[string]string{},
 			expLogging: "",
 		},
 		// 1
 		{
-			ann:        types.BackendAnnotations{Affinity: "no"},
+			ann: map[string]string{
+				ingtypes.BackAffinity: "no",
+			},
 			expLogging: "ERROR unsupported affinity type on ingress 'default/ing1': no",
 		},
 		// 2
 		{
-			ann:        types.BackendAnnotations{Affinity: "cookie"},
+			ann: map[string]string{
+				ingtypes.BackAffinity: "cookie",
+			},
 			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "insert"},
 			expLogging: "",
 		},
 		// 3
 		{
-			ann:        types.BackendAnnotations{Affinity: "cookie", SessionCookieName: "ing"},
+			ann: map[string]string{
+				ingtypes.BackAffinity:          "cookie",
+				ingtypes.BackSessionCookieName: "ing",
+			},
 			expCookie:  hatypes.Cookie{Name: "ing", Strategy: "insert"},
 			expLogging: "",
 		},
 		// 4
 		{
-			ann:        types.BackendAnnotations{Affinity: "cookie", SessionCookieStrategy: "err"},
+			ann: map[string]string{
+				ingtypes.BackAffinity:              "cookie",
+				ingtypes.BackSessionCookieStrategy: "err",
+			},
 			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "insert"},
 			expLogging: "WARN invalid affinity cookie strategy 'err' on ingress 'default/ing1', using 'insert' instead",
 		},
 		// 5
 		{
-			ann:        types.BackendAnnotations{Affinity: "cookie", SessionCookieStrategy: "rewrite"},
+			ann: map[string]string{
+				ingtypes.BackAffinity:              "cookie",
+				ingtypes.BackSessionCookieStrategy: "rewrite",
+			},
 			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "rewrite"},
 			expLogging: "",
 		},
 		// 6
 		{
-			ann:        types.BackendAnnotations{Affinity: "cookie", SessionCookieStrategy: "prefix", SessionCookieDynamic: true},
+			ann: map[string]string{
+				ingtypes.BackAffinity:              "cookie",
+				ingtypes.BackSessionCookieStrategy: "prefix",
+				ingtypes.BackSessionCookieDynamic:  "true",
+			},
 			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "prefix", Dynamic: true},
 			expLogging: "",
 		},
 		// 7
 		{
-			ann:        types.BackendAnnotations{Affinity: "cookie", SessionCookieDynamic: false},
+			ann: map[string]string{
+				ingtypes.BackAffinity:             "cookie",
+				ingtypes.BackSessionCookieDynamic: "false",
+			},
 			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "insert", Dynamic: false},
 			expLogging: "",
 		},
@@ -87,7 +107,7 @@ func TestAffinity(t *testing.T) {
 	for i, test := range testCase {
 		c := setup(t)
 		u := c.createUpdater()
-		d := c.createBackendData("default", "ing1", &test.ann)
+		d := c.createBackendData("default", "ing1", test.ann)
 		u.buildBackendAffinity(d)
 		if !reflect.DeepEqual(test.expCookie, d.backend.Cookie) {
 			t.Errorf("config %d differs - expected: %+v - actual: %+v", i, test.expCookie, d.backend.Cookie)
@@ -101,40 +121,54 @@ func TestAuthHTTP(t *testing.T) {
 	testCase := []struct {
 		namespace    string
 		ingname      string
-		ann          types.BackendAnnotations
+		ann          map[string]string
 		secrets      ing_helper.SecretContent
 		expUserlists []*hatypes.Userlist
 		expLogging   string
 	}{
 		// 0
 		{
-			ann:        types.BackendAnnotations{},
+			ann:        map[string]string{},
 			expLogging: "",
 		},
 		// 1
 		{
-			ann:        types.BackendAnnotations{AuthType: "fail"},
+			ann: map[string]string{
+				ingtypes.BackAuthType: "fail",
+			},
 			expLogging: "ERROR unsupported authentication type on ingress 'default/ing1': fail",
 		},
 		// 2
 		{
-			ann:        types.BackendAnnotations{AuthType: "basic"},
+			ann: map[string]string{
+				ingtypes.BackAuthType: "basic",
+			},
 			expLogging: "ERROR missing secret name on basic authentication on ingress 'default/ing1'",
 		},
 		// 3
 		{
-			ann:        types.BackendAnnotations{AuthType: "basic", AuthSecret: "mypwd"},
+			ann: map[string]string{
+				ingtypes.BackAuthType:   "basic",
+				ingtypes.BackAuthSecret: "mypwd",
+			},
 			expLogging: "ERROR error reading basic authentication on ingress 'default/ing1': secret not found: 'default/mypwd'",
 		},
 		// 4
 		{
-			ann:        types.BackendAnnotations{AuthType: "basic", AuthSecret: "mypwd"},
+			ann: map[string]string{
+				ingtypes.BackAuthType:   "basic",
+				ingtypes.BackAuthSecret: "mypwd",
+			},
 			secrets:    ing_helper.SecretContent{"default/mypwd": {"xx": []byte{}}},
 			expLogging: "ERROR error reading basic authentication on ingress 'default/ing1': secret 'default/mypwd' does not have file/key 'auth'",
 		},
 		// 5
 		{
-			ann:     types.BackendAnnotations{AuthType: "basic", AuthSecret: "mypwd", AuthRealm: `"a name"`},
+			ann: map[string]string{
+				ingtypes.BackAuthType:   "basic",
+				ingtypes.BackAuthSecret: "mypwd",
+				ingtypes.BackAuthRealm:  `"a name"`,
+			},
 			secrets: ing_helper.SecretContent{"default/mypwd": {"auth": []byte("usr1::clear1")}},
 			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_mypwd", Users: []hatypes.User{
 				{Name: "usr1", Passwd: "clear1", Encrypted: false},
@@ -143,16 +177,22 @@ func TestAuthHTTP(t *testing.T) {
 		},
 		// 6
 		{
-			namespace:    "ns1",
-			ingname:      "i1",
-			ann:          types.BackendAnnotations{AuthType: "basic", AuthSecret: "mypwd"},
+			namespace: "ns1",
+			ingname:   "i1",
+			ann: map[string]string{
+				ingtypes.BackAuthType:   "basic",
+				ingtypes.BackAuthSecret: "mypwd",
+			},
 			secrets:      ing_helper.SecretContent{"ns1/mypwd": {"auth": []byte{}}},
 			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "ns1_mypwd"}},
 			expLogging:   "WARN userlist on ingress 'ns1/i1' for basic authentication is empty",
 		},
 		// 7
 		{
-			ann:          types.BackendAnnotations{AuthType: "basic", AuthSecret: "basicpwd"},
+			ann: map[string]string{
+				ingtypes.BackAuthType:   "basic",
+				ingtypes.BackAuthSecret: "basicpwd",
+			},
 			secrets:      ing_helper.SecretContent{"default/basicpwd": {"auth": []byte("fail")}},
 			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_basicpwd"}},
 			expLogging: `
@@ -161,7 +201,10 @@ WARN userlist on ingress 'default/ing1' for basic authentication is empty`,
 		},
 		// 8
 		{
-			ann: types.BackendAnnotations{AuthType: "basic", AuthSecret: "basicpwd"},
+			ann: map[string]string{
+				ingtypes.BackAuthType:   "basic",
+				ingtypes.BackAuthSecret: "basicpwd",
+			},
 			secrets: ing_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
 usr1::clearpwd1
 nopwd`)}},
@@ -172,7 +215,10 @@ nopwd`)}},
 		},
 		// 9
 		{
-			ann: types.BackendAnnotations{AuthType: "basic", AuthSecret: "basicpwd"},
+			ann: map[string]string{
+				ingtypes.BackAuthType:   "basic",
+				ingtypes.BackAuthSecret: "basicpwd",
+			},
 			secrets: ing_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
 usrnopwd1:
 usrnopwd2::
@@ -188,7 +234,10 @@ WARN userlist on ingress 'default/ing1' for basic authentication is empty`,
 		},
 		// 10
 		{
-			ann: types.BackendAnnotations{AuthType: "basic", AuthSecret: "basicpwd"},
+			ann: map[string]string{
+				ingtypes.BackAuthType:   "basic",
+				ingtypes.BackAuthSecret: "basicpwd",
+			},
 			secrets: ing_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
 usr1:encpwd1
 usr2::clearpwd2`)}},
@@ -211,7 +260,7 @@ usr2::clearpwd2`)}},
 			test.ingname = "ing1"
 		}
 		c.cache.SecretContent = test.secrets
-		d := c.createBackendData(test.namespace, test.ingname, &test.ann)
+		d := c.createBackendData(test.namespace, test.ingname, test.ann)
 		u.buildBackendAuthHTTP(d)
 		userlists := u.haproxy.Userlists()
 		if len(userlists)+len(test.expUserlists) > 0 && !reflect.DeepEqual(test.expUserlists, userlists) {
@@ -237,8 +286,13 @@ func TestBlueGreen(t *testing.T) {
 			},
 		}
 	}
-	buildAnn := func(bal, mode string) types.BackendAnnotations {
-		return types.BackendAnnotations{BlueGreenBalance: bal, BlueGreenMode: mode}
+	buildAnn := func(bal, mode string) map[string]string {
+		ann := map[string]string{}
+		ann[ingtypes.BackBlueGreenBalance] = bal
+		if mode != "" {
+			ann[ingtypes.BackBlueGreenMode] = mode
+		}
+		return ann
 	}
 	buildEndpoints := func(targets string) []*hatypes.Endpoint {
 		ep := []*hatypes.Endpoint{}
@@ -273,7 +327,7 @@ func TestBlueGreen(t *testing.T) {
 		"pod0103-01": buildPod("app=d01,v=3"),
 	}
 	testCase := []struct {
-		ann        types.BackendAnnotations
+		ann        map[string]string
 		endpoints  []*hatypes.Endpoint
 		expWeights []int
 		expLogging string
@@ -502,7 +556,7 @@ INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not refe
 	for i, test := range testCase {
 		c := setup(t)
 		c.cache.PodList = pods
-		d := c.createBackendData("default", "ing1", &test.ann)
+		d := c.createBackendData("default", "ing1", test.ann)
 		d.backend.Endpoints = test.endpoints
 		u := c.createUpdater()
 		u.buildBackendBlueGreen(d)
@@ -520,29 +574,35 @@ INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not refe
 
 func TestOAuth(t *testing.T) {
 	testCases := []struct {
-		ann      types.BackendAnnotations
+		ann      map[string]string
 		backend  string
 		oauthExp hatypes.OAuthConfig
 		logging  string
 	}{
 		// 0
 		{
-			ann:      types.BackendAnnotations{},
+			ann:      map[string]string{},
 			oauthExp: hatypes.OAuthConfig{},
 		},
 		// 1
 		{
-			ann:     types.BackendAnnotations{OAuth: "none"},
+			ann: map[string]string{
+				ingtypes.BackOAuth: "none",
+			},
 			logging: "WARN ignoring invalid oauth implementation 'none' on ingress 'default/app'",
 		},
 		// 2
 		{
-			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy"},
+			ann: map[string]string{
+				ingtypes.BackOAuth: "oauth2_proxy",
+			},
 			logging: "ERROR path '/oauth2' was not found on namespace 'default'",
 		},
 		// 3
 		{
-			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy"},
+			ann: map[string]string{
+				ingtypes.BackOAuth: "oauth2_proxy",
+			},
 			backend: "default:back:/oauth2",
 			oauthExp: hatypes.OAuthConfig{
 				Impl:        "oauth2_proxy",
@@ -553,7 +613,10 @@ func TestOAuth(t *testing.T) {
 		},
 		// 4
 		{
-			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy", OAuthURIPrefix: "/auth"},
+			ann: map[string]string{
+				ingtypes.BackOAuth:          "oauth2_proxy",
+				ingtypes.BackOAuthURIPrefix: "/auth",
+			},
 			backend: "default:back:/auth",
 			oauthExp: hatypes.OAuthConfig{
 				Impl:        "oauth2_proxy",
@@ -564,7 +627,10 @@ func TestOAuth(t *testing.T) {
 		},
 		// 5
 		{
-			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy", OAuthHeaders: "X-Auth-New:attr_from_lua"},
+			ann: map[string]string{
+				ingtypes.BackOAuth:        "oauth2_proxy",
+				ingtypes.BackOAuthHeaders: "X-Auth-New:attr_from_lua",
+			},
 			backend: "default:back:/oauth2",
 			oauthExp: hatypes.OAuthConfig{
 				Impl:        "oauth2_proxy",
@@ -575,7 +641,10 @@ func TestOAuth(t *testing.T) {
 		},
 		// 6
 		{
-			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy", OAuthHeaders: "space before:attr"},
+			ann: map[string]string{
+				ingtypes.BackOAuth:        "oauth2_proxy",
+				ingtypes.BackOAuthHeaders: "space before:attr",
+			},
 			backend: "default:back:/oauth2",
 			oauthExp: hatypes.OAuthConfig{
 				Impl:        "oauth2_proxy",
@@ -587,7 +656,10 @@ func TestOAuth(t *testing.T) {
 		},
 		// 7
 		{
-			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy", OAuthHeaders: "no-colon"},
+			ann: map[string]string{
+				ingtypes.BackOAuth:        "oauth2_proxy",
+				ingtypes.BackOAuthHeaders: "no-colon",
+			},
 			backend: "default:back:/oauth2",
 			oauthExp: hatypes.OAuthConfig{
 				Impl:        "oauth2_proxy",
@@ -599,7 +671,10 @@ func TestOAuth(t *testing.T) {
 		},
 		// 8
 		{
-			ann:     types.BackendAnnotations{OAuth: "oauth2_proxy", OAuthHeaders: "more:colons:unsupported"},
+			ann: map[string]string{
+				ingtypes.BackOAuth:        "oauth2_proxy",
+				ingtypes.BackOAuthHeaders: "more:colons:unsupported",
+			},
 			backend: "default:back:/oauth2",
 			oauthExp: hatypes.OAuthConfig{
 				Impl:        "oauth2_proxy",
@@ -611,9 +686,9 @@ func TestOAuth(t *testing.T) {
 		},
 		// 9
 		{
-			ann: types.BackendAnnotations{
-				OAuth:        "oauth2_proxy",
-				OAuthHeaders: ",,X-Auth-Request-Email:auth_response_email,,X-Auth-New:attr_from_lua,",
+			ann: map[string]string{
+				ingtypes.BackOAuth:        "oauth2_proxy",
+				ingtypes.BackOAuthHeaders: ",,X-Auth-Request-Email:auth_response_email,,X-Auth-New:attr_from_lua,",
 			},
 			backend: "default:back:/oauth2",
 			oauthExp: hatypes.OAuthConfig{
@@ -629,7 +704,7 @@ func TestOAuth(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		d := c.createBackendData("default", "app", &test.ann)
+		d := c.createBackendData("default", "app", test.ann)
 		if test.backend != "" {
 			b := strings.Split(test.backend, ":")
 			backend := c.haproxy.AcquireBackend(b[0], b[1], "8080")
@@ -659,7 +734,7 @@ func TestRewriteURL(t *testing.T) {
 		{
 			input:    `/"/`,
 			expected: ``,
-			logging:  `WARN rewrite-target does not allow white spaces or single/double quotes on ingress 'default/app'`,
+			logging:  `WARN rewrite-target does not allow white spaces or single/double quotes on ingress 'default/app': /"/`,
 		},
 		// 2
 		{
@@ -670,7 +745,11 @@ func TestRewriteURL(t *testing.T) {
 
 	for i, test := range testCases {
 		c := setup(t)
-		d := c.createBackendData("default", "app", &types.BackendAnnotations{RewriteTarget: test.input})
+		var ann map[string]string
+		if test.input != "" {
+			ann = map[string]string{ingtypes.BackRewriteTarget: test.input}
+		}
+		d := c.createBackendData("default", "app", ann)
 		c.createUpdater().buildRewriteURL(d)
 		if d.backend.RewriteURL != test.expected {
 			t.Errorf("rewrite on %d differs - expected: %v - actual: %v", i, test.expected, d.backend.RewriteURL)
@@ -694,7 +773,7 @@ func TestWAF(t *testing.T) {
 		{
 			waf:      "none",
 			expected: "",
-			logging:  "WARN ignoring invalid WAF mode: none",
+			logging:  "WARN ignoring invalid WAF mode on ingress 'default/app': none",
 		},
 		{
 			waf:      "modsecurity",
@@ -704,7 +783,11 @@ func TestWAF(t *testing.T) {
 	}
 	for i, test := range testCase {
 		c := setup(t)
-		d := c.createBackendData("default", "app", &types.BackendAnnotations{WAF: test.waf})
+		var ann map[string]string
+		if test.waf != "" {
+			ann = map[string]string{ingtypes.BackWAF: test.waf}
+		}
+		d := c.createBackendData("default", "app", ann)
 		c.createUpdater().buildWAF(d)
 		if d.backend.WAF != test.expected {
 			t.Errorf("WAF on %d differs - expected: %v - actual: %v", i, test.expected, d.backend.WAF)
@@ -747,7 +830,7 @@ WARN skipping invalid cidr '192.168.0/16' in whitelist config on ingress 'defaul
 	}
 	for i, test := range testCase {
 		c := setup(t)
-		d := c.createBackendData("default", "app", &types.BackendAnnotations{WhitelistSourceRange: test.cidrlist})
+		d := c.createBackendData("default", "app", map[string]string{ingtypes.BackWhitelistSourceRange: test.cidrlist})
 		c.createUpdater().buildWhitelist(d)
 		if !reflect.DeepEqual(d.backend.Whitelist, test.expected) {
 			if len(d.backend.Whitelist) > 0 || len(test.expected) > 0 {

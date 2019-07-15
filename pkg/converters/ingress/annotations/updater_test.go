@@ -62,19 +62,21 @@ func (c *testConfig) createUpdater() *updater {
 	}
 }
 
-func (c *testConfig) createBackendData(namespace, name string, ann *types.BackendAnnotations) *backData {
-	ann.Source = types.Source{
+func (c *testConfig) createBackendData(namespace, name string, ann map[string]string) *backData {
+	source := &Source{
 		Namespace: namespace,
 		Name:      name,
 		Type:      "ingress",
 	}
+	mapper := NewMapBuilder(c.logger, "ing.k8s.io/", map[string]string{}).NewMapper()
+	mapper.AddAnnotations(source, "/", ann)
 	return &backData{
 		backend: &hatypes.Backend{},
-		ann:     ann,
+		mapper:  mapper,
 	}
 }
 
-func (c *testConfig) createGlobalData(config *types.Config) *globalData {
+func (c *testConfig) createGlobalData(config *types.ConfigGlobals) *globalData {
 	return &globalData{
 		global: &hatypes.Global{},
 		config: config,

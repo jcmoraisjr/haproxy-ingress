@@ -23,72 +23,80 @@ import (
 	"strconv"
 	"strings"
 
+	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	ingutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/utils"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
 func (c *updater) buildBackendAffinity(d *backData) {
-	if d.ann.Affinity != "cookie" {
-		if d.ann.Affinity != "" {
-			c.logger.Error("unsupported affinity type on %v: %s", d.ann.Source, d.ann.Affinity)
+	affinity, srcAffinity, foundAffinity := d.mapper.GetStr(ingtypes.BackAffinity)
+	if affinity != "cookie" {
+		if foundAffinity {
+			c.logger.Error("unsupported affinity type on %v: %s", srcAffinity, affinity)
 		}
 		return
 	}
-	name := d.ann.SessionCookieName
+	name := d.mapper.GetStrValue(ingtypes.BackSessionCookieName)
 	if name == "" {
 		name = "INGRESSCOOKIE"
 	}
-	strategy := d.ann.SessionCookieStrategy
+	strategy, srcStrategy, foundStrategy := d.mapper.GetStr(ingtypes.BackSessionCookieStrategy)
 	switch strategy {
 	case "insert", "rewrite", "prefix":
 	default:
-		if strategy != "" {
-			c.logger.Warn("invalid affinity cookie strategy '%s' on %v, using 'insert' instead", strategy, d.ann.Source)
+		if foundStrategy {
+			c.logger.Warn("invalid affinity cookie strategy '%s' on %v, using 'insert' instead", strategy, srcStrategy)
 		}
 		strategy = "insert"
 	}
 	d.backend.Cookie.Name = name
 	d.backend.Cookie.Strategy = strategy
-	d.backend.Cookie.Dynamic = d.ann.SessionCookieDynamic
+	d.backend.Cookie.Dynamic = d.mapper.GetBoolValue(ingtypes.BackSessionCookieDynamic)
 }
 
 func (c *updater) buildBackendAuthHTTP(d *backData) {
-	if d.ann.AuthType != "basic" {
-		if d.ann.AuthType != "" {
-			c.logger.Error("unsupported authentication type on %v: %s", d.ann.Source, d.ann.AuthType)
+	authType, srcAuthType, foundAuthType := d.mapper.GetStr(ingtypes.BackAuthType)
+	if authType != "basic" {
+		if foundAuthType {
+			c.logger.Error("unsupported authentication type on %v: %s", srcAuthType, authType)
 		}
 		return
 	}
-	if d.ann.AuthSecret == "" {
-		c.logger.Error("missing secret name on basic authentication on %v", d.ann.Source)
+	authSecret, srcAuthSecret, foundAuthSecret := d.mapper.GetStr(ingtypes.BackAuthSecret)
+	if !foundAuthSecret {
+		srcAuthSecret = srcAuthType
+	}
+	if authSecret == "" {
+		c.logger.Error("missing secret name on basic authentication on %v", srcAuthSecret)
 		return
 	}
-	secretName := ingutils.FullQualifiedName(d.ann.Source.Namespace, d.ann.AuthSecret)
+	secretName := ingutils.FullQualifiedName(srcAuthSecret.Namespace, authSecret)
 	listName := strings.Replace(secretName, "/", "_", 1)
 	userlist := c.haproxy.FindUserlist(listName)
 	if userlist == nil {
 		userb, err := c.cache.GetSecretContent(secretName, "auth")
 		if err != nil {
-			c.logger.Error("error reading basic authentication on %v: %v", d.ann.Source, err)
+			c.logger.Error("error reading basic authentication on %v: %v", srcAuthSecret, err)
 			return
 		}
 		userstr := string(userb)
-		users, errs := c.buildBackendAuthHTTPExtractUserlist(d.ann.Source.Name, secretName, userstr)
+		users, errs := c.buildBackendAuthHTTPExtractUserlist(srcAuthSecret.Name, secretName, userstr)
 		for _, err := range errs {
-			c.logger.Warn("ignoring malformed usr/passwd on secret '%s', declared on %v: %v", secretName, d.ann.Source, err)
+			c.logger.Warn("ignoring malformed usr/passwd on secret '%s', declared on %v: %v", secretName, srcAuthSecret, err)
 		}
 		userlist = c.haproxy.AddUserlist(listName, users)
 		if len(users) == 0 {
-			c.logger.Warn("userlist on %v for basic authentication is empty", d.ann.Source)
+			c.logger.Warn("userlist on %v for basic authentication is empty", srcAuthSecret)
 		}
 	}
 	d.backend.Userlist.Name = userlist.Name
 	realm := "localhost" // HAProxy's backend name would be used if missing
-	if strings.Index(d.ann.AuthRealm, `"`) >= 0 {
-		c.logger.Warn("ignoring auth-realm with quotes on %v", d.ann.Source)
-	} else if d.ann.AuthRealm != "" {
-		realm = d.ann.AuthRealm
+	authRealm, srcAuthRealm, _ := d.mapper.GetStr(ingtypes.BackAuthRealm)
+	if strings.Index(authRealm, `"`) >= 0 {
+		c.logger.Warn("ignoring auth-realm with quotes on %v", srcAuthRealm)
+	} else if authRealm != "" {
+		realm = authRealm
 	}
 	d.backend.Userlist.Realm = realm
 }
@@ -136,9 +144,9 @@ func (c *updater) buildBackendAuthHTTPExtractUserlist(source, secret, users stri
 }
 
 func (c *updater) buildBackendBlueGreen(d *backData) {
-	balance := d.ann.BlueGreenBalance
+	balance, srcBalance, _ := d.mapper.GetStr(ingtypes.BackBlueGreenBalance)
 	if balance == "" {
-		balance = d.ann.BlueGreenDeploy
+		balance, srcBalance, _ = d.mapper.GetStr(ingtypes.BackBlueGreenDeploy)
 		if balance == "" {
 			return
 		}
@@ -153,20 +161,20 @@ func (c *updater) buildBackendBlueGreen(d *backData) {
 	for _, weight := range strings.Split(balance, ",") {
 		dwSlice := strings.Split(weight, "=")
 		if len(dwSlice) != 3 {
-			c.logger.Error("blue/green config on %v has an invalid weight format: %s", d.ann.Source, weight)
+			c.logger.Error("blue/green config on %v has an invalid weight format: %s", srcBalance, weight)
 			return
 		}
 		w, err := strconv.ParseInt(dwSlice[2], 10, 0)
 		if err != nil {
-			c.logger.Error("blue/green config on %v has an invalid weight value: %v", d.ann.Source, err)
+			c.logger.Error("blue/green config on %v has an invalid weight value: %v", srcBalance, err)
 			return
 		}
 		if w < 0 {
-			c.logger.Warn("invalid weight '%d' on %v, using '0' instead", w, d.ann.Source)
+			c.logger.Warn("invalid weight '%d' on %v, using '0' instead", w, srcBalance)
 			w = 0
 		}
 		if w > 256 {
-			c.logger.Warn("invalid weight '%d' on %v, using '256' instead", w, d.ann.Source)
+			c.logger.Warn("invalid weight '%d' on %v, using '256' instead", w, srcBalance)
 			w = 256
 		}
 		dw := &deployWeight{
@@ -198,7 +206,7 @@ func (c *updater) buildBackendBlueGreen(d *backData) {
 			if ep.TargetRef == "" {
 				err = fmt.Errorf("endpoint does not reference a pod")
 			}
-			c.logger.Warn("endpoint '%s:%d' on %v was removed from balance: %v", ep.IP, ep.Port, d.ann.Source, err)
+			c.logger.Warn("endpoint '%s:%d' on %v was removed from balance: %v", ep.IP, ep.Port, srcBalance, err)
 		}
 		if !hasLabel {
 			// no label match, set weight as zero to remove new traffic
@@ -208,15 +216,15 @@ func (c *updater) buildBackendBlueGreen(d *backData) {
 	}
 	for _, dw := range deployWeights {
 		if len(dw.endpoints) == 0 {
-			c.logger.InfoV(3, "blue/green balance label '%s=%s' on %v does not reference any endpoint", dw.labelName, dw.labelValue, d.ann.Source)
+			c.logger.InfoV(3, "blue/green balance label '%s=%s' on %v does not reference any endpoint", dw.labelName, dw.labelValue, srcBalance)
 		}
 	}
-	if mode := d.ann.BlueGreenMode; mode == "pod" {
+	if mode, srcMode, foundMode := d.mapper.GetStr(ingtypes.BackBlueGreenMode); mode == "pod" {
 		// mode == pod, same weight as defined on balance annotation,
 		// no need to rebalance
 		return
-	} else if mode != "" && mode != "deploy" {
-		c.logger.Warn("unsupported blue/green mode '%s' on %v, falling back to 'deploy'", d.ann.BlueGreenMode, d.ann.Source)
+	} else if foundMode && mode != "deploy" {
+		c.logger.Warn("unsupported blue/green mode '%s' on %v, falling back to 'deploy'", mode, srcMode)
 	}
 	// mode == deploy, need to recalc based on the number of replicas
 	lcmCount := 0
@@ -283,34 +291,53 @@ var (
 )
 
 func (c *updater) buildBackendCors(d *backData) {
-	if !d.ann.CorsEnable {
+	if enable := d.mapper.GetBoolValue(ingtypes.BackCorsEnable); !enable {
 		return
 	}
 	d.backend.Cors.Enabled = true
-	if d.ann.CorsAllowOrigin != "" && corsOriginRegex.MatchString(d.ann.CorsAllowOrigin) {
-		d.backend.Cors.AllowOrigin = d.ann.CorsAllowOrigin
+	allowOrigin, srcAllowOrigin, foundAllowOrigin := d.mapper.GetStr(ingtypes.BackCorsAllowOrigin)
+	if foundAllowOrigin && corsOriginRegex.MatchString(allowOrigin) {
+		d.backend.Cors.AllowOrigin = allowOrigin
 	} else {
+		if foundAllowOrigin {
+			c.logger.Warn("invalid cors origin on %s, using '*' instead: %s", srcAllowOrigin, allowOrigin)
+		}
 		d.backend.Cors.AllowOrigin = "*"
 	}
-	if corsHeadersRegex.MatchString(d.ann.CorsAllowHeaders) {
-		d.backend.Cors.AllowHeaders = d.ann.CorsAllowHeaders
+	allowHeaders, srcAllowHeaders, foundAllowHeaders := d.mapper.GetStr(ingtypes.BackCorsAllowHeaders)
+	if corsHeadersRegex.MatchString(allowHeaders) {
+		d.backend.Cors.AllowHeaders = allowHeaders
 	} else {
+		if foundAllowHeaders {
+			c.logger.Warn("invalid cors headers on %s, using default config instead: %s", srcAllowHeaders, allowHeaders)
+		}
 		d.backend.Cors.AllowHeaders =
 			"DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
 	}
-	if corsMethodsRegex.MatchString(d.ann.CorsAllowMethods) {
-		d.backend.Cors.AllowMethods = d.ann.CorsAllowMethods
+	allowMethods, srcAllowMethods, foundAllowMethods := d.mapper.GetStr(ingtypes.BackCorsAllowMethods)
+	if corsMethodsRegex.MatchString(allowMethods) {
+		d.backend.Cors.AllowMethods = allowMethods
 	} else {
+		if foundAllowMethods {
+			c.logger.Warn("invalid cors methods on %s, using default config instead: %s", srcAllowMethods, allowMethods)
+		}
 		d.backend.Cors.AllowMethods = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
 	}
-	d.backend.Cors.AllowCredentials = d.ann.CorsAllowCredentials
-	if d.ann.CorsMaxAge > 0 {
-		d.backend.Cors.MaxAge = d.ann.CorsMaxAge
+	d.backend.Cors.AllowCredentials = d.mapper.GetBoolValue(ingtypes.BackCorsAllowCredentials)
+	maxAge, srcMaxAge, foundMaxAge := d.mapper.GetInt(ingtypes.BackCorsMaxAge)
+	if maxAge > 0 {
+		d.backend.Cors.MaxAge = maxAge
 	} else {
+		if foundMaxAge {
+			c.logger.Warn("invalid cors max age '%d' on %s, using '86400' instead", maxAge, srcMaxAge)
+		}
 		d.backend.Cors.MaxAge = 86400
 	}
-	if corsHeadersRegex.MatchString(d.ann.CorsExposeHeaders) {
-		d.backend.Cors.ExposeHeaders = d.ann.CorsExposeHeaders
+	exposeHeaders, srcExposeHeaders, foundExposeHeaders := d.mapper.GetStr(ingtypes.BackCorsExposeHeaders)
+	if corsHeadersRegex.MatchString(exposeHeaders) {
+		d.backend.Cors.ExposeHeaders = exposeHeaders
+	} else if foundExposeHeaders {
+		c.logger.Warn("ignoring invalid cors expose headers on %s: %s", srcExposeHeaders, exposeHeaders)
 	}
 }
 
@@ -319,23 +346,25 @@ var (
 )
 
 func (c *updater) buildOAuth(d *backData) {
-	if d.ann.OAuth == "" {
+	oauth, srcOAuth, foundOAuth := d.mapper.GetStr(ingtypes.BackOAuth)
+	if !foundOAuth {
 		return
 	}
-	if d.ann.OAuth != "oauth2_proxy" {
-		c.logger.Warn("ignoring invalid oauth implementation '%s' on %v", d.ann.OAuth, d.ann.Source)
+	if oauth != "oauth2_proxy" {
+		c.logger.Warn("ignoring invalid oauth implementation '%s' on %v", oauth, srcOAuth)
 		return
 	}
 	uriPrefix := "/oauth2"
 	headers := []string{"X-Auth-Request-Email:auth_response_email"}
-	if d.ann.OAuthURIPrefix != "" {
-		uriPrefix = d.ann.OAuthURIPrefix
+	if prefix, _, found := d.mapper.GetStr(ingtypes.BackOAuthURIPrefix); found {
+		uriPrefix = prefix
 	}
-	if d.ann.OAuthHeaders != "" {
-		headers = strings.Split(d.ann.OAuthHeaders, ",")
+	h, srcHeaders, foundHeders := d.mapper.GetStr(ingtypes.BackOAuthHeaders)
+	if foundHeders {
+		headers = strings.Split(h, ",")
 	}
 	uriPrefix = strings.TrimRight(uriPrefix, "/")
-	namespace := d.ann.Source.Namespace
+	namespace := srcOAuth.Namespace
 	backend := c.findBackend(namespace, uriPrefix)
 	if backend == nil {
 		c.logger.Error("path '%s' was not found on namespace '%s'", uriPrefix, namespace)
@@ -347,13 +376,13 @@ func (c *updater) buildOAuth(d *backData) {
 			continue
 		}
 		if !oauthHeaderRegex.MatchString(header) {
-			c.logger.Warn("invalid header format '%s' on %v", header, d.ann.Source)
+			c.logger.Warn("invalid header format '%s' on %v", header, srcHeaders)
 			continue
 		}
 		h := strings.Split(header, ":")
 		headersMap[h[0]] = h[1]
 	}
-	d.backend.OAuth.Impl = d.ann.OAuth
+	d.backend.OAuth.Impl = oauth
 	d.backend.OAuth.BackendName = backend.ID
 	d.backend.OAuth.URIPrefix = uriPrefix
 	d.backend.OAuth.Headers = headersMap
@@ -375,35 +404,38 @@ var (
 )
 
 func (c *updater) buildRewriteURL(d *backData) {
-	if d.ann.RewriteTarget == "" {
+	rewrite, srcRewrite, foundRewrite := d.mapper.GetStr(ingtypes.BackRewriteTarget)
+	if !foundRewrite {
 		return
 	}
-	if !rewriteURLRegex.MatchString(d.ann.RewriteTarget) {
-		c.logger.Warn("rewrite-target does not allow white spaces or single/double quotes on %v", d.ann.Source)
+	if !rewriteURLRegex.MatchString(rewrite) {
+		c.logger.Warn("rewrite-target does not allow white spaces or single/double quotes on %v: %s", srcRewrite, rewrite)
 		return
 	}
-	d.backend.RewriteURL = d.ann.RewriteTarget
+	d.backend.RewriteURL = rewrite
 }
 
 func (c *updater) buildWAF(d *backData) {
-	if d.ann.WAF == "" {
+	waf, srcWaf, foundWaf := d.mapper.GetStr(ingtypes.BackWAF)
+	if !foundWaf {
 		return
 	}
-	if d.ann.WAF != "modsecurity" {
-		c.logger.Warn("ignoring invalid WAF mode: %s", d.ann.WAF)
+	if waf != "modsecurity" {
+		c.logger.Warn("ignoring invalid WAF mode on %s: %s", srcWaf, waf)
 		return
 	}
-	d.backend.WAF = d.ann.WAF
+	d.backend.WAF = waf
 }
 
 func (c *updater) buildWhitelist(d *backData) {
-	if d.ann.WhitelistSourceRange == "" {
+	wlist, srcWlist, foundWlist := d.mapper.GetStr(ingtypes.BackWhitelistSourceRange)
+	if !foundWlist {
 		return
 	}
 	var cidrlist []string
-	for _, cidr := range utils.Split(d.ann.WhitelistSourceRange, ",") {
+	for _, cidr := range utils.Split(wlist, ",") {
 		if _, _, err := net.ParseCIDR(cidr); err != nil {
-			c.logger.Warn("skipping invalid cidr '%s' in whitelist config on %v", cidr, d.ann.Source)
+			c.logger.Warn("skipping invalid cidr '%s' in whitelist config on %v", cidr, srcWlist)
 		} else {
 			cidrlist = append(cidrlist, cidr)
 		}

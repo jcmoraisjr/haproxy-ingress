@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
 
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/annotations"
 	ing_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/helper_test"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
@@ -797,7 +798,7 @@ func TestSyncAnnFrontsConflict(t *testing.T) {
     client: 1s`)
 
 	c.compareLogging(`
-INFO skipping host annotation(s) from ingress 'default/echo2' due to conflict: [timeout-client]`)
+WARN skipping host annotation(s) from ingress 'default/echo2' due to conflict: [timeout-client]`)
 }
 
 func TestSyncAnnFronts(t *testing.T) {
@@ -918,7 +919,7 @@ func TestSyncAnnBackSvcIngConflict(t *testing.T) {
   balancealgorithm: leastconn` + defaultBackendConfig)
 
 	c.compareLogging(`
-INFO skipping backend 'default/echo:8080' annotation(s) from ingress 'default/echo' due to conflict: [balance-algorithm]`)
+WARN skipping backend 'echo:8080' annotation(s) from ingress 'default/echo' due to conflict: [balance-algorithm]`)
 }
 
 func TestSyncAnnBacksSvcIng(t *testing.T) {
@@ -973,7 +974,7 @@ func TestSyncAnnBackDefault(t *testing.T) {
 			"ingress.kubernetes.io/balance-algorithm": "first",
 		}),
 		c.createIng1Ann("default/echo6", "echo.example.com", "/app6", "echo6:8080", map[string]string{
-			"ingress.kubernetes.io/balance-algorithm": "roundrobin",
+			"ingress.kubernetes.io/balance-algorithm": "leastconn",
 		}),
 		c.createIng1Ann("default/echo7", "echo.example.com", "/app7", "echo7:8080", map[string]string{
 			"ingress.kubernetes.io/balance-algorithm": "leastconn",
@@ -1015,10 +1016,16 @@ func TestSyncAnnBackDefault(t *testing.T) {
   endpoints:
   - ip: 172.17.0.17
     port: 8080
-  balancealgorithm: leastconn` + defaultBackendConfig)
+  balancealgorithm: roundrobin
+- id: _default_backend
+  endpoints:
+  - ip: 172.17.0.99
+    port: 8080
+  balancealgorithm: roundrobin`)
 
 	c.compareLogging(`
-INFO skipping backend 'default/echo5:8080' annotation(s) from ingress 'default/echo5' due to conflict: [balance-algorithm]`)
+WARN skipping backend 'echo5:8080' annotation(s) from ingress 'default/echo5' due to conflict: [balance-algorithm]
+WARN skipping backend 'echo7:8080' annotation(s) from ingress 'default/echo7' due to conflict: [balance-algorithm]`)
 }
 
 func TestSyncAnnPassthrough(t *testing.T) {
@@ -1094,7 +1101,7 @@ type testConfig struct {
 	hconfig haproxy.Config
 	logger  *types_helper.LoggerMock
 	cache   *ing_helper.CacheMock
-	updater *ing_helper.UpdaterMock
+	updater *updaterMock
 }
 
 func setup(t *testing.T) *testConfig {
@@ -1135,10 +1142,14 @@ var defaultBackendConfig = `
     port: 8080`
 
 func (c *testConfig) SyncDef(config map[string]string, ing ...*extensions.Ingress) {
+	defaultConfig := func() (ann map[string]string, global *ingtypes.ConfigGlobals) {
+		return map[string]string{}, &ingtypes.ConfigGlobals{}
+	}
 	conv := NewIngressConverter(
 		&ingtypes.ConverterOptions{
 			Cache:          c.cache,
 			Logger:         c.logger,
+			DefaultConfig:  defaultConfig,
 			DefaultBackend: "system/default",
 			DefaultSSLFile: ingtypes.File{
 				Filename: "/tls/tls-default.pem",
@@ -1150,7 +1161,6 @@ func (c *testConfig) SyncDef(config map[string]string, ing ...*extensions.Ingres
 		config,
 	).(*converter)
 	conv.updater = c.updater
-	conv.globalConfig = mergeConfig(&ingtypes.Config{}, config)
 	conv.Sync(ing)
 }
 
@@ -1339,6 +1349,21 @@ func (c *testConfig) compareText(actual, expected string) {
 	if txt1 != txt2 {
 		c.t.Error(diff.Diff(txt1, txt2))
 	}
+}
+
+type updaterMock struct{}
+
+func (u *updaterMock) UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.ConfigGlobals) {
+}
+
+func (u *updaterMock) UpdateHostConfig(host *hatypes.Host, mapper *annotations.Mapper) {
+	host.Timeout.Client = mapper.GetStrValue(ingtypes.HostTimeoutClient)
+	host.RootRedirect = mapper.GetStrValue(ingtypes.HostAppRoot)
+}
+
+func (u *updaterMock) UpdateBackendConfig(backend *hatypes.Backend, mapper *annotations.Mapper) {
+	backend.MaxConnServer = mapper.GetIntValue(ingtypes.BackMaxconnServer)
+	backend.BalanceAlgorithm = mapper.GetStrValue(ingtypes.BackBalanceAlgorithm)
 }
 
 type (
