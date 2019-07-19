@@ -18,8 +18,11 @@ package annotations
 
 import (
 	"fmt"
+	"reflect"
+	"sort"
 	"strconv"
 
+	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )
 
@@ -39,7 +42,7 @@ type Mapper struct {
 // Map ...
 type Map struct {
 	Source *Source
-	ID     string
+	URI    string
 	Value  string
 }
 
@@ -68,11 +71,11 @@ func (b *MapBuilder) NewMapper() *Mapper {
 }
 
 // AddAnnotation ...
-func (c *Mapper) AddAnnotation(source *Source, id, key, value string) bool {
+func (c *Mapper) AddAnnotation(source *Source, uri, key, value string) bool {
 	annMaps, found := c.maps[key]
 	if found {
 		for _, annMap := range annMaps {
-			if annMap.ID == id {
+			if annMap.URI == uri {
 				// true if value was used -- either adding or
 				// matching a previous one. Map.Source is ignored here.
 				return annMap.Value == value
@@ -81,7 +84,7 @@ func (c *Mapper) AddAnnotation(source *Source, id, key, value string) bool {
 	}
 	annMaps = append(annMaps, &Map{
 		Source: source,
-		ID:     id,
+		URI:    uri,
 		Value:  value,
 	})
 	c.maps[key] = annMaps
@@ -89,10 +92,10 @@ func (c *Mapper) AddAnnotation(source *Source, id, key, value string) bool {
 }
 
 // AddAnnotations ...
-func (c *Mapper) AddAnnotations(source *Source, id string, ann map[string]string) (skipped []string) {
+func (c *Mapper) AddAnnotations(source *Source, uri string, ann map[string]string) (skipped []string) {
 	skipped = make([]string, 0, len(ann))
 	for key, value := range ann {
-		if added := c.AddAnnotation(source, id, key, value); !added {
+		if added := c.AddAnnotation(source, uri, key, value); !added {
 			skipped = append(skipped, key)
 		}
 	}
@@ -127,9 +130,11 @@ func (c *Mapper) GetStr(key string) (string, *Source, bool) {
 				sources = append(sources, annMap.Source)
 			}
 		}
-		c.logger.Warn(
-			"annotation '%s' from %s overrides the same annotation with distinct value from %s",
-			c.annPrefix+key, source, sources)
+		if len(sources) > 0 {
+			c.logger.Warn(
+				"annotation '%s' from %s overrides the same annotation with distinct value from %s",
+				c.annPrefix+key, source, sources)
+		}
 	}
 	return value, source, true
 }
@@ -178,6 +183,77 @@ func (c *Mapper) GetInt(key string) (int, *Source, bool) {
 func (c *Mapper) GetIntValue(key string) int {
 	value, _, _ := c.GetInt(key)
 	return value
+}
+
+type backendConfig struct {
+	Paths  []*hatypes.BackendPath
+	Config map[string]string
+}
+
+func (c *Mapper) getBackendConfig(backend *hatypes.Backend, keys ...string) []*backendConfig {
+	rawConfig := map[string]map[string]string{}
+	for _, key := range keys {
+		if maps, found := c.GetStrMap(key); found {
+			for _, m := range maps {
+				if _, f := rawConfig[m.URI]; f {
+					rawConfig[m.URI][key] = m.Value
+				} else {
+					rawConfig[m.URI] = map[string]string{key: m.Value}
+				}
+			}
+		}
+	}
+	config := []*backendConfig{}
+	for uri, kv := range rawConfig {
+		path := backend.FindPath(uri)
+		if path == nil {
+			// skipping paths not declared on host/frontend
+			continue
+		}
+		if cfg := findConfig(config, kv); cfg != nil {
+			cfg.Paths = append(cfg.Paths, path)
+		} else {
+			config = append(config, &backendConfig{
+				Paths:  []*hatypes.BackendPath{path},
+				Config: kv,
+			})
+		}
+	}
+	for _, cfg := range config {
+		sort.SliceStable(cfg.Paths, func(i, j int) bool {
+			return cfg.Paths[i].ID < cfg.Paths[j].ID
+		})
+	}
+	sort.SliceStable(config, func(i, j int) bool {
+		return config[i].Paths[0].ID < config[j].Paths[0].ID
+	})
+	return config
+}
+
+func findConfig(config []*backendConfig, kv map[string]string) *backendConfig {
+	for _, cfg := range config {
+		if reflect.DeepEqual(cfg.Config, kv) {
+			return cfg
+		}
+	}
+	return nil
+}
+
+// GetBackendConfigStr ...
+func (c *Mapper) GetBackendConfigStr(backend *hatypes.Backend, key string) []*hatypes.BackendConfigStr {
+	rawConfig := c.getBackendConfig(backend, key)
+	config := make([]*hatypes.BackendConfigStr, len(rawConfig))
+	for i, cfg := range rawConfig {
+		config[i] = &hatypes.BackendConfigStr{
+			Paths:  cfg.Paths,
+			Config: cfg.Config[key],
+		}
+	}
+	return config
+}
+
+func (b *backendConfig) String() string {
+	return fmt.Sprintf("%+v", *b)
 }
 
 func (m *Map) String() string {

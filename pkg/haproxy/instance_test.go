@@ -209,6 +209,31 @@ backend d1_app_8080
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+func TestInstanceBare(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	h = c.config.AcquireHost("d1.local")
+	h.AddPath(b, "/")
+
+	c.instance.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+<<frontends-default>>
+`)
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestInstanceEmpty(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
@@ -1091,9 +1116,37 @@ d3.local/ d3_app_8080
 ^[a-z]+\.d2\.local$/ d2_app_8080
 .*d3\.local$/ d3_app_8080
 `)
-
 	c.logger.CompareLogging(defaultLogging)
+}
 
+func TestInstanceRewriteTarget(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	b.RewriteURL = "/internal"
+
+	h = c.config.AcquireHost("d1.local")
+	h.AddPath(b, "/app")
+	h.AddPath(b, "/uri")
+
+	c.instance.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    reqrep ^([^:\ ]*)\ /uri(.*)$       \1\ /internal\2
+    reqrep ^([^:\ ]*)\ /app(.*)$       \1\ /internal\2
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+<<frontends-default>>
+`)
+	c.logger.CompareLogging(defaultLogging)
 }
 
 func TestUserlist(t *testing.T) {

@@ -18,12 +18,15 @@ package annotations
 
 import (
 	"reflect"
+	"sort"
 	"testing"
+
+	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
 type ann struct {
 	src      *Source
-	id       string
+	uri      string
 	key      string
 	val      string
 	expAdded bool
@@ -64,8 +67,8 @@ func TestAddAnnotation(t *testing.T) {
 		// 0
 		{
 			ann: []ann{
-				{srcing1, "id1", "auth-basic", "default/basic1", true},
-				{srcing2, "id2", "auth-basic", "default/basic2", true},
+				{srcing1, "/", "auth-basic", "default/basic1", true},
+				{srcing2, "/url", "auth-basic", "default/basic2", true},
 			},
 			annPrefix: "ing/",
 			getKey:    "auth-basic",
@@ -75,10 +78,10 @@ func TestAddAnnotation(t *testing.T) {
 		// 1
 		{
 			ann: []ann{
-				{srcing1, "id1", "auth-basic", "default/basic1", true},
-				{srcing2, "id2", "auth-basic", "default/basic2", true},
-				{srcing3, "id3", "auth-basic", "default/basic3", true},
-				{srcing4, "id4", "auth-basic", "default/basic4", true},
+				{srcing1, "/", "auth-basic", "default/basic1", true},
+				{srcing2, "/url", "auth-basic", "default/basic2", true},
+				{srcing3, "/path", "auth-basic", "default/basic3", true},
+				{srcing4, "/app", "auth-basic", "default/basic4", true},
 			},
 			annPrefix: "ing.k8s.io/",
 			getKey:    "auth-basic",
@@ -88,10 +91,10 @@ func TestAddAnnotation(t *testing.T) {
 		// 2
 		{
 			ann: []ann{
-				{srcing1, "id1", "auth-basic", "default/basic1", true},
-				{srcing2, "id2", "auth-basic", "default/basic1", true},
-				{srcing3, "id3", "auth-basic", "default/basic1", true},
-				{srcing4, "id4", "auth-basic", "default/basic2", true},
+				{srcing1, "/", "auth-basic", "default/basic1", true},
+				{srcing2, "/url", "auth-basic", "default/basic1", true},
+				{srcing3, "/path", "auth-basic", "default/basic1", true},
+				{srcing4, "/app", "auth-basic", "default/basic2", true},
 			},
 			annPrefix: "ing.k8s.io/",
 			getKey:    "auth-basic",
@@ -101,8 +104,8 @@ func TestAddAnnotation(t *testing.T) {
 		// 3
 		{
 			ann: []ann{
-				{srcing1, "id1", "auth-basic", "default/basic1", true},
-				{srcing2, "id1", "auth-basic", "default/basic2", false},
+				{srcing1, "/", "auth-basic", "default/basic1", true},
+				{srcing2, "/", "auth-basic", "default/basic2", false},
 			},
 			getKey: "auth-basic",
 			expVal: "default/basic1",
@@ -110,8 +113,8 @@ func TestAddAnnotation(t *testing.T) {
 		// 4
 		{
 			ann: []ann{
-				{srcing1, "id1", "auth-basic", "default/basic1", true},
-				{srcing2, "id1", "auth-basic", "default/basic1", true},
+				{srcing1, "/", "auth-basic", "default/basic1", true},
+				{srcing2, "/url", "auth-basic", "default/basic1", true},
 			},
 			getKey: "auth-basic",
 			expVal: "default/basic1",
@@ -127,7 +130,7 @@ func TestAddAnnotation(t *testing.T) {
 		c := setup(t)
 		mapper := NewMapBuilder(c.logger, test.annPrefix, map[string]string{}).NewMapper()
 		for j, ann := range test.ann {
-			if added := mapper.AddAnnotation(ann.src, ann.id, ann.key, ann.val); added != ann.expAdded {
+			if added := mapper.AddAnnotation(ann.src, ann.uri, ann.key, ann.val); added != ann.expAdded {
 				t.Errorf("expect added '%t' on '// %d (%d)', but was '%t'", ann.expAdded, i, j, added)
 			}
 		}
@@ -158,37 +161,37 @@ func TestGetAnnotation(t *testing.T) {
 		// 0
 		{
 			ann: []ann{
-				{srcing1, "id1", "auth-basic", "default/basic1", true},
-				{srcing2, "id2", "auth-basic", "default/basic2", true},
+				{srcing1, "/", "auth-basic", "default/basic1", true},
+				{srcing2, "/url", "auth-basic", "default/basic2", true},
 			},
 			getKey: "auth-basic",
 			expAnnMap: []*Map{
-				{Source: srcing1, ID: "id1", Value: "default/basic1"},
-				{Source: srcing2, ID: "id2", Value: "default/basic2"},
+				{Source: srcing1, URI: "/", Value: "default/basic1"},
+				{Source: srcing2, URI: "/url", Value: "default/basic2"},
 			},
 		},
 		// 1
 		{
 			ann: []ann{
-				{srcing1, "id1", "auth-type", "basic", true},
-				{srcing1, "id1", "auth-basic", "default/basic1", true},
-				{srcing2, "id1", "auth-basic", "default/basic2", false},
+				{srcing1, "/", "auth-type", "basic", true},
+				{srcing1, "/", "auth-basic", "default/basic1", true},
+				{srcing2, "/", "auth-basic", "default/basic2", false},
 			},
 			getKey: "auth-basic",
 			expAnnMap: []*Map{
-				{Source: srcing1, ID: "id1", Value: "default/basic1"},
+				{Source: srcing1, URI: "/", Value: "default/basic1"},
 			},
 		},
 		// 2
 		{
 			ann: []ann{
-				{srcing1, "id1", "auth-type", "basic", true},
-				{srcing1, "id1", "auth-basic", "default/basic1", true},
-				{srcing2, "id1", "auth-basic", "default/basic2", false},
+				{srcing1, "/", "auth-type", "basic", true},
+				{srcing1, "/", "auth-basic", "default/basic1", true},
+				{srcing2, "/", "auth-basic", "default/basic2", false},
 			},
 			getKey: "auth-type",
 			expAnnMap: []*Map{
-				{Source: srcing1, ID: "id1", Value: "basic"},
+				{Source: srcing1, URI: "/", Value: "basic"},
 			},
 		},
 	}
@@ -196,7 +199,7 @@ func TestGetAnnotation(t *testing.T) {
 		c := setup(t)
 		mapper := NewMapBuilder(c.logger, test.annPrefix, map[string]string{}).NewMapper()
 		for j, ann := range test.ann {
-			if added := mapper.AddAnnotation(ann.src, ann.id, ann.key, ann.val); added != ann.expAdded {
+			if added := mapper.AddAnnotation(ann.src, ann.uri, ann.key, ann.val); added != ann.expAdded {
 				t.Errorf("expect added '%t' on '// %d (%d)', but was '%t'", ann.expAdded, i, j, added)
 			}
 		}
@@ -288,6 +291,208 @@ func TestGetDefault(t *testing.T) {
 			if exp != value {
 				t.Errorf("expected key '%s'='%s' on '%d', but was '%s'", key, exp, i, value)
 			}
+		}
+		c.teardown()
+	}
+}
+
+func TestGetBackendConfig(t *testing.T) {
+	testCases := []struct {
+		keyValues map[string]map[string]string
+		expected  []*backendConfig
+	}{
+		// 0
+		{
+			keyValues: map[string]map[string]string{
+				"ann-1": {
+					"/": "10",
+				},
+			},
+			expected: []*backendConfig{
+				{
+					Paths: []*hatypes.BackendPath{
+						{Path: "/"},
+					},
+					Config: map[string]string{
+						"ann-1": "10",
+					},
+				},
+			},
+		},
+		// 1
+		{
+			keyValues: map[string]map[string]string{
+				"ann-1": {
+					"/": "10",
+				},
+				"ann-2": {
+					"/": "10",
+				},
+			},
+			expected: []*backendConfig{
+				{
+					Paths: []*hatypes.BackendPath{
+						{Path: "/"},
+					},
+					Config: map[string]string{
+						"ann-1": "10",
+						"ann-2": "10",
+					},
+				},
+			},
+		},
+		// 2
+		{
+			keyValues: map[string]map[string]string{
+				"ann-1": {
+					"/":    "10",
+					"/url": "10",
+				},
+				"ann-2": {
+					"/":     "20",
+					"/url":  "20",
+					"/path": "20",
+				},
+			},
+			expected: []*backendConfig{
+				{
+					Paths: []*hatypes.BackendPath{
+						{Path: "/"},
+						{Path: "/url"},
+					},
+					Config: map[string]string{
+						"ann-1": "10",
+						"ann-2": "20",
+					},
+				},
+				{
+					Paths: []*hatypes.BackendPath{
+						{Path: "/path"},
+					},
+					Config: map[string]string{
+						"ann-2": "20",
+					},
+				},
+			},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		b := c.createBackendData("default", "app", map[string]string{})
+		for _, kv := range test.keyValues {
+			for path := range kv {
+				b.backend.AddPath(path)
+			}
+		}
+		for key, values := range test.keyValues {
+			for url, value := range values {
+				b.mapper.AddAnnotation(&Source{}, url, key, value)
+			}
+		}
+		keys := make([]string, len(test.keyValues))
+		j := 0
+		for key := range test.keyValues {
+			keys[j] = key
+			j++
+		}
+		config := b.mapper.getBackendConfig(b.backend, keys...)
+		for _, cfg := range config {
+			for i := range cfg.Paths {
+				cfg.Paths[i].ID = ""
+			}
+		}
+		for _, cfg := range config {
+			sort.SliceStable(cfg.Paths, func(i, j int) bool {
+				return cfg.Paths[i].Path < cfg.Paths[j].Path
+			})
+		}
+		if !reflect.DeepEqual(config, test.expected) {
+			t.Errorf("expected and actual differ on '%d' - expected: %+v - actual: %+v", i, test.expected, config)
+		}
+		c.teardown()
+	}
+}
+
+func TestGetBackendConfigString(t *testing.T) {
+	testCases := []struct {
+		values   map[string]string
+		expected map[string][]string
+	}{
+		// 0
+		{
+			values: map[string]string{
+				"/":    "20",
+				"/url": "30",
+			},
+			expected: map[string][]string{
+				"20": {"/"},
+				"30": {"/url"},
+			},
+		},
+		// 1
+		{
+			values: map[string]string{
+				"/":    "20",
+				"/url": "20",
+			},
+			expected: map[string][]string{
+				"20": {"/", "/url"},
+			},
+		},
+		// 2
+		{
+			values: map[string]string{
+				"/":     "20",
+				"/path": "20",
+				"/url":  "10",
+			},
+			expected: map[string][]string{
+				"10": {"/url"},
+				"20": {"/", "/path"},
+			},
+		},
+	}
+	key := "ann-1"
+	for i, test := range testCases {
+		c := setup(t)
+		b := c.createBackendData("default", "app", map[string]string{})
+		for url, value := range test.values {
+			b.backend.AddPath(url)
+			b.mapper.AddAnnotation(&Source{}, url, key, value)
+		}
+		config := b.mapper.GetBackendConfigStr(b.backend, key)
+		for _, cfg := range config {
+			for i := range cfg.Paths {
+				cfg.Paths[i].ID = "-"
+			}
+		}
+		for _, cfg := range config {
+			sort.SliceStable(cfg.Paths, func(i, j int) bool {
+				return cfg.Paths[i].Path < cfg.Paths[j].Path
+			})
+		}
+		sort.SliceStable(config, func(i, j int) bool {
+			return config[i].Config < config[j].Config
+		})
+		expected := []*hatypes.BackendConfigStr{}
+		for value, urls := range test.expected {
+			paths := []*hatypes.BackendPath{}
+			for _, url := range urls {
+				paths = append(paths, &hatypes.BackendPath{
+					ID:   "-",
+					Path: url,
+				})
+			}
+			expected = append(expected, &hatypes.BackendConfigStr{
+				Paths:  paths,
+				Config: value,
+			})
+		}
+		sort.SliceStable(expected, func(i, j int) bool {
+			return expected[i].Config < expected[j].Config
+		})
+		if !reflect.DeepEqual(config, expected) {
+			t.Errorf("expected and actual differ on '%d' - expected: %+v - actual: %+v", i, expected, config)
 		}
 		c.teardown()
 	}

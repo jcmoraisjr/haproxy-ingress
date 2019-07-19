@@ -233,6 +233,7 @@ type Backend struct {
 	Name      string
 	Port      string
 	Endpoints []*Endpoint
+	Paths     []*BackendPath
 	//
 	AgentCheck        AgentCheck
 	BalanceAlgorithm  string
@@ -245,8 +246,7 @@ type Backend struct {
 	MaxQueueServer    int
 	ModeTCP           bool
 	OAuth             OAuthConfig
-	Paths             []string
-	ProxyBodySize     string
+	ProxyBodySize     []*BackendConfigStr
 	RewriteURL        string
 	SendProxyProtocol string
 	SSL               SSLBackendConfig
@@ -265,6 +265,18 @@ type Endpoint struct {
 	Port      int
 	TargetRef string
 	Weight    int
+}
+
+// BackendPath ...
+type BackendPath struct {
+	ID   string
+	Path string
+}
+
+// BackendConfigStr ...
+type BackendConfigStr struct {
+	Paths  []*BackendPath
+	Config string
 }
 
 // AgentCheck ...
@@ -314,6 +326,7 @@ type BackendTimeoutConfig struct {
 	Tunnel      string
 }
 
+// UserlistConfig ...
 type UserlistConfig struct {
 	Name  string
 	Realm string

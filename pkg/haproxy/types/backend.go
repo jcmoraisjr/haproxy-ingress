@@ -37,19 +37,43 @@ func (b *Backend) NewEndpoint(ip string, port int, targetRef string) *Endpoint {
 	return endpoint
 }
 
-// AddPath ...
-func (b *Backend) AddPath(path string) {
+// FindPath ...
+func (b *Backend) FindPath(path string) *BackendPath {
 	for _, p := range b.Paths {
-		if p == path {
-			// add only unique paths
-			return
+		if p.Path == path {
+			return p
 		}
+	}
+	return nil
+}
+
+// AddPath ...
+func (b *Backend) AddPath(path string) *BackendPath {
+	// add only unique paths
+	backendPath := b.FindPath(path)
+	if backendPath != nil {
+		return backendPath
 	}
 	// host's paths that references this backend
 	// used on RewriteURL config
-	b.Paths = append(b.Paths, path)
+	backendPath = &BackendPath{
+		ID:   fmt.Sprintf("path%02d", len(b.Paths)+1),
+		Path: path,
+	}
+	b.Paths = append(b.Paths, backendPath)
 	// reverse order in order to avoid overlap of sub-paths
 	sort.Slice(b.Paths, func(i, j int) bool {
-		return b.Paths[i] > b.Paths[j]
+		return b.Paths[i].Path > b.Paths[j].Path
 	})
+	return backendPath
+}
+
+// String ...
+func (p *BackendPath) String() string {
+	return fmt.Sprintf("%+v", *p)
+}
+
+// BackendConfigStr ...
+func (b *BackendConfigStr) String() string {
+	return fmt.Sprintf("%+v", *b)
 }
