@@ -341,11 +341,27 @@ func (c *updater) buildBackendCors(d *backData) {
 	}
 }
 
+func (c *updater) buildBackendHSTS(d *backData) {
+	rawHSTSList := d.mapper.GetBackendConfig(d.backend,
+		ingtypes.BackHSTS, ingtypes.BackHSTSMaxAge, ingtypes.BackHSTSPreload, ingtypes.BackHSTSIncludeSubdomains)
+	for _, rawHSTS := range rawHSTSList {
+		d.backend.HSTS = append(d.backend.HSTS, &hatypes.BackendConfigHSTS{
+			Paths: rawHSTS.Paths,
+			Config: hatypes.HSTS{
+				Enabled:    d.mapper.GetBoolFromMap(d.backend, rawHSTS, ingtypes.BackHSTS),
+				MaxAge:     d.mapper.GetIntFromMap(d.backend, rawHSTS, ingtypes.BackHSTSMaxAge),
+				Subdomains: d.mapper.GetBoolFromMap(d.backend, rawHSTS, ingtypes.BackHSTSIncludeSubdomains),
+				Preload:    d.mapper.GetBoolFromMap(d.backend, rawHSTS, ingtypes.BackHSTSPreload),
+			},
+		})
+	}
+}
+
 var (
 	oauthHeaderRegex = regexp.MustCompile(`^[A-Za-z0-9-]+:[A-Za-z0-9-_]+$`)
 )
 
-func (c *updater) buildOAuth(d *backData) {
+func (c *updater) buildBackendOAuth(d *backData) {
 	oauth, srcOAuth, foundOAuth := d.mapper.GetStr(ingtypes.BackOAuth)
 	if !foundOAuth {
 		return
@@ -403,7 +419,7 @@ var (
 	rewriteURLRegex = regexp.MustCompile(`^[^"' ]+$`)
 )
 
-func (c *updater) buildRewriteURL(d *backData) {
+func (c *updater) buildBackendRewriteURL(d *backData) {
 	rewrite, srcRewrite, foundRewrite := d.mapper.GetStr(ingtypes.BackRewriteTarget)
 	if !foundRewrite {
 		return
@@ -415,7 +431,7 @@ func (c *updater) buildRewriteURL(d *backData) {
 	d.backend.RewriteURL = rewrite
 }
 
-func (c *updater) buildWAF(d *backData) {
+func (c *updater) buildBackendWAF(d *backData) {
 	waf, srcWaf, foundWaf := d.mapper.GetStr(ingtypes.BackWAF)
 	if !foundWaf {
 		return
@@ -427,7 +443,7 @@ func (c *updater) buildWAF(d *backData) {
 	d.backend.WAF = waf
 }
 
-func (c *updater) buildWhitelist(d *backData) {
+func (c *updater) buildBackendWhitelist(d *backData) {
 	wlist, srcWlist, foundWlist := d.mapper.GetStr(ingtypes.BackWhitelistSourceRange)
 	if !foundWlist {
 		return

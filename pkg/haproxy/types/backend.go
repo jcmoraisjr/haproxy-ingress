@@ -19,7 +19,15 @@ package types
 import (
 	"fmt"
 	"sort"
+	"strings"
 )
+
+// NewBackendPaths ...
+func NewBackendPaths(paths ...*BackendPath) BackendPaths {
+	b := BackendPaths{}
+	b.Add(paths...)
+	return b
+}
 
 // NewEndpoint ...
 func (b *Backend) NewEndpoint(ip string, port int, targetRef string) *Endpoint {
@@ -68,12 +76,41 @@ func (b *Backend) AddPath(path string) *BackendPath {
 	return backendPath
 }
 
+// NeedACL ...
+func (b *Backend) NeedACL() bool {
+	return len(b.HSTS) > 1
+}
+
+// IDList ...
+func (p *BackendPaths) IDList() string {
+	ids := make([]string, len(p.Items))
+	for i, item := range p.Items {
+		ids[i] = item.ID
+	}
+	return strings.Join(ids, " ")
+}
+
+// Add ...
+func (p *BackendPaths) Add(paths ...*BackendPath) {
+	for _, path := range paths {
+		p.Items = append(p.Items, path)
+	}
+	sort.SliceStable(p.Items, func(i, j int) bool {
+		return p.Items[i].Path < p.Items[j].Path
+	})
+}
+
 // String ...
 func (p *BackendPath) String() string {
 	return fmt.Sprintf("%+v", *p)
 }
 
-// BackendConfigStr ...
+// String ...
 func (b *BackendConfigStr) String() string {
+	return fmt.Sprintf("%+v", *b)
+}
+
+// String ...
+func (b *BackendConfigHSTS) String() string {
 	return fmt.Sprintf("%+v", *b)
 }

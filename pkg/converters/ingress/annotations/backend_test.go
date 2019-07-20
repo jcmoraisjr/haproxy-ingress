@@ -32,6 +32,7 @@ import (
 
 func TestAffinity(t *testing.T) {
 	testCase := []struct {
+		annDefault map[string]string
 		ann        map[string]string
 		expCookie  hatypes.Cookie
 		expLogging string
@@ -107,7 +108,7 @@ func TestAffinity(t *testing.T) {
 	for i, test := range testCase {
 		c := setup(t)
 		u := c.createUpdater()
-		d := c.createBackendData("default", "ing1", test.ann)
+		d := c.createBackendData("default", "ing1", test.ann, test.annDefault)
 		u.buildBackendAffinity(d)
 		if !reflect.DeepEqual(test.expCookie, d.backend.Cookie) {
 			t.Errorf("config %d differs - expected: %+v - actual: %+v", i, test.expCookie, d.backend.Cookie)
@@ -121,6 +122,7 @@ func TestAuthHTTP(t *testing.T) {
 	testCase := []struct {
 		namespace    string
 		ingname      string
+		annDefault   map[string]string
 		ann          map[string]string
 		secrets      ing_helper.SecretContent
 		expUserlists []*hatypes.Userlist
@@ -260,7 +262,7 @@ usr2::clearpwd2`)}},
 			test.ingname = "ing1"
 		}
 		c.cache.SecretContent = test.secrets
-		d := c.createBackendData(test.namespace, test.ingname, test.ann)
+		d := c.createBackendData(test.namespace, test.ingname, test.ann, test.annDefault)
 		u.buildBackendAuthHTTP(d)
 		userlists := u.haproxy.Userlists()
 		if len(userlists)+len(test.expUserlists) > 0 && !reflect.DeepEqual(test.expUserlists, userlists) {
@@ -327,6 +329,7 @@ func TestBlueGreen(t *testing.T) {
 		"pod0103-01": buildPod("app=d01,v=3"),
 	}
 	testCase := []struct {
+		annDefault map[string]string
 		ann        map[string]string
 		endpoints  []*hatypes.Endpoint
 		expWeights []int
@@ -552,11 +555,10 @@ INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not refe
 			expLogging: "",
 		},
 	}
-
 	for i, test := range testCase {
 		c := setup(t)
 		c.cache.PodList = pods
-		d := c.createBackendData("default", "ing1", test.ann)
+		d := c.createBackendData("default", "ing1", test.ann, test.annDefault)
 		d.backend.Endpoints = test.endpoints
 		u := c.createUpdater()
 		u.buildBackendBlueGreen(d)
@@ -572,12 +574,105 @@ INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not refe
 	}
 }
 
+func TestHSTS(t *testing.T) {
+	testCases := []struct {
+		paths      []string
+		source     *Source
+		annDefault map[string]string
+		ann        map[string]map[string]string
+		expected   []*hatypes.BackendConfigHSTS
+		logging    string
+	}{
+		// 0
+		{
+			paths: []string{"/", "/url"},
+			annDefault: map[string]string{
+				ingtypes.BackHSTS:       "true",
+				ingtypes.BackHSTSMaxAge: "15768000",
+			},
+			ann: map[string]map[string]string{
+				"/": {},
+				"/url": {
+					ingtypes.BackHSTSMaxAge:  "50",
+					ingtypes.BackHSTSPreload: "true",
+				},
+			},
+			expected: []*hatypes.BackendConfigHSTS{
+				{
+					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{ID: "path01", Path: "/"}),
+					Config: hatypes.HSTS{
+						Enabled:    true,
+						MaxAge:     15768000,
+						Subdomains: false,
+						Preload:    false,
+					},
+				},
+				{
+					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{ID: "path02", Path: "/url"}),
+					Config: hatypes.HSTS{
+						Enabled:    true,
+						MaxAge:     50,
+						Subdomains: false,
+						Preload:    true,
+					},
+				},
+			},
+		},
+		// 1
+		{
+			paths: []string{"/"},
+			annDefault: map[string]string{
+				ingtypes.BackHSTS:       "true",
+				ingtypes.BackHSTSMaxAge: "15768000",
+			},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackHSTSMaxAge:            "50",
+					ingtypes.BackHSTSPreload:           "not-valid-bool",
+					ingtypes.BackHSTSIncludeSubdomains: "true",
+				},
+			},
+			expected: []*hatypes.BackendConfigHSTS{
+				{
+					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{ID: "path01", Path: "/"}),
+					Config: hatypes.HSTS{
+						Enabled:    true,
+						MaxAge:     50,
+						Subdomains: true,
+						Preload:    false,
+					},
+				},
+			},
+			source:  &Source{Namespace: "default", Name: "ing1", Type: "ingress"},
+			logging: `WARN ignoring key 'hsts-preload' for backend 'default/ing1': strconv.ParseBool: parsing "not-valid-bool": invalid syntax`,
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createBackendData("default", "ing1", map[string]string{}, test.annDefault)
+		for _, path := range test.paths {
+			d.backend.AddPath(path)
+		}
+		for uri, ann := range test.ann {
+			d.mapper.AddAnnotations(test.source, uri, ann)
+		}
+		u := c.createUpdater()
+		u.buildBackendHSTS(d)
+		if !reflect.DeepEqual(d.backend.HSTS, test.expected) {
+			t.Errorf("hsts on %d differs - expected: %v - actual: %v", i, test.expected, d.backend.HSTS)
+		}
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
 func TestOAuth(t *testing.T) {
 	testCases := []struct {
-		ann      map[string]string
-		backend  string
-		oauthExp hatypes.OAuthConfig
-		logging  string
+		annDefault map[string]string
+		ann        map[string]string
+		backend    string
+		oauthExp   hatypes.OAuthConfig
+		logging    string
 	}{
 		// 0
 		{
@@ -704,13 +799,13 @@ func TestOAuth(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		d := c.createBackendData("default", "app", test.ann)
+		d := c.createBackendData("default", "app", test.ann, test.annDefault)
 		if test.backend != "" {
 			b := strings.Split(test.backend, ":")
 			backend := c.haproxy.AcquireBackend(b[0], b[1], "8080")
 			c.haproxy.AcquireHost("app.local").AddPath(backend, b[2])
 		}
-		c.createUpdater().buildOAuth(d)
+		c.createUpdater().buildBackendOAuth(d)
 		if !reflect.DeepEqual(test.oauthExp, d.backend.OAuth) {
 			t.Errorf("oauth on %d differs - expected: %+v - actual: %+v", i, test.oauthExp, d.backend.OAuth)
 		}
@@ -749,8 +844,8 @@ func TestRewriteURL(t *testing.T) {
 		if test.input != "" {
 			ann = map[string]string{ingtypes.BackRewriteTarget: test.input}
 		}
-		d := c.createBackendData("default", "app", ann)
-		c.createUpdater().buildRewriteURL(d)
+		d := c.createBackendData("default", "app", ann, map[string]string{})
+		c.createUpdater().buildBackendRewriteURL(d)
 		if d.backend.RewriteURL != test.expected {
 			t.Errorf("rewrite on %d differs - expected: %v - actual: %v", i, test.expected, d.backend.RewriteURL)
 		}
@@ -787,8 +882,8 @@ func TestWAF(t *testing.T) {
 		if test.waf != "" {
 			ann = map[string]string{ingtypes.BackWAF: test.waf}
 		}
-		d := c.createBackendData("default", "app", ann)
-		c.createUpdater().buildWAF(d)
+		d := c.createBackendData("default", "app", ann, map[string]string{})
+		c.createUpdater().buildBackendWAF(d)
 		if d.backend.WAF != test.expected {
 			t.Errorf("WAF on %d differs - expected: %v - actual: %v", i, test.expected, d.backend.WAF)
 		}
@@ -830,8 +925,8 @@ WARN skipping invalid cidr '192.168.0/16' in whitelist config on ingress 'defaul
 	}
 	for i, test := range testCase {
 		c := setup(t)
-		d := c.createBackendData("default", "app", map[string]string{ingtypes.BackWhitelistSourceRange: test.cidrlist})
-		c.createUpdater().buildWhitelist(d)
+		d := c.createBackendData("default", "app", map[string]string{ingtypes.BackWhitelistSourceRange: test.cidrlist}, map[string]string{})
+		c.createUpdater().buildBackendWhitelist(d)
 		if !reflect.DeepEqual(d.backend.Whitelist, test.expected) {
 			if len(d.backend.Whitelist) > 0 || len(test.expected) > 0 {
 				t.Errorf("whitelist on %d differs - expected: %v - actual: %v", i, test.expected, d.backend.Whitelist)

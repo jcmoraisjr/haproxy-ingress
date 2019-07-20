@@ -88,13 +88,37 @@ func TestBackends(t *testing.T) {
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
-				b.HSTS.Enabled = true
-				b.HSTS.MaxAge = 15768000
-				b.HSTS.Preload = true
-				b.HSTS.Subdomains = true
+				p1 := b.AddPath("/")
+				p2 := b.AddPath("/path")
+				p3 := b.AddPath("/uri")
+				b.HSTS = []*hatypes.BackendConfigHSTS{
+					{
+						Paths: hatypes.NewBackendPaths(p1),
+						Config: hatypes.HSTS{
+							Enabled:    true,
+							MaxAge:     15768000,
+							Preload:    true,
+							Subdomains: true,
+						},
+					},
+					{
+						Paths: hatypes.NewBackendPaths(p2, p3),
+						Config: hatypes.HSTS{
+							Enabled:    true,
+							MaxAge:     15768000,
+							Preload:    false,
+							Subdomains: false,
+						},
+					},
+				}
 			},
 			expected: `
-    http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload" if { ssl_fc }`,
+    # path01 = /
+    # path02 = /path
+    # path03 = /uri
+    http-request set-var(txn.pathID) path,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map,_nomatch)
+    http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload" if { ssl_fc } { var(txn.pathID) path01 }
+    http-response set-header Strict-Transport-Security "max-age=15768000" if { ssl_fc } { var(txn.pathID) path02 path03 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {

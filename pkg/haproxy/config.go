@@ -37,6 +37,7 @@ type Config interface {
 	FindUserlist(name string) *hatypes.Userlist
 	FrontendGroup() *hatypes.FrontendGroup
 	BuildFrontendGroup() error
+	BuildBackendMaps() error
 	DefaultHost() *hatypes.Host
 	DefaultBackend() *hatypes.Backend
 	Global() *hatypes.Global
@@ -360,6 +361,22 @@ func (c *config) BuildFrontendGroup() error {
 	}
 	c.fgroup = fgroup
 	return nil
+}
+
+func (c *config) BuildBackendMaps() error {
+	// TODO rename HostMap types to HAProxyMap
+	maps := hatypes.CreateMaps()
+	for _, backend := range c.backends {
+		mapsPrefix := c.mapsDir + "/_back_" + backend.ID
+		if backend.NeedACL() {
+			pathsMap := maps.AddMap(mapsPrefix + "_idpath.map")
+			for _, path := range backend.Paths {
+				pathsMap.AppendPath(path.Path, path.ID)
+			}
+			backend.PathsMap = pathsMap
+		}
+	}
+	return writeMaps(maps, c.mapsTemplate)
 }
 
 func writeMaps(maps *hatypes.HostsMaps, template *template.Config) error {

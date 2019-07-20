@@ -17,6 +17,7 @@ limitations under the License.
 package annotations
 
 import (
+	"fmt"
 	"testing"
 
 	ing_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/helper_test"
@@ -62,17 +63,21 @@ func (c *testConfig) createUpdater() *updater {
 	}
 }
 
-func (c *testConfig) createBackendData(namespace, name string, ann map[string]string) *backData {
+func (c *testConfig) createBackendData(namespace, name string, ann, annDefault map[string]string) *backData {
 	source := &Source{
 		Namespace: namespace,
 		Name:      name,
 		Type:      "ingress",
 	}
-	mapper := NewMapBuilder(c.logger, "ing.k8s.io/", map[string]string{}).NewMapper()
+	mapper := NewMapBuilder(c.logger, "ing.k8s.io/", annDefault).NewMapper()
 	mapper.AddAnnotations(source, "/", ann)
 	return &backData{
-		backend: &hatypes.Backend{},
-		mapper:  mapper,
+		backend: &hatypes.Backend{
+			ID:        fmt.Sprintf("%s_%s_%d", namespace, name, 8080),
+			Namespace: namespace,
+			Name:      name,
+		},
+		mapper: mapper,
 	}
 }
 

@@ -234,6 +234,7 @@ type Backend struct {
 	Port      string
 	Endpoints []*Endpoint
 	Paths     []*BackendPath
+	PathsMap  *HostsMap
 	//
 	AgentCheck        AgentCheck
 	BalanceAlgorithm  string
@@ -241,7 +242,7 @@ type Backend struct {
 	Cors              Cors
 	CustomConfig      []string
 	HealthCheck       HealthCheck
-	HSTS              HSTS
+	HSTS              []*BackendConfigHSTS
 	MaxConnServer     int
 	MaxQueueServer    int
 	ModeTCP           bool
@@ -267,6 +268,11 @@ type Endpoint struct {
 	Weight    int
 }
 
+// BackendPaths ...
+type BackendPaths struct {
+	Items []*BackendPath
+}
+
 // BackendPath ...
 type BackendPath struct {
 	ID   string
@@ -275,8 +281,14 @@ type BackendPath struct {
 
 // BackendConfigStr ...
 type BackendConfigStr struct {
-	Paths  []*BackendPath
+	Paths  BackendPaths
 	Config string
+}
+
+// BackendConfigHSTS ...
+type BackendConfigHSTS struct {
+	Paths  BackendPaths
+	Config HSTS
 }
 
 // AgentCheck ...

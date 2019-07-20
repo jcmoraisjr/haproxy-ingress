@@ -122,6 +122,11 @@ func (i *instance) Update() {
 		i.clearConfig()
 		return
 	}
+	if err := i.curConfig.BuildBackendMaps(); err != nil {
+		i.logger.Error("error building backend maps: %v", err)
+		i.clearConfig()
+		return
+	}
 	if i.curConfig.Equals(i.oldConfig) {
 		i.logger.InfoV(2, "old and new configurations match, skipping reload")
 		i.clearConfig()

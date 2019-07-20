@@ -74,6 +74,17 @@ func (hm *HostsMap) AppendAliasRegex(base, value string) {
 	}
 }
 
+// AppendPath ...
+func (hm *HostsMap) AppendPath(path, id string) {
+	hm.Match = append(hm.Match, &HostsMapEntry{
+		Key:   path,
+		Value: id,
+	})
+	sort.SliceStable(hm.Match, func(i, j int) bool {
+		return hm.Match[i].Key > hm.Match[j].Key
+	})
+}
+
 // HasRegex ...
 func (hm *HostsMap) HasRegex() bool {
 	return len(hm.Regex) > 0

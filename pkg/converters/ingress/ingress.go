@@ -49,7 +49,7 @@ func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Con
 		options:            options,
 		logger:             options.Logger,
 		cache:              options.Cache,
-		mapBuilder:         annotations.NewMapBuilder(options.Logger, options.AnnotationPrefix, mergeMaps(annDefaults, globalConfig)),
+		mapBuilder:         annotations.NewMapBuilder(options.Logger, options.AnnotationPrefix+"/", mergeMaps(annDefaults, globalConfig)),
 		updater:            annotations.NewUpdater(haproxy, options.Cache, options.Logger),
 		globalConfig:       mergeConfig(globalDefaults, globalConfig),
 		hostAnnotations:    map[*hatypes.Host]*annotations.Mapper{},

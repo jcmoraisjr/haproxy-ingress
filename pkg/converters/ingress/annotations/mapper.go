@@ -53,6 +53,12 @@ type Source struct {
 	Type      string
 }
 
+// BackendConfig ...
+type BackendConfig struct {
+	Paths  hatypes.BackendPaths
+	Config map[string]string
+}
+
 // NewMapBuilder ...
 func NewMapBuilder(logger types.Logger, annPrefix string, annDefaults map[string]string) *MapBuilder {
 	return &MapBuilder{
@@ -73,6 +79,10 @@ func (b *MapBuilder) NewMapper() *Mapper {
 // AddAnnotation ...
 func (c *Mapper) AddAnnotation(source *Source, uri, key, value string) bool {
 	annMaps, found := c.maps[key]
+	if uri == "" {
+		// empty uri means default value
+		panic("uri cannot be empty")
+	}
 	if found {
 		for _, annMap := range annMaps {
 			if annMap.URI == uri {
@@ -145,6 +155,15 @@ func (c *Mapper) GetStrValue(key string) string {
 	return value
 }
 
+// GetStrFromMap ...
+func (c *Mapper) GetStrFromMap(config *BackendConfig, key string) (string, bool) {
+	if value, found := config.Config[key]; found {
+		return value, true
+	}
+	value, found := c.annDefaults[key]
+	return value, found
+}
+
 // GetBool ...
 func (c *Mapper) GetBool(key string) (bool, *Source, bool) {
 	valueStr, src, found := c.GetStr(key)
@@ -163,6 +182,18 @@ func (c *Mapper) GetBool(key string) (bool, *Source, bool) {
 func (c *Mapper) GetBoolValue(key string) bool {
 	value, _, _ := c.GetBool(key)
 	return value
+}
+
+// GetBoolFromMap ...
+func (c *Mapper) GetBoolFromMap(backend *hatypes.Backend, config *BackendConfig, key string) bool {
+	if valueStr, found := c.GetStrFromMap(config, key); found {
+		value, err := strconv.ParseBool(valueStr)
+		if err != nil {
+			c.logger.Warn("ignoring key '%s' for backend '%s/%s': %v", key, backend.Namespace, backend.Name, err)
+		}
+		return value
+	}
+	return false
 }
 
 // GetInt ...
@@ -185,52 +216,83 @@ func (c *Mapper) GetIntValue(key string) int {
 	return value
 }
 
-type backendConfig struct {
-	Paths  []*hatypes.BackendPath
-	Config map[string]string
+// GetIntFromMap ...
+func (c *Mapper) GetIntFromMap(backend *hatypes.Backend, config *BackendConfig, key string) int {
+	if valueStr, found := c.GetStrFromMap(config, key); found {
+		value, err := strconv.ParseInt(valueStr, 10, 0)
+		if err != nil {
+			c.logger.Warn("ignoring key '%s' for backend '%s/%s': %v", key, backend.Namespace, backend.Name, err)
+		}
+		return int(value)
+	}
+	return 0
 }
 
-func (c *Mapper) getBackendConfig(backend *hatypes.Backend, keys ...string) []*backendConfig {
-	rawConfig := map[string]map[string]string{}
+// GetBackendConfig builds a generic BackendConfig using
+// annotation maps registered previously as its data source
+//
+// An annotation map is a `map[<uri>]<value>` collected on
+// ingress/service parsing phase. A HAProxy backend need a group
+// of annotation keys - ie a group of maps - grouped by URI in
+// order to create and apply ACLs.
+//
+// The rule of thumb on the final BackendConfig array is:
+//
+//   1. Every backend path must be declared, so a HAProxy method can
+//      just `if len(BackendConfig) > 1 then need-acl`;
+//   2. Added annotation means declared annotation (ingress, service
+//      or default) so the config reader `Get<Type>FromMap()`` can
+//      distinguish between `undeclared` and `declared empty`.
+//
+func (c *Mapper) GetBackendConfig(backend *hatypes.Backend, keys ...string) []*BackendConfig {
+	// all backend paths need to be declared, filling up previously with default values
+	rawConfig := make(map[string]map[string]string, len(backend.Paths))
+	for _, path := range backend.Paths {
+		kv := make(map[string]string, len(keys))
+		for _, key := range keys {
+			if value, found := c.annDefaults[key]; found {
+				kv[key] = value
+			}
+		}
+		rawConfig[path.Path] = kv
+	}
+	// populate rawConfig with declared annotations, grouping annotation maps by URI
 	for _, key := range keys {
 		if maps, found := c.GetStrMap(key); found {
 			for _, m := range maps {
-				if _, f := rawConfig[m.URI]; f {
+				// skip default value
+				if m.URI != "" {
+					if _, found := rawConfig[m.URI]; !found {
+						panic(fmt.Sprintf("backend '%s' is missing uri '%s'", backend.Name, m.URI))
+					}
 					rawConfig[m.URI][key] = m.Value
-				} else {
-					rawConfig[m.URI] = map[string]string{key: m.Value}
 				}
 			}
 		}
 	}
-	config := []*backendConfig{}
+	// iterate the URIs and create the BackendConfig array
+	// most configs should have just one item with default kv
+	config := make([]*BackendConfig, 0, 1)
 	for uri, kv := range rawConfig {
 		path := backend.FindPath(uri)
-		if path == nil {
-			// skipping paths not declared on host/frontend
-			continue
-		}
 		if cfg := findConfig(config, kv); cfg != nil {
-			cfg.Paths = append(cfg.Paths, path)
+			cfg.Paths.Add(path)
 		} else {
-			config = append(config, &backendConfig{
-				Paths:  []*hatypes.BackendPath{path},
+			config = append(config, &BackendConfig{
+				Paths:  hatypes.NewBackendPaths(path),
 				Config: kv,
 			})
 		}
 	}
-	for _, cfg := range config {
-		sort.SliceStable(cfg.Paths, func(i, j int) bool {
-			return cfg.Paths[i].ID < cfg.Paths[j].ID
-		})
-	}
+	// rawConfig is a map which by definition does not have explicit order.
+	// sort in order to the same input generates the same output
 	sort.SliceStable(config, func(i, j int) bool {
-		return config[i].Paths[0].ID < config[j].Paths[0].ID
+		return config[i].Paths.Items[0].Path < config[j].Paths.Items[0].Path
 	})
 	return config
 }
 
-func findConfig(config []*backendConfig, kv map[string]string) *backendConfig {
+func findConfig(config []*BackendConfig, kv map[string]string) *BackendConfig {
 	for _, cfg := range config {
 		if reflect.DeepEqual(cfg.Config, kv) {
 			return cfg
@@ -241,7 +303,7 @@ func findConfig(config []*backendConfig, kv map[string]string) *backendConfig {
 
 // GetBackendConfigStr ...
 func (c *Mapper) GetBackendConfigStr(backend *hatypes.Backend, key string) []*hatypes.BackendConfigStr {
-	rawConfig := c.getBackendConfig(backend, key)
+	rawConfig := c.GetBackendConfig(backend, key)
 	config := make([]*hatypes.BackendConfigStr, len(rawConfig))
 	for i, cfg := range rawConfig {
 		config[i] = &hatypes.BackendConfigStr{
@@ -252,7 +314,7 @@ func (c *Mapper) GetBackendConfigStr(backend *hatypes.Backend, key string) []*ha
 	return config
 }
 
-func (b *backendConfig) String() string {
+func (b *BackendConfig) String() string {
 	return fmt.Sprintf("%+v", *b)
 }
 

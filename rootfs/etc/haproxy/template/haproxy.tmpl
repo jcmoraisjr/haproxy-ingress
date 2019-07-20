@@ -183,6 +183,14 @@ backend {{ $backend.ID }}
 {{- else }}{{/*** if $backend.ModeTCP ***/}}
 
 {{- /*------------------------------------*/}}
+{{- if $backend.NeedACL }}
+{{- range $path := reverse $backend.Paths }}
+    # {{ $path.ID }} = {{ $path.Path }}
+{{- end }}
+    http-request set-var(txn.pathID) path,map_beg({{ $backend.PathsMap.MatchFile }},_nomatch)
+{{- end }}
+
+{{- /*------------------------------------*/}}
 {{- if $backend.Whitelist }}
     http-request deny if !{ src{{ range $cidr := $backend.Whitelist }} {{ $cidr }}{{ end }} }
 {{- end }}
@@ -265,12 +273,19 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $backend.HSTS.Enabled }}
-{{- $hsts := $backend.HSTS }}
+{{- $needACL := gt (len $backend.HSTS) 1 }}
+{{- range $hstsCfg := $backend.HSTS }}
+{{- $hsts := $hstsCfg.Config }}
+{{- if $hsts.Enabled }}
+{{- $paths := $hstsCfg.Paths }}
     http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}
         {{- if $hsts.Subdomains }}; includeSubDomains{{ end }}
         {{- if $hsts.Preload }}; preload{{ end }}"
-        {{- if not $backend.SSLRedirect }} if { ssl_fc }{{ end }}
+        {{- if or (not $backend.SSLRedirect) $needACL }} if
+            {{- if not $backend.SSLRedirect }} { ssl_fc }{{ end }}
+            {{- if $needACL }} { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+        {{- end }}
+{{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
