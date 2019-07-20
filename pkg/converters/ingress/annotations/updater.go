@@ -124,4 +124,5 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) 
 	c.buildBackendRewriteURL(data)
 	c.buildBackendWAF(data)
 	c.buildBackendWhitelist(data)
+	c.buildBackendWhitelistTCP(data)
 }

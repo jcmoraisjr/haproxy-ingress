@@ -156,14 +156,56 @@ func TestBackends(t *testing.T) {
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
-				b.Whitelist = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				p1 := b.AddPath("/app")
+				p2 := b.AddPath("/api")
+				p3 := b.AddPath("/path")
+				b.Whitelist = []*hatypes.BackendConfigWhitelist{
+					{
+						Paths:  hatypes.NewBackendPaths(p1, p2),
+						Config: []string{"10.0.0.0/8", "192.168.0.0/16"},
+					},
+					{
+						Paths:  hatypes.NewBackendPaths(p3),
+						Config: []string{"192.168.95.0/24"},
+					},
+				}
 			},
 			expected: `
-    http-request deny if !{ src 10.0.0.0/8 192.168.0.0/16 }`,
+    # path01 = /
+    # path03 = /api
+    # path02 = /app
+    # path04 = /path
+    http-request set-var(txn.pathID) path,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map,_nomatch)
+    http-request deny if { var(txn.pathID) path03 path02 } !{ src 10.0.0.0/8 192.168.0.0/16 }
+    http-request deny if { var(txn.pathID) path04 } !{ src 192.168.95.0/24 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
-				b.Whitelist = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				p1 := b.AddPath("/app")
+				p2 := b.AddPath("/api")
+				p3 := b.AddPath("/path")
+				b.Whitelist = []*hatypes.BackendConfigWhitelist{
+					{
+						Paths:  hatypes.NewBackendPaths(p1, p2),
+						Config: []string{},
+					},
+					{
+						Paths:  hatypes.NewBackendPaths(p3),
+						Config: []string{"192.168.95.0/24"},
+					},
+				}
+			},
+			expected: `
+    # path01 = /
+    # path03 = /api
+    # path02 = /app
+    # path04 = /path
+    http-request set-var(txn.pathID) path,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map,_nomatch)
+    http-request deny if { var(txn.pathID) path04 } !{ src 192.168.95.0/24 }`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.WhitelistTCP = []string{"10.0.0.0/8", "192.168.0.0/16"}
 				b.ModeTCP = true
 			},
 			expected: `

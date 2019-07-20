@@ -646,6 +646,16 @@ func TestHSTS(t *testing.T) {
 			source:  &Source{Namespace: "default", Name: "ing1", Type: "ingress"},
 			logging: `WARN ignoring key 'hsts-preload' for backend 'default/ing1': strconv.ParseBool: parsing "not-valid-bool": invalid syntax`,
 		},
+		// 2
+		{
+			paths: []string{"/"},
+			expected: []*hatypes.BackendConfigHSTS{
+				{
+					Paths:  hatypes.NewBackendPaths(&hatypes.BackendPath{ID: "path01", Path: "/"}),
+					Config: hatypes.HSTS{},
+				},
+			},
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
@@ -893,6 +903,80 @@ func TestWAF(t *testing.T) {
 }
 
 func TestWhitelist(t *testing.T) {
+	testCases := []struct {
+		paths    []string
+		cidrlist map[string]string
+		expected []*hatypes.BackendConfigWhitelist
+		logging  string
+	}{
+		// 0
+		{
+			paths: []string{"/"},
+			cidrlist: map[string]string{
+				"/": "10.0.0.0/8,192.168.0.0/16",
+			},
+			expected: []*hatypes.BackendConfigWhitelist{
+				{
+					Paths:  hatypes.NewBackendPaths(&hatypes.BackendPath{Path: "/"}),
+					Config: []string{"10.0.0.0/8", "192.168.0.0/16"},
+				},
+			},
+		},
+		// 1
+		{
+			paths: []string{"/", "/url", "/path"},
+			cidrlist: map[string]string{
+				"/":     "10.0.0.0/8,192.168.0.0/16",
+				"/path": "10.0.0.0/8,192.168.0.0/16",
+				"/url":  "10.0.0.0/8",
+			},
+			expected: []*hatypes.BackendConfigWhitelist{
+				{
+					Paths: hatypes.NewBackendPaths(
+						&hatypes.BackendPath{Path: "/"},
+						&hatypes.BackendPath{Path: "/path"},
+					),
+					Config: []string{"10.0.0.0/8", "192.168.0.0/16"},
+				},
+				{
+					Paths:  hatypes.NewBackendPaths(&hatypes.BackendPath{Path: "/url"}),
+					Config: []string{"10.0.0.0/8"},
+				},
+			},
+		},
+		// 2
+		{
+			paths: []string{"/"},
+			expected: []*hatypes.BackendConfigWhitelist{
+				{
+					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{Path: "/"}),
+				},
+			},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createBackendData("default", "app", map[string]string{}, map[string]string{})
+		for _, path := range test.paths {
+			d.backend.AddPath(path)
+		}
+		for uri, cidrlist := range test.cidrlist {
+			d.mapper.AddAnnotation(&Source{}, uri, ingtypes.BackWhitelistSourceRange, cidrlist)
+		}
+		c.createUpdater().buildBackendWhitelist(d)
+		for _, cfg := range d.backend.Whitelist {
+			for _, path := range cfg.Paths.Items {
+				path.ID = ""
+			}
+		}
+		if !reflect.DeepEqual(d.backend.Whitelist, test.expected) {
+			t.Errorf("whitelist on %d differs- expected: %v - actual: %v", i, test.expected, d.backend.Whitelist)
+		}
+		c.teardown()
+	}
+}
+
+func TestWhitelistTCP(t *testing.T) {
 	testCase := []struct {
 		cidrlist string
 		expected []string
@@ -917,7 +1001,7 @@ func TestWhitelist(t *testing.T) {
 		// 3
 		{
 			cidrlist: "10.0.0/8,192.168.0/16",
-			expected: []string{},
+			expected: nil,
 			logging: `
 WARN skipping invalid cidr '10.0.0/8' in whitelist config on ingress 'default/app'
 WARN skipping invalid cidr '192.168.0/16' in whitelist config on ingress 'default/app'`,
@@ -926,11 +1010,9 @@ WARN skipping invalid cidr '192.168.0/16' in whitelist config on ingress 'defaul
 	for i, test := range testCase {
 		c := setup(t)
 		d := c.createBackendData("default", "app", map[string]string{ingtypes.BackWhitelistSourceRange: test.cidrlist}, map[string]string{})
-		c.createUpdater().buildBackendWhitelist(d)
-		if !reflect.DeepEqual(d.backend.Whitelist, test.expected) {
-			if len(d.backend.Whitelist) > 0 || len(test.expected) > 0 {
-				t.Errorf("whitelist on %d differs - expected: %v - actual: %v", i, test.expected, d.backend.Whitelist)
-			}
+		c.createUpdater().buildBackendWhitelistTCP(d)
+		if !reflect.DeepEqual(d.backend.WhitelistTCP, test.expected) {
+			t.Errorf("whitelist on %d differs - expected: %v - actual: %v", i, test.expected, d.backend.WhitelistTCP)
 		}
 		c.logger.CompareLogging(test.logging)
 		c.teardown()

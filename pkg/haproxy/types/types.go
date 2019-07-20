@@ -255,7 +255,8 @@ type Backend struct {
 	Timeout           BackendTimeoutConfig
 	Userlist          UserlistConfig
 	WAF               string
-	Whitelist         []string
+	Whitelist         []*BackendConfigWhitelist
+	WhitelistTCP      []string
 }
 
 // Endpoint ...
@@ -289,6 +290,12 @@ type BackendConfigStr struct {
 type BackendConfigHSTS struct {
 	Paths  BackendPaths
 	Config HSTS
+}
+
+// BackendConfigWhitelist ...
+type BackendConfigWhitelist struct {
+	Paths  BackendPaths
+	Config []string
 }
 
 // AgentCheck ...

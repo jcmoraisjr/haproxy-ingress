@@ -173,8 +173,8 @@ backend {{ $backend.ID }}
 {{- if $backend.ModeTCP }}
 
 {{- /*------------------------------------*/}}
-{{- if $backend.Whitelist }}
-    tcp-request content reject if !{ src{{ range $cidr := $backend.Whitelist }} {{ $cidr }}{{ end }} }
+{{- if $backend.WhitelistTCP }}
+    tcp-request content reject if !{ src{{ range $cidr := $backend.WhitelistTCP }} {{ $cidr }}{{ end }} }
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -191,8 +191,13 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $backend.Whitelist }}
-    http-request deny if !{ src{{ range $cidr := $backend.Whitelist }} {{ $cidr }}{{ end }} }
+{{- range $wlistCfg := $backend.Whitelist }}
+{{- $wlist := $wlistCfg.Config }}
+{{- if $wlist }}
+    http-request deny if
+        {{- if gt (len $backend.Whitelist) 1 }} { var(txn.pathID) {{ $wlistCfg.Paths.IDList }} }{{ end }}
+        {{- "" }} !{ src{{ range $cidr := $wlist }} {{ $cidr }}{{ end }} }
+{{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}

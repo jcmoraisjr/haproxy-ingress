@@ -444,6 +444,24 @@ func (c *updater) buildBackendWAF(d *backData) {
 }
 
 func (c *updater) buildBackendWhitelist(d *backData) {
+	for _, wlist := range d.mapper.GetBackendConfigStr(d.backend, ingtypes.BackWhitelistSourceRange) {
+		var cidrlist []string
+		for _, cidr := range utils.Split(wlist.Config, ",") {
+			if _, _, err := net.ParseCIDR(cidr); err != nil {
+				c.logger.Warn("skipping invalid cidr '%s' in whitelist config on backend '%s/%s'",
+					cidr, d.backend.Namespace, d.backend.Name)
+			} else {
+				cidrlist = append(cidrlist, cidr)
+			}
+		}
+		d.backend.Whitelist = append(d.backend.Whitelist, &hatypes.BackendConfigWhitelist{
+			Paths:  wlist.Paths,
+			Config: cidrlist,
+		})
+	}
+}
+
+func (c *updater) buildBackendWhitelistTCP(d *backData) {
 	wlist, srcWlist, foundWlist := d.mapper.GetStr(ingtypes.BackWhitelistSourceRange)
 	if !foundWlist {
 		return
@@ -456,5 +474,5 @@ func (c *updater) buildBackendWhitelist(d *backData) {
 			cidrlist = append(cidrlist, cidr)
 		}
 	}
-	d.backend.Whitelist = cidrlist
+	d.backend.WhitelistTCP = cidrlist
 }

@@ -78,7 +78,7 @@ func (b *Backend) AddPath(path string) *BackendPath {
 
 // NeedACL ...
 func (b *Backend) NeedACL() bool {
-	return len(b.HSTS) > 1
+	return len(b.HSTS) > 1 || len(b.Whitelist) > 1
 }
 
 // IDList ...
@@ -112,5 +112,10 @@ func (b *BackendConfigStr) String() string {
 
 // String ...
 func (b *BackendConfigHSTS) String() string {
+	return fmt.Sprintf("%+v", *b)
+}
+
+// String ...
+func (b *BackendConfigWhitelist) String() string {
 	return fmt.Sprintf("%+v", *b)
 }
