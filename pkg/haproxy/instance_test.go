@@ -972,7 +972,7 @@ func TestInstanceSSLPassthrough(t *testing.T) {
 
 	b = c.config.AcquireBackend("d3", "app-http", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS41h}
-	h.HTTPPassthroughBackend = b
+	h.HTTPPassthroughBackend = b.ID
 
 	c.instance.Update()
 	c.checkConfig(`

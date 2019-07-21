@@ -57,8 +57,11 @@ func (c *updater) buildHostSSLPassthrough(d *hostData) {
 	sslpassHTTPPort, _, foundSSLPassHTTPPort := d.mapper.GetStr(ingtypes.HostSSLPassthroughHTTPPort)
 	if foundSSLPassHTTPPort {
 		httpBackend := c.haproxy.FindBackend(rootPath.Backend.Namespace, rootPath.Backend.Name, sslpassHTTPPort)
-		d.host.HTTPPassthroughBackend = httpBackend
+		if httpBackend != nil {
+			d.host.HTTPPassthroughBackend = httpBackend.ID
+		}
 	}
-	rootPath.Backend.ModeTCP = true
+	backend := c.haproxy.AcquireBackend(rootPath.Backend.Namespace, rootPath.Backend.Name, rootPath.Backend.Port)
+	backend.ModeTCP = true
 	d.host.SSLPassthrough = true
 }

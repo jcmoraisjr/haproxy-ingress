@@ -278,17 +278,18 @@ func (c *config) BuildFrontendGroup() error {
 		if rootPath == nil {
 			return fmt.Errorf("missing root path on host %s", sslpassHost.Hostname)
 		}
-		fgroup.SSLPassthroughMap.AppendHostname(sslpassHost.Hostname, rootPath.BackendID)
-		fgroup.HTTPSRedirMap.AppendHostname(sslpassHost.Hostname+"/", yesno[sslpassHost.HTTPPassthroughBackend == nil])
-		if sslpassHost.HTTPPassthroughBackend != nil {
-			fgroup.HTTPFrontsMap.AppendHostname(sslpassHost.Hostname+"/", sslpassHost.HTTPPassthroughBackend.ID)
+		fgroup.SSLPassthroughMap.AppendHostname(sslpassHost.Hostname, rootPath.Backend.ID)
+		fgroup.HTTPSRedirMap.AppendHostname(sslpassHost.Hostname+"/", yesno[sslpassHost.HTTPPassthroughBackend == ""])
+		if sslpassHost.HTTPPassthroughBackend != "" {
+			fgroup.HTTPFrontsMap.AppendHostname(sslpassHost.Hostname+"/", sslpassHost.HTTPPassthroughBackend)
 		}
 	}
 	for _, f := range frontends {
 		for _, host := range f.Hosts {
 			for _, path := range host.Paths {
+				backend := c.AcquireBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
 				// TODO use only root path if all uri has the same conf
-				fgroup.HTTPSRedirMap.AppendHostname(host.Hostname+path.Path, yesno[path.Backend.SSLRedirect])
+				fgroup.HTTPSRedirMap.AppendHostname(host.Hostname+path.Path, yesno[backend.SSLRedirect])
 				base := host.Hostname + path.Path
 				var aliasName, aliasRegex string
 				// TODO warn in logs about ignoring alias name due to hostname colision
@@ -298,18 +299,18 @@ func (c *config) BuildFrontendGroup() error {
 				if host.Alias.AliasRegex != "" {
 					aliasRegex = host.Alias.AliasRegex + path.Path
 				}
-				back := path.BackendID
+				back := path.Backend.ID
 				if host.HasTLSAuth() {
 					f.SNIBackendsMap.AppendHostname(base, back)
 					f.SNIBackendsMap.AppendAliasName(aliasName, back)
 					f.SNIBackendsMap.AppendAliasRegex(aliasRegex, back)
-					path.Backend.SSL.HasTLSAuth = true
+					backend.SSL.HasTLSAuth = true
 				} else {
 					f.HostBackendsMap.AppendHostname(base, back)
 					f.HostBackendsMap.AppendAliasName(aliasName, back)
 					f.HostBackendsMap.AppendAliasRegex(aliasRegex, back)
 				}
-				if !path.Backend.SSLRedirect {
+				if !backend.SSLRedirect {
 					fgroup.HTTPFrontsMap.AppendHostname(base, back)
 				}
 				var ns string

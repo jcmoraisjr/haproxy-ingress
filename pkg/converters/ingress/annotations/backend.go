@@ -404,11 +404,11 @@ func (c *updater) buildBackendOAuth(d *backData) {
 	d.backend.OAuth.Headers = headersMap
 }
 
-func (c *updater) findBackend(namespace, uriPrefix string) *hatypes.Backend {
+func (c *updater) findBackend(namespace, uriPrefix string) *hatypes.HostBackend {
 	for _, host := range c.haproxy.Hosts() {
 		for _, path := range host.Paths {
 			if strings.TrimRight(path.Path, "/") == uriPrefix && path.Backend.Namespace == namespace {
-				return path.Backend
+				return &path.Backend
 			}
 		}
 	}

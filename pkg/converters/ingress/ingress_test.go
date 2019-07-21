@@ -1391,7 +1391,7 @@ func convertHost(hafronts ...*hatypes.Host) []hostMock {
 	for _, f := range hafronts {
 		paths := []pathMock{}
 		for _, p := range f.Paths {
-			paths = append(paths, pathMock{Path: p.Path, BackendID: p.BackendID})
+			paths = append(paths, pathMock{Path: p.Path, BackendID: p.Backend.ID})
 		}
 		hosts = append(hosts, hostMock{
 			Hostname:     f.Hostname,

@@ -673,7 +673,7 @@ frontend {{ $frontend.Name }}
 {{- $cfg := .p1 }}
 {{- if $cfg.DefaultHost }}
 {{- range $path := $cfg.DefaultHost.Paths }}
-    use_backend {{ $path.BackendID }}
+    use_backend {{ $path.Backend.ID }}
         {{- if ne $path.Path "/" }} if { path_beg {{ $path.Path }} }{{ end }}
 {{- end }}
 {{- else if $cfg.DefaultBackend }}
