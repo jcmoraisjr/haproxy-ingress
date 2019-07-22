@@ -684,14 +684,23 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 
-{{- if $global.ModSecurity.Endpoints }}
-
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # #
 # #   SUPPORT
 # #
 #
+
+listen stats
+    bind *:1936{{ if gt $global.Procs.Nbproc 1 }} process 1{{ end }}
+    mode http
+    stats enable
+    stats uri /
+    no log
+    option forceclose
+    stats show-legends
+
+{{- if $global.ModSecurity.Endpoints }}
 
   # # # # # # # # # # # # # # # # # # #
 # #

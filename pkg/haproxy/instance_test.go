@@ -262,6 +262,7 @@ backend d1_app_8080
     server s1 172.17.0.11:8080 weight 100` + test.srvsuffix + `
 <<backends-default>>
 <<frontends-default>>
+<<support>>
 `)
 
 		c.logger.CompareLogging(defaultLogging)
@@ -296,6 +297,7 @@ backend d1_app_8080
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
 <<frontends-default>>
+<<support>>
 `)
 	c.logger.CompareLogging(defaultLogging)
 }
@@ -364,6 +366,7 @@ frontend _front001
     <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404
+<<support>>
 `)
 
 	c.checkMap("_global_http_front.map", `
@@ -433,6 +436,7 @@ frontend _front001
     <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     use_backend d1_app_8080
+<<support>>
 `)
 
 	c.checkMap("_global_http_front.map", `
@@ -510,6 +514,7 @@ frontend _front001
     <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _default_backend
+<<support>>
 `)
 
 	c.checkMap("_global_http_front.map", `
@@ -621,6 +626,7 @@ frontend _front001
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     use_backend %[var(req.snibackend)] unless { var(req.snibackend) _nomatch }
     default_backend _default_backend
+<<support>>
 `)
 
 	c.checkMap("_socket001.list", `
@@ -790,6 +796,7 @@ frontend _front002
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     use_backend %[var(req.snibackend)] unless { var(req.snibackend) _nomatch }
     default_backend _default_backend
+<<support>>
 `)
 
 	c.checkMap("_socket001.list", `
@@ -928,6 +935,7 @@ frontend _front001
     <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _default_backend
+<<support>>
 `)
 
 	c.checkMap("_global_http_front.map", `
@@ -1004,7 +1012,9 @@ frontend _front_http
     <<tls-del-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
-    default_backend _error404`)
+    default_backend _error404
+<<support>>
+`)
 
 	c.checkMap("_global_sslpassthrough.map", `
 d2.local d2_app_8080
@@ -1074,6 +1084,7 @@ frontend _front001
     <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404
+<<support>>
 `)
 
 	c.checkMap("_global_http_front.map", `
@@ -1159,6 +1170,7 @@ frontend _front001
     <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404
+<<support>>
 `)
 
 	c.checkMap("_global_https_redir.map", `
@@ -1211,6 +1223,7 @@ backend d1_app_8080
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
 <<frontends-default>>
+<<support>>
 `)
 	c.logger.CompareLogging(defaultLogging)
 }
@@ -1313,6 +1326,7 @@ backend d1_app_8080
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
 <<frontends-default>>
+<<support>>
 `)
 		c.logger.CompareLogging(defaultLogging)
 		c.teardown()
@@ -1389,7 +1403,8 @@ backend d1_app_8080
     mode http` + test.backendExp + `
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
-<<frontends-default>>` + modsec)
+<<frontends-default>>
+<<support>>` + modsec)
 
 		c.logger.CompareLogging(defaultLogging)
 		c.teardown()
@@ -1516,6 +1531,7 @@ frontend _front002
     <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404
+<<support>>
 `)
 
 	c.checkMap("_socket001.list", `
@@ -1805,6 +1821,14 @@ frontend _front001
     <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404`,
+		"<<support>>": `listen stats
+    bind *:1936
+    mode http
+    stats enable
+    stats uri /
+    no log
+    option forceclose
+    stats show-legends`,
 	}
 	for {
 		changed := false
