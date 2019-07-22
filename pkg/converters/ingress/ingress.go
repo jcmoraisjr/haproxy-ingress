@@ -290,11 +290,11 @@ func (c *converter) addEndpoints(svc *api.Service, svcPort intstr.IntOrString, b
 			ssport := int(port.Port)
 			if ssport == svcPort.IntValue() && port.Protocol == api.ProtocolTCP {
 				for _, addr := range subset.Addresses {
-					backend.NewEndpoint(addr.IP, ssport, addr.TargetRef.Namespace+"/"+addr.TargetRef.Name)
+					backend.AddEndpoint(addr.IP, ssport, addr.TargetRef.Namespace+"/"+addr.TargetRef.Name)
 				}
 				if c.globalConfig.DrainSupport {
 					for _, addr := range subset.NotReadyAddresses {
-						ep := backend.NewEndpoint(addr.IP, ssport, addr.TargetRef.Namespace+"/"+addr.TargetRef.Name)
+						ep := backend.AddEndpoint(addr.IP, ssport, addr.TargetRef.Namespace+"/"+addr.TargetRef.Name)
 						ep.Weight = 0
 					}
 				}
@@ -307,7 +307,7 @@ func (c *converter) addEndpoints(svc *api.Service, svcPort intstr.IntOrString, b
 			return err
 		}
 		for _, pod := range pods {
-			ep := backend.NewEndpoint(pod.Status.PodIP, svcPort.IntValue(), pod.Namespace+"/"+pod.Name)
+			ep := backend.AddEndpoint(pod.Status.PodIP, svcPort.IntValue(), pod.Namespace+"/"+pod.Name)
 			ep.Weight = 0
 		}
 	}

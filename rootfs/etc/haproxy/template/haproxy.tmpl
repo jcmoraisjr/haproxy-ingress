@@ -322,7 +322,7 @@ backend {{ $backend.ID }}
 {{- /*------------------------------------*/}}
 {{- range $ep := $backend.Endpoints }}
     server {{ $ep.Name }} {{ $ep.IP }}:{{ $ep.Port }}
-        {{- if $ep.Disabled }} disabled{{ end }}
+        {{- if not $ep.Enabled }} disabled{{ end }}
         {{- "" }} weight {{ $ep.Weight }}
         {{- if and (not $backend.ModeTCP) ($backend.Cookie.Name) (not $backend.Cookie.Dynamic) }} cookie {{ $ep.Name }}{{ end }}
         {{- template "backend" map $backend }}

@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/dynconfig"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
@@ -44,9 +43,6 @@ type Instance interface {
 
 // CreateInstance ...
 func CreateInstance(logger types.Logger, bindUtils hatypes.BindUtils, options InstanceOptions) Instance {
-	dynconf := &dynconfig.Config{
-		Logger: logger,
-	}
 	return &instance{
 		logger:       logger,
 		bindUtils:    bindUtils,
@@ -54,7 +50,6 @@ func CreateInstance(logger types.Logger, bindUtils hatypes.BindUtils, options In
 		templates:    template.CreateConfig(),
 		mapsTemplate: template.CreateConfig(),
 		mapsDir:      "/etc/haproxy/maps",
-		dynconfig:    dynconf,
 	}
 }
 
@@ -65,7 +60,6 @@ type instance struct {
 	templates    *template.Config
 	mapsTemplate *template.Config
 	mapsDir      string
-	dynconfig    *dynconfig.Config
 	oldConfig    Config
 	curConfig    Config
 }
@@ -137,7 +131,7 @@ func (i *instance) Update() {
 		i.clearConfig()
 		return
 	}
-	updated := i.dynconfig.Update()
+	updated := i.newDynUpdater(i.curConfig.Global().StatsSocket).dynUpdate(i.oldConfig, i.curConfig)
 	i.clearConfig()
 	if updated {
 		if err := i.check(); err != nil {

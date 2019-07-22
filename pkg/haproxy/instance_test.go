@@ -1663,7 +1663,7 @@ func setup(t *testing.T) *testConfig {
 		tempdir:    tempdir,
 		configfile: configfile,
 	}
-	c.configGlobal()
+	c.configGlobal(c.config.Global())
 	return c
 }
 
@@ -1674,8 +1674,17 @@ func (c *testConfig) teardown() {
 	}
 }
 
-func (c *testConfig) configGlobal() {
-	global := c.config.Global()
+func (c *testConfig) newConfig() Config {
+	config := createConfig(c.bindUtils, options{
+		mapsTemplate: c.instance.(*instance).mapsTemplate,
+		mapsDir:      c.tempdir,
+	})
+	config.ConfigDefaultX509Cert("/var/haproxy/ssl/certs/default.pem")
+	c.configGlobal(config.Global())
+	return config
+}
+
+func (c *testConfig) configGlobal(global *hatypes.Global) {
 	global.Cookie.Key = "Ingress"
 	global.MaxConn = 2000
 	global.SSL.Ciphers = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256"
@@ -1696,58 +1705,67 @@ func (c *testConfig) configGlobal() {
 }
 
 var endpointS0 = &hatypes.Endpoint{
-	Name:   "s0",
-	IP:     "172.17.0.99",
-	Port:   8080,
-	Weight: 100,
+	Name:    "s0",
+	IP:      "172.17.0.99",
+	Enabled: true,
+	Port:    8080,
+	Weight:  100,
 }
 var endpointS1 = &hatypes.Endpoint{
-	Name:   "s1",
-	IP:     "172.17.0.11",
-	Port:   8080,
-	Weight: 100,
+	Name:    "s1",
+	IP:      "172.17.0.11",
+	Enabled: true,
+	Port:    8080,
+	Weight:  100,
 }
 var endpointS21 = &hatypes.Endpoint{
-	Name:   "s21",
-	IP:     "172.17.0.121",
-	Port:   8080,
-	Weight: 100,
+	Name:    "s21",
+	IP:      "172.17.0.121",
+	Enabled: true,
+	Port:    8080,
+	Weight:  100,
 }
 var endpointS22 = &hatypes.Endpoint{
-	Name:   "s22",
-	IP:     "172.17.0.122",
-	Port:   8080,
-	Weight: 100,
+	Name:    "s22",
+	IP:      "172.17.0.122",
+	Enabled: true,
+	Port:    8080,
+	Weight:  100,
 }
 var endpointS31 = &hatypes.Endpoint{
-	Name:   "s31",
-	IP:     "172.17.0.131",
-	Port:   8080,
-	Weight: 100,
+	Name:    "s31",
+	IP:      "172.17.0.131",
+	Enabled: true,
+	Port:    8080,
+	Weight:  100,
 }
 var endpointS32 = &hatypes.Endpoint{
-	Name:   "s32",
-	IP:     "172.17.0.132",
-	Port:   8080,
-	Weight: 100,
+	Name:    "s32",
+	IP:      "172.17.0.132",
+	Enabled: true,
+	Port:    8080,
+	Weight:  100,
 }
 var endpointS33 = &hatypes.Endpoint{
-	Name:   "s33",
-	IP:     "172.17.0.133",
-	Port:   8080,
-	Weight: 100,
+	Name:    "s33",
+	IP:      "172.17.0.133",
+	Enabled: true,
+	Port:    8080,
+	Weight:  100,
 }
 var endpointS41s = &hatypes.Endpoint{
-	Name:   "s41s",
-	IP:     "172.17.0.141",
-	Port:   8443,
-	Weight: 100,
+	Name:    "s41s",
+	IP:      "172.17.0.141",
+	Enabled: true,
+	Port:    8443,
+	Weight:  100,
 }
 var endpointS41h = &hatypes.Endpoint{
-	Name:   "s41h",
-	IP:     "172.17.0.141",
-	Port:   8080,
-	Weight: 100,
+	Name:    "s41h",
+	IP:      "172.17.0.141",
+	Enabled: true,
+	Port:    8080,
+	Weight:  100,
 }
 
 var defaultLogging = `

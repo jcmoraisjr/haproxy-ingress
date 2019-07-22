@@ -268,10 +268,11 @@ type Backend struct {
 
 // Endpoint ...
 type Endpoint struct {
-	Disabled  bool
+	Enabled   bool
 	IP        string
 	Name      string
 	Port      int
+	Target    string
 	TargetRef string
 	Weight    int
 }

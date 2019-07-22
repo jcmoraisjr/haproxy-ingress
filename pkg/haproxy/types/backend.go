@@ -29,19 +29,26 @@ func NewBackendPaths(paths ...*BackendPath) BackendPaths {
 	return b
 }
 
-// NewEndpoint ...
-func (b *Backend) NewEndpoint(ip string, port int, targetRef string) *Endpoint {
+// AddEndpoint ...
+func (b *Backend) AddEndpoint(ip string, port int, targetRef string) *Endpoint {
 	endpoint := &Endpoint{
-		Name:      fmt.Sprintf("%s:%d", ip, port),
+		Name:      fmt.Sprintf("srv%03d", len(b.Endpoints)+1),
 		IP:        ip,
 		Port:      port,
+		Target:    fmt.Sprintf("%s:%d", ip, port),
+		Enabled:   true,
 		TargetRef: targetRef,
 		Weight:    1,
 	}
 	b.Endpoints = append(b.Endpoints, endpoint)
-	sort.Slice(b.Endpoints, func(i, j int) bool {
-		return b.Endpoints[i].Name < b.Endpoints[j].Name
-	})
+	return endpoint
+}
+
+// AddEmptyEndpoint ...
+func (b *Backend) AddEmptyEndpoint() *Endpoint {
+	endpoint := b.AddEndpoint("127.0.0.1", 1023, "")
+	endpoint.Enabled = false
+	endpoint.Weight = 0
 	return endpoint
 }
 
