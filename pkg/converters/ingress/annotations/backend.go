@@ -32,7 +32,7 @@ import (
 func (c *updater) buildBackendAffinity(d *backData) {
 	affinity, srcAffinity, foundAffinity := d.mapper.GetStr(ingtypes.BackAffinity)
 	if affinity != "cookie" {
-		if foundAffinity {
+		if foundAffinity && affinity != "" {
 			c.logger.Error("unsupported affinity type on %v: %s", srcAffinity, affinity)
 		}
 		return
@@ -58,7 +58,7 @@ func (c *updater) buildBackendAffinity(d *backData) {
 func (c *updater) buildBackendAuthHTTP(d *backData) {
 	authType, srcAuthType, foundAuthType := d.mapper.GetStr(ingtypes.BackAuthType)
 	if authType != "basic" {
-		if foundAuthType {
+		if foundAuthType && authType != "" {
 			c.logger.Error("unsupported authentication type on %v: %s", srcAuthType, authType)
 		}
 		return
@@ -363,7 +363,7 @@ var (
 
 func (c *updater) buildBackendOAuth(d *backData) {
 	oauth, srcOAuth, foundOAuth := d.mapper.GetStr(ingtypes.BackOAuth)
-	if !foundOAuth {
+	if !foundOAuth || oauth == "" {
 		return
 	}
 	if oauth != "oauth2_proxy" {
@@ -421,7 +421,7 @@ var (
 
 func (c *updater) buildBackendRewriteURL(d *backData) {
 	rewrite, srcRewrite, foundRewrite := d.mapper.GetStr(ingtypes.BackRewriteTarget)
-	if !foundRewrite {
+	if !foundRewrite || rewrite == "" {
 		return
 	}
 	if !rewriteURLRegex.MatchString(rewrite) {

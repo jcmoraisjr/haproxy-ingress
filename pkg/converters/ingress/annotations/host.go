@@ -22,7 +22,7 @@ import (
 
 func (c *updater) buildHostAuthTLS(d *hostData) {
 	tlsSecret, _, foundTLSSecret := d.mapper.GetStr(ingtypes.HostAuthTLSSecret)
-	if !foundTLSSecret {
+	if !foundTLSSecret || tlsSecret == "" {
 		return
 	}
 	verify := d.mapper.GetStrValue(ingtypes.HostAuthTLSVerifyClient)

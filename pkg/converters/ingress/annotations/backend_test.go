@@ -953,6 +953,21 @@ func TestWhitelist(t *testing.T) {
 				},
 			},
 		},
+		// 3
+		{
+			paths: []string{"/"},
+			cidrlist: map[string]string{
+				"/": "",
+			},
+			expected: []*hatypes.BackendConfigWhitelist{
+				{
+					Paths: hatypes.NewBackendPaths(
+						&hatypes.BackendPath{Path: "/"},
+					),
+					Config: nil,
+				},
+			},
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
