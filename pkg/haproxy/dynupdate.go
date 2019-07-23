@@ -115,7 +115,7 @@ func (d *dynUpdater) updateBackendPair(pair *backendPair) bool {
 
 	// map endpoints of old and new config together
 	endpoints := make(map[string]*epPair, len(oldBack.Endpoints))
-	empty := make([]string, 0, len(oldBack.Endpoints))
+	var empty []string
 	for _, endpoint := range oldBack.Endpoints {
 		if endpoint.Enabled {
 			endpoints[endpoint.Target] = &epPair{old: endpoint}
@@ -126,7 +126,7 @@ func (d *dynUpdater) updateBackendPair(pair *backendPair) bool {
 
 	// current endpoint names will be overwritten from its
 	// old counterpart, this will save some socket calls
-	added := make([]*hatypes.Endpoint, 0, len(curBack.Endpoints))
+	var added []*hatypes.Endpoint
 	for _, endpoint := range curBack.Endpoints {
 		if pair, found := endpoints[endpoint.Target]; found {
 			endpoint.Name = pair.old.Name
