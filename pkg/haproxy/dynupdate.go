@@ -108,6 +108,11 @@ func (d *dynUpdater) updateBackendPair(pair *backendPair) bool {
 		return false
 	}
 
+	// most of the backends are equal, save some proc stopping here
+	if reflect.DeepEqual(oldBack.Endpoints, curBack.Endpoints) {
+		return true
+	}
+
 	// can decrease endpoints, cannot increase
 	if len(oldBack.Endpoints) < len(curBack.Endpoints) {
 		return false
