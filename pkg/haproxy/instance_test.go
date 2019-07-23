@@ -88,12 +88,9 @@ func TestBackends(t *testing.T) {
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
-				p1 := b.AddPath("/")
-				p2 := b.AddPath("/path")
-				p3 := b.AddPath("/uri")
 				b.HSTS = []*hatypes.BackendConfigHSTS{
 					{
-						Paths: hatypes.NewBackendPaths(p1),
+						Paths: hatypes.NewBackendPaths(b.FindHostPath("d1.local/")),
 						Config: hatypes.HSTS{
 							Enabled:    true,
 							MaxAge:     15768000,
@@ -102,7 +99,7 @@ func TestBackends(t *testing.T) {
 						},
 					},
 					{
-						Paths: hatypes.NewBackendPaths(p2, p3),
+						Paths: hatypes.NewBackendPaths(b.FindHostPath("d1.local/path"), b.FindHostPath("d1.local/uri")),
 						Config: hatypes.HSTS{
 							Enabled:    true,
 							MaxAge:     15768000,
@@ -112,11 +109,12 @@ func TestBackends(t *testing.T) {
 					},
 				}
 			},
+			path: []string{"/", "/path", "/uri"},
 			expected: `
-    # path01 = /
-    # path02 = /path
-    # path03 = /uri
-    http-request set-var(txn.pathID) path,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map,_nomatch)
+    # path01 = d1.local/
+    # path02 = d1.local/path
+    # path03 = d1.local/uri
+    http-request set-var(txn.pathID) base,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map,_nomatch)
     http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload" if { ssl_fc } { var(txn.pathID) path01 }
     http-response set-header Strict-Transport-Security "max-age=15768000" if { ssl_fc } { var(txn.pathID) path02 path03 }`,
 		},
@@ -156,52 +154,46 @@ func TestBackends(t *testing.T) {
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
-				p1 := b.AddPath("/app")
-				p2 := b.AddPath("/api")
-				p3 := b.AddPath("/path")
 				b.Whitelist = []*hatypes.BackendConfigWhitelist{
 					{
-						Paths:  hatypes.NewBackendPaths(p1, p2),
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app"), b.FindHostPath("d1.local/api")),
 						Config: []string{"10.0.0.0/8", "192.168.0.0/16"},
 					},
 					{
-						Paths:  hatypes.NewBackendPaths(p3),
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/path")),
 						Config: []string{"192.168.95.0/24"},
 					},
 				}
 			},
+			path: []string{"/app", "/api", "/path"},
 			expected: `
-    # path01 = /
-    # path03 = /api
-    # path02 = /app
-    # path04 = /path
-    http-request set-var(txn.pathID) path,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map,_nomatch)
-    http-request deny if { var(txn.pathID) path03 path02 } !{ src 10.0.0.0/8 192.168.0.0/16 }
-    http-request deny if { var(txn.pathID) path04 } !{ src 192.168.95.0/24 }`,
+    # path02 = d1.local/api
+    # path01 = d1.local/app
+    # path03 = d1.local/path
+    http-request set-var(txn.pathID) base,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map,_nomatch)
+    http-request deny if { var(txn.pathID) path02 path01 } !{ src 10.0.0.0/8 192.168.0.0/16 }
+    http-request deny if { var(txn.pathID) path03 } !{ src 192.168.95.0/24 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
-				p1 := b.AddPath("/app")
-				p2 := b.AddPath("/api")
-				p3 := b.AddPath("/path")
 				b.Whitelist = []*hatypes.BackendConfigWhitelist{
 					{
-						Paths:  hatypes.NewBackendPaths(p1, p2),
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app"), b.FindHostPath("d1.local/api")),
 						Config: []string{},
 					},
 					{
-						Paths:  hatypes.NewBackendPaths(p3),
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/path")),
 						Config: []string{"192.168.95.0/24"},
 					},
 				}
 			},
+			path: []string{"/app", "/api", "/path"},
 			expected: `
-    # path01 = /
-    # path03 = /api
-    # path02 = /app
-    # path04 = /path
-    http-request set-var(txn.pathID) path,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map,_nomatch)
-    http-request deny if { var(txn.pathID) path04 } !{ src 192.168.95.0/24 }`,
+    # path02 = d1.local/api
+    # path01 = d1.local/app
+    # path03 = d1.local/path
+    http-request set-var(txn.pathID) base,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map,_nomatch)
+    http-request deny if { var(txn.pathID) path03 } !{ src 192.168.95.0/24 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {

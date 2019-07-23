@@ -599,7 +599,7 @@ func TestHSTS(t *testing.T) {
 			},
 			expected: []*hatypes.BackendConfigHSTS{
 				{
-					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{ID: "path01", Path: "/"}),
+					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{ID: "path01", Hostpath: "/", Path: "/"}),
 					Config: hatypes.HSTS{
 						Enabled:    true,
 						MaxAge:     15768000,
@@ -608,7 +608,7 @@ func TestHSTS(t *testing.T) {
 					},
 				},
 				{
-					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{ID: "path02", Path: "/url"}),
+					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{ID: "path02", Hostpath: "/url", Path: "/url"}),
 					Config: hatypes.HSTS{
 						Enabled:    true,
 						MaxAge:     50,
@@ -634,7 +634,7 @@ func TestHSTS(t *testing.T) {
 			},
 			expected: []*hatypes.BackendConfigHSTS{
 				{
-					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{ID: "path01", Path: "/"}),
+					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{ID: "path01", Hostpath: "/", Path: "/"}),
 					Config: hatypes.HSTS{
 						Enabled:    true,
 						MaxAge:     50,
@@ -651,7 +651,7 @@ func TestHSTS(t *testing.T) {
 			paths: []string{"/"},
 			expected: []*hatypes.BackendConfigHSTS{
 				{
-					Paths:  hatypes.NewBackendPaths(&hatypes.BackendPath{ID: "path01", Path: "/"}),
+					Paths:  hatypes.NewBackendPaths(&hatypes.BackendPath{ID: "path01", Hostpath: "/", Path: "/"}),
 					Config: hatypes.HSTS{},
 				},
 			},
@@ -661,7 +661,7 @@ func TestHSTS(t *testing.T) {
 		c := setup(t)
 		d := c.createBackendData("default", "ing1", map[string]string{}, test.annDefault)
 		for _, path := range test.paths {
-			d.backend.AddPath(path)
+			d.backend.AddHostPath("", path)
 		}
 		for uri, ann := range test.ann {
 			d.mapper.AddAnnotations(test.source, uri, ann)
@@ -958,7 +958,8 @@ func TestWhitelist(t *testing.T) {
 		c := setup(t)
 		d := c.createBackendData("default", "app", map[string]string{}, map[string]string{})
 		for _, path := range test.paths {
-			d.backend.AddPath(path)
+			// TODO missing a proper test with host and /path
+			d.backend.AddHostPath("", path)
 		}
 		for uri, cidrlist := range test.cidrlist {
 			d.mapper.AddAnnotation(&Source{}, uri, ingtypes.BackWhitelistSourceRange, cidrlist)
@@ -967,6 +968,7 @@ func TestWhitelist(t *testing.T) {
 		for _, cfg := range d.backend.Whitelist {
 			for _, path := range cfg.Paths.Items {
 				path.ID = ""
+				path.Hostpath = ""
 			}
 		}
 		if !reflect.DeepEqual(d.backend.Whitelist, test.expected) {
@@ -1010,6 +1012,7 @@ WARN skipping invalid cidr '192.168.0/16' in whitelist config on ingress 'defaul
 	for i, test := range testCase {
 		c := setup(t)
 		d := c.createBackendData("default", "app", map[string]string{ingtypes.BackWhitelistSourceRange: test.cidrlist}, map[string]string{})
+		d.backend.ModeTCP = true
 		c.createUpdater().buildBackendWhitelistTCP(d)
 		if !reflect.DeepEqual(d.backend.WhitelistTCP, test.expected) {
 			t.Errorf("whitelist on %d differs - expected: %v - actual: %v", i, test.expected, d.backend.WhitelistTCP)

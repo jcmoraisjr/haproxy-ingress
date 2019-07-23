@@ -372,7 +372,7 @@ func (c *config) BuildBackendMaps() error {
 		if backend.NeedACL() {
 			pathsMap := maps.AddMap(mapsPrefix + "_idpath.map")
 			for _, path := range backend.Paths {
-				pathsMap.AppendPath(path.Path, path.ID)
+				pathsMap.AppendPath(path.Hostpath, path.ID)
 			}
 			backend.PathsMap = pathsMap
 		}

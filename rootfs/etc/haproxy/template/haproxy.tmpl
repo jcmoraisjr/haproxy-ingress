@@ -185,9 +185,9 @@ backend {{ $backend.ID }}
 {{- /*------------------------------------*/}}
 {{- if $backend.NeedACL }}
 {{- range $path := reverse $backend.Paths }}
-    # {{ $path.ID }} = {{ $path.Path }}
+    # {{ $path.ID }} = {{ $path.Hostpath }}
 {{- end }}
-    http-request set-var(txn.pathID) path,map_beg({{ $backend.PathsMap.MatchFile }},_nomatch)
+    http-request set-var(txn.pathID) base,map_beg({{ $backend.PathsMap.MatchFile }},_nomatch)
 {{- end }}
 
 {{- /*------------------------------------*/}}

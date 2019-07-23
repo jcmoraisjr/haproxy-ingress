@@ -40,6 +40,13 @@ type Mapper struct {
 }
 
 // Map ...
+//
+// TODO rename URI to Hostpath -- currently this is a little mess.
+// Fix also testCase data in order to represent a hostname+path.
+// Hostname is the domain name. Path is the declared starting path on ingress
+// Together they populate a map_beg() converter in order to match HAProxy's
+// `base` sample fetch method.
+//
 type Map struct {
 	Source *Source
 	URI    string
@@ -77,15 +84,15 @@ func (b *MapBuilder) NewMapper() *Mapper {
 }
 
 // AddAnnotation ...
-func (c *Mapper) AddAnnotation(source *Source, uri, key, value string) bool {
+func (c *Mapper) AddAnnotation(source *Source, hostpath, key, value string) bool {
 	annMaps, found := c.maps[key]
-	if uri == "" {
-		// empty uri means default value
-		panic("uri cannot be empty")
+	if hostpath == "" {
+		// empty hostpath means default value
+		panic("hostpath cannot be empty")
 	}
 	if found {
 		for _, annMap := range annMaps {
-			if annMap.URI == uri {
+			if annMap.URI == hostpath {
 				// true if value was used -- either adding or
 				// matching a previous one. Map.Source is ignored here.
 				return annMap.Value == value
@@ -94,7 +101,7 @@ func (c *Mapper) AddAnnotation(source *Source, uri, key, value string) bool {
 	}
 	annMaps = append(annMaps, &Map{
 		Source: source,
-		URI:    uri,
+		URI:    hostpath,
 		Value:  value,
 	})
 	c.maps[key] = annMaps
@@ -102,10 +109,10 @@ func (c *Mapper) AddAnnotation(source *Source, uri, key, value string) bool {
 }
 
 // AddAnnotations ...
-func (c *Mapper) AddAnnotations(source *Source, uri string, ann map[string]string) (skipped []string) {
+func (c *Mapper) AddAnnotations(source *Source, hostpath string, ann map[string]string) (skipped []string) {
 	skipped = make([]string, 0, len(ann))
 	for key, value := range ann {
-		if added := c.AddAnnotation(source, uri, key, value); !added {
+		if added := c.AddAnnotation(source, hostpath, key, value); !added {
 			skipped = append(skipped, key)
 		}
 	}
@@ -254,7 +261,7 @@ func (c *Mapper) GetBackendConfig(backend *hatypes.Backend, keys ...string) []*B
 				kv[key] = value
 			}
 		}
-		rawConfig[path.Path] = kv
+		rawConfig[path.Hostpath] = kv
 	}
 	// populate rawConfig with declared annotations, grouping annotation maps by URI
 	for _, key := range keys {
@@ -263,7 +270,7 @@ func (c *Mapper) GetBackendConfig(backend *hatypes.Backend, keys ...string) []*B
 				// skip default value
 				if m.URI != "" {
 					if _, found := rawConfig[m.URI]; !found {
-						panic(fmt.Sprintf("backend '%s' is missing uri '%s'", backend.Name, m.URI))
+						panic(fmt.Sprintf("backend '%s' is missing hostname/path '%s'", backend.Name, m.URI))
 					}
 					rawConfig[m.URI][key] = m.Value
 				}
@@ -274,7 +281,7 @@ func (c *Mapper) GetBackendConfig(backend *hatypes.Backend, keys ...string) []*B
 	// most configs should have just one item with default kv
 	config := make([]*BackendConfig, 0, 1)
 	for uri, kv := range rawConfig {
-		path := backend.FindPath(uri)
+		path := backend.FindHostPath(uri)
 		if cfg := findConfig(config, kv); cfg != nil {
 			cfg.Paths.Add(path)
 		} else {
@@ -287,7 +294,7 @@ func (c *Mapper) GetBackendConfig(backend *hatypes.Backend, keys ...string) []*B
 	// rawConfig is a map which by definition does not have explicit order.
 	// sort in order to the same input generates the same output
 	sort.SliceStable(config, func(i, j int) bool {
-		return config[i].Paths.Items[0].Path < config[j].Paths.Items[0].Path
+		return config[i].Paths.Items[0].Hostpath < config[j].Paths.Items[0].Hostpath
 	})
 	return config
 }

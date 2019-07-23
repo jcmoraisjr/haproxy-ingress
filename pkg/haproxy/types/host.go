@@ -42,7 +42,7 @@ func (h *Host) AddPath(backend *Backend, path string) {
 			Port:      backend.Port,
 		},
 	})
-	backend.AddPath(path)
+	backend.AddHostPath(h.Hostname, path)
 	// reverse order in order to avoid overlap of sub-paths
 	sort.Slice(h.Paths, func(i, j int) bool {
 		return h.Paths[i].Path > h.Paths[j].Path

@@ -444,6 +444,9 @@ func (c *updater) buildBackendWAF(d *backData) {
 }
 
 func (c *updater) buildBackendWhitelist(d *backData) {
+	if d.backend.ModeTCP {
+		return
+	}
 	for _, wlist := range d.mapper.GetBackendConfigStr(d.backend, ingtypes.BackWhitelistSourceRange) {
 		var cidrlist []string
 		for _, cidr := range utils.Split(wlist.Config, ",") {
@@ -462,6 +465,9 @@ func (c *updater) buildBackendWhitelist(d *backData) {
 }
 
 func (c *updater) buildBackendWhitelistTCP(d *backData) {
+	if !d.backend.ModeTCP {
+		return
+	}
 	wlist, srcWlist, foundWlist := d.mapper.GetStr(ingtypes.BackWhitelistSourceRange)
 	if !foundWlist {
 		return

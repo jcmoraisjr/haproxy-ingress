@@ -284,8 +284,9 @@ type BackendPaths struct {
 
 // BackendPath ...
 type BackendPath struct {
-	ID   string
-	Path string
+	ID       string
+	Hostpath string
+	Path     string
 }
 
 // BackendConfigStr ...

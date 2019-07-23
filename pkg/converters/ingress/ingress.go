@@ -57,7 +57,7 @@ func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Con
 	}
 	haproxy.ConfigDefaultX509Cert(options.DefaultSSLFile.Filename)
 	if options.DefaultBackend != "" {
-		if backend, err := c.addBackend(&annotations.Source{}, "/", options.DefaultBackend, "", map[string]string{}); err == nil {
+		if backend, err := c.addBackend(&annotations.Source{}, "*/", options.DefaultBackend, "", map[string]string{}); err == nil {
 			haproxy.ConfigDefaultBackend(backend)
 		} else {
 			c.logger.Error("error reading default service: %v", err)
@@ -120,7 +120,7 @@ func (c *converter) syncIngress(ing *extensions.Ingress) {
 			}
 			svcName, svcPort := readServiceNamePort(&path.Backend)
 			fullSvcName := utils.FullQualifiedName(ing.Namespace, svcName)
-			backend, err := c.addBackend(source, uri, fullSvcName, svcPort, annBack)
+			backend, err := c.addBackend(source, hostname+uri, fullSvcName, svcPort, annBack)
 			if err != nil {
 				c.logger.Warn("skipping backend config of ingress '%s': %v", fullIngName, err)
 				continue
@@ -129,7 +129,7 @@ func (c *converter) syncIngress(ing *extensions.Ingress) {
 			sslpassthrough, _ := strconv.ParseBool(annHost[ingtypes.HostSSLPassthrough])
 			sslpasshttpport := annHost[ingtypes.HostSSLPassthroughHTTPPort]
 			if sslpassthrough && sslpasshttpport != "" {
-				if _, err := c.addBackend(source, uri, fullSvcName, sslpasshttpport, annBack); err != nil {
+				if _, err := c.addBackend(source, hostname+uri, fullSvcName, sslpasshttpport, annBack); err != nil {
 					c.logger.Warn("skipping http port config of ssl-passthrough: %v", err)
 				}
 			}
@@ -170,17 +170,18 @@ func (c *converter) syncAnnotations() {
 }
 
 func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcName, svcPort string, annHost, annBack map[string]string) error {
+	hostname := "*"
 	uri := "/"
-	if fr := c.haproxy.FindHost("*"); fr != nil {
+	if fr := c.haproxy.FindHost(hostname); fr != nil {
 		if fr.FindPath(uri) != nil {
 			return fmt.Errorf("path %s was already defined on default host", uri)
 		}
 	}
-	backend, err := c.addBackend(source, uri, fullSvcName, svcPort, annBack)
+	backend, err := c.addBackend(source, hostname+uri, fullSvcName, svcPort, annBack)
 	if err != nil {
 		return err
 	}
-	host := c.addHost("*", source, annHost)
+	host := c.addHost(hostname, source, annHost)
 	host.AddPath(backend, uri)
 	return nil
 }
@@ -192,14 +193,14 @@ func (c *converter) addHost(hostname string, source *annotations.Source, ann map
 		mapper = c.mapBuilder.NewMapper()
 		c.hostAnnotations[host] = mapper
 	}
-	skipped := mapper.AddAnnotations(source, "/", ann)
+	skipped := mapper.AddAnnotations(source, hostname+"/", ann)
 	if len(skipped) > 0 {
 		c.logger.Warn("skipping host annotation(s) from %v due to conflict: %v", source, skipped)
 	}
 	return host
 }
 
-func (c *converter) addBackend(source *annotations.Source, uri, fullSvcName, svcPort string, ann map[string]string) (*hatypes.Backend, error) {
+func (c *converter) addBackend(source *annotations.Source, hostpath, fullSvcName, svcPort string, ann map[string]string) (*hatypes.Backend, error) {
 	svc, err := c.cache.GetService(fullSvcName)
 	if err != nil {
 		return nil, err
@@ -230,11 +231,11 @@ func (c *converter) addBackend(source *annotations.Source, uri, fullSvcName, svc
 			Namespace: namespace,
 			Name:      svcName,
 			Type:      "service",
-		}, uri, ann)
+		}, hostpath, ann)
 		c.backendAnnotations[backend] = mapper
 	}
 	// Merging Ingress annotations
-	skipped := mapper.AddAnnotations(source, uri, ann)
+	skipped := mapper.AddAnnotations(source, hostpath, ann)
 	if len(skipped) > 0 {
 		c.logger.Warn("skipping backend '%s:%s' annotation(s) from %v due to conflict: %v",
 			svcName, svcPort, source, skipped)

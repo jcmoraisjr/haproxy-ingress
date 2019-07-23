@@ -430,7 +430,7 @@ func TestGetBackendConfig(t *testing.T) {
 		b := c.createBackendData("default", "app", map[string]string{}, test.annDefault)
 		for _, kv := range test.keyValues {
 			for path := range kv {
-				b.backend.AddPath(path)
+				b.backend.AddHostPath("", path)
 			}
 		}
 		for key, values := range test.keyValues {
@@ -442,6 +442,7 @@ func TestGetBackendConfig(t *testing.T) {
 		for _, cfg := range config {
 			for i := range cfg.Paths.Items {
 				cfg.Paths.Items[i].ID = ""
+				cfg.Paths.Items[i].Hostpath = ""
 			}
 		}
 		if !reflect.DeepEqual(config, test.expected) {
@@ -507,9 +508,9 @@ func TestGetBackendConfigString(t *testing.T) {
 	for i, test := range testCases {
 		c := setup(t)
 		b := c.createBackendData("default", "app", map[string]string{}, test.annDefault)
-		for url, value := range test.values {
-			b.backend.AddPath(url)
-			b.mapper.AddAnnotation(&Source{}, url, key, value)
+		for path, value := range test.values {
+			b.backend.AddHostPath("", path)
+			b.mapper.AddAnnotation(&Source{}, path, key, value)
 		}
 		config := b.mapper.GetBackendConfigStr(b.backend, key)
 		for _, cfg := range config {
@@ -525,8 +526,9 @@ func TestGetBackendConfigString(t *testing.T) {
 			paths := hatypes.NewBackendPaths()
 			for _, url := range urls {
 				paths.Add(&hatypes.BackendPath{
-					ID:   "-",
-					Path: url,
+					ID:       "-",
+					Hostpath: url,
+					Path:     url,
 				})
 			}
 			expected = append(expected, &hatypes.BackendConfigStr{

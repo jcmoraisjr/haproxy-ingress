@@ -52,33 +52,35 @@ func (b *Backend) AddEmptyEndpoint() *Endpoint {
 	return endpoint
 }
 
-// FindPath ...
-func (b *Backend) FindPath(path string) *BackendPath {
+// FindHostPath ...
+func (b *Backend) FindHostPath(hostpath string) *BackendPath {
 	for _, p := range b.Paths {
-		if p.Path == path {
+		if p.Hostpath == hostpath {
 			return p
 		}
 	}
 	return nil
 }
 
-// AddPath ...
-func (b *Backend) AddPath(path string) *BackendPath {
+// AddHostPath ...
+func (b *Backend) AddHostPath(hostname, path string) *BackendPath {
+	hostpath := hostname + path
 	// add only unique paths
-	backendPath := b.FindPath(path)
+	backendPath := b.FindHostPath(hostpath)
 	if backendPath != nil {
 		return backendPath
 	}
 	// host's paths that references this backend
 	// used on RewriteURL config
 	backendPath = &BackendPath{
-		ID:   fmt.Sprintf("path%02d", len(b.Paths)+1),
-		Path: path,
+		ID:       fmt.Sprintf("path%02d", len(b.Paths)+1),
+		Hostpath: hostpath,
+		Path:     path,
 	}
 	b.Paths = append(b.Paths, backendPath)
 	// reverse order in order to avoid overlap of sub-paths
 	sort.Slice(b.Paths, func(i, j int) bool {
-		return b.Paths[i].Path > b.Paths[j].Path
+		return b.Paths[i].Hostpath > b.Paths[j].Hostpath
 	})
 	return backendPath
 }
@@ -103,7 +105,7 @@ func (p *BackendPaths) Add(paths ...*BackendPath) {
 		p.Items = append(p.Items, path)
 	}
 	sort.SliceStable(p.Items, func(i, j int) bool {
-		return p.Items[i].Path < p.Items[j].Path
+		return p.Items[i].Hostpath < p.Items[j].Hostpath
 	})
 }
 
