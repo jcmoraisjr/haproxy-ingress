@@ -29,8 +29,34 @@ func NewBackendPaths(paths ...*BackendPath) BackendPaths {
 	return b
 }
 
-// AddEndpoint ...
-func (b *Backend) AddEndpoint(ip string, port int, targetRef string) *Endpoint {
+// FindEndpoint ...
+func (b *Backend) FindEndpoint(target string) *Endpoint {
+	for _, endpoint := range b.Endpoints {
+		if endpoint.Target == target {
+			return endpoint
+		}
+	}
+	return nil
+}
+
+// AcquireEndpoint ...
+func (b *Backend) AcquireEndpoint(ip string, port int, targetRef string) *Endpoint {
+	endpoint := b.FindEndpoint(fmt.Sprintf("%s:%d", ip, port))
+	if endpoint != nil {
+		return endpoint
+	}
+	return b.addEndpoint(ip, port, targetRef)
+}
+
+// AddEmptyEndpoint ...
+func (b *Backend) AddEmptyEndpoint() *Endpoint {
+	endpoint := b.addEndpoint("127.0.0.1", 1023, "")
+	endpoint.Enabled = false
+	endpoint.Weight = 0
+	return endpoint
+}
+
+func (b *Backend) addEndpoint(ip string, port int, targetRef string) *Endpoint {
 	endpoint := &Endpoint{
 		Name:      fmt.Sprintf("srv%03d", len(b.Endpoints)+1),
 		IP:        ip,
@@ -41,14 +67,6 @@ func (b *Backend) AddEndpoint(ip string, port int, targetRef string) *Endpoint {
 		Weight:    1,
 	}
 	b.Endpoints = append(b.Endpoints, endpoint)
-	return endpoint
-}
-
-// AddEmptyEndpoint ...
-func (b *Backend) AddEmptyEndpoint() *Endpoint {
-	endpoint := b.AddEndpoint("127.0.0.1", 1023, "")
-	endpoint.Enabled = false
-	endpoint.Weight = 0
 	return endpoint
 }
 

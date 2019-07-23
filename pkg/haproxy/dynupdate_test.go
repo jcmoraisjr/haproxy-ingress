@@ -71,12 +71,12 @@ func TestDynUpdate(t *testing.T) {
 		{
 			doconfig1: func(c *testConfig) {
 				b := c.config.AcquireBackend("default", "app", "8080")
-				b.AddEndpoint("172.17.0.3", 8080, "")
+				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.AcquireBackend("default", "app", "8080")
-				b.AddEndpoint("172.17.0.2", 8080, "")
-				b.AddEndpoint("172.17.0.3", 8080, "")
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
 			updated: false,
 		},
@@ -84,12 +84,12 @@ func TestDynUpdate(t *testing.T) {
 		{
 			doconfig1: func(c *testConfig) {
 				b := c.config.AcquireBackend("default", "app", "8080")
-				b.AddEndpoint("172.17.0.2", 8080, "")
-				b.AddEndpoint("172.17.0.3", 8080, "")
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.AcquireBackend("default", "app", "8080")
-				b.AddEndpoint("172.17.0.3", 8080, "")
+				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
 			updated: true,
 			cmd: `
@@ -103,11 +103,11 @@ set server default_app_8080/srv001 weight 0
 		{
 			doconfig1: func(c *testConfig) {
 				b := c.config.AcquireBackend("default", "app", "8080")
-				b.AddEndpoint("172.17.0.2", 8080, "")
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.AcquireBackend("default", "app", "8080")
-				ep := b.AddEndpoint("172.17.0.2", 8080, "")
+				ep := b.AcquireEndpoint("172.17.0.2", 8080, "")
 				ep.Weight = 2
 			},
 			updated: true,
@@ -123,12 +123,12 @@ set server default_app_8080/srv001 weight 2
 			doconfig1: func(c *testConfig) {
 				b := c.config.AcquireBackend("default", "app", "8080")
 				b.AddEmptyEndpoint()
-				b.AddEndpoint("172.17.0.3", 8080, "")
+				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.AcquireBackend("default", "app", "8080")
-				b.AddEndpoint("172.17.0.2", 8080, "")
-				b.AddEndpoint("172.17.0.3", 8080, "")
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
 			updated: true,
 			cmd: `
@@ -143,12 +143,12 @@ set server default_app_8080/srv001 weight 1
 			doconfig1: func(c *testConfig) {
 				b := c.config.AcquireBackend("default", "app", "8080")
 				b.AddEmptyEndpoint()
-				b.AddEndpoint("172.17.0.2", 8080, "")
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.AcquireBackend("default", "app", "8080")
-				b.AddEndpoint("172.17.0.2", 8080, "")
-				b.AddEndpoint("172.17.0.3", 8080, "")
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
 			updated: true,
 			cmd: `
