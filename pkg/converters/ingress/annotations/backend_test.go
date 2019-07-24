@@ -839,7 +839,7 @@ func TestRewriteURL(t *testing.T) {
 		{
 			input:    `/"/`,
 			expected: ``,
-			logging:  `WARN rewrite-target does not allow white spaces or single/double quotes on ingress 'default/app': /"/`,
+			logging:  `WARN rewrite-target does not allow white spaces or single/double quotes on backend 'default/app': /"/`,
 		},
 		// 2
 		{
@@ -854,10 +854,18 @@ func TestRewriteURL(t *testing.T) {
 		if test.input != "" {
 			ann = map[string]string{ingtypes.BackRewriteTarget: test.input}
 		}
-		d := c.createBackendData("default", "app", ann, map[string]string{})
+		d := c.createBackendData("default", "app", map[string]string{}, map[string]string{})
+		d.backend.AddHostPath("d1.local", "/")
+		d.mapper.AddAnnotations(&Source{}, "d1.local/", ann)
 		c.createUpdater().buildBackendRewriteURL(d)
-		if d.backend.RewriteURL != test.expected {
-			t.Errorf("rewrite on %d differs - expected: %v - actual: %v", i, test.expected, d.backend.RewriteURL)
+		expected := []*hatypes.BackendConfigStr{
+			{
+				Paths:  hatypes.NewBackendPaths(d.backend.FindHostPath("d1.local/")),
+				Config: test.expected,
+			},
+		}
+		if !reflect.DeepEqual(d.backend.RewriteURL, expected) {
+			t.Errorf("rewrite on %d differs - expected: %v - actual: %v", i, expected, d.backend.RewriteURL)
 		}
 		c.logger.CompareLogging(test.logging)
 		c.teardown()

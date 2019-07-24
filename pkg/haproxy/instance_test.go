@@ -129,7 +129,12 @@ func TestBackends(t *testing.T) {
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
-				b.RewriteURL = "/"
+				b.RewriteURL = []*hatypes.BackendConfigStr{
+					{
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app")),
+						Config: "/",
+					},
+				}
 			},
 			path: []string{"/app"},
 			expected: `
@@ -137,7 +142,12 @@ func TestBackends(t *testing.T) {
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
-				b.RewriteURL = "/other"
+				b.RewriteURL = []*hatypes.BackendConfigStr{
+					{
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app")),
+						Config: "/other",
+					},
+				}
 			},
 			path: []string{"/app"},
 			expected: `
@@ -145,12 +155,40 @@ func TestBackends(t *testing.T) {
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
-				b.RewriteURL = "/other/"
+				b.RewriteURL = []*hatypes.BackendConfigStr{
+					{
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app"), b.FindHostPath("d1.local/app/sub")),
+						Config: "/other/",
+					},
+				}
 			},
 			path: []string{"/app", "/app/sub"},
 			expected: `
-    reqrep ^([^:\ ]*)\ /app/sub(.*)$       \1\ /other/\2
-    reqrep ^([^:\ ]*)\ /app(.*)$       \1\ /other/\2`,
+    reqrep ^([^:\ ]*)\ /app(.*)$       \1\ /other/\2
+    reqrep ^([^:\ ]*)\ /app/sub(.*)$       \1\ /other/\2`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.RewriteURL = []*hatypes.BackendConfigStr{
+					{
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/path1")),
+						Config: "/sub1",
+					},
+					{
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/path2"), b.FindHostPath("d1.local/path3")),
+						Config: "/sub2",
+					},
+				}
+			},
+			path: []string{"/path1", "/path2", "/path3"},
+			expected: `
+    # path01 = d1.local/path1
+    # path02 = d1.local/path2
+    # path03 = d1.local/path3
+    http-request set-var(txn.pathID) base,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map,_nomatch)
+    reqrep ^([^:\ ]*)\ /path1(.*)$       \1\ /sub1\2     if { var(txn.pathID) path01 }
+    reqrep ^([^:\ ]*)\ /path2(.*)$       \1\ /sub2\2     if { var(txn.pathID) path02 }
+    reqrep ^([^:\ ]*)\ /path3(.*)$       \1\ /sub2\2     if { var(txn.pathID) path03 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
@@ -1185,37 +1223,6 @@ d3.local/ d3_app_8080
 ^[^.]+\.d1\.local/ d1_app_8080
 ^[a-z]+\.d2\.local$/ d2_app_8080
 .*d3\.local$/ d3_app_8080
-`)
-	c.logger.CompareLogging(defaultLogging)
-}
-
-func TestInstanceRewriteTarget(t *testing.T) {
-	c := setup(t)
-	defer c.teardown()
-
-	var h *hatypes.Host
-	var b *hatypes.Backend
-
-	b = c.config.AcquireBackend("d1", "app", "8080")
-	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	b.RewriteURL = "/internal"
-
-	h = c.config.AcquireHost("d1.local")
-	h.AddPath(b, "/app")
-	h.AddPath(b, "/uri")
-
-	c.instance.Update()
-	c.checkConfig(`
-<<global>>
-<<defaults>>
-backend d1_app_8080
-    mode http
-    reqrep ^([^:\ ]*)\ /uri(.*)$       \1\ /internal\2
-    reqrep ^([^:\ ]*)\ /app(.*)$       \1\ /internal\2
-    server s1 172.17.0.11:8080 weight 100
-<<backends-default>>
-<<frontends-default>>
-<<support>>
 `)
 	c.logger.CompareLogging(defaultLogging)
 }

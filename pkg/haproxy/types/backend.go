@@ -105,7 +105,18 @@ func (b *Backend) AddHostPath(hostname, path string) *BackendPath {
 
 // NeedACL ...
 func (b *Backend) NeedACL() bool {
-	return len(b.HSTS) > 1 || len(b.WhitelistHTTP) > 1
+	return len(b.HSTS) > 1 ||
+		len(b.ProxyBodySize) > 1 || len(b.RewriteURL) > 1 || len(b.WhitelistHTTP) > 1
+}
+
+// Has ...
+func (p *BackendPaths) Has(path string) bool {
+	for _, item := range p.Items {
+		if item.Path == path {
+			return true
+		}
+	}
+	return false
 }
 
 // IDList ...
@@ -120,6 +131,9 @@ func (p *BackendPaths) IDList() string {
 // Add ...
 func (p *BackendPaths) Add(paths ...*BackendPath) {
 	for _, path := range paths {
+		if path == nil {
+			panic("path cannot be nil")
+		}
 		p.Items = append(p.Items, path)
 	}
 	sort.SliceStable(p.Items, func(i, j int) bool {

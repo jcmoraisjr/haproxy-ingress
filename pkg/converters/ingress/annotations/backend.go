@@ -416,19 +416,19 @@ func (c *updater) findBackend(namespace, uriPrefix string) *hatypes.HostBackend 
 }
 
 var (
-	rewriteURLRegex = regexp.MustCompile(`^[^"' ]+$`)
+	rewriteURLRegex = regexp.MustCompile(`^[^"' ]*$`)
 )
 
 func (c *updater) buildBackendRewriteURL(d *backData) {
-	rewrite, srcRewrite, foundRewrite := d.mapper.GetStr(ingtypes.BackRewriteTarget)
-	if !foundRewrite || rewrite == "" {
-		return
+	for _, rewrite := range d.mapper.GetBackendConfigStr(d.backend, ingtypes.BackRewriteTarget) {
+		if !rewriteURLRegex.MatchString(rewrite.Config) {
+			c.logger.Warn(
+				"rewrite-target does not allow white spaces or single/double quotes on backend '%s/%s': %s",
+				d.backend.Namespace, d.backend.Name, rewrite.Config)
+			rewrite.Config = ""
+		}
+		d.backend.RewriteURL = append(d.backend.RewriteURL, rewrite)
 	}
-	if !rewriteURLRegex.MatchString(rewrite) {
-		c.logger.Warn("rewrite-target does not allow white spaces or single/double quotes on %v: %s", srcRewrite, rewrite)
-		return
-	}
-	d.backend.RewriteURL = rewrite
 }
 
 func (c *updater) buildBackendWAF(d *backData) {

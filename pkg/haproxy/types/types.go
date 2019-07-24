@@ -235,6 +235,9 @@ type HostTLSConfig struct {
 
 // Backend ...
 type Backend struct {
+	//
+	// core config
+	//
 	ID        string
 	Namespace string
 	Name      string
@@ -243,27 +246,58 @@ type Backend struct {
 	Paths     []*BackendPath
 	PathsMap  *HostsMap
 	//
+	// per backend config
+	//
 	AgentCheck        AgentCheck
 	BalanceAlgorithm  string
 	Cookie            Cookie
-	Cors              Cors
 	CustomConfig      []string
 	HealthCheck       HealthCheck
-	HSTS              []*BackendConfigHSTS
 	MaxConnServer     int
 	MaxQueueServer    int
 	ModeTCP           bool
 	OAuth             OAuthConfig
-	ProxyBodySize     []*BackendConfigStr
-	RewriteURL        string
 	SendProxyProtocol string
 	SSL               SSLBackendConfig
-	SSLRedirect       bool
 	Timeout           BackendTimeoutConfig
-	Userlist          UserlistConfig
-	WAF               string
-	WhitelistHTTP     []*BackendConfigWhitelist
 	WhitelistTCP      []string
+	//
+	// per path config
+	//
+	// TODO refactor
+	//
+	// The current implementation is tricky. A small refactor is welcome
+	// but can wait a little more. Multipath unit tests need to do a
+	// better job as well.
+	//
+	// Following some tips in order to multipath work properly:
+	//
+	//   1. On backend annotation parsing, do not filter
+	//      mapper.GetBackendConfig/Str() slice, instead populate
+	//      haproxy type even with empty data. Backend.NeedACL() need
+	//      to know all paths in order to work properly. Filter out
+	//      empty/disabled items in the template.
+	//
+	//   2. Every config array added here, need also to be added
+	//      in Backend.NeedACL() - haproxy/types/backend.go.
+	//      Template uses this func in order to know if a config
+	//      has two or more paths, and so need to be configured with ACL.
+	//
+	// Missing:
+	//
+	//   [ ] Cors
+	//   [ ] SSLRedirect
+	//   [ ] Userlist
+	//   [ ] WAF
+	//
+	Cors          Cors
+	HSTS          []*BackendConfigHSTS
+	ProxyBodySize []*BackendConfigStr
+	RewriteURL    []*BackendConfigStr
+	SSLRedirect   bool
+	Userlist      UserlistConfig
+	WAF           string
+	WhitelistHTTP []*BackendConfigWhitelist
 }
 
 // Endpoint ...
