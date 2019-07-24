@@ -262,7 +262,7 @@ type Backend struct {
 	Timeout           BackendTimeoutConfig
 	Userlist          UserlistConfig
 	WAF               string
-	Whitelist         []*BackendConfigWhitelist
+	WhitelistHTTP     []*BackendConfigWhitelist
 	WhitelistTCP      []string
 }
 

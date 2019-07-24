@@ -123,6 +123,6 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) 
 	c.buildBackendOAuth(data)
 	c.buildBackendRewriteURL(data)
 	c.buildBackendWAF(data)
-	c.buildBackendWhitelist(data)
+	c.buildBackendWhitelistHTTP(data)
 	c.buildBackendWhitelistTCP(data)
 }

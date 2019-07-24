@@ -81,7 +81,7 @@ func (c *updater) buildBackendAuthHTTP(d *backData) {
 			return
 		}
 		userstr := string(userb)
-		users, errs := c.buildBackendAuthHTTPExtractUserlist(srcAuthSecret.Name, secretName, userstr)
+		users, errs := extractUserlist(srcAuthSecret.Name, secretName, userstr)
 		for _, err := range errs {
 			c.logger.Warn("ignoring malformed usr/passwd on secret '%s', declared on %v: %v", secretName, srcAuthSecret, err)
 		}
@@ -101,7 +101,7 @@ func (c *updater) buildBackendAuthHTTP(d *backData) {
 	d.backend.Userlist.Realm = realm
 }
 
-func (c *updater) buildBackendAuthHTTPExtractUserlist(source, secret, users string) ([]hatypes.User, []error) {
+func extractUserlist(source, secret, users string) ([]hatypes.User, []error) {
 	var userlist []hatypes.User
 	var err []error
 	for i, usr := range strings.Split(users, "\n") {
@@ -443,7 +443,7 @@ func (c *updater) buildBackendWAF(d *backData) {
 	d.backend.WAF = waf
 }
 
-func (c *updater) buildBackendWhitelist(d *backData) {
+func (c *updater) buildBackendWhitelistHTTP(d *backData) {
 	if d.backend.ModeTCP {
 		return
 	}
@@ -457,7 +457,7 @@ func (c *updater) buildBackendWhitelist(d *backData) {
 				cidrlist = append(cidrlist, cidr)
 			}
 		}
-		d.backend.Whitelist = append(d.backend.Whitelist, &hatypes.BackendConfigWhitelist{
+		d.backend.WhitelistHTTP = append(d.backend.WhitelistHTTP, &hatypes.BackendConfigWhitelist{
 			Paths:  wlist.Paths,
 			Config: cidrlist,
 		})

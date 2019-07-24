@@ -105,7 +105,7 @@ func (b *Backend) AddHostPath(hostname, path string) *BackendPath {
 
 // NeedACL ...
 func (b *Backend) NeedACL() bool {
-	return len(b.HSTS) > 1 || len(b.Whitelist) > 1
+	return len(b.HSTS) > 1 || len(b.WhitelistHTTP) > 1
 }
 
 // IDList ...

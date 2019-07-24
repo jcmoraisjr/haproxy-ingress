@@ -191,11 +191,11 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- range $wlistCfg := $backend.Whitelist }}
+{{- range $wlistCfg := $backend.WhitelistHTTP }}
 {{- $wlist := $wlistCfg.Config }}
 {{- if $wlist }}
     http-request deny if
-        {{- if gt (len $backend.Whitelist) 1 }} { var(txn.pathID) {{ $wlistCfg.Paths.IDList }} }{{ end }}
+        {{- if gt (len $backend.WhitelistHTTP) 1 }} { var(txn.pathID) {{ $wlistCfg.Paths.IDList }} }{{ end }}
         {{- "" }} !{ src{{ range $cidr := $wlist }} {{ $cidr }}{{ end }} }
 {{- end }}
 {{- end }}

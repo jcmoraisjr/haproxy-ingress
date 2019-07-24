@@ -154,7 +154,7 @@ func TestBackends(t *testing.T) {
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
-				b.Whitelist = []*hatypes.BackendConfigWhitelist{
+				b.WhitelistHTTP = []*hatypes.BackendConfigWhitelist{
 					{
 						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app"), b.FindHostPath("d1.local/api")),
 						Config: []string{"10.0.0.0/8", "192.168.0.0/16"},
@@ -176,7 +176,7 @@ func TestBackends(t *testing.T) {
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
-				b.Whitelist = []*hatypes.BackendConfigWhitelist{
+				b.WhitelistHTTP = []*hatypes.BackendConfigWhitelist{
 					{
 						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app"), b.FindHostPath("d1.local/api")),
 						Config: []string{},

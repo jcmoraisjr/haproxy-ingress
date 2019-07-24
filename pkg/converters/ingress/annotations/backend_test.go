@@ -902,7 +902,7 @@ func TestWAF(t *testing.T) {
 	}
 }
 
-func TestWhitelist(t *testing.T) {
+func TestWhitelistHTTP(t *testing.T) {
 	testCases := []struct {
 		paths    []string
 		cidrlist map[string]string
@@ -979,15 +979,15 @@ func TestWhitelist(t *testing.T) {
 		for uri, cidrlist := range test.cidrlist {
 			d.mapper.AddAnnotation(&Source{}, uri, ingtypes.BackWhitelistSourceRange, cidrlist)
 		}
-		c.createUpdater().buildBackendWhitelist(d)
-		for _, cfg := range d.backend.Whitelist {
+		c.createUpdater().buildBackendWhitelistHTTP(d)
+		for _, cfg := range d.backend.WhitelistHTTP {
 			for _, path := range cfg.Paths.Items {
 				path.ID = ""
 				path.Hostpath = ""
 			}
 		}
-		if !reflect.DeepEqual(d.backend.Whitelist, test.expected) {
-			t.Errorf("whitelist on %d differs- expected: %v - actual: %v", i, test.expected, d.backend.Whitelist)
+		if !reflect.DeepEqual(d.backend.WhitelistHTTP, test.expected) {
+			t.Errorf("whitelist on %d differs- expected: %v - actual: %v", i, test.expected, d.backend.WhitelistHTTP)
 		}
 		c.teardown()
 	}
