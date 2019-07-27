@@ -252,6 +252,7 @@ type Backend struct {
 	BalanceAlgorithm  string
 	Cookie            Cookie
 	CustomConfig      []string
+	Dynamic           DynBackendConfig
 	HealthCheck       HealthCheck
 	MaxConnServer     int
 	MaxQueueServer    int
@@ -347,6 +348,13 @@ type AgentCheck struct {
 	Interval string
 	Port     string
 	Send     string
+}
+
+// DynBackendConfig
+type DynBackendConfig struct {
+	BlockSize    int
+	DynUpdate    bool
+	MinFreeSlots int
 }
 
 // HealthCheck ...

@@ -52,7 +52,7 @@ type config struct {
 	bindUtils       hatypes.BindUtils
 	mapsTemplate    *template.Config
 	mapsDir         string
-	global          *hatypes.Global
+	global          hatypes.Global
 	hosts           []*hatypes.Host
 	backends        []*hatypes.Backend
 	userlists       []*hatypes.Userlist
@@ -73,7 +73,6 @@ func createConfig(bindUtils hatypes.BindUtils, options options) *config {
 	}
 	return &config{
 		bindUtils:    bindUtils,
-		global:       &hatypes.Global{},
 		mapsTemplate: mapsTemplate,
 		mapsDir:      options.mapsDir,
 	}
@@ -419,7 +418,7 @@ func (c *config) DefaultBackend() *hatypes.Backend {
 }
 
 func (c *config) Global() *hatypes.Global {
-	return c.global
+	return &c.global
 }
 
 func (c *config) Hosts() []*hatypes.Host {

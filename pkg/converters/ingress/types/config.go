@@ -19,7 +19,6 @@ package types
 // ConfigGlobals ...
 type ConfigGlobals struct {
 	BackendCheckInterval         string `json:"backend-check-interval"`
-	BackendServerSlotsIncrement  int    `json:"backend-server-slots-increment"`
 	BindIPAddrHealthz            string `json:"bind-ip-addr-healthz"`
 	BindIPAddrHTTP               string `json:"bind-ip-addr-http"`
 	BindIPAddrStats              string `json:"bind-ip-addr-stats"`
@@ -36,7 +35,6 @@ type ConfigGlobals struct {
 	DNSTimeoutRetry              string `json:"dns-timeout-retry"`
 	DrainSupport                 bool   `json:"drain-support"`
 	DrainSupportRedispatch       bool   `json:"drain-support-redispatch"`
-	DynamicScaling               bool   `json:"dynamic-scaling"`
 	Forwardfor                   string `json:"forwardfor"`
 	HealthzPort                  int    `json:"healthz-port"`
 	HTTPLogFormat                string `json:"http-log-format"`

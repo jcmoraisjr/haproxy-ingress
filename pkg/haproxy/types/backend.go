@@ -70,6 +70,13 @@ func (b *Backend) addEndpoint(ip string, port int, targetRef string) *Endpoint {
 	return endpoint
 }
 
+// SortEndpoints ...
+func (b *Backend) SortEndpoints() {
+	sort.SliceStable(b.Endpoints, func(i, j int) bool {
+		return b.Endpoints[i].Name < b.Endpoints[j].Name
+	})
+}
+
 // FindHostPath ...
 func (b *Backend) FindHostPath(hostpath string) *BackendPath {
 	for _, p := range b.Paths {
@@ -109,14 +116,9 @@ func (b *Backend) NeedACL() bool {
 		len(b.ProxyBodySize) > 1 || len(b.RewriteURL) > 1 || len(b.WhitelistHTTP) > 1
 }
 
-// Has ...
-func (p *BackendPaths) Has(path string) bool {
-	for _, item := range p.Items {
-		if item.Path == path {
-			return true
-		}
-	}
-	return false
+// IsEmpty ...
+func (ep *Endpoint) IsEmpty() bool {
+	return ep.IP == "127.0.0.1"
 }
 
 // IDList ...

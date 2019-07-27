@@ -108,7 +108,7 @@ func (i *instance) Config() Config {
 
 func (i *instance) Update() {
 	if i.curConfig == nil {
-		i.logger.InfoV(2, "new configuration is empty")
+		i.logger.Info("new configuration is empty")
 		return
 	}
 	if err := i.curConfig.BuildFrontendGroup(); err != nil {
@@ -126,18 +126,23 @@ func (i *instance) Update() {
 		i.clearConfig()
 		return
 	}
+	updater := i.newDynUpdater()
+	updated := updater.update()
 	if err := i.templates.Write(i.curConfig); err != nil {
 		i.logger.Error("error writing configuration: %v", err)
 		i.clearConfig()
 		return
 	}
-	updated := i.newDynUpdater(i.curConfig.Global().StatsSocket).dynUpdate(i.oldConfig, i.curConfig)
 	i.clearConfig()
 	if updated {
 		if err := i.check(); err != nil {
 			i.logger.Error("error validating config file:\n%v", err)
 		}
-		i.logger.Info("HAProxy updated without needing to reload")
+		if updater.cmdCnt > 0 {
+			i.logger.Info("HAProxy updated without needing to reload. Commands sent: %d", updater.cmdCnt)
+		} else {
+			i.logger.Info("old and new configurations match")
+		}
 		return
 	}
 	if err := i.reload(); err != nil {

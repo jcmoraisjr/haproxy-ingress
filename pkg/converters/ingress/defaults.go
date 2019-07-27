@@ -28,12 +28,12 @@ func createDefaults() (ann map[string]string, global *types.ConfigGlobals) {
 	ann = map[string]string{
 		types.HostTimeoutClient:         "50s",
 		types.HostTimeoutClientFin:      "50s",
+		types.BackBackendServerSlotsInc: "32",
 		types.BackBalanceAlgorithm:      "roundrobin",
 		types.BackHSTS:                  "true",
 		types.BackHSTSIncludeSubdomains: "false",
 		types.BackHSTSMaxAge:            "15768000",
 		types.BackHSTSPreload:           "false",
-		types.BackProxyBodySize:         "",
 		types.BackSessionCookieDynamic:  "true",
 		types.BackSSLRedirect:           "true",
 		types.BackTimeoutConnect:        "5s",
@@ -46,7 +46,6 @@ func createDefaults() (ann map[string]string, global *types.ConfigGlobals) {
 	}
 	global = &types.ConfigGlobals{
 		BackendCheckInterval:         "2s",
-		BackendServerSlotsIncrement:  32,
 		BindIPAddrHealthz:            "*",
 		BindIPAddrHTTP:               "*",
 		BindIPAddrStats:              "*",
@@ -63,7 +62,6 @@ func createDefaults() (ann map[string]string, global *types.ConfigGlobals) {
 		DNSTimeoutRetry:              "1s",
 		DrainSupport:                 false,
 		DrainSupportRedispatch:       true,
-		DynamicScaling:               false,
 		Forwardfor:                   "add",
 		HealthzPort:                  10253,
 		HTTPLogFormat:                "",

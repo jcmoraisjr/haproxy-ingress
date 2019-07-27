@@ -29,8 +29,11 @@ import (
 
 type dynUpdater struct {
 	logger types.Logger
+	old    *config
+	cur    *config
 	socket string
 	cmd    func(socket string, commands ...string) ([]string, error)
+	cmdCnt int
 }
 
 type backendPair struct {
@@ -43,20 +46,35 @@ type epPair struct {
 	cur *hatypes.Endpoint
 }
 
-func (i *instance) newDynUpdater(socket string) *dynUpdater {
+func (i *instance) newDynUpdater() *dynUpdater {
+	var old, cur *config
+	if i.oldConfig != nil {
+		old = i.oldConfig.(*config)
+	}
+	if i.curConfig != nil {
+		cur = i.curConfig.(*config)
+	}
 	return &dynUpdater{
 		logger: i.logger,
-		socket: socket,
+		old:    old,
+		cur:    cur,
+		socket: i.curConfig.Global().StatsSocket,
 		cmd:    utils.HAProxyCommand,
 	}
 }
 
-func (d *dynUpdater) dynUpdate(old, cur Config) bool {
-	if old == nil || cur == nil {
-		return false
+func (d *dynUpdater) update() bool {
+	updated := d.checkConfigPair()
+	if !updated {
+		// Need to reload, time to adjust empty slots according to config
+		d.alignSlots()
 	}
-	oldConfig := old.(*config)
-	curConfig := cur.(*config)
+	return updated
+}
+
+func (d *dynUpdater) checkConfigPair() bool {
+	oldConfig := d.old
+	curConfig := d.cur
 	if oldConfig == nil || curConfig == nil {
 		return false
 	}
@@ -64,13 +82,26 @@ func (d *dynUpdater) dynUpdate(old, cur Config) bool {
 	// check equality of everything but backends
 	oldConfigCopy := *oldConfig
 	oldConfigCopy.backends = curConfig.backends
+	oldConfigCopy.defaultBackend = curConfig.defaultBackend
 	if !reflect.DeepEqual(&oldConfigCopy, curConfig) {
+		var diff []string
+		if !reflect.DeepEqual(oldConfig.global, curConfig.global) {
+			diff = append(diff, "global")
+		}
+		if !reflect.DeepEqual(oldConfig.hosts, curConfig.hosts) {
+			diff = append(diff, "hosts")
+		}
+		if !reflect.DeepEqual(oldConfig.userlists, curConfig.userlists) {
+			diff = append(diff, "userlists")
+		}
+		d.logger.InfoV(2, "diff outside backends - %v", diff)
 		return false
 	}
 
 	// map backends of old and new config together
 	// return false if len or names doesn't match
 	if len(curConfig.backends) != len(curConfig.backends) {
+		d.logger.InfoV(2, "added or removed backend(s)")
 		return false
 	}
 	backends := make(map[string]*backendPair, len(oldConfig.backends))
@@ -80,6 +111,7 @@ func (d *dynUpdater) dynUpdate(old, cur Config) bool {
 	for _, backend := range curConfig.backends {
 		back, found := backends[backend.ID]
 		if !found {
+			d.logger.InfoV(2, "removed backend %s", backend.ID)
 			return false
 		}
 		back.cur = backend
@@ -89,7 +121,7 @@ func (d *dynUpdater) dynUpdate(old, cur Config) bool {
 	// true if deep equals or sucessfully updated
 	// false if cannot be dynamically updated or update failed
 	for _, pair := range backends {
-		if !d.updateBackendPair(pair) {
+		if !d.checkBackendPair(pair) {
 			return false
 		}
 	}
@@ -97,40 +129,50 @@ func (d *dynUpdater) dynUpdate(old, cur Config) bool {
 	return true
 }
 
-func (d *dynUpdater) updateBackendPair(pair *backendPair) bool {
+func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 	oldBack := pair.old
 	curBack := pair.cur
 
 	// check equality of everything but endpoints
 	oldBackCopy := *oldBack
+	oldBackCopy.Dynamic = curBack.Dynamic
 	oldBackCopy.Endpoints = curBack.Endpoints
 	if !reflect.DeepEqual(&oldBackCopy, curBack) {
+		d.logger.InfoV(2, "diff outside endpoints")
 		return false
 	}
 
-	// most of the backends are equal, save some proc stopping here
+	// most of the backends are equal, save some proc stopping here if deep equals
 	if reflect.DeepEqual(oldBack.Endpoints, curBack.Endpoints) {
 		return true
 	}
 
 	// can decrease endpoints, cannot increase
 	if len(oldBack.Endpoints) < len(curBack.Endpoints) {
+		d.logger.InfoV(2, "added endpoints")
 		return false
 	}
 
 	// map endpoints of old and new config together
 	endpoints := make(map[string]*epPair, len(oldBack.Endpoints))
+	targets := make([]string, 0, len(oldBack.Endpoints))
 	var empty []string
 	for _, endpoint := range oldBack.Endpoints {
 		if endpoint.Enabled {
 			endpoints[endpoint.Target] = &epPair{old: endpoint}
+			targets = append(targets, endpoint.Target)
 		} else {
 			empty = append(empty, endpoint.Name)
 		}
 	}
 
-	// current endpoint names will be overwritten from its
-	// old counterpart, this will save some socket calls
+	// From this point we cannot simply `return false` because endpoint.Name
+	// is being updated, need to be updated until the end, and endpoints slice
+	// need to be sorted
+	updated := true
+
+	// reuse the backend/server which has the same target endpoint, if found,
+	// this will save some socket calls and will not mess endpoint metrics
 	var added []*hatypes.Endpoint
 	for _, endpoint := range curBack.Endpoints {
 		if pair, found := endpoints[endpoint.Target]; found {
@@ -142,32 +184,71 @@ func (d *dynUpdater) updateBackendPair(pair *backendPair) bool {
 	}
 
 	// try to dynamically remove/update/add endpoints
-	for _, pair := range endpoints {
+	// targets used here only to have predictable results
+	sort.Strings(targets)
+	for _, target := range targets {
+		pair := endpoints[target]
 		if pair.cur == nil {
-			if !d.execDisableEndpoint(curBack.ID, pair.old) {
-				return false
+			if updated && !d.execDisableEndpoint(curBack.ID, pair.old) {
+				updated = false
 			}
 			empty = append(empty, pair.old.Name)
-		} else if !d.updateEndpointPair(curBack.ID, pair) {
-			return false
+		} else if updated && !d.checkEndpointPair(curBack.ID, pair) {
+			updated = false
 		}
 	}
-	sort.Strings(empty)
 	for i := range added {
+		// reusing empty slots from oldBack
 		added[i].Name = empty[i]
-		if !d.execEnableEndpoint(curBack.ID, added[i]) {
-			return false
+		if updated && !d.execEnableEndpoint(curBack.ID, nil, added[i]) {
+			updated = false
 		}
 	}
 
-	return true
+	// copy remaining empty slots from oldBack to curBack, so it can be used in a future update
+	for i := len(added); i < len(empty); i++ {
+		curBack.AddEmptyEndpoint().Name = empty[i]
+	}
+	curBack.SortEndpoints()
+
+	return updated
 }
 
-func (d *dynUpdater) updateEndpointPair(backname string, pair *epPair) bool {
+func (d *dynUpdater) checkEndpointPair(backname string, pair *epPair) bool {
 	if reflect.DeepEqual(pair.old, pair.cur) {
 		return true
 	}
-	return d.execEnableEndpoint(backname, pair.cur)
+	return d.execEnableEndpoint(backname, pair.old, pair.cur)
+}
+
+func (d *dynUpdater) alignSlots() {
+	if d.cur == nil {
+		return
+	}
+	for _, back := range d.cur.backends {
+		minFreeSlots := back.Dynamic.MinFreeSlots
+		blockSize := back.Dynamic.BlockSize
+		if blockSize < 1 {
+			blockSize = 1
+		}
+		totalFreeSlots := 0
+		for _, ep := range back.Endpoints {
+			if ep.IsEmpty() {
+				totalFreeSlots++
+			}
+		}
+		for i := totalFreeSlots; i < minFreeSlots; i++ {
+			back.AddEmptyEndpoint()
+		}
+		// * []endpoints == group of blocks
+		// * block == group of slots
+		// * slot == a single server
+		// newFreeSlots := blockSize - (1 <= <size-of-last-block> <= blockSize)
+		newFreeSlots := blockSize - (((len(back.Endpoints) + blockSize - 1) % blockSize) + 1)
+		for i := 0; i < newFreeSlots; i++ {
+			back.AddEmptyEndpoint()
+		}
+	}
 }
 
 func (d *dynUpdater) execDisableEndpoint(backname string, ep *hatypes.Endpoint) bool {
@@ -177,34 +258,42 @@ func (d *dynUpdater) execDisableEndpoint(backname string, ep *hatypes.Endpoint) 
 		server + "addr 127.0.0.1 port 1023",
 		server + "weight 0",
 	}
-	msg, err := d.cmd(d.socket, cmd...)
+	msg, err := d.execCommand(cmd)
 	if err != nil {
 		d.logger.Error("error disabling endpoint %s/%s: %v", backname, ep.Name, err)
 		return false
 	}
+	d.logger.InfoV(2, "disabled endpoint '%s' on backend/server '%s/%s'", ep.Target, backname, ep.Name)
 	for _, m := range msg {
-		d.logger.Info(m)
+		d.logger.InfoV(2, m)
 	}
-	d.logger.InfoV(2, "disabled endpoint %s on backend/server %s/%s", ep.Target, backname, ep.Name)
 	return true
 }
 
-func (d *dynUpdater) execEnableEndpoint(backname string, ep *hatypes.Endpoint) bool {
-	stateReady := map[bool]string{true: "ready", false: "drain"}
-	server := fmt.Sprintf("set server %s/%s ", backname, ep.Name)
+func (d *dynUpdater) execEnableEndpoint(backname string, oldEP, curEP *hatypes.Endpoint) bool {
+	state := map[bool]string{true: "ready", false: "drain"}[curEP.Weight > 0]
+	server := fmt.Sprintf("set server %s/%s ", backname, curEP.Name)
 	cmd := []string{
-		server + "addr " + ep.IP + " port " + strconv.Itoa(ep.Port),
-		server + "state " + stateReady[ep.Weight > 0],
-		server + "weight " + strconv.Itoa(ep.Weight),
+		server + "addr " + curEP.IP + " port " + strconv.Itoa(curEP.Port),
+		server + "state " + state,
+		server + "weight " + strconv.Itoa(curEP.Weight),
 	}
-	msg, err := d.cmd(d.socket, cmd...)
+	msg, err := d.execCommand(cmd)
 	if err != nil {
-		d.logger.Error("error adding endpoint %s/%s: %v", backname, ep.Name, err)
+		d.logger.Error("error adding/updating endpoint %s/%s: %v", backname, curEP.Name, err)
 		return false
 	}
+	event := map[bool]string{true: "updated", false: "added"}[oldEP != nil]
+	d.logger.InfoV(2, "%s endpoint '%s' weight '%d' state '%s' on backend/server '%s/%s'",
+		event, curEP.Target, curEP.Weight, state, backname, curEP.Name)
 	for _, m := range msg {
-		d.logger.Info(m)
+		d.logger.InfoV(2, m)
 	}
-	d.logger.InfoV(2, "added endpoint %s on backend/server %s/%s", ep.Target, backname, ep.Name)
 	return true
+}
+
+func (d *dynUpdater) execCommand(cmd []string) ([]string, error) {
+	msg, err := d.cmd(d.socket, cmd...)
+	d.cmdCnt = d.cmdCnt + len(cmd)
+	return msg, err
 }

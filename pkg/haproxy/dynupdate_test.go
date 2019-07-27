@@ -17,6 +17,8 @@ limitations under the License.
 package haproxy
 
 import (
+	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -31,7 +33,8 @@ func TestDynUpdate(t *testing.T) {
 		curConfig *config
 		doconfig1 func(c *testConfig)
 		doconfig2 func(c *testConfig)
-		updated   bool
+		expected  []string
+		dynamic   bool
 		cmd       string
 		logging   string
 	}{
@@ -39,33 +42,34 @@ func TestDynUpdate(t *testing.T) {
 		{
 			oldConfig: nil,
 			curConfig: nil,
-			updated:   false,
+			dynamic:   false,
 		},
 		// 1
 		{
 			oldConfig: nil,
 			curConfig: &config{},
-			updated:   false,
+			dynamic:   false,
 		},
 		// 2
 		{
 			oldConfig: &config{},
 			curConfig: nil,
-			updated:   false,
+			dynamic:   false,
 		},
 		// 3
 		{
 			oldConfig: &config{},
 			curConfig: &config{},
-			updated:   true,
+			dynamic:   true,
 		},
 		// 4
 		{
 			oldConfig: &config{},
 			curConfig: &config{
-				global: &hatypes.Global{},
+				global: hatypes.Global{MaxConn: 1},
 			},
-			updated: false,
+			dynamic: false,
+			logging: `INFO-V(2) diff outside backends - [global]`,
 		},
 		// 5
 		{
@@ -75,10 +79,22 @@ func TestDynUpdate(t *testing.T) {
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.AcquireBackend("default", "app", "8080")
+				b.Dynamic.BlockSize = 8
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
-			updated: false,
+			expected: []string{
+				"srv001:172.17.0.2:8080:1",
+				"srv002:172.17.0.3:8080:1",
+				"srv003:127.0.0.1:1023:0",
+				"srv004:127.0.0.1:1023:0",
+				"srv005:127.0.0.1:1023:0",
+				"srv006:127.0.0.1:1023:0",
+				"srv007:127.0.0.1:1023:0",
+				"srv008:127.0.0.1:1023:0",
+			},
+			dynamic: false,
+			logging: `INFO-V(2) added endpoints`,
 		},
 		// 6
 		{
@@ -91,13 +107,17 @@ func TestDynUpdate(t *testing.T) {
 				b := c.config.AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
-			updated: true,
+			expected: []string{
+				"srv001:127.0.0.1:1023:0",
+				"srv002:172.17.0.3:8080:1",
+			},
+			dynamic: true,
 			cmd: `
 set server default_app_8080/srv001 state maint
 set server default_app_8080/srv001 addr 127.0.0.1 port 1023
 set server default_app_8080/srv001 weight 0
 `,
-			logging: `INFO-V(2) disabled endpoint 172.17.0.2:8080 on backend/server default_app_8080/srv001`,
+			logging: `INFO-V(2) disabled endpoint '172.17.0.2:8080' on backend/server 'default_app_8080/srv001'`,
 		},
 		// 7
 		{
@@ -110,13 +130,16 @@ set server default_app_8080/srv001 weight 0
 				ep := b.AcquireEndpoint("172.17.0.2", 8080, "")
 				ep.Weight = 2
 			},
-			updated: true,
+			expected: []string{
+				"srv001:172.17.0.2:8080:2",
+			},
+			dynamic: true,
 			cmd: `
 set server default_app_8080/srv001 addr 172.17.0.2 port 8080
 set server default_app_8080/srv001 state ready
 set server default_app_8080/srv001 weight 2
 `,
-			logging: `INFO-V(2) added endpoint 172.17.0.2:8080 on backend/server default_app_8080/srv001`,
+			logging: `INFO-V(2) updated endpoint '172.17.0.2:8080' weight '2' state 'ready' on backend/server 'default_app_8080/srv001'`,
 		},
 		// 8
 		{
@@ -130,13 +153,17 @@ set server default_app_8080/srv001 weight 2
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
-			updated: true,
+			expected: []string{
+				"srv001:172.17.0.2:8080:1",
+				"srv002:172.17.0.3:8080:1",
+			},
+			dynamic: true,
 			cmd: `
 set server default_app_8080/srv001 addr 172.17.0.2 port 8080
 set server default_app_8080/srv001 state ready
 set server default_app_8080/srv001 weight 1
 `,
-			logging: `INFO-V(2) added endpoint 172.17.0.2:8080 on backend/server default_app_8080/srv001`,
+			logging: `INFO-V(2) added endpoint '172.17.0.2:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv001'`,
 		},
 		// 9
 		{
@@ -150,13 +177,186 @@ set server default_app_8080/srv001 weight 1
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
-			updated: true,
+			expected: []string{
+				"srv001:172.17.0.3:8080:1",
+				"srv002:172.17.0.2:8080:1",
+			},
+			dynamic: true,
 			cmd: `
 set server default_app_8080/srv001 addr 172.17.0.3 port 8080
 set server default_app_8080/srv001 state ready
 set server default_app_8080/srv001 weight 1
 `,
-			logging: `INFO-V(2) added endpoint 172.17.0.3:8080 on backend/server default_app_8080/srv001`,
+			logging: `INFO-V(2) added endpoint '172.17.0.3:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv001'`,
+		},
+		// 10
+		{
+			doconfig1: func(c *testConfig) {
+				b := c.config.AcquireBackend("default", "app", "8080")
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AcquireEndpoint("172.17.0.3", 8080, "")
+				b.AcquireEndpoint("172.17.0.4", 8080, "")
+				b.AcquireEndpoint("172.17.0.5", 8080, "")
+				b.AcquireEndpoint("172.17.0.6", 8080, "")
+				b.AcquireEndpoint("172.17.0.7", 8080, "")
+				b.AcquireEndpoint("172.17.0.8", 8080, "")
+				b.AcquireEndpoint("172.17.0.9", 8080, "")
+			},
+			doconfig2: func(c *testConfig) {
+				b := c.config.AcquireBackend("default", "app", "8080")
+				b.AcquireEndpoint("172.17.0.5", 8080, "")
+				b.AcquireEndpoint("172.17.0.7", 8080, "")
+			},
+			expected: []string{
+				"srv001:127.0.0.1:1023:0",
+				"srv002:127.0.0.1:1023:0",
+				"srv003:127.0.0.1:1023:0",
+				"srv004:172.17.0.5:8080:1",
+				"srv005:127.0.0.1:1023:0",
+				"srv006:172.17.0.7:8080:1",
+				"srv007:127.0.0.1:1023:0",
+				"srv008:127.0.0.1:1023:0",
+			},
+			dynamic: true,
+			cmd: `
+set server default_app_8080/srv001 state maint
+set server default_app_8080/srv001 addr 127.0.0.1 port 1023
+set server default_app_8080/srv001 weight 0
+set server default_app_8080/srv002 state maint
+set server default_app_8080/srv002 addr 127.0.0.1 port 1023
+set server default_app_8080/srv002 weight 0
+set server default_app_8080/srv003 state maint
+set server default_app_8080/srv003 addr 127.0.0.1 port 1023
+set server default_app_8080/srv003 weight 0
+set server default_app_8080/srv005 state maint
+set server default_app_8080/srv005 addr 127.0.0.1 port 1023
+set server default_app_8080/srv005 weight 0
+set server default_app_8080/srv007 state maint
+set server default_app_8080/srv007 addr 127.0.0.1 port 1023
+set server default_app_8080/srv007 weight 0
+set server default_app_8080/srv008 state maint
+set server default_app_8080/srv008 addr 127.0.0.1 port 1023
+set server default_app_8080/srv008 weight 0
+`,
+			logging: `
+INFO-V(2) disabled endpoint '172.17.0.2:8080' on backend/server 'default_app_8080/srv001'
+INFO-V(2) disabled endpoint '172.17.0.3:8080' on backend/server 'default_app_8080/srv002'
+INFO-V(2) disabled endpoint '172.17.0.4:8080' on backend/server 'default_app_8080/srv003'
+INFO-V(2) disabled endpoint '172.17.0.6:8080' on backend/server 'default_app_8080/srv005'
+INFO-V(2) disabled endpoint '172.17.0.8:8080' on backend/server 'default_app_8080/srv007'
+INFO-V(2) disabled endpoint '172.17.0.9:8080' on backend/server 'default_app_8080/srv008'
+`,
+		},
+		// 11
+		{
+			doconfig1: func(c *testConfig) {
+				b := c.config.AcquireBackend("default", "app", "8080")
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AcquireEndpoint("172.17.0.3", 8080, "")
+				b.AcquireEndpoint("172.17.0.4", 8080, "")
+			},
+			doconfig2: func(c *testConfig) {
+				c.config.AcquireBackend("default", "app", "8080")
+			},
+			expected: []string{
+				"srv001:127.0.0.1:1023:0",
+				"srv002:127.0.0.1:1023:0",
+				"srv003:127.0.0.1:1023:0",
+			},
+			dynamic: true,
+			cmd: `
+set server default_app_8080/srv001 state maint
+set server default_app_8080/srv001 addr 127.0.0.1 port 1023
+set server default_app_8080/srv001 weight 0
+set server default_app_8080/srv002 state maint
+set server default_app_8080/srv002 addr 127.0.0.1 port 1023
+set server default_app_8080/srv002 weight 0
+set server default_app_8080/srv003 state maint
+set server default_app_8080/srv003 addr 127.0.0.1 port 1023
+set server default_app_8080/srv003 weight 0
+`,
+			logging: `
+INFO-V(2) disabled endpoint '172.17.0.2:8080' on backend/server 'default_app_8080/srv001'
+INFO-V(2) disabled endpoint '172.17.0.3:8080' on backend/server 'default_app_8080/srv002'
+INFO-V(2) disabled endpoint '172.17.0.4:8080' on backend/server 'default_app_8080/srv003'
+`,
+		},
+		// 12
+		{
+			doconfig1: func(c *testConfig) {
+				b := c.config.AcquireBackend("default", "app", "8080")
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AddEmptyEndpoint()
+			},
+			doconfig2: func(c *testConfig) {
+				b := c.config.AcquireBackend("default", "app", "8080")
+				b.Dynamic.MinFreeSlots = 4
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AcquireEndpoint("172.17.0.3", 8080, "")
+				b.AcquireEndpoint("172.17.0.4", 8080, "")
+			},
+			expected: []string{
+				"srv001:172.17.0.2:8080:1",
+				"srv002:172.17.0.3:8080:1",
+				"srv003:172.17.0.4:8080:1",
+				"srv004:127.0.0.1:1023:0",
+				"srv005:127.0.0.1:1023:0",
+				"srv006:127.0.0.1:1023:0",
+				"srv007:127.0.0.1:1023:0",
+			},
+			dynamic: false,
+			logging: `INFO-V(2) added endpoints`,
+		},
+		// 13
+		{
+			doconfig1: func(c *testConfig) {
+				b := c.config.AcquireBackend("default", "app", "8080")
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AddEmptyEndpoint()
+				b.AddEmptyEndpoint()
+			},
+			doconfig2: func(c *testConfig) {
+				b := c.config.AcquireBackend("default", "app", "8080")
+				b.Dynamic.MinFreeSlots = 4
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AcquireEndpoint("172.17.0.3", 8080, "")
+			},
+			expected: []string{
+				"srv001:172.17.0.2:8080:1",
+				"srv002:172.17.0.3:8080:1",
+				"srv003:127.0.0.1:1023:0",
+			},
+			dynamic: true,
+			cmd: `
+set server default_app_8080/srv002 addr 172.17.0.3 port 8080
+set server default_app_8080/srv002 state ready
+set server default_app_8080/srv002 weight 1
+`,
+			logging: `INFO-V(2) added endpoint '172.17.0.3:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
+		},
+		// 14
+		{
+			doconfig1: func(c *testConfig) {
+				b1 := c.config.AcquireBackend("default", "default_backend", "8080")
+				c.config.ConfigDefaultBackend(b1)
+				b2 := c.config.AcquireBackend("default", "app", "8080")
+				b2.AcquireEndpoint("172.17.0.2", 8080, "")
+			},
+			doconfig2: func(c *testConfig) {
+				b1 := c.config.AcquireBackend("default", "default_backend", "8080")
+				b1.Dynamic.MinFreeSlots = 1
+				c.config.ConfigDefaultBackend(b1)
+				b2 := c.config.AcquireBackend("default", "app", "8080")
+				b2.AcquireEndpoint("172.17.0.2", 8080, "")
+				b2.AcquireEndpoint("172.17.0.3", 8080, "")
+			},
+			expected: []string{
+				"srv001:172.17.0.2:8080:1",
+				"srv002:172.17.0.3:8080:1",
+			},
+			dynamic: false,
+			cmd:     ``,
+			logging: `INFO-V(2) added endpoints`,
 		},
 	}
 	for i, test := range testCases {
@@ -174,16 +374,26 @@ set server default_app_8080/srv001 weight 1
 			test.curConfig = c.config.(*config)
 		}
 		var cmd string
-		dynUpdater := instance.newDynUpdater("/var/run/haproxy.sock")
+		dynUpdater := instance.newDynUpdater()
+		dynUpdater.old = test.oldConfig
+		dynUpdater.cur = test.curConfig
 		dynUpdater.cmd = func(socket string, command ...string) ([]string, error) {
 			for _, c := range command {
 				cmd = cmd + c + "\n"
 			}
 			return []string{}, nil
 		}
-		updated := dynUpdater.dynUpdate(test.oldConfig, test.curConfig)
-		if updated != test.updated {
-			t.Errorf("updated expected as '%t' on %d, but was '%t'", test.updated, i, updated)
+		dynamic := dynUpdater.update()
+		var actual []string
+		for _, ep := range c.config.AcquireBackend("default", "app", "8080").Endpoints {
+			actual = append(actual, fmt.Sprintf("%s:%s:%d:%d", ep.Name, ep.IP, ep.Port, ep.Weight))
+		}
+		if !reflect.DeepEqual(actual, test.expected) {
+			t.Errorf("endpoints expected and actual differs on %d -- expected: %v -- actual: %v",
+				i, test.expected, actual)
+		}
+		if dynamic != test.dynamic {
+			t.Errorf("dynamic expected as '%t' on %d, but was '%t'", test.dynamic, i, dynamic)
 		}
 		cmd = strings.TrimSpace(cmd)
 		test.cmd = strings.TrimSpace(test.cmd)

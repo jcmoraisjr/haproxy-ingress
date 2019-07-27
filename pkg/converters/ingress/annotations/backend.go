@@ -341,6 +341,14 @@ func (c *updater) buildBackendCors(d *backData) {
 	}
 }
 
+func (c *updater) buildBackendDynamic(d *backData) {
+	d.backend.Dynamic = hatypes.DynBackendConfig{
+		DynUpdate:    d.mapper.GetBoolValue(ingtypes.BackDynamicScaling),
+		BlockSize:    d.mapper.GetIntValue(ingtypes.BackBackendServerSlotsInc),
+		MinFreeSlots: d.mapper.GetIntValue(ingtypes.BackSlotsMinFree),
+	}
+}
+
 func (c *updater) buildBackendHSTS(d *backData) {
 	rawHSTSList := d.mapper.GetBackendConfig(d.backend,
 		ingtypes.BackHSTS, ingtypes.BackHSTSMaxAge, ingtypes.BackHSTSPreload, ingtypes.BackHSTSIncludeSubdomains)
