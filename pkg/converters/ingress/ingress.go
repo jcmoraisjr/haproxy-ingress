@@ -130,7 +130,7 @@ func (c *converter) syncIngress(ing *extensions.Ingress) {
 			sslpasshttpport := annHost[ingtypes.HostSSLPassthroughHTTPPort]
 			if sslpassthrough && sslpasshttpport != "" {
 				if _, err := c.addBackend(source, hostname+uri, fullSvcName, sslpasshttpport, annBack); err != nil {
-					c.logger.Warn("skipping http port config of ssl-passthrough: %v", err)
+					c.logger.Warn("skipping http port config of ssl-passthrough on %v: %v", source, err)
 				}
 			}
 		}

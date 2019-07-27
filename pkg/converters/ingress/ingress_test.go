@@ -1085,7 +1085,7 @@ func TestSyncAnnPassthrough(t *testing.T) {
 `)
 
 	c.compareLogging(`
-WARN skipping http port config of ssl-passthrough: port not found: '9000'
+WARN skipping http port config of ssl-passthrough on ingress 'default/echo2': port not found: '9000'
 `)
 }
 
