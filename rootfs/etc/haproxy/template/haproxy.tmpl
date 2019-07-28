@@ -120,6 +120,8 @@ userlist {{ $userlist.Name }}
 {{- end }}
 {{- end }}
 
+{{- if $cfg.TCPBackends }}
+
 
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -128,7 +130,37 @@ userlist {{ $userlist.Name }}
 # #
 #
 
-# TODO
+{{- range $backend := $cfg.TCPBackends }}
+listen _tcp_{{ $backend.Name }}_{{ $backend.Port }}
+{{- $ssl := $backend.SSL }}
+    bind :{{ $backend.Port }}
+        {{- if $ssl.Filename }} ssl crt {{ $ssl.Filename }}{{ end }}
+        {{- if $backend.ProxyProt.Decode }} accept-proxy{{ end }}
+    mode tcp
+
+{{- /*------------------------------------*/}}
+{{- if $global.Syslog.Endpoint }}
+{{- if eq $global.Syslog.TCPLogFormat "default" }}
+    option tcplog
+{{- else if $global.Syslog.TCPLogFormat }}
+    log-format {{ $global.Syslog.TCPLogFormat }}
+{{- else }}
+    no log
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- $outProxyProtVersion := $backend.ProxyProt.EncodeVersion }}
+{{- range $ep := $backend.Endpoints }}
+    server {{ $ep.Name }} {{ $ep.Target }}
+        {{- if $backend.CheckInterval }} check port {{ $ep.Port }} inter {{ $backend.CheckInterval }}{{ end }}
+        {{- if eq $outProxyProtVersion "v1" }} send-proxy
+            {{- else if eq $outProxyProtVersion "v2" }} send-proxy-v2
+        {{- end }}
+{{- end }}
+
+{{- end }}{{/* range TCPBackends */}}
+{{- end }}{{/* if has TCPBackend */}}
 
 {{- if $cfg.Backends }}
 

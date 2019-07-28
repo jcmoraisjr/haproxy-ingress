@@ -88,6 +88,9 @@ func (d *dynUpdater) checkConfigPair() bool {
 		if !reflect.DeepEqual(oldConfig.global, curConfig.global) {
 			diff = append(diff, "global")
 		}
+		if !reflect.DeepEqual(oldConfig.tcpbackends, curConfig.tcpbackends) {
+			diff = append(diff, "tcp-services")
+		}
 		if !reflect.DeepEqual(oldConfig.hosts, curConfig.hosts) {
 			diff = append(diff, "hosts")
 		}

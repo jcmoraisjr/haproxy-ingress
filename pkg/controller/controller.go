@@ -35,6 +35,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/controller"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/defaults"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/dynconfig"
+	configmapconverter "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/configmap"
 	ingressconverter "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
@@ -46,6 +47,8 @@ import (
 // HAProxyController has internal data of a HAProxyController instance
 type HAProxyController struct {
 	instance          haproxy.Instance
+	logger            types.Logger
+	cache             convtypes.Cache
 	controller        *controller.GenericController
 	cfg               *controller.Configuration
 	configMap         *api.ConfigMap
@@ -97,7 +100,8 @@ func (hc *HAProxyController) configController() {
 	}
 
 	// starting v0.8 only config
-	logger := &logger{depth: 1}
+	hc.logger = &logger{depth: 1}
+	hc.cache = newCache(hc.storeLister, hc.controller)
 	instanceOptions := haproxy.InstanceOptions{
 		HAProxyCmd:        "haproxy",
 		ReloadCmd:         "/haproxy-reload.sh",
@@ -105,21 +109,20 @@ func (hc *HAProxyController) configController() {
 		ReloadStrategy:    *hc.reloadStrategy,
 		MaxOldConfigFiles: *hc.maxOldConfigFiles,
 	}
-	hc.instance = haproxy.CreateInstance(logger, hc, instanceOptions)
+	hc.instance = haproxy.CreateInstance(hc.logger, hc, instanceOptions)
 	if err := hc.instance.ParseTemplates(); err != nil {
 		glog.Fatalf("error creating HAProxy instance: %v", err)
 	}
-	cache := newCache(hc.storeLister, hc.controller)
 	hc.converterOptions = &ingtypes.ConverterOptions{
-		Logger:           logger,
-		Cache:            cache,
+		Logger:           hc.logger,
+		Cache:            hc.cache,
 		AnnotationPrefix: "ingress.kubernetes.io",
 		DefaultBackend:   hc.cfg.DefaultService,
-		DefaultSSLFile:   hc.createDefaultSSLFile(cache),
+		DefaultSSLFile:   hc.createDefaultSSLFile(hc.cache),
 	}
 }
 
-func (hc *HAProxyController) createDefaultSSLFile(cache *cache) (tlsFile convtypes.File) {
+func (hc *HAProxyController) createDefaultSSLFile(cache convtypes.Cache) (tlsFile convtypes.File) {
 	if hc.cfg.DefaultSSLCertificate != "" {
 		tlsFile, err := cache.GetTLSSecretPath(hc.cfg.DefaultSSLCertificate)
 		if err == nil {
@@ -253,6 +256,9 @@ func (hc *HAProxyController) DrainSupport() (drainSupport bool) {
 
 // SyncIngress sync HAProxy config from a very early stage
 func (hc *HAProxyController) SyncIngress(item interface{}) error {
+	//
+	// ingress converter
+	//
 	var ingress []*extensions.Ingress
 	for _, iing := range hc.storeLister.Ingress.List() {
 		ing := iing.(*extensions.Ingress)
@@ -263,19 +269,38 @@ func (hc *HAProxyController) SyncIngress(item interface{}) error {
 	sort.SliceStable(ingress, func(i, j int) bool {
 		return ingress[i].ResourceVersion < ingress[j].ResourceVersion
 	})
-
 	var globalConfig map[string]string
 	if hc.configMap != nil {
 		globalConfig = hc.configMap.Data
 	}
-	converter := ingressconverter.NewIngressConverter(
+	ingConverter := ingressconverter.NewIngressConverter(
 		hc.converterOptions,
 		hc.instance.Config(),
 		globalConfig,
 	)
-	converter.Sync(ingress)
-	hc.instance.Update()
+	ingConverter.Sync(ingress)
 
+	//
+	// configmap converters
+	//
+	if hc.cfg.TCPConfigMapName != "" {
+		tcpConfigmap, err := hc.storeLister.ConfigMap.GetByName(hc.cfg.TCPConfigMapName)
+		if err == nil && tcpConfigmap != nil {
+			tcpSvcConverter := configmapconverter.NewTCPServicesConverter(
+				hc.logger,
+				hc.instance.Config(),
+				hc.cache,
+			)
+			tcpSvcConverter.Sync(tcpConfigmap.Data)
+		} else {
+			hc.logger.Error("error reading TCP services: %v", err)
+		}
+	}
+
+	//
+	// update proxy
+	//
+	hc.instance.Update()
 	return nil
 }
 

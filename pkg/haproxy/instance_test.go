@@ -409,6 +409,88 @@ empty/ default_empty_8080`)
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestInstanceTCPBackend(t *testing.T) {
+	testCases := []struct {
+		doconfig func(c *testConfig)
+		expected string
+		logging  string
+	}{
+		// 0
+		{
+			doconfig: func(c *testConfig) {
+				b := c.config.AcquireTCPBackend("postgresql", 5432)
+				b.AddEndpoint("172.17.0.2", 5432)
+			},
+			expected: `
+listen _tcp_postgresql_5432
+    bind :5432
+    mode tcp
+    server srv001 172.17.0.2:5432
+`,
+		},
+		// 1
+		{
+			doconfig: func(c *testConfig) {
+				b := c.config.AcquireTCPBackend("pq", 5432)
+				b.AddEndpoint("172.17.0.2", 5432)
+				b.AddEndpoint("172.17.0.3", 5432)
+				b.CheckInterval = "2s"
+			},
+			expected: `
+listen _tcp_pq_5432
+    bind :5432
+    mode tcp
+    server srv001 172.17.0.2:5432 check port 5432 inter 2s
+    server srv002 172.17.0.3:5432 check port 5432 inter 2s
+`,
+		},
+		// 2
+		{
+			doconfig: func(c *testConfig) {
+				b := c.config.AcquireTCPBackend("pq", 5432)
+				b.AddEndpoint("172.17.0.2", 5432)
+				b.SSL.Filename = "/var/haproxy/ssl/pq.pem"
+				b.ProxyProt.EncodeVersion = "v2"
+			},
+			expected: `
+listen _tcp_pq_5432
+    bind :5432 ssl crt /var/haproxy/ssl/pq.pem
+    mode tcp
+    server srv001 172.17.0.2:5432 send-proxy-v2
+`,
+		},
+		// 3
+		{
+			doconfig: func(c *testConfig) {
+				b := c.config.AcquireTCPBackend("pq", 5432)
+				b.AddEndpoint("172.17.0.2", 5432)
+				b.SSL.Filename = "/var/haproxy/ssl/pq.pem"
+				b.ProxyProt.Decode = true
+				b.ProxyProt.EncodeVersion = "v1"
+				b.CheckInterval = "2s"
+			},
+			expected: `
+listen _tcp_pq_5432
+    bind :5432 ssl crt /var/haproxy/ssl/pq.pem accept-proxy
+    mode tcp
+    server srv001 172.17.0.2:5432 check port 5432 inter 2s send-proxy
+`,
+		},
+	}
+	for _, test := range testCases {
+		c := setup(t)
+		test.doconfig(c)
+		c.instance.Update()
+		c.checkConfig("<<global>>\n<<defaults>>" + test.expected + "<<support>>")
+		logging := test.logging
+		if logging == "" {
+			logging = defaultLogging
+		}
+		c.logger.CompareLogging(logging)
+		c.teardown()
+	}
+}
+
 func TestInstanceDefaultHost(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()

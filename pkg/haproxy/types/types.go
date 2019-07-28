@@ -101,6 +101,35 @@ type ModSecurityTimeoutConfig struct {
 	Processing string
 }
 
+// TCPBackend ...
+type TCPBackend struct {
+	Name          string
+	Port          int
+	Endpoints     []*TCPEndpoint
+	CheckInterval string
+	SSL           TCPSSL
+	ProxyProt     TCPProxyProt
+}
+
+// TCPEndpoint ...
+type TCPEndpoint struct {
+	Name   string
+	IP     string
+	Port   int
+	Target string
+}
+
+// TCPSSL ...
+type TCPSSL struct {
+	Filename string
+}
+
+// TCPProxyProt ...
+type TCPProxyProt struct {
+	Decode        bool
+	EncodeVersion string
+}
+
 // HostsMapEntry ...
 type HostsMapEntry struct {
 	Key   string

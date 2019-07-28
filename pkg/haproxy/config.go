@@ -27,6 +27,7 @@ import (
 
 // Config ...
 type Config interface {
+	AcquireTCPBackend(servicename string, port int) *hatypes.TCPBackend
 	AcquireHost(hostname string) *hatypes.Host
 	FindHost(hostname string) *hatypes.Host
 	AcquireBackend(namespace, name, port string) *hatypes.Backend
@@ -41,6 +42,7 @@ type Config interface {
 	DefaultHost() *hatypes.Host
 	DefaultBackend() *hatypes.Backend
 	Global() *hatypes.Global
+	TCPBackends() []*hatypes.TCPBackend
 	Hosts() []*hatypes.Host
 	Backends() []*hatypes.Backend
 	Userlists() []*hatypes.Userlist
@@ -53,6 +55,7 @@ type config struct {
 	mapsTemplate    *template.Config
 	mapsDir         string
 	global          hatypes.Global
+	tcpbackends     []*hatypes.TCPBackend
 	hosts           []*hatypes.Host
 	backends        []*hatypes.Backend
 	userlists       []*hatypes.Userlist
@@ -76,6 +79,23 @@ func createConfig(bindUtils hatypes.BindUtils, options options) *config {
 		mapsTemplate: mapsTemplate,
 		mapsDir:      options.mapsDir,
 	}
+}
+
+func (c *config) AcquireTCPBackend(servicename string, port int) *hatypes.TCPBackend {
+	for _, backend := range c.tcpbackends {
+		if backend.Name == servicename && backend.Port == port {
+			return backend
+		}
+	}
+	backend := &hatypes.TCPBackend{
+		Name: servicename,
+		Port: port,
+	}
+	c.tcpbackends = append(c.tcpbackends, backend)
+	sort.Slice(c.tcpbackends, func(i, j int) bool {
+		return c.tcpbackends[i].Name < c.tcpbackends[j].Name
+	})
+	return backend
 }
 
 func (c *config) AcquireHost(hostname string) *hatypes.Host {
@@ -419,6 +439,10 @@ func (c *config) DefaultBackend() *hatypes.Backend {
 
 func (c *config) Global() *hatypes.Global {
 	return &c.global
+}
+
+func (c *config) TCPBackends() []*hatypes.TCPBackend {
+	return c.tcpbackends
 }
 
 func (c *config) Hosts() []*hatypes.Host {
