@@ -7,7 +7,6 @@
 # #
 #
 {{- $cfg := . }}
-{{- $fgroup := $cfg.FrontendGroup }}
 {{- $global := $cfg.Global }}
 global
     daemon
@@ -130,6 +129,8 @@ userlist {{ $userlist.Name }}
 #
 
 # TODO
+
+{{- if $cfg.Backends }}
 
 
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -335,6 +336,8 @@ backend {{ $backend.ID }}
 {{- end }}
 {{- end }}
 
+{{- end }}{{/* if has Backends */}}
+
 {{- define "backend" }}
     {{- $backend := .p1 }}
     {{- if $backend.MaxConnServer }} maxconn {{ $backend.MaxConnServer }}{{ end }}
@@ -363,6 +366,8 @@ backend {{ $backend.ID }}
     {{- end }}
 {{- end }}
 
+{{- if $cfg.Backends }}
+
   # # # # # # # # # # # # # # # # # # #
 # #
 #     Error pages
@@ -381,6 +386,11 @@ backend _error496
     mode http
     errorfile 400 /usr/local/etc/haproxy/errors/496.http
     http-request deny deny_status 400
+
+{{- end }}{{/* if has Backends */}}
+
+{{- $fgroup := $cfg.FrontendGroup }}
+{{- if $fgroup }}
 
 
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -672,6 +682,8 @@ frontend {{ $frontend.Name }}
 {{- end }}
 {{- template "defaultbackend" map $cfg }}
 {{- end }}
+
+{{- end }}{{/* if $fgroup */}}
 
 {{- /*------------------------------------*/}}
 {{- /*------------------------------------*/}}

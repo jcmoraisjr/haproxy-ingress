@@ -24,12 +24,21 @@ import (
 
 func TestEmptyFrontend(t *testing.T) {
 	c := createConfig(&ha_helper.BindUtilsMock{}, options{})
-	if err := c.BuildFrontendGroup(); err == nil {
-		t.Error("expected error creating empty frontend")
+	if err := c.BuildFrontendGroup(); err != nil {
+		t.Errorf("error creating frontends: %v", err)
+	}
+	if fg := c.FrontendGroup(); fg != nil {
+		t.Error("expected FrontendGroup == nil")
 	}
 	c.AcquireHost("empty")
 	if err := c.BuildFrontendGroup(); err != nil {
 		t.Errorf("error creating frontends: %v", err)
+	}
+	fg := c.FrontendGroup()
+	if fg == nil {
+		t.Error("expected FrontendGroup != nil")
+	} else if len(fg.Frontends) == 0 {
+		t.Error("expected at least one frontend")
 	}
 }
 

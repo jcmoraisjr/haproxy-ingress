@@ -197,7 +197,7 @@ func (c *config) BuildFrontendGroup() error {
 	// tested thanks to instance_test templating tests
 	// ideas to make a nice test or a nice refactor are welcome
 	if len(c.hosts) == 0 {
-		return fmt.Errorf("cannot create frontends without hosts")
+		return nil
 	}
 	frontends, sslpassthrough := hatypes.BuildRawFrontends(c.hosts)
 	fgroupMaps := hatypes.CreateMaps()
