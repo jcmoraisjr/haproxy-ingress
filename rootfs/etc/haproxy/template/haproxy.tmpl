@@ -709,9 +709,13 @@ frontend {{ $frontend.Name }}
 # #
 #
 
+  # # # # # # # # # # # # # # # # # # #
+# #
+#     Stats
+#
 listen stats
-    bind *:1936{{ if gt $global.Procs.Nbproc 1 }} process 1{{ end }}
     mode http
+    bind :1936{{ if gt $global.Procs.Nbproc 1 }} process 1{{ end }}
     stats enable
     stats uri /
     no log

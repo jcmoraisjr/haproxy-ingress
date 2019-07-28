@@ -1839,8 +1839,8 @@ frontend _front001
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404`,
 		"<<support>>": `listen stats
-    bind *:1936
     mode http
+    bind :1936
     stats enable
     stats uri /
     no log
