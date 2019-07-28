@@ -28,6 +28,8 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/annotations"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/utils"
+	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
+	convutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
@@ -70,7 +72,7 @@ type converter struct {
 	haproxy            haproxy.Config
 	options            *ingtypes.ConverterOptions
 	logger             types.Logger
-	cache              ingtypes.Cache
+	cache              convtypes.Cache
 	mapBuilder         *annotations.MapBuilder
 	updater            annotations.Updater
 	globalConfig       *ingtypes.ConfigGlobals
@@ -213,7 +215,7 @@ func (c *converter) addBackend(source *annotations.Source, hostpath, fullSvcName
 		// from the api.Service object
 		svcPort = svc.Spec.Ports[0].TargetPort.String()
 	}
-	epport := findServicePort(svc, svcPort)
+	epport := convutils.FindServicePort(svc, svcPort)
 	if epport.String() == "" {
 		return nil, fmt.Errorf("port not found: '%s'", svcPort)
 	}
@@ -243,30 +245,7 @@ func (c *converter) addBackend(source *annotations.Source, hostpath, fullSvcName
 	return backend, nil
 }
 
-func findServicePort(svc *api.Service, servicePort string) intstr.IntOrString {
-	for _, port := range svc.Spec.Ports {
-		if port.Name == servicePort {
-			return port.TargetPort
-		}
-	}
-	for _, port := range svc.Spec.Ports {
-		if port.TargetPort.String() == servicePort {
-			return port.TargetPort
-		}
-	}
-	svcPortNumber, err := strconv.ParseInt(servicePort, 10, 0)
-	if err != nil {
-		return intstr.FromString("")
-	}
-	for _, port := range svc.Spec.Ports {
-		if port.Port == int32(svcPortNumber) {
-			return port.TargetPort
-		}
-	}
-	return intstr.FromString("")
-}
-
-func (c *converter) addTLS(namespace, secretName string) ingtypes.File {
+func (c *converter) addTLS(namespace, secretName string) convtypes.File {
 	if secretName != "" {
 		tlsSecretName := namespace + "/" + secretName
 		tlsFile, err := c.cache.GetTLSSecretPath(tlsSecretName)
@@ -283,26 +262,15 @@ func (c *converter) addEndpoints(svc *api.Service, svcPort intstr.IntOrString, b
 	if err != nil {
 		return err
 	}
-	// TODO ServiceTypeExternalName
-	// TODO ServiceUpstream - annotation nao documentada
-	// TODO svcPort.IntValue() doesn't work if svc.targetPort is a pod's named port
-	for _, subset := range endpoints.Subsets {
-		for _, port := range subset.Ports {
-			ssport := int(port.Port)
-			if ssport == svcPort.IntValue() && port.Protocol == api.ProtocolTCP {
-				for _, addr := range subset.Addresses {
-					backend.AcquireEndpoint(addr.IP, ssport, addr.TargetRef.Namespace+"/"+addr.TargetRef.Name)
-				}
-				if c.globalConfig.DrainSupport {
-					for _, addr := range subset.NotReadyAddresses {
-						ep := backend.AcquireEndpoint(addr.IP, ssport, addr.TargetRef.Namespace+"/"+addr.TargetRef.Name)
-						ep.Weight = 0
-					}
-				}
-			}
-		}
+	ready, notReady := convutils.FindEndpoints(endpoints, svcPort)
+	for _, addr := range ready {
+		backend.AcquireEndpoint(addr.IP, addr.Port, addr.TargetNS+"/"+addr.TargetName)
 	}
 	if c.globalConfig.DrainSupport {
+		for _, addr := range notReady {
+			ep := backend.AcquireEndpoint(addr.IP, addr.Port, addr.TargetNS+"/"+addr.TargetName)
+			ep.Weight = 0
+		}
 		pods, err := c.cache.GetTerminatingPods(svc)
 		if err != nil {
 			return err

@@ -18,6 +18,7 @@ package annotations
 
 import (
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
+	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
@@ -31,7 +32,7 @@ type Updater interface {
 }
 
 // NewUpdater ...
-func NewUpdater(haproxy haproxy.Config, cache ingtypes.Cache, logger types.Logger) Updater {
+func NewUpdater(haproxy haproxy.Config, cache convtypes.Cache, logger types.Logger) Updater {
 	return &updater{
 		haproxy: haproxy,
 		cache:   cache,
@@ -41,7 +42,7 @@ func NewUpdater(haproxy haproxy.Config, cache ingtypes.Cache, logger types.Logge
 
 type updater struct {
 	haproxy haproxy.Config
-	cache   ingtypes.Cache
+	cache   convtypes.Cache
 	logger  types.Logger
 }
 

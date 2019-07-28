@@ -31,3 +31,9 @@ type Cache interface {
 	GetDHSecretPath(secretName string) (File, error)
 	GetSecretContent(secretName, keyName string) ([]byte, error)
 }
+
+// File ...
+type File struct {
+	Filename string
+	SHA1Hash string
+}

@@ -37,6 +37,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/dynconfig"
 	ingressconverter "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
+	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/version"
@@ -118,7 +119,7 @@ func (hc *HAProxyController) configController() {
 	}
 }
 
-func (hc *HAProxyController) createDefaultSSLFile(cache *cache) (tlsFile ingtypes.File) {
+func (hc *HAProxyController) createDefaultSSLFile(cache *cache) (tlsFile convtypes.File) {
 	if hc.cfg.DefaultSSLCertificate != "" {
 		tlsFile, err := cache.GetTLSSecretPath(hc.cfg.DefaultSSLCertificate)
 		if err == nil {
@@ -129,7 +130,7 @@ func (hc *HAProxyController) createDefaultSSLFile(cache *cache) (tlsFile ingtype
 		glog.Info("using auto generated fake certificate")
 	}
 	path, hash := hc.controller.CreateDefaultSSLCertificate()
-	tlsFile = ingtypes.File{
+	tlsFile = convtypes.File{
 		Filename: path,
 		SHA1Hash: hash,
 	}

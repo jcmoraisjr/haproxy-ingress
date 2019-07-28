@@ -25,7 +25,7 @@ import (
 	api "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	ing_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/helper_test"
+	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
@@ -124,7 +124,7 @@ func TestAuthHTTP(t *testing.T) {
 		ingname      string
 		annDefault   map[string]string
 		ann          map[string]string
-		secrets      ing_helper.SecretContent
+		secrets      conv_helper.SecretContent
 		expUserlists []*hatypes.Userlist
 		expLogging   string
 	}{
@@ -161,7 +161,7 @@ func TestAuthHTTP(t *testing.T) {
 				ingtypes.BackAuthType:   "basic",
 				ingtypes.BackAuthSecret: "mypwd",
 			},
-			secrets:    ing_helper.SecretContent{"default/mypwd": {"xx": []byte{}}},
+			secrets:    conv_helper.SecretContent{"default/mypwd": {"xx": []byte{}}},
 			expLogging: "ERROR error reading basic authentication on ingress 'default/ing1': secret 'default/mypwd' does not have file/key 'auth'",
 		},
 		// 5
@@ -171,7 +171,7 @@ func TestAuthHTTP(t *testing.T) {
 				ingtypes.BackAuthSecret: "mypwd",
 				ingtypes.BackAuthRealm:  `"a name"`,
 			},
-			secrets: ing_helper.SecretContent{"default/mypwd": {"auth": []byte("usr1::clear1")}},
+			secrets: conv_helper.SecretContent{"default/mypwd": {"auth": []byte("usr1::clear1")}},
 			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_mypwd", Users: []hatypes.User{
 				{Name: "usr1", Passwd: "clear1", Encrypted: false},
 			}}},
@@ -185,7 +185,7 @@ func TestAuthHTTP(t *testing.T) {
 				ingtypes.BackAuthType:   "basic",
 				ingtypes.BackAuthSecret: "mypwd",
 			},
-			secrets:      ing_helper.SecretContent{"ns1/mypwd": {"auth": []byte{}}},
+			secrets:      conv_helper.SecretContent{"ns1/mypwd": {"auth": []byte{}}},
 			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "ns1_mypwd"}},
 			expLogging:   "WARN userlist on ingress 'ns1/i1' for basic authentication is empty",
 		},
@@ -195,7 +195,7 @@ func TestAuthHTTP(t *testing.T) {
 				ingtypes.BackAuthType:   "basic",
 				ingtypes.BackAuthSecret: "basicpwd",
 			},
-			secrets:      ing_helper.SecretContent{"default/basicpwd": {"auth": []byte("fail")}},
+			secrets:      conv_helper.SecretContent{"default/basicpwd": {"auth": []byte("fail")}},
 			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_basicpwd"}},
 			expLogging: `
 WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ingress 'default/ing1': missing password of user 'fail' line 1
@@ -207,7 +207,7 @@ WARN userlist on ingress 'default/ing1' for basic authentication is empty`,
 				ingtypes.BackAuthType:   "basic",
 				ingtypes.BackAuthSecret: "basicpwd",
 			},
-			secrets: ing_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
+			secrets: conv_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
 usr1::clearpwd1
 nopwd`)}},
 			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_basicpwd", Users: []hatypes.User{
@@ -221,7 +221,7 @@ nopwd`)}},
 				ingtypes.BackAuthType:   "basic",
 				ingtypes.BackAuthSecret: "basicpwd",
 			},
-			secrets: ing_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
+			secrets: conv_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
 usrnopwd1:
 usrnopwd2::
 :encpwd3
@@ -240,7 +240,7 @@ WARN userlist on ingress 'default/ing1' for basic authentication is empty`,
 				ingtypes.BackAuthType:   "basic",
 				ingtypes.BackAuthSecret: "basicpwd",
 			},
-			secrets: ing_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
+			secrets: conv_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
 usr1:encpwd1
 usr2::clearpwd2`)}},
 			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_basicpwd", Users: []hatypes.User{
