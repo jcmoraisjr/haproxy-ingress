@@ -722,6 +722,16 @@ listen stats
     option forceclose
     stats show-legends
 
+  # # # # # # # # # # # # # # # # # # #
+# #
+#     Monitor URI
+#
+frontend healthz
+    mode http
+    bind :10253
+    monitor-uri /healthz
+    no log
+
 {{- if $global.ModSecurity.Endpoints }}
 
   # # # # # # # # # # # # # # # # # # #

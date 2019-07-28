@@ -1845,7 +1845,12 @@ frontend _front001
     stats uri /
     no log
     option forceclose
-    stats show-legends`,
+    stats show-legends
+frontend healthz
+    mode http
+    bind :10253
+    monitor-uri /healthz
+    no log`,
 	}
 	for {
 		changed := false
