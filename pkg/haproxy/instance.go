@@ -23,6 +23,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
 // InstanceOptions ...
@@ -38,7 +39,7 @@ type InstanceOptions struct {
 type Instance interface {
 	ParseTemplates() error
 	Config() Config
-	Update()
+	Update(timer *utils.Timer)
 }
 
 // CreateInstance ...
@@ -106,7 +107,7 @@ func (i *instance) Config() Config {
 	return i.curConfig
 }
 
-func (i *instance) Update() {
+func (i *instance) Update(timer *utils.Timer) {
 	if i.curConfig == nil {
 		i.logger.Info("new configuration is empty")
 		return
@@ -134,10 +135,12 @@ func (i *instance) Update() {
 		return
 	}
 	i.clearConfig()
+	timer.Tick("writeTmpl")
 	if updated {
 		if err := i.check(); err != nil {
 			i.logger.Error("error validating config file:\n%v", err)
 		}
+		timer.Tick("validate")
 		if updater.cmdCnt > 0 {
 			i.logger.Info("HAProxy updated without needing to reload. Commands sent: %d", updater.cmdCnt)
 		} else {
@@ -149,6 +152,7 @@ func (i *instance) Update() {
 		i.logger.Error("error reloading server:\n%v", err)
 		return
 	}
+	timer.Tick("reload")
 	i.logger.Info("HAProxy successfully reloaded")
 }
 

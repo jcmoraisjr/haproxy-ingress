@@ -41,6 +41,7 @@ import (
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/version"
 )
 
@@ -49,6 +50,7 @@ type HAProxyController struct {
 	instance          haproxy.Instance
 	logger            types.Logger
 	cache             convtypes.Cache
+	updateCount       int
 	controller        *controller.GenericController
 	cfg               *controller.Configuration
 	configMap         *api.ConfigMap
@@ -259,6 +261,9 @@ func (hc *HAProxyController) SyncIngress(item interface{}) error {
 	//
 	// ingress converter
 	//
+	hc.updateCount++
+	hc.logger.Info("Starting HAProxy update id=%d", hc.updateCount)
+	timer := utils.NewTimer()
 	var ingress []*extensions.Ingress
 	for _, iing := range hc.storeLister.Ingress.List() {
 		ing := iing.(*extensions.Ingress)
@@ -279,6 +284,7 @@ func (hc *HAProxyController) SyncIngress(item interface{}) error {
 		globalConfig,
 	)
 	ingConverter.Sync(ingress)
+	timer.Tick("ingress")
 
 	//
 	// configmap converters
@@ -292,6 +298,7 @@ func (hc *HAProxyController) SyncIngress(item interface{}) error {
 				hc.cache,
 			)
 			tcpSvcConverter.Sync(tcpConfigmap.Data)
+			timer.Tick("tcpServices")
 		} else {
 			hc.logger.Error("error reading TCP services: %v", err)
 		}
@@ -300,7 +307,8 @@ func (hc *HAProxyController) SyncIngress(item interface{}) error {
 	//
 	// update proxy
 	//
-	hc.instance.Update()
+	hc.instance.Update(timer)
+	hc.logger.Info("Finish HAProxy update id=%d: %s", hc.updateCount, timer.AsString("total"))
 	return nil
 }
 

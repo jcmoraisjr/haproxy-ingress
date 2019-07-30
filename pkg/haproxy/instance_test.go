@@ -30,6 +30,7 @@ import (
 	ha_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/helper_test"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types/helper_test"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -283,7 +284,7 @@ func TestBackends(t *testing.T) {
 			mode = "http"
 		}
 
-		c.instance.Update()
+		c.Update()
 		c.checkConfig(`
 <<global>>
 <<defaults>>
@@ -318,7 +319,7 @@ func TestInstanceBare(t *testing.T) {
 	h = c.config.AcquireHost("d1.local")
 	h.AddPath(b, "/")
 
-	c.instance.Update()
+	c.Update()
 	c.checkConfig(`
 <<global>>
 <<defaults>>
@@ -337,7 +338,7 @@ func TestInstanceEmpty(t *testing.T) {
 	defer c.teardown()
 
 	c.config.AcquireHost("empty").AddPath(c.config.AcquireBackend("default", "empty", "8080"), "/")
-	c.instance.Update()
+	c.Update()
 
 	c.checkConfig(`
 global
@@ -480,7 +481,7 @@ listen _tcp_pq_5432
 	for _, test := range testCases {
 		c := setup(t)
 		test.doconfig(c)
-		c.instance.Update()
+		c.Update()
 		c.checkConfig("<<global>>\n<<defaults>>" + test.expected + "<<support>>")
 		logging := test.logging
 		if logging == "" {
@@ -516,7 +517,7 @@ func TestInstanceDefaultHost(t *testing.T) {
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 	h.VarNamespace = true
 
-	c.instance.Update()
+	c.Update()
 	c.checkConfig(`
 <<global>>
 <<defaults>>
@@ -594,7 +595,7 @@ func TestInstanceSingleFrontendSingleBind(t *testing.T) {
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/d2.pem"
 	h.TLS.TLSHash = "2"
 
-	c.instance.Update()
+	c.Update()
 	c.checkConfig(`
 <<global>>
 <<defaults>>
@@ -680,7 +681,7 @@ func TestInstanceSingleFrontendTwoBindsCA(t *testing.T) {
 	h.TLS.CAFilename = "/var/haproxy/ssl/ca/d2.local.pem"
 	h.TLS.CAHash = "2"
 
-	c.instance.Update()
+	c.Update()
 	c.checkConfig(`
 <<global>>
 <<defaults>>
@@ -827,7 +828,7 @@ func TestInstanceTwoFrontendsThreeBindsCA(t *testing.T) {
 	h.AddPath(b, "/")
 	h.Timeout.Client = "2s"
 
-	c.instance.Update()
+	c.Update()
 	c.checkConfig(`
 <<global>>
 <<defaults>>
@@ -1008,7 +1009,7 @@ func TestInstanceSomePaths(t *testing.T) {
 	h.AddPath(b, "/sub")
 	b.Endpoints = []*hatypes.Endpoint{endpointS31, endpointS32, endpointS33}
 
-	c.instance.Update()
+	c.Update()
 	c.checkConfig(`
 <<global>>
 <<defaults>>
@@ -1094,7 +1095,7 @@ func TestInstanceSSLPassthrough(t *testing.T) {
 	b.Endpoints = []*hatypes.Endpoint{endpointS41h}
 	h.HTTPPassthroughBackend = b.ID
 
-	c.instance.Update()
+	c.Update()
 	c.checkConfig(`
 <<global>>
 <<defaults>>
@@ -1162,7 +1163,7 @@ func TestInstanceRootRedirect(t *testing.T) {
 	h.AddPath(b, "/app2")
 	h.RootRedirect = "/app1"
 
-	c.instance.Update()
+	c.Update()
 
 	c.checkConfig(`
 <<global>>
@@ -1250,7 +1251,7 @@ func TestInstanceAlias(t *testing.T) {
 	h.AddPath(b, "/")
 	h.Alias.AliasRegex = ".*d3\\.local$"
 
-	c.instance.Update()
+	c.Update()
 	c.checkConfig(`
 <<global>>
 <<defaults>>
@@ -1397,7 +1398,7 @@ userlist default_auth2
 			realm = fmt.Sprintf(` realm "%s"`, test.realm)
 		}
 
-		c.instance.Update()
+		c.Update()
 		c.checkConfig(`
 <<global>>
 <<defaults>>` + test.config + `
@@ -1467,7 +1468,7 @@ func TestModSecurity(t *testing.T) {
 		h.AddPath(b, "/")
 		c.config.Global().ModSecurity.Endpoints = test.endpoints
 
-		c.instance.Update()
+		c.Update()
 
 		var modsec string
 		if test.modsecExp != "" {
@@ -1521,7 +1522,7 @@ func TestInstanceWildcardHostname(t *testing.T) {
 	h.RootRedirect = "/app"
 	h.Timeout.Client = "10s"
 
-	c.instance.Update()
+	c.Update()
 	c.checkConfig(`
 <<global>>
 <<defaults>>
@@ -1856,6 +1857,11 @@ INFO HAProxy successfully reloaded`
 func _yamlMarshal(in interface{}) string {
 	out, _ := yaml.Marshal(in)
 	return string(out)
+}
+
+func (c *testConfig) Update() {
+	timer := utils.NewTimer()
+	c.instance.Update(timer)
 }
 
 func (c *testConfig) checkConfig(expected string) {
