@@ -358,6 +358,34 @@ set server default_app_8080/srv002 weight 1
 			cmd:     ``,
 			logging: `INFO-V(2) added endpoints`,
 		},
+		// 15
+		{
+			doconfig2: func(c *testConfig) {
+				c.config.AcquireBackend("default", "app", "8080")
+			},
+			expected: []string{
+				"srv001:127.0.0.1:1023:0",
+			},
+			dynamic: false,
+			cmd:     ``,
+			logging: ``,
+		},
+		// 16
+		{
+			doconfig2: func(c *testConfig) {
+				b := c.config.AcquireBackend("default", "app", "8080")
+				b.Dynamic.BlockSize = 4
+			},
+			expected: []string{
+				"srv001:127.0.0.1:1023:0",
+				"srv002:127.0.0.1:1023:0",
+				"srv003:127.0.0.1:1023:0",
+				"srv004:127.0.0.1:1023:0",
+			},
+			dynamic: false,
+			cmd:     ``,
+			logging: ``,
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)

@@ -234,20 +234,25 @@ func (d *dynUpdater) alignSlots() {
 		if blockSize < 1 {
 			blockSize = 1
 		}
-		totalFreeSlots := 0
-		for _, ep := range back.Endpoints {
-			if ep.IsEmpty() {
-				totalFreeSlots++
+		var newFreeSlots int
+		if minFreeSlots == 0 && len(back.Endpoints) == 0 {
+			newFreeSlots = blockSize
+		} else {
+			totalFreeSlots := 0
+			for _, ep := range back.Endpoints {
+				if ep.IsEmpty() {
+					totalFreeSlots++
+				}
 			}
+			for i := totalFreeSlots; i < minFreeSlots; i++ {
+				back.AddEmptyEndpoint()
+			}
+			// * []endpoints == group of blocks
+			// * block == group of slots
+			// * slot == a single server
+			// newFreeSlots := blockSize - (1 <= <size-of-last-block> <= blockSize)
+			newFreeSlots = blockSize - (((len(back.Endpoints) + blockSize - 1) % blockSize) + 1)
 		}
-		for i := totalFreeSlots; i < minFreeSlots; i++ {
-			back.AddEmptyEndpoint()
-		}
-		// * []endpoints == group of blocks
-		// * block == group of slots
-		// * slot == a single server
-		// newFreeSlots := blockSize - (1 <= <size-of-last-block> <= blockSize)
-		newFreeSlots := blockSize - (((len(back.Endpoints) + blockSize - 1) % blockSize) + 1)
 		for i := 0; i < newFreeSlots; i++ {
 			back.AddEmptyEndpoint()
 		}
