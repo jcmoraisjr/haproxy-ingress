@@ -33,6 +33,7 @@ type InstanceOptions struct {
 	HAProxyConfigFile string
 	ReloadCmd         string
 	ReloadStrategy    string
+	ValidateConfig    bool
 }
 
 // Instance ...
@@ -108,10 +109,17 @@ func (i *instance) Config() Config {
 }
 
 func (i *instance) Update(timer *utils.Timer) {
+	// nil config, just ignore
 	if i.curConfig == nil {
 		i.logger.Info("new configuration is empty")
 		return
 	}
+	//
+	// this should be taken into account when refactoring this func:
+	//   - dynUpdater might change config state, so it should be called before templates.Write();
+	//   - templates.Write() uses the current config, so it should be called before clearConfig();
+	//   - clearConfig() rotates the configurations, so it should be called always, but only once.
+	//
 	if err := i.curConfig.BuildFrontendGroup(); err != nil {
 		i.logger.Error("error building configuration group: %v", err)
 		i.clearConfig()
@@ -129,19 +137,27 @@ func (i *instance) Update(timer *utils.Timer) {
 	}
 	updater := i.newDynUpdater()
 	updated := updater.update()
-	if err := i.templates.Write(i.curConfig); err != nil {
-		i.logger.Error("error writing configuration: %v", err)
-		i.clearConfig()
-		return
+	if !updated || updater.cmdCnt > 0 {
+		// only need to rewrtite config files if:
+		//   - !updated           - there are changes that cannot be dynamically applied
+		//   - updater.cmdCnt > 0 - there are changes that was dynamically applied
+		err := i.templates.Write(i.curConfig)
+		timer.Tick("writeTmpl")
+		if err != nil {
+			i.logger.Error("error writing configuration: %v", err)
+			i.clearConfig()
+			return
+		}
 	}
 	i.clearConfig()
-	timer.Tick("writeTmpl")
 	if updated {
-		if err := i.check(); err != nil {
-			i.logger.Error("error validating config file:\n%v", err)
-		}
-		timer.Tick("validate")
 		if updater.cmdCnt > 0 {
+			if i.options.ValidateConfig {
+				if err := i.check(); err != nil {
+					i.logger.Error("error validating config file:\n%v", err)
+				}
+				timer.Tick("validate")
+			}
 			i.logger.Info("HAProxy updated without needing to reload. Commands sent: %d", updater.cmdCnt)
 		} else {
 			i.logger.Info("old and new configurations match")

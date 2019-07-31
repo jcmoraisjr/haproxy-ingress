@@ -62,6 +62,7 @@ type HAProxyController struct {
 	configFilePrefix  string
 	configFileSuffix  string
 	maxOldConfigFiles *int
+	validateConfig    *bool
 	haproxyTemplate   *template
 	modsecConfigFile  string
 	modsecTemplate    *template
@@ -110,6 +111,7 @@ func (hc *HAProxyController) configController() {
 		HAProxyConfigFile: "/etc/haproxy/haproxy.cfg",
 		ReloadStrategy:    *hc.reloadStrategy,
 		MaxOldConfigFiles: *hc.maxOldConfigFiles,
+		ValidateConfig:    *hc.validateConfig,
 	}
 	hc.instance = haproxy.CreateInstance(hc.logger, hc, instanceOptions)
 	if err := hc.instance.ParseTemplates(); err != nil {
@@ -203,6 +205,8 @@ func (hc *HAProxyController) ConfigureFlags(flags *pflag.FlagSet) {
 		`Name of the reload strategy. Options are: native (default) or reusesocket`)
 	hc.maxOldConfigFiles = flags.Int("max-old-config-files", 0,
 		`Maximum old haproxy timestamped config files to allow before being cleaned up. A value <= 0 indicates a single non-timestamped config file will be used`)
+	hc.validateConfig = flags.Bool("validate-config", false,
+		`Define if the resulting configuration files should be validated when a dynamic update was applied. Default value is false, which means the validation will only happen when HAProxy need to be reloaded.`)
 	ingressClass := flags.Lookup("ingress-class")
 	if ingressClass != nil {
 		ingressClass.Value.Set("haproxy")
