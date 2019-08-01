@@ -191,7 +191,7 @@ backend {{ $backend.ID }}
 {{- if $backend.Userlist.Name }}
     http-request auth
         {{- if $backend.Userlist.Realm }} realm "{{ $backend.Userlist.Realm }}"{{ end }}
-        {{- "" }} if !{ http_auth({{ $backend.Userlist.Name }}) }
+        {{- "" }} if {{- if and $backend.Cors.Enabled }}!METH_OPTIONS{{ end }} !{ http_auth({{ $backend.Userlist.Name }}) }
 {{- end }}
 
 {{- /*------------------------------------*/}}
