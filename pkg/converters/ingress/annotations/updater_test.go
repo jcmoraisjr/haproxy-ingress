@@ -17,9 +17,10 @@ limitations under the License.
 package annotations
 
 import (
+	"fmt"
 	"testing"
 
-	ing_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/helper_test"
+	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	ha_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/helper_test"
@@ -36,7 +37,7 @@ import (
 type testConfig struct {
 	t       *testing.T
 	haproxy haproxy.Config
-	cache   *ing_helper.CacheMock
+	cache   *conv_helper.CacheMock
 	logger  *types_helper.LoggerMock
 }
 
@@ -45,7 +46,7 @@ func setup(t *testing.T) *testConfig {
 	return &testConfig{
 		t:       t,
 		haproxy: haproxy.CreateInstance(logger, &ha_helper.BindUtilsMock{}, haproxy.InstanceOptions{}).Config(),
-		cache:   &ing_helper.CacheMock{},
+		cache:   &conv_helper.CacheMock{},
 		logger:  logger,
 	}
 }
@@ -62,19 +63,25 @@ func (c *testConfig) createUpdater() *updater {
 	}
 }
 
-func (c *testConfig) createBackendData(namespace, name string, ann *types.BackendAnnotations) *backData {
-	ann.Source = types.Source{
+func (c *testConfig) createBackendData(namespace, name string, ann, annDefault map[string]string) *backData {
+	source := &Source{
 		Namespace: namespace,
 		Name:      name,
 		Type:      "ingress",
 	}
+	mapper := NewMapBuilder(c.logger, "ing.k8s.io/", annDefault).NewMapper()
+	mapper.AddAnnotations(source, "/", ann)
 	return &backData{
-		backend: &hatypes.Backend{},
-		ann:     ann,
+		backend: &hatypes.Backend{
+			ID:        fmt.Sprintf("%s_%s_%d", namespace, name, 8080),
+			Namespace: namespace,
+			Name:      name,
+		},
+		mapper: mapper,
 	}
 }
 
-func (c *testConfig) createGlobalData(config *types.Config) *globalData {
+func (c *testConfig) createGlobalData(config *types.ConfigGlobals) *globalData {
 	return &globalData{
 		global: &hatypes.Global{},
 		config: config,

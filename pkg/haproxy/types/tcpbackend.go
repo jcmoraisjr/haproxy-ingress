@@ -17,17 +17,17 @@ limitations under the License.
 package types
 
 import (
-	api "k8s.io/api/core/v1"
+	"fmt"
 )
 
-// Cache ...
-type Cache interface {
-	GetService(serviceName string) (*api.Service, error)
-	GetEndpoints(service *api.Service) (*api.Endpoints, error)
-	GetTerminatingPods(service *api.Service) ([]*api.Pod, error)
-	GetPod(podName string) (*api.Pod, error)
-	GetTLSSecretPath(secretName string) (File, error)
-	GetCASecretPath(secretName string) (File, error)
-	GetDHSecretPath(secretName string) (File, error)
-	GetSecretContent(secretName, keyName string) ([]byte, error)
+// AddEndpoint ...
+func (b *TCPBackend) AddEndpoint(ip string, port int) *TCPEndpoint {
+	ep := &TCPEndpoint{
+		Name:   fmt.Sprintf("srv%03d", len(b.Endpoints)+1),
+		IP:     ip,
+		Port:   port,
+		Target: fmt.Sprintf("%s:%d", ip, port),
+	}
+	b.Endpoints = append(b.Endpoints, ep)
+	return ep
 }

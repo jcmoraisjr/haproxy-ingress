@@ -27,6 +27,7 @@ import (
 
 // Config ...
 type Config interface {
+	AcquireTCPBackend(servicename string, port int) *hatypes.TCPBackend
 	AcquireHost(hostname string) *hatypes.Host
 	FindHost(hostname string) *hatypes.Host
 	AcquireBackend(namespace, name, port string) *hatypes.Backend
@@ -37,9 +38,11 @@ type Config interface {
 	FindUserlist(name string) *hatypes.Userlist
 	FrontendGroup() *hatypes.FrontendGroup
 	BuildFrontendGroup() error
+	BuildBackendMaps() error
 	DefaultHost() *hatypes.Host
 	DefaultBackend() *hatypes.Backend
 	Global() *hatypes.Global
+	TCPBackends() []*hatypes.TCPBackend
 	Hosts() []*hatypes.Host
 	Backends() []*hatypes.Backend
 	Userlists() []*hatypes.Userlist
@@ -51,7 +54,8 @@ type config struct {
 	bindUtils       hatypes.BindUtils
 	mapsTemplate    *template.Config
 	mapsDir         string
-	global          *hatypes.Global
+	global          hatypes.Global
+	tcpbackends     []*hatypes.TCPBackend
 	hosts           []*hatypes.Host
 	backends        []*hatypes.Backend
 	userlists       []*hatypes.Userlist
@@ -72,10 +76,26 @@ func createConfig(bindUtils hatypes.BindUtils, options options) *config {
 	}
 	return &config{
 		bindUtils:    bindUtils,
-		global:       &hatypes.Global{},
 		mapsTemplate: mapsTemplate,
 		mapsDir:      options.mapsDir,
 	}
+}
+
+func (c *config) AcquireTCPBackend(servicename string, port int) *hatypes.TCPBackend {
+	for _, backend := range c.tcpbackends {
+		if backend.Name == servicename && backend.Port == port {
+			return backend
+		}
+	}
+	backend := &hatypes.TCPBackend{
+		Name: servicename,
+		Port: port,
+	}
+	c.tcpbackends = append(c.tcpbackends, backend)
+	sort.Slice(c.tcpbackends, func(i, j int) bool {
+		return c.tcpbackends[i].Name < c.tcpbackends[j].Name
+	})
+	return backend
 }
 
 func (c *config) AcquireHost(hostname string) *hatypes.Host {
@@ -197,7 +217,7 @@ func (c *config) BuildFrontendGroup() error {
 	// tested thanks to instance_test templating tests
 	// ideas to make a nice test or a nice refactor are welcome
 	if len(c.hosts) == 0 {
-		return fmt.Errorf("cannot create frontends without hosts")
+		return nil
 	}
 	frontends, sslpassthrough := hatypes.BuildRawFrontends(c.hosts)
 	fgroupMaps := hatypes.CreateMaps()
@@ -277,17 +297,18 @@ func (c *config) BuildFrontendGroup() error {
 		if rootPath == nil {
 			return fmt.Errorf("missing root path on host %s", sslpassHost.Hostname)
 		}
-		fgroup.SSLPassthroughMap.AppendHostname(sslpassHost.Hostname, rootPath.BackendID)
-		fgroup.HTTPSRedirMap.AppendHostname(sslpassHost.Hostname+"/", yesno[sslpassHost.HTTPPassthroughBackend == nil])
-		if sslpassHost.HTTPPassthroughBackend != nil {
-			fgroup.HTTPFrontsMap.AppendHostname(sslpassHost.Hostname+"/", sslpassHost.HTTPPassthroughBackend.ID)
+		fgroup.SSLPassthroughMap.AppendHostname(sslpassHost.Hostname, rootPath.Backend.ID)
+		fgroup.HTTPSRedirMap.AppendHostname(sslpassHost.Hostname+"/", yesno[sslpassHost.HTTPPassthroughBackend == ""])
+		if sslpassHost.HTTPPassthroughBackend != "" {
+			fgroup.HTTPFrontsMap.AppendHostname(sslpassHost.Hostname+"/", sslpassHost.HTTPPassthroughBackend)
 		}
 	}
 	for _, f := range frontends {
 		for _, host := range f.Hosts {
 			for _, path := range host.Paths {
+				backend := c.AcquireBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
 				// TODO use only root path if all uri has the same conf
-				fgroup.HTTPSRedirMap.AppendHostname(host.Hostname+path.Path, yesno[path.Backend.SSLRedirect])
+				fgroup.HTTPSRedirMap.AppendHostname(host.Hostname+path.Path, yesno[backend.SSLRedirect])
 				base := host.Hostname + path.Path
 				var aliasName, aliasRegex string
 				// TODO warn in logs about ignoring alias name due to hostname colision
@@ -297,18 +318,18 @@ func (c *config) BuildFrontendGroup() error {
 				if host.Alias.AliasRegex != "" {
 					aliasRegex = host.Alias.AliasRegex + path.Path
 				}
-				back := path.BackendID
+				back := path.Backend.ID
 				if host.HasTLSAuth() {
 					f.SNIBackendsMap.AppendHostname(base, back)
 					f.SNIBackendsMap.AppendAliasName(aliasName, back)
 					f.SNIBackendsMap.AppendAliasRegex(aliasRegex, back)
-					path.Backend.SSL.HasTLSAuth = true
+					backend.SSL.HasTLSAuth = true
 				} else {
 					f.HostBackendsMap.AppendHostname(base, back)
 					f.HostBackendsMap.AppendAliasName(aliasName, back)
 					f.HostBackendsMap.AppendAliasRegex(aliasRegex, back)
 				}
-				if !path.Backend.SSLRedirect {
+				if !backend.SSLRedirect {
 					fgroup.HTTPFrontsMap.AppendHostname(base, back)
 				}
 				var ns string
@@ -362,6 +383,22 @@ func (c *config) BuildFrontendGroup() error {
 	return nil
 }
 
+func (c *config) BuildBackendMaps() error {
+	// TODO rename HostMap types to HAProxyMap
+	maps := hatypes.CreateMaps()
+	for _, backend := range c.backends {
+		mapsPrefix := c.mapsDir + "/_back_" + backend.ID
+		if backend.NeedACL() {
+			pathsMap := maps.AddMap(mapsPrefix + "_idpath.map")
+			for _, path := range backend.Paths {
+				pathsMap.AppendPath(path.Hostpath, path.ID)
+			}
+			backend.PathsMap = pathsMap
+		}
+	}
+	return writeMaps(maps, c.mapsTemplate)
+}
+
 func writeMaps(maps *hatypes.HostsMaps, template *template.Config) error {
 	for _, hmap := range maps.Items {
 		if err := template.WriteOutput(hmap.Match, hmap.MatchFile); err != nil {
@@ -401,7 +438,11 @@ func (c *config) DefaultBackend() *hatypes.Backend {
 }
 
 func (c *config) Global() *hatypes.Global {
-	return c.global
+	return &c.global
+}
+
+func (c *config) TCPBackends() []*hatypes.TCPBackend {
+	return c.tcpbackends
 }
 
 func (c *config) Hosts() []*hatypes.Host {

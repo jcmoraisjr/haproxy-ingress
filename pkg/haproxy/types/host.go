@@ -34,11 +34,15 @@ func (h *Host) FindPath(path string) *HostPath {
 // AddPath ...
 func (h *Host) AddPath(backend *Backend, path string) {
 	h.Paths = append(h.Paths, &HostPath{
-		Path:      path,
-		Backend:   backend,
-		BackendID: backend.ID,
+		Path: path,
+		Backend: HostBackend{
+			ID:        backend.ID,
+			Namespace: backend.Namespace,
+			Name:      backend.Name,
+			Port:      backend.Port,
+		},
 	})
-	backend.AddPath(path)
+	backend.AddHostPath(h.Hostname, path)
 	// reverse order in order to avoid overlap of sub-paths
 	sort.Slice(h.Paths, func(i, j int) bool {
 		return h.Paths[i].Path > h.Paths[j].Path

@@ -28,6 +28,8 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/annotations"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/utils"
+	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
+	convutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
@@ -40,19 +42,24 @@ type Config interface {
 
 // NewIngressConverter ...
 func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Config, globalConfig map[string]string) Config {
+	if options.DefaultConfig == nil {
+		options.DefaultConfig = createDefaults
+	}
+	annDefaults, globalDefaults := options.DefaultConfig()
 	c := &converter{
 		haproxy:            haproxy,
 		options:            options,
 		logger:             options.Logger,
 		cache:              options.Cache,
+		mapBuilder:         annotations.NewMapBuilder(options.Logger, options.AnnotationPrefix+"/", mergeMaps(annDefaults, globalConfig)),
 		updater:            annotations.NewUpdater(haproxy, options.Cache, options.Logger),
-		globalConfig:       mergeConfig(createDefaults(), globalConfig),
-		hostAnnotations:    map[*hatypes.Host]*ingtypes.HostAnnotations{},
-		backendAnnotations: map[*hatypes.Backend]*ingtypes.BackendAnnotations{},
+		globalConfig:       mergeConfig(globalDefaults, globalConfig),
+		hostAnnotations:    map[*hatypes.Host]*annotations.Mapper{},
+		backendAnnotations: map[*hatypes.Backend]*annotations.Mapper{},
 	}
 	haproxy.ConfigDefaultX509Cert(options.DefaultSSLFile.Filename)
 	if options.DefaultBackend != "" {
-		if backend, err := c.addBackend(options.DefaultBackend, "", &ingtypes.BackendAnnotations{}); err == nil {
+		if backend, err := c.addBackend(&annotations.Source{}, "*/", options.DefaultBackend, "", map[string]string{}); err == nil {
 			haproxy.ConfigDefaultBackend(backend)
 		} else {
 			c.logger.Error("error reading default service: %v", err)
@@ -65,11 +72,12 @@ type converter struct {
 	haproxy            haproxy.Config
 	options            *ingtypes.ConverterOptions
 	logger             types.Logger
-	cache              ingtypes.Cache
+	cache              convtypes.Cache
+	mapBuilder         *annotations.MapBuilder
 	updater            annotations.Updater
-	globalConfig       *ingtypes.Config
-	hostAnnotations    map[*hatypes.Host]*ingtypes.HostAnnotations
-	backendAnnotations map[*hatypes.Backend]*ingtypes.BackendAnnotations
+	globalConfig       *ingtypes.ConfigGlobals
+	hostAnnotations    map[*hatypes.Host]*annotations.Mapper
+	backendAnnotations map[*hatypes.Backend]*annotations.Mapper
 }
 
 func (c *converter) Sync(ingress []*extensions.Ingress) {
@@ -81,14 +89,15 @@ func (c *converter) Sync(ingress []*extensions.Ingress) {
 
 func (c *converter) syncIngress(ing *extensions.Ingress) {
 	fullIngName := fmt.Sprintf("%s/%s", ing.Namespace, ing.Name)
-	ingFrontAnn, ingBackAnn := c.readAnnotations(&ingtypes.Source{
+	source := &annotations.Source{
 		Namespace: ing.Namespace,
 		Name:      ing.Name,
 		Type:      "ingress",
-	}, ing.Annotations)
+	}
+	annHost, annBack := c.readAnnotations(ing.Annotations)
 	if ing.Spec.Backend != nil {
 		svcName, svcPort := readServiceNamePort(ing.Spec.Backend)
-		err := c.addDefaultHostBackend(utils.FullQualifiedName(ing.Namespace, svcName), svcPort, ingFrontAnn, ingBackAnn)
+		err := c.addDefaultHostBackend(source, utils.FullQualifiedName(ing.Namespace, svcName), svcPort, annHost, annBack)
 		if err != nil {
 			c.logger.Warn("skipping default backend of ingress '%s': %v", fullIngName, err)
 		}
@@ -101,7 +110,7 @@ func (c *converter) syncIngress(ing *extensions.Ingress) {
 		if hostname == "" {
 			hostname = "*"
 		}
-		host := c.addHost(hostname, ingFrontAnn)
+		host := c.addHost(hostname, source, annHost)
 		for _, path := range rule.HTTP.Paths {
 			uri := path.Path
 			if uri == "" {
@@ -113,13 +122,19 @@ func (c *converter) syncIngress(ing *extensions.Ingress) {
 			}
 			svcName, svcPort := readServiceNamePort(&path.Backend)
 			fullSvcName := utils.FullQualifiedName(ing.Namespace, svcName)
-			backend, err := c.addBackend(fullSvcName, svcPort, ingBackAnn)
+			backend, err := c.addBackend(source, hostname+uri, fullSvcName, svcPort, annBack)
 			if err != nil {
 				c.logger.Warn("skipping backend config of ingress '%s': %v", fullIngName, err)
 				continue
 			}
 			host.AddPath(backend, uri)
-			c.addHTTPPassthrough(fullSvcName, ingFrontAnn, ingBackAnn)
+			sslpassthrough, _ := strconv.ParseBool(annHost[ingtypes.HostSSLPassthrough])
+			sslpasshttpport := annHost[ingtypes.HostSSLPassthroughHTTPPort]
+			if sslpassthrough && sslpasshttpport != "" {
+				if _, err := c.addBackend(source, hostname+uri, fullSvcName, sslpasshttpport, annBack); err != nil {
+					c.logger.Warn("skipping http port config of ssl-passthrough on %v: %v", source, err)
+				}
+			}
 		}
 		for _, tls := range ing.Spec.TLS {
 			for _, tlshost := range tls.Hosts {
@@ -156,35 +171,38 @@ func (c *converter) syncAnnotations() {
 	}
 }
 
-func (c *converter) addDefaultHostBackend(fullSvcName, svcPort string, ingFrontAnn *ingtypes.HostAnnotations, ingBackAnn *ingtypes.BackendAnnotations) error {
-	if fr := c.haproxy.FindHost("*"); fr != nil {
-		if fr.FindPath("/") != nil {
-			return fmt.Errorf("path / was already defined on default host")
+func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcName, svcPort string, annHost, annBack map[string]string) error {
+	hostname := "*"
+	uri := "/"
+	if fr := c.haproxy.FindHost(hostname); fr != nil {
+		if fr.FindPath(uri) != nil {
+			return fmt.Errorf("path %s was already defined on default host", uri)
 		}
 	}
-	backend, err := c.addBackend(fullSvcName, svcPort, ingBackAnn)
+	backend, err := c.addBackend(source, hostname+uri, fullSvcName, svcPort, annBack)
 	if err != nil {
 		return err
 	}
-	host := c.addHost("*", ingFrontAnn)
-	host.AddPath(backend, "/")
+	host := c.addHost(hostname, source, annHost)
+	host.AddPath(backend, uri)
 	return nil
 }
 
-func (c *converter) addHost(hostname string, ingAnn *ingtypes.HostAnnotations) *hatypes.Host {
+func (c *converter) addHost(hostname string, source *annotations.Source, ann map[string]string) *hatypes.Host {
 	host := c.haproxy.AcquireHost(hostname)
-	if ann, found := c.hostAnnotations[host]; found {
-		skipped, _ := utils.UpdateStruct(c.globalConfig.ConfigDefaults, ingAnn, ann)
-		if len(skipped) > 0 {
-			c.logger.Info("skipping host annotation(s) from %v due to conflict: %v", ingAnn.Source, skipped)
-		}
-	} else {
-		c.hostAnnotations[host] = ingAnn
+	mapper, found := c.hostAnnotations[host]
+	if !found {
+		mapper = c.mapBuilder.NewMapper()
+		c.hostAnnotations[host] = mapper
+	}
+	skipped := mapper.AddAnnotations(source, hostname+"/", ann)
+	if len(skipped) > 0 {
+		c.logger.Warn("skipping host annotation(s) from %v due to conflict: %v", source, skipped)
 	}
 	return host
 }
 
-func (c *converter) addBackend(fullSvcName, svcPort string, ingAnn *ingtypes.BackendAnnotations) (*hatypes.Backend, error) {
+func (c *converter) addBackend(source *annotations.Source, hostpath, fullSvcName, svcPort string, ann map[string]string) (*hatypes.Backend, error) {
 	svc, err := c.cache.GetService(fullSvcName)
 	if err != nil {
 		return nil, err
@@ -197,68 +215,37 @@ func (c *converter) addBackend(fullSvcName, svcPort string, ingAnn *ingtypes.Bac
 		// from the api.Service object
 		svcPort = svc.Spec.Ports[0].TargetPort.String()
 	}
-	epport := findServicePort(svc, svcPort)
+	epport := convutils.FindServicePort(svc, svcPort)
 	if epport.String() == "" {
 		return nil, fmt.Errorf("port not found: '%s'", svcPort)
 	}
 	backend := c.haproxy.AcquireBackend(namespace, svcName, epport.String())
-	ann, found := c.backendAnnotations[backend]
+	mapper, found := c.backendAnnotations[backend]
 	if !found {
 		// New backend, configure endpoints and svc annotations
 		if err := c.addEndpoints(svc, epport, backend); err != nil {
 			c.logger.Error("error adding endpoints of service '%s': %v", fullSvcName, err)
 		}
 		// Initialize with service annotations, giving precedence
-		_, ann = c.readAnnotations(&ingtypes.Source{
+		mapper = c.mapBuilder.NewMapper()
+		_, ann := c.readAnnotations(svc.Annotations)
+		mapper.AddAnnotations(&annotations.Source{
 			Namespace: namespace,
 			Name:      svcName,
 			Type:      "service",
-		}, svc.Annotations)
-		c.backendAnnotations[backend] = ann
+		}, hostpath, ann)
+		c.backendAnnotations[backend] = mapper
 	}
 	// Merging Ingress annotations
-	skipped, _ := utils.UpdateStruct(c.globalConfig.ConfigDefaults, ingAnn, ann)
+	skipped := mapper.AddAnnotations(source, hostpath, ann)
 	if len(skipped) > 0 {
-		c.logger.Info("skipping backend '%s/%s:%s' annotation(s) from %v due to conflict: %v",
-			backend.Namespace, backend.Name, backend.Port, ingAnn.Source, skipped)
+		c.logger.Warn("skipping backend '%s:%s' annotation(s) from %v due to conflict: %v",
+			svcName, svcPort, source, skipped)
 	}
 	return backend, nil
 }
 
-func findServicePort(svc *api.Service, servicePort string) intstr.IntOrString {
-	for _, port := range svc.Spec.Ports {
-		if port.Name == servicePort {
-			return port.TargetPort
-		}
-	}
-	for _, port := range svc.Spec.Ports {
-		if port.TargetPort.String() == servicePort {
-			return port.TargetPort
-		}
-	}
-	svcPortNumber, err := strconv.ParseInt(servicePort, 10, 0)
-	if err != nil {
-		return intstr.FromString("")
-	}
-	for _, port := range svc.Spec.Ports {
-		if port.Port == int32(svcPortNumber) {
-			return port.TargetPort
-		}
-	}
-	return intstr.FromString("")
-}
-
-func (c *converter) addHTTPPassthrough(fullSvcName string, ingFrontAnn *ingtypes.HostAnnotations, ingBackAnn *ingtypes.BackendAnnotations) {
-	// a very specific use case of pre-parsing annotations:
-	// need to add a backend if ssl-passthrough-http-port assigned
-	if ingFrontAnn.SSLPassthrough && ingFrontAnn.SSLPassthroughHTTPPort != "" {
-		if _, err := c.addBackend(fullSvcName, ingFrontAnn.SSLPassthroughHTTPPort, ingBackAnn); err != nil {
-			c.logger.Warn("skipping http port config of ssl-passthrough: %v", err)
-		}
-	}
-}
-
-func (c *converter) addTLS(namespace, secretName string) ingtypes.File {
+func (c *converter) addTLS(namespace, secretName string) convtypes.File {
 	if secretName != "" {
 		tlsSecretName := namespace + "/" + secretName
 		tlsFile, err := c.cache.GetTLSSecretPath(tlsSecretName)
@@ -275,62 +262,58 @@ func (c *converter) addEndpoints(svc *api.Service, svcPort intstr.IntOrString, b
 	if err != nil {
 		return err
 	}
-	// TODO ServiceTypeExternalName
-	// TODO ServiceUpstream - annotation nao documentada
-	// TODO svcPort.IntValue() doesn't work if svc.targetPort is a pod's named port
-	for _, subset := range endpoints.Subsets {
-		for _, port := range subset.Ports {
-			ssport := int(port.Port)
-			if ssport == svcPort.IntValue() && port.Protocol == api.ProtocolTCP {
-				for _, addr := range subset.Addresses {
-					backend.NewEndpoint(addr.IP, ssport, addr.TargetRef.Namespace+"/"+addr.TargetRef.Name)
-				}
-				if c.globalConfig.DrainSupport {
-					for _, addr := range subset.NotReadyAddresses {
-						ep := backend.NewEndpoint(addr.IP, ssport, addr.TargetRef.Namespace+"/"+addr.TargetRef.Name)
-						ep.Weight = 0
-					}
-				}
-			}
-		}
+	ready, notReady := convutils.FindEndpoints(endpoints, svcPort)
+	for _, addr := range ready {
+		backend.AcquireEndpoint(addr.IP, addr.Port, addr.TargetNS+"/"+addr.TargetName)
 	}
 	if c.globalConfig.DrainSupport {
+		for _, addr := range notReady {
+			ep := backend.AcquireEndpoint(addr.IP, addr.Port, addr.TargetNS+"/"+addr.TargetName)
+			ep.Weight = 0
+		}
 		pods, err := c.cache.GetTerminatingPods(svc)
 		if err != nil {
 			return err
 		}
 		for _, pod := range pods {
-			ep := backend.NewEndpoint(pod.Status.PodIP, svcPort.IntValue(), pod.Namespace+"/"+pod.Name)
+			ep := backend.AcquireEndpoint(pod.Status.PodIP, svcPort.IntValue(), pod.Namespace+"/"+pod.Name)
 			ep.Weight = 0
 		}
 	}
 	return nil
 }
 
-func (c *converter) readAnnotations(source *ingtypes.Source, annotations map[string]string) (*ingtypes.HostAnnotations, *ingtypes.BackendAnnotations) {
-	ann := make(map[string]string, len(annotations))
+func (c *converter) readAnnotations(annotations map[string]string) (annHost, annBack map[string]string) {
+	annHost = make(map[string]string, len(annotations))
+	annBack = make(map[string]string, len(annotations))
 	prefix := c.options.AnnotationPrefix + "/"
 	for annName, annValue := range annotations {
 		if strings.HasPrefix(annName, prefix) {
 			name := strings.TrimPrefix(annName, prefix)
-			ann[name] = annValue
+			if _, isHostAnn := ingtypes.AnnHost[name]; isHostAnn {
+				annHost[name] = annValue
+			} else {
+				annBack[name] = annValue
+			}
 		}
 	}
-	frontAnn := &ingtypes.HostAnnotations{Source: *source}
-	backAnn := &ingtypes.BackendAnnotations{Source: *source}
-	utils.UpdateStruct(struct{}{}, c.globalConfig.ConfigDefaults, frontAnn)
-	utils.UpdateStruct(struct{}{}, c.globalConfig.ConfigDefaults, backAnn)
-	if err := utils.MergeMap(ann, frontAnn); err != nil {
-		c.logger.Error("error merging host annotations from %v: %v", source, err)
-	}
-	if err := utils.MergeMap(ann, backAnn); err != nil {
-		c.logger.Error("error merging backend annotations from %v: %v", source, err)
-	}
-	return frontAnn, backAnn
+	return annHost, annBack
 }
 
 func readServiceNamePort(backend *extensions.IngressBackend) (string, string) {
 	serviceName := backend.ServiceName
 	servicePort := backend.ServicePort.String()
 	return serviceName, servicePort
+}
+
+func mergeMaps(dst, src map[string]string) map[string]string {
+	for key, value := range src {
+		dst[key] = value
+	}
+	return dst
+}
+
+func mergeConfig(configDefault *ingtypes.ConfigGlobals, config map[string]string) *ingtypes.ConfigGlobals {
+	utils.MergeMap(config, configDefault)
+	return configDefault
 }

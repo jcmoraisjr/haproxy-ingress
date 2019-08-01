@@ -14,18 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package dynconfig
+package types
 
 import (
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
+	api "k8s.io/api/core/v1"
 )
 
-// Config ...
-type Config struct {
-	Logger types.Logger
+// Cache ...
+type Cache interface {
+	GetService(serviceName string) (*api.Service, error)
+	GetEndpoints(service *api.Service) (*api.Endpoints, error)
+	GetTerminatingPods(service *api.Service) ([]*api.Pod, error)
+	GetPod(podName string) (*api.Pod, error)
+	GetTLSSecretPath(secretName string) (File, error)
+	GetCASecretPath(secretName string) (File, error)
+	GetDHSecretPath(secretName string) (File, error)
+	GetSecretContent(secretName, keyName string) ([]byte, error)
 }
 
-// Update ...
-func (c *Config) Update() bool {
-	return false
+// File ...
+type File struct {
+	Filename string
+	SHA1Hash string
 }

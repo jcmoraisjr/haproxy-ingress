@@ -131,7 +131,7 @@ func (c *updater) buildGlobalCustomConfig(d *globalData) {
 	if d.config.ConfigGlobal != "" {
 		d.global.CustomConfig = strings.Split(strings.TrimRight(d.config.ConfigGlobal, "\n"), "\n")
 	}
-	if d.config.ConfigGlobals.ConfigDefaults != "" {
-		d.global.CustomDefaults = strings.Split(strings.TrimRight(d.config.ConfigGlobals.ConfigDefaults, "\n"), "\n")
+	if d.config.ConfigDefaults != "" {
+		d.global.CustomDefaults = strings.Split(strings.TrimRight(d.config.ConfigDefaults, "\n"), "\n")
 	}
 }

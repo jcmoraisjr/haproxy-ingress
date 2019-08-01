@@ -23,7 +23,7 @@ import (
 
 	api "k8s.io/api/core/v1"
 
-	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
+	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 )
 
 // SecretContent ...
@@ -39,6 +39,18 @@ type CacheMock struct {
 	SecretCAPath  map[string]string
 	SecretDHPath  map[string]string
 	SecretContent SecretContent
+}
+
+// NewCacheMock ...
+func NewCacheMock() *CacheMock {
+	return &CacheMock{
+		SvcList:     []*api.Service{},
+		EpList:      map[string]*api.Endpoints{},
+		TermPodList: map[string][]*api.Pod{},
+		SecretTLSPath: map[string]string{
+			"system/ingress-default": "/tls/tls-default.pem",
+		},
+	}
 }
 
 // GetService ...
@@ -81,36 +93,36 @@ func (c *CacheMock) GetPod(podName string) (*api.Pod, error) {
 }
 
 // GetTLSSecretPath ...
-func (c *CacheMock) GetTLSSecretPath(secretName string) (ingtypes.File, error) {
+func (c *CacheMock) GetTLSSecretPath(secretName string) (convtypes.File, error) {
 	if path, found := c.SecretTLSPath[secretName]; found {
-		return ingtypes.File{
+		return convtypes.File{
 			Filename: path,
 			SHA1Hash: fmt.Sprintf("%x", sha1.Sum([]byte(path))),
 		}, nil
 	}
-	return ingtypes.File{}, fmt.Errorf("secret not found: '%s'", secretName)
+	return convtypes.File{}, fmt.Errorf("secret not found: '%s'", secretName)
 }
 
 // GetCASecretPath ...
-func (c *CacheMock) GetCASecretPath(secretName string) (ingtypes.File, error) {
+func (c *CacheMock) GetCASecretPath(secretName string) (convtypes.File, error) {
 	if path, found := c.SecretCAPath[secretName]; found {
-		return ingtypes.File{
+		return convtypes.File{
 			Filename: path,
 			SHA1Hash: fmt.Sprintf("%x", sha1.Sum([]byte(path))),
 		}, nil
 	}
-	return ingtypes.File{}, fmt.Errorf("secret not found: '%s'", secretName)
+	return convtypes.File{}, fmt.Errorf("secret not found: '%s'", secretName)
 }
 
 // GetDHSecretPath ...
-func (c *CacheMock) GetDHSecretPath(secretName string) (ingtypes.File, error) {
+func (c *CacheMock) GetDHSecretPath(secretName string) (convtypes.File, error) {
 	if path, found := c.SecretDHPath[secretName]; found {
-		return ingtypes.File{
+		return convtypes.File{
 			Filename: path,
 			SHA1Hash: fmt.Sprintf("%x", sha1.Sum([]byte(path))),
 		}, nil
 	}
-	return ingtypes.File{}, fmt.Errorf("secret not found: '%s'", secretName)
+	return convtypes.File{}, fmt.Errorf("secret not found: '%s'", secretName)
 }
 
 // GetSecretContent ...

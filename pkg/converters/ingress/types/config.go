@@ -16,32 +16,9 @@ limitations under the License.
 
 package types
 
-// ConfigDefaults ...
-type ConfigDefaults struct {
-	BalanceAlgorithm      string `json:"balance-algorithm"`
-	CookieKey             string `json:"cookie-key"`
-	HSTS                  bool   `json:"hsts"`
-	HSTSIncludeSubdomains bool   `json:"hsts-include-subdomains"`
-	HSTSMaxAge            string `json:"hsts-max-age"`
-	HSTSPreload           bool   `json:"hsts-preload"`
-	ProxyBodySize         string `json:"proxy-body-size"`
-	SessionCookieDynamic  bool   `json:"session-cookie-dynamic"`
-	SSLRedirect           bool   `json:"ssl-redirect"`
-	TimeoutClient         string `json:"timeout-client"`
-	TimeoutClientFin      string `json:"timeout-client-fin"`
-	TimeoutConnect        string `json:"timeout-connect"`
-	TimeoutHTTPRequest    string `json:"timeout-http-request"`
-	TimeoutKeepAlive      string `json:"timeout-keep-alive"`
-	TimeoutQueue          string `json:"timeout-queue"`
-	TimeoutServer         string `json:"timeout-server"`
-	TimeoutServerFin      string `json:"timeout-server-fin"`
-	TimeoutTunnel         string `json:"timeout-tunnel"`
-}
-
 // ConfigGlobals ...
 type ConfigGlobals struct {
 	BackendCheckInterval         string `json:"backend-check-interval"`
-	BackendServerSlotsIncrement  int    `json:"backend-server-slots-increment"`
 	BindIPAddrHealthz            string `json:"bind-ip-addr-healthz"`
 	BindIPAddrHTTP               string `json:"bind-ip-addr-http"`
 	BindIPAddrStats              string `json:"bind-ip-addr-stats"`
@@ -49,6 +26,7 @@ type ConfigGlobals struct {
 	ConfigDefaults               string `json:"config-defaults"`
 	ConfigFrontend               string `json:"config-frontend"`
 	ConfigGlobal                 string `json:"config-global"`
+	CookieKey                    string `json:"cookie-key"`
 	DNSAcceptedPayloadSize       int    `json:"dns-accepted-payload-size"`
 	DNSClusterDomain             string `json:"dns-cluster-domain"`
 	DNSHoldObsolete              string `json:"dns-hold-obsolete"`
@@ -57,7 +35,6 @@ type ConfigGlobals struct {
 	DNSTimeoutRetry              string `json:"dns-timeout-retry"`
 	DrainSupport                 bool   `json:"drain-support"`
 	DrainSupportRedispatch       bool   `json:"drain-support-redispatch"`
-	DynamicScaling               bool   `json:"dynamic-scaling"`
 	Forwardfor                   string `json:"forwardfor"`
 	HealthzPort                  int    `json:"healthz-port"`
 	HTTPLogFormat                string `json:"http-log-format"`
@@ -91,12 +68,15 @@ type ConfigGlobals struct {
 	SyslogFormat                 string `json:"syslog-format"`
 	SyslogTag                    string `json:"syslog-tag"`
 	TCPLogFormat                 string `json:"tcp-log-format"`
+	TimeoutClient                string `json:"timeout-client"`
+	TimeoutClientFin             string `json:"timeout-client-fin"`
+	TimeoutConnect               string `json:"timeout-connect"`
+	TimeoutHTTPRequest           string `json:"timeout-http-request"`
+	TimeoutKeepAlive             string `json:"timeout-keep-alive"`
+	TimeoutQueue                 string `json:"timeout-queue"`
+	TimeoutServer                string `json:"timeout-server"`
+	TimeoutServerFin             string `json:"timeout-server-fin"`
 	TimeoutStop                  string `json:"timeout-stop"`
+	TimeoutTunnel                string `json:"timeout-tunnel"`
 	UseProxyProtocol             bool   `json:"use-proxy-protocol"`
-}
-
-// Config ...
-type Config struct {
-	ConfigDefaults `json:",squash"`
-	ConfigGlobals  `json:",squash"`
 }

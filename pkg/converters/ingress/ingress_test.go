@@ -29,8 +29,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	ing_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/helper_test"
+	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/annotations"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
+	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	ha_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/helper_test"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
@@ -55,7 +57,7 @@ func TestSyncSvcNotFound(t *testing.T) {
 
 	c.compareConfigBack(defaultBackendConfig)
 
-	c.compareLogging(`
+	c.logger.CompareLogging(`
 WARN skipping backend config of ingress 'default/echo': service not found: 'default/notfound'`)
 }
 
@@ -79,7 +81,7 @@ func TestSyncDefaultSvcNotFound(t *testing.T) {
   - ip: 172.17.0.11
     port: 8080`)
 
-	c.compareLogging(`
+	c.logger.CompareLogging(`
 ERROR error reading default service: service not found: 'system/default'`)
 }
 
@@ -102,7 +104,7 @@ func TestSyncSvcPortNotFound(t *testing.T) {
     port: 8080
 `)
 
-	c.compareLogging(`
+	c.logger.CompareLogging(`
 WARN skipping backend config of ingress 'default/echo': port not found: 'non'
 `)
 }
@@ -147,7 +149,7 @@ func TestSyncSvcNamedPort(t *testing.T) {
     port: 8080
 `)
 
-	c.compareLogging(`
+	c.logger.CompareLogging(`
 WARN skipping backend config of ingress 'default/echo4': port not found: '9000'
 `)
 }
@@ -247,7 +249,7 @@ func TestSyncInvalidEndpoint(t *testing.T) {
 	c.compareConfigBack(`
 - id: default_echo_8080` + defaultBackendConfig)
 
-	c.compareLogging(`
+	c.logger.CompareLogging(`
 ERROR error adding endpoints of service 'default/echo': could not find endpoints for service 'default/echo'`)
 }
 
@@ -291,8 +293,6 @@ func TestSyncDrainSupport(t *testing.T) {
   - ip: 172.17.0.99
     port: 8080
 `)
-
-	c.compareLogging(``)
 }
 
 func TestSyncRootPathLast(t *testing.T) {
@@ -393,7 +393,7 @@ func TestSyncRedeclarePath(t *testing.T) {
   - ip: 172.17.0.11
     port: 8080` + defaultBackendConfig)
 
-	c.compareLogging(`
+	c.logger.CompareLogging(`
 WARN skipping redeclared path '/p1' of ingress 'default/echo1'`)
 }
 
@@ -428,7 +428,7 @@ func TestSyncTLSSecretNotFound(t *testing.T) {
   tls:
     tlsfilename: /tls/tls-default.pem`)
 
-	c.compareLogging(`
+	c.logger.CompareLogging(`
 WARN using default certificate due to an error reading secret 'default/ing-tls': secret not found: 'default/ing-tls'`)
 }
 
@@ -466,7 +466,7 @@ func TestSyncRedeclareTLS(t *testing.T) {
   tls:
     tlsfilename: /tls/default/tls-echo1.pem`)
 
-	c.compareLogging(`
+	c.logger.CompareLogging(`
 WARN skipping TLS secret 'tls-echo2' of ingress 'default/echo1': TLS of host 'echo.example.com' was already assigned`)
 }
 
@@ -513,7 +513,7 @@ func TestSyncRedeclareTLSDefaultFirst(t *testing.T) {
   tls:
     tlsfilename: /tls/tls-default.pem`)
 
-	c.compareLogging(`
+	c.logger.CompareLogging(`
 WARN skipping TLS secret 'tls-echo1' of ingress 'default/echo2': TLS of host 'echo.example.com' was already assigned`)
 }
 
@@ -538,7 +538,7 @@ func TestSyncRedeclareTLSCustomFirst(t *testing.T) {
   tls:
     tlsfilename: /tls/default/tls-echo1.pem`)
 
-	c.compareLogging(`
+	c.logger.CompareLogging(`
 WARN skipping default TLS secret of ingress 'default/echo2': TLS of host 'echo.example.com' was already assigned`)
 }
 
@@ -558,7 +558,7 @@ func TestSyncInvalidTLS(t *testing.T) {
   tls:
     tlsfilename: /tls/tls-default.pem`)
 
-	c.compareLogging(`
+	c.logger.CompareLogging(`
 WARN using default certificate due to an error reading secret 'default/tls-invalid': secret not found: 'default/tls-invalid'`)
 }
 
@@ -620,7 +620,7 @@ func TestSyncBackendSvcNotFound(t *testing.T) {
 	c.compareConfigFront(`[]`)
 	c.compareConfigBack(defaultBackendConfig)
 
-	c.compareLogging(`
+	c.logger.CompareLogging(`
 WARN skipping default backend of ingress 'default/echo': service not found: 'default/notfound'`)
 }
 
@@ -663,7 +663,7 @@ paths:
   - ip: 172.17.0.11
     port: 8080` + defaultBackendConfig)
 
-	c.compareLogging(`
+	c.logger.CompareLogging(`
 WARN skipping default backend of ingress 'default/echo2': path / was already defined on default host`)
 }
 
@@ -690,7 +690,7 @@ paths:
   - ip: 172.17.0.11
     port: 8080` + defaultBackendConfig)
 
-	c.compareLogging(`
+	c.logger.CompareLogging(`
 WARN skipping redeclared path '/' of ingress 'default/echo2'`)
 }
 
@@ -796,8 +796,8 @@ func TestSyncAnnFrontsConflict(t *testing.T) {
   timeout:
     client: 1s`)
 
-	c.compareLogging(`
-INFO skipping host annotation(s) from ingress 'default/echo2' due to conflict: [timeout-client]`)
+	c.logger.CompareLogging(`
+WARN skipping host annotation(s) from ingress 'default/echo2' due to conflict: [timeout-client]`)
 }
 
 func TestSyncAnnFronts(t *testing.T) {
@@ -917,8 +917,8 @@ func TestSyncAnnBackSvcIngConflict(t *testing.T) {
     port: 8080
   balancealgorithm: leastconn` + defaultBackendConfig)
 
-	c.compareLogging(`
-INFO skipping backend 'default/echo:8080' annotation(s) from ingress 'default/echo' due to conflict: [balance-algorithm]`)
+	c.logger.CompareLogging(`
+WARN skipping backend 'echo:8080' annotation(s) from ingress 'default/echo' due to conflict: [balance-algorithm]`)
 }
 
 func TestSyncAnnBacksSvcIng(t *testing.T) {
@@ -973,7 +973,7 @@ func TestSyncAnnBackDefault(t *testing.T) {
 			"ingress.kubernetes.io/balance-algorithm": "first",
 		}),
 		c.createIng1Ann("default/echo6", "echo.example.com", "/app6", "echo6:8080", map[string]string{
-			"ingress.kubernetes.io/balance-algorithm": "roundrobin",
+			"ingress.kubernetes.io/balance-algorithm": "leastconn",
 		}),
 		c.createIng1Ann("default/echo7", "echo.example.com", "/app7", "echo7:8080", map[string]string{
 			"ingress.kubernetes.io/balance-algorithm": "leastconn",
@@ -1015,10 +1015,16 @@ func TestSyncAnnBackDefault(t *testing.T) {
   endpoints:
   - ip: 172.17.0.17
     port: 8080
-  balancealgorithm: leastconn` + defaultBackendConfig)
+  balancealgorithm: roundrobin
+- id: _default_backend
+  endpoints:
+  - ip: 172.17.0.99
+    port: 8080
+  balancealgorithm: roundrobin`)
 
-	c.compareLogging(`
-INFO skipping backend 'default/echo5:8080' annotation(s) from ingress 'default/echo5' due to conflict: [balance-algorithm]`)
+	c.logger.CompareLogging(`
+WARN skipping backend 'echo5:8080' annotation(s) from ingress 'default/echo5' due to conflict: [balance-algorithm]
+WARN skipping backend 'echo7:8080' annotation(s) from ingress 'default/echo7' due to conflict: [balance-algorithm]`)
 }
 
 func TestSyncAnnPassthrough(t *testing.T) {
@@ -1077,8 +1083,8 @@ func TestSyncAnnPassthrough(t *testing.T) {
     port: 8080
 `)
 
-	c.compareLogging(`
-WARN skipping http port config of ssl-passthrough: port not found: '9000'
+	c.logger.CompareLogging(`
+WARN skipping http port config of ssl-passthrough on ingress 'default/echo2': port not found: '9000'
 `)
 }
 
@@ -1093,35 +1099,25 @@ type testConfig struct {
 	decode  func(data []byte, defaults *schema.GroupVersionKind, into runtime.Object) (runtime.Object, *schema.GroupVersionKind, error)
 	hconfig haproxy.Config
 	logger  *types_helper.LoggerMock
-	cache   *ing_helper.CacheMock
-	updater *ing_helper.UpdaterMock
+	cache   *conv_helper.CacheMock
+	updater *updaterMock
 }
 
 func setup(t *testing.T) *testConfig {
-	logger := &types_helper.LoggerMock{
-		Logging: []string{},
-		T:       t,
-	}
+	logger := types_helper.NewLoggerMock(t)
 	c := &testConfig{
 		t:       t,
 		decode:  scheme.Codecs.UniversalDeserializer().Decode,
 		hconfig: haproxy.CreateInstance(logger, &ha_helper.BindUtilsMock{}, haproxy.InstanceOptions{}).Config(),
-		cache: &ing_helper.CacheMock{
-			SvcList:     []*api.Service{},
-			EpList:      map[string]*api.Endpoints{},
-			TermPodList: map[string][]*api.Pod{},
-			SecretTLSPath: map[string]string{
-				"system/ingress-default": "/tls/tls-default.pem",
-			},
-		},
-		logger: logger,
+		cache:   conv_helper.NewCacheMock(),
+		logger:  logger,
 	}
 	c.createSvc1("system/default", "8080", "172.17.0.99")
 	return c
 }
 
 func (c *testConfig) teardown() {
-	c.compareLogging("")
+	c.logger.CompareLogging("")
 }
 
 func (c *testConfig) Sync(ing ...*extensions.Ingress) {
@@ -1135,12 +1131,16 @@ var defaultBackendConfig = `
     port: 8080`
 
 func (c *testConfig) SyncDef(config map[string]string, ing ...*extensions.Ingress) {
+	defaultConfig := func() (ann map[string]string, global *ingtypes.ConfigGlobals) {
+		return map[string]string{}, &ingtypes.ConfigGlobals{}
+	}
 	conv := NewIngressConverter(
 		&ingtypes.ConverterOptions{
 			Cache:          c.cache,
 			Logger:         c.logger,
+			DefaultConfig:  defaultConfig,
 			DefaultBackend: "system/default",
-			DefaultSSLFile: ingtypes.File{
+			DefaultSSLFile: convtypes.File{
 				Filename: "/tls/tls-default.pem",
 				SHA1Hash: "1",
 			},
@@ -1150,7 +1150,6 @@ func (c *testConfig) SyncDef(config map[string]string, ing ...*extensions.Ingres
 		config,
 	).(*converter)
 	conv.updater = c.updater
-	conv.globalConfig = mergeConfig(&ingtypes.Config{}, config)
 	conv.Sync(ing)
 }
 
@@ -1171,55 +1170,9 @@ func (c *testConfig) createSvc1Ann(name, port, endpoints string, ann map[string]
 }
 
 func (c *testConfig) createSvc1(name, port, endpoints string) (*api.Service, *api.Endpoints) {
-	sname := strings.Split(name, "/")
-	sport := strings.Split(port, ":")
-	if len(sport) < 2 {
-		sport = []string{"", port, port}
-	} else if len(sport) < 3 {
-		sport = []string{sport[0], sport[1], sport[1]}
-	}
-
-	svc := c.createObject(`
-apiVersion: v1
-kind: Service
-metadata:
-  name: ` + sname[1] + `
-  namespace: ` + sname[0] + `
-spec:
-  ports:
-  - name: ` + sport[0] + `
-    port: ` + sport[1] + `
-    targetPort: ` + sport[2]).(*api.Service)
-
+	svc, ep := conv_helper.CreateService(name, port, endpoints)
 	c.cache.SvcList = append(c.cache.SvcList, svc)
-
-	ep := c.createObject(`
-apiVersion: v1
-kind: Endpoints
-metadata:
-  name: ` + sname[1] + `
-  namespace: ` + sname[0] + `
-subsets:
-- addresses: []
-  ports:
-  - name: ` + sport[0] + `
-    port: ` + sport[2] + `
-    protocol: TCP`).(*api.Endpoints)
-
-	addr := []api.EndpointAddress{}
-	for _, e := range strings.Split(endpoints, ",") {
-		if e != "" {
-			target := &api.ObjectReference{
-				Kind:      "Pod",
-				Name:      sname[1] + "-xxxxx",
-				Namespace: sname[0],
-			}
-			addr = append(addr, api.EndpointAddress{IP: e, TargetRef: target})
-		}
-	}
-	ep.Subsets[0].Addresses = addr
 	c.cache.EpList[name] = ep
-
 	return svc, ep
 }
 
@@ -1341,6 +1294,21 @@ func (c *testConfig) compareText(actual, expected string) {
 	}
 }
 
+type updaterMock struct{}
+
+func (u *updaterMock) UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.ConfigGlobals) {
+}
+
+func (u *updaterMock) UpdateHostConfig(host *hatypes.Host, mapper *annotations.Mapper) {
+	host.Timeout.Client = mapper.GetStrValue(ingtypes.HostTimeoutClient)
+	host.RootRedirect = mapper.GetStrValue(ingtypes.HostAppRoot)
+}
+
+func (u *updaterMock) UpdateBackendConfig(backend *hatypes.Backend, mapper *annotations.Mapper) {
+	backend.MaxConnServer = mapper.GetIntValue(ingtypes.BackMaxconnServer)
+	backend.BalanceAlgorithm = mapper.GetStrValue(ingtypes.BackBalanceAlgorithm)
+}
+
 type (
 	pathMock struct {
 		Path      string
@@ -1366,7 +1334,7 @@ func convertHost(hafronts ...*hatypes.Host) []hostMock {
 	for _, f := range hafronts {
 		paths := []pathMock{}
 		for _, p := range f.Paths {
-			paths = append(paths, pathMock{Path: p.Path, BackendID: p.BackendID})
+			paths = append(paths, pathMock{Path: p.Path, BackendID: p.Backend.ID})
 		}
 		hosts = append(hosts, hostMock{
 			Hostname:     f.Hostname,
@@ -1425,9 +1393,4 @@ func convertBackend(habackends ...*hatypes.Backend) []backendMock {
 
 func (c *testConfig) compareConfigBack(expected string) {
 	c.compareText(_yamlMarshal(convertBackend(c.hconfig.Backends()...)), expected)
-}
-
-func (c *testConfig) compareLogging(expected string) {
-	c.compareText(strings.Join(c.logger.Logging, "\n"), expected)
-	c.logger.Logging = []string{}
 }

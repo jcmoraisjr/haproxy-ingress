@@ -17,20 +17,16 @@ limitations under the License.
 package types
 
 import (
+	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )
-
-// File ...
-type File struct {
-	Filename string
-	SHA1Hash string
-}
 
 // ConverterOptions ...
 type ConverterOptions struct {
 	Logger           types.Logger
-	Cache            Cache
+	Cache            convtypes.Cache
+	DefaultConfig    func() (ann map[string]string, global *ConfigGlobals)
 	DefaultBackend   string
-	DefaultSSLFile   File
+	DefaultSSLFile   convtypes.File
 	AnnotationPrefix string
 }

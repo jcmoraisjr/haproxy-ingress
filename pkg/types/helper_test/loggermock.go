@@ -30,6 +30,14 @@ type LoggerMock struct {
 	T       *testing.T
 }
 
+// NewLoggerMock ...
+func NewLoggerMock(t *testing.T) *LoggerMock {
+	return &LoggerMock{
+		Logging: []string{},
+		T:       t,
+	}
+}
+
 // Info ...
 func (l *LoggerMock) Info(msg string, args ...interface{}) {
 	l.log("INFO", msg, args...)

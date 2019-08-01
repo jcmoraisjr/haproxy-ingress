@@ -7,7 +7,6 @@
 # #
 #
 {{- $cfg := . }}
-{{- $fgroup := $cfg.FrontendGroup }}
 {{- $global := $cfg.Global }}
 global
     daemon
@@ -121,6 +120,8 @@ userlist {{ $userlist.Name }}
 {{- end }}
 {{- end }}
 
+{{- if $cfg.TCPBackends }}
+
 
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -129,7 +130,39 @@ userlist {{ $userlist.Name }}
 # #
 #
 
-# TODO
+{{- range $backend := $cfg.TCPBackends }}
+listen _tcp_{{ $backend.Name }}_{{ $backend.Port }}
+{{- $ssl := $backend.SSL }}
+    bind :{{ $backend.Port }}
+        {{- if $ssl.Filename }} ssl crt {{ $ssl.Filename }}{{ end }}
+        {{- if $backend.ProxyProt.Decode }} accept-proxy{{ end }}
+    mode tcp
+
+{{- /*------------------------------------*/}}
+{{- if $global.Syslog.Endpoint }}
+{{- if eq $global.Syslog.TCPLogFormat "default" }}
+    option tcplog
+{{- else if $global.Syslog.TCPLogFormat }}
+    log-format {{ $global.Syslog.TCPLogFormat }}
+{{- else }}
+    no log
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- $outProxyProtVersion := $backend.ProxyProt.EncodeVersion }}
+{{- range $ep := $backend.Endpoints }}
+    server {{ $ep.Name }} {{ $ep.Target }}
+        {{- if $backend.CheckInterval }} check port {{ $ep.Port }} inter {{ $backend.CheckInterval }}{{ end }}
+        {{- if eq $outProxyProtVersion "v1" }} send-proxy
+            {{- else if eq $outProxyProtVersion "v2" }} send-proxy-v2
+        {{- end }}
+{{- end }}
+
+{{- end }}{{/* range TCPBackends */}}
+{{- end }}{{/* if has TCPBackend */}}
+
+{{- if $cfg.Backends }}
 
 
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -173,8 +206,8 @@ backend {{ $backend.ID }}
 {{- if $backend.ModeTCP }}
 
 {{- /*------------------------------------*/}}
-{{- if $backend.Whitelist }}
-    tcp-request content reject if !{ src{{ range $cidr := $backend.Whitelist }} {{ $cidr }}{{ end }} }
+{{- if $backend.WhitelistTCP }}
+    tcp-request content reject if !{ src{{ range $cidr := $backend.WhitelistTCP }} {{ $cidr }}{{ end }} }
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -183,15 +216,28 @@ backend {{ $backend.ID }}
 {{- else }}{{/*** if $backend.ModeTCP ***/}}
 
 {{- /*------------------------------------*/}}
-{{- if $backend.Whitelist }}
-    http-request deny if !{ src{{ range $cidr := $backend.Whitelist }} {{ $cidr }}{{ end }} }
+{{- if $backend.NeedACL }}
+{{- range $path := reverse $backend.Paths }}
+    # {{ $path.ID }} = {{ $path.Hostpath }}
+{{- end }}
+    http-request set-var(txn.pathID) base,map_beg({{ $backend.PathsMap.MatchFile }},_nomatch)
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- range $wlistCfg := $backend.WhitelistHTTP }}
+{{- $wlist := $wlistCfg.Config }}
+{{- if $wlist }}
+    http-request deny if
+        {{- if gt (len $backend.WhitelistHTTP) 1 }} { var(txn.pathID) {{ $wlistCfg.Paths.IDList }} }{{ end }}
+        {{- "" }} !{ src{{ range $cidr := $wlist }} {{ $cidr }}{{ end }} }
+{{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $backend.Userlist.Name }}
     http-request auth
         {{- if $backend.Userlist.Realm }} realm "{{ $backend.Userlist.Realm }}"{{ end }}
-        {{- "" }} if {{- if and $backend.Cors.Enabled }}!METH_OPTIONS{{ end }} !{ http_auth({{ $backend.Userlist.Name }}) }
+        {{- "" }} if{{ if and $backend.Cors.Enabled }} !METH_OPTIONS{{ end }} !{ http_auth({{ $backend.Userlist.Name }}) }
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -254,23 +300,36 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $backend.RewriteURL }}
-{{- range $path := $backend.Paths }}
-{{- if eq $backend.RewriteURL "/" }}
-    reqrep ^([^:\ ]*)\ {{ $path }}/?(.*)$     \1\ {{ $backend.RewriteURL }}\2
+{{- $needACL := gt (len $backend.RewriteURL) 1 }}
+{{- range $rewriteCfg := $backend.RewriteURL }}
+{{- $rewrite := $rewriteCfg.Config }}
+{{- if $rewrite }}
+{{- range $path := $rewriteCfg.Paths.Items }}
+{{- if eq $rewrite "/" }}
+    reqrep ^([^:\ ]*)\ {{ $path.Path }}/?(.*)$     \1\ {{ $rewrite }}\2
+        {{- if $needACL }}     if { var(txn.pathID) {{ $path.ID }} }{{ end }}
 {{- else }}
-    reqrep ^([^:\ ]*)\ {{ $path }}(.*)$       \1\ {{ $backend.RewriteURL }}{{ if hasSuffix $path "/" }}/{{ end }}\2
+    reqrep ^([^:\ ]*)\ {{ $path.Path }}(.*)$       \1\ {{ $rewrite }}{{ if hasSuffix $path.Path "/" }}/{{ end }}\2
+        {{- if $needACL }}     if { var(txn.pathID) {{ $path.ID }} }{{ end }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $backend.HSTS.Enabled }}
-{{- $hsts := $backend.HSTS }}
+{{- $needACL := gt (len $backend.HSTS) 1 }}
+{{- range $hstsCfg := $backend.HSTS }}
+{{- $hsts := $hstsCfg.Config }}
+{{- if $hsts.Enabled }}
+{{- $paths := $hstsCfg.Paths }}
     http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}
         {{- if $hsts.Subdomains }}; includeSubDomains{{ end }}
         {{- if $hsts.Preload }}; preload{{ end }}"
-        {{- if not $backend.SSLRedirect }} if { ssl_fc }{{ end }}
+        {{- if or (not $backend.SSLRedirect) $needACL }} if
+            {{- if not $backend.SSLRedirect }} { ssl_fc }{{ end }}
+            {{- if $needACL }} { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+        {{- end }}
+{{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -302,12 +361,14 @@ backend {{ $backend.ID }}
 {{- /*------------------------------------*/}}
 {{- range $ep := $backend.Endpoints }}
     server {{ $ep.Name }} {{ $ep.IP }}:{{ $ep.Port }}
-        {{- if $ep.Disabled }} disabled{{ end }}
+        {{- if not $ep.Enabled }} disabled{{ end }}
         {{- "" }} weight {{ $ep.Weight }}
         {{- if and (not $backend.ModeTCP) ($backend.Cookie.Name) (not $backend.Cookie.Dynamic) }} cookie {{ $ep.Name }}{{ end }}
         {{- template "backend" map $backend }}
 {{- end }}
 {{- end }}
+
+{{- end }}{{/* if has Backends */}}
 
 {{- define "backend" }}
     {{- $backend := .p1 }}
@@ -337,6 +398,8 @@ backend {{ $backend.ID }}
     {{- end }}
 {{- end }}
 
+{{- if $cfg.Backends }}
+
   # # # # # # # # # # # # # # # # # # #
 # #
 #     Error pages
@@ -355,6 +418,11 @@ backend _error496
     mode http
     errorfile 400 /usr/local/etc/haproxy/errors/496.http
     http-request deny deny_status 400
+
+{{- end }}{{/* if has Backends */}}
+
+{{- $fgroup := $cfg.FrontendGroup }}
+{{- if $fgroup }}
 
 
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -647,13 +715,15 @@ frontend {{ $frontend.Name }}
 {{- template "defaultbackend" map $cfg }}
 {{- end }}
 
+{{- end }}{{/* if $fgroup */}}
+
 {{- /*------------------------------------*/}}
 {{- /*------------------------------------*/}}
 {{- define "defaultbackend" }}
 {{- $cfg := .p1 }}
 {{- if $cfg.DefaultHost }}
 {{- range $path := $cfg.DefaultHost.Paths }}
-    use_backend {{ $path.BackendID }}
+    use_backend {{ $path.Backend.ID }}
         {{- if ne $path.Path "/" }} if { path_beg {{ $path.Path }} }{{ end }}
 {{- end }}
 {{- else if $cfg.DefaultBackend }}
@@ -664,14 +734,37 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 
-{{- if $global.ModSecurity.Endpoints }}
-
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # #
 # #   SUPPORT
 # #
 #
+
+  # # # # # # # # # # # # # # # # # # #
+# #
+#     Stats
+#
+listen stats
+    mode http
+    bind :1936{{ if gt $global.Procs.Nbproc 1 }} process 1{{ end }}
+    stats enable
+    stats uri /
+    no log
+    option forceclose
+    stats show-legends
+
+  # # # # # # # # # # # # # # # # # # #
+# #
+#     Monitor URI
+#
+frontend healthz
+    mode http
+    bind :10253
+    monitor-uri /healthz
+    no log
+
+{{- if $global.ModSecurity.Endpoints }}
 
   # # # # # # # # # # # # # # # # # # #
 # #

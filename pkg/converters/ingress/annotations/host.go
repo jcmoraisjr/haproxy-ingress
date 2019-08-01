@@ -16,42 +16,52 @@ limitations under the License.
 
 package annotations
 
+import (
+	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
+)
+
 func (c *updater) buildHostAuthTLS(d *hostData) {
-	if d.ann.AuthTLSSecret == "" {
+	tlsSecret, _, foundTLSSecret := d.mapper.GetStr(ingtypes.HostAuthTLSSecret)
+	if !foundTLSSecret || tlsSecret == "" {
 		return
 	}
-	verify := d.ann.AuthTLSVerifyClient
+	verify := d.mapper.GetStrValue(ingtypes.HostAuthTLSVerifyClient)
 	if verify == "off" {
 		return
 	}
-	if cafile, err := c.cache.GetCASecretPath(d.ann.AuthTLSSecret); err == nil {
+	if cafile, err := c.cache.GetCASecretPath(tlsSecret); err == nil {
 		d.host.TLS.CAFilename = cafile.Filename
 		d.host.TLS.CAHash = cafile.SHA1Hash
 		d.host.TLS.CAVerifyOptional = verify == "optional" || verify == "optional_no_ca"
-		d.host.TLS.CAErrorPage = d.ann.AuthTLSErrorPage
+		d.host.TLS.CAErrorPage = d.mapper.GetStrValue(ingtypes.HostAuthTLSErrorPage)
 	} else {
 		c.logger.Error("error building TLS auth config: %v", err)
 	}
 }
 
 func (c *updater) buildHostSSLPassthrough(d *hostData) {
-	if !d.ann.SSLPassthrough {
+	sslpassthrough, srcSSLPassthrough, _ := d.mapper.GetBool(ingtypes.HostSSLPassthrough)
+	if !sslpassthrough {
 		return
 	}
 	rootPath := d.host.FindPath("/")
 	if rootPath == nil {
-		c.logger.Warn("skipping SSL of %s: root path was not configured", d.ann.Source)
+		c.logger.Warn("skipping SSL of %s: root path was not configured", srcSSLPassthrough)
 		return
 	}
 	for _, path := range d.host.Paths {
 		if path.Path != "/" {
-			c.logger.Warn("ignoring path '%s' from '%s': ssl-passthrough only support root path", path.Path, d.ann.Source)
+			c.logger.Warn("ignoring path '%s' from %s: ssl-passthrough only support root path", path.Path, srcSSLPassthrough)
 		}
 	}
-	if d.ann.SSLPassthroughHTTPPort != "" {
-		httpBackend := c.haproxy.FindBackend(rootPath.Backend.Namespace, rootPath.Backend.Name, d.ann.SSLPassthroughHTTPPort)
-		d.host.HTTPPassthroughBackend = httpBackend
+	sslpassHTTPPort, _, foundSSLPassHTTPPort := d.mapper.GetStr(ingtypes.HostSSLPassthroughHTTPPort)
+	if foundSSLPassHTTPPort {
+		httpBackend := c.haproxy.FindBackend(rootPath.Backend.Namespace, rootPath.Backend.Name, sslpassHTTPPort)
+		if httpBackend != nil {
+			d.host.HTTPPassthroughBackend = httpBackend.ID
+		}
 	}
-	rootPath.Backend.ModeTCP = true
+	backend := c.haproxy.AcquireBackend(rootPath.Backend.Namespace, rootPath.Backend.Name, rootPath.Backend.Port)
+	backend.ModeTCP = true
 	d.host.SSLPassthrough = true
 }

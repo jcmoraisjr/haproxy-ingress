@@ -18,6 +18,7 @@ package annotations
 
 import (
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
+	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
@@ -25,13 +26,13 @@ import (
 
 // Updater ...
 type Updater interface {
-	UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.Config)
-	UpdateHostConfig(host *hatypes.Host, ann *ingtypes.HostAnnotations)
-	UpdateBackendConfig(backend *hatypes.Backend, ann *ingtypes.BackendAnnotations)
+	UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.ConfigGlobals)
+	UpdateHostConfig(host *hatypes.Host, mapper *Mapper)
+	UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper)
 }
 
 // NewUpdater ...
-func NewUpdater(haproxy haproxy.Config, cache ingtypes.Cache, logger types.Logger) Updater {
+func NewUpdater(haproxy haproxy.Config, cache convtypes.Cache, logger types.Logger) Updater {
 	return &updater{
 		haproxy: haproxy,
 		cache:   cache,
@@ -41,23 +42,23 @@ func NewUpdater(haproxy haproxy.Config, cache ingtypes.Cache, logger types.Logge
 
 type updater struct {
 	haproxy haproxy.Config
-	cache   ingtypes.Cache
+	cache   convtypes.Cache
 	logger  types.Logger
 }
 
 type globalData struct {
 	global *hatypes.Global
-	config *ingtypes.Config
+	config *ingtypes.ConfigGlobals
 }
 
 type hostData struct {
-	host *hatypes.Host
-	ann  *ingtypes.HostAnnotations
+	host   *hatypes.Host
+	mapper *Mapper
 }
 
 type backData struct {
 	backend *hatypes.Backend
-	ann     *ingtypes.BackendAnnotations
+	mapper  *Mapper
 }
 
 func copyHAProxyTime(dst *string, src string) {
@@ -65,7 +66,7 @@ func copyHAProxyTime(dst *string, src string) {
 	*dst = src
 }
 
-func (c *updater) UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.Config) {
+func (c *updater) UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.ConfigGlobals) {
 	data := &globalData{
 		global: global,
 		config: config,
@@ -90,41 +91,40 @@ func (c *updater) UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.Co
 	c.buildGlobalCustomConfig(data)
 }
 
-func (c *updater) UpdateHostConfig(host *hatypes.Host, ann *ingtypes.HostAnnotations) {
+func (c *updater) UpdateHostConfig(host *hatypes.Host, mapper *Mapper) {
 	data := &hostData{
-		host: host,
-		ann:  ann,
+		host:   host,
+		mapper: mapper,
 	}
-	host.RootRedirect = ann.AppRoot
-	host.Alias.AliasName = ann.ServerAlias
-	host.Alias.AliasRegex = ann.ServerAliasRegex
-	host.Timeout.Client = ann.TimeoutClient
-	host.Timeout.ClientFin = ann.TimeoutClientFin
+	host.RootRedirect = mapper.GetStrValue(ingtypes.HostAppRoot)
+	host.Alias.AliasName = mapper.GetStrValue(ingtypes.HostServerAlias)
+	host.Alias.AliasRegex = mapper.GetStrValue(ingtypes.HostServerAliasRegex)
+	host.Timeout.Client = mapper.GetStrValue(ingtypes.HostTimeoutClient)
+	host.Timeout.ClientFin = mapper.GetStrValue(ingtypes.HostTimeoutClientFin)
 	c.buildHostAuthTLS(data)
 	c.buildHostSSLPassthrough(data)
 }
 
-func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, ann *ingtypes.BackendAnnotations) {
+func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) {
 	data := &backData{
 		backend: backend,
-		ann:     ann,
+		mapper:  mapper,
 	}
 	// TODO check ModeTCP with HTTP annotations
-	backend.BalanceAlgorithm = ann.BalanceAlgorithm
-	backend.HSTS.Enabled = ann.HSTS
-	backend.HSTS.MaxAge = ann.HSTSMaxAge
-	backend.HSTS.Preload = ann.HSTSPreload
-	backend.HSTS.Subdomains = ann.HSTSIncludeSubdomains
-	backend.MaxConnServer = ann.MaxconnServer
-	backend.ProxyBodySize = ann.ProxyBodySize
-	backend.SSLRedirect = ann.SSLRedirect
-	backend.SSL.AddCertHeader = ann.AuthTLSCertHeader
+	backend.BalanceAlgorithm = mapper.GetStrValue(ingtypes.BackBalanceAlgorithm)
+	backend.MaxConnServer = mapper.GetIntValue(ingtypes.BackMaxconnServer)
+	backend.ProxyBodySize = mapper.GetBackendConfigStr(backend, ingtypes.BackProxyBodySize)
+	backend.SSLRedirect = mapper.GetBoolValue(ingtypes.BackSSLRedirect)
+	backend.SSL.AddCertHeader = mapper.GetBoolValue(ingtypes.BackAuthTLSCertHeader)
 	c.buildBackendAffinity(data)
 	c.buildBackendAuthHTTP(data)
 	c.buildBackendBlueGreen(data)
 	c.buildBackendCors(data)
-	c.buildOAuth(data)
-	c.buildRewriteURL(data)
-	c.buildWAF(data)
-	c.buildWhitelist(data)
+	c.buildBackendDynamic(data)
+	c.buildBackendHSTS(data)
+	c.buildBackendOAuth(data)
+	c.buildBackendRewriteURL(data)
+	c.buildBackendWAF(data)
+	c.buildBackendWhitelistHTTP(data)
+	c.buildBackendWhitelistTCP(data)
 }

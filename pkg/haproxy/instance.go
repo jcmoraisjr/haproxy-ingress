@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/dynconfig"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
 // InstanceOptions ...
@@ -33,20 +33,18 @@ type InstanceOptions struct {
 	HAProxyConfigFile string
 	ReloadCmd         string
 	ReloadStrategy    string
+	ValidateConfig    bool
 }
 
 // Instance ...
 type Instance interface {
 	ParseTemplates() error
 	Config() Config
-	Update()
+	Update(timer *utils.Timer)
 }
 
 // CreateInstance ...
 func CreateInstance(logger types.Logger, bindUtils hatypes.BindUtils, options InstanceOptions) Instance {
-	dynconf := &dynconfig.Config{
-		Logger: logger,
-	}
 	return &instance{
 		logger:       logger,
 		bindUtils:    bindUtils,
@@ -54,7 +52,6 @@ func CreateInstance(logger types.Logger, bindUtils hatypes.BindUtils, options In
 		templates:    template.CreateConfig(),
 		mapsTemplate: template.CreateConfig(),
 		mapsDir:      "/etc/haproxy/maps",
-		dynconfig:    dynconf,
 	}
 }
 
@@ -65,7 +62,6 @@ type instance struct {
 	templates    *template.Config
 	mapsTemplate *template.Config
 	mapsDir      string
-	dynconfig    *dynconfig.Config
 	oldConfig    Config
 	curConfig    Config
 }
@@ -112,13 +108,25 @@ func (i *instance) Config() Config {
 	return i.curConfig
 }
 
-func (i *instance) Update() {
+func (i *instance) Update(timer *utils.Timer) {
+	// nil config, just ignore
 	if i.curConfig == nil {
-		i.logger.InfoV(2, "new configuration is empty")
+		i.logger.Info("new configuration is empty")
 		return
 	}
+	//
+	// this should be taken into account when refactoring this func:
+	//   - dynUpdater might change config state, so it should be called before templates.Write();
+	//   - templates.Write() uses the current config, so it should be called before clearConfig();
+	//   - clearConfig() rotates the configurations, so it should be called always, but only once.
+	//
 	if err := i.curConfig.BuildFrontendGroup(); err != nil {
 		i.logger.Error("error building configuration group: %v", err)
+		i.clearConfig()
+		return
+	}
+	if err := i.curConfig.BuildBackendMaps(); err != nil {
+		i.logger.Error("error building backend maps: %v", err)
 		i.clearConfig()
 		return
 	}
@@ -127,24 +135,40 @@ func (i *instance) Update() {
 		i.clearConfig()
 		return
 	}
-	if err := i.templates.Write(i.curConfig); err != nil {
-		i.logger.Error("error writing configuration: %v", err)
-		i.clearConfig()
-		return
+	updater := i.newDynUpdater()
+	updated := updater.update()
+	if !updated || updater.cmdCnt > 0 {
+		// only need to rewrtite config files if:
+		//   - !updated           - there are changes that cannot be dynamically applied
+		//   - updater.cmdCnt > 0 - there are changes that was dynamically applied
+		err := i.templates.Write(i.curConfig)
+		timer.Tick("writeTmpl")
+		if err != nil {
+			i.logger.Error("error writing configuration: %v", err)
+			i.clearConfig()
+			return
+		}
 	}
-	updated := i.dynconfig.Update()
 	i.clearConfig()
 	if updated {
-		if err := i.check(); err != nil {
-			i.logger.Error("error validating config file:\n%v", err)
+		if updater.cmdCnt > 0 {
+			if i.options.ValidateConfig {
+				if err := i.check(); err != nil {
+					i.logger.Error("error validating config file:\n%v", err)
+				}
+				timer.Tick("validate")
+			}
+			i.logger.Info("HAProxy updated without needing to reload. Commands sent: %d", updater.cmdCnt)
+		} else {
+			i.logger.Info("old and new configurations match")
 		}
-		i.logger.Info("HAProxy updated without needing to reload")
 		return
 	}
 	if err := i.reload(); err != nil {
 		i.logger.Error("error reloading server:\n%v", err)
 		return
 	}
+	timer.Tick("reload")
 	i.logger.Info("HAProxy successfully reloaded")
 }
 

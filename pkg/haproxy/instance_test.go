@@ -30,6 +30,7 @@ import (
 	ha_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/helper_test"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types/helper_test"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -88,13 +89,35 @@ func TestBackends(t *testing.T) {
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
-				b.HSTS.Enabled = true
-				b.HSTS.MaxAge = 15768000
-				b.HSTS.Preload = true
-				b.HSTS.Subdomains = true
+				b.HSTS = []*hatypes.BackendConfigHSTS{
+					{
+						Paths: hatypes.NewBackendPaths(b.FindHostPath("d1.local/")),
+						Config: hatypes.HSTS{
+							Enabled:    true,
+							MaxAge:     15768000,
+							Preload:    true,
+							Subdomains: true,
+						},
+					},
+					{
+						Paths: hatypes.NewBackendPaths(b.FindHostPath("d1.local/path"), b.FindHostPath("d1.local/uri")),
+						Config: hatypes.HSTS{
+							Enabled:    true,
+							MaxAge:     15768000,
+							Preload:    false,
+							Subdomains: false,
+						},
+					},
+				}
 			},
+			path: []string{"/", "/path", "/uri"},
 			expected: `
-    http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload" if { ssl_fc }`,
+    # path01 = d1.local/
+    # path02 = d1.local/path
+    # path03 = d1.local/uri
+    http-request set-var(txn.pathID) base,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map,_nomatch)
+    http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload" if { ssl_fc } { var(txn.pathID) path01 }
+    http-response set-header Strict-Transport-Security "max-age=15768000" if { ssl_fc } { var(txn.pathID) path02 path03 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
@@ -107,7 +130,12 @@ func TestBackends(t *testing.T) {
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
-				b.RewriteURL = "/"
+				b.RewriteURL = []*hatypes.BackendConfigStr{
+					{
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app")),
+						Config: "/",
+					},
+				}
 			},
 			path: []string{"/app"},
 			expected: `
@@ -115,7 +143,12 @@ func TestBackends(t *testing.T) {
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
-				b.RewriteURL = "/other"
+				b.RewriteURL = []*hatypes.BackendConfigStr{
+					{
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app")),
+						Config: "/other",
+					},
+				}
 			},
 			path: []string{"/app"},
 			expected: `
@@ -123,23 +156,87 @@ func TestBackends(t *testing.T) {
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
-				b.RewriteURL = "/other/"
+				b.RewriteURL = []*hatypes.BackendConfigStr{
+					{
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app"), b.FindHostPath("d1.local/app/sub")),
+						Config: "/other/",
+					},
+				}
 			},
 			path: []string{"/app", "/app/sub"},
 			expected: `
-    reqrep ^([^:\ ]*)\ /app/sub(.*)$       \1\ /other/\2
-    reqrep ^([^:\ ]*)\ /app(.*)$       \1\ /other/\2`,
+    reqrep ^([^:\ ]*)\ /app(.*)$       \1\ /other/\2
+    reqrep ^([^:\ ]*)\ /app/sub(.*)$       \1\ /other/\2`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
-				b.Whitelist = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.RewriteURL = []*hatypes.BackendConfigStr{
+					{
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/path1")),
+						Config: "/sub1",
+					},
+					{
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/path2"), b.FindHostPath("d1.local/path3")),
+						Config: "/sub2",
+					},
+				}
 			},
+			path: []string{"/path1", "/path2", "/path3"},
 			expected: `
-    http-request deny if !{ src 10.0.0.0/8 192.168.0.0/16 }`,
+    # path01 = d1.local/path1
+    # path02 = d1.local/path2
+    # path03 = d1.local/path3
+    http-request set-var(txn.pathID) base,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map,_nomatch)
+    reqrep ^([^:\ ]*)\ /path1(.*)$       \1\ /sub1\2     if { var(txn.pathID) path01 }
+    reqrep ^([^:\ ]*)\ /path2(.*)$       \1\ /sub2\2     if { var(txn.pathID) path02 }
+    reqrep ^([^:\ ]*)\ /path3(.*)$       \1\ /sub2\2     if { var(txn.pathID) path03 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
-				b.Whitelist = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.WhitelistHTTP = []*hatypes.BackendConfigWhitelist{
+					{
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app"), b.FindHostPath("d1.local/api")),
+						Config: []string{"10.0.0.0/8", "192.168.0.0/16"},
+					},
+					{
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/path")),
+						Config: []string{"192.168.95.0/24"},
+					},
+				}
+			},
+			path: []string{"/app", "/api", "/path"},
+			expected: `
+    # path02 = d1.local/api
+    # path01 = d1.local/app
+    # path03 = d1.local/path
+    http-request set-var(txn.pathID) base,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map,_nomatch)
+    http-request deny if { var(txn.pathID) path02 path01 } !{ src 10.0.0.0/8 192.168.0.0/16 }
+    http-request deny if { var(txn.pathID) path03 } !{ src 192.168.95.0/24 }`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.WhitelistHTTP = []*hatypes.BackendConfigWhitelist{
+					{
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app"), b.FindHostPath("d1.local/api")),
+						Config: []string{},
+					},
+					{
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/path")),
+						Config: []string{"192.168.95.0/24"},
+					},
+				}
+			},
+			path: []string{"/app", "/api", "/path"},
+			expected: `
+    # path02 = d1.local/api
+    # path01 = d1.local/app
+    # path03 = d1.local/path
+    http-request set-var(txn.pathID) base,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map,_nomatch)
+    http-request deny if { var(txn.pathID) path03 } !{ src 192.168.95.0/24 }`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.WhitelistTCP = []string{"10.0.0.0/8", "192.168.0.0/16"}
 				b.ModeTCP = true
 			},
 			expected: `
@@ -187,7 +284,7 @@ func TestBackends(t *testing.T) {
 			mode = "http"
 		}
 
-		c.instance.Update()
+		c.Update()
 		c.checkConfig(`
 <<global>>
 <<defaults>>
@@ -196,6 +293,7 @@ backend d1_app_8080
     server s1 172.17.0.11:8080 weight 100` + test.srvsuffix + `
 <<backends-default>>
 <<frontends-default>>
+<<support>>
 `)
 
 		c.logger.CompareLogging(defaultLogging)
@@ -209,12 +307,38 @@ backend d1_app_8080
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+func TestInstanceBare(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	h = c.config.AcquireHost("d1.local")
+	h.AddPath(b, "/")
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+<<frontends-default>>
+<<support>>
+`)
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestInstanceEmpty(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
 	c.config.AcquireHost("empty").AddPath(c.config.AcquireBackend("default", "empty", "8080"), "/")
-	c.instance.Update()
+	c.Update()
 
 	c.checkConfig(`
 global
@@ -245,6 +369,7 @@ defaults
     timeout tunnel          1h
 backend default_empty_8080
     mode http
+    server srv001 127.0.0.1:1023 disabled weight 0
 backend _error404
     mode http
     errorfile 400 /usr/local/etc/haproxy/errors/404.http
@@ -273,6 +398,7 @@ frontend _front001
     <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404
+<<support>>
 `)
 
 	c.checkMap("_global_http_front.map", `
@@ -283,6 +409,88 @@ empty/ no`)
 empty/ default_empty_8080`)
 
 	c.logger.CompareLogging(defaultLogging)
+}
+
+func TestInstanceTCPBackend(t *testing.T) {
+	testCases := []struct {
+		doconfig func(c *testConfig)
+		expected string
+		logging  string
+	}{
+		// 0
+		{
+			doconfig: func(c *testConfig) {
+				b := c.config.AcquireTCPBackend("postgresql", 5432)
+				b.AddEndpoint("172.17.0.2", 5432)
+			},
+			expected: `
+listen _tcp_postgresql_5432
+    bind :5432
+    mode tcp
+    server srv001 172.17.0.2:5432
+`,
+		},
+		// 1
+		{
+			doconfig: func(c *testConfig) {
+				b := c.config.AcquireTCPBackend("pq", 5432)
+				b.AddEndpoint("172.17.0.2", 5432)
+				b.AddEndpoint("172.17.0.3", 5432)
+				b.CheckInterval = "2s"
+			},
+			expected: `
+listen _tcp_pq_5432
+    bind :5432
+    mode tcp
+    server srv001 172.17.0.2:5432 check port 5432 inter 2s
+    server srv002 172.17.0.3:5432 check port 5432 inter 2s
+`,
+		},
+		// 2
+		{
+			doconfig: func(c *testConfig) {
+				b := c.config.AcquireTCPBackend("pq", 5432)
+				b.AddEndpoint("172.17.0.2", 5432)
+				b.SSL.Filename = "/var/haproxy/ssl/pq.pem"
+				b.ProxyProt.EncodeVersion = "v2"
+			},
+			expected: `
+listen _tcp_pq_5432
+    bind :5432 ssl crt /var/haproxy/ssl/pq.pem
+    mode tcp
+    server srv001 172.17.0.2:5432 send-proxy-v2
+`,
+		},
+		// 3
+		{
+			doconfig: func(c *testConfig) {
+				b := c.config.AcquireTCPBackend("pq", 5432)
+				b.AddEndpoint("172.17.0.2", 5432)
+				b.SSL.Filename = "/var/haproxy/ssl/pq.pem"
+				b.ProxyProt.Decode = true
+				b.ProxyProt.EncodeVersion = "v1"
+				b.CheckInterval = "2s"
+			},
+			expected: `
+listen _tcp_pq_5432
+    bind :5432 ssl crt /var/haproxy/ssl/pq.pem accept-proxy
+    mode tcp
+    server srv001 172.17.0.2:5432 check port 5432 inter 2s send-proxy
+`,
+		},
+	}
+	for _, test := range testCases {
+		c := setup(t)
+		test.doconfig(c)
+		c.Update()
+		c.checkConfig("<<global>>\n<<defaults>>" + test.expected + "<<support>>")
+		logging := test.logging
+		if logging == "" {
+			logging = defaultLogging
+		}
+		c.logger.CompareLogging(logging)
+		c.teardown()
+	}
 }
 
 func TestInstanceDefaultHost(t *testing.T) {
@@ -310,7 +518,7 @@ func TestInstanceDefaultHost(t *testing.T) {
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 	h.VarNamespace = true
 
-	c.instance.Update()
+	c.Update()
 	c.checkConfig(`
 <<global>>
 <<defaults>>
@@ -342,6 +550,7 @@ frontend _front001
     <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     use_backend d1_app_8080
+<<support>>
 `)
 
 	c.checkMap("_global_http_front.map", `
@@ -387,7 +596,7 @@ func TestInstanceSingleFrontendSingleBind(t *testing.T) {
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/d2.pem"
 	h.TLS.TLSHash = "2"
 
-	c.instance.Update()
+	c.Update()
 	c.checkConfig(`
 <<global>>
 <<defaults>>
@@ -419,6 +628,7 @@ frontend _front001
     <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _default_backend
+<<support>>
 `)
 
 	c.checkMap("_global_http_front.map", `
@@ -472,7 +682,7 @@ func TestInstanceSingleFrontendTwoBindsCA(t *testing.T) {
 	h.TLS.CAFilename = "/var/haproxy/ssl/ca/d2.local.pem"
 	h.TLS.CAHash = "2"
 
-	c.instance.Update()
+	c.Update()
 	c.checkConfig(`
 <<global>>
 <<defaults>>
@@ -530,6 +740,7 @@ frontend _front001
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     use_backend %[var(req.snibackend)] unless { var(req.snibackend) _nomatch }
     default_backend _default_backend
+<<support>>
 `)
 
 	c.checkMap("_socket001.list", `
@@ -618,7 +829,7 @@ func TestInstanceTwoFrontendsThreeBindsCA(t *testing.T) {
 	h.AddPath(b, "/")
 	h.Timeout.Client = "2s"
 
-	c.instance.Update()
+	c.Update()
 	c.checkConfig(`
 <<global>>
 <<defaults>>
@@ -699,6 +910,7 @@ frontend _front002
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     use_backend %[var(req.snibackend)] unless { var(req.snibackend) _nomatch }
     default_backend _default_backend
+<<support>>
 `)
 
 	c.checkMap("_socket001.list", `
@@ -798,7 +1010,7 @@ func TestInstanceSomePaths(t *testing.T) {
 	h.AddPath(b, "/sub")
 	b.Endpoints = []*hatypes.Endpoint{endpointS31, endpointS32, endpointS33}
 
-	c.instance.Update()
+	c.Update()
 	c.checkConfig(`
 <<global>>
 <<defaults>>
@@ -837,6 +1049,7 @@ frontend _front001
     <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _default_backend
+<<support>>
 `)
 
 	c.checkMap("_global_http_front.map", `
@@ -881,9 +1094,9 @@ func TestInstanceSSLPassthrough(t *testing.T) {
 
 	b = c.config.AcquireBackend("d3", "app-http", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS41h}
-	h.HTTPPassthroughBackend = b
+	h.HTTPPassthroughBackend = b.ID
 
-	c.instance.Update()
+	c.Update()
 	c.checkConfig(`
 <<global>>
 <<defaults>>
@@ -913,7 +1126,9 @@ frontend _front_http
     <<tls-del-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
-    default_backend _error404`)
+    default_backend _error404
+<<support>>
+`)
 
 	c.checkMap("_global_sslpassthrough.map", `
 d2.local d2_app_8080
@@ -949,7 +1164,7 @@ func TestInstanceRootRedirect(t *testing.T) {
 	h.AddPath(b, "/app2")
 	h.RootRedirect = "/app1"
 
-	c.instance.Update()
+	c.Update()
 
 	c.checkConfig(`
 <<global>>
@@ -983,6 +1198,7 @@ frontend _front001
     <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404
+<<support>>
 `)
 
 	c.checkMap("_global_http_front.map", `
@@ -1036,7 +1252,7 @@ func TestInstanceAlias(t *testing.T) {
 	h.AddPath(b, "/")
 	h.Alias.AliasRegex = ".*d3\\.local$"
 
-	c.instance.Update()
+	c.Update()
 	c.checkConfig(`
 <<global>>
 <<defaults>>
@@ -1068,6 +1284,7 @@ frontend _front001
     <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404
+<<support>>
 `)
 
 	c.checkMap("_global_https_redir.map", `
@@ -1091,9 +1308,7 @@ d3.local/ d3_app_8080
 ^[a-z]+\.d2\.local$/ d2_app_8080
 .*d3\.local$/ d3_app_8080
 `)
-
 	c.logger.CompareLogging(defaultLogging)
-
 }
 
 func TestUserlist(t *testing.T) {
@@ -1184,7 +1399,7 @@ userlist default_auth2
 			realm = fmt.Sprintf(` realm "%s"`, test.realm)
 		}
 
-		c.instance.Update()
+		c.Update()
 		c.checkConfig(`
 <<global>>
 <<defaults>>` + test.config + `
@@ -1194,6 +1409,7 @@ backend d1_app_8080
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
 <<frontends-default>>
+<<support>>
 `)
 		c.logger.CompareLogging(defaultLogging)
 		c.teardown()
@@ -1253,7 +1469,7 @@ func TestModSecurity(t *testing.T) {
 		h.AddPath(b, "/")
 		c.config.Global().ModSecurity.Endpoints = test.endpoints
 
-		c.instance.Update()
+		c.Update()
 
 		var modsec string
 		if test.modsecExp != "" {
@@ -1270,7 +1486,8 @@ backend d1_app_8080
     mode http` + test.backendExp + `
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
-<<frontends-default>>` + modsec)
+<<frontends-default>>
+<<support>>` + modsec)
 
 		c.logger.CompareLogging(defaultLogging)
 		c.teardown()
@@ -1306,7 +1523,7 @@ func TestInstanceWildcardHostname(t *testing.T) {
 	h.RootRedirect = "/app"
 	h.Timeout.Client = "10s"
 
-	c.instance.Update()
+	c.Update()
 	c.checkConfig(`
 <<global>>
 <<defaults>>
@@ -1397,6 +1614,7 @@ frontend _front002
     <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404
+<<support>>
 `)
 
 	c.checkMap("_socket001.list", `
@@ -1528,7 +1746,7 @@ func setup(t *testing.T) *testConfig {
 		tempdir:    tempdir,
 		configfile: configfile,
 	}
-	c.configGlobal()
+	c.configGlobal(c.config.Global())
 	return c
 }
 
@@ -1539,8 +1757,17 @@ func (c *testConfig) teardown() {
 	}
 }
 
-func (c *testConfig) configGlobal() {
-	global := c.config.Global()
+func (c *testConfig) newConfig() Config {
+	config := createConfig(c.bindUtils, options{
+		mapsTemplate: c.instance.(*instance).mapsTemplate,
+		mapsDir:      c.tempdir,
+	})
+	config.ConfigDefaultX509Cert("/var/haproxy/ssl/certs/default.pem")
+	c.configGlobal(config.Global())
+	return config
+}
+
+func (c *testConfig) configGlobal(global *hatypes.Global) {
 	global.Cookie.Key = "Ingress"
 	global.MaxConn = 2000
 	global.SSL.Ciphers = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256"
@@ -1561,58 +1788,67 @@ func (c *testConfig) configGlobal() {
 }
 
 var endpointS0 = &hatypes.Endpoint{
-	Name:   "s0",
-	IP:     "172.17.0.99",
-	Port:   8080,
-	Weight: 100,
+	Name:    "s0",
+	IP:      "172.17.0.99",
+	Enabled: true,
+	Port:    8080,
+	Weight:  100,
 }
 var endpointS1 = &hatypes.Endpoint{
-	Name:   "s1",
-	IP:     "172.17.0.11",
-	Port:   8080,
-	Weight: 100,
+	Name:    "s1",
+	IP:      "172.17.0.11",
+	Enabled: true,
+	Port:    8080,
+	Weight:  100,
 }
 var endpointS21 = &hatypes.Endpoint{
-	Name:   "s21",
-	IP:     "172.17.0.121",
-	Port:   8080,
-	Weight: 100,
+	Name:    "s21",
+	IP:      "172.17.0.121",
+	Enabled: true,
+	Port:    8080,
+	Weight:  100,
 }
 var endpointS22 = &hatypes.Endpoint{
-	Name:   "s22",
-	IP:     "172.17.0.122",
-	Port:   8080,
-	Weight: 100,
+	Name:    "s22",
+	IP:      "172.17.0.122",
+	Enabled: true,
+	Port:    8080,
+	Weight:  100,
 }
 var endpointS31 = &hatypes.Endpoint{
-	Name:   "s31",
-	IP:     "172.17.0.131",
-	Port:   8080,
-	Weight: 100,
+	Name:    "s31",
+	IP:      "172.17.0.131",
+	Enabled: true,
+	Port:    8080,
+	Weight:  100,
 }
 var endpointS32 = &hatypes.Endpoint{
-	Name:   "s32",
-	IP:     "172.17.0.132",
-	Port:   8080,
-	Weight: 100,
+	Name:    "s32",
+	IP:      "172.17.0.132",
+	Enabled: true,
+	Port:    8080,
+	Weight:  100,
 }
 var endpointS33 = &hatypes.Endpoint{
-	Name:   "s33",
-	IP:     "172.17.0.133",
-	Port:   8080,
-	Weight: 100,
+	Name:    "s33",
+	IP:      "172.17.0.133",
+	Enabled: true,
+	Port:    8080,
+	Weight:  100,
 }
 var endpointS41s = &hatypes.Endpoint{
-	Name:   "s41s",
-	IP:     "172.17.0.141",
-	Port:   8443,
-	Weight: 100,
+	Name:    "s41s",
+	IP:      "172.17.0.141",
+	Enabled: true,
+	Port:    8443,
+	Weight:  100,
 }
 var endpointS41h = &hatypes.Endpoint{
-	Name:   "s41h",
-	IP:     "172.17.0.141",
-	Port:   8080,
-	Weight: 100,
+	Name:    "s41h",
+	IP:      "172.17.0.141",
+	Enabled: true,
+	Port:    8080,
+	Weight:  100,
 }
 
 var defaultLogging = `
@@ -1622,6 +1858,11 @@ INFO HAProxy successfully reloaded`
 func _yamlMarshal(in interface{}) string {
 	out, _ := yaml.Marshal(in)
 	return string(out)
+}
+
+func (c *testConfig) Update() {
+	timer := utils.NewTimer()
+	c.instance.Update(timer)
 }
 
 func (c *testConfig) checkConfig(expected string) {
@@ -1686,6 +1927,19 @@ frontend _front001
     <<tls-del-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404`,
+		"<<support>>": `listen stats
+    mode http
+    bind :1936
+    stats enable
+    stats uri /
+    no log
+    option forceclose
+    stats show-legends
+frontend healthz
+    mode http
+    bind :10253
+    monitor-uri /healthz
+    no log`,
 	}
 	for {
 		changed := false
