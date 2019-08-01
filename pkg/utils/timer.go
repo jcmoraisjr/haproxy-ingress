@@ -54,11 +54,11 @@ func (t *Timer) AsString(totalLabel string) string {
 	out := make([]string, 0, len(t.Ticks)+1)
 	last := t.Start
 	for _, tick := range t.Ticks {
-		out = append(out, fmt.Sprintf("%s=%v", tick.Event, tick.When.Sub(last)))
+		out = append(out, fmt.Sprintf("%s=%fms", tick.Event, tick.When.Sub(last).Seconds()*1000))
 		last = tick.When
 	}
 	if totalLabel != "" {
-		out = append(out, fmt.Sprintf("%s=%v", totalLabel, last.Sub(t.Start)))
+		out = append(out, fmt.Sprintf("%s=%fms", totalLabel, last.Sub(t.Start).Seconds()*1000))
 	}
 	return strings.Join(out, " ")
 }
