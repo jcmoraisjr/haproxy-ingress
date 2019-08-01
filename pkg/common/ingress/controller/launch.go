@@ -102,7 +102,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		configmaps or the default backend service located in a different namespace than the specified
 		in the flag --watch-namespace.`)
 
-		terminationGracePeriod = flags.Int("termination-grace-period", 0, `Define time controller waits until it shuts down " +
+		waitBeforeShutdown = flags.Int("wait-before-shutdown", 0, `Define time controller waits until it shuts down " +
 			"when SIGTERM signal was received`)
 
 		allowCrossNamespace = flags.Bool("allow-cross-namespace", false,
@@ -260,7 +260,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		PublishService:          *publishSvc,
 		Backend:                 backend,
 		ForceNamespaceIsolation: *forceIsolation,
-		TerminationGracePeriod:  *terminationGracePeriod,
+		WaitBeforeShutdown:      *waitBeforeShutdown,
 		AllowCrossNamespace:     *allowCrossNamespace,
 		DisableNodeList:         *disableNodeList,
 		UpdateStatusOnShutdown:  *updateStatusOnShutdown,

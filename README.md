@@ -986,7 +986,6 @@ The following command-line arguments are supported:
 
 ||Name|Type|Default|
 |---|---|---|---|
-||[`termination-grace-period`](#termination-grace-period)|seconds as integer|`0`|
 ||[`allow-cross-namespace`](#allow-cross-namespace)|[true\|false]|`false`|
 ||[`default-backend-service`](#default-backend-service)|namespace/servicename|(mandatory)|
 ||[`default-ssl-certificate`](#default-ssl-certificate)|namespace/secretname|(mandatory)|
@@ -999,12 +998,8 @@ The following command-line arguments are supported:
 ||[`sort-backends`](#sort-backends)|[true\|false]|`false`|
 ||[`tcp-services-configmap`](#tcp-services-configmap)|namespace/configmapname|no tcp svc|
 ||[`verify-hostname`](#verify-hostname)|[true\|false]|`true`|
+||[`wait-before-shutdown`](#wait-before-shutdown)|seconds as integer|`0`|
 ||[`watch-namespace`](#watch-namespace)|namespace|all namespaces|
-
-### termination-grace-period
-If argument `--termination-grace-period` is defined, controller will wait defined time in seconds
-before it starts shutting down components when SIGTERM was received. By default, it's 0, which means
-the controller starts shutting down itself right after signal was sent.
 
 ### allow-cross-namespace
 
@@ -1139,6 +1134,12 @@ match the hostname are discarded and a warning is logged into the ingress contro
 
 Use `--verify-hostname=false` argument to bypass this validation. If used, HAProxy will provide
 the certificate declared in the `secretName` ignoring if the certificate is or is not valid.
+
+### wait-before-shutdown
+
+If argument `--wait-before-shutdown` is defined, controller will wait defined time in seconds
+before it starts shutting down components when SIGTERM was received. By default, it's 0, which means
+the controller starts shutting down itself right after signal was sent.
 
 ### watch-namespace
 

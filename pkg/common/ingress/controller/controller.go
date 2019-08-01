@@ -130,7 +130,7 @@ type Configuration struct {
 	ConfigMapName  string
 
 	ForceNamespaceIsolation bool
-	TerminationGracePeriod  int
+	WaitBeforeShutdown      int
 	AllowCrossNamespace     bool
 	DisableNodeList         bool
 
