@@ -459,7 +459,7 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- $listName := $location.Userlist.ListName }}
 {{- if ne $listName "" }}
 {{- $realm := $location.Userlist.Realm }}
-    http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if {{ $server.ACLLabel }}{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
+    http-request auth {{ if ne $realm "" }}realm "{{ $realm }}" {{ end }}if {{- if $location.CORS.CorsEnabled }}!METH_OPTIONS{{ end }} {{ $server.ACLLabel }}{{ $location.HAMatchPath }} !{ http_auth({{ $listName }}) }
 {{- end }}
 {{- end }}
 {{- end }}
