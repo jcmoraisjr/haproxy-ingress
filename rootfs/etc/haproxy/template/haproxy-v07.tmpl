@@ -724,7 +724,7 @@ frontend http{{ if and $hasSSL (not $hasBalance) }}s{{ end }}front-{{ if $isShar
 {{- if $cors.CorsAllowCredentials }}
     http-response set-header Access-Control-Allow-Credentials "{{ $cors.CorsAllowCredentials }}" if {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
 {{- end }}
-{{- if $cors.CorsExportHeaders }}
+{{- if $cors.CorsExposeHeaders }}
     http-response set-header Access-Control-Expose-Headers    "{{ $cors.CorsExposeHeaders }}" if {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
 {{- end }}
     http-response set-header Access-Control-Allow-Methods     "{{ $cors.CorsAllowMethods }}" if {{ $server.ACLLabel }}{{ if $location }}{{ $location.HAMatchTxnPath }}{{ end }}
