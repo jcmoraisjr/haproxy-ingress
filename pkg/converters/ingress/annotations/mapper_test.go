@@ -463,7 +463,7 @@ func TestGetBackendConfig(t *testing.T) {
 	defer delete(validators, "ann-1")
 	for i, test := range testCases {
 		c := setup(t)
-		b := c.createBackendData("default", "app", map[string]string{}, test.annDefault)
+		b := c.createBackendData("default/app", &Source{}, map[string]string{}, test.annDefault)
 		for _, kv := range test.keyValues {
 			for path := range kv {
 				b.backend.AddHostPath("", path)
@@ -544,7 +544,7 @@ func TestGetBackendConfigString(t *testing.T) {
 	key := "ann-1"
 	for i, test := range testCases {
 		c := setup(t)
-		b := c.createBackendData("default", "app", map[string]string{}, test.annDefault)
+		b := c.createBackendData("default/app", &Source{}, map[string]string{}, test.annDefault)
 		for path, value := range test.values {
 			b.backend.AddHostPath("", path)
 			b.mapper.AddAnnotation(&Source{}, path, key, value)
