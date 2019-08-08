@@ -284,60 +284,43 @@ func (c *updater) buildBackendBlueGreen(d *backData) {
 	}
 }
 
-var (
-	corsOriginRegex  = regexp.MustCompile(`^(https?://[A-Za-z0-9\-\.]*(:[0-9]+)?|\*)?$`)
-	corsMethodsRegex = regexp.MustCompile(`^([A-Za-z]+,?\s?)+$`)
-	corsHeadersRegex = regexp.MustCompile(`^([A-Za-z0-9\-\_]+,?\s?)+$`)
-)
-
 func (c *updater) buildBackendCors(d *backData) {
-	if enable := d.mapper.GetBoolValue(ingtypes.BackCorsEnable); !enable {
-		return
-	}
-	d.backend.Cors.Enabled = true
-	allowOrigin, srcAllowOrigin, foundAllowOrigin := d.mapper.GetStr(ingtypes.BackCorsAllowOrigin)
-	if foundAllowOrigin && corsOriginRegex.MatchString(allowOrigin) {
-		d.backend.Cors.AllowOrigin = allowOrigin
-	} else {
-		if foundAllowOrigin {
-			c.logger.Warn("invalid cors origin on %s, using '*' instead: %s", srcAllowOrigin, allowOrigin)
+	config := d.mapper.GetBackendConfig(d.backend,
+		[]string{
+			ingtypes.BackCorsEnable,
+			ingtypes.BackCorsAllowCredentials,
+			ingtypes.BackCorsAllowHeaders,
+			ingtypes.BackCorsAllowMethods,
+			ingtypes.BackCorsAllowOrigin,
+			ingtypes.BackCorsExposeHeaders,
+			ingtypes.BackCorsMaxAge,
+		},
+	)
+	for _, cfg := range config {
+		if enabled := d.mapper.GetBoolFromMap(d.backend, cfg, ingtypes.BackCorsEnable); !enabled {
+			d.backend.Cors = append(d.backend.Cors, &hatypes.BackendConfigCors{
+				Paths: cfg.Paths, Config: hatypes.Cors{},
+			})
+			continue
 		}
-		d.backend.Cors.AllowOrigin = "*"
-	}
-	allowHeaders, srcAllowHeaders, foundAllowHeaders := d.mapper.GetStr(ingtypes.BackCorsAllowHeaders)
-	if corsHeadersRegex.MatchString(allowHeaders) {
-		d.backend.Cors.AllowHeaders = allowHeaders
-	} else {
-		if foundAllowHeaders {
-			c.logger.Warn("invalid cors headers on %s, using default config instead: %s", srcAllowHeaders, allowHeaders)
-		}
-		d.backend.Cors.AllowHeaders =
-			"DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
-	}
-	allowMethods, srcAllowMethods, foundAllowMethods := d.mapper.GetStr(ingtypes.BackCorsAllowMethods)
-	if corsMethodsRegex.MatchString(allowMethods) {
-		d.backend.Cors.AllowMethods = allowMethods
-	} else {
-		if foundAllowMethods {
-			c.logger.Warn("invalid cors methods on %s, using default config instead: %s", srcAllowMethods, allowMethods)
-		}
-		d.backend.Cors.AllowMethods = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
-	}
-	d.backend.Cors.AllowCredentials = d.mapper.GetBoolValue(ingtypes.BackCorsAllowCredentials)
-	maxAge, srcMaxAge, foundMaxAge := d.mapper.GetInt(ingtypes.BackCorsMaxAge)
-	if maxAge > 0 {
-		d.backend.Cors.MaxAge = maxAge
-	} else {
-		if foundMaxAge {
-			c.logger.Warn("invalid cors max age '%d' on %s, using '86400' instead", maxAge, srcMaxAge)
-		}
-		d.backend.Cors.MaxAge = 86400
-	}
-	exposeHeaders, srcExposeHeaders, foundExposeHeaders := d.mapper.GetStr(ingtypes.BackCorsExposeHeaders)
-	if corsHeadersRegex.MatchString(exposeHeaders) {
-		d.backend.Cors.ExposeHeaders = exposeHeaders
-	} else if foundExposeHeaders {
-		c.logger.Warn("ignoring invalid cors expose headers on %s: %s", srcExposeHeaders, exposeHeaders)
+		allowCredentials := d.mapper.GetBoolFromMap(d.backend, cfg, ingtypes.BackCorsAllowCredentials)
+		allowHeaders, _ := d.mapper.GetStrFromMap(cfg, ingtypes.BackCorsAllowHeaders)
+		allowMethods, _ := d.mapper.GetStrFromMap(cfg, ingtypes.BackCorsAllowMethods)
+		allowOrigin, _ := d.mapper.GetStrFromMap(cfg, ingtypes.BackCorsAllowOrigin)
+		exposeHeaders, _ := d.mapper.GetStrFromMap(cfg, ingtypes.BackCorsExposeHeaders)
+		maxAge := d.mapper.GetIntFromMap(d.backend, cfg, ingtypes.BackCorsMaxAge)
+		d.backend.Cors = append(d.backend.Cors, &hatypes.BackendConfigCors{
+			Paths: cfg.Paths,
+			Config: hatypes.Cors{
+				Enabled:          true,
+				AllowCredentials: allowCredentials,
+				AllowHeaders:     allowHeaders,
+				AllowMethods:     allowMethods,
+				AllowOrigin:      allowOrigin,
+				ExposeHeaders:    exposeHeaders,
+				MaxAge:           maxAge,
+			},
+		})
 	}
 }
 

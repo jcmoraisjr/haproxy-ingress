@@ -67,13 +67,21 @@ func TestBackends(t *testing.T) {
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
-				b.Cors.Enabled = true
-				b.Cors.AllowOrigin = "*"
-				b.Cors.AllowHeaders =
-					"DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
-				b.Cors.AllowMethods = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
-				b.Cors.MaxAge = 86400
+				config := hatypes.Cors{
+					Enabled:      true,
+					AllowOrigin:  "*",
+					AllowHeaders: "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization",
+					AllowMethods: "GET, PUT, POST, DELETE, PATCH, OPTIONS",
+					MaxAge:       86400,
+				}
+				b.Cors = []*hatypes.BackendConfigCors{
+					{
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/"), b.FindHostPath("d1.local/sub")),
+						Config: config,
+					},
+				}
 			},
+			path: []string{"/", "/sub"},
 			expected: `
     http-request use-service lua.send-response if METH_OPTIONS
     http-response set-status 204 reason "No Content" if METH_OPTIONS
@@ -83,6 +91,42 @@ func TestBackends(t *testing.T) {
     http-response set-header Access-Control-Allow-Origin  "*"
     http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
     http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				config := hatypes.Cors{
+					Enabled:          true,
+					AllowOrigin:      "*",
+					AllowHeaders:     "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization",
+					AllowMethods:     "GET, PUT, POST, DELETE, PATCH, OPTIONS",
+					MaxAge:           86400,
+					AllowCredentials: true,
+				}
+				b.Cors = []*hatypes.BackendConfigCors{
+					{
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/")),
+						Config: config,
+					},
+					{
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/sub")),
+						Config: hatypes.Cors{},
+					},
+				}
+			},
+			path: []string{"/", "/sub"},
+			expected: `
+    # path01 = d1.local/
+    # path02 = d1.local/sub
+    http-request set-var(txn.pathID) base,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map,_nomatch)
+    http-request use-service lua.send-response if METH_OPTIONS
+    http-response set-status 204 reason "No Content" if METH_OPTIONS { var(txn.pathID) path01 }
+    http-response set-header Content-Type                 "text/plain" if METH_OPTIONS { var(txn.pathID) path01 }
+    http-response set-header Content-Length               "0" if METH_OPTIONS { var(txn.pathID) path01 }
+    http-response set-header Access-Control-Max-Age       "86400" if METH_OPTIONS { var(txn.pathID) path01 }
+    http-response set-header Access-Control-Allow-Origin  "*" if { var(txn.pathID) path01 }
+    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) path01 }
+    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if { var(txn.pathID) path01 }
+    http-response set-header Access-Control-Allow-Credentials "true" if { var(txn.pathID) path01 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {

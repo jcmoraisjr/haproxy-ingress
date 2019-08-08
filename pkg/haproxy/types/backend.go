@@ -120,6 +120,16 @@ func (b *Backend) CreateConfigBool(value bool) []*BackendConfigBool {
 	}
 }
 
+// HasCorsEnabled ...
+func (b *Backend) HasCorsEnabled() bool {
+	for _, cors := range b.Cors {
+		if cors.Config.Enabled {
+			return true
+		}
+	}
+	return false
+}
+
 // HasSSLRedirect ...
 func (b *Backend) HasSSLRedirect() bool {
 	for _, sslredirect := range b.SSLRedirect {
@@ -155,7 +165,8 @@ func (b *Backend) HasSSLRedirectPaths(paths *BackendPaths) bool {
 // NeedACL ...
 func (b *Backend) NeedACL() bool {
 	return len(b.HSTS) > 1 ||
-		len(b.ProxyBodySize) > 1 || len(b.RewriteURL) > 1 || len(b.WhitelistHTTP) > 1
+		len(b.ProxyBodySize) > 1 || len(b.RewriteURL) > 1 || len(b.WhitelistHTTP) > 1 ||
+		len(b.Cors) > 1
 }
 
 // IsEmpty ...
@@ -207,6 +218,11 @@ func (b *BackendConfigBool) String() string {
 
 // String ...
 func (b *BackendConfigStr) String() string {
+	return fmt.Sprintf("%+v", *b)
+}
+
+// String ...
+func (b *BackendConfigCors) String() string {
 	return fmt.Sprintf("%+v", *b)
 }
 

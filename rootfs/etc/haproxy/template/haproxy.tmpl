@@ -237,7 +237,7 @@ backend {{ $backend.ID }}
 {{- if $backend.Userlist.Name }}
     http-request auth
         {{- if $backend.Userlist.Realm }} realm "{{ $backend.Userlist.Realm }}"{{ end }}
-        {{- "" }} if{{ if and $backend.Cors.Enabled }} !METH_OPTIONS{{ end }} !{ http_auth({{ $backend.Userlist.Name }}) }
+        {{- "" }} if{{ if and $backend.HasCorsEnabled }} !METH_OPTIONS{{ end }} !{ http_auth({{ $backend.Userlist.Name }}) }
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -258,7 +258,7 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $backend.Cors.Enabled }}
+{{- if $backend.HasCorsEnabled }}
     http-request use-service lua.send-response if METH_OPTIONS
 {{- end }}
 
@@ -335,20 +335,33 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $backend.Cors.Enabled }}
-{{- $cors := $backend.Cors }}
+{{- $needACL := gt (len $backend.Cors) 1 }}
+{{- range $corsCfg := $backend.Cors }}
+{{- $cors := $corsCfg.Config }}
+{{- if $cors.Enabled }}
+{{- $paths := $corsCfg.Paths }}
     http-response set-status 204 reason "No Content" if METH_OPTIONS
+        {{- if $needACL }} { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
     http-response set-header Content-Type                 "text/plain" if METH_OPTIONS
+        {{- if $needACL }} { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
     http-response set-header Content-Length               "0" if METH_OPTIONS
+        {{- if $needACL }} { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
     http-response set-header Access-Control-Max-Age       "{{ $cors.MaxAge }}" if METH_OPTIONS
+        {{- if $needACL }} { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
     http-response set-header Access-Control-Allow-Origin  "{{ $cors.AllowOrigin }}"
+        {{- if $needACL }} if { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
     http-response set-header Access-Control-Allow-Methods "{{ $cors.AllowMethods }}"
+        {{- if $needACL }} if { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
     http-response set-header Access-Control-Allow-Headers "{{ $cors.AllowHeaders }}"
+        {{- if $needACL }} if { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
 {{- if $cors.AllowCredentials }}
     http-response set-header Access-Control-Allow-Credentials "{{ $cors.AllowCredentials }}"
+        {{- if $needACL }} if { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
 {{- end }}
 {{- if $cors.ExposeHeaders }}
     http-response set-header Access-Control-Expose-Headers "{{ $cors.ExposeHeaders }}"
+        {{- if $needACL }} if { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+{{- end }}
 {{- end }}
 {{- end }}
 

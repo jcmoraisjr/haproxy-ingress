@@ -577,6 +577,70 @@ INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not refe
 	}
 }
 
+const (
+	corsDefaultHeaders = "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+	corsDefaultMethods = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+	corsDefaultOrigin  = "*"
+	corsDefaultMaxAge  = 86400
+)
+
+func TestCors(t *testing.T) {
+	testCases := []struct {
+		paths    []string
+		ann      map[string]map[string]string
+		expected []*hatypes.BackendConfigCors
+		logging  string
+	}{
+		// 0
+		{
+			paths: []string{"/"},
+			expected: []*hatypes.BackendConfigCors{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: hatypes.Cors{},
+				},
+			},
+		},
+		// 1
+		{
+			paths: []string{"/"},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackCorsEnable: "true",
+				},
+			},
+			expected: []*hatypes.BackendConfigCors{
+				{
+					Paths: createBackendPaths("/"),
+					Config: hatypes.Cors{
+						Enabled:          true,
+						AllowCredentials: false,
+						AllowHeaders:     corsDefaultHeaders,
+						AllowMethods:     corsDefaultMethods,
+						AllowOrigin:      corsDefaultOrigin,
+						ExposeHeaders:    "",
+						MaxAge:           corsDefaultMaxAge,
+					},
+				},
+			},
+		},
+	}
+	annDefault := map[string]string{
+		ingtypes.BackCorsAllowHeaders: corsDefaultHeaders,
+		ingtypes.BackCorsAllowMethods: corsDefaultMethods,
+		ingtypes.BackCorsAllowOrigin:  corsDefaultOrigin,
+		ingtypes.BackCorsMaxAge:       strconv.Itoa(corsDefaultMaxAge),
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createBackendMappingData("default/app", &Source{}, annDefault, test.ann, test.paths)
+		c.createUpdater().buildBackendCors(d)
+		c.compareObjects("cors", i, d.backend.Cors, test.expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
 func TestHSTS(t *testing.T) {
 	testCases := []struct {
 		paths      []string
