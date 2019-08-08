@@ -79,9 +79,6 @@ func TestBackends(t *testing.T) {
     http-response set-status 204 reason "No Content" if METH_OPTIONS
     http-response set-header Content-Type                 "text/plain" if METH_OPTIONS
     http-response set-header Content-Length               "0" if METH_OPTIONS
-    http-response set-header Access-Control-Allow-Origin  "*" if METH_OPTIONS
-    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if METH_OPTIONS
-    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if METH_OPTIONS
     http-response set-header Access-Control-Max-Age       "86400" if METH_OPTIONS
     http-response set-header Access-Control-Allow-Origin  "*"
     http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"

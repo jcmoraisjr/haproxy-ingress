@@ -340,12 +340,6 @@ backend {{ $backend.ID }}
     http-response set-status 204 reason "No Content" if METH_OPTIONS
     http-response set-header Content-Type                 "text/plain" if METH_OPTIONS
     http-response set-header Content-Length               "0" if METH_OPTIONS
-    http-response set-header Access-Control-Allow-Origin  "{{ $cors.AllowOrigin }}" if METH_OPTIONS
-    http-response set-header Access-Control-Allow-Methods "{{ $cors.AllowMethods }}" if METH_OPTIONS
-    http-response set-header Access-Control-Allow-Headers "{{ $cors.AllowHeaders }}" if METH_OPTIONS
-{{- if $cors.AllowCredentials }}
-    http-response set-header Access-Control-Allow-Credentials "{{ $cors.AllowCredentials }}" if METH_OPTIONS
-{{- end }}
     http-response set-header Access-Control-Max-Age       "{{ $cors.MaxAge }}" if METH_OPTIONS
     http-response set-header Access-Control-Allow-Origin  "{{ $cors.AllowOrigin }}"
     http-response set-header Access-Control-Allow-Methods "{{ $cors.AllowMethods }}"
