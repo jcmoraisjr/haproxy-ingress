@@ -110,6 +110,48 @@ func (b *Backend) AddHostPath(hostname, path string) *BackendPath {
 	return backendPath
 }
 
+// CreateConfigBool ...
+func (b *Backend) CreateConfigBool(value bool) []*BackendConfigBool {
+	return []*BackendConfigBool{
+		{
+			Paths:  NewBackendPaths(b.Paths...),
+			Config: value,
+		},
+	}
+}
+
+// HasSSLRedirect ...
+func (b *Backend) HasSSLRedirect() bool {
+	for _, sslredirect := range b.SSLRedirect {
+		if sslredirect.Config {
+			return true
+		}
+	}
+	return false
+}
+
+// HasSSLRedirectHostpath ...
+func (b *Backend) HasSSLRedirectHostpath(hostpath string) bool {
+	for _, sslredirect := range b.SSLRedirect {
+		for _, path := range sslredirect.Paths.Items {
+			if path.Hostpath == hostpath {
+				return sslredirect.Config
+			}
+		}
+	}
+	return false
+}
+
+// HasSSLRedirectPaths ...
+func (b *Backend) HasSSLRedirectPaths(paths *BackendPaths) bool {
+	for _, path := range paths.Items {
+		if b.HasSSLRedirectHostpath(path.Hostpath) {
+			return true
+		}
+	}
+	return false
+}
+
 // NeedACL ...
 func (b *Backend) NeedACL() bool {
 	return len(b.HSTS) > 1 ||
@@ -156,6 +198,11 @@ func (ep *TCPEndpoint) String() string {
 // String ...
 func (p *BackendPath) String() string {
 	return fmt.Sprintf("%+v", *p)
+}
+
+// String ...
+func (b *BackendConfigBool) String() string {
+	return fmt.Sprintf("%+v", *b)
 }
 
 // String ...

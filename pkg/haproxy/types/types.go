@@ -316,7 +316,6 @@ type Backend struct {
 	// Missing:
 	//
 	//   [ ] Cors
-	//   [ ] SSLRedirect
 	//   [ ] Userlist
 	//   [ ] WAF
 	//
@@ -324,7 +323,7 @@ type Backend struct {
 	HSTS          []*BackendConfigHSTS
 	ProxyBodySize []*BackendConfigStr
 	RewriteURL    []*BackendConfigStr
-	SSLRedirect   bool
+	SSLRedirect   []*BackendConfigBool
 	Userlist      UserlistConfig
 	WAF           string
 	WhitelistHTTP []*BackendConfigWhitelist
@@ -353,6 +352,12 @@ type BackendPath struct {
 	Path     string
 }
 
+// BackendConfigBool ...
+type BackendConfigBool struct {
+	Paths  BackendPaths
+	Config bool
+}
+
 // BackendConfigStr ...
 type BackendConfigStr struct {
 	Paths  BackendPaths
@@ -379,7 +384,7 @@ type AgentCheck struct {
 	Send     string
 }
 
-// DynBackendConfig
+// DynBackendConfig ...
 type DynBackendConfig struct {
 	BlockSize    int
 	DynUpdate    bool

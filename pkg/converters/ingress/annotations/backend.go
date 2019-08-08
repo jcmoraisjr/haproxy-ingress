@@ -440,6 +440,15 @@ func (c *updater) buildBackendRewriteURL(d *backData) {
 	}
 }
 
+func (c *updater) buildBackendSSLRedirect(d *backData) {
+	for _, redir := range d.mapper.GetBackendConfigBool(d.backend, ingtypes.BackSSLRedirect) {
+		d.backend.SSLRedirect = append(d.backend.SSLRedirect, &hatypes.BackendConfigBool{
+			Paths:  redir.Paths,
+			Config: redir.Config,
+		})
+	}
+}
+
 func (c *updater) buildBackendWAF(d *backData) {
 	waf, srcWaf, foundWaf := d.mapper.GetStr(ingtypes.BackWAF)
 	if !foundWaf {

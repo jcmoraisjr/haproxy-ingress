@@ -318,6 +318,20 @@ func findConfig(config []*BackendConfig, kv map[string]string) *BackendConfig {
 	return nil
 }
 
+// GetBackendConfigBool ...
+func (c *Mapper) GetBackendConfigBool(backend *hatypes.Backend, key string) []*hatypes.BackendConfigBool {
+	rawConfig := c.GetBackendConfig(backend, []string{key})
+	config := make([]*hatypes.BackendConfigBool, len(rawConfig))
+	for i, cfg := range rawConfig {
+		value, _ := strconv.ParseBool(cfg.Config[key])
+		config[i] = &hatypes.BackendConfigBool{
+			Paths:  cfg.Paths,
+			Config: value,
+		}
+	}
+	return config
+}
+
 // GetBackendConfigStr ...
 func (c *Mapper) GetBackendConfigStr(backend *hatypes.Backend, key string) []*hatypes.BackendConfigStr {
 	rawConfig := c.GetBackendConfig(backend, []string{key})

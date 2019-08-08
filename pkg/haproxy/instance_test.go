@@ -507,14 +507,14 @@ func TestInstanceDefaultHost(t *testing.T) {
 	b = c.config.AcquireBackend("d1", "app", "8080")
 	h = c.config.AcquireHost("*")
 	h.AddPath(b, "/")
-	b.SSLRedirect = true
+	b.SSLRedirect = b.CreateConfigBool(true)
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 	h.VarNamespace = true
 
 	b = c.config.AcquireBackend("d2", "app", "8080")
 	h = c.config.AcquireHost("d2.local")
 	h.AddPath(b, "/app")
-	b.SSLRedirect = true
+	b.SSLRedirect = b.CreateConfigBool(true)
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 	h.VarNamespace = true
 
@@ -582,7 +582,7 @@ func TestInstanceSingleFrontendSingleBind(t *testing.T) {
 	b = c.config.AcquireBackend("d1", "app", "8080")
 	h = c.config.AcquireHost("d1.local")
 	h.AddPath(b, "/")
-	b.SSLRedirect = true
+	b.SSLRedirect = b.CreateConfigBool(true)
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 	h.VarNamespace = true
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/d1.pem"
@@ -591,7 +591,7 @@ func TestInstanceSingleFrontendSingleBind(t *testing.T) {
 	b = c.config.AcquireBackend("d2", "app", "8080")
 	h = c.config.AcquireHost("d2.local")
 	h.AddPath(b, "/app")
-	b.SSLRedirect = true
+	b.SSLRedirect = b.CreateConfigBool(true)
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/d2.pem"
 	h.TLS.TLSHash = "2"
@@ -670,9 +670,6 @@ func TestInstanceSingleFrontendTwoBindsCA(t *testing.T) {
 	b = c.config.AcquireBackend("d", "app", "8080")
 	h = c.config.AcquireHost("d1.local")
 	h.AddPath(b, "/")
-	b.SSLRedirect = true
-	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	b.SSL.AddCertHeader = true
 	h.TLS.CAFilename = "/var/haproxy/ssl/ca/d1.local.pem"
 	h.TLS.CAHash = "1"
 	h.TLS.CAErrorPage = "http://d1.local/error.html"
@@ -681,6 +678,10 @@ func TestInstanceSingleFrontendTwoBindsCA(t *testing.T) {
 	h.AddPath(b, "/")
 	h.TLS.CAFilename = "/var/haproxy/ssl/ca/d2.local.pem"
 	h.TLS.CAHash = "2"
+
+	b.SSLRedirect = b.CreateConfigBool(true)
+	b.SSL.AddCertHeader = true
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 
 	c.Update()
 	c.checkConfig(`
@@ -994,12 +995,12 @@ func TestInstanceSomePaths(t *testing.T) {
 	b = c.config.AcquireBackend("d", "app0", "8080")
 	h = c.config.AcquireHost("d.local")
 	h.AddPath(b, "/")
-	b.SSLRedirect = true
+	b.SSLRedirect = b.CreateConfigBool(true)
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 
 	b = c.config.AcquireBackend("d", "app1", "8080")
 	h.AddPath(b, "/app")
-	b.SSLRedirect = true
+	b.SSLRedirect = b.CreateConfigBool(true)
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 
 	b = c.config.AcquireBackend("d", "app2", "8080")
@@ -1082,7 +1083,7 @@ func TestInstanceSSLPassthrough(t *testing.T) {
 	b = c.config.AcquireBackend("d2", "app", "8080")
 	h = c.config.AcquireHost("d2.local")
 	h.AddPath(b, "/")
-	b.SSLRedirect = true
+	b.SSLRedirect = b.CreateConfigBool(true)
 	b.Endpoints = []*hatypes.Endpoint{endpointS31}
 	h.SSLPassthrough = true
 
@@ -1150,19 +1151,19 @@ func TestInstanceRootRedirect(t *testing.T) {
 	var b *hatypes.Backend
 
 	b = c.config.AcquireBackend("d1", "app", "8080")
-	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	b.SSLRedirect = false
 	h = c.config.AcquireHost("d1.local")
 	h.AddPath(b, "/")
 	h.RootRedirect = "/app"
+	b.SSLRedirect = b.CreateConfigBool(false)
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 
 	b = c.config.AcquireBackend("d2", "app", "8080")
-	b.Endpoints = []*hatypes.Endpoint{endpointS21}
-	b.SSLRedirect = true
 	h = c.config.AcquireHost("d2.local")
 	h.AddPath(b, "/app1")
 	h.AddPath(b, "/app2")
 	h.RootRedirect = "/app1"
+	b.SSLRedirect = b.CreateConfigBool(true)
+	b.Endpoints = []*hatypes.Endpoint{endpointS21}
 
 	c.Update()
 
@@ -1502,8 +1503,6 @@ func TestInstanceWildcardHostname(t *testing.T) {
 	var b *hatypes.Backend
 
 	b = c.config.AcquireBackend("d1", "app", "8080")
-	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	b.SSLRedirect = true
 	h = c.config.AcquireHost("d1.local")
 	h.AddPath(b, "/")
 	h = c.config.AcquireHost("*.app.d1.local")
@@ -1514,14 +1513,16 @@ func TestInstanceWildcardHostname(t *testing.T) {
 	h.TLS.CAHash = "1"
 	h.TLS.CAVerifyOptional = true
 	h.TLS.CAErrorPage = "http://sub.d1.local/error.html"
+	b.SSLRedirect = b.CreateConfigBool(true)
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 
 	b = c.config.AcquireBackend("d2", "app", "8080")
-	b.Endpoints = []*hatypes.Endpoint{endpointS21}
-	b.SSLRedirect = false
 	h = c.config.AcquireHost("*.d2.local")
 	h.AddPath(b, "/")
 	h.RootRedirect = "/app"
 	h.Timeout.Client = "10s"
+	b.SSLRedirect = b.CreateConfigBool(false)
+	b.Endpoints = []*hatypes.Endpoint{endpointS21}
 
 	c.Update()
 	c.checkConfig(`

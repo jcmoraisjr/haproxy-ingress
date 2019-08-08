@@ -307,9 +307,10 @@ func (c *config) BuildFrontendGroup() error {
 		for _, host := range f.Hosts {
 			for _, path := range host.Paths {
 				backend := c.AcquireBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
-				// TODO use only root path if all uri has the same conf
-				fgroup.HTTPSRedirMap.AppendHostname(host.Hostname+path.Path, yesno[backend.SSLRedirect])
 				base := host.Hostname + path.Path
+				hasSSLRedirect := backend.HasSSLRedirectHostpath(base)
+				// TODO use only root path if all uri has the same conf
+				fgroup.HTTPSRedirMap.AppendHostname(host.Hostname+path.Path, yesno[hasSSLRedirect])
 				var aliasName, aliasRegex string
 				// TODO warn in logs about ignoring alias name due to hostname colision
 				if host.Alias.AliasName != "" && c.FindHost(host.Alias.AliasName) == nil {
@@ -329,7 +330,7 @@ func (c *config) BuildFrontendGroup() error {
 					f.HostBackendsMap.AppendAliasName(aliasName, back)
 					f.HostBackendsMap.AppendAliasRegex(aliasRegex, back)
 				}
-				if !backend.SSLRedirect {
+				if !hasSSLRedirect {
 					fgroup.HTTPFrontsMap.AppendHostname(base, back)
 				}
 				var ns string

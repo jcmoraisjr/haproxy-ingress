@@ -248,11 +248,12 @@ backend {{ $backend.ID }}
 
 {{- /*------------------------------------*/}}
 {{- if $backend.SSL.HasTLSAuth }}
-    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-CN   %{+Q}[ssl_c_s_dn(cn)]{{ if not $backend.SSLRedirect }}   if { ssl_fc }{{ end }}
-    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-DN   %{+Q}[ssl_c_s_dn]{{ if not $backend.SSLRedirect }}       if { ssl_fc }{{ end }}
-    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1 %{+Q}[ssl_c_sha1,hex]{{ if not $backend.SSLRedirect }}   if { ssl_fc }{{ end }}
+{{- $needSSLACL := not $backend.HasSSLRedirect }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-CN   %{+Q}[ssl_c_s_dn(cn)]{{ if $needSSLACL }}   if { ssl_fc }{{ end }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-DN   %{+Q}[ssl_c_s_dn]{{ if $needSSLACL }}       if { ssl_fc }{{ end }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1 %{+Q}[ssl_c_sha1,hex]{{ if $needSSLACL }}   if { ssl_fc }{{ end }}
 {{- if $backend.SSL.AddCertHeader }}
-    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-Cert %{+Q}[ssl_c_der,base64]{{ if not $backend.SSLRedirect }} if { ssl_fc }{{ end }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-Cert %{+Q}[ssl_c_der,base64]{{ if $needSSLACL }} if { ssl_fc }{{ end }}
 {{- end }}
 {{- end }}
 
@@ -322,11 +323,12 @@ backend {{ $backend.ID }}
 {{- $hsts := $hstsCfg.Config }}
 {{- if $hsts.Enabled }}
 {{- $paths := $hstsCfg.Paths }}
+{{- $needSSLACL := not ($backend.HasSSLRedirectPaths $paths) }}
     http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}
         {{- if $hsts.Subdomains }}; includeSubDomains{{ end }}
         {{- if $hsts.Preload }}; preload{{ end }}"
-        {{- if or (not $backend.SSLRedirect) $needACL }} if
-            {{- if not $backend.SSLRedirect }} { ssl_fc }{{ end }}
+        {{- if or $needSSLACL $needACL }} if
+            {{- if $needSSLACL }} { ssl_fc }{{ end }}
             {{- if $needACL }} { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
         {{- end }}
 {{- end }}

@@ -869,6 +869,97 @@ func TestRewriteURL(t *testing.T) {
 	}
 }
 
+func TestSSLRedirect(t *testing.T) {
+	testCases := []struct {
+		annDefault map[string]string
+		ann        map[string]map[string]string
+		addPaths   []string
+		expected   []*hatypes.BackendConfigBool
+		source     Source
+		logging    string
+	}{
+		// 0
+		{
+			addPaths: []string{"/"},
+			expected: []*hatypes.BackendConfigBool{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: false,
+				},
+			},
+		},
+		// 1
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackSSLRedirect: "true",
+				},
+			},
+			expected: []*hatypes.BackendConfigBool{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: true,
+				},
+			},
+		},
+		// 2
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackSSLRedirect: "invalid",
+				},
+			},
+			expected: []*hatypes.BackendConfigBool{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: false,
+				},
+			},
+			source:  Source{Namespace: "default", Name: "ing1", Type: "ingress"},
+			logging: `WARN ignoring invalid bool expression on ingress 'default/ing1': invalid`,
+		},
+		// 3
+		{
+			addPaths: []string{"/other"},
+			annDefault: map[string]string{
+				ingtypes.BackSSLRedirect: "false",
+			},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackSSLRedirect: "true",
+				},
+				"/url": {
+					ingtypes.BackSSLRedirect: "false",
+				},
+				"/path": {
+					ingtypes.BackSSLRedirect: "no-bool",
+				},
+			},
+			expected: []*hatypes.BackendConfigBool{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: true,
+				},
+				{
+					Paths:  createBackendPaths("/other", "/path", "/url"),
+					Config: false,
+				},
+			},
+			source:  Source{Namespace: "system1", Name: "app", Type: "service"},
+			logging: `WARN ignoring invalid bool expression on service 'system1/app': no-bool`,
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createBackendMappingData("default/app", &test.source, test.annDefault, test.ann, test.addPaths)
+		u := c.createUpdater()
+		u.buildBackendSSLRedirect(d)
+		c.compareObjects("sslredirect", i, d.backend.SSLRedirect, test.expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
 func TestWAF(t *testing.T) {
 	testCase := []struct {
 		waf      string
