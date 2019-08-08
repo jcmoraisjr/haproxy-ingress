@@ -577,7 +577,7 @@ INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not refe
 func TestHSTS(t *testing.T) {
 	testCases := []struct {
 		paths      []string
-		source     *Source
+		source     Source
 		annDefault map[string]string
 		ann        map[string]map[string]string
 		expected   []*hatypes.BackendConfigHSTS
@@ -643,8 +643,8 @@ func TestHSTS(t *testing.T) {
 					},
 				},
 			},
-			source:  &Source{Namespace: "default", Name: "ing1", Type: "ingress"},
-			logging: `WARN ignoring key 'hsts-preload' for backend 'default/ing1': strconv.ParseBool: parsing "not-valid-bool": invalid syntax`,
+			source:  Source{Namespace: "default", Name: "ing1", Type: "ingress"},
+			logging: `WARN ignoring invalid bool expression on ingress 'default/ing1': not-valid-bool`,
 		},
 		// 2
 		{
@@ -664,7 +664,7 @@ func TestHSTS(t *testing.T) {
 			d.backend.AddHostPath("", path)
 		}
 		for uri, ann := range test.ann {
-			d.mapper.AddAnnotations(test.source, uri, ann)
+			d.mapper.AddAnnotations(&test.source, uri, ann)
 		}
 		u := c.createUpdater()
 		u.buildBackendHSTS(d)

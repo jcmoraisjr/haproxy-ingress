@@ -99,10 +99,20 @@ func (c *Mapper) AddAnnotation(source *Source, hostpath, key, value string) bool
 			}
 		}
 	}
+	var realValue string
+	var ok bool
+	validator, found := validators[key]
+	if found {
+		if realValue, ok = validator(validate{logger: c.logger, source: source, value: value}); !ok {
+			return false
+		}
+	} else {
+		realValue = value
+	}
 	annMaps = append(annMaps, &Map{
 		Source: source,
 		URI:    hostpath,
-		Value:  value,
+		Value:  realValue,
 	})
 	c.maps[key] = annMaps
 	return true
@@ -251,7 +261,7 @@ func (c *Mapper) GetIntFromMap(backend *hatypes.Backend, config *BackendConfig, 
 //      or default) so the config reader `Get<Type>FromMap()`` can
 //      distinguish between `undeclared` and `declared empty`.
 //
-func (c *Mapper) GetBackendConfig(backend *hatypes.Backend, keys ...string) []*BackendConfig {
+func (c *Mapper) GetBackendConfig(backend *hatypes.Backend, keys []string) []*BackendConfig {
 	// all backend paths need to be declared, filling up previously with default values
 	rawConfig := make(map[string]map[string]string, len(backend.Paths))
 	for _, path := range backend.Paths {
@@ -270,7 +280,7 @@ func (c *Mapper) GetBackendConfig(backend *hatypes.Backend, keys ...string) []*B
 				// skip default value
 				if m.URI != "" {
 					if _, found := rawConfig[m.URI]; !found {
-						panic(fmt.Sprintf("backend '%s' is missing hostname/path '%s'", backend.Name, m.URI))
+						panic(fmt.Sprintf("backend '%s/%s' is missing hostname/path '%s'", backend.Namespace, backend.Name, m.URI))
 					}
 					rawConfig[m.URI][key] = m.Value
 				}
@@ -310,7 +320,7 @@ func findConfig(config []*BackendConfig, kv map[string]string) *BackendConfig {
 
 // GetBackendConfigStr ...
 func (c *Mapper) GetBackendConfigStr(backend *hatypes.Backend, key string) []*hatypes.BackendConfigStr {
-	rawConfig := c.GetBackendConfig(backend, key)
+	rawConfig := c.GetBackendConfig(backend, []string{key})
 	config := make([]*hatypes.BackendConfigStr, len(rawConfig))
 	for i, cfg := range rawConfig {
 		config[i] = &hatypes.BackendConfigStr{

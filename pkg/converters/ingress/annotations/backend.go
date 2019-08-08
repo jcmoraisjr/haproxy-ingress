@@ -351,7 +351,8 @@ func (c *updater) buildBackendDynamic(d *backData) {
 
 func (c *updater) buildBackendHSTS(d *backData) {
 	rawHSTSList := d.mapper.GetBackendConfig(d.backend,
-		ingtypes.BackHSTS, ingtypes.BackHSTSMaxAge, ingtypes.BackHSTSPreload, ingtypes.BackHSTSIncludeSubdomains)
+		[]string{ingtypes.BackHSTS, ingtypes.BackHSTSMaxAge, ingtypes.BackHSTSPreload, ingtypes.BackHSTSIncludeSubdomains},
+	)
 	for _, rawHSTS := range rawHSTSList {
 		d.backend.HSTS = append(d.backend.HSTS, &hatypes.BackendConfigHSTS{
 			Paths: rawHSTS.Paths,

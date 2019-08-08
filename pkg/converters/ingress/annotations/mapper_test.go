@@ -298,10 +298,12 @@ func TestGetDefault(t *testing.T) {
 
 func TestGetBackendConfig(t *testing.T) {
 	testCases := []struct {
+		source     Source
 		annDefault map[string]string
 		keyValues  map[string]map[string]string
 		getKeys    []string
 		expected   []*BackendConfig
+		logging    string
 	}{
 		// 0
 		{
@@ -343,6 +345,9 @@ func TestGetBackendConfig(t *testing.T) {
 		},
 		// 2
 		{
+			annDefault: map[string]string{
+				"ann-1": "0",
+			},
 			getKeys: []string{"ann-1", "ann-2"},
 			keyValues: map[string]map[string]string{
 				"ann-1": {
@@ -369,6 +374,7 @@ func TestGetBackendConfig(t *testing.T) {
 				{
 					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{Path: "/path"}),
 					Config: map[string]string{
+						"ann-1": "0",
 						"ann-2": "20",
 					},
 				},
@@ -398,6 +404,8 @@ func TestGetBackendConfig(t *testing.T) {
 		{
 			annDefault: map[string]string{
 				"ann-1": "5",
+				"ann-2": "0",
+				"ann-3": "0",
 			},
 			keyValues: map[string]map[string]string{
 				"ann-1": {
@@ -413,6 +421,8 @@ func TestGetBackendConfig(t *testing.T) {
 					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{Path: "/"}),
 					Config: map[string]string{
 						"ann-1": "10",
+						"ann-2": "0",
+						"ann-3": "0",
 					},
 				},
 				{
@@ -420,11 +430,37 @@ func TestGetBackendConfig(t *testing.T) {
 					Config: map[string]string{
 						"ann-1": "5",
 						"ann-2": "20",
+						"ann-3": "0",
 					},
 				},
 			},
 		},
+		// 5
+		{
+			annDefault: map[string]string{
+				"ann-1": "0",
+			},
+			keyValues: map[string]map[string]string{
+				"ann-1": {
+					"/":    "err",
+					"/url": "0",
+				},
+			},
+			getKeys: []string{"ann-1"},
+			expected: []*BackendConfig{
+				{
+					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{Path: "/"}, &hatypes.BackendPath{Path: "/url"}),
+					Config: map[string]string{
+						"ann-1": "0",
+					},
+				},
+			},
+			source:  Source{Namespace: "default", Name: "ing1", Type: "service"},
+			logging: `WARN ignoring invalid int expression on service 'default/ing1': err`,
+		},
 	}
+	validators["ann-1"] = validateInt
+	defer delete(validators, "ann-1")
 	for i, test := range testCases {
 		c := setup(t)
 		b := c.createBackendData("default", "app", map[string]string{}, test.annDefault)
@@ -435,10 +471,10 @@ func TestGetBackendConfig(t *testing.T) {
 		}
 		for key, values := range test.keyValues {
 			for url, value := range values {
-				b.mapper.AddAnnotation(&Source{}, url, key, value)
+				b.mapper.AddAnnotation(&test.source, url, key, value)
 			}
 		}
-		config := b.mapper.GetBackendConfig(b.backend, test.getKeys...)
+		config := b.mapper.GetBackendConfig(b.backend, test.getKeys)
 		for _, cfg := range config {
 			for i := range cfg.Paths.Items {
 				cfg.Paths.Items[i].ID = ""
@@ -448,6 +484,7 @@ func TestGetBackendConfig(t *testing.T) {
 		if !reflect.DeepEqual(config, test.expected) {
 			t.Errorf("expected and actual differ on '%d' - expected: %+v - actual: %+v", i, test.expected, config)
 		}
+		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
 }
