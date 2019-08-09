@@ -711,7 +711,7 @@ func TestHSTS(t *testing.T) {
 				},
 			},
 			source:  Source{Namespace: "default", Name: "ing1", Type: "ingress"},
-			logging: `WARN ignoring invalid bool expression on ingress 'default/ing1': not-valid-bool`,
+			logging: `WARN ignoring invalid bool expression on ingress 'default/ing1' key 'hsts-preload': not-valid-bool`,
 		},
 		// 2
 		{
@@ -980,7 +980,7 @@ func TestSSLRedirect(t *testing.T) {
 				},
 			},
 			source:  Source{Namespace: "default", Name: "ing1", Type: "ingress"},
-			logging: `WARN ignoring invalid bool expression on ingress 'default/ing1': invalid`,
+			logging: `WARN ignoring invalid bool expression on ingress 'default/ing1' key 'ssl-redirect': invalid`,
 		},
 		// 3
 		{
@@ -1010,7 +1010,7 @@ func TestSSLRedirect(t *testing.T) {
 				},
 			},
 			source:  Source{Namespace: "system1", Name: "app", Type: "service"},
-			logging: `WARN ignoring invalid bool expression on service 'system1/app': no-bool`,
+			logging: `WARN ignoring invalid bool expression on service 'system1/app' key 'ssl-redirect': no-bool`,
 		},
 	}
 	for i, test := range testCases {

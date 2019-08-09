@@ -25,11 +25,11 @@ import (
 )
 
 type ann struct {
-	src      *Source
-	uri      string
-	key      string
-	val      string
-	expAdded bool
+	src         *Source
+	uri         string
+	key         string
+	val         string
+	expConflict bool
 }
 
 var (
@@ -67,8 +67,8 @@ func TestAddAnnotation(t *testing.T) {
 		// 0
 		{
 			ann: []ann{
-				{srcing1, "/", "auth-basic", "default/basic1", true},
-				{srcing2, "/url", "auth-basic", "default/basic2", true},
+				{srcing1, "/", "auth-basic", "default/basic1", false},
+				{srcing2, "/url", "auth-basic", "default/basic2", false},
 			},
 			annPrefix: "ing/",
 			getKey:    "auth-basic",
@@ -78,10 +78,10 @@ func TestAddAnnotation(t *testing.T) {
 		// 1
 		{
 			ann: []ann{
-				{srcing1, "/", "auth-basic", "default/basic1", true},
-				{srcing2, "/url", "auth-basic", "default/basic2", true},
-				{srcing3, "/path", "auth-basic", "default/basic3", true},
-				{srcing4, "/app", "auth-basic", "default/basic4", true},
+				{srcing1, "/", "auth-basic", "default/basic1", false},
+				{srcing2, "/url", "auth-basic", "default/basic2", false},
+				{srcing3, "/path", "auth-basic", "default/basic3", false},
+				{srcing4, "/app", "auth-basic", "default/basic4", false},
 			},
 			annPrefix: "ing.k8s.io/",
 			getKey:    "auth-basic",
@@ -91,10 +91,10 @@ func TestAddAnnotation(t *testing.T) {
 		// 2
 		{
 			ann: []ann{
-				{srcing1, "/", "auth-basic", "default/basic1", true},
-				{srcing2, "/url", "auth-basic", "default/basic1", true},
-				{srcing3, "/path", "auth-basic", "default/basic1", true},
-				{srcing4, "/app", "auth-basic", "default/basic2", true},
+				{srcing1, "/", "auth-basic", "default/basic1", false},
+				{srcing2, "/url", "auth-basic", "default/basic1", false},
+				{srcing3, "/path", "auth-basic", "default/basic1", false},
+				{srcing4, "/app", "auth-basic", "default/basic2", false},
 			},
 			annPrefix: "ing.k8s.io/",
 			getKey:    "auth-basic",
@@ -104,8 +104,8 @@ func TestAddAnnotation(t *testing.T) {
 		// 3
 		{
 			ann: []ann{
-				{srcing1, "/", "auth-basic", "default/basic1", true},
-				{srcing2, "/", "auth-basic", "default/basic2", false},
+				{srcing1, "/", "auth-basic", "default/basic1", false},
+				{srcing2, "/", "auth-basic", "default/basic2", true},
 			},
 			getKey: "auth-basic",
 			expVal: "default/basic1",
@@ -113,8 +113,8 @@ func TestAddAnnotation(t *testing.T) {
 		// 4
 		{
 			ann: []ann{
-				{srcing1, "/", "auth-basic", "default/basic1", true},
-				{srcing2, "/url", "auth-basic", "default/basic1", true},
+				{srcing1, "/", "auth-basic", "default/basic1", false},
+				{srcing2, "/url", "auth-basic", "default/basic1", false},
 			},
 			getKey: "auth-basic",
 			expVal: "default/basic1",
@@ -130,8 +130,8 @@ func TestAddAnnotation(t *testing.T) {
 		c := setup(t)
 		mapper := NewMapBuilder(c.logger, test.annPrefix, map[string]string{}).NewMapper()
 		for j, ann := range test.ann {
-			if added := mapper.AddAnnotation(ann.src, ann.uri, ann.key, ann.val); added != ann.expAdded {
-				t.Errorf("expect added '%t' on '// %d (%d)', but was '%t'", ann.expAdded, i, j, added)
+			if conflict := mapper.addAnnotation(ann.src, ann.uri, ann.key, ann.val); conflict != ann.expConflict {
+				t.Errorf("expect conflict '%t' on '// %d (%d)', but was '%t'", ann.expConflict, i, j, conflict)
 			}
 		}
 		if _, _, found := mapper.GetStr("error"); found {
@@ -161,8 +161,8 @@ func TestGetAnnotation(t *testing.T) {
 		// 0
 		{
 			ann: []ann{
-				{srcing1, "/", "auth-basic", "default/basic1", true},
-				{srcing2, "/url", "auth-basic", "default/basic2", true},
+				{srcing1, "/", "auth-basic", "default/basic1", false},
+				{srcing2, "/url", "auth-basic", "default/basic2", false},
 			},
 			getKey: "auth-basic",
 			expAnnMap: []*Map{
@@ -173,9 +173,9 @@ func TestGetAnnotation(t *testing.T) {
 		// 1
 		{
 			ann: []ann{
-				{srcing1, "/", "auth-type", "basic", true},
-				{srcing1, "/", "auth-basic", "default/basic1", true},
-				{srcing2, "/", "auth-basic", "default/basic2", false},
+				{srcing1, "/", "auth-type", "basic", false},
+				{srcing1, "/", "auth-basic", "default/basic1", false},
+				{srcing2, "/", "auth-basic", "default/basic2", true},
 			},
 			getKey: "auth-basic",
 			expAnnMap: []*Map{
@@ -185,9 +185,9 @@ func TestGetAnnotation(t *testing.T) {
 		// 2
 		{
 			ann: []ann{
-				{srcing1, "/", "auth-type", "basic", true},
-				{srcing1, "/", "auth-basic", "default/basic1", true},
-				{srcing2, "/", "auth-basic", "default/basic2", false},
+				{srcing1, "/", "auth-type", "basic", false},
+				{srcing1, "/", "auth-basic", "default/basic1", false},
+				{srcing2, "/", "auth-basic", "default/basic2", true},
 			},
 			getKey: "auth-type",
 			expAnnMap: []*Map{
@@ -199,8 +199,8 @@ func TestGetAnnotation(t *testing.T) {
 		c := setup(t)
 		mapper := NewMapBuilder(c.logger, test.annPrefix, map[string]string{}).NewMapper()
 		for j, ann := range test.ann {
-			if added := mapper.AddAnnotation(ann.src, ann.uri, ann.key, ann.val); added != ann.expAdded {
-				t.Errorf("expect added '%t' on '// %d (%d)', but was '%t'", ann.expAdded, i, j, added)
+			if conflict := mapper.addAnnotation(ann.src, ann.uri, ann.key, ann.val); conflict != ann.expConflict {
+				t.Errorf("expect conflict '%t' on '// %d (%d)', but was '%t'", ann.expConflict, i, j, conflict)
 			}
 		}
 		annMap, found := mapper.GetStrMap(test.getKey)
@@ -456,7 +456,7 @@ func TestGetBackendConfig(t *testing.T) {
 				},
 			},
 			source:  Source{Namespace: "default", Name: "ing1", Type: "service"},
-			logging: `WARN ignoring invalid int expression on service 'default/ing1': err`,
+			logging: `WARN ignoring invalid int expression on service 'default/ing1' key 'ann-1': err`,
 		},
 	}
 	validators["ann-1"] = validateInt
@@ -471,7 +471,7 @@ func TestGetBackendConfig(t *testing.T) {
 		}
 		for key, values := range test.keyValues {
 			for url, value := range values {
-				b.mapper.AddAnnotation(&test.source, url, key, value)
+				b.mapper.addAnnotation(&test.source, url, key, value)
 			}
 		}
 		config := b.mapper.GetBackendConfig(b.backend, test.getKeys)
@@ -547,7 +547,7 @@ func TestGetBackendConfigString(t *testing.T) {
 		b := c.createBackendData("default/app", &Source{}, map[string]string{}, test.annDefault)
 		for path, value := range test.values {
 			b.backend.AddHostPath("", path)
-			b.mapper.AddAnnotation(&Source{}, path, key, value)
+			b.mapper.addAnnotation(&Source{}, path, key, value)
 		}
 		config := b.mapper.GetBackendConfigStr(b.backend, key)
 		for _, cfg := range config {

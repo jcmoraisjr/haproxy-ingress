@@ -195,9 +195,9 @@ func (c *converter) addHost(hostname string, source *annotations.Source, ann map
 		mapper = c.mapBuilder.NewMapper()
 		c.hostAnnotations[host] = mapper
 	}
-	skipped := mapper.AddAnnotations(source, hostname+"/", ann)
-	if len(skipped) > 0 {
-		c.logger.Warn("skipping host annotation(s) from %v due to conflict: %v", source, skipped)
+	conflict := mapper.AddAnnotations(source, hostname+"/", ann)
+	if len(conflict) > 0 {
+		c.logger.Warn("skipping host annotation(s) from %v due to conflict: %v", source, conflict)
 	}
 	return host
 }
@@ -237,10 +237,10 @@ func (c *converter) addBackend(source *annotations.Source, hostpath, fullSvcName
 		c.backendAnnotations[backend] = mapper
 	}
 	// Merging Ingress annotations
-	skipped := mapper.AddAnnotations(source, hostpath, ann)
-	if len(skipped) > 0 {
+	conflict := mapper.AddAnnotations(source, hostpath, ann)
+	if len(conflict) > 0 {
 		c.logger.Warn("skipping backend '%s:%s' annotation(s) from %v due to conflict: %v",
-			svcName, svcPort, source, skipped)
+			svcName, svcPort, source, conflict)
 	}
 	return backend, nil
 }

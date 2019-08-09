@@ -83,8 +83,8 @@ func (b *MapBuilder) NewMapper() *Mapper {
 	}
 }
 
-// AddAnnotation ...
-func (c *Mapper) AddAnnotation(source *Source, hostpath, key, value string) bool {
+func (c *Mapper) addAnnotation(source *Source, hostpath, key, value string) (conflict bool) {
+	conflict = false
 	annMaps, found := c.maps[key]
 	if hostpath == "" {
 		// empty hostpath means default value
@@ -93,9 +93,7 @@ func (c *Mapper) AddAnnotation(source *Source, hostpath, key, value string) bool
 	if found {
 		for _, annMap := range annMaps {
 			if annMap.URI == hostpath {
-				// true if value was used -- either adding or
-				// matching a previous one. Map.Source is ignored here.
-				return annMap.Value == value
+				return annMap.Value != value
 			}
 		}
 	}
@@ -103,8 +101,8 @@ func (c *Mapper) AddAnnotation(source *Source, hostpath, key, value string) bool
 	var ok bool
 	validator, found := validators[key]
 	if found {
-		if realValue, ok = validator(validate{logger: c.logger, source: source, value: value}); !ok {
-			return false
+		if realValue, ok = validator(validate{logger: c.logger, source: source, key: key, value: value}); !ok {
+			return
 		}
 	} else {
 		realValue = value
@@ -115,18 +113,18 @@ func (c *Mapper) AddAnnotation(source *Source, hostpath, key, value string) bool
 		Value:  realValue,
 	})
 	c.maps[key] = annMaps
-	return true
+	return
 }
 
 // AddAnnotations ...
-func (c *Mapper) AddAnnotations(source *Source, hostpath string, ann map[string]string) (skipped []string) {
-	skipped = make([]string, 0, len(ann))
+func (c *Mapper) AddAnnotations(source *Source, hostpath string, ann map[string]string) (conflicts []string) {
+	conflicts = make([]string, 0, len(ann))
 	for key, value := range ann {
-		if added := c.AddAnnotation(source, hostpath, key, value); !added {
-			skipped = append(skipped, key)
+		if conflict := c.addAnnotation(source, hostpath, key, value); conflict {
+			conflicts = append(conflicts, key)
 		}
 	}
-	return skipped
+	return conflicts
 }
 
 // GetStrMap ...

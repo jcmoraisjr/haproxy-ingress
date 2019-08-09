@@ -27,6 +27,7 @@ import (
 type validate struct {
 	logger types.Logger
 	source *Source
+	key    string
 	value  string
 }
 
@@ -85,7 +86,7 @@ func validateBool(v validate) (string, bool) {
 	if res, err := strconv.ParseBool(v.value); err == nil {
 		return strconv.FormatBool(res), true
 	}
-	v.logger.Warn("ignoring invalid bool expression on %s: %s", v.source, v.value)
+	v.logger.Warn("ignoring invalid bool expression on %s key '%s': %s", v.source, v.key, v.value)
 	return "", false
 }
 
@@ -93,6 +94,6 @@ func validateInt(v validate) (string, bool) {
 	if res, err := strconv.Atoi(v.value); err == nil {
 		return strconv.Itoa(res), true
 	}
-	v.logger.Warn("ignoring invalid int expression on %s: %s", v.source, v.value)
+	v.logger.Warn("ignoring invalid int expression on %s key '%s': %s", v.source, v.key, v.value)
 	return "", false
 }
