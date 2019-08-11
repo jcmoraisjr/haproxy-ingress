@@ -298,6 +298,7 @@ func TestGetDefault(t *testing.T) {
 
 func TestGetBackendConfig(t *testing.T) {
 	testCases := []struct {
+		paths      []string
 		source     Source
 		annDefault map[string]string
 		keyValues  map[string]map[string]string
@@ -308,16 +309,16 @@ func TestGetBackendConfig(t *testing.T) {
 		// 0
 		{
 			keyValues: map[string]map[string]string{
-				"ann-1": {
-					"/": "10",
+				"/": {
+					"ann-1": "10",
 				},
 			},
 			getKeys: []string{"ann-1"},
 			expected: []*BackendConfig{
 				{
-					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{Path: "/"}),
-					Config: map[string]string{
-						"ann-1": "10",
+					Paths: createBackendPaths("/"),
+					Config: map[string]*ConfigValue{
+						"ann-1": &ConfigValue{Value: "10"},
 					},
 				},
 			},
@@ -325,20 +326,18 @@ func TestGetBackendConfig(t *testing.T) {
 		// 1
 		{
 			keyValues: map[string]map[string]string{
-				"ann-1": {
-					"/": "10",
-				},
-				"ann-2": {
-					"/": "10",
+				"/": {
+					"ann-1": "10",
+					"ann-2": "10",
 				},
 			},
 			getKeys: []string{"ann-1", "ann-2"},
 			expected: []*BackendConfig{
 				{
-					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{Path: "/"}),
-					Config: map[string]string{
-						"ann-1": "10",
-						"ann-2": "10",
+					Paths: createBackendPaths("/"),
+					Config: map[string]*ConfigValue{
+						"ann-1": &ConfigValue{Value: "10"},
+						"ann-2": &ConfigValue{Value: "10"},
 					},
 				},
 			},
@@ -350,32 +349,31 @@ func TestGetBackendConfig(t *testing.T) {
 			},
 			getKeys: []string{"ann-1", "ann-2"},
 			keyValues: map[string]map[string]string{
-				"ann-1": {
-					"/":    "10",
-					"/url": "10",
+				"/": {
+					"ann-1": "10",
+					"ann-2": "20",
 				},
-				"ann-2": {
-					"/":     "20",
-					"/url":  "20",
-					"/path": "20",
+				"/url": {
+					"ann-1": "10",
+					"ann-2": "20",
+				},
+				"/path": {
+					"ann-2": "20",
 				},
 			},
 			expected: []*BackendConfig{
 				{
-					Paths: hatypes.NewBackendPaths(
-						&hatypes.BackendPath{Path: "/"},
-						&hatypes.BackendPath{Path: "/url"},
-					),
-					Config: map[string]string{
-						"ann-1": "10",
-						"ann-2": "20",
+					Paths: createBackendPaths("/", "/url"),
+					Config: map[string]*ConfigValue{
+						"ann-1": &ConfigValue{Value: "10"},
+						"ann-2": &ConfigValue{Value: "20"},
 					},
 				},
 				{
-					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{Path: "/path"}),
-					Config: map[string]string{
-						"ann-1": "0",
-						"ann-2": "20",
+					Paths: createBackendPaths("/path"),
+					Config: map[string]*ConfigValue{
+						"ann-1": &ConfigValue{Value: "0"},
+						"ann-2": &ConfigValue{Value: "20"},
 					},
 				},
 			},
@@ -386,16 +384,16 @@ func TestGetBackendConfig(t *testing.T) {
 				"ann-1": "5",
 			},
 			keyValues: map[string]map[string]string{
-				"ann-1": {
-					"/url": "10",
+				"/url": {
+					"ann-1": "10",
 				},
 			},
 			getKeys: []string{"ann-1"},
 			expected: []*BackendConfig{
 				{
-					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{Path: "/url"}),
-					Config: map[string]string{
-						"ann-1": "10",
+					Paths: createBackendPaths("/url"),
+					Config: map[string]*ConfigValue{
+						"ann-1": &ConfigValue{Value: "10"},
 					},
 				},
 			},
@@ -408,29 +406,29 @@ func TestGetBackendConfig(t *testing.T) {
 				"ann-3": "0",
 			},
 			keyValues: map[string]map[string]string{
-				"ann-1": {
-					"/": "10",
+				"/": {
+					"ann-1": "10",
 				},
-				"ann-2": {
-					"/url": "20",
+				"/url": {
+					"ann-2": "20",
 				},
 			},
 			getKeys: []string{"ann-1", "ann-2", "ann-3"},
 			expected: []*BackendConfig{
 				{
-					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{Path: "/"}),
-					Config: map[string]string{
-						"ann-1": "10",
-						"ann-2": "0",
-						"ann-3": "0",
+					Paths: createBackendPaths("/"),
+					Config: map[string]*ConfigValue{
+						"ann-1": &ConfigValue{Value: "10"},
+						"ann-2": &ConfigValue{Value: "0"},
+						"ann-3": &ConfigValue{Value: "0"},
 					},
 				},
 				{
-					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{Path: "/url"}),
-					Config: map[string]string{
-						"ann-1": "5",
-						"ann-2": "20",
-						"ann-3": "0",
+					Paths: createBackendPaths("/url"),
+					Config: map[string]*ConfigValue{
+						"ann-1": &ConfigValue{Value: "5"},
+						"ann-2": &ConfigValue{Value: "20"},
+						"ann-3": &ConfigValue{Value: "0"},
 					},
 				},
 			},
@@ -441,17 +439,19 @@ func TestGetBackendConfig(t *testing.T) {
 				"ann-1": "0",
 			},
 			keyValues: map[string]map[string]string{
-				"ann-1": {
-					"/":    "err",
-					"/url": "0",
+				"/": {
+					"ann-1": "err",
+				},
+				"/url": {
+					"ann-1": "0",
 				},
 			},
 			getKeys: []string{"ann-1"},
 			expected: []*BackendConfig{
 				{
-					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{Path: "/"}, &hatypes.BackendPath{Path: "/url"}),
-					Config: map[string]string{
-						"ann-1": "0",
+					Paths: createBackendPaths("/", "/url"),
+					Config: map[string]*ConfigValue{
+						"ann-1": &ConfigValue{Value: "0"},
 					},
 				},
 			},
@@ -463,27 +463,18 @@ func TestGetBackendConfig(t *testing.T) {
 	defer delete(validators, "ann-1")
 	for i, test := range testCases {
 		c := setup(t)
-		b := c.createBackendData("default/app", &Source{}, map[string]string{}, test.annDefault)
-		for _, kv := range test.keyValues {
-			for path := range kv {
-				b.backend.AddHostPath("", path)
-			}
-		}
-		for key, values := range test.keyValues {
-			for url, value := range values {
-				b.mapper.addAnnotation(&test.source, url, key, value)
-			}
-		}
-		config := b.mapper.GetBackendConfig(b.backend, test.getKeys)
+		d := c.createBackendMappingData("default/app", &test.source, test.annDefault, test.keyValues, test.paths)
+		config := d.mapper.GetBackendConfig(d.backend, test.getKeys)
 		for _, cfg := range config {
-			for i := range cfg.Paths.Items {
-				cfg.Paths.Items[i].ID = ""
-				cfg.Paths.Items[i].Hostpath = ""
+			for _, value := range cfg.Config {
+				// Source is inconsistent and irrelevant here
+				value.Source = nil
+			}
+			for _, value := range cfg.Config {
+				value.Source = nil
 			}
 		}
-		if !reflect.DeepEqual(config, test.expected) {
-			t.Errorf("expected and actual differ on '%d' - expected: %+v - actual: %+v", i, test.expected, config)
-		}
+		c.compareObjects("backend config", i, config, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}

@@ -18,7 +18,6 @@ package annotations
 
 import (
 	"fmt"
-	"reflect"
 	"sort"
 	"strconv"
 
@@ -63,7 +62,13 @@ type Source struct {
 // BackendConfig ...
 type BackendConfig struct {
 	Paths  hatypes.BackendPaths
-	Config map[string]string
+	Config map[string]*ConfigValue
+}
+
+// ConfigValue ...
+type ConfigValue struct {
+	Source *Source
+	Value  string
 }
 
 // NewMapBuilder ...
@@ -173,7 +178,7 @@ func (c *Mapper) GetStrValue(key string) string {
 // GetStrFromMap ...
 func (c *Mapper) GetStrFromMap(config *BackendConfig, key string) (string, bool) {
 	if value, found := config.Config[key]; found {
-		return value, true
+		return value.Value, true
 	}
 	value, found := c.annDefaults[key]
 	return value, found
@@ -261,12 +266,14 @@ func (c *Mapper) GetIntFromMap(backend *hatypes.Backend, config *BackendConfig, 
 //
 func (c *Mapper) GetBackendConfig(backend *hatypes.Backend, keys []string) []*BackendConfig {
 	// all backend paths need to be declared, filling up previously with default values
-	rawConfig := make(map[string]map[string]string, len(backend.Paths))
+	rawConfig := make(map[string]map[string]*ConfigValue, len(backend.Paths))
 	for _, path := range backend.Paths {
-		kv := make(map[string]string, len(keys))
+		kv := make(map[string]*ConfigValue, len(keys))
 		for _, key := range keys {
 			if value, found := c.annDefaults[key]; found {
-				kv[key] = value
+				kv[key] = &ConfigValue{
+					Value: value,
+				}
 			}
 		}
 		rawConfig[path.Hostpath] = kv
@@ -277,10 +284,14 @@ func (c *Mapper) GetBackendConfig(backend *hatypes.Backend, keys []string) []*Ba
 			for _, m := range maps {
 				// skip default value
 				if m.URI != "" {
-					if _, found := rawConfig[m.URI]; !found {
+					if cfg, found := rawConfig[m.URI]; found {
+						cfg[key] = &ConfigValue{
+							Source: m.Source,
+							Value:  m.Value,
+						}
+					} else {
 						panic(fmt.Sprintf("backend '%s/%s' is missing hostname/path '%s'", backend.Namespace, backend.Name, m.URI))
 					}
-					rawConfig[m.URI][key] = m.Value
 				}
 			}
 		}
@@ -307,9 +318,9 @@ func (c *Mapper) GetBackendConfig(backend *hatypes.Backend, keys []string) []*Ba
 	return config
 }
 
-func findConfig(config []*BackendConfig, kv map[string]string) *BackendConfig {
+func findConfig(config []*BackendConfig, kv map[string]*ConfigValue) *BackendConfig {
 	for _, cfg := range config {
-		if reflect.DeepEqual(cfg.Config, kv) {
+		if cfg.ConfigEquals(kv) {
 			return cfg
 		}
 	}
@@ -321,7 +332,7 @@ func (c *Mapper) GetBackendConfigBool(backend *hatypes.Backend, key string) []*h
 	rawConfig := c.GetBackendConfig(backend, []string{key})
 	config := make([]*hatypes.BackendConfigBool, len(rawConfig))
 	for i, cfg := range rawConfig {
-		value, _ := strconv.ParseBool(cfg.Config[key])
+		value, _ := strconv.ParseBool(cfg.Get(key).Value)
 		config[i] = &hatypes.BackendConfigBool{
 			Paths:  cfg.Paths,
 			Config: value,
@@ -337,20 +348,51 @@ func (c *Mapper) GetBackendConfigStr(backend *hatypes.Backend, key string) []*ha
 	for i, cfg := range rawConfig {
 		config[i] = &hatypes.BackendConfigStr{
 			Paths:  cfg.Paths,
-			Config: cfg.Config[key],
+			Config: cfg.Get(key).Value,
 		}
 	}
 	return config
 }
 
+// ConfigEquals ...
+func (b *BackendConfig) ConfigEquals(other map[string]*ConfigValue) bool {
+	if len(b.Config) != len(other) {
+		return false
+	}
+	for key, value := range b.Config {
+		if otherValue, found := other[key]; !found {
+			return false
+		} else if value.Value != otherValue.Value {
+			return false
+		}
+	}
+	return true
+}
+
+// Get ...
+func (b *BackendConfig) Get(key string) *ConfigValue {
+	if configValue, found := b.Config[key]; found && configValue != nil {
+		return configValue
+	}
+	return &ConfigValue{}
+}
+
+// String ...
 func (b *BackendConfig) String() string {
 	return fmt.Sprintf("%+v", *b)
 }
 
+// String ...
+func (cv *ConfigValue) String() string {
+	return fmt.Sprintf("%+v", *cv)
+}
+
+// String ...
 func (m *Map) String() string {
 	return fmt.Sprintf("%+v", *m)
 }
 
+// String ...
 func (s *Source) String() string {
 	return s.Type + " '" + s.Namespace + "/" + s.Name + "'"
 }
