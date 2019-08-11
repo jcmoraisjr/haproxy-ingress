@@ -248,6 +248,9 @@ func (c *Mapper) GetIntFromMap(backend *hatypes.Backend, config *BackendConfig, 
 	return 0
 }
 
+// ConfigOverwrite ...
+type ConfigOverwrite func(values map[string]*ConfigValue) map[string]*ConfigValue
+
 // GetBackendConfig builds a generic BackendConfig using
 // annotation maps registered previously as its data source
 //
@@ -264,7 +267,7 @@ func (c *Mapper) GetIntFromMap(backend *hatypes.Backend, config *BackendConfig, 
 //      or default) so the config reader `Get<Type>FromMap()`` can
 //      distinguish between `undeclared` and `declared empty`.
 //
-func (c *Mapper) GetBackendConfig(backend *hatypes.Backend, keys []string) []*BackendConfig {
+func (c *Mapper) GetBackendConfig(backend *hatypes.Backend, keys []string, overwrite ConfigOverwrite) []*BackendConfig {
 	// all backend paths need to be declared, filling up previously with default values
 	rawConfig := make(map[string]map[string]*ConfigValue, len(backend.Paths))
 	for _, path := range backend.Paths {
@@ -301,12 +304,19 @@ func (c *Mapper) GetBackendConfig(backend *hatypes.Backend, keys []string) []*Ba
 	config := make([]*BackendConfig, 0, 1)
 	for uri, kv := range rawConfig {
 		path := backend.FindHostPath(uri)
-		if cfg := findConfig(config, kv); cfg != nil {
+		realKV := kv
+		if overwrite != nil {
+			realKV = overwrite(kv)
+			if realKV == nil {
+				realKV = map[string]*ConfigValue{}
+			}
+		}
+		if cfg := findConfig(config, realKV); cfg != nil {
 			cfg.Paths.Add(path)
 		} else {
 			config = append(config, &BackendConfig{
 				Paths:  hatypes.NewBackendPaths(path),
-				Config: kv,
+				Config: realKV,
 			})
 		}
 	}
@@ -329,7 +339,7 @@ func findConfig(config []*BackendConfig, kv map[string]*ConfigValue) *BackendCon
 
 // GetBackendConfigBool ...
 func (c *Mapper) GetBackendConfigBool(backend *hatypes.Backend, key string) []*hatypes.BackendConfigBool {
-	rawConfig := c.GetBackendConfig(backend, []string{key})
+	rawConfig := c.GetBackendConfig(backend, []string{key}, nil)
 	config := make([]*hatypes.BackendConfigBool, len(rawConfig))
 	for i, cfg := range rawConfig {
 		value, _ := strconv.ParseBool(cfg.Get(key).Value)
@@ -343,7 +353,7 @@ func (c *Mapper) GetBackendConfigBool(backend *hatypes.Backend, key string) []*h
 
 // GetBackendConfigStr ...
 func (c *Mapper) GetBackendConfigStr(backend *hatypes.Backend, key string) []*hatypes.BackendConfigStr {
-	rawConfig := c.GetBackendConfig(backend, []string{key})
+	rawConfig := c.GetBackendConfig(backend, []string{key}, nil)
 	config := make([]*hatypes.BackendConfigStr, len(rawConfig))
 	for i, cfg := range rawConfig {
 		config[i] = &hatypes.BackendConfigStr{

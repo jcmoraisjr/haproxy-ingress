@@ -295,6 +295,7 @@ func (c *updater) buildBackendCors(d *backData) {
 			ingtypes.BackCorsExposeHeaders,
 			ingtypes.BackCorsMaxAge,
 		},
+		nil,
 	)
 	for _, cfg := range config {
 		if enabled := d.mapper.GetBoolFromMap(d.backend, cfg, ingtypes.BackCorsEnable); !enabled {
@@ -333,8 +334,10 @@ func (c *updater) buildBackendDynamic(d *backData) {
 }
 
 func (c *updater) buildBackendHSTS(d *backData) {
-	rawHSTSList := d.mapper.GetBackendConfig(d.backend,
+	rawHSTSList := d.mapper.GetBackendConfig(
+		d.backend,
 		[]string{ingtypes.BackHSTS, ingtypes.BackHSTSMaxAge, ingtypes.BackHSTSPreload, ingtypes.BackHSTSIncludeSubdomains},
+		nil,
 	)
 	for _, rawHSTS := range rawHSTSList {
 		d.backend.HSTS = append(d.backend.HSTS, &hatypes.BackendConfigHSTS{

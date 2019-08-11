@@ -303,6 +303,7 @@ func TestGetBackendConfig(t *testing.T) {
 		annDefault map[string]string
 		keyValues  map[string]map[string]string
 		getKeys    []string
+		overwrite  ConfigOverwrite
 		expected   []*BackendConfig
 		logging    string
 	}{
@@ -458,13 +459,34 @@ func TestGetBackendConfig(t *testing.T) {
 			source:  Source{Namespace: "default", Name: "ing1", Type: "service"},
 			logging: `WARN ignoring invalid int expression on service 'default/ing1' key 'ann-1': err`,
 		},
+		// 6
+		{
+			keyValues: map[string]map[string]string{
+				"/": {
+					"ann-1": "10",
+				},
+				"/sub": {
+					"ann-1": "20",
+				},
+			},
+			getKeys: []string{"ann-1"},
+			expected: []*BackendConfig{
+				{
+					Paths:  createBackendPaths("/", "/sub"),
+					Config: map[string]*ConfigValue{},
+				},
+			},
+			overwrite: func(values map[string]*ConfigValue) map[string]*ConfigValue {
+				return nil
+			},
+		},
 	}
 	validators["ann-1"] = validateInt
 	defer delete(validators, "ann-1")
 	for i, test := range testCases {
 		c := setup(t)
 		d := c.createBackendMappingData("default/app", &test.source, test.annDefault, test.keyValues, test.paths)
-		config := d.mapper.GetBackendConfig(d.backend, test.getKeys)
+		config := d.mapper.GetBackendConfig(d.backend, test.getKeys, test.overwrite)
 		for _, cfg := range config {
 			for _, value := range cfg.Config {
 				// Source is inconsistent and irrelevant here
