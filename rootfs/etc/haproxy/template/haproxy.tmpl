@@ -234,10 +234,15 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $backend.Userlist.Name }}
+{{- $needACL := gt (len $backend.AuthHTTP) 1 }}
+{{- range $authCfg := $backend.AuthHTTP }}
+{{- if $authCfg.UserlistName }}
     http-request auth
-        {{- if $backend.Userlist.Realm }} realm "{{ $backend.Userlist.Realm }}"{{ end }}
-        {{- "" }} if{{ if and $backend.HasCorsEnabled }} !METH_OPTIONS{{ end }} !{ http_auth({{ $backend.Userlist.Name }}) }
+        {{- if $authCfg.Realm }} realm "{{ $authCfg.Realm }}"{{ end }}
+        {{- "" }} if{{ if and $backend.HasCorsEnabled }} !METH_OPTIONS{{ end }}
+        {{- if $needACL }} { var(txn.pathID) {{ $authCfg.Paths.IDList }} }{{ end }}
+        {{- "" }} !{ http_auth({{ $authCfg.UserlistName }}) }
+{{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}

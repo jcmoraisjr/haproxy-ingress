@@ -166,7 +166,7 @@ func (b *Backend) HasSSLRedirectPaths(paths *BackendPaths) bool {
 func (b *Backend) NeedACL() bool {
 	return len(b.HSTS) > 1 ||
 		len(b.ProxyBodySize) > 1 || len(b.RewriteURL) > 1 || len(b.WhitelistHTTP) > 1 ||
-		len(b.Cors) > 1
+		len(b.Cors) > 1 || len(b.AuthHTTP) > 1
 }
 
 // IsEmpty ...
@@ -209,6 +209,11 @@ func (ep *TCPEndpoint) String() string {
 // String ...
 func (p *BackendPath) String() string {
 	return fmt.Sprintf("%+v", *p)
+}
+
+// String ...
+func (b *BackendConfigAuth) String() string {
+	return fmt.Sprintf("%+v", *b)
 }
 
 // String ...

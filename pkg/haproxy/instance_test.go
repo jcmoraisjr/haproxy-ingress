@@ -1429,12 +1429,21 @@ userlist default_auth2
 		b.Endpoints = []*hatypes.Endpoint{endpointS1}
 		h = c.config.AcquireHost("d1.local")
 		h.AddPath(b, "/")
+		h.AddPath(b, "/admin")
 
 		for _, list := range test.lists {
 			c.config.AddUserlist(list.name, list.users)
 		}
-		b.Userlist.Name = test.listname
-		b.Userlist.Realm = test.realm
+		b.AuthHTTP = []*hatypes.BackendConfigAuth{
+			{
+				Paths: hatypes.NewBackendPaths(b.FindHostPath("d1.local/")),
+			},
+			{
+				Paths:        hatypes.NewBackendPaths(b.FindHostPath("d1.local/admin")),
+				UserlistName: test.listname,
+				Realm:        test.realm,
+			},
+		}
 
 		var realm string
 		if test.realm != "" {
@@ -1447,7 +1456,10 @@ userlist default_auth2
 <<defaults>>` + test.config + `
 backend d1_app_8080
     mode http
-    http-request auth` + realm + ` if !{ http_auth(` + test.listname + `) }
+    # path01 = d1.local/
+    # path02 = d1.local/admin
+    http-request set-var(txn.pathID) base,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map,_nomatch)
+    http-request auth` + realm + ` if { var(txn.pathID) path02 } !{ http_auth(` + test.listname + `) }
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
 <<frontends-default>>

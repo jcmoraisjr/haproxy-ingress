@@ -122,55 +122,66 @@ func TestAffinity(t *testing.T) {
 
 func TestAuthHTTP(t *testing.T) {
 	testCase := []struct {
+		paths        []string
 		source       *Source
 		annDefault   map[string]string
-		ann          map[string]string
+		ann          map[string]map[string]string
 		secrets      conv_helper.SecretContent
 		expUserlists []*hatypes.Userlist
+		expConfig    []*hatypes.BackendConfigAuth
 		expLogging   string
 	}{
 		// 0
 		{
-			ann:        map[string]string{},
-			expLogging: "",
+			ann: map[string]map[string]string{},
 		},
 		// 1
 		{
-			ann: map[string]string{
-				ingtypes.BackAuthType: "fail",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAuthType: "fail",
+				},
 			},
 			expLogging: "ERROR unsupported authentication type on ingress 'default/ing1': fail",
 		},
 		// 2
 		{
-			ann: map[string]string{
-				ingtypes.BackAuthType: "basic",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAuthType: "basic",
+				},
 			},
 			expLogging: "ERROR missing secret name on basic authentication on ingress 'default/ing1'",
 		},
 		// 3
 		{
-			ann: map[string]string{
-				ingtypes.BackAuthType:   "basic",
-				ingtypes.BackAuthSecret: "mypwd",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAuthType:   "basic",
+					ingtypes.BackAuthSecret: "mypwd",
+				},
 			},
 			expLogging: "ERROR error reading basic authentication on ingress 'default/ing1': secret not found: 'default/mypwd'",
 		},
 		// 4
 		{
-			ann: map[string]string{
-				ingtypes.BackAuthType:   "basic",
-				ingtypes.BackAuthSecret: "mypwd",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAuthType:   "basic",
+					ingtypes.BackAuthSecret: "mypwd",
+				},
 			},
 			secrets:    conv_helper.SecretContent{"default/mypwd": {"xx": []byte{}}},
 			expLogging: "ERROR error reading basic authentication on ingress 'default/ing1': secret 'default/mypwd' does not have file/key 'auth'",
 		},
 		// 5
 		{
-			ann: map[string]string{
-				ingtypes.BackAuthType:   "basic",
-				ingtypes.BackAuthSecret: "mypwd",
-				ingtypes.BackAuthRealm:  `"a name"`,
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAuthType:   "basic",
+					ingtypes.BackAuthSecret: "mypwd",
+					ingtypes.BackAuthRealm:  `"a name"`,
+				},
 			},
 			secrets: conv_helper.SecretContent{"default/mypwd": {"auth": []byte("usr1::clear1")}},
 			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_mypwd", Users: []hatypes.User{
@@ -181,9 +192,11 @@ func TestAuthHTTP(t *testing.T) {
 		// 6
 		{
 			source: &Source{Namespace: "ns1", Name: "i1", Type: "ingress"},
-			ann: map[string]string{
-				ingtypes.BackAuthType:   "basic",
-				ingtypes.BackAuthSecret: "mypwd",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAuthType:   "basic",
+					ingtypes.BackAuthSecret: "mypwd",
+				},
 			},
 			secrets:      conv_helper.SecretContent{"ns1/mypwd": {"auth": []byte{}}},
 			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "ns1_mypwd"}},
@@ -191,9 +204,11 @@ func TestAuthHTTP(t *testing.T) {
 		},
 		// 7
 		{
-			ann: map[string]string{
-				ingtypes.BackAuthType:   "basic",
-				ingtypes.BackAuthSecret: "basicpwd",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAuthType:   "basic",
+					ingtypes.BackAuthSecret: "basicpwd",
+				},
 			},
 			secrets:      conv_helper.SecretContent{"default/basicpwd": {"auth": []byte("fail")}},
 			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_basicpwd"}},
@@ -203,9 +218,11 @@ WARN userlist on ingress 'default/ing1' for basic authentication is empty`,
 		},
 		// 8
 		{
-			ann: map[string]string{
-				ingtypes.BackAuthType:   "basic",
-				ingtypes.BackAuthSecret: "basicpwd",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAuthType:   "basic",
+					ingtypes.BackAuthSecret: "basicpwd",
+				},
 			},
 			secrets: conv_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
 usr1::clearpwd1
@@ -217,9 +234,11 @@ nopwd`)}},
 		},
 		// 9
 		{
-			ann: map[string]string{
-				ingtypes.BackAuthType:   "basic",
-				ingtypes.BackAuthSecret: "basicpwd",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAuthType:   "basic",
+					ingtypes.BackAuthSecret: "basicpwd",
+				},
 			},
 			secrets: conv_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
 usrnopwd1:
@@ -236,9 +255,12 @@ WARN userlist on ingress 'default/ing1' for basic authentication is empty`,
 		},
 		// 10
 		{
-			ann: map[string]string{
-				ingtypes.BackAuthType:   "basic",
-				ingtypes.BackAuthSecret: "basicpwd",
+			paths: []string{"/", "/admin"},
+			ann: map[string]map[string]string{
+				"/admin": {
+					ingtypes.BackAuthType:   "basic",
+					ingtypes.BackAuthSecret: "basicpwd",
+				},
 			},
 			secrets: conv_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
 usr1:encpwd1
@@ -247,7 +269,16 @@ usr2::clearpwd2`)}},
 				{Name: "usr1", Passwd: "encpwd1", Encrypted: true},
 				{Name: "usr2", Passwd: "clearpwd2", Encrypted: false},
 			}}},
-			expLogging: "",
+			expConfig: []*hatypes.BackendConfigAuth{
+				{
+					Paths: createBackendPaths("/"),
+				},
+				{
+					Paths:        createBackendPaths("/admin"),
+					UserlistName: "default_basicpwd",
+					Realm:        "localhost",
+				},
+			},
 		},
 	}
 
@@ -263,10 +294,13 @@ usr2::clearpwd2`)}},
 			}
 		}
 		c.cache.SecretContent = test.secrets
-		d := c.createBackendData("default/app", test.source, test.ann, test.annDefault)
+		d := c.createBackendMappingData("default/app", test.source, test.annDefault, test.ann, test.paths)
 		u.buildBackendAuthHTTP(d)
 		userlists := u.haproxy.Userlists()
 		c.compareObjects("userlists", i, userlists, test.expUserlists)
+		if test.expConfig != nil {
+			c.compareObjects("auth http", i, d.backend.AuthHTTP, test.expConfig)
+		}
 		c.logger.CompareLogging(test.expLogging)
 		c.teardown()
 	}

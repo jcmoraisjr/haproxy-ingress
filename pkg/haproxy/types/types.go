@@ -315,15 +315,14 @@ type Backend struct {
 	//
 	// Missing:
 	//
-	//   [ ] Userlist
 	//   [ ] WAF
 	//
+	AuthHTTP      []*BackendConfigAuth
 	Cors          []*BackendConfigCors
 	HSTS          []*BackendConfigHSTS
 	ProxyBodySize []*BackendConfigStr
 	RewriteURL    []*BackendConfigStr
 	SSLRedirect   []*BackendConfigBool
-	Userlist      UserlistConfig
 	WAF           string
 	WhitelistHTTP []*BackendConfigWhitelist
 }
@@ -361,6 +360,13 @@ type BackendConfigBool struct {
 type BackendConfigStr struct {
 	Paths  BackendPaths
 	Config string
+}
+
+// BackendConfigAuth ...
+type BackendConfigAuth struct {
+	Paths        BackendPaths
+	UserlistName string
+	Realm        string
 }
 
 // BackendConfigCors ...
