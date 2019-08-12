@@ -1300,13 +1300,13 @@ func (u *updaterMock) UpdateGlobalConfig(global *hatypes.Global, config *ingtype
 }
 
 func (u *updaterMock) UpdateHostConfig(host *hatypes.Host, mapper *annotations.Mapper) {
-	host.Timeout.Client = mapper.GetStrValue(ingtypes.HostTimeoutClient)
-	host.RootRedirect = mapper.GetStrValue(ingtypes.HostAppRoot)
+	host.Timeout.Client = mapper.Get(ingtypes.HostTimeoutClient).Value
+	host.RootRedirect = mapper.Get(ingtypes.HostAppRoot).Value
 }
 
 func (u *updaterMock) UpdateBackendConfig(backend *hatypes.Backend, mapper *annotations.Mapper) {
-	backend.MaxConnServer = mapper.GetIntValue(ingtypes.BackMaxconnServer)
-	backend.BalanceAlgorithm = mapper.GetStrValue(ingtypes.BackBalanceAlgorithm)
+	backend.MaxConnServer = mapper.Get(ingtypes.BackMaxconnServer).Int()
+	backend.BalanceAlgorithm = mapper.Get(ingtypes.BackBalanceAlgorithm).Value
 }
 
 type (

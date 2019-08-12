@@ -145,107 +145,30 @@ func (c *Mapper) GetStrMap(key string) ([]*Map, bool) {
 	return []*Map{}, false
 }
 
-// GetStr ...
-func (c *Mapper) GetStr(key string) (string, *Source, bool) {
+// Get ...
+func (c *Mapper) Get(key string) *ConfigValue {
 	annMaps, found := c.GetStrMap(key)
 	if !found {
-		return "", nil, false
+		return &ConfigValue{}
 	}
-	value := annMaps[0].Value
-	source := annMaps[0].Source
+	value := &ConfigValue{
+		Source: annMaps[0].Source,
+		Value:  annMaps[0].Value,
+	}
 	if len(annMaps) > 1 {
 		sources := make([]*Source, 0, len(annMaps))
 		for _, annMap := range annMaps {
-			if value != annMap.Value {
+			if value.Value != annMap.Value {
 				sources = append(sources, annMap.Source)
 			}
 		}
 		if len(sources) > 0 {
 			c.logger.Warn(
 				"annotation '%s' from %s overrides the same annotation with distinct value from %s",
-				c.annPrefix+key, source, sources)
+				c.annPrefix+key, value.Source, sources)
 		}
 	}
-	return value, source, true
-}
-
-// GetStrValue ...
-func (c *Mapper) GetStrValue(key string) string {
-	value, _, _ := c.GetStr(key)
 	return value
-}
-
-// GetStrFromMap ...
-func (c *Mapper) GetStrFromMap(config *BackendConfig, key string) (string, bool) {
-	if value, found := config.Config[key]; found {
-		return value.Value, true
-	}
-	value, found := c.annDefaults[key]
-	return value, found
-}
-
-// GetBool ...
-func (c *Mapper) GetBool(key string) (bool, *Source, bool) {
-	valueStr, src, found := c.GetStr(key)
-	if !found {
-		return false, nil, false
-	}
-	value, err := strconv.ParseBool(valueStr)
-	if err != nil {
-		c.logger.Warn("ignoring annotation '%s' from %s: %v", c.annPrefix+key, src, err)
-		return false, src, false
-	}
-	return value, src, true
-}
-
-// GetBoolValue ...
-func (c *Mapper) GetBoolValue(key string) bool {
-	value, _, _ := c.GetBool(key)
-	return value
-}
-
-// GetBoolFromMap ...
-func (c *Mapper) GetBoolFromMap(backend *hatypes.Backend, config *BackendConfig, key string) bool {
-	if valueStr, found := c.GetStrFromMap(config, key); found {
-		value, err := strconv.ParseBool(valueStr)
-		if err != nil {
-			c.logger.Warn("ignoring key '%s' for backend '%s/%s': %v", key, backend.Namespace, backend.Name, err)
-		}
-		return value
-	}
-	return false
-}
-
-// GetInt ...
-func (c *Mapper) GetInt(key string) (int, *Source, bool) {
-	valueStr, src, found := c.GetStr(key)
-	if !found {
-		return 0, nil, false
-	}
-	value, err := strconv.ParseInt(valueStr, 10, 0)
-	if err != nil {
-		c.logger.Warn("ignoring annotation '%s' from %s: %v", c.annPrefix+key, src, err)
-		return 0, src, false
-	}
-	return int(value), src, true
-}
-
-// GetIntValue ...
-func (c *Mapper) GetIntValue(key string) int {
-	value, _, _ := c.GetInt(key)
-	return value
-}
-
-// GetIntFromMap ...
-func (c *Mapper) GetIntFromMap(backend *hatypes.Backend, config *BackendConfig, key string) int {
-	if valueStr, found := c.GetStrFromMap(config, key); found {
-		value, err := strconv.ParseInt(valueStr, 10, 0)
-		if err != nil {
-			c.logger.Warn("ignoring key '%s' for backend '%s/%s': %v", key, backend.Namespace, backend.Name, err)
-		}
-		return int(value)
-	}
-	return 0
 }
 
 // ConfigOverwrite ...
@@ -337,33 +260,6 @@ func findConfig(config []*BackendConfig, kv map[string]*ConfigValue) *BackendCon
 	return nil
 }
 
-// GetBackendConfigBool ...
-func (c *Mapper) GetBackendConfigBool(backend *hatypes.Backend, key string) []*hatypes.BackendConfigBool {
-	rawConfig := c.GetBackendConfig(backend, []string{key}, nil)
-	config := make([]*hatypes.BackendConfigBool, len(rawConfig))
-	for i, cfg := range rawConfig {
-		value, _ := strconv.ParseBool(cfg.Get(key).Value)
-		config[i] = &hatypes.BackendConfigBool{
-			Paths:  cfg.Paths,
-			Config: value,
-		}
-	}
-	return config
-}
-
-// GetBackendConfigStr ...
-func (c *Mapper) GetBackendConfigStr(backend *hatypes.Backend, key string) []*hatypes.BackendConfigStr {
-	rawConfig := c.GetBackendConfig(backend, []string{key}, nil)
-	config := make([]*hatypes.BackendConfigStr, len(rawConfig))
-	for i, cfg := range rawConfig {
-		config[i] = &hatypes.BackendConfigStr{
-			Paths:  cfg.Paths,
-			Config: cfg.Get(key).Value,
-		}
-	}
-	return config
-}
-
 // ConfigEquals ...
 func (b *BackendConfig) ConfigEquals(other map[string]*ConfigValue) bool {
 	if len(b.Config) != len(other) {
@@ -394,7 +290,19 @@ func (b *BackendConfig) String() string {
 
 // String ...
 func (cv *ConfigValue) String() string {
-	return fmt.Sprintf("%+v", *cv)
+	return cv.Value
+}
+
+// Bool ...
+func (cv *ConfigValue) Bool() bool {
+	value, _ := strconv.ParseBool(cv.Value)
+	return value
+}
+
+// Int ...
+func (cv *ConfigValue) Int() int {
+	value, _ := strconv.Atoi(cv.Value)
+	return value
 }
 
 // String ...

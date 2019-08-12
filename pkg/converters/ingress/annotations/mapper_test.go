@@ -18,10 +18,7 @@ package annotations
 
 import (
 	"reflect"
-	"sort"
 	"testing"
-
-	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
 type ann struct {
@@ -134,15 +131,15 @@ func TestAddAnnotation(t *testing.T) {
 				t.Errorf("expect conflict '%t' on '// %d (%d)', but was '%t'", ann.expConflict, i, j, conflict)
 			}
 		}
-		if _, _, found := mapper.GetStr("error"); found {
+		if v := mapper.Get("error"); v.Source != nil {
 			t.Errorf("expect to not find 'error' key on '%d', but was found", i)
 		}
-		v, _, found := mapper.GetStr(test.getKey)
-		if !found {
+		v := mapper.Get(test.getKey)
+		if v.Source == nil {
 			if !test.expMiss {
 				t.Errorf("expect to find '%s' key on '%d', but was not found", test.getKey, i)
 			}
-		} else if v != test.expVal {
+		} else if v.Value != test.expVal {
 			t.Errorf("expect '%s' on '%d', but was '%s'", test.expVal, i, v)
 		}
 		c.logger.CompareLogging(test.expLog)
@@ -287,7 +284,7 @@ func TestGetDefault(t *testing.T) {
 		mapper := NewMapBuilder(c.logger, "ing.k8s.io", test.annDefaults).NewMapper()
 		mapper.AddAnnotations(&Source{}, "/", test.ann)
 		for key, exp := range test.expAnn {
-			value := mapper.GetStrValue(key)
+			value := mapper.Get(key).Value
 			if exp != value {
 				t.Errorf("expected key '%s'='%s' on '%d', but was '%s'", key, exp, i, value)
 			}
@@ -498,100 +495,6 @@ func TestGetBackendConfig(t *testing.T) {
 		}
 		c.compareObjects("backend config", i, config, test.expected)
 		c.logger.CompareLogging(test.logging)
-		c.teardown()
-	}
-}
-
-func TestGetBackendConfigString(t *testing.T) {
-	testCases := []struct {
-		annDefault map[string]string
-		values     map[string]string
-		expected   map[string][]string
-	}{
-		// 0
-		{
-			values: map[string]string{
-				"/":    "20",
-				"/url": "30",
-			},
-			expected: map[string][]string{
-				"20": {"/"},
-				"30": {"/url"},
-			},
-		},
-		// 1
-		{
-			values: map[string]string{
-				"/":    "20",
-				"/url": "20",
-			},
-			expected: map[string][]string{
-				"20": {"/", "/url"},
-			},
-		},
-		// 2
-		{
-			values: map[string]string{
-				"/":     "20",
-				"/path": "20",
-				"/url":  "10",
-			},
-			expected: map[string][]string{
-				"10": {"/url"},
-				"20": {"/", "/path"},
-			},
-		},
-		// 3
-		{
-			values: map[string]string{
-				"/":     "20",
-				"/path": "20",
-				"/url":  "10",
-			},
-			expected: map[string][]string{
-				"10": {"/url"},
-				"20": {"/", "/path"},
-			},
-		},
-	}
-	key := "ann-1"
-	for i, test := range testCases {
-		c := setup(t)
-		b := c.createBackendData("default/app", &Source{}, map[string]string{}, test.annDefault)
-		for path, value := range test.values {
-			b.backend.AddHostPath("", path)
-			b.mapper.addAnnotation(&Source{}, path, key, value)
-		}
-		config := b.mapper.GetBackendConfigStr(b.backend, key)
-		for _, cfg := range config {
-			for i := range cfg.Paths.Items {
-				cfg.Paths.Items[i].ID = "-"
-			}
-		}
-		sort.SliceStable(config, func(i, j int) bool {
-			return config[i].Config < config[j].Config
-		})
-		expected := []*hatypes.BackendConfigStr{}
-		for value, urls := range test.expected {
-			paths := hatypes.NewBackendPaths()
-			for _, url := range urls {
-				paths.Add(&hatypes.BackendPath{
-					ID:       "-",
-					Hostpath: url,
-					Path:     url,
-				})
-			}
-			expected = append(expected, &hatypes.BackendConfigStr{
-				Paths:  paths,
-				Config: value,
-			})
-		}
-		sort.SliceStable(expected, func(i, j int) bool {
-			return expected[i].Config < expected[j].Config
-		})
-		if !reflect.DeepEqual(config, expected) {
-			t.Errorf("expected and actual differ on '%d' - expected: %+v - actual: %+v", i, expected, config)
-		}
 		c.teardown()
 	}
 }

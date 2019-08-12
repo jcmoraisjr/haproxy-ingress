@@ -30,29 +30,32 @@ import (
 )
 
 func (c *updater) buildBackendAffinity(d *backData) {
-	affinity, srcAffinity, foundAffinity := d.mapper.GetStr(ingtypes.BackAffinity)
-	if affinity != "cookie" {
-		if foundAffinity && affinity != "" {
-			c.logger.Error("unsupported affinity type on %v: %s", srcAffinity, affinity)
-		}
+	affinity := d.mapper.Get(ingtypes.BackAffinity)
+	if affinity.Source == nil {
 		return
 	}
-	name := d.mapper.GetStrValue(ingtypes.BackSessionCookieName)
+	if affinity.Value != "cookie" {
+		c.logger.Error("unsupported affinity type on %v: %s", affinity.Source, affinity.Value)
+		return
+	}
+	name := d.mapper.Get(ingtypes.BackSessionCookieName).Value
 	if name == "" {
 		name = "INGRESSCOOKIE"
 	}
-	strategy, srcStrategy, foundStrategy := d.mapper.GetStr(ingtypes.BackSessionCookieStrategy)
-	switch strategy {
+	strategy := d.mapper.Get(ingtypes.BackSessionCookieStrategy)
+	var strategyName string
+	switch strategy.Value {
 	case "insert", "rewrite", "prefix":
+		strategyName = strategy.Value
 	default:
-		if foundStrategy {
-			c.logger.Warn("invalid affinity cookie strategy '%s' on %v, using 'insert' instead", strategy, srcStrategy)
+		if strategy.Source != nil {
+			c.logger.Warn("invalid affinity cookie strategy '%s' on %v, using 'insert' instead", strategy.Value, strategy.Source)
 		}
-		strategy = "insert"
+		strategyName = "insert"
 	}
 	d.backend.Cookie.Name = name
-	d.backend.Cookie.Strategy = strategy
-	d.backend.Cookie.Dynamic = d.mapper.GetBoolValue(ingtypes.BackSessionCookieDynamic)
+	d.backend.Cookie.Strategy = strategyName
+	d.backend.Cookie.Dynamic = d.mapper.Get(ingtypes.BackSessionCookieDynamic).Bool()
 }
 
 func (c *updater) buildBackendAuthHTTP(d *backData) {
@@ -163,10 +166,10 @@ func extractUserlist(source, secret, users string) ([]hatypes.User, []error) {
 }
 
 func (c *updater) buildBackendBlueGreen(d *backData) {
-	balance, srcBalance, _ := d.mapper.GetStr(ingtypes.BackBlueGreenBalance)
-	if balance == "" {
-		balance, srcBalance, _ = d.mapper.GetStr(ingtypes.BackBlueGreenDeploy)
-		if balance == "" {
+	balance := d.mapper.Get(ingtypes.BackBlueGreenBalance)
+	if balance.Source == nil || balance.Value == "" {
+		balance = d.mapper.Get(ingtypes.BackBlueGreenDeploy)
+		if balance.Source == nil {
 			return
 		}
 	}
@@ -177,23 +180,23 @@ func (c *updater) buildBackendBlueGreen(d *backData) {
 		endpoints  []*hatypes.Endpoint
 	}
 	var deployWeights []*deployWeight
-	for _, weight := range strings.Split(balance, ",") {
+	for _, weight := range strings.Split(balance.Value, ",") {
 		dwSlice := strings.Split(weight, "=")
 		if len(dwSlice) != 3 {
-			c.logger.Error("blue/green config on %v has an invalid weight format: %s", srcBalance, weight)
+			c.logger.Error("blue/green config on %v has an invalid weight format: %s", balance.Source, weight)
 			return
 		}
 		w, err := strconv.ParseInt(dwSlice[2], 10, 0)
 		if err != nil {
-			c.logger.Error("blue/green config on %v has an invalid weight value: %v", srcBalance, err)
+			c.logger.Error("blue/green config on %v has an invalid weight value: %v", balance.Source, err)
 			return
 		}
 		if w < 0 {
-			c.logger.Warn("invalid weight '%d' on %v, using '0' instead", w, srcBalance)
+			c.logger.Warn("invalid weight '%d' on %v, using '0' instead", w, balance.Source)
 			w = 0
 		}
 		if w > 256 {
-			c.logger.Warn("invalid weight '%d' on %v, using '256' instead", w, srcBalance)
+			c.logger.Warn("invalid weight '%d' on %v, using '256' instead", w, balance.Source)
 			w = 256
 		}
 		dw := &deployWeight{
@@ -225,7 +228,7 @@ func (c *updater) buildBackendBlueGreen(d *backData) {
 			if ep.TargetRef == "" {
 				err = fmt.Errorf("endpoint does not reference a pod")
 			}
-			c.logger.Warn("endpoint '%s:%d' on %v was removed from balance: %v", ep.IP, ep.Port, srcBalance, err)
+			c.logger.Warn("endpoint '%s:%d' on %v was removed from balance: %v", ep.IP, ep.Port, balance.Source, err)
 		}
 		if !hasLabel {
 			// no label match, set weight as zero to remove new traffic
@@ -235,15 +238,15 @@ func (c *updater) buildBackendBlueGreen(d *backData) {
 	}
 	for _, dw := range deployWeights {
 		if len(dw.endpoints) == 0 {
-			c.logger.InfoV(3, "blue/green balance label '%s=%s' on %v does not reference any endpoint", dw.labelName, dw.labelValue, srcBalance)
+			c.logger.InfoV(3, "blue/green balance label '%s=%s' on %v does not reference any endpoint", dw.labelName, dw.labelValue, balance.Source)
 		}
 	}
-	if mode, srcMode, foundMode := d.mapper.GetStr(ingtypes.BackBlueGreenMode); mode == "pod" {
+	if mode := d.mapper.Get(ingtypes.BackBlueGreenMode); mode.Value == "pod" {
 		// mode == pod, same weight as defined on balance annotation,
 		// no need to rebalance
 		return
-	} else if foundMode && mode != "deploy" {
-		c.logger.Warn("unsupported blue/green mode '%s' on %v, falling back to 'deploy'", mode, srcMode)
+	} else if mode.Source != nil && mode.Value != "deploy" {
+		c.logger.Warn("unsupported blue/green mode '%s' on %v, falling back to 'deploy'", mode.Value, mode.Source)
 	}
 	// mode == deploy, need to recalc based on the number of replicas
 	lcmCount := 0
@@ -303,6 +306,16 @@ func (c *updater) buildBackendBlueGreen(d *backData) {
 	}
 }
 
+func (c *updater) buildBackendBodySize(d *backData) {
+	config := d.mapper.GetBackendConfig(d.backend, []string{ingtypes.BackProxyBodySize}, nil)
+	for _, cfg := range config {
+		d.backend.ProxyBodySize = append(d.backend.ProxyBodySize, &hatypes.BackendConfigStr{
+			Paths:  cfg.Paths,
+			Config: cfg.Get(ingtypes.BackProxyBodySize).Value,
+		})
+	}
+}
+
 func (c *updater) buildBackendCors(d *backData) {
 	config := d.mapper.GetBackendConfig(d.backend,
 		[]string{
@@ -314,25 +327,26 @@ func (c *updater) buildBackendCors(d *backData) {
 			ingtypes.BackCorsExposeHeaders,
 			ingtypes.BackCorsMaxAge,
 		},
-		nil,
+		func(values map[string]*ConfigValue) map[string]*ConfigValue {
+			enabled, found := values[ingtypes.BackCorsEnable]
+			if !found || !enabled.Bool() {
+				return nil
+			}
+			return values
+		},
 	)
 	for _, cfg := range config {
-		if enabled := d.mapper.GetBoolFromMap(d.backend, cfg, ingtypes.BackCorsEnable); !enabled {
-			d.backend.Cors = append(d.backend.Cors, &hatypes.BackendConfigCors{
-				Paths: cfg.Paths, Config: hatypes.Cors{},
-			})
-			continue
-		}
-		allowCredentials := d.mapper.GetBoolFromMap(d.backend, cfg, ingtypes.BackCorsAllowCredentials)
-		allowHeaders, _ := d.mapper.GetStrFromMap(cfg, ingtypes.BackCorsAllowHeaders)
-		allowMethods, _ := d.mapper.GetStrFromMap(cfg, ingtypes.BackCorsAllowMethods)
-		allowOrigin, _ := d.mapper.GetStrFromMap(cfg, ingtypes.BackCorsAllowOrigin)
-		exposeHeaders, _ := d.mapper.GetStrFromMap(cfg, ingtypes.BackCorsExposeHeaders)
-		maxAge := d.mapper.GetIntFromMap(d.backend, cfg, ingtypes.BackCorsMaxAge)
+		enabled := cfg.Get(ingtypes.BackCorsEnable).Bool()
+		allowCredentials := cfg.Get(ingtypes.BackCorsAllowCredentials).Bool()
+		allowHeaders := cfg.Get(ingtypes.BackCorsAllowHeaders).Value
+		allowMethods := cfg.Get(ingtypes.BackCorsAllowMethods).Value
+		allowOrigin := cfg.Get(ingtypes.BackCorsAllowOrigin).Value
+		exposeHeaders := cfg.Get(ingtypes.BackCorsExposeHeaders).Value
+		maxAge := cfg.Get(ingtypes.BackCorsMaxAge).Int()
 		d.backend.Cors = append(d.backend.Cors, &hatypes.BackendConfigCors{
 			Paths: cfg.Paths,
 			Config: hatypes.Cors{
-				Enabled:          true,
+				Enabled:          enabled,
 				AllowCredentials: allowCredentials,
 				AllowHeaders:     allowHeaders,
 				AllowMethods:     allowMethods,
@@ -346,9 +360,9 @@ func (c *updater) buildBackendCors(d *backData) {
 
 func (c *updater) buildBackendDynamic(d *backData) {
 	d.backend.Dynamic = hatypes.DynBackendConfig{
-		DynUpdate:    d.mapper.GetBoolValue(ingtypes.BackDynamicScaling),
-		BlockSize:    d.mapper.GetIntValue(ingtypes.BackBackendServerSlotsInc),
-		MinFreeSlots: d.mapper.GetIntValue(ingtypes.BackSlotsMinFree),
+		DynUpdate:    d.mapper.Get(ingtypes.BackDynamicScaling).Bool(),
+		BlockSize:    d.mapper.Get(ingtypes.BackBackendServerSlotsInc).Int(),
+		MinFreeSlots: d.mapper.Get(ingtypes.BackSlotsMinFree).Int(),
 	}
 }
 
@@ -358,14 +372,14 @@ func (c *updater) buildBackendHSTS(d *backData) {
 		[]string{ingtypes.BackHSTS, ingtypes.BackHSTSMaxAge, ingtypes.BackHSTSPreload, ingtypes.BackHSTSIncludeSubdomains},
 		nil,
 	)
-	for _, rawHSTS := range rawHSTSList {
+	for _, cfg := range rawHSTSList {
 		d.backend.HSTS = append(d.backend.HSTS, &hatypes.BackendConfigHSTS{
-			Paths: rawHSTS.Paths,
+			Paths: cfg.Paths,
 			Config: hatypes.HSTS{
-				Enabled:    d.mapper.GetBoolFromMap(d.backend, rawHSTS, ingtypes.BackHSTS),
-				MaxAge:     d.mapper.GetIntFromMap(d.backend, rawHSTS, ingtypes.BackHSTSMaxAge),
-				Subdomains: d.mapper.GetBoolFromMap(d.backend, rawHSTS, ingtypes.BackHSTSIncludeSubdomains),
-				Preload:    d.mapper.GetBoolFromMap(d.backend, rawHSTS, ingtypes.BackHSTSPreload),
+				Enabled:    cfg.Get(ingtypes.BackHSTS).Bool(),
+				MaxAge:     cfg.Get(ingtypes.BackHSTSMaxAge).Int(),
+				Subdomains: cfg.Get(ingtypes.BackHSTSIncludeSubdomains).Bool(),
+				Preload:    cfg.Get(ingtypes.BackHSTSPreload).Bool(),
 			},
 		})
 	}
@@ -376,25 +390,25 @@ var (
 )
 
 func (c *updater) buildBackendOAuth(d *backData) {
-	oauth, srcOAuth, foundOAuth := d.mapper.GetStr(ingtypes.BackOAuth)
-	if !foundOAuth || oauth == "" {
+	oauth := d.mapper.Get(ingtypes.BackOAuth)
+	if oauth.Source == nil {
 		return
 	}
-	if oauth != "oauth2_proxy" {
-		c.logger.Warn("ignoring invalid oauth implementation '%s' on %v", oauth, srcOAuth)
+	if oauth.Value != "oauth2_proxy" {
+		c.logger.Warn("ignoring invalid oauth implementation '%s' on %v", oauth, oauth.Source)
 		return
 	}
 	uriPrefix := "/oauth2"
 	headers := []string{"X-Auth-Request-Email:auth_response_email"}
-	if prefix, _, found := d.mapper.GetStr(ingtypes.BackOAuthURIPrefix); found {
-		uriPrefix = prefix
+	if prefix := d.mapper.Get(ingtypes.BackOAuthURIPrefix); prefix.Source != nil {
+		uriPrefix = prefix.Value
 	}
-	h, srcHeaders, foundHeders := d.mapper.GetStr(ingtypes.BackOAuthHeaders)
-	if foundHeders {
-		headers = strings.Split(h, ",")
+	h := d.mapper.Get(ingtypes.BackOAuthHeaders)
+	if h.Source != nil {
+		headers = strings.Split(h.Value, ",")
 	}
 	uriPrefix = strings.TrimRight(uriPrefix, "/")
-	namespace := srcOAuth.Namespace
+	namespace := oauth.Source.Namespace
 	backend := c.findBackend(namespace, uriPrefix)
 	if backend == nil {
 		c.logger.Error("path '%s' was not found on namespace '%s'", uriPrefix, namespace)
@@ -406,13 +420,13 @@ func (c *updater) buildBackendOAuth(d *backData) {
 			continue
 		}
 		if !oauthHeaderRegex.MatchString(header) {
-			c.logger.Warn("invalid header format '%s' on %v", header, srcHeaders)
+			c.logger.Warn("invalid header format '%s' on %v", header, h.Source)
 			continue
 		}
 		h := strings.Split(header, ":")
 		headersMap[h[0]] = h[1]
 	}
-	d.backend.OAuth.Impl = oauth
+	d.backend.OAuth.Impl = oauth.Value
 	d.backend.OAuth.BackendName = backend.ID
 	d.backend.OAuth.URIPrefix = uriPrefix
 	d.backend.OAuth.Headers = headersMap
@@ -434,54 +448,68 @@ var (
 )
 
 func (c *updater) buildBackendRewriteURL(d *backData) {
-	for _, rewrite := range d.mapper.GetBackendConfigStr(d.backend, ingtypes.BackRewriteTarget) {
-		if !rewriteURLRegex.MatchString(rewrite.Config) {
-			c.logger.Warn(
-				"rewrite-target does not allow white spaces or single/double quotes on backend '%s/%s': %s",
-				d.backend.Namespace, d.backend.Name, rewrite.Config)
-			rewrite.Config = ""
-		}
-		d.backend.RewriteURL = append(d.backend.RewriteURL, rewrite)
+	config := d.mapper.GetBackendConfig(
+		d.backend,
+		[]string{ingtypes.BackRewriteTarget},
+		func(values map[string]*ConfigValue) map[string]*ConfigValue {
+			rewrite, found := values[ingtypes.BackRewriteTarget]
+			if !found {
+				return nil
+			}
+			if !rewriteURLRegex.MatchString(rewrite.Value) {
+				c.logger.Warn(
+					"rewrite-target does not allow white spaces or single/double quotes on %v: '%s'",
+					rewrite.Source, rewrite.Value)
+				return nil
+			}
+			return values
+		},
+	)
+	for _, cfg := range config {
+		d.backend.RewriteURL = append(d.backend.RewriteURL, &hatypes.BackendConfigStr{
+			Paths:  cfg.Paths,
+			Config: cfg.Get(ingtypes.BackRewriteTarget).Value,
+		})
 	}
 }
 
 func (c *updater) buildBackendSSLRedirect(d *backData) {
-	for _, redir := range d.mapper.GetBackendConfigBool(d.backend, ingtypes.BackSSLRedirect) {
+	for _, redir := range d.mapper.GetBackendConfig(d.backend, []string{ingtypes.BackSSLRedirect}, nil) {
 		d.backend.SSLRedirect = append(d.backend.SSLRedirect, &hatypes.BackendConfigBool{
 			Paths:  redir.Paths,
-			Config: redir.Config,
+			Config: redir.Get(ingtypes.BackSSLRedirect).Bool(),
 		})
 	}
 }
 
 func (c *updater) buildBackendWAF(d *backData) {
-	waf, srcWaf, foundWaf := d.mapper.GetStr(ingtypes.BackWAF)
-	if !foundWaf {
+	waf := d.mapper.Get(ingtypes.BackWAF)
+	if waf.Source == nil {
 		return
 	}
-	if waf != "modsecurity" {
-		c.logger.Warn("ignoring invalid WAF mode on %s: %s", srcWaf, waf)
+	if waf.Value != "modsecurity" {
+		c.logger.Warn("ignoring invalid WAF mode on %s: %s", waf.Source, waf.Value)
 		return
 	}
-	d.backend.WAF = waf
+	d.backend.WAF = waf.Value
 }
 
 func (c *updater) buildBackendWhitelistHTTP(d *backData) {
 	if d.backend.ModeTCP {
 		return
 	}
-	for _, wlist := range d.mapper.GetBackendConfigStr(d.backend, ingtypes.BackWhitelistSourceRange) {
+	for _, cfg := range d.mapper.GetBackendConfig(d.backend, []string{ingtypes.BackWhitelistSourceRange}, nil) {
+		wlist := cfg.Get(ingtypes.BackWhitelistSourceRange)
 		var cidrlist []string
-		for _, cidr := range utils.Split(wlist.Config, ",") {
+		for _, cidr := range utils.Split(wlist.Value, ",") {
 			if _, _, err := net.ParseCIDR(cidr); err != nil {
-				c.logger.Warn("skipping invalid cidr '%s' in whitelist config on backend '%s/%s'",
-					cidr, d.backend.Namespace, d.backend.Name)
+				c.logger.Warn("skipping invalid cidr '%s' in whitelist config on %v", cidr, wlist.Source)
 			} else {
 				cidrlist = append(cidrlist, cidr)
 			}
 		}
 		d.backend.WhitelistHTTP = append(d.backend.WhitelistHTTP, &hatypes.BackendConfigWhitelist{
-			Paths:  wlist.Paths,
+			Paths:  cfg.Paths,
 			Config: cidrlist,
 		})
 	}
@@ -491,14 +519,14 @@ func (c *updater) buildBackendWhitelistTCP(d *backData) {
 	if !d.backend.ModeTCP {
 		return
 	}
-	wlist, srcWlist, foundWlist := d.mapper.GetStr(ingtypes.BackWhitelistSourceRange)
-	if !foundWlist {
+	wlist := d.mapper.Get(ingtypes.BackWhitelistSourceRange)
+	if wlist.Source == nil {
 		return
 	}
 	var cidrlist []string
-	for _, cidr := range utils.Split(wlist, ",") {
+	for _, cidr := range utils.Split(wlist.Value, ",") {
 		if _, _, err := net.ParseCIDR(cidr); err != nil {
-			c.logger.Warn("skipping invalid cidr '%s' in whitelist config on %v", cidr, srcWlist)
+			c.logger.Warn("skipping invalid cidr '%s' in whitelist config on %v", cidr, wlist.Source)
 		} else {
 			cidrlist = append(cidrlist, cidr)
 		}

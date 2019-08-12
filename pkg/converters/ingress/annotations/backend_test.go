@@ -637,7 +637,6 @@ func TestCors(t *testing.T) {
 		},
 		// 1
 		{
-			paths: []string{"/"},
 			ann: map[string]map[string]string{
 				"/": {
 					ingtypes.BackCorsEnable: "true",
@@ -646,6 +645,35 @@ func TestCors(t *testing.T) {
 			expected: []*hatypes.BackendConfigCors{
 				{
 					Paths: createBackendPaths("/"),
+					Config: hatypes.Cors{
+						Enabled:          true,
+						AllowCredentials: false,
+						AllowHeaders:     corsDefaultHeaders,
+						AllowMethods:     corsDefaultMethods,
+						AllowOrigin:      corsDefaultOrigin,
+						ExposeHeaders:    "",
+						MaxAge:           corsDefaultMaxAge,
+					},
+				},
+			},
+		},
+		// 2
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackCorsEnable: "false",
+				},
+				"/sub": {
+					ingtypes.BackCorsEnable: "true",
+				},
+			},
+			expected: []*hatypes.BackendConfigCors{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: hatypes.Cors{},
+				},
+				{
+					Paths: createBackendPaths("/sub"),
 					Config: hatypes.Cors{
 						Enabled:          true,
 						AllowCredentials: false,
@@ -923,6 +951,7 @@ func TestOAuth(t *testing.T) {
 
 func TestRewriteURL(t *testing.T) {
 	testCases := []struct {
+		source   Source
 		input    string
 		expected string
 		logging  string
@@ -934,9 +963,14 @@ func TestRewriteURL(t *testing.T) {
 		},
 		// 1
 		{
+			source: Source{
+				Namespace: "default",
+				Name:      "app1",
+				Type:      "service",
+			},
 			input:    `/"/`,
 			expected: ``,
-			logging:  `WARN rewrite-target does not allow white spaces or single/double quotes on backend 'default/app': /"/`,
+			logging:  `WARN rewrite-target does not allow white spaces or single/double quotes on service 'default/app1': '/"/'`,
 		},
 		// 2
 		{
@@ -951,9 +985,9 @@ func TestRewriteURL(t *testing.T) {
 		if test.input != "" {
 			ann = map[string]string{ingtypes.BackRewriteTarget: test.input}
 		}
-		d := c.createBackendData("default/app", &Source{}, map[string]string{}, map[string]string{})
+		d := c.createBackendData("default/app", &test.source, map[string]string{}, map[string]string{})
 		d.backend.AddHostPath("d1.local", "/")
-		d.mapper.AddAnnotations(&Source{}, "d1.local/", ann)
+		d.mapper.AddAnnotations(&test.source, "d1.local/", ann)
 		c.createUpdater().buildBackendRewriteURL(d)
 		expected := []*hatypes.BackendConfigStr{
 			{

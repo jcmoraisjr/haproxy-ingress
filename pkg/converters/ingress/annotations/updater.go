@@ -96,11 +96,11 @@ func (c *updater) UpdateHostConfig(host *hatypes.Host, mapper *Mapper) {
 		host:   host,
 		mapper: mapper,
 	}
-	host.RootRedirect = mapper.GetStrValue(ingtypes.HostAppRoot)
-	host.Alias.AliasName = mapper.GetStrValue(ingtypes.HostServerAlias)
-	host.Alias.AliasRegex = mapper.GetStrValue(ingtypes.HostServerAliasRegex)
-	host.Timeout.Client = mapper.GetStrValue(ingtypes.HostTimeoutClient)
-	host.Timeout.ClientFin = mapper.GetStrValue(ingtypes.HostTimeoutClientFin)
+	host.RootRedirect = mapper.Get(ingtypes.HostAppRoot).Value
+	host.Alias.AliasName = mapper.Get(ingtypes.HostServerAlias).Value
+	host.Alias.AliasRegex = mapper.Get(ingtypes.HostServerAliasRegex).Value
+	host.Timeout.Client = mapper.Get(ingtypes.HostTimeoutClient).Value
+	host.Timeout.ClientFin = mapper.Get(ingtypes.HostTimeoutClientFin).Value
 	c.buildHostAuthTLS(data)
 	c.buildHostSSLPassthrough(data)
 }
@@ -111,13 +111,13 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) 
 		mapper:  mapper,
 	}
 	// TODO check ModeTCP with HTTP annotations
-	backend.BalanceAlgorithm = mapper.GetStrValue(ingtypes.BackBalanceAlgorithm)
-	backend.MaxConnServer = mapper.GetIntValue(ingtypes.BackMaxconnServer)
-	backend.ProxyBodySize = mapper.GetBackendConfigStr(backend, ingtypes.BackProxyBodySize)
-	backend.SSL.AddCertHeader = mapper.GetBoolValue(ingtypes.BackAuthTLSCertHeader)
+	backend.BalanceAlgorithm = mapper.Get(ingtypes.BackBalanceAlgorithm).Value
+	backend.MaxConnServer = mapper.Get(ingtypes.BackMaxconnServer).Int()
+	backend.SSL.AddCertHeader = mapper.Get(ingtypes.BackAuthTLSCertHeader).Bool()
 	c.buildBackendAffinity(data)
 	c.buildBackendAuthHTTP(data)
 	c.buildBackendBlueGreen(data)
+	c.buildBackendBodySize(data)
 	c.buildBackendCors(data)
 	c.buildBackendDynamic(data)
 	c.buildBackendHSTS(data)
