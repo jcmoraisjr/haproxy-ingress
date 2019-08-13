@@ -1114,7 +1114,6 @@ func TestWAF(t *testing.T) {
 			logging:  "",
 		},
 	}
-
 	source := &Source{
 		Namespace: "default",
 		Name:      "ing1",
@@ -1122,13 +1121,24 @@ func TestWAF(t *testing.T) {
 	}
 	for i, test := range testCase {
 		c := setup(t)
-		var ann map[string]string
+		var ann map[string]map[string]string
+		var expected []*hatypes.BackendConfigStr
 		if test.waf != "" {
-			ann = map[string]string{ingtypes.BackWAF: test.waf}
+			ann = map[string]map[string]string{
+				"/": {
+					ingtypes.BackWAF: test.waf,
+				},
+			}
+			expected = []*hatypes.BackendConfigStr{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: test.expected,
+				},
+			}
 		}
-		d := c.createBackendData("default/app", source, ann, map[string]string{})
+		d := c.createBackendMappingData("default/app", source, map[string]string{}, ann, []string{})
 		c.createUpdater().buildBackendWAF(d)
-		c.compareObjects("WAF", i, d.backend.WAF, test.expected)
+		c.compareObjects("WAF", i, d.backend.WAF, expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}

@@ -246,9 +246,15 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if and (eq $backend.WAF "modsecurity") $global.ModSecurity.Endpoints }}
+{{- if and $global.ModSecurity.Endpoints $backend.HasModsec }}
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
+{{- $needACL := gt (len $backend.WAF) 1 }}
+{{- range $waf := $backend.WAF }}
+{{- if eq $waf.Config "modsecurity" }}
     http-request deny if { var(txn.modsec.code) -m int gt 0 }
+    {{- if $needACL }} { var(txn.pathID) {{ $waf.Paths.IDList }} }{{ end }}
+{{- end }}
+{{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}

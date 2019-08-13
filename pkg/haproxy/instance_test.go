@@ -1473,6 +1473,7 @@ backend d1_app_8080
 func TestModSecurity(t *testing.T) {
 	testCases := []struct {
 		waf        string
+		path       string
 		endpoints  []string
 		backendExp string
 		modsecExp  string
@@ -1509,6 +1510,19 @@ func TestModSecurity(t *testing.T) {
     server modsec-spoa0 10.0.0.101:12345
     server modsec-spoa1 10.0.0.102:12345`,
 		},
+		{
+			waf:       "modsecurity",
+			endpoints: []string{"10.0.0.101:12345"},
+			path:      "/sub",
+			backendExp: `
+    # path02 = d1.local/
+    # path01 = d1.local/sub
+    http-request set-var(txn.pathID) base,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map,_nomatch)
+    filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
+    http-request deny if { var(txn.modsec.code) -m int gt 0 } { var(txn.pathID) path01 }`,
+			modsecExp: `
+    server modsec-spoa0 10.0.0.101:12345`,
+		},
 	}
 	for _, test := range testCases {
 		c := setup(t)
@@ -1518,9 +1532,23 @@ func TestModSecurity(t *testing.T) {
 
 		b = c.config.AcquireBackend("d1", "app", "8080")
 		b.Endpoints = []*hatypes.Endpoint{endpointS1}
-		b.WAF = test.waf
 		h = c.config.AcquireHost("d1.local")
-		h.AddPath(b, "/")
+		if test.path == "" {
+			test.path = "/"
+		}
+		h.AddPath(b, test.path)
+		b.WAF = []*hatypes.BackendConfigStr{
+			{
+				Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local" + test.path)),
+				Config: test.waf,
+			},
+		}
+		if test.path != "/" {
+			h.AddPath(b, "/")
+			b.WAF = append(b.WAF, &hatypes.BackendConfigStr{
+				Paths: hatypes.NewBackendPaths(b.FindHostPath("d1.local/")),
+			})
+		}
 		c.config.Global().ModSecurity.Endpoints = test.endpoints
 
 		c.Update()

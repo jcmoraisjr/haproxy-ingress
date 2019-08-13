@@ -130,6 +130,16 @@ func (b *Backend) HasCorsEnabled() bool {
 	return false
 }
 
+// HasModsec ...
+func (b *Backend) HasModsec() bool {
+	for _, waf := range b.WAF {
+		if waf.Config == "modsecurity" {
+			return true
+		}
+	}
+	return false
+}
+
 // HasSSLRedirect ...
 func (b *Backend) HasSSLRedirect() bool {
 	for _, sslredirect := range b.SSLRedirect {
@@ -166,7 +176,7 @@ func (b *Backend) HasSSLRedirectPaths(paths *BackendPaths) bool {
 func (b *Backend) NeedACL() bool {
 	return len(b.HSTS) > 1 ||
 		len(b.ProxyBodySize) > 1 || len(b.RewriteURL) > 1 || len(b.WhitelistHTTP) > 1 ||
-		len(b.Cors) > 1 || len(b.AuthHTTP) > 1
+		len(b.Cors) > 1 || len(b.AuthHTTP) > 1 || len(b.WAF) > 1
 }
 
 // IsEmpty ...

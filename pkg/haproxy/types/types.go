@@ -313,17 +313,13 @@ type Backend struct {
 	//      Template uses this func in order to know if a config
 	//      has two or more paths, and so need to be configured with ACL.
 	//
-	// Missing:
-	//
-	//   [ ] WAF
-	//
 	AuthHTTP      []*BackendConfigAuth
 	Cors          []*BackendConfigCors
 	HSTS          []*BackendConfigHSTS
 	ProxyBodySize []*BackendConfigStr
 	RewriteURL    []*BackendConfigStr
 	SSLRedirect   []*BackendConfigBool
-	WAF           string
+	WAF           []*BackendConfigStr
 	WhitelistHTTP []*BackendConfigWhitelist
 }
 

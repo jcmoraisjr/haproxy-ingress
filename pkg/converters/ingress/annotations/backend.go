@@ -483,15 +483,27 @@ func (c *updater) buildBackendSSLRedirect(d *backData) {
 }
 
 func (c *updater) buildBackendWAF(d *backData) {
-	waf := d.mapper.Get(ingtypes.BackWAF)
-	if waf.Source == nil {
-		return
+	config := d.mapper.GetBackendConfig(
+		d.backend,
+		[]string{ingtypes.BackWAF},
+		func(values map[string]*ConfigValue) map[string]*ConfigValue {
+			waf, found := values[ingtypes.BackWAF]
+			if !found {
+				return nil
+			}
+			if waf.Value != "modsecurity" {
+				c.logger.Warn("ignoring invalid WAF mode on %s: %s", waf.Source, waf.Value)
+				return nil
+			}
+			return values
+		},
+	)
+	for _, cfg := range config {
+		d.backend.WAF = append(d.backend.WAF, &hatypes.BackendConfigStr{
+			Paths:  cfg.Paths,
+			Config: cfg.Get(ingtypes.BackWAF).Value,
+		})
 	}
-	if waf.Value != "modsecurity" {
-		c.logger.Warn("ignoring invalid WAF mode on %s: %s", waf.Source, waf.Value)
-		return
-	}
-	d.backend.WAF = waf.Value
 }
 
 func (c *updater) buildBackendWhitelistHTTP(d *backData) {
