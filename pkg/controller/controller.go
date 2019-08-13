@@ -168,9 +168,11 @@ func (hc *HAProxyController) CreateX509CertsDir(bindName string, certs []string)
 
 // Stop shutdown the controller process
 func (hc *HAProxyController) Stop() error {
-	waitBeforeShutdown := time.Duration(hc.cfg.WaitBeforeShutdown) * time.Second
-	glog.Infof("Waiting %v before stopping components", waitBeforeShutdown)
-	time.Sleep(waitBeforeShutdown)
+	if hc.cfg.WaitBeforeShutdown > 0 {
+		waitBeforeShutdown := time.Duration(hc.cfg.WaitBeforeShutdown) * time.Second
+		glog.Infof("Waiting %v before stopping components", waitBeforeShutdown)
+		time.Sleep(waitBeforeShutdown)
+	}
 	err := hc.controller.Stop()
 	return err
 }
