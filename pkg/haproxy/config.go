@@ -219,11 +219,12 @@ func (c *config) BuildFrontendGroup() error {
 	if len(c.hosts) == 0 {
 		return nil
 	}
-	frontends, sslpassthrough := hatypes.BuildRawFrontends(c.hosts)
+	frontends, sslpassthrough, defaultBind := hatypes.BuildRawFrontends(c.hosts)
 	fgroupMaps := hatypes.CreateMaps()
 	fgroup := &hatypes.FrontendGroup{
 		Frontends:         frontends,
 		HasSSLPassthrough: len(sslpassthrough) > 0,
+		DefaultBind:       defaultBind,
 		Maps:              fgroupMaps,
 		HTTPFrontsMap:     fgroupMaps.AddMap(c.mapsDir + "/_global_http_front.map"),
 		HTTPRootRedirMap:  fgroupMaps.AddMap(c.mapsDir + "/_global_http_root_redir.map"),

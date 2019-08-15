@@ -497,9 +497,11 @@ listen _front__tls
 {{- end }}
 {{- range $frontend := $frontends }}
 {{- range $bind := $frontend.Binds }}
+{{- if $bind.Hosts }}
     ## {{ $frontend.Name }}/{{ $bind.Name }}
     use-server _server{{ $bind.Name }} if { req.ssl_sni -i -f {{ $bind.UseServerList.MatchFile }} }
     server _server{{ $bind.Name }} {{ $bind.Socket }} send-proxy-v2 weight 0
+{{- end }}
 {{- end }}
 {{- end }}
 
@@ -518,7 +520,8 @@ listen _front__tls
 {{- end }}
 
 {{- /*------------------------------------*/}}
-    # TODO default backend
+    # default backend
+    server _default_server{{ $fgroup.DefaultBind.Name }} {{ $fgroup.DefaultBind.Socket }} send-proxy-v2
 {{- end }}
 
   # # # # # # # # # # # # # # # # # # #

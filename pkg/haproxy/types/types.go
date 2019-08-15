@@ -154,6 +154,7 @@ type FrontendGroup struct {
 	Frontends []*Frontend
 	//
 	HasSSLPassthrough bool
+	DefaultBind       *BindConfig
 	//
 	Maps              *HostsMaps
 	HTTPFrontsMap     *HostsMap

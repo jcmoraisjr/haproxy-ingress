@@ -750,7 +750,8 @@ listen _front__tls
     ## _front001/_socket002
     use-server _server_socket002 if { req.ssl_sni -i -f /etc/haproxy/maps/_socket002.list }
     server _server_socket002 unix@/var/run/_socket002.sock send-proxy-v2 weight 0
-    # TODO default backend
+    # default backend
+    server _default_server_socket003 unix@/var/run/_socket003.sock send-proxy-v2
 frontend _front_http
     mode http
     bind :80
@@ -764,6 +765,7 @@ frontend _front001
     mode http
     bind unix@/var/run/_socket001.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem ca-file /var/haproxy/ssl/ca/d1.local.pem verify optional ca-ignore-err all crt-ignore-err all
     bind unix@/var/run/_socket002.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem ca-file /var/haproxy/ssl/ca/d2.local.pem verify optional ca-ignore-err all crt-ignore-err all
+    bind unix@/var/run/_socket003.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     <<tls-del-headers>>
     http-request set-header x-ha-base %[ssl_fc_sni]%[path]
@@ -902,7 +904,8 @@ listen _front__tls
     ## _front002/_socket003
     use-server _server_socket003 if { req.ssl_sni -i -f /etc/haproxy/maps/_socket003.list }
     server _server_socket003 unix@/var/run/_socket003.sock send-proxy-v2 weight 0
-    # TODO default backend
+    # default backend
+    server _default_server_socket003 unix@/var/run/_socket003.sock send-proxy-v2
 frontend _front_http
     mode http
     bind :80
@@ -1159,7 +1162,8 @@ listen _front__tls
     tcp-request content set-var(req.sslpassback) req.ssl_sni,lower,map(/etc/haproxy/maps/_global_sslpassthrough.map,_nomatch)
     tcp-request content accept if { req.ssl_hello_type 1 }
     use_backend %[var(req.sslpassback)] unless { var(req.sslpassback) _nomatch }
-    # TODO default backend
+    # default backend
+    server _default_server_socket001 unix@/var/run/_socket001.sock send-proxy-v2
 frontend _front_http
     mode http
     bind :80
@@ -1168,6 +1172,16 @@ frontend _front_http
     <<tls-del-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+    default_backend _error404
+frontend _front001
+    mode http
+    bind unix@/var/run/_socket001.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
+    http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
+    http-request del-header X-SSL-Client-CN
+    http-request del-header X-SSL-Client-DN
+    http-request del-header X-SSL-Client-SHA1
+    http-request del-header X-SSL-Client-Cert
+    use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404
 <<support>>
 `)
@@ -1642,7 +1656,8 @@ listen _front__tls
     ## _front002/_socket003 wildcard
     use-server _server_socket003_wildcard if { req.ssl_sni -i -m reg -f /etc/haproxy/maps/_socket003_regex.list }
     server _server_socket003_wildcard unix@/var/run/_socket003.sock send-proxy-v2 weight 0
-    # TODO default backend
+    # default backend
+    server _default_server_socket001 unix@/var/run/_socket001.sock send-proxy-v2
 frontend _front_http
     mode http
     bind :80

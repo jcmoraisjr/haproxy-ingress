@@ -171,9 +171,9 @@ func (f *Frontend) HasVarNamespace() bool {
 }
 
 // BuildRawFrontends ...
-func BuildRawFrontends(hosts []*Host) (frontends []*Frontend, sslpassthrough []*Host) {
+func BuildRawFrontends(hosts []*Host) (frontends []*Frontend, sslpassthrough []*Host, defaultBind *BindConfig) {
 	if len(hosts) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 	// creating frontends and ssl-passthrough hosts
 	for _, host := range hosts {
@@ -198,9 +198,24 @@ func BuildRawFrontends(hosts []*Host) (frontends []*Frontend, sslpassthrough []*
 				bind = newFrontendBind(host)
 				binds = append(binds, bind)
 			}
+			if defaultBind == nil && bind.supportDefault() {
+				defaultBind = bind
+			}
 			bind.Hosts = append(bind.Hosts, host)
 		}
 		frontend.Binds = binds
+	}
+	// configuring the default bind
+	if defaultBind == nil {
+		var frontend *Frontend
+		if len(frontends) == 0 {
+			frontend = newFrontend(nil)
+			frontends = append(frontends, frontend)
+		} else {
+			frontend = frontends[0]
+		}
+		defaultBind = newFrontendBind(nil)
+		frontend.Binds = append(frontend.Binds, defaultBind)
 	}
 	// naming frontends
 	var i int
@@ -212,7 +227,7 @@ func BuildRawFrontends(hosts []*Host) (frontends []*Frontend, sslpassthrough []*
 	sort.Slice(frontends, func(i, j int) bool {
 		return frontends[i].Name < frontends[j].Name
 	})
-	return frontends, sslpassthrough
+	return frontends, sslpassthrough, defaultBind
 }
 
 func findMatchingFrontend(frontends []*Frontend, host *Host) *Frontend {
@@ -235,6 +250,9 @@ func findMatchingBind(binds []*BindConfig, host *Host) *BindConfig {
 
 // newFrontend and Frontend.Match should always sinchronize its attributes
 func newFrontend(host *Host) *Frontend {
+	if host == nil {
+		return &Frontend{}
+	}
 	return &Frontend{
 		Timeout: host.Timeout,
 	}
@@ -242,6 +260,9 @@ func newFrontend(host *Host) *Frontend {
 
 // newFrontendBind and BindConfig.Match should always sinchronize its attributes
 func newFrontendBind(host *Host) *BindConfig {
+	if host == nil {
+		return &BindConfig{}
+	}
 	return &BindConfig{
 		TLS: BindTLSConfig{
 			CAFilename: host.TLS.CAFilename,
@@ -259,4 +280,8 @@ func (f *Frontend) match(host *Host) bool {
 
 func (b *BindConfig) match(host *Host) bool {
 	return b.TLS.CAHash == host.TLS.CAHash
+}
+
+func (b *BindConfig) supportDefault() bool {
+	return b.TLS.CAHash == ""
 }
