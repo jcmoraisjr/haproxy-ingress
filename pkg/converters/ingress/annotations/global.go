@@ -77,16 +77,17 @@ func (c *updater) buildGlobalProc(d *globalData) {
 }
 
 func (c *updater) buildGlobalTimeout(d *globalData) {
-	copyHAProxyTime(&d.global.Timeout.Client, d.config.TimeoutClient)
-	copyHAProxyTime(&d.global.Timeout.ClientFin, d.config.TimeoutClientFin)
-	copyHAProxyTime(&d.global.Timeout.Connect, d.config.TimeoutConnect)
-	copyHAProxyTime(&d.global.Timeout.HTTPRequest, d.config.TimeoutHTTPRequest)
-	copyHAProxyTime(&d.global.Timeout.KeepAlive, d.config.TimeoutKeepAlive)
-	copyHAProxyTime(&d.global.Timeout.Queue, d.config.TimeoutQueue)
-	copyHAProxyTime(&d.global.Timeout.Server, d.config.TimeoutServer)
-	copyHAProxyTime(&d.global.Timeout.ServerFin, d.config.TimeoutServerFin)
-	copyHAProxyTime(&d.global.Timeout.Tunnel, d.config.TimeoutTunnel)
-	copyHAProxyTime(&d.global.Timeout.Stop, d.config.TimeoutStop)
+	// TODO use c.validaTime() after migrate global config to annotation mapper
+	d.global.Timeout.Client = d.config.TimeoutClient
+	d.global.Timeout.ClientFin = d.config.TimeoutClientFin
+	d.global.Timeout.Connect = d.config.TimeoutConnect
+	d.global.Timeout.HTTPRequest = d.config.TimeoutHTTPRequest
+	d.global.Timeout.KeepAlive = d.config.TimeoutKeepAlive
+	d.global.Timeout.Queue = d.config.TimeoutQueue
+	d.global.Timeout.Server = d.config.TimeoutServer
+	d.global.Timeout.ServerFin = d.config.TimeoutServerFin
+	d.global.Timeout.Tunnel = d.config.TimeoutTunnel
+	d.global.Timeout.Stop = d.config.TimeoutStop
 }
 
 func (c *updater) buildGlobalSSL(d *globalData) {

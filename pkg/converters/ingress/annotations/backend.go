@@ -482,6 +482,30 @@ func (c *updater) buildBackendSSLRedirect(d *backData) {
 	}
 }
 
+func (c *updater) buildBackendTimeout(d *backData) {
+	if cfg := d.mapper.Get(ingtypes.BackTimeoutConnect); cfg.Source != nil {
+		d.backend.Timeout.Connect = c.validateTime(cfg)
+	}
+	if cfg := d.mapper.Get(ingtypes.BackTimeoutHTTPRequest); cfg.Source != nil {
+		d.backend.Timeout.HTTPRequest = c.validateTime(cfg)
+	}
+	if cfg := d.mapper.Get(ingtypes.BackTimeoutKeepAlive); cfg.Source != nil {
+		d.backend.Timeout.KeepAlive = c.validateTime(cfg)
+	}
+	if cfg := d.mapper.Get(ingtypes.BackTimeoutQueue); cfg.Source != nil {
+		d.backend.Timeout.Queue = c.validateTime(cfg)
+	}
+	if cfg := d.mapper.Get(ingtypes.BackTimeoutServer); cfg.Source != nil {
+		d.backend.Timeout.Server = c.validateTime(cfg)
+	}
+	if cfg := d.mapper.Get(ingtypes.BackTimeoutServerFin); cfg.Source != nil {
+		d.backend.Timeout.ServerFin = c.validateTime(cfg)
+	}
+	if cfg := d.mapper.Get(ingtypes.BackTimeoutTunnel); cfg.Source != nil {
+		d.backend.Timeout.Tunnel = c.validateTime(cfg)
+	}
+}
+
 func (c *updater) buildBackendWAF(d *backData) {
 	config := d.mapper.GetBackendConfig(
 		d.backend,

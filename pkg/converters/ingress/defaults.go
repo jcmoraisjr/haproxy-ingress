@@ -26,8 +26,6 @@ const (
 
 func createDefaults() (ann map[string]string, global *types.ConfigGlobals) {
 	ann = map[string]string{
-		types.HostTimeoutClient:         "50s",
-		types.HostTimeoutClientFin:      "50s",
 		types.BackBackendServerSlotsInc: "32",
 		types.BackBalanceAlgorithm:      "roundrobin",
 		types.BackCorsAllowHeaders:      "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization",
@@ -40,13 +38,6 @@ func createDefaults() (ann map[string]string, global *types.ConfigGlobals) {
 		types.BackHSTSPreload:           "false",
 		types.BackSessionCookieDynamic:  "true",
 		types.BackSSLRedirect:           "true",
-		types.BackTimeoutConnect:        "5s",
-		types.BackTimeoutHTTPRequest:    "5s",
-		types.BackTimeoutKeepAlive:      "1m",
-		types.BackTimeoutQueue:          "5s",
-		types.BackTimeoutServer:         "50s",
-		types.BackTimeoutServerFin:      "50s",
-		types.BackTimeoutTunnel:         "1h",
 	}
 	global = &types.ConfigGlobals{
 		BackendCheckInterval:         "2s",
@@ -99,16 +90,16 @@ func createDefaults() (ann map[string]string, global *types.ConfigGlobals) {
 		SyslogFormat:                 "rfc5424",
 		SyslogTag:                    "ingress",
 		TCPLogFormat:                 "",
-		TimeoutClient:                ann[types.HostTimeoutClient],
-		TimeoutClientFin:             ann[types.HostTimeoutClientFin],
-		TimeoutConnect:               ann[types.BackTimeoutConnect],
-		TimeoutHTTPRequest:           ann[types.BackTimeoutHTTPRequest],
-		TimeoutKeepAlive:             ann[types.BackTimeoutKeepAlive],
-		TimeoutQueue:                 ann[types.BackTimeoutQueue],
-		TimeoutServer:                ann[types.BackTimeoutServer],
-		TimeoutServerFin:             ann[types.BackTimeoutServerFin],
-		TimeoutStop:                  "",
-		TimeoutTunnel:                ann[types.BackTimeoutTunnel],
+		TimeoutClient:                "50s",
+		TimeoutClientFin:             "50s",
+		TimeoutConnect:               "5s",
+		TimeoutHTTPRequest:           "5s",
+		TimeoutKeepAlive:             "1m",
+		TimeoutQueue:                 "5s",
+		TimeoutServer:                "50s",
+		TimeoutServerFin:             "50s",
+		TimeoutStop:                  "10m",
+		TimeoutTunnel:                "1h",
 		UseProxyProtocol:             false,
 	}
 	return ann, global

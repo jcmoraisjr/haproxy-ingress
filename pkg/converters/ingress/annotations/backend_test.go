@@ -1092,6 +1092,56 @@ func TestSSLRedirect(t *testing.T) {
 	}
 }
 
+func TestTimeout(t *testing.T) {
+	testCase := []struct {
+		annDefault map[string]string
+		ann        map[string]map[string]string
+		paths      []string
+		source     Source
+		expected   hatypes.BackendTimeoutConfig
+		logging    string
+	}{
+		// 0
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					"timeout-server": "10s",
+				},
+			},
+			expected: hatypes.BackendTimeoutConfig{
+				Server: "10s",
+			},
+		},
+		// 1
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					"timeout-server": "10zz",
+				},
+			},
+			source:   Source{Namespace: "default", Name: "ing1", Type: "ingress"},
+			expected: hatypes.BackendTimeoutConfig{},
+			logging:  `WARN ignoring invalid time format on ingress 'default/ing1': 10zz`,
+		},
+		// 2
+		{
+			annDefault: map[string]string{
+				"timeout-server": "10s",
+			},
+			// use only if declared as svc/ing annotation, otherwise defaults to HAProxy's defaults section
+			expected: hatypes.BackendTimeoutConfig{},
+		},
+	}
+	for i, test := range testCase {
+		c := setup(t)
+		d := c.createBackendMappingData("default/app", &test.source, test.annDefault, test.ann, test.paths)
+		c.createUpdater().buildBackendTimeout(d)
+		c.compareObjects("backend timeout", i, d.backend.Timeout, test.expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
 func TestWAF(t *testing.T) {
 	testCase := []struct {
 		waf      string

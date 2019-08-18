@@ -17,6 +17,8 @@ limitations under the License.
 package annotations
 
 import (
+	"regexp"
+
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
@@ -61,9 +63,18 @@ type backData struct {
 	mapper  *Mapper
 }
 
-func copyHAProxyTime(dst *string, src string) {
-	// TODO validate
-	*dst = src
+var regexValidTime = regexp.MustCompile(`^[0-9]+(us|ms|s|m|h|d)$`)
+
+func (c *updater) validateTime(cfg *ConfigValue) string {
+	if !regexValidTime.MatchString(cfg.Value) {
+		if cfg.Source != nil {
+			c.logger.Warn("ignoring invalid time format on %v: %s", cfg.Source, cfg.Value)
+		} else if cfg.Value != "" {
+			c.logger.Warn("ignoring invalid time format on global/default config: %s", cfg.Value)
+		}
+		return ""
+	}
+	return cfg.Value
 }
 
 func (c *updater) UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.ConfigGlobals) {
@@ -99,10 +110,9 @@ func (c *updater) UpdateHostConfig(host *hatypes.Host, mapper *Mapper) {
 	host.RootRedirect = mapper.Get(ingtypes.HostAppRoot).Value
 	host.Alias.AliasName = mapper.Get(ingtypes.HostServerAlias).Value
 	host.Alias.AliasRegex = mapper.Get(ingtypes.HostServerAliasRegex).Value
-	host.Timeout.Client = mapper.Get(ingtypes.HostTimeoutClient).Value
-	host.Timeout.ClientFin = mapper.Get(ingtypes.HostTimeoutClientFin).Value
 	c.buildHostAuthTLS(data)
 	c.buildHostSSLPassthrough(data)
+	c.buildHostTimeout(data)
 }
 
 func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) {
@@ -124,6 +134,7 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) 
 	c.buildBackendOAuth(data)
 	c.buildBackendRewriteURL(data)
 	c.buildBackendSSLRedirect(data)
+	c.buildBackendTimeout(data)
 	c.buildBackendWAF(data)
 	c.buildBackendWhitelistHTTP(data)
 	c.buildBackendWhitelistTCP(data)
