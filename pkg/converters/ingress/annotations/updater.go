@@ -123,6 +123,7 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) 
 	// TODO check ModeTCP with HTTP annotations
 	backend.BalanceAlgorithm = mapper.Get(ingtypes.BackBalanceAlgorithm).Value
 	backend.MaxConnServer = mapper.Get(ingtypes.BackMaxconnServer).Int()
+	backend.MaxQueueServer = mapper.Get(ingtypes.BackMaxQueueServer).Int()
 	backend.SSL.AddCertHeader = mapper.Get(ingtypes.BackAuthTLSCertHeader).Bool()
 	c.buildBackendAffinity(data)
 	c.buildBackendAuthHTTP(data)
