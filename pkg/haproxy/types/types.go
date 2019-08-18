@@ -278,20 +278,18 @@ type Backend struct {
 	//
 	// per backend config
 	//
-	AgentCheck        AgentCheck
-	BalanceAlgorithm  string
-	Cookie            Cookie
-	CustomConfig      []string
-	Dynamic           DynBackendConfig
-	HealthCheck       HealthCheck
-	MaxConnServer     int
-	MaxQueueServer    int
-	ModeTCP           bool
-	OAuth             OAuthConfig
-	SendProxyProtocol string
-	SSL               SSLBackendConfig
-	Timeout           BackendTimeoutConfig
-	WhitelistTCP      []string
+	AgentCheck       AgentCheck
+	BalanceAlgorithm string
+	Cookie           Cookie
+	CustomConfig     []string
+	Dynamic          DynBackendConfig
+	HealthCheck      HealthCheck
+	ModeTCP          bool
+	OAuth            OAuthConfig
+	Server           ServerConfig
+	Timeout          BackendTimeoutConfig
+	TLS              BackendTLSConfig
+	WhitelistTCP     []string
 	//
 	// per path config
 	//
@@ -417,15 +415,16 @@ type OAuthConfig struct {
 	Headers     map[string]string
 }
 
-// SSLBackendConfig ...
-type SSLBackendConfig struct {
-	HasTLSAuth    bool
-	AddCertHeader bool
-	IsSecure      bool
-	CertFilename  string
-	CertHash      string
+// ServerConfig ...
+type ServerConfig struct {
 	CAFilename    string
 	CAHash        string
+	CrtFilename   string
+	CrtHash       string
+	MaxConn       int
+	MaxQueue      int
+	Protocol      string
+	ProxyProtocol string
 }
 
 // BackendTimeoutConfig ...
@@ -437,6 +436,12 @@ type BackendTimeoutConfig struct {
 	Server      string
 	ServerFin   string
 	Tunnel      string
+}
+
+// BackendTLSConfig ...
+type BackendTLSConfig struct {
+	AddCertHeader bool
+	HasTLSAuth    bool
 }
 
 // UserlistConfig ...

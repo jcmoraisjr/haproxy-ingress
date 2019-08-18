@@ -1305,7 +1305,7 @@ func (u *updaterMock) UpdateHostConfig(host *hatypes.Host, mapper *annotations.M
 }
 
 func (u *updaterMock) UpdateBackendConfig(backend *hatypes.Backend, mapper *annotations.Mapper) {
-	backend.MaxConnServer = mapper.Get(ingtypes.BackMaxconnServer).Int()
+	backend.Server.MaxConn = mapper.Get(ingtypes.BackMaxconnServer).Int()
 	backend.BalanceAlgorithm = mapper.Get(ingtypes.BackBalanceAlgorithm).Value
 }
 
@@ -1385,7 +1385,7 @@ func convertBackend(habackends ...*hatypes.Backend) []backendMock {
 			ID:               b.ID,
 			Endpoints:        endpoints,
 			BalanceAlgorithm: b.BalanceAlgorithm,
-			MaxConnServer:    b.MaxConnServer,
+			MaxConnServer:    b.Server.MaxConn,
 		})
 	}
 	return backends

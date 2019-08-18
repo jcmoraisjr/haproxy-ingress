@@ -493,6 +493,29 @@ func (c *updater) buildBackendRewriteURL(d *backData) {
 	}
 }
 
+func (c *updater) buildBackendSecure(d *backData) {
+	if !d.mapper.Get(ingtypes.BackSecureBackends).Bool() {
+		return
+	}
+	d.backend.Server.Protocol = "https"
+	if crt := d.mapper.Get(ingtypes.BackSecureCrtSecret); crt.Value != "" {
+		if crtFile, err := c.cache.GetTLSSecretPath(crt.Source.Namespace + "/" + crt.Value); err == nil {
+			d.backend.Server.CrtFilename = crtFile.Filename
+			d.backend.Server.CrtHash = crtFile.SHA1Hash
+		} else {
+			c.logger.Warn("skipping client certificate on %v: %v", crt.Source, err)
+		}
+	}
+	if ca := d.mapper.Get(ingtypes.BackSecureVerifyCASecret); ca.Value != "" {
+		if caFile, err := c.cache.GetCASecretPath(ca.Source.Namespace + "/" + ca.Value); err == nil {
+			d.backend.Server.CAFilename = caFile.Filename
+			d.backend.Server.CAHash = caFile.SHA1Hash
+		} else {
+			c.logger.Warn("skipping CA on %v: %v", ca.Source, err)
+		}
+	}
+}
+
 func (c *updater) buildBackendSSLRedirect(d *backData) {
 	for _, redir := range d.mapper.GetBackendConfig(d.backend, []string{ingtypes.BackSSLRedirect}, nil) {
 		d.backend.SSLRedirect = append(d.backend.SSLRedirect, &hatypes.BackendConfigBool{

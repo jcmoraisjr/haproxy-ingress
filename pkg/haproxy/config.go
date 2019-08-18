@@ -325,7 +325,7 @@ func (c *config) BuildFrontendGroup() error {
 					f.SNIBackendsMap.AppendHostname(base, back)
 					f.SNIBackendsMap.AppendAliasName(aliasName, back)
 					f.SNIBackendsMap.AppendAliasRegex(aliasRegex, back)
-					backend.SSL.HasTLSAuth = true
+					backend.TLS.HasTLSAuth = true
 				} else {
 					f.HostBackendsMap.AppendHostname(base, back)
 					f.HostBackendsMap.AppendAliasName(aliasName, back)

@@ -1001,6 +1001,109 @@ func TestRewriteURL(t *testing.T) {
 	}
 }
 
+func TestBackendSecure(t *testing.T) {
+	testCase := []struct {
+		source     Source
+		annDefault map[string]string
+		ann        map[string]map[string]string
+		paths      []string
+		tlsSecrets map[string]string
+		caSecrets  map[string]string
+		expected   hatypes.ServerConfig
+		logging    string
+	}{
+		// 0
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackSecureBackends: "true",
+				},
+			},
+			expected: hatypes.ServerConfig{
+				Protocol: "https",
+			},
+		},
+		// 1
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackSecureCrtSecret: "cli",
+				},
+			},
+			expected: hatypes.ServerConfig{},
+		},
+		// 2
+		{
+			source: Source{Namespace: "default", Name: "app1", Type: "service"},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackSecureBackends:  "true",
+					ingtypes.BackSecureCrtSecret: "cli",
+				},
+			},
+			tlsSecrets: map[string]string{
+				"default/cli": "/var/haproxy/ssl/cli.pem",
+			},
+			expected: hatypes.ServerConfig{
+				Protocol:    "https",
+				CrtFilename: "/var/haproxy/ssl/cli.pem",
+				CrtHash:     "f916dd295030e070f4d4aca4508571bc82f549af",
+			},
+		},
+		// 3
+		{
+			source: Source{Namespace: "default", Name: "app1", Type: "service"},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackSecureBackends:       "true",
+					ingtypes.BackSecureCrtSecret:      "cli",
+					ingtypes.BackSecureVerifyCASecret: "ca",
+				},
+			},
+			tlsSecrets: map[string]string{
+				"default/cli": "/var/haproxy/ssl/cli.pem",
+			},
+			caSecrets: map[string]string{
+				"default/ca": "/var/haproxy/ssl/ca.pem",
+			},
+			expected: hatypes.ServerConfig{
+				Protocol:    "https",
+				CAFilename:  "/var/haproxy/ssl/ca.pem",
+				CAHash:      "3be93154b1cddfd0e1279f4d76022221676d08c7",
+				CrtFilename: "/var/haproxy/ssl/cli.pem",
+				CrtHash:     "f916dd295030e070f4d4aca4508571bc82f549af",
+			},
+		},
+		// 4
+		{
+			source: Source{Namespace: "default", Name: "app1", Type: "service"},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackSecureBackends:       "true",
+					ingtypes.BackSecureCrtSecret:      "cli",
+					ingtypes.BackSecureVerifyCASecret: "ca",
+				},
+			},
+			expected: hatypes.ServerConfig{
+				Protocol: "https",
+			},
+			logging: `
+WARN skipping client certificate on service 'default/app1': secret not found: 'default/cli'
+WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
+		},
+	}
+	for i, test := range testCase {
+		c := setup(t)
+		d := c.createBackendMappingData("defualt/app", &test.source, test.annDefault, test.ann, test.paths)
+		c.cache.SecretTLSPath = test.tlsSecrets
+		c.cache.SecretCAPath = test.caSecrets
+		c.createUpdater().buildBackendSecure(d)
+		c.compareObjects("secure", i, d.backend.Server, test.expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
 func TestSSLRedirect(t *testing.T) {
 	testCases := []struct {
 		annDefault map[string]string

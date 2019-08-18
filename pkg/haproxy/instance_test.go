@@ -318,6 +318,20 @@ func TestBackends(t *testing.T) {
 			},
 			srvsuffix: "agent-check agent-port 8000 agent-inter 2s",
 		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.Server.Protocol = "https"
+				b.Server.CrtFilename = "/var/haproxy/ssl/client.pem"
+			},
+			srvsuffix: "ssl crt /var/haproxy/ssl/client.pem verify none",
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.Server.Protocol = "https"
+				b.Server.CAFilename = "/var/haproxy/ssl/ca.pem"
+			},
+			srvsuffix: "ssl verify required ca-file /var/haproxy/ssl/ca.pem",
+		},
 	}
 	for _, test := range testCases {
 		c := setup(t)
@@ -743,7 +757,7 @@ func TestInstanceSingleFrontendTwoBindsCA(t *testing.T) {
 	h.TLS.CAHash = "2"
 
 	b.SSLRedirect = b.CreateConfigBool(true)
-	b.SSL.AddCertHeader = true
+	b.TLS.AddCertHeader = true
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 
 	c.Update()
