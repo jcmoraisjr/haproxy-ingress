@@ -201,6 +201,11 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $backend.HealthCheck.URI }}
+    option httpchk {{ $backend.HealthCheck.URI }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
 {{- /*              MODE TCP              */}}
 {{- /*------------------------------------*/}}
 {{- if $backend.ModeTCP }}

@@ -32,6 +32,7 @@ func createDefaults() (ann map[string]string, global *types.ConfigGlobals) {
 		types.BackCorsAllowMethods:      "GET, PUT, POST, DELETE, PATCH, OPTIONS",
 		types.BackCorsAllowOrigin:       "*",
 		types.BackCorsMaxAge:            "86400",
+		types.BackHealthCheckInterval:   "2s",
 		types.BackHSTS:                  "true",
 		types.BackHSTSIncludeSubdomains: "false",
 		types.BackHSTSMaxAge:            "15768000",
@@ -40,7 +41,6 @@ func createDefaults() (ann map[string]string, global *types.ConfigGlobals) {
 		types.BackSSLRedirect:           "true",
 	}
 	global = &types.ConfigGlobals{
-		BackendCheckInterval:         "2s",
 		BindIPAddrHealthz:            "*",
 		BindIPAddrHTTP:               "*",
 		BindIPAddrStats:              "*",

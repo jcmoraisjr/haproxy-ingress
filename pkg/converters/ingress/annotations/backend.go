@@ -366,6 +366,26 @@ func (c *updater) buildBackendDynamic(d *backData) {
 	}
 }
 
+func (c *updater) buildBackendAgentCheck(d *backData) {
+	d.backend.AgentCheck.Addr = d.mapper.Get(ingtypes.BackAgentCheckAddr).Value
+	d.backend.AgentCheck.Interval = c.validateTime(d.mapper.Get(ingtypes.BackAgentCheckInterval))
+	d.backend.AgentCheck.Port = d.mapper.Get(ingtypes.BackAgentCheckPort).Int()
+	d.backend.AgentCheck.Send = d.mapper.Get(ingtypes.BackAgentCheckSend).Value
+}
+
+func (c *updater) buildBackendHealthCheck(d *backData) {
+	d.backend.HealthCheck.Addr = d.mapper.Get(ingtypes.BackHealthCheckAddr).Value
+	d.backend.HealthCheck.FallCount = d.mapper.Get(ingtypes.BackHealthCheckFallCount).Int()
+	interval := d.mapper.Get(ingtypes.BackHealthCheckInterval)
+	if interval.Value == "" {
+		interval = d.mapper.Get(ingtypes.BackBackendCheckInterval)
+	}
+	d.backend.HealthCheck.Interval = c.validateTime(interval)
+	d.backend.HealthCheck.Port = d.mapper.Get(ingtypes.BackHealthCheckPort).Int()
+	d.backend.HealthCheck.RiseCount = d.mapper.Get(ingtypes.BackHealthCheckRiseCount).Int()
+	d.backend.HealthCheck.URI = d.mapper.Get(ingtypes.BackHealthCheckURI).Value
+}
+
 func (c *updater) buildBackendHSTS(d *backData) {
 	rawHSTSList := d.mapper.GetBackendConfig(
 		d.backend,

@@ -18,7 +18,6 @@ package types
 
 // ConfigGlobals ...
 type ConfigGlobals struct {
-	BackendCheckInterval         string `json:"backend-check-interval"`
 	BindIPAddrHealthz            string `json:"bind-ip-addr-healthz"`
 	BindIPAddrHTTP               string `json:"bind-ip-addr-http"`
 	BindIPAddrStats              string `json:"bind-ip-addr-stats"`

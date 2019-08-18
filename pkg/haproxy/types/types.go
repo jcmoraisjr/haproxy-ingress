@@ -388,7 +388,7 @@ type BackendConfigWhitelist struct {
 type AgentCheck struct {
 	Addr     string
 	Interval string
-	Port     string
+	Port     int
 	Send     string
 }
 
@@ -402,10 +402,11 @@ type DynBackendConfig struct {
 // HealthCheck ...
 type HealthCheck struct {
 	Addr      string
-	FallCount string
+	FallCount int
 	Interval  string
-	Port      string
-	RiseCount string
+	Port      int
+	RiseCount int
+	URI       string
 }
 
 // OAuthConfig ...

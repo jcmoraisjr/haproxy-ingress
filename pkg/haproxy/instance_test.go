@@ -296,6 +296,28 @@ func TestBackends(t *testing.T) {
     http-request redirect location /oauth2/start?rd=%[path] if !{ path_beg /oauth2/ } !{ var(txn.auth_response_successful) -m bool }
     http-request set-header X-Auth-Request-Email %[var(txn.auth_response_email)] if { var(txn.auth_response_email) -m found }`,
 		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.HealthCheck.Interval = "2s"
+			},
+			srvsuffix: "check inter 2s",
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.HealthCheck.URI = "/check"
+				b.HealthCheck.Port = 4000
+			},
+			expected: `
+    option httpchk /check`,
+			srvsuffix: "check port 4000",
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.AgentCheck.Port = 8000
+				b.AgentCheck.Interval = "2s"
+			},
+			srvsuffix: "agent-check agent-port 8000 agent-inter 2s",
+		},
 	}
 	for _, test := range testCases {
 		c := setup(t)
