@@ -284,6 +284,7 @@ type Backend struct {
 	CustomConfig     []string
 	Dynamic          DynBackendConfig
 	HealthCheck      HealthCheck
+	Limit            BackendLimit
 	ModeTCP          bool
 	OAuth            OAuthConfig
 	Server           ServerConfig
@@ -405,6 +406,13 @@ type HealthCheck struct {
 	Port      int
 	RiseCount int
 	URI       string
+}
+
+// BackendLimit ...
+type BackendLimit struct {
+	Connections int
+	RPS         int
+	Whitelist   []string
 }
 
 // OAuthConfig ...

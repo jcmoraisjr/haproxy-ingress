@@ -201,6 +201,11 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if coalesce $backend.Limit.Connections $backend.Limit.RPS }}
+    stick-table type ip size 200k expire 5m store conn_cur,conn_rate(1s)
+{{- end }}
+
+{{- /*------------------------------------*/}}
 {{- if $backend.HealthCheck.URI }}
     option httpchk {{ $backend.HealthCheck.URI }}
 {{- end }}
@@ -212,13 +217,43 @@ backend {{ $backend.ID }}
 
 {{- /*------------------------------------*/}}
 {{- if $backend.WhitelistTCP }}
-    tcp-request content reject if !{ src{{ range $cidr := $backend.WhitelistTCP }} {{ $cidr }}{{ end }} }
+    tcp-request content reject if !{ src {{ join " " $backend.WhitelistTCP }} }
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if coalesce $backend.Limit.RPS $backend.Limit.Connections }}
+    tcp-request content track-sc1 src
+{{- if $backend.Limit.Connections }}
+    tcp-request content reject if
+        {{- if $backend.Limit.Whitelist }} !{ src {{ join " " $backend.Limit.Whitelist }} }{{ end }}
+        {{- "" }} { sc1_conn_cur gt {{ $backend.Limit.Connections }} }
+{{- end }}
+{{- if $backend.Limit.RPS }}
+    tcp-request content reject if
+        {{- if $backend.Limit.Whitelist }} !{ src {{ join " " $backend.Limit.Whitelist }} }{{ end }}
+        {{- "" }} { sc1_conn_rate gt {{ $backend.Limit.RPS }} }
+{{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
 {{- /*             MODE HTTP              */}}
 {{- /*------------------------------------*/}}
 {{- else }}{{/*** if $backend.ModeTCP ***/}}
+
+{{- /*------------------------------------*/}}
+{{- if coalesce $backend.Limit.RPS $backend.Limit.Connections }}
+    http-request track-sc1 src
+{{- if $backend.Limit.Connections }}
+    http-request deny if
+        {{- if $backend.Limit.Whitelist }} !{ src {{ join " " $backend.Limit.Whitelist }} }{{ end }}
+        {{- "" }} { sc1_conn_cur gt {{ $backend.Limit.Connections }} }
+{{- end }}
+{{- if $backend.Limit.RPS }}
+    http-request deny if
+        {{- if $backend.Limit.Whitelist }} !{ src {{ join " " $backend.Limit.Whitelist }} }{{ end }}
+        {{- "" }} { sc1_conn_rate gt {{ $backend.Limit.RPS }} }
+{{- end }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $backend.NeedACL }}
@@ -234,7 +269,7 @@ backend {{ $backend.ID }}
 {{- if $wlist }}
     http-request deny if
         {{- if gt (len $backend.WhitelistHTTP) 1 }} { var(txn.pathID) {{ $wlistCfg.Paths.IDList }} }{{ end }}
-        {{- "" }} !{ src{{ range $cidr := $wlist }} {{ $cidr }}{{ end }} }
+        {{- "" }} !{ src {{ join " " $wlist }} }
 {{- end }}
 {{- end }}
 

@@ -17,6 +17,7 @@ limitations under the License.
 package annotations
 
 import (
+	"net"
 	"regexp"
 
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
@@ -24,6 +25,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
 // Updater ...
@@ -75,6 +77,22 @@ func (c *updater) validateTime(cfg *ConfigValue) string {
 		return ""
 	}
 	return cfg.Value
+}
+
+func (c *updater) splitCIDR(cidrlist *ConfigValue) []string {
+	var cidrslice []string
+	for _, cidr := range utils.Split(cidrlist.Value, ",") {
+		var err error
+		if net.ParseIP(cidr) == nil {
+			_, _, err = net.ParseCIDR(cidr)
+		}
+		if err != nil {
+			c.logger.Warn("skipping invalid IP or cidr on %v: %s", cidrlist.Source, cidr)
+		} else {
+			cidrslice = append(cidrslice, cidr)
+		}
+	}
+	return cidrslice
 }
 
 func (c *updater) UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.ConfigGlobals) {
@@ -134,6 +152,7 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) 
 	c.buildBackendAgentCheck(data)
 	c.buildBackendHealthCheck(data)
 	c.buildBackendHSTS(data)
+	c.buildBackendLimit(data)
 	c.buildBackendOAuth(data)
 	c.buildBackendRewriteURL(data)
 	c.buildBackendSecure(data)

@@ -1330,7 +1330,7 @@ func TestWhitelistHTTP(t *testing.T) {
 					ingtypes.BackWhitelistSourceRange: "10.0.0.0/8,192.168.0.0/16",
 				},
 				"/url": {
-					ingtypes.BackWhitelistSourceRange: "10.0.0.0/8",
+					ingtypes.BackWhitelistSourceRange: "10.0.0.0/8,192.168.0.101",
 				},
 			},
 			expected: []*hatypes.BackendConfigWhitelist{
@@ -1340,7 +1340,7 @@ func TestWhitelistHTTP(t *testing.T) {
 				},
 				{
 					Paths:  createBackendPaths("/url"),
-					Config: []string{"10.0.0.0/8"},
+					Config: []string{"10.0.0.0/8", "192.168.0.101"},
 				},
 			},
 		},
@@ -1398,15 +1398,15 @@ func TestWhitelistTCP(t *testing.T) {
 		{
 			cidrlist: "10.0.0.0/8,192.168.0/16",
 			expected: []string{"10.0.0.0/8"},
-			logging:  `WARN skipping invalid cidr '192.168.0/16' in whitelist config on ingress 'default/ing1'`,
+			logging:  `WARN skipping invalid IP or cidr on ingress 'default/ing1': 192.168.0/16`,
 		},
 		// 3
 		{
-			cidrlist: "10.0.0/8,192.168.0/16",
-			expected: nil,
+			cidrlist: "10.0.0/8,192.168.0/16,192.168.1.101",
+			expected: []string{"192.168.1.101"},
 			logging: `
-WARN skipping invalid cidr '10.0.0/8' in whitelist config on ingress 'default/ing1'
-WARN skipping invalid cidr '192.168.0/16' in whitelist config on ingress 'default/ing1'`,
+WARN skipping invalid IP or cidr on ingress 'default/ing1': 10.0.0/8
+WARN skipping invalid IP or cidr on ingress 'default/ing1': 192.168.0/16`,
 		},
 	}
 

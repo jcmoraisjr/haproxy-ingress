@@ -332,6 +332,49 @@ func TestBackends(t *testing.T) {
 			},
 			srvsuffix: "ssl verify required ca-file /var/haproxy/ssl/ca.pem",
 		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.Limit.Connections = 200
+				b.Limit.RPS = 20
+				b.Limit.Whitelist = []string{"192.168.0.0/16", "10.1.1.101"}
+			},
+			expected: `
+    stick-table type ip size 200k expire 5m store conn_cur,conn_rate(1s)
+    http-request track-sc1 src
+    http-request deny if !{ src 192.168.0.0/16 10.1.1.101 } { sc1_conn_cur gt 200 }
+    http-request deny if !{ src 192.168.0.0/16 10.1.1.101 } { sc1_conn_rate gt 20 }`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.Limit.RPS = 20
+			},
+			expected: `
+    stick-table type ip size 200k expire 5m store conn_cur,conn_rate(1s)
+    http-request track-sc1 src
+    http-request deny if { sc1_conn_rate gt 20 }`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.Limit.Connections = 200
+			},
+			expected: `
+    stick-table type ip size 200k expire 5m store conn_cur,conn_rate(1s)
+    http-request track-sc1 src
+    http-request deny if { sc1_conn_cur gt 200 }`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.ModeTCP = true
+				b.Limit.Connections = 200
+				b.Limit.RPS = 20
+				b.Limit.Whitelist = []string{"192.168.0.0/16", "10.1.1.101"}
+			},
+			expected: `
+    stick-table type ip size 200k expire 5m store conn_cur,conn_rate(1s)
+    tcp-request content track-sc1 src
+    tcp-request content reject if !{ src 192.168.0.0/16 10.1.1.101 } { sc1_conn_cur gt 200 }
+    tcp-request content reject if !{ src 192.168.0.0/16 10.1.1.101 } { sc1_conn_rate gt 20 }`,
+		},
 	}
 	for _, test := range testCases {
 		c := setup(t)

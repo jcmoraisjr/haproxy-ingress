@@ -18,7 +18,6 @@ package annotations
 
 import (
 	"fmt"
-	"net"
 	"regexp"
 	"strconv"
 	"strings"
@@ -26,7 +25,6 @@ import (
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	ingutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/utils"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
 func (c *updater) buildBackendAffinity(d *backData) {
@@ -405,6 +403,12 @@ func (c *updater) buildBackendHSTS(d *backData) {
 	}
 }
 
+func (c *updater) buildBackendLimit(d *backData) {
+	d.backend.Limit.RPS = d.mapper.Get(ingtypes.BackLimitRPS).Int()
+	d.backend.Limit.Connections = d.mapper.Get(ingtypes.BackLimitConnections).Int()
+	d.backend.Limit.Whitelist = c.splitCIDR(d.mapper.Get(ingtypes.BackLimitWhitelist))
+}
+
 var (
 	oauthHeaderRegex = regexp.MustCompile(`^[A-Za-z0-9-]+:[A-Za-z0-9-_]+$`)
 )
@@ -578,18 +582,9 @@ func (c *updater) buildBackendWhitelistHTTP(d *backData) {
 		return
 	}
 	for _, cfg := range d.mapper.GetBackendConfig(d.backend, []string{ingtypes.BackWhitelistSourceRange}, nil) {
-		wlist := cfg.Get(ingtypes.BackWhitelistSourceRange)
-		var cidrlist []string
-		for _, cidr := range utils.Split(wlist.Value, ",") {
-			if _, _, err := net.ParseCIDR(cidr); err != nil {
-				c.logger.Warn("skipping invalid cidr '%s' in whitelist config on %v", cidr, wlist.Source)
-			} else {
-				cidrlist = append(cidrlist, cidr)
-			}
-		}
 		d.backend.WhitelistHTTP = append(d.backend.WhitelistHTTP, &hatypes.BackendConfigWhitelist{
 			Paths:  cfg.Paths,
-			Config: cidrlist,
+			Config: c.splitCIDR(cfg.Get(ingtypes.BackWhitelistSourceRange)),
 		})
 	}
 }
@@ -602,13 +597,5 @@ func (c *updater) buildBackendWhitelistTCP(d *backData) {
 	if wlist.Source == nil {
 		return
 	}
-	var cidrlist []string
-	for _, cidr := range utils.Split(wlist.Value, ",") {
-		if _, _, err := net.ParseCIDR(cidr); err != nil {
-			c.logger.Warn("skipping invalid cidr '%s' in whitelist config on %v", cidr, wlist.Source)
-		} else {
-			cidrlist = append(cidrlist, cidr)
-		}
-	}
-	d.backend.WhitelistTCP = cidrlist
+	d.backend.WhitelistTCP = c.splitCIDR(wlist)
 }
