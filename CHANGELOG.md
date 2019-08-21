@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v0.7.3
+
+Fixes and improvements since [v0.7.2](#v072):
+
+* Update HAProxy from 1.8.20 to 1.8.21
+* Fix duplication of ConfigFrontend snippets for DefaultBackend [#352](https://github.com/jcmoraisjr/haproxy-ingress/pull/352)
+* Disable HTTP Basic Auth on CORS pre-flight OPTIONS request [#356](https://github.com/jcmoraisjr/haproxy-ingress/pull/356)
+
 ## v0.7.2
 
 Fixes and improvements since [v0.7.1](#v071):
