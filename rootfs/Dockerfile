@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM haproxy:1.8.20-alpine
+FROM haproxy:1.8.21-alpine
 RUN apk --no-cache add socat openssl lua5.3 lua-socket
 
 # dumb-init kindly manages SIGCHLD from forked HAProxy processes
