@@ -425,14 +425,14 @@ type OAuthConfig struct {
 
 // ServerConfig ...
 type ServerConfig struct {
-	CAFilename    string
-	CAHash        string
-	CrtFilename   string
-	CrtHash       string
-	MaxConn       int
-	MaxQueue      int
-	Protocol      string
-	ProxyProtocol string
+	CAFilename  string
+	CAHash      string
+	CrtFilename string
+	CrtHash     string
+	MaxConn     int
+	MaxQueue    int
+	Protocol    string
+	SendProxy   string
 }
 
 // BackendTimeoutConfig ...

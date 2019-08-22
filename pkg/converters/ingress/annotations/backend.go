@@ -467,6 +467,25 @@ func (c *updater) findBackend(namespace, uriPrefix string) *hatypes.HostBackend 
 	return nil
 }
 
+func (c *updater) buildBackendProxyProtocol(d *backData) {
+	cfg := d.mapper.Get(ingtypes.BackProxyProtocol)
+	if cfg.Source == nil {
+		return
+	}
+	switch cfg.Value {
+	case "v1":
+		d.backend.Server.SendProxy = "send-proxy"
+	case "v2":
+		d.backend.Server.SendProxy = "send-proxy-v2"
+	case "v2-ssl":
+		d.backend.Server.SendProxy = "send-proxy-v2-ssl"
+	case "v2-ssl-cn":
+		d.backend.Server.SendProxy = "send-proxy-v2-ssl-cn"
+	default:
+		c.logger.Warn("ignoring invalid proxy protocol version on %v: %s", cfg.Source, cfg.Value)
+	}
+}
+
 var (
 	rewriteURLRegex = regexp.MustCompile(`^[^"' ]*$`)
 )

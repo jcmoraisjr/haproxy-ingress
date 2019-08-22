@@ -375,6 +375,12 @@ func TestBackends(t *testing.T) {
     tcp-request content reject if !{ src 192.168.0.0/16 10.1.1.101 } { sc1_conn_cur gt 200 }
     tcp-request content reject if !{ src 192.168.0.0/16 10.1.1.101 } { sc1_conn_rate gt 20 }`,
 		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.Server.SendProxy = "send-proxy-v2"
+			},
+			srvsuffix: "send-proxy-v2",
+		},
 	}
 	for _, test := range testCases {
 		c := setup(t)

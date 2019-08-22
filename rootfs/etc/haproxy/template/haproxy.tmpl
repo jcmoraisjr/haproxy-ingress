@@ -441,7 +441,7 @@ backend {{ $backend.ID }}
             {{- else }} verify none
         {{- end }}
     {{- end }}
-    {{- if $server.ProxyProtocol }} {{ $server.ProxyProtocol }}{{ end }}
+    {{- if $server.SendProxy }} {{ $server.SendProxy }}{{ end }}
     {{- $agent := $backend.AgentCheck }}
     {{- $hc := $backend.HealthCheck }}
     {{- if coalesce $hc.Port $hc.Addr $hc.Interval $hc.RiseCount $hc.FallCount }} check
