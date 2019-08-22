@@ -119,7 +119,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		useNodeInternalIP = flags.Bool("report-node-internal-ip-address", false,
 			`Defines if the nodes IP address to be returned in the ingress status should be the internal instead of the external IP address`)
 
-		v07 = flags.Bool("v07-controller", true,
+		v07 = flags.Bool("v07-controller", false,
 			`Defines if legacy v07 controller code should be used`)
 
 		showVersion = flags.Bool("version", false,
