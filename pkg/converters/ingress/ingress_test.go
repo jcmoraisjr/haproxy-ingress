@@ -1131,8 +1131,8 @@ var defaultBackendConfig = `
     port: 8080`
 
 func (c *testConfig) SyncDef(config map[string]string, ing ...*extensions.Ingress) {
-	defaultConfig := func() (ann map[string]string, global *ingtypes.ConfigGlobals) {
-		return map[string]string{}, &ingtypes.ConfigGlobals{}
+	defaultConfig := func() map[string]string {
+		return map[string]string{}
 	}
 	conv := NewIngressConverter(
 		&ingtypes.ConverterOptions{
@@ -1296,7 +1296,7 @@ func (c *testConfig) compareText(actual, expected string) {
 
 type updaterMock struct{}
 
-func (u *updaterMock) UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.ConfigGlobals) {
+func (u *updaterMock) UpdateGlobalConfig(global *hatypes.Global, config *annotations.Mapper) {
 }
 
 func (u *updaterMock) UpdateHostConfig(host *hatypes.Host, mapper *annotations.Mapper) {

@@ -142,7 +142,7 @@ func (c *Mapper) GetStrMap(key string) ([]*Map, bool) {
 	if found {
 		return []*Map{{Value: value}}, true
 	}
-	return []*Map{}, false
+	return nil, false
 }
 
 // Get ...

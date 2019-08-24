@@ -17,7 +17,6 @@ limitations under the License.
 package annotations
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
@@ -46,13 +45,9 @@ func TestModSecurity(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		config := &types.ConfigGlobals{}
-		config.ModsecurityEndpoints = test.endpoints
-		d := c.createGlobalData(config)
+		d := c.createGlobalData(map[string]string{types.GlobalModsecurityEndpoints: test.endpoints})
 		c.createUpdater().buildGlobalModSecurity(d)
-		if !reflect.DeepEqual(test.expected, d.global.ModSecurity.Endpoints) {
-			t.Errorf("endpoints differ on %d - expected: %v - actual: %v", i, test.expected, d.global.ModSecurity.Endpoints)
-		}
+		c.compareObjects("modsecurity endpoints", i, d.global.ModSecurity.Endpoints, test.expected)
 		c.teardown()
 	}
 }
@@ -96,14 +91,9 @@ func TestForwardFor(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		u := c.createUpdater()
-		d := c.createGlobalData(&types.ConfigGlobals{
-			Forwardfor: test.conf,
-		})
-		u.buildGlobalForwardFor(d)
-		if d.global.ForwardFor != test.expected {
-			t.Errorf("ForwardFor differs on %d: expected '%s' but was '%s'", i, test.expected, d.global.ForwardFor)
-		}
+		d := c.createGlobalData(map[string]string{types.GlobalForwardfor: test.conf})
+		c.createUpdater().buildGlobalForwardFor(d)
+		c.compareObjects("forward-for", i, d.global.ForwardFor, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}

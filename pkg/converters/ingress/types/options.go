@@ -25,7 +25,7 @@ import (
 type ConverterOptions struct {
 	Logger           types.Logger
 	Cache            convtypes.Cache
-	DefaultConfig    func() (ann map[string]string, global *ConfigGlobals)
+	DefaultConfig    func() map[string]string
 	DefaultBackend   string
 	DefaultSSLFile   convtypes.File
 	AnnotationPrefix string

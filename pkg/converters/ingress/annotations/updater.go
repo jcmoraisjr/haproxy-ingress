@@ -30,7 +30,7 @@ import (
 
 // Updater ...
 type Updater interface {
-	UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.ConfigGlobals)
+	UpdateGlobalConfig(global *hatypes.Global, mapper *Mapper)
 	UpdateHostConfig(host *hatypes.Host, mapper *Mapper)
 	UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper)
 }
@@ -52,7 +52,7 @@ type updater struct {
 
 type globalData struct {
 	global *hatypes.Global
-	config *ingtypes.ConfigGlobals
+	mapper *Mapper
 }
 
 type hostData struct {
@@ -95,22 +95,22 @@ func (c *updater) splitCIDR(cidrlist *ConfigValue) []string {
 	return cidrslice
 }
 
-func (c *updater) UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.ConfigGlobals) {
+func (c *updater) UpdateGlobalConfig(global *hatypes.Global, mapper *Mapper) {
 	data := &globalData{
 		global: global,
-		config: config,
+		mapper: mapper,
 	}
-	global.Syslog.Endpoint = config.SyslogEndpoint
-	global.Syslog.Format = config.SyslogFormat
-	global.Syslog.Tag = config.SyslogTag
-	global.Syslog.HTTPLogFormat = config.HTTPLogFormat
-	global.Syslog.HTTPSLogFormat = config.HTTPSLogFormat
-	global.Syslog.TCPLogFormat = config.TCPLogFormat
-	global.MaxConn = config.MaxConnections
-	global.DrainSupport.Drain = config.DrainSupport
-	global.DrainSupport.Redispatch = config.DrainSupportRedispatch
-	global.Cookie.Key = config.CookieKey
-	global.LoadServerState = config.LoadServerState
+	global.Syslog.Endpoint = mapper.Get(ingtypes.GlobalSyslogEndpoint).Value
+	global.Syslog.Format = mapper.Get(ingtypes.GlobalSyslogFormat).Value
+	global.Syslog.Tag = mapper.Get(ingtypes.GlobalSyslogTag).Value
+	global.Syslog.HTTPLogFormat = mapper.Get(ingtypes.GlobalHTTPLogFormat).Value
+	global.Syslog.HTTPSLogFormat = mapper.Get(ingtypes.GlobalHTTPSLogFormat).Value
+	global.Syslog.TCPLogFormat = mapper.Get(ingtypes.GlobalTCPLogFormat).Value
+	global.MaxConn = mapper.Get(ingtypes.GlobalMaxConnections).Int()
+	global.DrainSupport.Drain = mapper.Get(ingtypes.GlobalDrainSupport).Bool()
+	global.DrainSupport.Redispatch = mapper.Get(ingtypes.GlobalDrainSupportRedispatch).Bool()
+	global.Cookie.Key = mapper.Get(ingtypes.GlobalCookieKey).Value
+	global.LoadServerState = mapper.Get(ingtypes.GlobalLoadServerState).Bool()
 	global.StatsSocket = "/var/run/haproxy-stats.sock"
 	c.buildGlobalProc(data)
 	c.buildGlobalTimeout(data)

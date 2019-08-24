@@ -20,11 +20,12 @@ import (
 	"fmt"
 	"regexp"
 
+	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
 func (c *updater) buildGlobalProc(d *globalData) {
-	balance := d.config.NbprocBalance
+	balance := d.mapper.Get(ingtypes.GlobalNbprocBalance).Int()
 	if balance < 1 {
 		c.logger.Warn("invalid value of nbproc-balance configmap option (%v), using 1", balance)
 		balance = 1
@@ -35,13 +36,13 @@ func (c *updater) buildGlobalProc(d *globalData) {
 		c.logger.Warn("nbproc-balance configmap option (%v) greater than 1 is not yet supported, using 1", balance)
 		balance = 1
 	}
-	ssl := d.config.NbprocSSL
+	ssl := d.mapper.Get(ingtypes.GlobalNbprocSSL).Int()
 	if ssl < 0 {
 		c.logger.Warn("invalid value of nbproc-ssl configmap option (%v), using 0", ssl)
 		ssl = 0
 	}
 	procs := balance + ssl
-	threads := d.config.Nbthread
+	threads := d.mapper.Get(ingtypes.GlobalNbthread).Int()
 	if threads < 1 {
 		c.logger.Warn("invalid value of nbthread configmap option (%v), using 1", threads)
 		threads = 1
@@ -76,40 +77,39 @@ func (c *updater) buildGlobalProc(d *globalData) {
 }
 
 func (c *updater) buildGlobalTimeout(d *globalData) {
-	// TODO use c.validaTime() after migrate global config to annotation mapper
-	d.global.Timeout.Client = d.config.TimeoutClient
-	d.global.Timeout.ClientFin = d.config.TimeoutClientFin
-	d.global.Timeout.Connect = d.config.TimeoutConnect
-	d.global.Timeout.HTTPRequest = d.config.TimeoutHTTPRequest
-	d.global.Timeout.KeepAlive = d.config.TimeoutKeepAlive
-	d.global.Timeout.Queue = d.config.TimeoutQueue
-	d.global.Timeout.Server = d.config.TimeoutServer
-	d.global.Timeout.ServerFin = d.config.TimeoutServerFin
-	d.global.Timeout.Tunnel = d.config.TimeoutTunnel
-	d.global.Timeout.Stop = d.config.TimeoutStop
+	d.global.Timeout.Client = c.validateTime(d.mapper.Get(ingtypes.HostTimeoutClient))
+	d.global.Timeout.ClientFin = c.validateTime(d.mapper.Get(ingtypes.HostTimeoutClientFin))
+	d.global.Timeout.Connect = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutConnect))
+	d.global.Timeout.HTTPRequest = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutHTTPRequest))
+	d.global.Timeout.KeepAlive = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutKeepAlive))
+	d.global.Timeout.Queue = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutQueue))
+	d.global.Timeout.Server = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutServer))
+	d.global.Timeout.ServerFin = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutServerFin))
+	d.global.Timeout.Stop = c.validateTime(d.mapper.Get(ingtypes.GlobalTimeoutStop))
+	d.global.Timeout.Tunnel = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutTunnel))
 }
 
 func (c *updater) buildGlobalSSL(d *globalData) {
-	d.global.SSL.Ciphers = d.config.SSLCiphers
-	d.global.SSL.Options = d.config.SSLOptions
-	if d.config.SSLDHParam != "" {
-		if dhFile, err := c.cache.GetDHSecretPath(d.config.SSLDHParam); err == nil {
+	d.global.SSL.Ciphers = d.mapper.Get(ingtypes.GlobalSSLCiphers).Value
+	d.global.SSL.Options = d.mapper.Get(ingtypes.GlobalSSLOptions).Value
+	if sslDHParam := d.mapper.Get(ingtypes.GlobalSSLDHParam).Value; sslDHParam != "" {
+		if dhFile, err := c.cache.GetDHSecretPath(sslDHParam); err == nil {
 			d.global.SSL.DHParam.Filename = dhFile.Filename
 		} else {
 			c.logger.Error("error reading DH params: %v", err)
 		}
 	}
-	d.global.SSL.DHParam.DefaultMaxSize = d.config.SSLDHDefaultMaxSize
-	d.global.SSL.Engine = d.config.SSLEngine
-	d.global.SSL.ModeAsync = d.config.SSLModeAsync
-	d.global.SSL.HeadersPrefix = d.config.SSLHeadersPrefix
+	d.global.SSL.DHParam.DefaultMaxSize = d.mapper.Get(ingtypes.GlobalSSLDHDefaultMaxSize).Int()
+	d.global.SSL.Engine = d.mapper.Get(ingtypes.GlobalSSLEngine).Value
+	d.global.SSL.ModeAsync = d.mapper.Get(ingtypes.GlobalSSLModeAsync).Bool()
+	d.global.SSL.HeadersPrefix = d.mapper.Get(ingtypes.GlobalSSLHeadersPrefix).Value
 }
 
 func (c *updater) buildGlobalModSecurity(d *globalData) {
-	d.global.ModSecurity.Endpoints = utils.Split(d.config.ModsecurityEndpoints, ",")
-	d.global.ModSecurity.Timeout.Hello = d.config.ModsecurityTimeoutHello
-	d.global.ModSecurity.Timeout.Idle = d.config.ModsecurityTimeoutIdle
-	d.global.ModSecurity.Timeout.Processing = d.config.ModsecurityTimeoutProcessing
+	d.global.ModSecurity.Endpoints = utils.Split(d.mapper.Get(ingtypes.GlobalModsecurityEndpoints).Value, ",")
+	d.global.ModSecurity.Timeout.Hello = c.validateTime(d.mapper.Get(ingtypes.GlobalModsecurityTimeoutHello))
+	d.global.ModSecurity.Timeout.Idle = c.validateTime(d.mapper.Get(ingtypes.GlobalModsecurityTimeoutIdle))
+	d.global.ModSecurity.Timeout.Processing = c.validateTime(d.mapper.Get(ingtypes.GlobalModsecurityTimeoutProcessing))
 }
 
 var (
@@ -117,17 +117,17 @@ var (
 )
 
 func (c *updater) buildGlobalForwardFor(d *globalData) {
-	if forwardRegex.MatchString(d.config.Forwardfor) {
-		d.global.ForwardFor = d.config.Forwardfor
+	if forwardFor := d.mapper.Get(ingtypes.GlobalForwardfor).Value; forwardRegex.MatchString(forwardFor) {
+		d.global.ForwardFor = forwardFor
 	} else {
-		if d.config.Forwardfor != "" {
-			c.logger.Warn("Invalid forwardfor value option on configmap: '%s'. Using 'add' instead", d.config.Forwardfor)
+		if forwardFor != "" {
+			c.logger.Warn("Invalid forwardfor value option on configmap: '%s'. Using 'add' instead", forwardFor)
 		}
 		d.global.ForwardFor = "add"
 	}
 }
 
 func (c *updater) buildGlobalCustomConfig(d *globalData) {
-	d.global.CustomConfig = utils.LineToSlice(d.config.ConfigGlobal)
-	d.global.CustomDefaults = utils.LineToSlice(d.config.ConfigDefaults)
+	d.global.CustomConfig = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigGlobal).Value)
+	d.global.CustomDefaults = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigDefaults).Value)
 }

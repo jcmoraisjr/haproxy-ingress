@@ -45,15 +45,18 @@ func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Con
 	if options.DefaultConfig == nil {
 		options.DefaultConfig = createDefaults
 	}
-	annDefaults, globalDefaults := options.DefaultConfig()
+	defaultConfig := options.DefaultConfig()
+	for key, value := range globalConfig {
+		defaultConfig[key] = value
+	}
 	c := &converter{
 		haproxy:            haproxy,
 		options:            options,
 		logger:             options.Logger,
 		cache:              options.Cache,
-		mapBuilder:         annotations.NewMapBuilder(options.Logger, options.AnnotationPrefix+"/", mergeMaps(annDefaults, globalConfig)),
+		mapBuilder:         annotations.NewMapBuilder(options.Logger, options.AnnotationPrefix+"/", defaultConfig),
 		updater:            annotations.NewUpdater(haproxy, options.Cache, options.Logger),
-		globalConfig:       mergeConfig(globalDefaults, globalConfig),
+		globalConfig:       annotations.NewMapBuilder(options.Logger, "", defaultConfig).NewMapper(),
 		hostAnnotations:    map[*hatypes.Host]*annotations.Mapper{},
 		backendAnnotations: map[*hatypes.Backend]*annotations.Mapper{},
 	}
@@ -75,7 +78,7 @@ type converter struct {
 	cache              convtypes.Cache
 	mapBuilder         *annotations.MapBuilder
 	updater            annotations.Updater
-	globalConfig       *ingtypes.ConfigGlobals
+	globalConfig       *annotations.Mapper
 	hostAnnotations    map[*hatypes.Host]*annotations.Mapper
 	backendAnnotations map[*hatypes.Backend]*annotations.Mapper
 }
@@ -266,7 +269,7 @@ func (c *converter) addEndpoints(svc *api.Service, svcPort intstr.IntOrString, b
 	for _, addr := range ready {
 		backend.AcquireEndpoint(addr.IP, addr.Port, addr.TargetNS+"/"+addr.TargetName)
 	}
-	if c.globalConfig.DrainSupport {
+	if c.globalConfig.Get(ingtypes.GlobalDrainSupport).Bool() {
 		for _, addr := range notReady {
 			ep := backend.AcquireEndpoint(addr.IP, addr.Port, addr.TargetNS+"/"+addr.TargetName)
 			ep.Weight = 0
@@ -304,16 +307,4 @@ func readServiceNamePort(backend *extensions.IngressBackend) (string, string) {
 	serviceName := backend.ServiceName
 	servicePort := backend.ServicePort.String()
 	return serviceName, servicePort
-}
-
-func mergeMaps(dst, src map[string]string) map[string]string {
-	for key, value := range src {
-		dst[key] = value
-	}
-	return dst
-}
-
-func mergeConfig(configDefault *ingtypes.ConfigGlobals, config map[string]string) *ingtypes.ConfigGlobals {
-	utils.MergeMap(config, configDefault)
-	return configDefault
 }

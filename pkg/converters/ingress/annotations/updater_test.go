@@ -23,7 +23,6 @@ import (
 	"testing"
 
 	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	ha_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/helper_test"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
@@ -116,9 +115,9 @@ func (c *testConfig) compareObjects(name string, index int, actual, expected int
 	}
 }
 
-func (c *testConfig) createGlobalData(config *types.ConfigGlobals) *globalData {
+func (c *testConfig) createGlobalData(config map[string]string) *globalData {
 	return &globalData{
 		global: &hatypes.Global{},
-		config: config,
+		mapper: NewMapBuilder(c.logger, "", config).NewMapper(),
 	}
 }
