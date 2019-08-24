@@ -40,6 +40,14 @@ func Split(s, sep string) []string {
 	return out
 }
 
+// LineToSlice converts POSIX line breaks to a string slice
+func LineToSlice(s string) []string {
+	if s == "" {
+		return []string{}
+	}
+	return strings.Split(strings.TrimRight(s, "\n"), "\n")
+}
+
 // MergeMap copy keys from a `data` map to a `resultTo` tagged object
 func MergeMap(data map[string]string, resultTo interface{}) error {
 	if data != nil {

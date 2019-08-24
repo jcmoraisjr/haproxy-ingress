@@ -19,7 +19,6 @@ package annotations
 import (
 	"fmt"
 	"regexp"
-	"strings"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
@@ -129,10 +128,6 @@ func (c *updater) buildGlobalForwardFor(d *globalData) {
 }
 
 func (c *updater) buildGlobalCustomConfig(d *globalData) {
-	if d.config.ConfigGlobal != "" {
-		d.global.CustomConfig = strings.Split(strings.TrimRight(d.config.ConfigGlobal, "\n"), "\n")
-	}
-	if d.config.ConfigDefaults != "" {
-		d.global.CustomDefaults = strings.Split(strings.TrimRight(d.config.ConfigDefaults, "\n"), "\n")
-	}
+	d.global.CustomConfig = utils.LineToSlice(d.config.ConfigGlobal)
+	d.global.CustomDefaults = utils.LineToSlice(d.config.ConfigDefaults)
 }
