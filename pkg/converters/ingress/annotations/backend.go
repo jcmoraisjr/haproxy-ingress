@@ -25,6 +25,7 @@ import (
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	ingutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/utils"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
 func (c *updater) buildBackendAffinity(d *backData) {
@@ -305,11 +306,27 @@ func (c *updater) buildBackendBlueGreen(d *backData) {
 }
 
 func (c *updater) buildBackendBodySize(d *backData) {
-	config := d.mapper.GetBackendConfig(d.backend, []string{ingtypes.BackProxyBodySize}, nil)
+	config := d.mapper.GetBackendConfig(
+		d.backend,
+		[]string{ingtypes.BackProxyBodySize},
+		func(values map[string]*ConfigValue) map[string]*ConfigValue {
+			bodysize := values[ingtypes.BackProxyBodySize]
+			if bodysize == nil || bodysize.Value == "unlimited" {
+				return nil
+			}
+			value, err := utils.SizeSuffixToInt64(bodysize.Value)
+			if err != nil {
+				c.logger.Warn("ignoring invalid body size on %v: %s", bodysize.Source, bodysize.Value)
+				return nil
+			}
+			bodysize.Value = strconv.FormatInt(value, 10)
+			return values
+		},
+	)
 	for _, cfg := range config {
-		d.backend.ProxyBodySize = append(d.backend.ProxyBodySize, &hatypes.BackendConfigStr{
+		d.backend.MaxBodySize = append(d.backend.MaxBodySize, &hatypes.BackendConfigInt{
 			Paths:  cfg.Paths,
-			Config: cfg.Get(ingtypes.BackProxyBodySize).Value,
+			Config: cfg.Get(ingtypes.BackProxyBodySize).Int64(),
 		})
 	}
 }

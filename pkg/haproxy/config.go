@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strconv"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
@@ -277,6 +278,7 @@ func (c *config) BuildFrontendGroup() error {
 		frontend.Maps = hatypes.CreateMaps()
 		frontend.HostBackendsMap = frontend.Maps.AddMap(mapsPrefix + "_host.map")
 		frontend.RootRedirMap = frontend.Maps.AddMap(mapsPrefix + "_root_redir.map")
+		frontend.MaxBodySizeMap = frontend.Maps.AddMap(mapsPrefix + "_max_body_size.map")
 		frontend.SNIBackendsMap = frontend.Maps.AddMap(mapsPrefix + "_sni.map")
 		frontend.TLSInvalidCrtErrorList = frontend.Maps.AddMap(mapsPrefix + "_inv_crt.list")
 		frontend.TLSInvalidCrtErrorPagesMap = frontend.Maps.AddMap(mapsPrefix + "_inv_crt_redir.map")
@@ -306,6 +308,8 @@ func (c *config) BuildFrontendGroup() error {
 	}
 	for _, f := range frontends {
 		for _, host := range f.Hosts {
+			// TODO implement deny 413 and move all MaxBodySize stuff to backend
+			maxBodySizes := map[string]int64{}
 			for _, path := range host.Paths {
 				backend := c.AcquireBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
 				base := host.Hostname + path.Path
@@ -331,6 +335,9 @@ func (c *config) BuildFrontendGroup() error {
 					f.HostBackendsMap.AppendAliasName(aliasName, back)
 					f.HostBackendsMap.AppendAliasRegex(aliasRegex, back)
 				}
+				if maxBodySize := backend.MaxBodySizeHostpath(base); maxBodySize > 0 {
+					maxBodySizes[base] = maxBodySize
+				}
 				if !hasSSLRedirect {
 					fgroup.HTTPFrontsMap.AppendHostname(base, back)
 				}
@@ -341,6 +348,15 @@ func (c *config) BuildFrontendGroup() error {
 					ns = "-"
 				}
 				f.VarNamespaceMap.AppendHostname(base, ns)
+			}
+			// TODO implement deny 413 and move all MaxBodySize stuff to backend
+			if len(maxBodySizes) > 0 {
+				// add all paths of the same host to avoid overlap
+				// 0 (zero) means unlimited
+				for _, path := range host.Paths {
+					base := host.Hostname + path.Path
+					f.MaxBodySizeMap.AppendHostname(base, strconv.FormatInt(maxBodySizes[base], 10))
+				}
 			}
 			if host.HasTLSAuth() {
 				f.TLSInvalidCrtErrorList.AppendHostname(host.Hostname, "")

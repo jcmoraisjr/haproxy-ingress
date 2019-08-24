@@ -305,6 +305,12 @@ func (cv *ConfigValue) Int() int {
 	return value
 }
 
+// Int64 ...
+func (cv *ConfigValue) Int64() int64 {
+	value, _ := strconv.ParseInt(cv.Value, 10, 0)
+	return value
+}
+
 // String ...
 func (m *Map) String() string {
 	return fmt.Sprintf("%+v", *m)

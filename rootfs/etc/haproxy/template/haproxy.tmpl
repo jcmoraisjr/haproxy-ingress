@@ -470,6 +470,10 @@ backend _error404
     errorfile 400 /usr/local/etc/haproxy/errors/404.http
     http-request deny deny_status 400
 {{- end }}
+backend _error413
+    mode http
+    errorfile 400 /usr/local/etc/haproxy/errors/413.http
+    http-request deny deny_status 400
 backend _error495
     mode http
     errorfile 400 /usr/local/etc/haproxy/errors/495.http
@@ -665,7 +669,7 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if or $frontend.HostBackendsMap.HasRegex $frontend.HasVarNamespace }}
+{{- if or $frontend.HostBackendsMap.HasRegex $frontend.HasVarNamespace $frontend.HasMaxBody }}
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend)
         {{- "" }} var(req.base),map_beg({{ $frontend.HostBackendsMap.MatchFile }},_nomatch)
@@ -707,6 +711,11 @@ frontend {{ $frontend.Name }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-DN
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-Cert
+
+{{- /*------------------------------------*/}}
+{{- if $frontend.HasMaxBody }}
+    http-request set-var(req.maxbody) var(req.base),map_beg_int({{ $frontend.MaxBodySizeMap.MatchFile }},0)
+{{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $frontend.HasTLSAuth }}
@@ -768,6 +777,12 @@ frontend {{ $frontend.Name }}
 {{- end }}
     use_backend _error495 if
         {{- "" }} { var(req.tls_invalidcrt_redir) _internal }
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $frontend.HasMaxBody }}
+    use_backend _error413 if
+        {{- "" }} !{ var(req.maxbody) 0 } { req.body_size,sub(req.maxbody) gt 0 }
 {{- end }}
 
 {{- /*------------------------------------*/}}

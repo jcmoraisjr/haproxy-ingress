@@ -170,6 +170,11 @@ func (f *Frontend) HasVarNamespace() bool {
 	return false
 }
 
+// HasMaxBody ...
+func (f *Frontend) HasMaxBody() bool {
+	return f.MaxBodySizeMap.HasHost()
+}
+
 // BuildRawFrontends ...
 func BuildRawFrontends(hosts []*Host) (frontends []*Frontend, sslpassthrough []*Host, defaultBind *BindConfig) {
 	if len(hosts) == 0 {

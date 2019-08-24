@@ -172,10 +172,22 @@ func (b *Backend) HasSSLRedirectPaths(paths *BackendPaths) bool {
 	return false
 }
 
+// MaxBodySizeHostpath ...
+func (b *Backend) MaxBodySizeHostpath(hostpath string) int64 {
+	for _, maxbodysize := range b.MaxBodySize {
+		for _, path := range maxbodysize.Paths.Items {
+			if path.Hostpath == hostpath {
+				return maxbodysize.Config
+			}
+		}
+	}
+	return 0
+}
+
 // NeedACL ...
 func (b *Backend) NeedACL() bool {
 	return len(b.HSTS) > 1 ||
-		len(b.ProxyBodySize) > 1 || len(b.RewriteURL) > 1 || len(b.WhitelistHTTP) > 1 ||
+		len(b.MaxBodySize) > 1 || len(b.RewriteURL) > 1 || len(b.WhitelistHTTP) > 1 ||
 		len(b.Cors) > 1 || len(b.AuthHTTP) > 1 || len(b.WAF) > 1
 }
 
@@ -228,6 +240,11 @@ func (b *BackendConfigAuth) String() string {
 
 // String ...
 func (b *BackendConfigBool) String() string {
+	return fmt.Sprintf("%+v", *b)
+}
+
+// String ...
+func (b *BackendConfigInt) String() string {
 	return fmt.Sprintf("%+v", *b)
 }
 

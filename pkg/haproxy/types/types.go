@@ -173,6 +173,7 @@ type Frontend struct {
 	//
 	Maps                       *HostsMaps
 	HostBackendsMap            *HostsMap
+	MaxBodySizeMap             *HostsMap
 	RootRedirMap               *HostsMap
 	SNIBackendsMap             *HostsMap
 	TLSInvalidCrtErrorList     *HostsMap
@@ -316,7 +317,7 @@ type Backend struct {
 	AuthHTTP      []*BackendConfigAuth
 	Cors          []*BackendConfigCors
 	HSTS          []*BackendConfigHSTS
-	ProxyBodySize []*BackendConfigStr
+	MaxBodySize   []*BackendConfigInt
 	RewriteURL    []*BackendConfigStr
 	SSLRedirect   []*BackendConfigBool
 	WAF           []*BackendConfigStr
@@ -350,6 +351,12 @@ type BackendPath struct {
 type BackendConfigBool struct {
 	Paths  BackendPaths
 	Config bool
+}
+
+// BackendConfigInt ...
+type BackendConfigInt struct {
+	Paths  BackendPaths
+	Config int64
 }
 
 // BackendConfigStr ...

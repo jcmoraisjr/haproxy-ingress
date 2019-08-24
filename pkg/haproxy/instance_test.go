@@ -500,6 +500,10 @@ backend _error404
     mode http
     errorfile 400 /usr/local/etc/haproxy/errors/404.http
     http-request deny deny_status 400
+backend _error413
+    mode http
+    errorfile 400 /usr/local/etc/haproxy/errors/413.http
+    http-request deny deny_status 400
 backend _error495
     mode http
     errorfile 400 /usr/local/etc/haproxy/errors/495.http
@@ -1452,6 +1456,67 @@ d3.local/ d3_app_8080
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestInstanceMaxBody(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	h = c.config.AcquireHost("d1.local")
+	h.AddPath(b, "/")
+	h.AddPath(b, "/app")
+	b.MaxBodySize = []*hatypes.BackendConfigInt{{
+		Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/")),
+		Config: 1048576,
+	}}
+
+	b = c.config.AcquireBackend("d2", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS21}
+	h = c.config.AcquireHost("d2.local")
+	h.AddPath(b, "/")
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+backend d2_app_8080
+    mode http
+    server s21 172.17.0.121:8080 weight 100
+<<backends-default>>
+frontend _front_http
+    mode http
+    bind :80
+    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
+    <<tls-del-headers>>
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
+    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+    default_backend _error404
+frontend _front001
+    mode http
+    bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
+    <<tls-del-headers>>
+    http-request set-var(req.maxbody) var(req.base),map_beg_int(/etc/haproxy/maps/_front001_max_body_size.map,0)
+    use_backend _error413 if !{ var(req.maxbody) 0 } { req.body_size,sub(req.maxbody) gt 0 }
+    use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
+    default_backend _error404
+<<support>>
+`)
+	c.checkMap("_front001_max_body_size.map", `
+d1.local/app 0
+d1.local/ 1048576
+`)
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestUserlist(t *testing.T) {
 	type list struct {
 		name  string
@@ -2076,7 +2141,11 @@ func (c *testConfig) checkConfig(expected string) {
     timeout server          50s
     timeout server-fin      50s
     timeout tunnel          1h`,
-		"<<backend-errors>>": `backend _error495
+		"<<backend-errors>>": `backend _error413
+    mode http
+    errorfile 400 /usr/local/etc/haproxy/errors/413.http
+    http-request deny deny_status 400
+backend _error495
     mode http
     errorfile 400 /usr/local/etc/haproxy/errors/495.http
     http-request deny deny_status 400

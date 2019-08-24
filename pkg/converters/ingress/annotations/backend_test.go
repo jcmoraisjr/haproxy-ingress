@@ -611,6 +611,118 @@ INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not refe
 	}
 }
 
+func TestBodySize(t *testing.T) {
+	testCases := []struct {
+		source     Source
+		annDefault map[string]string
+		ann        map[string]map[string]string
+		paths      []string
+		expected   []*hatypes.BackendConfigInt
+		logging    string
+	}{
+		// 0
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackProxyBodySize: "10",
+				},
+			},
+			expected: []*hatypes.BackendConfigInt{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: 10,
+				},
+			},
+		},
+		// 1
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackProxyBodySize: "10k",
+				},
+				"/app": {
+					ingtypes.BackProxyBodySize: "10m",
+				},
+				"/sub": {
+					ingtypes.BackProxyBodySize: "10g",
+				},
+			},
+			expected: []*hatypes.BackendConfigInt{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: 10240,
+				},
+				{
+					Paths:  createBackendPaths("/app"),
+					Config: 10485760,
+				},
+				{
+					Paths:  createBackendPaths("/sub"),
+					Config: 10737418240,
+				},
+			},
+		},
+		// 2
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackProxyBodySize: "unlimited",
+				},
+			},
+			expected: []*hatypes.BackendConfigInt{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: 0,
+				},
+			},
+		},
+		// 3
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackProxyBodySize: "10e",
+				},
+			},
+			expected: []*hatypes.BackendConfigInt{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: 0,
+				},
+			},
+			source:  Source{Namespace: "default", Name: "ing1", Type: "ingress"},
+			logging: `WARN ignoring invalid body size on ingress 'default/ing1': 10e`,
+		},
+		// 4
+		{
+			ann: map[string]map[string]string{
+				"/app": {
+					ingtypes.BackProxyBodySize: "1m",
+				},
+			},
+			expected: []*hatypes.BackendConfigInt{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: 0,
+				},
+				{
+					Paths:  createBackendPaths("/app"),
+					Config: 1048576,
+				},
+			},
+			paths:  []string{"/"},
+			source: Source{Namespace: "default", Name: "ing1", Type: "ingress"},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createBackendMappingData("default/app", &test.source, test.annDefault, test.ann, test.paths)
+		c.createUpdater().buildBackendBodySize(d)
+		c.compareObjects("proxy body size", i, d.backend.MaxBodySize, test.expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
 const (
 	corsDefaultHeaders = "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
 	corsDefaultMethods = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
