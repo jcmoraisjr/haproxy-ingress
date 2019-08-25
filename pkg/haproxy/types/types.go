@@ -31,6 +31,7 @@ type Global struct {
 	StatsSocket     string
 	CustomConfig    []string
 	CustomDefaults  []string
+	CustomFrontend  []string
 }
 
 // ProcsConfig ...

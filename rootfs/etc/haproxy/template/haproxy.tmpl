@@ -771,18 +771,25 @@ frontend {{ $frontend.Name }}
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if
         {{- "" }} { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
 {{- end }}
-{{- if $mandatory }}
-    use_backend _error496 if
-        {{- "" }} { var(req.tls_nocrt_redir) _internal }
 {{- end }}
-    use_backend _error495 if
-        {{- "" }} { var(req.tls_invalidcrt_redir) _internal }
+
+{{- /*------------------------------------*/}}
+{{- range $snippet := $global.CustomFrontend }}
+    {{ $snippet }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $frontend.HasMaxBody }}
     use_backend _error413 if
         {{- "" }} !{ var(req.maxbody) 0 } { req.body_size,sub(req.maxbody) gt 0 }
+{{- end }}
+{{- if $frontend.HasTLSAuth }}
+{{- if $frontend.HasTLSMandatory }}
+    use_backend _error496 if
+        {{- "" }} { var(req.tls_nocrt_redir) _internal }
+{{- end }}
+    use_backend _error495 if
+        {{- "" }} { var(req.tls_invalidcrt_redir) _internal }
 {{- end }}
 
 {{- /*------------------------------------*/}}

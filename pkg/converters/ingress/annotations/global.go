@@ -130,4 +130,5 @@ func (c *updater) buildGlobalForwardFor(d *globalData) {
 func (c *updater) buildGlobalCustomConfig(d *globalData) {
 	d.global.CustomConfig = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigGlobal).Value)
 	d.global.CustomDefaults = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigDefaults).Value)
+	d.global.CustomFrontend = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigFrontend).Value)
 }

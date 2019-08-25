@@ -1151,6 +1151,49 @@ d.local/ d_app0_8080
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestInstanceCustomFrontend(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	h = c.config.AcquireHost("d1.local")
+	h.AddPath(b, "/")
+	c.config.Global().CustomFrontend = []string{
+		"# new header",
+		"http-response set-header X-Server HAProxy",
+	}
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+<<frontend-http>>
+    default_backend _error404
+frontend _front001
+    mode http
+    bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
+    http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
+    http-request del-header X-SSL-Client-CN
+    http-request del-header X-SSL-Client-DN
+    http-request del-header X-SSL-Client-SHA1
+    http-request del-header X-SSL-Client-Cert
+    # new header
+    http-response set-header X-Server HAProxy
+    use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
+    default_backend _error404
+<<support>>
+`)
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestInstanceSSLPassthrough(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
