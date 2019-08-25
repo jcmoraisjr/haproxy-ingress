@@ -76,6 +76,15 @@ func (c *updater) buildGlobalProc(d *globalData) {
 	d.global.Procs.CPUMap = cpumap
 }
 
+func (c *updater) buildGlobalSyslog(d *globalData) {
+	d.global.Syslog.Endpoint = d.mapper.Get(ingtypes.GlobalSyslogEndpoint).Value
+	d.global.Syslog.Format = d.mapper.Get(ingtypes.GlobalSyslogFormat).Value
+	d.global.Syslog.HTTPLogFormat = d.mapper.Get(ingtypes.GlobalHTTPLogFormat).Value
+	d.global.Syslog.HTTPSLogFormat = d.mapper.Get(ingtypes.GlobalHTTPSLogFormat).Value
+	d.global.Syslog.Tag = d.mapper.Get(ingtypes.GlobalSyslogTag).Value
+	d.global.Syslog.TCPLogFormat = d.mapper.Get(ingtypes.GlobalTCPLogFormat).Value
+}
+
 func (c *updater) buildGlobalTimeout(d *globalData) {
 	d.global.Timeout.Client = c.validateTime(d.mapper.Get(ingtypes.HostTimeoutClient))
 	d.global.Timeout.ClientFin = c.validateTime(d.mapper.Get(ingtypes.HostTimeoutClientFin))

@@ -100,24 +100,19 @@ func (c *updater) UpdateGlobalConfig(global *hatypes.Global, mapper *Mapper) {
 		global: global,
 		mapper: mapper,
 	}
-	global.Syslog.Endpoint = mapper.Get(ingtypes.GlobalSyslogEndpoint).Value
-	global.Syslog.Format = mapper.Get(ingtypes.GlobalSyslogFormat).Value
-	global.Syslog.Tag = mapper.Get(ingtypes.GlobalSyslogTag).Value
-	global.Syslog.HTTPLogFormat = mapper.Get(ingtypes.GlobalHTTPLogFormat).Value
-	global.Syslog.HTTPSLogFormat = mapper.Get(ingtypes.GlobalHTTPSLogFormat).Value
-	global.Syslog.TCPLogFormat = mapper.Get(ingtypes.GlobalTCPLogFormat).Value
+	global.StatsSocket = "/var/run/haproxy-stats.sock"
 	global.MaxConn = mapper.Get(ingtypes.GlobalMaxConnections).Int()
 	global.DrainSupport.Drain = mapper.Get(ingtypes.GlobalDrainSupport).Bool()
 	global.DrainSupport.Redispatch = mapper.Get(ingtypes.GlobalDrainSupportRedispatch).Bool()
 	global.Cookie.Key = mapper.Get(ingtypes.GlobalCookieKey).Value
 	global.LoadServerState = mapper.Get(ingtypes.GlobalLoadServerState).Bool()
-	global.StatsSocket = "/var/run/haproxy-stats.sock"
-	c.buildGlobalProc(data)
-	c.buildGlobalTimeout(data)
-	c.buildGlobalSSL(data)
-	c.buildGlobalModSecurity(data)
-	c.buildGlobalForwardFor(data)
 	c.buildGlobalCustomConfig(data)
+	c.buildGlobalForwardFor(data)
+	c.buildGlobalModSecurity(data)
+	c.buildGlobalProc(data)
+	c.buildGlobalSSL(data)
+	c.buildGlobalSyslog(data)
+	c.buildGlobalTimeout(data)
 }
 
 func (c *updater) UpdateHostConfig(host *hatypes.Host, mapper *Mapper) {
