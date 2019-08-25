@@ -132,6 +132,7 @@ type Configuration struct {
 	ForceNamespaceIsolation bool
 	AllowCrossNamespace     bool
 	DisableNodeList         bool
+	AnnPrefix               string
 
 	// optional
 	TCPConfigMapName string

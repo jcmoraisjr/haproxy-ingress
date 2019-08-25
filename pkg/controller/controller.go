@@ -120,7 +120,7 @@ func (hc *HAProxyController) configController() {
 	hc.converterOptions = &ingtypes.ConverterOptions{
 		Logger:           hc.logger,
 		Cache:            hc.cache,
-		AnnotationPrefix: "ingress.kubernetes.io",
+		AnnotationPrefix: hc.cfg.AnnPrefix,
 		DefaultBackend:   hc.cfg.DefaultService,
 		DefaultSSLFile:   hc.createDefaultSSLFile(hc.cache),
 	}
