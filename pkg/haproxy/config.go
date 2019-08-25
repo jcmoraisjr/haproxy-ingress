@@ -260,7 +260,8 @@ func (c *config) BuildFrontendGroup() error {
 		// One single HAProxy's frontend and bind
 		bind := frontends[0].Binds[0]
 		bind.Name = "_public"
-		bind.Socket = ":443"
+		bind.Socket = fmt.Sprintf("%s:%d", c.global.Bind.HTTPSBindIP, c.global.Bind.HTTPSPort)
+		bind.AcceptProxy = c.global.Bind.AcceptProxy
 		if len(bind.Hosts) == 1 {
 			bind.TLS.TLSCert = c.defaultX509Cert
 			bind.TLS.TLSCertDir = bind.Hosts[0].TLS.TLSFilename

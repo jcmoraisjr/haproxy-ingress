@@ -133,7 +133,7 @@ userlist {{ $userlist.Name }}
 {{- range $backend := $cfg.TCPBackends }}
 listen _tcp_{{ $backend.Name }}_{{ $backend.Port }}
 {{- $ssl := $backend.SSL }}
-    bind :{{ $backend.Port }}
+    bind {{ $global.Bind.TCPBindIP }}:{{ $backend.Port }}
         {{- if $ssl.Filename }} ssl crt {{ $ssl.Filename }}{{ end }}
         {{- if $backend.ProxyProt.Decode }} accept-proxy{{ end }}
     mode tcp
@@ -504,7 +504,7 @@ backend _error496
 #
 listen _front__tls
     mode tcp
-    bind :443
+    bind {{ $global.Bind.HTTPSBindIP }}:{{ $global.Bind.HTTPSPort }}{{ if $global.Bind.AcceptProxy }} accept-proxy{{ end }}
 
 {{- /*------------------------------------*/}}
 {{- if $global.Syslog.Endpoint }}
@@ -574,7 +574,7 @@ listen _front__tls
 #
 frontend _front_http
     mode http
-    bind :80
+    bind {{ $global.Bind.HTTPBindIP }}:{{ $global.Bind.HTTPPort }}{{ if $global.Bind.AcceptProxy }} accept-proxy{{ end }}
 
 {{- /*------------------------------------*/}}
 {{- if $global.Syslog.Endpoint }}

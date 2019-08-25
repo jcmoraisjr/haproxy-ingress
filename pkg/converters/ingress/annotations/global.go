@@ -24,6 +24,15 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
+func (c *updater) buildGlobalBind(d *globalData) {
+	d.global.Bind.AcceptProxy = d.mapper.Get(ingtypes.GlobalUseProxyProtocol).Bool()
+	d.global.Bind.HTTPBindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrHTTP).Value
+	d.global.Bind.HTTPSBindIP = d.global.Bind.HTTPBindIP
+	d.global.Bind.TCPBindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrTCP).Value
+	d.global.Bind.HTTPPort = d.mapper.Get(ingtypes.GlobalHTTPPort).Int()
+	d.global.Bind.HTTPSPort = d.mapper.Get(ingtypes.GlobalHTTPSPort).Int()
+}
+
 func (c *updater) buildGlobalProc(d *globalData) {
 	balance := d.mapper.Get(ingtypes.GlobalNbprocBalance).Int()
 	if balance < 1 {

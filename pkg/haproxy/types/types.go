@@ -18,6 +18,7 @@ package types
 
 // Global ...
 type Global struct {
+	Bind            GlobalBindConfig
 	Procs           ProcsConfig
 	Syslog          SyslogConfig
 	MaxConn         int
@@ -34,6 +35,16 @@ type Global struct {
 	CustomConfig    []string
 	CustomDefaults  []string
 	CustomFrontend  []string
+}
+
+// GlobalBindConfig ...
+type GlobalBindConfig struct {
+	AcceptProxy bool
+	HTTPBindIP  string
+	HTTPPort    int
+	HTTPSBindIP string
+	HTTPSPort   int
+	TCPBindIP   string
 }
 
 // ProcsConfig ...

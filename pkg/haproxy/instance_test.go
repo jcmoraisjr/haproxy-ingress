@@ -459,6 +459,82 @@ backend d1_app_8080
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestInstanceGlobalBind(t *testing.T) {
+	testCases := []struct {
+		bind          hatypes.GlobalBindConfig
+		expectedHTTP  string
+		expectedHTTPS string
+	}{
+		// 0
+		{
+			expectedHTTP:  "bind :0",
+			expectedHTTPS: "bind :0 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem",
+		},
+		// 1
+		{
+			bind: hatypes.GlobalBindConfig{
+				HTTPPort:    80,
+				HTTPSPort:   443,
+				AcceptProxy: true,
+			},
+			expectedHTTP:  "bind :80 accept-proxy",
+			expectedHTTPS: "bind :443 accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem",
+		},
+		// 2
+		{
+			bind: hatypes.GlobalBindConfig{
+				HTTPBindIP:  "127.0.0.1",
+				HTTPPort:    80,
+				HTTPSBindIP: "127.0.0.1",
+				HTTPSPort:   443,
+			},
+			expectedHTTP:  "bind 127.0.0.1:80",
+			expectedHTTPS: "bind 127.0.0.1:443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem",
+		},
+	}
+	for _, test := range testCases {
+		c := setup(t)
+		var h *hatypes.Host
+		var b *hatypes.Backend
+
+		b = c.config.AcquireBackend("d1", "app", "8080")
+		b.Endpoints = []*hatypes.Endpoint{endpointS1}
+		h = c.config.AcquireHost("d1.local")
+		h.AddPath(b, "/")
+
+		c.config.Global().Bind = test.bind
+
+		c.Update()
+		c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+frontend _front_http
+    mode http
+    ` + test.expectedHTTP + `
+    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
+    <<tls-del-headers>>
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
+    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+    default_backend _error404
+frontend _front001
+    mode http
+    ` + test.expectedHTTPS + `
+    http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
+    <<tls-del-headers>>
+    use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
+    default_backend _error404
+<<support>>
+`)
+		c.logger.CompareLogging(defaultLogging)
+		c.teardown()
+	}
+}
+
 func TestInstanceEmpty(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
@@ -585,10 +661,11 @@ listen _tcp_pq_5432
 				b.ProxyProt.Decode = true
 				b.ProxyProt.EncodeVersion = "v1"
 				b.CheckInterval = "2s"
+				c.config.Global().Bind.TCPBindIP = "127.0.0.1"
 			},
 			expected: `
 listen _tcp_pq_5432
-    bind :5432 ssl crt /var/haproxy/ssl/pq.pem accept-proxy
+    bind 127.0.0.1:5432 ssl crt /var/haproxy/ssl/pq.pem accept-proxy
     mode tcp
     server srv001 172.17.0.2:5432 check port 5432 inter 2s send-proxy
 `,
@@ -2063,6 +2140,8 @@ func (c *testConfig) newConfig() Config {
 
 func (c *testConfig) configGlobal(global *hatypes.Global) {
 	global.AdminSocket = "/var/run/haproxy.sock"
+	global.Bind.HTTPPort = 80
+	global.Bind.HTTPSPort = 443
 	global.Cookie.Key = "Ingress"
 	global.Healthz.Port = 10253
 	global.MaxConn = 2000
