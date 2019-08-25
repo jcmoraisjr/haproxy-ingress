@@ -129,6 +129,11 @@ func (c *updater) buildGlobalSSL(d *globalData) {
 	d.global.SSL.HeadersPrefix = d.mapper.Get(ingtypes.GlobalSSLHeadersPrefix).Value
 }
 
+func (c *updater) buildGlobalHealthz(d *globalData) {
+	d.global.Healthz.BindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrHealthz).Value
+	d.global.Healthz.Port = d.mapper.Get(ingtypes.GlobalHealthzPort).Int()
+}
+
 func (c *updater) buildGlobalModSecurity(d *globalData) {
 	d.global.ModSecurity.Endpoints = utils.Split(d.mapper.Get(ingtypes.GlobalModsecurityEndpoints).Value, ",")
 	d.global.ModSecurity.Timeout.Hello = c.validateTime(d.mapper.Get(ingtypes.GlobalModsecurityTimeoutHello))

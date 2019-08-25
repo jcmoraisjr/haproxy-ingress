@@ -1603,15 +1603,13 @@ backend d1_app_8080
 
 func TestStatsHealthz(t *testing.T) {
 	testCases := []struct {
-		stats         hatypes.StatsConfig
-		expectedStats string
+		stats          hatypes.StatsConfig
+		healtz         hatypes.HealthzConfig
+		expectedStats  string
+		expectedHealtz string
 	}{
 		// 0
-		{
-			stats: hatypes.StatsConfig{},
-			expectedStats: `
-    bind :0`,
-		},
+		{},
 		// 1
 		{
 			stats: hatypes.StatsConfig{
@@ -1642,10 +1640,25 @@ func TestStatsHealthz(t *testing.T) {
 			expectedStats: `
     bind :1936 ssl crt /var/haproxy/ssl/stats.pem`,
 		},
+		// 4
+		{
+			healtz: hatypes.HealthzConfig{
+				BindIP: "127.0.0.1",
+				Port:   10253,
+			},
+			expectedHealtz: "127.0.0.1:10253",
+		},
 	}
 	for _, test := range testCases {
 		c := setup(t)
 		c.config.Global().Stats = test.stats
+		c.config.Global().Healthz = test.healtz
+		if test.expectedStats == "" {
+			test.expectedStats = "\n    bind :0"
+		}
+		if test.expectedHealtz == "" {
+			test.expectedHealtz = ":0"
+		}
 		c.Update()
 		c.checkConfig(`
 <<global>>
@@ -1659,7 +1672,7 @@ listen stats
     stats show-legends
 frontend healthz
     mode http
-    bind :10253
+    bind ` + test.expectedHealtz + `
     monitor-uri /healthz
     no log
 `)
@@ -2051,6 +2064,7 @@ func (c *testConfig) newConfig() Config {
 func (c *testConfig) configGlobal(global *hatypes.Global) {
 	global.AdminSocket = "/var/run/haproxy.sock"
 	global.Cookie.Key = "Ingress"
+	global.Healthz.Port = 10253
 	global.MaxConn = 2000
 	global.SSL.Ciphers = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256"
 	global.SSL.DHParam.Filename = "/var/haproxy/tls/dhparam.pem"

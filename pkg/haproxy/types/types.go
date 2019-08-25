@@ -29,6 +29,7 @@ type Global struct {
 	ForwardFor      string
 	LoadServerState bool
 	AdminSocket     string
+	Healthz         HealthzConfig
 	Stats           StatsConfig
 	CustomConfig    []string
 	CustomDefaults  []string
@@ -94,6 +95,12 @@ type CookieConfig struct {
 type DrainConfig struct {
 	Drain      bool
 	Redispatch bool
+}
+
+// HealthzConfig ...
+type HealthzConfig struct {
+	BindIP string
+	Port   int
 }
 
 // StatsConfig ...

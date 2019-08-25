@@ -852,7 +852,7 @@ listen stats
 #
 frontend healthz
     mode http
-    bind :10253
+    bind {{ $global.Healthz.BindIP }}:{{ $global.Healthz.Port }}
     monitor-uri /healthz
     no log
 

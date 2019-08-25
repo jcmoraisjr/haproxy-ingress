@@ -108,6 +108,7 @@ func (c *updater) UpdateGlobalConfig(global *hatypes.Global, mapper *Mapper) {
 	global.LoadServerState = mapper.Get(ingtypes.GlobalLoadServerState).Bool()
 	c.buildGlobalCustomConfig(data)
 	c.buildGlobalForwardFor(data)
+	c.buildGlobalHealthz(data)
 	c.buildGlobalModSecurity(data)
 	c.buildGlobalProc(data)
 	c.buildGlobalSSL(data)
