@@ -1295,12 +1295,41 @@ func TestSSLRedirect(t *testing.T) {
 			source:  Source{Namespace: "system1", Name: "app", Type: "service"},
 			logging: `WARN ignoring invalid bool expression on service 'system1/app' key 'ssl-redirect': no-bool`,
 		},
+		// 4
+		{
+			annDefault: map[string]string{
+				ingtypes.GlobalNoTLSRedirectLocations: "/.hidden,/app",
+			},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackSSLRedirect: "false",
+				},
+				"/.hidden/api": {
+					ingtypes.BackSSLRedirect: "true",
+				},
+				"/api": {
+					ingtypes.BackSSLRedirect: "true",
+				},
+				"/app": {
+					ingtypes.BackSSLRedirect: "true",
+				},
+			},
+			expected: []*hatypes.BackendConfigBool{
+				{
+					Paths:  createBackendPaths("/", "/.hidden/api", "/app"),
+					Config: false,
+				},
+				{
+					Paths:  createBackendPaths("/api"),
+					Config: true,
+				},
+			},
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
 		d := c.createBackendMappingData("default/app", &test.source, test.annDefault, test.ann, test.addPaths)
-		u := c.createUpdater()
-		u.buildBackendSSLRedirect(d)
+		c.createUpdater().buildBackendSSLRedirect(d)
 		c.compareObjects("sslredirect", i, d.backend.SSLRedirect, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()

@@ -31,7 +31,7 @@ import (
 // Split will also TrimSpace() all resulting substrings.
 func Split(s, sep string) []string {
 	if s == "" {
-		return []string{}
+		return nil
 	}
 	out := strings.Split(s, sep)
 	for i := range out {
@@ -43,7 +43,7 @@ func Split(s, sep string) []string {
 // LineToSlice converts POSIX line breaks to a string slice
 func LineToSlice(s string) []string {
 	if s == "" {
-		return []string{}
+		return nil
 	}
 	return strings.Split(strings.TrimRight(s, "\n"), "\n")
 }

@@ -30,7 +30,7 @@ func TestModSecurity(t *testing.T) {
 		// 0
 		{
 			endpoints: "",
-			expected:  []string{},
+			expected:  nil,
 		},
 		// 1
 		{

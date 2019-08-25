@@ -172,7 +172,7 @@ func (c *Mapper) Get(key string) *ConfigValue {
 }
 
 // ConfigOverwrite ...
-type ConfigOverwrite func(values map[string]*ConfigValue) map[string]*ConfigValue
+type ConfigOverwrite func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue
 
 // GetBackendConfig builds a generic BackendConfig using
 // annotation maps registered previously as its data source
@@ -229,7 +229,7 @@ func (c *Mapper) GetBackendConfig(backend *hatypes.Backend, keys []string, overw
 		path := backend.FindHostPath(uri)
 		realKV := kv
 		if overwrite != nil {
-			realKV = overwrite(kv)
+			realKV = overwrite(path, kv)
 			if realKV == nil {
 				realKV = map[string]*ConfigValue{}
 			}

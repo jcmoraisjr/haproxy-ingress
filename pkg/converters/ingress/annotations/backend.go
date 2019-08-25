@@ -65,7 +65,7 @@ func (c *updater) buildBackendAuthHTTP(d *backData) {
 			ingtypes.BackAuthSecret,
 			ingtypes.BackAuthRealm,
 		},
-		func(values map[string]*ConfigValue) map[string]*ConfigValue {
+		func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue {
 			authType := values[ingtypes.BackAuthType]
 			if authType == nil || authType.Source == nil {
 				return nil
@@ -309,7 +309,7 @@ func (c *updater) buildBackendBodySize(d *backData) {
 	config := d.mapper.GetBackendConfig(
 		d.backend,
 		[]string{ingtypes.BackProxyBodySize},
-		func(values map[string]*ConfigValue) map[string]*ConfigValue {
+		func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue {
 			bodysize := values[ingtypes.BackProxyBodySize]
 			if bodysize == nil || bodysize.Value == "unlimited" {
 				return nil
@@ -342,7 +342,7 @@ func (c *updater) buildBackendCors(d *backData) {
 			ingtypes.BackCorsExposeHeaders,
 			ingtypes.BackCorsMaxAge,
 		},
-		func(values map[string]*ConfigValue) map[string]*ConfigValue {
+		func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue {
 			enabled, found := values[ingtypes.BackCorsEnable]
 			if !found || !enabled.Bool() {
 				return nil
@@ -511,7 +511,7 @@ func (c *updater) buildBackendRewriteURL(d *backData) {
 	config := d.mapper.GetBackendConfig(
 		d.backend,
 		[]string{ingtypes.BackRewriteTarget},
-		func(values map[string]*ConfigValue) map[string]*ConfigValue {
+		func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue {
 			rewrite, found := values[ingtypes.BackRewriteTarget]
 			if !found {
 				return nil
@@ -557,7 +557,20 @@ func (c *updater) buildBackendSecure(d *backData) {
 }
 
 func (c *updater) buildBackendSSLRedirect(d *backData) {
-	for _, redir := range d.mapper.GetBackendConfig(d.backend, []string{ingtypes.BackSSLRedirect}, nil) {
+	noTLSRedir := utils.Split(d.mapper.Get(ingtypes.GlobalNoTLSRedirectLocations).Value, ",")
+	for _, redir := range d.mapper.GetBackendConfig(
+		d.backend,
+		[]string{ingtypes.BackSSLRedirect},
+		func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue {
+			for _, redir := range noTLSRedir {
+				if strings.HasPrefix(path.Path, redir) {
+					values[ingtypes.BackSSLRedirect].Value = "false"
+					return values
+				}
+			}
+			return values
+		},
+	) {
 		d.backend.SSLRedirect = append(d.backend.SSLRedirect, &hatypes.BackendConfigBool{
 			Paths:  redir.Paths,
 			Config: redir.Get(ingtypes.BackSSLRedirect).Bool(),
@@ -593,7 +606,7 @@ func (c *updater) buildBackendWAF(d *backData) {
 	config := d.mapper.GetBackendConfig(
 		d.backend,
 		[]string{ingtypes.BackWAF},
-		func(values map[string]*ConfigValue) map[string]*ConfigValue {
+		func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue {
 			waf, found := values[ingtypes.BackWAF]
 			if !found {
 				return nil

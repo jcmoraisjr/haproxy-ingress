@@ -19,6 +19,8 @@ package annotations
 import (
 	"reflect"
 	"testing"
+
+	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
 type ann struct {
@@ -473,7 +475,7 @@ func TestGetBackendConfig(t *testing.T) {
 					Config: map[string]*ConfigValue{},
 				},
 			},
-			overwrite: func(values map[string]*ConfigValue) map[string]*ConfigValue {
+			overwrite: func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue {
 				return nil
 			},
 		},
