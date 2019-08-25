@@ -1601,6 +1601,73 @@ backend d1_app_8080
 	}
 }
 
+func TestStatsHealthz(t *testing.T) {
+	testCases := []struct {
+		stats         hatypes.StatsConfig
+		expectedStats string
+	}{
+		// 0
+		{
+			stats: hatypes.StatsConfig{},
+			expectedStats: `
+    bind :0`,
+		},
+		// 1
+		{
+			stats: hatypes.StatsConfig{
+				Port:        1936,
+				AcceptProxy: true,
+			},
+			expectedStats: `
+    bind :1936 accept-proxy`,
+		},
+		// 2
+		{
+			stats: hatypes.StatsConfig{
+				Port: 1936,
+				Auth: "usr:pwd",
+			},
+			expectedStats: `
+    bind :1936
+    stats realm HAProxy\ Statistics
+    stats auth usr:pwd`,
+		},
+		// 3
+		{
+			stats: hatypes.StatsConfig{
+				Port:        1936,
+				TLSFilename: "/var/haproxy/ssl/stats.pem",
+				TLSHash:     "1",
+			},
+			expectedStats: `
+    bind :1936 ssl crt /var/haproxy/ssl/stats.pem`,
+		},
+	}
+	for _, test := range testCases {
+		c := setup(t)
+		c.config.Global().Stats = test.stats
+		c.Update()
+		c.checkConfig(`
+<<global>>
+<<defaults>>
+listen stats
+    mode http` + test.expectedStats + `
+    stats enable
+    stats uri /
+    no log
+    option forceclose
+    stats show-legends
+frontend healthz
+    mode http
+    bind :10253
+    monitor-uri /healthz
+    no log
+`)
+		c.logger.CompareLogging(defaultLogging)
+		c.teardown()
+	}
+}
+
 func TestModSecurity(t *testing.T) {
 	testCases := []struct {
 		waf        string
@@ -1982,13 +2049,14 @@ func (c *testConfig) newConfig() Config {
 }
 
 func (c *testConfig) configGlobal(global *hatypes.Global) {
+	global.AdminSocket = "/var/run/haproxy.sock"
 	global.Cookie.Key = "Ingress"
 	global.MaxConn = 2000
 	global.SSL.Ciphers = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256"
 	global.SSL.DHParam.Filename = "/var/haproxy/tls/dhparam.pem"
 	global.SSL.HeadersPrefix = "X-SSL"
 	global.SSL.Options = "no-sslv3"
-	global.StatsSocket = "/var/run/haproxy.sock"
+	global.Stats.Port = 1936
 	global.Timeout.Client = "50s"
 	global.Timeout.ClientFin = "50s"
 	global.Timeout.Connect = "5s"

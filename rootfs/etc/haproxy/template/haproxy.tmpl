@@ -19,7 +19,7 @@ global
 {{- if $global.Procs.CPUMap }}
     cpu-map {{ $global.Procs.CPUMap }}
 {{- end }}
-    stats socket {{ default "--" $global.StatsSocket }} level admin expose-fd listeners
+    stats socket {{ default "--" $global.AdminSocket }} level admin expose-fd listeners
         {{- if gt $global.Procs.Nbproc 1 }} process 1{{ end }}
 {{- if $global.LoadServerState }}
     server-state-file state-global
@@ -832,7 +832,14 @@ frontend {{ $frontend.Name }}
 #
 listen stats
     mode http
-    bind :1936{{ if gt $global.Procs.Nbproc 1 }} process 1{{ end }}
+    bind {{ $global.Stats.BindIP }}:{{ $global.Stats.Port }}
+        {{- if $global.Stats.TLSFilename }} ssl crt {{ $global.Stats.TLSFilename }}{{ end }}
+        {{- if $global.Stats.AcceptProxy }} accept-proxy{{ end }}
+        {{- if gt $global.Procs.Nbproc 1 }} process 1{{ end }}
+{{- if $global.Stats.Auth }}
+    stats realm HAProxy\ Statistics
+    stats auth {{ $global.Stats.Auth }}
+{{- end }}
     stats enable
     stats uri /
     no log

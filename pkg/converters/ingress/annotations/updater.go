@@ -100,7 +100,7 @@ func (c *updater) UpdateGlobalConfig(global *hatypes.Global, mapper *Mapper) {
 		global: global,
 		mapper: mapper,
 	}
-	global.StatsSocket = "/var/run/haproxy-stats.sock"
+	global.AdminSocket = "/var/run/haproxy-stats.sock"
 	global.MaxConn = mapper.Get(ingtypes.GlobalMaxConnections).Int()
 	global.DrainSupport.Drain = mapper.Get(ingtypes.GlobalDrainSupport).Bool()
 	global.DrainSupport.Redispatch = mapper.Get(ingtypes.GlobalDrainSupportRedispatch).Bool()
@@ -111,6 +111,7 @@ func (c *updater) UpdateGlobalConfig(global *hatypes.Global, mapper *Mapper) {
 	c.buildGlobalModSecurity(data)
 	c.buildGlobalProc(data)
 	c.buildGlobalSSL(data)
+	c.buildGlobalStats(data)
 	c.buildGlobalSyslog(data)
 	c.buildGlobalTimeout(data)
 }

@@ -58,7 +58,7 @@ func (i *instance) newDynUpdater() *dynUpdater {
 		logger: i.logger,
 		old:    old,
 		cur:    cur,
-		socket: i.curConfig.Global().StatsSocket,
+		socket: i.curConfig.Global().AdminSocket,
 		cmd:    utils.HAProxyCommand,
 	}
 }

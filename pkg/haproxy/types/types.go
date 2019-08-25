@@ -28,7 +28,8 @@ type Global struct {
 	DrainSupport    DrainConfig
 	ForwardFor      string
 	LoadServerState bool
-	StatsSocket     string
+	AdminSocket     string
+	Stats           StatsConfig
 	CustomConfig    []string
 	CustomDefaults  []string
 	CustomFrontend  []string
@@ -93,6 +94,16 @@ type CookieConfig struct {
 type DrainConfig struct {
 	Drain      bool
 	Redispatch bool
+}
+
+// StatsConfig ...
+type StatsConfig struct {
+	AcceptProxy bool
+	Auth        string
+	BindIP      string
+	Port        int
+	TLSFilename string
+	TLSHash     string
 }
 
 // ModSecurityTimeoutConfig ...

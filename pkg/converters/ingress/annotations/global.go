@@ -76,6 +76,21 @@ func (c *updater) buildGlobalProc(d *globalData) {
 	d.global.Procs.CPUMap = cpumap
 }
 
+func (c *updater) buildGlobalStats(d *globalData) {
+	d.global.Stats.AcceptProxy = d.mapper.Get(ingtypes.GlobalStatsProxyProtocol).Bool()
+	d.global.Stats.Auth = d.mapper.Get(ingtypes.GlobalStatsAuth).Value
+	d.global.Stats.BindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrStats).Value
+	d.global.Stats.Port = d.mapper.Get(ingtypes.GlobalStatsPort).Int()
+	if tlsSecret := d.mapper.Get(ingtypes.GlobalStatsSSLCert).Value; tlsSecret != "" {
+		if tls, err := c.cache.GetTLSSecretPath(tlsSecret); err == nil {
+			d.global.Stats.TLSFilename = tls.Filename
+			d.global.Stats.TLSHash = tls.SHA1Hash
+		} else {
+			c.logger.Warn("ignore TLS config on stats endpoint: %v", err)
+		}
+	}
+}
+
 func (c *updater) buildGlobalSyslog(d *globalData) {
 	d.global.Syslog.Endpoint = d.mapper.Get(ingtypes.GlobalSyslogEndpoint).Value
 	d.global.Syslog.Format = d.mapper.Get(ingtypes.GlobalSyslogFormat).Value
