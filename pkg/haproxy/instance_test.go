@@ -512,22 +512,7 @@ backend _error496
     mode http
     errorfile 400 /usr/local/etc/haproxy/errors/496.http
     http-request deny deny_status 400
-frontend _front_http
-    mode http
-    bind :80
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    <<tls-del-headers>>
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
-    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
-    default_backend _error404
-frontend _front001
-    mode http
-    bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
-    http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
-    <<tls-del-headers>>
-    use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
-    default_backend _error404
+<<frontends-default>>
 <<support>>
 `)
 
@@ -662,14 +647,7 @@ backend _default_backend
     mode http
     server s0 172.17.0.99:8080 weight 100
 <<backend-errors>>
-frontend _front_http
-    mode http
-    bind :80
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    <<tls-del-headers>>
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
-    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+<<frontend-http>>
     use_backend d1_app_8080
 frontend _front001
     mode http
@@ -740,14 +718,7 @@ backend _default_backend
     mode http
     server s0 172.17.0.99:8080 weight 100
 <<backend-errors>>
-frontend _front_http
-    mode http
-    bind :80
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    <<tls-del-headers>>
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
-    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+<<frontend-http>>
     default_backend _default_backend
 frontend _front001
     mode http
@@ -841,14 +812,7 @@ listen _front__tls
     server _server_socket002 unix@/var/run/_socket002.sock send-proxy-v2 weight 0
     # default backend
     server _default_server_socket003 unix@/var/run/_socket003.sock send-proxy-v2
-frontend _front_http
-    mode http
-    bind :80
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    <<tls-del-headers>>
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
-    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+<<frontend-http>>
     default_backend _default_backend
 frontend _front001
     mode http
@@ -995,14 +959,7 @@ listen _front__tls
     server _server_socket003 unix@/var/run/_socket003.sock send-proxy-v2 weight 0
     # default backend
     server _default_server_socket003 unix@/var/run/_socket003.sock send-proxy-v2
-frontend _front_http
-    mode http
-    bind :80
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    <<tls-del-headers>>
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
-    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+<<frontend-http>>
     default_backend _default_backend
 frontend _front001
     mode http
@@ -1167,21 +1124,9 @@ backend _default_backend
     mode http
     server s0 172.17.0.99:8080 weight 100
 <<backend-errors>>
-frontend _front_http
-    mode http
-    bind :80
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    <<tls-del-headers>>
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
-    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+<<frontend-http>>
     default_backend _default_backend
-frontend _front001
-    mode http
-    bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
-    http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
-    <<tls-del-headers>>
-    use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
+<<frontend-https>>
     default_backend _default_backend
 <<support>>
 `)
@@ -1253,14 +1198,7 @@ listen _front__tls
     use_backend %[var(req.sslpassback)] unless { var(req.sslpassback) _nomatch }
     # default backend
     server _default_server_socket001 unix@/var/run/_socket001.sock send-proxy-v2
-frontend _front_http
-    mode http
-    bind :80
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    <<tls-del-headers>>
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
-    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+<<frontend-http>>
     default_backend _error404
 frontend _front001
     mode http
@@ -1411,14 +1349,7 @@ backend d3_app_8080
     mode http
     server s31 172.17.0.131:8080 weight 100
 <<backends-default>>
-frontend _front_http
-    mode http
-    bind :80
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    <<tls-del-headers>>
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
-    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+<<frontend-http>>
     default_backend _error404
 frontend _front001
     mode http
@@ -1489,14 +1420,7 @@ backend d2_app_8080
     mode http
     server s21 172.17.0.121:8080 weight 100
 <<backends-default>>
-frontend _front_http
-    mode http
-    bind :80
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
-    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    <<tls-del-headers>>
-    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
-    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+<<frontend-http>>
     default_backend _error404
 frontend _front001
     mode http
@@ -2162,21 +2086,23 @@ backend _error496
     http-request del-header X-SSL-Client-DN
     http-request del-header X-SSL-Client-SHA1
     http-request del-header X-SSL-Client-Cert`,
-		"<<frontends-default>>": `frontend _front_http
+		"<<frontend-http>>": `frontend _front_http
     mode http
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
     <<tls-del-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
-    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
-    default_backend _error404
-frontend _front001
+    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }`,
+		"<<frontend-https>>": `frontend _front001
     mode http
     bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     <<tls-del-headers>>
-    use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
+    use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }`,
+		"<<frontends-default>>": `<<frontend-http>>
+    default_backend _error404
+<<frontend-https>>
     default_backend _error404`,
 		"<<support>>": `listen stats
     mode http
