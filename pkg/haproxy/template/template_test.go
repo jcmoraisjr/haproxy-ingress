@@ -66,6 +66,9 @@ func TestWrite(t *testing.T) {
 		Name string
 		Age  int
 	}
+	type data3 struct {
+		List []int
+	}
 	testCases := []struct {
 		templates []tmplContent
 		datas     []interface{}
@@ -214,6 +217,18 @@ func TestWrite(t *testing.T) {
 				data2{Name: "joe3", Age: 33},
 				data2{Name: "joe4", Age: 34},
 				data2{Name: "joe5", Age: 35},
+			},
+		},
+		// 10
+		{
+			templates: []tmplContent{
+				{
+					content: `{{ range $s1 := short 3 .List }}{{ range $s := $s1 }}{{ $s }},{{ end }}; {{ end }}`,
+					outputs: []string{"1,2,3,; 4,5,6,; 7,; "},
+				},
+			},
+			datas: []interface{}{
+				data3{List: []int{1, 2, 3, 4, 5, 6, 7}},
 			},
 		},
 	}

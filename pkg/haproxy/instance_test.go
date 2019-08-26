@@ -251,8 +251,10 @@ func TestBackends(t *testing.T) {
     # path01 = d1.local/app
     # path03 = d1.local/path
     http-request set-var(txn.pathID) base,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map,_nomatch)
-    http-request deny if { var(txn.pathID) path02 path01 } !{ src 10.0.0.0/8 192.168.0.0/16 }
-    http-request deny if { var(txn.pathID) path03 } !{ src 192.168.95.0/24 }`,
+    acl wlist_src0 src 10.0.0.0/8 192.168.0.0/16
+    http-request deny if { var(txn.pathID) path02 path01 } !wlist_src0
+    acl wlist_src1 src 192.168.95.0/24
+    http-request deny if { var(txn.pathID) path03 } !wlist_src1`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
@@ -262,8 +264,12 @@ func TestBackends(t *testing.T) {
 						Config: []string{},
 					},
 					{
-						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/path")),
-						Config: []string{"192.168.95.0/24"},
+						Paths: hatypes.NewBackendPaths(b.FindHostPath("d1.local/path")),
+						Config: []string{
+							"1.1.1.1", "1.1.1.2", "1.1.1.3", "1.1.1.4", "1.1.1.5",
+							"1.1.1.6", "1.1.1.7", "1.1.1.8", "1.1.1.9", "1.1.1.10",
+							"1.1.1.11",
+						},
 					},
 				}
 			},
@@ -273,7 +279,9 @@ func TestBackends(t *testing.T) {
     # path01 = d1.local/app
     # path03 = d1.local/path
     http-request set-var(txn.pathID) base,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map,_nomatch)
-    http-request deny if { var(txn.pathID) path03 } !{ src 192.168.95.0/24 }`,
+    acl wlist_src1 src 1.1.1.1 1.1.1.2 1.1.1.3 1.1.1.4 1.1.1.5 1.1.1.6 1.1.1.7 1.1.1.8 1.1.1.9 1.1.1.10
+    acl wlist_src1 src 1.1.1.11
+    http-request deny if { var(txn.pathID) path03 } !wlist_src1`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
@@ -281,7 +289,8 @@ func TestBackends(t *testing.T) {
 				b.ModeTCP = true
 			},
 			expected: `
-    tcp-request content reject if !{ src 10.0.0.0/8 192.168.0.0/16 }`,
+    acl wlist_src src 10.0.0.0/8 192.168.0.0/16
+    tcp-request content reject if !wlist_src`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
@@ -341,8 +350,9 @@ func TestBackends(t *testing.T) {
 			expected: `
     stick-table type ip size 200k expire 5m store conn_cur,conn_rate(1s)
     http-request track-sc1 src
-    http-request deny if !{ src 192.168.0.0/16 10.1.1.101 } { sc1_conn_cur gt 200 }
-    http-request deny if !{ src 192.168.0.0/16 10.1.1.101 } { sc1_conn_rate gt 20 }`,
+    acl wlist_conn src 192.168.0.0/16 10.1.1.101
+    http-request deny if !wlist_conn { sc1_conn_cur gt 200 }
+    http-request deny if !wlist_conn { sc1_conn_rate gt 20 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
@@ -372,8 +382,9 @@ func TestBackends(t *testing.T) {
 			expected: `
     stick-table type ip size 200k expire 5m store conn_cur,conn_rate(1s)
     tcp-request content track-sc1 src
-    tcp-request content reject if !{ src 192.168.0.0/16 10.1.1.101 } { sc1_conn_cur gt 200 }
-    tcp-request content reject if !{ src 192.168.0.0/16 10.1.1.101 } { sc1_conn_rate gt 20 }`,
+    acl wlist_conn src 192.168.0.0/16 10.1.1.101
+    tcp-request content reject if !wlist_conn { sc1_conn_cur gt 200 }
+    tcp-request content reject if !wlist_conn { sc1_conn_rate gt 20 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
