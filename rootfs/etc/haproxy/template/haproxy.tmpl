@@ -257,12 +257,12 @@ backend {{ $backend.ID }}
 {{- end }}
 {{- end }}
 {{- if $backend.Limit.Connections }}
-    http-request deny if
+    http-request deny deny_status 429 if
         {{- if $backend.Limit.Whitelist }} !wlist_conn{{ end }}
         {{- "" }} { sc1_conn_cur gt {{ $backend.Limit.Connections }} }
 {{- end }}
 {{- if $backend.Limit.RPS }}
-    http-request deny if
+    http-request deny deny_status 429 if
         {{- if $backend.Limit.Whitelist }} !wlist_conn{{ end }}
         {{- "" }} { sc1_conn_rate gt {{ $backend.Limit.RPS }} }
 {{- end }}

@@ -351,8 +351,8 @@ func TestBackends(t *testing.T) {
     stick-table type ip size 200k expire 5m store conn_cur,conn_rate(1s)
     http-request track-sc1 src
     acl wlist_conn src 192.168.0.0/16 10.1.1.101
-    http-request deny if !wlist_conn { sc1_conn_cur gt 200 }
-    http-request deny if !wlist_conn { sc1_conn_rate gt 20 }`,
+    http-request deny deny_status 429 if !wlist_conn { sc1_conn_cur gt 200 }
+    http-request deny deny_status 429 if !wlist_conn { sc1_conn_rate gt 20 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
@@ -361,7 +361,7 @@ func TestBackends(t *testing.T) {
 			expected: `
     stick-table type ip size 200k expire 5m store conn_cur,conn_rate(1s)
     http-request track-sc1 src
-    http-request deny if { sc1_conn_rate gt 20 }`,
+    http-request deny deny_status 429 if { sc1_conn_rate gt 20 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
@@ -370,7 +370,7 @@ func TestBackends(t *testing.T) {
 			expected: `
     stick-table type ip size 200k expire 5m store conn_cur,conn_rate(1s)
     http-request track-sc1 src
-    http-request deny if { sc1_conn_cur gt 200 }`,
+    http-request deny deny_status 429 if { sc1_conn_cur gt 200 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
