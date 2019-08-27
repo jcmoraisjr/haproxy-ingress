@@ -106,6 +106,7 @@ func (c *updater) UpdateGlobalConfig(global *hatypes.Global, mapper *Mapper) {
 	global.DrainSupport.Redispatch = mapper.Get(ingtypes.GlobalDrainSupportRedispatch).Bool()
 	global.Cookie.Key = mapper.Get(ingtypes.GlobalCookieKey).Value
 	global.LoadServerState = mapper.Get(ingtypes.GlobalLoadServerState).Bool()
+	global.SSL.ALPN = mapper.Get(ingtypes.GlobalTLSALPN).Value
 	c.buildGlobalBind(data)
 	c.buildGlobalCustomConfig(data)
 	c.buildGlobalForwardFor(data)

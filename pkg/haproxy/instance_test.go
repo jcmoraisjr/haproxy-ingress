@@ -2156,6 +2156,7 @@ func (c *testConfig) configGlobal(global *hatypes.Global) {
 	global.Cookie.Key = "Ingress"
 	global.Healthz.Port = 10253
 	global.MaxConn = 2000
+	global.SSL.ALPN = "h2,http/1.1"
 	global.SSL.Ciphers = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256"
 	global.SSL.DHParam.Filename = "/var/haproxy/tls/dhparam.pem"
 	global.SSL.HeadersPrefix = "X-SSL"

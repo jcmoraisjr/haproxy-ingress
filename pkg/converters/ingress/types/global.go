@@ -68,5 +68,6 @@ const (
 	GlobalSyslogTag                    = "syslog-tag"
 	GlobalTCPLogFormat                 = "tcp-log-format"
 	GlobalTimeoutStop                  = "timeout-stop"
+	GlobalTLSALPN                      = "tls-alpn"
 	GlobalUseProxyProtocol             = "use-proxy-protocol"
 )

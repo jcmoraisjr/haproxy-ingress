@@ -659,7 +659,7 @@ frontend {{ $frontend.Name }}
     bind {{ $bind.Socket }}
         {{- if $bind.AcceptProxy }} accept-proxy{{ end }}
         {{- if or $tls.TLSCert $tls.TLSCertDir }}
-            {{- "" }} ssl alpn h2,http/1.1
+            {{- "" }} ssl alpn {{ $tls.ALPN }}
             {{- if $tls.TLSCert }} crt {{ $tls.TLSCert }}{{ end }}
             {{- if $tls.TLSCertDir }} crt {{ $tls.TLSCertDir }}{{ end }}
         {{- end }}

@@ -253,6 +253,7 @@ func (c *config) BuildFrontendGroup() error {
 				}
 				bind.Name = bindName
 				bind.Socket = fmt.Sprintf("unix@/var/run/%s.sock", bindName)
+				bind.TLS.ALPN = c.global.SSL.ALPN
 				bind.AcceptProxy = true
 			}
 		}
@@ -261,6 +262,7 @@ func (c *config) BuildFrontendGroup() error {
 		bind := frontends[0].Binds[0]
 		bind.Name = "_public"
 		bind.Socket = fmt.Sprintf("%s:%d", c.global.Bind.HTTPSBindIP, c.global.Bind.HTTPSPort)
+		bind.TLS.ALPN = c.global.SSL.ALPN
 		bind.AcceptProxy = c.global.Bind.AcceptProxy
 		if len(bind.Hosts) == 1 {
 			bind.TLS.TLSCert = c.defaultX509Cert

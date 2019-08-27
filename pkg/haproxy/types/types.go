@@ -77,6 +77,7 @@ type TimeoutConfig struct {
 
 // SSLConfig ...
 type SSLConfig struct {
+	ALPN          string
 	DHParam       DHParamConfig
 	Ciphers       string
 	Options       string
@@ -228,6 +229,7 @@ type BindConfig struct {
 
 // BindTLSConfig ...
 type BindTLSConfig struct {
+	ALPN       string
 	CAFilename string
 	CAHash     string
 	TLSCert    string

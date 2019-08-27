@@ -81,5 +81,6 @@ func createDefaults() map[string]string {
 		types.GlobalSyslogFormat:                 "rfc5424",
 		types.GlobalSyslogTag:                    "ingress",
 		types.GlobalTimeoutStop:                  "10m",
+		types.GlobalTLSALPN:                      "h2,http/1.1",
 	}
 }
