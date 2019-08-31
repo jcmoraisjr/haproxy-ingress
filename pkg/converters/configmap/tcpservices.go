@@ -77,7 +77,7 @@ func (c *tcpSvcConverter) Sync(tcpservices map[string]string) {
 			c.logger.Warn("skipping TCP service on public port %d: port not found: %s:%s", publicport, svc.name, svc.port)
 			continue
 		}
-		endpoints, err := c.cache.GetEndpoints(service)
+		addrs, _, err := convutils.CreateEndpoints(c.cache, service, svcport)
 		if err != nil {
 			c.logger.Warn("skipping TCP service on public port %d: %v", svc.port, err)
 			continue
@@ -90,7 +90,6 @@ func (c *tcpSvcConverter) Sync(tcpservices map[string]string) {
 				continue
 			}
 		}
-		addrs, _ := convutils.FindEndpoints(endpoints, svcport)
 		servicename := fmt.Sprintf("%s_%s", service.Namespace, service.Name)
 		backend := c.haproxy.AcquireTCPBackend(servicename, publicport)
 		for _, addr := range addrs {

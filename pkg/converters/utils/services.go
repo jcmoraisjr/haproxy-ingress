@@ -17,10 +17,14 @@ limitations under the License.
 package utils
 
 import (
+	"fmt"
+	"net"
 	"strconv"
 
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 )
 
 // FindServicePort ...
@@ -49,26 +53,45 @@ func FindServicePort(svc *api.Service, servicePort string) intstr.IntOrString {
 
 // Endpoint ...
 type Endpoint struct {
-	IP         string
-	Port       int
-	TargetNS   string
-	TargetName string
+	IP        string
+	Port      int
+	TargetRef string
 }
 
-// FindEndpoints ...
-func FindEndpoints(endpoints *api.Endpoints, svcPort intstr.IntOrString) (ready, notReady []*Endpoint) {
-	// TODO ServiceTypeExternalName
-	// TODO ServiceUpstream - annotation nao documentada
+// CreateEndpoints ...
+func CreateEndpoints(cache types.Cache, svc *api.Service, svcPort intstr.IntOrString) (ready, notReady []*Endpoint, err error) {
+	if svc.Spec.Type == api.ServiceTypeExternalName {
+		ready, err := createEndpointsExternalName(svc, svcPort)
+		return ready, nil, err
+	}
+	endpoints, err := cache.GetEndpoints(svc)
+	if err != nil {
+		return nil, nil, err
+	}
+	ready, notReady = createEndpointsService(endpoints, svcPort)
+	return ready, notReady, nil
+}
+
+// CreateSvcEndpoint ...
+func CreateSvcEndpoint(svc *api.Service, svcPort intstr.IntOrString) (endpoint *Endpoint, err error) {
+	port := svcPort.IntValue()
+	if port <= 0 {
+		return nil, fmt.Errorf("invalid port number: %s", svcPort.String())
+	}
+	return newEndpointIP(svc.Spec.ClusterIP, port), nil
+}
+
+func createEndpointsService(endpoints *api.Endpoints, svcPort intstr.IntOrString) (ready, notReady []*Endpoint) {
 	// TODO svcPort.IntValue() doesn't work if svc.targetPort is a pod's named port
 	for _, subset := range endpoints.Subsets {
 		for _, port := range subset.Ports {
 			ssport := int(port.Port)
 			if ssport == svcPort.IntValue() && port.Protocol == api.ProtocolTCP {
 				for _, addr := range subset.Addresses {
-					ready = append(ready, newEndpoint(&addr, ssport))
+					ready = append(ready, newEndpointAddr(&addr, ssport))
 				}
 				for _, addr := range subset.NotReadyAddresses {
-					notReady = append(notReady, newEndpoint(&addr, ssport))
+					notReady = append(notReady, newEndpointAddr(&addr, ssport))
 				}
 			}
 		}
@@ -76,11 +99,39 @@ func FindEndpoints(endpoints *api.Endpoints, svcPort intstr.IntOrString) (ready,
 	return ready, notReady
 }
 
-func newEndpoint(addr *api.EndpointAddress, port int) *Endpoint {
-	return &Endpoint{
-		IP:         addr.IP,
-		Port:       port,
-		TargetNS:   addr.TargetRef.Namespace,
-		TargetName: addr.TargetRef.Name,
+var lookup = net.LookupIP
+
+func createEndpointsExternalName(svc *api.Service, svcPort intstr.IntOrString) (endpoints []*Endpoint, err error) {
+	port := svcPort.IntValue()
+	if port <= 0 {
+		return nil, fmt.Errorf("invalid port number: %s", svcPort.String())
 	}
+	addr, err := lookup(svc.Spec.ExternalName)
+	if err != nil {
+		return nil, err
+	}
+	endpoints = make([]*Endpoint, len(addr))
+	for i, ip := range addr {
+		endpoints[i] = newEndpointIP(ip.String(), port)
+	}
+	return endpoints, nil
+}
+
+func newEndpointAddr(addr *api.EndpointAddress, port int) *Endpoint {
+	return &Endpoint{
+		IP:        addr.IP,
+		Port:      port,
+		TargetRef: fmt.Sprintf("%s/%s", addr.TargetRef.Namespace, addr.TargetRef.Name),
+	}
+}
+
+func newEndpointIP(ip string, port int) *Endpoint {
+	return &Endpoint{
+		IP:   ip,
+		Port: port,
+	}
+}
+
+func (e *Endpoint) String() string {
+	return fmt.Sprintf("%+v", *e)
 }

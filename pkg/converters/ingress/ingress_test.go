@@ -154,6 +154,25 @@ WARN skipping backend config of ingress 'default/echo4': port not found: '9000'
 `)
 }
 
+func TestSyncSvcUpstream(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	svc, _ := c.createSvc1Ann("default/echo", "8080", "172.17.1.101,172.17.1.102,172.17.1.103", map[string]string{
+		"ingress.kubernetes.io/service-upstream": "true",
+	})
+	svc.Spec.ClusterIP = "10.0.0.2"
+	c.Sync(
+		c.createIng1("default/echo1", "echo1.example.com", "/", "echo:8080"),
+	)
+
+	c.compareConfigBack(`
+- id: default_echo_8080
+  endpoints:
+  - ip: 10.0.0.2
+    port: 8080` + defaultBackendConfig)
+}
+
 func TestSyncSingle(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()

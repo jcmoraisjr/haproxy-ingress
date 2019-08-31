@@ -97,6 +97,7 @@ const (
 	BackSecureBackends        = "secure-backends"
 	BackSecureCrtSecret       = "secure-crt-secret"
 	BackSecureVerifyCASecret  = "secure-verify-ca-secret"
+	BackServiceUpstream       = "service-upstream"
 	BackSessionCookieDynamic  = "session-cookie-dynamic"
 	BackSessionCookieName     = "session-cookie-name"
 	BackSessionCookieStrategy = "session-cookie-strategy"
