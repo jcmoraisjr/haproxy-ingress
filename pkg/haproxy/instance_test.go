@@ -153,12 +153,13 @@ func TestBackends(t *testing.T) {
 			},
 			path: []string{"/", "/path", "/uri"},
 			expected: `
+    acl https-request ssl_fc
     # path01 = d1.local/
     # path02 = d1.local/path
     # path03 = d1.local/uri
     http-request set-var(txn.pathID) base,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map,_nomatch)
-    http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload" if { ssl_fc } { var(txn.pathID) path01 }
-    http-response set-header Strict-Transport-Security "max-age=15768000" if { ssl_fc } { var(txn.pathID) path02 path03 }`,
+    http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload" if https-request { var(txn.pathID) path01 }
+    http-response set-header Strict-Transport-Security "max-age=15768000" if https-request { var(txn.pathID) path02 path03 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
@@ -528,7 +529,7 @@ frontend _front_http
     ` + test.expectedHTTP + `
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    <<tls-del-headers>>
+    <<http-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _error404
@@ -536,7 +537,7 @@ frontend _front001
     mode http
     ` + test.expectedHTTPS + `
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
-    <<tls-del-headers>>
+    <<https-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404
 <<support>>
@@ -610,6 +611,91 @@ empty/ no`)
 	c.checkMap("_front001_host.map", `
 empty/ default_empty_8080`)
 
+	c.logger.CompareLogging(defaultLogging)
+}
+
+func TestInstanceToHTTPSocket(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.AcquireBackend("d1", "app", "8080")
+	h = c.config.AcquireHost("d1.local")
+	h.AddPath(b, "/")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	b.HSTS = []*hatypes.BackendConfigHSTS{
+		{
+			Paths: hatypes.NewBackendPaths(b.FindHostPath("d1.local/")),
+			Config: hatypes.HSTS{
+				Enabled:    true,
+				MaxAge:     15768000,
+				Subdomains: true,
+				Preload:    true,
+			},
+		},
+	}
+	h.TLS.CAHash = "1"
+	h.TLS.CAFilename = "/var/haproxy/ssl/ca.pem"
+	c.config.Global().Bind.ToHTTPPort = 8000
+	c.config.Global().Bind.ToHTTPSocketID = 11
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    acl https-request ssl_fc
+    acl https-request so_id 11
+    acl local-offload ssl_fc
+    http-request set-header X-SSL-Client-CN   %{+Q}[ssl_c_s_dn(cn)]   if local-offload
+    http-request set-header X-SSL-Client-DN   %{+Q}[ssl_c_s_dn]       if local-offload
+    http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex]   if local-offload
+    http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload" if https-request
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+listen _front__tls
+    mode tcp
+    bind :443
+    tcp-request inspect-delay 5s
+    tcp-request content accept if { req.ssl_hello_type 1 }
+    ## _front001/_socket001
+    use-server _server_socket001 if { req.ssl_sni -i -f /etc/haproxy/maps/_socket001.list }
+    server _server_socket001 unix@/var/run/_socket001.sock send-proxy-v2 weight 0
+    # default backend
+    server _default_server_socket002 unix@/var/run/_socket002.sock send-proxy-v2
+<<frontend-http>>
+    default_backend _error404
+frontend _front001
+    mode http
+    bind unix@/var/run/_socket001.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem ca-file /var/haproxy/ssl/ca.pem verify optional ca-ignore-err all crt-ignore-err all
+    bind unix@/var/run/_socket002.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
+    bind :8000 id 11
+    acl local-offload ssl_fc
+    http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
+    http-request set-header X-Forwarded-Proto https
+    http-request del-header X-SSL-Client-CN if local-offload
+    http-request del-header X-SSL-Client-DN if local-offload
+    http-request del-header X-SSL-Client-SHA1 if local-offload
+    http-request del-header X-SSL-Client-Cert if local-offload
+    http-request set-header x-ha-base %[ssl_fc_sni]%[path] if local-offload
+    http-request set-var(req.snibackend) hdr(x-ha-base),lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_sni.map,_nomatch) if local-offload
+    acl tls-has-crt ssl_c_used
+    acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_no_crt.list
+    acl tls-has-invalid-crt ssl_c_ca_err gt 0
+    acl tls-has-invalid-crt ssl_c_err gt 0
+    acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_inv_crt.list
+    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front001_no_crt_redir.map,_internal) if local-offload !tls-has-crt tls-need-crt
+    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front001_inv_crt_redir.map,_internal) if local-offload tls-has-invalid-crt tls-check-crt
+    use_backend _error496 if { var(req.tls_nocrt_redir) _internal }
+    use_backend _error495 if { var(req.tls_invalidcrt_redir) _internal }
+    use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
+    use_backend %[var(req.snibackend)] if local-offload !{ var(req.snibackend) _nomatch }
+    default_backend _error404
+<<support>>
+`)
 	c.logger.CompareLogging(defaultLogging)
 }
 
@@ -743,7 +829,7 @@ frontend _front001
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-var(txn.namespace) var(req.base),map_beg(/etc/haproxy/maps/_front001_k8s_ns.map,-)
-    <<tls-del-headers>>
+    <<https-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     use_backend d1_app_8080
 <<support>>
@@ -814,7 +900,7 @@ frontend _front001
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-var(txn.namespace) var(req.base),map_beg(/etc/haproxy/maps/_front001_k8s_ns.map,-)
-    <<tls-del-headers>>
+    <<https-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _default_backend
 <<support>>
@@ -878,6 +964,7 @@ func TestInstanceSingleFrontendTwoBindsCA(t *testing.T) {
 <<defaults>>
 backend d_app_8080
     mode http
+    acl local-offload ssl_fc
     http-request set-header X-SSL-Client-CN   %{+Q}[ssl_c_s_dn(cn)]
     http-request set-header X-SSL-Client-DN   %{+Q}[ssl_c_s_dn]
     http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex]
@@ -908,7 +995,7 @@ frontend _front001
     bind unix@/var/run/_socket002.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem ca-file /var/haproxy/ssl/ca/d2.local.pem verify optional ca-ignore-err all crt-ignore-err all
     bind unix@/var/run/_socket003.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
-    <<tls-del-headers>>
+    <<https-headers>>
     http-request set-header x-ha-base %[ssl_fc_sni]%[path]
     http-request set-var(req.snibackend) hdr(x-ha-base),lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_sni.map,_nomatch)
     acl tls-has-crt ssl_c_used
@@ -1023,9 +1110,10 @@ backend d_app_8080
     server s21 172.17.0.121:8080 weight 100
 backend d_appca_8080
     mode http
-    http-request set-header X-SSL-Client-CN   %{+Q}[ssl_c_s_dn(cn)]   if { ssl_fc }
-    http-request set-header X-SSL-Client-DN   %{+Q}[ssl_c_s_dn]       if { ssl_fc }
-    http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex]   if { ssl_fc }
+    acl local-offload ssl_fc
+    http-request set-header X-SSL-Client-CN   %{+Q}[ssl_c_s_dn(cn)]   if local-offload
+    http-request set-header X-SSL-Client-DN   %{+Q}[ssl_c_s_dn]       if local-offload
+    http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex]   if local-offload
     server s1 172.17.0.11:8080 weight 100
 backend _default_backend
     mode http
@@ -1054,7 +1142,7 @@ frontend _front001
     bind unix@/var/run/_socket001.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem ca-file /var/haproxy/ssl/ca/d1.local.pem verify optional ca-ignore-err all crt-ignore-err all
     timeout client 1s
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
-    <<tls-del-headers>>
+    <<https-headers>>
     http-request set-header x-ha-base %[ssl_fc_sni]%[path]
     http-request set-var(req.snibackend) hdr(x-ha-base),lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_sni.map,_nomatch)
     acl tls-has-invalid-crt ssl_c_ca_err gt 0
@@ -1072,7 +1160,7 @@ frontend _front002
     bind unix@/var/run/_socket003.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
     timeout client 2s
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front002_host.map,_nomatch)
-    <<tls-del-headers>>
+    <<https-headers>>
     http-request set-header x-ha-base %[ssl_fc_sni]%[path]
     http-request set-var(req.snibackend) hdr(x-ha-base),lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front002_sni.map,_nomatch)
     acl tls-has-crt ssl_c_used
@@ -1269,6 +1357,7 @@ frontend _front001
     mode http
     bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
+    http-request set-header X-Forwarded-Proto https
     http-request del-header X-SSL-Client-CN
     http-request del-header X-SSL-Client-DN
     http-request del-header X-SSL-Client-SHA1
@@ -1335,6 +1424,7 @@ frontend _front001
     mode http
     bind unix@/var/run/_socket001.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
+    http-request set-header X-Forwarded-Proto https
     http-request del-header X-SSL-Client-CN
     http-request del-header X-SSL-Client-DN
     http-request del-header X-SSL-Client-SHA1
@@ -1398,7 +1488,7 @@ frontend _front_http
     http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
     http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/_global_http_root_redir.map,_nomatch)
     http-request redirect location %[var(req.rootredir)] if { path / } !{ var(req.rootredir) _nomatch }
-    <<tls-del-headers>>
+    <<http-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _error404
@@ -1409,7 +1499,7 @@ frontend _front001
     http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
     http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/_front001_root_redir.map,_nomatch)
     http-request redirect location %[var(req.rootredir)] if { path / } !{ var(req.rootredir) _nomatch }
-    <<tls-del-headers>>
+    <<https-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404
 <<support>>
@@ -1488,7 +1578,7 @@ frontend _front001
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-var(req.hostbackend) var(req.base),map_reg(/etc/haproxy/maps/_front001_host_regex.map,_nomatch) if { var(req.hostbackend) _nomatch }
-    <<tls-del-headers>>
+    <<https-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404
 <<support>>
@@ -1558,7 +1648,7 @@ frontend _front001
     bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
-    <<tls-del-headers>>
+    <<https-headers>>
     http-request set-var(req.maxbody) var(req.base),map_beg_int(/etc/haproxy/maps/_front001_max_body_size.map,0)
     use_backend _error413 if !{ var(req.maxbody) 0 } { req.body_size,sub(req.maxbody) gt 0 }
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
@@ -1910,6 +2000,7 @@ func TestInstanceWildcardHostname(t *testing.T) {
 <<defaults>>
 backend d1_app_8080
     mode http
+    acl local-offload ssl_fc
     http-request set-header X-SSL-Client-CN   %{+Q}[ssl_c_s_dn(cn)]
     http-request set-header X-SSL-Client-DN   %{+Q}[ssl_c_s_dn]
     http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex]
@@ -1954,7 +2045,7 @@ frontend _front_http
     http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/_global_http_root_redir.map,_nomatch)
     http-request set-var(req.rootredir) var(req.host),map_reg(/etc/haproxy/maps/_global_http_root_redir_regex.map,_nomatch) if { var(req.rootredir) _nomatch }
     http-request redirect location %[var(req.rootredir)] if { path / } !{ var(req.rootredir) _nomatch }
-    <<tls-del-headers>>
+    <<http-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     http-request set-var(req.backend) var(req.base),map_reg(/etc/haproxy/maps/_global_http_front_regex.map,_nomatch) if { var(req.backend) _nomatch }
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
@@ -1966,7 +2057,7 @@ frontend _front001
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-var(req.hostbackend) var(req.base),map_reg(/etc/haproxy/maps/_front001_host_regex.map,_nomatch) if { var(req.hostbackend) _nomatch }
-    <<tls-del-headers>>
+    <<https-headers>>
     http-request set-header x-ha-base %[ssl_fc_sni]%[path]
     http-request set-var(req.snibase) hdr(x-ha-base),lower,regsub(:[0-9]+/,/)
     http-request set-var(req.snibackend) var(req.snibase),map_beg(/etc/haproxy/maps/_front001_sni.map,_nomatch)
@@ -1993,7 +2084,7 @@ frontend _front002
     http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/_front002_root_redir.map,_nomatch)
     http-request set-var(req.rootredir) var(req.host),map_reg(/etc/haproxy/maps/_front002_root_redir_regex.map,_nomatch) if { var(req.rootredir) _nomatch }
     http-request redirect location %[var(req.rootredir)] if { path / } !{ var(req.rootredir) _nomatch }
-    <<tls-del-headers>>
+    <<https-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _error404
 <<support>>
@@ -2298,7 +2389,13 @@ backend _error496
     errorfile 400 /usr/local/etc/haproxy/errors/404.http
     http-request deny deny_status 400
 <<backend-errors>>`,
-		"    <<tls-del-headers>>": `    http-request del-header X-SSL-Client-CN
+		"    <<http-headers>>": `    http-request set-header X-Forwarded-Proto http
+    http-request del-header X-SSL-Client-CN
+    http-request del-header X-SSL-Client-DN
+    http-request del-header X-SSL-Client-SHA1
+    http-request del-header X-SSL-Client-Cert`,
+		"    <<https-headers>>": `    http-request set-header X-Forwarded-Proto https
+    http-request del-header X-SSL-Client-CN
     http-request del-header X-SSL-Client-DN
     http-request del-header X-SSL-Client-SHA1
     http-request del-header X-SSL-Client-Cert`,
@@ -2307,14 +2404,14 @@ backend _error496
     bind :80
     http-request set-var(req.base) base,regsub(:[0-9]+/,/)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    <<tls-del-headers>>
+    <<http-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }`,
 		"<<frontend-https>>": `frontend _front001
     mode http
     bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
-    <<tls-del-headers>>
+    <<https-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }`,
 		"<<frontends-default>>": `<<frontend-http>>
     default_backend _error404

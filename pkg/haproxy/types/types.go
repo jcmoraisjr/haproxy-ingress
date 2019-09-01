@@ -39,12 +39,15 @@ type Global struct {
 
 // GlobalBindConfig ...
 type GlobalBindConfig struct {
-	AcceptProxy bool
-	HTTPBindIP  string
-	HTTPPort    int
-	HTTPSBindIP string
-	HTTPSPort   int
-	TCPBindIP   string
+	AcceptProxy    bool
+	HTTPBindIP     string
+	HTTPPort       int
+	HTTPSBindIP    string
+	HTTPSPort      int
+	TCPBindIP      string
+	ToHTTPBindIP   string
+	ToHTTPPort     int
+	ToHTTPSocketID int
 }
 
 // ProcsConfig ...
@@ -184,8 +187,9 @@ type HostsMaps struct {
 type FrontendGroup struct {
 	Frontends []*Frontend
 	//
-	HasSSLPassthrough bool
 	DefaultBind       *BindConfig
+	HasSSLPassthrough bool
+	ToHTTPBind        BindConfig
 	//
 	Maps              *HostsMaps
 	HTTPFrontsMap     *HostsMap
@@ -218,6 +222,7 @@ type Frontend struct {
 type BindConfig struct {
 	Name   string
 	Socket string
+	ID     int
 	Hosts  []*Host
 	//
 	AcceptProxy bool

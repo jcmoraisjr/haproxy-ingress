@@ -249,6 +249,18 @@ backend {{ $backend.ID }}
 {{- else }}{{/*** if $backend.ModeTCP ***/}}
 
 {{- /*------------------------------------*/}}
+{{- if $backend.HSTS }}
+    acl https-request ssl_fc
+{{- $hasHTTPSocket := $global.Bind.ToHTTPSocketID }}
+{{- if $hasHTTPSocket }}
+    acl https-request so_id {{ $global.Bind.ToHTTPSocketID }}
+{{- end }}
+{{- end }}
+{{- if or $backend.TLS.HasTLSAuth }}
+    acl local-offload ssl_fc
+{{- end }}
+
+{{- /*------------------------------------*/}}
 {{- if or $backend.Limit.RPS $backend.Limit.Connections }}
     http-request track-sc1 src
 {{- if $backend.Limit.Whitelist }}
@@ -316,11 +328,11 @@ backend {{ $backend.ID }}
 {{- /*------------------------------------*/}}
 {{- if $backend.TLS.HasTLSAuth }}
 {{- $needSSLACL := not $backend.HasSSLRedirect }}
-    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-CN   %{+Q}[ssl_c_s_dn(cn)]{{ if $needSSLACL }}   if { ssl_fc }{{ end }}
-    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-DN   %{+Q}[ssl_c_s_dn]{{ if $needSSLACL }}       if { ssl_fc }{{ end }}
-    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1 %{+Q}[ssl_c_sha1,hex]{{ if $needSSLACL }}   if { ssl_fc }{{ end }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-CN   %{+Q}[ssl_c_s_dn(cn)]{{ if $needSSLACL }}   if local-offload{{ end }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-DN   %{+Q}[ssl_c_s_dn]{{ if $needSSLACL }}       if local-offload{{ end }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1 %{+Q}[ssl_c_sha1,hex]{{ if $needSSLACL }}   if local-offload{{ end }}
 {{- if $backend.TLS.AddCertHeader }}
-    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-Cert %{+Q}[ssl_c_der,base64]{{ if $needSSLACL }} if { ssl_fc }{{ end }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-Cert %{+Q}[ssl_c_der,base64]{{ if $needSSLACL }} if local-offload{{ end }}
 {{- end }}
 {{- end }}
 
@@ -395,7 +407,7 @@ backend {{ $backend.ID }}
         {{- if $hsts.Subdomains }}; includeSubDomains{{ end }}
         {{- if $hsts.Preload }}; preload{{ end }}"
         {{- if or $needSSLACL $needACL }} if
-            {{- if $needSSLACL }} { ssl_fc }{{ end }}
+            {{- if $needSSLACL }} https-request{{ end }}
             {{- if $needACL }} { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
         {{- end }}
 {{- end }}
@@ -628,6 +640,7 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
+    http-request set-header X-Forwarded-Proto http
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-CN
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-DN
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1
@@ -653,10 +666,11 @@ frontend {{ $frontend.Name }}
     mode http
 
 {{- /*------------------------------------*/}}
-{{- range $bind := $frontend.Binds }}
+{{- range $bind := append $frontend.Binds $fgroup.ToHTTPBind }}
 {{- if $bind.Socket }}
 {{- $tls := $bind.TLS }}
     bind {{ $bind.Socket }}
+        {{- if $bind.ID }} id {{ $bind.ID }}{{ end }}
         {{- if $bind.AcceptProxy }} accept-proxy{{ end }}
         {{- if or $tls.TLSCert $tls.TLSCertDir }}
             {{- "" }} ssl alpn {{ $tls.ALPN }}
@@ -665,6 +679,12 @@ frontend {{ $frontend.Name }}
         {{- end }}
         {{- if $tls.CAFilename }} ca-file {{ $tls.CAFilename }} verify optional ca-ignore-err all crt-ignore-err all{{ end }}
 {{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- $hasHTTPSocket := $global.Bind.ToHTTPSocketID }}
+{{- if $hasHTTPSocket }}
+    acl local-offload ssl_fc
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -723,10 +743,15 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+    http-request set-header X-Forwarded-Proto https
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-CN
+        {{- if $hasHTTPSocket }} if local-offload{{ end }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-DN
+        {{- if $hasHTTPSocket }} if local-offload{{ end }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1
+        {{- if $hasHTTPSocket }} if local-offload{{ end }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-Cert
+        {{- if $hasHTTPSocket }} if local-offload{{ end }}
 
 {{- /*------------------------------------*/}}
 {{- if $frontend.HasMaxBody }}
@@ -737,15 +762,21 @@ frontend {{ $frontend.Name }}
 {{- if $frontend.HasTLSAuth }}
 {{- /*** TODO missing concat converter, fix after 1.9 ***/}}
     http-request set-header x-ha-base %[ssl_fc_sni]%[path]
+        {{- if $hasHTTPSocket }} if local-offload{{ end }}
 {{- if $frontend.SNIBackendsMap.HasRegex }}
     http-request set-var(req.snibase) hdr(x-ha-base),lower,regsub(:[0-9]+/,/)
+        {{- if $hasHTTPSocket }} if local-offload{{ end }}
     http-request set-var(req.snibackend) var(req.snibase)
         {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }},_nomatch)
+        {{- if $hasHTTPSocket }} if local-offload{{ end }}
     http-request set-var(req.snibackend) var(req.snibase)
-        {{- "" }},map_reg({{ $frontend.SNIBackendsMap.RegexFile }},_nomatch) if { var(req.snibackend) _nomatch }
+        {{- "" }},map_reg({{ $frontend.SNIBackendsMap.RegexFile }},_nomatch)
+        {{- "" }} if{{ if $hasHTTPSocket }} local-offload{{ end }}
+        {{- "" }} { var(req.snibackend) _nomatch }
 {{- else }}
     http-request set-var(req.snibackend) hdr(x-ha-base),lower,regsub(:[0-9]+/,/)
         {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }},_nomatch)
+        {{- if $hasHTTPSocket }} if local-offload{{ end }}
 {{- end }}
 {{- $mandatory := $frontend.HasTLSMandatory }}
 {{- if $mandatory }}
@@ -764,27 +795,33 @@ frontend {{ $frontend.Name }}
 {{- if $mandatory }}
     http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower
         {{- "" }},map({{ $frontend.TLSNoCrtErrorPagesMap.MatchFile }},_internal)
-        {{- "" }} if !tls-has-crt tls-need-crt
+        {{- "" }} if{{ if $hasHTTPSocket }} local-offload{{ end }}
+        {{- "" }} !tls-has-crt tls-need-crt
 {{- if $frontend.TLSNoCrtErrorPagesMap.HasRegex }}
     http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower
         {{- "" }},map_reg({{ $frontend.TLSNoCrtErrorPagesMap.RegexFile }},_internal)
-        {{- "" }} if { var(req.tls_nocrt_redir) _internal }
+        {{- "" }} if{{ if $hasHTTPSocket }} local-offload{{ end }}
+        {{- "" }} { var(req.tls_nocrt_redir) _internal }
 {{- end }}
 {{- end }}
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower
         {{- "" }},map({{ $frontend.TLSInvalidCrtErrorPagesMap.MatchFile }},_internal)
-        {{- "" }} if tls-has-invalid-crt tls-check-crt
+        {{- "" }} if{{ if $hasHTTPSocket }} local-offload{{ end }}
+        {{- "" }} tls-has-invalid-crt tls-check-crt
 {{- if $frontend.TLSInvalidCrtErrorPagesMap.HasRegex }}
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower
         {{- "" }},map_reg({{ $frontend.TLSInvalidCrtErrorPagesMap.RegexFile }},_internal)
-        {{- "" }} if { var(req.tls_invalidcrt_redir) _internal }
+        {{- "" }} if{{ if $hasHTTPSocket }} local-offload{{ end }}
+        {{- "" }} { var(req.tls_invalidcrt_redir) _internal }
 {{- end }}
 {{- if and $mandatory $frontend.HasNoCrtErrorPage }}
-    http-request redirect location %[var(req.tls_nocrt_redir)] code 303 if
+    http-request redirect location %[var(req.tls_nocrt_redir)] code 303
+        {{- "" }} if{{ if $hasHTTPSocket }} local-offload{{ end }}
         {{- "" }} { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) _internal }
 {{- end }}
 {{- if $frontend.HasInvalidErrorPage }}
-    http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if
+    http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303
+        {{- "" }} if{{ if $hasHTTPSocket }} local-offload{{ end }}
         {{- "" }} { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
 {{- end }}
 {{- end }}
@@ -811,7 +848,9 @@ frontend {{ $frontend.Name }}
 {{- /*------------------------------------*/}}
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
 {{- if $frontend.HasTLSAuth }}
-    use_backend %[var(req.snibackend)] unless { var(req.snibackend) _nomatch }
+    use_backend %[var(req.snibackend)]
+        {{- if $hasHTTPSocket }} if local-offload !{ var(req.snibackend) _nomatch }
+        {{- else }} unless { var(req.snibackend) _nomatch }{{ end }}
 {{- end }}
 {{- template "defaultbackend" map $cfg }}
 {{- end }}

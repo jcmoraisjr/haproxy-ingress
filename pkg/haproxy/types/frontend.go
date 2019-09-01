@@ -189,7 +189,7 @@ func BuildRawFrontends(hosts []*Host) (frontends []*Frontend, sslpassthrough []*
 		}
 		frontend := findMatchingFrontend(frontends, host)
 		if frontend == nil {
-			frontend = newFrontend(host)
+			frontend = NewFrontend(host)
 			frontends = append(frontends, frontend)
 		}
 		frontend.Hosts = append(frontend.Hosts, host)
@@ -200,7 +200,7 @@ func BuildRawFrontends(hosts []*Host) (frontends []*Frontend, sslpassthrough []*
 		for _, host := range frontend.Hosts {
 			bind := findMatchingBind(binds, host)
 			if bind == nil {
-				bind = newFrontendBind(host)
+				bind = NewFrontendBind(host)
 				binds = append(binds, bind)
 			}
 			if defaultBind == nil && bind.supportDefault() {
@@ -214,12 +214,12 @@ func BuildRawFrontends(hosts []*Host) (frontends []*Frontend, sslpassthrough []*
 	if defaultBind == nil {
 		var frontend *Frontend
 		if len(frontends) == 0 {
-			frontend = newFrontend(nil)
+			frontend = NewFrontend(nil)
 			frontends = append(frontends, frontend)
 		} else {
 			frontend = frontends[0]
 		}
-		defaultBind = newFrontendBind(nil)
+		defaultBind = NewFrontendBind(nil)
 		frontend.Binds = append(frontend.Binds, defaultBind)
 	}
 	// naming frontends
@@ -253,8 +253,8 @@ func findMatchingBind(binds []*BindConfig, host *Host) *BindConfig {
 	return nil
 }
 
-// newFrontend and Frontend.Match should always sinchronize its attributes
-func newFrontend(host *Host) *Frontend {
+// NewFrontend and Frontend.Match should always sinchronize its attributes
+func NewFrontend(host *Host) *Frontend {
 	if host == nil {
 		return &Frontend{}
 	}
@@ -263,8 +263,8 @@ func newFrontend(host *Host) *Frontend {
 	}
 }
 
-// newFrontendBind and BindConfig.Match should always sinchronize its attributes
-func newFrontendBind(host *Host) *BindConfig {
+// NewFrontendBind and BindConfig.Match should always sinchronize its attributes
+func NewFrontendBind(host *Host) *BindConfig {
 	if host == nil {
 		return &BindConfig{}
 	}

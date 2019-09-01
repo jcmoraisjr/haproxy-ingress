@@ -111,6 +111,7 @@ func (c *updater) UpdateGlobalConfig(global *hatypes.Global, mapper *Mapper) {
 	c.buildGlobalCustomConfig(data)
 	c.buildGlobalForwardFor(data)
 	c.buildGlobalHealthz(data)
+	c.buildGlobalHTTPStoHTTP(data)
 	c.buildGlobalModSecurity(data)
 	c.buildGlobalProc(data)
 	c.buildGlobalSSL(data)

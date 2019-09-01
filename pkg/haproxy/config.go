@@ -232,6 +232,13 @@ func (c *config) BuildFrontendGroup() error {
 		HTTPSRedirMap:     fgroupMaps.AddMap(c.mapsDir + "/_global_https_redir.map"),
 		SSLPassthroughMap: fgroupMaps.AddMap(c.mapsDir + "/_global_sslpassthrough.map"),
 	}
+	if c.global.Bind.ToHTTPPort > 0 {
+		bind := *hatypes.NewFrontendBind(nil)
+		bind.Socket = fmt.Sprintf("%s:%d", c.global.Bind.ToHTTPBindIP, c.global.Bind.ToHTTPPort)
+		bind.ID = c.global.Bind.ToHTTPSocketID
+		bind.AcceptProxy = c.global.Bind.AcceptProxy
+		fgroup.ToHTTPBind = bind
+	}
 	if fgroup.HasTCPProxy() {
 		// More than one HAProxy's frontend or bind, or using ssl-passthrough config,
 		// so need a `mode tcp` frontend with `inspect-delay` and `req.ssl_sni`
