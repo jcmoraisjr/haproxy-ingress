@@ -201,7 +201,7 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if coalesce $backend.Limit.Connections $backend.Limit.RPS }}
+{{- if or $backend.Limit.Connections $backend.Limit.RPS }}
     stick-table type ip size 200k expire 5m store conn_cur,conn_rate(1s)
 {{- end }}
 
@@ -224,7 +224,7 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if coalesce $backend.Limit.RPS $backend.Limit.Connections }}
+{{- if or $backend.Limit.RPS $backend.Limit.Connections }}
     tcp-request content track-sc1 src
 {{- if $backend.Limit.Whitelist }}
 {{- range $w1 := short 10 $backend.Limit.Whitelist }}
@@ -249,7 +249,7 @@ backend {{ $backend.ID }}
 {{- else }}{{/*** if $backend.ModeTCP ***/}}
 
 {{- /*------------------------------------*/}}
-{{- if coalesce $backend.Limit.RPS $backend.Limit.Connections }}
+{{- if or $backend.Limit.RPS $backend.Limit.Connections }}
     http-request track-sc1 src
 {{- if $backend.Limit.Whitelist }}
 {{- range $w1 := short 10 $backend.Limit.Whitelist }}
@@ -460,7 +460,7 @@ backend {{ $backend.ID }}
     {{- if $server.SendProxy }} {{ $server.SendProxy }}{{ end }}
     {{- $agent := $backend.AgentCheck }}
     {{- $hc := $backend.HealthCheck }}
-    {{- if coalesce $hc.Port $hc.Addr $hc.Interval $hc.RiseCount $hc.FallCount }} check
+    {{- if or $hc.Port $hc.Addr $hc.Interval $hc.RiseCount $hc.FallCount }} check
         {{- if $hc.Port }} port {{ $hc.Port }}{{ end }}
         {{- if $hc.Addr }} addr {{ $hc.Addr }}{{ end }}
         {{- if $hc.Interval }} inter {{ $hc.Interval }}{{ end }}
