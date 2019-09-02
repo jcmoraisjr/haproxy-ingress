@@ -32,6 +32,7 @@ type Global struct {
 	AdminSocket     string
 	Healthz         HealthzConfig
 	Stats           StatsConfig
+	StrictHost      bool
 	CustomConfig    []string
 	CustomDefaults  []string
 	CustomFrontend  []string

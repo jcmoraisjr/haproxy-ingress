@@ -77,7 +77,6 @@ func createDefaults() map[string]string {
 		types.GlobalSSLHeadersPrefix:             "X-SSL",
 		types.GlobalSSLOptions:                   "no-sslv3 no-tls-tickets",
 		types.GlobalStatsPort:                    "1936",
-		types.GlobalStrictHost:                   "true",
 		types.GlobalSyslogFormat:                 "rfc5424",
 		types.GlobalSyslogTag:                    "ingress",
 		types.GlobalTimeoutStop:                  "10m",

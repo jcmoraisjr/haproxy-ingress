@@ -318,12 +318,31 @@ func (c *config) BuildFrontendGroup() error {
 	}
 	for _, f := range frontends {
 		for _, host := range f.Hosts {
+			if c.global.StrictHost && host.FindPath("/") == nil {
+				var back *hatypes.Backend
+				if c.defaultHost != nil {
+					if path := c.defaultHost.FindPath("/"); path != nil {
+						hback := path.Backend
+						back = c.FindBackend(hback.Namespace, hback.Name, hback.Port)
+					}
+				}
+				if back == nil {
+					// TODO c.defaultBackend can be nil; create a valid
+					// _error404 backend, remove `if nil` from host.AddPath()
+					// and from `for range host.Paths` below
+					back = c.defaultBackend
+				}
+				host.AddPath(back, "/")
+			}
 			// TODO implement deny 413 and move all MaxBodySize stuff to backend
 			maxBodySizes := map[string]int64{}
 			for _, path := range host.Paths {
-				backend := c.AcquireBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
+				backend := c.FindBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
 				base := host.Hostname + path.Path
-				hasSSLRedirect := backend.HasSSLRedirectHostpath(base)
+				hasSSLRedirect := false
+				if backend != nil {
+					hasSSLRedirect = backend.HasSSLRedirectHostpath(base)
+				}
 				// TODO use only root path if all uri has the same conf
 				fgroup.HTTPSRedirMap.AppendHostname(host.Hostname+path.Path, yesno[hasSSLRedirect])
 				var aliasName, aliasRegex string
@@ -339,14 +358,18 @@ func (c *config) BuildFrontendGroup() error {
 					f.SNIBackendsMap.AppendHostname(base, back)
 					f.SNIBackendsMap.AppendAliasName(aliasName, back)
 					f.SNIBackendsMap.AppendAliasRegex(aliasRegex, back)
-					backend.TLS.HasTLSAuth = true
+					if backend != nil {
+						backend.TLS.HasTLSAuth = true
+					}
 				} else {
 					f.HostBackendsMap.AppendHostname(base, back)
 					f.HostBackendsMap.AppendAliasName(aliasName, back)
 					f.HostBackendsMap.AppendAliasRegex(aliasRegex, back)
 				}
-				if maxBodySize := backend.MaxBodySizeHostpath(base); maxBodySize > 0 {
-					maxBodySizes[base] = maxBodySize
+				if backend != nil {
+					if maxBodySize := backend.MaxBodySizeHostpath(base); maxBodySize > 0 {
+						maxBodySizes[base] = maxBodySize
+					}
 				}
 				if !hasSSLRedirect {
 					fgroup.HTTPFrontsMap.AppendHostname(base, back)

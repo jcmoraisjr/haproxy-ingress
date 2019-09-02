@@ -107,6 +107,7 @@ func (c *updater) UpdateGlobalConfig(global *hatypes.Global, mapper *Mapper) {
 	global.Cookie.Key = mapper.Get(ingtypes.GlobalCookieKey).Value
 	global.LoadServerState = mapper.Get(ingtypes.GlobalLoadServerState).Bool()
 	global.SSL.ALPN = mapper.Get(ingtypes.GlobalTLSALPN).Value
+	global.StrictHost = mapper.Get(ingtypes.GlobalStrictHost).Bool()
 	c.buildGlobalBind(data)
 	c.buildGlobalCustomConfig(data)
 	c.buildGlobalForwardFor(data)

@@ -823,6 +823,7 @@ backend _default_backend
 <<backend-errors>>
 <<frontend-http>>
     use_backend d1_app_8080
+    default_backend _default_backend
 frontend _front001
     mode http
     bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
@@ -832,6 +833,7 @@ frontend _front001
     <<https-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     use_backend d1_app_8080
+    default_backend _default_backend
 <<support>>
 `)
 
@@ -847,6 +849,98 @@ d2.local/app d2
 d2.local/app d2_app_8080
 `)
 
+	c.logger.CompareLogging(defaultLogging)
+}
+
+func TestInstanceStrictHost(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	h = c.config.AcquireHost("d1.local")
+	h.AddPath(b, "/path")
+	c.config.Global().StrictHost = true
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+<<frontends-default>>
+<<support>>
+`)
+	c.checkMap("_global_https_redir.map", `
+d1.local/path no
+d1.local/ no
+`)
+	c.checkMap("_global_http_front.map", `
+d1.local/path d1_app_8080
+d1.local/ _error404
+`)
+	c.checkMap("_front001_host.map", `
+d1.local/path d1_app_8080
+d1.local/ _error404
+`)
+	c.logger.CompareLogging(defaultLogging)
+}
+
+func TestInstanceStrictHostDefaultHost(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	h = c.config.AcquireHost("d1.local")
+	h.AddPath(b, "/path")
+
+	b = c.config.AcquireBackend("d2", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS21}
+	h = c.config.AcquireHost("*")
+	h.AddPath(b, "/")
+
+	c.config.Global().StrictHost = true
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+backend d2_app_8080
+    mode http
+    server s21 172.17.0.121:8080 weight 100
+<<backends-default>>
+<<frontend-http>>
+    use_backend d2_app_8080
+    default_backend _error404
+<<frontend-https>>
+    use_backend d2_app_8080
+    default_backend _error404
+<<support>>
+`)
+	c.checkMap("_global_https_redir.map", `
+d1.local/path no
+d1.local/ no
+`)
+	c.checkMap("_global_http_front.map", `
+d1.local/path d1_app_8080
+d1.local/ d2_app_8080
+`)
+	c.checkMap("_front001_host.map", `
+d1.local/path d1_app_8080
+d1.local/ d2_app_8080
+`)
 	c.logger.CompareLogging(defaultLogging)
 }
 

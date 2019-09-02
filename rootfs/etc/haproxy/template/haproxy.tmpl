@@ -492,7 +492,7 @@ backend {{ $backend.ID }}
 # #
 #     Error pages
 #
-{{- if and (not $cfg.DefaultHost) (not $cfg.DefaultBackend) }}
+{{- if not $cfg.DefaultBackend }}
 backend _error404
     mode http
     errorfile 400 /usr/local/etc/haproxy/errors/404.http
@@ -866,7 +866,8 @@ frontend {{ $frontend.Name }}
     use_backend {{ $path.Backend.ID }}
         {{- if ne $path.Path "/" }} if { path_beg {{ $path.Path }} }{{ end }}
 {{- end }}
-{{- else if $cfg.DefaultBackend }}
+{{- end }}
+{{- if $cfg.DefaultBackend }}
     default_backend {{ $cfg.DefaultBackend.ID }}
 {{- else }}
     default_backend _error404
