@@ -741,6 +741,9 @@ backend spoe-modsecurity
     mode tcp
     timeout connect 5s
     timeout server  5s
+{{- if gt $ing.Procs.Nbproc 1 }}
+    bind-process {{ $ing.Procs.BindprocBalance }}
+{{- end }}
 {{- range $i, $endpoint := split $cfg.ModSecurity "," }}
     server modsec-spoa{{ $i }} {{ $endpoint }}
 {{- end }}
