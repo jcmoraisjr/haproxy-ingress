@@ -373,6 +373,26 @@ func (c *updater) buildBackendCors(d *backData) {
 	}
 }
 
+func (c *updater) buildBackendDNS(d *backData) {
+	resolverName := d.mapper.Get(ingtypes.BackUseResolver).Value
+	if resolverName == "" {
+		return
+	}
+	exists := func() bool {
+		for _, resolver := range c.haproxy.Global().DNS.Resolvers {
+			if resolver.Name == resolverName {
+				return true
+			}
+		}
+		return false
+	}()
+	if !exists {
+		c.logger.Warn("skipping undeclared DNS resolver: %s", resolverName)
+		return
+	}
+	d.backend.Resolver = resolverName
+}
+
 func (c *updater) buildBackendDynamic(d *backData) {
 	d.backend.Dynamic = hatypes.DynBackendConfig{
 		DynUpdate:    d.mapper.Get(ingtypes.BackDynamicScaling).Bool(),

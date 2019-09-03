@@ -98,12 +98,23 @@ defaults
     {{ $snippet }}
 {{- end }}
 
+{{- if $global.DNS.Resolvers }}
+
   # # # # # # # # # # # # # # # # # # #
 # #
 #     DNS RESOLVERS
 #
-
-# TODO
+{{- range $resolver := $global.DNS.Resolvers }}
+resolvers {{ $resolver.Name }}
+{{- range $ns := $resolver.Nameservers }}
+    nameserver {{ $ns.Name }} {{ $ns.Endpoint }}
+{{- end }}
+    accepted_payload_size {{ $resolver.AcceptedPayloadSize }}
+    hold obsolete         {{ $resolver.HoldObsolete }}
+    hold valid            {{ $resolver.HoldValid }}
+    timeout retry         {{ $resolver.TimeoutRetry }}
+{{- end }}
+{{- end }}
 
 {{- $userlists := $cfg.Userlists }}
 {{- if $userlists }}
@@ -447,12 +458,22 @@ backend {{ $backend.ID }}
 {{- end }}{{/*** if $backend.ModeTCP ***/}}
 
 {{- /*------------------------------------*/}}
+{{- if $backend.Resolver }}
+{{- $portIsNumber := ne (int64 $backend.Port) 0 }}
+    server-template srv {{ len $backend.Endpoints }}
+        {{- " " }}{{ if not $portIsNumber }}_{{ $backend.Port }}._tcp.{{ end }}
+        {{- $backend.Name }}.{{ $backend.Namespace }}.svc.{{ $global.DNS.ClusterDomain }}
+        {{- if $portIsNumber }}:{{ $backend.Port }}{{ end }}
+        {{- "" }} resolvers {{ $backend.Resolver }} resolve-prefer ipv4 init-addr none
+        {{- template "backend" map $backend }}
+{{- else }}
 {{- range $ep := $backend.Endpoints }}
     server {{ $ep.Name }} {{ $ep.IP }}:{{ $ep.Port }}
         {{- if not $ep.Enabled }} disabled{{ end }}
         {{- "" }} weight {{ $ep.Weight }}
         {{- if and (not $backend.ModeTCP) ($backend.Cookie.Name) (not $backend.Cookie.Dynamic) }} cookie {{ $ep.Name }}{{ end }}
         {{- template "backend" map $backend }}
+{{- end }}
 {{- end }}
 {{- end }}
 

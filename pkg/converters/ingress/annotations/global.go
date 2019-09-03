@@ -19,8 +19,10 @@ package annotations
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
+	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
@@ -160,6 +162,51 @@ func (c *updater) buildGlobalModSecurity(d *globalData) {
 	d.global.ModSecurity.Timeout.Hello = c.validateTime(d.mapper.Get(ingtypes.GlobalModsecurityTimeoutHello))
 	d.global.ModSecurity.Timeout.Idle = c.validateTime(d.mapper.Get(ingtypes.GlobalModsecurityTimeoutIdle))
 	d.global.ModSecurity.Timeout.Processing = c.validateTime(d.mapper.Get(ingtypes.GlobalModsecurityTimeoutProcessing))
+}
+
+func (c *updater) buildGlobalDNS(d *globalData) {
+	resolvers := d.mapper.Get(ingtypes.GlobalDNSResolvers).Value
+	if resolvers == "" {
+		return
+	}
+	payloadSize := d.mapper.Get(ingtypes.GlobalDNSAcceptedPayloadSize).Int()
+	holdObsolete := c.validateTime(d.mapper.Get(ingtypes.GlobalDNSHoldObsolete))
+	holdValid := c.validateTime(d.mapper.Get(ingtypes.GlobalDNSHoldValid))
+	timeoutRetry := c.validateTime(d.mapper.Get(ingtypes.GlobalDNSTimeoutRetry))
+	for _, resolver := range utils.LineToSlice(resolvers) {
+		if resolver == "" {
+			continue
+		}
+		resolverData := strings.Split(resolver, "=")
+		if len(resolverData) != 2 {
+			c.logger.Warn("ignoring misconfigured resolver: %s", resolver)
+			continue
+		}
+		dnsResolver := &hatypes.DNSResolver{
+			Name:                resolverData[0],
+			AcceptedPayloadSize: payloadSize,
+			HoldObsolete:        holdObsolete,
+			HoldValid:           holdValid,
+			TimeoutRetry:        timeoutRetry,
+		}
+		var i int
+		for _, ns := range strings.Split(resolverData[1], ",") {
+			if ns == "" {
+				continue
+			}
+			if strings.Index(ns, ":") < 0 {
+				// missing port number
+				ns += ":53"
+			}
+			i++
+			dnsResolver.Nameservers = append(dnsResolver.Nameservers, &hatypes.DNSNameserver{
+				Name:     fmt.Sprintf("ns%02d", i),
+				Endpoint: ns,
+			})
+		}
+		d.global.DNS.Resolvers = append(d.global.DNS.Resolvers, dnsResolver)
+	}
+	d.global.DNS.ClusterDomain = d.mapper.Get(ingtypes.GlobalDNSClusterDomain).Value
 }
 
 var (

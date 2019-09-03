@@ -24,6 +24,7 @@ type Global struct {
 	MaxConn         int
 	Timeout         TimeoutConfig
 	SSL             SSLConfig
+	DNS             DNSConfig
 	ModSecurity     ModSecurityConfig
 	Cookie          CookieConfig
 	DrainSupport    DrainConfig
@@ -94,6 +95,28 @@ type SSLConfig struct {
 type DHParamConfig struct {
 	Filename       string
 	DefaultMaxSize int
+}
+
+// DNSConfig ...
+type DNSConfig struct {
+	ClusterDomain string
+	Resolvers     []*DNSResolver
+}
+
+// DNSResolver ...
+type DNSResolver struct {
+	Name                string
+	Nameservers         []*DNSNameserver
+	AcceptedPayloadSize int
+	HoldObsolete        string
+	HoldValid           string
+	TimeoutRetry        string
+}
+
+// DNSNameserver ...
+type DNSNameserver struct {
+	Name     string
+	Endpoint string
 }
 
 // ModSecurityConfig ...
@@ -326,6 +349,7 @@ type Backend struct {
 	Limit            BackendLimit
 	ModeTCP          bool
 	OAuth            OAuthConfig
+	Resolver         string
 	Server           ServerConfig
 	Timeout          BackendTimeoutConfig
 	TLS              BackendTLSConfig

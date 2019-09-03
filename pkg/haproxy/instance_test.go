@@ -1756,6 +1756,77 @@ d1.local/ 1048576
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestDNS(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	c.config.Global().DNS = hatypes.DNSConfig{
+		ClusterDomain: "cluster.local",
+		Resolvers: []*hatypes.DNSResolver{
+			{
+				Name: "k8s",
+				Nameservers: []*hatypes.DNSNameserver{
+					{
+						Name:     "coredns1",
+						Endpoint: "10.0.1.11",
+					},
+					{
+						Name:     "coredns2",
+						Endpoint: "10.0.1.12",
+					},
+					{
+						Name:     "coredns3",
+						Endpoint: "10.0.1.13",
+					},
+				},
+				AcceptedPayloadSize: 8192,
+				HoldObsolete:        "0s",
+				HoldValid:           "1s",
+				TimeoutRetry:        "2s",
+			},
+		},
+	}
+
+	b = c.config.AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS21, endpointS22}
+	b.Resolver = "k8s"
+	h = c.config.AcquireHost("d1.local")
+	h.AddPath(b, "/")
+
+	b = c.config.AcquireBackend("d2", "app", "http")
+	b.Endpoints = []*hatypes.Endpoint{endpointS21, endpointS22}
+	b.Resolver = "k8s"
+	h = c.config.AcquireHost("d2.local")
+	h.AddPath(b, "/")
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+resolvers k8s
+    nameserver coredns1 10.0.1.11
+    nameserver coredns2 10.0.1.12
+    nameserver coredns3 10.0.1.13
+    accepted_payload_size 8192
+    hold obsolete         0s
+    hold valid            1s
+    timeout retry         2s
+backend d1_app_8080
+    mode http
+    server-template srv 2 app.d1.svc.cluster.local:8080 resolvers k8s resolve-prefer ipv4 init-addr none
+backend d2_app_http
+    mode http
+    server-template srv 2 _http._tcp.app.d2.svc.cluster.local resolvers k8s resolve-prefer ipv4 init-addr none
+<<backends-default>>
+<<frontends-default>>
+<<support>>
+`)
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestUserlist(t *testing.T) {
 	type list struct {
 		name  string
