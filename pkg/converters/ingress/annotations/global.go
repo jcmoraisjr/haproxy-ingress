@@ -52,6 +52,10 @@ func (c *updater) buildGlobalProc(d *globalData) {
 		c.logger.Warn("invalid value of nbproc-ssl configmap option (%v), using 0", ssl)
 		ssl = 0
 	}
+	if ssl > 0 {
+		c.logger.Warn("v08 controller does not support nbproc-ssl, using 0")
+		ssl = 0
+	}
 	procs := balance + ssl
 	threads := d.mapper.Get(ingtypes.GlobalNbthread).Int()
 	if threads < 1 {
