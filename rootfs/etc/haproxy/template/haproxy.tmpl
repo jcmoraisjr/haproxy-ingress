@@ -748,6 +748,9 @@ frontend {{ $frontend.Name }}
 listen stats
     mode http
     bind :1936{{ if gt $global.Procs.Nbproc 1 }} process 1{{ end }}
+    option http-use-htx
+    http-request use-service prometheus-exporter if {path /metrics}
+    stats refresh 10s
     stats enable
     stats uri /
     no log
