@@ -28,6 +28,7 @@ const (
 	HostSSLPassthroughHTTPPort = "ssl-passthrough-http-port"
 	HostTimeoutClient          = "timeout-client"
 	HostTimeoutClientFin       = "timeout-client-fin"
+	HostVarNamespace           = "var-namespace"
 )
 
 var (
@@ -43,6 +44,7 @@ var (
 		HostSSLPassthroughHTTPPort: {},
 		HostTimeoutClient:          {},
 		HostTimeoutClientFin:       {},
+		HostVarNamespace:           {},
 	}
 )
 
