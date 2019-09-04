@@ -17,10 +17,10 @@ limitations under the License.
 package annotations
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
+	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
+	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
 func TestModSecurity(t *testing.T) {
@@ -31,7 +31,7 @@ func TestModSecurity(t *testing.T) {
 		// 0
 		{
 			endpoints: "",
-			expected:  []string{},
+			expected:  nil,
 		},
 		// 1
 		{
@@ -46,13 +46,110 @@ func TestModSecurity(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		config := &types.ConfigGlobals{}
-		config.ModsecurityEndpoints = test.endpoints
-		d := c.createGlobalData(config)
+		d := c.createGlobalData(map[string]string{ingtypes.GlobalModsecurityEndpoints: test.endpoints})
 		c.createUpdater().buildGlobalModSecurity(d)
-		if !reflect.DeepEqual(test.expected, d.global.ModSecurity.Endpoints) {
-			t.Errorf("endpoints differ on %d - expected: %v - actual: %v", i, test.expected, d.global.ModSecurity.Endpoints)
-		}
+		c.compareObjects("modsecurity endpoints", i, d.global.ModSecurity.Endpoints, test.expected)
+		c.teardown()
+	}
+}
+
+func TestDNS(t *testing.T) {
+	testCases := []struct {
+		config   map[string]string
+		expected hatypes.DNSConfig
+		logging  string
+	}{
+		// 0
+		{
+			config: map[string]string{
+				ingtypes.GlobalDNSResolvers: "k8s",
+			},
+			logging: `WARN ignoring misconfigured resolver: k8s`,
+		},
+		// 1
+		{
+			config: map[string]string{
+				ingtypes.GlobalDNSClusterDomain: "cluster.local",
+				ingtypes.GlobalDNSResolvers:     "k8s=10.0.1.11",
+			},
+			expected: hatypes.DNSConfig{
+				ClusterDomain: "cluster.local",
+				Resolvers: []*hatypes.DNSResolver{
+					{
+						Name: "k8s",
+						Nameservers: []*hatypes.DNSNameserver{
+							{
+								Name:     "ns01",
+								Endpoint: "10.0.1.11:53",
+							},
+						},
+					},
+				},
+			},
+		},
+		// 2
+		{
+			config: map[string]string{
+				ingtypes.GlobalDNSClusterDomain: "cluster.local",
+				ingtypes.GlobalDNSResolvers: `
+k8s1=10.0.1.11
+k8s2=10.0.1.21:53,10.0.1.22:53,
+
+k8s3=10.0.1.31:10053,10.0.1.32:10053,10.0.1.33:10053,
+`,
+			},
+			expected: hatypes.DNSConfig{
+				ClusterDomain: "cluster.local",
+				Resolvers: []*hatypes.DNSResolver{
+					{
+						Name: "k8s1",
+						Nameservers: []*hatypes.DNSNameserver{
+							{
+								Name:     "ns01",
+								Endpoint: "10.0.1.11:53",
+							},
+						},
+					},
+					{
+						Name: "k8s2",
+						Nameservers: []*hatypes.DNSNameserver{
+							{
+								Name:     "ns01",
+								Endpoint: "10.0.1.21:53",
+							},
+							{
+								Name:     "ns02",
+								Endpoint: "10.0.1.22:53",
+							},
+						},
+					},
+					{
+						Name: "k8s3",
+						Nameservers: []*hatypes.DNSNameserver{
+							{
+								Name:     "ns01",
+								Endpoint: "10.0.1.31:10053",
+							},
+							{
+								Name:     "ns02",
+								Endpoint: "10.0.1.32:10053",
+							},
+							{
+								Name:     "ns03",
+								Endpoint: "10.0.1.33:10053",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createGlobalData(test.config)
+		c.createUpdater().buildGlobalDNS(d)
+		c.compareObjects("dns", i, d.global.DNS, test.expected)
+		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
 }
@@ -96,14 +193,9 @@ func TestForwardFor(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		u := c.createUpdater()
-		d := c.createGlobalData(&types.ConfigGlobals{
-			Forwardfor: test.conf,
-		})
-		u.buildGlobalForwardFor(d)
-		if d.global.ForwardFor != test.expected {
-			t.Errorf("ForwardFor differs on %d: expected '%s' but was '%s'", i, test.expected, d.global.ForwardFor)
-		}
+		d := c.createGlobalData(map[string]string{ingtypes.GlobalForwardfor: test.conf})
+		c.createUpdater().buildGlobalForwardFor(d)
+		c.compareObjects("forward-for", i, d.global.ForwardFor, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}

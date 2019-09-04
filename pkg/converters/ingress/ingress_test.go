@@ -154,6 +154,25 @@ WARN skipping backend config of ingress 'default/echo4': port not found: '9000'
 `)
 }
 
+func TestSyncSvcUpstream(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	svc, _ := c.createSvc1Ann("default/echo", "8080", "172.17.1.101,172.17.1.102,172.17.1.103", map[string]string{
+		"ingress.kubernetes.io/service-upstream": "true",
+	})
+	svc.Spec.ClusterIP = "10.0.0.2"
+	c.Sync(
+		c.createIng1("default/echo1", "echo1.example.com", "/", "echo:8080"),
+	)
+
+	c.compareConfigBack(`
+- id: default_echo_8080
+  endpoints:
+  - ip: 10.0.0.2
+    port: 8080` + defaultBackendConfig)
+}
+
 func TestSyncSingle(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
@@ -1131,8 +1150,8 @@ var defaultBackendConfig = `
     port: 8080`
 
 func (c *testConfig) SyncDef(config map[string]string, ing ...*extensions.Ingress) {
-	defaultConfig := func() (ann map[string]string, global *ingtypes.ConfigGlobals) {
-		return map[string]string{}, &ingtypes.ConfigGlobals{}
+	defaultConfig := func() map[string]string {
+		return map[string]string{}
 	}
 	conv := NewIngressConverter(
 		&ingtypes.ConverterOptions{
@@ -1296,17 +1315,17 @@ func (c *testConfig) compareText(actual, expected string) {
 
 type updaterMock struct{}
 
-func (u *updaterMock) UpdateGlobalConfig(global *hatypes.Global, config *ingtypes.ConfigGlobals) {
+func (u *updaterMock) UpdateGlobalConfig(global *hatypes.Global, config *annotations.Mapper) {
 }
 
 func (u *updaterMock) UpdateHostConfig(host *hatypes.Host, mapper *annotations.Mapper) {
-	host.Timeout.Client = mapper.GetStrValue(ingtypes.HostTimeoutClient)
-	host.RootRedirect = mapper.GetStrValue(ingtypes.HostAppRoot)
+	host.Timeout.Client = mapper.Get(ingtypes.HostTimeoutClient).Value
+	host.RootRedirect = mapper.Get(ingtypes.HostAppRoot).Value
 }
 
 func (u *updaterMock) UpdateBackendConfig(backend *hatypes.Backend, mapper *annotations.Mapper) {
-	backend.MaxConnServer = mapper.GetIntValue(ingtypes.BackMaxconnServer)
-	backend.BalanceAlgorithm = mapper.GetStrValue(ingtypes.BackBalanceAlgorithm)
+	backend.Server.MaxConn = mapper.Get(ingtypes.BackMaxconnServer).Int()
+	backend.BalanceAlgorithm = mapper.Get(ingtypes.BackBalanceAlgorithm).Value
 }
 
 type (
@@ -1385,7 +1404,7 @@ func convertBackend(habackends ...*hatypes.Backend) []backendMock {
 			ID:               b.ID,
 			Endpoints:        endpoints,
 			BalanceAlgorithm: b.BalanceAlgorithm,
-			MaxConnServer:    b.MaxConnServer,
+			MaxConnServer:    b.Server.MaxConn,
 		})
 	}
 	return backends

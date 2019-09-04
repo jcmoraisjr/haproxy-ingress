@@ -21,11 +21,22 @@ import (
 	"regexp"
 	"strings"
 
+	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
+	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
+func (c *updater) buildGlobalBind(d *globalData) {
+	d.global.Bind.AcceptProxy = d.mapper.Get(ingtypes.GlobalUseProxyProtocol).Bool()
+	d.global.Bind.HTTPBindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrHTTP).Value
+	d.global.Bind.HTTPSBindIP = d.global.Bind.HTTPBindIP
+	d.global.Bind.TCPBindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrTCP).Value
+	d.global.Bind.HTTPPort = d.mapper.Get(ingtypes.GlobalHTTPPort).Int()
+	d.global.Bind.HTTPSPort = d.mapper.Get(ingtypes.GlobalHTTPSPort).Int()
+}
+
 func (c *updater) buildGlobalProc(d *globalData) {
-	balance := d.config.NbprocBalance
+	balance := d.mapper.Get(ingtypes.GlobalNbprocBalance).Int()
 	if balance < 1 {
 		c.logger.Warn("invalid value of nbproc-balance configmap option (%v), using 1", balance)
 		balance = 1
@@ -36,13 +47,17 @@ func (c *updater) buildGlobalProc(d *globalData) {
 		c.logger.Warn("nbproc-balance configmap option (%v) greater than 1 is not yet supported, using 1", balance)
 		balance = 1
 	}
-	ssl := d.config.NbprocSSL
+	ssl := d.mapper.Get(ingtypes.GlobalNbprocSSL).Int()
 	if ssl < 0 {
 		c.logger.Warn("invalid value of nbproc-ssl configmap option (%v), using 0", ssl)
 		ssl = 0
 	}
+	if ssl > 0 {
+		c.logger.Warn("v08 controller does not support nbproc-ssl, using 0")
+		ssl = 0
+	}
 	procs := balance + ssl
-	threads := d.config.Nbthread
+	threads := d.mapper.Get(ingtypes.GlobalNbthread).Int()
 	if threads < 1 {
 		c.logger.Warn("invalid value of nbthread configmap option (%v), using 1", threads)
 		threads = 1
@@ -76,40 +91,126 @@ func (c *updater) buildGlobalProc(d *globalData) {
 	d.global.Procs.CPUMap = cpumap
 }
 
+func (c *updater) buildGlobalStats(d *globalData) {
+	d.global.Stats.AcceptProxy = d.mapper.Get(ingtypes.GlobalStatsProxyProtocol).Bool()
+	d.global.Stats.Auth = d.mapper.Get(ingtypes.GlobalStatsAuth).Value
+	d.global.Stats.BindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrStats).Value
+	d.global.Stats.Port = d.mapper.Get(ingtypes.GlobalStatsPort).Int()
+	if tlsSecret := d.mapper.Get(ingtypes.GlobalStatsSSLCert).Value; tlsSecret != "" {
+		if tls, err := c.cache.GetTLSSecretPath(tlsSecret); err == nil {
+			d.global.Stats.TLSFilename = tls.Filename
+			d.global.Stats.TLSHash = tls.SHA1Hash
+		} else {
+			c.logger.Warn("ignore TLS config on stats endpoint: %v", err)
+		}
+	}
+}
+
+func (c *updater) buildGlobalSyslog(d *globalData) {
+	d.global.Syslog.Endpoint = d.mapper.Get(ingtypes.GlobalSyslogEndpoint).Value
+	d.global.Syslog.Format = d.mapper.Get(ingtypes.GlobalSyslogFormat).Value
+	d.global.Syslog.HTTPLogFormat = d.mapper.Get(ingtypes.GlobalHTTPLogFormat).Value
+	d.global.Syslog.HTTPSLogFormat = d.mapper.Get(ingtypes.GlobalHTTPSLogFormat).Value
+	d.global.Syslog.Tag = d.mapper.Get(ingtypes.GlobalSyslogTag).Value
+	d.global.Syslog.TCPLogFormat = d.mapper.Get(ingtypes.GlobalTCPLogFormat).Value
+}
+
 func (c *updater) buildGlobalTimeout(d *globalData) {
-	copyHAProxyTime(&d.global.Timeout.Client, d.config.TimeoutClient)
-	copyHAProxyTime(&d.global.Timeout.ClientFin, d.config.TimeoutClientFin)
-	copyHAProxyTime(&d.global.Timeout.Connect, d.config.TimeoutConnect)
-	copyHAProxyTime(&d.global.Timeout.HTTPRequest, d.config.TimeoutHTTPRequest)
-	copyHAProxyTime(&d.global.Timeout.KeepAlive, d.config.TimeoutKeepAlive)
-	copyHAProxyTime(&d.global.Timeout.Queue, d.config.TimeoutQueue)
-	copyHAProxyTime(&d.global.Timeout.Server, d.config.TimeoutServer)
-	copyHAProxyTime(&d.global.Timeout.ServerFin, d.config.TimeoutServerFin)
-	copyHAProxyTime(&d.global.Timeout.Tunnel, d.config.TimeoutTunnel)
-	copyHAProxyTime(&d.global.Timeout.Stop, d.config.TimeoutStop)
+	d.global.Timeout.Client = c.validateTime(d.mapper.Get(ingtypes.HostTimeoutClient))
+	d.global.Timeout.ClientFin = c.validateTime(d.mapper.Get(ingtypes.HostTimeoutClientFin))
+	d.global.Timeout.Connect = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutConnect))
+	d.global.Timeout.HTTPRequest = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutHTTPRequest))
+	d.global.Timeout.KeepAlive = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutKeepAlive))
+	d.global.Timeout.Queue = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutQueue))
+	d.global.Timeout.Server = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutServer))
+	d.global.Timeout.ServerFin = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutServerFin))
+	d.global.Timeout.Stop = c.validateTime(d.mapper.Get(ingtypes.GlobalTimeoutStop))
+	d.global.Timeout.Tunnel = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutTunnel))
 }
 
 func (c *updater) buildGlobalSSL(d *globalData) {
-	d.global.SSL.Ciphers = d.config.SSLCiphers
-	d.global.SSL.Options = d.config.SSLOptions
-	if d.config.SSLDHParam != "" {
-		if dhFile, err := c.cache.GetDHSecretPath(d.config.SSLDHParam); err == nil {
+	d.global.SSL.Ciphers = d.mapper.Get(ingtypes.GlobalSSLCiphers).Value
+	d.global.SSL.Options = d.mapper.Get(ingtypes.GlobalSSLOptions).Value
+	if sslDHParam := d.mapper.Get(ingtypes.GlobalSSLDHParam).Value; sslDHParam != "" {
+		if dhFile, err := c.cache.GetDHSecretPath(sslDHParam); err == nil {
 			d.global.SSL.DHParam.Filename = dhFile.Filename
 		} else {
 			c.logger.Error("error reading DH params: %v", err)
 		}
 	}
-	d.global.SSL.DHParam.DefaultMaxSize = d.config.SSLDHDefaultMaxSize
-	d.global.SSL.Engine = d.config.SSLEngine
-	d.global.SSL.ModeAsync = d.config.SSLModeAsync
-	d.global.SSL.HeadersPrefix = d.config.SSLHeadersPrefix
+	d.global.SSL.DHParam.DefaultMaxSize = d.mapper.Get(ingtypes.GlobalSSLDHDefaultMaxSize).Int()
+	d.global.SSL.Engine = d.mapper.Get(ingtypes.GlobalSSLEngine).Value
+	d.global.SSL.ModeAsync = d.mapper.Get(ingtypes.GlobalSSLModeAsync).Bool()
+	d.global.SSL.HeadersPrefix = d.mapper.Get(ingtypes.GlobalSSLHeadersPrefix).Value
+}
+
+func (c *updater) buildGlobalHealthz(d *globalData) {
+	d.global.Healthz.BindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrHealthz).Value
+	d.global.Healthz.Port = d.mapper.Get(ingtypes.GlobalHealthzPort).Int()
+}
+
+func (c *updater) buildGlobalHTTPStoHTTP(d *globalData) {
+	port := d.mapper.Get(ingtypes.GlobalHTTPStoHTTPPort).Int()
+	if port > 0 {
+		d.global.Bind.ToHTTPBindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrHTTP).Value
+		d.global.Bind.ToHTTPPort = port
+		// Socket ID should be a high number to avoid colision
+		// between the same socket ID from distinct frontends
+		// TODO match socket and frontend ID in the backend
+		d.global.Bind.ToHTTPSocketID = 10011
+	}
 }
 
 func (c *updater) buildGlobalModSecurity(d *globalData) {
-	d.global.ModSecurity.Endpoints = utils.Split(d.config.ModsecurityEndpoints, ",")
-	d.global.ModSecurity.Timeout.Hello = d.config.ModsecurityTimeoutHello
-	d.global.ModSecurity.Timeout.Idle = d.config.ModsecurityTimeoutIdle
-	d.global.ModSecurity.Timeout.Processing = d.config.ModsecurityTimeoutProcessing
+	d.global.ModSecurity.Endpoints = utils.Split(d.mapper.Get(ingtypes.GlobalModsecurityEndpoints).Value, ",")
+	d.global.ModSecurity.Timeout.Hello = c.validateTime(d.mapper.Get(ingtypes.GlobalModsecurityTimeoutHello))
+	d.global.ModSecurity.Timeout.Idle = c.validateTime(d.mapper.Get(ingtypes.GlobalModsecurityTimeoutIdle))
+	d.global.ModSecurity.Timeout.Processing = c.validateTime(d.mapper.Get(ingtypes.GlobalModsecurityTimeoutProcessing))
+}
+
+func (c *updater) buildGlobalDNS(d *globalData) {
+	resolvers := d.mapper.Get(ingtypes.GlobalDNSResolvers).Value
+	if resolvers == "" {
+		return
+	}
+	payloadSize := d.mapper.Get(ingtypes.GlobalDNSAcceptedPayloadSize).Int()
+	holdObsolete := c.validateTime(d.mapper.Get(ingtypes.GlobalDNSHoldObsolete))
+	holdValid := c.validateTime(d.mapper.Get(ingtypes.GlobalDNSHoldValid))
+	timeoutRetry := c.validateTime(d.mapper.Get(ingtypes.GlobalDNSTimeoutRetry))
+	for _, resolver := range utils.LineToSlice(resolvers) {
+		if resolver == "" {
+			continue
+		}
+		resolverData := strings.Split(resolver, "=")
+		if len(resolverData) != 2 {
+			c.logger.Warn("ignoring misconfigured resolver: %s", resolver)
+			continue
+		}
+		dnsResolver := &hatypes.DNSResolver{
+			Name:                resolverData[0],
+			AcceptedPayloadSize: payloadSize,
+			HoldObsolete:        holdObsolete,
+			HoldValid:           holdValid,
+			TimeoutRetry:        timeoutRetry,
+		}
+		var i int
+		for _, ns := range strings.Split(resolverData[1], ",") {
+			if ns == "" {
+				continue
+			}
+			if strings.Index(ns, ":") < 0 {
+				// missing port number
+				ns += ":53"
+			}
+			i++
+			dnsResolver.Nameservers = append(dnsResolver.Nameservers, &hatypes.DNSNameserver{
+				Name:     fmt.Sprintf("ns%02d", i),
+				Endpoint: ns,
+			})
+		}
+		d.global.DNS.Resolvers = append(d.global.DNS.Resolvers, dnsResolver)
+	}
+	d.global.DNS.ClusterDomain = d.mapper.Get(ingtypes.GlobalDNSClusterDomain).Value
 }
 
 var (
@@ -117,21 +218,18 @@ var (
 )
 
 func (c *updater) buildGlobalForwardFor(d *globalData) {
-	if forwardRegex.MatchString(d.config.Forwardfor) {
-		d.global.ForwardFor = d.config.Forwardfor
+	if forwardFor := d.mapper.Get(ingtypes.GlobalForwardfor).Value; forwardRegex.MatchString(forwardFor) {
+		d.global.ForwardFor = forwardFor
 	} else {
-		if d.config.Forwardfor != "" {
-			c.logger.Warn("Invalid forwardfor value option on configmap: '%s'. Using 'add' instead", d.config.Forwardfor)
+		if forwardFor != "" {
+			c.logger.Warn("Invalid forwardfor value option on configmap: '%s'. Using 'add' instead", forwardFor)
 		}
 		d.global.ForwardFor = "add"
 	}
 }
 
 func (c *updater) buildGlobalCustomConfig(d *globalData) {
-	if d.config.ConfigGlobal != "" {
-		d.global.CustomConfig = strings.Split(strings.TrimRight(d.config.ConfigGlobal, "\n"), "\n")
-	}
-	if d.config.ConfigDefaults != "" {
-		d.global.CustomDefaults = strings.Split(strings.TrimRight(d.config.ConfigDefaults, "\n"), "\n")
-	}
+	d.global.CustomConfig = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigGlobal).Value)
+	d.global.CustomDefaults = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigDefaults).Value)
+	d.global.CustomFrontend = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigFrontend).Value)
 }

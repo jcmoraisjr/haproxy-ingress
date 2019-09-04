@@ -41,7 +41,9 @@ func (ic *GenericController) syncSecret(key string) {
 
 	secret, err := ic.listers.Secret.GetByName(key)
 	if err != nil {
-		glog.Warningf("error retrieving secret %v: %v", key, err)
+		if ic.cfg.V07 {
+			glog.Warningf("error retrieving secret %v: %v", key, err)
+		}
 		return
 	}
 

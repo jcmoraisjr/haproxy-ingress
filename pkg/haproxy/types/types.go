@@ -18,19 +18,38 @@ package types
 
 // Global ...
 type Global struct {
+	Bind            GlobalBindConfig
 	Procs           ProcsConfig
 	Syslog          SyslogConfig
 	MaxConn         int
 	Timeout         TimeoutConfig
 	SSL             SSLConfig
+	DNS             DNSConfig
 	ModSecurity     ModSecurityConfig
 	Cookie          CookieConfig
 	DrainSupport    DrainConfig
 	ForwardFor      string
 	LoadServerState bool
-	StatsSocket     string
+	AdminSocket     string
+	Healthz         HealthzConfig
+	Stats           StatsConfig
+	StrictHost      bool
 	CustomConfig    []string
 	CustomDefaults  []string
+	CustomFrontend  []string
+}
+
+// GlobalBindConfig ...
+type GlobalBindConfig struct {
+	AcceptProxy    bool
+	HTTPBindIP     string
+	HTTPPort       int
+	HTTPSBindIP    string
+	HTTPSPort      int
+	TCPBindIP      string
+	ToHTTPBindIP   string
+	ToHTTPPort     int
+	ToHTTPSocketID int
 }
 
 // ProcsConfig ...
@@ -63,6 +82,7 @@ type TimeoutConfig struct {
 
 // SSLConfig ...
 type SSLConfig struct {
+	ALPN          string
 	DHParam       DHParamConfig
 	Ciphers       string
 	Options       string
@@ -75,6 +95,28 @@ type SSLConfig struct {
 type DHParamConfig struct {
 	Filename       string
 	DefaultMaxSize int
+}
+
+// DNSConfig ...
+type DNSConfig struct {
+	ClusterDomain string
+	Resolvers     []*DNSResolver
+}
+
+// DNSResolver ...
+type DNSResolver struct {
+	Name                string
+	Nameservers         []*DNSNameserver
+	AcceptedPayloadSize int
+	HoldObsolete        string
+	HoldValid           string
+	TimeoutRetry        string
+}
+
+// DNSNameserver ...
+type DNSNameserver struct {
+	Name     string
+	Endpoint string
 }
 
 // ModSecurityConfig ...
@@ -92,6 +134,22 @@ type CookieConfig struct {
 type DrainConfig struct {
 	Drain      bool
 	Redispatch bool
+}
+
+// HealthzConfig ...
+type HealthzConfig struct {
+	BindIP string
+	Port   int
+}
+
+// StatsConfig ...
+type StatsConfig struct {
+	AcceptProxy bool
+	Auth        string
+	BindIP      string
+	Port        int
+	TLSFilename string
+	TLSHash     string
 }
 
 // ModSecurityTimeoutConfig ...
@@ -153,7 +211,9 @@ type HostsMaps struct {
 type FrontendGroup struct {
 	Frontends []*Frontend
 	//
+	DefaultBind       *BindConfig
 	HasSSLPassthrough bool
+	ToHTTPBind        BindConfig
 	//
 	Maps              *HostsMaps
 	HTTPFrontsMap     *HostsMap
@@ -172,6 +232,7 @@ type Frontend struct {
 	//
 	Maps                       *HostsMaps
 	HostBackendsMap            *HostsMap
+	MaxBodySizeMap             *HostsMap
 	RootRedirMap               *HostsMap
 	SNIBackendsMap             *HostsMap
 	TLSInvalidCrtErrorList     *HostsMap
@@ -185,6 +246,7 @@ type Frontend struct {
 type BindConfig struct {
 	Name   string
 	Socket string
+	ID     int
 	Hosts  []*Host
 	//
 	AcceptProxy bool
@@ -196,6 +258,7 @@ type BindConfig struct {
 
 // BindTLSConfig ...
 type BindTLSConfig struct {
+	ALPN       string
 	CAFilename string
 	CAHash     string
 	TLSCert    string
@@ -277,20 +340,20 @@ type Backend struct {
 	//
 	// per backend config
 	//
-	AgentCheck        AgentCheck
-	BalanceAlgorithm  string
-	Cookie            Cookie
-	CustomConfig      []string
-	Dynamic           DynBackendConfig
-	HealthCheck       HealthCheck
-	MaxConnServer     int
-	MaxQueueServer    int
-	ModeTCP           bool
-	OAuth             OAuthConfig
-	SendProxyProtocol string
-	SSL               SSLBackendConfig
-	Timeout           BackendTimeoutConfig
-	WhitelistTCP      []string
+	AgentCheck       AgentCheck
+	BalanceAlgorithm string
+	Cookie           Cookie
+	CustomConfig     []string
+	Dynamic          DynBackendConfig
+	HealthCheck      HealthCheck
+	Limit            BackendLimit
+	ModeTCP          bool
+	OAuth            OAuthConfig
+	Resolver         string
+	Server           ServerConfig
+	Timeout          BackendTimeoutConfig
+	TLS              BackendTLSConfig
+	WhitelistTCP     []string
 	//
 	// per path config
 	//
@@ -313,20 +376,13 @@ type Backend struct {
 	//      Template uses this func in order to know if a config
 	//      has two or more paths, and so need to be configured with ACL.
 	//
-	// Missing:
-	//
-	//   [ ] Cors
-	//   [ ] SSLRedirect
-	//   [ ] Userlist
-	//   [ ] WAF
-	//
-	Cors          Cors
+	AuthHTTP      []*BackendConfigAuth
+	Cors          []*BackendConfigCors
 	HSTS          []*BackendConfigHSTS
-	ProxyBodySize []*BackendConfigStr
+	MaxBodySize   []*BackendConfigInt
 	RewriteURL    []*BackendConfigStr
-	SSLRedirect   bool
-	Userlist      UserlistConfig
-	WAF           string
+	SSLRedirect   []*BackendConfigBool
+	WAF           []*BackendConfigStr
 	WhitelistHTTP []*BackendConfigWhitelist
 }
 
@@ -353,10 +409,35 @@ type BackendPath struct {
 	Path     string
 }
 
+// BackendConfigBool ...
+type BackendConfigBool struct {
+	Paths  BackendPaths
+	Config bool
+}
+
+// BackendConfigInt ...
+type BackendConfigInt struct {
+	Paths  BackendPaths
+	Config int64
+}
+
 // BackendConfigStr ...
 type BackendConfigStr struct {
 	Paths  BackendPaths
 	Config string
+}
+
+// BackendConfigAuth ...
+type BackendConfigAuth struct {
+	Paths        BackendPaths
+	UserlistName string
+	Realm        string
+}
+
+// BackendConfigCors ...
+type BackendConfigCors struct {
+	Paths  BackendPaths
+	Config Cors
 }
 
 // BackendConfigHSTS ...
@@ -375,11 +456,11 @@ type BackendConfigWhitelist struct {
 type AgentCheck struct {
 	Addr     string
 	Interval string
-	Port     string
+	Port     int
 	Send     string
 }
 
-// DynBackendConfig
+// DynBackendConfig ...
 type DynBackendConfig struct {
 	BlockSize    int
 	DynUpdate    bool
@@ -389,10 +470,18 @@ type DynBackendConfig struct {
 // HealthCheck ...
 type HealthCheck struct {
 	Addr      string
-	FallCount string
+	FallCount int
 	Interval  string
-	Port      string
-	RiseCount string
+	Port      int
+	RiseCount int
+	URI       string
+}
+
+// BackendLimit ...
+type BackendLimit struct {
+	Connections int
+	RPS         int
+	Whitelist   []string
 }
 
 // OAuthConfig ...
@@ -403,15 +492,16 @@ type OAuthConfig struct {
 	Headers     map[string]string
 }
 
-// SSLBackendConfig ...
-type SSLBackendConfig struct {
-	HasTLSAuth    bool
-	AddCertHeader bool
-	IsSecure      bool
-	CertFilename  string
-	CertHash      string
-	CAFilename    string
-	CAHash        string
+// ServerConfig ...
+type ServerConfig struct {
+	CAFilename  string
+	CAHash      string
+	CrtFilename string
+	CrtHash     string
+	MaxConn     int
+	MaxQueue    int
+	Protocol    string
+	SendProxy   string
 }
 
 // BackendTimeoutConfig ...
@@ -423,6 +513,12 @@ type BackendTimeoutConfig struct {
 	Server      string
 	ServerFin   string
 	Tunnel      string
+}
+
+// BackendTLSConfig ...
+type BackendTLSConfig struct {
+	AddCertHeader bool
+	HasTLSAuth    bool
 }
 
 // UserlistConfig ...

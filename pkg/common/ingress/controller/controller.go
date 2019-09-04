@@ -133,6 +133,7 @@ type Configuration struct {
 	WaitBeforeShutdown      int
 	AllowCrossNamespace     bool
 	DisableNodeList         bool
+	AnnPrefix               string
 
 	// optional
 	TCPConfigMapName string

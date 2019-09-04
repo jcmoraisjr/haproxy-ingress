@@ -17,7 +17,6 @@ limitations under the License.
 package annotations
 
 import (
-	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -105,14 +104,17 @@ func TestAffinity(t *testing.T) {
 		},
 	}
 
+	source := &Source{
+		Namespace: "default",
+		Name:      "ing1",
+		Type:      "ingress",
+	}
 	for i, test := range testCase {
 		c := setup(t)
 		u := c.createUpdater()
-		d := c.createBackendData("default", "ing1", test.ann, test.annDefault)
+		d := c.createBackendData("default/app", source, test.ann, test.annDefault)
 		u.buildBackendAffinity(d)
-		if !reflect.DeepEqual(test.expCookie, d.backend.Cookie) {
-			t.Errorf("config %d differs - expected: %+v - actual: %+v", i, test.expCookie, d.backend.Cookie)
-		}
+		c.compareObjects("affinity", i, d.backend.Cookie, test.expCookie)
 		c.logger.CompareLogging(test.expLogging)
 		c.teardown()
 	}
@@ -120,56 +122,66 @@ func TestAffinity(t *testing.T) {
 
 func TestAuthHTTP(t *testing.T) {
 	testCase := []struct {
-		namespace    string
-		ingname      string
+		paths        []string
+		source       *Source
 		annDefault   map[string]string
-		ann          map[string]string
+		ann          map[string]map[string]string
 		secrets      conv_helper.SecretContent
 		expUserlists []*hatypes.Userlist
+		expConfig    []*hatypes.BackendConfigAuth
 		expLogging   string
 	}{
 		// 0
 		{
-			ann:        map[string]string{},
-			expLogging: "",
+			ann: map[string]map[string]string{},
 		},
 		// 1
 		{
-			ann: map[string]string{
-				ingtypes.BackAuthType: "fail",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAuthType: "fail",
+				},
 			},
 			expLogging: "ERROR unsupported authentication type on ingress 'default/ing1': fail",
 		},
 		// 2
 		{
-			ann: map[string]string{
-				ingtypes.BackAuthType: "basic",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAuthType: "basic",
+				},
 			},
 			expLogging: "ERROR missing secret name on basic authentication on ingress 'default/ing1'",
 		},
 		// 3
 		{
-			ann: map[string]string{
-				ingtypes.BackAuthType:   "basic",
-				ingtypes.BackAuthSecret: "mypwd",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAuthType:   "basic",
+					ingtypes.BackAuthSecret: "mypwd",
+				},
 			},
 			expLogging: "ERROR error reading basic authentication on ingress 'default/ing1': secret not found: 'default/mypwd'",
 		},
 		// 4
 		{
-			ann: map[string]string{
-				ingtypes.BackAuthType:   "basic",
-				ingtypes.BackAuthSecret: "mypwd",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAuthType:   "basic",
+					ingtypes.BackAuthSecret: "mypwd",
+				},
 			},
 			secrets:    conv_helper.SecretContent{"default/mypwd": {"xx": []byte{}}},
 			expLogging: "ERROR error reading basic authentication on ingress 'default/ing1': secret 'default/mypwd' does not have file/key 'auth'",
 		},
 		// 5
 		{
-			ann: map[string]string{
-				ingtypes.BackAuthType:   "basic",
-				ingtypes.BackAuthSecret: "mypwd",
-				ingtypes.BackAuthRealm:  `"a name"`,
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAuthType:   "basic",
+					ingtypes.BackAuthSecret: "mypwd",
+					ingtypes.BackAuthRealm:  `"a name"`,
+				},
 			},
 			secrets: conv_helper.SecretContent{"default/mypwd": {"auth": []byte("usr1::clear1")}},
 			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_mypwd", Users: []hatypes.User{
@@ -179,11 +191,12 @@ func TestAuthHTTP(t *testing.T) {
 		},
 		// 6
 		{
-			namespace: "ns1",
-			ingname:   "i1",
-			ann: map[string]string{
-				ingtypes.BackAuthType:   "basic",
-				ingtypes.BackAuthSecret: "mypwd",
+			source: &Source{Namespace: "ns1", Name: "i1", Type: "ingress"},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAuthType:   "basic",
+					ingtypes.BackAuthSecret: "mypwd",
+				},
 			},
 			secrets:      conv_helper.SecretContent{"ns1/mypwd": {"auth": []byte{}}},
 			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "ns1_mypwd"}},
@@ -191,9 +204,11 @@ func TestAuthHTTP(t *testing.T) {
 		},
 		// 7
 		{
-			ann: map[string]string{
-				ingtypes.BackAuthType:   "basic",
-				ingtypes.BackAuthSecret: "basicpwd",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAuthType:   "basic",
+					ingtypes.BackAuthSecret: "basicpwd",
+				},
 			},
 			secrets:      conv_helper.SecretContent{"default/basicpwd": {"auth": []byte("fail")}},
 			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_basicpwd"}},
@@ -203,9 +218,11 @@ WARN userlist on ingress 'default/ing1' for basic authentication is empty`,
 		},
 		// 8
 		{
-			ann: map[string]string{
-				ingtypes.BackAuthType:   "basic",
-				ingtypes.BackAuthSecret: "basicpwd",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAuthType:   "basic",
+					ingtypes.BackAuthSecret: "basicpwd",
+				},
 			},
 			secrets: conv_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
 usr1::clearpwd1
@@ -217,9 +234,11 @@ nopwd`)}},
 		},
 		// 9
 		{
-			ann: map[string]string{
-				ingtypes.BackAuthType:   "basic",
-				ingtypes.BackAuthSecret: "basicpwd",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAuthType:   "basic",
+					ingtypes.BackAuthSecret: "basicpwd",
+				},
 			},
 			secrets: conv_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
 usrnopwd1:
@@ -236,9 +255,12 @@ WARN userlist on ingress 'default/ing1' for basic authentication is empty`,
 		},
 		// 10
 		{
-			ann: map[string]string{
-				ingtypes.BackAuthType:   "basic",
-				ingtypes.BackAuthSecret: "basicpwd",
+			paths: []string{"/", "/admin"},
+			ann: map[string]map[string]string{
+				"/admin": {
+					ingtypes.BackAuthType:   "basic",
+					ingtypes.BackAuthSecret: "basicpwd",
+				},
 			},
 			secrets: conv_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
 usr1:encpwd1
@@ -247,7 +269,16 @@ usr2::clearpwd2`)}},
 				{Name: "usr1", Passwd: "encpwd1", Encrypted: true},
 				{Name: "usr2", Passwd: "clearpwd2", Encrypted: false},
 			}}},
-			expLogging: "",
+			expConfig: []*hatypes.BackendConfigAuth{
+				{
+					Paths: createBackendPaths("/"),
+				},
+				{
+					Paths:        createBackendPaths("/admin"),
+					UserlistName: "default_basicpwd",
+					Realm:        "localhost",
+				},
+			},
 		},
 	}
 
@@ -255,18 +286,20 @@ usr2::clearpwd2`)}},
 		// TODO missing expHTTPRequests
 		c := setup(t)
 		u := c.createUpdater()
-		if test.namespace == "" {
-			test.namespace = "default"
-		}
-		if test.ingname == "" {
-			test.ingname = "ing1"
+		if test.source == nil {
+			test.source = &Source{
+				Namespace: "default",
+				Name:      "ing1",
+				Type:      "ingress",
+			}
 		}
 		c.cache.SecretContent = test.secrets
-		d := c.createBackendData(test.namespace, test.ingname, test.ann, test.annDefault)
+		d := c.createBackendMappingData("default/app", test.source, test.annDefault, test.ann, test.paths)
 		u.buildBackendAuthHTTP(d)
 		userlists := u.haproxy.Userlists()
-		if len(userlists)+len(test.expUserlists) > 0 && !reflect.DeepEqual(test.expUserlists, userlists) {
-			t.Errorf("userlists config %d differs - expected: %+v - actual: %+v", i, test.expUserlists, userlists)
+		c.compareObjects("userlists", i, userlists, test.expUserlists)
+		if test.expConfig != nil {
+			c.compareObjects("auth http", i, d.backend.AuthHTTP, test.expConfig)
 		}
 		c.logger.CompareLogging(test.expLogging)
 		c.teardown()
@@ -555,10 +588,16 @@ INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not refe
 			expLogging: "",
 		},
 	}
+
+	source := &Source{
+		Namespace: "default",
+		Name:      "ing1",
+		Type:      "ingress",
+	}
 	for i, test := range testCase {
 		c := setup(t)
 		c.cache.PodList = pods
-		d := c.createBackendData("default", "ing1", test.ann, test.annDefault)
+		d := c.createBackendData("default/app", source, test.ann, test.annDefault)
 		d.backend.Endpoints = test.endpoints
 		u := c.createUpdater()
 		u.buildBackendBlueGreen(d)
@@ -566,10 +605,212 @@ INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not refe
 		for j, ep := range d.backend.Endpoints {
 			weights[j] = ep.Weight
 		}
-		if len(test.expWeights)+len(weights) > 0 && !reflect.DeepEqual(test.expWeights, weights) {
-			t.Errorf("weight on %d differs - expected: %v - actual: %v", i, test.expWeights, weights)
-		}
+		c.compareObjects("blue/green weight", i, weights, test.expWeights)
 		c.logger.CompareLogging(test.expLogging)
+		c.teardown()
+	}
+}
+
+func TestBodySize(t *testing.T) {
+	testCases := []struct {
+		source     Source
+		annDefault map[string]string
+		ann        map[string]map[string]string
+		paths      []string
+		expected   []*hatypes.BackendConfigInt
+		logging    string
+	}{
+		// 0
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackProxyBodySize: "10",
+				},
+			},
+			expected: []*hatypes.BackendConfigInt{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: 10,
+				},
+			},
+		},
+		// 1
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackProxyBodySize: "10k",
+				},
+				"/app": {
+					ingtypes.BackProxyBodySize: "10m",
+				},
+				"/sub": {
+					ingtypes.BackProxyBodySize: "10g",
+				},
+			},
+			expected: []*hatypes.BackendConfigInt{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: 10240,
+				},
+				{
+					Paths:  createBackendPaths("/app"),
+					Config: 10485760,
+				},
+				{
+					Paths:  createBackendPaths("/sub"),
+					Config: 10737418240,
+				},
+			},
+		},
+		// 2
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackProxyBodySize: "unlimited",
+				},
+			},
+			expected: []*hatypes.BackendConfigInt{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: 0,
+				},
+			},
+		},
+		// 3
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackProxyBodySize: "10e",
+				},
+			},
+			expected: []*hatypes.BackendConfigInt{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: 0,
+				},
+			},
+			source:  Source{Namespace: "default", Name: "ing1", Type: "ingress"},
+			logging: `WARN ignoring invalid body size on ingress 'default/ing1': 10e`,
+		},
+		// 4
+		{
+			ann: map[string]map[string]string{
+				"/app": {
+					ingtypes.BackProxyBodySize: "1m",
+				},
+			},
+			expected: []*hatypes.BackendConfigInt{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: 0,
+				},
+				{
+					Paths:  createBackendPaths("/app"),
+					Config: 1048576,
+				},
+			},
+			paths:  []string{"/"},
+			source: Source{Namespace: "default", Name: "ing1", Type: "ingress"},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createBackendMappingData("default/app", &test.source, test.annDefault, test.ann, test.paths)
+		c.createUpdater().buildBackendBodySize(d)
+		c.compareObjects("proxy body size", i, d.backend.MaxBodySize, test.expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
+const (
+	corsDefaultHeaders = "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+	corsDefaultMethods = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+	corsDefaultOrigin  = "*"
+	corsDefaultMaxAge  = 86400
+)
+
+func TestCors(t *testing.T) {
+	testCases := []struct {
+		paths    []string
+		ann      map[string]map[string]string
+		expected []*hatypes.BackendConfigCors
+		logging  string
+	}{
+		// 0
+		{
+			paths: []string{"/"},
+			expected: []*hatypes.BackendConfigCors{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: hatypes.Cors{},
+				},
+			},
+		},
+		// 1
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackCorsEnable: "true",
+				},
+			},
+			expected: []*hatypes.BackendConfigCors{
+				{
+					Paths: createBackendPaths("/"),
+					Config: hatypes.Cors{
+						Enabled:          true,
+						AllowCredentials: false,
+						AllowHeaders:     corsDefaultHeaders,
+						AllowMethods:     corsDefaultMethods,
+						AllowOrigin:      corsDefaultOrigin,
+						ExposeHeaders:    "",
+						MaxAge:           corsDefaultMaxAge,
+					},
+				},
+			},
+		},
+		// 2
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackCorsEnable: "false",
+				},
+				"/sub": {
+					ingtypes.BackCorsEnable: "true",
+				},
+			},
+			expected: []*hatypes.BackendConfigCors{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: hatypes.Cors{},
+				},
+				{
+					Paths: createBackendPaths("/sub"),
+					Config: hatypes.Cors{
+						Enabled:          true,
+						AllowCredentials: false,
+						AllowHeaders:     corsDefaultHeaders,
+						AllowMethods:     corsDefaultMethods,
+						AllowOrigin:      corsDefaultOrigin,
+						ExposeHeaders:    "",
+						MaxAge:           corsDefaultMaxAge,
+					},
+				},
+			},
+		},
+	}
+	annDefault := map[string]string{
+		ingtypes.BackCorsAllowHeaders: corsDefaultHeaders,
+		ingtypes.BackCorsAllowMethods: corsDefaultMethods,
+		ingtypes.BackCorsAllowOrigin:  corsDefaultOrigin,
+		ingtypes.BackCorsMaxAge:       strconv.Itoa(corsDefaultMaxAge),
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createBackendMappingData("default/app", &Source{}, annDefault, test.ann, test.paths)
+		c.createUpdater().buildBackendCors(d)
+		c.compareObjects("cors", i, d.backend.Cors, test.expected)
+		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
 }
@@ -577,7 +818,7 @@ INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not refe
 func TestHSTS(t *testing.T) {
 	testCases := []struct {
 		paths      []string
-		source     *Source
+		source     Source
 		annDefault map[string]string
 		ann        map[string]map[string]string
 		expected   []*hatypes.BackendConfigHSTS
@@ -599,7 +840,7 @@ func TestHSTS(t *testing.T) {
 			},
 			expected: []*hatypes.BackendConfigHSTS{
 				{
-					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{ID: "path01", Hostpath: "/", Path: "/"}),
+					Paths: createBackendPaths("/"),
 					Config: hatypes.HSTS{
 						Enabled:    true,
 						MaxAge:     15768000,
@@ -608,7 +849,7 @@ func TestHSTS(t *testing.T) {
 					},
 				},
 				{
-					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{ID: "path02", Hostpath: "/url", Path: "/url"}),
+					Paths: createBackendPaths("/url"),
 					Config: hatypes.HSTS{
 						Enabled:    true,
 						MaxAge:     50,
@@ -634,7 +875,7 @@ func TestHSTS(t *testing.T) {
 			},
 			expected: []*hatypes.BackendConfigHSTS{
 				{
-					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{ID: "path01", Hostpath: "/", Path: "/"}),
+					Paths: createBackendPaths("/"),
 					Config: hatypes.HSTS{
 						Enabled:    true,
 						MaxAge:     50,
@@ -643,15 +884,15 @@ func TestHSTS(t *testing.T) {
 					},
 				},
 			},
-			source:  &Source{Namespace: "default", Name: "ing1", Type: "ingress"},
-			logging: `WARN ignoring key 'hsts-preload' for backend 'default/ing1': strconv.ParseBool: parsing "not-valid-bool": invalid syntax`,
+			source:  Source{Namespace: "default", Name: "ing1", Type: "ingress"},
+			logging: `WARN ignoring invalid bool expression on ingress 'default/ing1' key 'hsts-preload': not-valid-bool`,
 		},
 		// 2
 		{
 			paths: []string{"/"},
 			expected: []*hatypes.BackendConfigHSTS{
 				{
-					Paths:  hatypes.NewBackendPaths(&hatypes.BackendPath{ID: "path01", Hostpath: "/", Path: "/"}),
+					Paths:  createBackendPaths("/"),
 					Config: hatypes.HSTS{},
 				},
 			},
@@ -659,18 +900,10 @@ func TestHSTS(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		d := c.createBackendData("default", "ing1", map[string]string{}, test.annDefault)
-		for _, path := range test.paths {
-			d.backend.AddHostPath("", path)
-		}
-		for uri, ann := range test.ann {
-			d.mapper.AddAnnotations(test.source, uri, ann)
-		}
+		d := c.createBackendMappingData("default/app", &test.source, test.annDefault, test.ann, test.paths)
 		u := c.createUpdater()
 		u.buildBackendHSTS(d)
-		if !reflect.DeepEqual(d.backend.HSTS, test.expected) {
-			t.Errorf("hsts on %d differs - expected: %v - actual: %v", i, test.expected, d.backend.HSTS)
-		}
+		c.compareObjects("hsts", i, d.backend.HSTS, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
@@ -694,7 +927,7 @@ func TestOAuth(t *testing.T) {
 			ann: map[string]string{
 				ingtypes.BackOAuth: "none",
 			},
-			logging: "WARN ignoring invalid oauth implementation 'none' on ingress 'default/app'",
+			logging: "WARN ignoring invalid oauth implementation 'none' on ingress 'default/ing1'",
 		},
 		// 2
 		{
@@ -757,7 +990,7 @@ func TestOAuth(t *testing.T) {
 				URIPrefix:   "/oauth2",
 				Headers:     map[string]string{},
 			},
-			logging: "WARN invalid header format 'space before:attr' on ingress 'default/app'",
+			logging: "WARN invalid header format 'space before:attr' on ingress 'default/ing1'",
 		},
 		// 7
 		{
@@ -772,7 +1005,7 @@ func TestOAuth(t *testing.T) {
 				URIPrefix:   "/oauth2",
 				Headers:     map[string]string{},
 			},
-			logging: "WARN invalid header format 'no-colon' on ingress 'default/app'",
+			logging: "WARN invalid header format 'no-colon' on ingress 'default/ing1'",
 		},
 		// 8
 		{
@@ -787,7 +1020,7 @@ func TestOAuth(t *testing.T) {
 				URIPrefix:   "/oauth2",
 				Headers:     map[string]string{},
 			},
-			logging: "WARN invalid header format 'more:colons:unsupported' on ingress 'default/app'",
+			logging: "WARN invalid header format 'more:colons:unsupported' on ingress 'default/ing1'",
 		},
 		// 9
 		{
@@ -807,18 +1040,22 @@ func TestOAuth(t *testing.T) {
 			},
 		},
 	}
+
+	source := &Source{
+		Namespace: "default",
+		Name:      "ing1",
+		Type:      "ingress",
+	}
 	for i, test := range testCases {
 		c := setup(t)
-		d := c.createBackendData("default", "app", test.ann, test.annDefault)
+		d := c.createBackendData("default/app", source, test.ann, test.annDefault)
 		if test.backend != "" {
 			b := strings.Split(test.backend, ":")
 			backend := c.haproxy.AcquireBackend(b[0], b[1], "8080")
 			c.haproxy.AcquireHost("app.local").AddPath(backend, b[2])
 		}
 		c.createUpdater().buildBackendOAuth(d)
-		if !reflect.DeepEqual(test.oauthExp, d.backend.OAuth) {
-			t.Errorf("oauth on %d differs - expected: %+v - actual: %+v", i, test.oauthExp, d.backend.OAuth)
-		}
+		c.compareObjects("oauth", i, d.backend.OAuth, test.oauthExp)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
@@ -826,6 +1063,7 @@ func TestOAuth(t *testing.T) {
 
 func TestRewriteURL(t *testing.T) {
 	testCases := []struct {
+		source   Source
 		input    string
 		expected string
 		logging  string
@@ -837,9 +1075,14 @@ func TestRewriteURL(t *testing.T) {
 		},
 		// 1
 		{
+			source: Source{
+				Namespace: "default",
+				Name:      "app1",
+				Type:      "service",
+			},
 			input:    `/"/`,
 			expected: ``,
-			logging:  `WARN rewrite-target does not allow white spaces or single/double quotes on backend 'default/app': /"/`,
+			logging:  `WARN rewrite-target does not allow white spaces or single/double quotes on service 'default/app1': '/"/'`,
 		},
 		// 2
 		{
@@ -854,19 +1097,290 @@ func TestRewriteURL(t *testing.T) {
 		if test.input != "" {
 			ann = map[string]string{ingtypes.BackRewriteTarget: test.input}
 		}
-		d := c.createBackendData("default", "app", map[string]string{}, map[string]string{})
+		d := c.createBackendData("default/app", &test.source, map[string]string{}, map[string]string{})
 		d.backend.AddHostPath("d1.local", "/")
-		d.mapper.AddAnnotations(&Source{}, "d1.local/", ann)
+		d.mapper.AddAnnotations(&test.source, "d1.local/", ann)
 		c.createUpdater().buildBackendRewriteURL(d)
 		expected := []*hatypes.BackendConfigStr{
 			{
-				Paths:  hatypes.NewBackendPaths(d.backend.FindHostPath("d1.local/")),
+				Paths:  hatypes.NewBackendPaths(d.backend.Paths...),
 				Config: test.expected,
 			},
 		}
-		if !reflect.DeepEqual(d.backend.RewriteURL, expected) {
-			t.Errorf("rewrite on %d differs - expected: %v - actual: %v", i, expected, d.backend.RewriteURL)
-		}
+		c.compareObjects("rewrite", i, d.backend.RewriteURL, expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
+func TestBackendSecure(t *testing.T) {
+	testCase := []struct {
+		source     Source
+		annDefault map[string]string
+		ann        map[string]map[string]string
+		paths      []string
+		tlsSecrets map[string]string
+		caSecrets  map[string]string
+		expected   hatypes.ServerConfig
+		logging    string
+	}{
+		// 0
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackSecureBackends: "true",
+				},
+			},
+			expected: hatypes.ServerConfig{
+				Protocol: "https",
+			},
+		},
+		// 1
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackSecureCrtSecret: "cli",
+				},
+			},
+			expected: hatypes.ServerConfig{},
+		},
+		// 2
+		{
+			source: Source{Namespace: "default", Name: "app1", Type: "service"},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackSecureBackends:  "true",
+					ingtypes.BackSecureCrtSecret: "cli",
+				},
+			},
+			tlsSecrets: map[string]string{
+				"default/cli": "/var/haproxy/ssl/cli.pem",
+			},
+			expected: hatypes.ServerConfig{
+				Protocol:    "https",
+				CrtFilename: "/var/haproxy/ssl/cli.pem",
+				CrtHash:     "f916dd295030e070f4d4aca4508571bc82f549af",
+			},
+		},
+		// 3
+		{
+			source: Source{Namespace: "default", Name: "app1", Type: "service"},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackSecureBackends:       "true",
+					ingtypes.BackSecureCrtSecret:      "cli",
+					ingtypes.BackSecureVerifyCASecret: "ca",
+				},
+			},
+			tlsSecrets: map[string]string{
+				"default/cli": "/var/haproxy/ssl/cli.pem",
+			},
+			caSecrets: map[string]string{
+				"default/ca": "/var/haproxy/ssl/ca.pem",
+			},
+			expected: hatypes.ServerConfig{
+				Protocol:    "https",
+				CAFilename:  "/var/haproxy/ssl/ca.pem",
+				CAHash:      "3be93154b1cddfd0e1279f4d76022221676d08c7",
+				CrtFilename: "/var/haproxy/ssl/cli.pem",
+				CrtHash:     "f916dd295030e070f4d4aca4508571bc82f549af",
+			},
+		},
+		// 4
+		{
+			source: Source{Namespace: "default", Name: "app1", Type: "service"},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackSecureBackends:       "true",
+					ingtypes.BackSecureCrtSecret:      "cli",
+					ingtypes.BackSecureVerifyCASecret: "ca",
+				},
+			},
+			expected: hatypes.ServerConfig{
+				Protocol: "https",
+			},
+			logging: `
+WARN skipping client certificate on service 'default/app1': secret not found: 'default/cli'
+WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
+		},
+	}
+	for i, test := range testCase {
+		c := setup(t)
+		d := c.createBackendMappingData("defualt/app", &test.source, test.annDefault, test.ann, test.paths)
+		c.cache.SecretTLSPath = test.tlsSecrets
+		c.cache.SecretCAPath = test.caSecrets
+		c.createUpdater().buildBackendSecure(d)
+		c.compareObjects("secure", i, d.backend.Server, test.expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
+func TestSSLRedirect(t *testing.T) {
+	testCases := []struct {
+		annDefault map[string]string
+		ann        map[string]map[string]string
+		addPaths   []string
+		expected   []*hatypes.BackendConfigBool
+		source     Source
+		logging    string
+	}{
+		// 0
+		{
+			addPaths: []string{"/"},
+			expected: []*hatypes.BackendConfigBool{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: false,
+				},
+			},
+		},
+		// 1
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackSSLRedirect: "true",
+				},
+			},
+			expected: []*hatypes.BackendConfigBool{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: true,
+				},
+			},
+		},
+		// 2
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackSSLRedirect: "invalid",
+				},
+			},
+			expected: []*hatypes.BackendConfigBool{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: false,
+				},
+			},
+			source:  Source{Namespace: "default", Name: "ing1", Type: "ingress"},
+			logging: `WARN ignoring invalid bool expression on ingress 'default/ing1' key 'ssl-redirect': invalid`,
+		},
+		// 3
+		{
+			addPaths: []string{"/other"},
+			annDefault: map[string]string{
+				ingtypes.BackSSLRedirect: "false",
+			},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackSSLRedirect: "true",
+				},
+				"/url": {
+					ingtypes.BackSSLRedirect: "false",
+				},
+				"/path": {
+					ingtypes.BackSSLRedirect: "no-bool",
+				},
+			},
+			expected: []*hatypes.BackendConfigBool{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: true,
+				},
+				{
+					Paths:  createBackendPaths("/other", "/path", "/url"),
+					Config: false,
+				},
+			},
+			source:  Source{Namespace: "system1", Name: "app", Type: "service"},
+			logging: `WARN ignoring invalid bool expression on service 'system1/app' key 'ssl-redirect': no-bool`,
+		},
+		// 4
+		{
+			annDefault: map[string]string{
+				ingtypes.GlobalNoTLSRedirectLocations: "/.hidden,/app",
+			},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackSSLRedirect: "false",
+				},
+				"/.hidden/api": {
+					ingtypes.BackSSLRedirect: "true",
+				},
+				"/api": {
+					ingtypes.BackSSLRedirect: "true",
+				},
+				"/app": {
+					ingtypes.BackSSLRedirect: "true",
+				},
+			},
+			expected: []*hatypes.BackendConfigBool{
+				{
+					Paths:  createBackendPaths("/", "/.hidden/api", "/app"),
+					Config: false,
+				},
+				{
+					Paths:  createBackendPaths("/api"),
+					Config: true,
+				},
+			},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createBackendMappingData("default/app", &test.source, test.annDefault, test.ann, test.addPaths)
+		c.createUpdater().buildBackendSSLRedirect(d)
+		c.compareObjects("sslredirect", i, d.backend.SSLRedirect, test.expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
+func TestTimeout(t *testing.T) {
+	testCase := []struct {
+		annDefault map[string]string
+		ann        map[string]map[string]string
+		paths      []string
+		source     Source
+		expected   hatypes.BackendTimeoutConfig
+		logging    string
+	}{
+		// 0
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					"timeout-server": "10s",
+				},
+			},
+			expected: hatypes.BackendTimeoutConfig{
+				Server: "10s",
+			},
+		},
+		// 1
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					"timeout-server": "10zz",
+				},
+			},
+			source:   Source{Namespace: "default", Name: "ing1", Type: "ingress"},
+			expected: hatypes.BackendTimeoutConfig{},
+			logging:  `WARN ignoring invalid time format on ingress 'default/ing1': 10zz`,
+		},
+		// 2
+		{
+			annDefault: map[string]string{
+				"timeout-server": "10s",
+			},
+			// use only if declared as svc/ing annotation, otherwise defaults to HAProxy's defaults section
+			expected: hatypes.BackendTimeoutConfig{},
+		},
+	}
+	for i, test := range testCase {
+		c := setup(t)
+		d := c.createBackendMappingData("default/app", &test.source, test.annDefault, test.ann, test.paths)
+		c.createUpdater().buildBackendTimeout(d)
+		c.compareObjects("backend timeout", i, d.backend.Timeout, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
@@ -886,7 +1400,7 @@ func TestWAF(t *testing.T) {
 		{
 			waf:      "none",
 			expected: "",
-			logging:  "WARN ignoring invalid WAF mode on ingress 'default/app': none",
+			logging:  "WARN ignoring invalid WAF mode on ingress 'default/ing1': none",
 		},
 		{
 			waf:      "modsecurity",
@@ -894,17 +1408,31 @@ func TestWAF(t *testing.T) {
 			logging:  "",
 		},
 	}
+	source := &Source{
+		Namespace: "default",
+		Name:      "ing1",
+		Type:      "ingress",
+	}
 	for i, test := range testCase {
 		c := setup(t)
-		var ann map[string]string
+		var ann map[string]map[string]string
+		var expected []*hatypes.BackendConfigStr
 		if test.waf != "" {
-			ann = map[string]string{ingtypes.BackWAF: test.waf}
+			ann = map[string]map[string]string{
+				"/": {
+					ingtypes.BackWAF: test.waf,
+				},
+			}
+			expected = []*hatypes.BackendConfigStr{
+				{
+					Paths:  createBackendPaths("/"),
+					Config: test.expected,
+				},
+			}
 		}
-		d := c.createBackendData("default", "app", ann, map[string]string{})
+		d := c.createBackendMappingData("default/app", source, map[string]string{}, ann, []string{})
 		c.createUpdater().buildBackendWAF(d)
-		if d.backend.WAF != test.expected {
-			t.Errorf("WAF on %d differs - expected: %v - actual: %v", i, test.expected, d.backend.WAF)
-		}
+		c.compareObjects("WAF", i, d.backend.WAF, expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
@@ -913,19 +1441,21 @@ func TestWAF(t *testing.T) {
 func TestWhitelistHTTP(t *testing.T) {
 	testCases := []struct {
 		paths    []string
-		cidrlist map[string]string
+		cidrlist map[string]map[string]string
 		expected []*hatypes.BackendConfigWhitelist
 		logging  string
 	}{
 		// 0
 		{
 			paths: []string{"/"},
-			cidrlist: map[string]string{
-				"/": "10.0.0.0/8,192.168.0.0/16",
+			cidrlist: map[string]map[string]string{
+				"/": {
+					ingtypes.BackWhitelistSourceRange: "10.0.0.0/8,192.168.0.0/16",
+				},
 			},
 			expected: []*hatypes.BackendConfigWhitelist{
 				{
-					Paths:  hatypes.NewBackendPaths(&hatypes.BackendPath{Path: "/"}),
+					Paths:  createBackendPaths("/"),
 					Config: []string{"10.0.0.0/8", "192.168.0.0/16"},
 				},
 			},
@@ -933,22 +1463,25 @@ func TestWhitelistHTTP(t *testing.T) {
 		// 1
 		{
 			paths: []string{"/", "/url", "/path"},
-			cidrlist: map[string]string{
-				"/":     "10.0.0.0/8,192.168.0.0/16",
-				"/path": "10.0.0.0/8,192.168.0.0/16",
-				"/url":  "10.0.0.0/8",
+			cidrlist: map[string]map[string]string{
+				"/": {
+					ingtypes.BackWhitelistSourceRange: "10.0.0.0/8,192.168.0.0/16",
+				},
+				"/path": {
+					ingtypes.BackWhitelistSourceRange: "10.0.0.0/8,192.168.0.0/16",
+				},
+				"/url": {
+					ingtypes.BackWhitelistSourceRange: "10.0.0.0/8,192.168.0.101",
+				},
 			},
 			expected: []*hatypes.BackendConfigWhitelist{
 				{
-					Paths: hatypes.NewBackendPaths(
-						&hatypes.BackendPath{Path: "/"},
-						&hatypes.BackendPath{Path: "/path"},
-					),
+					Paths:  createBackendPaths("/", "/path"),
 					Config: []string{"10.0.0.0/8", "192.168.0.0/16"},
 				},
 				{
-					Paths:  hatypes.NewBackendPaths(&hatypes.BackendPath{Path: "/url"}),
-					Config: []string{"10.0.0.0/8"},
+					Paths:  createBackendPaths("/url"),
+					Config: []string{"10.0.0.0/8", "192.168.0.101"},
 				},
 			},
 		},
@@ -957,21 +1490,21 @@ func TestWhitelistHTTP(t *testing.T) {
 			paths: []string{"/"},
 			expected: []*hatypes.BackendConfigWhitelist{
 				{
-					Paths: hatypes.NewBackendPaths(&hatypes.BackendPath{Path: "/"}),
+					Paths: createBackendPaths("/"),
 				},
 			},
 		},
 		// 3
 		{
 			paths: []string{"/"},
-			cidrlist: map[string]string{
-				"/": "",
+			cidrlist: map[string]map[string]string{
+				"/": {
+					ingtypes.BackWhitelistSourceRange: "",
+				},
 			},
 			expected: []*hatypes.BackendConfigWhitelist{
 				{
-					Paths: hatypes.NewBackendPaths(
-						&hatypes.BackendPath{Path: "/"},
-					),
+					Paths:  createBackendPaths("/"),
 					Config: nil,
 				},
 			},
@@ -979,24 +1512,9 @@ func TestWhitelistHTTP(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		d := c.createBackendData("default", "app", map[string]string{}, map[string]string{})
-		for _, path := range test.paths {
-			// TODO missing a proper test with host and /path
-			d.backend.AddHostPath("", path)
-		}
-		for uri, cidrlist := range test.cidrlist {
-			d.mapper.AddAnnotation(&Source{}, uri, ingtypes.BackWhitelistSourceRange, cidrlist)
-		}
+		d := c.createBackendMappingData("default/app", &Source{}, map[string]string{}, test.cidrlist, test.paths)
 		c.createUpdater().buildBackendWhitelistHTTP(d)
-		for _, cfg := range d.backend.WhitelistHTTP {
-			for _, path := range cfg.Paths.Items {
-				path.ID = ""
-				path.Hostpath = ""
-			}
-		}
-		if !reflect.DeepEqual(d.backend.WhitelistHTTP, test.expected) {
-			t.Errorf("whitelist on %d differs- expected: %v - actual: %v", i, test.expected, d.backend.WhitelistHTTP)
-		}
+		c.compareObjects("whitelist http", i, d.backend.WhitelistHTTP, test.expected)
 		c.teardown()
 	}
 }
@@ -1021,26 +1539,45 @@ func TestWhitelistTCP(t *testing.T) {
 		{
 			cidrlist: "10.0.0.0/8,192.168.0/16",
 			expected: []string{"10.0.0.0/8"},
-			logging:  `WARN skipping invalid cidr '192.168.0/16' in whitelist config on ingress 'default/app'`,
+			logging:  `WARN skipping invalid IP or cidr on ingress 'default/ing1': 192.168.0/16`,
 		},
 		// 3
 		{
-			cidrlist: "10.0.0/8,192.168.0/16",
-			expected: nil,
+			cidrlist: "10.0.0/8,192.168.0/16,192.168.1.101",
+			expected: []string{"192.168.1.101"},
 			logging: `
-WARN skipping invalid cidr '10.0.0/8' in whitelist config on ingress 'default/app'
-WARN skipping invalid cidr '192.168.0/16' in whitelist config on ingress 'default/app'`,
+WARN skipping invalid IP or cidr on ingress 'default/ing1': 10.0.0/8
+WARN skipping invalid IP or cidr on ingress 'default/ing1': 192.168.0/16`,
 		},
+	}
+
+	source := &Source{
+		Namespace: "default",
+		Name:      "ing1",
+		Type:      "ingress",
 	}
 	for i, test := range testCase {
 		c := setup(t)
-		d := c.createBackendData("default", "app", map[string]string{ingtypes.BackWhitelistSourceRange: test.cidrlist}, map[string]string{})
+		ann := map[string]string{ingtypes.BackWhitelistSourceRange: test.cidrlist}
+		d := c.createBackendData("default/app", source, ann, map[string]string{})
 		d.backend.ModeTCP = true
 		c.createUpdater().buildBackendWhitelistTCP(d)
-		if !reflect.DeepEqual(d.backend.WhitelistTCP, test.expected) {
-			t.Errorf("whitelist on %d differs - expected: %v - actual: %v", i, test.expected, d.backend.WhitelistTCP)
-		}
+		c.compareObjects("whitelist tcp", i, d.backend.WhitelistTCP, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
+}
+
+func createBackendPaths(paths ...string) hatypes.BackendPaths {
+	backendPaths := make([]*hatypes.BackendPath, 0, len(paths))
+	for _, path := range paths {
+		backendPaths = append(backendPaths, &hatypes.BackendPath{
+			// ignoring ID which isn't the focus of the test
+			// removing on createBackendMappingData() as well
+			ID:       "",
+			Hostpath: testingHostname + path,
+			Path:     path,
+		})
+	}
+	return hatypes.NewBackendPaths(backendPaths...)
 }

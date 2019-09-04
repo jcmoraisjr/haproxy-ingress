@@ -67,7 +67,7 @@ func TestAppendHostname(t *testing.T) {
 }
 
 func TestBuildFrontendEmpty(t *testing.T) {
-	frontends, _ := BuildRawFrontends([]*Host{})
+	frontends, _, _ := BuildRawFrontends([]*Host{})
 	if len(frontends) > 0 {
 		t.Errorf("expected len(frontends) == 0, but was %d", len(frontends))
 	}
@@ -147,6 +147,7 @@ func TestBuildFrontend(t *testing.T) {
 							Hosts: []*Host{h10CA2_1, h10CA2_2},
 							TLS:   BindTLSConfig{CAHash: "2"},
 						},
+						&BindConfig{},
 					},
 				},
 			},
@@ -173,7 +174,7 @@ func TestBuildFrontend(t *testing.T) {
 		},
 	}
 	for i, test := range testCases {
-		frontends, _ := BuildRawFrontends(test.hosts)
+		frontends, _, _ := BuildRawFrontends(test.hosts)
 		actualRaw, _ := yaml.Marshal(frontends)
 		expectedRaw, _ := yaml.Marshal(test.expected)
 		actual := string(actualRaw)
@@ -198,7 +199,7 @@ func TestBuildSSLPassthrough(t *testing.T) {
 		},
 	}
 	for i, test := range testCases {
-		_, sslpassthrough := BuildRawFrontends(test.hosts)
+		_, sslpassthrough, _ := BuildRawFrontends(test.hosts)
 		actualRaw, _ := yaml.Marshal(sslpassthrough)
 		expectedRaw, _ := yaml.Marshal(test.expected)
 		actual := string(actualRaw)

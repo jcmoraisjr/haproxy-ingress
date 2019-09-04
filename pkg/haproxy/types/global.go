@@ -20,6 +20,18 @@ import (
 	"fmt"
 )
 
+func (dns *DNSConfig) String() string {
+	return fmt.Sprintf("%+v", *dns)
+}
+
+func (dns *DNSResolver) String() string {
+	return fmt.Sprintf("%+v", *dns)
+}
+
+func (dns *DNSNameserver) String() string {
+	return fmt.Sprintf("%+v", *dns)
+}
+
 func (u *Userlist) String() string {
 	return fmt.Sprintf("%+v", *u)
 }

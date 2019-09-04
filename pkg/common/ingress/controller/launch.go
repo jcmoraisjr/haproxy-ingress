@@ -67,6 +67,9 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		service with the format namespace/serviceName and the port of the service could be a
 		number of the name of the port.`)
 
+		annPrefix = flags.String("annotations-prefix", "ingress.kubernetes.io",
+			`Defines the prefix of ingress and service annotations`)
+
 		rateLimitUpdate = flags.Float32("rate-limit-update", 0.5,
 			`Maximum of updates per second this controller should perform.
 		Default is 0.5, which means wait 2 seconds between Ingress updates in order
@@ -122,7 +125,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		useNodeInternalIP = flags.Bool("report-node-internal-ip-address", false,
 			`Defines if the nodes IP address to be returned in the ingress status should be the internal instead of the external IP address`)
 
-		v07 = flags.Bool("v07-controller", true,
+		v07 = flags.Bool("v07-controller", false,
 			`Defines if legacy v07 controller code should be used`)
 
 		showVersion = flags.Bool("version", false,
@@ -254,6 +257,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		ConfigMapName:           *configMap,
 		TCPConfigMapName:        *tcpConfigMapName,
 		UDPConfigMapName:        *udpConfigMapName,
+		AnnPrefix:               *annPrefix,
 		DefaultSSLCertificate:   *defSSLCertificate,
 		VerifyHostname:          *verifyHostname,
 		DefaultHealthzURL:       *defHealthzURL,

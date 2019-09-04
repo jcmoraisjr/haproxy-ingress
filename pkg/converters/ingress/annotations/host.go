@@ -21,42 +21,42 @@ import (
 )
 
 func (c *updater) buildHostAuthTLS(d *hostData) {
-	tlsSecret, _, foundTLSSecret := d.mapper.GetStr(ingtypes.HostAuthTLSSecret)
-	if !foundTLSSecret || tlsSecret == "" {
+	tlsSecret := d.mapper.Get(ingtypes.HostAuthTLSSecret)
+	if tlsSecret.Source == nil || tlsSecret.Value == "" {
 		return
 	}
-	verify := d.mapper.GetStrValue(ingtypes.HostAuthTLSVerifyClient)
-	if verify == "off" {
+	verify := d.mapper.Get(ingtypes.HostAuthTLSVerifyClient)
+	if verify.Value == "off" {
 		return
 	}
-	if cafile, err := c.cache.GetCASecretPath(tlsSecret); err == nil {
+	if cafile, err := c.cache.GetCASecretPath(tlsSecret.Value); err == nil {
 		d.host.TLS.CAFilename = cafile.Filename
 		d.host.TLS.CAHash = cafile.SHA1Hash
-		d.host.TLS.CAVerifyOptional = verify == "optional" || verify == "optional_no_ca"
-		d.host.TLS.CAErrorPage = d.mapper.GetStrValue(ingtypes.HostAuthTLSErrorPage)
+		d.host.TLS.CAVerifyOptional = verify.Value == "optional" || verify.Value == "optional_no_ca"
+		d.host.TLS.CAErrorPage = d.mapper.Get(ingtypes.HostAuthTLSErrorPage).Value
 	} else {
 		c.logger.Error("error building TLS auth config: %v", err)
 	}
 }
 
 func (c *updater) buildHostSSLPassthrough(d *hostData) {
-	sslpassthrough, srcSSLPassthrough, _ := d.mapper.GetBool(ingtypes.HostSSLPassthrough)
-	if !sslpassthrough {
+	sslpassthrough := d.mapper.Get(ingtypes.HostSSLPassthrough)
+	if !sslpassthrough.Bool() {
 		return
 	}
 	rootPath := d.host.FindPath("/")
 	if rootPath == nil {
-		c.logger.Warn("skipping SSL of %s: root path was not configured", srcSSLPassthrough)
+		c.logger.Warn("skipping SSL of %s: root path was not configured", sslpassthrough.Source)
 		return
 	}
 	for _, path := range d.host.Paths {
 		if path.Path != "/" {
-			c.logger.Warn("ignoring path '%s' from %s: ssl-passthrough only support root path", path.Path, srcSSLPassthrough)
+			c.logger.Warn("ignoring path '%s' from %s: ssl-passthrough only support root path", path.Path, sslpassthrough.Source)
 		}
 	}
-	sslpassHTTPPort, _, foundSSLPassHTTPPort := d.mapper.GetStr(ingtypes.HostSSLPassthroughHTTPPort)
-	if foundSSLPassHTTPPort {
-		httpBackend := c.haproxy.FindBackend(rootPath.Backend.Namespace, rootPath.Backend.Name, sslpassHTTPPort)
+	sslpassHTTPPort := d.mapper.Get(ingtypes.HostSSLPassthroughHTTPPort)
+	if sslpassHTTPPort.Source != nil {
+		httpBackend := c.haproxy.FindBackend(rootPath.Backend.Namespace, rootPath.Backend.Name, sslpassHTTPPort.Value)
 		if httpBackend != nil {
 			d.host.HTTPPassthroughBackend = httpBackend.ID
 		}
@@ -64,4 +64,13 @@ func (c *updater) buildHostSSLPassthrough(d *hostData) {
 	backend := c.haproxy.AcquireBackend(rootPath.Backend.Namespace, rootPath.Backend.Name, rootPath.Backend.Port)
 	backend.ModeTCP = true
 	d.host.SSLPassthrough = true
+}
+
+func (c *updater) buildHostTimeout(d *hostData) {
+	if cfg := d.mapper.Get(ingtypes.HostTimeoutClient); cfg.Source != nil {
+		d.host.Timeout.Client = c.validateTime(cfg)
+	}
+	if cfg := d.mapper.Get(ingtypes.HostTimeoutClientFin); cfg.Source != nil {
+		d.host.Timeout.ClientFin = c.validateTime(cfg)
+	}
 }

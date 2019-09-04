@@ -18,6 +18,7 @@ package template
 
 import (
 	"fmt"
+	"reflect"
 	gotemplate "text/template"
 
 	"github.com/Masterminds/sprig"
@@ -33,6 +34,22 @@ func createFuncMap() gotemplate.FuncMap {
 				d[fmt.Sprintf("p%d", i+1)] = v[i]
 			}
 			return d
+		},
+		"short": func(size int, ilist interface{}) []interface{} {
+			list := reflect.ValueOf(ilist)
+			listlen := list.Len()
+			if size < 1 {
+				return []interface{}{list.Interface()}
+			}
+			out := make([]interface{}, (listlen+size-1)/size)
+			for i := range out {
+				last := size*i + size
+				if last >= listlen {
+					last = listlen
+				}
+				out[i] = list.Slice(size*i, last).Interface()
+			}
+			return out
 		},
 	}
 	if err := mergo.Merge(&fnc, sprig.TxtFuncMap()); err != nil {

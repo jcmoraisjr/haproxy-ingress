@@ -18,10 +18,11 @@ package annotations
 
 import (
 	"fmt"
+	"reflect"
+	"strings"
 	"testing"
 
 	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	ha_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/helper_test"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
@@ -63,14 +64,12 @@ func (c *testConfig) createUpdater() *updater {
 	}
 }
 
-func (c *testConfig) createBackendData(namespace, name string, ann, annDefault map[string]string) *backData {
-	source := &Source{
-		Namespace: namespace,
-		Name:      name,
-		Type:      "ingress",
-	}
+func (c *testConfig) createBackendData(svcFullName string, source *Source, ann, annDefault map[string]string) *backData {
 	mapper := NewMapBuilder(c.logger, "ing.k8s.io/", annDefault).NewMapper()
 	mapper.AddAnnotations(source, "/", ann)
+	svcName := strings.Split(svcFullName, "/")
+	namespace := svcName[0]
+	name := svcName[1]
 	return &backData{
 		backend: &hatypes.Backend{
 			ID:        fmt.Sprintf("%s_%s_%d", namespace, name, 8080),
@@ -81,9 +80,44 @@ func (c *testConfig) createBackendData(namespace, name string, ann, annDefault m
 	}
 }
 
-func (c *testConfig) createGlobalData(config *types.ConfigGlobals) *globalData {
+const testingHostname = "host.local"
+
+func (c *testConfig) createBackendMappingData(
+	svcFullName string,
+	source *Source,
+	annDefault map[string]string,
+	urlAnnValue map[string]map[string]string,
+	addPaths []string,
+) *backData {
+	d := c.createBackendData(svcFullName, source, map[string]string{}, annDefault)
+	paths := make(map[string]struct{}, len(urlAnnValue)+len(addPaths))
+	for path := range urlAnnValue {
+		paths[path] = struct{}{}
+	}
+	for _, path := range addPaths {
+		paths[path] = struct{}{}
+	}
+	for path := range paths {
+		b := d.backend.AddHostPath(testingHostname, path)
+		// ignoring ID which isn't the focus of the test
+		// removing on createBackendPaths() as well
+		b.ID = ""
+	}
+	for uri, ann := range urlAnnValue {
+		d.mapper.AddAnnotations(source, testingHostname+uri, ann)
+	}
+	return d
+}
+
+func (c *testConfig) compareObjects(name string, index int, actual, expected interface{}) {
+	if !reflect.DeepEqual(actual, expected) {
+		c.t.Errorf("%s on %d differs - expected: %v - actual: %v", name, index, expected, actual)
+	}
+}
+
+func (c *testConfig) createGlobalData(config map[string]string) *globalData {
 	return &globalData{
 		global: &hatypes.Global{},
-		config: config,
+		mapper: NewMapBuilder(c.logger, "", config).NewMapper(),
 	}
 }

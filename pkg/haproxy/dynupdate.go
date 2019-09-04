@@ -58,7 +58,7 @@ func (i *instance) newDynUpdater() *dynUpdater {
 		logger: i.logger,
 		old:    old,
 		cur:    cur,
-		socket: i.curConfig.Global().StatsSocket,
+		socket: i.curConfig.Global().AdminSocket,
 		cmd:    utils.HAProxyCommand,
 	}
 }
@@ -145,15 +145,20 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 		return false
 	}
 
-	// most of the backends are equal, save some proc stopping here if deep equals
-	if reflect.DeepEqual(oldBack.Endpoints, curBack.Endpoints) {
-		return true
-	}
-
 	// can decrease endpoints, cannot increase
 	if len(oldBack.Endpoints) < len(curBack.Endpoints) {
 		d.logger.InfoV(2, "added endpoints")
 		return false
+	}
+
+	// Resolver == update via DNS discovery
+	if curBack.Resolver != "" {
+		return true
+	}
+
+	// most of the backends are equal, save some proc stopping here if deep equals
+	if reflect.DeepEqual(oldBack.Endpoints, curBack.Endpoints) {
+		return true
 	}
 
 	// map endpoints of old and new config together

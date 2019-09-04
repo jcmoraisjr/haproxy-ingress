@@ -110,10 +110,85 @@ func (b *Backend) AddHostPath(hostname, path string) *BackendPath {
 	return backendPath
 }
 
+// CreateConfigBool ...
+func (b *Backend) CreateConfigBool(value bool) []*BackendConfigBool {
+	return []*BackendConfigBool{
+		{
+			Paths:  NewBackendPaths(b.Paths...),
+			Config: value,
+		},
+	}
+}
+
+// HasCorsEnabled ...
+func (b *Backend) HasCorsEnabled() bool {
+	for _, cors := range b.Cors {
+		if cors.Config.Enabled {
+			return true
+		}
+	}
+	return false
+}
+
+// HasModsec ...
+func (b *Backend) HasModsec() bool {
+	for _, waf := range b.WAF {
+		if waf.Config == "modsecurity" {
+			return true
+		}
+	}
+	return false
+}
+
+// HasSSLRedirect ...
+func (b *Backend) HasSSLRedirect() bool {
+	for _, sslredirect := range b.SSLRedirect {
+		if sslredirect.Config {
+			return true
+		}
+	}
+	return false
+}
+
+// HasSSLRedirectHostpath ...
+func (b *Backend) HasSSLRedirectHostpath(hostpath string) bool {
+	for _, sslredirect := range b.SSLRedirect {
+		for _, path := range sslredirect.Paths.Items {
+			if path.Hostpath == hostpath {
+				return sslredirect.Config
+			}
+		}
+	}
+	return false
+}
+
+// HasSSLRedirectPaths ...
+func (b *Backend) HasSSLRedirectPaths(paths *BackendPaths) bool {
+	for _, path := range paths.Items {
+		if b.HasSSLRedirectHostpath(path.Hostpath) {
+			return true
+		}
+	}
+	return false
+}
+
+// MaxBodySizeHostpath ...
+func (b *Backend) MaxBodySizeHostpath(hostpath string) int64 {
+	for _, maxbodysize := range b.MaxBodySize {
+		for _, path := range maxbodysize.Paths.Items {
+			if path.Hostpath == hostpath {
+				return maxbodysize.Config
+			}
+		}
+	}
+	return 0
+}
+
 // NeedACL ...
 func (b *Backend) NeedACL() bool {
 	return len(b.HSTS) > 1 ||
-		len(b.ProxyBodySize) > 1 || len(b.RewriteURL) > 1 || len(b.WhitelistHTTP) > 1
+		len(b.MaxBodySize) > 1 || len(b.RewriteURL) > 1 || len(b.WhitelistHTTP) > 1 ||
+		len(b.Cors) > 1 || len(b.AuthHTTP) > 1 || len(b.WAF) > 1
 }
 
 // IsEmpty ...
@@ -159,7 +234,27 @@ func (p *BackendPath) String() string {
 }
 
 // String ...
+func (b *BackendConfigAuth) String() string {
+	return fmt.Sprintf("%+v", *b)
+}
+
+// String ...
+func (b *BackendConfigBool) String() string {
+	return fmt.Sprintf("%+v", *b)
+}
+
+// String ...
+func (b *BackendConfigInt) String() string {
+	return fmt.Sprintf("%+v", *b)
+}
+
+// String ...
 func (b *BackendConfigStr) String() string {
+	return fmt.Sprintf("%+v", *b)
+}
+
+// String ...
+func (b *BackendConfigCors) String() string {
 	return fmt.Sprintf("%+v", *b)
 }
 
