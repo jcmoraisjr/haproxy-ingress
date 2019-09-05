@@ -73,15 +73,15 @@ lists, math etc.
 
 The following annotations are supported:
 
-* `[1]` only in `v0.8` (`snapshot`)
+* `[0]` only in `v0.8` (`beta`)
 
 ||Name|Data|Usage|
 |---|---|---|:---:|
 ||[`ingress.kubernetes.io/affinity`](#affinity)|affinity type|-|
-|`[1]`|[`ingress.kubernetes.io/agent-check-addr`](#agent-check)|address for agent checks|-|
-|`[1]`|[`ingress.kubernetes.io/agent-check-port`](#agent-check)|backend agent listen port|-|
-|`[1]`|[`ingress.kubernetes.io/agent-check-inter`](#agent-check)|time with suffix|-|
-|`[1]`|[`ingress.kubernetes.io/agent-check-send`](#agent-check)|string to send upon agent connection|-|
+|`[0]`|[`ingress.kubernetes.io/agent-check-addr`](#agent-check)|address for agent checks|-|
+|`[0]`|[`ingress.kubernetes.io/agent-check-port`](#agent-check)|backend agent listen port|-|
+|`[0]`|[`ingress.kubernetes.io/agent-check-inter`](#agent-check)|time with suffix|-|
+|`[0]`|[`ingress.kubernetes.io/agent-check-send`](#agent-check)|string to send upon agent connection|-|
 ||`ingress.kubernetes.io/app-root`|/url|[doc](/examples/rewrite)|
 ||`ingress.kubernetes.io/auth-realm`|realm string|[doc](/examples/auth/basic)|
 ||`ingress.kubernetes.io/auth-secret`|secret name|[doc](/examples/auth/basic)|
@@ -101,12 +101,12 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/cors-allow-origin`](#cors)|URL|-|
 ||[`ingress.kubernetes.io/cors-enable`](#cors)|[true\|false]|-|
 ||[`ingress.kubernetes.io/cors-max-age`](#cors)|time (seconds)|-|
-|`[1]`|[`ingress.kubernetes.io/health-check-uri`](#health-check)|uri for http health checks|-|
-|`[1]`|[`ingress.kubernetes.io/health-check-addr`](#health-check)|address for health checks|-|
-|`[1]`|[`ingress.kubernetes.io/health-check-port`](#health-check)|port for health checks|-|
-|`[1]`|[`ingress.kubernetes.io/health-check-interval`](#health-check)|time with suffix|-|
-|`[1]`|[`ingress.kubernetes.io/health-check-fall-count`](#health-check)|number of failures|-|
-|`[1]`|[`ingress.kubernetes.io/health-check-rise-count`](#health-check)|number of successes|-|
+|`[0]`|[`ingress.kubernetes.io/health-check-uri`](#health-check)|uri for http health checks|-|
+|`[0]`|[`ingress.kubernetes.io/health-check-addr`](#health-check)|address for health checks|-|
+|`[0]`|[`ingress.kubernetes.io/health-check-port`](#health-check)|port for health checks|-|
+|`[0]`|[`ingress.kubernetes.io/health-check-interval`](#health-check)|time with suffix|-|
+|`[0]`|[`ingress.kubernetes.io/health-check-fall-count`](#health-check)|number of failures|-|
+|`[0]`|[`ingress.kubernetes.io/health-check-rise-count`](#health-check)|number of successes|-|
 ||[`ingress.kubernetes.io/hsts`](#hsts)|[true\|false]|-|
 ||[`ingress.kubernetes.io/hsts-include-subdomains`](#hsts)|[true\|false]|-|
 ||[`ingress.kubernetes.io/hsts-max-age`](#hsts)|qty of seconds|-|
@@ -129,7 +129,7 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/server-alias-regex`](#server-alias)|regex|-|
 ||[`ingress.kubernetes.io/session-cookie-name`](#affinity)|cookie name|-|
 ||[`ingress.kubernetes.io/session-cookie-strategy`](#affinity)|[insert\|prefix\|rewrite]|-|
-|`[1]`|[`ingress.kubernetes.io/session-cookie-dynamic`](#affinity)|[true\|false]|-|
+|`[0]`|[`ingress.kubernetes.io/session-cookie-dynamic`](#affinity)|[true\|false]|-|
 ||[`ingress.kubernetes.io/slots-increment`](#dynamic-scaling)|qty|-|
 ||[`ingress.kubernetes.io/ssl-passthrough`](#ssl-passthrough)|[true\|false]|-|
 ||[`ingress.kubernetes.io/ssl-passthrough-http-port`](#ssl-passthrough)|backend port|-|
@@ -396,7 +396,7 @@ A ConfigMap can be created with `kubectl create configmap`.
 
 The following parameters are supported:
 
-* `[1]` only in `v0.8` (`snapshot`)
+* `[0]` only in `v0.8` (`snapshot`)
 
 ||Name|Type|Default|
 |---|---|---|---|
@@ -408,7 +408,7 @@ The following parameters are supported:
 ||[`bind-ip-addr-stats`](#bind-ip-addr)|IP address|`*`|
 ||[`bind-ip-addr-tcp`](#bind-ip-addr)|IP address|`*`|
 ||[`config-frontend`](#configuration-snippet)|multiline HAProxy frontend config||
-|`[1]`|[`config-defaults`](#configuration-snippet)|multiline HAProxy config for the defaults section||
+|`[0]`|[`config-defaults`](#configuration-snippet)|multiline HAProxy config for the defaults section||
 ||[`config-global`](#configuration-snippet)|multiline HAProxy global config||
 ||[`cookie-key`](#cookie-key)|secret key|`Ingress`|
 ||[`dns-accepted-payload-size`](#dns-resolvers)|number|`8192`|
@@ -418,7 +418,7 @@ The following parameters are supported:
 ||[`dns-resolvers`](#dns-resolvers)|multiline resolver=ip[:port]|``|
 ||[`dns-timeout-retry`](#dns-resolvers)|time with suffix|`1s`|
 ||[`drain-support`](#drain-support)|[true\|false]|`false`|
-|`[1]`|[`drain-support-redispatch`](#drain-support)|[true\|false]|`true`|
+|`[0]`|[`drain-support-redispatch`](#drain-support)|[true\|false]|`true`|
 ||[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`false`|
 ||[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
 ||[`healthz-port`](#healthz-port)|port number|`10253`|
@@ -441,13 +441,13 @@ The following parameters are supported:
 ||[`nbthread`](#nbthread)|number of threads|`1`|
 ||[`no-tls-redirect-locations`](#no-tls-redirect-locations)|comma-separated list of url|`/.well-known/acme-challenge`|
 ||[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
-|`[1]`|[`slots-min-free`](#dynamic-scaling)|minimum number of free slots|`0`|
+|`[0]`|[`slots-min-free`](#dynamic-scaling)|minimum number of free slots|`0`|
 ||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/v0.6/pkg/controller/config.go#L40)|
 ||[`ssl-dh-default-max-size`](#ssl-dh-default-max-size)|number|`1024`|
 ||[`ssl-dh-param`](#ssl-dh-param)|namespace/secret name|no custom DH param|
-|`[1]`|[`ssl-engine`](#ssl-engine)|OpenSSL engine name and parameters|no engine set|
+|`[0]`|[`ssl-engine`](#ssl-engine)|OpenSSL engine name and parameters|no engine set|
 ||[`ssl-headers-prefix`](#ssl-headers-prefix)|prefix|`X-SSL`|
-|`[1]`|[`ssl-mode-async`](#ssl-engine)|[true\|false]|`false`|
+|`[0]`|[`ssl-mode-async`](#ssl-engine)|[true\|false]|`false`|
 ||[`ssl-options`](#ssl-options)|space-separated list|`no-sslv3` `no-tls-tickets`|
 ||[`ssl-redirect`](#ssl-redirect)|[true\|false]|`true`|
 ||[`stats-auth`](#stats)|user:passwd|no auth|
@@ -456,8 +456,8 @@ The following parameters are supported:
 ||[`stats-ssl-cert`](#stats)|namespace/secret name|no ssl/plain http|
 ||[`strict-host`](#strict-host)|[true\|false]|`true`|
 ||[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
-|`[1]`|[`syslog-format`](#syslog-format)|rfc5424\|rfc3164|rfc5424|
-|`[1]`|[`syslog-tag`](#syslog-tag)|syslog tag field string|`ingress`|
+|`[0]`|[`syslog-format`](#syslog-format)|rfc5424\|rfc3164|rfc5424|
+|`[0]`|[`syslog-tag`](#syslog-tag)|syslog tag field string|`ingress`|
 ||[`tcp-log-format`](#log-format)|tcp log format|HAProxy default log format|
 ||[`timeout-client`](#timeout)|time with suffix|`50s`|
 ||[`timeout-client-fin`](#timeout)|time with suffix|`50s`|
@@ -471,7 +471,7 @@ The following parameters are supported:
 ||[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
 ||[`tls-alpn`](#tls-alpn)|TLS ALPN advertisement|`h2,http/1.1`|
 ||[`use-proxy-protocol`](#use-proxy-protocol)|[true\|false]|`false`|
-|`[1]`|[`var-namespace`](#var-namespace)|[true\|false]|`false`|
+|`[0]`|[`var-namespace`](#var-namespace)|[true\|false]|`false`|
 
 ### balance-algorithm
 
@@ -999,10 +999,12 @@ You can control this behavior by setting `drain-support-redispatch` flag to `fal
 
 The following command-line arguments are supported:
 
+* `[0]` only in `v0.8` (`beta`)
+
 ||Name|Type|Default|
 |---|---|---|---|
 ||[`allow-cross-namespace`](#allow-cross-namespace)|[true\|false]|`false`|
-|`[1]`|[`annotation-prefix`](#annotation-prefix)|prefix without `/`|`ingress.kubernetes.io`|
+|`[0]`|[`annotation-prefix`](#annotation-prefix)|prefix without `/`|`ingress.kubernetes.io`|
 ||[`default-backend-service`](#default-backend-service)|namespace/servicename|(mandatory)|
 ||[`default-ssl-certificate`](#default-ssl-certificate)|namespace/secretname|(mandatory)|
 ||[`ingress-class`](#ingress-class)|name|`haproxy`|
