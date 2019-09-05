@@ -441,6 +441,7 @@ The following parameters are supported:
 ||[`nbthread`](#nbthread)|number of threads|`1`|
 ||[`no-tls-redirect-locations`](#no-tls-redirect-locations)|comma-separated list of url|`/.well-known/acme-challenge`|
 ||[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
+|`[1]`|[`slots-min-free`](#dynamic-scaling)|minimum number of free slots|`0`|
 ||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/v0.6/pkg/controller/config.go#L40)|
 ||[`ssl-dh-default-max-size`](#ssl-dh-default-max-size)|number|`1024`|
 ||[`ssl-dh-param`](#ssl-dh-param)|namespace/secret name|no custom DH param|
@@ -470,6 +471,7 @@ The following parameters are supported:
 ||[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
 ||[`tls-alpn`](#tls-alpn)|TLS ALPN advertisement|`h2,http/1.1`|
 ||[`use-proxy-protocol`](#use-proxy-protocol)|[true\|false]|`false`|
+|`[1]`|[`var-namespace`](#var-namespace)|[true\|false]|`false`|
 
 ### balance-algorithm
 
@@ -601,10 +603,16 @@ Starting on v0.6, `dynamic-scaling` config will only force a reloading of HAProx
 the number of servers on a backend need to be increased. Before v0.6 a reload will
 also happen when the number of servers could be reduced.
 
+Starting on v0.8, a new configmap option `slots-min-free` can be used to configure the
+minimum number of free/empty servers per backend. If HAProxy need to be restarted and
+an backend has less than `slots-min-free` available servers, another
+`backend-server-slots-increment` new empty servers would be created.
+
 Global configmap options:
 
 * `dynamic-scaling`: Define if dynamic scaling should be used whenever possible
 * `backend-server-slots-increment`: Configures the minimum number of servers, the size of the increment when growing and the size of the decrement when shrinking of each HAProxy backend
+* `slots-min-free`: Configures the minimum number of empty servers a backend should have on every HAProxy restarts
 
 Annotations on ingress resources:
 
@@ -970,6 +978,13 @@ configuration.
 * http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.1-accept-proxy
 * http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
 
+### var-namespace
+
+If `var-namespace` is configured as `true`, a HAProxy var `txn.namespace` is created with the
+kubernetes namespace owner of the service which is the target of the request. This variable is
+useful on http logs. The default value is `false`. Usage: `k8s-namespace: %[var(txn.namespace)]`.
+See also [http-log](#log-format).
+
 ### drain-support
 
 Set to true if you wish to use HAProxy's drain support for pods that are NotReady (e.g., failing a
@@ -987,6 +1002,7 @@ The following command-line arguments are supported:
 ||Name|Type|Default|
 |---|---|---|---|
 ||[`allow-cross-namespace`](#allow-cross-namespace)|[true\|false]|`false`|
+|`[1]`|[`annotation-prefix`](#annotation-prefix)|prefix without `/`|`ingress.kubernetes.io`|
 ||[`default-backend-service`](#default-backend-service)|namespace/servicename|(mandatory)|
 ||[`default-ssl-certificate`](#default-ssl-certificate)|namespace/secretname|(mandatory)|
 ||[`ingress-class`](#ingress-class)|name|`haproxy`|
@@ -1007,6 +1023,14 @@ The following command-line arguments are supported:
 ingress resource of another namespace. The default behavior is to deny such cross namespace reading.
 This adds a breaking change from `v0.4` to `v0.5` on `ingress.kubernetes.io/auth-tls-secret`
 annotation, where cross namespace reading were allowed without any configuration.
+
+### annotation-prefix
+
+Changes the annotation prefix the controller should look for when parsing services and ingress
+objects. The default value is `ingress.kubernetes.io` if not declared, which means SSL Redirect
+should be configured with the annotation name `ingress.kubernetes.io/ssl-redirect`. Annotations
+with other prefix are ignored. This allows using HAProxy Ingress with other ingress controllers
+that shares ingress and service objects without conflicting each other.
 
 ### default-backend-service
 
