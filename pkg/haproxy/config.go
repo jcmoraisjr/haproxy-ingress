@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
@@ -52,7 +53,6 @@ type Config interface {
 
 type config struct {
 	fgroup          *hatypes.FrontendGroup
-	bindUtils       hatypes.BindUtils
 	mapsTemplate    *template.Config
 	mapsDir         string
 	global          hatypes.Global
@@ -70,13 +70,12 @@ type options struct {
 	mapsDir      string
 }
 
-func createConfig(bindUtils hatypes.BindUtils, options options) *config {
+func createConfig(options options) *config {
 	mapsTemplate := options.mapsTemplate
 	if mapsTemplate == nil {
 		mapsTemplate = template.CreateConfig()
 	}
 	return &config{
-		bindUtils:    bindUtils,
 		mapsTemplate: mapsTemplate,
 		mapsDir:      options.mapsDir,
 	}
@@ -233,7 +232,7 @@ func (c *config) BuildFrontendGroup() error {
 		SSLPassthroughMap: fgroupMaps.AddMap(c.mapsDir + "/_global_sslpassthrough.map"),
 	}
 	if c.global.Bind.ToHTTPPort > 0 {
-		bind := *hatypes.NewFrontendBind(nil)
+		bind := hatypes.NewFrontendBind(nil)
 		bind.Socket = fmt.Sprintf("%s:%d", c.global.Bind.ToHTTPBindIP, c.global.Bind.ToHTTPPort)
 		bind.ID = c.global.Bind.ToHTTPSocketID
 		bind.AcceptProxy = c.global.Bind.AcceptProxy
@@ -244,44 +243,21 @@ func (c *config) BuildFrontendGroup() error {
 		// so need a `mode tcp` frontend with `inspect-delay` and `req.ssl_sni`
 		var i int
 		for _, frontend := range frontends {
-			for _, bind := range frontend.Binds {
-				i++
-				bindName := fmt.Sprintf("_socket%03d", i)
-				if len(bind.Hosts) == 1 {
-					bind.TLS.TLSCert = c.defaultX509Cert
-					bind.TLS.TLSCertDir = bind.Hosts[0].TLS.TLSFilename
-				} else {
-					x509dir, err := c.createCertsDir(bindName, bind.Hosts)
-					if err != nil {
-						return err
-					}
-					bind.TLS.TLSCert = c.defaultX509Cert
-					bind.TLS.TLSCertDir = x509dir
-				}
-				bind.Name = bindName
-				bind.Socket = fmt.Sprintf("unix@/var/run/%s.sock", bindName)
-				bind.TLS.ALPN = c.global.SSL.ALPN
-				bind.AcceptProxy = true
-			}
+			i++
+			bindName := fmt.Sprintf("%s_socket", frontend.Name)
+			bind := &frontend.Bind
+			bind.Name = bindName
+			bind.Socket = fmt.Sprintf("unix@/var/run/%s.sock", bindName)
+			bind.AcceptProxy = true
+			bind.ALPN = c.global.SSL.ALPN
 		}
 	} else {
 		// One single HAProxy's frontend and bind
-		bind := frontends[0].Binds[0]
+		bind := &frontends[0].Bind
 		bind.Name = "_public"
 		bind.Socket = fmt.Sprintf("%s:%d", c.global.Bind.HTTPSBindIP, c.global.Bind.HTTPSPort)
-		bind.TLS.ALPN = c.global.SSL.ALPN
 		bind.AcceptProxy = c.global.Bind.AcceptProxy
-		if len(bind.Hosts) == 1 {
-			bind.TLS.TLSCert = c.defaultX509Cert
-			bind.TLS.TLSCertDir = bind.Hosts[0].TLS.TLSFilename
-		} else {
-			x509dir, err := c.createCertsDir(bind.Name, bind.Hosts)
-			if err != nil {
-				return err
-			}
-			frontends[0].Binds[0].TLS.TLSCert = c.defaultX509Cert
-			frontends[0].Binds[0].TLS.TLSCertDir = x509dir
-		}
+		bind.ALPN = c.global.SSL.ALPN
 	}
 	for _, frontend := range frontends {
 		mapsPrefix := c.mapsDir + "/" + frontend.Name
@@ -295,10 +271,8 @@ func (c *config) BuildFrontendGroup() error {
 		frontend.TLSNoCrtErrorList = frontend.Maps.AddMap(mapsPrefix + "_no_crt.list")
 		frontend.TLSNoCrtErrorPagesMap = frontend.Maps.AddMap(mapsPrefix + "_no_crt_redir.map")
 		frontend.VarNamespaceMap = frontend.Maps.AddMap(mapsPrefix + "_k8s_ns.map")
-		for _, bind := range frontend.Binds {
-			bind.Maps = hatypes.CreateMaps()
-			bind.UseServerList = bind.Maps.AddMap(c.mapsDir + "/" + bind.Name + ".list")
-		}
+		frontend.Bind.CrtList = frontend.Maps.AddMap(mapsPrefix + "_bind_crt.list")
+		frontend.Bind.UseServerList = frontend.Maps.AddMap(mapsPrefix + "_use_server.list")
 	}
 	// Some maps use yes/no answers instead of a list with found/missing keys
 	// This approach avoid overlap:
@@ -411,10 +385,27 @@ func (c *config) BuildFrontendGroup() error {
 				f.RootRedirMap.AppendHostname(host.Hostname, host.RootRedirect)
 			}
 		}
-		for _, bind := range f.Binds {
-			for _, host := range bind.Hosts {
-				bind.UseServerList.AppendHostname(host.Hostname, "")
+		f.Bind.CrtList.AppendItem(c.defaultX509Cert)
+		for _, tls := range f.Bind.TLS {
+			crtFile := tls.CrtFilename
+			if (crtFile == "" || crtFile == c.defaultX509Cert) && tls.CAFilename == "" {
+				// default cert without client cert auth, ignore
+				continue
 			}
+			if crtFile == "" {
+				crtFile = c.defaultX509Cert
+			}
+			var crtListConfig string
+			hostnames := strings.Join(tls.Hostnames, " ")
+			if tls.CAFilename == "" {
+				crtListConfig = fmt.Sprintf("%s %s", crtFile, hostnames)
+			} else {
+				crtListConfig = fmt.Sprintf("%s [ca-file %s verify optional] %s", crtFile, tls.CAFilename, hostnames)
+			}
+			f.Bind.CrtList.AppendItem(crtListConfig)
+		}
+		for _, host := range f.Hosts {
+			f.Bind.UseServerList.AppendHostname(host.Hostname, "")
 		}
 	}
 	if err := writeMaps(fgroup.Maps, c.mapsTemplate); err != nil {
@@ -423,11 +414,6 @@ func (c *config) BuildFrontendGroup() error {
 	for _, f := range frontends {
 		if err := writeMaps(f.Maps, c.mapsTemplate); err != nil {
 			return err
-		}
-		for _, bind := range f.Binds {
-			if err := writeMaps(bind.Maps, c.mapsTemplate); err != nil {
-				return err
-			}
 		}
 	}
 	c.fgroup = fgroup
@@ -462,22 +448,6 @@ func writeMaps(maps *hatypes.HostsMaps, template *template.Config) error {
 		}
 	}
 	return nil
-}
-
-func (c *config) createCertsDir(bindName string, hosts []*hatypes.Host) (string, error) {
-	certs := make([]string, 0, len(hosts))
-	added := map[string]bool{}
-	for _, host := range hosts {
-		filename := host.TLS.TLSFilename
-		if filename != "" && !added[filename] && filename != c.defaultX509Cert {
-			certs = append(certs, host.TLS.TLSFilename)
-			added[filename] = true
-		}
-	}
-	if len(certs) == 0 {
-		return "", nil
-	}
-	return c.bindUtils.CreateX509CertsDir(bindName, certs)
 }
 
 func (c *config) DefaultHost() *hatypes.Host {

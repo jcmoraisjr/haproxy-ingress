@@ -589,12 +589,11 @@ listen _front__tls
     use_backend %[var(req.sslpassback)] unless { var(req.sslpassback) _nomatch }
 {{- end }}
 {{- range $frontend := $frontends }}
-{{- range $bind := $frontend.Binds }}
-{{- if $bind.Hosts }}
-    ## {{ $frontend.Name }}/{{ $bind.Name }}
+{{- if $frontend.Hosts }}
+{{- $bind := $frontend.Bind }}
+    ## {{ $bind.Name }}
     use-server _server{{ $bind.Name }} if { req.ssl_sni -i -f {{ $bind.UseServerList.MatchFile }} }
     server _server{{ $bind.Name }} {{ $bind.Socket }} send-proxy-v2 weight 0
-{{- end }}
 {{- end }}
 {{- end }}
 
@@ -603,12 +602,11 @@ listen _front__tls
     use_backend %[var(req.sslpassback)] unless { var(req.sslpassback) _nomatch }
 {{- end }}
 {{- range $frontend := $frontends }}
-{{- range $bind := $frontend.Binds }}
+{{- $bind := $frontend.Bind }}
 {{- if $bind.UseServerList.HasRegex }}
-    ## {{ $frontend.Name }}/{{ $bind.Name }} wildcard
+    ## {{ $bind.Name }} wildcard
     use-server _server{{ $bind.Name }}_wildcard if { req.ssl_sni -i -m reg -f {{ $bind.UseServerList.RegexFile }} }
     server _server{{ $bind.Name }}_wildcard {{ $bind.Socket }} send-proxy-v2 weight 0
-{{- end }}
 {{- end }}
 {{- end }}
 
@@ -687,19 +685,20 @@ frontend {{ $frontend.Name }}
     mode http
 
 {{- /*------------------------------------*/}}
-{{- range $bind := append $frontend.Binds $fgroup.ToHTTPBind }}
+{{- $bind := $frontend.Bind }}
 {{- if $bind.Socket }}
-{{- $tls := $bind.TLS }}
     bind {{ $bind.Socket }}
         {{- if $bind.ID }} id {{ $bind.ID }}{{ end }}
         {{- if $bind.AcceptProxy }} accept-proxy{{ end }}
-        {{- if or $tls.TLSCert $tls.TLSCertDir }}
-            {{- "" }} ssl alpn {{ $tls.ALPN }}
-            {{- if $tls.TLSCert }} crt {{ $tls.TLSCert }}{{ end }}
-            {{- if $tls.TLSCertDir }} crt {{ $tls.TLSCertDir }}{{ end }}
-        {{- end }}
-        {{- if $tls.CAFilename }} ca-file {{ $tls.CAFilename }} verify optional ca-ignore-err all crt-ignore-err all{{ end }}
+        {{- "" }} ssl alpn {{ $bind.ALPN }}
+        {{- "" }} crt-list {{ $bind.CrtList.MatchFile }}
+        {{- "" }} ca-ignore-err all crt-ignore-err all
 {{- end }}
+{{- $bind := $fgroup.ToHTTPBind }}
+{{- if $bind.Socket }}
+    bind {{ $bind.Socket }}
+        {{- if $bind.ID }} id {{ $bind.ID }}{{ end }}
+        {{- if $bind.AcceptProxy }} accept-proxy{{ end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}

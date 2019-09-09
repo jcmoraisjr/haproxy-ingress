@@ -96,9 +96,9 @@ func TestBuildFrontend(t *testing.T) {
 					Name:    "_front001",
 					Timeout: timeout10,
 					Hosts:   []*Host{h10_1, h10_2},
-					Binds: []*BindConfig{
-						&BindConfig{
-							Hosts: []*Host{h10_1, h10_2},
+					Bind: BindConfig{
+						TLS: []*BindTLSConfig{
+							{Hostnames: []string{h10_1.Hostname, h10_2.Hostname}},
 						},
 					},
 				},
@@ -112,9 +112,9 @@ func TestBuildFrontend(t *testing.T) {
 					Name:    "_front001",
 					Timeout: timeout10,
 					Hosts:   []*Host{h10_1, h10_2},
-					Binds: []*BindConfig{
-						&BindConfig{
-							Hosts: []*Host{h10_1, h10_2},
+					Bind: BindConfig{
+						TLS: []*BindTLSConfig{
+							{Hostnames: []string{h10_1.Hostname, h10_2.Hostname}},
 						},
 					},
 				},
@@ -122,9 +122,9 @@ func TestBuildFrontend(t *testing.T) {
 					Name:    "_front002",
 					Timeout: timeout20,
 					Hosts:   []*Host{h20_1},
-					Binds: []*BindConfig{
-						&BindConfig{
-							Hosts: []*Host{h20_1},
+					Bind: BindConfig{
+						TLS: []*BindTLSConfig{
+							{Hostnames: []string{h20_1.Hostname}},
 						},
 					},
 				},
@@ -138,16 +138,20 @@ func TestBuildFrontend(t *testing.T) {
 					Name:    "_front001",
 					Timeout: timeout10,
 					Hosts:   []*Host{h10CA1_1, h10CA2_1, h10CA2_2},
-					Binds: []*BindConfig{
-						&BindConfig{
-							Hosts: []*Host{h10CA1_1},
-							TLS:   BindTLSConfig{CAHash: "1"},
+					Bind: BindConfig{
+						TLS: []*BindTLSConfig{
+							{
+								CAHash:    "1",
+								Hostnames: []string{h10CA1_1.Hostname},
+							},
+							{
+								CAHash: "2",
+								Hostnames: []string{
+									h10CA2_1.Hostname,
+									h10CA2_2.Hostname,
+								},
+							},
 						},
-						&BindConfig{
-							Hosts: []*Host{h10CA2_1, h10CA2_2},
-							TLS:   BindTLSConfig{CAHash: "2"},
-						},
-						&BindConfig{},
 					},
 				},
 			},
@@ -160,13 +164,22 @@ func TestBuildFrontend(t *testing.T) {
 					Name:    "_front001",
 					Timeout: timeout10,
 					Hosts:   []*Host{h10_1, h10_2, h10CA2_1, h10CA2_2},
-					Binds: []*BindConfig{
-						&BindConfig{
-							Hosts: []*Host{h10_1, h10_2},
-						},
-						&BindConfig{
-							Hosts: []*Host{h10CA2_1, h10CA2_2},
-							TLS:   BindTLSConfig{CAHash: "2"},
+					Bind: BindConfig{
+						TLS: []*BindTLSConfig{
+							{
+								CAHash: "",
+								Hostnames: []string{
+									h10_1.Hostname,
+									h10_2.Hostname,
+								},
+							},
+							{
+								CAHash: "2",
+								Hostnames: []string{
+									h10CA2_1.Hostname,
+									h10CA2_2.Hostname,
+								},
+							},
 						},
 					},
 				},

@@ -34,7 +34,6 @@ import (
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
-	ha_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/helper_test"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	types_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/types/helper_test"
 )
@@ -1127,7 +1126,7 @@ func setup(t *testing.T) *testConfig {
 	c := &testConfig{
 		t:       t,
 		decode:  scheme.Codecs.UniversalDeserializer().Decode,
-		hconfig: haproxy.CreateInstance(logger, &ha_helper.BindUtilsMock{}, haproxy.InstanceOptions{}).Config(),
+		hconfig: haproxy.CreateInstance(logger, haproxy.InstanceOptions{}).Config(),
 		cache:   conv_helper.NewCacheMock(),
 		logger:  logger,
 	}
