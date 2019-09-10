@@ -64,6 +64,64 @@ func TestCreateEndpointsExternalName(t *testing.T) {
 	}
 }
 
+func TestCreateEndpoints(t *testing.T) {
+	testCases := []struct {
+		endpoints   string
+		declarePort string
+		findPort    string
+		expected    []*Endpoint
+	}{
+		// 0
+		{
+			endpoints:   "172.17.0.11,172.17.0.12",
+			declarePort: "svcport:8080:http",
+			findPort:    "8080",
+			expected: []*Endpoint{
+				{IP: "172.17.0.11", Port: 8080},
+				{IP: "172.17.0.12", Port: 8080},
+			},
+		},
+		// 1
+		{
+			endpoints:   "172.17.0.11",
+			declarePort: "svcport:8080:http",
+			findPort:    "svcport",
+			expected: []*Endpoint{
+				{IP: "172.17.0.11", Port: 8080},
+			},
+		},
+		// 2
+		{
+			endpoints:   "172.17.0.12",
+			declarePort: "svcport:8000:http",
+			findPort:    "http",
+			expected: []*Endpoint{
+				{IP: "172.17.0.12", Port: 8000},
+			},
+		},
+	}
+	for _, test := range testCases {
+		c := setup(t)
+		svc, ep := helper_test.CreateService("default/echo", test.declarePort, test.endpoints)
+		cache := &helper_test.CacheMock{
+			SvcList: []*api.Service{svc},
+			EpList:  map[string]*api.Endpoints{"default/echo": ep},
+		}
+		port := FindServicePort(svc, test.findPort)
+		var endpoints []*Endpoint
+		if port != nil {
+			endpoints, _, _ = CreateEndpoints(cache, svc, port)
+		}
+		for _, ep := range endpoints {
+			ep.TargetRef = ""
+		}
+		if !reflect.DeepEqual(endpoints, test.expected) {
+			t.Errorf("endpoints differ: expected=%+v actual=%+v", test.expected, endpoints)
+		}
+		c.teardown()
+	}
+}
+
 type config struct {
 	t *testing.T
 }

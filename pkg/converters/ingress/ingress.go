@@ -23,7 +23,6 @@ import (
 
 	api "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/annotations"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
@@ -218,11 +217,11 @@ func (c *converter) addBackend(source *annotations.Source, hostpath, fullSvcName
 		// from the api.Service object
 		svcPort = svc.Spec.Ports[0].TargetPort.String()
 	}
-	epport := convutils.FindServicePort(svc, svcPort)
-	if epport.String() == "" {
+	port := convutils.FindServicePort(svc, svcPort)
+	if port == nil {
 		return nil, fmt.Errorf("port not found: '%s'", svcPort)
 	}
-	backend := c.haproxy.AcquireBackend(namespace, svcName, epport.String())
+	backend := c.haproxy.AcquireBackend(namespace, svcName, port.TargetPort.String())
 	mapper, found := c.backendAnnotations[backend]
 	if !found {
 		// New backend, initialize with service annotations, giving precedence
@@ -244,13 +243,13 @@ func (c *converter) addBackend(source *annotations.Source, hostpath, fullSvcName
 	// Configure endpoints
 	if !found {
 		if mapper.Get(ingtypes.BackServiceUpstream).Bool() {
-			if addr, err := convutils.CreateSvcEndpoint(svc, epport); err == nil {
+			if addr, err := convutils.CreateSvcEndpoint(svc, port); err == nil {
 				backend.AcquireEndpoint(addr.IP, addr.Port, addr.TargetRef)
 			} else {
 				c.logger.Error("error adding IP of service '%s': %v", fullSvcName, err)
 			}
 		} else {
-			if err := c.addEndpoints(svc, epport, backend); err != nil {
+			if err := c.addEndpoints(svc, port, backend); err != nil {
 				c.logger.Error("error adding endpoints of service '%s': %v", fullSvcName, err)
 			}
 		}
@@ -270,7 +269,7 @@ func (c *converter) addTLS(namespace, secretName string) convtypes.File {
 	return c.options.DefaultSSLFile
 }
 
-func (c *converter) addEndpoints(svc *api.Service, svcPort intstr.IntOrString, backend *hatypes.Backend) error {
+func (c *converter) addEndpoints(svc *api.Service, svcPort *api.ServicePort, backend *hatypes.Backend) error {
 	ready, notReady, err := convutils.CreateEndpoints(c.cache, svc, svcPort)
 	if err != nil {
 		return err
@@ -288,7 +287,8 @@ func (c *converter) addEndpoints(svc *api.Service, svcPort intstr.IntOrString, b
 			return err
 		}
 		for _, pod := range pods {
-			ep := backend.AcquireEndpoint(pod.Status.PodIP, svcPort.IntValue(), pod.Namespace+"/"+pod.Name)
+			// TODO need to find the correct pod's port number
+			ep := backend.AcquireEndpoint(pod.Status.PodIP, svcPort.TargetPort.IntValue(), pod.Namespace+"/"+pod.Name)
 			ep.Weight = 0
 		}
 	}

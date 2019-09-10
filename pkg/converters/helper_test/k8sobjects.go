@@ -26,8 +26,8 @@ import (
 
 // CreateService ...
 func CreateService(name, port, endpoints string) (*api.Service, *api.Endpoints) {
-	sname := strings.Split(name, "/")
-	sport := strings.Split(port, ":")
+	sname := strings.Split(name, "/") // namespace/name of the service
+	sport := strings.Split(port, ":") // numeric-port -or- name:numeric-port -or- name:numeric-port:named-port
 	if len(sport) < 2 {
 		sport = []string{"", port, port}
 	} else if len(sport) < 3 {
@@ -56,7 +56,7 @@ subsets:
 - addresses: []
   ports:
   - name: ` + sport[0] + `
-    port: ` + sport[2] + `
+    port: ` + sport[1] + `
     protocol: TCP`).(*api.Endpoints)
 
 	addr := []api.EndpointAddress{}

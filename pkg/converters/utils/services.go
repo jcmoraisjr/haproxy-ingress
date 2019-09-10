@@ -22,33 +22,28 @@ import (
 	"strconv"
 
 	api "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 )
 
 // FindServicePort ...
-func FindServicePort(svc *api.Service, servicePort string) intstr.IntOrString {
+func FindServicePort(svc *api.Service, servicePort string) *api.ServicePort {
 	for _, port := range svc.Spec.Ports {
-		if port.Name == servicePort {
-			return port.TargetPort
-		}
-	}
-	for _, port := range svc.Spec.Ports {
-		if port.TargetPort.String() == servicePort {
-			return port.TargetPort
+		if port.Name == servicePort || port.TargetPort.String() == servicePort {
+			return &port
 		}
 	}
 	svcPortNumber, err := strconv.ParseInt(servicePort, 10, 0)
 	if err != nil {
-		return intstr.FromString("")
+		return nil
 	}
+	svcPort := int32(svcPortNumber)
 	for _, port := range svc.Spec.Ports {
-		if port.Port == int32(svcPortNumber) {
-			return port.TargetPort
+		if port.Port == svcPort {
+			return &port
 		}
 	}
-	return intstr.FromString("")
+	return nil
 }
 
 // Endpoint ...
@@ -59,7 +54,7 @@ type Endpoint struct {
 }
 
 // CreateEndpoints ...
-func CreateEndpoints(cache types.Cache, svc *api.Service, svcPort intstr.IntOrString) (ready, notReady []*Endpoint, err error) {
+func CreateEndpoints(cache types.Cache, svc *api.Service, svcPort *api.ServicePort) (ready, notReady []*Endpoint, err error) {
 	if svc.Spec.Type == api.ServiceTypeExternalName {
 		ready, err := createEndpointsExternalName(svc, svcPort)
 		return ready, nil, err
@@ -68,43 +63,45 @@ func CreateEndpoints(cache types.Cache, svc *api.Service, svcPort intstr.IntOrSt
 	if err != nil {
 		return nil, nil, err
 	}
-	ready, notReady = createEndpointsService(endpoints, svcPort)
-	return ready, notReady, nil
-}
-
-// CreateSvcEndpoint ...
-func CreateSvcEndpoint(svc *api.Service, svcPort intstr.IntOrString) (endpoint *Endpoint, err error) {
-	port := svcPort.IntValue()
-	if port <= 0 {
-		return nil, fmt.Errorf("invalid port number: %s", svcPort.String())
-	}
-	return newEndpointIP(svc.Spec.ClusterIP, port), nil
-}
-
-func createEndpointsService(endpoints *api.Endpoints, svcPort intstr.IntOrString) (ready, notReady []*Endpoint) {
-	// TODO svcPort.IntValue() doesn't work if svc.targetPort is a pod's named port
 	for _, subset := range endpoints.Subsets {
-		for _, port := range subset.Ports {
-			ssport := int(port.Port)
-			if ssport == svcPort.IntValue() && port.Protocol == api.ProtocolTCP {
+		for _, epPort := range subset.Ports {
+			if matchPort(svcPort, &epPort) {
+				port := int(epPort.Port)
 				for _, addr := range subset.Addresses {
-					ready = append(ready, newEndpointAddr(&addr, ssport))
+					ready = append(ready, newEndpointAddr(&addr, port))
 				}
 				for _, addr := range subset.NotReadyAddresses {
-					notReady = append(notReady, newEndpointAddr(&addr, ssport))
+					notReady = append(notReady, newEndpointAddr(&addr, port))
 				}
 			}
 		}
 	}
-	return ready, notReady
+	return ready, notReady, nil
+}
+
+func matchPort(svcPort *api.ServicePort, epPort *api.EndpointPort) bool {
+	if epPort.Protocol != api.ProtocolTCP {
+		return false
+	}
+	return svcPort.Name == "" || svcPort.Name == epPort.Name
+}
+
+// CreateSvcEndpoint ...
+func CreateSvcEndpoint(svc *api.Service, svcPort *api.ServicePort) (endpoint *Endpoint, err error) {
+	port := svcPort.Port
+	if port <= 0 {
+		return nil, fmt.Errorf("invalid port number: %d", port)
+	}
+	return newEndpointIP(svc.Spec.ClusterIP, int(port)), nil
 }
 
 var lookup = net.LookupIP
 
-func createEndpointsExternalName(svc *api.Service, svcPort intstr.IntOrString) (endpoints []*Endpoint, err error) {
-	port := svcPort.IntValue()
+func createEndpointsExternalName(svc *api.Service, svcPort *api.ServicePort) (endpoints []*Endpoint, err error) {
+	// TODO add support to undeclared ServicePort
+	port := int(svcPort.Port)
 	if port <= 0 {
-		return nil, fmt.Errorf("invalid port number: %s", svcPort.String())
+		return nil, fmt.Errorf("invalid port number: %d", port)
 	}
 	addr, err := lookup(svc.Spec.ExternalName)
 	if err != nil {
