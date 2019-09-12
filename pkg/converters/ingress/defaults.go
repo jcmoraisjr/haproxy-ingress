@@ -29,7 +29,8 @@ func createDefaults() map[string]string {
 		types.HostTimeoutClient:    "50s",
 		types.HostTimeoutClientFin: "50s",
 		//
-		types.BackBackendServerSlotsInc: "32",
+		types.BackBackendServerSlotsInc: "1",
+		types.BackSlotsMinFree:          "6",
 		types.BackBalanceAlgorithm:      "roundrobin",
 		types.BackCorsAllowHeaders:      "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization",
 		types.BackCorsAllowMethods:      "GET, PUT, POST, DELETE, PATCH, OPTIONS",
