@@ -113,10 +113,10 @@ func TestSyncSvcNamedPort(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	c.createSvc1("default/echo", "httpsvc:1001:8080", "172.17.1.101")
+	c.createSvc1("default/echo", "svcport:8080:http", "172.17.1.101")
 	c.Sync(
-		c.createIng1("default/echo1", "echo1.example.com", "/", "echo:httpsvc"),
-		c.createIng1("default/echo2", "echo2.example.com", "/", "echo:1001"),
+		c.createIng1("default/echo1", "echo1.example.com", "/", "echo:http"),
+		c.createIng1("default/echo2", "echo2.example.com", "/", "echo:svcport"),
 		c.createIng1("default/echo3", "echo3.example.com", "/", "echo:8080"),
 		c.createIng1("default/echo4", "echo4.example.com", "/", "echo:9000"),
 	)
@@ -125,21 +125,21 @@ func TestSyncSvcNamedPort(t *testing.T) {
 - hostname: echo1.example.com
   paths:
   - path: /
-    backend: default_echo_8080
+    backend: default_echo_http
 - hostname: echo2.example.com
   paths:
   - path: /
-    backend: default_echo_8080
+    backend: default_echo_http
 - hostname: echo3.example.com
   paths:
   - path: /
-    backend: default_echo_8080
+    backend: default_echo_http
 - hostname: echo4.example.com
   paths: []
 `)
 
 	c.compareConfigBack(`
-- id: default_echo_8080
+- id: default_echo_http
   endpoints:
   - ip: 172.17.1.101
     port: 8080
