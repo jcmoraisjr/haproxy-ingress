@@ -34,6 +34,7 @@ type Global struct {
 	Healthz         HealthzConfig
 	Stats           StatsConfig
 	StrictHost      bool
+	UseHTX          bool
 	CustomConfig    []string
 	CustomDefaults  []string
 	CustomFrontend  []string
@@ -501,6 +502,7 @@ type ServerConfig struct {
 	MaxConn     int
 	MaxQueue    int
 	Protocol    string
+	Secure      bool
 	SendProxy   string
 }
 

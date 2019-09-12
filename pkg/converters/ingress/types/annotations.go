@@ -60,6 +60,7 @@ const (
 	BackAuthTLSCertHeader     = "auth-tls-cert-header"
 	BackAuthType              = "auth-type"
 	BackBackendCheckInterval  = "backend-check-interval"
+	BackBackendProtocol       = "backend-protocol"
 	BackBackendServerSlotsInc = "backend-server-slots-increment"
 	BackBalanceAlgorithm      = "balance-algorithm"
 	BackBlueGreenBalance      = "blue-green-balance"
