@@ -157,10 +157,10 @@ HAProxy configuration. In order to circumvent this, always configure the slot in
 least as much as the number of replicas of the deployment that need to use affinity. This
 limitation was removed on v0.6.
 
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-cookie
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-cookie
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-cookie
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-cookie
 * https://www.haproxy.com/blog/load-balancing-affinity-persistence-sticky-sessions-what-you-need-to-know/
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#dynamic-cookie-key
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#dynamic-cookie-key
 
 ### Auth TLS
 
@@ -216,7 +216,7 @@ in the load balancing. The maximum weight value is `256`.
 
 See also the [example](/examples/blue-green) page.
 
-http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-weight
+http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-weight
 
 ### CORS
 
@@ -252,10 +252,10 @@ Configurations of connection limit and timeout.
 * `ingress.kubernetes.io/maxqueue-server`: Defines the maximum number of connections should wait in the queue of a server. When this number is reached, new requests will be redispached to another server, breaking sticky session if configured. The queue will be unlimited if the annotation is not specified or a value lesser than or equal zero is used.
 * `ingress.kubernetes.io/timeout-queue`: Defines how much time a connection should wait on a queue before a 503 error is returned to the client. The unit defaults to milliseconds if missing, change the unit with `s`, `m`, `h`, ... suffix. The configmap `timeout-queue` option is used as the default value.
 
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-maxconn
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-maxqueue
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-timeout%20queue
-* Time suffix: http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#2.4
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-maxconn
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-maxqueue
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-timeout%20queue
+* Time suffix: http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#2.4
 
 ### OAuth
 
@@ -282,11 +282,11 @@ Define if the upstream backends support proxy protocol and what version of the p
 
 * `ingress.kubernetes.io/proxy-protocol`: The proxy protocol version the backend expect. Supported values are `v1`, `v2`, `v2-ssl`, `v2-ssl-cn` or `no`. The default behavior if not declared is that the protocol is not supported by the backends and should not be used.
 
-* http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-send-proxy
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-send-proxy-v2
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-send-proxy-v2-ssl
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-send-proxy-v2-ssl-cn
+* http://www.haproxy.org/download/1.9/doc/proxy-protocol.txt
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-send-proxy
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-send-proxy-v2
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-send-proxy-v2-ssl
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-send-proxy-v2-ssl-cn
 
 ### Secure Backend
 
@@ -354,16 +354,16 @@ options to be applied.
 
 * `ingress.kubernetes.io/agent-check-port`: Defines the port on which the agent is
 listening. This option is required in order to use an agent check.
-See also: http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-agent-port
+See also: http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-agent-port
 * `ingress.kubernetes.io/agent-check-addr`: Defines the address for agent checks.
 If omitted, the server address will be used.
-See also: http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-agent-check
+See also: http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-agent-check
 * `ingress.kubernetes.io/agent-check-interval`: Defines the interval between agent checks.
 If omitted, the default of 2 seconds will be used.
-See also: http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-agent-inter
+See also: http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-agent-inter
 * `ingress.kubernetes.io/agent-check-send`: Defines a string to be sent to the agent
 upon connection.
-See also: http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-agent-send
+See also: http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-agent-send
 
 ### Health Check
 
@@ -371,22 +371,22 @@ Controls server health checks on a per-backend basis.
 
 * `ingress.kubernetes.io/health-check-uri`: If specified, this changes the default TCP health
 into an HTTP health check.
-See also: http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4.2-option%20httpchk
+See also: http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4.2-option%20httpchk
 * `ingress.kubernetes.io/health-check-addr`: Defines the address for health checks.
 If omitted, the server addr will be used.
-See also: http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-addr
+See also: http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-addr
 * `ingress.kubernetes.io/health-check-port`: Defines the port for health checks.
 If omitted, the server port will be used.
-See also: http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-port
+See also: http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-port
 * `ingress.kubernetes.io/health-check-interval`: Defines the interval between health checks.
 If omitted, the value specified in the [ConfigMap](#backend-check-interval) will be used.
-See also: http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-inter
+See also: http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-inter
 * `ingress.kubernetes.io/health-check-rise-count`: The number of successful health checks
 that must occur before a server is marked operational. If omitted, the default value is 2.
-See also: http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-rise
+See also: http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-rise
 * `ingress.kubernetes.io/health-check-fall-count`: The number of failed health checks that
 must occur before a server is marked as dead. If omitted, the default value is 3.
-See also: http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-fall
+See also: http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-fall
 
 ## ConfigMap
 
@@ -486,7 +486,7 @@ Annotation on ingress resources:
 
 * `ingress.kubernetes.io/balance-algorithm`
 
-http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-balance
+http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-balance
 
 ### backend-check-interval
 
@@ -495,7 +495,7 @@ Define the interval between TCP health checks to the backend using `inter` optio
 Default value is `2s` - two seconds between two consecutive checks. Configure an
 empty string to disable health checks.
 
-http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-inter
+http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-inter
 
 ### bind-ip-addr
 
@@ -506,7 +506,7 @@ Define listening IPv4/IPv6 address on several HAProxy frontends. All IP addresse
 `bind-ip-addr-healthz`: IP address of the health check URL. See also [`healthz-port`](#healthz-port).
 `bind-ip-addr-stats`: IP address of the statistics page. See also [`stats-port`](#stats).
 
-http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-bind
+http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-bind
 
 ### Configuration snippet
 
@@ -555,7 +555,7 @@ Define a secret key used with the IP address and port number of a backend server
 to dynamically create a cookie to that server. Only useful on cookie based
 server affinity. See also [affinity](#affinity) annotations.
 
-http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#dynamic-cookie-key
+http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#dynamic-cookie-key
 
 ### dns-resolvers
 
@@ -583,8 +583,8 @@ See also the [example](/examples/dns-service-discovery) page.
 
 Reference:
 
-* https://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.3.2
-* https://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.2-resolvers
+* https://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.3.2
+* https://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-resolvers
 * https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/
 * https://kubernetes.io/docs/concepts/services-networking/service/#headless-services
 
@@ -618,7 +618,7 @@ Annotations on ingress resources:
 
 * `ingress.kubernetes.io/slots-increment`: A per backend slot increment
 
-http://cbonte.github.io/haproxy-dconv/1.8/management.html#9.3
+http://cbonte.github.io/haproxy-dconv/1.9/management.html#9.3
 
 ### forwardfor
 
@@ -631,14 +631,14 @@ Use `ignore` to skip any check. `ifmissing` should be used to add
 `X-Forwarded-For` with client's IP address only if this header is not defined.
 Only use `ignore` or `ifmissing` on trusted networks.
 
-http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-option%20forwardfor
+http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-option%20forwardfor
 
 ### healthz-port
 
 Define the port number HAProxy should listen to in order to answer for health checking
 requests. Use `/healthz` as the request path.
 
-http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-monitor-uri
+http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-monitor-uri
 
 ### hsts
 
@@ -685,8 +685,8 @@ uptime of backends, qty of requests and so on.
 This is an experimental feature and has currently some issues if using with `dynamic-scaling`:
 an old state with disabled servers will disable them in the new configuration.
 
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-server-state-file
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-load-server-state-from-file
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-server-state-file
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-load-server-state-from-file
 
 ### log-format
 
@@ -697,14 +697,14 @@ Customize the tcp, http or https log format using log format variables. Only use
 * `http-log-format`: log format of all HTTP proxies, defaults to HAProxy default HTTP log format.
 * `https-log-format`: log format of TCP proxy used to inspect SNI extention. Use `default` to configure default TCP log format, defaults to not log.
 
-https://cbonte.github.io/haproxy-dconv/1.8/configuration.html#8.2.4
+https://cbonte.github.io/haproxy-dconv/1.9/configuration.html#8.2.4
 
 ### max-connections
 
 Define the maximum number of concurrent connections on all proxies.
 Defaults to `2000` connections, which is also the HAProxy default configuration.
 
-http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.2-maxconn
+http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.2-maxconn
 
 ### modsecurity-endpoints
 
@@ -722,8 +722,8 @@ See also:
 
 Reference:
 
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#9.3
-* https://www.haproxy.org/download/1.8/doc/SPOE.txt
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#9.3
+* https://www.haproxy.org/download/1.9/doc/SPOE.txt
 * https://github.com/jcmoraisjr/modsecurity-spoa
 
 ### modsecurity
@@ -738,7 +738,7 @@ Global configmap options:
 * `modsecurity-timeout-idle`: Defines the maximum time to wait before close an idle connection. Default value is `30s`.
 * `modsecurity-timeout-processing`: Defines the maximum time to wait for the whole ModSecurity processing. Default value is `1s`.
 
-* https://www.haproxy.org/download/1.8/doc/SPOE.txt
+* https://www.haproxy.org/download/1.9/doc/SPOE.txt
 
 ### nbproc
 
@@ -762,9 +762,9 @@ See also [nbthread](#nbthread).
 
 Referece:
 
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-nbproc
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4-bind-process
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-cpu-map
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-nbproc
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-bind-process
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-cpu-map
 
 ### nbthread
 
@@ -779,8 +779,8 @@ Note that multithreaded process is a HAProxy experimental feature!
 
 Reference:
 
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-nbthread
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-cpu-map
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-nbthread
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-cpu-map
 
 ### no-tls-redirect-locations
 
@@ -801,20 +801,20 @@ Since 0.4 a suffix can be added to the size, so `10m` means
 
 Since 0.7 `unlimited` can be used to overwrite any global body size limit.
 
-http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#7.3.6-req.body_size
+http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#7.3.6-req.body_size
 
 ### ssl-ciphers
 
 Set the list of cipher algorithms used during the SSL/TLS handshake.
 
-http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-ssl-default-bind-ciphers
+http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-ssl-default-bind-ciphers
 
 ### ssl-dh-default-max-size
 
 Define the maximum size of a temporary DH parameters used for key exchange.
 Only used if `ssl-dh-param` isn't provided.
 
-http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#tune.ssl.default-dh-param
+http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#tune.ssl.default-dh-param
 
 ### ssl-dh-param
 
@@ -840,7 +840,7 @@ kubectl create secret generic ingress-dh-param --from-file dhparam.pem
 Then, in the haproxy ingress configuration, `ssl-dh-param` should reference the
 resulting secret.
 
-http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-ssl-dh-param-file
+http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-ssl-dh-param-file
 
 ### ssl-engine
 
@@ -852,8 +852,8 @@ the ssl-engine used supports it.
 
 Reference:
 
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#ssl-engine
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#ssl-mode-async
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#ssl-engine
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#ssl-mode-async
 
 ### ssl-headers-prefix
 
@@ -939,7 +939,7 @@ Configure the log format to be either rfc5424 ( default ) or rfc3164
 ### syslog-tag
 
 Configure the tag field in the syslog header to the supplied string.
-See: http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-log-tag
+See: http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-log-tag
 
 ### timeout
 
@@ -958,14 +958,14 @@ Define timeout configurations:
 
 Reference:
 
-* `timeout-stop` - http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-hard-stop-after
+* `timeout-stop` - http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-hard-stop-after
 
 ### tls-alpn
 
 Defines the TLS ALPN extension advertisement. The default value is `h2,http/1.1` which enables
 HTTP/2 on the client side.
 
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.1-alpn
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.1-alpn
 
 ### use-proxy-protocol
 
@@ -975,8 +975,8 @@ Define if HAProxy is behind another proxy that use the PROXY protocol. If `true`
 The stats endpoint (defaults to port `1936`) has it's own [`stats-proxy-protocol`](#stats)
 configuration.
 
-* http://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.1-accept-proxy
-* http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.1-accept-proxy
+* http://www.haproxy.org/download/1.9/doc/proxy-protocol.txt
 
 ### var-namespace
 
@@ -1126,7 +1126,7 @@ The value of the configmap entry is a colon separated list of the following item
 
 1. `<namespace>/<service-name>`, mandatory, is the well known notation of the service that will receive incoming connections.
 2. `<portnumber>`, mandatory, is the port number the upstream service is listening - this is not related to the listening port of HAProxy.
-3. `<in-proxy>`, optional, should be defined as `PROXY` if HAProxy should expect requests using the [PROXY](http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt) protocol. Leave empty to not use PROXY protocol. This is usually used only if there is another load balancer in front of HAProxy which supports the PROXY protocol. PROXY protocol v1 and v2 are supported.
+3. `<in-proxy>`, optional, should be defined as `PROXY` if HAProxy should expect requests using the [PROXY](http://www.haproxy.org/download/1.9/doc/proxy-protocol.txt) protocol. Leave empty to not use PROXY protocol. This is usually used only if there is another load balancer in front of HAProxy which supports the PROXY protocol. PROXY protocol v1 and v2 are supported.
 4. `<out-proxy>`, optional, should be defined as `PROXY` or `PROXY-V2` if the upstream service expect connections using the PROXY protocol v2. Use `PROXY-V1` instead if the upstream service only support v1 protocol. Leave empty to connect without using the PROXY protocol.
 5. `<namespace/secret-name>`, optional, used to configure SSL/TLS over the TCP connection. Secret should have `tls.crt` and `tls.key` pair used on TLS handshake. Leave empty to not use ssl-offload.
 
