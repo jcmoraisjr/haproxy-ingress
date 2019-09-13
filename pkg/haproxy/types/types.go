@@ -225,7 +225,7 @@ type FrontendGroup struct {
 // Frontend ...
 type Frontend struct {
 	Name  string
-	Binds []*BindConfig
+	Bind  BindConfig
 	Hosts []*Host
 	//
 	Timeout HostTimeoutConfig
@@ -247,22 +247,22 @@ type BindConfig struct {
 	Name   string
 	Socket string
 	ID     int
-	Hosts  []*Host
 	//
 	AcceptProxy bool
-	TLS         BindTLSConfig
+	ALPN        string
+	TLS         []*BindTLSConfig
 	//
-	Maps          *HostsMaps
 	UseServerList *HostsMap
+	CrtList       *HostsMap
 }
 
 // BindTLSConfig ...
 type BindTLSConfig struct {
-	ALPN       string
-	CAFilename string
-	CAHash     string
-	TLSCert    string
-	TLSCertDir string
+	CAFilename  string
+	CAHash      string
+	CrtFilename string
+	CrtHash     string
+	Hostnames   []string
 }
 
 // Host ...

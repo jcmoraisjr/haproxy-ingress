@@ -21,7 +21,6 @@ import (
 	"os/exec"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
-	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
@@ -44,10 +43,9 @@ type Instance interface {
 }
 
 // CreateInstance ...
-func CreateInstance(logger types.Logger, bindUtils hatypes.BindUtils, options InstanceOptions) Instance {
+func CreateInstance(logger types.Logger, options InstanceOptions) Instance {
 	return &instance{
 		logger:       logger,
-		bindUtils:    bindUtils,
 		options:      &options,
 		templates:    template.CreateConfig(),
 		mapsTemplate: template.CreateConfig(),
@@ -57,7 +55,6 @@ func CreateInstance(logger types.Logger, bindUtils hatypes.BindUtils, options In
 
 type instance struct {
 	logger       types.Logger
-	bindUtils    hatypes.BindUtils
 	options      *InstanceOptions
 	templates    *template.Config
 	mapsTemplate *template.Config
@@ -99,7 +96,7 @@ func (i *instance) ParseTemplates() error {
 
 func (i *instance) Config() Config {
 	if i.curConfig == nil {
-		config := createConfig(i.bindUtils, options{
+		config := createConfig(options{
 			mapsTemplate: i.mapsTemplate,
 			mapsDir:      i.mapsDir,
 		})

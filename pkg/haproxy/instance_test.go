@@ -27,7 +27,6 @@ import (
 	"github.com/kylelemons/godebug/diff"
 	yaml "gopkg.in/yaml.v2"
 
-	ha_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/helper_test"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types/helper_test"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
@@ -480,7 +479,7 @@ func TestInstanceGlobalBind(t *testing.T) {
 		// 0
 		{
 			expectedHTTP:  "bind :0",
-			expectedHTTPS: "bind :0 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem",
+			expectedHTTPS: "bind :0 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all",
 		},
 		// 1
 		{
@@ -490,7 +489,7 @@ func TestInstanceGlobalBind(t *testing.T) {
 				AcceptProxy: true,
 			},
 			expectedHTTP:  "bind :80 accept-proxy",
-			expectedHTTPS: "bind :443 accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem",
+			expectedHTTPS: "bind :443 accept-proxy ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all",
 		},
 		// 2
 		{
@@ -501,7 +500,7 @@ func TestInstanceGlobalBind(t *testing.T) {
 				HTTPSPort:   443,
 			},
 			expectedHTTP:  "bind 127.0.0.1:80",
-			expectedHTTPS: "bind 127.0.0.1:443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem",
+			expectedHTTPS: "bind 127.0.0.1:443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all",
 		},
 	}
 	for _, test := range testCases {
@@ -656,22 +655,11 @@ backend d1_app_8080
     http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload" if https-request
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
-listen _front__tls
-    mode tcp
-    bind :443
-    tcp-request inspect-delay 5s
-    tcp-request content accept if { req.ssl_hello_type 1 }
-    ## _front001/_socket001
-    use-server _server_socket001 if { req.ssl_sni -i -f /etc/haproxy/maps/_socket001.list }
-    server _server_socket001 unix@/var/run/_socket001.sock send-proxy-v2 weight 0
-    # default backend
-    server _default_server_socket002 unix@/var/run/_socket002.sock send-proxy-v2
 <<frontend-http>>
     default_backend _error404
 frontend _front001
     mode http
-    bind unix@/var/run/_socket001.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem ca-file /var/haproxy/ssl/ca.pem verify optional ca-ignore-err all crt-ignore-err all
-    bind unix@/var/run/_socket002.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
+    bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all
     bind :8000 id 11
     acl local-offload ssl_fc
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
@@ -826,7 +814,7 @@ backend _default_backend
     default_backend _default_backend
 frontend _front001
     mode http
-    bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
+    bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-var(txn.namespace) var(req.base),map_beg(/etc/haproxy/maps/_front001_k8s_ns.map,-)
@@ -841,6 +829,9 @@ frontend _front001
 `)
 	c.checkMap("_global_https_redir.map", `
 d2.local/app yes
+`)
+	c.checkMap("_front001_bind_crt.list", `
+/var/haproxy/ssl/certs/default.pem
 `)
 	c.checkMap("_front001_k8s_ns.map", `
 d2.local/app d2
@@ -990,7 +981,7 @@ backend _default_backend
     default_backend _default_backend
 frontend _front001
     mode http
-    bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem crt /var/haproxy/certs/_public
+    bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-var(txn.namespace) var(req.base),map_beg(/etc/haproxy/maps/_front001_k8s_ns.map,-)
@@ -1015,12 +1006,11 @@ d1.local/ d1
 d2.local/app -
 `)
 
-	c.checkCerts(`
-certdirs:
-- dir: /var/haproxy/certs/_public
-  certs:
-  - /var/haproxy/ssl/certs/d1.pem
-  - /var/haproxy/ssl/certs/d2.pem`)
+	c.checkMap("_front001_bind_crt.list", `
+/var/haproxy/ssl/certs/default.pem
+/var/haproxy/ssl/certs/d1.pem d1.local
+/var/haproxy/ssl/certs/d2.pem d2.local
+`)
 
 	c.logger.CompareLogging(defaultLogging)
 }
@@ -1068,26 +1058,11 @@ backend _default_backend
     mode http
     server s0 172.17.0.99:8080 weight 100
 <<backend-errors>>
-listen _front__tls
-    mode tcp
-    bind :443
-    tcp-request inspect-delay 5s
-    tcp-request content accept if { req.ssl_hello_type 1 }
-    ## _front001/_socket001
-    use-server _server_socket001 if { req.ssl_sni -i -f /etc/haproxy/maps/_socket001.list }
-    server _server_socket001 unix@/var/run/_socket001.sock send-proxy-v2 weight 0
-    ## _front001/_socket002
-    use-server _server_socket002 if { req.ssl_sni -i -f /etc/haproxy/maps/_socket002.list }
-    server _server_socket002 unix@/var/run/_socket002.sock send-proxy-v2 weight 0
-    # default backend
-    server _default_server_socket003 unix@/var/run/_socket003.sock send-proxy-v2
 <<frontend-http>>
     default_backend _default_backend
 frontend _front001
     mode http
-    bind unix@/var/run/_socket001.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem ca-file /var/haproxy/ssl/ca/d1.local.pem verify optional ca-ignore-err all crt-ignore-err all
-    bind unix@/var/run/_socket002.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem ca-file /var/haproxy/ssl/ca/d2.local.pem verify optional ca-ignore-err all crt-ignore-err all
-    bind unix@/var/run/_socket003.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
+    bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     <<https-headers>>
     http-request set-header x-ha-base %[ssl_fc_sni]%[path]
@@ -1109,17 +1084,16 @@ frontend _front001
 <<support>>
 `)
 
-	c.checkMap("_socket001.list", `
-d1.local
-`)
-	c.checkMap("_socket002.list", `
-d2.local
-`)
 	c.checkMap("_global_http_front.map", `
 `)
 	c.checkMap("_global_https_redir.map", `
 d1.local/ yes
 d2.local/ yes
+`)
+	c.checkMap("_front001_bind_crt.list", `
+/var/haproxy/ssl/certs/default.pem
+/var/haproxy/ssl/certs/default.pem [ca-file /var/haproxy/ssl/ca/d1.local.pem verify optional] d1.local
+/var/haproxy/ssl/certs/default.pem [ca-file /var/haproxy/ssl/ca/d2.local.pem verify optional] d2.local
 `)
 	c.checkMap("_front001_host.map", `
 `)
@@ -1218,22 +1192,19 @@ listen _front__tls
     bind :443
     tcp-request inspect-delay 5s
     tcp-request content accept if { req.ssl_hello_type 1 }
-    ## _front001/_socket001
-    use-server _server_socket001 if { req.ssl_sni -i -f /etc/haproxy/maps/_socket001.list }
-    server _server_socket001 unix@/var/run/_socket001.sock send-proxy-v2 weight 0
-    ## _front002/_socket002
-    use-server _server_socket002 if { req.ssl_sni -i -f /etc/haproxy/maps/_socket002.list }
-    server _server_socket002 unix@/var/run/_socket002.sock send-proxy-v2 weight 0
-    ## _front002/_socket003
-    use-server _server_socket003 if { req.ssl_sni -i -f /etc/haproxy/maps/_socket003.list }
-    server _server_socket003 unix@/var/run/_socket003.sock send-proxy-v2 weight 0
+    ## _front001_socket
+    use-server _server_front001_socket if { req.ssl_sni -i -f /etc/haproxy/maps/_front001_use_server.list }
+    server _server_front001_socket unix@/var/run/_front001_socket.sock send-proxy-v2 weight 0
+    ## _front002_socket
+    use-server _server_front002_socket if { req.ssl_sni -i -f /etc/haproxy/maps/_front002_use_server.list }
+    server _server_front002_socket unix@/var/run/_front002_socket.sock send-proxy-v2 weight 0
     # default backend
-    server _default_server_socket003 unix@/var/run/_socket003.sock send-proxy-v2
+    server _default_server_front001_socket unix@/var/run/_front001_socket.sock send-proxy-v2
 <<frontend-http>>
     default_backend _default_backend
 frontend _front001
     mode http
-    bind unix@/var/run/_socket001.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem ca-file /var/haproxy/ssl/ca/d1.local.pem verify optional ca-ignore-err all crt-ignore-err all
+    bind unix@/var/run/_front001_socket.sock accept-proxy ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all
     timeout client 1s
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     <<https-headers>>
@@ -1250,8 +1221,7 @@ frontend _front001
     default_backend _default_backend
 frontend _front002
     mode http
-    bind unix@/var/run/_socket002.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem crt /var/haproxy/certs/_socket002 ca-file /var/haproxy/ssl/ca/d2.local.pem verify optional ca-ignore-err all crt-ignore-err all
-    bind unix@/var/run/_socket003.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
+    bind unix@/var/run/_front002_socket.sock accept-proxy ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front002_bind_crt.list ca-ignore-err all crt-ignore-err all
     timeout client 2s
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front002_host.map,_nomatch)
     <<https-headers>>
@@ -1274,16 +1244,22 @@ frontend _front002
 <<support>>
 `)
 
-	c.checkMap("_socket001.list", `
+	c.checkMap("_front001_use_server.list", `
 d1.local
 `)
-	c.checkMap("_socket002.list", `
+	c.checkMap("_front002_use_server.list", `
 d21.local
 d22.local
-`)
-	c.checkMap("_socket003.list", `
 d3.local
 d4.local
+`)
+	c.checkMap("_front001_bind_crt.list", `
+/var/haproxy/ssl/certs/default.pem
+/var/haproxy/ssl/certs/default.pem [ca-file /var/haproxy/ssl/ca/d1.local.pem verify optional] d1.local
+`)
+	c.checkMap("_front002_bind_crt.list", `
+/var/haproxy/ssl/certs/default.pem
+/var/haproxy/ssl/certs/d.pem [ca-file /var/haproxy/ssl/ca/d2.local.pem verify optional] d21.local d22.local
 `)
 	c.checkMap("_global_http_front.map", `
 d1.local/ d_appca_8080
@@ -1331,12 +1307,6 @@ d22.local http://d22.local/error.html
 d21.local http://d21.local/error.html
 d22.local http://d22.local/error.html
 `)
-
-	c.checkCerts(`
-certdirs:
-- dir: /var/haproxy/certs/_socket002
-  certs:
-  - /var/haproxy/ssl/certs/d.pem`)
 
 	c.logger.CompareLogging(defaultLogging)
 }
@@ -1449,7 +1419,7 @@ backend d1_app_8080
     default_backend _error404
 frontend _front001
     mode http
-    bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
+    bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-header X-Forwarded-Proto https
     http-request del-header X-SSL-Client-CN
@@ -1511,12 +1481,12 @@ listen _front__tls
     tcp-request content accept if { req.ssl_hello_type 1 }
     use_backend %[var(req.sslpassback)] unless { var(req.sslpassback) _nomatch }
     # default backend
-    server _default_server_socket001 unix@/var/run/_socket001.sock send-proxy-v2
+    server _default_server_front001_socket unix@/var/run/_front001_socket.sock send-proxy-v2
 <<frontend-http>>
     default_backend _error404
 frontend _front001
     mode http
-    bind unix@/var/run/_socket001.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
+    bind unix@/var/run/_front001_socket.sock accept-proxy ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-header X-Forwarded-Proto https
     http-request del-header X-SSL-Client-CN
@@ -1536,6 +1506,9 @@ d3.local/ d3_app-http_8080`)
 	c.checkMap("_global_https_redir.map", `
 d2.local/ yes
 d3.local/ no`)
+	c.checkMap("_front001_bind_crt.list", `
+/var/haproxy/ssl/certs/default.pem
+`)
 
 	c.logger.CompareLogging(defaultLogging)
 }
@@ -1588,7 +1561,7 @@ frontend _front_http
     default_backend _error404
 frontend _front001
     mode http
-    bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
+    bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
     http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/_front001_root_redir.map,_nomatch)
@@ -1668,7 +1641,7 @@ backend d3_app_8080
     default_backend _error404
 frontend _front001
     mode http
-    bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
+    bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-var(req.hostbackend) var(req.base),map_reg(/etc/haproxy/maps/_front001_host_regex.map,_nomatch) if { var(req.hostbackend) _nomatch }
@@ -1739,7 +1712,7 @@ backend d2_app_8080
     default_backend _error404
 frontend _front001
     mode http
-    bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
+    bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     <<https-headers>>
@@ -2179,26 +2152,20 @@ listen _front__tls
     bind :443
     tcp-request inspect-delay 5s
     tcp-request content accept if { req.ssl_hello_type 1 }
-    ## _front001/_socket001
-    use-server _server_socket001 if { req.ssl_sni -i -f /etc/haproxy/maps/_socket001.list }
-    server _server_socket001 unix@/var/run/_socket001.sock send-proxy-v2 weight 0
-    ## _front001/_socket002
-    use-server _server_socket002 if { req.ssl_sni -i -f /etc/haproxy/maps/_socket002.list }
-    server _server_socket002 unix@/var/run/_socket002.sock send-proxy-v2 weight 0
-    ## _front002/_socket003
-    use-server _server_socket003 if { req.ssl_sni -i -f /etc/haproxy/maps/_socket003.list }
-    server _server_socket003 unix@/var/run/_socket003.sock send-proxy-v2 weight 0
-    ## _front001/_socket001 wildcard
-    use-server _server_socket001_wildcard if { req.ssl_sni -i -m reg -f /etc/haproxy/maps/_socket001_regex.list }
-    server _server_socket001_wildcard unix@/var/run/_socket001.sock send-proxy-v2 weight 0
-    ## _front001/_socket002 wildcard
-    use-server _server_socket002_wildcard if { req.ssl_sni -i -m reg -f /etc/haproxy/maps/_socket002_regex.list }
-    server _server_socket002_wildcard unix@/var/run/_socket002.sock send-proxy-v2 weight 0
-    ## _front002/_socket003 wildcard
-    use-server _server_socket003_wildcard if { req.ssl_sni -i -m reg -f /etc/haproxy/maps/_socket003_regex.list }
-    server _server_socket003_wildcard unix@/var/run/_socket003.sock send-proxy-v2 weight 0
+    ## _front001_socket
+    use-server _server_front001_socket if { req.ssl_sni -i -f /etc/haproxy/maps/_front001_use_server.list }
+    server _server_front001_socket unix@/var/run/_front001_socket.sock send-proxy-v2 weight 0
+    ## _front002_socket
+    use-server _server_front002_socket if { req.ssl_sni -i -f /etc/haproxy/maps/_front002_use_server.list }
+    server _server_front002_socket unix@/var/run/_front002_socket.sock send-proxy-v2 weight 0
+    ## _front001_socket wildcard
+    use-server _server_front001_socket_wildcard if { req.ssl_sni -i -m reg -f /etc/haproxy/maps/_front001_use_server_regex.list }
+    server _server_front001_socket_wildcard unix@/var/run/_front001_socket.sock send-proxy-v2 weight 0
+    ## _front002_socket wildcard
+    use-server _server_front002_socket_wildcard if { req.ssl_sni -i -m reg -f /etc/haproxy/maps/_front002_use_server_regex.list }
+    server _server_front002_socket_wildcard unix@/var/run/_front002_socket.sock send-proxy-v2 weight 0
     # default backend
-    server _default_server_socket001 unix@/var/run/_socket001.sock send-proxy-v2
+    server _default_server_front002_socket unix@/var/run/_front002_socket.sock send-proxy-v2
 frontend _front_http
     mode http
     bind :80
@@ -2217,8 +2184,7 @@ frontend _front_http
     default_backend _error404
 frontend _front001
     mode http
-    bind unix@/var/run/_socket001.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
-    bind unix@/var/run/_socket002.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem ca-file /var/haproxy/ssl/ca/d1.local.pem verify optional ca-ignore-err all crt-ignore-err all
+    bind unix@/var/run/_front001_socket.sock accept-proxy ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-var(req.hostbackend) var(req.base),map_reg(/etc/haproxy/maps/_front001_host_regex.map,_nomatch) if { var(req.hostbackend) _nomatch }
@@ -2240,7 +2206,7 @@ frontend _front001
     default_backend _error404
 frontend _front002
     mode http
-    bind unix@/var/run/_socket003.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
+    bind unix@/var/run/_front002_socket.sock accept-proxy ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front002_bind_crt.list ca-ignore-err all crt-ignore-err all
     timeout client 10s
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front002_host.map,_nomatch)
@@ -2255,20 +2221,16 @@ frontend _front002
 <<support>>
 `)
 
-	c.checkMap("_socket001.list", `
+	c.checkMap("_front001_use_server.list", `
 d1.local
 `)
-	c.checkMap("_socket002.list", `
+	c.checkMap("_front002_use_server.list", `
 `)
-	c.checkMap("_socket003.list", `
-`)
-	c.checkMap("_socket001_regex.list", `
+	c.checkMap("_front001_use_server_regex.list", `
 ^[^.]+\.app\.d1\.local$
-`)
-	c.checkMap("_socket002_regex.list", `
 ^[^.]+\.sub\.d1\.local$
 `)
-	c.checkMap("_socket003_regex.list", `
+	c.checkMap("_front002_use_server_regex.list", `
 ^[^.]+\.d2\.local$
 `)
 	c.checkMap("_global_http_front.map", `
@@ -2333,7 +2295,6 @@ d1.local/ d1_app_8080
 type testConfig struct {
 	t          *testing.T
 	logger     *helper_test.LoggerMock
-	bindUtils  *ha_helper.BindUtilsMock
 	instance   Instance
 	config     Config
 	tempdir    string
@@ -2347,7 +2308,7 @@ func setup(t *testing.T) *testConfig {
 		t.Errorf("error creating tempdir: %v", err)
 	}
 	configfile := tempdir + "/haproxy.cfg"
-	instance := CreateInstance(logger, &ha_helper.BindUtilsMock{}, InstanceOptions{
+	instance := CreateInstance(logger, InstanceOptions{
 		HAProxyConfigFile: configfile,
 	}).(*instance)
 	if err := instance.templates.NewTemplate(
@@ -2368,8 +2329,7 @@ func setup(t *testing.T) *testConfig {
 	); err != nil {
 		t.Errorf("error parsing map.tmpl: %v", err)
 	}
-	bindUtils := &ha_helper.BindUtilsMock{}
-	config := createConfig(bindUtils, options{
+	config := createConfig(options{
 		mapsTemplate: instance.mapsTemplate,
 		mapsDir:      tempdir,
 	})
@@ -2378,7 +2338,6 @@ func setup(t *testing.T) *testConfig {
 	c := &testConfig{
 		t:          t,
 		logger:     logger,
-		bindUtils:  bindUtils,
 		instance:   instance,
 		config:     config,
 		tempdir:    tempdir,
@@ -2396,7 +2355,7 @@ func (c *testConfig) teardown() {
 }
 
 func (c *testConfig) newConfig() Config {
-	config := createConfig(c.bindUtils, options{
+	config := createConfig(options{
 		mapsTemplate: c.instance.(*instance).mapsTemplate,
 		mapsDir:      c.tempdir,
 	})
@@ -2574,7 +2533,7 @@ backend _error496
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }`,
 		"<<frontend-https>>": `frontend _front001
     mode http
-    bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
+    bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     <<https-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }`,
@@ -2615,11 +2574,6 @@ frontend healthz
 func (c *testConfig) checkMap(mapName, expected string) {
 	actual := c.readConfig(c.tempdir + "/" + mapName)
 	c.compareText(mapName, actual, expected)
-}
-
-func (c *testConfig) checkCerts(expected string) {
-	actual := _yamlMarshal(c.bindUtils)
-	c.compareText("certs", actual, expected)
 }
 
 var replaceComments = regexp.MustCompile(`(?m)^[ \t]{0,2}(#.*)?[\r\n]+`)

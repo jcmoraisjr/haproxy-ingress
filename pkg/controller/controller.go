@@ -113,7 +113,7 @@ func (hc *HAProxyController) configController() {
 		MaxOldConfigFiles: *hc.maxOldConfigFiles,
 		ValidateConfig:    *hc.validateConfig,
 	}
-	hc.instance = haproxy.CreateInstance(hc.logger, hc, instanceOptions)
+	hc.instance = haproxy.CreateInstance(hc.logger, instanceOptions)
 	if err := hc.instance.ParseTemplates(); err != nil {
 		glog.Fatalf("error creating HAProxy instance: %v", err)
 	}
@@ -142,28 +142,6 @@ func (hc *HAProxyController) createDefaultSSLFile(cache convtypes.Cache) (tlsFil
 		SHA1Hash: hash,
 	}
 	return tlsFile
-}
-
-// CreateX509CertsDir hard link files from certs to a single directory.
-func (hc *HAProxyController) CreateX509CertsDir(bindName string, certs []string) (string, error) {
-	x509dir := "/var/haproxy/certs/" + bindName
-	if err := os.RemoveAll(x509dir); err != nil {
-		return "", err
-	}
-	if err := os.MkdirAll(x509dir, 0700); err != nil {
-		return "", err
-	}
-	for _, cert := range certs {
-		srcFile, err := os.Stat(cert)
-		if err != nil {
-			return "", err
-		}
-		dstFile := x509dir + "/" + srcFile.Name()
-		if err := os.Link(cert, dstFile); err != nil {
-			return "", err
-		}
-	}
-	return x509dir, nil
 }
 
 // Stop shutdown the controller process

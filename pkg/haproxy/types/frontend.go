@@ -85,6 +85,13 @@ func (hm *HostsMap) AppendPath(path, id string) {
 	})
 }
 
+// AppendItem adds a generic item to the HostsMap.
+func (hm *HostsMap) AppendItem(item string) {
+	hm.Match = append(hm.Match, &HostsMapEntry{
+		Key: item,
+	})
+}
+
 // HasRegex ...
 func (hm *HostsMap) HasRegex() bool {
 	return len(hm.Regex) > 0
@@ -116,7 +123,7 @@ func (hm *HostsMaps) AddMap(filename string) *HostsMap {
 func (fg *FrontendGroup) HasTCPProxy() bool {
 	// short-circuit saves:
 	// len(fg.Frontend) may be zero only if fg.HasSSLPassthrough is true
-	return fg.HasSSLPassthrough || len(fg.Frontends) > 1 || len(fg.Frontends[0].Binds) > 1
+	return fg.HasSSLPassthrough || len(fg.Frontends) > 1
 }
 
 // String ...
@@ -194,33 +201,22 @@ func BuildRawFrontends(hosts []*Host) (frontends []*Frontend, sslpassthrough []*
 		}
 		frontend.Hosts = append(frontend.Hosts, host)
 	}
+	var hostCount int
 	// creating binds
 	for _, frontend := range frontends {
-		var binds []*BindConfig
-		for _, host := range frontend.Hosts {
-			bind := findMatchingBind(binds, host)
-			if bind == nil {
-				bind = NewFrontendBind(host)
-				binds = append(binds, bind)
-			}
-			if defaultBind == nil && bind.supportDefault() {
-				defaultBind = bind
-			}
-			bind.Hosts = append(bind.Hosts, host)
+		frontend.Bind = NewFrontendBind(frontend.Hosts)
+		if defaultBind == nil || hostCount > len(frontend.Hosts) {
+			defaultBind = &frontend.Bind
+			hostCount = len(frontend.Hosts)
 		}
-		frontend.Binds = binds
 	}
 	// configuring the default bind
 	if defaultBind == nil {
 		var frontend *Frontend
-		if len(frontends) == 0 {
-			frontend = NewFrontend(nil)
-			frontends = append(frontends, frontend)
-		} else {
-			frontend = frontends[0]
-		}
-		defaultBind = NewFrontendBind(nil)
-		frontend.Binds = append(frontend.Binds, defaultBind)
+		frontend = NewFrontend(nil)
+		frontend.Bind = NewFrontendBind(nil)
+		defaultBind = &frontend.Bind
+		frontends = append(frontends, frontend)
 	}
 	// naming frontends
 	var i int
@@ -244,15 +240,6 @@ func findMatchingFrontend(frontends []*Frontend, host *Host) *Frontend {
 	return nil
 }
 
-func findMatchingBind(binds []*BindConfig, host *Host) *BindConfig {
-	for _, bind := range binds {
-		if bind.match(host) {
-			return bind
-		}
-	}
-	return nil
-}
-
 // NewFrontend and Frontend.Match should always sinchronize its attributes
 func NewFrontend(host *Host) *Frontend {
 	if host == nil {
@@ -263,17 +250,34 @@ func NewFrontend(host *Host) *Frontend {
 	}
 }
 
-// NewFrontendBind and BindConfig.Match should always sinchronize its attributes
-func NewFrontendBind(host *Host) *BindConfig {
-	if host == nil {
-		return &BindConfig{}
+// NewFrontendBind ...
+func NewFrontendBind(hosts []*Host) BindConfig {
+	var tls []*BindTLSConfig
+	for _, host := range hosts {
+		cfg := findTLSConfig(tls, &host.TLS)
+		if cfg == nil {
+			cfg = &BindTLSConfig{
+				CAFilename:  host.TLS.CAFilename,
+				CAHash:      host.TLS.CAHash,
+				CrtFilename: host.TLS.TLSFilename,
+				CrtHash:     host.TLS.TLSHash,
+			}
+			tls = append(tls, cfg)
+		}
+		cfg.Hostnames = append(cfg.Hostnames, host.Hostname)
 	}
-	return &BindConfig{
-		TLS: BindTLSConfig{
-			CAFilename: host.TLS.CAFilename,
-			CAHash:     host.TLS.CAHash,
-		},
+	return BindConfig{
+		TLS: tls,
 	}
+}
+
+func findTLSConfig(bindTLS []*BindTLSConfig, hostTLS *HostTLSConfig) *BindTLSConfig {
+	for _, tls := range bindTLS {
+		if tls.CAHash == hostTLS.CAHash && tls.CrtHash == hostTLS.TLSHash {
+			return tls
+		}
+	}
+	return nil
 }
 
 func (f *Frontend) match(host *Host) bool {
@@ -281,12 +285,4 @@ func (f *Frontend) match(host *Host) bool {
 		return true
 	}
 	return reflect.DeepEqual(f.Timeout, host.Timeout)
-}
-
-func (b *BindConfig) match(host *Host) bool {
-	return b.TLS.CAHash == host.TLS.CAHash
-}
-
-func (b *BindConfig) supportDefault() bool {
-	return b.TLS.CAHash == ""
 }

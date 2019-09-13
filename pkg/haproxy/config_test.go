@@ -18,12 +18,10 @@ package haproxy
 
 import (
 	"testing"
-
-	ha_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/helper_test"
 )
 
 func TestEmptyFrontend(t *testing.T) {
-	c := createConfig(&ha_helper.BindUtilsMock{}, options{})
+	c := createConfig(options{})
 	if err := c.BuildFrontendGroup(); err != nil {
 		t.Errorf("error creating frontends: %v", err)
 	}
@@ -43,7 +41,7 @@ func TestEmptyFrontend(t *testing.T) {
 }
 
 func TestAcquireHostDiff(t *testing.T) {
-	c := createConfig(&ha_helper.BindUtilsMock{}, options{})
+	c := createConfig(options{})
 	f1 := c.AcquireHost("h1")
 	f2 := c.AcquireHost("h2")
 	if f1.Hostname != "h1" {
@@ -55,7 +53,7 @@ func TestAcquireHostDiff(t *testing.T) {
 }
 
 func TestAcquireHostSame(t *testing.T) {
-	c := createConfig(&ha_helper.BindUtilsMock{}, options{})
+	c := createConfig(options{})
 	f1 := c.AcquireHost("h1")
 	f2 := c.AcquireHost("h1")
 	if f1 != f2 {
@@ -82,8 +80,8 @@ func TestBuildID(t *testing.T) {
 }
 
 func TestEqual(t *testing.T) {
-	c1 := createConfig(&ha_helper.BindUtilsMock{}, options{})
-	c2 := createConfig(&ha_helper.BindUtilsMock{}, options{})
+	c1 := createConfig(options{})
+	c2 := createConfig(options{})
 	if !c1.Equals(c2) {
 		t.Error("c1 and c2 should be equals (empty)")
 	}
