@@ -73,6 +73,9 @@ defaults
     option dontlognull
     option http-server-close
     option http-keep-alive
+{{- if $global.UseHTX }}
+    option http-use-htx
+{{- end }}
     timeout client          {{ default "--" $global.Timeout.Client }}
 {{- if $global.Timeout.ClientFin }}
     timeout client-fin      {{ $global.Timeout.ClientFin }}
@@ -150,6 +153,11 @@ listen _tcp_{{ $backend.Name }}_{{ $backend.Port }}
     mode tcp
 
 {{- /*------------------------------------*/}}
+{{- if $global.UseHTX }}
+    no option http-use-htx
+{{- end }}
+
+{{- /*------------------------------------*/}}
 {{- if $global.Syslog.Endpoint }}
 {{- if eq $global.Syslog.TCPLogFormat "default" }}
     option tcplog
@@ -225,6 +233,11 @@ backend {{ $backend.ID }}
 {{- /*              MODE TCP              */}}
 {{- /*------------------------------------*/}}
 {{- if $backend.ModeTCP }}
+
+{{- /*------------------------------------*/}}
+{{- if $global.UseHTX }}
+    no option http-use-htx
+{{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $backend.WhitelistTCP }}
@@ -482,9 +495,10 @@ backend {{ $backend.ID }}
 {{- define "backend" }}
     {{- $backend := .p1 }}
     {{- $server := $backend.Server }}
+    {{- if eq $server.Protocol "h2" }} proto h2{{ end }}
     {{- if $server.MaxConn }} maxconn {{ $server.MaxConn }}{{ end }}
     {{- if $server.MaxQueue }} maxqueue {{ $server.MaxQueue }}{{ end }}
-    {{- if eq $server.Protocol "https" }} ssl
+    {{- if $server.Secure }} ssl
         {{- if $server.CrtFilename }} crt {{ $server.CrtFilename }}{{ end }}
         {{- if $server.CAFilename }} verify required ca-file {{ $server.CAFilename }}
             {{- else }} verify none
@@ -554,6 +568,11 @@ backend _error496
 listen _front__tls
     mode tcp
     bind {{ $global.Bind.HTTPSBindIP }}:{{ $global.Bind.HTTPSPort }}{{ if $global.Bind.AcceptProxy }} accept-proxy{{ end }}
+
+{{- /*------------------------------------*/}}
+{{- if $global.UseHTX }}
+    no option http-use-htx
+{{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $global.Syslog.Endpoint }}
@@ -942,6 +961,9 @@ backend spoe-modsecurity
     mode tcp
     timeout connect 5s
     timeout server  5s
+{{- if $global.UseHTX }}
+    no option http-use-htx
+{{- end }}
 {{- range $i, $endpoint := $global.ModSecurity.Endpoints }}
     server modsec-spoa{{ $i }} {{ $endpoint }}
 {{- end }}

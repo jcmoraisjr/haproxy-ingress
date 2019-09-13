@@ -504,6 +504,57 @@ func (c *updater) findBackend(namespace, uriPrefix string) *hatypes.HostBackend 
 	return nil
 }
 
+func (c *updater) buildBackendProtocol(d *backData) {
+	proto := d.mapper.Get(ingtypes.BackBackendProtocol)
+	var protocol string
+	var secure bool
+	switch strings.ToLower(proto.Value) {
+	case "", "h1", "http":
+		protocol = "h1"
+		secure = false
+	case "h1-ssl", "https":
+		protocol = "h1"
+		secure = true
+	case "h2", "grpc":
+		protocol = "h2"
+		secure = false
+	case "h2-ssl", "grpcs":
+		protocol = "h2"
+		secure = true
+	default:
+		c.logger.Warn("ignoring invalid backend protocol on %v: %s", proto.Source, proto.Value)
+		return
+	}
+	if protocol == "h2" && !c.haproxy.Global().UseHTX {
+		c.logger.Warn("ignoring h2 protocol on %v due to HTX disabled, changing to h1", proto.Source)
+		protocol = "h1"
+	}
+	if !secure {
+		secure = d.mapper.Get(ingtypes.BackSecureBackends).Bool()
+	}
+	d.backend.Server.Protocol = protocol
+	d.backend.Server.Secure = secure
+	if !secure {
+		return
+	}
+	if crt := d.mapper.Get(ingtypes.BackSecureCrtSecret); crt.Value != "" {
+		if crtFile, err := c.cache.GetTLSSecretPath(crt.Source.Namespace + "/" + crt.Value); err == nil {
+			d.backend.Server.CrtFilename = crtFile.Filename
+			d.backend.Server.CrtHash = crtFile.SHA1Hash
+		} else {
+			c.logger.Warn("skipping client certificate on %v: %v", crt.Source, err)
+		}
+	}
+	if ca := d.mapper.Get(ingtypes.BackSecureVerifyCASecret); ca.Value != "" {
+		if caFile, err := c.cache.GetCASecretPath(ca.Source.Namespace + "/" + ca.Value); err == nil {
+			d.backend.Server.CAFilename = caFile.Filename
+			d.backend.Server.CAHash = caFile.SHA1Hash
+		} else {
+			c.logger.Warn("skipping CA on %v: %v", ca.Source, err)
+		}
+	}
+}
+
 func (c *updater) buildBackendProxyProtocol(d *backData) {
 	cfg := d.mapper.Get(ingtypes.BackProxyProtocol)
 	if cfg.Source == nil {
@@ -550,29 +601,6 @@ func (c *updater) buildBackendRewriteURL(d *backData) {
 			Paths:  cfg.Paths,
 			Config: cfg.Get(ingtypes.BackRewriteTarget).Value,
 		})
-	}
-}
-
-func (c *updater) buildBackendSecure(d *backData) {
-	if !d.mapper.Get(ingtypes.BackSecureBackends).Bool() {
-		return
-	}
-	d.backend.Server.Protocol = "https"
-	if crt := d.mapper.Get(ingtypes.BackSecureCrtSecret); crt.Value != "" {
-		if crtFile, err := c.cache.GetTLSSecretPath(crt.Source.Namespace + "/" + crt.Value); err == nil {
-			d.backend.Server.CrtFilename = crtFile.Filename
-			d.backend.Server.CrtHash = crtFile.SHA1Hash
-		} else {
-			c.logger.Warn("skipping client certificate on %v: %v", crt.Source, err)
-		}
-	}
-	if ca := d.mapper.Get(ingtypes.BackSecureVerifyCASecret); ca.Value != "" {
-		if caFile, err := c.cache.GetCASecretPath(ca.Source.Namespace + "/" + ca.Value); err == nil {
-			d.backend.Server.CAFilename = caFile.Filename
-			d.backend.Server.CAHash = caFile.SHA1Hash
-		} else {
-			c.logger.Warn("skipping CA on %v: %v", ca.Source, err)
-		}
 	}
 }
 

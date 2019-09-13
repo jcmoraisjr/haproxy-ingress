@@ -1113,9 +1113,10 @@ func TestRewriteURL(t *testing.T) {
 	}
 }
 
-func TestBackendSecure(t *testing.T) {
+func TestBackendProtocol(t *testing.T) {
 	testCase := []struct {
 		source     Source
+		useHTX     bool
 		annDefault map[string]string
 		ann        map[string]map[string]string
 		paths      []string
@@ -1132,7 +1133,8 @@ func TestBackendSecure(t *testing.T) {
 				},
 			},
 			expected: hatypes.ServerConfig{
-				Protocol: "https",
+				Protocol: "h1",
+				Secure:   true,
 			},
 		},
 		// 1
@@ -1142,7 +1144,10 @@ func TestBackendSecure(t *testing.T) {
 					ingtypes.BackSecureCrtSecret: "cli",
 				},
 			},
-			expected: hatypes.ServerConfig{},
+			expected: hatypes.ServerConfig{
+				Protocol: "h1",
+				Secure:   false,
+			},
 		},
 		// 2
 		{
@@ -1157,7 +1162,8 @@ func TestBackendSecure(t *testing.T) {
 				"default/cli": "/var/haproxy/ssl/cli.pem",
 			},
 			expected: hatypes.ServerConfig{
-				Protocol:    "https",
+				Protocol:    "h1",
+				Secure:      true,
 				CrtFilename: "/var/haproxy/ssl/cli.pem",
 				CrtHash:     "f916dd295030e070f4d4aca4508571bc82f549af",
 			},
@@ -1179,7 +1185,8 @@ func TestBackendSecure(t *testing.T) {
 				"default/ca": "/var/haproxy/ssl/ca.pem",
 			},
 			expected: hatypes.ServerConfig{
-				Protocol:    "https",
+				Protocol:    "h1",
+				Secure:      true,
 				CAFilename:  "/var/haproxy/ssl/ca.pem",
 				CAHash:      "3be93154b1cddfd0e1279f4d76022221676d08c7",
 				CrtFilename: "/var/haproxy/ssl/cli.pem",
@@ -1197,19 +1204,108 @@ func TestBackendSecure(t *testing.T) {
 				},
 			},
 			expected: hatypes.ServerConfig{
-				Protocol: "https",
+				Protocol: "h1",
+				Secure:   true,
 			},
 			logging: `
 WARN skipping client certificate on service 'default/app1': secret not found: 'default/cli'
 WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 		},
+		// 5
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackBackendProtocol: "h1",
+				},
+			},
+			expected: hatypes.ServerConfig{
+				Protocol: "h1",
+				Secure:   false,
+			},
+		},
+		// 6
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackBackendProtocol: "h1-ssl",
+				},
+			},
+			expected: hatypes.ServerConfig{
+				Protocol: "h1",
+				Secure:   true,
+			},
+		},
+		// 7
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackBackendProtocol: "h1-ssl",
+					ingtypes.BackSecureBackends:  "false",
+				},
+			},
+			expected: hatypes.ServerConfig{
+				Protocol: "h1",
+				Secure:   true,
+			},
+		},
+		// 8
+		{
+			useHTX: true,
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackBackendProtocol: "GRPC",
+				},
+			},
+			expected: hatypes.ServerConfig{
+				Protocol: "h2",
+				Secure:   false,
+			},
+		},
+		// 9
+		{
+			useHTX: true,
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackBackendProtocol: "h2-ssl",
+				},
+			},
+			expected: hatypes.ServerConfig{
+				Protocol: "h2",
+				Secure:   true,
+			},
+		},
+		// 10
+		{
+			source: Source{Namespace: "default", Name: "app1", Type: "service"},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackBackendProtocol: "invalid-ssl",
+				},
+			},
+			expected: hatypes.ServerConfig{},
+			logging:  `WARN ignoring invalid backend protocol on service 'default/app1': invalid-ssl`,
+		},
+		// 11
+		{
+			source: Source{Namespace: "default", Name: "app1", Type: "service"},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackBackendProtocol: "h2",
+				},
+			},
+			expected: hatypes.ServerConfig{
+				Protocol: "h1",
+			},
+			logging: `WARN ignoring h2 protocol on service 'default/app1' due to HTX disabled, changing to h1`,
+		},
 	}
 	for i, test := range testCase {
 		c := setup(t)
 		d := c.createBackendMappingData("defualt/app", &test.source, test.annDefault, test.ann, test.paths)
+		c.haproxy.Global().UseHTX = test.useHTX
 		c.cache.SecretTLSPath = test.tlsSecrets
 		c.cache.SecretCAPath = test.caSecrets
-		c.createUpdater().buildBackendSecure(d)
+		c.createUpdater().buildBackendProtocol(d)
 		c.compareObjects("secure", i, d.backend.Server, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()

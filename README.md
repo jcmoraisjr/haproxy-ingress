@@ -74,6 +74,7 @@ lists, math etc.
 The following annotations are supported:
 
 * `[0]` only in `v0.8` (`beta`)
+* `[1]` only in `v0.9` (`master`)
 
 ||Name|Data|Usage|
 |---|---|---|:---:|
@@ -90,6 +91,7 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/auth-tls-secret`](#auth-tls)|namespace/secret name|[doc](/examples/auth/client-certs)|
 ||[`ingress.kubernetes.io/auth-tls-verify-client`](#auth-tls)|[off\|optional\|on\|optional_no_ca]|-|
 ||`ingress.kubernetes.io/auth-type`|"basic"|[doc](/examples/auth/basic)|
+|`[1]`|[`ingress.kubernetes.io/backend-protocol`](#backend-protocol)|[h1\|h2\|h1-ssl\|h2-ssl]|-|
 ||[`ingress.kubernetes.io/balance-algorithm`](#balance-algorithm)|algorithm name|-|
 ||[`ingress.kubernetes.io/blue-green-balance`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
 ||[`ingress.kubernetes.io/blue-green-deploy`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
@@ -180,6 +182,27 @@ The following annotations are supported:
 * `ingress.kubernetes.io/auth-tls-verify-client`: optional configuration of Client Verification behavior. Supported values are `off`, `on`, `optional` and `optional_no_ca`. The default value is `on` if a valid secret is provided, `off` otherwise.
 
 See also client cert [example](/examples/auth/client-certs).
+
+### Backend-protocol
+
+Defines the HTTP protocol version of the backend. Note that HTTP/2 is only supported if HTX is enabled.
+A case insensitive match is used, so either `h1` or `H1` configures HTTP/1 protocol. A non SSL/TLS
+configuration does not overrides [secure-backends](#secure-backend), so `h1` and secure-backends `true`
+will still configures SSL/TLS.
+
+Options:
+
+* `h1`: the default value, configures HTTP/1 protocol. `http` is an alias to `h1`.
+* `h1-ssl`: configures HTTP/1 over SSL/TLS. `https` is an alias to `h1-ssl`.
+* `h2`: configures HTTP/2 protocol. `grpc` is an alias to `h2`.
+* `h2-ssl`: configures HTTP/2 over SSL/TLS. `grpcs` is an alias to `h2-ssl`.
+
+See also:
+
+* [use-htx](#use-htx) configmap option to enable HTTP/2 backends.
+* [secure-backend](#secure-backend) annotations to configure optional client certificate and certificate authority bundle of SSL/TLS connections.
+
+http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-proto
 
 ### Blue-green
 
@@ -397,6 +420,7 @@ A ConfigMap can be created with `kubectl create configmap`.
 The following parameters are supported:
 
 * `[0]` only in `v0.8` (`snapshot`)
+* `[1]` only in `v0.9` (`master`)
 
 ||Name|Type|Default|
 |---|---|---|---|
@@ -470,6 +494,7 @@ The following parameters are supported:
 ||[`timeout-stop`](#timeout)|time with suffix|no timeout|
 ||[`timeout-tunnel`](#timeout)|time with suffix|`1h`|
 ||[`tls-alpn`](#tls-alpn)|TLS ALPN advertisement|`h2,http/1.1`|
+|`[1]`|[`use-htx`](#use-htx)|[true\|false]|`false`|
 ||[`use-proxy-protocol`](#use-proxy-protocol)|[true\|false]|`false`|
 |`[0]`|[`var-namespace`](#var-namespace)|[true\|false]|`false`|
 
@@ -966,6 +991,13 @@ Defines the TLS ALPN extension advertisement. The default value is `h2,http/1.1`
 HTTP/2 on the client side.
 
 * http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.1-alpn
+
+### use-htx
+
+Defines if the new HTX internal representation for HTTP elements should be used. The default value
+is `false`. HTX should be used to enable HTTP/2 protocol to backends.
+
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-option%20http-use-htx
 
 ### use-proxy-protocol
 
