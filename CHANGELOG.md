@@ -78,6 +78,14 @@ Fixes and improvements since [v0.7](#v07):
   * Annotation or configmap options (without prefix):
     * `ingress.kubernetes.io/var-namespace`
 
+### v0.8-beta.2
+
+Fixes and improvements since [v0.8-beta.1](#v08-beta1):
+
+* Fix service port lookup [#385](https://github.com/jcmoraisjr/haproxy-ingress/pull/385)
+* Change dynamic update default values [#388](https://github.com/jcmoraisjr/haproxy-ingress/pull/388)
+* Fix port number lookup of terminating pods [#389](https://github.com/jcmoraisjr/haproxy-ingress/pull/389)
+
 ## v0.7.3
 
 Fixes and improvements since [v0.7.2](#v072):
