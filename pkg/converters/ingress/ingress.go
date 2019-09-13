@@ -287,9 +287,14 @@ func (c *converter) addEndpoints(svc *api.Service, svcPort *api.ServicePort, bac
 			return err
 		}
 		for _, pod := range pods {
-			// TODO need to find the correct pod's port number
-			ep := backend.AcquireEndpoint(pod.Status.PodIP, svcPort.TargetPort.IntValue(), pod.Namespace+"/"+pod.Name)
-			ep.Weight = 0
+			targetPort := convutils.FindContainerPort(pod, svcPort)
+			if targetPort > 0 {
+				ep := backend.AcquireEndpoint(pod.Status.PodIP, targetPort, pod.Namespace+"/"+pod.Name)
+				ep.Weight = 0
+			} else {
+				c.logger.Warn("skipping endpoint %s of service %s/%s: port '%s' was not found",
+					pod.Status.PodIP, svc.Namespace, svc.Name, svcPort.TargetPort.String())
+			}
 		}
 	}
 	return nil
