@@ -276,14 +276,15 @@ func TestSyncDrainSupport(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	svc, ep := c.createSvc1("default/echo", "8080", "172.17.1.101,172.17.1.102")
+	svc, ep := c.createSvc1("default/echo", "http:8080:http", "172.17.1.101,172.17.1.102")
 	svcName := svc.Namespace + "/" + svc.Name
 	ss := &ep.Subsets[0]
 	addr := ss.Addresses
 	ss.Addresses = []api.EndpointAddress{addr[0]}
 	ss.NotReadyAddresses = []api.EndpointAddress{addr[1]}
-	pod := c.createPod1("default/echo-xxxxx", "172.17.1.103")
-	c.cache.TermPodList[svcName] = []*api.Pod{pod}
+	pod1 := c.createPod1("default/echo-xxxxx", "172.17.1.103", "http:8080")
+	pod2 := c.createPod1("default/echo-yyyyy", "172.17.1.104", "none:8080")
+	c.cache.TermPodList[svcName] = []*api.Pod{pod1, pod2}
 
 	c.SyncDef(
 		map[string]string{"drain-support": "true"},
@@ -294,10 +295,10 @@ func TestSyncDrainSupport(t *testing.T) {
 - hostname: echo.example.com
   paths:
   - path: /
-    backend: default_echo_8080
+    backend: default_echo_http
 `)
 	c.compareConfigBack(`
-- id: default_echo_8080
+- id: default_echo_http
   endpoints:
   - ip: 172.17.1.101
     port: 8080
@@ -312,6 +313,8 @@ func TestSyncDrainSupport(t *testing.T) {
   - ip: 172.17.0.99
     port: 8080
 `)
+
+	c.logger.CompareLogging("WARN skipping endpoint 172.17.1.104 of service default/echo: port 'http' was not found")
 }
 
 func TestSyncRootPathLast(t *testing.T) {
@@ -1195,8 +1198,9 @@ func (c *testConfig) createSvc1(name, port, endpoints string) (*api.Service, *ap
 	return svc, ep
 }
 
-func (c *testConfig) createPod1(name, ip string) *api.Pod {
+func (c *testConfig) createPod1(name, ip, port string) *api.Pod {
 	pname := strings.Split(name, "/")
+	pport := strings.Split(port, ":")
 
 	pod := c.createObject(`
 apiVersion: v1
@@ -1204,6 +1208,11 @@ kind: Pod
 metadata:
   name: ` + pname[1] + `
   namespace: ` + pname[0] + `
+spec:
+  containers:
+  - ports:
+    - name: ` + pport[0] + `
+      containerPort: ` + pport[1] + `
 status:
   podIP: ` + ip).(*api.Pod)
 

@@ -46,6 +46,26 @@ func FindServicePort(svc *api.Service, servicePort string) *api.ServicePort {
 	return nil
 }
 
+// FindContainerPort Find the container's port number of a known servicePort
+// Search criteria:
+// 1. svcPort.TargetPort is a number: this is the right container's port
+// 2. svcPort.TargetPort is a named port (not a number): find a container's port with that name and use its ContainerPort
+// If targetPort is neither a valid port number nor a declared named port, return zero which means that the port was not found
+func FindContainerPort(pod *api.Pod, svcPort *api.ServicePort) int {
+	if targetPort := svcPort.TargetPort.IntValue(); targetPort > 0 {
+		return targetPort
+	}
+	portName := svcPort.TargetPort.String()
+	for _, c := range pod.Spec.Containers {
+		for _, port := range c.Ports {
+			if port.Protocol == svcPort.Protocol && port.Name == portName {
+				return int(port.ContainerPort)
+			}
+		}
+	}
+	return 0
+}
+
 // Endpoint ...
 type Endpoint struct {
 	IP        string
