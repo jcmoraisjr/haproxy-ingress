@@ -799,6 +799,20 @@ frontend {{ $frontend.Name }}
 
 {{- /*------------------------------------*/}}
 {{- if $frontend.HasTLSAuth }}
+{{- $mandatory := $frontend.HasTLSMandatory }}
+{{- if $mandatory }}
+    acl tls-has-crt ssl_c_used
+    acl tls-need-crt ssl_fc_sni -i -f {{ $frontend.TLSNoCrtErrorList.MatchFile }}
+{{- if $frontend.TLSNoCrtErrorList.HasRegex }}
+    acl tls-need-crt ssl_fc_sni -i -m reg -f {{ $frontend.TLSNoCrtErrorList.RegexFile }}
+{{- end }}
+{{- end }}
+    acl tls-has-invalid-crt ssl_c_ca_err gt 0
+    acl tls-has-invalid-crt ssl_c_err gt 0
+    acl tls-check-crt ssl_fc_sni -i -f {{ $frontend.TLSInvalidCrtErrorList.MatchFile }}
+{{- if $frontend.TLSInvalidCrtErrorList.HasRegex }}
+    acl tls-check-crt ssl_fc_sni -i -m reg -f {{ $frontend.TLSInvalidCrtErrorList.RegexFile }}
+{{- end }}
 {{- /*** TODO missing concat converter, fix after 1.9 ***/}}
     http-request set-header x-ha-base %[ssl_fc_sni]%[path]
         {{- if $hasHTTPSocket }} if local-offload{{ end }}
@@ -816,20 +830,6 @@ frontend {{ $frontend.Name }}
     http-request set-var(req.snibackend) hdr(x-ha-base),lower,regsub(:[0-9]+/,/)
         {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }},_nomatch)
         {{- if $hasHTTPSocket }} if local-offload{{ end }}
-{{- end }}
-{{- $mandatory := $frontend.HasTLSMandatory }}
-{{- if $mandatory }}
-    acl tls-has-crt ssl_c_used
-    acl tls-need-crt ssl_fc_sni -i -f {{ $frontend.TLSNoCrtErrorList.MatchFile }}
-{{- if $frontend.TLSNoCrtErrorList.HasRegex }}
-    acl tls-need-crt ssl_fc_sni -i -m reg -f {{ $frontend.TLSNoCrtErrorList.RegexFile }}
-{{- end }}
-{{- end }}
-    acl tls-has-invalid-crt ssl_c_ca_err gt 0
-    acl tls-has-invalid-crt ssl_c_err gt 0
-    acl tls-check-crt ssl_fc_sni -i -f {{ $frontend.TLSInvalidCrtErrorList.MatchFile }}
-{{- if $frontend.TLSInvalidCrtErrorList.HasRegex }}
-    acl tls-check-crt ssl_fc_sni -i -m reg -f {{ $frontend.TLSInvalidCrtErrorList.RegexFile }}
 {{- end }}
 {{- if $mandatory }}
     http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower
