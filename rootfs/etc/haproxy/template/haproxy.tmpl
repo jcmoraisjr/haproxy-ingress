@@ -819,12 +819,9 @@ frontend {{ $frontend.Name }}
 {{- if $frontend.TLSInvalidCrtErrorList.HasRegex }}
     acl tls-check-crt ssl_fc_sni -i -m reg -f {{ $frontend.TLSInvalidCrtErrorList.RegexFile }}
 {{- end }}
-{{- /*** TODO missing concat converter, fix after 1.9 ***/}}
-    http-request set-header x-ha-base %[ssl_fc_sni]%[path]
+    http-request set-var(req.snibase) ssl_fc_sni,concat(path),lower,regsub(:[0-9]+/,/)
         {{- if $hasHTTPSocket }} if local-offload{{ end }}
 {{- if $frontend.SNIBackendsMap.HasRegex }}
-    http-request set-var(req.snibase) hdr(x-ha-base),lower,regsub(:[0-9]+/,/)
-        {{- if $hasHTTPSocket }} if local-offload{{ end }}
     http-request set-var(req.snibackend) var(req.snibase)
         {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }},_nomatch)
         {{- if $hasHTTPSocket }} if local-offload{{ end }}
@@ -843,7 +840,7 @@ frontend {{ $frontend.Name }}
         {{- "" }} { var(req.snibackend) _nomatch }
         {{- "" }} !tls-has-crt !tls-host-need-crt
 {{- else }}
-    http-request set-var(req.snibackend) hdr(x-ha-base),lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.snibackend) var(req.snibase)
         {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }},_nomatch)
         {{- if $hasHTTPSocket }} if local-offload{{ end }}
     http-request set-var(req.snibackend) var(req.base)
