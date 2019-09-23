@@ -537,6 +537,10 @@ backend _error413
     mode http
     errorfile 400 /usr/local/etc/haproxy/errors/413.http
     http-request deny deny_status 400
+backend _error421
+    mode http
+    errorfile 400 /usr/local/etc/haproxy/errors/421.http
+    http-request deny deny_status 400
 backend _error495
     mode http
     errorfile 400 /usr/local/etc/haproxy/errors/495.http
@@ -897,6 +901,8 @@ frontend {{ $frontend.Name }}
         {{- "" }} !{ var(req.maxbody) 0 } { req.body_size,sub(req.maxbody) gt 0 }
 {{- end }}
 {{- if $frontend.HasTLSAuth }}
+    use_backend _error421 if
+        {{- "" }} { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
 {{- if $frontend.HasTLSMandatory }}
     use_backend _error496 if
         {{- "" }} { var(req.tls_nocrt_redir) _internal }
