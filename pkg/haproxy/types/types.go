@@ -70,6 +70,7 @@ type SyslogConfig struct {
 	Format         string
 	HTTPLogFormat  string
 	HTTPSLogFormat string
+	Length         int
 	Tag            string
 	TCPLogFormat   string
 }

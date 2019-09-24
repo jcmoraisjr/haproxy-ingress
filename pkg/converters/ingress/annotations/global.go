@@ -111,6 +111,7 @@ func (c *updater) buildGlobalSyslog(d *globalData) {
 	d.global.Syslog.Format = d.mapper.Get(ingtypes.GlobalSyslogFormat).Value
 	d.global.Syslog.HTTPLogFormat = d.mapper.Get(ingtypes.GlobalHTTPLogFormat).Value
 	d.global.Syslog.HTTPSLogFormat = d.mapper.Get(ingtypes.GlobalHTTPSLogFormat).Value
+	d.global.Syslog.Length = d.mapper.Get(ingtypes.GlobalSyslogLength).Int()
 	d.global.Syslog.Tag = d.mapper.Get(ingtypes.GlobalSyslogTag).Value
 	d.global.Syslog.TCPLogFormat = d.mapper.Get(ingtypes.GlobalTCPLogFormat).Value
 }

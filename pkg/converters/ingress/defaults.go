@@ -79,6 +79,7 @@ func createDefaults() map[string]string {
 		types.GlobalSSLOptions:                   "no-sslv3 no-tls-tickets",
 		types.GlobalStatsPort:                    "1936",
 		types.GlobalSyslogFormat:                 "rfc5424",
+		types.GlobalSyslogLength:                 "1024",
 		types.GlobalSyslogTag:                    "ingress",
 		types.GlobalTimeoutStop:                  "10m",
 		types.GlobalTLSALPN:                      "h2,http/1.1",

@@ -1760,6 +1760,66 @@ d1.local/ 1048576
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestInstanceSyslog(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	h = c.config.AcquireHost("d1.local")
+	h.AddPath(b, "/")
+
+	syslog := &c.config.Global().Syslog
+	syslog.Endpoint = "127.0.0.1:1514"
+	syslog.Format = "rfc3164"
+	syslog.Length = 2048
+	syslog.Tag = "ingress"
+
+	c.Update()
+	c.checkConfig(`
+global
+    daemon
+    stats socket /var/run/haproxy.sock level admin expose-fd listeners
+    maxconn 2000
+    hard-stop-after 15m
+    log 127.0.0.1:1514 len 2048 format rfc3164 local0
+    log-tag ingress
+    lua-load /usr/local/etc/haproxy/lua/send-response.lua
+    lua-load /usr/local/etc/haproxy/lua/auth-request.lua
+    ssl-dh-param-file /var/haproxy/tls/dhparam.pem
+    ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
+    ssl-default-bind-options no-sslv3
+<<defaults>>
+backend d1_app_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+frontend _front_http
+    mode http
+    bind :80
+    option httplog
+    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
+    <<http-headers>>
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
+    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+    default_backend _error404
+frontend _front001
+    mode http
+    bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all
+    option httplog
+    http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
+    <<https-headers>>
+    use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
+    default_backend _error404
+<<support>>
+`)
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestDNS(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()

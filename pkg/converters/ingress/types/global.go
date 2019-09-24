@@ -65,6 +65,7 @@ const (
 	GlobalStrictHost                   = "strict-host"
 	GlobalSyslogEndpoint               = "syslog-endpoint"
 	GlobalSyslogFormat                 = "syslog-format"
+	GlobalSyslogLength                 = "syslog-length"
 	GlobalSyslogTag                    = "syslog-tag"
 	GlobalTCPLogFormat                 = "tcp-log-format"
 	GlobalTimeoutStop                  = "timeout-stop"
