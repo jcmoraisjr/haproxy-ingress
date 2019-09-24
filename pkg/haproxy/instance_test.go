@@ -1446,7 +1446,16 @@ backend d1_app_8080
     mode http
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
-<<frontend-http>>
+frontend _front_http
+    mode http
+    bind :80
+    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
+    <<http-headers>>
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
+    # new header
+    http-response set-header X-Server HAProxy
+    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _error404
 frontend _front001
     mode http
