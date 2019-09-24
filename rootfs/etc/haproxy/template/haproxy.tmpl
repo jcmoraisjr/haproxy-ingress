@@ -674,6 +674,13 @@ frontend _front_http
         {{- "" }} var(req.base),map_reg({{ $fgroup.HTTPFrontsMap.RegexFile }},_nomatch)
         {{- "" }} if { var(req.backend) _nomatch }
 {{- end }}
+
+{{- /*------------------------------------*/}}
+{{- range $snippet := $global.CustomFrontend }}
+    {{ $snippet }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
 
 {{- template "defaultbackend" map $cfg }}
