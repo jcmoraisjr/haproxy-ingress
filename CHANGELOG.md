@@ -6,6 +6,8 @@ Breaking backward compatibility from [v0.7](#v07):
 
 Note: A new configuration parser and HAProxy config builder is in place. Despite declared incompatibility changes listed below, all configuration options and behavior should be preserved. Please file an issue if something changed in the v0.8 controller which is not listed here.
 
+* HAProxy's backend naming convention used for services changed from `<namespace>-<svcname>-<port>` to `<namespace>_<svcname>_<port>` in order to avoid ambiguity. This should impact as least logging filters and metrics dashboards.
+* All the other HAProxy's proxy names changed as well - check your logging filters and metrics dasboards.
 * `nbproc-ssl` global configmap option wasn't reimplemented in v0.8, consider use `nbthread` instead.
 * `strict-host` global configmap option changed the default value from `true` to `false`. See `strict-host` [doc](/README.md#strict-host).
 
@@ -85,6 +87,13 @@ Fixes and improvements since [v0.8-beta.1](#v08-beta1):
 * Fix service port lookup [#385](https://github.com/jcmoraisjr/haproxy-ingress/pull/385)
 * Change dynamic update default values [#388](https://github.com/jcmoraisjr/haproxy-ingress/pull/388)
 * Fix port number lookup of terminating pods [#389](https://github.com/jcmoraisjr/haproxy-ingress/pull/389)
+
+### v0.8-beta.3
+
+Fixes and improvements since [v0.8-beta.2](#v08-beta2):
+
+* Make sni optional if a certificate is optional and is not provided [#392](https://github.com/jcmoraisjr/haproxy-ingress/pull/392)
+* Add custom-frontend to snippet to http:80 frontend [#395](https://github.com/jcmoraisjr/haproxy-ingress/pull/395)
 
 ## v0.7.3
 
