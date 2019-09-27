@@ -481,6 +481,7 @@ The following parameters are supported:
 ||[`strict-host`](#strict-host)|[true\|false]|`true`|
 ||[`syslog-endpoint`](#syslog-endpoint)|IP:port (udp)|do not log|
 |`[0]`|[`syslog-format`](#syslog-format)|rfc5424\|rfc3164|rfc5424|
+|`[1]`|[`syslog-length`](#syslog-length)|max length of log line|`1024`|
 |`[0]`|[`syslog-tag`](#syslog-tag)|syslog tag field string|`ingress`|
 ||[`tcp-log-format`](#log-format)|tcp log format|HAProxy default log format|
 ||[`timeout-client`](#timeout)|time with suffix|`50s`|
@@ -960,6 +961,13 @@ Configure the UDP syslog endpoint where HAProxy should send access logs.
 ### syslog-format
 
 Configure the log format to be either rfc5424 ( default ) or rfc3164
+
+### syslog-length
+
+Configure the maximum length of the log line. Defaults to `1024` if not declared.
+Log lines larger than this will be truncated before sent.
+
+http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-log
 
 ### syslog-tag
 

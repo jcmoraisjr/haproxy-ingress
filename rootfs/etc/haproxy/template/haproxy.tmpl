@@ -30,7 +30,7 @@ global
     hard-stop-after {{ $global.Timeout.Stop }}
 {{- end }}
 {{- if $global.Syslog.Endpoint }}
-    log {{ $global.Syslog.Endpoint }} format {{ $global.Syslog.Format }} local0
+    log {{ $global.Syslog.Endpoint }} len {{ $global.Syslog.Length }} format {{ $global.Syslog.Format }} local0
     log-tag {{ $global.Syslog.Tag }}
 {{- end }}
     lua-load /usr/local/etc/haproxy/lua/send-response.lua
