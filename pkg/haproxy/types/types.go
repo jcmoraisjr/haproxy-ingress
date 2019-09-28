@@ -337,6 +337,7 @@ type Backend struct {
 	Name      string
 	Port      string
 	Endpoints []*Endpoint
+	BlueGreen BlueGreenConfig
 	Paths     []*BackendPath
 	PathsMap  *HostsMap
 	//
@@ -391,12 +392,19 @@ type Backend struct {
 // Endpoint ...
 type Endpoint struct {
 	Enabled   bool
+	Label     string
 	IP        string
 	Name      string
 	Port      int
 	Target    string
 	TargetRef string
 	Weight    int
+}
+
+// BlueGreenConfig ...
+type BlueGreenConfig struct {
+	CookieName string
+	HeaderName string
 }
 
 // BackendPaths ...

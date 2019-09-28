@@ -94,7 +94,9 @@ The following annotations are supported:
 |`[1]`|[`ingress.kubernetes.io/backend-protocol`](#backend-protocol)|[h1\|h2\|h1-ssl\|h2-ssl]|-|
 ||[`ingress.kubernetes.io/balance-algorithm`](#balance-algorithm)|algorithm name|-|
 ||[`ingress.kubernetes.io/blue-green-balance`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
+|`[1]`|[`ingress.kubernetes.io/blue-green-cookie`](#blue-green)|CookieName=LabelName|[doc](/examples/blue-green)|
 ||[`ingress.kubernetes.io/blue-green-deploy`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
+|`[1]`|[`ingress.kubernetes.io/blue-green-header`](#blue-green)|HeaderName=LabelName|[doc](/examples/blue-green)|
 ||[`ingress.kubernetes.io/blue-green-mode`](#blue-green)|[pod\|deploy]|[doc](/examples/blue-green)|
 ||[`ingress.kubernetes.io/config-backend`](#configuration-snippet)|multiline HAProxy backend config|-|
 ||[`ingress.kubernetes.io/cors-allow-credentials`](#cors)|[true\|false]|-|
@@ -206,7 +208,17 @@ http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-proto
 
 ### Blue-green
 
-Configure weight of a blue/green deployment. The annotation accepts a comma separated list of label
+Configure backend server groups based on the weight of the group - blue/green
+balance - or a group selection based on http header or cookie value - blue/green selector.
+
+Both blue/green configurations can be used together: if the http header or cookie isn't provided
+or doesn't match a group, the blue/green balance will be used.
+
+See below the description of the two blue/green configuration options.
+
+**Blue/green balance**
+
+Configures weight of a blue/green deployment. The annotation accepts a comma separated list of label
 name/value pair and a numeric weight. Concatenate label name, label value and weight with an equal
 sign, without spaces. The label name/value pair will be used to match corresponding pods or deploys.
 There is no limit to the number of label/weight balance configurations.
@@ -237,9 +249,40 @@ Value of `0` (zero) can also be used as weight. This will let the endpoint confi
 backend accepting persistent connections - see [affinity](#affinity) - but will not participate
 in the load balancing. The maximum weight value is `256`.
 
-See also the [example](/examples/blue-green) page.
+**Blue/green selector**
 
-http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-weight
+Configures header or cookie name and also a pod label name used to tag the group of backend servers.
+
+* `ingress.kubernetes.io/blue-green-cookie`: the `CookieName:LabelName` pair
+* `ingress.kubernetes.io/blue-green-header`: the `HeaderName:LabelName` pair
+
+The `CookieName` or `HeaderName` is the name of the http cookie or header used in the request to match
+a group name. The `LabelName` is the name of the pod label used to read the group name of the backend
+server.
+
+The following configuration `X-Server:group` on `ingress.kubernetes.io/blue-green-header` configures
+HAProxy to try to match a backend server based on the value of its label `group`. A request with header
+`X-Server: green` will match a pod labeled `group=green`. Cookie configuration follows the same rules.
+
+The name of the header and the label follow the k8s label naming convention: must consist of
+alphanumeric characters, `-`, `_` or `.`, and must start and end with an alphanumeric character.
+
+Both cookie and header based configurations can be used together in the same backend (k8s service),
+provided that the label name is the same. If the request uses the configured header and cookie, the
+header will take precedence, and the cookie would be used if the header value provided doesn't match
+a healthy backend server.
+
+Note that blue/green selector should be used only on controlled testing scenarios because it
+doesn't provide a proper load balancing: the first healthy backend server that match header or
+cookie configuration will be used despite if a proper load balance algorithm would choose another
+one. This can be changed in the future. Blue/green balance doesn't have this limitation and properly
+uses the chosen load balance algorithm.
+
+See also:
+
+* the [example](/examples/blue-green) page
+* `weight` based balance: http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-weight
+* `use-server` bases selector: http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-use-server
 
 ### CORS
 
