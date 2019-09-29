@@ -604,6 +604,19 @@ func (c *updater) buildBackendRewriteURL(d *backData) {
 	}
 }
 
+func (c *updater) buildBackendSSL(d *backData) {
+	d.backend.TLS.AddCertHeader = d.mapper.Get(ingtypes.BackAuthTLSCertHeader).Bool()
+	if cfg := d.mapper.Get(ingtypes.BackSSLCiphersBackend); cfg.Source != nil {
+		d.backend.Server.Ciphers = cfg.Value
+	}
+	if cfg := d.mapper.Get(ingtypes.BackSSLCipherSuitesBackend); cfg.Source != nil {
+		d.backend.Server.CipherSuites = cfg.Value
+	}
+	if cfg := d.mapper.Get(ingtypes.BackSSLOptionsBackend); cfg.Source != nil {
+		d.backend.Server.Options = cfg.Value
+	}
+}
+
 func (c *updater) buildBackendSSLRedirect(d *backData) {
 	noTLSRedir := utils.Split(d.mapper.Get(ingtypes.GlobalNoTLSRedirectLocations).Value, ",")
 	for _, redir := range d.mapper.GetBackendConfig(

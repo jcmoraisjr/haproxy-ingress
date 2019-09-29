@@ -49,8 +49,20 @@ global
 {{- if $global.SSL.Ciphers }}
     ssl-default-bind-ciphers {{ $global.SSL.Ciphers }}
 {{- end }}
+{{- if $global.SSL.CipherSuites }}
+    ssl-default-bind-ciphersuites {{ $global.SSL.CipherSuites }}
+{{- end }}
 {{- if $global.SSL.Options }}
     ssl-default-bind-options {{ $global.SSL.Options }}
+{{- end }}
+{{- if $global.SSL.BackendCiphers }}
+    ssl-default-server-ciphers {{ $global.SSL.BackendCiphers }}
+{{- end }}
+{{- if $global.SSL.BackendCipherSuites }}
+    ssl-default-server-ciphersuites {{ $global.SSL.BackendCipherSuites }}
+{{- end }}
+{{- if $global.SSL.BackendOptions }}
+    ssl-default-server-options {{ $global.SSL.BackendOptions }}
 {{- end }}
 {{- range $snippet := $global.CustomConfig }}
     {{ $snippet }}
@@ -499,6 +511,9 @@ backend {{ $backend.ID }}
     {{- if $server.MaxConn }} maxconn {{ $server.MaxConn }}{{ end }}
     {{- if $server.MaxQueue }} maxqueue {{ $server.MaxQueue }}{{ end }}
     {{- if $server.Secure }} ssl
+        {{- if $server.Ciphers }} ciphers {{ $server.Ciphers }}{{ end }}
+        {{- if $server.CipherSuites }} ciphersuites {{ $server.CipherSuites }}{{ end }}
+        {{- if $server.Options }} {{ $server.Options }}{{ end }}
         {{- if $server.CrtFilename }} crt {{ $server.CrtFilename }}{{ end }}
         {{- if $server.CAFilename }} verify required ca-file {{ $server.CAFilename }}
             {{- else }} verify none
