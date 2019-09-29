@@ -194,6 +194,7 @@ backend {{ $backend.Name }}
     {{- if $backend.Secure.IsSecure }} ssl
         {{- if ne $clcert.CrtFileName "" }} crt {{ $clcert.CrtFileName }}{{ end }}
         {{- if ne $cacert.CAFileName "" }} verify required ca-file {{ $cacert.CAFileName }}
+          {{- if ne $cacert.CRLFileName "" }} crl-file {{ $cacert.CRLFileName }}{{ end }}
         {{- else }} verify none{{ end }}
     {{- end }}
     {{- if eq $backend.Proxy.ProxyProtocol "v1" }} send-proxy
