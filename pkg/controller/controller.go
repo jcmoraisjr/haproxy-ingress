@@ -259,7 +259,7 @@ func (hc *HAProxyController) SyncIngress(item interface{}) error {
 		}
 	}
 	sort.SliceStable(ingress, func(i, j int) bool {
-		return ingress[i].ResourceVersion < ingress[j].ResourceVersion
+		return ingress[i].CreationTimestamp.Before(&ingress[j].CreationTimestamp)
 	})
 	var globalConfig map[string]string
 	if hc.configMap != nil {
