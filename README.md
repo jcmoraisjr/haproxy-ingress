@@ -317,7 +317,7 @@ Configure secure (TLS) connection to the backends.
 
 * `ingress.kubernetes.io/secure-backends`: Define as true if the backend provide a TLS connection.
 * `ingress.kubernetes.io/secure-crt-secret`: Optional secret name of client certificate and key. This cert/key pair must be provided if the backend requests a client certificate. Expected secret keys are `tls.crt` and `tls.key`, the same used if secret is built with `kubectl create secret tls <name>`.
-* `ingress.kubernetes.io/secure-verify-ca-secret`: Optional secret name with certificate authority bundle used to validate server certificate, preventing man-in-the-middle attacks. Expected secret key is `ca.crt`.
+* `ingress.kubernetes.io/secure-verify-ca-secret`: Optional secret name with certificate authority bundle used to validate server certificate, preventing man-in-the-middle attacks. Expected secret key is `ca.crt`. An optional `ca.crl` key can also provide a CRL in PEM format for the server to verify against.
 
 ### Server Alias
 

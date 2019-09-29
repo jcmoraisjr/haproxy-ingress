@@ -249,7 +249,7 @@ func parseSANExtension(value []byte) (dnsNames, emailAddresses []string, ipAddre
 // AddCertAuth creates a .pem file with the specified CAs to be used in Cert Authentication
 // If it's already exists, it's clobbered.
 func AddCertAuth(name string, ca, crl []byte) (*ingress.SSLCert, error) {
-	caName := fmt.Sprintf("ca-%v.pem", name)
+	caName := fmt.Sprintf("ca_%v.pem", name)
 	caFileName := fmt.Sprintf("%v/%v", ingress.DefaultCACertsDirectory, caName)
 
 	pemCABlock, _ := pem.Decode(ca)
@@ -275,7 +275,7 @@ func AddCertAuth(name string, ca, crl []byte) (*ingress.SSLCert, error) {
 	var PemSHA string
 
 	if len(crl) > 0 {
-		crlName := fmt.Sprintf("ca-%v-crl.pem", name)
+		crlName := fmt.Sprintf("ca_%v_crl.pem", name)
 		crlFileName = fmt.Sprintf("%v/%v", ingress.DefaultCrlDirectory, crlName)
 
 		pemCrlBlock, _ := pem.Decode(crl)

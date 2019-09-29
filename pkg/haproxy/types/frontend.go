@@ -259,6 +259,8 @@ func NewFrontendBind(hosts []*Host) BindConfig {
 			cfg = &BindTLSConfig{
 				CAFilename:  host.TLS.CAFilename,
 				CAHash:      host.TLS.CAHash,
+				CRLFilename: host.TLS.CRLFilename,
+				CRLHash:     host.TLS.CRLHash,
 				CrtFilename: host.TLS.TLSFilename,
 				CrtHash:     host.TLS.TLSHash,
 			}

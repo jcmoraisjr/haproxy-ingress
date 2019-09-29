@@ -262,6 +262,8 @@ type BindConfig struct {
 type BindTLSConfig struct {
 	CAFilename  string
 	CAHash      string
+	CRLFilename string
+	CRLHash     string
 	CrtFilename string
 	CrtHash     string
 	Hostnames   []string
@@ -323,6 +325,8 @@ type HostTLSConfig struct {
 	CAFilename       string
 	CAHash           string
 	CAVerifyOptional bool
+	CRLFilename      string
+	CRLHash          string
 	TLSFilename      string
 	TLSHash          string
 }
@@ -498,6 +502,8 @@ type OAuthConfig struct {
 type ServerConfig struct {
 	CAFilename  string
 	CAHash      string
+	CRLFilename string
+	CRLHash     string
 	CrtFilename string
 	CrtHash     string
 	MaxConn     int

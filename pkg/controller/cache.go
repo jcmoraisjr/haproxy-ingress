@@ -84,18 +84,26 @@ func (c *cache) GetTLSSecretPath(secretName string) (convtypes.File, error) {
 	}, nil
 }
 
-func (c *cache) GetCASecretPath(secretName string) (convtypes.File, error) {
+func (c *cache) GetCASecretPath(secretName string) (ca, crl convtypes.File, err error) {
 	sslCert, err := c.controller.GetCertificate(secretName)
 	if err != nil {
-		return convtypes.File{}, err
+		return ca, crl, err
 	}
 	if sslCert.CAFileName == "" {
-		return convtypes.File{}, fmt.Errorf("secret '%s' does not have key 'ca.crt'", secretName)
+		return ca, crl, fmt.Errorf("secret '%s' does not have key 'ca.crt'", secretName)
 	}
-	return convtypes.File{
+	ca = convtypes.File{
 		Filename: sslCert.CAFileName,
 		SHA1Hash: sslCert.PemSHA,
-	}, nil
+	}
+	if sslCert.CRLFileName != "" {
+		// ssl.AddCertAuth concatenates the hash of CA and CRL into the same attribute
+		crl = convtypes.File{
+			Filename: sslCert.CRLFileName,
+			SHA1Hash: sslCert.PemSHA,
+		}
+	}
+	return ca, crl, nil
 }
 
 func (c *cache) GetDHSecretPath(secretName string) (convtypes.File, error) {

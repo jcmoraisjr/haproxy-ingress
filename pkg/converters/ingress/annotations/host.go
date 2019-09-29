@@ -29,13 +29,16 @@ func (c *updater) buildHostAuthTLS(d *hostData) {
 	if verify.Value == "off" {
 		return
 	}
-	if cafile, err := c.cache.GetCASecretPath(tlsSecret.Value); err == nil {
+	if cafile, crlfile, err := c.cache.GetCASecretPath(tlsSecret.Value); err == nil {
 		d.host.TLS.CAFilename = cafile.Filename
 		d.host.TLS.CAHash = cafile.SHA1Hash
+		d.host.TLS.CRLFilename = crlfile.Filename
+		d.host.TLS.CRLHash = crlfile.SHA1Hash
 		d.host.TLS.CAVerifyOptional = verify.Value == "optional" || verify.Value == "optional_no_ca"
 		d.host.TLS.CAErrorPage = d.mapper.Get(ingtypes.HostAuthTLSErrorPage).Value
 	} else {
-		c.logger.Error("error building TLS auth config: %v", err)
+		c.logger.Error("error building TLS auth config on %s: %v", tlsSecret.Source, err)
+		return
 	}
 }
 
