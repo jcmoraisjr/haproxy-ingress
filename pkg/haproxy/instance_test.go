@@ -349,6 +349,14 @@ func TestBackends(t *testing.T) {
 		},
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.Server.Secure = true
+				b.Server.CAFilename = "/var/haproxy/ssl/ca.pem"
+				b.Server.CRLFilename = "/var/haproxy/ssl/crl.pem"
+			},
+			srvsuffix: "ssl verify required ca-file /var/haproxy/ssl/ca.pem crl-file /var/haproxy/ssl/crl.pem",
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
 				b.Server.Protocol = "h2"
 				b.Server.Secure = true
 				b.Server.CAFilename = "/var/haproxy/ssl/ca.pem"
@@ -1060,6 +1068,8 @@ func TestInstanceSingleFrontendTwoBindsCA(t *testing.T) {
 	h.AddPath(b, "/")
 	h.TLS.CAFilename = "/var/haproxy/ssl/ca/d2.local.pem"
 	h.TLS.CAHash = "2"
+	h.TLS.CRLFilename = "/var/haproxy/ssl/ca/d2.local.crl.pem"
+	h.TLS.CRLHash = "2"
 
 	b.SSLRedirect = b.CreateConfigBool(true)
 	b.TLS.AddCertHeader = true
@@ -1121,7 +1131,7 @@ d2.local/ yes
 	c.checkMap("_front001_bind_crt.list", `
 /var/haproxy/ssl/certs/default.pem
 /var/haproxy/ssl/certs/default.pem [ca-file /var/haproxy/ssl/ca/d1.local.pem verify optional] d1.local
-/var/haproxy/ssl/certs/default.pem [ca-file /var/haproxy/ssl/ca/d2.local.pem verify optional] d2.local
+/var/haproxy/ssl/certs/default.pem [ca-file /var/haproxy/ssl/ca/d2.local.pem crl-file /var/haproxy/ssl/ca/d2.local.crl.pem verify optional] d2.local
 `)
 	c.checkMap("_front001_host.map", `
 `)

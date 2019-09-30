@@ -501,7 +501,8 @@ backend {{ $backend.ID }}
     {{- if $server.Secure }} ssl
         {{- if $server.CrtFilename }} crt {{ $server.CrtFilename }}{{ end }}
         {{- if $server.CAFilename }} verify required ca-file {{ $server.CAFilename }}
-            {{- else }} verify none
+            {{- if $server.CRLFilename }} crl-file {{ $server.CRLFilename }}{{ end }}
+        {{- else }} verify none
         {{- end }}
     {{- end }}
     {{- if $server.SendProxy }} {{ $server.SendProxy }}{{ end }}

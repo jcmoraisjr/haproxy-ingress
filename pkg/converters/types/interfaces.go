@@ -27,7 +27,7 @@ type Cache interface {
 	GetTerminatingPods(service *api.Service) ([]*api.Pod, error)
 	GetPod(podName string) (*api.Pod, error)
 	GetTLSSecretPath(secretName string) (File, error)
-	GetCASecretPath(secretName string) (File, error)
+	GetCASecretPath(secretName string) (ca, crl File, err error)
 	GetDHSecretPath(secretName string) (File, error)
 	GetSecretContent(secretName, keyName string) ([]byte, error)
 }

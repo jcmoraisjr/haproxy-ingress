@@ -546,9 +546,11 @@ func (c *updater) buildBackendProtocol(d *backData) {
 		}
 	}
 	if ca := d.mapper.Get(ingtypes.BackSecureVerifyCASecret); ca.Value != "" {
-		if caFile, err := c.cache.GetCASecretPath(ca.Source.Namespace + "/" + ca.Value); err == nil {
+		if caFile, crlFile, err := c.cache.GetCASecretPath(ca.Source.Namespace + "/" + ca.Value); err == nil {
 			d.backend.Server.CAFilename = caFile.Filename
 			d.backend.Server.CAHash = caFile.SHA1Hash
+			d.backend.Server.CRLFilename = crlFile.Filename
+			d.backend.Server.CRLHash = crlFile.SHA1Hash
 		} else {
 			c.logger.Warn("skipping CA on %v: %v", ca.Source, err)
 		}
