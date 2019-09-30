@@ -2,7 +2,8 @@
 
 This example demonstrates how to configure
 [blue/green deployment](https://www.martinfowler.com/bliki/BlueGreenDeployment.html)
-on HAProxy Ingress controller.
+on HAProxy Ingress controller, in order to route requests based on distict weight on
+deployment groups as well as selecting a group based on http header or cookie value.
 
 ## Prerequisites
 
@@ -76,6 +77,7 @@ apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   annotations:
+    ingress.kubernetes.io/balance-algorithm: roundrobin
     ingress.kubernetes.io/blue-green-deploy: group=blue=1,group=green=1
     ingress.kubernetes.io/blue-green-mode: pod
     ingress.kubernetes.io/ssl-redirect: "false"
@@ -98,7 +100,7 @@ NAME        HOSTS                   ADDRESS   PORTS     AGE
 bluegreen   bluegreen.example.com             80        11s
 ```
 
-# Test
+## Test blue/green balance
 
 Lets test! The following snippets use an alias `hareq` declared below.
 Change `IP` to your HAProxy Ingress controller IP address:
@@ -203,4 +205,65 @@ $ hareq
 Running 100 requests...
   33 blue
   67 green
+```
+
+## Test blue/green selector
+
+Blue/green selector requires HAProxy Ingress controller v0.9 or above.
+
+Follow the [deployment](#deploying-applications) and [configuration](#configure)
+instructions to deploy the sample application.
+
+After that, add the following annotation:
+
+```
+$ kubectl annotate --overwrite ingress bluegreen \
+  ingress.kubernetes.io/blue-green-header=x-server:group
+```
+
+Create (or update) the `hareq` alias. Change `IP` to your HAProxy Ingress controller
+IP address:
+
+```
+$ IP=192.168.100.99
+$ alias hareq='echo Running 100 requests...; for i in `seq 1 100`; do
+    curl -fsS $IP -H "Host: bluegreen.example.com" -H "X-Server: $GROUP" | cut -d- -f1
+  done | sort | uniq -c'
+```
+
+Choose `blue` group:
+
+```
+$ GROUP=blue
+```
+
+The envvar `GROUP` will populate the `X-Server` header with the value `blue`.
+
+Run the requests:
+
+```
+$ hareq
+Running 100 requests...
+ 100 blue
+```
+
+Choose `green` group:
+
+```
+$ GROUP=blue
+$ hareq
+Running 100 requests...
+ 100 green
+```
+
+Choose an invalid group, the configured blue/green balance will be used:
+
+```
+$ kubectl annotate --overwrite ingress bluegreen \
+  ingress.kubernetes.io/blue-green-deploy=group=blue=1,group=green=3
+$ GROUP=invalid
+$ hareq
+Running 100 requests...
+  25 blue
+  75 green
 ```

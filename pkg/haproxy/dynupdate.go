@@ -193,11 +193,12 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 
 	// try to dynamically remove/update/add endpoints
 	// targets used here only to have predictable results
+	// Endpoint.Label != "" means use-server of blue/green config, need reload
 	sort.Strings(targets)
 	for _, target := range targets {
 		pair := endpoints[target]
 		if pair.cur == nil {
-			if updated && !d.execDisableEndpoint(curBack.ID, pair.old) {
+			if pair.old.Label != "" || (updated && !d.execDisableEndpoint(curBack.ID, pair.old)) {
 				updated = false
 			}
 			empty = append(empty, pair.old.Name)
@@ -208,7 +209,7 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 	for i := range added {
 		// reusing empty slots from oldBack
 		added[i].Name = empty[i]
-		if updated && !d.execEnableEndpoint(curBack.ID, nil, added[i]) {
+		if added[i].Label != "" || (updated && !d.execEnableEndpoint(curBack.ID, nil, added[i])) {
 			updated = false
 		}
 	}
@@ -225,6 +226,9 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 func (d *dynUpdater) checkEndpointPair(backname string, pair *epPair) bool {
 	if reflect.DeepEqual(pair.old, pair.cur) {
 		return true
+	}
+	if pair.old.Label != "" || pair.cur.Label != "" {
+		return false
 	}
 	return d.execEnableEndpoint(backname, pair.old, pair.cur)
 }

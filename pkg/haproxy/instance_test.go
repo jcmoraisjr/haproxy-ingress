@@ -42,6 +42,7 @@ func TestBackends(t *testing.T) {
 	testCases := []struct {
 		doconfig  func(g *hatypes.Global, b *hatypes.Backend)
 		path      []string
+		skipSrv   bool
 		srvsuffix string
 		expected  string
 	}{
@@ -414,6 +415,53 @@ func TestBackends(t *testing.T) {
 			},
 			srvsuffix: "send-proxy-v2",
 		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.BlueGreen.CookieName = "ServerName"
+				e1, e2, e3 := *endpointS31, *endpointS32, *endpointS33
+				b.Endpoints = []*hatypes.Endpoint{&e1, &e2, &e3}
+				b.Endpoints[0].Label = "blue"
+			},
+			skipSrv: true,
+			expected: `
+    use-server s31 if { req.cook(ServerName) blue }
+    server s31 172.17.0.131:8080 weight 100
+    server s32 172.17.0.132:8080 weight 100
+    server s33 172.17.0.133:8080 weight 100`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.BlueGreen.HeaderName = "X-Svc"
+				e1, e2, e3 := *endpointS31, *endpointS32, *endpointS33
+				b.Endpoints = []*hatypes.Endpoint{&e1, &e2, &e3}
+				b.Endpoints[1].Label = "green"
+			},
+			skipSrv: true,
+			expected: `
+    use-server s32 if { req.hdr(X-Svc) green }
+    server s31 172.17.0.131:8080 weight 100
+    server s32 172.17.0.132:8080 weight 100
+    server s33 172.17.0.133:8080 weight 100`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.BlueGreen.CookieName = "ServerName"
+				b.BlueGreen.HeaderName = "X-Svc"
+				e1, e2, e3 := *endpointS31, *endpointS32, *endpointS33
+				b.Endpoints = []*hatypes.Endpoint{&e1, &e2, &e3}
+				b.Endpoints[1].Label = "green"
+				b.Endpoints[2].Label = "green"
+			},
+			skipSrv: true,
+			expected: `
+    use-server s32 if { req.hdr(X-Svc) green }
+    use-server s33 if { req.hdr(X-Svc) green }
+    use-server s32 if { req.cook(ServerName) green }
+    use-server s33 if { req.cook(ServerName) green }
+    server s31 172.17.0.131:8080 weight 100
+    server s32 172.17.0.132:8080 weight 100
+    server s33 172.17.0.133:8080 weight 100`,
+		},
 	}
 	for _, test := range testCases {
 		c := setup(t)
@@ -443,13 +491,17 @@ func TestBackends(t *testing.T) {
 			mode = "http"
 		}
 
+		var srv string
+		if !test.skipSrv {
+			srv = `
+    server s1 172.17.0.11:8080 weight 100` + test.srvsuffix
+		}
 		c.Update()
 		c.checkConfig(`
 <<global>>
 <<defaults>>
 backend d1_app_8080
-    mode ` + mode + test.expected + `
-    server s1 172.17.0.11:8080 weight 100` + test.srvsuffix + `
+    mode ` + mode + test.expected + srv + `
 <<backends-default>>
 <<frontends-default>>
 <<support>>

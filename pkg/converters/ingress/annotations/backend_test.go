@@ -343,6 +343,7 @@ func TestBlueGreen(t *testing.T) {
 					}
 				}
 				ep = append(ep, &hatypes.Endpoint{
+					Enabled:   true,
 					IP:        "172.17.0.11",
 					Port:      8080,
 					Weight:    weight,
@@ -360,14 +361,20 @@ func TestBlueGreen(t *testing.T) {
 		"pod0102-03": buildPod("app=d01,v=2"),
 		"pod0102-04": buildPod("app=d01,v=2"),
 		"pod0103-01": buildPod("app=d01,v=3"),
+		"pod0103-02": buildPod("app=d01,x=3"),
+		"pod0103-03": buildPod("app=d01"),
 	}
 	testCase := []struct {
-		annDefault map[string]string
 		ann        map[string]string
 		endpoints  []*hatypes.Endpoint
+		expConfig  *hatypes.BlueGreenConfig
+		expLabels  []string
 		expWeights []int
 		expLogging string
 	}{
+		//
+		// Balance test cases
+		//
 		// 0
 		{
 			ann:        buildAnn("", ""),
@@ -382,7 +389,7 @@ func TestBlueGreen(t *testing.T) {
 			expWeights: []int{1},
 			expLogging: "",
 		},
-		// 22
+		// 2
 		{
 			ann:        buildAnn("err", ""),
 			endpoints:  buildEndpoints("pod0101-01"),
@@ -587,8 +594,88 @@ INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not refe
 			expWeights: []int{1, 1, 2, 0},
 			expLogging: "",
 		},
+		//
+		// Label test cases
+		//
+		// 30
+		{
+			ann:       map[string]string{ingtypes.BackBlueGreenCookie: "SetServer:v"},
+			endpoints: buildEndpoints("pod0101-01,pod0101-02,pod0102-01"),
+			expConfig: &hatypes.BlueGreenConfig{CookieName: "SetServer"},
+			expLabels: []string{"1", "1", "2"},
+		},
+		// 31
+		{
+			ann:       map[string]string{ingtypes.BackBlueGreenHeader: "X-Server:v"},
+			endpoints: buildEndpoints("pod0101-01,pod0101-02,pod0102-01"),
+			expConfig: &hatypes.BlueGreenConfig{HeaderName: "X-Server"},
+			expLabels: []string{"1", "1", "2"},
+		},
+		// 32
+		{
+			ann:       map[string]string{ingtypes.BackBlueGreenHeader: "X-Server:v"},
+			endpoints: buildEndpoints("pod0103-01,pod0103-02,pod0103-03"),
+			expConfig: &hatypes.BlueGreenConfig{HeaderName: "X-Server"},
+			expLabels: []string{"3", "", ""},
+		},
+		// 33
+		{
+			ann: map[string]string{
+				ingtypes.BackBlueGreenCookie: "SetServer:v",
+				ingtypes.BackBlueGreenHeader: "X-Server:v",
+			},
+			endpoints: buildEndpoints("pod0103-01,pod0103-02,pod0103-03"),
+			expConfig: &hatypes.BlueGreenConfig{
+				CookieName: "SetServer",
+				HeaderName: "X-Server",
+			},
+			expLabels: []string{"3", "", ""},
+		},
+		// 34
+		{
+			ann: map[string]string{
+				ingtypes.BackBlueGreenCookie: "SetServer:v",
+				ingtypes.BackBlueGreenHeader: "X-Server:x",
+			},
+			endpoints:  buildEndpoints("pod0103-01,pod0103-02,pod0103-03"),
+			expConfig:  &hatypes.BlueGreenConfig{},
+			expLabels:  []string{"", "", ""},
+			expLogging: `ERROR CookieName:LabelName and HeaderName:LabelName pairs, used in the same backend on ingress 'default/ing1' and ingress 'default/ing1', should have the same label name`,
+		},
+		// 35
+		{
+			ann: map[string]string{
+				ingtypes.BackBlueGreenCookie: "SetServer:x",
+				ingtypes.BackBlueGreenHeader: "X-Server:x",
+			},
+			endpoints: buildEndpoints("pod0103-01,pod0103-02,pod0103-03"),
+			expConfig: &hatypes.BlueGreenConfig{
+				CookieName: "SetServer",
+				HeaderName: "X-Server",
+			},
+			expLabels: []string{"", "3", ""},
+		},
+		// 36
+		{
+			ann: map[string]string{
+				ingtypes.BackBlueGreenCookie: "SetServer",
+			},
+			endpoints:  buildEndpoints("pod0103-01,pod0103-02,pod0103-03"),
+			expConfig:  &hatypes.BlueGreenConfig{},
+			expLabels:  []string{"", "", ""},
+			expLogging: `ERROR invalid CookieName:LabelName pair on ingress 'default/ing1': SetServer`,
+		},
+		// 37
+		{
+			ann: map[string]string{
+				ingtypes.BackBlueGreenHeader: "_X_Server:v",
+			},
+			endpoints:  buildEndpoints("pod0103-01,pod0103-02,pod0103-03"),
+			expConfig:  &hatypes.BlueGreenConfig{},
+			expLabels:  []string{"", "", ""},
+			expLogging: `ERROR invalid HeaderName:LabelName pair on ingress 'default/ing1': _X_Server:v`,
+		},
 	}
-
 	source := &Source{
 		Namespace: "default",
 		Name:      "ing1",
@@ -597,15 +684,24 @@ INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not refe
 	for i, test := range testCase {
 		c := setup(t)
 		c.cache.PodList = pods
-		d := c.createBackendData("default/app", source, test.ann, test.annDefault)
+		d := c.createBackendData("default/app", source, test.ann, map[string]string{})
 		d.backend.Endpoints = test.endpoints
 		u := c.createUpdater()
-		u.buildBackendBlueGreen(d)
+		u.buildBackendBlueGreenBalance(d)
+		u.buildBackendBlueGreenSelector(d)
 		weights := make([]int, len(d.backend.Endpoints))
+		labels := make([]string, len(d.backend.Endpoints))
 		for j, ep := range d.backend.Endpoints {
 			weights[j] = ep.Weight
+			labels[j] = ep.Label
 		}
-		c.compareObjects("blue/green weight", i, weights, test.expWeights)
+		if test.expConfig != nil || test.expLabels != nil {
+			c.compareObjects("blue/green configs", i, d.backend.BlueGreen, *test.expConfig)
+			c.compareObjects("blue/green labels", i, labels, test.expLabels)
+		}
+		if test.expWeights != nil {
+			c.compareObjects("blue/green weight", i, weights, test.expWeights)
+		}
 		c.logger.CompareLogging(test.expLogging)
 		c.teardown()
 	}
