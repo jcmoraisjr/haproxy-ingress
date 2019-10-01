@@ -337,6 +337,23 @@ func TestBackends(t *testing.T) {
 		{
 			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
 				b.Server.Secure = true
+				b.Server.Ciphers = "ECDHE-ECDSA-AES128-GCM-SHA256"
+				b.Server.CipherSuites = "TLS_AES_128_GCM_SHA256"
+			},
+			srvsuffix: "ssl ciphers ECDHE-ECDSA-AES128-GCM-SHA256 ciphersuites TLS_AES_128_GCM_SHA256 verify none",
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.Server.Secure = true
+				b.Server.CrtFilename = "/var/haproxy/ssl/client.pem"
+				b.Server.CipherSuites = "TLS_AES_128_GCM_SHA256"
+				b.Server.Options = "no-sslv3 no-tlsv10 no-tlsv11 no-tlsv12 no-tls-tickets"
+			},
+			srvsuffix: "ssl ciphersuites TLS_AES_128_GCM_SHA256 no-sslv3 no-tlsv10 no-tlsv11 no-tlsv12 no-tls-tickets crt /var/haproxy/ssl/client.pem verify none",
+		},
+		{
+			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+				b.Server.Secure = true
 				b.Server.CrtFilename = "/var/haproxy/ssl/client.pem"
 			},
 			srvsuffix: "ssl crt /var/haproxy/ssl/client.pem verify none",
@@ -637,7 +654,11 @@ global
     lua-load /usr/local/etc/haproxy/lua/auth-request.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
+    ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
     ssl-default-bind-options no-sslv3
+    ssl-default-server-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
+    ssl-default-server-ciphersuites TLS_AES_128_GCM_SHA256
+    ssl-default-server-options no-sslv3
 defaults
     log global
     maxconn 2000
@@ -1870,7 +1891,11 @@ global
     lua-load /usr/local/etc/haproxy/lua/auth-request.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
+    ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
     ssl-default-bind-options no-sslv3
+    ssl-default-server-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
+    ssl-default-server-ciphersuites TLS_AES_128_GCM_SHA256
+    ssl-default-server-options no-sslv3
 <<defaults>>
 backend d1_app_8080
     mode http
@@ -2547,7 +2572,11 @@ func (c *testConfig) configGlobal(global *hatypes.Global) {
 	global.Healthz.Port = 10253
 	global.MaxConn = 2000
 	global.SSL.ALPN = "h2,http/1.1"
+	global.SSL.BackendCiphers = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256"
+	global.SSL.BackendCipherSuites = "TLS_AES_128_GCM_SHA256"
+	global.SSL.BackendOptions = "no-sslv3"
 	global.SSL.Ciphers = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256"
+	global.SSL.CipherSuites = "TLS_AES_128_GCM_SHA256"
 	global.SSL.DHParam.Filename = "/var/haproxy/tls/dhparam.pem"
 	global.SSL.HeadersPrefix = "X-SSL"
 	global.SSL.Options = "no-sslv3"
@@ -2654,7 +2683,11 @@ func (c *testConfig) checkConfig(expected string) {
     lua-load /usr/local/etc/haproxy/lua/auth-request.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
-    ssl-default-bind-options no-sslv3`,
+    ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
+    ssl-default-bind-options no-sslv3
+    ssl-default-server-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
+    ssl-default-server-ciphersuites TLS_AES_128_GCM_SHA256
+    ssl-default-server-options no-sslv3`,
 		"<<defaults>>": `defaults
     log global
     maxconn 2000

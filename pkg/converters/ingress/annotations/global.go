@@ -130,19 +130,24 @@ func (c *updater) buildGlobalTimeout(d *globalData) {
 }
 
 func (c *updater) buildGlobalSSL(d *globalData) {
-	d.global.SSL.Ciphers = d.mapper.Get(ingtypes.GlobalSSLCiphers).Value
-	d.global.SSL.Options = d.mapper.Get(ingtypes.GlobalSSLOptions).Value
+	ssl := &d.global.SSL
+	ssl.Ciphers = d.mapper.Get(ingtypes.GlobalSSLCiphers).Value
+	ssl.CipherSuites = d.mapper.Get(ingtypes.GlobalSSLCipherSuites).Value
+	ssl.Options = d.mapper.Get(ingtypes.GlobalSSLOptions).Value
+	ssl.BackendCiphers = d.mapper.Get(ingtypes.BackSSLCiphersBackend).Value
+	ssl.BackendCipherSuites = d.mapper.Get(ingtypes.BackSSLCipherSuitesBackend).Value
+	ssl.BackendOptions = d.mapper.Get(ingtypes.BackSSLOptionsBackend).Value
 	if sslDHParam := d.mapper.Get(ingtypes.GlobalSSLDHParam).Value; sslDHParam != "" {
 		if dhFile, err := c.cache.GetDHSecretPath(sslDHParam); err == nil {
-			d.global.SSL.DHParam.Filename = dhFile.Filename
+			ssl.DHParam.Filename = dhFile.Filename
 		} else {
 			c.logger.Error("error reading DH params: %v", err)
 		}
 	}
-	d.global.SSL.DHParam.DefaultMaxSize = d.mapper.Get(ingtypes.GlobalSSLDHDefaultMaxSize).Int()
-	d.global.SSL.Engine = d.mapper.Get(ingtypes.GlobalSSLEngine).Value
-	d.global.SSL.ModeAsync = d.mapper.Get(ingtypes.GlobalSSLModeAsync).Bool()
-	d.global.SSL.HeadersPrefix = d.mapper.Get(ingtypes.GlobalSSLHeadersPrefix).Value
+	ssl.DHParam.DefaultMaxSize = d.mapper.Get(ingtypes.GlobalSSLDHDefaultMaxSize).Int()
+	ssl.Engine = d.mapper.Get(ingtypes.GlobalSSLEngine).Value
+	ssl.ModeAsync = d.mapper.Get(ingtypes.GlobalSSLModeAsync).Bool()
+	ssl.HeadersPrefix = d.mapper.Get(ingtypes.GlobalSSLHeadersPrefix).Value
 }
 
 func (c *updater) buildGlobalHealthz(d *globalData) {

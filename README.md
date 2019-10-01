@@ -135,6 +135,9 @@ The following annotations are supported:
 ||[`ingress.kubernetes.io/session-cookie-strategy`](#affinity)|[insert\|prefix\|rewrite]|-|
 |`[0]`|[`ingress.kubernetes.io/session-cookie-dynamic`](#affinity)|[true\|false]|-|
 ||[`ingress.kubernetes.io/slots-increment`](#dynamic-scaling)|qty|-|
+|`[1]`|[`ingress.kubernetes.io/ssl-cipher-suites-backend`](#ssl-ciphers)|colon-separated list|-|
+|`[1]`|[`ingress.kubernetes.io/ssl-ciphers-backend`](#ssl-ciphers)|colon-separated list|-|
+|`[1]`|[`ingress.kubernetes.io/ssl-options-backend`](#ssl-options)|space-separated list|-|
 ||[`ingress.kubernetes.io/ssl-passthrough`](#ssl-passthrough)|[true\|false]|-|
 ||[`ingress.kubernetes.io/ssl-passthrough-http-port`](#ssl-passthrough)|backend port|-|
 ||`ingress.kubernetes.io/ssl-redirect`|[true\|false]|[doc](/examples/rewrite)|
@@ -509,7 +512,8 @@ The following parameters are supported:
 ||[`no-tls-redirect-locations`](#no-tls-redirect-locations)|comma-separated list of url|`/.well-known/acme-challenge`|
 ||[`proxy-body-size`](#proxy-body-size)|number of bytes|unlimited|
 |`[0]`|[`slots-min-free`](#dynamic-scaling)|minimum number of free slots|`0`|
-||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[link to code](https://github.com/jcmoraisjr/haproxy-ingress/blob/v0.6/pkg/controller/config.go#L40)|
+|`[1]`|[`ssl-cipher-suites`](#ssl-ciphers)|colon-separated list|[see description](#ssl-ciphers)|
+||[`ssl-ciphers`](#ssl-ciphers)|colon-separated list|[see description](#ssl-ciphers)|
 ||[`ssl-dh-default-max-size`](#ssl-dh-default-max-size)|number|`1024`|
 ||[`ssl-dh-param`](#ssl-dh-param)|namespace/secret name|no custom DH param|
 |`[0]`|[`ssl-engine`](#ssl-engine)|OpenSSL engine name and parameters|no engine set|
@@ -876,7 +880,34 @@ http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#7.3.6-req.body_size
 
 Set the list of cipher algorithms used during the SSL/TLS handshake.
 
-http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-ssl-default-bind-ciphers
+Configmap options:
+
+* `ssl-cipher-suites`: Cipher suites on TLS v1.3 handshake
+* `ssl-ciphers`: Cipher suites on TLS up to v1.2 handshake
+* `ssl-cipher-suites-backend`: Default cipher suites on TLS v1.3 handshake to backend servers
+* `ssl-ciphers-backend`: Default cipher suites on TLS up to v1.2 handshake to backend servers
+
+Annotations:
+
+* `ingress.kubernetes.io/ssl-cipher-suites-backend`: Per backend configuration of cipher suites on TLS v1.3 handshake, defaults to the configmap configuration
+* `ingress.kubernetes.io/ssl-ciphers-backend`: Per backend configuration of cipher suites on TLS up to v1.2 handshake, defaults to the configmap configuration
+
+Default values on HAProxy Ingress v0.9 and newer:
+
+* TLS up to v1.2: `ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384`
+* TLS v1.3: `TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256`
+
+Default value on HAProxy Ingress up to v0.8:
+
+* TLS up to v1.2: `ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!3DES:!MD5:!PSK`
+
+See also:
+
+* https://ssl-config.mozilla.org/#server=haproxy
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-ssl-default-bind-ciphers
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-ssl-default-bind-ciphersuites
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-ciphers
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-ciphersuites
 
 ### ssl-dh-default-max-size
 
@@ -936,17 +967,32 @@ select which pattern should be used on SSL/TLS headers.
 
 ### ssl-options
 
-Define a space-separated list of options on SSL/TLS connections:
+Define a space-separated list of options on SSL/TLS connections.
+
+Configmap options:
+
+* `ssl-options`: Options for frontend connections - HAProxy being the server
+* `ssl-options-backend`: Default options for backend server connections - HAProxy being the client
+
+Annotation:
+
+* `ingress.kubernetes.io/ssl-options-backend`: Per backend options, defaults to the global configmap configuration
+
+Available SSL options:
 
 * `force-sslv3`: Enforces use of SSLv3 only
 * `force-tlsv10`: Enforces use of TLSv1.0 only
 * `force-tlsv11`: Enforces use of TLSv1.1 only
 * `force-tlsv12`: Enforces use of TLSv1.2 only
+* `force-tlsv13`: Enforces use of TLSv1.3 only
 * `no-sslv3`: Disables support for SSLv3
 * `no-tls-tickets`: Enforces the use of stateful session resumption
 * `no-tlsv10`: Disables support for TLSv1.0
 * `no-tlsv11`: Disables support for TLSv1.1
 * `no-tlsv12`: Disables support for TLSv1.2
+* `no-tlsv13`: Disables support for TLSv1.3
+* `ssl-max-ver <SSLv3|TLSv1.0|TLSv1.1|TLSv1.2|TLSv1.3>`: Enforces the use of a SSL/TLS version or lower
+* `ssl-min-ver <SSLv3|TLSv1.0|TLSv1.1|TLSv1.2|TLSv1.3>`: Enforces the use of a SSL/TLS version or upper
 
 ### ssl-redirect
 

@@ -84,13 +84,17 @@ type TimeoutConfig struct {
 
 // SSLConfig ...
 type SSLConfig struct {
-	ALPN          string
-	DHParam       DHParamConfig
-	Ciphers       string
-	Options       string
-	Engine        string
-	ModeAsync     bool
-	HeadersPrefix string
+	ALPN                string
+	BackendCiphers      string
+	BackendCipherSuites string
+	BackendOptions      string
+	Ciphers             string // TLS up to 1.2
+	CipherSuites        string // TLS 1.3
+	DHParam             DHParamConfig
+	Engine              string
+	HeadersPrefix       string
+	ModeAsync           bool
+	Options             string
 }
 
 // DHParamConfig ...
@@ -508,17 +512,20 @@ type OAuthConfig struct {
 
 // ServerConfig ...
 type ServerConfig struct {
-	CAFilename  string
-	CAHash      string
-	CRLFilename string
-	CRLHash     string
-	CrtFilename string
-	CrtHash     string
-	MaxConn     int
-	MaxQueue    int
-	Protocol    string
-	Secure      bool
-	SendProxy   string
+	CAFilename   string
+	CAHash       string
+	Ciphers      string // TLS up to 1.2
+	CipherSuites string // TLS 1.3
+	CRLFilename  string
+	CRLHash      string
+	CrtFilename  string
+	CrtHash      string
+	MaxConn      int
+	MaxQueue     int
+	Options      string
+	Protocol     string
+	Secure       bool
+	SendProxy    string
 }
 
 // BackendTimeoutConfig ...
