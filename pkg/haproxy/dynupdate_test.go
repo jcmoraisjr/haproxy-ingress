@@ -386,6 +386,82 @@ set server default_app_8080/srv002 weight 1
 			cmd:     ``,
 			logging: ``,
 		},
+		// 17
+		{
+			doconfig1: func(c *testConfig) {
+				b := c.config.AcquireBackend("default", "app", "8080")
+				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
+				b.AddEmptyEndpoint()
+			},
+			doconfig2: func(c *testConfig) {
+				b := c.config.AcquireBackend("default", "app", "8080")
+				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
+				b.AcquireEndpoint("172.17.0.3", 8080, "")
+			},
+			expected: []string{
+				"srv001:172.17.0.2:8080:1",
+				"srv002:172.17.0.3:8080:1",
+			},
+			dynamic: true,
+			cmd: `
+set server default_app_8080/srv002 addr 172.17.0.3 port 8080
+set server default_app_8080/srv002 state ready
+set server default_app_8080/srv002 weight 1`,
+			logging: `INFO-V(2) added endpoint '172.17.0.3:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
+		},
+		// 18
+		{
+			doconfig1: func(c *testConfig) {
+				b := c.config.AcquireBackend("default", "app", "8080")
+				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
+				b.AddEmptyEndpoint()
+			},
+			doconfig2: func(c *testConfig) {
+				b := c.config.AcquireBackend("default", "app", "8080")
+				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
+				b.AcquireEndpoint("172.17.0.4", 8080, "").Label = "green"
+			},
+			expected: []string{
+				"srv001:172.17.0.2:8080:1",
+				"srv002:172.17.0.4:8080:1",
+			},
+			dynamic: false,
+		},
+		// 19
+		{
+			doconfig1: func(c *testConfig) {
+				b := c.config.AcquireBackend("default", "app", "8080")
+				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
+				b.AcquireEndpoint("172.17.0.3", 8080, "").Label = "green"
+			},
+			doconfig2: func(c *testConfig) {
+				b := c.config.AcquireBackend("default", "app", "8080")
+				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
+			},
+			expected: []string{
+				"srv001:172.17.0.2:8080:1",
+				"srv002:127.0.0.1:1023:0",
+			},
+			dynamic: false,
+		},
+		// 20
+		{
+			doconfig1: func(c *testConfig) {
+				b := c.config.AcquireBackend("default", "app", "8080")
+				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
+				b.AcquireEndpoint("172.17.0.3", 8080, "").Label = "green"
+			},
+			doconfig2: func(c *testConfig) {
+				b := c.config.AcquireBackend("default", "app", "8080")
+				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
+				b.AcquireEndpoint("172.17.0.4", 8080, "").Label = "green"
+			},
+			expected: []string{
+				"srv001:172.17.0.2:8080:1",
+				"srv002:172.17.0.4:8080:1",
+			},
+			dynamic: false,
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)

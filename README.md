@@ -65,8 +65,8 @@ in-memory parsed template.
 |`/etc/haproxy/template`|`haproxy.tmpl`|[haproxy.tmpl](/rootfs/etc/haproxy/template/haproxy.tmpl)|
 |`/etc/haproxy/modsecurity`|`spoe-modsecurity.tmpl`|[spoe-modsecurity.tmpl](/rootfs/etc/haproxy/modsecurity/spoe-modsecurity.tmpl)|
 
-All templates support [Sprig](http://masterminds.github.io/sprig/) template library. 
-This library provides a group of commonly used template functions to work with dictionaries, 
+All templates support [Sprig](http://masterminds.github.io/sprig/) template library.
+This library provides a group of commonly used template functions to work with dictionaries,
 lists, math etc.
 
 ## Annotations
@@ -94,7 +94,9 @@ The following annotations are supported:
 |`[1]`|[`ingress.kubernetes.io/backend-protocol`](#backend-protocol)|[h1\|h2\|h1-ssl\|h2-ssl]|-|
 ||[`ingress.kubernetes.io/balance-algorithm`](#balance-algorithm)|algorithm name|-|
 ||[`ingress.kubernetes.io/blue-green-balance`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
+|`[1]`|[`ingress.kubernetes.io/blue-green-cookie`](#blue-green)|CookieName=LabelName|[doc](/examples/blue-green)|
 ||[`ingress.kubernetes.io/blue-green-deploy`](#blue-green)|label=value=weight,...|[doc](/examples/blue-green)|
+|`[1]`|[`ingress.kubernetes.io/blue-green-header`](#blue-green)|HeaderName=LabelName|[doc](/examples/blue-green)|
 ||[`ingress.kubernetes.io/blue-green-mode`](#blue-green)|[pod\|deploy]|[doc](/examples/blue-green)|
 ||[`ingress.kubernetes.io/config-backend`](#configuration-snippet)|multiline HAProxy backend config|-|
 ||[`ingress.kubernetes.io/cors-allow-credentials`](#cors)|[true\|false]|-|
@@ -181,7 +183,7 @@ The following annotations are supported:
 
 * `ingress.kubernetes.io/auth-tls-cert-header`: if true HAProxy will add `X-SSL-Client-Cert` http header with a base64 encoding of the X509 certificate provided by the client. Default is to not provide the client certificate.
 * `ingress.kubernetes.io/auth-tls-error-page`: optional URL of the page to redirect the user if he doesn't provide a certificate or the certificate is invalid.
-* `ingress.kubernetes.io/auth-tls-secret`: mandatory secret name with `ca.crt` key providing all certificate authority bundles used to validate client certificates.
+* `ingress.kubernetes.io/auth-tls-secret`: mandatory secret name with `ca.crt` key providing all certificate authority bundles used to validate client certificates, an optional `ca.crl` key can also provide a CRL in PEM format for the server to verify against.
 * `ingress.kubernetes.io/auth-tls-verify-client`: optional configuration of Client Verification behavior. Supported values are `off`, `on`, `optional` and `optional_no_ca`. The default value is `on` if a valid secret is provided, `off` otherwise.
 
 See also client cert [example](/examples/auth/client-certs).
@@ -209,7 +211,17 @@ http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-proto
 
 ### Blue-green
 
-Configure weight of a blue/green deployment. The annotation accepts a comma separated list of label
+Configure backend server groups based on the weight of the group - blue/green
+balance - or a group selection based on http header or cookie value - blue/green selector.
+
+Both blue/green configurations can be used together: if the http header or cookie isn't provided
+or doesn't match a group, the blue/green balance will be used.
+
+See below the description of the two blue/green configuration options.
+
+**Blue/green balance**
+
+Configures weight of a blue/green deployment. The annotation accepts a comma separated list of label
 name/value pair and a numeric weight. Concatenate label name, label value and weight with an equal
 sign, without spaces. The label name/value pair will be used to match corresponding pods or deploys.
 There is no limit to the number of label/weight balance configurations.
@@ -240,9 +252,40 @@ Value of `0` (zero) can also be used as weight. This will let the endpoint confi
 backend accepting persistent connections - see [affinity](#affinity) - but will not participate
 in the load balancing. The maximum weight value is `256`.
 
-See also the [example](/examples/blue-green) page.
+**Blue/green selector**
 
-http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-weight
+Configures header or cookie name and also a pod label name used to tag the group of backend servers.
+
+* `ingress.kubernetes.io/blue-green-cookie`: the `CookieName:LabelName` pair
+* `ingress.kubernetes.io/blue-green-header`: the `HeaderName:LabelName` pair
+
+The `CookieName` or `HeaderName` is the name of the http cookie or header used in the request to match
+a group name. The `LabelName` is the name of the pod label used to read the group name of the backend
+server.
+
+The following configuration `X-Server:group` on `ingress.kubernetes.io/blue-green-header` configures
+HAProxy to try to match a backend server based on the value of its label `group`. A request with header
+`X-Server: green` will match a pod labeled `group=green`. Cookie configuration follows the same rules.
+
+The name of the header and the label follow the k8s label naming convention: must consist of
+alphanumeric characters, `-`, `_` or `.`, and must start and end with an alphanumeric character.
+
+Both cookie and header based configurations can be used together in the same backend (k8s service),
+provided that the label name is the same. If the request uses the configured header and cookie, the
+header will take precedence, and the cookie would be used if the header value provided doesn't match
+a healthy backend server.
+
+Note that blue/green selector should be used only on controlled testing scenarios because it
+doesn't provide a proper load balancing: the first healthy backend server that match header or
+cookie configuration will be used despite if a proper load balance algorithm would choose another
+one. This can be changed in the future. Blue/green balance doesn't have this limitation and properly
+uses the chosen load balance algorithm.
+
+See also:
+
+* the [example](/examples/blue-green) page
+* `weight` based balance: http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-weight
+* `use-server` bases selector: http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-use-server
 
 ### CORS
 
@@ -320,7 +363,7 @@ Configure secure (TLS) connection to the backends.
 
 * `ingress.kubernetes.io/secure-backends`: Define as true if the backend provide a TLS connection.
 * `ingress.kubernetes.io/secure-crt-secret`: Optional secret name of client certificate and key. This cert/key pair must be provided if the backend requests a client certificate. Expected secret keys are `tls.crt` and `tls.key`, the same used if secret is built with `kubectl create secret tls <name>`.
-* `ingress.kubernetes.io/secure-verify-ca-secret`: Optional secret name with certificate authority bundle used to validate server certificate, preventing man-in-the-middle attacks. Expected secret key is `ca.crt`.
+* `ingress.kubernetes.io/secure-verify-ca-secret`: Optional secret name with certificate authority bundle used to validate server certificate, preventing man-in-the-middle attacks. Expected secret key is `ca.crt`. An optional `ca.crl` key can also provide a CRL in PEM format for the server to verify against.
 
 ### Server Alias
 

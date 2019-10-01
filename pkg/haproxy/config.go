@@ -400,7 +400,12 @@ func (c *config) BuildFrontendGroup() error {
 			if tls.CAFilename == "" {
 				crtListConfig = fmt.Sprintf("%s %s", crtFile, hostnames)
 			} else {
-				crtListConfig = fmt.Sprintf("%s [ca-file %s verify optional] %s", crtFile, tls.CAFilename, hostnames)
+				// TODO this NEED its own template file
+				var crl string
+				if tls.CRLFilename != "" {
+					crl = " crl-file " + tls.CRLFilename
+				}
+				crtListConfig = fmt.Sprintf("%s [ca-file %s%s verify optional] %s", crtFile, tls.CAFilename, crl, hostnames)
 			}
 			f.Bind.CrtList.AppendItem(crtListConfig)
 		}

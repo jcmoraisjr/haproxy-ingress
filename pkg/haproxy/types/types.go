@@ -266,6 +266,8 @@ type BindConfig struct {
 type BindTLSConfig struct {
 	CAFilename  string
 	CAHash      string
+	CRLFilename string
+	CRLHash     string
 	CrtFilename string
 	CrtHash     string
 	Hostnames   []string
@@ -327,6 +329,8 @@ type HostTLSConfig struct {
 	CAFilename       string
 	CAHash           string
 	CAVerifyOptional bool
+	CRLFilename      string
+	CRLHash          string
 	TLSFilename      string
 	TLSHash          string
 }
@@ -341,6 +345,7 @@ type Backend struct {
 	Name      string
 	Port      string
 	Endpoints []*Endpoint
+	BlueGreen BlueGreenConfig
 	Paths     []*BackendPath
 	PathsMap  *HostsMap
 	//
@@ -395,12 +400,19 @@ type Backend struct {
 // Endpoint ...
 type Endpoint struct {
 	Enabled   bool
+	Label     string
 	IP        string
 	Name      string
 	Port      int
 	Target    string
 	TargetRef string
 	Weight    int
+}
+
+// BlueGreenConfig ...
+type BlueGreenConfig struct {
+	CookieName string
+	HeaderName string
 }
 
 // BackendPaths ...
@@ -504,6 +516,8 @@ type ServerConfig struct {
 	CAHash       string
 	Ciphers      string // TLS up to 1.2
 	CipherSuites string // TLS 1.3
+	CRLFilename  string
+	CRLHash      string
 	CrtFilename  string
 	CrtHash      string
 	MaxConn      int

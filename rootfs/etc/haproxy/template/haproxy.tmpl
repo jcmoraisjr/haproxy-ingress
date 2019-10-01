@@ -492,6 +492,21 @@ backend {{ $backend.ID }}
         {{- "" }} resolvers {{ $backend.Resolver }} resolve-prefer ipv4 init-addr none
         {{- template "backend" map $backend }}
 {{- else }}
+{{- /* Iterate twice because header takes precedence */}}
+{{- if $backend.BlueGreen.HeaderName }}
+{{- range $ep := $backend.Endpoints }}
+{{- if $ep.Label }}
+    use-server {{ $ep.Name }} if { req.hdr({{ $backend.BlueGreen.HeaderName }}) {{ $ep.Label }} }
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if $backend.BlueGreen.CookieName }}
+{{- range $ep := $backend.Endpoints }}
+{{- if $ep.Label }}
+    use-server {{ $ep.Name }} if { req.cook({{ $backend.BlueGreen.CookieName }}) {{ $ep.Label }} }
+{{- end }}
+{{- end }}
+{{- end }}
 {{- range $ep := $backend.Endpoints }}
     server {{ $ep.Name }} {{ $ep.IP }}:{{ $ep.Port }}
         {{- if not $ep.Enabled }} disabled{{ end }}
@@ -516,7 +531,8 @@ backend {{ $backend.ID }}
         {{- if $server.Options }} {{ $server.Options }}{{ end }}
         {{- if $server.CrtFilename }} crt {{ $server.CrtFilename }}{{ end }}
         {{- if $server.CAFilename }} verify required ca-file {{ $server.CAFilename }}
-            {{- else }} verify none
+            {{- if $server.CRLFilename }} crl-file {{ $server.CRLFilename }}{{ end }}
+        {{- else }} verify none
         {{- end }}
     {{- end }}
     {{- if $server.SendProxy }} {{ $server.SendProxy }}{{ end }}

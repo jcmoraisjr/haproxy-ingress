@@ -60,6 +60,7 @@ var (
 	// certificate and key.
 	DefaultSSLDirectory     = "/ingress-controller/ssl"
 	DefaultCACertsDirectory = "/ingress-controller/cacerts"
+	DefaultCrlDirectory     = "/ingress-controller/crl"
 )
 
 // Controller holds the methods to handle an Ingress backend

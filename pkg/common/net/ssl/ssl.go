@@ -31,6 +31,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -247,9 +248,8 @@ func parseSANExtension(value []byte) (dnsNames, emailAddresses []string, ipAddre
 
 // AddCertAuth creates a .pem file with the specified CAs to be used in Cert Authentication
 // If it's already exists, it's clobbered.
-func AddCertAuth(name string, ca []byte) (*ingress.SSLCert, error) {
-
-	caName := fmt.Sprintf("ca-%v.pem", name)
+func AddCertAuth(name string, ca, crl []byte) (*ingress.SSLCert, error) {
+	caName := fmt.Sprintf("ca_%v.pem", name)
 	caFileName := fmt.Sprintf("%v/%v", ingress.DefaultCACertsDirectory, caName)
 
 	pemCABlock, _ := pem.Decode(ca)
@@ -271,11 +271,45 @@ func AddCertAuth(name string, ca []byte) (*ingress.SSLCert, error) {
 		return nil, fmt.Errorf("could not write CA file %v: %v", caFileName, err)
 	}
 
+	var crlFileName string
+	var PemSHA string
+
+	if len(crl) > 0 {
+		crlName := fmt.Sprintf("ca_%v_crl.pem", name)
+		crlFileName = fmt.Sprintf("%v/%v", ingress.DefaultCrlDirectory, crlName)
+
+		pemCrlBlock, _ := pem.Decode(crl)
+		if pemCrlBlock == nil {
+			return nil, fmt.Errorf("CRL file %v provided contains invalid data, and must be created only with PEM formatted CRL", name)
+		}
+
+		_, err := x509.ParseCRL(pemCrlBlock.Bytes)
+		if err != nil {
+			return nil, err
+		}
+
+		err = ioutil.WriteFile(crlFileName, crl, 0644)
+		if err != nil {
+			return nil, fmt.Errorf("could not write CRL file: %v: %v", crlFileName, err)
+		}
+
+		// Concatenate the CA and CRL file SHAs together for the PemSHA
+		filenameSHAs := []string{
+			file.SHA1(caFileName),
+			file.SHA1(crlFileName),
+		}
+		PemSHA = strings.Join(filenameSHAs, "")
+	} else {
+		// Only use the CA filename for a PemSHA
+		PemSHA = file.SHA1(caFileName)
+	}
+
 	glog.V(3).Infof("Created CA Certificate for Authentication: %v", caFileName)
 	return &ingress.SSLCert{
 		CAFileName:  caFileName,
+		CRLFileName: crlFileName,
 		PemFileName: caFileName,
-		PemSHA:      file.SHA1(caFileName),
+		PemSHA:      PemSHA,
 	}, nil
 }
 

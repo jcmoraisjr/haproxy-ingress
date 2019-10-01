@@ -164,7 +164,7 @@ func extractUserlist(source, secret, users string) ([]hatypes.User, []error) {
 	return userlist, err
 }
 
-func (c *updater) buildBackendBlueGreen(d *backData) {
+func (c *updater) buildBackendBlueGreenBalance(d *backData) {
 	balance := d.mapper.Get(ingtypes.BackBlueGreenBalance)
 	if balance.Source == nil || balance.Value == "" {
 		balance = d.mapper.Get(ingtypes.BackBlueGreenDeploy)
@@ -301,6 +301,61 @@ func (c *updater) buildBackendBlueGreen(d *backData) {
 			} else {
 				ep.Weight = weight
 			}
+		}
+	}
+}
+
+const validLabelRegexStr = "([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]"
+const bluegreenSeparator = ":"
+
+var validNamePairRegex = regexp.MustCompile(`^` + validLabelRegexStr + bluegreenSeparator + validLabelRegexStr + `$`)
+
+func (c *updater) buildBackendBlueGreenSelector(d *backData) {
+	cookie := d.mapper.Get(ingtypes.BackBlueGreenCookie)
+	header := d.mapper.Get(ingtypes.BackBlueGreenHeader)
+	if cookie.Value == "" && header.Value == "" {
+		return
+	}
+	if cookie.Value != "" && !validNamePairRegex.MatchString(cookie.Value) {
+		c.logger.Error("invalid CookieName:LabelName pair on %s: %s", cookie.Source, cookie.Value)
+		return
+	}
+	if header.Value != "" && !validNamePairRegex.MatchString(header.Value) {
+		c.logger.Error("invalid HeaderName:LabelName pair on %s: %s", header.Source, header.Value)
+		return
+	}
+	vcookie := strings.Split(cookie.Value, bluegreenSeparator)
+	vheader := strings.Split(header.Value, bluegreenSeparator)
+	var labelName string
+	if cookie.Value != "" {
+		d.backend.BlueGreen.CookieName = vcookie[0]
+		labelName = vcookie[1]
+	}
+	if header.Value != "" {
+		if labelName != "" && labelName != vheader[1] {
+			c.logger.Error(
+				"CookieName:LabelName and HeaderName:LabelName pairs, used in the same backend on %s and %s, should have the same label name",
+				cookie.Source, header.Source,
+			)
+			d.backend.BlueGreen.CookieName = ""
+			return
+		}
+		d.backend.BlueGreen.HeaderName = vheader[0]
+		labelName = vheader[1]
+	}
+	for _, ep := range d.backend.Endpoints {
+		if !ep.Enabled {
+			continue
+		}
+		if pod, err := c.cache.GetPod(ep.TargetRef); err == nil {
+			if labelValue, found := pod.Labels[labelName]; found {
+				ep.Label = labelValue
+			}
+		} else {
+			if ep.TargetRef == "" {
+				err = fmt.Errorf("endpoint does not reference a pod")
+			}
+			c.logger.Warn("endpoint '%s:%d' on backend '%s' was removed from blue/green label: %v", ep.IP, ep.Port, d.backend.ID, err)
 		}
 	}
 }
@@ -546,9 +601,11 @@ func (c *updater) buildBackendProtocol(d *backData) {
 		}
 	}
 	if ca := d.mapper.Get(ingtypes.BackSecureVerifyCASecret); ca.Value != "" {
-		if caFile, err := c.cache.GetCASecretPath(ca.Source.Namespace + "/" + ca.Value); err == nil {
+		if caFile, crlFile, err := c.cache.GetCASecretPath(ca.Source.Namespace + "/" + ca.Value); err == nil {
 			d.backend.Server.CAFilename = caFile.Filename
 			d.backend.Server.CAHash = caFile.SHA1Hash
+			d.backend.Server.CRLFilename = crlFile.Filename
+			d.backend.Server.CRLHash = crlFile.SHA1Hash
 		} else {
 			c.logger.Warn("skipping CA on %v: %v", ca.Source, err)
 		}

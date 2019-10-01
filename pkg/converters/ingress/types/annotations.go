@@ -20,8 +20,8 @@ package types
 const (
 	HostAppRoot                = "app-root"
 	HostAuthTLSErrorPage       = "auth-tls-error-page"
-	HostAuthTLSVerifyClient    = "auth-tls-verify-client"
 	HostAuthTLSSecret          = "auth-tls-secret"
+	HostAuthTLSVerifyClient    = "auth-tls-verify-client"
 	HostServerAlias            = "server-alias"
 	HostServerAliasRegex       = "server-alias-regex"
 	HostSSLPassthrough         = "ssl-passthrough"
@@ -36,8 +36,8 @@ var (
 	AnnHost = map[string]struct{}{
 		HostAppRoot:                {},
 		HostAuthTLSErrorPage:       {},
-		HostAuthTLSVerifyClient:    {},
 		HostAuthTLSSecret:          {},
+		HostAuthTLSVerifyClient:    {},
 		HostServerAlias:            {},
 		HostServerAliasRegex:       {},
 		HostSSLPassthrough:         {},
@@ -64,7 +64,9 @@ const (
 	BackBackendServerSlotsInc  = "backend-server-slots-increment"
 	BackBalanceAlgorithm       = "balance-algorithm"
 	BackBlueGreenBalance       = "blue-green-balance"
+	BackBlueGreenCookie        = "blue-green-cookie"
 	BackBlueGreenDeploy        = "blue-green-deploy"
+	BackBlueGreenHeader        = "blue-green-header"
 	BackBlueGreenMode          = "blue-green-mode"
 	BackConfigBackend          = "config-backend"
 	BackCorsAllowCredentials   = "cors-allow-credentials"
