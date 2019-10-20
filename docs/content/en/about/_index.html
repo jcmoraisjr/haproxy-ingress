@@ -1,0 +1,33 @@
+---
+title: About
+linkTitle: About
+menu:
+  main:
+    weight: 10
+---
+
+{{< blocks/cover title="About HAProxy Ingress" image_anchor="bottom" height="min" >}}
+<p class="lead mt-5">
+  HAProxy Ingress watches ingress, services and other objects from a Kubernetes cluster,
+  and configures a HAProxy instance which will route incoming requests to the pods.
+  Updates to the cluster state is automatically applied to the HAProxy instance.
+</p>
+{{< /blocks/cover >}}
+
+{{% blocks/lead %}}
+  HAProxy is a fast and reliable TCP and HTTP reverse proxy and load balancer.
+  HAProxy Ingress carefully build an optimized HAProxy configuration, which allows
+  thousands of requests per second per proxy, despite the size of your cluster,
+  with a very low latency.
+
+  Kubernetes is a system which automates the deployment of containerized applications.
+  HAProxy Ingress uses deployment and exposing spec from the Kubernetes cluster
+  to build routing rules, allowing incoming requests from an external network
+  to the in-cluster applications.
+{{% /blocks/lead %}}
+
+{{% blocks/lead color="dark" %}}
+See HAProxy Ingress in action!
+
+Visit our [documentation]({{% relref "/docs" %}}) to get started.
+{{% /blocks/lead %}}
