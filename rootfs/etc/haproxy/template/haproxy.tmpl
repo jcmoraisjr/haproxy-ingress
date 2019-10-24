@@ -379,6 +379,9 @@ backend {{ $backend.ID }}
 {{- $cookie := $backend.Cookie }}
     cookie {{ $cookie.Name }} {{ $cookie.Strategy }}
         {{- if eq $cookie.Strategy "insert" }} indirect nocache httponly{{ end }}
+        {{- if $cookie.Shared }}
+            {{- range $hostname := $backend.Hostnames }} domain {{ $hostname }}{{ end }}
+        {{- end }}
         {{- if $cookie.Dynamic }} dynamic{{ end }}
 {{- if $cookie.Dynamic }}
     dynamic-cookie-key "{{ $global.Cookie.Key }}"

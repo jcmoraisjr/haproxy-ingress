@@ -41,13 +41,13 @@ import (
 
 func TestBackends(t *testing.T) {
 	testCases := []struct {
-		doconfig  func(g *hatypes.Global, b *hatypes.Backend)
+		doconfig  func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend)
 		path      []string
 		srvsuffix string
 		expected  string
 	}{
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.Cookie.Name = "ingress-controller"
 				b.Cookie.Strategy = "insert"
 			},
@@ -56,7 +56,7 @@ func TestBackends(t *testing.T) {
     cookie ingress-controller insert indirect nocache httponly`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.Cookie.Name = "Ingress"
 				b.Cookie.Strategy = "prefix"
 				b.Cookie.Dynamic = true
@@ -66,7 +66,19 @@ func TestBackends(t *testing.T) {
     dynamic-cookie-key "Ingress"`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.Cookie.Name = "Ingress"
+				b.Cookie.Strategy = "insert"
+				b.Cookie.Dynamic = true
+				b.Cookie.Shared = true
+				h.AddPath(b, "/other")
+			},
+			expected: `
+    cookie Ingress insert indirect nocache httponly domain d1.local dynamic
+    dynamic-cookie-key "Ingress"`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				config := hatypes.Cors{
 					Enabled:      true,
 					AllowOrigin:  "*",
@@ -93,7 +105,7 @@ func TestBackends(t *testing.T) {
     http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				config := hatypes.Cors{
 					Enabled:          true,
 					AllowOrigin:      "*",
@@ -129,7 +141,7 @@ func TestBackends(t *testing.T) {
     http-response set-header Access-Control-Allow-Credentials "true" if { var(txn.pathID) path01 }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.HSTS = []*hatypes.BackendConfigHSTS{
 					{
 						Paths: hatypes.NewBackendPaths(b.FindHostPath("d1.local/")),
@@ -162,7 +174,7 @@ func TestBackends(t *testing.T) {
     http-response set-header Strict-Transport-Security "max-age=15768000" if https-request { var(txn.pathID) path02 path03 }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				g.ForwardFor = "add"
 			},
 			expected: `
@@ -171,7 +183,7 @@ func TestBackends(t *testing.T) {
     option forwardfor`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.RewriteURL = []*hatypes.BackendConfigStr{
 					{
 						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app")),
@@ -184,7 +196,7 @@ func TestBackends(t *testing.T) {
     reqrep ^([^:\ ]*)\ /app/?(.*)$     \1\ /\2`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.RewriteURL = []*hatypes.BackendConfigStr{
 					{
 						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app")),
@@ -197,7 +209,7 @@ func TestBackends(t *testing.T) {
     reqrep ^([^:\ ]*)\ /app(.*)$       \1\ /other\2`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.RewriteURL = []*hatypes.BackendConfigStr{
 					{
 						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app"), b.FindHostPath("d1.local/app/sub")),
@@ -211,7 +223,7 @@ func TestBackends(t *testing.T) {
     reqrep ^([^:\ ]*)\ /app/sub(.*)$       \1\ /other/\2`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.RewriteURL = []*hatypes.BackendConfigStr{
 					{
 						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/path1")),
@@ -234,7 +246,7 @@ func TestBackends(t *testing.T) {
     reqrep ^([^:\ ]*)\ /path3(.*)$       \1\ /sub2\2     if { var(txn.pathID) path03 }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.WhitelistHTTP = []*hatypes.BackendConfigWhitelist{
 					{
 						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app"), b.FindHostPath("d1.local/api")),
@@ -258,7 +270,7 @@ func TestBackends(t *testing.T) {
     http-request deny if { var(txn.pathID) path03 } !wlist_src1`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.WhitelistHTTP = []*hatypes.BackendConfigWhitelist{
 					{
 						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app"), b.FindHostPath("d1.local/api")),
@@ -285,7 +297,7 @@ func TestBackends(t *testing.T) {
     http-request deny if { var(txn.pathID) path03 } !wlist_src1`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.WhitelistTCP = []string{"10.0.0.0/8", "192.168.0.0/16"}
 				b.ModeTCP = true
 			},
@@ -294,7 +306,7 @@ func TestBackends(t *testing.T) {
     tcp-request content reject if !wlist_src`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.OAuth.Impl = "oauth2_proxy"
 				b.OAuth.BackendName = "system_oauth_4180"
 				b.OAuth.URIPrefix = "/oauth2"
@@ -307,13 +319,13 @@ func TestBackends(t *testing.T) {
     http-request set-header X-Auth-Request-Email %[var(txn.auth_response_email)] if { var(txn.auth_response_email) -m found }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.HealthCheck.Interval = "2s"
 			},
 			srvsuffix: "check inter 2s",
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.HealthCheck.URI = "/check"
 				b.HealthCheck.Port = 4000
 			},
@@ -322,28 +334,28 @@ func TestBackends(t *testing.T) {
 			srvsuffix: "check port 4000",
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.AgentCheck.Port = 8000
 				b.AgentCheck.Interval = "2s"
 			},
 			srvsuffix: "agent-check agent-port 8000 agent-inter 2s",
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.Server.Protocol = "https"
 				b.Server.CrtFilename = "/var/haproxy/ssl/client.pem"
 			},
 			srvsuffix: "ssl crt /var/haproxy/ssl/client.pem verify none",
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.Server.Protocol = "https"
 				b.Server.CAFilename = "/var/haproxy/ssl/ca.pem"
 			},
 			srvsuffix: "ssl verify required ca-file /var/haproxy/ssl/ca.pem",
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.Limit.Connections = 200
 				b.Limit.RPS = 20
 				b.Limit.Whitelist = []string{"192.168.0.0/16", "10.1.1.101"}
@@ -356,7 +368,7 @@ func TestBackends(t *testing.T) {
     http-request deny deny_status 429 if !wlist_conn { sc1_conn_rate gt 20 }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.Limit.RPS = 20
 			},
 			expected: `
@@ -365,7 +377,7 @@ func TestBackends(t *testing.T) {
     http-request deny deny_status 429 if { sc1_conn_rate gt 20 }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.Limit.Connections = 200
 			},
 			expected: `
@@ -374,7 +386,7 @@ func TestBackends(t *testing.T) {
     http-request deny deny_status 429 if { sc1_conn_cur gt 200 }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.ModeTCP = true
 				b.Limit.Connections = 200
 				b.Limit.RPS = 20
@@ -388,7 +400,7 @@ func TestBackends(t *testing.T) {
     tcp-request content reject if !wlist_conn { sc1_conn_rate gt 20 }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, b *hatypes.Backend) {
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.Server.SendProxy = "send-proxy-v2"
 			},
 			srvsuffix: "send-proxy-v2",
@@ -413,7 +425,7 @@ func TestBackends(t *testing.T) {
 		for _, p := range test.path {
 			h.AddPath(b, p)
 		}
-		test.doconfig(c.config.Global(), b)
+		test.doconfig(c.config.Global(), h, b)
 
 		var mode string
 		if b.ModeTCP {
