@@ -1,0 +1,33 @@
+---
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  labels:
+    run: modsecurity-spoa
+  name: modsecurity-spoa
+  namespace: ingress-controller
+spec:
+  selector:
+    matchLabels:
+      run: modsecurity-spoa
+  template:
+    metadata:
+      labels:
+        run: modsecurity-spoa
+    spec:
+      containers:
+      - name: modsecurity-spoa
+        image: quay.io/jcmoraisjr/modsecurity-spoa
+        args:
+        - -n
+        - "1"
+        ports:
+        - containerPort: 12345
+          hostPort: 12345
+          name: spop
+          protocol: TCP
+      hostNetwork: true
+      nodeSelector:
+        waf: modsec
+  updateStrategy:
+    type: RollingUpdate
