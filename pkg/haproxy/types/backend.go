@@ -96,9 +96,10 @@ func (b *Backend) AddHostPath(hostname, path string) *BackendPath {
 		return backendPath
 	}
 	// host's paths that references this backend
-	// used on RewriteURL config
+	// used on RewriteURL and Shared Session Cookie config
 	backendPath = &BackendPath{
 		ID:       fmt.Sprintf("path%02d", len(b.Paths)+1),
+		Hostname: hostname,
 		Hostpath: hostpath,
 		Path:     path,
 	}
@@ -108,6 +109,24 @@ func (b *Backend) AddHostPath(hostname, path string) *BackendPath {
 		return b.Paths[i].Hostpath > b.Paths[j].Hostpath
 	})
 	return backendPath
+}
+
+// Hostnames ...
+func (b *Backend) Hostnames() []string {
+	hmap := make(map[string]struct{}, len(b.Paths))
+	for _, p := range b.Paths {
+		hmap[p.Hostname] = struct{}{}
+	}
+	hosts := make([]string, len(hmap))
+	i := 0
+	for host := range hmap {
+		hosts[i] = host
+		i++
+	}
+	sort.Slice(hosts, func(i, j int) bool {
+		return hosts[i] < hosts[j]
+	})
+	return hosts
 }
 
 // CreateConfigBool ...

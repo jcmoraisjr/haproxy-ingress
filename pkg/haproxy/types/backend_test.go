@@ -30,54 +30,54 @@ func TestAddPath(t *testing.T) {
 		{
 			input: []string{"/"},
 			expected: []*BackendPath{
-				{"path01", "/", "/"},
+				{"path01", "d1.local", "d1.local/", "/"},
 			},
 		},
 		// 1
 		{
 			input: []string{"/app", "/app"},
 			expected: []*BackendPath{
-				{"path01", "/app", "/app"},
+				{"path01", "d1.local", "d1.local/app", "/app"},
 			},
 		},
 		// 2
 		{
 			input: []string{"/app", "/root"},
 			expected: []*BackendPath{
-				{"path02", "/root", "/root"},
-				{"path01", "/app", "/app"},
+				{"path02", "d1.local", "d1.local/root", "/root"},
+				{"path01", "d1.local", "d1.local/app", "/app"},
 			},
 		},
 		// 3
 		{
 			input: []string{"/app", "/root", "/root"},
 			expected: []*BackendPath{
-				{"path02", "/root", "/root"},
-				{"path01", "/app", "/app"},
+				{"path02", "d1.local", "d1.local/root", "/root"},
+				{"path01", "d1.local", "d1.local/app", "/app"},
 			},
 		},
 		// 4
 		{
 			input: []string{"/app", "/root", "/app"},
 			expected: []*BackendPath{
-				{"path02", "/root", "/root"},
-				{"path01", "/app", "/app"},
+				{"path02", "d1.local", "d1.local/root", "/root"},
+				{"path01", "d1.local", "d1.local/app", "/app"},
 			},
 		},
 		// 5
 		{
 			input: []string{"/", "/app", "/root"},
 			expected: []*BackendPath{
-				{"path03", "/root", "/root"},
-				{"path02", "/app", "/app"},
-				{"path01", "/", "/"},
+				{"path03", "d1.local", "d1.local/root", "/root"},
+				{"path02", "d1.local", "d1.local/app", "/app"},
+				{"path01", "d1.local", "d1.local/", "/"},
 			},
 		},
 	}
 	for i, test := range testCases {
 		b := &Backend{}
 		for _, p := range test.input {
-			b.AddHostPath("", p)
+			b.AddHostPath("d1.local", p)
 		}
 		if !reflect.DeepEqual(b.Paths, test.expected) {
 			t.Errorf("backend.Paths differs on %d - actual: %v - expected: %v", i, b.Paths, test.expected)

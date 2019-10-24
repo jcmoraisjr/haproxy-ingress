@@ -1767,6 +1767,7 @@ func createBackendPaths(paths ...string) hatypes.BackendPaths {
 			// ignoring ID which isn't the focus of the test
 			// removing on createBackendMappingData() as well
 			ID:       "",
+			Hostname: testingHostname,
 			Hostpath: testingHostname + path,
 			Path:     path,
 		})
