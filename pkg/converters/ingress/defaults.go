@@ -40,6 +40,7 @@ func createDefaults() map[string]string {
 		types.BackCorsAllowMethods:       "GET, PUT, POST, DELETE, PATCH, OPTIONS",
 		types.BackCorsAllowOrigin:        "*",
 		types.BackCorsMaxAge:             "86400",
+		types.BackDynamicScaling:         "true",
 		types.BackHealthCheckInterval:    "2s",
 		types.BackHSTS:                   "true",
 		types.BackHSTSIncludeSubdomains:  "false",

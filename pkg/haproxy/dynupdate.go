@@ -114,7 +114,7 @@ func (d *dynUpdater) checkConfigPair() bool {
 	for _, backend := range curConfig.backends {
 		back, found := backends[backend.ID]
 		if !found {
-			d.logger.InfoV(2, "removed backend %s", backend.ID)
+			d.logger.InfoV(2, "removed backend '%s'", backend.ID)
 			return false
 		}
 		back.cur = backend
@@ -141,13 +141,13 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 	oldBackCopy.Dynamic = curBack.Dynamic
 	oldBackCopy.Endpoints = curBack.Endpoints
 	if !reflect.DeepEqual(&oldBackCopy, curBack) {
-		d.logger.InfoV(2, "diff outside endpoints")
+		d.logger.InfoV(2, "diff outside endpoints of backend '%s'", curBack.ID)
 		return false
 	}
 
 	// can decrease endpoints, cannot increase
 	if len(oldBack.Endpoints) < len(curBack.Endpoints) {
-		d.logger.InfoV(2, "added endpoints")
+		d.logger.InfoV(2, "added endpoints on backend '%s'", curBack.ID)
 		return false
 	}
 
@@ -159,6 +159,13 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 	// most of the backends are equal, save some proc stopping here if deep equals
 	if reflect.DeepEqual(oldBack.Endpoints, curBack.Endpoints) {
 		return true
+	}
+
+	// oldBack and curBack differs, DynUpdate is disabled, need to reload
+	// TODO check if endpoints are the same and only the order differ
+	if !curBack.Dynamic.DynUpdate {
+		d.logger.InfoV(2, "backend '%s' changed and its dynamic-scaling is 'false'", curBack.ID)
+		return false
 	}
 
 	// map endpoints of old and new config together
@@ -238,6 +245,10 @@ func (d *dynUpdater) alignSlots() {
 		return
 	}
 	for _, back := range d.cur.backends {
+		if !back.Dynamic.DynUpdate {
+			// no need to add empty slots if won't dynamically update
+			continue
+		}
 		minFreeSlots := back.Dynamic.MinFreeSlots
 		blockSize := back.Dynamic.BlockSize
 		if blockSize < 1 {
