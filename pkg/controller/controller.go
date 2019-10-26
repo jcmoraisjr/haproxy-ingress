@@ -280,8 +280,13 @@ func (hc *HAProxyController) SyncIngress(item interface{}) error {
 			ingress = append(ingress, ing)
 		}
 	}
-	sort.SliceStable(ingress, func(i, j int) bool {
-		return ingress[i].CreationTimestamp.Before(&ingress[j].CreationTimestamp)
+	sort.Slice(ingress, func(i, j int) bool {
+		i1 := ingress[i]
+		i2 := ingress[j]
+		if i1.CreationTimestamp != i2.CreationTimestamp {
+			return i1.CreationTimestamp.Before(&i2.CreationTimestamp)
+		}
+		return i1.Namespace+"/"+i1.Name < i2.Namespace+"/"+i2.Name
 	})
 	var globalConfig map[string]string
 	if hc.configMap != nil {
