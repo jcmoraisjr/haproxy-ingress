@@ -95,6 +95,17 @@ Fixes and improvements since [v0.8-beta.2](#v08-beta2):
 * Make sni optional if a certificate is optional and is not provided [#392](https://github.com/jcmoraisjr/haproxy-ingress/pull/392)
 * Add custom-frontend to snippet to http:80 frontend [#395](https://github.com/jcmoraisjr/haproxy-ingress/pull/395)
 
+### v0.8-beta.4
+
+Fixes and improvements since [v0.8-beta.3](#v08-beta3):
+
+* Sort ingress using creation timestamp [#405](https://github.com/jcmoraisjr/haproxy-ingress/pull/405)
+* Add session-cookie-shared [#419](https://github.com/jcmoraisjr/haproxy-ingress/pull/419)
+* Add dynamic-scaling false option [#420](https://github.com/jcmoraisjr/haproxy-ingress/pull/420)
+* Improve sorting of internal state [#423](https://github.com/jcmoraisjr/haproxy-ingress/pull/423)
+* Tuning default thread number and reload strategy [#424](https://github.com/jcmoraisjr/haproxy-ingress/pull/424)
+* Fix case on requests from 80/http [#425](https://github.com/jcmoraisjr/haproxy-ingress/pull/425)
+
 ## v0.7.3
 
 Fixes and improvements since [v0.7.2](#v072):
