@@ -19,7 +19,7 @@ The following command-line options are supported:
 | [`--max-old-config-files`](#max-old-config-files)       | num of files               | `0`                     |
 | [`--publish-service`](#publish-service)                 | namespace/servicename      |                         |
 | [`--rate-limit-update`](#rate-limit-update)             | uploads per second (float) | `0.5`                   |
-| [`--reload-strategy`](#reload-strategy)                 | [native\|reusesocket]      | `native`                |
+| [`--reload-strategy`](#reload-strategy)                 | [native\|reusesocket]      | `reusesocket`           |
 | [`--sort-backends`](#sort-backends)                     | [true\|false]              | `false`                 |  
 | [`--tcp-services-configmap`](#tcp-services-configmap)   | namespace/configmapname    | no tcp svc              |
 | [`--verify-hostname`](#verify-hostname)                 | [true\|false]              | `true`                  |
@@ -133,8 +133,8 @@ times per second.
 The `--reload-strategy` command-line argument is used to select which reload strategy
 HAProxy should use. The following options are available:
 
-* `native`: Uses native HAProxy reload option `-sf`. This is the default option.
-* `reusesocket`: (starting on v0.6) Uses HAProxy `-x` command-line option to pass the listening sockets between old and new HAProxy process, allowing hitless reloads.
+* `native`: Uses native HAProxy reload option `-sf`.
+* `reusesocket`: (starting on v0.6) Uses HAProxy `-x` command-line option to pass the listening sockets between old and new HAProxy process, allowing hitless reloads. This is the default option since v0.8.
 * `multibinder`: (deprecated on v0.6) Uses GitHub's [multibinder](https://github.com/github/multibinder). This [link](https://githubengineering.com/glb-part-2-haproxy-zero-downtime-zero-delay-reloads-with-multibinder/)
 describes how it works.
 
