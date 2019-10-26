@@ -72,7 +72,7 @@ func createDefaults() map[string]string {
 		types.GlobalModsecurityTimeoutIdle:       "30s",
 		types.GlobalModsecurityTimeoutProcessing: "1s",
 		types.GlobalNbprocBalance:                "1",
-		types.GlobalNbthread:                     "1",
+		types.GlobalNbthread:                     "2",
 		types.GlobalNoTLSRedirectLocations:       "/.well-known/acme-challenge",
 		types.GlobalSSLCiphers:                   defaultSSLCiphers,
 		types.GlobalSSLDHDefaultMaxSize:          "2048",
