@@ -198,6 +198,9 @@ func (c *config) AddUserlist(name string, users []hatypes.User) *hatypes.Userlis
 		Name:  name,
 		Users: users,
 	}
+	sort.Slice(users, func(i, j int) bool {
+		return users[i].Name < users[j].Name
+	})
 	c.userlists = append(c.userlists, userlist)
 	sort.Slice(c.userlists, func(i, j int) bool {
 		return c.userlists[i].Name < c.userlists[j].Name
