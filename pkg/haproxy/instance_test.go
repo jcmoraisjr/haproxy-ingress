@@ -629,7 +629,7 @@ backend d1_app_8080
 frontend _front_http
     mode http
     ` + test.expectedHTTP + `
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
     <<http-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
@@ -1551,7 +1551,7 @@ backend d1_app_8080
 frontend _front_http
     mode http
     bind :80
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
     <<http-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
@@ -1692,7 +1692,7 @@ backend d2_app_8080
 frontend _front_http
     mode http
     bind :80
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
     http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
     http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/_global_http_root_redir.map,_nomatch)
@@ -1916,7 +1916,7 @@ frontend _front_http
     mode http
     bind :80
     option httplog
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
     <<http-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
@@ -2375,7 +2375,7 @@ listen _front__tls
 frontend _front_http
     mode http
     bind :80
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.redir) var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch)
     http-request redirect scheme https if { var(req.redir) yes }
     http-request redirect scheme https if { var(req.redir) _nomatch } { var(req.base),map_reg(/etc/haproxy/maps/_global_https_redir_regex.map,_nomatch) yes }
@@ -2749,7 +2749,7 @@ backend _error496
 		"<<frontend-http>>": `frontend _front_http
     mode http
     bind :80
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
     <<http-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)

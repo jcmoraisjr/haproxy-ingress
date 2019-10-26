@@ -690,7 +690,7 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
-    http-request set-var(req.base) base,regsub(:[0-9]+/,/)
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
 
 {{- /*------------------------------------*/}}
 {{- if $fgroup.HTTPSRedirMap.HasRegex }}
