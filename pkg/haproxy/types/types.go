@@ -423,6 +423,7 @@ type BackendPaths struct {
 // BackendPath ...
 type BackendPath struct {
 	ID       string
+	Hostname string
 	Hostpath string
 	Path     string
 }
@@ -554,8 +555,9 @@ type UserlistConfig struct {
 // Cookie ...
 type Cookie struct {
 	Name     string
-	Strategy string
 	Dynamic  bool
+	Shared   bool
+	Strategy string
 }
 
 // Cors ...

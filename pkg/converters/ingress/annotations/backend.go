@@ -55,6 +55,7 @@ func (c *updater) buildBackendAffinity(d *backData) {
 	d.backend.Cookie.Name = name
 	d.backend.Cookie.Strategy = strategyName
 	d.backend.Cookie.Dynamic = d.mapper.Get(ingtypes.BackSessionCookieDynamic).Bool()
+	d.backend.Cookie.Shared = d.mapper.Get(ingtypes.BackSessionCookieShared).Bool()
 }
 
 func (c *updater) buildBackendAuthHTTP(d *backData) {
