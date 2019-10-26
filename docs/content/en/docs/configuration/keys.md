@@ -656,6 +656,8 @@ running HAProxy via a Unix socket (`true`) whenever possible. Despite the config
 the config files will stay in sync with in memory config. The default value was `false`
 up to v0.7 if not declared, changed to `true` since v0.8.
 
+`dynamic-scaling` is ignored if the backend uses [DNS resolver](#dns-resolvers).
+
 If `true` HAProxy Ingress will create at least `backend-server-slots-increment`
 servers on each backend and update them via a Unix socket without reloading HAProxy.
 Unused servers will stay in a disabled state. If the change cannot be made via socket,

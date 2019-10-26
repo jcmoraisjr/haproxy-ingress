@@ -689,7 +689,6 @@ defaults
     timeout tunnel          1h
 backend default_empty_8080
     mode http
-    server srv001 127.0.0.1:1023 disabled weight 0
 backend _error404
     mode http
     errorfile 400 /usr/local/etc/haproxy/errors/404.http
