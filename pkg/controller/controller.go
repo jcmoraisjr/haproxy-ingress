@@ -184,8 +184,8 @@ func (hc *HAProxyController) UpdateIngressStatus(*extensions.Ingress) []api.Load
 // ConfigureFlags allow to configure more flags before the parsing of
 // command line arguments
 func (hc *HAProxyController) ConfigureFlags(flags *pflag.FlagSet) {
-	hc.reloadStrategy = flags.String("reload-strategy", "native",
-		`Name of the reload strategy. Options are: native (default) or reusesocket`)
+	hc.reloadStrategy = flags.String("reload-strategy", "reusesocket",
+		`Name of the reload strategy. Options are: native or reusesocket (default)`)
 	hc.maxOldConfigFiles = flags.Int("max-old-config-files", 0,
 		`Maximum old haproxy timestamped config files to allow before being cleaned up. A value <= 0 indicates a single non-timestamped config file will be used`)
 	hc.validateConfig = flags.Bool("validate-config", false,

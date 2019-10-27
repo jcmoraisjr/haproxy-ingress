@@ -163,7 +163,7 @@ The table below describes all supported configuration keys.
 | [`modsecurity-timeout-idle`](#modsecurity)           | time with suffix                        | Global  | `30s`              |
 | [`modsecurity-timeout-processing`](#modsecurity)     | time with suffix                        | Global  | `1s`               |
 | [`nbproc-ssl`](#nbproc)                              | number of process                       | Global  | `0`                |
-| [`nbthread`](#nbthread)                              | number of threads                       | Global  | `1`                |
+| [`nbthread`](#nbthread)                              | number of threads                       | Global  | `2`                |
 | [`no-tls-redirect-locations`](#ssl-redirect)         | comma-separated list of URIs            | Global  | `/.well-known/acme-challenge` |
 | [`oauth`](#oauth)                                    | "oauth2_proxy"                          | Backend |                    |
 | [`oauth-headers`](#oauth)                            | `<header>:<var>,...`                    | Backend |                    |
@@ -916,7 +916,7 @@ See also:
 
 | Configuration key | Scope    | Default | Since |
 |-------------------|----------|---------|-------|
-| `nbthread`        | `Global` | `1`     |       |
+| `nbthread`        | `Global` | `2`     |       |
 
 Define the number of threads a single HAProxy process should use to all its
 processing. If using with [nbproc](#nbproc), every single HAProxy process will
