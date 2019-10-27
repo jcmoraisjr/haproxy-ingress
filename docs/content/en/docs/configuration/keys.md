@@ -176,12 +176,16 @@ The table below describes all supported configuration keys.
 | [`secure-verify-ca-secret`](#secure-backend)         | secret name                             | Backend |                    |
 | [`server-alias`](#server-alias)                      | domain name                             | Host    |                    |
 | [`server-alias-regex`](#server-alias)                | regex                                   | Host    |                    |
+| [`service-upstream`](#service-upstream)              | [true\|false]                           | Backend | `false`            |
 | [`session-cookie-dynamic`](#affinity)                | [true\|false]                           | Backend |                    |
 | [`session-cookie-name`](#affinity)                   | cookie name                             | Backend |                    |
 | [`session-cookie-shared`](#affinity)                 | [true\|false]                           | Backend | `false`            |
 | [`session-cookie-strategy`](#affinity)               | [insert\|prefix\|rewrite]               | Backend |                    |
 | [`slots-min-free`](#dynamic-scaling)                 | minimum number of free slots            | Backend | `0`                |
+| [`ssl-cipher-suites`](#ssl-ciphers)                  | colon-separated list                    | Global  | [see description](#ssl-ciphers) |
+| [`ssl-cipher-suites-backend`](#ssl-ciphers)          | colon-separated list                    | Backend | [see description](#ssl-ciphers) |
 | [`ssl-ciphers`](#ssl-ciphers)                        | colon-separated list                    | Global  | [see description](#ssl-ciphers) |
+| [`ssl-ciphers-backend`](#ssl-ciphers)                | colon-separated list                    | Backend | [see description](#ssl-ciphers) |
 | [`ssl-dh-default-max-size`](#ssl-dh)                 | number                                  | Global  | `1024`             |
 | [`ssl-dh-param`](#ssl-dh)                            | namespace/secret name                   | Global  | no custom DH param |
 | [`ssl-engine`](#ssl-engine)                          | OpenSSL engine name and parameters      | Global  | no engine set      |
@@ -198,6 +202,7 @@ The table below describes all supported configuration keys.
 | [`strict-host`](#strict-host)                        | [true\|false]                           | Global  | `true`             |
 | [`syslog-endpoint`](#syslog)                         | IP:port (udp)                           | Global  | do not log         |
 | [`syslog-format`](#syslog)                           | rfc5424\|rfc3164                        | Global  | `rfc5424`          |
+| [`syslog-length`](#syslog)                           | maximum length                          | Global  | `1024`             |
 | [`syslog-tag`](#syslog)                              | syslog tag field string                 | Global  | `ingress`          |
 | [`tcp-log-format`](#log-format)                      | tcp log format                          | Global  | HAProxy default log format |
 | [`timeout-client`](#timeout)                         | time with suffix                        | Host    | `50s`              |
@@ -1064,28 +1069,34 @@ attribute in the same ACL, and any of them might be used to match SNI extensions
 
 ---
 
+## Service upstream
+
+| Configuration key  | Scope     | Default | Since |
+|--------------------|-----------|---------|-------|
+| `service-upstream` | `Backend` | `false` |       |
+
+Defines if the HAProxy backend/server endpoints should be configured with the
+service VIP/IPVS. If `false`, the default value, the endpoints will be used and
+HAProxy will load balance the requests between them. If defined as `true` the
+service's ClusterIP is used instead.
+
+---
+
 ## SSL ciphers
 
 | Configuration key           | Scope     | Default | Since |
 |-----------------------------|-----------|---------|-------|
 | `ssl-cipher-suites`         | `Global`  |         | v0.9  |
+| `ssl-cipher-suites-backend` | `Backend` |         | v0.9  |
 | `ssl-ciphers`               | `Global`  |         |       |
-| `ssl-cipher-suites-backend` | `Global`  |         | v0.9  |
-| `ssl-ciphers-backend`       | `Global`  |         | v0.9  |
+| `ssl-ciphers-backend`       | `Backend` |         | v0.9  |
 
 Set the list of cipher algorithms used during the SSL/TLS handshake.
 
-Configmap options:
-
-* `ssl-cipher-suites`: Cipher suites on TLS v1.3 handshake
-* `ssl-ciphers`: Cipher suites on TLS up to v1.2 handshake
-* `ssl-cipher-suites-backend`: Default cipher suites on TLS v1.3 handshake to backend servers
-* `ssl-ciphers-backend`: Default cipher suites on TLS up to v1.2 handshake to backend servers
-
-Annotations:
-
-* `ssl-cipher-suites-backend`: Per backend configuration of cipher suites on TLS v1.3 handshake, defaults to the configmap configuration
-* `ssl-ciphers-backend`: Per backend configuration of cipher suites on TLS up to v1.2 handshake, defaults to the configmap configuration
+* `ssl-cipher-suites`: Cipher suites on TLS v1.3 handshake of incoming requests. HAProxy being the TLS server.
+* `ssl-cipher-suites-backend`: Cipher suites on TLS v1.3 handshake to backend/servers. HAProxy being the TLS client.
+* `ssl-ciphers`: Cipher suites on TLS up to v1.2 handshake of incoming requests. HAProxy being the TLS server.
+* `ssl-ciphers-backend`: Cipher suites on TLS up to v1.2 handshake to backend/servers. HAProxy being the TLS client.
 
 Default values on HAProxy Ingress up to v0.8:
 
@@ -1261,12 +1272,14 @@ A request to `my.domain.com/b` would serve:
 |-------------------|-----------|------------|-------|
 | `syslog-endpoint` | `Global`  |            |       |
 | `syslog-format`   | `Global`  | `rfc5424`  |       |
-| `syslog-tag`      | `Global`  |  `ingress` |       |
+| `syslog-length`   | `Global`  | `1024`     | v0.9  | 
+| `syslog-tag`      | `Global`  | `ingress`  |       |
 
 Logging configurations.
 
 * `syslog-endpoint`: Configures the UDP syslog endpoint where HAProxy should send access logs.
 * `syslog-format`: Configures the log format to be either `rfc5424` (default) or `rfc3164`.
+* `syslog-length`: The maximum line length, log lines larger than this value will be truncated. Defaults to `1024`.
 * `syslog-tag`: Configure the tag field in the syslog header to the supplied string.
 
 See also:
