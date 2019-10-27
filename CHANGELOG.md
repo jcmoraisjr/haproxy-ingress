@@ -10,6 +10,9 @@ Note: A new configuration parser and HAProxy config builder is in place. Despite
 * All the other HAProxy's proxy names changed as well - check your logging filters and metrics dasboards.
 * `nbproc-ssl` global configmap option wasn't reimplemented in v0.8, consider use `nbthread` instead.
 * `strict-host` global configmap option changed the default value from `true` to `false`. See `strict-host` [doc](/README.md#strict-host).
+* `dynamic-scaling` configuration key changed the default value from `false` to `true`
+* `nbthread` configuration key changed the default value from `1` to `2`
+* `reload-strategy` command-line option changed  the default value from `native` to `reusesocket`
 
 The `--v07-controller=true` command-line option can be used to revert to the old controller and behavior. Note that in this case the `*-v07.tmpl` templates will be used instead. This option will be removed on v1.0.
 
