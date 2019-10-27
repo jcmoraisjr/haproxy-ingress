@@ -101,6 +101,8 @@ Fixes and improvements since [v0.8-beta.3](#v08-beta3):
 
 * Sort ingress using creation timestamp [#405](https://github.com/jcmoraisjr/haproxy-ingress/pull/405)
 * Add session-cookie-shared [#419](https://github.com/jcmoraisjr/haproxy-ingress/pull/419)
+  * Configuration keys:
+    * `session-cookie-shared` - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#affinity)
 * Add dynamic-scaling false option [#420](https://github.com/jcmoraisjr/haproxy-ingress/pull/420)
 * Improve sorting of internal state [#423](https://github.com/jcmoraisjr/haproxy-ingress/pull/423)
 * Tuning default thread number and reload strategy [#424](https://github.com/jcmoraisjr/haproxy-ingress/pull/424)
