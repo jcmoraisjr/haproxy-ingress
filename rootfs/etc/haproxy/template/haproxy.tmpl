@@ -296,7 +296,7 @@ backend {{ $backend.ID }}
 {{- range $path := reverse $backend.Paths }}
     # {{ $path.ID }} = {{ $path.Hostpath }}
 {{- end }}
-    http-request set-var(txn.pathID) base,map_beg({{ $backend.PathsMap.MatchFile }},_nomatch)
+    http-request set-var(txn.pathID) base,lower,map_beg({{ $backend.PathsMap.MatchFile }},_nomatch)
 {{- end }}
 
 {{- /*------------------------------------*/}}
