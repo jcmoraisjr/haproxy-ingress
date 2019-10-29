@@ -18,9 +18,12 @@ package controller
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	api "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8s "k8s.io/client-go/kubernetes"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/file"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
@@ -30,15 +33,29 @@ import (
 )
 
 type cache struct {
+	client     k8s.Interface
 	listers    *ingress.StoreLister
 	controller *controller.GenericController
 }
 
-func newCache(listers *ingress.StoreLister, controller *controller.GenericController) *cache {
+func newCache(client k8s.Interface, listers *ingress.StoreLister, controller *controller.GenericController) *cache {
 	return &cache{
+		client:     client,
 		listers:    listers,
 		controller: controller,
 	}
+}
+
+func (c *cache) GetIngressPodName() (namespace, podname string, err error) {
+	namespace = os.Getenv("POD_NAMESPACE")
+	podname = os.Getenv("POD_NAME")
+	if namespace == "" || podname == "" {
+		return "", "", fmt.Errorf("missing POD_NAMESPACE or POD_NAME envvar")
+	}
+	if pod, _ := c.client.CoreV1().Pods(namespace).Get(podname, metav1.GetOptions{}); pod == nil {
+		return "", "", fmt.Errorf("ingress controller pod was not found: %s/%s", namespace, podname)
+	}
+	return namespace, podname, nil
 }
 
 func (c *cache) GetService(serviceName string) (*api.Service, error) {
