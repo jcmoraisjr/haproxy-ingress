@@ -111,6 +111,12 @@ Fixes and improvements since [v0.8-beta.3](#v08-beta3):
 * Tuning default thread number and reload strategy [#424](https://github.com/jcmoraisjr/haproxy-ingress/pull/424)
 * Fix case on requests from 80/http [#425](https://github.com/jcmoraisjr/haproxy-ingress/pull/425)
 
+## v0.7.4
+
+Fixes and improvements since [v0.7.3](#v073):
+
+* Update HAProxy from 1.8.21 to 1.8.22, which fixes a segmentation fault when using a spoe filter (ModSecurity)
+
 ## v0.7.3
 
 Fixes and improvements since [v0.7.2](#v072):
