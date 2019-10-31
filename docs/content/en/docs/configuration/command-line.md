@@ -8,23 +8,23 @@ description: >
 
 The following command-line options are supported:
 
-| Name                                                    | Type                       | Default                 |
-|---------------------------------------------------------|----------------------------|-------------------------|
-| [`--allow-cross-namespace`](#allow-cross-namespace)     | [true\|false]              | `false`                 |
-| [`--annotation-prefix`](#annotation-prefix)             | prefix without `/`         | `ingress.kubernetes.io` |
-| [`--default-backend-service`](#default-backend-service) | namespace/servicename      | (mandatory)             |
-| [`--default-ssl-certificate`](#default-ssl-certificate) | namespace/secretname       | (mandatory)             |
-| [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |
-| [`--kubeconfig`](#kubeconfig)                           | /path/to/kubeconfig        | in cluster config       |
-| [`--max-old-config-files`](#max-old-config-files)       | num of files               | `0`                     |
-| [`--publish-service`](#publish-service)                 | namespace/servicename      |                         |
-| [`--rate-limit-update`](#rate-limit-update)             | uploads per second (float) | `0.5`                   |
-| [`--reload-strategy`](#reload-strategy)                 | [native\|reusesocket]      | `reusesocket`           |
-| [`--sort-backends`](#sort-backends)                     | [true\|false]              | `false`                 |  
-| [`--tcp-services-configmap`](#tcp-services-configmap)   | namespace/configmapname    | no tcp svc              |
-| [`--verify-hostname`](#verify-hostname)                 | [true\|false]              | `true`                  |
-| [`--wait-before-shutdown`](#wait-before-shutdown)       | seconds as integer         | `0`                     |
-| [`--watch-namespace`](#watch-namespace)                 | namespace                  | all namespaces          |
+| Name                                                    | Type                       | Default                 | Since |
+|---------------------------------------------------------|----------------------------|-------------------------|-------|
+| [`--allow-cross-namespace`](#allow-cross-namespace)     | [true\|false]              | `false`                 |       |
+| [`--annotation-prefix`](#annotation-prefix)             | prefix without `/`         | `ingress.kubernetes.io` | v0.8  |
+| [`--default-backend-service`](#default-backend-service) | namespace/servicename      | (mandatory)             |       |
+| [`--default-ssl-certificate`](#default-ssl-certificate) | namespace/secretname       | (mandatory)             |       |
+| [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |       |
+| [`--kubeconfig`](#kubeconfig)                           | /path/to/kubeconfig        | in cluster config       |       |
+| [`--max-old-config-files`](#max-old-config-files)       | num of files               | `0`                     |       |
+| [`--publish-service`](#publish-service)                 | namespace/servicename      |                         |       |
+| [`--rate-limit-update`](#rate-limit-update)             | uploads per second (float) | `0.5`                   |       |
+| [`--reload-strategy`](#reload-strategy)                 | [native\|reusesocket]      | `reusesocket`           |       |
+| [`--sort-backends`](#sort-backends)                     | [true\|false]              | `false`                 |       |
+| [`--tcp-services-configmap`](#tcp-services-configmap)   | namespace/configmapname    | no tcp svc              |       |
+| [`--verify-hostname`](#verify-hostname)                 | [true\|false]              | `true`                  |       |
+| [`--wait-before-shutdown`](#wait-before-shutdown)       | seconds as integer         | `0`                     | v0.8  |
+| [`--watch-namespace`](#watch-namespace)                 | namespace                  | all namespaces          |       |
 
 ---
 

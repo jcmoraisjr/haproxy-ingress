@@ -231,7 +231,7 @@ The table below describes all supported configuration keys.
 | `cookie-key`                | `Global`  | `Ingress`       |       |
 | `session-cookie-dynamic`    | `Backend` | `true`          |       |
 | `session-cookie-name`       | `Backend` | `INGRESSCOOKIE` |       |
-| `session-cookie-shared`     | `Backend` | `false`         |       |
+| `session-cookie-shared`     | `Backend` | `false`         | v0.8  |
 | `session-cookie-strategy`   | `Backend` | `insert`        |       |
 
 Configure if HAProxy should maintain client requests to the same backend server.
@@ -262,10 +262,10 @@ See also:
 
 | Configuration key         | Scope     | Default | Since |
 |---------------------------|-----------|---------|-------|
-| `agent-check-addr`        | `Backend` |         |       |
-| `agent-check-interval`    | `Backend` |         |       |
-| `agent-check-port`        | `Backend` |         |       |
-| `agent-check-send`        | `Backend` |         |       |
+| `agent-check-addr`        | `Backend` |         | v0.8  |
+| `agent-check-interval`    | `Backend` |         | v0.8  |
+| `agent-check-port`        | `Backend` |         | v0.8  |
+| `agent-check-send`        | `Backend` |         | v0.8  |
 
 Allows HAProxy agent checks to be defined for a backend. This is an auxiliary
 check that is run independently of a regular health check and can be used to
@@ -499,7 +499,7 @@ See also:
 | Configuration key | Scope     | Default  | Since |
 |-------------------|-----------|----------|-------|
 | `config-backend`  | `Backend` |          |       |
-| `config-defaults` | `Global`  |          |       |
+| `config-defaults` | `Global`  |          | v0.8  |
 | `config-frontend` | `Global`  |          |       |
 | `config-global`   | `Global`  |          |       |
 
@@ -572,7 +572,7 @@ See also:
 | `cors-allow-methods`     | `Backend` | *see below*  |       |
 | `cors-allow-origin`      | `Backend` | `*`          |       |
 | `cors-enable`            | `Backend` | `false`      |       |
-| `cors-expose-headers`    | `Backend` |              |       |
+| `cors-expose-headers`    | `Backend` |              | v0.8  |
 | `cors-max-age`           | `Backend` | `86400`      |       |
 
 Add CORS headers on OPTIONS http command (preflight) and reponses.
@@ -635,7 +635,7 @@ See also:
 | Configuration key          | Scope     | Default | Since |
 |----------------------------|-----------|---------|-------|
 | `drain-support`            | `Global`  | `false` |       |
-| `drain-support-redispatch` | `Global`  | `true`  |       |
+| `drain-support-redispatch` | `Global`  | `true`  | v0.8  |
 
 Set `drain-support` to true if you wish to use HAProxy's drain support for pods that are NotReady
 (e.g., failing a k8s readiness check) or are in the process of terminating. This option only makes
@@ -653,7 +653,7 @@ You can control this behavior by setting `drain-support-redispatch` flag to `fal
 |-------------------------------------|-----------|---------|-------|
 | `backend-server-slots-increment`    | `Backend` | `1`     |       |
 | `dynamic-scaling`                   | `Global`  | `true`  |       |
-| `slots-min-free`                    | `Backend` | `6`     |       |
+| `slots-min-free`                    | `Backend` | `6`     | v0.8  |
 
 The `dynamic-scaling` option defines if backend updates should always be made starting
 a new HAProxy instance that will read the new config file (`false`), or updating the
@@ -714,12 +714,12 @@ See also:
 
 | Configuration key         | Scope     | Default | Since |
 |---------------------------|-----------|---------|-------|
-| `health-check-addr`       | `Backend` |         |       |
-| `health-check-fall-count` | `Backend` |         |       |
-| `health-check-interval`   | `Backend` |         |       |
-| `health-check-port`       | `Backend` |         |       |
-| `health-check-rise-count` | `Backend` |         |       |
-| `health-check-uri`        | `Backend` |         |       |
+| `health-check-addr`       | `Backend` |         | v0.8  |
+| `health-check-fall-count` | `Backend` |         | v0.8  |
+| `health-check-interval`   | `Backend` |         | v0.8  |
+| `health-check-port`       | `Backend` |         | v0.8  |
+| `health-check-rise-count` | `Backend` |         | v0.8  |
+| `health-check-uri`        | `Backend` |         | v0.8  |
 
 Controls server health checks on a per-backend basis.
 
@@ -1140,8 +1140,8 @@ See also:
 
 | Configuration key  | Scope    | Default | Since |
 |--------------------|----------|---------|-------|
-| `ssl-engine`       | `Global` |         |       |
-| `ssl-mode-async`   | `Global` | `false` |       |
+| `ssl-engine`       | `Global` |         | v0.8  |
+| `ssl-mode-async`   | `Global` | `false` | v0.8  |
 
 Set the name of the OpenSSL engine to use. The string shall include the engine name
 and its parameters.
@@ -1271,9 +1271,9 @@ A request to `my.domain.com/b` would serve:
 | Configuration key | Scope     | Default    | Since |
 |-------------------|-----------|------------|-------|
 | `syslog-endpoint` | `Global`  |            |       |
-| `syslog-format`   | `Global`  | `rfc5424`  |       |
+| `syslog-format`   | `Global`  | `rfc5424`  | v0.8  |
 | `syslog-length`   | `Global`  | `1024`     | v0.9  | 
-| `syslog-tag`      | `Global`  | `ingress`  |       |
+| `syslog-tag`      | `Global`  | `ingress`  | v0.8  |
 
 Logging configurations.
 
@@ -1330,7 +1330,7 @@ See also:
 
 | Configuration key | Scope    | Default       | Since |
 |-------------------|----------|---------------|-------|
-| `tls-alpm`        | `Global` | `h2,http/1.1` |       |
+| `tls-alpm`        | `Global` | `h2,http/1.1` | v0.8  |
 
 Defines the TLS ALPN extension advertisement. The default value is `h2,http/1.1` which enables
 HTTP/2 on the client side.
@@ -1360,7 +1360,7 @@ See also:
 
 | Configuration key | Scope    | Default | Since |
 |-------------------|----------|---------|-------|
-| `var-namespace`   | `Host`   | `false` |       |
+| `var-namespace`   | `Host`   | `false` | v0.8  |
 
 If `var-namespace` is configured as `true`, a HAProxy var `txn.namespace` is created with the
 kubernetes namespace owner of the service which is the target of the request. This variable is
