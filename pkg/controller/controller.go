@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -48,8 +49,9 @@ import (
 // HAProxyController has internal data of a HAProxyController instance
 type HAProxyController struct {
 	instance          haproxy.Instance
-	logger            types.Logger
-	cache             convtypes.Cache
+	logger            *logger
+	cache             *cache
+	leaderelector     LeaderElector
 	updateCount       int
 	controller        *controller.GenericController
 	cfg               *controller.Configuration
@@ -89,6 +91,7 @@ func (hc *HAProxyController) Start() {
 	hc.controller = controller.NewIngressController(hc)
 	hc.controller.StartControllers()
 	hc.configController()
+	hc.startServices()
 	hc.controller.Start()
 }
 
@@ -104,7 +107,9 @@ func (hc *HAProxyController) configController() {
 
 	// starting v0.8 only config
 	hc.logger = &logger{depth: 1}
-	hc.cache = newCache(hc.storeLister, hc.controller)
+	hc.cache = newCache(hc.cfg.Client, hc.storeLister, hc.controller)
+	electorID := fmt.Sprintf("ingress-controller-%s-elector", hc.cfg.IngressClass)
+	hc.leaderelector = NewLeaderElector(electorID, hc.logger, hc.cache, hc)
 	instanceOptions := haproxy.InstanceOptions{
 		HAProxyCmd:        "haproxy",
 		ReloadCmd:         "/haproxy-reload.sh",
@@ -126,6 +131,10 @@ func (hc *HAProxyController) configController() {
 	}
 }
 
+func (hc *HAProxyController) startServices() {
+	go hc.leaderelector.Run()
+}
+
 func (hc *HAProxyController) createDefaultSSLFile(cache convtypes.Cache) (tlsFile convtypes.File) {
 	if hc.cfg.DefaultSSLCertificate != "" {
 		tlsFile, err := cache.GetTLSSecretPath(hc.cfg.DefaultSSLCertificate)
@@ -142,6 +151,21 @@ func (hc *HAProxyController) createDefaultSSLFile(cache convtypes.Cache) (tlsFil
 		SHA1Hash: hash,
 	}
 	return tlsFile
+}
+
+// OnStartedLeading ...
+// implements LeaderSubscriber
+func (hc *HAProxyController) OnStartedLeading(stop <-chan struct{}) {
+}
+
+// OnStoppedLeading ...
+// implements LeaderSubscriber
+func (hc *HAProxyController) OnStoppedLeading() {
+}
+
+// OnNewLeader ...
+// implements LeaderSubscriber
+func (hc *HAProxyController) OnNewLeader(identity string) {
 }
 
 // Stop shutdown the controller process
