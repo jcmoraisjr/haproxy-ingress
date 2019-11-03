@@ -17,33 +17,47 @@ limitations under the License.
 package utils
 
 import (
+	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/client-go/util/workqueue"
 )
 
 // Queue ...
 type Queue interface {
 	Add(item interface{})
+	Notify()
 	Run()
 	ShuttingDown() bool
 	ShutDown()
 }
 
 type queue struct {
-	workqueue *workqueue.Type
-	running   chan struct{}
-	sync      func(item interface{})
+	workqueue   *workqueue.Type
+	rateLimiter flowcontrol.RateLimiter
+	running     chan struct{}
+	sync        func(item interface{})
 }
 
 // NewQueue ...
-func NewQueue(sync func(item interface{})) Queue {
+func NewQueue(rate float32, sync func(item interface{})) Queue {
+	var rateLimiter flowcontrol.RateLimiter
+	if rate > 0 {
+		rateLimiter = flowcontrol.NewTokenBucketRateLimiter(rate, 1)
+	}
 	return &queue{
-		workqueue: workqueue.New(),
-		sync:      sync,
+		workqueue:   workqueue.New(),
+		rateLimiter: rateLimiter,
+		sync:        sync,
 	}
 }
 
 func (q *queue) Add(item interface{}) {
 	q.workqueue.Add(item)
+}
+
+func (q *queue) Notify() {
+	//  When using with rateLimiter, `nil` will be deduplicated
+	// and `queue.Get()` will release call to `sync()` just once
+	q.workqueue.Add(nil)
 }
 
 func (q *queue) Run() {
@@ -53,6 +67,9 @@ func (q *queue) Run() {
 	}
 	q.running = make(chan struct{})
 	for {
+		if q.rateLimiter != nil {
+			q.rateLimiter.Accept()
+		}
 		item, shutdown := q.workqueue.Get()
 		if shutdown {
 			close(q.running)

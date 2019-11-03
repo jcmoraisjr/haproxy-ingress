@@ -17,6 +17,7 @@ limitations under the License.
 package utils
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -27,12 +28,12 @@ type task struct {
 }
 
 func TestQueueNotRunning(t *testing.T) {
-	q := NewQueue(nil)
+	q := NewQueue(0, nil)
 	q.ShutDown()
 }
 
 func TestQueueAlreadyRunning(t *testing.T) {
-	q := NewQueue(nil)
+	q := NewQueue(0, nil)
 	go q.Run()
 	time.Sleep(100 * time.Millisecond)
 	q.Run() // test fail if this call blocks, the test will timeout
@@ -40,7 +41,7 @@ func TestQueueAlreadyRunning(t *testing.T) {
 }
 
 func TestQueueShutdown(t *testing.T) {
-	q := NewQueue(func(item interface{}) { time.Sleep(200 * time.Millisecond) })
+	q := NewQueue(0, func(item interface{}) { time.Sleep(200 * time.Millisecond) })
 	stopped := false
 	go func() {
 		q.Run()
@@ -55,8 +56,8 @@ func TestQueueShutdown(t *testing.T) {
 }
 
 func TestQueueRun(t *testing.T) {
-	items := []string{}
-	q := NewQueue(func(item interface{}) {
+	var items []string
+	q := NewQueue(0, func(item interface{}) {
 		items = append(items, item.(string)+"-1")
 		time.Sleep(250 * time.Millisecond)
 		items = append(items, item.(string)+"-2")
@@ -77,8 +78,10 @@ func TestQueueRun(t *testing.T) {
 }
 
 func TestDeduplicate(t *testing.T) {
-	items := []interface{}{}
-	q := NewQueue(func(item interface{}) { items = append(items, item) })
+	var items []interface{}
+	q := NewQueue(0, func(item interface{}) {
+		items = append(items, item)
+	})
 	go q.Run()
 	q.Add(nil)
 	q.Add(nil)
@@ -97,5 +100,45 @@ func TestDeduplicate(t *testing.T) {
 	expected := []interface{}{nil, "", "1", 1}
 	if !reflect.DeepEqual(items, expected) {
 		t.Errorf("items differ, expected: %+v; actual: %+v", expected, items)
+	}
+}
+
+func TestRate(t *testing.T) {
+	var items []string
+	q := NewQueue(2, func(item interface{}) {
+		items = append(items, fmt.Sprintf("%d=%s", item, time.Now().Format("15:04:05.000")))
+	})
+	go q.Run()
+	start := time.Now()
+	for i := 0; i < 4; i++ {
+		q.Add(i + 1)
+	}
+	time.Sleep(200 * time.Millisecond)
+	q.ShutDown()
+	duration := time.Now().Sub(start)
+	if len(items) != 4 {
+		t.Errorf("expected 4 items but sync was called %d time(s)", len(items))
+	}
+	if duration.Seconds() < 1 {
+		t.Errorf("expected time higher than 1s but was %s - timestamps: %v", duration.String(), items)
+	}
+}
+
+func TestNotify(t *testing.T) {
+	var items []interface{}
+	q := NewQueue(10, func(item interface{}) {
+		items = append(items, item)
+	})
+	go q.Run()
+	for i := 0; i < 10; i++ {
+		q.Notify()
+	}
+	time.Sleep(200 * time.Millisecond)
+	for i := 0; i < 10; i++ {
+		q.Notify()
+	}
+	q.ShutDown()
+	if len(items) != 2 {
+		t.Errorf("expected 2 items but sync was called %d time(s)", len(items))
 	}
 }
