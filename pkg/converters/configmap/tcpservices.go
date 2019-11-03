@@ -84,7 +84,7 @@ func (c *tcpSvcConverter) Sync(tcpservices map[string]string) {
 		}
 		var crtfile convtypes.File
 		if svc.secret != "" {
-			crtfile, err = c.cache.GetTLSSecretPath(svc.secret)
+			crtfile, err = c.cache.GetTLSSecretPath("", svc.secret)
 			if err != nil {
 				c.logger.Warn("skipping TCP service on public port %d: %v", publicport, err)
 				continue

@@ -16,16 +16,6 @@ limitations under the License.
 
 package utils
 
-import (
-	"fmt"
-)
-
-// FullQualifiedName ...
-func FullQualifiedName(namespace, name string) string {
-	// TODO cross namespace
-	return fmt.Sprintf("%s/%s", namespace, name)
-}
-
 // GCD calculates the Greatest Common Divisor between a and b
 func GCD(a, b int) int {
 	for b != 0 {

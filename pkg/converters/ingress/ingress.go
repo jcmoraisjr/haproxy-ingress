@@ -26,7 +26,6 @@ import (
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/annotations"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/utils"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	convutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
@@ -99,7 +98,7 @@ func (c *converter) syncIngress(ing *extensions.Ingress) {
 	annHost, annBack := c.readAnnotations(ing.Annotations)
 	if ing.Spec.Backend != nil {
 		svcName, svcPort := readServiceNamePort(ing.Spec.Backend)
-		err := c.addDefaultHostBackend(source, utils.FullQualifiedName(ing.Namespace, svcName), svcPort, annHost, annBack)
+		err := c.addDefaultHostBackend(source, ing.Namespace+"/"+svcName, svcPort, annHost, annBack)
 		if err != nil {
 			c.logger.Warn("skipping default backend of ingress '%s': %v", fullIngName, err)
 		}
@@ -123,7 +122,7 @@ func (c *converter) syncIngress(ing *extensions.Ingress) {
 				continue
 			}
 			svcName, svcPort := readServiceNamePort(&path.Backend)
-			fullSvcName := utils.FullQualifiedName(ing.Namespace, svcName)
+			fullSvcName := ing.Namespace + "/" + svcName
 			backend, err := c.addBackend(source, hostname+uri, fullSvcName, svcPort, annBack)
 			if err != nil {
 				c.logger.Warn("skipping backend config of ingress '%s': %v", fullIngName, err)
@@ -141,7 +140,7 @@ func (c *converter) syncIngress(ing *extensions.Ingress) {
 		for _, tls := range ing.Spec.TLS {
 			for _, tlshost := range tls.Hosts {
 				if tlshost == hostname {
-					tlsPath := c.addTLS(ing.Namespace, tls.SecretName)
+					tlsPath := c.addTLS(source, tls.SecretName)
 					if host.TLS.TLSHash == "" {
 						host.TLS.TLSFilename = tlsPath.Filename
 						host.TLS.TLSHash = tlsPath.SHA1Hash
@@ -257,14 +256,13 @@ func (c *converter) addBackend(source *annotations.Source, hostpath, fullSvcName
 	return backend, nil
 }
 
-func (c *converter) addTLS(namespace, secretName string) convtypes.File {
+func (c *converter) addTLS(source *annotations.Source, secretName string) convtypes.File {
 	if secretName != "" {
-		tlsSecretName := namespace + "/" + secretName
-		tlsFile, err := c.cache.GetTLSSecretPath(tlsSecretName)
+		tlsFile, err := c.cache.GetTLSSecretPath(source.Namespace, secretName)
 		if err == nil {
 			return tlsFile
 		}
-		c.logger.Warn("using default certificate due to an error reading secret '%s': %v", tlsSecretName, err)
+		c.logger.Warn("using default certificate due to an error reading secret '%s' on %s: %v", secretName, source, err)
 	}
 	return c.options.DefaultSSLFile
 }

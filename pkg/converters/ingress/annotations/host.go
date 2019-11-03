@@ -29,7 +29,7 @@ func (c *updater) buildHostAuthTLS(d *hostData) {
 	if verify.Value == "off" {
 		return
 	}
-	if cafile, err := c.cache.GetCASecretPath(tlsSecret.Value); err == nil {
+	if cafile, err := c.cache.GetCASecretPath(tlsSecret.Source.Namespace, tlsSecret.Value); err == nil {
 		d.host.TLS.CAFilename = cafile.Filename
 		d.host.TLS.CAHash = cafile.SHA1Hash
 		d.host.TLS.CAVerifyOptional = verify.Value == "optional" || verify.Value == "optional_no_ca"
