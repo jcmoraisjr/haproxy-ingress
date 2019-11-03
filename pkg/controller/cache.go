@@ -25,7 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/file"
+	cfile "github.com/jcmoraisjr/haproxy-ingress/pkg/common/file"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/controller"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
@@ -36,6 +36,7 @@ type cache struct {
 	client     k8s.Interface
 	listers    *ingress.StoreLister
 	controller *controller.GenericController
+	crossNS    bool
 }
 
 func newCache(client k8s.Interface, listers *ingress.StoreLister, controller *controller.GenericController) *cache {
@@ -43,6 +44,7 @@ func newCache(client k8s.Interface, listers *ingress.StoreLister, controller *co
 		client:     client,
 		listers:    listers,
 		controller: controller,
+		crossNS:    controller.GetConfig().AllowCrossNamespace,
 	}
 }
 
@@ -87,27 +89,52 @@ func (c *cache) GetPod(podName string) (*api.Pod, error) {
 	return c.listers.Pod.GetPod(sname[0], sname[1])
 }
 
-func (c *cache) GetTLSSecretPath(secretName string) (convtypes.File, error) {
-	sslCert, err := c.controller.GetCertificate(secretName)
-	if err != nil {
-		return convtypes.File{}, err
+func (c *cache) buildSecretName(defaultNamespace, secretName string) (string, error) {
+	if defaultNamespace == "" {
+		return secretName, nil
 	}
-	if sslCert.PemFileName == "" {
-		return convtypes.File{}, fmt.Errorf("secret '%s' does not have keys 'tls.crt' and 'tls.key'", secretName)
+	if strings.Index(secretName, "/") < 0 {
+		return defaultNamespace + "/" + secretName, nil
 	}
-	return convtypes.File{
-		Filename: sslCert.PemFileName,
-		SHA1Hash: sslCert.PemSHA,
-	}, nil
+	if c.crossNS || strings.HasPrefix(secretName, defaultNamespace+"/") {
+		return secretName, nil
+	}
+	return "", fmt.Errorf(
+		"trying to read secret '%s' from namespace '%s', but cross-namespace reading is disabled; use --allow-cross-namespace to enable",
+		secretName, defaultNamespace,
+	)
 }
 
-func (c *cache) GetCASecretPath(secretName string) (ca, crl convtypes.File, err error) {
-	sslCert, err := c.controller.GetCertificate(secretName)
+func (c *cache) GetTLSSecretPath(defaultNamespace, secretName string) (file convtypes.File, err error) {
+	fullname, err := c.buildSecretName(defaultNamespace, secretName)
+	if err != nil {
+		return file, err
+	}
+	sslCert, err := c.controller.GetCertificate(fullname)
+	if err != nil {
+		return file, err
+	}
+	if sslCert.PemFileName == "" {
+		return file, fmt.Errorf("secret '%s' does not have keys 'tls.crt' and 'tls.key'", fullname)
+	}
+	file = convtypes.File{
+		Filename: sslCert.PemFileName,
+		SHA1Hash: sslCert.PemSHA,
+	}
+	return file, nil
+}
+
+func (c *cache) GetCASecretPath(defaultNamespace, secretName string) (ca, crl convtypes.File, err error) {
+	fullname, err := c.buildSecretName(defaultNamespace, secretName)
+	if err != nil {
+		return ca, crl, err
+	}
+	sslCert, err := c.controller.GetCertificate(fullname)
 	if err != nil {
 		return ca, crl, err
 	}
 	if sslCert.CAFileName == "" {
-		return ca, crl, fmt.Errorf("secret '%s' does not have key 'ca.crt'", secretName)
+		return ca, crl, fmt.Errorf("secret '%s' does not have key 'ca.crt'", fullname)
 	}
 	ca = convtypes.File{
 		Filename: sslCert.CAFileName,
@@ -123,34 +150,43 @@ func (c *cache) GetCASecretPath(secretName string) (ca, crl convtypes.File, err 
 	return ca, crl, nil
 }
 
-func (c *cache) GetDHSecretPath(secretName string) (convtypes.File, error) {
-	secret, err := c.listers.Secret.GetByName(secretName)
+func (c *cache) GetDHSecretPath(defaultNamespace, secretName string) (file convtypes.File, err error) {
+	fullname, err := c.buildSecretName(defaultNamespace, secretName)
 	if err != nil {
-		return convtypes.File{}, err
+		return file, nil
+	}
+	secret, err := c.listers.Secret.GetByName(fullname)
+	if err != nil {
+		return file, err
 	}
 	dh, found := secret.Data[dhparamFilename]
 	if !found {
-		return convtypes.File{}, fmt.Errorf("secret '%s' does not have key '%s'", secretName, dhparamFilename)
+		return file, fmt.Errorf("secret '%s' does not have key '%s'", fullname, dhparamFilename)
 	}
-	pem := strings.Replace(secretName, "/", "_", -1)
+	pem := strings.Replace(fullname, "/", "_", -1)
 	pemFileName, err := ssl.AddOrUpdateDHParam(pem, dh)
 	if err != nil {
-		return convtypes.File{}, fmt.Errorf("error creating dh-param file '%s': %v", pem, err)
+		return file, fmt.Errorf("error creating dh-param file '%s': %v", pem, err)
 	}
-	return convtypes.File{
+	file = convtypes.File{
 		Filename: pemFileName,
-		SHA1Hash: file.SHA1(pemFileName),
-	}, nil
+		SHA1Hash: cfile.SHA1(pemFileName),
+	}
+	return file, nil
 }
 
-func (c *cache) GetSecretContent(secretName, keyName string) ([]byte, error) {
-	secret, err := c.listers.Secret.GetByName(secretName)
+func (c *cache) GetSecretContent(defaultNamespace, secretName, keyName string) ([]byte, error) {
+	fullname, err := c.buildSecretName(defaultNamespace, secretName)
+	if err != nil {
+		return nil, err
+	}
+	secret, err := c.listers.Secret.GetByName(fullname)
 	if err != nil {
 		return nil, err
 	}
 	data, found := secret.Data[keyName]
 	if !found {
-		return nil, fmt.Errorf("secret '%s' does not have key '%s'", secretName, keyName)
+		return nil, fmt.Errorf("secret '%s' does not have key '%s'", fullname, keyName)
 	}
 	return data, nil
 }

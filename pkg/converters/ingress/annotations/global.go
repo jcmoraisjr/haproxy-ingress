@@ -97,7 +97,7 @@ func (c *updater) buildGlobalStats(d *globalData) {
 	d.global.Stats.BindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrStats).Value
 	d.global.Stats.Port = d.mapper.Get(ingtypes.GlobalStatsPort).Int()
 	if tlsSecret := d.mapper.Get(ingtypes.GlobalStatsSSLCert).Value; tlsSecret != "" {
-		if tls, err := c.cache.GetTLSSecretPath(tlsSecret); err == nil {
+		if tls, err := c.cache.GetTLSSecretPath("", tlsSecret); err == nil {
 			d.global.Stats.TLSFilename = tls.Filename
 			d.global.Stats.TLSHash = tls.SHA1Hash
 		} else {
@@ -138,7 +138,7 @@ func (c *updater) buildGlobalSSL(d *globalData) {
 	ssl.BackendCipherSuites = d.mapper.Get(ingtypes.BackSSLCipherSuitesBackend).Value
 	ssl.BackendOptions = d.mapper.Get(ingtypes.BackSSLOptionsBackend).Value
 	if sslDHParam := d.mapper.Get(ingtypes.GlobalSSLDHParam).Value; sslDHParam != "" {
-		if dhFile, err := c.cache.GetDHSecretPath(sslDHParam); err == nil {
+		if dhFile, err := c.cache.GetDHSecretPath("", sslDHParam); err == nil {
 			ssl.DHParam.Filename = dhFile.Filename
 		} else {
 			c.logger.Error("error reading DH params: %v", err)

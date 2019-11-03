@@ -137,7 +137,7 @@ func (hc *HAProxyController) startServices() {
 
 func (hc *HAProxyController) createDefaultSSLFile(cache convtypes.Cache) (tlsFile convtypes.File) {
 	if hc.cfg.DefaultSSLCertificate != "" {
-		tlsFile, err := cache.GetTLSSecretPath(hc.cfg.DefaultSSLCertificate)
+		tlsFile, err := cache.GetTLSSecretPath("", hc.cfg.DefaultSSLCertificate)
 		if err == nil {
 			return tlsFile
 		}

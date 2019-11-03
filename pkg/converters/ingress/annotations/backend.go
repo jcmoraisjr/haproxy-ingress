@@ -80,11 +80,14 @@ func (c *updater) buildBackendAuthHTTP(d *backData) {
 				c.logger.Error("missing secret name on basic authentication on %v", authType.Source)
 				return nil
 			}
-			secretName := ingutils.FullQualifiedName(authSecret.Source.Namespace, authSecret.Value)
+			secretName := authSecret.Value
+			if strings.Index(secretName, "/") < 0 {
+				secretName = authSecret.Source.Namespace + "/" + secretName
+			}
 			listName := strings.Replace(secretName, "/", "_", 1)
 			userlist := c.haproxy.FindUserlist(listName)
 			if userlist == nil {
-				userb, err := c.cache.GetSecretContent(secretName, "auth")
+				userb, err := c.cache.GetSecretContent(authSecret.Source.Namespace, authSecret.Value, "auth")
 				if err != nil {
 					c.logger.Error("error reading basic authentication on %v: %v", authSecret.Source, err)
 					return nil
@@ -594,7 +597,7 @@ func (c *updater) buildBackendProtocol(d *backData) {
 		return
 	}
 	if crt := d.mapper.Get(ingtypes.BackSecureCrtSecret); crt.Value != "" {
-		if crtFile, err := c.cache.GetTLSSecretPath(crt.Source.Namespace + "/" + crt.Value); err == nil {
+		if crtFile, err := c.cache.GetTLSSecretPath(crt.Source.Namespace, crt.Value); err == nil {
 			d.backend.Server.CrtFilename = crtFile.Filename
 			d.backend.Server.CrtHash = crtFile.SHA1Hash
 		} else {
@@ -602,7 +605,7 @@ func (c *updater) buildBackendProtocol(d *backData) {
 		}
 	}
 	if ca := d.mapper.Get(ingtypes.BackSecureVerifyCASecret); ca.Value != "" {
-		if caFile, crlFile, err := c.cache.GetCASecretPath(ca.Source.Namespace + "/" + ca.Value); err == nil {
+		if caFile, crlFile, err := c.cache.GetCASecretPath(ca.Source.Namespace, ca.Value); err == nil {
 			d.backend.Server.CAFilename = caFile.Filename
 			d.backend.Server.CAHash = caFile.SHA1Hash
 			d.backend.Server.CRLFilename = crlFile.Filename
