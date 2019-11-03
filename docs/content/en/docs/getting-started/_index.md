@@ -45,3 +45,7 @@ Instructions here, without links
 {{% alert title="TODO" %}}
 Name some hello-world style [examples]({{% relref "../examples" %}}) after migrate or create them.
 {{% /alert %}}
+
+## Evolve your configuration
+
+Get started with all the configuration options: [configuration]({{% relref "../configuration" %}})

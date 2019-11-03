@@ -3,7 +3,7 @@ title: "Configuration keys"
 linkTitle: "Configuration keys"
 weight: 3
 description: >
-  Global configmap and per ingress/service configuration keys.
+  List of all ingress/service annotations and global configmap options.
 ---
 
 Most of HAProxy Ingress configurations are made using a configmap object or annotating
