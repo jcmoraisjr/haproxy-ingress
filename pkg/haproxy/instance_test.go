@@ -724,82 +724,195 @@ empty/ default_empty_8080`)
 }
 
 func TestInstanceToHTTPSocket(t *testing.T) {
-	c := setup(t)
-	defer c.teardown()
-
-	var h *hatypes.Host
-	var b *hatypes.Backend
-
-	b = c.config.AcquireBackend("d1", "app", "8080")
-	h = c.config.AcquireHost("d1.local")
-	h.AddPath(b, "/")
-	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	b.HSTS = []*hatypes.BackendConfigHSTS{
+	testCases := []struct {
+		toHTTPPort       int
+		domain           string
+		expectedFront    string
+		expectedMap      string
+		expectedRegexMap string
+		expectedACL      string
+		expectedSetvar   string
+	}{
+		// 0
 		{
-			Paths: hatypes.NewBackendPaths(b.FindHostPath("d1.local/")),
-			Config: hatypes.HSTS{
-				Enabled:    true,
-				MaxAge:     15768000,
-				Subdomains: true,
-				Preload:    true,
-			},
+			toHTTPPort: 8000,
+			domain:     "d1.local",
+			expectedFront: `
+    mode http
+    bind :80
+    bind :8000 id 11
+    acl fronting-proxy so_id 11
+    http-request redirect scheme https if fronting-proxy !{ hdr(X-Forwarded-Proto) https }
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
+    http-request redirect scheme https if !fronting-proxy { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
+    http-request set-header X-Forwarded-Proto http if !fronting-proxy
+    http-request del-header X-SSL-Client-CN if !fronting-proxy
+    http-request del-header X-SSL-Client-DN if !fronting-proxy
+    http-request del-header X-SSL-Client-SHA1 if !fronting-proxy
+    http-request del-header X-SSL-Client-Cert if !fronting-proxy
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
+    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }`,
+			expectedMap: "d1.local/ d1_app_8080",
+			expectedACL: `
+    acl tls-has-crt ssl_c_used
+    acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_no_crt.list
+    acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front001_no_crt.list
+    acl tls-has-invalid-crt ssl_c_ca_err gt 0
+    acl tls-has-invalid-crt ssl_c_err gt 0
+    acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_inv_crt.list`,
+			expectedSetvar: `
+    http-request set-var(req.snibase) ssl_fc_sni,concat(path),lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.snibackend) var(req.snibase),map_beg(/etc/haproxy/maps/_front001_sni.map,_nomatch)
+    http-request set-var(req.snibackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_sni.map,_nomatch) if { var(req.snibackend) _nomatch } !tls-has-crt !tls-host-need-crt
+    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front001_no_crt_redir.map,_internal) if !tls-has-crt tls-need-crt
+    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front001_inv_crt_redir.map,_internal) if tls-has-invalid-crt tls-check-crt`,
+		},
+		// 1
+		{
+			toHTTPPort: 8000,
+			domain:     "*.d1.local",
+			expectedFront: `
+    mode http
+    bind :80
+    bind :8000 id 11
+    acl fronting-proxy so_id 11
+    http-request redirect scheme https if fronting-proxy !{ hdr(X-Forwarded-Proto) https }
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.redir) var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) if !fronting-proxy
+    http-request redirect scheme https if !fronting-proxy { var(req.redir) yes }
+    http-request redirect scheme https if !fronting-proxy { var(req.redir) _nomatch } { var(req.base),map_reg(/etc/haproxy/maps/_global_https_redir_regex.map,_nomatch) yes }
+    http-request set-header X-Forwarded-Proto http if !fronting-proxy
+    http-request del-header X-SSL-Client-CN if !fronting-proxy
+    http-request del-header X-SSL-Client-DN if !fronting-proxy
+    http-request del-header X-SSL-Client-SHA1 if !fronting-proxy
+    http-request del-header X-SSL-Client-Cert if !fronting-proxy
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
+    http-request set-var(req.backend) var(req.base),map_reg(/etc/haproxy/maps/_global_http_front_regex.map,_nomatch) if { var(req.backend) _nomatch }
+    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }`,
+			expectedRegexMap: `^[^.]+\.d1\.local/ d1_app_8080`,
+			expectedACL: `
+    acl tls-has-crt ssl_c_used
+    acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_no_crt.list
+    acl tls-need-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front001_no_crt_regex.list
+    acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front001_no_crt.list
+    acl tls-host-need-crt var(req.host) -i -m reg -f /etc/haproxy/maps/_front001_no_crt_regex.list
+    acl tls-has-invalid-crt ssl_c_ca_err gt 0
+    acl tls-has-invalid-crt ssl_c_err gt 0
+    acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_inv_crt.list
+    acl tls-check-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front001_inv_crt_regex.list`,
+			expectedSetvar: `
+    http-request set-var(req.snibase) ssl_fc_sni,concat(path),lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.snibackend) var(req.snibase),map_beg(/etc/haproxy/maps/_front001_sni.map,_nomatch)
+    http-request set-var(req.snibackend) var(req.snibase),map_reg(/etc/haproxy/maps/_front001_sni_regex.map,_nomatch) if { var(req.snibackend) _nomatch }
+    http-request set-var(req.snibackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_sni.map,_nomatch) if { var(req.snibackend) _nomatch } !tls-has-crt !tls-host-need-crt
+    http-request set-var(req.snibackend) var(req.base),map_reg(/etc/haproxy/maps/_front001_sni_regex.map,_nomatch) if { var(req.snibackend) _nomatch } !tls-has-crt !tls-host-need-crt
+    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front001_no_crt_redir.map,_internal) if !tls-has-crt tls-need-crt
+    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front001_inv_crt_redir.map,_internal) if tls-has-invalid-crt tls-check-crt`,
+		},
+		// 2
+		{
+			toHTTPPort: 80,
+			domain:     "d1.local",
+			expectedFront: `
+    mode http
+    bind :80
+    acl fronting-proxy hdr(X-Forwarded-Proto) -m found
+    http-request redirect scheme https if fronting-proxy !{ hdr(X-Forwarded-Proto) https }
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
+    http-request redirect scheme https if !fronting-proxy { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
+    http-request set-header X-Forwarded-Proto http if !fronting-proxy
+    http-request del-header X-SSL-Client-CN if !fronting-proxy
+    http-request del-header X-SSL-Client-DN if !fronting-proxy
+    http-request del-header X-SSL-Client-SHA1 if !fronting-proxy
+    http-request del-header X-SSL-Client-Cert if !fronting-proxy
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
+    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }`,
+			expectedMap: "d1.local/ d1_app_8080",
+			expectedACL: `
+    acl tls-has-crt ssl_c_used
+    acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_no_crt.list
+    acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front001_no_crt.list
+    acl tls-has-invalid-crt ssl_c_ca_err gt 0
+    acl tls-has-invalid-crt ssl_c_err gt 0
+    acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_inv_crt.list`,
+			expectedSetvar: `
+    http-request set-var(req.snibase) ssl_fc_sni,concat(path),lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.snibackend) var(req.snibase),map_beg(/etc/haproxy/maps/_front001_sni.map,_nomatch)
+    http-request set-var(req.snibackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_sni.map,_nomatch) if { var(req.snibackend) _nomatch } !tls-has-crt !tls-host-need-crt
+    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front001_no_crt_redir.map,_internal) if !tls-has-crt tls-need-crt
+    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front001_inv_crt_redir.map,_internal) if tls-has-invalid-crt tls-check-crt`,
 		},
 	}
-	h.TLS.CAHash = "1"
-	h.TLS.CAFilename = "/var/haproxy/ssl/ca.pem"
-	c.config.Global().Bind.ToHTTPPort = 8000
-	c.config.Global().Bind.ToHTTPSocketID = 11
+	for _, test := range testCases {
+		c := setup(t)
 
-	c.Update()
-	c.checkConfig(`
+		var h *hatypes.Host
+		var b *hatypes.Backend
+
+		b = c.config.AcquireBackend("d1", "app", "8080")
+		h = c.config.AcquireHost(test.domain)
+		h.AddPath(b, "/")
+		b.Endpoints = []*hatypes.Endpoint{endpointS1}
+		b.HSTS = []*hatypes.BackendConfigHSTS{
+			{
+				Paths: hatypes.NewBackendPaths(b.FindHostPath(test.domain + "/")),
+				Config: hatypes.HSTS{
+					Enabled:    true,
+					MaxAge:     15768000,
+					Subdomains: true,
+					Preload:    true,
+				},
+			},
+		}
+		h.TLS.CAHash = "1"
+		h.TLS.CAFilename = "/var/haproxy/ssl/ca.pem"
+		c.config.Global().Bind.ToHTTPPort = test.toHTTPPort
+		c.config.Global().Bind.ToHTTPSocketID = 11
+
+		c.Update()
+		c.checkConfig(`
 <<global>>
 <<defaults>>
 backend d1_app_8080
     mode http
     acl https-request ssl_fc
-    acl https-request so_id 11
+    acl https-request var(txn.proto) https
     acl local-offload ssl_fc
+    http-request set-var(txn.proto) hdr(X-Forwarded-Proto)
     http-request set-header X-SSL-Client-CN   %{+Q}[ssl_c_s_dn(cn)]   if local-offload
     http-request set-header X-SSL-Client-DN   %{+Q}[ssl_c_s_dn]       if local-offload
     http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex]   if local-offload
     http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload" if https-request
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
-<<frontend-http>>
+frontend _front_http` + test.expectedFront + `
     default_backend _error404
 frontend _front001
     mode http
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all
-    bind :8000 id 11
-    acl local-offload ssl_fc
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
     http-request set-header X-Forwarded-Proto https
-    http-request del-header X-SSL-Client-CN if local-offload
-    http-request del-header X-SSL-Client-DN if local-offload
-    http-request del-header X-SSL-Client-SHA1 if local-offload
-    http-request del-header X-SSL-Client-Cert if local-offload
-    acl tls-has-crt ssl_c_used
-    acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_no_crt.list
-    acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front001_no_crt.list
-    acl tls-has-invalid-crt ssl_c_ca_err gt 0
-    acl tls-has-invalid-crt ssl_c_err gt 0
-    acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_inv_crt.list
-    http-request set-var(req.snibase) ssl_fc_sni,concat(path),lower,regsub(:[0-9]+/,/) if local-offload
-    http-request set-var(req.snibackend) var(req.snibase),map_beg(/etc/haproxy/maps/_front001_sni.map,_nomatch) if local-offload
-    http-request set-var(req.snibackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_sni.map,_nomatch) if local-offload { var(req.snibackend) _nomatch } !tls-has-crt !tls-host-need-crt
-    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front001_no_crt_redir.map,_internal) if local-offload !tls-has-crt tls-need-crt
-    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front001_inv_crt_redir.map,_internal) if local-offload tls-has-invalid-crt tls-check-crt
+    http-request del-header X-SSL-Client-CN
+    http-request del-header X-SSL-Client-DN
+    http-request del-header X-SSL-Client-SHA1
+    http-request del-header X-SSL-Client-Cert` + test.expectedACL + test.expectedSetvar + `
     use_backend _error421 if { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
     use_backend _error496 if { var(req.tls_nocrt_redir) _internal }
     use_backend _error495 if { var(req.tls_invalidcrt_redir) _internal }
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
-    use_backend %[var(req.snibackend)] if local-offload !{ var(req.snibackend) _nomatch }
+    use_backend %[var(req.snibackend)] unless { var(req.snibackend) _nomatch }
     default_backend _error404
 <<support>>
 `)
-	c.logger.CompareLogging(defaultLogging)
+		c.checkMap("_global_http_front.map", test.expectedMap)
+		if test.expectedRegexMap != "" {
+			c.checkMap("_global_http_front_regex.map", test.expectedRegexMap)
+		}
+		c.logger.CompareLogging(defaultLogging)
+		c.teardown()
+	}
 }
 
 func TestInstanceTCPBackend(t *testing.T) {

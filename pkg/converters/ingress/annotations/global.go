@@ -156,15 +156,20 @@ func (c *updater) buildGlobalHealthz(d *globalData) {
 }
 
 func (c *updater) buildGlobalHTTPStoHTTP(d *globalData) {
-	port := d.mapper.Get(ingtypes.GlobalHTTPStoHTTPPort).Int()
-	if port > 0 {
-		d.global.Bind.ToHTTPBindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrHTTP).Value
-		d.global.Bind.ToHTTPPort = port
-		// Socket ID should be a high number to avoid colision
-		// between the same socket ID from distinct frontends
-		// TODO match socket and frontend ID in the backend
-		d.global.Bind.ToHTTPSocketID = 10011
+	port := d.mapper.Get(ingtypes.GlobalFrontingProxyPort).Int()
+	if port == 0 {
+		port = d.mapper.Get(ingtypes.GlobalHTTPStoHTTPPort).Int()
 	}
+	if port == 0 {
+		return
+	}
+	// TODO Change all `ToHTTP` naming to `FrontingProxy`
+	d.global.Bind.ToHTTPBindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrHTTP).Value
+	d.global.Bind.ToHTTPPort = port
+	// Socket ID should be a high number to avoid colision
+	// between the same socket ID from distinct frontends
+	// TODO match socket and frontend ID in the backend
+	d.global.Bind.ToHTTPSocketID = 10011
 }
 
 func (c *updater) buildGlobalModSecurity(d *globalData) {

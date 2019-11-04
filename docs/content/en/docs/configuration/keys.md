@@ -135,6 +135,7 @@ The table below describes all supported configuration keys.
 | [`drain-support-redispatch`](#drain-support)         | [true\|false]                           | Global  | `true`             |
 | [`dynamic-scaling`](#dynamic-scaling)                | [true\|false]                           | Backend | `false`            |
 | [`forwardfor`](#forwardfor)                          | [add\|ignore\|ifmissing]                | Global  | `add`              |
+| [`fronting-proxy-port`](#fronting-proxy-port)        | port number                             | Global  | 0 (do not listen)  |
 | [`health-check-addr`](#health-check)                 | address for health checks               | Backend |                    |
 | [`health-check-fall-count`](#health-check)           | number of failures                      | Backend |                    |
 | [`health-check-interval`](#health-check)             | time with suffix                        | Backend |                    |
@@ -150,7 +151,7 @@ The table below describes all supported configuration keys.
 | [`http-port`](#bind-port)                            | port number                             | Global  | `80`               |
 | [`https-log-format`](#log-format)                    | https(tcp) log format\|`default`        | Global  | do not log         |
 | [`https-port`](#bind-port)                           | port number                             | Global  | `443`              |
-| [`https-to-http-port`](#https-to-http-port)          | port number                             | Global  | 0 (do not listen)  |
+| [`https-to-http-port`](#fronting-proxy-port)         | port number                             | Global  | 0 (do not listen)  |
 | [`initial-weight`](#initial-weight)                  | weight value                            | Backend | `1`                |
 | [`limit-connections`](#limit)                        | qty                                     | Backend |                    |
 | [`limit-rps`](#limit)                                | rate per second                         | Backend |                    |
@@ -731,6 +732,37 @@ See also:
 
 ---
 
+## Fronting proxy port
+
+| Configuration key     | Scope    | Default | Since  |
+|-----------------------|----------|---------|--------|
+| `fronting-proxy-port` | `Global` |         | `v0.8` |
+| `https-to-http-port`  | `Global` |         |        |
+
+A port number to listen to http requests from a fronting proxy that does the ssl
+offload. `https-to-http-port` is an alias to `fronting-proxy-port`.
+
+Requests made to `fronting-proxy-port` port number evaluate the `X-Forwarded-Proto`
+header to decide how to handle the request:
+
+* If `X-Forwarded-Proto` is `https`: HAProxy will handle the request just like the
+ssl-offload was made by HAProxy itself - HSTS header is provided if configured and
+`X-SSL-*` headers won't be changed or removed if provided.
+* If `X-Forwarded-Proto` is `http` or the header is missing:
+  * If `fronting-proxy-port` has its own port: HAProxy will redirect scheme to https
+  * If `fronting-proxy-port` uses the same HTTP port (defaults to 80): the redirect scheme is done only if the header is provided, otherwise the request will be handled as if `fronting-proxy-port` wasn't configured.
+
+{{% alert title="Warning" color="warning" %}}
+On v0.7 and older, and only if the `X-Forwarded-Proto` is missing: the
+connecting port number was used to define which socket received the request, so
+the fronting proxy should connect to the same port number defined in
+`https-to-http-port`, eg cannot have any proxy like Kubernetes' `NodePort`
+between the load balancer and HAProxy which changes the connecting port number.
+This limitation doesn't exist on v0.8 or above.
+{{% /alert %}}
+
+---
+
 ## Health check
 
 | Configuration key         | Scope     | Default | Since |
@@ -782,29 +814,6 @@ Configure HSTS - HTTP Strict Transport Security. The following keys are supporte
 See also:
 
 * https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security
-
----
-
-## HTTPS to HTTP port
-
-| Configuration key    | Scope    | Default | Since |
-|----------------------|----------|---------|-------|
-| `https-to-http-port` | `Global` |         |       |
-
-A port number to listen http requests from another load balancer that does the ssl offload.
-
-How it works: HAProxy will define if the request came from a HTTPS connection reading the
-`X-Forwarded-Proto` HTTP header or the port number the client used to connect. If the
-header is `https` or the port number matches `https-to-http-port`, HAProxy will behave
-just like itself did the ssl offload: HSTS header will be provided if configured and no
-https redirect will be done. There is only one exception: if `https-to-http-port` is `80`,
-only the header will be checked.
-
-The `X-Forwarded-Proto` header is optional in the following condition:
-
-* The `https-to-http-port` should not match HTTP port `80`; and
-* The load balancer should connect to the same `https-to-http-port` number, eg cannot
-have any proxy like Kubernetes' `NodePort` between the load balancer and HAProxy
 
 ---
 
