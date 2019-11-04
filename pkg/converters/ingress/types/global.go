@@ -35,6 +35,7 @@ const (
 	GlobalDrainSupport                 = "drain-support"
 	GlobalDrainSupportRedispatch       = "drain-support-redispatch"
 	GlobalForwardfor                   = "forwardfor"
+	GlobalFrontingProxyPort            = "fronting-proxy-port"
 	GlobalHealthzPort                  = "healthz-port"
 	GlobalHTTPLogFormat                = "http-log-format"
 	GlobalHTTPPort                     = "http-port"
