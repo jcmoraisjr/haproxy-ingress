@@ -705,7 +705,7 @@ frontend _front_http
 
 {{- /*------------------------------------*/}}
 {{- if $fgroup.HTTPRootRedirMap.HasHost }}
-    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
     http-request set-var(req.rootredir)
         {{- "" }} var(req.host),map({{ $fgroup.HTTPRootRedirMap.MatchFile }},_nomatch)
 {{- if $fgroup.HTTPRootRedirMap.HasRegex }}
@@ -805,7 +805,7 @@ frontend {{ $frontend.Name }}
 
 {{- /*------------------------------------*/}}
 {{- if or $frontend.HasTLSAuth $frontend.RootRedirMap.HasHost }}
-    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
 {{- end }}
 {{- if $frontend.RootRedirMap.HasHost }}
     http-request set-var(req.rootredir)
