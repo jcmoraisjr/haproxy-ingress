@@ -728,7 +728,7 @@ frontend _front001
     bind unix@/var/run/_socket002.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
-    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
     http-request set-header X-Forwarded-Proto https
     http-request del-header X-SSL-Client-CN
     http-request del-header X-SSL-Client-DN
@@ -1149,7 +1149,7 @@ frontend _front001
     bind unix@/var/run/_socket003.sock accept-proxy ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
-    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
     <<https-headers>>
     acl tls-has-crt ssl_c_used
     acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_no_crt.list
@@ -1300,7 +1300,7 @@ frontend _front001
     timeout client 1s
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
-    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
     <<https-headers>>
     acl tls-has-crt ssl_c_used
     acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front001_no_crt.list
@@ -1323,7 +1323,7 @@ frontend _front002
     timeout client 2s
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front002_host.map,_nomatch)
-    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
     <<https-headers>>
     acl tls-has-crt ssl_c_used
     acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front002_no_crt.list
@@ -1660,7 +1660,7 @@ frontend _front_http
     bind :80
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
-    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
     http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/_global_http_root_redir.map,_nomatch)
     http-request redirect location %[var(req.rootredir)] if { path / } !{ var(req.rootredir) _nomatch }
     <<http-headers>>
@@ -1671,7 +1671,7 @@ frontend _front001
     mode http
     bind :443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
-    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
     http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/_front001_root_redir.map,_nomatch)
     http-request redirect location %[var(req.rootredir)] if { path / } !{ var(req.rootredir) _nomatch }
     <<https-headers>>
@@ -2287,7 +2287,7 @@ frontend _front_http
     http-request set-var(req.redir) var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch)
     http-request redirect scheme https if { var(req.redir) yes }
     http-request redirect scheme https if { var(req.redir) _nomatch } { var(req.base),map_reg(/etc/haproxy/maps/_global_https_redir_regex.map,_nomatch) yes }
-    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
     http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/_global_http_root_redir.map,_nomatch)
     http-request set-var(req.rootredir) var(req.host),map_reg(/etc/haproxy/maps/_global_http_root_redir_regex.map,_nomatch) if { var(req.rootredir) _nomatch }
     http-request redirect location %[var(req.rootredir)] if { path / } !{ var(req.rootredir) _nomatch }
@@ -2303,7 +2303,7 @@ frontend _front001
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     http-request set-var(req.hostbackend) var(req.base),map_reg(/etc/haproxy/maps/_front001_host_regex.map,_nomatch) if { var(req.hostbackend) _nomatch }
-    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
     <<https-headers>>
     acl tls-has-crt ssl_c_used
     acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front001_no_crt.list
@@ -2331,7 +2331,7 @@ frontend _front002
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front002_host.map,_nomatch)
     http-request set-var(req.hostbackend) var(req.base),map_reg(/etc/haproxy/maps/_front002_host_regex.map,_nomatch) if { var(req.hostbackend) _nomatch }
-    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
     http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/_front002_root_redir.map,_nomatch)
     http-request set-var(req.rootredir) var(req.host),map_reg(/etc/haproxy/maps/_front002_root_redir_regex.map,_nomatch) if { var(req.rootredir) _nomatch }
     http-request redirect location %[var(req.rootredir)] if { path / } !{ var(req.rootredir) _nomatch }
