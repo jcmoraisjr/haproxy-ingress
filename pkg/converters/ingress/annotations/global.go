@@ -220,7 +220,7 @@ func (c *updater) buildGlobalDNS(d *globalData) {
 }
 
 var (
-	forwardRegex = regexp.MustCompile(`^(add|ignore|ifmissing)$`)
+	forwardRegex = regexp.MustCompile(`^(add|update|ignore|ifmissing)$`)
 )
 
 func (c *updater) buildGlobalForwardFor(d *globalData) {

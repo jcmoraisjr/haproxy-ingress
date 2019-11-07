@@ -695,18 +695,26 @@ See also:
 |-------------------|-----------|---------|-------|
 | `forwardfor`      | `Global`  | `add`   |       |
 
-Define if `X-Forwarded-For` header should be added always, added if missing or
-ignored from incoming requests. Default is `add` which means HAProxy will itself
-generate a `X-Forwarded-For` header with client's IP address and remove this same
-header from incoming requests.
+Define how the `X-Forwarded-For` header should be handled by haproxy.
 
-Use `ignore` to skip any check. `ifmissing` should be used to add
-`X-Forwarded-For` with client's IP address only if this header is not defined.
-Only use `ignore` or `ifmissing` on trusted networks.
+Options:
+
+* `add`: haproxy should generate a `X-Forwarded-For` header with the source IP
+address. This is the default option and should be used on untrusted networks.
+If the request has a `XFF` header, its value is copied to
+`X-Original-Forwarded-For`.
+* `update`: Only on `v0.9` and above. haproxy should preserve any `X-Forwarded-For`
+header, if provided, updating with the source IP address, which should be a
+fronting TCP or HTTP proxy/load balancer.
+* `ignore`: do nothing - only send the `X-Forwarded-For` header if the client
+provided one, without updating its content.
+* `ifmissing`: add `X-Forwarded-For` header only if the incoming request
+doesn't provide one.
 
 See also:
 
 * http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-option%20forwardfor
+* https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
 
 ---
 

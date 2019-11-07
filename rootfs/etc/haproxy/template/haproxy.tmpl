@@ -382,6 +382,8 @@ backend {{ $backend.ID }}
     http-request set-header X-Original-Forwarded-For %[hdr(x-forwarded-for)] if { hdr(x-forwarded-for) -m found }
     http-request del-header x-forwarded-for
     option forwardfor
+{{- else if eq $global.ForwardFor "update" }}
+    option forwardfor
 {{- else if eq $global.ForwardFor "ifmissing" }}
     option forwardfor if-none
 {{- end }}

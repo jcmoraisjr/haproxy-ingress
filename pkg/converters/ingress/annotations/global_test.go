@@ -190,6 +190,12 @@ func TestForwardFor(t *testing.T) {
 			expected: "ifmissing",
 			logging:  "",
 		},
+		// 5
+		{
+			conf:     "update",
+			expected: "update",
+			logging:  "",
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
