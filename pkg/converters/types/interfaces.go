@@ -26,10 +26,10 @@ type Cache interface {
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
 	GetTerminatingPods(service *api.Service) ([]*api.Pod, error)
 	GetPod(podName string) (*api.Pod, error)
-	GetTLSSecretPath(secretName string) (File, error)
-	GetCASecretPath(secretName string) (ca, crl File, err error)
-	GetDHSecretPath(secretName string) (File, error)
-	GetSecretContent(secretName, keyName string) ([]byte, error)
+	GetTLSSecretPath(defaultNamespace, secretName string) (File, error)
+	GetCASecretPath(defaultNamespace, secretName string) (ca, crl File, err error)
+	GetDHSecretPath(defaultNamespace, secretName string) (File, error)
+	GetSecretContent(defaultNamespace, secretName, keyName string) ([]byte, error)
 }
 
 // File ...

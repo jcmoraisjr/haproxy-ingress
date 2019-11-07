@@ -450,7 +450,7 @@ func TestSyncTLSSecretNotFound(t *testing.T) {
     tlsfilename: /tls/tls-default.pem`)
 
 	c.logger.CompareLogging(`
-WARN using default certificate due to an error reading secret 'default/ing-tls': secret not found: 'default/ing-tls'`)
+WARN using default certificate due to an error reading secret 'ing-tls' on ingress 'default/echo': secret not found: 'default/ing-tls'`)
 }
 
 func TestSyncTLSCustom(t *testing.T) {
@@ -580,7 +580,7 @@ func TestSyncInvalidTLS(t *testing.T) {
     tlsfilename: /tls/tls-default.pem`)
 
 	c.logger.CompareLogging(`
-WARN using default certificate due to an error reading secret 'default/tls-invalid': secret not found: 'default/tls-invalid'`)
+WARN using default certificate due to an error reading secret 'tls-invalid' on ingress 'default/echo': secret not found: 'default/tls-invalid'`)
 }
 
 func TestSyncRootPathDefault(t *testing.T) {

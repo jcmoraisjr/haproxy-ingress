@@ -54,6 +54,13 @@ func NewCacheMock() *CacheMock {
 	}
 }
 
+func (c *CacheMock) buildSecretName(defaultNamespace, secretName string) string {
+	if defaultNamespace == "" || strings.Index(secretName, "/") >= 0 {
+		return secretName
+	}
+	return defaultNamespace + "/" + secretName
+}
+
 // GetService ...
 func (c *CacheMock) GetService(serviceName string) (*api.Service, error) {
 	sname := strings.Split(serviceName, "/")
@@ -94,27 +101,29 @@ func (c *CacheMock) GetPod(podName string) (*api.Pod, error) {
 }
 
 // GetTLSSecretPath ...
-func (c *CacheMock) GetTLSSecretPath(secretName string) (convtypes.File, error) {
-	if path, found := c.SecretTLSPath[secretName]; found {
+func (c *CacheMock) GetTLSSecretPath(defaultNamespace, secretName string) (convtypes.File, error) {
+	fullname := c.buildSecretName(defaultNamespace, secretName)
+	if path, found := c.SecretTLSPath[fullname]; found {
 		return convtypes.File{
 			Filename: path,
 			SHA1Hash: fmt.Sprintf("%x", sha1.Sum([]byte(path))),
 		}, nil
 	}
-	return convtypes.File{}, fmt.Errorf("secret not found: '%s'", secretName)
+	return convtypes.File{}, fmt.Errorf("secret not found: '%s'", fullname)
 }
 
 // GetCASecretPath ...
-func (c *CacheMock) GetCASecretPath(secretName string) (ca, crl convtypes.File, err error) {
-	if path, found := c.SecretCAPath[secretName]; found {
+func (c *CacheMock) GetCASecretPath(defaultNamespace, secretName string) (ca, crl convtypes.File, err error) {
+	fullname := c.buildSecretName(defaultNamespace, secretName)
+	if path, found := c.SecretCAPath[fullname]; found {
 		ca = convtypes.File{
 			Filename: path,
 			SHA1Hash: fmt.Sprintf("%x", sha1.Sum([]byte(path))),
 		}
 	} else {
-		return ca, crl, fmt.Errorf("secret not found: '%s'", secretName)
+		return ca, crl, fmt.Errorf("secret not found: '%s'", fullname)
 	}
-	if path, found := c.SecretCRLPath[secretName]; found {
+	if path, found := c.SecretCRLPath[fullname]; found {
 		crl = convtypes.File{
 			Filename: path,
 			SHA1Hash: fmt.Sprintf("%x", sha1.Sum([]byte(path))),
@@ -124,23 +133,25 @@ func (c *CacheMock) GetCASecretPath(secretName string) (ca, crl convtypes.File, 
 }
 
 // GetDHSecretPath ...
-func (c *CacheMock) GetDHSecretPath(secretName string) (convtypes.File, error) {
-	if path, found := c.SecretDHPath[secretName]; found {
+func (c *CacheMock) GetDHSecretPath(defaultNamespace, secretName string) (convtypes.File, error) {
+	fullname := c.buildSecretName(defaultNamespace, secretName)
+	if path, found := c.SecretDHPath[fullname]; found {
 		return convtypes.File{
 			Filename: path,
 			SHA1Hash: fmt.Sprintf("%x", sha1.Sum([]byte(path))),
 		}, nil
 	}
-	return convtypes.File{}, fmt.Errorf("secret not found: '%s'", secretName)
+	return convtypes.File{}, fmt.Errorf("secret not found: '%s'", fullname)
 }
 
 // GetSecretContent ...
-func (c *CacheMock) GetSecretContent(secretName, keyName string) ([]byte, error) {
-	if content, found := c.SecretContent[secretName]; found {
+func (c *CacheMock) GetSecretContent(defaultNamespace, secretName, keyName string) ([]byte, error) {
+	fullname := c.buildSecretName(defaultNamespace, secretName)
+	if content, found := c.SecretContent[fullname]; found {
 		if val, found := content[keyName]; found {
 			return val, nil
 		}
-		return nil, fmt.Errorf("secret '%s' does not have file/key '%s'", secretName, keyName)
+		return nil, fmt.Errorf("secret '%s' does not have file/key '%s'", fullname, keyName)
 	}
-	return nil, fmt.Errorf("secret not found: '%s'", secretName)
+	return nil, fmt.Errorf("secret not found: '%s'", fullname)
 }
