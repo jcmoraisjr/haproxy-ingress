@@ -393,7 +393,7 @@ type Backend struct {
 	MaxBodySize   []*BackendConfigInt
 	RewriteURL    []*BackendConfigStr
 	SSLRedirect   []*BackendConfigBool
-	WAF           []*BackendConfigStr
+	WAF           []*BackendConfigWAF
 	WhitelistHTTP []*BackendConfigWhitelist
 }
 
@@ -457,6 +457,12 @@ type BackendConfigAuth struct {
 type BackendConfigCors struct {
 	Paths  BackendPaths
 	Config Cors
+}
+
+// BackendConfigWAF defines Web Application Firewall Configurations
+type BackendConfigWAF struct {
+	Paths  BackendPaths
+	Config WAF
 }
 
 // BackendConfigHSTS ...
@@ -578,6 +584,14 @@ type HSTS struct {
 	MaxAge     int
 	Subdomains bool
 	Preload    bool
+}
+
+// WAF Defines the WAF Config structure for the Backend
+type WAF struct {
+	// Mode defines On or DetectionOnly
+	Mode string
+	// Which WAF Module should be used
+	Module string
 }
 
 // Userlist ...

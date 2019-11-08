@@ -149,10 +149,10 @@ func (b *Backend) HasCorsEnabled() bool {
 	return false
 }
 
-// HasModsec ...
+// HasModsec is a method to verify if a Backend has ModSecurity Enabled
 func (b *Backend) HasModsec() bool {
 	for _, waf := range b.WAF {
-		if waf.Config == "modsecurity" {
+		if waf.Config.Module == "modsecurity" {
 			return true
 		}
 	}

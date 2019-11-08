@@ -1580,24 +1580,46 @@ func TestTimeout(t *testing.T) {
 
 func TestWAF(t *testing.T) {
 	testCase := []struct {
-		waf      string
-		expected string
-		logging  string
+		waf          string
+		wafmode      string
+		expected     string
+		expectedmode string
+		logging      string
 	}{
 		{
-			waf:      "",
-			expected: "",
-			logging:  "",
+			waf:          "",
+			wafmode:      "",
+			expected:     "",
+			expectedmode: "",
+			logging:      "",
 		},
 		{
-			waf:      "none",
-			expected: "",
-			logging:  "WARN ignoring invalid WAF mode on ingress 'default/ing1': none",
+			waf:          "none",
+			wafmode:      "On",
+			expected:     "",
+			expectedmode: "On",
+			logging:      "WARN ignoring invalid WAF module on ingress 'default/ing1': none",
 		},
 		{
-			waf:      "modsecurity",
-			expected: "modsecurity",
-			logging:  "",
+			waf:          "modsecurity",
+			wafmode:      "XXXXXX",
+			expected:     "modsecurity",
+			expectedmode: "On",
+			logging:      "",
+		},
+		{
+			waf:          "modsecurity",
+			wafmode:      "DetectOnly",
+			expected:     "modsecurity",
+			expectedmode: "DetectOnly",
+			logging:      "",
+		},
+		{
+			waf:          "modsecurity",
+			wafmode:      "On",
+			expected:     "modsecurity",
+			expectedmode: "On",
+			logging:      "",
 		},
 	}
 	source := &Source{
@@ -1608,17 +1630,21 @@ func TestWAF(t *testing.T) {
 	for i, test := range testCase {
 		c := setup(t)
 		var ann map[string]map[string]string
-		var expected []*hatypes.BackendConfigStr
+		var expected []*hatypes.BackendConfigWAF
 		if test.waf != "" {
 			ann = map[string]map[string]string{
 				"/": {
-					ingtypes.BackWAF: test.waf,
+					ingtypes.BackWAF:     test.waf,
+					ingtypes.BackWAFMode: test.wafmode,
 				},
 			}
-			expected = []*hatypes.BackendConfigStr{
+			expected = []*hatypes.BackendConfigWAF{
 				{
-					Paths:  createBackendPaths("/"),
-					Config: test.expected,
+					Paths: createBackendPaths("/"),
+					Config: hatypes.WAF{
+						Mode:   test.expectedmode,
+						Module: test.expected,
+					},
 				},
 			}
 		}
