@@ -151,6 +151,7 @@ The table below describes all supported configuration keys.
 | [`https-log-format`](#log-format)                    | https(tcp) log format\|`default`        | Global  | do not log         |
 | [`https-port`](#bind-port)                           | port number                             | Global  | `443`              |
 | [`https-to-http-port`](#https-to-http-port)          | port number                             | Global  | 0 (do not listen)  |
+| [`initial-weight`](#initial-weight)                  | weight value                            | Backend | `1`                |
 | [`limit-connections`](#limit)                        | qty                                     | Backend |                    |
 | [`limit-rps`](#limit)                                | rate per second                         | Backend |                    |
 | [`limit-whitelist`](#limit)                          | cidr list                               | Backend |                    |
@@ -272,8 +273,10 @@ check that is run independently of a regular health check and can be used to
 control the reported status of a server as well as the weight to be used for
 load balancing.
 
-**NOTE:** `agent-check-port` must be provided for any of the agent check
-options to be applied.
+{{% alert title="Note" %}}
+* `agent-check-port` must be provided for any of the agent check options to be applied
+* define [`initial-weight`](#initial-weight) if using `agent-check` to change the server weight
+{{% /alert %}}
 
 * `agent-check-port`: Defines the port on which the agent is listening. This
 option is required in order to use an agent check.
@@ -283,10 +286,19 @@ server address will be used.
 the default of 2 seconds will be used.
 * `agent-check-send`: Defines a string to be sent to the agent upon connection.
 
+The following limitations are known when using `agent-check` to change the weight
+of a backend server:
+
+* If using [`drain-support`](#drain-support), the backend server will have its
+initial weight defined as `0` (zero) if the server is terminating when haproxy
+is restarted, making the weight update useless
+* Blue/green annotation might be dynamically applied, which will temporarily
+overwrite the weight defined from the agent
+
 See also:
 
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-agent-port
 * http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-agent-check
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-agent-port
 * http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-agent-inter
 * http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-agent-send
 
@@ -792,6 +804,30 @@ The `X-Forwarded-Proto` header is optional in the following condition:
 * The `https-to-http-port` should not match HTTP port `80`; and
 * The load balancer should connect to the same `https-to-http-port` number, eg cannot
 have any proxy like Kubernetes' `NodePort` between the load balancer and HAProxy
+
+---
+
+## Initial weight
+
+| Configuration key | Scope     | Default | Since  |
+|-------------------|-----------|---------|--------|
+| `initial-weight`  | `Backend` | `1`     | `v0.8` |
+
+Configures the weight value of each backend server - either the enabled and also the
+disabled servers. The default value is `1`. Changing this value has no effect on the
+proportional value between each server of a single backend, thus this doesn't change
+the balance between the servers.
+
+Change the default value to a higher number, eg `100`, if using with
+[`agent-check`](#agent-check) and the agent is used to change the weight of the server.
+
+Blue/green on `deploy` mode also uses `initial-weight` as its minimum weight value,
+provided that the maximum is lesser than or equal `256`.
+
+See also:
+
+* [`agent-check`](#agent-check)
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-weight
 
 ---
 

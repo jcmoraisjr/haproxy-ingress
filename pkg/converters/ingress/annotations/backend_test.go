@@ -335,7 +335,7 @@ func TestBlueGreen(t *testing.T) {
 			for _, targetRef := range strings.Split(targets, ",") {
 				targetWeight := strings.Split(targetRef, "=")
 				target := targetRef
-				weight := 1
+				weight := 100
 				if len(targetWeight) == 2 {
 					target = targetWeight[0]
 					if w, err := strconv.ParseInt(targetWeight[1], 10, 0); err == nil {
@@ -379,35 +379,35 @@ func TestBlueGreen(t *testing.T) {
 		{
 			ann:        buildAnn("", ""),
 			endpoints:  buildEndpoints("pod0101-01"),
-			expWeights: []int{1},
+			expWeights: []int{100},
 			expLogging: "",
 		},
 		// 1
 		{
 			ann:        buildAnn("", "err"),
 			endpoints:  buildEndpoints("pod0101-01"),
-			expWeights: []int{1},
+			expWeights: []int{100},
 			expLogging: "",
 		},
 		// 2
 		{
 			ann:        buildAnn("err", ""),
 			endpoints:  buildEndpoints("pod0101-01"),
-			expWeights: []int{1},
+			expWeights: []int{100},
 			expLogging: "ERROR blue/green config on ingress 'default/ing1' has an invalid weight format: err",
 		},
 		// 3
 		{
 			ann:        buildAnn("v=1=xx", ""),
 			endpoints:  buildEndpoints("pod0101-01"),
-			expWeights: []int{1},
+			expWeights: []int{100},
 			expLogging: "ERROR blue/green config on ingress 'default/ing1' has an invalid weight value: strconv.ParseInt: parsing \"xx\": invalid syntax",
 		},
 		// 4
 		{
 			ann:        buildAnn("v=1=1.5", ""),
 			endpoints:  buildEndpoints("pod0101-01"),
-			expWeights: []int{1},
+			expWeights: []int{100},
 			expLogging: "ERROR blue/green config on ingress 'default/ing1' has an invalid weight value: strconv.ParseInt: parsing \"1.5\": invalid syntax",
 		},
 		// 5
@@ -421,49 +421,49 @@ func TestBlueGreen(t *testing.T) {
 		{
 			ann:        buildAnn("v=1=260", ""),
 			endpoints:  buildEndpoints("pod0101-01"),
-			expWeights: []int{1},
+			expWeights: []int{100},
 			expLogging: "WARN invalid weight '260' on ingress 'default/ing1', using '256' instead",
 		},
 		// 7
 		{
 			ann:        buildAnn("v=1=10", "err"),
 			endpoints:  buildEndpoints("pod0101-01"),
-			expWeights: []int{1},
+			expWeights: []int{100},
 			expLogging: "WARN unsupported blue/green mode 'err' on ingress 'default/ing1', falling back to 'deploy'",
 		},
 		// 8
 		{
 			ann:        buildAnn("v=1=10", ""),
 			endpoints:  buildEndpoints("pod0101-01"),
-			expWeights: []int{1},
+			expWeights: []int{100},
 			expLogging: "",
 		},
 		// 9
 		{
 			ann:        buildAnn("", "deploy"),
 			endpoints:  buildEndpoints("pod0101-01,pod0102-01"),
-			expWeights: []int{1, 1},
+			expWeights: []int{100, 100},
 			expLogging: "",
 		},
 		// 10
 		{
 			ann:        buildAnn("v=1=50,v=2=50", "deploy"),
 			endpoints:  buildEndpoints("pod0101-01,pod0102-01"),
-			expWeights: []int{1, 1},
+			expWeights: []int{100, 100},
 			expLogging: "",
 		},
 		// 11
 		{
 			ann:        buildAnn("v=1=50,v=2=25", "deploy"),
 			endpoints:  buildEndpoints("pod0101-01,pod0102-01"),
-			expWeights: []int{2, 1},
+			expWeights: []int{200, 100},
 			expLogging: "",
 		},
 		// 12
 		{
 			ann:        buildAnn("v=1=50,v=2=25", "deploy"),
 			endpoints:  buildEndpoints("pod0101-01,pod0102-01,pod0102-02"),
-			expWeights: []int{4, 1, 1},
+			expWeights: []int{256, 64, 64},
 			expLogging: "",
 		},
 		// 13
@@ -477,21 +477,21 @@ func TestBlueGreen(t *testing.T) {
 		{
 			ann:        buildAnn("v=1=50,v=2=25", ""),
 			endpoints:  buildEndpoints("pod0101-01,pod0102-01,pod0102-02"),
-			expWeights: []int{4, 1, 1},
+			expWeights: []int{256, 64, 64},
 			expLogging: "",
 		},
 		// 15
 		{
 			ann:        buildAnn("v=1=500,v=2=2", "deploy"),
 			endpoints:  buildEndpoints("pod0101-01,pod0102-01"),
-			expWeights: []int{128, 1},
+			expWeights: []int{256, 2},
 			expLogging: "WARN invalid weight '500' on ingress 'default/ing1', using '256' instead",
 		},
 		// 16
 		{
 			ann:        buildAnn("v=1=60,v=2=3", "deploy"),
 			endpoints:  buildEndpoints("pod0101-01,pod0102-01,pod0102-02,pod0102-03,pod0102-04"),
-			expWeights: []int{80, 1, 1, 1, 1},
+			expWeights: []int{256, 3, 3, 3, 3},
 			expLogging: "",
 		},
 		// 17
@@ -505,7 +505,7 @@ func TestBlueGreen(t *testing.T) {
 		{
 			ann:        buildAnn("v=1=50,v=2=25", "deploy"),
 			endpoints:  buildEndpoints(",pod0102-01"),
-			expWeights: []int{0, 1},
+			expWeights: []int{0, 100},
 			expLogging: `
 WARN endpoint '172.17.0.11:8080' on ingress 'default/ing1' was removed from balance: endpoint does not reference a pod
 INFO-V(3) blue/green balance label 'v=1' on ingress 'default/ing1' does not reference any endpoint`,
@@ -514,7 +514,7 @@ INFO-V(3) blue/green balance label 'v=1' on ingress 'default/ing1' does not refe
 		{
 			ann:        buildAnn("v=1=50,v=non=25", "deploy"),
 			endpoints:  buildEndpoints("pod0101-01,pod0102-01"),
-			expWeights: []int{1, 0},
+			expWeights: []int{100, 0},
 			expLogging: "INFO-V(3) blue/green balance label 'v=non' on ingress 'default/ing1' does not reference any endpoint",
 		},
 		// 20
@@ -528,14 +528,14 @@ INFO-V(3) blue/green balance label 'v=1' on ingress 'default/ing1' does not refe
 		{
 			ann:        buildAnn("v=1=50,non=2=25", "deploy"),
 			endpoints:  buildEndpoints("pod0101-01,pod0102-01"),
-			expWeights: []int{1, 0},
+			expWeights: []int{100, 0},
 			expLogging: "INFO-V(3) blue/green balance label 'non=2' on ingress 'default/ing1' does not reference any endpoint",
 		},
 		// 22
 		{
 			ann:        buildAnn("v=1=50,v=2=25", "deploy"),
 			endpoints:  buildEndpoints("pod0101-01,pod0102-non"),
-			expWeights: []int{1, 0},
+			expWeights: []int{100, 0},
 			expLogging: `
 WARN endpoint '172.17.0.11:8080' on ingress 'default/ing1' was removed from balance: pod not found: 'pod0102-non'
 INFO-V(3) blue/green balance label 'v=2' on ingress 'default/ing1' does not reference any endpoint`,
@@ -553,14 +553,14 @@ INFO-V(3) blue/green balance label 'v=2' on ingress 'default/ing1' does not refe
 		{
 			ann:        buildAnn("v=1=50,v=2=25,v=3=25", "deploy"),
 			endpoints:  buildEndpoints("pod0101-01,pod0102-01,pod0102-02,pod0103-01"),
-			expWeights: []int{4, 1, 1, 2},
+			expWeights: []int{256, 64, 64, 128},
 			expLogging: "",
 		},
 		// 25
 		{
 			ann:        buildAnn("v=1=50,v=2=0,v=3=25", "deploy"),
 			endpoints:  buildEndpoints("pod0101-01,pod0102-01,pod0102-02,pod0103-01"),
-			expWeights: []int{2, 0, 0, 1},
+			expWeights: []int{200, 0, 0, 100},
 			expLogging: "",
 		},
 		// 26
@@ -591,7 +591,7 @@ INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not refe
 		{
 			ann:        buildAnn("v=1=50,v=2=50", "deploy"),
 			endpoints:  buildEndpoints("pod0101-01,pod0101-02,pod0102-01,pod0102-02=0"),
-			expWeights: []int{1, 1, 2, 0},
+			expWeights: []int{100, 100, 200, 0},
 			expLogging: "",
 		},
 		//
@@ -684,7 +684,7 @@ INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not refe
 	for i, test := range testCase {
 		c := setup(t)
 		c.cache.PodList = pods
-		d := c.createBackendData("default/app", source, test.ann, map[string]string{})
+		d := c.createBackendData("default/app", source, test.ann, map[string]string{ingtypes.BackInitialWeight: "100"})
 		d.backend.Endpoints = test.endpoints
 		u := c.createUpdater()
 		u.buildBackendBlueGreenBalance(d)

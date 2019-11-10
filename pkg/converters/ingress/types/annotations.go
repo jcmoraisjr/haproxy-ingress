@@ -87,6 +87,7 @@ const (
 	BackHSTSIncludeSubdomains  = "hsts-include-subdomains"
 	BackHSTSMaxAge             = "hsts-max-age"
 	BackHSTSPreload            = "hsts-preload"
+	BackInitialWeight          = "initial-weight"
 	BackLimitConnections       = "limit-connections"
 	BackLimitRPS               = "limit-rps"
 	BackLimitWhitelist         = "limit-whitelist"

@@ -176,6 +176,7 @@ func (c *updater) buildBackendBlueGreenBalance(d *backData) {
 			return
 		}
 	}
+	initialWeight := d.mapper.Get(ingtypes.BackInitialWeight).Int()
 	type deployWeight struct {
 		labelName  string
 		labelValue string
@@ -249,7 +250,7 @@ func (c *updater) buildBackendBlueGreenBalance(d *backData) {
 		// no need to rebalance
 		return
 	} else if mode.Source != nil && mode.Value != "deploy" {
-		c.logger.Warn("unsupported blue/green mode '%s' on %v, falling back to 'deploy'", mode.Value, mode.Source)
+		c.logger.Warn("unsupported blue/green mode '%s' on %s, falling back to 'deploy'", mode.Value, mode.Source)
 	}
 	// mode == deploy, need to recalc based on the number of replicas
 	lcmCount := 0
@@ -269,6 +270,7 @@ func (c *updater) buildBackendBlueGreenBalance(d *backData) {
 		return
 	}
 	gcdGroupWeight := 0
+	minWeight := -1
 	maxWeight := 0
 	for _, dw := range deployWeights {
 		count := len(dw.endpoints)
@@ -281,6 +283,9 @@ func (c *updater) buildBackendBlueGreenBalance(d *backData) {
 		} else {
 			gcdGroupWeight = groupWeight
 		}
+		if groupWeight < minWeight || minWeight < 0 {
+			minWeight = groupWeight
+		}
 		if groupWeight > maxWeight {
 			maxWeight = groupWeight
 		}
@@ -289,21 +294,25 @@ func (c *updater) buildBackendBlueGreenBalance(d *backData) {
 		// all weights are zero, no need to rebalance
 		return
 	}
+	// Agent works better if weight is `initial-weight` or
+	// at least the higher value weightFactor will let it to be
+	// weightFactorMin has how many times minWeight is lesser than `initial-weight`.
+	weightFactorMin := float32(initialWeight*gcdGroupWeight) / float32(minWeight)
 	// HAProxy weight must be between 0..256.
-	// weightFactor has how many times the max weight is greater than 256.
-	weightFactor := float32(maxWeight) / float32(gcdGroupWeight) / float32(256)
+	// weightFactor has how many times the max weight will be greater than 256.
+	weightFactor := weightFactorMin * float32(maxWeight) / float32(256*gcdGroupWeight)
 	// LCM of denominators and GCD of the results are known. Updating ep.Weight
 	for _, dw := range deployWeights {
 		for _, ep := range dw.endpoints {
-			weight := dw.weight * lcmCount / len(dw.endpoints) / gcdGroupWeight
+			weight := weightFactorMin * float32(dw.weight*lcmCount) / float32(len(dw.endpoints)*gcdGroupWeight)
 			if weightFactor > 1 {
-				propWeight := int(float32(weight) / weightFactor)
+				propWeight := int(weight / weightFactor)
 				if propWeight == 0 && dw.weight > 0 {
 					propWeight = 1
 				}
 				ep.Weight = propWeight
 			} else {
-				ep.Weight = weight
+				ep.Weight = int(weight)
 			}
 		}
 	}

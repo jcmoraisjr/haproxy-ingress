@@ -169,6 +169,7 @@ func createBackend(namespace, name, port string) *hatypes.Backend {
 		Namespace: namespace,
 		Name:      name,
 		Port:      port,
+		Server:    hatypes.ServerConfig{InitialWeight: 1},
 		Endpoints: []*hatypes.Endpoint{},
 	}
 }
