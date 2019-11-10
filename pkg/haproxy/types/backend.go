@@ -52,7 +52,6 @@ func (b *Backend) AcquireEndpoint(ip string, port int, targetRef string) *Endpoi
 func (b *Backend) AddEmptyEndpoint() *Endpoint {
 	endpoint := b.addEndpoint("127.0.0.1", 1023, "")
 	endpoint.Enabled = false
-	endpoint.Weight = 0
 	return endpoint
 }
 
@@ -64,7 +63,7 @@ func (b *Backend) addEndpoint(ip string, port int, targetRef string) *Endpoint {
 		Target:    fmt.Sprintf("%s:%d", ip, port),
 		Enabled:   true,
 		TargetRef: targetRef,
-		Weight:    1,
+		Weight:    b.Server.InitialWeight,
 	}
 	b.Endpoints = append(b.Endpoints, endpoint)
 	return endpoint

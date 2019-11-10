@@ -1897,10 +1897,10 @@ resolvers k8s
     timeout retry         2s
 backend d1_app_8080
     mode http
-    server-template srv 2 app.d1.svc.cluster.local:8080 resolvers k8s resolve-prefer ipv4 init-addr none
+    server-template srv 2 app.d1.svc.cluster.local:8080 resolvers k8s resolve-prefer ipv4 init-addr none weight 1
 backend d2_app_http
     mode http
-    server-template srv 2 _http._tcp.app.d2.svc.cluster.local resolvers k8s resolve-prefer ipv4 init-addr none
+    server-template srv 2 _http._tcp.app.d2.svc.cluster.local resolvers k8s resolve-prefer ipv4 init-addr none weight 1
 <<backends-default>>
 <<frontends-default>>
 <<support>>

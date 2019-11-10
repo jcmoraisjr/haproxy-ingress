@@ -473,6 +473,7 @@ backend {{ $backend.ID }}
         {{- $backend.Name }}.{{ $backend.Namespace }}.svc.{{ $global.DNS.ClusterDomain }}
         {{- if $portIsNumber }}:{{ $backend.Port }}{{ end }}
         {{- "" }} resolvers {{ $backend.Resolver }} resolve-prefer ipv4 init-addr none
+        {{- "" }} weight {{ $backend.Server.InitialWeight }}
         {{- template "backend" map $backend }}
 {{- else }}
 {{- range $ep := $backend.Endpoints }}

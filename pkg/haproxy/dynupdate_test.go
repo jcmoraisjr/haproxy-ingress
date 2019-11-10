@@ -87,12 +87,12 @@ func TestDynUpdate(t *testing.T) {
 			expected: []string{
 				"srv001:172.17.0.2:8080:1",
 				"srv002:172.17.0.3:8080:1",
-				"srv003:127.0.0.1:1023:0",
-				"srv004:127.0.0.1:1023:0",
-				"srv005:127.0.0.1:1023:0",
-				"srv006:127.0.0.1:1023:0",
-				"srv007:127.0.0.1:1023:0",
-				"srv008:127.0.0.1:1023:0",
+				"srv003:127.0.0.1:1023:1",
+				"srv004:127.0.0.1:1023:1",
+				"srv005:127.0.0.1:1023:1",
+				"srv006:127.0.0.1:1023:1",
+				"srv007:127.0.0.1:1023:1",
+				"srv008:127.0.0.1:1023:1",
 			},
 			dynamic: false,
 			logging: `INFO-V(2) added endpoints on backend 'default_app_8080'`,
@@ -110,7 +110,7 @@ func TestDynUpdate(t *testing.T) {
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
 			expected: []string{
-				"srv001:127.0.0.1:1023:0",
+				"srv001:127.0.0.1:1023:1",
 				"srv002:172.17.0.3:8080:1",
 			},
 			dynamic: true,
@@ -214,14 +214,14 @@ set server default_app_8080/srv001 weight 1
 				b.AcquireEndpoint("172.17.0.7", 8080, "")
 			},
 			expected: []string{
-				"srv001:127.0.0.1:1023:0",
-				"srv002:127.0.0.1:1023:0",
-				"srv003:127.0.0.1:1023:0",
+				"srv001:127.0.0.1:1023:1",
+				"srv002:127.0.0.1:1023:1",
+				"srv003:127.0.0.1:1023:1",
 				"srv004:172.17.0.5:8080:1",
-				"srv005:127.0.0.1:1023:0",
+				"srv005:127.0.0.1:1023:1",
 				"srv006:172.17.0.7:8080:1",
-				"srv007:127.0.0.1:1023:0",
-				"srv008:127.0.0.1:1023:0",
+				"srv007:127.0.0.1:1023:1",
+				"srv008:127.0.0.1:1023:1",
 			},
 			dynamic: true,
 			cmd: `
@@ -265,9 +265,9 @@ INFO-V(2) disabled endpoint '172.17.0.9:8080' on backend/server 'default_app_808
 				c.config.AcquireBackend("default", "app", "8080").Dynamic.DynUpdate = true
 			},
 			expected: []string{
-				"srv001:127.0.0.1:1023:0",
-				"srv002:127.0.0.1:1023:0",
-				"srv003:127.0.0.1:1023:0",
+				"srv001:127.0.0.1:1023:1",
+				"srv002:127.0.0.1:1023:1",
+				"srv003:127.0.0.1:1023:1",
 			},
 			dynamic: true,
 			cmd: `
@@ -306,10 +306,10 @@ INFO-V(2) disabled endpoint '172.17.0.4:8080' on backend/server 'default_app_808
 				"srv001:172.17.0.2:8080:1",
 				"srv002:172.17.0.3:8080:1",
 				"srv003:172.17.0.4:8080:1",
-				"srv004:127.0.0.1:1023:0",
-				"srv005:127.0.0.1:1023:0",
-				"srv006:127.0.0.1:1023:0",
-				"srv007:127.0.0.1:1023:0",
+				"srv004:127.0.0.1:1023:1",
+				"srv005:127.0.0.1:1023:1",
+				"srv006:127.0.0.1:1023:1",
+				"srv007:127.0.0.1:1023:1",
 			},
 			dynamic: false,
 			logging: `INFO-V(2) added endpoints on backend 'default_app_8080'`,
@@ -332,7 +332,7 @@ INFO-V(2) disabled endpoint '172.17.0.4:8080' on backend/server 'default_app_808
 			expected: []string{
 				"srv001:172.17.0.2:8080:1",
 				"srv002:172.17.0.3:8080:1",
-				"srv003:127.0.0.1:1023:0",
+				"srv003:127.0.0.1:1023:1",
 			},
 			dynamic: true,
 			cmd: `
@@ -374,7 +374,7 @@ set server default_app_8080/srv002 weight 1
 				c.config.AcquireBackend("default", "app", "8080").Dynamic.DynUpdate = true
 			},
 			expected: []string{
-				"srv001:127.0.0.1:1023:0",
+				"srv001:127.0.0.1:1023:1",
 			},
 			dynamic: false,
 			cmd:     ``,
@@ -388,10 +388,10 @@ set server default_app_8080/srv002 weight 1
 				b.Dynamic.BlockSize = 4
 			},
 			expected: []string{
-				"srv001:127.0.0.1:1023:0",
-				"srv002:127.0.0.1:1023:0",
-				"srv003:127.0.0.1:1023:0",
-				"srv004:127.0.0.1:1023:0",
+				"srv001:127.0.0.1:1023:1",
+				"srv002:127.0.0.1:1023:1",
+				"srv003:127.0.0.1:1023:1",
+				"srv004:127.0.0.1:1023:1",
 			},
 			dynamic: false,
 			cmd:     ``,
