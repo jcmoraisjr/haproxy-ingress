@@ -232,6 +232,7 @@ func (c *converter) addBackend(source *annotations.Source, hostpath, fullSvcName
 			Type:      "service",
 		}, hostpath, ann)
 		c.backendAnnotations[backend] = mapper
+		backend.Server.InitialWeight = mapper.Get(ingtypes.BackInitialWeight).Int()
 	}
 	// Merging Ingress annotations
 	conflict := mapper.AddAnnotations(source, hostpath, ann)

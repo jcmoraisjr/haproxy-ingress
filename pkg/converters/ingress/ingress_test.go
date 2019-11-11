@@ -1153,7 +1153,9 @@ var defaultBackendConfig = `
 
 func (c *testConfig) SyncDef(config map[string]string, ing ...*extensions.Ingress) {
 	defaultConfig := func() map[string]string {
-		return map[string]string{}
+		return map[string]string{
+			ingtypes.BackInitialWeight: "100",
+		}
 	}
 	conv := NewIngressConverter(
 		&ingtypes.ConverterOptions{

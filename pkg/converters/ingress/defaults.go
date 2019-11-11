@@ -46,6 +46,7 @@ func createDefaults() map[string]string {
 		types.BackHSTSIncludeSubdomains:  "false",
 		types.BackHSTSMaxAge:             "15768000",
 		types.BackHSTSPreload:            "false",
+		types.BackInitialWeight:          "1",
 		types.BackSessionCookieDynamic:   "true",
 		types.BackSSLRedirect:            "true",
 		types.BackSSLCipherSuitesBackend: defaultSSLCipherSuites,
