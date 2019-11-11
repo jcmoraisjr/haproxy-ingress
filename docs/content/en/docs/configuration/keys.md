@@ -1383,17 +1383,17 @@ See also [http-log](#log-format).
 | Configuration key | Scope     | Default | Since |
 |-------------------|-----------|---------|-------|
 | `waf`             | `Backend` |         |       |
-| `waf-mode`        | `Backend` |  `On`   | v0.9  |
+| `waf-mode`        | `Backend` | `deny`  | v0.9  |
 
 Defines which web application firewall (WAF) implementation should be used
 to validate requests. Currently the only supported value is `modsecurity`.
 
 This configuration has no effect if the ModSecurity endpoints are not configured.
 
-The `waf-mode` key defines wether the WAF should be `On` or in `DetectOnly` for that Backend. 
-If the WAF is in DetectOnly mode the requests are passed to ModSecurity and logged, but not denied.
+The `waf-mode` key defines wether the WAF should be `deny` or `detect` for that Backend. 
+If the WAF is in `detect` mode the requests are passed to ModSecurity and logged, but not denied.
 
-The default behavior here is `On` if `waf` is set to `modsecurity`.
+The default behavior here is `deny` if `waf` is set to `modsecurity`.
 
 See also:
 

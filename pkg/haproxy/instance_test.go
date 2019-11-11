@@ -2229,7 +2229,7 @@ func TestModSecurity(t *testing.T) {
 		},
 		{
 			waf:       "modsecurity",
-			wafmode:   "On",
+			wafmode:   "deny",
 			endpoints: []string{"10.0.0.101:12345"},
 			backendExp: `
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
@@ -2239,7 +2239,7 @@ func TestModSecurity(t *testing.T) {
 		},
 		{
 			waf:       "modsecurity",
-			wafmode:   "DetectOnly",
+			wafmode:   "detect",
 			endpoints: []string{"10.0.0.101:12345"},
 			backendExp: `
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf`,
@@ -2248,7 +2248,7 @@ func TestModSecurity(t *testing.T) {
 		},
 		{
 			waf:       "modsecurity",
-			wafmode:   "On",
+			wafmode:   "deny",
 			endpoints: []string{"10.0.0.101:12345", "10.0.0.102:12345"},
 			backendExp: `
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
@@ -2259,7 +2259,7 @@ func TestModSecurity(t *testing.T) {
 		},
 		{
 			waf:       "modsecurity",
-			wafmode:   "On",
+			wafmode:   "deny",
 			endpoints: []string{"10.0.0.101:12345"},
 			path:      "/sub",
 			backendExp: `

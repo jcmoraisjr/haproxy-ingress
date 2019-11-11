@@ -286,3 +286,8 @@ func (b *BackendConfigHSTS) String() string {
 func (b *BackendConfigWhitelist) String() string {
 	return fmt.Sprintf("%+v", *b)
 }
+
+// String ...
+func (b *BackendConfigWAF) String() string {
+	return fmt.Sprintf("%+v", *b)
+}

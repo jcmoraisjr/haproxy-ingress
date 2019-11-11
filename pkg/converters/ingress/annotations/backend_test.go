@@ -1586,6 +1586,7 @@ func TestWAF(t *testing.T) {
 		expectedmode string
 		logging      string
 	}{
+		// 0
 		{
 			waf:          "",
 			wafmode:      "",
@@ -1593,32 +1594,44 @@ func TestWAF(t *testing.T) {
 			expectedmode: "",
 			logging:      "",
 		},
+		// 1
 		{
 			waf:          "none",
-			wafmode:      "On",
+			wafmode:      "deny",
 			expected:     "",
-			expectedmode: "On",
+			expectedmode: "",
 			logging:      "WARN ignoring invalid WAF module on ingress 'default/ing1': none",
 		},
+		// 2
 		{
 			waf:          "modsecurity",
 			wafmode:      "XXXXXX",
 			expected:     "modsecurity",
-			expectedmode: "On",
-			logging:      "",
+			expectedmode: "deny",
+			logging:      "WARN ignoring invalid WAF mode 'XXXXXX' on ingress 'default/ing1', using 'deny' instead",
 		},
+		// 3
 		{
 			waf:          "modsecurity",
-			wafmode:      "DetectOnly",
+			wafmode:      "detect",
 			expected:     "modsecurity",
-			expectedmode: "DetectOnly",
+			expectedmode: "detect",
 			logging:      "",
 		},
+		// 4
 		{
 			waf:          "modsecurity",
-			wafmode:      "On",
+			wafmode:      "deny",
 			expected:     "modsecurity",
-			expectedmode: "On",
+			expectedmode: "deny",
+			logging:      "",
+		},
+		// 5
+		{
+			waf:          "modsecurity",
+			wafmode:      "",
+			expected:     "modsecurity",
+			expectedmode: "deny",
 			logging:      "",
 		},
 	}
@@ -1631,24 +1644,25 @@ func TestWAF(t *testing.T) {
 		c := setup(t)
 		var ann map[string]map[string]string
 		var expected []*hatypes.BackendConfigWAF
-		if test.waf != "" {
-			ann = map[string]map[string]string{
-				"/": {
-					ingtypes.BackWAF:     test.waf,
-					ingtypes.BackWAFMode: test.wafmode,
-				},
-			}
-			expected = []*hatypes.BackendConfigWAF{
-				{
-					Paths: createBackendPaths("/"),
-					Config: hatypes.WAF{
-						Mode:   test.expectedmode,
-						Module: test.expected,
-					},
-				},
-			}
+		ann = map[string]map[string]string{
+			"/": {},
 		}
-		d := c.createBackendMappingData("default/app", source, map[string]string{}, ann, []string{})
+		if test.waf != "" {
+			ann["/"][ingtypes.BackWAF] = test.waf
+		}
+		if test.wafmode != "" {
+			ann["/"][ingtypes.BackWAFMode] = test.wafmode
+		}
+		expected = []*hatypes.BackendConfigWAF{
+			{
+				Paths: createBackendPaths("/"),
+				Config: hatypes.WAF{
+					Module: test.expected,
+					Mode:   test.expectedmode,
+				},
+			},
+		}
+		d := c.createBackendMappingData("default/app", source, map[string]string{ingtypes.BackWAFMode: "deny"}, ann, []string{})
 		c.createUpdater().buildBackendWAF(d)
 		c.compareObjects("WAF", i, d.backend.WAF, expected)
 		c.logger.CompareLogging(test.logging)
