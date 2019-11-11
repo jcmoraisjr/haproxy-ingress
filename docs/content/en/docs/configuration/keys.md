@@ -579,8 +579,8 @@ Add CORS headers on OPTIONS http command (preflight) and reponses.
 
 * `cors-enable`: Enable CORS if defined as `true`.
 * `cors-allow-origin`: Optional, configures `Access-Control-Allow-Origin` header which defines the URL that may access the resource. Defaults to `*`.
-* `cors-allow-methods`: Optional, configures `Access-Control-Allow-Methods` header which defines the allowed methods. Default value is `DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization`.
-* `cors-allow-headers`: Optional, configures `Access-Control-Allow-Headers` header which defines the allowed headers. Default value is `GET, PUT, POST, DELETE, PATCH, OPTIONS`.
+* `cors-allow-methods`: Optional, configures `Access-Control-Allow-Methods` header which defines the allowed methods. Default value is `GET, PUT, POST, DELETE, PATCH, OPTIONS`.
+* `cors-allow-headers`: Optional, configures `Access-Control-Allow-Headers` header which defines the allowed headers. Default value is `DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization`.
 * `cors-allow-credentials`: Optional, configures `Access-Control-Allow-Credentials` header which defines whether or not credentials (cookies, authorization headers or client certificates) should be exposed. Defaults to `true`.
 * `cors-max-age`: Optional, configures `Access-Control-Max-Age` header which defines the time in seconds the result should be cached. Defaults to `86400` (1 day).
 * `cors-expose-headers`: Optional, configures `Access-Control-Expose-Headers` header which defines what headers are allowed to be passed through to the CORS application. Defaults to not add the header.
