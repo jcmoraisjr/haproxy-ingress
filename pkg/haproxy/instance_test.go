@@ -2206,6 +2206,7 @@ frontend healthz
 func TestModSecurity(t *testing.T) {
 	testCases := []struct {
 		waf        string
+		wafmode    string
 		path       string
 		endpoints  []string
 		backendExp string
@@ -2213,12 +2214,14 @@ func TestModSecurity(t *testing.T) {
 	}{
 		{
 			waf:        "modsecurity",
+			wafmode:    "On",
 			endpoints:  []string{},
 			backendExp: ``,
 			modsecExp:  ``,
 		},
 		{
 			waf:        "",
+			wafmode:    "",
 			endpoints:  []string{"10.0.0.101:12345"},
 			backendExp: ``,
 			modsecExp: `
@@ -2226,6 +2229,7 @@ func TestModSecurity(t *testing.T) {
 		},
 		{
 			waf:       "modsecurity",
+			wafmode:   "deny",
 			endpoints: []string{"10.0.0.101:12345"},
 			backendExp: `
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
@@ -2235,6 +2239,16 @@ func TestModSecurity(t *testing.T) {
 		},
 		{
 			waf:       "modsecurity",
+			wafmode:   "detect",
+			endpoints: []string{"10.0.0.101:12345"},
+			backendExp: `
+    filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf`,
+			modsecExp: `
+    server modsec-spoa0 10.0.0.101:12345`,
+		},
+		{
+			waf:       "modsecurity",
+			wafmode:   "deny",
 			endpoints: []string{"10.0.0.101:12345", "10.0.0.102:12345"},
 			backendExp: `
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
@@ -2245,6 +2259,7 @@ func TestModSecurity(t *testing.T) {
 		},
 		{
 			waf:       "modsecurity",
+			wafmode:   "deny",
 			endpoints: []string{"10.0.0.101:12345"},
 			path:      "/sub",
 			backendExp: `
@@ -2270,15 +2285,18 @@ func TestModSecurity(t *testing.T) {
 			test.path = "/"
 		}
 		h.AddPath(b, test.path)
-		b.WAF = []*hatypes.BackendConfigStr{
+		b.WAF = []*hatypes.BackendConfigWAF{
 			{
-				Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local" + test.path)),
-				Config: test.waf,
+				Paths: hatypes.NewBackendPaths(b.FindHostPath("d1.local" + test.path)),
+				Config: hatypes.WAF{
+					Module: test.waf,
+					Mode:   test.wafmode,
+				},
 			},
 		}
 		if test.path != "/" {
 			h.AddPath(b, "/")
-			b.WAF = append(b.WAF, &hatypes.BackendConfigStr{
+			b.WAF = append(b.WAF, &hatypes.BackendConfigWAF{
 				Paths: hatypes.NewBackendPaths(b.FindHostPath("d1.local/")),
 			})
 		}

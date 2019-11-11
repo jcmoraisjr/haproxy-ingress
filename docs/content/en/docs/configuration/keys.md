@@ -221,6 +221,7 @@ The table below describes all supported configuration keys.
 | [`use-resolver`](#dns-resolvers)                     | resolver name                           | Backend |                    |
 | [`var-namespace`](#var-namespace)                    | [true\|false]                           | Host    | `false`            |
 | [`waf`](#waf)                                        | "modsecurity"                           | Backend |                    |
+| [`waf-mode`](#waf)                                   | [On\|DetectOnly]                        | Backend | `On` (if waf is set) |
 | `whitelist-source-range`                             | CIDR                                    | Backend |                    |
 
 ## Affinity
@@ -1382,11 +1383,17 @@ See also [http-log](#log-format).
 | Configuration key | Scope     | Default | Since |
 |-------------------|-----------|---------|-------|
 | `waf`             | `Backend` |         |       |
+| `waf-mode`        | `Backend` | `deny`  | v0.9  |
 
 Defines which web application firewall (WAF) implementation should be used
 to validate requests. Currently the only supported value is `modsecurity`.
 
 This configuration has no effect if the ModSecurity endpoints are not configured.
+
+The `waf-mode` key defines wether the WAF should be `deny` or `detect` for that Backend. 
+If the WAF is in `detect` mode the requests are passed to ModSecurity and logged, but not denied.
+
+The default behavior here is `deny` if `waf` is set to `modsecurity`.
 
 See also:
 

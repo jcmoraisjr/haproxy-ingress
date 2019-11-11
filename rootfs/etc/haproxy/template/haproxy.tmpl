@@ -354,9 +354,9 @@ backend {{ $backend.ID }}
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
 {{- $needACL := gt (len $backend.WAF) 1 }}
 {{- range $waf := $backend.WAF }}
-{{- if eq $waf.Config "modsecurity" }}
+{{- if eq $waf.Config.Mode "deny" }}
     http-request deny if { var(txn.modsec.code) -m int gt 0 }
-    {{- if $needACL }} { var(txn.pathID) {{ $waf.Paths.IDList }} }{{ end }}
+        {{- if $needACL }} { var(txn.pathID) {{ $waf.Paths.IDList }} }{{ end }}
 {{- end }}
 {{- end }}
 {{- end }}

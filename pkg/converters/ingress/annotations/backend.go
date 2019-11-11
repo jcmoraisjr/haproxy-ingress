@@ -727,23 +727,36 @@ func (c *updater) buildBackendTimeout(d *backData) {
 func (c *updater) buildBackendWAF(d *backData) {
 	config := d.mapper.GetBackendConfig(
 		d.backend,
-		[]string{ingtypes.BackWAF},
+		[]string{ingtypes.BackWAF, ingtypes.BackWAFMode},
 		func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue {
-			waf, found := values[ingtypes.BackWAF]
-			if !found {
+			waf, foundWAF := values[ingtypes.BackWAF]
+			if !foundWAF {
 				return nil
 			}
 			if waf.Value != "modsecurity" {
-				c.logger.Warn("ignoring invalid WAF mode on %s: %s", waf.Source, waf.Value)
+				c.logger.Warn("ignoring invalid WAF module on %s: %s", waf.Source, waf.Value)
 				return nil
+			}
+			wafMode, foundWAFMode := values[ingtypes.BackWAFMode]
+			if !foundWAFMode {
+				return values
+			}
+			if wafMode.Value != "deny" && wafMode.Value != "detect" {
+				c.logger.Warn("ignoring invalid WAF mode '%s' on %s, using 'deny' instead", wafMode.Value, wafMode.Source)
+				wafMode.Value = "deny"
 			}
 			return values
 		},
 	)
 	for _, cfg := range config {
-		d.backend.WAF = append(d.backend.WAF, &hatypes.BackendConfigStr{
-			Paths:  cfg.Paths,
-			Config: cfg.Get(ingtypes.BackWAF).Value,
+		wafModule := cfg.Get(ingtypes.BackWAF).Value
+		wafMode := cfg.Get(ingtypes.BackWAFMode).Value
+		d.backend.WAF = append(d.backend.WAF, &hatypes.BackendConfigWAF{
+			Paths: cfg.Paths,
+			Config: hatypes.WAF{
+				Module: wafModule,
+				Mode:   wafMode,
+			},
 		})
 	}
 }
