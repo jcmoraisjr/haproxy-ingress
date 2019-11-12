@@ -223,7 +223,7 @@ The table below describes all supported configuration keys.
 | [`use-resolver`](#dns-resolvers)                     | resolver name                           | Backend |                    |
 | [`var-namespace`](#var-namespace)                    | [true\|false]                           | Host    | `false`            |
 | [`waf`](#waf)                                        | "modsecurity"                           | Backend |                    |
-| [`waf-mode`](#waf)                                   | [On\|DetectOnly]                        | Backend | `On` (if waf is set) |
+| [`waf-mode`](#waf)                                   | [deny\|detect]                          | Backend | `deny` (if waf is set) |
 | `whitelist-source-range`                             | CIDR                                    | Backend |                    |
 
 ## Affinity
