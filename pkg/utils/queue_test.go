@@ -126,19 +126,30 @@ func TestRate(t *testing.T) {
 
 func TestNotify(t *testing.T) {
 	var items []interface{}
-	q := NewQueue(10, func(item interface{}) {
+	q := NewQueue(0, func(item interface{}) {
+		time.Sleep(200 * time.Millisecond)
 		items = append(items, item)
 	})
 	go q.Run()
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 5; i++ {
 		q.Notify()
+		// t0ms - start the first notification
+		time.Sleep(10 * time.Millisecond)
 	}
+	// t50ms - first notification running, one notification in the queue
 	time.Sleep(200 * time.Millisecond)
-	for i := 0; i < 10; i++ {
+	// t250ms - second notification running, zero notification in the queue
+	for i := 0; i < 5; i++ {
 		q.Notify()
+		// t250ms - second notification running, one notification in the queue
+		time.Sleep(10 * time.Millisecond)
 	}
+	// t300ms - second notification running, one notification in the queue
+	time.Sleep(200 * time.Millisecond)
+	// t500ms - third notification running, zero notification in the queue
 	q.ShutDown()
-	if len(items) != 2 {
-		t.Errorf("expected 2 items but sync was called %d time(s)", len(items))
+	// t600ms - third notification finish - shutdown wait the callback to return
+	if len(items) != 3 {
+		t.Errorf("expected 3 items but sync was called %d time(s)", len(items))
 	}
 }
