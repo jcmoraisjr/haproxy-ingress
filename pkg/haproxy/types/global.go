@@ -35,3 +35,13 @@ func (dns *DNSNameserver) String() string {
 func (u *Userlist) String() string {
 	return fmt.Sprintf("%+v", *u)
 }
+
+// ShareHTTPPort ...
+func (b GlobalBindConfig) ShareHTTPPort() bool {
+	return b.HasFrontingProxy() && b.HTTPBindIP == b.ToHTTPBindIP && b.HTTPPort == b.ToHTTPPort
+}
+
+// HasFrontingProxy ...
+func (b GlobalBindConfig) HasFrontingProxy() bool {
+	return b.ToHTTPPort > 0
+}

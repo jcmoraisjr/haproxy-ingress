@@ -235,7 +235,7 @@ func (c *config) BuildFrontendGroup() error {
 		HTTPSRedirMap:     fgroupMaps.AddMap(c.mapsDir + "/_global_https_redir.map"),
 		SSLPassthroughMap: fgroupMaps.AddMap(c.mapsDir + "/_global_sslpassthrough.map"),
 	}
-	if c.global.Bind.ToHTTPPort > 0 {
+	if c.global.Bind.HasFrontingProxy() {
 		bind := hatypes.NewFrontendBind(nil)
 		bind.Socket = fmt.Sprintf("%s:%d", c.global.Bind.ToHTTPBindIP, c.global.Bind.ToHTTPPort)
 		bind.ID = c.global.Bind.ToHTTPSocketID
@@ -349,7 +349,7 @@ func (c *config) BuildFrontendGroup() error {
 						maxBodySizes[base] = maxBodySize
 					}
 				}
-				if !hasSSLRedirect {
+				if !hasSSLRedirect || c.global.Bind.HasFrontingProxy() {
 					fgroup.HTTPFrontsMap.AppendHostname(base, back)
 				}
 				var ns string

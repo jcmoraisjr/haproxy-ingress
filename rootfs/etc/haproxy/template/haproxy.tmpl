@@ -285,15 +285,20 @@ backend {{ $backend.ID }}
 {{- else }}{{/*** if $backend.ModeTCP ***/}}
 
 {{- /*------------------------------------*/}}
+{{- $hasFrontingProxy := $global.Bind.ToHTTPSocketID }}
 {{- if $backend.HSTS }}
     acl https-request ssl_fc
-{{- $hasHTTPSocket := $global.Bind.ToHTTPSocketID }}
-{{- if $hasHTTPSocket }}
-    acl https-request so_id {{ $global.Bind.ToHTTPSocketID }}
+{{- if $hasFrontingProxy }}
+    acl https-request var(txn.proto) https
 {{- end }}
 {{- end }}
-{{- if or $backend.TLS.HasTLSAuth }}
+{{- if $backend.TLS.HasTLSAuth }}
     acl local-offload ssl_fc
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if and $hasFrontingProxy $backend.HSTS }}
+    http-request set-var(txn.proto) hdr(X-Forwarded-Proto)
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -675,13 +680,33 @@ listen _front__tls
     server _default_server{{ $fgroup.DefaultBind.Name }} {{ $fgroup.DefaultBind.Socket }} send-proxy-v2
 {{- end }}
 
+{{- $hasFrontingProxy := $global.Bind.ToHTTPSocketID }}
+
   # # # # # # # # # # # # # # # # # # #
 # #
-#     HTTP frontend
+#     HTTP{{ if $hasFrontingProxy }} & Fronting Proxy{{ end }} frontend
 #
 frontend _front_http
     mode http
+{{- $frontingBind := $fgroup.ToHTTPBind }}
+{{- $hasPlainHTTPSocket := not $global.Bind.ShareHTTPPort }}
+{{- if $hasPlainHTTPSocket }}
     bind {{ $global.Bind.HTTPBindIP }}:{{ $global.Bind.HTTPPort }}{{ if $global.Bind.AcceptProxy }} accept-proxy{{ end }}
+{{- end }}
+{{- if $frontingBind.Socket }}
+    bind {{ $frontingBind.Socket }}
+        {{- if and $hasPlainHTTPSocket $frontingBind.ID }} id {{ $frontingBind.ID }}{{ end }}
+        {{- if $frontingBind.AcceptProxy }} accept-proxy{{ end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $hasFrontingProxy }}
+{{- if $hasPlainHTTPSocket }}
+    acl fronting-proxy so_id {{ $global.Bind.ToHTTPSocketID }}
+{{- else }}
+    acl fronting-proxy hdr(X-Forwarded-Proto) -m found
+{{- end }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $global.Syslog.Endpoint }}
@@ -693,17 +718,30 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $hasFrontingProxy }}
+    http-request redirect scheme https if
+        {{- "" }} fronting-proxy !{ hdr(X-Forwarded-Proto) https }
+{{- end }}
+
+{{- /*------------------------------------*/}}
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
 
 {{- /*------------------------------------*/}}
 {{- if $fgroup.HTTPSRedirMap.HasRegex }}
     http-request set-var(req.redir)
         {{- "" }} var(req.base),map_beg({{ $fgroup.HTTPSRedirMap.MatchFile }},_nomatch)
-    http-request redirect scheme https if { var(req.redir) yes }
-    http-request redirect scheme https if { var(req.redir) _nomatch }
+        {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
+    http-request redirect scheme https if
+        {{- if $hasFrontingProxy }} !fronting-proxy{{ end }}
+        {{- "" }} { var(req.redir) yes }
+    http-request redirect scheme https if
+        {{- if $hasFrontingProxy }} !fronting-proxy{{ end }}
+        {{- "" }} { var(req.redir) _nomatch }
         {{- "" }} { var(req.base),map_reg({{ $fgroup.HTTPSRedirMap.RegexFile }},_nomatch) yes }
 {{- else }}
-    http-request redirect scheme https if { var(req.base),map_beg({{ $fgroup.HTTPSRedirMap.MatchFile }},_nomatch) yes }
+    http-request redirect scheme https if
+        {{- if $hasFrontingProxy }} !fronting-proxy{{ end }}
+        {{- "" }} { var(req.base),map_beg({{ $fgroup.HTTPSRedirMap.MatchFile }},_nomatch) yes }
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -720,10 +758,15 @@ frontend _front_http
 
 {{- /*------------------------------------*/}}
     http-request set-header X-Forwarded-Proto http
+        {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-CN
+        {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-DN
+        {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1
+        {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-Cert
+        {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
 
 {{- /*------------------------------------*/}}
     http-request set-var(req.backend) var(req.base),map_beg({{ $fgroup.HTTPFrontsMap.MatchFile }},_nomatch)
@@ -745,7 +788,7 @@ frontend _front_http
 
   # # # # # # # # # # # # # # # # # # #
 # #
-#     HTTPS frontends
+#     HTTPS frontend
 #
 {{- range $frontend := $frontends }}
 frontend {{ $frontend.Name }}
@@ -760,18 +803,6 @@ frontend {{ $frontend.Name }}
         {{- "" }} ssl alpn {{ $bind.ALPN }}
         {{- "" }} crt-list {{ $bind.CrtList.MatchFile }}
         {{- "" }} ca-ignore-err all crt-ignore-err all
-{{- end }}
-{{- $bind := $fgroup.ToHTTPBind }}
-{{- if $bind.Socket }}
-    bind {{ $bind.Socket }}
-        {{- if $bind.ID }} id {{ $bind.ID }}{{ end }}
-        {{- if $bind.AcceptProxy }} accept-proxy{{ end }}
-{{- end }}
-
-{{- /*------------------------------------*/}}
-{{- $hasHTTPSocket := $global.Bind.ToHTTPSocketID }}
-{{- if $hasHTTPSocket }}
-    acl local-offload ssl_fc
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -834,13 +865,9 @@ frontend {{ $frontend.Name }}
 {{- /*------------------------------------*/}}
     http-request set-header X-Forwarded-Proto https
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-CN
-        {{- if $hasHTTPSocket }} if local-offload{{ end }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-DN
-        {{- if $hasHTTPSocket }} if local-offload{{ end }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1
-        {{- if $hasHTTPSocket }} if local-offload{{ end }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-Cert
-        {{- if $hasHTTPSocket }} if local-offload{{ end }}
 
 {{- /*------------------------------------*/}}
 {{- if $frontend.HasMaxBody }}
@@ -868,66 +895,53 @@ frontend {{ $frontend.Name }}
     acl tls-check-crt ssl_fc_sni -i -m reg -f {{ $frontend.TLSInvalidCrtErrorList.RegexFile }}
 {{- end }}
     http-request set-var(req.snibase) ssl_fc_sni,concat(path),lower,regsub(:[0-9]+/,/)
-        {{- if $hasHTTPSocket }} if local-offload{{ end }}
 {{- if $frontend.SNIBackendsMap.HasRegex }}
     http-request set-var(req.snibackend) var(req.snibase)
         {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }},_nomatch)
-        {{- if $hasHTTPSocket }} if local-offload{{ end }}
     http-request set-var(req.snibackend) var(req.snibase)
         {{- "" }},map_reg({{ $frontend.SNIBackendsMap.RegexFile }},_nomatch)
-        {{- "" }} if{{ if $hasHTTPSocket }} local-offload{{ end }}
-        {{- "" }} { var(req.snibackend) _nomatch }
+        {{- "" }} if { var(req.snibackend) _nomatch }
     http-request set-var(req.snibackend) var(req.base)
         {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }},_nomatch)
-        {{- "" }} if{{ if $hasHTTPSocket }} local-offload{{ end }}
-        {{- "" }} { var(req.snibackend) _nomatch }
+        {{- "" }} if { var(req.snibackend) _nomatch }
         {{- "" }} !tls-has-crt !tls-host-need-crt
     http-request set-var(req.snibackend) var(req.base)
         {{- "" }},map_reg({{ $frontend.SNIBackendsMap.RegexFile }},_nomatch)
-        {{- "" }} if{{ if $hasHTTPSocket }} local-offload{{ end }}
-        {{- "" }} { var(req.snibackend) _nomatch }
+        {{- "" }} if { var(req.snibackend) _nomatch }
         {{- "" }} !tls-has-crt !tls-host-need-crt
 {{- else }}
     http-request set-var(req.snibackend) var(req.snibase)
         {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }},_nomatch)
-        {{- if $hasHTTPSocket }} if local-offload{{ end }}
     http-request set-var(req.snibackend) var(req.base)
         {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }},_nomatch)
-        {{- "" }} if{{ if $hasHTTPSocket }} local-offload{{ end }}
-        {{- "" }} { var(req.snibackend) _nomatch }
+        {{- "" }} if { var(req.snibackend) _nomatch }
         {{- "" }} !tls-has-crt !tls-host-need-crt
 {{- end }}
 {{- if $mandatory }}
     http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower
         {{- "" }},map({{ $frontend.TLSNoCrtErrorPagesMap.MatchFile }},_internal)
-        {{- "" }} if{{ if $hasHTTPSocket }} local-offload{{ end }}
-        {{- "" }} !tls-has-crt tls-need-crt
+        {{- "" }} if !tls-has-crt tls-need-crt
 {{- if $frontend.TLSNoCrtErrorPagesMap.HasRegex }}
     http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower
         {{- "" }},map_reg({{ $frontend.TLSNoCrtErrorPagesMap.RegexFile }},_internal)
-        {{- "" }} if{{ if $hasHTTPSocket }} local-offload{{ end }}
-        {{- "" }} { var(req.tls_nocrt_redir) _internal }
+        {{- "" }} if { var(req.tls_nocrt_redir) _internal }
 {{- end }}
 {{- end }}
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower
         {{- "" }},map({{ $frontend.TLSInvalidCrtErrorPagesMap.MatchFile }},_internal)
-        {{- "" }} if{{ if $hasHTTPSocket }} local-offload{{ end }}
-        {{- "" }} tls-has-invalid-crt tls-check-crt
+        {{- "" }} if tls-has-invalid-crt tls-check-crt
 {{- if $frontend.TLSInvalidCrtErrorPagesMap.HasRegex }}
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower
         {{- "" }},map_reg({{ $frontend.TLSInvalidCrtErrorPagesMap.RegexFile }},_internal)
-        {{- "" }} if{{ if $hasHTTPSocket }} local-offload{{ end }}
-        {{- "" }} { var(req.tls_invalidcrt_redir) _internal }
+        {{- "" }} if { var(req.tls_invalidcrt_redir) _internal }
 {{- end }}
 {{- if and $mandatory $frontend.HasNoCrtErrorPage }}
     http-request redirect location %[var(req.tls_nocrt_redir)] code 303
-        {{- "" }} if{{ if $hasHTTPSocket }} local-offload{{ end }}
-        {{- "" }} { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) _internal }
+        {{- "" }} if { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) _internal }
 {{- end }}
 {{- if $frontend.HasInvalidErrorPage }}
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303
-        {{- "" }} if{{ if $hasHTTPSocket }} local-offload{{ end }}
-        {{- "" }} { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
+        {{- "" }} if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
 {{- end }}
 {{- end }}
 
@@ -956,8 +970,7 @@ frontend {{ $frontend.Name }}
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
 {{- if $frontend.HasTLSAuth }}
     use_backend %[var(req.snibackend)]
-        {{- if $hasHTTPSocket }} if local-offload !{ var(req.snibackend) _nomatch }
-        {{- else }} unless { var(req.snibackend) _nomatch }{{ end }}
+       {{- "" }} unless { var(req.snibackend) _nomatch }
 {{- end }}
 {{- template "defaultbackend" map $cfg }}
 {{- end }}
