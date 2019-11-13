@@ -108,8 +108,11 @@ func (hc *HAProxyController) configController() {
 	// starting v0.8 only config
 	hc.logger = &logger{depth: 1}
 	hc.cache = newCache(hc.cfg.Client, hc.storeLister, hc.controller)
-	electorID := fmt.Sprintf("ingress-controller-%s-elector", hc.cfg.IngressClass)
-	hc.leaderelector = NewLeaderElector(electorID, hc.logger, hc.cache, hc)
+	if false {
+		// initialize only if needed: acme (to be merged) and status (to be moved from old controller)
+		electorID := fmt.Sprintf("ingress-controller-%s-elector", hc.cfg.IngressClass)
+		hc.leaderelector = NewLeaderElector(electorID, hc.logger, hc.cache, hc)
+	}
 	instanceOptions := haproxy.InstanceOptions{
 		HAProxyCmd:        "haproxy",
 		ReloadCmd:         "/haproxy-reload.sh",
@@ -132,7 +135,9 @@ func (hc *HAProxyController) configController() {
 }
 
 func (hc *HAProxyController) startServices() {
-	go hc.leaderelector.Run()
+	if hc.leaderelector != nil {
+		go hc.leaderelector.Run()
+	}
 }
 
 func (hc *HAProxyController) createDefaultSSLFile(cache convtypes.Cache) (tlsFile convtypes.File) {
