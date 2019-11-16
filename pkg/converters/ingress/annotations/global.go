@@ -28,11 +28,21 @@ import (
 
 func (c *updater) buildGlobalBind(d *globalData) {
 	d.global.Bind.AcceptProxy = d.mapper.Get(ingtypes.GlobalUseProxyProtocol).Bool()
-	d.global.Bind.HTTPBindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrHTTP).Value
-	d.global.Bind.HTTPSBindIP = d.global.Bind.HTTPBindIP
 	d.global.Bind.TCPBindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrTCP).Value
-	d.global.Bind.HTTPPort = d.mapper.Get(ingtypes.GlobalHTTPPort).Int()
-	d.global.Bind.HTTPSPort = d.mapper.Get(ingtypes.GlobalHTTPSPort).Int()
+	if bindHTTP := d.mapper.Get(ingtypes.GlobalBindHTTP).Value; bindHTTP != "" {
+		d.global.Bind.HTTPBind = bindHTTP
+	} else {
+		ip := d.mapper.Get(ingtypes.GlobalBindIPAddrHTTP).Value
+		port := d.mapper.Get(ingtypes.GlobalHTTPPort).Int()
+		d.global.Bind.HTTPBind = fmt.Sprintf("%s:%d", ip, port)
+	}
+	if bindHTTPS := d.mapper.Get(ingtypes.GlobalBindHTTPS).Value; bindHTTPS != "" {
+		d.global.Bind.HTTPSBind = bindHTTPS
+	} else {
+		ip := d.mapper.Get(ingtypes.GlobalBindIPAddrHTTP).Value
+		port := d.mapper.Get(ingtypes.GlobalHTTPSPort).Int()
+		d.global.Bind.HTTPSBind = fmt.Sprintf("%s:%d", ip, port)
+	}
 }
 
 func (c *updater) buildGlobalProc(d *globalData) {
@@ -150,20 +160,23 @@ func (c *updater) buildGlobalHealthz(d *globalData) {
 }
 
 func (c *updater) buildGlobalHTTPStoHTTP(d *globalData) {
-	port := d.mapper.Get(ingtypes.GlobalFrontingProxyPort).Int()
-	if port == 0 {
-		port = d.mapper.Get(ingtypes.GlobalHTTPStoHTTPPort).Int()
-	}
-	if port == 0 {
-		return
+	bind := d.mapper.Get(ingtypes.GlobalBindFrontingProxy).Value
+	if bind == "" {
+		port := d.mapper.Get(ingtypes.GlobalFrontingProxyPort).Int()
+		if port == 0 {
+			port = d.mapper.Get(ingtypes.GlobalHTTPStoHTTPPort).Int()
+		}
+		if port == 0 {
+			return
+		}
+		bind = fmt.Sprintf("%s:%d", d.mapper.Get(ingtypes.GlobalBindIPAddrHTTP).Value, port)
 	}
 	// TODO Change all `ToHTTP` naming to `FrontingProxy`
-	d.global.Bind.ToHTTPBindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrHTTP).Value
-	d.global.Bind.ToHTTPPort = port
+	d.global.Bind.FrontingBind = bind
 	// Socket ID should be a high number to avoid colision
 	// between the same socket ID from distinct frontends
 	// TODO match socket and frontend ID in the backend
-	d.global.Bind.ToHTTPSocketID = 10011
+	d.global.Bind.FrontingSockID = 10011
 }
 
 func (c *updater) buildGlobalModSecurity(d *globalData) {

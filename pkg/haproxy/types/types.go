@@ -42,14 +42,11 @@ type Global struct {
 // GlobalBindConfig ...
 type GlobalBindConfig struct {
 	AcceptProxy    bool
-	HTTPBindIP     string
-	HTTPPort       int
-	HTTPSBindIP    string
-	HTTPSPort      int
+	HTTPBind       string
+	HTTPSBind      string
 	TCPBindIP      string
-	ToHTTPBindIP   string
-	ToHTTPPort     int
-	ToHTTPSocketID int
+	FrontingBind   string
+	FrontingSockID int
 }
 
 // ProcsConfig ...

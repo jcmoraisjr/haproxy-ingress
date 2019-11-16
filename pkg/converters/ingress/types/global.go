@@ -18,6 +18,9 @@ package types
 
 // Global config
 const (
+	GlobalBindFrontingProxy            = "bind-fronting-proxy"
+	GlobalBindHTTP                     = "bind-http"
+	GlobalBindHTTPS                    = "bind-https"
 	GlobalBindIPAddrHealthz            = "bind-ip-addr-healthz"
 	GlobalBindIPAddrHTTP               = "bind-ip-addr-http"
 	GlobalBindIPAddrStats              = "bind-ip-addr-stats"

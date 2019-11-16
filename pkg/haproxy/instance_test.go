@@ -490,15 +490,12 @@ func TestInstanceGlobalBind(t *testing.T) {
 		expectedHTTPS string
 	}{
 		// 0
-		{
-			expectedHTTP:  "bind :0",
-			expectedHTTPS: "bind :0 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem",
-		},
+		{},
 		// 1
 		{
 			bind: hatypes.GlobalBindConfig{
-				HTTPPort:    80,
-				HTTPSPort:   443,
+				HTTPBind:    ":80",
+				HTTPSBind:   ":443",
 				AcceptProxy: true,
 			},
 			expectedHTTP:  "bind :80 accept-proxy",
@@ -507,10 +504,8 @@ func TestInstanceGlobalBind(t *testing.T) {
 		// 2
 		{
 			bind: hatypes.GlobalBindConfig{
-				HTTPBindIP:  "127.0.0.1",
-				HTTPPort:    80,
-				HTTPSBindIP: "127.0.0.1",
-				HTTPSPort:   443,
+				HTTPBind:  "127.0.0.1:80",
+				HTTPSBind: "127.0.0.1:443",
 			},
 			expectedHTTP:  "bind 127.0.0.1:80",
 			expectedHTTPS: "bind 127.0.0.1:443 ssl alpn h2,http/1.1 crt /var/haproxy/ssl/certs/default.pem",
@@ -527,6 +522,12 @@ func TestInstanceGlobalBind(t *testing.T) {
 		h.AddPath(b, "/")
 
 		c.config.Global().Bind = test.bind
+		if test.expectedHTTP != "" {
+			test.expectedHTTP = "\n    " + test.expectedHTTP
+		}
+		if test.expectedHTTPS != "" {
+			test.expectedHTTPS = "\n    " + test.expectedHTTPS
+		}
 
 		c.Update()
 		c.checkConfig(`
@@ -537,8 +538,7 @@ backend d1_app_8080
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
 frontend _front_http
-    mode http
-    ` + test.expectedHTTP + `
+    mode http` + test.expectedHTTP + `
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
     <<http-headers>>
@@ -546,8 +546,7 @@ frontend _front_http
     use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _error404
 frontend _front001
-    mode http
-    ` + test.expectedHTTPS + `
+    mode http` + test.expectedHTTPS + `
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
     <<https-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
@@ -627,12 +626,12 @@ empty/ default_empty_8080`)
 
 func TestInstanceToHTTPSocket(t *testing.T) {
 	testCases := []struct {
-		toHTTPPort    int
+		toHTTPBind    string
 		expectedFront string
 	}{
 		// 0
 		{
-			toHTTPPort: 8000,
+			toHTTPBind: ":8000",
 			expectedFront: `
     mode http
     bind :80
@@ -651,7 +650,7 @@ func TestInstanceToHTTPSocket(t *testing.T) {
 		},
 		// 1
 		{
-			toHTTPPort: 80,
+			toHTTPBind: ":80",
 			expectedFront: `
     mode http
     bind :80
@@ -691,8 +690,8 @@ func TestInstanceToHTTPSocket(t *testing.T) {
 		}
 		h.TLS.CAHash = "1"
 		h.TLS.CAFilename = "/var/haproxy/ssl/ca.pem"
-		c.config.Global().Bind.ToHTTPPort = test.toHTTPPort
-		c.config.Global().Bind.ToHTTPSocketID = 11
+		c.config.Global().Bind.FrontingBind = test.toHTTPBind
+		c.config.Global().Bind.FrontingSockID = 11
 
 		c.Update()
 		c.checkConfig(`
@@ -2493,8 +2492,8 @@ func (c *testConfig) newConfig() Config {
 
 func (c *testConfig) configGlobal(global *hatypes.Global) {
 	global.AdminSocket = "/var/run/haproxy.sock"
-	global.Bind.HTTPPort = 80
-	global.Bind.HTTPSPort = 443
+	global.Bind.HTTPBind = ":80"
+	global.Bind.HTTPSBind = ":443"
 	global.Cookie.Key = "Ingress"
 	global.Healthz.Port = 10253
 	global.MaxConn = 2000

@@ -238,8 +238,8 @@ func (c *config) BuildFrontendGroup() error {
 	}
 	if c.global.Bind.HasFrontingProxy() {
 		bind := *hatypes.NewFrontendBind(nil)
-		bind.Socket = fmt.Sprintf("%s:%d", c.global.Bind.ToHTTPBindIP, c.global.Bind.ToHTTPPort)
-		bind.ID = c.global.Bind.ToHTTPSocketID
+		bind.Socket = c.global.Bind.FrontingBind
+		bind.ID = c.global.Bind.FrontingSockID
 		bind.AcceptProxy = c.global.Bind.AcceptProxy
 		fgroup.ToHTTPBind = bind
 	}
@@ -272,7 +272,7 @@ func (c *config) BuildFrontendGroup() error {
 		// One single HAProxy's frontend and bind
 		bind := frontends[0].Binds[0]
 		bind.Name = "_public"
-		bind.Socket = fmt.Sprintf("%s:%d", c.global.Bind.HTTPSBindIP, c.global.Bind.HTTPSPort)
+		bind.Socket = c.global.Bind.HTTPSBind
 		bind.TLS.ALPN = c.global.SSL.ALPN
 		bind.AcceptProxy = c.global.Bind.AcceptProxy
 		if len(bind.Hosts) == 1 {
