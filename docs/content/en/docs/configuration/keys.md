@@ -104,6 +104,9 @@ The table below describes all supported configuration keys.
 | [`backend-protocol`](#backend-protocol)              | [h1\|h2\|h1-ssl\|h2-ssl]                | Backend |                    |
 | [`backend-server-slots-increment`](#dynamic-scaling) | number of slots                         | Backend | `32`               |
 | [`balance-algorithm`](#balance-algorithm)            | algorithm name                          | Backend | `roundrobin`       |
+| [`bind-fronting-proxy`](#bind)                       | ip + port                               | Global  |                    |
+| [`bind-http`](#bind)                                 | ip + port                               | Global  |                    |
+| [`bind-https`](#bind)                                | ip + port                               | Global  |                    |
 | [`bind-ip-addr-healthz`](#bind-ip-addr)              | IP address                              | Global  | `*`                |
 | [`bind-ip-addr-http`](#bind-ip-addr)                 | IP address                              | Global  | `*`                |
 | [`bind-ip-addr-stats`](#bind-ip-addr)                | IP address                              | Global  | `*`                |
@@ -381,6 +384,49 @@ See also:
 
 ---
 
+## Bind
+
+| Configuration key      | Scope    | Default | Since |
+|------------------------|----------|---------|-------|
+| `bind-fronting-proxy`  | `Global` |         | v0.8  |
+| `bind-http`            | `Global` |         | v0.8  |
+| `bind-https`           | `Global` |         | v0.8  |
+
+Configures listening IP and port for HTTP/s incoming requests. These
+configuration keys have backward compatibility with [Bind IP addr](#bind-ip-addr),
+[Bind port](#bind-port) and [Fronting proxy](#fronting-proxy-port) keys.
+The bind configuration keys in this section have precedente if declared.
+
+Any HAProxy supported option can be used, this will be copied verbatim to the
+bind keyword. See HAProxy
+[bind keyword doc](#http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-bind).
+
+Configuration examples:
+
+* `bind-http: ":::80"` and `bind-https: ":::443"`: Listen all IPv6 addresses
+* `bind-http: ":80,:::80"` and `bind-https:  ":443,:::443"`: Listen all IPv4 and IPv6 addresses
+* `bind-https: ":443,:8443"`: accept https connections on `443` and also `8443` port numbers
+
+{{% alert title="Note" %}}
+`bind-fronting-proxy` and `bind-http` can share the same port number, provided
+that the whole configuration key match, not only the port number.
+See [Fronting proxy](#fronting-proxy-port) doc.
+{{% /alert %}}
+
+{{% alert title="Warning" color="warning" %}}
+Special care should be taken on port number overlap, nether haproxy itself nor
+haproxy-ingress will warn if the same port number is used in more than one
+configuration key.
+{{% /alert %}}
+
+See also:
+
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-bind
+* [Bind IP addr](#bind-ip-addr)
+* [Bind port](#bind-port)
+
+---
+
 ## Bind IP addr
 
 | Configuration key      | Scope    | Default | Since |
@@ -400,6 +446,7 @@ Define listening IPv4/IPv6 address on public HAProxy frontends.
 See also:
 
 * http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-bind
+* [Bind](#bind)
 
 ---
 
@@ -418,6 +465,7 @@ See also:
 See also:
 
 * http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-monitor-uri (`healthz-port`)
+* [Bind](#bind)
 
 ---
 
@@ -760,6 +808,10 @@ the fronting proxy should connect to the same port number defined in
 between the load balancer and HAProxy which changes the connecting port number.
 This limitation doesn't exist on v0.8 or above.
 {{% /alert %}}
+
+See also:
+
+* [Bind](#bind)
 
 ---
 
