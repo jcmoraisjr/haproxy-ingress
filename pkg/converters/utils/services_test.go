@@ -103,6 +103,14 @@ func TestCreateEndpoints(t *testing.T) {
 	for _, test := range testCases {
 		c := setup(t)
 		svc, ep := helper_test.CreateService("default/echo", test.declarePort, test.endpoints)
+		for _, ss := range ep.Subsets {
+			for i := range ss.Addresses {
+				ss.Addresses[i].TargetRef = nil
+			}
+			for i := range ss.NotReadyAddresses {
+				ss.NotReadyAddresses[i].TargetRef = nil
+			}
+		}
 		cache := &helper_test.CacheMock{
 			SvcList: []*api.Service{svc},
 			EpList:  map[string]*api.Endpoints{"default/echo": ep},
@@ -111,9 +119,6 @@ func TestCreateEndpoints(t *testing.T) {
 		var endpoints []*Endpoint
 		if port != nil {
 			endpoints, _, _ = CreateEndpoints(cache, svc, port)
-		}
-		for _, ep := range endpoints {
-			ep.TargetRef = ""
 		}
 		if !reflect.DeepEqual(endpoints, test.expected) {
 			t.Errorf("endpoints differ: expected=%+v actual=%+v", test.expected, endpoints)
