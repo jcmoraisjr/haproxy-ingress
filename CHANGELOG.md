@@ -111,6 +111,27 @@ Fixes and improvements since [v0.8-beta.3](#v08-beta3):
 * Tuning default thread number and reload strategy [#424](https://github.com/jcmoraisjr/haproxy-ingress/pull/424)
 * Fix case on requests from 80/http [#425](https://github.com/jcmoraisjr/haproxy-ingress/pull/425)
 
+### v0.8-beta.5
+
+Fixes and improvements since [v0.8-beta.4](#v08-beta4):
+
+* Update to haproxy 1.8.22
+* Fix case on per-path backend requests [#427](https://github.com/jcmoraisjr/haproxy-ingress/pull/427)
+* Add cross-namespace command-line option [#433](https://github.com/jcmoraisjr/haproxy-ingress/pull/433)
+* Improve fronting proxy config [#434](https://github.com/jcmoraisjr/haproxy-ingress/pull/434)
+  * Configuration keys:
+    * `fronting-proxy-port` - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#fronting-proxy-port)
+* Fix host match with a port number [#436](https://github.com/jcmoraisjr/haproxy-ingress/pull/436)
+* Add initial-weight config key [#444](https://github.com/jcmoraisjr/haproxy-ingress/pull/444)
+  * Configuration keys:
+    * `initial-weight` - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#initial-weight)
+* Add ip+port bind support for http/https/fronting-proxy [#452](https://github.com/jcmoraisjr/haproxy-ingress/pull/452)
+  * Configuration keys:
+    * `bind-fronting-proxy` - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#bind)
+    * `bind-http` - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#bind)
+    * `bind-https` - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#bind)
+* Fix panic reading empty targetRef from ep [#455](https://github.com/jcmoraisjr/haproxy-ingress/pull/455)
+
 ## v0.7.4
 
 Fixes and improvements since [v0.7.3](#v073):
