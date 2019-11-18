@@ -138,8 +138,15 @@ func newEndpointAddr(addr *api.EndpointAddress, port int) *Endpoint {
 	return &Endpoint{
 		IP:        addr.IP,
 		Port:      port,
-		TargetRef: fmt.Sprintf("%s/%s", addr.TargetRef.Namespace, addr.TargetRef.Name),
+		TargetRef: targetRefToString(addr.TargetRef),
 	}
+}
+
+func targetRefToString(targetRef *api.ObjectReference) string {
+	if targetRef == nil {
+		return ""
+	}
+	return fmt.Sprintf("%s/%s", targetRef.Namespace, targetRef.Name)
 }
 
 func newEndpointIP(ip string, port int) *Endpoint {
