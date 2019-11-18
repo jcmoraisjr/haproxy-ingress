@@ -115,9 +115,9 @@ Fixes and improvements since [v0.8-beta.3](#v08-beta3):
 
 Fixes and improvements since [v0.8-beta.4](#v08-beta4):
 
-* Update to haproxy 1.8.22
+* Update HAProxy from 1.8.20 to 1.8.22
 * Fix case on per-path backend requests [#427](https://github.com/jcmoraisjr/haproxy-ingress/pull/427)
-* Add cross-namespace command-line option [#433](https://github.com/jcmoraisjr/haproxy-ingress/pull/433)
+* Fix implementation of cross-namespace command-line option [#433](https://github.com/jcmoraisjr/haproxy-ingress/pull/433)
 * Improve fronting proxy config [#434](https://github.com/jcmoraisjr/haproxy-ingress/pull/434)
   * Configuration keys:
     * `fronting-proxy-port` - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#fronting-proxy-port)
