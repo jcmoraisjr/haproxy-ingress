@@ -38,10 +38,10 @@ func (u *Userlist) String() string {
 
 // ShareHTTPPort ...
 func (b GlobalBindConfig) ShareHTTPPort() bool {
-	return b.HasFrontingProxy() && b.HTTPBindIP == b.ToHTTPBindIP && b.HTTPPort == b.ToHTTPPort
+	return b.HasFrontingProxy() && b.HTTPBind == b.FrontingBind
 }
 
 // HasFrontingProxy ...
 func (b GlobalBindConfig) HasFrontingProxy() bool {
-	return b.ToHTTPPort > 0
+	return b.FrontingBind != ""
 }

@@ -285,7 +285,7 @@ backend {{ $backend.ID }}
 {{- else }}{{/*** if $backend.ModeTCP ***/}}
 
 {{- /*------------------------------------*/}}
-{{- $hasFrontingProxy := $global.Bind.ToHTTPSocketID }}
+{{- $hasFrontingProxy := $global.Bind.HasFrontingProxy }}
 {{- if $backend.HSTS }}
     acl https-request ssl_fc
 {{- if $hasFrontingProxy }}
@@ -613,7 +613,7 @@ backend _error496
 #
 listen _front__tls
     mode tcp
-    bind {{ $global.Bind.HTTPSBindIP }}:{{ $global.Bind.HTTPSPort }}{{ if $global.Bind.AcceptProxy }} accept-proxy{{ end }}
+    bind {{ $global.Bind.HTTPSBind }}{{ if $global.Bind.AcceptProxy }} accept-proxy{{ end }}
 
 {{- /*------------------------------------*/}}
 {{- if $global.UseHTX }}
@@ -680,7 +680,7 @@ listen _front__tls
     server _default_server{{ $fgroup.DefaultBind.Name }} {{ $fgroup.DefaultBind.Socket }} send-proxy-v2
 {{- end }}
 
-{{- $hasFrontingProxy := $global.Bind.ToHTTPSocketID }}
+{{- $hasFrontingProxy := $global.Bind.HasFrontingProxy }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
@@ -690,8 +690,8 @@ frontend _front_http
     mode http
 {{- $frontingBind := $fgroup.ToHTTPBind }}
 {{- $hasPlainHTTPSocket := not $global.Bind.ShareHTTPPort }}
-{{- if $hasPlainHTTPSocket }}
-    bind {{ $global.Bind.HTTPBindIP }}:{{ $global.Bind.HTTPPort }}{{ if $global.Bind.AcceptProxy }} accept-proxy{{ end }}
+{{- if and $global.Bind.HTTPBind $hasPlainHTTPSocket }}
+    bind {{ $global.Bind.HTTPBind }}{{ if $global.Bind.AcceptProxy }} accept-proxy{{ end }}
 {{- end }}
 {{- if $frontingBind.Socket }}
     bind {{ $frontingBind.Socket }}
@@ -702,7 +702,7 @@ frontend _front_http
 {{- /*------------------------------------*/}}
 {{- if $hasFrontingProxy }}
 {{- if $hasPlainHTTPSocket }}
-    acl fronting-proxy so_id {{ $global.Bind.ToHTTPSocketID }}
+    acl fronting-proxy so_id {{ $global.Bind.FrontingSockID }}
 {{- else }}
     acl fronting-proxy hdr(X-Forwarded-Proto) -m found
 {{- end }}
