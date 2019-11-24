@@ -28,12 +28,12 @@ type task struct {
 }
 
 func TestQueueNotRunning(t *testing.T) {
-	q := NewQueue(0, nil)
+	q := NewQueue(nil)
 	q.ShutDown()
 }
 
 func TestQueueAlreadyRunning(t *testing.T) {
-	q := NewQueue(0, nil)
+	q := NewQueue(nil)
 	go q.Run()
 	time.Sleep(100 * time.Millisecond)
 	q.Run() // test fail if this call blocks, the test will timeout
@@ -41,7 +41,7 @@ func TestQueueAlreadyRunning(t *testing.T) {
 }
 
 func TestQueueShutdown(t *testing.T) {
-	q := NewQueue(0, func(item interface{}) { time.Sleep(200 * time.Millisecond) })
+	q := NewQueue(func(item interface{}) { time.Sleep(200 * time.Millisecond) })
 	stopped := false
 	go func() {
 		q.Run()
@@ -57,7 +57,7 @@ func TestQueueShutdown(t *testing.T) {
 
 func TestQueueRun(t *testing.T) {
 	var items []string
-	q := NewQueue(0, func(item interface{}) {
+	q := NewQueue(func(item interface{}) {
 		items = append(items, item.(string)+"-1")
 		time.Sleep(250 * time.Millisecond)
 		items = append(items, item.(string)+"-2")
@@ -79,7 +79,7 @@ func TestQueueRun(t *testing.T) {
 
 func TestDeduplicate(t *testing.T) {
 	var items []interface{}
-	q := NewQueue(0, func(item interface{}) {
+	q := NewQueue(func(item interface{}) {
 		items = append(items, item)
 	})
 	go q.Run()
@@ -105,7 +105,7 @@ func TestDeduplicate(t *testing.T) {
 
 func TestRate(t *testing.T) {
 	var items []string
-	q := NewQueue(2, func(item interface{}) {
+	q := NewRateLimitingQueue(2, func(item interface{}) {
 		items = append(items, fmt.Sprintf("%d=%s", item, time.Now().Format("15:04:05.000")))
 	})
 	go q.Run()
@@ -126,7 +126,7 @@ func TestRate(t *testing.T) {
 
 func TestNotify(t *testing.T) {
 	var items []interface{}
-	q := NewQueue(0, func(item interface{}) {
+	q := NewQueue(func(item interface{}) {
 		time.Sleep(200 * time.Millisecond)
 		items = append(items, item)
 	})
@@ -152,4 +152,46 @@ func TestNotify(t *testing.T) {
 	if len(items) != 3 {
 		t.Errorf("expected 3 items but sync was called %d time(s)", len(items))
 	}
+}
+
+func TestBackoffQueue(t *testing.T) {
+	var count int
+	// retries on 30ms, +60ms(90ms), +120ms(210ms), +240ms(450ms) ... up to 2s
+	q := NewFailureRateLimitingQueue(30*time.Millisecond, 2*time.Second, func(item interface{}) error {
+		count++
+		if err, ok := item.(error); ok {
+			if count >= 3 {
+				return nil
+			}
+			return err
+		}
+		return nil
+	})
+	go q.Run()
+	checkCount := func(c int) {
+		if count != c {
+			t.Errorf("expected count=%d but was %d", c, count)
+		}
+	}
+	count = 0
+	for i := 0; i < 5; i++ {
+		q.Add(i)
+	}
+	time.Sleep(100 * time.Millisecond)
+	checkCount(5)
+	count = 0
+	q.Add(fmt.Errorf("oops"))
+	time.Sleep(60 * time.Millisecond)
+	// 60ms
+	checkCount(2)
+	time.Sleep(90 * time.Millisecond)
+	// 150ms
+	checkCount(3)
+	time.Sleep(180 * time.Millisecond)
+	// 330ms
+	checkCount(3)
+	time.Sleep(180 * time.Millisecond)
+	// 510ms
+	checkCount(3)
+	q.ShutDown()
 }
