@@ -217,6 +217,7 @@ type FrontendGroup struct {
 	HTTPRootRedirMap  *HostsMap
 	HTTPSRedirMap     *HostsMap
 	SSLPassthroughMap *HostsMap
+	VarNamespaceMap   *HostsMap
 }
 
 // Frontend ...
@@ -236,7 +237,6 @@ type Frontend struct {
 	TLSInvalidCrtErrorPagesMap *HostsMap
 	TLSNoCrtErrorList          *HostsMap
 	TLSNoCrtErrorPagesMap      *HostsMap
-	VarNamespaceMap            *HostsMap
 }
 
 // BindConfig ...

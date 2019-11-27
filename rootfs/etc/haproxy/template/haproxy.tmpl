@@ -703,6 +703,17 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $fgroup.HasVarNamespace }}
+    http-request set-var(txn.namespace) 
+        {{- "" }} var(req.base),map_beg({{ $fgroup.VarNamespaceMap.MatchFile }},-)
+{{- if $fgroup.VarNamespaceMap.HasRegex }}
+    http-request set-var(txn.namespace) 
+        {{- "" }} var(req.base),map_reg({{ $fgroup.VarNamespaceMap.RegexFile }},-)
+        {{- "" }} if { var(txn.namespace) -- - }
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
     http-request set-header X-Forwarded-Proto http
         {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-CN
@@ -774,7 +785,7 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if or $frontend.HasTLSAuth $frontend.HostBackendsMap.HasRegex $frontend.HasVarNamespace $frontend.HasMaxBody }}
+{{- if or $frontend.HasTLSAuth $frontend.HostBackendsMap.HasRegex $fgroup.HasVarNamespace $frontend.HasMaxBody }}
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend)
         {{- "" }} var(req.base),map_beg({{ $frontend.HostBackendsMap.MatchFile }},_nomatch)
@@ -803,13 +814,13 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $frontend.HasVarNamespace }}
+{{- if $fgroup.HasVarNamespace }}
     http-request set-var(txn.namespace) 
-        {{- "" }} var(req.base),map_beg({{ $frontend.VarNamespaceMap.MatchFile }},-)
-{{- if $frontend.VarNamespaceMap.HasRegex }}
+        {{- "" }} var(req.base),map_beg({{ $fgroup.VarNamespaceMap.MatchFile }},-)
+{{- if $fgroup.VarNamespaceMap.HasRegex }}
     http-request set-var(txn.namespace) 
-        {{- "" }} var(req.base),map_reg({{ $frontend.VarNamespaceMap.RegexFile }},-)
-        {{- "" }} if { var(txn.namespace) - }
+        {{- "" }} var(req.base),map_reg({{ $fgroup.VarNamespaceMap.RegexFile }},-)
+        {{- "" }} if { var(txn.namespace) -- - }
 {{- end }}
 {{- end }}
 

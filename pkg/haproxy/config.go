@@ -235,6 +235,7 @@ func (c *config) BuildFrontendGroup() error {
 		HTTPRootRedirMap:  fgroupMaps.AddMap(c.mapsDir + "/_global_http_root_redir.map"),
 		HTTPSRedirMap:     fgroupMaps.AddMap(c.mapsDir + "/_global_https_redir.map"),
 		SSLPassthroughMap: fgroupMaps.AddMap(c.mapsDir + "/_global_sslpassthrough.map"),
+		VarNamespaceMap:   fgroupMaps.AddMap(c.mapsDir + "/_global_k8s_ns.map"),
 	}
 	if c.global.Bind.HasFrontingProxy() {
 		bind := *hatypes.NewFrontendBind(nil)
@@ -298,7 +299,6 @@ func (c *config) BuildFrontendGroup() error {
 		frontend.TLSInvalidCrtErrorPagesMap = frontend.Maps.AddMap(mapsPrefix + "_inv_crt_redir.map")
 		frontend.TLSNoCrtErrorList = frontend.Maps.AddMap(mapsPrefix + "_no_crt.list")
 		frontend.TLSNoCrtErrorPagesMap = frontend.Maps.AddMap(mapsPrefix + "_no_crt_redir.map")
-		frontend.VarNamespaceMap = frontend.Maps.AddMap(mapsPrefix + "_k8s_ns.map")
 		for _, bind := range frontend.Binds {
 			bind.Maps = hatypes.CreateMaps()
 			bind.UseServerList = bind.Maps.AddMap(c.mapsDir + "/" + bind.Name + ".list")
@@ -384,7 +384,7 @@ func (c *config) BuildFrontendGroup() error {
 				} else {
 					ns = "-"
 				}
-				f.VarNamespaceMap.AppendHostname(base, ns)
+				fgroup.VarNamespaceMap.AppendHostname(base, ns)
 			}
 			// TODO implement deny 413 and move all MaxBodySize stuff to backend
 			if len(maxBodySizes) > 0 {

@@ -119,6 +119,18 @@ func (fg *FrontendGroup) HasTCPProxy() bool {
 	return fg.HasSSLPassthrough || len(fg.Frontends) > 1 || len(fg.Frontends[0].Binds) > 1
 }
 
+// HasVarNamespace ...
+func (fg *FrontendGroup) HasVarNamespace() bool {
+	for _, f := range fg.Frontends {
+		for _, host := range f.Hosts {
+			if host.VarNamespace {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // String ...
 func (f *Frontend) String() string {
 	return fmt.Sprintf("%+v", *f)
@@ -154,16 +166,6 @@ func (f *Frontend) HasNoCrtErrorPage() bool {
 func (f *Frontend) HasTLSMandatory() bool {
 	for _, host := range f.Hosts {
 		if host.HasTLSAuth() && !host.TLS.CAVerifyOptional {
-			return true
-		}
-	}
-	return false
-}
-
-// HasVarNamespace ...
-func (f *Frontend) HasVarNamespace() bool {
-	for _, host := range f.Hosts {
-		if host.VarNamespace {
 			return true
 		}
 	}
