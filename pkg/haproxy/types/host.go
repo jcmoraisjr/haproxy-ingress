@@ -64,3 +64,8 @@ func (h *Host) HasTLSAuth() bool {
 func (h *Host) String() string {
 	return fmt.Sprintf("%+v", *h)
 }
+
+// HasTLS ...
+func (h *HostTLSConfig) HasTLS() bool {
+	return h.TLSFilename != ""
+}
