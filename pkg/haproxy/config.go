@@ -254,7 +254,10 @@ func (c *config) BuildFrontendGroup() error {
 				bindName := fmt.Sprintf("_socket%03d", i)
 				if len(bind.Hosts) == 1 {
 					bind.TLS.TLSCert = c.defaultX509Cert
-					bind.TLS.TLSCertDir = bind.Hosts[0].TLS.TLSFilename
+					tlsFilename := bind.Hosts[0].TLS.TLSFilename
+					if tlsFilename != c.defaultX509Cert {
+						bind.TLS.TLSCertDir = tlsFilename
+					}
 				} else {
 					x509dir, err := c.createCertsDir(bindName, bind.Hosts)
 					if err != nil {
@@ -278,7 +281,10 @@ func (c *config) BuildFrontendGroup() error {
 		bind.AcceptProxy = c.global.Bind.AcceptProxy
 		if len(bind.Hosts) == 1 {
 			bind.TLS.TLSCert = c.defaultX509Cert
-			bind.TLS.TLSCertDir = bind.Hosts[0].TLS.TLSFilename
+			tlsFilename := bind.Hosts[0].TLS.TLSFilename
+			if tlsFilename != c.defaultX509Cert {
+				bind.TLS.TLSCertDir = tlsFilename
+			}
 		} else {
 			x509dir, err := c.createCertsDir(bind.Name, bind.Hosts)
 			if err != nil {
@@ -344,7 +350,7 @@ func (c *config) BuildFrontendGroup() error {
 				backend := c.FindBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
 				base := host.Hostname + path.Path
 				hasSSLRedirect := false
-				if backend != nil {
+				if host.TLS.HasTLS() && backend != nil {
 					hasSSLRedirect = backend.HasSSLRedirectHostpath(base)
 				}
 				// TODO use only root path if all uri has the same conf
