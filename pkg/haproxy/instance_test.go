@@ -1014,6 +1014,8 @@ func TestInstanceDefaultHost(t *testing.T) {
 	b = c.config.AcquireBackend("d1", "app", "8080")
 	h = c.config.AcquireHost("*")
 	h.AddPath(b, "/")
+	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
+	h.TLS.TLSHash = "0"
 	b.SSLRedirect = b.CreateConfigBool(true)
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 	h.VarNamespace = true
@@ -1021,6 +1023,8 @@ func TestInstanceDefaultHost(t *testing.T) {
 	b = c.config.AcquireBackend("d2", "app", "8080")
 	h = c.config.AcquireHost("d2.local")
 	h.AddPath(b, "/app")
+	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
+	h.TLS.TLSHash = "0"
 	b.SSLRedirect = b.CreateConfigBool(true)
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 	h.VarNamespace = true
@@ -1275,12 +1279,16 @@ func TestInstanceSingleFrontendTwoBindsCA(t *testing.T) {
 	b = c.config.AcquireBackend("d", "app", "8080")
 	h = c.config.AcquireHost("d1.local")
 	h.AddPath(b, "/")
+	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
+	h.TLS.TLSHash = "0"
 	h.TLS.CAFilename = "/var/haproxy/ssl/ca/d1.local.pem"
 	h.TLS.CAHash = "1"
 	h.TLS.CAErrorPage = "http://d1.local/error.html"
 
 	h = c.config.AcquireHost("d2.local")
 	h.AddPath(b, "/")
+	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
+	h.TLS.TLSHash = "0"
 	h.TLS.CAFilename = "/var/haproxy/ssl/ca/d2.local.pem"
 	h.TLS.CAHash = "2"
 	h.TLS.CRLFilename = "/var/haproxy/ssl/ca/d2.local.crl.pem"
@@ -1591,6 +1599,8 @@ func TestInstanceSomePaths(t *testing.T) {
 
 	b = c.config.AcquireBackend("d", "app0", "8080")
 	h = c.config.AcquireHost("d.local")
+	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
+	h.TLS.TLSHash = "0"
 	h.AddPath(b, "/")
 	b.SSLRedirect = b.CreateConfigBool(true)
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
@@ -1711,6 +1721,55 @@ frontend _front001
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestInstanceSSLRedirect(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.AcquireBackend("d1", "app-api", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	h = c.config.AcquireHost("d1.local")
+	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
+	h.TLS.TLSHash = "0"
+	h.AddPath(b, "/")
+	b.SSLRedirect = b.CreateConfigBool(true)
+
+	b = c.config.AcquireBackend("d2", "app-front", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS21}
+	h = c.config.AcquireHost("d2.local")
+	h.TLS.TLSFilename = ""
+	h.TLS.TLSHash = ""
+	h.AddPath(b, "/")
+	b.SSLRedirect = b.CreateConfigBool(true)
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app-api_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+backend d2_app-front_8080
+    mode http
+    server s21 172.17.0.121:8080 weight 100
+<<backends-default>>
+<<frontend-http>>
+    default_backend _error404
+<<frontend-https>>
+    default_backend _error404
+<<support>>
+`)
+
+	c.checkMap("_global_https_redir.map", `
+d1.local/ yes
+d2.local/ no
+`)
+
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestInstanceSSLPassthrough(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
@@ -1798,6 +1857,8 @@ func TestInstanceRootRedirect(t *testing.T) {
 
 	b = c.config.AcquireBackend("d1", "app", "8080")
 	h = c.config.AcquireHost("d1.local")
+	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
+	h.TLS.TLSHash = "0"
 	h.AddPath(b, "/")
 	h.RootRedirect = "/app"
 	b.SSLRedirect = b.CreateConfigBool(false)
@@ -1805,6 +1866,8 @@ func TestInstanceRootRedirect(t *testing.T) {
 
 	b = c.config.AcquireBackend("d2", "app", "8080")
 	h = c.config.AcquireHost("d2.local")
+	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
+	h.TLS.TLSHash = "0"
 	h.AddPath(b, "/app1")
 	h.AddPath(b, "/app2")
 	h.RootRedirect = "/app1"
@@ -2470,10 +2533,16 @@ func TestInstanceWildcardHostname(t *testing.T) {
 
 	b = c.config.AcquireBackend("d1", "app", "8080")
 	h = c.config.AcquireHost("d1.local")
+	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
+	h.TLS.TLSHash = "0"
 	h.AddPath(b, "/")
 	h = c.config.AcquireHost("*.app.d1.local")
+	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
+	h.TLS.TLSHash = "0"
 	h.AddPath(b, "/")
 	h = c.config.AcquireHost("*.sub.d1.local")
+	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
+	h.TLS.TLSHash = "0"
 	h.AddPath(b, "/")
 	h.TLS.CAFilename = "/var/haproxy/ssl/ca/d1.local.pem"
 	h.TLS.CAHash = "1"

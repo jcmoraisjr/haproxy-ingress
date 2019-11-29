@@ -318,7 +318,7 @@ func (c *config) BuildFrontendGroup() error {
 				backend := c.FindBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
 				base := host.Hostname + path.Path
 				hasSSLRedirect := false
-				if backend != nil {
+				if host.TLS.HasTLS() && backend != nil {
 					hasSSLRedirect = backend.HasSSLRedirectHostpath(base)
 				}
 				// TODO use only root path if all uri has the same conf
