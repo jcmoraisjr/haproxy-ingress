@@ -66,6 +66,8 @@ func (hm *HostsMap) AppendAliasName(base, value string) {
 
 // AppendAliasRegex ...
 func (hm *HostsMap) AppendAliasRegex(base, value string) {
+	// always use case insensitive match
+	base = strings.ToLower(base)
 	if base != "" {
 		hm.Regex = append(hm.Regex, &HostsMapEntry{
 			Key:   base,
@@ -76,6 +78,8 @@ func (hm *HostsMap) AppendAliasRegex(base, value string) {
 
 // AppendPath ...
 func (hm *HostsMap) AppendPath(path, id string) {
+	// always use case insensitive match
+	path = strings.ToLower(path)
 	hm.Match = append(hm.Match, &HostsMapEntry{
 		Key:   path,
 		Value: id,
