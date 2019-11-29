@@ -1039,7 +1039,15 @@ backend _default_backend
     mode http
     server s0 172.17.0.99:8080 weight 100
 <<backend-errors>>
-<<frontend-http>>
+frontend _front_http
+    mode http
+    bind :80
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
+    http-request set-var(txn.namespace) var(req.base),map_beg(/etc/haproxy/maps/_global_k8s_ns.map,-)
+    <<http-headers>>
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
+    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     use_backend d1_app_8080
     default_backend _default_backend
 frontend _front001
@@ -1047,7 +1055,7 @@ frontend _front001
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
-    http-request set-var(txn.namespace) var(req.base),map_beg(/etc/haproxy/maps/_front001_k8s_ns.map,-)
+    http-request set-var(txn.namespace) var(req.base),map_beg(/etc/haproxy/maps/_global_k8s_ns.map,-)
     <<https-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     use_backend d1_app_8080
@@ -1063,7 +1071,7 @@ d2.local/app yes
 	c.checkMap("_front001_bind_crt.list", `
 /var/haproxy/ssl/certs/default.pem
 `)
-	c.checkMap("_front001_k8s_ns.map", `
+	c.checkMap("_global_k8s_ns.map", `
 d2.local/app d2
 `)
 	c.checkMap("_front001_host.map", `
@@ -1207,14 +1215,22 @@ backend _default_backend
     mode http
     server s0 172.17.0.99:8080 weight 100
 <<backend-errors>>
-<<frontend-http>>
+frontend _front_http
+    mode http
+    bind :80
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map,_nomatch) yes }
+    http-request set-var(txn.namespace) var(req.base),map_beg(/etc/haproxy/maps/_global_k8s_ns.map,-)
+    <<http-headers>>
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map,_nomatch)
+    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
     default_backend _default_backend
 frontend _front001
     mode http
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map,_nomatch)
-    http-request set-var(txn.namespace) var(req.base),map_beg(/etc/haproxy/maps/_front001_k8s_ns.map,-)
+    http-request set-var(txn.namespace) var(req.base),map_beg(/etc/haproxy/maps/_global_k8s_ns.map,-)
     <<https-headers>>
     use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
     default_backend _default_backend
@@ -1231,7 +1247,7 @@ d2.local/app yes
 d1.local/ d1_app_8080
 d2.local/app d2_app_8080
 `)
-	c.checkMap("_front001_k8s_ns.map", `
+	c.checkMap("_global_k8s_ns.map", `
 d1.local/ d1
 d2.local/app -
 `)
