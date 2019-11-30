@@ -132,6 +132,12 @@ Fixes and improvements since [v0.8-beta.4](#v08-beta4):
     * `bind-https` - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#bind)
 * Fix panic reading empty targetRef from ep [#455](https://github.com/jcmoraisjr/haproxy-ingress/pull/455)
 
+## v0.7.5
+
+Fixes and improvements since [v0.7.4](#v074):
+
+* Update HAProxy from 1.8.22 to 1.8.23
+
 ## v0.7.4
 
 Fixes and improvements since [v0.7.3](#v073):
