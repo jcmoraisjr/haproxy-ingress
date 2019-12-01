@@ -326,7 +326,7 @@ backend {{ $backend.ID }}
 {{- range $path := reverse $backend.Paths }}
     # {{ $path.ID }} = {{ $path.Hostpath }}
 {{- end }}
-    http-request set-var(txn.pathID) base,lower,map_beg({{ $backend.PathsMap.MatchFile }},_nomatch)
+    http-request set-var(txn.pathID) base,lower,map_beg({{ $backend.PathsMap.MatchFile }})
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -637,13 +637,13 @@ listen _front__tls
 {{- /*------------------------------------*/}}
 {{- if $fgroup.HasSSLPassthrough }}
     tcp-request content set-var(req.sslpassback)
-        {{- "" }} req.ssl_sni,lower,map({{ $fgroup.SSLPassthroughMap.MatchFile }},_nomatch)
+        {{- "" }} req.ssl_sni,lower,map({{ $fgroup.SSLPassthroughMap.MatchFile }})
 {{- end }}
 {{- if $fgroup.SSLPassthroughMap.HasRegex }}
 {{- /*** TODO map_reg() running on every request ***/}}
     tcp-request content set-var(req.sslpassregback)
-        {{- "" }} req.ssl_sni,lower,map_reg({{ $fgroup.SSLPassthroughMap.RegexFile }},_nomatch)
-        {{- "" }} if { var(req.sslpassback) _nomatch }
+        {{- "" }} req.ssl_sni,lower,map_reg({{ $fgroup.SSLPassthroughMap.RegexFile }})
+        {{- "" }} if !{ var(req.sslpassback) -m found }
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -651,7 +651,7 @@ listen _front__tls
 
 {{- /*------------------------------------*/}}
 {{- if $fgroup.HasSSLPassthrough }}
-    use_backend %[var(req.sslpassback)] unless { var(req.sslpassback) _nomatch }
+    use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
 {{- end }}
 {{- range $frontend := $frontends }}
 {{- if $frontend.Hosts }}
@@ -664,7 +664,7 @@ listen _front__tls
 
 {{- /*------------------------------------*/}}
 {{- if $fgroup.SSLPassthroughMap.HasRegex }}
-    use_backend %[var(req.sslpassback)] unless { var(req.sslpassback) _nomatch }
+    use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
 {{- end }}
 {{- range $frontend := $frontends }}
 {{- $bind := $frontend.Bind }}
@@ -729,31 +729,31 @@ frontend _front_http
 {{- /*------------------------------------*/}}
 {{- if $fgroup.HTTPSRedirMap.HasRegex }}
     http-request set-var(req.redir)
-        {{- "" }} var(req.base),map_beg({{ $fgroup.HTTPSRedirMap.MatchFile }},_nomatch)
+        {{- "" }} var(req.base),map_beg({{ $fgroup.HTTPSRedirMap.MatchFile }})
         {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
     http-request redirect scheme https if
         {{- if $hasFrontingProxy }} !fronting-proxy{{ end }}
         {{- "" }} { var(req.redir) yes }
     http-request redirect scheme https if
         {{- if $hasFrontingProxy }} !fronting-proxy{{ end }}
-        {{- "" }} { var(req.redir) _nomatch }
-        {{- "" }} { var(req.base),map_reg({{ $fgroup.HTTPSRedirMap.RegexFile }},_nomatch) yes }
+        {{- "" }} !{ var(req.redir) -m found }
+        {{- "" }} { var(req.base),map_reg({{ $fgroup.HTTPSRedirMap.RegexFile }}) yes }
 {{- else }}
     http-request redirect scheme https if
         {{- if $hasFrontingProxy }} !fronting-proxy{{ end }}
-        {{- "" }} { var(req.base),map_beg({{ $fgroup.HTTPSRedirMap.MatchFile }},_nomatch) yes }
+        {{- "" }} { var(req.base),map_beg({{ $fgroup.HTTPSRedirMap.MatchFile }}) yes }
 {{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $fgroup.HTTPRootRedirMap.HasHost }}
     http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
     http-request set-var(req.rootredir)
-        {{- "" }} var(req.host),map({{ $fgroup.HTTPRootRedirMap.MatchFile }},_nomatch)
+        {{- "" }} var(req.host),map({{ $fgroup.HTTPRootRedirMap.MatchFile }})
 {{- if $fgroup.HTTPRootRedirMap.HasRegex }}
     http-request set-var(req.rootredir)
-        {{- "" }} var(req.host),map_reg({{ $fgroup.HTTPRootRedirMap.RegexFile }},_nomatch) if { var(req.rootredir) _nomatch }
+        {{- "" }} var(req.host),map_reg({{ $fgroup.HTTPRootRedirMap.RegexFile }}) if !{ var(req.rootredir) -m found }
 {{- end }}
-    http-request redirect location %[var(req.rootredir)] if { path / } !{ var(req.rootredir) _nomatch }
+    http-request redirect location %[var(req.rootredir)] if { path / } { var(req.rootredir) -m found }
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -780,11 +780,11 @@ frontend _front_http
         {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
 
 {{- /*------------------------------------*/}}
-    http-request set-var(req.backend) var(req.base),map_beg({{ $fgroup.HTTPFrontsMap.MatchFile }},_nomatch)
+    http-request set-var(req.backend) var(req.base),map_beg({{ $fgroup.HTTPFrontsMap.MatchFile }})
 {{- if $fgroup.HTTPFrontsMap.HasRegex }}
     http-request set-var(req.backend)
-        {{- "" }} var(req.base),map_reg({{ $fgroup.HTTPFrontsMap.RegexFile }},_nomatch)
-        {{- "" }} if { var(req.backend) _nomatch }
+        {{- "" }} var(req.base),map_reg({{ $fgroup.HTTPFrontsMap.RegexFile }})
+        {{- "" }} if !{ var(req.backend) -m found }
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -793,7 +793,7 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
-    use_backend %[var(req.backend)] unless { var(req.backend) _nomatch }
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
 
 {{- template "defaultbackend" map $cfg }}
 
@@ -837,15 +837,15 @@ frontend {{ $frontend.Name }}
 {{- if or $frontend.HasTLSAuth $frontend.HostBackendsMap.HasRegex $fgroup.HasVarNamespace $frontend.HasMaxBody }}
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend)
-        {{- "" }} var(req.base),map_beg({{ $frontend.HostBackendsMap.MatchFile }},_nomatch)
+        {{- "" }} var(req.base),map_beg({{ $frontend.HostBackendsMap.MatchFile }})
 {{- else }}
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/)
-        {{- "" }},map_beg({{ $frontend.HostBackendsMap.MatchFile }},_nomatch)
+        {{- "" }},map_beg({{ $frontend.HostBackendsMap.MatchFile }})
 {{- end }}
 {{- if $frontend.HostBackendsMap.HasRegex }}
     http-request set-var(req.hostbackend)
-        {{- "" }} var(req.base),map_reg({{ $frontend.HostBackendsMap.RegexFile }},_nomatch)
-        {{- "" }} if { var(req.hostbackend) _nomatch }
+        {{- "" }} var(req.base),map_reg({{ $frontend.HostBackendsMap.RegexFile }})
+        {{- "" }} if !{ var(req.hostbackend) -m found }
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -854,12 +854,12 @@ frontend {{ $frontend.Name }}
 {{- end }}
 {{- if $frontend.RootRedirMap.HasHost }}
     http-request set-var(req.rootredir)
-        {{- "" }} var(req.host),map({{ $frontend.RootRedirMap.MatchFile }},_nomatch)
+        {{- "" }} var(req.host),map({{ $frontend.RootRedirMap.MatchFile }})
 {{- if $frontend.RootRedirMap.HasRegex }}
     http-request set-var(req.rootredir)
-        {{- "" }} var(req.host),map_reg({{ $frontend.RootRedirMap.RegexFile }},_nomatch) if { var(req.rootredir) _nomatch }
+        {{- "" }} var(req.host),map_reg({{ $frontend.RootRedirMap.RegexFile }}) if !{ var(req.rootredir) -m found }
 {{- end }}
-    http-request redirect location %[var(req.rootredir)] if { path / } !{ var(req.rootredir) _nomatch }
+    http-request redirect location %[var(req.rootredir)] if { path / } { var(req.rootredir) -m found }
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -909,24 +909,24 @@ frontend {{ $frontend.Name }}
     http-request set-var(req.snibase) ssl_fc_sni,concat(,req.path),lower
 {{- if $frontend.SNIBackendsMap.HasRegex }}
     http-request set-var(req.snibackend) var(req.snibase)
-        {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }},_nomatch)
+        {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }})
     http-request set-var(req.snibackend) var(req.snibase)
-        {{- "" }},map_reg({{ $frontend.SNIBackendsMap.RegexFile }},_nomatch)
-        {{- "" }} if { var(req.snibackend) _nomatch }
+        {{- "" }},map_reg({{ $frontend.SNIBackendsMap.RegexFile }})
+        {{- "" }} if !{ var(req.snibackend) -m found }
     http-request set-var(req.snibackend) var(req.base)
-        {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }},_nomatch)
-        {{- "" }} if { var(req.snibackend) _nomatch }
+        {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }})
+        {{- "" }} if !{ var(req.snibackend) -m found }
         {{- "" }} !tls-has-crt !tls-host-need-crt
     http-request set-var(req.snibackend) var(req.base)
-        {{- "" }},map_reg({{ $frontend.SNIBackendsMap.RegexFile }},_nomatch)
-        {{- "" }} if { var(req.snibackend) _nomatch }
+        {{- "" }},map_reg({{ $frontend.SNIBackendsMap.RegexFile }})
+        {{- "" }} if !{ var(req.snibackend) -m found }
         {{- "" }} !tls-has-crt !tls-host-need-crt
 {{- else }}
     http-request set-var(req.snibackend) var(req.snibase)
-        {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }},_nomatch)
+        {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }})
     http-request set-var(req.snibackend) var(req.base)
-        {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }},_nomatch)
-        {{- "" }} if { var(req.snibackend) _nomatch }
+        {{- "" }},map_beg({{ $frontend.SNIBackendsMap.MatchFile }})
+        {{- "" }} if !{ var(req.snibackend) -m found }
         {{- "" }} !tls-has-crt !tls-host-need-crt
 {{- end }}
 {{- if $mandatory }}
@@ -979,10 +979,11 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-    use_backend %[var(req.hostbackend)] unless { var(req.hostbackend) _nomatch }
+    use_backend %[var(req.hostbackend)]
+        {{- "" }} if { var(req.hostbackend) -m found }
 {{- if $frontend.HasTLSAuth }}
     use_backend %[var(req.snibackend)]
-       {{- "" }} unless { var(req.snibackend) _nomatch }
+        {{- "" }} if { var(req.snibackend) -m found }
 {{- end }}
 {{- template "defaultbackend" map $cfg }}
 {{- end }}
