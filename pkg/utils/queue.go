@@ -17,6 +17,8 @@ limitations under the License.
 package utils
 
 import (
+	"time"
+
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -31,22 +33,40 @@ type Queue interface {
 }
 
 type queue struct {
-	workqueue   *workqueue.Type
+	workqueue   workqueue.RateLimitingInterface
 	rateLimiter flowcontrol.RateLimiter
 	running     chan struct{}
 	sync        func(item interface{})
+	syncFailure func(item interface{}) error
 }
 
 // NewQueue ...
-func NewQueue(rate float32, sync func(item interface{})) Queue {
+func NewQueue(sync func(item interface{})) Queue {
+	return NewRateLimitingQueue(0, sync)
+}
+
+// NewRateLimitingQueue ...
+func NewRateLimitingQueue(rate float32, sync func(item interface{})) Queue {
 	var rateLimiter flowcontrol.RateLimiter
 	if rate > 0 {
 		rateLimiter = flowcontrol.NewTokenBucketRateLimiter(rate, 1)
 	}
 	return &queue{
-		workqueue:   workqueue.New(),
+		workqueue: workqueue.NewRateLimitingQueue(
+			workqueue.DefaultItemBasedRateLimiter(),
+		),
 		rateLimiter: rateLimiter,
 		sync:        sync,
+	}
+}
+
+// NewFailureRateLimitingQueue ...
+func NewFailureRateLimitingQueue(failInitialWait, failMaxWait time.Duration, sync func(item interface{}) error) Queue {
+	return &queue{
+		workqueue: workqueue.NewRateLimitingQueue(
+			workqueue.NewItemExponentialFailureRateLimiter(failInitialWait, failMaxWait),
+		),
+		syncFailure: sync,
 	}
 }
 
@@ -75,7 +95,15 @@ func (q *queue) Run() {
 			close(q.running)
 			return
 		}
-		q.sync(item)
+		if q.sync != nil {
+			q.sync(item)
+		} else if q.syncFailure != nil {
+			if err := q.syncFailure(item); err != nil {
+				q.workqueue.AddRateLimited(item)
+			} else {
+				q.workqueue.Forget(item)
+			}
+		}
 		q.workqueue.Done(item)
 	}
 }
