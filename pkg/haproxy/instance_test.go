@@ -900,8 +900,9 @@ frontend _front001
     http-request del-header X-SSL-Client-DN
     http-request del-header X-SSL-Client-SHA1
     http-request del-header X-SSL-Client-Cert` + test.expectedACL + test.expectedSetvar + `
-    use_backend _error421 if { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
+    use_backend _error421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
     use_backend _error496 if { var(req.tls_nocrt_redir) _internal }
+    use_backend _error421 if !tls-has-crt tls-host-need-crt
     use_backend _error495 if { var(req.tls_invalidcrt_redir) _internal }
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     use_backend %[var(req.snibackend)] if { var(req.snibackend) -m found }
@@ -1337,8 +1338,9 @@ frontend _front001
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front001_inv_crt_redir.map,_internal) if tls-has-invalid-crt tls-check-crt
     http-request redirect location %[var(req.tls_nocrt_redir)] code 303 if { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) _internal }
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
-    use_backend _error421 if { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
+    use_backend _error421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
     use_backend _error496 if { var(req.tls_nocrt_redir) _internal }
+    use_backend _error421 if !tls-has-crt tls-host-need-crt
     use_backend _error495 if { var(req.tls_invalidcrt_redir) _internal }
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     use_backend %[var(req.snibackend)] if { var(req.snibackend) -m found }
@@ -1483,7 +1485,7 @@ frontend _front001
     http-request set-var(req.snibackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_sni.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front001_inv_crt_redir.map,_internal) if tls-has-invalid-crt tls-check-crt
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
-    use_backend _error421 if { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
+    use_backend _error421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
     use_backend _error495 if { var(req.tls_invalidcrt_redir) _internal }
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     use_backend %[var(req.snibackend)] if { var(req.snibackend) -m found }
@@ -1510,8 +1512,9 @@ frontend _front002
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front002_inv_crt_redir.map,_internal) if tls-has-invalid-crt tls-check-crt
     http-request redirect location %[var(req.tls_nocrt_redir)] code 303 if { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) _internal }
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
-    use_backend _error421 if { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
+    use_backend _error421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
     use_backend _error496 if { var(req.tls_nocrt_redir) _internal }
+    use_backend _error421 if !tls-has-crt tls-host-need-crt
     use_backend _error495 if { var(req.tls_invalidcrt_redir) _internal }
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     use_backend %[var(req.snibackend)] if { var(req.snibackend) -m found }
@@ -2632,7 +2635,7 @@ frontend _front001
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front001_inv_crt_redir.map,_internal) if tls-has-invalid-crt tls-check-crt
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map_reg(/etc/haproxy/maps/_front001_inv_crt_redir_regex.map,_internal) if { var(req.tls_invalidcrt_redir) _internal }
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
-    use_backend _error421 if { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
+    use_backend _error421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
     use_backend _error495 if { var(req.tls_invalidcrt_redir) _internal }
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     use_backend %[var(req.snibackend)] if { var(req.snibackend) -m found }
