@@ -42,6 +42,23 @@ func (c *updater) buildHostAuthTLS(d *hostData) {
 	}
 }
 
+func (c *updater) buildHostCertSigner(d *hostData) {
+	signer := d.mapper.Get(ingtypes.HostCertSigner)
+	if signer.Value == "" {
+		return
+	}
+	if signer.Value != "acme" {
+		c.logger.Warn("ignoring invalid cert-signer on %v: %s", signer.Source, signer.Value)
+		return
+	}
+	acme := c.haproxy.Acme()
+	if acme.Endpoint == "" || acme.Emails == "" {
+		c.logger.Warn("ignoring acme signer on %v due to missing endpoint or email config", signer.Source)
+		return
+	}
+	// just the warnings, ingress.syncIngress() has already added the domains
+}
+
 func (c *updater) buildHostSSLPassthrough(d *hostData) {
 	sslpassthrough := d.mapper.Get(ingtypes.HostSSLPassthrough)
 	if !sslpassthrough.Bool() {

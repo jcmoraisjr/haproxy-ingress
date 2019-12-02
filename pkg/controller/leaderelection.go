@@ -20,6 +20,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
+
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -28,12 +30,6 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
 )
-
-// LeaderElector ...
-type LeaderElector interface {
-	IsLeader() bool
-	Run()
-}
 
 // LeaderSubscriber ...
 type LeaderSubscriber interface {
@@ -48,7 +44,7 @@ type leaderelector struct {
 }
 
 // NewLeaderElector ...
-func NewLeaderElector(id string, logger *logger, cache *cache, subscriber LeaderSubscriber) LeaderElector {
+func NewLeaderElector(id string, logger *logger, cache *cache, subscriber LeaderSubscriber) types.LeaderElector {
 	hostname, _ := os.Hostname()
 	namespace, podname, err := cache.GetIngressPodName()
 	if err != nil {
@@ -102,6 +98,14 @@ func NewLeaderElector(id string, logger *logger, cache *cache, subscriber Leader
 
 func (l *leaderelector) IsLeader() bool {
 	return l.le.IsLeader()
+}
+
+func (l *leaderelector) LeaderName() string {
+	name := l.le.GetLeader()
+	if name == "" {
+		return "<no-leader>"
+	}
+	return name
 }
 
 func (l *leaderelector) Run() {

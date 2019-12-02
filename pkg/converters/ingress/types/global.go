@@ -18,6 +18,11 @@ package types
 
 // Global config
 const (
+	GlobalAcmeEmails                   = "acme-emails"
+	GlobalAcmeEndpoint                 = "acme-endpoint"
+	GlobalAcmeExpiring                 = "acme-expiring"
+	GlobalAcmeShared                   = "acme-shared"
+	GlobalAcmeTermsAgreed              = "acme-terms-agreed"
 	GlobalBindFrontingProxy            = "bind-fronting-proxy"
 	GlobalBindHTTP                     = "bind-http"
 	GlobalBindHTTPS                    = "bind-https"

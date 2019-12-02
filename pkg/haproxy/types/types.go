@@ -16,6 +16,23 @@ limitations under the License.
 
 package types
 
+import (
+	"time"
+)
+
+// Acme ...
+type Acme struct {
+	Certs       map[string]map[string]struct{}
+	Emails      string
+	Enabled     bool
+	Endpoint    string
+	Expiring    time.Duration
+	Prefix      string
+	Shared      bool
+	Socket      string
+	TermsAgreed bool
+}
+
 // Global ...
 type Global struct {
 	Bind            GlobalBindConfig

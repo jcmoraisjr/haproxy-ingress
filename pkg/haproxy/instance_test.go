@@ -2323,6 +2323,79 @@ backend d1_app_8080
 	}
 }
 
+func TestAcme(t *testing.T) {
+	testCases := []struct {
+		shared   bool
+		expected string
+	}{
+		{
+			shared: false,
+			expected: `
+frontend _front_http
+    mode http
+    bind :80
+    acl acme-challenge path_beg /.acme
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
+    http-request redirect scheme https if !acme-challenge { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map) yes }
+    <<http-headers>>
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map)
+    use_backend _acme_challenge if acme-challenge
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
+    default_backend _error404`,
+		},
+		{
+			shared: true,
+			expected: `
+frontend _front_http
+    mode http
+    bind :80
+    acl acme-challenge path_beg /.acme
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map) yes }
+    <<http-headers>>
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map)
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
+    use_backend _acme_challenge if acme-challenge
+    default_backend _error404`,
+		},
+	}
+	for _, test := range testCases {
+		c := setup(t)
+
+		var h *hatypes.Host
+		var b *hatypes.Backend
+
+		b = c.config.AcquireBackend("d1", "app", "8080")
+		b.Endpoints = []*hatypes.Endpoint{endpointS1}
+		h = c.config.AcquireHost("d1.local")
+		h.AddPath(b, "/")
+
+		acme := c.config.Acme()
+		acme.Enabled = true
+		acme.Prefix = "/.acme"
+		acme.Socket = "/run/acme.sock"
+		acme.Shared = test.shared
+
+		c.Update()
+		c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+backend _acme_challenge
+    mode http
+    server _acme_server unix@/run/acme.sock
+<<backends-default>>` + test.expected + `
+<<frontend-https>>
+    default_backend _error404
+<<support>>
+`)
+		c.logger.CompareLogging(defaultLogging)
+		c.teardown()
+	}
+}
+
 func TestStatsHealthz(t *testing.T) {
 	testCases := []struct {
 		stats          hatypes.StatsConfig

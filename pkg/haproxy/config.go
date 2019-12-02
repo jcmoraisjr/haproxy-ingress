@@ -43,6 +43,7 @@ type Config interface {
 	BuildBackendMaps() error
 	DefaultHost() *hatypes.Host
 	DefaultBackend() *hatypes.Backend
+	Acme() *hatypes.Acme
 	Global() *hatypes.Global
 	TCPBackends() []*hatypes.TCPBackend
 	Hosts() []*hatypes.Host
@@ -52,10 +53,13 @@ type Config interface {
 }
 
 type config struct {
+	// external state, cannot reflect in Config.Equals()
+	acme *hatypes.Acme
+	// haproxy internal state
 	fgroup          *hatypes.FrontendGroup
 	mapsTemplate    *template.Config
 	mapsDir         string
-	global          hatypes.Global
+	global          *hatypes.Global
 	tcpbackends     []*hatypes.TCPBackend
 	hosts           []*hatypes.Host
 	backends        []*hatypes.Backend
@@ -76,6 +80,8 @@ func createConfig(options options) *config {
 		mapsTemplate = template.CreateConfig()
 	}
 	return &config{
+		acme:         &hatypes.Acme{},
+		global:       &hatypes.Global{},
 		mapsTemplate: mapsTemplate,
 		mapsDir:      options.mapsDir,
 	}
@@ -467,8 +473,12 @@ func (c *config) DefaultBackend() *hatypes.Backend {
 	return c.defaultBackend
 }
 
+func (c *config) Acme() *hatypes.Acme {
+	return c.acme
+}
+
 func (c *config) Global() *hatypes.Global {
-	return &c.global
+	return c.global
 }
 
 func (c *config) TCPBackends() []*hatypes.TCPBackend {
@@ -492,5 +502,8 @@ func (c *config) Equals(other Config) bool {
 	if !ok {
 		return false
 	}
-	return reflect.DeepEqual(c, c2)
+	// (config struct): external state, cannot reflect in Config.Equals()
+	copy := *c2
+	copy.acme = c.acme
+	return reflect.DeepEqual(c, &copy)
 }

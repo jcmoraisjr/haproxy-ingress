@@ -61,6 +61,7 @@ func createDefaults() map[string]string {
 		types.BackTimeoutTunnel:          "1h",
 		types.BackWAFMode:                "deny",
 		//
+		types.GlobalAcmeExpiring:                 "30",
 		types.GlobalBindIPAddrHealthz:            "*",
 		types.GlobalBindIPAddrHTTP:               "*",
 		types.GlobalBindIPAddrStats:              "*",

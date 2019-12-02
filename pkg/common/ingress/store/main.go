@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	apiv1 "k8s.io/api/core/v1"
+	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/kubernetes/pkg/util/node"
 )
@@ -31,6 +32,7 @@ type IngressLister struct {
 
 // SecretLister makes a Store that lists Secrets.
 type SecretLister struct {
+	Client k8s.Interface
 	cache.Store
 }
 
@@ -46,8 +48,20 @@ func (sl *SecretLister) GetByName(name string) (*apiv1.Secret, error) {
 	return s.(*apiv1.Secret), nil
 }
 
+// CreateOrUpdate ...
+func (sl *SecretLister) CreateOrUpdate(secret *apiv1.Secret) (err error) {
+	cli := sl.Client.CoreV1().Secrets(secret.Namespace)
+	if _, exists, _ := sl.GetByKey(secret.Namespace + "/" + secret.Name); exists {
+		_, err = cli.Update(secret)
+	} else {
+		_, err = cli.Create(secret)
+	}
+	return err
+}
+
 // ConfigMapLister makes a Store that lists Configmaps.
 type ConfigMapLister struct {
+	Client k8s.Interface
 	cache.Store
 }
 
@@ -61,6 +75,17 @@ func (cml *ConfigMapLister) GetByName(name string) (*apiv1.ConfigMap, error) {
 		return nil, fmt.Errorf("configmap %v was not found", name)
 	}
 	return s.(*apiv1.ConfigMap), nil
+}
+
+// CreateOrUpdate ...
+func (cml *ConfigMapLister) CreateOrUpdate(cm *apiv1.ConfigMap) (err error) {
+	cli := cml.Client.CoreV1().ConfigMaps(cm.Namespace)
+	if _, exists, _ := cml.GetByKey(cm.Namespace + "/" + cm.Name); exists {
+		_, err = cli.Update(cm)
+	} else {
+		_, err = cli.Create(cm)
+	}
+	return err
 }
 
 // ServiceLister makes a Store that lists Services.

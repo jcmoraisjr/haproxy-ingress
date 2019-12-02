@@ -19,15 +19,22 @@ package haproxy
 import (
 	"fmt"
 	"os/exec"
+	"reflect"
+	"sort"
 	"strings"
 
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
+	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
 // InstanceOptions ...
 type InstanceOptions struct {
+	AcmeSigner        acme.Signer
+	AcmeQueue         utils.Queue
+	LeaderElector     types.LeaderElector
 	MaxOldConfigFiles int
 	HAProxyCmd        string
 	HAProxyConfigFile string
@@ -38,6 +45,7 @@ type InstanceOptions struct {
 
 // Instance ...
 type Instance interface {
+	AcmePeriodicCheck()
 	ParseTemplates() error
 	Config() Config
 	Update(timer *utils.Timer)
@@ -62,6 +70,46 @@ type instance struct {
 	mapsDir      string
 	oldConfig    Config
 	curConfig    Config
+}
+
+func (i *instance) AcmePeriodicCheck() {
+	if i.oldConfig == nil || i.options.AcmeQueue == nil {
+		return
+	}
+	le := i.options.LeaderElector
+	if !le.IsLeader() {
+		i.logger.Info("skipping acme periodic check, leader is %s", le.LeaderName())
+		return
+	}
+	if !i.options.AcmeSigner.HasAccount() {
+		i.acmeEnsureConfig(i.oldConfig.Acme())
+	}
+	i.logger.Info("starting periodic certificate check")
+	for storage, domains := range i.oldConfig.Acme().Certs {
+		i.acmeAddCert(storage, domains)
+	}
+	i.logger.Info("finish adding certificates to the work queue")
+}
+
+func (i *instance) acmeEnsureConfig(acmeConfig *hatypes.Acme) {
+	i.options.AcmeSigner.AcmeConfig(acmeConfig.Expiring)
+	i.options.AcmeSigner.AcmeAccount(acmeConfig.Endpoint, acmeConfig.Emails, acmeConfig.TermsAgreed)
+}
+
+func (i *instance) acmeAddCert(storage string, domains map[string]struct{}) {
+	cert := make([]string, len(domains))
+	n := 0
+	for dom := range domains {
+		cert[n] = dom
+		n++
+	}
+	sort.Slice(cert, func(i, j int) bool {
+		return cert[i] < cert[j]
+	})
+	strcert := strings.Join(cert, ",")
+	i.logger.Info("enqueue certificate for processing: storage=%s domain(s)=%s",
+		storage, strcert)
+	i.options.AcmeQueue.Add(storage + "," + strcert)
 }
 
 func (i *instance) ParseTemplates() error {
@@ -107,6 +155,31 @@ func (i *instance) Config() Config {
 }
 
 func (i *instance) Update(timer *utils.Timer) {
+	i.acmeUpdate()
+	i.haproxyUpdate(timer)
+}
+
+func (i *instance) acmeUpdate() {
+	if i.oldConfig == nil || i.curConfig == nil || i.options.AcmeQueue == nil {
+		return
+	}
+	le := i.options.LeaderElector
+	if !le.IsLeader() {
+		i.logger.Info("skipping acme update, leader is %s", le.LeaderName())
+		return
+	}
+	i.acmeEnsureConfig(i.curConfig.Acme())
+	oldCerts := i.oldConfig.Acme().Certs
+	curCerts := i.curConfig.Acme().Certs
+	for storage, domains := range curCerts {
+		olddomains, found := oldCerts[storage]
+		if !found || !reflect.DeepEqual(domains, olddomains) {
+			i.acmeAddCert(storage, domains)
+		}
+	}
+}
+
+func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	// nil config, just ignore
 	if i.curConfig == nil {
 		i.logger.Info("new configuration is empty")

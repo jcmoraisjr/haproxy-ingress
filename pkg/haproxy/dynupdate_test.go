@@ -66,7 +66,7 @@ func TestDynUpdate(t *testing.T) {
 		{
 			oldConfig: &config{},
 			curConfig: &config{
-				global: hatypes.Global{MaxConn: 1},
+				global: &hatypes.Global{MaxConn: 1},
 			},
 			dynamic: false,
 			logging: `INFO-V(2) diff outside backends - [global]`,
