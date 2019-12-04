@@ -32,7 +32,6 @@ import (
 
 	apiv1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
-	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -77,8 +76,6 @@ var (
 
 	fakeCertificatePath = ""
 	fakeCertificateSHA  = ""
-
-	cloner = conversion.NewCloner()
 )
 
 // GenericController holds the boilerplate code required to build an Ingress controlller.
@@ -210,8 +207,6 @@ func newIngressController(config *Configuration) *GenericController {
 	ic.annotations = newAnnotationExtractor(&ic)
 
 	ic.cfg.Backend.SetListers(ic.listers)
-
-	cloner.RegisterDeepCopyFunc(ingress.GetGeneratedDeepCopyFuncs)
 
 	return &ic
 }

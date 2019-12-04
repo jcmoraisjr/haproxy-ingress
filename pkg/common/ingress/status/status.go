@@ -18,6 +18,7 @@ package status
 
 import (
 	"fmt"
+	"context"
 	"net"
 	"os"
 	"sort"
@@ -95,7 +96,7 @@ type statusSync struct {
 
 // Run starts the loop to keep the status in sync
 func (s statusSync) Run(stopCh <-chan struct{}) {
-	go s.elector.Run()
+	go s.elector.Run(context.Background())
 	go wait.Forever(s.update, updateInterval)
 	go s.syncQueue.Run(time.Second, stopCh)
 	<-stopCh
@@ -189,7 +190,7 @@ func NewStatusSyncer(config Config) Sync {
 	}
 
 	callbacks := leaderelection.LeaderCallbacks{
-		OnStartedLeading: func(stop <-chan struct{}) {
+		OnStartedLeading: func(context.Context) {
 			glog.V(2).Infof("I am the new status update leader")
 		},
 		OnStoppedLeading: func() {
@@ -354,7 +355,7 @@ func runUpdate(ing *extensions.Ingress, status []apiv1.LoadBalancerIngress,
 			return true, nil
 		}
 
-		ingClient := client.Extensions().Ingresses(ing.Namespace)
+		ingClient := client.ExtensionsV1beta1().Ingresses(ing.Namespace)
 
 		currIng, err := ingClient.Get(ing.Name, metav1.GetOptions{})
 		if err != nil {

@@ -66,9 +66,9 @@ var (
 // Controller holds the methods to handle an Ingress backend
 // TODO (#18): Make sure this is sufficiently supportive of other backends.
 type Controller interface {
-	// HealthzChecker returns is a named healthz check that returns the ingress
+	// HealthChecker returns is a named healthz check that returns the ingress
 	// controller status
-	healthz.HealthzChecker
+	healthz.HealthChecker
 
 	// OnUpdate callback invoked from the sync queue https://k8s.io/ingress/core/blob/master/pkg/ingress/controller/controller.go#L387
 	// when an update occurs. This is executed frequently because Ingress
