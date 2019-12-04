@@ -7,7 +7,7 @@ DOCKER_HUB=quay.io
 include container.mk
 
 GOOS=linux
-GOARCH=amd64
+GOARCH?=amd64
 GIT_REPO=$(shell git config --get remote.origin.url)
 ROOT_PKG=github.com/jcmoraisjr/haproxy-ingress/pkg
 
