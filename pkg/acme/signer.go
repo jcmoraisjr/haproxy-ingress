@@ -129,8 +129,8 @@ func (s *signer) verify(secretName string, domains []string) error {
 			why = "added one or more domains to an existing certificate"
 		}
 		s.verifyCount++
-		s.logger.InfoV(2, "acme: authorizing: id=%d secret=%s domain(s)=%s why=\"%s\"",
-			s.verifyCount, secretName, strdomains, why)
+		s.logger.InfoV(2, "acme: authorizing: id=%d secret=%s domain(s)=%s endpoint=%s why=\"%s\"",
+			s.verifyCount, secretName, strdomains, s.account.Endpoint, why)
 		crt, key, err := s.client.Sign(domains)
 		if err == nil {
 			if errTLS := s.cache.SetTLSSecretContent(secretName, crt, key); errTLS == nil {

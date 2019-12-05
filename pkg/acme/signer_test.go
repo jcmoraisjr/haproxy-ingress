@@ -46,7 +46,7 @@ INFO-V(2) acme: skipping sign, certificate is updated: secret=s1 domain(s)=d1.lo
 			input:     "s1,d2.local",
 			expiresIn: -10 * 24 * time.Hour,
 			logging: `
-INFO-V(2) acme: authorizing: id=1 secret=s1 domain(s)=d2.local why="certificate expires in 2020-12-01 16:33:14 +0000 UTC"
+INFO-V(2) acme: authorizing: id=1 secret=s1 domain(s)=d2.local endpoint=https://acme-v2.local why="certificate expires in 2020-12-01 16:33:14 +0000 UTC"
 INFO acme: new certificate issued: id=1 secret=s1 domain(s)=d2.local`,
 		},
 		// 2
@@ -54,7 +54,7 @@ INFO acme: new certificate issued: id=1 secret=s1 domain(s)=d2.local`,
 			input:     "s1,d3.local",
 			expiresIn: 10 * 24 * time.Hour,
 			logging: `
-INFO-V(2) acme: authorizing: id=1 secret=s1 domain(s)=d3.local why="added one or more domains to an existing certificate"
+INFO-V(2) acme: authorizing: id=1 secret=s1 domain(s)=d3.local endpoint=https://acme-v2.local why="added one or more domains to an existing certificate"
 INFO acme: new certificate issued: id=1 secret=s1 domain(s)=d3.local`,
 		},
 		// 3
@@ -62,7 +62,7 @@ INFO acme: new certificate issued: id=1 secret=s1 domain(s)=d3.local`,
 			input:     "s2,d1.local",
 			expiresIn: 10 * 24 * time.Hour,
 			logging: `
-INFO-V(2) acme: authorizing: id=1 secret=s2 domain(s)=d1.local why="certificate does not exist"
+INFO-V(2) acme: authorizing: id=1 secret=s2 domain(s)=d1.local endpoint=https://acme-v2.local why="certificate does not exist"
 INFO acme: new certificate issued: id=1 secret=s2 domain(s)=d1.local`,
 		},
 	}
@@ -73,6 +73,7 @@ INFO acme: new certificate issued: id=1 secret=s2 domain(s)=d1.local`,
 	c.cache.tlsSecret["s1"] = &TLSSecret{Crt: x509}
 	for _, test := range testCases {
 		signer := c.newSigner()
+		signer.account.Endpoint = "https://acme-v2.local"
 		signer.expiring = x509.NotAfter.Sub(time.Now().Add(test.expiresIn))
 		signer.Notify(test.input)
 		c.logger.CompareLogging(test.logging)
