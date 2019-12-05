@@ -96,7 +96,7 @@ func (i *instance) acmeEnsureConfig(acmeConfig *hatypes.Acme) {
 	i.options.AcmeSigner.AcmeAccount(acmeConfig.Endpoint, acmeConfig.Emails, acmeConfig.TermsAgreed)
 }
 
-func (i *instance) acmeAddCert(storage string, domains map[string]struct{}) {
+func (i *instance) acmeBuildCert(storage string, domains map[string]struct{}) string {
 	cert := make([]string, len(domains))
 	n := 0
 	for dom := range domains {
@@ -106,10 +106,19 @@ func (i *instance) acmeAddCert(storage string, domains map[string]struct{}) {
 	sort.Slice(cert, func(i, j int) bool {
 		return cert[i] < cert[j]
 	})
-	strcert := strings.Join(cert, ",")
+	return strings.Join(cert, ",")
+}
+
+func (i *instance) acmeAddCert(storage string, domains map[string]struct{}) {
+	strcert := i.acmeBuildCert(storage, domains)
 	i.logger.Info("enqueue certificate for processing: storage=%s domain(s)=%s",
 		storage, strcert)
 	i.options.AcmeQueue.Add(storage + "," + strcert)
+}
+
+func (i *instance) acmeRemoveCert(storage string, domains map[string]struct{}) {
+	strcert := i.acmeBuildCert(storage, domains)
+	i.options.AcmeQueue.Remove(storage + "," + strcert)
 }
 
 func (i *instance) ParseTemplates() error {
@@ -171,6 +180,14 @@ func (i *instance) acmeUpdate() {
 	i.acmeEnsureConfig(i.curConfig.Acme())
 	oldCerts := i.oldConfig.Acme().Certs
 	curCerts := i.curConfig.Acme().Certs
+	// Remove from the retry queue certs that was removed from the config
+	for storage, domains := range oldCerts {
+		curdomains, found := curCerts[storage]
+		if !found || !reflect.DeepEqual(domains, curdomains) {
+			i.acmeRemoveCert(storage, domains)
+		}
+	}
+	// Add new certs to the work queue
 	for storage, domains := range curCerts {
 		olddomains, found := oldCerts[storage]
 		if !found || !reflect.DeepEqual(domains, olddomains) {
