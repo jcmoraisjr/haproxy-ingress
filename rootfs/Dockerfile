@@ -19,4 +19,4 @@ RUN apk --no-cache add socat openssl lua5.3 lua-socket dumb-init \
 COPY . /
 
 STOPSIGNAL SIGTERM
-ENTRYPOINT ["/dumb-init", "--", "/start.sh"]
+ENTRYPOINT ["/usr/bin/dumb-init", "--", "/start.sh"]
