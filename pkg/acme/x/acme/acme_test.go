@@ -6,6 +6,7 @@ package acme
 
 import (
 	"context"
+	"crypto"
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -61,6 +62,17 @@ func decodeJWSHead(r *http.Request) (*jwsHead, error) {
 		return nil, err
 	}
 	return &head, nil
+}
+
+func newTestClient(key crypto.Signer, ts *httptest.Server) *Client {
+	return &Client{
+		Key:        key,
+		accountURL: "https://example.com/acme/account",
+		dir: &Directory{
+			NewNonceURL:   ts.URL,
+			NewAccountURL: ts.URL + "/account",
+		},
+	}
 }
 
 func TestDiscover(t *testing.T) {
@@ -327,8 +339,12 @@ func TestCreateOrder(t *testing.T) {
 
 func TestGetAuthorization(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			t.Errorf("r.Method = %q; want GET", r.Method)
+		if r.Method == "HEAD" {
+			w.Header().Set("Replay-Nonce", "nonce")
+			return
+		}
+		if r.Method != "POST" {
+			t.Errorf("r.Method = %q; want POST", r.Method)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -353,7 +369,7 @@ func TestGetAuthorization(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	cl := Client{Key: testKeyEC, dir: &Directory{NewNonceURL: ts.URL}}
+	cl := newTestClient(testKeyEC, ts)
 	auth, err := cl.GetAuthorization(context.Background(), ts.URL)
 	if err != nil {
 		t.Fatal(err)
@@ -399,6 +415,10 @@ func TestGetAuthorization(t *testing.T) {
 func TestWaitAuthorization(t *testing.T) {
 	var count int
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "HEAD" {
+			w.Header().Set("Replay-Nonce", "nonce")
+			return
+		}
 		count++
 		w.Header().Set("Retry-After", "0")
 		if count > 1 {
@@ -416,7 +436,7 @@ func TestWaitAuthorization(t *testing.T) {
 	done := make(chan res)
 	defer close(done)
 	go func() {
-		var client Client
+		client := newTestClient(testKey, ts)
 		a, err := client.WaitAuthorization(context.Background(), ts.URL)
 		done <- res{a, err}
 	}()
@@ -436,6 +456,10 @@ func TestWaitAuthorization(t *testing.T) {
 
 func TestWaitAuthorizationInvalid(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "HEAD" {
+			w.Header().Set("Replay-Nonce", "nonce")
+			return
+		}
 		fmt.Fprintf(w, `{"status":"invalid"}`)
 	}))
 	defer ts.Close()
@@ -443,7 +467,7 @@ func TestWaitAuthorizationInvalid(t *testing.T) {
 	res := make(chan error)
 	defer close(res)
 	go func() {
-		var client Client
+		client := newTestClient(testKey, ts)
 		_, err := client.WaitAuthorization(context.Background(), ts.URL)
 		res <- err
 	}()
@@ -470,7 +494,7 @@ func TestWaitAuthorizationClientError(t *testing.T) {
 
 	ch := make(chan error, 1)
 	go func() {
-		var client Client
+		client := newTestClient(testKey, ts)
 		_, err := client.WaitAuthorization(context.Background(), ts.URL)
 		ch <- err
 	}()
@@ -499,7 +523,7 @@ func TestWaitAuthorizationCancel(t *testing.T) {
 	res := make(chan error)
 	defer close(res)
 	go func() {
-		var client Client
+		client := newTestClient(testKey, ts)
 		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 		defer cancel()
 		_, err := client.WaitAuthorization(ctx, ts.URL)
@@ -551,8 +575,12 @@ func TestDeactivateAuthorization(t *testing.T) {
 
 func TestGetChallenge(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			t.Errorf("r.Method = %q; want GET", r.Method)
+		if r.Method == "HEAD" {
+			w.Header().Set("Replay-Nonce", "nonce")
+			return
+		}
+		if r.Method != "POST" {
+			t.Errorf("r.Method = %q; want POST", r.Method)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -579,7 +607,7 @@ func TestGetChallenge(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	cl := Client{Key: testKeyEC}
+	cl := newTestClient(testKeyEC, ts)
 	chall, err := cl.GetChallenge(context.Background(), ts.URL)
 	if err != nil {
 		t.Fatal(err)
@@ -691,7 +719,7 @@ func TestFinalizeOrder(t *testing.T) {
 			w.Header().Set("Replay-Nonce", "test-nonce")
 			return
 		}
-		if r.URL.Path == "/cert" && r.Method == "GET" {
+		if r.URL.Path == "/cert" && r.Method == "POST" {
 			pem.Encode(w, &pem.Block{Type: "CERTIFICATE", Bytes: sampleCert})
 			return
 		}
@@ -786,7 +814,7 @@ func TestWaitOrderInvalid(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	var client Client
+	client := newTestClient(testKey, ts)
 	_, err := client.WaitOrder(context.Background(), ts.URL+"/pending")
 	if e, ok := err.(OrderPendingError); ok {
 		if e.Order == nil {
@@ -814,6 +842,10 @@ func TestWaitOrderInvalid(t *testing.T) {
 
 func TestGetOrder(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "HEAD" {
+			w.Header().Set("Replay-Nonce", "nonce")
+			return
+		}
 		fmt.Fprintf(w, `{
 			"identifiers": [{"type":"dns","value":"example.com"}],
 			"status":"valid",
@@ -824,7 +856,7 @@ func TestGetOrder(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	var client Client
+	client := newTestClient(testKey, ts)
 	o, err := client.GetOrder(context.Background(), ts.URL)
 	if err != nil {
 		t.Fatal(err)

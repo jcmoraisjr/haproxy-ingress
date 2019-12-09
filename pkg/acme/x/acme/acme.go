@@ -258,7 +258,7 @@ func (c *Client) FinalizeOrder(ctx context.Context, finalizeURL string, csr []by
 // If a caller needs to poll an order until its status is final,
 // see the WaitOrder method.
 func (c *Client) GetOrder(ctx context.Context, url string) (*Order, error) {
-	res, err := c.get(ctx, url)
+	res, err := c.postWithJWSAccount(ctx, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -376,7 +376,7 @@ func (c *Client) UpdateAccount(ctx context.Context, a *Account) (*Account, error
 // If a caller needs to poll an authorization until its status is final,
 // see the WaitAuthorization method.
 func (c *Client) GetAuthorization(ctx context.Context, url string) (*Authorization, error) {
-	res, err := c.get(ctx, url)
+	res, err := c.postWithJWSAccount(ctx, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -422,7 +422,7 @@ func (c *Client) DeactivateAuthorization(ctx context.Context, url string) error 
 func (c *Client) WaitAuthorization(ctx context.Context, url string) (*Authorization, error) {
 	sleep := sleeper(ctx)
 	for {
-		res, err := c.get(ctx, url)
+		res, err := c.postWithJWSAccount(ctx, url, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -466,7 +466,7 @@ func (c *Client) WaitAuthorization(ctx context.Context, url string) (*Authorizat
 //
 // A client typically polls a challenge status using this method.
 func (c *Client) GetChallenge(ctx context.Context, url string) (*Challenge, error) {
-	res, err := c.get(ctx, url)
+	res, err := c.postWithJWSAccount(ctx, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -822,7 +822,7 @@ func nonceFromHeader(h http.Header) string {
 }
 
 func (c *Client) getCert(ctx context.Context, url string) ([][]byte, error) {
-	res, err := c.get(ctx, url)
+	res, err := c.postWithJWSAccount(ctx, url, nil)
 	if err != nil {
 		return nil, err
 	}
