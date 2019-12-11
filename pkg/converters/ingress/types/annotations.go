@@ -126,3 +126,8 @@ const (
 	BackWAFMode                = "waf-mode"
 	BackWhitelistSourceRange   = "whitelist-source-range"
 )
+
+// Extra Annotations
+const (
+	ExtraTLSAcme = "kubernetes.io/tls-acme"
+)

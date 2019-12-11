@@ -113,12 +113,10 @@ func (hc *HAProxyController) configController() {
 	hc.stopCh = hc.controller.GetStopCh()
 	hc.logger = &logger{depth: 1}
 	hc.cache = newCache(hc.cfg.Client, hc.storeLister, hc.controller)
+	var acmeSigner acme.Signer
 	if hc.cfg.AcmeServer {
 		electorID := fmt.Sprintf("%s-%s", hc.cfg.AcmeElectionID, hc.cfg.IngressClass)
 		hc.leaderelector = NewLeaderElector(electorID, hc.logger, hc.cache, hc)
-	}
-	var acmeSigner acme.Signer
-	if hc.cfg.AcmeServer {
 		acmeSigner = acme.NewSigner(hc.logger, hc.cache)
 		hc.acmeQueue = utils.NewFailureRateLimitingQueue(
 			hc.cfg.AcmeFailInitialDuration,
@@ -147,6 +145,7 @@ func (hc *HAProxyController) configController() {
 		AnnotationPrefix: hc.cfg.AnnPrefix,
 		DefaultBackend:   hc.cfg.DefaultService,
 		DefaultSSLFile:   hc.createDefaultSSLFile(hc.cache),
+		AcmeTrackTLSAnn:  hc.cfg.AcmeTrackTLSAnn,
 	}
 }
 

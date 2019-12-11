@@ -261,7 +261,7 @@ Supported acme configuration keys:
 * `acme-expiring`: how many days before expiring a certificate should be considered old and should be updated. Defaults to `30` days.
 * `acme-shared`: defines if another certificate signer is running in the cluster. If `false`, the default value, any request to `/.well-known/acme-challenge/` is sent to the local acme server despite any ingress object configuration. Otherwise, if `true`, a configured ingress object would take precedence.
 * `acme-terms-agreed`: mandatory, it should be defined as `true`, otherwise certificates won't be issued.
-* `cert-signer`: defines the certificate signer that should be used to authorize and sign new certificates. The only supported value is `"acme"`. Add this config as an annotation in the ingress object that should have its certificate managed by haproxy-ingress and signed by the configured acme environment.
+* `cert-signer`: defines the certificate signer that should be used to authorize and sign new certificates. The only supported value is `"acme"`. Add this config as an annotation in the ingress object that should have its certificate managed by haproxy-ingress and signed by the configured acme environment. The annotation `kubernetes.io/tls-acme: "true"` is also supported if the command-line option `--acme-track-tls-annotation` is used.
 
 **Minimum setup**
 
@@ -292,9 +292,11 @@ haproxy-ingress instance should perform authorizations and certificate signing.
 
 The haproxy-ingress leader tracks ingress objects that declares the annotation
 `ingress.kubernetes.io/cert-signer` with value `acme` and a configured secret name for
-TLS certificates. The secret does not need to exist. A new certificate will be issued
-if the certificate is old, the secret does not exist or has an invalid certificate, or
-the domains of the certificate doesn't cover all the domains configured in the ingress.
+TLS certificate. The annotation `kubernetes.io/tls-acme` with value `"true"` will also
+be used if the command-line option `--acme-track-tls-annotation` is declared. The
+secret does not need to exist. A new certificate will be issued if the certificate is
+old, the secret does not exist or has an invalid certificate, or the domains of the
+certificate doesn't cover all the domains configured in the ingress.
 
 Every `24h` or the duration configured in the `--acme-check-period`, and also when the
 leader changes, all the certificates from all the tracked ingress will be verified. The

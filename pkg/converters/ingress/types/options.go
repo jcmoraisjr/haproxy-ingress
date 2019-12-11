@@ -29,4 +29,5 @@ type ConverterOptions struct {
 	DefaultBackend   string
 	DefaultSSLFile   convtypes.File
 	AnnotationPrefix string
+	AcmeTrackTLSAnn  bool
 }

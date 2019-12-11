@@ -17,6 +17,7 @@ The following command-line options are supported:
 | [`--acme-secret-key-name`](#acme)                       | [namespace]/secret-name    | `acme-private-key`      | v0.9  |
 | [`--acme-server`](#acme)                                | [true\|false]              | `false`                 | v0.9  |
 | [`--acme-token-configmap-name`](#acme)                  | [namespace]/configmap-name | `acme-validation-tokens` | v0.9 |
+| [`--acme-track-tls-annotation`](#acme)                  | [true\|false]              | `false`                 | v0.9 |
 | [`--allow-cross-namespace`](#allow-cross-namespace)     | [true\|false]              | `false`                 |       |
 | [`--annotation-prefix`](#annotation-prefix)             | prefix without `/`         | `ingress.kubernetes.io` | v0.8  |
 | [`--default-backend-service`](#default-backend-service) | namespace/servicename      | haproxy's 404 page      |       |
@@ -49,6 +50,7 @@ Supported acme command-line options:
 * `--acme-secret-key-name`: secret name used to store the client private key. Defaults to `acme-private-key`. A new key, hence a new client, is created if the secret does not exist.
 * `--acme-server`: mandatory, starts a local server used to answer challenges from the acme environment. This option should be provided on all haproxy-ingress instances to the certificate signing work properly.
 * `--acme-token-configmap-name`: the configmap name used to store temporary tokens generated during the challenge. Defaults to `acme-validation-tokens`. Such tokens need to be stored in k8s because any haproxy-ingress instance might receive the request from the acme environment.
+* `--acme-track-tls-annotation`: defines if ingress objects with annotation `kubernetes.io/tls-acme: "true"` should also be tracked. Defaults to `false`.
 
 See also:
 

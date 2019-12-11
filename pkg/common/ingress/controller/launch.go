@@ -76,6 +76,9 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		used to answer the acme challenges. If a namespace is not provided, the secret will be created
 		in the same namespace of the controller pod`)
 
+		acmeTrackTLSAnn = flags.Bool("acme-track-tls-annotation", false,
+			`Enable tracking of ingress objects annotated with 'kubernetes.io/tls-acme'`)
+
 		publishSvc = flags.String("publish-service", "",
 			`Service fronting the ingress controllers. Takes the form
  		namespace/name. The controller will set the endpoint records on the
@@ -286,6 +289,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		AcmeFailMaxDuration:     *acmeFailMaxDuration,
 		AcmeSecretKeyName:       *acmeSecretKeyName,
 		AcmeTokenConfigmapName:  *acmeTokenConfigmapName,
+		AcmeTrackTLSAnn:         *acmeTrackTLSAnn,
 		RateLimitUpdate:         *rateLimitUpdate,
 		ResyncPeriod:            *resyncPeriod,
 		DefaultService:          *defaultSvc,

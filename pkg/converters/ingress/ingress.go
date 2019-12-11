@@ -157,7 +157,16 @@ func (c *converter) syncIngress(ing *extensions.Ingress) {
 		}
 	}
 	for _, tls := range ing.Spec.TLS {
-		if annHost[ingtypes.HostCertSigner] == "acme" {
+		// distinct prefix, read from the Annotations map
+		var tlsAcme bool
+		if c.options.AcmeTrackTLSAnn {
+			tlsAcmeStr, _ := ing.Annotations[ingtypes.ExtraTLSAcme]
+			tlsAcme, _ = strconv.ParseBool(tlsAcmeStr)
+		}
+		if !tlsAcme {
+			tlsAcme = strings.ToLower(annHost[ingtypes.HostCertSigner]) == "acme"
+		}
+		if tlsAcme {
 			if tls.SecretName != "" {
 				c.haproxy.Acme().AddDomains(ing.Namespace+"/"+tls.SecretName, tls.Hosts)
 			} else {

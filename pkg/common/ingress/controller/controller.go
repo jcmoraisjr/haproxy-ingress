@@ -142,6 +142,7 @@ type Configuration struct {
 	AcmeElectionID          string
 	AcmeSecretKeyName       string
 	AcmeTokenConfigmapName  string
+	AcmeTrackTLSAnn         bool
 
 	// optional
 	TCPConfigMapName string
