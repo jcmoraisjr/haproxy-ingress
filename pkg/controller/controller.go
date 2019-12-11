@@ -113,9 +113,8 @@ func (hc *HAProxyController) configController() {
 	hc.stopCh = hc.controller.GetStopCh()
 	hc.logger = &logger{depth: 1}
 	hc.cache = newCache(hc.cfg.Client, hc.storeLister, hc.controller)
-	if hc.cfg.AcmeServer || false /* waiting status sync, which also uses leader election */ {
-		// TODO move status sync + fix electorID
-		electorID := fmt.Sprintf("tmp-%s-acme-elector", hc.cfg.IngressClass)
+	if hc.cfg.AcmeServer {
+		electorID := fmt.Sprintf("%s-%s", hc.cfg.AcmeElectionID, hc.cfg.IngressClass)
 		hc.leaderelector = NewLeaderElector(electorID, hc.logger, hc.cache, hc)
 	}
 	var acmeSigner acme.Signer

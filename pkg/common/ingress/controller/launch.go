@@ -56,6 +56,9 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		acmeCheckPeriod = flags.Duration("acme-check-period", 24*time.Hour,
 			`Time between checks of invalid or expiring certificates`)
 
+		acmeElectionID = flags.String("acme-election-id", "acme-leader",
+			`Prefix of the election ID used to choose the acme leader`)
+
 		acmeFailInitialDuration = flags.Duration("acme-fail-initial-duration", 5*time.Minute,
 			`The initial time to wait to retry sign a new certificate after a failure.
 		The time between retries will grow exponentially until 'acme-fail-max-duration'`)
@@ -278,6 +281,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		Client:                  kubeClient,
 		AcmeServer:              *acmeServer,
 		AcmeCheckPeriod:         *acmeCheckPeriod,
+		AcmeElectionID:          *acmeElectionID,
 		AcmeFailInitialDuration: *acmeFailInitialDuration,
 		AcmeFailMaxDuration:     *acmeFailMaxDuration,
 		AcmeSecretKeyName:       *acmeSecretKeyName,

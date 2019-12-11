@@ -139,6 +139,7 @@ type Configuration struct {
 	AcmeCheckPeriod         time.Duration
 	AcmeFailInitialDuration time.Duration
 	AcmeFailMaxDuration     time.Duration
+	AcmeElectionID          string
 	AcmeSecretKeyName       string
 	AcmeTokenConfigmapName  string
 
