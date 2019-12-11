@@ -85,10 +85,16 @@ func (i *instance) AcmePeriodicCheck() {
 		i.acmeEnsureConfig(i.oldConfig.Acme())
 	}
 	i.logger.Info("starting periodic certificate check")
+	var count int
 	for storage, domains := range i.oldConfig.Acme().Certs {
 		i.acmeAddCert(storage, domains)
+		count++
 	}
-	i.logger.Info("finish adding certificates to the work queue")
+	if count == 0 {
+		i.logger.Info("certificate list is empty")
+	} else {
+		i.logger.Info("finish adding %d certificate(s) to the work queue", count)
+	}
 }
 
 func (i *instance) acmeEnsureConfig(acmeConfig *hatypes.Acme) {
@@ -111,7 +117,7 @@ func (i *instance) acmeBuildCert(storage string, domains map[string]struct{}) st
 
 func (i *instance) acmeAddCert(storage string, domains map[string]struct{}) {
 	strcert := i.acmeBuildCert(storage, domains)
-	i.logger.Info("enqueue certificate for processing: storage=%s domain(s)=%s",
+	i.logger.InfoV(2, "enqueue certificate for processing: storage=%s domain(s)=%s",
 		storage, strcert)
 	i.options.AcmeQueue.Add(storage + "," + strcert)
 }
@@ -173,26 +179,34 @@ func (i *instance) acmeUpdate() {
 		return
 	}
 	le := i.options.LeaderElector
-	if !le.IsLeader() {
-		i.logger.Info("skipping acme update, leader is %s", le.LeaderName())
-		return
+	if le.IsLeader() {
+		i.acmeEnsureConfig(i.curConfig.Acme())
 	}
-	i.acmeEnsureConfig(i.curConfig.Acme())
+	var updated bool
 	oldCerts := i.oldConfig.Acme().Certs
 	curCerts := i.curConfig.Acme().Certs
 	// Remove from the retry queue certs that was removed from the config
 	for storage, domains := range oldCerts {
 		curdomains, found := curCerts[storage]
 		if !found || !reflect.DeepEqual(domains, curdomains) {
-			i.acmeRemoveCert(storage, domains)
+			if le.IsLeader() {
+				i.acmeRemoveCert(storage, domains)
+			}
+			updated = true
 		}
 	}
 	// Add new certs to the work queue
 	for storage, domains := range curCerts {
 		olddomains, found := oldCerts[storage]
 		if !found || !reflect.DeepEqual(domains, olddomains) {
-			i.acmeAddCert(storage, domains)
+			if le.IsLeader() {
+				i.acmeAddCert(storage, domains)
+			}
+			updated = true
 		}
+	}
+	if updated && !le.IsLeader() {
+		i.logger.InfoV(2, "skipping acme update check, leader is %s", le.LeaderName())
 	}
 }
 

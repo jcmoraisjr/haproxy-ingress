@@ -87,6 +87,7 @@ func (s *signer) AcmeAccount(endpoint, emails string, termsAgreed bool) {
 		return
 	}
 	s.client = nil
+	s.logger.Info("loading account %+v", account)
 	client, err := NewClient(s.logger, s.cache, &account)
 	if err != nil {
 		s.logger.Warn("error creating the acme client: %v", err)
