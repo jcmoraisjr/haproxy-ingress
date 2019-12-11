@@ -166,6 +166,7 @@ func (c *client) authorize(dnsnames []string, order *acme.Order) error {
 					return err
 				}
 				_, err = c.client.WaitAuthorization(c.ctx, challenge.URL)
+				_ = c.resolver.SetToken(auth.Identifier.Value, checkURI, "")
 				if err != nil {
 					if acmeErr, ok := err.(acme.AuthorizationError); ok {
 						// acme client returns an empty Identifier.Value on acmeErr.Authorization

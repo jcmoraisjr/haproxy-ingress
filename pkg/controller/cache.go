@@ -329,6 +329,10 @@ func (c *cache) SetToken(domain string, uri, token string) error {
 	if config.Data == nil {
 		config.Data = make(map[string]string, 1)
 	}
-	config.Data[domain] = uri + "=" + token
+	if token != "" {
+		config.Data[domain] = uri + "=" + token
+	} else {
+		delete(config.Data, domain)
+	}
 	return c.listers.ConfigMap.CreateOrUpdate(config)
 }

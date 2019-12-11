@@ -78,6 +78,9 @@ func (c *clientResolver) GetKey() (crypto.Signer, error) {
 }
 
 func (c *clientResolver) SetToken(domain string, uri, token string) error {
+	if token == "" {
+		return nil
+	}
 	out := fmt.Sprintf("%s%s = %s", domain, uri, token)
 	ioutil.WriteFile("/tmp/out", []byte(out), 0644)
 	// 20s to copy the challenge from /tmp/out and update the server
