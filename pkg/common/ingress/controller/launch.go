@@ -56,11 +56,11 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		acmeCheckPeriod = flags.Duration("acme-check-period", 24*time.Hour,
 			`Time between checks of invalid or expiring certificates`)
 
-		acmeFailInitialDuration = flags.Duration("acme-fail-initial-duration", 10*time.Minute,
+		acmeFailInitialDuration = flags.Duration("acme-fail-initial-duration", 5*time.Minute,
 			`The initial time to wait to retry sign a new certificate after a failure.
 		The time between retries will grow exponentially until 'acme-fail-max-duration'`)
 
-		acmeFailMaxDuration = flags.Duration("acme-fail-max-duration", 24*time.Hour,
+		acmeFailMaxDuration = flags.Duration("acme-fail-max-duration", 8*time.Hour,
 			`The maximum time to wait after failing to sign a new certificate`)
 
 		acmeSecretKeyName = flags.String("acme-secret-key-name", "acme-private-key",
