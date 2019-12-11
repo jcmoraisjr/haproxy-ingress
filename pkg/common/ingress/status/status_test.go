@@ -26,7 +26,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	testclient "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/kubernetes/pkg/api"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/class"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/store"
@@ -82,7 +81,7 @@ func buildSimpleClientSet() *testclient.Clientset {
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo3",
-					Namespace: api.NamespaceSystem,
+					Namespace: "kube-system",
 					Labels: map[string]string{
 						"lable_sig": "foo_pod",
 					},
@@ -183,7 +182,7 @@ func buildExtensionsIngresses() []extensions.Ingress {
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo_ingress_different_class",
-				Namespace: api.NamespaceDefault,
+				Namespace: apiv1.NamespaceDefault,
 				Annotations: map[string]string{
 					class.IngressKey: "no-nginx",
 				},
@@ -291,7 +290,7 @@ func TestStatusActions(t *testing.T) {
 	newIPs := []apiv1.LoadBalancerIngress{{
 		IP: "11.0.0.2",
 	}}
-	fooIngress1, err1 := fk.Client.Extensions().Ingresses(apiv1.NamespaceDefault).Get("foo_ingress_1", metav1.GetOptions{})
+	fooIngress1, err1 := fk.Client.ExtensionsV1beta1().Ingresses(apiv1.NamespaceDefault).Get("foo_ingress_1", metav1.GetOptions{})
 	if err1 != nil {
 		t.Fatalf("unexpected error")
 	}
@@ -304,7 +303,7 @@ func TestStatusActions(t *testing.T) {
 	fk.Shutdown()
 	// ingress should be empty
 	newIPs2 := []apiv1.LoadBalancerIngress{}
-	fooIngress2, err2 := fk.Client.Extensions().Ingresses(apiv1.NamespaceDefault).Get("foo_ingress_1", metav1.GetOptions{})
+	fooIngress2, err2 := fk.Client.ExtensionsV1beta1().Ingresses(apiv1.NamespaceDefault).Get("foo_ingress_1", metav1.GetOptions{})
 	if err2 != nil {
 		t.Fatalf("unexpected error")
 	}
@@ -313,7 +312,7 @@ func TestStatusActions(t *testing.T) {
 		t.Fatalf("returned %v but expected %v", fooIngress2CurIPs, newIPs2)
 	}
 
-	oic, err := fk.Client.Extensions().Ingresses(api.NamespaceDefault).Get("foo_ingress_different_class", metav1.GetOptions{})
+	oic, err := fk.Client.ExtensionsV1beta1().Ingresses(apiv1.NamespaceDefault).Get("foo_ingress_different_class", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error")
 	}
