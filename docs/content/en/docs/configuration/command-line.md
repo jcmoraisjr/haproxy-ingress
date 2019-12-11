@@ -10,10 +10,17 @@ The following command-line options are supported:
 
 | Name                                                    | Type                       | Default                 | Since |
 |---------------------------------------------------------|----------------------------|-------------------------|-------|
+| [`--acme-check-period`](#acme)                          | time                       | `24h`                   | v0.9  |
+| [`--acme-election-id`](#acme)                           | [namespace]/configmap-name | `acme-leader`           | v0.9  |
+| [`--acme-fail-initial-duration`](#acme)                 | time                       | `5m`                    | v0.9  |
+| [`--acme-fail-max-duration`](#acme)                     | time                       | `8h`                    | v0.9  |
+| [`--acme-secret-key-name`](#acme)                       | [namespace]/secret-name    | `acme-private-key`      | v0.9  |
+| [`--acme-server`](#acme)                                | [true\|false]              | `false`                 | v0.9  |
+| [`--acme-token-configmap-name`](#acme)                  | [namespace]/configmap-name | `acme-validation-tokens` | v0.9 |
 | [`--allow-cross-namespace`](#allow-cross-namespace)     | [true\|false]              | `false`                 |       |
 | [`--annotation-prefix`](#annotation-prefix)             | prefix without `/`         | `ingress.kubernetes.io` | v0.8  |
-| [`--default-backend-service`](#default-backend-service) | namespace/servicename      | (mandatory)             |       |
-| [`--default-ssl-certificate`](#default-ssl-certificate) | namespace/secretname       | (mandatory)             |       |
+| [`--default-backend-service`](#default-backend-service) | namespace/servicename      | haproxy's 404 page      |       |
+| [`--default-ssl-certificate`](#default-ssl-certificate) | namespace/secretname       | fake, auto generated    |       |
 | [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |       |
 | [`--kubeconfig`](#kubeconfig)                           | /path/to/kubeconfig        | in cluster config       |       |
 | [`--max-old-config-files`](#max-old-config-files)       | num of files               | `0`                     |       |
@@ -25,6 +32,27 @@ The following command-line options are supported:
 | [`--verify-hostname`](#verify-hostname)                 | [true\|false]              | `true`                  |       |
 | [`--wait-before-shutdown`](#wait-before-shutdown)       | seconds as integer         | `0`                     | v0.8  |
 | [`--watch-namespace`](#watch-namespace)                 | namespace                  | all namespaces          |       |
+
+---
+
+## Acme
+
+Configures the acme server and other static options used to authorize and sign certificates
+against a server which implements the acme protocol, version 2.
+
+Supported acme command-line options:
+
+* `--acme-check-period`: interval between checks for expiring certificates. Defaults to `24h`.
+* `--acme-election-id`: prefix of the configmap name used to store the leader election data. Only the leader of a haproxy-ingress cluster should start the authorization and sign certificate process. Defaults to `acme-leader`.
+* `--acme-fail-initial-duration`: the starting time to wait and retry after a failed authorization and sign process. Defaults to `5m`.
+* `--acme-fail-max-duration`: the time between retries of failed authorization will exponentially grow up to the max duration time. Defaults to `8h`.
+* `--acme-secret-key-name`: secret name used to store the client private key. Defaults to `acme-private-key`. A new key, hence a new client, is created if the secret does not exist.
+* `--acme-server`: mandatory, starts a local server used to answer challenges from the acme environment. This option should be provided on all haproxy-ingress instances to the certificate signing work properly.
+* `--acme-token-configmap-name`: the configmap name used to store temporary tokens generated during the challenge. Defaults to `acme-validation-tokens`. Such tokens need to be stored in k8s because any haproxy-ingress instance might receive the request from the acme environment.
+
+See also:
+
+* [acme configuration keys]({{% relref "keys/#acme" %}}) doc, which has also an overview on how acme works on haproxy-ingress
 
 ---
 
