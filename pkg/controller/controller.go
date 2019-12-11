@@ -376,7 +376,7 @@ func (hc *HAProxyController) OnUpdate(cfg ingress.Configuration) error {
 }
 
 func (hc *HAProxyController) writeModSecConfigFile(data []byte) error {
-	if err := ioutil.WriteFile(hc.modsecConfigFile, data, 644); err != nil {
+	if err := ioutil.WriteFile(hc.modsecConfigFile, data, 0644); err != nil {
 		glog.Warningf("Error writing modsecurity config file: %v", err)
 		return err
 	}
@@ -394,7 +394,7 @@ func (hc *HAProxyController) rewriteConfigFiles(data []byte) (string, error) {
 	configFile := hc.configDir + "/" + hc.configFilePrefix + timestamp + hc.configFileSuffix
 
 	// Write directly to configFile
-	if err := ioutil.WriteFile(configFile, data, 644); err != nil {
+	if err := ioutil.WriteFile(configFile, data, 0644); err != nil {
 		glog.Warningf("Error writing haproxy config file: %v", err)
 		return "", err
 	}
