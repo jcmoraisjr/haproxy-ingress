@@ -87,6 +87,11 @@ The table below describes all supported configuration keys.
 
 | Configuration key                                    | Data type                               | Scope   | Default value      |
 |------------------------------------------------------|-----------------------------------------|---------|--------------------|
+| [`acme-emails`](#acme)                               | email1,email2,...                       | Global  |                    |
+| [`acme-endpoint`](#acme)                             | v2-staging | v2 | endpoint              | Global  |                    |
+| [`acme-expiring`](#acme)                             | number of days                          | Global  | `30`               |
+| [`acme-shared`](#acme)                               | [true\|false]                           | Global  | `false`            |
+| [`acme-terms-agreed`](#acme)                         | [true\|false]                           | Global  | `false`            |
 | [`affinity`](#affinity)                              | affinity type                           | Backend |                    |
 | [`agent-check-addr`](#agent-check)                   | address for agent checks                | Backend |                    |
 | [`agent-check-interval`](#agent-check)               | time with suffix                        | Backend |                    |
@@ -116,6 +121,7 @@ The table below describes all supported configuration keys.
 | [`blue-green-deploy`](#blue-green)                   | label=value=weight,...                  | Backend |                    |
 | [`blue-green-header`](#blue-green)                   | `HeaderName:LabelName` pair             | Backend |                    |
 | [`blue-green-mode`](#blue-green)                     | [pod\|deploy]                           | Backend |                    |
+| [`cert-signer`](#acme)                               | "acme"                                  | Host    |                    |
 | [`config-backend`](#configuration-snippet)           | multiline HAProxy backend config        | Backend |                    |
 | [`config-defaults`](#configuration-snippet)          | multiline HAProxy config for the defaults section | Global |           |
 | [`config-frontend`](#configuration-snippet)          | multiline HAProxy frontend config       | Global  |                    |
@@ -228,6 +234,92 @@ The table below describes all supported configuration keys.
 | [`waf`](#waf)                                        | "modsecurity"                           | Backend |                    |
 | [`waf-mode`](#waf)                                   | [deny\|detect]                          | Backend | `deny` (if waf is set) |
 | `whitelist-source-range`                             | CIDR                                    | Backend |                    |
+
+---
+
+## Acme
+
+| Configuration key   | Scope    | Default | Since |
+|---------------------|----------|---------|-------|
+| `acme-emails`       | `Global` |         | v0.9  |
+| `acme-endpoint`     | `Global` |         | v0.9  |
+| `acme-expiring`     | `Global` | `30`    | v0.9  |
+| `acme-shared`       | `Global` | `false` | v0.9  |
+| `acme-terms-agreed` | `Global` | `false` | v0.9  |
+| `cert-signer`       | `Host`   |         | v0.9  |
+
+Configures dynamic options used to authorize and sign certificates against a server
+which implements the acme protocol, version 2.
+
+The popular [Let's Encrypt](https://letsencrypt.org) certificate authority implements
+acme-v2.
+
+Supported acme configuration keys:
+
+* `acme-emails`: mandatory, a comma-separated list of emails used to configure the client account. The account will be updated if this option is changed.
+* `acme-endpoint`: mandatory, endpoint of the acme environment. `v2-staging` and `v02-staging` are alias to `https://acme-staging-v02.api.letsencrypt.org`, while `v2` and `v02` are alias to `https://acme-v02.api.letsencrypt.org`.
+* `acme-expiring`: how many days before expiring a certificate should be considered old and should be updated. Defaults to `30` days.
+* `acme-shared`: defines if another certificate signer is running in the cluster. If `false`, the default value, any request to `/.well-known/acme-challenge/` is sent to the local acme server despite any ingress object configuration. Otherwise, if `true`, a configured ingress object would take precedence.
+* `acme-terms-agreed`: mandatory, it should be defined as `true`, otherwise certificates won't be issued.
+* `cert-signer`: defines the certificate signer that should be used to authorize and sign new certificates. The only supported value is `"acme"`. Add this config as an annotation in the ingress object that should have its certificate managed by haproxy-ingress and signed by the configured acme environment. The annotation `kubernetes.io/tls-acme: "true"` is also supported if the command-line option `--acme-track-tls-annotation` is used.
+
+**Minimum setup**
+
+The command-line option `--acme-server` need to be declared to start the local
+server and the work queue used to authorize and sign new certificates. See other
+command-line options [here]({{% relref "command-line/#acme" %}}).
+
+The following configuration keys are mandatory: `acme-emails`, `acme-endpoint`,
+`acme-terms-agreed`.
+
+A cluster-wide permission to `create` and `update` the `secrets` resources should
+also be made.
+
+{{% alert title="Note" %}}
+haproxy-ingress need cluster-wide permissions `create` and `update` on resource
+`secrets` to store the client private key (new account) and the generated certificate
+and its private key. The default clusterrole configuration doesn't provide these
+permissions.
+{{% /alert %}}
+
+**How it works**
+
+All haproxy-ingress instances should declare `--acme-server`
+[command-line option]({{% relref "command-line/#acme" %}}), which will start a local
+server to answer acme challenges, a work queue to enqueue the domain authorization
+and certificate signing, and will also start a leader election to define which
+haproxy-ingress instance should perform authorizations and certificate signing.
+
+The haproxy-ingress leader tracks ingress objects that declares the annotation
+`ingress.kubernetes.io/cert-signer` with value `acme` and a configured secret name for
+TLS certificate. The annotation `kubernetes.io/tls-acme` with value `"true"` will also
+be used if the command-line option `--acme-track-tls-annotation` is declared. The
+secret does not need to exist. A new certificate will be issued if the certificate is
+old, the secret does not exist or has an invalid certificate, or the domains of the
+certificate doesn't cover all the domains configured in the ingress.
+
+Every `24h` or the duration configured in the `--acme-check-period`, and also when the
+leader changes, all the certificates from all the tracked ingress will be verified. The
+certificate is also verified whenever the list of the domains or the secret name changes,
+so the periodic check will, in fact, only issue new certificates when there is `30` days
+or less to the certificate expires. This duration can be changed with `acme-expiring`
+configuration key.
+
+If an authorization fails, the certificate request is re-enqueued to be tried again after
+`5m`. This duration can be changed with `--acme-fail-initial-duration` command-line
+option. If the request fails again, it will be re-enqueued after the double of the time,
+in this case, after `10m`. The duration will exponentially increase up to `8h` or the
+duration defined by the command-line option `--acme-fail-max-duration`. The request will
+continue in the work queue until it is successfully processed and stored, or when the
+ingress object is untracked, either removing the annotation, removing the secret name or
+removing the ingress object itself.
+
+See also:
+
+* [acme command-line options]({{% relref "command-line/#acme" %}}) doc.
+
+---
+
 
 ## Affinity
 

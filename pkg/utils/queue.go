@@ -27,6 +27,7 @@ import (
 type Queue interface {
 	Add(item interface{})
 	Notify()
+	Remove(item interface{})
 	Run()
 	ShuttingDown() bool
 	ShutDown()
@@ -36,9 +37,14 @@ type queue struct {
 	workqueue   workqueue.RateLimitingInterface
 	rateLimiter flowcontrol.RateLimiter
 	running     chan struct{}
+	forget      set
 	sync        func(item interface{})
 	syncFailure func(item interface{}) error
 }
+
+type set map[iface]empty
+type iface interface{}
+type empty struct{}
 
 // NewQueue ...
 func NewQueue(sync func(item interface{})) Queue {
@@ -71,13 +77,22 @@ func NewFailureRateLimitingQueue(failInitialWait, failMaxWait time.Duration, syn
 }
 
 func (q *queue) Add(item interface{}) {
+	delete(q.forget, item)
 	q.workqueue.Add(item)
 }
 
 func (q *queue) Notify() {
 	//  When using with rateLimiter, `nil` will be deduplicated
 	// and `queue.Get()` will release call to `sync()` just once
+	delete(q.forget, nil)
 	q.workqueue.Add(nil)
+}
+
+func (q *queue) Remove(item interface{}) {
+	if q.forget == nil {
+		q.forget = set{}
+	}
+	q.forget[item] = empty{}
 }
 
 func (q *queue) Run() {
@@ -98,7 +113,10 @@ func (q *queue) Run() {
 		if q.sync != nil {
 			q.sync(item)
 		} else if q.syncFailure != nil {
-			if err := q.syncFailure(item); err != nil {
+			if _, forget := q.forget[item]; forget {
+				q.workqueue.Forget(item)
+				delete(q.forget, item)
+			} else if err := q.syncFailure(item); err != nil {
 				q.workqueue.AddRateLimited(item)
 			} else {
 				q.workqueue.Forget(item)

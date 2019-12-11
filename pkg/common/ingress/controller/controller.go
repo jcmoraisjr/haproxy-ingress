@@ -135,6 +135,15 @@ type Configuration struct {
 	DisableNodeList         bool
 	AnnPrefix               string
 
+	AcmeServer              bool
+	AcmeCheckPeriod         time.Duration
+	AcmeFailInitialDuration time.Duration
+	AcmeFailMaxDuration     time.Duration
+	AcmeElectionID          string
+	AcmeSecretKeyName       string
+	AcmeTokenConfigmapName  string
+	AcmeTrackTLSAnn         bool
+
 	// optional
 	TCPConfigMapName string
 	// optional
@@ -210,6 +219,11 @@ func newIngressController(config *Configuration) *GenericController {
 // GetConfig expose the controller configuration
 func (ic *GenericController) GetConfig() *Configuration {
 	return ic.cfg
+}
+
+// GetStopCh ...
+func (ic *GenericController) GetStopCh() chan struct{} {
+	return ic.stopCh
 }
 
 // Info returns information about the backend

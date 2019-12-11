@@ -53,7 +53,7 @@ func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Con
 		logger:             options.Logger,
 		cache:              options.Cache,
 		mapBuilder:         annotations.NewMapBuilder(options.Logger, options.AnnotationPrefix+"/", defaultConfig),
-		updater:            annotations.NewUpdater(haproxy, options.Cache, options.Logger),
+		updater:            annotations.NewUpdater(haproxy, options),
 		globalConfig:       annotations.NewMapBuilder(options.Logger, "", defaultConfig).NewMapper(),
 		hostAnnotations:    map[*hatypes.Host]*annotations.Mapper{},
 		backendAnnotations: map[*hatypes.Backend]*annotations.Mapper{},
@@ -156,10 +156,28 @@ func (c *converter) syncIngress(ing *extensions.Ingress) {
 			}
 		}
 	}
+	for _, tls := range ing.Spec.TLS {
+		// distinct prefix, read from the Annotations map
+		var tlsAcme bool
+		if c.options.AcmeTrackTLSAnn {
+			tlsAcmeStr, _ := ing.Annotations[ingtypes.ExtraTLSAcme]
+			tlsAcme, _ = strconv.ParseBool(tlsAcmeStr)
+		}
+		if !tlsAcme {
+			tlsAcme = strings.ToLower(annHost[ingtypes.HostCertSigner]) == "acme"
+		}
+		if tlsAcme {
+			if tls.SecretName != "" {
+				c.haproxy.Acme().AddDomains(ing.Namespace+"/"+tls.SecretName, tls.Hosts)
+			} else {
+				c.logger.Warn("skipping cert signer of ingress '%s': missing secret name", fullIngName)
+			}
+		}
+	}
 }
 
 func (c *converter) syncAnnotations() {
-	c.updater.UpdateGlobalConfig(c.haproxy.Global(), c.globalConfig)
+	c.updater.UpdateGlobalConfig(c.haproxy, c.globalConfig)
 	for _, host := range c.haproxy.Hosts() {
 		if ann, found := c.hostAnnotations[host]; found {
 			c.updater.UpdateHostConfig(host, ann)

@@ -22,6 +22,7 @@ const (
 	HostAuthTLSErrorPage       = "auth-tls-error-page"
 	HostAuthTLSSecret          = "auth-tls-secret"
 	HostAuthTLSVerifyClient    = "auth-tls-verify-client"
+	HostCertSigner             = "cert-signer"
 	HostServerAlias            = "server-alias"
 	HostServerAliasRegex       = "server-alias-regex"
 	HostSSLPassthrough         = "ssl-passthrough"
@@ -38,6 +39,7 @@ var (
 		HostAuthTLSErrorPage:       {},
 		HostAuthTLSSecret:          {},
 		HostAuthTLSVerifyClient:    {},
+		HostCertSigner:             {},
 		HostServerAlias:            {},
 		HostServerAliasRegex:       {},
 		HostSSLPassthrough:         {},
@@ -123,4 +125,9 @@ const (
 	BackWAF                    = "waf"
 	BackWAFMode                = "waf-mode"
 	BackWhitelistSourceRange   = "whitelist-source-range"
+)
+
+// Extra Annotations
+const (
+	ExtraTLSAcme = "kubernetes.io/tls-acme"
 )

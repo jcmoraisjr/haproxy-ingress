@@ -154,6 +154,51 @@ func TestNotify(t *testing.T) {
 	}
 }
 
+func TestRemove(t *testing.T) {
+	var count int
+	// retries on 20ms, +40ms(60ms), +80ms(140ms), +160ms(300ms) ... up to 1s
+	q := NewFailureRateLimitingQueue(20*time.Millisecond, 1*time.Second, func(item interface{}) error {
+		count++
+		return fmt.Errorf("oops")
+	})
+	go q.Run()
+	checkCount := func(c int) {
+		if count != c {
+			t.Errorf("expected count=%d but was %d", c, count)
+		}
+	}
+	q.Add(1)
+	// 100ms
+	time.Sleep(100 * time.Millisecond)
+	checkCount(3)
+	q.Remove(1)
+	// 320ms
+	time.Sleep(220 * time.Millisecond)
+	checkCount(3)
+	q.ShutDown()
+}
+
+func TestAddRemoved(t *testing.T) {
+	var count int
+	// retries on 20ms, +40ms(60ms), +80ms(140ms), +160ms(300ms) ... up to 1s
+	q := NewFailureRateLimitingQueue(20*time.Millisecond, 1*time.Second, func(item interface{}) error {
+		count++
+		return fmt.Errorf("oops")
+	})
+	go q.Run()
+	checkCount := func(c int) {
+		if count != c {
+			t.Errorf("expected count=%d but was %d", c, count)
+		}
+	}
+	q.Remove(1)
+	q.Add(1)
+	// 100ms
+	time.Sleep(100 * time.Millisecond)
+	checkCount(3)
+	q.ShutDown()
+}
+
 func TestBackoffQueue(t *testing.T) {
 	var count int
 	// retries on 30ms, +60ms(90ms), +120ms(210ms), +240ms(450ms) ... up to 2s

@@ -16,18 +16,9 @@ limitations under the License.
 
 package types
 
-import (
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
-)
-
-// ConverterOptions ...
-type ConverterOptions struct {
-	Logger           types.Logger
-	Cache            convtypes.Cache
-	DefaultConfig    func() map[string]string
-	DefaultBackend   string
-	DefaultSSLFile   convtypes.File
-	AnnotationPrefix string
-	AcmeTrackTLSAnn  bool
+// LeaderElector ...
+type LeaderElector interface {
+	IsLeader() bool
+	LeaderName() string
+	Run()
 }

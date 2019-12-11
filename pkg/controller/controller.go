@@ -30,7 +30,9 @@ import (
 	"github.com/spf13/pflag"
 	api "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/util/wait"
 
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/class"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/controller"
@@ -51,7 +53,9 @@ type HAProxyController struct {
 	instance          haproxy.Instance
 	logger            *logger
 	cache             *cache
-	leaderelector     LeaderElector
+	stopCh            chan struct{}
+	acmeQueue         utils.Queue
+	leaderelector     types.LeaderElector
 	updateCount       int
 	controller        *controller.GenericController
 	cfg               *controller.Configuration
@@ -106,17 +110,27 @@ func (hc *HAProxyController) configController() {
 	}
 
 	// starting v0.8 only config
+	hc.stopCh = hc.controller.GetStopCh()
 	hc.logger = &logger{depth: 1}
 	hc.cache = newCache(hc.cfg.Client, hc.storeLister, hc.controller)
-	if false {
-		// initialize only if needed: acme (to be merged) and status (to be moved from old controller)
-		electorID := fmt.Sprintf("ingress-controller-%s-elector", hc.cfg.IngressClass)
+	var acmeSigner acme.Signer
+	if hc.cfg.AcmeServer {
+		electorID := fmt.Sprintf("%s-%s", hc.cfg.AcmeElectionID, hc.cfg.IngressClass)
 		hc.leaderelector = NewLeaderElector(electorID, hc.logger, hc.cache, hc)
+		acmeSigner = acme.NewSigner(hc.logger, hc.cache)
+		hc.acmeQueue = utils.NewFailureRateLimitingQueue(
+			hc.cfg.AcmeFailInitialDuration,
+			hc.cfg.AcmeFailMaxDuration,
+			acmeSigner.Notify,
+		)
 	}
 	instanceOptions := haproxy.InstanceOptions{
 		HAProxyCmd:        "haproxy",
 		ReloadCmd:         "/haproxy-reload.sh",
 		HAProxyConfigFile: "/etc/haproxy/haproxy.cfg",
+		AcmeSigner:        acmeSigner,
+		AcmeQueue:         hc.acmeQueue,
+		LeaderElector:     hc.leaderelector,
 		ReloadStrategy:    *hc.reloadStrategy,
 		MaxOldConfigFiles: *hc.maxOldConfigFiles,
 		ValidateConfig:    *hc.validateConfig,
@@ -131,12 +145,26 @@ func (hc *HAProxyController) configController() {
 		AnnotationPrefix: hc.cfg.AnnPrefix,
 		DefaultBackend:   hc.cfg.DefaultService,
 		DefaultSSLFile:   hc.createDefaultSSLFile(hc.cache),
+		AcmeTrackTLSAnn:  hc.cfg.AcmeTrackTLSAnn,
 	}
 }
 
 func (hc *HAProxyController) startServices() {
+	if hc.cfg.V07 {
+		return
+	}
 	if hc.leaderelector != nil {
 		go hc.leaderelector.Run()
+	}
+	if hc.cfg.AcmeServer {
+		// TODO deduplicate acme socket
+		server := acme.NewServer(hc.logger, "/var/run/acme.sock", hc.cache)
+		// TODO move goroutine from the server to the controller
+		if err := server.Listen(hc.stopCh); err != nil {
+			hc.logger.Fatal("error creating the acme server listener: %v", err)
+		}
+		go hc.acmeQueue.Run()
+		go wait.Until(hc.instance.AcmePeriodicCheck, hc.cfg.AcmeCheckPeriod, hc.stopCh)
 	}
 }
 
@@ -161,6 +189,7 @@ func (hc *HAProxyController) createDefaultSSLFile(cache convtypes.Cache) (tlsFil
 // OnStartedLeading ...
 // implements LeaderSubscriber
 func (hc *HAProxyController) OnStartedLeading(stop <-chan struct{}) {
+	hc.instance.AcmePeriodicCheck()
 }
 
 // OnStoppedLeading ...

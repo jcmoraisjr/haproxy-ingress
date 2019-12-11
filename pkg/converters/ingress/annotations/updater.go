@@ -30,27 +30,28 @@ import (
 
 // Updater ...
 type Updater interface {
-	UpdateGlobalConfig(global *hatypes.Global, mapper *Mapper)
+	UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mapper)
 	UpdateHostConfig(host *hatypes.Host, mapper *Mapper)
 	UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper)
 }
 
 // NewUpdater ...
-func NewUpdater(haproxy haproxy.Config, cache convtypes.Cache, logger types.Logger) Updater {
+func NewUpdater(haproxy haproxy.Config, options *ingtypes.ConverterOptions) Updater {
 	return &updater{
 		haproxy: haproxy,
-		cache:   cache,
-		logger:  logger,
+		logger:  options.Logger,
+		cache:   options.Cache,
 	}
 }
 
 type updater struct {
 	haproxy haproxy.Config
-	cache   convtypes.Cache
 	logger  types.Logger
+	cache   convtypes.Cache
 }
 
 type globalData struct {
+	acme   *hatypes.Acme
 	global *hatypes.Global
 	mapper *Mapper
 }
@@ -95,32 +96,34 @@ func (c *updater) splitCIDR(cidrlist *ConfigValue) []string {
 	return cidrslice
 }
 
-func (c *updater) UpdateGlobalConfig(global *hatypes.Global, mapper *Mapper) {
-	data := &globalData{
-		global: global,
+func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mapper) {
+	d := &globalData{
+		acme:   haproxyConfig.Acme(),
+		global: haproxyConfig.Global(),
 		mapper: mapper,
 	}
-	global.AdminSocket = "/var/run/haproxy-stats.sock"
-	global.MaxConn = mapper.Get(ingtypes.GlobalMaxConnections).Int()
-	global.DrainSupport.Drain = mapper.Get(ingtypes.GlobalDrainSupport).Bool()
-	global.DrainSupport.Redispatch = mapper.Get(ingtypes.GlobalDrainSupportRedispatch).Bool()
-	global.Cookie.Key = mapper.Get(ingtypes.GlobalCookieKey).Value
-	global.LoadServerState = mapper.Get(ingtypes.GlobalLoadServerState).Bool()
-	global.SSL.ALPN = mapper.Get(ingtypes.GlobalTLSALPN).Value
-	global.StrictHost = mapper.Get(ingtypes.GlobalStrictHost).Bool()
-	global.UseHTX = mapper.Get(ingtypes.GlobalUseHTX).Bool()
-	c.buildGlobalBind(data)
-	c.buildGlobalCustomConfig(data)
-	c.buildGlobalDNS(data)
-	c.buildGlobalForwardFor(data)
-	c.buildGlobalHealthz(data)
-	c.buildGlobalHTTPStoHTTP(data)
-	c.buildGlobalModSecurity(data)
-	c.buildGlobalProc(data)
-	c.buildGlobalSSL(data)
-	c.buildGlobalStats(data)
-	c.buildGlobalSyslog(data)
-	c.buildGlobalTimeout(data)
+	d.global.AdminSocket = "/var/run/haproxy-stats.sock"
+	d.global.MaxConn = mapper.Get(ingtypes.GlobalMaxConnections).Int()
+	d.global.DrainSupport.Drain = mapper.Get(ingtypes.GlobalDrainSupport).Bool()
+	d.global.DrainSupport.Redispatch = mapper.Get(ingtypes.GlobalDrainSupportRedispatch).Bool()
+	d.global.Cookie.Key = mapper.Get(ingtypes.GlobalCookieKey).Value
+	d.global.LoadServerState = mapper.Get(ingtypes.GlobalLoadServerState).Bool()
+	d.global.SSL.ALPN = mapper.Get(ingtypes.GlobalTLSALPN).Value
+	d.global.StrictHost = mapper.Get(ingtypes.GlobalStrictHost).Bool()
+	d.global.UseHTX = mapper.Get(ingtypes.GlobalUseHTX).Bool()
+	c.buildGlobalAcme(d)
+	c.buildGlobalBind(d)
+	c.buildGlobalCustomConfig(d)
+	c.buildGlobalDNS(d)
+	c.buildGlobalForwardFor(d)
+	c.buildGlobalHealthz(d)
+	c.buildGlobalHTTPStoHTTP(d)
+	c.buildGlobalModSecurity(d)
+	c.buildGlobalProc(d)
+	c.buildGlobalSSL(d)
+	c.buildGlobalStats(d)
+	c.buildGlobalSyslog(d)
+	c.buildGlobalTimeout(d)
 }
 
 func (c *updater) UpdateHostConfig(host *hatypes.Host, mapper *Mapper) {
@@ -133,6 +136,7 @@ func (c *updater) UpdateHostConfig(host *hatypes.Host, mapper *Mapper) {
 	host.Alias.AliasRegex = mapper.Get(ingtypes.HostServerAliasRegex).Value
 	host.VarNamespace = mapper.Get(ingtypes.HostVarNamespace).Bool()
 	c.buildHostAuthTLS(data)
+	c.buildHostCertSigner(data)
 	c.buildHostSSLPassthrough(data)
 	c.buildHostTimeout(data)
 }

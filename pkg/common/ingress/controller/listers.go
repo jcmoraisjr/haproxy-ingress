@@ -218,6 +218,8 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 	}
 
 	lister := &ingress.StoreLister{}
+	lister.Secret.Client = ic.cfg.Client
+	lister.ConfigMap.Client = ic.cfg.Client
 
 	controller := &cacheController{}
 

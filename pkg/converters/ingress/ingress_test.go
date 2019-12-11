@@ -1325,7 +1325,7 @@ func (c *testConfig) compareText(actual, expected string) {
 
 type updaterMock struct{}
 
-func (u *updaterMock) UpdateGlobalConfig(global *hatypes.Global, config *annotations.Mapper) {
+func (u *updaterMock) UpdateGlobalConfig(haproxyConfig haproxy.Config, config *annotations.Mapper) {
 }
 
 func (u *updaterMock) UpdateHostConfig(host *hatypes.Host, mapper *annotations.Mapper) {

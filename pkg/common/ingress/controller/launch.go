@@ -49,6 +49,36 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		configMap = flags.String("configmap", "",
 			`Name of the ConfigMap that contains the custom configuration to use`)
 
+		acmeServer = flags.Bool("acme-server", false,
+			`Enables acme server. This server is used to receive and answer challenges from
+		Lets Encrypt or other acme implementations.`)
+
+		acmeCheckPeriod = flags.Duration("acme-check-period", 24*time.Hour,
+			`Time between checks of invalid or expiring certificates`)
+
+		acmeElectionID = flags.String("acme-election-id", "acme-leader",
+			`Prefix of the election ID used to choose the acme leader`)
+
+		acmeFailInitialDuration = flags.Duration("acme-fail-initial-duration", 5*time.Minute,
+			`The initial time to wait to retry sign a new certificate after a failure.
+		The time between retries will grow exponentially until 'acme-fail-max-duration'`)
+
+		acmeFailMaxDuration = flags.Duration("acme-fail-max-duration", 8*time.Hour,
+			`The maximum time to wait after failing to sign a new certificate`)
+
+		acmeSecretKeyName = flags.String("acme-secret-key-name", "acme-private-key",
+			`Name and an optional namespace of the secret which will store the acme account
+		private key. If a namespace is not provided, the secret will be created in the same
+		namespace of the controller pod`)
+
+		acmeTokenConfigmapName = flags.String("acme-token-configmap-name", "acme-validation-tokens",
+			`Name and an optional namespace of the configmap which will store acme tokens
+		used to answer the acme challenges. If a namespace is not provided, the secret will be created
+		in the same namespace of the controller pod`)
+
+		acmeTrackTLSAnn = flags.Bool("acme-track-tls-annotation", false,
+			`Enable tracking of ingress objects annotated with 'kubernetes.io/tls-acme'`)
+
 		publishSvc = flags.String("publish-service", "",
 			`Service fronting the ingress controllers. Takes the form
  		namespace/name. The controller will set the endpoint records on the
@@ -252,6 +282,14 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		UpdateStatus:            *updateStatus,
 		ElectionID:              *electionID,
 		Client:                  kubeClient,
+		AcmeServer:              *acmeServer,
+		AcmeCheckPeriod:         *acmeCheckPeriod,
+		AcmeElectionID:          *acmeElectionID,
+		AcmeFailInitialDuration: *acmeFailInitialDuration,
+		AcmeFailMaxDuration:     *acmeFailMaxDuration,
+		AcmeSecretKeyName:       *acmeSecretKeyName,
+		AcmeTokenConfigmapName:  *acmeTokenConfigmapName,
+		AcmeTrackTLSAnn:         *acmeTrackTLSAnn,
 		RateLimitUpdate:         *rateLimitUpdate,
 		ResyncPeriod:            *resyncPeriod,
 		DefaultService:          *defaultSvc,

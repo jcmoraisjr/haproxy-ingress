@@ -20,6 +20,21 @@ import (
 	"fmt"
 )
 
+// AddDomains ...
+func (acme *Acme) AddDomains(storage string, domains []string) {
+	if acme.Certs == nil {
+		acme.Certs = map[string]map[string]struct{}{}
+	}
+	certs, found := acme.Certs[storage]
+	if !found {
+		certs = map[string]struct{}{}
+		acme.Certs[storage] = certs
+	}
+	for _, domain := range domains {
+		certs[domain] = struct{}{}
+	}
+}
+
 func (dns *DNSConfig) String() string {
 	return fmt.Sprintf("%+v", *dns)
 }

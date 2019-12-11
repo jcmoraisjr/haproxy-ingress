@@ -20,11 +20,37 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
+
+func (c *updater) buildGlobalAcme(d *globalData) {
+	endpoint := d.mapper.Get(ingtypes.GlobalAcmeEndpoint).Value
+	if endpoint == "" {
+		return
+	}
+	emails := d.mapper.Get(ingtypes.GlobalAcmeEmails).Value
+	if emails == "" {
+		c.logger.Warn("skipping acme config, missing email account")
+		return
+	}
+	termsAgreed := d.mapper.Get(ingtypes.GlobalAcmeTermsAgreed).Bool()
+	if !termsAgreed {
+		c.logger.Warn("acme terms was not agreed, configure '%s' with \"true\" value", ingtypes.GlobalAcmeTermsAgreed)
+		return
+	}
+	d.acme.Prefix = "/.well-known/acme-challenge/"
+	d.acme.Socket = "/var/run/acme.sock"
+	d.acme.Emails = emails
+	d.acme.Enabled = true
+	d.acme.Endpoint = endpoint
+	d.acme.Expiring = time.Duration(d.mapper.Get(ingtypes.GlobalAcmeExpiring).Int()) * 24 * time.Hour
+	d.acme.Shared = d.mapper.Get(ingtypes.GlobalAcmeShared).Bool()
+	d.acme.TermsAgreed = termsAgreed
+}
 
 func (c *updater) buildGlobalBind(d *globalData) {
 	d.global.Bind.AcceptProxy = d.mapper.Get(ingtypes.GlobalUseProxyProtocol).Bool()
