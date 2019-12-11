@@ -83,7 +83,7 @@ func (d *dynUpdater) checkConfigPair() bool {
 	oldConfigCopy := *oldConfig
 	oldConfigCopy.backends = curConfig.backends
 	oldConfigCopy.defaultBackend = curConfig.defaultBackend
-	if !reflect.DeepEqual(&oldConfigCopy, curConfig) {
+	if !oldConfigCopy.Equals(curConfig) {
 		var diff []string
 		if !reflect.DeepEqual(oldConfig.global, curConfig.global) {
 			diff = append(diff, "global")
