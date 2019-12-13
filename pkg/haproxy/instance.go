@@ -76,13 +76,14 @@ func (i *instance) AcmePeriodicCheck() {
 	if i.oldConfig == nil || i.options.AcmeQueue == nil {
 		return
 	}
+	hasAccount := i.acmeEnsureConfig(i.oldConfig.Acme())
+	if !hasAccount {
+		return
+	}
 	le := i.options.LeaderElector
 	if !le.IsLeader() {
 		i.logger.Info("skipping acme periodic check, leader is %s", le.LeaderName())
 		return
-	}
-	if !i.options.AcmeSigner.HasAccount() {
-		i.acmeEnsureConfig(i.oldConfig.Acme())
 	}
 	i.logger.Info("starting periodic certificate check")
 	var count int
@@ -97,9 +98,11 @@ func (i *instance) AcmePeriodicCheck() {
 	}
 }
 
-func (i *instance) acmeEnsureConfig(acmeConfig *hatypes.Acme) {
-	i.options.AcmeSigner.AcmeConfig(acmeConfig.Expiring)
-	i.options.AcmeSigner.AcmeAccount(acmeConfig.Endpoint, acmeConfig.Emails, acmeConfig.TermsAgreed)
+func (i *instance) acmeEnsureConfig(acmeConfig *hatypes.Acme) bool {
+	signer := i.options.AcmeSigner
+	signer.AcmeConfig(acmeConfig.Expiring)
+	signer.AcmeAccount(acmeConfig.Endpoint, acmeConfig.Emails, acmeConfig.TermsAgreed)
+	return signer.HasAccount()
 }
 
 func (i *instance) acmeBuildCert(storage string, domains map[string]struct{}) string {
@@ -180,7 +183,10 @@ func (i *instance) acmeUpdate() {
 	}
 	le := i.options.LeaderElector
 	if le.IsLeader() {
-		i.acmeEnsureConfig(i.curConfig.Acme())
+		hasAccount := i.acmeEnsureConfig(i.curConfig.Acme())
+		if !hasAccount {
+			return
+		}
 	}
 	var updated bool
 	oldCerts := i.oldConfig.Acme().Certs
