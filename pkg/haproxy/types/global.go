@@ -21,7 +21,7 @@ import (
 )
 
 // AddDomains ...
-func (acme *Acme) AddDomains(storage string, domains []string) {
+func (acme *AcmeData) AddDomains(storage string, domains []string) {
 	if acme.Certs == nil {
 		acme.Certs = map[string]map[string]struct{}{}
 	}

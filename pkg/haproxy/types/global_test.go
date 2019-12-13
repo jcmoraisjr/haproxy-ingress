@@ -58,7 +58,7 @@ func TestAcmeAddDomain(t *testing.T) {
 		},
 	}
 	for i, test := range testCases {
-		acme := Acme{}
+		acme := AcmeData{}
 		for _, cert := range test.certs {
 			acme.AddDomains(cert[0], cert[1:])
 		}

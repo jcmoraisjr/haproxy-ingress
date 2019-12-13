@@ -168,7 +168,7 @@ func (c *converter) syncIngress(ing *extensions.Ingress) {
 		}
 		if tlsAcme {
 			if tls.SecretName != "" {
-				c.haproxy.Acme().AddDomains(ing.Namespace+"/"+tls.SecretName, tls.Hosts)
+				c.haproxy.AcmeData().AddDomains(ing.Namespace+"/"+tls.SecretName, tls.Hosts)
 			} else {
 				c.logger.Warn("skipping cert signer of ingress '%s': missing secret name", fullIngName)
 			}

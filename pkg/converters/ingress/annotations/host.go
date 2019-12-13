@@ -51,8 +51,8 @@ func (c *updater) buildHostCertSigner(d *hostData) {
 		c.logger.Warn("ignoring invalid cert-signer on %v: %s", signer.Source, signer.Value)
 		return
 	}
-	acme := c.haproxy.Acme()
-	if acme.Endpoint == "" || acme.Emails == "" {
+	acmeData := c.haproxy.AcmeData()
+	if acmeData.Endpoint == "" || acmeData.Emails == "" {
 		c.logger.Warn("ignoring acme signer on %v due to missing endpoint or email config", signer.Source)
 		return
 	}

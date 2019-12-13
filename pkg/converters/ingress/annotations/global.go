@@ -42,14 +42,14 @@ func (c *updater) buildGlobalAcme(d *globalData) {
 		c.logger.Warn("acme terms was not agreed, configure '%s' with \"true\" value", ingtypes.GlobalAcmeTermsAgreed)
 		return
 	}
+	d.acmeData.Emails = emails
+	d.acmeData.Endpoint = endpoint
+	d.acmeData.Expiring = time.Duration(d.mapper.Get(ingtypes.GlobalAcmeExpiring).Int()) * 24 * time.Hour
+	d.acmeData.TermsAgreed = termsAgreed
 	d.acme.Prefix = "/.well-known/acme-challenge/"
 	d.acme.Socket = "/var/run/acme.sock"
-	d.acme.Emails = emails
 	d.acme.Enabled = true
-	d.acme.Endpoint = endpoint
-	d.acme.Expiring = time.Duration(d.mapper.Get(ingtypes.GlobalAcmeExpiring).Int()) * 24 * time.Hour
 	d.acme.Shared = d.mapper.Get(ingtypes.GlobalAcmeShared).Bool()
-	d.acme.TermsAgreed = termsAgreed
 }
 
 func (c *updater) buildGlobalBind(d *globalData) {
