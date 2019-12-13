@@ -59,6 +59,8 @@ func (t *Queue) Run(period time.Duration, stopCh <-chan struct{}) {
 	wait.Until(t.worker, period, stopCh)
 }
 
+var notification = Element{Key: nil, Timestamp: 0}
+
 // Enqueue enqueues ns/name of the given api object in the task queue.
 func (t *Queue) Enqueue(obj interface{}) {
 	if t.IsShuttingDown() {
@@ -66,6 +68,26 @@ func (t *Queue) Enqueue(obj interface{}) {
 		return
 	}
 
+	//
+	// This work queue implementation is only used by status and both controller parsers
+	// Status uses a dummy string just to start the job, both controllers are started
+	// with the object being changed.
+	//
+	// The change below ignores the received object:
+	//   - Multiple updates in a short time range - below the rate limit - are starting
+	//     the controller parser several times, wasting CPU specially on big k8s clusters
+	//
+	// Why this change is not a problem:
+	//   - Status is already enqueueing the same dummy string, so no problem here
+	//   - Controller parsing is enqueueing the changed object, which is ignored by the
+	//     old and new parsers
+	//
+	// Btw this work queue is deprecated and is being removed on v0.11
+	//
+
+	t.queue.Add(notification)
+
+	/* old code
 	ts := time.Now().UnixNano()
 	glog.V(3).Infof("queuing item %v", obj)
 	key, err := t.fn(obj)
@@ -77,6 +99,7 @@ func (t *Queue) Enqueue(obj interface{}) {
 		Key:       key,
 		Timestamp: ts,
 	})
+	*/
 }
 
 func (t *Queue) defaultKeyFunc(obj interface{}) (interface{}, error) {

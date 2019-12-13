@@ -108,30 +108,6 @@ func TestEnqueueFailed(t *testing.T) {
 	}
 }
 
-func TestEnqueueKeyError(t *testing.T) {
-	// initialize result
-	atomic.StoreUint32(&sr, 0)
-	q := NewCustomTaskQueue(mockSynFn, mockErrorKeyFn)
-	stopCh := make(chan struct{})
-	// run queue
-	go q.Run(5*time.Second, stopCh)
-	// mock object whichi will be enqueue
-	mo := mockEnqueueObj{
-		k: "testKey",
-		v: "testValue",
-	}
-
-	q.Enqueue(mo)
-	// wait for 'mockSynFn'
-	time.Sleep(time.Millisecond * 10)
-	// key error, so the result should be 0
-	if atomic.LoadUint32(&sr) != 0 {
-		t.Errorf("error occurs while get key, so sr should be 0, but is %d", sr)
-	}
-	// shutdown queue before exit
-	q.Shutdown()
-}
-
 func TestSkipEnqueue(t *testing.T) {
 	// initialize result
 	atomic.StoreUint32(&sr, 0)
