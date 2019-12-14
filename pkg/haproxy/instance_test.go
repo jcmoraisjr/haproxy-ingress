@@ -2872,6 +2872,7 @@ func (c *testConfig) configGlobal(global *hatypes.Global) {
 	global.Timeout.ServerFin = "50s"
 	global.Timeout.Stop = "15m"
 	global.Timeout.Tunnel = "1h"
+	global.UseHTX = true
 }
 
 var endpointS0 = &hatypes.Endpoint{
