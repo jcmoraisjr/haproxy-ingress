@@ -351,10 +351,10 @@ limitation was removed on v0.6.
 
 See also:
 
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-cookie
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-cookie
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4-cookie
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-cookie
 * https://www.haproxy.com/blog/load-balancing-affinity-persistence-sticky-sessions-what-you-need-to-know/
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#dynamic-cookie-key
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#dynamic-cookie-key
 
 ---
 
@@ -396,10 +396,10 @@ overwrite the weight defined from the agent
 
 See also:
 
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-agent-check
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-agent-port
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-agent-inter
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-agent-send
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-agent-check
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-agent-port
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-agent-inter
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-agent-send
 
 ---
 
@@ -430,7 +430,7 @@ The following keys are supported:
 * `auth-tls-error-page`: Optional URL of the page to redirect the user if he doesn't provide a certificate or the certificate is invalid.
 * `auth-tls-secret`: Mandatory secret name with `ca.crt` key providing all certificate authority bundles used to validate client certificates.
 * `auth-tls-verify-client`: Optional configuration of Client Verification behavior. Supported values are `off`, `on`, `optional` and `optional_no_ca`. The default value is `on` if a valid secret is provided, `off` otherwise.
-* `ssl-headers-prefix`: Configures which prefix should be used on HTTP headers. Since [RFC 6648](http://tools.ietf.org/html/rfc6648) `X-` prefix on unstandardized headers changed from a convention to deprecation. This configuration allows to select which pattern should be used on header names.
+* `ssl-headers-prefix`: Configures which prefix should be used on HTTP headers. Since [RFC 6648](https://tools.ietf.org/html/rfc6648) `X-` prefix on unstandardized headers changed from a convention to deprecation. This configuration allows to select which pattern should be used on header names.
 
 See also:
 
@@ -460,7 +460,7 @@ See also:
 
 * [use-htx](#use-htx) configuration key to enable HTTP/2 backends.
 * [secure-backend](#secure-backend) configuration keys to configure optional client certificate and certificate authority bundle of SSL/TLS connections.
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-proto
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-proto
 
 ---
 
@@ -474,7 +474,7 @@ Defines a valid HAProxy load balancing algorithm. The default value is `roundrob
 
 See also:
 
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-balance
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4-balance
 
 ---
 
@@ -493,7 +493,7 @@ The bind configuration keys in this section have precedente if declared.
 
 Any HAProxy supported option can be used, this will be copied verbatim to the
 bind keyword. See HAProxy
-[bind keyword doc](#http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-bind).
+[bind keyword doc](#https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4-bind).
 
 Configuration examples:
 
@@ -515,7 +515,7 @@ configuration key.
 
 See also:
 
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-bind
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4-bind
 * [Bind IP addr](#bind-ip-addr)
 * [Bind port](#bind-port)
 
@@ -539,7 +539,7 @@ Define listening IPv4/IPv6 address on public HAProxy frontends.
 
 See also:
 
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-bind
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4-bind
 * [Bind](#bind)
 
 ---
@@ -558,7 +558,7 @@ See also:
 
 See also:
 
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-monitor-uri (`healthz-port`)
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4-monitor-uri (`healthz-port`)
 * [Bind](#bind)
 
 ---
@@ -645,8 +645,8 @@ uses the chosen load balance algorithm.
 See also:
 
 * [example]({{% relref "../examples/blue-green" %}}) page.
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-weight (`weight` based balance)
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-use-server (`use-server` based selector)
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-weight (`weight` based balance)
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4-use-server (`use-server` based selector)
 
 ---
 
@@ -713,9 +713,9 @@ Configuration of connection limits.
 
 See also:
 
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.2-maxconn (`max-connections`)
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-maxconn (`maxconn-server`)
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-maxqueue (`maxqueue-server`)
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.2-maxconn (`max-connections`)
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-maxconn (`maxconn-server`)
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-maxqueue (`maxqueue-server`)
 
 ---
 
@@ -779,8 +779,8 @@ The following keys are supported:
 See also:
 
 * [example](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/dns-service-discovery) page.
-* https://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.3.2
-* https://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-resolvers
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.3.2
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-resolvers
 * https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/
 * https://kubernetes.io/docs/concepts/services-networking/service/#headless-services
 
@@ -841,7 +841,7 @@ The following keys are supported:
 
 See also:
 
-* http://cbonte.github.io/haproxy-dconv/1.9/management.html#9.3
+* https://cbonte.github.io/haproxy-dconv/2.0/management.html#9.3
 
 ---
 
@@ -869,7 +869,7 @@ doesn't provide one.
 
 See also:
 
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-option%20forwardfor
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4-option%20forwardfor
 * https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
 
 ---
@@ -932,12 +932,12 @@ Controls server health checks on a per-backend basis.
 
 See also:
 
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4.2-option%20httpchk
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-addr
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-port
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-inter
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-rise
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-fall
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4.2-option%20httpchk
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-addr
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-port
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-inter
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-rise
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-fall
 
 ---
 
@@ -983,7 +983,7 @@ provided that the maximum is lesser than or equal `256`.
 See also:
 
 * [`agent-check`](#agent-check)
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-weight
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-weight
 
 ---
 
@@ -1021,8 +1021,8 @@ an old state with disabled servers will disable them in the new configuration.
 
 See also:
 
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-server-state-file
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-load-server-state-from-file
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-server-state-file
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4-load-server-state-from-file
 
 ---
 
@@ -1043,7 +1043,7 @@ Customize the tcp, http or https log format using log format variables. Only use
 
 See also:
 
-* https://cbonte.github.io/haproxy-dconv/1.9/configuration.html#8.2.4
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#8.2.4
 
 ---
 
@@ -1078,8 +1078,8 @@ See also:
 
 * [example]({{% relref "../examples/modsecurity" %}}) page.
 * [`waf`](#waf) configuration key.
-* https://www.haproxy.org/download/1.9/doc/SPOE.txt
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#9.3
+* https://www.haproxy.org/download/2.0/doc/SPOE.txt
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#9.3
 * https://github.com/jcmoraisjr/modsecurity-spoa
 
 ---
@@ -1111,9 +1111,9 @@ If splitting HAProxy into two or more process and the number of threads is one,
 See also:
 
 * [nbthread](#nbthread) configuration key
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-nbproc
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-bind-process
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-cpu-map
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-nbproc
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4-bind-process
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-cpu-map
 
 ---
 
@@ -1132,8 +1132,8 @@ bind each thread on its own CPU core.
 
 See also:
 
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-nbthread
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-cpu-map
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-nbthread
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-cpu-map
 
 ---
 
@@ -1183,7 +1183,7 @@ Since 0.7 `unlimited` can also be used to overwrite any global body size limit.
 
 See also:
 
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#7.3.6-req.body_size
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#7.3.6-req.body_size
 
 ---
 
@@ -1201,12 +1201,12 @@ Configures PROXY protocol in frontends and backends.
 
 See also:
 
-* http://www.haproxy.org/download/1.9/doc/proxy-protocol.txt
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.1-accept-proxy
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-send-proxy
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-send-proxy-v2
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-send-proxy-v2-ssl
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-send-proxy-v2-ssl-cn
+* https://www.haproxy.org/download/2.0/doc/proxy-protocol.txt
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.1-accept-proxy
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-send-proxy
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-send-proxy-v2
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-send-proxy-v2-ssl
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-send-proxy-v2-ssl-cn
 
 ---
 
@@ -1343,10 +1343,10 @@ Default values on HAProxy Ingress v0.9 and newer:
 See also:
 
 * https://ssl-config.mozilla.org/#server=haproxy
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-ssl-default-bind-ciphers
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-ssl-default-bind-ciphersuites
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-ciphers
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-ciphersuites
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-ssl-default-bind-ciphers
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-ssl-default-bind-ciphersuites
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-ciphers
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-ciphersuites
 
 ---
 
@@ -1364,8 +1364,8 @@ Configures Diffie-Hellman key exchange parameters.
 
 See also:
 
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#tune.ssl.default-dh-param
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-ssl-dh-param-file
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#tune.ssl.default-dh-param
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-ssl-dh-param-file
 
 ---
 
@@ -1384,8 +1384,8 @@ the ssl-engine used supports it.
 
 Reference:
 
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#ssl-engine
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#ssl-mode-async
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#ssl-engine
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#ssl-mode-async
 
 ---
 
@@ -1517,8 +1517,8 @@ Logging configurations.
 
 See also:
 
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-log
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-log-tag
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-log
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-log-tag
 
 ---
 
@@ -1554,8 +1554,8 @@ The following keys are supported:
 
 See also:
 
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-hard-stop-after (`timeout-stop`)
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#2.4 (time suffix)
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-hard-stop-after (`timeout-stop`)
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#2.4 (time suffix)
 
 ---
 
@@ -1570,7 +1570,7 @@ HTTP/2 on the client side.
 
 See also:
 
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.1-alpn
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.1-alpn
 
 ---
 
@@ -1585,7 +1585,7 @@ is `false`. HTX should be used to enable HTTP/2 protocol to backends.
 
 See also:
 
-* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-option%20http-use-htx
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4-option%20http-use-htx
 
 ---
 

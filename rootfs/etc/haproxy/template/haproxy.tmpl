@@ -447,10 +447,10 @@ backend {{ $backend.ID }}
 {{- if $rewrite }}
 {{- range $path := $rewriteCfg.Paths.Items }}
 {{- if eq $rewrite "/" }}
-    reqrep ^([^:\ ]*)\ {{ $path.Path }}/?(.*)$     \1\ {{ $rewrite }}\2
+    http-request replace-uri ^{{ $path.Path }}/?(.*)$     {{ $rewrite }}\1
         {{- if $needACL }}     if { var(txn.pathID) {{ $path.ID }} }{{ end }}
 {{- else }}
-    reqrep ^([^:\ ]*)\ {{ $path.Path }}(.*)$       \1\ {{ $rewrite }}{{ if hasSuffix $path.Path "/" }}/{{ end }}\2
+    http-request replace-uri ^{{ $path.Path }}(.*)$       {{ $rewrite }}{{ if hasSuffix $path.Path "/" }}/{{ end }}\1
         {{- if $needACL }}     if { var(txn.pathID) {{ $path.ID }} }{{ end }}
 {{- end }}
 {{- end }}
@@ -1051,7 +1051,7 @@ listen stats
     stats enable
     stats uri /
     no log
-    option forceclose
+    option httpclose
     stats show-legends
 
   # # # # # # # # # # # # # # # # # # #
