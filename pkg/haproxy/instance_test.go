@@ -95,11 +95,8 @@ func TestBackends(t *testing.T) {
 			},
 			path: []string{"/", "/sub"},
 			expected: `
-    http-request use-service lua.send-response if METH_OPTIONS
-    http-response set-status 204 reason "No Content" if METH_OPTIONS
-    http-response set-header Content-Type                 "text/plain" if METH_OPTIONS
-    http-response set-header Content-Length               "0" if METH_OPTIONS
-    http-response set-header Access-Control-Max-Age       "86400" if METH_OPTIONS
+    http-request set-var(txn.cors_max_age) str(86400) if METH_OPTIONS
+    http-request use-service lua.send-cors-preflight if METH_OPTIONS
     http-response set-header Access-Control-Allow-Origin  "*"
     http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
     http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"`,
@@ -130,11 +127,8 @@ func TestBackends(t *testing.T) {
     # path01 = d1.local/
     # path02 = d1.local/sub
     http-request set-var(txn.pathID) base,lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map)
-    http-request use-service lua.send-response if METH_OPTIONS
-    http-response set-status 204 reason "No Content" if METH_OPTIONS { var(txn.pathID) path01 }
-    http-response set-header Content-Type                 "text/plain" if METH_OPTIONS { var(txn.pathID) path01 }
-    http-response set-header Content-Length               "0" if METH_OPTIONS { var(txn.pathID) path01 }
-    http-response set-header Access-Control-Max-Age       "86400" if METH_OPTIONS { var(txn.pathID) path01 }
+    http-request set-var(txn.cors_max_age) str(86400) if METH_OPTIONS { var(txn.pathID) path01 }
+    http-request use-service lua.send-cors-preflight if METH_OPTIONS { var(txn.pathID) path01 }
     http-response set-header Access-Control-Allow-Origin  "*" if { var(txn.pathID) path01 }
     http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) path01 }
     http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if { var(txn.pathID) path01 }
@@ -661,7 +655,6 @@ global
     stats socket /var/run/haproxy.sock level admin expose-fd listeners
     maxconn 2000
     hard-stop-after 15m
-    lua-load /usr/local/etc/haproxy/lua/send-response.lua
     lua-load /usr/local/etc/haproxy/lua/auth-request.lua
     lua-load /usr/local/etc/haproxy/lua/services.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
@@ -2077,7 +2070,6 @@ global
     hard-stop-after 15m
     log 127.0.0.1:1514 len 2048 format rfc3164 local0
     log-tag ingress
-    lua-load /usr/local/etc/haproxy/lua/send-response.lua
     lua-load /usr/local/etc/haproxy/lua/auth-request.lua
     lua-load /usr/local/etc/haproxy/lua/services.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
@@ -2968,7 +2960,6 @@ func (c *testConfig) checkConfig(expected string) {
     stats socket /var/run/haproxy.sock level admin expose-fd listeners
     maxconn 2000
     hard-stop-after 15m
-    lua-load /usr/local/etc/haproxy/lua/send-response.lua
     lua-load /usr/local/etc/haproxy/lua/auth-request.lua
     lua-load /usr/local/etc/haproxy/lua/services.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem

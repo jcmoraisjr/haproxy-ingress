@@ -22,6 +22,14 @@ local function send(applet, status, response)
     applet:send(response)
 end
 
+core.register_service("send-cors-preflight", "http", function(applet)
+    applet:set_status(204)
+    applet:add_header("Content-Length", 0)
+    applet:add_header("Content-Type", "text/plain")
+    applet:add_header("Access-Control-Max-Age", applet:get_var("txn.cors_max_age"))
+    applet:start_response()
+end)
+
 core.register_service("send-404", "http", function(applet)
     send(applet, 404, [[
 <html><body><h1>404 Not Found</h1>
