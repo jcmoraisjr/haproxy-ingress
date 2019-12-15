@@ -1,5 +1,7 @@
 # CHANGELOG
 
+## v0.8
+
 ### v0.8-beta.1
 
 Breaking backward compatibility from [v0.7](#v07):
@@ -14,7 +16,7 @@ Note: A new configuration parser and HAProxy config builder is in place. Despite
 * `nbthread` configuration key changed the default value from `1` to `2`
 * `reload-strategy` command-line option changed  the default value from `native` to `reusesocket`
 
-The `--v07-controller=true` command-line option can be used to revert to the old controller and behavior. Note that in this case the `*-v07.tmpl` templates will be used instead. This option will be removed on v1.0.
+The `--v07-controller=true` command-line option can be used to revert to the old controller and behavior. Note that in this case the `*-v07.tmpl` templates will be used instead. This option will be removed on v0.10.
 
 Improvements on the new internal representation and converters:
 
@@ -131,6 +133,16 @@ Fixes and improvements since [v0.8-beta.4](#v08-beta4):
     * `bind-http` - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#bind)
     * `bind-https` - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#bind)
 * Fix panic reading empty targetRef from ep [#455](https://github.com/jcmoraisjr/haproxy-ingress/pull/455)
+
+### v0.8-post-beta.5 (match v0.8)
+
+Fixes and improvements since [v0.8-beta.5](#v08-beta5):
+
+* Update HAProxy from 1.8.22 to 1.8.23
+* Fix txn.namespace on http requests [#463](https://github.com/jcmoraisjr/haproxy-ingress/pull/463)
+* Do ssl-redirect only if tls declares the hostname [#465](https://github.com/jcmoraisjr/haproxy-ingress/pull/465)
+* Fix case on per-path backend maps [#466](https://github.com/jcmoraisjr/haproxy-ingress/pull/466)
+* Fix haproxy.cfg permissions [#476](https://github.com/jcmoraisjr/haproxy-ingress/pull/476)
 
 ## v0.7.5
 
