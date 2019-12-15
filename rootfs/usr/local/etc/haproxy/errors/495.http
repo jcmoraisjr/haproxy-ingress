@@ -1,8 +1,0 @@
-HTTP/1.0 495 SSL Certificate Error
-Cache-Control: no-cache
-Connection: close
-Content-Type: text/html
-
-<html><body><h1>495 SSL Certificate Error</h1>
-An invalid certificate has been provided.
-</body></html>

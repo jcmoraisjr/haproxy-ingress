@@ -37,5 +37,3 @@ The following `make` targets are currently supported:
 * `build` (default): compiles HAProxy Ingress and generates an ELF (Linux) executable at `rootfs/haproxy-ingress-controller` despite the source platform.
 * `test`: run unit tests
 * `image`: generates a Docker image tagged `localhost/haproxy-ingress:latest`
-
-All packages below `pkg/common` and also `pkg/controller/config.go` and `pkg/controller/template.go` are deprecated, find the v0.8+ controller code under `pkg/converters` and `pkg/haproxy`. There are some missing pieces that still need to be rewritten, so you'll need to touch the old controller if your patch needs to adjust them. Please avoid to change `pkg/common` unless you need to change launch, listers or certificate parsing/cache.

@@ -14,11 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package status
+package controller
 
 import (
-	"fmt"
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"sort"
@@ -40,42 +40,18 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/class"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/store"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/k8s"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/task"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/utils"
 )
 
 const (
 	updateInterval = 60 * time.Second
 )
 
-// Sync ...
-type Sync interface {
+// StatusSync ...
+type StatusSync interface {
 	Run(stopCh <-chan struct{})
 	Shutdown()
-}
-
-// Config ...
-type Config struct {
-	Client clientset.Interface
-
-	PublishService string
-
-	ElectionID string
-
-	UpdateStatusOnShutdown bool
-
-	UseNodeInternalIP bool
-
-	IngressLister store.IngressLister
-
-	DefaultIngressClass string
-	IngressClass        string
-
-	// CustomIngressStatus allows to set custom values in Ingress status
-	CustomIngressStatus func(*extensions.Ingress) []apiv1.LoadBalancerIngress
 }
 
 // statusSync keeps the status IP in each Ingress rule updated executing a periodic check
@@ -84,10 +60,10 @@ type Config struct {
 // If the controller is running with the flag --publish-service (with a valid service)
 // the IP address behind the service is used, if not the source is the IP/s of the node/s
 type statusSync struct {
-	Config
+	ic *GenericController
 	// pod contains runtime information about this pod
 	pod *k8s.PodInfo
-
+	//
 	elector *leaderelection.LeaderElector
 	// workqueue used to keep in sync the status IP/s
 	// in the Ingress rules
@@ -116,7 +92,7 @@ func (s statusSync) Shutdown() {
 		return
 	}
 
-	if !s.UpdateStatusOnShutdown {
+	if !s.ic.cfg.UpdateStatusOnShutdown {
 		glog.Warningf("skipping update of status of Ingress rules")
 		return
 	}
@@ -169,25 +145,20 @@ func (s statusSync) keyfunc(input interface{}) (interface{}, error) {
 }
 
 // NewStatusSyncer returns a new Sync instance
-func NewStatusSyncer(config Config) Sync {
-	pod, err := k8s.GetPodDetails(config.Client)
+func NewStatusSyncer(ic *GenericController) StatusSync {
+	pod, err := k8s.GetPodDetails(ic.cfg.Client)
 	if err != nil {
 		glog.Fatalf("unexpected error obtaining pod information: %v", err)
 	}
 
 	st := statusSync{
 		pod: pod,
-
-		Config: config,
+		ic:  ic,
+		// StatusConfig: config,
 	}
 	st.syncQueue = task.NewCustomTaskQueue(st.sync, st.keyfunc)
 
-	// we need to use the defined ingress class to allow multiple leaders
-	// in order to update information about ingress status
-	electionID := fmt.Sprintf("%v-%v", config.ElectionID, config.DefaultIngressClass)
-	if config.IngressClass != "" {
-		electionID = fmt.Sprintf("%v-%v", config.ElectionID, config.IngressClass)
-	}
+	electionID := fmt.Sprintf("%v-%v", ic.cfg.ElectionID, ic.cfg.IngressClass)
 
 	callbacks := leaderelection.LeaderCallbacks{
 		OnStartedLeading: func(context.Context) {
@@ -211,7 +182,7 @@ func NewStatusSyncer(config Config) Sync {
 
 	lock := resourcelock.ConfigMapLock{
 		ConfigMapMeta: metav1.ObjectMeta{Namespace: pod.Namespace, Name: electionID},
-		Client:        config.Client.CoreV1(),
+		Client:        ic.cfg.Client.CoreV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
 			Identity:      pod.Name,
 			EventRecorder: recorder,
@@ -238,9 +209,9 @@ func NewStatusSyncer(config Config) Sync {
 // runningAddresses returns a list of IP addresses and/or FQDN where the
 // ingress controller is currently running
 func (s *statusSync) runningAddresses() ([]string, error) {
-	if s.PublishService != "" {
-		ns, name, _ := k8s.ParseNameNS(s.PublishService)
-		svc, err := s.Client.CoreV1().Services(ns).Get(name, metav1.GetOptions{})
+	if s.ic.cfg.PublishService != "" {
+		ns, name, _ := k8s.ParseNameNS(s.ic.cfg.PublishService)
+		svc, err := s.ic.cfg.Client.CoreV1().Services(ns).Get(name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -261,7 +232,7 @@ func (s *statusSync) runningAddresses() ([]string, error) {
 	}
 
 	// get information about all the pods running the ingress controller
-	pods, err := s.Client.CoreV1().Pods(s.pod.Namespace).List(metav1.ListOptions{
+	pods, err := s.ic.cfg.Client.CoreV1().Pods(s.pod.Namespace).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(s.pod.Labels).String(),
 	})
 	if err != nil {
@@ -270,8 +241,8 @@ func (s *statusSync) runningAddresses() ([]string, error) {
 
 	addrs := []string{}
 	for _, pod := range pods.Items {
-		name := k8s.GetNodeIP(s.Client, pod.Spec.NodeName, s.UseNodeInternalIP)
-		if !utils.StringInSlice(name, addrs) {
+		name := k8s.GetNodeIP(s.ic.cfg.Client, pod.Spec.NodeName, s.ic.cfg.UseNodeInternalIP)
+		if !stringInSlice(name, addrs) {
 			addrs = append(addrs, name)
 		}
 	}
@@ -279,7 +250,7 @@ func (s *statusSync) runningAddresses() ([]string, error) {
 }
 
 func (s *statusSync) isRunningMultiplePods() bool {
-	pods, err := s.Client.CoreV1().Pods(s.pod.Namespace).List(metav1.ListOptions{
+	pods, err := s.ic.cfg.Client.CoreV1().Pods(s.pod.Namespace).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(s.pod.Labels).String(),
 	})
 	if err != nil {
@@ -287,6 +258,15 @@ func (s *statusSync) isRunningMultiplePods() bool {
 	}
 
 	return len(pods.Items) > 1
+}
+
+func stringInSlice(a string, slice []string) bool {
+	for _, b := range slice {
+		if b == a {
+			return true
+		}
+	}
+	return false
 }
 
 // sliceToStatus converts a slice of IP and/or hostnames to LoadBalancerIngress
@@ -311,7 +291,7 @@ func sliceToStatus(endpoints []string) []apiv1.LoadBalancerIngress {
 // If the backend function CustomIngressStatus returns a value different
 // of nil then it uses the returned value or the newIngressPoint values
 func (s *statusSync) updateStatus(newIngressPoint []apiv1.LoadBalancerIngress) {
-	ings := s.IngressLister.List()
+	ings := s.ic.listers.Ingress.List()
 
 	p := pool.NewLimited(10)
 	defer p.Close()
@@ -321,11 +301,17 @@ func (s *statusSync) updateStatus(newIngressPoint []apiv1.LoadBalancerIngress) {
 	for _, cur := range ings {
 		ing := cur.(*extensions.Ingress)
 
-		if !class.IsValid(ing, s.Config.IngressClass, s.Config.DefaultIngressClass) {
+		if !s.ic.IsValidClass(ing) {
 			continue
 		}
 
-		batch.Queue(runUpdate(ing, newIngressPoint, s.Client, s.CustomIngressStatus))
+		var callback func(*extensions.Ingress) []apiv1.LoadBalancerIngress
+		if s.ic.cfg.Backend != nil {
+			callback = s.ic.cfg.Backend.UpdateIngressStatus
+		} else {
+			callback = func(*extensions.Ingress) []apiv1.LoadBalancerIngress { return nil }
+		}
+		batch.Queue(runUpdate(ing, newIngressPoint, s.ic.cfg.Client, callback))
 	}
 
 	batch.QueueComplete()

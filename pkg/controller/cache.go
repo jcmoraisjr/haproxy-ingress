@@ -38,6 +38,8 @@ import (
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 )
 
+const dhparamFilename = "dhparam.pem"
+
 type cache struct {
 	client                 k8s.Interface
 	listers                *ingress.StoreLister

@@ -1,8 +1,0 @@
-HTTP/1.0 421 Misdirected Request
-Cache-Control: no-cache
-Connection: close
-Content-Type: text/html
-
-<html><body><h1>421 Misdirected Request</h1>
-Request sent to a non-authoritative server.
-</body></html>

@@ -1,8 +1,0 @@
-HTTP/1.0 496 SSL Certificate Required
-Cache-Control: no-cache
-Connection: close
-Content-Type: text/html
-
-<html><body><h1>496 SSL Certificate Required</h1>
-A client certificate must be provided.
-</body></html>

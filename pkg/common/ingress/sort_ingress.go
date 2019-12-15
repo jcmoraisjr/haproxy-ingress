@@ -21,7 +21,6 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // SSLCert describes a SSL certificate to be used in a server
@@ -41,9 +40,4 @@ type SSLCert struct {
 	CN []string `json:"cn"`
 	// ExpiresTime contains the expiration of this SSL certificate in timestamp format
 	ExpireTime time.Time `json:"expires"`
-}
-
-// GetObjectKind implements the ObjectKind interface as a noop
-func (s SSLCert) GetObjectKind() schema.ObjectKind {
-	return schema.EmptyObjectKind
 }

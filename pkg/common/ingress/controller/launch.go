@@ -91,12 +91,6 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		number of the name of the port.
 		The ports 80 and 443 are not allowed as external ports. This ports are reserved for the backend`)
 
-		udpConfigMapName = flags.String("udp-services-configmap", "",
-			`Name of the ConfigMap that contains the definition of the UDP services to expose.
-		The key in the map indicates the external port to be used. The value is the name of the
-		service with the format namespace/serviceName and the port of the service could be a
-		number of the name of the port.`)
-
 		annPrefix = flags.String("annotations-prefix", "ingress.kubernetes.io",
 			`Defines the prefix of ingress and service annotations`)
 
@@ -123,7 +117,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		SAN extension has the hostname. Default is true`)
 
 		defHealthzURL = flags.String("health-check-path", "/healthz", `Defines
-		the URL to be used as health check inside in the default server in NGINX.`)
+		the URL to be used as health check inside in the default server.`)
 
 		updateStatus = flags.Bool("update-status", true, `Indicates if the
 		ingress controller should update the Ingress status IP/hostname. Default is true`)
@@ -155,11 +149,8 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		useNodeInternalIP = flags.Bool("report-node-internal-ip-address", false,
 			`Defines if the nodes IP address to be returned in the ingress status should be the internal instead of the external IP address`)
 
-		v07 = flags.Bool("v07-controller", false,
-			`Defines if legacy v07 controller code should be used`)
-
 		showVersion = flags.Bool("version", false,
-			`Shows release information about the NGINX Ingress controller`)
+			`Shows release information about the Ingress controller`)
 	)
 
 	flags.AddGoFlagSet(flag.CommandLine)
@@ -182,10 +173,6 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 
 	if *ingressClass != "" {
 		glog.Infof("Watching for ingress class: %s", *ingressClass)
-	}
-
-	if *v07 && *defaultSvc == "" {
-		glog.Fatalf("Please specify --default-backend-service")
 	}
 
 	kubeClient, err := createApiserverClient(*apiserverHost, *kubeConfigFile)
@@ -294,11 +281,9 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		ResyncPeriod:            *resyncPeriod,
 		DefaultService:          *defaultSvc,
 		IngressClass:            *ingressClass,
-		DefaultIngressClass:     backend.DefaultIngressClass(),
-		Namespace:               *watchNamespace,
+		WatchNamespace:          *watchNamespace,
 		ConfigMapName:           *configMap,
 		TCPConfigMapName:        *tcpConfigMapName,
-		UDPConfigMapName:        *udpConfigMapName,
 		AnnPrefix:               *annPrefix,
 		DefaultSSLCertificate:   *defSSLCertificate,
 		VerifyHostname:          *verifyHostname,
@@ -312,7 +297,6 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		UpdateStatusOnShutdown:  *updateStatusOnShutdown,
 		SortBackends:            *sortBackends,
 		UseNodeInternalIP:       *useNodeInternalIP,
-		V07:                     *v07,
 	}
 
 	ic := newIngressController(config)
@@ -323,7 +307,8 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 func registerHandlers(enableProfiling bool, port int, ic *GenericController) {
 	mux := http.NewServeMux()
 	// expose health check endpoint (/healthz)
-	healthz.InstallHandler(mux,
+	healthz.InstallPathHandler(mux,
+		ic.cfg.DefaultHealthzURL,
 		healthz.PingHealthz,
 		ic.cfg.Backend,
 	)
@@ -428,7 +413,5 @@ func createApiserverClient(apiserverHost string, kubeConfig string) (*kubernetes
 func handleFatalInitError(err error) {
 	glog.Fatalf("Error while initializing connection to Kubernetes apiserver. "+
 		"This most likely means that the cluster is misconfigured (e.g., it has "+
-		"invalid apiserver certificates or service accounts configuration). Reason: %s\n"+
-		"Refer to the troubleshooting guide for more information: "+
-		"https://github.com/kubernetes/ingress-nginx/blob/master/docs/troubleshooting.md", err)
+		"invalid apiserver certificates or service accounts configuration). Reason: %s", err)
 }
