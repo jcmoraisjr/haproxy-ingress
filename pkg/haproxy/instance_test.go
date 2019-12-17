@@ -95,11 +95,8 @@ func TestBackends(t *testing.T) {
 			},
 			path: []string{"/", "/sub"},
 			expected: `
-    http-request use-service lua.send-response if METH_OPTIONS
-    http-response set-status 204 reason "No Content" if METH_OPTIONS
-    http-response set-header Content-Type                 "text/plain" if METH_OPTIONS
-    http-response set-header Content-Length               "0" if METH_OPTIONS
-    http-response set-header Access-Control-Max-Age       "86400" if METH_OPTIONS
+    http-request set-var(txn.cors_max_age) str(86400) if METH_OPTIONS
+    http-request use-service lua.send-cors-preflight if METH_OPTIONS
     http-response set-header Access-Control-Allow-Origin  "*"
     http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
     http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"`,
@@ -130,11 +127,8 @@ func TestBackends(t *testing.T) {
     # path01 = d1.local/
     # path02 = d1.local/sub
     http-request set-var(txn.pathID) base,lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map)
-    http-request use-service lua.send-response if METH_OPTIONS
-    http-response set-status 204 reason "No Content" if METH_OPTIONS { var(txn.pathID) path01 }
-    http-response set-header Content-Type                 "text/plain" if METH_OPTIONS { var(txn.pathID) path01 }
-    http-response set-header Content-Length               "0" if METH_OPTIONS { var(txn.pathID) path01 }
-    http-response set-header Access-Control-Max-Age       "86400" if METH_OPTIONS { var(txn.pathID) path01 }
+    http-request set-var(txn.cors_max_age) str(86400) if METH_OPTIONS { var(txn.pathID) path01 }
+    http-request use-service lua.send-cors-preflight if METH_OPTIONS { var(txn.pathID) path01 }
     http-response set-header Access-Control-Allow-Origin  "*" if { var(txn.pathID) path01 }
     http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) path01 }
     http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if { var(txn.pathID) path01 }
@@ -661,8 +655,8 @@ global
     stats socket /var/run/haproxy.sock level admin expose-fd listeners
     maxconn 2000
     hard-stop-after 15m
-    lua-load /usr/local/etc/haproxy/lua/send-response.lua
     lua-load /usr/local/etc/haproxy/lua/auth-request.lua
+    lua-load /usr/local/etc/haproxy/lua/services.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -690,24 +684,7 @@ backend default_empty_8080
     mode http
 backend _error404
     mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/404.http
-    http-request deny deny_status 400
-backend _error413
-    mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/413.http
-    http-request deny deny_status 400
-backend _error421
-    mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/421.http
-    http-request deny deny_status 400
-backend _error495
-    mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/495.http
-    http-request deny deny_status 400
-backend _error496
-    mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/496.http
-    http-request deny deny_status 400
+    http-request use-service lua.send-404
 <<frontends-default>>
 <<support>>
 `)
@@ -900,10 +877,10 @@ frontend _front001
     http-request del-header X-SSL-Client-DN
     http-request del-header X-SSL-Client-SHA1
     http-request del-header X-SSL-Client-Cert` + test.expectedACL + test.expectedSetvar + `
-    use_backend _error421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
-    use_backend _error496 if { var(req.tls_nocrt_redir) _internal }
-    use_backend _error421 if !tls-has-crt tls-host-need-crt
-    use_backend _error495 if { var(req.tls_invalidcrt_redir) _internal }
+    http-request use-service lua.send-421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
+    http-request use-service lua.send-496 if { var(req.tls_nocrt_redir) _internal }
+    http-request use-service lua.send-421 if !tls-has-crt tls-host-need-crt
+    http-request use-service lua.send-495 if { var(req.tls_invalidcrt_redir) _internal }
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     use_backend %[var(req.snibackend)] if { var(req.snibackend) -m found }
     default_backend _error404
@@ -1043,7 +1020,6 @@ backend d2_app_8080
 backend _default_backend
     mode http
     server s0 172.17.0.99:8080 weight 100
-<<backend-errors>>
 frontend _front_http
     mode http
     bind :80
@@ -1219,7 +1195,6 @@ backend d2_app_8080
 backend _default_backend
     mode http
     server s0 172.17.0.99:8080 weight 100
-<<backend-errors>>
 frontend _front_http
     mode http
     bind :80
@@ -1314,7 +1289,6 @@ backend d_app_8080
 backend _default_backend
     mode http
     server s0 172.17.0.99:8080 weight 100
-<<backend-errors>>
 <<frontend-http>>
     default_backend _default_backend
 frontend _front001
@@ -1338,10 +1312,10 @@ frontend _front001
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front001_inv_crt_redir.map,_internal) if tls-has-invalid-crt tls-check-crt
     http-request redirect location %[var(req.tls_nocrt_redir)] code 303 if { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) _internal }
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
-    use_backend _error421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
-    use_backend _error496 if { var(req.tls_nocrt_redir) _internal }
-    use_backend _error421 if !tls-has-crt tls-host-need-crt
-    use_backend _error495 if { var(req.tls_invalidcrt_redir) _internal }
+    http-request use-service lua.send-421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
+    http-request use-service lua.send-496 if { var(req.tls_nocrt_redir) _internal }
+    http-request use-service lua.send-421 if !tls-has-crt tls-host-need-crt
+    http-request use-service lua.send-495 if { var(req.tls_invalidcrt_redir) _internal }
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     use_backend %[var(req.snibackend)] if { var(req.snibackend) -m found }
     default_backend _default_backend
@@ -1450,7 +1424,6 @@ backend d_appca_8080
 backend _default_backend
     mode http
     server s0 172.17.0.99:8080 weight 100
-<<backend-errors>>
 listen _front__tls
     mode tcp
     bind :443
@@ -1485,8 +1458,8 @@ frontend _front001
     http-request set-var(req.snibackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_sni.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front001_inv_crt_redir.map,_internal) if tls-has-invalid-crt tls-check-crt
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
-    use_backend _error421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
-    use_backend _error495 if { var(req.tls_invalidcrt_redir) _internal }
+    http-request use-service lua.send-421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
+    http-request use-service lua.send-495 if { var(req.tls_invalidcrt_redir) _internal }
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     use_backend %[var(req.snibackend)] if { var(req.snibackend) -m found }
     default_backend _default_backend
@@ -1512,10 +1485,10 @@ frontend _front002
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front002_inv_crt_redir.map,_internal) if tls-has-invalid-crt tls-check-crt
     http-request redirect location %[var(req.tls_nocrt_redir)] code 303 if { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) _internal }
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
-    use_backend _error421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
-    use_backend _error496 if { var(req.tls_nocrt_redir) _internal }
-    use_backend _error421 if !tls-has-crt tls-host-need-crt
-    use_backend _error495 if { var(req.tls_invalidcrt_redir) _internal }
+    http-request use-service lua.send-421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
+    http-request use-service lua.send-496 if { var(req.tls_nocrt_redir) _internal }
+    http-request use-service lua.send-421 if !tls-has-crt tls-host-need-crt
+    http-request use-service lua.send-495 if { var(req.tls_invalidcrt_redir) _internal }
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     use_backend %[var(req.snibackend)] if { var(req.snibackend) -m found }
     default_backend _default_backend
@@ -1643,7 +1616,6 @@ backend d_app3_8080
 backend _default_backend
     mode http
     server s0 172.17.0.99:8080 weight 100
-<<backend-errors>>
 <<frontend-http>>
     default_backend _default_backend
 <<frontend-https>>
@@ -2059,7 +2031,7 @@ frontend _front001
     http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map)
     <<https-headers>>
     http-request set-var(req.maxbody) var(req.base),map_beg_int(/etc/haproxy/maps/_front001_max_body_size.map,0)
-    use_backend _error413 if !{ var(req.maxbody) 0 } { req.body_size,sub(req.maxbody) gt 0 }
+    http-request use-service lua.send-413 if !{ var(req.maxbody) 0 } { req.body_size,sub(req.maxbody) gt 0 }
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     default_backend _error404
 <<support>>
@@ -2098,8 +2070,8 @@ global
     hard-stop-after 15m
     log 127.0.0.1:1514 len 2048 format rfc3164 local0
     log-tag ingress
-    lua-load /usr/local/etc/haproxy/lua/send-response.lua
     lua-load /usr/local/etc/haproxy/lua/auth-request.lua
+    lua-load /usr/local/etc/haproxy/lua/services.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -2708,8 +2680,8 @@ frontend _front001
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map(/etc/haproxy/maps/_front001_inv_crt_redir.map,_internal) if tls-has-invalid-crt tls-check-crt
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map_reg(/etc/haproxy/maps/_front001_inv_crt_redir_regex.map,_internal) if { var(req.tls_invalidcrt_redir) _internal }
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
-    use_backend _error421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
-    use_backend _error495 if { var(req.tls_invalidcrt_redir) _internal }
+    http-request use-service lua.send-421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
+    http-request use-service lua.send-495 if { var(req.tls_invalidcrt_redir) _internal }
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     use_backend %[var(req.snibackend)] if { var(req.snibackend) -m found }
     default_backend _error404
@@ -2988,8 +2960,8 @@ func (c *testConfig) checkConfig(expected string) {
     stats socket /var/run/haproxy.sock level admin expose-fd listeners
     maxconn 2000
     hard-stop-after 15m
-    lua-load /usr/local/etc/haproxy/lua/send-response.lua
     lua-load /usr/local/etc/haproxy/lua/auth-request.lua
+    lua-load /usr/local/etc/haproxy/lua/services.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -3013,27 +2985,9 @@ func (c *testConfig) checkConfig(expected string) {
     timeout server          50s
     timeout server-fin      50s
     timeout tunnel          1h`,
-		"<<backend-errors>>": `backend _error413
-    mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/413.http
-    http-request deny deny_status 400
-backend _error421
-    mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/421.http
-    http-request deny deny_status 400
-backend _error495
-    mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/495.http
-    http-request deny deny_status 400
-backend _error496
-    mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/496.http
-    http-request deny deny_status 400`,
 		"<<backends-default>>": `backend _error404
     mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/404.http
-    http-request deny deny_status 400
-<<backend-errors>>`,
+    http-request use-service lua.send-404`,
 		"    <<http-headers>>": `    http-request set-header X-Forwarded-Proto http
     http-request del-header X-SSL-Client-CN
     http-request del-header X-SSL-Client-DN

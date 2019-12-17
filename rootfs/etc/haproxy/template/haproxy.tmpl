@@ -33,8 +33,8 @@ global
     log {{ $global.Syslog.Endpoint }} len {{ $global.Syslog.Length }} format {{ $global.Syslog.Format }} local0
     log-tag {{ $global.Syslog.Tag }}
 {{- end }}
-    lua-load /usr/local/etc/haproxy/lua/send-response.lua
     lua-load /usr/local/etc/haproxy/lua/auth-request.lua
+    lua-load /usr/local/etc/haproxy/lua/services.lua
 {{- if $global.SSL.DHParam.Filename }}
     ssl-dh-param-file {{ $global.SSL.DHParam.Filename }}
 {{- else }}
@@ -378,8 +378,16 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $backend.HasCorsEnabled }}
-    http-request use-service lua.send-response if METH_OPTIONS
+{{- $needACL := gt (len $backend.Cors) 1 }}
+{{- range $corsCfg := $backend.Cors }}
+{{- $cors := $corsCfg.Config }}
+{{- if $cors.Enabled }}
+{{- $paths := $corsCfg.Paths }}
+    http-request set-var(txn.cors_max_age) str({{ $cors.MaxAge }}) if METH_OPTIONS
+        {{- if $needACL }} { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+    http-request use-service lua.send-cors-preflight if METH_OPTIONS
+        {{- if $needACL }} { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+{{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -465,14 +473,6 @@ backend {{ $backend.ID }}
 {{- $cors := $corsCfg.Config }}
 {{- if $cors.Enabled }}
 {{- $paths := $corsCfg.Paths }}
-    http-response set-status 204 reason "No Content" if METH_OPTIONS
-        {{- if $needACL }} { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
-    http-response set-header Content-Type                 "text/plain" if METH_OPTIONS
-        {{- if $needACL }} { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
-    http-response set-header Content-Length               "0" if METH_OPTIONS
-        {{- if $needACL }} { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
-    http-response set-header Access-Control-Max-Age       "{{ $cors.MaxAge }}" if METH_OPTIONS
-        {{- if $needACL }} { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
     http-response set-header Access-Control-Allow-Origin  "{{ $cors.AllowOrigin }}"
         {{- if $needACL }} if { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
     http-response set-header Access-Control-Allow-Methods "{{ $cors.AllowMethods }}"
@@ -574,36 +574,16 @@ backend _acme_challenge
     server _acme_server unix@{{ $cfg.Acme.Socket }}
 {{- end }}
 
-{{- if $cfg.Backends }}
+{{- if and $cfg.Backends (not $cfg.DefaultBackend) }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
 #     Error pages
 #
-{{- if not $cfg.DefaultBackend }}
 backend _error404
     mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/404.http
-    http-request deny deny_status 400
+    http-request use-service lua.send-404
 {{- end }}
-backend _error413
-    mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/413.http
-    http-request deny deny_status 400
-backend _error421
-    mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/421.http
-    http-request deny deny_status 400
-backend _error495
-    mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/495.http
-    http-request deny deny_status 400
-backend _error496
-    mode http
-    errorfile 400 /usr/local/etc/haproxy/errors/496.http
-    http-request deny deny_status 400
-
-{{- end }}{{/* if has Backends */}}
 
 {{- $fgroup := $cfg.FrontendGroup }}
 {{- if $fgroup }}
@@ -992,21 +972,21 @@ frontend {{ $frontend.Name }}
 
 {{- /*------------------------------------*/}}
 {{- if $frontend.HasMaxBody }}
-    use_backend _error413 if
+    http-request use-service lua.send-413 if
         {{- "" }} !{ var(req.maxbody) 0 } { req.body_size,sub(req.maxbody) gt 0 }
 {{- end }}
 {{- if $frontend.HasTLSAuth }}
-    use_backend _error421 if
+    http-request use-service lua.send-421 if
         {{- "" }} tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
 {{- if $frontend.HasTLSMandatory }}
-    use_backend _error496 if
+    http-request use-service lua.send-496 if
         {{- "" }} { var(req.tls_nocrt_redir) _internal }
 {{- /* HTTP 421 instead of 404 if missing sni or the provided one doesn't read client crt. */}}
 {{- /* Waiting move the tls-auth stuff to the backend to implement a proper config. */}}
-    use_backend _error421 if
+    http-request use-service lua.send-421 if
         {{- "" }} !tls-has-crt tls-host-need-crt
 {{- end }}
-    use_backend _error495 if
+    http-request use-service lua.send-495 if
         {{- "" }} { var(req.tls_invalidcrt_redir) _internal }
 {{- end }}
 
