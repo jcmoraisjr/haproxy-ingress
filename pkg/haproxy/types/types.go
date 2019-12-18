@@ -20,17 +20,21 @@ import (
 	"time"
 )
 
-// Acme ...
-type Acme struct {
+// AcmeData ...
+type AcmeData struct {
 	Certs       map[string]map[string]struct{}
 	Emails      string
-	Enabled     bool
 	Endpoint    string
 	Expiring    time.Duration
-	Prefix      string
-	Shared      bool
-	Socket      string
 	TermsAgreed bool
+}
+
+// Acme ...
+type Acme struct {
+	Enabled bool
+	Prefix  string
+	Shared  bool
+	Socket  string
 }
 
 // Global ...

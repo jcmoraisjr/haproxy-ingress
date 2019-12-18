@@ -76,7 +76,7 @@ func (i *instance) AcmePeriodicCheck() {
 	if i.oldConfig == nil || i.options.AcmeQueue == nil {
 		return
 	}
-	hasAccount := i.acmeEnsureConfig(i.oldConfig.Acme())
+	hasAccount := i.acmeEnsureConfig(i.oldConfig.AcmeData())
 	if !hasAccount {
 		return
 	}
@@ -87,7 +87,7 @@ func (i *instance) AcmePeriodicCheck() {
 	}
 	i.logger.Info("starting periodic certificate check")
 	var count int
-	for storage, domains := range i.oldConfig.Acme().Certs {
+	for storage, domains := range i.oldConfig.AcmeData().Certs {
 		i.acmeAddCert(storage, domains)
 		count++
 	}
@@ -98,7 +98,7 @@ func (i *instance) AcmePeriodicCheck() {
 	}
 }
 
-func (i *instance) acmeEnsureConfig(acmeConfig *hatypes.Acme) bool {
+func (i *instance) acmeEnsureConfig(acmeConfig *hatypes.AcmeData) bool {
 	signer := i.options.AcmeSigner
 	signer.AcmeConfig(acmeConfig.Expiring)
 	signer.AcmeAccount(acmeConfig.Endpoint, acmeConfig.Emails, acmeConfig.TermsAgreed)
@@ -183,14 +183,14 @@ func (i *instance) acmeUpdate() {
 	}
 	le := i.options.LeaderElector
 	if le.IsLeader() {
-		hasAccount := i.acmeEnsureConfig(i.curConfig.Acme())
+		hasAccount := i.acmeEnsureConfig(i.curConfig.AcmeData())
 		if !hasAccount {
 			return
 		}
 	}
 	var updated bool
-	oldCerts := i.oldConfig.Acme().Certs
-	curCerts := i.curConfig.Acme().Certs
+	oldCerts := i.oldConfig.AcmeData().Certs
+	curCerts := i.curConfig.AcmeData().Certs
 	// Remove from the retry queue certs that was removed from the config
 	for storage, domains := range oldCerts {
 		curdomains, found := curCerts[storage]

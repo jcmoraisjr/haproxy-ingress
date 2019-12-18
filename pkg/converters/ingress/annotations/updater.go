@@ -51,9 +51,10 @@ type updater struct {
 }
 
 type globalData struct {
-	acme   *hatypes.Acme
-	global *hatypes.Global
-	mapper *Mapper
+	acmeData *hatypes.AcmeData
+	acme     *hatypes.Acme
+	global   *hatypes.Global
+	mapper   *Mapper
 }
 
 type hostData struct {
@@ -98,9 +99,10 @@ func (c *updater) splitCIDR(cidrlist *ConfigValue) []string {
 
 func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mapper) {
 	d := &globalData{
-		acme:   haproxyConfig.Acme(),
-		global: haproxyConfig.Global(),
-		mapper: mapper,
+		acmeData: haproxyConfig.AcmeData(),
+		acme:     haproxyConfig.Acme(),
+		global:   haproxyConfig.Global(),
+		mapper:   mapper,
 	}
 	d.global.AdminSocket = "/var/run/haproxy-stats.sock"
 	d.global.MaxConn = mapper.Get(ingtypes.GlobalMaxConnections).Int()
