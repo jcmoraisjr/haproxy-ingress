@@ -227,6 +227,8 @@ The table below describes all supported configuration keys.
 | [`timeout-stop`](#timeout)                           | time with suffix                        | Global  | no timeout         |
 | [`timeout-tunnel`](#timeout)                         | time with suffix                        | Backend | `1h`               |
 | [`tls-alpn`](#tls-alpn)                              | TLS ALPN advertisement                  | Global  | `h2,http/1.1`      |
+| [`use-chroot`](#security)                            | [true\|false]                           | Global  | `false`            |
+| [`use-haproxy-user`](#security)                      | [true\|false]                           | Global  | `false`            |
 | [`use-htx`](#use-htx)                                | [true\|false]                           | Global  | `false`            |
 | [`use-proxy-protocol`](#proxy-protocol)              | [true\|false]                           | Global  | `false`            |
 | [`use-resolver`](#dns-resolvers)                     | resolver name                           | Backend |                    |
@@ -1248,6 +1250,39 @@ Configure secure (TLS) connection to the backends.
 See also:
 
 * [Backend protocol](#backend-protocol) configuration key.
+
+---
+
+## Security
+
+| Configuration key  | Scope    | Default | Since |
+|--------------------|----------|---------|-------|
+| `use-chroot`       | `Global` | `false` | v0.9  |
+| `use-haproxy-user` | `Global` | `false` | v0.9  |
+
+Change security options.
+
+* `use-chroot`: If `true`, configures haproxy to perform a `chroot()` in the empty and non-writable directory `/var/empty` during the startup process, just before it drops its own privileges. Only root can perform a `chroot()`, so HAProxy Ingress container should start as UID `0` if this option is configured as `true`.
+* `use-haproxy-user`: Defines if the haproxy's process should be changed to `haproxy`, UID `1001`. The default value `false` leaves haproxy running as root. Note that even running as root, haproxy always drops its own privileges before start its event loop.
+
+In the default configuration, HAProxy Ingress container starts as root. It is also possible to configure the container to start as `haproxy` user, UID `1001`. Read the [Security considerations](http://cbonte.github.io/haproxy-dconv/1.9/management.html#13) from HAProxy doc before change the starting user. The starting user can be changed in the deployment or daemonset's pod template using the following configuration:
+
+```yaml
+...
+  template:
+    spec:
+      securityContext:
+        runAsUser: 1001
+```
+
+Note that ports below 1024 cannot be bound if the container starts as non-root.
+
+See also:
+
+* http://cbonte.github.io/haproxy-dconv/1.9/management.html#13
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-chroot
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-uid
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-gid
 
 ---
 

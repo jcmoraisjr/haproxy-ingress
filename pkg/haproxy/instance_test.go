@@ -652,7 +652,7 @@ func TestInstanceEmpty(t *testing.T) {
 	c.checkConfig(`
 global
     daemon
-    stats socket /var/run/haproxy.sock level admin expose-fd listeners
+    stats socket /var/run/haproxy.sock level admin expose-fd listeners mode 600
     maxconn 2000
     hard-stop-after 15m
     lua-load /usr/local/etc/haproxy/lua/auth-request.lua
@@ -2065,7 +2065,7 @@ func TestInstanceSyslog(t *testing.T) {
 	c.checkConfig(`
 global
     daemon
-    stats socket /var/run/haproxy.sock level admin expose-fd listeners
+    stats socket /var/run/haproxy.sock level admin expose-fd listeners mode 600
     maxconn 2000
     hard-stop-after 15m
     log 127.0.0.1:1514 len 2048 format rfc3164 local0
@@ -2957,7 +2957,7 @@ func (c *testConfig) checkConfig(expected string) {
 	replace := map[string]string{
 		"<<global>>": `global
     daemon
-    stats socket /var/run/haproxy.sock level admin expose-fd listeners
+    stats socket /var/run/haproxy.sock level admin expose-fd listeners mode 600
     maxconn 2000
     hard-stop-after 15m
     lua-load /usr/local/etc/haproxy/lua/auth-request.lua

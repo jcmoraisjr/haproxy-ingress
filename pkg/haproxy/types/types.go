@@ -55,6 +55,8 @@ type Global struct {
 	Healthz         HealthzConfig
 	Stats           StatsConfig
 	StrictHost      bool
+	UseChroot       bool
+	UseHAProxyUser  bool
 	UseHTX          bool
 	CustomConfig    []string
 	CustomDefaults  []string

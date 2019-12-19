@@ -10,6 +10,13 @@
 {{- $global := $cfg.Global }}
 global
     daemon
+{{- if $global.UseHAProxyUser }}
+    user haproxy
+    group haproxy
+{{- end }}
+{{- if $global.UseChroot }}
+    chroot /var/empty
+{{- end }}
 {{- if gt $global.Procs.Nbproc 1 }}
     nbproc {{ $global.Procs.Nbproc }}
 {{- end }}
@@ -19,7 +26,7 @@ global
 {{- if $global.Procs.CPUMap }}
     cpu-map {{ $global.Procs.CPUMap }}
 {{- end }}
-    stats socket {{ default "--" $global.AdminSocket }} level admin expose-fd listeners
+    stats socket {{ default "--" $global.AdminSocket }} level admin expose-fd listeners mode 600
         {{- if gt $global.Procs.Nbproc 1 }} process 1{{ end }}
 {{- if $global.LoadServerState }}
     server-state-file state-global
