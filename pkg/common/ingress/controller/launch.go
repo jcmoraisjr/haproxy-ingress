@@ -261,15 +261,15 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		glog.Fatalf("resync period (%vs) is too low", resyncPeriod.Seconds())
 	}
 
-	err = os.MkdirAll(ingress.DefaultSSLDirectory, 0655)
+	err = os.MkdirAll(ingress.DefaultSSLDirectory, 0755)
 	if err != nil {
 		glog.Fatalf("Failed to mkdir SSL directory: %v", err)
 	}
-	err = os.MkdirAll(ingress.DefaultCACertsDirectory, 0655)
+	err = os.MkdirAll(ingress.DefaultCACertsDirectory, 0755)
 	if err != nil {
 		glog.Fatalf("Failed to mkdir cacerts directory: %v", err)
 	}
-	err = os.MkdirAll(ingress.DefaultCrlDirectory, 0655)
+	err = os.MkdirAll(ingress.DefaultCrlDirectory, 0755)
 	if err != nil {
 		glog.Fatalf("Failed to mkdir crl directory: %v", err)
 	}

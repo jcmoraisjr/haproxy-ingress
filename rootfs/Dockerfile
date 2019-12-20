@@ -13,10 +13,15 @@
 # limitations under the License.
 
 FROM haproxy:1.9.13-alpine
-RUN apk --no-cache add socat openssl lua5.3 lua-socket dumb-init \
-  && mkdir -p /ingress-controller /etc/haproxy/maps
+RUN apk --no-cache add socat openssl lua5.3 lua-socket dumb-init
 
 COPY . /
+
+RUN addgroup -g 1001 haproxy\
+ && adduser -u 1001 -G haproxy -D -s /bin/false haproxy\
+ && mkdir -p /var/empty /var/lib/haproxy /etc/haproxy/maps /ingress-controller\
+ && chown -R haproxy:haproxy /run /var/lib/haproxy /etc/haproxy /ingress-controller\
+ && chmod 0 /var/empty
 
 STOPSIGNAL SIGTERM
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "/start.sh"]
