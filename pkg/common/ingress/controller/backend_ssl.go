@@ -28,8 +28,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/class"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/parser"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
 )
 
@@ -41,9 +39,6 @@ func (ic *GenericController) syncSecret(key string) {
 
 	secret, err := ic.listers.Secret.GetByName(key)
 	if err != nil {
-		if ic.cfg.V07 {
-			glog.Warningf("error retrieving secret %v: %v", key, err)
-		}
 		return
 	}
 
@@ -84,11 +79,7 @@ func (ic *GenericController) getPemCertificate(secret *apiv1.Secret) (*ingress.S
 	cert, okcert := secret.Data[apiv1.TLSCertKey]
 	key, okkey := secret.Data[apiv1.TLSPrivateKeyKey]
 	ca := secret.Data["ca.crt"]
-
-	// namespace/secretName -> namespace-secretName
-	// use `_` instead if v0.8+
-	sep := map[bool]string{true: "-", false: "_"}
-	nsSecName := strings.Replace(secretName, "/", sep[ic.cfg.V07], -1)
+	nsSecName := strings.Replace(secretName, "/", "_", -1)
 
 	var s *ingress.SSLCert
 	var err error
@@ -140,7 +131,7 @@ func (ic *GenericController) checkMissingSecrets() {
 	for _, obj := range ic.listers.Ingress.List() {
 		ing := obj.(*extensions.Ingress)
 
-		if !class.IsValid(ing, ic.cfg.IngressClass, ic.cfg.DefaultIngressClass) {
+		if !ic.IsValidClass(ing) {
 			continue
 		}
 
@@ -155,7 +146,7 @@ func (ic *GenericController) checkMissingSecrets() {
 			}
 		}
 
-		key, _ := parser.GetStringAnnotation("ingress.kubernetes.io/auth-tls-secret", ing)
+		key, _ := ing.Annotations[ic.cfg.AnnPrefix+"/auth-tls-secret"]
 		if key == "" {
 			continue
 		}

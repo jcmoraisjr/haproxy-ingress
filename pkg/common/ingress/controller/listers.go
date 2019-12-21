@@ -30,8 +30,6 @@ import (
 	fcache "k8s.io/client-go/tools/cache/testing"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/class"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/parser"
 )
 
 type cacheController struct {
@@ -74,9 +72,10 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 	ingEventHandler := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			addIng := obj.(*extensions.Ingress)
-			if !class.IsValid(addIng, ic.cfg.IngressClass, ic.cfg.DefaultIngressClass) {
-				a, _ := parser.GetStringAnnotation(class.IngressKey, addIng)
-				glog.Infof("ignoring add for ingress %v based on annotation %v with value %v", addIng.Name, class.IngressKey, a)
+			if !ic.IsValidClass(addIng) {
+				a, _ := addIng.Annotations[IngressClassKey]
+				glog.Infof("ignoring add for ingress %s/%s based on annotation %s with value %s",
+					addIng.Namespace, addIng.Name, IngressClassKey, a)
 				return
 			}
 			ic.recorder.Eventf(addIng, apiv1.EventTypeNormal, "CREATE", fmt.Sprintf("Ingress %s/%s", addIng.Namespace, addIng.Name))
@@ -97,8 +96,9 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 					return
 				}
 			}
-			if !class.IsValid(delIng, ic.cfg.IngressClass, ic.cfg.DefaultIngressClass) {
-				glog.Infof("ignoring delete for ingress %v based on annotation %v", delIng.Name, class.IngressKey)
+			if !ic.IsValidClass(delIng) {
+				glog.Infof("ignoring delete for ingress %s/%s based on annotation %s",
+					delIng.Namespace, delIng.Name, IngressClassKey)
 				return
 			}
 			ic.recorder.Eventf(delIng, apiv1.EventTypeNormal, "DELETE", fmt.Sprintf("Ingress %s/%s", delIng.Namespace, delIng.Name))
@@ -107,13 +107,13 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 		UpdateFunc: func(old, cur interface{}) {
 			oldIng := old.(*extensions.Ingress)
 			curIng := cur.(*extensions.Ingress)
-			validOld := class.IsValid(oldIng, ic.cfg.IngressClass, ic.cfg.DefaultIngressClass)
-			validCur := class.IsValid(curIng, ic.cfg.IngressClass, ic.cfg.DefaultIngressClass)
+			validOld := ic.IsValidClass(oldIng)
+			validCur := ic.IsValidClass(curIng)
 			if !validOld && validCur {
-				glog.Infof("creating ingress %v based on annotation %v", curIng.Name, class.IngressKey)
+				glog.Infof("creating ingress %v based on annotation %v", curIng.Name, IngressClassKey)
 				ic.recorder.Eventf(curIng, apiv1.EventTypeNormal, "CREATE", fmt.Sprintf("Ingress %s/%s", curIng.Namespace, curIng.Name))
 			} else if validOld && !validCur {
-				glog.Infof("removing ingress %v based on annotation %v", curIng.Name, class.IngressKey)
+				glog.Infof("removing ingress %v based on annotation %v", curIng.Name, IngressClassKey)
 				ic.recorder.Eventf(curIng, apiv1.EventTypeNormal, "DELETE", fmt.Sprintf("Ingress %s/%s", curIng.Namespace, curIng.Name))
 			} else if validCur && !reflect.DeepEqual(old, cur) {
 				ic.recorder.Eventf(curIng, apiv1.EventTypeNormal, "UPDATE", fmt.Sprintf("Ingress %s/%s", curIng.Namespace, curIng.Name))
@@ -178,7 +178,6 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 			if mapKey == ic.cfg.ConfigMapName {
 				glog.V(2).Infof("adding configmap %v to backend", mapKey)
 				ic.cfg.Backend.SetConfig(upCmap)
-				ic.SetForceReload(true)
 			}
 		},
 		UpdateFunc: func(old, cur interface{}) {
@@ -188,10 +187,9 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 				if mapKey == ic.cfg.ConfigMapName {
 					glog.V(2).Infof("updating configmap backend (%v)", mapKey)
 					ic.cfg.Backend.SetConfig(upCmap)
-					ic.SetForceReload(true)
 				}
 				// updates to configuration configmaps can trigger an update
-				if mapKey == ic.cfg.ConfigMapName || mapKey == ic.cfg.TCPConfigMapName || mapKey == ic.cfg.UDPConfigMapName {
+				if mapKey == ic.cfg.ConfigMapName || mapKey == ic.cfg.TCPConfigMapName {
 					ic.recorder.Eventf(upCmap, apiv1.EventTypeNormal, "UPDATE", fmt.Sprintf("ConfigMap %v", mapKey))
 					ic.syncQueue.Enqueue(cur)
 				}
@@ -213,8 +211,8 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 	}
 
 	watchNs := apiv1.NamespaceAll
-	if ic.cfg.ForceNamespaceIsolation && ic.cfg.Namespace != apiv1.NamespaceAll {
-		watchNs = ic.cfg.Namespace
+	if ic.cfg.ForceNamespaceIsolation && ic.cfg.WatchNamespace != apiv1.NamespaceAll {
+		watchNs = ic.cfg.WatchNamespace
 	}
 
 	lister := &ingress.StoreLister{}
@@ -224,7 +222,7 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 	controller := &cacheController{}
 
 	lister.Ingress.Store, controller.Ingress = cache.NewInformer(
-		cache.NewListWatchFromClient(ic.cfg.Client.ExtensionsV1beta1().RESTClient(), "ingresses", ic.cfg.Namespace, fields.Everything()),
+		cache.NewListWatchFromClient(ic.cfg.Client.ExtensionsV1beta1().RESTClient(), "ingresses", ic.cfg.WatchNamespace, fields.Everything()),
 		&extensions.Ingress{}, ic.cfg.ResyncPeriod, ingEventHandler)
 
 	lister.Endpoint.Store, controller.Endpoint = cache.NewInformer(
@@ -244,7 +242,7 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 		&apiv1.Service{}, ic.cfg.ResyncPeriod, cache.ResourceEventHandlerFuncs{})
 
 	lister.Pod.Store, controller.Pod = cache.NewInformer(
-		cache.NewListWatchFromClient(ic.cfg.Client.CoreV1().RESTClient(), "pods", ic.cfg.Namespace, fields.Everything()),
+		cache.NewListWatchFromClient(ic.cfg.Client.CoreV1().RESTClient(), "pods", ic.cfg.WatchNamespace, fields.Everything()),
 		&apiv1.Pod{}, ic.cfg.ResyncPeriod, podEventHandler)
 
 	var nodeListerWatcher cache.ListerWatcher

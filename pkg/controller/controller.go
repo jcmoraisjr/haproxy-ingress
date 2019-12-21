@@ -1,5 +1,5 @@
 /*
-Copyright 2017 The Kubernetes Authors.
+Copyright 2019 The HAProxy Ingress Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,12 +19,8 @@ package controller
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"os"
-	"os/exec"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -35,10 +31,7 @@ import (
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/annotations/class"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/controller"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/defaults"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/dynconfig"
 	configmapconverter "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/configmap"
 	ingressconverter "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
@@ -63,17 +56,9 @@ type HAProxyController struct {
 	configMap         *api.ConfigMap
 	storeLister       *ingress.StoreLister
 	converterOptions  *ingtypes.ConverterOptions
-	command           string
 	reloadStrategy    *string
-	configDir         string
-	configFilePrefix  string
-	configFileSuffix  string
 	maxOldConfigFiles *int
 	validateConfig    *bool
-	haproxyTemplate   *template
-	modsecConfigFile  string
-	modsecTemplate    *template
-	currentConfig     *types.ControllerConfig
 }
 
 // NewHAProxyController constructor
@@ -105,12 +90,6 @@ func (hc *HAProxyController) configController() {
 		glog.Warningf("multibinder is deprecated, using reusesocket strategy instead. update your deployment configuration")
 	}
 	hc.cfg = hc.controller.GetConfig()
-
-	if hc.cfg.V07 {
-		return
-	}
-
-	// starting v0.8 only config
 	hc.stopCh = hc.controller.GetStopCh()
 	hc.logger = &logger{depth: 1}
 	hc.cache = newCache(hc.cfg.Client, hc.storeLister, hc.controller)
@@ -151,9 +130,6 @@ func (hc *HAProxyController) configController() {
 }
 
 func (hc *HAProxyController) startServices() {
-	if hc.cfg.V07 {
-		return
-	}
 	if hc.leaderelector != nil {
 		go hc.leaderelector.Run()
 	}
@@ -258,14 +234,6 @@ func (hc *HAProxyController) ConfigureFlags(flags *pflag.FlagSet) {
 
 // OverrideFlags allows controller to override command line parameter flags
 func (hc *HAProxyController) OverrideFlags(flags *pflag.FlagSet) {
-	hc.configDir = "/etc/haproxy"
-	hc.configFilePrefix = "haproxy"
-	hc.configFileSuffix = ".cfg"
-	hc.haproxyTemplate = newTemplate("haproxy-v07.tmpl", "/etc/haproxy/template/haproxy-v07.tmpl", 16384)
-	hc.modsecConfigFile = "/etc/haproxy/spoe-modsecurity.conf"
-	hc.modsecTemplate = newTemplate("spoe-modsecurity-v07.tmpl", "/etc/haproxy/modsecurity/spoe-modsecurity-v07.tmpl", 1024)
-	hc.command = "/haproxy-reload.sh"
-
 	if !(*hc.reloadStrategy == "native" || *hc.reloadStrategy == "reusesocket" || *hc.reloadStrategy == "multibinder") {
 		glog.Fatalf("Unsupported reload strategy: %v", *hc.reloadStrategy)
 	}
@@ -274,32 +242,6 @@ func (hc *HAProxyController) OverrideFlags(flags *pflag.FlagSet) {
 // SetConfig receives the ConfigMap the user has configured
 func (hc *HAProxyController) SetConfig(configMap *api.ConfigMap) {
 	hc.configMap = configMap
-}
-
-// BackendDefaults defines default values to the ingress core
-func (hc *HAProxyController) BackendDefaults() defaults.Backend {
-	return newHAProxyConfig(hc).Backend
-}
-
-// DefaultEndpoint returns the Endpoint to use as default when the
-// referenced service does not exists
-func (hc *HAProxyController) DefaultEndpoint() ingress.Endpoint {
-	return ingress.Endpoint{
-		Address:  "127.0.0.1",
-		Port:     "8181",
-		Draining: false,
-		Target:   &api.ObjectReference{},
-	}
-}
-
-// DrainSupport indicates whether or not this controller supports a "drain" mode where
-// unavailable and terminating pods are included in the list of returned pods and used to
-// direct certain traffic (e.g., traffic using persistence) to terminating/unavailable pods.
-func (hc *HAProxyController) DrainSupport() (drainSupport bool) {
-	if hc.currentConfig != nil {
-		drainSupport = hc.currentConfig.Cfg.DrainSupport
-	}
-	return
 }
 
 // SyncIngress sync HAProxy config from a very early stage
@@ -313,7 +255,7 @@ func (hc *HAProxyController) SyncIngress(item interface{}) error {
 	var ingress []*extensions.Ingress
 	for _, iing := range hc.storeLister.Ingress.List() {
 		ing := iing.(*extensions.Ingress)
-		if class.IsValid(ing, hc.cfg.IngressClass, hc.cfg.DefaultIngressClass) {
+		if hc.controller.IsValidClass(ing) {
 			ingress = append(ingress, ing)
 		}
 	}
@@ -360,122 +302,5 @@ func (hc *HAProxyController) SyncIngress(item interface{}) error {
 	//
 	hc.instance.Update(timer)
 	hc.logger.Info("Finish HAProxy update id=%d: %s", hc.updateCount, timer.AsString("total"))
-	return nil
-}
-
-// OnUpdate regenerate the configuration file of the backend
-func (hc *HAProxyController) OnUpdate(cfg ingress.Configuration) error {
-	updatedConfig, err := newControllerConfig(&cfg, hc)
-	if err != nil {
-		return err
-	}
-
-	reloadRequired := !dynconfig.ConfigBackends(hc.currentConfig, updatedConfig)
-	hc.currentConfig = updatedConfig
-
-	modSecConf, err := hc.modsecTemplate.execute(updatedConfig)
-	if err != nil {
-		return err
-	}
-
-	if err := hc.writeModSecConfigFile(modSecConf); err != nil {
-		return err
-	}
-
-	data, err := hc.haproxyTemplate.execute(updatedConfig)
-	if err != nil {
-		return err
-	}
-
-	configFile, err := hc.rewriteConfigFiles(data)
-	if err != nil {
-		return err
-	}
-
-	if !reloadRequired {
-		glog.Infoln("HAProxy updated without needing to reload")
-		return nil
-	}
-
-	reloadCmd := exec.Command(hc.command, *hc.reloadStrategy, configFile)
-	out, err := reloadCmd.CombinedOutput()
-	if len(out) > 0 {
-		glog.Infof("HAProxy[pid=%v] output:\n%v", reloadCmd.Process.Pid, string(out))
-	}
-	return err
-}
-
-func (hc *HAProxyController) writeModSecConfigFile(data []byte) error {
-	if err := ioutil.WriteFile(hc.modsecConfigFile, data, 0644); err != nil {
-		glog.Warningf("Error writing modsecurity config file: %v", err)
-		return err
-	}
-	return nil
-}
-
-// RewriteConfigFiles safely replaces configuration files with new contents after validation
-func (hc *HAProxyController) rewriteConfigFiles(data []byte) (string, error) {
-	// Include timestamp in config file name to aid troubleshooting. When using a single, ever-changing config file it
-	// was difficult to know what config was loaded by any given haproxy process
-	timestamp := ""
-	if *hc.maxOldConfigFiles > 0 {
-		timestamp = time.Now().Format("-20060102-150405.000")
-	}
-	configFile := hc.configDir + "/" + hc.configFilePrefix + timestamp + hc.configFileSuffix
-
-	// Write directly to configFile
-	if err := ioutil.WriteFile(configFile, data, 0644); err != nil {
-		glog.Warningf("Error writing haproxy config file: %v", err)
-		return "", err
-	}
-
-	// Validate haproxy config
-	if err := checkValidity(configFile); err != nil {
-		return "", err
-	}
-
-	if *hc.maxOldConfigFiles > 0 {
-		if err := hc.removeOldConfigFiles(); err != nil {
-			glog.Warningf("Problem removing old config files, but continuing in case it was a fluke. err=%v", err)
-		}
-	}
-
-	return configFile, nil
-}
-
-func (hc *HAProxyController) removeOldConfigFiles() error {
-	files, err := ioutil.ReadDir(hc.configDir)
-	if err != nil {
-		return err
-	}
-
-	// Sort with most recently modified first
-	sort.Slice(files, func(i, j int) bool {
-		return files[i].ModTime().After(files[j].ModTime())
-	})
-
-	matchesFound := 0
-	for _, f := range files {
-		if !f.IsDir() && strings.HasPrefix(f.Name(), hc.configFilePrefix) && strings.HasSuffix(f.Name(), hc.configFileSuffix) {
-			matchesFound = matchesFound + 1
-			if matchesFound > *hc.maxOldConfigFiles {
-				filePath := hc.configDir + "/" + f.Name()
-				glog.Infof("Removing old config file (%v). maxOldConfigFiles=%v", filePath, *hc.maxOldConfigFiles)
-				if err := os.Remove(filePath); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
-}
-
-// checkValidity runs a HAProxy configuration validity check on a file
-func checkValidity(configFile string) error {
-	out, err := exec.Command("haproxy", "-c", "-f", configFile).CombinedOutput()
-	if err != nil {
-		glog.Warningf("Error validating config file:\n%v", string(out))
-		return err
-	}
 	return nil
 }
