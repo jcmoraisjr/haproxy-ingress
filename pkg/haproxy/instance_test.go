@@ -2368,11 +2368,13 @@ backend _acme_challenge
 	}
 }
 
-func TestStatsHealthz(t *testing.T) {
+func TestStats(t *testing.T) {
 	testCases := []struct {
 		stats          hatypes.StatsConfig
+		prom           hatypes.PromConfig
 		healtz         hatypes.HealthzConfig
 		expectedStats  string
+		expectedProm   string
 		expectedHealtz string
 	}{
 		// 0
@@ -2415,10 +2417,25 @@ func TestStatsHealthz(t *testing.T) {
 			},
 			expectedHealtz: "127.0.0.1:10253",
 		},
+		// 5
+		{
+			prom: hatypes.PromConfig{
+				Port: 9100,
+			},
+			expectedProm: `
+frontend prometheus
+    mode http
+    bind :9100
+    http-request use-service prometheus-exporter if { path /metrics }
+    http-request use-service lua.send-prometheus-root if { path / }
+    http-request use-service lua.send-404
+    no log`,
+		},
 	}
 	for _, test := range testCases {
 		c := setup(t)
 		c.config.Global().Stats = test.stats
+		c.config.Global().Prometheus = test.prom
 		c.config.Global().Healthz = test.healtz
 		if test.expectedStats == "" {
 			test.expectedStats = "\n    bind :0"
@@ -2436,11 +2453,12 @@ listen stats
     stats uri /
     no log
     option httpclose
-    stats show-legends
+    stats show-legends` + test.expectedProm + `
 frontend healthz
     mode http
     bind ` + test.expectedHealtz + `
     monitor-uri /healthz
+    http-request use-service lua.send-404
     no log
 `)
 		c.logger.CompareLogging(defaultLogging)
@@ -3029,6 +3047,7 @@ frontend healthz
     mode http
     bind :10253
     monitor-uri /healthz
+    http-request use-service lua.send-404
     no log`,
 	}
 	for {

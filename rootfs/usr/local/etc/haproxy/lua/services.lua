@@ -30,6 +30,16 @@ core.register_service("send-cors-preflight", "http", function(applet)
     applet:start_response()
 end)
 
+core.register_service("send-prometheus-root", "http", function(applet)
+    send(applet, 200, [[
+<html>
+<head><title>HAProxy Exporter</title></head>
+<body><h1>HAProxy Exporter</h1>
+<a href='/metrics'>Metrics</a>
+</body></html>
+]])
+end)
+
 core.register_service("send-404", "http", function(applet)
     send(applet, 404, [[
 <html><body><h1>404 Not Found</h1>

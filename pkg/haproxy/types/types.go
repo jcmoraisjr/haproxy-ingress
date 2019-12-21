@@ -53,6 +53,7 @@ type Global struct {
 	LoadServerState bool
 	AdminSocket     string
 	Healthz         HealthzConfig
+	Prometheus      PromConfig
 	Stats           StatsConfig
 	StrictHost      bool
 	UseChroot       bool
@@ -164,6 +165,12 @@ type DrainConfig struct {
 
 // HealthzConfig ...
 type HealthzConfig struct {
+	BindIP string
+	Port   int
+}
+
+// PromConfig ...
+type PromConfig struct {
 	BindIP string
 	Port   int
 }
