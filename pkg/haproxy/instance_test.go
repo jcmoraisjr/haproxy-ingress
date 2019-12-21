@@ -187,7 +187,7 @@ func TestBackends(t *testing.T) {
 			},
 			path: []string{"/app"},
 			expected: `
-    reqrep ^([^:\ ]*)\ /app/?(.*)$     \1\ /\2`,
+    http-request replace-uri ^/app/?(.*)$     /\1`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
@@ -200,7 +200,7 @@ func TestBackends(t *testing.T) {
 			},
 			path: []string{"/app"},
 			expected: `
-    reqrep ^([^:\ ]*)\ /app(.*)$       \1\ /other\2`,
+    http-request replace-uri ^/app(.*)$       /other\1`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
@@ -213,8 +213,8 @@ func TestBackends(t *testing.T) {
 			},
 			path: []string{"/app", "/app/sub"},
 			expected: `
-    reqrep ^([^:\ ]*)\ /app(.*)$       \1\ /other/\2
-    reqrep ^([^:\ ]*)\ /app/sub(.*)$       \1\ /other/\2`,
+    http-request replace-uri ^/app(.*)$       /other/\1
+    http-request replace-uri ^/app/sub(.*)$       /other/\1`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
@@ -235,9 +235,9 @@ func TestBackends(t *testing.T) {
     # path02 = d1.local/path2
     # path03 = d1.local/path3
     http-request set-var(txn.pathID) base,lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map)
-    reqrep ^([^:\ ]*)\ /path1(.*)$       \1\ /sub1\2     if { var(txn.pathID) path01 }
-    reqrep ^([^:\ ]*)\ /path2(.*)$       \1\ /sub2\2     if { var(txn.pathID) path02 }
-    reqrep ^([^:\ ]*)\ /path3(.*)$       \1\ /sub2\2     if { var(txn.pathID) path03 }`,
+    http-request replace-uri ^/path1(.*)$       /sub1\1     if { var(txn.pathID) path01 }
+    http-request replace-uri ^/path2(.*)$       /sub2\1     if { var(txn.pathID) path02 }
+    http-request replace-uri ^/path3(.*)$       /sub2\1     if { var(txn.pathID) path03 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
@@ -2435,7 +2435,7 @@ listen stats
     stats enable
     stats uri /
     no log
-    option forceclose
+    option httpclose
     stats show-legends
 frontend healthz
     mode http
@@ -2872,6 +2872,7 @@ func (c *testConfig) configGlobal(global *hatypes.Global) {
 	global.Timeout.ServerFin = "50s"
 	global.Timeout.Stop = "15m"
 	global.Timeout.Tunnel = "1h"
+	global.UseHTX = true
 }
 
 var endpointS0 = &hatypes.Endpoint{
@@ -3022,7 +3023,7 @@ func (c *testConfig) checkConfig(expected string) {
     stats enable
     stats uri /
     no log
-    option forceclose
+    option httpclose
     stats show-legends
 frontend healthz
     mode http

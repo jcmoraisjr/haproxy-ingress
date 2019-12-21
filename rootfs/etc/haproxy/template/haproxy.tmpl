@@ -92,8 +92,8 @@ defaults
     option dontlognull
     option http-server-close
     option http-keep-alive
-{{- if $global.UseHTX }}
-    option http-use-htx
+{{- if not $global.UseHTX }}
+    no option http-use-htx
 {{- end }}
     timeout client          {{ default "--" $global.Timeout.Client }}
 {{- if $global.Timeout.ClientFin }}
@@ -172,11 +172,6 @@ listen _tcp_{{ $backend.Name }}_{{ $backend.Port }}
     mode tcp
 
 {{- /*------------------------------------*/}}
-{{- if $global.UseHTX }}
-    no option http-use-htx
-{{- end }}
-
-{{- /*------------------------------------*/}}
 {{- if $global.Syslog.Endpoint }}
 {{- if eq $global.Syslog.TCPLogFormat "default" }}
     option tcplog
@@ -252,11 +247,6 @@ backend {{ $backend.ID }}
 {{- /*              MODE TCP              */}}
 {{- /*------------------------------------*/}}
 {{- if $backend.ModeTCP }}
-
-{{- /*------------------------------------*/}}
-{{- if $global.UseHTX }}
-    no option http-use-htx
-{{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $backend.WhitelistTCP }}
@@ -447,10 +437,10 @@ backend {{ $backend.ID }}
 {{- if $rewrite }}
 {{- range $path := $rewriteCfg.Paths.Items }}
 {{- if eq $rewrite "/" }}
-    reqrep ^([^:\ ]*)\ {{ $path.Path }}/?(.*)$     \1\ {{ $rewrite }}\2
+    http-request replace-uri ^{{ $path.Path }}/?(.*)$     {{ $rewrite }}\1
         {{- if $needACL }}     if { var(txn.pathID) {{ $path.ID }} }{{ end }}
 {{- else }}
-    reqrep ^([^:\ ]*)\ {{ $path.Path }}(.*)$       \1\ {{ $rewrite }}{{ if hasSuffix $path.Path "/" }}/{{ end }}\2
+    http-request replace-uri ^{{ $path.Path }}(.*)$       {{ $rewrite }}{{ if hasSuffix $path.Path "/" }}/{{ end }}\1
         {{- if $needACL }}     if { var(txn.pathID) {{ $path.ID }} }{{ end }}
 {{- end }}
 {{- end }}
@@ -612,11 +602,6 @@ backend _error404
 listen _front__tls
     mode tcp
     bind {{ $global.Bind.HTTPSBind }}{{ if $global.Bind.AcceptProxy }} accept-proxy{{ end }}
-
-{{- /*------------------------------------*/}}
-{{- if $global.UseHTX }}
-    no option http-use-htx
-{{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $global.Syslog.Endpoint }}
@@ -1051,7 +1036,7 @@ listen stats
     stats enable
     stats uri /
     no log
-    option forceclose
+    option httpclose
     stats show-legends
 
   # # # # # # # # # # # # # # # # # # #
@@ -1074,9 +1059,6 @@ backend spoe-modsecurity
     mode tcp
     timeout connect 5s
     timeout server  5s
-{{- if $global.UseHTX }}
-    no option http-use-htx
-{{- end }}
 {{- range $i, $endpoint := $global.ModSecurity.Endpoints }}
     server modsec-spoa{{ $i }} {{ $endpoint }}
 {{- end }}
