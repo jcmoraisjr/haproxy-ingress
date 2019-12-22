@@ -65,6 +65,7 @@ func CreateInstance(logger types.Logger, options InstanceOptions) Instance {
 		templates:    template.CreateConfig(),
 		mapsTemplate: template.CreateConfig(),
 		mapsDir:      "/etc/haproxy/maps",
+		metrics:      options.Metrics,
 	}
 }
 
@@ -76,6 +77,7 @@ type instance struct {
 	mapsDir      string
 	oldConfig    Config
 	curConfig    Config
+	metrics      types.Metrics
 }
 
 func (i *instance) AcmePeriodicCheck() {
@@ -184,10 +186,9 @@ func (i *instance) CalcIdleMetric() {
 	if i.oldConfig == nil {
 		return
 	}
-	metrics := i.options.Metrics
 	start := time.Now()
 	msg, err := hautils.HAProxyCommand(i.oldConfig.Global().AdminSocket, "show info")
-	metrics.HAProxyShowInfoResponseTime(time.Since(start))
+	i.metrics.HAProxyShowInfoResponseTime(time.Since(start))
 	if err != nil {
 		i.logger.Error("error reading admin socket: %v", err)
 		return
@@ -201,7 +202,7 @@ func (i *instance) CalcIdleMetric() {
 	if err != nil {
 		i.logger.Error("Idle_pct has an invalid integer: %s", idleStr[1])
 	}
-	metrics.AddIdleFactor(idle)
+	i.metrics.AddIdleFactor(idle)
 }
 
 func (i *instance) Update(timer *utils.Timer) {
@@ -259,20 +260,28 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	//   - dynUpdater might change config state, so it should be called before templates.Write();
 	//   - templates.Write() uses the current config, so it should be called before clearConfig();
 	//   - clearConfig() rotates the configurations, so it should be called always, but only once.
+	//   - i.metrics.IncUpdate<Status>() should be called once
+	//   - i.metrics.UpdateSuccessful() should be called once
 	//
 	if err := i.curConfig.BuildFrontendGroup(); err != nil {
 		i.logger.Error("error building configuration group: %v", err)
 		i.clearConfig()
+		i.metrics.IncUpdateNoop()
+		i.metrics.UpdateSuccessful(false)
 		return
 	}
 	if err := i.curConfig.BuildBackendMaps(); err != nil {
 		i.logger.Error("error building backend maps: %v", err)
 		i.clearConfig()
+		i.metrics.IncUpdateNoop()
+		i.metrics.UpdateSuccessful(false)
 		return
 	}
 	if i.curConfig.Equals(i.oldConfig) {
 		i.logger.InfoV(2, "old and new configurations match, skipping reload")
 		i.clearConfig()
+		i.metrics.IncUpdateNoop()
+		i.metrics.UpdateSuccessful(true)
 		return
 	}
 	updater := i.newDynUpdater()
@@ -286,29 +295,39 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 		if err != nil {
 			i.logger.Error("error writing configuration: %v", err)
 			i.clearConfig()
+			i.metrics.IncUpdateNoop()
+			i.metrics.UpdateSuccessful(false)
 			return
 		}
 	}
 	i.clearConfig()
 	if updated {
 		if updater.cmdCnt > 0 {
+			var err error
 			if i.options.ValidateConfig {
-				if err := i.check(); err != nil {
+				if err = i.check(); err != nil {
 					i.logger.Error("error validating config file:\n%v", err)
 				}
 				timer.Tick("validate")
 			}
 			i.logger.Info("HAProxy updated without needing to reload. Commands sent: %d", updater.cmdCnt)
+			i.metrics.IncUpdateDynamic()
+			i.metrics.UpdateSuccessful(err == nil)
 		} else {
 			i.logger.Info("old and new configurations match")
+			i.metrics.IncUpdateNoop()
+			i.metrics.UpdateSuccessful(true)
 		}
 		return
 	}
+	i.metrics.IncUpdateFull()
 	if err := i.reload(); err != nil {
 		i.logger.Error("error reloading server:\n%v", err)
+		i.metrics.UpdateSuccessful(false)
 		return
 	}
 	timer.Tick("reload")
+	i.metrics.UpdateSuccessful(true)
 	i.logger.Info("HAProxy successfully reloaded")
 }
 

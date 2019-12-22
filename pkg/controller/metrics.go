@@ -25,6 +25,8 @@ import (
 type metrics struct {
 	responseTime       *prometheus.HistogramVec
 	procSecondsCounter *prometheus.CounterVec
+	updatesCounter     *prometheus.CounterVec
+	updateSuccessGauge *prometheus.GaugeVec
 	lastTrack          time.Time
 }
 
@@ -48,9 +50,27 @@ func createMetrics() *metrics {
 			},
 			[]string{},
 		),
+		updatesCounter: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      "updates_total",
+				Help:      "Cumulative number of Ingress controller updates. Status can be noop, dynamic, full.",
+			},
+			[]string{"status"},
+		),
+		updateSuccessGauge: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      "update_success",
+				Help:      "Whether the last haproxy update was successful.",
+			},
+			[]string{},
+		),
 	}
 	prometheus.MustRegister(metrics.responseTime)
 	prometheus.MustRegister(metrics.procSecondsCounter)
+	prometheus.MustRegister(metrics.updatesCounter)
+	prometheus.MustRegister(metrics.updateSuccessGauge)
 	return metrics
 }
 
@@ -67,4 +87,21 @@ func (m *metrics) AddIdleFactor(idle int) {
 	totalTime := now.Sub(m.lastTrack).Seconds()
 	m.lastTrack = now
 	m.procSecondsCounter.WithLabelValues().Add(float64(100-idle) * totalTime / 100)
+}
+
+func (m *metrics) IncUpdateNoop() {
+	m.updatesCounter.WithLabelValues("noop").Inc()
+}
+
+func (m *metrics) IncUpdateDynamic() {
+	m.updatesCounter.WithLabelValues("dynamic").Inc()
+}
+
+func (m *metrics) IncUpdateFull() {
+	m.updatesCounter.WithLabelValues("full").Inc()
+}
+
+func (m *metrics) UpdateSuccessful(success bool) {
+	value := map[bool]float64{false: 0, true: 1}
+	m.updateSuccessGauge.WithLabelValues().Set(value[success])
 }

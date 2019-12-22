@@ -24,4 +24,8 @@ import (
 type Metrics interface {
 	HAProxyShowInfoResponseTime(duration time.Duration)
 	AddIdleFactor(idle int)
+	IncUpdateNoop()
+	IncUpdateDynamic()
+	IncUpdateFull()
+	UpdateSuccessful(success bool)
 }

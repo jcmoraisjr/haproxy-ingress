@@ -2791,6 +2791,7 @@ func setup(t *testing.T) *testConfig {
 	configfile := tempdir + "/haproxy.cfg"
 	instance := CreateInstance(logger, InstanceOptions{
 		HAProxyConfigFile: configfile,
+		Metrics:           helper_test.NewMetricsMock(),
 	}).(*instance)
 	if err := instance.templates.NewTemplate(
 		"haproxy.tmpl",
