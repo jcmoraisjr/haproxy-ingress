@@ -107,6 +107,10 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 
 		healthzPort = flags.Int("healthz-port", 10254, "port for healthz endpoint.")
 
+		statsCollectProcTime = flags.Bool("stats-collect-processing-time", true,
+			`Defines if a cumulative processing time should be added to the metrics.
+		 If defined, haproxy-ingress will collect Idle_pct from the admin socket every 500ms.`)
+
 		profiling = flags.Bool("profiling", true, `Enable profiling via web interface host:port/debug/pprof/`)
 
 		defSSLCertificate = flags.String("default-ssl-certificate", "", `Name of the secret
@@ -288,6 +292,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		DefaultSSLCertificate:   *defSSLCertificate,
 		VerifyHostname:          *verifyHostname,
 		DefaultHealthzURL:       *defHealthzURL,
+		StatsCollectProcTime:    *statsCollectProcTime,
 		PublishService:          *publishSvc,
 		Backend:                 backend,
 		ForceNamespaceIsolation: *forceIsolation,

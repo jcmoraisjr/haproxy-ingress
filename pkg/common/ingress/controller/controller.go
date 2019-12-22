@@ -82,6 +82,7 @@ type Configuration struct {
 	DefaultSSLCertificate string
 	VerifyHostname        bool
 	DefaultHealthzURL     string
+	StatsCollectProcTime  bool
 	PublishService        string
 	Backend               ingress.Controller
 

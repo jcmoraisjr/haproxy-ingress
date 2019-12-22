@@ -47,6 +47,7 @@ type HAProxyController struct {
 	instance          haproxy.Instance
 	logger            *logger
 	cache             *cache
+	metrics           *metrics
 	stopCh            chan struct{}
 	acmeQueue         utils.Queue
 	leaderelector     types.LeaderElector
@@ -93,6 +94,7 @@ func (hc *HAProxyController) configController() {
 	hc.stopCh = hc.controller.GetStopCh()
 	hc.logger = &logger{depth: 1}
 	hc.cache = newCache(hc.cfg.Client, hc.storeLister, hc.controller)
+	hc.metrics = createMetrics()
 	var acmeSigner acme.Signer
 	if hc.cfg.AcmeServer {
 		electorID := fmt.Sprintf("%s-%s", hc.cfg.AcmeElectionID, hc.cfg.IngressClass)
@@ -111,6 +113,7 @@ func (hc *HAProxyController) configController() {
 		AcmeSigner:        acmeSigner,
 		AcmeQueue:         hc.acmeQueue,
 		LeaderElector:     hc.leaderelector,
+		Metrics:           hc.metrics,
 		ReloadStrategy:    *hc.reloadStrategy,
 		MaxOldConfigFiles: *hc.maxOldConfigFiles,
 		ValidateConfig:    *hc.validateConfig,
@@ -130,6 +133,11 @@ func (hc *HAProxyController) configController() {
 }
 
 func (hc *HAProxyController) startServices() {
+	if hc.cfg.StatsCollectProcTime {
+		go wait.Until(func() {
+			hc.instance.CalcIdleMetric()
+		}, 500*time.Millisecond, hc.stopCh)
+	}
 	if hc.leaderelector != nil {
 		go hc.leaderelector.Run()
 	}

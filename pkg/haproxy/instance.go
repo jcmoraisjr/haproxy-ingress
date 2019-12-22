@@ -20,12 +20,16 @@ import (
 	"fmt"
 	"os/exec"
 	"reflect"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
+	hautils "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
@@ -38,6 +42,7 @@ type InstanceOptions struct {
 	MaxOldConfigFiles int
 	HAProxyCmd        string
 	HAProxyConfigFile string
+	Metrics           types.Metrics
 	ReloadCmd         string
 	ReloadStrategy    string
 	ValidateConfig    bool
@@ -48,6 +53,7 @@ type Instance interface {
 	AcmePeriodicCheck()
 	ParseTemplates() error
 	Config() Config
+	CalcIdleMetric()
 	Update(timer *utils.Timer)
 }
 
@@ -170,6 +176,32 @@ func (i *instance) Config() Config {
 		i.curConfig = config
 	}
 	return i.curConfig
+}
+
+var idleRegex = regexp.MustCompile(`Idle_pct: ([0-9]+)`)
+
+func (i *instance) CalcIdleMetric() {
+	if i.oldConfig == nil {
+		return
+	}
+	metrics := i.options.Metrics
+	start := time.Now()
+	msg, err := hautils.HAProxyCommand(i.oldConfig.Global().AdminSocket, "show info")
+	metrics.HAProxyShowInfoResponseTime(time.Since(start))
+	if err != nil {
+		i.logger.Error("error reading admin socket: %v", err)
+		return
+	}
+	idleStr := idleRegex.FindStringSubmatch(msg[0])
+	if len(idleStr) < 2 {
+		i.logger.Error("cannot find Idle_pct field in the show info socket command")
+		return
+	}
+	idle, err := strconv.Atoi(idleStr[1])
+	if err != nil {
+		i.logger.Error("Idle_pct has an invalid integer: %s", idleStr[1])
+	}
+	metrics.AddIdleFactor(idle)
 }
 
 func (i *instance) Update(timer *utils.Timer) {
