@@ -20,6 +20,7 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"strings"
+	"time"
 
 	api "k8s.io/api/core/v1"
 
@@ -101,15 +102,16 @@ func (c *CacheMock) GetPod(podName string) (*api.Pod, error) {
 }
 
 // GetTLSSecretPath ...
-func (c *CacheMock) GetTLSSecretPath(defaultNamespace, secretName string) (convtypes.File, error) {
+func (c *CacheMock) GetTLSSecretPath(defaultNamespace, secretName string) (convtypes.CrtFile, error) {
 	fullname := c.buildSecretName(defaultNamespace, secretName)
 	if path, found := c.SecretTLSPath[fullname]; found {
-		return convtypes.File{
+		return convtypes.CrtFile{
 			Filename: path,
 			SHA1Hash: fmt.Sprintf("%x", sha1.Sum([]byte(path))),
+			NotAfter: time.Now().AddDate(0, 0, 30),
 		}, nil
 	}
-	return convtypes.File{}, fmt.Errorf("secret not found: '%s'", fullname)
+	return convtypes.CrtFile{}, fmt.Errorf("secret not found: '%s'", fullname)
 }
 
 // GetCASecretPath ...

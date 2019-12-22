@@ -320,6 +320,12 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 		}
 		return
 	}
+	// A future implementation of ssl certs dynamic update should change this metric
+	for _, host := range i.oldConfig.Hosts() {
+		if host.TLS.TLSHash != "" {
+			i.metrics.SetCertExpireDate(host.Hostname, host.TLS.TLSNotAfter)
+		}
+	}
 	i.metrics.IncUpdateFull()
 	if err := i.reload(); err != nil {
 		i.logger.Error("error reloading server:\n%v", err)

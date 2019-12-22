@@ -153,7 +153,7 @@ func (hc *HAProxyController) startServices() {
 	}
 }
 
-func (hc *HAProxyController) createDefaultSSLFile(cache convtypes.Cache) (tlsFile convtypes.File) {
+func (hc *HAProxyController) createDefaultSSLFile(cache convtypes.Cache) (tlsFile convtypes.CrtFile) {
 	if hc.cfg.DefaultSSLCertificate != "" {
 		tlsFile, err := cache.GetTLSSecretPath("", hc.cfg.DefaultSSLCertificate)
 		if err == nil {
@@ -163,10 +163,11 @@ func (hc *HAProxyController) createDefaultSSLFile(cache convtypes.Cache) (tlsFil
 	} else {
 		glog.Info("using auto generated fake certificate")
 	}
-	path, hash := hc.controller.CreateDefaultSSLCertificate()
-	tlsFile = convtypes.File{
+	path, hash, notAfter := hc.controller.CreateDefaultSSLCertificate()
+	tlsFile = convtypes.CrtFile{
 		Filename: path,
 		SHA1Hash: hash,
+		NotAfter: notAfter,
 	}
 	return tlsFile
 }

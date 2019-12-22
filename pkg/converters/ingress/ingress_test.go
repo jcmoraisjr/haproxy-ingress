@@ -19,6 +19,7 @@ package ingress
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/kylelemons/godebug/diff"
 	yaml "gopkg.in/yaml.v2"
@@ -1163,9 +1164,10 @@ func (c *testConfig) SyncDef(config map[string]string, ing ...*extensions.Ingres
 			Logger:         c.logger,
 			DefaultConfig:  defaultConfig,
 			DefaultBackend: "system/default",
-			DefaultSSLFile: convtypes.File{
+			DefaultSSLFile: convtypes.CrtFile{
 				Filename: "/tls/tls-default.pem",
 				SHA1Hash: "1",
+				NotAfter: time.Now().AddDate(0, 0, 30),
 			},
 			AnnotationPrefix: "ingress.kubernetes.io",
 		},

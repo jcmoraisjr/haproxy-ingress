@@ -55,3 +55,7 @@ func (m *MetricsMock) IncUpdateFull() {
 // UpdateSuccessful ...
 func (m *MetricsMock) UpdateSuccessful(success bool) {
 }
+
+// SetCertExpireDate ...
+func (m *MetricsMock) SetCertExpireDate(hostname string, notAfter time.Time) {
+}

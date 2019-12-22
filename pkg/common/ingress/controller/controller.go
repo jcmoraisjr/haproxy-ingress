@@ -242,11 +242,11 @@ func (ic *GenericController) Start() {
 }
 
 // CreateDefaultSSLCertificate ...
-func (ic *GenericController) CreateDefaultSSLCertificate() (path, hash string) {
+func (ic *GenericController) CreateDefaultSSLCertificate() (path, hash string, notAfter time.Time) {
 	defCert, defKey := ssl.GetFakeSSLCert()
 	c, err := ssl.AddOrUpdateCertAndKey("default-fake-certificate", defCert, defKey, []byte{})
 	if err != nil {
 		glog.Fatalf("Error generating self signed certificate: %v", err)
 	}
-	return c.PemFileName, c.PemSHA
+	return c.PemFileName, c.PemSHA, c.Certificate.NotAfter
 }

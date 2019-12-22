@@ -27,6 +27,7 @@ type metrics struct {
 	procSecondsCounter *prometheus.CounterVec
 	updatesCounter     *prometheus.CounterVec
 	updateSuccessGauge *prometheus.GaugeVec
+	certExpireGauge    *prometheus.GaugeVec
 	lastTrack          time.Time
 }
 
@@ -66,11 +67,20 @@ func createMetrics() *metrics {
 			},
 			[]string{},
 		),
+		certExpireGauge: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      "cert_expire_date_epoch",
+				Help:      "The SSL certificate expiration date in unix epoch time.",
+			},
+			[]string{"hostname"},
+		),
 	}
 	prometheus.MustRegister(metrics.responseTime)
 	prometheus.MustRegister(metrics.procSecondsCounter)
 	prometheus.MustRegister(metrics.updatesCounter)
 	prometheus.MustRegister(metrics.updateSuccessGauge)
+	prometheus.MustRegister(metrics.certExpireGauge)
 	return metrics
 }
 
@@ -104,4 +114,8 @@ func (m *metrics) IncUpdateFull() {
 func (m *metrics) UpdateSuccessful(success bool) {
 	value := map[bool]float64{false: 0, true: 1}
 	m.updateSuccessGauge.WithLabelValues().Set(value[success])
+}
+
+func (m *metrics) SetCertExpireDate(hostname string, notAfter time.Time) {
+	m.certExpireGauge.WithLabelValues(hostname).Set(float64(notAfter.Unix()))
 }

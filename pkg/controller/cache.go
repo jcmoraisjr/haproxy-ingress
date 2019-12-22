@@ -136,7 +136,7 @@ func (c *cache) buildSecretName(defaultNamespace, secretName string) (string, er
 	)
 }
 
-func (c *cache) GetTLSSecretPath(defaultNamespace, secretName string) (file convtypes.File, err error) {
+func (c *cache) GetTLSSecretPath(defaultNamespace, secretName string) (file convtypes.CrtFile, err error) {
 	fullname, err := c.buildSecretName(defaultNamespace, secretName)
 	if err != nil {
 		return file, err
@@ -148,9 +148,10 @@ func (c *cache) GetTLSSecretPath(defaultNamespace, secretName string) (file conv
 	if sslCert.PemFileName == "" {
 		return file, fmt.Errorf("secret '%s' does not have keys 'tls.crt' and 'tls.key'", fullname)
 	}
-	file = convtypes.File{
+	file = convtypes.CrtFile{
 		Filename: sslCert.PemFileName,
 		SHA1Hash: sslCert.PemSHA,
+		NotAfter: sslCert.Certificate.NotAfter,
 	}
 	return file, nil
 }

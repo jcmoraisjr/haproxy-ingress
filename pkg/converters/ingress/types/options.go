@@ -27,7 +27,7 @@ type ConverterOptions struct {
 	Cache            convtypes.Cache
 	DefaultConfig    func() map[string]string
 	DefaultBackend   string
-	DefaultSSLFile   convtypes.File
+	DefaultSSLFile   convtypes.CrtFile
 	AnnotationPrefix string
 	AcmeTrackTLSAnn  bool
 }

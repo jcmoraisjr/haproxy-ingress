@@ -28,4 +28,5 @@ type Metrics interface {
 	IncUpdateDynamic()
 	IncUpdateFull()
 	UpdateSuccessful(success bool)
+	SetCertExpireDate(hostname string, notAfter time.Time)
 }
