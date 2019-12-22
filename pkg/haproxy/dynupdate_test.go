@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/kylelemons/godebug/diff"
 
@@ -534,7 +535,7 @@ set server default_app_8080/srv002 weight 1`,
 		dynUpdater := instance.newDynUpdater()
 		dynUpdater.old = test.oldConfig
 		dynUpdater.cur = test.curConfig
-		dynUpdater.cmd = func(socket string, command ...string) ([]string, error) {
+		dynUpdater.cmd = func(socket string, observer func(duration time.Duration), command ...string) ([]string, error) {
 			for _, c := range command {
 				cmd = cmd + c + "\n"
 			}

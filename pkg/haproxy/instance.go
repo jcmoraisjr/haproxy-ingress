@@ -24,7 +24,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
@@ -186,9 +185,7 @@ func (i *instance) CalcIdleMetric() {
 	if i.oldConfig == nil {
 		return
 	}
-	start := time.Now()
-	msg, err := hautils.HAProxyCommand(i.oldConfig.Global().AdminSocket, "show info")
-	i.metrics.HAProxyShowInfoResponseTime(time.Since(start))
+	msg, err := hautils.HAProxyCommand(i.oldConfig.Global().AdminSocket, i.metrics.HAProxyShowInfoResponseTime, "show info")
 	if err != nil {
 		i.logger.Error("error reading admin socket: %v", err)
 		return

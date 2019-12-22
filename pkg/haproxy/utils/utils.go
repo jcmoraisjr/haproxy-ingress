@@ -19,12 +19,14 @@ package utils
 import (
 	"fmt"
 	"net"
+	"time"
 )
 
 // HAProxyCommand ...
-func HAProxyCommand(socket string, command ...string) ([]string, error) {
+func HAProxyCommand(socket string, observer func(duration time.Duration), command ...string) ([]string, error) {
 	var msg []string
 	for _, cmd := range command {
+		start := time.Now()
 		c, err := net.Dial("unix", socket)
 		if err != nil {
 			return msg, fmt.Errorf("error connecting to unix socket %s: %v", socket, err)
@@ -42,6 +44,7 @@ func HAProxyCommand(socket string, command ...string) ([]string, error) {
 		} else if r > 2 {
 			msg = append(msg, fmt.Sprintf("response from server: %s", string(readBuffer[:r-2])))
 		}
+		observer(time.Since(start))
 	}
 	return msg, nil
 }

@@ -88,6 +88,10 @@ func (m *metrics) HAProxyShowInfoResponseTime(duration time.Duration) {
 	m.responseTime.WithLabelValues("show_info").Observe(duration.Seconds())
 }
 
+func (m *metrics) HAProxySetServerResponseTime(duration time.Duration) {
+	m.responseTime.WithLabelValues("set_server").Observe(duration.Seconds())
+}
+
 func (m *metrics) AddIdleFactor(idle int) {
 	now := time.Now()
 	if m.lastTrack.IsZero() {

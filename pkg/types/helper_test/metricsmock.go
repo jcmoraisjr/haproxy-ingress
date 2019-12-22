@@ -36,6 +36,10 @@ func NewMetricsMock() *MetricsMock {
 func (m *MetricsMock) HAProxyShowInfoResponseTime(duration time.Duration) {
 }
 
+// HAProxySetServerResponseTime ...
+func (m *MetricsMock) HAProxySetServerResponseTime(duration time.Duration) {
+}
+
 // AddIdleFactor ...
 func (m *MetricsMock) AddIdleFactor(idle int) {
 }
