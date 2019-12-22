@@ -106,7 +106,7 @@ The table below describes all supported configuration keys.
 | [`auth-tls-verify-client`](#auth-tls)                | [off\|optional\|on\|optional_no_ca]     | Host    |                    |
 | `auth-type`                                          | "basic"                                 | Backend |                    |
 | [`backend-check-interval`](#health-check)            | time with suffix                        | Backend | `2s`               |
-| [`backend-protocol`](#backend-protocol)              | [h1\|h2\|h1-ssl\|h2-ssl]                | Backend |                    |
+| [`backend-protocol`](#backend-protocol)              | [h1\|h2\|h1-ssl\|h2-ssl]                | Backend | `h1`               |
 | [`backend-server-slots-increment`](#dynamic-scaling) | number of slots                         | Backend | `32`               |
 | [`balance-algorithm`](#balance-algorithm)            | algorithm name                          | Backend | `roundrobin`       |
 | [`bind-fronting-proxy`](#bind)                       | ip + port                               | Global  |                    |
@@ -202,7 +202,8 @@ The table below describes all supported configuration keys.
 | [`ssl-engine`](#ssl-engine)                          | OpenSSL engine name and parameters      | Global  | no engine set      |
 | [`ssl-headers-prefix`](#auth-tls)                    | prefix                                  | Global  | `X-SSL`            |
 | [`ssl-mode-async`](#ssl-engine)                      | [true\|false]                           | Global  | `false`            |
-| [`ssl-options`](#ssl-options)                        | space-separated list                    | Global  | `no-sslv3` `no-tls-tickets` |
+| [`ssl-options`](#ssl-options)                        | space-separated list                    | Global  | [see description](#ssl-options) |
+| [`ssl-options-backend`](#ssl-options)                | space-separated list                    | Global  | [see description](#ssl-options) |
 | [`ssl-passthrough`](#ssl-passthrough)                | [true\|false]                           | Host    |                    |
 | [`ssl-passthrough-http-port`](#ssl-passthrough)      | backend port                            | Host    |                    |
 | [`ssl-redirect`](#ssl-redirect)                      | [true\|false]                           | Backend | `true`             |
@@ -428,7 +429,7 @@ The following keys are supported:
 
 * `auth-tls-cert-header`: If `true` HAProxy will add `X-SSL-Client-Cert` http header with a base64 encoding of the X509 certificate provided by the client. Default is to not provide the client certificate.
 * `auth-tls-error-page`: Optional URL of the page to redirect the user if he doesn't provide a certificate or the certificate is invalid.
-* `auth-tls-secret`: Mandatory secret name with `ca.crt` key providing all certificate authority bundles used to validate client certificates.
+* `auth-tls-secret`: Mandatory secret name with `ca.crt` key providing all certificate authority bundles used to validate client certificates. Since v0.9, an optional `ca.crl` key can also provide a CRL in PEM format for the server to verify against.
 * `auth-tls-verify-client`: Optional configuration of Client Verification behavior. Supported values are `off`, `on`, `optional` and `optional_no_ca`. The default value is `on` if a valid secret is provided, `off` otherwise.
 * `ssl-headers-prefix`: Configures which prefix should be used on HTTP headers. Since [RFC 6648](http://tools.ietf.org/html/rfc6648) `X-` prefix on unstandardized headers changed from a convention to deprecation. This configuration allows to select which pattern should be used on header names.
 
@@ -442,7 +443,7 @@ See also:
 
 | Configuration key  | Scope     | Default | Since |
 |--------------------|-----------|---------|-------|
-| `backend-protocol` | `Backend` | `h1`    |       |
+| `backend-protocol` | `Backend` | `h1`    | v0.9  |
 
 Defines the HTTP protocol version of the backend. Note that HTTP/2 is only supported if HTX is enabled.
 A case insensitive match is used, so either `h1` or `H1` configures HTTP/1 protocol. A non SSL/TLS
@@ -1245,7 +1246,7 @@ Configure secure (TLS) connection to the backends.
 
 * `secure-backends`: Define as true if the backend provide a TLS connection.
 * `secure-crt-secret`: Optional secret name of client certificate and key. This cert/key pair must be provided if the backend requests a client certificate. Expected secret keys are `tls.crt` and `tls.key`, the same used if secret is built with `kubectl create secret tls <name>`.
-* `secure-verify-ca-secret`: Optional secret name with certificate authority bundle used to validate server certificate, preventing man-in-the-middle attacks. Expected secret key is `ca.crt`.
+* `secure-verify-ca-secret`: Optional secret name with certificate authority bundle used to validate server certificate, preventing man-in-the-middle attacks. Expected secret key is `ca.crt`. Since v0.9, an optional `ca.crl` key can also provide a CRL in PEM format for the server to verify against.
 
 See also:
 
@@ -1391,11 +1392,22 @@ Reference:
 
 ## SSL options
 
-| Configuration key  | Scope    | Default | Since |
-|--------------------|----------|---------|-------|
-| `ssl-options`      | `Global` |         |       |
+| Configuration key     | Scope     | Default | Since |
+|-----------------------|-----------|---------|-------|
+| `ssl-options`         | `Global`  |         |       |
+| `ssl-options-backend` | `Backend` |         | v0.9  |
 
-Define a space-separated list of options on SSL/TLS connections:
+Define a space-separated list of options on SSL/TLS connections.
+
+* `ssl-options`: Options for frontend connections - HAProxy being the server
+* `ssl-options-backend`: Default options for backend server connections - HAProxy being the client
+
+Default values:
+
+* v0.9 and newer: `no-sslv3 no-tlsv10 no-tlsv11 no-tls-tickets`
+* up to v0.8: `no-sslv3 no-tls-tickets`
+
+Supported options:
 
 * `force-sslv3`: Enforces use of SSLv3 only
 * `force-tlsv10`: Enforces use of TLSv1.0 only
@@ -1406,6 +1418,13 @@ Define a space-separated list of options on SSL/TLS connections:
 * `no-tlsv10`: Disables support for TLSv1.0
 * `no-tlsv11`: Disables support for TLSv1.1
 * `no-tlsv12`: Disables support for TLSv1.2
+
+New supported options since v0.9:
+
+* `force-tlsv13`: Enforces use of TLSv1.3 only
+* `no-tlsv13`: Disables support for TLSv1.3
+* `ssl-max-ver <SSLv3|TLSv1.0|TLSv1.1|TLSv1.2|TLSv1.3>`: Enforces the use of a SSL/TLS version or lower
+* `ssl-min-ver <SSLv3|TLSv1.0|TLSv1.1|TLSv1.2|TLSv1.3>`: Enforces the use of a SSL/TLS version or upper
 
 ---
 
@@ -1585,6 +1604,7 @@ is `false`. HTX should be used to enable HTTP/2 protocol to backends.
 
 See also:
 
+* [backend-protocol](#backend-protocol) configuration keys
 * http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4-option%20http-use-htx
 
 ---
@@ -1598,7 +1618,10 @@ See also:
 If `var-namespace` is configured as `true`, a HAProxy var `txn.namespace` is created with the
 kubernetes namespace owner of the service which is the target of the request. This variable is
 useful on http logs. The default value is `false`. Usage: `k8s-namespace: %[var(txn.namespace)]`.
-See also [http-log](#log-format).
+
+See also:
+
+* [http-log](#log-format) configuration key
 
 ---
 
