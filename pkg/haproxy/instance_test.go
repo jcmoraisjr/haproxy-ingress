@@ -2950,7 +2950,7 @@ func _yamlMarshal(in interface{}) string {
 }
 
 func (c *testConfig) Update() {
-	timer := utils.NewTimer()
+	timer := utils.NewTimer(nil)
 	c.instance.Update(timer)
 }
 

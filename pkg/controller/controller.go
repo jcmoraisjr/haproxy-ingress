@@ -260,7 +260,7 @@ func (hc *HAProxyController) SyncIngress(item interface{}) error {
 	//
 	hc.updateCount++
 	hc.logger.Info("Starting HAProxy update id=%d", hc.updateCount)
-	timer := utils.NewTimer()
+	timer := utils.NewTimer(hc.metrics.ControllerProcTime)
 	var ingress []*extensions.Ingress
 	for _, iing := range hc.storeLister.Ingress.List() {
 		ing := iing.(*extensions.Ingress)

@@ -24,6 +24,8 @@ import (
 
 type metrics struct {
 	responseTime       *prometheus.HistogramVec
+	ctlProcTimeSum     *prometheus.CounterVec
+	ctlProcTimeCount   *prometheus.CounterVec
 	procSecondsCounter *prometheus.CounterVec
 	updatesCounter     *prometheus.CounterVec
 	updateSuccessGauge *prometheus.GaugeVec
@@ -42,6 +44,22 @@ func createMetrics() *metrics {
 				Buckets:   []float64{.0005, .001, .002, .005, .01},
 			},
 			[]string{"command"},
+		),
+		ctlProcTimeSum: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      "controller_processing_time_seconds_sum",
+				Help:      "Cumulative time in seconds spent on haproxy-ingress tasks",
+			},
+			[]string{"task"},
+		),
+		ctlProcTimeCount: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      "controller_processing_time_seconds_count",
+				Help:      "Cumulative number of haproxy-ingress tasks executed",
+			},
+			[]string{"task"},
 		),
 		procSecondsCounter: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
@@ -77,6 +95,8 @@ func createMetrics() *metrics {
 		),
 	}
 	prometheus.MustRegister(metrics.responseTime)
+	prometheus.MustRegister(metrics.ctlProcTimeSum)
+	prometheus.MustRegister(metrics.ctlProcTimeCount)
 	prometheus.MustRegister(metrics.procSecondsCounter)
 	prometheus.MustRegister(metrics.updatesCounter)
 	prometheus.MustRegister(metrics.updateSuccessGauge)
@@ -90,6 +110,11 @@ func (m *metrics) HAProxyShowInfoResponseTime(duration time.Duration) {
 
 func (m *metrics) HAProxySetServerResponseTime(duration time.Duration) {
 	m.responseTime.WithLabelValues("set_server").Observe(duration.Seconds())
+}
+
+func (m *metrics) ControllerProcTime(task string, duration time.Duration) {
+	m.ctlProcTimeSum.WithLabelValues(task).Add(duration.Seconds())
+	m.ctlProcTimeCount.WithLabelValues(task).Inc()
 }
 
 func (m *metrics) AddIdleFactor(idle int) {
