@@ -128,6 +128,13 @@ func (c *updater) buildGlobalProc(d *globalData) {
 }
 
 func (c *updater) buildGlobalStats(d *globalData) {
+	// healthz
+	d.global.Healthz.BindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrHealthz).Value
+	d.global.Healthz.Port = d.mapper.Get(ingtypes.GlobalHealthzPort).Int()
+	// prometheus
+	d.global.Prometheus.BindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrPrometheus).Value
+	d.global.Prometheus.Port = d.mapper.Get(ingtypes.GlobalPrometheusPort).Int()
+	// stats
 	d.global.Stats.AcceptProxy = d.mapper.Get(ingtypes.GlobalStatsProxyProtocol).Bool()
 	d.global.Stats.Auth = d.mapper.Get(ingtypes.GlobalStatsAuth).Value
 	d.global.Stats.BindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrStats).Value
@@ -184,11 +191,6 @@ func (c *updater) buildGlobalSSL(d *globalData) {
 	ssl.Engine = d.mapper.Get(ingtypes.GlobalSSLEngine).Value
 	ssl.ModeAsync = d.mapper.Get(ingtypes.GlobalSSLModeAsync).Bool()
 	ssl.HeadersPrefix = d.mapper.Get(ingtypes.GlobalSSLHeadersPrefix).Value
-}
-
-func (c *updater) buildGlobalHealthz(d *globalData) {
-	d.global.Healthz.BindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrHealthz).Value
-	d.global.Healthz.Port = d.mapper.Get(ingtypes.GlobalHealthzPort).Int()
 }
 
 func (c *updater) buildGlobalHTTPStoHTTP(d *globalData) {

@@ -112,10 +112,11 @@ The table below describes all supported configuration keys.
 | [`bind-fronting-proxy`](#bind)                       | ip + port                               | Global  |                    |
 | [`bind-http`](#bind)                                 | ip + port                               | Global  |                    |
 | [`bind-https`](#bind)                                | ip + port                               | Global  |                    |
-| [`bind-ip-addr-healthz`](#bind-ip-addr)              | IP address                              | Global  | `*`                |
-| [`bind-ip-addr-http`](#bind-ip-addr)                 | IP address                              | Global  | `*`                |
-| [`bind-ip-addr-stats`](#bind-ip-addr)                | IP address                              | Global  | `*`                |
-| [`bind-ip-addr-tcp`](#bind-ip-addr)                  | IP address                              | Global  | `*`                |
+| [`bind-ip-addr-healthz`](#bind-ip-addr)              | IP address                              | Global  |                    |
+| [`bind-ip-addr-http`](#bind-ip-addr)                 | IP address                              | Global  |                    |
+| [`bind-ip-addr-prometheus`](#bind-ip-addr)           | IP address                              | Global  |                    |
+| [`bind-ip-addr-stats`](#bind-ip-addr)                | IP address                              | Global  |                    |
+| [`bind-ip-addr-tcp`](#bind-ip-addr)                  | IP address                              | Global  |                    |
 | [`blue-green-balance`](#blue-green)                  | label=value=weight,...                  | Backend |                    |
 | [`blue-green-cookie`](#blue-green)                   | `CookieName:LabelName` pair             | Backend |                    |
 | [`blue-green-deploy`](#blue-green)                   | label=value=weight,...                  | Backend |                    |
@@ -179,6 +180,7 @@ The table below describes all supported configuration keys.
 | [`oauth`](#oauth)                                    | "oauth2_proxy"                          | Backend |                    |
 | [`oauth-headers`](#oauth)                            | `<header>:<var>,...`                    | Backend |                    |
 | [`oauth-uri-prefix`](#oauth)                         | URI prefix                              | Backend |                    |
+| [`prometheus-port`](#bind-port)                      | port number                             | Global  | `9100`             |
 | [`proxy-body-size`](#proxy-body-size)                | size (bytes)                            | Backend | unlimited          |
 | [`proxy-protocol`](#proxy-protocol)                  | [v1\|v2\|v2-ssl\|v2-ssl-cn]             | Backend |                    |
 | [`rewrite-target`](#rewrite-target)                  | path string                             | Backend |                    |
@@ -524,24 +526,29 @@ See also:
 
 ## Bind IP addr
 
-| Configuration key      | Scope    | Default | Since |
-|------------------------|----------|---------|-------|
-| `bind-ip-addr-healthz` | `Global` | `*`     |       |
-| `bind-ip-addr-http`    | `Global` | `*`     |       |
-| `bind-ip-addr-stats`   | `Global` | `*`     |       |
-| `bind-ip-addr-tcp`     | `Global` | `*`     |       |
+| Configuration key         | Scope    | Default | Since |
+|---------------------------|----------|---------|-------|
+| `bind-ip-addr-healthz`    | `Global` |         |       |
+| `bind-ip-addr-http`       | `Global` |         |       |
+| `bind-ip-addr-prometheus` | `Global` |         | v0.10 |
+| `bind-ip-addr-stats`      | `Global` |         |       |
+| `bind-ip-addr-tcp`        | `Global` |         |       |
 
-Define listening IPv4/IPv6 address on public HAProxy frontends.
+Define listening IPv4/IPv6 address on public HAProxy frontends. Since v0.10 the default
+value changed from `*` to an empty string, which haproxy interprets in the same way and
+binds on all IPv4 address.
 
 * `bind-ip-addr-tcp`: IP address of all TCP services declared on [`tcp-services`](#tcp-services-configmap) command-line option.
-* `bind-ip-addr-http`: IP address of all HTTP/s frontends, port `:80` and `:443`, and also [`https-to-http-port`](#https-to-http-port) if declared.
 * `bind-ip-addr-healthz`: IP address of the health check URL.
+* `bind-ip-addr-http`: IP address of all HTTP/s frontends, port `:80` and `:443`, and also [`https-to-http-port`](#https-to-http-port) if declared.
+* `bind-ip-addr-prometheus`: IP address of the haproxy's internal Prometheus exporter.
 * `bind-ip-addr-stats`: IP address of the statistics page. See also [`stats-port`](#stats).
 
 See also:
 
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4-bind
 * [Bind](#bind)
+* [Bind port](#bind-port)
 
 ---
 
@@ -552,10 +559,21 @@ See also:
 | `healthz-port`    | `Global` | `10253` |       |
 | `http-port`       | `Global` | `80`    |       |
 | `https-port`      | `Global` | `443`   |       |
+| `prometheus-port` | `Global` | `9100`  | v0.10 |
 
 * `healthz-port`: Define the port number HAProxy should listen to in order to answer for health checking requests. Use `/healthz` as the request path.
 * `http-port`: Define the port number of unencripted HTTP connections.
 * `https-port`: Define the port number of encripted HTTPS connections.
+* `prometheus-port`: Define the port number of the haproxy's internal Prometheus exporter. This port can be changed to zero `0` to remove the listener. A listener without being scraped does not use system resources, except for the listening port.
+
+{{% alert title="Note" %}}
+The internal Prometheus exporter runs concurrently with request processing, and it is
+about 5x slower and 20x more verbose than the CSV exporter. See the haproxy's exporter
+[doc](https://github.com/haproxy/haproxy/blob/v2.0.0/contrib/prometheus-exporter/README#L44).
+Consider use Prometheus' [haproxy_exporter](https://github.com/prometheus/haproxy_exporter)
+on very large clusters - Prometheus' implementation reads the CSV from the stats page and
+converts to the Prometheus syntax outside the haproxy process.
+{{% /alert %}}
 
 See also:
 

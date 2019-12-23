@@ -120,7 +120,6 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	c.buildGlobalCustomConfig(d)
 	c.buildGlobalDNS(d)
 	c.buildGlobalForwardFor(d)
-	c.buildGlobalHealthz(d)
 	c.buildGlobalHTTPStoHTTP(d)
 	c.buildGlobalModSecurity(d)
 	c.buildGlobalProc(d)

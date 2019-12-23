@@ -62,10 +62,6 @@ func createDefaults() map[string]string {
 		types.BackWAFMode:                "deny",
 		//
 		types.GlobalAcmeExpiring:                 "30",
-		types.GlobalBindIPAddrHealthz:            "*",
-		types.GlobalBindIPAddrHTTP:               "*",
-		types.GlobalBindIPAddrStats:              "*",
-		types.GlobalBindIPAddrTCP:                "*",
 		types.GlobalCookieKey:                    "Ingress",
 		types.GlobalDNSAcceptedPayloadSize:       "8192",
 		types.GlobalDNSClusterDomain:             "cluster.local",
@@ -84,6 +80,7 @@ func createDefaults() map[string]string {
 		types.GlobalNbprocBalance:                "1",
 		types.GlobalNbthread:                     "2",
 		types.GlobalNoTLSRedirectLocations:       "/.well-known/acme-challenge",
+		types.GlobalPrometheusPort:               "9100",
 		types.GlobalSSLCiphers:                   defaultSSLCiphers,
 		types.GlobalSSLCipherSuites:              defaultSSLCipherSuites,
 		types.GlobalSSLDHDefaultMaxSize:          "2048",

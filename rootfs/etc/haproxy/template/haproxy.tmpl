@@ -1039,6 +1039,21 @@ listen stats
     option httpclose
     stats show-legends
 
+{{- if $global.Prometheus.Port }}
+
+  # # # # # # # # # # # # # # # # # # #
+# #
+#     Prometheus metrics
+#
+frontend prometheus
+    mode http
+    bind {{ $global.Prometheus.BindIP }}:{{ $global.Prometheus.Port }}
+    http-request use-service prometheus-exporter if { path /metrics }
+    http-request use-service lua.send-prometheus-root if { path / }
+    http-request use-service lua.send-404
+    no log
+{{- end }}
+
   # # # # # # # # # # # # # # # # # # #
 # #
 #     Monitor URI
@@ -1047,6 +1062,7 @@ frontend healthz
     mode http
     bind {{ $global.Healthz.BindIP }}:{{ $global.Healthz.Port }}
     monitor-uri /healthz
+    http-request use-service lua.send-404
     no log
 
 {{- if $global.ModSecurity.Endpoints }}
