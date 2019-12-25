@@ -180,7 +180,7 @@ The table below describes all supported configuration keys.
 | [`oauth`](#oauth)                                    | "oauth2_proxy"                          | Backend |                    |
 | [`oauth-headers`](#oauth)                            | `<header>:<var>,...`                    | Backend |                    |
 | [`oauth-uri-prefix`](#oauth)                         | URI prefix                              | Backend |                    |
-| [`prometheus-port`](#bind-port)                      | port number                             | Global  | `9100`             |
+| [`prometheus-port`](#bind-port)                      | port number                             | Global  |                    |
 | [`proxy-body-size`](#proxy-body-size)                | size (bytes)                            | Backend | unlimited          |
 | [`proxy-protocol`](#proxy-protocol)                  | [v1\|v2\|v2-ssl\|v2-ssl-cn]             | Backend |                    |
 | [`rewrite-target`](#rewrite-target)                  | path string                             | Backend |                    |
@@ -559,12 +559,12 @@ See also:
 | `healthz-port`    | `Global` | `10253` |       |
 | `http-port`       | `Global` | `80`    |       |
 | `https-port`      | `Global` | `443`   |       |
-| `prometheus-port` | `Global` | `9100`  | v0.10 |
+| `prometheus-port` | `Global` |         | v0.10 |
 
 * `healthz-port`: Define the port number HAProxy should listen to in order to answer for health checking requests. Use `/healthz` as the request path.
 * `http-port`: Define the port number of unencripted HTTP connections.
 * `https-port`: Define the port number of encripted HTTPS connections.
-* `prometheus-port`: Define the port number of the haproxy's internal Prometheus exporter. This port can be changed to zero `0` to remove the listener. A listener without being scraped does not use system resources, except for the listening port.
+* `prometheus-port`: Define the port number of the haproxy's internal Prometheus exporter. Defaults to not create the listener. A listener without being scraped does not use system resources, except for the listening port. The internal exporter supports scope filter as a query string, eg `/metrics?scope=frontend&scope=backend` will only export frontends and backends. See the full description in the [HAProxy's Prometheus exporter doc](https://git.haproxy.org/?p=haproxy-2.0.git;a=blob;f=contrib/prometheus-exporter/README;hb=HEAD).
 
 {{% alert title="Note" %}}
 The internal Prometheus exporter runs concurrently with request processing, and it is
@@ -577,8 +577,9 @@ converts to the Prometheus syntax outside the haproxy process.
 
 See also:
 
+* [Bind](#bind) configuration key
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4-monitor-uri (`healthz-port`)
-* [Bind](#bind)
+* https://git.haproxy.org/?p=haproxy-2.0.git;a=blob;f=contrib/prometheus-exporter/README;hb=HEAD (`prometheus-port`)
 
 ---
 

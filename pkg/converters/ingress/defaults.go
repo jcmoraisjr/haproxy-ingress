@@ -80,7 +80,6 @@ func createDefaults() map[string]string {
 		types.GlobalNbprocBalance:                "1",
 		types.GlobalNbthread:                     "2",
 		types.GlobalNoTLSRedirectLocations:       "/.well-known/acme-challenge",
-		types.GlobalPrometheusPort:               "9100",
 		types.GlobalSSLCiphers:                   defaultSSLCiphers,
 		types.GlobalSSLCipherSuites:              defaultSSLCipherSuites,
 		types.GlobalSSLDHDefaultMaxSize:          "2048",
