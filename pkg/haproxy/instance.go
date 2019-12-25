@@ -254,29 +254,25 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	}
 	//
 	// this should be taken into account when refactoring this func:
-	//   - dynUpdater might change config state, so it should be called before templates.Write();
-	//   - templates.Write() uses the current config, so it should be called before clearConfig();
-	//   - clearConfig() rotates the configurations, so it should be called always, but only once.
-	//   - i.metrics.IncUpdate<Status>() should be called once
-	//   - i.metrics.UpdateSuccessful() should be called once
+	//   - dynUpdater might change config state, so it should be called before templates.Write()
+	//   - i.metrics.IncUpdate<Status>() should be called always, but only once
+	//   - i.metrics.UpdateSuccessful(<bool>) should be called always, but only once
 	//
+	defer i.rotateConfig()
 	if err := i.curConfig.BuildFrontendGroup(); err != nil {
 		i.logger.Error("error building configuration group: %v", err)
-		i.clearConfig()
 		i.metrics.IncUpdateNoop()
 		i.metrics.UpdateSuccessful(false)
 		return
 	}
 	if err := i.curConfig.BuildBackendMaps(); err != nil {
 		i.logger.Error("error building backend maps: %v", err)
-		i.clearConfig()
 		i.metrics.IncUpdateNoop()
 		i.metrics.UpdateSuccessful(false)
 		return
 	}
 	if i.curConfig.Equals(i.oldConfig) {
 		i.logger.InfoV(2, "old and new configurations match, skipping reload")
-		i.clearConfig()
 		i.metrics.IncUpdateNoop()
 		i.metrics.UpdateSuccessful(true)
 		return
@@ -291,13 +287,11 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 		timer.Tick("writeTmpl")
 		if err != nil {
 			i.logger.Error("error writing configuration: %v", err)
-			i.clearConfig()
 			i.metrics.IncUpdateNoop()
 			i.metrics.UpdateSuccessful(false)
 			return
 		}
 	}
-	i.clearConfig()
 	if updated {
 		if updater.cmdCnt > 0 {
 			var err error
@@ -318,7 +312,7 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 		return
 	}
 	// A future implementation of ssl certs dynamic update should change this metric
-	for _, host := range i.oldConfig.Hosts() {
+	for _, host := range i.curConfig.Hosts() {
 		if host.TLS.TLSHash != "" {
 			i.metrics.SetCertExpireDate(host.Hostname, host.TLS.TLSNotAfter)
 		}
@@ -375,7 +369,7 @@ func filterOutput(out []byte) string {
 	return outstr
 }
 
-func (i *instance) clearConfig() {
+func (i *instance) rotateConfig() {
 	// TODO releaseConfig (old support files, ...)
 	i.oldConfig = i.curConfig
 	i.curConfig = nil

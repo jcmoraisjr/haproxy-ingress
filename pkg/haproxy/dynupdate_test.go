@@ -523,7 +523,7 @@ set server default_app_8080/srv002 weight 1`,
 		if test.doconfig1 != nil {
 			test.doconfig1(c)
 			test.oldConfig = c.config.(*config)
-			instance.clearConfig()
+			instance.rotateConfig()
 			c.config = c.newConfig()
 			instance.curConfig = c.config
 		}
