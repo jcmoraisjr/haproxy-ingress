@@ -286,7 +286,7 @@ func (hc *HAProxyController) SyncIngress(item interface{}) error {
 		globalConfig,
 	)
 	ingConverter.Sync(ingress)
-	timer.Tick("ingress")
+	timer.Tick("parse_ingress")
 
 	//
 	// configmap converters
@@ -300,7 +300,7 @@ func (hc *HAProxyController) SyncIngress(item interface{}) error {
 				hc.cache,
 			)
 			tcpSvcConverter.Sync(tcpConfigmap.Data)
-			timer.Tick("tcpServices")
+			timer.Tick("parse_tcp_svc")
 		} else {
 			hc.logger.Error("error reading TCP services: %v", err)
 		}

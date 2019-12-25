@@ -284,7 +284,7 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 		//   - !updated           - there are changes that cannot be dynamically applied
 		//   - updater.cmdCnt > 0 - there are changes that was dynamically applied
 		err := i.templates.Write(i.curConfig)
-		timer.Tick("writeTmpl")
+		timer.Tick("write_tmpl")
 		if err != nil {
 			i.logger.Error("error writing configuration: %v", err)
 			i.metrics.IncUpdateNoop()
@@ -299,7 +299,7 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 				if err = i.check(); err != nil {
 					i.logger.Error("error validating config file:\n%v", err)
 				}
-				timer.Tick("validate")
+				timer.Tick("validate_cfg")
 			}
 			i.logger.Info("HAProxy updated without needing to reload. Commands sent: %d", updater.cmdCnt)
 			i.metrics.IncUpdateDynamic()
@@ -323,7 +323,7 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 		i.metrics.UpdateSuccessful(false)
 		return
 	}
-	timer.Tick("reload")
+	timer.Tick("reload_haproxy")
 	i.metrics.UpdateSuccessful(true)
 	i.logger.Info("HAProxy successfully reloaded")
 }
