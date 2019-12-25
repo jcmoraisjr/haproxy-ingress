@@ -107,9 +107,10 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 
 		healthzPort = flags.Int("healthz-port", 10254, "port for healthz endpoint.")
 
-		statsCollectProcTime = flags.Bool("stats-collect-processing-time", true,
-			`Defines if a cumulative processing time should be added to the metrics.
-		 If defined, haproxy-ingress will collect Idle_pct from the admin socket every 500ms.`)
+		statsCollectProcPeriod = flags.Duration("stats-collect-processing-period", 500*time.Millisecond,
+			`Defines the interval between two consecutive readings of haproxy's Idle_pct. haproxy
+		updates Idle_pct every 500ms, which makes that the best configuration value.
+		Change to 0 (zero) to disable this metric.`)
 
 		profiling = flags.Bool("profiling", true, `Enable profiling via web interface host:port/debug/pprof/`)
 
@@ -292,7 +293,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		DefaultSSLCertificate:   *defSSLCertificate,
 		VerifyHostname:          *verifyHostname,
 		DefaultHealthzURL:       *defHealthzURL,
-		StatsCollectProcTime:    *statsCollectProcTime,
+		StatsCollectProcPeriod:  *statsCollectProcPeriod,
 		PublishService:          *publishSvc,
 		Backend:                 backend,
 		ForceNamespaceIsolation: *forceIsolation,

@@ -78,13 +78,13 @@ type Configuration struct {
 	AcmeTokenConfigmapName  string
 	AcmeTrackTLSAnn         bool
 
-	TCPConfigMapName      string
-	DefaultSSLCertificate string
-	VerifyHostname        bool
-	DefaultHealthzURL     string
-	StatsCollectProcTime  bool
-	PublishService        string
-	Backend               ingress.Controller
+	TCPConfigMapName       string
+	DefaultSSLCertificate  string
+	VerifyHostname         bool
+	DefaultHealthzURL      string
+	StatsCollectProcPeriod time.Duration
+	PublishService         string
+	Backend                ingress.Controller
 
 	UpdateStatus           bool
 	UseNodeInternalIP      bool

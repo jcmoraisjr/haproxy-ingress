@@ -133,10 +133,10 @@ func (hc *HAProxyController) configController() {
 }
 
 func (hc *HAProxyController) startServices() {
-	if hc.cfg.StatsCollectProcTime {
+	if hc.cfg.StatsCollectProcPeriod.Milliseconds() > 0 {
 		go wait.Until(func() {
 			hc.instance.CalcIdleMetric()
-		}, 500*time.Millisecond, hc.stopCh)
+		}, hc.cfg.StatsCollectProcPeriod, hc.stopCh)
 	}
 	if hc.leaderelector != nil {
 		go hc.leaderelector.Run()
