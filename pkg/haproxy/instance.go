@@ -256,25 +256,22 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	// this should be taken into account when refactoring this func:
 	//   - dynUpdater might change config state, so it should be called before templates.Write()
 	//   - i.metrics.IncUpdate<Status>() should be called always, but only once
-	//   - i.metrics.UpdateSuccessful(<bool>) should be called always, but only once
+	//   - i.metrics.UpdateSuccessful(<bool>) should be called only if haproxy is reloaded or cfg is validated
 	//
 	defer i.rotateConfig()
 	if err := i.curConfig.BuildFrontendGroup(); err != nil {
 		i.logger.Error("error building configuration group: %v", err)
 		i.metrics.IncUpdateNoop()
-		i.metrics.UpdateSuccessful(false)
 		return
 	}
 	if err := i.curConfig.BuildBackendMaps(); err != nil {
 		i.logger.Error("error building backend maps: %v", err)
 		i.metrics.IncUpdateNoop()
-		i.metrics.UpdateSuccessful(false)
 		return
 	}
 	if i.curConfig.Equals(i.oldConfig) {
 		i.logger.InfoV(2, "old and new configurations match, skipping reload")
 		i.metrics.IncUpdateNoop()
-		i.metrics.UpdateSuccessful(true)
 		return
 	}
 	updater := i.newDynUpdater()
@@ -288,26 +285,24 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 		if err != nil {
 			i.logger.Error("error writing configuration: %v", err)
 			i.metrics.IncUpdateNoop()
-			i.metrics.UpdateSuccessful(false)
 			return
 		}
 	}
 	if updated {
 		if updater.cmdCnt > 0 {
-			var err error
 			if i.options.ValidateConfig {
+				var err error
 				if err = i.check(); err != nil {
 					i.logger.Error("error validating config file:\n%v", err)
 				}
 				timer.Tick("validate_cfg")
+				i.metrics.UpdateSuccessful(err == nil)
 			}
 			i.logger.Info("HAProxy updated without needing to reload. Commands sent: %d", updater.cmdCnt)
 			i.metrics.IncUpdateDynamic()
-			i.metrics.UpdateSuccessful(err == nil)
 		} else {
 			i.logger.Info("old and new configurations match")
 			i.metrics.IncUpdateNoop()
-			i.metrics.UpdateSuccessful(true)
 		}
 		return
 	}
