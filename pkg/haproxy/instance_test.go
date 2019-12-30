@@ -2809,6 +2809,7 @@ func setup(t *testing.T) *testConfig {
 	configfile := tempdir + "/haproxy.cfg"
 	instance := CreateInstance(logger, InstanceOptions{
 		HAProxyConfigFile: configfile,
+		Metrics:           helper_test.NewMetricsMock(),
 	}).(*instance)
 	if err := instance.templates.NewTemplate(
 		"haproxy.tmpl",
@@ -2967,7 +2968,7 @@ func _yamlMarshal(in interface{}) string {
 }
 
 func (c *testConfig) Update() {
-	timer := utils.NewTimer()
+	timer := utils.NewTimer(nil)
 	c.instance.Update(timer)
 }
 

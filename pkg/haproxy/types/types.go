@@ -360,6 +360,7 @@ type HostTLSConfig struct {
 	CRLHash          string
 	TLSFilename      string
 	TLSHash          string
+	TLSNotAfter      time.Time
 }
 
 // Backend ...

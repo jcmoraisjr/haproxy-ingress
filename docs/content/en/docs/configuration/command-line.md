@@ -22,13 +22,16 @@ The following command-line options are supported:
 | [`--annotation-prefix`](#annotation-prefix)             | prefix without `/`         | `ingress.kubernetes.io` | v0.8  |
 | [`--default-backend-service`](#default-backend-service) | namespace/servicename      | haproxy's 404 page      |       |
 | [`--default-ssl-certificate`](#default-ssl-certificate) | namespace/secretname       | fake, auto generated    |       |
+| [`--healthz-port`](#stats)                              | port number                | `10254`                 |       |
 | [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |       |
 | [`--kubeconfig`](#kubeconfig)                           | /path/to/kubeconfig        | in cluster config       |       |
 | [`--max-old-config-files`](#max-old-config-files)       | num of files               | `0`                     |       |
+| [`--profiling`](#stats)                                 | [true\|false]              | `true`                  |       |
 | [`--publish-service`](#publish-service)                 | namespace/servicename      |                         |       |
 | [`--rate-limit-update`](#rate-limit-update)             | uploads per second (float) | `0.5`                   |       |
 | [`--reload-strategy`](#reload-strategy)                 | [native\|reusesocket]      | `reusesocket`           |       |
 | [`--sort-backends`](#sort-backends)                     | [true\|false]              | `false`                 |       |
+| [`--stats-collect-processing-period`](#stats)           | time                       | `500ms`                 | v0.10 |
 | [`--tcp-services-configmap`](#tcp-services-configmap)   | namespace/configmapname    | no tcp svc              |       |
 | [`--verify-hostname`](#verify-hostname)                 | [true\|false]              | `true`                  |       |
 | [`--wait-before-shutdown`](#wait-before-shutdown)       | seconds as integer         | `0`                     | v0.8  |
@@ -176,6 +179,24 @@ Ingress will randomly shuffle backends and server endpoints on each reload in or
 requesting always the same backends just after reloads, depending on the balancing algorithm.
 Use `--sort-backends` to avoid this behavior and always declare backends and upstream servers
 in the same order.
+
+---
+
+## Stats
+
+Configures an endpoint with statistics, debugging and health checks. The following URIs are provided:
+
+* `/healthz`: a healthz URI for the haproxy-ingress
+* `/metrics`: Prometheus compatible metrics exporter
+* `/debug/pprof`: profiling tools
+* `/build`: build information - controller name, version, git commit hash and repository
+* `/stop`: stops haproxy-ingress controller
+
+Options:
+
+* `--healthz-port`: Defines the port number haproxy-ingress should listen to. Defaults to `10254`.
+* `--profiling`: Configures if the profiling URI should be enabled. Defaults to `true`.
+* `--stats-collect-processing-period`: Defines the interval between two consecutive readings of haproxy's `Idle_pct`, used to generate `haproxy_processing_seconds_total` metric. haproxy updates Idle_pct every `500ms`, which makes that the best configuration value, and it's also the default if not configured. Values higher than `500ms` will produce a less accurate collect. Change to 0 (zero) to disable this metric.
 
 ---
 

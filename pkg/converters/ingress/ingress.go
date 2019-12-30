@@ -144,6 +144,7 @@ func (c *converter) syncIngress(ing *extensions.Ingress) {
 					if host.TLS.TLSHash == "" {
 						host.TLS.TLSFilename = tlsPath.Filename
 						host.TLS.TLSHash = tlsPath.SHA1Hash
+						host.TLS.TLSNotAfter = tlsPath.NotAfter
 					} else if host.TLS.TLSHash != tlsPath.SHA1Hash {
 						msg := fmt.Sprintf("TLS of host '%s' was already assigned", host.Hostname)
 						if tls.SecretName != "" {
@@ -275,7 +276,7 @@ func (c *converter) addBackend(source *annotations.Source, hostpath, fullSvcName
 	return backend, nil
 }
 
-func (c *converter) addTLS(source *annotations.Source, secretName string) convtypes.File {
+func (c *converter) addTLS(source *annotations.Source, secretName string) convtypes.CrtFile {
 	if secretName != "" {
 		tlsFile, err := c.cache.GetTLSSecretPath(source.Namespace, secretName)
 		if err == nil {

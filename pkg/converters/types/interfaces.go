@@ -17,6 +17,8 @@ limitations under the License.
 package types
 
 import (
+	"time"
+
 	api "k8s.io/api/core/v1"
 )
 
@@ -26,7 +28,7 @@ type Cache interface {
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
 	GetTerminatingPods(service *api.Service) ([]*api.Pod, error)
 	GetPod(podName string) (*api.Pod, error)
-	GetTLSSecretPath(defaultNamespace, secretName string) (File, error)
+	GetTLSSecretPath(defaultNamespace, secretName string) (CrtFile, error)
 	GetCASecretPath(defaultNamespace, secretName string) (ca, crl File, err error)
 	GetDHSecretPath(defaultNamespace, secretName string) (File, error)
 	GetSecretContent(defaultNamespace, secretName, keyName string) ([]byte, error)
@@ -36,4 +38,11 @@ type Cache interface {
 type File struct {
 	Filename string
 	SHA1Hash string
+}
+
+// CrtFile ...
+type CrtFile struct {
+	Filename string
+	SHA1Hash string
+	NotAfter time.Time
 }

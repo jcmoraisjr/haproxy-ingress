@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"time"
 
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/utils"
@@ -28,12 +29,13 @@ import (
 )
 
 type dynUpdater struct {
-	logger types.Logger
-	old    *config
-	cur    *config
-	socket string
-	cmd    func(socket string, commands ...string) ([]string, error)
-	cmdCnt int
+	logger  types.Logger
+	old     *config
+	cur     *config
+	socket  string
+	cmd     func(socket string, observer func(duration time.Duration), commands ...string) ([]string, error)
+	cmdCnt  int
+	metrics types.Metrics
 }
 
 type backendPair struct {
@@ -55,11 +57,12 @@ func (i *instance) newDynUpdater() *dynUpdater {
 		cur = i.curConfig.(*config)
 	}
 	return &dynUpdater{
-		logger: i.logger,
-		old:    old,
-		cur:    cur,
-		socket: i.curConfig.Global().AdminSocket,
-		cmd:    utils.HAProxyCommand,
+		logger:  i.logger,
+		old:     old,
+		cur:     cur,
+		socket:  i.curConfig.Global().AdminSocket,
+		cmd:     utils.HAProxyCommand,
+		metrics: i.metrics,
 	}
 }
 
@@ -286,7 +289,7 @@ func (d *dynUpdater) execDisableEndpoint(backname string, ep *hatypes.Endpoint) 
 		server + "addr 127.0.0.1 port 1023",
 		server + "weight 0",
 	}
-	msg, err := d.execCommand(cmd)
+	msg, err := d.execCommand(d.metrics.HAProxySetServerResponseTime, cmd)
 	if err != nil {
 		d.logger.Error("error disabling endpoint %s/%s: %v", backname, ep.Name, err)
 		return false
@@ -306,7 +309,7 @@ func (d *dynUpdater) execEnableEndpoint(backname string, oldEP, curEP *hatypes.E
 		server + "state " + state,
 		server + "weight " + strconv.Itoa(curEP.Weight),
 	}
-	msg, err := d.execCommand(cmd)
+	msg, err := d.execCommand(d.metrics.HAProxySetServerResponseTime, cmd)
 	if err != nil {
 		d.logger.Error("error adding/updating endpoint %s/%s: %v", backname, curEP.Name, err)
 		return false
@@ -320,8 +323,8 @@ func (d *dynUpdater) execEnableEndpoint(backname string, oldEP, curEP *hatypes.E
 	return true
 }
 
-func (d *dynUpdater) execCommand(cmd []string) ([]string, error) {
-	msg, err := d.cmd(d.socket, cmd...)
+func (d *dynUpdater) execCommand(observer func(duration time.Duration), cmd []string) ([]string, error) {
+	msg, err := d.cmd(d.socket, observer, cmd...)
 	d.cmdCnt = d.cmdCnt + len(cmd)
 	return msg, err
 }

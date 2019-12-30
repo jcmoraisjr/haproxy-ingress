@@ -17,17 +17,18 @@ limitations under the License.
 package types
 
 import (
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
+	"time"
 )
 
-// ConverterOptions ...
-type ConverterOptions struct {
-	Logger           types.Logger
-	Cache            convtypes.Cache
-	DefaultConfig    func() map[string]string
-	DefaultBackend   string
-	DefaultSSLFile   convtypes.CrtFile
-	AnnotationPrefix string
-	AcmeTrackTLSAnn  bool
+// Metrics ...
+type Metrics interface {
+	HAProxyShowInfoResponseTime(duration time.Duration)
+	HAProxySetServerResponseTime(duration time.Duration)
+	ControllerProcTime(task string, duration time.Duration)
+	AddIdleFactor(idle int)
+	IncUpdateNoop()
+	IncUpdateDynamic()
+	IncUpdateFull()
+	UpdateSuccessful(success bool)
+	SetCertExpireDate(hostname string, notAfter time.Time)
 }

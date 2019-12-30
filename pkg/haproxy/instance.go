@@ -20,12 +20,15 @@ import (
 	"fmt"
 	"os/exec"
 	"reflect"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
+	hautils "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
@@ -38,6 +41,7 @@ type InstanceOptions struct {
 	MaxOldConfigFiles int
 	HAProxyCmd        string
 	HAProxyConfigFile string
+	Metrics           types.Metrics
 	ReloadCmd         string
 	ReloadStrategy    string
 	ValidateConfig    bool
@@ -48,6 +52,7 @@ type Instance interface {
 	AcmePeriodicCheck()
 	ParseTemplates() error
 	Config() Config
+	CalcIdleMetric()
 	Update(timer *utils.Timer)
 }
 
@@ -59,6 +64,7 @@ func CreateInstance(logger types.Logger, options InstanceOptions) Instance {
 		templates:    template.CreateConfig(),
 		mapsTemplate: template.CreateConfig(),
 		mapsDir:      "/etc/haproxy/maps",
+		metrics:      options.Metrics,
 	}
 }
 
@@ -70,6 +76,7 @@ type instance struct {
 	mapsDir      string
 	oldConfig    Config
 	curConfig    Config
+	metrics      types.Metrics
 }
 
 func (i *instance) AcmePeriodicCheck() {
@@ -172,6 +179,29 @@ func (i *instance) Config() Config {
 	return i.curConfig
 }
 
+var idleRegex = regexp.MustCompile(`Idle_pct: ([0-9]+)`)
+
+func (i *instance) CalcIdleMetric() {
+	if i.oldConfig == nil {
+		return
+	}
+	msg, err := hautils.HAProxyCommand(i.oldConfig.Global().AdminSocket, i.metrics.HAProxyShowInfoResponseTime, "show info")
+	if err != nil {
+		i.logger.Error("error reading admin socket: %v", err)
+		return
+	}
+	idleStr := idleRegex.FindStringSubmatch(msg[0])
+	if len(idleStr) < 2 {
+		i.logger.Error("cannot find Idle_pct field in the show info socket command")
+		return
+	}
+	idle, err := strconv.Atoi(idleStr[1])
+	if err != nil {
+		i.logger.Error("Idle_pct has an invalid integer: %s", idleStr[1])
+	}
+	i.metrics.AddIdleFactor(idle)
+}
+
 func (i *instance) Update(timer *utils.Timer) {
 	i.acmeUpdate()
 	i.haproxyUpdate(timer)
@@ -224,23 +254,24 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	}
 	//
 	// this should be taken into account when refactoring this func:
-	//   - dynUpdater might change config state, so it should be called before templates.Write();
-	//   - templates.Write() uses the current config, so it should be called before clearConfig();
-	//   - clearConfig() rotates the configurations, so it should be called always, but only once.
+	//   - dynUpdater might change config state, so it should be called before templates.Write()
+	//   - i.metrics.IncUpdate<Status>() should be called always, but only once
+	//   - i.metrics.UpdateSuccessful(<bool>) should be called only if haproxy is reloaded or cfg is validated
 	//
+	defer i.rotateConfig()
 	if err := i.curConfig.BuildFrontendGroup(); err != nil {
 		i.logger.Error("error building configuration group: %v", err)
-		i.clearConfig()
+		i.metrics.IncUpdateNoop()
 		return
 	}
 	if err := i.curConfig.BuildBackendMaps(); err != nil {
 		i.logger.Error("error building backend maps: %v", err)
-		i.clearConfig()
+		i.metrics.IncUpdateNoop()
 		return
 	}
 	if i.curConfig.Equals(i.oldConfig) {
 		i.logger.InfoV(2, "old and new configurations match, skipping reload")
-		i.clearConfig()
+		i.metrics.IncUpdateNoop()
 		return
 	}
 	updater := i.newDynUpdater()
@@ -250,33 +281,45 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 		//   - !updated           - there are changes that cannot be dynamically applied
 		//   - updater.cmdCnt > 0 - there are changes that was dynamically applied
 		err := i.templates.Write(i.curConfig)
-		timer.Tick("writeTmpl")
+		timer.Tick("write_tmpl")
 		if err != nil {
 			i.logger.Error("error writing configuration: %v", err)
-			i.clearConfig()
+			i.metrics.IncUpdateNoop()
 			return
 		}
 	}
-	i.clearConfig()
 	if updated {
 		if updater.cmdCnt > 0 {
 			if i.options.ValidateConfig {
-				if err := i.check(); err != nil {
+				var err error
+				if err = i.check(); err != nil {
 					i.logger.Error("error validating config file:\n%v", err)
 				}
-				timer.Tick("validate")
+				timer.Tick("validate_cfg")
+				i.metrics.UpdateSuccessful(err == nil)
 			}
 			i.logger.Info("HAProxy updated without needing to reload. Commands sent: %d", updater.cmdCnt)
+			i.metrics.IncUpdateDynamic()
 		} else {
 			i.logger.Info("old and new configurations match")
+			i.metrics.IncUpdateNoop()
 		}
 		return
 	}
+	// A future implementation of ssl certs dynamic update should change this metric
+	for _, host := range i.curConfig.Hosts() {
+		if host.TLS.TLSHash != "" {
+			i.metrics.SetCertExpireDate(host.Hostname, host.TLS.TLSNotAfter)
+		}
+	}
+	i.metrics.IncUpdateFull()
 	if err := i.reload(); err != nil {
 		i.logger.Error("error reloading server:\n%v", err)
+		i.metrics.UpdateSuccessful(false)
 		return
 	}
-	timer.Tick("reload")
+	timer.Tick("reload_haproxy")
+	i.metrics.UpdateSuccessful(true)
 	i.logger.Info("HAProxy successfully reloaded")
 }
 
@@ -321,7 +364,7 @@ func filterOutput(out []byte) string {
 	return outstr
 }
 
-func (i *instance) clearConfig() {
+func (i *instance) rotateConfig() {
 	// TODO releaseConfig (old support files, ...)
 	i.oldConfig = i.curConfig
 	i.curConfig = nil

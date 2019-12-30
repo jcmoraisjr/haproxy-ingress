@@ -47,6 +47,7 @@ type HAProxyController struct {
 	instance          haproxy.Instance
 	logger            *logger
 	cache             *cache
+	metrics           *metrics
 	stopCh            chan struct{}
 	acmeQueue         utils.Queue
 	leaderelector     types.LeaderElector
@@ -93,6 +94,7 @@ func (hc *HAProxyController) configController() {
 	hc.stopCh = hc.controller.GetStopCh()
 	hc.logger = &logger{depth: 1}
 	hc.cache = newCache(hc.cfg.Client, hc.storeLister, hc.controller)
+	hc.metrics = createMetrics()
 	var acmeSigner acme.Signer
 	if hc.cfg.AcmeServer {
 		electorID := fmt.Sprintf("%s-%s", hc.cfg.AcmeElectionID, hc.cfg.IngressClass)
@@ -111,6 +113,7 @@ func (hc *HAProxyController) configController() {
 		AcmeSigner:        acmeSigner,
 		AcmeQueue:         hc.acmeQueue,
 		LeaderElector:     hc.leaderelector,
+		Metrics:           hc.metrics,
 		ReloadStrategy:    *hc.reloadStrategy,
 		MaxOldConfigFiles: *hc.maxOldConfigFiles,
 		ValidateConfig:    *hc.validateConfig,
@@ -130,6 +133,11 @@ func (hc *HAProxyController) configController() {
 }
 
 func (hc *HAProxyController) startServices() {
+	if hc.cfg.StatsCollectProcPeriod.Milliseconds() > 0 {
+		go wait.Until(func() {
+			hc.instance.CalcIdleMetric()
+		}, hc.cfg.StatsCollectProcPeriod, hc.stopCh)
+	}
 	if hc.leaderelector != nil {
 		go hc.leaderelector.Run()
 	}
@@ -145,7 +153,7 @@ func (hc *HAProxyController) startServices() {
 	}
 }
 
-func (hc *HAProxyController) createDefaultSSLFile(cache convtypes.Cache) (tlsFile convtypes.File) {
+func (hc *HAProxyController) createDefaultSSLFile(cache convtypes.Cache) (tlsFile convtypes.CrtFile) {
 	if hc.cfg.DefaultSSLCertificate != "" {
 		tlsFile, err := cache.GetTLSSecretPath("", hc.cfg.DefaultSSLCertificate)
 		if err == nil {
@@ -155,10 +163,11 @@ func (hc *HAProxyController) createDefaultSSLFile(cache convtypes.Cache) (tlsFil
 	} else {
 		glog.Info("using auto generated fake certificate")
 	}
-	path, hash := hc.controller.CreateDefaultSSLCertificate()
-	tlsFile = convtypes.File{
+	path, hash, notAfter := hc.controller.CreateDefaultSSLCertificate()
+	tlsFile = convtypes.CrtFile{
 		Filename: path,
 		SHA1Hash: hash,
+		NotAfter: notAfter,
 	}
 	return tlsFile
 }
@@ -251,7 +260,7 @@ func (hc *HAProxyController) SyncIngress(item interface{}) error {
 	//
 	hc.updateCount++
 	hc.logger.Info("Starting HAProxy update id=%d", hc.updateCount)
-	timer := utils.NewTimer()
+	timer := utils.NewTimer(hc.metrics.ControllerProcTime)
 	var ingress []*extensions.Ingress
 	for _, iing := range hc.storeLister.Ingress.List() {
 		ing := iing.(*extensions.Ingress)
@@ -277,7 +286,7 @@ func (hc *HAProxyController) SyncIngress(item interface{}) error {
 		globalConfig,
 	)
 	ingConverter.Sync(ingress)
-	timer.Tick("ingress")
+	timer.Tick("parse_ingress")
 
 	//
 	// configmap converters
@@ -291,7 +300,7 @@ func (hc *HAProxyController) SyncIngress(item interface{}) error {
 				hc.cache,
 			)
 			tcpSvcConverter.Sync(tcpConfigmap.Data)
-			timer.Tick("tcpServices")
+			timer.Tick("parse_tcp_svc")
 		} else {
 			hc.logger.Error("error reading TCP services: %v", err)
 		}

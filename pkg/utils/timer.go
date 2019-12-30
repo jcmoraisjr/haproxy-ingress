@@ -24,8 +24,9 @@ import (
 
 // Timer ...
 type Timer struct {
-	Start time.Time
-	Ticks []*Tick
+	Start    time.Time
+	Ticks    []*Tick
+	observer func(task string, duration time.Duration)
 }
 
 // Tick ...
@@ -35,17 +36,28 @@ type Tick struct {
 }
 
 // NewTimer ...
-func NewTimer() *Timer {
+func NewTimer(observer func(task string, duration time.Duration)) *Timer {
 	return &Timer{
-		Start: time.Now(),
+		Start:    time.Now(),
+		observer: observer,
 	}
 }
 
 // Tick ...
 func (t *Timer) Tick(eventLabel string) {
+	now := time.Now()
+	if t.observer != nil {
+		var last time.Time
+		if len(t.Ticks) > 0 {
+			last = t.Ticks[len(t.Ticks)-1].When
+		} else {
+			last = t.Start
+		}
+		t.observer(eventLabel, now.Sub(last))
+	}
 	t.Ticks = append(t.Ticks, &Tick{
 		Event: eventLabel,
-		When:  time.Now(),
+		When:  now,
 	})
 }
 
