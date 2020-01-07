@@ -1,4 +1,3 @@
----
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -132,43 +131,6 @@ subjects:
     kind: User
     name: ingress-controller
 ---
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  labels:
-    run: ingress-default-backend
-  name: ingress-default-backend
-  namespace: ingress-controller
-spec:
-  selector:
-    matchLabels:
-      run: ingress-default-backend
-  template:
-    metadata:
-      labels:
-        run: ingress-default-backend
-    spec:
-      containers:
-      - name: ingress-default-backend
-        image: gcr.io/google_containers/defaultbackend:1.0
-        ports:
-        - containerPort: 8080
-        resources:
-          limits:
-            cpu: 10m
-            memory: 20Mi
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: ingress-default-backend
-  namespace: ingress-controller
-spec:
-  ports:
-  - port: 8080
-  selector:
-    run: ingress-default-backend
----
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -201,9 +163,7 @@ spec:
       - name: haproxy-ingress
         image: quay.io/jcmoraisjr/haproxy-ingress
         args:
-        - --default-backend-service=$(POD_NAMESPACE)/ingress-default-backend
-        - --configmap=$(POD_NAMESPACE)/haproxy-ingress
-        - --sort-backends
+        - --configmap=ingress-controller/haproxy-ingress
         ports:
         - name: http
           containerPort: 80
@@ -211,6 +171,8 @@ spec:
           containerPort: 443
         - name: stat
           containerPort: 1936
+        - name: ingress-stats
+          containerPort: 10254
         livenessProbe:
           httpGet:
             path: /healthz
