@@ -12,8 +12,14 @@ Ingress resources target exactly one Ingress controller by specifying the
 
 This document has also the following prerequisites:
 
-* Create a [TLS secret](/examples/PREREQUISITES.md#tls-certificates) named `tls-secret` to be used as default TLS certificate
+* Create a [TLS secret](/examples/PREREQUISITES.md#tls-certificates) named `tls-secret` to be used as default TLS certificate within the same namespace you will deploy the ingress-controller
 * Optional: deploy a web app for testing
+
+Create the ingress-controller namespace:
+
+```console
+kubectl create ns ingress-controller
+```
 
 Creating the TLS secret:
 
@@ -21,14 +27,8 @@ Creating the TLS secret:
 $ openssl req \
   -x509 -newkey rsa:2048 -nodes -days 365 \
   -keyout tls.key -out tls.crt -subj '/CN=localhost'
-$ kubectl create secret tls tls-secret --cert=tls.crt --key=tls.key
+$ kubectl --namespace ingress-controller create secret tls tls-secret --cert=tls.crt --key=tls.key
 $ rm -v tls.crt tls.key
-```
-
-Create the ingress-controller namespace:
-
-```console
-kubectl create ns ingress-controller
 ```
 
 The optional web app can be created as follow:
