@@ -23,6 +23,8 @@ About the Kubernetes' ingress controllers, what HAProxy Ingress watches in the k
 HAProxy Ingress is released as a Docker image on top of Alpine's flavor of
 [HAProxy image](https://hub.docker.com/_/haproxy).
 
+To get an overview of the individual releases and to read the changelog per release follow this [link](https://github.com/jcmoraisjr/haproxy-ingress/releases).
+
 Images are built by [Travis CI](https://travis-ci.org/jcmoraisjr/haproxy-ingress) and
 deployed to [quay.io](https://quay.io/repository/jcmoraisjr/haproxy-ingress?tag=latest&tab=tags)
 whenever a tag is applied. The `latest` tag will always point to the latest stable version while
