@@ -419,7 +419,7 @@ The following parameters are supported:
 ||[`dns-timeout-retry`](#dns-resolvers)|time with suffix|`1s`|
 ||[`drain-support`](#drain-support)|[true\|false]|`false`|
 |`[0]`|[`drain-support-redispatch`](#drain-support)|[true\|false]|`true`|
-||[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`false`|
+||[`dynamic-scaling`](#dynamic-scaling)|[true\|false]|`true`|
 ||[`forwardfor`](#forwardfor)|[add\|ignore\|ifmissing]|`add`|
 ||[`healthz-port`](#healthz-port)|port number|`10253`|
 ||[`hsts`](#hsts)|[true\|false]|`true`|
