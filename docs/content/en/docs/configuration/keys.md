@@ -3,29 +3,29 @@ title: "Configuration keys"
 linkTitle: "Configuration keys"
 weight: 3
 description: >
-  List of all ingress/service annotations and global configmap options.
+  List of all ingress/service annotations and global ConfigMap options.
 ---
 
-Most of HAProxy Ingress configurations are made using a configmap object or annotating
+Most of HAProxy Ingress configurations are made using a ConfigMap object or annotating
 the ingress or service object. Ingress or service annotations are used to make local
-configurations, and the configmap is used to make global configurations or change
+configurations, and the ConfigMap is used to make global configurations or change
 default configuration values.
 
-# Configmap
+# ConfigMap
 
-Global configurations and changing default values are made via a configmap object.
-Configmap declaration is optional but highly recommended. Create an empty configmap
+Global configurations and changing default values are made via a ConfigMap object.
+ConfigMap declaration is optional but highly recommended. Create an empty ConfigMap
 using `kubectl create configmap` and configures in the haproxy-ingress deployment using
 the command-line option `--configmap=<namespace>/<configmap-name>`.
 
-Changes to any key in the configmap object is applied on the fly, the haproxy instance
+Changes to any key in the ConfigMap object is applied on the fly, the haproxy instance
 is restarted or dynamically updated if needed.
 
-All configuration key names are supported as a configmap keys. When declared, its value
+All configuration key names are supported as a ConfigMap keys. When declared, its value
 is used as the default value if not overwritten elsewhere.
 
-A configuration key is used verbatim as the configmap key name, without any prefix.
-The configmap spec expects a string as the key value, so declare numbers and booleans
+A configuration key is used verbatim as the ConfigMap key name, without any prefix.
+The ConfigMap spec expects a string as the key value, so declare numbers and booleans
 as strings, HAProxy Ingress will convert it when needed.
 
 # Ingress and services
@@ -51,8 +51,8 @@ service object accepts configuration keys of scope `Backend` only. See
 [Scope](#scope) below.
 
 Configuration keys declared in services have the highest precedence, overwriting
-configuration keys declared in the configmap and ingress objects. Ingress object
-overwrite the default value and the configmap configuration.
+configuration keys declared in the ConfigMap and ingress objects. Ingress object
+overwrite the default value and the ConfigMap configuration.
 
 # Scope
 
@@ -61,17 +61,17 @@ defines where a configuration key can be declared and how it interacts with ingr
 and service objects.
 
 * Scope `Global`: Defines configuration keys that should be declared only in the
-configmap object. Configuration keys of the global scope declared as ingress or
+ConfigMap object. Configuration keys of the global scope declared as ingress or
 service annotations are ignored. A configuration key of the global scope never
 conflict.
 * Scope `Host`: Defines configuration keys that binds to the hostname. Configuration
-keys of the host scope can be declared in the configmap as a default value, or in
+keys of the host scope can be declared in the ConfigMap as a default value, or in
 an ingress object. A conflict warning will be logged if the same host configuration
 key with distinct values are declared in distict ingress objects but to the same
 hostname.
 * Scope `Backend`: Defines configuration keys that binds to the service object, which
 is converted to a HAProxy backend after the configuration parsing. Configuration keys
-of the backend scope can be declared in the configmap as a default value, in an ingress
+of the backend scope can be declared in the ConfigMap as a default value, in an ingress
 object, or in a service object. A conflict warning will be logged if the same backend
 configuration key with distinct values are declared in distict ingress objects but
 to the same service or HAProxy backend. A backend configuration key declared in a
@@ -663,7 +663,7 @@ See also:
 Add HAProxy configuration snippet to the configuration file. Use multiline content
 to add more than one line of configuration.
 
-Examples - configmap:
+Examples - ConfigMap:
 
 ```yaml
     config-global: |
@@ -825,7 +825,7 @@ servers on each backend and update them via a Unix socket without reloading HAPr
 Unused servers will stay in a disabled state. If the change cannot be made via socket,
 a new HAProxy instance will be started.
 
-Starting on v0.8, a new configmap option `slots-min-free` can be used to configure the
+Starting on v0.8, a new ConfigMap option `slots-min-free` can be used to configure the
 minimum number of free/empty servers per backend. If HAProxy need to be restarted and
 an backend has less than `slots-min-free` available servers, another
 `backend-server-slots-increment` new empty servers would be created.

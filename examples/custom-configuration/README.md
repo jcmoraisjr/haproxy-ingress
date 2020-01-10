@@ -30,6 +30,6 @@ The only difference from the deployment instructions is the --configmap paramete
 - --configmap=default/haproxy-conf
 ```
 
-If the Configmap it is updated, HAProxy will be reloaded with the new configuration.
+If the ConfigMap it is updated, HAProxy will be reloaded with the new configuration.
 
 Check all the config options in the [HAProxy Ingress docs](https://github.com/jcmoraisjr/haproxy-ingress#configmap)

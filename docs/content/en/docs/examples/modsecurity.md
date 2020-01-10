@@ -55,11 +55,11 @@ modsecurity-spoa-pp6jz   1/1       Running   0          7s        192.168.100.99
 
 ## Configuring HAProxy Ingress
 
-Add the configmap key `modsecurity-endpoints` with a comma-separated list of `IP:port`
+Add the ConfigMap key `modsecurity-endpoints` with a comma-separated list of `IP:port`
 of the ModSecurity agent server(s). The default port number of the agent is `12345`.
 A `kubectl -n ingress-controller edit configmap haproxy-ingress` should work.
 
-Example of a configmap content if ModSecurity agents has IPs `192.168.100.99` and
+Example of a ConfigMap content if ModSecurity agents has IPs `192.168.100.99` and
 `192.168.100.100`:
 
 ```yaml
