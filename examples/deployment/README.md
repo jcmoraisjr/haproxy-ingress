@@ -63,18 +63,18 @@ NAME                                       READY     STATUS    RESTARTS   AGE
 ingress-default-backend-1110790216-gqr61   1/1       Running   0          10s
 ```
 
-## Configmap
+## ConfigMap
 
-Create a configmap named `haproxy-ingress`:
+Create a ConfigMap named `haproxy-ingress`:
 
 ```console
 $ kubectl --namespace=ingress-controller create configmap haproxy-ingress
 configmap "haproxy-ingress" created
 ```
 
-A configmap is used to provide global or default configuration like
+A ConfigMap is used to provide global or default configuration like
 timeouts, SSL/TLS settings, a syslog service endpoint and so on. The
-configmap can be edited or replaced later in order to apply new
+ConfigMap can be edited or replaced later in order to apply new
 configuration on a running ingress controller. All supported options
 are [here](https://github.com/jcmoraisjr/haproxy-ingress#configmap).
 

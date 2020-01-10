@@ -47,12 +47,12 @@ against a server which implements the acme protocol, version 2.
 Supported acme command-line options:
 
 * `--acme-check-period`: interval between checks for expiring certificates. Defaults to `24h`.
-* `--acme-election-id`: prefix of the configmap name used to store the leader election data. Only the leader of a haproxy-ingress cluster should start the authorization and sign certificate process. Defaults to `acme-leader`.
+* `--acme-election-id`: prefix of the ConfigMap name used to store the leader election data. Only the leader of a haproxy-ingress cluster should start the authorization and sign certificate process. Defaults to `acme-leader`.
 * `--acme-fail-initial-duration`: the starting time to wait and retry after a failed authorization and sign process. Defaults to `5m`.
 * `--acme-fail-max-duration`: the time between retries of failed authorization will exponentially grow up to the max duration time. Defaults to `8h`.
 * `--acme-secret-key-name`: secret name used to store the client private key. Defaults to `acme-private-key`. A new key, hence a new client, is created if the secret does not exist.
 * `--acme-server`: mandatory, starts a local server used to answer challenges from the acme environment. This option should be provided on all haproxy-ingress instances to the certificate signing work properly.
-* `--acme-token-configmap-name`: the configmap name used to store temporary tokens generated during the challenge. Defaults to `acme-validation-tokens`. Such tokens need to be stored in k8s because any haproxy-ingress instance might receive the request from the acme environment.
+* `--acme-token-configmap-name`: the ConfigMap name used to store temporary tokens generated during the challenge. Defaults to `acme-validation-tokens`. Such tokens need to be stored in k8s because any haproxy-ingress instance might receive the request from the acme environment.
 * `--acme-track-tls-annotation`: defines if ingress objects with annotation `kubernetes.io/tls-acme: "true"` should also be tracked. Defaults to `false`.
 
 See also:
@@ -204,9 +204,9 @@ Options:
 
 Configure `--tcp-services-configmap` argument with `namespace/configmapname` resource with TCP
 services and ports that HAProxy should listen to. Use the HAProxy's port number as the key of the
-configmap.
+ConfigMap.
 
-The value of the configmap entry is a colon separated list of the following items:
+The value of the ConfigMap entry is a colon separated list of the following items:
 
 1. `<namespace>/<service-name>`, mandatory, is the well known notation of the service that will receive incoming connections.
 1. `<portnumber>`, mandatory, is the port number the upstream service is listening - this is not related to the listening port of HAProxy.
