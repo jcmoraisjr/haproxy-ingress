@@ -58,13 +58,13 @@ func (sl *SecretLister) CreateOrUpdate(secret *apiv1.Secret) (err error) {
 	return err
 }
 
-// ConfigMapLister makes a Store that lists Configmaps.
+// ConfigMapLister makes a Store that lists ConfigMaps.
 type ConfigMapLister struct {
 	Client k8s.Interface
 	cache.Store
 }
 
-// GetByName searches for a configmap in the local configmaps Store
+// GetByName searches for a ConfigMap in the local ConfigMaps Store
 func (cml *ConfigMapLister) GetByName(name string) (*apiv1.ConfigMap, error) {
 	s, exists, err := cml.GetByKey(name)
 	if err != nil {

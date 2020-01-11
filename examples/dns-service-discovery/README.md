@@ -14,13 +14,13 @@ Example - using internal kubernetes resources
 
 *Note: Configure IP address of your cluster DNS server*
 
-* Update ingress with simple [configmap](/examples/dns-service-discovery/haproxy-config-map.yml)
+* Update ingress with simple [ConfigMap](/examples/dns-service-discovery/haproxy-config-map.yml)
 
 ```console
 $ kubectl apply -f haproxy-config-map.yml
 ```
 
-* configmap with all options displayed [configmap](/examples/dns-service-discovery/all-options-haproxy-config-map.yml)
+* ConfigMap with all options displayed [ConfigMap](/examples/dns-service-discovery/all-options-haproxy-config-map.yml)
 
 ```console
 $ kubectl apply -f all-options-haproxy-config-map.yml
@@ -45,7 +45,7 @@ Two important settings:
 - `clusterIP: None`: service must be [**headless**](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services). See also [dns headless doc](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/).
 
 
-## Configmap options
+## ConfigMap options
 
 * `cluster-dns-domain` can be used if kubedns does not points to cluster.local
 * `dns-resolvers` multiline list of DNS resolvers
