@@ -143,7 +143,7 @@ The table below describes all supported configuration keys.
 | [`dns-timeout-retry`](#dns-resolvers)                | time with suffix                        | Global  | `1s`               |
 | [`drain-support`](#drain-support)                    | [true\|false]                           | Global  | `false`            |
 | [`drain-support-redispatch`](#drain-support)         | [true\|false]                           | Global  | `true`             |
-| [`dynamic-scaling`](#dynamic-scaling)                | [true\|false]                           | Backend | `false`            |
+| [`dynamic-scaling`](#dynamic-scaling)                | [true\|false]                           | Backend | `true`             |
 | [`forwardfor`](#forwardfor)                          | [add\|ignore\|ifmissing]                | Global  | `add`              |
 | [`fronting-proxy-port`](#fronting-proxy-port)        | port number                             | Global  | 0 (do not listen)  |
 | [`health-check-addr`](#health-check)                 | address for health checks               | Backend |                    |
