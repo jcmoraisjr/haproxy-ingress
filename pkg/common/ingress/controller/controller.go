@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"crypto/x509"
 	"fmt"
 	"strings"
 	"sync"
@@ -242,11 +243,11 @@ func (ic *GenericController) Start() {
 }
 
 // CreateDefaultSSLCertificate ...
-func (ic *GenericController) CreateDefaultSSLCertificate() (path, hash string, notAfter time.Time) {
+func (ic *GenericController) CreateDefaultSSLCertificate() (path, hash string, crt *x509.Certificate) {
 	defCert, defKey := ssl.GetFakeSSLCert()
 	c, err := ssl.AddOrUpdateCertAndKey("default-fake-certificate", defCert, defKey, []byte{})
 	if err != nil {
 		glog.Fatalf("Error generating self signed certificate: %v", err)
 	}
-	return c.PemFileName, c.PemSHA, c.Certificate.NotAfter
+	return c.PemFileName, c.PemSHA, c.Certificate
 }

@@ -309,7 +309,7 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	// A future implementation of ssl certs dynamic update should change this metric
 	for _, host := range i.curConfig.Hosts() {
 		if host.TLS.TLSHash != "" {
-			i.metrics.SetCertExpireDate(host.Hostname, host.TLS.TLSNotAfter)
+			i.metrics.SetCertExpireDate(host.Hostname, host.TLS.TLSCommonName, host.TLS.TLSNotAfter)
 		}
 	}
 	i.metrics.IncUpdateFull()

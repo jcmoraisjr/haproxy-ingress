@@ -144,6 +144,7 @@ func (c *converter) syncIngress(ing *extensions.Ingress) {
 					if host.TLS.TLSHash == "" {
 						host.TLS.TLSFilename = tlsPath.Filename
 						host.TLS.TLSHash = tlsPath.SHA1Hash
+						host.TLS.TLSCommonName = tlsPath.CommonName
 						host.TLS.TLSNotAfter = tlsPath.NotAfter
 					} else if host.TLS.TLSHash != tlsPath.SHA1Hash {
 						msg := fmt.Sprintf("TLS of host '%s' was already assigned", host.Hostname)

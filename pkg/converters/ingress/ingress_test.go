@@ -1165,9 +1165,10 @@ func (c *testConfig) SyncDef(config map[string]string, ing ...*extensions.Ingres
 			DefaultConfig:  defaultConfig,
 			DefaultBackend: "system/default",
 			DefaultSSLFile: convtypes.CrtFile{
-				Filename: "/tls/tls-default.pem",
-				SHA1Hash: "1",
-				NotAfter: time.Now().AddDate(0, 0, 30),
+				Filename:   "/tls/tls-default.pem",
+				SHA1Hash:   "1",
+				CommonName: "localhost.localdomain",
+				NotAfter:   time.Now().AddDate(0, 0, 30),
 			},
 			AnnotationPrefix: "ingress.kubernetes.io",
 		},

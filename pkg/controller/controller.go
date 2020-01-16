@@ -163,11 +163,12 @@ func (hc *HAProxyController) createDefaultSSLFile(cache convtypes.Cache) (tlsFil
 	} else {
 		glog.Info("using auto generated fake certificate")
 	}
-	path, hash, notAfter := hc.controller.CreateDefaultSSLCertificate()
+	path, hash, crt := hc.controller.CreateDefaultSSLCertificate()
 	tlsFile = convtypes.CrtFile{
-		Filename: path,
-		SHA1Hash: hash,
-		NotAfter: notAfter,
+		Filename:   path,
+		SHA1Hash:   hash,
+		CommonName: crt.Subject.CommonName,
+		NotAfter:   crt.NotAfter,
 	}
 	return tlsFile
 }
