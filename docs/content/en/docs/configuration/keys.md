@@ -1285,10 +1285,10 @@ See also:
 
 Change security options.
 
-* `use-chroot`: If `true`, configures haproxy to perform a `chroot()` in the empty and non-writable directory `/var/empty` during the startup process, just before it drops its own privileges. Only root can perform a `chroot()`, so HAProxy Ingress container should start as UID `0` if this option is configured as `true`.
+* `use-chroot`: If `true`, configures haproxy to perform a `chroot()` in the empty and non-writable directory `/var/empty` during the startup process, just before it drops its own privileges. Only root can perform a `chroot()`, so HAProxy Ingress container should start as UID `0` if this option is configured as `true`. See the note below about `use-chroot` option limitations.
 * `use-haproxy-user`: Defines if the haproxy's process should be changed to `haproxy`, UID `1001`. The default value `false` leaves haproxy running as root. Note that even running as root, haproxy always drops its own privileges before start its event loop.
 
-In the default configuration, HAProxy Ingress container starts as root. It is also possible to configure the container to start as `haproxy` user, UID `1001`. Read the [Security considerations](http://cbonte.github.io/haproxy-dconv/1.9/management.html#13) from HAProxy doc before change the starting user. The starting user can be changed in the deployment or daemonset's pod template using the following configuration:
+In the default configuration, HAProxy Ingress container starts as root. Since v0.9 it's also possible to configure the container to start as `haproxy` user, UID `1001`. Read the [Security considerations](http://cbonte.github.io/haproxy-dconv/1.9/management.html#13) from HAProxy doc before change the starting user. The starting user can be changed in the deployment or daemonset's pod template using the following configuration:
 
 ```yaml
 ...
@@ -1300,12 +1300,22 @@ In the default configuration, HAProxy Ingress container starts as root. It is al
 
 Note that ports below 1024 cannot be bound if the container starts as non-root.
 
+{{% alert title="Note" %}}
+HAProxy does not have access to the file system after configure a `chroot()`. Unix sockets located outside the chroot directory are used in the following conditions:
+
+* At least one `ssl-passthrough` is used, or `timeout-client` is used as an Ingress annotation (`timeout-client` as a configmap option is fine). Both configurations create a fronting TCP proxy inside haproxy, which uses an unix socket to communicate with the HTTP frontend.
+* Internal ACME signer is used. HAProxy Ingress creates an internal server to answer the ACME challenge, and haproxy forwards the challenge requests to this server using an unix socket.
+
+So only enable `use-chroot` if not using these features.
+{{% /alert %}}
+
 See also:
 
 * http://cbonte.github.io/haproxy-dconv/1.9/management.html#13
 * http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-chroot
 * http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-uid
 * http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-gid
+* http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#3.1-unix-bind
 
 ---
 

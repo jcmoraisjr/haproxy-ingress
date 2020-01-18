@@ -20,6 +20,9 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
+	"os/user"
+	"strconv"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )
@@ -69,6 +72,18 @@ func (s *server) Listen(stopCh chan struct{}) error {
 	l, err := net.Listen("unix", s.server.Addr)
 	if err != nil {
 		return err
+	}
+	if user, err := user.Lookup("haproxy"); err == nil {
+		uid, e1 := strconv.Atoi(user.Uid)
+		gid, e2 := strconv.Atoi(user.Gid)
+		if e1 == nil && e2 == nil {
+			if err := os.Chown(s.socket, uid, gid); err != nil {
+				return err
+			}
+			if err := os.Chmod(s.socket, 0600); err != nil {
+				return err
+			}
+		}
 	}
 	s.logger.Info("acme: listening on unix socket: %s", s.socket)
 	go s.server.Serve(l)
