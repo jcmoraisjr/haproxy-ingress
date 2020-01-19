@@ -145,6 +145,10 @@ func (m *metrics) UpdateSuccessful(success bool) {
 	m.updateSuccessGauge.WithLabelValues().Set(value[success])
 }
 
-func (m *metrics) SetCertExpireDate(domain, cn string, notAfter time.Time) {
+func (m *metrics) SetCertExpireDate(domain, cn string, notAfter *time.Time) {
+	if notAfter == nil {
+		m.certExpireGauge.DeleteLabelValues(domain, cn)
+		return
+	}
 	m.certExpireGauge.WithLabelValues(domain, cn).Set(float64(notAfter.Unix()))
 }

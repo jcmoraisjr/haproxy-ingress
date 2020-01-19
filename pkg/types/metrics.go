@@ -30,5 +30,5 @@ type Metrics interface {
 	IncUpdateDynamic()
 	IncUpdateFull()
 	UpdateSuccessful(success bool)
-	SetCertExpireDate(domain, cn string, notAfter time.Time)
+	SetCertExpireDate(domain, cn string, notAfter *time.Time)
 }

@@ -66,5 +66,5 @@ func (m *MetricsMock) UpdateSuccessful(success bool) {
 }
 
 // SetCertExpireDate ...
-func (m *MetricsMock) SetCertExpireDate(domain, cn string, notAfter time.Time) {
+func (m *MetricsMock) SetCertExpireDate(domain, cn string, notAfter *time.Time) {
 }
