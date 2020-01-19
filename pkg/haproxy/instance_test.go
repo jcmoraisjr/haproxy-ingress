@@ -652,6 +652,7 @@ func TestInstanceEmpty(t *testing.T) {
 	c.checkConfig(`
 global
     daemon
+    unix-bind user haproxy group haproxy mode 0600
     stats socket /var/run/haproxy.sock level admin expose-fd listeners mode 600
     maxconn 2000
     hard-stop-after 15m
@@ -2065,6 +2066,7 @@ func TestInstanceSyslog(t *testing.T) {
 	c.checkConfig(`
 global
     daemon
+    unix-bind user haproxy group haproxy mode 0600
     stats socket /var/run/haproxy.sock level admin expose-fd listeners mode 600
     maxconn 2000
     hard-stop-after 15m
@@ -2977,6 +2979,7 @@ func (c *testConfig) checkConfig(expected string) {
 	replace := map[string]string{
 		"<<global>>": `global
     daemon
+    unix-bind user haproxy group haproxy mode 0600
     stats socket /var/run/haproxy.sock level admin expose-fd listeners mode 600
     maxconn 2000
     hard-stop-after 15m
