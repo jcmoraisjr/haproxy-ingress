@@ -358,6 +358,7 @@ type HostTLSConfig struct {
 	CAVerifyOptional bool
 	CRLFilename      string
 	CRLHash          string
+	TLSCommonName    string
 	TLSFilename      string
 	TLSHash          string
 	TLSNotAfter      time.Time

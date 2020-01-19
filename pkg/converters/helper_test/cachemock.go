@@ -106,9 +106,10 @@ func (c *CacheMock) GetTLSSecretPath(defaultNamespace, secretName string) (convt
 	fullname := c.buildSecretName(defaultNamespace, secretName)
 	if path, found := c.SecretTLSPath[fullname]; found {
 		return convtypes.CrtFile{
-			Filename: path,
-			SHA1Hash: fmt.Sprintf("%x", sha1.Sum([]byte(path))),
-			NotAfter: time.Now().AddDate(0, 0, 30),
+			Filename:   path,
+			SHA1Hash:   fmt.Sprintf("%x", sha1.Sum([]byte(path))),
+			CommonName: "localhost.localdomain",
+			NotAfter:   time.Now().AddDate(0, 0, 30),
 		}, nil
 	}
 	return convtypes.CrtFile{}, fmt.Errorf("secret not found: '%s'", fullname)

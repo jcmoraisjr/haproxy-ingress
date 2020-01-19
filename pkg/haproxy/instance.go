@@ -306,12 +306,7 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 		}
 		return
 	}
-	// A future implementation of ssl certs dynamic update should change this metric
-	for _, host := range i.curConfig.Hosts() {
-		if host.TLS.TLSHash != "" {
-			i.metrics.SetCertExpireDate(host.Hostname, host.TLS.TLSNotAfter)
-		}
-	}
+	i.updateCertExpiring()
 	i.metrics.IncUpdateFull()
 	if err := i.reload(); err != nil {
 		i.logger.Error("error reloading server:\n%v", err)
@@ -321,6 +316,36 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	timer.Tick("reload_haproxy")
 	i.metrics.UpdateSuccessful(true)
 	i.logger.Info("HAProxy successfully reloaded")
+}
+
+func (i *instance) updateCertExpiring() {
+	// TODO move to dynupdate when dynamic crt update is implemented
+	if i.oldConfig == nil {
+		for _, curHost := range i.curConfig.Hosts() {
+			if curHost.TLS.HasTLS() {
+				i.metrics.SetCertExpireDate(curHost.Hostname, curHost.TLS.TLSCommonName, &curHost.TLS.TLSNotAfter)
+			}
+		}
+		return
+	}
+	for _, oldHost := range i.oldConfig.Hosts() {
+		if !oldHost.TLS.HasTLS() {
+			continue
+		}
+		curHost := i.curConfig.FindHost(oldHost.Hostname)
+		if curHost == nil || oldHost.TLS.TLSCommonName != curHost.TLS.TLSCommonName {
+			i.metrics.SetCertExpireDate(oldHost.Hostname, oldHost.TLS.TLSCommonName, nil)
+		}
+	}
+	for _, curHost := range i.curConfig.Hosts() {
+		if !curHost.TLS.HasTLS() {
+			continue
+		}
+		oldHost := i.oldConfig.FindHost(curHost.Hostname)
+		if oldHost == nil || oldHost.TLS.TLSCommonName != curHost.TLS.TLSCommonName {
+			i.metrics.SetCertExpireDate(curHost.Hostname, curHost.TLS.TLSCommonName, &curHost.TLS.TLSNotAfter)
+		}
+	}
 }
 
 func (i *instance) check() error {

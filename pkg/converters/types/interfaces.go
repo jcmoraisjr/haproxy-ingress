@@ -42,7 +42,8 @@ type File struct {
 
 // CrtFile ...
 type CrtFile struct {
-	Filename string
-	SHA1Hash string
-	NotAfter time.Time
+	Filename   string
+	SHA1Hash   string
+	CommonName string
+	NotAfter   time.Time
 }

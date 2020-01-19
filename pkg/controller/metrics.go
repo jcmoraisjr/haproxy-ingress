@@ -91,7 +91,7 @@ func createMetrics() *metrics {
 				Name:      "cert_expire_date_epoch",
 				Help:      "The SSL certificate expiration date in unix epoch time.",
 			},
-			[]string{"hostname"},
+			[]string{"domain", "cn"},
 		),
 	}
 	prometheus.MustRegister(metrics.responseTime)
@@ -145,6 +145,10 @@ func (m *metrics) UpdateSuccessful(success bool) {
 	m.updateSuccessGauge.WithLabelValues().Set(value[success])
 }
 
-func (m *metrics) SetCertExpireDate(hostname string, notAfter time.Time) {
-	m.certExpireGauge.WithLabelValues(hostname).Set(float64(notAfter.Unix()))
+func (m *metrics) SetCertExpireDate(domain, cn string, notAfter *time.Time) {
+	if notAfter == nil {
+		m.certExpireGauge.DeleteLabelValues(domain, cn)
+		return
+	}
+	m.certExpireGauge.WithLabelValues(domain, cn).Set(float64(notAfter.Unix()))
 }
