@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: ingress-controller
+spec:
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      run: grafana
+  template:
+    metadata:
+      labels:
+        run: grafana
+      name: grafana
+      namespace: ingress-controller
+    spec:
+      containers:
+      - name: grafana
+        image: grafana/grafana
+        imagePullPolicy: IfNotPresent
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: ingress-controller
+spec:
+  ports:
+  - port: 3000
+  selector:
+    run: grafana

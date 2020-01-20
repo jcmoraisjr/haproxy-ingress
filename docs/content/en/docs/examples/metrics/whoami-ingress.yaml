@@ -1,0 +1,20 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    ingress.kubernetes.io/ssl-redirect: "false"
+  name: whoami
+  namespace: default
+spec:
+  rules:
+  - host: whoami.localdomain
+    http:
+      paths:
+      - backend:
+          serviceName: whoami
+          servicePort: 8000
+        path: /
+  tls:
+  - hosts:
+    - whoami.localdomain
+    secretName: whoami
