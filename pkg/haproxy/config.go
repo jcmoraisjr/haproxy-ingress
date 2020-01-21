@@ -94,7 +94,12 @@ func (c *config) AcquireTCPBackend(servicename string, port int) *hatypes.TCPBac
 	}
 	c.tcpbackends = append(c.tcpbackends, backend)
 	sort.Slice(c.tcpbackends, func(i, j int) bool {
-		return c.tcpbackends[i].Name < c.tcpbackends[j].Name
+		back1 := c.tcpbackends[i]
+		back2 := c.tcpbackends[j]
+		if back1.Name == back2.Name {
+			return back1.Port < back2.Port
+		}
+		return back1.Name < back2.Name
 	})
 	return backend
 }
