@@ -29,6 +29,7 @@ func createDefaults() map[string]string {
 		types.HostTimeoutClient:    "50s",
 		types.HostTimeoutClientFin: "50s",
 		//
+		types.BackBackendServerNaming:   "sequence",
 		types.BackBackendServerSlotsInc: "1",
 		types.BackSlotsMinFree:          "6",
 		types.BackBalanceAlgorithm:      "roundrobin",

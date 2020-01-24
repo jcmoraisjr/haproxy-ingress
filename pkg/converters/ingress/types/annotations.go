@@ -61,6 +61,7 @@ const (
 	BackAuthType               = "auth-type"
 	BackBackendCheckInterval   = "backend-check-interval"
 	BackBackendProtocol        = "backend-protocol"
+	BackBackendServerNaming    = "backend-server-naming"
 	BackBackendServerSlotsInc  = "backend-server-slots-increment"
 	BackBalanceAlgorithm       = "balance-algorithm"
 	BackBlueGreenBalance       = "blue-green-balance"

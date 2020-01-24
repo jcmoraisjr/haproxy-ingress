@@ -322,6 +322,16 @@ type HostTLSConfig struct {
 	TLSHash          string
 }
 
+// EndpointNaming ...
+type EndpointNaming int
+
+// ...
+const (
+	EpSequence EndpointNaming = iota
+	EpIPPort
+	EpTargetRef
+)
+
 // Backend ...
 type Backend struct {
 	//
@@ -332,6 +342,7 @@ type Backend struct {
 	Name      string
 	Port      string
 	Endpoints []*Endpoint
+	EpNaming  EndpointNaming
 	Paths     []*BackendPath
 	PathsMap  *HostsMap
 	//
