@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	ingutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/utils"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
@@ -671,6 +672,16 @@ func (c *updater) buildBackendRewriteURL(d *backData) {
 			Paths:  cfg.Paths,
 			Config: cfg.Get(ingtypes.BackRewriteTarget).Value,
 		})
+	}
+}
+
+var epNamingRegex = regexp.MustCompile(`^(seq(uence)?|pod|ip)$`)
+
+func (c *updater) buildBackendServerNaming(d *backData) {
+	// Only warning here. d.backend.EpNaming should be updated before backend.AcquireEndpoint()
+	naming := d.mapper.Get(types.BackBackendServerNaming)
+	if !epNamingRegex.MatchString(naming.Value) {
+		c.logger.Warn("ignoring invalid naming type '%s' on %s, using 'seq' instead", naming.Value, naming.Source)
 	}
 }
 
