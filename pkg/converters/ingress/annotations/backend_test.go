@@ -1209,6 +1209,48 @@ func TestRewriteURL(t *testing.T) {
 	}
 }
 
+func TestBackendServerNaming(t *testing.T) {
+	testCases := []struct {
+		source  Source
+		naming  string
+		logging string
+	}{
+		// 0
+		{
+			naming: "seq",
+		},
+		// 1
+		{
+			naming: "sequence",
+		},
+		// 2
+		{
+			source: Source{
+				Namespace: "default",
+				Name:      "ing1",
+				Type:      "ingress",
+			},
+			naming:  "sequences",
+			logging: "WARN ignoring invalid naming type 'sequences' on ingress 'default/ing1', using 'seq' instead",
+		},
+		// 3
+		{
+			naming: "pod",
+		},
+		// 4
+		{
+			naming: "ip",
+		},
+	}
+	for _, test := range testCases {
+		c := setup(t)
+		d := c.createBackendData("default/app", &test.source, map[string]string{ingtypes.BackBackendServerNaming: test.naming}, map[string]string{})
+		c.createUpdater().buildBackendServerNaming(d)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
 func TestBackendProtocol(t *testing.T) {
 	testCase := []struct {
 		source     Source

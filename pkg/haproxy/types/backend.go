@@ -56,8 +56,21 @@ func (b *Backend) AddEmptyEndpoint() *Endpoint {
 }
 
 func (b *Backend) addEndpoint(ip string, port int, targetRef string) *Endpoint {
+	var name string
+	switch b.EpNaming {
+	case EpTargetRef:
+		names := strings.Split(targetRef, "/")
+		name = names[len(names)-1]
+	case EpIPPort:
+		if ip != "127.0.0.1" {
+			name = fmt.Sprintf("%s:%d", ip, port)
+		}
+	}
+	if name == "" {
+		name = fmt.Sprintf("srv%03d", len(b.Endpoints)+1)
+	}
 	endpoint := &Endpoint{
-		Name:      fmt.Sprintf("srv%03d", len(b.Endpoints)+1),
+		Name:      name,
 		IP:        ip,
 		Port:      port,
 		Target:    fmt.Sprintf("%s:%d", ip, port),

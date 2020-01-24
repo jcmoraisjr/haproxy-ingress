@@ -355,6 +355,16 @@ type HostTLSConfig struct {
 	TLSHash          string
 }
 
+// EndpointNaming ...
+type EndpointNaming int
+
+// ...
+const (
+	EpSequence EndpointNaming = iota
+	EpIPPort
+	EpTargetRef
+)
+
 // Backend ...
 type Backend struct {
 	//
@@ -365,7 +375,7 @@ type Backend struct {
 	Name      string
 	Port      string
 	Endpoints []*Endpoint
-	BlueGreen BlueGreenConfig
+	EpNaming  EndpointNaming
 	Paths     []*BackendPath
 	PathsMap  *HostsMap
 	//
@@ -373,6 +383,7 @@ type Backend struct {
 	//
 	AgentCheck       AgentCheck
 	BalanceAlgorithm string
+	BlueGreen        BlueGreenConfig
 	Cookie           Cookie
 	CustomConfig     []string
 	Dynamic          DynBackendConfig
