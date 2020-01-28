@@ -116,6 +116,7 @@ type SSLConfig struct {
 	HeadersPrefix       string
 	ModeAsync           bool
 	Options             string
+	RedirectCode        int
 }
 
 // DHParamConfig ...

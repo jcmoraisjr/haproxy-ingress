@@ -210,6 +210,7 @@ The table below describes all supported configuration keys.
 | [`ssl-passthrough`](#ssl-passthrough)                | [true\|false]                           | Host    |                    |
 | [`ssl-passthrough-http-port`](#ssl-passthrough)      | backend port                            | Host    |                    |
 | [`ssl-redirect`](#ssl-redirect)                      | [true\|false]                           | Backend | `true`             |
+| [`ssl-redirect-code`](#ssl-redirect)                 | http status code                        | Global  | `302`              |
 | [`stats-auth`](#stats)                               | user:passwd                             | Global  | no auth            |
 | [`stats-port`](#stats)                               | port number                             | Global  | `1936`             |
 | [`stats-proxy-protocol`](#stats)                     | [true\|false]                           | Global  | `false`            |
@@ -1503,11 +1504,17 @@ If using SSL passthrough, only root `/` path is supported.
 |-----------------------------|-----------|-------------------------------|-------|
 | `no-tls-redirect-locations` | `Global`  | `/.well-known/acme-challenge` |       |
 | `ssl-redirect`              | `Backend` | `true`                        |       |
+| `ssl-redirect-code`         | `Global`  | `302`                         | v0.10 |
 
 Configures if an encripted connection should be used.
 
 * `ssl-redirect`: Defines if HAProxy should send a `302 redirect` response to requests made on unencripted connections. Note that this configuration will only make effect if TLS is [configured](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/tls-termination).
+* `ssl-redirect-code`: Defines the HTTP status code used in the redirect. The default value is `302` if not declared. Supported values are `301`, `302`, `303`, `307` and `308`.
 * `no-tls-redirect-locations`: Defines a comma-separated list of URLs that should be removed from the TLS redirect. Requests to `:80` http port and starting with one of the URLs from the list will not be redirected to https despite of the TLS redirect configuration. This option defaults to `/.well-known/acme-challenge`, used by ACME protocol.
+
+See also:
+
+* http://cbonte.github.io/haproxy-dconv/2.0/configuration.html#redirect
 
 ---
 

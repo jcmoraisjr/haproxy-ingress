@@ -70,6 +70,7 @@ const (
 	GlobalSSLHeadersPrefix             = "ssl-headers-prefix"
 	GlobalSSLModeAsync                 = "ssl-mode-async"
 	GlobalSSLOptions                   = "ssl-options"
+	GlobalSSLRedirectCode              = "ssl-redirect-code"
 	GlobalStatsAuth                    = "stats-auth"
 	GlobalStatsPort                    = "stats-port"
 	GlobalStatsProxyProtocol           = "stats-proxy-protocol"
