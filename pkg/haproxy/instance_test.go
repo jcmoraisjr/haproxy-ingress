@@ -2490,6 +2490,8 @@ func TestModSecurity(t *testing.T) {
 			endpoints:  []string{"10.0.0.101:12345"},
 			backendExp: ``,
 			modsecExp: `
+    timeout connect 1s
+    timeout server  2s
     server modsec-spoa0 10.0.0.101:12345`,
 		},
 		{
@@ -2500,6 +2502,8 @@ func TestModSecurity(t *testing.T) {
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
     http-request deny if { var(txn.modsec.code) -m int gt 0 }`,
 			modsecExp: `
+    timeout connect 1s
+    timeout server  2s
     server modsec-spoa0 10.0.0.101:12345`,
 		},
 		{
@@ -2509,6 +2513,8 @@ func TestModSecurity(t *testing.T) {
 			backendExp: `
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf`,
 			modsecExp: `
+    timeout connect 1s
+    timeout server  2s
     server modsec-spoa0 10.0.0.101:12345`,
 		},
 		{
@@ -2519,6 +2525,8 @@ func TestModSecurity(t *testing.T) {
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
     http-request deny if { var(txn.modsec.code) -m int gt 0 }`,
 			modsecExp: `
+    timeout connect 1s
+    timeout server  2s
     server modsec-spoa0 10.0.0.101:12345
     server modsec-spoa1 10.0.0.102:12345`,
 		},
@@ -2534,6 +2542,8 @@ func TestModSecurity(t *testing.T) {
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
     http-request deny if { var(txn.modsec.code) -m int gt 0 } { var(txn.pathID) path01 }`,
 			modsecExp: `
+    timeout connect 1s
+    timeout server  2s
     server modsec-spoa0 10.0.0.101:12345`,
 		},
 	}
@@ -2565,7 +2575,11 @@ func TestModSecurity(t *testing.T) {
 				Paths: hatypes.NewBackendPaths(b.FindHostPath("d1.local/")),
 			})
 		}
-		c.config.Global().ModSecurity.Endpoints = test.endpoints
+
+		globalModsec := &c.config.Global().ModSecurity
+		globalModsec.Endpoints = test.endpoints
+		globalModsec.Timeout.Connect = "1s"
+		globalModsec.Timeout.Server = "2s"
 
 		c.Update()
 
@@ -2573,9 +2587,7 @@ func TestModSecurity(t *testing.T) {
 		if test.modsecExp != "" {
 			modsec = `
 backend spoe-modsecurity
-    mode tcp
-    timeout connect 5s
-    timeout server  5s` + test.modsecExp
+    mode tcp` + test.modsecExp
 		}
 		c.checkConfig(`
 <<global>>

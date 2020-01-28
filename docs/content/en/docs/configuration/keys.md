@@ -1094,9 +1094,11 @@ See also:
 | Configuration key                | Scope    | Default | Since |
 |----------------------------------|----------|---------|-------|
 | `modsecurity-endpoints`          | `Global` |         |       |
+| `modsecurity-timeout-connect`    | `Global` | `5s`    | v0.10 |
 | `modsecurity-timeout-hello`      | `Global` | `100ms` |       |
 | `modsecurity-timeout-idle`       | `Global` | `30s`   |       |
 | `modsecurity-timeout-processing` | `Global` | `1s`    |       |
+| `modsecurity-timeout-server`     | `Global` | `5s`    | v0.10 |
 
 Configure modsecurity agent. These options only have effect if `modsecurity-endpoints`
 is configured.
@@ -1112,9 +1114,11 @@ Since v0.8 the spoe filter is configured on a per-backend basis.
 The following keys are supported:
 
 * `modsecurity-endpoints`: Comma separated list of ModSecurity agent endpoints.
+* `modsecurity-timeout-connect`: Defines the maximum time to wait for the connection to the agent be established. Configures the haproxy's timeout connect. Defaults to `5s` if not configured.
 * `modsecurity-timeout-hello`: Defines the maximum time to wait for the AGENT-HELLO frame from the agent. Default value is `100ms`.
 * `modsecurity-timeout-idle`: Defines the maximum time to wait before close an idle connection. Default value is `30s`.
 * `modsecurity-timeout-processing`: Defines the maximum time to wait for the whole ModSecurity processing. Default value is `1s`.
+* `modsecurity-timeout-server`: Defines the maximum time to wait for an agent response. Configures the haproxy's timeout server. Defaults to `5s` if not configured.
 
 See also:
 

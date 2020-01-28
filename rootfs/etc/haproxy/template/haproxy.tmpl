@@ -1074,8 +1074,8 @@ frontend healthz
 #
 backend spoe-modsecurity
     mode tcp
-    timeout connect 5s
-    timeout server  5s
+    timeout connect {{ $global.ModSecurity.Timeout.Connect }}
+    timeout server  {{ $global.ModSecurity.Timeout.Server }}
 {{- range $i, $endpoint := $global.ModSecurity.Endpoints }}
     server modsec-spoa{{ $i }} {{ $endpoint }}
 {{- end }}
