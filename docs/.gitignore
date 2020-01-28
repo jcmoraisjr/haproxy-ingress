@@ -1,4 +1,4 @@
 package-lock.json
-/public/
-/resources/
-/node_modules/
+public/
+resources/
+node_modules/
