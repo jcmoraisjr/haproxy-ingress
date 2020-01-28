@@ -107,6 +107,7 @@ The table below describes all supported configuration keys.
 | `auth-type`                                          | "basic"                                 | Backend |                    |
 | [`backend-check-interval`](#health-check)            | time with suffix                        | Backend | `2s`               |
 | [`backend-protocol`](#backend-protocol)              | [h1\|h2\|h1-ssl\|h2-ssl]                | Backend | `h1`               |
+| [`backend-server-naming`](#backend-server-naming)    | [sequence\|ip\|pod]                     | Backend | `sequence`         |
 | [`backend-server-slots-increment`](#dynamic-scaling) | number of slots                         | Backend | `32`               |
 | [`balance-algorithm`](#balance-algorithm)            | algorithm name                          | Backend | `roundrobin`       |
 | [`bind-fronting-proxy`](#bind)                       | ip + port                               | Global  |                    |
@@ -464,6 +465,24 @@ See also:
 * [use-htx](#use-htx) configuration key to enable HTTP/2 backends.
 * [secure-backend](#secure-backend) configuration keys to configure optional client certificate and certificate authority bundle of SSL/TLS connections.
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-proto
+
+---
+
+## Backend server naming
+
+| Configuration key       | Scope     | Default    | Since    |
+|-------------------------|-----------|------------|----------|
+| `backend-server-naming` | `Backend` | `sequence` | `v0.8.1` |
+
+Configures how to name backend servers.
+
+* `sequence`: Names backend servers with a prefixed number sequence: `srv001`, `srv002`, and so on. This is the default configuration and the preferred option if dynamic udpate is used. `seq` is an alias to `sequence`.
+* `pod`: Uses the k8s pod name as the backend server name. This option doesn't work on backends whose [`service-upstream`](#service-upstream) is `true`, falling back to `sequence`.
+* `ip`: Uses target's `<ip>:<port>` as the server name.
+
+{{% alert title="Note" %}}
+HAProxy Ingress won't refuse to change the default naming if dynamic update is `true`, this would however lead to undesired behaviour: empty slots would still be named as sequences, old-named backend servers will dynamically receive new workloads with new pod names or IP numbers which does not relates with the name anymore, making the naming useless, if not wrong.
+{{% /alert %}}
 
 ---
 
