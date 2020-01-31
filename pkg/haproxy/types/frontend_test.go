@@ -68,8 +68,8 @@ func TestAppendHostname(t *testing.T) {
 
 func TestBuildFrontendEmpty(t *testing.T) {
 	frontends, _, _ := BuildRawFrontends([]*Host{})
-	if len(frontends) > 0 {
-		t.Errorf("expected len(frontends) == 0, but was %d", len(frontends))
+	if len(frontends) != 1 {
+		t.Errorf("expected len(frontends) == 1, but was %d", len(frontends))
 	}
 }
 

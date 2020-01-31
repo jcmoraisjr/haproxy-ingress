@@ -516,8 +516,6 @@ backend {{ $backend.ID }}
     {{- end }}
 {{- end }}
 
-{{- if $cfg.Backends }}
-
   # # # # # # # # # # # # # # # # # # #
 # #
 #     Error pages
@@ -540,8 +538,6 @@ backend _error496
     mode http
     errorfile 400 /usr/local/etc/haproxy/errors/496.http
     http-request deny deny_status 400
-
-{{- end }}{{/* if has Backends */}}
 
 {{- $fgroup := $cfg.FrontendGroup }}
 {{- if $fgroup }}

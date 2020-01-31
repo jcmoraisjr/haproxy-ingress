@@ -773,8 +773,7 @@ func TestInstanceTCPBackend(t *testing.T) {
 listen _tcp_postgresql_5432
     bind :5432
     mode tcp
-    server srv001 172.17.0.2:5432
-`,
+    server srv001 172.17.0.2:5432`,
 		},
 		// 1
 		{
@@ -789,8 +788,7 @@ listen _tcp_pq_5432
     bind :5432
     mode tcp
     server srv001 172.17.0.2:5432 check port 5432 inter 2s
-    server srv002 172.17.0.3:5432 check port 5432 inter 2s
-`,
+    server srv002 172.17.0.3:5432 check port 5432 inter 2s`,
 		},
 		// 2
 		{
@@ -804,8 +802,7 @@ listen _tcp_pq_5432
 listen _tcp_pq_5432
     bind :5432 ssl crt /var/haproxy/ssl/pq.pem
     mode tcp
-    server srv001 172.17.0.2:5432 send-proxy-v2
-`,
+    server srv001 172.17.0.2:5432 send-proxy-v2`,
 		},
 		// 3
 		{
@@ -822,15 +819,27 @@ listen _tcp_pq_5432
 listen _tcp_pq_5432
     bind 127.0.0.1:5432 ssl crt /var/haproxy/ssl/pq.pem accept-proxy
     mode tcp
-    server srv001 172.17.0.2:5432 check port 5432 inter 2s send-proxy
-`,
+    server srv001 172.17.0.2:5432 check port 5432 inter 2s send-proxy`,
 		},
 	}
 	for _, test := range testCases {
 		c := setup(t)
 		test.doconfig(c)
 		c.Update()
-		c.checkConfig("<<global>>\n<<defaults>>" + test.expected + "<<support>>")
+		c.checkConfig(`
+<<global>>
+<<defaults>>` + test.expected + `
+backend _error404
+    mode http
+    errorfile 400 /usr/local/etc/haproxy/errors/404.http
+    http-request deny deny_status 400
+<<backend-errors>>
+<<frontend-http>>
+    default_backend _error404
+<<frontend-https>>
+    default_backend _error404
+<<support>>
+`)
 		logging := test.logging
 		if logging == "" {
 			logging = defaultLogging
@@ -2165,6 +2174,15 @@ func TestStatsHealthz(t *testing.T) {
 		c.checkConfig(`
 <<global>>
 <<defaults>>
+backend _error404
+    mode http
+    errorfile 400 /usr/local/etc/haproxy/errors/404.http
+    http-request deny deny_status 400
+<<backend-errors>>
+<<frontend-http>>
+    default_backend _error404
+<<frontend-https>>
+    default_backend _error404
 listen stats
     mode http` + test.expectedStats + `
     stats enable

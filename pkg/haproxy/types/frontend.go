@@ -183,9 +183,6 @@ func (f *Frontend) HasMaxBody() bool {
 
 // BuildRawFrontends ...
 func BuildRawFrontends(hosts []*Host) (frontends []*Frontend, sslpassthrough []*Host, defaultBind *BindConfig) {
-	if len(hosts) == 0 {
-		return nil, nil, nil
-	}
 	// creating frontends and ssl-passthrough hosts
 	for _, host := range hosts {
 		if host.SSLPassthrough {

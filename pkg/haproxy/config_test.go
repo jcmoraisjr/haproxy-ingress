@@ -27,8 +27,8 @@ func TestEmptyFrontend(t *testing.T) {
 	if err := c.BuildFrontendGroup(); err != nil {
 		t.Errorf("error creating frontends: %v", err)
 	}
-	if fg := c.FrontendGroup(); fg != nil {
-		t.Error("expected FrontendGroup == nil")
+	if fg := c.FrontendGroup(); fg == nil {
+		t.Error("expected FrontendGroup != nil")
 	}
 	c.AcquireHost("empty")
 	if err := c.BuildFrontendGroup(); err != nil {
