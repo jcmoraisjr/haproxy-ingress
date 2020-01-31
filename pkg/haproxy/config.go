@@ -234,9 +234,6 @@ func (c *config) FrontendGroup() *hatypes.FrontendGroup {
 func (c *config) BuildFrontendGroup() error {
 	// tested thanks to instance_test templating tests
 	// ideas to make a nice test or a nice refactor are welcome
-	if len(c.hosts) == 0 {
-		return nil
-	}
 	frontends, sslpassthrough, defaultBind := hatypes.BuildRawFrontends(c.hosts)
 	fgroupMaps := hatypes.CreateMaps()
 	fgroup := &hatypes.FrontendGroup{
