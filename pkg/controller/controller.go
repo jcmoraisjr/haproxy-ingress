@@ -127,7 +127,7 @@ func (hc *HAProxyController) configController() {
 		Cache:            hc.cache,
 		AnnotationPrefix: hc.cfg.AnnPrefix,
 		DefaultBackend:   hc.cfg.DefaultService,
-		DefaultSSLFile:   hc.createDefaultSSLFile(hc.cache),
+		DefaultSSLFile:   hc.createDefaultSSLFile(),
 		AcmeTrackTLSAnn:  hc.cfg.AcmeTrackTLSAnn,
 	}
 }
@@ -153,9 +153,9 @@ func (hc *HAProxyController) startServices() {
 	}
 }
 
-func (hc *HAProxyController) createDefaultSSLFile(cache convtypes.Cache) (tlsFile convtypes.CrtFile) {
+func (hc *HAProxyController) createDefaultSSLFile() (tlsFile convtypes.CrtFile) {
 	if hc.cfg.DefaultSSLCertificate != "" {
-		tlsFile, err := cache.GetTLSSecretPath("", hc.cfg.DefaultSSLCertificate)
+		tlsFile, err := hc.cache.GetTLSSecretPath("", hc.cfg.DefaultSSLCertificate)
 		if err == nil {
 			return tlsFile
 		}
