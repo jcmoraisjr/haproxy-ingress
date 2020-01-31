@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
+	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	types_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/types/helper_test"
@@ -33,6 +34,11 @@ import (
  *  BUILDERS
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+const (
+	fakeCAFilename = "/var/haproxy/ssl/fake-ca.crt"
+	fakeCAHash     = "1"
+)
 
 type testConfig struct {
 	t       *testing.T
@@ -60,6 +66,10 @@ func (c *testConfig) createUpdater() *updater {
 		haproxy: c.haproxy,
 		cache:   c.cache,
 		logger:  c.logger,
+		fakeCA: convtypes.CrtFile{
+			Filename: fakeCAFilename,
+			SHA1Hash: fakeCAHash,
+		},
 	}
 }
 
@@ -106,6 +116,15 @@ func (c *testConfig) createBackendMappingData(
 		d.mapper.AddAnnotations(source, testingHostname+uri, ann)
 	}
 	return d
+}
+
+func (c *testConfig) createHostData(source *Source, ann, annDefault map[string]string) *hostData {
+	mapper := NewMapBuilder(c.logger, "", annDefault).NewMapper()
+	mapper.AddAnnotations(source, "/", ann)
+	return &hostData{
+		host:   &hatypes.Host{},
+		mapper: mapper,
+	}
 }
 
 func (c *testConfig) compareObjects(name string, index int, actual, expected interface{}) {

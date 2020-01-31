@@ -103,6 +103,7 @@ The table below describes all supported configuration keys.
 | [`auth-tls-cert-header`](#auth-tls)                  | [true\|false]                           | Backend |                    |
 | [`auth-tls-error-page`](#auth-tls)                   | url                                     | Host    |                    |
 | [`auth-tls-secret`](#auth-tls)                       | namespace/secret name                   | Host    |                    |
+| [`auth-tls-strict`](#auth-tls)                       | [true\|false]                           | Host    |                    |
 | [`auth-tls-verify-client`](#auth-tls)                | [off\|optional\|on\|optional_no_ca]     | Host    |                    |
 | `auth-type`                                          | "basic"                                 | Backend |                    |
 | [`backend-check-interval`](#health-check)            | time with suffix                        | Backend | `2s`               |
@@ -411,14 +412,15 @@ See also:
 
 ## Auth TLS
 
-| Configuration key        | Scope     | Default | Since |
-|--------------------------|-----------|---------|-------|
-| `auth-tls-cert-header`   | `Backend` | `false` |       |
-| `auth-tls-error-page`    | `Host`    |         |       |
-| `auth-tls-secret`        | `Host`    |         |       |
-| `auth-tls-verify-client` | `Host`    |         |       |
-| `ssl-fingerprint-lower`  | `Backend` | `false` | v0.10 |
-| `ssl-headers-prefix`     | `Global`  | `X-SSL` |       |
+| Configuration key        | Scope     | Default | Since  |
+|--------------------------|-----------|---------|--------|
+| `auth-tls-cert-header`   | `Backend` | `false` |        |
+| `auth-tls-error-page`    | `Host`    |         |        |
+| `auth-tls-secret`        | `Host`    |         |        |
+| `auth-tls-strict`        | `Host`    | `false` | v0.8.1 |
+| `auth-tls-verify-client` | `Host`    |         |        |
+| `ssl-fingerprint-lower`  | `Backend` | `false` | v0.10  |
+| `ssl-headers-prefix`     | `Global`  | `X-SSL` |        |
 
 Configure client authentication with X509 certificate. The following headers are
 added to the request:
@@ -436,6 +438,7 @@ The following keys are supported:
 * `auth-tls-cert-header`: If `true` HAProxy will add `X-SSL-Client-Cert` http header with a base64 encoding of the X509 certificate provided by the client. Default is to not provide the client certificate.
 * `auth-tls-error-page`: Optional URL of the page to redirect the user if he doesn't provide a certificate or the certificate is invalid.
 * `auth-tls-secret`: Mandatory secret name with `ca.crt` key providing all certificate authority bundles used to validate client certificates. Since v0.9, an optional `ca.crl` key can also provide a CRL in PEM format for the server to verify against.
+* `auth-tls-strict`: Defines if a wrong or incomplete configuration, eg missing secret with `ca.crt`, should forbid connection attempts. If `false`, the default value, a wrong or incomplete configuration will ignore the authentication config, allowing anonymous connection. If `true`, a strict configuration is used: all requests will be rejected with HTTP 495 or 496, or redirected to the error page if configured, until a proper `ca.crt` is provided. Strict configuration will only be used if `auth-tls-secret` has a secret name and `auth-tls-verify-client` is missing or is not configured as `off`.
 * `auth-tls-verify-client`: Optional configuration of Client Verification behavior. Supported values are `off`, `on`, `optional` and `optional_no_ca`. The default value is `on` if a valid secret is provided, `off` otherwise.
 * `ssl-fingerprint-lower`: Defines if the certificate fingerprint should be in lowercase hexadecimal digits. The default value is `false`, which uses uppercase digits.
 * `ssl-headers-prefix`: Configures which prefix should be used on HTTP headers. Since [RFC 6648](https://tools.ietf.org/html/rfc6648) `X-` prefix on unstandardized headers changed from a convention to deprecation. This configuration allows to select which pattern should be used on header names.

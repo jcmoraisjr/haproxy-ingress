@@ -41,6 +41,7 @@ func NewUpdater(haproxy haproxy.Config, options *ingtypes.ConverterOptions) Upda
 		haproxy: haproxy,
 		logger:  options.Logger,
 		cache:   options.Cache,
+		fakeCA:  options.FakeCAFile,
 	}
 }
 
@@ -48,6 +49,7 @@ type updater struct {
 	haproxy haproxy.Config
 	logger  types.Logger
 	cache   convtypes.Cache
+	fakeCA  convtypes.CrtFile
 }
 
 type globalData struct {

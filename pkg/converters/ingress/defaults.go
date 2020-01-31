@@ -30,6 +30,7 @@ const (
 
 func createDefaults() map[string]string {
 	return map[string]string{
+		types.HostAuthTLSStrict:    "false",
 		types.HostTimeoutClient:    "50s",
 		types.HostTimeoutClientFin: "50s",
 		//
