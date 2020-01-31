@@ -369,7 +369,9 @@ backend {{ $backend.ID }}
 {{- $needSSLACL := not $backend.HasSSLRedirect }}
     http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-CN   %{+Q}[ssl_c_s_dn(cn)]{{ if $needSSLACL }}   if local-offload{{ end }}
     http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-DN   %{+Q}[ssl_c_s_dn]{{ if $needSSLACL }}       if local-offload{{ end }}
-    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1 %{+Q}[ssl_c_sha1,hex]{{ if $needSSLACL }}   if local-offload{{ end }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1 %{+Q}[ssl_c_sha1,hex
+        {{- if $backend.TLS.FingerprintLower }},lower{{ end }}]
+        {{- if $needSSLACL }}   if local-offload{{ end }}
 {{- if $backend.TLS.AddCertHeader }}
     http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-Cert %{+Q}[ssl_c_der,base64]{{ if $needSSLACL }} if local-offload{{ end }}
 {{- end }}

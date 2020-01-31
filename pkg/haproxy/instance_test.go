@@ -1273,6 +1273,7 @@ func TestInstanceSingleFrontendTwoBindsCA(t *testing.T) {
 
 	b.SSLRedirect = b.CreateConfigBool(true)
 	b.TLS.AddCertHeader = true
+	b.TLS.FingerprintLower = true
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 
 	c.Update()
@@ -1284,7 +1285,7 @@ backend d_app_8080
     acl local-offload ssl_fc
     http-request set-header X-SSL-Client-CN   %{+Q}[ssl_c_s_dn(cn)]
     http-request set-header X-SSL-Client-DN   %{+Q}[ssl_c_s_dn]
-    http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex]
+    http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex,lower]
     http-request set-header X-SSL-Client-Cert %{+Q}[ssl_c_der,base64]
     server s1 172.17.0.11:8080 weight 100
 backend _default_backend

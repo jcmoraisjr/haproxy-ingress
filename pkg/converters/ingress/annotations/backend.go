@@ -687,6 +687,7 @@ func (c *updater) buildBackendServerNaming(d *backData) {
 
 func (c *updater) buildBackendSSL(d *backData) {
 	d.backend.TLS.AddCertHeader = d.mapper.Get(ingtypes.BackAuthTLSCertHeader).Bool()
+	d.backend.TLS.FingerprintLower = d.mapper.Get(ingtypes.BackSSLFingerprintLower).Bool()
 	if cfg := d.mapper.Get(ingtypes.BackSSLCiphersBackend); cfg.Source != nil {
 		d.backend.Server.Ciphers = cfg.Value
 	}

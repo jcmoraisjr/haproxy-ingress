@@ -589,8 +589,9 @@ type BackendTimeoutConfig struct {
 
 // BackendTLSConfig ...
 type BackendTLSConfig struct {
-	AddCertHeader bool
-	HasTLSAuth    bool
+	AddCertHeader    bool
+	FingerprintLower bool
+	HasTLSAuth       bool
 }
 
 // UserlistConfig ...
