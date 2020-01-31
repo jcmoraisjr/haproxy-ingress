@@ -1634,7 +1634,9 @@ func (ic *GenericController) SetForceReload(shouldReload bool) {
 
 // CreateDefaultSSLCertificate ...
 func (ic *GenericController) CreateDefaultSSLCertificate() (path, hash string) {
-	defCert, defKey := ssl.GetFakeSSLCert()
+	defCert, defKey := ssl.GetFakeSSLCert(
+		[]string{"Acme Co"}, "Kubernetes Ingress Controller Fake Certificate", []string{"ingress.local"},
+	)
 	c, err := ssl.AddOrUpdateCertAndKey(fakeCertificate, defCert, defKey, []byte{})
 	if err != nil {
 		glog.Fatalf("Error generating self signed certificate: %v", err)

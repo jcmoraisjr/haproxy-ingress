@@ -21,6 +21,7 @@ const (
 	HostAppRoot                = "app-root"
 	HostAuthTLSErrorPage       = "auth-tls-error-page"
 	HostAuthTLSSecret          = "auth-tls-secret"
+	HostAuthTLSStrict          = "auth-tls-strict"
 	HostAuthTLSVerifyClient    = "auth-tls-verify-client"
 	HostCertSigner             = "cert-signer"
 	HostServerAlias            = "server-alias"
@@ -38,6 +39,7 @@ var (
 		HostAppRoot:                {},
 		HostAuthTLSErrorPage:       {},
 		HostAuthTLSSecret:          {},
+		HostAuthTLSStrict:          {},
 		HostAuthTLSVerifyClient:    {},
 		HostCertSigner:             {},
 		HostServerAlias:            {},
