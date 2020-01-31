@@ -244,7 +244,9 @@ func (ic *GenericController) Start() {
 
 // CreateDefaultSSLCertificate ...
 func (ic *GenericController) CreateDefaultSSLCertificate() (path, hash string, crt *x509.Certificate) {
-	defCert, defKey := ssl.GetFakeSSLCert()
+	defCert, defKey := ssl.GetFakeSSLCert(
+		[]string{"Acme Co"}, "Kubernetes Ingress Controller Fake Certificate", []string{"ingress.local"},
+	)
 	c, err := ssl.AddOrUpdateCertAndKey("default-fake-certificate", defCert, defKey, []byte{})
 	if err != nil {
 		glog.Fatalf("Error generating self signed certificate: %v", err)
