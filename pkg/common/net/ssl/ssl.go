@@ -329,7 +329,7 @@ func AddOrUpdateDHParam(name string, dh []byte) (string, error) {
 
 // GetFakeSSLCert creates a Self Signed Certificate
 // Based in the code https://golang.org/src/crypto/tls/generate_cert.go
-func GetFakeSSLCert() ([]byte, []byte) {
+func GetFakeSSLCert(o []string, cn string, dns []string) (cert, key []byte) {
 
 	var priv interface{}
 	var err error
@@ -354,8 +354,8 @@ func GetFakeSSLCert() ([]byte, []byte) {
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			Organization: []string{"Acme Co"},
-			CommonName:   "Kubernetes Ingress Controller Fake Certificate",
+			Organization: o,
+			CommonName:   cn,
 		},
 		NotBefore: notBefore,
 		NotAfter:  notAfter,
@@ -363,16 +363,14 @@ func GetFakeSSLCert() ([]byte, []byte) {
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
-		DNSNames:              []string{"ingress.local"},
+		DNSNames:              dns,
 	}
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.(*rsa.PrivateKey).PublicKey, priv)
 	if err != nil {
 		glog.Fatalf("Failed to create fake certificate: %s", err)
 	}
 
-	cert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-
-	key := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv.(*rsa.PrivateKey))})
-
+	cert = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	key = pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv.(*rsa.PrivateKey))})
 	return cert, key
 }

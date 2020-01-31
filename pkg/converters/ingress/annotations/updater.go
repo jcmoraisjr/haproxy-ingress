@@ -36,11 +36,12 @@ type Updater interface {
 }
 
 // NewUpdater ...
-func NewUpdater(haproxy haproxy.Config, cache convtypes.Cache, logger types.Logger) Updater {
+func NewUpdater(haproxy haproxy.Config, options *ingtypes.ConverterOptions) Updater {
 	return &updater{
 		haproxy: haproxy,
-		cache:   cache,
-		logger:  logger,
+		cache:   options.Cache,
+		logger:  options.Logger,
+		fakeCA:  options.FakeCAFile,
 	}
 }
 
@@ -48,6 +49,7 @@ type updater struct {
 	haproxy haproxy.Config
 	cache   convtypes.Cache
 	logger  types.Logger
+	fakeCA  convtypes.File
 }
 
 type globalData struct {

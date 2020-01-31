@@ -22,6 +22,7 @@ const (
 	HostAuthTLSErrorPage       = "auth-tls-error-page"
 	HostAuthTLSVerifyClient    = "auth-tls-verify-client"
 	HostAuthTLSSecret          = "auth-tls-secret"
+	HostAuthTLSStrict          = "auth-tls-strict"
 	HostServerAlias            = "server-alias"
 	HostServerAliasRegex       = "server-alias-regex"
 	HostSSLPassthrough         = "ssl-passthrough"
@@ -38,6 +39,7 @@ var (
 		HostAuthTLSErrorPage:       {},
 		HostAuthTLSVerifyClient:    {},
 		HostAuthTLSSecret:          {},
+		HostAuthTLSStrict:          {},
 		HostServerAlias:            {},
 		HostServerAliasRegex:       {},
 		HostSSLPassthrough:         {},

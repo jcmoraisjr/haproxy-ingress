@@ -121,7 +121,9 @@ func TestCACert(t *testing.T) {
 }
 
 func TestGetFakeSSLCert(t *testing.T) {
-	k, c := GetFakeSSLCert()
+	k, c := GetFakeSSLCert(
+		[]string{"Acme Co"}, "Kubernetes Ingress Controller Fake Certificate", []string{"ingress.local"},
+	)
 	if len(k) == 0 {
 		t.Fatalf("expected a valid key")
 	}

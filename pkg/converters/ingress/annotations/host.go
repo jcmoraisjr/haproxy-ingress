@@ -29,14 +29,22 @@ func (c *updater) buildHostAuthTLS(d *hostData) {
 	if verify.Value == "off" {
 		return
 	}
+	tls := &d.host.TLS
 	if cafile, err := c.cache.GetCASecretPath(tlsSecret.Source.Namespace, tlsSecret.Value); err == nil {
-		d.host.TLS.CAFilename = cafile.Filename
-		d.host.TLS.CAHash = cafile.SHA1Hash
-		d.host.TLS.CAVerifyOptional = verify.Value == "optional" || verify.Value == "optional_no_ca"
-		d.host.TLS.CAErrorPage = d.mapper.Get(ingtypes.HostAuthTLSErrorPage).Value
+		tls.CAFilename = cafile.Filename
+		tls.CAHash = cafile.SHA1Hash
 	} else {
-		c.logger.Error("error building TLS auth config: %v", err)
+		c.logger.Error("error building TLS auth config on %s: %v", tlsSecret.Source, err)
 	}
+	if tls.CAFilename == "" && d.mapper.Get(ingtypes.HostAuthTLSStrict).Bool() {
+		// Here we have a misconfigured auth-tls and auth-tls-strict as `true`.
+		// Using a fake and self-generated CA so any connection attempt will fail with
+		// HTTP 495 (invalid crt) or 496 (crt wasn't provided) instead of allow the request.
+		tls.CAFilename = c.fakeCA.Filename
+		tls.CAHash = c.fakeCA.SHA1Hash
+	}
+	tls.CAVerifyOptional = verify.Value == "optional" || verify.Value == "optional_no_ca"
+	tls.CAErrorPage = d.mapper.Get(ingtypes.HostAuthTLSErrorPage).Value
 }
 
 func (c *updater) buildHostSSLPassthrough(d *hostData) {
