@@ -203,6 +203,7 @@ The table below describes all supported configuration keys.
 | [`ssl-dh-default-max-size`](#ssl-dh)                 | number                                  | Global  | `1024`             |
 | [`ssl-dh-param`](#ssl-dh)                            | namespace/secret name                   | Global  | no custom DH param |
 | [`ssl-engine`](#ssl-engine)                          | OpenSSL engine name and parameters      | Global  | no engine set      |
+| [`ssl-fingerprint-lower`](#auth-tls)                 | [true\|false]                           | Backend | `false`            |
 | [`ssl-headers-prefix`](#auth-tls)                    | prefix                                  | Global  | `X-SSL`            |
 | [`ssl-mode-async`](#ssl-engine)                      | [true\|false]                           | Global  | `false`            |
 | [`ssl-options`](#ssl-options)                        | space-separated list                    | Global  | [see description](#ssl-options) |
@@ -416,12 +417,13 @@ See also:
 | `auth-tls-error-page`    | `Host`    |         |       |
 | `auth-tls-secret`        | `Host`    |         |       |
 | `auth-tls-verify-client` | `Host`    |         |       |
+| `ssl-fingerprint-lower`  | `Backend` | `false` | v0.10 |
 | `ssl-headers-prefix`     | `Global`  | `X-SSL` |       |
 
 Configure client authentication with X509 certificate. The following headers are
 added to the request:
 
-* `X-SSL-Client-SHA1`: Hex encoding of the SHA-1 fingerprint of the X509 certificate
+* `X-SSL-Client-SHA1`: Hex encoding of the SHA-1 fingerprint of the X509 certificate. The default output uses uppercase hexadecimal digits, configure `ssl-fingerprint-lower` to `true` to use lowercase digits instead.
 * `X-SSL-Client-DN`: Distinguished name of the certificate
 * `X-SSL-Client-CN`: Common name of the certificate
 
@@ -435,6 +437,7 @@ The following keys are supported:
 * `auth-tls-error-page`: Optional URL of the page to redirect the user if he doesn't provide a certificate or the certificate is invalid.
 * `auth-tls-secret`: Mandatory secret name with `ca.crt` key providing all certificate authority bundles used to validate client certificates. Since v0.9, an optional `ca.crl` key can also provide a CRL in PEM format for the server to verify against.
 * `auth-tls-verify-client`: Optional configuration of Client Verification behavior. Supported values are `off`, `on`, `optional` and `optional_no_ca`. The default value is `on` if a valid secret is provided, `off` otherwise.
+* `ssl-fingerprint-lower`: Defines if the certificate fingerprint should be in lowercase hexadecimal digits. The default value is `false`, which uses uppercase digits.
 * `ssl-headers-prefix`: Configures which prefix should be used on HTTP headers. Since [RFC 6648](https://tools.ietf.org/html/rfc6648) `X-` prefix on unstandardized headers changed from a convention to deprecation. This configuration allows to select which pattern should be used on header names.
 
 See also:
