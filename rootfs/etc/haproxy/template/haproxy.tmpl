@@ -703,8 +703,9 @@ frontend _front_http
 
 {{- /*------------------------------------*/}}
 {{- if $hasFrontingProxy }}
-    http-request redirect scheme https if
-        {{- "" }} fronting-proxy !{ hdr(X-Forwarded-Proto) https }
+    http-request redirect scheme https
+        {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
+        {{- "" }} if fronting-proxy !{ hdr(X-Forwarded-Proto) https }
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -722,16 +723,19 @@ frontend _front_http
         {{- "" }} var(req.base),map_beg({{ $fgroup.HTTPSRedirMap.MatchFile }})
         {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
     http-request redirect scheme https
+        {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
         {{- "" }} if{{ if $acmeexclusive }} !acme-challenge{{ end }}
         {{- if $hasFrontingProxy }} !fronting-proxy{{ end }}
         {{- "" }} { var(req.redir) yes }
     http-request redirect scheme https
+        {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
         {{- "" }} if{{ if $acmeexclusive }} !acme-challenge{{ end }}
         {{- if $hasFrontingProxy }} !fronting-proxy{{ end }}
         {{- "" }} !{ var(req.redir) -m found }
         {{- "" }} { var(req.base),map_reg({{ $fgroup.HTTPSRedirMap.RegexFile }}) yes }
 {{- else }}
     http-request redirect scheme https
+        {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
         {{- "" }} if{{ if $acmeexclusive }} !acme-challenge{{ end }}
         {{- if $hasFrontingProxy }} !fronting-proxy{{ end }}
         {{- "" }} { var(req.base),map_beg({{ $fgroup.HTTPSRedirMap.MatchFile }}) yes }

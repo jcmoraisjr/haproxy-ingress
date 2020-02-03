@@ -1720,6 +1720,8 @@ func TestInstanceSSLRedirect(t *testing.T) {
 	h.AddPath(b, "/")
 	b.SSLRedirect = b.CreateConfigBool(true)
 
+	c.config.Global().SSL.RedirectCode = 301
+
 	c.Update()
 	c.checkConfig(`
 <<global>>
@@ -1731,7 +1733,14 @@ backend d2_app-front_8080
     mode http
     server s21 172.17.0.121:8080 weight 100
 <<backends-default>>
-<<frontend-http>>
+frontend _front_http
+    mode http
+    bind :80
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
+    http-request redirect scheme https code 301 if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map) yes }
+    <<http-headers>>
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map)
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
     default_backend _error404
 <<frontend-https>>
     default_backend _error404

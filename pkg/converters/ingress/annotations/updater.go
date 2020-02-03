@@ -111,6 +111,7 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	d.global.Cookie.Key = mapper.Get(ingtypes.GlobalCookieKey).Value
 	d.global.LoadServerState = mapper.Get(ingtypes.GlobalLoadServerState).Bool()
 	d.global.SSL.ALPN = mapper.Get(ingtypes.GlobalTLSALPN).Value
+	d.global.SSL.RedirectCode = mapper.Get(ingtypes.GlobalSSLRedirectCode).Int()
 	d.global.StrictHost = mapper.Get(ingtypes.GlobalStrictHost).Bool()
 	d.global.UseChroot = mapper.Get(ingtypes.GlobalUseChroot).Bool()
 	d.global.UseHAProxyUser = mapper.Get(ingtypes.GlobalUseHAProxyUser).Bool()
