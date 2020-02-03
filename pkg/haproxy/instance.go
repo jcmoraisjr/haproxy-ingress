@@ -354,7 +354,7 @@ func (i *instance) check() error {
 		return nil
 	}
 	out, err := exec.Command(i.options.HAProxyCmd, "-c", "-f", i.options.HAProxyConfigFile).CombinedOutput()
-	outstr := filterOutput(out)
+	outstr := string(out)
 	if err != nil {
 		return fmt.Errorf(outstr)
 	}
@@ -367,7 +367,7 @@ func (i *instance) reload() error {
 		return nil
 	}
 	out, err := exec.Command(i.options.ReloadCmd, i.options.ReloadStrategy, i.options.HAProxyConfigFile).CombinedOutput()
-	outstr := filterOutput(out)
+	outstr := string(out)
 	if len(outstr) > 0 {
 		i.logger.Warn("output from haproxy:\n%v", outstr)
 	}
@@ -375,18 +375,6 @@ func (i *instance) reload() error {
 		return err
 	}
 	return nil
-}
-
-func filterOutput(out []byte) string {
-	// workaround a misplaced warn from haproxy until the fix is merged
-	skip := "contains no embedded dots nor does not start with a dot"
-	outstr := ""
-	for _, line := range strings.Split(string(out), "\n") {
-		if line != "" && strings.Index(line, skip) < 0 {
-			outstr += line + "\n"
-		}
-	}
-	return outstr
 }
 
 func (i *instance) rotateConfig() {
