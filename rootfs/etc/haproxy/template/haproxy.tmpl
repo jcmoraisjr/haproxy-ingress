@@ -574,7 +574,7 @@ backend _acme_challenge
     server _acme_server unix@{{ $cfg.Acme.Socket }}
 {{- end }}
 
-{{- if and $cfg.Backends (not $cfg.DefaultBackend) }}
+{{- if not $cfg.DefaultBackend }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
