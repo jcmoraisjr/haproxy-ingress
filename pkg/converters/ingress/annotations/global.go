@@ -215,9 +215,11 @@ func (c *updater) buildGlobalHTTPStoHTTP(d *globalData) {
 
 func (c *updater) buildGlobalModSecurity(d *globalData) {
 	d.global.ModSecurity.Endpoints = utils.Split(d.mapper.Get(ingtypes.GlobalModsecurityEndpoints).Value, ",")
+	d.global.ModSecurity.Timeout.Connect = c.validateTime(d.mapper.Get(ingtypes.GlobalModsecurityTimeoutConnect))
 	d.global.ModSecurity.Timeout.Hello = c.validateTime(d.mapper.Get(ingtypes.GlobalModsecurityTimeoutHello))
 	d.global.ModSecurity.Timeout.Idle = c.validateTime(d.mapper.Get(ingtypes.GlobalModsecurityTimeoutIdle))
 	d.global.ModSecurity.Timeout.Processing = c.validateTime(d.mapper.Get(ingtypes.GlobalModsecurityTimeoutProcessing))
+	d.global.ModSecurity.Timeout.Server = c.validateTime(d.mapper.Get(ingtypes.GlobalModsecurityTimeoutServer))
 }
 
 func (c *updater) buildGlobalDNS(d *globalData) {

@@ -188,6 +188,10 @@ type StatsConfig struct {
 
 // ModSecurityTimeoutConfig ...
 type ModSecurityTimeoutConfig struct {
+	// Backend
+	Connect string
+	Server  string
+	// SPOE
 	Hello      string
 	Idle       string
 	Processing string
