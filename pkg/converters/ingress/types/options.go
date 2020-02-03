@@ -28,6 +28,7 @@ type ConverterOptions struct {
 	DefaultConfig    func() map[string]string
 	DefaultBackend   string
 	DefaultSSLFile   convtypes.CrtFile
+	FakeCAFile       convtypes.CrtFile
 	AnnotationPrefix string
 	AcmeTrackTLSAnn  bool
 }

@@ -32,6 +32,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/controller"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
 	configmapconverter "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/configmap"
 	ingressconverter "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
@@ -127,7 +128,8 @@ func (hc *HAProxyController) configController() {
 		Cache:            hc.cache,
 		AnnotationPrefix: hc.cfg.AnnPrefix,
 		DefaultBackend:   hc.cfg.DefaultService,
-		DefaultSSLFile:   hc.createDefaultSSLFile(hc.cache),
+		DefaultSSLFile:   hc.createDefaultSSLFile(),
+		FakeCAFile:       hc.createFakeCAFile(),
 		AcmeTrackTLSAnn:  hc.cfg.AcmeTrackTLSAnn,
 	}
 }
@@ -153,9 +155,9 @@ func (hc *HAProxyController) startServices() {
 	}
 }
 
-func (hc *HAProxyController) createDefaultSSLFile(cache convtypes.Cache) (tlsFile convtypes.CrtFile) {
+func (hc *HAProxyController) createDefaultSSLFile() (tlsFile convtypes.CrtFile) {
 	if hc.cfg.DefaultSSLCertificate != "" {
-		tlsFile, err := cache.GetTLSSecretPath("", hc.cfg.DefaultSSLCertificate)
+		tlsFile, err := hc.cache.GetTLSSecretPath("", hc.cfg.DefaultSSLCertificate)
 		if err == nil {
 			return tlsFile
 		}
@@ -171,6 +173,19 @@ func (hc *HAProxyController) createDefaultSSLFile(cache convtypes.Cache) (tlsFil
 		NotAfter:   crt.NotAfter,
 	}
 	return tlsFile
+}
+
+func (hc *HAProxyController) createFakeCAFile() (crtFile convtypes.CrtFile) {
+	fakeCA, _ := ssl.GetFakeSSLCert([]string{}, "Fake CA", []string{})
+	fakeCAFile, err := ssl.AddCertAuth("fake-ca", fakeCA, []byte{})
+	if err != nil {
+		glog.Fatalf("error generating fake CA: %v", err)
+	}
+	crtFile = convtypes.CrtFile{
+		Filename: fakeCAFile.PemFileName,
+		SHA1Hash: fakeCAFile.PemSHA,
+	}
+	return crtFile
 }
 
 // OnStartedLeading ...
