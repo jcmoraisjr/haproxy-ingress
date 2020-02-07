@@ -1,5 +1,58 @@
 # CHANGELOG
 
+## v0.10
+
+Highlights of this version:
+
+* HAProxy upgrade from 1.9 to 2.0
+* Metrics:
+  * HAProxy's internal Prometheus exporter, see the [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#bind-port)
+  * HAProxy Ingress exporter for Prometheus
+  * HAProxy Ingress dashboard for Grafana, see the [metrics example](https://haproxy-ingress.github.io/docs/examples/metrics/)
+
+**v0.10-snapshot.1**
+
+* Update to haproxy 2.0.11 [#414](https://github.com/jcmoraisjr/haproxy-ingress/pull/414)
+* Remove v0.7 controller [#483](https://github.com/jcmoraisjr/haproxy-ingress/pull/483)
+* Add frontend to the internal prometheus exporter [#486](https://github.com/jcmoraisjr/haproxy-ingress/pull/486)
+  * Configuration keys:
+    * `bind-ip-addr-prometheus` - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#bind-ip-addr)
+    * `prometheus-port` - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#bind-port)
+* Defaults to not create prometheus listener [#491](https://github.com/jcmoraisjr/haproxy-ingress/pull/491)
+* Metric collector and exporter [#487](https://github.com/jcmoraisjr/haproxy-ingress/pull/487) - [doc](https://haproxy-ingress.github.io/docs/configuration/command-line/#stats)
+  * Command-line options:
+    * `--healthz-port`
+    * `--profiling`
+    * `--stats-collect-processing-period`
+
+**v0.10-snapshot.2**
+
+* Change unix sockets user to haproxy [#504](https://github.com/jcmoraisjr/haproxy-ingress/pull/504)
+* Add CN label in the cert_expire metric [#501](https://github.com/jcmoraisjr/haproxy-ingress/pull/501)
+
+**v0.10-snapshot.3**
+
+* Sort tcp services by name and port [#506](https://github.com/jcmoraisjr/haproxy-ingress/pull/506)
+* Add backend-server-naming key [#507](https://github.com/jcmoraisjr/haproxy-ingress/pull/507) - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#backend-server-naming)
+  * Configuration keys:
+    * `backend-server-naming`
+* Add ssl-redirect-code global config key [#511](https://github.com/jcmoraisjr/haproxy-ingress/pull/511) - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#ssl-redirect)
+  * Configuration keys:
+    * `ssl-redirect-code`
+* Add modsecurity timeout connect/server [#512](https://github.com/jcmoraisjr/haproxy-ingress/pull/512) - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#modsecurity)
+  * Configuration keys:
+    * `modsecurity-timeout-connect`
+    * `modsecurity-timeout-server`
+* Add ssl-fingerprint-lower config key [#515](https://github.com/jcmoraisjr/haproxy-ingress/pull/515) - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#auth-tls)
+  * Configuration keys:
+    * `ssl-fingerprint-lower`
+* Remove haproxy warning filter [#514](https://github.com/jcmoraisjr/haproxy-ingress/pull/514)
+* Create frontends even without ingress [#516](https://github.com/jcmoraisjr/haproxy-ingress/pull/516)
+* Add auth-tls-strict configuration key [#513](https://github.com/jcmoraisjr/haproxy-ingress/pull/513) - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#auth-tls)
+  * Configuration keys:
+    * `auth-tls-strict`
+* Update to haproxy 2.0.12 [#518](https://github.com/jcmoraisjr/haproxy-ingress/pull/518)
+
 ## v0.9
 
 ### v0.9-beta.1
