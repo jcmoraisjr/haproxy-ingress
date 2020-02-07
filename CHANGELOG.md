@@ -121,6 +121,21 @@ Docs:
 * docs: update deploy and ds api to apps/v1 [#422](https://github.com/jcmoraisjr/haproxy-ingress/pull/422)
 * docs: defaults for cors-allow-methods and -headers [#445](https://github.com/jcmoraisjr/haproxy-ingress/pull/445)
 
+### v0.9-beta.2
+
+Fixes and improvements since [v0.9-beta.1](#v09-beta1):
+
+* Change unix sockets user to haproxy [#504](https://github.com/jcmoraisjr/haproxy-ingress/pull/504)
+* Sort tcp services by name and port [#506](https://github.com/jcmoraisjr/haproxy-ingress/pull/506)
+* Add backend-server-naming key [#507](https://github.com/jcmoraisjr/haproxy-ingress/pull/507) - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#backend-server-naming)
+  * Configuration keys:
+    * `backend-server-naming`
+* Add auth-tls-strict configuration key [#513](https://github.com/jcmoraisjr/haproxy-ingress/pull/513) - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#auth-tls)
+  * Configuration keys:
+    * `auth-tls-strict`
+* Remove haproxy warning filter [#514](https://github.com/jcmoraisjr/haproxy-ingress/pull/514)
+* Create frontends even without ingress [#516](https://github.com/jcmoraisjr/haproxy-ingress/pull/516)
+
 ## v0.8.1
 
 Fixes and improvements since [v0.8](#v08):
