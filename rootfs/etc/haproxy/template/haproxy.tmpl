@@ -533,7 +533,9 @@ backend {{ $backend.ID }}
 {{- define "backend" }}
     {{- $backend := .p1 }}
     {{- $server := $backend.Server }}
-    {{- if eq $server.Protocol "h2" }} proto h2{{ end }}
+    {{- if eq $server.Protocol "h2" }} proto h2
+        {{- if $server.Secure }} alpn h2{{ end }}
+    {{- end }}
     {{- if $server.MaxConn }} maxconn {{ $server.MaxConn }}{{ end }}
     {{- if $server.MaxQueue }} maxqueue {{ $server.MaxQueue }}{{ end }}
     {{- if $server.Secure }} ssl
