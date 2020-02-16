@@ -382,10 +382,23 @@ func TestBackends(t *testing.T) {
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.Server.Protocol = "h2"
+			},
+			srvsuffix: "proto h2",
+		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.Server.Protocol = "h2"
+				b.Server.Secure = true
+			},
+			srvsuffix: "proto h2 alpn h2 ssl verify none",
+		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.Server.Protocol = "h2"
 				b.Server.Secure = true
 				b.Server.CAFilename = "/var/haproxy/ssl/ca.pem"
 			},
-			srvsuffix: "proto h2 ssl verify required ca-file /var/haproxy/ssl/ca.pem",
+			srvsuffix: "proto h2 alpn h2 ssl verify required ca-file /var/haproxy/ssl/ca.pem",
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
