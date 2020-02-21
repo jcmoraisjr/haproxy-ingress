@@ -1665,10 +1665,10 @@ See also:
 
 | Configuration key | Scope    | Default | Since |
 |-------------------|----------|---------|-------|
-| `use-htx`         | `Global` | `false` | v0.9  |
+| `use-htx`         | `Global` | `true`  | v0.9  |
 
 Defines if the new HTX internal representation for HTTP elements should be used. The default value
-is `false`. HTX should be used to enable HTTP/2 protocol to backends.
+is `true` since v0.10, it was `false` on v0.9. HTX should be used to enable HTTP/2 protocol to backends.
 
 See also:
 
