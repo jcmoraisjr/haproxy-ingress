@@ -931,20 +931,26 @@ See also:
 | `https-to-http-port`  | `Global` |         |        |
 
 A port number to listen to http requests from a fronting proxy that does the ssl
-offload. `https-to-http-port` is an alias to `fronting-proxy-port`.
+offload, eg haproxy ingress behind a cloud load balancers that manages the TLS
+certificates. `https-to-http-port` is an alias to `fronting-proxy-port`.
+
+`fronting-proxy-port` and [`http-port`](#bind-port) can share the same port number, see below
+what changes in the behaviour.
 
 Requests made to `fronting-proxy-port` port number evaluate the `X-Forwarded-Proto`
 header to decide how to handle the request:
 
-* If `X-Forwarded-Proto` is `https`: HAProxy will handle the request just like the
-ssl-offload was made by HAProxy itself - HSTS header is provided if configured and
+* If `X-Forwarded-Proto` header is `https`:
+  * HAProxy will handle the request just like the ssl-offload was made by HAProxy itself - HSTS header is provided if configured and
 `X-SSL-*` headers won't be changed or removed if provided.
-* If `X-Forwarded-Proto` is `http` or the header is missing:
-  * If `fronting-proxy-port` has its own port: HAProxy will redirect scheme to https
-  * If `fronting-proxy-port` uses the same HTTP port (defaults to 80): the redirect scheme is done only if the header is provided, otherwise the request will be handled as if `fronting-proxy-port` wasn't configured.
+* If `X-Forwarded-Proto` header is `http` or any other value except `https`:
+  * HAProxy will redirect scheme to https
+* If `X-Forwarded-Proto` header is missing:
+  * If `fronting-proxy-port` has its own port --- HAProxy will redirect scheme to https
+  * If `fronting-proxy-port` shares the HTTP port --- the request will be handled as plain http, being redirected to https only if `ssl-redirect` is `true`, just like if `fronting-proxy-port` wasn't configured.
 
-{{% alert title="Warning" color="warning" %}}
-On v0.7 and older, and only if the `X-Forwarded-Proto` is missing: the
+{{% alert title="Warning on v0.7 and older" color="warning" %}}
+On v0.7 and older and only if the `X-Forwarded-Proto` is missing: the
 connecting port number was used to define which socket received the request, so
 the fronting proxy should connect to the same port number defined in
 `https-to-http-port`, eg cannot have any proxy like Kubernetes' `NodePort`
@@ -955,6 +961,7 @@ This limitation doesn't exist on v0.8 or above.
 See also:
 
 * [Bind](#bind)
+* [Bind port](#bind-port)
 
 ---
 
