@@ -89,6 +89,7 @@ func createDefaults() map[string]string {
 		types.GlobalSSLDHDefaultMaxSize:          "2048",
 		types.GlobalSSLHeadersPrefix:             "X-SSL",
 		types.GlobalSSLOptions:                   defaultSSLOptions,
+		types.GlobalSSLRedirectCode:              "302",
 		types.GlobalStatsPort:                    "1936",
 		types.GlobalSyslogFormat:                 "rfc5424",
 		types.GlobalSyslogLength:                 "1024",
