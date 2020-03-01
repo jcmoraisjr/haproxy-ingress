@@ -240,3 +240,30 @@ func TestBackoffQueue(t *testing.T) {
 	checkCount(3)
 	q.ShutDown()
 }
+
+func TestClearQueue(t *testing.T) {
+	var count int
+	// retries on 30ms, +60ms(90ms), +120ms(210ms), +240ms(450ms) ... up to 2s
+	q := NewFailureRateLimitingQueue(30*time.Millisecond, 2*time.Second, func(item interface{}) error {
+		count++
+		return fmt.Errorf("fail")
+	})
+	go q.Run()
+	checkCount := func(id, c int) {
+		if count != c {
+			t.Errorf("on %d, expected count=%d but was %d", id, c, count)
+		}
+	}
+	q.Add(nil)
+	time.Sleep(45 * time.Millisecond)
+	checkCount(1, 2)
+	q.Clear()
+	count = 0
+	time.Sleep(210 * time.Millisecond)
+	checkCount(2, 0)
+	count = 0
+	q.Add(nil)
+	time.Sleep(120 * time.Millisecond)
+	checkCount(3, 3)
+	q.ShutDown()
+}

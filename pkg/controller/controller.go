@@ -211,11 +211,13 @@ func (hc *HAProxyController) OnStartedLeading(ctx context.Context) {
 // OnStoppedLeading ...
 // implements LeaderSubscriber
 func (hc *HAProxyController) OnStoppedLeading() {
+	hc.acmeQueue.Clear()
 }
 
 // OnNewLeader ...
 // implements LeaderSubscriber
 func (hc *HAProxyController) OnNewLeader(identity string) {
+	hc.logger.Info("leader changed to %s", identity)
 }
 
 // Stop shutdown the controller process
