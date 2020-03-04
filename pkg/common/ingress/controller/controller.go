@@ -92,7 +92,8 @@ type Configuration struct {
 	ElectionID             string
 	UpdateStatusOnShutdown bool
 
-	SortBackends bool
+	SortBackends              bool
+	IgnoreIngressWithoutClass bool
 }
 
 // newIngressController creates an Ingress controller
@@ -136,7 +137,8 @@ const IngressClassKey = "kubernetes.io/ingress.class"
 // IsValidClass ...
 func (ic *GenericController) IsValidClass(ing *extensions.Ingress) bool {
 	ann, found := ing.Annotations[IngressClassKey]
-	return !found || ann == ic.cfg.IngressClass
+
+	return (ic.cfg.IgnoreIngressWithoutClass && found && ann == ic.cfg.IngressClass) || (!ic.cfg.IgnoreIngressWithoutClass && (!found || ann == ic.cfg.IngressClass))
 }
 
 // GetConfig expose the controller configuration

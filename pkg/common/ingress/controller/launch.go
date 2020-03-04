@@ -156,6 +156,11 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 
 		showVersion = flags.Bool("version", false,
 			`Shows release information about the Ingress controller`)
+
+		ignoreIngressWithoutClass = flags.Bool("ignore-ingress-without-class", false,
+			`Defines if the ingress without the ingress.class annotation will be considered or not. If true then 
+			only the ingresses with the matching ingress.class annotation will be considered, ingresses with missing 
+			or different ingress.class annotation will not be considered. Default is false`)
 	)
 
 	flags.AddGoFlagSet(flag.CommandLine)
@@ -271,38 +276,39 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 	}
 
 	config := &Configuration{
-		UpdateStatus:            *updateStatus,
-		ElectionID:              *electionID,
-		Client:                  kubeClient,
-		AcmeServer:              *acmeServer,
-		AcmeCheckPeriod:         *acmeCheckPeriod,
-		AcmeElectionID:          *acmeElectionID,
-		AcmeFailInitialDuration: *acmeFailInitialDuration,
-		AcmeFailMaxDuration:     *acmeFailMaxDuration,
-		AcmeSecretKeyName:       *acmeSecretKeyName,
-		AcmeTokenConfigmapName:  *acmeTokenConfigmapName,
-		AcmeTrackTLSAnn:         *acmeTrackTLSAnn,
-		RateLimitUpdate:         *rateLimitUpdate,
-		ResyncPeriod:            *resyncPeriod,
-		DefaultService:          *defaultSvc,
-		IngressClass:            *ingressClass,
-		WatchNamespace:          *watchNamespace,
-		ConfigMapName:           *configMap,
-		TCPConfigMapName:        *tcpConfigMapName,
-		AnnPrefix:               *annPrefix,
-		DefaultSSLCertificate:   *defSSLCertificate,
-		VerifyHostname:          *verifyHostname,
-		DefaultHealthzURL:       *defHealthzURL,
-		StatsCollectProcPeriod:  *statsCollectProcPeriod,
-		PublishService:          *publishSvc,
-		Backend:                 backend,
-		ForceNamespaceIsolation: *forceIsolation,
-		WaitBeforeShutdown:      *waitBeforeShutdown,
-		AllowCrossNamespace:     *allowCrossNamespace,
-		DisableNodeList:         *disableNodeList,
-		UpdateStatusOnShutdown:  *updateStatusOnShutdown,
-		SortBackends:            *sortBackends,
-		UseNodeInternalIP:       *useNodeInternalIP,
+		UpdateStatus:              *updateStatus,
+		ElectionID:                *electionID,
+		Client:                    kubeClient,
+		AcmeServer:                *acmeServer,
+		AcmeCheckPeriod:           *acmeCheckPeriod,
+		AcmeElectionID:            *acmeElectionID,
+		AcmeFailInitialDuration:   *acmeFailInitialDuration,
+		AcmeFailMaxDuration:       *acmeFailMaxDuration,
+		AcmeSecretKeyName:         *acmeSecretKeyName,
+		AcmeTokenConfigmapName:    *acmeTokenConfigmapName,
+		AcmeTrackTLSAnn:           *acmeTrackTLSAnn,
+		RateLimitUpdate:           *rateLimitUpdate,
+		ResyncPeriod:              *resyncPeriod,
+		DefaultService:            *defaultSvc,
+		IngressClass:              *ingressClass,
+		WatchNamespace:            *watchNamespace,
+		ConfigMapName:             *configMap,
+		TCPConfigMapName:          *tcpConfigMapName,
+		AnnPrefix:                 *annPrefix,
+		DefaultSSLCertificate:     *defSSLCertificate,
+		VerifyHostname:            *verifyHostname,
+		DefaultHealthzURL:         *defHealthzURL,
+		StatsCollectProcPeriod:    *statsCollectProcPeriod,
+		PublishService:            *publishSvc,
+		Backend:                   backend,
+		ForceNamespaceIsolation:   *forceIsolation,
+		WaitBeforeShutdown:        *waitBeforeShutdown,
+		AllowCrossNamespace:       *allowCrossNamespace,
+		DisableNodeList:           *disableNodeList,
+		UpdateStatusOnShutdown:    *updateStatusOnShutdown,
+		SortBackends:              *sortBackends,
+		UseNodeInternalIP:         *useNodeInternalIP,
+		IgnoreIngressWithoutClass: *ignoreIngressWithoutClass,
 	}
 
 	ic := newIngressController(config)
