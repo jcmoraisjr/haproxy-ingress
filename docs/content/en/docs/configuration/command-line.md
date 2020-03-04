@@ -36,6 +36,7 @@ The following command-line options are supported:
 | [`--verify-hostname`](#verify-hostname)                 | [true\|false]              | `true`                  |       |
 | [`--wait-before-shutdown`](#wait-before-shutdown)       | seconds as integer         | `0`                     | v0.8  |
 | [`--watch-namespace`](#watch-namespace)                 | namespace                  | all namespaces          |       |
+| [`--ignore-ingress-without-class`](#ignore-ingress-without-class)| [true\|false]     | `false`                 |       |
 
 ---
 
@@ -262,3 +263,9 @@ the controller starts shutting down itself right after signal was sent.
 By default the proxy will be configured using all namespaces from the Kubernetes cluster. Use
 `--watch-namespace` with the name of a namespace to watch and build the configuration of a
 single namespace.
+
+---
+
+## --ignore-ingress-without-class
+
+Defines if the ingress without the ingress.class annotation will be considered or not. If `--ignore-ingress-without-class=true` then only the ingresses with the matching ingress.class annotation will be considered, ingresses with missing or different ingress.class annotation will not be considered. Default is false.
