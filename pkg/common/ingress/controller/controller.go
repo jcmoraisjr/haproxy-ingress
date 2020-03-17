@@ -138,7 +138,11 @@ const IngressClassKey = "kubernetes.io/ingress.class"
 func (ic *GenericController) IsValidClass(ing *extensions.Ingress) bool {
 	ann, found := ing.Annotations[IngressClassKey]
 
-	return (ic.cfg.IgnoreIngressWithoutClass && found && ann == ic.cfg.IngressClass) || (!ic.cfg.IgnoreIngressWithoutClass && (!found || ann == ic.cfg.IngressClass))
+	if ic.cfg.IgnoreIngressWithoutClass {
+		return found && ann == ic.cfg.IngressClass
+	}
+
+	return !found || ann == ic.cfg.IngressClass
 }
 
 // GetConfig expose the controller configuration
