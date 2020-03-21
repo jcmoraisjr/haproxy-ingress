@@ -23,6 +23,7 @@ The following command-line options are supported:
 | [`--default-backend-service`](#default-backend-service) | namespace/servicename      | haproxy's 404 page      |       |
 | [`--default-ssl-certificate`](#default-ssl-certificate) | namespace/secretname       | fake, auto generated    |       |
 | [`--healthz-port`](#stats)                              | port number                | `10254`                 |       |
+| [`--ignore-ingress-without-class`](#ignore-ingress-without-class)| [true\|false]     | `false`                 | v0.10 |
 | [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |       |
 | [`--kubeconfig`](#kubeconfig)                           | /path/to/kubeconfig        | in cluster config       |       |
 | [`--max-old-config-files`](#max-old-config-files)       | num of files               | `0`                     |       |
@@ -96,6 +97,12 @@ resources using TLS configuration doesn't provide it's own certificate.
 
 This is a mandatory argument used in the [deployment](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/deployment) and
 [TLS termination](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/tls-termination) example pages.
+
+---
+
+## --ignore-ingress-without-class
+
+Defines if the ingress without the ingress.class annotation will be considered or not. If `--ignore-ingress-without-class=true` then only the ingresses with the matching ingress.class annotation will be considered, ingresses with missing or different ingress.class annotation will not be considered. Default is false.
 
 ---
 
