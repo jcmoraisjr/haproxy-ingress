@@ -157,7 +157,7 @@ func (hc *HAProxyController) startServices() {
 		return
 	}
 	if hc.leaderelector != nil {
-		go hc.leaderelector.Run()
+		go hc.leaderelector.Run(hc.stopCh)
 	}
 	if hc.cfg.AcmeServer {
 		// TODO deduplicate acme socket
