@@ -25,6 +25,7 @@ import (
 
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
@@ -108,6 +109,13 @@ func (l *leaderelector) LeaderName() string {
 	return name
 }
 
-func (l *leaderelector) Run() {
-	go l.le.Run(context.Background())
+func (l *leaderelector) Run(stopCh <-chan struct{}) {
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		defer cancel()
+		<-stopCh
+	}()
+	wait.Until(func() {
+		l.le.Run(ctx)
+	}, time.Second, stopCh)
 }
