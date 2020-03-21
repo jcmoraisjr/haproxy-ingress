@@ -342,7 +342,7 @@ func (i *instance) updateCertExpiring() {
 			continue
 		}
 		oldHost := i.oldConfig.FindHost(curHost.Hostname)
-		if oldHost == nil || oldHost.TLS.TLSCommonName != curHost.TLS.TLSCommonName {
+		if oldHost == nil || oldHost.TLS.TLSCommonName != curHost.TLS.TLSCommonName || oldHost.TLS.TLSNotAfter != curHost.TLS.TLSNotAfter {
 			i.metrics.SetCertExpireDate(curHost.Hostname, curHost.TLS.TLSCommonName, &curHost.TLS.TLSNotAfter)
 		}
 	}
