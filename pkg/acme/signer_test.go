@@ -86,14 +86,16 @@ func setup(t *testing.T) *config {
 		cache: &cache{
 			tlsSecret: map[string]*TLSSecret{},
 		},
-		logger: types_helper.NewLoggerMock(t),
+		logger:  types_helper.NewLoggerMock(t),
+		metrics: types_helper.NewMetricsMock(),
 	}
 }
 
 type config struct {
-	t      *testing.T
-	cache  *cache
-	logger *types_helper.LoggerMock
+	t       *testing.T
+	cache   *cache
+	logger  *types_helper.LoggerMock
+	metrics *types_helper.MetricsMock
 }
 
 func (c *config) teardown() {
@@ -101,7 +103,7 @@ func (c *config) teardown() {
 }
 
 func (c *config) newSigner() *signer {
-	signer := NewSigner(c.logger, c.cache).(*signer)
+	signer := NewSigner(c.logger, c.cache, c.metrics).(*signer)
 	signer.client = &clientMock{}
 	return signer
 }

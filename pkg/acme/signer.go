@@ -28,10 +28,11 @@ import (
 )
 
 // NewSigner ...
-func NewSigner(logger types.Logger, cache Cache) Signer {
+func NewSigner(logger types.Logger, cache Cache, metrics types.Metrics) Signer {
 	return &signer{
-		logger: logger,
-		cache:  cache,
+		logger:  logger,
+		cache:   cache,
+		metrics: metrics,
 	}
 }
 
@@ -65,6 +66,7 @@ type TLSSecret struct {
 type signer struct {
 	logger      types.Logger
 	cache       Cache
+	metrics     types.Metrics
 	account     Account
 	client      Client
 	expiring    time.Duration
@@ -119,17 +121,21 @@ func (s *signer) Notify(item interface{}) error {
 	return err
 }
 
-func (s *signer) verify(secretName string, domains []string) error {
+func (s *signer) verify(secretName string, domains []string) (verifyErr error) {
 	duedate := time.Now().Add(s.expiring)
 	tls := s.cache.GetTLSSecretContent(secretName)
 	strdomains := strings.Join(domains, ",")
 	if tls == nil || tls.Crt.NotAfter.Before(duedate) || !match(domains, tls.Crt.DNSNames) {
+		var collector func(domains string, success bool)
 		var reason string
 		if tls == nil {
+			collector = s.metrics.IncCertSigningMissing
 			reason = "certificate does not exist"
 		} else if tls.Crt.NotAfter.Before(duedate) {
+			collector = s.metrics.IncCertSigningOutdated
 			reason = fmt.Sprintf("certificate expires in %s", tls.Crt.NotAfter.String())
 		} else {
+			collector = s.metrics.IncCertSigningChangedDomains
 			reason = "added one or more domains to an existing certificate"
 		}
 		s.verifyCount++
@@ -143,17 +149,18 @@ func (s *signer) verify(secretName string, domains []string) error {
 			} else {
 				s.logger.Warn("acme: error storing new certificate: id=%d secret=%s domain(s)=%s error=%v",
 					s.verifyCount, secretName, strdomains, errTLS)
-				return errTLS
+				verifyErr = errTLS
 			}
 		} else {
 			s.logger.Warn("acme: error signing new certificate: id=%d secret=%s domain(s)=%s error=%v",
 				s.verifyCount, secretName, strdomains, err)
-			return err
+			verifyErr = err
 		}
+		collector(strdomains, verifyErr == nil)
 	} else {
 		s.logger.InfoV(2, "acme: skipping sign, certificate is updated: secret=%s domain(s)=%s", secretName, strdomains)
 	}
-	return nil
+	return verifyErr
 }
 
 // match return true if all hosts in hostnames (desired configuration)
