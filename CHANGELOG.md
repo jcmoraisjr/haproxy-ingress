@@ -189,6 +189,17 @@ Fixes and improvements since [v0.9-beta.1](#v09-beta1):
 * Remove haproxy warning filter [#514](https://github.com/jcmoraisjr/haproxy-ingress/pull/514)
 * Create frontends even without ingress [#516](https://github.com/jcmoraisjr/haproxy-ingress/pull/516)
 
+### v0.9-beta.3
+
+Fixes and improvements since [v0.9-beta.2](#v09-beta2):
+
+* Fix TLS handshake on backend [#520](https://github.com/jcmoraisjr/haproxy-ingress/pull/520)
+* Update haproxy from 1.9.13 to 1.9.14
+* Clear acme work queue on stopped leading [#526](https://github.com/jcmoraisjr/haproxy-ingress/pull/526)
+* Restart the leader elector when stop leading [#532](https://github.com/jcmoraisjr/haproxy-ingress/pull/532)
+* Improve certificate sign logs [#533](https://github.com/jcmoraisjr/haproxy-ingress/pull/533)
+* Fix race on failure rate limit queue [#534](https://github.com/jcmoraisjr/haproxy-ingress/pull/534)
+
 ## v0.8.2
 
 Fixes and improvements since [v0.8.1](#v081):
