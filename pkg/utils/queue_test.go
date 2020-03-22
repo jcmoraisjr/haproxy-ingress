@@ -267,3 +267,24 @@ func TestClearQueue(t *testing.T) {
 	checkCount(3, 3)
 	q.ShutDown()
 }
+
+func TestConcurrency(t *testing.T) {
+	q := NewFailureRateLimitingQueue(30*time.Millisecond, 2*time.Second, func(item interface{}) error {
+		return fmt.Errorf("err")
+	})
+	go q.Run()
+	go func() {
+		for {
+			q.Add(1)
+			time.Sleep(35 * time.Microsecond)
+		}
+	}()
+	go func() {
+		for {
+			q.Remove(1)
+			time.Sleep(25 * time.Microsecond)
+		}
+	}()
+	time.Sleep(5 * time.Second)
+	q.ShutDown()
+}
