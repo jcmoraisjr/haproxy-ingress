@@ -124,17 +124,17 @@ func (s *signer) verify(secretName string, domains []string) error {
 	tls := s.cache.GetTLSSecretContent(secretName)
 	strdomains := strings.Join(domains, ",")
 	if tls == nil || tls.Crt.NotAfter.Before(duedate) || !match(domains, tls.Crt.DNSNames) {
-		var why string
+		var reason string
 		if tls == nil {
-			why = "certificate does not exist"
+			reason = "certificate does not exist"
 		} else if tls.Crt.NotAfter.Before(duedate) {
-			why = fmt.Sprintf("certificate expires in %s", tls.Crt.NotAfter.String())
+			reason = fmt.Sprintf("certificate expires in %s", tls.Crt.NotAfter.String())
 		} else {
-			why = "added one or more domains to an existing certificate"
+			reason = "added one or more domains to an existing certificate"
 		}
 		s.verifyCount++
-		s.logger.InfoV(2, "acme: authorizing: id=%d secret=%s domain(s)=%s endpoint=%s why=\"%s\"",
-			s.verifyCount, secretName, strdomains, s.account.Endpoint, why)
+		s.logger.Info("acme: authorizing: id=%d secret=%s domain(s)=%s endpoint=%s reason='%s'",
+			s.verifyCount, secretName, strdomains, s.account.Endpoint, reason)
 		crt, key, err := s.client.Sign(domains)
 		if err == nil {
 			if errTLS := s.cache.SetTLSSecretContent(secretName, crt, key); errTLS == nil {
