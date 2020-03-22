@@ -135,9 +135,8 @@ func (q *queue) Run() {
 		if q.sync != nil {
 			q.sync(item)
 		} else if q.syncFailure != nil {
-			if _, forget := q.forget[item]; forget {
-				q.workqueue.Forget(item)
-				delete(q.forget, item)
+			if q.forgotten(item) {
+				// ignore, item was already removed from the queue
 			} else if err := q.syncFailure(item); err != nil {
 				q.workqueue.AddRateLimited(item)
 			} else {
@@ -146,6 +145,17 @@ func (q *queue) Run() {
 		}
 		q.workqueue.Done(item)
 	}
+}
+
+func (q *queue) forgotten(item interface{}) bool {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
+	if _, forget := q.forget[item]; forget {
+		q.workqueue.Forget(item)
+		delete(q.forget, item)
+		return true
+	}
+	return false
 }
 
 func (q *queue) Clear() {
