@@ -189,6 +189,12 @@ Fixes and improvements since [v0.9-beta.1](#v09-beta1):
 * Remove haproxy warning filter [#514](https://github.com/jcmoraisjr/haproxy-ingress/pull/514)
 * Create frontends even without ingress [#516](https://github.com/jcmoraisjr/haproxy-ingress/pull/516)
 
+## v0.8.2
+
+Fixes and improvements since [v0.8.1](#v081):
+
+* Update HAProxy from 1.8.23 to 1.8.24
+
 ## v0.8.1
 
 Fixes and improvements since [v0.8](#v08):
