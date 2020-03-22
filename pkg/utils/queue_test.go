@@ -21,6 +21,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 type task struct {
@@ -265,5 +267,22 @@ func TestClearQueue(t *testing.T) {
 	q.Add(nil)
 	time.Sleep(120 * time.Millisecond)
 	checkCount(3, 3)
+	q.ShutDown()
+}
+
+func TestConcurrency(t *testing.T) {
+	q := NewFailureRateLimitingQueue(30*time.Millisecond, 2*time.Second, func(item interface{}) error {
+		return fmt.Errorf("err")
+	})
+	stop := make(chan struct{})
+	go q.Run()
+	go wait.Until(func() {
+		q.Add(1)
+	}, 2*time.Millisecond, stop)
+	go wait.Until(func() {
+		q.Remove(1)
+	}, 500*time.Nanosecond, stop)
+	time.Sleep(5 * time.Second)
+	close(stop)
 	q.ShutDown()
 }
