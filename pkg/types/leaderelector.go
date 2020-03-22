@@ -20,5 +20,5 @@ package types
 type LeaderElector interface {
 	IsLeader() bool
 	LeaderName() string
-	Run()
+	Run(stopCh <-chan struct{})
 }
