@@ -17,6 +17,7 @@ limitations under the License.
 package utils
 
 import (
+	"sync"
 	"time"
 
 	"k8s.io/client-go/util/flowcontrol"
@@ -26,17 +27,20 @@ import (
 // Queue ...
 type Queue interface {
 	Add(item interface{})
+	Clear()
 	Notify()
 	Remove(item interface{})
 	Run()
-	ShuttingDown() bool
 	ShutDown()
 }
 
 type queue struct {
+	mutex       sync.Mutex
+	buildQueue  func() workqueue.RateLimitingInterface
 	workqueue   workqueue.RateLimitingInterface
 	rateLimiter flowcontrol.RateLimiter
 	running     chan struct{}
+	shutdown    chan bool
 	forget      set
 	sync        func(item interface{})
 	syncFailure func(item interface{}) error
@@ -52,43 +56,58 @@ func NewQueue(sync func(item interface{})) Queue {
 }
 
 // NewRateLimitingQueue ...
-func NewRateLimitingQueue(rate float32, sync func(item interface{})) Queue {
-	var rateLimiter flowcontrol.RateLimiter
-	if rate > 0 {
-		rateLimiter = flowcontrol.NewTokenBucketRateLimiter(rate, 1)
-	}
-	return &queue{
-		workqueue: workqueue.NewRateLimitingQueue(
+func NewRateLimitingQueue(rate float32, syncfn func(item interface{})) Queue {
+	queue := newQueue(func() workqueue.RateLimitingInterface {
+		return workqueue.NewRateLimitingQueue(
 			workqueue.DefaultItemBasedRateLimiter(),
-		),
-		rateLimiter: rateLimiter,
-		sync:        sync,
+		)
+	})
+	queue.sync = syncfn
+	if rate > 0 {
+		queue.rateLimiter = flowcontrol.NewTokenBucketRateLimiter(rate, 1)
 	}
+	return queue
 }
 
 // NewFailureRateLimitingQueue ...
-func NewFailureRateLimitingQueue(failInitialWait, failMaxWait time.Duration, sync func(item interface{}) error) Queue {
-	return &queue{
-		workqueue: workqueue.NewRateLimitingQueue(
+func NewFailureRateLimitingQueue(failInitialWait, failMaxWait time.Duration, syncfn func(item interface{}) error) Queue {
+	queue := newQueue(func() workqueue.RateLimitingInterface {
+		return workqueue.NewRateLimitingQueue(
 			workqueue.NewItemExponentialFailureRateLimiter(failInitialWait, failMaxWait),
-		),
-		syncFailure: sync,
+		)
+	})
+	queue.syncFailure = syncfn
+	return queue
+}
+
+func newQueue(builder func() workqueue.RateLimitingInterface) *queue {
+	return &queue{
+		mutex:      sync.Mutex{},
+		buildQueue: builder,
+		workqueue:  builder(),
+		shutdown:   make(chan bool, 1),
 	}
 }
 
 func (q *queue) Add(item interface{}) {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
 	delete(q.forget, item)
 	q.workqueue.Add(item)
 }
 
 func (q *queue) Notify() {
-	//  When using with rateLimiter, `nil` will be deduplicated
+	// When using with rateLimiter, `nil` will be deduplicated
 	// and `queue.Get()` will release call to `sync()` just once
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
 	delete(q.forget, nil)
 	q.workqueue.Add(nil)
 }
 
 func (q *queue) Remove(item interface{}) {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
 	if q.forget == nil {
 		q.forget = set{}
 	}
@@ -105,8 +124,11 @@ func (q *queue) Run() {
 		if q.rateLimiter != nil {
 			q.rateLimiter.Accept()
 		}
-		item, shutdown := q.workqueue.Get()
-		if shutdown {
+		item, quit := q.workqueue.Get()
+		if quit {
+			if !<-q.shutdown {
+				continue
+			}
 			close(q.running)
 			return
 		}
@@ -126,13 +148,23 @@ func (q *queue) Run() {
 	}
 }
 
-func (q *queue) ShuttingDown() bool {
-	return q.workqueue.ShuttingDown()
+func (q *queue) Clear() {
+	// this would be a lot easier if k8s' workqueue could be cleaned
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
+	q.workqueue.ShutDown()
+	q.forget = nil
+	q.workqueue = q.buildQueue()
+	q.shutdown <- false
 }
 
 func (q *queue) ShutDown() {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
 	q.workqueue.ShutDown()
+	q.shutdown <- true
 	if q.running != nil {
 		<-q.running
 	}
+	close(q.shutdown)
 }
