@@ -127,7 +127,7 @@ func (i *instance) acmeBuildCert(storage string, domains map[string]struct{}) st
 
 func (i *instance) acmeAddCert(storage string, domains map[string]struct{}) {
 	strcert := i.acmeBuildCert(storage, domains)
-	i.logger.InfoV(2, "enqueue certificate for processing: storage=%s domain(s)=%s",
+	i.logger.InfoV(3, "enqueue certificate for processing: storage=%s domain(s)=%s",
 		storage, strcert)
 	i.options.AcmeQueue.Add(storage + "," + strcert)
 }
