@@ -132,10 +132,10 @@ func (s *signer) verify(secretName string, domains []string) (verifyErr error) {
 			collector = s.metrics.IncCertSigningMissing
 			reason = "certificate does not exist"
 		} else if tls.Crt.NotAfter.Before(duedate) {
-			collector = s.metrics.IncCertSigningOutdated
+			collector = s.metrics.IncCertSigningExpiring
 			reason = fmt.Sprintf("certificate expires in %s", tls.Crt.NotAfter.String())
 		} else {
-			collector = s.metrics.IncCertSigningChangedDomains
+			collector = s.metrics.IncCertSigningOutdated
 			reason = "added one or more domains to an existing certificate"
 		}
 		s.verifyCount++
