@@ -79,6 +79,8 @@ type Configuration struct {
 	AcmeTokenConfigmapName  string
 	AcmeTrackTLSAnn         bool
 
+	BucketsResponseTime []float64
+
 	TCPConfigMapName       string
 	DefaultSSLCertificate  string
 	VerifyHostname         bool
