@@ -26,7 +26,7 @@ import (
 type metrics struct {
 	responseTime       *prometheus.HistogramVec
 	ctlProcTimeSum     *prometheus.CounterVec
-	ctlProcTimeCount   *prometheus.CounterVec
+	ctlProcCount       *prometheus.CounterVec
 	procSecondsCounter *prometheus.CounterVec
 	updatesCounter     *prometheus.CounterVec
 	updateSuccessGauge *prometheus.GaugeVec
@@ -55,10 +55,10 @@ func createMetrics() *metrics {
 			},
 			[]string{"task"},
 		),
-		ctlProcTimeCount: prometheus.NewCounterVec(
+		ctlProcCount: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Namespace: namespace,
-				Name:      "controller_processing_time_seconds_count",
+				Name:      "controller_processing_count",
 				Help:      "Cumulative number of haproxy-ingress tasks executed",
 			},
 			[]string{"task"},
@@ -106,7 +106,7 @@ func createMetrics() *metrics {
 	}
 	prometheus.MustRegister(metrics.responseTime)
 	prometheus.MustRegister(metrics.ctlProcTimeSum)
-	prometheus.MustRegister(metrics.ctlProcTimeCount)
+	prometheus.MustRegister(metrics.ctlProcCount)
 	prometheus.MustRegister(metrics.procSecondsCounter)
 	prometheus.MustRegister(metrics.updatesCounter)
 	prometheus.MustRegister(metrics.updateSuccessGauge)
@@ -125,7 +125,7 @@ func (m *metrics) HAProxySetServerResponseTime(duration time.Duration) {
 
 func (m *metrics) ControllerProcTime(task string, duration time.Duration) {
 	m.ctlProcTimeSum.WithLabelValues(task).Add(duration.Seconds())
-	m.ctlProcTimeCount.WithLabelValues(task).Inc()
+	m.ctlProcCount.WithLabelValues(task).Inc()
 }
 
 func (m *metrics) AddIdleFactor(idle int) {
