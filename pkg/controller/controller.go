@@ -95,7 +95,7 @@ func (hc *HAProxyController) configController() {
 	hc.stopCh = hc.controller.GetStopCh()
 	hc.logger = &logger{depth: 1}
 	hc.cache = newCache(hc.cfg.Client, hc.storeLister, hc.controller)
-	hc.metrics = createMetrics()
+	hc.metrics = createMetrics(hc.cfg.BucketsResponseTime)
 	var acmeSigner acme.Signer
 	if hc.cfg.AcmeServer {
 		electorID := fmt.Sprintf("%s-%s", hc.cfg.AcmeElectionID, hc.cfg.IngressClass)

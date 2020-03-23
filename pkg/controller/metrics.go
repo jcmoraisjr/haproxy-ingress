@@ -33,7 +33,7 @@ type metrics struct {
 	lastTrack          time.Time
 }
 
-func createMetrics() *metrics {
+func createMetrics(bucketsResponseTime []float64) *metrics {
 	namespace := "haproxyingress"
 	metrics := &metrics{
 		responseTime: prometheus.NewHistogramVec(
@@ -41,7 +41,7 @@ func createMetrics() *metrics {
 				Namespace: namespace,
 				Name:      "haproxy_response_time_seconds",
 				Help:      "Response time to commands sent via admin socket",
-				Buckets:   []float64{.0005, .001, .002, .005, .01},
+				Buckets:   bucketsResponseTime,
 			},
 			[]string{"command"},
 		),

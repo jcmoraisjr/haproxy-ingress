@@ -79,6 +79,11 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		acmeTrackTLSAnn = flags.Bool("acme-track-tls-annotation", false,
 			`Enable tracking of ingress objects annotated with 'kubernetes.io/tls-acme'`)
 
+		bucketsResponseTime = flags.Float64Slice("buckets-response-time",
+			[]float64{.0005, .001, .002, .005, .01},
+			`Configures the buckets of the histogram used to compute the response time of the haproxy's admin socket.
+		The response time unit is in seconds.`)
+
 		publishSvc = flags.String("publish-service", "",
 			`Service fronting the ingress controllers. Takes the form
  		namespace/name. The controller will set the endpoint records on the
@@ -287,6 +292,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		AcmeSecretKeyName:         *acmeSecretKeyName,
 		AcmeTokenConfigmapName:    *acmeTokenConfigmapName,
 		AcmeTrackTLSAnn:           *acmeTrackTLSAnn,
+		BucketsResponseTime:       *bucketsResponseTime,
 		RateLimitUpdate:           *rateLimitUpdate,
 		ResyncPeriod:              *resyncPeriod,
 		DefaultService:            *defaultSvc,
