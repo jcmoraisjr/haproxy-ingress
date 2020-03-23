@@ -100,7 +100,7 @@ func (hc *HAProxyController) configController() {
 	if hc.cfg.AcmeServer {
 		electorID := fmt.Sprintf("%s-%s", hc.cfg.AcmeElectionID, hc.cfg.IngressClass)
 		hc.leaderelector = NewLeaderElector(electorID, hc.logger, hc.cache, hc)
-		acmeSigner = acme.NewSigner(hc.logger, hc.cache)
+		acmeSigner = acme.NewSigner(hc.logger, hc.cache, hc.metrics)
 		hc.acmeQueue = utils.NewFailureRateLimitingQueue(
 			hc.cfg.AcmeFailInitialDuration,
 			hc.cfg.AcmeFailMaxDuration,

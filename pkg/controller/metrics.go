@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -30,6 +31,7 @@ type metrics struct {
 	updatesCounter     *prometheus.CounterVec
 	updateSuccessGauge *prometheus.GaugeVec
 	certExpireGauge    *prometheus.GaugeVec
+	certSigningCounter *prometheus.CounterVec
 	lastTrack          time.Time
 }
 
@@ -93,6 +95,14 @@ func createMetrics() *metrics {
 			},
 			[]string{"domain", "cn"},
 		),
+		certSigningCounter: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      "cert_signing_count",
+				Help:      "Cumulative number of certificate signing.",
+			},
+			[]string{"domains", "reason", "success"},
+		),
 	}
 	prometheus.MustRegister(metrics.responseTime)
 	prometheus.MustRegister(metrics.ctlProcTimeSum)
@@ -101,6 +111,7 @@ func createMetrics() *metrics {
 	prometheus.MustRegister(metrics.updatesCounter)
 	prometheus.MustRegister(metrics.updateSuccessGauge)
 	prometheus.MustRegister(metrics.certExpireGauge)
+	prometheus.MustRegister(metrics.certSigningCounter)
 	return metrics
 }
 
@@ -151,4 +162,16 @@ func (m *metrics) SetCertExpireDate(domain, cn string, notAfter *time.Time) {
 		return
 	}
 	m.certExpireGauge.WithLabelValues(domain, cn).Set(float64(notAfter.Unix()))
+}
+
+func (m *metrics) IncCertSigningMissing(domains string, success bool) {
+	m.certSigningCounter.WithLabelValues(domains, "missing", strconv.FormatBool(success)).Inc()
+}
+
+func (m *metrics) IncCertSigningOutdated(domains string, success bool) {
+	m.certSigningCounter.WithLabelValues(domains, "outdated", strconv.FormatBool(success)).Inc()
+}
+
+func (m *metrics) IncCertSigningChangedDomains(domains string, success bool) {
+	m.certSigningCounter.WithLabelValues(domains, "changeddomains", strconv.FormatBool(success)).Inc()
 }

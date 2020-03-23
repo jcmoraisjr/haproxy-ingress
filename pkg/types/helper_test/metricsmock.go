@@ -68,3 +68,15 @@ func (m *MetricsMock) UpdateSuccessful(success bool) {
 // SetCertExpireDate ...
 func (m *MetricsMock) SetCertExpireDate(domain, cn string, notAfter *time.Time) {
 }
+
+// IncCertSigningMissing ...
+func (m *MetricsMock) IncCertSigningMissing(domains string, success bool) {
+}
+
+// IncCertSigningOutdated ...
+func (m *MetricsMock) IncCertSigningOutdated(domains string, success bool) {
+}
+
+// IncCertSigningChangedDomains ...
+func (m *MetricsMock) IncCertSigningChangedDomains(domains string, success bool) {
+}

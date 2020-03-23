@@ -31,4 +31,7 @@ type Metrics interface {
 	IncUpdateFull()
 	UpdateSuccessful(success bool)
 	SetCertExpireDate(domain, cn string, notAfter *time.Time)
+	IncCertSigningMissing(domains string, success bool)
+	IncCertSigningOutdated(domains string, success bool)
+	IncCertSigningChangedDomains(domains string, success bool)
 }
