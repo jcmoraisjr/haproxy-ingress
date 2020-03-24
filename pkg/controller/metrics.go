@@ -168,10 +168,10 @@ func (m *metrics) IncCertSigningMissing(domains string, success bool) {
 	m.certSigningCounter.WithLabelValues(domains, "missing", strconv.FormatBool(success)).Inc()
 }
 
-func (m *metrics) IncCertSigningOutdated(domains string, success bool) {
-	m.certSigningCounter.WithLabelValues(domains, "outdated", strconv.FormatBool(success)).Inc()
+func (m *metrics) IncCertSigningExpiring(domains string, success bool) {
+	m.certSigningCounter.WithLabelValues(domains, "expiring", strconv.FormatBool(success)).Inc()
 }
 
-func (m *metrics) IncCertSigningChangedDomains(domains string, success bool) {
-	m.certSigningCounter.WithLabelValues(domains, "changeddomains", strconv.FormatBool(success)).Inc()
+func (m *metrics) IncCertSigningOutdated(domains string, success bool) {
+	m.certSigningCounter.WithLabelValues(domains, "outdated", strconv.FormatBool(success)).Inc()
 }
