@@ -52,6 +52,8 @@ type Controller interface {
 	SetListers(*StoreLister)
 	// Info returns information about the ingress controller
 	Info() *BackendInfo
+	// AcmeCheck starts a certificate missing/expiring/outdated check
+	AcmeCheck() (int, error)
 	// ConfigureFlags allow to configure more flags before the parsing of
 	// command line arguments
 	ConfigureFlags(*pflag.FlagSet)

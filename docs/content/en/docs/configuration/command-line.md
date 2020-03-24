@@ -202,6 +202,7 @@ Configures an endpoint with statistics, debugging and health checks. The followi
 
 * `/healthz`: a healthz URI for the haproxy-ingress
 * `/metrics`: Prometheus compatible metrics exporter
+* `/acme/check` (`POST`): starts check for missing, expiring or outdated certificates controlled by acme client. Should be issued in the leader.
 * `/debug/pprof`: profiling tools
 * `/build`: build information - controller name, version, git commit hash and repository
 * `/stop`: stops haproxy-ingress controller
