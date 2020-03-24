@@ -311,7 +311,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "100*max(haproxy_frontend_current_sessions{hostname=~\"$hostname\"})/max(haproxy_process_max_connections{hostname=~\"$hostname\"})",
+          "expr": "100*max(sum(haproxy_frontend_current_sessions{hostname=~\"$hostname\"}) by (hostname)/max(haproxy_process_max_connections{hostname=~\"$hostname\"}) by (hostname))",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 1,
@@ -749,7 +749,7 @@
       "thresholds": "7,21",
       "timeFrom": null,
       "timeShift": null,
-      "title": "Certificate expires",
+      "title": "Certificate expiring",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [],
@@ -1481,24 +1481,7 @@
               "refId": "A"
             }
           ],
-          "thresholds": [
-            {
-              "colorMode": "warning",
-              "fill": true,
-              "line": true,
-              "op": "gt",
-              "value": 60,
-              "yaxis": "left"
-            },
-            {
-              "colorMode": "critical",
-              "fill": true,
-              "line": true,
-              "op": "gt",
-              "value": 80,
-              "yaxis": "left"
-            }
-          ],
+          "thresholds": [],
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
@@ -2862,6 +2845,201 @@
       "id": 58,
       "panels": [
         {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "${DS_PROMETHEUS}",
+          "decimals": 0,
+          "fill": 1,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 6,
+            "w": 12,
+            "x": 0,
+            "y": 13
+          },
+          "hiddenSeries": false,
+          "id": 62,
+          "legend": {
+            "alignAsTable": true,
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": true,
+            "values": true
+          },
+          "lines": true,
+          "linewidth": 1,
+          "nullPointMode": "null",
+          "options": {
+            "dataLinks": []
+          },
+          "percentage": false,
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(increase(haproxyingress_cert_signing_count{hostname=~\"$hostname\",success=\"false\"}[1m])) by (hostname,domains)",
+              "legendFormat": "{{hostname}} | {{domains}}",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Certificate signing failures",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "decimals": 0,
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": "0",
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "${DS_PROMETHEUS}",
+          "decimals": 0,
+          "fill": 1,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 6,
+            "w": 12,
+            "x": 12,
+            "y": 13
+          },
+          "hiddenSeries": false,
+          "id": 63,
+          "legend": {
+            "alignAsTable": true,
+            "avg": false,
+            "current": false,
+            "hideEmpty": false,
+            "hideZero": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": true,
+            "values": true
+          },
+          "lines": true,
+          "linewidth": 1,
+          "nullPointMode": "null",
+          "options": {
+            "dataLinks": []
+          },
+          "percentage": false,
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(increase(haproxyingress_cert_signing_count{hostname=~\"$hostname\",reason=\"missing\",success=\"true\"}[1m])) by (hostname)",
+              "hide": false,
+              "instant": false,
+              "legendFormat": "{{hostname}} | missing",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(increase(haproxyingress_cert_signing_count{hostname=~\"$hostname\",reason=\"expiring\",success=\"true\"}[1m])) by (hostname)",
+              "legendFormat": "{{hostname}} | expiring",
+              "refId": "B"
+            },
+            {
+              "expr": "sum(increase(haproxyingress_cert_signing_count{hostname=~\"$hostname\",reason=\"outdated\",success=\"true\"}[1m])) by (hostname)",
+              "instant": false,
+              "legendFormat": "{{hostname}} | outdated",
+              "refId": "C"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "New certificates issued",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "decimals": 0,
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": "0",
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
           "columns": [],
           "datasource": "${DS_PROMETHEUS}",
           "fontSize": "100%",
@@ -2869,7 +3047,7 @@
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 13
+            "y": 19
           },
           "id": 60,
           "options": {},
@@ -2922,7 +3100,7 @@
           ],
           "targets": [
             {
-              "expr": "min(1000*haproxyingress_cert_expire_date_epoch) by (cn)",
+              "expr": "min(1000*haproxyingress_cert_expire_date_epoch{hostname=~\"$hostname\"}) by (cn)",
               "format": "table",
               "instant": true,
               "refId": "A"
@@ -2935,7 +3113,7 @@
           "type": "table"
         }
       ],
-      "title": "Certificate expiration",
+      "title": "Certificates",
       "type": "row"
     }
   ],

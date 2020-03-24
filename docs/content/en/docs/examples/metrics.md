@@ -7,7 +7,7 @@ description: >
 ---
 
 {{% pageinfo %}}
-This is a `v0.10` example and need HAProxy Ingress `v0.10-snapshot.2` or above
+This is a `v0.10` example and need HAProxy Ingress `v0.10-snapshot.4` or above
 {{% /pageinfo %}}
 
 This example demonstrates how to configure [Prometheus](https://prometheus.io) to collect ingress controller and haproxy metrics, and also to configure a [Grafana](https://grafana.com) dashboard to expose these metrics.
