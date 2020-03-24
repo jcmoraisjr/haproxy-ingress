@@ -330,6 +330,27 @@ func registerHandlers(enableProfiling bool, port int, ic *GenericController) {
 
 	mux.Handle("/metrics", promhttp.Handler())
 
+	mux.HandleFunc("/acme/check", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		var out string
+		count, err := ic.cfg.Backend.AcmeCheck()
+		if err != nil {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			out = fmt.Sprintf("Error starting the certificate check: %v.\nSee further information in the controller log.\n", err)
+		} else {
+			w.WriteHeader(http.StatusOK)
+			if count > 0 {
+				out = fmt.Sprintf("Acme check successfully started. Added %d certificate(s) in the processing queue.\n", count)
+			} else {
+				out = fmt.Sprintf("Acme certificate list is empty.\n")
+			}
+		}
+		w.Write([]byte(out))
+	})
+
 	mux.HandleFunc("/build", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		b, _ := json.Marshal(ic.Info())

@@ -45,7 +45,7 @@ type InstanceOptions struct {
 
 // Instance ...
 type Instance interface {
-	AcmePeriodicCheck()
+	AcmeCheck(source string) (int, error)
 	ParseTemplates() error
 	Config() Config
 	Update(timer *utils.Timer)
@@ -72,21 +72,25 @@ type instance struct {
 	curConfig    Config
 }
 
-func (i *instance) AcmePeriodicCheck() {
-	if i.oldConfig == nil || i.options.AcmeQueue == nil {
-		return
+func (i *instance) AcmeCheck(source string) (int, error) {
+	var count int
+	if i.oldConfig == nil {
+		return count, fmt.Errorf("controller wasn't started yet")
+	}
+	if i.options.AcmeQueue == nil {
+		return count, fmt.Errorf("Acme queue wasn't configured")
 	}
 	hasAccount := i.acmeEnsureConfig(i.oldConfig.AcmeData())
 	if !hasAccount {
-		return
+		return count, fmt.Errorf("Cannot create or retrieve the acme client account")
 	}
 	le := i.options.LeaderElector
 	if !le.IsLeader() {
-		i.logger.Info("skipping acme periodic check, leader is %s", le.LeaderName())
-		return
+		msg := fmt.Sprintf("skipping acme periodic check, leader is %s", le.LeaderName())
+		i.logger.Info(msg)
+		return count, fmt.Errorf(msg)
 	}
-	i.logger.Info("starting periodic certificate check")
-	var count int
+	i.logger.Info("starting certificate check (%s)", source)
 	for storage, domains := range i.oldConfig.AcmeData().Certs {
 		i.acmeAddCert(storage, domains)
 		count++
@@ -96,6 +100,7 @@ func (i *instance) AcmePeriodicCheck() {
 	} else {
 		i.logger.Info("finish adding %d certificate(s) to the work queue", count)
 	}
+	return count, nil
 }
 
 func (i *instance) acmeEnsureConfig(acmeConfig *hatypes.AcmeData) bool {

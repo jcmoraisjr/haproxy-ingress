@@ -167,7 +167,9 @@ func (hc *HAProxyController) startServices() {
 			hc.logger.Fatal("error creating the acme server listener: %v", err)
 		}
 		go hc.acmeQueue.Run()
-		go wait.Until(hc.instance.AcmePeriodicCheck, hc.cfg.AcmeCheckPeriod, hc.stopCh)
+		go wait.JitterUntil(func() {
+			_, _ = hc.instance.AcmeCheck("periodic check")
+		}, hc.cfg.AcmeCheckPeriod, 0, false, hc.stopCh)
 	}
 }
 
@@ -202,10 +204,15 @@ func (hc *HAProxyController) createFakeCAFile() (crtFile convtypes.File) {
 	return crtFile
 }
 
+// AcmeCheck ...
+func (hc *HAProxyController) AcmeCheck() (int, error) {
+	return hc.instance.AcmeCheck("external call")
+}
+
 // OnStartedLeading ...
 // implements LeaderSubscriber
 func (hc *HAProxyController) OnStartedLeading(ctx context.Context) {
-	hc.instance.AcmePeriodicCheck()
+	_, _ = hc.instance.AcmeCheck("starting leader")
 }
 
 // OnStoppedLeading ...
