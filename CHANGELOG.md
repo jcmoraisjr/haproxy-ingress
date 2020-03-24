@@ -53,6 +53,27 @@ Highlights of this version:
     * `auth-tls-strict`
 * Update to haproxy 2.0.12 [#518](https://github.com/jcmoraisjr/haproxy-ingress/pull/518)
 
+**v0.10-snapshot.4**
+
+* Fix TLS handshake on backend [#520](https://github.com/jcmoraisjr/haproxy-ingress/pull/520)
+* Update to haproxy 2.0.13 [#521](https://github.com/jcmoraisjr/haproxy-ingress/pull/521)
+* Ignore ingresses without specified class [#527](https://github.com/jcmoraisjr/haproxy-ingress/pull/527) - [doc](https://haproxy-ingress.github.io/docs/configuration/command-line/#ignore-ingress-without-class)
+  * Command-line options:
+    * `--ignore-ingress-without-class`
+* Update crt metric if date changes [#524](https://github.com/jcmoraisjr/haproxy-ingress/pull/524)
+* Clear acme work queue on stopped leading [#526](https://github.com/jcmoraisjr/haproxy-ingress/pull/526)
+* Restart the leader elector when stop leading [#532](https://github.com/jcmoraisjr/haproxy-ingress/pull/532)
+* Improve certificate sign logs [#533](https://github.com/jcmoraisjr/haproxy-ingress/pull/533)
+* Fix race on failure rate limit queue [#534](https://github.com/jcmoraisjr/haproxy-ingress/pull/534)
+* Add cert signing metrics [#535](https://github.com/jcmoraisjr/haproxy-ingress/pull/535)
+* Fix processing count metric name [#536](https://github.com/jcmoraisjr/haproxy-ingress/pull/536)
+* Add buckets-response-time command-line option [#537](https://github.com/jcmoraisjr/haproxy-ingress/pull/537) - [doc](https://haproxy-ingress.github.io/docs/configuration/command-line/#buckets-response-time)
+  * Command-line options:
+    * `--buckets-response-time`
+* Fix label naming of cert signing metric [#538](https://github.com/jcmoraisjr/haproxy-ingress/pull/#538)
+* Add external call to certificate check [#539](https://github.com/jcmoraisjr/haproxy-ingress/pull/#539) - [doc](https://haproxy-ingress.github.io/docs/configuration/command-line/#stats)
+* docs: add crt signing metrics in the dashboard [#540](https://github.com/jcmoraisjr/haproxy-ingress/pull/#540) - [doc](https://haproxy-ingress.github.io/docs/examples/metrics/)
+
 ## v0.9
 
 ### v0.9-beta.1
