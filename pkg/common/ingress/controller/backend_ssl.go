@@ -21,14 +21,14 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/golang/glog"
-
-	apiv1 "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
-	"k8s.io/client-go/tools/cache"
-
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
+
+	"github.com/golang/glog"
+	apiv1 "k8s.io/api/core/v1"
+	extensions "k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/tools/cache"
 )
 
 // syncSecret keeps in sync Secrets used by Ingress rules with the files on
@@ -124,13 +124,16 @@ func (ic *GenericController) getPemCertificate(secret *apiv1.Secret) (*ingress.S
 	return s, nil
 }
 
+// TODO(prometherion): this func is not used anywhere
 // checkMissingSecrets verify if one or more ingress rules contains a reference
 // to a secret that is not present in the local secret store.
 // In this case we call syncSecret.
 func (ic *GenericController) checkMissingSecrets() {
-	for _, obj := range ic.listers.Ingress.List() {
-		ing := obj.(*extensions.Ingress)
-
+	il, err := ic.listers.Ingress.Lister.List(labels.Everything())
+	if err != nil {
+		panic(err)
+	}
+	for _, ing := range il {
 		if !ic.IsValidClass(ing) {
 			continue
 		}

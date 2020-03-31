@@ -18,13 +18,13 @@ package ingress
 
 import (
 	"fmt"
+	
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/store"
 
 	"github.com/spf13/pflag"
 	apiv1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apiserver/pkg/server/healthz"
-
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/store"
 )
 
 var (

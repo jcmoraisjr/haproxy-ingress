@@ -97,7 +97,7 @@ func (c *cache) GetService(serviceName string) (*api.Service, error) {
 
 func (c *cache) GetEndpoints(service *api.Service) (*api.Endpoints, error) {
 	ep, err := c.listers.Endpoint.GetServiceEndpoints(service)
-	return &ep, err
+	return ep, err
 }
 
 func (c *cache) GetTerminatingPods(service *api.Service) ([]*api.Pod, error) {

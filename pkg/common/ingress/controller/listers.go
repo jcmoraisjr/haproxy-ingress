@@ -20,16 +20,17 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/golang/glog"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 
+	"github.com/golang/glog"
 	apiv1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	fcache "k8s.io/client-go/tools/cache/testing"
-
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 )
 
 type cacheController struct {
@@ -38,7 +39,7 @@ type cacheController struct {
 	Service   cache.Controller
 	Node      cache.Controller
 	Secret    cache.Controller
-	Configmap cache.Controller
+	ConfigMap cache.Controller
 	Pod       cache.Controller
 }
 
@@ -48,7 +49,7 @@ func (c *cacheController) Run(stopCh chan struct{}) {
 	go c.Service.Run(stopCh)
 	go c.Node.Run(stopCh)
 	go c.Secret.Run(stopCh)
-	go c.Configmap.Run(stopCh)
+	go c.ConfigMap.Run(stopCh)
 	go c.Pod.Run(stopCh)
 
 	// Wait for all involved caches to be synced, before processing items from the queue is started
@@ -58,7 +59,7 @@ func (c *cacheController) Run(stopCh chan struct{}) {
 		c.Service.HasSynced,
 		c.Node.HasSynced,
 		c.Secret.HasSynced,
-		c.Configmap.HasSynced,
+		c.ConfigMap.HasSynced,
 		c.Pod.HasSynced,
 	) {
 		runtime.HandleError(fmt.Errorf("timed out waiting for caches to sync"))
@@ -66,10 +67,33 @@ func (c *cacheController) Run(stopCh chan struct{}) {
 }
 
 func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.StoreLister, *cacheController) {
-	// from here to the end of the method all the code is just boilerplate
-	// required to watch Ingress, Secrets, ConfigMaps and Endoints.
-	// This is used to detect new content, updates or removals and act accordingly
-	ingEventHandler := cache.ResourceEventHandlerFuncs{
+	lister := &ingress.StoreLister{}
+	lister.Secret.Client = ic.cfg.Client
+	lister.ConfigMap.Client = ic.cfg.Client
+
+	controller := &cacheController{}
+
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		panic(err)
+	}
+	cs, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(err)
+	}
+
+	si := informers.NewSharedInformerFactoryWithOptions(cs, ic.cfg.ResyncPeriod, func() informers.SharedInformerOption {
+		if ic.cfg.ForceNamespaceIsolation && ic.cfg.WatchNamespace != apiv1.NamespaceAll {
+			return informers.WithNamespace(ic.cfg.WatchNamespace)
+		}
+		return informers.WithTweakListOptions(nil)
+	}())
+
+	ingressInformer := si.Extensions().V1beta1().Ingresses()
+	ingressInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		// from here to the end of the method all the code is just boilerplate
+		// required to watch Ingress, Secrets, ConfigMaps and Endpoints.
+		// This is used to detect new content, updates or removals and act accordingly
 		AddFunc: func(obj interface{}) {
 			addIng := obj.(*extensions.Ingress)
 			if !ic.IsValidClass(addIng) {
@@ -121,9 +145,29 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 
 			ic.syncQueue.Enqueue(cur)
 		},
-	}
+	})
+	lister.Ingress.Lister, controller.Ingress = ingressInformer.Lister(), ingressInformer.Informer()
 
-	secrEventHandler := cache.ResourceEventHandlerFuncs{
+	endpointInformer := si.Core().V1().Endpoints()
+	endpointInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			ic.syncQueue.Enqueue(obj)
+		},
+		DeleteFunc: func(obj interface{}) {
+			ic.syncQueue.Enqueue(obj)
+		},
+		UpdateFunc: func(old, cur interface{}) {
+			oep := old.(*apiv1.Endpoints)
+			ocur := cur.(*apiv1.Endpoints)
+			if !reflect.DeepEqual(ocur.Subsets, oep.Subsets) {
+				ic.syncQueue.Enqueue(cur)
+			}
+		},
+	})
+	lister.Endpoint.Lister, controller.Endpoint = endpointInformer.Lister(), endpointInformer.Informer()
+
+	secretInformer := si.Core().V1().Secrets()
+	secretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			ic.syncQueue.Enqueue(obj)
 		},
@@ -153,25 +197,11 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 			ic.sslCertTracker.DeleteAll(key)
 			ic.syncQueue.Enqueue(sec)
 		},
-	}
+	})
+	lister.Secret.Lister, controller.Secret = secretInformer.Lister(), secretInformer.Informer()
 
-	eventHandler := cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			ic.syncQueue.Enqueue(obj)
-		},
-		DeleteFunc: func(obj interface{}) {
-			ic.syncQueue.Enqueue(obj)
-		},
-		UpdateFunc: func(old, cur interface{}) {
-			oep := old.(*apiv1.Endpoints)
-			ocur := cur.(*apiv1.Endpoints)
-			if !reflect.DeepEqual(ocur.Subsets, oep.Subsets) {
-				ic.syncQueue.Enqueue(cur)
-			}
-		},
-	}
-
-	mapEventHandler := cache.ResourceEventHandlerFuncs{
+	cmInformer := si.Core().V1().ConfigMaps()
+	cmInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			upCmap := obj.(*apiv1.ConfigMap)
 			mapKey := fmt.Sprintf("%s/%s", upCmap.Namespace, upCmap.Name)
@@ -195,9 +225,14 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 				}
 			}
 		},
-	}
+	})
+	lister.ConfigMap.Lister, controller.ConfigMap = cmInformer.Lister(), cmInformer.Informer()
 
-	podEventHandler := cache.ResourceEventHandlerFuncs{
+	serviceInformer := si.Core().V1().Services()
+	lister.Service.Lister, controller.Service = serviceInformer.Lister(), serviceInformer.Informer()
+
+	podInformer := si.Core().V1().Pods()
+	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		DeleteFunc: func(obj interface{}) {
 			ic.syncQueue.Enqueue(obj)
 		},
@@ -208,52 +243,15 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 				ic.syncQueue.Enqueue(cur)
 			}
 		},
-	}
+	})
+	lister.Pod.Lister, controller.Pod = podInformer.Lister(), podInformer.Informer()
 
-	watchNs := apiv1.NamespaceAll
-	if ic.cfg.ForceNamespaceIsolation && ic.cfg.WatchNamespace != apiv1.NamespaceAll {
-		watchNs = ic.cfg.WatchNamespace
-	}
-
-	lister := &ingress.StoreLister{}
-	lister.Secret.Client = ic.cfg.Client
-	lister.ConfigMap.Client = ic.cfg.Client
-
-	controller := &cacheController{}
-
-	lister.Ingress.Store, controller.Ingress = cache.NewInformer(
-		cache.NewListWatchFromClient(ic.cfg.Client.ExtensionsV1beta1().RESTClient(), "ingresses", ic.cfg.WatchNamespace, fields.Everything()),
-		&extensions.Ingress{}, ic.cfg.ResyncPeriod, ingEventHandler)
-
-	lister.Endpoint.Store, controller.Endpoint = cache.NewInformer(
-		cache.NewListWatchFromClient(ic.cfg.Client.CoreV1().RESTClient(), "endpoints", watchNs, fields.Everything()),
-		&apiv1.Endpoints{}, ic.cfg.ResyncPeriod, eventHandler)
-
-	lister.Secret.Store, controller.Secret = cache.NewInformer(
-		cache.NewListWatchFromClient(ic.cfg.Client.CoreV1().RESTClient(), "secrets", watchNs, fields.Everything()),
-		&apiv1.Secret{}, ic.cfg.ResyncPeriod, secrEventHandler)
-
-	lister.ConfigMap.Store, controller.Configmap = cache.NewInformer(
-		cache.NewListWatchFromClient(ic.cfg.Client.CoreV1().RESTClient(), "configmaps", watchNs, fields.Everything()),
-		&apiv1.ConfigMap{}, ic.cfg.ResyncPeriod, mapEventHandler)
-
-	lister.Service.Store, controller.Service = cache.NewInformer(
-		cache.NewListWatchFromClient(ic.cfg.Client.CoreV1().RESTClient(), "services", watchNs, fields.Everything()),
-		&apiv1.Service{}, ic.cfg.ResyncPeriod, cache.ResourceEventHandlerFuncs{})
-
-	lister.Pod.Store, controller.Pod = cache.NewInformer(
-		cache.NewListWatchFromClient(ic.cfg.Client.CoreV1().RESTClient(), "pods", ic.cfg.WatchNamespace, fields.Everything()),
-		&apiv1.Pod{}, ic.cfg.ResyncPeriod, podEventHandler)
-
-	var nodeListerWatcher cache.ListerWatcher
 	if disableNodeLister {
-		nodeListerWatcher = fcache.NewFakeControllerSource()
-	} else {
-		nodeListerWatcher = cache.NewListWatchFromClient(ic.cfg.Client.CoreV1().RESTClient(), "nodes", apiv1.NamespaceAll, fields.Everything())
+		cs := fake.NewSimpleClientset()
+		si = informers.NewSharedInformerFactory(cs, 0)
 	}
-	lister.Node.Store, controller.Node = cache.NewInformer(
-		nodeListerWatcher,
-		&apiv1.Node{}, ic.cfg.ResyncPeriod, cache.ResourceEventHandlerFuncs{})
+	nodeInformer := si.Core().V1().Nodes()
+	lister.Node.Lister, controller.Node = nodeInformer.Lister(), nodeInformer.Informer()
 
 	return lister, controller
 }

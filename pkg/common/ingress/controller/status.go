@@ -25,9 +25,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/k8s"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/task"
+
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
-
 	pool "gopkg.in/go-playground/pool.v3"
 	apiv1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
@@ -39,9 +41,6 @@ import (
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
-
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/k8s"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/task"
 )
 
 const (
@@ -117,7 +116,9 @@ func (s statusSync) Shutdown() {
 	}
 
 	glog.Infof("removing address from ingress status (%v)", addrs)
-	s.updateStatus([]apiv1.LoadBalancerIngress{})
+	if err := s.updateStatus([]apiv1.LoadBalancerIngress{}); err != nil {
+		glog.Errorf("cannot update status due to an error: %s", err.Error())
+	}
 }
 
 func (s *statusSync) sync(key interface{}) error {
@@ -135,7 +136,9 @@ func (s *statusSync) sync(key interface{}) error {
 	if err != nil {
 		return err
 	}
-	s.updateStatus(sliceToStatus(addrs))
+	if err := s.updateStatus(sliceToStatus(addrs)); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -290,17 +293,18 @@ func sliceToStatus(endpoints []string) []apiv1.LoadBalancerIngress {
 // updateStatus changes the status information of Ingress rules
 // If the backend function CustomIngressStatus returns a value different
 // of nil then it uses the returned value or the newIngressPoint values
-func (s *statusSync) updateStatus(newIngressPoint []apiv1.LoadBalancerIngress) {
-	ings := s.ic.listers.Ingress.List()
+func (s *statusSync) updateStatus(newIngressPoint []apiv1.LoadBalancerIngress) error {
+	ings, err := s.ic.listers.Ingress.Lister.List(labels.Everything())
+	if err != nil {
+		return err
+	}
 
 	p := pool.NewLimited(10)
 	defer p.Close()
 
 	batch := p.Batch()
 
-	for _, cur := range ings {
-		ing := cur.(*extensions.Ingress)
-
+	for _, ing := range ings {
 		if !s.ic.IsValidClass(ing) {
 			continue
 		}
@@ -316,6 +320,8 @@ func (s *statusSync) updateStatus(newIngressPoint []apiv1.LoadBalancerIngress) {
 
 	batch.QueueComplete()
 	batch.WaitAll()
+
+	return nil
 }
 
 func runUpdate(ing *extensions.Ingress, status []apiv1.LoadBalancerIngress,
