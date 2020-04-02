@@ -221,6 +221,12 @@ Fixes and improvements since [v0.9-beta.2](#v09-beta2):
 * Improve certificate sign logs [#533](https://github.com/jcmoraisjr/haproxy-ingress/pull/533)
 * Fix race on failure rate limit queue [#534](https://github.com/jcmoraisjr/haproxy-ingress/pull/534)
 
+## v0.8.3
+
+Fixes and improvements since [v0.8.2](#v082):
+
+* Update HAProxy from 1.8.24 to 1.8.25, which fixes CVE-2020-11100
+
 ## v0.8.2
 
 Fixes and improvements since [v0.8.1](#v081):
