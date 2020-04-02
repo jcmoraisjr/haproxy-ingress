@@ -385,6 +385,12 @@ Fixes and improvements since [v0.8-beta.5](#v08-beta5):
 * Fix case on per-path backend maps [#466](https://github.com/jcmoraisjr/haproxy-ingress/pull/466)
 * Fix haproxy.cfg permissions [#476](https://github.com/jcmoraisjr/haproxy-ingress/pull/476)
 
+## v0.7.6
+
+Fixes and improvements since [v0.7.5](#v075):
+
+* Update HAProxy from 1.8.23 to 1.8.25, which fixes CVE-2020-11100
+
 ## v0.7.5
 
 Fixes and improvements since [v0.7.4](#v074):
