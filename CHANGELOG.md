@@ -221,6 +221,13 @@ Fixes and improvements since [v0.9-beta.2](#v09-beta2):
 * Improve certificate sign logs [#533](https://github.com/jcmoraisjr/haproxy-ingress/pull/533)
 * Fix race on failure rate limit queue [#534](https://github.com/jcmoraisjr/haproxy-ingress/pull/534)
 
+### v0.9-beta.4
+
+Fixes and improvements since [v0.9-beta.3](#v09-beta3):
+
+* Add external call to certificate check [#539](https://github.com/jcmoraisjr/haproxy-ingress/pull/#539) - [doc](https://haproxy-ingress.github.io/docs/configuration/command-line/#stats)
+* Update HAProxy from 1.9.14 to 1.9.15, which fixes CVE-2020-11100
+
 ## v0.8.3
 
 Fixes and improvements since [v0.8.2](#v082):
