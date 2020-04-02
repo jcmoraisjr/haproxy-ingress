@@ -74,6 +74,10 @@ Highlights of this version:
 * Add external call to certificate check [#539](https://github.com/jcmoraisjr/haproxy-ingress/pull/#539) - [doc](https://haproxy-ingress.github.io/docs/configuration/command-line/#stats)
 * docs: add crt signing metrics in the dashboard [#540](https://github.com/jcmoraisjr/haproxy-ingress/pull/#540) - [doc](https://haproxy-ingress.github.io/docs/examples/metrics/)
 
+***v0.10-snapshot.5**
+
+* Update HAProxy from 2.0.13 to 2.0.14, which fixes CVE-2020-11100
+
 ## v0.9
 
 ### v0.9-beta.1
