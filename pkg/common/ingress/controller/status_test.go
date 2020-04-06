@@ -181,8 +181,8 @@ func buildExtensionsIngresses() []extensions.Ingress {
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo_ingress_different_class",
-				Namespace: apiv1.NamespaceDefault,
+				Name:        "foo_ingress_different_class",
+				Namespace:   apiv1.NamespaceDefault,
 				Annotations: map[string]string{
 					// class.IngressKey: "no-nginx",
 				},

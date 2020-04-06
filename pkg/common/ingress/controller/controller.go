@@ -196,7 +196,7 @@ func (ic GenericController) GetFullResourceName(name, currentNamespace string) s
 		return ""
 	}
 	if strings.Index(name, "/") == -1 {
-		// there isn't a slash, just the resourcename
+		// there isn't a slash, just the resource name
 		return fmt.Sprintf("%v/%v", currentNamespace, name)
 	} else if !ic.cfg.AllowCrossNamespace {
 		// there IS a slash: namespace/resourcename
