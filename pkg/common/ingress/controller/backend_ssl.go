@@ -21,14 +21,13 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/golang/glog"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
 
+	"github.com/golang/glog"
 	apiv1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/client-go/tools/cache"
-
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
 )
 
 // syncSecret keeps in sync Secrets used by Ingress rules with the files on
@@ -122,39 +121,6 @@ func (ic *GenericController) getPemCertificate(secret *apiv1.Secret) (*ingress.S
 	s.Name = secret.Name
 	s.Namespace = secret.Namespace
 	return s, nil
-}
-
-// checkMissingSecrets verify if one or more ingress rules contains a reference
-// to a secret that is not present in the local secret store.
-// In this case we call syncSecret.
-func (ic *GenericController) checkMissingSecrets() {
-	for _, obj := range ic.listers.Ingress.List() {
-		ing := obj.(*extensions.Ingress)
-
-		if !ic.IsValidClass(ing) {
-			continue
-		}
-
-		for _, tls := range ing.Spec.TLS {
-			if tls.SecretName == "" {
-				continue
-			}
-
-			key := ic.GetFullResourceName(tls.SecretName, ing.Namespace)
-			if _, ok := ic.sslCertTracker.Get(key); !ok {
-				ic.syncSecret(key)
-			}
-		}
-
-		key, _ := ing.Annotations[ic.cfg.AnnPrefix+"/auth-tls-secret"]
-		if key == "" {
-			continue
-		}
-
-		if _, ok := ic.sslCertTracker.Get(key); !ok {
-			ic.syncSecret(key)
-		}
-	}
 }
 
 // sslCertTracker holds a store of referenced Secrets in Ingress rules
