@@ -23,6 +23,13 @@ import (
 	"sort"
 	"time"
 
+	"github.com/golang/glog"
+	"github.com/spf13/pflag"
+	api "k8s.io/api/core/v1"
+	extensions "k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/wait"
+
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/controller"
@@ -35,13 +42,6 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/version"
-
-	"github.com/golang/glog"
-	"github.com/spf13/pflag"
-	api "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 // HAProxyController has internal data of a HAProxyController instance

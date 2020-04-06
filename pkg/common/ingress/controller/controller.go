@@ -23,11 +23,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/task"
-
 	"github.com/golang/glog"
+
 	apiv1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -36,6 +33,9 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/flowcontrol"
 
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/task"
 )
 
 // GenericController holds the boilerplate code required to build an Ingress controlller.
@@ -196,7 +196,7 @@ func (ic GenericController) GetFullResourceName(name, currentNamespace string) s
 		return ""
 	}
 	if strings.Index(name, "/") == -1 {
-		// there isn't a slash, just the resource name
+		// there isn't a slash, just the resourcename
 		return fmt.Sprintf("%v/%v", currentNamespace, name)
 	} else if !ic.cfg.AllowCrossNamespace {
 		// there IS a slash: namespace/resourcename

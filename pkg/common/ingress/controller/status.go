@@ -25,11 +25,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/k8s"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/task"
-
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
+
 	pool "gopkg.in/go-playground/pool.v3"
 	apiv1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
@@ -41,6 +39,9 @@ import (
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
+
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/k8s"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/task"
 )
 
 const (

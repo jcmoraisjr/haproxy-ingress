@@ -27,9 +27,7 @@ import (
 	extensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -73,16 +71,7 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 
 	controller := &cacheController{}
 
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		panic(err)
-	}
-	cs, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err)
-	}
-
-	si := informers.NewSharedInformerFactoryWithOptions(cs, ic.cfg.ResyncPeriod, func() informers.SharedInformerOption {
+	si := informers.NewSharedInformerFactoryWithOptions(ic.cfg.Client, ic.cfg.ResyncPeriod, func() informers.SharedInformerOption {
 		if ic.cfg.ForceNamespaceIsolation && ic.cfg.WatchNamespace != apiv1.NamespaceAll {
 			return informers.WithNamespace(ic.cfg.WatchNamespace)
 		}
@@ -91,9 +80,6 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 
 	ingressInformer := si.Extensions().V1beta1().Ingresses()
 	ingressInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		// from here to the end of the method all the code is just boilerplate
-		// required to watch Ingress, Secrets, ConfigMaps and Endpoints.
-		// This is used to detect new content, updates or removals and act accordingly
 		AddFunc: func(obj interface{}) {
 			addIng := obj.(*extensions.Ingress)
 			if !ic.IsValidClass(addIng) {
@@ -148,24 +134,6 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 	})
 	lister.Ingress.Lister, controller.Ingress = ingressInformer.Lister(), ingressInformer.Informer()
 
-	endpointInformer := si.Core().V1().Endpoints()
-	endpointInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			ic.syncQueue.Enqueue(obj)
-		},
-		DeleteFunc: func(obj interface{}) {
-			ic.syncQueue.Enqueue(obj)
-		},
-		UpdateFunc: func(old, cur interface{}) {
-			oep := old.(*apiv1.Endpoints)
-			ocur := cur.(*apiv1.Endpoints)
-			if !reflect.DeepEqual(ocur.Subsets, oep.Subsets) {
-				ic.syncQueue.Enqueue(cur)
-			}
-		},
-	})
-	lister.Endpoint.Lister, controller.Endpoint = endpointInformer.Lister(), endpointInformer.Informer()
-
 	secretInformer := si.Core().V1().Secrets()
 	secretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
@@ -199,6 +167,24 @@ func (ic *GenericController) createListers(disableNodeLister bool) (*ingress.Sto
 		},
 	})
 	lister.Secret.Lister, controller.Secret = secretInformer.Lister(), secretInformer.Informer()
+
+	endpointInformer := si.Core().V1().Endpoints()
+	endpointInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			ic.syncQueue.Enqueue(obj)
+		},
+		DeleteFunc: func(obj interface{}) {
+			ic.syncQueue.Enqueue(obj)
+		},
+		UpdateFunc: func(old, cur interface{}) {
+			oep := old.(*apiv1.Endpoints)
+			ocur := cur.(*apiv1.Endpoints)
+			if !reflect.DeepEqual(ocur.Subsets, oep.Subsets) {
+				ic.syncQueue.Enqueue(cur)
+			}
+		},
+	})
+	lister.Endpoint.Lister, controller.Endpoint = endpointInformer.Lister(), endpointInformer.Informer()
 
 	cmInformer := si.Core().V1().ConfigMaps()
 	cmInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{

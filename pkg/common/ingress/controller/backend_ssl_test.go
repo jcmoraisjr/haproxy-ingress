@@ -146,7 +146,7 @@ func TestSyncSecret(t *testing.T) {
 			ic := buildGenericControllerForBackendSSL(cs, l)
 			ic.syncSecret(c.secretName)
 
-			_, e := Get(c.secretName)
+			_, e := ic.sslCertTracker.Get(c.secretName)
 			assert.Equal(t, c.expectSuccess, e)
 		})
 	}
