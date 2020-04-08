@@ -57,6 +57,18 @@ func (hm *HostsMap) AppendHostname(base, value string) {
 	}
 }
 
+// AppendHostnameRegex ...
+func (hm *HostsMap) AppendHostnameRegex(base, value string) {
+	hm.Regex = append(hm.Regex, &HostsMapEntry{
+		Key:   base,
+		Value: value,
+	})
+	// Keep regexes in order from most to least specific (based on rule length)
+	sort.Slice(hm.Regex, func(i, j int) bool {
+		return len(hm.Regex[i].Key) > len(hm.Regex[j].Key)
+	})
+}
+
 // AppendAliasName ...
 func (hm *HostsMap) AppendAliasName(base, value string) {
 	if base != "" {

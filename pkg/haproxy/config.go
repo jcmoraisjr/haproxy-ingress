@@ -19,6 +19,7 @@ package haproxy
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -328,6 +329,7 @@ func (c *config) BuildFrontendGroup() error {
 			for _, path := range host.Paths {
 				backend := c.FindBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
 				base := host.Hostname + path.Path
+				isRegex := path.IsRegex
 				hasSSLRedirect := false
 				if host.TLS.HasTLS() && backend != nil {
 					hasSSLRedirect = backend.HasSSLRedirectHostpath(base)
@@ -361,7 +363,12 @@ func (c *config) BuildFrontendGroup() error {
 					}
 				}
 				if !hasSSLRedirect || c.global.Bind.HasFrontingProxy() {
-					fgroup.HTTPFrontsMap.AppendHostname(base, back)
+					if isRegex {
+						baseRegex := regexp.QuoteMeta(host.Hostname) + path.Path
+						fgroup.HTTPFrontsMap.AppendHostnameRegex(baseRegex, back)
+					} else {
+						fgroup.HTTPFrontsMap.AppendHostname(base, back)
+					}
 				}
 				var ns string
 				if host.VarNamespace {

@@ -128,7 +128,12 @@ func (c *converter) syncIngress(ing *extensions.Ingress) {
 				c.logger.Warn("skipping backend config of ingress '%s': %v", fullIngName, err)
 				continue
 			}
-			host.AddPath(backend, uri)
+			pathIsRegex := annBack[ingtypes.BackPathType] == "regex"
+			if pathIsRegex {
+				host.AddPathRegex(backend, uri)
+			} else {
+				host.AddPath(backend, uri)
+			}
 			sslpassthrough, _ := strconv.ParseBool(annHost[ingtypes.HostSSLPassthrough])
 			sslpasshttpport := annHost[ingtypes.HostSSLPassthroughHTTPPort]
 			if sslpassthrough && sslpasshttpport != "" {
