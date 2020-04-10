@@ -7,7 +7,7 @@ description: >
 ---
 
 {{% pageinfo %}}
-This is a `v0.10` example and need HAProxy Ingress `v0.10-snapshot.4` or above
+This is a `v0.10` example and need HAProxy Ingress `v0.10-snapshot.5` or above
 {{% /pageinfo %}}
 
 This example demonstrates how to configure [Prometheus](https://prometheus.io) to collect ingress controller and haproxy metrics, and also to configure a [Grafana](https://grafana.com) dashboard to expose these metrics.
@@ -105,7 +105,7 @@ Now its time to see what Prometheus is collecting. Grafana can be acessed in the
 
 * Log in to Grafana, user is `admin` and the first password is `admin`
 * Create a Prometheus data source, the endpoint is `http://prometheus:9090`
-* Click the big `+` plus sign in the left side, and Import [this](https://haproxy-ingress.github.io/docs/examples/metrics/haproxy-ingress-dashboard.json) dashboard
+* Click the big `+` plus sign in the left side, and Import [this](https://grafana.com/grafana/dashboards/12056) dashboard
 
 {{% alert title="Note" %}}
 This deployment has no persistent volume, so all customizations will be lost if the pod is recreated.
