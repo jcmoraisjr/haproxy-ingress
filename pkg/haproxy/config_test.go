@@ -28,7 +28,7 @@ func TestEmptyFrontend(t *testing.T) {
 	if fg := c.FrontendGroup(); fg == nil {
 		t.Error("expected FrontendGroup != nil")
 	}
-	c.AcquireHost("empty")
+	c.hosts.AcquireHost("empty")
 	if err := c.BuildFrontendGroup(); err != nil {
 		t.Errorf("error creating frontends: %v", err)
 	}
@@ -40,8 +40,8 @@ func TestEmptyFrontend(t *testing.T) {
 
 func TestAcquireHostDiff(t *testing.T) {
 	c := createConfig(options{})
-	f1 := c.AcquireHost("h1")
-	f2 := c.AcquireHost("h2")
+	f1 := c.hosts.AcquireHost("h1")
+	f2 := c.hosts.AcquireHost("h2")
 	if f1.Hostname != "h1" {
 		t.Errorf("expected %v but was %v", "h1", f1.Hostname)
 	}
@@ -52,8 +52,8 @@ func TestAcquireHostDiff(t *testing.T) {
 
 func TestAcquireHostSame(t *testing.T) {
 	c := createConfig(options{})
-	f1 := c.AcquireHost("h1")
-	f2 := c.AcquireHost("h1")
+	f1 := c.hosts.AcquireHost("h1")
+	f2 := c.hosts.AcquireHost("h1")
 	if f1 != f2 {
 		t.Errorf("expected same host but was different")
 	}
@@ -101,12 +101,12 @@ func TestEqual(t *testing.T) {
 	if !c1.Equals(c2) {
 		t.Error("c1 and c2 should be equals (with backends)")
 	}
-	h1 := c1.AcquireHost("d")
+	h1 := c1.hosts.AcquireHost("d")
 	h1.AddPath(b1, "/")
 	if c1.Equals(c2) {
 		t.Error("c1 and c2 should not be equals (hosts on one side)")
 	}
-	h2 := c2.AcquireHost("d")
+	h2 := c2.hosts.AcquireHost("d")
 	h2.AddPath(b2, "/")
 	if !c1.Equals(c2) {
 		t.Error("c1 and c2 should be equals (with hosts)")

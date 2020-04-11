@@ -127,53 +127,7 @@ func (fg *FrontendGroup) HasMaxBody() bool {
 	return fg.MaxBodySizeMap.HasHost()
 }
 
-// HasVarNamespace ...
-func (f *Frontend) HasVarNamespace() bool {
-	for _, host := range f.Hosts {
-		if host.VarNamespace {
-			return true
-		}
-	}
-	return false
-}
-
 // String ...
 func (f *Frontend) String() string {
 	return fmt.Sprintf("%+v", *f)
-}
-
-// HasTLSAuth ...
-func (f *Frontend) HasTLSAuth() bool {
-	for _, host := range f.Hosts {
-		if host.HasTLSAuth() {
-			return true
-		}
-	}
-	return false
-}
-
-// HasInvalidErrorPage ...
-func (f *Frontend) HasInvalidErrorPage() bool {
-	for _, host := range f.Hosts {
-		if host.TLS.CAErrorPage != "" {
-			return true
-		}
-	}
-	return false
-}
-
-// HasNoCrtErrorPage ...
-func (f *Frontend) HasNoCrtErrorPage() bool {
-	// Use currently the same attribute
-	return f.HasInvalidErrorPage()
-}
-
-// HasTLSMandatory ...
-func (f *Frontend) HasTLSMandatory() bool {
-	for _, host := range f.Hosts {
-		if host.HasTLSAuth() && !host.TLS.CAVerifyOptional {
-			return true
-		}
-	}
-	return false
 }

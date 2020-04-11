@@ -29,8 +29,6 @@ import (
 // Config ...
 type Config interface {
 	AcquireTCPBackend(servicename string, port int) *hatypes.TCPBackend
-	AcquireHost(hostname string) *hatypes.Host
-	FindHost(hostname string) *hatypes.Host
 	AcquireBackend(namespace, name, port string) *hatypes.Backend
 	FindBackend(namespace, name, port string) *hatypes.Backend
 	ConfigDefaultBackend(defaultBackend *hatypes.Backend)
@@ -41,13 +39,12 @@ type Config interface {
 	FrontendGroup() *hatypes.FrontendGroup
 	BuildFrontendGroup() error
 	BuildBackendMaps() error
-	DefaultHost() *hatypes.Host
 	DefaultBackend() *hatypes.Backend
 	AcmeData() *hatypes.AcmeData
 	Acme() *hatypes.Acme
 	Global() *hatypes.Global
 	TCPBackends() []*hatypes.TCPBackend
-	Hosts() []*hatypes.Host
+	Hosts() *hatypes.Hosts
 	Backends() []*hatypes.Backend
 	Userlists() []*hatypes.Userlist
 	Equals(other Config) bool
@@ -63,11 +60,10 @@ type config struct {
 	mapsDir         string
 	global          *hatypes.Global
 	frontend        *hatypes.Frontend
+	hosts           *hatypes.Hosts
 	tcpbackends     []*hatypes.TCPBackend
-	hosts           []*hatypes.Host
 	backends        []*hatypes.Backend
 	userlists       []*hatypes.Userlist
-	defaultHost     *hatypes.Host
 	defaultBackend  *hatypes.Backend
 	defaultX509Cert string
 }
@@ -87,6 +83,7 @@ func createConfig(options options) *config {
 		acme:         &hatypes.Acme{},
 		global:       &hatypes.Global{},
 		frontend:     &hatypes.Frontend{Name: "_front001"},
+		hosts:        &hatypes.Hosts{},
 		mapsTemplate: mapsTemplate,
 		mapsDir:      options.mapsDir,
 	}
@@ -112,40 +109,6 @@ func (c *config) AcquireTCPBackend(servicename string, port int) *hatypes.TCPBac
 		return back1.Name < back2.Name
 	})
 	return backend
-}
-
-func (c *config) AcquireHost(hostname string) *hatypes.Host {
-	if host := c.FindHost(hostname); host != nil {
-		return host
-	}
-	host := createHost(hostname)
-	if host.Hostname != "*" {
-		c.hosts = append(c.hosts, host)
-		sort.Slice(c.hosts, func(i, j int) bool {
-			return c.hosts[i].Hostname < c.hosts[j].Hostname
-		})
-	} else {
-		c.defaultHost = host
-	}
-	return host
-}
-
-func (c *config) FindHost(hostname string) *hatypes.Host {
-	if hostname == "*" && c.defaultHost != nil {
-		return c.defaultHost
-	}
-	for _, f := range c.hosts {
-		if f.Hostname == hostname {
-			return f
-		}
-	}
-	return nil
-}
-
-func createHost(hostname string) *hatypes.Host {
-	return &hatypes.Host{
-		Hostname: hostname,
-	}
 }
 
 func (c *config) sortBackends() {
@@ -240,19 +203,8 @@ func (c *config) FrontendGroup() *hatypes.FrontendGroup {
 func (c *config) BuildFrontendGroup() error {
 	// tested thanks to instance_test templating tests
 	// ideas to make a nice test or a nice refactor are welcome
-	var frontHosts, sslpassHosts []*hatypes.Host
-	for _, host := range c.hosts {
-		if host.SSLPassthrough {
-			sslpassHosts = append(sslpassHosts, host)
-		} else {
-			frontHosts = append(frontHosts, host)
-		}
-	}
-	c.frontend.Hosts = frontHosts
 	maps := hatypes.CreateMaps()
 	fgroup := &hatypes.FrontendGroup{
-		HasSSLPassthrough: len(sslpassHosts) > 0,
-		//
 		HTTPFrontsMap:     maps.AddMap(c.mapsDir + "/_global_http_front.map"),
 		HTTPRootRedirMap:  maps.AddMap(c.mapsDir + "/_global_http_root_redir.map"),
 		HTTPSRedirMap:     maps.AddMap(c.mapsDir + "/_global_https_redir.map"),
@@ -271,7 +223,7 @@ func (c *config) BuildFrontendGroup() error {
 		CrtList:       maps.AddMap(c.mapsDir + "/_front001_bind_crt.list"),
 		UseServerList: maps.AddMap(c.mapsDir + "/_front001_use_server.list"),
 	}
-	if fgroup.HasSSLPassthrough {
+	if c.hosts.HasSSLPassthrough() {
 		// using ssl-passthrough config, so need a `mode tcp`
 		// frontend with `inspect-delay` and `req.ssl_sni`
 		bindName := fmt.Sprintf("%s_socket", c.frontend.Name)
@@ -284,27 +236,34 @@ func (c *config) BuildFrontendGroup() error {
 		c.frontend.BindSocket = c.global.Bind.HTTPSBind
 		c.frontend.AcceptProxy = c.global.Bind.AcceptProxy
 	}
+	fgroup.CrtList.AppendItem(c.defaultX509Cert)
 	// Some maps use yes/no answers instead of a list with found/missing keys
 	// This approach avoid overlap:
 	//  1. match with path_beg/map_beg, /path has a feature and a declared /path/sub doesn't have
 	//  2. *.host.domain wildcard/alias/alias-regex has a feature and a declared sub.host.domain doesn't have
 	yesno := map[bool]string{true: "yes", false: "no"}
-	for _, sslpassHost := range sslpassHosts {
-		rootPath := sslpassHost.FindPath("/")
-		if rootPath == nil {
-			return fmt.Errorf("missing root path on host %s", sslpassHost.Hostname)
+	for _, host := range c.hosts.Items {
+		if host.SSLPassthrough {
+			rootPath := host.FindPath("/")
+			if rootPath == nil {
+				return fmt.Errorf("missing root path on host %s", host.Hostname)
+			}
+			fgroup.SSLPassthroughMap.AppendHostname(host.Hostname, rootPath.Backend.ID)
+			fgroup.HTTPSRedirMap.AppendHostname(host.Hostname+"/", yesno[host.HTTPPassthroughBackend == ""])
+			if host.HTTPPassthroughBackend != "" {
+				fgroup.HTTPFrontsMap.AppendHostname(host.Hostname+"/", host.HTTPPassthroughBackend)
+			}
+			// ssl-passthrough is as simple as that, jump to the next host
+			continue
 		}
-		fgroup.SSLPassthroughMap.AppendHostname(sslpassHost.Hostname, rootPath.Backend.ID)
-		fgroup.HTTPSRedirMap.AppendHostname(sslpassHost.Hostname+"/", yesno[sslpassHost.HTTPPassthroughBackend == ""])
-		if sslpassHost.HTTPPassthroughBackend != "" {
-			fgroup.HTTPFrontsMap.AppendHostname(sslpassHost.Hostname+"/", sslpassHost.HTTPPassthroughBackend)
-		}
-	}
-	for _, host := range frontHosts {
+		//
+		// Starting here to the end of this for loop has only HTTP/L7 map configuration
+		//
 		if c.global.StrictHost && host.FindPath("/") == nil {
 			var back *hatypes.Backend
-			if c.defaultHost != nil {
-				if path := c.defaultHost.FindPath("/"); path != nil {
+			defaultHost := c.hosts.DefaultHost()
+			if defaultHost != nil {
+				if path := defaultHost.FindPath("/"); path != nil {
 					hback := path.Backend
 					back = c.FindBackend(hback.Namespace, hback.Name, hback.Port)
 				}
@@ -330,7 +289,7 @@ func (c *config) BuildFrontendGroup() error {
 			fgroup.HTTPSRedirMap.AppendHostname(host.Hostname+path.Path, yesno[hasSSLRedirect])
 			var aliasName, aliasRegex string
 			// TODO warn in logs about ignoring alias name due to hostname colision
-			if host.Alias.AliasName != "" && c.FindHost(host.Alias.AliasName) == nil {
+			if host.Alias.AliasName != "" && c.hosts.FindHost(host.Alias.AliasName) == nil {
 				aliasName = host.Alias.AliasName + path.Path
 			}
 			if host.Alias.AliasRegex != "" {
@@ -393,35 +352,31 @@ func (c *config) BuildFrontendGroup() error {
 			fgroup.HTTPRootRedirMap.AppendHostname(host.Hostname, host.RootRedirect)
 			fgroup.RootRedirMap.AppendHostname(host.Hostname, host.RootRedirect)
 		}
-	}
-	fgroup.CrtList.AppendItem(c.defaultX509Cert)
-	for _, host := range frontHosts {
+		fgroup.UseServerList.AppendHostname(host.Hostname, "")
+		//
 		tls := host.TLS
 		crtFile := tls.TLSFilename
 		if crtFile == "" {
 			crtFile = c.defaultX509Cert
 		}
-		if crtFile == c.defaultX509Cert && tls.CAFilename == "" {
-			// default cert without client cert auth, ignore
-			continue
-		}
-		// TODO optimization: distinct hostnames that shares crt, ca and crl
-		// can be combined into a single line. Note that this is usually the exception.
-		// TODO this NEED its own template file.
-		var crtListConfig string
-		if tls.CAFilename == "" {
-			crtListConfig = fmt.Sprintf("%s %s", crtFile, host.Hostname)
-		} else {
-			var crl string
-			if tls.CRLFilename != "" {
-				crl = " crl-file " + tls.CRLFilename
+		if crtFile != c.defaultX509Cert || tls.CAFilename != "" {
+			// has custom cert or tls auth
+			//
+			// TODO optimization: distinct hostnames that shares crt, ca and crl
+			// can be combined into a single line. Note that this is usually the exception.
+			// TODO this NEED its own template file.
+			var crtListConfig string
+			if tls.CAFilename == "" {
+				crtListConfig = fmt.Sprintf("%s %s", crtFile, host.Hostname)
+			} else {
+				var crl string
+				if tls.CRLFilename != "" {
+					crl = " crl-file " + tls.CRLFilename
+				}
+				crtListConfig = fmt.Sprintf("%s [ca-file %s%s verify optional] %s", crtFile, tls.CAFilename, crl, host.Hostname)
 			}
-			crtListConfig = fmt.Sprintf("%s [ca-file %s%s verify optional] %s", crtFile, tls.CAFilename, crl, host.Hostname)
+			fgroup.CrtList.AppendItem(crtListConfig)
 		}
-		fgroup.CrtList.AppendItem(crtListConfig)
-	}
-	for _, host := range frontHosts {
-		fgroup.UseServerList.AppendHostname(host.Hostname, "")
 	}
 	if err := writeMaps(maps, c.mapsTemplate); err != nil {
 		return err
@@ -460,10 +415,6 @@ func writeMaps(maps *hatypes.HostsMaps, template *template.Config) error {
 	return nil
 }
 
-func (c *config) DefaultHost() *hatypes.Host {
-	return c.defaultHost
-}
-
 func (c *config) DefaultBackend() *hatypes.Backend {
 	return c.defaultBackend
 }
@@ -484,7 +435,7 @@ func (c *config) TCPBackends() []*hatypes.TCPBackend {
 	return c.tcpbackends
 }
 
-func (c *config) Hosts() []*hatypes.Host {
+func (c *config) Hosts() *hatypes.Hosts {
 	return c.hosts
 }
 

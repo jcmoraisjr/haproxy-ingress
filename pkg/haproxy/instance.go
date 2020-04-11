@@ -326,27 +326,27 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 func (i *instance) updateCertExpiring() {
 	// TODO move to dynupdate when dynamic crt update is implemented
 	if i.oldConfig == nil {
-		for _, curHost := range i.curConfig.Hosts() {
+		for _, curHost := range i.curConfig.Hosts().Items {
 			if curHost.TLS.HasTLS() {
 				i.metrics.SetCertExpireDate(curHost.Hostname, curHost.TLS.TLSCommonName, &curHost.TLS.TLSNotAfter)
 			}
 		}
 		return
 	}
-	for _, oldHost := range i.oldConfig.Hosts() {
+	for _, oldHost := range i.oldConfig.Hosts().Items {
 		if !oldHost.TLS.HasTLS() {
 			continue
 		}
-		curHost := i.curConfig.FindHost(oldHost.Hostname)
+		curHost := i.curConfig.Hosts().FindHost(oldHost.Hostname)
 		if curHost == nil || oldHost.TLS.TLSCommonName != curHost.TLS.TLSCommonName {
 			i.metrics.SetCertExpireDate(oldHost.Hostname, oldHost.TLS.TLSCommonName, nil)
 		}
 	}
-	for _, curHost := range i.curConfig.Hosts() {
+	for _, curHost := range i.curConfig.Hosts().Items {
 		if !curHost.TLS.HasTLS() {
 			continue
 		}
-		oldHost := i.oldConfig.FindHost(curHost.Hostname)
+		oldHost := i.oldConfig.Hosts().FindHost(curHost.Hostname)
 		if oldHost == nil || oldHost.TLS.TLSCommonName != curHost.TLS.TLSCommonName || oldHost.TLS.TLSNotAfter != curHost.TLS.TLSNotAfter {
 			i.metrics.SetCertExpireDate(curHost.Hostname, curHost.TLS.TLSCommonName, &curHost.TLS.TLSNotAfter)
 		}

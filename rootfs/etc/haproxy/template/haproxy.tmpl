@@ -598,7 +598,8 @@ backend _error404
 # #
 #
 {{- $frontend := $cfg.Frontend }}
-{{- if $fgroup.HasSSLPassthrough }}
+{{- $hosts := $cfg.Hosts }}
+{{- if $hosts.HasSSLPassthrough }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
@@ -623,7 +624,7 @@ listen _front__tls
     tcp-request inspect-delay 5s
 
 {{- /*------------------------------------*/}}
-{{- if $fgroup.HasSSLPassthrough }}
+{{- if $hosts.HasSSLPassthrough }}
     tcp-request content set-var(req.sslpassback)
         {{- "" }} req.ssl_sni,lower,map({{ $fgroup.SSLPassthroughMap.MatchFile }})
 {{- end }}
@@ -638,10 +639,10 @@ listen _front__tls
     tcp-request content accept if { req.ssl_hello_type 1 }
 
 {{- /*------------------------------------*/}}
-{{- if $fgroup.HasSSLPassthrough }}
+{{- if $hosts.HasSSLPassthrough }}
     use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
 {{- end }}
-{{- if $frontend.Hosts }}
+{{- if $hosts.HasHTTP }}
     ## {{ $frontend.BindName }}
     use-server _server{{ $frontend.BindName }} if { req.ssl_sni -i -f {{ $fgroup.UseServerList.MatchFile }} }
     server _server{{ $frontend.BindName }} {{ $frontend.BindSocket }} send-proxy-v2 weight 0
@@ -753,7 +754,7 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $frontend.HasVarNamespace }}
+{{- if $hosts.HasVarNamespace }}
     http-request set-var(txn.namespace) 
         {{- "" }} var(req.base),map_beg({{ $fgroup.VarNamespaceMap.MatchFile }},-)
 {{- if $fgroup.VarNamespaceMap.HasRegex }}
@@ -826,7 +827,7 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if or $frontend.HasTLSAuth $fgroup.HostBackendsMap.HasRegex $frontend.HasVarNamespace $fgroup.HasMaxBody }}
+{{- if or $hosts.HasTLSAuth $fgroup.HostBackendsMap.HasRegex $hosts.HasVarNamespace $fgroup.HasMaxBody }}
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend)
         {{- "" }} var(req.base),map_beg({{ $fgroup.HostBackendsMap.MatchFile }})
@@ -841,7 +842,7 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if or $frontend.HasTLSAuth $fgroup.RootRedirMap.HasHost }}
+{{- if or $hosts.HasTLSAuth $fgroup.RootRedirMap.HasHost }}
     http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
 {{- end }}
 {{- if $fgroup.RootRedirMap.HasHost }}
@@ -855,7 +856,7 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $frontend.HasVarNamespace }}
+{{- if $hosts.HasVarNamespace }}
     http-request set-var(txn.namespace) 
         {{- "" }} var(req.base),map_beg({{ $fgroup.VarNamespaceMap.MatchFile }},-)
 {{- if $fgroup.VarNamespaceMap.HasRegex }}
@@ -878,8 +879,8 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $frontend.HasTLSAuth }}
-{{- $mandatory := $frontend.HasTLSMandatory }}
+{{- if $hosts.HasTLSAuth }}
+{{- $mandatory := $hosts.HasTLSMandatory }}
     acl tls-has-crt ssl_c_used
 {{- if $mandatory }}
     acl tls-need-crt ssl_fc_sni -i -f {{ $fgroup.TLSNoCrtErrorList.MatchFile }}
@@ -939,11 +940,11 @@ frontend {{ $frontend.Name }}
         {{- "" }},map_reg({{ $fgroup.TLSInvalidCrtErrorPagesMap.RegexFile }},_internal)
         {{- "" }} if { var(req.tls_invalidcrt_redir) _internal }
 {{- end }}
-{{- if and $mandatory $frontend.HasNoCrtErrorPage }}
+{{- if and $mandatory $hosts.HasNoCrtErrorPage }}
     http-request redirect location %[var(req.tls_nocrt_redir)] code 303
         {{- "" }} if { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) _internal }
 {{- end }}
-{{- if $frontend.HasInvalidErrorPage }}
+{{- if $hosts.HasInvalidErrorPage }}
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303
         {{- "" }} if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
 {{- end }}
@@ -959,10 +960,10 @@ frontend {{ $frontend.Name }}
     http-request use-service lua.send-413 if
         {{- "" }} !{ var(req.maxbody) 0 } { req.body_size,sub(req.maxbody) gt 0 }
 {{- end }}
-{{- if $frontend.HasTLSAuth }}
+{{- if $hosts.HasTLSAuth }}
     http-request use-service lua.send-421 if
         {{- "" }} tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
-{{- if $frontend.HasTLSMandatory }}
+{{- if $hosts.HasTLSMandatory }}
     http-request use-service lua.send-496 if
         {{- "" }} { var(req.tls_nocrt_redir) _internal }
 {{- /* HTTP 421 instead of 404 if missing sni or the provided one doesn't read client crt. */}}
@@ -977,7 +978,7 @@ frontend {{ $frontend.Name }}
 {{- /*------------------------------------*/}}
     use_backend %[var(req.hostbackend)]
         {{- "" }} if { var(req.hostbackend) -m found }
-{{- if $frontend.HasTLSAuth }}
+{{- if $hosts.HasTLSAuth }}
     use_backend %[var(req.snibackend)]
         {{- "" }} if { var(req.snibackend) -m found }
 {{- end }}
@@ -989,8 +990,9 @@ frontend {{ $frontend.Name }}
 {{- /*------------------------------------*/}}
 {{- define "defaultbackend" }}
 {{- $cfg := .p1 }}
-{{- if $cfg.DefaultHost }}
-{{- range $path := $cfg.DefaultHost.Paths }}
+{{- $hosts := $cfg.Hosts }}
+{{- if $hosts.DefaultHost }}
+{{- range $path := $hosts.DefaultHost.Paths }}
     use_backend {{ $path.Backend.ID }}
         {{- if ne $path.Path "/" }} if { path_beg {{ $path.Path }} }{{ end }}
 {{- end }}

@@ -563,7 +563,7 @@ func (c *updater) buildBackendOAuth(d *backData) {
 }
 
 func (c *updater) findBackend(namespace, uriPrefix string) *hatypes.HostBackend {
-	for _, host := range c.haproxy.Hosts() {
+	for _, host := range c.haproxy.Hosts().Items {
 		for _, path := range host.Paths {
 			if strings.TrimRight(path.Path, "/") == uriPrefix && path.Backend.Namespace == namespace {
 				return &path.Backend
