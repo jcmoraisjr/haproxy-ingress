@@ -37,6 +37,7 @@ type Config interface {
 	ConfigDefaultX509Cert(filename string)
 	AddUserlist(name string, users []hatypes.User) *hatypes.Userlist
 	FindUserlist(name string) *hatypes.Userlist
+	Frontend() *hatypes.Frontend
 	FrontendGroup() *hatypes.FrontendGroup
 	BuildFrontendGroup() error
 	BuildBackendMaps() error
@@ -61,6 +62,7 @@ type config struct {
 	mapsTemplate    *template.Config
 	mapsDir         string
 	global          *hatypes.Global
+	frontend        *hatypes.Frontend
 	tcpbackends     []*hatypes.TCPBackend
 	hosts           []*hatypes.Host
 	backends        []*hatypes.Backend
@@ -84,6 +86,7 @@ func createConfig(options options) *config {
 		acmeData:     &hatypes.AcmeData{},
 		acme:         &hatypes.Acme{},
 		global:       &hatypes.Global{},
+		frontend:     &hatypes.Frontend{Name: "_front001"},
 		mapsTemplate: mapsTemplate,
 		mapsDir:      options.mapsDir,
 	}
@@ -226,6 +229,10 @@ func (c *config) FindUserlist(name string) *hatypes.Userlist {
 	return nil
 }
 
+func (c *config) Frontend() *hatypes.Frontend {
+	return c.frontend
+}
+
 func (c *config) FrontendGroup() *hatypes.FrontendGroup {
 	return c.fgroup
 }
@@ -241,10 +248,9 @@ func (c *config) BuildFrontendGroup() error {
 			frontHosts = append(frontHosts, host)
 		}
 	}
-	frontend := hatypes.NewFrontend("_front001", frontHosts)
+	c.frontend.Hosts = frontHosts
 	maps := hatypes.CreateMaps()
 	fgroup := &hatypes.FrontendGroup{
-		Frontend:          frontend,
 		HasSSLPassthrough: len(sslpassHosts) > 0,
 		//
 		HTTPFrontsMap:     maps.AddMap(c.mapsDir + "/_global_http_front.map"),
@@ -268,15 +274,15 @@ func (c *config) BuildFrontendGroup() error {
 	if fgroup.HasSSLPassthrough {
 		// using ssl-passthrough config, so need a `mode tcp`
 		// frontend with `inspect-delay` and `req.ssl_sni`
-		bindName := fmt.Sprintf("%s_socket", frontend.Name)
-		frontend.Bind.Name = bindName
-		frontend.Bind.Socket = fmt.Sprintf("unix@/var/run/%s.sock", bindName)
-		frontend.Bind.AcceptProxy = true
+		bindName := fmt.Sprintf("%s_socket", c.frontend.Name)
+		c.frontend.BindName = bindName
+		c.frontend.BindSocket = fmt.Sprintf("unix@/var/run/%s.sock", bindName)
+		c.frontend.AcceptProxy = true
 	} else {
 		// One single HAProxy's frontend and bind
-		frontend.Bind.Name = "_public"
-		frontend.Bind.Socket = c.global.Bind.HTTPSBind
-		frontend.Bind.AcceptProxy = c.global.Bind.AcceptProxy
+		c.frontend.BindName = "_public"
+		c.frontend.BindSocket = c.global.Bind.HTTPSBind
+		c.frontend.AcceptProxy = c.global.Bind.AcceptProxy
 	}
 	// Some maps use yes/no answers instead of a list with found/missing keys
 	// This approach avoid overlap:

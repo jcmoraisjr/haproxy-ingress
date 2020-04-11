@@ -597,7 +597,7 @@ backend _error404
 # #   FRONTENDS
 # #
 #
-{{- $frontend := $fgroup.Frontend }}
+{{- $frontend := $cfg.Frontend }}
 {{- if $fgroup.HasSSLPassthrough }}
 
   # # # # # # # # # # # # # # # # # # #
@@ -642,26 +642,24 @@ listen _front__tls
     use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
 {{- end }}
 {{- if $frontend.Hosts }}
-{{- $bind := $frontend.Bind }}
-    ## {{ $bind.Name }}
-    use-server _server{{ $bind.Name }} if { req.ssl_sni -i -f {{ $fgroup.UseServerList.MatchFile }} }
-    server _server{{ $bind.Name }} {{ $bind.Socket }} send-proxy-v2 weight 0
+    ## {{ $frontend.BindName }}
+    use-server _server{{ $frontend.BindName }} if { req.ssl_sni -i -f {{ $fgroup.UseServerList.MatchFile }} }
+    server _server{{ $frontend.BindName }} {{ $frontend.BindSocket }} send-proxy-v2 weight 0
 {{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $fgroup.SSLPassthroughMap.HasRegex }}
     use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
 {{- end }}
-{{- $bind := $frontend.Bind }}
 {{- if $fgroup.UseServerList.HasRegex }}
-    ## {{ $bind.Name }} wildcard
-    use-server _server{{ $bind.Name }}_wildcard if { req.ssl_sni -i -m reg -f {{ $fgroup.UseServerList.RegexFile }} }
-    server _server{{ $bind.Name }}_wildcard {{ $bind.Socket }} send-proxy-v2 weight 0
+    ## {{ $frontend.BindName }} wildcard
+    use-server _server{{ $frontend.BindName }}_wildcard if { req.ssl_sni -i -m reg -f {{ $fgroup.UseServerList.RegexFile }} }
+    server _server{{ $frontend.BindName }}_wildcard {{ $frontend.BindSocket }} send-proxy-v2 weight 0
 {{- end }}
 
 {{- /*------------------------------------*/}}
     # default backend
-    server _default_server{{ $frontend.Bind.Name }} {{ $frontend.Bind.Socket }} send-proxy-v2
+    server _default_server{{ $frontend.BindName }} {{ $frontend.BindSocket }} send-proxy-v2
 {{- end }}
 
 {{- $hasFrontingProxy := $global.Bind.HasFrontingProxy }}
@@ -755,7 +753,7 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $fgroup.HasVarNamespace }}
+{{- if $frontend.HasVarNamespace }}
     http-request set-var(txn.namespace) 
         {{- "" }} var(req.base),map_beg({{ $fgroup.VarNamespaceMap.MatchFile }},-)
 {{- if $fgroup.VarNamespaceMap.HasRegex }}
@@ -809,11 +807,10 @@ frontend {{ $frontend.Name }}
     mode http
 
 {{- /*------------------------------------*/}}
-{{- $bind := $frontend.Bind }}
-{{- if $bind.Socket }}
-    bind {{ $bind.Socket }}
-        {{- if $bind.ID }} id {{ $bind.ID }}{{ end }}
-        {{- if $bind.AcceptProxy }} accept-proxy{{ end }}
+{{- if $frontend.BindSocket }}
+    bind {{ $frontend.BindSocket }}
+        {{- if $frontend.BindID }} id {{ $frontend.BindID }}{{ end }}
+        {{- if $frontend.AcceptProxy }} accept-proxy{{ end }}
         {{- "" }} ssl alpn {{ $global.SSL.ALPN }}
         {{- "" }} crt-list {{ $fgroup.CrtList.MatchFile }}
         {{- "" }} ca-ignore-err all crt-ignore-err all
@@ -829,7 +826,7 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if or $frontend.HasTLSAuth $fgroup.HostBackendsMap.HasRegex $fgroup.HasVarNamespace $fgroup.HasMaxBody }}
+{{- if or $frontend.HasTLSAuth $fgroup.HostBackendsMap.HasRegex $frontend.HasVarNamespace $fgroup.HasMaxBody }}
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend)
         {{- "" }} var(req.base),map_beg({{ $fgroup.HostBackendsMap.MatchFile }})
@@ -858,7 +855,7 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $fgroup.HasVarNamespace }}
+{{- if $frontend.HasVarNamespace }}
     http-request set-var(txn.namespace) 
         {{- "" }} var(req.base),map_beg({{ $fgroup.VarNamespaceMap.MatchFile }},-)
 {{- if $fgroup.VarNamespaceMap.HasRegex }}

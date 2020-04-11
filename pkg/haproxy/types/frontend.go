@@ -128,8 +128,8 @@ func (fg *FrontendGroup) HasMaxBody() bool {
 }
 
 // HasVarNamespace ...
-func (fg *FrontendGroup) HasVarNamespace() bool {
-	for _, host := range fg.Frontend.Hosts {
+func (f *Frontend) HasVarNamespace() bool {
+	for _, host := range f.Hosts {
 		if host.VarNamespace {
 			return true
 		}
@@ -176,12 +176,4 @@ func (f *Frontend) HasTLSMandatory() bool {
 		}
 	}
 	return false
-}
-
-// NewFrontend ...
-func NewFrontend(name string, hosts []*Host) *Frontend {
-	return &Frontend{
-		Name:  name,
-		Hosts: hosts,
-	}
 }

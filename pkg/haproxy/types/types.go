@@ -248,7 +248,6 @@ type HostsMaps struct {
 
 // FrontendGroup ...
 type FrontendGroup struct {
-	Frontend          *Frontend
 	HasSSLPassthrough bool
 	//
 	HTTPFrontsMap     *HostsMap
@@ -272,17 +271,11 @@ type FrontendGroup struct {
 
 // Frontend ...
 type Frontend struct {
-	Name  string
-	Bind  BindConfig
-	Hosts []*Host
-}
-
-// BindConfig ...
-type BindConfig struct {
-	Name   string
-	Socket string
-	ID     int
-	//
+	Name        string
+	BindName    string
+	BindSocket  string
+	BindID      int
+	Hosts       []*Host
 	AcceptProxy bool
 }
 
