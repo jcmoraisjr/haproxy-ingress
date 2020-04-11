@@ -18,9 +18,6 @@ package types
 
 import (
 	"testing"
-
-	"github.com/kylelemons/godebug/diff"
-	yaml "gopkg.in/yaml.v2"
 )
 
 func TestAppendHostname(t *testing.T) {
@@ -62,38 +59,6 @@ func TestAppendHostname(t *testing.T) {
 				t.Errorf("item %d, expected key '%s', but was '%s'", i, test.expectedRegex, hm.Regex[0].Key)
 				continue
 			}
-		}
-	}
-}
-
-func TestBuildFrontendEmpty(t *testing.T) {
-	frontends, _, _ := BuildRawFrontends([]*Host{})
-	if len(frontends) != 1 {
-		t.Errorf("expected len(frontends) == 1, but was %d", len(frontends))
-	}
-}
-
-func TestBuildSSLPassthrough(t *testing.T) {
-	h1 := &Host{Hostname: "h1.local"}
-	h2 := &Host{Hostname: "h2.local", SSLPassthrough: true}
-	testCases := []struct {
-		hosts    []*Host
-		expected []*Host
-	}{
-		// 0
-		{
-			hosts:    []*Host{h1, h2},
-			expected: []*Host{h2},
-		},
-	}
-	for i, test := range testCases {
-		_, sslpassthrough, _ := BuildRawFrontends(test.hosts)
-		actualRaw, _ := yaml.Marshal(sslpassthrough)
-		expectedRaw, _ := yaml.Marshal(test.expected)
-		actual := string(actualRaw)
-		expected := string(expectedRaw)
-		if actual != expected {
-			t.Errorf("sslpassthrough '%d' actual and expected differs:\n%v", i, diff.Diff(actual, expected))
 		}
 	}
 }

@@ -35,8 +35,6 @@ func TestEmptyFrontend(t *testing.T) {
 	fg := c.FrontendGroup()
 	if fg == nil {
 		t.Error("expected FrontendGroup != nil")
-	} else if len(fg.Frontends) == 0 {
-		t.Error("expected at least one frontend")
 	}
 }
 

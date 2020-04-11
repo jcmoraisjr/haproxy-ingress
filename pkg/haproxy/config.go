@@ -21,7 +21,6 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
@@ -234,67 +233,57 @@ func (c *config) FrontendGroup() *hatypes.FrontendGroup {
 func (c *config) BuildFrontendGroup() error {
 	// tested thanks to instance_test templating tests
 	// ideas to make a nice test or a nice refactor are welcome
-	frontends, sslpassthrough, defaultBind := hatypes.BuildRawFrontends(c.hosts)
-	fgroupMaps := hatypes.CreateMaps()
-	fgroup := &hatypes.FrontendGroup{
-		Frontends:         frontends,
-		HasSSLPassthrough: len(sslpassthrough) > 0,
-		DefaultBind:       defaultBind,
-		Maps:              fgroupMaps,
-		HTTPFrontsMap:     fgroupMaps.AddMap(c.mapsDir + "/_global_http_front.map"),
-		HTTPRootRedirMap:  fgroupMaps.AddMap(c.mapsDir + "/_global_http_root_redir.map"),
-		HTTPSRedirMap:     fgroupMaps.AddMap(c.mapsDir + "/_global_https_redir.map"),
-		SSLPassthroughMap: fgroupMaps.AddMap(c.mapsDir + "/_global_sslpassthrough.map"),
-		VarNamespaceMap:   fgroupMaps.AddMap(c.mapsDir + "/_global_k8s_ns.map"),
-	}
-	if c.global.Bind.HasFrontingProxy() {
-		bind := hatypes.NewFrontendBind(nil)
-		bind.Socket = c.global.Bind.FrontingBind
-		bind.ID = c.global.Bind.FrontingSockID
-		bind.AcceptProxy = c.global.Bind.AcceptProxy
-		fgroup.ToHTTPBind = bind
-	}
-	if fgroup.HasTCPProxy() {
-		// More than one HAProxy's frontend or bind, or using ssl-passthrough config,
-		// so need a `mode tcp` frontend with `inspect-delay` and `req.ssl_sni`
-		var i int
-		for _, frontend := range frontends {
-			i++
-			bindName := fmt.Sprintf("%s_socket", frontend.Name)
-			bind := &frontend.Bind
-			bind.Name = bindName
-			bind.Socket = fmt.Sprintf("unix@/var/run/%s.sock", bindName)
-			bind.AcceptProxy = true
-			bind.ALPN = c.global.SSL.ALPN
+	var frontHosts, sslpassHosts []*hatypes.Host
+	for _, host := range c.hosts {
+		if host.SSLPassthrough {
+			sslpassHosts = append(sslpassHosts, host)
+		} else {
+			frontHosts = append(frontHosts, host)
 		}
+	}
+	frontend := hatypes.NewFrontend("_front001", frontHosts)
+	maps := hatypes.CreateMaps()
+	fgroup := &hatypes.FrontendGroup{
+		Frontend:          frontend,
+		HasSSLPassthrough: len(sslpassHosts) > 0,
+		//
+		HTTPFrontsMap:     maps.AddMap(c.mapsDir + "/_global_http_front.map"),
+		HTTPRootRedirMap:  maps.AddMap(c.mapsDir + "/_global_http_root_redir.map"),
+		HTTPSRedirMap:     maps.AddMap(c.mapsDir + "/_global_https_redir.map"),
+		SSLPassthroughMap: maps.AddMap(c.mapsDir + "/_global_sslpassthrough.map"),
+		VarNamespaceMap:   maps.AddMap(c.mapsDir + "/_global_k8s_ns.map"),
+		//
+		HostBackendsMap:            maps.AddMap(c.mapsDir + "/_front001_host.map"),
+		RootRedirMap:               maps.AddMap(c.mapsDir + "/_front001_root_redir.map"),
+		MaxBodySizeMap:             maps.AddMap(c.mapsDir + "/_front001_max_body_size.map"),
+		SNIBackendsMap:             maps.AddMap(c.mapsDir + "/_front001_sni.map"),
+		TLSInvalidCrtErrorList:     maps.AddMap(c.mapsDir + "/_front001_inv_crt.list"),
+		TLSInvalidCrtErrorPagesMap: maps.AddMap(c.mapsDir + "/_front001_inv_crt_redir.map"),
+		TLSNoCrtErrorList:          maps.AddMap(c.mapsDir + "/_front001_no_crt.list"),
+		TLSNoCrtErrorPagesMap:      maps.AddMap(c.mapsDir + "/_front001_no_crt_redir.map"),
+		//
+		CrtList:       maps.AddMap(c.mapsDir + "/_front001_bind_crt.list"),
+		UseServerList: maps.AddMap(c.mapsDir + "/_front001_use_server.list"),
+	}
+	if fgroup.HasSSLPassthrough {
+		// using ssl-passthrough config, so need a `mode tcp`
+		// frontend with `inspect-delay` and `req.ssl_sni`
+		bindName := fmt.Sprintf("%s_socket", frontend.Name)
+		frontend.Bind.Name = bindName
+		frontend.Bind.Socket = fmt.Sprintf("unix@/var/run/%s.sock", bindName)
+		frontend.Bind.AcceptProxy = true
 	} else {
 		// One single HAProxy's frontend and bind
-		bind := &frontends[0].Bind
-		bind.Name = "_public"
-		bind.Socket = c.global.Bind.HTTPSBind
-		bind.AcceptProxy = c.global.Bind.AcceptProxy
-		bind.ALPN = c.global.SSL.ALPN
-	}
-	for _, frontend := range frontends {
-		mapsPrefix := c.mapsDir + "/" + frontend.Name
-		frontend.Maps = hatypes.CreateMaps()
-		frontend.HostBackendsMap = frontend.Maps.AddMap(mapsPrefix + "_host.map")
-		frontend.RootRedirMap = frontend.Maps.AddMap(mapsPrefix + "_root_redir.map")
-		frontend.MaxBodySizeMap = frontend.Maps.AddMap(mapsPrefix + "_max_body_size.map")
-		frontend.SNIBackendsMap = frontend.Maps.AddMap(mapsPrefix + "_sni.map")
-		frontend.TLSInvalidCrtErrorList = frontend.Maps.AddMap(mapsPrefix + "_inv_crt.list")
-		frontend.TLSInvalidCrtErrorPagesMap = frontend.Maps.AddMap(mapsPrefix + "_inv_crt_redir.map")
-		frontend.TLSNoCrtErrorList = frontend.Maps.AddMap(mapsPrefix + "_no_crt.list")
-		frontend.TLSNoCrtErrorPagesMap = frontend.Maps.AddMap(mapsPrefix + "_no_crt_redir.map")
-		frontend.Bind.CrtList = frontend.Maps.AddMap(mapsPrefix + "_bind_crt.list")
-		frontend.Bind.UseServerList = frontend.Maps.AddMap(mapsPrefix + "_use_server.list")
+		frontend.Bind.Name = "_public"
+		frontend.Bind.Socket = c.global.Bind.HTTPSBind
+		frontend.Bind.AcceptProxy = c.global.Bind.AcceptProxy
 	}
 	// Some maps use yes/no answers instead of a list with found/missing keys
 	// This approach avoid overlap:
 	//  1. match with path_beg/map_beg, /path has a feature and a declared /path/sub doesn't have
 	//  2. *.host.domain wildcard/alias/alias-regex has a feature and a declared sub.host.domain doesn't have
 	yesno := map[bool]string{true: "yes", false: "no"}
-	for _, sslpassHost := range sslpassthrough {
+	for _, sslpassHost := range sslpassHosts {
 		rootPath := sslpassHost.FindPath("/")
 		if rootPath == nil {
 			return fmt.Errorf("missing root path on host %s", sslpassHost.Hostname)
@@ -305,136 +294,131 @@ func (c *config) BuildFrontendGroup() error {
 			fgroup.HTTPFrontsMap.AppendHostname(sslpassHost.Hostname+"/", sslpassHost.HTTPPassthroughBackend)
 		}
 	}
-	for _, f := range frontends {
-		for _, host := range f.Hosts {
-			if c.global.StrictHost && host.FindPath("/") == nil {
-				var back *hatypes.Backend
-				if c.defaultHost != nil {
-					if path := c.defaultHost.FindPath("/"); path != nil {
-						hback := path.Backend
-						back = c.FindBackend(hback.Namespace, hback.Name, hback.Port)
-					}
-				}
-				if back == nil {
-					// TODO c.defaultBackend can be nil; create a valid
-					// _error404 backend, remove `if nil` from host.AddPath()
-					// and from `for range host.Paths` below
-					back = c.defaultBackend
-				}
-				host.AddPath(back, "/")
-			}
-			// TODO implement deny 413 and move all MaxBodySize stuff to backend
-			maxBodySizes := map[string]int64{}
-			for _, path := range host.Paths {
-				backend := c.FindBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
-				base := host.Hostname + path.Path
-				hasSSLRedirect := false
-				if host.TLS.HasTLS() && backend != nil {
-					hasSSLRedirect = backend.HasSSLRedirectHostpath(base)
-				}
-				// TODO use only root path if all uri has the same conf
-				fgroup.HTTPSRedirMap.AppendHostname(host.Hostname+path.Path, yesno[hasSSLRedirect])
-				var aliasName, aliasRegex string
-				// TODO warn in logs about ignoring alias name due to hostname colision
-				if host.Alias.AliasName != "" && c.FindHost(host.Alias.AliasName) == nil {
-					aliasName = host.Alias.AliasName + path.Path
-				}
-				if host.Alias.AliasRegex != "" {
-					aliasRegex = host.Alias.AliasRegex + path.Path
-				}
-				back := path.Backend.ID
-				if host.HasTLSAuth() {
-					f.SNIBackendsMap.AppendHostname(base, back)
-					f.SNIBackendsMap.AppendAliasName(aliasName, back)
-					f.SNIBackendsMap.AppendAliasRegex(aliasRegex, back)
-					if backend != nil {
-						backend.TLS.HasTLSAuth = true
-					}
-				} else {
-					f.HostBackendsMap.AppendHostname(base, back)
-					f.HostBackendsMap.AppendAliasName(aliasName, back)
-					f.HostBackendsMap.AppendAliasRegex(aliasRegex, back)
-				}
-				if backend != nil {
-					if maxBodySize := backend.MaxBodySizeHostpath(base); maxBodySize > 0 {
-						maxBodySizes[base] = maxBodySize
-					}
-				}
-				if !hasSSLRedirect || c.global.Bind.HasFrontingProxy() {
-					fgroup.HTTPFrontsMap.AppendHostname(base, back)
-				}
-				var ns string
-				if host.VarNamespace {
-					ns = path.Backend.Namespace
-				} else {
-					ns = "-"
-				}
-				fgroup.VarNamespaceMap.AppendHostname(base, ns)
-			}
-			// TODO implement deny 413 and move all MaxBodySize stuff to backend
-			if len(maxBodySizes) > 0 {
-				// add all paths of the same host to avoid overlap
-				// 0 (zero) means unlimited
-				for _, path := range host.Paths {
-					base := host.Hostname + path.Path
-					f.MaxBodySizeMap.AppendHostname(base, strconv.FormatInt(maxBodySizes[base], 10))
+	for _, host := range frontHosts {
+		if c.global.StrictHost && host.FindPath("/") == nil {
+			var back *hatypes.Backend
+			if c.defaultHost != nil {
+				if path := c.defaultHost.FindPath("/"); path != nil {
+					hback := path.Backend
+					back = c.FindBackend(hback.Namespace, hback.Name, hback.Port)
 				}
 			}
+			if back == nil {
+				// TODO c.defaultBackend can be nil; create a valid
+				// _error404 backend, remove `if nil` from host.AddPath()
+				// and from `for range host.Paths` below
+				back = c.defaultBackend
+			}
+			host.AddPath(back, "/")
+		}
+		// TODO implement deny 413 and move all MaxBodySize stuff to backend
+		maxBodySizes := map[string]int64{}
+		for _, path := range host.Paths {
+			backend := c.FindBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
+			base := host.Hostname + path.Path
+			hasSSLRedirect := false
+			if host.TLS.HasTLS() && backend != nil {
+				hasSSLRedirect = backend.HasSSLRedirectHostpath(base)
+			}
+			// TODO use only root path if all uri has the same conf
+			fgroup.HTTPSRedirMap.AppendHostname(host.Hostname+path.Path, yesno[hasSSLRedirect])
+			var aliasName, aliasRegex string
+			// TODO warn in logs about ignoring alias name due to hostname colision
+			if host.Alias.AliasName != "" && c.FindHost(host.Alias.AliasName) == nil {
+				aliasName = host.Alias.AliasName + path.Path
+			}
+			if host.Alias.AliasRegex != "" {
+				aliasRegex = host.Alias.AliasRegex + path.Path
+			}
+			backendID := path.Backend.ID
 			if host.HasTLSAuth() {
-				f.TLSInvalidCrtErrorList.AppendHostname(host.Hostname, "")
-				if !host.TLS.CAVerifyOptional {
-					f.TLSNoCrtErrorList.AppendHostname(host.Hostname, "")
+				fgroup.SNIBackendsMap.AppendHostname(base, backendID)
+				fgroup.SNIBackendsMap.AppendAliasName(aliasName, backendID)
+				fgroup.SNIBackendsMap.AppendAliasRegex(aliasRegex, backendID)
+				if backend != nil {
+					backend.TLS.HasTLSAuth = true
 				}
-				page := host.TLS.CAErrorPage
-				if page != "" {
-					f.TLSInvalidCrtErrorPagesMap.AppendHostname(host.Hostname, page)
-					if !host.TLS.CAVerifyOptional {
-						f.TLSNoCrtErrorPagesMap.AppendHostname(host.Hostname, page)
-					}
-				}
-			}
-			// TODO wildcard/alias/alias-regex hostname can overlap
-			// a configured domain which doesn't have rootRedirect
-			if host.RootRedirect != "" {
-				fgroup.HTTPRootRedirMap.AppendHostname(host.Hostname, host.RootRedirect)
-				f.RootRedirMap.AppendHostname(host.Hostname, host.RootRedirect)
-			}
-		}
-		f.Bind.CrtList.AppendItem(c.defaultX509Cert)
-		for _, tls := range f.Bind.TLS {
-			crtFile := tls.CrtFilename
-			if (crtFile == "" || crtFile == c.defaultX509Cert) && tls.CAFilename == "" {
-				// default cert without client cert auth, ignore
-				continue
-			}
-			if crtFile == "" {
-				crtFile = c.defaultX509Cert
-			}
-			var crtListConfig string
-			hostnames := strings.Join(tls.Hostnames, " ")
-			if tls.CAFilename == "" {
-				crtListConfig = fmt.Sprintf("%s %s", crtFile, hostnames)
 			} else {
-				// TODO this NEED its own template file
-				var crl string
-				if tls.CRLFilename != "" {
-					crl = " crl-file " + tls.CRLFilename
-				}
-				crtListConfig = fmt.Sprintf("%s [ca-file %s%s verify optional] %s", crtFile, tls.CAFilename, crl, hostnames)
+				fgroup.HostBackendsMap.AppendHostname(base, backendID)
+				fgroup.HostBackendsMap.AppendAliasName(aliasName, backendID)
+				fgroup.HostBackendsMap.AppendAliasRegex(aliasRegex, backendID)
 			}
-			f.Bind.CrtList.AppendItem(crtListConfig)
+			if backend != nil {
+				if maxBodySize := backend.MaxBodySizeHostpath(base); maxBodySize > 0 {
+					maxBodySizes[base] = maxBodySize
+				}
+			}
+			if !hasSSLRedirect || c.global.Bind.HasFrontingProxy() {
+				fgroup.HTTPFrontsMap.AppendHostname(base, backendID)
+			}
+			var ns string
+			if host.VarNamespace {
+				ns = path.Backend.Namespace
+			} else {
+				ns = "-"
+			}
+			fgroup.VarNamespaceMap.AppendHostname(base, ns)
 		}
-		for _, host := range f.Hosts {
-			f.Bind.UseServerList.AppendHostname(host.Hostname, "")
+		// TODO implement deny 413 and move all MaxBodySize stuff to backend
+		if len(maxBodySizes) > 0 {
+			// add all paths of the same host to avoid overlap
+			// 0 (zero) means unlimited
+			for _, path := range host.Paths {
+				base := host.Hostname + path.Path
+				fgroup.MaxBodySizeMap.AppendHostname(base, strconv.FormatInt(maxBodySizes[base], 10))
+			}
+		}
+		if host.HasTLSAuth() {
+			fgroup.TLSInvalidCrtErrorList.AppendHostname(host.Hostname, "")
+			if !host.TLS.CAVerifyOptional {
+				fgroup.TLSNoCrtErrorList.AppendHostname(host.Hostname, "")
+			}
+			page := host.TLS.CAErrorPage
+			if page != "" {
+				fgroup.TLSInvalidCrtErrorPagesMap.AppendHostname(host.Hostname, page)
+				if !host.TLS.CAVerifyOptional {
+					fgroup.TLSNoCrtErrorPagesMap.AppendHostname(host.Hostname, page)
+				}
+			}
+		}
+		// TODO wildcard/alias/alias-regex hostname can overlap
+		// a configured domain which doesn't have rootRedirect
+		if host.RootRedirect != "" {
+			fgroup.HTTPRootRedirMap.AppendHostname(host.Hostname, host.RootRedirect)
+			fgroup.RootRedirMap.AppendHostname(host.Hostname, host.RootRedirect)
 		}
 	}
-	if err := writeMaps(fgroup.Maps, c.mapsTemplate); err != nil {
+	fgroup.CrtList.AppendItem(c.defaultX509Cert)
+	for _, host := range frontHosts {
+		tls := host.TLS
+		crtFile := tls.TLSFilename
+		if crtFile == "" {
+			crtFile = c.defaultX509Cert
+		}
+		if crtFile == c.defaultX509Cert && tls.CAFilename == "" {
+			// default cert without client cert auth, ignore
+			continue
+		}
+		// TODO optimization: distinct hostnames that shares crt, ca and crl
+		// can be combined into a single line. Note that this is usually the exception.
+		// TODO this NEED its own template file.
+		var crtListConfig string
+		if tls.CAFilename == "" {
+			crtListConfig = fmt.Sprintf("%s %s", crtFile, host.Hostname)
+		} else {
+			var crl string
+			if tls.CRLFilename != "" {
+				crl = " crl-file " + tls.CRLFilename
+			}
+			crtListConfig = fmt.Sprintf("%s [ca-file %s%s verify optional] %s", crtFile, tls.CAFilename, crl, host.Hostname)
+		}
+		fgroup.CrtList.AppendItem(crtListConfig)
+	}
+	for _, host := range frontHosts {
+		fgroup.UseServerList.AppendHostname(host.Hostname, "")
+	}
+	if err := writeMaps(maps, c.mapsTemplate); err != nil {
 		return err
-	}
-	for _, f := range frontends {
-		if err := writeMaps(f.Maps, c.mapsTemplate); err != nil {
-			return err
-		}
 	}
 	c.fgroup = fgroup
 	return nil

@@ -1175,7 +1175,7 @@ d1.local/ d2_app_8080
 	c.logger.CompareLogging(defaultLogging)
 }
 
-func TestInstanceSingleFrontendSingleBind(t *testing.T) {
+func TestInstanceFrontend(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
@@ -1262,7 +1262,7 @@ d2.local/app -
 	c.logger.CompareLogging(defaultLogging)
 }
 
-func TestInstanceSingleFrontendTwoBindsCA(t *testing.T) {
+func TestInstanceFrontendCA(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
