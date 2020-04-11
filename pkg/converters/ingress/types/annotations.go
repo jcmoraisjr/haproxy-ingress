@@ -28,8 +28,6 @@ const (
 	HostServerAliasRegex       = "server-alias-regex"
 	HostSSLPassthrough         = "ssl-passthrough"
 	HostSSLPassthroughHTTPPort = "ssl-passthrough-http-port"
-	HostTimeoutClient          = "timeout-client"
-	HostTimeoutClientFin       = "timeout-client-fin"
 	HostVarNamespace           = "var-namespace"
 )
 
@@ -46,8 +44,6 @@ var (
 		HostServerAliasRegex:       {},
 		HostSSLPassthrough:         {},
 		HostSSLPassthroughHTTPPort: {},
-		HostTimeoutClient:          {},
-		HostTimeoutClientFin:       {},
 		HostVarNamespace:           {},
 	}
 )

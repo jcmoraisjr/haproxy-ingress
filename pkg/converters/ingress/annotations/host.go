@@ -92,12 +92,3 @@ func (c *updater) buildHostSSLPassthrough(d *hostData) {
 	backend.ModeTCP = true
 	d.host.SSLPassthrough = true
 }
-
-func (c *updater) buildHostTimeout(d *hostData) {
-	if cfg := d.mapper.Get(ingtypes.HostTimeoutClient); cfg.Source != nil {
-		d.host.Timeout.Client = c.validateTime(cfg)
-	}
-	if cfg := d.mapper.Get(ingtypes.HostTimeoutClientFin); cfg.Source != nil {
-		d.host.Timeout.ClientFin = c.validateTime(cfg)
-	}
-}

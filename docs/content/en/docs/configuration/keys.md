@@ -223,8 +223,8 @@ The table below describes all supported configuration keys.
 | [`syslog-length`](#syslog)                           | maximum length                          | Global  | `1024`             |
 | [`syslog-tag`](#syslog)                              | syslog tag field string                 | Global  | `ingress`          |
 | [`tcp-log-format`](#log-format)                      | tcp log format                          | Global  | HAProxy default log format |
-| [`timeout-client`](#timeout)                         | time with suffix                        | Host    | `50s`              |
-| [`timeout-client-fin`](#timeout)                     | time with suffix                        | Host    | `50s`              |
+| [`timeout-client`](#timeout)                         | time with suffix                        | Global  | `50s`              |
+| [`timeout-client-fin`](#timeout)                     | time with suffix                        | Global  | `50s`              |
 | [`timeout-connect`](#timeout)                        | time with suffix                        | Backend | `5s`               |
 | [`timeout-http-request`](#timeout)                   | time with suffix                        | Backend | `5s`               |
 | [`timeout-keep-alive`](#timeout)                     | time with suffix                        | Backend | `1m`               |
@@ -1620,8 +1620,8 @@ See also:
 
 | Configuration key      | Scope     | Default | Since |
 |------------------------|-----------|---------|-------|
-| `timeout-client`       | `Host`    | `50s`   |       |
-| `timeout-client-fin`   | `Host`    | `50s`   |       |
+| `timeout-client`       | `Global`  | `50s`   |       |
+| `timeout-client-fin`   | `Global`  | `50s`   |       |
 | `timeout-connect`      | `Backend` | `5s`    |       |
 | `timeout-http-request` | `Backend` | `5s`    |       |
 | `timeout-keep-alive`   | `Backend` | `1m`    |       |
@@ -1632,6 +1632,10 @@ See also:
 | `timeout-tunnel`       | `Backend` | `1h`    |       |
 
 Define timeout configurations. The unit defaults to milliseconds if missing, change the unit with `s`, `m`, `h`, ... suffix.
+
+{{% alert title="Note" %}}
+Since `v0.11`, `timeout-client` and `timeout-client-fin` are global configuration keys and cannot be configured per hostname.
+{{% /alert %}}
 
 The following keys are supported:
 

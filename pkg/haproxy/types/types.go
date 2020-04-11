@@ -98,9 +98,10 @@ type SyslogConfig struct {
 
 // TimeoutConfig ...
 type TimeoutConfig struct {
-	HostTimeoutConfig
 	BackendTimeoutConfig
-	Stop string
+	Client    string
+	ClientFin string
+	Stop      string
 }
 
 // SSLConfig ...
@@ -267,8 +268,6 @@ type Frontend struct {
 	Bind  BindConfig
 	Hosts []*Host
 	//
-	Timeout HostTimeoutConfig
-	//
 	Maps                       *HostsMaps
 	HostBackendsMap            *HostsMap
 	MaxBodySizeMap             *HostsMap
@@ -319,7 +318,6 @@ type Host struct {
 	HTTPPassthroughBackend string
 	RootRedirect           string
 	SSLPassthrough         bool
-	Timeout                HostTimeoutConfig
 	TLS                    HostTLSConfig
 	VarNamespace           bool
 }
@@ -347,12 +345,6 @@ type HostBackend struct {
 type HostAliasConfig struct {
 	AliasName  string
 	AliasRegex string
-}
-
-// HostTimeoutConfig ...
-type HostTimeoutConfig struct {
-	Client    string
-	ClientFin string
 }
 
 // HostTLSConfig ...
