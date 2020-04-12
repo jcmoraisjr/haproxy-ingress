@@ -357,6 +357,16 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- $needACL := gt (len $backend.MaxBodySize) 1 }}
+{{- range $maxbody := $backend.MaxBodySize }}
+{{- if $maxbody.Config }}
+    http-request use-service lua.send-413 if
+        {{- if $needACL }} { var(txn.pathID) {{ $maxbody.Paths.IDList }} }{{ end }}
+        {{- "" }} { req.body_size,sub({{ $maxbody.Config }}) gt 0 }
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
 {{- if and $global.ModSecurity.Endpoints $backend.HasModsec }}
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
 {{- $needACL := gt (len $backend.WAF) 1 }}
@@ -828,7 +838,7 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if or $hosts.HasTLSAuth $fmaps.HostBackendsMap.HasRegex $hosts.HasVarNamespace $frontend.HasMaxBody }}
+{{- if or $hosts.HasTLSAuth $fmaps.HostBackendsMap.HasRegex $hosts.HasVarNamespace }}
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend)
         {{- "" }} var(req.base),map_beg({{ $fmaps.HostBackendsMap.MatchFile }})
@@ -873,11 +883,6 @@ frontend {{ $frontend.Name }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-DN
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-Cert
-
-{{- /*------------------------------------*/}}
-{{- if $frontend.HasMaxBody }}
-    http-request set-var(req.maxbody) var(req.base),map_beg_int({{ $fmaps.MaxBodySizeMap.MatchFile }},0)
-{{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $hosts.HasTLSAuth }}
@@ -957,10 +962,6 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $frontend.HasMaxBody }}
-    http-request use-service lua.send-413 if
-        {{- "" }} !{ var(req.maxbody) 0 } { req.body_size,sub(req.maxbody) gt 0 }
-{{- end }}
 {{- if $hosts.HasTLSAuth }}
     http-request use-service lua.send-421 if
         {{- "" }} tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }

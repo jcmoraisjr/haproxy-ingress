@@ -255,7 +255,6 @@ type FrontendMaps struct {
 	VarNamespaceMap   *HostsMap
 	//
 	HostBackendsMap            *HostsMap
-	MaxBodySizeMap             *HostsMap
 	RootRedirMap               *HostsMap
 	SNIBackendsMap             *HostsMap
 	TLSInvalidCrtErrorList     *HostsMap
