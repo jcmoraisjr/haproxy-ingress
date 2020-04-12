@@ -24,8 +24,6 @@ import (
 	"time"
 
 	"github.com/kylelemons/godebug/diff"
-
-	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
 func TestDynUpdate(t *testing.T) {
@@ -48,26 +46,26 @@ func TestDynUpdate(t *testing.T) {
 		// 1
 		{
 			oldConfig: nil,
-			curConfig: &config{},
+			curConfig: createConfig(options{}),
 			dynamic:   false,
 		},
 		// 2
 		{
-			oldConfig: &config{},
+			oldConfig: createConfig(options{}),
 			curConfig: nil,
 			dynamic:   false,
 		},
 		// 3
 		{
-			oldConfig: &config{},
-			curConfig: &config{},
+			oldConfig: createConfig(options{}),
+			curConfig: createConfig(options{}),
 			dynamic:   true,
 		},
 		// 4
 		{
-			oldConfig: &config{},
-			curConfig: &config{
-				global: &hatypes.Global{MaxConn: 1},
+			oldConfig: createConfig(options{}),
+			doconfig2: func(c *testConfig) {
+				c.config.Global().MaxConn = 1
 			},
 			dynamic: false,
 			logging: `INFO-V(2) diff outside backends - [global]`,
@@ -75,11 +73,11 @@ func TestDynUpdate(t *testing.T) {
 		// 5
 		{
 			doconfig1: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
 			doconfig2: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.Dynamic.DynUpdate = true
 				b.Dynamic.BlockSize = 8
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
@@ -101,12 +99,12 @@ func TestDynUpdate(t *testing.T) {
 		// 6
 		{
 			doconfig1: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
 			doconfig2: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.Dynamic.DynUpdate = true
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
@@ -125,11 +123,11 @@ set server default_app_8080/srv001 weight 0
 		// 7
 		{
 			doconfig1: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 			},
 			doconfig2: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.Dynamic.DynUpdate = true
 				ep := b.AcquireEndpoint("172.17.0.2", 8080, "")
 				ep.Weight = 2
@@ -148,12 +146,12 @@ set server default_app_8080/srv001 weight 2
 		// 8
 		{
 			doconfig1: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AddEmptyEndpoint()
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
 			doconfig2: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.Dynamic.DynUpdate = true
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
@@ -173,12 +171,12 @@ set server default_app_8080/srv001 weight 1
 		// 9
 		{
 			doconfig1: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AddEmptyEndpoint()
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 			},
 			doconfig2: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.Dynamic.DynUpdate = true
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
@@ -198,7 +196,7 @@ set server default_app_8080/srv001 weight 1
 		// 10
 		{
 			doconfig1: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 				b.AcquireEndpoint("172.17.0.4", 8080, "")
@@ -209,7 +207,7 @@ set server default_app_8080/srv001 weight 1
 				b.AcquireEndpoint("172.17.0.9", 8080, "")
 			},
 			doconfig2: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.Dynamic.DynUpdate = true
 				b.AcquireEndpoint("172.17.0.5", 8080, "")
 				b.AcquireEndpoint("172.17.0.7", 8080, "")
@@ -257,13 +255,13 @@ INFO-V(2) disabled endpoint '172.17.0.9:8080' on backend/server 'default_app_808
 		// 11
 		{
 			doconfig1: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 				b.AcquireEndpoint("172.17.0.4", 8080, "")
 			},
 			doconfig2: func(c *testConfig) {
-				c.config.AcquireBackend("default", "app", "8080").Dynamic.DynUpdate = true
+				c.config.Backends().AcquireBackend("default", "app", "8080").Dynamic.DynUpdate = true
 			},
 			expected: []string{
 				"srv001:127.0.0.1:1023:1",
@@ -291,12 +289,12 @@ INFO-V(2) disabled endpoint '172.17.0.4:8080' on backend/server 'default_app_808
 		// 12
 		{
 			doconfig1: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AddEmptyEndpoint()
 			},
 			doconfig2: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.Dynamic.DynUpdate = true
 				b.Dynamic.MinFreeSlots = 4
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
@@ -318,13 +316,13 @@ INFO-V(2) disabled endpoint '172.17.0.4:8080' on backend/server 'default_app_808
 		// 13
 		{
 			doconfig1: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AddEmptyEndpoint()
 				b.AddEmptyEndpoint()
 			},
 			doconfig2: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.Dynamic.DynUpdate = true
 				b.Dynamic.MinFreeSlots = 4
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
@@ -346,17 +344,17 @@ set server default_app_8080/srv002 weight 1
 		// 14
 		{
 			doconfig1: func(c *testConfig) {
-				b1 := c.config.AcquireBackend("default", "default_backend", "8080")
-				c.config.ConfigDefaultBackend(b1)
-				b2 := c.config.AcquireBackend("default", "app", "8080")
+				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
+				c.config.Backends().SetDefaultBackend(b1)
+				b2 := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b2.AcquireEndpoint("172.17.0.2", 8080, "")
 			},
 			doconfig2: func(c *testConfig) {
-				b1 := c.config.AcquireBackend("default", "default_backend", "8080")
+				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
 				b1.Dynamic.DynUpdate = true
 				b1.Dynamic.MinFreeSlots = 1
-				c.config.ConfigDefaultBackend(b1)
-				b2 := c.config.AcquireBackend("default", "app", "8080")
+				c.config.Backends().SetDefaultBackend(b1)
+				b2 := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b2.Dynamic.DynUpdate = true
 				b2.AcquireEndpoint("172.17.0.2", 8080, "")
 				b2.AcquireEndpoint("172.17.0.3", 8080, "")
@@ -372,7 +370,7 @@ set server default_app_8080/srv002 weight 1
 		// 15
 		{
 			doconfig2: func(c *testConfig) {
-				c.config.AcquireBackend("default", "app", "8080").Dynamic.DynUpdate = true
+				c.config.Backends().AcquireBackend("default", "app", "8080").Dynamic.DynUpdate = true
 			},
 			expected: []string{
 				"srv001:127.0.0.1:1023:1",
@@ -384,7 +382,7 @@ set server default_app_8080/srv002 weight 1
 		// 16
 		{
 			doconfig2: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.Dynamic.DynUpdate = true
 				b.Dynamic.BlockSize = 4
 			},
@@ -401,12 +399,12 @@ set server default_app_8080/srv002 weight 1
 		// 17
 		{
 			doconfig1: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
 				b.AddEmptyEndpoint()
 			},
 			doconfig2: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.Dynamic.DynUpdate = true
 				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
@@ -425,12 +423,12 @@ set server default_app_8080/srv002 weight 1`,
 		// 18
 		{
 			doconfig1: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
 				b.AddEmptyEndpoint()
 			},
 			doconfig2: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.Dynamic.DynUpdate = true
 				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
 				b.AcquireEndpoint("172.17.0.4", 8080, "").Label = "green"
@@ -444,12 +442,12 @@ set server default_app_8080/srv002 weight 1`,
 		// 19
 		{
 			doconfig1: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
 				b.AcquireEndpoint("172.17.0.3", 8080, "").Label = "green"
 			},
 			doconfig2: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.Dynamic.DynUpdate = true
 				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
 			},
@@ -462,12 +460,12 @@ set server default_app_8080/srv002 weight 1`,
 		// 20
 		{
 			doconfig1: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
 				b.AcquireEndpoint("172.17.0.3", 8080, "").Label = "green"
 			},
 			doconfig2: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.Dynamic.DynUpdate = true
 				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
 				b.AcquireEndpoint("172.17.0.4", 8080, "").Label = "green"
@@ -481,12 +479,12 @@ set server default_app_8080/srv002 weight 1`,
 		// 21
 		{
 			doconfig1: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
 			doconfig2: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.Dynamic.DynUpdate = false
 				b.Dynamic.MinFreeSlots = 4
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
@@ -500,13 +498,13 @@ set server default_app_8080/srv002 weight 1`,
 		// 22
 		{
 			doconfig1: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.Dynamic.DynUpdate = false
 				b.Dynamic.MinFreeSlots = 4
 			},
 			doconfig2: func(c *testConfig) {
-				b := c.config.AcquireBackend("default", "app", "8080")
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.Dynamic.DynUpdate = false
 				b.Dynamic.MinFreeSlots = 4
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
@@ -543,7 +541,7 @@ set server default_app_8080/srv002 weight 1`,
 		}
 		dynamic := dynUpdater.update()
 		var actual []string
-		for _, ep := range c.config.AcquireBackend("default", "app", "8080").Endpoints {
+		for _, ep := range c.config.Backends().AcquireBackend("default", "app", "8080").Endpoints {
 			actual = append(actual, fmt.Sprintf("%s:%s:%d:%d", ep.Name, ep.IP, ep.Port, ep.Weight))
 		}
 		if !reflect.DeepEqual(actual, test.expected) {

@@ -29,9 +29,6 @@ import (
 // Config ...
 type Config interface {
 	AcquireTCPBackend(servicename string, port int) *hatypes.TCPBackend
-	AcquireBackend(namespace, name, port string) *hatypes.Backend
-	FindBackend(namespace, name, port string) *hatypes.Backend
-	ConfigDefaultBackend(defaultBackend *hatypes.Backend)
 	ConfigDefaultX509Cert(filename string)
 	AddUserlist(name string, users []hatypes.User) *hatypes.Userlist
 	FindUserlist(name string) *hatypes.Userlist
@@ -39,13 +36,12 @@ type Config interface {
 	SyncConfig()
 	WriteFrontendMaps() error
 	WriteBackendMaps() error
-	DefaultBackend() *hatypes.Backend
 	AcmeData() *hatypes.AcmeData
 	Acme() *hatypes.Acme
 	Global() *hatypes.Global
 	TCPBackends() []*hatypes.TCPBackend
 	Hosts() *hatypes.Hosts
-	Backends() []*hatypes.Backend
+	Backends() *hatypes.Backends
 	Userlists() []*hatypes.Userlist
 	Equals(other Config) bool
 }
@@ -60,10 +56,9 @@ type config struct {
 	global          *hatypes.Global
 	frontend        *hatypes.Frontend
 	hosts           *hatypes.Hosts
+	backends        *hatypes.Backends
 	tcpbackends     []*hatypes.TCPBackend
-	backends        []*hatypes.Backend
 	userlists       []*hatypes.Userlist
-	defaultBackend  *hatypes.Backend
 	defaultX509Cert string
 }
 
@@ -83,6 +78,7 @@ func createConfig(options options) *config {
 		global:       &hatypes.Global{},
 		frontend:     &hatypes.Frontend{Name: "_front001"},
 		hosts:        &hatypes.Hosts{},
+		backends:     hatypes.CreateBackends(),
 		mapsTemplate: mapsTemplate,
 		mapsDir:      options.mapsDir,
 	}
@@ -108,64 +104,6 @@ func (c *config) AcquireTCPBackend(servicename string, port int) *hatypes.TCPBac
 		return back1.Name < back2.Name
 	})
 	return backend
-}
-
-func (c *config) sortBackends() {
-	sort.Slice(c.backends, func(i, j int) bool {
-		if c.backends[i] == c.defaultBackend {
-			return false
-		}
-		if c.backends[j] == c.defaultBackend {
-			return true
-		}
-		return c.backends[i].ID < c.backends[j].ID
-	})
-}
-
-func (c *config) AcquireBackend(namespace, name, port string) *hatypes.Backend {
-	if backend := c.FindBackend(namespace, name, port); backend != nil {
-		return backend
-	}
-	backend := createBackend(namespace, name, port)
-	c.backends = append(c.backends, backend)
-	c.sortBackends()
-	return backend
-}
-
-func (c *config) FindBackend(namespace, name, port string) *hatypes.Backend {
-	for _, b := range c.backends {
-		if b.Namespace == namespace && b.Name == name && b.Port == port {
-			return b
-		}
-	}
-	return nil
-}
-
-func createBackend(namespace, name, port string) *hatypes.Backend {
-	return &hatypes.Backend{
-		ID:        buildID(namespace, name, port),
-		Namespace: namespace,
-		Name:      name,
-		Port:      port,
-		Server:    hatypes.ServerConfig{InitialWeight: 1},
-		Endpoints: []*hatypes.Endpoint{},
-	}
-}
-
-func buildID(namespace, name, port string) string {
-	return fmt.Sprintf("%s_%s_%s", namespace, name, port)
-}
-
-func (c *config) ConfigDefaultBackend(defaultBackend *hatypes.Backend) {
-	if c.defaultBackend != nil {
-		def := c.defaultBackend
-		def.ID = buildID(def.Namespace, def.Name, def.Port)
-	}
-	c.defaultBackend = defaultBackend
-	if c.defaultBackend != nil {
-		c.defaultBackend.ID = "_default_backend"
-	}
-	c.sortBackends()
 }
 
 func (c *config) ConfigDefaultX509Cert(filename string) {
@@ -220,7 +158,7 @@ func (c *config) SyncConfig() {
 		}
 		if host.HasTLSAuth() {
 			for _, path := range host.Paths {
-				backend := c.FindBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
+				backend := c.backends.FindBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
 				if backend != nil {
 					backend.TLS.HasTLSAuth = true
 				}
@@ -232,14 +170,14 @@ func (c *config) SyncConfig() {
 			if defaultHost != nil {
 				if path := defaultHost.FindPath("/"); path != nil {
 					hback := path.Backend
-					back = c.FindBackend(hback.Namespace, hback.Name, hback.Port)
+					back = c.backends.FindBackend(hback.Namespace, hback.Name, hback.Port)
 				}
 			}
 			if back == nil {
 				// TODO c.defaultBackend can be nil; create a valid
 				// _error404 backend, remove `if nil` from host.AddPath()
 				// and from `for range host.Paths` on map building.
-				back = c.defaultBackend
+				back = c.backends.DefaultBackend()
 			}
 			host.AddPath(back, "/")
 		}
@@ -301,7 +239,7 @@ func (c *config) WriteFrontendMaps() error {
 		// TODO implement deny 413 and move all MaxBodySize stuff to backend
 		maxBodySizes := map[string]int64{}
 		for _, path := range host.Paths {
-			backend := c.FindBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
+			backend := c.backends.FindBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
 			base := host.Hostname + path.Path
 			hasSSLRedirect := false
 			if host.TLS.HasTLS() && backend != nil {
@@ -411,7 +349,7 @@ func (c *config) WriteFrontendMaps() error {
 func (c *config) WriteBackendMaps() error {
 	// TODO rename HostMap types to HAProxyMap
 	mapBuilder := hatypes.CreateMaps()
-	for _, backend := range c.backends {
+	for _, backend := range c.backends.Items() {
 		mapsPrefix := c.mapsDir + "/_back_" + backend.ID
 		if backend.NeedACL() {
 			pathsMap := mapBuilder.AddMap(mapsPrefix + "_idpath.map")
@@ -438,10 +376,6 @@ func writeMaps(maps *hatypes.HostsMaps, template *template.Config) error {
 	return nil
 }
 
-func (c *config) DefaultBackend() *hatypes.Backend {
-	return c.defaultBackend
-}
-
 func (c *config) AcmeData() *hatypes.AcmeData {
 	return c.acmeData
 }
@@ -462,7 +396,7 @@ func (c *config) Hosts() *hatypes.Hosts {
 	return c.hosts
 }
 
-func (c *config) Backends() []*hatypes.Backend {
+func (c *config) Backends() *hatypes.Backends {
 	return c.backends
 }
 

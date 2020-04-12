@@ -59,24 +59,6 @@ func TestAcquireHostSame(t *testing.T) {
 	}
 }
 
-func TestBuildID(t *testing.T) {
-	testCases := []struct {
-		namespace string
-		name      string
-		port      string
-		expected  string
-	}{
-		{
-			"default", "echo", "8080", "default_echo_8080",
-		},
-	}
-	for _, test := range testCases {
-		if actual := buildID(test.namespace, test.name, test.port); actual != test.expected {
-			t.Errorf("expected '%s' but was '%s'", test.expected, actual)
-		}
-	}
-}
-
 func TestEqual(t *testing.T) {
 	c1 := createConfig(options{})
 	c2 := createConfig(options{})
@@ -91,13 +73,13 @@ func TestEqual(t *testing.T) {
 	if !c1.Equals(c2) {
 		t.Error("c1 and c2 should be equals (default cert)")
 	}
-	b1 := c1.AcquireBackend("d", "app1", "8080")
-	c1.AcquireBackend("d", "app2", "8080")
+	b1 := c1.Backends().AcquireBackend("d", "app1", "8080")
+	c1.Backends().AcquireBackend("d", "app2", "8080")
 	if c1.Equals(c2) {
 		t.Error("c1 and c2 should not be equals (backends on one side)")
 	}
-	c2.AcquireBackend("d", "app2", "8080")
-	b2 := c2.AcquireBackend("d", "app1", "8080")
+	c2.Backends().AcquireBackend("d", "app2", "8080")
+	b2 := c2.Backends().AcquireBackend("d", "app1", "8080")
 	if !c1.Equals(c2) {
 		t.Error("c1 and c2 should be equals (with backends)")
 	}
