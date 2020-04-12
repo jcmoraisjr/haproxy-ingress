@@ -180,7 +180,7 @@ func (c *converter) syncIngress(ing *extensions.Ingress) {
 
 func (c *converter) syncAnnotations() {
 	c.updater.UpdateGlobalConfig(c.haproxy, c.globalConfig)
-	for _, host := range c.haproxy.Hosts() {
+	for _, host := range c.haproxy.Hosts().Items {
 		if ann, found := c.hostAnnotations[host]; found {
 			c.updater.UpdateHostConfig(host, ann)
 		}
@@ -195,7 +195,7 @@ func (c *converter) syncAnnotations() {
 func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcName, svcPort string, annHost, annBack map[string]string) error {
 	hostname := "*"
 	uri := "/"
-	if fr := c.haproxy.FindHost(hostname); fr != nil {
+	if fr := c.haproxy.Hosts().FindHost(hostname); fr != nil {
 		if fr.FindPath(uri) != nil {
 			return fmt.Errorf("path %s was already defined on default host", uri)
 		}
@@ -210,7 +210,7 @@ func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcNam
 }
 
 func (c *converter) addHost(hostname string, source *annotations.Source, ann map[string]string) *hatypes.Host {
-	host := c.haproxy.AcquireHost(hostname)
+	host := c.haproxy.Hosts().AcquireHost(hostname)
 	mapper, found := c.hostAnnotations[host]
 	if !found {
 		mapper = c.mapBuilder.NewMapper()

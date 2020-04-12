@@ -246,29 +246,14 @@ type HostsMaps struct {
 	Items []*HostsMap
 }
 
-// FrontendGroup ...
-type FrontendGroup struct {
-	Frontends []*Frontend
-	//
-	DefaultBind       *BindConfig
-	HasSSLPassthrough bool
-	ToHTTPBind        BindConfig
-	//
-	Maps              *HostsMaps
+// FrontendMaps ...
+type FrontendMaps struct {
 	HTTPFrontsMap     *HostsMap
 	HTTPRootRedirMap  *HostsMap
 	HTTPSRedirMap     *HostsMap
 	SSLPassthroughMap *HostsMap
 	VarNamespaceMap   *HostsMap
-}
-
-// Frontend ...
-type Frontend struct {
-	Name  string
-	Bind  BindConfig
-	Hosts []*Host
 	//
-	Maps                       *HostsMaps
 	HostBackendsMap            *HostsMap
 	MaxBodySizeMap             *HostsMap
 	RootRedirMap               *HostsMap
@@ -277,31 +262,25 @@ type Frontend struct {
 	TLSInvalidCrtErrorPagesMap *HostsMap
 	TLSNoCrtErrorList          *HostsMap
 	TLSNoCrtErrorPagesMap      *HostsMap
-}
-
-// BindConfig ...
-type BindConfig struct {
-	Name   string
-	Socket string
-	ID     int
 	//
-	AcceptProxy bool
-	ALPN        string
-	TLS         []*BindTLSConfig
-	//
-	UseServerList *HostsMap
 	CrtList       *HostsMap
+	UseServerList *HostsMap
 }
 
-// BindTLSConfig ...
-type BindTLSConfig struct {
-	CAFilename  string
-	CAHash      string
-	CRLFilename string
-	CRLHash     string
-	CrtFilename string
-	CrtHash     string
-	Hostnames   []string
+// Frontend ...
+type Frontend struct {
+	Name        string
+	Maps        *FrontendMaps
+	BindName    string
+	BindSocket  string
+	BindID      int
+	AcceptProxy bool
+}
+
+// Hosts ...
+type Hosts struct {
+	Items       []*Host
+	defaultHost *Host
 }
 
 // Host ...
