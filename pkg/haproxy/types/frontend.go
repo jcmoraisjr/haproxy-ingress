@@ -123,8 +123,8 @@ func (hm *HostsMaps) AddMap(filename string) *HostsMap {
 }
 
 // HasMaxBody ...
-func (fg *FrontendGroup) HasMaxBody() bool {
-	return fg.MaxBodySizeMap.HasHost()
+func (f *Frontend) HasMaxBody() bool {
+	return f.Maps.MaxBodySizeMap.HasHost()
 }
 
 // String ...

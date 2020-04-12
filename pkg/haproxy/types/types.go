@@ -246,8 +246,8 @@ type HostsMaps struct {
 	Items []*HostsMap
 }
 
-// FrontendGroup ...
-type FrontendGroup struct {
+// FrontendMaps ...
+type FrontendMaps struct {
 	HTTPFrontsMap     *HostsMap
 	HTTPRootRedirMap  *HostsMap
 	HTTPSRedirMap     *HostsMap
@@ -270,6 +270,7 @@ type FrontendGroup struct {
 // Frontend ...
 type Frontend struct {
 	Name        string
+	Maps        *FrontendMaps
 	BindName    string
 	BindSocket  string
 	BindID      int

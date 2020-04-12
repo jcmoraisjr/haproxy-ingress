@@ -36,10 +36,9 @@ type Config interface {
 	AddUserlist(name string, users []hatypes.User) *hatypes.Userlist
 	FindUserlist(name string) *hatypes.Userlist
 	Frontend() *hatypes.Frontend
-	FrontendGroup() *hatypes.FrontendGroup
 	SyncConfig()
-	BuildFrontendGroup() error
-	BuildBackendMaps() error
+	WriteFrontendMaps() error
+	WriteBackendMaps() error
 	DefaultBackend() *hatypes.Backend
 	AcmeData() *hatypes.AcmeData
 	Acme() *hatypes.Acme
@@ -56,7 +55,6 @@ type config struct {
 	acmeData *hatypes.AcmeData
 	// haproxy internal state
 	acme            *hatypes.Acme
-	fgroup          *hatypes.FrontendGroup
 	mapsTemplate    *template.Config
 	mapsDir         string
 	global          *hatypes.Global
@@ -197,10 +195,6 @@ func (c *config) Frontend() *hatypes.Frontend {
 	return c.frontend
 }
 
-func (c *config) FrontendGroup() *hatypes.FrontendGroup {
-	return c.fgroup
-}
-
 // SyncConfig does final synchronization, just before write
 // maps and config files to disk. These tasks should be done
 // during ingress, services and endpoint parsing, but most of
@@ -252,30 +246,32 @@ func (c *config) SyncConfig() {
 	}
 }
 
-func (c *config) BuildFrontendGroup() error {
-	// tested thanks to instance_test templating tests
-	// ideas to make a nice test or a nice refactor are welcome
-	maps := hatypes.CreateMaps()
-	fgroup := &hatypes.FrontendGroup{
-		HTTPFrontsMap:     maps.AddMap(c.mapsDir + "/_global_http_front.map"),
-		HTTPRootRedirMap:  maps.AddMap(c.mapsDir + "/_global_http_root_redir.map"),
-		HTTPSRedirMap:     maps.AddMap(c.mapsDir + "/_global_https_redir.map"),
-		SSLPassthroughMap: maps.AddMap(c.mapsDir + "/_global_sslpassthrough.map"),
-		VarNamespaceMap:   maps.AddMap(c.mapsDir + "/_global_k8s_ns.map"),
+// WriteFrontendMaps reads the model and writes haproxy's maps
+// used in the frontend. Should be called before write the main
+// config file. This func doesn't change model state, except the
+// link to the frontend maps.
+func (c *config) WriteFrontendMaps() error {
+	mapBuilder := hatypes.CreateMaps()
+	fmaps := &hatypes.FrontendMaps{
+		HTTPFrontsMap:     mapBuilder.AddMap(c.mapsDir + "/_global_http_front.map"),
+		HTTPRootRedirMap:  mapBuilder.AddMap(c.mapsDir + "/_global_http_root_redir.map"),
+		HTTPSRedirMap:     mapBuilder.AddMap(c.mapsDir + "/_global_https_redir.map"),
+		SSLPassthroughMap: mapBuilder.AddMap(c.mapsDir + "/_global_sslpassthrough.map"),
+		VarNamespaceMap:   mapBuilder.AddMap(c.mapsDir + "/_global_k8s_ns.map"),
 		//
-		HostBackendsMap:            maps.AddMap(c.mapsDir + "/_front001_host.map"),
-		RootRedirMap:               maps.AddMap(c.mapsDir + "/_front001_root_redir.map"),
-		MaxBodySizeMap:             maps.AddMap(c.mapsDir + "/_front001_max_body_size.map"),
-		SNIBackendsMap:             maps.AddMap(c.mapsDir + "/_front001_sni.map"),
-		TLSInvalidCrtErrorList:     maps.AddMap(c.mapsDir + "/_front001_inv_crt.list"),
-		TLSInvalidCrtErrorPagesMap: maps.AddMap(c.mapsDir + "/_front001_inv_crt_redir.map"),
-		TLSNoCrtErrorList:          maps.AddMap(c.mapsDir + "/_front001_no_crt.list"),
-		TLSNoCrtErrorPagesMap:      maps.AddMap(c.mapsDir + "/_front001_no_crt_redir.map"),
+		HostBackendsMap:            mapBuilder.AddMap(c.mapsDir + "/_front001_host.map"),
+		RootRedirMap:               mapBuilder.AddMap(c.mapsDir + "/_front001_root_redir.map"),
+		MaxBodySizeMap:             mapBuilder.AddMap(c.mapsDir + "/_front001_max_body_size.map"),
+		SNIBackendsMap:             mapBuilder.AddMap(c.mapsDir + "/_front001_sni.map"),
+		TLSInvalidCrtErrorList:     mapBuilder.AddMap(c.mapsDir + "/_front001_inv_crt.list"),
+		TLSInvalidCrtErrorPagesMap: mapBuilder.AddMap(c.mapsDir + "/_front001_inv_crt_redir.map"),
+		TLSNoCrtErrorList:          mapBuilder.AddMap(c.mapsDir + "/_front001_no_crt.list"),
+		TLSNoCrtErrorPagesMap:      mapBuilder.AddMap(c.mapsDir + "/_front001_no_crt_redir.map"),
 		//
-		CrtList:       maps.AddMap(c.mapsDir + "/_front001_bind_crt.list"),
-		UseServerList: maps.AddMap(c.mapsDir + "/_front001_use_server.list"),
+		CrtList:       mapBuilder.AddMap(c.mapsDir + "/_front001_bind_crt.list"),
+		UseServerList: mapBuilder.AddMap(c.mapsDir + "/_front001_use_server.list"),
 	}
-	fgroup.CrtList.AppendItem(c.defaultX509Cert)
+	fmaps.CrtList.AppendItem(c.defaultX509Cert)
 	// Some maps use yes/no answers instead of a list with found/missing keys
 	// This approach avoid overlap:
 	//  1. match with path_beg/map_beg, /path has a feature and a declared /path/sub doesn't have
@@ -285,12 +281,16 @@ func (c *config) BuildFrontendGroup() error {
 		if host.SSLPassthrough {
 			rootPath := host.FindPath("/")
 			if rootPath == nil {
-				return fmt.Errorf("missing root path on host %s", host.Hostname)
+				// Cannot use this hostname if the root path wasn't declared.
+				// Silently skipping beucase we have not a logger here.
+				// However this skip should never happen because root path
+				// validation already happens in the annotation parsing phase.
+				continue
 			}
-			fgroup.SSLPassthroughMap.AppendHostname(host.Hostname, rootPath.Backend.ID)
-			fgroup.HTTPSRedirMap.AppendHostname(host.Hostname+"/", yesno[host.HTTPPassthroughBackend == ""])
+			fmaps.SSLPassthroughMap.AppendHostname(host.Hostname, rootPath.Backend.ID)
+			fmaps.HTTPSRedirMap.AppendHostname(host.Hostname+"/", yesno[host.HTTPPassthroughBackend == ""])
 			if host.HTTPPassthroughBackend != "" {
-				fgroup.HTTPFrontsMap.AppendHostname(host.Hostname+"/", host.HTTPPassthroughBackend)
+				fmaps.HTTPFrontsMap.AppendHostname(host.Hostname+"/", host.HTTPPassthroughBackend)
 			}
 			// ssl-passthrough is as simple as that, jump to the next host
 			continue
@@ -308,7 +308,7 @@ func (c *config) BuildFrontendGroup() error {
 				hasSSLRedirect = backend.HasSSLRedirectHostpath(base)
 			}
 			// TODO use only root path if all uri has the same conf
-			fgroup.HTTPSRedirMap.AppendHostname(host.Hostname+path.Path, yesno[hasSSLRedirect])
+			fmaps.HTTPSRedirMap.AppendHostname(host.Hostname+path.Path, yesno[hasSSLRedirect])
 			var aliasName, aliasRegex string
 			// TODO warn in logs about ignoring alias name due to hostname colision
 			if host.Alias.AliasName != "" && c.hosts.FindHost(host.Alias.AliasName) == nil {
@@ -319,13 +319,13 @@ func (c *config) BuildFrontendGroup() error {
 			}
 			backendID := path.Backend.ID
 			if host.HasTLSAuth() {
-				fgroup.SNIBackendsMap.AppendHostname(base, backendID)
-				fgroup.SNIBackendsMap.AppendAliasName(aliasName, backendID)
-				fgroup.SNIBackendsMap.AppendAliasRegex(aliasRegex, backendID)
+				fmaps.SNIBackendsMap.AppendHostname(base, backendID)
+				fmaps.SNIBackendsMap.AppendAliasName(aliasName, backendID)
+				fmaps.SNIBackendsMap.AppendAliasRegex(aliasRegex, backendID)
 			} else {
-				fgroup.HostBackendsMap.AppendHostname(base, backendID)
-				fgroup.HostBackendsMap.AppendAliasName(aliasName, backendID)
-				fgroup.HostBackendsMap.AppendAliasRegex(aliasRegex, backendID)
+				fmaps.HostBackendsMap.AppendHostname(base, backendID)
+				fmaps.HostBackendsMap.AppendAliasName(aliasName, backendID)
+				fmaps.HostBackendsMap.AppendAliasRegex(aliasRegex, backendID)
 			}
 			if backend != nil {
 				if maxBodySize := backend.MaxBodySizeHostpath(base); maxBodySize > 0 {
@@ -333,7 +333,7 @@ func (c *config) BuildFrontendGroup() error {
 				}
 			}
 			if !hasSSLRedirect || c.global.Bind.HasFrontingProxy() {
-				fgroup.HTTPFrontsMap.AppendHostname(base, backendID)
+				fmaps.HTTPFrontsMap.AppendHostname(base, backendID)
 			}
 			var ns string
 			if host.VarNamespace {
@@ -341,7 +341,7 @@ func (c *config) BuildFrontendGroup() error {
 			} else {
 				ns = "-"
 			}
-			fgroup.VarNamespaceMap.AppendHostname(base, ns)
+			fmaps.VarNamespaceMap.AppendHostname(base, ns)
 		}
 		// TODO implement deny 413 and move all MaxBodySize stuff to backend
 		if len(maxBodySizes) > 0 {
@@ -349,29 +349,29 @@ func (c *config) BuildFrontendGroup() error {
 			// 0 (zero) means unlimited
 			for _, path := range host.Paths {
 				base := host.Hostname + path.Path
-				fgroup.MaxBodySizeMap.AppendHostname(base, strconv.FormatInt(maxBodySizes[base], 10))
+				fmaps.MaxBodySizeMap.AppendHostname(base, strconv.FormatInt(maxBodySizes[base], 10))
 			}
 		}
 		if host.HasTLSAuth() {
-			fgroup.TLSInvalidCrtErrorList.AppendHostname(host.Hostname, "")
+			fmaps.TLSInvalidCrtErrorList.AppendHostname(host.Hostname, "")
 			if !host.TLS.CAVerifyOptional {
-				fgroup.TLSNoCrtErrorList.AppendHostname(host.Hostname, "")
+				fmaps.TLSNoCrtErrorList.AppendHostname(host.Hostname, "")
 			}
 			page := host.TLS.CAErrorPage
 			if page != "" {
-				fgroup.TLSInvalidCrtErrorPagesMap.AppendHostname(host.Hostname, page)
+				fmaps.TLSInvalidCrtErrorPagesMap.AppendHostname(host.Hostname, page)
 				if !host.TLS.CAVerifyOptional {
-					fgroup.TLSNoCrtErrorPagesMap.AppendHostname(host.Hostname, page)
+					fmaps.TLSNoCrtErrorPagesMap.AppendHostname(host.Hostname, page)
 				}
 			}
 		}
 		// TODO wildcard/alias/alias-regex hostname can overlap
 		// a configured domain which doesn't have rootRedirect
 		if host.RootRedirect != "" {
-			fgroup.HTTPRootRedirMap.AppendHostname(host.Hostname, host.RootRedirect)
-			fgroup.RootRedirMap.AppendHostname(host.Hostname, host.RootRedirect)
+			fmaps.HTTPRootRedirMap.AppendHostname(host.Hostname, host.RootRedirect)
+			fmaps.RootRedirMap.AppendHostname(host.Hostname, host.RootRedirect)
 		}
-		fgroup.UseServerList.AppendHostname(host.Hostname, "")
+		fmaps.UseServerList.AppendHostname(host.Hostname, "")
 		//
 		tls := host.TLS
 		crtFile := tls.TLSFilename
@@ -394,30 +394,34 @@ func (c *config) BuildFrontendGroup() error {
 				}
 				crtListConfig = fmt.Sprintf("%s [ca-file %s%s verify optional] %s", crtFile, tls.CAFilename, crl, host.Hostname)
 			}
-			fgroup.CrtList.AppendItem(crtListConfig)
+			fmaps.CrtList.AppendItem(crtListConfig)
 		}
 	}
-	if err := writeMaps(maps, c.mapsTemplate); err != nil {
+	if err := writeMaps(mapBuilder, c.mapsTemplate); err != nil {
 		return err
 	}
-	c.fgroup = fgroup
+	c.frontend.Maps = fmaps
 	return nil
 }
 
-func (c *config) BuildBackendMaps() error {
+// WriteBackendMaps reads the model and writes haproxy's maps
+// used in the backends. Should be called before write the main
+// config file. This func doesn't change model state, except the
+// link to the backend maps.
+func (c *config) WriteBackendMaps() error {
 	// TODO rename HostMap types to HAProxyMap
-	maps := hatypes.CreateMaps()
+	mapBuilder := hatypes.CreateMaps()
 	for _, backend := range c.backends {
 		mapsPrefix := c.mapsDir + "/_back_" + backend.ID
 		if backend.NeedACL() {
-			pathsMap := maps.AddMap(mapsPrefix + "_idpath.map")
+			pathsMap := mapBuilder.AddMap(mapsPrefix + "_idpath.map")
 			for _, path := range backend.Paths {
 				pathsMap.AppendPath(path.Hostpath, path.ID)
 			}
 			backend.PathsMap = pathsMap
 		}
 	}
-	return writeMaps(maps, c.mapsTemplate)
+	return writeMaps(mapBuilder, c.mapsTemplate)
 }
 
 func writeMaps(maps *hatypes.HostsMaps, template *template.Config) error {

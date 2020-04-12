@@ -265,12 +265,12 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	//
 	defer i.rotateConfig()
 	i.curConfig.SyncConfig()
-	if err := i.curConfig.BuildFrontendGroup(); err != nil {
+	if err := i.curConfig.WriteFrontendMaps(); err != nil {
 		i.logger.Error("error building configuration group: %v", err)
 		i.metrics.IncUpdateNoop()
 		return
 	}
-	if err := i.curConfig.BuildBackendMaps(); err != nil {
+	if err := i.curConfig.WriteBackendMaps(); err != nil {
 		i.logger.Error("error building backend maps: %v", err)
 		i.metrics.IncUpdateNoop()
 		return

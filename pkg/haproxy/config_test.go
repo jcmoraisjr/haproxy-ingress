@@ -22,19 +22,19 @@ import (
 
 func TestEmptyFrontend(t *testing.T) {
 	c := createConfig(options{})
-	if err := c.BuildFrontendGroup(); err != nil {
+	if err := c.WriteFrontendMaps(); err != nil {
 		t.Errorf("error creating frontends: %v", err)
 	}
-	if fg := c.FrontendGroup(); fg == nil {
-		t.Error("expected FrontendGroup != nil")
+	if maps := c.frontend.Maps; maps == nil {
+		t.Error("expected frontend.Maps != nil")
 	}
 	c.hosts.AcquireHost("empty")
-	if err := c.BuildFrontendGroup(); err != nil {
+	if err := c.WriteFrontendMaps(); err != nil {
 		t.Errorf("error creating frontends: %v", err)
 	}
-	fg := c.FrontendGroup()
-	if fg == nil {
-		t.Error("expected FrontendGroup != nil")
+	maps := c.frontend.Maps
+	if maps == nil {
+		t.Error("expected frontend.Maps != nil")
 	}
 }
 
@@ -111,8 +111,8 @@ func TestEqual(t *testing.T) {
 	if !c1.Equals(c2) {
 		t.Error("c1 and c2 should be equals (with hosts)")
 	}
-	err1 := c1.BuildFrontendGroup()
-	err2 := c2.BuildFrontendGroup()
+	err1 := c1.WriteFrontendMaps()
+	err2 := c2.WriteFrontendMaps()
 	if err1 != nil {
 		t.Errorf("error building c1: %v", err1)
 	}
