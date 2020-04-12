@@ -264,6 +264,7 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	//   - i.metrics.UpdateSuccessful(<bool>) should be called only if haproxy is reloaded or cfg is validated
 	//
 	defer i.rotateConfig()
+	i.curConfig.SyncConfig()
 	if err := i.curConfig.BuildFrontendGroup(); err != nil {
 		i.logger.Error("error building configuration group: %v", err)
 		i.metrics.IncUpdateNoop()

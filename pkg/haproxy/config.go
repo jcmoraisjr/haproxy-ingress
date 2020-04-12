@@ -37,6 +37,7 @@ type Config interface {
 	FindUserlist(name string) *hatypes.Userlist
 	Frontend() *hatypes.Frontend
 	FrontendGroup() *hatypes.FrontendGroup
+	SyncConfig()
 	BuildFrontendGroup() error
 	BuildBackendMaps() error
 	DefaultBackend() *hatypes.Backend
@@ -200,6 +201,57 @@ func (c *config) FrontendGroup() *hatypes.FrontendGroup {
 	return c.fgroup
 }
 
+// SyncConfig does final synchronization, just before write
+// maps and config files to disk. These tasks should be done
+// during ingress, services and endpoint parsing, but most of
+// them need to start after all objects are parsed.
+func (c *config) SyncConfig() {
+	if c.hosts.HasSSLPassthrough() {
+		// using ssl-passthrough config, so need a `mode tcp`
+		// frontend with `inspect-delay` and `req.ssl_sni`
+		bindName := fmt.Sprintf("%s_socket", c.frontend.Name)
+		c.frontend.BindName = bindName
+		c.frontend.BindSocket = fmt.Sprintf("unix@/var/run/%s.sock", bindName)
+		c.frontend.AcceptProxy = true
+	} else {
+		// One single HAProxy's frontend and bind
+		c.frontend.BindName = "_public"
+		c.frontend.BindSocket = c.global.Bind.HTTPSBind
+		c.frontend.AcceptProxy = c.global.Bind.AcceptProxy
+	}
+	for _, host := range c.hosts.Items {
+		if host.SSLPassthrough {
+			// no action if ssl-passthrough
+			continue
+		}
+		if host.HasTLSAuth() {
+			for _, path := range host.Paths {
+				backend := c.FindBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
+				if backend != nil {
+					backend.TLS.HasTLSAuth = true
+				}
+			}
+		}
+		if c.global.StrictHost && host.FindPath("/") == nil {
+			var back *hatypes.Backend
+			defaultHost := c.hosts.DefaultHost()
+			if defaultHost != nil {
+				if path := defaultHost.FindPath("/"); path != nil {
+					hback := path.Backend
+					back = c.FindBackend(hback.Namespace, hback.Name, hback.Port)
+				}
+			}
+			if back == nil {
+				// TODO c.defaultBackend can be nil; create a valid
+				// _error404 backend, remove `if nil` from host.AddPath()
+				// and from `for range host.Paths` on map building.
+				back = c.defaultBackend
+			}
+			host.AddPath(back, "/")
+		}
+	}
+}
+
 func (c *config) BuildFrontendGroup() error {
 	// tested thanks to instance_test templating tests
 	// ideas to make a nice test or a nice refactor are welcome
@@ -222,19 +274,6 @@ func (c *config) BuildFrontendGroup() error {
 		//
 		CrtList:       maps.AddMap(c.mapsDir + "/_front001_bind_crt.list"),
 		UseServerList: maps.AddMap(c.mapsDir + "/_front001_use_server.list"),
-	}
-	if c.hosts.HasSSLPassthrough() {
-		// using ssl-passthrough config, so need a `mode tcp`
-		// frontend with `inspect-delay` and `req.ssl_sni`
-		bindName := fmt.Sprintf("%s_socket", c.frontend.Name)
-		c.frontend.BindName = bindName
-		c.frontend.BindSocket = fmt.Sprintf("unix@/var/run/%s.sock", bindName)
-		c.frontend.AcceptProxy = true
-	} else {
-		// One single HAProxy's frontend and bind
-		c.frontend.BindName = "_public"
-		c.frontend.BindSocket = c.global.Bind.HTTPSBind
-		c.frontend.AcceptProxy = c.global.Bind.AcceptProxy
 	}
 	fgroup.CrtList.AppendItem(c.defaultX509Cert)
 	// Some maps use yes/no answers instead of a list with found/missing keys
@@ -259,23 +298,6 @@ func (c *config) BuildFrontendGroup() error {
 		//
 		// Starting here to the end of this for loop has only HTTP/L7 map configuration
 		//
-		if c.global.StrictHost && host.FindPath("/") == nil {
-			var back *hatypes.Backend
-			defaultHost := c.hosts.DefaultHost()
-			if defaultHost != nil {
-				if path := defaultHost.FindPath("/"); path != nil {
-					hback := path.Backend
-					back = c.FindBackend(hback.Namespace, hback.Name, hback.Port)
-				}
-			}
-			if back == nil {
-				// TODO c.defaultBackend can be nil; create a valid
-				// _error404 backend, remove `if nil` from host.AddPath()
-				// and from `for range host.Paths` below
-				back = c.defaultBackend
-			}
-			host.AddPath(back, "/")
-		}
 		// TODO implement deny 413 and move all MaxBodySize stuff to backend
 		maxBodySizes := map[string]int64{}
 		for _, path := range host.Paths {
@@ -300,9 +322,6 @@ func (c *config) BuildFrontendGroup() error {
 				fgroup.SNIBackendsMap.AppendHostname(base, backendID)
 				fgroup.SNIBackendsMap.AppendAliasName(aliasName, backendID)
 				fgroup.SNIBackendsMap.AppendAliasRegex(aliasRegex, backendID)
-				if backend != nil {
-					backend.TLS.HasTLSAuth = true
-				}
 			} else {
 				fgroup.HostBackendsMap.AppendHostname(base, backendID)
 				fgroup.HostBackendsMap.AppendAliasName(aliasName, backendID)
