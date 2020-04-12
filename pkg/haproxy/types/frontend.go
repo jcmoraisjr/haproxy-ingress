@@ -18,7 +18,6 @@ package types
 
 import (
 	"fmt"
-	"reflect"
 	"sort"
 	"strings"
 )
@@ -245,12 +244,7 @@ func findMatchingFrontend(frontends []*Frontend, host *Host) *Frontend {
 
 // NewFrontend and Frontend.Match should always sinchronize its attributes
 func NewFrontend(host *Host) *Frontend {
-	if host == nil {
-		return &Frontend{}
-	}
-	return &Frontend{
-		Timeout: host.Timeout,
-	}
+	return &Frontend{}
 }
 
 // NewFrontendBind ...
@@ -286,8 +280,5 @@ func findTLSConfig(bindTLS []*BindTLSConfig, hostTLS *HostTLSConfig) *BindTLSCon
 }
 
 func (f *Frontend) match(host *Host) bool {
-	if len(f.Hosts) == 0 {
-		return true
-	}
-	return reflect.DeepEqual(f.Timeout, host.Timeout)
+	return true
 }

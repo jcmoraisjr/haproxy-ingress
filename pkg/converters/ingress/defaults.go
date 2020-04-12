@@ -30,9 +30,7 @@ const (
 
 func createDefaults() map[string]string {
 	return map[string]string{
-		types.HostAuthTLSStrict:    "false",
-		types.HostTimeoutClient:    "50s",
-		types.HostTimeoutClientFin: "50s",
+		types.HostAuthTLSStrict: "false",
 		//
 		types.BackBackendServerNaming:    "sequence",
 		types.BackBackendServerSlotsInc:  "1",
@@ -93,6 +91,8 @@ func createDefaults() map[string]string {
 		types.GlobalSyslogFormat:                 "rfc5424",
 		types.GlobalSyslogLength:                 "1024",
 		types.GlobalSyslogTag:                    "ingress",
+		types.GlobalTimeoutClient:                "50s",
+		types.GlobalTimeoutClientFin:             "50s",
 		types.GlobalTimeoutStop:                  "10m",
 		types.GlobalTLSALPN:                      "h2,http/1.1",
 		types.GlobalUseHTX:                       "true",

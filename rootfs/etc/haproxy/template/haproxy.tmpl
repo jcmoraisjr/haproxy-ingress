@@ -826,14 +826,6 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $frontend.Timeout.Client }}
-    timeout client {{ $frontend.Timeout.Client }}
-{{- end }}
-{{- if $frontend.Timeout.ClientFin }}
-    timeout client-fin {{ $frontend.Timeout.ClientFin }}
-{{- end }}
-
-{{- /*------------------------------------*/}}
 {{- if $global.Syslog.Endpoint }}
 {{- if $global.Syslog.HTTPLogFormat }}
     log-format {{ $global.Syslog.HTTPLogFormat }}

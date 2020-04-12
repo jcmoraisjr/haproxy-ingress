@@ -814,12 +814,7 @@ func TestSyncAnnFrontsConflict(t *testing.T) {
   - path: /app
     backend: default_echo_8080
   - path: /
-    backend: default_echo_8080
-  timeout:
-    client: 1s`)
-
-	c.logger.CompareLogging(`
-WARN skipping host annotation(s) from ingress 'default/echo2' due to conflict: [timeout-client]`)
+    backend: default_echo_8080`)
 }
 
 func TestSyncAnnFronts(t *testing.T) {
@@ -841,14 +836,10 @@ func TestSyncAnnFronts(t *testing.T) {
   paths:
   - path: /app1
     backend: default_echo_8080
-  timeout:
-    client: 1s
 - hostname: echo2.example.com
   paths:
   - path: /app2
-    backend: default_echo_8080
-  timeout:
-    client: 2s`)
+    backend: default_echo_8080`)
 }
 
 func TestSyncAnnFrontDefault(t *testing.T) {
@@ -871,20 +862,14 @@ func TestSyncAnnFrontDefault(t *testing.T) {
   paths:
   - path: /app
     backend: default_echo_8080
-  timeout:
-    client: 2s
 - hostname: echo2.example.com
   paths:
   - path: /app
     backend: default_echo_8080
-  timeout:
-    client: 1s
 - hostname: echo3.example.com
   paths:
   - path: /app
-    backend: default_echo_8080
-  timeout:
-    client: 1s`)
+    backend: default_echo_8080`)
 }
 
 func TestSyncAnnBack(t *testing.T) {
@@ -1332,7 +1317,6 @@ func (u *updaterMock) UpdateGlobalConfig(haproxyConfig haproxy.Config, config *a
 }
 
 func (u *updaterMock) UpdateHostConfig(host *hatypes.Host, mapper *annotations.Mapper) {
-	host.Timeout.Client = mapper.Get(ingtypes.HostTimeoutClient).Value
 	host.RootRedirect = mapper.Get(ingtypes.HostAppRoot).Value
 }
 
@@ -1355,9 +1339,8 @@ type (
 	hostMock struct {
 		Hostname     string
 		Paths        []pathMock
-		RootRedirect string      `yaml:",omitempty"`
-		Timeout      timeoutMock `yaml:",omitempty"`
-		TLS          tlsMock     `yaml:",omitempty"`
+		RootRedirect string  `yaml:",omitempty"`
+		TLS          tlsMock `yaml:",omitempty"`
 	}
 )
 
@@ -1372,7 +1355,6 @@ func convertHost(hafronts ...*hatypes.Host) []hostMock {
 			Hostname:     f.Hostname,
 			Paths:        paths,
 			RootRedirect: f.RootRedirect,
-			Timeout:      timeoutMock{Client: f.Timeout.Client},
 			TLS:          tlsMock{TLSFilename: f.TLS.TLSFilename},
 		})
 	}

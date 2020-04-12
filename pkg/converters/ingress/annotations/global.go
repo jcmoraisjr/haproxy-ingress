@@ -160,8 +160,8 @@ func (c *updater) buildGlobalSyslog(d *globalData) {
 }
 
 func (c *updater) buildGlobalTimeout(d *globalData) {
-	d.global.Timeout.Client = c.validateTime(d.mapper.Get(ingtypes.HostTimeoutClient))
-	d.global.Timeout.ClientFin = c.validateTime(d.mapper.Get(ingtypes.HostTimeoutClientFin))
+	d.global.Timeout.Client = c.validateTime(d.mapper.Get(ingtypes.GlobalTimeoutClient))
+	d.global.Timeout.ClientFin = c.validateTime(d.mapper.Get(ingtypes.GlobalTimeoutClientFin))
 	d.global.Timeout.Connect = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutConnect))
 	d.global.Timeout.HTTPRequest = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutHTTPRequest))
 	d.global.Timeout.KeepAlive = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutKeepAlive))
