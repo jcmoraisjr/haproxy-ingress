@@ -6,3 +6,8 @@ services:
 sudo: required
 script:
 - make build test tag-push
+branches:
+  only:
+  - master
+  - /^release-.*/
+  - /^v[0-9].*/
