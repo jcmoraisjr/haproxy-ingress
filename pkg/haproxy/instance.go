@@ -327,14 +327,14 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 func (i *instance) updateCertExpiring() {
 	// TODO move to dynupdate when dynamic crt update is implemented
 	if i.oldConfig == nil {
-		for _, curHost := range i.curConfig.Hosts().Items {
+		for _, curHost := range i.curConfig.Hosts().Items() {
 			if curHost.TLS.HasTLS() {
 				i.metrics.SetCertExpireDate(curHost.Hostname, curHost.TLS.TLSCommonName, &curHost.TLS.TLSNotAfter)
 			}
 		}
 		return
 	}
-	for _, oldHost := range i.oldConfig.Hosts().Items {
+	for _, oldHost := range i.oldConfig.Hosts().Items() {
 		if !oldHost.TLS.HasTLS() {
 			continue
 		}
@@ -343,7 +343,7 @@ func (i *instance) updateCertExpiring() {
 			i.metrics.SetCertExpireDate(oldHost.Hostname, oldHost.TLS.TLSCommonName, nil)
 		}
 	}
-	for _, curHost := range i.curConfig.Hosts().Items {
+	for _, curHost := range i.curConfig.Hosts().Items() {
 		if !curHost.TLS.HasTLS() {
 			continue
 		}

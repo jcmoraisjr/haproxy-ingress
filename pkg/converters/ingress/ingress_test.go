@@ -1362,7 +1362,7 @@ func convertHost(hafronts ...*hatypes.Host) []hostMock {
 }
 
 func (c *testConfig) compareConfigFront(expected string) {
-	c.compareText(_yamlMarshal(convertHost(c.hconfig.Hosts().Items...)), expected)
+	c.compareText(_yamlMarshal(convertHost(c.hconfig.Hosts().Items()...)), expected)
 }
 
 func (c *testConfig) compareConfigDefaultFront(expected string) {

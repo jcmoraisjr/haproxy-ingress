@@ -77,7 +77,7 @@ func createConfig(options options) *config {
 		acme:         &hatypes.Acme{},
 		global:       &hatypes.Global{},
 		frontend:     &hatypes.Frontend{Name: "_front001"},
-		hosts:        &hatypes.Hosts{},
+		hosts:        hatypes.CreateHosts(),
 		backends:     hatypes.CreateBackends(),
 		mapsTemplate: mapsTemplate,
 		mapsDir:      options.mapsDir,
@@ -151,7 +151,7 @@ func (c *config) SyncConfig() {
 		c.frontend.BindSocket = c.global.Bind.HTTPSBind
 		c.frontend.AcceptProxy = c.global.Bind.AcceptProxy
 	}
-	for _, host := range c.hosts.Items {
+	for _, host := range c.hosts.Items() {
 		if host.SSLPassthrough {
 			// no action if ssl-passthrough
 			continue
@@ -215,7 +215,7 @@ func (c *config) WriteFrontendMaps() error {
 	//  1. match with path_beg/map_beg, /path has a feature and a declared /path/sub doesn't have
 	//  2. *.host.domain wildcard/alias/alias-regex has a feature and a declared sub.host.domain doesn't have
 	yesno := map[bool]string{true: "yes", false: "no"}
-	for _, host := range c.hosts.Items {
+	for _, host := range c.hosts.Items() {
 		if host.SSLPassthrough {
 			rootPath := host.FindPath("/")
 			if rootPath == nil {
