@@ -17,6 +17,7 @@ limitations under the License.
 package types
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -35,5 +36,23 @@ func TestBuildID(t *testing.T) {
 		if actual := buildID(test.namespace, test.name, test.port); actual != test.expected {
 			t.Errorf("expected '%s' but was '%s'", test.expected, actual)
 		}
+	}
+}
+
+func BenchmarkBuildIDFmt(b *testing.B) {
+	namespace := "default"
+	name := "app"
+	port := "8080"
+	for i := 0; i < b.N; i++ {
+		_ = fmt.Sprintf("%s_%s_%s", namespace, name, port)
+	}
+}
+
+func BenchmarkBuildIDConcat(b *testing.B) {
+	namespace := "default"
+	name := "app"
+	port := "8080"
+	for i := 0; i < b.N; i++ {
+		_ = namespace + "_" + name + "_" + port
 	}
 }

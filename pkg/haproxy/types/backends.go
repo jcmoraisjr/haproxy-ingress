@@ -17,13 +17,14 @@ limitations under the License.
 package types
 
 import (
-	"fmt"
 	"sort"
 )
 
 // CreateBackends ...
 func CreateBackends() *Backends {
-	return &Backends{}
+	return &Backends{
+		itemsmap: map[string]*Backend{},
+	}
 }
 
 // Items ...
@@ -37,6 +38,12 @@ func (b *Backends) AcquireBackend(namespace, name, port string) *Backend {
 		return backend
 	}
 	backend := createBackend(namespace, name, port)
+	// Store backends on slice and map data structure.
+	// The slice has the order and the map has the index.
+	// TODO current approach is using the double of the memory
+	// on behalf of speed. Map only is doable? Another approach?
+	// See also hosts.AcquireHost().
+	b.itemsmap[backend.ID] = backend
 	b.itemslist = append(b.itemslist, backend)
 	b.sortBackends()
 	return backend
@@ -44,12 +51,7 @@ func (b *Backends) AcquireBackend(namespace, name, port string) *Backend {
 
 // FindBackend ...
 func (b *Backends) FindBackend(namespace, name, port string) *Backend {
-	for _, b := range b.itemslist {
-		if b.Namespace == namespace && b.Name == name && b.Port == port {
-			return b
-		}
-	}
-	return nil
+	return b.itemsmap[buildID(namespace, name, port)]
 }
 
 // DefaultBackend ...
@@ -93,5 +95,5 @@ func createBackend(namespace, name, port string) *Backend {
 }
 
 func buildID(namespace, name, port string) string {
-	return fmt.Sprintf("%s_%s_%s", namespace, name, port)
+	return namespace + "_" + name + "_" + port
 }
