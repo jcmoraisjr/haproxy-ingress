@@ -353,6 +353,7 @@ const (
 // Backends ...
 type Backends struct {
 	itemslist      []*Backend
+	itemsmap       map[string]*Backend
 	defaultBackend *Backend
 }
 
