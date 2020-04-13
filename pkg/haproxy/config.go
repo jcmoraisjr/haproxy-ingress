@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
-	"strconv"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
@@ -199,7 +198,6 @@ func (c *config) WriteFrontendMaps() error {
 		//
 		HostBackendsMap:            mapBuilder.AddMap(c.mapsDir + "/_front001_host.map"),
 		RootRedirMap:               mapBuilder.AddMap(c.mapsDir + "/_front001_root_redir.map"),
-		MaxBodySizeMap:             mapBuilder.AddMap(c.mapsDir + "/_front001_max_body_size.map"),
 		SNIBackendsMap:             mapBuilder.AddMap(c.mapsDir + "/_front001_sni.map"),
 		TLSInvalidCrtErrorList:     mapBuilder.AddMap(c.mapsDir + "/_front001_inv_crt.list"),
 		TLSInvalidCrtErrorPagesMap: mapBuilder.AddMap(c.mapsDir + "/_front001_inv_crt_redir.map"),
@@ -234,10 +232,8 @@ func (c *config) WriteFrontendMaps() error {
 			continue
 		}
 		//
-		// Starting here to the end of this for loop has only HTTP/L7 map configuration
+		// Starting here to the end of the outer for-loop has only HTTP/L7 map configuration
 		//
-		// TODO implement deny 413 and move all MaxBodySize stuff to backend
-		maxBodySizes := map[string]int64{}
 		for _, path := range host.Paths {
 			backend := c.backends.FindBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
 			base := host.Hostname + path.Path
@@ -265,11 +261,6 @@ func (c *config) WriteFrontendMaps() error {
 				fmaps.HostBackendsMap.AppendAliasName(aliasName, backendID)
 				fmaps.HostBackendsMap.AppendAliasRegex(aliasRegex, backendID)
 			}
-			if backend != nil {
-				if maxBodySize := backend.MaxBodySizeHostpath(base); maxBodySize > 0 {
-					maxBodySizes[base] = maxBodySize
-				}
-			}
 			if !hasSSLRedirect || c.global.Bind.HasFrontingProxy() {
 				fmaps.HTTPFrontsMap.AppendHostname(base, backendID)
 			}
@@ -280,15 +271,6 @@ func (c *config) WriteFrontendMaps() error {
 				ns = "-"
 			}
 			fmaps.VarNamespaceMap.AppendHostname(base, ns)
-		}
-		// TODO implement deny 413 and move all MaxBodySize stuff to backend
-		if len(maxBodySizes) > 0 {
-			// add all paths of the same host to avoid overlap
-			// 0 (zero) means unlimited
-			for _, path := range host.Paths {
-				base := host.Hostname + path.Path
-				fmaps.MaxBodySizeMap.AppendHostname(base, strconv.FormatInt(maxBodySizes[base], 10))
-			}
 		}
 		if host.HasTLSAuth() {
 			fmaps.TLSInvalidCrtErrorList.AppendHostname(host.Hostname, "")

@@ -301,6 +301,34 @@ func TestBackends(t *testing.T) {
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.MaxBodySize = b.CreateConfigInt(1024)
+			},
+			path: []string{"/", "/app"},
+			expected: `
+    http-request use-service lua.send-413 if { req.body_size,sub(1024) gt 0 }`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.MaxBodySize = []*hatypes.BackendConfigInt{
+					{
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app")),
+						Config: 2048,
+					},
+					{
+						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/")),
+						Config: 0,
+					},
+				}
+			},
+			path: []string{"/", "/app"},
+			expected: `
+    # path01 = d1.local/
+    # path02 = d1.local/app
+    http-request set-var(txn.pathID) base,lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map)
+    http-request use-service lua.send-413 if { var(txn.pathID) path02 } { req.body_size,sub(2048) gt 0 }`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.OAuth.Impl = "oauth2_proxy"
 				b.OAuth.BackendName = "system_oauth_4180"
 				b.OAuth.URIPrefix = "/oauth2"
@@ -1811,60 +1839,6 @@ d3.local/ d3_app_8080
 ^[^.]+\.d1\.local/ d1_app_8080
 ^[a-z]+\.d2\.local$/ d2_app_8080
 .*d3\.local$/ d3_app_8080
-`)
-	c.logger.CompareLogging(defaultLogging)
-}
-
-func TestInstanceMaxBody(t *testing.T) {
-	c := setup(t)
-	defer c.teardown()
-
-	var h *hatypes.Host
-	var b *hatypes.Backend
-
-	b = c.config.Backends().AcquireBackend("d1", "app", "8080")
-	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	h = c.config.Hosts().AcquireHost("d1.local")
-	h.AddPath(b, "/")
-	h.AddPath(b, "/app")
-	b.MaxBodySize = []*hatypes.BackendConfigInt{{
-		Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/")),
-		Config: 1048576,
-	}}
-
-	b = c.config.Backends().AcquireBackend("d2", "app", "8080")
-	b.Endpoints = []*hatypes.Endpoint{endpointS21}
-	h = c.config.Hosts().AcquireHost("d2.local")
-	h.AddPath(b, "/")
-
-	c.Update()
-	c.checkConfig(`
-<<global>>
-<<defaults>>
-backend d1_app_8080
-    mode http
-    server s1 172.17.0.11:8080 weight 100
-backend d2_app_8080
-    mode http
-    server s21 172.17.0.121:8080 weight 100
-<<backends-default>>
-<<frontend-http>>
-    default_backend _error404
-frontend _front001
-    mode http
-    bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all
-    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
-    http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map)
-    <<https-headers>>
-    http-request set-var(req.maxbody) var(req.base),map_beg_int(/etc/haproxy/maps/_front001_max_body_size.map,0)
-    http-request use-service lua.send-413 if !{ var(req.maxbody) 0 } { req.body_size,sub(req.maxbody) gt 0 }
-    use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
-    default_backend _error404
-<<support>>
-`)
-	c.checkMap("_front001_max_body_size.map", `
-d1.local/app 0
-d1.local/ 1048576
 `)
 	c.logger.CompareLogging(defaultLogging)
 }

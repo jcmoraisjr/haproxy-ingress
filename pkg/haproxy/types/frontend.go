@@ -122,11 +122,6 @@ func (hm *HostsMaps) AddMap(filename string) *HostsMap {
 	return hmap
 }
 
-// HasMaxBody ...
-func (f *Frontend) HasMaxBody() bool {
-	return f.Maps.MaxBodySizeMap.HasHost()
-}
-
 // String ...
 func (f *Frontend) String() string {
 	return fmt.Sprintf("%+v", *f)

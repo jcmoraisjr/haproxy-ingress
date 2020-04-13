@@ -151,6 +151,16 @@ func (b *Backend) CreateConfigBool(value bool) []*BackendConfigBool {
 	}
 }
 
+// CreateConfigInt ...
+func (b *Backend) CreateConfigInt(value int64) []*BackendConfigInt {
+	return []*BackendConfigInt{
+		{
+			Paths:  NewBackendPaths(b.Paths...),
+			Config: value,
+		},
+	}
+}
+
 // HasCorsEnabled ...
 func (b *Backend) HasCorsEnabled() bool {
 	for _, cors := range b.Cors {
@@ -201,18 +211,6 @@ func (b *Backend) HasSSLRedirectPaths(paths *BackendPaths) bool {
 		}
 	}
 	return false
-}
-
-// MaxBodySizeHostpath ...
-func (b *Backend) MaxBodySizeHostpath(hostpath string) int64 {
-	for _, maxbodysize := range b.MaxBodySize {
-		for _, path := range maxbodysize.Paths.Items {
-			if path.Hostpath == hostpath {
-				return maxbodysize.Config
-			}
-		}
-	}
-	return 0
 }
 
 // NeedACL ...
