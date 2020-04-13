@@ -279,7 +279,8 @@ type Frontend struct {
 
 // Hosts ...
 type Hosts struct {
-	Items       []*Host
+	itemslist   []*Host
+	itemsmap    map[string]*Host
 	defaultHost *Host
 }
 
