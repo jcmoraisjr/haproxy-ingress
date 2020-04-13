@@ -1406,5 +1406,5 @@ func convertBackend(habackends ...*hatypes.Backend) []backendMock {
 }
 
 func (c *testConfig) compareConfigBack(expected string) {
-	c.compareText(_yamlMarshal(convertBackend(c.hconfig.Backends()...)), expected)
+	c.compareText(_yamlMarshal(convertBackend(c.hconfig.Backends().Items()...)), expected)
 }

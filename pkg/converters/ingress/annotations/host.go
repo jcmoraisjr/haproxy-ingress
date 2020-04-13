@@ -83,12 +83,12 @@ func (c *updater) buildHostSSLPassthrough(d *hostData) {
 	}
 	sslpassHTTPPort := d.mapper.Get(ingtypes.HostSSLPassthroughHTTPPort)
 	if sslpassHTTPPort.Source != nil {
-		httpBackend := c.haproxy.FindBackend(rootPath.Backend.Namespace, rootPath.Backend.Name, sslpassHTTPPort.Value)
+		httpBackend := c.haproxy.Backends().FindBackend(rootPath.Backend.Namespace, rootPath.Backend.Name, sslpassHTTPPort.Value)
 		if httpBackend != nil {
 			d.host.HTTPPassthroughBackend = httpBackend.ID
 		}
 	}
-	backend := c.haproxy.AcquireBackend(rootPath.Backend.Namespace, rootPath.Backend.Name, rootPath.Backend.Port)
+	backend := c.haproxy.Backends().AcquireBackend(rootPath.Backend.Namespace, rootPath.Backend.Name, rootPath.Backend.Port)
 	backend.ModeTCP = true
 	d.host.SSLPassthrough = true
 }

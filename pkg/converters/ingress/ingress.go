@@ -61,7 +61,7 @@ func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Con
 	haproxy.ConfigDefaultX509Cert(options.DefaultSSLFile.Filename)
 	if options.DefaultBackend != "" {
 		if backend, err := c.addBackend(&annotations.Source{}, "*/", options.DefaultBackend, "", map[string]string{}); err == nil {
-			haproxy.ConfigDefaultBackend(backend)
+			haproxy.Backends().SetDefaultBackend(backend)
 		} else {
 			c.logger.Error("error reading default service: %v", err)
 		}
@@ -185,7 +185,7 @@ func (c *converter) syncAnnotations() {
 			c.updater.UpdateHostConfig(host, ann)
 		}
 	}
-	for _, backend := range c.haproxy.Backends() {
+	for _, backend := range c.haproxy.Backends().Items() {
 		if ann, found := c.backendAnnotations[backend]; found {
 			c.updater.UpdateBackendConfig(backend, ann)
 		}
@@ -240,7 +240,7 @@ func (c *converter) addBackend(source *annotations.Source, hostpath, fullSvcName
 	if port == nil {
 		return nil, fmt.Errorf("port not found: '%s'", svcPort)
 	}
-	backend := c.haproxy.AcquireBackend(namespace, svcName, port.TargetPort.String())
+	backend := c.haproxy.Backends().AcquireBackend(namespace, svcName, port.TargetPort.String())
 	mapper, found := c.backendAnnotations[backend]
 	if !found {
 		// New backend, initialize with service annotations, giving precedence

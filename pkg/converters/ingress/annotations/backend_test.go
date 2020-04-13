@@ -1147,7 +1147,7 @@ func TestOAuth(t *testing.T) {
 		d := c.createBackendData("default/app", source, test.ann, test.annDefault)
 		if test.backend != "" {
 			b := strings.Split(test.backend, ":")
-			backend := c.haproxy.AcquireBackend(b[0], b[1], "8080")
+			backend := c.haproxy.Backends().AcquireBackend(b[0], b[1], "8080")
 			c.haproxy.Hosts().AcquireHost("app.local").AddPath(backend, b[2])
 		}
 		c.createUpdater().buildBackendOAuth(d)

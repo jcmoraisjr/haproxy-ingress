@@ -85,7 +85,6 @@ func (d *dynUpdater) checkConfigPair() bool {
 	// check equality of everything but backends
 	oldConfigCopy := *oldConfig
 	oldConfigCopy.backends = curConfig.backends
-	oldConfigCopy.defaultBackend = curConfig.defaultBackend
 	if !oldConfigCopy.Equals(curConfig) {
 		var diff []string
 		if !reflect.DeepEqual(oldConfig.global, curConfig.global) {
@@ -106,15 +105,15 @@ func (d *dynUpdater) checkConfigPair() bool {
 
 	// map backends of old and new config together
 	// return false if len or names doesn't match
-	if len(curConfig.backends) != len(curConfig.backends) {
+	if len(curConfig.Backends().Items()) != len(curConfig.Backends().Items()) {
 		d.logger.InfoV(2, "added or removed backend(s)")
 		return false
 	}
-	backends := make(map[string]*backendPair, len(oldConfig.backends))
-	for _, backend := range oldConfig.backends {
+	backends := make(map[string]*backendPair, len(oldConfig.Backends().Items()))
+	for _, backend := range oldConfig.Backends().Items() {
 		backends[backend.ID] = &backendPair{old: backend}
 	}
-	for _, backend := range curConfig.backends {
+	for _, backend := range curConfig.Backends().Items() {
 		back, found := backends[backend.ID]
 		if !found {
 			d.logger.InfoV(2, "removed backend '%s'", backend.ID)
@@ -247,7 +246,7 @@ func (d *dynUpdater) alignSlots() {
 	if d.cur == nil {
 		return
 	}
-	for _, back := range d.cur.backends {
+	for _, back := range d.cur.Backends().Items() {
 		if !back.Dynamic.DynUpdate {
 			// no need to add empty slots if won't dynamically update
 			continue

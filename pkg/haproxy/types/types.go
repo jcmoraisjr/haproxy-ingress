@@ -350,6 +350,12 @@ const (
 	EpTargetRef
 )
 
+// Backends ...
+type Backends struct {
+	itemslist      []*Backend
+	defaultBackend *Backend
+}
+
 // Backend ...
 type Backend struct {
 	//
