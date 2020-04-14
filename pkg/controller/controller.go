@@ -198,7 +198,7 @@ func (hc *HAProxyController) AcmeCheck() (int, error) {
 // OnStartedLeading ...
 // implements LeaderSubscriber
 func (hc *HAProxyController) OnStartedLeading(ctx context.Context) {
-	_, _ = hc.instance.AcmeCheck("starting leader")
+	_, _ = hc.instance.AcmeCheck("started leading")
 }
 
 // OnStoppedLeading ...

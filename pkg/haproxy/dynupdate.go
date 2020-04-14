@@ -117,7 +117,7 @@ func (d *dynUpdater) checkConfigPair() bool {
 	for _, backend := range curConfig.backends {
 		back, found := backends[backend.ID]
 		if !found {
-			d.logger.InfoV(2, "removed backend '%s'", backend.ID)
+			d.logger.InfoV(2, "added backend '%s'", backend.ID)
 			return false
 		}
 		back.cur = backend
