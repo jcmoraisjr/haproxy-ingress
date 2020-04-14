@@ -946,11 +946,11 @@ frontend {{ $frontend.Name }}
         {{- "" }},map_reg({{ $fmaps.TLSInvalidCrtErrorPagesMap.RegexFile }},_internal)
         {{- "" }} if { var(req.tls_invalidcrt_redir) _internal }
 {{- end }}
-{{- if and $mandatory $hosts.HasNoCrtErrorPage }}
+{{- if and $mandatory $fmaps.TLSNoCrtErrorPagesMap.HasHost }}
     http-request redirect location %[var(req.tls_nocrt_redir)] code 303
         {{- "" }} if { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) _internal }
 {{- end }}
-{{- if $hosts.HasInvalidErrorPage }}
+{{- if $fmaps.TLSInvalidCrtErrorPagesMap.HasHost }}
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303
         {{- "" }} if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
 {{- end }}

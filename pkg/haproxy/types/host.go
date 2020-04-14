@@ -85,22 +85,6 @@ func (h *Hosts) HasHTTP() bool {
 	return len(h.itemslist) > h.sslPassthroughCount
 }
 
-// HasInvalidErrorPage ...
-func (h *Hosts) HasInvalidErrorPage() bool {
-	for _, host := range h.itemslist {
-		if host.TLS.CAErrorPage != "" {
-			return true
-		}
-	}
-	return false
-}
-
-// HasNoCrtErrorPage ...
-func (h *Hosts) HasNoCrtErrorPage() bool {
-	// Use currently the same attribute
-	return h.HasInvalidErrorPage()
-}
-
 // HasTLSAuth ...
 func (h *Hosts) HasTLSAuth() bool {
 	for _, host := range h.itemslist {
