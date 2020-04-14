@@ -40,7 +40,7 @@ import (
 
 const dhparamFilename = "dhparam.pem"
 
-type cache struct {
+type k8scache struct {
 	client                 k8s.Interface
 	listers                *ingress.StoreLister
 	controller             *controller.GenericController
@@ -49,7 +49,7 @@ type cache struct {
 	acmeTokenConfigmapName string
 }
 
-func newCache(client k8s.Interface, listers *ingress.StoreLister, controller *controller.GenericController) *cache {
+func newCache(client k8s.Interface, listers *ingress.StoreLister, controller *controller.GenericController) *k8scache {
 	namespace := os.Getenv("POD_NAMESPACE")
 	if namespace == "" {
 		// TODO implement a smart fallback or error checking
@@ -69,7 +69,7 @@ func newCache(client k8s.Interface, listers *ingress.StoreLister, controller *co
 	if !strings.Contains(acmeTokenConfigmapName, "/") {
 		acmeTokenConfigmapName = namespace + "/" + acmeTokenConfigmapName
 	}
-	return &cache{
+	return &k8scache{
 		client:                 client,
 		listers:                listers,
 		controller:             controller,
@@ -79,7 +79,7 @@ func newCache(client k8s.Interface, listers *ingress.StoreLister, controller *co
 	}
 }
 
-func (c *cache) GetIngressPodName() (namespace, podname string, err error) {
+func (c *k8scache) GetIngressPodName() (namespace, podname string, err error) {
 	namespace = os.Getenv("POD_NAMESPACE")
 	podname = os.Getenv("POD_NAME")
 	if namespace == "" || podname == "" {
@@ -91,16 +91,16 @@ func (c *cache) GetIngressPodName() (namespace, podname string, err error) {
 	return namespace, podname, nil
 }
 
-func (c *cache) GetService(serviceName string) (*api.Service, error) {
+func (c *k8scache) GetService(serviceName string) (*api.Service, error) {
 	return c.listers.Service.GetByName(serviceName)
 }
 
-func (c *cache) GetEndpoints(service *api.Service) (*api.Endpoints, error) {
+func (c *k8scache) GetEndpoints(service *api.Service) (*api.Endpoints, error) {
 	ep, err := c.listers.Endpoint.GetServiceEndpoints(service)
 	return ep, err
 }
 
-func (c *cache) GetTerminatingPods(service *api.Service) ([]*api.Pod, error) {
+func (c *k8scache) GetTerminatingPods(service *api.Service) ([]*api.Pod, error) {
 	pods, err := c.listers.Pod.GetTerminatingServicePods(service)
 	if err != nil {
 		return []*api.Pod{}, err
@@ -112,7 +112,7 @@ func (c *cache) GetTerminatingPods(service *api.Service) ([]*api.Pod, error) {
 	return podRef, err
 }
 
-func (c *cache) GetPod(podName string) (*api.Pod, error) {
+func (c *k8scache) GetPod(podName string) (*api.Pod, error) {
 	sname := strings.Split(podName, "/")
 	if len(sname) != 2 {
 		return nil, fmt.Errorf("invalid pod name: '%s'", podName)
@@ -120,7 +120,7 @@ func (c *cache) GetPod(podName string) (*api.Pod, error) {
 	return c.listers.Pod.GetPod(sname[0], sname[1])
 }
 
-func (c *cache) buildSecretName(defaultNamespace, secretName string) (string, error) {
+func (c *k8scache) buildSecretName(defaultNamespace, secretName string) (string, error) {
 	if defaultNamespace == "" {
 		return secretName, nil
 	}
@@ -136,7 +136,7 @@ func (c *cache) buildSecretName(defaultNamespace, secretName string) (string, er
 	)
 }
 
-func (c *cache) GetTLSSecretPath(defaultNamespace, secretName string) (file convtypes.CrtFile, err error) {
+func (c *k8scache) GetTLSSecretPath(defaultNamespace, secretName string) (file convtypes.CrtFile, err error) {
 	fullname, err := c.buildSecretName(defaultNamespace, secretName)
 	if err != nil {
 		return file, err
@@ -157,7 +157,7 @@ func (c *cache) GetTLSSecretPath(defaultNamespace, secretName string) (file conv
 	return file, nil
 }
 
-func (c *cache) GetCASecretPath(defaultNamespace, secretName string) (ca, crl convtypes.File, err error) {
+func (c *k8scache) GetCASecretPath(defaultNamespace, secretName string) (ca, crl convtypes.File, err error) {
 	fullname, err := c.buildSecretName(defaultNamespace, secretName)
 	if err != nil {
 		return ca, crl, err
@@ -183,7 +183,7 @@ func (c *cache) GetCASecretPath(defaultNamespace, secretName string) (ca, crl co
 	return ca, crl, nil
 }
 
-func (c *cache) GetDHSecretPath(defaultNamespace, secretName string) (file convtypes.File, err error) {
+func (c *k8scache) GetDHSecretPath(defaultNamespace, secretName string) (file convtypes.File, err error) {
 	fullname, err := c.buildSecretName(defaultNamespace, secretName)
 	if err != nil {
 		return file, nil
@@ -208,7 +208,7 @@ func (c *cache) GetDHSecretPath(defaultNamespace, secretName string) (file convt
 	return file, nil
 }
 
-func (c *cache) GetSecretContent(defaultNamespace, secretName, keyName string) ([]byte, error) {
+func (c *k8scache) GetSecretContent(defaultNamespace, secretName, keyName string) ([]byte, error) {
 	fullname, err := c.buildSecretName(defaultNamespace, secretName)
 	if err != nil {
 		return nil, err
@@ -225,7 +225,7 @@ func (c *cache) GetSecretContent(defaultNamespace, secretName, keyName string) (
 }
 
 // Implements acme.ClientResolver
-func (c *cache) GetKey() (crypto.Signer, error) {
+func (c *k8scache) GetKey() (crypto.Signer, error) {
 	secret, err := c.listers.Secret.GetByName(c.acmeSecretKeyName)
 	var key *rsa.PrivateKey
 	if err == nil {
@@ -264,7 +264,7 @@ func (c *cache) GetKey() (crypto.Signer, error) {
 }
 
 // Implements acme.SignerResolver
-func (c *cache) GetTLSSecretContent(secretName string) *acme.TLSSecret {
+func (c *k8scache) GetTLSSecretContent(secretName string) *acme.TLSSecret {
 	secret, err := c.listers.Secret.GetByName(secretName)
 	if err != nil {
 		return nil
@@ -291,7 +291,7 @@ func (c *cache) GetTLSSecretContent(secretName string) *acme.TLSSecret {
 }
 
 // Implements acme.SignerResolver
-func (c *cache) SetTLSSecretContent(secretName string, pemCrt, pemKey []byte) error {
+func (c *k8scache) SetTLSSecretContent(secretName string, pemCrt, pemKey []byte) error {
 	name := strings.Split(secretName, "/")
 	secret := &api.Secret{}
 	secret.Namespace = name[0]
@@ -305,7 +305,7 @@ func (c *cache) SetTLSSecretContent(secretName string, pemCrt, pemKey []byte) er
 }
 
 // Implements acme.ServerResolver
-func (c *cache) GetToken(domain, uri string) string {
+func (c *k8scache) GetToken(domain, uri string) string {
 	config, err := c.listers.ConfigMap.GetByName(c.acmeTokenConfigmapName)
 	if err != nil {
 		return ""
@@ -322,7 +322,7 @@ func (c *cache) GetToken(domain, uri string) string {
 }
 
 // Implements acme.ClientResolver
-func (c *cache) SetToken(domain string, uri, token string) error {
+func (c *k8scache) SetToken(domain string, uri, token string) error {
 	config, err := c.listers.ConfigMap.GetByName(c.acmeTokenConfigmapName)
 	if err != nil {
 		configName := strings.Split(c.acmeTokenConfigmapName, "/")

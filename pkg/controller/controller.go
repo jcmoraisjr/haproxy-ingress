@@ -48,7 +48,7 @@ import (
 type HAProxyController struct {
 	instance          haproxy.Instance
 	logger            *logger
-	cache             *cache
+	cache             *k8scache
 	metrics           *metrics
 	stopCh            chan struct{}
 	acmeQueue         utils.Queue

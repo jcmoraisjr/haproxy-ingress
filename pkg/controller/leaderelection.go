@@ -45,7 +45,7 @@ type leaderelector struct {
 }
 
 // NewLeaderElector ...
-func NewLeaderElector(id string, logger *logger, cache *cache, subscriber LeaderSubscriber) types.LeaderElector {
+func NewLeaderElector(id string, logger *logger, cache *k8scache, subscriber LeaderSubscriber) types.LeaderElector {
 	hostname, _ := os.Hostname()
 	namespace, podname, err := cache.GetIngressPodName()
 	if err != nil {
