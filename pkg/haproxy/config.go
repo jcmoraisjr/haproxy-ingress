@@ -332,8 +332,8 @@ func (c *config) WriteBackendMaps() error {
 	// TODO rename HostMap types to HAProxyMap
 	mapBuilder := hatypes.CreateMaps()
 	for _, backend := range c.backends.Items() {
-		mapsPrefix := c.mapsDir + "/_back_" + backend.ID
 		if backend.NeedACL() {
+			mapsPrefix := c.mapsDir + "/_back_" + backend.ID
 			pathsMap := mapBuilder.AddMap(mapsPrefix + "_idpath.map")
 			for _, path := range backend.Paths {
 				pathsMap.AppendPath(path.Hostpath, path.ID)
