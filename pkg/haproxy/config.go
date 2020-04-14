@@ -151,7 +151,7 @@ func (c *config) SyncConfig() {
 		c.frontend.AcceptProxy = c.global.Bind.AcceptProxy
 	}
 	for _, host := range c.hosts.Items() {
-		if host.SSLPassthrough {
+		if host.SSLPassthrough() {
 			// no action if ssl-passthrough
 			continue
 		}
@@ -214,7 +214,7 @@ func (c *config) WriteFrontendMaps() error {
 	//  2. *.host.domain wildcard/alias/alias-regex has a feature and a declared sub.host.domain doesn't have
 	yesno := map[bool]string{true: "yes", false: "no"}
 	for _, host := range c.hosts.Items() {
-		if host.SSLPassthrough {
+		if host.SSLPassthrough() {
 			rootPath := host.FindPath("/")
 			if rootPath == nil {
 				// Cannot use this hostname if the root path wasn't declared.

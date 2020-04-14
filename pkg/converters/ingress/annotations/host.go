@@ -90,5 +90,5 @@ func (c *updater) buildHostSSLPassthrough(d *hostData) {
 	}
 	backend := c.haproxy.Backends().AcquireBackend(rootPath.Backend.Namespace, rootPath.Backend.Name, rootPath.Backend.Port)
 	backend.ModeTCP = true
-	d.host.SSLPassthrough = true
+	d.host.SetSSLPassthrough(true)
 }
