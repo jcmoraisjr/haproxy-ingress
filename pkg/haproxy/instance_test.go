@@ -1611,13 +1611,13 @@ func TestInstanceSSLPassthrough(t *testing.T) {
 	h.AddPath(b, "/")
 	b.SSLRedirect = b.CreateConfigBool(true)
 	b.Endpoints = []*hatypes.Endpoint{endpointS31}
-	h.SSLPassthrough = true
+	h.SetSSLPassthrough(true)
 
 	b = c.config.Backends().AcquireBackend("d3", "app-ssl", "8443")
 	h = c.config.Hosts().AcquireHost("d3.local")
 	h.AddPath(b, "/")
 	b.Endpoints = []*hatypes.Endpoint{endpointS41s}
-	h.SSLPassthrough = true
+	h.SetSSLPassthrough(true)
 
 	b = c.config.Backends().AcquireBackend("d3", "app-http", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS41h}

@@ -33,7 +33,7 @@ func (h *Hosts) AcquireHost(hostname string) *Host {
 	if host := h.FindHost(hostname); host != nil {
 		return host
 	}
-	host := createHost(hostname)
+	host := h.createHost(hostname)
 	if host.Hostname != "*" {
 		// Here we store a just created Host. Both slice and map.
 		// The slice has the order and the map has the index.
@@ -58,9 +58,10 @@ func (h *Hosts) FindHost(hostname string) *Host {
 	return h.itemsmap[hostname]
 }
 
-func createHost(hostname string) *Host {
+func (h *Hosts) createHost(hostname string) *Host {
 	return &Host{
 		Hostname: hostname,
+		hosts:    h,
 	}
 }
 
@@ -76,44 +77,12 @@ func (h *Hosts) DefaultHost() *Host {
 
 // HasSSLPassthrough ...
 func (h *Hosts) HasSSLPassthrough() bool {
-	// TODO this is just another HasXXX() or FindXXX() which iterates over
-	// thousands of items to find an answer. Sometimes this is done more
-	// than once. This need to be improved.
-	// We can find this answer (regarding HasSSLPassthrough) on
-	// ssl-passthrough map but it is (currently) built on instance.update()
-	// which would need some knowledge and synchronization from the caller.
-	for _, host := range h.itemslist {
-		if host.SSLPassthrough {
-			return true
-		}
-	}
-	return false
+	return h.sslPassthroughCount > 0
 }
 
 // HasHTTP ...
 func (h *Hosts) HasHTTP() bool {
-	for _, host := range h.itemslist {
-		if !host.SSLPassthrough {
-			return true
-		}
-	}
-	return false
-}
-
-// HasInvalidErrorPage ...
-func (h *Hosts) HasInvalidErrorPage() bool {
-	for _, host := range h.itemslist {
-		if host.TLS.CAErrorPage != "" {
-			return true
-		}
-	}
-	return false
-}
-
-// HasNoCrtErrorPage ...
-func (h *Hosts) HasNoCrtErrorPage() bool {
-	// Use currently the same attribute
-	return h.HasInvalidErrorPage()
+	return len(h.itemslist) > h.sslPassthroughCount
 }
 
 // HasTLSAuth ...
@@ -183,6 +152,24 @@ func (h *Host) AddPath(backend *Backend, path string) {
 // HasTLSAuth ...
 func (h *Host) HasTLSAuth() bool {
 	return h.TLS.CAHash != ""
+}
+
+// SSLPassthrough ...
+func (h *Host) SSLPassthrough() bool {
+	return h.sslPassthrough
+}
+
+// SetSSLPassthrough ...
+func (h *Host) SetSSLPassthrough(value bool) {
+	if h.sslPassthrough == value {
+		return
+	}
+	if value {
+		h.hosts.sslPassthroughCount++
+	} else {
+		h.hosts.sslPassthroughCount--
+	}
+	h.sslPassthrough = value
 }
 
 // String ...

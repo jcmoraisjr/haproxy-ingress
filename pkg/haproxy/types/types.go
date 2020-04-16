@@ -281,6 +281,8 @@ type Hosts struct {
 	itemslist   []*Host
 	itemsmap    map[string]*Host
 	defaultHost *Host
+	//
+	sslPassthroughCount int
 }
 
 // Host ...
@@ -296,9 +298,11 @@ type Host struct {
 	Alias                  HostAliasConfig
 	HTTPPassthroughBackend string
 	RootRedirect           string
-	SSLPassthrough         bool
 	TLS                    HostTLSConfig
 	VarNamespace           bool
+	//
+	hosts          *Hosts
+	sslPassthrough bool
 }
 
 // HostPath ...
