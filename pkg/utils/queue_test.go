@@ -42,6 +42,21 @@ func TestQueueAlreadyRunning(t *testing.T) {
 	q.ShutDown()
 }
 
+func TestQueueShuttingDown(t *testing.T) {
+	q := NewQueue(func(item interface{}) { time.Sleep(300 * time.Millisecond) })
+	go q.Run()
+	q.Add(nil)
+	time.Sleep(100 * time.Millisecond)
+	if q.ShuttingDown() {
+		t.Error("queue should be not in shutdown state")
+	}
+	go q.ShutDown() // running shutdown async
+	time.Sleep(100 * time.Millisecond)
+	if !q.ShuttingDown() {
+		t.Error("queue should be shutting down")
+	}
+}
+
 func TestQueueShutdown(t *testing.T) {
 	q := NewQueue(func(item interface{}) { time.Sleep(200 * time.Millisecond) })
 	stopped := false

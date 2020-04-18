@@ -31,6 +31,7 @@ type Queue interface {
 	Notify()
 	Remove(item interface{})
 	Run()
+	ShuttingDown() bool
 	ShutDown()
 }
 
@@ -166,6 +167,12 @@ func (q *queue) Clear() {
 	q.forget = nil
 	q.workqueue = q.buildQueue()
 	q.shutdown <- false
+}
+
+func (q *queue) ShuttingDown() bool {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
+	return q.workqueue.ShuttingDown()
 }
 
 func (q *queue) ShutDown() {
