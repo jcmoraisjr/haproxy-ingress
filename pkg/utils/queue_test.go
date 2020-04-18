@@ -141,6 +141,30 @@ func TestRate(t *testing.T) {
 	}
 }
 
+func TestRateAccept(t *testing.T) {
+	var timestamps []time.Time
+	q := NewRateLimitingQueue(3, func(item interface{}) {
+		timestamps = append(timestamps, time.Now())
+	})
+	go q.Run()
+	time.Sleep(500 * time.Millisecond)
+	for i := 0; i < 3; i++ {
+		q.Add(i + 1)
+	}
+	q.ShutDown()
+	if len(timestamps) != 3 {
+		t.Errorf("expected 3 timestamps but sync was called %d time(s)", len(timestamps))
+	}
+	check := func(first int, min time.Duration) {
+		if timestamps[first+1].Sub(timestamps[first]) < min {
+			t.Errorf("expected 300ms+ between timestamps [%d] and [%d], but was %0.3fms",
+				first, first+1, 1000*timestamps[first+1].Sub(timestamps[first]).Seconds())
+		}
+	}
+	check(0, 330*time.Millisecond)
+	check(1, 330*time.Millisecond)
+}
+
 func TestNotify(t *testing.T) {
 	var items []interface{}
 	q := NewQueue(func(item interface{}) {

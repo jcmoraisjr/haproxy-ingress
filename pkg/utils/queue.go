@@ -126,6 +126,12 @@ func (q *queue) Run() {
 			q.rateLimiter.Accept()
 		}
 		item, quit := q.workqueue.Get()
+		if q.rateLimiter != nil {
+			// waste a token if available, so Accept() can properly
+			// rate limit two consecutive calls after Get() blocks
+			// longer than the allowed rate
+			_ = q.rateLimiter.TryAccept()
+		}
 		if quit {
 			if !<-q.shutdown {
 				continue
