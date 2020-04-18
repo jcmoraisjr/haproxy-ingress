@@ -28,28 +28,29 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/flowcontrol"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/task"
 )
+
+// NewCtrlIntf is a temporary interface used by this generic and now
+// deprecated controller to call functionality moved to the new controller.
+type NewCtrlIntf interface {
+	GetIngressList() ([]*extensions.Ingress, error)
+	GetSecret(name string) (*apiv1.Secret, error)
+	Notify()
+}
 
 // GenericController holds the boilerplate code required to build an Ingress controlller.
 type GenericController struct {
-	cfg             *Configuration
-	listers         *ingress.StoreLister
-	cacheController *cacheController
-	recorder        record.EventRecorder
-	syncQueue       *task.Queue
-	syncStatus      StatusSync
-	sslCertTracker  *sslCertTracker
-	syncRateLimiter flowcontrol.RateLimiter
-	stopLock        *sync.Mutex
-	stopCh          chan struct{}
+	cfg            *Configuration
+	newctrl        NewCtrlIntf
+	syncStatus     StatusSync
+	sslCertTracker *sslCertTracker
+	stopLock       *sync.Mutex
+	stopCh         chan struct{}
 }
 
 // Configuration contains all the settings required by an Ingress controller
@@ -108,27 +109,17 @@ func newIngressController(config *Configuration) *GenericController {
 	})
 
 	ic := GenericController{
-		cfg:             config,
-		stopLock:        &sync.Mutex{},
-		stopCh:          make(chan struct{}),
-		syncRateLimiter: flowcontrol.NewTokenBucketRateLimiter(config.RateLimitUpdate, 1),
-		recorder: eventBroadcaster.NewRecorder(scheme.Scheme, apiv1.EventSource{
-			Component: "ingress-controller",
-		}),
+		cfg:            config,
+		stopLock:       &sync.Mutex{},
+		stopCh:         make(chan struct{}),
 		sslCertTracker: newSSLCertTracker(),
 	}
-
-	ic.syncQueue = task.NewTaskQueue(ic.syncIngress)
-
-	ic.listers, ic.cacheController = ic.createListers(config.DisableNodeList)
 
 	if config.UpdateStatus {
 		ic.syncStatus = NewStatusSyncer(&ic)
 	} else {
 		glog.Warning("Update of ingress status is disabled (flag --update-status=false was specified)")
 	}
-
-	ic.cfg.Backend.SetListers(ic.listers)
 
 	return &ic
 }
@@ -157,33 +148,28 @@ func (ic *GenericController) GetStopCh() chan struct{} {
 	return ic.stopCh
 }
 
+// SetNewCtrl ...
+func (ic *GenericController) SetNewCtrl(newctrl NewCtrlIntf) {
+	ic.newctrl = newctrl
+}
+
 // Info returns information about the backend
 func (ic GenericController) Info() *ingress.BackendInfo {
 	return ic.cfg.Backend.Info()
 }
 
-// sync collects all the pieces required to assemble the configuration file and
-// then sends the content to the backend (OnUpdate) receiving the populated
-// template as response reloading the backend if is required.
-func (ic *GenericController) syncIngress(item interface{}) error {
-	if !ic.syncQueue.IsShuttingDown() {
-		ic.syncRateLimiter.Accept()
-		ic.cfg.Backend.SyncIngress(item)
-	}
-	return nil
-}
-
 // GetCertificate get a SSLCert object from a secret name
-func (ic *GenericController) GetCertificate(name string) (*ingress.SSLCert, error) {
+func (ic *GenericController) GetCertificate(namespace, secretName string) (*ingress.SSLCert, error) {
+	name := fmt.Sprintf("%s/%s", namespace, secretName)
 	crt, exists := ic.sslCertTracker.Get(name)
 	if !exists {
-		ic.syncSecret(name)
+		ic.SyncSecret(name)
 		crt, exists = ic.sslCertTracker.Get(name)
 	}
 	if exists {
 		return crt.(*ingress.SSLCert), nil
 	}
-	if _, err := ic.listers.Secret.GetByName(name); err != nil {
+	if _, err := ic.newctrl.GetSecret(name); err != nil {
 		return nil, err
 	}
 	return nil, fmt.Errorf("secret '%v' have neither ca.crt nor tls.crt/tls.key pair", name)
@@ -210,16 +196,19 @@ func (ic GenericController) GetFullResourceName(name, currentNamespace string) s
 	return name
 }
 
+// DeleteSecret ...
+func (ic GenericController) DeleteSecret(key string) {
+	ic.sslCertTracker.DeleteAll(key)
+}
+
 // Stop stops the loadbalancer controller.
 func (ic GenericController) Stop() error {
 	ic.stopLock.Lock()
 	defer ic.stopLock.Unlock()
 
-	// Only try draining the workqueue if we haven't already.
-	if !ic.syncQueue.IsShuttingDown() {
+	if ic.stopCh != nil {
 		glog.Infof("shutting down controller queues")
 		close(ic.stopCh)
-		go ic.syncQueue.Shutdown()
 		if ic.syncStatus != nil {
 			ic.syncStatus.Shutdown()
 		}
@@ -229,25 +218,11 @@ func (ic GenericController) Stop() error {
 	return fmt.Errorf("shutdown already in progress")
 }
 
-// StartControllers ...
-func (ic *GenericController) StartControllers() {
-	ic.cacheController.Run(ic.stopCh)
-}
-
-// Start starts the Ingress controller.
-func (ic *GenericController) Start() {
-	glog.Infof("starting Ingress controller")
-
-	go ic.syncQueue.Run(time.Second, ic.stopCh)
-
+// StartAsync starts the Ingress controller.
+func (ic *GenericController) StartAsync() {
 	if ic.syncStatus != nil {
 		go ic.syncStatus.Run(ic.stopCh)
 	}
-
-	// force initial sync
-	ic.syncQueue.Enqueue(&extensions.Ingress{})
-
-	<-ic.stopCh
 }
 
 // CreateDefaultSSLCertificate ...

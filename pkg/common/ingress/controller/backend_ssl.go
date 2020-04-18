@@ -26,17 +26,16 @@ import (
 
 	"github.com/golang/glog"
 	apiv1 "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/client-go/tools/cache"
 )
 
-// syncSecret keeps in sync Secrets used by Ingress rules with the files on
+// SyncSecret keeps in sync Secrets used by Ingress rules with the files on
 // disk to allow copy of the content of the secret to disk to be used
 // by external processes.
-func (ic *GenericController) syncSecret(key string) {
+func (ic *GenericController) SyncSecret(key string) {
 	glog.V(3).Infof("starting syncing of secret %v", key)
 
-	secret, err := ic.listers.Secret.GetByName(key)
+	secret, err := ic.newctrl.GetSecret(key)
 	if err != nil {
 		return
 	}
@@ -44,7 +43,7 @@ func (ic *GenericController) syncSecret(key string) {
 	cert, err := ic.getPemCertificate(secret)
 	if err != nil {
 		glog.V(3).Infof("syncing a non ca/crt secret %v", key)
-		ic.syncQueue.Enqueue(&extensions.Ingress{})
+		ic.newctrl.Notify()
 		return
 	}
 
@@ -60,7 +59,7 @@ func (ic *GenericController) syncSecret(key string) {
 		ic.sslCertTracker.Update(key, cert)
 		// this update must trigger an update
 		// (like an update event from a change in Ingress)
-		ic.syncQueue.Enqueue(&extensions.Ingress{})
+		ic.newctrl.Notify()
 		return
 	}
 
@@ -68,7 +67,7 @@ func (ic *GenericController) syncSecret(key string) {
 	ic.sslCertTracker.Add(key, cert)
 	// this update must trigger an update
 	// (like an update event from a change in Ingress)
-	ic.syncQueue.Enqueue(&extensions.Ingress{})
+	ic.newctrl.Notify()
 }
 
 // getPemCertificate receives a secret, and creates a ingress.SSLCert as return.

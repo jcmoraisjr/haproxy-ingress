@@ -295,7 +295,7 @@ func sliceToStatus(endpoints []string) []apiv1.LoadBalancerIngress {
 // If the backend function CustomIngressStatus returns a value different
 // of nil then it uses the returned value or the newIngressPoint values
 func (s *statusSync) updateStatus(newIngressPoint []apiv1.LoadBalancerIngress) error {
-	ings, err := s.ic.listers.Ingress.Lister.List(labels.Everything())
+	ings, err := s.ic.newctrl.GetIngressList()
 	if err != nil {
 		return err
 	}

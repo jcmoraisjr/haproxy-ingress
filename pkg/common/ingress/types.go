@@ -23,8 +23,6 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apiserver/pkg/server/healthz"
-
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/store"
 )
 
 var (
@@ -43,13 +41,6 @@ type Controller interface {
 	// HealthChecker returns is a named healthz check that returns the ingress
 	// controller status
 	healthz.HealthChecker
-	// SyncIngress sync load balancer config from a very early stage
-	SyncIngress(item interface{}) error
-	// ConfigMap content of --configmap
-	SetConfig(*apiv1.ConfigMap)
-	// SetListers allows the access of store listers present in the generic controller
-	// This avoid the use of the kubernetes client.
-	SetListers(*StoreLister)
 	// Info returns information about the ingress controller
 	Info() *BackendInfo
 	// AcmeCheck starts a certificate missing/expiring/outdated check
@@ -63,18 +54,6 @@ type Controller interface {
 	// This allows custom implementations
 	// If the function returns nil the standard functions will be executed.
 	UpdateIngressStatus(*extensions.Ingress) []apiv1.LoadBalancerIngress
-}
-
-// StoreLister returns the configured stores for ingresses, services,
-// endpoints, secrets and configmaps.
-type StoreLister struct {
-	Ingress   store.IngressLister
-	Service   store.ServiceLister
-	Node      store.NodeLister
-	Endpoint  store.EndpointLister
-	Secret    store.SecretLister
-	ConfigMap store.ConfigMapLister
-	Pod       store.PodLister
 }
 
 // BackendInfo returns information about the backend.
