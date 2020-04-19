@@ -113,8 +113,8 @@ func (c *updater) buildBackendAuthHTTP(d *backData) {
 				realm = authRealm.Value
 			}
 			return map[string]*ConfigValue{
-				"username": &ConfigValue{Value: userlist.Name},
-				"realm":    &ConfigValue{Value: realm},
+				"username": {Value: userlist.Name},
+				"realm":    {Value: realm},
 			}
 		},
 	)

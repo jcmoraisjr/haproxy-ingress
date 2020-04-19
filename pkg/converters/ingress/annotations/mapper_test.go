@@ -318,7 +318,7 @@ func TestGetBackendConfig(t *testing.T) {
 				{
 					Paths: createBackendPaths("/"),
 					Config: map[string]*ConfigValue{
-						"ann-1": &ConfigValue{Value: "10"},
+						"ann-1": {Value: "10"},
 					},
 				},
 			},
@@ -336,8 +336,8 @@ func TestGetBackendConfig(t *testing.T) {
 				{
 					Paths: createBackendPaths("/"),
 					Config: map[string]*ConfigValue{
-						"ann-1": &ConfigValue{Value: "10"},
-						"ann-2": &ConfigValue{Value: "10"},
+						"ann-1": {Value: "10"},
+						"ann-2": {Value: "10"},
 					},
 				},
 			},
@@ -365,15 +365,15 @@ func TestGetBackendConfig(t *testing.T) {
 				{
 					Paths: createBackendPaths("/", "/url"),
 					Config: map[string]*ConfigValue{
-						"ann-1": &ConfigValue{Value: "10"},
-						"ann-2": &ConfigValue{Value: "20"},
+						"ann-1": {Value: "10"},
+						"ann-2": {Value: "20"},
 					},
 				},
 				{
 					Paths: createBackendPaths("/path"),
 					Config: map[string]*ConfigValue{
-						"ann-1": &ConfigValue{Value: "0"},
-						"ann-2": &ConfigValue{Value: "20"},
+						"ann-1": {Value: "0"},
+						"ann-2": {Value: "20"},
 					},
 				},
 			},
@@ -393,7 +393,7 @@ func TestGetBackendConfig(t *testing.T) {
 				{
 					Paths: createBackendPaths("/url"),
 					Config: map[string]*ConfigValue{
-						"ann-1": &ConfigValue{Value: "10"},
+						"ann-1": {Value: "10"},
 					},
 				},
 			},
@@ -418,17 +418,17 @@ func TestGetBackendConfig(t *testing.T) {
 				{
 					Paths: createBackendPaths("/"),
 					Config: map[string]*ConfigValue{
-						"ann-1": &ConfigValue{Value: "10"},
-						"ann-2": &ConfigValue{Value: "0"},
-						"ann-3": &ConfigValue{Value: "0"},
+						"ann-1": {Value: "10"},
+						"ann-2": {Value: "0"},
+						"ann-3": {Value: "0"},
 					},
 				},
 				{
 					Paths: createBackendPaths("/url"),
 					Config: map[string]*ConfigValue{
-						"ann-1": &ConfigValue{Value: "5"},
-						"ann-2": &ConfigValue{Value: "20"},
-						"ann-3": &ConfigValue{Value: "0"},
+						"ann-1": {Value: "5"},
+						"ann-2": {Value: "20"},
+						"ann-3": {Value: "0"},
 					},
 				},
 			},
@@ -451,7 +451,7 @@ func TestGetBackendConfig(t *testing.T) {
 				{
 					Paths: createBackendPaths("/", "/url"),
 					Config: map[string]*ConfigValue{
-						"ann-1": &ConfigValue{Value: "0"},
+						"ann-1": {Value: "0"},
 					},
 				},
 			},
