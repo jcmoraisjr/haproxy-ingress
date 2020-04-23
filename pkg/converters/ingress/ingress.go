@@ -58,7 +58,7 @@ func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Con
 		hostAnnotations:    map[*hatypes.Host]*annotations.Mapper{},
 		backendAnnotations: map[*hatypes.Backend]*annotations.Mapper{},
 	}
-	haproxy.ConfigDefaultX509Cert(options.DefaultSSLFile.Filename)
+	haproxy.Frontend().DefaultCert = options.DefaultSSLFile.Filename
 	if options.DefaultBackend != "" {
 		if backend, err := c.addBackend(&annotations.Source{}, "*/", options.DefaultBackend, "", map[string]string{}); err == nil {
 			haproxy.Backends().SetDefaultBackend(backend)

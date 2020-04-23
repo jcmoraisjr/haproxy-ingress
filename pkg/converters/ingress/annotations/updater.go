@@ -54,7 +54,6 @@ type updater struct {
 
 type globalData struct {
 	acmeData *hatypes.AcmeData
-	acme     *hatypes.Acme
 	global   *hatypes.Global
 	mapper   *Mapper
 }
@@ -102,7 +101,6 @@ func (c *updater) splitCIDR(cidrlist *ConfigValue) []string {
 func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mapper) {
 	d := &globalData{
 		acmeData: haproxyConfig.AcmeData(),
-		acme:     haproxyConfig.Acme(),
 		global:   haproxyConfig.Global(),
 		mapper:   mapper,
 	}

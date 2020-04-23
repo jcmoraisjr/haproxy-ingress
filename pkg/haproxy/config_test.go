@@ -65,11 +65,11 @@ func TestEqual(t *testing.T) {
 	if !c1.Equals(c2) {
 		t.Error("c1 and c2 should be equals (empty)")
 	}
-	c1.ConfigDefaultX509Cert("/var/default.pem")
+	c1.frontend.DefaultCert = "/var/default.pem"
 	if c1.Equals(c2) {
 		t.Error("c1 and c2 should not be equals (one default cert)")
 	}
-	c2.ConfigDefaultX509Cert("/var/default.pem")
+	c2.frontend.DefaultCert = "/var/default.pem"
 	if !c1.Equals(c2) {
 		t.Error("c1 and c2 should be equals (default cert)")
 	}

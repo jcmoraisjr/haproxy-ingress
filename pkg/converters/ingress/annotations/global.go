@@ -46,10 +46,10 @@ func (c *updater) buildGlobalAcme(d *globalData) {
 	d.acmeData.Endpoint = endpoint
 	d.acmeData.Expiring = time.Duration(d.mapper.Get(ingtypes.GlobalAcmeExpiring).Int()) * 24 * time.Hour
 	d.acmeData.TermsAgreed = termsAgreed
-	d.acme.Prefix = "/.well-known/acme-challenge/"
-	d.acme.Socket = "/var/run/acme.sock"
-	d.acme.Enabled = true
-	d.acme.Shared = d.mapper.Get(ingtypes.GlobalAcmeShared).Bool()
+	d.global.Acme.Prefix = "/.well-known/acme-challenge/"
+	d.global.Acme.Socket = "/var/run/acme.sock"
+	d.global.Acme.Enabled = true
+	d.global.Acme.Shared = d.mapper.Get(ingtypes.GlobalAcmeShared).Bool()
 }
 
 func (c *updater) buildGlobalBind(d *globalData) {

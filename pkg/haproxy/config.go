@@ -29,7 +29,6 @@ import (
 // Config ...
 type Config interface {
 	AcquireTCPBackend(servicename string, port int) *hatypes.TCPBackend
-	ConfigDefaultX509Cert(filename string)
 	AddUserlist(name string, users []hatypes.User) *hatypes.Userlist
 	FindUserlist(name string) *hatypes.Userlist
 	Frontend() *hatypes.Frontend
@@ -37,7 +36,6 @@ type Config interface {
 	WriteFrontendMaps() error
 	WriteBackendMaps() error
 	AcmeData() *hatypes.AcmeData
-	Acme() *hatypes.Acme
 	Global() *hatypes.Global
 	TCPBackends() []*hatypes.TCPBackend
 	Hosts() *hatypes.Hosts
@@ -48,18 +46,16 @@ type Config interface {
 
 type config struct {
 	// external state, non haproxy data, cannot reflect in Config.Equals()
-	acmeData *hatypes.AcmeData
+	acmeData     *hatypes.AcmeData
+	mapsTemplate *template.Config
+	mapsDir      string
 	// haproxy internal state
-	acme            *hatypes.Acme
-	mapsTemplate    *template.Config
-	mapsDir         string
-	global          *hatypes.Global
-	frontend        *hatypes.Frontend
-	hosts           *hatypes.Hosts
-	backends        *hatypes.Backends
-	tcpbackends     []*hatypes.TCPBackend
-	userlists       []*hatypes.Userlist
-	defaultX509Cert string
+	global      *hatypes.Global
+	frontend    *hatypes.Frontend
+	hosts       *hatypes.Hosts
+	backends    *hatypes.Backends
+	tcpbackends []*hatypes.TCPBackend
+	userlists   []*hatypes.Userlist
 }
 
 type options struct {
@@ -74,7 +70,6 @@ func createConfig(options options) *config {
 	}
 	return &config{
 		acmeData:     &hatypes.AcmeData{},
-		acme:         &hatypes.Acme{},
 		global:       &hatypes.Global{},
 		frontend:     &hatypes.Frontend{Name: "_front001"},
 		hosts:        hatypes.CreateHosts(),
@@ -104,10 +99,6 @@ func (c *config) AcquireTCPBackend(servicename string, port int) *hatypes.TCPBac
 		return back1.Name < back2.Name
 	})
 	return backend
-}
-
-func (c *config) ConfigDefaultX509Cert(filename string) {
-	c.defaultX509Cert = filename
 }
 
 func (c *config) AddUserlist(name string, users []hatypes.User) *hatypes.Userlist {
@@ -208,7 +199,7 @@ func (c *config) WriteFrontendMaps() error {
 		CrtList:       mapBuilder.AddMap(c.mapsDir + "/_front001_bind_crt.list"),
 		UseServerList: mapBuilder.AddMap(c.mapsDir + "/_front001_use_server.list"),
 	}
-	fmaps.CrtList.AppendItem(c.defaultX509Cert)
+	fmaps.CrtList.AppendItem(c.frontend.DefaultCert)
 	// Some maps use yes/no answers instead of a list with found/missing keys
 	// This approach avoid overlap:
 	//  1. match with path_beg/map_beg, /path has a feature and a declared /path/sub doesn't have
@@ -299,9 +290,9 @@ func (c *config) WriteFrontendMaps() error {
 		tls := host.TLS
 		crtFile := tls.TLSFilename
 		if crtFile == "" {
-			crtFile = c.defaultX509Cert
+			crtFile = c.frontend.DefaultCert
 		}
-		if crtFile != c.defaultX509Cert || tls.CAFilename != "" || tls.Ciphers != "" || tls.CipherSuites != "" {
+		if crtFile != c.frontend.DefaultCert || tls.CAFilename != "" || tls.Ciphers != "" || tls.CipherSuites != "" {
 			// has custom cert, tls auth, ciphers or ciphersuites
 			//
 			// TODO optimization: distinct hostnames that shares crt, ca and crl
@@ -373,10 +364,6 @@ func writeMaps(maps *hatypes.HostsMaps, template *template.Config) error {
 
 func (c *config) AcmeData() *hatypes.AcmeData {
 	return c.acmeData
-}
-
-func (c *config) Acme() *hatypes.Acme {
-	return c.acme
 }
 
 func (c *config) Global() *hatypes.Global {
