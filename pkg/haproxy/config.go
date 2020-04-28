@@ -41,11 +41,13 @@ type Config interface {
 	Hosts() *hatypes.Hosts
 	Backends() *hatypes.Backends
 	Userlists() []*hatypes.Userlist
+	Clear()
 	Equals(other Config) bool
 }
 
 type config struct {
 	// external state, non haproxy data, cannot reflect in Config.Equals()
+	// reflect changes to config.Equals()
 	acmeData     *hatypes.AcmeData
 	mapsTemplate *template.Config
 	mapsDir      string
@@ -59,6 +61,7 @@ type config struct {
 }
 
 type options struct {
+	// reflect changes to config.Clear()
 	mapsTemplate *template.Config
 	mapsDir      string
 }
@@ -205,7 +208,7 @@ func (c *config) WriteFrontendMaps() error {
 	//  1. match with path_beg/map_beg, /path has a feature and a declared /path/sub doesn't have
 	//  2. *.host.domain wildcard/alias/alias-regex has a feature and a declared sub.host.domain doesn't have
 	yesno := map[bool]string{true: "yes", false: "no"}
-	for _, host := range c.hosts.Items() {
+	for _, host := range c.hosts.BuildSortedItems() {
 		if host.SSLPassthrough() {
 			rootPath := host.FindPath("/")
 			if rootPath == nil {
@@ -386,13 +389,23 @@ func (c *config) Userlists() []*hatypes.Userlist {
 	return c.userlists
 }
 
+func (c *config) Clear() {
+	config := createConfig(options{
+		mapsTemplate: c.mapsTemplate,
+		mapsDir:      c.mapsDir,
+	})
+	*c = *config
+}
+
 func (c *config) Equals(other Config) bool {
 	c2, ok := other.(*config)
 	if !ok {
 		return false
 	}
-	// (config struct): external state, cannot reflect in Config.Equals()
+	// (config struct): external state, should not reflect in Config.Equals()
 	copy := *c2
 	copy.acmeData = c.acmeData
+	copy.mapsTemplate = c.mapsTemplate
+	copy.mapsDir = c.mapsDir
 	return reflect.DeepEqual(c, &copy)
 }

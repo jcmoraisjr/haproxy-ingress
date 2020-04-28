@@ -29,6 +29,15 @@ func NewBackendPaths(paths ...*BackendPath) BackendPaths {
 	return b
 }
 
+// BackendID ...
+func (b *Backend) BackendID() BackendID {
+	return BackendID{
+		Namespace: b.Namespace,
+		Name:      b.Name,
+		Port:      b.Port,
+	}
+}
+
 // FindEndpoint ...
 func (b *Backend) FindEndpoint(target string) *Endpoint {
 	for _, endpoint := range b.Endpoints {
@@ -37,6 +46,11 @@ func (b *Backend) FindEndpoint(target string) *Endpoint {
 		}
 	}
 	return nil
+}
+
+// ClearEndpoints ...
+func (b *Backend) ClearEndpoints() {
+	b.Endpoints = nil
 }
 
 // AcquireEndpoint ...

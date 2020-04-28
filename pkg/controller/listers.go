@@ -39,15 +39,9 @@ import (
 
 // ListerEvents ...
 type ListerEvents interface {
-	Notify()
-	//
-	UpdateSecret(key string)
-	DeleteSecret(key string)
-	//
-	AddConfigMap(cm *api.ConfigMap)
-	UpdateConfigMap(cm *api.ConfigMap)
-	//
-	IsValidClass(ing *extensions.Ingress) bool
+	IsValidIngress(ing *extensions.Ingress) bool
+	IsValidConfigMap(cm *api.ConfigMap) bool
+	Notify(old, cur interface{})
 }
 
 type listers struct {
@@ -147,8 +141,8 @@ func (l *listers) createIngressLister(informer informersv1beta1.IngressInformer)
 	l.ingressInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			ing := obj.(*extensions.Ingress)
-			if l.events.IsValidClass(ing) {
-				l.events.Notify()
+			if l.events.IsValidIngress(ing) {
+				l.events.Notify(nil, ing)
 				l.recorder.Eventf(ing, api.EventTypeNormal, "CREATE", fmt.Sprintf("Ingress %s/%s", ing.Namespace, ing.Name))
 			}
 		},
@@ -158,19 +152,21 @@ func (l *listers) createIngressLister(informer informersv1beta1.IngressInformer)
 			}
 			oldIng := old.(*extensions.Ingress)
 			curIng := cur.(*extensions.Ingress)
-			oldValid := l.events.IsValidClass(oldIng)
-			curValid := l.events.IsValidClass(curIng)
+			oldValid := l.events.IsValidIngress(oldIng)
+			curValid := l.events.IsValidIngress(curIng)
 			if !oldValid && !curValid {
 				return
 			}
 			if !oldValid && curValid {
+				l.events.Notify(nil, curIng)
 				l.recorder.Eventf(curIng, api.EventTypeNormal, "CREATE", fmt.Sprintf("Ingress %s/%s", curIng.Namespace, curIng.Name))
 			} else if oldValid && !curValid {
+				l.events.Notify(oldIng, nil)
 				l.recorder.Eventf(curIng, api.EventTypeNormal, "DELETE", fmt.Sprintf("Ingress %s/%s", curIng.Namespace, curIng.Name))
 			} else {
+				l.events.Notify(oldIng, curIng)
 				l.recorder.Eventf(curIng, api.EventTypeNormal, "UPDATE", fmt.Sprintf("Ingress %s/%s", curIng.Namespace, curIng.Name))
 			}
-			l.events.Notify()
 		},
 		DeleteFunc: func(obj interface{}) {
 			ing, ok := obj.(*extensions.Ingress)
@@ -178,18 +174,20 @@ func (l *listers) createIngressLister(informer informersv1beta1.IngressInformer)
 				tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 				if !ok {
 					l.logger.Error("couldn't get object from tombstone %#v", obj)
+					l.events.Notify(nil, nil)
 					return
 				}
 				if ing, ok = tombstone.Obj.(*extensions.Ingress); !ok {
 					l.logger.Error("Tombstone contained object that is not an Ingress: %#v", obj)
+					l.events.Notify(nil, nil)
 					return
 				}
 			}
-			if !l.events.IsValidClass(ing) {
+			if !l.events.IsValidIngress(ing) {
 				return
 			}
 			l.recorder.Eventf(ing, api.EventTypeNormal, "DELETE", fmt.Sprintf("Ingress %s/%s", ing.Namespace, ing.Name))
-			l.events.Notify()
+			l.events.Notify(ing, nil)
 		},
 	})
 }
@@ -199,17 +197,17 @@ func (l *listers) createEndpointLister(informer informersv1.EndpointsInformer) {
 	l.endpointInformer = informer.Informer()
 	l.endpointInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			l.events.Notify()
+			l.events.Notify(nil, obj)
 		},
 		UpdateFunc: func(old, cur interface{}) {
 			oldEP := old.(*api.Endpoints)
 			curEP := cur.(*api.Endpoints)
 			if !reflect.DeepEqual(oldEP.Subsets, curEP.Subsets) {
-				l.events.Notify()
+				l.events.Notify(oldEP, curEP)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			l.events.Notify()
+			l.events.Notify(obj, nil)
 		},
 	})
 }
@@ -217,6 +215,31 @@ func (l *listers) createEndpointLister(informer informersv1.EndpointsInformer) {
 func (l *listers) createServiceLister(informer informersv1.ServiceInformer) {
 	l.serviceLister = informer.Lister()
 	l.serviceInformer = informer.Informer()
+	l.serviceInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			l.events.Notify(nil, obj)
+		},
+		UpdateFunc: func(old, cur interface{}) {
+			if !reflect.DeepEqual(old, cur) {
+				l.events.Notify(old, cur)
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			svc, ok := obj.(*api.Service)
+			if !ok {
+				tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+				if !ok {
+					l.logger.Error("couldn't get object from tombstone %#v", obj)
+					return
+				}
+				if svc, ok = tombstone.Obj.(*api.Service); !ok {
+					l.logger.Error("Tombstone contained object that is not a Service: %#v", obj)
+					return
+				}
+			}
+			l.events.Notify(svc, nil)
+		},
+	})
 }
 
 func (l *listers) createSecretLister(informer informersv1.SecretInformer) {
@@ -224,13 +247,11 @@ func (l *listers) createSecretLister(informer informersv1.SecretInformer) {
 	l.secretInformer = informer.Informer()
 	l.secretInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			l.events.Notify()
+			l.events.Notify(nil, obj)
 		},
 		UpdateFunc: func(old, cur interface{}) {
 			if !reflect.DeepEqual(old, cur) {
-				sec := cur.(*api.Secret)
-				key := fmt.Sprintf("%v/%v", sec.Namespace, sec.Name)
-				l.events.UpdateSecret(key)
+				l.events.Notify(old, cur)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
@@ -246,8 +267,7 @@ func (l *listers) createSecretLister(informer informersv1.SecretInformer) {
 					return
 				}
 			}
-			key := fmt.Sprintf("%v/%v", sec.Namespace, sec.Name)
-			l.events.DeleteSecret(key)
+			l.events.Notify(sec, nil)
 		},
 	})
 }
@@ -257,11 +277,15 @@ func (l *listers) createConfigMapLister(informer informersv1.ConfigMapInformer) 
 	l.configMapInformer = informer.Informer()
 	l.configMapInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			l.events.AddConfigMap(obj.(*api.ConfigMap))
+			if l.events.IsValidConfigMap(obj.(*api.ConfigMap)) {
+				l.events.Notify(nil, obj)
+			}
 		},
 		UpdateFunc: func(old, cur interface{}) {
 			if !reflect.DeepEqual(old, cur) {
-				l.events.UpdateConfigMap(cur.(*api.ConfigMap))
+				if l.events.IsValidConfigMap(cur.(*api.ConfigMap)) {
+					l.events.Notify(old, cur)
+				}
 			}
 		},
 	})
@@ -275,11 +299,11 @@ func (l *listers) createPodLister(informer informersv1.PodInformer) {
 			oldPod := old.(*api.Pod)
 			curPod := cur.(*api.Pod)
 			if oldPod.DeletionTimestamp != curPod.DeletionTimestamp {
-				l.events.Notify()
+				l.events.Notify(old, cur)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			l.events.Notify()
+			l.events.Notify(obj, nil)
 		},
 	})
 }

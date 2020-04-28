@@ -40,7 +40,6 @@ import (
 type NewCtrlIntf interface {
 	GetIngressList() ([]*extensions.Ingress, error)
 	GetSecret(name string) (*apiv1.Secret, error)
-	Notify()
 }
 
 // GenericController holds the boilerplate code required to build an Ingress controlller.

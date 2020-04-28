@@ -204,7 +204,8 @@ listen _tcp_{{ $backend.Name }}_{{ $backend.Port }}
 {{- end }}{{/* range TCPBackends */}}
 {{- end }}{{/* if has TCPBackend */}}
 
-{{- if $backends.Items }}
+{{- $backendItems := $backends.BuildSortedItems }}
+{{- if $backendItems }}
 
 
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -213,7 +214,7 @@ listen _tcp_{{ $backend.Name }}_{{ $backend.Port }}
 # #   BACKENDS
 # #
 #
-{{- range $backend := $backends.Items }}
+{{- range $backend := $backendItems }}
 backend {{ $backend.ID }}
     mode {{ if $backend.ModeTCP }}tcp{{ else }}http{{ end }}
 {{- if $backend.BalanceAlgorithm }}
@@ -553,7 +554,7 @@ backend {{ $backend.ID }}
 {{- end }}
 {{- end }}
 
-{{- end }}{{/* if has backends.Items */}}
+{{- end }}{{/* if backendItems */}}
 
 {{- define "backend" }}
     {{- $backend := .p1 }}

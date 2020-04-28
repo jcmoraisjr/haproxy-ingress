@@ -283,7 +283,6 @@ type Frontend struct {
 
 // Hosts ...
 type Hosts struct {
-	itemslist   []*Host
 	itemsmap    map[string]*Host
 	defaultHost *Host
 	//
@@ -363,9 +362,16 @@ const (
 
 // Backends ...
 type Backends struct {
-	itemslist      []*Backend
 	itemsmap       map[string]*Backend
 	defaultBackend *Backend
+}
+
+// BackendID ...
+type BackendID struct {
+	id        string
+	Namespace string
+	Name      string
+	Port      string
 }
 
 // Backend ...
@@ -373,6 +379,8 @@ type Backend struct {
 	//
 	// core config
 	//
+	// IMPLEMENT
+	// use BackendID
 	ID        string
 	Namespace string
 	Name      string

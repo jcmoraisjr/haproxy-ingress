@@ -105,3 +105,30 @@ func TestEqual(t *testing.T) {
 		t.Error("c1 and c2 should be equals (after building frontends)")
 	}
 }
+
+func TestClear(t *testing.T) {
+	c := createConfig(options{
+		mapsDir: "/tmp/maps",
+	})
+	c.Hosts().AcquireHost("app.local")
+	c.Backends().AcquireBackend("default", "app", "8080")
+	if c.mapsDir != "/tmp/maps" {
+		t.Error("expected mapsDir == /tmp/maps")
+	}
+	if len(c.Hosts().Items()) != 1 {
+		t.Error("expected len(hosts) == 1")
+	}
+	if len(c.Backends().Items()) != 1 {
+		t.Error("expected len(backends) == 1")
+	}
+	c.Clear()
+	if c.mapsDir != "/tmp/maps" {
+		t.Error("expected mapsDir == /tmp/maps")
+	}
+	if len(c.Hosts().Items()) != 0 {
+		t.Error("expected len(hosts) == 0")
+	}
+	if len(c.Backends().Items()) != 0 {
+		t.Error("expected len(backends) == 0")
+	}
+}

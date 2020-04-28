@@ -311,6 +311,11 @@ func (cv *ConfigValue) Int64() int64 {
 	return value
 }
 
+// FullName ...
+func (s *Source) FullName() string {
+	return s.Namespace + "/" + s.Name
+}
+
 // String ...
 func (m *Map) String() string {
 	return fmt.Sprintf("%+v", *m)
@@ -318,5 +323,5 @@ func (m *Map) String() string {
 
 // String ...
 func (s *Source) String() string {
-	return s.Type + " '" + s.Namespace + "/" + s.Name + "'"
+	return s.Type + " '" + s.FullName() + "'"
 }

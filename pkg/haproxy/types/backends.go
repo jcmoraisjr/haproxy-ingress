@@ -28,8 +28,28 @@ func CreateBackends() *Backends {
 }
 
 // Items ...
-func (b *Backends) Items() []*Backend {
-	return b.itemslist
+func (b *Backends) Items() map[string]*Backend {
+	return b.itemsmap
+}
+
+// BuildSortedItems ...
+func (b *Backends) BuildSortedItems() []*Backend {
+	items := make([]*Backend, len(b.itemsmap))
+	var i int
+	for _, item := range b.itemsmap {
+		items[i] = item
+		i++
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i] == b.defaultBackend {
+			return false
+		}
+		if items[j] == b.defaultBackend {
+			return true
+		}
+		return items[i].ID < items[j].ID
+	})
+	return items
 }
 
 // AcquireBackend ...
@@ -38,20 +58,27 @@ func (b *Backends) AcquireBackend(namespace, name, port string) *Backend {
 		return backend
 	}
 	backend := createBackend(namespace, name, port)
-	// Store backends on slice and map data structure.
-	// The slice has the order and the map has the index.
-	// TODO current approach is using the double of the memory
-	// on behalf of speed. Map only is doable? Another approach?
-	// See also hosts.AcquireHost().
 	b.itemsmap[backend.ID] = backend
-	b.itemslist = append(b.itemslist, backend)
-	b.sortBackends()
 	return backend
 }
 
 // FindBackend ...
 func (b *Backends) FindBackend(namespace, name, port string) *Backend {
 	return b.itemsmap[buildID(namespace, name, port)]
+}
+
+// FindBackendID ...
+func (b *Backends) FindBackendID(backendID BackendID) *Backend {
+	return b.itemsmap[backendID.String()]
+}
+
+// RemoveAll ...
+func (b *Backends) RemoveAll(backendID []BackendID) {
+	for _, backend := range backendID {
+		delete(b.itemsmap, backend.String())
+	}
+	// IMPLEMENT
+	// track and remove unused userlist entries
 }
 
 // DefaultBackend ...
@@ -69,19 +96,13 @@ func (b *Backends) SetDefaultBackend(defaultBackend *Backend) {
 	if b.defaultBackend != nil {
 		b.defaultBackend.ID = "_default_backend"
 	}
-	b.sortBackends()
 }
 
-func (b *Backends) sortBackends() {
-	sort.Slice(b.itemslist, func(i, j int) bool {
-		if b.itemslist[i] == b.defaultBackend {
-			return false
-		}
-		if b.itemslist[j] == b.defaultBackend {
-			return true
-		}
-		return b.itemslist[i].ID < b.itemslist[j].ID
-	})
+func (b *BackendID) String() string {
+	if b.id == "" {
+		b.id = b.Namespace + "_" + b.Name + "_" + b.Port
+	}
+	return b.id
 }
 
 func createBackend(namespace, name, port string) *Backend {

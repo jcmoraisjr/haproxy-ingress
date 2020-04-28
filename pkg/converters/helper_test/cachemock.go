@@ -23,6 +23,7 @@ import (
 	"time"
 
 	api "k8s.io/api/core/v1"
+	extensions "k8s.io/api/extensions/v1beta1"
 
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 )
@@ -32,6 +33,8 @@ type SecretContent map[string]map[string][]byte
 
 // CacheMock ...
 type CacheMock struct {
+	Changed       *convtypes.ChangedObjects
+	IngList       []*extensions.Ingress
 	SvcList       []*api.Service
 	EpList        map[string]*api.Endpoints
 	TermPodList   map[string][]*api.Pod
@@ -46,6 +49,7 @@ type CacheMock struct {
 // NewCacheMock ...
 func NewCacheMock() *CacheMock {
 	return &CacheMock{
+		Changed:     &convtypes.ChangedObjects{},
 		SvcList:     []*api.Service{},
 		EpList:      map[string]*api.Endpoints{},
 		TermPodList: map[string][]*api.Pod{},
@@ -60,6 +64,21 @@ func (c *CacheMock) buildSecretName(defaultNamespace, secretName string) string 
 		return secretName
 	}
 	return defaultNamespace + "/" + secretName
+}
+
+// GetIngress ...
+func (c *CacheMock) GetIngress(ingressName string) (*extensions.Ingress, error) {
+	for _, ing := range c.IngList {
+		if ing.Namespace+"/"+ing.Name == ingressName {
+			return ing, nil
+		}
+	}
+	return nil, fmt.Errorf("ingress not found: %s", ingressName)
+}
+
+// GetIngressList ...
+func (c *CacheMock) GetIngressList() ([]*extensions.Ingress, error) {
+	return c.IngList, nil
 }
 
 // GetService ...
@@ -157,4 +176,66 @@ func (c *CacheMock) GetSecretContent(defaultNamespace, secretName, keyName strin
 		return nil, fmt.Errorf("secret '%s' does not have file/key '%s'", fullname, keyName)
 	}
 	return nil, fmt.Errorf("secret not found: '%s'", fullname)
+}
+
+// SwapChangedObjects ...
+func (c *CacheMock) SwapChangedObjects() *convtypes.ChangedObjects {
+	changed := c.Changed
+	c.Changed = &convtypes.ChangedObjects{
+		GlobalCur:       changed.GlobalNew,
+		TCPConfigMapCur: changed.TCPConfigMapNew,
+	}
+	// update c.IngList based on notifications
+	for i, ing := range c.IngList {
+		for _, ingUpd := range changed.IngressesUpd {
+			if ing.Namespace == ingUpd.Namespace && ing.Name == ingUpd.Name {
+				c.IngList[i] = ingUpd
+			}
+		}
+		for j, ingDel := range changed.IngressesDel {
+			if ing.Namespace == ingDel.Namespace && ing.Name == ingDel.Name {
+				c.IngList[i] = c.IngList[len(c.IngList)-j-1]
+			}
+		}
+	}
+	c.IngList = c.IngList[:len(c.IngList)-len(changed.IngressesDel)]
+	for _, ingAdd := range changed.IngressesAdd {
+		c.IngList = append(c.IngList, ingAdd)
+	}
+	// update c.SvcList based on notifications
+	for i, svc := range c.SvcList {
+		for _, svcUpd := range changed.ServicesUpd {
+			if svc.Namespace == svcUpd.Namespace && svc.Name == svcUpd.Name {
+				c.SvcList[i] = svcUpd
+			}
+		}
+		for j, svcDel := range changed.ServicesDel {
+			if svc.Namespace == svcDel.Namespace && svc.Name == svcDel.Name {
+				c.SvcList[i] = c.SvcList[len(c.SvcList)-j-1]
+				delete(c.EpList, svc.Namespace+"/"+svc.Name)
+			}
+		}
+	}
+	// update c.SecretList based on notification
+	for _, secret := range changed.SecretsDel {
+		delete(c.SecretTLSPath, secret.Namespace+"/"+secret.Name)
+	}
+	for _, secret := range changed.SecretsAdd {
+		name := secret.Namespace + "/" + secret.Name
+		c.SecretTLSPath[name] = "/tls/" + name + ".pem"
+	}
+	// update c.EpList based on notifications
+	for _, ep := range changed.Endpoints {
+		c.EpList[ep.Namespace+"/"+ep.Name] = ep
+	}
+	c.SvcList = c.SvcList[:len(c.SvcList)-len(changed.ServicesDel)]
+	for _, svcAdd := range changed.ServicesAdd {
+		c.SvcList = append(c.SvcList, svcAdd)
+	}
+	return changed
+}
+
+// NeedFullSync ...
+func (c *CacheMock) NeedFullSync() bool {
+	return false
 }

@@ -32,6 +32,7 @@ import (
 
 	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/annotations"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/tracker"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
@@ -286,8 +287,8 @@ func TestSyncDrainSupport(t *testing.T) {
 	pod2 := c.createPod1("default/echo-yyyyy", "172.17.1.104", "none:8080")
 	c.cache.TermPodList[svcName] = []*api.Pod{pod1, pod2}
 
-	c.SyncDef(
-		map[string]string{"drain-support": "true"},
+	c.cache.Changed.GlobalNew = map[string]string{"drain-support": "true"}
+	c.Sync(
 		c.createIng1("default/echo", "echo.example.com", "/", "echo:8080"),
 	)
 
@@ -769,6 +770,306 @@ func TestSyncMultiNamespace(t *testing.T) {
     port: 8080` + defaultBackendConfig)
 }
 
+func TestSyncPartial(t *testing.T) {
+	svcDefault := [][]string{
+		{"default/echo1", "8080", "172.17.0.11"},
+		{"default/echo2", "8080", "172.17.0.12"},
+	}
+	ingDefault := [][]string{
+		{"default/echo1", "echo.example.com", "/app1", "echo1:8080"},
+		{"default/echo2", "echo.example.com", "/app2", "echo2:8080"},
+	}
+	ingTLSDefault := [][]string{
+		{"default/echo1", "echo.example.com", "/app1", "echo1:8080", "tls1"},
+		{"default/echo2", "echo.example.com", "/app2", "echo2:8080", "tls1"},
+	}
+	secTLSDefault := [][]string{
+		{"default/tls1"},
+	}
+	expFrontDefault := `
+- hostname: echo.example.com
+  paths:
+  - path: /app2
+    backend: default_echo2_8080
+  - path: /app1
+    backend: default_echo1_8080`
+	expBackDefault := `
+- id: default_echo1_8080
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+- id: default_echo2_8080
+  endpoints:
+  - ip: 172.17.0.12
+    port: 8080` + defaultBackendConfig
+
+	testCases := []struct {
+		//
+		svc, ing, ingtls, sec [][]string
+		//
+		svcAdd, svcUpd, svcDel [][]string
+		ingAdd, ingUpd, ingDel [][]string
+		secAdd, secUpd, secDel [][]string
+		//
+		endpoints [][]string
+		//
+		expFront string
+		expBack  string
+		logging  string
+	}{
+		// 0
+		{
+			svc: svcDefault,
+			ing: ingDefault,
+			ingAdd: [][]string{
+				{"default/echo3", "echo.example.com", "/app33", "echo2:8080"},
+			},
+			expFront: `
+- hostname: echo.example.com
+  paths:
+  - path: /app33
+    backend: default_echo2_8080
+  - path: /app2
+    backend: default_echo2_8080
+  - path: /app1
+    backend: default_echo1_8080`,
+			expBack: expBackDefault,
+		},
+		// 1
+		{
+			svc: svcDefault,
+			ing: ingDefault,
+			ingUpd: [][]string{
+				{"default/echo1", "echo.example.com", "/app11", "echo1:8080"},
+			},
+			expFront: `
+- hostname: echo.example.com
+  paths:
+  - path: /app2
+    backend: default_echo2_8080
+  - path: /app11
+    backend: default_echo1_8080`,
+			expBack: expBackDefault,
+		},
+		// 2
+		{
+			svc: svcDefault,
+			ing: ingDefault,
+			ingDel: [][]string{
+				{"default/echo1", "echo.example.com", "/app1", "echo1:8080"},
+			},
+			expFront: `
+- hostname: echo.example.com
+  paths:
+  - path: /app2
+    backend: default_echo2_8080`,
+			expBack: `
+- id: default_echo2_8080
+  endpoints:
+  - ip: 172.17.0.12
+    port: 8080` + defaultBackendConfig,
+		},
+		// 3
+		{
+			svc: svcDefault,
+			ing: ingDefault,
+			ingAdd: [][]string{
+				{"default/echo3", "echo3.example.com", "/app33", "echo2:8080"},
+			},
+			ingDel: [][]string{
+				{"default/echo2", "echo.example.com", "/app2", "echo2:8080"},
+			},
+			expFront: `
+- hostname: echo.example.com
+  paths:
+  - path: /app1
+    backend: default_echo1_8080
+- hostname: echo3.example.com
+  paths:
+  - path: /app33
+    backend: default_echo2_8080`,
+			expBack: expBackDefault,
+		},
+		// 4
+		{
+			svc: svcDefault,
+			ing: [][]string{
+				{"default/echo1", "echo.example.com", "/app1", "echo1:8080"},
+				{"default/echo2", "echo.example.com", "/app2", "echo2:8080"},
+				{"default/echo3", "echo.example.com", "/app3", "echo3:8080"},
+			},
+			svcAdd: [][]string{
+				{"default/echo3", "8080", "172.17.0.13"},
+			},
+			expFront: `
+- hostname: echo.example.com
+  paths:
+  - path: /app3
+    backend: default_echo3_8080
+  - path: /app2
+    backend: default_echo2_8080
+  - path: /app1
+    backend: default_echo1_8080`,
+			expBack: `
+- id: default_echo1_8080
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+- id: default_echo2_8080
+  endpoints:
+  - ip: 172.17.0.12
+    port: 8080
+- id: default_echo3_8080
+  endpoints:
+  - ip: 172.17.0.13
+    port: 8080` + defaultBackendConfig,
+		},
+		// 5
+		{
+			svc: svcDefault,
+			ing: ingDefault,
+			svcUpd: [][]string{
+				{"default/echo2", "8080", "172.17.0.22"},
+			},
+			expFront: expFrontDefault,
+			expBack: `
+- id: default_echo1_8080
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+- id: default_echo2_8080
+  endpoints:
+  - ip: 172.17.0.22
+    port: 8080` + defaultBackendConfig,
+		},
+		// 6
+		{
+			svc: svcDefault,
+			ing: ingDefault,
+			svcDel: [][]string{
+				{"default/echo2", "8080", "172.17.0.12"},
+			},
+			logging: `WARN skipping backend config of ingress 'default/echo2': service not found: 'default/echo2'`,
+			expFront: `
+- hostname: echo.example.com
+  paths:
+  - path: /app1
+    backend: default_echo1_8080`,
+			expBack: `
+- id: default_echo1_8080
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080` + defaultBackendConfig,
+		},
+		// 7
+		{
+			svc: svcDefault,
+			ing: ingDefault,
+			endpoints: [][]string{
+				{"default/echo1", "8080", "172.17.0.21,172.17.0.22,172.17.0.23"},
+			},
+			expFront: expFrontDefault,
+			expBack: `
+- id: default_echo1_8080
+  endpoints:
+  - ip: 172.17.0.21
+    port: 8080
+  - ip: 172.17.0.22
+    port: 8080
+  - ip: 172.17.0.23
+    port: 8080
+- id: default_echo2_8080
+  endpoints:
+  - ip: 172.17.0.12
+    port: 8080` + defaultBackendConfig,
+		},
+		// 8
+		{
+			svc:    svcDefault,
+			ingtls: ingTLSDefault,
+			secAdd: secTLSDefault,
+			expFront: expFrontDefault + `
+  tls:
+    tlsfilename: /tls/default/tls1.pem`,
+			expBack: expBackDefault,
+		},
+		// 9
+		{
+			svc:    svcDefault,
+			sec:    secTLSDefault,
+			ingtls: ingTLSDefault,
+			secDel: secTLSDefault,
+			logging: `
+WARN using default certificate due to an error reading secret 'tls1' on ingress 'default/echo1': secret not found: 'default/tls1'
+WARN using default certificate due to an error reading secret 'tls1' on ingress 'default/echo2': secret not found: 'default/tls1'`,
+			expFront: expFrontDefault + `
+  tls:
+    tlsfilename: /tls/tls-default.pem`,
+			expBack: expBackDefault,
+		},
+	}
+
+	for _, test := range testCases {
+		c := setup(t)
+
+		for _, svc := range test.svc {
+			c.createSvc1(svc[0], svc[1], svc[2])
+		}
+		for _, ing := range test.ing {
+			c.cache.IngList = append(c.cache.IngList, c.createIng1(ing[0], ing[1], ing[2], ing[3]))
+		}
+		for _, ing := range test.ingtls {
+			c.cache.IngList = append(c.cache.IngList, c.createIngTLS1(ing[0], ing[1], ing[2], ing[3], ing[4]))
+		}
+		for _, sec := range test.sec {
+			c.cache.SecretTLSPath[sec[0]] = "/tls/" + sec[0] + ".pem"
+		}
+		c.Sync()
+		c.logger.Logging = []string{}
+
+		ings := func(slice *[]*extensions.Ingress, params [][]string) {
+			for _, param := range params {
+				*slice = append(*slice, c.createIng1(param[0], param[1], param[2], param[3]))
+			}
+		}
+		svcs := func(slice *[]*api.Service, params [][]string) {
+			for _, param := range params {
+				svc, _ := c.createSvc1(param[0], param[1], param[2])
+				*slice = append(*slice, svc)
+			}
+		}
+		secs := func(slice *[]*api.Secret, params [][]string) {
+			for _, param := range params {
+				secret := c.createSecretTLS2(param[0])
+				*slice = append(*slice, secret)
+			}
+		}
+		endp := func(slice *[]*api.Endpoints, params [][]string) {
+			for _, param := range params {
+				_, ep := conv_helper.CreateService(param[0], param[1], param[2])
+				*slice = append(*slice, ep)
+			}
+		}
+		ings(&c.cache.Changed.IngressesAdd, test.ingAdd)
+		ings(&c.cache.Changed.IngressesUpd, test.ingUpd)
+		ings(&c.cache.Changed.IngressesDel, test.ingDel)
+		svcs(&c.cache.Changed.ServicesAdd, test.svcAdd)
+		svcs(&c.cache.Changed.ServicesUpd, test.svcUpd)
+		svcs(&c.cache.Changed.ServicesDel, test.svcDel)
+		secs(&c.cache.Changed.SecretsAdd, test.secAdd)
+		secs(&c.cache.Changed.SecretsUpd, test.secUpd)
+		secs(&c.cache.Changed.SecretsDel, test.secDel)
+		endp(&c.cache.Changed.Endpoints, test.endpoints)
+		c.Sync()
+
+		c.compareConfigFront(test.expFront)
+		c.compareConfigBack(test.expBack)
+		c.logger.CompareLogging(test.logging)
+
+		c.teardown()
+	}
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *
  *  ANNOTATIONS
@@ -847,7 +1148,8 @@ func TestSyncAnnFrontDefault(t *testing.T) {
 	defer c.teardown()
 
 	c.createSvc1Auto()
-	c.SyncDef(map[string]string{"timeout-client": "1s"},
+	c.cache.Changed.GlobalNew = map[string]string{"timeout-client": "1s"}
+	c.Sync(
 		c.createIng1Ann("default/echo1", "echo1.example.com", "/app", "echo:8080", map[string]string{
 			"ingress.kubernetes.io/timeout-client": "2s",
 		}),
@@ -967,7 +1269,8 @@ func TestSyncAnnBackDefault(t *testing.T) {
 	c.createSvc1Ann("default/echo7", "8080", "172.17.0.17", map[string]string{
 		"ingress.kubernetes.io/balance-algorithm": "roundrobin",
 	})
-	c.SyncDef(map[string]string{"balance-algorithm": "roundrobin"},
+	c.cache.Changed.GlobalNew = map[string]string{"balance-algorithm": "roundrobin"}
+	c.Sync(
 		c.createIng1Ann("default/echo1", "echo.example.com", "/app1", "echo1:8080", map[string]string{
 			"ingress.kubernetes.io/balance-algorithm": "leastconn",
 		}),
@@ -1107,6 +1410,7 @@ type testConfig struct {
 	hconfig haproxy.Config
 	logger  *types_helper.LoggerMock
 	cache   *conv_helper.CacheMock
+	tracker convtypes.Tracker
 	updater *updaterMock
 }
 
@@ -1118,6 +1422,7 @@ func setup(t *testing.T) *testConfig {
 		hconfig: haproxy.CreateInstance(logger, haproxy.InstanceOptions{}).Config(),
 		cache:   conv_helper.NewCacheMock(),
 		logger:  logger,
+		tracker: tracker.NewTracker(),
 	}
 	c.createSvc1("system/default", "8080", "172.17.0.99")
 	return c
@@ -1127,17 +1432,20 @@ func (c *testConfig) teardown() {
 	c.logger.CompareLogging("")
 }
 
-func (c *testConfig) Sync(ing ...*extensions.Ingress) {
-	c.SyncDef(map[string]string{}, ing...)
-}
-
 var defaultBackendConfig = `
 - id: _default_backend
   endpoints:
   - ip: 172.17.0.99
     port: 8080`
 
-func (c *testConfig) SyncDef(config map[string]string, ing ...*extensions.Ingress) {
+func (c *testConfig) Sync(ing ...*extensions.Ingress) {
+	if ing != nil {
+		c.cache.IngList = ing
+	}
+	if c.cache.Changed.GlobalCur == nil && c.cache.Changed.GlobalNew == nil {
+		// first run, set GlobalNew != nil and run SyncFull
+		c.cache.Changed.GlobalNew = map[string]string{}
+	}
 	defaultConfig := func() map[string]string {
 		return map[string]string{
 			ingtypes.BackInitialWeight: "100",
@@ -1147,6 +1455,7 @@ func (c *testConfig) SyncDef(config map[string]string, ing ...*extensions.Ingres
 		&ingtypes.ConverterOptions{
 			Cache:          c.cache,
 			Logger:         c.logger,
+			Tracker:        c.tracker,
 			DefaultConfig:  defaultConfig,
 			DefaultBackend: "system/default",
 			DefaultSSLFile: convtypes.CrtFile{
@@ -1158,10 +1467,9 @@ func (c *testConfig) SyncDef(config map[string]string, ing ...*extensions.Ingres
 			AnnotationPrefix: "ingress.kubernetes.io",
 		},
 		c.hconfig,
-		config,
 	).(*converter)
 	conv.updater = c.updater
-	conv.Sync(ing)
+	conv.Sync()
 }
 
 func (c *testConfig) createSvc1Auto() (*api.Service, *api.Endpoints) {
@@ -1182,7 +1490,18 @@ func (c *testConfig) createSvc1Ann(name, port, endpoints string, ann map[string]
 
 func (c *testConfig) createSvc1(name, port, endpoints string) (*api.Service, *api.Endpoints) {
 	svc, ep := conv_helper.CreateService(name, port, endpoints)
-	c.cache.SvcList = append(c.cache.SvcList, svc)
+	// TODO change SvcList to map
+	var has bool
+	for i, svc1 := range c.cache.SvcList {
+		if svc1.Namespace+"/"+svc1.Name == name {
+			c.cache.SvcList[i] = svc
+			has = true
+			break
+		}
+	}
+	if !has {
+		c.cache.SvcList = append(c.cache.SvcList, svc)
+	}
 	c.cache.EpList[name] = ep
 	return svc, ep
 }
@@ -1210,6 +1529,16 @@ status:
 
 func (c *testConfig) createSecretTLS1(secretName string) {
 	c.cache.SecretTLSPath[secretName] = "/tls/" + secretName + ".pem"
+}
+
+func (c *testConfig) createSecretTLS2(secretName string) *api.Secret {
+	sname := strings.Split(secretName, "/")
+	return c.createObject(`
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ` + sname[1] + `
+  namespace: ` + sname[0]).(*api.Secret)
 }
 
 func (c *testConfig) createIng1(name, hostname, path, service string) *extensions.Ingress {
@@ -1362,7 +1691,7 @@ func convertHost(hafronts ...*hatypes.Host) []hostMock {
 }
 
 func (c *testConfig) compareConfigFront(expected string) {
-	c.compareText(_yamlMarshal(convertHost(c.hconfig.Hosts().Items()...)), expected)
+	c.compareText(_yamlMarshal(convertHost(c.hconfig.Hosts().BuildSortedItems()...)), expected)
 }
 
 func (c *testConfig) compareConfigDefaultFront(expected string) {
@@ -1406,5 +1735,5 @@ func convertBackend(habackends ...*hatypes.Backend) []backendMock {
 }
 
 func (c *testConfig) compareConfigBack(expected string) {
-	c.compareText(_yamlMarshal(convertBackend(c.hconfig.Backends().Items()...)), expected)
+	c.compareText(_yamlMarshal(convertBackend(c.hconfig.Backends().BuildSortedItems()...)), expected)
 }

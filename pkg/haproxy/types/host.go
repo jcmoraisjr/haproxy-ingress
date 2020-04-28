@@ -35,15 +35,7 @@ func (h *Hosts) AcquireHost(hostname string) *Host {
 	}
 	host := h.createHost(hostname)
 	if host.Hostname != "*" {
-		// Here we store a just created Host. Both slice and map.
-		// The slice has the order and the map has the index.
-		// TODO current approach is using the double of the memory
-		// on behalf of speed. Map only is doable? Another approach?
 		h.itemsmap[hostname] = host
-		h.itemslist = append(h.itemslist, host)
-		sort.Slice(h.itemslist, func(i, j int) bool {
-			return h.itemslist[i].Hostname < h.itemslist[j].Hostname
-		})
 	} else {
 		h.defaultHost = host
 	}
@@ -58,6 +50,13 @@ func (h *Hosts) FindHost(hostname string) *Host {
 	return h.itemsmap[hostname]
 }
 
+// RemoveAll ...
+func (h *Hosts) RemoveAll(hostnames []string) {
+	for _, hostname := range hostnames {
+		delete(h.itemsmap, hostname)
+	}
+}
+
 func (h *Hosts) createHost(hostname string) *Host {
 	return &Host{
 		Hostname: hostname,
@@ -65,9 +64,23 @@ func (h *Hosts) createHost(hostname string) *Host {
 	}
 }
 
+// BuildSortedItems ...
+func (h *Hosts) BuildSortedItems() []*Host {
+	items := make([]*Host, len(h.itemsmap))
+	var i int
+	for _, item := range h.itemsmap {
+		items[i] = item
+		i++
+	}
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].Hostname < items[j].Hostname
+	})
+	return items
+}
+
 // Items ...
-func (h *Hosts) Items() []*Host {
-	return h.itemslist
+func (h *Hosts) Items() map[string]*Host {
+	return h.itemsmap
 }
 
 // DefaultHost ...
@@ -82,12 +95,12 @@ func (h *Hosts) HasSSLPassthrough() bool {
 
 // HasHTTP ...
 func (h *Hosts) HasHTTP() bool {
-	return len(h.itemslist) > h.sslPassthroughCount
+	return len(h.itemsmap) > h.sslPassthroughCount
 }
 
 // HasTLSAuth ...
 func (h *Hosts) HasTLSAuth() bool {
-	for _, host := range h.itemslist {
+	for _, host := range h.itemsmap {
 		if host.HasTLSAuth() {
 			return true
 		}
@@ -97,7 +110,7 @@ func (h *Hosts) HasTLSAuth() bool {
 
 // HasTLSMandatory ...
 func (h *Hosts) HasTLSMandatory() bool {
-	for _, host := range h.itemslist {
+	for _, host := range h.itemsmap {
 		if host.HasTLSAuth() && !host.TLS.CAVerifyOptional {
 			return true
 		}
@@ -107,7 +120,7 @@ func (h *Hosts) HasTLSMandatory() bool {
 
 // HasVarNamespace ...
 func (h *Hosts) HasVarNamespace() bool {
-	for _, host := range h.itemslist {
+	for _, host := range h.itemsmap {
 		if host.VarNamespace {
 			return true
 		}

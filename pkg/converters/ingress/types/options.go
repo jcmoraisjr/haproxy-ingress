@@ -25,6 +25,7 @@ import (
 type ConverterOptions struct {
 	Logger           types.Logger
 	Cache            convtypes.Cache
+	Tracker          convtypes.Tracker
 	DefaultConfig    func() map[string]string
 	DefaultBackend   string
 	DefaultSSLFile   convtypes.CrtFile
