@@ -263,6 +263,8 @@ func (c *config) WriteFrontendMaps() error {
 			}
 			if !hasSSLRedirect || c.global.Bind.HasFrontingProxy() {
 				fmaps.HTTPFrontsMap.AppendHostname(base, backendID)
+				fmaps.HTTPFrontsMap.AppendAliasName(aliasName, backendID)
+				fmaps.HTTPFrontsMap.AppendAliasRegex(aliasRegex, backendID)
 			}
 			var ns string
 			if host.VarNamespace {
