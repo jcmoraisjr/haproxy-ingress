@@ -1982,7 +1982,15 @@ backend d3_app_8080
     mode http
     server s31 172.17.0.131:8080 weight 100
 <<backends-default>>
-<<frontend-http>>
+frontend _front_http
+    mode http
+    bind :80
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
+    http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map) yes }
+    <<http-headers>>
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map)
+    http-request set-var(req.backend) var(req.base),map_reg(/etc/haproxy/maps/_global_http_front_regex.map) if !{ var(req.backend) -m found }
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
     default_backend _error404
 frontend _front001
     mode http
@@ -2004,6 +2012,7 @@ d3.local/ no
 	c.checkMap("_global_http_front.map", `
 d1.local/ d1_app_8080
 d2.local/ d2_app_8080
+sub.d2.local/ d2_app_8080
 d3.local/ d3_app_8080
 `)
 	c.checkMap("_front001_host.map", `
