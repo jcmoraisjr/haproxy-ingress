@@ -362,6 +362,8 @@ func (c *config) BuildFrontendGroup() error {
 				}
 				if !hasSSLRedirect || c.global.Bind.HasFrontingProxy() {
 					fgroup.HTTPFrontsMap.AppendHostname(base, back)
+					fgroup.HTTPFrontsMap.AppendAliasName(aliasName, back)
+					fgroup.HTTPFrontsMap.AppendAliasRegex(aliasRegex, back)
 				}
 				var ns string
 				if host.VarNamespace {
