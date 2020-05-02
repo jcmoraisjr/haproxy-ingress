@@ -184,7 +184,7 @@ func TestAuthHTTP(t *testing.T) {
 				},
 			},
 			secrets: conv_helper.SecretContent{"default/mypwd": {"auth": []byte("usr1::clear1")}},
-			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_mypwd", Users: []hatypes.User{
+			expUserlists: []*hatypes.Userlist{{Name: "default_mypwd", Users: []hatypes.User{
 				{Name: "usr1", Passwd: "clear1", Encrypted: false},
 			}}},
 			expLogging: "WARN ignoring auth-realm with quotes on ingress 'default/ing1'",
@@ -199,7 +199,7 @@ func TestAuthHTTP(t *testing.T) {
 				},
 			},
 			secrets:      conv_helper.SecretContent{"ns1/mypwd": {"auth": []byte{}}},
-			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "ns1_mypwd"}},
+			expUserlists: []*hatypes.Userlist{{Name: "ns1_mypwd"}},
 			expLogging:   "WARN userlist on ingress 'ns1/i1' for basic authentication is empty",
 		},
 		// 7
@@ -211,7 +211,7 @@ func TestAuthHTTP(t *testing.T) {
 				},
 			},
 			secrets:      conv_helper.SecretContent{"default/basicpwd": {"auth": []byte("fail")}},
-			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_basicpwd"}},
+			expUserlists: []*hatypes.Userlist{{Name: "default_basicpwd"}},
 			expLogging: `
 WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ingress 'default/ing1': missing password of user 'fail' line 1
 WARN userlist on ingress 'default/ing1' for basic authentication is empty`,
@@ -227,7 +227,7 @@ WARN userlist on ingress 'default/ing1' for basic authentication is empty`,
 			secrets: conv_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
 usr1::clearpwd1
 nopwd`)}},
-			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_basicpwd", Users: []hatypes.User{
+			expUserlists: []*hatypes.Userlist{{Name: "default_basicpwd", Users: []hatypes.User{
 				{Name: "usr1", Passwd: "clearpwd1", Encrypted: false},
 			}}},
 			expLogging: "WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ingress 'default/ing1': missing password of user 'nopwd' line 3",
@@ -245,7 +245,7 @@ usrnopwd1:
 usrnopwd2::
 :encpwd3
 ::clearpwd4`)}},
-			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_basicpwd"}},
+			expUserlists: []*hatypes.Userlist{{Name: "default_basicpwd"}},
 			expLogging: `
 WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ingress 'default/ing1': missing password of user 'usrnopwd1' line 2
 WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ingress 'default/ing1': missing password of user 'usrnopwd2' line 3
@@ -265,7 +265,7 @@ WARN userlist on ingress 'default/ing1' for basic authentication is empty`,
 			secrets: conv_helper.SecretContent{"default/basicpwd": {"auth": []byte(`
 usr1:encpwd1
 usr2::clearpwd2`)}},
-			expUserlists: []*hatypes.Userlist{&hatypes.Userlist{Name: "default_basicpwd", Users: []hatypes.User{
+			expUserlists: []*hatypes.Userlist{{Name: "default_basicpwd", Users: []hatypes.User{
 				{Name: "usr1", Passwd: "encpwd1", Encrypted: true},
 				{Name: "usr2", Passwd: "clearpwd2", Encrypted: false},
 			}}},
