@@ -31,6 +31,7 @@ type Queue interface {
 	Notify()
 	Remove(item interface{})
 	Run()
+	ShuttingDown() bool
 	ShutDown()
 }
 
@@ -125,6 +126,12 @@ func (q *queue) Run() {
 			q.rateLimiter.Accept()
 		}
 		item, quit := q.workqueue.Get()
+		if q.rateLimiter != nil {
+			// waste a token if available, so Accept() can properly
+			// rate limit two consecutive calls after Get() blocks
+			// longer than the allowed rate
+			_ = q.rateLimiter.TryAccept()
+		}
 		if quit {
 			if !<-q.shutdown {
 				continue
@@ -166,6 +173,12 @@ func (q *queue) Clear() {
 	q.forget = nil
 	q.workqueue = q.buildQueue()
 	q.shutdown <- false
+}
+
+func (q *queue) ShuttingDown() bool {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
+	return q.workqueue.ShuttingDown()
 }
 
 func (q *queue) ShutDown() {

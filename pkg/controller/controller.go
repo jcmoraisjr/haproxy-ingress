@@ -29,6 +29,9 @@ import (
 	extensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes/scheme"
+	typedv1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/record"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
@@ -48,16 +51,18 @@ import (
 type HAProxyController struct {
 	instance          haproxy.Instance
 	logger            *logger
-	cache             *cache
+	cache             *k8scache
 	metrics           *metrics
 	stopCh            chan struct{}
+	ingressQueue      utils.Queue
 	acmeQueue         utils.Queue
 	leaderelector     types.LeaderElector
 	updateCount       int
 	controller        *controller.GenericController
 	cfg               *controller.Configuration
 	configMap         *api.ConfigMap
-	storeLister       *ingress.StoreLister
+	recorder          record.EventRecorder
+	listers           *listers
 	converterOptions  *ingtypes.ConverterOptions
 	reloadStrategy    *string
 	maxOldConfigFiles *int
@@ -82,10 +87,13 @@ func (hc *HAProxyController) Info() *ingress.BackendInfo {
 // Start starts the controller
 func (hc *HAProxyController) Start() {
 	hc.controller = controller.NewIngressController(hc)
-	hc.controller.StartControllers()
 	hc.configController()
 	hc.startServices()
-	hc.controller.Start()
+	hc.logger.Info("HAProxy Ingress successfully initialized")
+	//
+	<-hc.stopCh
+	//
+	hc.stopServices()
 }
 
 func (hc *HAProxyController) configController() {
@@ -94,9 +102,24 @@ func (hc *HAProxyController) configController() {
 	}
 	hc.cfg = hc.controller.GetConfig()
 	hc.stopCh = hc.controller.GetStopCh()
+	hc.controller.SetNewCtrl(hc)
 	hc.logger = &logger{depth: 1}
-	hc.cache = newCache(hc.cfg.Client, hc.storeLister, hc.controller)
 	hc.metrics = createMetrics(hc.cfg.BucketsResponseTime)
+	watchNamespace := api.NamespaceAll
+	if hc.cfg.ForceNamespaceIsolation {
+		watchNamespace = hc.cfg.WatchNamespace
+	}
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartLogging(hc.logger.Info)
+	eventBroadcaster.StartRecordingToSink(&typedv1.EventSinkImpl{
+		Interface: hc.cfg.Client.CoreV1().Events(watchNamespace),
+	})
+	hc.recorder = eventBroadcaster.NewRecorder(scheme.Scheme, api.EventSource{
+		Component: "ingress-controller",
+	})
+	hc.listers = createListers(hc, hc.logger, hc.recorder, hc.cfg.Client, watchNamespace, hc.cfg.ResyncPeriod)
+	hc.cache = newCache(hc.cfg.Client, hc.listers, hc.controller)
+	hc.ingressQueue = utils.NewRateLimitingQueue(hc.cfg.RateLimitUpdate, hc.syncIngress)
 	var acmeSigner acme.Signer
 	if hc.cfg.AcmeServer {
 		electorID := fmt.Sprintf("%s-%s", hc.cfg.AcmeElectionID, hc.cfg.IngressClass)
@@ -136,6 +159,8 @@ func (hc *HAProxyController) configController() {
 }
 
 func (hc *HAProxyController) startServices() {
+	hc.listers.RunAsync(hc.stopCh)
+	go hc.ingressQueue.Run()
 	if hc.cfg.StatsCollectProcPeriod.Milliseconds() > 0 {
 		go wait.Until(func() {
 			hc.instance.CalcIdleMetric()
@@ -155,6 +180,14 @@ func (hc *HAProxyController) startServices() {
 		go wait.JitterUntil(func() {
 			_, _ = hc.instance.AcmeCheck("periodic check")
 		}, hc.cfg.AcmeCheckPeriod, 0, false, hc.stopCh)
+	}
+	hc.controller.StartAsync()
+}
+
+func (hc *HAProxyController) stopServices() {
+	hc.ingressQueue.ShutDown()
+	if hc.acmeQueue != nil {
+		hc.acmeQueue.ShutDown()
 	}
 }
 
@@ -225,6 +258,68 @@ func (hc *HAProxyController) Stop() error {
 	return err
 }
 
+// Notify ...
+// implements ListerEvents
+// implements oldcontroller.NewCtrlIntf
+func (hc *HAProxyController) Notify() {
+	hc.ingressQueue.Notify()
+}
+
+// GetIngressList ...
+// implements oldcontroller.NewCtrlIntf
+func (hc *HAProxyController) GetIngressList() ([]*extensions.Ingress, error) {
+	return hc.listers.ingressLister.List(labels.Everything())
+}
+
+// GetSecret ...
+// implements oldcontroller.NewCtrlIntf
+func (hc *HAProxyController) GetSecret(name string) (*api.Secret, error) {
+	return hc.cache.GetSecret(name)
+}
+
+// UpdateSecret ...
+// implements ListerEvents
+func (hc *HAProxyController) UpdateSecret(key string) {
+	hc.controller.SyncSecret(key)
+}
+
+// DeleteSecret ...
+// implements ListerEvents
+func (hc *HAProxyController) DeleteSecret(key string) {
+	hc.controller.DeleteSecret(key)
+	hc.ingressQueue.Notify()
+}
+
+// AddConfigMap ...
+// implements ListerEvents
+func (hc *HAProxyController) AddConfigMap(cm *api.ConfigMap) {
+	key := fmt.Sprintf("%s/%s", cm.Namespace, cm.Name)
+	if key == hc.cfg.ConfigMapName {
+		hc.logger.InfoV(2, "adding configmap %v to backend", key)
+		hc.configMap = cm
+	}
+}
+
+// UpdateConfigMap ...
+// implements ListerEvents
+func (hc *HAProxyController) UpdateConfigMap(cm *api.ConfigMap) {
+	key := fmt.Sprintf("%s/%s", cm.Namespace, cm.Name)
+	if key == hc.cfg.ConfigMapName {
+		hc.logger.InfoV(2, "updating configmap backend (%v)", key)
+		hc.configMap = cm
+	}
+	if key == hc.cfg.ConfigMapName || key == hc.cfg.TCPConfigMapName {
+		hc.recorder.Eventf(cm, api.EventTypeNormal, "UPDATE", fmt.Sprintf("ConfigMap %v", key))
+		hc.ingressQueue.Notify()
+	}
+}
+
+// IsValidClass ...
+// implements ListerEvents
+func (hc *HAProxyController) IsValidClass(ing *extensions.Ingress) bool {
+	return hc.controller.IsValidClass(ing)
+}
+
 // Name provides the complete name of the controller
 func (hc *HAProxyController) Name() string {
 	return "HAProxy Ingress Controller"
@@ -238,11 +333,6 @@ func (hc *HAProxyController) DefaultIngressClass() string {
 // Check health check implementation
 func (hc *HAProxyController) Check(_ *http.Request) error {
 	return nil
-}
-
-// SetListers give access to the store listers
-func (hc *HAProxyController) SetListers(lister *ingress.StoreLister) {
-	hc.storeLister = lister
 }
 
 // UpdateIngressStatus custom callback used to update the status in an Ingress rule
@@ -280,17 +370,22 @@ func (hc *HAProxyController) SetConfig(configMap *api.ConfigMap) {
 }
 
 // SyncIngress sync HAProxy config from a very early stage
-func (hc *HAProxyController) SyncIngress(item interface{}) error {
+func (hc *HAProxyController) syncIngress(item interface{}) {
+	if hc.ingressQueue.ShuttingDown() {
+		return
+	}
+
 	//
 	// ingress converter
 	//
 	hc.updateCount++
-	hc.logger.Info("Starting HAProxy update id=%d", hc.updateCount)
+	hc.logger.Info("starting HAProxy update id=%d", hc.updateCount)
 	timer := utils.NewTimer(hc.metrics.ControllerProcTime)
 	var ingress []*extensions.Ingress
-	il, err := hc.storeLister.Ingress.Lister.List(labels.Everything())
+	il, err := hc.listers.ingressLister.List(labels.Everything())
 	if err != nil {
-		return err
+		hc.logger.Error("error reading ingress list: %v", err)
+		return
 	}
 	for _, ing := range il {
 		if hc.controller.IsValidClass(ing) {
@@ -321,7 +416,7 @@ func (hc *HAProxyController) SyncIngress(item interface{}) error {
 	// configmap converters
 	//
 	if hc.cfg.TCPConfigMapName != "" {
-		tcpConfigmap, err := hc.storeLister.ConfigMap.GetByName(hc.cfg.TCPConfigMapName)
+		tcpConfigmap, err := hc.cache.GetConfigMap(hc.cfg.TCPConfigMapName)
 		if err == nil && tcpConfigmap != nil {
 			tcpSvcConverter := configmapconverter.NewTCPServicesConverter(
 				hc.logger,
@@ -339,6 +434,5 @@ func (hc *HAProxyController) SyncIngress(item interface{}) error {
 	// update proxy
 	//
 	hc.instance.Update(timer)
-	hc.logger.Info("Finish HAProxy update id=%d: %s", hc.updateCount, timer.AsString("total"))
-	return nil
+	hc.logger.Info("finish HAProxy update id=%d: %s", hc.updateCount, timer.AsString("total"))
 }
