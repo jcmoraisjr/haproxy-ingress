@@ -18,6 +18,7 @@ package configmap
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -47,6 +48,8 @@ type tcpSvcConverter struct {
 	haproxy haproxy.Config
 }
 
+var regexValidTime = regexp.MustCompile(`^[0-9]+(us|ms|s|m|h|d)$`)
+
 func (c *tcpSvcConverter) Sync(tcpservices map[string]string) {
 	// map[key]value is:
 	// - key   => port to expose
@@ -56,6 +59,7 @@ func (c *tcpSvcConverter) Sync(tcpservices map[string]string) {
 	//   - 2: "PROXY" means accept proxy protocol
 	//   - 3: "PROXY[-V1|V2]" means send proxy protocol, defaults to V2
 	//   - 4: namespace/name of crt/key secret if should ssl-offload
+	//   - 5: check interval
 	for k, v := range tcpservices {
 		publicport, err := strconv.Atoi(k)
 		if err != nil {
@@ -90,12 +94,25 @@ func (c *tcpSvcConverter) Sync(tcpservices map[string]string) {
 				continue
 			}
 		}
+		checkInterval := "2s"
+		if svc.checkint != "" {
+			if svc.checkint == "-" {
+				checkInterval = ""
+			} else if regexValidTime.MatchString(svc.checkint) {
+				checkInterval = svc.checkint
+			} else {
+				c.logger.Warn(
+					"using default check interval '%s' due to an invalid time config on TCP service %d: %s",
+					checkInterval, publicport, svc.checkint)
+			}
+		}
 		servicename := fmt.Sprintf("%s_%s", service.Namespace, service.Name)
 		backend := c.haproxy.AcquireTCPBackend(servicename, publicport)
 		for _, addr := range addrs {
 			backend.AddEndpoint(addr.IP, addr.Port)
 		}
 		backend.ProxyProt.Decode = strings.ToLower(svc.inProxy) == "proxy"
+		backend.CheckInterval = checkInterval
 		switch strings.ToLower(svc.outProxy) {
 		case "proxy", "proxy-v2":
 			backend.ProxyProt.EncodeVersion = "v2"
@@ -112,12 +129,13 @@ type tcpSvc struct {
 	inProxy  string
 	outProxy string
 	secret   string
+	checkint string
 }
 
 func (c *tcpSvcConverter) parseService(service string) *tcpSvc {
-	svc := make([]string, 5)
+	svc := make([]string, 6)
 	for i, v := range strings.Split(service, ":") {
-		if i < 5 {
+		if i < 6 {
 			svc[i] = v
 		}
 	}
@@ -127,5 +145,6 @@ func (c *tcpSvcConverter) parseService(service string) *tcpSvc {
 		inProxy:  svc[2],
 		outProxy: svc[3],
 		secret:   svc[4],
+		checkint: svc[5],
 	}
 }
