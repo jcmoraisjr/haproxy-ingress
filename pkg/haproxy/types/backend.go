@@ -263,6 +263,11 @@ func (p *BackendPath) String() string {
 }
 
 // String ...
+func (h *BackendHeader) String() string {
+	return fmt.Sprintf("%+v", *h)
+}
+
+// String ...
 func (b *BackendConfigAuth) String() string {
 	return fmt.Sprintf("%+v", *b)
 }

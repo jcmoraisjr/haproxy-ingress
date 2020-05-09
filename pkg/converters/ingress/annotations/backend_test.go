@@ -911,6 +911,77 @@ func TestCors(t *testing.T) {
 	}
 }
 
+func TestHeaders(t *testing.T) {
+	testCases := []struct {
+		headers  string
+		expected []*hatypes.BackendHeader
+		logging  string
+	}{
+		// 0
+		{
+			headers: `invalid`,
+			logging: `WARN ignored missing header name or value on ingress 'ing1/app': invalid`,
+		},
+		// 1
+		{
+			headers: `key value`,
+			expected: []*hatypes.BackendHeader{
+				{Name: "key", Value: "value"},
+			},
+		},
+		// 2
+		{
+			headers: `name: content`,
+			expected: []*hatypes.BackendHeader{
+				{Name: "name", Value: "content"},
+			},
+		},
+		// 3
+		{
+			headers: `k:v`,
+			expected: []*hatypes.BackendHeader{
+				{Name: "k", Value: "v"},
+			},
+		},
+		// 4
+		{
+			headers: `host: %[service].%[namespace].svc.cluster.local`,
+			expected: []*hatypes.BackendHeader{
+				{Name: "host", Value: "app.default.svc.cluster.local"},
+			},
+		},
+		// 5
+		{
+			headers: `
+k8snamespace: %[namespace]
+k8sservice: %[service]
+host: %[service].%[namespace].svc.cluster.local
+`,
+			expected: []*hatypes.BackendHeader{
+				{Name: "k8snamespace", Value: "default"},
+				{Name: "k8sservice", Value: "app"},
+				{Name: "host", Value: "app.default.svc.cluster.local"},
+			},
+		},
+	}
+	source := &Source{
+		Namespace: "ing1",
+		Name:      "app",
+		Type:      "ingress",
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		ann := map[string]map[string]string{
+			"/": {ingtypes.BackHeaders: test.headers},
+		}
+		d := c.createBackendMappingData("default/app", source, map[string]string{}, ann, []string{"/"})
+		c.createUpdater().buildBackendHeaders(d)
+		c.compareObjects("headers", i, d.backend.Headers, test.expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
 func TestHSTS(t *testing.T) {
 	testCases := []struct {
 		paths      []string

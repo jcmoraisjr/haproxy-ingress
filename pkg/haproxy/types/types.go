@@ -383,6 +383,7 @@ type Backend struct {
 	Cookie           Cookie
 	CustomConfig     []string
 	Dynamic          DynBackendConfig
+	Headers          []*BackendHeader
 	HealthCheck      HealthCheck
 	Limit            BackendLimit
 	ModeTCP          bool
@@ -453,6 +454,12 @@ type BackendPath struct {
 	Hostname string
 	Hostpath string
 	Path     string
+}
+
+// BackendHeader ...
+type BackendHeader struct {
+	Name  string
+	Value string
 }
 
 // BackendConfigBool ...
