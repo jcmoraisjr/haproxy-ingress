@@ -284,9 +284,11 @@ backend {{ $backend.ID }}
 
 {{- /*------------------------------------*/}}
 {{- $hasFrontingProxy := $global.Bind.HasFrontingProxy }}
-{{- if $backend.HSTS }}
+{{- $frontingUseProto := and $hasFrontingProxy $global.Bind.FrontingUseProto }}
+{{- $frontingIgnoreProto := and $hasFrontingProxy (not $global.Bind.FrontingUseProto) }}
+{{- if and $backend.HSTS (not $frontingIgnoreProto) }}
     acl https-request ssl_fc
-{{- if $hasFrontingProxy }}
+{{- if $frontingUseProto }}
     acl https-request var(txn.proto) https
 {{- end }}
 {{- end }}
@@ -295,7 +297,7 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if and $hasFrontingProxy $backend.HSTS }}
+{{- if and $frontingUseProto $backend.HSTS }}
     http-request set-var(txn.proto) hdr(X-Forwarded-Proto)
 {{- end }}
 
@@ -456,7 +458,7 @@ backend {{ $backend.ID }}
 {{- $hsts := $hstsCfg.Config }}
 {{- if $hsts.Enabled }}
 {{- $paths := $hstsCfg.Paths }}
-{{- $needSSLACL := not ($backend.HasSSLRedirectPaths $paths) }}
+{{- $needSSLACL := and (not $frontingIgnoreProto) (not ($backend.HasSSLRedirectPaths $paths)) }}
     http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}
         {{- if $hsts.Subdomains }}; includeSubDomains{{ end }}
         {{- if $hsts.Preload }}; preload{{ end }}"
@@ -669,6 +671,8 @@ listen _front__tls
 {{- end }}
 
 {{- $hasFrontingProxy := $global.Bind.HasFrontingProxy }}
+{{- $frontingUseProto := and $hasFrontingProxy $global.Bind.FrontingUseProto }}
+{{- $frontingIgnoreProto := and $hasFrontingProxy (not $global.Bind.FrontingUseProto) }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
@@ -688,7 +692,7 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $hasFrontingProxy }}
+{{- if $frontingUseProto }}
 {{- if $hasPlainHTTPSocket }}
     acl fronting-proxy so_id {{ $global.Bind.FrontingSockID }}
 {{- else }}
@@ -706,7 +710,7 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $hasFrontingProxy }}
+{{- if $frontingUseProto }}
     http-request redirect scheme https
         {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
         {{- "" }} if fronting-proxy !{ hdr(X-Forwarded-Proto) https }
@@ -722,6 +726,7 @@ frontend _front_http
 
 {{- /*------------------------------------*/}}
 {{- $acmeexclusive := and $cfg.Acme.Enabled (not $cfg.Acme.Shared) }}
+{{- if not $frontingIgnoreProto }}
 {{- if $fgroup.HTTPSRedirMap.HasRegex }}
     http-request set-var(req.redir)
         {{- "" }} var(req.base),map_beg({{ $fgroup.HTTPSRedirMap.MatchFile }})
@@ -743,6 +748,7 @@ frontend _front_http
         {{- "" }} if{{ if $acmeexclusive }} !acme-challenge{{ end }}
         {{- if $hasFrontingProxy }} !fronting-proxy{{ end }}
         {{- "" }} { var(req.base),map_beg({{ $fgroup.HTTPSRedirMap.MatchFile }}) yes }
+{{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -771,6 +777,7 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if not $frontingIgnoreProto }}
     http-request set-header X-Forwarded-Proto http
         {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-CN
@@ -781,6 +788,7 @@ frontend _front_http
         {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-Cert
         {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
     http-request set-var(req.backend) var(req.base),map_beg({{ $fgroup.HTTPFrontsMap.MatchFile }})

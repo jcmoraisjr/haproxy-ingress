@@ -86,6 +86,7 @@ const (
 	GlobalTimeoutStop                  = "timeout-stop"
 	GlobalTLSALPN                      = "tls-alpn"
 	GlobalUseChroot                    = "use-chroot"
+	GlobalUseForwardedProto            = "use-forwarded-proto"
 	GlobalUseHAProxyUser               = "use-haproxy-user"
 	GlobalUseHTX                       = "use-htx"
 	GlobalUseProxyProtocol             = "use-proxy-protocol"

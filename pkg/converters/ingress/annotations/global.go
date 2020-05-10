@@ -207,6 +207,7 @@ func (c *updater) buildGlobalHTTPStoHTTP(d *globalData) {
 	}
 	// TODO Change all `ToHTTP` naming to `FrontingProxy`
 	d.global.Bind.FrontingBind = bind
+	d.global.Bind.FrontingUseProto = d.mapper.Get(ingtypes.GlobalUseForwardedProto).Bool()
 	// Socket ID should be a high number to avoid colision
 	// between the same socket ID from distinct frontends
 	// TODO match socket and frontend ID in the backend

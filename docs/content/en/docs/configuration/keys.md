@@ -235,6 +235,7 @@ The table below describes all supported configuration keys.
 | [`timeout-tunnel`](#timeout)                         | time with suffix                        | Backend | `1h`               |
 | [`tls-alpn`](#tls-alpn)                              | TLS ALPN advertisement                  | Global  | `h2,http/1.1`      |
 | [`use-chroot`](#security)                            | [true\|false]                           | Global  | `false`            |
+| [`use-forwarded-proto`](#fronting-proxy-port)        | [true\|false]                           | Global  | `true`             |
 | [`use-haproxy-user`](#security)                      | [true\|false]                           | Global  | `false`            |
 | [`use-htx`](#use-htx)                                | [true\|false]                           | Global  | `false`            |
 | [`use-proxy-protocol`](#proxy-protocol)              | [true\|false]                           | Global  | `false`            |
@@ -925,10 +926,11 @@ See also:
 
 ## Fronting proxy port
 
-| Configuration key     | Scope    | Default | Since  |
-|-----------------------|----------|---------|--------|
-| `fronting-proxy-port` | `Global` |         | `v0.8` |
-| `https-to-http-port`  | `Global` |         |        |
+| Configuration key     | Scope    | Default | Since   |
+|-----------------------|----------|---------|---------|
+| `fronting-proxy-port` | `Global` |         | `v0.8`  |
+| `https-to-http-port`  | `Global` |         |         |
+| `use-forwarded-proto` | `Global` | `true`  | `v0.10` |
 
 A port number to listen to http requests from a fronting proxy that does the ssl
 offload, eg haproxy ingress behind a cloud load balancers that manages the TLS
@@ -937,8 +939,15 @@ certificates. `https-to-http-port` is an alias to `fronting-proxy-port`.
 `fronting-proxy-port` and [`http-port`](#bind-port) can share the same port number, see below
 what changes in the behaviour.
 
-Requests made to `fronting-proxy-port` port number evaluate the `X-Forwarded-Proto`
-header to decide how to handle the request:
+`use-forwarded-proto` defines if haproxy should use `X-Forwarded-Proto` header to decide
+how to handle requests made to `fronting-proxy-port` port number.
+
+If `use-forwarded-proto` is `false`, the request takes the `https` route and is handled as if
+`X-Forwarded-Proto` header is `https`, see below. The actual header content is ignored by
+haproxy and forwarded to the backend if provided.
+
+If `use-forwarded-proto` is `true`, the default value, requests made to `fronting-proxy-port`
+port number evaluate the `X-Forwarded-Proto` header to decide how to handle the request:
 
 * If `X-Forwarded-Proto` header is `https`:
   * HAProxy will handle the request just like the ssl-offload was made by HAProxy itself - HSTS header is provided if configured and
