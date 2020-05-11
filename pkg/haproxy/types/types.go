@@ -66,12 +66,13 @@ type Global struct {
 
 // GlobalBindConfig ...
 type GlobalBindConfig struct {
-	AcceptProxy    bool
-	HTTPBind       string
-	HTTPSBind      string
-	TCPBindIP      string
-	FrontingBind   string
-	FrontingSockID int
+	AcceptProxy      bool
+	HTTPBind         string
+	HTTPSBind        string
+	TCPBindIP        string
+	FrontingBind     string
+	FrontingSockID   int
+	FrontingUseProto bool
 }
 
 // ProcsConfig ...
