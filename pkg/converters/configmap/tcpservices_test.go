@@ -61,6 +61,7 @@ func TestTCPSvcSync(t *testing.T) {
 					Endpoints: []*hatypes.TCPEndpoint{
 						{Name: "srv001", IP: "172.17.0.101", Port: 5432},
 					},
+					CheckInterval: "2s",
 				},
 				{
 					Name: "default_sendmail",
@@ -69,6 +70,7 @@ func TestTCPSvcSync(t *testing.T) {
 						{Name: "srv001", IP: "172.17.0.201", Port: 25},
 						{Name: "srv002", IP: "172.17.0.202", Port: 25},
 					},
+					CheckInterval: "2s",
 				},
 			},
 		},
@@ -101,8 +103,9 @@ func TestTCPSvcSync(t *testing.T) {
 			services: map[string]string{"5432": "default/pg:5432"},
 			expected: []*hatypes.TCPBackend{
 				{
-					Name: "default_pg",
-					Port: 5432,
+					Name:          "default_pg",
+					Port:          5432,
+					CheckInterval: "2s",
 				},
 			},
 		},
@@ -118,6 +121,7 @@ func TestTCPSvcSync(t *testing.T) {
 					Endpoints: []*hatypes.TCPEndpoint{
 						{Name: "srv001", IP: "172.17.0.101", Port: 5432},
 					},
+					CheckInterval: "2s",
 				},
 			},
 		},
@@ -133,13 +137,14 @@ func TestTCPSvcSync(t *testing.T) {
 					Endpoints: []*hatypes.TCPEndpoint{
 						{Name: "srv001", IP: "172.17.0.101", Port: 5432},
 					},
+					CheckInterval: "2s",
 				},
 			},
 		},
 		// 10
 		{
 			svcmock:  map[string]string{"default/pg:5432": "172.17.0.101"},
-			services: map[string]string{"5432": "default/pg:5432::proxy"},
+			services: map[string]string{"5432": "default/pg:5432::proxy::-"},
 			expected: []*hatypes.TCPBackend{
 				{
 					Name:      "default_pg",
@@ -171,6 +176,38 @@ func TestTCPSvcSync(t *testing.T) {
 					Endpoints: []*hatypes.TCPEndpoint{
 						{Name: "srv001", IP: "172.17.0.101", Port: 5432},
 					},
+					CheckInterval: "2s",
+				},
+			},
+		},
+		// 13
+		{
+			svcmock:  map[string]string{"default/pg:5432": "172.17.0.101"},
+			services: map[string]string{"5432": "default/pg:5432::::fail"},
+			expected: []*hatypes.TCPBackend{
+				{
+					Name: "default_pg",
+					Port: 5432,
+					Endpoints: []*hatypes.TCPEndpoint{
+						{Name: "srv001", IP: "172.17.0.101", Port: 5432},
+					},
+					CheckInterval: "2s",
+				},
+			},
+			logging: `WARN using default check interval '2s' due to an invalid time config on TCP service 5432: fail`,
+		},
+		// 14
+		{
+			svcmock:  map[string]string{"default/pg:5432": "172.17.0.101"},
+			services: map[string]string{"5432": "default/pg:5432::::2s"},
+			expected: []*hatypes.TCPBackend{
+				{
+					Name: "default_pg",
+					Port: 5432,
+					Endpoints: []*hatypes.TCPEndpoint{
+						{Name: "srv001", IP: "172.17.0.101", Port: 5432},
+					},
+					CheckInterval: "2s",
 				},
 			},
 		},
