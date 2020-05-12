@@ -15,7 +15,7 @@ or the [deployment example](/examples/deployment)
 
 An OAuth2 configured domain will proxy all of its requests to a local oauth2 proxy.
 If the request doesn't provide a cookie with a valid signed token, the browser will
-redirect to the OAuth2 provider page, asking the user to login and authorize seding
+redirect to the OAuth2 provider page, asking the user to login and authorize sending
 his email to the application.
 
 If the user authenticate and authorize to share his email address, the provider

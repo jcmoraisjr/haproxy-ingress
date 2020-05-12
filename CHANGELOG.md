@@ -96,7 +96,7 @@ Highlights of this version:
 * HTTP/2 support in the backend side
 * TLS 1.3 support
 * Certificate update using ACME-v2 protocol
-* Hability to run as non-root, see the [security](https://haproxy-ingress.github.io/docs/configuration/keys/#security) doc
+* Ability to run as non-root, see the [security](https://haproxy-ingress.github.io/docs/configuration/keys/#security) doc
 
 New features:
 
@@ -148,7 +148,7 @@ New features:
 * Initialize leader election only if needed [#447](https://github.com/jcmoraisjr/haproxy-ingress/pull/447)
 * Add ip+port bind support for http/https/fronting-proxy [#452](https://github.com/jcmoraisjr/haproxy-ingress/pull/452)
 * Add failure rate limit on work queue [#457](https://github.com/jcmoraisjr/haproxy-ingress/pull/457)
-* Customizeable goarch [#472](https://github.com/jcmoraisjr/haproxy-ingress/pull/472)
+* Customizable goarch [#472](https://github.com/jcmoraisjr/haproxy-ingress/pull/472)
 * dumb-init added from alpine repo [#471](https://github.com/jcmoraisjr/haproxy-ingress/pull/471)
 * Add acme v02 support [#391](https://github.com/jcmoraisjr/haproxy-ingress/pull/391)
   * Configuration keys - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#acme):
@@ -267,7 +267,7 @@ Breaking backward compatibility from [v0.7](#v07):
 Note: A new configuration parser and HAProxy config builder is in place. Despite declared incompatibility changes listed below, all configuration options and behavior should be preserved. Please file an issue if something changed in the v0.8 controller which is not listed here.
 
 * HAProxy's backend naming convention used for services changed from `<namespace>-<svcname>-<port>` to `<namespace>_<svcname>_<port>` in order to avoid ambiguity. This should impact as least logging filters and metrics dashboards.
-* All the other HAProxy's proxy names changed as well - check your logging filters and metrics dasboards.
+* All the other HAProxy's proxy names changed as well - check your logging filters and metrics dashboards.
 * `nbproc-ssl` global configmap option wasn't reimplemented in v0.8, consider use `nbthread` instead.
 * `strict-host` global configmap option changed the default value from `true` to `false`. See `strict-host` [doc](/README.md#strict-host).
 * `dynamic-scaling` configuration key changed the default value from `false` to `true`

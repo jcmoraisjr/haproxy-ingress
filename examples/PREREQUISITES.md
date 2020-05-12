@@ -11,7 +11,7 @@ You can do so following [these instructions](/examples/deployment).
 
 If you're using a generic controller, eg the HAProxy Ingress controller, you
 will need to create a firewall rule that targets port 80/443 on the specific VMs
-the HAProxy controller is running on. On cloudproviders, the respective backend
+the HAProxy controller is running on. On cloud providers, the respective backend
 will auto-create firewall rules for your Ingress.
 
 ## TLS certificates
