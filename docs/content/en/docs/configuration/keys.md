@@ -1670,7 +1670,7 @@ See also:
 
 | Configuration key | Scope    | Default       | Since |
 |-------------------|----------|---------------|-------|
-| `tls-alpm`        | `Global` | `h2,http/1.1` | v0.8  |
+| `tls-alpn`        | `Global` | `h2,http/1.1` | v0.8  |
 
 Defines the TLS ALPN extension advertisement. The default value is `h2,http/1.1` which enables
 HTTP/2 on the client side.
