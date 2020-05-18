@@ -10,7 +10,9 @@ Highlights of this version:
   * HAProxy Ingress exporter for Prometheus
   * HAProxy Ingress dashboard for Grafana, see the [metrics example](https://haproxy-ingress.github.io/docs/examples/metrics/)
 
-**v0.10-snapshot.1**
+### v0.10-beta.1
+
+New features and improvemets:
 
 * Update to haproxy 2.0.11 [#414](https://github.com/jcmoraisjr/haproxy-ingress/pull/414)
 * Remove v0.7 controller [#483](https://github.com/jcmoraisjr/haproxy-ingress/pull/483)
@@ -24,14 +26,8 @@ Highlights of this version:
     * `--healthz-port`
     * `--profiling`
     * `--stats-collect-processing-period`
-
-**v0.10-snapshot.2**
-
 * Change unix sockets user to haproxy [#504](https://github.com/jcmoraisjr/haproxy-ingress/pull/504)
 * Add CN label in the cert_expire metric [#501](https://github.com/jcmoraisjr/haproxy-ingress/pull/501)
-
-**v0.10-snapshot.3**
-
 * Sort tcp services by name and port [#506](https://github.com/jcmoraisjr/haproxy-ingress/pull/506)
 * Add backend-server-naming key [#507](https://github.com/jcmoraisjr/haproxy-ingress/pull/507) - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#backend-server-naming)
   * Configuration keys:
@@ -52,31 +48,37 @@ Highlights of this version:
   * Configuration keys:
     * `auth-tls-strict`
 * Update to haproxy 2.0.12 [#518](https://github.com/jcmoraisjr/haproxy-ingress/pull/518)
-
-**v0.10-snapshot.4**
-
-* Fix TLS handshake on backend [#520](https://github.com/jcmoraisjr/haproxy-ingress/pull/520)
 * Update to haproxy 2.0.13 [#521](https://github.com/jcmoraisjr/haproxy-ingress/pull/521)
 * Ignore ingresses without specified class [#527](https://github.com/jcmoraisjr/haproxy-ingress/pull/527) - [doc](https://haproxy-ingress.github.io/docs/configuration/command-line/#ignore-ingress-without-class)
   * Command-line options:
     * `--ignore-ingress-without-class`
-* Update crt metric if date changes [#524](https://github.com/jcmoraisjr/haproxy-ingress/pull/524)
-* Clear acme work queue on stopped leading [#526](https://github.com/jcmoraisjr/haproxy-ingress/pull/526)
-* Restart the leader elector when stop leading [#532](https://github.com/jcmoraisjr/haproxy-ingress/pull/532)
 * Improve certificate sign logs [#533](https://github.com/jcmoraisjr/haproxy-ingress/pull/533)
-* Fix race on failure rate limit queue [#534](https://github.com/jcmoraisjr/haproxy-ingress/pull/534)
 * Add cert signing metrics [#535](https://github.com/jcmoraisjr/haproxy-ingress/pull/535)
-* Fix processing count metric name [#536](https://github.com/jcmoraisjr/haproxy-ingress/pull/536)
 * Add buckets-response-time command-line option [#537](https://github.com/jcmoraisjr/haproxy-ingress/pull/537) - [doc](https://haproxy-ingress.github.io/docs/configuration/command-line/#buckets-response-time)
   * Command-line options:
     * `--buckets-response-time`
-* Fix label naming of cert signing metric [#538](https://github.com/jcmoraisjr/haproxy-ingress/pull/#538)
 * Add external call to certificate check [#539](https://github.com/jcmoraisjr/haproxy-ingress/pull/#539) - [doc](https://haproxy-ingress.github.io/docs/configuration/command-line/#stats)
 * docs: add crt signing metrics in the dashboard [#540](https://github.com/jcmoraisjr/haproxy-ingress/pull/#540) - [doc](https://haproxy-ingress.github.io/docs/examples/metrics/)
-
-***v0.10-snapshot.5**
-
 * Update HAProxy from 2.0.13 to 2.0.14, which fixes CVE-2020-11100
+* Add check interval on tcp service [#576](https://github.com/jcmoraisjr/haproxy-ingress/pull/576)
+  * Command-line option:
+    * `--tcp-services-configmap` (update) - [doc](https://haproxy-ingress.github.io/docs/configuration/command-line/#tcp-services-configmap)
+* Add use-forwarded-proto config key [#577](https://github.com/jcmoraisjr/haproxy-ingress/pull/577)
+  * Configuration keys:
+    *  `use-forwarded-proto` - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#fronting-proxy-port)
+
+Fixes:
+
+* Fix TLS handshake on backend [#520](https://github.com/jcmoraisjr/haproxy-ingress/pull/520)
+* Update crt metric if date changes [#524](https://github.com/jcmoraisjr/haproxy-ingress/pull/524)
+* Clear acme work queue on stopped leading [#526](https://github.com/jcmoraisjr/haproxy-ingress/pull/526)
+* Restart the leader elector when stop leading [#532](https://github.com/jcmoraisjr/haproxy-ingress/pull/532)
+* Fix race on failure rate limit queue [#534](https://github.com/jcmoraisjr/haproxy-ingress/pull/534)
+* Fix processing count metric name [#536](https://github.com/jcmoraisjr/haproxy-ingress/pull/536)
+* Fix label naming of cert signing metric [#538](https://github.com/jcmoraisjr/haproxy-ingress/pull/#538)
+* Fix logging messages [#559](https://github.com/jcmoraisjr/haproxy-ingress/pull/559)
+* Fix server-alias on http/80 [#570](https://github.com/jcmoraisjr/haproxy-ingress/pull/570)
+* Fix permission using watch-namespace [#578](https://github.com/jcmoraisjr/haproxy-ingress/pull/578)
 
 ## v0.9
 
