@@ -232,6 +232,13 @@ Fixes and improvements since [v0.9-beta.3](#v09-beta3):
 * Add external call to certificate check [#539](https://github.com/jcmoraisjr/haproxy-ingress/pull/#539) - [doc](https://haproxy-ingress.github.io/docs/configuration/command-line/#stats)
 * Update HAProxy from 1.9.14 to 1.9.15, which fixes CVE-2020-11100
 
+### v0.9-post-beta.4 (match v0.9)
+
+Fixes and improvements since [v0.9-beta.4](#v09-beta4):
+
+* Fix logging messages [#559](https://github.com/jcmoraisjr/haproxy-ingress/pull/559)
+* Fix server-alias on http/80 [#570](https://github.com/jcmoraisjr/haproxy-ingress/pull/570)
+
 ## v0.8.4
 
 Fixes and improvements since [v0.8.3](#v083):
