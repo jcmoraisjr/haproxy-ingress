@@ -78,6 +78,7 @@ const (
 	BackCorsExposeHeaders      = "cors-expose-headers"
 	BackCorsMaxAge             = "cors-max-age"
 	BackDynamicScaling         = "dynamic-scaling"
+	BackHeaders                = "headers"
 	BackHealthCheckAddr        = "health-check-addr"
 	BackHealthCheckFallCount   = "health-check-fall-count"
 	BackHealthCheckInterval    = "health-check-interval"

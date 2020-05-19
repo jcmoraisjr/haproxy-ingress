@@ -381,6 +381,11 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- range $header := $backend.Headers }}
+    http-request set-header {{ $header.Name }} {{ $header.Value }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
 {{- if $backend.TLS.HasTLSAuth }}
 {{- $needSSLACL := not $backend.HasSSLRedirect }}
     http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-CN   %{+Q}[ssl_c_s_dn(cn)]{{ if $needSSLACL }}   if local-offload{{ end }}

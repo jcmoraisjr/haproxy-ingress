@@ -490,6 +490,33 @@ func (c *updater) buildBackendHealthCheck(d *backData) {
 	d.backend.HealthCheck.URI = d.mapper.Get(ingtypes.BackHealthCheckURI).Value
 }
 
+func (c *updater) buildBackendHeaders(d *backData) {
+	headers := d.mapper.Get(ingtypes.BackHeaders)
+	if headers.Value == "" {
+		return
+	}
+	for _, header := range utils.LineToSlice(headers.Value) {
+		header = strings.TrimSpace(header)
+		if header == "" {
+			continue
+		}
+		idx := strings.IndexAny(header, ": ")
+		if idx <= 0 {
+			c.logger.Warn("ignored missing header name or value on %v: %s", headers.Source, header)
+			continue
+		}
+		name := strings.TrimRight(header[:idx], ":")
+		value := strings.TrimSpace(header[idx+1:])
+		// TODO this should use a structured type and a smart match/replace if growing a bit more
+		value = strings.ReplaceAll(value, "%[service]", d.backend.Name)
+		value = strings.ReplaceAll(value, "%[namespace]", d.backend.Namespace)
+		d.backend.Headers = append(d.backend.Headers, &hatypes.BackendHeader{
+			Name:  name,
+			Value: value,
+		})
+	}
+}
+
 func (c *updater) buildBackendHSTS(d *backData) {
 	rawHSTSList := d.mapper.GetBackendConfig(
 		d.backend,

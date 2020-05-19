@@ -329,6 +329,26 @@ func TestBackends(t *testing.T) {
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.Headers = []*hatypes.BackendHeader{
+					{Name: "Name", Value: "Value"},
+				}
+			},
+			expected: `
+    http-request set-header Name Value`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.Headers = []*hatypes.BackendHeader{
+					{Name: "X-ID", Value: "abc"},
+					{Name: "Host", Value: "app.domain"},
+				}
+			},
+			expected: `
+    http-request set-header X-ID abc
+    http-request set-header Host app.domain`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.OAuth.Impl = "oauth2_proxy"
 				b.OAuth.BackendName = "system_oauth_4180"
 				b.OAuth.URIPrefix = "/oauth2"

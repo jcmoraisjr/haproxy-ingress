@@ -148,6 +148,7 @@ The table below describes all supported configuration keys.
 | [`dynamic-scaling`](#dynamic-scaling)                | [true\|false]                           | Backend | `true`             |
 | [`forwardfor`](#forwardfor)                          | [add\|ignore\|ifmissing]                | Global  | `add`              |
 | [`fronting-proxy-port`](#fronting-proxy-port)        | port number                             | Global  | 0 (do not listen)  |
+| [`headers`](#headers)                                | multiline header:value pair             | Backend |                    |
 | [`health-check-addr`](#health-check)                 | address for health checks               | Backend |                    |
 | [`health-check-fall-count`](#health-check)           | number of failures                      | Backend |                    |
 | [`health-check-interval`](#health-check)             | time with suffix                        | Backend |                    |
@@ -971,6 +972,28 @@ See also:
 
 * [Bind](#bind)
 * [Bind port](#bind-port)
+
+## Headers
+
+| Configuration key | Scope     | Default | Since  |
+|-------------------|-----------|---------|--------|
+| `headers`         | `Backend` |         | v0.11  |
+
+Configures a list of HTTP header names and the value it should be configured with. More than one header can be configured using a multi-line configuration value. The name of the header and its value should be separated with a colon and/or any amount of spaces.
+
+The following variables can be used in the value:
+
+* `%[namespace]`: namespace of the ingress or service
+* `%[service]`: name of the service which received the request
+
+Configuration example:
+
+```yaml
+    annotations:
+      ingress.kubernetes.io/headers: |
+        x-path: /
+        host: %[service].%[namespace].svc.cluster.local
+```
 
 ---
 
