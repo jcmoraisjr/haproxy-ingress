@@ -105,19 +105,19 @@ func (hc *HAProxyController) configController() {
 	hc.controller.SetNewCtrl(hc)
 	hc.logger = &logger{depth: 1}
 	hc.metrics = createMetrics(hc.cfg.BucketsResponseTime)
-	watchNamespace := api.NamespaceAll
-	if hc.cfg.ForceNamespaceIsolation {
-		watchNamespace = hc.cfg.WatchNamespace
-	}
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(hc.logger.Info)
+	watchNamespace := hc.cfg.WatchNamespace
 	eventBroadcaster.StartRecordingToSink(&typedv1.EventSinkImpl{
 		Interface: hc.cfg.Client.CoreV1().Events(watchNamespace),
 	})
 	hc.recorder = eventBroadcaster.NewRecorder(scheme.Scheme, api.EventSource{
 		Component: "ingress-controller",
 	})
-	hc.listers = createListers(hc, hc.logger, hc.recorder, hc.cfg.Client, watchNamespace, hc.cfg.ResyncPeriod)
+	hc.listers = createListers(
+		hc, hc.logger, hc.recorder, hc.cfg.Client,
+		watchNamespace, hc.cfg.ForceNamespaceIsolation,
+		hc.cfg.ResyncPeriod)
 	hc.cache = newCache(hc.cfg.Client, hc.listers, hc.controller)
 	hc.ingressQueue = utils.NewRateLimitingQueue(hc.cfg.RateLimitUpdate, hc.syncIngress)
 	var acmeSigner acme.Signer

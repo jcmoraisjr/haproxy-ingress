@@ -72,29 +72,43 @@ type listers struct {
 	nodeInformer      cache.SharedInformer
 }
 
-func createListers(events ListerEvents, logger types.Logger, recorder record.EventRecorder, client k8s.Interface, watchNamespace string, resync time.Duration) *listers {
+func createListers(
+	events ListerEvents,
+	logger types.Logger,
+	recorder record.EventRecorder,
+	client k8s.Interface,
+	watchNamespace string,
+	isolateNamespace bool,
+	resync time.Duration,
+) *listers {
 	clusterWatch := watchNamespace == api.NamespaceAll
-	var option informers.SharedInformerOption
+	clusterOption := informers.WithTweakListOptions(nil)
+	namespaceOption := informers.WithNamespace(watchNamespace)
+	var ingressInformer, resourceInformer informers.SharedInformerFactory
 	if clusterWatch {
-		option = informers.WithTweakListOptions(nil)
+		ingressInformer = informers.NewSharedInformerFactoryWithOptions(client, resync, clusterOption)
+		resourceInformer = ingressInformer
+	} else if isolateNamespace {
+		ingressInformer = informers.NewSharedInformerFactoryWithOptions(client, resync, namespaceOption)
+		resourceInformer = ingressInformer
 	} else {
-		option = informers.WithNamespace(watchNamespace)
+		ingressInformer = informers.NewSharedInformerFactoryWithOptions(client, resync, namespaceOption)
+		resourceInformer = informers.NewSharedInformerFactoryWithOptions(client, resync, clusterOption)
 	}
-	informer := informers.NewSharedInformerFactoryWithOptions(client, resync, option)
 	l := &listers{
 		events:   events,
 		recorder: recorder,
 		logger:   logger,
 	}
-	l.createIngressLister(informer.Extensions().V1beta1().Ingresses())
-	l.createEndpointLister(informer.Core().V1().Endpoints())
-	l.createServiceLister(informer.Core().V1().Services())
-	l.createSecretLister(informer.Core().V1().Secrets())
-	l.createConfigMapLister(informer.Core().V1().ConfigMaps())
-	l.createPodLister(informer.Core().V1().Pods())
+	l.createIngressLister(ingressInformer.Extensions().V1beta1().Ingresses())
+	l.createEndpointLister(resourceInformer.Core().V1().Endpoints())
+	l.createServiceLister(resourceInformer.Core().V1().Services())
+	l.createSecretLister(resourceInformer.Core().V1().Secrets())
+	l.createConfigMapLister(resourceInformer.Core().V1().ConfigMaps())
+	l.createPodLister(ingressInformer.Core().V1().Pods())
 	if clusterWatch {
 		// ignoring --disable-node-list
-		l.createNodeLister(informer.Core().V1().Nodes())
+		l.createNodeLister(resourceInformer.Core().V1().Nodes())
 	} else {
 		localInformer := informers.NewSharedInformerFactory(fake.NewSimpleClientset(), 0)
 		l.createNodeLister(localInformer.Core().V1().Nodes())
