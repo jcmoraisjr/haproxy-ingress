@@ -110,13 +110,19 @@ func (c *updater) buildGlobalProc(d *globalData) {
 	} else if ssl > 1 {
 		bindprocSSL = fmt.Sprintf("%v-%v", balance+1, procs)
 	}
+	useCpuMap := d.mapper.Get(ingtypes.GlobalUseCpuMap).Bool()
 	cpumap := ""
-	if threads > 1 {
-		if procs == 1 {
-			cpumap = fmt.Sprintf("auto:1/1-%v 0-%v", threads, threads-1)
+	if useCpuMap {
+		cpumap = d.mapper.Get(ingtypes.GlobalCpuMap).Value
+		if cpumap == "" {
+			if threads > 1 {
+				if procs == 1 {
+					cpumap = fmt.Sprintf("auto:1/1-%v 0-%v", threads, threads-1)
+				}
+			} else if procs > 1 {
+				cpumap = fmt.Sprintf("auto:1-%v 0-%v", procs, procs-1)
+			}
 		}
-	} else if procs > 1 {
-		cpumap = fmt.Sprintf("auto:1-%v 0-%v", procs, procs-1)
 	}
 	d.global.Procs.Nbproc = procs
 	d.global.Procs.Nbthread = threads

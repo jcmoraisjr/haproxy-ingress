@@ -95,6 +95,7 @@ func createDefaults() map[string]string {
 		types.GlobalSyslogTag:                    "ingress",
 		types.GlobalTimeoutStop:                  "10m",
 		types.GlobalTLSALPN:                      "h2,http/1.1",
+		types.GlobalUseCpuMap:                    "true",
 		types.GlobalUseForwardedProto:            "true",
 		types.GlobalUseHTX:                       "true",
 	}

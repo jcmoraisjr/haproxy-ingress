@@ -330,3 +330,56 @@ func TestFrontingProxy(t *testing.T) {
 		c.teardown()
 	}
 }
+
+func TestDisableCpuMap(t *testing.T) {
+	testCases := []struct {
+		ann      map[string]string
+		expected string
+	}{
+		// 0
+		{
+			ann: map[string]string{
+				ingtypes.GlobalUseCpuMap: "false",
+				ingtypes.GlobalNbthread: "1",
+				ingtypes.GlobalNbprocBalance: "1",
+			},
+			expected: "",
+		},
+		// 1
+		{
+			ann: map[string]string{
+				ingtypes.GlobalUseCpuMap: "false",
+				ingtypes.GlobalCpuMap: "auto 1/1 1-",
+				ingtypes.GlobalNbthread: "1",
+				ingtypes.GlobalNbprocBalance: "1",
+			},
+			expected: "",
+		},
+		// 2
+		{
+			ann: map[string]string{
+				ingtypes.GlobalUseCpuMap: "true",
+				ingtypes.GlobalCpuMap: "auto:1/1 1-",
+				ingtypes.GlobalNbthread: "4",
+				ingtypes.GlobalNbprocBalance: "1",
+			},
+			expected: "auto:1/1 1-",
+		},
+		// 3
+		{
+			ann: map[string]string{
+				ingtypes.GlobalUseCpuMap: "true",
+				ingtypes.GlobalNbthread: "2",
+				ingtypes.GlobalNbprocBalance: "1",
+			},
+			expected: "auto:1/1-2 0-1",
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createGlobalData(test.ann)
+		c.createUpdater().buildGlobalProc(d)
+		c.compareObjects("cpu map", i, d.global.Procs.CPUMap, test.expected)
+		c.teardown()
+	}
+}

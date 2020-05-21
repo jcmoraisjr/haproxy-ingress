@@ -137,6 +137,7 @@ The table below describes all supported configuration keys.
 | [`cors-enable`](#cors)                               | [true\|false]                           | Backend |                    |
 | [`cors-expose-headers`](#cors)                       | headers                                 | Backend |                    |
 | [`cors-max-age`](#cors)                              | time (seconds)                          | Backend |                    |
+| [`cpu-map`](#cpu-map)                                | haproxy CPU Map format                  | Global  |                    |
 | [`dns-accepted-payload-size`](#dns-resolvers)        | number                                  | Global  | `8192`             |
 | [`dns-cluster-domain`](#dns-resolvers)               | cluster name                            | Global  | `cluster.local`    |
 | [`dns-hold-obsolete`](#dns-resolvers)                | time with suffix                        | Global  | `0s`               |
@@ -235,6 +236,7 @@ The table below describes all supported configuration keys.
 | [`timeout-tunnel`](#timeout)                         | time with suffix                        | Backend | `1h`               |
 | [`tls-alpn`](#tls-alpn)                              | TLS ALPN advertisement                  | Global  | `h2,http/1.1`      |
 | [`use-chroot`](#security)                            | [true\|false]                           | Global  | `false`            |
+| [`use-cpu-map`](#cpu-map)                            | [true\|false]                           | Global  | `true`             |
 | [`use-forwarded-proto`](#fronting-proxy-port)        | [true\|false]                           | Global  | `true`             |
 | [`use-haproxy-user`](#security)                      | [true\|false]                           | Global  | `false`            |
 | [`use-htx`](#use-htx)                                | [true\|false]                           | Global  | `false`            |
@@ -1180,6 +1182,7 @@ If splitting HAProxy into two or more process and the number of threads is one,
 See also:
 
 * [nbthread](#nbthread) configuration key
+* [cpu-map](#cpu-map) configuration key
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-nbproc
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4-bind-process
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-cpu-map
@@ -1201,7 +1204,30 @@ bind each thread on its own CPU core.
 
 See also:
 
+* [cpu-map](#cpu-map) configuration key
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-nbthread
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-cpu-map
+
+---
+
+## cpu-map
+
+| Configuration key | Scope    | Default | Since |
+|-------------------|----------|---------|-------|
+| `use-cpu-map`     | `Global` | `true`  |       |
+| `cpu-map`         | `Global` |         |       |
+
+
+Define how processes/threads map to CPUs. The default value is generated based
+on [nbthread](#nbthread) and [nbproc](#nbproc).
+
+* `use-cpu-map`: Set to `false` to prevent any cpu mapping
+* `cpu-map`: Custom override specifying the cpu mapping behaviour in the format described [here](https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-cpu-map).
+
+See also:
+
+* [nbthread](#nbthread) configuration key
+* [nbproc](#nbproc) configuration key
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-cpu-map
 
 ---
