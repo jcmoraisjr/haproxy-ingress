@@ -29,11 +29,13 @@ import (
 
 func TestTCPSvcSync(t *testing.T) {
 	testCases := []struct {
-		svcmock    map[string]string
-		secretmock map[string]string
-		services   map[string]string
-		expected   []*hatypes.TCPBackend
-		logging    string
+		svcmock        map[string]string
+		secretCertMock map[string]string
+		secretCAMock   map[string]string
+		secretCRLMock  map[string]string
+		services       map[string]string
+		expected       []*hatypes.TCPBackend
+		logging        string
 	}{
 		// 0
 		{
@@ -158,16 +160,16 @@ func TestTCPSvcSync(t *testing.T) {
 		},
 		// 11
 		{
-			svcmock:    map[string]string{"default/pg:5432": "172.17.0.101"},
-			secretmock: map[string]string{"default/crt": ""},
-			services:   map[string]string{"5432": "default/pg:5432:::default/notfound"},
-			logging:    `WARN skipping TCP service on public port 5432: secret not found: 'default/notfound'`,
+			svcmock:        map[string]string{"default/pg:5432": "172.17.0.101"},
+			secretCertMock: map[string]string{"default/crt": ""},
+			services:       map[string]string{"5432": "default/pg:5432:::default/notfound"},
+			logging:        `WARN skipping TCP service on public port 5432: secret not found: 'default/notfound'`,
 		},
 		// 12
 		{
-			svcmock:    map[string]string{"default/pg:5432": "172.17.0.101"},
-			secretmock: map[string]string{"default/crt": "/var/haproxy/ssl/crt.pem"},
-			services:   map[string]string{"5432": "default/pg:5432:::default/crt"},
+			svcmock:        map[string]string{"default/pg:5432": "172.17.0.101"},
+			secretCertMock: map[string]string{"default/crt": "/var/haproxy/ssl/crt.pem"},
+			services:       map[string]string{"5432": "default/pg:5432:::default/crt"},
 			expected: []*hatypes.TCPBackend{
 				{
 					Name: "default_pg",
@@ -211,6 +213,76 @@ func TestTCPSvcSync(t *testing.T) {
 				},
 			},
 		},
+		// 15
+		{
+			svcmock:  map[string]string{"default/pg:5432": "172.17.0.101"},
+			services: map[string]string{"5432": "default/pg:5432::::2s:default/bogus-secret-ca"},
+			logging:  `WARN skipping TCP service on public port 5432: secret not found: 'default/bogus-secret-ca'`,
+		},
+		// 16
+		{
+			svcmock:      map[string]string{"default/pg:5432": "172.17.0.101"},
+			secretCAMock: map[string]string{"default/ca-only": "/var/haproxy/ssl/ca.pem"},
+			services:     map[string]string{"5432": "default/pg:5432:::::default/ca-only"},
+			expected: []*hatypes.TCPBackend{
+				{
+					Name: "default_pg",
+					Port: 5432,
+					Endpoints: []*hatypes.TCPEndpoint{
+						{Name: "srv001", IP: "172.17.0.101", Port: 5432},
+					},
+					CheckInterval: "2s",
+					SSL: hatypes.TCPSSL{
+						CAFilename:  "/var/haproxy/ssl/ca.pem",
+						CRLFilename: "",
+					},
+				},
+			},
+		},
+		// 17
+		{
+			svcmock:        map[string]string{"default/pg:5432": "172.17.0.101"},
+			secretCertMock: map[string]string{"default/real-secret-tls": "/var/haproxy/ssl/crt.pem"},
+			secretCAMock:   map[string]string{"default/real-secret-ca": "/var/haproxy/ssl/ca.pem"},
+			services:       map[string]string{"5432": "default/pg:5432:::default/real-secret-tls:2s:default/real-secret-ca"},
+			expected: []*hatypes.TCPBackend{
+				{
+					Name: "default_pg",
+					Port: 5432,
+					Endpoints: []*hatypes.TCPEndpoint{
+						{Name: "srv001", IP: "172.17.0.101", Port: 5432},
+					},
+					CheckInterval: "2s",
+					SSL: hatypes.TCPSSL{
+						Filename:   "/var/haproxy/ssl/crt.pem",
+						CAFilename: "/var/haproxy/ssl/ca.pem",
+					},
+				},
+			},
+		},
+		// 18
+		{
+			svcmock:        map[string]string{"default/pg:5432": "172.17.0.101"},
+			secretCertMock: map[string]string{"default/real-secret-tls": "/var/haproxy/ssl/crt.pem"},
+			secretCAMock:   map[string]string{"default/real-secret-ca": "/var/haproxy/ssl/ca.pem"},
+			secretCRLMock:  map[string]string{"default/real-secret-ca": "/var/haproxy/ssl/crl.pem"},
+			services:       map[string]string{"5432": "default/pg:5432:::default/real-secret-tls:2s:default/real-secret-ca"},
+			expected: []*hatypes.TCPBackend{
+				{
+					Name: "default_pg",
+					Port: 5432,
+					Endpoints: []*hatypes.TCPEndpoint{
+						{Name: "srv001", IP: "172.17.0.101", Port: 5432},
+					},
+					CheckInterval: "2s",
+					SSL: hatypes.TCPSSL{
+						Filename:    "/var/haproxy/ssl/crt.pem",
+						CAFilename:  "/var/haproxy/ssl/ca.pem",
+						CRLFilename: "/var/haproxy/ssl/crl.pem",
+					},
+				},
+			},
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
@@ -220,7 +292,9 @@ func TestTCPSvcSync(t *testing.T) {
 			c.cache.SvcList = append(c.cache.SvcList, svc)
 			c.cache.EpList[svcport[0]] = ep
 		}
-		c.cache.SecretTLSPath = test.secretmock
+		c.cache.SecretTLSPath = test.secretCertMock
+		c.cache.SecretCAPath = test.secretCAMock
+		c.cache.SecretCRLPath = test.secretCRLMock
 		NewTCPServicesConverter(c.logger, c.haproxy, c.cache).Sync(test.services)
 		backends := c.haproxy.TCPBackends()
 		for _, b := range backends {

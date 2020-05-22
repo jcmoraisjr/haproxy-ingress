@@ -1190,6 +1190,37 @@ listen _tcp_pq_5432
     mode tcp
     server srv001 172.17.0.2:5432 check port 5432 inter 2s send-proxy`,
 		},
+		// 4
+		{
+			doconfig: func(c *testConfig) {
+				b := c.config.AcquireTCPBackend("pq", 5432)
+				b.AddEndpoint("172.17.0.2", 5432)
+				b.SSL.Filename = "/var/haproxy/ssl/pq.pem"
+				b.SSL.CAFilename = "/var/haproxy/ssl/pqca.pem"
+				b.ProxyProt.EncodeVersion = "v2"
+			},
+			expected: `
+listen _tcp_pq_5432
+    bind :5432 ssl crt /var/haproxy/ssl/pq.pem ca-file /var/haproxy/ssl/pqca.pem verify required
+    mode tcp
+    server srv001 172.17.0.2:5432 send-proxy-v2`,
+		},
+		// 5
+		{
+			doconfig: func(c *testConfig) {
+				b := c.config.AcquireTCPBackend("pq", 5432)
+				b.AddEndpoint("172.17.0.2", 5432)
+				b.SSL.Filename = "/var/haproxy/ssl/pq.pem"
+				b.SSL.CAFilename = "/var/haproxy/ssl/pqca.pem"
+				b.SSL.CRLFilename = "/var/haproxy/ssl/pqcrl.pem"
+				b.ProxyProt.EncodeVersion = "v2"
+			},
+			expected: `
+listen _tcp_pq_5432
+    bind :5432 ssl crt /var/haproxy/ssl/pq.pem ca-file /var/haproxy/ssl/pqca.pem verify required crl-file /var/haproxy/ssl/pqcrl.pem
+    mode tcp
+    server srv001 172.17.0.2:5432 send-proxy-v2`,
+		},
 	}
 	for _, test := range testCases {
 		c := setup(t)
