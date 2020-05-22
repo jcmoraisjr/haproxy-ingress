@@ -218,7 +218,9 @@ type TCPEndpoint struct {
 
 // TCPSSL ...
 type TCPSSL struct {
-	Filename string
+	Filename    string
+	CAFilename  string
+	CRLFilename string
 }
 
 // TCPProxyProt ...

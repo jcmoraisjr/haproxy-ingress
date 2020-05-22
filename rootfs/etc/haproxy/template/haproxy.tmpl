@@ -168,7 +168,11 @@ userlist {{ $userlist.Name }}
 listen _tcp_{{ $backend.Name }}_{{ $backend.Port }}
 {{- $ssl := $backend.SSL }}
     bind {{ $global.Bind.TCPBindIP }}:{{ $backend.Port }}
-        {{- if $ssl.Filename }} ssl crt {{ $ssl.Filename }}{{ end }}
+        {{- if $ssl.Filename }} ssl crt {{ $ssl.Filename }}
+            {{- if $ssl.CAFilename }} ca-file {{ $ssl.CAFilename }} verify required
+                {{- if $ssl.CRLFilename }} crl-file {{ $ssl.CRLFilename }}{{ end }}
+            {{- end }}
+        {{- end }}
         {{- if $backend.ProxyProt.Decode }} accept-proxy{{ end }}
     mode tcp
 
