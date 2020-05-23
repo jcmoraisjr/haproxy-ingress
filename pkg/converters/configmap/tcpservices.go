@@ -53,13 +53,14 @@ var regexValidTime = regexp.MustCompile(`^[0-9]+(us|ms|s|m|h|d)$`)
 func (c *tcpSvcConverter) Sync(tcpservices map[string]string) {
 	// map[key]value is:
 	// - key   => port to expose
-	// - value => <service-name>:<port>:[<PROXY>]:[<PROXY[-<V1|V2>]]:<secret-name>
+	// - value => <service-name>:<port>:[<PROXY>]:[<PROXY[-<V1|V2>]]:<secret-name-cert>:check-interval:<secret-name-ca>
 	//   - 0: namespace/name of the target service
 	//   - 1: target port number
 	//   - 2: "PROXY" means accept proxy protocol
 	//   - 3: "PROXY[-V1|V2]" means send proxy protocol, defaults to V2
 	//   - 4: namespace/name of crt/key secret if should ssl-offload
 	//   - 5: check interval
+	//   - 6: namespace/name of ca/crl secret if should verify client ssl
 	for k, v := range tcpservices {
 		publicport, err := strconv.Atoi(k)
 		if err != nil {
@@ -87,23 +88,31 @@ func (c *tcpSvcConverter) Sync(tcpservices map[string]string) {
 			continue
 		}
 		var crtfile convtypes.CrtFile
-		if svc.secret != "" {
-			crtfile, err = c.cache.GetTLSSecretPath("", svc.secret)
+		if svc.secretTLS != "" {
+			crtfile, err = c.cache.GetTLSSecretPath("", svc.secretTLS)
+			if err != nil {
+				c.logger.Warn("skipping TCP service on public port %d: %v", publicport, err)
+				continue
+			}
+		}
+		var cafile, crlfile convtypes.File
+		if svc.secretCA != "" {
+			cafile, crlfile, err = c.cache.GetCASecretPath("", svc.secretCA)
 			if err != nil {
 				c.logger.Warn("skipping TCP service on public port %d: %v", publicport, err)
 				continue
 			}
 		}
 		checkInterval := "2s"
-		if svc.checkint != "" {
-			if svc.checkint == "-" {
+		if svc.checkInt != "" {
+			if svc.checkInt == "-" {
 				checkInterval = ""
-			} else if regexValidTime.MatchString(svc.checkint) {
-				checkInterval = svc.checkint
+			} else if regexValidTime.MatchString(svc.checkInt) {
+				checkInterval = svc.checkInt
 			} else {
 				c.logger.Warn(
 					"using default check interval '%s' due to an invalid time config on TCP service %d: %s",
-					checkInterval, publicport, svc.checkint)
+					checkInterval, publicport, svc.checkInt)
 			}
 		}
 		servicename := fmt.Sprintf("%s_%s", service.Namespace, service.Name)
@@ -120,31 +129,35 @@ func (c *tcpSvcConverter) Sync(tcpservices map[string]string) {
 			backend.ProxyProt.EncodeVersion = "v1"
 		}
 		backend.SSL.Filename = crtfile.Filename
+		backend.SSL.CAFilename = cafile.Filename
+		backend.SSL.CRLFilename = crlfile.Filename
 	}
 }
 
 type tcpSvc struct {
-	name     string
-	port     string
-	inProxy  string
-	outProxy string
-	secret   string
-	checkint string
+	name      string
+	port      string
+	inProxy   string
+	outProxy  string
+	secretTLS string
+	secretCA  string
+	checkInt  string
 }
 
 func (c *tcpSvcConverter) parseService(service string) *tcpSvc {
-	svc := make([]string, 6)
+	svc := make([]string, 7)
 	for i, v := range strings.Split(service, ":") {
-		if i < 6 {
+		if i < 7 {
 			svc[i] = v
 		}
 	}
 	return &tcpSvc{
-		name:     svc[0],
-		port:     svc[1],
-		inProxy:  svc[2],
-		outProxy: svc[3],
-		secret:   svc[4],
-		checkint: svc[5],
+		name:      svc[0],
+		port:      svc[1],
+		inProxy:   svc[2],
+		outProxy:  svc[3],
+		secretTLS: svc[4],
+		checkInt:  svc[5],
+		secretCA:  svc[6],
 	}
 }
