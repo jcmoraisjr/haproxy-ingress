@@ -799,6 +799,27 @@ See also:
 
 ---
 
+## CPU map
+
+| Configuration key | Scope    | Default | Since |
+|-------------------|----------|---------|-------|
+| `cpu-map`         | `Global` |         |       |
+| `use-cpu-map`     | `Global` | `true`  |       |
+
+Define how processes/threads map to CPUs. The default value is generated based
+on [nbthread](#nbthread) and [nbproc](#nbproc).
+
+* `cpu-map`: Custom override specifying the cpu mapping behaviour in the format described [here](https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-cpu-map).
+* `use-cpu-map`: Set to `false` to prevent any cpu mapping
+
+See also:
+
+* [nbthread](#nbthread) configuration key
+* [nbproc](#nbproc) configuration key
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-cpu-map
+
+---
+
 ## DNS resolvers
 
 | Configuration key           | Scope     | Default         | Since |
@@ -1206,28 +1227,6 @@ See also:
 
 * [cpu-map](#cpu-map) configuration key
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-nbthread
-* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-cpu-map
-
----
-
-## cpu-map
-
-| Configuration key | Scope    | Default | Since |
-|-------------------|----------|---------|-------|
-| `use-cpu-map`     | `Global` | `true`  |       |
-| `cpu-map`         | `Global` |         |       |
-
-
-Define how processes/threads map to CPUs. The default value is generated based
-on [nbthread](#nbthread) and [nbproc](#nbproc).
-
-* `use-cpu-map`: Set to `false` to prevent any cpu mapping
-* `cpu-map`: Custom override specifying the cpu mapping behaviour in the format described [here](https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-cpu-map).
-
-See also:
-
-* [nbthread](#nbthread) configuration key
-* [nbproc](#nbproc) configuration key
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-cpu-map
 
 ---
