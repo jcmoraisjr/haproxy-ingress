@@ -80,6 +80,16 @@ Fixes:
 * Fix server-alias on http/80 [#570](https://github.com/jcmoraisjr/haproxy-ingress/pull/570)
 * Fix permission using watch-namespace [#578](https://github.com/jcmoraisjr/haproxy-ingress/pull/578)
 
+### v0.10-beta.2
+
+Fixes and improvements since [v0.10-beta.1](#v010-beta1):
+
+* Allow overriding CPU Map [#588](https://github.com/jcmoraisjr/haproxy-ingress/pull/588) - [doc](https://haproxy-ingress.github.io/docs/configuration/keys/#cpu-map)
+  * Configuration keys:
+    * `cpu-map`
+    * `use-cpu-map`
+* TCP Services : SSL : Optionally Verify Client [#589](https://github.com/jcmoraisjr/haproxy-ingress/pull/589) - [doc](https://haproxy-ingress.github.io/docs/configuration/command-line/#tcp-services-configmap)
+
 ## v0.9
 
 ### v0.9-beta.1
