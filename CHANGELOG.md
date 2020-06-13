@@ -89,6 +89,7 @@ Fixes and improvements since [v0.10-beta.1](#v010-beta1):
     * `cpu-map`
     * `use-cpu-map`
 * TCP Services : SSL : Optionally Verify Client [#589](https://github.com/jcmoraisjr/haproxy-ingress/pull/589) - [doc](https://haproxy-ingress.github.io/docs/configuration/command-line/#tcp-services-configmap)
+* Update haproxy from 2.0.14 to 2.0.15
 
 ## v0.9
 
