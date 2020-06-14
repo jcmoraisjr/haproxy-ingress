@@ -110,6 +110,7 @@ const (
 	BackSessionCookieName      = "session-cookie-name"
 	BackSessionCookieShared    = "session-cookie-shared"
 	BackSessionCookieStrategy  = "session-cookie-strategy"
+	BackSessionCookieKeywords  = "session-cookie-keywords"
 	BackSSLCipherSuitesBackend = "ssl-cipher-suites-backend"
 	BackSSLCiphersBackend      = "ssl-ciphers-backend"
 	BackSSLFingerprintLower    = "ssl-fingerprint-lower"

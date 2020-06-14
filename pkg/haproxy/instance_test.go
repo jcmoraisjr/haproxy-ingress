@@ -50,6 +50,7 @@ func TestBackends(t *testing.T) {
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.Cookie.Name = "ingress-controller"
 				b.Cookie.Strategy = "insert"
+				b.Cookie.Keywords = "indirect nocache httponly"
 			},
 			srvsuffix: "cookie s1",
 			expected: `
@@ -71,6 +72,7 @@ func TestBackends(t *testing.T) {
 				b.Cookie.Strategy = "insert"
 				b.Cookie.Dynamic = true
 				b.Cookie.Shared = true
+				b.Cookie.Keywords = "indirect nocache httponly"
 				h.AddPath(b, "/other")
 			},
 			expected: `
