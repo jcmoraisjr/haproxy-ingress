@@ -55,6 +55,11 @@ func (c *updater) buildBackendAffinity(d *backData) {
 	}
 	d.backend.Cookie.Name = name
 	d.backend.Cookie.Strategy = strategyName
+	keywords := d.mapper.Get(ingtypes.BackSessionCookieKeywords).Value
+	if strategyName == "insert" && keywords == "" {
+		keywords = "indirect nocache httponly"
+	}
+	d.backend.Cookie.Keywords = keywords
 	d.backend.Cookie.Dynamic = d.mapper.Get(ingtypes.BackSessionCookieDynamic).Bool()
 	d.backend.Cookie.Shared = d.mapper.Get(ingtypes.BackSessionCookieShared).Bool()
 }

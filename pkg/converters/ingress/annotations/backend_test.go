@@ -53,7 +53,7 @@ func TestAffinity(t *testing.T) {
 			ann: map[string]string{
 				ingtypes.BackAffinity: "cookie",
 			},
-			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "insert"},
+			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "insert", Keywords: "indirect nocache httponly"},
 			expLogging: "",
 		},
 		// 3
@@ -62,7 +62,7 @@ func TestAffinity(t *testing.T) {
 				ingtypes.BackAffinity:          "cookie",
 				ingtypes.BackSessionCookieName: "ing",
 			},
-			expCookie:  hatypes.Cookie{Name: "ing", Strategy: "insert"},
+			expCookie:  hatypes.Cookie{Name: "ing", Strategy: "insert", Keywords: "indirect nocache httponly"},
 			expLogging: "",
 		},
 		// 4
@@ -71,7 +71,7 @@ func TestAffinity(t *testing.T) {
 				ingtypes.BackAffinity:              "cookie",
 				ingtypes.BackSessionCookieStrategy: "err",
 			},
-			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "insert"},
+			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "insert", Keywords: "indirect nocache httponly"},
 			expLogging: "WARN invalid affinity cookie strategy 'err' on ingress 'default/ing1', using 'insert' instead",
 		},
 		// 5
@@ -99,7 +99,26 @@ func TestAffinity(t *testing.T) {
 				ingtypes.BackAffinity:             "cookie",
 				ingtypes.BackSessionCookieDynamic: "false",
 			},
-			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "insert", Dynamic: false},
+			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "insert", Dynamic: false, Keywords: "indirect nocache httponly"},
+			expLogging: "",
+		},
+		// 8
+		{
+			ann: map[string]string{
+				ingtypes.BackAffinity:             "cookie",
+				ingtypes.BackSessionCookieKeywords: "nocache",
+			},
+			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "insert", Dynamic: false, Keywords: "nocache"},
+			expLogging: "",
+		},
+		// 9
+		{
+			ann: map[string]string{
+				ingtypes.BackAffinity:              "cookie",
+				ingtypes.BackSessionCookieStrategy: "prefix",
+				ingtypes.BackSessionCookieKeywords: "nocache",
+			},
+			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "prefix", Keywords: "nocache"},
 			expLogging: "",
 		},
 	}
