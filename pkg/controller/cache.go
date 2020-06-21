@@ -160,11 +160,27 @@ func (c *k8scache) GetIngress(ingressName string) (*extensions.Ingress, error) {
 	if err != nil {
 		return nil, err
 	}
-	return c.listers.ingressLister.Ingresses(namespace).Get(name)
+	ing, err := c.listers.ingressLister.Ingresses(namespace).Get(name)
+	if ing != nil && !c.IsValidIngress(ing) {
+		return nil, fmt.Errorf("ingress class does not match")
+	}
+	return ing, err
 }
 
 func (c *k8scache) GetIngressList() ([]*extensions.Ingress, error) {
-	return c.listers.ingressLister.List(labels.Everything())
+	ingList, err := c.listers.ingressLister.List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+	validIngList := make([]*extensions.Ingress, len(ingList))
+	var i int
+	for _, ing := range ingList {
+		if c.IsValidIngress(ing) {
+			validIngList[i] = ing
+			i++
+		}
+	}
+	return validIngList[:i], nil
 }
 
 func (c *k8scache) GetService(serviceName string) (*api.Service, error) {
@@ -180,7 +196,10 @@ func (c *k8scache) GetSecret(secretName string) (*api.Secret, error) {
 	if err != nil {
 		return nil, err
 	}
-	return c.listers.secretLister.Secrets(namespace).Get(name)
+	if c.listers.running {
+		return c.listers.secretLister.Secrets(namespace).Get(name)
+	}
+	return c.client.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
 }
 
 func (c *k8scache) GetConfigMap(configMapName string) (*api.ConfigMap, error) {

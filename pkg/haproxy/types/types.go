@@ -200,6 +200,11 @@ type ModSecurityTimeoutConfig struct {
 	Processing string
 }
 
+// TCPBackends ...
+type TCPBackends struct {
+	items, itemsAdd, itemsDel map[int]*TCPBackend
+}
+
 // TCPBackend ...
 type TCPBackend struct {
 	Name          string
@@ -283,7 +288,8 @@ type Frontend struct {
 
 // Hosts ...
 type Hosts struct {
-	itemsmap    map[string]*Host
+	items, itemsAdd, itemsDel map[string]*Host
+	//
 	defaultHost *Host
 	//
 	sslPassthroughCount int
@@ -362,7 +368,8 @@ const (
 
 // Backends ...
 type Backends struct {
-	itemsmap       map[string]*Backend
+	items, itemsAdd, itemsDel map[string]*Backend
+	//
 	defaultBackend *Backend
 }
 
@@ -644,6 +651,11 @@ type WAF struct {
 	Mode string
 	// Which WAF Module should be used
 	Module string
+}
+
+// Userlists ...
+type Userlists struct {
+	items, itemsAdd, itemsDel map[string]*Userlist
 }
 
 // Userlist ...

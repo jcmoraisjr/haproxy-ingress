@@ -296,7 +296,7 @@ func TestTCPSvcSync(t *testing.T) {
 		c.cache.SecretCAPath = test.secretCAMock
 		c.cache.SecretCRLPath = test.secretCRLMock
 		NewTCPServicesConverter(c.logger, c.haproxy, c.cache).Sync(test.services)
-		backends := c.haproxy.TCPBackends()
+		backends := c.haproxy.TCPBackends().BuildSortedItems()
 		for _, b := range backends {
 			for _, ep := range b.Endpoints {
 				ep.Target = ""

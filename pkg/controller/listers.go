@@ -48,6 +48,7 @@ type listers struct {
 	events   ListerEvents
 	logger   types.Logger
 	recorder record.EventRecorder
+	running  bool
 	//
 	ingressLister   listersv1beta1.IngressLister
 	endpointLister  listersv1.EndpointsLister
@@ -130,6 +131,7 @@ func (l *listers) RunAsync(stopCh <-chan struct{}) {
 	)
 	if synced {
 		l.logger.Info("cache successfully synced")
+		l.running = true
 	} else {
 		runtime.HandleError(fmt.Errorf("initial cache sync has timed out or shutdown has requested"))
 	}
@@ -143,7 +145,9 @@ func (l *listers) createIngressLister(informer informersv1beta1.IngressInformer)
 			ing := obj.(*extensions.Ingress)
 			if l.events.IsValidIngress(ing) {
 				l.events.Notify(nil, ing)
-				l.recorder.Eventf(ing, api.EventTypeNormal, "CREATE", fmt.Sprintf("Ingress %s/%s", ing.Namespace, ing.Name))
+				if l.running {
+					l.recorder.Eventf(ing, api.EventTypeNormal, "CREATE", "Ingress %s/%s", ing.Namespace, ing.Name)
+				}
 			}
 		},
 		UpdateFunc: func(old, cur interface{}) {
@@ -159,13 +163,13 @@ func (l *listers) createIngressLister(informer informersv1beta1.IngressInformer)
 			}
 			if !oldValid && curValid {
 				l.events.Notify(nil, curIng)
-				l.recorder.Eventf(curIng, api.EventTypeNormal, "CREATE", fmt.Sprintf("Ingress %s/%s", curIng.Namespace, curIng.Name))
+				l.recorder.Eventf(curIng, api.EventTypeNormal, "CREATE", "Ingress %s/%s", curIng.Namespace, curIng.Name)
 			} else if oldValid && !curValid {
 				l.events.Notify(oldIng, nil)
-				l.recorder.Eventf(curIng, api.EventTypeNormal, "DELETE", fmt.Sprintf("Ingress %s/%s", curIng.Namespace, curIng.Name))
+				l.recorder.Eventf(curIng, api.EventTypeNormal, "DELETE", "Ingress %s/%s", curIng.Namespace, curIng.Name)
 			} else {
 				l.events.Notify(oldIng, curIng)
-				l.recorder.Eventf(curIng, api.EventTypeNormal, "UPDATE", fmt.Sprintf("Ingress %s/%s", curIng.Namespace, curIng.Name))
+				l.recorder.Eventf(curIng, api.EventTypeNormal, "UPDATE", "Ingress %s/%s", curIng.Namespace, curIng.Name)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
@@ -186,7 +190,7 @@ func (l *listers) createIngressLister(informer informersv1beta1.IngressInformer)
 			if !l.events.IsValidIngress(ing) {
 				return
 			}
-			l.recorder.Eventf(ing, api.EventTypeNormal, "DELETE", fmt.Sprintf("Ingress %s/%s", ing.Namespace, ing.Name))
+			l.recorder.Eventf(ing, api.EventTypeNormal, "DELETE", "Ingress %s/%s", ing.Namespace, ing.Name)
 			l.events.Notify(ing, nil)
 		},
 	})

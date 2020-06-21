@@ -23,20 +23,43 @@ import (
 // CreateBackends ...
 func CreateBackends() *Backends {
 	return &Backends{
-		itemsmap: map[string]*Backend{},
+		items:    map[string]*Backend{},
+		itemsAdd: map[string]*Backend{},
+		itemsDel: map[string]*Backend{},
 	}
 }
 
 // Items ...
 func (b *Backends) Items() map[string]*Backend {
-	return b.itemsmap
+	return b.items
+}
+
+// ItemsAdd ...
+func (b *Backends) ItemsAdd() map[string]*Backend {
+	return b.itemsAdd
+}
+
+// ItemsDel ...
+func (b *Backends) ItemsDel() map[string]*Backend {
+	return b.itemsDel
+}
+
+// Commit ...
+func (b *Backends) Commit() {
+	b.itemsAdd = map[string]*Backend{}
+	b.itemsDel = map[string]*Backend{}
+}
+
+// Changed ...
+func (b *Backends) Changed() bool {
+	return len(b.itemsAdd) > 0 || len(b.itemsDel) > 0
 }
 
 // BuildSortedItems ...
 func (b *Backends) BuildSortedItems() []*Backend {
-	items := make([]*Backend, len(b.itemsmap))
+	items := make([]*Backend, len(b.items))
 	var i int
-	for _, item := range b.itemsmap {
+	for _, item := range b.items {
 		items[i] = item
 		i++
 	}
@@ -58,24 +81,29 @@ func (b *Backends) AcquireBackend(namespace, name, port string) *Backend {
 		return backend
 	}
 	backend := createBackend(namespace, name, port)
-	b.itemsmap[backend.ID] = backend
+	b.items[backend.ID] = backend
+	b.itemsAdd[backend.ID] = backend
 	return backend
 }
 
 // FindBackend ...
 func (b *Backends) FindBackend(namespace, name, port string) *Backend {
-	return b.itemsmap[buildID(namespace, name, port)]
+	return b.items[buildID(namespace, name, port)]
 }
 
 // FindBackendID ...
 func (b *Backends) FindBackendID(backendID BackendID) *Backend {
-	return b.itemsmap[backendID.String()]
+	return b.items[backendID.String()]
 }
 
 // RemoveAll ...
 func (b *Backends) RemoveAll(backendID []BackendID) {
 	for _, backend := range backendID {
-		delete(b.itemsmap, backend.String())
+		id := backend.String()
+		if item, found := b.items[id]; found {
+			b.itemsDel[id] = item
+			delete(b.items, id)
+		}
 	}
 	// IMPLEMENT
 	// track and remove unused userlist entries
@@ -98,7 +126,7 @@ func (b *Backends) SetDefaultBackend(defaultBackend *Backend) {
 	}
 }
 
-func (b *BackendID) String() string {
+func (b BackendID) String() string {
 	if b.id == "" {
 		b.id = b.Namespace + "_" + b.Name + "_" + b.Port
 	}

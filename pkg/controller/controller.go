@@ -327,6 +327,7 @@ func (hc *HAProxyController) syncIngress(item interface{}) {
 	// configmap converters
 	//
 	if hc.cfg.TCPConfigMapName != "" {
+		// TODO parses only when tcpconfigmap changes
 		tcpConfigmap, err := hc.cache.GetConfigMap(hc.cfg.TCPConfigMapName)
 		if err == nil && tcpConfigmap != nil {
 			tcpSvcConverter := configmapconverter.NewTCPServicesConverter(

@@ -51,6 +51,8 @@ type tcpSvcConverter struct {
 var regexValidTime = regexp.MustCompile(`^[0-9]+(us|ms|s|m|h|d)$`)
 
 func (c *tcpSvcConverter) Sync(tcpservices map[string]string) {
+	c.haproxy.TCPBackends().RemoveAll()
+
 	// map[key]value is:
 	// - key   => port to expose
 	// - value => <service-name>:<port>:[<PROXY>]:[<PROXY[-<V1|V2>]]:<secret-name-cert>:check-interval:<secret-name-ca>
@@ -116,7 +118,7 @@ func (c *tcpSvcConverter) Sync(tcpservices map[string]string) {
 			}
 		}
 		servicename := fmt.Sprintf("%s_%s", service.Namespace, service.Name)
-		backend := c.haproxy.AcquireTCPBackend(servicename, publicport)
+		backend := c.haproxy.TCPBackends().Acquire(servicename, publicport)
 		for _, addr := range addrs {
 			backend.AddEndpoint(addr.IP, addr.Port)
 		}

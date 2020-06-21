@@ -91,7 +91,7 @@ func (c *updater) buildBackendAuthHTTP(d *backData) {
 				secretName = authSecret.Source.Namespace + "/" + secretName
 			}
 			listName := strings.Replace(secretName, "/", "_", 1)
-			userlist := c.haproxy.FindUserlist(listName)
+			userlist := c.haproxy.Userlists().Find(listName)
 			if userlist == nil {
 				userb, err := c.cache.GetSecretContent(authSecret.Source.Namespace, authSecret.Value, "auth")
 				if err != nil {
@@ -103,7 +103,7 @@ func (c *updater) buildBackendAuthHTTP(d *backData) {
 				for _, err := range errs {
 					c.logger.Warn("ignoring malformed usr/passwd on secret '%s', declared on %v: %v", secretName, authSecret.Source, err)
 				}
-				userlist = c.haproxy.AddUserlist(listName, users)
+				userlist = c.haproxy.Userlists().Replace(listName, users)
 				if len(users) == 0 {
 					c.logger.Warn("userlist on %v for basic authentication is empty", authSecret.Source)
 				}

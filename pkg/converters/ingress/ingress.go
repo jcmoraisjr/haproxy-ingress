@@ -162,6 +162,13 @@ func (c *converter) syncPartial() {
 		}
 		return serviceList
 	}
+	ep2names := func(endpoints []*api.Endpoints) []string {
+		epList := make([]string, len(endpoints))
+		for i, ep := range endpoints {
+			epList[i] = ep.Namespace + "/" + ep.Name
+		}
+		return epList
+	}
 	secret2names := func(secrets []*api.Secret) []string {
 		secretList := make([]string, len(secrets))
 		for i, secret := range secrets {
@@ -178,6 +185,8 @@ func (c *converter) syncPartial() {
 	updSvcNames := svc2names(c.changed.ServicesUpd)
 	addSvcNames := svc2names(c.changed.ServicesAdd)
 	oldSvcNames := append(delSvcNames, updSvcNames...)
+	updEndpointsNames := ep2names(c.changed.Endpoints)
+	oldSvcNames = append(oldSvcNames, updEndpointsNames...)
 	delSecretNames := secret2names(c.changed.SecretsDel)
 	updSecretNames := secret2names(c.changed.SecretsUpd)
 	addSecretNames := secret2names(c.changed.SecretsAdd)
@@ -188,6 +197,9 @@ func (c *converter) syncPartial() {
 	c.tracker.DeleteBackends(dirtyBacks)
 	c.haproxy.Hosts().RemoveAll(dirtyHosts)
 	c.haproxy.Backends().RemoveAll(dirtyBacks)
+	if len(dirtyHosts) > 0 || len(dirtyBacks) > 0 {
+		c.logger.InfoV(2, "changed hosts: %v; backends: %v", dirtyHosts, dirtyBacks)
+	}
 
 	// merge dirty and added ingress objects into a single list
 	ingMap := make(map[string]*extensions.Ingress)
@@ -219,11 +231,6 @@ func (c *converter) syncPartial() {
 	sortIngress(ingList)
 	for _, ing := range ingList {
 		c.syncIngress(ing)
-	}
-	for _, ep := range c.changed.Endpoints {
-		if err := c.applyEndpoints(ep); err != nil {
-			c.logger.Warn("skipping apply endpoint '%s/%s' update: %v", ep.Namespace, ep.Name, err)
-		}
 	}
 	if c.globalConfig.Get(ingtypes.GlobalDrainSupport).Bool() {
 		for _, pod := range c.changed.Pods {
@@ -351,7 +358,6 @@ func (c *converter) fullSyncAnnotations() {
 }
 
 func (c *converter) partialSyncAnnotations(hosts []string, backends []hatypes.BackendID) {
-	c.updater.UpdateGlobalConfig(c.haproxy, c.globalConfig)
 	for _, hostname := range hosts {
 		host := c.haproxy.Hosts().FindHost(hostname)
 		if ann, found := c.hostAnnotations[host]; found {
@@ -468,7 +474,10 @@ func (c *converter) addBackend(source *annotations.Source, hostname, uri, fullSv
 
 func (c *converter) addTLS(source *annotations.Source, hostname, secretName string) convtypes.CrtFile {
 	if secretName != "" {
-		fullName := source.Namespace + "/" + secretName
+		fullName := secretName
+		if strings.Index(secretName, "/") == -1 {
+			fullName = source.Namespace + "/" + secretName
+		}
 		tlsFile, err := c.cache.GetTLSSecretPath(source.Namespace, secretName)
 		if err == nil {
 			c.tracker.TrackHostname(convtypes.SecretType, fullName, hostname)
@@ -505,23 +514,6 @@ func (c *converter) addEndpoints(svc *api.Service, svcPort *api.ServicePort, bac
 			} else {
 				c.logger.Warn("skipping endpoint %s of service %s/%s: port '%s' was not found",
 					pod.Status.PodIP, svc.Namespace, svc.Name, svcPort.TargetPort.String())
-			}
-		}
-	}
-	return nil
-}
-
-func (c *converter) applyEndpoints(endpoints *api.Endpoints) error {
-	svc, err := c.cache.GetService(fmt.Sprintf("%s/%s", endpoints.Namespace, endpoints.Name))
-	if err != nil {
-		return err
-	}
-	for _, port := range svc.Spec.Ports {
-		backend := c.haproxy.Backends().FindBackend(endpoints.Namespace, endpoints.Name, port.TargetPort.String())
-		if backend != nil {
-			backend.ClearEndpoints()
-			if err := c.addEndpoints(svc, &port, backend); err != nil {
-				c.logger.Warn("skipping backend '%s' update: %v", backend.ID, err)
 			}
 		}
 	}

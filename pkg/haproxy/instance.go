@@ -69,25 +69,25 @@ func CreateInstance(logger types.Logger, options InstanceOptions) Instance {
 }
 
 type instance struct {
+	up           bool
 	logger       types.Logger
 	options      *InstanceOptions
 	templates    *template.Config
 	mapsTemplate *template.Config
 	mapsDir      string
-	oldConfig    Config
-	curConfig    Config
+	config       Config
 	metrics      types.Metrics
 }
 
 func (i *instance) AcmeCheck(source string) (int, error) {
 	var count int
-	if i.oldConfig == nil {
+	if !i.up {
 		return count, fmt.Errorf("controller wasn't started yet")
 	}
 	if i.options.AcmeQueue == nil {
 		return count, fmt.Errorf("Acme queue wasn't configured")
 	}
-	hasAccount := i.acmeEnsureConfig(i.oldConfig.AcmeData())
+	hasAccount := i.acmeEnsureConfig(i.config.AcmeData())
 	if !hasAccount {
 		return count, fmt.Errorf("Cannot create or retrieve the acme client account")
 	}
@@ -98,7 +98,7 @@ func (i *instance) AcmeCheck(source string) (int, error) {
 		return count, fmt.Errorf(msg)
 	}
 	i.logger.Info("starting certificate check (%s)", source)
-	for storage, domains := range i.oldConfig.AcmeData().Certs {
+	for storage, domains := range i.config.AcmeData().Certs {
 		i.acmeAddCert(storage, domains)
 		count++
 	}
@@ -174,23 +174,23 @@ func (i *instance) ParseTemplates() error {
 }
 
 func (i *instance) Config() Config {
-	if i.curConfig == nil {
+	if i.config == nil {
 		config := createConfig(options{
 			mapsTemplate: i.mapsTemplate,
 			mapsDir:      i.mapsDir,
 		})
-		i.curConfig = config
+		i.config = config
 	}
-	return i.curConfig
+	return i.config
 }
 
 var idleRegex = regexp.MustCompile(`Idle_pct: ([0-9]+)`)
 
 func (i *instance) CalcIdleMetric() {
-	if i.oldConfig == nil {
+	if !i.up {
 		return
 	}
-	msg, err := hautils.HAProxyCommand(i.oldConfig.Global().AdminSocket, i.metrics.HAProxyShowInfoResponseTime, "show info")
+	msg, err := hautils.HAProxyCommand(i.config.Global().AdminSocket, i.metrics.HAProxyShowInfoResponseTime, "show info")
 	if err != nil {
 		i.logger.Error("error reading admin socket: %v", err)
 		return
@@ -213,19 +213,21 @@ func (i *instance) Update(timer *utils.Timer) {
 }
 
 func (i *instance) acmeUpdate() {
-	if i.oldConfig == nil || i.curConfig == nil || i.options.AcmeQueue == nil {
+	if i.config == nil || i.options.AcmeQueue == nil {
 		return
 	}
 	le := i.options.LeaderElector
 	if le.IsLeader() {
-		hasAccount := i.acmeEnsureConfig(i.curConfig.AcmeData())
+		hasAccount := i.acmeEnsureConfig(i.config.AcmeData())
 		if !hasAccount {
 			return
 		}
 	}
 	var updated bool
-	oldCerts := i.oldConfig.AcmeData().Certs
-	curCerts := i.curConfig.AcmeData().Certs
+	// IMPLEMENT
+	// cannot use acmeDataOld/acmeData - this would need a full ingress parsing
+	oldCerts := i.config.AcmeData().Certs
+	curCerts := i.config.AcmeData().Certs
 	// Remove from the retry queue certs that was removed from the config
 	for storage, domains := range oldCerts {
 		curdomains, found := curCerts[storage]
@@ -253,7 +255,7 @@ func (i *instance) acmeUpdate() {
 
 func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	// nil config, just ignore
-	if i.curConfig == nil {
+	if i.config == nil {
 		i.logger.Info("new configuration is empty")
 		return
 	}
@@ -263,30 +265,26 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	//   - i.metrics.IncUpdate<Status>() should be called always, but only once
 	//   - i.metrics.UpdateSuccessful(<bool>) should be called only if haproxy is reloaded or cfg is validated
 	//
-	defer i.rotateConfig()
-	i.curConfig.SyncConfig()
-	if err := i.curConfig.WriteFrontendMaps(); err != nil {
+	defer i.config.Commit()
+	i.config.SyncConfig()
+	if err := i.config.WriteFrontendMaps(); err != nil {
 		i.logger.Error("error building configuration group: %v", err)
 		i.metrics.IncUpdateNoop()
 		return
 	}
-	if err := i.curConfig.WriteBackendMaps(); err != nil {
+	if err := i.config.WriteBackendMaps(); err != nil {
 		i.logger.Error("error building backend maps: %v", err)
-		i.metrics.IncUpdateNoop()
-		return
-	}
-	if i.curConfig.Equals(i.oldConfig) {
-		i.logger.InfoV(2, "old and new configurations match, skipping reload")
 		i.metrics.IncUpdateNoop()
 		return
 	}
 	updater := i.newDynUpdater()
 	updated := updater.update()
+	timer.Tick("gen_config")
 	if !updated || updater.cmdCnt > 0 {
 		// only need to rewrtite config files if:
 		//   - !updated           - there are changes that cannot be dynamically applied
 		//   - updater.cmdCnt > 0 - there are changes that was dynamically applied
-		err := i.templates.Write(i.curConfig)
+		err := i.templates.Write(i.config)
 		timer.Tick("write_tmpl")
 		if err != nil {
 			i.logger.Error("error writing configuration: %v", err)
@@ -319,37 +317,30 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 		i.metrics.UpdateSuccessful(false)
 		return
 	}
-	timer.Tick("reload_haproxy")
+	i.up = true
 	i.metrics.UpdateSuccessful(true)
 	i.logger.Info("HAProxy successfully reloaded")
+	timer.Tick("reload_haproxy")
 }
 
 func (i *instance) updateCertExpiring() {
 	// TODO move to dynupdate when dynamic crt update is implemented
-	if i.oldConfig == nil {
-		for _, curHost := range i.curConfig.Hosts().Items() {
-			if curHost.TLS.HasTLS() {
-				i.metrics.SetCertExpireDate(curHost.Hostname, curHost.TLS.TLSCommonName, &curHost.TLS.TLSNotAfter)
+	hostsAdd := i.config.Hosts().ItemsAdd()
+	hostsDel := i.config.Hosts().ItemsDel()
+	for hostname, oldHost := range hostsDel {
+		if oldHost.TLS.HasTLS() {
+			curHost, found := hostsAdd[hostname]
+			if !found || oldHost.TLS.TLSCommonName != curHost.TLS.TLSCommonName {
+				i.metrics.SetCertExpireDate(hostname, oldHost.TLS.TLSCommonName, nil)
 			}
 		}
-		return
 	}
-	for _, oldHost := range i.oldConfig.Hosts().Items() {
-		if !oldHost.TLS.HasTLS() {
-			continue
-		}
-		curHost := i.curConfig.Hosts().FindHost(oldHost.Hostname)
-		if curHost == nil || oldHost.TLS.TLSCommonName != curHost.TLS.TLSCommonName {
-			i.metrics.SetCertExpireDate(oldHost.Hostname, oldHost.TLS.TLSCommonName, nil)
-		}
-	}
-	for _, curHost := range i.curConfig.Hosts().Items() {
-		if !curHost.TLS.HasTLS() {
-			continue
-		}
-		oldHost := i.oldConfig.Hosts().FindHost(curHost.Hostname)
-		if oldHost == nil || oldHost.TLS.TLSCommonName != curHost.TLS.TLSCommonName || oldHost.TLS.TLSNotAfter != curHost.TLS.TLSNotAfter {
-			i.metrics.SetCertExpireDate(curHost.Hostname, curHost.TLS.TLSCommonName, &curHost.TLS.TLSNotAfter)
+	for hostname, curHost := range hostsAdd {
+		if curHost.TLS.HasTLS() {
+			oldHost, found := hostsDel[hostname]
+			if !found || oldHost.TLS.TLSCommonName != curHost.TLS.TLSCommonName || oldHost.TLS.TLSNotAfter != curHost.TLS.TLSNotAfter {
+				i.metrics.SetCertExpireDate(hostname, curHost.TLS.TLSCommonName, &curHost.TLS.TLSNotAfter)
+			}
 		}
 	}
 }
@@ -381,10 +372,4 @@ func (i *instance) reload() error {
 		return err
 	}
 	return nil
-}
-
-func (i *instance) rotateConfig() {
-	// TODO releaseConfig (old support files, ...)
-	i.oldConfig = i.curConfig
-	i.curConfig = nil
 }

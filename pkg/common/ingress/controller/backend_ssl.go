@@ -61,7 +61,7 @@ func (ic *GenericController) SyncSecret(key string) {
 		return
 	}
 
-	glog.Infof("adding secret %v to the local store", key)
+	glog.V(3).Infof("adding secret %v to the local store", key)
 	ic.sslCertTracker.Add(key, cert)
 	// this update must trigger an update
 	// (like an update event from a change in Ingress)

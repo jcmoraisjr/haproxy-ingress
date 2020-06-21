@@ -19,8 +19,9 @@ package haproxy
 import (
 	"fmt"
 	"reflect"
-	"sort"
 	"strings"
+
+	"github.com/jinzhu/copier"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
@@ -28,36 +29,33 @@ import (
 
 // Config ...
 type Config interface {
-	AcquireTCPBackend(servicename string, port int) *hatypes.TCPBackend
-	AddUserlist(name string, users []hatypes.User) *hatypes.Userlist
-	FindUserlist(name string) *hatypes.Userlist
 	Frontend() *hatypes.Frontend
 	SyncConfig()
 	WriteFrontendMaps() error
 	WriteBackendMaps() error
 	AcmeData() *hatypes.AcmeData
 	Global() *hatypes.Global
-	TCPBackends() []*hatypes.TCPBackend
+	TCPBackends() *hatypes.TCPBackends
 	Hosts() *hatypes.Hosts
 	Backends() *hatypes.Backends
-	Userlists() []*hatypes.Userlist
+	Userlists() *hatypes.Userlists
 	Clear()
-	Equals(other Config) bool
+	Commit()
 }
 
 type config struct {
-	// external state, non haproxy data, cannot reflect in Config.Equals()
-	// reflect changes to config.Equals()
+	// external state, non haproxy data
 	acmeData     *hatypes.AcmeData
 	mapsTemplate *template.Config
 	mapsDir      string
 	// haproxy internal state
+	globalOld   *hatypes.Global
 	global      *hatypes.Global
 	frontend    *hatypes.Frontend
 	hosts       *hatypes.Hosts
 	backends    *hatypes.Backends
-	tcpbackends []*hatypes.TCPBackend
-	userlists   []*hatypes.Userlist
+	tcpbackends *hatypes.TCPBackends
+	userlists   *hatypes.Userlists
 }
 
 type options struct {
@@ -77,50 +75,11 @@ func createConfig(options options) *config {
 		frontend:     &hatypes.Frontend{Name: "_front001"},
 		hosts:        hatypes.CreateHosts(),
 		backends:     hatypes.CreateBackends(),
+		tcpbackends:  hatypes.CreateTCPBackends(),
+		userlists:    hatypes.CreateUserlists(),
 		mapsTemplate: mapsTemplate,
 		mapsDir:      options.mapsDir,
 	}
-}
-
-func (c *config) AcquireTCPBackend(servicename string, port int) *hatypes.TCPBackend {
-	for _, backend := range c.tcpbackends {
-		if backend.Name == servicename && backend.Port == port {
-			return backend
-		}
-	}
-	backend := &hatypes.TCPBackend{
-		Name: servicename,
-		Port: port,
-	}
-	c.tcpbackends = append(c.tcpbackends, backend)
-	sort.Slice(c.tcpbackends, func(i, j int) bool {
-		back1 := c.tcpbackends[i]
-		back2 := c.tcpbackends[j]
-		if back1.Name == back2.Name {
-			return back1.Port < back2.Port
-		}
-		return back1.Name < back2.Name
-	})
-	return backend
-}
-
-func (c *config) AddUserlist(name string, users []hatypes.User) *hatypes.Userlist {
-	userlist := &hatypes.Userlist{
-		Name:  name,
-		Users: users,
-	}
-	sort.Slice(users, func(i, j int) bool {
-		return users[i].Name < users[j].Name
-	})
-	c.userlists = append(c.userlists, userlist)
-	sort.Slice(c.userlists, func(i, j int) bool {
-		return c.userlists[i].Name < c.userlists[j].Name
-	})
-	return userlist
-}
-
-func (c *config) FindUserlist(name string) *hatypes.Userlist {
-	return nil
 }
 
 func (c *config) Frontend() *hatypes.Frontend {
@@ -373,7 +332,7 @@ func (c *config) Global() *hatypes.Global {
 	return c.global
 }
 
-func (c *config) TCPBackends() []*hatypes.TCPBackend {
+func (c *config) TCPBackends() *hatypes.TCPBackends {
 	return c.tcpbackends
 }
 
@@ -385,7 +344,7 @@ func (c *config) Backends() *hatypes.Backends {
 	return c.backends
 }
 
-func (c *config) Userlists() []*hatypes.Userlist {
+func (c *config) Userlists() *hatypes.Userlists {
 	return c.userlists
 }
 
@@ -397,15 +356,27 @@ func (c *config) Clear() {
 	*c = *config
 }
 
-func (c *config) Equals(other Config) bool {
-	c2, ok := other.(*config)
-	if !ok {
-		return false
+func (c *config) Commit() {
+	if !reflect.DeepEqual(c.globalOld, c.global) {
+		// globals still uses the old deepCopy+fullParsing+deepEqual strategy
+		var globalOld hatypes.Global
+		if err := copier.Copy(&globalOld, c.global); err != nil {
+			panic(err)
+		}
+		c.globalOld = &globalOld
 	}
-	// (config struct): external state, should not reflect in Config.Equals()
-	copy := *c2
-	copy.acmeData = c.acmeData
-	copy.mapsTemplate = c.mapsTemplate
-	copy.mapsDir = c.mapsDir
-	return reflect.DeepEqual(c, &copy)
+	c.hosts.Commit()
+	c.backends.Commit()
+	c.tcpbackends.Commit()
+	c.userlists.Commit()
+}
+
+func (c *config) hasCommittedData() bool {
+	// Committed data is data which was already added and synchronized
+	// to a haproxy instance. A `Clear()` clears the committed state.
+	// Whenever a commit is performed the global instance is cloned to
+	// its old state, and whenever a clear is performed such clone is
+	// cleaned as well. So a globalOld != nil is a fast and safe way to
+	// know if there is committed data.
+	return c.globalOld != nil
 }

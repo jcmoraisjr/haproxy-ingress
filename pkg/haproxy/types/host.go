@@ -18,13 +18,16 @@ package types
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 )
 
 // CreateHosts ...
 func CreateHosts() *Hosts {
 	return &Hosts{
-		itemsmap: map[string]*Host{},
+		items:    map[string]*Host{},
+		itemsAdd: map[string]*Host{},
+		itemsDel: map[string]*Host{},
 	}
 }
 
@@ -35,7 +38,8 @@ func (h *Hosts) AcquireHost(hostname string) *Host {
 	}
 	host := h.createHost(hostname)
 	if host.Hostname != "*" {
-		h.itemsmap[hostname] = host
+		h.items[hostname] = host
+		h.itemsAdd[hostname] = host
 	} else {
 		h.defaultHost = host
 	}
@@ -47,14 +51,28 @@ func (h *Hosts) FindHost(hostname string) *Host {
 	if hostname == "*" && h.defaultHost != nil {
 		return h.defaultHost
 	}
-	return h.itemsmap[hostname]
+	return h.items[hostname]
 }
 
 // RemoveAll ...
 func (h *Hosts) RemoveAll(hostnames []string) {
 	for _, hostname := range hostnames {
-		delete(h.itemsmap, hostname)
+		if item, found := h.items[hostname]; found {
+			h.itemsDel[hostname] = item
+			delete(h.items, hostname)
+		}
 	}
+}
+
+// Commit ...
+func (h *Hosts) Commit() {
+	h.itemsAdd = map[string]*Host{}
+	h.itemsDel = map[string]*Host{}
+}
+
+// Changed ...
+func (h *Hosts) Changed() bool {
+	return !reflect.DeepEqual(h.itemsAdd, h.itemsDel)
 }
 
 func (h *Hosts) createHost(hostname string) *Host {
@@ -66,21 +84,34 @@ func (h *Hosts) createHost(hostname string) *Host {
 
 // BuildSortedItems ...
 func (h *Hosts) BuildSortedItems() []*Host {
-	items := make([]*Host, len(h.itemsmap))
+	items := make([]*Host, len(h.items))
 	var i int
-	for _, item := range h.itemsmap {
+	for _, item := range h.items {
 		items[i] = item
 		i++
 	}
 	sort.Slice(items, func(i, j int) bool {
 		return items[i].Hostname < items[j].Hostname
 	})
+	if len(items) == 0 {
+		return nil
+	}
 	return items
 }
 
 // Items ...
 func (h *Hosts) Items() map[string]*Host {
-	return h.itemsmap
+	return h.items
+}
+
+// ItemsAdd ...
+func (h *Hosts) ItemsAdd() map[string]*Host {
+	return h.itemsAdd
+}
+
+// ItemsDel ...
+func (h *Hosts) ItemsDel() map[string]*Host {
+	return h.itemsDel
 }
 
 // DefaultHost ...
@@ -95,12 +126,12 @@ func (h *Hosts) HasSSLPassthrough() bool {
 
 // HasHTTP ...
 func (h *Hosts) HasHTTP() bool {
-	return len(h.itemsmap) > h.sslPassthroughCount
+	return len(h.items) > h.sslPassthroughCount
 }
 
 // HasTLSAuth ...
 func (h *Hosts) HasTLSAuth() bool {
-	for _, host := range h.itemsmap {
+	for _, host := range h.items {
 		if host.HasTLSAuth() {
 			return true
 		}
@@ -110,7 +141,7 @@ func (h *Hosts) HasTLSAuth() bool {
 
 // HasTLSMandatory ...
 func (h *Hosts) HasTLSMandatory() bool {
-	for _, host := range h.itemsmap {
+	for _, host := range h.items {
 		if host.HasTLSAuth() && !host.TLS.CAVerifyOptional {
 			return true
 		}
@@ -120,7 +151,7 @@ func (h *Hosts) HasTLSMandatory() bool {
 
 // HasVarNamespace ...
 func (h *Hosts) HasVarNamespace() bool {
-	for _, host := range h.itemsmap {
+	for _, host := range h.items {
 		if host.VarNamespace {
 			return true
 		}

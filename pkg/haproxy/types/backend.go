@@ -48,11 +48,6 @@ func (b *Backend) FindEndpoint(target string) *Endpoint {
 	return nil
 }
 
-// ClearEndpoints ...
-func (b *Backend) ClearEndpoints() {
-	b.Endpoints = nil
-}
-
 // AcquireEndpoint ...
 func (b *Backend) AcquireEndpoint(ip string, port int, targetRef string) *Endpoint {
 	endpoint := b.FindEndpoint(fmt.Sprintf("%s:%d", ip, port))

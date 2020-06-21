@@ -18,6 +18,7 @@ package tracker
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
@@ -183,18 +184,23 @@ func (t *tracker) GetDirtyLinks(
 		for ing := range ingsMap {
 			dirtyIngs = append(dirtyIngs, ing)
 		}
+		sort.Strings(dirtyIngs)
 	}
 	if len(hostsMap) > 0 {
 		dirtyHosts = make([]string, 0, len(hostsMap))
 		for host := range hostsMap {
 			dirtyHosts = append(dirtyHosts, host)
 		}
+		sort.Strings(dirtyHosts)
 	}
 	if len(backsMap) > 0 {
 		dirtyBacks = make([]hatypes.BackendID, 0, len(backsMap))
 		for back := range backsMap {
 			dirtyBacks = append(dirtyBacks, back)
 		}
+		sort.Slice(dirtyBacks, func(i, j int) bool {
+			return dirtyBacks[i].String() < dirtyBacks[j].String()
+		})
 	}
 	return dirtyIngs, dirtyHosts, dirtyBacks
 }

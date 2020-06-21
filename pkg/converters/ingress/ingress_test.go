@@ -781,7 +781,7 @@ func TestSyncPartial(t *testing.T) {
 	}
 	ingTLSDefault := [][]string{
 		{"default/echo1", "echo.example.com", "/app1", "echo1:8080", "tls1"},
-		{"default/echo2", "echo.example.com", "/app2", "echo2:8080", "tls1"},
+		{"default/echo2", "echo.example.com", "/app2", "echo2:8080", "default/tls1"},
 	}
 	secTLSDefault := [][]string{
 		{"default/tls1"},
@@ -802,6 +802,7 @@ func TestSyncPartial(t *testing.T) {
   endpoints:
   - ip: 172.17.0.12
     port: 8080` + defaultBackendConfig
+	explogging := `INFO-V(2) changed hosts: [echo.example.com]; backends: [default_echo1_8080 default_echo2_8080]`
 
 	testCases := []struct {
 		//
@@ -842,6 +843,7 @@ func TestSyncPartial(t *testing.T) {
 			ingUpd: [][]string{
 				{"default/echo1", "echo.example.com", "/app11", "echo1:8080"},
 			},
+			logging: explogging,
 			expFront: `
 - hostname: echo.example.com
   paths:
@@ -858,6 +860,7 @@ func TestSyncPartial(t *testing.T) {
 			ingDel: [][]string{
 				{"default/echo1", "echo.example.com", "/app1", "echo1:8080"},
 			},
+			logging: explogging,
 			expFront: `
 - hostname: echo.example.com
   paths:
@@ -879,6 +882,7 @@ func TestSyncPartial(t *testing.T) {
 			ingDel: [][]string{
 				{"default/echo2", "echo.example.com", "/app2", "echo2:8080"},
 			},
+			logging: explogging,
 			expFront: `
 - hostname: echo.example.com
   paths:
@@ -901,6 +905,7 @@ func TestSyncPartial(t *testing.T) {
 			svcAdd: [][]string{
 				{"default/echo3", "8080", "172.17.0.13"},
 			},
+			logging: explogging,
 			expFront: `
 - hostname: echo.example.com
   paths:
@@ -931,6 +936,7 @@ func TestSyncPartial(t *testing.T) {
 			svcUpd: [][]string{
 				{"default/echo2", "8080", "172.17.0.22"},
 			},
+			logging:  explogging,
 			expFront: expFrontDefault,
 			expBack: `
 - id: default_echo1_8080
@@ -949,7 +955,8 @@ func TestSyncPartial(t *testing.T) {
 			svcDel: [][]string{
 				{"default/echo2", "8080", "172.17.0.12"},
 			},
-			logging: `WARN skipping backend config of ingress 'default/echo2': service not found: 'default/echo2'`,
+			logging: explogging + `
+WARN skipping backend config of ingress 'default/echo2': service not found: 'default/echo2'`,
 			expFront: `
 - hostname: echo.example.com
   paths:
@@ -968,6 +975,7 @@ func TestSyncPartial(t *testing.T) {
 			endpoints: [][]string{
 				{"default/echo1", "8080", "172.17.0.21,172.17.0.22,172.17.0.23"},
 			},
+			logging:  explogging,
 			expFront: expFrontDefault,
 			expBack: `
 - id: default_echo1_8080
@@ -985,9 +993,10 @@ func TestSyncPartial(t *testing.T) {
 		},
 		// 8
 		{
-			svc:    svcDefault,
-			ingtls: ingTLSDefault,
-			secAdd: secTLSDefault,
+			svc:     svcDefault,
+			ingtls:  ingTLSDefault,
+			secAdd:  secTLSDefault,
+			logging: explogging,
 			expFront: expFrontDefault + `
   tls:
     tlsfilename: /tls/default/tls1.pem`,
@@ -999,9 +1008,9 @@ func TestSyncPartial(t *testing.T) {
 			sec:    secTLSDefault,
 			ingtls: ingTLSDefault,
 			secDel: secTLSDefault,
-			logging: `
+			logging: explogging + `
 WARN using default certificate due to an error reading secret 'tls1' on ingress 'default/echo1': secret not found: 'default/tls1'
-WARN using default certificate due to an error reading secret 'tls1' on ingress 'default/echo2': secret not found: 'default/tls1'`,
+WARN using default certificate due to an error reading secret 'default/tls1' on ingress 'default/echo2': secret not found: 'default/tls1'`,
 			expFront: expFrontDefault + `
   tls:
     tlsfilename: /tls/tls-default.pem`,

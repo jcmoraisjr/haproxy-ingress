@@ -59,53 +59,6 @@ func TestAcquireHostSame(t *testing.T) {
 	}
 }
 
-func TestEqual(t *testing.T) {
-	c1 := createConfig(options{})
-	c2 := createConfig(options{})
-	if !c1.Equals(c2) {
-		t.Error("c1 and c2 should be equals (empty)")
-	}
-	c1.frontend.DefaultCert = "/var/default.pem"
-	if c1.Equals(c2) {
-		t.Error("c1 and c2 should not be equals (one default cert)")
-	}
-	c2.frontend.DefaultCert = "/var/default.pem"
-	if !c1.Equals(c2) {
-		t.Error("c1 and c2 should be equals (default cert)")
-	}
-	b1 := c1.Backends().AcquireBackend("d", "app1", "8080")
-	c1.Backends().AcquireBackend("d", "app2", "8080")
-	if c1.Equals(c2) {
-		t.Error("c1 and c2 should not be equals (backends on one side)")
-	}
-	c2.Backends().AcquireBackend("d", "app2", "8080")
-	b2 := c2.Backends().AcquireBackend("d", "app1", "8080")
-	if !c1.Equals(c2) {
-		t.Error("c1 and c2 should be equals (with backends)")
-	}
-	h1 := c1.hosts.AcquireHost("d")
-	h1.AddPath(b1, "/")
-	if c1.Equals(c2) {
-		t.Error("c1 and c2 should not be equals (hosts on one side)")
-	}
-	h2 := c2.hosts.AcquireHost("d")
-	h2.AddPath(b2, "/")
-	if !c1.Equals(c2) {
-		t.Error("c1 and c2 should be equals (with hosts)")
-	}
-	err1 := c1.WriteFrontendMaps()
-	err2 := c2.WriteFrontendMaps()
-	if err1 != nil {
-		t.Errorf("error building c1: %v", err1)
-	}
-	if err2 != nil {
-		t.Errorf("error building c2: %v", err2)
-	}
-	if !c1.Equals(c2) {
-		t.Error("c1 and c2 should be equals (after building frontends)")
-	}
-}
-
 func TestClear(t *testing.T) {
 	c := createConfig(options{
 		mapsDir: "/tmp/maps",
