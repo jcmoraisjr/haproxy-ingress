@@ -339,6 +339,8 @@ type HostTLSConfig struct {
 	CAFilename       string
 	CAHash           string
 	CAVerifyOptional bool
+	Ciphers          string
+	CipherSuites     string
 	CRLFilename      string
 	CRLHash          string
 	TLSCommonName    string

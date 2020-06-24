@@ -65,8 +65,6 @@ const (
 	GlobalNbthread                     = "nbthread"
 	GlobalNoTLSRedirectLocations       = "no-tls-redirect-locations"
 	GlobalPrometheusPort               = "prometheus-port"
-	GlobalSSLCiphers                   = "ssl-ciphers"
-	GlobalSSLCipherSuites              = "ssl-cipher-suites"
 	GlobalSSLDHDefaultMaxSize          = "ssl-dh-default-max-size"
 	GlobalSSLDHParam                   = "ssl-dh-param"
 	GlobalSSLEngine                    = "ssl-engine"

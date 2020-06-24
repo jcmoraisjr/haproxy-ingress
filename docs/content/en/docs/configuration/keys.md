@@ -200,9 +200,9 @@ The table below describes all supported configuration keys.
 | [`session-cookie-shared`](#affinity)                 | [true\|false]                           | Backend | `false`            |
 | [`session-cookie-strategy`](#affinity)               | [insert\|prefix\|rewrite]               | Backend |                    |
 | [`slots-min-free`](#dynamic-scaling)                 | minimum number of free slots            | Backend | `0`                |
-| [`ssl-cipher-suites`](#ssl-ciphers)                  | colon-separated list                    | Global  | [see description](#ssl-ciphers) |
+| [`ssl-cipher-suites`](#ssl-ciphers)                  | colon-separated list                    | Host    | [see description](#ssl-ciphers) |
 | [`ssl-cipher-suites-backend`](#ssl-ciphers)          | colon-separated list                    | Backend | [see description](#ssl-ciphers) |
-| [`ssl-ciphers`](#ssl-ciphers)                        | colon-separated list                    | Global  | [see description](#ssl-ciphers) |
+| [`ssl-ciphers`](#ssl-ciphers)                        | colon-separated list                    | Host    | [see description](#ssl-ciphers) |
 | [`ssl-ciphers-backend`](#ssl-ciphers)                | colon-separated list                    | Backend | [see description](#ssl-ciphers) |
 | [`ssl-dh-default-max-size`](#ssl-dh)                 | number                                  | Global  | `1024`             |
 | [`ssl-dh-param`](#ssl-dh)                            | namespace/secret name                   | Global  | no custom DH param |
@@ -1449,9 +1449,9 @@ service's ClusterIP is used instead.
 
 | Configuration key           | Scope     | Default | Since |
 |-----------------------------|-----------|---------|-------|
-| `ssl-cipher-suites`         | `Global`  |         | v0.9  |
+| `ssl-cipher-suites`         | `Host`    |         | v0.9  |
 | `ssl-cipher-suites-backend` | `Backend` |         | v0.9  |
-| `ssl-ciphers`               | `Global`  |         |       |
+| `ssl-ciphers`               | `Host`    |         |       |
 | `ssl-ciphers-backend`       | `Backend` |         | v0.9  |
 
 Set the list of cipher algorithms used during the SSL/TLS handshake.
@@ -1469,6 +1469,8 @@ Default values on HAProxy Ingress v0.9 and newer:
 
 * TLS up to v1.2: `ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384`
 * TLS v1.3: `TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256`
+
+`ssl-ciphers` and `ssl-cipher-suites` were `Global` scope up to v0.10.
 
 See also:
 
