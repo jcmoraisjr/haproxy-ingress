@@ -1541,6 +1541,18 @@ func TestInstanceFrontendCA(t *testing.T) {
 	h.TLS.CRLFilename = "/var/haproxy/ssl/ca/d2.local.crl.pem"
 	h.TLS.CRLHash = "2"
 
+	h = c.config.Hosts().AcquireHost("d3.local")
+	h.AddPath(b, "/")
+	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
+	h.TLS.TLSHash = "0"
+	h.TLS.Ciphers = "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384"
+
+	h = c.config.Hosts().AcquireHost("d4.local")
+	h.AddPath(b, "/")
+	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
+	h.TLS.TLSHash = "0"
+	h.TLS.CipherSuites = "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
+
 	b.SSLRedirect = b.CreateConfigBool(true)
 	b.TLS.AddCertHeader = true
 	b.TLS.FingerprintLower = true
@@ -1599,13 +1611,19 @@ frontend _front001
 	c.checkMap("_global_https_redir.map", `
 d1.local/ yes
 d2.local/ yes
+d3.local/ yes
+d4.local/ yes
 `)
 	c.checkMap("_front001_bind_crt.list", `
 /var/haproxy/ssl/certs/default.pem
 /var/haproxy/ssl/certs/default.pem [ca-file /var/haproxy/ssl/ca/d1.local.pem verify optional] d1.local
-/var/haproxy/ssl/certs/default.pem [ca-file /var/haproxy/ssl/ca/d2.local.pem crl-file /var/haproxy/ssl/ca/d2.local.crl.pem verify optional] d2.local
+/var/haproxy/ssl/certs/default.pem [ca-file /var/haproxy/ssl/ca/d2.local.pem verify optional crl-file /var/haproxy/ssl/ca/d2.local.crl.pem] d2.local
+/var/haproxy/ssl/certs/default.pem [ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384] d3.local
+/var/haproxy/ssl/certs/default.pem [ciphersuites TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256] d4.local
 `)
 	c.checkMap("_front001_host.map", `
+d3.local/ d_app_8080
+d4.local/ d_app_8080
 `)
 	c.checkMap("_front001_sni.map", `
 d1.local/ d_app_8080

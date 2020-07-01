@@ -23,7 +23,7 @@ import (
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
-func TestAuthTLS(t *testing.T) {
+func TestTLSConfig(t *testing.T) {
 	testCases := []struct {
 		annDefault map[string]string
 		ann        map[string]string
@@ -120,6 +120,44 @@ func TestAuthTLS(t *testing.T) {
 				CAVerifyOptional: true,
 			},
 		},
+		// 10
+		{
+			annDefault: map[string]string{
+				ingtypes.HostSSLCiphers: "some-cipher-1:some-cipher-2",
+			},
+			expected: hatypes.HostTLSConfig{},
+		},
+		// 11
+		{
+			annDefault: map[string]string{
+				ingtypes.HostSSLCiphers: "some-cipher-1:some-cipher-2",
+			},
+			ann: map[string]string{
+				ingtypes.HostSSLCiphers: "some-cipher-2:some-cipher-3",
+			},
+			expected: hatypes.HostTLSConfig{
+				Ciphers: "some-cipher-2:some-cipher-3",
+			},
+		},
+		// 12
+		{
+			annDefault: map[string]string{
+				ingtypes.HostSSLCipherSuites: "some-cipher-1:some-cipher-2",
+			},
+			expected: hatypes.HostTLSConfig{},
+		},
+		// 13
+		{
+			annDefault: map[string]string{
+				ingtypes.HostSSLCipherSuites: "some-cipher-suite-1:some-cipher-suite-2",
+			},
+			ann: map[string]string{
+				ingtypes.HostSSLCipherSuites: "some-cipher-suite-2:some-cipher-suite-3",
+			},
+			expected: hatypes.HostTLSConfig{
+				CipherSuites: "some-cipher-suite-2:some-cipher-suite-3",
+			},
+		},
 	}
 	source := &Source{Namespace: "system", Name: "ing1", Type: "ingress"}
 	for i, test := range testCases {
@@ -128,8 +166,10 @@ func TestAuthTLS(t *testing.T) {
 			"system/cafile": "/path/ca.crt",
 		}
 		d := c.createHostData(source, test.ann, test.annDefault)
-		c.createUpdater().buildHostAuthTLS(d)
-		c.compareObjects("auth-tls", i, d.host.TLS, test.expected)
+		updater := c.createUpdater()
+		updater.buildHostAuthTLS(d)
+		updater.buildHostTLSConfig(d)
+		c.compareObjects("tls", i, d.host.TLS, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}

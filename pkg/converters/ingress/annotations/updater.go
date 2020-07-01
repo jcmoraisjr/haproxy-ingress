@@ -144,6 +144,7 @@ func (c *updater) UpdateHostConfig(host *hatypes.Host, mapper *Mapper) {
 	c.buildHostAuthTLS(data)
 	c.buildHostCertSigner(data)
 	c.buildHostSSLPassthrough(data)
+	c.buildHostTLSConfig(data)
 }
 
 func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) {

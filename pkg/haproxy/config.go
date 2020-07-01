@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
@@ -300,23 +301,33 @@ func (c *config) WriteFrontendMaps() error {
 		if crtFile == "" {
 			crtFile = c.defaultX509Cert
 		}
-		if crtFile != c.defaultX509Cert || tls.CAFilename != "" {
-			// has custom cert or tls auth
+		if crtFile != c.defaultX509Cert || tls.CAFilename != "" || tls.Ciphers != "" || tls.CipherSuites != "" {
+			// has custom cert, tls auth, ciphers or ciphersuites
 			//
 			// TODO optimization: distinct hostnames that shares crt, ca and crl
 			// can be combined into a single line. Note that this is usually the exception.
 			// TODO this NEED its own template file.
-			var crtListConfig string
-			if tls.CAFilename == "" {
-				crtListConfig = fmt.Sprintf("%s %s", crtFile, host.Hostname)
-			} else {
-				var crl string
+			var bindConf = make([]string, 0, 20)
+			if tls.CAFilename != "" {
+				bindConf = append(bindConf, "ca-file", tls.CAFilename, "verify", "optional")
 				if tls.CRLFilename != "" {
-					crl = " crl-file " + tls.CRLFilename
+					bindConf = append(bindConf, "crl-file", tls.CRLFilename)
 				}
-				crtListConfig = fmt.Sprintf("%s [ca-file %s%s verify optional] %s", crtFile, tls.CAFilename, crl, host.Hostname)
 			}
-			fmaps.CrtList.AppendItem(crtListConfig)
+			if tls.Ciphers != "" {
+				bindConf = append(bindConf, "ciphers", tls.Ciphers)
+			}
+			if tls.CipherSuites != "" {
+				bindConf = append(bindConf, "ciphersuites", tls.CipherSuites)
+			}
+
+			var crtListEntry string
+			if len(bindConf) == 0 {
+				crtListEntry = fmt.Sprintf("%s %s", crtFile, host.Hostname)
+			} else {
+				crtListEntry = fmt.Sprintf("%s [%s] %s", crtFile, strings.Join(bindConf, " "), host.Hostname)
+			}
+			fmaps.CrtList.AppendItem(crtListEntry)
 		}
 	}
 	if err := writeMaps(mapBuilder, c.mapsTemplate); err != nil {

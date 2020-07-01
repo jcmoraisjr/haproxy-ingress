@@ -92,3 +92,12 @@ func (c *updater) buildHostSSLPassthrough(d *hostData) {
 	backend.ModeTCP = true
 	d.host.SetSSLPassthrough(true)
 }
+
+func (c *updater) buildHostTLSConfig(d *hostData) {
+	if cfg := d.mapper.Get(ingtypes.HostSSLCiphers); cfg.Source != nil {
+		d.host.TLS.Ciphers = cfg.Value
+	}
+	if cfg := d.mapper.Get(ingtypes.HostSSLCipherSuites); cfg.Source != nil {
+		d.host.TLS.CipherSuites = cfg.Value
+	}
+}

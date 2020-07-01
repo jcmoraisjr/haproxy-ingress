@@ -30,7 +30,9 @@ const (
 
 func createDefaults() map[string]string {
 	return map[string]string{
-		types.HostAuthTLSStrict: "false",
+		types.HostAuthTLSStrict:   "false",
+		types.HostSSLCiphers:      defaultSSLCiphers,
+		types.HostSSLCipherSuites: defaultSSLCipherSuites,
 		//
 		types.BackBackendServerNaming:    "sequence",
 		types.BackBackendServerSlotsInc:  "1",
@@ -82,8 +84,6 @@ func createDefaults() map[string]string {
 		types.GlobalNbprocBalance:                "1",
 		types.GlobalNbthread:                     "2",
 		types.GlobalNoTLSRedirectLocations:       "/.well-known/acme-challenge",
-		types.GlobalSSLCiphers:                   defaultSSLCiphers,
-		types.GlobalSSLCipherSuites:              defaultSSLCipherSuites,
 		types.GlobalSSLDHDefaultMaxSize:          "2048",
 		types.GlobalSSLHeadersPrefix:             "X-SSL",
 		types.GlobalSSLOptions:                   defaultSSLOptions,

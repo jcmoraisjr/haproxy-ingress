@@ -180,8 +180,8 @@ func (c *updater) buildGlobalTimeout(d *globalData) {
 
 func (c *updater) buildGlobalSSL(d *globalData) {
 	ssl := &d.global.SSL
-	ssl.Ciphers = d.mapper.Get(ingtypes.GlobalSSLCiphers).Value
-	ssl.CipherSuites = d.mapper.Get(ingtypes.GlobalSSLCipherSuites).Value
+	ssl.Ciphers = d.mapper.Get(ingtypes.HostSSLCiphers).Value
+	ssl.CipherSuites = d.mapper.Get(ingtypes.HostSSLCipherSuites).Value
 	ssl.Options = d.mapper.Get(ingtypes.GlobalSSLOptions).Value
 	ssl.BackendCiphers = d.mapper.Get(ingtypes.BackSSLCiphersBackend).Value
 	ssl.BackendCipherSuites = d.mapper.Get(ingtypes.BackSSLCipherSuitesBackend).Value

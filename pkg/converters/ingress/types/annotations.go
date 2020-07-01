@@ -26,6 +26,8 @@ const (
 	HostCertSigner             = "cert-signer"
 	HostServerAlias            = "server-alias"
 	HostServerAliasRegex       = "server-alias-regex"
+	HostSSLCiphers             = "ssl-ciphers"
+	HostSSLCipherSuites        = "ssl-cipher-suites"
 	HostSSLPassthrough         = "ssl-passthrough"
 	HostSSLPassthroughHTTPPort = "ssl-passthrough-http-port"
 	HostVarNamespace           = "var-namespace"
@@ -42,6 +44,8 @@ var (
 		HostCertSigner:             {},
 		HostServerAlias:            {},
 		HostServerAliasRegex:       {},
+		HostSSLCiphers:             {},
+		HostSSLCipherSuites:        {},
 		HostSSLPassthrough:         {},
 		HostSSLPassthroughHTTPPort: {},
 		HostVarNamespace:           {},
