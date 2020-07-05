@@ -51,6 +51,8 @@ type tracker struct {
 	hostnameSecret stringStringMap
 	secretBackend  stringBackendMap
 	backendSecret  backendStringMap
+	secretUserlist stringStringMap
+	userlistSecret stringStringMap
 	//
 	serviceHostnameMissing stringStringMap
 	hostnameServiceMissing stringStringMap
@@ -74,6 +76,11 @@ func (t *tracker) Track(isMissing bool, track convtypes.TrackingTarget, rtype co
 			t.TrackMissingOnBackend(rtype, name, track.Backend)
 		} else {
 			t.TrackBackend(rtype, name, track.Backend)
+		}
+	}
+	if track.Userlist != "" {
+		if !isMissing {
+			t.TrackUserlist(rtype, name, track.Userlist)
 		}
 	}
 }
@@ -104,6 +111,17 @@ func (t *tracker) TrackBackend(rtype convtypes.ResourceType, name string, backen
 	case convtypes.SecretType:
 		addStringBackendTracking(&t.secretBackend, name, backendID)
 		addBackendStringTracking(&t.backendSecret, backendID, name)
+	default:
+		panic(fmt.Errorf("unsupported resource type %d", rtype))
+	}
+}
+
+func (t *tracker) TrackUserlist(rtype convtypes.ResourceType, name string, userlist string) {
+	validName(name)
+	switch rtype {
+	case convtypes.SecretType:
+		addStringTracking(&t.secretUserlist, name, userlist)
+		addStringTracking(&t.userlistSecret, userlist, name)
 	default:
 		panic(fmt.Errorf("unsupported resource type %d", rtype))
 	}
@@ -152,10 +170,11 @@ func (t *tracker) GetDirtyLinks(
 	oldIngressList []string,
 	oldServiceList, addServiceList []string,
 	oldSecretList, addSecretList []string,
-) (dirtyIngs, dirtyHosts []string, dirtyBacks []hatypes.BackendID) {
+) (dirtyIngs, dirtyHosts []string, dirtyBacks []hatypes.BackendID, dirtyUsers []string) {
 	ingsMap := make(map[string]empty)
 	hostsMap := make(map[string]empty)
 	backsMap := make(map[hatypes.BackendID]empty)
+	usersMap := make(map[string]empty)
 
 	// recursively fill hostsMap and backsMap from ingress and secrets
 	// that directly or indirectly are referenced by them
@@ -209,6 +228,11 @@ func (t *tracker) GetDirtyLinks(
 				build(t.getIngressByBackend(backend))
 			}
 		}
+		for _, userlist := range t.getUserlistsBySecret(secretName) {
+			if _, found := usersMap[userlist]; !found {
+				usersMap[userlist] = empty{}
+			}
+		}
 	}
 	for _, secretName := range addSecretList {
 		for _, hostname := range t.getHostnamesBySecretMissing(secretName) {
@@ -249,7 +273,14 @@ func (t *tracker) GetDirtyLinks(
 			return dirtyBacks[i].String() < dirtyBacks[j].String()
 		})
 	}
-	return dirtyIngs, dirtyHosts, dirtyBacks
+	if len(usersMap) > 0 {
+		dirtyUsers = make([]string, 0, len(usersMap))
+		for user := range usersMap {
+			dirtyUsers = append(dirtyUsers, user)
+		}
+		sort.Strings(dirtyUsers)
+	}
+	return dirtyIngs, dirtyHosts, dirtyBacks, dirtyUsers
 }
 
 func (t *tracker) DeleteHostnames(hostnames []string) {
@@ -291,6 +322,15 @@ func (t *tracker) DeleteBackends(backends []hatypes.BackendID) {
 			deleteStringBackendTracking(&t.secretBackendMissing, secret, backend)
 		}
 		deleteBackendStringMapKey(&t.backendSecretMissing, backend)
+	}
+}
+
+func (t *tracker) DeleteUserlists(userlists []string) {
+	for _, userlist := range userlists {
+		for secret := range t.userlistSecret[userlist] {
+			deleteStringTracking(&t.secretUserlist, secret, userlist)
+		}
+		deleteStringMapKey(&t.userlistSecret, userlist)
 	}
 }
 
@@ -362,6 +402,13 @@ func (t *tracker) getBackendsBySecretMissing(secretName string) []hatypes.Backen
 		return nil
 	}
 	return getBackendTracking(t.secretBackendMissing[secretName])
+}
+
+func (t *tracker) getUserlistsBySecret(secretName string) []string {
+	if t.secretUserlist == nil {
+		return nil
+	}
+	return getStringTracking(t.secretUserlist[secretName])
 }
 
 func addStringTracking(trackingRef *stringStringMap, key, value string) {

@@ -105,8 +105,6 @@ func (b *Backends) RemoveAll(backendID []BackendID) {
 			delete(b.items, id)
 		}
 	}
-	// IMPLEMENT
-	// track and remove unused userlist entries
 }
 
 // DefaultBackend ...

@@ -65,15 +65,17 @@ type Tracker interface {
 	TrackHostname(rtype ResourceType, name, hostname string)
 	TrackBackend(rtype ResourceType, name string, backendID hatypes.BackendID)
 	TrackMissingOnHostname(rtype ResourceType, name, hostname string)
-	GetDirtyLinks(oldIngressList, oldServiceList, addServiceList, oldSecretList, addSecretList []string) (dirtyIngs, dirtyHosts []string, dirtyBacks []hatypes.BackendID)
+	GetDirtyLinks(oldIngressList, oldServiceList, addServiceList, oldSecretList, addSecretList []string) (dirtyIngs, dirtyHosts []string, dirtyBacks []hatypes.BackendID, dirtyUsers []string)
 	DeleteHostnames(hostnames []string)
 	DeleteBackends(backends []hatypes.BackendID)
+	DeleteUserlists(userlists []string)
 }
 
 // TrackingTarget ...
 type TrackingTarget struct {
 	Hostname string
 	Backend  hatypes.BackendID
+	Userlist string
 }
 
 // File ...

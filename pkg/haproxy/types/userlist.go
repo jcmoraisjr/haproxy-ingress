@@ -67,6 +67,17 @@ func (u *Userlists) BuildSortedItems() []*Userlist {
 	return items
 }
 
+// RemoveAll ...
+func (u *Userlists) RemoveAll(userlists []string) {
+	for _, userlist := range userlists {
+		if item, found := u.items[userlist]; found {
+			u.itemsDel[userlist] = item
+			delete(u.items, userlist)
+		}
+	}
+
+}
+
 // Changed ...
 func (u *Userlists) Changed() bool {
 	return !reflect.DeepEqual(u.itemsAdd, u.itemsDel)

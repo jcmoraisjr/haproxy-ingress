@@ -191,12 +191,14 @@ func (c *converter) syncPartial() {
 	updSecretNames := secret2names(c.changed.SecretsUpd)
 	addSecretNames := secret2names(c.changed.SecretsAdd)
 	oldSecretNames := append(delSecretNames, updSecretNames...)
-	dirtyIngs, dirtyHosts, dirtyBacks :=
+	dirtyIngs, dirtyHosts, dirtyBacks, dirtyUsers :=
 		c.tracker.GetDirtyLinks(oldIngNames, oldSvcNames, addSvcNames, oldSecretNames, addSecretNames)
 	c.tracker.DeleteHostnames(dirtyHosts)
 	c.tracker.DeleteBackends(dirtyBacks)
+	c.tracker.DeleteUserlists(dirtyUsers)
 	c.haproxy.Hosts().RemoveAll(dirtyHosts)
 	c.haproxy.Backends().RemoveAll(dirtyBacks)
+	c.haproxy.Userlists().RemoveAll(dirtyUsers)
 	if len(dirtyHosts) > 0 || len(dirtyBacks) > 0 {
 		c.logger.InfoV(2, "changed hosts: %v; backends: %v", dirtyHosts, dirtyBacks)
 	}

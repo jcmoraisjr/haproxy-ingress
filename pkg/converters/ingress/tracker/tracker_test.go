@@ -37,6 +37,12 @@ type backTracking struct {
 	backend hatypes.BackendID
 }
 
+type userTracking struct {
+	rtype    convtypes.ResourceType
+	name     string
+	userlist string
+}
+
 var (
 	back1a = hatypes.BackendID{
 		Namespace: "default",
@@ -64,6 +70,7 @@ func TestGetDirtyLinks(t *testing.T) {
 	testCases := []struct {
 		trackedHosts []hostTracking
 		trackedBacks []backTracking
+		trackedUsers []userTracking
 		//
 		trackedMissingHosts []hostTracking
 		trackedMissingBacks []backTracking
@@ -77,6 +84,7 @@ func TestGetDirtyLinks(t *testing.T) {
 		expDirtyIngs  []string
 		expDirtyHosts []string
 		expDirtyBacks []hatypes.BackendID
+		expDirtyUsers []string
 	}{
 		// 0
 		{},
@@ -230,6 +238,15 @@ func TestGetDirtyLinks(t *testing.T) {
 			addSecretList: []string{"default/secret1"},
 			expDirtyBacks: []hatypes.BackendID{back1b},
 		},
+		// 16
+		{
+			trackedUsers: []userTracking{
+				{convtypes.SecretType, "default/secret1", "usr1"},
+				{convtypes.SecretType, "default/secret2", "usr2"},
+			},
+			oldSecretList: []string{"default/secret1"},
+			expDirtyUsers: []string{"usr1"},
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
@@ -239,13 +256,16 @@ func TestGetDirtyLinks(t *testing.T) {
 		for _, trackedBack := range test.trackedBacks {
 			c.tracker.TrackBackend(trackedBack.rtype, trackedBack.name, trackedBack.backend)
 		}
+		for _, trackedUser := range test.trackedUsers {
+			c.tracker.TrackUserlist(trackedUser.rtype, trackedUser.name, trackedUser.userlist)
+		}
 		for _, trackedMissingHost := range test.trackedMissingHosts {
 			c.tracker.TrackMissingOnHostname(trackedMissingHost.rtype, trackedMissingHost.name, trackedMissingHost.hostname)
 		}
 		for _, trackedMissingBack := range test.trackedMissingBacks {
 			c.tracker.TrackMissingOnBackend(trackedMissingBack.rtype, trackedMissingBack.name, trackedMissingBack.backend)
 		}
-		dirtyIngs, dirtyHosts, dirtyBacks :=
+		dirtyIngs, dirtyHosts, dirtyBacks, dirtyUsers :=
 			c.tracker.GetDirtyLinks(
 				test.oldIngressList,
 				test.oldServiceList,
@@ -258,9 +278,11 @@ func TestGetDirtyLinks(t *testing.T) {
 		sort.Slice(dirtyBacks, func(i, j int) bool {
 			return dirtyBacks[i].String() < dirtyBacks[j].String()
 		})
+		sort.Strings(dirtyUsers)
 		c.compareObjects("dirty ingress", i, dirtyIngs, test.expDirtyIngs)
 		c.compareObjects("dirty hosts", i, dirtyHosts, test.expDirtyHosts)
 		c.compareObjects("dirty backs", i, dirtyBacks, test.expDirtyBacks)
+		c.compareObjects("dirty users", i, dirtyUsers, test.expDirtyUsers)
 		c.teardown()
 	}
 }
@@ -495,6 +517,68 @@ func TestDeleteBackends(t *testing.T) {
 		c.compareObjects("backendSecret", i, c.tracker.backendSecret, test.expBackendSecret)
 		c.compareObjects("secretBackendMissing", i, c.tracker.secretBackendMissing, test.expSecretBackendMissing)
 		c.compareObjects("backendSecretMissing", i, c.tracker.backendSecretMissing, test.expBackendSecretMissing)
+		c.teardown()
+	}
+}
+
+func TestDeleteUserlists(t *testing.T) {
+	testCases := []struct {
+		trackedUsers []userTracking
+		//
+		deleteUserlists []string
+		//
+		expSecretUserlist stringStringMap
+		expUserlistSecret stringStringMap
+	}{
+		// 0
+		{},
+		// 1
+		{
+			deleteUserlists: []string{"usr1"},
+		},
+		// 2
+		{
+			trackedUsers: []userTracking{
+				{convtypes.SecretType, "default/secret1", "usr1"},
+			},
+			expUserlistSecret: stringStringMap{"usr1": {"default/secret1": empty{}}},
+			expSecretUserlist: stringStringMap{"default/secret1": {"usr1": empty{}}},
+		},
+		// 3
+		{
+			trackedUsers: []userTracking{
+				{convtypes.SecretType, "default/secret1", "usr1"},
+			},
+			deleteUserlists:   []string{"usr2"},
+			expUserlistSecret: stringStringMap{"usr1": {"default/secret1": empty{}}},
+			expSecretUserlist: stringStringMap{"default/secret1": {"usr1": empty{}}},
+		},
+		// 4
+		{
+			trackedUsers: []userTracking{
+				{convtypes.SecretType, "default/secret1", "usr1"},
+			},
+			deleteUserlists: []string{"usr1"},
+		},
+		// 5
+		{
+			trackedUsers: []userTracking{
+				{convtypes.SecretType, "default/secret1", "usr1"},
+				{convtypes.SecretType, "default/secret2", "usr2"},
+			},
+			deleteUserlists:   []string{"usr2"},
+			expUserlistSecret: stringStringMap{"usr1": {"default/secret1": empty{}}},
+			expSecretUserlist: stringStringMap{"default/secret1": {"usr1": empty{}}},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		for _, trackedUser := range test.trackedUsers {
+			c.tracker.TrackUserlist(trackedUser.rtype, trackedUser.name, trackedUser.userlist)
+		}
+		c.tracker.DeleteUserlists(test.deleteUserlists)
+		c.compareObjects("secretUserlist", i, c.tracker.secretUserlist, test.expSecretUserlist)
+		c.compareObjects("userlistSecret", i, c.tracker.userlistSecret, test.expUserlistSecret)
 		c.teardown()
 	}
 }

@@ -96,7 +96,10 @@ func (c *updater) buildBackendAuthHTTP(d *backData) {
 				userb, err := c.cache.GetSecretContent(
 					authSecret.Source.Namespace,
 					authSecret.Value, "auth",
-					convtypes.TrackingTarget{Backend: d.backend.BackendID()},
+					convtypes.TrackingTarget{
+						Backend:  d.backend.BackendID(),
+						Userlist: listName,
+					},
 				)
 				if err != nil {
 					c.logger.Error("error reading basic authentication on %v: %v", authSecret.Source, err)
