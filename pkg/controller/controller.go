@@ -49,6 +49,7 @@ type HAProxyController struct {
 	logger            *logger
 	cache             *k8scache
 	metrics           *metrics
+	tracker           convtypes.Tracker
 	stopCh            chan struct{}
 	ingressQueue      utils.Queue
 	acmeQueue         utils.Queue
@@ -100,8 +101,9 @@ func (hc *HAProxyController) configController() {
 	hc.logger = &logger{depth: 1}
 	hc.metrics = createMetrics(hc.cfg.BucketsResponseTime)
 	hc.ingressQueue = utils.NewRateLimitingQueue(hc.cfg.RateLimitUpdate, hc.syncIngress)
+	hc.tracker = tracker.NewTracker()
 	hc.cache = createCache(
-		hc.logger, hc.cfg.Client, hc.controller, hc.ingressQueue,
+		hc.logger, hc.cfg.Client, hc.controller, hc.tracker, hc.ingressQueue,
 		hc.cfg.WatchNamespace, hc.cfg.ForceNamespaceIsolation,
 		hc.cfg.ResyncPeriod)
 	var acmeSigner acme.Signer
@@ -134,7 +136,7 @@ func (hc *HAProxyController) configController() {
 	hc.converterOptions = &ingtypes.ConverterOptions{
 		Logger:           hc.logger,
 		Cache:            hc.cache,
-		Tracker:          tracker.NewTracker(),
+		Tracker:          hc.tracker,
 		AnnotationPrefix: hc.cfg.AnnPrefix,
 		DefaultBackend:   hc.cfg.DefaultService,
 		DefaultSSLFile:   hc.createDefaultSSLFile(),
@@ -178,7 +180,8 @@ func (hc *HAProxyController) stopServices() {
 
 func (hc *HAProxyController) createDefaultSSLFile() (tlsFile convtypes.CrtFile) {
 	if hc.cfg.DefaultSSLCertificate != "" {
-		tlsFile, err := hc.cache.GetTLSSecretPath("", hc.cfg.DefaultSSLCertificate)
+		// IMPLEMENT track hosts that uses this secret/crt
+		tlsFile, err := hc.cache.GetTLSSecretPath("", hc.cfg.DefaultSSLCertificate, convtypes.TrackingTarget{})
 		if err == nil {
 			return tlsFile
 		}

@@ -41,6 +41,7 @@ func NewUpdater(haproxy haproxy.Config, options *ingtypes.ConverterOptions) Upda
 		haproxy: haproxy,
 		logger:  options.Logger,
 		cache:   options.Cache,
+		tracker: options.Tracker,
 		fakeCA:  options.FakeCAFile,
 	}
 }
@@ -49,6 +50,7 @@ type updater struct {
 	haproxy haproxy.Config
 	logger  types.Logger
 	cache   convtypes.Cache
+	tracker convtypes.Tracker
 	fakeCA  convtypes.CrtFile
 }
 

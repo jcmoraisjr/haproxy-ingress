@@ -53,6 +53,7 @@ type k8scache struct {
 	client                 k8s.Interface
 	listers                *listers
 	controller             *controller.GenericController
+	tracker                convtypes.Tracker
 	crossNS                bool
 	globalConfigMapKey     string
 	tcpConfigMapKey        string
@@ -87,6 +88,7 @@ func createCache(
 	logger types.Logger,
 	client k8s.Interface,
 	controller *controller.GenericController,
+	tracker convtypes.Tracker,
 	updateQueue utils.Queue,
 	watchNamespace string,
 	isolateNamespace bool,
@@ -124,6 +126,7 @@ func createCache(
 	cache := &k8scache{
 		client:                 client,
 		controller:             controller,
+		tracker:                tracker,
 		crossNS:                cfg.AllowCrossNamespace,
 		globalConfigMapKey:     globalConfigMapName,
 		tcpConfigMapKey:        tcpConfigMapName,
@@ -284,16 +287,18 @@ func (c *k8scache) buildSecretName(defaultNamespace, secretName string) (string,
 	)
 }
 
-func (c *k8scache) GetTLSSecretPath(defaultNamespace, secretName string) (file convtypes.CrtFile, err error) {
+func (c *k8scache) GetTLSSecretPath(defaultNamespace, secretName string, track convtypes.TrackingTarget) (file convtypes.CrtFile, err error) {
 	namespace, name, err := c.buildSecretName(defaultNamespace, secretName)
 	if err != nil {
 		return file, err
 	}
 	sslCert, err := c.controller.GetCertificate(namespace, name)
 	if err != nil {
+		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return file, err
 	}
 	if sslCert.PemFileName == "" {
+		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return file, fmt.Errorf("secret '%s/%s' does not have keys 'tls.crt' and 'tls.key'", namespace, name)
 	}
 	file = convtypes.CrtFile{
@@ -302,19 +307,22 @@ func (c *k8scache) GetTLSSecretPath(defaultNamespace, secretName string) (file c
 		CommonName: sslCert.Certificate.Subject.CommonName,
 		NotAfter:   sslCert.Certificate.NotAfter,
 	}
+	c.tracker.Track(false, track, convtypes.SecretType, namespace+"/"+name)
 	return file, nil
 }
 
-func (c *k8scache) GetCASecretPath(defaultNamespace, secretName string) (ca, crl convtypes.File, err error) {
+func (c *k8scache) GetCASecretPath(defaultNamespace, secretName string, track convtypes.TrackingTarget) (ca, crl convtypes.File, err error) {
 	namespace, name, err := c.buildSecretName(defaultNamespace, secretName)
 	if err != nil {
 		return ca, crl, err
 	}
 	sslCert, err := c.controller.GetCertificate(namespace, name)
 	if err != nil {
+		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return ca, crl, err
 	}
 	if sslCert.CAFileName == "" {
+		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return ca, crl, fmt.Errorf("secret '%s/%s' does not have key 'ca.crt'", namespace, name)
 	}
 	ca = convtypes.File{
@@ -328,6 +336,7 @@ func (c *k8scache) GetCASecretPath(defaultNamespace, secretName string) (ca, crl
 			SHA1Hash: sslCert.PemSHA,
 		}
 	}
+	c.tracker.Track(false, track, convtypes.SecretType, namespace+"/"+name)
 	return ca, crl, nil
 }
 
@@ -356,19 +365,22 @@ func (c *k8scache) GetDHSecretPath(defaultNamespace, secretName string) (file co
 	return file, nil
 }
 
-func (c *k8scache) GetSecretContent(defaultNamespace, secretName, keyName string) ([]byte, error) {
+func (c *k8scache) GetSecretContent(defaultNamespace, secretName, keyName string, track convtypes.TrackingTarget) ([]byte, error) {
 	namespace, name, err := c.buildSecretName(defaultNamespace, secretName)
 	if err != nil {
 		return nil, err
 	}
 	secret, err := c.listers.secretLister.Secrets(namespace).Get(name)
 	if err != nil {
+		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return nil, err
 	}
 	data, found := secret.Data[keyName]
 	if !found {
+		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return nil, fmt.Errorf("secret '%s/%s' does not have key '%s'", namespace, name, keyName)
 	}
+	c.tracker.Track(false, track, convtypes.SecretType, namespace+"/"+name)
 	return data, nil
 }
 

@@ -1425,13 +1425,14 @@ type testConfig struct {
 
 func setup(t *testing.T) *testConfig {
 	logger := types_helper.NewLoggerMock(t)
+	tracker := tracker.NewTracker()
 	c := &testConfig{
 		t:       t,
 		decode:  scheme.Codecs.UniversalDeserializer().Decode,
 		hconfig: haproxy.CreateInstance(logger, haproxy.InstanceOptions{}).Config(),
-		cache:   conv_helper.NewCacheMock(),
+		cache:   conv_helper.NewCacheMock(tracker),
 		logger:  logger,
-		tracker: tracker.NewTracker(),
+		tracker: tracker,
 	}
 	c.createSvc1("system/default", "8080", "172.17.0.99")
 	return c

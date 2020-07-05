@@ -474,16 +474,14 @@ func (c *converter) addBackend(source *annotations.Source, hostname, uri, fullSv
 
 func (c *converter) addTLS(source *annotations.Source, hostname, secretName string) convtypes.CrtFile {
 	if secretName != "" {
-		fullName := secretName
-		if strings.Index(secretName, "/") == -1 {
-			fullName = source.Namespace + "/" + secretName
-		}
-		tlsFile, err := c.cache.GetTLSSecretPath(source.Namespace, secretName)
+		tlsFile, err := c.cache.GetTLSSecretPath(
+			source.Namespace,
+			secretName,
+			convtypes.TrackingTarget{Hostname: hostname},
+		)
 		if err == nil {
-			c.tracker.TrackHostname(convtypes.SecretType, fullName, hostname)
 			return tlsFile
 		}
-		c.tracker.TrackMissingOnHostname(convtypes.SecretType, fullName, hostname)
 		c.logger.Warn("using default certificate due to an error reading secret '%s' on %s: %v", secretName, source, err)
 	}
 	return c.options.DefaultSSLFile

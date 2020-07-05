@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/tracker"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	types_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/types/helper_test"
@@ -319,10 +320,11 @@ type testConfig struct {
 
 func setup(t *testing.T) *testConfig {
 	logger := types_helper.NewLoggerMock(t)
+	tracker := tracker.NewTracker()
 	c := &testConfig{
 		t:       t,
 		logger:  logger,
-		cache:   conv_helper.NewCacheMock(),
+		cache:   conv_helper.NewCacheMock(tracker),
 		haproxy: haproxy.CreateInstance(logger, haproxy.InstanceOptions{}).Config(),
 	}
 	return c

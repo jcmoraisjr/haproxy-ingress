@@ -33,10 +33,10 @@ type Cache interface {
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
 	GetTerminatingPods(service *api.Service) ([]*api.Pod, error)
 	GetPod(podName string) (*api.Pod, error)
-	GetTLSSecretPath(defaultNamespace, secretName string) (CrtFile, error)
-	GetCASecretPath(defaultNamespace, secretName string) (ca, crl File, err error)
+	GetTLSSecretPath(defaultNamespace, secretName string, track TrackingTarget) (CrtFile, error)
+	GetCASecretPath(defaultNamespace, secretName string, track TrackingTarget) (ca, crl File, err error)
 	GetDHSecretPath(defaultNamespace, secretName string) (File, error)
-	GetSecretContent(defaultNamespace, secretName, keyName string) ([]byte, error)
+	GetSecretContent(defaultNamespace, secretName, keyName string, track TrackingTarget) ([]byte, error)
 	SwapChangedObjects() *ChangedObjects
 	NeedFullSync() bool
 }
