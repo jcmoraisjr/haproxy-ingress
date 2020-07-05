@@ -61,12 +61,19 @@ type ChangedObjects struct {
 
 // Tracker ...
 type Tracker interface {
+	Track(isMissing bool, track TrackingTarget, rtype ResourceType, name string)
 	TrackHostname(rtype ResourceType, name, hostname string)
 	TrackBackend(rtype ResourceType, name string, backendID hatypes.BackendID)
 	TrackMissingOnHostname(rtype ResourceType, name, hostname string)
 	GetDirtyLinks(oldIngressList, oldServiceList, addServiceList, oldSecretList, addSecretList []string) (dirtyIngs, dirtyHosts []string, dirtyBacks []hatypes.BackendID)
 	DeleteHostnames(hostnames []string)
 	DeleteBackends(backends []hatypes.BackendID)
+}
+
+// TrackingTarget ...
+type TrackingTarget struct {
+	Hostname string
+	Backend  hatypes.BackendID
 }
 
 // File ...

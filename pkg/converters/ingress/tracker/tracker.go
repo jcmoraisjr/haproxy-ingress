@@ -49,12 +49,33 @@ type tracker struct {
 	//
 	secretHostname stringStringMap
 	hostnameSecret stringStringMap
+	secretBackend  stringBackendMap
+	backendSecret  backendStringMap
 	//
 	serviceHostnameMissing stringStringMap
 	hostnameServiceMissing stringStringMap
 	//
 	secretHostnameMissing stringStringMap
 	hostnameSecretMissing stringStringMap
+	secretBackendMissing  stringBackendMap
+	backendSecretMissing  backendStringMap
+}
+
+func (t *tracker) Track(isMissing bool, track convtypes.TrackingTarget, rtype convtypes.ResourceType, name string) {
+	if track.Hostname != "" {
+		if isMissing {
+			t.TrackMissingOnHostname(rtype, name, track.Hostname)
+		} else {
+			t.TrackHostname(rtype, name, track.Hostname)
+		}
+	}
+	if track.Backend.Name != "" {
+		if isMissing {
+			t.TrackMissingOnBackend(rtype, name, track.Backend)
+		} else {
+			t.TrackBackend(rtype, name, track.Backend)
+		}
+	}
 }
 
 func (t *tracker) TrackHostname(rtype convtypes.ResourceType, name, hostname string) {
@@ -80,6 +101,9 @@ func (t *tracker) TrackBackend(rtype convtypes.ResourceType, name string, backen
 	case convtypes.IngressType:
 		addStringBackendTracking(&t.ingressBackend, name, backendID)
 		addBackendStringTracking(&t.backendIngress, backendID, name)
+	case convtypes.SecretType:
+		addStringBackendTracking(&t.secretBackend, name, backendID)
+		addBackendStringTracking(&t.backendSecret, backendID, name)
 	default:
 		panic(fmt.Errorf("unsupported resource type %d", rtype))
 	}
@@ -94,6 +118,17 @@ func (t *tracker) TrackMissingOnHostname(rtype convtypes.ResourceType, name, hos
 	case convtypes.SecretType:
 		addStringTracking(&t.secretHostnameMissing, name, hostname)
 		addStringTracking(&t.hostnameSecretMissing, hostname, name)
+	default:
+		panic(fmt.Errorf("unsupported resource type %d", rtype))
+	}
+}
+
+func (t *tracker) TrackMissingOnBackend(rtype convtypes.ResourceType, name string, backendID hatypes.BackendID) {
+	validName(name)
+	switch rtype {
+	case convtypes.SecretType:
+		addStringBackendTracking(&t.secretBackendMissing, name, backendID)
+		addBackendStringTracking(&t.backendSecretMissing, backendID, name)
 	default:
 		panic(fmt.Errorf("unsupported resource type %d", rtype))
 	}
@@ -168,12 +203,24 @@ func (t *tracker) GetDirtyLinks(
 				build(t.getIngressByHostname(hostname))
 			}
 		}
+		for _, backend := range t.getBackendsBySecret(secretName) {
+			if _, found := backsMap[backend]; !found {
+				backsMap[backend] = empty{}
+				build(t.getIngressByBackend(backend))
+			}
+		}
 	}
 	for _, secretName := range addSecretList {
 		for _, hostname := range t.getHostnamesBySecretMissing(secretName) {
 			if _, found := hostsMap[hostname]; !found {
 				hostsMap[hostname] = empty{}
 				build(t.getIngressByHostname(hostname))
+			}
+		}
+		for _, backend := range t.getBackendsBySecretMissing(secretName) {
+			if _, found := backsMap[backend]; !found {
+				backsMap[backend] = empty{}
+				build(t.getIngressByBackend(backend))
 			}
 		}
 	}
@@ -236,6 +283,14 @@ func (t *tracker) DeleteBackends(backends []hatypes.BackendID) {
 			deleteStringBackendTracking(&t.ingressBackend, ing, backend)
 		}
 		deleteBackendStringMapKey(&t.backendIngress, backend)
+		for secret := range t.backendSecret[backend] {
+			deleteStringBackendTracking(&t.secretBackend, secret, backend)
+		}
+		deleteBackendStringMapKey(&t.backendSecret, backend)
+		for secret := range t.backendSecretMissing[backend] {
+			deleteStringBackendTracking(&t.secretBackendMissing, secret, backend)
+		}
+		deleteBackendStringMapKey(&t.backendSecretMissing, backend)
 	}
 }
 
@@ -293,6 +348,20 @@ func (t *tracker) getHostnamesBySecretMissing(secretName string) []string {
 		return nil
 	}
 	return getStringTracking(t.secretHostnameMissing[secretName])
+}
+
+func (t *tracker) getBackendsBySecret(secretName string) []hatypes.BackendID {
+	if t.secretBackend == nil {
+		return nil
+	}
+	return getBackendTracking(t.secretBackend[secretName])
+}
+
+func (t *tracker) getBackendsBySecretMissing(secretName string) []hatypes.BackendID {
+	if t.secretBackendMissing == nil {
+		return nil
+	}
+	return getBackendTracking(t.secretBackendMissing[secretName])
 }
 
 func addStringTracking(trackingRef *stringStringMap, key, value string) {

@@ -66,6 +66,7 @@ func TestGetDirtyLinks(t *testing.T) {
 		trackedBacks []backTracking
 		//
 		trackedMissingHosts []hostTracking
+		trackedMissingBacks []backTracking
 		//
 		oldIngressList []string
 		oldServiceList []string
@@ -211,6 +212,24 @@ func TestGetDirtyLinks(t *testing.T) {
 			expDirtyHosts:  []string{"domain1.local", "domain3.local"},
 			expDirtyBacks:  []hatypes.BackendID{back1b},
 		},
+		// 14
+		{
+			trackedBacks: []backTracking{
+				{convtypes.IngressType, "default/ing1", back1a},
+				{convtypes.SecretType, "default/secret1", back1a},
+			},
+			oldSecretList: []string{"default/secret1"},
+			expDirtyIngs:  []string{"default/ing1"},
+			expDirtyBacks: []hatypes.BackendID{back1b},
+		},
+		// 15
+		{
+			trackedMissingBacks: []backTracking{
+				{convtypes.SecretType, "default/secret1", back1a},
+			},
+			addSecretList: []string{"default/secret1"},
+			expDirtyBacks: []hatypes.BackendID{back1b},
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
@@ -222,6 +241,9 @@ func TestGetDirtyLinks(t *testing.T) {
 		}
 		for _, trackedMissingHost := range test.trackedMissingHosts {
 			c.tracker.TrackMissingOnHostname(trackedMissingHost.rtype, trackedMissingHost.name, trackedMissingHost.hostname)
+		}
+		for _, trackedMissingBack := range test.trackedMissingBacks {
+			c.tracker.TrackMissingOnBackend(trackedMissingBack.rtype, trackedMissingBack.name, trackedMissingBack.backend)
 		}
 		dirtyIngs, dirtyHosts, dirtyBacks :=
 			c.tracker.GetDirtyLinks(
@@ -395,10 +417,17 @@ func TestDeleteBackends(t *testing.T) {
 	testCases := []struct {
 		trackedBacks []backTracking
 		//
+		trackedMissingBacks []backTracking
+		//
 		deleteBackends []hatypes.BackendID
 		//
 		expIngressBackend stringBackendMap
 		expBackendIngress backendStringMap
+		expSecretBackend  stringBackendMap
+		expBackendSecret  backendStringMap
+		//
+		expSecretBackendMissing stringBackendMap
+		expBackendSecretMissing backendStringMap
 	}{
 		// 0
 		{},
@@ -432,15 +461,40 @@ func TestDeleteBackends(t *testing.T) {
 			expBackendIngress: backendStringMap{back2b: {"default/ing2": empty{}}},
 			expIngressBackend: stringBackendMap{"default/ing2": {back2b: empty{}}},
 		},
+		// 5
+		{
+			trackedBacks: []backTracking{
+				{convtypes.SecretType, "default/secret1", back1a},
+				{convtypes.SecretType, "default/secret2", back1a},
+				{convtypes.SecretType, "default/secret2", back2a},
+			},
+			trackedMissingBacks: []backTracking{
+				{convtypes.SecretType, "default/secret1", back1a},
+				{convtypes.SecretType, "default/secret2", back1a},
+				{convtypes.SecretType, "default/secret2", back2a},
+			},
+			deleteBackends:          []hatypes.BackendID{back1b},
+			expSecretBackend:        stringBackendMap{"default/secret2": {back2b: empty{}}},
+			expBackendSecret:        backendStringMap{back2b: {"default/secret2": empty{}}},
+			expSecretBackendMissing: stringBackendMap{"default/secret2": {back2b: empty{}}},
+			expBackendSecretMissing: backendStringMap{back2b: {"default/secret2": empty{}}},
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
 		for _, trackedBack := range test.trackedBacks {
 			c.tracker.TrackBackend(trackedBack.rtype, trackedBack.name, trackedBack.backend)
 		}
+		for _, trackedMissingBack := range test.trackedMissingBacks {
+			c.tracker.TrackMissingOnBackend(trackedMissingBack.rtype, trackedMissingBack.name, trackedMissingBack.backend)
+		}
 		c.tracker.DeleteBackends(test.deleteBackends)
 		c.compareObjects("ingressBackend", i, c.tracker.ingressBackend, test.expIngressBackend)
 		c.compareObjects("backendIngress", i, c.tracker.backendIngress, test.expBackendIngress)
+		c.compareObjects("secretBackend", i, c.tracker.secretBackend, test.expSecretBackend)
+		c.compareObjects("backendSecret", i, c.tracker.backendSecret, test.expBackendSecret)
+		c.compareObjects("secretBackendMissing", i, c.tracker.secretBackendMissing, test.expSecretBackendMissing)
+		c.compareObjects("backendSecretMissing", i, c.tracker.backendSecretMissing, test.expBackendSecretMissing)
 		c.teardown()
 	}
 }
