@@ -54,6 +54,9 @@ type tracker struct {
 	secretUserlist stringStringMap
 	userlistSecret stringStringMap
 	//
+	podBackend stringBackendMap
+	backendPod backendStringMap
+	//
 	serviceHostnameMissing stringStringMap
 	hostnameServiceMissing stringStringMap
 	//
@@ -111,6 +114,9 @@ func (t *tracker) TrackBackend(rtype convtypes.ResourceType, name string, backen
 	case convtypes.SecretType:
 		addStringBackendTracking(&t.secretBackend, name, backendID)
 		addBackendStringTracking(&t.backendSecret, backendID, name)
+	case convtypes.PodType:
+		addStringBackendTracking(&t.podBackend, name, backendID)
+		addBackendStringTracking(&t.backendPod, backendID, name)
 	default:
 		panic(fmt.Errorf("unsupported resource type %d", rtype))
 	}
@@ -170,6 +176,7 @@ func (t *tracker) GetDirtyLinks(
 	oldIngressList []string,
 	oldServiceList, addServiceList []string,
 	oldSecretList, addSecretList []string,
+	addPodList []string,
 ) (dirtyIngs, dirtyHosts []string, dirtyBacks []hatypes.BackendID, dirtyUsers []string) {
 	ingsMap := make(map[string]empty)
 	hostsMap := make(map[string]empty)
@@ -242,6 +249,15 @@ func (t *tracker) GetDirtyLinks(
 			}
 		}
 		for _, backend := range t.getBackendsBySecretMissing(secretName) {
+			if _, found := backsMap[backend]; !found {
+				backsMap[backend] = empty{}
+				build(t.getIngressByBackend(backend))
+			}
+		}
+	}
+	//
+	for _, podName := range addPodList {
+		for _, backend := range t.getBackendsByPod(podName) {
 			if _, found := backsMap[backend]; !found {
 				backsMap[backend] = empty{}
 				build(t.getIngressByBackend(backend))
@@ -322,6 +338,10 @@ func (t *tracker) DeleteBackends(backends []hatypes.BackendID) {
 			deleteStringBackendTracking(&t.secretBackendMissing, secret, backend)
 		}
 		deleteBackendStringMapKey(&t.backendSecretMissing, backend)
+		for pod := range t.backendPod[backend] {
+			deleteStringBackendTracking(&t.podBackend, pod, backend)
+		}
+		deleteBackendStringMapKey(&t.backendPod, backend)
 	}
 }
 
@@ -409,6 +429,13 @@ func (t *tracker) getUserlistsBySecret(secretName string) []string {
 		return nil
 	}
 	return getStringTracking(t.secretUserlist[secretName])
+}
+
+func (t *tracker) getBackendsByPod(podName string) []hatypes.BackendID {
+	if t.podBackend == nil {
+		return nil
+	}
+	return getBackendTracking(t.podBackend[podName])
 }
 
 func addStringTracking(trackingRef *stringStringMap, key, value string) {

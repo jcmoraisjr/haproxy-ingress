@@ -31,7 +31,7 @@ type Cache interface {
 	GetIngressList() ([]*extensions.Ingress, error)
 	GetService(serviceName string) (*api.Service, error)
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
-	GetTerminatingPods(service *api.Service) ([]*api.Pod, error)
+	GetTerminatingPods(service *api.Service, track TrackingTarget) ([]*api.Pod, error)
 	GetPod(podName string) (*api.Pod, error)
 	GetTLSSecretPath(defaultNamespace, secretName string, track TrackingTarget) (CrtFile, error)
 	GetCASecretPath(defaultNamespace, secretName string, track TrackingTarget) (ca, crl File, err error)
@@ -65,7 +65,7 @@ type Tracker interface {
 	TrackHostname(rtype ResourceType, name, hostname string)
 	TrackBackend(rtype ResourceType, name string, backendID hatypes.BackendID)
 	TrackMissingOnHostname(rtype ResourceType, name, hostname string)
-	GetDirtyLinks(oldIngressList, oldServiceList, addServiceList, oldSecretList, addSecretList []string) (dirtyIngs, dirtyHosts []string, dirtyBacks []hatypes.BackendID, dirtyUsers []string)
+	GetDirtyLinks(oldIngressList, oldServiceList, addServiceList, oldSecretList, addSecretList, addPodList []string) (dirtyIngs, dirtyHosts []string, dirtyBacks []hatypes.BackendID, dirtyUsers []string)
 	DeleteHostnames(hostnames []string)
 	DeleteBackends(backends []hatypes.BackendID)
 	DeleteUserlists(userlists []string)
@@ -104,4 +104,7 @@ const (
 
 	// SecretType ...
 	SecretType
+
+	// PodType ...
+	PodType
 )

@@ -219,7 +219,7 @@ func (c *k8scache) GetEndpoints(service *api.Service) (*api.Endpoints, error) {
 
 // GetTerminatingPods returns the pods that are terminating and belong
 // (based on the Spec.Selector) to the supplied service.
-func (c *k8scache) GetTerminatingPods(service *api.Service) (pl []*api.Pod, err error) {
+func (c *k8scache) GetTerminatingPods(service *api.Service, track convtypes.TrackingTarget) (pl []*api.Pod, err error) {
 	// converting the service selector to slice of string
 	// in order to create the full match selector
 	var ls []string
@@ -236,6 +236,8 @@ func (c *k8scache) GetTerminatingPods(service *api.Service) (pl []*api.Pod, err 
 		return nil, err
 	}
 	for _, p := range list {
+		// all pods need to be tracked despite of the terminating status
+		c.tracker.Track(false, track, convtypes.PodType, p.Namespace+"/"+p.Name)
 		if isTerminatingPod(service, p) {
 			pl = append(pl, p)
 		}

@@ -80,6 +80,7 @@ func TestGetDirtyLinks(t *testing.T) {
 		addServiceList []string
 		oldSecretList  []string
 		addSecretList  []string
+		addPodList     []string
 		//
 		expDirtyIngs  []string
 		expDirtyHosts []string
@@ -247,6 +248,17 @@ func TestGetDirtyLinks(t *testing.T) {
 			oldSecretList: []string{"default/secret1"},
 			expDirtyUsers: []string{"usr1"},
 		},
+		// 17
+		{
+			trackedBacks: []backTracking{
+				{convtypes.PodType, "default/pod1", back1a},
+				{convtypes.PodType, "default/pod2", back1a},
+				{convtypes.PodType, "default/pod3", back2a},
+				{convtypes.PodType, "default/pod4", back2a},
+			},
+			addPodList:    []string{"default/pod3"},
+			expDirtyBacks: []hatypes.BackendID{back2b},
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
@@ -272,6 +284,7 @@ func TestGetDirtyLinks(t *testing.T) {
 				test.addServiceList,
 				test.oldSecretList,
 				test.addSecretList,
+				test.addPodList,
 			)
 		sort.Strings(dirtyIngs)
 		sort.Strings(dirtyHosts)

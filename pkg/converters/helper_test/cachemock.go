@@ -106,7 +106,7 @@ func (c *CacheMock) GetEndpoints(service *api.Service) (*api.Endpoints, error) {
 }
 
 // GetTerminatingPods ...
-func (c *CacheMock) GetTerminatingPods(service *api.Service) ([]*api.Pod, error) {
+func (c *CacheMock) GetTerminatingPods(service *api.Service, track convtypes.TrackingTarget) ([]*api.Pod, error) {
 	serviceName := service.Namespace + "/" + service.Name
 	if pods, found := c.TermPodList[serviceName]; found {
 		return pods, nil

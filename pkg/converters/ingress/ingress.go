@@ -176,6 +176,13 @@ func (c *converter) syncPartial() {
 		}
 		return secretList
 	}
+	pod2names := func(pods []*api.Pod) []string {
+		podList := make([]string, len(pods))
+		for i, pod := range pods {
+			podList[i] = pod.Namespace + "/" + pod.Name
+		}
+		return podList
+	}
 
 	// remove changed/deleted data
 	delIngNames := ing2names(c.changed.IngressesDel)
@@ -191,8 +198,9 @@ func (c *converter) syncPartial() {
 	updSecretNames := secret2names(c.changed.SecretsUpd)
 	addSecretNames := secret2names(c.changed.SecretsAdd)
 	oldSecretNames := append(delSecretNames, updSecretNames...)
+	addPodNames := pod2names(c.changed.Pods)
 	dirtyIngs, dirtyHosts, dirtyBacks, dirtyUsers :=
-		c.tracker.GetDirtyLinks(oldIngNames, oldSvcNames, addSvcNames, oldSecretNames, addSecretNames)
+		c.tracker.GetDirtyLinks(oldIngNames, oldSvcNames, addSvcNames, oldSecretNames, addSecretNames, addPodNames)
 	c.tracker.DeleteHostnames(dirtyHosts)
 	c.tracker.DeleteBackends(dirtyBacks)
 	c.tracker.DeleteUserlists(dirtyUsers)
@@ -233,13 +241,6 @@ func (c *converter) syncPartial() {
 	sortIngress(ingList)
 	for _, ing := range ingList {
 		c.syncIngress(ing)
-	}
-	if c.globalConfig.Get(ingtypes.GlobalDrainSupport).Bool() {
-		for _, pod := range c.changed.Pods {
-			if err := c.applyPod(pod); err != nil {
-				c.logger.Warn("skipping apply pod '%s/%s' update: %v", pod.Namespace, pod.Name, err)
-			}
-		}
 	}
 	c.partialSyncAnnotations(dirtyHosts, dirtyBacks)
 }
@@ -502,7 +503,7 @@ func (c *converter) addEndpoints(svc *api.Service, svcPort *api.ServicePort, bac
 			ep := backend.AcquireEndpoint(addr.IP, addr.Port, addr.TargetRef)
 			ep.Weight = 0
 		}
-		pods, err := c.cache.GetTerminatingPods(svc)
+		pods, err := c.cache.GetTerminatingPods(svc, convtypes.TrackingTarget{Backend: backend.BackendID()})
 		if err != nil {
 			return err
 		}
@@ -517,11 +518,6 @@ func (c *converter) addEndpoints(svc *api.Service, svcPort *api.ServicePort, bac
 			}
 		}
 	}
-	return nil
-}
-
-func (c *converter) applyPod(pod *api.Pod) error {
-	// IMPLEMENT
 	return nil
 }
 
