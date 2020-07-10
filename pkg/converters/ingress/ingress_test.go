@@ -24,7 +24,7 @@ import (
 	"github.com/kylelemons/godebug/diff"
 	yaml "gopkg.in/yaml.v2"
 	api "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
+	networking "k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -1127,7 +1127,7 @@ func (c *testConfig) teardown() {
 	c.logger.CompareLogging("")
 }
 
-func (c *testConfig) Sync(ing ...*extensions.Ingress) {
+func (c *testConfig) Sync(ing ...*networking.Ingress) {
 	c.SyncDef(map[string]string{}, ing...)
 }
 
@@ -1137,7 +1137,7 @@ var defaultBackendConfig = `
   - ip: 172.17.0.99
     port: 8080`
 
-func (c *testConfig) SyncDef(config map[string]string, ing ...*extensions.Ingress) {
+func (c *testConfig) SyncDef(config map[string]string, ing ...*networking.Ingress) {
 	defaultConfig := func() map[string]string {
 		return map[string]string{
 			ingtypes.BackInitialWeight: "100",
@@ -1212,11 +1212,11 @@ func (c *testConfig) createSecretTLS1(secretName string) {
 	c.cache.SecretTLSPath[secretName] = "/tls/" + secretName + ".pem"
 }
 
-func (c *testConfig) createIng1(name, hostname, path, service string) *extensions.Ingress {
+func (c *testConfig) createIng1(name, hostname, path, service string) *networking.Ingress {
 	sname := strings.Split(name, "/")
 	sservice := strings.Split(service, ":")
 	return c.createObject(`
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   name: ` + sname[1] + `
@@ -1229,20 +1229,20 @@ spec:
       - path: ` + path + `
         backend:
           serviceName: ` + sservice[0] + `
-          servicePort: ` + sservice[1]).(*extensions.Ingress)
+          servicePort: ` + sservice[1]).(*networking.Ingress)
 }
 
-func (c *testConfig) createIng1Ann(name, hostname, path, service string, ann map[string]string) *extensions.Ingress {
+func (c *testConfig) createIng1Ann(name, hostname, path, service string, ann map[string]string) *networking.Ingress {
 	ing := c.createIng1(name, hostname, path, service)
 	ing.SetAnnotations(ann)
 	return ing
 }
 
-func (c *testConfig) createIng2(name, service string) *extensions.Ingress {
+func (c *testConfig) createIng2(name, service string) *networking.Ingress {
 	sname := strings.Split(name, "/")
 	sservice := strings.Split(service, ":")
 	return c.createObject(`
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   name: ` + sname[1] + `
@@ -1250,24 +1250,24 @@ metadata:
 spec:
   backend:
     serviceName: ` + sservice[0] + `
-    servicePort: ` + sservice[1]).(*extensions.Ingress)
+    servicePort: ` + sservice[1]).(*networking.Ingress)
 }
 
-func (c *testConfig) createIng3(name string) *extensions.Ingress {
+func (c *testConfig) createIng3(name string) *networking.Ingress {
 	sname := strings.Split(name, "/")
 	return c.createObject(`
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   name: ` + sname[1] + `
   namespace: ` + sname[0] + `
 spec:
   rules:
-  - http:`).(*extensions.Ingress)
+  - http:`).(*networking.Ingress)
 }
 
-func (c *testConfig) createIngTLS1(name, hostname, path, service, secretHostName string) *extensions.Ingress {
-	tls := []extensions.IngressTLS{}
+func (c *testConfig) createIngTLS1(name, hostname, path, service, secretHostName string) *networking.Ingress {
+	tls := []networking.IngressTLS{}
 	for _, secret := range strings.Split(secretHostName, ";") {
 		ssecret := strings.Split(secret, ":")
 		hosts := []string{}
@@ -1279,7 +1279,7 @@ func (c *testConfig) createIngTLS1(name, hostname, path, service, secretHostName
 		if len(hosts) == 0 {
 			hosts = []string{hostname}
 		}
-		tls = append(tls, extensions.IngressTLS{
+		tls = append(tls, networking.IngressTLS{
 			Hosts:      hosts,
 			SecretName: ssecret[0],
 		})

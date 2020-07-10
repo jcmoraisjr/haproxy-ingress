@@ -26,7 +26,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/pflag"
 	api "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
+	networking "k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -267,7 +267,7 @@ func (hc *HAProxyController) Notify() {
 
 // GetIngressList ...
 // implements oldcontroller.NewCtrlIntf
-func (hc *HAProxyController) GetIngressList() ([]*extensions.Ingress, error) {
+func (hc *HAProxyController) GetIngressList() ([]*networking.Ingress, error) {
 	return hc.listers.ingressLister.List(labels.Everything())
 }
 
@@ -316,7 +316,7 @@ func (hc *HAProxyController) UpdateConfigMap(cm *api.ConfigMap) {
 
 // IsValidClass ...
 // implements ListerEvents
-func (hc *HAProxyController) IsValidClass(ing *extensions.Ingress) bool {
+func (hc *HAProxyController) IsValidClass(ing *networking.Ingress) bool {
 	return hc.controller.IsValidClass(ing)
 }
 
@@ -337,7 +337,7 @@ func (hc *HAProxyController) Check(_ *http.Request) error {
 
 // UpdateIngressStatus custom callback used to update the status in an Ingress rule
 // If the function returns nil the standard functions will be executed.
-func (hc *HAProxyController) UpdateIngressStatus(*extensions.Ingress) []api.LoadBalancerIngress {
+func (hc *HAProxyController) UpdateIngressStatus(*networking.Ingress) []api.LoadBalancerIngress {
 	return nil
 }
 
@@ -381,7 +381,7 @@ func (hc *HAProxyController) syncIngress(item interface{}) {
 	hc.updateCount++
 	hc.logger.Info("starting HAProxy update id=%d", hc.updateCount)
 	timer := utils.NewTimer(hc.metrics.ControllerProcTime)
-	var ingress []*extensions.Ingress
+	var ingress []*networking.Ingress
 	il, err := hc.listers.ingressLister.List(labels.Everything())
 	if err != nil {
 		hc.logger.Error("error reading ingress list: %v", err)
