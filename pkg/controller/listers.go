@@ -50,6 +50,9 @@ type listers struct {
 	recorder record.EventRecorder
 	running  bool
 	//
+	hasPodLister  bool
+	hasNodeLister bool
+	//
 	ingressLister   listersv1beta1.IngressLister
 	endpointLister  listersv1.EndpointsLister
 	serviceLister   listersv1.ServiceLister
@@ -74,12 +77,13 @@ func createListers(
 	client k8s.Interface,
 	watchNamespace string,
 	isolateNamespace bool,
+	podWatch bool,
 	resync time.Duration,
 ) *listers {
 	clusterWatch := watchNamespace == api.NamespaceAll
 	clusterOption := informers.WithTweakListOptions(nil)
 	namespaceOption := informers.WithNamespace(watchNamespace)
-	var ingressInformer, resourceInformer informers.SharedInformerFactory
+	var ingressInformer, resourceInformer, localInformer informers.SharedInformerFactory
 	if clusterWatch {
 		ingressInformer = informers.NewSharedInformerFactoryWithOptions(client, resync, clusterOption)
 		resourceInformer = ingressInformer
@@ -89,6 +93,9 @@ func createListers(
 	} else {
 		ingressInformer = informers.NewSharedInformerFactoryWithOptions(client, resync, namespaceOption)
 		resourceInformer = informers.NewSharedInformerFactoryWithOptions(client, resync, clusterOption)
+	}
+	if !podWatch || !clusterWatch {
+		localInformer = informers.NewSharedInformerFactory(fake.NewSimpleClientset(), 0)
 	}
 	l := &listers{
 		events:   events,
@@ -100,12 +107,17 @@ func createListers(
 	l.createServiceLister(resourceInformer.Core().V1().Services())
 	l.createSecretLister(resourceInformer.Core().V1().Secrets())
 	l.createConfigMapLister(resourceInformer.Core().V1().ConfigMaps())
-	l.createPodLister(ingressInformer.Core().V1().Pods())
+	if podWatch {
+		l.createPodLister(ingressInformer.Core().V1().Pods())
+		l.hasPodLister = true
+	} else {
+		l.createPodLister(localInformer.Core().V1().Pods())
+	}
 	if clusterWatch {
 		// ignoring --disable-node-list
 		l.createNodeLister(resourceInformer.Core().V1().Nodes())
+		l.hasNodeLister = true
 	} else {
-		localInformer := informers.NewSharedInformerFactory(fake.NewSimpleClientset(), 0)
 		l.createNodeLister(localInformer.Core().V1().Nodes())
 	}
 	return l

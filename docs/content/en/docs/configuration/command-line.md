@@ -23,6 +23,7 @@ The following command-line options are supported:
 | [`--buckets-response-time`](#buckets-response-time)     | float64 slice           | `.0005,.001,.002,.005,.01` | v0.10 |
 | [`--default-backend-service`](#default-backend-service) | namespace/servicename      | haproxy's 404 page      |       |
 | [`--default-ssl-certificate`](#default-ssl-certificate) | namespace/secretname       | fake, auto generated    |       |
+| [`--disable-pod-list`](#disable-pod-list)               | [true\|false]              | `false`                 | v0.11 |
 | [`--healthz-port`](#stats)                              | port number                | `10254`                 |       |
 | [`--ignore-ingress-without-class`](#ignore-ingress-without-class)| [true\|false]     | `false`                 | v0.10 |
 | [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |       |
@@ -104,6 +105,14 @@ resources using TLS configuration doesn't provide it's own certificate.
 
 This is a mandatory argument used in the [deployment](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/deployment) and
 [TLS termination](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/tls-termination) example pages.
+
+---
+
+## --disable-pod-list
+
+Since v0.11
+
+Disables in memory pod list and also pod watch for changes. Pod list and watch is used by `drain-support` option, which will not work if pod list is disabled. Blue/green also uses pod list if enabled, otherwise k8s api is called if needed. The default value is `false`, which means pods will be watched and listed in memory.
 
 ---
 
