@@ -43,6 +43,12 @@ type userTracking struct {
 	userlist string
 }
 
+type storageTracking struct {
+	rtype   convtypes.ResourceType
+	name    string
+	storage string
+}
+
 var (
 	back1a = hatypes.BackendID{
 		Namespace: "default",
@@ -68,9 +74,10 @@ var (
 
 func TestGetDirtyLinks(t *testing.T) {
 	testCases := []struct {
-		trackedHosts []hostTracking
-		trackedBacks []backTracking
-		trackedUsers []userTracking
+		trackedHosts    []hostTracking
+		trackedBacks    []backTracking
+		trackedUsers    []userTracking
+		trackedStorages []storageTracking
 		//
 		trackedMissingHosts []hostTracking
 		trackedMissingBacks []backTracking
@@ -82,10 +89,11 @@ func TestGetDirtyLinks(t *testing.T) {
 		addSecretList  []string
 		addPodList     []string
 		//
-		expDirtyIngs  []string
-		expDirtyHosts []string
-		expDirtyBacks []hatypes.BackendID
-		expDirtyUsers []string
+		expDirtyIngs     []string
+		expDirtyHosts    []string
+		expDirtyBacks    []hatypes.BackendID
+		expDirtyUsers    []string
+		expDirtyStorages []string
 	}{
 		// 0
 		{},
@@ -259,6 +267,18 @@ func TestGetDirtyLinks(t *testing.T) {
 			addPodList:    []string{"default/pod3"},
 			expDirtyBacks: []hatypes.BackendID{back2b},
 		},
+		// 18
+		{
+			trackedStorages: []storageTracking{
+				{convtypes.IngressType, "default/ing1", "crt1"},
+				{convtypes.IngressType, "default/ing2", "crt2"},
+				{convtypes.IngressType, "default/ing2", "crt3"},
+				{convtypes.IngressType, "default/ing3", "crt4"},
+			},
+			oldIngressList:   []string{"default/ing2"},
+			expDirtyIngs:     []string{"default/ing2"},
+			expDirtyStorages: []string{"crt2", "crt3"},
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
@@ -271,13 +291,16 @@ func TestGetDirtyLinks(t *testing.T) {
 		for _, trackedUser := range test.trackedUsers {
 			c.tracker.TrackUserlist(trackedUser.rtype, trackedUser.name, trackedUser.userlist)
 		}
+		for _, trackedStorage := range test.trackedStorages {
+			c.tracker.TrackStorage(trackedStorage.rtype, trackedStorage.name, trackedStorage.storage)
+		}
 		for _, trackedMissingHost := range test.trackedMissingHosts {
 			c.tracker.TrackMissingOnHostname(trackedMissingHost.rtype, trackedMissingHost.name, trackedMissingHost.hostname)
 		}
 		for _, trackedMissingBack := range test.trackedMissingBacks {
 			c.tracker.TrackMissingOnBackend(trackedMissingBack.rtype, trackedMissingBack.name, trackedMissingBack.backend)
 		}
-		dirtyIngs, dirtyHosts, dirtyBacks, dirtyUsers :=
+		dirtyIngs, dirtyHosts, dirtyBacks, dirtyUsers, dirtyStorages :=
 			c.tracker.GetDirtyLinks(
 				test.oldIngressList,
 				test.oldServiceList,
@@ -292,10 +315,12 @@ func TestGetDirtyLinks(t *testing.T) {
 			return dirtyBacks[i].String() < dirtyBacks[j].String()
 		})
 		sort.Strings(dirtyUsers)
+		sort.Strings(dirtyStorages)
 		c.compareObjects("dirty ingress", i, dirtyIngs, test.expDirtyIngs)
 		c.compareObjects("dirty hosts", i, dirtyHosts, test.expDirtyHosts)
 		c.compareObjects("dirty backs", i, dirtyBacks, test.expDirtyBacks)
 		c.compareObjects("dirty users", i, dirtyUsers, test.expDirtyUsers)
+		c.compareObjects("dirty storages", i, dirtyStorages, test.expDirtyStorages)
 		c.teardown()
 	}
 }
@@ -592,6 +617,68 @@ func TestDeleteUserlists(t *testing.T) {
 		c.tracker.DeleteUserlists(test.deleteUserlists)
 		c.compareObjects("secretUserlist", i, c.tracker.secretUserlist, test.expSecretUserlist)
 		c.compareObjects("userlistSecret", i, c.tracker.userlistSecret, test.expUserlistSecret)
+		c.teardown()
+	}
+}
+
+func TestDeleteStorages(t *testing.T) {
+	testCases := []struct {
+		trackedStorages []storageTracking
+		//
+		deleteStorages []string
+		//
+		expIngressStorages stringStringMap
+		expStoragesIngress stringStringMap
+	}{
+		// 0
+		{},
+		// 1
+		{
+			deleteStorages: []string{"crt1"},
+		},
+		// 2
+		{
+			trackedStorages: []storageTracking{
+				{convtypes.IngressType, "default/ingress1", "crt1"},
+			},
+			expIngressStorages: stringStringMap{"default/ingress1": {"crt1": empty{}}},
+			expStoragesIngress: stringStringMap{"crt1": {"default/ingress1": empty{}}},
+		},
+		// 3
+		{
+			trackedStorages: []storageTracking{
+				{convtypes.IngressType, "default/ingress1", "crt1"},
+			},
+			deleteStorages:     []string{"crt2"},
+			expIngressStorages: stringStringMap{"default/ingress1": {"crt1": empty{}}},
+			expStoragesIngress: stringStringMap{"crt1": {"default/ingress1": empty{}}},
+		},
+		// 4
+		{
+			trackedStorages: []storageTracking{
+				{convtypes.IngressType, "default/ingress1", "crt1"},
+			},
+			deleteStorages: []string{"crt1"},
+		},
+		// 5
+		{
+			trackedStorages: []storageTracking{
+				{convtypes.IngressType, "default/ingress1", "crt1"},
+				{convtypes.IngressType, "default/ingress2", "crt2"},
+			},
+			deleteStorages:     []string{"crt2"},
+			expIngressStorages: stringStringMap{"default/ingress1": {"crt1": empty{}}},
+			expStoragesIngress: stringStringMap{"crt1": {"default/ingress1": empty{}}},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		for _, trackedStorage := range test.trackedStorages {
+			c.tracker.TrackStorage(trackedStorage.rtype, trackedStorage.name, trackedStorage.storage)
+		}
+		c.tracker.DeleteStorages(test.deleteStorages)
+		c.compareObjects("ingressStorages", i, c.tracker.ingressStorages, test.expIngressStorages)
+		c.compareObjects("storagesIngress", i, c.tracker.storagesIngress, test.expStoragesIngress)
 		c.teardown()
 	}
 }

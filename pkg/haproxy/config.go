@@ -369,6 +369,7 @@ func (c *config) Commit() {
 	c.backends.Commit()
 	c.tcpbackends.Commit()
 	c.userlists.Commit()
+	c.acmeData.Storages().Commit()
 }
 
 func (c *config) hasCommittedData() bool {

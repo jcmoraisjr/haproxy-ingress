@@ -39,27 +39,30 @@ type (
 )
 
 type tracker struct {
+	// ingress
 	ingressHostname stringStringMap
 	hostnameIngress stringStringMap
 	ingressBackend  stringBackendMap
 	backendIngress  backendStringMap
-	//
+	ingressStorages stringStringMap
+	storagesIngress stringStringMap
+	// service
 	serviceHostname stringStringMap
 	hostnameService stringStringMap
-	//
+	// secret
 	secretHostname stringStringMap
 	hostnameSecret stringStringMap
 	secretBackend  stringBackendMap
 	backendSecret  backendStringMap
 	secretUserlist stringStringMap
 	userlistSecret stringStringMap
-	//
+	// pod
 	podBackend stringBackendMap
 	backendPod backendStringMap
-	//
+	// service (missing)
 	serviceHostnameMissing stringStringMap
 	hostnameServiceMissing stringStringMap
-	//
+	// secret (missing)
 	secretHostnameMissing stringStringMap
 	hostnameSecretMissing stringStringMap
 	secretBackendMissing  stringBackendMap
@@ -122,12 +125,23 @@ func (t *tracker) TrackBackend(rtype convtypes.ResourceType, name string, backen
 	}
 }
 
-func (t *tracker) TrackUserlist(rtype convtypes.ResourceType, name string, userlist string) {
+func (t *tracker) TrackUserlist(rtype convtypes.ResourceType, name, userlist string) {
 	validName(name)
 	switch rtype {
 	case convtypes.SecretType:
 		addStringTracking(&t.secretUserlist, name, userlist)
 		addStringTracking(&t.userlistSecret, userlist, name)
+	default:
+		panic(fmt.Errorf("unsupported resource type %d", rtype))
+	}
+}
+
+func (t *tracker) TrackStorage(rtype convtypes.ResourceType, name, storage string) {
+	validName(name)
+	switch rtype {
+	case convtypes.IngressType:
+		addStringTracking(&t.ingressStorages, name, storage)
+		addStringTracking(&t.storagesIngress, storage, name)
 	default:
 		panic(fmt.Errorf("unsupported resource type %d", rtype))
 	}
@@ -177,11 +191,12 @@ func (t *tracker) GetDirtyLinks(
 	oldServiceList, addServiceList []string,
 	oldSecretList, addSecretList []string,
 	addPodList []string,
-) (dirtyIngs, dirtyHosts []string, dirtyBacks []hatypes.BackendID, dirtyUsers []string) {
+) (dirtyIngs, dirtyHosts []string, dirtyBacks []hatypes.BackendID, dirtyUsers, dirtyStorages []string) {
 	ingsMap := make(map[string]empty)
 	hostsMap := make(map[string]empty)
 	backsMap := make(map[hatypes.BackendID]empty)
 	usersMap := make(map[string]empty)
+	storagesMap := make(map[string]empty)
 
 	// recursively fill hostsMap and backsMap from ingress and secrets
 	// that directly or indirectly are referenced by them
@@ -199,6 +214,12 @@ func (t *tracker) GetDirtyLinks(
 				if _, found := backsMap[backend]; !found {
 					backsMap[backend] = empty{}
 					build(t.getIngressByBackend(backend))
+				}
+			}
+			for _, storage := range t.getStoragesByIngress(ingName) {
+				if _, found := storagesMap[storage]; !found {
+					storagesMap[storage] = empty{}
+					build(t.getIngressByStorage(storage))
 				}
 			}
 		}
@@ -296,7 +317,14 @@ func (t *tracker) GetDirtyLinks(
 		}
 		sort.Strings(dirtyUsers)
 	}
-	return dirtyIngs, dirtyHosts, dirtyBacks, dirtyUsers
+	if len(storagesMap) > 0 {
+		dirtyStorages = make([]string, 0, len(storagesMap))
+		for storage := range storagesMap {
+			dirtyStorages = append(dirtyStorages, storage)
+		}
+		sort.Strings(dirtyStorages)
+	}
+	return dirtyIngs, dirtyHosts, dirtyBacks, dirtyUsers, dirtyStorages
 }
 
 func (t *tracker) DeleteHostnames(hostnames []string) {
@@ -354,6 +382,15 @@ func (t *tracker) DeleteUserlists(userlists []string) {
 	}
 }
 
+func (t *tracker) DeleteStorages(storages []string) {
+	for _, storage := range storages {
+		for ing := range t.storagesIngress[storage] {
+			deleteStringTracking(&t.ingressStorages, ing, storage)
+		}
+		deleteStringMapKey(&t.storagesIngress, storage)
+	}
+}
+
 func (t *tracker) getIngressByHostname(hostname string) []string {
 	if t.hostnameIngress == nil {
 		return nil
@@ -380,6 +417,20 @@ func (t *tracker) getBackendsByIngress(ingName string) []hatypes.BackendID {
 		return nil
 	}
 	return getBackendTracking(t.ingressBackend[ingName])
+}
+
+func (t *tracker) getIngressByStorage(storages string) []string {
+	if t.storagesIngress == nil {
+		return nil
+	}
+	return getStringTracking(t.storagesIngress[storages])
+}
+
+func (t *tracker) getStoragesByIngress(ingName string) []string {
+	if t.ingressStorages == nil {
+		return nil
+	}
+	return getStringTracking(t.ingressStorages[ingName])
 }
 
 func (t *tracker) getHostnamesByService(serviceName string) []string {

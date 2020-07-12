@@ -31,6 +31,8 @@ func NewBackendPaths(paths ...*BackendPath) BackendPaths {
 
 // BackendID ...
 func (b *Backend) BackendID() BackendID {
+	// IMPLEMENT as pointer
+	// TODO immutable internal state
 	return BackendID{
 		Namespace: b.Namespace,
 		Name:      b.Name,

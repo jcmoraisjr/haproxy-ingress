@@ -22,11 +22,21 @@ import (
 
 // AcmeData ...
 type AcmeData struct {
-	Certs       map[string]map[string]struct{}
+	storages    *AcmeStorages
 	Emails      string
 	Endpoint    string
 	Expiring    time.Duration
 	TermsAgreed bool
+}
+
+// AcmeStorages ...
+type AcmeStorages struct {
+	items, itemsAdd, itemsDel map[string]*AcmeCerts
+}
+
+// AcmeCerts ...
+type AcmeCerts struct {
+	certs map[string]struct{}
 }
 
 // Acme ...

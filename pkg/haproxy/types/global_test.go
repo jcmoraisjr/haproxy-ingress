@@ -18,21 +18,22 @@ package types
 
 import (
 	"reflect"
+	"sort"
 	"testing"
 )
 
-func TestAcmeAddDomain(t *testing.T) {
+func TestBuildAcmeStorages(t *testing.T) {
 	testCases := []struct {
 		certs    [][]string
-		expected map[string]map[string]struct{}
+		expected []string
 	}{
 		// 0
 		{
 			certs: [][]string{
 				{"cert1", "d1.local"},
 			},
-			expected: map[string]map[string]struct{}{
-				"cert1": {"d1.local": {}},
+			expected: []string{
+				"cert1,d1.local",
 			},
 		},
 		// 1
@@ -41,8 +42,8 @@ func TestAcmeAddDomain(t *testing.T) {
 				{"cert1", "d1.local", "d2.local"},
 				{"cert1", "d2.local", "d3.local"},
 			},
-			expected: map[string]map[string]struct{}{
-				"cert1": {"d1.local": {}, "d2.local": {}, "d3.local": {}},
+			expected: []string{
+				"cert1,d1.local,d2.local,d3.local",
 			},
 		},
 		// 2
@@ -51,19 +52,97 @@ func TestAcmeAddDomain(t *testing.T) {
 				{"cert1", "d1.local", "d2.local"},
 				{"cert2", "d2.local", "d3.local"},
 			},
-			expected: map[string]map[string]struct{}{
-				"cert1": {"d1.local": {}, "d2.local": {}},
-				"cert2": {"d2.local": {}, "d3.local": {}},
+			expected: []string{
+				"cert1,d1.local,d2.local",
+				"cert2,d2.local,d3.local",
 			},
 		},
 	}
 	for i, test := range testCases {
 		acme := AcmeData{}
 		for _, cert := range test.certs {
-			acme.AddDomains(cert[0], cert[1:])
+			acme.Storages().Acquire(cert[0]).AddDomains(cert[1:])
 		}
-		if !reflect.DeepEqual(acme.Certs, test.expected) {
-			t.Errorf("acme certs differs on %d - expected: %+v, actual: %+v", i, test.expected, acme.Certs)
+		storages := acme.Storages().BuildAcmeStorages()
+		sort.Strings(storages)
+		if !reflect.DeepEqual(storages, test.expected) {
+			t.Errorf("acme certs differs on %d - expected: %+v, actual: %+v", i, test.expected, storages)
+		}
+	}
+}
+
+func TestShrink(t *testing.T) {
+	d1 := map[string]struct{}{"d1.local": {}}
+	d2 := map[string]struct{}{"d2.local": {}}
+	testCases := []struct {
+		itemAdd, itemDel map[string]*AcmeCerts
+		expAdd, expDel   map[string]*AcmeCerts
+	}{
+		// 0
+		{
+			expAdd: map[string]*AcmeCerts{},
+			expDel: map[string]*AcmeCerts{},
+		},
+		// 1
+		{
+			itemAdd: map[string]*AcmeCerts{"cert1": {d1}},
+			expAdd:  map[string]*AcmeCerts{"cert1": {d1}},
+			expDel:  map[string]*AcmeCerts{},
+		},
+		// 2
+		{
+			itemAdd: map[string]*AcmeCerts{"cert1": {d1}},
+			itemDel: map[string]*AcmeCerts{"cert1": {d1}},
+			expAdd:  map[string]*AcmeCerts{},
+			expDel:  map[string]*AcmeCerts{},
+		},
+		// 3
+		{
+			itemAdd: map[string]*AcmeCerts{
+				"cert1": {d1},
+				"cert2": {d1},
+			},
+			itemDel: map[string]*AcmeCerts{
+				"cert1": {d1},
+				"cert2": {d2},
+			},
+			expAdd: map[string]*AcmeCerts{
+				"cert2": {d1},
+			},
+			expDel: map[string]*AcmeCerts{
+				"cert2": {d2},
+			},
+		},
+		// 4
+		{
+			itemAdd: map[string]*AcmeCerts{
+				"cert1": {d1},
+				"cert2": {d1},
+			},
+			itemDel: map[string]*AcmeCerts{
+				"cert1": {d1},
+			},
+			expAdd: map[string]*AcmeCerts{
+				"cert2": {d1},
+			},
+			expDel: map[string]*AcmeCerts{},
+		},
+	}
+	for i, test := range testCases {
+		acme := AcmeData{}
+		storages := acme.Storages()
+		if test.itemAdd != nil {
+			storages.itemsAdd = test.itemAdd
+		}
+		if test.itemDel != nil {
+			storages.itemsDel = test.itemDel
+		}
+		storages.shrink()
+		if !reflect.DeepEqual(storages.itemsAdd, test.expAdd) {
+			t.Errorf("itemAdd differs on %d - expected: %+v, actual: %+v", i, test.expAdd, storages.itemsAdd)
+		}
+		if !reflect.DeepEqual(storages.itemsDel, test.expDel) {
+			t.Errorf("itemDel differs on %d - expected: %+v, actual: %+v", i, test.expDel, storages.itemsDel)
 		}
 	}
 }

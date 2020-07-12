@@ -19,9 +19,7 @@ package haproxy
 import (
 	"fmt"
 	"os/exec"
-	"reflect"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -98,8 +96,8 @@ func (i *instance) AcmeCheck(source string) (int, error) {
 		return count, fmt.Errorf(msg)
 	}
 	i.logger.Info("starting certificate check (%s)", source)
-	for storage, domains := range i.config.AcmeData().Certs {
-		i.acmeAddCert(storage, domains)
+	for _, storage := range i.config.AcmeData().Storages().BuildAcmeStorages() {
+		i.acmeAddStorage(storage)
 		count++
 	}
 	if count == 0 {
@@ -117,29 +115,17 @@ func (i *instance) acmeEnsureConfig(acmeConfig *hatypes.AcmeData) bool {
 	return signer.HasAccount()
 }
 
-func (i *instance) acmeBuildCert(storage string, domains map[string]struct{}) string {
-	cert := make([]string, len(domains))
-	n := 0
-	for dom := range domains {
-		cert[n] = dom
-		n++
-	}
-	sort.Slice(cert, func(i, j int) bool {
-		return cert[i] < cert[j]
-	})
-	return strings.Join(cert, ",")
+func (i *instance) acmeAddStorage(storage string) {
+	// TODO change to a proper entity
+	index := strings.Index(storage, ",")
+	name := storage[:index]
+	domains := storage[index+1:]
+	i.logger.InfoV(3, "enqueue certificate for processing: storage=%s domain(s)=%s", name, domains)
+	i.options.AcmeQueue.Add(storage)
 }
 
-func (i *instance) acmeAddCert(storage string, domains map[string]struct{}) {
-	strcert := i.acmeBuildCert(storage, domains)
-	i.logger.InfoV(3, "enqueue certificate for processing: storage=%s domain(s)=%s",
-		storage, strcert)
-	i.options.AcmeQueue.Add(storage + "," + strcert)
-}
-
-func (i *instance) acmeRemoveCert(storage string, domains map[string]struct{}) {
-	strcert := i.acmeBuildCert(storage, domains)
-	i.options.AcmeQueue.Remove(storage + "," + strcert)
+func (i *instance) acmeRemoveStorage(storage string) {
+	i.options.AcmeQueue.Remove(storage)
 }
 
 func (i *instance) ParseTemplates() error {
@@ -216,39 +202,20 @@ func (i *instance) acmeUpdate() {
 	if i.config == nil || i.options.AcmeQueue == nil {
 		return
 	}
+	storages := i.config.AcmeData().Storages()
 	le := i.options.LeaderElector
 	if le.IsLeader() {
 		hasAccount := i.acmeEnsureConfig(i.config.AcmeData())
 		if !hasAccount {
 			return
 		}
-	}
-	var updated bool
-	// IMPLEMENT
-	// cannot use acmeDataOld/acmeData - this would need a full ingress parsing
-	oldCerts := i.config.AcmeData().Certs
-	curCerts := i.config.AcmeData().Certs
-	// Remove from the retry queue certs that was removed from the config
-	for storage, domains := range oldCerts {
-		curdomains, found := curCerts[storage]
-		if !found || !reflect.DeepEqual(domains, curdomains) {
-			if le.IsLeader() {
-				i.acmeRemoveCert(storage, domains)
-			}
-			updated = true
+		for _, add := range storages.BuildAcmeStoragesAdd() {
+			i.acmeAddStorage(add)
 		}
-	}
-	// Add new certs to the work queue
-	for storage, domains := range curCerts {
-		olddomains, found := oldCerts[storage]
-		if !found || !reflect.DeepEqual(domains, olddomains) {
-			if le.IsLeader() {
-				i.acmeAddCert(storage, domains)
-			}
-			updated = true
+		for _, del := range storages.BuildAcmeStoragesDel() {
+			i.acmeRemoveStorage(del)
 		}
-	}
-	if updated && !le.IsLeader() {
+	} else if storages.Updated() {
 		i.logger.InfoV(2, "skipping acme update check, leader is %s", le.LeaderName())
 	}
 }

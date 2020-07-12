@@ -199,14 +199,16 @@ func (c *converter) syncPartial() {
 	addSecretNames := secret2names(c.changed.SecretsAdd)
 	oldSecretNames := append(delSecretNames, updSecretNames...)
 	addPodNames := pod2names(c.changed.Pods)
-	dirtyIngs, dirtyHosts, dirtyBacks, dirtyUsers :=
+	dirtyIngs, dirtyHosts, dirtyBacks, dirtyUsers, dirtyStorages :=
 		c.tracker.GetDirtyLinks(oldIngNames, oldSvcNames, addSvcNames, oldSecretNames, addSecretNames, addPodNames)
 	c.tracker.DeleteHostnames(dirtyHosts)
 	c.tracker.DeleteBackends(dirtyBacks)
 	c.tracker.DeleteUserlists(dirtyUsers)
+	c.tracker.DeleteStorages(dirtyStorages)
 	c.haproxy.Hosts().RemoveAll(dirtyHosts)
 	c.haproxy.Backends().RemoveAll(dirtyBacks)
 	c.haproxy.Userlists().RemoveAll(dirtyUsers)
+	c.haproxy.AcmeData().Storages().RemoveAll(dirtyStorages)
 	if len(dirtyHosts) > 0 || len(dirtyBacks) > 0 {
 		c.logger.InfoV(2, "changed hosts: %v; backends: %v", dirtyHosts, dirtyBacks)
 	}
@@ -338,7 +340,9 @@ func (c *converter) syncIngress(ing *extensions.Ingress) {
 		}
 		if tlsAcme {
 			if tls.SecretName != "" {
-				c.haproxy.AcmeData().AddDomains(ing.Namespace+"/"+tls.SecretName, tls.Hosts)
+				secretName := ing.Namespace + "/" + tls.SecretName
+				c.haproxy.AcmeData().Storages().Acquire(secretName).AddDomains(tls.Hosts)
+				c.tracker.TrackStorage(convtypes.IngressType, fullIngName, secretName)
 			} else {
 				c.logger.Warn("skipping cert signer of ingress '%s': missing secret name", fullIngName)
 			}
