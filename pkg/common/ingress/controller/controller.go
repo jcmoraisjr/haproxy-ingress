@@ -195,6 +195,13 @@ func (ic GenericController) GetFullResourceName(name, currentNamespace string) s
 	return name
 }
 
+// UpdateSecret ...
+func (ic GenericController) UpdateSecret(key string) {
+	if _, found := ic.sslCertTracker.Get(key); found {
+		ic.SyncSecret(key)
+	}
+}
+
 // DeleteSecret ...
 func (ic GenericController) DeleteSecret(key string) {
 	ic.sslCertTracker.DeleteAll(key)

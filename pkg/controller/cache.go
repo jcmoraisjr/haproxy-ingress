@@ -595,6 +595,7 @@ func (c *k8scache) Notify(old, cur interface{}) {
 			} else {
 				c.secretsUpd = append(c.secretsUpd, secret)
 			}
+			c.controller.UpdateSecret(fmt.Sprintf("%s/%s", secret.Namespace, secret.Name))
 		case *api.ConfigMap:
 			cm := cur.(*api.ConfigMap)
 			key := fmt.Sprintf("%s/%s", cm.Namespace, cm.Name)
