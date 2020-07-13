@@ -104,7 +104,7 @@ func (c *config) SyncConfig() {
 		c.frontend.BindSocket = c.global.Bind.HTTPSBind
 		c.frontend.AcceptProxy = c.global.Bind.AcceptProxy
 	}
-	for _, host := range c.hosts.Items() {
+	for _, host := range c.hosts.ItemsAdd() {
 		if host.SSLPassthrough() {
 			// no action if ssl-passthrough
 			continue
