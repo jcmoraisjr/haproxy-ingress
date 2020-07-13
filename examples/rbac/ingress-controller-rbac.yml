@@ -10,7 +10,7 @@ metadata:
   name: ingress-controller
   namespace: ingress-controller
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: ingress-controller
@@ -62,7 +62,7 @@ rules:
     verbs:
       - update
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: ingress-controller
@@ -99,7 +99,7 @@ rules:
       - create
       - update
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: ingress-controller
@@ -115,7 +115,7 @@ subjects:
     kind: User
     name: ingress-controller
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: ingress-controller
