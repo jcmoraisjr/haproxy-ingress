@@ -223,7 +223,6 @@ func (i *instance) acmeUpdate() {
 func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	// nil config, just ignore
 	if i.config == nil {
-		i.logger.Info("new configuration is empty")
 		return
 	}
 	//
@@ -235,7 +234,7 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	defer i.config.Commit()
 	i.config.SyncConfig()
 	if err := i.config.WriteFrontendMaps(); err != nil {
-		i.logger.Error("error building configuration group: %v", err)
+		i.logger.Error("error building frontend maps: %v", err)
 		i.metrics.IncUpdateNoop()
 		return
 	}
@@ -246,13 +245,13 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	}
 	updater := i.newDynUpdater()
 	updated := updater.update()
-	timer.Tick("gen_config")
+	timer.Tick("write_maps")
 	if !updated || updater.cmdCnt > 0 {
 		// only need to rewrtite config files if:
 		//   - !updated           - there are changes that cannot be dynamically applied
 		//   - updater.cmdCnt > 0 - there are changes that was dynamically applied
 		err := i.templates.Write(i.config)
-		timer.Tick("write_tmpl")
+		timer.Tick("write_config")
 		if err != nil {
 			i.logger.Error("error writing configuration: %v", err)
 			i.metrics.IncUpdateNoop()
