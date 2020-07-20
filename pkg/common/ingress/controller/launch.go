@@ -152,6 +152,9 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		ingress controller should update the Ingress status IP/hostname when the controller
 		is being stopped. Default is true`)
 
+		backendShards = flags.Int("backend-shards", 0,
+			`Defines how much files should be used to configure the haproxy backends`)
+
 		sortBackends = flags.Bool("sort-backends", false,
 			`Defines if backends and it's endpoints should be sorted`)
 
@@ -311,6 +314,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		AllowCrossNamespace:       *allowCrossNamespace,
 		DisableNodeList:           *disableNodeList,
 		UpdateStatusOnShutdown:    *updateStatusOnShutdown,
+		BackendShards:             *backendShards,
 		SortBackends:              *sortBackends,
 		UseNodeInternalIP:         *useNodeInternalIP,
 		IgnoreIngressWithoutClass: *ignoreIngressWithoutClass,

@@ -65,7 +65,7 @@ func TestClear(t *testing.T) {
 	})
 	c.Hosts().AcquireHost("app.local")
 	c.Backends().AcquireBackend("default", "app", "8080")
-	if c.mapsDir != "/tmp/maps" {
+	if c.options.mapsDir != "/tmp/maps" {
 		t.Error("expected mapsDir == /tmp/maps")
 	}
 	if len(c.Hosts().Items()) != 1 {
@@ -75,7 +75,7 @@ func TestClear(t *testing.T) {
 		t.Error("expected len(backends) == 1")
 	}
 	c.Clear()
-	if c.mapsDir != "/tmp/maps" {
+	if c.options.mapsDir != "/tmp/maps" {
 		t.Error("expected mapsDir == /tmp/maps")
 	}
 	if len(c.Hosts().Items()) != 0 {

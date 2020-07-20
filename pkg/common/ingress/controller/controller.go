@@ -94,6 +94,7 @@ type Configuration struct {
 	ElectionID             string
 	UpdateStatusOnShutdown bool
 
+	BackendShards             int
 	SortBackends              bool
 	IgnoreIngressWithoutClass bool
 }

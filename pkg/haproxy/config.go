@@ -45,9 +45,8 @@ type Config interface {
 
 type config struct {
 	// external state, non haproxy data
-	acmeData     *hatypes.AcmeData
-	mapsTemplate *template.Config
-	mapsDir      string
+	options  options
+	acmeData *hatypes.AcmeData
 	// haproxy internal state
 	globalOld   *hatypes.Global
 	global      *hatypes.Global
@@ -59,26 +58,24 @@ type config struct {
 }
 
 type options struct {
-	// reflect changes to config.Clear()
 	mapsTemplate *template.Config
 	mapsDir      string
+	shardCount   int
 }
 
 func createConfig(options options) *config {
-	mapsTemplate := options.mapsTemplate
-	if mapsTemplate == nil {
-		mapsTemplate = template.CreateConfig()
+	if options.mapsTemplate == nil {
+		options.mapsTemplate = template.CreateConfig()
 	}
 	return &config{
-		acmeData:     &hatypes.AcmeData{},
-		global:       &hatypes.Global{},
-		frontend:     &hatypes.Frontend{Name: "_front001"},
-		hosts:        hatypes.CreateHosts(),
-		backends:     hatypes.CreateBackends(),
-		tcpbackends:  hatypes.CreateTCPBackends(),
-		userlists:    hatypes.CreateUserlists(),
-		mapsTemplate: mapsTemplate,
-		mapsDir:      options.mapsDir,
+		options:     options,
+		acmeData:    &hatypes.AcmeData{},
+		global:      &hatypes.Global{},
+		frontend:    &hatypes.Frontend{Name: "_front001"},
+		hosts:       hatypes.CreateHosts(),
+		backends:    hatypes.CreateBackends(options.shardCount),
+		tcpbackends: hatypes.CreateTCPBackends(),
+		userlists:   hatypes.CreateUserlists(),
 	}
 }
 
@@ -143,23 +140,24 @@ func (c *config) SyncConfig() {
 // link to the frontend maps.
 func (c *config) WriteFrontendMaps() error {
 	mapBuilder := hatypes.CreateMaps()
+	mapsDir := c.options.mapsDir
 	fmaps := &hatypes.FrontendMaps{
-		HTTPFrontsMap:     mapBuilder.AddMap(c.mapsDir + "/_global_http_front.map"),
-		HTTPRootRedirMap:  mapBuilder.AddMap(c.mapsDir + "/_global_http_root_redir.map"),
-		HTTPSRedirMap:     mapBuilder.AddMap(c.mapsDir + "/_global_https_redir.map"),
-		SSLPassthroughMap: mapBuilder.AddMap(c.mapsDir + "/_global_sslpassthrough.map"),
-		VarNamespaceMap:   mapBuilder.AddMap(c.mapsDir + "/_global_k8s_ns.map"),
+		HTTPFrontsMap:     mapBuilder.AddMap(mapsDir + "/_global_http_front.map"),
+		HTTPRootRedirMap:  mapBuilder.AddMap(mapsDir + "/_global_http_root_redir.map"),
+		HTTPSRedirMap:     mapBuilder.AddMap(mapsDir + "/_global_https_redir.map"),
+		SSLPassthroughMap: mapBuilder.AddMap(mapsDir + "/_global_sslpassthrough.map"),
+		VarNamespaceMap:   mapBuilder.AddMap(mapsDir + "/_global_k8s_ns.map"),
 		//
-		HostBackendsMap:            mapBuilder.AddMap(c.mapsDir + "/_front001_host.map"),
-		RootRedirMap:               mapBuilder.AddMap(c.mapsDir + "/_front001_root_redir.map"),
-		SNIBackendsMap:             mapBuilder.AddMap(c.mapsDir + "/_front001_sni.map"),
-		TLSInvalidCrtErrorList:     mapBuilder.AddMap(c.mapsDir + "/_front001_inv_crt.list"),
-		TLSInvalidCrtErrorPagesMap: mapBuilder.AddMap(c.mapsDir + "/_front001_inv_crt_redir.map"),
-		TLSNoCrtErrorList:          mapBuilder.AddMap(c.mapsDir + "/_front001_no_crt.list"),
-		TLSNoCrtErrorPagesMap:      mapBuilder.AddMap(c.mapsDir + "/_front001_no_crt_redir.map"),
+		HostBackendsMap:            mapBuilder.AddMap(mapsDir + "/_front001_host.map"),
+		RootRedirMap:               mapBuilder.AddMap(mapsDir + "/_front001_root_redir.map"),
+		SNIBackendsMap:             mapBuilder.AddMap(mapsDir + "/_front001_sni.map"),
+		TLSInvalidCrtErrorList:     mapBuilder.AddMap(mapsDir + "/_front001_inv_crt.list"),
+		TLSInvalidCrtErrorPagesMap: mapBuilder.AddMap(mapsDir + "/_front001_inv_crt_redir.map"),
+		TLSNoCrtErrorList:          mapBuilder.AddMap(mapsDir + "/_front001_no_crt.list"),
+		TLSNoCrtErrorPagesMap:      mapBuilder.AddMap(mapsDir + "/_front001_no_crt_redir.map"),
 		//
-		CrtList:       mapBuilder.AddMap(c.mapsDir + "/_front001_bind_crt.list"),
-		UseServerList: mapBuilder.AddMap(c.mapsDir + "/_front001_use_server.list"),
+		CrtList:       mapBuilder.AddMap(mapsDir + "/_front001_bind_crt.list"),
+		UseServerList: mapBuilder.AddMap(mapsDir + "/_front001_use_server.list"),
 	}
 	fmaps.CrtList.AppendItem(c.frontend.DefaultCert)
 	// Some maps use yes/no answers instead of a list with found/missing keys
@@ -283,7 +281,7 @@ func (c *config) WriteFrontendMaps() error {
 			fmaps.CrtList.AppendItem(crtListEntry)
 		}
 	}
-	if err := writeMaps(mapBuilder, c.mapsTemplate); err != nil {
+	if err := writeMaps(mapBuilder, c.options.mapsTemplate); err != nil {
 		return err
 	}
 	c.frontend.Maps = fmaps
@@ -299,7 +297,7 @@ func (c *config) WriteBackendMaps() error {
 	mapBuilder := hatypes.CreateMaps()
 	for _, backend := range c.backends.Items() {
 		if backend.NeedACL() {
-			mapsPrefix := c.mapsDir + "/_back_" + backend.ID
+			mapsPrefix := c.options.mapsDir + "/_back_" + backend.ID
 			pathsMap := mapBuilder.AddMap(mapsPrefix + "_idpath.map")
 			for _, path := range backend.Paths {
 				pathsMap.AppendPath(path.Hostpath, path.ID)
@@ -307,7 +305,7 @@ func (c *config) WriteBackendMaps() error {
 			backend.PathsMap = pathsMap
 		}
 	}
-	return writeMaps(mapBuilder, c.mapsTemplate)
+	return writeMaps(mapBuilder, c.options.mapsTemplate)
 }
 
 func writeMaps(maps *hatypes.HostsMaps, template *template.Config) error {
@@ -349,10 +347,7 @@ func (c *config) Userlists() *hatypes.Userlists {
 }
 
 func (c *config) Clear() {
-	config := createConfig(options{
-		mapsTemplate: c.mapsTemplate,
-		mapsDir:      c.mapsDir,
-	})
+	config := createConfig(c.options)
 	*c = *config
 }
 

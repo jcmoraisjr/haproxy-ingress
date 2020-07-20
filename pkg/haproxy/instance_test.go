@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -2813,6 +2814,59 @@ d1.local/ d1_app_8080
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestShards(t *testing.T) {
+	c := setupOptions(testOptions{
+		t:          t,
+		shardCount: 3,
+	})
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.Backends().AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	h = c.config.Hosts().AcquireHost("d1.local")
+	h.AddPath(b, "/")
+
+	b = c.config.Backends().AcquireBackend("d2", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS21}
+	h = c.config.Hosts().AcquireHost("d2.local")
+	h.AddPath(b, "/")
+
+	b = c.config.Backends().AcquireBackend("d3", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS31}
+	h = c.config.Hosts().AcquireHost("d3.local")
+	h.AddPath(b, "/")
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+<<backends-default>>
+<<frontends-default>>
+<<support>>
+`)
+
+	c.checkConfigFile(`
+backend d2_app_8080
+    mode http
+    server s21 172.17.0.121:8080 weight 100
+`, "haproxy5-backend000.cfg")
+
+	c.checkConfigFile(`
+backend d1_app_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+backend d3_app_8080
+    mode http
+    server s31 172.17.0.131:8080 weight 100
+`, "haproxy5-backend002.cfg")
+
+	c.logger.CompareLogging(`
+INFO-V(2) updated main cfg and 2 backend file(s): [000 002]` + defaultLogging)
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *
  *  BUILDERS
@@ -2820,35 +2874,45 @@ d1.local/ d1_app_8080
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 type testConfig struct {
+	t        *testing.T
+	logger   *helper_test.LoggerMock
+	instance *instance
+	config   *config
+	tempdir  string
+}
+
+type testOptions struct {
 	t          *testing.T
-	logger     *helper_test.LoggerMock
-	instance   Instance
-	config     Config
-	tempdir    string
-	configfile string
+	shardCount int
 }
 
 func setup(t *testing.T) *testConfig {
+	return setupOptions(testOptions{t: t})
+}
+
+func setupOptions(options testOptions) *testConfig {
+	t := options.t
 	logger := &helper_test.LoggerMock{T: t}
 	tempdir, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Errorf("error creating tempdir: %v", err)
 	}
-	configfile := tempdir + "/haproxy.cfg"
 	instance := CreateInstance(logger, InstanceOptions{
-		HAProxyConfigFile: configfile,
-		Metrics:           helper_test.NewMetricsMock(),
+		HAProxyCfgDir:  tempdir,
+		HAProxyMapsDir: tempdir,
+		Metrics:        helper_test.NewMetricsMock(),
+		BackendShards:  options.shardCount,
 	}).(*instance)
-	if err := instance.templates.NewTemplate(
+	if err := instance.haproxyTmpl.NewTemplate(
 		"haproxy.tmpl",
 		"../../rootfs/etc/haproxy/template/haproxy.tmpl",
-		configfile,
+		filepath.Join(tempdir, "haproxy.cfg"),
 		0,
 		2048,
 	); err != nil {
 		t.Errorf("error parsing haproxy.tmpl: %v", err)
 	}
-	if err := instance.mapsTemplate.NewTemplate(
+	if err := instance.mapsTmpl.NewTemplate(
 		"map.tmpl",
 		"../../rootfs/etc/haproxy/maptemplate/map.tmpl",
 		"",
@@ -2857,19 +2921,14 @@ func setup(t *testing.T) *testConfig {
 	); err != nil {
 		t.Errorf("error parsing map.tmpl: %v", err)
 	}
-	config := createConfig(options{
-		mapsTemplate: instance.mapsTemplate,
-		mapsDir:      tempdir,
-	})
-	instance.config = config
+	config := instance.Config().(*config)
 	config.frontend.DefaultCert = "/var/haproxy/ssl/certs/default.pem"
 	c := &testConfig{
-		t:          t,
-		logger:     logger,
-		instance:   instance,
-		config:     config,
-		tempdir:    tempdir,
-		configfile: configfile,
+		t:        t,
+		logger:   logger,
+		instance: instance,
+		config:   config,
+		tempdir:  tempdir,
 	}
 	c.configGlobal(c.config.Global())
 	return c
@@ -2991,7 +3050,11 @@ func (c *testConfig) Update() {
 }
 
 func (c *testConfig) checkConfig(expected string) {
-	actual := strings.Replace(c.readConfig(c.configfile), c.tempdir, "/etc/haproxy/maps", -1)
+	c.checkConfigFile(expected, "haproxy.cfg")
+}
+
+func (c *testConfig) checkConfigFile(expected, fileName string) {
+	actual := strings.Replace(c.readConfig(filepath.Join(c.tempdir, fileName)), c.tempdir, "/etc/haproxy/maps", -1)
 	replace := map[string]string{
 		"<<global>>": `global
     daemon
@@ -3083,7 +3146,7 @@ frontend healthz
 			break
 		}
 	}
-	c.compareText("haproxy.cfg", actual, expected)
+	c.compareText(fileName, actual, expected)
 }
 
 func (c *testConfig) checkMap(mapName, expected string) {

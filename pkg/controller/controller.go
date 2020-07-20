@@ -120,7 +120,9 @@ func (hc *HAProxyController) configController() {
 	instanceOptions := haproxy.InstanceOptions{
 		HAProxyCmd:        "haproxy",
 		ReloadCmd:         "/haproxy-reload.sh",
-		HAProxyConfigFile: "/etc/haproxy/haproxy.cfg",
+		HAProxyCfgDir:     "/etc/haproxy",
+		HAProxyMapsDir:    "/etc/haproxy/maps",
+		BackendShards:     hc.cfg.BackendShards,
 		AcmeSigner:        acmeSigner,
 		AcmeQueue:         hc.acmeQueue,
 		LeaderElector:     hc.leaderelector,
