@@ -18,6 +18,7 @@ package annotations
 
 import (
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
+	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 )
 
 func (c *updater) buildHostAuthTLS(d *hostData) {
@@ -30,7 +31,11 @@ func (c *updater) buildHostAuthTLS(d *hostData) {
 		return
 	}
 	tls := &d.host.TLS
-	if cafile, crlfile, err := c.cache.GetCASecretPath(tlsSecret.Source.Namespace, tlsSecret.Value); err == nil {
+	if cafile, crlfile, err := c.cache.GetCASecretPath(
+		tlsSecret.Source.Namespace,
+		tlsSecret.Value,
+		convtypes.TrackingTarget{Hostname: d.host.Hostname},
+	); err == nil {
 		tls.CAFilename = cafile.Filename
 		tls.CAHash = cafile.SHA1Hash
 		tls.CRLFilename = crlfile.Filename

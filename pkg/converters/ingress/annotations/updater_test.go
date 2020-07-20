@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/tracker"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
@@ -44,15 +45,18 @@ type testConfig struct {
 	t       *testing.T
 	haproxy haproxy.Config
 	cache   *conv_helper.CacheMock
+	tracker convtypes.Tracker
 	logger  *types_helper.LoggerMock
 }
 
 func setup(t *testing.T) *testConfig {
 	logger := &types_helper.LoggerMock{T: t}
+	tracker := tracker.NewTracker()
 	return &testConfig{
 		t:       t,
 		haproxy: haproxy.CreateInstance(logger, haproxy.InstanceOptions{}).Config(),
-		cache:   &conv_helper.CacheMock{},
+		cache:   conv_helper.NewCacheMock(tracker),
+		tracker: tracker,
 		logger:  logger,
 	}
 }
@@ -66,6 +70,7 @@ func (c *testConfig) createUpdater() *updater {
 		haproxy: c.haproxy,
 		cache:   c.cache,
 		logger:  c.logger,
+		tracker: c.tracker,
 		fakeCA: convtypes.CrtFile{
 			Filename: fakeCAFilename,
 			SHA1Hash: fakeCAHash,

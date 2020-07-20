@@ -23,6 +23,7 @@ import (
 	"time"
 
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
+	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
@@ -46,10 +47,10 @@ func (c *updater) buildGlobalAcme(d *globalData) {
 	d.acmeData.Endpoint = endpoint
 	d.acmeData.Expiring = time.Duration(d.mapper.Get(ingtypes.GlobalAcmeExpiring).Int()) * 24 * time.Hour
 	d.acmeData.TermsAgreed = termsAgreed
-	d.acme.Prefix = "/.well-known/acme-challenge/"
-	d.acme.Socket = "/var/run/acme.sock"
-	d.acme.Enabled = true
-	d.acme.Shared = d.mapper.Get(ingtypes.GlobalAcmeShared).Bool()
+	d.global.Acme.Prefix = "/.well-known/acme-challenge/"
+	d.global.Acme.Socket = "/var/run/acme.sock"
+	d.global.Acme.Enabled = true
+	d.global.Acme.Shared = d.mapper.Get(ingtypes.GlobalAcmeShared).Bool()
 }
 
 func (c *updater) buildGlobalBind(d *globalData) {
@@ -146,7 +147,7 @@ func (c *updater) buildGlobalStats(d *globalData) {
 	d.global.Stats.BindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrStats).Value
 	d.global.Stats.Port = d.mapper.Get(ingtypes.GlobalStatsPort).Int()
 	if tlsSecret := d.mapper.Get(ingtypes.GlobalStatsSSLCert).Value; tlsSecret != "" {
-		if tls, err := c.cache.GetTLSSecretPath("", tlsSecret); err == nil {
+		if tls, err := c.cache.GetTLSSecretPath("", tlsSecret, convtypes.TrackingTarget{}); err == nil {
 			d.global.Stats.TLSFilename = tls.Filename
 			d.global.Stats.TLSHash = tls.SHA1Hash
 		} else {

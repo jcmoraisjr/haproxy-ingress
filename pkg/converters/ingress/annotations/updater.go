@@ -41,6 +41,7 @@ func NewUpdater(haproxy haproxy.Config, options *ingtypes.ConverterOptions) Upda
 		haproxy: haproxy,
 		logger:  options.Logger,
 		cache:   options.Cache,
+		tracker: options.Tracker,
 		fakeCA:  options.FakeCAFile,
 	}
 }
@@ -49,12 +50,12 @@ type updater struct {
 	haproxy haproxy.Config
 	logger  types.Logger
 	cache   convtypes.Cache
+	tracker convtypes.Tracker
 	fakeCA  convtypes.CrtFile
 }
 
 type globalData struct {
 	acmeData *hatypes.AcmeData
-	acme     *hatypes.Acme
 	global   *hatypes.Global
 	mapper   *Mapper
 }
@@ -102,7 +103,6 @@ func (c *updater) splitCIDR(cidrlist *ConfigValue) []string {
 func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mapper) {
 	d := &globalData{
 		acmeData: haproxyConfig.AcmeData(),
-		acme:     haproxyConfig.Acme(),
 		global:   haproxyConfig.Global(),
 		mapper:   mapper,
 	}

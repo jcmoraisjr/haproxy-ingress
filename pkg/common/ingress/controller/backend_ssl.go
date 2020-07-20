@@ -43,7 +43,6 @@ func (ic *GenericController) SyncSecret(key string) {
 	cert, err := ic.getPemCertificate(secret)
 	if err != nil {
 		glog.V(3).Infof("syncing a non ca/crt secret %v", key)
-		ic.newctrl.Notify()
 		return
 	}
 
@@ -59,15 +58,13 @@ func (ic *GenericController) SyncSecret(key string) {
 		ic.sslCertTracker.Update(key, cert)
 		// this update must trigger an update
 		// (like an update event from a change in Ingress)
-		ic.newctrl.Notify()
 		return
 	}
 
-	glog.Infof("adding secret %v to the local store", key)
+	glog.V(3).Infof("adding secret %v to the local store", key)
 	ic.sslCertTracker.Add(key, cert)
 	// this update must trigger an update
 	// (like an update event from a change in Ingress)
-	ic.newctrl.Notify()
 }
 
 // getPemCertificate receives a secret, and creates a ingress.SSLCert as return.

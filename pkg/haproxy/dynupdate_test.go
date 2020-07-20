@@ -24,12 +24,12 @@ import (
 	"time"
 
 	"github.com/kylelemons/godebug/diff"
+
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
 func TestDynUpdate(t *testing.T) {
 	testCases := []struct {
-		oldConfig *config
-		curConfig *config
 		doconfig1 func(c *testConfig)
 		doconfig2 func(c *testConfig)
 		expected  []string
@@ -39,36 +39,89 @@ func TestDynUpdate(t *testing.T) {
 	}{
 		// 0
 		{
-			oldConfig: nil,
-			curConfig: nil,
-			dynamic:   false,
+			dynamic: true,
 		},
 		// 1
 		{
-			oldConfig: nil,
-			curConfig: createConfig(options{}),
-			dynamic:   false,
-		},
-		// 2
-		{
-			oldConfig: createConfig(options{}),
-			curConfig: nil,
-			dynamic:   false,
-		},
-		// 3
-		{
-			oldConfig: createConfig(options{}),
-			curConfig: createConfig(options{}),
-			dynamic:   true,
-		},
-		// 4
-		{
-			oldConfig: createConfig(options{}),
 			doconfig2: func(c *testConfig) {
 				c.config.Global().MaxConn = 1
 			},
 			dynamic: false,
-			logging: `INFO-V(2) diff outside backends - [global]`,
+			logging: `INFO-V(2) diff outside backends: [global]`,
+		},
+		// 2
+		{
+			doconfig1: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AcquireEndpoint("172.17.0.3", 8080, "")
+			},
+			doconfig2: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.Dynamic.DynUpdate = true
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AcquireEndpoint("172.17.0.4", 8080, "")
+			},
+			expected: []string{
+				"srv001:172.17.0.2:8080:1",
+				"srv002:172.17.0.4:8080:1",
+			},
+			dynamic: true,
+			cmd: `
+set server default_app_8080/srv002 addr 172.17.0.4 port 8080
+set server default_app_8080/srv002 state ready
+set server default_app_8080/srv002 weight 1`,
+			logging: `INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
+		},
+		// 3
+		{
+			doconfig1: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AcquireEndpoint("172.17.0.3", 8080, "")
+				b.AddEmptyEndpoint()
+			},
+			doconfig2: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.Dynamic.DynUpdate = true
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AcquireEndpoint("172.17.0.4", 8080, "")
+			},
+			expected: []string{
+				"srv001:172.17.0.2:8080:1",
+				"srv002:172.17.0.4:8080:1",
+				"srv003:127.0.0.1:1023:1",
+			},
+			dynamic: true,
+			cmd: `
+set server default_app_8080/srv002 addr 172.17.0.4 port 8080
+set server default_app_8080/srv002 state ready
+set server default_app_8080/srv002 weight 1`,
+			logging: `INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
+		},
+		// 4
+		{
+			doconfig1: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AcquireEndpoint("172.17.0.3", 8080, "")
+			},
+			doconfig2: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.Dynamic.DynUpdate = true
+				b.AcquireEndpoint("172.17.0.3", 8080, "")
+				b.AcquireEndpoint("172.17.0.4", 8080, "")
+			},
+			expected: []string{
+				"srv001:172.17.0.4:8080:1",
+				"srv002:172.17.0.3:8080:1",
+			},
+			dynamic: true,
+			cmd: `
+set server default_app_8080/srv001 addr 172.17.0.4 port 8080
+set server default_app_8080/srv001 state ready
+set server default_app_8080/srv001 weight 1`,
+			logging: `INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv001'`,
 		},
 		// 5
 		{
@@ -377,7 +430,7 @@ set server default_app_8080/srv002 weight 1
 			},
 			dynamic: false,
 			cmd:     ``,
-			logging: ``,
+			logging: `INFO-V(2) added backend 'default_app_8080'`,
 		},
 		// 16
 		{
@@ -394,7 +447,7 @@ set server default_app_8080/srv002 weight 1
 			},
 			dynamic: false,
 			cmd:     ``,
-			logging: ``,
+			logging: `INFO-V(2) added backend 'default_app_8080'`,
 		},
 		// 17
 		{
@@ -438,6 +491,11 @@ set server default_app_8080/srv002 weight 1`,
 				"srv002:172.17.0.4:8080:1",
 			},
 			dynamic: false,
+			cmd: `
+set server default_app_8080/srv002 addr 172.17.0.4 port 8080
+set server default_app_8080/srv002 state ready
+set server default_app_8080/srv002 weight 1`,
+			logging: `INFO-V(2) added endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
 		},
 		// 19
 		{
@@ -456,6 +514,11 @@ set server default_app_8080/srv002 weight 1`,
 				"srv002:127.0.0.1:1023:1",
 			},
 			dynamic: false,
+			cmd: `
+set server default_app_8080/srv002 state maint
+set server default_app_8080/srv002 addr 127.0.0.1 port 1023
+set server default_app_8080/srv002 weight 0`,
+			logging: `INFO-V(2) disabled endpoint '172.17.0.3:8080' on backend/server 'default_app_8080/srv002'`,
 		},
 		// 20
 		{
@@ -475,6 +538,11 @@ set server default_app_8080/srv002 weight 1`,
 				"srv002:172.17.0.4:8080:1",
 			},
 			dynamic: false,
+			cmd: `
+set server default_app_8080/srv002 addr 172.17.0.4 port 8080
+set server default_app_8080/srv002 state ready
+set server default_app_8080/srv002 weight 1`,
+			logging: `INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
 		},
 		// 21
 		{
@@ -520,19 +588,20 @@ set server default_app_8080/srv002 weight 1`,
 		instance := c.instance.(*instance)
 		if test.doconfig1 != nil {
 			test.doconfig1(c)
-			test.oldConfig = c.config.(*config)
-			instance.rotateConfig()
-			c.config = c.newConfig()
-			instance.curConfig = c.config
 		}
+		instance.config.Commit()
+		backendIDs := []types.BackendID{}
+		for _, backend := range c.config.Backends().Items() {
+			if backend != c.config.Backends().DefaultBackend() {
+				backendIDs = append(backendIDs, backend.BackendID())
+			}
+		}
+		c.config.Backends().RemoveAll(backendIDs)
 		if test.doconfig2 != nil {
 			test.doconfig2(c)
-			test.curConfig = c.config.(*config)
 		}
 		var cmd string
 		dynUpdater := instance.newDynUpdater()
-		dynUpdater.old = test.oldConfig
-		dynUpdater.cur = test.curConfig
 		dynUpdater.cmd = func(socket string, observer func(duration time.Duration), command ...string) ([]string, error) {
 			for _, c := range command {
 				cmd = cmd + c + "\n"

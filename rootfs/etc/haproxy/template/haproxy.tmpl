@@ -143,7 +143,7 @@ resolvers {{ $resolver.Name }}
 {{- end }}
 {{- end }}
 
-{{- $userlists := $cfg.Userlists }}
+{{- $userlists := $cfg.Userlists.BuildSortedItems }}
 {{- if $userlists }}
 
   # # # # # # # # # # # # # # # # # # #
@@ -158,7 +158,8 @@ userlist {{ $userlist.Name }}
 {{- end }}
 {{- end }}
 
-{{- if $cfg.TCPBackends }}
+{{- $tcpbackends := $cfg.TCPBackends.BuildSortedItems}}
+{{- if $tcpbackends }}
 
 
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -168,7 +169,7 @@ userlist {{ $userlist.Name }}
 # #
 #
 
-{{- range $backend := $cfg.TCPBackends }}
+{{- range $backend := $tcpbackends }}
 listen _tcp_{{ $backend.Name }}_{{ $backend.Port }}
 {{- $ssl := $backend.SSL }}
     bind {{ $global.Bind.TCPBindIP }}:{{ $backend.Port }}
@@ -204,7 +205,8 @@ listen _tcp_{{ $backend.Name }}_{{ $backend.Port }}
 {{- end }}{{/* range TCPBackends */}}
 {{- end }}{{/* if has TCPBackend */}}
 
-{{- if $backends.Items }}
+{{- $backendItems := $backends.BuildSortedItems }}
+{{- if $backendItems }}
 
 
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -213,7 +215,7 @@ listen _tcp_{{ $backend.Name }}_{{ $backend.Port }}
 # #   BACKENDS
 # #
 #
-{{- range $backend := $backends.Items }}
+{{- range $backend := $backendItems }}
 backend {{ $backend.ID }}
     mode {{ if $backend.ModeTCP }}tcp{{ else }}http{{ end }}
 {{- if $backend.BalanceAlgorithm }}
@@ -553,7 +555,7 @@ backend {{ $backend.ID }}
 {{- end }}
 {{- end }}
 
-{{- end }}{{/* if has backends.Items */}}
+{{- end }}{{/* if backendItems */}}
 
 {{- define "backend" }}
     {{- $backend := .p1 }}
@@ -590,7 +592,7 @@ backend {{ $backend.ID }}
     {{- end }}
 {{- end }}
 
-{{- if $cfg.Acme.Enabled }}
+{{- if $global.Acme.Enabled }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
@@ -598,7 +600,7 @@ backend {{ $backend.ID }}
 #
 backend _acme_challenge
     mode http
-    server _acme_server unix@{{ $cfg.Acme.Socket }}
+    server _acme_server unix@{{ $global.Acme.Socket }}
 {{- end }}
 
 {{- if not $backends.DefaultBackend }}
@@ -731,15 +733,15 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $cfg.Acme.Enabled }}
-    acl acme-challenge path_beg {{ $cfg.Acme.Prefix }}
+{{- if $global.Acme.Enabled }}
+    acl acme-challenge path_beg {{ $global.Acme.Prefix }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
 
 {{- /*------------------------------------*/}}
-{{- $acmeexclusive := and $cfg.Acme.Enabled (not $cfg.Acme.Shared) }}
+{{- $acmeexclusive := and $global.Acme.Enabled (not $global.Acme.Shared) }}
 {{- if not $frontingIgnoreProto }}
 {{- if $fmaps.HTTPSRedirMap.HasRegex }}
     http-request set-var(req.redir)
@@ -822,7 +824,7 @@ frontend _front_http
     use_backend _acme_challenge if acme-challenge
 {{- end }}
     use_backend %[var(req.backend)] if { var(req.backend) -m found }
-{{- if and $cfg.Acme.Enabled $cfg.Acme.Shared }}
+{{- if and $global.Acme.Enabled $global.Acme.Shared }}
     use_backend _acme_challenge if acme-challenge
 {{- end }}
 

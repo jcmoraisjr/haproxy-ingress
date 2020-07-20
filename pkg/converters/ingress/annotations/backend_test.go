@@ -105,7 +105,7 @@ func TestAffinity(t *testing.T) {
 		// 8
 		{
 			ann: map[string]string{
-				ingtypes.BackAffinity:             "cookie",
+				ingtypes.BackAffinity:              "cookie",
 				ingtypes.BackSessionCookieKeywords: "nocache",
 			},
 			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "insert", Dynamic: false, Keywords: "nocache"},
@@ -315,7 +315,7 @@ usr2::clearpwd2`)}},
 		c.cache.SecretContent = test.secrets
 		d := c.createBackendMappingData("default/app", test.source, test.annDefault, test.ann, test.paths)
 		u.buildBackendAuthHTTP(d)
-		userlists := u.haproxy.Userlists()
+		userlists := u.haproxy.Userlists().BuildSortedItems()
 		c.compareObjects("userlists", i, userlists, test.expUserlists)
 		if test.expConfig != nil {
 			c.compareObjects("auth http", i, d.backend.AuthHTTP, test.expConfig)

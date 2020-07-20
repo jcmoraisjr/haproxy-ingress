@@ -1137,7 +1137,7 @@ func TestInstanceTCPBackend(t *testing.T) {
 		// 0
 		{
 			doconfig: func(c *testConfig) {
-				b := c.config.AcquireTCPBackend("postgresql", 5432)
+				b := c.config.TCPBackends().Acquire("postgresql", 5432)
 				b.AddEndpoint("172.17.0.2", 5432)
 			},
 			expected: `
@@ -1149,7 +1149,7 @@ listen _tcp_postgresql_5432
 		// 1
 		{
 			doconfig: func(c *testConfig) {
-				b := c.config.AcquireTCPBackend("pq", 5432)
+				b := c.config.TCPBackends().Acquire("pq", 5432)
 				b.AddEndpoint("172.17.0.2", 5432)
 				b.AddEndpoint("172.17.0.3", 5432)
 				b.CheckInterval = "2s"
@@ -1164,7 +1164,7 @@ listen _tcp_pq_5432
 		// 2
 		{
 			doconfig: func(c *testConfig) {
-				b := c.config.AcquireTCPBackend("pq", 5432)
+				b := c.config.TCPBackends().Acquire("pq", 5432)
 				b.AddEndpoint("172.17.0.2", 5432)
 				b.SSL.Filename = "/var/haproxy/ssl/pq.pem"
 				b.ProxyProt.EncodeVersion = "v2"
@@ -1178,7 +1178,7 @@ listen _tcp_pq_5432
 		// 3
 		{
 			doconfig: func(c *testConfig) {
-				b := c.config.AcquireTCPBackend("pq", 5432)
+				b := c.config.TCPBackends().Acquire("pq", 5432)
 				b.AddEndpoint("172.17.0.2", 5432)
 				b.SSL.Filename = "/var/haproxy/ssl/pq.pem"
 				b.ProxyProt.Decode = true
@@ -1195,7 +1195,7 @@ listen _tcp_pq_5432
 		// 4
 		{
 			doconfig: func(c *testConfig) {
-				b := c.config.AcquireTCPBackend("pq", 5432)
+				b := c.config.TCPBackends().Acquire("pq", 5432)
 				b.AddEndpoint("172.17.0.2", 5432)
 				b.SSL.Filename = "/var/haproxy/ssl/pq.pem"
 				b.SSL.CAFilename = "/var/haproxy/ssl/pqca.pem"
@@ -1210,7 +1210,7 @@ listen _tcp_pq_5432
 		// 5
 		{
 			doconfig: func(c *testConfig) {
-				b := c.config.AcquireTCPBackend("pq", 5432)
+				b := c.config.TCPBackends().Acquire("pq", 5432)
 				b.AddEndpoint("172.17.0.2", 5432)
 				b.SSL.Filename = "/var/haproxy/ssl/pq.pem"
 				b.SSL.CAFilename = "/var/haproxy/ssl/pqca.pem"
@@ -2307,7 +2307,7 @@ userlist default_auth2
 		h.AddPath(b, "/admin")
 
 		for _, list := range test.lists {
-			c.config.AddUserlist(list.name, list.users)
+			c.config.Userlists().Replace(list.name, list.users)
 		}
 		b.AuthHTTP = []*hatypes.BackendConfigAuth{
 			{
@@ -2392,7 +2392,7 @@ frontend _front_http
 		h = c.config.Hosts().AcquireHost("d1.local")
 		h.AddPath(b, "/")
 
-		acme := c.config.Acme()
+		acme := &c.config.Global().Acme
 		acme.Enabled = true
 		acme.Prefix = "/.acme"
 		acme.Socket = "/run/acme.sock"
@@ -2861,8 +2861,8 @@ func setup(t *testing.T) *testConfig {
 		mapsTemplate: instance.mapsTemplate,
 		mapsDir:      tempdir,
 	})
-	instance.curConfig = config
-	config.ConfigDefaultX509Cert("/var/haproxy/ssl/certs/default.pem")
+	instance.config = config
+	config.frontend.DefaultCert = "/var/haproxy/ssl/certs/default.pem"
 	c := &testConfig{
 		t:          t,
 		logger:     logger,
@@ -2880,16 +2880,6 @@ func (c *testConfig) teardown() {
 	if err := os.RemoveAll(c.tempdir); err != nil {
 		c.t.Errorf("error removing tempdir: %v", err)
 	}
-}
-
-func (c *testConfig) newConfig() Config {
-	config := createConfig(options{
-		mapsTemplate: c.instance.(*instance).mapsTemplate,
-		mapsDir:      c.tempdir,
-	})
-	config.ConfigDefaultX509Cert("/var/haproxy/ssl/certs/default.pem")
-	c.configGlobal(config.Global())
-	return config
 }
 
 func (c *testConfig) configGlobal(global *hatypes.Global) {

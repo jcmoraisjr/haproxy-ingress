@@ -29,6 +29,17 @@ func NewBackendPaths(paths ...*BackendPath) BackendPaths {
 	return b
 }
 
+// BackendID ...
+func (b *Backend) BackendID() BackendID {
+	// IMPLEMENT as pointer
+	// TODO immutable internal state
+	return BackendID{
+		Namespace: b.Namespace,
+		Name:      b.Name,
+		Port:      b.Port,
+	}
+}
+
 // FindEndpoint ...
 func (b *Backend) FindEndpoint(target string) *Endpoint {
 	for _, endpoint := range b.Endpoints {

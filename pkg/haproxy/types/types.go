@@ -22,11 +22,21 @@ import (
 
 // AcmeData ...
 type AcmeData struct {
-	Certs       map[string]map[string]struct{}
+	storages    *AcmeStorages
 	Emails      string
 	Endpoint    string
 	Expiring    time.Duration
 	TermsAgreed bool
+}
+
+// AcmeStorages ...
+type AcmeStorages struct {
+	items, itemsAdd, itemsDel map[string]*AcmeCerts
+}
+
+// AcmeCerts ...
+type AcmeCerts struct {
+	certs map[string]struct{}
 }
 
 // Acme ...
@@ -49,6 +59,7 @@ type Global struct {
 	ModSecurity     ModSecurityConfig
 	Cookie          CookieConfig
 	DrainSupport    DrainConfig
+	Acme            Acme
 	ForwardFor      string
 	LoadServerState bool
 	AdminSocket     string
@@ -199,6 +210,11 @@ type ModSecurityTimeoutConfig struct {
 	Processing string
 }
 
+// TCPBackends ...
+type TCPBackends struct {
+	items, itemsAdd, itemsDel map[int]*TCPBackend
+}
+
 // TCPBackend ...
 type TCPBackend struct {
 	Name          string
@@ -277,12 +293,13 @@ type Frontend struct {
 	BindSocket  string
 	BindID      int
 	AcceptProxy bool
+	DefaultCert string
 }
 
 // Hosts ...
 type Hosts struct {
-	itemslist   []*Host
-	itemsmap    map[string]*Host
+	items, itemsAdd, itemsDel map[string]*Host
+	//
 	defaultHost *Host
 	//
 	sslPassthroughCount int
@@ -361,9 +378,17 @@ const (
 
 // Backends ...
 type Backends struct {
-	itemslist      []*Backend
-	itemsmap       map[string]*Backend
+	items, itemsAdd, itemsDel map[string]*Backend
+	//
 	defaultBackend *Backend
+}
+
+// BackendID ...
+type BackendID struct {
+	id        string
+	Namespace string
+	Name      string
+	Port      string
 }
 
 // Backend ...
@@ -371,6 +396,8 @@ type Backend struct {
 	//
 	// core config
 	//
+	// IMPLEMENT
+	// use BackendID
 	ID        string
 	Namespace string
 	Name      string
@@ -634,6 +661,11 @@ type WAF struct {
 	Mode string
 	// Which WAF Module should be used
 	Module string
+}
+
+// Userlists ...
+type Userlists struct {
+	items, itemsAdd, itemsDel map[string]*Userlist
 }
 
 // Userlist ...

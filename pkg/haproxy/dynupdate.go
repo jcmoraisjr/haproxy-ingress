@@ -30,8 +30,7 @@ import (
 
 type dynUpdater struct {
 	logger  types.Logger
-	old     *config
-	cur     *config
+	config  *config
 	socket  string
 	cmd     func(socket string, observer func(duration time.Duration), commands ...string) ([]string, error)
 	cmdCnt  int
@@ -49,25 +48,17 @@ type epPair struct {
 }
 
 func (i *instance) newDynUpdater() *dynUpdater {
-	var old, cur *config
-	if i.oldConfig != nil {
-		old = i.oldConfig.(*config)
-	}
-	if i.curConfig != nil {
-		cur = i.curConfig.(*config)
-	}
 	return &dynUpdater{
 		logger:  i.logger,
-		old:     old,
-		cur:     cur,
-		socket:  i.curConfig.Global().AdminSocket,
+		config:  i.config.(*config),
+		socket:  i.config.Global().AdminSocket,
 		cmd:     utils.HAProxyCommand,
 		metrics: i.metrics,
 	}
 }
 
 func (d *dynUpdater) update() bool {
-	updated := d.checkConfigPair()
+	updated := d.config.hasCommittedData() && d.checkConfigChange()
 	if !updated {
 		// Need to reload, time to adjust empty slots according to config
 		d.alignSlots()
@@ -75,68 +66,70 @@ func (d *dynUpdater) update() bool {
 	return updated
 }
 
-func (d *dynUpdater) checkConfigPair() bool {
-	oldConfig := d.old
-	curConfig := d.cur
-	if oldConfig == nil || curConfig == nil {
-		return false
+func (d *dynUpdater) checkConfigChange() bool {
+	// updated defines if dynamic update was successfully applied.
+	// The udpated backend list is fully verified even if a restart
+	// should be made (updated=false) in order to leave haproxy as
+	// update as possible if a reload fails.
+	// TODO use two steps update and perform full dynamic update
+	//      only if the reload failed.
+	updated := true
+
+	var diff []string
+	if d.config.globalOld != nil && !reflect.DeepEqual(d.config.globalOld, d.config.global) {
+		diff = append(diff, "global")
+	}
+	if d.config.tcpbackends.Changed() {
+		diff = append(diff, "tcp-services")
+	}
+	if d.config.hosts.Changed() {
+		diff = append(diff, "hosts")
+	}
+	if d.config.userlists.Changed() {
+		diff = append(diff, "userlists")
+	}
+	if len(diff) > 0 {
+		d.logger.InfoV(2, "diff outside backends: %v", diff)
+		updated = false
 	}
 
-	// check equality of everything but backends
-	oldConfigCopy := *oldConfig
-	oldConfigCopy.backends = curConfig.backends
-	if !oldConfigCopy.Equals(curConfig) {
-		var diff []string
-		if !reflect.DeepEqual(oldConfig.global, curConfig.global) {
-			diff = append(diff, "global")
-		}
-		if !reflect.DeepEqual(oldConfig.tcpbackends, curConfig.tcpbackends) {
-			diff = append(diff, "tcp-services")
-		}
-		if !reflect.DeepEqual(oldConfig.hosts, curConfig.hosts) {
-			diff = append(diff, "hosts")
-		}
-		if !reflect.DeepEqual(oldConfig.userlists, curConfig.userlists) {
-			diff = append(diff, "userlists")
-		}
-		d.logger.InfoV(2, "diff outside backends - %v", diff)
-		return false
-	}
-
-	// map backends of old and new config together
-	// return false if len or names doesn't match
-	if len(curConfig.Backends().Items()) != len(curConfig.Backends().Items()) {
-		d.logger.InfoV(2, "added or removed backend(s)")
-		return false
-	}
-	backends := make(map[string]*backendPair, len(oldConfig.Backends().Items()))
-	for _, backend := range oldConfig.Backends().Items() {
+	// group reusable backends together
+	// return false on new backend which cannot be dynamically created
+	backends := make(map[string]*backendPair, len(d.config.backends.ItemsDel()))
+	for _, backend := range d.config.backends.ItemsDel() {
 		backends[backend.ID] = &backendPair{old: backend}
 	}
-	for _, backend := range curConfig.Backends().Items() {
+	for _, backend := range d.config.backends.ItemsAdd() {
 		back, found := backends[backend.ID]
 		if !found {
 			d.logger.InfoV(2, "added backend '%s'", backend.ID)
-			return false
+			updated = false
+		} else {
+			back.cur = backend
 		}
-		back.cur = backend
 	}
 
 	// try to dynamically update every single backend
 	// true if deep equals or sucessfully updated
 	// false if cannot be dynamically updated or update failed
 	for _, pair := range backends {
-		if !d.checkBackendPair(pair) {
-			return false
+		if pair.cur != nil && !d.checkBackendPair(pair) {
+			updated = false
 		}
 	}
 
-	return true
+	return updated
 }
 
 func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 	oldBack := pair.old
 	curBack := pair.cur
+
+	// Track if dynamic update was successfully applied.
+	// Socket updates will continue to be applied even if updated
+	// is false, so haproxy will stay as updated as possible even
+	// if a reload fail
+	updated := true
 
 	// check equality of everything but endpoints
 	oldBackCopy := *oldBack
@@ -144,30 +137,29 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 	oldBackCopy.Endpoints = curBack.Endpoints
 	if !reflect.DeepEqual(&oldBackCopy, curBack) {
 		d.logger.InfoV(2, "diff outside endpoints of backend '%s'", curBack.ID)
-		return false
+		updated = false
 	}
 
 	// can decrease endpoints, cannot increase
 	if len(oldBack.Endpoints) < len(curBack.Endpoints) {
 		d.logger.InfoV(2, "added endpoints on backend '%s'", curBack.ID)
+		// cannot continue -- missing empty slots in the backend
 		return false
 	}
 
 	// Resolver == update via DNS discovery
 	if curBack.Resolver != "" {
-		return true
+		return updated
 	}
 
-	// most of the backends are equal, save some proc stopping here if deep equals
-	if reflect.DeepEqual(oldBack.Endpoints, curBack.Endpoints) {
-		return true
-	}
-
-	// oldBack and curBack differs, DynUpdate is disabled, need to reload
+	// DynUpdate is disabled, check if differs and quit
 	// TODO check if endpoints are the same and only the order differ
 	if !curBack.Dynamic.DynUpdate {
-		d.logger.InfoV(2, "backend '%s' changed and its dynamic-scaling is 'false'", curBack.ID)
-		return false
+		if updated && !reflect.DeepEqual(oldBack.Endpoints, curBack.Endpoints) {
+			d.logger.InfoV(2, "backend '%s' changed and its dynamic-scaling is 'false'", curBack.ID)
+			return false
+		}
+		return updated
 	}
 
 	// map endpoints of old and new config together
@@ -183,42 +175,42 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 		}
 	}
 
-	// From this point we cannot simply `return false` because endpoint.Name
-	// is being updated, need to be updated until the end, and endpoints slice
-	// need to be sorted
-	updated := true
-
 	// reuse the backend/server which has the same target endpoint, if found,
 	// this will save some socket calls and will not mess endpoint metrics
 	var added []*hatypes.Endpoint
 	for _, endpoint := range curBack.Endpoints {
 		if pair, found := endpoints[endpoint.Target]; found {
-			endpoint.Name = pair.old.Name
 			pair.cur = endpoint
+			pair.cur.Name = pair.old.Name
 		} else {
 			added = append(added, endpoint)
 		}
 	}
 
-	// try to dynamically remove/update/add endpoints
-	// targets used here only to have predictable results
+	// Try to dynamically remove/update/add endpoints.
+	// Targets being used here only to have predictable results (tests).
 	// Endpoint.Label != "" means use-server of blue/green config, need reload
 	sort.Strings(targets)
 	for _, target := range targets {
 		pair := endpoints[target]
+		if pair.cur == nil && len(added) > 0 {
+			pair.cur = added[0]
+			pair.cur.Name = pair.old.Name
+			added = added[1:]
+		}
 		if pair.cur == nil {
-			if pair.old.Label != "" || (updated && !d.execDisableEndpoint(curBack.ID, pair.old)) {
+			if !d.execDisableEndpoint(curBack.ID, pair.old) || pair.old.Label != "" {
 				updated = false
 			}
 			empty = append(empty, pair.old.Name)
-		} else if updated && !d.checkEndpointPair(curBack.ID, pair) {
+		} else if !d.checkEndpointPair(curBack.ID, pair) {
 			updated = false
 		}
 	}
 	for i := range added {
 		// reusing empty slots from oldBack
 		added[i].Name = empty[i]
-		if added[i].Label != "" || (updated && !d.execEnableEndpoint(curBack.ID, nil, added[i])) {
+		if !d.execEnableEndpoint(curBack.ID, nil, added[i]) || added[i].Label != "" {
 			updated = false
 		}
 	}
@@ -236,17 +228,15 @@ func (d *dynUpdater) checkEndpointPair(backname string, pair *epPair) bool {
 	if reflect.DeepEqual(pair.old, pair.cur) {
 		return true
 	}
-	if pair.old.Label != "" || pair.cur.Label != "" {
+	updated := d.execEnableEndpoint(backname, pair.old, pair.cur)
+	if !updated || pair.old.Label != "" || pair.cur.Label != "" {
 		return false
 	}
-	return d.execEnableEndpoint(backname, pair.old, pair.cur)
+	return true
 }
 
 func (d *dynUpdater) alignSlots() {
-	if d.cur == nil {
-		return
-	}
-	for _, back := range d.cur.Backends().Items() {
+	for _, back := range d.config.Backends().Items() {
 		if !back.Dynamic.DynUpdate {
 			// no need to add empty slots if won't dynamically update
 			continue

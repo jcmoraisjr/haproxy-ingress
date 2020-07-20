@@ -20,18 +20,64 @@ import (
 	"time"
 
 	api "k8s.io/api/core/v1"
+	networking "k8s.io/api/networking/v1beta1"
+
+	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
 // Cache ...
 type Cache interface {
+	GetIngress(ingressName string) (*networking.Ingress, error)
+	GetIngressList() ([]*networking.Ingress, error)
 	GetService(serviceName string) (*api.Service, error)
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
-	GetTerminatingPods(service *api.Service) ([]*api.Pod, error)
+	GetTerminatingPods(service *api.Service, track TrackingTarget) ([]*api.Pod, error)
 	GetPod(podName string) (*api.Pod, error)
-	GetTLSSecretPath(defaultNamespace, secretName string) (CrtFile, error)
-	GetCASecretPath(defaultNamespace, secretName string) (ca, crl File, err error)
+	GetTLSSecretPath(defaultNamespace, secretName string, track TrackingTarget) (CrtFile, error)
+	GetCASecretPath(defaultNamespace, secretName string, track TrackingTarget) (ca, crl File, err error)
 	GetDHSecretPath(defaultNamespace, secretName string) (File, error)
-	GetSecretContent(defaultNamespace, secretName, keyName string) ([]byte, error)
+	GetSecretContent(defaultNamespace, secretName, keyName string, track TrackingTarget) ([]byte, error)
+	SwapChangedObjects() *ChangedObjects
+	NeedFullSync() bool
+}
+
+// ChangedObjects ...
+type ChangedObjects struct {
+	//
+	GlobalCur, GlobalNew map[string]string
+	//
+	TCPConfigMapCur, TCPConfigMapNew map[string]string
+	//
+	IngressesDel, IngressesUpd, IngressesAdd []*networking.Ingress
+	//
+	Endpoints []*api.Endpoints
+	//
+	ServicesDel, ServicesUpd, ServicesAdd []*api.Service
+	//
+	SecretsDel, SecretsUpd, SecretsAdd []*api.Secret
+	//
+	Pods []*api.Pod
+}
+
+// Tracker ...
+type Tracker interface {
+	Track(isMissing bool, track TrackingTarget, rtype ResourceType, name string)
+	TrackHostname(rtype ResourceType, name, hostname string)
+	TrackBackend(rtype ResourceType, name string, backendID hatypes.BackendID)
+	TrackMissingOnHostname(rtype ResourceType, name, hostname string)
+	TrackStorage(rtype ResourceType, name, storage string)
+	GetDirtyLinks(oldIngressList, oldServiceList, addServiceList, oldSecretList, addSecretList, addPodList []string) (dirtyIngs, dirtyHosts []string, dirtyBacks []hatypes.BackendID, dirtyUsers, dirtyStorages []string)
+	DeleteHostnames(hostnames []string)
+	DeleteBackends(backends []hatypes.BackendID)
+	DeleteUserlists(userlists []string)
+	DeleteStorages(storages []string)
+}
+
+// TrackingTarget ...
+type TrackingTarget struct {
+	Hostname string
+	Backend  hatypes.BackendID
+	Userlist string
 }
 
 // File ...
@@ -47,3 +93,20 @@ type CrtFile struct {
 	CommonName string
 	NotAfter   time.Time
 }
+
+// ResourceType ...
+type ResourceType int
+
+const (
+	// IngressType ...
+	IngressType ResourceType = iota
+
+	// ServiceType ...
+	ServiceType
+
+	// SecretType ...
+	SecretType
+
+	// PodType ...
+	PodType
+)

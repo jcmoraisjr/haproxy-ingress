@@ -51,6 +51,8 @@ type tcpSvcConverter struct {
 var regexValidTime = regexp.MustCompile(`^[0-9]+(us|ms|s|m|h|d)$`)
 
 func (c *tcpSvcConverter) Sync(tcpservices map[string]string) {
+	c.haproxy.TCPBackends().RemoveAll()
+
 	// map[key]value is:
 	// - key   => port to expose
 	// - value => <service-name>:<port>:[<PROXY>]:[<PROXY[-<V1|V2>]]:<secret-name-cert>:check-interval:<secret-name-ca>
@@ -89,7 +91,7 @@ func (c *tcpSvcConverter) Sync(tcpservices map[string]string) {
 		}
 		var crtfile convtypes.CrtFile
 		if svc.secretTLS != "" {
-			crtfile, err = c.cache.GetTLSSecretPath("", svc.secretTLS)
+			crtfile, err = c.cache.GetTLSSecretPath("", svc.secretTLS, convtypes.TrackingTarget{})
 			if err != nil {
 				c.logger.Warn("skipping TCP service on public port %d: %v", publicport, err)
 				continue
@@ -97,7 +99,7 @@ func (c *tcpSvcConverter) Sync(tcpservices map[string]string) {
 		}
 		var cafile, crlfile convtypes.File
 		if svc.secretCA != "" {
-			cafile, crlfile, err = c.cache.GetCASecretPath("", svc.secretCA)
+			cafile, crlfile, err = c.cache.GetCASecretPath("", svc.secretCA, convtypes.TrackingTarget{})
 			if err != nil {
 				c.logger.Warn("skipping TCP service on public port %d: %v", publicport, err)
 				continue
@@ -116,7 +118,7 @@ func (c *tcpSvcConverter) Sync(tcpservices map[string]string) {
 			}
 		}
 		servicename := fmt.Sprintf("%s_%s", service.Namespace, service.Name)
-		backend := c.haproxy.AcquireTCPBackend(servicename, publicport)
+		backend := c.haproxy.TCPBackends().Acquire(servicename, publicport)
 		for _, addr := range addrs {
 			backend.AddEndpoint(addr.IP, addr.Port)
 		}

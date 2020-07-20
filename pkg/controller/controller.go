@@ -20,18 +20,13 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"sort"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/spf13/pflag"
 	api "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1beta1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes/scheme"
-	typedv1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/tools/record"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
@@ -39,6 +34,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
 	configmapconverter "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/configmap"
 	ingressconverter "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/tracker"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
@@ -53,6 +49,7 @@ type HAProxyController struct {
 	logger            *logger
 	cache             *k8scache
 	metrics           *metrics
+	tracker           convtypes.Tracker
 	stopCh            chan struct{}
 	ingressQueue      utils.Queue
 	acmeQueue         utils.Queue
@@ -61,8 +58,6 @@ type HAProxyController struct {
 	controller        *controller.GenericController
 	cfg               *controller.Configuration
 	configMap         *api.ConfigMap
-	recorder          record.EventRecorder
-	listers           *listers
 	converterOptions  *ingtypes.ConverterOptions
 	reloadStrategy    *string
 	maxOldConfigFiles *int
@@ -105,21 +100,12 @@ func (hc *HAProxyController) configController() {
 	hc.controller.SetNewCtrl(hc)
 	hc.logger = &logger{depth: 1}
 	hc.metrics = createMetrics(hc.cfg.BucketsResponseTime)
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(hc.logger.Info)
-	watchNamespace := hc.cfg.WatchNamespace
-	eventBroadcaster.StartRecordingToSink(&typedv1.EventSinkImpl{
-		Interface: hc.cfg.Client.CoreV1().Events(watchNamespace),
-	})
-	hc.recorder = eventBroadcaster.NewRecorder(scheme.Scheme, api.EventSource{
-		Component: "ingress-controller",
-	})
-	hc.listers = createListers(
-		hc, hc.logger, hc.recorder, hc.cfg.Client,
-		watchNamespace, hc.cfg.ForceNamespaceIsolation,
-		hc.cfg.ResyncPeriod)
-	hc.cache = newCache(hc.cfg.Client, hc.listers, hc.controller)
 	hc.ingressQueue = utils.NewRateLimitingQueue(hc.cfg.RateLimitUpdate, hc.syncIngress)
+	hc.tracker = tracker.NewTracker()
+	hc.cache = createCache(
+		hc.logger, hc.cfg.Client, hc.controller, hc.tracker, hc.ingressQueue,
+		hc.cfg.WatchNamespace, hc.cfg.ForceNamespaceIsolation,
+		hc.cfg.ResyncPeriod)
 	var acmeSigner acme.Signer
 	if hc.cfg.AcmeServer {
 		electorID := fmt.Sprintf("%s-%s", hc.cfg.AcmeElectionID, hc.cfg.IngressClass)
@@ -150,6 +136,7 @@ func (hc *HAProxyController) configController() {
 	hc.converterOptions = &ingtypes.ConverterOptions{
 		Logger:           hc.logger,
 		Cache:            hc.cache,
+		Tracker:          hc.tracker,
 		AnnotationPrefix: hc.cfg.AnnPrefix,
 		DefaultBackend:   hc.cfg.DefaultService,
 		DefaultSSLFile:   hc.createDefaultSSLFile(),
@@ -159,7 +146,7 @@ func (hc *HAProxyController) configController() {
 }
 
 func (hc *HAProxyController) startServices() {
-	hc.listers.RunAsync(hc.stopCh)
+	hc.cache.RunAsync(hc.stopCh)
 	go hc.ingressQueue.Run()
 	if hc.cfg.StatsCollectProcPeriod.Milliseconds() > 0 {
 		go wait.Until(func() {
@@ -193,7 +180,8 @@ func (hc *HAProxyController) stopServices() {
 
 func (hc *HAProxyController) createDefaultSSLFile() (tlsFile convtypes.CrtFile) {
 	if hc.cfg.DefaultSSLCertificate != "" {
-		tlsFile, err := hc.cache.GetTLSSecretPath("", hc.cfg.DefaultSSLCertificate)
+		// IMPLEMENT track hosts that uses this secret/crt
+		tlsFile, err := hc.cache.GetTLSSecretPath("", hc.cfg.DefaultSSLCertificate, convtypes.TrackingTarget{})
 		if err == nil {
 			return tlsFile
 		}
@@ -258,66 +246,16 @@ func (hc *HAProxyController) Stop() error {
 	return err
 }
 
-// Notify ...
-// implements ListerEvents
-// implements oldcontroller.NewCtrlIntf
-func (hc *HAProxyController) Notify() {
-	hc.ingressQueue.Notify()
-}
-
 // GetIngressList ...
 // implements oldcontroller.NewCtrlIntf
 func (hc *HAProxyController) GetIngressList() ([]*networking.Ingress, error) {
-	return hc.listers.ingressLister.List(labels.Everything())
+	return hc.cache.GetIngressList()
 }
 
 // GetSecret ...
 // implements oldcontroller.NewCtrlIntf
 func (hc *HAProxyController) GetSecret(name string) (*api.Secret, error) {
 	return hc.cache.GetSecret(name)
-}
-
-// UpdateSecret ...
-// implements ListerEvents
-func (hc *HAProxyController) UpdateSecret(key string) {
-	hc.controller.SyncSecret(key)
-}
-
-// DeleteSecret ...
-// implements ListerEvents
-func (hc *HAProxyController) DeleteSecret(key string) {
-	hc.controller.DeleteSecret(key)
-	hc.ingressQueue.Notify()
-}
-
-// AddConfigMap ...
-// implements ListerEvents
-func (hc *HAProxyController) AddConfigMap(cm *api.ConfigMap) {
-	key := fmt.Sprintf("%s/%s", cm.Namespace, cm.Name)
-	if key == hc.cfg.ConfigMapName {
-		hc.logger.InfoV(2, "adding configmap %v to backend", key)
-		hc.configMap = cm
-	}
-}
-
-// UpdateConfigMap ...
-// implements ListerEvents
-func (hc *HAProxyController) UpdateConfigMap(cm *api.ConfigMap) {
-	key := fmt.Sprintf("%s/%s", cm.Namespace, cm.Name)
-	if key == hc.cfg.ConfigMapName {
-		hc.logger.InfoV(2, "updating configmap backend (%v)", key)
-		hc.configMap = cm
-	}
-	if key == hc.cfg.ConfigMapName || key == hc.cfg.TCPConfigMapName {
-		hc.recorder.Eventf(cm, api.EventTypeNormal, "UPDATE", fmt.Sprintf("ConfigMap %v", key))
-		hc.ingressQueue.Notify()
-	}
-}
-
-// IsValidClass ...
-// implements ListerEvents
-func (hc *HAProxyController) IsValidClass(ing *networking.Ingress) bool {
-	return hc.controller.IsValidClass(ing)
 }
 
 // Name provides the complete name of the controller
@@ -381,41 +319,18 @@ func (hc *HAProxyController) syncIngress(item interface{}) {
 	hc.updateCount++
 	hc.logger.Info("starting HAProxy update id=%d", hc.updateCount)
 	timer := utils.NewTimer(hc.metrics.ControllerProcTime)
-	var ingress []*networking.Ingress
-	il, err := hc.listers.ingressLister.List(labels.Everything())
-	if err != nil {
-		hc.logger.Error("error reading ingress list: %v", err)
-		return
-	}
-	for _, ing := range il {
-		if hc.controller.IsValidClass(ing) {
-			ingress = append(ingress, ing)
-		}
-	}
-	sort.Slice(ingress, func(i, j int) bool {
-		i1 := ingress[i]
-		i2 := ingress[j]
-		if i1.CreationTimestamp != i2.CreationTimestamp {
-			return i1.CreationTimestamp.Before(&i2.CreationTimestamp)
-		}
-		return i1.Namespace+"/"+i1.Name < i2.Namespace+"/"+i2.Name
-	})
-	var globalConfig map[string]string
-	if hc.configMap != nil {
-		globalConfig = hc.configMap.Data
-	}
 	ingConverter := ingressconverter.NewIngressConverter(
 		hc.converterOptions,
 		hc.instance.Config(),
-		globalConfig,
 	)
-	ingConverter.Sync(ingress)
+	ingConverter.Sync()
 	timer.Tick("parse_ingress")
 
 	//
 	// configmap converters
 	//
 	if hc.cfg.TCPConfigMapName != "" {
+		// TODO parses only when tcpconfigmap changes
 		tcpConfigmap, err := hc.cache.GetConfigMap(hc.cfg.TCPConfigMapName)
 		if err == nil && tcpConfigmap != nil {
 			tcpSvcConverter := configmapconverter.NewTCPServicesConverter(

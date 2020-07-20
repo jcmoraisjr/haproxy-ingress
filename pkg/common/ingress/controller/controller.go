@@ -40,7 +40,6 @@ import (
 type NewCtrlIntf interface {
 	GetIngressList() ([]*networking.Ingress, error)
 	GetSecret(name string) (*apiv1.Secret, error)
-	Notify()
 }
 
 // GenericController holds the boilerplate code required to build an Ingress controlller.
@@ -194,6 +193,13 @@ func (ic GenericController) GetFullResourceName(name, currentNamespace string) s
 		}
 	}
 	return name
+}
+
+// UpdateSecret ...
+func (ic GenericController) UpdateSecret(key string) {
+	if _, found := ic.sslCertTracker.Get(key); found {
+		ic.SyncSecret(key)
+	}
 }
 
 // DeleteSecret ...

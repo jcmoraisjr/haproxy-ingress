@@ -22,9 +22,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	ingutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/utils"
+	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
@@ -91,9 +91,16 @@ func (c *updater) buildBackendAuthHTTP(d *backData) {
 				secretName = authSecret.Source.Namespace + "/" + secretName
 			}
 			listName := strings.Replace(secretName, "/", "_", 1)
-			userlist := c.haproxy.FindUserlist(listName)
+			userlist := c.haproxy.Userlists().Find(listName)
 			if userlist == nil {
-				userb, err := c.cache.GetSecretContent(authSecret.Source.Namespace, authSecret.Value, "auth")
+				userb, err := c.cache.GetSecretContent(
+					authSecret.Source.Namespace,
+					authSecret.Value, "auth",
+					convtypes.TrackingTarget{
+						Backend:  d.backend.BackendID(),
+						Userlist: listName,
+					},
+				)
 				if err != nil {
 					c.logger.Error("error reading basic authentication on %v: %v", authSecret.Source, err)
 					return nil
@@ -103,7 +110,7 @@ func (c *updater) buildBackendAuthHTTP(d *backData) {
 				for _, err := range errs {
 					c.logger.Warn("ignoring malformed usr/passwd on secret '%s', declared on %v: %v", secretName, authSecret.Source, err)
 				}
-				userlist = c.haproxy.AddUserlist(listName, users)
+				userlist = c.haproxy.Userlists().Replace(listName, users)
 				if len(users) == 0 {
 					c.logger.Warn("userlist on %v for basic authentication is empty", authSecret.Source)
 				}
@@ -639,7 +646,11 @@ func (c *updater) buildBackendProtocol(d *backData) {
 		return
 	}
 	if crt := d.mapper.Get(ingtypes.BackSecureCrtSecret); crt.Value != "" {
-		if crtFile, err := c.cache.GetTLSSecretPath(crt.Source.Namespace, crt.Value); err == nil {
+		if crtFile, err := c.cache.GetTLSSecretPath(
+			crt.Source.Namespace,
+			crt.Value,
+			convtypes.TrackingTarget{Backend: d.backend.BackendID()},
+		); err == nil {
 			d.backend.Server.CrtFilename = crtFile.Filename
 			d.backend.Server.CrtHash = crtFile.SHA1Hash
 		} else {
@@ -647,7 +658,11 @@ func (c *updater) buildBackendProtocol(d *backData) {
 		}
 	}
 	if ca := d.mapper.Get(ingtypes.BackSecureVerifyCASecret); ca.Value != "" {
-		if caFile, crlFile, err := c.cache.GetCASecretPath(ca.Source.Namespace, ca.Value); err == nil {
+		if caFile, crlFile, err := c.cache.GetCASecretPath(
+			ca.Source.Namespace,
+			ca.Value,
+			convtypes.TrackingTarget{Backend: d.backend.BackendID()},
+		); err == nil {
 			d.backend.Server.CAFilename = caFile.Filename
 			d.backend.Server.CAHash = caFile.SHA1Hash
 			d.backend.Server.CRLFilename = crlFile.Filename
@@ -711,7 +726,7 @@ var epNamingRegex = regexp.MustCompile(`^(seq(uence)?|pod|ip)$`)
 
 func (c *updater) buildBackendServerNaming(d *backData) {
 	// Only warning here. d.backend.EpNaming should be updated before backend.AcquireEndpoint()
-	naming := d.mapper.Get(types.BackBackendServerNaming)
+	naming := d.mapper.Get(ingtypes.BackBackendServerNaming)
 	if !epNamingRegex.MatchString(naming.Value) {
 		c.logger.Warn("ignoring invalid naming type '%s' on %s, using 'seq' instead", naming.Value, naming.Source)
 	}

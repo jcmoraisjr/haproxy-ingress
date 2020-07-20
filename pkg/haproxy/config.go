@@ -19,8 +19,9 @@ package haproxy
 import (
 	"fmt"
 	"reflect"
-	"sort"
 	"strings"
+
+	"github.com/jinzhu/copier"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
@@ -28,41 +29,37 @@ import (
 
 // Config ...
 type Config interface {
-	AcquireTCPBackend(servicename string, port int) *hatypes.TCPBackend
-	ConfigDefaultX509Cert(filename string)
-	AddUserlist(name string, users []hatypes.User) *hatypes.Userlist
-	FindUserlist(name string) *hatypes.Userlist
 	Frontend() *hatypes.Frontend
 	SyncConfig()
 	WriteFrontendMaps() error
 	WriteBackendMaps() error
 	AcmeData() *hatypes.AcmeData
-	Acme() *hatypes.Acme
 	Global() *hatypes.Global
-	TCPBackends() []*hatypes.TCPBackend
+	TCPBackends() *hatypes.TCPBackends
 	Hosts() *hatypes.Hosts
 	Backends() *hatypes.Backends
-	Userlists() []*hatypes.Userlist
-	Equals(other Config) bool
+	Userlists() *hatypes.Userlists
+	Clear()
+	Commit()
 }
 
 type config struct {
-	// external state, non haproxy data, cannot reflect in Config.Equals()
-	acmeData *hatypes.AcmeData
+	// external state, non haproxy data
+	acmeData     *hatypes.AcmeData
+	mapsTemplate *template.Config
+	mapsDir      string
 	// haproxy internal state
-	acme            *hatypes.Acme
-	mapsTemplate    *template.Config
-	mapsDir         string
-	global          *hatypes.Global
-	frontend        *hatypes.Frontend
-	hosts           *hatypes.Hosts
-	backends        *hatypes.Backends
-	tcpbackends     []*hatypes.TCPBackend
-	userlists       []*hatypes.Userlist
-	defaultX509Cert string
+	globalOld   *hatypes.Global
+	global      *hatypes.Global
+	frontend    *hatypes.Frontend
+	hosts       *hatypes.Hosts
+	backends    *hatypes.Backends
+	tcpbackends *hatypes.TCPBackends
+	userlists   *hatypes.Userlists
 }
 
 type options struct {
+	// reflect changes to config.Clear()
 	mapsTemplate *template.Config
 	mapsDir      string
 }
@@ -74,59 +71,15 @@ func createConfig(options options) *config {
 	}
 	return &config{
 		acmeData:     &hatypes.AcmeData{},
-		acme:         &hatypes.Acme{},
 		global:       &hatypes.Global{},
 		frontend:     &hatypes.Frontend{Name: "_front001"},
 		hosts:        hatypes.CreateHosts(),
 		backends:     hatypes.CreateBackends(),
+		tcpbackends:  hatypes.CreateTCPBackends(),
+		userlists:    hatypes.CreateUserlists(),
 		mapsTemplate: mapsTemplate,
 		mapsDir:      options.mapsDir,
 	}
-}
-
-func (c *config) AcquireTCPBackend(servicename string, port int) *hatypes.TCPBackend {
-	for _, backend := range c.tcpbackends {
-		if backend.Name == servicename && backend.Port == port {
-			return backend
-		}
-	}
-	backend := &hatypes.TCPBackend{
-		Name: servicename,
-		Port: port,
-	}
-	c.tcpbackends = append(c.tcpbackends, backend)
-	sort.Slice(c.tcpbackends, func(i, j int) bool {
-		back1 := c.tcpbackends[i]
-		back2 := c.tcpbackends[j]
-		if back1.Name == back2.Name {
-			return back1.Port < back2.Port
-		}
-		return back1.Name < back2.Name
-	})
-	return backend
-}
-
-func (c *config) ConfigDefaultX509Cert(filename string) {
-	c.defaultX509Cert = filename
-}
-
-func (c *config) AddUserlist(name string, users []hatypes.User) *hatypes.Userlist {
-	userlist := &hatypes.Userlist{
-		Name:  name,
-		Users: users,
-	}
-	sort.Slice(users, func(i, j int) bool {
-		return users[i].Name < users[j].Name
-	})
-	c.userlists = append(c.userlists, userlist)
-	sort.Slice(c.userlists, func(i, j int) bool {
-		return c.userlists[i].Name < c.userlists[j].Name
-	})
-	return userlist
-}
-
-func (c *config) FindUserlist(name string) *hatypes.Userlist {
-	return nil
 }
 
 func (c *config) Frontend() *hatypes.Frontend {
@@ -151,7 +104,7 @@ func (c *config) SyncConfig() {
 		c.frontend.BindSocket = c.global.Bind.HTTPSBind
 		c.frontend.AcceptProxy = c.global.Bind.AcceptProxy
 	}
-	for _, host := range c.hosts.Items() {
+	for _, host := range c.hosts.ItemsAdd() {
 		if host.SSLPassthrough() {
 			// no action if ssl-passthrough
 			continue
@@ -208,13 +161,13 @@ func (c *config) WriteFrontendMaps() error {
 		CrtList:       mapBuilder.AddMap(c.mapsDir + "/_front001_bind_crt.list"),
 		UseServerList: mapBuilder.AddMap(c.mapsDir + "/_front001_use_server.list"),
 	}
-	fmaps.CrtList.AppendItem(c.defaultX509Cert)
+	fmaps.CrtList.AppendItem(c.frontend.DefaultCert)
 	// Some maps use yes/no answers instead of a list with found/missing keys
 	// This approach avoid overlap:
 	//  1. match with path_beg/map_beg, /path has a feature and a declared /path/sub doesn't have
 	//  2. *.host.domain wildcard/alias/alias-regex has a feature and a declared sub.host.domain doesn't have
 	yesno := map[bool]string{true: "yes", false: "no"}
-	for _, host := range c.hosts.Items() {
+	for _, host := range c.hosts.BuildSortedItems() {
 		if host.SSLPassthrough() {
 			rootPath := host.FindPath("/")
 			if rootPath == nil {
@@ -299,9 +252,9 @@ func (c *config) WriteFrontendMaps() error {
 		tls := host.TLS
 		crtFile := tls.TLSFilename
 		if crtFile == "" {
-			crtFile = c.defaultX509Cert
+			crtFile = c.frontend.DefaultCert
 		}
-		if crtFile != c.defaultX509Cert || tls.CAFilename != "" || tls.Ciphers != "" || tls.CipherSuites != "" {
+		if crtFile != c.frontend.DefaultCert || tls.CAFilename != "" || tls.Ciphers != "" || tls.CipherSuites != "" {
 			// has custom cert, tls auth, ciphers or ciphersuites
 			//
 			// TODO optimization: distinct hostnames that shares crt, ca and crl
@@ -375,15 +328,11 @@ func (c *config) AcmeData() *hatypes.AcmeData {
 	return c.acmeData
 }
 
-func (c *config) Acme() *hatypes.Acme {
-	return c.acme
-}
-
 func (c *config) Global() *hatypes.Global {
 	return c.global
 }
 
-func (c *config) TCPBackends() []*hatypes.TCPBackend {
+func (c *config) TCPBackends() *hatypes.TCPBackends {
 	return c.tcpbackends
 }
 
@@ -395,17 +344,40 @@ func (c *config) Backends() *hatypes.Backends {
 	return c.backends
 }
 
-func (c *config) Userlists() []*hatypes.Userlist {
+func (c *config) Userlists() *hatypes.Userlists {
 	return c.userlists
 }
 
-func (c *config) Equals(other Config) bool {
-	c2, ok := other.(*config)
-	if !ok {
-		return false
+func (c *config) Clear() {
+	config := createConfig(options{
+		mapsTemplate: c.mapsTemplate,
+		mapsDir:      c.mapsDir,
+	})
+	*c = *config
+}
+
+func (c *config) Commit() {
+	if !reflect.DeepEqual(c.globalOld, c.global) {
+		// globals still uses the old deepCopy+fullParsing+deepEqual strategy
+		var globalOld hatypes.Global
+		if err := copier.Copy(&globalOld, c.global); err != nil {
+			panic(err)
+		}
+		c.globalOld = &globalOld
 	}
-	// (config struct): external state, cannot reflect in Config.Equals()
-	copy := *c2
-	copy.acmeData = c.acmeData
-	return reflect.DeepEqual(c, &copy)
+	c.hosts.Commit()
+	c.backends.Commit()
+	c.tcpbackends.Commit()
+	c.userlists.Commit()
+	c.acmeData.Storages().Commit()
+}
+
+func (c *config) hasCommittedData() bool {
+	// Committed data is data which was already added and synchronized
+	// to a haproxy instance. A `Clear()` clears the committed state.
+	// Whenever a commit is performed the global instance is cloned to
+	// its old state, and whenever a clear is performed such clone is
+	// cleaned as well. So a globalOld != nil is a fast and safe way to
+	// know if there is committed data.
+	return c.globalOld != nil
 }

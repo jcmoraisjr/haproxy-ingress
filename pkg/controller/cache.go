@@ -25,18 +25,26 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	api "k8s.io/api/core/v1"
+	networking "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	k8s "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	typedv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	cfile "github.com/jcmoraisjr/haproxy-ingress/pkg/common/file"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/controller"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
 const dhparamFilename = "dhparam.pem"
@@ -45,12 +53,47 @@ type k8scache struct {
 	client                 k8s.Interface
 	listers                *listers
 	controller             *controller.GenericController
+	tracker                convtypes.Tracker
 	crossNS                bool
+	globalConfigMapKey     string
+	tcpConfigMapKey        string
 	acmeSecretKeyName      string
 	acmeTokenConfigmapName string
+	//
+	updateQueue  utils.Queue
+	stateMutex   sync.RWMutex
+	clear        bool
+	needFullSync bool
+	//
+	globalConfigMapData    map[string]string
+	tcpConfigMapData       map[string]string
+	globalConfigMapDataNew map[string]string
+	tcpConfigMapDataNew    map[string]string
+	//
+	ingressesDel []*networking.Ingress
+	ingressesUpd []*networking.Ingress
+	ingressesAdd []*networking.Ingress
+	endpointsNew []*api.Endpoints
+	servicesDel  []*api.Service
+	servicesUpd  []*api.Service
+	servicesAdd  []*api.Service
+	secretsDel   []*api.Secret
+	secretsUpd   []*api.Secret
+	secretsAdd   []*api.Secret
+	podsNew      []*api.Pod
+	//
 }
 
-func newCache(client k8s.Interface, listers *listers, controller *controller.GenericController) *k8scache {
+func createCache(
+	logger types.Logger,
+	client k8s.Interface,
+	controller *controller.GenericController,
+	tracker convtypes.Tracker,
+	updateQueue utils.Queue,
+	watchNamespace string,
+	isolateNamespace bool,
+	resync time.Duration,
+) *k8scache {
 	namespace := os.Getenv("POD_NAMESPACE")
 	if namespace == "" {
 		// TODO implement a smart fallback or error checking
@@ -70,14 +113,37 @@ func newCache(client k8s.Interface, listers *listers, controller *controller.Gen
 	if !strings.Contains(acmeTokenConfigmapName, "/") {
 		acmeTokenConfigmapName = namespace + "/" + acmeTokenConfigmapName
 	}
-	return &k8scache{
+	globalConfigMapName := cfg.ConfigMapName
+	tcpConfigMapName := cfg.TCPConfigMapName
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartLogging(logger.Info)
+	eventBroadcaster.StartRecordingToSink(&typedv1.EventSinkImpl{
+		Interface: client.CoreV1().Events(watchNamespace),
+	})
+	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, api.EventSource{
+		Component: "ingress-controller",
+	})
+	cache := &k8scache{
 		client:                 client,
-		listers:                listers,
 		controller:             controller,
+		tracker:                tracker,
 		crossNS:                cfg.AllowCrossNamespace,
+		globalConfigMapKey:     globalConfigMapName,
+		tcpConfigMapKey:        tcpConfigMapName,
 		acmeSecretKeyName:      acmeSecretKeyName,
 		acmeTokenConfigmapName: acmeTokenConfigmapName,
+		stateMutex:             sync.RWMutex{},
+		updateQueue:            updateQueue,
+		clear:                  true,
+		needFullSync:           false,
 	}
+	// TODO I'm a circular reference, can you fix me?
+	cache.listers = createListers(cache, logger, recorder, client, watchNamespace, isolateNamespace, resync)
+	return cache
+}
+
+func (c *k8scache) RunAsync(stopCh <-chan struct{}) {
+	c.listers.RunAsync(stopCh)
 }
 
 func (c *k8scache) GetIngressPodName() (namespace, podname string, err error) {
@@ -90,6 +156,34 @@ func (c *k8scache) GetIngressPodName() (namespace, podname string, err error) {
 		return "", "", fmt.Errorf("ingress controller pod was not found: %s/%s", namespace, podname)
 	}
 	return namespace, podname, nil
+}
+
+func (c *k8scache) GetIngress(ingressName string) (*networking.Ingress, error) {
+	namespace, name, err := cache.SplitMetaNamespaceKey(ingressName)
+	if err != nil {
+		return nil, err
+	}
+	ing, err := c.listers.ingressLister.Ingresses(namespace).Get(name)
+	if ing != nil && !c.IsValidIngress(ing) {
+		return nil, fmt.Errorf("ingress class does not match")
+	}
+	return ing, err
+}
+
+func (c *k8scache) GetIngressList() ([]*networking.Ingress, error) {
+	ingList, err := c.listers.ingressLister.List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+	validIngList := make([]*networking.Ingress, len(ingList))
+	var i int
+	for _, ing := range ingList {
+		if c.IsValidIngress(ing) {
+			validIngList[i] = ing
+			i++
+		}
+	}
+	return validIngList[:i], nil
 }
 
 func (c *k8scache) GetService(serviceName string) (*api.Service, error) {
@@ -105,7 +199,10 @@ func (c *k8scache) GetSecret(secretName string) (*api.Secret, error) {
 	if err != nil {
 		return nil, err
 	}
-	return c.listers.secretLister.Secrets(namespace).Get(name)
+	if c.listers.running {
+		return c.listers.secretLister.Secrets(namespace).Get(name)
+	}
+	return c.client.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
 }
 
 func (c *k8scache) GetConfigMap(configMapName string) (*api.ConfigMap, error) {
@@ -122,7 +219,7 @@ func (c *k8scache) GetEndpoints(service *api.Service) (*api.Endpoints, error) {
 
 // GetTerminatingPods returns the pods that are terminating and belong
 // (based on the Spec.Selector) to the supplied service.
-func (c *k8scache) GetTerminatingPods(service *api.Service) (pl []*api.Pod, err error) {
+func (c *k8scache) GetTerminatingPods(service *api.Service, track convtypes.TrackingTarget) (pl []*api.Pod, err error) {
 	// converting the service selector to slice of string
 	// in order to create the full match selector
 	var ls []string
@@ -139,6 +236,8 @@ func (c *k8scache) GetTerminatingPods(service *api.Service) (pl []*api.Pod, err 
 		return nil, err
 	}
 	for _, p := range list {
+		// all pods need to be tracked despite of the terminating status
+		c.tracker.Track(false, track, convtypes.PodType, p.Namespace+"/"+p.Name)
 		if isTerminatingPod(service, p) {
 			pl = append(pl, p)
 		}
@@ -190,16 +289,18 @@ func (c *k8scache) buildSecretName(defaultNamespace, secretName string) (string,
 	)
 }
 
-func (c *k8scache) GetTLSSecretPath(defaultNamespace, secretName string) (file convtypes.CrtFile, err error) {
+func (c *k8scache) GetTLSSecretPath(defaultNamespace, secretName string, track convtypes.TrackingTarget) (file convtypes.CrtFile, err error) {
 	namespace, name, err := c.buildSecretName(defaultNamespace, secretName)
 	if err != nil {
 		return file, err
 	}
 	sslCert, err := c.controller.GetCertificate(namespace, name)
 	if err != nil {
+		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return file, err
 	}
 	if sslCert.PemFileName == "" {
+		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return file, fmt.Errorf("secret '%s/%s' does not have keys 'tls.crt' and 'tls.key'", namespace, name)
 	}
 	file = convtypes.CrtFile{
@@ -208,19 +309,22 @@ func (c *k8scache) GetTLSSecretPath(defaultNamespace, secretName string) (file c
 		CommonName: sslCert.Certificate.Subject.CommonName,
 		NotAfter:   sslCert.Certificate.NotAfter,
 	}
+	c.tracker.Track(false, track, convtypes.SecretType, namespace+"/"+name)
 	return file, nil
 }
 
-func (c *k8scache) GetCASecretPath(defaultNamespace, secretName string) (ca, crl convtypes.File, err error) {
+func (c *k8scache) GetCASecretPath(defaultNamespace, secretName string, track convtypes.TrackingTarget) (ca, crl convtypes.File, err error) {
 	namespace, name, err := c.buildSecretName(defaultNamespace, secretName)
 	if err != nil {
 		return ca, crl, err
 	}
 	sslCert, err := c.controller.GetCertificate(namespace, name)
 	if err != nil {
+		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return ca, crl, err
 	}
 	if sslCert.CAFileName == "" {
+		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return ca, crl, fmt.Errorf("secret '%s/%s' does not have key 'ca.crt'", namespace, name)
 	}
 	ca = convtypes.File{
@@ -234,6 +338,7 @@ func (c *k8scache) GetCASecretPath(defaultNamespace, secretName string) (ca, crl
 			SHA1Hash: sslCert.PemSHA,
 		}
 	}
+	c.tracker.Track(false, track, convtypes.SecretType, namespace+"/"+name)
 	return ca, crl, nil
 }
 
@@ -262,19 +367,22 @@ func (c *k8scache) GetDHSecretPath(defaultNamespace, secretName string) (file co
 	return file, nil
 }
 
-func (c *k8scache) GetSecretContent(defaultNamespace, secretName, keyName string) ([]byte, error) {
+func (c *k8scache) GetSecretContent(defaultNamespace, secretName, keyName string, track convtypes.TrackingTarget) ([]byte, error) {
 	namespace, name, err := c.buildSecretName(defaultNamespace, secretName)
 	if err != nil {
 		return nil, err
 	}
 	secret, err := c.listers.secretLister.Secrets(namespace).Get(name)
 	if err != nil {
+		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return nil, err
 	}
 	data, found := secret.Data[keyName]
 	if !found {
+		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return nil, fmt.Errorf("secret '%s/%s' does not have key '%s'", namespace, name, keyName)
 	}
+	c.tracker.Track(false, track, convtypes.SecretType, namespace+"/"+name)
 	return data, nil
 }
 
@@ -422,4 +530,154 @@ func (c *k8scache) CreateOrUpdateConfigMap(cm *api.ConfigMap) (err error) {
 		_, err = cli.Update(cm)
 	}
 	return err
+}
+
+// implements ListerEvents
+func (c *k8scache) IsValidIngress(ing *networking.Ingress) bool {
+	return c.controller.IsValidClass(ing)
+}
+
+// implements ListerEvents
+func (c *k8scache) IsValidConfigMap(cm *api.ConfigMap) bool {
+	key := fmt.Sprintf("%s/%s", cm.Namespace, cm.Name)
+	return key == c.globalConfigMapKey || key == c.tcpConfigMapKey
+}
+
+// implements ListerEvents
+func (c *k8scache) Notify(old, cur interface{}) {
+	// IMPLEMENT
+	// maintain a list of changed objects only if partial parsing is being used
+	c.stateMutex.Lock()
+	defer c.stateMutex.Unlock()
+	// old != nil: has the `old` state of a changed or removed object
+	// cur != nil: has the `cur` state of a changed or a just created object
+	// old and cur == nil: cannot identify what was changed, need to start a full resync
+	if old != nil {
+		switch old.(type) {
+		case *networking.Ingress:
+			if cur == nil {
+				c.ingressesDel = append(c.ingressesDel, old.(*networking.Ingress))
+			}
+		case *api.Service:
+			if cur == nil {
+				c.servicesDel = append(c.servicesDel, old.(*api.Service))
+			}
+		case *api.Secret:
+			if cur == nil {
+				secret := old.(*api.Secret)
+				c.secretsDel = append(c.secretsDel, secret)
+				c.controller.DeleteSecret(fmt.Sprintf("%s/%s", secret.Namespace, secret.Name))
+			}
+		}
+	}
+	if cur != nil {
+		switch cur.(type) {
+		case *networking.Ingress:
+			ing := cur.(*networking.Ingress)
+			if old == nil {
+				c.ingressesAdd = append(c.ingressesAdd, ing)
+			} else {
+				c.ingressesUpd = append(c.ingressesUpd, ing)
+			}
+		case *api.Endpoints:
+			c.endpointsNew = append(c.endpointsNew, cur.(*api.Endpoints))
+		case *api.Service:
+			svc := cur.(*api.Service)
+			if old == nil {
+				c.servicesAdd = append(c.servicesAdd, svc)
+			} else {
+				c.servicesUpd = append(c.servicesUpd, svc)
+			}
+		case *api.Secret:
+			secret := cur.(*api.Secret)
+			if old == nil {
+				c.secretsAdd = append(c.secretsAdd, secret)
+			} else {
+				c.secretsUpd = append(c.secretsUpd, secret)
+			}
+			c.controller.UpdateSecret(fmt.Sprintf("%s/%s", secret.Namespace, secret.Name))
+		case *api.ConfigMap:
+			cm := cur.(*api.ConfigMap)
+			key := fmt.Sprintf("%s/%s", cm.Namespace, cm.Name)
+			switch key {
+			case c.globalConfigMapKey:
+				c.globalConfigMapDataNew = cm.Data
+			case c.tcpConfigMapKey:
+				c.tcpConfigMapDataNew = cm.Data
+			}
+		case *api.Pod:
+			c.podsNew = append(c.podsNew, cur.(*api.Pod))
+		}
+	}
+	if old == nil && cur == nil {
+		c.needFullSync = true
+	}
+	if c.clear {
+		// Notify after 500ms, giving the time to receive
+		// all/most of the changes of a batch update
+		// TODO parameterize this delay
+		time.AfterFunc(500*time.Millisecond, func() { c.updateQueue.Notify() })
+	}
+	c.clear = false
+}
+
+// implements converters.types.Cache
+func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
+	c.stateMutex.Lock()
+	defer c.stateMutex.Unlock()
+	//
+	changed := &convtypes.ChangedObjects{
+		GlobalCur:       c.globalConfigMapData,
+		GlobalNew:       c.globalConfigMapDataNew,
+		TCPConfigMapCur: c.tcpConfigMapData,
+		TCPConfigMapNew: c.tcpConfigMapDataNew,
+		IngressesDel:    c.ingressesDel,
+		IngressesUpd:    c.ingressesUpd,
+		IngressesAdd:    c.ingressesAdd,
+		Endpoints:       c.endpointsNew,
+		ServicesDel:     c.servicesDel,
+		ServicesUpd:     c.servicesUpd,
+		ServicesAdd:     c.servicesAdd,
+		SecretsDel:      c.secretsDel,
+		SecretsUpd:      c.secretsUpd,
+		SecretsAdd:      c.secretsAdd,
+		Pods:            c.podsNew,
+	}
+	//
+	c.podsNew = nil
+	c.endpointsNew = nil
+	//
+	// Secrets
+	//
+	c.secretsDel = nil
+	c.secretsUpd = nil
+	c.secretsAdd = nil
+	//
+	// Ingress
+	//
+	c.ingressesDel = nil
+	c.ingressesUpd = nil
+	c.ingressesAdd = nil
+	//
+	// ConfigMaps
+	//
+	if c.globalConfigMapDataNew != nil {
+		c.globalConfigMapData = c.globalConfigMapDataNew
+		c.globalConfigMapDataNew = nil
+	}
+	if c.tcpConfigMapDataNew != nil {
+		c.tcpConfigMapData = c.tcpConfigMapDataNew
+		c.tcpConfigMapDataNew = nil
+	}
+	//
+	c.clear = true
+	c.needFullSync = false
+	return changed
+}
+
+// implements converters.types.Cache
+func (c *k8scache) NeedFullSync() bool {
+	c.stateMutex.RLock()
+	defer c.stateMutex.RUnlock()
+	return c.needFullSync
 }

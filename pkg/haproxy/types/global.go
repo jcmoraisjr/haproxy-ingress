@@ -18,20 +18,106 @@ package types
 
 import (
 	"fmt"
+	"reflect"
+	"sort"
+	"strings"
 )
 
-// AddDomains ...
-func (acme *AcmeData) AddDomains(storage string, domains []string) {
-	if acme.Certs == nil {
-		acme.Certs = map[string]map[string]struct{}{}
+// Storages ...
+func (acme *AcmeData) Storages() *AcmeStorages {
+	if acme.storages == nil {
+		acme.storages = &AcmeStorages{
+			items:    map[string]*AcmeCerts{},
+			itemsAdd: map[string]*AcmeCerts{},
+			itemsDel: map[string]*AcmeCerts{},
+		}
 	}
-	certs, found := acme.Certs[storage]
+	return acme.storages
+}
+
+// Acquire ...
+func (c *AcmeStorages) Acquire(name string) *AcmeCerts {
+	storage, found := c.items[name]
 	if !found {
-		certs = map[string]struct{}{}
-		acme.Certs[storage] = certs
+		storage = &AcmeCerts{
+			certs: map[string]struct{}{},
+		}
+		c.items[name] = storage
+		c.itemsAdd[name] = storage
 	}
+	return storage
+}
+
+// Updated ...
+func (c *AcmeStorages) Updated() bool {
+	c.shrink()
+	return len(c.itemsAdd) > 0 || len(c.itemsDel) > 0
+}
+
+// BuildAcmeStorages ...
+func (c *AcmeStorages) BuildAcmeStorages() []string {
+	return buildAcmeStorages(c.items)
+}
+
+// BuildAcmeStoragesAdd ...
+func (c *AcmeStorages) BuildAcmeStoragesAdd() []string {
+	c.shrink()
+	return buildAcmeStorages(c.itemsAdd)
+}
+
+// BuildAcmeStoragesDel ...
+func (c *AcmeStorages) BuildAcmeStoragesDel() []string {
+	c.shrink()
+	return buildAcmeStorages(c.itemsDel)
+}
+
+func buildAcmeStorages(items map[string]*AcmeCerts) []string {
+	storages := make([]string, len(items))
+	i := 0
+	for name := range items {
+		item := items[name]
+		certs := make([]string, len(item.certs))
+		j := 0
+		for cert := range item.certs {
+			certs[j] = cert
+			j++
+		}
+		sort.Strings(certs)
+		storages[i] = name + "," + strings.Join(certs, ",")
+		i++
+	}
+	return storages
+}
+
+func (c *AcmeStorages) shrink() {
+	for item, del := range c.itemsDel {
+		if add, found := c.itemsAdd[item]; found && reflect.DeepEqual(add, del) {
+			delete(c.itemsAdd, item)
+			delete(c.itemsDel, item)
+		}
+	}
+}
+
+// RemoveAll ...
+func (c *AcmeStorages) RemoveAll(names []string) {
+	for _, name := range names {
+		if item, found := c.items[name]; found {
+			c.itemsDel[name] = item
+			delete(c.items, name)
+		}
+	}
+}
+
+// Commit ...
+func (c *AcmeStorages) Commit() {
+	c.itemsAdd = map[string]*AcmeCerts{}
+	c.itemsDel = map[string]*AcmeCerts{}
+}
+
+// AddDomains ...
+func (c *AcmeCerts) AddDomains(domains []string) {
 	for _, domain := range domains {
-		certs[domain] = struct{}{}
+		c.certs[domain] = struct{}{}
 	}
 }
 
@@ -45,10 +131,6 @@ func (dns *DNSResolver) String() string {
 
 func (dns *DNSNameserver) String() string {
 	return fmt.Sprintf("%+v", *dns)
-}
-
-func (u *Userlist) String() string {
-	return fmt.Sprintf("%+v", *u)
 }
 
 // ShareHTTPPort ...
