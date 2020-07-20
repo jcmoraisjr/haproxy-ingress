@@ -20,15 +20,15 @@ import (
 	"time"
 
 	api "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
+	networking "k8s.io/api/networking/v1beta1"
 
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
 // Cache ...
 type Cache interface {
-	GetIngress(ingressName string) (*extensions.Ingress, error)
-	GetIngressList() ([]*extensions.Ingress, error)
+	GetIngress(ingressName string) (*networking.Ingress, error)
+	GetIngressList() ([]*networking.Ingress, error)
 	GetService(serviceName string) (*api.Service, error)
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
 	GetTerminatingPods(service *api.Service, track TrackingTarget) ([]*api.Pod, error)
@@ -48,7 +48,7 @@ type ChangedObjects struct {
 	//
 	TCPConfigMapCur, TCPConfigMapNew map[string]string
 	//
-	IngressesDel, IngressesUpd, IngressesAdd []*extensions.Ingress
+	IngressesDel, IngressesUpd, IngressesAdd []*networking.Ingress
 	//
 	Endpoints []*api.Endpoints
 	//

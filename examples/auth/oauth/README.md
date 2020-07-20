@@ -62,7 +62,7 @@ After editing, create the oauth2-proxy deployment and service:
 
 ```
 $ kubectl create -f oauth2-proxy.yaml
-deployment.extensions "oauth2-proxy" created
+deployment.apps "oauth2-proxy" created
 service "oauth2-proxy" exposed
 ```
 
@@ -93,7 +93,7 @@ After editing, create the ingress resource:
 
 ```
 $ kubectl create -f app.yaml
-ingress.extensions "app" created
+ingress.networking.k8s.io/app created
 ```
 
 Fire a request to your domain and an optional `/uri`. Your OAuth2

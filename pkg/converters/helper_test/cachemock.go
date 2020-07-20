@@ -23,7 +23,7 @@ import (
 	"time"
 
 	api "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
+	networking "k8s.io/api/networking/v1beta1"
 
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 )
@@ -35,7 +35,7 @@ type SecretContent map[string]map[string][]byte
 type CacheMock struct {
 	tracker       convtypes.Tracker
 	Changed       *convtypes.ChangedObjects
-	IngList       []*extensions.Ingress
+	IngList       []*networking.Ingress
 	SvcList       []*api.Service
 	EpList        map[string]*api.Endpoints
 	TermPodList   map[string][]*api.Pod
@@ -69,7 +69,7 @@ func (c *CacheMock) buildSecretName(defaultNamespace, secretName string) string 
 }
 
 // GetIngress ...
-func (c *CacheMock) GetIngress(ingressName string) (*extensions.Ingress, error) {
+func (c *CacheMock) GetIngress(ingressName string) (*networking.Ingress, error) {
 	for _, ing := range c.IngList {
 		if ing.Namespace+"/"+ing.Name == ingressName {
 			return ing, nil
@@ -79,7 +79,7 @@ func (c *CacheMock) GetIngress(ingressName string) (*extensions.Ingress, error) 
 }
 
 // GetIngressList ...
-func (c *CacheMock) GetIngressList() ([]*extensions.Ingress, error) {
+func (c *CacheMock) GetIngressList() ([]*networking.Ingress, error) {
 	return c.IngList, nil
 }
 

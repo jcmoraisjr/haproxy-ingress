@@ -29,7 +29,7 @@ import (
 	"time"
 
 	api "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
+	networking "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	k8s "k8s.io/client-go/kubernetes"
@@ -70,9 +70,9 @@ type k8scache struct {
 	globalConfigMapDataNew map[string]string
 	tcpConfigMapDataNew    map[string]string
 	//
-	ingressesDel []*extensions.Ingress
-	ingressesUpd []*extensions.Ingress
-	ingressesAdd []*extensions.Ingress
+	ingressesDel []*networking.Ingress
+	ingressesUpd []*networking.Ingress
+	ingressesAdd []*networking.Ingress
 	endpointsNew []*api.Endpoints
 	servicesDel  []*api.Service
 	servicesUpd  []*api.Service
@@ -158,7 +158,7 @@ func (c *k8scache) GetIngressPodName() (namespace, podname string, err error) {
 	return namespace, podname, nil
 }
 
-func (c *k8scache) GetIngress(ingressName string) (*extensions.Ingress, error) {
+func (c *k8scache) GetIngress(ingressName string) (*networking.Ingress, error) {
 	namespace, name, err := cache.SplitMetaNamespaceKey(ingressName)
 	if err != nil {
 		return nil, err
@@ -170,12 +170,12 @@ func (c *k8scache) GetIngress(ingressName string) (*extensions.Ingress, error) {
 	return ing, err
 }
 
-func (c *k8scache) GetIngressList() ([]*extensions.Ingress, error) {
+func (c *k8scache) GetIngressList() ([]*networking.Ingress, error) {
 	ingList, err := c.listers.ingressLister.List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
-	validIngList := make([]*extensions.Ingress, len(ingList))
+	validIngList := make([]*networking.Ingress, len(ingList))
 	var i int
 	for _, ing := range ingList {
 		if c.IsValidIngress(ing) {
@@ -533,7 +533,7 @@ func (c *k8scache) CreateOrUpdateConfigMap(cm *api.ConfigMap) (err error) {
 }
 
 // implements ListerEvents
-func (c *k8scache) IsValidIngress(ing *extensions.Ingress) bool {
+func (c *k8scache) IsValidIngress(ing *networking.Ingress) bool {
 	return c.controller.IsValidClass(ing)
 }
 
@@ -554,9 +554,9 @@ func (c *k8scache) Notify(old, cur interface{}) {
 	// old and cur == nil: cannot identify what was changed, need to start a full resync
 	if old != nil {
 		switch old.(type) {
-		case *extensions.Ingress:
+		case *networking.Ingress:
 			if cur == nil {
-				c.ingressesDel = append(c.ingressesDel, old.(*extensions.Ingress))
+				c.ingressesDel = append(c.ingressesDel, old.(*networking.Ingress))
 			}
 		case *api.Service:
 			if cur == nil {
@@ -572,8 +572,8 @@ func (c *k8scache) Notify(old, cur interface{}) {
 	}
 	if cur != nil {
 		switch cur.(type) {
-		case *extensions.Ingress:
-			ing := cur.(*extensions.Ingress)
+		case *networking.Ingress:
+			ing := cur.(*networking.Ingress)
 			if old == nil {
 				c.ingressesAdd = append(c.ingressesAdd, ing)
 			} else {

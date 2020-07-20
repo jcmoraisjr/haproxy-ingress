@@ -22,15 +22,15 @@ import (
 	"time"
 
 	api "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
+	networking "k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/informers"
 	informersv1 "k8s.io/client-go/informers/core/v1"
-	informersv1beta1 "k8s.io/client-go/informers/extensions/v1beta1"
+	informersv1beta1 "k8s.io/client-go/informers/networking/v1beta1"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	listersv1 "k8s.io/client-go/listers/core/v1"
-	listersv1beta1 "k8s.io/client-go/listers/extensions/v1beta1"
+	listersv1beta1 "k8s.io/client-go/listers/networking/v1beta1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 
@@ -39,7 +39,7 @@ import (
 
 // ListerEvents ...
 type ListerEvents interface {
-	IsValidIngress(ing *extensions.Ingress) bool
+	IsValidIngress(ing *networking.Ingress) bool
 	IsValidConfigMap(cm *api.ConfigMap) bool
 	Notify(old, cur interface{})
 }
@@ -95,7 +95,7 @@ func createListers(
 		recorder: recorder,
 		logger:   logger,
 	}
-	l.createIngressLister(ingressInformer.Extensions().V1beta1().Ingresses())
+	l.createIngressLister(ingressInformer.Networking().V1beta1().Ingresses())
 	l.createEndpointLister(resourceInformer.Core().V1().Endpoints())
 	l.createServiceLister(resourceInformer.Core().V1().Services())
 	l.createSecretLister(resourceInformer.Core().V1().Secrets())
@@ -142,7 +142,7 @@ func (l *listers) createIngressLister(informer informersv1beta1.IngressInformer)
 	l.ingressInformer = informer.Informer()
 	l.ingressInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			ing := obj.(*extensions.Ingress)
+			ing := obj.(*networking.Ingress)
 			if l.events.IsValidIngress(ing) {
 				l.events.Notify(nil, ing)
 				if l.running {
@@ -154,8 +154,8 @@ func (l *listers) createIngressLister(informer informersv1beta1.IngressInformer)
 			if reflect.DeepEqual(old, cur) {
 				return
 			}
-			oldIng := old.(*extensions.Ingress)
-			curIng := cur.(*extensions.Ingress)
+			oldIng := old.(*networking.Ingress)
+			curIng := cur.(*networking.Ingress)
 			oldValid := l.events.IsValidIngress(oldIng)
 			curValid := l.events.IsValidIngress(curIng)
 			if !oldValid && !curValid {
@@ -173,7 +173,7 @@ func (l *listers) createIngressLister(informer informersv1beta1.IngressInformer)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			ing, ok := obj.(*extensions.Ingress)
+			ing, ok := obj.(*networking.Ingress)
 			if !ok {
 				tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 				if !ok {
@@ -181,7 +181,7 @@ func (l *listers) createIngressLister(informer informersv1beta1.IngressInformer)
 					l.events.Notify(nil, nil)
 					return
 				}
-				if ing, ok = tombstone.Obj.(*extensions.Ingress); !ok {
+				if ing, ok = tombstone.Obj.(*networking.Ingress); !ok {
 					l.logger.Error("Tombstone contained object that is not an Ingress: %#v", obj)
 					l.events.Notify(nil, nil)
 					return

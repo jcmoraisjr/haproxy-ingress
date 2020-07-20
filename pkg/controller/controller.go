@@ -25,7 +25,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/pflag"
 	api "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
+	networking "k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
@@ -248,7 +248,7 @@ func (hc *HAProxyController) Stop() error {
 
 // GetIngressList ...
 // implements oldcontroller.NewCtrlIntf
-func (hc *HAProxyController) GetIngressList() ([]*extensions.Ingress, error) {
+func (hc *HAProxyController) GetIngressList() ([]*networking.Ingress, error) {
 	return hc.cache.GetIngressList()
 }
 
@@ -275,7 +275,7 @@ func (hc *HAProxyController) Check(_ *http.Request) error {
 
 // UpdateIngressStatus custom callback used to update the status in an Ingress rule
 // If the function returns nil the standard functions will be executed.
-func (hc *HAProxyController) UpdateIngressStatus(*extensions.Ingress) []api.LoadBalancerIngress {
+func (hc *HAProxyController) UpdateIngressStatus(*networking.Ingress) []api.LoadBalancerIngress {
 	return nil
 }
 

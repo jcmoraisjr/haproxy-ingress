@@ -24,7 +24,7 @@ import (
 	"strings"
 
 	api "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
+	networking "k8s.io/api/networking/v1beta1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/annotations"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
@@ -148,7 +148,7 @@ func (c *converter) syncPartial() {
 	//
 
 	// helper funcs
-	ing2names := func(ings []*extensions.Ingress) []string {
+	ing2names := func(ings []*networking.Ingress) []string {
 		inglist := make([]string, len(ings))
 		for i, ing := range ings {
 			inglist[i] = ing.Namespace + "/" + ing.Name
@@ -214,7 +214,7 @@ func (c *converter) syncPartial() {
 	}
 
 	// merge dirty and added ingress objects into a single list
-	ingMap := make(map[string]*extensions.Ingress)
+	ingMap := make(map[string]*networking.Ingress)
 	for _, ing := range dirtyIngs {
 		ingMap[ing] = nil
 	}
@@ -224,7 +224,7 @@ func (c *converter) syncPartial() {
 	for _, ing := range c.changed.IngressesAdd {
 		ingMap[ing.Namespace+"/"+ing.Name] = ing
 	}
-	ingList := make([]*extensions.Ingress, 0, len(ingMap))
+	ingList := make([]*networking.Ingress, 0, len(ingMap))
 	for name, ing := range ingMap {
 		if ing == nil {
 			var err error
@@ -247,7 +247,7 @@ func (c *converter) syncPartial() {
 	c.partialSyncAnnotations(dirtyHosts, dirtyBacks)
 }
 
-func sortIngress(ingress []*extensions.Ingress) {
+func sortIngress(ingress []*networking.Ingress) {
 	sort.Slice(ingress, func(i, j int) bool {
 		i1 := ingress[i]
 		i2 := ingress[j]
@@ -258,7 +258,7 @@ func sortIngress(ingress []*extensions.Ingress) {
 	})
 }
 
-func (c *converter) syncIngress(ing *extensions.Ingress) {
+func (c *converter) syncIngress(ing *networking.Ingress) {
 	fullIngName := fmt.Sprintf("%s/%s", ing.Namespace, ing.Name)
 	source := &annotations.Source{
 		Namespace: ing.Namespace,
@@ -542,7 +542,7 @@ func (c *converter) readAnnotations(annotations map[string]string) (annHost, ann
 	return annHost, annBack
 }
 
-func readServiceNamePort(backend *extensions.IngressBackend) (string, string) {
+func readServiceNamePort(backend *networking.IngressBackend) (string, string) {
 	serviceName := backend.ServiceName
 	servicePort := backend.ServicePort.String()
 	return serviceName, servicePort

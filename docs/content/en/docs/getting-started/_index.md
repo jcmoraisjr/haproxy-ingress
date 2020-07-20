@@ -104,7 +104,7 @@ Obs.: `nip.io` is a convenient service which converts a valid domain name to any
 ```shell
 $ HOST=nginx.192.168.1.1.nip.io
 $ kubectl create -f - <<EOF
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   name: nginx

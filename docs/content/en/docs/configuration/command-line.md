@@ -148,7 +148,7 @@ remove old configuration files. If `0`, the default value, a single `haproxy.cfg
 Some infrastructure tools like `external-DNS` relay in the ingress status to created access routes to the services exposed with ingress object.
 
 ```
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 ...
 status:

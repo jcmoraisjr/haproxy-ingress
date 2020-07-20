@@ -30,7 +30,7 @@ import (
 
 	pool "gopkg.in/go-playground/pool.v3"
 	apiv1 "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
+	networking "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -310,11 +310,11 @@ func (s *statusSync) updateStatus(newIngressPoint []apiv1.LoadBalancerIngress) e
 			continue
 		}
 
-		var callback func(*extensions.Ingress) []apiv1.LoadBalancerIngress
+		var callback func(*networking.Ingress) []apiv1.LoadBalancerIngress
 		if s.ic.cfg.Backend != nil {
 			callback = s.ic.cfg.Backend.UpdateIngressStatus
 		} else {
-			callback = func(*extensions.Ingress) []apiv1.LoadBalancerIngress { return nil }
+			callback = func(*networking.Ingress) []apiv1.LoadBalancerIngress { return nil }
 		}
 		batch.Queue(runUpdate(ing, newIngressPoint, s.ic.cfg.Client, callback))
 	}
@@ -325,9 +325,9 @@ func (s *statusSync) updateStatus(newIngressPoint []apiv1.LoadBalancerIngress) e
 	return nil
 }
 
-func runUpdate(ing *extensions.Ingress, status []apiv1.LoadBalancerIngress,
+func runUpdate(ing *networking.Ingress, status []apiv1.LoadBalancerIngress,
 	client clientset.Interface,
-	statusFunc func(*extensions.Ingress) []apiv1.LoadBalancerIngress) pool.WorkFunc {
+	statusFunc func(*networking.Ingress) []apiv1.LoadBalancerIngress) pool.WorkFunc {
 	return func(wu pool.WorkUnit) (interface{}, error) {
 		if wu.IsCancelled() {
 			return nil, nil
@@ -348,7 +348,7 @@ func runUpdate(ing *extensions.Ingress, status []apiv1.LoadBalancerIngress,
 			return true, nil
 		}
 
-		ingClient := client.ExtensionsV1beta1().Ingresses(ing.Namespace)
+		ingClient := client.NetworkingV1beta1().Ingresses(ing.Namespace)
 
 		currIng, err := ingClient.Get(ing.Name, metav1.GetOptions{})
 		if err != nil {
