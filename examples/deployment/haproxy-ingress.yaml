@@ -1,5 +1,5 @@
 # see https://kubernetes.io/docs/reference/workloads-18-19
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:

@@ -234,7 +234,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 	}
 
 	if *watchNamespace != "" {
-		_, err = kubeClient.ExtensionsV1beta1().Ingresses(*watchNamespace).List(metav1.ListOptions{Limit: 1})
+		_, err = kubeClient.NetworkingV1beta1().Ingresses(*watchNamespace).List(metav1.ListOptions{Limit: 1})
 		if err != nil {
 			glog.Fatalf("no watchNamespace with name %v found: %v", *watchNamespace, err)
 		}

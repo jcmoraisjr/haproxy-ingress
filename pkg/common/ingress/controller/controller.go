@@ -26,7 +26,7 @@ import (
 	"github.com/golang/glog"
 
 	apiv1 "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
+	networking "k8s.io/api/networking/v1beta1"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
@@ -38,7 +38,7 @@ import (
 // NewCtrlIntf is a temporary interface used by this generic and now
 // deprecated controller to call functionality moved to the new controller.
 type NewCtrlIntf interface {
-	GetIngressList() ([]*extensions.Ingress, error)
+	GetIngressList() ([]*networking.Ingress, error)
 	GetSecret(name string) (*apiv1.Secret, error)
 	Notify()
 }
@@ -128,7 +128,7 @@ func newIngressController(config *Configuration) *GenericController {
 const IngressClassKey = "kubernetes.io/ingress.class"
 
 // IsValidClass ...
-func (ic *GenericController) IsValidClass(ing *extensions.Ingress) bool {
+func (ic *GenericController) IsValidClass(ing *networking.Ingress) bool {
 	ann, found := ing.Annotations[IngressClassKey]
 
 	if ic.cfg.IgnoreIngressWithoutClass {
