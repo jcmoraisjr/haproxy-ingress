@@ -653,6 +653,12 @@ func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
 	c.secretsUpd = nil
 	c.secretsAdd = nil
 	//
+	// Services
+	//
+	c.servicesDel = nil
+	c.servicesUpd = nil
+	c.servicesAdd = nil
+	//
 	// Ingress
 	//
 	c.ingressesDel = nil
