@@ -146,3 +146,21 @@ func TestShrink(t *testing.T) {
 		}
 	}
 }
+
+type testConfig struct {
+	t *testing.T
+}
+
+func setup(t *testing.T) *testConfig {
+	return &testConfig{
+		t: t,
+	}
+}
+
+func (c *testConfig) teardown() {}
+
+func (c *testConfig) compareObjects(name string, index int, actual, expected interface{}) {
+	if !reflect.DeepEqual(actual, expected) {
+		c.t.Errorf("%s on %d differs - expected: %v - actual: %v", name, index, expected, actual)
+	}
+}

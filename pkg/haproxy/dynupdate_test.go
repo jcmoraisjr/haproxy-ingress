@@ -585,11 +585,10 @@ set server default_app_8080/srv002 weight 1`,
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		instance := c.instance.(*instance)
 		if test.doconfig1 != nil {
 			test.doconfig1(c)
 		}
-		instance.config.Commit()
+		c.instance.config.Commit()
 		backendIDs := []types.BackendID{}
 		for _, backend := range c.config.Backends().Items() {
 			if backend != c.config.Backends().DefaultBackend() {
@@ -601,7 +600,7 @@ set server default_app_8080/srv002 weight 1`,
 			test.doconfig2(c)
 		}
 		var cmd string
-		dynUpdater := instance.newDynUpdater()
+		dynUpdater := c.instance.newDynUpdater()
 		dynUpdater.cmd = func(socket string, observer func(duration time.Duration), command ...string) ([]string, error) {
 			for _, c := range command {
 				cmd = cmd + c + "\n"

@@ -381,6 +381,8 @@ type Backends struct {
 	items, itemsAdd, itemsDel map[string]*Backend
 	//
 	defaultBackend *Backend
+	shards         []map[string]*Backend
+	changedShards  map[int]bool
 }
 
 // BackendID ...
@@ -398,6 +400,7 @@ type Backend struct {
 	//
 	// IMPLEMENT
 	// use BackendID
+	shard     int
 	ID        string
 	Namespace string
 	Name      string

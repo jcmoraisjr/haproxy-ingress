@@ -17,15 +17,22 @@ limitations under the License.
 package types
 
 import (
+	"crypto/md5"
 	"sort"
 )
 
 // CreateBackends ...
-func CreateBackends() *Backends {
+func CreateBackends(shardCount int) *Backends {
+	shards := make([]map[string]*Backend, shardCount)
+	for i := range shards {
+		shards[i] = map[string]*Backend{}
+	}
 	return &Backends{
-		items:    map[string]*Backend{},
-		itemsAdd: map[string]*Backend{},
-		itemsDel: map[string]*Backend{},
+		items:         map[string]*Backend{},
+		itemsAdd:      map[string]*Backend{},
+		itemsDel:      map[string]*Backend{},
+		shards:        shards,
+		changedShards: map[int]bool{},
 	}
 }
 
@@ -48,6 +55,7 @@ func (b *Backends) ItemsDel() map[string]*Backend {
 func (b *Backends) Commit() {
 	b.itemsAdd = map[string]*Backend{}
 	b.itemsDel = map[string]*Backend{}
+	b.changedShards = map[int]bool{}
 }
 
 // Changed ...
@@ -55,11 +63,38 @@ func (b *Backends) Changed() bool {
 	return len(b.itemsAdd) > 0 || len(b.itemsDel) > 0
 }
 
+// ChangedShards ...
+func (b *Backends) ChangedShards() []int {
+	changed := []int{}
+	for i, c := range b.changedShards {
+		if c {
+			changed = append(changed, i)
+		}
+	}
+	sort.Ints(changed)
+	return changed
+}
+
 // BuildSortedItems ...
 func (b *Backends) BuildSortedItems() []*Backend {
-	items := make([]*Backend, len(b.items))
+	// TODO BuildSortedItems() is currently used only by the backend template.
+	// The main cfg template doesn't care if there are backend shards or not,
+	// so the logic is here, but this doesn't seem to be a good place.
+	if len(b.shards) == 0 {
+		return b.buildSortedItems(b.items)
+	}
+	return nil
+}
+
+// BuildSortedShard ...
+func (b *Backends) BuildSortedShard(shardRef int) []*Backend {
+	return b.buildSortedItems(b.shards[shardRef])
+}
+
+func (b *Backends) buildSortedItems(backendItems map[string]*Backend) []*Backend {
+	items := make([]*Backend, len(backendItems))
 	var i int
-	for _, item := range b.items {
+	for _, item := range backendItems {
 		items[i] = item
 		i++
 	}
@@ -80,9 +115,14 @@ func (b *Backends) AcquireBackend(namespace, name, port string) *Backend {
 	if backend := b.FindBackend(namespace, name, port); backend != nil {
 		return backend
 	}
-	backend := createBackend(namespace, name, port)
+	shardCount := len(b.shards)
+	backend := createBackend(shardCount, namespace, name, port)
 	b.items[backend.ID] = backend
 	b.itemsAdd[backend.ID] = backend
+	if shardCount > 0 {
+		b.shards[backend.shard][backend.ID] = backend
+	}
+	b.changedShards[backend.shard] = true
 	return backend
 }
 
@@ -101,6 +141,10 @@ func (b *Backends) RemoveAll(backendID []BackendID) {
 	for _, backend := range backendID {
 		id := backend.String()
 		if item, found := b.items[id]; found {
+			if len(b.shards) > 0 {
+				delete(b.shards[item.shard], id)
+			}
+			b.changedShards[item.shard] = true
 			b.itemsDel[id] = item
 			delete(b.items, id)
 		}
@@ -131,9 +175,32 @@ func (b BackendID) String() string {
 	return b.id
 }
 
-func createBackend(namespace, name, port string) *Backend {
+func createBackend(shards int, namespace, name, port string) *Backend {
+	id := buildID(namespace, name, port)
+	var shard int
+	if shards > 0 {
+		hash := md5.Sum([]byte(id))
+		part0 := uint64(hash[0])<<56 |
+			uint64(hash[1])<<48 |
+			uint64(hash[2])<<40 |
+			uint64(hash[3])<<32 |
+			uint64(hash[4])<<24 |
+			uint64(hash[5])<<16 |
+			uint64(hash[6])<<8 |
+			uint64(hash[7])
+		part1 := uint64(hash[8])<<56 |
+			uint64(hash[9])<<48 |
+			uint64(hash[10])<<40 |
+			uint64(hash[11])<<32 |
+			uint64(hash[12])<<24 |
+			uint64(hash[13])<<16 |
+			uint64(hash[14])<<8 |
+			uint64(hash[15])
+		shard = int(uint64(part0^part1) % uint64(shards))
+	}
 	return &Backend{
-		ID:        buildID(namespace, name, port),
+		shard:     shard,
+		ID:        id,
 		Namespace: namespace,
 		Name:      name,
 		Port:      port,

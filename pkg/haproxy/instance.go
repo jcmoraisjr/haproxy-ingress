@@ -19,6 +19,7 @@ package haproxy
 import (
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -35,10 +36,12 @@ import (
 type InstanceOptions struct {
 	AcmeSigner        acme.Signer
 	AcmeQueue         utils.Queue
+	BackendShards     int
+	HAProxyCmd        string
+	HAProxyCfgDir     string
+	HAProxyMapsDir    string
 	LeaderElector     types.LeaderElector
 	MaxOldConfigFiles int
-	HAProxyCmd        string
-	HAProxyConfigFile string
 	Metrics           types.Metrics
 	ReloadCmd         string
 	ReloadStrategy    string
@@ -57,24 +60,24 @@ type Instance interface {
 // CreateInstance ...
 func CreateInstance(logger types.Logger, options InstanceOptions) Instance {
 	return &instance{
-		logger:       logger,
-		options:      &options,
-		templates:    template.CreateConfig(),
-		mapsTemplate: template.CreateConfig(),
-		mapsDir:      "/etc/haproxy/maps",
-		metrics:      options.Metrics,
+		logger:      logger,
+		options:     &options,
+		haproxyTmpl: template.CreateConfig(),
+		mapsTmpl:    template.CreateConfig(),
+		modsecTmpl:  template.CreateConfig(),
+		metrics:     options.Metrics,
 	}
 }
 
 type instance struct {
-	up           bool
-	logger       types.Logger
-	options      *InstanceOptions
-	templates    *template.Config
-	mapsTemplate *template.Config
-	mapsDir      string
-	config       Config
-	metrics      types.Metrics
+	up          bool
+	logger      types.Logger
+	options     *InstanceOptions
+	haproxyTmpl *template.Config
+	mapsTmpl    *template.Config
+	modsecTmpl  *template.Config
+	config      Config
+	metrics     types.Metrics
 }
 
 func (i *instance) AcmeCheck(source string) (int, error) {
@@ -129,9 +132,10 @@ func (i *instance) acmeRemoveStorage(storage string) {
 }
 
 func (i *instance) ParseTemplates() error {
-	i.templates.ClearTemplates()
-	i.mapsTemplate.ClearTemplates()
-	if err := i.templates.NewTemplate(
+	i.haproxyTmpl.ClearTemplates()
+	i.mapsTmpl.ClearTemplates()
+	i.modsecTmpl.ClearTemplates()
+	if err := i.modsecTmpl.NewTemplate(
 		"spoe-modsecurity.tmpl",
 		"/etc/haproxy/modsecurity/spoe-modsecurity.tmpl",
 		"/etc/haproxy/spoe-modsecurity.conf",
@@ -140,7 +144,7 @@ func (i *instance) ParseTemplates() error {
 	); err != nil {
 		return err
 	}
-	if err := i.templates.NewTemplate(
+	if err := i.haproxyTmpl.NewTemplate(
 		"haproxy.tmpl",
 		"/etc/haproxy/template/haproxy.tmpl",
 		"/etc/haproxy/haproxy.cfg",
@@ -149,7 +153,7 @@ func (i *instance) ParseTemplates() error {
 	); err != nil {
 		return err
 	}
-	err := i.mapsTemplate.NewTemplate(
+	err := i.mapsTmpl.NewTemplate(
 		"map.tmpl",
 		"/etc/haproxy/maptemplate/map.tmpl",
 		"",
@@ -162,8 +166,9 @@ func (i *instance) ParseTemplates() error {
 func (i *instance) Config() Config {
 	if i.config == nil {
 		config := createConfig(options{
-			mapsTemplate: i.mapsTemplate,
-			mapsDir:      i.mapsDir,
+			mapsTemplate: i.mapsTmpl,
+			mapsDir:      i.options.HAProxyMapsDir,
+			shardCount:   i.options.BackendShards,
 		})
 		i.config = config
 	}
@@ -250,7 +255,7 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 		// only need to rewrtite config files if:
 		//   - !updated           - there are changes that cannot be dynamically applied
 		//   - updater.cmdCnt > 0 - there are changes that was dynamically applied
-		err := i.templates.Write(i.config)
+		err := i.writeConfig()
 		timer.Tick("write_config")
 		if err != nil {
 			i.logger.Error("error writing configuration: %v", err)
@@ -289,6 +294,54 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	timer.Tick("reload_haproxy")
 }
 
+func (i *instance) writeConfig() (err error) {
+	//
+	// modsec template execution
+	//
+	err = i.modsecTmpl.Write(i.config)
+	if err != nil {
+		return err
+	}
+	//
+	// haproxy template execution
+	//
+	//   a single template is used to generate all haproxy cfg files
+	//   of a multi-file configuration. `datatype` is the root type
+	//   that the template recognizes, which will behave accordingly
+	//   to the filled/ignored attributes.
+	//
+	type datatype struct {
+		Cfg      Config
+		Global   *hatypes.Global
+		Backends []*hatypes.Backend
+	}
+	// main cfg -- fills the .Cfg attribute
+	err = i.haproxyTmpl.Write(datatype{Cfg: i.config})
+	if err != nil {
+		return err
+	}
+	// backend shards -- fills the .Global and .Backends attributes
+	if i.options.BackendShards > 0 {
+		shards := i.config.Backends().ChangedShards()
+		if len(shards) > 0 {
+			strshards := make([]string, len(shards))
+			for n, j := range shards {
+				str := fmt.Sprintf("%03d", j)
+				configFile := filepath.Join(i.options.HAProxyCfgDir, "haproxy5-backend"+str+".cfg")
+				if err = i.haproxyTmpl.WriteOutput(datatype{
+					Global:   i.config.Global(),
+					Backends: i.config.Backends().BuildSortedShard(j),
+				}, configFile); err != nil {
+					return err
+				}
+				strshards[n] = str
+			}
+			i.logger.InfoV(2, "updated main cfg and %d backend file(s): %v", len(strshards), strshards)
+		}
+	}
+	return err
+}
+
 func (i *instance) updateCertExpiring() {
 	// TODO move to dynupdate when dynamic crt update is implemented
 	hostsAdd := i.config.Hosts().ItemsAdd()
@@ -316,7 +369,7 @@ func (i *instance) check() error {
 		i.logger.Info("(test) check was skipped")
 		return nil
 	}
-	out, err := exec.Command(i.options.HAProxyCmd, "-c", "-f", i.options.HAProxyConfigFile).CombinedOutput()
+	out, err := exec.Command(i.options.HAProxyCmd, "-c", "-f", i.options.HAProxyCfgDir).CombinedOutput()
 	outstr := string(out)
 	if err != nil {
 		return fmt.Errorf(outstr)
@@ -329,7 +382,7 @@ func (i *instance) reload() error {
 		i.logger.Info("(test) reload was skipped")
 		return nil
 	}
-	out, err := exec.Command(i.options.ReloadCmd, i.options.ReloadStrategy, i.options.HAProxyConfigFile).CombinedOutput()
+	out, err := exec.Command(i.options.ReloadCmd, i.options.ReloadStrategy, i.options.HAProxyCfgDir).CombinedOutput()
 	outstr := string(out)
 	if len(outstr) > 0 {
 		i.logger.Warn("output from haproxy:\n%v", outstr)

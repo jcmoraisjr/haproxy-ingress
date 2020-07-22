@@ -6,12 +6,58 @@
 # #   This file is automatically updated, do not edit
 # #
 #
-{{- $cfg := . }}
-{{- $global := $cfg.Global }}
-{{- $backends := $cfg.Backends }}
-{{- $frontend := $cfg.Frontend }}
-{{- $fmaps := $frontend.Maps }}
-{{- $hosts := $cfg.Hosts }}
+
+{{- /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+   *
+   *  TEMPLATE DECLARATIONS
+   *
+   *    1. main cfg
+   *    2. backend shards
+   *
+   */}}
+
+{{- if .Cfg }}
+    {{- $cfg := .Cfg }}
+    {{- $global := $cfg.Global }}
+    {{- $userlists := $cfg.Userlists.BuildSortedItems }}
+    {{- $tcpbackends := $cfg.TCPBackends.BuildSortedItems}}
+    {{- $backends := $cfg.Backends }}
+    {{- $backendItems := $backends.BuildSortedItems }}
+    {{- $frontend := $cfg.Frontend }}
+    {{- $fmaps := $frontend.Maps }}
+    {{- $hosts := $cfg.Hosts }}
+    {{- template "global" map $global }}
+    {{- if $global.DNS.Resolvers }}
+        {{- template "dnresolvers" map $global.DNS.Resolvers }}
+    {{- end }}
+    {{- if $userlists }}
+        {{- template "userlists" map $userlists }}
+    {{- end }}
+    {{- if $tcpbackends }}
+        {{- template "tcpbackends" map $global $tcpbackends }}
+    {{- end }}
+    {{- if $backendItems }}
+        {{- template "backends" map $global $backendItems true }}
+    {{- end }}
+    {{- template "backend-support" map $global $backends }}
+    {{- if $fmaps }}
+        {{- template "frontends" map $global $frontend $hosts $fmaps $backends.DefaultBackend }}
+    {{- end }}
+    {{- template "frontend-support" map $global }}
+{{- else if and .Global .Backends }}
+    {{- $global := .Global }}
+    {{- $backendItems := .Backends }}
+    {{- template "backends" map $global $backendItems false }}
+{{- end }}
+
+{{- /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+   *
+   *  TEMPLATE DEFINITIONS
+   *
+   */}}
+
+{{- define "global" }}
+{{- $global := .p1 }}
 global
     daemon
 {{- if $global.UseHAProxyUser }}
@@ -124,14 +170,17 @@ defaults
 {{- range $snippet := $global.CustomDefaults }}
     {{ $snippet }}
 {{- end }}
+{{- end }}{{/* define "global" */}}
 
-{{- if $global.DNS.Resolvers }}
+
+{{- define "dnresolvers" }}
+{{- $resolvers := .p1 }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
 #     DNS RESOLVERS
 #
-{{- range $resolver := $global.DNS.Resolvers }}
+{{- range $resolver := $resolvers }}
 resolvers {{ $resolver.Name }}
 {{- range $ns := $resolver.Nameservers }}
     nameserver {{ $ns.Name }} {{ $ns.Endpoint }}
@@ -141,10 +190,11 @@ resolvers {{ $resolver.Name }}
     hold valid            {{ $resolver.HoldValid }}
     timeout retry         {{ $resolver.TimeoutRetry }}
 {{- end }}
-{{- end }}
+{{- end }}{{/* define "dnresolvers" */}}
 
-{{- $userlists := $cfg.Userlists.BuildSortedItems }}
-{{- if $userlists }}
+
+{{- define "userlists" }}
+{{- $userlists := .p1 }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
@@ -156,10 +206,12 @@ userlist {{ $userlist.Name }}
     user {{ $user.Name }} {{ if not $user.Encrypted }}insecure-{{ end }}password {{ $user.Passwd }}
 {{- end }}
 {{- end }}
-{{- end }}
+{{- end }}{{/* define "userlists" */}}
 
-{{- $tcpbackends := $cfg.TCPBackends.BuildSortedItems}}
-{{- if $tcpbackends }}
+
+{{- define "tcpbackends" }}
+{{- $global := .p1 }}
+{{- $tcpbackends := .p2 }}
 
 
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -203,11 +255,14 @@ listen _tcp_{{ $backend.Name }}_{{ $backend.Port }}
 {{- end }}
 
 {{- end }}{{/* range TCPBackends */}}
-{{- end }}{{/* if has TCPBackend */}}
+{{- end }}{{/* define "tcpbackends" */}}
 
-{{- $backendItems := $backends.BuildSortedItems }}
-{{- if $backendItems }}
 
+{{- define "backends" }}
+{{- $global := .p1 }}
+{{- $backendItems := .p2 }}
+{{- $shared := .p3 }}
+{{- if $shared }}
 
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -215,6 +270,7 @@ listen _tcp_{{ $backend.Name }}_{{ $backend.Port }}
 # #   BACKENDS
 # #
 #
+{{- end }}
 {{- range $backend := $backendItems }}
 backend {{ $backend.ID }}
     mode {{ if $backend.ModeTCP }}tcp{{ else }}http{{ end }}
@@ -555,7 +611,7 @@ backend {{ $backend.ID }}
 {{- end }}
 {{- end }}
 
-{{- end }}{{/* if backendItems */}}
+{{- end }}{{/* define "backends" */}}
 
 {{- define "backend" }}
     {{- $backend := .p1 }}
@@ -592,6 +648,11 @@ backend {{ $backend.ID }}
     {{- end }}
 {{- end }}
 
+
+{{- define "backend-support" }}
+{{- $global := .p1 }}
+{{- $backends := .p2 }}
+
 {{- if $global.Acme.Enabled }}
 
   # # # # # # # # # # # # # # # # # # #
@@ -614,7 +675,15 @@ backend _error404
     http-request use-service lua.send-404
 {{- end }}
 
-{{- if $fmaps }}
+{{- end }}{{/* define "backend-support" */}}
+
+
+{{- define "frontends" }}
+{{- $global := .p1 }}
+{{- $frontend := .p2 }}
+{{- $hosts := .p3 }}
+{{- $fmaps := .p4 }}
+{{- $defaultbackend := .p5 }}
 
 
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -828,7 +897,7 @@ frontend _front_http
     use_backend _acme_challenge if acme-challenge
 {{- end }}
 
-{{- template "defaultbackend" map $cfg }}
+{{- template "defaultbackend" map $hosts $defaultbackend }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
@@ -1003,28 +1072,30 @@ frontend {{ $frontend.Name }}
     use_backend %[var(req.snibackend)]
         {{- "" }} if { var(req.snibackend) -m found }
 {{- end }}
-{{- template "defaultbackend" map $cfg }}
+{{- template "defaultbackend" map $hosts $defaultbackend }}
 
-{{- end }}{{/* if $fmaps */}}
+{{- end }}{{/* define "frontends" */}}
 
 {{- /*------------------------------------*/}}
 {{- /*------------------------------------*/}}
 {{- define "defaultbackend" }}
-{{- $cfg := .p1 }}
-{{- $backends := $cfg.Backends }}
-{{- $hosts := $cfg.Hosts }}
+{{- $hosts := .p1 }}
+{{- $defaultbackend := .p2 }}
 {{- if $hosts.DefaultHost }}
 {{- range $path := $hosts.DefaultHost.Paths }}
     use_backend {{ $path.Backend.ID }}
         {{- if ne $path.Path "/" }} if { path_beg {{ $path.Path }} }{{ end }}
 {{- end }}
 {{- end }}
-{{- if $backends.DefaultBackend }}
-    default_backend {{ $backends.DefaultBackend.ID }}
+{{- if $defaultbackend }}
+    default_backend {{ $defaultbackend.ID }}
 {{- else }}
     default_backend _error404
 {{- end }}
 {{- end }}
+
+{{- define "frontend-support" }}
+{{- $global := .p1 }}
 
 
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -1093,5 +1164,6 @@ backend spoe-modsecurity
 {{- range $i, $endpoint := $global.ModSecurity.Endpoints }}
     server modsec-spoa{{ $i }} {{ $endpoint }}
 {{- end }}
-
 {{- end }}
+
+{{- end }}{{/* define "frontend-support" */}}
