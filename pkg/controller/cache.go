@@ -92,6 +92,7 @@ func createCache(
 	updateQueue utils.Queue,
 	watchNamespace string,
 	isolateNamespace bool,
+	disablePodList bool,
 	resync time.Duration,
 ) *k8scache {
 	namespace := os.Getenv("POD_NAMESPACE")
@@ -138,7 +139,7 @@ func createCache(
 		needFullSync:           false,
 	}
 	// TODO I'm a circular reference, can you fix me?
-	cache.listers = createListers(cache, logger, recorder, client, watchNamespace, isolateNamespace, resync)
+	cache.listers = createListers(cache, logger, recorder, client, watchNamespace, isolateNamespace, !disablePodList, resync)
 	return cache
 }
 
@@ -220,6 +221,9 @@ func (c *k8scache) GetEndpoints(service *api.Service) (*api.Endpoints, error) {
 // GetTerminatingPods returns the pods that are terminating and belong
 // (based on the Spec.Selector) to the supplied service.
 func (c *k8scache) GetTerminatingPods(service *api.Service, track convtypes.TrackingTarget) (pl []*api.Pod, err error) {
+	if !c.listers.hasPodLister {
+		return nil, fmt.Errorf("pod lister wasn't started, remove --disable-pod-list command-line option to enable it")
+	}
 	// converting the service selector to slice of string
 	// in order to create the full match selector
 	var ls []string
@@ -266,7 +270,11 @@ func (c *k8scache) GetPod(podName string) (*api.Pod, error) {
 	if err != nil {
 		return nil, err
 	}
-	return c.listers.podLister.Pods(namespace).Get(name)
+	if c.listers.hasPodLister {
+		return c.listers.podLister.Pods(namespace).Get(name)
+	}
+	// A fallback just in case --disable-pod-list is configured.
+	return c.client.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
 }
 
 func (c *k8scache) buildSecretName(defaultNamespace, secretName string) (string, string, error) {

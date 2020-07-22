@@ -105,6 +105,7 @@ func (hc *HAProxyController) configController() {
 	hc.cache = createCache(
 		hc.logger, hc.cfg.Client, hc.controller, hc.tracker, hc.ingressQueue,
 		hc.cfg.WatchNamespace, hc.cfg.ForceNamespaceIsolation,
+		hc.cfg.DisablePodList,
 		hc.cfg.ResyncPeriod)
 	var acmeSigner acme.Signer
 	if hc.cfg.AcmeServer {

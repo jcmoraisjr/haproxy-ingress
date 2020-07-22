@@ -148,6 +148,10 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		disableNodeList = flags.Bool("disable-node-list", false,
 			`Disable querying nodes. If --force-namespace-isolation is true, this should also be set.`)
 
+		disablePodList = flags.Bool("disable-pod-list", false,
+			`Defines if HAProxy Ingress should disable pod watch and in memory list. Pod list is
+		mandatory for drain-support (should not be disabled) and optional for blue/green.`)
+
 		updateStatusOnShutdown = flags.Bool("update-status-on-shutdown", true, `Indicates if the
 		ingress controller should update the Ingress status IP/hostname when the controller
 		is being stopped. Default is true`)
@@ -313,6 +317,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		WaitBeforeShutdown:        *waitBeforeShutdown,
 		AllowCrossNamespace:       *allowCrossNamespace,
 		DisableNodeList:           *disableNodeList,
+		DisablePodList:            *disablePodList,
 		UpdateStatusOnShutdown:    *updateStatusOnShutdown,
 		BackendShards:             *backendShards,
 		SortBackends:              *sortBackends,

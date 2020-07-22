@@ -634,6 +634,11 @@ balance - or a group selection based on http header or cookie value - blue/green
 Both blue/green configurations can be used together: if the http header or cookie isn't provided
 or doesn't match a group, the blue/green balance will be used.
 
+Blue/green reads endpoint weight from the pod lister. However the `--disable-pod-list`
+command-line option can be safely used to save some memory on clusters with a huge amount of
+pods. If pod list is disabled, pods are read straight from the k8s api, only when needed,
+without changing blue/green behavior.
+
 See below the description of the two blue/green configuration options.
 
 **Blue/green balance**
@@ -701,6 +706,7 @@ uses the chosen load balance algorithm.
 See also:
 
 * [example]({{% relref "../examples/blue-green" %}}) page.
+* [disable-pod-list]({{% relref "command-line/#disable-pod-list" %}}) command-line option doc.
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-weight (`weight` based balance)
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4-use-server (`use-server` based selector)
 
@@ -877,6 +883,10 @@ are in a not ready or terminating state.
 
 By default, sessions will be redispatched on a failed upstream connection once the target pod is terminated.
 You can control this behavior by setting `drain-support-redispatch` flag to `false` to instead return a 503 failure.
+
+See also:
+
+* [disable-pod-list]({{% relref "command-line/#disable-pod-list" %}}) command-line option doc.
 
 ---
 

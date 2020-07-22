@@ -68,6 +68,7 @@ type Configuration struct {
 	WaitBeforeShutdown      int
 	AllowCrossNamespace     bool
 	DisableNodeList         bool
+	DisablePodList          bool
 	AnnPrefix               string
 
 	AcmeServer              bool

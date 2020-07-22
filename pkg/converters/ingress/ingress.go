@@ -509,7 +509,7 @@ func (c *converter) addEndpoints(svc *api.Service, svcPort *api.ServicePort, bac
 		}
 		pods, err := c.cache.GetTerminatingPods(svc, convtypes.TrackingTarget{Backend: backend.BackendID()})
 		if err != nil {
-			return err
+			return fmt.Errorf("cannot fetch terminating pods on drain-support mode: %v", err)
 		}
 		for _, pod := range pods {
 			targetPort := convutils.FindContainerPort(pod, svcPort)
