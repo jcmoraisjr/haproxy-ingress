@@ -24,6 +24,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -634,6 +635,47 @@ func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
 	c.stateMutex.Lock()
 	defer c.stateMutex.Unlock()
 	//
+	var obj []string
+	if c.globalConfigMapDataNew != nil && !reflect.DeepEqual(c.globalConfigMapData, c.globalConfigMapDataNew) {
+		obj = append(obj, "update/global")
+	}
+	if c.tcpConfigMapDataNew != nil && !reflect.DeepEqual(c.tcpConfigMapData, c.tcpConfigMapDataNew) {
+		obj = append(obj, "update/tcp-services")
+	}
+	for _, ing := range c.ingressesDel {
+		obj = append(obj, "del/ingress:"+ing.Namespace+"/"+ing.Name)
+	}
+	for _, ing := range c.ingressesUpd {
+		obj = append(obj, "update/ingress:"+ing.Namespace+"/"+ing.Name)
+	}
+	for _, ing := range c.ingressesAdd {
+		obj = append(obj, "add/ingress:"+ing.Namespace+"/"+ing.Name)
+	}
+	for _, ep := range c.endpointsNew {
+		obj = append(obj, "update/endpoint:"+ep.Namespace+"/"+ep.Name)
+	}
+	for _, svc := range c.servicesDel {
+		obj = append(obj, "del/service:"+svc.Namespace+"/"+svc.Name)
+	}
+	for _, svc := range c.servicesUpd {
+		obj = append(obj, "update/service:"+svc.Namespace+"/"+svc.Name)
+	}
+	for _, svc := range c.servicesAdd {
+		obj = append(obj, "add/service:"+svc.Namespace+"/"+svc.Name)
+	}
+	for _, secret := range c.secretsDel {
+		obj = append(obj, "del/secret:"+secret.Namespace+"/"+secret.Name)
+	}
+	for _, secret := range c.secretsUpd {
+		obj = append(obj, "update/secret:"+secret.Namespace+"/"+secret.Name)
+	}
+	for _, secret := range c.secretsAdd {
+		obj = append(obj, "add/secret:"+secret.Namespace+"/"+secret.Name)
+	}
+	for _, pod := range c.podsNew {
+		obj = append(obj, "update/pod:"+pod.Namespace+"/"+pod.Name)
+	}
+	//
 	changed := &convtypes.ChangedObjects{
 		GlobalCur:       c.globalConfigMapData,
 		GlobalNew:       c.globalConfigMapDataNew,
@@ -650,6 +692,7 @@ func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
 		SecretsUpd:      c.secretsUpd,
 		SecretsAdd:      c.secretsAdd,
 		Pods:            c.podsNew,
+		Objects:         obj,
 	}
 	//
 	c.podsNew = nil

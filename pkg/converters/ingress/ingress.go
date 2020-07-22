@@ -184,6 +184,10 @@ func (c *converter) syncPartial() {
 		return podList
 	}
 
+	if len(c.changed.Objects) > 0 {
+		c.logger.InfoV(2, "applying %d change notification(s): %v", len(c.changed.Objects), c.changed.Objects)
+	}
+
 	// remove changed/deleted data
 	delIngNames := ing2names(c.changed.IngressesDel)
 	updIngNames := ing2names(c.changed.IngressesUpd)
@@ -210,7 +214,7 @@ func (c *converter) syncPartial() {
 	c.haproxy.Userlists().RemoveAll(dirtyUsers)
 	c.haproxy.AcmeData().Storages().RemoveAll(dirtyStorages)
 	if len(dirtyHosts) > 0 || len(dirtyBacks) > 0 {
-		c.logger.InfoV(2, "changed hosts: %v; backends: %v", dirtyHosts, dirtyBacks)
+		c.logger.InfoV(2, "syncing %d host(s) and %d backend(s)", len(dirtyHosts), len(dirtyBacks))
 	}
 
 	// merge dirty and added ingress objects into a single list
