@@ -57,6 +57,8 @@ type ChangedObjects struct {
 	SecretsDel, SecretsUpd, SecretsAdd []*api.Secret
 	//
 	Pods []*api.Pod
+	//
+	Objects []string
 }
 
 // Tracker ...
