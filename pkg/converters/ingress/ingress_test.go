@@ -802,7 +802,7 @@ func TestSyncPartial(t *testing.T) {
   endpoints:
   - ip: 172.17.0.12
     port: 8080` + defaultBackendConfig
-	explogging := `INFO-V(2) changed hosts: [echo.example.com]; backends: [default_echo1_8080 default_echo2_8080]`
+	explogging := `INFO-V(2) syncing 1 host(s) and 2 backend(s)`
 
 	testCases := []struct {
 		//
