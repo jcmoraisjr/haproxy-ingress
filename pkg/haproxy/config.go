@@ -139,6 +139,11 @@ func (c *config) SyncConfig() {
 // config file. This func doesn't change model state, except the
 // link to the frontend maps.
 func (c *config) WriteFrontendMaps() error {
+	if c.frontend.Maps != nil && !c.hosts.Changed() {
+		// TODO Maps!=nil just to preserve the current behavior. Check if this can be removed.
+		// hosts are clean, maps are updated
+		return nil
+	}
 	mapBuilder := hatypes.CreateMaps()
 	mapsDir := c.options.mapsDir
 	fmaps := &hatypes.FrontendMaps{
@@ -294,6 +299,10 @@ func (c *config) WriteFrontendMaps() error {
 // link to the backend maps.
 func (c *config) WriteBackendMaps() error {
 	// TODO rename HostMap types to HAProxyMap
+	if !c.backends.Changed() {
+		// backends are clean, maps are updated
+		return nil
+	}
 	mapBuilder := hatypes.CreateMaps()
 	for _, backend := range c.backends.Items() {
 		if backend.NeedACL() {
