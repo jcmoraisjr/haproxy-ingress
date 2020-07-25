@@ -64,6 +64,21 @@ func (h *Hosts) RemoveAll(hostnames []string) {
 	}
 }
 
+// Shrink removes matching added and deleted hosts from the changing hashmap
+// tracker that has the same content. A matching added+deleted pair means
+// that a hostname was reparsed but its content wasn't changed.
+func (h *Hosts) Shrink() {
+	for name, del := range h.itemsDel {
+		if add, found := h.itemsAdd[name]; found {
+			if reflect.DeepEqual(add, del) {
+				h.items[name] = del
+				delete(h.itemsAdd, name)
+				delete(h.itemsDel, name)
+			}
+		}
+	}
+}
+
 // Commit ...
 func (h *Hosts) Commit() {
 	h.itemsAdd = map[string]*Host{}
@@ -72,7 +87,7 @@ func (h *Hosts) Commit() {
 
 // Changed ...
 func (h *Hosts) Changed() bool {
-	return !reflect.DeepEqual(h.itemsAdd, h.itemsDel)
+	return len(h.itemsAdd) > 0 || len(h.itemsDel) > 0
 }
 
 func (h *Hosts) createHost(hostname string) *Host {

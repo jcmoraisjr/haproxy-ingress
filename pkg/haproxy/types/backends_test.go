@@ -128,6 +128,155 @@ func TestBackendCrud(t *testing.T) {
 	}
 }
 
+func TestShrinkBackends(t *testing.T) {
+	ep0 := &Endpoint{IP: "127.0.0.1"}
+	ep11 := &Endpoint{IP: "192.168.0.11"}
+	ep21 := &Endpoint{IP: "192.168.0.21"}
+	app11 := &Backend{Name: "default_app1_8080", Endpoints: []*Endpoint{ep11}}
+	app12 := &Backend{Name: "default_app1_8080", Endpoints: []*Endpoint{ep11, ep0}}
+	app21 := &Backend{Name: "default_app2_8080", Endpoints: []*Endpoint{ep21}}
+	testCases := []struct {
+		add, del       []*Backend
+		expAdd, expDel []*Backend
+	}{
+		// 0
+		{},
+		// 1
+		{
+			add:    []*Backend{app11},
+			expAdd: []*Backend{app11},
+		},
+		// 2
+		{
+			add: []*Backend{app11},
+			del: []*Backend{app11},
+		},
+		// 3
+		{
+			add:    []*Backend{app11, app21},
+			del:    []*Backend{app21},
+			expAdd: []*Backend{app11},
+		},
+		// 4
+		{
+			add:    []*Backend{app11},
+			del:    []*Backend{app11, app21},
+			expDel: []*Backend{app21},
+		},
+		// 5
+		{
+			add: []*Backend{app11},
+			del: []*Backend{app12},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		b := CreateBackends(0)
+		for _, add := range test.add {
+			b.itemsAdd[add.Name] = add
+		}
+		for _, del := range test.del {
+			b.itemsDel[del.Name] = del
+		}
+		expAdd := map[string]*Backend{}
+		for _, add := range test.expAdd {
+			expAdd[add.Name] = add
+		}
+		expDel := map[string]*Backend{}
+		for _, del := range test.expDel {
+			expDel[del.Name] = del
+		}
+		b.Shrink()
+		c.compareObjects("add", i, b.itemsAdd, expAdd)
+		c.compareObjects("del", i, b.itemsDel, expDel)
+		c.teardown()
+	}
+}
+
+func TestBackendsMatch(t *testing.T) {
+	ep0_1 := &Endpoint{IP: "127.0.0.1"}
+	ep0_2 := &Endpoint{IP: "127.0.0.1"}
+	ep1_1 := &Endpoint{IP: "192.168.0.1"}
+	ep1_2 := &Endpoint{IP: "192.168.0.1"}
+	ep2_1 := &Endpoint{IP: "192.168.0.2"}
+	ep2_2 := &Endpoint{IP: "192.168.0.2"}
+	testCases := []struct {
+		back1, back2 *Backend
+		expected     bool
+	}{
+		// 0
+		{
+			expected: true,
+		},
+		// 1
+		{
+			back1:    &Backend{},
+			back2:    &Backend{},
+			expected: true,
+		},
+		// 2
+		{
+			back1:    &Backend{Endpoints: []*Endpoint{ep0_1}},
+			back2:    &Backend{Endpoints: []*Endpoint{ep0_2}},
+			expected: true,
+		},
+		// 3
+		{
+			back1:    &Backend{CustomConfig: []string{"http-request"}, Endpoints: []*Endpoint{ep0_1}},
+			back2:    &Backend{CustomConfig: []string{"http-response"}, Endpoints: []*Endpoint{ep0_2}},
+			expected: false,
+		},
+		// 4
+		{
+			back1:    &Backend{Endpoints: []*Endpoint{ep0_1, ep1_1}},
+			back2:    &Backend{Endpoints: []*Endpoint{ep0_2, ep1_2}},
+			expected: true,
+		},
+		// 5
+		{
+			back1:    &Backend{Endpoints: []*Endpoint{ep0_1, ep1_1}},
+			back2:    &Backend{Endpoints: []*Endpoint{ep0_2, ep2_2}},
+			expected: false,
+		},
+		// 6
+		{
+			back1:    &Backend{Endpoints: []*Endpoint{ep0_1, ep1_1, ep2_1}},
+			back2:    &Backend{Endpoints: []*Endpoint{ep0_2, ep2_2, ep1_2}},
+			expected: true,
+		},
+		// 7
+		{
+			back1:    &Backend{Endpoints: []*Endpoint{ep2_1, ep1_1}},
+			back2:    &Backend{Endpoints: []*Endpoint{ep1_2, ep2_2}},
+			expected: true,
+		},
+		// 8
+		{
+			back1:    &Backend{Endpoints: []*Endpoint{ep2_1, ep0_1, ep1_1}},
+			back2:    &Backend{Endpoints: []*Endpoint{ep1_2, ep2_2, ep0_2}},
+			expected: true,
+		},
+		// 9
+		{
+			back1:    &Backend{Endpoints: []*Endpoint{ep2_1, ep0_1}},
+			back2:    &Backend{Endpoints: []*Endpoint{ep1_2, ep2_2, ep0_2}},
+			expected: false,
+		},
+		// 10
+		{
+			back1:    &Backend{Endpoints: []*Endpoint{ep2_1, ep0_1, ep1_1}},
+			back2:    &Backend{Endpoints: []*Endpoint{ep1_2, ep0_2}},
+			expected: false,
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		result := backendsMatch(test.back1, test.back2)
+		c.compareObjects("match", i, result, test.expected)
+		c.teardown()
+	}
+}
+
 func TestBuildID(t *testing.T) {
 	testCases := []struct {
 		namespace string

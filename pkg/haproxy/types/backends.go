@@ -18,6 +18,7 @@ package types
 
 import (
 	"crypto/md5"
+	"reflect"
 	"sort"
 )
 
@@ -49,6 +50,74 @@ func (b *Backends) ItemsAdd() map[string]*Backend {
 // ItemsDel ...
 func (b *Backends) ItemsDel() map[string]*Backend {
 	return b.itemsDel
+}
+
+// Shrink compares deleted and added backends with the same name - ie changed
+// objects - and remove both from the changing hashmap tracker when they match.
+func (b *Backends) Shrink() {
+	changed := false
+	for name, del := range b.itemsDel {
+		if add, found := b.itemsAdd[name]; found {
+			if backendsMatch(add, del) {
+				// Such changed backend, when removed from the tracking, need to
+				// be reincluded into the current state hashmap `items` and also
+				// into its shard hashmap when backend sharding is enabled.
+				if len(b.shards) > 0 {
+					b.shards[del.shard][del.ID] = del
+				}
+				b.items[name] = del
+				delete(b.itemsAdd, name)
+				delete(b.itemsDel, name)
+				changed = true
+			}
+		}
+	}
+	// Backends removed from the changing tracker might clean a shard state if it
+	// was the only one changed into the shard. Recalc changedShards if anything
+	// was changed.
+	if changed {
+		b.changedShards = map[int]bool{}
+		for _, back := range b.itemsAdd {
+			b.changedShards[back.shard] = true
+		}
+		for _, back := range b.itemsDel {
+			b.changedShards[back.shard] = true
+		}
+	}
+}
+
+// backendsMatch returns true if two backends match. This comparison
+// ignores empty endpoints and its order and it's cheaper than leave
+// the backend dirty.
+func backendsMatch(back1, back2 *Backend) bool {
+	if reflect.DeepEqual(back1, back2) {
+		return true
+	}
+	b1copy := *back1
+	b1copy.Endpoints = back2.Endpoints
+	if !reflect.DeepEqual(&b1copy, back2) {
+		return false
+	}
+	epmap := make(map[Endpoint]bool, len(back1.Endpoints))
+	for _, ep := range back1.Endpoints {
+		if !ep.IsEmpty() {
+			epmap[*ep] = false
+		}
+	}
+	for _, ep := range back2.Endpoints {
+		if !ep.IsEmpty() {
+			if _, found := epmap[*ep]; !found {
+				return false
+			}
+			epmap[*ep] = true
+		}
+	}
+	for _, found := range epmap {
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 // Commit ...

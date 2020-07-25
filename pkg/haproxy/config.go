@@ -40,6 +40,7 @@ type Config interface {
 	Backends() *hatypes.Backends
 	Userlists() *hatypes.Userlists
 	Clear()
+	Shrink()
 	Commit()
 }
 
@@ -349,6 +350,11 @@ func (c *config) Userlists() *hatypes.Userlists {
 func (c *config) Clear() {
 	config := createConfig(c.options)
 	*c = *config
+}
+
+func (c *config) Shrink() {
+	c.hosts.Shrink()
+	c.backends.Shrink()
 }
 
 func (c *config) Commit() {
