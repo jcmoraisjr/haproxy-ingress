@@ -1,5 +1,101 @@
 # CHANGELOG
 
+## v0.11
+
+**Highlights of this version**
+
+* HAProxy upgrade from 2.0 to 2.1
+* Improvements on ingress parsing and model update
+  * Less IO and CPU usage on clusters between 1000 and 3000 ingress and services
+  * Drastically reduces IO, CPU and reconciliation time on clusters with 3000+ ingress and services
+  * Logging of k8s notifications and changed hosts and backends that started a reconciliation
+  * See [`--backend-shards`](https://haproxy-ingress.github.io/v0.11/docs/configuration/command-line/#backend-shards) and [`--disable-pod-list`](https://haproxy-ingress.github.io/v0.11/docs/configuration/command-line/#disable-pod-list) command-line options
+* Ingress API upgrade from `extensions/v1beta1` to `networking.k8s.io/v1beta1`
+
+**Breaking backward compatibility from [v0.10](#v010)**
+
+* `timeout-client` and `timeout-client-fin` are global scoped only - cannot use as an ingress annotation
+
+**Contributors**
+
+* Alexis Dufour ([AlexisDuf](https://github.com/AlexisDuf))
+* Colin Deasy ([coldeasy](https://github.com/coldeasy))
+* Dario Tranchitella ([prometherion](https://github.com/prometherion))
+* Eliot Hautefeuille ([hileef](https://github.com/hileef))
+* Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
+* MartinKirchner ([MartinKirchner](https://github.com/MartinKirchner))
+* Ricardo Katz ([rikatz](https://github.com/rikatz))
+* Robert Agbozo ([RobertTheProfessional](https://github.com/RobertTheProfessional))
+* Shagon94 ([Shagon94](https://github.com/Shagon94))
+* Unichron ([Unichron](https://github.com/Unichron))
+
+**v0.11-snapshot.1**
+
+New features and improvemets:
+
+* Update to haproxy 2.1.4 [#542](https://github.com/jcmoraisjr/haproxy-ingress/pull/542) (jcmoraisjr)
+* Converting to cache.Listers [#545](https://github.com/jcmoraisjr/haproxy-ingress/pull/545) (prometherion)
+* Sorting imports and code linting [#550](https://github.com/jcmoraisjr/haproxy-ingress/pull/550) (prometherion)
+* Change timeout-client(-fin) scope from host to global [#552](https://github.com/jcmoraisjr/haproxy-ingress/pull/552) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.11/docs/configuration/keys/#timeout)
+  * Configuration keys:
+    * `timeout-client` (update)
+    * `timeout-client-fin` (update)
+* Remove frontend group [#553](https://github.com/jcmoraisjr/haproxy-ingress/pull/553) (jcmoraisjr)
+* Move backend data and funcs to its own entity [#555](https://github.com/jcmoraisjr/haproxy-ingress/pull/555) (jcmoraisjr)
+* Add host lookup with hash table [#556](https://github.com/jcmoraisjr/haproxy-ingress/pull/556) (jcmoraisjr)
+* Add backend lookup with hash table [#557](https://github.com/jcmoraisjr/haproxy-ingress/pull/557) (jcmoraisjr)
+* Move max body size to the backend [#554](https://github.com/jcmoraisjr/haproxy-ingress/pull/554) (jcmoraisjr)
+* Parsing and lookup optimizations [#558](https://github.com/jcmoraisjr/haproxy-ingress/pull/558) (jcmoraisjr)
+* Follow gofmt convention [#564](https://github.com/jcmoraisjr/haproxy-ingress/pull/564) (jcmoraisjr)
+* Move listers and informers to the new controller [#563](https://github.com/jcmoraisjr/haproxy-ingress/pull/563) (jcmoraisjr)
+* Add check interval on tcp service [#576](https://github.com/jcmoraisjr/haproxy-ingress/pull/576) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.11/docs/configuration/command-line/#tcp-services-configmap)
+  * Command-line options:
+    * `--tcp-services-configmap` (update)
+* Add use-forwarded-proto config key [#577](https://github.com/jcmoraisjr/haproxy-ingress/pull/577) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.11/docs/configuration/keys/#fronting-proxy-port)
+  * Configuration keys:
+    * `use-forwarded-proto`
+* Add headers config key [#575](https://github.com/jcmoraisjr/haproxy-ingress/pull/575) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.11/docs/configuration/keys/#headers)
+  * Configuration keys:
+    * `headers`
+* Allow overriding CPU Map [#588](https://github.com/jcmoraisjr/haproxy-ingress/pull/588) (coldeasy) - [doc](https://haproxy-ingress.github.io/v0.11/docs/configuration/keys/#cpu-map)
+  * Configuration keys:
+    * `cpu-map`
+    * `use-cpu-map`
+* TCP Services : SSL : Optionally Verify Client [#589](https://github.com/jcmoraisjr/haproxy-ingress/pull/589) (hileef) - [doc](https://haproxy-ingress.github.io/v0.11/docs/configuration/command-line/#tcp-services-configmap)
+  * Command-line options:
+    * `--tcp-services-configmap` (update)
+* Add session-cookie-keywords [#601](https://github.com/jcmoraisjr/haproxy-ingress/pull/601) (MartinKirchner) - [doc](https://haproxy-ingress.github.io/v0.11/docs/configuration/keys/#affinity)
+  * Configuration keys:
+    * `session-cookie-keywords`
+* Host scoped cipher options [#609](https://github.com/jcmoraisjr/haproxy-ingress/pull/609) (Unichron) - [doc](https://haproxy-ingress.github.io/v0.11/docs/configuration/keys/#ssl-ciphers)
+  * Configuration keys:
+    * `ssl-cipher-suites`
+    * `ssl-ciphers`
+* Update deprecated APIs in Docs [#613](https://github.com/jcmoraisjr/haproxy-ingress/pull/613) (rikatz)
+* Improve parsing time on big clusters [#571](https://github.com/jcmoraisjr/haproxy-ingress/pull/571) (jcmoraisjr)
+* Add backend-shards command-line option [#623](https://github.com/jcmoraisjr/haproxy-ingress/pull/623) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.11/docs/configuration/command-line/#backend-shards)
+  * Command-line options:
+    * `--backend-shards`
+* Add disable-pod-list command-line option [#622](https://github.com/jcmoraisjr/haproxy-ingress/pull/622) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.11/docs/configuration/command-line/#disable-pod-list)
+  * Command-line options:
+    * `--disable-pod-list`
+* Log changed objects [#625](https://github.com/jcmoraisjr/haproxy-ingress/pull/625) (jcmoraisjr)
+* Optimize haproxy maps building [#629](https://github.com/jcmoraisjr/haproxy-ingress/pull/629) (jcmoraisjr)
+* Shrink list of changed hosts and backends [#630](https://github.com/jcmoraisjr/haproxy-ingress/pull/630) (jcmoraisjr)
+
+Fixes:
+
+* Fix logging messages [#559](https://github.com/jcmoraisjr/haproxy-ingress/pull/559) (jcmoraisjr)
+* Fix server-alias on http/80 [#570](https://github.com/jcmoraisjr/haproxy-ingress/pull/570) (AlexisDuf)
+* Fix permission using watch-namespace [#578](https://github.com/jcmoraisjr/haproxy-ingress/pull/578) (jcmoraisjr)
+* Fix watch-namespace option [#579](https://github.com/jcmoraisjr/haproxy-ingress/pull/579) (jcmoraisjr)
+* Fix cleaning cache of changed objects [#626](https://github.com/jcmoraisjr/haproxy-ingress/pull/626) (jcmoraisjr)
+
+Docs:
+
+* Fixed typos [#580](https://github.com/jcmoraisjr/haproxy-ingress/pull/580) (Shagon94)
+* Typo on configuration keys docs [#585](https://github.com/jcmoraisjr/haproxy-ingress/pull/585) (RobertTheProfessional)
+
 ## v0.10
 
 Highlights of this version:
