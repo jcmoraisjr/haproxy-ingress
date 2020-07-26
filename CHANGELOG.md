@@ -4,17 +4,15 @@
 
 **Highlights of this version**
 
-* HAProxy upgrade from 2.0 to 2.1
-* Improvements on ingress parsing and model update
-  * Less IO and CPU usage on clusters between 1000 and 3000 ingress and services
-  * Drastically reduces IO, CPU and reconciliation time on clusters with 3000+ ingress and services
-  * Logging of k8s notifications and changed hosts and backends that started a reconciliation
-  * See [`--backend-shards`](https://haproxy-ingress.github.io/v0.11/docs/configuration/command-line/#backend-shards) and [`--disable-pod-list`](https://haproxy-ingress.github.io/v0.11/docs/configuration/command-line/#disable-pod-list) command-line options
-* Ingress API upgrade from `extensions/v1beta1` to `networking.k8s.io/v1beta1`
+* HAProxy upgrade from 2.0 to 2.1.
+* Negligible IO, CPU usage and reconciliation time, regardless the number of tracked ingress and service objects. HAProxy Ingress deployed on noisy (about 10 reconciliations per minute) and big (about 4000 ingress and services) clusters used to use about 90% CPU. HAProxy Ingress v0.11 uses about 2% CPU on such clusters when using [backend shards](https://haproxy-ingress.github.io/v0.11/docs/configuration/command-line/#backend-shards).
+* Logging of k8s notifications and changed hosts and backends that started a reconciliation.
+* Ingress API upgrade from `extensions/v1beta1` to `networking.k8s.io/v1beta1`.
 
 **Breaking backward compatibility from [v0.10](#v010)**
 
-* `timeout-client` and `timeout-client-fin` are global scoped only - cannot use as an ingress annotation
+* HAProxy Ingress service account need `get`, `list`, `watch` and `update` access to `networking.k8s.io` api group - which was the same permitions granted to `extensions/v1beta1` api group. Update your k8s role configuration before deploy v0.11. See an updated version of the [deployment manifest](https://raw.githubusercontent.com/jcmoraisjr/haproxy-ingress/2b3cc6701b27866acd9db35cbbd0c4de114aaec2/docs/static/resources/haproxy-ingress.yaml).
+* `timeout-client` and `timeout-client-fin` are global scoped only - cannot use as an ingress annotation.
 
 **Contributors**
 
