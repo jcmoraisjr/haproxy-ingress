@@ -84,6 +84,10 @@ privacy_policy = ""
 version_menu = "v0.9"
 
 [[params.versions]]
+version = "v0.11"
+url = "https://haproxy-ingress.github.io/v0.11/docs"
+
+[[params.versions]]
 version = "v0.10"
 url = "https://haproxy-ingress.github.io/docs"
 
