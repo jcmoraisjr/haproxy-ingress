@@ -21,6 +21,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -238,6 +239,7 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	//
 	defer i.config.Commit()
 	i.config.SyncConfig()
+	i.config.Shrink()
 	if err := i.config.WriteFrontendMaps(); err != nil {
 		i.logger.Error("error building frontend maps: %v", err)
 		i.metrics.IncUpdateNoop()
@@ -248,9 +250,13 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 		i.metrics.IncUpdateNoop()
 		return
 	}
+	timer.Tick("write_maps")
+	if i.options.HAProxyCmd != "" {
+		// TODO update tests and remove `if cmd!=""` above
+		i.logChanged()
+	}
 	updater := i.newDynUpdater()
 	updated := updater.update()
-	timer.Tick("write_maps")
 	if !updated || updater.cmdCnt > 0 {
 		// only need to rewrtite config files if:
 		//   - !updated           - there are changes that cannot be dynamically applied
@@ -292,6 +298,43 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	i.metrics.UpdateSuccessful(true)
 	i.logger.Info("HAProxy successfully reloaded")
 	timer.Tick("reload_haproxy")
+}
+
+func (i *instance) logChanged() {
+	hostsAdd := i.config.Hosts().ItemsAdd()
+	if len(hostsAdd) < 100 {
+		hostsDel := i.config.Hosts().ItemsDel()
+		hosts := make([]string, 0, len(hostsAdd))
+		for host := range hostsAdd {
+			hosts = append(hosts, host)
+		}
+		for host := range hostsDel {
+			if _, found := hostsAdd[host]; !found {
+				hosts = append(hosts, host)
+			}
+		}
+		sort.Strings(hosts)
+		i.logger.InfoV(2, "updating %d host(s): %v", len(hosts), hosts)
+	} else {
+		i.logger.InfoV(2, "updating %d hosts", len(hostsAdd))
+	}
+	backsAdd := i.config.Backends().ItemsAdd()
+	if len(backsAdd) < 100 {
+		backsDel := i.config.Backends().ItemsDel()
+		backs := make([]string, 0, len(backsAdd))
+		for back := range backsAdd {
+			backs = append(backs, back)
+		}
+		for back := range backsDel {
+			if _, found := backsAdd[back]; !found {
+				backs = append(backs, back)
+			}
+		}
+		sort.Strings(backs)
+		i.logger.InfoV(2, "updating %d backend(s): %v", len(backs), backs)
+	} else {
+		i.logger.InfoV(2, "updating %d backends", len(backsAdd))
+	}
 }
 
 func (i *instance) writeConfig() (err error) {
