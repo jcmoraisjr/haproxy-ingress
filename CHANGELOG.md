@@ -5,8 +5,8 @@
 **Highlights of this version**
 
 * HAProxy upgrade from 2.0 to 2.1.
-* Negligible IO, CPU usage and reconciliation time, regardless the number of tracked ingress and service objects. HAProxy Ingress deployed on noisy (about 10 reconciliations per minute) and big (about 4000 ingress and services) clusters used to use about 90% CPU. HAProxy Ingress v0.11 uses about 2% CPU on such clusters when using [backend shards](https://haproxy-ingress.github.io/v0.11/docs/configuration/command-line/#backend-shards).
-* Logging of k8s notifications and changed hosts and backends that started a reconciliation.
+* Negligible IO, CPU usage and reconciliation time, regardless the number of tracked ingress and service objects.
+  * HAProxy Ingress deployed on noisy (about 10 reconciliations per minute) and big (about 4000 ingress and services) clusters used to use about 90% CPU. HAProxy Ingress v0.11 uses about 2% CPU on such clusters when using [backend shards](https://haproxy-ingress.github.io/v0.11/docs/configuration/command-line/#backend-shards).
 * Ingress API upgrade from `extensions/v1beta1` to `networking.k8s.io/v1beta1`.
 
 **Breaking backward compatibility from [v0.10](#v010)**
