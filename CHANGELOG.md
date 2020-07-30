@@ -11,6 +11,7 @@
 
 **Breaking backward compatibility from [v0.10](#v010)**
 
+* Kubernetes version 1.14 or newer
 * HAProxy Ingress service account need `get`, `list`, `watch` and `update` access to `networking.k8s.io` api group - which was the same permitions granted to `extensions/v1beta1` api group. Update your k8s role configuration before deploy v0.11. See an updated version of the [deployment manifest](https://raw.githubusercontent.com/jcmoraisjr/haproxy-ingress/2b3cc6701b27866acd9db35cbbd0c4de114aaec2/docs/static/resources/haproxy-ingress.yaml).
 * `timeout-client` and `timeout-client-fin` are global scoped only - cannot use as an ingress annotation.
 
