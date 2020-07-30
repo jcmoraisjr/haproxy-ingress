@@ -27,7 +27,8 @@ type ConverterOptions struct {
 	Cache            convtypes.Cache
 	DefaultConfig    func() map[string]string
 	DefaultBackend   string
-	DefaultSSLFile   convtypes.File
+	DefaultCrtSecret string
+	FakeCrtFile      convtypes.File
 	FakeCAFile       convtypes.File
 	AnnotationPrefix string
 }

@@ -123,27 +123,18 @@ func (hc *HAProxyController) configController() {
 		Cache:            hc.cache,
 		AnnotationPrefix: hc.cfg.AnnPrefix,
 		DefaultBackend:   hc.cfg.DefaultService,
-		DefaultSSLFile:   hc.createDefaultSSLFile(),
+		DefaultCrtSecret: hc.cfg.DefaultSSLCertificate,
+		FakeCrtFile:      hc.createFakeCrtFile(),
 		FakeCAFile:       hc.createFakeCAFile(),
 	}
 }
 
-func (hc *HAProxyController) createDefaultSSLFile() (tlsFile convtypes.File) {
-	if hc.cfg.DefaultSSLCertificate != "" {
-		tlsFile, err := hc.cache.GetTLSSecretPath("", hc.cfg.DefaultSSLCertificate)
-		if err == nil {
-			return tlsFile
-		}
-		glog.Warningf("using auto generated fake certificate due to an error reading default TLS certificate: %v", err)
-	} else {
-		glog.Info("using auto generated fake certificate")
-	}
+func (hc *HAProxyController) createFakeCrtFile() (tlsFile convtypes.File) {
 	path, hash := hc.controller.CreateDefaultSSLCertificate()
-	tlsFile = convtypes.File{
+	return convtypes.File{
 		Filename: path,
 		SHA1Hash: hash,
 	}
-	return tlsFile
 }
 
 // CreateX509CertsDir hard link files from certs to a single directory.
