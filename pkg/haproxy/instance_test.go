@@ -2938,7 +2938,7 @@ func setupOptions(options testOptions) *testConfig {
 		t.Errorf("error parsing map.tmpl: %v", err)
 	}
 	config := instance.Config().(*config)
-	config.frontend.DefaultCert = "/var/haproxy/ssl/certs/default.pem"
+	config.frontend.DefaultCrtFile = "/var/haproxy/ssl/certs/default.pem"
 	c := &testConfig{
 		t:        t,
 		logger:   logger,

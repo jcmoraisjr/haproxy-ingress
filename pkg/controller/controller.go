@@ -142,7 +142,8 @@ func (hc *HAProxyController) configController() {
 		Tracker:          hc.tracker,
 		AnnotationPrefix: hc.cfg.AnnPrefix,
 		DefaultBackend:   hc.cfg.DefaultService,
-		DefaultSSLFile:   hc.createDefaultSSLFile(),
+		DefaultCrtSecret: hc.cfg.DefaultSSLCertificate,
+		FakeCrtFile:      hc.createFakeCrtFile(),
 		FakeCAFile:       hc.createFakeCAFile(),
 		AcmeTrackTLSAnn:  hc.cfg.AcmeTrackTLSAnn,
 	}
@@ -181,25 +182,14 @@ func (hc *HAProxyController) stopServices() {
 	}
 }
 
-func (hc *HAProxyController) createDefaultSSLFile() (tlsFile convtypes.CrtFile) {
-	if hc.cfg.DefaultSSLCertificate != "" {
-		// IMPLEMENT track hosts that uses this secret/crt
-		tlsFile, err := hc.cache.GetTLSSecretPath("", hc.cfg.DefaultSSLCertificate, convtypes.TrackingTarget{})
-		if err == nil {
-			return tlsFile
-		}
-		glog.Warningf("using auto generated fake certificate due to an error reading default TLS certificate: %v", err)
-	} else {
-		glog.Info("using auto generated fake certificate")
-	}
+func (hc *HAProxyController) createFakeCrtFile() (tlsFile convtypes.CrtFile) {
 	path, hash, crt := hc.controller.CreateDefaultSSLCertificate()
-	tlsFile = convtypes.CrtFile{
+	return convtypes.CrtFile{
 		Filename:   path,
 		SHA1Hash:   hash,
 		CommonName: crt.Subject.CommonName,
 		NotAfter:   crt.NotAfter,
 	}
-	return tlsFile
 }
 
 func (hc *HAProxyController) createFakeCAFile() (crtFile convtypes.CrtFile) {

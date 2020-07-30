@@ -81,6 +81,7 @@ type converter struct {
 	logger             types.Logger
 	cache              convtypes.Cache
 	tracker            convtypes.Tracker
+	defaultCrt         convtypes.CrtFile
 	mapBuilder         *annotations.MapBuilder
 	updater            annotations.Updater
 	globalConfig       *annotations.Mapper
@@ -93,14 +94,8 @@ func (c *converter) Sync() {
 	if c.needFullSync {
 		c.haproxy.Clear()
 	}
-	c.haproxy.Frontend().DefaultCert = c.options.DefaultSSLFile.Filename
-	if c.options.DefaultBackend != "" {
-		if backend, err := c.addBackend(&annotations.Source{}, "*", "/", c.options.DefaultBackend, "", map[string]string{}); err == nil {
-			c.haproxy.Backends().SetDefaultBackend(backend)
-		} else {
-			c.logger.Error("error reading default service: %v", err)
-		}
-	}
+	c.syncDefaultCrt()
+	c.syncDefaultBackend()
 	if c.needFullSync {
 		c.syncFull()
 	} else {
@@ -124,6 +119,43 @@ func globalConfigNeedFullSync(changed *convtypes.ChangedObjects) bool {
 	// is just a haproxy global, default or frontend config.
 	cur, new := changed.GlobalCur, changed.GlobalNew
 	return new != nil && !reflect.DeepEqual(cur, new)
+}
+
+func (c *converter) syncDefaultCrt() {
+	crt := c.options.FakeCrtFile
+	if c.options.DefaultCrtSecret != "" {
+		var err error
+		crt, err = c.cache.GetTLSSecretPath("", c.options.DefaultCrtSecret, convtypes.TrackingTarget{})
+		if err != nil {
+			crt = c.options.FakeCrtFile
+			c.logger.Warn("using auto generated fake certificate due to an error reading default TLS certificate: %v", err)
+		}
+	}
+	frontend := c.haproxy.Frontend()
+	if !c.needFullSync {
+		if frontend.DefaultCrtFile != crt.Filename || frontend.DefaultCrtHash != crt.SHA1Hash {
+			// TODO implement a proper secret tracking and partial sync
+			c.haproxy.Clear()
+			frontend = c.haproxy.Frontend() // Clear() recreates internal objects
+			c.needFullSync = true
+		}
+	}
+	if c.needFullSync && crt == c.options.FakeCrtFile {
+		c.logger.Info("using auto generated fake certificate")
+	}
+	frontend.DefaultCrtFile = crt.Filename
+	frontend.DefaultCrtHash = crt.SHA1Hash
+	c.defaultCrt = crt
+}
+
+func (c *converter) syncDefaultBackend() {
+	if c.options.DefaultBackend != "" {
+		if backend, err := c.addBackend(&annotations.Source{}, "*", "/", c.options.DefaultBackend, "", map[string]string{}); err == nil {
+			c.haproxy.Backends().SetDefaultBackend(backend)
+		} else {
+			c.logger.Error("error reading default service: %v", err)
+		}
+	}
 }
 
 func (c *converter) syncFull() {
@@ -495,7 +527,7 @@ func (c *converter) addTLS(source *annotations.Source, hostname, secretName stri
 		}
 		c.logger.Warn("using default certificate due to an error reading secret '%s' on %s: %v", secretName, source, err)
 	}
-	return c.options.DefaultSSLFile
+	return c.defaultCrt
 }
 
 func (c *converter) addEndpoints(svc *api.Service, svcPort *api.ServicePort, backend *hatypes.Backend) error {

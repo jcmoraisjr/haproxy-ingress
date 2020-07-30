@@ -19,7 +19,6 @@ package ingress
 import (
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/kylelemons/godebug/diff"
 	yaml "gopkg.in/yaml.v2"
@@ -1461,19 +1460,15 @@ func (c *testConfig) Sync(ing ...*networking.Ingress) {
 			ingtypes.BackInitialWeight: "100",
 		}
 	}
+	c.cache.SecretTLSPath["system/default"] = "/tls/tls-default.pem"
 	conv := NewIngressConverter(
 		&ingtypes.ConverterOptions{
-			Cache:          c.cache,
-			Logger:         c.logger,
-			Tracker:        c.tracker,
-			DefaultConfig:  defaultConfig,
-			DefaultBackend: "system/default",
-			DefaultSSLFile: convtypes.CrtFile{
-				Filename:   "/tls/tls-default.pem",
-				SHA1Hash:   "1",
-				CommonName: "localhost.localdomain",
-				NotAfter:   time.Now().AddDate(0, 0, 30),
-			},
+			Cache:            c.cache,
+			Logger:           c.logger,
+			Tracker:          c.tracker,
+			DefaultConfig:    defaultConfig,
+			DefaultBackend:   "system/default",
+			DefaultCrtSecret: "system/default",
 			AnnotationPrefix: "ingress.kubernetes.io",
 		},
 		c.hconfig,
