@@ -32,7 +32,6 @@ import (
 	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/annotations"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	types_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/types/helper_test"
@@ -1157,16 +1156,14 @@ func (c *testConfig) SyncDef(config map[string]string, ing ...*extensions.Ingres
 			ingtypes.BackInitialWeight: "100",
 		}
 	}
+	c.cache.SecretTLSPath["system/default"] = "/tls/tls-default.pem"
 	conv := NewIngressConverter(
 		&ingtypes.ConverterOptions{
-			Cache:          c.cache,
-			Logger:         c.logger,
-			DefaultConfig:  defaultConfig,
-			DefaultBackend: "system/default",
-			DefaultSSLFile: convtypes.File{
-				Filename: "/tls/tls-default.pem",
-				SHA1Hash: "1",
-			},
+			Cache:            c.cache,
+			Logger:           c.logger,
+			DefaultConfig:    defaultConfig,
+			DefaultBackend:   "system/default",
+			DefaultCrtSecret: "system/default",
 			AnnotationPrefix: "ingress.kubernetes.io",
 		},
 		c.hconfig,

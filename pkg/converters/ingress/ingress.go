@@ -58,7 +58,6 @@ func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Con
 		hostAnnotations:    map[*hatypes.Host]*annotations.Mapper{},
 		backendAnnotations: map[*hatypes.Backend]*annotations.Mapper{},
 	}
-	haproxy.ConfigDefaultX509Cert(options.DefaultSSLFile.Filename)
 	if options.DefaultBackend != "" {
 		if backend, err := c.addBackend(&annotations.Source{}, "*/", options.DefaultBackend, "", map[string]string{}); err == nil {
 			haproxy.ConfigDefaultBackend(backend)
@@ -74,6 +73,7 @@ type converter struct {
 	options            *ingtypes.ConverterOptions
 	logger             types.Logger
 	cache              convtypes.Cache
+	defaultCrt         convtypes.File
 	mapBuilder         *annotations.MapBuilder
 	updater            annotations.Updater
 	globalConfig       *annotations.Mapper
@@ -82,10 +82,25 @@ type converter struct {
 }
 
 func (c *converter) Sync(ingress []*extensions.Ingress) {
+	c.syncDefaultCrt()
 	for _, ing := range ingress {
 		c.syncIngress(ing)
 	}
 	c.syncAnnotations()
+}
+
+func (c *converter) syncDefaultCrt() {
+	crt := c.options.FakeCrtFile
+	if c.options.DefaultCrtSecret != "" {
+		var err error
+		crt, err = c.cache.GetTLSSecretPath("", c.options.DefaultCrtSecret)
+		if err != nil {
+			crt = c.options.FakeCrtFile
+			c.logger.Warn("using auto generated fake certificate due to an error reading default TLS certificate: %v", err)
+		}
+	}
+	c.haproxy.ConfigDefaultX509Cert(crt.Filename)
+	c.defaultCrt = crt
 }
 
 func (c *converter) syncIngress(ing *extensions.Ingress) {
@@ -291,7 +306,7 @@ func (c *converter) addTLS(source *annotations.Source, secretName string) convty
 		}
 		c.logger.Warn("using default certificate due to an error reading secret '%s' on %s: %v", secretName, source, err)
 	}
-	return c.options.DefaultSSLFile
+	return c.defaultCrt
 }
 
 func (c *converter) addEndpoints(svc *api.Service, svcPort *api.ServicePort, backend *hatypes.Backend) error {
