@@ -119,9 +119,6 @@ global
 {{- if $global.SSL.BackendCipherSuites }}
     ssl-default-server-ciphersuites {{ $global.SSL.BackendCipherSuites }}
 {{- end }}
-{{- if $global.SSL.BackendOptions }}
-    ssl-default-server-options {{ $global.SSL.BackendOptions }}
-{{- end }}
 {{- range $snippet := $global.CustomConfig }}
     {{ $snippet }}
 {{- end }}

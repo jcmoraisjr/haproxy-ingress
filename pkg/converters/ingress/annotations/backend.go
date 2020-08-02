@@ -741,9 +741,7 @@ func (c *updater) buildBackendSSL(d *backData) {
 	if cfg := d.mapper.Get(ingtypes.BackSSLCipherSuitesBackend); cfg.Source != nil {
 		d.backend.Server.CipherSuites = cfg.Value
 	}
-	if cfg := d.mapper.Get(ingtypes.BackSSLOptionsBackend); cfg.Source != nil {
-		d.backend.Server.Options = cfg.Value
-	}
+	d.backend.Server.Options = d.mapper.Get(ingtypes.BackSSLOptionsBackend).Value
 }
 
 func (c *updater) buildBackendSSLRedirect(d *backData) {

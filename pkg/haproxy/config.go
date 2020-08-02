@@ -258,13 +258,21 @@ func (c *config) WriteFrontendMaps() error {
 		if crtFile == "" {
 			crtFile = c.frontend.DefaultCert
 		}
-		if crtFile != c.frontend.DefaultCert || tls.CAFilename != "" || tls.Ciphers != "" || tls.CipherSuites != "" {
-			// has custom cert, tls auth, ciphers or ciphersuites
+		if crtFile != c.frontend.DefaultCert ||
+			tls.ALPN != "" ||
+			tls.CAFilename != "" ||
+			tls.Ciphers != "" ||
+			tls.CipherSuites != "" ||
+			tls.Options != "" {
+			// has custom tls config
 			//
 			// TODO optimization: distinct hostnames that shares crt, ca and crl
 			// can be combined into a single line. Note that this is usually the exception.
 			// TODO this NEED its own template file.
 			var bindConf = make([]string, 0, 20)
+			if tls.ALPN != "" {
+				bindConf = append(bindConf, "alpn", tls.ALPN)
+			}
 			if tls.CAFilename != "" {
 				bindConf = append(bindConf, "ca-file", tls.CAFilename, "verify", "optional")
 				if tls.CRLFilename != "" {
@@ -276,6 +284,9 @@ func (c *config) WriteFrontendMaps() error {
 			}
 			if tls.CipherSuites != "" {
 				bindConf = append(bindConf, "ciphersuites", tls.CipherSuites)
+			}
+			if tls.Options != "" {
+				bindConf = append(bindConf, tls.Options)
 			}
 
 			var crtListEntry string

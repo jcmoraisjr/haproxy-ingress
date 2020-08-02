@@ -211,7 +211,8 @@ The table below describes all supported configuration keys.
 | [`ssl-headers-prefix`](#auth-tls)                    | prefix                                  | Global  | `X-SSL`            |
 | [`ssl-mode-async`](#ssl-engine)                      | [true\|false]                           | Global  | `false`            |
 | [`ssl-options`](#ssl-options)                        | space-separated list                    | Global  | [see description](#ssl-options) |
-| [`ssl-options-backend`](#ssl-options)                | space-separated list                    | Global  | [see description](#ssl-options) |
+| [`ssl-options-backend`](#ssl-options)                | space-separated list                    | Backend | [see description](#ssl-options) |
+| [`ssl-options-host`](#ssl-options)                   | space-separated list                    | Host    | [see description](#ssl-options) |
 | [`ssl-passthrough`](#ssl-passthrough)                | [true\|false]                           | Host    |                    |
 | [`ssl-passthrough-http-port`](#ssl-passthrough)      | backend port                            | Host    |                    |
 | [`ssl-redirect`](#ssl-redirect)                      | [true\|false]                           | Backend | `true`             |
@@ -236,7 +237,7 @@ The table below describes all supported configuration keys.
 | [`timeout-server-fin`](#timeout)                     | time with suffix                        | Backend | `50s`              |
 | [`timeout-stop`](#timeout)                           | time with suffix                        | Global  | no timeout         |
 | [`timeout-tunnel`](#timeout)                         | time with suffix                        | Backend | `1h`               |
-| [`tls-alpn`](#tls-alpn)                              | TLS ALPN advertisement                  | Global  | `h2,http/1.1`      |
+| [`tls-alpn`](#tls-alpn)                              | TLS ALPN advertisement                  | Host    | `h2,http/1.1`      |
 | [`use-chroot`](#security)                            | [true\|false]                           | Global  | `false`            |
 | [`use-cpu-map`](#cpu-map)                            | [true\|false]                           | Global  | `true`             |
 | [`use-forwarded-proto`](#fronting-proxy-port)        | [true\|false]                           | Global  | `true`             |
@@ -1537,18 +1538,20 @@ Reference:
 |-----------------------|-----------|---------|-------|
 | `ssl-options`         | `Global`  |         |       |
 | `ssl-options-backend` | `Backend` |         | v0.9  |
+| `ssl-options-host`    | `Host`    |         | v0.11 |
 
 Define a space-separated list of options on SSL/TLS connections.
 
-* `ssl-options`: Options for frontend connections - HAProxy being the server
-* `ssl-options-backend`: Default options for backend server connections - HAProxy being the client
+* `ssl-options`: Default options for all the TLS frontend connections - HAProxy being the server
+* `ssl-options-backend`: Options for backend server connections - HAProxy being the client
+* `ssl-options-host`: Options for TLS frontend connections - HAProxy being the server. This acts as a host scoped override to options defined in `ssl-options` and supports everything that HAProxy supports in the `crt-list`.
 
-Default values:
+Default values for `ssl-options` and `ssl-options-backend`:
 
 * v0.9 and newer: `no-sslv3 no-tlsv10 no-tlsv11 no-tls-tickets`
 * up to v0.8: `no-sslv3 no-tls-tickets`
 
-Supported options:
+Supported options for `ssl-options` and `ssl-options-backend`:
 
 * `force-sslv3`: Enforces use of SSLv3 only
 * `force-tlsv10`: Enforces use of TLSv1.0 only
@@ -1560,12 +1563,16 @@ Supported options:
 * `no-tlsv11`: Disables support for TLSv1.1
 * `no-tlsv12`: Disables support for TLSv1.2
 
-New supported options since v0.9:
+New supported options since v0.9 for `ssl-options` and `ssl-options-backend`:
 
 * `force-tlsv13`: Enforces use of TLSv1.3 only
 * `no-tlsv13`: Disables support for TLSv1.3
 * `ssl-max-ver <SSLv3|TLSv1.0|TLSv1.1|TLSv1.2|TLSv1.3>`: Enforces the use of a SSL/TLS version or lower
 * `ssl-min-ver <SSLv3|TLSv1.0|TLSv1.1|TLSv1.2|TLSv1.3>`: Enforces the use of a SSL/TLS version or upper
+
+See also:
+
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.1-crt-list
 
 ---
 
@@ -1733,10 +1740,12 @@ See also:
 
 | Configuration key | Scope    | Default       | Since |
 |-------------------|----------|---------------|-------|
-| `tls-alpn`        | `Global` | `h2,http/1.1` | v0.8  |
+| `tls-alpn`        | `Host`   | `h2,http/1.1` | v0.8  |
 
 Defines the TLS ALPN extension advertisement. The default value is `h2,http/1.1` which enables
 HTTP/2 on the client side.
+
+`tls-alpn` was `Global` scope up to v0.10.
 
 See also:
 

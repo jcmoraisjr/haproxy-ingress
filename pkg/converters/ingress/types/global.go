@@ -85,7 +85,6 @@ const (
 	GlobalTimeoutClient                = "timeout-client"
 	GlobalTimeoutClientFin             = "timeout-client-fin"
 	GlobalTimeoutStop                  = "timeout-stop"
-	GlobalTLSALPN                      = "tls-alpn"
 	GlobalUseChroot                    = "use-chroot"
 	GlobalUseCpuMap                    = "use-cpu-map"
 	GlobalUseForwardedProto            = "use-forwarded-proto"

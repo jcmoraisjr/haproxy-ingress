@@ -121,7 +121,6 @@ type SSLConfig struct {
 	ALPN                string
 	BackendCiphers      string
 	BackendCipherSuites string
-	BackendOptions      string
 	Ciphers             string // TLS up to 1.2
 	CipherSuites        string // TLS 1.3
 	DHParam             DHParamConfig
@@ -352,6 +351,7 @@ type HostAliasConfig struct {
 
 // HostTLSConfig ...
 type HostTLSConfig struct {
+	ALPN             string
 	CAErrorPage      string
 	CAFilename       string
 	CAHash           string
@@ -360,6 +360,7 @@ type HostTLSConfig struct {
 	CipherSuites     string
 	CRLFilename      string
 	CRLHash          string
+	Options          string
 	TLSCommonName    string
 	TLSFilename      string
 	TLSHash          string
