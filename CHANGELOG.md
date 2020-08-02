@@ -186,6 +186,18 @@ Fixes and improvements since [v0.10-beta.1](#v010-beta1):
 * TCP Services : SSL : Optionally Verify Client [#589](https://github.com/jcmoraisjr/haproxy-ingress/pull/589) - [doc](https://haproxy-ingress.github.io/docs/configuration/command-line/#tcp-services-configmap)
 * Update haproxy from 2.0.14 to 2.0.15
 
+## v0.9.1
+
+Fixes and improvements since [v0.9](#v09):
+
+* Update HAProxy from 1.9.15 to 1.9.16
+* Add service event handler [#633](https://github.com/jcmoraisjr/haproxy-ingress/pull/633)
+* Configure default crt on ingress parsing phase [#634](https://github.com/jcmoraisjr/haproxy-ingress/pull/634)
+
+Docs:
+
+* Typo on configuration keys docs [#585](https://github.com/jcmoraisjr/haproxy-ingress/pull/585)
+
 ## v0.9
 
 ### v0.9-beta.1
