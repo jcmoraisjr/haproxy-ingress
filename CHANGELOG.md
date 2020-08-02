@@ -347,6 +347,13 @@ Fixes and improvements since [v0.9-beta.4](#v09-beta4):
 * Fix logging messages [#559](https://github.com/jcmoraisjr/haproxy-ingress/pull/559)
 * Fix server-alias on http/80 [#570](https://github.com/jcmoraisjr/haproxy-ingress/pull/570)
 
+## v0.8.5
+
+Fixes and improvements since [v0.8.4](#v084):
+
+* Add service event handler [#633](https://github.com/jcmoraisjr/haproxy-ingress/pull/633)
+* Configure default crt on ingress parsing phase [#634](https://github.com/jcmoraisjr/haproxy-ingress/pull/634)
+
 ## v0.8.4
 
 Fixes and improvements since [v0.8.3](#v083):
