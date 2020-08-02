@@ -728,7 +728,6 @@ global
     ssl-default-bind-options no-sslv3
     ssl-default-server-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-server-ciphersuites TLS_AES_128_GCM_SHA256
-    ssl-default-server-options no-sslv3
 defaults
     log global
     maxconn 2000
@@ -1554,6 +1553,18 @@ func TestInstanceFrontendCA(t *testing.T) {
 	h.TLS.TLSHash = "0"
 	h.TLS.CipherSuites = "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
 
+	h = c.config.Hosts().AcquireHost("d5.local")
+	h.AddPath(b, "/")
+	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
+	h.TLS.TLSHash = "0"
+	h.TLS.ALPN = "h2"
+
+	h = c.config.Hosts().AcquireHost("d6.local")
+	h.AddPath(b, "/")
+	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
+	h.TLS.TLSHash = "0"
+	h.TLS.Options = "ssl-min-ver TLSv1.0 ssl-max-ver TLSv1.2"
+
 	b.SSLRedirect = b.CreateConfigBool(true)
 	b.TLS.AddCertHeader = true
 	b.TLS.FingerprintLower = true
@@ -1614,6 +1625,8 @@ d1.local/ yes
 d2.local/ yes
 d3.local/ yes
 d4.local/ yes
+d5.local/ yes
+d6.local/ yes
 `)
 	c.checkMap("_front001_bind_crt.list", `
 /var/haproxy/ssl/certs/default.pem
@@ -1621,10 +1634,14 @@ d4.local/ yes
 /var/haproxy/ssl/certs/default.pem [ca-file /var/haproxy/ssl/ca/d2.local.pem verify optional crl-file /var/haproxy/ssl/ca/d2.local.crl.pem] d2.local
 /var/haproxy/ssl/certs/default.pem [ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384] d3.local
 /var/haproxy/ssl/certs/default.pem [ciphersuites TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256] d4.local
+/var/haproxy/ssl/certs/default.pem [alpn h2] d5.local
+/var/haproxy/ssl/certs/default.pem [ssl-min-ver TLSv1.0 ssl-max-ver TLSv1.2] d6.local
 `)
 	c.checkMap("_front001_host.map", `
 d3.local/ d_app_8080
 d4.local/ d_app_8080
+d5.local/ d_app_8080
+d6.local/ d_app_8080
 `)
 	c.checkMap("_front001_sni.map", `
 d1.local/ d_app_8080
@@ -2129,7 +2146,6 @@ global
     ssl-default-bind-options no-sslv3
     ssl-default-server-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-server-ciphersuites TLS_AES_128_GCM_SHA256
-    ssl-default-server-options no-sslv3
 <<defaults>>
 backend d1_app_8080
     mode http
@@ -2951,7 +2967,6 @@ func (c *testConfig) configGlobal(global *hatypes.Global) {
 	global.SSL.ALPN = "h2,http/1.1"
 	global.SSL.BackendCiphers = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256"
 	global.SSL.BackendCipherSuites = "TLS_AES_128_GCM_SHA256"
-	global.SSL.BackendOptions = "no-sslv3"
 	global.SSL.Ciphers = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256"
 	global.SSL.CipherSuites = "TLS_AES_128_GCM_SHA256"
 	global.SSL.DHParam.Filename = "/var/haproxy/tls/dhparam.pem"
@@ -3069,8 +3084,7 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
     ssl-default-bind-options no-sslv3
     ssl-default-server-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
-    ssl-default-server-ciphersuites TLS_AES_128_GCM_SHA256
-    ssl-default-server-options no-sslv3`,
+    ssl-default-server-ciphersuites TLS_AES_128_GCM_SHA256`,
 		"<<defaults>>": `defaults
     log global
     maxconn 2000

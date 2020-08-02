@@ -33,6 +33,8 @@ func createDefaults() map[string]string {
 		types.HostAuthTLSStrict:   "false",
 		types.HostSSLCiphers:      defaultSSLCiphers,
 		types.HostSSLCipherSuites: defaultSSLCipherSuites,
+		types.HostSSLOptionsHost:  "",
+		types.HostTLSALPN:         "h2,http/1.1",
 		//
 		types.BackBackendServerNaming:    "sequence",
 		types.BackBackendServerSlotsInc:  "1",
@@ -94,7 +96,6 @@ func createDefaults() map[string]string {
 		types.GlobalTimeoutClient:                "50s",
 		types.GlobalTimeoutClientFin:             "50s",
 		types.GlobalTimeoutStop:                  "10m",
-		types.GlobalTLSALPN:                      "h2,http/1.1",
 		types.GlobalUseCpuMap:                    "true",
 		types.GlobalUseForwardedProto:            "true",
 		types.GlobalUseHTX:                       "true",

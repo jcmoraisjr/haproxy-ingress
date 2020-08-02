@@ -105,4 +105,8 @@ func (c *updater) buildHostTLSConfig(d *hostData) {
 	if cfg := d.mapper.Get(ingtypes.HostSSLCipherSuites); cfg.Source != nil {
 		d.host.TLS.CipherSuites = cfg.Value
 	}
+	if cfg := d.mapper.Get(ingtypes.HostTLSALPN); cfg.Source != nil {
+		d.host.TLS.ALPN = cfg.Value
+	}
+	d.host.TLS.Options = d.mapper.Get(ingtypes.HostSSLOptionsHost).Value
 }

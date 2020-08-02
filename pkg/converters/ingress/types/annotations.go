@@ -28,8 +28,10 @@ const (
 	HostServerAliasRegex       = "server-alias-regex"
 	HostSSLCiphers             = "ssl-ciphers"
 	HostSSLCipherSuites        = "ssl-cipher-suites"
+	HostSSLOptionsHost         = "ssl-options-host"
 	HostSSLPassthrough         = "ssl-passthrough"
 	HostSSLPassthroughHTTPPort = "ssl-passthrough-http-port"
+	HostTLSALPN                = "tls-alpn"
 	HostVarNamespace           = "var-namespace"
 )
 
@@ -46,8 +48,10 @@ var (
 		HostServerAliasRegex:       {},
 		HostSSLCiphers:             {},
 		HostSSLCipherSuites:        {},
+		HostSSLOptionsHost:         {},
 		HostSSLPassthrough:         {},
 		HostSSLPassthroughHTTPPort: {},
+		HostTLSALPN:                {},
 		HostVarNamespace:           {},
 	}
 )

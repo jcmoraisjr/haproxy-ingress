@@ -158,6 +158,46 @@ func TestTLSConfig(t *testing.T) {
 				CipherSuites: "some-cipher-suite-2:some-cipher-suite-3",
 			},
 		},
+		// 14
+		{
+			annDefault: map[string]string{
+				ingtypes.HostTLSALPN: "h2,http/1.1",
+			},
+			expected: hatypes.HostTLSConfig{},
+		},
+		// 15
+		{
+			annDefault: map[string]string{
+				ingtypes.HostTLSALPN: "h2,http/1.1",
+			},
+			ann: map[string]string{
+				ingtypes.HostTLSALPN: "h2",
+			},
+			expected: hatypes.HostTLSConfig{
+				ALPN: "h2",
+			},
+		},
+		// 16
+		{
+			annDefault: map[string]string{
+				ingtypes.HostSSLOptionsHost: "ssl-min-ver TLSv1.2",
+			},
+			expected: hatypes.HostTLSConfig{
+				Options: "ssl-min-ver TLSv1.2",
+			},
+		},
+		// 17
+		{
+			annDefault: map[string]string{
+				ingtypes.HostSSLOptionsHost: "ssl-min-ver TLSv1.2",
+			},
+			ann: map[string]string{
+				ingtypes.HostSSLOptionsHost: "ssl-min-ver TLSv1.0 ssl-max-ver TLSv1.2",
+			},
+			expected: hatypes.HostTLSConfig{
+				Options: "ssl-min-ver TLSv1.0 ssl-max-ver TLSv1.2",
+			},
+		},
 	}
 	source := &Source{Namespace: "system", Name: "ing1", Type: "ingress"}
 	for i, test := range testCases {
