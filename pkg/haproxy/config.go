@@ -165,7 +165,7 @@ func (c *config) WriteFrontendMaps() error {
 		CrtList:       mapBuilder.AddMap(mapsDir + "/_front001_bind_crt.list"),
 		UseServerList: mapBuilder.AddMap(mapsDir + "/_front001_use_server.list"),
 	}
-	fmaps.CrtList.AppendItem(c.frontend.DefaultCert)
+	fmaps.CrtList.AppendItem(c.frontend.DefaultCrtFile)
 	// Some maps use yes/no answers instead of a list with found/missing keys
 	// This approach avoid overlap:
 	//  1. match with path_beg/map_beg, /path has a feature and a declared /path/sub doesn't have
@@ -256,9 +256,9 @@ func (c *config) WriteFrontendMaps() error {
 		tls := host.TLS
 		crtFile := tls.TLSFilename
 		if crtFile == "" {
-			crtFile = c.frontend.DefaultCert
+			crtFile = c.frontend.DefaultCrtFile
 		}
-		if crtFile != c.frontend.DefaultCert ||
+		if crtFile != c.frontend.DefaultCrtFile ||
 			tls.ALPN != "" ||
 			tls.CAFilename != "" ||
 			tls.Ciphers != "" ||

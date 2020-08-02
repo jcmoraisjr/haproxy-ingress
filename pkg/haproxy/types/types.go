@@ -292,7 +292,9 @@ type Frontend struct {
 	BindSocket  string
 	BindID      int
 	AcceptProxy bool
-	DefaultCert string
+	//
+	DefaultCrtFile string
+	DefaultCrtHash string
 }
 
 // Hosts ...

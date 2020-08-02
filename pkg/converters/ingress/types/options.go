@@ -28,7 +28,8 @@ type ConverterOptions struct {
 	Tracker          convtypes.Tracker
 	DefaultConfig    func() map[string]string
 	DefaultBackend   string
-	DefaultSSLFile   convtypes.CrtFile
+	DefaultCrtSecret string
+	FakeCrtFile      convtypes.CrtFile
 	FakeCAFile       convtypes.CrtFile
 	AnnotationPrefix string
 	AcmeTrackTLSAnn  bool
