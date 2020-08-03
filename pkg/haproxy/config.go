@@ -316,7 +316,7 @@ func (c *config) WriteBackendMaps() error {
 		return nil
 	}
 	mapBuilder := hatypes.CreateMaps()
-	for _, backend := range c.backends.Items() {
+	for _, backend := range c.backends.ItemsAdd() {
 		if backend.NeedACL() {
 			mapsPrefix := c.options.mapsDir + "/_back_" + backend.ID
 			pathsMap := mapBuilder.AddMap(mapsPrefix + "_idpath.map")
