@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -51,6 +52,7 @@ import (
 const dhparamFilename = "dhparam.pem"
 
 type k8scache struct {
+	ctx                    context.Context
 	client                 k8s.Interface
 	listers                *listers
 	controller             *controller.GenericController
@@ -126,6 +128,7 @@ func createCache(
 		Component: "ingress-controller",
 	})
 	cache := &k8scache{
+		ctx:                    context.Background(),
 		client:                 client,
 		controller:             controller,
 		tracker:                tracker,
@@ -154,7 +157,7 @@ func (c *k8scache) GetIngressPodName() (namespace, podname string, err error) {
 	if namespace == "" || podname == "" {
 		return "", "", fmt.Errorf("missing POD_NAMESPACE or POD_NAME envvar")
 	}
-	if pod, _ := c.client.CoreV1().Pods(namespace).Get(podname, metav1.GetOptions{}); pod == nil {
+	if pod, _ := c.client.CoreV1().Pods(namespace).Get(c.ctx, podname, metav1.GetOptions{}); pod == nil {
 		return "", "", fmt.Errorf("ingress controller pod was not found: %s/%s", namespace, podname)
 	}
 	return namespace, podname, nil
@@ -204,7 +207,7 @@ func (c *k8scache) GetSecret(secretName string) (*api.Secret, error) {
 	if c.listers.running {
 		return c.listers.secretLister.Secrets(namespace).Get(name)
 	}
-	return c.client.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
+	return c.client.CoreV1().Secrets(namespace).Get(c.ctx, name, metav1.GetOptions{})
 }
 
 func (c *k8scache) GetConfigMap(configMapName string) (*api.ConfigMap, error) {
@@ -275,7 +278,7 @@ func (c *k8scache) GetPod(podName string) (*api.Pod, error) {
 		return c.listers.podLister.Pods(namespace).Get(name)
 	}
 	// A fallback just in case --disable-pod-list is configured.
-	return c.client.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
+	return c.client.CoreV1().Pods(namespace).Get(c.ctx, name, metav1.GetOptions{})
 }
 
 func (c *k8scache) buildSecretName(defaultNamespace, secretName string) (string, string, error) {
@@ -524,9 +527,9 @@ func (c *k8scache) SetToken(domain string, uri, token string) error {
 func (c *k8scache) CreateOrUpdateSecret(secret *api.Secret) (err error) {
 	cli := c.client.CoreV1().Secrets(secret.Namespace)
 	if _, err := c.listers.secretLister.Secrets(secret.Namespace).Get(secret.Name); err != nil {
-		_, err = cli.Create(secret)
+		_, err = cli.Create(c.ctx, secret, metav1.CreateOptions{})
 	} else {
-		_, err = cli.Update(secret)
+		_, err = cli.Update(c.ctx, secret, metav1.UpdateOptions{})
 	}
 	return err
 }
@@ -534,9 +537,9 @@ func (c *k8scache) CreateOrUpdateSecret(secret *api.Secret) (err error) {
 func (c *k8scache) CreateOrUpdateConfigMap(cm *api.ConfigMap) (err error) {
 	cli := c.client.CoreV1().ConfigMaps(cm.Namespace)
 	if _, err := c.listers.configMapLister.ConfigMaps(cm.Namespace).Get(cm.Name); err != nil {
-		_, err = cli.Create(cm)
+		_, err = cli.Create(c.ctx, cm, metav1.CreateOptions{})
 	} else {
-		_, err = cli.Update(cm)
+		_, err = cli.Update(c.ctx, cm, metav1.UpdateOptions{})
 	}
 	return err
 }

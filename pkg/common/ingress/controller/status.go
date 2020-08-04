@@ -60,7 +60,8 @@ type StatusSync interface {
 // If the controller is running with the flag --publish-service (with a valid service)
 // the IP address behind the service is used, if not the source is the IP/s of the node/s
 type statusSync struct {
-	ic *GenericController
+	ctx context.Context
+	ic  *GenericController
 	// pod contains runtime information about this pod
 	pod *k8s.PodInfo
 	//
@@ -156,6 +157,7 @@ func NewStatusSyncer(ic *GenericController) StatusSync {
 	}
 
 	st := statusSync{
+		ctx: context.Background(),
 		pod: pod,
 		ic:  ic,
 		// StatusConfig: config,
@@ -215,7 +217,7 @@ func NewStatusSyncer(ic *GenericController) StatusSync {
 func (s *statusSync) runningAddresses() ([]string, error) {
 	if s.ic.cfg.PublishService != "" {
 		ns, name, _ := k8s.ParseNameNS(s.ic.cfg.PublishService)
-		svc, err := s.ic.cfg.Client.CoreV1().Services(ns).Get(name, metav1.GetOptions{})
+		svc, err := s.ic.cfg.Client.CoreV1().Services(ns).Get(s.ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -236,7 +238,7 @@ func (s *statusSync) runningAddresses() ([]string, error) {
 	}
 
 	// get information about all the pods running the ingress controller
-	pods, err := s.ic.cfg.Client.CoreV1().Pods(s.pod.Namespace).List(metav1.ListOptions{
+	pods, err := s.ic.cfg.Client.CoreV1().Pods(s.pod.Namespace).List(s.ctx, metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(s.pod.Labels).String(),
 	})
 	if err != nil {
@@ -254,7 +256,7 @@ func (s *statusSync) runningAddresses() ([]string, error) {
 }
 
 func (s *statusSync) isRunningMultiplePods() bool {
-	pods, err := s.ic.cfg.Client.CoreV1().Pods(s.pod.Namespace).List(metav1.ListOptions{
+	pods, err := s.ic.cfg.Client.CoreV1().Pods(s.pod.Namespace).List(s.ctx, metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(s.pod.Labels).String(),
 	})
 	if err != nil {
@@ -316,7 +318,7 @@ func (s *statusSync) updateStatus(newIngressPoint []apiv1.LoadBalancerIngress) e
 		} else {
 			callback = func(*networking.Ingress) []apiv1.LoadBalancerIngress { return nil }
 		}
-		batch.Queue(runUpdate(ing, newIngressPoint, s.ic.cfg.Client, callback))
+		batch.Queue(runUpdate(s.ctx, ing, newIngressPoint, s.ic.cfg.Client, callback))
 	}
 
 	batch.QueueComplete()
@@ -325,7 +327,7 @@ func (s *statusSync) updateStatus(newIngressPoint []apiv1.LoadBalancerIngress) e
 	return nil
 }
 
-func runUpdate(ing *networking.Ingress, status []apiv1.LoadBalancerIngress,
+func runUpdate(ctx context.Context, ing *networking.Ingress, status []apiv1.LoadBalancerIngress,
 	client clientset.Interface,
 	statusFunc func(*networking.Ingress) []apiv1.LoadBalancerIngress) pool.WorkFunc {
 	return func(wu pool.WorkUnit) (interface{}, error) {
@@ -350,14 +352,14 @@ func runUpdate(ing *networking.Ingress, status []apiv1.LoadBalancerIngress,
 
 		ingClient := client.NetworkingV1beta1().Ingresses(ing.Namespace)
 
-		currIng, err := ingClient.Get(ing.Name, metav1.GetOptions{})
+		currIng, err := ingClient.Get(ctx, ing.Name, metav1.GetOptions{})
 		if err != nil {
 			return nil, errors.Wrap(err, fmt.Sprintf("unexpected error searching Ingress %v/%v", ing.Namespace, ing.Name))
 		}
 
 		glog.Infof("updating Ingress %v/%v status to %v", currIng.Namespace, currIng.Name, addrs)
 		currIng.Status.LoadBalancer.Ingress = addrs
-		_, err = ingClient.UpdateStatus(currIng)
+		_, err = ingClient.UpdateStatus(ctx, currIng, metav1.UpdateOptions{})
 		if err != nil {
 			glog.Warningf("error updating ingress rule: %v", err)
 		}
