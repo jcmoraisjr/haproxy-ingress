@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -201,13 +202,15 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		handleFatalInitError(err)
 	}
 
+	ctx := context.Background()
+
 	if *defaultSvc != "" {
 		ns, name, err := k8s.ParseNameNS(*defaultSvc)
 		if err != nil {
 			glog.Fatalf("invalid format for service %v: %v", *defaultSvc, err)
 		}
 
-		_, err = kubeClient.CoreV1().Services(ns).Get(name, metav1.GetOptions{})
+		_, err = kubeClient.CoreV1().Services(ns).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			if strings.Contains(err.Error(), "cannot get services in the namespace") {
 				glog.Fatalf("✖ It seems the cluster it is running with Authorization enabled (like RBAC) and there is no permissions for the ingress controller. Please check the configuration")
@@ -223,7 +226,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 			glog.Fatalf("invalid service format: %v", err)
 		}
 
-		svc, err := kubeClient.CoreV1().Services(ns).Get(name, metav1.GetOptions{})
+		svc, err := kubeClient.CoreV1().Services(ns).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			glog.Fatalf("unexpected error getting information about service %v: %v", *publishSvc, err)
 		}
@@ -241,12 +244,12 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 	}
 
 	if *watchNamespace != "" {
-		_, err = kubeClient.NetworkingV1beta1().Ingresses(*watchNamespace).List(metav1.ListOptions{Limit: 1})
+		_, err = kubeClient.NetworkingV1beta1().Ingresses(*watchNamespace).List(ctx, metav1.ListOptions{Limit: 1})
 		if err != nil {
 			glog.Fatalf("no watchNamespace with name %v found: %v", *watchNamespace, err)
 		}
 	} else {
-		_, err = kubeClient.CoreV1().Services("default").Get("kubernetes", metav1.GetOptions{})
+		_, err = kubeClient.CoreV1().Services("default").Get(ctx, "kubernetes", metav1.GetOptions{})
 		if err != nil {
 			glog.Fatalf("error connecting to the apiserver: %v", err)
 		}
