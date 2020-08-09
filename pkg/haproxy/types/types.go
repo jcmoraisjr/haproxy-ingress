@@ -267,7 +267,6 @@ type HostsMaps struct {
 // FrontendMaps ...
 type FrontendMaps struct {
 	HTTPFrontsMap     *HostsMap
-	HTTPRootRedirMap  *HostsMap
 	HTTPSRedirMap     *HostsMap
 	SSLPassthroughMap *HostsMap
 	VarNamespaceMap   *HostsMap

@@ -1979,7 +1979,7 @@ frontend _front_http
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request redirect scheme https if { var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map) yes }
     http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
-    http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/_global_http_root_redir.map)
+    http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/_front001_root_redir.map)
     http-request redirect location %[var(req.rootredir)] if { path / } { var(req.rootredir) -m found }
     <<http-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map)
@@ -2006,7 +2006,7 @@ d1.local/ no
 d2.local/app2 yes
 d2.local/app1 yes
 `)
-	c.checkMap("_global_http_root_redir.map", `
+	c.checkMap("_front001_root_redir.map", `
 d1.local /app
 d2.local /app1
 `)
@@ -2733,8 +2733,8 @@ frontend _front_http
     http-request redirect scheme https if { var(req.redir) yes }
     http-request redirect scheme https if !{ var(req.redir) -m found } { var(req.base),map_reg(/etc/haproxy/maps/_global_https_redir_regex.map) yes }
     http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
-    http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/_global_http_root_redir.map)
-    http-request set-var(req.rootredir) var(req.host),map_reg(/etc/haproxy/maps/_global_http_root_redir_regex.map) if !{ var(req.rootredir) -m found }
+    http-request set-var(req.rootredir) var(req.host),map(/etc/haproxy/maps/_front001_root_redir.map)
+    http-request set-var(req.rootredir) var(req.host),map_reg(/etc/haproxy/maps/_front001_root_redir_regex.map) if !{ var(req.rootredir) -m found }
     http-request redirect location %[var(req.rootredir)] if { path / } { var(req.rootredir) -m found }
     <<http-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map)
@@ -2796,9 +2796,9 @@ d1.local/ yes
 ^[^.]+\.d2\.local/ no
 ^[^.]+\.sub\.d1\.local/ yes
 `)
-	c.checkMap("_global_http_root_redir.map", `
+	c.checkMap("_front001_root_redir.map", `
 `)
-	c.checkMap("_global_http_root_redir_regex.map", `
+	c.checkMap("_front001_root_redir_regex.map", `
 ^[^.]+\.d2\.local$ /app
 `)
 	c.checkMap("_front001_host.map", `

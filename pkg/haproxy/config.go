@@ -149,7 +149,6 @@ func (c *config) WriteFrontendMaps() error {
 	mapsDir := c.options.mapsDir
 	fmaps := &hatypes.FrontendMaps{
 		HTTPFrontsMap:     mapBuilder.AddMap(mapsDir + "/_global_http_front.map"),
-		HTTPRootRedirMap:  mapBuilder.AddMap(mapsDir + "/_global_http_root_redir.map"),
 		HTTPSRedirMap:     mapBuilder.AddMap(mapsDir + "/_global_https_redir.map"),
 		SSLPassthroughMap: mapBuilder.AddMap(mapsDir + "/_global_sslpassthrough.map"),
 		VarNamespaceMap:   mapBuilder.AddMap(mapsDir + "/_global_k8s_ns.map"),
@@ -248,7 +247,6 @@ func (c *config) WriteFrontendMaps() error {
 		// TODO wildcard/alias/alias-regex hostname can overlap
 		// a configured domain which doesn't have rootRedirect
 		if host.RootRedirect != "" {
-			fmaps.HTTPRootRedirMap.AppendHostname(host.Hostname, host.RootRedirect)
 			fmaps.RootRedirMap.AppendHostname(host.Hostname, host.RootRedirect)
 		}
 		fmaps.UseServerList.AppendHostname(host.Hostname, "")

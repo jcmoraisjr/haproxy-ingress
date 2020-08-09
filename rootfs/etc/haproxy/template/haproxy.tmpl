@@ -834,13 +834,13 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $fmaps.HTTPRootRedirMap.HasHost }}
+{{- if $fmaps.RootRedirMap.HasHost }}
     http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
     http-request set-var(req.rootredir)
-        {{- "" }} var(req.host),map({{ $fmaps.HTTPRootRedirMap.MatchFile }})
-{{- if $fmaps.HTTPRootRedirMap.HasRegex }}
+        {{- "" }} var(req.host),map({{ $fmaps.RootRedirMap.MatchFile }})
+{{- if $fmaps.RootRedirMap.HasRegex }}
     http-request set-var(req.rootredir)
-        {{- "" }} var(req.host),map_reg({{ $fmaps.HTTPRootRedirMap.RegexFile }}) if !{ var(req.rootredir) -m found }
+        {{- "" }} var(req.host),map_reg({{ $fmaps.RootRedirMap.RegexFile }}) if !{ var(req.rootredir) -m found }
 {{- end }}
     http-request redirect location %[var(req.rootredir)]
         {{- "" }} if{{ if $acmeexclusive }} !acme-challenge{{ end }}
