@@ -139,11 +139,6 @@ func (h *Hosts) HasSSLPassthrough() bool {
 	return h.sslPassthroughCount > 0
 }
 
-// HasHTTP ...
-func (h *Hosts) HasHTTP() bool {
-	return len(h.items) > h.sslPassthroughCount
-}
-
 // HasTLSAuth ...
 func (h *Hosts) HasTLSAuth() bool {
 	for _, host := range h.items {

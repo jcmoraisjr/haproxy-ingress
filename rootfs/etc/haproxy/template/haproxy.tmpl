@@ -732,20 +732,8 @@ listen _front__tls
 {{- if $hosts.HasSSLPassthrough }}
     use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
 {{- end }}
-{{- if $hosts.HasHTTP }}
-    ## {{ $frontend.BindName }}
-    use-server _server{{ $frontend.BindName }} if { req.ssl_sni -i -f {{ $fmaps.UseServerList.MatchFile }} }
-    server _server{{ $frontend.BindName }} {{ $frontend.BindSocket }} send-proxy-v2 weight 0
-{{- end }}
-
-{{- /*------------------------------------*/}}
 {{- if $fmaps.SSLPassthroughMap.HasRegex }}
-    use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
-{{- end }}
-{{- if $fmaps.UseServerList.HasRegex }}
-    ## {{ $frontend.BindName }} wildcard
-    use-server _server{{ $frontend.BindName }}_wildcard if { req.ssl_sni -i -m reg -f {{ $fmaps.UseServerList.RegexFile }} }
-    server _server{{ $frontend.BindName }}_wildcard {{ $frontend.BindSocket }} send-proxy-v2 weight 0
+    use_backend %[var(req.sslpassregback)] if { var(req.sslpassregback) -m found }
 {{- end }}
 
 {{- /*------------------------------------*/}}

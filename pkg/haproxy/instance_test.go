@@ -2775,14 +2775,6 @@ frontend _front001
 <<support>>
 `)
 
-	c.checkMap("_front001_use_server.list", `
-d1.local
-`)
-	c.checkMap("_front001_use_server_regex.list", `
-^[^.]+\.app\.d1\.local$
-^[^.]+\.d2\.local$
-^[^.]+\.sub\.d1\.local$
-`)
 	c.checkMap("_global_http_front.map", `
 `)
 	c.checkMap("_global_http_front_regex.map", `

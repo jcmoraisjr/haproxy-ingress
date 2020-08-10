@@ -161,8 +161,7 @@ func (c *config) WriteFrontendMaps() error {
 		TLSNoCrtErrorList:          mapBuilder.AddMap(mapsDir + "/_front001_no_crt.list"),
 		TLSNoCrtErrorPagesMap:      mapBuilder.AddMap(mapsDir + "/_front001_no_crt_redir.map"),
 		//
-		CrtList:       mapBuilder.AddMap(mapsDir + "/_front001_bind_crt.list"),
-		UseServerList: mapBuilder.AddMap(mapsDir + "/_front001_use_server.list"),
+		CrtList: mapBuilder.AddMap(mapsDir + "/_front001_bind_crt.list"),
 	}
 	fmaps.CrtList.AppendItem(c.frontend.DefaultCrtFile)
 	// Some maps use yes/no answers instead of a list with found/missing keys
@@ -249,7 +248,6 @@ func (c *config) WriteFrontendMaps() error {
 		if host.RootRedirect != "" {
 			fmaps.RootRedirMap.AppendHostname(host.Hostname, host.RootRedirect)
 		}
-		fmaps.UseServerList.AppendHostname(host.Hostname, "")
 		//
 		tls := host.TLS
 		crtFile := tls.TLSFilename

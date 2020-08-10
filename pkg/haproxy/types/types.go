@@ -279,8 +279,7 @@ type FrontendMaps struct {
 	TLSNoCrtErrorList          *HostsMap
 	TLSNoCrtErrorPagesMap      *HostsMap
 	//
-	CrtList       *HostsMap
-	UseServerList *HostsMap
+	CrtList *HostsMap
 }
 
 // Frontend ...
