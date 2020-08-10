@@ -2073,7 +2073,7 @@ frontend _front_http
     http-request set-var(req.backend) var(req.base),map_reg(/etc/haproxy/maps/_global_http_front_regex.map) if !{ var(req.backend) -m found }
     use_backend %[var(req.backend)] if { var(req.backend) -m found }
     default_backend _error404
-frontend _front001
+frontend _front_https
     mode http
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
@@ -3114,7 +3114,7 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     <<http-headers>>
     http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map)
     use_backend %[var(req.backend)] if { var(req.backend) -m found }`,
-		"<<frontend-https>>": `frontend _front001
+		"<<frontend-https>>": `frontend _front_https
     mode http
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/),map_beg(/etc/haproxy/maps/_front001_host.map)

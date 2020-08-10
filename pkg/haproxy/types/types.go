@@ -284,7 +284,6 @@ type FrontendMaps struct {
 
 // Frontend ...
 type Frontend struct {
-	Name        string
 	Maps        *FrontendMaps
 	BindName    string
 	BindSocket  string

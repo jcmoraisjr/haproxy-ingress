@@ -72,7 +72,7 @@ func createConfig(options options) *config {
 		options:     options,
 		acmeData:    &hatypes.AcmeData{},
 		global:      &hatypes.Global{},
-		frontend:    &hatypes.Frontend{Name: "_front001"},
+		frontend:    &hatypes.Frontend{},
 		hosts:       hatypes.CreateHosts(),
 		backends:    hatypes.CreateBackends(options.shardCount),
 		tcpbackends: hatypes.CreateTCPBackends(),
@@ -92,7 +92,7 @@ func (c *config) SyncConfig() {
 	if c.hosts.HasSSLPassthrough() {
 		// using ssl-passthrough config, so need a `mode tcp`
 		// frontend with `inspect-delay` and `req.ssl_sni`
-		bindName := fmt.Sprintf("%s_socket", c.frontend.Name)
+		bindName := "_https_socket"
 		c.frontend.BindName = bindName
 		c.frontend.BindSocket = fmt.Sprintf("unix@/var/run/%s.sock", bindName)
 		c.frontend.AcceptProxy = true
