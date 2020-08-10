@@ -148,20 +148,21 @@ func (c *config) WriteFrontendMaps() error {
 	mapBuilder := hatypes.CreateMaps()
 	mapsDir := c.options.mapsDir
 	fmaps := &hatypes.FrontendMaps{
-		HTTPFrontsMap:     mapBuilder.AddMap(mapsDir + "/_global_http_front.map"),
-		HTTPSRedirMap:     mapBuilder.AddMap(mapsDir + "/_global_https_redir.map"),
-		SSLPassthroughMap: mapBuilder.AddMap(mapsDir + "/_global_sslpassthrough.map"),
-		VarNamespaceMap:   mapBuilder.AddMap(mapsDir + "/_global_k8s_ns.map"),
+		HTTPHostMap:  mapBuilder.AddMap(mapsDir + "/_front_http_host.map"),
+		HTTPSHostMap: mapBuilder.AddMap(mapsDir + "/_front_https_host.map"),
+		HTTPSSNIMap:  mapBuilder.AddMap(mapsDir + "/_front_https_sni.map"),
 		//
-		HostBackendsMap:            mapBuilder.AddMap(mapsDir + "/_front001_host.map"),
-		RootRedirMap:               mapBuilder.AddMap(mapsDir + "/_front001_root_redir.map"),
-		SNIBackendsMap:             mapBuilder.AddMap(mapsDir + "/_front001_sni.map"),
-		TLSInvalidCrtErrorList:     mapBuilder.AddMap(mapsDir + "/_front001_inv_crt.list"),
-		TLSInvalidCrtErrorPagesMap: mapBuilder.AddMap(mapsDir + "/_front001_inv_crt_redir.map"),
-		TLSNoCrtErrorList:          mapBuilder.AddMap(mapsDir + "/_front001_no_crt.list"),
-		TLSNoCrtErrorPagesMap:      mapBuilder.AddMap(mapsDir + "/_front001_no_crt_redir.map"),
+		RedirToHTTPSMap:   mapBuilder.AddMap(mapsDir + "/_front_redir_tohttps.map"),
+		RedirFromRootMap:  mapBuilder.AddMap(mapsDir + "/_front_redir_fromroot.map"),
+		SSLPassthroughMap: mapBuilder.AddMap(mapsDir + "/_front_sslpassthrough.map"),
+		VarNamespaceMap:   mapBuilder.AddMap(mapsDir + "/_front_namespace.map"),
 		//
-		CrtList: mapBuilder.AddMap(mapsDir + "/_front001_bind_crt.list"),
+		TLSInvalidCrtHostsList: mapBuilder.AddMap(mapsDir + "/_front_tls_invalidcrt_hosts.list"),
+		TLSInvalidCrtPagesMap:  mapBuilder.AddMap(mapsDir + "/_front_tls_invalidcrt_pages.map"),
+		TLSMissingCrtHostsList: mapBuilder.AddMap(mapsDir + "/_front_tls_missingcrt_hosts.list"),
+		TLSMissingCrtPagesMap:  mapBuilder.AddMap(mapsDir + "/_front_tls_missingcrt_pages.map"),
+		//
+		CrtList: mapBuilder.AddMap(mapsDir + "/_front_bind_crt.list"),
 	}
 	fmaps.CrtList.AppendItem(c.frontend.DefaultCrtFile)
 	// Some maps use yes/no answers instead of a list with found/missing keys
@@ -180,9 +181,9 @@ func (c *config) WriteFrontendMaps() error {
 				continue
 			}
 			fmaps.SSLPassthroughMap.AppendHostname(host.Hostname, rootPath.Backend.ID)
-			fmaps.HTTPSRedirMap.AppendHostname(host.Hostname+"/", yesno[host.HTTPPassthroughBackend == ""])
+			fmaps.RedirToHTTPSMap.AppendHostname(host.Hostname+"/", yesno[host.HTTPPassthroughBackend == ""])
 			if host.HTTPPassthroughBackend != "" {
-				fmaps.HTTPFrontsMap.AppendHostname(host.Hostname+"/", host.HTTPPassthroughBackend)
+				fmaps.HTTPHostMap.AppendHostname(host.Hostname+"/", host.HTTPPassthroughBackend)
 			}
 			// ssl-passthrough is as simple as that, jump to the next host
 			continue
@@ -198,7 +199,7 @@ func (c *config) WriteFrontendMaps() error {
 				hasSSLRedirect = backend.HasSSLRedirectHostpath(base)
 			}
 			// TODO use only root path if all uri has the same conf
-			fmaps.HTTPSRedirMap.AppendHostname(host.Hostname+path.Path, yesno[hasSSLRedirect])
+			fmaps.RedirToHTTPSMap.AppendHostname(host.Hostname+path.Path, yesno[hasSSLRedirect])
 			var aliasName, aliasRegex string
 			// TODO warn in logs about ignoring alias name due to hostname colision
 			if host.Alias.AliasName != "" && c.hosts.FindHost(host.Alias.AliasName) == nil {
@@ -209,18 +210,18 @@ func (c *config) WriteFrontendMaps() error {
 			}
 			backendID := path.Backend.ID
 			if host.HasTLSAuth() {
-				fmaps.SNIBackendsMap.AppendHostname(base, backendID)
-				fmaps.SNIBackendsMap.AppendAliasName(aliasName, backendID)
-				fmaps.SNIBackendsMap.AppendAliasRegex(aliasRegex, backendID)
+				fmaps.HTTPSSNIMap.AppendHostname(base, backendID)
+				fmaps.HTTPSSNIMap.AppendAliasName(aliasName, backendID)
+				fmaps.HTTPSSNIMap.AppendAliasRegex(aliasRegex, backendID)
 			} else {
-				fmaps.HostBackendsMap.AppendHostname(base, backendID)
-				fmaps.HostBackendsMap.AppendAliasName(aliasName, backendID)
-				fmaps.HostBackendsMap.AppendAliasRegex(aliasRegex, backendID)
+				fmaps.HTTPSHostMap.AppendHostname(base, backendID)
+				fmaps.HTTPSHostMap.AppendAliasName(aliasName, backendID)
+				fmaps.HTTPSHostMap.AppendAliasRegex(aliasRegex, backendID)
 			}
 			if !hasSSLRedirect || c.global.Bind.HasFrontingProxy() {
-				fmaps.HTTPFrontsMap.AppendHostname(base, backendID)
-				fmaps.HTTPFrontsMap.AppendAliasName(aliasName, backendID)
-				fmaps.HTTPFrontsMap.AppendAliasRegex(aliasRegex, backendID)
+				fmaps.HTTPHostMap.AppendHostname(base, backendID)
+				fmaps.HTTPHostMap.AppendAliasName(aliasName, backendID)
+				fmaps.HTTPHostMap.AppendAliasRegex(aliasRegex, backendID)
 			}
 			var ns string
 			if host.VarNamespace {
@@ -231,22 +232,22 @@ func (c *config) WriteFrontendMaps() error {
 			fmaps.VarNamespaceMap.AppendHostname(base, ns)
 		}
 		if host.HasTLSAuth() {
-			fmaps.TLSInvalidCrtErrorList.AppendHostname(host.Hostname, "")
+			fmaps.TLSInvalidCrtHostsList.AppendHostname(host.Hostname, "")
 			if !host.TLS.CAVerifyOptional {
-				fmaps.TLSNoCrtErrorList.AppendHostname(host.Hostname, "")
+				fmaps.TLSMissingCrtHostsList.AppendHostname(host.Hostname, "")
 			}
 			page := host.TLS.CAErrorPage
 			if page != "" {
-				fmaps.TLSInvalidCrtErrorPagesMap.AppendHostname(host.Hostname, page)
+				fmaps.TLSInvalidCrtPagesMap.AppendHostname(host.Hostname, page)
 				if !host.TLS.CAVerifyOptional {
-					fmaps.TLSNoCrtErrorPagesMap.AppendHostname(host.Hostname, page)
+					fmaps.TLSMissingCrtPagesMap.AppendHostname(host.Hostname, page)
 				}
 			}
 		}
 		// TODO wildcard/alias/alias-regex hostname can overlap
 		// a configured domain which doesn't have rootRedirect
 		if host.RootRedirect != "" {
-			fmaps.RootRedirMap.AppendHostname(host.Hostname, host.RootRedirect)
+			fmaps.RedirFromRootMap.AppendHostname(host.Hostname, host.RootRedirect)
 		}
 		//
 		tls := host.TLS

@@ -797,9 +797,9 @@ frontend _front_http
 {{- /*------------------------------------*/}}
 {{- $acmeexclusive := and $global.Acme.Enabled (not $global.Acme.Shared) }}
 {{- if not $frontingIgnoreProto }}
-{{- if $fmaps.HTTPSRedirMap.HasRegex }}
+{{- if $fmaps.RedirToHTTPSMap.HasRegex }}
     http-request set-var(req.redir)
-        {{- "" }} var(req.base),map_beg({{ $fmaps.HTTPSRedirMap.MatchFile }})
+        {{- "" }} var(req.base),map_beg({{ $fmaps.RedirToHTTPSMap.MatchFile }})
         {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
     http-request redirect scheme https
         {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
@@ -811,24 +811,24 @@ frontend _front_http
         {{- "" }} if{{ if $acmeexclusive }} !acme-challenge{{ end }}
         {{- if $hasFrontingProxy }} !fronting-proxy{{ end }}
         {{- "" }} !{ var(req.redir) -m found }
-        {{- "" }} { var(req.base),map_reg({{ $fmaps.HTTPSRedirMap.RegexFile }}) yes }
+        {{- "" }} { var(req.base),map_reg({{ $fmaps.RedirToHTTPSMap.RegexFile }}) yes }
 {{- else }}
     http-request redirect scheme https
         {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
         {{- "" }} if{{ if $acmeexclusive }} !acme-challenge{{ end }}
         {{- if $hasFrontingProxy }} !fronting-proxy{{ end }}
-        {{- "" }} { var(req.base),map_beg({{ $fmaps.HTTPSRedirMap.MatchFile }}) yes }
+        {{- "" }} { var(req.base),map_beg({{ $fmaps.RedirToHTTPSMap.MatchFile }}) yes }
 {{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $fmaps.RootRedirMap.HasHost }}
+{{- if $fmaps.RedirFromRootMap.HasHost }}
     http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
     http-request set-var(req.rootredir)
-        {{- "" }} var(req.host),map({{ $fmaps.RootRedirMap.MatchFile }})
-{{- if $fmaps.RootRedirMap.HasRegex }}
+        {{- "" }} var(req.host),map({{ $fmaps.RedirFromRootMap.MatchFile }})
+{{- if $fmaps.RedirFromRootMap.HasRegex }}
     http-request set-var(req.rootredir)
-        {{- "" }} var(req.host),map_reg({{ $fmaps.RootRedirMap.RegexFile }}) if !{ var(req.rootredir) -m found }
+        {{- "" }} var(req.host),map_reg({{ $fmaps.RedirFromRootMap.RegexFile }}) if !{ var(req.rootredir) -m found }
 {{- end }}
     http-request redirect location %[var(req.rootredir)]
         {{- "" }} if{{ if $acmeexclusive }} !acme-challenge{{ end }}
@@ -861,10 +861,10 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
-    http-request set-var(req.backend) var(req.base),map_beg({{ $fmaps.HTTPFrontsMap.MatchFile }})
-{{- if $fmaps.HTTPFrontsMap.HasRegex }}
+    http-request set-var(req.backend) var(req.base),map_beg({{ $fmaps.HTTPHostMap.MatchFile }})
+{{- if $fmaps.HTTPHostMap.HasRegex }}
     http-request set-var(req.backend)
-        {{- "" }} var(req.base),map_reg({{ $fmaps.HTTPFrontsMap.RegexFile }})
+        {{- "" }} var(req.base),map_reg({{ $fmaps.HTTPHostMap.RegexFile }})
         {{- "" }} if !{ var(req.backend) -m found }
 {{- end }}
 
@@ -911,30 +911,30 @@ frontend _front_https
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if or $hosts.HasTLSAuth $fmaps.HostBackendsMap.HasRegex $hosts.HasVarNamespace }}
+{{- if or $hosts.HasTLSAuth $fmaps.HTTPSHostMap.HasRegex $hosts.HasVarNamespace }}
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
     http-request set-var(req.hostbackend)
-        {{- "" }} var(req.base),map_beg({{ $fmaps.HostBackendsMap.MatchFile }})
+        {{- "" }} var(req.base),map_beg({{ $fmaps.HTTPSHostMap.MatchFile }})
 {{- else }}
     http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/)
-        {{- "" }},map_beg({{ $fmaps.HostBackendsMap.MatchFile }})
+        {{- "" }},map_beg({{ $fmaps.HTTPSHostMap.MatchFile }})
 {{- end }}
-{{- if $fmaps.HostBackendsMap.HasRegex }}
+{{- if $fmaps.HTTPSHostMap.HasRegex }}
     http-request set-var(req.hostbackend)
-        {{- "" }} var(req.base),map_reg({{ $fmaps.HostBackendsMap.RegexFile }})
+        {{- "" }} var(req.base),map_reg({{ $fmaps.HTTPSHostMap.RegexFile }})
         {{- "" }} if !{ var(req.hostbackend) -m found }
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if or $hosts.HasTLSAuth $fmaps.RootRedirMap.HasHost }}
+{{- if or $hosts.HasTLSAuth $fmaps.RedirFromRootMap.HasHost }}
     http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
 {{- end }}
-{{- if $fmaps.RootRedirMap.HasHost }}
+{{- if $fmaps.RedirFromRootMap.HasHost }}
     http-request set-var(req.rootredir)
-        {{- "" }} var(req.host),map({{ $fmaps.RootRedirMap.MatchFile }})
-{{- if $fmaps.RootRedirMap.HasRegex }}
+        {{- "" }} var(req.host),map({{ $fmaps.RedirFromRootMap.MatchFile }})
+{{- if $fmaps.RedirFromRootMap.HasRegex }}
     http-request set-var(req.rootredir)
-        {{- "" }} var(req.host),map_reg({{ $fmaps.RootRedirMap.RegexFile }}) if !{ var(req.rootredir) -m found }
+        {{- "" }} var(req.host),map_reg({{ $fmaps.RedirFromRootMap.RegexFile }}) if !{ var(req.rootredir) -m found }
 {{- end }}
     http-request redirect location %[var(req.rootredir)] if { path / } { var(req.rootredir) -m found }
 {{- end }}
@@ -962,68 +962,68 @@ frontend _front_https
 {{- $mandatory := $hosts.HasTLSMandatory }}
     acl tls-has-crt ssl_c_used
 {{- if $mandatory }}
-    acl tls-need-crt ssl_fc_sni -i -f {{ $fmaps.TLSNoCrtErrorList.MatchFile }}
-{{- if $fmaps.TLSNoCrtErrorList.HasRegex }}
-    acl tls-need-crt ssl_fc_sni -i -m reg -f {{ $fmaps.TLSNoCrtErrorList.RegexFile }}
+    acl tls-need-crt ssl_fc_sni -i -f {{ $fmaps.TLSMissingCrtHostsList.MatchFile }}
+{{- if $fmaps.TLSMissingCrtHostsList.HasRegex }}
+    acl tls-need-crt ssl_fc_sni -i -m reg -f {{ $fmaps.TLSMissingCrtHostsList.RegexFile }}
 {{- end }}
 {{- end }}
-    acl tls-host-need-crt var(req.host) -i -f {{ $fmaps.TLSNoCrtErrorList.MatchFile }}
-{{- if $fmaps.TLSNoCrtErrorList.HasRegex }}
-    acl tls-host-need-crt var(req.host) -i -m reg -f {{ $fmaps.TLSNoCrtErrorList.RegexFile }}
+    acl tls-host-need-crt var(req.host) -i -f {{ $fmaps.TLSMissingCrtHostsList.MatchFile }}
+{{- if $fmaps.TLSMissingCrtHostsList.HasRegex }}
+    acl tls-host-need-crt var(req.host) -i -m reg -f {{ $fmaps.TLSMissingCrtHostsList.RegexFile }}
 {{- end }}
     acl tls-has-invalid-crt ssl_c_ca_err gt 0
     acl tls-has-invalid-crt ssl_c_err gt 0
-    acl tls-check-crt ssl_fc_sni -i -f {{ $fmaps.TLSInvalidCrtErrorList.MatchFile }}
-{{- if $fmaps.TLSInvalidCrtErrorList.HasRegex }}
-    acl tls-check-crt ssl_fc_sni -i -m reg -f {{ $fmaps.TLSInvalidCrtErrorList.RegexFile }}
+    acl tls-check-crt ssl_fc_sni -i -f {{ $fmaps.TLSInvalidCrtHostsList.MatchFile }}
+{{- if $fmaps.TLSInvalidCrtHostsList.HasRegex }}
+    acl tls-check-crt ssl_fc_sni -i -m reg -f {{ $fmaps.TLSInvalidCrtHostsList.RegexFile }}
 {{- end }}
     http-request set-var(req.path) path
     http-request set-var(req.snibase) ssl_fc_sni,concat(,req.path),lower
-{{- if $fmaps.SNIBackendsMap.HasRegex }}
+{{- if $fmaps.HTTPSSNIMap.HasRegex }}
     http-request set-var(req.snibackend) var(req.snibase)
-        {{- "" }},map_beg({{ $fmaps.SNIBackendsMap.MatchFile }})
+        {{- "" }},map_beg({{ $fmaps.HTTPSSNIMap.MatchFile }})
     http-request set-var(req.snibackend) var(req.snibase)
-        {{- "" }},map_reg({{ $fmaps.SNIBackendsMap.RegexFile }})
+        {{- "" }},map_reg({{ $fmaps.HTTPSSNIMap.RegexFile }})
         {{- "" }} if !{ var(req.snibackend) -m found }
     http-request set-var(req.snibackend) var(req.base)
-        {{- "" }},map_beg({{ $fmaps.SNIBackendsMap.MatchFile }})
+        {{- "" }},map_beg({{ $fmaps.HTTPSSNIMap.MatchFile }})
         {{- "" }} if !{ var(req.snibackend) -m found }
         {{- "" }} !tls-has-crt !tls-host-need-crt
     http-request set-var(req.snibackend) var(req.base)
-        {{- "" }},map_reg({{ $fmaps.SNIBackendsMap.RegexFile }})
+        {{- "" }},map_reg({{ $fmaps.HTTPSSNIMap.RegexFile }})
         {{- "" }} if !{ var(req.snibackend) -m found }
         {{- "" }} !tls-has-crt !tls-host-need-crt
 {{- else }}
     http-request set-var(req.snibackend) var(req.snibase)
-        {{- "" }},map_beg({{ $fmaps.SNIBackendsMap.MatchFile }})
+        {{- "" }},map_beg({{ $fmaps.HTTPSSNIMap.MatchFile }})
     http-request set-var(req.snibackend) var(req.base)
-        {{- "" }},map_beg({{ $fmaps.SNIBackendsMap.MatchFile }})
+        {{- "" }},map_beg({{ $fmaps.HTTPSSNIMap.MatchFile }})
         {{- "" }} if !{ var(req.snibackend) -m found }
         {{- "" }} !tls-has-crt !tls-host-need-crt
 {{- end }}
 {{- if $mandatory }}
     http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower
-        {{- "" }},map({{ $fmaps.TLSNoCrtErrorPagesMap.MatchFile }},_internal)
+        {{- "" }},map({{ $fmaps.TLSMissingCrtPagesMap.MatchFile }},_internal)
         {{- "" }} if !tls-has-crt tls-need-crt
-{{- if $fmaps.TLSNoCrtErrorPagesMap.HasRegex }}
+{{- if $fmaps.TLSMissingCrtPagesMap.HasRegex }}
     http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower
-        {{- "" }},map_reg({{ $fmaps.TLSNoCrtErrorPagesMap.RegexFile }},_internal)
+        {{- "" }},map_reg({{ $fmaps.TLSMissingCrtPagesMap.RegexFile }},_internal)
         {{- "" }} if { var(req.tls_nocrt_redir) _internal }
 {{- end }}
 {{- end }}
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower
-        {{- "" }},map({{ $fmaps.TLSInvalidCrtErrorPagesMap.MatchFile }},_internal)
+        {{- "" }},map({{ $fmaps.TLSInvalidCrtPagesMap.MatchFile }},_internal)
         {{- "" }} if tls-has-invalid-crt tls-check-crt
-{{- if $fmaps.TLSInvalidCrtErrorPagesMap.HasRegex }}
+{{- if $fmaps.TLSInvalidCrtPagesMap.HasRegex }}
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower
-        {{- "" }},map_reg({{ $fmaps.TLSInvalidCrtErrorPagesMap.RegexFile }},_internal)
+        {{- "" }},map_reg({{ $fmaps.TLSInvalidCrtPagesMap.RegexFile }},_internal)
         {{- "" }} if { var(req.tls_invalidcrt_redir) _internal }
 {{- end }}
-{{- if and $mandatory $fmaps.TLSNoCrtErrorPagesMap.HasHost }}
+{{- if and $mandatory $fmaps.TLSMissingCrtPagesMap.HasHost }}
     http-request redirect location %[var(req.tls_nocrt_redir)] code 303
         {{- "" }} if { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) _internal }
 {{- end }}
-{{- if $fmaps.TLSInvalidCrtErrorPagesMap.HasHost }}
+{{- if $fmaps.TLSInvalidCrtPagesMap.HasHost }}
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303
         {{- "" }} if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
 {{- end }}

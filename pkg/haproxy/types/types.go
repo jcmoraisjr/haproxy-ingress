@@ -266,18 +266,19 @@ type HostsMaps struct {
 
 // FrontendMaps ...
 type FrontendMaps struct {
-	HTTPFrontsMap     *HostsMap
-	HTTPSRedirMap     *HostsMap
+	HTTPHostMap  *HostsMap
+	HTTPSHostMap *HostsMap
+	HTTPSSNIMap  *HostsMap
+	//
+	RedirToHTTPSMap   *HostsMap
+	RedirFromRootMap  *HostsMap
 	SSLPassthroughMap *HostsMap
 	VarNamespaceMap   *HostsMap
 	//
-	HostBackendsMap            *HostsMap
-	RootRedirMap               *HostsMap
-	SNIBackendsMap             *HostsMap
-	TLSInvalidCrtErrorList     *HostsMap
-	TLSInvalidCrtErrorPagesMap *HostsMap
-	TLSNoCrtErrorList          *HostsMap
-	TLSNoCrtErrorPagesMap      *HostsMap
+	TLSInvalidCrtHostsList *HostsMap
+	TLSInvalidCrtPagesMap  *HostsMap
+	TLSMissingCrtHostsList *HostsMap
+	TLSMissingCrtPagesMap  *HostsMap
 	//
 	CrtList *HostsMap
 }
