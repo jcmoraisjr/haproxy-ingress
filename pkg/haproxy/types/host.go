@@ -195,6 +195,7 @@ func (h *Host) AddPath(backend *Backend, path string) {
 	}
 	h.Paths = append(h.Paths, &HostPath{
 		Path:    path,
+		Match:   MatchBegin,
 		Backend: hback,
 	})
 	// reverse order in order to avoid overlap of sub-paths
@@ -224,6 +225,11 @@ func (h *Host) SetSSLPassthrough(value bool) {
 		h.hosts.sslPassthroughCount--
 	}
 	h.sslPassthrough = value
+}
+
+// String ...
+func (f *Frontend) String() string {
+	return fmt.Sprintf("%+v", *f)
 }
 
 // String ...

@@ -180,10 +180,15 @@ func (c *config) WriteFrontendMaps() error {
 				// validation already happens in the annotation parsing phase.
 				continue
 			}
-			fmaps.SSLPassthroughMap.AppendHostname(host.Hostname, rootPath.Backend.ID)
-			fmaps.RedirToHTTPSMap.AppendHostname(host.Hostname+"/", yesno[host.HTTPPassthroughBackend == ""])
-			if host.HTTPPassthroughBackend != "" {
-				fmaps.HTTPHostMap.AppendHostname(host.Hostname+"/", host.HTTPPassthroughBackend)
+			fmaps.SSLPassthroughMap.AddHostnameMapping(host.Hostname, rootPath.Backend.ID)
+			hostPath := &hatypes.HostPath{
+				Path:  "/",
+				Match: hatypes.MatchBegin,
+			}
+			hasHTTPBackend := host.HTTPPassthroughBackend != ""
+			fmaps.RedirToHTTPSMap.AddHostnamePathMapping(host.Hostname, hostPath, yesno[!hasHTTPBackend])
+			if hasHTTPBackend {
+				fmaps.HTTPHostMap.AddHostnamePathMapping(host.Hostname, hostPath, host.HTTPPassthroughBackend)
 			}
 			// ssl-passthrough is as simple as that, jump to the next host
 			continue
@@ -193,35 +198,24 @@ func (c *config) WriteFrontendMaps() error {
 		//
 		for _, path := range host.Paths {
 			backend := c.backends.FindBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
-			base := host.Hostname + path.Path
 			hasSSLRedirect := false
 			if host.TLS.HasTLS() && backend != nil {
-				hasSSLRedirect = backend.HasSSLRedirectHostpath(base)
+				hasSSLRedirect = backend.HasSSLRedirectHostpath(host.Hostname + path.Path)
 			}
 			// TODO use only root path if all uri has the same conf
-			fmaps.RedirToHTTPSMap.AppendHostname(host.Hostname+path.Path, yesno[hasSSLRedirect])
-			var aliasName, aliasRegex string
-			// TODO warn in logs about ignoring alias name due to hostname colision
-			if host.Alias.AliasName != "" && c.hosts.FindHost(host.Alias.AliasName) == nil {
-				aliasName = host.Alias.AliasName + path.Path
-			}
-			if host.Alias.AliasRegex != "" {
-				aliasRegex = host.Alias.AliasRegex + path.Path
-			}
+			fmaps.RedirToHTTPSMap.AddHostnamePathMapping(host.Hostname, path, yesno[hasSSLRedirect])
 			backendID := path.Backend.ID
+			// IMPLEMENT check if host.Alias.AliasName was already used as a hostname
 			if host.HasTLSAuth() {
-				fmaps.HTTPSSNIMap.AppendHostname(base, backendID)
-				fmaps.HTTPSSNIMap.AppendAliasName(aliasName, backendID)
-				fmaps.HTTPSSNIMap.AppendAliasRegex(aliasRegex, backendID)
+				fmaps.HTTPSSNIMap.AddHostnamePathMapping(host.Hostname, path, backendID)
+				fmaps.HTTPSSNIMap.AddAliasPathMapping(host.Alias, path, backendID)
 			} else {
-				fmaps.HTTPSHostMap.AppendHostname(base, backendID)
-				fmaps.HTTPSHostMap.AppendAliasName(aliasName, backendID)
-				fmaps.HTTPSHostMap.AppendAliasRegex(aliasRegex, backendID)
+				fmaps.HTTPSHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
+				fmaps.HTTPSHostMap.AddAliasPathMapping(host.Alias, path, backendID)
 			}
 			if !hasSSLRedirect || c.global.Bind.HasFrontingProxy() {
-				fmaps.HTTPHostMap.AppendHostname(base, backendID)
-				fmaps.HTTPHostMap.AppendAliasName(aliasName, backendID)
-				fmaps.HTTPHostMap.AppendAliasRegex(aliasRegex, backendID)
+				fmaps.HTTPHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
+				fmaps.HTTPHostMap.AddAliasPathMapping(host.Alias, path, backendID)
 			}
 			var ns string
 			if host.VarNamespace {
@@ -229,25 +223,25 @@ func (c *config) WriteFrontendMaps() error {
 			} else {
 				ns = "-"
 			}
-			fmaps.VarNamespaceMap.AppendHostname(base, ns)
+			fmaps.VarNamespaceMap.AddHostnamePathMapping(host.Hostname, path, ns)
 		}
 		if host.HasTLSAuth() {
-			fmaps.TLSInvalidCrtHostsList.AppendHostname(host.Hostname, "")
+			fmaps.TLSInvalidCrtHostsList.AddHostnameMapping(host.Hostname, "")
 			if !host.TLS.CAVerifyOptional {
-				fmaps.TLSMissingCrtHostsList.AppendHostname(host.Hostname, "")
+				fmaps.TLSMissingCrtHostsList.AddHostnameMapping(host.Hostname, "")
 			}
 			page := host.TLS.CAErrorPage
 			if page != "" {
-				fmaps.TLSInvalidCrtPagesMap.AppendHostname(host.Hostname, page)
+				fmaps.TLSInvalidCrtPagesMap.AddHostnameMapping(host.Hostname, page)
 				if !host.TLS.CAVerifyOptional {
-					fmaps.TLSMissingCrtPagesMap.AppendHostname(host.Hostname, page)
+					fmaps.TLSMissingCrtPagesMap.AddHostnameMapping(host.Hostname, page)
 				}
 			}
 		}
 		// TODO wildcard/alias/alias-regex hostname can overlap
 		// a configured domain which doesn't have rootRedirect
 		if host.RootRedirect != "" {
-			fmaps.RedirFromRootMap.AppendHostname(host.Hostname, host.RootRedirect)
+			fmaps.RedirFromRootMap.AddHostnameMapping(host.Hostname, host.RootRedirect)
 		}
 		//
 		tls := host.TLS
@@ -328,11 +322,8 @@ func (c *config) WriteBackendMaps() error {
 
 func writeMaps(maps *hatypes.HostsMaps, template *template.Config) error {
 	for _, hmap := range maps.Items {
-		if err := template.WriteOutput(hmap.Match, hmap.MatchFile); err != nil {
-			return err
-		}
-		if len(hmap.Regex) > 0 {
-			if err := template.WriteOutput(hmap.Regex, hmap.RegexFile); err != nil {
+		for _, match := range hmap.Matches() {
+			if err := template.WriteOutput(hmap.Values(match), hmap.Filename(match)); err != nil {
 				return err
 			}
 		}
