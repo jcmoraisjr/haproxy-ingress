@@ -302,11 +302,6 @@ func TestAddAliasPathMapping(t *testing.T) {
 				})
 			}
 		}
-		for _, match := range []MatchType{MatchBegin, MatchExact} {
-			if _, found := expvalues[match]; !found {
-				expvalues[match] = []*HostsMapEntry{}
-			}
-		}
 		if !reflect.DeepEqual(hm.values, expvalues) {
 			t.Errorf("item %d, expected values '%v' but was '%v'", i, expvalues, hm.values)
 			continue

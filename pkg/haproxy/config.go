@@ -323,7 +323,11 @@ func (c *config) WriteBackendMaps() error {
 func writeMaps(maps *hatypes.HostsMaps, template *template.Config) error {
 	for _, hmap := range maps.Items {
 		for _, match := range hmap.Matches() {
-			if err := template.WriteOutput(hmap.Values(match), hmap.Filename(match)); err != nil {
+			filename, err := hmap.Filename(match)
+			if err != nil {
+				return err
+			}
+			if err := template.WriteOutput(hmap.Values(match), filename); err != nil {
 				return err
 			}
 		}

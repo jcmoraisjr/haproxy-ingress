@@ -33,12 +33,7 @@ func (hm *HostsMaps) AddMap(basename string) *HostsMap {
 	hmap := &HostsMap{
 		basename:  basename,
 		filenames: map[MatchType]string{},
-		values: map[MatchType][]*HostsMapEntry{
-			// TODO need to create this files every time,
-			// can be removed after implement some if's in the tmpl
-			MatchBegin: {},
-			MatchExact: {},
-		},
+		values:    map[MatchType][]*HostsMapEntry{},
 	}
 	hm.Items = append(hm.Items, hmap)
 	return hmap
@@ -214,7 +209,10 @@ func (hm *HostsMap) HasRegex() bool {
 }
 
 // Filename ...
-func (hm *HostsMap) Filename(match MatchType) string {
+func (hm *HostsMap) Filename(match MatchType) (string, error) {
+	if !hm.Has(match) {
+		return "", fmt.Errorf("file content is empty")
+	}
 	filename, found := hm.filenames[match]
 	if !found {
 		if match == MatchEmpty {
@@ -224,31 +222,31 @@ func (hm *HostsMap) Filename(match MatchType) string {
 		}
 		hm.filenames[match] = filename
 	}
-	return filename
+	return filename, nil
 }
 
 // FilenameBegin ...
-func (hm *HostsMap) FilenameBegin() string {
+func (hm *HostsMap) FilenameBegin() (string, error) {
 	return hm.Filename(MatchBegin)
 }
 
 // FilenameExact ...
-func (hm *HostsMap) FilenameExact() string {
+func (hm *HostsMap) FilenameExact() (string, error) {
 	return hm.Filename(MatchExact)
 }
 
 // FilenamePrefix ...
-func (hm *HostsMap) FilenamePrefix() string {
+func (hm *HostsMap) FilenamePrefix() (string, error) {
 	return hm.Filename(MatchPrefix)
 }
 
 // FilenameRegex ...
-func (hm *HostsMap) FilenameRegex() string {
+func (hm *HostsMap) FilenameRegex() (string, error) {
 	return hm.Filename(MatchRegex)
 }
 
 // FilenameEmpty ...
-func (hm *HostsMap) FilenameEmpty() string {
+func (hm *HostsMap) FilenameEmpty() (string, error) {
 	return hm.Filename(MatchEmpty)
 }
 
