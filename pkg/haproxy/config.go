@@ -181,14 +181,10 @@ func (c *config) WriteFrontendMaps() error {
 				continue
 			}
 			fmaps.SSLPassthroughMap.AddHostnameMapping(host.Hostname, rootPath.Backend.ID)
-			hostPath := &hatypes.HostPath{
-				Path:  "/",
-				Match: hatypes.MatchBegin,
-			}
 			hasHTTPBackend := host.HTTPPassthroughBackend != ""
-			fmaps.RedirToHTTPSMap.AddHostnamePathMapping(host.Hostname, hostPath, yesno[!hasHTTPBackend])
+			fmaps.RedirToHTTPSMap.AddHostnamePathMapping(host.Hostname, rootPath, yesno[!hasHTTPBackend])
 			if hasHTTPBackend {
-				fmaps.HTTPHostMap.AddHostnamePathMapping(host.Hostname, hostPath, host.HTTPPassthroughBackend)
+				fmaps.HTTPHostMap.AddHostnamePathMapping(host.Hostname, rootPath, host.HTTPPassthroughBackend)
 			}
 			// ssl-passthrough is as simple as that, jump to the next host
 			continue
@@ -312,7 +308,16 @@ func (c *config) WriteBackendMaps() error {
 			mapsPrefix := c.options.mapsDir + "/_back_" + backend.ID
 			pathsMap := mapBuilder.AddMap(mapsPrefix + "_idpath.map")
 			for _, path := range backend.Paths {
-				pathsMap.AppendPath(path.Hostpath, path.ID)
+				// IMPLEMENT add HostPath link into the backend path
+				h := c.hosts.FindHost(path.Hostname)
+				if h == nil {
+					continue
+				}
+				p := h.FindPath(path.Path)
+				if p == nil {
+					continue
+				}
+				pathsMap.AddHostnamePathMapping(path.Hostname, p, path.ID)
 			}
 			backend.PathsMap = pathsMap
 		}

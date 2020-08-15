@@ -389,7 +389,18 @@ backend {{ $backend.ID }}
 {{- range $path := reverse $backend.Paths }}
     # {{ $path.ID }} = {{ $path.Hostpath }}
 {{- end }}
-    http-request set-var(txn.pathID) base,lower,map_beg({{ $backend.PathsMap.FilenameBegin }})
+{{- if $backend.PathsMap.HasExact }}
+    http-request set-var(txn.pathID) base,map({{ $backend.PathsMap.FilenameExact }})
+{{- end }}
+{{- if $backend.PathsMap.HasPrefix }}
+    http-request set-var(txn.pathID) base,map_dir({{ $backend.PathsMap.FilenamePrefix }}) if !{ var(txn.pathID) -m found }
+{{- end }}
+{{- if $backend.PathsMap.HasBegin }}
+    http-request set-var(txn.pathID) base,lower,map_beg({{ $backend.PathsMap.FilenameBegin }}) if !{ var(txn.pathID) -m found }
+{{- end }}
+{{- if $backend.PathsMap.HasRegex }}
+    http-request set-var(txn.pathID) base,map_reg({{ $backend.PathsMap.FilenameRegex }}) if !{ var(txn.pathID) -m found }
+{{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -714,13 +725,13 @@ listen _front__tls
     tcp-request inspect-delay 5s
 
 {{- /*------------------------------------*/}}
-{{- if $hosts.HasSSLPassthrough }}
+{{- if $fmaps.SSLPassthroughMap.HasExact }}
     tcp-request content set-var(req.sslpassback)
         {{- "" }} req.ssl_sni,lower,map({{ $fmaps.SSLPassthroughMap.FilenameExact }})
 {{- end }}
 {{- if $fmaps.SSLPassthroughMap.HasRegex }}
 {{- /*** TODO map_reg() running on every request ***/}}
-    tcp-request content set-var(req.sslpassregback)
+    tcp-request content set-var(req.sslpassback)
         {{- "" }} req.ssl_sni,lower,map_reg({{ $fmaps.SSLPassthroughMap.FilenameRegex }})
         {{- "" }} if !{ var(req.sslpassback) -m found }
 {{- end }}
@@ -729,15 +740,7 @@ listen _front__tls
     tcp-request content accept if { req.ssl_hello_type 1 }
 
 {{- /*------------------------------------*/}}
-{{- if $hosts.HasSSLPassthrough }}
     use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
-{{- end }}
-{{- if $fmaps.SSLPassthroughMap.HasRegex }}
-    use_backend %[var(req.sslpassregback)] if { var(req.sslpassregback) -m found }
-{{- end }}
-
-{{- /*------------------------------------*/}}
-    # default backend
     server _default_server{{ $frontend.BindName }} {{ $frontend.BindSocket }} send-proxy-v2
 {{- end }}
 
@@ -798,10 +801,22 @@ frontend _front_http
 {{- $acmeexclusive := and $global.Acme.Enabled (not $global.Acme.Shared) }}
 {{- if not $frontingIgnoreProto }}
 {{- if $fmaps.RedirToHTTPSMap.HasHost }}
+{{- if $fmaps.RedirToHTTPSMap.HasExact }}
+    http-request set-var(req.redir)
+        {{- "" }} var(req.base),map({{ $fmaps.RedirToHTTPSMap.FilenameExact }})
+        {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
+{{- end }}
+{{- if $fmaps.RedirToHTTPSMap.HasPrefix }}
+    http-request set-var(req.redir)
+        {{- "" }} var(req.base),map_dir({{ $fmaps.RedirToHTTPSMap.FilenamePrefix }})
+        {{- "" }} if{{ if $hasFrontingProxy }} !fronting-proxy{{ end }}
+        {{- "" }} !{ var(req.redir) -m found }
+{{- end }}
 {{- if $fmaps.RedirToHTTPSMap.HasBegin }}
     http-request set-var(req.redir)
         {{- "" }} var(req.base),map_beg({{ $fmaps.RedirToHTTPSMap.FilenameBegin }})
-        {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
+        {{- "" }} if{{ if $hasFrontingProxy }} !fronting-proxy{{ end }}
+        {{- "" }} !{ var(req.redir) -m found }
 {{- end }}
 {{- if $fmaps.RedirToHTTPSMap.HasRegex }}
     http-request set-var(req.redir)
@@ -835,13 +850,27 @@ frontend _front_http
 
 {{- /*------------------------------------*/}}
 {{- if $hosts.HasVarNamespace }}
+{{- if $fmaps.VarNamespaceMap.HasExact }}
     http-request set-var(txn.namespace) 
-        {{- "" }} var(req.base),map_beg({{ $fmaps.VarNamespaceMap.FilenameBegin }},-)
+        {{- "" }} var(req.base),map({{ $fmaps.VarNamespaceMap.FilenameExact }})
+{{- end }}
+{{- if $fmaps.VarNamespaceMap.HasPrefix }}
+    http-request set-var(txn.namespace) 
+        {{- "" }} var(req.base),map_dir({{ $fmaps.VarNamespaceMap.FilenamePrefix }})
+        {{- "" }} if !{ var(txn.namespace) -m found }
+{{- end }}
+{{- if $fmaps.VarNamespaceMap.HasBegin }}
+    http-request set-var(txn.namespace) 
+        {{- "" }} var(req.base),map_beg({{ $fmaps.VarNamespaceMap.FilenameBegin }})
+        {{- "" }} if !{ var(txn.namespace) -m found }
+{{- end }}
 {{- if $fmaps.VarNamespaceMap.HasRegex }}
     http-request set-var(txn.namespace) 
-        {{- "" }} var(req.base),map_reg({{ $fmaps.VarNamespaceMap.FilenameRegex }},-)
-        {{- "" }} if { var(txn.namespace) -- - }
+        {{- "" }} var(req.base),map_reg({{ $fmaps.VarNamespaceMap.FilenameRegex }})
+        {{- "" }} if !{ var(txn.namespace) -m found }
 {{- end }}
+    http-request set-var(txn.namespace) str(-)
+        {{- "" }} if !{ var(txn.namespace) -m found }
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -859,8 +888,19 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $fmaps.HTTPHostMap.HasExact }}
+    http-request set-var(req.backend)
+        {{- "" }} var(req.base),map({{ $fmaps.HTTPHostMap.FilenameExact }})
+{{- end }}
+{{- if $fmaps.HTTPHostMap.HasPrefix }}
+    http-request set-var(req.backend)
+        {{- "" }} var(req.base),map_dir({{ $fmaps.HTTPHostMap.FilenamePrefix }})
+        {{- "" }} if !{ var(req.backend) -m found }
+{{- end }}
 {{- if $fmaps.HTTPHostMap.HasBegin }}
-    http-request set-var(req.backend) var(req.base),map_beg({{ $fmaps.HTTPHostMap.FilenameBegin }})
+    http-request set-var(req.backend)
+        {{- "" }} var(req.base),map_beg({{ $fmaps.HTTPHostMap.FilenameBegin }})
+        {{- "" }} if !{ var(req.backend) -m found }
 {{- end }}
 {{- if $fmaps.HTTPHostMap.HasRegex }}
     http-request set-var(req.backend)
@@ -911,15 +951,22 @@ frontend _front_https
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $fmaps.HTTPSHostMap.HasBegin }}
-{{- if or $hosts.HasTLSAuth $fmaps.HTTPSHostMap.HasRegex $hosts.HasVarNamespace }}
+{{- if or $fmaps.HTTPSHostMap.HasHost $fmaps.TLSAuthList.HasHost $hosts.HasVarNamespace }}
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
+{{- end }}
+{{- if $fmaps.HTTPSHostMap.HasExact }}
+    http-request set-var(req.hostbackend)
+        {{- "" }} var(req.base),map({{ $fmaps.HTTPSHostMap.FilenameExact }})
+{{- end }}
+{{- if $fmaps.HTTPSHostMap.HasPrefix }}
+    http-request set-var(req.hostbackend)
+        {{- "" }} var(req.base),map_dir({{ $fmaps.HTTPSHostMap.FilenamePrefix }})
+        {{- "" }} if !{ var(req.hostbackend) -m found }
+{{- end }}
+{{- if $fmaps.HTTPSHostMap.HasBegin }}
     http-request set-var(req.hostbackend)
         {{- "" }} var(req.base),map_beg({{ $fmaps.HTTPSHostMap.FilenameBegin }})
-{{- else }}
-    http-request set-var(req.hostbackend) base,lower,regsub(:[0-9]+/,/)
-        {{- "" }},map_beg({{ $fmaps.HTTPSHostMap.FilenameBegin }})
-{{- end }}
+        {{- "" }} if !{ var(req.hostbackend) -m found }
 {{- end }}
 {{- if $fmaps.HTTPSHostMap.HasRegex }}
     http-request set-var(req.hostbackend)
@@ -928,7 +975,7 @@ frontend _front_https
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if or $hosts.HasTLSAuth $fmaps.RedirFromRootMap.HasHost }}
+{{- if or $fmaps.RedirFromRootMap.HasHost $fmaps.TLSAuthList.HasHost }}
     http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
 {{- end }}
 {{- if $fmaps.RedirFromRootMap.HasHost }}
@@ -938,20 +985,35 @@ frontend _front_https
 {{- end }}
 {{- if $fmaps.RedirFromRootMap.HasRegex }}
     http-request set-var(req.rootredir)
-        {{- "" }} var(req.host),map_reg({{ $fmaps.RedirFromRootMap.FilenameRegex }}) if !{ var(req.rootredir) -m found }
+        {{- "" }} var(req.host),map_reg({{ $fmaps.RedirFromRootMap.FilenameRegex }})
+        {{- "" }} if !{ var(req.rootredir) -m found }
 {{- end }}
     http-request redirect location %[var(req.rootredir)] if { path / } { var(req.rootredir) -m found }
 {{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $hosts.HasVarNamespace }}
+{{- if $fmaps.VarNamespaceMap.HasExact }}
     http-request set-var(txn.namespace) 
-        {{- "" }} var(req.base),map_beg({{ $fmaps.VarNamespaceMap.FilenameBegin }},-)
+        {{- "" }} var(req.base),map({{ $fmaps.VarNamespaceMap.FilenameExact }})
+{{- end }}
+{{- if $fmaps.VarNamespaceMap.HasPrefix }}
+    http-request set-var(txn.namespace) 
+        {{- "" }} var(req.base),map_dir({{ $fmaps.VarNamespaceMap.FilenamePrefix }})
+        {{- "" }} if !{ var(txn.namespace) -m found }
+{{- end }}
+{{- if $fmaps.VarNamespaceMap.HasBegin }}
+    http-request set-var(txn.namespace) 
+        {{- "" }} var(req.base),map_beg({{ $fmaps.VarNamespaceMap.FilenameBegin }})
+        {{- "" }} if !{ var(txn.namespace) -m found }
+{{- end }}
 {{- if $fmaps.VarNamespaceMap.HasRegex }}
     http-request set-var(txn.namespace) 
-        {{- "" }} var(req.base),map_reg({{ $fmaps.VarNamespaceMap.FilenameRegex }},-)
-        {{- "" }} if { var(txn.namespace) -- - }
+        {{- "" }} var(req.base),map_reg({{ $fmaps.VarNamespaceMap.FilenameRegex }})
+        {{- "" }} if !{ var(txn.namespace) -m found }
 {{- end }}
+    http-request set-var(txn.namespace) str(-)
+        {{- "" }} if !{ var(txn.namespace) -m found }
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -962,9 +1024,10 @@ frontend _front_https
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-Cert
 
 {{- /*------------------------------------*/}}
-{{- if $hosts.HasTLSAuth }}
-{{- $mandatory := $hosts.HasTLSMandatory }}
+{{- if $fmaps.TLSAuthList.HasHost }}
+{{- $mandatory := $fmaps.TLSNeedCrtList.HasHost }}
     acl tls-has-crt ssl_c_used
+
 {{- if $mandatory }}
 {{- if $fmaps.TLSNeedCrtList.HasExact }}
     acl tls-need-crt ssl_fc_sni -i -f {{ $fmaps.TLSNeedCrtList.FilenameExact }}
@@ -973,6 +1036,7 @@ frontend _front_https
     acl tls-need-crt ssl_fc_sni -i -m reg -f {{ $fmaps.TLSNeedCrtList.FilenameRegex }}
 {{- end }}
 {{- end }}
+
 {{- if $fmaps.TLSNeedCrtList.HasExact }}
     acl tls-host-need-crt var(req.host) -i -f {{ $fmaps.TLSNeedCrtList.FilenameExact }}
 {{- end }}
@@ -987,18 +1051,42 @@ frontend _front_https
 {{- if $fmaps.TLSAuthList.HasRegex }}
     acl tls-check-crt ssl_fc_sni -i -m reg -f {{ $fmaps.TLSAuthList.FilenameRegex }}
 {{- end }}
+
 {{- if $fmaps.HTTPSSNIMap.HasHost }}
     http-request set-var(req.path) path
     http-request set-var(req.snibase) ssl_fc_sni,concat(,req.path),lower
+{{- if $fmaps.HTTPSSNIMap.HasExact }}
+    http-request set-var(req.snibackend) var(req.snibase)
+        {{- "" }},map({{ $fmaps.HTTPSSNIMap.FilenameExact }})
+{{- end }}
+{{- if $fmaps.HTTPSSNIMap.HasPrefix }}
+    http-request set-var(req.snibackend) var(req.snibase)
+        {{- "" }},map_dir({{ $fmaps.HTTPSSNIMap.FilenamePrefix }})
+        {{- "" }} if !{ var(req.snibackend) -m found }
+{{- end }}
 {{- if $fmaps.HTTPSSNIMap.HasBegin }}
     http-request set-var(req.snibackend) var(req.snibase)
         {{- "" }},map_beg({{ $fmaps.HTTPSSNIMap.FilenameBegin }})
-        {{- "" }}
+        {{- "" }} if !{ var(req.snibackend) -m found }
 {{- end }}
 {{- if $fmaps.HTTPSSNIMap.HasRegex }}
     http-request set-var(req.snibackend) var(req.snibase)
         {{- "" }},map_reg({{ $fmaps.HTTPSSNIMap.FilenameRegex }})
         {{- "" }} if !{ var(req.snibackend) -m found }
+{{- end }}
+{{- if $fmaps.HTTPSSNIMap.HasExact }}
+    http-request set-var(req.snibackend) var(req.base)
+        {{- "" }},map({{ $fmaps.HTTPSSNIMap.FilenameExact }})
+        {{- "" }} if !{ var(req.snibackend) -m found }
+        {{- "" }} !tls-has-crt
+        {{- if $fmaps.TLSNeedCrtList.HasHost }} !tls-host-need-crt{{ end }}
+{{- end }}
+{{- if $fmaps.HTTPSSNIMap.HasPrefix }}
+    http-request set-var(req.snibackend) var(req.base)
+        {{- "" }},map_dir({{ $fmaps.HTTPSSNIMap.FilenamePrefix }})
+        {{- "" }} if !{ var(req.snibackend) -m found }
+        {{- "" }} !tls-has-crt
+        {{- if $fmaps.TLSNeedCrtList.HasHost }} !tls-host-need-crt{{ end }}
 {{- end }}
 {{- if $fmaps.HTTPSSNIMap.HasBegin }}
     http-request set-var(req.snibackend) var(req.base)
@@ -1015,6 +1103,7 @@ frontend _front_https
         {{- if $fmaps.TLSNeedCrtList.HasHost }} !tls-host-need-crt{{ end }}
 {{- end }}
 {{- end }}
+
 {{- if $mandatory }}
 {{- if not $fmaps.TLSMissingCrtPagesMap.HasHost }}
     http-request set-var(req.tls_nocrt_redir) str(_internal) if !tls-has-crt tls-need-crt
@@ -1031,6 +1120,7 @@ frontend _front_https
         {{- else }} if !tls-has-crt tls-need-crt{{ end }}
 {{- end }}
 {{- end }}
+
 {{- if not $fmaps.TLSInvalidCrtPagesMap.HasHost }}
     http-request set-var(req.tls_invalidcrt_redir) str(_internal) if tls-has-invalid-crt tls-check-crt
 {{- end }}
@@ -1053,7 +1143,8 @@ frontend _front_https
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303
         {{- "" }} if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
 {{- end }}
-{{- end }}
+
+{{- end }}{{/* if $fmaps.TLSAuthList.HasHost */}}
 
 {{- /*------------------------------------*/}}
 {{- range $snippet := $global.CustomFrontend }}
@@ -1061,10 +1152,10 @@ frontend _front_https
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $hosts.HasTLSAuth }}
+{{- if $fmaps.TLSAuthList.HasHost }}
     http-request use-service lua.send-421 if
         {{- "" }} tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
-{{- if $hosts.HasTLSMandatory }}
+{{- if $fmaps.TLSNeedCrtList.HasHost }}
     http-request use-service lua.send-496 if
         {{- "" }} { var(req.tls_nocrt_redir) _internal }
 {{- /* HTTP 421 instead of 404 if missing sni or the provided one doesn't read client crt. */}}
@@ -1079,7 +1170,7 @@ frontend _front_https
 {{- /*------------------------------------*/}}
     use_backend %[var(req.hostbackend)]
         {{- "" }} if { var(req.hostbackend) -m found }
-{{- if $hosts.HasTLSAuth }}
+{{- if $fmaps.TLSAuthList.HasHost }}
     use_backend %[var(req.snibackend)]
         {{- "" }} if { var(req.snibackend) -m found }
 {{- end }}

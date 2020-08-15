@@ -159,11 +159,6 @@ func (hm *HostsMap) Values(match MatchType) []*HostsMapEntry {
 	return hm.values[match]
 }
 
-// AppendPath ...
-func (hm *HostsMap) AppendPath(path, id string) {
-	hm.addTarget("", path, id, MatchBegin)
-}
-
 // AppendItem ...
 func (hm *HostsMap) AppendItem(item string) {
 	values := hm.values[MatchEmpty]

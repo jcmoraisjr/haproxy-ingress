@@ -139,26 +139,6 @@ func (h *Hosts) HasSSLPassthrough() bool {
 	return h.sslPassthroughCount > 0
 }
 
-// HasTLSAuth ...
-func (h *Hosts) HasTLSAuth() bool {
-	for _, host := range h.items {
-		if host.HasTLSAuth() {
-			return true
-		}
-	}
-	return false
-}
-
-// HasTLSMandatory ...
-func (h *Hosts) HasTLSMandatory() bool {
-	for _, host := range h.items {
-		if host.HasTLSAuth() && !host.TLS.CAVerifyOptional {
-			return true
-		}
-	}
-	return false
-}
-
 // HasVarNamespace ...
 func (h *Hosts) HasVarNamespace() bool {
 	for _, host := range h.items {
