@@ -276,10 +276,10 @@ type FrontendMaps struct {
 	SSLPassthroughMap *HostsMap
 	VarNamespaceMap   *HostsMap
 	//
-	TLSInvalidCrtHostsList *HostsMap
-	TLSInvalidCrtPagesMap  *HostsMap
-	TLSMissingCrtHostsList *HostsMap
-	TLSMissingCrtPagesMap  *HostsMap
+	TLSAuthList           *HostsMap
+	TLSNeedCrtList        *HostsMap
+	TLSInvalidCrtPagesMap *HostsMap
+	TLSMissingCrtPagesMap *HostsMap
 	//
 	CrtList *HostsMap
 }

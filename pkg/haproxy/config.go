@@ -157,10 +157,10 @@ func (c *config) WriteFrontendMaps() error {
 		SSLPassthroughMap: mapBuilder.AddMap(mapsDir + "/_front_sslpassthrough.map"),
 		VarNamespaceMap:   mapBuilder.AddMap(mapsDir + "/_front_namespace.map"),
 		//
-		TLSInvalidCrtHostsList: mapBuilder.AddMap(mapsDir + "/_front_tls_invalidcrt_hosts.list"),
-		TLSInvalidCrtPagesMap:  mapBuilder.AddMap(mapsDir + "/_front_tls_invalidcrt_pages.map"),
-		TLSMissingCrtHostsList: mapBuilder.AddMap(mapsDir + "/_front_tls_missingcrt_hosts.list"),
-		TLSMissingCrtPagesMap:  mapBuilder.AddMap(mapsDir + "/_front_tls_missingcrt_pages.map"),
+		TLSAuthList:           mapBuilder.AddMap(mapsDir + "/_front_tls_auth.list"),
+		TLSNeedCrtList:        mapBuilder.AddMap(mapsDir + "/_front_tls_needcrt.list"),
+		TLSInvalidCrtPagesMap: mapBuilder.AddMap(mapsDir + "/_front_tls_invalidcrt_pages.map"),
+		TLSMissingCrtPagesMap: mapBuilder.AddMap(mapsDir + "/_front_tls_missingcrt_pages.map"),
 		//
 		CrtList: mapBuilder.AddMap(mapsDir + "/_front_bind_crt.list"),
 	}
@@ -226,9 +226,9 @@ func (c *config) WriteFrontendMaps() error {
 			fmaps.VarNamespaceMap.AddHostnamePathMapping(host.Hostname, path, ns)
 		}
 		if host.HasTLSAuth() {
-			fmaps.TLSInvalidCrtHostsList.AddHostnameMapping(host.Hostname, "")
+			fmaps.TLSAuthList.AddHostnameMapping(host.Hostname, "")
 			if !host.TLS.CAVerifyOptional {
-				fmaps.TLSMissingCrtHostsList.AddHostnameMapping(host.Hostname, "")
+				fmaps.TLSNeedCrtList.AddHostnameMapping(host.Hostname, "")
 			}
 			page := host.TLS.CAErrorPage
 			if page != "" {

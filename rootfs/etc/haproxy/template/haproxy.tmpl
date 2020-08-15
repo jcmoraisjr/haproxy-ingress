@@ -966,26 +966,26 @@ frontend _front_https
 {{- $mandatory := $hosts.HasTLSMandatory }}
     acl tls-has-crt ssl_c_used
 {{- if $mandatory }}
-{{- if $fmaps.TLSMissingCrtHostsList.HasExact }}
-    acl tls-need-crt ssl_fc_sni -i -f {{ $fmaps.TLSMissingCrtHostsList.FilenameExact }}
+{{- if $fmaps.TLSNeedCrtList.HasExact }}
+    acl tls-need-crt ssl_fc_sni -i -f {{ $fmaps.TLSNeedCrtList.FilenameExact }}
 {{- end }}
-{{- if $fmaps.TLSMissingCrtHostsList.HasRegex }}
-    acl tls-need-crt ssl_fc_sni -i -m reg -f {{ $fmaps.TLSMissingCrtHostsList.FilenameRegex }}
+{{- if $fmaps.TLSNeedCrtList.HasRegex }}
+    acl tls-need-crt ssl_fc_sni -i -m reg -f {{ $fmaps.TLSNeedCrtList.FilenameRegex }}
 {{- end }}
 {{- end }}
-{{- if $fmaps.TLSMissingCrtHostsList.HasExact }}
-    acl tls-host-need-crt var(req.host) -i -f {{ $fmaps.TLSMissingCrtHostsList.FilenameExact }}
+{{- if $fmaps.TLSNeedCrtList.HasExact }}
+    acl tls-host-need-crt var(req.host) -i -f {{ $fmaps.TLSNeedCrtList.FilenameExact }}
 {{- end }}
-{{- if $fmaps.TLSMissingCrtHostsList.HasRegex }}
-    acl tls-host-need-crt var(req.host) -i -m reg -f {{ $fmaps.TLSMissingCrtHostsList.FilenameRegex }}
+{{- if $fmaps.TLSNeedCrtList.HasRegex }}
+    acl tls-host-need-crt var(req.host) -i -m reg -f {{ $fmaps.TLSNeedCrtList.FilenameRegex }}
 {{- end }}
     acl tls-has-invalid-crt ssl_c_ca_err gt 0
     acl tls-has-invalid-crt ssl_c_err gt 0
-{{- if $fmaps.TLSInvalidCrtHostsList.HasExact }}
-    acl tls-check-crt ssl_fc_sni -i -f {{ $fmaps.TLSInvalidCrtHostsList.FilenameExact }}
+{{- if $fmaps.TLSAuthList.HasExact }}
+    acl tls-check-crt ssl_fc_sni -i -f {{ $fmaps.TLSAuthList.FilenameExact }}
 {{- end }}
-{{- if $fmaps.TLSInvalidCrtHostsList.HasRegex }}
-    acl tls-check-crt ssl_fc_sni -i -m reg -f {{ $fmaps.TLSInvalidCrtHostsList.FilenameRegex }}
+{{- if $fmaps.TLSAuthList.HasRegex }}
+    acl tls-check-crt ssl_fc_sni -i -m reg -f {{ $fmaps.TLSAuthList.FilenameRegex }}
 {{- end }}
 {{- if $fmaps.HTTPSSNIMap.HasHost }}
     http-request set-var(req.path) path
@@ -1005,14 +1005,14 @@ frontend _front_https
         {{- "" }},map_beg({{ $fmaps.HTTPSSNIMap.FilenameBegin }})
         {{- "" }} if !{ var(req.snibackend) -m found }
         {{- "" }} !tls-has-crt
-        {{- if $fmaps.TLSMissingCrtHostsList.HasHost }} !tls-host-need-crt{{ end }}
+        {{- if $fmaps.TLSNeedCrtList.HasHost }} !tls-host-need-crt{{ end }}
 {{- end }}
 {{- if $fmaps.HTTPSSNIMap.HasRegex }}
     http-request set-var(req.snibackend) var(req.base)
         {{- "" }},map_reg({{ $fmaps.HTTPSSNIMap.FilenameRegex }})
         {{- "" }} if !{ var(req.snibackend) -m found }
         {{- "" }} !tls-has-crt
-        {{- if $fmaps.TLSMissingCrtHostsList.HasHost }} !tls-host-need-crt{{ end }}
+        {{- if $fmaps.TLSNeedCrtList.HasHost }} !tls-host-need-crt{{ end }}
 {{- end }}
 {{- end }}
 {{- if $mandatory }}

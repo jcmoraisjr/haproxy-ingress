@@ -834,11 +834,11 @@ func TestInstanceFrontingProxyUseProto(t *testing.T) {
 			expectedMap: "d1.local/ d1_app_8080",
 			expectedACL: `
     acl tls-has-crt ssl_c_used
-    acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front_tls_missingcrt_hosts__exact.list
-    acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front_tls_missingcrt_hosts__exact.list
+    acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front_tls_needcrt__exact.list
+    acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front_tls_needcrt__exact.list
     acl tls-has-invalid-crt ssl_c_ca_err gt 0
     acl tls-has-invalid-crt ssl_c_err gt 0
-    acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front_tls_invalidcrt_hosts__exact.list`,
+    acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front_tls_auth__exact.list`,
 			expectedSetvar: `
     http-request set-var(req.path) path
     http-request set-var(req.snibase) ssl_fc_sni,concat(,req.path),lower
@@ -870,11 +870,11 @@ func TestInstanceFrontingProxyUseProto(t *testing.T) {
 			expectedRegexMap: `^[^.]+\.d1\.local/ d1_app_8080`,
 			expectedACL: `
     acl tls-has-crt ssl_c_used
-    acl tls-need-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front_tls_missingcrt_hosts__regex.list
-    acl tls-host-need-crt var(req.host) -i -m reg -f /etc/haproxy/maps/_front_tls_missingcrt_hosts__regex.list
+    acl tls-need-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front_tls_needcrt__regex.list
+    acl tls-host-need-crt var(req.host) -i -m reg -f /etc/haproxy/maps/_front_tls_needcrt__regex.list
     acl tls-has-invalid-crt ssl_c_ca_err gt 0
     acl tls-has-invalid-crt ssl_c_err gt 0
-    acl tls-check-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front_tls_invalidcrt_hosts__regex.list`,
+    acl tls-check-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front_tls_auth__regex.list`,
 			expectedSetvar: `
     http-request set-var(req.path) path
     http-request set-var(req.snibase) ssl_fc_sni,concat(,req.path),lower
@@ -905,11 +905,11 @@ func TestInstanceFrontingProxyUseProto(t *testing.T) {
 			expectedMap: "d1.local/ d1_app_8080",
 			expectedACL: `
     acl tls-has-crt ssl_c_used
-    acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front_tls_missingcrt_hosts__exact.list
-    acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front_tls_missingcrt_hosts__exact.list
+    acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front_tls_needcrt__exact.list
+    acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front_tls_needcrt__exact.list
     acl tls-has-invalid-crt ssl_c_ca_err gt 0
     acl tls-has-invalid-crt ssl_c_err gt 0
-    acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front_tls_invalidcrt_hosts__exact.list`,
+    acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front_tls_auth__exact.list`,
 			expectedSetvar: `
     http-request set-var(req.path) path
     http-request set-var(req.snibase) ssl_fc_sni,concat(,req.path),lower
@@ -1017,11 +1017,11 @@ func TestInstanceFrontingProxyIgnoreProto(t *testing.T) {
 			expectedMap: "d1.local/ d1_app_8080",
 			expectedACL: `
     acl tls-has-crt ssl_c_used
-    acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front_tls_missingcrt_hosts__exact.list
-    acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front_tls_missingcrt_hosts__exact.list
+    acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front_tls_needcrt__exact.list
+    acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front_tls_needcrt__exact.list
     acl tls-has-invalid-crt ssl_c_ca_err gt 0
     acl tls-has-invalid-crt ssl_c_err gt 0
-    acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front_tls_invalidcrt_hosts__exact.list`,
+    acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front_tls_auth__exact.list`,
 			expectedSetvar: `
     http-request set-var(req.path) path
     http-request set-var(req.snibase) ssl_fc_sni,concat(,req.path),lower
@@ -1044,11 +1044,11 @@ func TestInstanceFrontingProxyIgnoreProto(t *testing.T) {
 			expectedRegexMap: `^[^.]+\.d1\.local/ d1_app_8080`,
 			expectedACL: `
     acl tls-has-crt ssl_c_used
-    acl tls-need-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front_tls_missingcrt_hosts__regex.list
-    acl tls-host-need-crt var(req.host) -i -m reg -f /etc/haproxy/maps/_front_tls_missingcrt_hosts__regex.list
+    acl tls-need-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front_tls_needcrt__regex.list
+    acl tls-host-need-crt var(req.host) -i -m reg -f /etc/haproxy/maps/_front_tls_needcrt__regex.list
     acl tls-has-invalid-crt ssl_c_ca_err gt 0
     acl tls-has-invalid-crt ssl_c_err gt 0
-    acl tls-check-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front_tls_invalidcrt_hosts__regex.list`,
+    acl tls-check-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front_tls_auth__regex.list`,
 			expectedSetvar: `
     http-request set-var(req.path) path
     http-request set-var(req.snibase) ssl_fc_sni,concat(,req.path),lower
@@ -1070,11 +1070,11 @@ func TestInstanceFrontingProxyIgnoreProto(t *testing.T) {
 			expectedMap: "d1.local/ d1_app_8080",
 			expectedACL: `
     acl tls-has-crt ssl_c_used
-    acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front_tls_missingcrt_hosts__exact.list
-    acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front_tls_missingcrt_hosts__exact.list
+    acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front_tls_needcrt__exact.list
+    acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front_tls_needcrt__exact.list
     acl tls-has-invalid-crt ssl_c_ca_err gt 0
     acl tls-has-invalid-crt ssl_c_err gt 0
-    acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front_tls_invalidcrt_hosts__exact.list`,
+    acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front_tls_auth__exact.list`,
 			expectedSetvar: `
     http-request set-var(req.path) path
     http-request set-var(req.snibase) ssl_fc_sni,concat(,req.path),lower
@@ -1619,11 +1619,11 @@ frontend _front_https
     http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
     <<https-headers>>
     acl tls-has-crt ssl_c_used
-    acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front_tls_missingcrt_hosts__exact.list
-    acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front_tls_missingcrt_hosts__exact.list
+    acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front_tls_needcrt__exact.list
+    acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front_tls_needcrt__exact.list
     acl tls-has-invalid-crt ssl_c_ca_err gt 0
     acl tls-has-invalid-crt ssl_c_err gt 0
-    acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front_tls_invalidcrt_hosts__exact.list
+    acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front_tls_auth__exact.list
     http-request set-var(req.path) path
     http-request set-var(req.snibase) ssl_fc_sni,concat(,req.path),lower
     http-request set-var(req.snibackend) var(req.snibase),map_beg(/etc/haproxy/maps/_front_https_sni__begin.map)
@@ -1669,11 +1669,11 @@ d6.local/ d_app_8080
 d1.local/ d_app_8080
 d2.local/ d_app_8080
 `)
-	c.checkMap("_front_tls_missingcrt_hosts__exact.list", `
+	c.checkMap("_front_tls_needcrt__exact.list", `
 d1.local
 d2.local
 `)
-	c.checkMap("_front_tls_invalidcrt_hosts__exact.list", `
+	c.checkMap("_front_tls_auth__exact.list", `
 d1.local
 d2.local
 `)
@@ -2770,7 +2770,7 @@ frontend _front_https
     acl tls-has-crt ssl_c_used
     acl tls-has-invalid-crt ssl_c_ca_err gt 0
     acl tls-has-invalid-crt ssl_c_err gt 0
-    acl tls-check-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front_tls_invalidcrt_hosts__regex.list
+    acl tls-check-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front_tls_auth__regex.list
     http-request set-var(req.path) path
     http-request set-var(req.snibase) ssl_fc_sni,concat(,req.path),lower
     http-request set-var(req.snibackend) var(req.snibase),map_reg(/etc/haproxy/maps/_front_https_sni__regex.map) if !{ var(req.snibackend) -m found }
@@ -2812,7 +2812,7 @@ d1.local/ d1_app_8080
 	c.checkMap("_front_https_sni__regex.map", `
 ^[^.]+\.sub\.d1\.local/ d1_app_8080
 `)
-	c.checkMap("_front_tls_invalidcrt_hosts__regex.list", `
+	c.checkMap("_front_tls_auth__regex.list", `
 ^[^.]+\.sub\.d1\.local$
 `)
 	c.checkMap("_front_tls_invalidcrt_pages__regex.map", `
