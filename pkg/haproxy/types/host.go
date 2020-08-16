@@ -160,7 +160,7 @@ func (h *Host) FindPath(path string) *HostPath {
 }
 
 // AddPath ...
-func (h *Host) AddPath(backend *Backend, path string) {
+func (h *Host) AddPath(backend *Backend, path string, match MatchType) {
 	var hback HostBackend
 	if backend != nil {
 		hback = HostBackend{
@@ -175,7 +175,7 @@ func (h *Host) AddPath(backend *Backend, path string) {
 	}
 	h.Paths = append(h.Paths, &HostPath{
 		Path:    path,
-		Match:   MatchBegin,
+		Match:   match,
 		Backend: hback,
 	})
 	// reverse order in order to avoid overlap of sub-paths

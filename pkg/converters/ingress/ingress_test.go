@@ -612,6 +612,114 @@ func TestSyncPathEmpty(t *testing.T) {
     backend: default_echo_8080`)
 }
 
+func TestPathType(t *testing.T) {
+	pathTypeExact := networking.PathTypeExact
+	pathTypePrefix := networking.PathTypePrefix
+	pathTypeImplementationSpecific := networking.PathTypeImplementationSpecific
+	pathNewFromSpec := networking.PathType("NewFromSpec")
+	testCases := []struct {
+		pathType   *networking.PathType
+		annotation string
+		expected   hatypes.MatchType
+		logging    string
+	}{
+		// 0
+		{
+			expected: hatypes.MatchBegin,
+		},
+		// 1
+		{
+			annotation: "begin",
+			expected:   hatypes.MatchBegin,
+		},
+		// 2
+		{
+			annotation: "exact",
+			expected:   hatypes.MatchExact,
+		},
+		// 3
+		{
+			annotation: "Exact",
+			expected:   hatypes.MatchExact,
+		},
+		// 4
+		{
+			annotation: "prefix",
+			expected:   hatypes.MatchPrefix,
+		},
+		// 5
+		{
+			annotation: "regex",
+			expected:   hatypes.MatchRegex,
+		},
+		// 6
+		{
+			pathType: &pathTypeImplementationSpecific,
+			expected: hatypes.MatchBegin,
+		},
+		// 7
+		{
+			pathType: &pathTypeExact,
+			expected: hatypes.MatchExact,
+		},
+		// 8
+		{
+			pathType: &pathTypePrefix,
+			expected: hatypes.MatchPrefix,
+		},
+		// 9
+		{
+			pathType:   &pathTypeImplementationSpecific,
+			annotation: "begin",
+			expected:   hatypes.MatchBegin,
+		},
+		// 10
+		{
+			pathType:   &pathTypeImplementationSpecific,
+			annotation: "prefix",
+			expected:   hatypes.MatchPrefix,
+		},
+		// 11
+		{
+			pathType:   &pathTypePrefix,
+			annotation: "begin",
+			expected:   hatypes.MatchPrefix,
+		},
+		// 12
+		{
+			pathType:   &pathTypeExact,
+			annotation: "prefix",
+			expected:   hatypes.MatchExact,
+		},
+		// 13
+		{
+			annotation: "invalid",
+			expected:   hatypes.MatchBegin,
+			logging:    "WARN unsupported path-type 'invalid', using 'begin' instead.",
+		},
+		// 14
+		{
+			pathType: &pathNewFromSpec,
+			expected: hatypes.MatchBegin,
+			logging:  "WARN unsupported 'NewFromSpec' pathType from ingress spec, using 'ImplementationSpecific' instead.",
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		c.createSvc1Auto()
+		ann := map[string]string{"ingress.kubernetes.io/path-type": test.annotation}
+		ing := c.createIng1Ann("default/echo", "echo.localdomain", "/", "echo:8080", ann)
+		ing.Spec.Rules[0].HTTP.Paths[0].PathType = test.pathType
+		c.Sync(ing)
+		match := c.hconfig.Hosts().AcquireHost("echo.localdomain").FindPath("/").Match
+		if match != test.expected {
+			c.t.Errorf("path type does not match in %d: expected '%s', actual '%s'", i, test.expected, match)
+		}
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
 func TestSyncBackendDefault(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()

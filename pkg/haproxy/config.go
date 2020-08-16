@@ -130,7 +130,7 @@ func (c *config) SyncConfig() {
 				// and from `for range host.Paths` on map building.
 				back = c.backends.DefaultBackend()
 			}
-			host.AddPath(back, "/")
+			host.AddPath(back, "/", hatypes.MatchBegin)
 		}
 	}
 }
