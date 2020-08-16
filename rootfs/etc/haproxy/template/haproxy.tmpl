@@ -849,7 +849,7 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $hosts.HasVarNamespace }}
+{{- if $fmaps.VarNamespaceMap.HasHost }}
 {{- if $fmaps.VarNamespaceMap.HasExact }}
     http-request set-var(txn.namespace) 
         {{- "" }} var(req.base),map({{ $fmaps.VarNamespaceMap.FilenameExact }})
@@ -951,7 +951,7 @@ frontend _front_https
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if or $fmaps.HTTPSHostMap.HasHost $fmaps.TLSAuthList.HasHost $hosts.HasVarNamespace }}
+{{- if or $fmaps.HTTPSHostMap.HasHost $fmaps.TLSAuthList.HasHost $fmaps.VarNamespaceMap.HasHost }}
     http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
 {{- end }}
 {{- if $fmaps.HTTPSHostMap.HasExact }}
@@ -992,7 +992,7 @@ frontend _front_https
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $hosts.HasVarNamespace }}
+{{- if $fmaps.VarNamespaceMap.HasHost }}
 {{- if $fmaps.VarNamespaceMap.HasExact }}
     http-request set-var(txn.namespace) 
         {{- "" }} var(req.base),map({{ $fmaps.VarNamespaceMap.FilenameExact }})

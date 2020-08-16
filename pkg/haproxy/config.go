@@ -170,6 +170,7 @@ func (c *config) WriteFrontendMaps() error {
 	//  1. match with path_beg/map_beg, /path has a feature and a declared /path/sub doesn't have
 	//  2. *.host.domain wildcard/alias/alias-regex has a feature and a declared sub.host.domain doesn't have
 	yesno := map[bool]string{true: "yes", false: "no"}
+	hasVarNamespace := c.hosts.HasVarNamespace()
 	for _, host := range c.hosts.BuildSortedItems() {
 		if host.SSLPassthrough() {
 			rootPath := host.FindPath("/")
@@ -213,13 +214,16 @@ func (c *config) WriteFrontendMaps() error {
 				fmaps.HTTPHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
 				fmaps.HTTPHostMap.AddAliasPathMapping(host.Alias, path, backendID)
 			}
-			var ns string
-			if host.VarNamespace {
-				ns = path.Backend.Namespace
-			} else {
-				ns = "-"
+			if hasVarNamespace {
+				// add "-" on missing paths to avoid overlap
+				var ns string
+				if host.VarNamespace {
+					ns = path.Backend.Namespace
+				} else {
+					ns = "-"
+				}
+				fmaps.VarNamespaceMap.AddHostnamePathMapping(host.Hostname, path, ns)
 			}
-			fmaps.VarNamespaceMap.AddHostnamePathMapping(host.Hostname, path, ns)
 		}
 		if host.HasTLSAuth() {
 			fmaps.TLSAuthList.AddHostnameMapping(host.Hostname, "")
