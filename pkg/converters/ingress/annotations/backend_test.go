@@ -1284,8 +1284,8 @@ func TestRewriteURL(t *testing.T) {
 			ann = map[string]string{ingtypes.BackRewriteTarget: test.input}
 		}
 		d := c.createBackendData("default/app", &test.source, map[string]string{}, map[string]string{})
-		d.backend.AddHostPath("d1.local", "/")
-		d.mapper.AddAnnotations(&test.source, "d1.local/", ann)
+		d.backend.AddBackendPath(hatypes.CreatePathLink("d1.local", "/"))
+		d.mapper.AddAnnotations(&test.source, hatypes.CreatePathLink("d1.local", "/"), ann)
 		c.createUpdater().buildBackendRewriteURL(d)
 		expected := []*hatypes.BackendConfigStr{
 			{
@@ -1938,10 +1938,8 @@ func createBackendPaths(paths ...string) hatypes.BackendPaths {
 		backendPaths = append(backendPaths, &hatypes.BackendPath{
 			// ignoring ID which isn't the focus of the test
 			// removing on createBackendMappingData() as well
-			ID:       "",
-			Hostname: testingHostname,
-			Hostpath: testingHostname + path,
-			Path:     path,
+			ID:   "",
+			Link: hatypes.CreatePathLink(testingHostname, path),
 		})
 	}
 	return hatypes.NewBackendPaths(backendPaths...)

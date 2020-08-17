@@ -197,7 +197,7 @@ func (c *config) WriteFrontendMaps() error {
 			backend := c.backends.FindBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
 			hasSSLRedirect := false
 			if host.TLS.HasTLS() && backend != nil {
-				hasSSLRedirect = backend.HasSSLRedirectHostpath(host.Hostname + path.Path)
+				hasSSLRedirect = backend.LinkHasSSLRedirect(path.Link)
 			}
 			// TODO use only root path if all uri has the same conf
 			fmaps.RedirToHTTPSMap.AddHostnamePathMapping(host.Hostname, path, yesno[hasSSLRedirect])
@@ -313,15 +313,15 @@ func (c *config) WriteBackendMaps() error {
 			pathsMap := mapBuilder.AddMap(mapsPrefix + "_idpath.map")
 			for _, path := range backend.Paths {
 				// IMPLEMENT add HostPath link into the backend path
-				h := c.hosts.FindHost(path.Hostname)
+				h := c.hosts.FindHost(path.Hostname())
 				if h == nil {
 					continue
 				}
-				p := h.FindPath(path.Path)
+				p := h.FindPath(path.Path())
 				if p == nil {
 					continue
 				}
-				pathsMap.AddHostnamePathMapping(path.Hostname, p, path.ID)
+				pathsMap.AddHostnamePathMapping(path.Hostname(), p, path.ID)
 			}
 			backend.PathsMap = pathsMap
 		}

@@ -475,7 +475,7 @@ func (c *converter) addHost(hostname string, source *annotations.Source, ann map
 		mapper = c.mapBuilder.NewMapper()
 		c.hostAnnotations[host] = mapper
 	}
-	conflict := mapper.AddAnnotations(source, hostname+"/", ann)
+	conflict := mapper.AddAnnotations(source, hatypes.CreatePathLink(hostname, "/"), ann)
 	if len(conflict) > 0 {
 		c.logger.Warn("skipping host annotation(s) from %v due to conflict: %v", source, conflict)
 	}
@@ -504,7 +504,7 @@ func (c *converter) addBackend(source *annotations.Source, hostname, uri, fullSv
 	}
 	backend := c.haproxy.Backends().AcquireBackend(namespace, svcName, port.TargetPort.String())
 	c.tracker.TrackBackend(convtypes.IngressType, source.FullName(), backend.BackendID())
-	hostpath := hostname + uri
+	pathlink := hatypes.CreatePathLink(hostname, uri)
 	mapper, found := c.backendAnnotations[backend]
 	if !found {
 		// New backend, initialize with service annotations, giving precedence
@@ -514,12 +514,12 @@ func (c *converter) addBackend(source *annotations.Source, hostname, uri, fullSv
 			Namespace: namespace,
 			Name:      svcName,
 			Type:      "service",
-		}, hostpath, ann)
+		}, pathlink, ann)
 		c.backendAnnotations[backend] = mapper
 		backend.Server.InitialWeight = mapper.Get(ingtypes.BackInitialWeight).Int()
 	}
 	// Merging Ingress annotations
-	conflict := mapper.AddAnnotations(source, hostpath, ann)
+	conflict := mapper.AddAnnotations(source, pathlink, ann)
 	if len(conflict) > 0 {
 		c.logger.Warn("skipping backend '%s:%s' annotation(s) from %v due to conflict: %v",
 			svcName, svcPort, source, conflict)

@@ -751,7 +751,7 @@ func (c *updater) buildBackendSSLRedirect(d *backData) {
 		[]string{ingtypes.BackSSLRedirect},
 		func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue {
 			for _, redir := range noTLSRedir {
-				if strings.HasPrefix(path.Path, redir) {
+				if strings.HasPrefix(path.Path(), redir) {
 					values[ingtypes.BackSSLRedirect].Value = "false"
 					return values
 				}

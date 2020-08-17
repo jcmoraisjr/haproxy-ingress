@@ -85,7 +85,7 @@ func TestBind(t *testing.T) {
 			ingtypes.GlobalHTTPSPort:      "443",
 			ingtypes.GlobalBindIPAddrHTTP: "*",
 		})
-		d.mapper.AddAnnotations(nil, "-", test.ann)
+		d.mapper.AddAnnotations(nil, hatypes.CreatePathLink("-", "-"), test.ann)
 		c.createUpdater().buildGlobalBind(d)
 		c.compareObjects("bind", i, d.global.Bind, test.expected)
 		c.teardown()
@@ -339,8 +339,8 @@ func TestDisableCpuMap(t *testing.T) {
 		// 0
 		{
 			ann: map[string]string{
-				ingtypes.GlobalUseCpuMap: "false",
-				ingtypes.GlobalNbthread: "1",
+				ingtypes.GlobalUseCpuMap:     "false",
+				ingtypes.GlobalNbthread:      "1",
 				ingtypes.GlobalNbprocBalance: "1",
 			},
 			expected: "",
@@ -348,9 +348,9 @@ func TestDisableCpuMap(t *testing.T) {
 		// 1
 		{
 			ann: map[string]string{
-				ingtypes.GlobalUseCpuMap: "false",
-				ingtypes.GlobalCpuMap: "auto 1/1 1-",
-				ingtypes.GlobalNbthread: "1",
+				ingtypes.GlobalUseCpuMap:     "false",
+				ingtypes.GlobalCpuMap:        "auto 1/1 1-",
+				ingtypes.GlobalNbthread:      "1",
 				ingtypes.GlobalNbprocBalance: "1",
 			},
 			expected: "",
@@ -358,9 +358,9 @@ func TestDisableCpuMap(t *testing.T) {
 		// 2
 		{
 			ann: map[string]string{
-				ingtypes.GlobalUseCpuMap: "true",
-				ingtypes.GlobalCpuMap: "auto:1/1 1-",
-				ingtypes.GlobalNbthread: "4",
+				ingtypes.GlobalUseCpuMap:     "true",
+				ingtypes.GlobalCpuMap:        "auto:1/1 1-",
+				ingtypes.GlobalNbthread:      "4",
 				ingtypes.GlobalNbprocBalance: "1",
 			},
 			expected: "auto:1/1 1-",
@@ -368,8 +368,8 @@ func TestDisableCpuMap(t *testing.T) {
 		// 3
 		{
 			ann: map[string]string{
-				ingtypes.GlobalUseCpuMap: "true",
-				ingtypes.GlobalNbthread: "2",
+				ingtypes.GlobalUseCpuMap:     "true",
+				ingtypes.GlobalNbthread:      "2",
 				ingtypes.GlobalNbprocBalance: "1",
 			},
 			expected: "auto:1/1-2 0-1",

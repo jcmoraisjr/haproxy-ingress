@@ -25,7 +25,7 @@ import (
 
 type ann struct {
 	src         *Source
-	uri         string
+	link        hatypes.PathLink
 	key         string
 	val         string
 	expConflict bool
@@ -55,6 +55,10 @@ var (
 )
 
 func TestAddAnnotation(t *testing.T) {
+	pathRoot := hatypes.CreatePathLink("domain.local", "/")
+	pathApp := hatypes.CreatePathLink("domain.local", "/app")
+	pathPath := hatypes.CreatePathLink("domain.local", "/path")
+	pathURL := hatypes.CreatePathLink("domain.local", "/url")
 	testCases := []struct {
 		ann       []ann
 		annPrefix string
@@ -66,8 +70,8 @@ func TestAddAnnotation(t *testing.T) {
 		// 0
 		{
 			ann: []ann{
-				{srcing1, "/", "auth-basic", "default/basic1", false},
-				{srcing2, "/url", "auth-basic", "default/basic2", false},
+				{srcing1, pathRoot, "auth-basic", "default/basic1", false},
+				{srcing2, pathURL, "auth-basic", "default/basic2", false},
 			},
 			annPrefix: "ing/",
 			getKey:    "auth-basic",
@@ -77,10 +81,10 @@ func TestAddAnnotation(t *testing.T) {
 		// 1
 		{
 			ann: []ann{
-				{srcing1, "/", "auth-basic", "default/basic1", false},
-				{srcing2, "/url", "auth-basic", "default/basic2", false},
-				{srcing3, "/path", "auth-basic", "default/basic3", false},
-				{srcing4, "/app", "auth-basic", "default/basic4", false},
+				{srcing1, pathRoot, "auth-basic", "default/basic1", false},
+				{srcing2, pathURL, "auth-basic", "default/basic2", false},
+				{srcing3, pathPath, "auth-basic", "default/basic3", false},
+				{srcing4, pathApp, "auth-basic", "default/basic4", false},
 			},
 			annPrefix: "ing.k8s.io/",
 			getKey:    "auth-basic",
@@ -90,10 +94,10 @@ func TestAddAnnotation(t *testing.T) {
 		// 2
 		{
 			ann: []ann{
-				{srcing1, "/", "auth-basic", "default/basic1", false},
-				{srcing2, "/url", "auth-basic", "default/basic1", false},
-				{srcing3, "/path", "auth-basic", "default/basic1", false},
-				{srcing4, "/app", "auth-basic", "default/basic2", false},
+				{srcing1, pathRoot, "auth-basic", "default/basic1", false},
+				{srcing2, pathURL, "auth-basic", "default/basic1", false},
+				{srcing3, pathPath, "auth-basic", "default/basic1", false},
+				{srcing4, pathApp, "auth-basic", "default/basic2", false},
 			},
 			annPrefix: "ing.k8s.io/",
 			getKey:    "auth-basic",
@@ -103,8 +107,8 @@ func TestAddAnnotation(t *testing.T) {
 		// 3
 		{
 			ann: []ann{
-				{srcing1, "/", "auth-basic", "default/basic1", false},
-				{srcing2, "/", "auth-basic", "default/basic2", true},
+				{srcing1, pathRoot, "auth-basic", "default/basic1", false},
+				{srcing2, pathRoot, "auth-basic", "default/basic2", true},
 			},
 			getKey: "auth-basic",
 			expVal: "default/basic1",
@@ -112,8 +116,8 @@ func TestAddAnnotation(t *testing.T) {
 		// 4
 		{
 			ann: []ann{
-				{srcing1, "/", "auth-basic", "default/basic1", false},
-				{srcing2, "/url", "auth-basic", "default/basic1", false},
+				{srcing1, pathRoot, "auth-basic", "default/basic1", false},
+				{srcing2, pathURL, "auth-basic", "default/basic1", false},
 			},
 			getKey: "auth-basic",
 			expVal: "default/basic1",
@@ -129,7 +133,7 @@ func TestAddAnnotation(t *testing.T) {
 		c := setup(t)
 		mapper := NewMapBuilder(c.logger, test.annPrefix, map[string]string{}).NewMapper()
 		for j, ann := range test.ann {
-			if conflict := mapper.addAnnotation(ann.src, ann.uri, ann.key, ann.val); conflict != ann.expConflict {
+			if conflict := mapper.addAnnotation(ann.src, ann.link, ann.key, ann.val); conflict != ann.expConflict {
 				t.Errorf("expect conflict '%t' on '// %d (%d)', but was '%t'", ann.expConflict, i, j, conflict)
 			}
 		}
@@ -150,6 +154,8 @@ func TestAddAnnotation(t *testing.T) {
 }
 
 func TestGetAnnotation(t *testing.T) {
+	pathRoot := hatypes.CreatePathLink("domain.local", "/")
+	pathURL := hatypes.CreatePathLink("domain.local", "/url")
 	testCases := []struct {
 		ann       []ann
 		annPrefix string
@@ -160,37 +166,37 @@ func TestGetAnnotation(t *testing.T) {
 		// 0
 		{
 			ann: []ann{
-				{srcing1, "/", "auth-basic", "default/basic1", false},
-				{srcing2, "/url", "auth-basic", "default/basic2", false},
+				{srcing1, pathRoot, "auth-basic", "default/basic1", false},
+				{srcing2, pathURL, "auth-basic", "default/basic2", false},
 			},
 			getKey: "auth-basic",
 			expAnnMap: []*Map{
-				{Source: srcing1, URI: "/", Value: "default/basic1"},
-				{Source: srcing2, URI: "/url", Value: "default/basic2"},
+				{Source: srcing1, Link: pathRoot, Value: "default/basic1"},
+				{Source: srcing2, Link: pathURL, Value: "default/basic2"},
 			},
 		},
 		// 1
 		{
 			ann: []ann{
-				{srcing1, "/", "auth-type", "basic", false},
-				{srcing1, "/", "auth-basic", "default/basic1", false},
-				{srcing2, "/", "auth-basic", "default/basic2", true},
+				{srcing1, pathRoot, "auth-type", "basic", false},
+				{srcing1, pathRoot, "auth-basic", "default/basic1", false},
+				{srcing2, pathRoot, "auth-basic", "default/basic2", true},
 			},
 			getKey: "auth-basic",
 			expAnnMap: []*Map{
-				{Source: srcing1, URI: "/", Value: "default/basic1"},
+				{Source: srcing1, Link: pathRoot, Value: "default/basic1"},
 			},
 		},
 		// 2
 		{
 			ann: []ann{
-				{srcing1, "/", "auth-type", "basic", false},
-				{srcing1, "/", "auth-basic", "default/basic1", false},
-				{srcing2, "/", "auth-basic", "default/basic2", true},
+				{srcing1, pathRoot, "auth-type", "basic", false},
+				{srcing1, pathRoot, "auth-basic", "default/basic1", false},
+				{srcing2, pathRoot, "auth-basic", "default/basic2", true},
 			},
 			getKey: "auth-type",
 			expAnnMap: []*Map{
-				{Source: srcing1, URI: "/", Value: "basic"},
+				{Source: srcing1, Link: pathRoot, Value: "basic"},
 			},
 		},
 	}
@@ -198,7 +204,7 @@ func TestGetAnnotation(t *testing.T) {
 		c := setup(t)
 		mapper := NewMapBuilder(c.logger, test.annPrefix, map[string]string{}).NewMapper()
 		for j, ann := range test.ann {
-			if conflict := mapper.addAnnotation(ann.src, ann.uri, ann.key, ann.val); conflict != ann.expConflict {
+			if conflict := mapper.addAnnotation(ann.src, ann.link, ann.key, ann.val); conflict != ann.expConflict {
 				t.Errorf("expect conflict '%t' on '// %d (%d)', but was '%t'", ann.expConflict, i, j, conflict)
 			}
 		}
@@ -281,10 +287,11 @@ func TestGetDefault(t *testing.T) {
 			},
 		},
 	}
+	pathRoot := hatypes.CreatePathLink("domain.local", "/")
 	for i, test := range testCases {
 		c := setup(t)
 		mapper := NewMapBuilder(c.logger, "ing.k8s.io", test.annDefaults).NewMapper()
-		mapper.AddAnnotations(&Source{}, "/", test.ann)
+		mapper.AddAnnotations(&Source{}, pathRoot, test.ann)
 		for key, exp := range test.expAnn {
 			value := mapper.Get(key).Value
 			if exp != value {

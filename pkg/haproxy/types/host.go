@@ -31,6 +31,14 @@ func CreateHosts() *Hosts {
 	}
 }
 
+// CreatePathLink ...
+func CreatePathLink(hostname, path string) PathLink {
+	return PathLink{
+		hostname: hostname,
+		path:     path,
+	}
+}
+
 // AcquireHost ...
 func (h *Hosts) AcquireHost(hostname string) *Host {
 	if host := h.FindHost(hostname); host != nil {
@@ -161,6 +169,7 @@ func (h *Host) FindPath(path string) *HostPath {
 
 // AddPath ...
 func (h *Host) AddPath(backend *Backend, path string, match MatchType) {
+	link := CreatePathLink(h.Hostname, path)
 	var hback HostBackend
 	if backend != nil {
 		hback = HostBackend{
@@ -169,12 +178,13 @@ func (h *Host) AddPath(backend *Backend, path string, match MatchType) {
 			Name:      backend.Name,
 			Port:      backend.Port,
 		}
-		backend.AddHostPath(h.Hostname, path)
+		backend.AddBackendPath(link)
 	} else {
 		hback = HostBackend{ID: "_error404"}
 	}
 	h.Paths = append(h.Paths, &HostPath{
 		Path:    path,
+		Link:    link,
 		Match:   match,
 		Backend: hback,
 	})
@@ -205,6 +215,22 @@ func (h *Host) SetSSLPassthrough(value bool) {
 		h.hosts.sslPassthroughCount--
 	}
 	h.sslPassthrough = value
+}
+
+// IsEmpty ...
+func (l *PathLink) IsEmpty() bool {
+	return l.hostname == "" && l.path == ""
+}
+
+// Less ...
+func (l *PathLink) Less(other PathLink, reversePath bool) bool {
+	if l.hostname == other.hostname {
+		if reversePath {
+			return l.path > other.path
+		}
+		return l.path < other.path
+	}
+	return l.hostname < other.hostname
 }
 
 // String ...

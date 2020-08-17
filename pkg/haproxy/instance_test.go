@@ -93,7 +93,7 @@ func TestBackends(t *testing.T) {
 				}
 				b.Cors = []*hatypes.BackendConfigCors{
 					{
-						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/"), b.FindHostPath("d1.local/sub")),
+						Paths:  createBackendPaths(b, "d1.local/", "d1.local/sub"),
 						Config: config,
 					},
 				}
@@ -118,11 +118,11 @@ func TestBackends(t *testing.T) {
 				}
 				b.Cors = []*hatypes.BackendConfigCors{
 					{
-						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/")),
+						Paths:  createBackendPaths(b, "d1.local/"),
 						Config: config,
 					},
 					{
-						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/sub")),
+						Paths:  createBackendPaths(b, "d1.local/sub"),
 						Config: hatypes.Cors{},
 					},
 				}
@@ -148,7 +148,7 @@ d1.local/ path01`,
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.HSTS = []*hatypes.BackendConfigHSTS{
 					{
-						Paths: hatypes.NewBackendPaths(b.FindHostPath("d1.local/")),
+						Paths: createBackendPaths(b, "d1.local/"),
 						Config: hatypes.HSTS{
 							Enabled:    true,
 							MaxAge:     15768000,
@@ -157,7 +157,7 @@ d1.local/ path01`,
 						},
 					},
 					{
-						Paths: hatypes.NewBackendPaths(b.FindHostPath("d1.local/path"), b.FindHostPath("d1.local/uri")),
+						Paths: createBackendPaths(b, "d1.local/path", "d1.local/uri"),
 						Config: hatypes.HSTS{
 							Enabled:    true,
 							MaxAge:     15768000,
@@ -196,7 +196,7 @@ d1.local/ path01`,
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.RewriteURL = []*hatypes.BackendConfigStr{
 					{
-						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app")),
+						Paths:  createBackendPaths(b, "d1.local/app"),
 						Config: "/",
 					},
 				}
@@ -209,7 +209,7 @@ d1.local/ path01`,
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.RewriteURL = []*hatypes.BackendConfigStr{
 					{
-						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app")),
+						Paths:  createBackendPaths(b, "d1.local/app"),
 						Config: "/other",
 					},
 				}
@@ -222,7 +222,7 @@ d1.local/ path01`,
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.RewriteURL = []*hatypes.BackendConfigStr{
 					{
-						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app"), b.FindHostPath("d1.local/app/sub")),
+						Paths:  createBackendPaths(b, "d1.local/app", "d1.local/app/sub"),
 						Config: "/other/",
 					},
 				}
@@ -236,11 +236,11 @@ d1.local/ path01`,
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.RewriteURL = []*hatypes.BackendConfigStr{
 					{
-						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/path1")),
+						Paths:  createBackendPaths(b, "d1.local/path1"),
 						Config: "/sub1",
 					},
 					{
-						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/path2"), b.FindHostPath("d1.local/path3")),
+						Paths:  createBackendPaths(b, "d1.local/path2", "d1.local/path3"),
 						Config: "/sub2",
 					},
 				}
@@ -265,11 +265,11 @@ d1.local/path1 path01`,
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.WhitelistHTTP = []*hatypes.BackendConfigWhitelist{
 					{
-						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app"), b.FindHostPath("d1.local/api")),
+						Paths:  createBackendPaths(b, "d1.local/app", "d1.local/api"),
 						Config: []string{"10.0.0.0/8", "192.168.0.0/16"},
 					},
 					{
-						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/path")),
+						Paths:  createBackendPaths(b, "d1.local/path"),
 						Config: []string{"192.168.95.0/24"},
 					},
 				}
@@ -298,16 +298,11 @@ d1.local/api path02`,
 				h.FindPath("/api/v[0-9]+/.*").Match = hatypes.MatchRegex
 				b.WhitelistHTTP = []*hatypes.BackendConfigWhitelist{
 					{
-						Paths: hatypes.NewBackendPaths(
-							b.FindHostPath("d1.local/app"),
-							b.FindHostPath("d1.local/api"),
-							b.FindHostPath("d1.local/path"),
-							b.FindHostPath("d1.local/api/v[0-9]+/.*")),
+						Paths:  createBackendPaths(b, "d1.local/app", "d1.local/api", "d1.local/path", "d1.local/api/v[0-9]+/.*"),
 						Config: []string{"10.0.0.0/8", "192.168.0.0/16"},
 					},
 					{
-						Paths: hatypes.NewBackendPaths(
-							b.FindHostPath("d1.local/")),
+						Paths:  createBackendPaths(b, "d1.local/"),
 						Config: []string{"172.17.0.0/16"},
 					},
 				}
@@ -344,11 +339,11 @@ d1.local/ path01`,
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.WhitelistHTTP = []*hatypes.BackendConfigWhitelist{
 					{
-						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app"), b.FindHostPath("d1.local/api")),
+						Paths:  createBackendPaths(b, "d1.local/app", "d1.local/api"),
 						Config: []string{},
 					},
 					{
-						Paths: hatypes.NewBackendPaths(b.FindHostPath("d1.local/path")),
+						Paths: createBackendPaths(b, "d1.local/path"),
 						Config: []string{
 							"1.1.1.1", "1.1.1.2", "1.1.1.3", "1.1.1.4", "1.1.1.5",
 							"1.1.1.6", "1.1.1.7", "1.1.1.8", "1.1.1.9", "1.1.1.10",
@@ -394,11 +389,11 @@ d1.local/api path02`,
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.MaxBodySize = []*hatypes.BackendConfigInt{
 					{
-						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/app")),
+						Paths:  createBackendPaths(b, "d1.local/app"),
 						Config: 2048,
 					},
 					{
-						Paths:  hatypes.NewBackendPaths(b.FindHostPath("d1.local/")),
+						Paths:  createBackendPaths(b, "d1.local/"),
 						Config: 0,
 					},
 				}
@@ -1044,7 +1039,7 @@ func TestInstanceFrontingProxyUseProto(t *testing.T) {
 		b.Endpoints = []*hatypes.Endpoint{endpointS1}
 		b.HSTS = []*hatypes.BackendConfigHSTS{
 			{
-				Paths: hatypes.NewBackendPaths(b.FindHostPath(test.domain + "/")),
+				Paths: createBackendPaths(b, test.domain+"/"),
 				Config: hatypes.HSTS{
 					Enabled:    true,
 					MaxAge:     15768000,
@@ -1210,7 +1205,7 @@ func TestInstanceFrontingProxyIgnoreProto(t *testing.T) {
 		b.Endpoints = []*hatypes.Endpoint{endpointS1}
 		b.HSTS = []*hatypes.BackendConfigHSTS{
 			{
-				Paths: hatypes.NewBackendPaths(b.FindHostPath(test.domain + "/")),
+				Paths: createBackendPaths(b, test.domain+"/"),
 				Config: hatypes.HSTS{
 					Enabled:    true,
 					MaxAge:     15768000,
@@ -2479,10 +2474,10 @@ userlist default_auth2
 		}
 		b.AuthHTTP = []*hatypes.BackendConfigAuth{
 			{
-				Paths: hatypes.NewBackendPaths(b.FindHostPath("d1.local/")),
+				Paths: createBackendPaths(b, "d1.local/"),
 			},
 			{
-				Paths:        hatypes.NewBackendPaths(b.FindHostPath("d1.local/admin")),
+				Paths:        createBackendPaths(b, "d1.local/admin"),
 				UserlistName: test.listname,
 				Realm:        test.realm,
 			},
@@ -2785,7 +2780,7 @@ func TestModSecurity(t *testing.T) {
 		h.AddPath(b, test.path, hatypes.MatchBegin)
 		b.WAF = []*hatypes.BackendConfigWAF{
 			{
-				Paths: hatypes.NewBackendPaths(b.FindHostPath("d1.local" + test.path)),
+				Paths: createBackendPaths(b, "d1.local"+test.path),
 				Config: hatypes.WAF{
 					Module: test.waf,
 					Mode:   test.wafmode,
@@ -2795,7 +2790,7 @@ func TestModSecurity(t *testing.T) {
 		if test.path != "/" {
 			h.AddPath(b, "/", hatypes.MatchBegin)
 			b.WAF = append(b.WAF, &hatypes.BackendConfigWAF{
-				Paths: hatypes.NewBackendPaths(b.FindHostPath("d1.local/")),
+				Paths: createBackendPaths(b, "d1.local/"),
 			})
 		}
 
@@ -3355,4 +3350,15 @@ func (c *testConfig) compareText(name, actual, expected string) {
 	if txtActual != txtExpected {
 		c.t.Error("\ndiff of " + name + ":" + diff.Diff(txtExpected, txtActual))
 	}
+}
+
+func createBackendPaths(backend *hatypes.Backend, uris ...string) hatypes.BackendPaths {
+	paths := make([]*hatypes.BackendPath, len(uris))
+	for i, uri := range uris {
+		j := strings.Index(uri, "/")
+		hostname := uri[:j]
+		path := uri[j:]
+		paths[i] = backend.FindBackendPath(hatypes.CreatePathLink(hostname, path))
+	}
+	return hatypes.NewBackendPaths(paths...)
 }

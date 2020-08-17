@@ -387,7 +387,7 @@ backend {{ $backend.ID }}
 {{- /*------------------------------------*/}}
 {{- if $backend.NeedACL }}
 {{- range $path := reverse $backend.Paths }}
-    # {{ $path.ID }} = {{ $path.Hostpath }}
+    # {{ $path.ID }} = {{ $path.Hostname }}{{ $path.Path }}
 {{- end }}
 {{- if $backend.PathsMap.HasExact }}
     http-request set-var(txn.pathID) base,map({{ $backend.PathsMap.FilenameExact }})
