@@ -41,7 +41,7 @@ func (hm *HostsMaps) AddMap(basename string) *HostsMap {
 
 // AddHostnameMapping ...
 func (hm *HostsMap) AddHostnameMapping(hostname, target string) {
-	hostname, hasWildcard := convertWildcardToRegex(hostname, true)
+	hostname, hasWildcard := convertWildcardToRegex(hostname)
 	if hasWildcard {
 		hm.addTarget(hostname, "", target, MatchRegex)
 	} else {
@@ -51,7 +51,7 @@ func (hm *HostsMap) AddHostnameMapping(hostname, target string) {
 
 // AddHostnamePathMapping ...
 func (hm *HostsMap) AddHostnamePathMapping(hostname string, hostPath *HostPath, target string) {
-	hostname, hasWildcard := convertWildcardToRegex(hostname, false)
+	hostname, hasWildcard := convertWildcardToRegex(hostname)
 	path := hostPath.Path
 	match := hostPath.Match
 	// TODO paths of a wildcard hostname will always have less precedence
@@ -61,8 +61,7 @@ func (hm *HostsMap) AddHostnamePathMapping(hostname string, hostPath *HostPath, 
 		path = convertPathToRegex(hostPath)
 		match = MatchRegex
 	} else if hostPath.Match == MatchRegex {
-		hostname = "^" + regexp.QuoteMeta(hostname)
-		path = hostPath.Path + "$"
+		hostname = "^" + regexp.QuoteMeta(hostname) + "$"
 	}
 	hm.addTarget(hostname, path, target, match)
 }
@@ -74,35 +73,31 @@ func (hm *HostsMap) AddAliasPathMapping(alias HostAliasConfig, path *HostPath, t
 	}
 	if alias.AliasRegex != "" {
 		pathstr := convertPathToRegex(path)
-		hm.addTarget("^"+alias.AliasRegex, pathstr, target, MatchRegex)
+		hm.addTarget(alias.AliasRegex, pathstr, target, MatchRegex)
 	}
 }
 
-func convertWildcardToRegex(hostname string, matchEol bool) (h string, hasWildcard bool) {
+func convertWildcardToRegex(hostname string) (h string, hasWildcard bool) {
 	if !strings.HasPrefix(hostname, "*.") {
 		return hostname, false
 	}
-	hostregex := "^[^.]+" + regexp.QuoteMeta(hostname[1:])
-	if matchEol {
-		return hostregex + "$", true
-	}
-	return hostregex, true
+	return "^[^.]+" + regexp.QuoteMeta(hostname[1:]) + "$", true
 }
 
 func convertPathToRegex(hostPath *HostPath) string {
 	switch hostPath.Match {
 	case MatchBegin:
-		return regexp.QuoteMeta(hostPath.Path)
+		return "^" + regexp.QuoteMeta(hostPath.Path)
 	case MatchExact:
-		return regexp.QuoteMeta(hostPath.Path) + "$"
+		return "^" + regexp.QuoteMeta(hostPath.Path) + "$"
 	case MatchPrefix:
-		path := regexp.QuoteMeta(hostPath.Path)
+		path := "^" + regexp.QuoteMeta(hostPath.Path)
 		if strings.HasSuffix(path, "/") {
 			return path
 		}
-		return path + "(/.*)?$"
+		return path + "(/.*)?"
 	case MatchRegex:
-		return hostPath.Path + "$"
+		return hostPath.Path
 	}
 	panic("unsupported match type")
 }
@@ -116,7 +111,7 @@ func (hm *HostsMap) addTarget(hostname, path, target string, match MatchType) {
 	entry := &HostsMapEntry{
 		hostname: hostname,
 		path:     path,
-		Key:      hostname + path,
+		Key:      bindHostnamePath(match, hostname, path),
 		Value:    target,
 	}
 	values := hm.values[match]
@@ -143,6 +138,25 @@ func (hm *HostsMap) addTarget(hostname, path, target string, match MatchType) {
 		})
 	}
 	hm.values[match] = values
+}
+
+func bindHostnamePath(match MatchType, hostname, path string) string {
+	if match == MatchRegex && hostname != "" && path != "" {
+		// we support both hostname and path with ^/$ boundaries
+		// lets change the ending of the former and the starting of the later
+		// in order to give the expected behavior.
+		if strings.HasSuffix(hostname, "$") {
+			hostname = hostname[:len(hostname)-1]
+		} else {
+			hostname = hostname + "[^/]*"
+		}
+		if strings.HasPrefix(path, "^") {
+			path = path[1:]
+		} else {
+			path = "/.*" + path
+		}
+	}
+	return hostname + path
 }
 
 // Matches ...

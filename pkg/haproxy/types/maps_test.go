@@ -18,7 +18,6 @@ package types
 
 import (
 	"reflect"
-	"strings"
 	"testing"
 )
 
@@ -105,15 +104,15 @@ func TestAddHostnamePathMapping(t *testing.T) {
 		// 3
 		{
 			hostname: "example.local",
-			path:     "/path",
+			path:     "^/path",
 			match:    MatchRegex,
 			expmatch: MatchRegex,
-			expected: "^example\\.local/path$",
+			expected: "^example\\.local/path",
 		},
 		// 4
 		{
 			hostname: "example.local",
-			path:     "/path[0-9]",
+			path:     "^/path[0-9]$",
 			match:    MatchRegex,
 			expmatch: MatchRegex,
 			expected: "^example\\.local/path[0-9]$",
@@ -121,15 +120,15 @@ func TestAddHostnamePathMapping(t *testing.T) {
 		// 5
 		{
 			hostname: "example.local",
-			path:     "/path/.*",
+			path:     "/path/",
 			match:    MatchRegex,
 			expmatch: MatchRegex,
-			expected: "^example\\.local/path/.*$",
+			expected: "^example\\.local/.*/path/",
 		},
 		// 6
 		{
 			hostname: "*.example.local",
-			path:     "/.*path",
+			path:     "^/.*path$",
 			match:    MatchRegex,
 			expmatch: MatchRegex,
 			expected: "^[^.]+\\.example\\.local/.*path$",
@@ -148,7 +147,7 @@ func TestAddHostnamePathMapping(t *testing.T) {
 			path:     "/path.new",
 			match:    MatchPrefix,
 			expmatch: MatchRegex,
-			expected: "^[^.]+\\.example\\.local/path\\.new(/.*)?$",
+			expected: "^[^.]+\\.example\\.local/path\\.new(/.*)?",
 		},
 		// 9
 		{
@@ -227,21 +226,21 @@ func TestAddAliasPathMapping(t *testing.T) {
 			path:       "/",
 			match:      MatchBegin,
 			expected: map[MatchType][]string{
-				MatchRegex: {"^.*\\.local/"},
+				MatchRegex: {".*\\.local[^/]*/"},
 			},
 		},
 		// 3
 		{
-			aliasRegex: ".*\\.local",
+			aliasRegex: "^.*\\.local",
 			path:       "/",
 			match:      MatchExact,
 			expected: map[MatchType][]string{
-				MatchRegex: {"^.*\\.local/$"},
+				MatchRegex: {"^.*\\.local[^/]*/$"},
 			},
 		},
 		// 4
 		{
-			aliasRegex: ".*\\.local",
+			aliasRegex: "^.*\\.local$",
 			path:       "/",
 			match:      MatchPrefix,
 			expected: map[MatchType][]string{
@@ -250,16 +249,16 @@ func TestAddAliasPathMapping(t *testing.T) {
 		},
 		// 5
 		{
-			aliasRegex: ".*\\.local",
+			aliasRegex: "\\.local$",
 			path:       "/path",
 			match:      MatchPrefix,
 			expected: map[MatchType][]string{
-				MatchRegex: {"^.*\\.local/path(/.*)?$"},
+				MatchRegex: {"\\.local/path(/.*)?"},
 			},
 		},
 		// 6
 		{
-			aliasRegex: ".*\\.local",
+			aliasRegex: "^.*\\.local$",
 			path:       "/path/",
 			match:      MatchPrefix,
 			expected: map[MatchType][]string{
@@ -269,12 +268,12 @@ func TestAddAliasPathMapping(t *testing.T) {
 		// 7
 		{
 			aliasName:  "example.local",
-			aliasRegex: ".*\\.local",
+			aliasRegex: "\\.local$",
 			path:       "/path",
 			match:      MatchBegin,
 			expected: map[MatchType][]string{
 				MatchBegin: {"example.local/path"},
-				MatchRegex: {"^.*\\.local/path"},
+				MatchRegex: {"\\.local/path"},
 			},
 		},
 	}
@@ -284,26 +283,19 @@ func TestAddAliasPathMapping(t *testing.T) {
 			Path:  test.path,
 			Match: test.match,
 		}
-		backend := "backend"
 		alias := HostAliasConfig{
 			AliasName:  test.aliasName,
 			AliasRegex: test.aliasRegex,
 		}
-		hm.AddAliasPathMapping(alias, hostPath, backend)
-		expvalues := map[MatchType][]*HostsMapEntry{}
-		for match := range test.expected {
-			for _, key := range test.expected[match] {
-				uri := strings.SplitN(key, "/", 2)
-				expvalues[match] = append(expvalues[match], &HostsMapEntry{
-					hostname: uri[0],
-					path:     "/" + uri[1],
-					Key:      key,
-					Value:    backend,
-				})
+		hm.AddAliasPathMapping(alias, hostPath, "backend")
+		actual := map[MatchType][]string{}
+		for match := range hm.values {
+			for _, value := range hm.values[match] {
+				actual[match] = append(actual[match], value.Key)
 			}
 		}
-		if !reflect.DeepEqual(hm.values, expvalues) {
-			t.Errorf("item %d, expected values '%v' but was '%v'", i, expvalues, hm.values)
+		if !reflect.DeepEqual(actual, test.expected) {
+			t.Errorf("item %d, expected values '%v' but was '%v'", i, test.expected, actual)
 			continue
 		}
 	}

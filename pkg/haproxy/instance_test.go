@@ -295,10 +295,10 @@ d1.local/api path02`,
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				h.FindPath("/app").Match = hatypes.MatchExact
 				h.FindPath("/path").Match = hatypes.MatchPrefix
-				h.FindPath("/api/v[0-9]+/.*").Match = hatypes.MatchRegex
+				h.FindPath("^/api/v[0-9]+/").Match = hatypes.MatchRegex
 				b.WhitelistHTTP = []*hatypes.BackendConfigWhitelist{
 					{
-						Paths:  createBackendPaths(b, "d1.local/app", "d1.local/api", "d1.local/path", "d1.local/api/v[0-9]+/.*"),
+						Paths:  createBackendPaths(b, "d1.local/app", "d1.local/api", "d1.local/path", "d1.local^/api/v[0-9]+/"),
 						Config: []string{"10.0.0.0/8", "192.168.0.0/16"},
 					},
 					{
@@ -307,19 +307,19 @@ d1.local/api path02`,
 					},
 				}
 			},
-			path: []string{"/", "/app", "/api", "/path", "/api/v[0-9]+/.*"},
+			path: []string{"/", "/app", "/api", "/path", "^/api/v[0-9]+/"},
 			expected: `
     # path01 = d1.local/
     # path03 = d1.local/api
-    # path05 = d1.local/api/v[0-9]+/.*
     # path02 = d1.local/app
     # path04 = d1.local/path
+    # path05 = d1.local^/api/v[0-9]+/
     http-request set-var(txn.pathID) base,map(/etc/haproxy/maps/_back_d1_app_8080_idpath__exact.map)
     http-request set-var(txn.pathID) base,map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpath__prefix.map) if !{ var(txn.pathID) -m found }
     http-request set-var(txn.pathID) base,lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map) if !{ var(txn.pathID) -m found }
     http-request set-var(txn.pathID) base,map_reg(/etc/haproxy/maps/_back_d1_app_8080_idpath__regex.map) if !{ var(txn.pathID) -m found }
     acl wlist_src0 src 10.0.0.0/8 192.168.0.0/16
-    http-request deny if { var(txn.pathID) path03 path05 path02 path04 } !wlist_src0
+    http-request deny if { var(txn.pathID) path03 path02 path04 path05 } !wlist_src0
     acl wlist_src1 src 172.17.0.0/16
     http-request deny if { var(txn.pathID) path01 } !wlist_src1`,
 			expFronts: "<<frontends-default-match-4>>",
@@ -332,7 +332,7 @@ d1.local/path path04`,
 d1.local/api path03
 d1.local/ path01`,
 				"_back_d1_app_8080_idpath__regex.map": `
-^d1\.local/api/v[0-9]+/.*$ path05`,
+^d1\.local/api/v[0-9]+/ path05`,
 			},
 		},
 		{
@@ -859,7 +859,7 @@ func TestInstanceMatch(t *testing.T) {
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 	h := c.config.Hosts().AcquireHost("d1.local")
 	h.AddPath(b, "/app", hatypes.MatchPrefix)
-	h.AddPath(b, "/api/v[0-9]+/.*", hatypes.MatchRegex)
+	h.AddPath(b, "^/api/v[0-9]+/", hatypes.MatchRegex)
 	c.Update()
 
 	c.checkConfig(`
@@ -896,15 +896,15 @@ frontend _front_https
 	c.checkMap("_front_redir_tohttps__prefix.map", `
 d1.local/app no`)
 	c.checkMap("_front_redir_tohttps__regex.map", `
-^d1\.local/api/v[0-9]+/.*$ no`)
+^d1\.local/api/v[0-9]+/ no`)
 	c.checkMap("_front_http_host__prefix.map", `
 d1.local/app default_d1_8080`)
 	c.checkMap("_front_http_host__regex.map", `
-^d1\.local/api/v[0-9]+/.*$ default_d1_8080`)
+^d1\.local/api/v[0-9]+/ default_d1_8080`)
 	c.checkMap("_front_https_host__prefix.map", `
 d1.local/app default_d1_8080`)
 	c.checkMap("_front_https_host__regex.map", `
-^d1\.local/api/v[0-9]+/.*$ default_d1_8080`)
+^d1\.local/api/v[0-9]+/ default_d1_8080`)
 
 	c.logger.CompareLogging(defaultLogging)
 }
@@ -2188,13 +2188,13 @@ func TestInstanceAlias(t *testing.T) {
 	h = c.config.Hosts().AcquireHost("d2.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 	h.Alias.AliasName = "sub.d2.local"
-	h.Alias.AliasRegex = "[a-z]+\\.d2\\.local"
+	h.Alias.AliasRegex = "^[a-z]+\\.d2\\.local$"
 
 	b = c.config.Backends().AcquireBackend("d3", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS31}
 	h = c.config.Hosts().AcquireHost("d3.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
-	h.Alias.AliasRegex = ".*d3\\.local"
+	h.Alias.AliasRegex = "d3\\.local$"
 
 	c.Update()
 	c.checkConfig(`
@@ -2251,7 +2251,7 @@ sub.d2.local/ d2_app_8080
 	c.checkMap("_front_https_host__regex.map", `
 ^[a-z]+\.d2\.local/ d2_app_8080
 ^[^.]+\.d1\.local/ d1_app_8080
-^.*d3\.local/ d3_app_8080
+d3\.local/ d3_app_8080
 `)
 	c.logger.CompareLogging(defaultLogging)
 }
@@ -3355,7 +3355,7 @@ func (c *testConfig) compareText(name, actual, expected string) {
 func createBackendPaths(backend *hatypes.Backend, uris ...string) hatypes.BackendPaths {
 	paths := make([]*hatypes.BackendPath, len(uris))
 	for i, uri := range uris {
-		j := strings.Index(uri, "/")
+		j := strings.IndexAny(uri, "^/")
 		hostname := uri[:j]
 		path := uri[j:]
 		paths[i] = backend.FindBackendPath(hatypes.CreatePathLink(hostname, path))
