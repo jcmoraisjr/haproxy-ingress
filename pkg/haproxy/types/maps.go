@@ -24,16 +24,19 @@ import (
 )
 
 // CreateMaps ...
-func CreateMaps() *HostsMaps {
-	return &HostsMaps{}
+func CreateMaps(matchOrder []MatchType) *HostsMaps {
+	return &HostsMaps{
+		matchOrder: matchOrder,
+	}
 }
 
 // AddMap ...
 func (hm *HostsMaps) AddMap(basename string) *HostsMap {
 	hmap := &HostsMap{
-		basename:  basename,
-		filenames: map[MatchType]string{},
-		values:    map[MatchType][]*HostsMapEntry{},
+		basename:   basename,
+		filenames:  map[MatchType]string{},
+		values:     map[MatchType][]*HostsMapEntry{},
+		matchOrder: hm.matchOrder,
 	}
 	hm.Items = append(hm.Items, hmap)
 	return hmap
@@ -159,13 +162,48 @@ func bindHostnamePath(match MatchType, hostname, path string) string {
 	return hostname + path
 }
 
-// Matches ...
-func (hm *HostsMap) Matches() []MatchType {
-	var matches []MatchType
-	for match := range hm.values {
-		matches = append(matches, match)
+type matchTypeHelper struct {
+	hm    *HostsMap
+	match MatchType
+	first bool
+}
+
+// MatchTypeHelper ...
+type MatchTypeHelper interface {
+	First() bool
+	Lower() bool
+	Method() string
+	Filename() (string, error)
+}
+
+func (h matchTypeHelper) First() bool               { return h.first }
+func (h matchTypeHelper) Lower() bool               { return h.hm.Lower(h.match) }
+func (h matchTypeHelper) Method() string            { return h.hm.Method(h.match) }
+func (h matchTypeHelper) Filename() (string, error) { return h.hm.Filename(h.match) }
+
+// UsedMatchTypes ...
+func (hm *HostsMap) UsedMatchTypes() []MatchType {
+	var matchTypes []MatchType
+	for _, match := range hm.matchOrder {
+		if len(hm.values[match]) > 0 {
+			matchTypes = append(matchTypes, match)
+		}
 	}
-	return matches
+	return matchTypes
+}
+
+// MatchTypes ...
+func (hm *HostsMap) MatchTypes() []MatchTypeHelper {
+	matchTypes := hm.UsedMatchTypes()
+	helper := make([]MatchTypeHelper, len(matchTypes))
+	for i, match := range matchTypes {
+		helper[i] = matchTypeHelper{
+			hm:    hm,
+			match: match,
+			first: i == 0,
+		}
+	}
+	return helper
 }
 
 // Values ...
@@ -215,6 +253,27 @@ func (hm *HostsMap) HasPrefix() bool {
 // HasRegex ...
 func (hm *HostsMap) HasRegex() bool {
 	return hm.Has(MatchRegex)
+}
+
+// Lower ...
+func (hm *HostsMap) Lower(match MatchType) bool {
+	// IMPLEMENT change match begin `true` and remove from base/path fetch methods
+	return false
+}
+
+// Method ...
+func (hm *HostsMap) Method(match MatchType) string {
+	switch match {
+	case MatchExact:
+		return "str"
+	case MatchPrefix:
+		return "dir"
+	case MatchBegin:
+		return "beg"
+	case MatchRegex:
+		return "reg"
+	}
+	panic(fmt.Errorf("unsupported match type: %s", match))
 }
 
 // Filename ...

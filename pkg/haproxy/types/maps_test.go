@@ -21,6 +21,8 @@ import (
 	"testing"
 )
 
+var matchOrder = []MatchType{MatchExact, MatchPrefix, MatchBegin, MatchRegex}
+
 func TestAddHostnameMapping(t *testing.T) {
 	testCases := []struct {
 		filename string
@@ -54,7 +56,7 @@ func TestAddHostnameMapping(t *testing.T) {
 		},
 	}
 	for i, test := range testCases {
-		hm := CreateMaps().AddMap(test.filename)
+		hm := CreateMaps(matchOrder).AddMap(test.filename)
 		hm.AddHostnameMapping(test.hostname, "backend")
 		values := hm.values[test.expmatch]
 		if len(values) != 1 {
@@ -175,7 +177,7 @@ func TestAddHostnamePathMapping(t *testing.T) {
 		},
 	}
 	for i, test := range testCases {
-		hm := CreateMaps().AddMap(test.filename)
+		hm := CreateMaps(matchOrder).AddMap(test.filename)
 		hostPath := &HostPath{
 			Path:  test.path,
 			Match: test.match,
@@ -278,7 +280,7 @@ func TestAddAliasPathMapping(t *testing.T) {
 		},
 	}
 	for i, test := range testCases {
-		hm := CreateMaps().AddMap(test.filename)
+		hm := CreateMaps(matchOrder).AddMap(test.filename)
 		hostPath := &HostPath{
 			Path:  test.path,
 			Match: test.match,

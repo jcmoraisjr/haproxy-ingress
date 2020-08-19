@@ -255,14 +255,16 @@ type HostsMapEntry struct {
 
 // HostsMap ...
 type HostsMap struct {
-	basename  string
-	filenames map[MatchType]string
-	values    map[MatchType][]*HostsMapEntry
+	basename   string
+	filenames  map[MatchType]string
+	values     map[MatchType][]*HostsMapEntry
+	matchOrder []MatchType
 }
 
 // HostsMaps ...
 type HostsMaps struct {
-	Items []*HostsMap
+	Items      []*HostsMap
+	matchOrder []MatchType
 }
 
 // FrontendMaps ...
