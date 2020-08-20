@@ -257,7 +257,9 @@ func (hm *HostsMap) HasRegex() bool {
 
 // Lower ...
 func (hm *HostsMap) Lower(match MatchType) bool {
-	// IMPLEMENT change match begin `true` and remove from base/path fetch methods
+	if match == MatchBegin {
+		return true
+	}
 	return false
 }
 

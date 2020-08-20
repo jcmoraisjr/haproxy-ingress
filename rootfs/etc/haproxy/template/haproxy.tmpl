@@ -390,7 +390,7 @@ backend {{ $backend.ID }}
     # {{ $path.ID }} = {{ $path.Hostname }}{{ $path.Path }}
 {{- end }}
 {{- range $match := $backend.PathsMap.MatchTypes }}
-    http-request set-var(txn.pathID) base
+    http-request set-var(txn.pathID) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- if not $match.First }} if !{ var(txn.pathID) -m found }{{ end }}
@@ -784,7 +784,9 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
-    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.path) path
+    http-request set-var(req.host) hdr(host),regsub(:[0-9]+$,),lower
+    http-request set-var(req.base) var(req.host),concat(,req.path)
 
 {{- /*------------------------------------*/}}
 {{- $acmeexclusive := and $global.Acme.Enabled (not $global.Acme.Shared) }}
@@ -809,7 +811,6 @@ frontend _front_http
 
 {{- /*------------------------------------*/}}
 {{- if $fmaps.RedirFromRootMap.HasHost }}
-    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
 {{- range $match := $fmaps.RedirFromRootMap.MatchTypes }}
     http-request set-var(req.rootredir) var(req.host)
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
@@ -897,9 +898,13 @@ frontend _front_https
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if or $fmaps.HTTPSHostMap.HasHost $fmaps.TLSAuthList.HasHost $fmaps.VarNamespaceMap.HasHost }}
-    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
+{{- if or $fmaps.RedirFromRootMap.HasHost $fmaps.HTTPSHostMap.HasHost $fmaps.HTTPSSNIMap.HasHost $fmaps.TLSAuthList.HasHost $fmaps.TLSNeedCrtList.MatchTypes $fmaps.VarNamespaceMap.HasHost }}
+    http-request set-var(req.path) path
+    http-request set-var(req.host) hdr(host),regsub(:[0-9]+$,),lower
+    http-request set-var(req.base) var(req.host),concat(,req.path)
 {{- end }}
+
+{{- /*------------------------------------*/}}
 {{- range $match := $fmaps.HTTPSHostMap.MatchTypes }}
     http-request set-var(req.hostbackend) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
@@ -908,9 +913,6 @@ frontend _front_https
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if or $fmaps.RedirFromRootMap.HasHost $fmaps.TLSAuthList.HasHost }}
-    http-request set-var(req.host) hdr(host),lower,regsub(:[0-9]+$,)
-{{- end }}
 {{- if $fmaps.RedirFromRootMap.HasHost }}
 {{- range $match := $fmaps.RedirFromRootMap.MatchTypes }}
     http-request set-var(req.rootredir) var(req.host)
@@ -960,8 +962,7 @@ frontend _front_https
 {{- end }}
 
 {{- if $fmaps.HTTPSSNIMap.HasHost }}
-    http-request set-var(req.path) path
-    http-request set-var(req.snibase) ssl_fc_sni,concat(,req.path),lower
+    http-request set-var(req.snibase) ssl_fc_sni,lower,concat(,req.path)
 {{- range $match := $fmaps.HTTPSSNIMap.MatchTypes }}
     http-request set-var(req.snibackend) var(req.snibase)
         {{- if $match.Lower }},lower{{ end }}
