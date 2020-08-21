@@ -31,6 +31,14 @@ func CreateHosts() *Hosts {
 	}
 }
 
+// CreatePathLink ...
+func CreatePathLink(hostname, path string) PathLink {
+	return PathLink{
+		hostname: hostname,
+		path:     path,
+	}
+}
+
 // AcquireHost ...
 func (h *Hosts) AcquireHost(hostname string) *Host {
 	if host := h.FindHost(hostname); host != nil {
@@ -139,31 +147,6 @@ func (h *Hosts) HasSSLPassthrough() bool {
 	return h.sslPassthroughCount > 0
 }
 
-// HasHTTP ...
-func (h *Hosts) HasHTTP() bool {
-	return len(h.items) > h.sslPassthroughCount
-}
-
-// HasTLSAuth ...
-func (h *Hosts) HasTLSAuth() bool {
-	for _, host := range h.items {
-		if host.HasTLSAuth() {
-			return true
-		}
-	}
-	return false
-}
-
-// HasTLSMandatory ...
-func (h *Hosts) HasTLSMandatory() bool {
-	for _, host := range h.items {
-		if host.HasTLSAuth() && !host.TLS.CAVerifyOptional {
-			return true
-		}
-	}
-	return false
-}
-
 // HasVarNamespace ...
 func (h *Hosts) HasVarNamespace() bool {
 	for _, host := range h.items {
@@ -185,7 +168,8 @@ func (h *Host) FindPath(path string) *HostPath {
 }
 
 // AddPath ...
-func (h *Host) AddPath(backend *Backend, path string) {
+func (h *Host) AddPath(backend *Backend, path string, match MatchType) {
+	link := CreatePathLink(h.Hostname, path)
 	var hback HostBackend
 	if backend != nil {
 		hback = HostBackend{
@@ -194,12 +178,14 @@ func (h *Host) AddPath(backend *Backend, path string) {
 			Name:      backend.Name,
 			Port:      backend.Port,
 		}
-		backend.AddHostPath(h.Hostname, path)
+		backend.AddBackendPath(link)
 	} else {
 		hback = HostBackend{ID: "_error404"}
 	}
 	h.Paths = append(h.Paths, &HostPath{
 		Path:    path,
+		Link:    link,
+		Match:   match,
 		Backend: hback,
 	})
 	// reverse order in order to avoid overlap of sub-paths
@@ -229,6 +215,27 @@ func (h *Host) SetSSLPassthrough(value bool) {
 		h.hosts.sslPassthroughCount--
 	}
 	h.sslPassthrough = value
+}
+
+// IsEmpty ...
+func (l *PathLink) IsEmpty() bool {
+	return l.hostname == "" && l.path == ""
+}
+
+// Less ...
+func (l *PathLink) Less(other PathLink, reversePath bool) bool {
+	if l.hostname == other.hostname {
+		if reversePath {
+			return l.path > other.path
+		}
+		return l.path < other.path
+	}
+	return l.hostname < other.hostname
+}
+
+// String ...
+func (f *Frontend) String() string {
+	return fmt.Sprintf("%+v", *f)
 }
 
 // String ...

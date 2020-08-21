@@ -48,7 +48,7 @@ type Mapper struct {
 //
 type Map struct {
 	Source *Source
-	URI    string
+	Link   hatypes.PathLink
 	Value  string
 }
 
@@ -88,16 +88,16 @@ func (b *MapBuilder) NewMapper() *Mapper {
 	}
 }
 
-func (c *Mapper) addAnnotation(source *Source, hostpath, key, value string) (conflict bool) {
+func (c *Mapper) addAnnotation(source *Source, link hatypes.PathLink, key, value string) (conflict bool) {
 	conflict = false
 	annMaps, found := c.maps[key]
-	if hostpath == "" {
-		// empty hostpath means default value
-		panic("hostpath cannot be empty")
+	if link.IsEmpty() {
+		// empty means default value
+		panic("path link cannot be empty")
 	}
 	if found {
 		for _, annMap := range annMaps {
-			if annMap.URI == hostpath {
+			if annMap.Link == link {
 				return annMap.Value != value
 			}
 		}
@@ -114,7 +114,7 @@ func (c *Mapper) addAnnotation(source *Source, hostpath, key, value string) (con
 	}
 	annMaps = append(annMaps, &Map{
 		Source: source,
-		URI:    hostpath,
+		Link:   link,
 		Value:  realValue,
 	})
 	c.maps[key] = annMaps
@@ -122,10 +122,10 @@ func (c *Mapper) addAnnotation(source *Source, hostpath, key, value string) (con
 }
 
 // AddAnnotations ...
-func (c *Mapper) AddAnnotations(source *Source, hostpath string, ann map[string]string) (conflicts []string) {
+func (c *Mapper) AddAnnotations(source *Source, link hatypes.PathLink, ann map[string]string) (conflicts []string) {
 	conflicts = make([]string, 0, len(ann))
 	for key, value := range ann {
-		if conflict := c.addAnnotation(source, hostpath, key, value); conflict {
+		if conflict := c.addAnnotation(source, link, key, value); conflict {
 			conflicts = append(conflicts, key)
 		}
 	}
@@ -192,7 +192,7 @@ type ConfigOverwrite func(path *hatypes.BackendPath, values map[string]*ConfigVa
 //
 func (c *Mapper) GetBackendConfig(backend *hatypes.Backend, keys []string, overwrite ConfigOverwrite) []*BackendConfig {
 	// all backend paths need to be declared, filling up previously with default values
-	rawConfig := make(map[string]map[string]*ConfigValue, len(backend.Paths))
+	rawConfig := make(map[hatypes.PathLink]map[string]*ConfigValue, len(backend.Paths))
 	for _, path := range backend.Paths {
 		kv := make(map[string]*ConfigValue, len(keys))
 		for _, key := range keys {
@@ -202,21 +202,21 @@ func (c *Mapper) GetBackendConfig(backend *hatypes.Backend, keys []string, overw
 				}
 			}
 		}
-		rawConfig[path.Hostpath] = kv
+		rawConfig[path.Link] = kv
 	}
 	// populate rawConfig with declared annotations, grouping annotation maps by URI
 	for _, key := range keys {
 		if maps, found := c.GetStrMap(key); found {
 			for _, m := range maps {
 				// skip default value
-				if m.URI != "" {
-					if cfg, found := rawConfig[m.URI]; found {
+				if !m.Link.IsEmpty() {
+					if cfg, found := rawConfig[m.Link]; found {
 						cfg[key] = &ConfigValue{
 							Source: m.Source,
 							Value:  m.Value,
 						}
 					} else {
-						panic(fmt.Sprintf("backend '%s/%s' is missing hostname/path '%s'", backend.Namespace, backend.Name, m.URI))
+						panic(fmt.Sprintf("backend '%s/%s' is missing hostname/path '%+v'", backend.Namespace, backend.Name, m.Link))
 					}
 				}
 			}
@@ -225,8 +225,8 @@ func (c *Mapper) GetBackendConfig(backend *hatypes.Backend, keys []string, overw
 	// iterate the URIs and create the BackendConfig array
 	// most configs should have just one item with default kv
 	config := make([]*BackendConfig, 0, 1)
-	for uri, kv := range rawConfig {
-		path := backend.FindHostPath(uri)
+	for link, kv := range rawConfig {
+		path := backend.FindBackendPath(link)
 		realKV := kv
 		if overwrite != nil {
 			realKV = overwrite(path, kv)
@@ -246,7 +246,9 @@ func (c *Mapper) GetBackendConfig(backend *hatypes.Backend, keys []string, overw
 	// rawConfig is a map which by definition does not have explicit order.
 	// sort in order to the same input generates the same output
 	sort.SliceStable(config, func(i, j int) bool {
-		return config[i].Paths.Items[0].Hostpath < config[j].Paths.Items[0].Hostpath
+		l1 := config[i].Paths.Items[0].Link
+		l2 := config[j].Paths.Items[0].Link
+		return l1.Less(l2, false)
 	})
 	return config
 }

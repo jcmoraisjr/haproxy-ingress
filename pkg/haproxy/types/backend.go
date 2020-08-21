@@ -100,37 +100,29 @@ func (b *Backend) SortEndpoints() {
 	})
 }
 
-// FindHostPath ...
-func (b *Backend) FindHostPath(hostpath string) *BackendPath {
+// FindBackendPath ...
+func (b *Backend) FindBackendPath(link PathLink) *BackendPath {
+	// IMPLEMENT change to a map
 	for _, p := range b.Paths {
-		if p.Hostpath == hostpath {
+		if p.Link == link {
 			return p
 		}
 	}
 	return nil
 }
 
-// AddHostPath ...
-func (b *Backend) AddHostPath(hostname, path string) *BackendPath {
-	hostpath := hostname + path
-	// add only unique paths
-	backendPath := b.FindHostPath(hostpath)
+// AddBackendPath ...
+func (b *Backend) AddBackendPath(link PathLink) *BackendPath {
+	backendPath := b.FindBackendPath(link)
 	if backendPath != nil {
 		return backendPath
 	}
-	// host's paths that references this backend
-	// used on RewriteURL and Shared Session Cookie config
 	backendPath = &BackendPath{
-		ID:       fmt.Sprintf("path%02d", len(b.Paths)+1),
-		Hostname: hostname,
-		Hostpath: hostpath,
-		Path:     path,
+		ID:   fmt.Sprintf("path%02d", len(b.Paths)+1),
+		Link: link,
 	}
 	b.Paths = append(b.Paths, backendPath)
-	// reverse order in order to avoid overlap of sub-paths
-	sort.Slice(b.Paths, func(i, j int) bool {
-		return b.Paths[i].Hostpath > b.Paths[j].Hostpath
-	})
+	sortPaths(b.Paths, true)
 	return backendPath
 }
 
@@ -138,7 +130,7 @@ func (b *Backend) AddHostPath(hostname, path string) *BackendPath {
 func (b *Backend) Hostnames() []string {
 	hmap := make(map[string]struct{}, len(b.Paths))
 	for _, p := range b.Paths {
-		hmap[p.Hostname] = struct{}{}
+		hmap[p.Link.hostname] = struct{}{}
 	}
 	hosts := make([]string, len(hmap))
 	i := 0
@@ -150,6 +142,22 @@ func (b *Backend) Hostnames() []string {
 		return hosts[i] < hosts[j]
 	})
 	return hosts
+}
+
+func sortPaths(paths []*BackendPath, pathReverse bool) {
+	// Ascending order of hostnames and reverse order (if pathReverse) of paths within the same hostname
+	// reverse order in order to avoid overlap of sub-paths
+	sort.Slice(paths, func(i, j int) bool {
+		l1 := paths[i].Link
+		l2 := paths[j].Link
+		if l1.hostname == l2.hostname {
+			if pathReverse {
+				return l1.path > l2.path
+			}
+			return l1.path < l2.path
+		}
+		return l1.hostname < l2.hostname
+	})
 }
 
 // CreateConfigBool ...
@@ -202,11 +210,11 @@ func (b *Backend) HasSSLRedirect() bool {
 	return false
 }
 
-// HasSSLRedirectHostpath ...
-func (b *Backend) HasSSLRedirectHostpath(hostpath string) bool {
+// LinkHasSSLRedirect ...
+func (b *Backend) LinkHasSSLRedirect(link PathLink) bool {
 	for _, sslredirect := range b.SSLRedirect {
-		for _, path := range sslredirect.Paths.Items {
-			if path.Hostpath == hostpath {
+		for _, p := range sslredirect.Paths.Items {
+			if p.Link == link {
 				return sslredirect.Config
 			}
 		}
@@ -217,7 +225,7 @@ func (b *Backend) HasSSLRedirectHostpath(hostpath string) bool {
 // HasSSLRedirectPaths ...
 func (b *Backend) HasSSLRedirectPaths(paths *BackendPaths) bool {
 	for _, path := range paths.Items {
-		if b.HasSSLRedirectHostpath(path.Hostpath) {
+		if b.LinkHasSSLRedirect(path.Link) {
 			return true
 		}
 	}
@@ -253,9 +261,17 @@ func (p *BackendPaths) Add(paths ...*BackendPath) {
 		}
 		p.Items = append(p.Items, path)
 	}
-	sort.SliceStable(p.Items, func(i, j int) bool {
-		return p.Items[i].Hostpath < p.Items[j].Hostpath
-	})
+	sortPaths(p.Items, false)
+}
+
+// Hostname ...
+func (p *BackendPath) Hostname() string {
+	return p.Link.hostname
+}
+
+// Path ...
+func (p *BackendPath) Path() string {
+	return p.Link.path
 }
 
 // String ...

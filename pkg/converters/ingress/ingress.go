@@ -334,7 +334,8 @@ func (c *converter) syncIngress(ing *networking.Ingress) {
 				c.logger.Warn("skipping backend config of ingress '%s': %v", fullIngName, err)
 				continue
 			}
-			host.AddPath(backend, uri)
+			match := c.readPathType(path, annHost[ingtypes.HostPathType])
+			host.AddPath(backend, uri, match)
 			sslpassthrough, _ := strconv.ParseBool(annHost[ingtypes.HostSSLPassthrough])
 			sslpasshttpport := annHost[ingtypes.HostSSLPassthroughHTTPPort]
 			if sslpassthrough && sslpasshttpport != "" {
@@ -415,6 +416,39 @@ func (c *converter) partialSyncAnnotations(hosts []string, backends []hatypes.Ba
 	}
 }
 
+func (c *converter) readPathType(path networking.HTTPIngressPath, ann string) hatypes.MatchType {
+	match := hatypes.MatchBegin
+	pathType := networking.PathTypeImplementationSpecific
+	if path.PathType != nil {
+		pathType = *path.PathType
+	}
+	switch pathType {
+	case networking.PathTypeExact:
+		match = hatypes.MatchExact
+	case networking.PathTypePrefix:
+		match = hatypes.MatchPrefix
+	default:
+		matchStr := strings.ToLower(ann)
+		switch matchStr {
+		case "", "begin":
+			match = hatypes.MatchBegin
+		case "prefix":
+			match = hatypes.MatchPrefix
+		case "exact":
+			match = hatypes.MatchExact
+		case "regex":
+			match = hatypes.MatchRegex
+		default:
+			c.logger.Warn("unsupported path-type '%s', using 'begin' instead.", matchStr)
+		}
+		if pathType != networking.PathTypeImplementationSpecific {
+			c.logger.Warn("unsupported '%s' pathType from ingress spec, using '%s' instead.",
+				pathType, networking.PathTypeImplementationSpecific)
+		}
+	}
+	return match
+}
+
 func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcName, svcPort string, annHost, annBack map[string]string) error {
 	hostname := "*"
 	uri := "/"
@@ -428,7 +462,7 @@ func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcNam
 		return err
 	}
 	host := c.addHost(hostname, source, annHost)
-	host.AddPath(backend, uri)
+	host.AddPath(backend, uri, hatypes.MatchBegin)
 	return nil
 }
 
@@ -441,7 +475,7 @@ func (c *converter) addHost(hostname string, source *annotations.Source, ann map
 		mapper = c.mapBuilder.NewMapper()
 		c.hostAnnotations[host] = mapper
 	}
-	conflict := mapper.AddAnnotations(source, hostname+"/", ann)
+	conflict := mapper.AddAnnotations(source, hatypes.CreatePathLink(hostname, "/"), ann)
 	if len(conflict) > 0 {
 		c.logger.Warn("skipping host annotation(s) from %v due to conflict: %v", source, conflict)
 	}
@@ -470,7 +504,7 @@ func (c *converter) addBackend(source *annotations.Source, hostname, uri, fullSv
 	}
 	backend := c.haproxy.Backends().AcquireBackend(namespace, svcName, port.TargetPort.String())
 	c.tracker.TrackBackend(convtypes.IngressType, source.FullName(), backend.BackendID())
-	hostpath := hostname + uri
+	pathlink := hatypes.CreatePathLink(hostname, uri)
 	mapper, found := c.backendAnnotations[backend]
 	if !found {
 		// New backend, initialize with service annotations, giving precedence
@@ -480,12 +514,12 @@ func (c *converter) addBackend(source *annotations.Source, hostname, uri, fullSv
 			Namespace: namespace,
 			Name:      svcName,
 			Type:      "service",
-		}, hostpath, ann)
+		}, pathlink, ann)
 		c.backendAnnotations[backend] = mapper
 		backend.Server.InitialWeight = mapper.Get(ingtypes.BackInitialWeight).Int()
 	}
 	// Merging Ingress annotations
-	conflict := mapper.AddAnnotations(source, hostpath, ann)
+	conflict := mapper.AddAnnotations(source, pathlink, ann)
 	if len(conflict) > 0 {
 		c.logger.Warn("skipping backend '%s:%s' annotation(s) from %v due to conflict: %v",
 			svcName, svcPort, source, conflict)

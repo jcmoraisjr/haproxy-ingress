@@ -20,6 +20,24 @@ import (
 	"testing"
 )
 
+func TestCreatePathLink(t *testing.T) {
+	l1 := CreatePathLink("domain.local", "/app")
+	l2 := CreatePathLink("domain.local", "/app")
+	if l1 != l2 {
+		t.Errorf("two distinct path links with same host and path should match")
+	}
+	l3 := CreatePathLink("domain1.local", "/app")
+	l4 := CreatePathLink("domain2.local", "/app")
+	if l3 == l4 {
+		t.Errorf("path links with distinct domains should not match")
+	}
+	l5 := CreatePathLink("domain.local", "/app1")
+	l6 := CreatePathLink("domain.local", "/app2")
+	if l5 == l6 {
+		t.Errorf("path links with distinct paths should not match")
+	}
+}
+
 func TestShrinkHosts(t *testing.T) {
 	app1 := &Host{Hostname: "app1.localdomain"}
 	app2 := &Host{Hostname: "app2.localdomain"}
