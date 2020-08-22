@@ -95,6 +95,27 @@ Docs:
 * Fixed typos [#580](https://github.com/jcmoraisjr/haproxy-ingress/pull/580) (Shagon94)
 * Typo on configuration keys docs [#585](https://github.com/jcmoraisjr/haproxy-ingress/pull/585) (RobertTheProfessional)
 
+**v0.11-snapshot.2**
+
+New features and improvemets:
+
+* Host scope tls-alpn and ssl-options [#617](https://github.com/jcmoraisjr/haproxy-ingress/pull/617) (Unichron)
+  * Configuration keys:
+    * `ssl-options-backend` - [doc](https://haproxy-ingress.github.io/v0.11/docs/configuration/keys/#ssl-options)
+    * `ssl-options-host` - [doc](https://haproxy-ingress.github.io/v0.11/docs/configuration/keys/#ssl-options)
+    * `tls-alpn` - [doc](https://haproxy-ingress.github.io/v0.11/docs/configuration/keys/#tls-alpn)
+* Update to haproxy 2.1.8 [#635](https://github.com/jcmoraisjr/haproxy-ingress/pull/635) (jcmoraisjr)
+* Partial build of backend maps [#637](https://github.com/jcmoraisjr/haproxy-ingress/pull/637) (jcmoraisjr)
+* Update to client-go v0.18.6 [#638](https://github.com/jcmoraisjr/haproxy-ingress/pull/638) (jcmoraisjr)
+* Update to go1.13.15 [#640](https://github.com/jcmoraisjr/haproxy-ingress/pull/640) (jcmoraisjr)
+* Add support to multiple match types [#641](https://github.com/jcmoraisjr/haproxy-ingress/pull/641) (jcmoraisjr)
+  * Configuration keys:
+    * `path-type` - [doc](https://haproxy-ingress.github.io/v0.11/docs/configuration/keys/#path-type)
+
+Fixes:
+
+* Configure default crt on ingress parsing phase [#634](https://github.com/jcmoraisjr/haproxy-ingress/pull/634) (jcmoraisjr)
+
 ## v0.10
 
 Highlights of this version:
