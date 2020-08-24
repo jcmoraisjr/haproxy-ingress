@@ -187,7 +187,7 @@ func validName(name string) {
 //     all ingress that references it should also be listed.
 //
 func (t *tracker) GetDirtyLinks(
-	oldIngressList []string,
+	oldIngressList, addIngressList []string,
 	oldServiceList, addServiceList []string,
 	oldSecretList, addSecretList []string,
 	addPodList []string,
@@ -225,6 +225,7 @@ func (t *tracker) GetDirtyLinks(
 		}
 	}
 	build(oldIngressList)
+	build(addIngressList)
 	//
 	for _, svcName := range oldServiceList {
 		for _, hostname := range t.getHostnamesByService(svcName) {

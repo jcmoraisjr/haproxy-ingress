@@ -83,6 +83,7 @@ func TestGetDirtyLinks(t *testing.T) {
 		trackedMissingBacks []backTracking
 		//
 		oldIngressList []string
+		addIngressList []string
 		oldServiceList []string
 		addServiceList []string
 		oldSecretList  []string
@@ -303,6 +304,7 @@ func TestGetDirtyLinks(t *testing.T) {
 		dirtyIngs, dirtyHosts, dirtyBacks, dirtyUsers, dirtyStorages :=
 			c.tracker.GetDirtyLinks(
 				test.oldIngressList,
+				test.addIngressList,
 				test.oldServiceList,
 				test.addServiceList,
 				test.oldSecretList,
