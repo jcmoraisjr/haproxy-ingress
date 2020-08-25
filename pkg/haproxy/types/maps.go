@@ -119,6 +119,11 @@ func (hm *HostsMap) addTarget(hostname, path, target string, match MatchType) {
 	}
 	values := hm.values[match]
 	values = append(values, entry)
+	hm.values[match] = values
+}
+
+func (hm *HostsMap) sortValues(match MatchType) {
+	values := hm.values[match]
 	if match == MatchRegex {
 		// Keep regexes in order from most to least specific, based on rule length
 		sort.Slice(values, func(i, j int) bool {
@@ -206,8 +211,9 @@ func (hm *HostsMap) MatchTypes() []MatchTypeHelper {
 	return helper
 }
 
-// Values ...
-func (hm *HostsMap) Values(match MatchType) []*HostsMapEntry {
+// BuildSortedValues ...
+func (hm *HostsMap) BuildSortedValues(match MatchType) []*HostsMapEntry {
+	hm.sortValues(match)
 	return hm.values[match]
 }
 

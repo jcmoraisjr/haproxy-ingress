@@ -339,7 +339,7 @@ func (c *config) WriteBackendMaps() error {
 func writeMaps(maps *hatypes.HostsMaps, template *template.Config) error {
 	for _, hmap := range maps.Items {
 		if f, err := hmap.Filename(hatypes.MatchEmpty); err == nil {
-			if err := template.WriteOutput(hmap.Values(hatypes.MatchEmpty), f); err != nil {
+			if err := template.WriteOutput(hmap.BuildSortedValues(hatypes.MatchEmpty), f); err != nil {
 				return err
 			}
 		}
@@ -348,7 +348,7 @@ func writeMaps(maps *hatypes.HostsMaps, template *template.Config) error {
 			if err != nil {
 				return err
 			}
-			if err := template.WriteOutput(hmap.Values(match), filename); err != nil {
+			if err := template.WriteOutput(hmap.BuildSortedValues(match), filename); err != nil {
 				return err
 			}
 		}
