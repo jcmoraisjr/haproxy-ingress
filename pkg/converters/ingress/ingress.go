@@ -300,15 +300,17 @@ func (c *converter) trackAddedIngress() {
 		name := ing.Namespace + "/" + ing.Name
 		for _, rule := range ing.Spec.Rules {
 			c.tracker.TrackHostname(convtypes.IngressType, name, rule.Host)
-			for _, path := range rule.HTTP.Paths {
-				svcName, svcPort := readServiceNamePort(&path.Backend)
-				fullSvcName := ing.Namespace + "/" + svcName
-				if svc, err := c.cache.GetService(fullSvcName); err == nil {
-					port := convutils.FindServicePort(svc, svcPort)
-					if port != nil {
-						backend := c.haproxy.Backends().FindBackend(ing.Namespace, svcName, port.TargetPort.String())
-						if backend != nil {
-							c.tracker.TrackBackend(convtypes.IngressType, name, backend.BackendID())
+			if rule.HTTP != nil {
+				for _, path := range rule.HTTP.Paths {
+					svcName, svcPort := readServiceNamePort(&path.Backend)
+					fullSvcName := ing.Namespace + "/" + svcName
+					if svc, err := c.cache.GetService(fullSvcName); err == nil {
+						port := convutils.FindServicePort(svc, svcPort)
+						if port != nil {
+							backend := c.haproxy.Backends().FindBackend(ing.Namespace, svcName, port.TargetPort.String())
+							if backend != nil {
+								c.tracker.TrackBackend(convtypes.IngressType, name, backend.BackendID())
+							}
 						}
 					}
 				}
