@@ -928,15 +928,16 @@ func TestSyncPartial(t *testing.T) {
 		// 0
 		{
 			svc: svcDefault,
-			ing: ingDefault,
-			ingAdd: [][]string{
-				{"default/echo3", "echo.example.com", "/app33", "echo2:8080"},
+			ing: [][]string{
+				{"default/echo1", "echo.example.com", "/app1", "echo1:8080"},
 			},
+			ingAdd: [][]string{
+				{"default/echo2", "echo.example.com", "/app2", "echo2:8080"},
+			},
+			logging: `INFO-V(2) syncing 1 host(s) and 1 backend(s)`,
 			expFront: `
 - hostname: echo.example.com
   paths:
-  - path: /app33
-    backend: default_echo2_8080
   - path: /app2
     backend: default_echo2_8080
   - path: /app1
@@ -989,7 +990,7 @@ func TestSyncPartial(t *testing.T) {
 			ingDel: [][]string{
 				{"default/echo2", "echo.example.com", "/app2", "echo2:8080"},
 			},
-			logging: explogging,
+			logging: `INFO-V(2) syncing 2 host(s) and 2 backend(s)`,
 			expFront: `
 - hostname: echo.example.com
   paths:
@@ -1123,6 +1124,96 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
     tlsfilename: /tls/tls-default.pem`,
 			expBack: expBackDefault,
 		},
+		// 10
+		{
+			svc: svcDefault,
+			ing: [][]string{
+				{"default/echo1", "echo.example.com", "/app1", "echo1:8080"},
+			},
+			ingAdd: [][]string{
+				{"default/echo2", "echo.example.com", "/app2", "echo1:8080", "ingress.kubernetes.io/balance-algorithm=leastcon"},
+			},
+			logging: `INFO-V(2) syncing 1 host(s) and 1 backend(s)`,
+			expFront: `
+- hostname: echo.example.com
+  paths:
+  - path: /app2
+    backend: default_echo1_8080
+  - path: /app1
+    backend: default_echo1_8080`,
+			expBack: `
+- id: default_echo1_8080
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+  balancealgorithm: leastcon
+- id: _default_backend
+  endpoints:
+  - ip: 172.17.0.99
+    port: 8080`,
+		},
+		// 11
+		{
+			svc: svcDefault,
+			ing: [][]string{
+				{"default/echo1", "echo.example.com", "/app1", "echo1:8080"},
+			},
+			ingAdd: [][]string{
+				{"default/echo2", "echo.example.com", "/app2", "echo2:8080", "ingress.kubernetes.io/balance-algorithm=leastcon"},
+			},
+			logging: `INFO-V(2) syncing 1 host(s) and 1 backend(s)`,
+			expFront: `
+- hostname: echo.example.com
+  paths:
+  - path: /app2
+    backend: default_echo2_8080
+  - path: /app1
+    backend: default_echo1_8080`,
+			expBack: `
+- id: default_echo1_8080
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+- id: default_echo2_8080
+  endpoints:
+  - ip: 172.17.0.12
+    port: 8080
+  balancealgorithm: leastcon
+- id: _default_backend
+  endpoints:
+  - ip: 172.17.0.99
+    port: 8080`,
+		},
+		// 12
+		{
+			svc: svcDefault,
+			ing: [][]string{
+				{"default/echo1", "echo1.example.com", "/app1", "echo1:8080"},
+			},
+			ingAdd: [][]string{
+				{"default/echo2", "echo2.example.com", "/app2", "echo1:8080", "ingress.kubernetes.io/balance-algorithm=leastcon"},
+			},
+			logging: `INFO-V(2) syncing 2 host(s) and 1 backend(s)`,
+			expFront: `
+- hostname: echo1.example.com
+  paths:
+  - path: /app1
+    backend: default_echo1_8080
+- hostname: echo2.example.com
+  paths:
+  - path: /app2
+    backend: default_echo1_8080`,
+			expBack: `
+- id: default_echo1_8080
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+  balancealgorithm: leastcon
+- id: _default_backend
+  endpoints:
+  - ip: 172.17.0.99
+    port: 8080`,
+		},
 	}
 
 	for _, test := range testCases {
@@ -1141,11 +1232,27 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
 			c.cache.SecretTLSPath[sec[0]] = "/tls/" + sec[0] + ".pem"
 		}
 		c.Sync()
+		c.hconfig.Commit()
 		c.logger.Logging = []string{}
 
 		ings := func(slice *[]*networking.Ingress, params [][]string) {
+			paramToMap := func(param []string) map[string]string {
+				res := make(map[string]string, len(param))
+				for _, p := range param {
+					v := strings.SplitN(p, "=", 2)
+					res[v[0]] = v[1]
+				}
+				return res
+			}
 			for _, param := range params {
-				*slice = append(*slice, c.createIng1(param[0], param[1], param[2], param[3]))
+				var ing *networking.Ingress
+				switch len(param) {
+				case 4:
+					ing = c.createIng1(param[0], param[1], param[2], param[3])
+				case 5:
+					ing = c.createIng1Ann(param[0], param[1], param[2], param[3], paramToMap(param[4:]))
+				}
+				*slice = append(*slice, ing)
 			}
 		}
 		svcs := func(slice *[]*api.Service, params [][]string) {

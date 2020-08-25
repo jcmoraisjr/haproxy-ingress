@@ -223,6 +223,7 @@ func (c *converter) syncPartial() {
 	// remove changed/deleted data
 	delIngNames := ing2names(c.changed.IngressesDel)
 	updIngNames := ing2names(c.changed.IngressesUpd)
+	addIngNames := ing2names(c.changed.IngressesAdd)
 	oldIngNames := append(delIngNames, updIngNames...)
 	delSvcNames := svc2names(c.changed.ServicesDel)
 	updSvcNames := svc2names(c.changed.ServicesUpd)
@@ -235,8 +236,9 @@ func (c *converter) syncPartial() {
 	addSecretNames := secret2names(c.changed.SecretsAdd)
 	oldSecretNames := append(delSecretNames, updSecretNames...)
 	addPodNames := pod2names(c.changed.Pods)
+	c.trackAddedIngress()
 	dirtyIngs, dirtyHosts, dirtyBacks, dirtyUsers, dirtyStorages :=
-		c.tracker.GetDirtyLinks(oldIngNames, oldSvcNames, addSvcNames, oldSecretNames, addSecretNames, addPodNames)
+		c.tracker.GetDirtyLinks(oldIngNames, addIngNames, oldSvcNames, addSvcNames, oldSecretNames, addSecretNames, addPodNames)
 	c.tracker.DeleteHostnames(dirtyHosts)
 	c.tracker.DeleteBackends(dirtyBacks)
 	c.tracker.DeleteUserlists(dirtyUsers)
@@ -245,9 +247,7 @@ func (c *converter) syncPartial() {
 	c.haproxy.Backends().RemoveAll(dirtyBacks)
 	c.haproxy.Userlists().RemoveAll(dirtyUsers)
 	c.haproxy.AcmeData().Storages().RemoveAll(dirtyStorages)
-	if len(dirtyHosts) > 0 || len(dirtyBacks) > 0 {
-		c.logger.InfoV(2, "syncing %d host(s) and %d backend(s)", len(dirtyHosts), len(dirtyBacks))
-	}
+	c.logger.InfoV(2, "syncing %d host(s) and %d backend(s)", len(dirtyHosts), len(dirtyBacks))
 
 	// merge dirty and added ingress objects into a single list
 	ingMap := make(map[string]*networking.Ingress)
@@ -280,7 +280,41 @@ func (c *converter) syncPartial() {
 	for _, ing := range ingList {
 		c.syncIngress(ing)
 	}
-	c.partialSyncAnnotations(dirtyHosts, dirtyBacks)
+	c.partialSyncAnnotations()
+}
+
+// trackAddedIngress add tracking hostnames and backends to new ingress objects
+//
+// All state change works removing hosts and backs objects in an old state and
+// resyncing ingress objects to recreate hosts and backs in a new state. This
+// works very well, except with new ingress objects that references hosts or
+// backs that already exist - all the tracking starts from the ingress parsing.
+//
+// trackAddedIngress does the same tracking the sync ingress already do, but
+// before real sync starts and just before calculate dirty objects - if an
+// existent host or back is tracked only by an added ingress, it is tracked
+// here and removed before parse the added ingress which will readd such hosts
+// and backs
+func (c *converter) trackAddedIngress() {
+	for _, ing := range c.changed.IngressesAdd {
+		name := ing.Namespace + "/" + ing.Name
+		for _, rule := range ing.Spec.Rules {
+			c.tracker.TrackHostname(convtypes.IngressType, name, rule.Host)
+			for _, path := range rule.HTTP.Paths {
+				svcName, svcPort := readServiceNamePort(&path.Backend)
+				fullSvcName := ing.Namespace + "/" + svcName
+				if svc, err := c.cache.GetService(fullSvcName); err == nil {
+					port := convutils.FindServicePort(svc, svcPort)
+					if port != nil {
+						backend := c.haproxy.Backends().FindBackend(ing.Namespace, svcName, port.TargetPort.String())
+						if backend != nil {
+							c.tracker.TrackBackend(convtypes.IngressType, name, backend.BackendID())
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 func sortIngress(ingress []*networking.Ingress) {
@@ -401,15 +435,13 @@ func (c *converter) fullSyncAnnotations() {
 	}
 }
 
-func (c *converter) partialSyncAnnotations(hosts []string, backends []hatypes.BackendID) {
-	for _, hostname := range hosts {
-		host := c.haproxy.Hosts().FindHost(hostname)
+func (c *converter) partialSyncAnnotations() {
+	for _, host := range c.haproxy.Hosts().ItemsAdd() {
 		if ann, found := c.hostAnnotations[host]; found {
 			c.updater.UpdateHostConfig(host, ann)
 		}
 	}
-	for _, backendID := range backends {
-		backend := c.haproxy.Backends().FindBackendID(backendID)
+	for _, backend := range c.haproxy.Backends().ItemsAdd() {
 		if ann, found := c.backendAnnotations[backend]; found {
 			c.updater.UpdateBackendConfig(backend, ann)
 		}
