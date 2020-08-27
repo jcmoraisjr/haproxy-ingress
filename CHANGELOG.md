@@ -116,6 +116,19 @@ Fixes:
 
 * Configure default crt on ingress parsing phase [#634](https://github.com/jcmoraisjr/haproxy-ingress/pull/634) (jcmoraisjr)
 
+**v0.11-snapshot.3**
+
+New features and improvemets:
+
+* Improve backend shrinking [#644](https://github.com/jcmoraisjr/haproxy-ingress/pull/644) (jcmoraisjr)
+* Improve time of frontend maps build [#647](https://github.com/jcmoraisjr/haproxy-ingress/pull/647) (jcmoraisjr)
+
+Fixes:
+
+* Add hostname and backend tracking on addIngress [#646](https://github.com/jcmoraisjr/haproxy-ingress/pull/646) (jcmoraisjr)
+* Fix sigsegv tracking added ingress [#648](https://github.com/jcmoraisjr/haproxy-ingress/pull/648) (jcmoraisjr)
+* Add implicit starting boundary char in regex path match [#651](https://github.com/jcmoraisjr/haproxy-ingress/pull/651) (jcmoraisjr)
+
 ## v0.10
 
 Highlights of this version:
