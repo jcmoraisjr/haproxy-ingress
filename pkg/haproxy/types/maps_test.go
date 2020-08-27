@@ -106,7 +106,7 @@ func TestAddHostnamePathMapping(t *testing.T) {
 		// 3
 		{
 			hostname: "example.local",
-			path:     "^/path",
+			path:     "/path",
 			match:    MatchRegex,
 			expmatch: MatchRegex,
 			expected: "^example\\.local/path",
@@ -114,7 +114,7 @@ func TestAddHostnamePathMapping(t *testing.T) {
 		// 4
 		{
 			hostname: "example.local",
-			path:     "^/path[0-9]$",
+			path:     "/path[0-9]$",
 			match:    MatchRegex,
 			expmatch: MatchRegex,
 			expected: "^example\\.local/path[0-9]$",
@@ -125,12 +125,12 @@ func TestAddHostnamePathMapping(t *testing.T) {
 			path:     "/path/",
 			match:    MatchRegex,
 			expmatch: MatchRegex,
-			expected: "^example\\.local/.*/path/",
+			expected: "^example\\.local/path/",
 		},
 		// 6
 		{
 			hostname: "*.example.local",
-			path:     "^/.*path$",
+			path:     "/.*path$",
 			match:    MatchRegex,
 			expmatch: MatchRegex,
 			expected: "^[^.]+\\.example\\.local/.*path$",

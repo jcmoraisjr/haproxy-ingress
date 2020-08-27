@@ -87,14 +87,21 @@ func convertWildcardToRegex(hostname string) (h string, hasWildcard bool) {
 	return "^[^.]+" + regexp.QuoteMeta(hostname[1:]) + "$", true
 }
 
+// convertPathToRegex converts a path of any match type that
+// needs to be added to a regex list, eg when a alias regex
+// or a wildcard hostname is used.
+//
+// regex has an implicit starting `^` char due to ingress path
+// validation - paths need to start with a slash. There is no
+// implicit `$`, so regex behaves pretty much like `begin`.
 func convertPathToRegex(hostPath *HostPath) string {
 	switch hostPath.Match {
 	case MatchBegin:
-		return "^" + regexp.QuoteMeta(hostPath.Path)
+		return regexp.QuoteMeta(hostPath.Path)
 	case MatchExact:
-		return "^" + regexp.QuoteMeta(hostPath.Path) + "$"
+		return regexp.QuoteMeta(hostPath.Path) + "$"
 	case MatchPrefix:
-		path := "^" + regexp.QuoteMeta(hostPath.Path)
+		path := regexp.QuoteMeta(hostPath.Path)
 		if strings.HasSuffix(path, "/") {
 			return path
 		}
@@ -150,18 +157,13 @@ func (hm *HostsMap) sortValues(match MatchType) {
 
 func bindHostnamePath(match MatchType, hostname, path string) string {
 	if match == MatchRegex && hostname != "" && path != "" {
-		// we support both hostname and path with ^/$ boundaries
-		// lets change the ending of the former and the starting of the later
+		// we support hostname with ^/$ boundaries
+		// lets change the ending of the hostname
 		// in order to give the expected behavior.
 		if strings.HasSuffix(hostname, "$") {
 			hostname = hostname[:len(hostname)-1]
 		} else {
 			hostname = hostname + "[^/]*"
-		}
-		if strings.HasPrefix(path, "^") {
-			path = path[1:]
-		} else {
-			path = "/.*" + path
 		}
 	}
 	return hostname + path
