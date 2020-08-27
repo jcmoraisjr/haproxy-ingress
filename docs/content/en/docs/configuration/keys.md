@@ -1306,25 +1306,25 @@ See also:
 
 Defines how the path of an incoming request should match a declared path in the ingress object.
 
-* `path-type`: Configures the path type. Case insensitive, so `Begin` and `begin` configures the same path type option. The ingress spec has precedente, this option will only be used if the `pathType` attribute from the ingress spec is declared as `ImplementationSpecific` or is not declared.
+* `path-type`: Configures the path type. Case insensitive, so `Begin` and `begin` configures the same path type option. The ingress spec has priority, this option will only be used if the `pathType` attribute from the ingress spec is declared as `ImplementationSpecific` or is not declared.
 
 Supported `path-type` values:
 
 * `begin`: Case insensitive, matches the beginning of the path from the incoming request. This is the default value if not declared.
 * `exact`: Case sensitive, matches the whole path. Implements the `Exact` path type from the ingress spec.
 * `prefix`: Case sensitive, matches a whole subdirectory from the incoming path. A declared `/app` path matches `/app` and `/app/1` but does not match `/app1`. Implements the `Prefix` path type from the ingress spec.
-* `regex`: Case sensitive, matches the incoming path using POSIX extended regular expression. The regular expression is applied verbatim, so a declared `/app[0-9]+` will match `/app1/sub` and also `/sup/app1/sub`.
+* `regex`: Case sensitive, matches the incoming path using POSIX extended regular expression. The regular expression has an implicit start `^` and no ending `$` boundary, so a declared `/app[0-9]+/?` will match paths starting with this pattern. Add a trailing `$` if an exact match is desired.
 
 Request and match examples:
 
-| Path type | Request         | Match                               | Do not match                       |
-|-----------|-----------------|-------------------------------------|------------------------------------|
-| `exact`   | `/app`          | `/app`                              | `/App` <br/> `/app/` <br/> `/app1` |
-| `prefix`  | `/app`          | `/app` <br/> `/app/` <br/> `/app/1` | `/App` <br/> `/app1`               |
-| `begin`   | `/app`          | `/App` <br/> `/app` <br/> `/app/1` <br/> `/app1` | `/ap`                 |
-| `regex`   | `/app[0-9]+`    | `/app1` <br/> `/sup/app15` <br/> `/app25/sub` | `/App1` <br/> `/app/15`  |
-| `regex`   | `^/app[0-9]+$`  | `/app1` <br/> `/app15`       | `/App1` <br/> `/app15/` <br/> `/sup/app1` |
-| `regex`   | `^/app[0-9]+/?` | `/app1` <br/> `/app15/` <br/> `/app25/sub` | `/App15` <br/> `/app/25sub` |
+| Path type | Request        | Match                               | Do not match                        |
+|-----------|----------------|-------------------------------------|-------------------------------------|
+| `begin`   | `/app`         | `/App` <br/> `/app` <br/> `/app/1` <br/> `/app1` | `/ap`                  |
+| `exact`   | `/app`         | `/app`                              | `/App` <br/> `/app/` <br/> `/app1`  |
+| `prefix`  | `/app`         | `/app` <br/> `/app/` <br/> `/app/1` | `/App` <br/> `/app1`                |
+| `regex`   | `/app[0-9]+`   | `/app1` <br/> `/app15/sub` <br/> `/app25xx/sub` | `/App1` <br/> `/app/15` |
+| `regex`   | `/app[0-9]+$`  | `/app1` <br/> `/app15`              | `/App1` <br/> `/app15/`             |
+| `regex`   | `/app[0-9]+/?` | `/app1` <br/> `/app15/` <br/> `/app25/sub` | `/App15` <br/> `/app/25sub`  |
 
 ---
 
