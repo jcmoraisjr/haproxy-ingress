@@ -808,8 +808,8 @@ global
     stats socket /var/run/haproxy.sock level admin expose-fd listeners mode 600
     maxconn 2000
     hard-stop-after 15m
-    lua-load /usr/local/etc/haproxy/lua/auth-request.lua
-    lua-load /usr/local/etc/haproxy/lua/services.lua
+    lua-load /etc/haproxy/lua/auth-request.lua
+    lua-load /etc/haproxy/lua/services.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -2060,12 +2060,12 @@ listen _front__tls
     tcp-request content set-var(req.sslpassback) req.ssl_sni,lower,map_str(/etc/haproxy/maps/_front_sslpassthrough__exact.map)
     tcp-request content accept if { req.ssl_hello_type 1 }
     use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
-    server _default_server_https_socket unix@/var/run/_https_socket.sock send-proxy-v2
+    server _default_server_https_socket unix@/var/run/haproxy/_https_socket.sock send-proxy-v2
 <<frontend-http>>
     default_backend _error404
 frontend _front_https
     mode http
-    bind unix@/var/run/_https_socket.sock accept-proxy ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
+    bind unix@/var/run/haproxy/_https_socket.sock accept-proxy ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
     http-request set-header X-Forwarded-Proto https
     http-request del-header X-SSL-Client-CN
     http-request del-header X-SSL-Client-DN
@@ -2299,8 +2299,8 @@ global
     hard-stop-after 15m
     log 127.0.0.1:1514 len 2048 format rfc3164 local0
     log-tag ingress
-    lua-load /usr/local/etc/haproxy/lua/auth-request.lua
-    lua-load /usr/local/etc/haproxy/lua/services.lua
+    lua-load /etc/haproxy/lua/auth-request.lua
+    lua-load /etc/haproxy/lua/services.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -3209,8 +3209,8 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     stats socket /var/run/haproxy.sock level admin expose-fd listeners mode 600
     maxconn 2000
     hard-stop-after 15m
-    lua-load /usr/local/etc/haproxy/lua/auth-request.lua
-    lua-load /usr/local/etc/haproxy/lua/services.lua
+    lua-load /etc/haproxy/lua/auth-request.lua
+    lua-load /etc/haproxy/lua/services.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256

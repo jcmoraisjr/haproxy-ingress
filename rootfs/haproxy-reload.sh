@@ -34,9 +34,8 @@
 
 set -e
 
-HAPROXY_SOCKET=/var/run/haproxy-stats.sock
+HAPROXY_SOCKET=/var/run/haproxy/admin.sock
 HAPROXY_STATE=/var/lib/haproxy/state-global
-mkdir -p /var/lib/haproxy
 if [ -S $HAPROXY_SOCKET ]; then
     echo "show servers state" | socat $HAPROXY_SOCKET - > $HAPROXY_STATE
 else
@@ -45,13 +44,13 @@ fi
 case "$1" in
     native)
         CONFIG="$2"
-        HAPROXY_PID=/var/run/haproxy.pid
+        HAPROXY_PID=/var/run/haproxy/haproxy.pid
         haproxy -f "$CONFIG" -p "$HAPROXY_PID" -D -sf $(cat "$HAPROXY_PID" 2>/dev/null || :)
         ;;
     reusesocket|multibinder)
         # multibinder is now deprecated and, if used, is an alias to reusesocket
         CONFIG="$2"
-        HAPROXY_PID=/var/run/haproxy.pid
+        HAPROXY_PID=/var/run/haproxy/haproxy.pid
         OLD_PID=$(cat "$HAPROXY_PID" 2>/dev/null || :)
         if [ -S "$HAPROXY_SOCKET" ]; then
             haproxy -f "$CONFIG" -p "$HAPROXY_PID" -sf $OLD_PID -x "$HAPROXY_SOCKET"

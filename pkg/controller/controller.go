@@ -122,7 +122,7 @@ func (hc *HAProxyController) configController() {
 		HAProxyCmd:        "haproxy",
 		ReloadCmd:         "/haproxy-reload.sh",
 		HAProxyCfgDir:     "/etc/haproxy",
-		HAProxyMapsDir:    "/etc/haproxy/maps",
+		HAProxyMapsDir:    ingress.DefaultMapsDirectory,
 		BackendShards:     hc.cfg.BackendShards,
 		AcmeSigner:        acmeSigner,
 		AcmeQueue:         hc.acmeQueue,
@@ -162,7 +162,7 @@ func (hc *HAProxyController) startServices() {
 	}
 	if hc.cfg.AcmeServer {
 		// TODO deduplicate acme socket
-		server := acme.NewServer(hc.logger, "/var/run/acme.sock", hc.cache)
+		server := acme.NewServer(hc.logger, "/var/run/haproxy/acme.sock", hc.cache)
 		// TODO move goroutine from the server to the controller
 		if err := server.Listen(hc.stopCh); err != nil {
 			hc.logger.Fatal("error creating the acme server listener: %v", err)

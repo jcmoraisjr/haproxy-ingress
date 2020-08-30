@@ -19,8 +19,8 @@ COPY . /
 
 RUN addgroup -g 1001 haproxy\
  && adduser -u 1001 -G haproxy -D -s /bin/false haproxy\
- && mkdir -p /var/empty /var/lib/haproxy /etc/haproxy/maps /ingress-controller\
- && chown -R haproxy:haproxy /run /var/lib/haproxy /etc/haproxy /ingress-controller\
+ && mkdir -p /var/empty /etc/haproxy /var/lib/haproxy /var/run/haproxy\
+ && chown -R haproxy:haproxy /etc/haproxy /var/lib/haproxy /var/run/haproxy\
  && chmod 0 /var/empty
 
 STOPSIGNAL SIGTERM
