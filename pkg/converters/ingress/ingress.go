@@ -150,7 +150,7 @@ func (c *converter) syncDefaultCrt() {
 
 func (c *converter) syncDefaultBackend() {
 	if c.options.DefaultBackend != "" {
-		if backend, err := c.addBackend(&annotations.Source{}, "*", "/", c.options.DefaultBackend, "", map[string]string{}); err == nil {
+		if backend, err := c.addBackend(&annotations.Source{}, hatypes.DefaultHost, "/", c.options.DefaultBackend, "", map[string]string{}); err == nil {
 			c.haproxy.Backends().SetDefaultBackend(backend)
 		} else {
 			c.logger.Error("error reading default service: %v", err)
@@ -364,7 +364,7 @@ func (c *converter) syncIngress(ing *networking.Ingress) {
 		}
 		hostname := rule.Host
 		if hostname == "" {
-			hostname = "*"
+			hostname = hatypes.DefaultHost
 		}
 		host := c.addHost(hostname, source, annHost)
 		for _, path := range rule.HTTP.Paths {
@@ -497,7 +497,7 @@ func (c *converter) readPathType(path networking.HTTPIngressPath, ann string) ha
 }
 
 func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcName, svcPort string, annHost, annBack map[string]string) error {
-	hostname := "*"
+	hostname := hatypes.DefaultHost
 	uri := "/"
 	if fr := c.haproxy.Hosts().FindHost(hostname); fr != nil {
 		if fr.FindPath(uri) != nil {

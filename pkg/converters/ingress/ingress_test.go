@@ -728,7 +728,7 @@ func TestSyncBackendDefault(t *testing.T) {
 	c.Sync(c.createIng2("default/echo", "echo:8080"))
 
 	c.compareConfigDefaultFront(`
-hostname: '*'
+hostname: <default>
 paths:
 - path: /
   backend: default_echo_8080`)
@@ -777,15 +777,11 @@ func TestSyncDefaultBackendReusedPath1(t *testing.T) {
 	c.createSvc1("default/echo1", "8080", "172.17.0.11")
 	c.createSvc1("default/echo2", "8080", "172.17.0.12")
 	c.Sync(
-		c.createIng1("default/echo1", "'*'", "/", "echo1:8080"),
+		c.createIng1("default/echo1", hatypes.DefaultHost, "/", "echo1:8080"),
 		c.createIng2("default/echo2", "echo2:8080"),
 	)
 
-	c.compareConfigDefaultFront(`
-hostname: '*'
-paths:
-- path: /
-  backend: default_echo1_8080`)
+	c.compareConfigDefaultFront(defaultDefaultFrontendConfig)
 
 	c.compareConfigBack(`
 - id: default_echo1_8080
@@ -805,14 +801,10 @@ func TestSyncDefaultBackendReusedPath2(t *testing.T) {
 	c.createSvc1("default/echo2", "8080", "172.17.0.12")
 	c.Sync(
 		c.createIng2("default/echo1", "echo1:8080"),
-		c.createIng1("default/echo2", "'*'", "/", "echo2:8080"),
+		c.createIng1("default/echo2", hatypes.DefaultHost, "/", "echo2:8080"),
 	)
 
-	c.compareConfigDefaultFront(`
-hostname: '*'
-paths:
-- path: /
-  backend: default_echo1_8080`)
+	c.compareConfigDefaultFront(defaultDefaultFrontendConfig)
 
 	c.compareConfigBack(`
 - id: default_echo1_8080
@@ -840,7 +832,7 @@ func TestSyncEmptyHost(t *testing.T) {
 	c.Sync(c.createIng1("default/echo", "", "/", "echo:8080"))
 
 	c.compareConfigDefaultFront(`
-hostname: '*'
+hostname: <default>
 paths:
 - path: /
   backend: default_echo_8080`)
@@ -893,12 +885,7 @@ func TestSyncPartial(t *testing.T) {
 	secTLSDefault := [][]string{
 		{"default/tls1"},
 	}
-	expDefaultFrontDefault := `
-hostname: '*'
-paths:
-- path: /
-  backend: default_echo1_8080
-`
+	expDefaultFrontDefault := defaultDefaultFrontendConfig
 	expFrontDefault := `
 - hostname: echo.example.com
   paths:
@@ -1722,6 +1709,12 @@ func setup(t *testing.T) *testConfig {
 func (c *testConfig) teardown() {
 	c.logger.CompareLogging("")
 }
+
+var defaultDefaultFrontendConfig = `
+hostname: ` + hatypes.DefaultHost + `
+paths:
+- path: /
+  backend: default_echo1_8080`
 
 var defaultBackendConfig = `
 - id: _default_backend

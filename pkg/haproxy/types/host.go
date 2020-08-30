@@ -103,7 +103,7 @@ func (h *Hosts) BuildSortedItems() []*Host {
 	items := make([]*Host, len(h.items))
 	var i int
 	for hostname, item := range h.items {
-		if hostname != "*" {
+		if hostname != DefaultHost {
 			items[i] = item
 			i++
 		}
@@ -135,7 +135,7 @@ func (h *Hosts) ItemsDel() map[string]*Host {
 
 // DefaultHost ...
 func (h *Hosts) DefaultHost() *Host {
-	return h.items["*"]
+	return h.items[DefaultHost]
 }
 
 // HasSSLPassthrough ...
