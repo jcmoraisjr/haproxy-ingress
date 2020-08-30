@@ -302,8 +302,6 @@ type Frontend struct {
 type Hosts struct {
 	items, itemsAdd, itemsDel map[string]*Host
 	//
-	defaultHost *Host
-	//
 	sslPassthroughCount int
 }
 

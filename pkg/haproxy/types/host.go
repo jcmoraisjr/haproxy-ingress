@@ -45,20 +45,13 @@ func (h *Hosts) AcquireHost(hostname string) *Host {
 		return host
 	}
 	host := h.createHost(hostname)
-	if host.Hostname != "*" {
-		h.items[hostname] = host
-		h.itemsAdd[hostname] = host
-	} else {
-		h.defaultHost = host
-	}
+	h.items[hostname] = host
+	h.itemsAdd[hostname] = host
 	return host
 }
 
 // FindHost ...
 func (h *Hosts) FindHost(hostname string) *Host {
-	if hostname == "*" && h.defaultHost != nil {
-		return h.defaultHost
-	}
 	return h.items[hostname]
 }
 
@@ -109,10 +102,13 @@ func (h *Hosts) createHost(hostname string) *Host {
 func (h *Hosts) BuildSortedItems() []*Host {
 	items := make([]*Host, len(h.items))
 	var i int
-	for _, item := range h.items {
-		items[i] = item
-		i++
+	for hostname, item := range h.items {
+		if hostname != "*" {
+			items[i] = item
+			i++
+		}
 	}
+	items = items[:i]
 	sort.Slice(items, func(i, j int) bool {
 		return items[i].Hostname < items[j].Hostname
 	})
@@ -139,7 +135,7 @@ func (h *Hosts) ItemsDel() map[string]*Host {
 
 // DefaultHost ...
 func (h *Hosts) DefaultHost() *Host {
-	return h.defaultHost
+	return h.items["*"]
 }
 
 // HasSSLPassthrough ...

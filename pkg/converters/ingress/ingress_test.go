@@ -893,6 +893,12 @@ func TestSyncPartial(t *testing.T) {
 	secTLSDefault := [][]string{
 		{"default/tls1"},
 	}
+	expDefaultFrontDefault := `
+hostname: '*'
+paths:
+- path: /
+  backend: default_echo1_8080
+`
 	expFrontDefault := `
 - hostname: echo.example.com
   paths:
@@ -921,9 +927,10 @@ func TestSyncPartial(t *testing.T) {
 		//
 		endpoints [][]string
 		//
-		expFront string
-		expBack  string
-		logging  string
+		expFront        string
+		expDefaultFront string
+		expBack         string
+		logging         string
 	}{
 		// 0
 		{
@@ -1214,6 +1221,49 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
   - ip: 172.17.0.99
     port: 8080`,
 		},
+		// 13
+		{
+			ing: [][]string{
+				{"default/echo1", "echo1:8080"},
+			},
+			svcAdd:          svcDefault,
+			logging:         `INFO-V(2) syncing 1 host(s) and 0 backend(s)`,
+			expDefaultFront: expDefaultFrontDefault,
+			expBack: `
+- id: default_echo1_8080
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+- id: _default_backend
+  endpoints:
+  - ip: 172.17.0.99
+    port: 8080`,
+		},
+		// 14
+		{
+			svc: svcDefault,
+			ing: ingDefault,
+			ingAdd: [][]string{
+				{"default/echo0", "echo1:8080", "ingress.kubernetes.io/balance-algorithm=leastcon"},
+			},
+			logging:         `INFO-V(2) syncing 1 host(s) and 2 backend(s)`,
+			expDefaultFront: expDefaultFrontDefault,
+			expFront:        expFrontDefault,
+			expBack: `
+- id: default_echo1_8080
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+  balancealgorithm: leastcon
+- id: default_echo2_8080
+  endpoints:
+  - ip: 172.17.0.12
+    port: 8080
+- id: _default_backend
+  endpoints:
+  - ip: 172.17.0.99
+    port: 8080`,
+		},
 	}
 
 	for _, test := range testCases {
@@ -1223,7 +1273,14 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
 			c.createSvc1(svc[0], svc[1], svc[2])
 		}
 		for _, ing := range test.ing {
-			c.cache.IngList = append(c.cache.IngList, c.createIng1(ing[0], ing[1], ing[2], ing[3]))
+			var item *networking.Ingress
+			switch len(ing) {
+			case 2:
+				item = c.createIng2(ing[0], ing[1])
+			case 4:
+				item = c.createIng1(ing[0], ing[1], ing[2], ing[3])
+			}
+			c.cache.IngList = append(c.cache.IngList, item)
 		}
 		for _, ing := range test.ingtls {
 			c.cache.IngList = append(c.cache.IngList, c.createIngTLS1(ing[0], ing[1], ing[2], ing[3], ing[4]))
@@ -1247,6 +1304,9 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
 			for _, param := range params {
 				var ing *networking.Ingress
 				switch len(param) {
+				case 3:
+					ing = c.createIng2(param[0], param[1])
+					ing.SetAnnotations(paramToMap(param[2:]))
 				case 4:
 					ing = c.createIng1(param[0], param[1], param[2], param[3])
 				case 5:
@@ -1285,7 +1345,14 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
 		endp(&c.cache.Changed.Endpoints, test.endpoints)
 		c.Sync()
 
+		if test.expFront == "" {
+			test.expFront = "[]"
+		}
 		c.compareConfigFront(test.expFront)
+		if test.expDefaultFront == "" {
+			test.expDefaultFront = "[]"
+		}
+		c.compareConfigDefaultFront(test.expDefaultFront)
 		c.compareConfigBack(test.expBack)
 		c.logger.CompareLogging(test.logging)
 

@@ -298,25 +298,38 @@ func (c *converter) syncPartial() {
 func (c *converter) trackAddedIngress() {
 	for _, ing := range c.changed.IngressesAdd {
 		name := ing.Namespace + "/" + ing.Name
+		if ing.Spec.Backend != nil {
+			backend := c.findBackend(ing.Namespace, ing.Spec.Backend)
+			if backend != nil {
+				c.tracker.TrackBackend(convtypes.IngressType, name, backend.BackendID())
+			}
+		}
 		for _, rule := range ing.Spec.Rules {
 			c.tracker.TrackHostname(convtypes.IngressType, name, rule.Host)
 			if rule.HTTP != nil {
 				for _, path := range rule.HTTP.Paths {
-					svcName, svcPort := readServiceNamePort(&path.Backend)
-					fullSvcName := ing.Namespace + "/" + svcName
-					if svc, err := c.cache.GetService(fullSvcName); err == nil {
-						port := convutils.FindServicePort(svc, svcPort)
-						if port != nil {
-							backend := c.haproxy.Backends().FindBackend(ing.Namespace, svcName, port.TargetPort.String())
-							if backend != nil {
-								c.tracker.TrackBackend(convtypes.IngressType, name, backend.BackendID())
-							}
-						}
+					backend := c.findBackend(ing.Namespace, &path.Backend)
+					if backend != nil {
+						c.tracker.TrackBackend(convtypes.IngressType, name, backend.BackendID())
 					}
 				}
 			}
 		}
 	}
+}
+
+func (c *converter) findBackend(namespace string, backend *networking.IngressBackend) *hatypes.Backend {
+	svcName, svcPort := readServiceNamePort(backend)
+	fullSvcName := namespace + "/" + svcName
+	svc, err := c.cache.GetService(fullSvcName)
+	if err != nil {
+		return nil
+	}
+	port := convutils.FindServicePort(svc, svcPort)
+	if port == nil {
+		return nil
+	}
+	return c.haproxy.Backends().FindBackend(namespace, svcName, port.TargetPort.String())
 }
 
 func sortIngress(ingress []*networking.Ingress) {
@@ -493,6 +506,7 @@ func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcNam
 	}
 	backend, err := c.addBackend(source, hostname, uri, fullSvcName, svcPort, annBack)
 	if err != nil {
+		c.tracker.TrackHostname(convtypes.IngressType, source.FullName(), hostname)
 		return err
 	}
 	host := c.addHost(hostname, source, annHost)
