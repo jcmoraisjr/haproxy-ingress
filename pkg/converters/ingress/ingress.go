@@ -150,7 +150,7 @@ func (c *converter) syncDefaultCrt() {
 
 func (c *converter) syncDefaultBackend() {
 	if c.options.DefaultBackend != "" {
-		if backend, err := c.addBackend(&annotations.Source{}, "*", "/", c.options.DefaultBackend, "", map[string]string{}); err == nil {
+		if backend, err := c.addBackend(&annotations.Source{}, hatypes.DefaultHost, "/", c.options.DefaultBackend, "", map[string]string{}); err == nil {
 			c.haproxy.Backends().SetDefaultBackend(backend)
 		} else {
 			c.logger.Error("error reading default service: %v", err)
@@ -298,25 +298,38 @@ func (c *converter) syncPartial() {
 func (c *converter) trackAddedIngress() {
 	for _, ing := range c.changed.IngressesAdd {
 		name := ing.Namespace + "/" + ing.Name
+		if ing.Spec.Backend != nil {
+			backend := c.findBackend(ing.Namespace, ing.Spec.Backend)
+			if backend != nil {
+				c.tracker.TrackBackend(convtypes.IngressType, name, backend.BackendID())
+			}
+		}
 		for _, rule := range ing.Spec.Rules {
 			c.tracker.TrackHostname(convtypes.IngressType, name, rule.Host)
 			if rule.HTTP != nil {
 				for _, path := range rule.HTTP.Paths {
-					svcName, svcPort := readServiceNamePort(&path.Backend)
-					fullSvcName := ing.Namespace + "/" + svcName
-					if svc, err := c.cache.GetService(fullSvcName); err == nil {
-						port := convutils.FindServicePort(svc, svcPort)
-						if port != nil {
-							backend := c.haproxy.Backends().FindBackend(ing.Namespace, svcName, port.TargetPort.String())
-							if backend != nil {
-								c.tracker.TrackBackend(convtypes.IngressType, name, backend.BackendID())
-							}
-						}
+					backend := c.findBackend(ing.Namespace, &path.Backend)
+					if backend != nil {
+						c.tracker.TrackBackend(convtypes.IngressType, name, backend.BackendID())
 					}
 				}
 			}
 		}
 	}
+}
+
+func (c *converter) findBackend(namespace string, backend *networking.IngressBackend) *hatypes.Backend {
+	svcName, svcPort := readServiceNamePort(backend)
+	fullSvcName := namespace + "/" + svcName
+	svc, err := c.cache.GetService(fullSvcName)
+	if err != nil {
+		return nil
+	}
+	port := convutils.FindServicePort(svc, svcPort)
+	if port == nil {
+		return nil
+	}
+	return c.haproxy.Backends().FindBackend(namespace, svcName, port.TargetPort.String())
 }
 
 func sortIngress(ingress []*networking.Ingress) {
@@ -351,7 +364,7 @@ func (c *converter) syncIngress(ing *networking.Ingress) {
 		}
 		hostname := rule.Host
 		if hostname == "" {
-			hostname = "*"
+			hostname = hatypes.DefaultHost
 		}
 		host := c.addHost(hostname, source, annHost)
 		for _, path := range rule.HTTP.Paths {
@@ -484,7 +497,7 @@ func (c *converter) readPathType(path networking.HTTPIngressPath, ann string) ha
 }
 
 func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcName, svcPort string, annHost, annBack map[string]string) error {
-	hostname := "*"
+	hostname := hatypes.DefaultHost
 	uri := "/"
 	if fr := c.haproxy.Hosts().FindHost(hostname); fr != nil {
 		if fr.FindPath(uri) != nil {
@@ -493,6 +506,7 @@ func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcNam
 	}
 	backend, err := c.addBackend(source, hostname, uri, fullSvcName, svcPort, annBack)
 	if err != nil {
+		c.tracker.TrackHostname(convtypes.IngressType, source.FullName(), hostname)
 		return err
 	}
 	host := c.addHost(hostname, source, annHost)

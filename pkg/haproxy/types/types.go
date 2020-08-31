@@ -298,11 +298,12 @@ type Frontend struct {
 	DefaultCrtHash string
 }
 
+// DefaultHost ...
+const DefaultHost = "<default>"
+
 // Hosts ...
 type Hosts struct {
 	items, itemsAdd, itemsDel map[string]*Host
-	//
-	defaultHost *Host
 	//
 	sslPassthroughCount int
 }

@@ -1390,7 +1390,7 @@ func TestInstanceDefaultHost(t *testing.T) {
 	var b *hatypes.Backend
 
 	b = c.config.Backends().AcquireBackend("d1", "app", "8080")
-	h = c.config.Hosts().AcquireHost("*")
+	h = c.config.Hosts().AcquireHost(hatypes.DefaultHost)
 	h.AddPath(b, "/", hatypes.MatchBegin)
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
 	h.TLS.TLSHash = "0"
@@ -1513,7 +1513,7 @@ func TestInstanceStrictHostDefaultHost(t *testing.T) {
 
 	b = c.config.Backends().AcquireBackend("d2", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS21}
-	h = c.config.Hosts().AcquireHost("*")
+	h = c.config.Hosts().AcquireHost(hatypes.DefaultHost)
 	h.AddPath(b, "/", hatypes.MatchBegin)
 
 	c.config.Global().StrictHost = true
