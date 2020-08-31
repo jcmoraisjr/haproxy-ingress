@@ -3053,7 +3053,7 @@ func setupOptions(options testOptions) *testConfig {
 	}).(*instance)
 	if err := instance.haproxyTmpl.NewTemplate(
 		"haproxy.tmpl",
-		"../../rootfs/etc/haproxy/template/haproxy.tmpl",
+		"../../rootfs/etc/templates/haproxy/haproxy.tmpl",
 		filepath.Join(tempdir, "haproxy.cfg"),
 		0,
 		2048,
@@ -3062,7 +3062,7 @@ func setupOptions(options testOptions) *testConfig {
 	}
 	if err := instance.mapsTmpl.NewTemplate(
 		"map.tmpl",
-		"../../rootfs/etc/haproxy/maptemplate/map.tmpl",
+		"../../rootfs/etc/templates/map/map.tmpl",
 		"",
 		0,
 		2048,

@@ -20,5 +20,7 @@ if [ $# -gt 0 ] && [ "$(echo $1 | cut -b1-2)" != "--" ]; then
     # Probably a `docker run -ti`, so exec and exit
     exec "$@"
 else
+    # Copy static files to /etc/haproxy, which cannot have static content
+    cp -R -p /etc/lua /etc/haproxy/
     exec /haproxy-ingress-controller "$@"
 fi
