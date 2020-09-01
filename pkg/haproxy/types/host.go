@@ -59,6 +59,7 @@ func (h *Hosts) FindHost(hostname string) *Host {
 func (h *Hosts) RemoveAll(hostnames []string) {
 	for _, hostname := range hostnames {
 		if item, found := h.items[hostname]; found {
+			h.releaseHost(item)
 			h.itemsDel[hostname] = item
 			delete(h.items, hostname)
 		}
@@ -136,6 +137,14 @@ func (h *Hosts) ItemsDel() map[string]*Host {
 // DefaultHost ...
 func (h *Hosts) DefaultHost() *Host {
 	return h.items[DefaultHost]
+}
+
+// releaseHost does a reverse update on the Hosts state
+// due to the removal of a Host item
+func (h *Hosts) releaseHost(host *Host) {
+	if host.sslPassthrough {
+		h.sslPassthroughCount--
+	}
 }
 
 // HasSSLPassthrough ...
