@@ -1,7 +1,7 @@
 ---
 title: "Configuration keys"
 linkTitle: "Configuration keys"
-weight: 3
+weight: 1
 description: >
   List of all ingress/service annotations and global ConfigMap options.
 ---
