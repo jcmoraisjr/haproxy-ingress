@@ -137,8 +137,8 @@ func (i *instance) ParseTemplates() error {
 	i.mapsTmpl.ClearTemplates()
 	i.modsecTmpl.ClearTemplates()
 	if err := i.modsecTmpl.NewTemplate(
-		"spoe-modsecurity.tmpl",
-		"/etc/haproxy/modsecurity/spoe-modsecurity.tmpl",
+		"modsecurity.tmpl",
+		"/etc/templates/modsecurity/modsecurity.tmpl",
 		"/etc/haproxy/spoe-modsecurity.conf",
 		0,
 		1024,
@@ -147,7 +147,7 @@ func (i *instance) ParseTemplates() error {
 	}
 	if err := i.haproxyTmpl.NewTemplate(
 		"haproxy.tmpl",
-		"/etc/haproxy/template/haproxy.tmpl",
+		"/etc/templates/haproxy/haproxy.tmpl",
 		"/etc/haproxy/haproxy.cfg",
 		i.options.MaxOldConfigFiles,
 		16384,
@@ -156,7 +156,7 @@ func (i *instance) ParseTemplates() error {
 	}
 	err := i.mapsTmpl.NewTemplate(
 		"map.tmpl",
-		"/etc/haproxy/maptemplate/map.tmpl",
+		"/etc/templates/map/map.tmpl",
 		"",
 		0,
 		2048,

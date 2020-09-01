@@ -106,7 +106,7 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 		global:   haproxyConfig.Global(),
 		mapper:   mapper,
 	}
-	d.global.AdminSocket = "/var/run/haproxy-stats.sock"
+	d.global.AdminSocket = "/var/run/haproxy/admin.sock"
 	d.global.MaxConn = mapper.Get(ingtypes.GlobalMaxConnections).Int()
 	d.global.DrainSupport.Drain = mapper.Get(ingtypes.GlobalDrainSupport).Bool()
 	d.global.DrainSupport.Redispatch = mapper.Get(ingtypes.GlobalDrainSupportRedispatch).Bool()

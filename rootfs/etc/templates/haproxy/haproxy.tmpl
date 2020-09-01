@@ -91,8 +91,8 @@ global
     log {{ $global.Syslog.Endpoint }} len {{ $global.Syslog.Length }} format {{ $global.Syslog.Format }} local0
     log-tag {{ $global.Syslog.Tag }}
 {{- end }}
-    lua-load /usr/local/etc/haproxy/lua/auth-request.lua
-    lua-load /usr/local/etc/haproxy/lua/services.lua
+    lua-load /etc/haproxy/lua/auth-request.lua
+    lua-load /etc/haproxy/lua/services.lua
 {{- if $global.SSL.DHParam.Filename }}
     ssl-dh-param-file {{ $global.SSL.DHParam.Filename }}
 {{- else }}

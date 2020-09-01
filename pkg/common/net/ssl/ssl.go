@@ -49,9 +49,9 @@ var (
 // AddOrUpdateCertAndKey creates a .pem file wth the cert and the key with the specified name
 func AddOrUpdateCertAndKey(name string, cert, key, ca []byte) (*ingress.SSLCert, error) {
 	pemName := fmt.Sprintf("%v.pem", name)
-	pemFileName := fmt.Sprintf("%v/%v", ingress.DefaultSSLDirectory, pemName)
+	pemFileName := fmt.Sprintf("%v/%v", ingress.DefaultCrtDirectory, pemName)
 
-	tempPemFile, err := ioutil.TempFile(ingress.DefaultSSLDirectory, pemName)
+	tempPemFile, err := ioutil.TempFile(ingress.DefaultCrtDirectory, pemName)
 
 	if err != nil {
 		return nil, fmt.Errorf("could not create temp pem file %v: %v", pemFileName, err)
@@ -316,9 +316,9 @@ func AddCertAuth(name string, ca, crl []byte) (*ingress.SSLCert, error) {
 // AddOrUpdateDHParam creates a dh parameters file with the specified name
 func AddOrUpdateDHParam(name string, dh []byte) (string, error) {
 	pemName := fmt.Sprintf("%v.pem", name)
-	pemFileName := fmt.Sprintf("%v/%v", ingress.DefaultSSLDirectory, pemName)
+	pemFileName := fmt.Sprintf("%v/%v", ingress.DefaultDHParamDirectory, pemName)
 
-	tempPemFile, err := ioutil.TempFile(ingress.DefaultSSLDirectory, pemName)
+	tempPemFile, err := ioutil.TempFile(ingress.DefaultDHParamDirectory, pemName)
 
 	glog.V(3).Infof("Creating temp file %v for DH param: %v", tempPemFile.Name(), pemName)
 	if err != nil {
