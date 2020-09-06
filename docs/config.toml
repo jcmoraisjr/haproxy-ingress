@@ -122,6 +122,12 @@ no = 'Sorry to hear that. Please <a href="https://github.com/jcmoraisjr/haproxy-
 
 # End user relevant links. These will show up on left side of footer and in the community page if you have one.
 [[params.links.user]]
+name = "Slack"
+url = "http://jitec.com.br/slack/"
+icon = "fab fa-slack"
+desc = "Chat and get support from other HAProxy Ingress users"
+
+[[params.links.user]]
 name = "Users mailing list"
 url = "https://groups.google.com/forum/#!forum/haproxy-ingress"
 icon = "fa fa-envelope"
