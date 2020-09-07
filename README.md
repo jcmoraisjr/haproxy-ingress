@@ -12,16 +12,22 @@ Updates made to the cluster are applied on the fly to the HAProxy instance.
 
 ## Use HAProxy Ingress
 
-Find some useful links below:
+Documentation:
 
 * Home of HAProxy Ingress docs: [haproxy-ingress.github.io/docs](https://haproxy-ingress.github.io/docs/)
 * Global ConfigMap options and ingress/service annotations, now named configuration keys: [haproxy-ingress.github.io/docs/configuration/keys/](https://haproxy-ingress.github.io/docs/configuration/keys/)
 * Static command-line options: [haproxy-ingress.github.io/docs/configuration/command-line/](https://haproxy-ingress.github.io/docs/configuration/command-line/)
 * Old single-page doc (up to v0.8): [/release-0.8/README.md](https://github.com/jcmoraisjr/haproxy-ingress/blob/release-0.8/README.md)
 
+Community:
+
+* [Slack](http://jitec.com.br/slack/): Chat and get support from other HAProxy Ingress users
+* [Users mailing list](https://groups.google.com/forum/#!forum/haproxy-ingress): Announcements and discussion on a mailing list
+* [Stack Overflow](https://stackoverflow.com/questions/tagged/haproxy-ingress): Practical questions and curated answers
+
 ## Develop HAProxy Ingress
 
-Building HAProxy Ingress:
+Building:
 
 ```
 mkdir -p $GOPATH/src/github.com/jcmoraisjr
