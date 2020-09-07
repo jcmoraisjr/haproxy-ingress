@@ -106,7 +106,9 @@ func (hc *HAProxyController) configController() {
 		hc.logger, hc.cfg.Client, hc.controller, hc.tracker, hc.ingressQueue,
 		hc.cfg.WatchNamespace, hc.cfg.ForceNamespaceIsolation,
 		hc.cfg.DisablePodList,
-		hc.cfg.ResyncPeriod)
+		hc.cfg.ResyncPeriod,
+		hc.cfg.WaitBeforeUpdate,
+	)
 	var acmeSigner acme.Signer
 	if hc.cfg.AcmeServer {
 		electorID := fmt.Sprintf("%s-%s", hc.cfg.AcmeElectionID, hc.cfg.IngressClass)

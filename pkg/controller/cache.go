@@ -63,10 +63,11 @@ type k8scache struct {
 	acmeSecretKeyName      string
 	acmeTokenConfigmapName string
 	//
-	updateQueue  utils.Queue
-	stateMutex   sync.RWMutex
-	clear        bool
-	needFullSync bool
+	updateQueue      utils.Queue
+	stateMutex       sync.RWMutex
+	waitBeforeUpdate time.Duration
+	clear            bool
+	needFullSync     bool
 	//
 	globalConfigMapData    map[string]string
 	tcpConfigMapData       map[string]string
@@ -97,6 +98,7 @@ func createCache(
 	isolateNamespace bool,
 	disablePodList bool,
 	resync time.Duration,
+	waitBeforeUpdate time.Duration,
 ) *k8scache {
 	namespace := os.Getenv("POD_NAMESPACE")
 	if namespace == "" {
@@ -139,6 +141,7 @@ func createCache(
 		acmeTokenConfigmapName: acmeTokenConfigmapName,
 		stateMutex:             sync.RWMutex{},
 		updateQueue:            updateQueue,
+		waitBeforeUpdate:       waitBeforeUpdate,
 		clear:                  true,
 		needFullSync:           false,
 	}
@@ -625,10 +628,9 @@ func (c *k8scache) Notify(old, cur interface{}) {
 		c.needFullSync = true
 	}
 	if c.clear {
-		// Notify after 500ms, giving the time to receive
+		// Wait before notify, giving the time to receive
 		// all/most of the changes of a batch update
-		// TODO parameterize this delay
-		time.AfterFunc(500*time.Millisecond, func() { c.updateQueue.Notify() })
+		time.AfterFunc(c.waitBeforeUpdate, func() { c.updateQueue.Notify() })
 	}
 	c.clear = false
 }

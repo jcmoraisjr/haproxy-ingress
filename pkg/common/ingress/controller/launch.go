@@ -104,6 +104,10 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		Default is 0.5, which means wait 2 seconds between Ingress updates in order
 		to add more changes in a single reload`)
 
+		waitBeforeUpdate = flags.Duration("wait-before-update", 200*time.Millisecond,
+			`Amount of time to wait before start a reconciliation and update haproxy,
+		giving the time to receive all/most of the changes of a batch update.`)
+
 		resyncPeriod = flags.Duration("sync-period", 600*time.Second,
 			`Relist and confirm cloud resources this often. Default is 10 minutes`)
 
@@ -303,6 +307,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		BucketsResponseTime:       *bucketsResponseTime,
 		RateLimitUpdate:           *rateLimitUpdate,
 		ResyncPeriod:              *resyncPeriod,
+		WaitBeforeUpdate:          *waitBeforeUpdate,
 		DefaultService:            *defaultSvc,
 		IngressClass:              *ingressClass,
 		WatchNamespace:            *watchNamespace,
