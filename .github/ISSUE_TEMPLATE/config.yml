@@ -5,7 +5,7 @@ contact_links:
   about: Chat and get support from other HAProxy Ingress users.
 - name: Mailing List
   url: https://groups.google.com/forum/#!forum/haproxy-ingress
-  about: Ask questions and follow announcements. Post via `haproxy-ingress@groups.google.com` mail address without being subscribed.
+  about: Ask questions and follow announcements. Post via `haproxy-ingress@googlegroups.com` mail address without being subscribed.
 - name: Stack Overflow
   url: https://stackoverflow.com/questions/tagged/haproxy-ingress
   about: Practical questions and curated answers.
