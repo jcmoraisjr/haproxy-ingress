@@ -56,8 +56,9 @@ type GenericController struct {
 type Configuration struct {
 	Client clientset.Interface
 
-	RateLimitUpdate float32
-	ResyncPeriod    time.Duration
+	RateLimitUpdate  float32
+	ResyncPeriod     time.Duration
+	WaitBeforeUpdate time.Duration
 
 	DefaultService string
 	IngressClass   string

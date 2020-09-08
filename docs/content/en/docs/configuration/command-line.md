@@ -39,6 +39,7 @@ The following command-line options are supported:
 | [`--tcp-services-configmap`](#tcp-services-configmap)   | namespace/configmapname    | no tcp svc              |       |
 | [`--verify-hostname`](#verify-hostname)                 | [true\|false]              | `true`                  |       |
 | [`--wait-before-shutdown`](#wait-before-shutdown)       | seconds as integer         | `0`                     | v0.8  |
+| [`--wait-before-update`](#wait-before-update)           | duration                   | `200ms`                 | v0.11 |
 | [`--watch-namespace`](#watch-namespace)                 | namespace                  | all namespaces          |       |
 
 ---
@@ -297,6 +298,16 @@ the certificate declared in the `secretName` ignoring if the certificate is or i
 If argument `--wait-before-shutdown` is defined, controller will wait defined time in seconds
 before it starts shutting down components when SIGTERM was received. By default, it's 0, which means
 the controller starts shutting down itself right after signal was sent.
+
+---
+
+## --wait-before-update
+
+Since v0.11
+
+Defines the amount of time to wait before start a reconciliation event and update haproxy.
+The purpose of this delay is to group all the notifications of a batch update and apply pending
+changes in one single shot. The default value is `200ms`.
 
 ---
 
