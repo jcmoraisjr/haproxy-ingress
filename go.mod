@@ -13,15 +13,15 @@ require (
 	github.com/kylelemons/godebug v1.1.0
 	github.com/mitchellh/copystructure v1.0.0 // indirect
 	github.com/mitchellh/mapstructure v1.1.2
-	github.com/pkg/errors v0.8.1
+	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.2.1
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
+	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/pool.v3 v3.1.1
 	gopkg.in/yaml.v2 v2.2.8
-	k8s.io/api v0.18.6
-	k8s.io/apimachinery v0.18.6
+	k8s.io/api v0.19.0
+	k8s.io/apimachinery v0.19.0
 	k8s.io/apiserver v0.18.6
-	k8s.io/client-go v0.18.6
+	k8s.io/client-go v0.19.0
 )
