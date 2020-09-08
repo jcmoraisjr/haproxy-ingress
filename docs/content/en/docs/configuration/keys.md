@@ -213,7 +213,7 @@ The table below describes all supported configuration keys.
 | [`stats-port`](#stats)                               | port number                             | Global  | `1936`             |
 | [`stats-proxy-protocol`](#stats)                     | [true\|false]                           | Global  | `false`            |
 | [`stats-ssl-cert`](#stats)                           | namespace/secret name                   | Global  | no ssl/plain http  |
-| [`strict-host`](#strict-host)                        | [true\|false]                           | Global  | `true`             |
+| [`strict-host`](#strict-host)                        | [true\|false]                           | Global  | `false`            |
 | [`syslog-endpoint`](#syslog)                         | IP:port (udp)                           | Global  | do not log         |
 | [`syslog-format`](#syslog)                           | rfc5424\|rfc3164                        | Global  | `rfc5424`          |
 | [`syslog-length`](#syslog)                           | maximum length                          | Global  | `1024`             |
@@ -1514,13 +1514,13 @@ Configurations of the HAProxy statistics page:
 
 | Configuration key | Scope     | Default | Since |
 |-------------------|-----------|---------|-------|
-| `strict-host`     | `Global`  | `true`  |       |
+| `strict-host`     | `Global`  | `false` |       |
 
 Defines whether the path of another matching host/FQDN should be used to try
-to serve a request. The default value is `true`, which means a strict
-configuration and the `default-backend` should be used if a path couldn't be
-matched. If `false`, all matching wildcard hosts will be visited in order to
-try to match the path.
+to serve a request. The default value is `false`, which means all matching
+wildcard hosts will be visited in order to try to match the path. If `true`,
+a strict configuration is applied and the `default-backend` should be used
+if a path couldn't be matched.
 
 Using the following configuration:
 
@@ -1545,8 +1545,8 @@ Using the following configuration:
 
 A request to `my.domain.com/b` would serve:
 
-* `default-backend` if `strict-host` is `true`, the default value
-* `svc2` if `strict-host` is `false`
+* `svc2` if `strict-host` is `false`, the default value
+* `default-backend` if `strict-host` is `true`
 
 ---
 
