@@ -12,8 +12,12 @@
 **Breaking backward compatibility from [v0.10](#v010)**
 
 * Kubernetes version 1.14 or newer
-* HAProxy Ingress service account need `get`, `list`, `watch` and `update` access to `networking.k8s.io` api group - which was the same permitions granted to `extensions/v1beta1` api group. Update your k8s role configuration before deploy v0.11. See an updated version of the [deployment manifest](https://raw.githubusercontent.com/jcmoraisjr/haproxy-ingress/2b3cc6701b27866acd9db35cbbd0c4de114aaec2/docs/static/resources/haproxy-ingress.yaml).
+* HAProxy Ingress service account need `get`, `list`, `watch` and `update` access to `networking.k8s.io` api group - which was the same permissions granted to `extensions/v1beta1` api group. Update your k8s role configuration before deploy v0.11. See an updated version of the [deployment manifest](https://raw.githubusercontent.com/jcmoraisjr/haproxy-ingress/2b3cc6701b27866acd9db35cbbd0c4de114aaec2/docs/static/resources/haproxy-ingress.yaml).
+* Major refactor in the haproxy's frontents with the following visible changes:
+  * Internal proxy names changed, which will impact metric dashboards that use these names
+  * Internal map file names changed, which will impact configuration snippets that use them
 * `timeout-client` and `timeout-client-fin` are global scoped only - cannot use as an ingress annotation.
+* Template path changed, see the template [doc](https://haproxy-ingress.github.io/v0.11/docs/configuration/template/).
 
 **Contributors**
 
@@ -28,9 +32,9 @@
 * Shagon94 ([Shagon94](https://github.com/Shagon94))
 * Unichron ([Unichron](https://github.com/Unichron))
 
-**v0.11-snapshot.1**
+### v0.11-beta.1
 
-New features and improvemets:
+New features and improvements:
 
 * Update to haproxy 2.1.4 [#542](https://github.com/jcmoraisjr/haproxy-ingress/pull/542) (jcmoraisjr)
 * Converting to cache.Listers [#545](https://github.com/jcmoraisjr/haproxy-ingress/pull/545) (prometherion)
@@ -81,24 +85,6 @@ New features and improvemets:
 * Log changed objects [#625](https://github.com/jcmoraisjr/haproxy-ingress/pull/625) (jcmoraisjr)
 * Optimize haproxy maps building [#629](https://github.com/jcmoraisjr/haproxy-ingress/pull/629) (jcmoraisjr)
 * Shrink list of changed hosts and backends [#630](https://github.com/jcmoraisjr/haproxy-ingress/pull/630) (jcmoraisjr)
-
-Fixes:
-
-* Fix logging messages [#559](https://github.com/jcmoraisjr/haproxy-ingress/pull/559) (jcmoraisjr)
-* Fix server-alias on http/80 [#570](https://github.com/jcmoraisjr/haproxy-ingress/pull/570) (AlexisDuf)
-* Fix permission using watch-namespace [#578](https://github.com/jcmoraisjr/haproxy-ingress/pull/578) (jcmoraisjr)
-* Fix watch-namespace option [#579](https://github.com/jcmoraisjr/haproxy-ingress/pull/579) (jcmoraisjr)
-* Fix cleaning cache of changed objects [#626](https://github.com/jcmoraisjr/haproxy-ingress/pull/626) (jcmoraisjr)
-
-Docs:
-
-* Fixed typos [#580](https://github.com/jcmoraisjr/haproxy-ingress/pull/580) (Shagon94)
-* Typo on configuration keys docs [#585](https://github.com/jcmoraisjr/haproxy-ingress/pull/585) (RobertTheProfessional)
-
-**v0.11-snapshot.2**
-
-New features and improvemets:
-
 * Host scope tls-alpn and ssl-options [#617](https://github.com/jcmoraisjr/haproxy-ingress/pull/617) (Unichron)
   * Configuration keys:
     * `ssl-options-backend` - [doc](https://haproxy-ingress.github.io/v0.11/docs/configuration/keys/#ssl-options)
@@ -111,23 +97,29 @@ New features and improvemets:
 * Add support to multiple match types [#641](https://github.com/jcmoraisjr/haproxy-ingress/pull/641) (jcmoraisjr)
   * Configuration keys:
     * `path-type` - [doc](https://haproxy-ingress.github.io/v0.11/docs/configuration/keys/#path-type)
-
-Fixes:
-
-* Configure default crt on ingress parsing phase [#634](https://github.com/jcmoraisjr/haproxy-ingress/pull/634) (jcmoraisjr)
-
-**v0.11-snapshot.3**
-
-New features and improvemets:
-
 * Improve backend shrinking [#644](https://github.com/jcmoraisjr/haproxy-ingress/pull/644) (jcmoraisjr)
 * Improve time of frontend maps build [#647](https://github.com/jcmoraisjr/haproxy-ingress/pull/647) (jcmoraisjr)
+* Move files to /etc, /var/lib or /var/run dirs [#654](https://github.com/jcmoraisjr/haproxy-ingress/pull/654) (jcmoraisjr)
+* Add wait-before-update command-line option [#658](https://github.com/jcmoraisjr/haproxy-ingress/pull/658) (jcmoraisjr)
 
 Fixes:
 
+* Fix logging messages [#559](https://github.com/jcmoraisjr/haproxy-ingress/pull/559) (jcmoraisjr)
+* Fix server-alias on http/80 [#570](https://github.com/jcmoraisjr/haproxy-ingress/pull/570) (AlexisDuf)
+* Fix permission using watch-namespace [#578](https://github.com/jcmoraisjr/haproxy-ingress/pull/578) (jcmoraisjr)
+* Fix watch-namespace option [#579](https://github.com/jcmoraisjr/haproxy-ingress/pull/579) (jcmoraisjr)
+* Fix cleaning cache of changed objects [#626](https://github.com/jcmoraisjr/haproxy-ingress/pull/626) (jcmoraisjr)
+* Configure default crt on ingress parsing phase [#634](https://github.com/jcmoraisjr/haproxy-ingress/pull/634) (jcmoraisjr)
 * Add hostname and backend tracking on addIngress [#646](https://github.com/jcmoraisjr/haproxy-ingress/pull/646) (jcmoraisjr)
 * Fix sigsegv tracking added ingress [#648](https://github.com/jcmoraisjr/haproxy-ingress/pull/648) (jcmoraisjr)
 * Add implicit starting boundary char in regex path match [#651](https://github.com/jcmoraisjr/haproxy-ingress/pull/651) (jcmoraisjr)
+* Fix tracking and partial parsing of spec.backend [#653](https://github.com/jcmoraisjr/haproxy-ingress/pull/653) (jcmoraisjr)
+* Fix ssl-passthrough counter [#656](https://github.com/jcmoraisjr/haproxy-ingress/pull/656) (jcmoraisjr)
+
+Docs:
+
+* Fixed typos [#580](https://github.com/jcmoraisjr/haproxy-ingress/pull/580) (Shagon94)
+* Typo on configuration keys docs [#585](https://github.com/jcmoraisjr/haproxy-ingress/pull/585) (RobertTheProfessional)
 
 ## v0.10
 
@@ -141,7 +133,7 @@ Highlights of this version:
 
 ### v0.10-beta.1
 
-New features and improvemets:
+New features and improvements:
 
 * Update to haproxy 2.0.11 [#414](https://github.com/jcmoraisjr/haproxy-ingress/pull/414)
 * Remove v0.7 controller [#483](https://github.com/jcmoraisjr/haproxy-ingress/pull/483)
