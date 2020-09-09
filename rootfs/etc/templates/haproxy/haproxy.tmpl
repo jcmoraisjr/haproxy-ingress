@@ -386,7 +386,7 @@ backend {{ $backend.ID }}
 
 {{- /*------------------------------------*/}}
 {{- if $backend.NeedACL }}
-{{- range $path := reverse $backend.Paths }}
+{{- range $path := $backend.Paths }}
     # {{ $path.ID }} = {{ $path.Hostname }}{{ $path.Path }}
 {{- end }}
 {{- range $match := $backend.PathsMap.MatchTypes }}
