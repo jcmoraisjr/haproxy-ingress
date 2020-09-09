@@ -3095,6 +3095,7 @@ func (c *testConfig) configGlobal(global *hatypes.Global) {
 	global.Bind.HTTPSBind = ":443"
 	global.Cookie.Key = "Ingress"
 	global.Healthz.Port = 10253
+	global.MatchOrder = hatypes.DefaultMatchOrder
 	global.MaxConn = 2000
 	global.SSL.ALPN = "h2,http/1.1"
 	global.SSL.BackendCiphers = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256"

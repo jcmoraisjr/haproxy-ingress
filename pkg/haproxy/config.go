@@ -61,17 +61,10 @@ type config struct {
 type options struct {
 	mapsTemplate *template.Config
 	mapsDir      string
-	matchOrder   []hatypes.MatchType
 	shardCount   int
 }
 
 func createConfig(options options) *config {
-	options.matchOrder = []hatypes.MatchType{
-		hatypes.MatchExact,
-		hatypes.MatchPrefix,
-		hatypes.MatchBegin,
-		hatypes.MatchRegex,
-	}
 	if options.mapsTemplate == nil {
 		options.mapsTemplate = template.CreateConfig()
 	}
@@ -152,7 +145,7 @@ func (c *config) WriteFrontendMaps() error {
 		// hosts are clean, maps are updated
 		return nil
 	}
-	mapBuilder := hatypes.CreateMaps(c.options.matchOrder)
+	mapBuilder := hatypes.CreateMaps(c.global.MatchOrder)
 	mapsDir := c.options.mapsDir
 	fmaps := &hatypes.FrontendMaps{
 		HTTPHostMap:  mapBuilder.AddMap(mapsDir + "/_front_http_host.map"),
@@ -313,7 +306,7 @@ func (c *config) WriteBackendMaps() error {
 		// backends are clean, maps are updated
 		return nil
 	}
-	mapBuilder := hatypes.CreateMaps(c.options.matchOrder)
+	mapBuilder := hatypes.CreateMaps(c.global.MatchOrder)
 	for _, backend := range c.backends.ItemsAdd() {
 		if backend.NeedACL() {
 			mapsPrefix := c.options.mapsDir + "/_back_" + backend.ID

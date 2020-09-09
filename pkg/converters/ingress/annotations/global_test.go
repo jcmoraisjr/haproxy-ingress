@@ -383,3 +383,49 @@ func TestDisableCpuMap(t *testing.T) {
 		c.teardown()
 	}
 }
+
+func TestPathTypeOrder(t *testing.T) {
+	testCases := []struct {
+		order    string
+		expected []hatypes.MatchType
+		logging  string
+	}{
+		// 0
+		{
+			order:    "regex,begin",
+			expected: hatypes.DefaultMatchOrder,
+			logging:  "WARN all path types should be used in [regex begin], using default order [exact prefix begin regex]",
+		},
+		// 1
+		{
+			order:    "regex,begin,regex,begin",
+			expected: hatypes.DefaultMatchOrder,
+			logging:  "WARN invalid or duplicated path type 'regex', using default order [exact prefix begin regex]",
+		},
+		// 2
+		{
+			order:    "regex,begin,prefix,Exact",
+			expected: hatypes.DefaultMatchOrder,
+			logging:  "WARN invalid or duplicated path type 'Exact', using default order [exact prefix begin regex]",
+		},
+		// 3
+		{
+			order:    "prefix,invalid",
+			expected: hatypes.DefaultMatchOrder,
+			logging:  "WARN invalid or duplicated path type 'invalid', using default order [exact prefix begin regex]",
+		},
+		// 4
+		{
+			order:    "regex,begin,prefix,exact",
+			expected: []hatypes.MatchType{hatypes.MatchRegex, hatypes.MatchBegin, hatypes.MatchPrefix, hatypes.MatchExact},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createGlobalData(map[string]string{ingtypes.GlobalPathTypeOrder: test.order})
+		c.createUpdater().buildGlobalPathTypeOrder(d)
+		c.compareObjects("path type order", i, d.global.MatchOrder, test.expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}

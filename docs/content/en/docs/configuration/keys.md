@@ -185,6 +185,7 @@ The table below describes all supported configuration keys.
 | [`oauth-headers`](#oauth)                            | `<header>:<var>,...`                    | Backend |                    |
 | [`oauth-uri-prefix`](#oauth)                         | URI prefix                              | Backend |                    |
 | [`path-type`](#path-type)                            | path matching type                      | Host    | `begin`            |
+| [`path-type-order`](#path-type)                      | comma-separated path type list          | Global  | `exact,prefix,begin,regex` |
 | [`prometheus-port`](#bind-port)                      | port number                             | Global  |                    |
 | [`proxy-body-size`](#proxy-body-size)                | size (bytes)                            | Backend | unlimited          |
 | [`proxy-protocol`](#proxy-protocol)                  | [v1\|v2\|v2-ssl\|v2-ssl-cn]             | Backend |                    |
@@ -1300,13 +1301,19 @@ See also:
 
 ## Path type
 
-| Configuration key | Scope  | Default | Since |
-|-------------------|--------|---------|-------|
-| `path-type`       | `Host` | `begin` | v0.11 |
+| Configuration key | Scope    | Default                    | Since |
+|-------------------|----------|----------------------------|-------|
+| `path-type`       | `Host`   | `begin`                    | v0.11 |
+| `path-type-order` | `Global` | `exact,prefix,begin,regex` | v0.12 |
 
 Defines how the path of an incoming request should match a declared path in the ingress object.
 
 * `path-type`: Configures the path type. Case insensitive, so `Begin` and `begin` configures the same path type option. The ingress spec has priority, this option will only be used if the `pathType` attribute from the ingress spec is declared as `ImplementationSpecific` or is not declared.
+* `path-type-order`: Defines a comma-separated list of priority path types. First types has higher precedence, which means that if two distinct paths of two distinct types overlaps, the first in the list will be used to handle the request. All path types must be provided. Case insensitive, use all path types in lowercase.
+
+{{% alert title="Warning" color="warning" %}}
+Wildcard hostnames and alias-regex match incoming requests using the regex path type, even if the path itself has a distinct one. Changing the precedence order of paths also changes the precedence order of hostnames. See also [server-alias-regex](#server-alias) and [strict host](#strict-host).
+{{% /alert %}}
 
 Supported `path-type` values:
 

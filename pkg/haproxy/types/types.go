@@ -64,6 +64,7 @@ type Global struct {
 	LoadServerState bool
 	AdminSocket     string
 	Healthz         HealthzConfig
+	MatchOrder      []MatchType
 	Prometheus      PromConfig
 	Stats           StatsConfig
 	StrictHost      bool
@@ -341,6 +342,9 @@ const (
 	// IMPLEMENT a temp and partially supported match to configure crt-list
 	MatchEmpty = MatchType("")
 )
+
+// DefaultMatchOrder ...
+var DefaultMatchOrder = []MatchType{MatchExact, MatchPrefix, MatchBegin, MatchRegex}
 
 // PathLink is a unique identifier of a request
 // configuration. Several request based configurations

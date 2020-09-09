@@ -86,6 +86,7 @@ func createDefaults() map[string]string {
 		types.GlobalNbprocBalance:                "1",
 		types.GlobalNbthread:                     "2",
 		types.GlobalNoTLSRedirectLocations:       "/.well-known/acme-challenge",
+		types.GlobalPathTypeOrder:                "exact,prefix,begin,regex",
 		types.GlobalSSLDHDefaultMaxSize:          "2048",
 		types.GlobalSSLHeadersPrefix:             "X-SSL",
 		types.GlobalSSLOptions:                   defaultSSLOptions,
