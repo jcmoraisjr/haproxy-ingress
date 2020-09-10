@@ -850,17 +850,14 @@ func TestCors(t *testing.T) {
 	testCases := []struct {
 		paths    []string
 		ann      map[string]map[string]string
-		expected []*hatypes.BackendConfigCors
+		expected map[string]hatypes.Cors
 		logging  string
 	}{
 		// 0
 		{
 			paths: []string{"/"},
-			expected: []*hatypes.BackendConfigCors{
-				{
-					Paths:  createBackendPaths("/"),
-					Config: hatypes.Cors{},
-				},
+			expected: map[string]hatypes.Cors{
+				"/": {},
 			},
 		},
 		// 1
@@ -870,18 +867,15 @@ func TestCors(t *testing.T) {
 					ingtypes.BackCorsEnable: "true",
 				},
 			},
-			expected: []*hatypes.BackendConfigCors{
-				{
-					Paths: createBackendPaths("/"),
-					Config: hatypes.Cors{
-						Enabled:          true,
-						AllowCredentials: false,
-						AllowHeaders:     corsDefaultHeaders,
-						AllowMethods:     corsDefaultMethods,
-						AllowOrigin:      corsDefaultOrigin,
-						ExposeHeaders:    "",
-						MaxAge:           corsDefaultMaxAge,
-					},
+			expected: map[string]hatypes.Cors{
+				"/": {
+					Enabled:          true,
+					AllowCredentials: false,
+					AllowHeaders:     corsDefaultHeaders,
+					AllowMethods:     corsDefaultMethods,
+					AllowOrigin:      corsDefaultOrigin,
+					ExposeHeaders:    "",
+					MaxAge:           corsDefaultMaxAge,
 				},
 			},
 		},
@@ -895,22 +889,16 @@ func TestCors(t *testing.T) {
 					ingtypes.BackCorsEnable: "true",
 				},
 			},
-			expected: []*hatypes.BackendConfigCors{
-				{
-					Paths:  createBackendPaths("/"),
-					Config: hatypes.Cors{},
-				},
-				{
-					Paths: createBackendPaths("/sub"),
-					Config: hatypes.Cors{
-						Enabled:          true,
-						AllowCredentials: false,
-						AllowHeaders:     corsDefaultHeaders,
-						AllowMethods:     corsDefaultMethods,
-						AllowOrigin:      corsDefaultOrigin,
-						ExposeHeaders:    "",
-						MaxAge:           corsDefaultMaxAge,
-					},
+			expected: map[string]hatypes.Cors{
+				"/": {},
+				"/sub": {
+					Enabled:          true,
+					AllowCredentials: false,
+					AllowHeaders:     corsDefaultHeaders,
+					AllowMethods:     corsDefaultMethods,
+					AllowOrigin:      corsDefaultOrigin,
+					ExposeHeaders:    "",
+					MaxAge:           corsDefaultMaxAge,
 				},
 			},
 		},
@@ -925,7 +913,11 @@ func TestCors(t *testing.T) {
 		c := setup(t)
 		d := c.createBackendMappingData("default/app", &Source{}, annDefault, test.ann, test.paths)
 		c.createUpdater().buildBackendCors(d)
-		c.compareObjects("cors", i, d.backend.Cors, test.expected)
+		actual := map[string]hatypes.Cors{}
+		for _, path := range d.backend.Paths {
+			actual[path.Path()] = path.Cors
+		}
+		c.compareObjects("cors", i, actual, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}

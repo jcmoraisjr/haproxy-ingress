@@ -464,15 +464,15 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- $needACL := gt (len $backend.Cors) 1 }}
-{{- range $corsCfg := $backend.Cors }}
-{{- $cors := $corsCfg.Config }}
+{{- $corsCfg := $backend.PathConfig "Cors" }}
+{{- $needACL := $corsCfg.NeedACL }}
+{{- range $i, $cors := $corsCfg.Items }}
 {{- if $cors.Enabled }}
-{{- $paths := $corsCfg.Paths }}
+{{- $pathIDs := $corsCfg.PathIDs $i }}
     http-request set-var(txn.cors_max_age) str({{ $cors.MaxAge }}) if METH_OPTIONS
-        {{- if $needACL }} { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+        {{- if $needACL }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
     http-request use-service lua.send-cors-preflight if METH_OPTIONS
-        {{- if $needACL }} { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+        {{- if $needACL }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- end }}
 
@@ -554,24 +554,23 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- $needACL := gt (len $backend.Cors) 1 }}
-{{- range $corsCfg := $backend.Cors }}
-{{- $cors := $corsCfg.Config }}
+{{- $needACL := $corsCfg.NeedACL }}
+{{- range $i, $cors := $corsCfg.Items }}
 {{- if $cors.Enabled }}
-{{- $paths := $corsCfg.Paths }}
+{{- $pathIDs := $corsCfg.PathIDs $i }}
     http-response set-header Access-Control-Allow-Origin  "{{ $cors.AllowOrigin }}"
-        {{- if $needACL }} if { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+        {{- if $needACL }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
     http-response set-header Access-Control-Allow-Methods "{{ $cors.AllowMethods }}"
-        {{- if $needACL }} if { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+        {{- if $needACL }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
     http-response set-header Access-Control-Allow-Headers "{{ $cors.AllowHeaders }}"
-        {{- if $needACL }} if { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+        {{- if $needACL }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
 {{- if $cors.AllowCredentials }}
     http-response set-header Access-Control-Allow-Credentials "{{ $cors.AllowCredentials }}"
-        {{- if $needACL }} if { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+        {{- if $needACL }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- if $cors.ExposeHeaders }}
     http-response set-header Access-Control-Expose-Headers "{{ $cors.ExposeHeaders }}"
-        {{- if $needACL }} if { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+        {{- if $needACL }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- end }}
 {{- end }}

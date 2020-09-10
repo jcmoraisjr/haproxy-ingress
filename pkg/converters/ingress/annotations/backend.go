@@ -397,44 +397,20 @@ func (c *updater) buildBackendBodySize(d *backData) {
 }
 
 func (c *updater) buildBackendCors(d *backData) {
-	config := d.mapper.GetBackendConfig(d.backend,
-		[]string{
-			ingtypes.BackCorsEnable,
-			ingtypes.BackCorsAllowCredentials,
-			ingtypes.BackCorsAllowHeaders,
-			ingtypes.BackCorsAllowMethods,
-			ingtypes.BackCorsAllowOrigin,
-			ingtypes.BackCorsExposeHeaders,
-			ingtypes.BackCorsMaxAge,
-		},
-		func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue {
-			enabled, found := values[ingtypes.BackCorsEnable]
-			if !found || !enabled.Bool() {
-				return nil
-			}
-			return values
-		},
-	)
-	for _, cfg := range config {
-		enabled := cfg.Get(ingtypes.BackCorsEnable).Bool()
-		allowCredentials := cfg.Get(ingtypes.BackCorsAllowCredentials).Bool()
-		allowHeaders := cfg.Get(ingtypes.BackCorsAllowHeaders).Value
-		allowMethods := cfg.Get(ingtypes.BackCorsAllowMethods).Value
-		allowOrigin := cfg.Get(ingtypes.BackCorsAllowOrigin).Value
-		exposeHeaders := cfg.Get(ingtypes.BackCorsExposeHeaders).Value
-		maxAge := cfg.Get(ingtypes.BackCorsMaxAge).Int()
-		d.backend.Cors = append(d.backend.Cors, &hatypes.BackendConfigCors{
-			Paths: cfg.Paths,
-			Config: hatypes.Cors{
+	for _, path := range d.backend.Paths {
+		config := d.mapper.GetConfig(path.Link)
+		enabled := config.Get(ingtypes.BackCorsEnable).Bool()
+		if enabled {
+			path.Cors = hatypes.Cors{
 				Enabled:          enabled,
-				AllowCredentials: allowCredentials,
-				AllowHeaders:     allowHeaders,
-				AllowMethods:     allowMethods,
-				AllowOrigin:      allowOrigin,
-				ExposeHeaders:    exposeHeaders,
-				MaxAge:           maxAge,
-			},
-		})
+				AllowCredentials: config.Get(ingtypes.BackCorsAllowCredentials).Bool(),
+				AllowHeaders:     config.Get(ingtypes.BackCorsAllowHeaders).Value,
+				AllowMethods:     config.Get(ingtypes.BackCorsAllowMethods).Value,
+				AllowOrigin:      config.Get(ingtypes.BackCorsAllowOrigin).Value,
+				ExposeHeaders:    config.Get(ingtypes.BackCorsExposeHeaders).Value,
+				MaxAge:           config.Get(ingtypes.BackCorsMaxAge).Int(),
+			}
+		}
 	}
 }
 

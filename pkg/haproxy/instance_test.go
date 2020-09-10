@@ -91,12 +91,8 @@ func TestBackends(t *testing.T) {
 					AllowMethods: "GET, PUT, POST, DELETE, PATCH, OPTIONS",
 					MaxAge:       86400,
 				}
-				b.Cors = []*hatypes.BackendConfigCors{
-					{
-						Paths:  createBackendPaths(b, "d1.local/", "d1.local/sub"),
-						Config: config,
-					},
-				}
+				b.FindBackendPath(h.FindPath("/").Link).Cors = config
+				b.FindBackendPath(h.FindPath("/sub").Link).Cors = config
 			},
 			path: []string{"/", "/sub"},
 			expected: `
@@ -116,16 +112,7 @@ func TestBackends(t *testing.T) {
 					MaxAge:           86400,
 					AllowCredentials: true,
 				}
-				b.Cors = []*hatypes.BackendConfigCors{
-					{
-						Paths:  createBackendPaths(b, "d1.local/"),
-						Config: config,
-					},
-					{
-						Paths:  createBackendPaths(b, "d1.local/sub"),
-						Config: hatypes.Cors{},
-					},
-				}
+				b.FindBackendPath(h.FindPath("/").Link).Cors = config
 			},
 			path: []string{"/", "/sub"},
 			expected: `

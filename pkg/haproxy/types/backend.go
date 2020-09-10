@@ -183,8 +183,8 @@ func (b *Backend) CreateConfigInt(value int64) []*BackendConfigInt {
 
 // HasCorsEnabled ...
 func (b *Backend) HasCorsEnabled() bool {
-	for _, cors := range b.Cors {
-		if cors.Config.Enabled {
+	for _, path := range b.Paths {
+		if path.Cors.Enabled {
 			return true
 		}
 	}
@@ -258,7 +258,7 @@ func (b *Backend) NeedACL() bool {
 		}
 	}
 	return len(b.MaxBodySize) > 1 || len(b.RewriteURL) > 1 || len(b.WhitelistHTTP) > 1 ||
-		len(b.Cors) > 1 || len(b.WAF) > 1
+		len(b.WAF) > 1
 }
 
 func (b *Backend) ensurePathConfig(attr string) {
@@ -402,11 +402,6 @@ func (b *BackendConfigInt) String() string {
 
 // String ...
 func (b *BackendConfigStr) String() string {
-	return fmt.Sprintf("%+v", *b)
-}
-
-// String ...
-func (b *BackendConfigCors) String() string {
 	return fmt.Sprintf("%+v", *b)
 }
 

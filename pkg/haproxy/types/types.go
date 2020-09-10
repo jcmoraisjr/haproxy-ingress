@@ -488,7 +488,6 @@ type Backend struct {
 	//      Template uses this func in order to know if a config
 	//      has two or more paths, and so need to be configured with ACL.
 	//
-	Cors          []*BackendConfigCors
 	MaxBodySize   []*BackendConfigInt
 	RewriteURL    []*BackendConfigStr
 	SSLRedirect   []*BackendConfigBool
@@ -572,12 +571,6 @@ type BackendConfigInt struct {
 type BackendConfigStr struct {
 	Paths  BackendPaths
 	Config string
-}
-
-// BackendConfigCors ...
-type BackendConfigCors struct {
-	Paths  BackendPaths
-	Config Cors
 }
 
 // BackendConfigWAF defines Web Application Firewall Configurations
