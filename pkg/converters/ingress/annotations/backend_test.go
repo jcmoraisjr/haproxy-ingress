@@ -1007,7 +1007,7 @@ func TestHSTS(t *testing.T) {
 		source     Source
 		annDefault map[string]string
 		ann        map[string]map[string]string
-		expected   []*hatypes.BackendConfigHSTS
+		expected   map[string]hatypes.HSTS
 		logging    string
 	}{
 		// 0
@@ -1024,24 +1024,18 @@ func TestHSTS(t *testing.T) {
 					ingtypes.BackHSTSPreload: "true",
 				},
 			},
-			expected: []*hatypes.BackendConfigHSTS{
-				{
-					Paths: createBackendPaths("/"),
-					Config: hatypes.HSTS{
-						Enabled:    true,
-						MaxAge:     15768000,
-						Subdomains: false,
-						Preload:    false,
-					},
+			expected: map[string]hatypes.HSTS{
+				"/": {
+					Enabled:    true,
+					MaxAge:     15768000,
+					Subdomains: false,
+					Preload:    false,
 				},
-				{
-					Paths: createBackendPaths("/url"),
-					Config: hatypes.HSTS{
-						Enabled:    true,
-						MaxAge:     50,
-						Subdomains: false,
-						Preload:    true,
-					},
+				"/url": {
+					Enabled:    true,
+					MaxAge:     50,
+					Subdomains: false,
+					Preload:    true,
 				},
 			},
 		},
@@ -1059,15 +1053,12 @@ func TestHSTS(t *testing.T) {
 					ingtypes.BackHSTSIncludeSubdomains: "true",
 				},
 			},
-			expected: []*hatypes.BackendConfigHSTS{
-				{
-					Paths: createBackendPaths("/"),
-					Config: hatypes.HSTS{
-						Enabled:    true,
-						MaxAge:     50,
-						Subdomains: true,
-						Preload:    false,
-					},
+			expected: map[string]hatypes.HSTS{
+				"/": {
+					Enabled:    true,
+					MaxAge:     50,
+					Subdomains: true,
+					Preload:    false,
 				},
 			},
 			source:  Source{Namespace: "default", Name: "ing1", Type: "ingress"},
@@ -1076,11 +1067,8 @@ func TestHSTS(t *testing.T) {
 		// 2
 		{
 			paths: []string{"/"},
-			expected: []*hatypes.BackendConfigHSTS{
-				{
-					Paths:  createBackendPaths("/"),
-					Config: hatypes.HSTS{},
-				},
+			expected: map[string]hatypes.HSTS{
+				"/": {},
 			},
 		},
 	}
@@ -1089,7 +1077,11 @@ func TestHSTS(t *testing.T) {
 		d := c.createBackendMappingData("default/app", &test.source, test.annDefault, test.ann, test.paths)
 		u := c.createUpdater()
 		u.buildBackendHSTS(d)
-		c.compareObjects("hsts", i, d.backend.HSTS, test.expected)
+		actual := map[string]hatypes.HSTS{}
+		for _, path := range d.backend.Paths {
+			actual[path.Path()] = path.HSTS
+		}
+		c.compareObjects("hsts", i, actual, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}

@@ -349,7 +349,7 @@ backend {{ $backend.ID }}
 {{- $hasFrontingProxy := $global.Bind.HasFrontingProxy }}
 {{- $frontingUseProto := and $hasFrontingProxy $global.Bind.FrontingUseProto }}
 {{- $frontingIgnoreProto := and $hasFrontingProxy (not $global.Bind.FrontingUseProto) }}
-{{- if and $backend.HSTS (not $frontingIgnoreProto) }}
+{{- if and $backend.HasHSTS (not $frontingIgnoreProto) }}
     acl https-request ssl_fc
 {{- if $frontingUseProto }}
     acl https-request var(txn.proto) https
@@ -360,7 +360,7 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if and $frontingUseProto $backend.HSTS }}
+{{- if and $frontingUseProto $backend.HasHSTS }}
     http-request set-var(txn.proto) hdr(X-Forwarded-Proto)
 {{- end }}
 
@@ -536,18 +536,18 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- $needACL := gt (len $backend.HSTS) 1 }}
-{{- range $hstsCfg := $backend.HSTS }}
-{{- $hsts := $hstsCfg.Config }}
+{{- $hstsCfg := $backend.PathConfig "HSTS" }}
+{{- $needACL := $hstsCfg.NeedACL }}
+{{- range $i, $hsts := $hstsCfg.Items }}
 {{- if $hsts.Enabled }}
-{{- $paths := $hstsCfg.Paths }}
+{{- $paths := $hstsCfg.Paths $i }}
 {{- $needSSLACL := and (not $frontingIgnoreProto) (not ($backend.HasSSLRedirectPaths $paths)) }}
     http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}
         {{- if $hsts.Subdomains }}; includeSubDomains{{ end }}
         {{- if $hsts.Preload }}; preload{{ end }}"
         {{- if or $needSSLACL $needACL }} if
             {{- if $needSSLACL }} https-request{{ end }}
-            {{- if $needACL }} { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+            {{- if $needACL }} { var(txn.pathID) {{ $hstsCfg.PathIDs $i }} }{{ end }}
         {{- end }}
 {{- end }}
 {{- end }}

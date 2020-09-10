@@ -146,25 +146,23 @@ d1.local/ path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.HSTS = []*hatypes.BackendConfigHSTS{
-					{
-						Paths: createBackendPaths(b, "d1.local/"),
-						Config: hatypes.HSTS{
-							Enabled:    true,
-							MaxAge:     15768000,
-							Preload:    true,
-							Subdomains: true,
-						},
-					},
-					{
-						Paths: createBackendPaths(b, "d1.local/path", "d1.local/uri"),
-						Config: hatypes.HSTS{
-							Enabled:    true,
-							MaxAge:     15768000,
-							Preload:    false,
-							Subdomains: false,
-						},
-					},
+				b.FindBackendPath(h.FindPath("/").Link).HSTS = hatypes.HSTS{
+					Enabled:    true,
+					MaxAge:     15768000,
+					Preload:    true,
+					Subdomains: true,
+				}
+				b.FindBackendPath(h.FindPath("/path").Link).HSTS = hatypes.HSTS{
+					Enabled:    true,
+					MaxAge:     15768000,
+					Preload:    false,
+					Subdomains: false,
+				}
+				b.FindBackendPath(h.FindPath("/uri").Link).HSTS = hatypes.HSTS{
+					Enabled:    true,
+					MaxAge:     15768000,
+					Preload:    false,
+					Subdomains: false,
 				}
 			},
 			path: []string{"/", "/path", "/uri"},
@@ -1034,16 +1032,11 @@ func TestInstanceFrontingProxyUseProto(t *testing.T) {
 		h = c.config.Hosts().AcquireHost(test.domain)
 		h.AddPath(b, "/", hatypes.MatchBegin)
 		b.Endpoints = []*hatypes.Endpoint{endpointS1}
-		b.HSTS = []*hatypes.BackendConfigHSTS{
-			{
-				Paths: createBackendPaths(b, test.domain+"/"),
-				Config: hatypes.HSTS{
-					Enabled:    true,
-					MaxAge:     15768000,
-					Subdomains: true,
-					Preload:    true,
-				},
-			},
+		b.FindBackendPath(h.FindPath("/").Link).HSTS = hatypes.HSTS{
+			Enabled:    true,
+			MaxAge:     15768000,
+			Subdomains: true,
+			Preload:    true,
 		}
 		h.TLS.CAHash = "1"
 		h.TLS.CAFilename = "/var/haproxy/ssl/ca.pem"
@@ -1196,16 +1189,11 @@ func TestInstanceFrontingProxyIgnoreProto(t *testing.T) {
 		h = c.config.Hosts().AcquireHost(test.domain)
 		h.AddPath(b, "/", hatypes.MatchBegin)
 		b.Endpoints = []*hatypes.Endpoint{endpointS1}
-		b.HSTS = []*hatypes.BackendConfigHSTS{
-			{
-				Paths: createBackendPaths(b, test.domain+"/"),
-				Config: hatypes.HSTS{
-					Enabled:    true,
-					MaxAge:     15768000,
-					Subdomains: true,
-					Preload:    true,
-				},
-			},
+		b.FindBackendPath(h.FindPath("/").Link).HSTS = hatypes.HSTS{
+			Enabled:    true,
+			MaxAge:     15768000,
+			Subdomains: true,
+			Preload:    true,
 		}
 		h.TLS.CAHash = "1"
 		h.TLS.CAFilename = "/var/haproxy/ssl/ca.pem"

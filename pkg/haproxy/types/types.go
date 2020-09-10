@@ -490,7 +490,6 @@ type Backend struct {
 	//
 	AuthHTTP      []*BackendConfigAuth
 	Cors          []*BackendConfigCors
-	HSTS          []*BackendConfigHSTS
 	MaxBodySize   []*BackendConfigInt
 	RewriteURL    []*BackendConfigStr
 	SSLRedirect   []*BackendConfigBool
@@ -593,12 +592,6 @@ type BackendConfigCors struct {
 type BackendConfigWAF struct {
 	Paths  BackendPaths
 	Config WAF
-}
-
-// BackendConfigHSTS ...
-type BackendConfigHSTS struct {
-	Paths  BackendPaths
-	Config HSTS
 }
 
 // BackendConfigWhitelist ...

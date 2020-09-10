@@ -191,6 +191,16 @@ func (b *Backend) HasCorsEnabled() bool {
 	return false
 }
 
+// HasHSTS ...
+func (b *Backend) HasHSTS() bool {
+	for _, path := range b.Paths {
+		if path.HSTS.Enabled {
+			return true
+		}
+	}
+	return false
+}
+
 // HasModsec is a method to verify if a Backend has ModSecurity Enabled
 func (b *Backend) HasModsec() bool {
 	for _, waf := range b.WAF {
@@ -224,8 +234,8 @@ func (b *Backend) LinkHasSSLRedirect(link PathLink) bool {
 }
 
 // HasSSLRedirectPaths ...
-func (b *Backend) HasSSLRedirectPaths(paths *BackendPaths) bool {
-	for _, path := range paths.Items {
+func (b *Backend) HasSSLRedirectPaths(paths []*BackendPath) bool {
+	for _, path := range paths {
 		if b.LinkHasSSLRedirect(path.Link) {
 			return true
 		}
@@ -247,8 +257,7 @@ func (b *Backend) NeedACL() bool {
 			return true
 		}
 	}
-	return len(b.HSTS) > 1 ||
-		len(b.MaxBodySize) > 1 || len(b.RewriteURL) > 1 || len(b.WhitelistHTTP) > 1 ||
+	return len(b.MaxBodySize) > 1 || len(b.RewriteURL) > 1 || len(b.WhitelistHTTP) > 1 ||
 		len(b.Cors) > 1 || len(b.AuthHTTP) > 1 || len(b.WAF) > 1
 }
 
@@ -403,11 +412,6 @@ func (b *BackendConfigStr) String() string {
 
 // String ...
 func (b *BackendConfigCors) String() string {
-	return fmt.Sprintf("%+v", *b)
-}
-
-// String ...
-func (b *BackendConfigHSTS) String() string {
 	return fmt.Sprintf("%+v", *b)
 }
 

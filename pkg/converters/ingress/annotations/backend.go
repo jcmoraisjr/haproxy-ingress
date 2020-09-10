@@ -530,21 +530,12 @@ func (c *updater) buildBackendHeaders(d *backData) {
 }
 
 func (c *updater) buildBackendHSTS(d *backData) {
-	rawHSTSList := d.mapper.GetBackendConfig(
-		d.backend,
-		[]string{ingtypes.BackHSTS, ingtypes.BackHSTSMaxAge, ingtypes.BackHSTSPreload, ingtypes.BackHSTSIncludeSubdomains},
-		nil,
-	)
-	for _, cfg := range rawHSTSList {
-		d.backend.HSTS = append(d.backend.HSTS, &hatypes.BackendConfigHSTS{
-			Paths: cfg.Paths,
-			Config: hatypes.HSTS{
-				Enabled:    cfg.Get(ingtypes.BackHSTS).Bool(),
-				MaxAge:     cfg.Get(ingtypes.BackHSTSMaxAge).Int(),
-				Subdomains: cfg.Get(ingtypes.BackHSTSIncludeSubdomains).Bool(),
-				Preload:    cfg.Get(ingtypes.BackHSTSPreload).Bool(),
-			},
-		})
+	for _, path := range d.backend.Paths {
+		config := d.mapper.GetConfig(path.Link)
+		path.HSTS.Enabled = config.Get(ingtypes.BackHSTS).Bool()
+		path.HSTS.MaxAge = config.Get(ingtypes.BackHSTSMaxAge).Int()
+		path.HSTS.Subdomains = config.Get(ingtypes.BackHSTSIncludeSubdomains).Bool()
+		path.HSTS.Preload = config.Get(ingtypes.BackHSTSPreload).Bool()
 	}
 }
 
