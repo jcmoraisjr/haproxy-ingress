@@ -488,7 +488,6 @@ type Backend struct {
 	//      Template uses this func in order to know if a config
 	//      has two or more paths, and so need to be configured with ACL.
 	//
-	MaxBodySize   []*BackendConfigInt
 	RewriteURL    []*BackendConfigStr
 	SSLRedirect   []*BackendConfigBool
 	WAF           []*BackendConfigWAF
@@ -542,7 +541,7 @@ type BackendPath struct {
 	AuthHTTP      AuthHTTP
 	Cors          Cors
 	HSTS          HSTS
-	MaxBodySize   int
+	MaxBodySize   int64
 	RewriteURL    string
 	SSLRedirect   bool
 	WAF           WAF
@@ -559,12 +558,6 @@ type BackendHeader struct {
 type BackendConfigBool struct {
 	Paths  BackendPaths
 	Config bool
-}
-
-// BackendConfigInt ...
-type BackendConfigInt struct {
-	Paths  BackendPaths
-	Config int64
 }
 
 // BackendConfigStr ...

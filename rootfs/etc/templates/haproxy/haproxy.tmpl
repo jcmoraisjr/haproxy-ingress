@@ -424,12 +424,13 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- $needACL := gt (len $backend.MaxBodySize) 1 }}
-{{- range $maxbody := $backend.MaxBodySize }}
-{{- if $maxbody.Config }}
+{{- $maxbodyCfg := $backend.PathConfig "MaxBodySize" }}
+{{- $needACL := $maxbodyCfg.NeedACL }}
+{{- range $i, $maxbody := $maxbodyCfg.Items }}
+{{- if $maxbody }}
     http-request use-service lua.send-413 if
-        {{- if $needACL }} { var(txn.pathID) {{ $maxbody.Paths.IDList }} }{{ end }}
-        {{- "" }} { req.body_size,sub({{ $maxbody.Config }}) gt 0 }
+        {{- if $needACL }} { var(txn.pathID) {{ $maxbodyCfg.PathIDs $i }} }{{ end }}
+        {{- "" }} { req.body_size,sub({{ $maxbody }}) gt 0 }
 {{- end }}
 {{- end }}
 

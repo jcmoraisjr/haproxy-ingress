@@ -171,16 +171,6 @@ func (b *Backend) CreateConfigBool(value bool) []*BackendConfigBool {
 	}
 }
 
-// CreateConfigInt ...
-func (b *Backend) CreateConfigInt(value int64) []*BackendConfigInt {
-	return []*BackendConfigInt{
-		{
-			Paths:  NewBackendPaths(b.Paths...),
-			Config: value,
-		},
-	}
-}
-
 // HasCorsEnabled ...
 func (b *Backend) HasCorsEnabled() bool {
 	for _, path := range b.Paths {
@@ -257,7 +247,7 @@ func (b *Backend) NeedACL() bool {
 			return true
 		}
 	}
-	return len(b.MaxBodySize) > 1 || len(b.RewriteURL) > 1 || len(b.WhitelistHTTP) > 1 ||
+	return len(b.RewriteURL) > 1 || len(b.WhitelistHTTP) > 1 ||
 		len(b.WAF) > 1
 }
 
@@ -392,11 +382,6 @@ func (h *BackendHeader) String() string {
 
 // String ...
 func (b *BackendConfigBool) String() string {
-	return fmt.Sprintf("%+v", *b)
-}
-
-// String ...
-func (b *BackendConfigInt) String() string {
 	return fmt.Sprintf("%+v", *b)
 }
 

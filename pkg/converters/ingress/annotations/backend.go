@@ -371,28 +371,18 @@ func (c *updater) buildBackendBlueGreenSelector(d *backData) {
 }
 
 func (c *updater) buildBackendBodySize(d *backData) {
-	config := d.mapper.GetBackendConfig(
-		d.backend,
-		[]string{ingtypes.BackProxyBodySize},
-		func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue {
-			bodysize := values[ingtypes.BackProxyBodySize]
-			if bodysize == nil || bodysize.Value == "unlimited" {
-				return nil
-			}
-			value, err := utils.SizeSuffixToInt64(bodysize.Value)
-			if err != nil {
-				c.logger.Warn("ignoring invalid body size on %v: %s", bodysize.Source, bodysize.Value)
-				return nil
-			}
-			bodysize.Value = strconv.FormatInt(value, 10)
-			return values
-		},
-	)
-	for _, cfg := range config {
-		d.backend.MaxBodySize = append(d.backend.MaxBodySize, &hatypes.BackendConfigInt{
-			Paths:  cfg.Paths,
-			Config: cfg.Get(ingtypes.BackProxyBodySize).Int64(),
-		})
+	for _, path := range d.backend.Paths {
+		config := d.mapper.GetConfig(path.Link)
+		bodysize := config.Get(ingtypes.BackProxyBodySize)
+		if bodysize == nil || bodysize.Value == "" || bodysize.Value == "unlimited" {
+			continue
+		}
+		value, err := utils.SizeSuffixToInt64(bodysize.Value)
+		if err != nil {
+			c.logger.Warn("ignoring invalid body size on %v: %s", bodysize.Source, bodysize.Value)
+			continue
+		}
+		path.MaxBodySize = value
 	}
 }
 

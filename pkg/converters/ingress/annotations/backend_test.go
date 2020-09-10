@@ -733,7 +733,7 @@ func TestBodySize(t *testing.T) {
 		annDefault map[string]string
 		ann        map[string]map[string]string
 		paths      []string
-		expected   []*hatypes.BackendConfigInt
+		expected   map[string]int64
 		logging    string
 	}{
 		// 0
@@ -743,11 +743,8 @@ func TestBodySize(t *testing.T) {
 					ingtypes.BackProxyBodySize: "10",
 				},
 			},
-			expected: []*hatypes.BackendConfigInt{
-				{
-					Paths:  createBackendPaths("/"),
-					Config: 10,
-				},
+			expected: map[string]int64{
+				"/": 10,
 			},
 		},
 		// 1
@@ -763,19 +760,10 @@ func TestBodySize(t *testing.T) {
 					ingtypes.BackProxyBodySize: "10g",
 				},
 			},
-			expected: []*hatypes.BackendConfigInt{
-				{
-					Paths:  createBackendPaths("/"),
-					Config: 10240,
-				},
-				{
-					Paths:  createBackendPaths("/app"),
-					Config: 10485760,
-				},
-				{
-					Paths:  createBackendPaths("/sub"),
-					Config: 10737418240,
-				},
+			expected: map[string]int64{
+				"/":    10240,
+				"/app": 10485760,
+				"/sub": 10737418240,
 			},
 		},
 		// 2
@@ -785,11 +773,8 @@ func TestBodySize(t *testing.T) {
 					ingtypes.BackProxyBodySize: "unlimited",
 				},
 			},
-			expected: []*hatypes.BackendConfigInt{
-				{
-					Paths:  createBackendPaths("/"),
-					Config: 0,
-				},
+			expected: map[string]int64{
+				"/": 0,
 			},
 		},
 		// 3
@@ -799,11 +784,8 @@ func TestBodySize(t *testing.T) {
 					ingtypes.BackProxyBodySize: "10e",
 				},
 			},
-			expected: []*hatypes.BackendConfigInt{
-				{
-					Paths:  createBackendPaths("/"),
-					Config: 0,
-				},
+			expected: map[string]int64{
+				"/": 0,
 			},
 			source:  Source{Namespace: "default", Name: "ing1", Type: "ingress"},
 			logging: `WARN ignoring invalid body size on ingress 'default/ing1': 10e`,
@@ -815,15 +797,9 @@ func TestBodySize(t *testing.T) {
 					ingtypes.BackProxyBodySize: "1m",
 				},
 			},
-			expected: []*hatypes.BackendConfigInt{
-				{
-					Paths:  createBackendPaths("/"),
-					Config: 0,
-				},
-				{
-					Paths:  createBackendPaths("/app"),
-					Config: 1048576,
-				},
+			expected: map[string]int64{
+				"/":    0,
+				"/app": 1048576,
 			},
 			paths:  []string{"/"},
 			source: Source{Namespace: "default", Name: "ing1", Type: "ingress"},
@@ -833,7 +809,11 @@ func TestBodySize(t *testing.T) {
 		c := setup(t)
 		d := c.createBackendMappingData("default/app", &test.source, test.annDefault, test.ann, test.paths)
 		c.createUpdater().buildBackendBodySize(d)
-		c.compareObjects("proxy body size", i, d.backend.MaxBodySize, test.expected)
+		actual := map[string]int64{}
+		for _, path := range d.backend.Paths {
+			actual[path.Path()] = path.MaxBodySize
+		}
+		c.compareObjects("proxy body size", i, actual, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}

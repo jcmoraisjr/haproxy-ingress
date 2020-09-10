@@ -364,7 +364,8 @@ d1.local/api path02`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.MaxBodySize = b.CreateConfigInt(1024)
+				b.FindBackendPath(h.FindPath("/").Link).MaxBodySize = 1024
+				b.FindBackendPath(h.FindPath("/app").Link).MaxBodySize = 1024
 			},
 			path: []string{"/", "/app"},
 			expected: `
@@ -372,16 +373,7 @@ d1.local/api path02`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.MaxBodySize = []*hatypes.BackendConfigInt{
-					{
-						Paths:  createBackendPaths(b, "d1.local/app"),
-						Config: 2048,
-					},
-					{
-						Paths:  createBackendPaths(b, "d1.local/"),
-						Config: 0,
-					},
-				}
+				b.FindBackendPath(h.FindPath("/app").Link).MaxBodySize = 2048
 			},
 			path: []string{"/", "/app"},
 			expected: `
