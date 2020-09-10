@@ -72,6 +72,33 @@ func (c *updater) buildGlobalBind(d *globalData) {
 	}
 }
 
+func (c *updater) buildGlobalPathTypeOrder(d *globalData) {
+	matchTypes := make(map[hatypes.MatchType]struct{}, len(hatypes.DefaultMatchOrder))
+	for _, match := range hatypes.DefaultMatchOrder {
+		matchTypes[match] = struct{}{}
+	}
+	orderStr := d.mapper.Get(ingtypes.GlobalPathTypeOrder).Value
+	orderSlice := strings.Split(orderStr, ",")
+	order := make([]hatypes.MatchType, len(orderSlice))
+	d.global.MatchOrder = hatypes.DefaultMatchOrder
+	for i, matchStr := range orderSlice {
+		// 1) filling final `order` slice, 2) identifying invalid and 3) not used matches
+		match := hatypes.MatchType(matchStr)
+		if _, found := matchTypes[match]; found {
+			order[i] = match
+			delete(matchTypes, match)
+		} else {
+			c.logger.Warn("invalid or duplicated path type '%s', using default order %v", matchStr, hatypes.DefaultMatchOrder)
+			return
+		}
+	}
+	if len(matchTypes) > 0 {
+		c.logger.Warn("all path types should be used in %v, using default order %v", order, hatypes.DefaultMatchOrder)
+		return
+	}
+	d.global.MatchOrder = order
+}
+
 func (c *updater) buildGlobalProc(d *globalData) {
 	balance := d.mapper.Get(ingtypes.GlobalNbprocBalance).Int()
 	if balance < 1 {

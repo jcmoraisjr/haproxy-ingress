@@ -123,6 +123,7 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	c.buildGlobalForwardFor(d)
 	c.buildGlobalHTTPStoHTTP(d)
 	c.buildGlobalModSecurity(d)
+	c.buildGlobalPathTypeOrder(d)
 	c.buildGlobalProc(d)
 	c.buildGlobalSSL(d)
 	c.buildGlobalStats(d)
