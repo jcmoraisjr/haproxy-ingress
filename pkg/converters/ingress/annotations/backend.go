@@ -65,77 +65,61 @@ func (c *updater) buildBackendAffinity(d *backData) {
 }
 
 func (c *updater) buildBackendAuthHTTP(d *backData) {
-	config := d.mapper.GetBackendConfig(
-		d.backend,
-		[]string{
-			ingtypes.BackAuthType,
-			ingtypes.BackAuthSecret,
-			ingtypes.BackAuthRealm,
-		},
-		func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue {
-			authType := values[ingtypes.BackAuthType]
-			if authType == nil || authType.Source == nil {
-				return nil
+	for _, path := range d.backend.Paths {
+		config := d.mapper.GetConfig(path.Link)
+		authType := config.Get(ingtypes.BackAuthType)
+		if authType == nil || authType.Source == nil {
+			continue
+		}
+		if authType.Value != "basic" {
+			c.logger.Error("unsupported authentication type on %v: %s", authType.Source, authType.Value)
+			continue
+		}
+		authSecret := config.Get(ingtypes.BackAuthSecret)
+		if authSecret == nil || authSecret.Source == nil {
+			c.logger.Error("missing secret name on basic authentication on %v", authType.Source)
+			continue
+		}
+		secretName := authSecret.Value
+		if strings.Index(secretName, "/") < 0 {
+			secretName = authSecret.Source.Namespace + "/" + secretName
+		}
+		listName := strings.Replace(secretName, "/", "_", 1)
+		userlist := c.haproxy.Userlists().Find(listName)
+		if userlist == nil {
+			userb, err := c.cache.GetSecretContent(
+				authSecret.Source.Namespace,
+				authSecret.Value, "auth",
+				convtypes.TrackingTarget{
+					Backend:  d.backend.BackendID(),
+					Userlist: listName,
+				},
+			)
+			if err != nil {
+				c.logger.Error("error reading basic authentication on %v: %v", authSecret.Source, err)
+				continue
 			}
-			if authType.Value != "basic" {
-				c.logger.Error("unsupported authentication type on %v: %s", authType.Source, authType.Value)
-				return nil
+			userstr := string(userb)
+			users, errs := extractUserlist(authSecret.Source.Name, secretName, userstr)
+			for _, err := range errs {
+				c.logger.Warn("ignoring malformed usr/passwd on secret '%s', declared on %v: %v", secretName, authSecret.Source, err)
 			}
-			authSecret := values[ingtypes.BackAuthSecret]
-			if authSecret == nil || authSecret.Source == nil {
-				c.logger.Error("missing secret name on basic authentication on %v", authType.Source)
-				return nil
+			userlist = c.haproxy.Userlists().Replace(listName, users)
+			if len(users) == 0 {
+				c.logger.Warn("userlist on %v for basic authentication is empty", authSecret.Source)
 			}
-			secretName := authSecret.Value
-			if strings.Index(secretName, "/") < 0 {
-				secretName = authSecret.Source.Namespace + "/" + secretName
-			}
-			listName := strings.Replace(secretName, "/", "_", 1)
-			userlist := c.haproxy.Userlists().Find(listName)
-			if userlist == nil {
-				userb, err := c.cache.GetSecretContent(
-					authSecret.Source.Namespace,
-					authSecret.Value, "auth",
-					convtypes.TrackingTarget{
-						Backend:  d.backend.BackendID(),
-						Userlist: listName,
-					},
-				)
-				if err != nil {
-					c.logger.Error("error reading basic authentication on %v: %v", authSecret.Source, err)
-					return nil
-				}
-				userstr := string(userb)
-				users, errs := extractUserlist(authSecret.Source.Name, secretName, userstr)
-				for _, err := range errs {
-					c.logger.Warn("ignoring malformed usr/passwd on secret '%s', declared on %v: %v", secretName, authSecret.Source, err)
-				}
-				userlist = c.haproxy.Userlists().Replace(listName, users)
-				if len(users) == 0 {
-					c.logger.Warn("userlist on %v for basic authentication is empty", authSecret.Source)
-				}
-			}
-			realm := "localhost" // HAProxy's backend name would be used if missing
-			authRealm := values[ingtypes.BackAuthRealm]
-			if authRealm == nil || authRealm.Source == nil {
-				// leave default
-			} else if strings.Index(authRealm.Value, `"`) >= 0 {
-				c.logger.Warn("ignoring auth-realm with quotes on %v", authRealm.Source)
-			} else if authRealm.Value != "" {
-				realm = authRealm.Value
-			}
-			return map[string]*ConfigValue{
-				"username": {Value: userlist.Name},
-				"realm":    {Value: realm},
-			}
-		},
-	)
-	for _, cfg := range config {
-		d.backend.AuthHTTP = append(d.backend.AuthHTTP, &hatypes.BackendConfigAuth{
-			Paths:        cfg.Paths,
-			UserlistName: cfg.Get("username").Value,
-			Realm:        cfg.Get("realm").Value,
-		})
+		}
+		realm := "localhost" // HAProxy's backend name would be used if missing
+		authRealm := config.Get(ingtypes.BackAuthRealm)
+		if authRealm == nil || authRealm.Source == nil {
+			// leave default
+		} else if strings.Index(authRealm.Value, `"`) >= 0 {
+			c.logger.Warn("ignoring auth-realm with quotes on %v", authRealm.Source)
+		} else if authRealm.Value != "" {
+			realm = authRealm.Value
+		}
+		path.AuthHTTP.UserlistName = userlist.Name
+		path.AuthHTTP.Realm = realm
 	}
 }
 

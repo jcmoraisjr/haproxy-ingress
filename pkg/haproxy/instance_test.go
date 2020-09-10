@@ -2475,15 +2475,9 @@ userlist default_auth2
 		for _, list := range test.lists {
 			c.config.Userlists().Replace(list.name, list.users)
 		}
-		b.AuthHTTP = []*hatypes.BackendConfigAuth{
-			{
-				Paths: createBackendPaths(b, "d1.local/"),
-			},
-			{
-				Paths:        createBackendPaths(b, "d1.local/admin"),
-				UserlistName: test.listname,
-				Realm:        test.realm,
-			},
+		b.FindBackendPath(h.FindPath("/admin").Link).AuthHTTP = hatypes.AuthHTTP{
+			UserlistName: test.listname,
+			Realm:        test.realm,
 		}
 
 		var realm string

@@ -147,7 +147,7 @@ func TestAuthHTTP(t *testing.T) {
 		ann          map[string]map[string]string
 		secrets      conv_helper.SecretContent
 		expUserlists []*hatypes.Userlist
-		expConfig    []*hatypes.BackendConfigAuth
+		expConfig    map[string]hatypes.AuthHTTP
 		expLogging   string
 	}{
 		// 0
@@ -288,12 +288,9 @@ usr2::clearpwd2`)}},
 				{Name: "usr1", Passwd: "encpwd1", Encrypted: true},
 				{Name: "usr2", Passwd: "clearpwd2", Encrypted: false},
 			}}},
-			expConfig: []*hatypes.BackendConfigAuth{
-				{
-					Paths: createBackendPaths("/"),
-				},
-				{
-					Paths:        createBackendPaths("/admin"),
+			expConfig: map[string]hatypes.AuthHTTP{
+				"/": {},
+				"/admin": {
 					UserlistName: "default_basicpwd",
 					Realm:        "localhost",
 				},
@@ -318,7 +315,11 @@ usr2::clearpwd2`)}},
 		userlists := u.haproxy.Userlists().BuildSortedItems()
 		c.compareObjects("userlists", i, userlists, test.expUserlists)
 		if test.expConfig != nil {
-			c.compareObjects("auth http", i, d.backend.AuthHTTP, test.expConfig)
+			actual := map[string]hatypes.AuthHTTP{}
+			for _, path := range d.backend.Paths {
+				actual[path.Path()] = path.AuthHTTP
+			}
+			c.compareObjects("auth http", i, actual, test.expConfig)
 		}
 		c.logger.CompareLogging(test.expLogging)
 		c.teardown()

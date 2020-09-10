@@ -488,7 +488,6 @@ type Backend struct {
 	//      Template uses this func in order to know if a config
 	//      has two or more paths, and so need to be configured with ACL.
 	//
-	AuthHTTP      []*BackendConfigAuth
 	Cors          []*BackendConfigCors
 	MaxBodySize   []*BackendConfigInt
 	RewriteURL    []*BackendConfigStr
@@ -573,13 +572,6 @@ type BackendConfigInt struct {
 type BackendConfigStr struct {
 	Paths  BackendPaths
 	Config string
-}
-
-// BackendConfigAuth ...
-type BackendConfigAuth struct {
-	Paths        BackendPaths
-	UserlistName string
-	Realm        string
 }
 
 // BackendConfigCors ...
