@@ -35,17 +35,17 @@ type MapBuilder struct {
 // Mapper ...
 type Mapper struct {
 	MapBuilder
-	maps map[string][]*Map
+	maps    map[string][]*Map
+	configs map[hatypes.PathLink]*AnnConfig
+}
+
+// AnnConfig ...
+type AnnConfig struct {
+	mapper *Mapper
+	keys   map[string]*ConfigValue
 }
 
 // Map ...
-//
-// TODO rename URI to Hostpath -- currently this is a little mess.
-// Fix also testCase data in order to represent a hostname+path.
-// Hostname is the domain name. Path is the declared starting path on ingress
-// Together they populate a map_beg() converter in order to match HAProxy's
-// `base` sample fetch method.
-//
 type Map struct {
 	Source *Source
 	Link   hatypes.PathLink
@@ -84,41 +84,56 @@ func NewMapBuilder(logger types.Logger, annPrefix string, annDefaults map[string
 func (b *MapBuilder) NewMapper() *Mapper {
 	return &Mapper{
 		MapBuilder: *b,
-		maps:       map[string][]*Map{},
+		//
+		maps:    map[string][]*Map{},
+		configs: map[hatypes.PathLink]*AnnConfig{},
 	}
 }
 
-func (c *Mapper) addAnnotation(source *Source, link hatypes.PathLink, key, value string) (conflict bool) {
-	conflict = false
-	annMaps, found := c.maps[key]
+func newAnnConfig(mapper *Mapper) *AnnConfig {
+	return &AnnConfig{
+		mapper: mapper,
+		keys:   map[string]*ConfigValue{},
+	}
+}
+
+// Add a new annotation to the current mapper.
+// Return the conflict state: true if a conflict was found, false if the annotation was assigned or at least handled
+func (c *Mapper) addAnnotation(source *Source, link hatypes.PathLink, key, value string) bool {
 	if link.IsEmpty() {
-		// empty means default value
+		// empty means default value, cannot register as an annotation
 		panic("path link cannot be empty")
 	}
-	if found {
-		for _, annMap := range annMaps {
-			if annMap.Link == link {
-				return annMap.Value != value
-			}
-		}
+	// check overlap
+	config, configfound := c.configs[link]
+	if !configfound {
+		config = newAnnConfig(c)
+		c.configs[link] = config
 	}
-	var realValue string
-	var ok bool
-	validator, found := validators[key]
-	if found {
+	if cfg, found := config.keys[key]; found {
+		return cfg.Value != value
+	}
+	// validate (bool; int; ...) and normalize (int "01" => "1"; ...)
+	realValue := value
+	if validator, found := validators[key]; found {
+		var ok bool
 		if realValue, ok = validator(validate{logger: c.logger, source: source, key: key, value: value}); !ok {
-			return
+			return false
 		}
-	} else {
-		realValue = value
 	}
+	// update internal fields
+	config.keys[key] = &ConfigValue{
+		Source: source,
+		Value:  realValue,
+	}
+	annMaps, _ := c.maps[key]
 	annMaps = append(annMaps, &Map{
 		Source: source,
 		Link:   link,
 		Value:  realValue,
 	})
 	c.maps[key] = annMaps
-	return
+	return false
 }
 
 // AddAnnotations ...
@@ -143,6 +158,16 @@ func (c *Mapper) GetStrMap(key string) ([]*Map, bool) {
 		return []*Map{{Value: value}}, true
 	}
 	return nil, false
+}
+
+// GetConfig ...
+func (c *Mapper) GetConfig(link hatypes.PathLink) *AnnConfig {
+	if config, found := c.configs[link]; found {
+		return config
+	}
+	config := newAnnConfig(c)
+	c.configs[link] = config
+	return config
 }
 
 // Get ...
@@ -260,6 +285,17 @@ func findConfig(config []*BackendConfig, kv map[string]*ConfigValue) *BackendCon
 		}
 	}
 	return nil
+}
+
+// Get ...
+func (c *AnnConfig) Get(key string) *ConfigValue {
+	if value, found := c.keys[key]; found {
+		return value
+	}
+	if value, found := c.mapper.annDefaults[key]; found {
+		return &ConfigValue{Value: value}
+	}
+	return &ConfigValue{}
 }
 
 // ConfigEquals ...
