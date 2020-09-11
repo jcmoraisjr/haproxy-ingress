@@ -179,12 +179,7 @@ d1.local/ path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.RewriteURL = []*hatypes.BackendConfigStr{
-					{
-						Paths:  createBackendPaths(b, "d1.local/app"),
-						Config: "/",
-					},
-				}
+				b.FindBackendPath(h.FindPath("/app").Link).RewriteURL = "/"
 			},
 			path: []string{"/app"},
 			expected: `
@@ -192,12 +187,7 @@ d1.local/ path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.RewriteURL = []*hatypes.BackendConfigStr{
-					{
-						Paths:  createBackendPaths(b, "d1.local/app"),
-						Config: "/other",
-					},
-				}
+				b.FindBackendPath(h.FindPath("/app").Link).RewriteURL = "/other"
 			},
 			path: []string{"/app"},
 			expected: `
@@ -205,12 +195,8 @@ d1.local/ path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.RewriteURL = []*hatypes.BackendConfigStr{
-					{
-						Paths:  createBackendPaths(b, "d1.local/app", "d1.local/app/sub"),
-						Config: "/other/",
-					},
-				}
+				b.FindBackendPath(h.FindPath("/app").Link).RewriteURL = "/other/"
+				b.FindBackendPath(h.FindPath("/app/sub").Link).RewriteURL = "/other/"
 			},
 			path: []string{"/app", "/app/sub"},
 			expected: `
@@ -219,16 +205,9 @@ d1.local/ path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.RewriteURL = []*hatypes.BackendConfigStr{
-					{
-						Paths:  createBackendPaths(b, "d1.local/path1"),
-						Config: "/sub1",
-					},
-					{
-						Paths:  createBackendPaths(b, "d1.local/path2", "d1.local/path3"),
-						Config: "/sub2",
-					},
-				}
+				b.FindBackendPath(h.FindPath("/path1").Link).RewriteURL = "/sub1"
+				b.FindBackendPath(h.FindPath("/path2").Link).RewriteURL = "/sub2"
+				b.FindBackendPath(h.FindPath("/path3").Link).RewriteURL = "/sub2"
 			},
 			path: []string{"/path1", "/path2", "/path3"},
 			expected: `

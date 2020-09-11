@@ -1252,13 +1252,8 @@ func TestRewriteURL(t *testing.T) {
 		d.backend.AddBackendPath(hatypes.CreatePathLink("d1.local", "/"))
 		d.mapper.AddAnnotations(&test.source, hatypes.CreatePathLink("d1.local", "/"), ann)
 		c.createUpdater().buildBackendRewriteURL(d)
-		expected := []*hatypes.BackendConfigStr{
-			{
-				Paths:  hatypes.NewBackendPaths(d.backend.Paths...),
-				Config: test.expected,
-			},
-		}
-		c.compareObjects("rewrite", i, d.backend.RewriteURL, expected)
+		actual := d.backend.Paths[0].RewriteURL
+		c.compareObjects("rewrite", i, actual, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}

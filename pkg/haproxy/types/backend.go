@@ -247,7 +247,7 @@ func (b *Backend) NeedACL() bool {
 			return true
 		}
 	}
-	return len(b.RewriteURL) > 1 || len(b.WhitelistHTTP) > 1 ||
+	return len(b.WhitelistHTTP) > 1 ||
 		len(b.WAF) > 1
 }
 
@@ -382,11 +382,6 @@ func (h *BackendHeader) String() string {
 
 // String ...
 func (b *BackendConfigBool) String() string {
-	return fmt.Sprintf("%+v", *b)
-}
-
-// String ...
-func (b *BackendConfigStr) String() string {
 	return fmt.Sprintf("%+v", *b)
 }
 

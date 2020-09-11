@@ -638,28 +638,19 @@ var (
 )
 
 func (c *updater) buildBackendRewriteURL(d *backData) {
-	config := d.mapper.GetBackendConfig(
-		d.backend,
-		[]string{ingtypes.BackRewriteTarget},
-		func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue {
-			rewrite, found := values[ingtypes.BackRewriteTarget]
-			if !found {
-				return nil
-			}
-			if !rewriteURLRegex.MatchString(rewrite.Value) {
-				c.logger.Warn(
-					"rewrite-target does not allow white spaces or single/double quotes on %v: '%s'",
-					rewrite.Source, rewrite.Value)
-				return nil
-			}
-			return values
-		},
-	)
-	for _, cfg := range config {
-		d.backend.RewriteURL = append(d.backend.RewriteURL, &hatypes.BackendConfigStr{
-			Paths:  cfg.Paths,
-			Config: cfg.Get(ingtypes.BackRewriteTarget).Value,
-		})
+	for _, path := range d.backend.Paths {
+		config := d.mapper.GetConfig(path.Link)
+		rewrite := config.Get(ingtypes.BackRewriteTarget)
+		if rewrite == nil || rewrite.Value == "" {
+			continue
+		}
+		if !rewriteURLRegex.MatchString(rewrite.Value) {
+			c.logger.Warn(
+				"rewrite-target does not allow white spaces or single/double quotes on %v: '%s'",
+				rewrite.Source, rewrite.Value)
+			continue
+		}
+		path.RewriteURL = rewrite.Value
 	}
 }
 

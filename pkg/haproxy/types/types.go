@@ -488,7 +488,6 @@ type Backend struct {
 	//      Template uses this func in order to know if a config
 	//      has two or more paths, and so need to be configured with ACL.
 	//
-	RewriteURL    []*BackendConfigStr
 	SSLRedirect   []*BackendConfigBool
 	WAF           []*BackendConfigWAF
 	WhitelistHTTP []*BackendConfigWhitelist
@@ -558,12 +557,6 @@ type BackendHeader struct {
 type BackendConfigBool struct {
 	Paths  BackendPaths
 	Config bool
-}
-
-// BackendConfigStr ...
-type BackendConfigStr struct {
-	Paths  BackendPaths
-	Config string
 }
 
 // BackendConfigWAF defines Web Application Firewall Configurations

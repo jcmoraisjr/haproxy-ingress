@@ -521,11 +521,11 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- $needACL := gt (len $backend.RewriteURL) 1 }}
-{{- range $rewriteCfg := $backend.RewriteURL }}
-{{- $rewrite := $rewriteCfg.Config }}
+{{- $rewriteCfg := $backend.PathConfig "RewriteURL" }}
+{{- $needACL := $rewriteCfg.NeedACL }}
+{{- range $i, $rewrite := $rewriteCfg.Items }}
 {{- if $rewrite }}
-{{- range $path := $rewriteCfg.Paths.Items }}
+{{- range $path := ($rewriteCfg.Paths $i) }}
 {{- if eq $rewrite "/" }}
     http-request replace-uri ^{{ $path.Path }}/?(.*)$     {{ $rewrite }}\1
         {{- if $needACL }}     if { var(txn.pathID) {{ $path.ID }} }{{ end }}
