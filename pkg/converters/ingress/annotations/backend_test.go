@@ -1672,59 +1672,59 @@ func TestTimeout(t *testing.T) {
 
 func TestWAF(t *testing.T) {
 	testCase := []struct {
-		waf          string
-		wafmode      string
-		expected     string
-		expectedmode string
-		logging      string
+		waf      string
+		wafmode  string
+		expected hatypes.WAF
+		logging  string
 	}{
 		// 0
-		{
-			waf:          "",
-			wafmode:      "",
-			expected:     "",
-			expectedmode: "",
-			logging:      "",
-		},
+		{},
 		// 1
 		{
-			waf:          "none",
-			wafmode:      "deny",
-			expected:     "",
-			expectedmode: "",
-			logging:      "WARN ignoring invalid WAF module on ingress 'default/ing1': none",
+			waf:      "none",
+			wafmode:  "deny",
+			expected: hatypes.WAF{},
+			logging:  "WARN ignoring invalid WAF module on ingress 'default/ing1': none",
 		},
 		// 2
 		{
-			waf:          "modsecurity",
-			wafmode:      "XXXXXX",
-			expected:     "modsecurity",
-			expectedmode: "deny",
-			logging:      "WARN ignoring invalid WAF mode 'XXXXXX' on ingress 'default/ing1', using 'deny' instead",
+			waf:     "modsecurity",
+			wafmode: "XXXXXX",
+			expected: hatypes.WAF{
+				Module: "modsecurity",
+				Mode:   "deny",
+			},
+			logging: "WARN ignoring invalid WAF mode 'XXXXXX' on ingress 'default/ing1', using 'deny' instead",
 		},
 		// 3
 		{
-			waf:          "modsecurity",
-			wafmode:      "detect",
-			expected:     "modsecurity",
-			expectedmode: "detect",
-			logging:      "",
+			waf:     "modsecurity",
+			wafmode: "detect",
+			expected: hatypes.WAF{
+				Module: "modsecurity",
+				Mode:   "detect",
+			},
+			logging: "",
 		},
 		// 4
 		{
-			waf:          "modsecurity",
-			wafmode:      "deny",
-			expected:     "modsecurity",
-			expectedmode: "deny",
-			logging:      "",
+			waf:     "modsecurity",
+			wafmode: "deny",
+			expected: hatypes.WAF{
+				Module: "modsecurity",
+				Mode:   "deny",
+			},
+			logging: "",
 		},
 		// 5
 		{
-			waf:          "modsecurity",
-			wafmode:      "",
-			expected:     "modsecurity",
-			expectedmode: "deny",
-			logging:      "",
+			waf:     "modsecurity",
+			wafmode: "",
+			expected: hatypes.WAF{
+				Module: "modsecurity",
+				Mode:   "deny",
+			},
+			logging: "",
 		},
 	}
 	source := &Source{
@@ -1735,7 +1735,6 @@ func TestWAF(t *testing.T) {
 	for i, test := range testCase {
 		c := setup(t)
 		var ann map[string]map[string]string
-		var expected []*hatypes.BackendConfigWAF
 		ann = map[string]map[string]string{
 			"/": {},
 		}
@@ -1745,18 +1744,10 @@ func TestWAF(t *testing.T) {
 		if test.wafmode != "" {
 			ann["/"][ingtypes.BackWAFMode] = test.wafmode
 		}
-		expected = []*hatypes.BackendConfigWAF{
-			{
-				Paths: createBackendPaths("/"),
-				Config: hatypes.WAF{
-					Module: test.expected,
-					Mode:   test.expectedmode,
-				},
-			},
-		}
 		d := c.createBackendMappingData("default/app", source, map[string]string{ingtypes.BackWAFMode: "deny"}, ann, []string{})
 		c.createUpdater().buildBackendWAF(d)
-		c.compareObjects("WAF", i, d.backend.WAF, expected)
+		actual := d.backend.Paths[0].WAF
+		c.compareObjects("WAF", i, actual, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}

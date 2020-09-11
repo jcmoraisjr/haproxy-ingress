@@ -193,8 +193,8 @@ func (b *Backend) HasHSTS() bool {
 
 // HasModsec is a method to verify if a Backend has ModSecurity Enabled
 func (b *Backend) HasModsec() bool {
-	for _, waf := range b.WAF {
-		if waf.Config.Module == "modsecurity" {
+	for _, path := range b.Paths {
+		if path.WAF.Module == "modsecurity" {
 			return true
 		}
 	}
@@ -247,8 +247,7 @@ func (b *Backend) NeedACL() bool {
 			return true
 		}
 	}
-	return len(b.WhitelistHTTP) > 1 ||
-		len(b.WAF) > 1
+	return len(b.WhitelistHTTP) > 1
 }
 
 func (b *Backend) ensurePathConfig(attr string) {
@@ -387,10 +386,5 @@ func (b *BackendConfigBool) String() string {
 
 // String ...
 func (b *BackendConfigWhitelist) String() string {
-	return fmt.Sprintf("%+v", *b)
-}
-
-// String ...
-func (b *BackendConfigWAF) String() string {
 	return fmt.Sprintf("%+v", *b)
 }

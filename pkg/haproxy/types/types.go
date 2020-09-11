@@ -489,7 +489,6 @@ type Backend struct {
 	//      has two or more paths, and so need to be configured with ACL.
 	//
 	SSLRedirect   []*BackendConfigBool
-	WAF           []*BackendConfigWAF
 	WhitelistHTTP []*BackendConfigWhitelist
 }
 
@@ -557,12 +556,6 @@ type BackendHeader struct {
 type BackendConfigBool struct {
 	Paths  BackendPaths
 	Config bool
-}
-
-// BackendConfigWAF defines Web Application Firewall Configurations
-type BackendConfigWAF struct {
-	Paths  BackendPaths
-	Config WAF
 }
 
 // BackendConfigWhitelist ...

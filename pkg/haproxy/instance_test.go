@@ -2733,20 +2733,12 @@ func TestModSecurity(t *testing.T) {
 			test.path = "/"
 		}
 		h.AddPath(b, test.path, hatypes.MatchBegin)
-		b.WAF = []*hatypes.BackendConfigWAF{
-			{
-				Paths: createBackendPaths(b, "d1.local"+test.path),
-				Config: hatypes.WAF{
-					Module: test.waf,
-					Mode:   test.wafmode,
-				},
-			},
+		b.FindBackendPath(h.FindPath(test.path).Link).WAF = hatypes.WAF{
+			Module: test.waf,
+			Mode:   test.wafmode,
 		}
 		if test.path != "/" {
 			h.AddPath(b, "/", hatypes.MatchBegin)
-			b.WAF = append(b.WAF, &hatypes.BackendConfigWAF{
-				Paths: createBackendPaths(b, "d1.local/"),
-			})
 		}
 
 		globalModsec := &c.config.Global().ModSecurity
