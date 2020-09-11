@@ -398,14 +398,15 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- range $i, $wlistCfg := $backend.WhitelistHTTP }}
-{{- $wlist := $wlistCfg.Config }}
+{{- $wlistCfg := $backend.PathConfig "WhitelistHTTP" }}
+{{- $needACL := $wlistCfg.NeedACL }}
+{{- range $i, $wlist := $wlistCfg.Items }}
 {{- if $wlist }}
 {{- range $w1 := short 10 $wlist }}
     acl wlist_src{{ $i }} src{{ range $w := $w1 }} {{ $w }}{{ end }}
 {{- end }}
     http-request deny if
-        {{- if gt (len $backend.WhitelistHTTP) 1 }} { var(txn.pathID) {{ $wlistCfg.Paths.IDList }} }{{ end }}
+        {{- if $needACL }} { var(txn.pathID) {{ $wlistCfg.PathIDs $i }} }{{ end }}
         {{- "" }} !wlist_src{{ $i }}
 {{- end }}
 {{- end }}

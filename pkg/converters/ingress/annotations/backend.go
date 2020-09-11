@@ -746,14 +746,11 @@ func (c *updater) buildBackendWAF(d *backData) {
 }
 
 func (c *updater) buildBackendWhitelistHTTP(d *backData) {
-	if d.backend.ModeTCP {
-		return
-	}
-	for _, cfg := range d.mapper.GetBackendConfig(d.backend, []string{ingtypes.BackWhitelistSourceRange}, nil) {
-		d.backend.WhitelistHTTP = append(d.backend.WhitelistHTTP, &hatypes.BackendConfigWhitelist{
-			Paths:  cfg.Paths,
-			Config: c.splitCIDR(cfg.Get(ingtypes.BackWhitelistSourceRange)),
-		})
+	if !d.backend.ModeTCP {
+		for _, path := range d.backend.Paths {
+			config := d.mapper.GetConfig(path.Link)
+			path.WhitelistHTTP = c.splitCIDR(config.Get(ingtypes.BackWhitelistSourceRange))
+		}
 	}
 }
 

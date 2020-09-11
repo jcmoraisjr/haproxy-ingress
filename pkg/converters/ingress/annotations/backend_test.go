@@ -1757,7 +1757,7 @@ func TestWhitelistHTTP(t *testing.T) {
 	testCases := []struct {
 		paths    []string
 		cidrlist map[string]map[string]string
-		expected []*hatypes.BackendConfigWhitelist
+		expected map[string][]string
 		logging  string
 	}{
 		// 0
@@ -1768,11 +1768,8 @@ func TestWhitelistHTTP(t *testing.T) {
 					ingtypes.BackWhitelistSourceRange: "10.0.0.0/8,192.168.0.0/16",
 				},
 			},
-			expected: []*hatypes.BackendConfigWhitelist{
-				{
-					Paths:  createBackendPaths("/"),
-					Config: []string{"10.0.0.0/8", "192.168.0.0/16"},
-				},
+			expected: map[string][]string{
+				"/": {"10.0.0.0/8", "192.168.0.0/16"},
 			},
 		},
 		// 1
@@ -1783,31 +1780,24 @@ func TestWhitelistHTTP(t *testing.T) {
 					ingtypes.BackWhitelistSourceRange: "10.0.0.0/8,192.168.0.0/16",
 				},
 				"/path": {
-					ingtypes.BackWhitelistSourceRange: "10.0.0.0/8,192.168.0.0/16",
+					ingtypes.BackWhitelistSourceRange: "10.0.0.0/48,192.168.0.0/48",
 				},
 				"/url": {
 					ingtypes.BackWhitelistSourceRange: "10.0.0.0/8,192.168.0.101",
 				},
 			},
-			expected: []*hatypes.BackendConfigWhitelist{
-				{
-					Paths:  createBackendPaths("/", "/path"),
-					Config: []string{"10.0.0.0/8", "192.168.0.0/16"},
-				},
-				{
-					Paths:  createBackendPaths("/url"),
-					Config: []string{"10.0.0.0/8", "192.168.0.101"},
-				},
+			expected: map[string][]string{
+				"/":    {"10.0.0.0/8", "192.168.0.0/16"},
+				"/url": {"10.0.0.0/8", "192.168.0.101"},
 			},
+			logging: `
+WARN skipping invalid IP or cidr on ingress 'default/ing1': 10.0.0.0/48
+WARN skipping invalid IP or cidr on ingress 'default/ing1': 192.168.0.0/48`,
 		},
 		// 2
 		{
-			paths: []string{"/"},
-			expected: []*hatypes.BackendConfigWhitelist{
-				{
-					Paths: createBackendPaths("/"),
-				},
-			},
+			paths:    []string{"/"},
+			expected: map[string][]string{},
 		},
 		// 3
 		{
@@ -1817,19 +1807,62 @@ func TestWhitelistHTTP(t *testing.T) {
 					ingtypes.BackWhitelistSourceRange: "",
 				},
 			},
-			expected: []*hatypes.BackendConfigWhitelist{
-				{
-					Paths:  createBackendPaths("/"),
-					Config: nil,
+			expected: map[string][]string{},
+		},
+		// 4
+		{
+			paths: []string{"/"},
+			cidrlist: map[string]map[string]string{
+				"/": {
+					ingtypes.BackWhitelistSourceRange: "10.0.0.0/8,fa00::1:1,fa00::/64",
 				},
 			},
+			expected: map[string][]string{
+				"/": {"10.0.0.0/8", "fa00::1:1", "fa00::/64"},
+			},
+		},
+		// 5
+		{
+			paths: []string{"/"},
+			cidrlist: map[string]map[string]string{
+				"/": {
+					ingtypes.BackWhitelistSourceRange: "10.0.0.0/8,fa00::/129",
+				},
+			},
+			expected: map[string][]string{
+				"/": {"10.0.0.0/8"},
+			},
+			logging: `
+WARN skipping invalid IP or cidr on ingress 'default/ing1': fa00::/129`,
+		},
+		// 6
+		{
+			paths: []string{"/"},
+			cidrlist: map[string]map[string]string{
+				"/": {
+					ingtypes.BackWhitelistSourceRange: "10.0.0.0/48,192.168.0.0/24",
+				},
+			},
+			expected: map[string][]string{
+				"/": {"192.168.0.0/24"},
+			},
+			logging: `
+WARN skipping invalid IP or cidr on ingress 'default/ing1': 10.0.0.0/48`,
 		},
 	}
+	source := &Source{Namespace: "default", Name: "ing1", Type: "ingress"}
 	for i, test := range testCases {
 		c := setup(t)
-		d := c.createBackendMappingData("default/app", &Source{}, map[string]string{}, test.cidrlist, test.paths)
+		d := c.createBackendMappingData("default/app", source, map[string]string{}, test.cidrlist, test.paths)
 		c.createUpdater().buildBackendWhitelistHTTP(d)
-		c.compareObjects("whitelist http", i, d.backend.WhitelistHTTP, test.expected)
+		actual := map[string][]string{}
+		for _, path := range d.backend.Paths {
+			if len(path.WhitelistHTTP) > 0 {
+				actual[path.Path()] = path.WhitelistHTTP
+			}
+		}
+		c.compareObjects("whitelist http", i, actual, test.expected)
+		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
 }

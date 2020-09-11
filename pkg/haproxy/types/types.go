@@ -488,8 +488,7 @@ type Backend struct {
 	//      Template uses this func in order to know if a config
 	//      has two or more paths, and so need to be configured with ACL.
 	//
-	SSLRedirect   []*BackendConfigBool
-	WhitelistHTTP []*BackendConfigWhitelist
+	SSLRedirect []*BackendConfigBool
 }
 
 // Endpoint ...
@@ -556,12 +555,6 @@ type BackendHeader struct {
 type BackendConfigBool struct {
 	Paths  BackendPaths
 	Config bool
-}
-
-// BackendConfigWhitelist ...
-type BackendConfigWhitelist struct {
-	Paths  BackendPaths
-	Config []string
 }
 
 // AgentCheck ...

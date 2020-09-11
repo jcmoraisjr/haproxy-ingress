@@ -247,7 +247,7 @@ func (b *Backend) NeedACL() bool {
 			return true
 		}
 	}
-	return len(b.WhitelistHTTP) > 1
+	return false
 }
 
 func (b *Backend) ensurePathConfig(attr string) {
@@ -381,10 +381,5 @@ func (h *BackendHeader) String() string {
 
 // String ...
 func (b *BackendConfigBool) String() string {
-	return fmt.Sprintf("%+v", *b)
-}
-
-// String ...
-func (b *BackendConfigWhitelist) String() string {
 	return fmt.Sprintf("%+v", *b)
 }

@@ -227,16 +227,9 @@ d1.local/path1 path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.WhitelistHTTP = []*hatypes.BackendConfigWhitelist{
-					{
-						Paths:  createBackendPaths(b, "d1.local/app", "d1.local/api"),
-						Config: []string{"10.0.0.0/8", "192.168.0.0/16"},
-					},
-					{
-						Paths:  createBackendPaths(b, "d1.local/path"),
-						Config: []string{"192.168.95.0/24"},
-					},
-				}
+				b.FindBackendPath(h.FindPath("/app").Link).WhitelistHTTP = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.FindBackendPath(h.FindPath("/api").Link).WhitelistHTTP = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.FindBackendPath(h.FindPath("/path").Link).WhitelistHTTP = []string{"192.168.95.0/24"}
 			},
 			path: []string{"/app", "/api", "/path"},
 			expected: `
@@ -257,19 +250,14 @@ d1.local/api path02`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.FindBackendPath(h.FindPath("/app").Link).WhitelistHTTP = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.FindBackendPath(h.FindPath("/api").Link).WhitelistHTTP = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.FindBackendPath(h.FindPath("/path").Link).WhitelistHTTP = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.FindBackendPath(h.FindPath("/api/v[0-9]+/").Link).WhitelistHTTP = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.FindBackendPath(h.FindPath("/").Link).WhitelistHTTP = []string{"172.17.0.0/16"}
 				h.FindPath("/app").Match = hatypes.MatchExact
 				h.FindPath("/path").Match = hatypes.MatchPrefix
 				h.FindPath("/api/v[0-9]+/").Match = hatypes.MatchRegex
-				b.WhitelistHTTP = []*hatypes.BackendConfigWhitelist{
-					{
-						Paths:  createBackendPaths(b, "d1.local/app", "d1.local/api", "d1.local/path", "d1.local/api/v[0-9]+/"),
-						Config: []string{"10.0.0.0/8", "192.168.0.0/16"},
-					},
-					{
-						Paths:  createBackendPaths(b, "d1.local/"),
-						Config: []string{"172.17.0.0/16"},
-					},
-				}
 			},
 			path: []string{"/", "/app", "/api", "/path", "/api/v[0-9]+/"},
 			expected: `
@@ -282,10 +270,10 @@ d1.local/api path02`,
     http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpath__prefix.map) if !{ var(txn.pathID) -m found }
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map) if !{ var(txn.pathID) -m found }
     http-request set-var(txn.pathID) var(req.base),map_reg(/etc/haproxy/maps/_back_d1_app_8080_idpath__regex.map) if !{ var(txn.pathID) -m found }
-    acl wlist_src0 src 10.0.0.0/8 192.168.0.0/16
-    http-request deny if { var(txn.pathID) path03 path05 path02 path04 } !wlist_src0
-    acl wlist_src1 src 172.17.0.0/16
-    http-request deny if { var(txn.pathID) path01 } !wlist_src1`,
+    acl wlist_src0 src 172.17.0.0/16
+    http-request deny if { var(txn.pathID) path01 } !wlist_src0
+    acl wlist_src1 src 10.0.0.0/8 192.168.0.0/16
+    http-request deny if { var(txn.pathID) path03 path05 path02 path04 } !wlist_src1`,
 			expFronts: "<<frontends-default-match-4>>",
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__exact.map": `
@@ -301,19 +289,10 @@ d1.local/ path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.WhitelistHTTP = []*hatypes.BackendConfigWhitelist{
-					{
-						Paths:  createBackendPaths(b, "d1.local/app", "d1.local/api"),
-						Config: []string{},
-					},
-					{
-						Paths: createBackendPaths(b, "d1.local/path"),
-						Config: []string{
-							"1.1.1.1", "1.1.1.2", "1.1.1.3", "1.1.1.4", "1.1.1.5",
-							"1.1.1.6", "1.1.1.7", "1.1.1.8", "1.1.1.9", "1.1.1.10",
-							"1.1.1.11",
-						},
-					},
+				b.FindBackendPath(h.FindPath("/path").Link).WhitelistHTTP = []string{
+					"1.1.1.1", "1.1.1.2", "1.1.1.3", "1.1.1.4", "1.1.1.5",
+					"1.1.1.6", "1.1.1.7", "1.1.1.8", "1.1.1.9", "1.1.1.10",
+					"1.1.1.11",
 				}
 			},
 			path: []string{"/app", "/api", "/path"},
