@@ -466,28 +466,6 @@ type Backend struct {
 	Timeout          BackendTimeoutConfig
 	TLS              BackendTLSConfig
 	WhitelistTCP     []string
-	//
-	// per path config
-	//
-	// TODO refactor
-	//
-	// The current implementation is tricky. A small refactor is welcome
-	// but can wait a little more. Multipath unit tests need to do a
-	// better job as well.
-	//
-	// Following some tips in order to multipath work properly:
-	//
-	//   1. On backend annotation parsing, do not filter
-	//      mapper.GetBackendConfig/Str() slice, instead populate
-	//      haproxy type even with empty data. Backend.NeedACL() need
-	//      to know all paths in order to work properly. Filter out
-	//      empty/disabled items in the template.
-	//
-	//   2. Every config array added here, need also to be added
-	//      in Backend.NeedACL() - haproxy/types/backend.go.
-	//      Template uses this func in order to know if a config
-	//      has two or more paths, and so need to be configured with ACL.
-	//
 }
 
 // Endpoint ...
@@ -506,11 +484,6 @@ type Endpoint struct {
 type BlueGreenConfig struct {
 	CookieName string
 	HeaderName string
-}
-
-// BackendPaths ...
-type BackendPaths struct {
-	Items []*BackendPath
 }
 
 // BackendPathConfig ...

@@ -1904,16 +1904,3 @@ WARN skipping invalid IP or cidr on ingress 'default/ing1': 192.168.0/16`,
 		c.teardown()
 	}
 }
-
-func createBackendPaths(paths ...string) hatypes.BackendPaths {
-	backendPaths := make([]*hatypes.BackendPath, 0, len(paths))
-	for _, path := range paths {
-		backendPaths = append(backendPaths, &hatypes.BackendPath{
-			// ignoring ID which isn't the focus of the test
-			// removing on createBackendMappingData() as well
-			ID:   "",
-			Link: hatypes.CreatePathLink(testingHostname, path),
-		})
-	}
-	return hatypes.NewBackendPaths(backendPaths...)
-}

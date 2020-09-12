@@ -23,13 +23,6 @@ import (
 	"strings"
 )
 
-// NewBackendPaths ...
-func NewBackendPaths(paths ...*BackendPath) BackendPaths {
-	b := BackendPaths{}
-	b.Add(paths...)
-	return b
-}
-
 // BackendID ...
 func (b *Backend) BackendID() BackendID {
 	// IMPLEMENT as pointer
@@ -315,26 +308,6 @@ func (b *BackendPathConfig) PathIDs(index int) string {
 // IsEmpty ...
 func (ep *Endpoint) IsEmpty() bool {
 	return ep.IP == "127.0.0.1"
-}
-
-// IDList ...
-func (p *BackendPaths) IDList() string {
-	ids := make([]string, len(p.Items))
-	for i, item := range p.Items {
-		ids[i] = item.ID
-	}
-	return strings.Join(ids, " ")
-}
-
-// Add ...
-func (p *BackendPaths) Add(paths ...*BackendPath) {
-	for _, path := range paths {
-		if path == nil {
-			panic("path cannot be nil")
-		}
-		p.Items = append(p.Items, path)
-	}
-	sortPaths(p.Items, false)
 }
 
 // Hostname ...

@@ -3284,14 +3284,3 @@ func (c *testConfig) compareText(name, actual, expected string) {
 		c.t.Error("\ndiff of " + name + ":" + diff.Diff(txtExpected, txtActual))
 	}
 }
-
-func createBackendPaths(backend *hatypes.Backend, uris ...string) hatypes.BackendPaths {
-	paths := make([]*hatypes.BackendPath, len(uris))
-	for i, uri := range uris {
-		j := strings.IndexAny(uri, "^/")
-		hostname := uri[:j]
-		path := uri[j:]
-		paths[i] = backend.FindBackendPath(hatypes.CreatePathLink(hostname, path))
-	}
-	return hatypes.NewBackendPaths(paths...)
-}
