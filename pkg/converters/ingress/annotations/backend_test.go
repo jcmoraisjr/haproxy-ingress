@@ -1505,18 +1505,15 @@ func TestSSLRedirect(t *testing.T) {
 		annDefault map[string]string
 		ann        map[string]map[string]string
 		addPaths   []string
-		expected   []*hatypes.BackendConfigBool
+		expected   map[bool][]string
 		source     Source
 		logging    string
 	}{
 		// 0
 		{
 			addPaths: []string{"/"},
-			expected: []*hatypes.BackendConfigBool{
-				{
-					Paths:  createBackendPaths("/"),
-					Config: false,
-				},
+			expected: map[bool][]string{
+				false: {"/"},
 			},
 		},
 		// 1
@@ -1526,11 +1523,8 @@ func TestSSLRedirect(t *testing.T) {
 					ingtypes.BackSSLRedirect: "true",
 				},
 			},
-			expected: []*hatypes.BackendConfigBool{
-				{
-					Paths:  createBackendPaths("/"),
-					Config: true,
-				},
+			expected: map[bool][]string{
+				true: {"/"},
 			},
 		},
 		// 2
@@ -1540,11 +1534,8 @@ func TestSSLRedirect(t *testing.T) {
 					ingtypes.BackSSLRedirect: "invalid",
 				},
 			},
-			expected: []*hatypes.BackendConfigBool{
-				{
-					Paths:  createBackendPaths("/"),
-					Config: false,
-				},
+			expected: map[bool][]string{
+				false: {"/"},
 			},
 			source:  Source{Namespace: "default", Name: "ing1", Type: "ingress"},
 			logging: `WARN ignoring invalid bool expression on ingress 'default/ing1' key 'ssl-redirect': invalid`,
@@ -1566,15 +1557,9 @@ func TestSSLRedirect(t *testing.T) {
 					ingtypes.BackSSLRedirect: "no-bool",
 				},
 			},
-			expected: []*hatypes.BackendConfigBool{
-				{
-					Paths:  createBackendPaths("/"),
-					Config: true,
-				},
-				{
-					Paths:  createBackendPaths("/other", "/path", "/url"),
-					Config: false,
-				},
+			expected: map[bool][]string{
+				false: {"/other", "/path", "/url"},
+				true:  {"/"},
 			},
 			source:  Source{Namespace: "system1", Name: "app", Type: "service"},
 			logging: `WARN ignoring invalid bool expression on service 'system1/app' key 'ssl-redirect': no-bool`,
@@ -1598,15 +1583,9 @@ func TestSSLRedirect(t *testing.T) {
 					ingtypes.BackSSLRedirect: "true",
 				},
 			},
-			expected: []*hatypes.BackendConfigBool{
-				{
-					Paths:  createBackendPaths("/", "/.hidden/api", "/app"),
-					Config: false,
-				},
-				{
-					Paths:  createBackendPaths("/api"),
-					Config: true,
-				},
+			expected: map[bool][]string{
+				false: {"/", "/.hidden/api", "/app"},
+				true:  {"/api"},
 			},
 		},
 	}
@@ -1614,7 +1593,17 @@ func TestSSLRedirect(t *testing.T) {
 		c := setup(t)
 		d := c.createBackendMappingData("default/app", &test.source, test.annDefault, test.ann, test.addPaths)
 		c.createUpdater().buildBackendSSLRedirect(d)
-		c.compareObjects("sslredirect", i, d.backend.SSLRedirect, test.expected)
+		actual := map[bool][]string{}
+		for _, path := range d.backend.Paths {
+			actual[path.SSLRedirect] = append(actual[path.SSLRedirect], path.Path())
+		}
+		if len(actual[false]) == 0 {
+			delete(actual, false)
+		}
+		if len(actual[true]) == 0 {
+			delete(actual, true)
+		}
+		c.compareObjects("sslredirect", i, actual, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}

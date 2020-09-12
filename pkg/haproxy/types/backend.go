@@ -161,16 +161,6 @@ func sortPaths(paths []*BackendPath, pathReverse bool) {
 	})
 }
 
-// CreateConfigBool ...
-func (b *Backend) CreateConfigBool(value bool) []*BackendConfigBool {
-	return []*BackendConfigBool{
-		{
-			Paths:  NewBackendPaths(b.Paths...),
-			Config: value,
-		},
-	}
-}
-
 // HasCorsEnabled ...
 func (b *Backend) HasCorsEnabled() bool {
 	for _, path := range b.Paths {
@@ -203,8 +193,8 @@ func (b *Backend) HasModsec() bool {
 
 // HasSSLRedirect ...
 func (b *Backend) HasSSLRedirect() bool {
-	for _, sslredirect := range b.SSLRedirect {
-		if sslredirect.Config {
+	for _, path := range b.Paths {
+		if path.SSLRedirect {
 			return true
 		}
 	}
@@ -213,11 +203,9 @@ func (b *Backend) HasSSLRedirect() bool {
 
 // LinkHasSSLRedirect ...
 func (b *Backend) LinkHasSSLRedirect(link PathLink) bool {
-	for _, sslredirect := range b.SSLRedirect {
-		for _, p := range sslredirect.Paths.Items {
-			if p.Link == link {
-				return sslredirect.Config
-			}
+	for _, path := range b.Paths {
+		if path.Link == link {
+			return path.SSLRedirect
 		}
 	}
 	return false
@@ -377,9 +365,4 @@ func (p *BackendPath) String() string {
 // String ...
 func (h *BackendHeader) String() string {
 	return fmt.Sprintf("%+v", *h)
-}
-
-// String ...
-func (b *BackendConfigBool) String() string {
-	return fmt.Sprintf("%+v", *b)
 }
