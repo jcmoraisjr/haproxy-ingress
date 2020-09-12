@@ -171,8 +171,8 @@ func TestGetAnnotation(t *testing.T) {
 			},
 			getKey: "auth-basic",
 			expConfig: []*PathConfig{
-				{Source: srcing1, path: pathRoot, Value: "default/basic1"},
-				{Source: srcing2, path: pathURL, Value: "default/basic2"},
+				{path: pathRoot, value: &ConfigValue{Source: srcing1, Value: "default/basic1"}},
+				{path: pathURL, value: &ConfigValue{Source: srcing2, Value: "default/basic2"}},
 			},
 		},
 		// 1
@@ -184,7 +184,7 @@ func TestGetAnnotation(t *testing.T) {
 			},
 			getKey: "auth-basic",
 			expConfig: []*PathConfig{
-				{Source: srcing1, path: pathRoot, Value: "default/basic1"},
+				{path: pathRoot, value: &ConfigValue{Source: srcing1, Value: "default/basic1"}},
 			},
 		},
 		// 2
@@ -196,7 +196,7 @@ func TestGetAnnotation(t *testing.T) {
 			},
 			getKey: "auth-type",
 			expConfig: []*PathConfig{
-				{Source: srcing1, path: pathRoot, Value: "basic"},
+				{path: pathRoot, value: &ConfigValue{Source: srcing1, Value: "basic"}},
 			},
 		},
 	}
@@ -208,7 +208,7 @@ func TestGetAnnotation(t *testing.T) {
 				t.Errorf("expect conflict '%t' on '// %d (%d)', but was '%t'", ann.expConflict, i, j, conflict)
 			}
 		}
-		pathConfig, found := mapper.GetStrMap(test.getKey)
+		pathConfig, found := mapper.findPathConfig(test.getKey)
 		if !found {
 			if !test.expMiss {
 				t.Errorf("expect to find '%s' key on '%d', but was not found", test.getKey, i)

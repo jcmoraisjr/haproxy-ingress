@@ -46,9 +46,8 @@ type KeyConfig struct {
 
 // PathConfig ...
 type PathConfig struct {
-	Source *Source
-	path   hatypes.PathLink
-	Value  string
+	path  hatypes.PathLink
+	value *ConfigValue
 }
 
 // Source ...
@@ -116,15 +115,15 @@ func (c *Mapper) addAnnotation(source *Source, path hatypes.PathLink, key, value
 		}
 	}
 	// update internal fields
-	config.keys[key] = &ConfigValue{
+	configValue := &ConfigValue{
 		Source: source,
 		Value:  realValue,
 	}
+	config.keys[key] = configValue
 	pathConfigs, _ := c.configByKey[key]
 	pathConfigs = append(pathConfigs, &PathConfig{
-		Source: source,
-		path:   path,
-		Value:  realValue,
+		path:  path,
+		value: configValue,
 	})
 	c.configByKey[key] = pathConfigs
 	return false
@@ -141,15 +140,14 @@ func (c *Mapper) AddAnnotations(source *Source, path hatypes.PathLink, ann map[s
 	return conflicts
 }
 
-// GetStrMap ...
-func (c *Mapper) GetStrMap(key string) ([]*PathConfig, bool) {
+func (c *Mapper) findPathConfig(key string) ([]*PathConfig, bool) {
 	configs, found := c.configByKey[key]
 	if found && len(configs) > 0 {
 		return configs, true
 	}
 	value, found := c.annDefaults[key]
 	if found {
-		return []*PathConfig{{Value: value}}, true
+		return []*PathConfig{{value: &ConfigValue{Value: value}}}, true
 	}
 	return nil, false
 }
@@ -166,19 +164,16 @@ func (c *Mapper) GetConfig(path hatypes.PathLink) *KeyConfig {
 
 // Get ...
 func (c *Mapper) Get(key string) *ConfigValue {
-	configs, found := c.GetStrMap(key)
+	configs, found := c.findPathConfig(key)
 	if !found {
 		return &ConfigValue{}
 	}
-	value := &ConfigValue{
-		Source: configs[0].Source,
-		Value:  configs[0].Value,
-	}
+	value := configs[0].value
 	if len(configs) > 1 {
 		sources := make([]*Source, 0, len(configs))
 		for _, config := range configs {
-			if value.Value != config.Value {
-				sources = append(sources, config.Source)
+			if value.Value != config.value.Value {
+				sources = append(sources, config.value.Source)
 			}
 		}
 		if len(sources) > 0 {
