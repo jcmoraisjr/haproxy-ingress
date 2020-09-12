@@ -34,20 +34,20 @@ type MapBuilder struct {
 // Mapper ...
 type Mapper struct {
 	MapBuilder
-	maps    map[string][]*Map
-	configs map[hatypes.PathLink]*AnnConfig
+	configByKey  map[string][]*PathConfig
+	configByPath map[hatypes.PathLink]*KeyConfig
 }
 
-// AnnConfig ...
-type AnnConfig struct {
+// KeyConfig ...
+type KeyConfig struct {
 	mapper *Mapper
 	keys   map[string]*ConfigValue
 }
 
-// Map ...
-type Map struct {
+// PathConfig ...
+type PathConfig struct {
 	Source *Source
-	Link   hatypes.PathLink
+	path   hatypes.PathLink
 	Value  string
 }
 
@@ -78,13 +78,13 @@ func (b *MapBuilder) NewMapper() *Mapper {
 	return &Mapper{
 		MapBuilder: *b,
 		//
-		maps:    map[string][]*Map{},
-		configs: map[hatypes.PathLink]*AnnConfig{},
+		configByKey:  map[string][]*PathConfig{},
+		configByPath: map[hatypes.PathLink]*KeyConfig{},
 	}
 }
 
-func newAnnConfig(mapper *Mapper) *AnnConfig {
-	return &AnnConfig{
+func newKeyConfig(mapper *Mapper) *KeyConfig {
+	return &KeyConfig{
 		mapper: mapper,
 		keys:   map[string]*ConfigValue{},
 	}
@@ -92,19 +92,20 @@ func newAnnConfig(mapper *Mapper) *AnnConfig {
 
 // Add a new annotation to the current mapper.
 // Return the conflict state: true if a conflict was found, false if the annotation was assigned or at least handled
-func (c *Mapper) addAnnotation(source *Source, link hatypes.PathLink, key, value string) bool {
-	if link.IsEmpty() {
+func (c *Mapper) addAnnotation(source *Source, path hatypes.PathLink, key, value string) bool {
+	if path.IsEmpty() {
 		// empty means default value, cannot register as an annotation
 		panic("path link cannot be empty")
 	}
 	// check overlap
-	config, configfound := c.configs[link]
+	config, configfound := c.configByPath[path]
 	if !configfound {
-		config = newAnnConfig(c)
-		c.configs[link] = config
+		config = newKeyConfig(c)
+		c.configByPath[path] = config
 	}
-	if cfg, found := config.keys[key]; found {
-		return cfg.Value != value
+	if cv, found := config.keys[key]; found {
+		// there is a conflict only if values differ
+		return cv.Value != value
 	}
 	// validate (bool; int; ...) and normalize (int "01" => "1"; ...)
 	realValue := value
@@ -119,21 +120,21 @@ func (c *Mapper) addAnnotation(source *Source, link hatypes.PathLink, key, value
 		Source: source,
 		Value:  realValue,
 	}
-	annMaps, _ := c.maps[key]
-	annMaps = append(annMaps, &Map{
+	pathConfigs, _ := c.configByKey[key]
+	pathConfigs = append(pathConfigs, &PathConfig{
 		Source: source,
-		Link:   link,
+		path:   path,
 		Value:  realValue,
 	})
-	c.maps[key] = annMaps
+	c.configByKey[key] = pathConfigs
 	return false
 }
 
 // AddAnnotations ...
-func (c *Mapper) AddAnnotations(source *Source, link hatypes.PathLink, ann map[string]string) (conflicts []string) {
+func (c *Mapper) AddAnnotations(source *Source, path hatypes.PathLink, ann map[string]string) (conflicts []string) {
 	conflicts = make([]string, 0, len(ann))
 	for key, value := range ann {
-		if conflict := c.addAnnotation(source, link, key, value); conflict {
+		if conflict := c.addAnnotation(source, path, key, value); conflict {
 			conflicts = append(conflicts, key)
 		}
 	}
@@ -141,43 +142,43 @@ func (c *Mapper) AddAnnotations(source *Source, link hatypes.PathLink, ann map[s
 }
 
 // GetStrMap ...
-func (c *Mapper) GetStrMap(key string) ([]*Map, bool) {
-	annMaps, found := c.maps[key]
-	if found && len(annMaps) > 0 {
-		return annMaps, true
+func (c *Mapper) GetStrMap(key string) ([]*PathConfig, bool) {
+	configs, found := c.configByKey[key]
+	if found && len(configs) > 0 {
+		return configs, true
 	}
 	value, found := c.annDefaults[key]
 	if found {
-		return []*Map{{Value: value}}, true
+		return []*PathConfig{{Value: value}}, true
 	}
 	return nil, false
 }
 
 // GetConfig ...
-func (c *Mapper) GetConfig(link hatypes.PathLink) *AnnConfig {
-	if config, found := c.configs[link]; found {
+func (c *Mapper) GetConfig(path hatypes.PathLink) *KeyConfig {
+	if config, found := c.configByPath[path]; found {
 		return config
 	}
-	config := newAnnConfig(c)
-	c.configs[link] = config
+	config := newKeyConfig(c)
+	c.configByPath[path] = config
 	return config
 }
 
 // Get ...
 func (c *Mapper) Get(key string) *ConfigValue {
-	annMaps, found := c.GetStrMap(key)
+	configs, found := c.GetStrMap(key)
 	if !found {
 		return &ConfigValue{}
 	}
 	value := &ConfigValue{
-		Source: annMaps[0].Source,
-		Value:  annMaps[0].Value,
+		Source: configs[0].Source,
+		Value:  configs[0].Value,
 	}
-	if len(annMaps) > 1 {
-		sources := make([]*Source, 0, len(annMaps))
-		for _, annMap := range annMaps {
-			if value.Value != annMap.Value {
-				sources = append(sources, annMap.Source)
+	if len(configs) > 1 {
+		sources := make([]*Source, 0, len(configs))
+		for _, config := range configs {
+			if value.Value != config.Value {
+				sources = append(sources, config.Source)
 			}
 		}
 		if len(sources) > 0 {
@@ -190,7 +191,7 @@ func (c *Mapper) Get(key string) *ConfigValue {
 }
 
 // Get ...
-func (c *AnnConfig) Get(key string) *ConfigValue {
+func (c *KeyConfig) Get(key string) *ConfigValue {
 	if value, found := c.keys[key]; found {
 		return value
 	}
@@ -229,7 +230,7 @@ func (s *Source) FullName() string {
 }
 
 // String ...
-func (m *Map) String() string {
+func (m *PathConfig) String() string {
 	return fmt.Sprintf("%+v", *m)
 }
 

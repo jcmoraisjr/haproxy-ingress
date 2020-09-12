@@ -25,7 +25,7 @@ import (
 
 type ann struct {
 	src         *Source
-	link        hatypes.PathLink
+	path        hatypes.PathLink
 	key         string
 	val         string
 	expConflict bool
@@ -133,7 +133,7 @@ func TestAddAnnotation(t *testing.T) {
 		c := setup(t)
 		mapper := NewMapBuilder(c.logger, test.annPrefix, map[string]string{}).NewMapper()
 		for j, ann := range test.ann {
-			if conflict := mapper.addAnnotation(ann.src, ann.link, ann.key, ann.val); conflict != ann.expConflict {
+			if conflict := mapper.addAnnotation(ann.src, ann.path, ann.key, ann.val); conflict != ann.expConflict {
 				t.Errorf("expect conflict '%t' on '// %d (%d)', but was '%t'", ann.expConflict, i, j, conflict)
 			}
 		}
@@ -161,7 +161,7 @@ func TestGetAnnotation(t *testing.T) {
 		annPrefix string
 		getKey    string
 		expMiss   bool
-		expAnnMap []*Map
+		expConfig []*PathConfig
 	}{
 		// 0
 		{
@@ -170,9 +170,9 @@ func TestGetAnnotation(t *testing.T) {
 				{srcing2, pathURL, "auth-basic", "default/basic2", false},
 			},
 			getKey: "auth-basic",
-			expAnnMap: []*Map{
-				{Source: srcing1, Link: pathRoot, Value: "default/basic1"},
-				{Source: srcing2, Link: pathURL, Value: "default/basic2"},
+			expConfig: []*PathConfig{
+				{Source: srcing1, path: pathRoot, Value: "default/basic1"},
+				{Source: srcing2, path: pathURL, Value: "default/basic2"},
 			},
 		},
 		// 1
@@ -183,8 +183,8 @@ func TestGetAnnotation(t *testing.T) {
 				{srcing2, pathRoot, "auth-basic", "default/basic2", true},
 			},
 			getKey: "auth-basic",
-			expAnnMap: []*Map{
-				{Source: srcing1, Link: pathRoot, Value: "default/basic1"},
+			expConfig: []*PathConfig{
+				{Source: srcing1, path: pathRoot, Value: "default/basic1"},
 			},
 		},
 		// 2
@@ -195,8 +195,8 @@ func TestGetAnnotation(t *testing.T) {
 				{srcing2, pathRoot, "auth-basic", "default/basic2", true},
 			},
 			getKey: "auth-type",
-			expAnnMap: []*Map{
-				{Source: srcing1, Link: pathRoot, Value: "basic"},
+			expConfig: []*PathConfig{
+				{Source: srcing1, path: pathRoot, Value: "basic"},
 			},
 		},
 	}
@@ -204,17 +204,17 @@ func TestGetAnnotation(t *testing.T) {
 		c := setup(t)
 		mapper := NewMapBuilder(c.logger, test.annPrefix, map[string]string{}).NewMapper()
 		for j, ann := range test.ann {
-			if conflict := mapper.addAnnotation(ann.src, ann.link, ann.key, ann.val); conflict != ann.expConflict {
+			if conflict := mapper.addAnnotation(ann.src, ann.path, ann.key, ann.val); conflict != ann.expConflict {
 				t.Errorf("expect conflict '%t' on '// %d (%d)', but was '%t'", ann.expConflict, i, j, conflict)
 			}
 		}
-		annMap, found := mapper.GetStrMap(test.getKey)
+		pathConfig, found := mapper.GetStrMap(test.getKey)
 		if !found {
 			if !test.expMiss {
 				t.Errorf("expect to find '%s' key on '%d', but was not found", test.getKey, i)
 			}
-		} else if !reflect.DeepEqual(annMap, test.expAnnMap) {
-			t.Errorf("expected and actual differ on '%d' - expected: %+v - actual: %+v", i, test.expAnnMap, annMap)
+		} else if !reflect.DeepEqual(pathConfig, test.expConfig) {
+			t.Errorf("expected and actual differ on '%d' - expected: %+v - actual: %+v", i, test.expConfig, pathConfig)
 		}
 		c.teardown()
 	}
