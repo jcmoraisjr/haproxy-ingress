@@ -19,6 +19,15 @@ set -e
 if [ $# -gt 0 ] && [ "$(echo $1 | cut -b1-2)" != "--" ]; then
     # Probably a `docker run -ti`, so exec and exit
     exec "$@"
+elif [ "$1" = "--init" ]; then
+    cat >/etc/haproxy/haproxy.cfg <<EOF
+defaults
+    timeout server 1s
+    timeout client 1s
+    timeout connect 1s
+listen l
+    bind unix@/tmp/dummy.sock
+EOF
 else
     # Copy static files to /etc/haproxy, which cannot have static content
     cp -R -p /etc/lua /etc/haproxy/
