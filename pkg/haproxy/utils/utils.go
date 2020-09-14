@@ -18,6 +18,7 @@ package utils
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"time"
 )
@@ -39,10 +40,12 @@ func HAProxyCommand(socket string, observer func(duration time.Duration), comman
 			return msg, fmt.Errorf("incomplete data sent to unix socket %s", socket)
 		}
 		readBuffer := make([]byte, 1024)
-		if r, err := c.Read(readBuffer); err != nil {
+		if r, err := c.Read(readBuffer); err != nil && err != io.EOF {
 			return msg, fmt.Errorf("error reading response buffer: %v", err)
 		} else if r > 2 {
 			msg = append(msg, fmt.Sprintf("response from server: %s", string(readBuffer[:r-2])))
+		} else {
+			msg = append(msg, "")
 		}
 		observer(time.Since(start))
 	}
