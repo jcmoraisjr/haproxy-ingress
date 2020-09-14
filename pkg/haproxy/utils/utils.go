@@ -47,7 +47,9 @@ func HAProxyCommand(socket string, observer func(duration time.Duration), comman
 		} else {
 			msg = append(msg, "")
 		}
-		observer(time.Since(start))
+		if observer != nil {
+			observer(time.Since(start))
+		}
 	}
 	return msg, nil
 }
