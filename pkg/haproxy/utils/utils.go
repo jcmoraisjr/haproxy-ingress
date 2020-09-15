@@ -43,7 +43,7 @@ func HAProxyCommand(socket string, observer func(duration time.Duration), comman
 		if r, err := c.Read(readBuffer); err != nil && err != io.EOF {
 			return msg, fmt.Errorf("error reading response buffer: %v", err)
 		} else if r > 2 {
-			msg = append(msg, fmt.Sprintf("response from server: %s", string(readBuffer[:r-2])))
+			msg = append(msg, string(readBuffer[:r-2]))
 		} else {
 			msg = append(msg, "")
 		}
