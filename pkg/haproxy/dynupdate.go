@@ -165,13 +165,13 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 	// map endpoints of old and new config together
 	endpoints := make(map[string]*epPair, len(oldBack.Endpoints))
 	targets := make([]string, 0, len(oldBack.Endpoints))
-	var empty []string
+	var empty []*hatypes.Endpoint
 	for _, endpoint := range oldBack.Endpoints {
 		if endpoint.Enabled {
 			endpoints[endpoint.Target] = &epPair{old: endpoint}
 			targets = append(targets, endpoint.Target)
 		} else {
-			empty = append(empty, endpoint.Name)
+			empty = append(empty, endpoint)
 		}
 	}
 
@@ -202,14 +202,14 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 			if !d.execDisableEndpoint(curBack.ID, pair.old) || pair.old.Label != "" {
 				updated = false
 			}
-			empty = append(empty, pair.old.Name)
-		} else if !d.checkEndpointPair(curBack.ID, pair) {
+			empty = append(empty, pair.old)
+		} else if !d.checkEndpointPair(curBack, pair) {
 			updated = false
 		}
 	}
 	for i := range added {
 		// reusing empty slots from oldBack
-		added[i].Name = empty[i]
+		added[i].Name = empty[i].Name
 		if !d.execEnableEndpoint(curBack.ID, nil, added[i]) || added[i].Label != "" {
 			updated = false
 		}
@@ -217,18 +217,18 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 
 	// copy remaining empty slots from oldBack to curBack, so it can be used in a future update
 	for i := len(added); i < len(empty); i++ {
-		curBack.AddEmptyEndpoint().Name = empty[i]
+		curBack.AddEmptyEndpoint().Name = empty[i].Name
 	}
 	curBack.SortEndpoints()
 
 	return updated
 }
 
-func (d *dynUpdater) checkEndpointPair(backname string, pair *epPair) bool {
+func (d *dynUpdater) checkEndpointPair(backend *hatypes.Backend, pair *epPair) bool {
 	if reflect.DeepEqual(pair.old, pair.cur) {
 		return true
 	}
-	updated := d.execEnableEndpoint(backname, pair.old, pair.cur)
+	updated := d.execEnableEndpoint(backend.ID, pair.old, pair.cur)
 	if !updated || pair.old.Label != "" || pair.cur.Label != "" {
 		return false
 	}
