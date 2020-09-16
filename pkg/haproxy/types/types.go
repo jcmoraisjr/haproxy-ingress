@@ -410,6 +410,15 @@ const (
 	EpTargetRef
 )
 
+// EndpointCookieStrategy ...
+type EndpointCookieStrategy int
+
+// ...
+const (
+	EpCookieName EndpointCookieStrategy = iota
+	EpCookiePodUid
+)
+
 // Backends ...
 type Backends struct {
 	items, itemsAdd, itemsDel map[string]*Backend
@@ -434,15 +443,16 @@ type Backend struct {
 	//
 	// IMPLEMENT
 	// use BackendID
-	shard     int
-	ID        string
-	Namespace string
-	Name      string
-	Port      string
-	Endpoints []*Endpoint
-	EpNaming  EndpointNaming
-	Paths     []*BackendPath
-	PathsMap  *HostsMap
+	shard            int
+	ID               string
+	Namespace        string
+	Name             string
+	Port             string
+	Endpoints        []*Endpoint
+	EpNaming         EndpointNaming
+	EpCookieStrategy EndpointCookieStrategy
+	Paths            []*BackendPath
+	PathsMap         *HostsMap
 	//
 	// per backend config
 	//

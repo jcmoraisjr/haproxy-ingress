@@ -202,6 +202,7 @@ The table below describes all supported configuration keys.
 | [`session-cookie-preserve`](#affinity)               | [true\|false]                           | Backend | `false`            |
 | [`session-cookie-shared`](#affinity)                 | [true\|false]                           | Backend | `false`            |
 | [`session-cookie-strategy`](#affinity)               | [insert\|prefix\|rewrite]               | Backend |                    |
+| [`session-cookie-value-strategy`](#affinity)         | [server-name\|pod-uid]                  | Backend | `server-name`      |
 | [`slots-min-free`](#dynamic-scaling)                 | minimum number of free slots            | Backend | `0`                |
 | [`ssl-cipher-suites`](#ssl-ciphers)                  | colon-separated list                    | Host    | [see description](#ssl-ciphers) |
 | [`ssl-cipher-suites-backend`](#ssl-ciphers)          | colon-separated list                    | Backend | [see description](#ssl-ciphers) |
@@ -341,16 +342,17 @@ See also:
 
 ## Affinity
 
-| Configuration key           | Scope     | Default                     | Since |
-|-----------------------------|-----------|-----------------------------|-------|
-| `affinity`                  | `Backend` | `false`                     |       |
-| `cookie-key`                | `Global`  | `Ingress`                   |       |
-| `session-cookie-dynamic`    | `Backend` | `true`                      |       |
-| `session-cookie-keywords`   | `Backend` | `indirect nocache httponly` | v0.11 |
-| `session-cookie-name`       | `Backend` | `INGRESSCOOKIE`             |       |
-| `session-cookie-preserve`   | `Backend` | `false`                     | v0.12 |
-| `session-cookie-shared`     | `Backend` | `false`                     | v0.8  |
-| `session-cookie-strategy`   | `Backend` | `insert`                    |       |
+| Configuration key               | Scope     | Default                     | Since |
+|---------------------------------|-----------|-----------------------------|-------|
+| `affinity`                      | `Backend` | `false`                     |       |
+| `cookie-key`                    | `Global`  | `Ingress`                   |       |
+| `session-cookie-dynamic`        | `Backend` | `true`                      |       |
+| `session-cookie-keywords`       | `Backend` | `indirect nocache httponly` | v0.11 |
+| `session-cookie-name`           | `Backend` | `INGRESSCOOKIE`             |       |
+| `session-cookie-preserve`       | `Backend` | `false`                     | v0.12 |
+| `session-cookie-shared`         | `Backend` | `false`                     | v0.8  |
+| `session-cookie-strategy`       | `Backend` | `insert`                    |       |
+| `session-cookie-value-strategy` | `Backend` | `server-name`               | v0.12 |
 
 Configure if HAProxy should maintain client requests to the same backend server.
 
@@ -362,6 +364,7 @@ Configure if HAProxy should maintain client requests to the same backend server.
 * `session-cookie-preserve`: indicates whether the session cookie will be set to `preserve` mode. If this mode is enabled, haproxy will allow backend servers to use a `Set-Cookie` HTTP header to emit their own persistence cookie value, meaning the backend servers have knowledge of which cookie value should route to which server. Since the cookie value is tightly coupled with a particular backend server in this scenario, this mode will cause dynamic updating to understand that it must keep the same cookie value associated with the same backend server. If this is disabled, dynamic updating is free to assign servers in a way that can make their cookie value no longer matching.
 * `session-cookie-shared`: defines if the persistence cookie should be shared between all domains that uses this backend. Defaults to `false`. If `true` the `Set-Cookie` response will declare all the domains that shares this backend, indicating to the HTTP agent that all of them should use the same backend server.
 * `session-cookie-strategy`: the cookie strategy to use (insert, rewrite, prefix). `insert` is the default value if not declared.
+* `session-cookie-value-strategy`: the strategy to use to calculate the cookie value of a server (`server-name`, `pod-uid`). `server-name` is the default if not declared, and indicates that the cookie will be set based on the name defined in `backend-server-naming`. `pod-uid` indicates that the cookie will be set to the `UID` of the pod running the target server.
 
 Note for `dynamic-scaling` users only, v0.5 or older: the hash of the server is built based on it's name.
 When the slots are scaled down, the remaining servers might change it's server name on

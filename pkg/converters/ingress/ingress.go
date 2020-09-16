@@ -615,7 +615,19 @@ func (c *converter) syncBackendEndpointCookies(backend *hatypes.Backend) {
 	cookieAffinity := backend.CookieAffinity()
 	for _, ep := range backend.Endpoints {
 		if cookieAffinity {
-			ep.CookieValue = ep.Name
+			switch backend.EpCookieStrategy {
+			default:
+				ep.CookieValue = ep.Name
+			case hatypes.EpCookiePodUid:
+				if ep.TargetRef != "" {
+					pod, err := c.cache.GetPod(ep.TargetRef)
+					if err == nil {
+						ep.CookieValue = fmt.Sprintf("%v", pod.UID)
+					} else {
+						c.logger.Error("error calculating cookie value for pod %s: %v", ep.TargetRef, err)
+					}
+				}
+			}
 		}
 	}
 }

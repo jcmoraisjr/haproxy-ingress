@@ -68,6 +68,19 @@ func (c *updater) buildBackendAffinity(d *backData) {
 		// just warn, no error, for keeping backwards compatibility where "preserve" may have been used in the "keywords" section
 		c.logger.Warn("session-cookie-keywords contains 'preserve'; consider using 'session-cookie-preserve' instead for better dynamic update cookie persistence")
 	}
+
+	cookieStrategy := d.mapper.Get(ingtypes.BackSessionCookieValue).Value
+	switch cookieStrategy {
+	case "pod-uid":
+		d.backend.EpCookieStrategy = hatypes.EpCookiePodUid
+	case "server-name":
+		d.backend.EpCookieStrategy = hatypes.EpCookieName
+	default:
+		c.logger.Warn("invalid session-cookie-value-strategy '%s', using 'server-name' instead", cookieStrategy)
+		fallthrough
+	case "":
+		d.backend.EpCookieStrategy = hatypes.EpCookieName
+	}
 }
 
 func (c *updater) buildBackendAuthHTTP(d *backData) {
