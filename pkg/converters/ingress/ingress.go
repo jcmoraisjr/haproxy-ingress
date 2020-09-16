@@ -169,6 +169,7 @@ func (c *converter) syncFull() {
 		c.syncIngress(ing)
 	}
 	c.fullSyncAnnotations()
+	c.syncEndpointCookies()
 }
 
 func (c *converter) syncPartial() {
@@ -281,6 +282,7 @@ func (c *converter) syncPartial() {
 		c.syncIngress(ing)
 	}
 	c.partialSyncAnnotations()
+	c.syncChangedEndpointCookies()
 }
 
 // trackAddedIngress add tracking hostnames and backends to new ingress objects
@@ -433,6 +435,18 @@ func (c *converter) syncIngress(ing *networking.Ingress) {
 				c.logger.Warn("skipping cert signer of ingress '%s': missing secret name", fullIngName)
 			}
 		}
+	}
+}
+
+func (c *converter) syncEndpointCookies() {
+	for _, backend := range c.haproxy.Backends().Items() {
+		c.syncBackendEndpointCookies(backend)
+	}
+}
+
+func (c *converter) syncChangedEndpointCookies() {
+	for _, backend := range c.haproxy.Backends().ItemsAdd() {
+		c.syncBackendEndpointCookies(backend)
 	}
 }
 
@@ -595,6 +609,15 @@ func (c *converter) addBackend(source *annotations.Source, hostname, uri, fullSv
 		}
 	}
 	return backend, nil
+}
+
+func (c *converter) syncBackendEndpointCookies(backend *hatypes.Backend) {
+	cookieAffinity := backend.CookieAffinity()
+	for _, ep := range backend.Endpoints {
+		if cookieAffinity {
+			ep.CookieValue = ep.Name
+		}
+	}
 }
 
 func (c *converter) addTLS(source *annotations.Source, hostname, secretName string) convtypes.CrtFile {

@@ -63,6 +63,10 @@ func (b *Backend) AcquireEndpoint(ip string, port int, targetRef string) *Endpoi
 func (b *Backend) AddEmptyEndpoint() *Endpoint {
 	endpoint := b.addEndpoint("127.0.0.1", 1023, "")
 	endpoint.Enabled = false
+	// we need to set the cookie value to something here so that when dynamic
+	// update enables these endpoints without a reload, they will use cookie
+	// affinity (if it's enabled).
+	endpoint.CookieValue = endpoint.Name
 	return endpoint
 }
 

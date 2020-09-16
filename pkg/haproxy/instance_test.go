@@ -54,6 +54,9 @@ func TestBackends(t *testing.T) {
 				b.Cookie.Name = "ingress-controller"
 				b.Cookie.Strategy = "insert"
 				b.Cookie.Keywords = "indirect nocache httponly"
+				e1 := *endpointS1
+				b.Endpoints = []*hatypes.Endpoint{&e1}
+				b.Endpoints[0].CookieValue = "s1"
 			},
 			srvsuffix: "cookie s1",
 			expected: `
