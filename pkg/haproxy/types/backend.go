@@ -65,7 +65,8 @@ func (b *Backend) AddEmptyEndpoint() *Endpoint {
 	endpoint.Enabled = false
 	// we need to set the cookie value to something here so that when dynamic
 	// update enables these endpoints without a reload, they will use cookie
-	// affinity (if it's enabled).
+	// affinity (if it's enabled). This happens when session-cookie-preserve
+	// is false.
 	endpoint.CookieValue = endpoint.Name
 	return endpoint
 }

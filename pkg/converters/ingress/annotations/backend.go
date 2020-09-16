@@ -61,7 +61,13 @@ func (c *updater) buildBackendAffinity(d *backData) {
 	}
 	d.backend.Cookie.Keywords = keywords
 	d.backend.Cookie.Dynamic = d.mapper.Get(ingtypes.BackSessionCookieDynamic).Bool()
+	d.backend.Cookie.Preserve = d.mapper.Get(ingtypes.BackSessionCookiePreserve).Bool()
 	d.backend.Cookie.Shared = d.mapper.Get(ingtypes.BackSessionCookieShared).Bool()
+
+	if strings.Contains(d.backend.Cookie.Keywords, "preserve") {
+		// just warn, no error, for keeping backwards compatibility where "preserve" may have been used in the "keywords" section
+		c.logger.Warn("session-cookie-keywords contains 'preserve'; consider using 'session-cookie-preserve' instead for better dynamic update cookie persistence")
+	}
 }
 
 func (c *updater) buildBackendAuthHTTP(d *backData) {

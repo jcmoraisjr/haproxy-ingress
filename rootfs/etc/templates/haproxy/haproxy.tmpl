@@ -503,6 +503,7 @@ backend {{ $backend.ID }}
 {{- if $backend.Cookie.Name }}
 {{- $cookie := $backend.Cookie }}
     cookie {{ $cookie.Name }} {{ $cookie.Strategy }}
+        {{- if $cookie.Preserve }} preserve{{ end }}
         {{- if $cookie.Keywords }} {{ $cookie.Keywords }}{{ end }}
         {{- if $cookie.Shared }}
             {{- range $hostname := $backend.Hostnames }} domain {{ $hostname }}{{ end }}

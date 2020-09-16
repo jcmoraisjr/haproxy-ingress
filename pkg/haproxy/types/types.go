@@ -666,6 +666,7 @@ type UserlistConfig struct {
 type Cookie struct {
 	Name     string
 	Dynamic  bool
+	Preserve bool
 	Shared   bool
 	Strategy string
 	Keywords string

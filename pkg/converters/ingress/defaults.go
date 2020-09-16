@@ -52,6 +52,7 @@ func createDefaults() map[string]string {
 		types.BackHSTSPreload:            "false",
 		types.BackInitialWeight:          "1",
 		types.BackSessionCookieDynamic:   "true",
+		types.BackSessionCookiePreserve:  "false",
 		types.BackSSLRedirect:            "true",
 		types.BackSSLCipherSuitesBackend: defaultSSLCipherSuites,
 		types.BackSSLCiphersBackend:      defaultSSLCiphers,

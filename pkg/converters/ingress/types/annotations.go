@@ -119,6 +119,7 @@ const (
 	BackSessionCookieDynamic   = "session-cookie-dynamic"
 	BackSessionCookieKeywords  = "session-cookie-keywords"
 	BackSessionCookieName      = "session-cookie-name"
+	BackSessionCookiePreserve  = "session-cookie-preserve"
 	BackSessionCookieShared    = "session-cookie-shared"
 	BackSessionCookieStrategy  = "session-cookie-strategy"
 	BackSSLCipherSuitesBackend = "ssl-cipher-suites-backend"

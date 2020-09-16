@@ -632,6 +632,21 @@ d1.local/ path01`,
     server s32 172.17.0.132:8080 weight 100
     server s33 172.17.0.133:8080 weight 100`,
 		},
+		// simulates a config where the cookie "preserve" option is used
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.Cookie.Name = "serverId"
+				b.Cookie.Strategy = "insert"
+				b.Cookie.Preserve = true
+				b.Cookie.Keywords = "nocache"
+				ep1 := *endpointS1
+				b.Endpoints = []*hatypes.Endpoint{&ep1}
+				b.Endpoints[0].CookieValue = "web-abcde"
+			},
+			srvsuffix: "cookie web-abcde",
+			expected: `
+    cookie serverId insert preserve nocache`,
+		},
 	}
 	for _, test := range testCases {
 		c := setup(t)
