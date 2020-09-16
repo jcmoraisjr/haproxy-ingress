@@ -100,6 +100,11 @@ func (b *Backend) SortEndpoints() {
 	})
 }
 
+// CookieAffinity ...
+func (b *Backend) CookieAffinity() bool {
+	return !b.ModeTCP && b.Cookie.Name != "" && !b.Cookie.Dynamic
+}
+
 // FindBackendPath ...
 func (b *Backend) FindBackendPath(link PathLink) *BackendPath {
 	// IMPLEMENT change to a map

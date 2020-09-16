@@ -607,7 +607,7 @@ backend {{ $backend.ID }}
     server {{ $ep.Name }} {{ $ep.IP }}:{{ $ep.Port }}
         {{- if not $ep.Enabled }} disabled{{ end }}
         {{- "" }} weight {{ $ep.Weight }}
-        {{- if and (not $backend.ModeTCP) ($backend.Cookie.Name) (not $backend.Cookie.Dynamic) }} cookie {{ $ep.Name }}{{ end }}
+        {{- if $backend.CookieAffinity }} cookie {{ $ep.Name }}{{ end }}
         {{- template "backend" map $backend }}
 {{- end }}
 {{- end }}
