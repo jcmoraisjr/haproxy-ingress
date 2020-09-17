@@ -38,15 +38,15 @@ type InstanceOptions struct {
 	AcmeSigner        acme.Signer
 	AcmeQueue         utils.Queue
 	BackendShards     int
-	HAProxyCmd        string
 	HAProxyCfgDir     string
 	HAProxyMapsDir    string
 	LeaderElector     types.LeaderElector
 	MaxOldConfigFiles int
 	Metrics           types.Metrics
-	ReloadCmd         string
 	ReloadStrategy    string
 	ValidateConfig    bool
+	// TODO Fake is used to skip real haproxy calls. Use a mock instead.
+	fake bool
 }
 
 // Instance ...
@@ -251,8 +251,8 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 		return
 	}
 	timer.Tick("write_maps")
-	if i.options.HAProxyCmd != "" {
-		// TODO update tests and remove `if cmd!=""` above
+	if !i.options.fake {
+		// TODO update tests and remove `if !fake` above
 		i.logChanged()
 	}
 	updater := i.newDynUpdater()
@@ -408,11 +408,12 @@ func (i *instance) updateCertExpiring() {
 }
 
 func (i *instance) check() error {
-	if i.options.HAProxyCmd == "" {
+	if i.options.fake {
 		i.logger.Info("(test) check was skipped")
 		return nil
 	}
-	out, err := exec.Command(i.options.HAProxyCmd, "-c", "-f", i.options.HAProxyCfgDir).CombinedOutput()
+	// TODO Move all magic strings to a single place
+	out, err := exec.Command("haproxy", "-c", "-f", i.options.HAProxyCfgDir).CombinedOutput()
 	outstr := string(out)
 	if err != nil {
 		return fmt.Errorf(outstr)
@@ -421,11 +422,12 @@ func (i *instance) check() error {
 }
 
 func (i *instance) reload() error {
-	if i.options.ReloadCmd == "" {
+	if i.options.fake {
 		i.logger.Info("(test) reload was skipped")
 		return nil
 	}
-	out, err := exec.Command(i.options.ReloadCmd, i.options.ReloadStrategy, i.options.HAProxyCfgDir).CombinedOutput()
+	// TODO Move all magic strings to a single place
+	out, err := exec.Command("/haproxy-reload.sh", i.options.ReloadStrategy, i.options.HAProxyCfgDir).CombinedOutput()
 	outstr := string(out)
 	if len(outstr) > 0 {
 		i.logger.Warn("output from haproxy:\n%v", outstr)

@@ -3050,6 +3050,8 @@ func setupOptions(options testOptions) *testConfig {
 		HAProxyMapsDir: tempdir,
 		Metrics:        helper_test.NewMetricsMock(),
 		BackendShards:  options.shardCount,
+		//
+		fake: true,
 	}).(*instance)
 	if err := instance.haproxyTmpl.NewTemplate(
 		"haproxy.tmpl",

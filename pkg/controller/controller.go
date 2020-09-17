@@ -121,8 +121,6 @@ func (hc *HAProxyController) configController() {
 		)
 	}
 	instanceOptions := haproxy.InstanceOptions{
-		HAProxyCmd:        "haproxy",
-		ReloadCmd:         "/haproxy-reload.sh",
 		HAProxyCfgDir:     "/etc/haproxy",
 		HAProxyMapsDir:    ingress.DefaultMapsDirectory,
 		BackendShards:     hc.cfg.BackendShards,
