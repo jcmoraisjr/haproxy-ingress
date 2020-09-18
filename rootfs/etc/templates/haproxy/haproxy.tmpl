@@ -525,10 +525,10 @@ backend {{ $backend.ID }}
 {{- if $rewrite }}
 {{- range $path := $rewriteCfg.Paths.Items }}
 {{- if eq $rewrite "/" }}
-    http-request replace-uri ^{{ $path.Path }}/?(.*)$     {{ $rewrite }}\1
+    http-request replace-path ^{{ $path.Path }}/?(.*)$     {{ $rewrite }}\1
         {{- if $needACL }}     if { var(txn.pathID) {{ $path.ID }} }{{ end }}
 {{- else }}
-    http-request replace-uri ^{{ $path.Path }}(.*)$       {{ $rewrite }}{{ if hasSuffix $path.Path "/" }}/{{ end }}\1
+    http-request replace-path ^{{ $path.Path }}(.*)$       {{ $rewrite }}{{ if hasSuffix $path.Path "/" }}/{{ end }}\1
         {{- if $needACL }}     if { var(txn.pathID) {{ $path.ID }} }{{ end }}
 {{- end }}
 {{- end }}
