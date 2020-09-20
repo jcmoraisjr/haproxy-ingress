@@ -77,6 +77,7 @@ func createDefaults() map[string]string {
 		types.GlobalHealthzPort:                  "10253",
 		types.GlobalHTTPPort:                     "80",
 		types.GlobalHTTPSPort:                    "443",
+		types.GlobalMasterExitOnFailure:          "true",
 		types.GlobalMaxConnections:               "2000",
 		types.GlobalModsecurityTimeoutConnect:    "5s",
 		types.GlobalModsecurityTimeoutHello:      "100ms",

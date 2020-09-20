@@ -147,8 +147,10 @@ The table below describes all supported configuration keys.
 | [`drain-support`](#drain-support)                    | [true\|false]                           | Global  | `false`            |
 | [`drain-support-redispatch`](#drain-support)         | [true\|false]                           | Global  | `true`             |
 | [`dynamic-scaling`](#dynamic-scaling)                | [true\|false]                           | Backend | `true`             |
+| [`external-has-lua`](#external)                      | [true\|false]                           | Global  | `false`            |
 | [`forwardfor`](#forwardfor)                          | [add\|ignore\|ifmissing]                | Global  | `add`              |
 | [`fronting-proxy-port`](#fronting-proxy-port)        | port number                             | Global  | 0 (do not listen)  |
+| [`groupname`](#security)                             | haproxy group name                      | Global  | `haproxy`          |
 | [`headers`](#headers)                                | multiline header:value pair             | Backend |                    |
 | [`health-check-addr`](#health-check)                 | address for health checks               | Backend |                    |
 | [`health-check-fall-count`](#health-check)           | number of failures                      | Backend |                    |
@@ -171,6 +173,7 @@ The table below describes all supported configuration keys.
 | [`limit-rps`](#limit)                                | rate per second                         | Backend |                    |
 | [`limit-whitelist`](#limit)                          | cidr list                               | Backend |                    |
 | [`load-server-state`](#load-server-state) (experimental) |[true\|false]                        | Global  | `false`            |
+| [`master-exit-on-failure`](#master-worker)           | [true\|false]                           | Global  | `true`             |
 | [`max-connections`](#connection)                     | number                                  | Global  | `2000`             |
 | [`maxconn-server`](#connection)                      | qty                                     | Backend |                    |
 | [`maxqueue-server`](#connection)                     | qty                                     | Backend |                    |
@@ -247,6 +250,7 @@ The table below describes all supported configuration keys.
 | [`use-htx`](#use-htx)                                | [true\|false]                           | Global  | `false`            |
 | [`use-proxy-protocol`](#proxy-protocol)              | [true\|false]                           | Global  | `false`            |
 | [`use-resolver`](#dns-resolvers)                     | resolver name                           | Backend |                    |
+| [`username`](#security)                              | haproxy user name                       | Global  | `haproxy`          |
 | [`var-namespace`](#var-namespace)                    | [true\|false]                           | Host    | `false`            |
 | [`waf`](#waf)                                        | "modsecurity"                           | Backend |                    |
 | [`waf-mode`](#waf)                                   | [deny\|detect]                          | Backend | `deny` (if waf is set) |
@@ -935,6 +939,26 @@ See also:
 
 ---
 
+## External
+
+| Configuration key  | Scope    | Default | Since |
+|--------------------|----------|---------|-------|
+| `external-has-lua` | `Global` | `false` | v0.12 |
+
+Defines features that can be found in the external haproxy deployment, if an
+external deployment is used. These options have no effect if using the embedded
+haproxy.
+
+* `external-has-lua`: Define as true if the external haproxy has Lua libraries
+installed in the operating system. Currently only [OAuth](#oauth) needs Lua
+socket installed and will not work if `external-has-lua` is not enabled.
+
+See also:
+
+* [OAuth](#oauth) configuration keys.
+
+---
+
 ## Forwardfor
 
 | Configuration key | Scope     | Default | Since |
@@ -1174,6 +1198,23 @@ See also:
 
 ---
 
+## Master-worker
+
+| Configuration key        | Scope    | Default | Since |
+|--------------------------|----------|---------|-------|
+| `master-exit-on-failure` | `Global` | `true`  | v0.12 |
+
+Configures master-worker related options.
+
+* `master-exit-on-failure`: If `true`, kill all the remaining workers and exit
+from master in the case of an unexpected failure of a worker, eg a segfault.
+
+See also:
+
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-master-worker
+
+---
+
 ## Modsecurity
 
 | Configuration key                | Scope    | Default | Since |
@@ -1293,8 +1334,13 @@ on an ingress resource without oauth annotations. In other words, if two ingress
 the same domain but only one has oauth annotations - the one that has at least the `oauth2_proxy`
 service - all paths from that domain will be protected.
 
+{{% alert title="Note" %}}
+OAuth2 needs [`external-has-lua`](#external) enabled if running on an external haproxy deployment.
+{{% /alert %}}
+
 See also:
 
+* [`external-has-lua`](#external) configuration key.
 * [example](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/auth/oauth) page.
 
 ---
@@ -1426,15 +1472,26 @@ See also:
 
 | Configuration key  | Scope    | Default | Since |
 |--------------------|----------|---------|-------|
+| `groupname`        | `Global` |         | v0.12 |
 | `use-chroot`       | `Global` | `false` | v0.9  |
 | `use-haproxy-user` | `Global` | `false` | v0.9  |
+| `username`         | `Global` |         | v0.12 |
 
 Change security options.
 
-* `use-chroot`: If `true`, configures haproxy to perform a `chroot()` in the empty and non-writable directory `/var/empty` during the startup process, just before it drops its own privileges. Only root can perform a `chroot()`, so HAProxy Ingress container should start as UID `0` if this option is configured as `true`. See the note below about `use-chroot` option limitations.
-* `use-haproxy-user`: Defines if the haproxy's process should be changed to `haproxy`, UID `1001`. The default value `false` leaves haproxy running as root. Note that even running as root, haproxy always drops its own privileges before start its event loop.
+* `username` and `groupname`: Changes the user and group names used to run haproxy as non root. The default value is an empty string, which means leave haproxy running as root. Note that even running as root, haproxy always drops its own privileges before start its event loop. Both options should be declared to the configuration take effect. Note that this configuration means "running haproxy as non root", it's only useful when the haproxy container starts as root.
+* `use-chroot`: If `true`, configures haproxy to perform a `chroot()` in the empty and non-writable directory `/var/empty` during the startup process, just before it drops its own privileges. Only root can perform a `chroot()`, so HAProxy Ingress container should start as UID `0` if this option is configured as `true`. See **Using chroot()** section below.
+* `use-haproxy-user`: If `true`, configures `username` and `groupname` configuration keys as `haproxy`. See `username` and `groupname` above. Note that this user and group exists in the embedded haproxy, and should exist in the external haproxy if used. In the case of a conflict, `username` and `groupname` declaration will have priority and `use-haproxy-user` will be ignored. If `false`, the default value, user and group names will not be changed.
 
-In the default configuration, HAProxy Ingress container starts as root. Since v0.9 it's also possible to configure the container to start as `haproxy` user, UID `1001`. Read the [Security considerations](http://cbonte.github.io/haproxy-dconv/1.9/management.html#13) from HAProxy doc before change the starting user. The starting user can be changed in the deployment or daemonset's pod template using the following configuration:
+**Starting as non root**
+
+In the default configuration HAProxy Ingress container starts as root. Since v0.9 it's also possible to configure the container to start as `haproxy` user, UID `1001`.
+
+If using the embedded haproxy, read the [Security considerations](http://cbonte.github.io/haproxy-dconv/2.0/management.html#13) from HAProxy doc before change the starting user.
+
+If using an external haproxy, configures the pod's securityContext (instead of the container's one) which will make Kubernetes create the shared file system with write access, so the controller can create and update configuration, maps and certificate files.
+
+The starting user can be changed in the deployment or daemonset's pod template using the following configuration:
 
 ```yaml
 ...
@@ -1445,6 +1502,10 @@ In the default configuration, HAProxy Ingress container starts as root. Since v0
 ```
 
 Note that ports below 1024 cannot be bound if the container starts as non-root.
+
+**Using chroot()**
+
+Beware of some chroot limitations:
 
 {{% alert title="Note" %}}
 HAProxy does not have access to the file system after configure a `chroot()`. Unix sockets located outside the chroot directory are used in the following conditions:

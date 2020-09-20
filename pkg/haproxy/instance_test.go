@@ -804,7 +804,7 @@ func TestInstanceEmpty(t *testing.T) {
 	c.checkConfig(`
 global
     daemon
-    unix-bind user haproxy group haproxy mode 0600
+    unix-bind mode 0600
     stats socket /var/run/haproxy.sock level admin expose-fd listeners mode 600
     maxconn 2000
     hard-stop-after 15m
@@ -848,6 +848,84 @@ empty/ no`)
 	c.checkMap("_front_https_host__begin.map", `
 empty/ default_empty_8080`)
 
+	c.logger.CompareLogging(defaultLogging)
+}
+
+func TestInstanceEmptyExternal(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	c.config.global.External.IsExternal = true
+	c.config.global.Security.Username = "external"
+	c.config.global.Security.Groupname = "external"
+
+	c.config.Hosts().AcquireHost("empty").AddPath(c.config.Backends().AcquireBackend("default", "empty", "8080"), "/", hatypes.MatchBegin)
+	c.Update()
+
+	c.checkConfig(`
+global
+    master-worker
+    user external
+    group external
+    unix-bind user external group external mode 0600
+    stats socket /var/run/haproxy.sock level admin expose-fd listeners mode 600
+    maxconn 2000
+    hard-stop-after 15m
+    lua-load /etc/haproxy/lua/services.lua
+    ssl-dh-param-file /var/haproxy/tls/dhparam.pem
+    ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
+    ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
+    ssl-default-bind-options no-sslv3
+    ssl-default-server-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
+    ssl-default-server-ciphersuites TLS_AES_128_GCM_SHA256
+<<defaults>>
+backend default_empty_8080
+    mode http
+backend _error404
+    mode http
+    http-request use-service lua.send-404
+<<frontends-default>>
+<<support>>
+`)
+	c.logger.CompareLogging(defaultLogging)
+}
+
+func TestInstanceSecurity(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	c.config.global.Security.Username = "haproxy"
+	c.config.global.Security.Groupname = "haproxy"
+
+	c.config.Hosts().AcquireHost("empty").AddPath(c.config.Backends().AcquireBackend("default", "empty", "8080"), "/", hatypes.MatchBegin)
+	c.Update()
+
+	c.checkConfig(`
+global
+    daemon
+    user haproxy
+    group haproxy
+    unix-bind user haproxy group haproxy mode 0600
+    stats socket /var/run/haproxy.sock level admin expose-fd listeners mode 600
+    maxconn 2000
+    hard-stop-after 15m
+    lua-load /etc/haproxy/lua/auth-request.lua
+    lua-load /etc/haproxy/lua/services.lua
+    ssl-dh-param-file /var/haproxy/tls/dhparam.pem
+    ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
+    ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
+    ssl-default-bind-options no-sslv3
+    ssl-default-server-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
+    ssl-default-server-ciphersuites TLS_AES_128_GCM_SHA256
+<<defaults>>
+backend default_empty_8080
+    mode http
+backend _error404
+    mode http
+    http-request use-service lua.send-404
+<<frontends-default>>
+<<support>>
+`)
 	c.logger.CompareLogging(defaultLogging)
 }
 
@@ -2293,7 +2371,7 @@ func TestInstanceSyslog(t *testing.T) {
 	c.checkConfig(`
 global
     daemon
-    unix-bind user haproxy group haproxy mode 0600
+    unix-bind mode 0600
     stats socket /var/run/haproxy.sock level admin expose-fd listeners mode 600
     maxconn 2000
     hard-stop-after 15m
@@ -3097,6 +3175,7 @@ func (c *testConfig) configGlobal(global *hatypes.Global) {
 	global.Bind.HTTPSBind = ":443"
 	global.Cookie.Key = "Ingress"
 	global.Healthz.Port = 10253
+	global.Master.ExitOnFailure = true
 	global.MatchOrder = hatypes.DefaultMatchOrder
 	global.MaxConn = 2000
 	global.SSL.ALPN = "h2,http/1.1"
@@ -3208,7 +3287,7 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
 	replace := map[string]string{
 		"<<global>>": `global
     daemon
-    unix-bind user haproxy group haproxy mode 0600
+    unix-bind mode 0600
     stats socket /var/run/haproxy.sock level admin expose-fd listeners mode 600
     maxconn 2000
     hard-stop-after 15m

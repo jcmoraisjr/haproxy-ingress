@@ -567,6 +567,11 @@ func (c *updater) buildBackendOAuth(d *backData) {
 		c.logger.Warn("ignoring invalid oauth implementation '%s' on %v", oauth, oauth.Source)
 		return
 	}
+	external := c.haproxy.Global().External
+	if external.IsExternal && !external.HasLua {
+		c.logger.Warn("oauth2_proxy on %v needs Lua socket, install Lua libraries and enable 'external-has-lua' global config", oauth.Source)
+		return
+	}
 	uriPrefix := "/oauth2"
 	headers := []string{"X-Auth-Request-Email:auth_response_email"}
 	if prefix := d.mapper.Get(ingtypes.BackOAuthURIPrefix); prefix.Source != nil {
