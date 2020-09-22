@@ -1262,7 +1262,9 @@ func TestOAuth(t *testing.T) {
 	for i, test := range testCases {
 		c := setup(t)
 		d := c.createBackendData("default/app", source, test.ann, test.annDefault)
-		c.haproxy.Global().External.IsExternal = test.external
+		if test.external {
+			c.haproxy.Global().External.MasterSocket = "/tmp/master.sock"
+		}
 		c.haproxy.Global().External.HasLua = test.haslua
 		if test.backend != "" {
 			b := strings.Split(test.backend, ":")

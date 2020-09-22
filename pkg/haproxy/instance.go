@@ -279,7 +279,7 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 				timer.Tick("validate_cfg")
 				i.metrics.UpdateSuccessful(err == nil)
 			}
-			i.logger.Info("HAProxy updated without needing to reload. Commands sent: %d", updater.cmdCnt)
+			i.logger.Info("haproxy updated without needing to reload. Commands sent: %d", updater.cmdCnt)
 			i.metrics.IncUpdateDynamic()
 		} else {
 			i.logger.Info("old and new configurations match")
@@ -292,11 +292,16 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	if err := i.reload(); err != nil {
 		i.logger.Error("error reloading server:\n%v", err)
 		i.metrics.UpdateSuccessful(false)
+		timer.Tick("reload_haproxy")
 		return
 	}
 	i.up = true
 	i.metrics.UpdateSuccessful(true)
-	i.logger.Info("HAProxy successfully reloaded")
+	if i.config.Global().External.IsExternal() {
+		i.logger.Info("haproxy successfully reloaded (external)")
+	} else {
+		i.logger.Info("haproxy successfully reloaded (embedded)")
+	}
 	timer.Tick("reload_haproxy")
 }
 
@@ -412,11 +417,15 @@ func (i *instance) check() error {
 		i.logger.Info("(test) check was skipped")
 		return nil
 	}
-	// TODO Move all magic strings to a single place
-	out, err := exec.Command("haproxy", "-c", "-f", i.options.HAProxyCfgDir).CombinedOutput()
-	outstr := string(out)
-	if err != nil {
-		return fmt.Errorf(outstr)
+	if i.config.Global().External.IsExternal() {
+		// TODO check config on remote haproxy
+	} else {
+		// TODO Move all magic strings to a single place
+		out, err := exec.Command("haproxy", "-c", "-f", i.options.HAProxyCfgDir).CombinedOutput()
+		outstr := string(out)
+		if err != nil {
+			return fmt.Errorf(outstr)
+		}
 	}
 	return nil
 }
@@ -426,14 +435,33 @@ func (i *instance) reload() error {
 		i.logger.Info("(test) reload was skipped")
 		return nil
 	}
+	if i.config.Global().External.IsExternal() {
+		return i.reloadExternal()
+	}
+	return i.reloadEmbedded()
+}
+
+func (i *instance) reloadEmbedded() error {
 	// TODO Move all magic strings to a single place
 	out, err := exec.Command("/haproxy-reload.sh", i.options.ReloadStrategy, i.options.HAProxyCfgDir).CombinedOutput()
 	outstr := string(out)
 	if len(outstr) > 0 {
 		i.logger.Warn("output from haproxy:\n%v", outstr)
 	}
+	return err
+}
+
+func (i *instance) reloadExternal() error {
+	socket := i.config.Global().External.MasterSocket
+	if _, err := hautils.HAProxyCommand(socket, nil, "reload"); err != nil {
+		return fmt.Errorf("error sending reload to master socket: %w", err)
+	}
+	out, err := hautils.HAProxyProcs(socket)
 	if err != nil {
-		return err
+		return fmt.Errorf("error reading procs from master socket: %w", err)
+	}
+	if len(out.Workers) == 0 {
+		return fmt.Errorf("external haproxy was not successfully reloaded")
 	}
 	return nil
 }

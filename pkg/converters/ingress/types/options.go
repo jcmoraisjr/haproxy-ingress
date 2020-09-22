@@ -26,6 +26,7 @@ type ConverterOptions struct {
 	Logger           types.Logger
 	Cache            convtypes.Cache
 	Tracker          convtypes.Tracker
+	MasterSocket     string
 	DefaultConfig    func() map[string]string
 	DefaultBackend   string
 	DefaultCrtSecret string

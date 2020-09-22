@@ -180,8 +180,8 @@ type DrainConfig struct {
 
 // ExternalConfig ...
 type ExternalConfig struct {
-	HasLua     bool
-	IsExternal bool
+	HasLua       bool
+	MasterSocket string
 }
 
 // HealthzConfig ...

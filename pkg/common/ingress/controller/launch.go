@@ -46,6 +46,10 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		ingressClass = flags.String("ingress-class", "",
 			`Name of the ingress class to route through this controller.`)
 
+		masterSocket = flags.String("master-socket", "",
+			`Defines the master CLI unix socket of an external HAProxy running in master-worker mode.
+		Defaults to use the embedded HAProxy if not declared.`)
+
 		configMap = flags.String("configmap", "",
 			`Name of the ConfigMap that contains the custom configuration to use`)
 
@@ -296,6 +300,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		UpdateStatus:              *updateStatus,
 		ElectionID:                *electionID,
 		Client:                    kubeClient,
+		MasterSocket:              *masterSocket,
 		AcmeServer:                *acmeServer,
 		AcmeCheckPeriod:           *acmeCheckPeriod,
 		AcmeElectionID:            *acmeElectionID,

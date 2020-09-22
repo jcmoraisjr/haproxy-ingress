@@ -39,6 +39,7 @@ type Updater interface {
 func NewUpdater(haproxy haproxy.Config, options *ingtypes.ConverterOptions) Updater {
 	return &updater{
 		haproxy: haproxy,
+		options: options,
 		logger:  options.Logger,
 		cache:   options.Cache,
 		tracker: options.Tracker,
@@ -48,6 +49,7 @@ func NewUpdater(haproxy haproxy.Config, options *ingtypes.ConverterOptions) Upda
 
 type updater struct {
 	haproxy haproxy.Config
+	options *ingtypes.ConverterOptions
 	logger  types.Logger
 	cache   convtypes.Cache
 	tracker convtypes.Tracker
@@ -106,12 +108,14 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 		global:   haproxyConfig.Global(),
 		mapper:   mapper,
 	}
+	// TODO Move all magic strings to a single place
 	d.global.AdminSocket = "/var/run/haproxy/admin.sock"
 	d.global.MaxConn = mapper.Get(ingtypes.GlobalMaxConnections).Int()
 	d.global.DrainSupport.Drain = mapper.Get(ingtypes.GlobalDrainSupport).Bool()
 	d.global.DrainSupport.Redispatch = mapper.Get(ingtypes.GlobalDrainSupportRedispatch).Bool()
 	d.global.Cookie.Key = mapper.Get(ingtypes.GlobalCookieKey).Value
 	d.global.External.HasLua = mapper.Get(ingtypes.GlobalExternalHasLua).Bool()
+	d.global.External.MasterSocket = c.options.MasterSocket
 	d.global.LoadServerState = mapper.Get(ingtypes.GlobalLoadServerState).Bool()
 	d.global.Master.ExitOnFailure = mapper.Get(ingtypes.GlobalMasterExitOnFailure).Bool()
 	d.global.StrictHost = mapper.Get(ingtypes.GlobalStrictHost).Bool()

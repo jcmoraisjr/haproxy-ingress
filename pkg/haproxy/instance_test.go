@@ -855,7 +855,7 @@ func TestInstanceEmptyExternal(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	c.config.global.External.IsExternal = true
+	c.config.global.External.MasterSocket = "/tmp/master.sock"
 	c.config.global.Security.Username = "external"
 	c.config.global.Security.Groupname = "external"
 
@@ -887,7 +887,9 @@ backend _error404
 <<frontends-default>>
 <<support>>
 `)
-	c.logger.CompareLogging(defaultLogging)
+	c.logger.CompareLogging(`
+INFO (test) reload was skipped
+INFO haproxy successfully reloaded (external)`)
 }
 
 func TestInstanceSecurity(t *testing.T) {
@@ -3266,7 +3268,7 @@ var endpointS41h = &hatypes.Endpoint{
 
 var defaultLogging = `
 INFO (test) reload was skipped
-INFO HAProxy successfully reloaded`
+INFO haproxy successfully reloaded (embedded)`
 
 func _yamlMarshal(in interface{}) string {
 	out, _ := yaml.Marshal(in)

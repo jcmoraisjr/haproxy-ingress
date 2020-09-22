@@ -956,6 +956,7 @@ socket installed and will not work if `external-has-lua` is not enabled.
 See also:
 
 * [OAuth](#oauth) configuration keys.
+* [master-socket]({{% relref "command-line#master-socket" %}}) command-line option
 
 ---
 
@@ -1212,6 +1213,7 @@ from master in the case of an unexpected failure of a worker, eg a segfault.
 See also:
 
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-master-worker
+* [master-socket]({{% relref "command-line#master-socket" %}}) command-line option
 
 ---
 

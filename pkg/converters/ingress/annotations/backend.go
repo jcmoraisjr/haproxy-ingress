@@ -568,7 +568,7 @@ func (c *updater) buildBackendOAuth(d *backData) {
 		return
 	}
 	external := c.haproxy.Global().External
-	if external.IsExternal && !external.HasLua {
+	if external.IsExternal() && !external.HasLua {
 		c.logger.Warn("oauth2_proxy on %v needs Lua socket, install Lua libraries and enable 'external-has-lua' global config", oauth.Source)
 		return
 	}

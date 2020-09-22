@@ -54,7 +54,8 @@ type GenericController struct {
 
 // Configuration contains all the settings required by an Ingress controller
 type Configuration struct {
-	Client clientset.Interface
+	Client       clientset.Interface
+	MasterSocket string
 
 	RateLimitUpdate  float32
 	ResyncPeriod     time.Duration
