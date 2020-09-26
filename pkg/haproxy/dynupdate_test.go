@@ -582,6 +582,150 @@ set server default_app_8080/srv002 weight 1`,
 			},
 			dynamic: true,
 		},
+		// 23 - test that we're able to update when a cookie value of acquired
+		// existing endpoint exactly matches and cookie affinity is enabled
+		// even with "preserve" cookie mode
+		{
+			doconfig1: func(c *testConfig) {
+				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
+				c.config.Backends().SetDefaultBackend(b1)
+				b2 := c.config.Backends().AcquireBackend("default", "app", "8080")
+				// some of these are unnecessary but the attempt is to have as
+				// realistic config as possible for a more reliable test
+				b2.Cookie.Name = "serverId"
+				b2.Cookie.Strategy = "insert"
+				b2.Cookie.Keywords = "nocache"
+				b2.Cookie.Dynamic = false
+				b2.Cookie.Preserve = true
+				b2.ModeTCP = false
+				b2.AcquireEndpoint("172.17.0.2", 8080, "").CookieValue = "5017b276-6886-4ae0-b75e-bd1fcb9b1e3b"
+				b2.AcquireEndpoint("172.17.0.3", 8080, "").CookieValue = "3e4c9c86-0fc4-4aa9-9d96-bf0c49797006"
+			},
+			doconfig2: func(c *testConfig) {
+				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
+				b1.Dynamic.DynUpdate = true
+				c.config.Backends().SetDefaultBackend(b1)
+				b2 := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b2.Dynamic.DynUpdate = true
+				// some of these are unnecessary but the attempt is to have as
+				// realistic config as possible for a more reliable test
+				b2.Cookie.Name = "serverId"
+				b2.Cookie.Strategy = "insert"
+				b2.Cookie.Keywords = "nocache"
+				b2.Cookie.Dynamic = false
+				b2.Cookie.Preserve = true
+				b2.ModeTCP = false
+				b2.AcquireEndpoint("172.17.0.2", 8080, "").CookieValue = "5017b276-6886-4ae0-b75e-bd1fcb9b1e3b"
+				// acquiring a different ip on srv002 should succeed dynamically
+				// because the cookie didn't change
+				b2.AcquireEndpoint("172.17.0.4", 8080, "").CookieValue = "3e4c9c86-0fc4-4aa9-9d96-bf0c49797006"
+			},
+			expected: []string{
+				"srv001:172.17.0.2:8080:1",
+				"srv002:172.17.0.4:8080:1",
+			},
+			dynamic: true,
+			cmd: `
+set server default_app_8080/srv002 addr 172.17.0.4 port 8080
+set server default_app_8080/srv002 state ready
+set server default_app_8080/srv002 weight 1
+`,
+			logging: `INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
+		},
+		// 24 - test that we're unable to update when a cookie value of acquired
+		// existing endpoint doesn't match and "preserve" cookie mode is enabled
+		{
+			doconfig1: func(c *testConfig) {
+				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
+				c.config.Backends().SetDefaultBackend(b1)
+				b2 := c.config.Backends().AcquireBackend("default", "app", "8080")
+				// some of these are unnecessary but the attempt is to have as
+				// realistic config as possible for a more reliable test
+				b2.Cookie.Name = "serverId"
+				b2.Cookie.Strategy = "insert"
+				b2.Cookie.Keywords = "nocache"
+				b2.Cookie.Dynamic = false
+				b2.Cookie.Preserve = true
+				b2.ModeTCP = false
+				b2.AcquireEndpoint("172.17.0.2", 8080, "").CookieValue = "5017b276-6886-4ae0-b75e-bd1fcb9b1e3b"
+				b2.AcquireEndpoint("172.17.0.3", 8080, "").CookieValue = "3e4c9c86-0fc4-4aa9-9d96-bf0c49797006"
+			},
+			doconfig2: func(c *testConfig) {
+				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
+				b1.Dynamic.DynUpdate = true
+				c.config.Backends().SetDefaultBackend(b1)
+				b2 := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b2.Dynamic.DynUpdate = true
+				// some of these are unnecessary but the attempt is to have as
+				// realistic config as possible for a more reliable test
+				b2.Cookie.Name = "serverId"
+				b2.Cookie.Strategy = "insert"
+				b2.Cookie.Keywords = "nocache"
+				b2.Cookie.Dynamic = false
+				b2.Cookie.Preserve = true
+				b2.ModeTCP = false
+				b2.AcquireEndpoint("172.17.0.2", 8080, "").CookieValue = "5017b276-6886-4ae0-b75e-bd1fcb9b1e3b"
+				// changing this cookie value should cause it to not be able to
+				// dynupdate
+				b2.AcquireEndpoint("172.17.0.4", 8080, "").CookieValue = "a7b4db22-8689-4b56-8f49-1c1638c30acd"
+			},
+			expected: []string{
+				"srv001:172.17.0.2:8080:1",
+				"srv002:172.17.0.4:8080:1",
+			},
+			dynamic: false,
+			cmd:     ``,
+			logging: ``,
+		},
+		// 25 - test that we're able to update when a cookie value of acquired
+		// existing endpoint doesn't match and "preserve" cookie mode is not enabled
+		// (eg. it doesn't care to preserve the cookie value, so still updates)
+		{
+			doconfig1: func(c *testConfig) {
+				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
+				c.config.Backends().SetDefaultBackend(b1)
+				b2 := c.config.Backends().AcquireBackend("default", "app", "8080")
+				// some of these are unnecessary but the attempt is to have as
+				// realistic config as possible for a more reliable test
+				b2.Cookie.Name = "serverId"
+				b2.Cookie.Strategy = "insert"
+				b2.Cookie.Keywords = "nocache"
+				b2.Cookie.Dynamic = false
+				b2.Cookie.Preserve = false
+				b2.ModeTCP = false
+				b2.AcquireEndpoint("172.17.0.2", 8080, "").CookieValue = "5017b276-6886-4ae0-b75e-bd1fcb9b1e3b"
+				b2.AcquireEndpoint("172.17.0.3", 8080, "").CookieValue = "3e4c9c86-0fc4-4aa9-9d96-bf0c49797006"
+			},
+			doconfig2: func(c *testConfig) {
+				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
+				b1.Dynamic.DynUpdate = true
+				c.config.Backends().SetDefaultBackend(b1)
+				b2 := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b2.Dynamic.DynUpdate = true
+				// some of these are unnecessary but the attempt is to have as
+				// realistic config as possible for a more reliable test
+				b2.Cookie.Name = "serverId"
+				b2.Cookie.Strategy = "insert"
+				b2.Cookie.Keywords = "nocache"
+				b2.Cookie.Dynamic = false
+				b2.Cookie.Preserve = false
+				b2.ModeTCP = false
+				b2.AcquireEndpoint("172.17.0.2", 8080, "").CookieValue = "5017b276-6886-4ae0-b75e-bd1fcb9b1e3b"
+				// we can still update even though the cookie changes below because
+				// "preserve" cookie strategy is disabled
+				b2.AcquireEndpoint("172.17.0.4", 8080, "").CookieValue = "a7b4db22-8689-4b56-8f49-1c1638c30acd"
+			},
+			expected: []string{
+				"srv001:172.17.0.2:8080:1",
+				"srv002:172.17.0.4:8080:1",
+			},
+			dynamic: true,
+			cmd: `
+set server default_app_8080/srv002 addr 172.17.0.4 port 8080
+set server default_app_8080/srv002 state ready
+set server default_app_8080/srv002 weight 1`,
+			logging: `INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)

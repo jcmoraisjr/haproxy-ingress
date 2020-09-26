@@ -55,13 +55,32 @@ func (c *updater) buildBackendAffinity(d *backData) {
 	}
 	d.backend.Cookie.Name = name
 	d.backend.Cookie.Strategy = strategyName
-	keywords := d.mapper.Get(ingtypes.BackSessionCookieKeywords).Value
-	if strategyName == "insert" && keywords == "" {
-		keywords = "indirect nocache httponly"
+	keywords := d.mapper.Get(ingtypes.BackSessionCookieKeywords)
+	keywordsValue := keywords.Value
+	if strategyName == "insert" && keywordsValue == "" {
+		keywordsValue = "indirect nocache httponly"
 	}
-	d.backend.Cookie.Keywords = keywords
+	if strings.Contains(keywordsValue, "preserve") {
+		// just warn, no error, for keeping backwards compatibility where "preserve" may have been used in the "keywords" section
+		c.logger.Warn("session-cookie-keywords on %s contains 'preserve'; consider using 'session-cookie-preserve' instead for better dynamic update cookie persistence", keywords.Source)
+	}
+	d.backend.Cookie.Keywords = keywordsValue
 	d.backend.Cookie.Dynamic = d.mapper.Get(ingtypes.BackSessionCookieDynamic).Bool()
+	d.backend.Cookie.Preserve = d.mapper.Get(ingtypes.BackSessionCookiePreserve).Bool()
 	d.backend.Cookie.Shared = d.mapper.Get(ingtypes.BackSessionCookieShared).Bool()
+
+	cookieStrategy := d.mapper.Get(ingtypes.BackSessionCookieValue)
+	switch cookieStrategy.Value {
+	case "pod-uid":
+		d.backend.EpCookieStrategy = hatypes.EpCookiePodUid
+	case "server-name":
+		d.backend.EpCookieStrategy = hatypes.EpCookieName
+	default:
+		c.logger.Warn("invalid session-cookie-value-strategy '%s' on %s, using 'server-name' instead", cookieStrategy.Value, cookieStrategy.Source)
+		fallthrough
+	case "":
+		d.backend.EpCookieStrategy = hatypes.EpCookieName
+	}
 }
 
 func (c *updater) buildBackendAuthHTTP(d *backData) {
