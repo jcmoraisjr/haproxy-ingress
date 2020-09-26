@@ -124,7 +124,7 @@ This is a mandatory argument used in the [deployment](https://github.com/jcmorai
 
 Since v0.11
 
-Disables in memory pod list and also pod watch for changes. Pod list and watch is used by `drain-support` option, which will not work if pod list is disabled. Blue/green also uses pod list if enabled, otherwise k8s api is called if needed. The default value is `false`, which means pods will be watched and listed in memory.
+Disables in memory pod list and also pod watch for changes. Pod list and watch is used by `drain-support` option, which will not work if pod list is disabled. Blue/green and `session-cookie-value-strategy` set to `pod-uid` also use pod list if enabled, otherwise k8s api is called if needed. The default value is `false`, which means pods will be watched and listed in memory.
 
 ---
 
