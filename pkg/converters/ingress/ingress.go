@@ -624,7 +624,8 @@ func (c *converter) syncBackendEndpointCookies(backend *hatypes.Backend) {
 					if err == nil {
 						ep.CookieValue = fmt.Sprintf("%v", pod.UID)
 					} else {
-						c.logger.Error("error calculating cookie value for pod %s: %v", ep.TargetRef, err)
+						ep.CookieValue = ep.Name
+						c.logger.Error("error calculating cookie value for pod %s; falling back to 'server-name' strategy: %v", ep.TargetRef, err)
 					}
 				}
 			}
