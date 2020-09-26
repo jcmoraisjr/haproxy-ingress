@@ -410,6 +410,15 @@ const (
 	EpTargetRef
 )
 
+// EndpointCookieStrategy ...
+type EndpointCookieStrategy int
+
+// ...
+const (
+	EpCookieName EndpointCookieStrategy = iota
+	EpCookiePodUid
+)
+
 // Backends ...
 type Backends struct {
 	items, itemsAdd, itemsDel map[string]*Backend
@@ -456,6 +465,7 @@ type Backend struct {
 	Cookie           Cookie
 	CustomConfig     []string
 	Dynamic          DynBackendConfig
+	EpCookieStrategy EndpointCookieStrategy
 	Headers          []*BackendHeader
 	HealthCheck      HealthCheck
 	Limit            BackendLimit
@@ -470,14 +480,15 @@ type Backend struct {
 
 // Endpoint ...
 type Endpoint struct {
-	Enabled   bool
-	Label     string
-	IP        string
-	Name      string
-	Port      int
-	Target    string
-	TargetRef string
-	Weight    int
+	Enabled     bool
+	Label       string
+	IP          string
+	Name        string
+	Port        int
+	Target      string
+	TargetRef   string
+	Weight      int
+	CookieValue string
 }
 
 // BlueGreenConfig ...
@@ -610,6 +621,7 @@ type UserlistConfig struct {
 type Cookie struct {
 	Name     string
 	Dynamic  bool
+	Preserve bool
 	Shared   bool
 	Strategy string
 	Keywords string

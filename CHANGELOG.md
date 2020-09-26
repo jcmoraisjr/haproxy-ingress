@@ -121,6 +121,12 @@ Docs:
 * Fixed typos [#580](https://github.com/jcmoraisjr/haproxy-ingress/pull/580) (Shagon94)
 * Typo on configuration keys docs [#585](https://github.com/jcmoraisjr/haproxy-ingress/pull/585) (RobertTheProfessional)
 
+### v0.11-beta.2
+
+Fixes and improvements since [v0.11-beta.1](#v011-beta1):
+
+* Fix rewrite target match [#668](https://github.com/jcmoraisjr/haproxy-ingress/pull/668) (jcmoraisjr)
+
 ## v0.10
 
 Highlights of this version:

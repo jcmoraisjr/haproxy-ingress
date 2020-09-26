@@ -121,6 +121,41 @@ func TestAffinity(t *testing.T) {
 			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "prefix", Keywords: "nocache"},
 			expLogging: "",
 		},
+		// 10 - test that warning is logged when using "preserve" in the keywords annotation instead of in "session-cookie-preserve" annotation
+		{
+			ann: map[string]string{
+				ingtypes.BackAffinity:              "cookie",
+				ingtypes.BackSessionCookieName:     "serverId",
+				ingtypes.BackSessionCookieStrategy: "insert",
+				ingtypes.BackSessionCookieDynamic:  "false",
+				ingtypes.BackSessionCookieKeywords: "preserve nocache",
+			},
+			expCookie:  hatypes.Cookie{Name: "serverId", Strategy: "insert", Dynamic: false, Preserve: false, Keywords: "preserve nocache"},
+			expLogging: "WARN session-cookie-keywords on ingress 'default/ing1' contains 'preserve'; consider using 'session-cookie-preserve' instead for better dynamic update cookie persistence",
+		},
+		// 11 - test "session-cookie-preserve" cookie annotation is applied
+		{
+			ann: map[string]string{
+				ingtypes.BackAffinity:              "cookie",
+				ingtypes.BackSessionCookieName:     "serverId",
+				ingtypes.BackSessionCookieStrategy: "insert",
+				ingtypes.BackSessionCookieDynamic:  "false",
+				ingtypes.BackSessionCookiePreserve: "true",
+				ingtypes.BackSessionCookieKeywords: "nocache",
+			},
+			expCookie:  hatypes.Cookie{Name: "serverId", Strategy: "insert", Dynamic: false, Preserve: true, Keywords: "nocache"},
+			expLogging: "",
+		},
+		// 12 - test that there is a fallback to using the "name" cookie value strategy
+		{
+			ann: map[string]string{
+				ingtypes.BackAffinity:             "cookie",
+				ingtypes.BackSessionCookieDynamic: "false",
+				ingtypes.BackSessionCookieValue:   "err",
+			},
+			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "insert", Dynamic: false, Keywords: "indirect nocache httponly"},
+			expLogging: "WARN invalid session-cookie-value-strategy 'err' on ingress 'default/ing1', using 'server-name' instead",
+		},
 	}
 
 	source := &Source{

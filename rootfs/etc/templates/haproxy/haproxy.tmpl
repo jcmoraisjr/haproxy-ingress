@@ -507,6 +507,7 @@ backend {{ $backend.ID }}
 {{- if $backend.Cookie.Name }}
 {{- $cookie := $backend.Cookie }}
     cookie {{ $cookie.Name }} {{ $cookie.Strategy }}
+        {{- if $cookie.Preserve }} preserve{{ end }}
         {{- if $cookie.Keywords }} {{ $cookie.Keywords }}{{ end }}
         {{- if $cookie.Shared }}
             {{- range $hostname := $backend.Hostnames }} domain {{ $hostname }}{{ end }}
@@ -610,7 +611,7 @@ backend {{ $backend.ID }}
     server {{ $ep.Name }} {{ $ep.IP }}:{{ $ep.Port }}
         {{- if not $ep.Enabled }} disabled{{ end }}
         {{- "" }} weight {{ $ep.Weight }}
-        {{- if and (not $backend.ModeTCP) ($backend.Cookie.Name) (not $backend.Cookie.Dynamic) }} cookie {{ $ep.Name }}{{ end }}
+        {{- if and ($backend.CookieAffinity) ($ep.CookieValue) }} cookie {{ $ep.CookieValue }}{{ end }}
         {{- template "backend" map $backend }}
 {{- end }}
 {{- end }}
