@@ -146,6 +146,16 @@ func TestAffinity(t *testing.T) {
 			expCookie:  hatypes.Cookie{Name: "serverId", Strategy: "insert", Dynamic: false, Preserve: true, Keywords: "nocache"},
 			expLogging: "",
 		},
+		// 12 - test that there is a fallback to using the "name" cookie value strategy
+		{
+			ann: map[string]string{
+				ingtypes.BackAffinity:             "cookie",
+				ingtypes.BackSessionCookieDynamic: "false",
+				ingtypes.BackSessionCookieValue:   "err",
+			},
+			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "insert", Dynamic: false, Keywords: "indirect nocache httponly"},
+			expLogging: "WARN invalid session-cookie-value-strategy 'err' on ingress 'default/ing1', using 'server-name' instead",
+		},
 	}
 
 	source := &Source{

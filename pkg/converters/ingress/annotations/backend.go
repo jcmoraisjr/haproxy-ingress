@@ -69,14 +69,14 @@ func (c *updater) buildBackendAffinity(d *backData) {
 	d.backend.Cookie.Preserve = d.mapper.Get(ingtypes.BackSessionCookiePreserve).Bool()
 	d.backend.Cookie.Shared = d.mapper.Get(ingtypes.BackSessionCookieShared).Bool()
 
-	cookieStrategy := d.mapper.Get(ingtypes.BackSessionCookieValue).Value
-	switch cookieStrategy {
+	cookieStrategy := d.mapper.Get(ingtypes.BackSessionCookieValue)
+	switch cookieStrategy.Value {
 	case "pod-uid":
 		d.backend.EpCookieStrategy = hatypes.EpCookiePodUid
 	case "server-name":
 		d.backend.EpCookieStrategy = hatypes.EpCookieName
 	default:
-		c.logger.Warn("invalid session-cookie-value-strategy '%s', using 'server-name' instead", cookieStrategy)
+		c.logger.Warn("invalid session-cookie-value-strategy '%s' on %s, using 'server-name' instead", cookieStrategy.Value, cookieStrategy.Source)
 		fallthrough
 	case "":
 		d.backend.EpCookieStrategy = hatypes.EpCookieName
