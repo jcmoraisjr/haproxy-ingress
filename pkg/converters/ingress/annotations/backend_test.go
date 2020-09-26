@@ -131,7 +131,7 @@ func TestAffinity(t *testing.T) {
 				ingtypes.BackSessionCookieKeywords: "preserve nocache",
 			},
 			expCookie:  hatypes.Cookie{Name: "serverId", Strategy: "insert", Dynamic: false, Preserve: false, Keywords: "preserve nocache"},
-			expLogging: "WARN session-cookie-keywords contains 'preserve'; consider using 'session-cookie-preserve' instead for better dynamic update cookie persistence",
+			expLogging: "WARN session-cookie-keywords on ingress 'default/ing1' contains 'preserve'; consider using 'session-cookie-preserve' instead for better dynamic update cookie persistence",
 		},
 		// 11 - test "session-cookie-preserve" cookie annotation is applied
 		{

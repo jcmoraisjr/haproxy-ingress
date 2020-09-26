@@ -55,19 +55,19 @@ func (c *updater) buildBackendAffinity(d *backData) {
 	}
 	d.backend.Cookie.Name = name
 	d.backend.Cookie.Strategy = strategyName
-	keywords := d.mapper.Get(ingtypes.BackSessionCookieKeywords).Value
-	if strategyName == "insert" && keywords == "" {
-		keywords = "indirect nocache httponly"
+	keywords := d.mapper.Get(ingtypes.BackSessionCookieKeywords)
+	keywordsValue := keywords.Value
+	if strategyName == "insert" && keywordsValue == "" {
+		keywordsValue = "indirect nocache httponly"
 	}
-	d.backend.Cookie.Keywords = keywords
+	if strings.Contains(keywordsValue, "preserve") {
+		// just warn, no error, for keeping backwards compatibility where "preserve" may have been used in the "keywords" section
+		c.logger.Warn("session-cookie-keywords on %s contains 'preserve'; consider using 'session-cookie-preserve' instead for better dynamic update cookie persistence", keywords.Source)
+	}
+	d.backend.Cookie.Keywords = keywordsValue
 	d.backend.Cookie.Dynamic = d.mapper.Get(ingtypes.BackSessionCookieDynamic).Bool()
 	d.backend.Cookie.Preserve = d.mapper.Get(ingtypes.BackSessionCookiePreserve).Bool()
 	d.backend.Cookie.Shared = d.mapper.Get(ingtypes.BackSessionCookieShared).Bool()
-
-	if strings.Contains(d.backend.Cookie.Keywords, "preserve") {
-		// just warn, no error, for keeping backwards compatibility where "preserve" may have been used in the "keywords" section
-		c.logger.Warn("session-cookie-keywords contains 'preserve'; consider using 'session-cookie-preserve' instead for better dynamic update cookie persistence")
-	}
 
 	cookieStrategy := d.mapper.Get(ingtypes.BackSessionCookieValue).Value
 	switch cookieStrategy {
