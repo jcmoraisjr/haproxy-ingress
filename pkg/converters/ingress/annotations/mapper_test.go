@@ -25,7 +25,7 @@ import (
 
 type ann struct {
 	src         *Source
-	link        hatypes.PathLink
+	path        hatypes.PathLink
 	key         string
 	val         string
 	expConflict bool
@@ -133,7 +133,7 @@ func TestAddAnnotation(t *testing.T) {
 		c := setup(t)
 		mapper := NewMapBuilder(c.logger, test.annPrefix, map[string]string{}).NewMapper()
 		for j, ann := range test.ann {
-			if conflict := mapper.addAnnotation(ann.src, ann.link, ann.key, ann.val); conflict != ann.expConflict {
+			if conflict := mapper.addAnnotation(ann.src, ann.path, ann.key, ann.val); conflict != ann.expConflict {
 				t.Errorf("expect conflict '%t' on '// %d (%d)', but was '%t'", ann.expConflict, i, j, conflict)
 			}
 		}
@@ -161,7 +161,7 @@ func TestGetAnnotation(t *testing.T) {
 		annPrefix string
 		getKey    string
 		expMiss   bool
-		expAnnMap []*Map
+		expConfig []*PathConfig
 	}{
 		// 0
 		{
@@ -170,9 +170,9 @@ func TestGetAnnotation(t *testing.T) {
 				{srcing2, pathURL, "auth-basic", "default/basic2", false},
 			},
 			getKey: "auth-basic",
-			expAnnMap: []*Map{
-				{Source: srcing1, Link: pathRoot, Value: "default/basic1"},
-				{Source: srcing2, Link: pathURL, Value: "default/basic2"},
+			expConfig: []*PathConfig{
+				{path: pathRoot, value: &ConfigValue{Source: srcing1, Value: "default/basic1"}},
+				{path: pathURL, value: &ConfigValue{Source: srcing2, Value: "default/basic2"}},
 			},
 		},
 		// 1
@@ -183,8 +183,8 @@ func TestGetAnnotation(t *testing.T) {
 				{srcing2, pathRoot, "auth-basic", "default/basic2", true},
 			},
 			getKey: "auth-basic",
-			expAnnMap: []*Map{
-				{Source: srcing1, Link: pathRoot, Value: "default/basic1"},
+			expConfig: []*PathConfig{
+				{path: pathRoot, value: &ConfigValue{Source: srcing1, Value: "default/basic1"}},
 			},
 		},
 		// 2
@@ -195,8 +195,8 @@ func TestGetAnnotation(t *testing.T) {
 				{srcing2, pathRoot, "auth-basic", "default/basic2", true},
 			},
 			getKey: "auth-type",
-			expAnnMap: []*Map{
-				{Source: srcing1, Link: pathRoot, Value: "basic"},
+			expConfig: []*PathConfig{
+				{path: pathRoot, value: &ConfigValue{Source: srcing1, Value: "basic"}},
 			},
 		},
 	}
@@ -204,17 +204,17 @@ func TestGetAnnotation(t *testing.T) {
 		c := setup(t)
 		mapper := NewMapBuilder(c.logger, test.annPrefix, map[string]string{}).NewMapper()
 		for j, ann := range test.ann {
-			if conflict := mapper.addAnnotation(ann.src, ann.link, ann.key, ann.val); conflict != ann.expConflict {
+			if conflict := mapper.addAnnotation(ann.src, ann.path, ann.key, ann.val); conflict != ann.expConflict {
 				t.Errorf("expect conflict '%t' on '// %d (%d)', but was '%t'", ann.expConflict, i, j, conflict)
 			}
 		}
-		annMap, found := mapper.GetStrMap(test.getKey)
+		pathConfig, found := mapper.findPathConfig(test.getKey)
 		if !found {
 			if !test.expMiss {
 				t.Errorf("expect to find '%s' key on '%d', but was not found", test.getKey, i)
 			}
-		} else if !reflect.DeepEqual(annMap, test.expAnnMap) {
-			t.Errorf("expected and actual differ on '%d' - expected: %+v - actual: %+v", i, test.expAnnMap, annMap)
+		} else if !reflect.DeepEqual(pathConfig, test.expConfig) {
+			t.Errorf("expected and actual differ on '%d' - expected: %+v - actual: %+v", i, test.expConfig, pathConfig)
 		}
 		c.teardown()
 	}
@@ -298,212 +298,6 @@ func TestGetDefault(t *testing.T) {
 				t.Errorf("expected key '%s'='%s' on '%d', but was '%s'", key, exp, i, value)
 			}
 		}
-		c.teardown()
-	}
-}
-
-func TestGetBackendConfig(t *testing.T) {
-	testCases := []struct {
-		paths      []string
-		source     Source
-		annDefault map[string]string
-		keyValues  map[string]map[string]string
-		getKeys    []string
-		overwrite  ConfigOverwrite
-		expected   []*BackendConfig
-		logging    string
-	}{
-		// 0
-		{
-			keyValues: map[string]map[string]string{
-				"/": {
-					"ann-1": "10",
-				},
-			},
-			getKeys: []string{"ann-1"},
-			expected: []*BackendConfig{
-				{
-					Paths: createBackendPaths("/"),
-					Config: map[string]*ConfigValue{
-						"ann-1": {Value: "10"},
-					},
-				},
-			},
-		},
-		// 1
-		{
-			keyValues: map[string]map[string]string{
-				"/": {
-					"ann-1": "10",
-					"ann-2": "10",
-				},
-			},
-			getKeys: []string{"ann-1", "ann-2"},
-			expected: []*BackendConfig{
-				{
-					Paths: createBackendPaths("/"),
-					Config: map[string]*ConfigValue{
-						"ann-1": {Value: "10"},
-						"ann-2": {Value: "10"},
-					},
-				},
-			},
-		},
-		// 2
-		{
-			annDefault: map[string]string{
-				"ann-1": "0",
-			},
-			getKeys: []string{"ann-1", "ann-2"},
-			keyValues: map[string]map[string]string{
-				"/": {
-					"ann-1": "10",
-					"ann-2": "20",
-				},
-				"/url": {
-					"ann-1": "10",
-					"ann-2": "20",
-				},
-				"/path": {
-					"ann-2": "20",
-				},
-			},
-			expected: []*BackendConfig{
-				{
-					Paths: createBackendPaths("/", "/url"),
-					Config: map[string]*ConfigValue{
-						"ann-1": {Value: "10"},
-						"ann-2": {Value: "20"},
-					},
-				},
-				{
-					Paths: createBackendPaths("/path"),
-					Config: map[string]*ConfigValue{
-						"ann-1": {Value: "0"},
-						"ann-2": {Value: "20"},
-					},
-				},
-			},
-		},
-		// 3
-		{
-			annDefault: map[string]string{
-				"ann-1": "5",
-			},
-			keyValues: map[string]map[string]string{
-				"/url": {
-					"ann-1": "10",
-				},
-			},
-			getKeys: []string{"ann-1"},
-			expected: []*BackendConfig{
-				{
-					Paths: createBackendPaths("/url"),
-					Config: map[string]*ConfigValue{
-						"ann-1": {Value: "10"},
-					},
-				},
-			},
-		},
-		// 4
-		{
-			annDefault: map[string]string{
-				"ann-1": "5",
-				"ann-2": "0",
-				"ann-3": "0",
-			},
-			keyValues: map[string]map[string]string{
-				"/": {
-					"ann-1": "10",
-				},
-				"/url": {
-					"ann-2": "20",
-				},
-			},
-			getKeys: []string{"ann-1", "ann-2", "ann-3"},
-			expected: []*BackendConfig{
-				{
-					Paths: createBackendPaths("/"),
-					Config: map[string]*ConfigValue{
-						"ann-1": {Value: "10"},
-						"ann-2": {Value: "0"},
-						"ann-3": {Value: "0"},
-					},
-				},
-				{
-					Paths: createBackendPaths("/url"),
-					Config: map[string]*ConfigValue{
-						"ann-1": {Value: "5"},
-						"ann-2": {Value: "20"},
-						"ann-3": {Value: "0"},
-					},
-				},
-			},
-		},
-		// 5
-		{
-			annDefault: map[string]string{
-				"ann-1": "0",
-			},
-			keyValues: map[string]map[string]string{
-				"/": {
-					"ann-1": "err",
-				},
-				"/url": {
-					"ann-1": "0",
-				},
-			},
-			getKeys: []string{"ann-1"},
-			expected: []*BackendConfig{
-				{
-					Paths: createBackendPaths("/", "/url"),
-					Config: map[string]*ConfigValue{
-						"ann-1": {Value: "0"},
-					},
-				},
-			},
-			source:  Source{Namespace: "default", Name: "ing1", Type: "service"},
-			logging: `WARN ignoring invalid int expression on service 'default/ing1' key 'ann-1': err`,
-		},
-		// 6
-		{
-			keyValues: map[string]map[string]string{
-				"/": {
-					"ann-1": "10",
-				},
-				"/sub": {
-					"ann-1": "20",
-				},
-			},
-			getKeys: []string{"ann-1"},
-			expected: []*BackendConfig{
-				{
-					Paths:  createBackendPaths("/", "/sub"),
-					Config: map[string]*ConfigValue{},
-				},
-			},
-			overwrite: func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue {
-				return nil
-			},
-		},
-	}
-	validators["ann-1"] = validateInt
-	defer delete(validators, "ann-1")
-	for i, test := range testCases {
-		c := setup(t)
-		d := c.createBackendMappingData("default/app", &test.source, test.annDefault, test.keyValues, test.paths)
-		config := d.mapper.GetBackendConfig(d.backend, test.getKeys, test.overwrite)
-		for _, cfg := range config {
-			for _, value := range cfg.Config {
-				// Source is inconsistent and irrelevant here
-				value.Source = nil
-			}
-			for _, value := range cfg.Config {
-				value.Source = nil
-			}
-		}
-		c.compareObjects("backend config", i, config, test.expected)
-		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
 }

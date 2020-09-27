@@ -443,16 +443,19 @@ type Backend struct {
 	//
 	// IMPLEMENT
 	// use BackendID
-	shard            int
-	ID               string
-	Namespace        string
-	Name             string
-	Port             string
-	Endpoints        []*Endpoint
-	EpNaming         EndpointNaming
-	EpCookieStrategy EndpointCookieStrategy
-	Paths            []*BackendPath
-	PathsMap         *HostsMap
+	shard     int
+	ID        string
+	Namespace string
+	Name      string
+	Port      string
+	Endpoints []*Endpoint
+	EpNaming  EndpointNaming
+	//
+	// Paths
+	//
+	Paths      []*BackendPath
+	PathsMap   *HostsMap
+	pathConfig map[string]*BackendPathConfig
 	//
 	// per backend config
 	//
@@ -462,6 +465,7 @@ type Backend struct {
 	Cookie           Cookie
 	CustomConfig     []string
 	Dynamic          DynBackendConfig
+	EpCookieStrategy EndpointCookieStrategy
 	Headers          []*BackendHeader
 	HealthCheck      HealthCheck
 	Limit            BackendLimit
@@ -472,36 +476,6 @@ type Backend struct {
 	Timeout          BackendTimeoutConfig
 	TLS              BackendTLSConfig
 	WhitelistTCP     []string
-	//
-	// per path config
-	//
-	// TODO refactor
-	//
-	// The current implementation is tricky. A small refactor is welcome
-	// but can wait a little more. Multipath unit tests need to do a
-	// better job as well.
-	//
-	// Following some tips in order to multipath work properly:
-	//
-	//   1. On backend annotation parsing, do not filter
-	//      mapper.GetBackendConfig/Str() slice, instead populate
-	//      haproxy type even with empty data. Backend.NeedACL() need
-	//      to know all paths in order to work properly. Filter out
-	//      empty/disabled items in the template.
-	//
-	//   2. Every config array added here, need also to be added
-	//      in Backend.NeedACL() - haproxy/types/backend.go.
-	//      Template uses this func in order to know if a config
-	//      has two or more paths, and so need to be configured with ACL.
-	//
-	AuthHTTP      []*BackendConfigAuth
-	Cors          []*BackendConfigCors
-	HSTS          []*BackendConfigHSTS
-	MaxBodySize   []*BackendConfigInt
-	RewriteURL    []*BackendConfigStr
-	SSLRedirect   []*BackendConfigBool
-	WAF           []*BackendConfigWAF
-	WhitelistHTTP []*BackendConfigWhitelist
 }
 
 // Endpoint ...
@@ -523,70 +497,41 @@ type BlueGreenConfig struct {
 	HeaderName string
 }
 
-// BackendPaths ...
-type BackendPaths struct {
-	Items []*BackendPath
+// BackendPathConfig ...
+type BackendPathConfig struct {
+	items []*BackendPathItem
+}
+
+// BackendPathItem ...
+type BackendPathItem struct {
+	paths  []*BackendPath
+	config interface{}
 }
 
 // BackendPath ...
 type BackendPath struct {
+	//
+	// core fields, filter out new fields in `Backend.createPathConfig()`
+	//
 	ID   string
 	Link PathLink
+	//
+	// config fields
+	//
+	AuthHTTP      AuthHTTP
+	Cors          Cors
+	HSTS          HSTS
+	MaxBodySize   int64
+	RewriteURL    string
+	SSLRedirect   bool
+	WAF           WAF
+	WhitelistHTTP []string
 }
 
 // BackendHeader ...
 type BackendHeader struct {
 	Name  string
 	Value string
-}
-
-// BackendConfigBool ...
-type BackendConfigBool struct {
-	Paths  BackendPaths
-	Config bool
-}
-
-// BackendConfigInt ...
-type BackendConfigInt struct {
-	Paths  BackendPaths
-	Config int64
-}
-
-// BackendConfigStr ...
-type BackendConfigStr struct {
-	Paths  BackendPaths
-	Config string
-}
-
-// BackendConfigAuth ...
-type BackendConfigAuth struct {
-	Paths        BackendPaths
-	UserlistName string
-	Realm        string
-}
-
-// BackendConfigCors ...
-type BackendConfigCors struct {
-	Paths  BackendPaths
-	Config Cors
-}
-
-// BackendConfigWAF defines Web Application Firewall Configurations
-type BackendConfigWAF struct {
-	Paths  BackendPaths
-	Config WAF
-}
-
-// BackendConfigHSTS ...
-type BackendConfigHSTS struct {
-	Paths  BackendPaths
-	Config HSTS
-}
-
-// BackendConfigWhitelist ...
-type BackendConfigWhitelist struct {
-	Paths  BackendPaths
-	Config []string
 }
 
 // AgentCheck ...
@@ -680,6 +625,12 @@ type Cookie struct {
 	Shared   bool
 	Strategy string
 	Keywords string
+}
+
+// AuthHTTP ...
+type AuthHTTP struct {
+	UserlistName string
+	Realm        string
 }
 
 // Cors ...

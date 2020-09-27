@@ -84,77 +84,61 @@ func (c *updater) buildBackendAffinity(d *backData) {
 }
 
 func (c *updater) buildBackendAuthHTTP(d *backData) {
-	config := d.mapper.GetBackendConfig(
-		d.backend,
-		[]string{
-			ingtypes.BackAuthType,
-			ingtypes.BackAuthSecret,
-			ingtypes.BackAuthRealm,
-		},
-		func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue {
-			authType := values[ingtypes.BackAuthType]
-			if authType == nil || authType.Source == nil {
-				return nil
+	for _, path := range d.backend.Paths {
+		config := d.mapper.GetConfig(path.Link)
+		authType := config.Get(ingtypes.BackAuthType)
+		if authType == nil || authType.Source == nil {
+			continue
+		}
+		if authType.Value != "basic" {
+			c.logger.Error("unsupported authentication type on %v: %s", authType.Source, authType.Value)
+			continue
+		}
+		authSecret := config.Get(ingtypes.BackAuthSecret)
+		if authSecret == nil || authSecret.Source == nil {
+			c.logger.Error("missing secret name on basic authentication on %v", authType.Source)
+			continue
+		}
+		secretName := authSecret.Value
+		if strings.Index(secretName, "/") < 0 {
+			secretName = authSecret.Source.Namespace + "/" + secretName
+		}
+		listName := strings.Replace(secretName, "/", "_", 1)
+		userlist := c.haproxy.Userlists().Find(listName)
+		if userlist == nil {
+			userb, err := c.cache.GetSecretContent(
+				authSecret.Source.Namespace,
+				authSecret.Value, "auth",
+				convtypes.TrackingTarget{
+					Backend:  d.backend.BackendID(),
+					Userlist: listName,
+				},
+			)
+			if err != nil {
+				c.logger.Error("error reading basic authentication on %v: %v", authSecret.Source, err)
+				continue
 			}
-			if authType.Value != "basic" {
-				c.logger.Error("unsupported authentication type on %v: %s", authType.Source, authType.Value)
-				return nil
+			userstr := string(userb)
+			users, errs := extractUserlist(authSecret.Source.Name, secretName, userstr)
+			for _, err := range errs {
+				c.logger.Warn("ignoring malformed usr/passwd on secret '%s', declared on %v: %v", secretName, authSecret.Source, err)
 			}
-			authSecret := values[ingtypes.BackAuthSecret]
-			if authSecret == nil || authSecret.Source == nil {
-				c.logger.Error("missing secret name on basic authentication on %v", authType.Source)
-				return nil
+			userlist = c.haproxy.Userlists().Replace(listName, users)
+			if len(users) == 0 {
+				c.logger.Warn("userlist on %v for basic authentication is empty", authSecret.Source)
 			}
-			secretName := authSecret.Value
-			if strings.Index(secretName, "/") < 0 {
-				secretName = authSecret.Source.Namespace + "/" + secretName
-			}
-			listName := strings.Replace(secretName, "/", "_", 1)
-			userlist := c.haproxy.Userlists().Find(listName)
-			if userlist == nil {
-				userb, err := c.cache.GetSecretContent(
-					authSecret.Source.Namespace,
-					authSecret.Value, "auth",
-					convtypes.TrackingTarget{
-						Backend:  d.backend.BackendID(),
-						Userlist: listName,
-					},
-				)
-				if err != nil {
-					c.logger.Error("error reading basic authentication on %v: %v", authSecret.Source, err)
-					return nil
-				}
-				userstr := string(userb)
-				users, errs := extractUserlist(authSecret.Source.Name, secretName, userstr)
-				for _, err := range errs {
-					c.logger.Warn("ignoring malformed usr/passwd on secret '%s', declared on %v: %v", secretName, authSecret.Source, err)
-				}
-				userlist = c.haproxy.Userlists().Replace(listName, users)
-				if len(users) == 0 {
-					c.logger.Warn("userlist on %v for basic authentication is empty", authSecret.Source)
-				}
-			}
-			realm := "localhost" // HAProxy's backend name would be used if missing
-			authRealm := values[ingtypes.BackAuthRealm]
-			if authRealm == nil || authRealm.Source == nil {
-				// leave default
-			} else if strings.Index(authRealm.Value, `"`) >= 0 {
-				c.logger.Warn("ignoring auth-realm with quotes on %v", authRealm.Source)
-			} else if authRealm.Value != "" {
-				realm = authRealm.Value
-			}
-			return map[string]*ConfigValue{
-				"username": {Value: userlist.Name},
-				"realm":    {Value: realm},
-			}
-		},
-	)
-	for _, cfg := range config {
-		d.backend.AuthHTTP = append(d.backend.AuthHTTP, &hatypes.BackendConfigAuth{
-			Paths:        cfg.Paths,
-			UserlistName: cfg.Get("username").Value,
-			Realm:        cfg.Get("realm").Value,
-		})
+		}
+		realm := "localhost" // HAProxy's backend name would be used if missing
+		authRealm := config.Get(ingtypes.BackAuthRealm)
+		if authRealm == nil || authRealm.Source == nil {
+			// leave default
+		} else if strings.Index(authRealm.Value, `"`) >= 0 {
+			c.logger.Warn("ignoring auth-realm with quotes on %v", authRealm.Source)
+		} else if authRealm.Value != "" {
+			realm = authRealm.Value
+		}
+		path.AuthHTTP.UserlistName = userlist.Name
+		path.AuthHTTP.Realm = realm
 	}
 }
 
@@ -406,70 +390,36 @@ func (c *updater) buildBackendBlueGreenSelector(d *backData) {
 }
 
 func (c *updater) buildBackendBodySize(d *backData) {
-	config := d.mapper.GetBackendConfig(
-		d.backend,
-		[]string{ingtypes.BackProxyBodySize},
-		func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue {
-			bodysize := values[ingtypes.BackProxyBodySize]
-			if bodysize == nil || bodysize.Value == "unlimited" {
-				return nil
-			}
-			value, err := utils.SizeSuffixToInt64(bodysize.Value)
-			if err != nil {
-				c.logger.Warn("ignoring invalid body size on %v: %s", bodysize.Source, bodysize.Value)
-				return nil
-			}
-			bodysize.Value = strconv.FormatInt(value, 10)
-			return values
-		},
-	)
-	for _, cfg := range config {
-		d.backend.MaxBodySize = append(d.backend.MaxBodySize, &hatypes.BackendConfigInt{
-			Paths:  cfg.Paths,
-			Config: cfg.Get(ingtypes.BackProxyBodySize).Int64(),
-		})
+	for _, path := range d.backend.Paths {
+		config := d.mapper.GetConfig(path.Link)
+		bodysize := config.Get(ingtypes.BackProxyBodySize)
+		if bodysize == nil || bodysize.Value == "" || bodysize.Value == "unlimited" {
+			continue
+		}
+		value, err := utils.SizeSuffixToInt64(bodysize.Value)
+		if err != nil {
+			c.logger.Warn("ignoring invalid body size on %v: %s", bodysize.Source, bodysize.Value)
+			continue
+		}
+		path.MaxBodySize = value
 	}
 }
 
 func (c *updater) buildBackendCors(d *backData) {
-	config := d.mapper.GetBackendConfig(d.backend,
-		[]string{
-			ingtypes.BackCorsEnable,
-			ingtypes.BackCorsAllowCredentials,
-			ingtypes.BackCorsAllowHeaders,
-			ingtypes.BackCorsAllowMethods,
-			ingtypes.BackCorsAllowOrigin,
-			ingtypes.BackCorsExposeHeaders,
-			ingtypes.BackCorsMaxAge,
-		},
-		func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue {
-			enabled, found := values[ingtypes.BackCorsEnable]
-			if !found || !enabled.Bool() {
-				return nil
-			}
-			return values
-		},
-	)
-	for _, cfg := range config {
-		enabled := cfg.Get(ingtypes.BackCorsEnable).Bool()
-		allowCredentials := cfg.Get(ingtypes.BackCorsAllowCredentials).Bool()
-		allowHeaders := cfg.Get(ingtypes.BackCorsAllowHeaders).Value
-		allowMethods := cfg.Get(ingtypes.BackCorsAllowMethods).Value
-		allowOrigin := cfg.Get(ingtypes.BackCorsAllowOrigin).Value
-		exposeHeaders := cfg.Get(ingtypes.BackCorsExposeHeaders).Value
-		maxAge := cfg.Get(ingtypes.BackCorsMaxAge).Int()
-		d.backend.Cors = append(d.backend.Cors, &hatypes.BackendConfigCors{
-			Paths: cfg.Paths,
-			Config: hatypes.Cors{
+	for _, path := range d.backend.Paths {
+		config := d.mapper.GetConfig(path.Link)
+		enabled := config.Get(ingtypes.BackCorsEnable).Bool()
+		if enabled {
+			path.Cors = hatypes.Cors{
 				Enabled:          enabled,
-				AllowCredentials: allowCredentials,
-				AllowHeaders:     allowHeaders,
-				AllowMethods:     allowMethods,
-				AllowOrigin:      allowOrigin,
-				ExposeHeaders:    exposeHeaders,
-				MaxAge:           maxAge,
-			},
-		})
+				AllowCredentials: config.Get(ingtypes.BackCorsAllowCredentials).Bool(),
+				AllowHeaders:     config.Get(ingtypes.BackCorsAllowHeaders).Value,
+				AllowMethods:     config.Get(ingtypes.BackCorsAllowMethods).Value,
+				AllowOrigin:      config.Get(ingtypes.BackCorsAllowOrigin).Value,
+				ExposeHeaders:    config.Get(ingtypes.BackCorsExposeHeaders).Value,
+				MaxAge:           config.Get(ingtypes.BackCorsMaxAge).Int(),
+			}
+		}
 	}
 }
 
@@ -549,21 +499,12 @@ func (c *updater) buildBackendHeaders(d *backData) {
 }
 
 func (c *updater) buildBackendHSTS(d *backData) {
-	rawHSTSList := d.mapper.GetBackendConfig(
-		d.backend,
-		[]string{ingtypes.BackHSTS, ingtypes.BackHSTSMaxAge, ingtypes.BackHSTSPreload, ingtypes.BackHSTSIncludeSubdomains},
-		nil,
-	)
-	for _, cfg := range rawHSTSList {
-		d.backend.HSTS = append(d.backend.HSTS, &hatypes.BackendConfigHSTS{
-			Paths: cfg.Paths,
-			Config: hatypes.HSTS{
-				Enabled:    cfg.Get(ingtypes.BackHSTS).Bool(),
-				MaxAge:     cfg.Get(ingtypes.BackHSTSMaxAge).Int(),
-				Subdomains: cfg.Get(ingtypes.BackHSTSIncludeSubdomains).Bool(),
-				Preload:    cfg.Get(ingtypes.BackHSTSPreload).Bool(),
-			},
-		})
+	for _, path := range d.backend.Paths {
+		config := d.mapper.GetConfig(path.Link)
+		path.HSTS.Enabled = config.Get(ingtypes.BackHSTS).Bool()
+		path.HSTS.MaxAge = config.Get(ingtypes.BackHSTSMaxAge).Int()
+		path.HSTS.Subdomains = config.Get(ingtypes.BackHSTSIncludeSubdomains).Bool()
+		path.HSTS.Preload = config.Get(ingtypes.BackHSTSPreload).Bool()
 	}
 }
 
@@ -716,28 +657,19 @@ var (
 )
 
 func (c *updater) buildBackendRewriteURL(d *backData) {
-	config := d.mapper.GetBackendConfig(
-		d.backend,
-		[]string{ingtypes.BackRewriteTarget},
-		func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue {
-			rewrite, found := values[ingtypes.BackRewriteTarget]
-			if !found {
-				return nil
-			}
-			if !rewriteURLRegex.MatchString(rewrite.Value) {
-				c.logger.Warn(
-					"rewrite-target does not allow white spaces or single/double quotes on %v: '%s'",
-					rewrite.Source, rewrite.Value)
-				return nil
-			}
-			return values
-		},
-	)
-	for _, cfg := range config {
-		d.backend.RewriteURL = append(d.backend.RewriteURL, &hatypes.BackendConfigStr{
-			Paths:  cfg.Paths,
-			Config: cfg.Get(ingtypes.BackRewriteTarget).Value,
-		})
+	for _, path := range d.backend.Paths {
+		config := d.mapper.GetConfig(path.Link)
+		rewrite := config.Get(ingtypes.BackRewriteTarget)
+		if rewrite == nil || rewrite.Value == "" {
+			continue
+		}
+		if !rewriteURLRegex.MatchString(rewrite.Value) {
+			c.logger.Warn(
+				"rewrite-target does not allow white spaces or single/double quotes on %v: '%s'",
+				rewrite.Source, rewrite.Value)
+			continue
+		}
+		path.RewriteURL = rewrite.Value
 	}
 }
 
@@ -765,23 +697,17 @@ func (c *updater) buildBackendSSL(d *backData) {
 
 func (c *updater) buildBackendSSLRedirect(d *backData) {
 	noTLSRedir := utils.Split(d.mapper.Get(ingtypes.GlobalNoTLSRedirectLocations).Value, ",")
-	for _, redir := range d.mapper.GetBackendConfig(
-		d.backend,
-		[]string{ingtypes.BackSSLRedirect},
-		func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue {
-			for _, redir := range noTLSRedir {
-				if strings.HasPrefix(path.Path(), redir) {
-					values[ingtypes.BackSSLRedirect].Value = "false"
-					return values
+	for _, path := range d.backend.Paths {
+		config := d.mapper.GetConfig(path.Link)
+		redir := config.Get(ingtypes.BackSSLRedirect).Bool()
+		if redir {
+			for _, noredir := range noTLSRedir {
+				if strings.HasPrefix(path.Path(), noredir) {
+					redir = false
 				}
 			}
-			return values
-		},
-	) {
-		d.backend.SSLRedirect = append(d.backend.SSLRedirect, &hatypes.BackendConfigBool{
-			Paths:  redir.Paths,
-			Config: redir.Get(ingtypes.BackSSLRedirect).Bool(),
-		})
+		}
+		path.SSLRedirect = redir
 	}
 }
 
@@ -810,51 +736,34 @@ func (c *updater) buildBackendTimeout(d *backData) {
 }
 
 func (c *updater) buildBackendWAF(d *backData) {
-	config := d.mapper.GetBackendConfig(
-		d.backend,
-		[]string{ingtypes.BackWAF, ingtypes.BackWAFMode},
-		func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue {
-			waf, foundWAF := values[ingtypes.BackWAF]
-			if !foundWAF {
-				return nil
-			}
-			if waf.Value != "modsecurity" {
-				c.logger.Warn("ignoring invalid WAF module on %s: %s", waf.Source, waf.Value)
-				return nil
-			}
-			wafMode, foundWAFMode := values[ingtypes.BackWAFMode]
-			if !foundWAFMode {
-				return values
-			}
-			if wafMode.Value != "deny" && wafMode.Value != "detect" {
-				c.logger.Warn("ignoring invalid WAF mode '%s' on %s, using 'deny' instead", wafMode.Value, wafMode.Source)
-				wafMode.Value = "deny"
-			}
-			return values
-		},
-	)
-	for _, cfg := range config {
-		wafModule := cfg.Get(ingtypes.BackWAF).Value
-		wafMode := cfg.Get(ingtypes.BackWAFMode).Value
-		d.backend.WAF = append(d.backend.WAF, &hatypes.BackendConfigWAF{
-			Paths: cfg.Paths,
-			Config: hatypes.WAF{
-				Module: wafModule,
-				Mode:   wafMode,
-			},
-		})
+	for _, path := range d.backend.Paths {
+		config := d.mapper.GetConfig(path.Link)
+		waf := config.Get(ingtypes.BackWAF)
+		module := waf.Value
+		if module == "" {
+			continue
+		}
+		if module != "modsecurity" {
+			c.logger.Warn("ignoring invalid WAF module on %s: %s", waf.Source, module)
+			continue
+		}
+		wafMode := config.Get(ingtypes.BackWAFMode)
+		mode := wafMode.Value
+		if mode != "" && mode != "deny" && mode != "detect" {
+			c.logger.Warn("ignoring invalid WAF mode '%s' on %s, using 'deny' instead", mode, wafMode.Source)
+			mode = "deny"
+		}
+		path.WAF.Module = module
+		path.WAF.Mode = mode
 	}
 }
 
 func (c *updater) buildBackendWhitelistHTTP(d *backData) {
-	if d.backend.ModeTCP {
-		return
-	}
-	for _, cfg := range d.mapper.GetBackendConfig(d.backend, []string{ingtypes.BackWhitelistSourceRange}, nil) {
-		d.backend.WhitelistHTTP = append(d.backend.WhitelistHTTP, &hatypes.BackendConfigWhitelist{
-			Paths:  cfg.Paths,
-			Config: c.splitCIDR(cfg.Get(ingtypes.BackWhitelistSourceRange)),
-		})
+	if !d.backend.ModeTCP {
+		for _, path := range d.backend.Paths {
+			config := d.mapper.GetConfig(path.Link)
+			path.WhitelistHTTP = c.splitCIDR(config.Get(ingtypes.BackWhitelistSourceRange))
+		}
 	}
 }
 

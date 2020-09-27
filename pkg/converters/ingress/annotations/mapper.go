@@ -18,7 +18,6 @@ package annotations
 
 import (
 	"fmt"
-	"sort"
 	"strconv"
 
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
@@ -35,21 +34,20 @@ type MapBuilder struct {
 // Mapper ...
 type Mapper struct {
 	MapBuilder
-	maps map[string][]*Map
+	configByKey  map[string][]*PathConfig
+	configByPath map[hatypes.PathLink]*KeyConfig
 }
 
-// Map ...
-//
-// TODO rename URI to Hostpath -- currently this is a little mess.
-// Fix also testCase data in order to represent a hostname+path.
-// Hostname is the domain name. Path is the declared starting path on ingress
-// Together they populate a map_beg() converter in order to match HAProxy's
-// `base` sample fetch method.
-//
-type Map struct {
-	Source *Source
-	Link   hatypes.PathLink
-	Value  string
+// KeyConfig ...
+type KeyConfig struct {
+	mapper *Mapper
+	keys   map[string]*ConfigValue
+}
+
+// PathConfig ...
+type PathConfig struct {
+	path  hatypes.PathLink
+	value *ConfigValue
 }
 
 // Source ...
@@ -57,12 +55,6 @@ type Source struct {
 	Namespace string
 	Name      string
 	Type      string
-}
-
-// BackendConfig ...
-type BackendConfig struct {
-	Paths  hatypes.BackendPaths
-	Config map[string]*ConfigValue
 }
 
 // ConfigValue ...
@@ -84,82 +76,104 @@ func NewMapBuilder(logger types.Logger, annPrefix string, annDefaults map[string
 func (b *MapBuilder) NewMapper() *Mapper {
 	return &Mapper{
 		MapBuilder: *b,
-		maps:       map[string][]*Map{},
+		//
+		configByKey:  map[string][]*PathConfig{},
+		configByPath: map[hatypes.PathLink]*KeyConfig{},
 	}
 }
 
-func (c *Mapper) addAnnotation(source *Source, link hatypes.PathLink, key, value string) (conflict bool) {
-	conflict = false
-	annMaps, found := c.maps[key]
-	if link.IsEmpty() {
-		// empty means default value
+func newKeyConfig(mapper *Mapper) *KeyConfig {
+	return &KeyConfig{
+		mapper: mapper,
+		keys:   map[string]*ConfigValue{},
+	}
+}
+
+// Add a new annotation to the current mapper.
+// Return the conflict state: true if a conflict was found, false if the annotation was assigned or at least handled
+func (c *Mapper) addAnnotation(source *Source, path hatypes.PathLink, key, value string) bool {
+	if path.IsEmpty() {
+		// empty means default value, cannot register as an annotation
 		panic("path link cannot be empty")
 	}
-	if found {
-		for _, annMap := range annMaps {
-			if annMap.Link == link {
-				return annMap.Value != value
-			}
-		}
+	// check overlap
+	config, configfound := c.configByPath[path]
+	if !configfound {
+		config = newKeyConfig(c)
+		c.configByPath[path] = config
 	}
-	var realValue string
-	var ok bool
-	validator, found := validators[key]
-	if found {
+	if cv, found := config.keys[key]; found {
+		// there is a conflict only if values differ
+		return cv.Value != value
+	}
+	// validate (bool; int; ...) and normalize (int "01" => "1"; ...)
+	realValue := value
+	if validator, found := validators[key]; found {
+		var ok bool
 		if realValue, ok = validator(validate{logger: c.logger, source: source, key: key, value: value}); !ok {
-			return
+			return false
 		}
-	} else {
-		realValue = value
 	}
-	annMaps = append(annMaps, &Map{
+	// update internal fields
+	configValue := &ConfigValue{
 		Source: source,
-		Link:   link,
 		Value:  realValue,
+	}
+	config.keys[key] = configValue
+	pathConfigs, _ := c.configByKey[key]
+	pathConfigs = append(pathConfigs, &PathConfig{
+		path:  path,
+		value: configValue,
 	})
-	c.maps[key] = annMaps
-	return
+	c.configByKey[key] = pathConfigs
+	return false
 }
 
 // AddAnnotations ...
-func (c *Mapper) AddAnnotations(source *Source, link hatypes.PathLink, ann map[string]string) (conflicts []string) {
+func (c *Mapper) AddAnnotations(source *Source, path hatypes.PathLink, ann map[string]string) (conflicts []string) {
 	conflicts = make([]string, 0, len(ann))
 	for key, value := range ann {
-		if conflict := c.addAnnotation(source, link, key, value); conflict {
+		if conflict := c.addAnnotation(source, path, key, value); conflict {
 			conflicts = append(conflicts, key)
 		}
 	}
 	return conflicts
 }
 
-// GetStrMap ...
-func (c *Mapper) GetStrMap(key string) ([]*Map, bool) {
-	annMaps, found := c.maps[key]
-	if found && len(annMaps) > 0 {
-		return annMaps, true
+func (c *Mapper) findPathConfig(key string) ([]*PathConfig, bool) {
+	configs, found := c.configByKey[key]
+	if found && len(configs) > 0 {
+		return configs, true
 	}
 	value, found := c.annDefaults[key]
 	if found {
-		return []*Map{{Value: value}}, true
+		return []*PathConfig{{value: &ConfigValue{Value: value}}}, true
 	}
 	return nil, false
 }
 
+// GetConfig ...
+func (c *Mapper) GetConfig(path hatypes.PathLink) *KeyConfig {
+	if config, found := c.configByPath[path]; found {
+		return config
+	}
+	config := newKeyConfig(c)
+	c.configByPath[path] = config
+	return config
+}
+
 // Get ...
 func (c *Mapper) Get(key string) *ConfigValue {
-	annMaps, found := c.GetStrMap(key)
+	configs, found := c.findPathConfig(key)
 	if !found {
 		return &ConfigValue{}
 	}
-	value := &ConfigValue{
-		Source: annMaps[0].Source,
-		Value:  annMaps[0].Value,
-	}
-	if len(annMaps) > 1 {
-		sources := make([]*Source, 0, len(annMaps))
-		for _, annMap := range annMaps {
-			if value.Value != annMap.Value {
-				sources = append(sources, annMap.Source)
+	value := configs[0].value
+	if len(configs) > 1 {
+		sources := make([]*Source, 0, len(configs))
+		for _, config := range configs {
+			if value.Value != config.value.Value {
+				sources = append(sources, config.value.Source)
 			}
 		}
 		if len(sources) > 0 {
@@ -171,123 +185,15 @@ func (c *Mapper) Get(key string) *ConfigValue {
 	return value
 }
 
-// ConfigOverwrite ...
-type ConfigOverwrite func(path *hatypes.BackendPath, values map[string]*ConfigValue) map[string]*ConfigValue
-
-// GetBackendConfig builds a generic BackendConfig using
-// annotation maps registered previously as its data source
-//
-// An annotation map is a `map[<uri>]<value>` collected on
-// ingress/service parsing phase. A HAProxy backend need a group
-// of annotation keys - ie a group of maps - grouped by URI in
-// order to create and apply ACLs.
-//
-// The rule of thumb on the final BackendConfig array is:
-//
-//   1. Every backend path must be declared, so a HAProxy method can
-//      just `if len(BackendConfig) > 1 then need-acl`;
-//   2. Added annotation means declared annotation (ingress, service
-//      or default) so the config reader `Get<Type>FromMap()`` can
-//      distinguish between `undeclared` and `declared empty`.
-//
-func (c *Mapper) GetBackendConfig(backend *hatypes.Backend, keys []string, overwrite ConfigOverwrite) []*BackendConfig {
-	// all backend paths need to be declared, filling up previously with default values
-	rawConfig := make(map[hatypes.PathLink]map[string]*ConfigValue, len(backend.Paths))
-	for _, path := range backend.Paths {
-		kv := make(map[string]*ConfigValue, len(keys))
-		for _, key := range keys {
-			if value, found := c.annDefaults[key]; found {
-				kv[key] = &ConfigValue{
-					Value: value,
-				}
-			}
-		}
-		rawConfig[path.Link] = kv
-	}
-	// populate rawConfig with declared annotations, grouping annotation maps by URI
-	for _, key := range keys {
-		if maps, found := c.GetStrMap(key); found {
-			for _, m := range maps {
-				// skip default value
-				if !m.Link.IsEmpty() {
-					if cfg, found := rawConfig[m.Link]; found {
-						cfg[key] = &ConfigValue{
-							Source: m.Source,
-							Value:  m.Value,
-						}
-					} else {
-						panic(fmt.Sprintf("backend '%s/%s' is missing hostname/path '%+v'", backend.Namespace, backend.Name, m.Link))
-					}
-				}
-			}
-		}
-	}
-	// iterate the URIs and create the BackendConfig array
-	// most configs should have just one item with default kv
-	config := make([]*BackendConfig, 0, 1)
-	for link, kv := range rawConfig {
-		path := backend.FindBackendPath(link)
-		realKV := kv
-		if overwrite != nil {
-			realKV = overwrite(path, kv)
-			if realKV == nil {
-				realKV = map[string]*ConfigValue{}
-			}
-		}
-		if cfg := findConfig(config, realKV); cfg != nil {
-			cfg.Paths.Add(path)
-		} else {
-			config = append(config, &BackendConfig{
-				Paths:  hatypes.NewBackendPaths(path),
-				Config: realKV,
-			})
-		}
-	}
-	// rawConfig is a map which by definition does not have explicit order.
-	// sort in order to the same input generates the same output
-	sort.SliceStable(config, func(i, j int) bool {
-		l1 := config[i].Paths.Items[0].Link
-		l2 := config[j].Paths.Items[0].Link
-		return l1.Less(l2, false)
-	})
-	return config
-}
-
-func findConfig(config []*BackendConfig, kv map[string]*ConfigValue) *BackendConfig {
-	for _, cfg := range config {
-		if cfg.ConfigEquals(kv) {
-			return cfg
-		}
-	}
-	return nil
-}
-
-// ConfigEquals ...
-func (b *BackendConfig) ConfigEquals(other map[string]*ConfigValue) bool {
-	if len(b.Config) != len(other) {
-		return false
-	}
-	for key, value := range b.Config {
-		if otherValue, found := other[key]; !found {
-			return false
-		} else if value.Value != otherValue.Value {
-			return false
-		}
-	}
-	return true
-}
-
 // Get ...
-func (b *BackendConfig) Get(key string) *ConfigValue {
-	if configValue, found := b.Config[key]; found && configValue != nil {
-		return configValue
+func (c *KeyConfig) Get(key string) *ConfigValue {
+	if value, found := c.keys[key]; found {
+		return value
+	}
+	if value, found := c.mapper.annDefaults[key]; found {
+		return &ConfigValue{Value: value}
 	}
 	return &ConfigValue{}
-}
-
-// String ...
-func (b *BackendConfig) String() string {
-	return fmt.Sprintf("%+v", *b)
 }
 
 // String ...
@@ -319,7 +225,7 @@ func (s *Source) FullName() string {
 }
 
 // String ...
-func (m *Map) String() string {
+func (m *PathConfig) String() string {
 	return fmt.Sprintf("%+v", *m)
 }
 

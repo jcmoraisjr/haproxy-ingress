@@ -18,6 +18,7 @@ package types
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -30,47 +31,47 @@ func TestAddPath(t *testing.T) {
 		{
 			input: []string{"/"},
 			expected: []*BackendPath{
-				{"path01", PathLink{"d1.local", "/"}},
+				{ID: "path01", Link: PathLink{"d1.local", "/"}},
 			},
 		},
 		// 1
 		{
 			input: []string{"/app", "/app"},
 			expected: []*BackendPath{
-				{"path01", PathLink{"d1.local", "/app"}},
+				{ID: "path01", Link: PathLink{"d1.local", "/app"}},
 			},
 		},
 		// 2
 		{
 			input: []string{"/app", "/root"},
 			expected: []*BackendPath{
-				{"path02", PathLink{"d1.local", "/root"}},
-				{"path01", PathLink{"d1.local", "/app"}},
+				{ID: "path01", Link: PathLink{"d1.local", "/app"}},
+				{ID: "path02", Link: PathLink{"d1.local", "/root"}},
 			},
 		},
 		// 3
 		{
 			input: []string{"/app", "/root", "/root"},
 			expected: []*BackendPath{
-				{"path02", PathLink{"d1.local", "/root"}},
-				{"path01", PathLink{"d1.local", "/app"}},
+				{ID: "path01", Link: PathLink{"d1.local", "/app"}},
+				{ID: "path02", Link: PathLink{"d1.local", "/root"}},
 			},
 		},
 		// 4
 		{
 			input: []string{"/app", "/root", "/app"},
 			expected: []*BackendPath{
-				{"path02", PathLink{"d1.local", "/root"}},
-				{"path01", PathLink{"d1.local", "/app"}},
+				{ID: "path01", Link: PathLink{"d1.local", "/app"}},
+				{ID: "path02", Link: PathLink{"d1.local", "/root"}},
 			},
 		},
 		// 5
 		{
 			input: []string{"/", "/app", "/root"},
 			expected: []*BackendPath{
-				{"path03", PathLink{"d1.local", "/root"}},
-				{"path02", PathLink{"d1.local", "/app"}},
-				{"path01", PathLink{"d1.local", "/"}},
+				{ID: "path01", Link: PathLink{"d1.local", "/"}},
+				{ID: "path02", Link: PathLink{"d1.local", "/app"}},
+				{ID: "path03", Link: PathLink{"d1.local", "/root"}},
 			},
 		},
 	}
@@ -82,5 +83,111 @@ func TestAddPath(t *testing.T) {
 		if !reflect.DeepEqual(b.Paths, test.expected) {
 			t.Errorf("backend.Paths differs on %d - actual: %v - expected: %v", i, b.Paths, test.expected)
 		}
+	}
+}
+
+func TestCreatePathConfig(t *testing.T) {
+	type pathConfig struct {
+		paths  string
+		config interface{}
+	}
+	testCases := []struct {
+		paths    []*BackendPath
+		filter   string
+		expected map[string][]pathConfig
+	}{
+		// 0
+		{
+			filter: "SSLRedirect",
+			expected: map[string][]pathConfig{
+				"SSLRedirect": nil,
+			},
+		},
+		// 1
+		{
+			paths:  []*BackendPath{{ID: "path1"}},
+			filter: "SSLRedirect",
+			expected: map[string][]pathConfig{
+				"SSLRedirect": {
+					{paths: "path1", config: false},
+				},
+			},
+		},
+		// 2
+		{
+			paths: []*BackendPath{
+				{ID: "path1", HSTS: HSTS{Enabled: true, MaxAge: 10}},
+				{ID: "path2", HSTS: HSTS{Enabled: true, MaxAge: 10}},
+				{ID: "path3", HSTS: HSTS{Enabled: true, MaxAge: 20}},
+			},
+			filter: "HSTS",
+			expected: map[string][]pathConfig{
+				"HSTS": {
+					{
+						paths:  "path1,path2",
+						config: HSTS{Enabled: true, MaxAge: 10},
+					},
+					{
+						paths:  "path3",
+						config: HSTS{Enabled: true, MaxAge: 20},
+					},
+				},
+			},
+		},
+		// 3
+		{
+			paths: []*BackendPath{
+				{ID: "path1", HSTS: HSTS{Enabled: true, MaxAge: 10}, WhitelistHTTP: []string{"10.0.0.0/8"}},
+				{ID: "path2", HSTS: HSTS{Enabled: true, MaxAge: 20}, WhitelistHTTP: []string{"10.0.0.0/8"}},
+				{ID: "path3", HSTS: HSTS{Enabled: true, MaxAge: 20}},
+			},
+			filter: "HSTS,WhitelistHTTP",
+			expected: map[string][]pathConfig{
+				"HSTS": {
+					{
+						paths:  "path1",
+						config: HSTS{Enabled: true, MaxAge: 10},
+					},
+					{
+						paths:  "path2,path3",
+						config: HSTS{Enabled: true, MaxAge: 20},
+					},
+				},
+				"WhitelistHTTP": {
+					{
+						paths:  "path1,path2",
+						config: []string{"10.0.0.0/8"},
+					},
+					{
+						paths: "path3",
+					},
+				},
+			},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		backend := Backend{Paths: test.paths}
+		actualConfig := map[string][]pathConfig{}
+		for _, attr := range strings.Split(test.filter, ",") {
+			config := backend.PathConfig(attr)
+			pathConfigs := actualConfig[attr]
+			for _, item := range config.items {
+				paths := []string{}
+				for _, p := range item.paths {
+					paths = append(paths, p.ID)
+				}
+				itemConfig := item.config
+				configValue := reflect.ValueOf(itemConfig)
+				if configValue.Kind() == reflect.Slice && configValue.Len() == 0 {
+					// empty slices and nil are semantically identical but DeepEquals disagrees
+					itemConfig = nil
+				}
+				pathConfigs = append(pathConfigs, pathConfig{paths: strings.Join(paths, ","), config: itemConfig})
+			}
+			actualConfig[attr] = pathConfigs
+		}
+		c.compareObjects("pathconfig", i, actualConfig, test.expected)
+		c.teardown()
 	}
 }

@@ -18,16 +18,10 @@ package types
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 )
-
-// NewBackendPaths ...
-func NewBackendPaths(paths ...*BackendPath) BackendPaths {
-	b := BackendPaths{}
-	b.Add(paths...)
-	return b
-}
 
 // BackendID ...
 func (b *Backend) BackendID() BackendID {
@@ -132,7 +126,7 @@ func (b *Backend) AddBackendPath(link PathLink) *BackendPath {
 		Link: link,
 	}
 	b.Paths = append(b.Paths, backendPath)
-	sortPaths(b.Paths, true)
+	sortPaths(b.Paths, false)
 	return backendPath
 }
 
@@ -170,30 +164,20 @@ func sortPaths(paths []*BackendPath, pathReverse bool) {
 	})
 }
 
-// CreateConfigBool ...
-func (b *Backend) CreateConfigBool(value bool) []*BackendConfigBool {
-	return []*BackendConfigBool{
-		{
-			Paths:  NewBackendPaths(b.Paths...),
-			Config: value,
-		},
-	}
-}
-
-// CreateConfigInt ...
-func (b *Backend) CreateConfigInt(value int64) []*BackendConfigInt {
-	return []*BackendConfigInt{
-		{
-			Paths:  NewBackendPaths(b.Paths...),
-			Config: value,
-		},
-	}
-}
-
 // HasCorsEnabled ...
 func (b *Backend) HasCorsEnabled() bool {
-	for _, cors := range b.Cors {
-		if cors.Config.Enabled {
+	for _, path := range b.Paths {
+		if path.Cors.Enabled {
+			return true
+		}
+	}
+	return false
+}
+
+// HasHSTS ...
+func (b *Backend) HasHSTS() bool {
+	for _, path := range b.Paths {
+		if path.HSTS.Enabled {
 			return true
 		}
 	}
@@ -202,8 +186,8 @@ func (b *Backend) HasCorsEnabled() bool {
 
 // HasModsec is a method to verify if a Backend has ModSecurity Enabled
 func (b *Backend) HasModsec() bool {
-	for _, waf := range b.WAF {
-		if waf.Config.Module == "modsecurity" {
+	for _, path := range b.Paths {
+		if path.WAF.Module == "modsecurity" {
 			return true
 		}
 	}
@@ -212,8 +196,8 @@ func (b *Backend) HasModsec() bool {
 
 // HasSSLRedirect ...
 func (b *Backend) HasSSLRedirect() bool {
-	for _, sslredirect := range b.SSLRedirect {
-		if sslredirect.Config {
+	for _, path := range b.Paths {
+		if path.SSLRedirect {
 			return true
 		}
 	}
@@ -222,19 +206,17 @@ func (b *Backend) HasSSLRedirect() bool {
 
 // LinkHasSSLRedirect ...
 func (b *Backend) LinkHasSSLRedirect(link PathLink) bool {
-	for _, sslredirect := range b.SSLRedirect {
-		for _, p := range sslredirect.Paths.Items {
-			if p.Link == link {
-				return sslredirect.Config
-			}
+	for _, path := range b.Paths {
+		if path.Link == link {
+			return path.SSLRedirect
 		}
 	}
 	return false
 }
 
 // HasSSLRedirectPaths ...
-func (b *Backend) HasSSLRedirectPaths(paths *BackendPaths) bool {
-	for _, path := range paths.Items {
+func (b *Backend) HasSSLRedirectPaths(paths []*BackendPath) bool {
+	for _, path := range paths {
 		if b.LinkHasSSLRedirect(path.Link) {
 			return true
 		}
@@ -242,36 +224,100 @@ func (b *Backend) HasSSLRedirectPaths(paths *BackendPaths) bool {
 	return false
 }
 
+// PathConfig ...
+func (b *Backend) PathConfig(attr string) *BackendPathConfig {
+	b.ensurePathConfig(attr)
+	return b.pathConfig[attr]
+}
+
 // NeedACL ...
 func (b *Backend) NeedACL() bool {
-	return len(b.HSTS) > 1 ||
-		len(b.MaxBodySize) > 1 || len(b.RewriteURL) > 1 || len(b.WhitelistHTTP) > 1 ||
-		len(b.Cors) > 1 || len(b.AuthHTTP) > 1 || len(b.WAF) > 1
+	b.ensurePathConfig("")
+	for _, path := range b.pathConfig {
+		if path.NeedACL() {
+			return true
+		}
+	}
+	return false
+}
+
+func (b *Backend) ensurePathConfig(attr string) {
+	if b.pathConfig == nil {
+		b.pathConfig = b.createPathConfig()
+	}
+	if attr == "" {
+		return
+	}
+	if _, found := b.pathConfig[attr]; !found {
+		panic(fmt.Errorf("field does not exist: %s", attr))
+	}
+}
+
+func (b *Backend) createPathConfig() map[string]*BackendPathConfig {
+	pathconfig := make(map[string]*BackendPathConfig, len(b.Paths))
+	pathType := reflect.TypeOf(BackendPath{})
+	for i := 0; i < pathType.NumField(); i++ {
+		name := pathType.Field(i).Name
+		// filter out core fields
+		if name != "ID" && name != "Link" {
+			pathconfig[name] = &BackendPathConfig{}
+		}
+	}
+	for _, path := range b.Paths {
+		pathValue := reflect.ValueOf(*path)
+		for name, config := range pathconfig {
+			newconfig := pathValue.FieldByName(name).Interface()
+			hasconfig := false
+			for _, item := range config.items {
+				if reflect.DeepEqual(item.config, newconfig) {
+					item.paths = append(item.paths, path)
+					hasconfig = true
+					break
+				}
+			}
+			if !hasconfig {
+				config.items = append(config.items, &BackendPathItem{
+					paths:  []*BackendPath{path},
+					config: newconfig,
+				})
+			}
+		}
+	}
+	return pathconfig
+}
+
+// NeedACL ...
+func (b *BackendPathConfig) NeedACL() bool {
+	return len(b.items) > 1
+}
+
+// Items ...
+func (b *BackendPathConfig) Items() []interface{} {
+	items := make([]interface{}, len(b.items))
+	for i, item := range b.items {
+		items[i] = item.config
+	}
+	return items
+}
+
+// Paths ...
+func (b *BackendPathConfig) Paths(index int) []*BackendPath {
+	return b.items[index].paths
+}
+
+// PathIDs ...
+func (b *BackendPathConfig) PathIDs(index int) string {
+	paths := b.items[index].paths
+	ids := make([]string, len(paths))
+	for i, path := range paths {
+		ids[i] = path.ID
+	}
+	return strings.Join(ids, " ")
 }
 
 // IsEmpty ...
 func (ep *Endpoint) IsEmpty() bool {
 	return ep.IP == "127.0.0.1"
-}
-
-// IDList ...
-func (p *BackendPaths) IDList() string {
-	ids := make([]string, len(p.Items))
-	for i, item := range p.Items {
-		ids[i] = item.ID
-	}
-	return strings.Join(ids, " ")
-}
-
-// Add ...
-func (p *BackendPaths) Add(paths ...*BackendPath) {
-	for _, path := range paths {
-		if path == nil {
-			panic("path cannot be nil")
-		}
-		p.Items = append(p.Items, path)
-	}
-	sortPaths(p.Items, false)
 }
 
 // Hostname ...
@@ -302,44 +348,4 @@ func (p *BackendPath) String() string {
 // String ...
 func (h *BackendHeader) String() string {
 	return fmt.Sprintf("%+v", *h)
-}
-
-// String ...
-func (b *BackendConfigAuth) String() string {
-	return fmt.Sprintf("%+v", *b)
-}
-
-// String ...
-func (b *BackendConfigBool) String() string {
-	return fmt.Sprintf("%+v", *b)
-}
-
-// String ...
-func (b *BackendConfigInt) String() string {
-	return fmt.Sprintf("%+v", *b)
-}
-
-// String ...
-func (b *BackendConfigStr) String() string {
-	return fmt.Sprintf("%+v", *b)
-}
-
-// String ...
-func (b *BackendConfigCors) String() string {
-	return fmt.Sprintf("%+v", *b)
-}
-
-// String ...
-func (b *BackendConfigHSTS) String() string {
-	return fmt.Sprintf("%+v", *b)
-}
-
-// String ...
-func (b *BackendConfigWhitelist) String() string {
-	return fmt.Sprintf("%+v", *b)
-}
-
-// String ...
-func (b *BackendConfigWAF) String() string {
-	return fmt.Sprintf("%+v", *b)
 }
