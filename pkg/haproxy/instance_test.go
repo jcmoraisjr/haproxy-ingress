@@ -186,7 +186,7 @@ d1.local/ path01`,
 			},
 			path: []string{"/app"},
 			expected: `
-    http-request replace-uri ^/app/?(.*)$     /\1`,
+    http-request replace-path ^/app/?(.*)$     /\1`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
@@ -194,7 +194,7 @@ d1.local/ path01`,
 			},
 			path: []string{"/app"},
 			expected: `
-    http-request replace-uri ^/app(.*)$       /other\1`,
+    http-request replace-path ^/app(.*)$       /other\1`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
@@ -203,8 +203,8 @@ d1.local/ path01`,
 			},
 			path: []string{"/app", "/app/sub"},
 			expected: `
-    http-request replace-uri ^/app(.*)$       /other/\1
-    http-request replace-uri ^/app/sub(.*)$       /other/\1`,
+    http-request replace-path ^/app(.*)$       /other/\1
+    http-request replace-path ^/app/sub(.*)$       /other/\1`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
@@ -218,9 +218,9 @@ d1.local/ path01`,
     # path02 = d1.local/path2
     # path03 = d1.local/path3
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
-    http-request replace-uri ^/path1(.*)$       /sub1\1     if { var(txn.pathID) path01 }
-    http-request replace-uri ^/path2(.*)$       /sub2\1     if { var(txn.pathID) path02 }
-    http-request replace-uri ^/path3(.*)$       /sub2\1     if { var(txn.pathID) path03 }`,
+    http-request replace-path ^/path1(.*)$       /sub1\1     if { var(txn.pathID) path01 }
+    http-request replace-path ^/path2(.*)$       /sub2\1     if { var(txn.pathID) path02 }
+    http-request replace-path ^/path3(.*)$       /sub2\1     if { var(txn.pathID) path03 }`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
 d1.local/path3 path03
