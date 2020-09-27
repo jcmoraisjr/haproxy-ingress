@@ -1099,6 +1099,8 @@ func TestOAuth(t *testing.T) {
 	testCases := []struct {
 		annDefault map[string]string
 		ann        map[string]string
+		external   bool
+		haslua     bool
 		backend    string
 		oauthExp   hatypes.OAuthConfig
 		logging    string
@@ -1225,6 +1227,31 @@ func TestOAuth(t *testing.T) {
 				},
 			},
 		},
+		// 10
+		{
+			ann: map[string]string{
+				ingtypes.BackOAuth: "oauth2_proxy",
+			},
+			external: true,
+			backend:  "default:back:/oauth2",
+			oauthExp: hatypes.OAuthConfig{},
+			logging:  "WARN oauth2_proxy on ingress 'default/ing1' needs Lua socket, install Lua libraries and enable 'external-has-lua' global config",
+		},
+		// 11
+		{
+			ann: map[string]string{
+				ingtypes.BackOAuth: "oauth2_proxy",
+			},
+			external: true,
+			haslua:   true,
+			backend:  "default:back:/oauth2",
+			oauthExp: hatypes.OAuthConfig{
+				Impl:        "oauth2_proxy",
+				BackendName: "default_back_8080",
+				URIPrefix:   "/oauth2",
+				Headers:     map[string]string{"X-Auth-Request-Email": "auth_response_email"},
+			},
+		},
 	}
 
 	source := &Source{
@@ -1235,6 +1262,10 @@ func TestOAuth(t *testing.T) {
 	for i, test := range testCases {
 		c := setup(t)
 		d := c.createBackendData("default/app", source, test.ann, test.annDefault)
+		if test.external {
+			c.haproxy.Global().External.MasterSocket = "/tmp/master.sock"
+		}
+		c.haproxy.Global().External.HasLua = test.haslua
 		if test.backend != "" {
 			b := strings.Split(test.backend, ":")
 			backend := c.haproxy.Backends().AcquireBackend(b[0], b[1], "8080")

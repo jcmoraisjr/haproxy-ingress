@@ -206,6 +206,28 @@ func (c *updater) buildGlobalTimeout(d *globalData) {
 	d.global.Timeout.Tunnel = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutTunnel))
 }
 
+func (c *updater) buildSecurity(d *globalData) {
+	username := d.mapper.Get(ingtypes.GlobalUsername).Value
+	groupname := d.mapper.Get(ingtypes.GlobalGroupname).Value
+	if (username == "") != (groupname == "") {
+		c.logger.Warn("if configuring non root user, both username and groupname must be defined")
+		username = ""
+		groupname = ""
+	}
+	haproxy := "haproxy"
+	useHaproxyUser := d.mapper.Get(ingtypes.GlobalUseHAProxyUser).Bool()
+	if useHaproxyUser {
+		if username == "" {
+			username, groupname = haproxy, haproxy
+		} else if username != haproxy || groupname != haproxy {
+			c.logger.Warn("username and groupname are already defined as '%s' and '%s', ignoring '%s' config", username, groupname, ingtypes.GlobalUseHAProxyUser)
+		}
+	}
+	d.global.Security.Username = username
+	d.global.Security.Groupname = groupname
+	d.global.Security.UseChroot = d.mapper.Get(ingtypes.GlobalUseChroot).Bool()
+}
+
 func (c *updater) buildGlobalSSL(d *globalData) {
 	ssl := &d.global.SSL
 	ssl.ALPN = d.mapper.Get(ingtypes.HostTLSALPN).Value

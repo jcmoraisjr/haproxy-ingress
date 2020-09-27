@@ -29,6 +29,7 @@ The following command-line options are supported:
 | [`--ignore-ingress-without-class`](#ignore-ingress-without-class)| [true\|false]     | `false`                 | v0.10 |
 | [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |       |
 | [`--kubeconfig`](#kubeconfig)                           | /path/to/kubeconfig        | in cluster config       |       |
+| [`--master-socket`](#master-socket)                     | socket path                | use embedded haproxy    | v0.12 |
 | [`--max-old-config-files`](#max-old-config-files)       | num of files               | `0`                     |       |
 | [`--profiling`](#stats)                                 | [true\|false]              | `true`                  |       |
 | [`--publish-service`](#publish-service)                 | namespace/servicename      |                         |       |
@@ -152,6 +153,29 @@ Ingress controller will try to connect to the Kubernetes master using environmen
 service account. This behavior can be changed using `--kubeconfig` argument that reference a
 kubeconfig file with master endpoint and credentials. This is a mandatory argument if the controller
 is deployed outside of the Kubernetes cluster.
+
+---
+
+## --master-socket
+
+Since v0.12
+
+Configures HAProxy Ingress to use an external haproxy deployment in master-worker mode. This option
+receives the unix socket of the master CLI. The default value is an empty string, which will
+instruct the controller to start and manage the embedded haproxy instead of an external instance.
+
+The following conditions should be satisfied in order to an external haproxy work properly:
+
+1. The following paths should be shared between HAProxy Ingress and the external haproxy: `/etc/haproxy`, `/var/lib/haproxy`, `/var/run/haproxy`. HAProxy Ingress must have write access to all of them, external haproxy should have write access to `/var/run/haproxy`. This can be made using a sidecar container and k8s' emptyDir, or a remote file system provided that it updates synchronously and supports unix sockets
+1. Start the external haproxy with:
+  * `-S /var/run/haproxy/master.sock,mode,600`. `mode 600` isn't mandatory but recommended;
+  * `-f /etc/haproxy`
+1. HAProxy Ingress image has a `--init` command-line option which creates an initial valid configuration file, this allows the external haproxy to bootstraps successfully. This option can be used as an init container.
+
+See also:
+
+* [example]({{% relref "../examples/external-haproxy" %}}) page.
+* [External]({{% relref "keys#external" %}}) and [Master-worker]({{% relref "keys#master-worker" %}}) configuration keys
 
 ---
 

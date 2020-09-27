@@ -429,3 +429,85 @@ func TestPathTypeOrder(t *testing.T) {
 		c.teardown()
 	}
 }
+
+func TestSecurity(t *testing.T) {
+	testCases := []struct {
+		ann      map[string]string
+		expected hatypes.SecurityConfig
+		logging  string
+	}{
+		// 0
+		{
+			ann: map[string]string{
+				ingtypes.GlobalUseChroot: "true",
+			},
+			expected: hatypes.SecurityConfig{
+				UseChroot: true,
+			},
+		},
+		// 1
+		{
+			ann: map[string]string{
+				ingtypes.GlobalUsername: "someuser",
+			},
+			expected: hatypes.SecurityConfig{},
+			logging:  `WARN if configuring non root user, both username and groupname must be defined`,
+		},
+		// 2
+		{
+			ann: map[string]string{
+				ingtypes.GlobalUsername:  "someuser",
+				ingtypes.GlobalGroupname: "somegroup",
+			},
+			expected: hatypes.SecurityConfig{
+				Username:  "someuser",
+				Groupname: "somegroup",
+			},
+		},
+		// 3
+		{
+			ann: map[string]string{
+				ingtypes.GlobalUsername:       "someuser",
+				ingtypes.GlobalGroupname:      "somegroup",
+				ingtypes.GlobalUseHAProxyUser: "true",
+			},
+			expected: hatypes.SecurityConfig{
+				Username:  "someuser",
+				Groupname: "somegroup",
+			},
+			logging: `WARN username and groupname are already defined as 'someuser' and 'somegroup', ignoring 'use-haproxy-user' config`,
+		},
+		// 4
+		{
+			ann: map[string]string{
+				ingtypes.GlobalUsername:       "someuser",
+				ingtypes.GlobalUseHAProxyUser: "true",
+			},
+			expected: hatypes.SecurityConfig{
+				Username:  "haproxy",
+				Groupname: "haproxy",
+			},
+			logging: `WARN if configuring non root user, both username and groupname must be defined`,
+		},
+		// 5
+		{
+			ann: map[string]string{
+				ingtypes.GlobalUsername:       "haproxy",
+				ingtypes.GlobalGroupname:      "haproxy",
+				ingtypes.GlobalUseHAProxyUser: "true",
+			},
+			expected: hatypes.SecurityConfig{
+				Username:  "haproxy",
+				Groupname: "haproxy",
+			},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createGlobalData(test.ann)
+		c.createUpdater().buildSecurity(d)
+		c.compareObjects("fronting proxy", i, d.global.Security, test.expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}

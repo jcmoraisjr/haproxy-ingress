@@ -121,8 +121,6 @@ func (hc *HAProxyController) configController() {
 		)
 	}
 	instanceOptions := haproxy.InstanceOptions{
-		HAProxyCmd:        "haproxy",
-		ReloadCmd:         "/haproxy-reload.sh",
 		HAProxyCfgDir:     "/etc/haproxy",
 		HAProxyMapsDir:    ingress.DefaultMapsDirectory,
 		BackendShards:     hc.cfg.BackendShards,
@@ -142,6 +140,7 @@ func (hc *HAProxyController) configController() {
 		Logger:           hc.logger,
 		Cache:            hc.cache,
 		Tracker:          hc.tracker,
+		MasterSocket:     hc.cfg.MasterSocket,
 		AnnotationPrefix: hc.cfg.AnnPrefix,
 		DefaultBackend:   hc.cfg.DefaultService,
 		DefaultCrtSecret: hc.cfg.DefaultSSLCertificate,
@@ -312,7 +311,7 @@ func (hc *HAProxyController) syncIngress(item interface{}) {
 	// ingress converter
 	//
 	hc.updateCount++
-	hc.logger.Info("starting HAProxy update id=%d", hc.updateCount)
+	hc.logger.Info("starting haproxy update id=%d", hc.updateCount)
 	timer := utils.NewTimer(hc.metrics.ControllerProcTime)
 	ingConverter := ingressconverter.NewIngressConverter(
 		hc.converterOptions,
@@ -344,5 +343,5 @@ func (hc *HAProxyController) syncIngress(item interface{}) {
 	// update proxy
 	//
 	hc.instance.Update(timer)
-	hc.logger.Info("finish HAProxy update id=%d: %s", hc.updateCount, timer.AsString("total"))
+	hc.logger.Info("finish haproxy update id=%d: %s", hc.updateCount, timer.AsString("total"))
 }

@@ -59,13 +59,18 @@
 {{- define "global" }}
 {{- $global := .p1 }}
 global
+{{- if $global.External.IsExternal }}
+    master-worker{{ if not $global.Master.ExitOnFailure }} no-exit-on-failure{{ end }}
+{{- else }}
     daemon
-{{- if $global.UseHAProxyUser }}
-    user haproxy
-    group haproxy
 {{- end }}
-    unix-bind user haproxy group haproxy mode 0600
-{{- if $global.UseChroot }}
+{{- $nonroot := and $global.Security.Username $global.Security.Groupname }}
+{{- if $nonroot }}
+    user {{ $global.Security.Username }}
+    group {{ $global.Security.Groupname }}
+{{- end }}
+    unix-bind{{ if $nonroot }} user {{ $global.Security.Username }} group {{ $global.Security.Groupname }}{{ end }} mode 0600
+{{- if $global.Security.UseChroot }}
     chroot /var/empty
 {{- end }}
 {{- if gt $global.Procs.Nbproc 1 }}
@@ -91,7 +96,9 @@ global
     log {{ $global.Syslog.Endpoint }} len {{ $global.Syslog.Length }} format {{ $global.Syslog.Format }} local0
     log-tag {{ $global.Syslog.Tag }}
 {{- end }}
+{{- if or (not $global.External.IsExternal) $global.External.HasLua }}
     lua-load /etc/haproxy/lua/auth-request.lua
+{{- end }}
     lua-load /etc/haproxy/lua/services.lua
 {{- if $global.SSL.DHParam.Filename }}
     ssl-dh-param-file {{ $global.SSL.DHParam.Filename }}

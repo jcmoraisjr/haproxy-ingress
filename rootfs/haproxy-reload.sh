@@ -53,9 +53,9 @@ case "$1" in
         HAPROXY_PID=/var/run/haproxy/haproxy.pid
         OLD_PID=$(cat "$HAPROXY_PID" 2>/dev/null || :)
         if [ -S "$HAPROXY_SOCKET" ]; then
-            haproxy -f "$CONFIG" -p "$HAPROXY_PID" -sf $OLD_PID -x "$HAPROXY_SOCKET"
+            haproxy -f "$CONFIG" -p "$HAPROXY_PID" -D -sf $OLD_PID -x "$HAPROXY_SOCKET"
         else
-            haproxy -f "$CONFIG" -p "$HAPROXY_PID" -sf $OLD_PID
+            haproxy -f "$CONFIG" -p "$HAPROXY_PID" -D -sf $OLD_PID
         fi
         ;;
     *)

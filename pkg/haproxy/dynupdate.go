@@ -294,7 +294,7 @@ func (d *dynUpdater) execDisableEndpoint(backname string, ep *hatypes.Endpoint) 
 	}
 	d.logger.InfoV(2, "disabled endpoint '%s' on backend/server '%s/%s'", ep.Target, backname, ep.Name)
 	for _, m := range msg {
-		d.logger.InfoV(2, m)
+		d.logger.InfoV(2, "response from server: %s", m)
 	}
 	return true
 }
@@ -316,7 +316,7 @@ func (d *dynUpdater) execEnableEndpoint(backname string, oldEP, curEP *hatypes.E
 	d.logger.InfoV(2, "%s endpoint '%s' weight '%d' state '%s' on backend/server '%s/%s'",
 		event, curEP.Target, curEP.Weight, state, backname, curEP.Name)
 	for _, m := range msg {
-		d.logger.InfoV(2, m)
+		d.logger.InfoV(2, "response from server: %s", m)
 	}
 	return true
 }

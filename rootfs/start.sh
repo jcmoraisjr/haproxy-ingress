@@ -19,8 +19,20 @@ set -e
 if [ $# -gt 0 ] && [ "$(echo $1 | cut -b1-2)" != "--" ]; then
     # Probably a `docker run -ti`, so exec and exit
     exec "$@"
+elif [ "$1" = "--init" ]; then
+    port="${2:-10253}"
+    cat >/etc/haproxy/haproxy.cfg <<EOF
+defaults
+    timeout server 1s
+    timeout client 1s
+    timeout connect 1s
+frontend healthz
+    mode http
+    bind :$port
+    monitor-uri /healthz
+EOF
 else
     # Copy static files to /etc/haproxy, which cannot have static content
-    cp -R -p /etc/lua /etc/haproxy/
+    cp -R /etc/lua /etc/haproxy/ 
     exec /haproxy-ingress-controller "$@"
 fi

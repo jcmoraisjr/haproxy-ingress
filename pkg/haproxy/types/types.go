@@ -63,13 +63,14 @@ type Global struct {
 	ForwardFor      string
 	LoadServerState bool
 	AdminSocket     string
+	External        ExternalConfig
 	Healthz         HealthzConfig
+	Master          MasterConfig
 	MatchOrder      []MatchType
 	Prometheus      PromConfig
+	Security        SecurityConfig
 	Stats           StatsConfig
 	StrictHost      bool
-	UseChroot       bool
-	UseHAProxyUser  bool
 	UseHTX          bool
 	CustomConfig    []string
 	CustomDefaults  []string
@@ -177,16 +178,34 @@ type DrainConfig struct {
 	Redispatch bool
 }
 
+// ExternalConfig ...
+type ExternalConfig struct {
+	HasLua       bool
+	MasterSocket string
+}
+
 // HealthzConfig ...
 type HealthzConfig struct {
 	BindIP string
 	Port   int
 }
 
+// MasterConfig ...
+type MasterConfig struct {
+	ExitOnFailure bool
+}
+
 // PromConfig ...
 type PromConfig struct {
 	BindIP string
 	Port   int
+}
+
+// SecurityConfig ...
+type SecurityConfig struct {
+	Groupname string
+	UseChroot bool
+	Username  string
 }
 
 // StatsConfig ...
