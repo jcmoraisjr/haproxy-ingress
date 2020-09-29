@@ -997,6 +997,18 @@ backend d1_app_8080
     http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex]   if local-offload
     http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload" if https-request
     server s1 172.17.0.11:8080 weight 100`
+		backSSLRedirUseProto = `
+backend d1_app_8080
+    mode http
+    acl https-request ssl_fc
+    acl https-request var(txn.proto) https
+    acl local-offload ssl_fc
+    http-request set-var(txn.proto) hdr(X-Forwarded-Proto)
+    http-request set-header X-SSL-Client-CN   %{+Q}[ssl_c_s_dn(cn)]
+    http-request set-header X-SSL-Client-DN   %{+Q}[ssl_c_s_dn]
+    http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex]
+    http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload"
+    server s1 172.17.0.11:8080 weight 100`
 		backIgnoreProto = `
 backend d1_app_8080
     mode http
@@ -1004,6 +1016,15 @@ backend d1_app_8080
     http-request set-header X-SSL-Client-CN   %{+Q}[ssl_c_s_dn(cn)]   if local-offload
     http-request set-header X-SSL-Client-DN   %{+Q}[ssl_c_s_dn]       if local-offload
     http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex]   if local-offload
+    http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload"
+    server s1 172.17.0.11:8080 weight 100`
+		backSSLRedirIgnoreProto = `
+backend d1_app_8080
+    mode http
+    acl local-offload ssl_fc
+    http-request set-header X-SSL-Client-CN   %{+Q}[ssl_c_s_dn(cn)]
+    http-request set-header X-SSL-Client-DN   %{+Q}[ssl_c_s_dn]
+    http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex]
     http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload"
     server s1 172.17.0.11:8080 weight 100`
 		setvarBegin = `
@@ -1023,6 +1044,7 @@ backend d1_app_8080
 		frontingBind     string
 		domain           string
 		useProto         bool
+		sslRedirect      bool
 		expectedBack     string
 		expectedFront    string
 		expectedMap      string
@@ -1035,6 +1057,7 @@ backend d1_app_8080
 			frontingBind: ":8000",
 			domain:       "d1.local",
 			useProto:     true,
+			sslRedirect:  false,
 			expectedBack: backUseProto,
 			expectedFront: `
     mode http
@@ -1050,6 +1073,7 @@ backend d1_app_8080
 			frontingBind: ":8000",
 			domain:       "*.d1.local",
 			useProto:     true,
+			sslRedirect:  false,
 			expectedBack: backUseProto,
 			expectedFront: `
     mode http
@@ -1076,6 +1100,7 @@ backend d1_app_8080
 			frontingBind: ":80",
 			domain:       "d1.local",
 			useProto:     true,
+			sslRedirect:  false,
 			expectedBack: backUseProto,
 			expectedFront: `
     mode http
@@ -1090,6 +1115,7 @@ backend d1_app_8080
 			frontingBind: ":8000",
 			domain:       "d1.local",
 			useProto:     false,
+			sslRedirect:  false,
 			expectedBack: backIgnoreProto,
 			expectedFront: `
     mode http
@@ -1107,6 +1133,7 @@ backend d1_app_8080
 			frontingBind: ":8000",
 			domain:       "*.d1.local",
 			useProto:     false,
+			sslRedirect:  false,
 			expectedBack: backIgnoreProto,
 			expectedFront: `
     mode http
@@ -1124,7 +1151,74 @@ backend d1_app_8080
 			frontingBind: ":80",
 			domain:       "d1.local",
 			useProto:     false,
+			sslRedirect:  false,
 			expectedBack: backIgnoreProto,
+			expectedFront: `
+    mode http
+    bind :80
+    <<set-req-base>>
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }`,
+			expectedMap:    "d1.local/ d1_app_8080",
+			expectedACL:    aclExact,
+			expectedSetvar: setvarBegin,
+		},
+		// 6
+		{
+			frontingBind: ":8000",
+			domain:       "d1.local",
+			useProto:     true,
+			sslRedirect:  true,
+			expectedBack: backSSLRedirUseProto,
+			expectedFront: `
+    mode http
+    bind :80
+    bind :8000 id 11
+    acl fronting-proxy so_id 11` + frontUseProto,
+			expectedMap:    "d1.local/ d1_app_8080",
+			expectedACL:    aclExact,
+			expectedSetvar: setvarBegin,
+		},
+		// 7
+		{
+			frontingBind: ":80",
+			domain:       "d1.local",
+			useProto:     true,
+			sslRedirect:  true,
+			expectedBack: backSSLRedirUseProto,
+			expectedFront: `
+    mode http
+    bind :80
+    acl fronting-proxy hdr(X-Forwarded-Proto) -m found` + frontUseProto,
+			expectedMap:    "d1.local/ d1_app_8080",
+			expectedACL:    aclExact,
+			expectedSetvar: setvarBegin,
+		},
+		// 8
+		{
+			frontingBind: ":8000",
+			domain:       "d1.local",
+			useProto:     false,
+			sslRedirect:  true,
+			expectedBack: backSSLRedirIgnoreProto,
+			expectedFront: `
+    mode http
+    bind :80
+    bind :8000 id 11
+    <<set-req-base>>
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }`,
+			expectedMap:    "d1.local/ d1_app_8080",
+			expectedACL:    aclExact,
+			expectedSetvar: setvarBegin,
+		},
+		// 9
+		{
+			frontingBind: ":80",
+			domain:       "d1.local",
+			useProto:     false,
+			sslRedirect:  true,
+			expectedBack: backSSLRedirIgnoreProto,
 			expectedFront: `
     mode http
     bind :80
@@ -1146,6 +1240,7 @@ backend d1_app_8080
 		h = c.config.Hosts().AcquireHost(test.domain)
 		h.AddPath(b, "/", hatypes.MatchBegin)
 		b.Endpoints = []*hatypes.Endpoint{endpointS1}
+		b.FindBackendPath(h.FindPath("/").Link).SSLRedirect = test.sslRedirect
 		b.FindBackendPath(h.FindPath("/").Link).HSTS = hatypes.HSTS{
 			Enabled:    true,
 			MaxAge:     15768000,
