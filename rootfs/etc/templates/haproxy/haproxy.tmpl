@@ -39,7 +39,7 @@
     {{- if $backendItems }}
         {{- template "backends" map $global $backendItems true }}
     {{- end }}
-    {{- template "backend-support" map $global $backends }}
+    {{- template "backend-support" map $global $hosts $backends }}
     {{- if $fmaps }}
         {{- template "frontends" map $global $frontend $hosts $fmaps $backends.DefaultBackend }}
     {{- end }}
@@ -353,10 +353,18 @@ backend {{ $backend.ID }}
 {{- else }}{{/*** if $backend.ModeTCP ***/}}
 
 {{- /*------------------------------------*/}}
+{{- $hasPlainHTTPSocket := not $global.Bind.ShareHTTPPort }}
 {{- $hasFrontingProxy := $global.Bind.HasFrontingProxy }}
 {{- $frontingUseProto := and $hasFrontingProxy $global.Bind.FrontingUseProto }}
 {{- $frontingIgnoreProto := and $hasFrontingProxy (not $global.Bind.FrontingUseProto) }}
-{{- if and $backend.HasHSTS (not $frontingIgnoreProto) }}
+{{- if $frontingUseProto }}
+{{- if $hasPlainHTTPSocket }}
+    acl fronting-proxy so_id {{ $global.Bind.FrontingSockID }}
+{{- else }}
+    acl fronting-proxy hdr(X-Forwarded-Proto) -m found
+{{- end }}
+{{- end }}
+{{- if and (not $frontingIgnoreProto) (or $backend.HasHSTS $backend.HasSSLRedirect) }}
     acl https-request ssl_fc
 {{- if $frontingUseProto }}
     acl https-request var(txn.proto) https
@@ -369,6 +377,52 @@ backend {{ $backend.ID }}
 {{- /*------------------------------------*/}}
 {{- if and $frontingUseProto $backend.HasHSTS }}
     http-request set-var(txn.proto) hdr(X-Forwarded-Proto)
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $backend.NeedACL }}
+{{- range $path := $backend.Paths }}
+    # {{ $path.ID }} = {{ $path.Hostname }}{{ $path.Path }}
+{{- end }}
+{{- range $match := $backend.PathsMap.MatchTypes }}
+    http-request set-var(txn.pathID) var(req.base)
+        {{- if $match.Lower }},lower{{ end }}
+        {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
+        {{- if not $match.First }} if !{ var(txn.pathID) -m found }{{ end }}
+{{- end }}
+{{- end }}
+
+{{- /* * Snippet of per-path configuration
+   *
+{{- $attrCfg := $backend.PathConfig "Attr" }}
+{{- $needACL := $attrCfg.NeedACL }}
+{{- range $i, $attr := $attrCfg.Items }}
+    some haproxy keyword {{ $attr }}
+        {{- if $needACL }} if { var(txn.pathID) {{ $attrCfg.PathIDs $i }} }{{ end }}
+{{- end }}
+{{- end }}
+   *
+   * */}}
+
+{{- /*------------------------------------*/}}
+{{- if $frontingUseProto }}
+    http-request redirect scheme https
+        {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
+        {{- "" }} if fronting-proxy !{ hdr(X-Forwarded-Proto) https }
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if not $frontingIgnoreProto }}
+{{- $sslredirCfg := $backend.PathConfig "SSLRedirect" }}
+{{- $needACL := $sslredirCfg.NeedACL }}
+{{- range $i, $sslredir := $sslredirCfg.Items }}
+{{- if $sslredir }}
+    http-request redirect scheme https
+        {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
+        {{- "" }} if{{ if $hasFrontingProxy }} !fronting-proxy{{ end }} !https-request
+        {{- if $needACL }} { var(txn.pathID) {{ $sslredirCfg.PathIDs $i }} }{{ end }}
+{{- end }}
+{{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -388,19 +442,6 @@ backend {{ $backend.ID }}
     http-request deny deny_status 429 if
         {{- if $backend.Limit.Whitelist }} !wlist_conn{{ end }}
         {{- "" }} { sc1_conn_rate gt {{ $backend.Limit.RPS }} }
-{{- end }}
-{{- end }}
-
-{{- /*------------------------------------*/}}
-{{- if $backend.NeedACL }}
-{{- range $path := $backend.Paths }}
-    # {{ $path.ID }} = {{ $path.Hostname }}{{ $path.Path }}
-{{- end }}
-{{- range $match := $backend.PathsMap.MatchTypes }}
-    http-request set-var(txn.pathID) var(req.base)
-        {{- if $match.Lower }},lower{{ end }}
-        {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
-        {{- if not $match.First }} if !{ var(txn.pathID) -m found }{{ end }}
 {{- end }}
 {{- end }}
 
@@ -664,7 +705,20 @@ backend {{ $backend.ID }}
 
 {{- define "backend-support" }}
 {{- $global := .p1 }}
-{{- $backends := .p2 }}
+{{- $hosts := .p2 }}
+{{- $backends := .p3 }}
+
+{{- if $hosts.HasSSLPassthrough }}
+
+  # # # # # # # # # # # # # # # # # # #
+# #
+#     Support
+#
+backend _redirect_https
+    mode http
+    http-request redirect scheme https
+        {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
+{{- end }}
 
 {{- if $global.Acme.Enabled }}
 
@@ -783,13 +837,6 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $frontingUseProto }}
-    http-request redirect scheme https
-        {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
-        {{- "" }} if fronting-proxy !{ hdr(X-Forwarded-Proto) https }
-{{- end }}
-
-{{- /*------------------------------------*/}}
 {{- if $global.Acme.Enabled }}
     acl acme-challenge path_beg {{ $global.Acme.Prefix }}
 {{- end }}
@@ -801,26 +848,6 @@ frontend _front_http
 
 {{- /*------------------------------------*/}}
 {{- $acmeexclusive := and $global.Acme.Enabled (not $global.Acme.Shared) }}
-{{- if not $frontingIgnoreProto }}
-{{- if $fmaps.RedirToHTTPSMap.HasHost }}
-{{- range $match := $fmaps.RedirToHTTPSMap.MatchTypes }}
-    http-request set-var(req.redir) var(req.base)
-        {{- if $match.Lower }},lower{{ end }}
-        {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
-        {{- if or $hasFrontingProxy (not $match.First) }} if
-            {{- if $hasFrontingProxy }} !fronting-proxy{{ end }}
-            {{- if not $match.First }} !{ var(req.redir) -m found }{{ end }}
-        {{- end }}
-{{- end }}
-    http-request redirect scheme https
-        {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
-        {{- "" }} if{{ if $acmeexclusive }} !acme-challenge{{ end }}
-        {{- if $hasFrontingProxy }} !fronting-proxy{{ end }}
-        {{- "" }} { var(req.redir) yes }
-{{- end }}
-{{- end }}
-
-{{- /*------------------------------------*/}}
 {{- if $fmaps.RedirFromRootMap.HasHost }}
 {{- range $match := $fmaps.RedirFromRootMap.MatchTypes }}
     http-request set-var(req.rootredir) var(req.host)

@@ -204,20 +204,10 @@ func (b *Backend) HasSSLRedirect() bool {
 	return false
 }
 
-// LinkHasSSLRedirect ...
-func (b *Backend) LinkHasSSLRedirect(link PathLink) bool {
-	for _, path := range b.Paths {
-		if path.Link == link {
-			return path.SSLRedirect
-		}
-	}
-	return false
-}
-
 // HasSSLRedirectPaths ...
 func (b *Backend) HasSSLRedirectPaths(paths []*BackendPath) bool {
 	for _, path := range paths {
-		if b.LinkHasSSLRedirect(path.Link) {
+		if path.SSLRedirect {
 			return true
 		}
 	}
