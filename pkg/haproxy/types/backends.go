@@ -147,9 +147,16 @@ func (b *Backends) ChangedShards() []int {
 }
 
 // SortChangedEndpoints ...
-func (b *Backends) SortChangedEndpoints() {
+func (b *Backends) SortChangedEndpoints(sortBy string) {
 	for _, backend := range b.itemsAdd {
-		backend.sortEndpoints()
+		backend.sortEndpoints(sortBy)
+	}
+}
+
+// ShuffleAllEndpoints ...
+func (b *Backends) ShuffleAllEndpoints() {
+	for _, backend := range b.items {
+		backend.shuffleEndpoints()
 	}
 }
 
