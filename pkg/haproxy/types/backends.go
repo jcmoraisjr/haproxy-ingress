@@ -145,6 +145,13 @@ func (b *Backends) ChangedShards() []int {
 	return changed
 }
 
+// SortChangedEndpoints ...
+func (b *Backends) SortChangedEndpoints() {
+	for _, backend := range b.itemsAdd {
+		backend.sortEndpoints()
+	}
+}
+
 // BuildSortedItems ...
 func (b *Backends) BuildSortedItems() []*Backend {
 	// TODO BuildSortedItems() is currently used only by the backend template.

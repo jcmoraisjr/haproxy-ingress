@@ -93,8 +93,7 @@ func (b *Backend) addEndpoint(ip string, port int, targetRef string) *Endpoint {
 	return endpoint
 }
 
-// SortEndpoints ...
-func (b *Backend) SortEndpoints() {
+func (b *Backend) sortEndpoints() {
 	sort.SliceStable(b.Endpoints, func(i, j int) bool {
 		return b.Endpoints[i].Name < b.Endpoints[j].Name
 	})

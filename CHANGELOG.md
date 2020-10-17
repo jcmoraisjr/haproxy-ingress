@@ -455,6 +455,7 @@ Note: A new configuration parser and HAProxy config builder is in place. Despite
 * `dynamic-scaling` configuration key changed the default value from `false` to `true`
 * `nbthread` configuration key changed the default value from `1` to `2`
 * `reload-strategy` command-line option changed  the default value from `native` to `reusesocket`
+* A missing `--sort-backends` command-line option does not shuffle endpoints anymore
 
 The `--v07-controller=true` command-line option can be used to revert to the old controller and behavior. Note that in this case the `*-v07.tmpl` templates will be used instead. This option will be removed on v0.10.
 

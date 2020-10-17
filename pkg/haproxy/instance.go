@@ -46,6 +46,7 @@ type InstanceOptions struct {
 	Metrics           types.Metrics
 	ReloadCmd         string
 	ReloadStrategy    string
+	SortBackends      bool
 	ValidateConfig    bool
 }
 
@@ -257,6 +258,9 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	}
 	updater := i.newDynUpdater()
 	updated := updater.update()
+	if i.options.SortBackends {
+		i.config.Backends().SortChangedEndpoints()
+	}
 	if !updated || updater.cmdCnt > 0 {
 		// only need to rewrtite config files if:
 		//   - !updated           - there are changes that cannot be dynamically applied
