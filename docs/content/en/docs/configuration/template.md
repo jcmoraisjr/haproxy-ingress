@@ -27,7 +27,7 @@ Overwriting a template file:
 * Mount the ConfigMap into the Mounting directory (see below) of the HAProxy Ingress pod
 
 {{% alert title="Warning" color="warning" %}}
-Consider overwriting the template files as a last resort. Templates change a lot between HAProxy Ingress versions and the overwrite should be updated on every controller update. Try to use a [configuration snippet]({{% relref "keys/#configuration-snippet" %}}) instead or file a new [feature request](https://github.com/jcmoraisjr/haproxy-ingress/issues/new).
+Consider overwriting the template files as a last resort. Templates change a lot between HAProxy Ingress versions and the overwrite should be updated on every controller update. Try to use a [configuration snippet]({{% relref "keys/#configuration-snippet" %}}) instead or file a new [feature request](https://github.com/jcmoraisjr/haproxy-ingress/issues/new?template=fr.md).
 {{% /alert %}}
 
 | Mounting directory (v0.11+)  | ConfigMap keys     | Source (v0.11+) | Source (up to v0.10) |
