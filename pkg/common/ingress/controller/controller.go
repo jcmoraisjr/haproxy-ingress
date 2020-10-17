@@ -98,7 +98,7 @@ type Configuration struct {
 	UpdateStatusOnShutdown bool
 
 	BackendShards             int
-	SortBackends              bool
+	SortEndpointsBy           string
 	IgnoreIngressWithoutClass bool
 }
 
