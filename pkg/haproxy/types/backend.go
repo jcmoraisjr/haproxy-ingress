@@ -84,6 +84,10 @@ func (b *Backend) addEndpoint(ip string, port int, targetRef string) *Endpoint {
 
 // SortEndpoints ...
 func (b *Backend) SortEndpoints() {
+	if b.EpNaming == EpSequence {
+		// EpSequence is already sorted, skip and save some CPU
+		return
+	}
 	sort.SliceStable(b.Endpoints, func(i, j int) bool {
 		return b.Endpoints[i].Name < b.Endpoints[j].Name
 	})

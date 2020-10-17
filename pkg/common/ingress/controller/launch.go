@@ -120,7 +120,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		is being stopped. Default is true`)
 
 		sortBackends = flags.Bool("sort-backends", false,
-			`Defines if backends and it's endpoints should be sorted`)
+			`Defines if backend's endpoints should be sorted by name. It uses the same k8s endpoint order if missing`)
 
 		useNodeInternalIP = flags.Bool("report-node-internal-ip-address", false,
 			`Defines if the nodes IP address to be returned in the ingress status should be the internal instead of the external IP address`)
