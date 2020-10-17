@@ -234,10 +234,18 @@ describes how it works.
 
 ## --sort-backends
 
-Ingress will randomly shuffle backends and server endpoints on each reload in order to avoid
-requesting always the same backends just after reloads, depending on the balancing algorithm.
-Use `--sort-backends` to avoid this behavior and always declare backends and upstream servers
-in the same order.
+Defines if backend's endpoints should be sorted by name. Since v0.8 the endpoints will stay in the
+same order found in the Kubernetes' endpoint objects if `--sort-backends` is missing.
+
+In v0.7 and older version, if `--sort-backends` is missing, HAProxy Ingress randomly shuffle endpoints
+on each reload in order to avoid requesting always the same backends just after haproxy reloads.
+
+Sorting backends by name has a real effect only if using a distinct [backend-server-naming]({{% relref "keys#backend-server-naming" %}})
+option, because the default value builds the server name using a numeric sequence.
+
+See also:
+
+* [backend-server-naming]({{% relref "keys#backend-server-naming" %}}) configuration key
 
 ---
 

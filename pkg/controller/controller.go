@@ -130,6 +130,7 @@ func (hc *HAProxyController) configController() {
 		Metrics:           hc.metrics,
 		ReloadStrategy:    *hc.reloadStrategy,
 		MaxOldConfigFiles: *hc.maxOldConfigFiles,
+		SortBackends:      hc.cfg.SortBackends,
 		ValidateConfig:    *hc.validateConfig,
 	}
 	hc.instance = haproxy.CreateInstance(hc.logger, instanceOptions)
