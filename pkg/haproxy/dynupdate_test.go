@@ -111,8 +111,8 @@ func TestDynUpdate(t *testing.T) {
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
 			expected: []string{
-				"srv001:127.0.0.1:1023:1",
 				"srv002:172.17.0.3:8080:1",
+				"srv001:127.0.0.1:1023:1",
 			},
 			dynamic: true,
 			cmd: `
@@ -184,8 +184,8 @@ set server default_app_8080/srv001 weight 1
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
 			expected: []string{
-				"srv001:172.17.0.3:8080:1",
 				"srv002:172.17.0.2:8080:1",
+				"srv001:172.17.0.3:8080:1",
 			},
 			dynamic: true,
 			cmd: `
@@ -215,12 +215,12 @@ set server default_app_8080/srv001 weight 1
 				b.AcquireEndpoint("172.17.0.7", 8080, "")
 			},
 			expected: []string{
+				"srv004:172.17.0.5:8080:1",
+				"srv006:172.17.0.7:8080:1",
 				"srv001:127.0.0.1:1023:1",
 				"srv002:127.0.0.1:1023:1",
 				"srv003:127.0.0.1:1023:1",
-				"srv004:172.17.0.5:8080:1",
 				"srv005:127.0.0.1:1023:1",
-				"srv006:172.17.0.7:8080:1",
 				"srv007:127.0.0.1:1023:1",
 				"srv008:127.0.0.1:1023:1",
 			},
