@@ -223,7 +223,6 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 	for i := len(added); i < len(empty); i++ {
 		curBack.AddEmptyEndpoint().Name = empty[i].Name
 	}
-	curBack.SortEndpoints()
 
 	return updated
 }
