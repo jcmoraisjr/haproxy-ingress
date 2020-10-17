@@ -293,7 +293,6 @@ type FrontendMaps struct {
 	HTTPSHostMap *HostsMap
 	HTTPSSNIMap  *HostsMap
 	//
-	RedirToHTTPSMap   *HostsMap
 	RedirFromRootMap  *HostsMap
 	SSLPassthroughMap *HostsMap
 	VarNamespaceMap   *HostsMap

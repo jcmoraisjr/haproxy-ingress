@@ -152,7 +152,6 @@ func (c *config) WriteFrontendMaps() error {
 		HTTPSHostMap: mapBuilder.AddMap(mapsDir + "/_front_https_host.map"),
 		HTTPSSNIMap:  mapBuilder.AddMap(mapsDir + "/_front_https_sni.map"),
 		//
-		RedirToHTTPSMap:   mapBuilder.AddMap(mapsDir + "/_front_redir_tohttps.map"),
 		RedirFromRootMap:  mapBuilder.AddMap(mapsDir + "/_front_redir_fromroot.map"),
 		SSLPassthroughMap: mapBuilder.AddMap(mapsDir + "/_front_sslpassthrough.map"),
 		VarNamespaceMap:   mapBuilder.AddMap(mapsDir + "/_front_namespace.map"),
@@ -165,11 +164,6 @@ func (c *config) WriteFrontendMaps() error {
 		CrtList: mapBuilder.AddMap(mapsDir + "/_front_bind_crt.list"),
 	}
 	fmaps.CrtList.AppendItem(c.frontend.DefaultCrtFile)
-	// Some maps use yes/no answers instead of a list with found/missing keys
-	// This approach avoid overlap:
-	//  1. match with path_beg/map_beg, /path has a feature and a declared /path/sub doesn't have
-	//  2. *.host.domain wildcard/alias/alias-regex has a feature and a declared sub.host.domain doesn't have
-	yesno := map[bool]string{true: "yes", false: "no"}
 	hasVarNamespace := c.hosts.HasVarNamespace()
 	for _, host := range c.hosts.BuildSortedItems() {
 		if host.SSLPassthrough() {
@@ -182,11 +176,12 @@ func (c *config) WriteFrontendMaps() error {
 				continue
 			}
 			fmaps.SSLPassthroughMap.AddHostnameMapping(host.Hostname, rootPath.Backend.ID)
-			hasHTTPBackend := host.HTTPPassthroughBackend != ""
-			fmaps.RedirToHTTPSMap.AddHostnamePathMapping(host.Hostname, rootPath, yesno[!hasHTTPBackend])
-			if hasHTTPBackend {
-				fmaps.HTTPHostMap.AddHostnamePathMapping(host.Hostname, rootPath, host.HTTPPassthroughBackend)
+			httpBackend := host.HTTPPassthroughBackend
+			if httpBackend == "" {
+				// redirect https if a ssl-passthrough domain does not have an HTTP backend
+				httpBackend = "_redirect_https"
 			}
+			fmaps.HTTPHostMap.AddHostnamePathMapping(host.Hostname, rootPath, httpBackend)
 			// ssl-passthrough is as simple as that, jump to the next host
 			continue
 		}
@@ -194,13 +189,6 @@ func (c *config) WriteFrontendMaps() error {
 		// Starting here to the end of the outer for-loop has only HTTP/L7 map configuration
 		//
 		for _, path := range host.Paths {
-			backend := c.backends.FindBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
-			hasSSLRedirect := false
-			if host.TLS.HasTLS() && backend != nil {
-				hasSSLRedirect = backend.LinkHasSSLRedirect(path.Link)
-			}
-			// TODO use only root path if all uri has the same conf
-			fmaps.RedirToHTTPSMap.AddHostnamePathMapping(host.Hostname, path, yesno[hasSSLRedirect])
 			backendID := path.Backend.ID
 			// IMPLEMENT check if host.Alias.AliasName was already used as a hostname
 			if host.HasTLSAuth() {
@@ -210,10 +198,8 @@ func (c *config) WriteFrontendMaps() error {
 				fmaps.HTTPSHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
 				fmaps.HTTPSHostMap.AddAliasPathMapping(host.Alias, path, backendID)
 			}
-			if !hasSSLRedirect || c.global.Bind.HasFrontingProxy() {
-				fmaps.HTTPHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
-				fmaps.HTTPHostMap.AddAliasPathMapping(host.Alias, path, backendID)
-			}
+			fmaps.HTTPHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
+			fmaps.HTTPHostMap.AddAliasPathMapping(host.Alias, path, backendID)
 			if hasVarNamespace {
 				// add "-" on missing paths to avoid overlap
 				var ns string
