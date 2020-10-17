@@ -18,8 +18,10 @@ package types
 
 import (
 	"fmt"
+	"math/rand"
 	"sort"
 	"strings"
+	"time"
 )
 
 // NewBackendPaths ...
@@ -93,9 +95,26 @@ func (b *Backend) addEndpoint(ip string, port int, targetRef string) *Endpoint {
 	return endpoint
 }
 
-func (b *Backend) sortEndpoints() {
-	sort.SliceStable(b.Endpoints, func(i, j int) bool {
-		return b.Endpoints[i].Name < b.Endpoints[j].Name
+func (b *Backend) sortEndpoints(sortBy string) {
+	ep := b.Endpoints
+	switch sortBy {
+	// ignoring "ep"/"endpoint" (use the k8s order) and "random" (shuffleEndpoints implements)
+	case "name":
+		sort.Slice(ep, func(i, j int) bool {
+			return ep[i].Name < ep[j].Name
+		})
+	case "ip":
+		sort.Slice(ep, func(i, j int) bool {
+			return ep[i].IP < ep[j].IP
+		})
+	}
+}
+
+func (b *Backend) shuffleEndpoints() {
+	ep := b.Endpoints
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(ep), func(i, j int) {
+		ep[i], ep[j] = ep[j], ep[i]
 	})
 }
 

@@ -46,7 +46,7 @@ type InstanceOptions struct {
 	Metrics           types.Metrics
 	ReloadCmd         string
 	ReloadStrategy    string
-	SortBackends      bool
+	SortEndpointsBy   string
 	ValidateConfig    bool
 }
 
@@ -258,8 +258,12 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	}
 	updater := i.newDynUpdater()
 	updated := updater.update()
-	if i.options.SortBackends {
-		i.config.Backends().SortChangedEndpoints()
+	if i.options.SortEndpointsBy != "random" {
+		i.config.Backends().SortChangedEndpoints(i.options.SortEndpointsBy)
+	} else if !updated {
+		// Only shuffle if need to reload
+		i.config.Backends().ShuffleAllEndpoints()
+		timer.Tick("shuffle_endpoints")
 	}
 	if !updated || updater.cmdCnt > 0 {
 		// only need to rewrtite config files if:

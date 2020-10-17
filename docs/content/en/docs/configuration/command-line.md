@@ -35,6 +35,7 @@ The following command-line options are supported:
 | [`--rate-limit-update`](#rate-limit-update)             | uploads per second (float) | `0.5`                   |       |
 | [`--reload-strategy`](#reload-strategy)                 | [native\|reusesocket]      | `reusesocket`           |       |
 | [`--sort-backends`](#sort-backends)                     | [true\|false]              | `false`                 |       |
+| [`--sort-endpoints-by`](#sort-endpoints-by)             | [endpoint\|ip\|name\|random] | `endpoint`            | v0.11 |
 | [`--stats-collect-processing-period`](#stats)           | time                       | `500ms`                 | v0.10 |
 | [`--tcp-services-configmap`](#tcp-services-configmap)   | namespace/configmapname    | no tcp svc              |       |
 | [`--verify-hostname`](#verify-hostname)                 | [true\|false]              | `true`                  |       |
@@ -211,7 +212,8 @@ describes how it works.
 ## --sort-backends
 
 Defines if backend's endpoints should be sorted by name. Since v0.8 the endpoints will stay in the
-same order found in the Kubernetes' endpoint objects if `--sort-backends` is missing.
+same order found in the Kubernetes' endpoint objects if `--sort-backends` is missing. This option
+has less precedence than `--sort-endpoints-by` if both are declared.
 
 In v0.7 and older version, if `--sort-backends` is missing, HAProxy Ingress randomly shuffle endpoints
 on each reload in order to avoid requesting always the same backends just after haproxy reloads.
@@ -222,6 +224,20 @@ option, because the default value builds the server name using a numeric sequenc
 See also:
 
 * [backend-server-naming]({{% relref "keys#backend-server-naming" %}}) configuration key
+* [sort-endpoints-by]({{% relref "#sort-endpoints-by" %}}) command-line option
+
+---
+
+## --sort-endpoints-by
+
+Since v0.11
+
+Defines in which order the endpoints of a backend should be sorted.
+
+* `endpoint`: this is the default value, uses the same order declared in the Kubernetes' Endpoint objects. `ep` is an alias to `endpoint`
+* `ip`: sort endpoints by the IP and port of the destination server
+* `name`: sort the endpoints by the name given to the server, see also [backend-server-naming]({{% relref "keys#backend-server-naming" %}})
+* `random`: randomly shuffle the endpoints every time haproxy needs to be reloaded, this option avoids to always send requests to the same endpoints depending on the balancing algorithm
 
 ---
 

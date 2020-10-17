@@ -165,7 +165,12 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 			`Defines how much files should be used to configure the haproxy backends`)
 
 		sortBackends = flags.Bool("sort-backends", false,
-			`Defines if backend's endpoints should be sorted by name. It uses the same k8s endpoint order if missing`)
+			`Defines if backend's endpoints should be sorted by name. This option has less precedence than
+		--sort-endpoints-by if both are declared.`)
+
+		sortEndpointsBy = flags.String("sort-endpoints-by", "",
+			`Defines how to sort backend's endpoints. Allowed values are: 'endpoint' - same k8s endpoint order (default);
+		'name' - server/endpoint name; 'ip' - server/endpoint IP and port; 'random' - shuffle endpoints on every haproxy reload`)
 
 		useNodeInternalIP = flags.Bool("report-node-internal-ip-address", false,
 			`Defines if the nodes IP address to be returned in the ingress status should be the internal instead of the external IP address`)
@@ -292,6 +297,18 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		glog.Fatal("Cannot use --allow-cross-namespace if --force-namespace-isolation is true")
 	}
 
+	sortEndpoints := strings.ToLower(*sortEndpointsBy)
+	if sortEndpoints == "" {
+		if *sortBackends {
+			sortEndpoints = "name"
+		} else {
+			sortEndpoints = "endpoint"
+		}
+	}
+	if !stringInSlice(sortEndpoints, []string{"ep", "endpoint", "ip", "name", "random"}) {
+		glog.Fatalf("Unsupported --sort-endpoint-by option: %s", sortEndpoints)
+	}
+
 	config := &Configuration{
 		UpdateStatus:              *updateStatus,
 		ElectionID:                *electionID,
@@ -327,7 +344,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		DisablePodList:            *disablePodList,
 		UpdateStatusOnShutdown:    *updateStatusOnShutdown,
 		BackendShards:             *backendShards,
-		SortBackends:              *sortBackends,
+		SortEndpointsBy:           sortEndpoints,
 		UseNodeInternalIP:         *useNodeInternalIP,
 		IgnoreIngressWithoutClass: *ignoreIngressWithoutClass,
 	}
