@@ -1639,7 +1639,7 @@ A request to `my.domain.com/b` would serve:
 Logging configurations.
 
 * `syslog-endpoint`: Configures the UDP syslog endpoint where HAProxy should send access logs.
-* `syslog-format`: Configures the log format to be either `rfc5424` (default) or `rfc3164`.
+* `syslog-format`: Configures the log format to be either `rfc5424` (default), `rfc3164` or `raw`.
 * `syslog-length`: The maximum line length, log lines larger than this value will be truncated. Defaults to `1024`.
 * `syslog-tag`: Configure the tag field in the syslog header to the supplied string.
 
