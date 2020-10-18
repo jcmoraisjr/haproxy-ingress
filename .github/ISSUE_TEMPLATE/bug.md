@@ -1,6 +1,7 @@
 ---
 name: Bug report
 about: Report a problem with HAProxy Ingress.
+labels: 'kind/bug, status/needs-triage'
 ---
 
 <!--
