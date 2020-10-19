@@ -1214,7 +1214,7 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
 				{"default/echo1", "echo1:8080"},
 			},
 			svcAdd:          svcDefault,
-			logging:         `INFO-V(2) syncing 1 host(s) and 0 backend(s)`,
+			logging:         `INFO-V(2) syncing 1 host(s) and 1 backend(s)`,
 			expDefaultFront: expDefaultFrontDefault,
 			expBack: `
 - id: default_echo1_8080
@@ -1345,6 +1345,30 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
 
 		c.teardown()
 	}
+}
+
+func TestSyncPartialDefaultBackend(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	// first config, sync, commit, cleanup
+	c.Sync()
+	c.hconfig.Commit()
+	c.logger.Logging = []string{}
+
+	// the mock of the default backend is hardcoded to system/default:8080 at 172.17.0.99
+	_, ep := conv_helper.CreateService("system/default", "8080", "172.17.0.90")
+	c.cache.Changed.Endpoints = []*api.Endpoints{ep}
+	c.Sync()
+
+	c.compareConfigFront(`[]`)
+	c.compareConfigBack(`
+- id: _default_backend
+  endpoints:
+  - ip: 172.17.0.90
+    port: 8080
+`)
+	c.logger.CompareLogging(`INFO-V(2) syncing 1 host(s) and 1 backend(s)`)
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *

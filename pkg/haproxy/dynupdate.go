@@ -97,12 +97,13 @@ func (d *dynUpdater) checkConfigChange() bool {
 	// return false on new backend which cannot be dynamically created
 	backends := make(map[string]*backendPair, len(d.config.backends.ItemsDel()))
 	for _, backend := range d.config.backends.ItemsDel() {
-		backends[backend.ID] = &backendPair{old: backend}
+		backends[backend.BackendID().String()] = &backendPair{old: backend}
 	}
 	for _, backend := range d.config.backends.ItemsAdd() {
-		back, found := backends[backend.ID]
+		id := backend.BackendID().String()
+		back, found := backends[id]
 		if !found {
-			d.logger.InfoV(2, "added backend '%s'", backend.ID)
+			d.logger.InfoV(2, "added backend '%s'", id)
 			updated = false
 		} else {
 			back.cur = backend
@@ -133,6 +134,7 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 
 	// check equality of everything but endpoints
 	oldBackCopy := *oldBack
+	oldBackCopy.ID = curBack.ID
 	oldBackCopy.Dynamic = curBack.Dynamic
 	oldBackCopy.Endpoints = curBack.Endpoints
 	if !reflect.DeepEqual(&oldBackCopy, curBack) {

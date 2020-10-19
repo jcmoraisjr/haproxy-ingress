@@ -230,6 +230,9 @@ func (b *Backends) RemoveAll(backendID []BackendID) {
 			}
 			b.changedShards[item.shard] = true
 			b.itemsDel[id] = item
+			if item == b.defaultBackend {
+				b.SetDefaultBackend(nil)
+			}
 			delete(b.items, id)
 		}
 	}
@@ -254,7 +257,7 @@ func (b *Backends) SetDefaultBackend(defaultBackend *Backend) {
 
 func (b BackendID) String() string {
 	if b.id == "" {
-		b.id = b.Namespace + "_" + b.Name + "_" + b.Port
+		b.id = buildID(b.Namespace, b.Name, b.Port)
 	}
 	return b.id
 }
