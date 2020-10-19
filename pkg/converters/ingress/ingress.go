@@ -65,6 +65,7 @@ func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Con
 		logger:             options.Logger,
 		cache:              options.Cache,
 		tracker:            options.Tracker,
+		defaultBackSource:  annotations.Source{Name: "<default-backend>", Type: "ingress"},
 		mapBuilder:         annotations.NewMapBuilder(options.Logger, options.AnnotationPrefix+"/", defaultConfig),
 		updater:            annotations.NewUpdater(haproxy, options),
 		globalConfig:       annotations.NewMapBuilder(options.Logger, "", defaultConfig).NewMapper(),
@@ -82,6 +83,7 @@ type converter struct {
 	cache              convtypes.Cache
 	tracker            convtypes.Tracker
 	defaultCrt         convtypes.CrtFile
+	defaultBackSource  annotations.Source
 	mapBuilder         *annotations.MapBuilder
 	updater            annotations.Updater
 	globalConfig       *annotations.Mapper
@@ -95,7 +97,6 @@ func (c *converter) Sync() {
 		c.haproxy.Clear()
 	}
 	c.syncDefaultCrt()
-	c.syncDefaultBackend()
 	if c.needFullSync {
 		c.syncFull()
 	} else {
@@ -150,8 +151,9 @@ func (c *converter) syncDefaultCrt() {
 
 func (c *converter) syncDefaultBackend() {
 	if c.options.DefaultBackend != "" {
-		if backend, err := c.addBackend(&annotations.Source{}, hatypes.DefaultHost, "/", c.options.DefaultBackend, "", map[string]string{}); err == nil {
+		if backend, err := c.addBackend(&c.defaultBackSource, hatypes.DefaultHost, "/", c.options.DefaultBackend, "", map[string]string{}); err == nil {
 			c.haproxy.Backends().SetDefaultBackend(backend)
+			c.tracker.TrackHostname(convtypes.IngressType, c.defaultBackSource.FullName(), hatypes.DefaultHost)
 		} else {
 			c.logger.Error("error reading default service: %v", err)
 		}
@@ -165,6 +167,7 @@ func (c *converter) syncFull() {
 		return
 	}
 	sortIngress(ingList)
+	c.syncDefaultBackend()
 	for _, ing := range ingList {
 		c.syncIngress(ing)
 	}
@@ -267,7 +270,11 @@ func (c *converter) syncPartial() {
 			var err error
 			ing, err = c.cache.GetIngress(name)
 			if err != nil {
-				c.logger.Warn("ignoring ingress '%s': %v", name, err)
+				if name == c.defaultBackSource.FullName() {
+					c.syncDefaultBackend()
+				} else {
+					c.logger.Warn("ignoring ingress '%s': %v", name, err)
+				}
 				ing = nil
 			}
 		}
