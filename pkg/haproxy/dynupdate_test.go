@@ -726,6 +726,29 @@ set server default_app_8080/srv002 state ready
 set server default_app_8080/srv002 weight 1`,
 			logging: `INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
 		},
+		// 26
+		{
+			doconfig1: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				c.config.backends.SetDefaultBackend(b)
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+			},
+			doconfig2: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				c.config.backends.SetDefaultBackend(b)
+				b.Dynamic.DynUpdate = true
+				b.AcquireEndpoint("172.17.0.3", 8080, "")
+			},
+			expected: []string{
+				"srv001:172.17.0.3:8080:1",
+			},
+			dynamic: true,
+			cmd: `
+set server _default_backend/srv001 addr 172.17.0.3 port 8080
+set server _default_backend/srv001 state ready
+set server _default_backend/srv001 weight 1`,
+			logging: `INFO-V(2) updated endpoint '172.17.0.3:8080' weight '1' state 'ready' on backend/server '_default_backend/srv001'`,
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
@@ -735,9 +758,7 @@ set server default_app_8080/srv002 weight 1`,
 		c.instance.config.Commit()
 		backendIDs := []types.BackendID{}
 		for _, backend := range c.config.Backends().Items() {
-			if backend != c.config.Backends().DefaultBackend() {
-				backendIDs = append(backendIDs, backend.BackendID())
-			}
+			backendIDs = append(backendIDs, backend.BackendID())
 		}
 		c.config.Backends().RemoveAll(backendIDs)
 		if test.doconfig2 != nil {
