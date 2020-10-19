@@ -1434,7 +1434,7 @@ func TestInstanceDefaultHost(t *testing.T) {
 
 	def := c.config.Backends().AcquireBackend("default", "default-backend", "8080")
 	def.Endpoints = []*hatypes.Endpoint{endpointS0}
-	c.config.Backends().SetDefaultBackend(def)
+	c.config.Backends().DefaultBackend = def
 
 	var h *hatypes.Host
 	var b *hatypes.Backend
@@ -1471,7 +1471,7 @@ backend d2_app_8080
     acl https-request ssl_fc
     http-request redirect scheme https if !https-request
     server s1 172.17.0.11:8080 weight 100
-backend _default_backend
+backend default_default-backend_8080
     mode http
     server s0 172.17.0.99:8080 weight 100
 frontend _front_http
@@ -1484,7 +1484,7 @@ frontend _front_http
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
     use_backend %[var(req.backend)] if { var(req.backend) -m found }
     use_backend d1_app_8080
-    default_backend _default_backend
+    default_backend default_default-backend_8080
 frontend _front_https
     mode http
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
@@ -1495,7 +1495,7 @@ frontend _front_https
     <<https-headers>>
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     use_backend d1_app_8080
-    default_backend _default_backend
+    default_backend default_default-backend_8080
 <<support>>
 `)
 
@@ -1605,7 +1605,7 @@ func TestInstanceFrontend(t *testing.T) {
 
 	def := c.config.Backends().AcquireBackend("default", "default-backend", "8080")
 	def.Endpoints = []*hatypes.Endpoint{endpointS0}
-	c.config.Backends().SetDefaultBackend(def)
+	c.config.Backends().DefaultBackend = def
 
 	var h *hatypes.Host
 	var b *hatypes.Backend
@@ -1641,7 +1641,7 @@ backend d2_app_8080
     acl https-request ssl_fc
     http-request redirect scheme https if !https-request
     server s1 172.17.0.11:8080 weight 100
-backend _default_backend
+backend default_default-backend_8080
     mode http
     server s0 172.17.0.99:8080 weight 100
 frontend _front_http
@@ -1655,7 +1655,7 @@ frontend _front_http
     http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_host__prefix.map)
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map) if !{ var(req.backend) -m found }
     use_backend %[var(req.backend)] if { var(req.backend) -m found }
-    default_backend _default_backend
+    default_backend default_default-backend_8080
 frontend _front_https
     mode http
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
@@ -1667,7 +1667,7 @@ frontend _front_https
     http-request set-var(txn.namespace) str(-) if !{ var(txn.namespace) -m found }
     <<https-headers>>
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
-    default_backend _default_backend
+    default_backend default_default-backend_8080
 <<support>>
 `)
 
@@ -1705,7 +1705,7 @@ func TestInstanceFrontendCA(t *testing.T) {
 
 	def := c.config.Backends().AcquireBackend("default", "default-backend", "8080")
 	def.Endpoints = []*hatypes.Endpoint{endpointS0}
-	c.config.Backends().SetDefaultBackend(def)
+	c.config.Backends().DefaultBackend = def
 
 	var h *hatypes.Host
 	var b *hatypes.Backend
@@ -1774,7 +1774,7 @@ backend d_app_8080
     http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex,lower]
     http-request set-header X-SSL-Client-Cert %{+Q}[ssl_c_der,base64]
     server s1 172.17.0.11:8080 weight 100
-backend _default_backend
+backend default_default-backend_8080
     mode http
     server s0 172.17.0.99:8080 weight 100
 frontend _front_http
@@ -1785,7 +1785,7 @@ frontend _front_http
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
     http-request set-var(req.backend) var(req.base),map_reg(/etc/haproxy/maps/_front_http_host__regex.map) if !{ var(req.backend) -m found }
     use_backend %[var(req.backend)] if { var(req.backend) -m found }
-    default_backend _default_backend
+    default_backend default_default-backend_8080
 frontend _front_https
     mode http
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
@@ -1818,7 +1818,7 @@ frontend _front_https
     http-request use-service lua.send-495 if { var(req.tls_invalidcrt_redir) _internal }
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     use_backend %[var(req.snibackend)] if { var(req.snibackend) -m found }
-    default_backend _default_backend
+    default_backend default_default-backend_8080
 <<support>>
 `)
 
@@ -1881,7 +1881,7 @@ func TestInstanceSomePaths(t *testing.T) {
 
 	def := c.config.Backends().AcquireBackend("default", "default-backend", "8080")
 	def.Endpoints = []*hatypes.Endpoint{endpointS0}
-	c.config.Backends().SetDefaultBackend(def)
+	c.config.Backends().DefaultBackend = def
 
 	var h *hatypes.Host
 	var b *hatypes.Backend
@@ -1930,13 +1930,13 @@ backend d_app3_8080
     server s31 172.17.0.131:8080 weight 100
     server s32 172.17.0.132:8080 weight 100
     server s33 172.17.0.133:8080 weight 100
-backend _default_backend
+backend default_default-backend_8080
     mode http
     server s0 172.17.0.99:8080 weight 100
 <<frontend-http>>
-    default_backend _default_backend
+    default_backend default_default-backend_8080
 <<frontend-https>>
-    default_backend _default_backend
+    default_backend default_default-backend_8080
 <<support>>
 `)
 

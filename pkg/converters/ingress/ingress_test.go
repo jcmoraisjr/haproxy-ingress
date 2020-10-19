@@ -98,7 +98,7 @@ func TestSyncSvcPortNotFound(t *testing.T) {
 `)
 
 	c.compareConfigBack(`
-- id: _default_backend
+- id: system_default_8080
   endpoints:
   - ip: 172.17.0.99
     port: 8080
@@ -143,7 +143,7 @@ func TestSyncSvcNamedPort(t *testing.T) {
   endpoints:
   - ip: 172.17.1.101
     port: 8080
-- id: _default_backend
+- id: system_default_8080
   endpoints:
   - ip: 172.17.0.99
     port: 8080
@@ -308,7 +308,7 @@ func TestSyncDrainSupport(t *testing.T) {
   - ip: 172.17.1.103
     port: 8080
     drain: true
-- id: _default_backend
+- id: system_default_8080
   endpoints:
   - ip: 172.17.0.99
     port: 8080
@@ -764,7 +764,7 @@ func TestSyncBackendReuseDefaultSvc(t *testing.T) {
 - hostname: default.example.com
   paths:
   - path: /app
-    backend: _default_backend`)
+    backend: system_default_8080`)
 
 	c.compareConfigDefaultFront(`[]`)
 	c.compareConfigBack(defaultBackendConfig)
@@ -1141,7 +1141,7 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
   - ip: 172.17.0.11
     port: 8080
   balancealgorithm: leastcon
-- id: _default_backend
+- id: system_default_8080
   endpoints:
   - ip: 172.17.0.99
     port: 8080`,
@@ -1173,7 +1173,7 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
   - ip: 172.17.0.12
     port: 8080
   balancealgorithm: leastcon
-- id: _default_backend
+- id: system_default_8080
   endpoints:
   - ip: 172.17.0.99
     port: 8080`,
@@ -1203,7 +1203,7 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
   - ip: 172.17.0.11
     port: 8080
   balancealgorithm: leastcon
-- id: _default_backend
+- id: system_default_8080
   endpoints:
   - ip: 172.17.0.99
     port: 8080`,
@@ -1221,7 +1221,7 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
   endpoints:
   - ip: 172.17.0.11
     port: 8080
-- id: _default_backend
+- id: system_default_8080
   endpoints:
   - ip: 172.17.0.99
     port: 8080`,
@@ -1246,7 +1246,7 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
   endpoints:
   - ip: 172.17.0.12
     port: 8080
-- id: _default_backend
+- id: system_default_8080
   endpoints:
   - ip: 172.17.0.99
     port: 8080`,
@@ -1363,7 +1363,7 @@ func TestSyncPartialDefaultBackend(t *testing.T) {
 
 	c.compareConfigFront(`[]`)
 	c.compareConfigBack(`
-- id: _default_backend
+- id: system_default_8080
   endpoints:
   - ip: 172.17.0.90
     port: 8080
@@ -1627,7 +1627,7 @@ func TestSyncAnnBackDefault(t *testing.T) {
   - ip: 172.17.0.17
     port: 8080
   balancealgorithm: roundrobin
-- id: _default_backend
+- id: system_default_8080
   endpoints:
   - ip: 172.17.0.99
     port: 8080
@@ -1688,7 +1688,7 @@ func TestSyncAnnPassthrough(t *testing.T) {
   endpoints:
   - ip: 172.17.1.101
     port: 8443
-- id: _default_backend
+- id: system_default_8080
   endpoints:
   - ip: 172.17.0.99
     port: 8080
@@ -1741,7 +1741,7 @@ paths:
   backend: default_echo1_8080`
 
 var defaultBackendConfig = `
-- id: _default_backend
+- id: system_default_8080
   endpoints:
   - ip: 172.17.0.99
     port: 8080`

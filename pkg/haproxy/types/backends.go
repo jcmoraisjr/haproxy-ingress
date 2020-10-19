@@ -184,12 +184,6 @@ func (b *Backends) buildSortedItems(backendItems map[string]*Backend) []*Backend
 		i++
 	}
 	sort.Slice(items, func(i, j int) bool {
-		if items[i] == b.defaultBackend {
-			return false
-		}
-		if items[j] == b.defaultBackend {
-			return true
-		}
 		return items[i].ID < items[j].ID
 	})
 	return items
@@ -231,28 +225,11 @@ func (b *Backends) RemoveAll(backendID []BackendID) {
 			}
 			b.changedShards[item.shard] = true
 			b.itemsDel[id] = item
-			if item == b.defaultBackend {
-				b.SetDefaultBackend(nil)
+			if item == b.DefaultBackend {
+				b.DefaultBackend = nil
 			}
 			delete(b.items, id)
 		}
-	}
-}
-
-// DefaultBackend ...
-func (b *Backends) DefaultBackend() *Backend {
-	return b.defaultBackend
-}
-
-// SetDefaultBackend ...
-func (b *Backends) SetDefaultBackend(defaultBackend *Backend) {
-	if b.defaultBackend != nil {
-		def := b.defaultBackend
-		def.ID = buildID(def.Namespace, def.Name, def.Port)
-	}
-	b.defaultBackend = defaultBackend
-	if b.defaultBackend != nil {
-		b.defaultBackend.ID = "_default_backend"
 	}
 }
 
