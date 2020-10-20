@@ -127,6 +127,14 @@ Fixes and improvements since [v0.11-beta.1](#v011-beta1):
 
 * Fix rewrite target match [#668](https://github.com/jcmoraisjr/haproxy-ingress/pull/668) (jcmoraisjr)
 
+## v0.10.1
+
+Fixes and improvements since [v0.10](#v010):
+
+* Fix rewrite target match [#668](https://github.com/jcmoraisjr/haproxy-ingress/pull/668) (jcmoraisjr)
+* Implement sort-backends [#677](https://github.com/jcmoraisjr/haproxy-ingress/pull/677) (jcmoraisjr)
+* Update embedded haproxy to 2.0.18 [d9ac2c8](https://github.com/jcmoraisjr/haproxy-ingress/commit/d9ac2c8baffd4d1eab7a2d86180ff470c3f494a3) (Joao Morais)
+
 ## v0.10
 
 Highlights of this version:
