@@ -1,4 +1,4 @@
-baseURL = ""
+baseURL = "/v0.10"
 title = "HAProxy Ingress"
 
 enableRobotsTXT = true
@@ -84,12 +84,12 @@ privacy_policy = ""
 version_menu = "v0.10"
 
 [[params.versions]]
-version = "v0.11"
-url = "https://haproxy-ingress.github.io/v0.11/docs"
+version = "Latest"
+url = "https://haproxy-ingress.github.io/docs"
 
 [[params.versions]]
 version = "v0.10"
-url = "https://haproxy-ingress.github.io/docs"
+url = "https://haproxy-ingress.github.io/v0.10/docs"
 
 [[params.versions]]
 version = "v0.9"
