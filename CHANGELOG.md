@@ -226,6 +226,12 @@ Fixes and improvements since [v0.10-beta.2](#v010-beta2):
 * Add service event handler [#633](https://github.com/jcmoraisjr/haproxy-ingress/pull/633)
 * Configure default crt on ingress parsing phase [#634](https://github.com/jcmoraisjr/haproxy-ingress/pull/634)
 
+## v0.9.2
+
+Fixes and improvements since [v0.9.1](#v091):
+
+* Implement sort-backends [#677](https://github.com/jcmoraisjr/haproxy-ingress/pull/677) (jcmoraisjr)
+
 ## v0.9.1
 
 Fixes and improvements since [v0.9](#v09):
