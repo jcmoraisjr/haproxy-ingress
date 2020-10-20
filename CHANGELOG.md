@@ -127,6 +127,17 @@ Fixes and improvements since [v0.11-beta.1](#v011-beta1):
 
 * Fix rewrite target match [#668](https://github.com/jcmoraisjr/haproxy-ingress/pull/668) (jcmoraisjr)
 
+### v0.11-beta.3
+
+Fixes and improvements since [v0.11-beta.2](#v011-beta2):
+
+* Implement sort-backends [#677](https://github.com/jcmoraisjr/haproxy-ingress/pull/677) (jcmoraisjr)
+* Add --sort-endpoints-by command-line option [#678](https://github.com/jcmoraisjr/haproxy-ingress/pull/678) (jcmoraisjr)
+  * Configuration keys:
+    * `--sort-endpoints-by` - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/command-line/#sort-endpoints-by)
+* Fix dynamic update of the default backend [#680](https://github.com/jcmoraisjr/haproxy-ingress/pull/680) (jcmoraisjr)
+* Update embedded haproxy to 2.1.9 [06f2e65](https://github.com/jcmoraisjr/haproxy-ingress/commit/06f2e65ff6ec603a7abae9704bf0a32f66277b8e) (Joao Morais)
+
 ## v0.10.1
 
 Fixes and improvements since [v0.10](#v010):
