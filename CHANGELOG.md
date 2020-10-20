@@ -1,5 +1,59 @@
 # CHANGELOG
 
+## v0.12
+
+**Highlights of this version**
+
+* HAProxy upgrade from 2.1 to 2.2.
+* Ability to configure and run an external haproxy, version 2.0 or above, on a sidecar container.
+
+**Breaking backward compatibility from [v0.11](#v011)**
+
+* The default backend configured with `--default-backend-service` does not have a fixed name `_default_backend` anymore, but instead a dynamic name based on the namespace, service name and listening port number of the target service, as any other backend.
+
+**Contributors**
+
+* Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
+* Max Verigin ([griever989](https://github.com/griever989))
+
+**v0.12-snapshot.1**
+
+New features and improvements:
+
+* Update to go1.14.8 [#659](https://github.com/jcmoraisjr/haproxy-ingress/pull/659) (jcmoraisjr)
+* Update to client-go v0.19.0 [#660](https://github.com/jcmoraisjr/haproxy-ingress/pull/660) (jcmoraisjr)
+* Update to haproxy 2.2.3 [#661](https://github.com/jcmoraisjr/haproxy-ingress/pull/661) (jcmoraisjr)
+* Add path-type-order global config [#662](https://github.com/jcmoraisjr/haproxy-ingress/pull/662) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/keys/#path-type)
+  * Configuration keys:
+    * `path-type-order`
+* Add better handling for cookie affinity with preserve option [#667](https://github.com/jcmoraisjr/haproxy-ingress/pull/667) (griever989) - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/keys/#affinity)
+  * Configuration keys:
+    * `session-cookie-preserve`
+    * `session-cookie-value-strategy`
+* Add abstract per path config reader [#663](https://github.com/jcmoraisjr/haproxy-ingress/pull/663) (jcmoraisjr)
+* Add option to run an external haproxy instance [#666](https://github.com/jcmoraisjr/haproxy-ingress/pull/666) (jcmoraisjr)
+  * Configuration keys:
+    * `external-has-lua` - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/keys/#external)
+    * `groupname` - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/keys/#security)
+    * `master-exit-on-failure` - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/keys/#master-worker)
+    * `username` - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/keys/#security)
+  * Command-line options:
+    * `--master-socket` - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/command-line/#master-socket)
+* Convert ssl-redirect to the new per path config [#670](https://github.com/jcmoraisjr/haproxy-ingress/pull/670) (jcmoraisjr)
+* Add --sort-endpoints-by command-line option [#678](https://github.com/jcmoraisjr/haproxy-ingress/pull/678) (jcmoraisjr)
+  * Configuration keys:
+    * `--sort-endpoints-by` - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/command-line/#sort-endpoints-by)
+* Update embedded haproxy to 2.2.4 [4ff2f55](https://github.com/jcmoraisjr/haproxy-ingress/commit/4ff2f550acb3e6e0975457cb89c381452edde228) (Joao Morais)
+* Configure default backend to not change backend ID [#681](https://github.com/jcmoraisjr/haproxy-ingress/pull/681) (jcmoraisjr)
+
+Fixes:
+
+* Fix rewrite target match [#668](https://github.com/jcmoraisjr/haproxy-ingress/pull/668) (jcmoraisjr)
+* Log socket response only if message is not empty [#675](https://github.com/jcmoraisjr/haproxy-ingress/pull/675) (jcmoraisjr)
+* Improve old and new backend comparison [#676](https://github.com/jcmoraisjr/haproxy-ingress/pull/676) (jcmoraisjr)
+* Implement sort-backends [#677](https://github.com/jcmoraisjr/haproxy-ingress/pull/677) (jcmoraisjr)
+* Fix dynamic update of the default backend [#680](https://github.com/jcmoraisjr/haproxy-ingress/pull/680) (jcmoraisjr)
+
 ## v0.11
 
 **Highlights of this version**
