@@ -152,7 +152,7 @@ func (c *converter) syncDefaultCrt() {
 func (c *converter) syncDefaultBackend() {
 	if c.options.DefaultBackend != "" {
 		if backend, err := c.addBackend(&c.defaultBackSource, hatypes.DefaultHost, "/", c.options.DefaultBackend, "", map[string]string{}); err == nil {
-			c.haproxy.Backends().SetDefaultBackend(backend)
+			c.haproxy.Backends().DefaultBackend = backend
 			c.tracker.TrackHostname(convtypes.IngressType, c.defaultBackSource.FullName(), hatypes.DefaultHost)
 		} else {
 			c.logger.Error("error reading default service: %v", err)

@@ -441,9 +441,9 @@ const (
 type Backends struct {
 	items, itemsAdd, itemsDel map[string]*Backend
 	//
-	defaultBackend *Backend
 	shards         []map[string]*Backend
 	changedShards  map[int]bool
+	DefaultBackend *Backend
 }
 
 // BackendID ...

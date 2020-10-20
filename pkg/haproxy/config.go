@@ -128,7 +128,7 @@ func (c *config) SyncConfig() {
 				// TODO c.defaultBackend can be nil; create a valid
 				// _error404 backend, remove `if nil` from host.AddPath()
 				// and from `for range host.Paths` on map building.
-				back = c.backends.DefaultBackend()
+				back = c.backends.DefaultBackend
 			}
 			host.AddPath(back, "/", hatypes.MatchBegin)
 		}

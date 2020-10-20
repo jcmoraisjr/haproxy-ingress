@@ -398,7 +398,7 @@ set server default_app_8080/srv002 weight 1
 		{
 			doconfig1: func(c *testConfig) {
 				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
-				c.config.Backends().SetDefaultBackend(b1)
+				c.config.Backends().DefaultBackend = b1
 				b2 := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b2.AcquireEndpoint("172.17.0.2", 8080, "")
 			},
@@ -406,7 +406,7 @@ set server default_app_8080/srv002 weight 1
 				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
 				b1.Dynamic.DynUpdate = true
 				b1.Dynamic.MinFreeSlots = 1
-				c.config.Backends().SetDefaultBackend(b1)
+				c.config.Backends().DefaultBackend = b1
 				b2 := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b2.Dynamic.DynUpdate = true
 				b2.AcquireEndpoint("172.17.0.2", 8080, "")
@@ -588,7 +588,7 @@ set server default_app_8080/srv002 weight 1`,
 		{
 			doconfig1: func(c *testConfig) {
 				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
-				c.config.Backends().SetDefaultBackend(b1)
+				c.config.Backends().DefaultBackend = b1
 				b2 := c.config.Backends().AcquireBackend("default", "app", "8080")
 				// some of these are unnecessary but the attempt is to have as
 				// realistic config as possible for a more reliable test
@@ -604,7 +604,7 @@ set server default_app_8080/srv002 weight 1`,
 			doconfig2: func(c *testConfig) {
 				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
 				b1.Dynamic.DynUpdate = true
-				c.config.Backends().SetDefaultBackend(b1)
+				c.config.Backends().DefaultBackend = b1
 				b2 := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b2.Dynamic.DynUpdate = true
 				// some of these are unnecessary but the attempt is to have as
@@ -637,7 +637,7 @@ set server default_app_8080/srv002 weight 1
 		{
 			doconfig1: func(c *testConfig) {
 				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
-				c.config.Backends().SetDefaultBackend(b1)
+				c.config.Backends().DefaultBackend = b1
 				b2 := c.config.Backends().AcquireBackend("default", "app", "8080")
 				// some of these are unnecessary but the attempt is to have as
 				// realistic config as possible for a more reliable test
@@ -653,7 +653,7 @@ set server default_app_8080/srv002 weight 1
 			doconfig2: func(c *testConfig) {
 				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
 				b1.Dynamic.DynUpdate = true
-				c.config.Backends().SetDefaultBackend(b1)
+				c.config.Backends().DefaultBackend = b1
 				b2 := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b2.Dynamic.DynUpdate = true
 				// some of these are unnecessary but the attempt is to have as
@@ -683,7 +683,7 @@ set server default_app_8080/srv002 weight 1
 		{
 			doconfig1: func(c *testConfig) {
 				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
-				c.config.Backends().SetDefaultBackend(b1)
+				c.config.Backends().DefaultBackend = b1
 				b2 := c.config.Backends().AcquireBackend("default", "app", "8080")
 				// some of these are unnecessary but the attempt is to have as
 				// realistic config as possible for a more reliable test
@@ -699,7 +699,7 @@ set server default_app_8080/srv002 weight 1
 			doconfig2: func(c *testConfig) {
 				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
 				b1.Dynamic.DynUpdate = true
-				c.config.Backends().SetDefaultBackend(b1)
+				c.config.Backends().DefaultBackend = b1
 				b2 := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b2.Dynamic.DynUpdate = true
 				// some of these are unnecessary but the attempt is to have as
@@ -730,12 +730,12 @@ set server default_app_8080/srv002 weight 1`,
 		{
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				c.config.backends.SetDefaultBackend(b)
+				c.config.backends.DefaultBackend = b
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				c.config.backends.SetDefaultBackend(b)
+				c.config.backends.DefaultBackend = b
 				b.Dynamic.DynUpdate = true
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
@@ -744,10 +744,10 @@ set server default_app_8080/srv002 weight 1`,
 			},
 			dynamic: true,
 			cmd: `
-set server _default_backend/srv001 addr 172.17.0.3 port 8080
-set server _default_backend/srv001 state ready
-set server _default_backend/srv001 weight 1`,
-			logging: `INFO-V(2) updated endpoint '172.17.0.3:8080' weight '1' state 'ready' on backend/server '_default_backend/srv001'`,
+set server default_app_8080/srv001 addr 172.17.0.3 port 8080
+set server default_app_8080/srv001 state ready
+set server default_app_8080/srv001 weight 1`,
+			logging: `INFO-V(2) updated endpoint '172.17.0.3:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv001'`,
 		},
 	}
 	for i, test := range testCases {
