@@ -6,22 +6,28 @@
  title = "HAProxy Ingress"
  
  enableRobotsTXT = true
-@@ -81,16 +81,12 @@ privacy_policy = ""
+@@ -81,15 +81,19 @@ privacy_policy = ""
  
  # Menu title if your navbar has a versions selector to access old versions of your site.
  # This menu appears only if you have at least one [params.versions] set.
 -version_menu = "v0.10"
-+version_menu = "Latest (v0.10)"
++version_menu = "v0.10 (latest)"
  
  [[params.versions]]
 -version = "Latest"
-+version = "Latest (v0.10)"
- url = "https://haproxy-ingress.github.io/docs"
+-url = "https://haproxy-ingress.github.io/docs"
++version = "v0.12 (snapshot)"
++url = "https://haproxy-ingress.github.io/v0.12/docs"
++
++[[params.versions]]
++version = "v0.11 (beta)"
++url = "https://haproxy-ingress.github.io/v0.11/docs"
  
--[[params.versions]]
+ [[params.versions]]
 -version = "v0.10"
 -url = "https://haproxy-ingress.github.io/v0.10/docs"
--
++version = "v0.10 (latest)"
++url = "https://haproxy-ingress.github.io/docs"
+ 
  [[params.versions]]
  version = "v0.9"
- url = "https://haproxy-ingress.github.io/v0.9/docs"
