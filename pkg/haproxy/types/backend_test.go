@@ -84,3 +84,56 @@ func TestAddPath(t *testing.T) {
 		}
 	}
 }
+
+func TestIDList(t *testing.T) {
+	testCases := []struct {
+		paths    []string
+		expected []string
+	}{
+		// 0
+		{
+			paths:    []string{},
+			expected: []string{},
+		},
+		// 1
+		{
+			paths:    []string{"p1"},
+			expected: []string{"p1"},
+		},
+		// 2
+		{
+			paths:    []string{"p1", "p2", "p3"},
+			expected: []string{"p1 p2 p3"},
+		},
+		// 3
+		{
+			paths:    []string{"p01", "p02", "p03", "p04", "p05", "p06", "p07", "p08", "p09", "p10", "p11", "p12", "p13", "p14", "p15", "p16", "p17", "p18", "p19", "p20", "p21", "p22", "p23", "p24", "p25", "p26", "p27", "p28", "p29"},
+			expected: []string{"p01 p02 p03 p04 p05 p06 p07 p08 p09 p10 p11 p12 p13 p14 p15 p16 p17 p18 p19 p20 p21 p22 p23 p24 p25 p26 p27 p28 p29"},
+		},
+		// 4
+		{
+			paths:    []string{"p01", "p02", "p03", "p04", "p05", "p06", "p07", "p08", "p09", "p10", "p11", "p12", "p13", "p14", "p15", "p16", "p17", "p18", "p19", "p20", "p21", "p22", "p23", "p24", "p25", "p26", "p27", "p28", "p29", "p30"},
+			expected: []string{"p01 p02 p03 p04 p05 p06 p07 p08 p09 p10 p11 p12 p13 p14 p15 p16 p17 p18 p19 p20 p21 p22 p23 p24 p25 p26 p27 p28 p29 p30"},
+		},
+		// 5
+		{
+			paths:    []string{"p01", "p02", "p03", "p04", "p05", "p06", "p07", "p08", "p09", "p10", "p11", "p12", "p13", "p14", "p15", "p16", "p17", "p18", "p19", "p20", "p21", "p22", "p23", "p24", "p25", "p26", "p27", "p28", "p29", "p30", "p31"},
+			expected: []string{"p01 p02 p03 p04 p05 p06 p07 p08 p09 p10 p11 p12 p13 p14 p15 p16 p17 p18 p19 p20 p21 p22 p23 p24 p25 p26 p27 p28 p29 p30", "p31"},
+		},
+	}
+	for i, test := range testCases {
+		paths := make([]*BackendPath, len(test.paths))
+		for j, path := range test.paths {
+			paths[j] = &BackendPath{ID: path}
+		}
+		b := BackendPaths{
+			Items: paths,
+		}
+		pathIDs := b.IDList()
+		if len(pathIDs) > 0 || len(test.expected) > 0 {
+			if !reflect.DeepEqual(pathIDs, test.expected) {
+				t.Errorf("pathIDs differs in %d, expected: %+v, found: %+v", i, pathIDs, test.expected)
+			}
+		}
+	}
+}
