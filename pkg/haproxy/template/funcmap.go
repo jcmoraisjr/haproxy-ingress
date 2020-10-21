@@ -35,6 +35,12 @@ func createFuncMap() gotemplate.FuncMap {
 			}
 			return d
 		},
+		"iif": func(iif bool, t, f interface{}) interface{} {
+			if iif {
+				return t
+			}
+			return f
+		},
 		"short": func(size int, ilist interface{}) []interface{} {
 			list := reflect.ValueOf(ilist)
 			listlen := list.Len()
