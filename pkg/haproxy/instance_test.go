@@ -281,7 +281,7 @@ d1.local/path1 path01`,
     # path03 = d1.local/path
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
     acl wlist_src0 src 10.0.0.0/8 192.168.0.0/16
-    http-request deny if { var(txn.pathID) path02 path01 } !wlist_src0
+    http-request deny if { var(txn.pathID) path01 path02 } !wlist_src0
     acl wlist_src1 src 192.168.95.0/24
     http-request deny if { var(txn.pathID) path03 } !wlist_src1`,
 			expCheck: map[string]string{
@@ -319,7 +319,7 @@ d1.local/api path02`,
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map) if !{ var(txn.pathID) -m found }
     http-request set-var(txn.pathID) var(req.base),map_reg(/etc/haproxy/maps/_back_d1_app_8080_idpath__regex.map) if !{ var(txn.pathID) -m found }
     acl wlist_src0 src 10.0.0.0/8 192.168.0.0/16
-    http-request deny if { var(txn.pathID) path03 path05 path02 path04 } !wlist_src0
+    http-request deny if { var(txn.pathID) path02 path03 path04 path05 } !wlist_src0
     acl wlist_src1 src 172.17.0.0/16
     http-request deny if { var(txn.pathID) path01 } !wlist_src1`,
 			expFronts: "<<frontends-default-match-4>>",
@@ -847,6 +847,121 @@ empty/ default_empty_8080`)
 empty/ no`)
 	c.checkMap("_front_https_host__begin.map", `
 empty/ default_empty_8080`)
+
+	c.logger.CompareLogging(defaultLogging)
+}
+
+func TestPathIDsSplit(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	b := c.config.Backends().AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+
+	max := 32
+	for i := 1; i <= max; i++ {
+		hostname := fmt.Sprintf("h%02d.local", i)
+		h := c.config.Hosts().AcquireHost(hostname)
+		h.AddPath(b, "/", hatypes.MatchBegin)
+		path := b.FindBackendPath(hatypes.CreatePathLink(hostname, "/"))
+		if i == 1 {
+			// create the common config
+			b.HSTS = append(b.HSTS, &hatypes.BackendConfigHSTS{
+				Paths:  createBackendPaths(b, hostname+"/"),
+				Config: hatypes.HSTS{Enabled: true},
+			})
+			b.Cors = append(b.Cors, &hatypes.BackendConfigCors{
+				Paths: createBackendPaths(b, hostname+"/"),
+				Config: hatypes.Cors{
+					Enabled:      true,
+					AllowOrigin:  "*",
+					AllowMethods: "GET, PUT, POST, DELETE, PATCH, OPTIONS",
+					AllowHeaders: "DNT,X-CustomHeader,Keep-Alive,User-Agent",
+				},
+			})
+			b.WhitelistHTTP = append(b.WhitelistHTTP, &hatypes.BackendConfigWhitelist{
+				Paths:  createBackendPaths(b, hostname+"/"),
+				Config: []string{"10.0.0.0/8"},
+			})
+		} else if i < max {
+			// update the common config
+			b.HSTS[0].Paths.Items = append(b.HSTS[0].Paths.Items, path)
+			b.Cors[0].Paths.Items = append(b.Cors[0].Paths.Items, path)
+			b.WhitelistHTTP[0].Paths.Items = append(b.WhitelistHTTP[0].Paths.Items, path)
+		} else {
+			// distinct option with default values - ACLs isn't added if all hostnames+path has the same values
+			b.HSTS = append(b.HSTS, &hatypes.BackendConfigHSTS{
+				Paths: createBackendPaths(b, hostname+"/"),
+			})
+			b.Cors = append(b.Cors, &hatypes.BackendConfigCors{
+				Paths: createBackendPaths(b, hostname+"/"),
+			})
+			// Test needACL == false
+			b.WhitelistHTTP[0].Paths.Items = append(b.WhitelistHTTP[0].Paths.Items, path)
+		}
+	}
+
+	c.Update()
+
+	pathIDs01_30 := "path01 path02 path03 path04 path05 path06 path07 path08 path09 path10 path11 path12 path13 path14 path15 path16 path17 path18 path19 path20 path21 path22 path23 path24 path25 path26 path27 path28 path29 path30"
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    acl https-request ssl_fc
+    # path32 = h32.local/
+    # path31 = h31.local/
+    # path30 = h30.local/
+    # path29 = h29.local/
+    # path28 = h28.local/
+    # path27 = h27.local/
+    # path26 = h26.local/
+    # path25 = h25.local/
+    # path24 = h24.local/
+    # path23 = h23.local/
+    # path22 = h22.local/
+    # path21 = h21.local/
+    # path20 = h20.local/
+    # path19 = h19.local/
+    # path18 = h18.local/
+    # path17 = h17.local/
+    # path16 = h16.local/
+    # path15 = h15.local/
+    # path14 = h14.local/
+    # path13 = h13.local/
+    # path12 = h12.local/
+    # path11 = h11.local/
+    # path10 = h10.local/
+    # path09 = h09.local/
+    # path08 = h08.local/
+    # path07 = h07.local/
+    # path06 = h06.local/
+    # path05 = h05.local/
+    # path04 = h04.local/
+    # path03 = h03.local/
+    # path02 = h02.local/
+    # path01 = h01.local/
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    acl wlist_src0 src 10.0.0.0/8
+    http-request deny if !wlist_src0
+    http-request set-var(txn.cors_max_age) str(0) if METH_OPTIONS { var(txn.pathID) ` + pathIDs01_30 + ` }
+    http-request use-service lua.send-cors-preflight if METH_OPTIONS { var(txn.pathID) ` + pathIDs01_30 + ` }
+    http-request set-var(txn.cors_max_age) str(0) if METH_OPTIONS { var(txn.pathID) path31 }
+    http-request use-service lua.send-cors-preflight if METH_OPTIONS { var(txn.pathID) path31 }
+    http-response set-header Strict-Transport-Security "max-age=0" if https-request { var(txn.pathID) ` + pathIDs01_30 + ` }
+    http-response set-header Strict-Transport-Security "max-age=0" if https-request { var(txn.pathID) path31 }
+    http-response set-header Access-Control-Allow-Origin  "*" if { var(txn.pathID) ` + pathIDs01_30 + ` }
+    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) ` + pathIDs01_30 + ` }
+    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent" if { var(txn.pathID) ` + pathIDs01_30 + ` }
+    http-response set-header Access-Control-Allow-Origin  "*" if { var(txn.pathID) path31 }
+    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) path31 }
+    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent" if { var(txn.pathID) path31 }
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+<<frontends-default>>
+<<support>>
+`)
 
 	c.logger.CompareLogging(defaultLogging)
 }

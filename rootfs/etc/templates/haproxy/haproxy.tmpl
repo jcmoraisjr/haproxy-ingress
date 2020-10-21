@@ -398,15 +398,18 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- $needACL := gt (len $backend.WhitelistHTTP) 1 }}
 {{- range $i, $wlistCfg := $backend.WhitelistHTTP }}
 {{- $wlist := $wlistCfg.Config }}
 {{- if $wlist }}
 {{- range $w1 := short 10 $wlist }}
     acl wlist_src{{ $i }} src{{ range $w := $w1 }} {{ $w }}{{ end }}
 {{- end }}
+{{- range $pathIDs := iif $needACL $wlistCfg.Paths.IDList (list "") }}
     http-request deny if
-        {{- if gt (len $backend.WhitelistHTTP) 1 }} { var(txn.pathID) {{ $wlistCfg.Paths.IDList }} }{{ end }}
+        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
         {{- "" }} !wlist_src{{ $i }}
+{{- end }}
 {{- end }}
 {{- end }}
 
@@ -414,11 +417,13 @@ backend {{ $backend.ID }}
 {{- $needACL := gt (len $backend.AuthHTTP) 1 }}
 {{- range $authCfg := $backend.AuthHTTP }}
 {{- if $authCfg.UserlistName }}
+{{- range $pathIDs := iif $needACL $authCfg.Paths.IDList (list "") }}
     http-request auth
         {{- if $authCfg.Realm }} realm "{{ $authCfg.Realm }}"{{ end }}
         {{- "" }} if{{ if and $backend.HasCorsEnabled }} !METH_OPTIONS{{ end }}
-        {{- if $needACL }} { var(txn.pathID) {{ $authCfg.Paths.IDList }} }{{ end }}
+        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
         {{- "" }} !{ http_auth({{ $authCfg.UserlistName }}) }
+{{- end }}
 {{- end }}
 {{- end }}
 
@@ -426,9 +431,11 @@ backend {{ $backend.ID }}
 {{- $needACL := gt (len $backend.MaxBodySize) 1 }}
 {{- range $maxbody := $backend.MaxBodySize }}
 {{- if $maxbody.Config }}
+{{- range $pathIDs := $maxbody.Paths.IDList }}
     http-request use-service lua.send-413 if
-        {{- if $needACL }} { var(txn.pathID) {{ $maxbody.Paths.IDList }} }{{ end }}
+        {{- if $needACL }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
         {{- "" }} { req.body_size,sub({{ $maxbody.Config }}) gt 0 }
+{{- end }}
 {{- end }}
 {{- end }}
 
@@ -438,8 +445,10 @@ backend {{ $backend.ID }}
 {{- $needACL := gt (len $backend.WAF) 1 }}
 {{- range $waf := $backend.WAF }}
 {{- if eq $waf.Config.Mode "deny" }}
+{{- range $pathIDs := iif $needACL $waf.Paths.IDList (list "") }}
     http-request deny if { var(txn.modsec.code) -m int gt 0 }
-        {{- if $needACL }} { var(txn.pathID) {{ $waf.Paths.IDList }} }{{ end }}
+        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -467,11 +476,12 @@ backend {{ $backend.ID }}
 {{- range $corsCfg := $backend.Cors }}
 {{- $cors := $corsCfg.Config }}
 {{- if $cors.Enabled }}
-{{- $paths := $corsCfg.Paths }}
+{{- range $pathIDs := iif $needACL $corsCfg.Paths.IDList (list "") }}
     http-request set-var(txn.cors_max_age) str({{ $cors.MaxAge }}) if METH_OPTIONS
-        {{- if $needACL }} { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
     http-request use-service lua.send-cors-preflight if METH_OPTIONS
-        {{- if $needACL }} { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+{{- end }}
 {{- end }}
 {{- end }}
 
@@ -540,15 +550,16 @@ backend {{ $backend.ID }}
 {{- range $hstsCfg := $backend.HSTS }}
 {{- $hsts := $hstsCfg.Config }}
 {{- if $hsts.Enabled }}
-{{- $paths := $hstsCfg.Paths }}
-{{- $needSSLACL := and (not $frontingIgnoreProto) (not ($backend.HasSSLRedirectPaths $paths)) }}
+{{- $needSSLACL := and (not $frontingIgnoreProto) (not ($backend.HasSSLRedirectPaths $hstsCfg.Paths)) }}
+{{- range $pathIDs := iif $needACL $hstsCfg.Paths.IDList (list "") }}
     http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}
         {{- if $hsts.Subdomains }}; includeSubDomains{{ end }}
         {{- if $hsts.Preload }}; preload{{ end }}"
-        {{- if or $needSSLACL $needACL }} if
+        {{- if or $needSSLACL $pathIDs }} if
             {{- if $needSSLACL }} https-request{{ end }}
-            {{- if $needACL }} { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+            {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
         {{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
 
@@ -557,20 +568,21 @@ backend {{ $backend.ID }}
 {{- range $corsCfg := $backend.Cors }}
 {{- $cors := $corsCfg.Config }}
 {{- if $cors.Enabled }}
-{{- $paths := $corsCfg.Paths }}
+{{- range $pathIDs := iif $needACL $corsCfg.Paths.IDList (list "") }}
     http-response set-header Access-Control-Allow-Origin  "{{ $cors.AllowOrigin }}"
-        {{- if $needACL }} if { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
     http-response set-header Access-Control-Allow-Methods "{{ $cors.AllowMethods }}"
-        {{- if $needACL }} if { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
     http-response set-header Access-Control-Allow-Headers "{{ $cors.AllowHeaders }}"
-        {{- if $needACL }} if { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
 {{- if $cors.AllowCredentials }}
     http-response set-header Access-Control-Allow-Credentials "{{ $cors.AllowCredentials }}"
-        {{- if $needACL }} if { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- if $cors.ExposeHeaders }}
     http-response set-header Access-Control-Expose-Headers "{{ $cors.ExposeHeaders }}"
-        {{- if $needACL }} if { var(txn.pathID) {{ $paths.IDList }} }{{ end }}
+        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
