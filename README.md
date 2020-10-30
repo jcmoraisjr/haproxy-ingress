@@ -21,7 +21,7 @@ Documentation:
 
 Community:
 
-* [Slack](http://jitec.com.br/slack/): Chat and get support from other HAProxy Ingress users
+* [Slack](https://kubernetes.slack.com/channels/haproxy-ingress): We're in the [#haproxy-ingress](https://kubernetes.slack.com/channels/haproxy-ingress) channel on Kubernetes Slack. Take an invite [here](https://slack.k8s.io) if not subscribed yet
 * [Users mailing list](https://groups.google.com/forum/#!forum/haproxy-ingress): Announcements and discussion on a mailing list
 * [Stack Overflow](https://stackoverflow.com/questions/tagged/haproxy-ingress): Practical questions and curated answers
 
