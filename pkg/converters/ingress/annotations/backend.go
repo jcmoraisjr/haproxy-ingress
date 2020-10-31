@@ -115,6 +115,11 @@ func (c *updater) buildBackendAuthHTTP(d *backData) {
 					c.logger.Warn("userlist on %v for basic authentication is empty", authSecret.Source)
 				}
 			}
+			// Add secret->backend tracking again to properly track the backend if a userlist was reused
+			// Backends need always to be tracked because only hosts and backends tracking can properly start a partial update
+			// Tracker will take care of deduplicate trackings
+			// TODO build a stronger tracking
+			c.tracker.TrackBackend(convtypes.SecretType, secretName, d.backend.BackendID())
 			realm := "localhost" // HAProxy's backend name would be used if missing
 			authRealm := values[ingtypes.BackAuthRealm]
 			if authRealm == nil || authRealm.Source == nil {
