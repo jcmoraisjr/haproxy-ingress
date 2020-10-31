@@ -444,30 +444,39 @@ func (c *k8scache) GetKey() (crypto.Signer, error) {
 }
 
 // Implements acme.SignerResolver
-func (c *k8scache) GetTLSSecretContent(secretName string) *acme.TLSSecret {
+func (c *k8scache) GetTLSSecretContent(secretName string) (*acme.TLSSecret, error) {
 	secret, err := c.GetSecret(secretName)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	pemCrt, foundCrt := secret.Data[api.TLSCertKey]
 	pemKey, foundKey := secret.Data[api.TLSPrivateKeyKey]
-	if !foundCrt || !foundKey {
-		return nil
+	if !foundCrt {
+		return nil, fmt.Errorf("secret %s does not have %s key", secretName, api.TLSCertKey)
+	}
+	if !foundKey {
+		return nil, fmt.Errorf("secret %s does not have %s key", secretName, api.TLSPrivateKeyKey)
 	}
 	derCrt, _ := pem.Decode(pemCrt)
 	derKey, _ := pem.Decode(pemKey)
-	if derCrt == nil || derKey == nil {
-		return nil
+	if derCrt == nil {
+		return nil, fmt.Errorf("error decoding crt of secret %s: cannot find a proper pem block", secretName)
+	}
+	if derKey == nil {
+		return nil, fmt.Errorf("error decoding key of secret %s: cannot find a proper pem block", secretName)
 	}
 	crt, errCrt := x509.ParseCertificate(derCrt.Bytes)
 	key, errKey := x509.ParsePKCS1PrivateKey(derKey.Bytes)
-	if errCrt != nil || errKey != nil {
-		return nil
+	if errCrt != nil {
+		return nil, fmt.Errorf("error parsing crt of secret %s: %w", secretName, errCrt)
+	}
+	if errKey != nil {
+		return nil, fmt.Errorf("error parsing key of secret %s: %w", secretName, errKey)
 	}
 	return &acme.TLSSecret{
 		Crt: crt,
 		Key: key,
-	}
+	}, nil
 }
 
 // Implements acme.SignerResolver
