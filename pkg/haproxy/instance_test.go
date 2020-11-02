@@ -266,7 +266,7 @@ d1.local/path1 path01`,
     # path03 = d1.local/path
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
     acl wlist_src0 src 10.0.0.0/8 192.168.0.0/16
-    http-request deny if { var(txn.pathID) path02 path01 } !wlist_src0
+    http-request deny if { var(txn.pathID) path01 path02 } !wlist_src0
     acl wlist_src1 src 192.168.95.0/24
     http-request deny if { var(txn.pathID) path03 } !wlist_src1`,
 			expCheck: map[string]string{
@@ -301,7 +301,7 @@ d1.local/api path02`,
     acl wlist_src0 src 172.17.0.0/16
     http-request deny if { var(txn.pathID) path01 } !wlist_src0
     acl wlist_src1 src 10.0.0.0/8 192.168.0.0/16
-    http-request deny if { var(txn.pathID) path03 path05 path02 path04 } !wlist_src1`,
+    http-request deny if { var(txn.pathID) path02 path03 path04 path05 } !wlist_src1`,
 			expFronts: "<<frontends-default-match-4>>",
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__exact.map": `
@@ -881,6 +881,95 @@ backend _error404
 	c.logger.CompareLogging(`
 INFO (test) reload was skipped
 INFO haproxy successfully reloaded (external)`)
+}
+
+func TestPathIDsSplit(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	b := c.config.Backends().AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+
+	max := 32
+	for i := 1; i <= max; i++ {
+		h := c.config.Hosts().AcquireHost(fmt.Sprintf("h%02d.local", i))
+		h.AddPath(b, "/", hatypes.MatchBegin)
+		path := b.FindBackendPath(h.FindPath("/").Link)
+		path.SSLRedirect = true
+		path.WhitelistHTTP = []string{"10.0.0.0/8"}
+		if i < max {
+			path.HSTS.Enabled = true
+			path.Cors.Enabled = true
+			path.Cors.AllowOrigin = "*"
+			path.Cors.AllowMethods = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+			path.Cors.AllowHeaders = "DNT,X-CustomHeader,Keep-Alive,User-Agent"
+		}
+	}
+
+	c.Update()
+
+	pathIDs01_30 := "path01 path02 path03 path04 path05 path06 path07 path08 path09 path10 path11 path12 path13 path14 path15 path16 path17 path18 path19 path20 path21 path22 path23 path24 path25 path26 path27 path28 path29 path30"
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    acl https-request ssl_fc
+    # path01 = h01.local/
+    # path02 = h02.local/
+    # path03 = h03.local/
+    # path04 = h04.local/
+    # path05 = h05.local/
+    # path06 = h06.local/
+    # path07 = h07.local/
+    # path08 = h08.local/
+    # path09 = h09.local/
+    # path10 = h10.local/
+    # path11 = h11.local/
+    # path12 = h12.local/
+    # path13 = h13.local/
+    # path14 = h14.local/
+    # path15 = h15.local/
+    # path16 = h16.local/
+    # path17 = h17.local/
+    # path18 = h18.local/
+    # path19 = h19.local/
+    # path20 = h20.local/
+    # path21 = h21.local/
+    # path22 = h22.local/
+    # path23 = h23.local/
+    # path24 = h24.local/
+    # path25 = h25.local/
+    # path26 = h26.local/
+    # path27 = h27.local/
+    # path28 = h28.local/
+    # path29 = h29.local/
+    # path30 = h30.local/
+    # path31 = h31.local/
+    # path32 = h32.local/
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request redirect scheme https if !https-request
+    acl wlist_src0 src 10.0.0.0/8
+    http-request deny if !wlist_src0
+    http-request set-var(txn.cors_max_age) str(0) if METH_OPTIONS { var(txn.pathID) ` + pathIDs01_30 + ` }
+    http-request use-service lua.send-cors-preflight if METH_OPTIONS { var(txn.pathID) ` + pathIDs01_30 + ` }
+    http-request set-var(txn.cors_max_age) str(0) if METH_OPTIONS { var(txn.pathID) path31 }
+    http-request use-service lua.send-cors-preflight if METH_OPTIONS { var(txn.pathID) path31 }
+    http-response set-header Strict-Transport-Security "max-age=0" if { var(txn.pathID) ` + pathIDs01_30 + ` }
+    http-response set-header Strict-Transport-Security "max-age=0" if { var(txn.pathID) path31 }
+    http-response set-header Access-Control-Allow-Origin  "*" if { var(txn.pathID) ` + pathIDs01_30 + ` }
+    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) ` + pathIDs01_30 + ` }
+    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent" if { var(txn.pathID) ` + pathIDs01_30 + ` }
+    http-response set-header Access-Control-Allow-Origin  "*" if { var(txn.pathID) path31 }
+    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) path31 }
+    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent" if { var(txn.pathID) path31 }
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+<<frontends-default>>
+<<support>>
+`)
+
+	c.logger.CompareLogging(defaultLogging)
 }
 
 func TestInstanceSecurity(t *testing.T) {

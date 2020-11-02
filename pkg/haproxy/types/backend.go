@@ -314,13 +314,45 @@ func (b *BackendPathConfig) Paths(index int) []*BackendPath {
 }
 
 // PathIDs ...
-func (b *BackendPathConfig) PathIDs(index int) string {
+func (b *BackendPathConfig) PathIDs(index int) []string {
+	// slice of one item in order to iterate once and output the haproxy's keyword.
+	// template has `{{ if $pathIDs }}`, so empty string means to not build the ACL.
+	if !b.NeedACL() {
+		return []string{""}
+	}
 	paths := b.items[index].paths
+	if len(paths) == 0 {
+		return nil
+	}
 	ids := make([]string, len(paths))
 	for i, path := range paths {
 		ids[i] = path.ID
 	}
-	return strings.Join(ids, " ")
+
+	// pathIDs array is split into smaller chains of IDs to avoid "line too long"
+	// from haproxy. A `maxTokensPerLine` as 30 will add at most 30 new words in
+	// a single line whose limit is 64, and up to 2048 chars in length. Each ID
+	// "path0000 " uses at most 9 chars, multiplied by 30 means 270 chars in the
+	// whole line.
+	//
+	//   https://github.com/haproxy/haproxy/blob/v2.2.0/include/haproxy/defaults.h#L99
+	//   https://github.com/haproxy/haproxy/blob/v2.2.0/include/haproxy/defaults.h#L104
+	//
+	// 30 is fair enough.
+	maxTokensPerLine := 30
+
+	sort.Strings(ids)
+	pathIDs := make([]string, (len(ids)-1)/maxTokensPerLine+1)
+	lower := 0
+	for i := range pathIDs {
+		upper := lower + maxTokensPerLine
+		if upper > len(ids) {
+			upper = len(ids)
+		}
+		pathIDs[i] = strings.Join(ids[lower:upper], " ")
+		lower = lower + maxTokensPerLine
+	}
+	return pathIDs
 }
 
 // IsEmpty ...
