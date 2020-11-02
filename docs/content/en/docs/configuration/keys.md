@@ -257,6 +257,7 @@ The table below describes all supported configuration keys.
 | [`waf`](#waf)                                        | "modsecurity"                           | Backend |                    |
 | [`waf-mode`](#waf)                                   | [deny\|detect]                          | Backend | `deny` (if waf is set) |
 | `whitelist-source-range`                             | CIDR                                    | Backend |                    |
+| [`worker-max-reloads`](#master-worker)               | number of reloads                       | Global  | `0`                |
 
 ---
 
@@ -1210,15 +1211,24 @@ See also:
 | Configuration key        | Scope    | Default | Since |
 |--------------------------|----------|---------|-------|
 | `master-exit-on-failure` | `Global` | `true`  | v0.12 |
+| `worker-max-reloads`     | `Global` | `0`     | v0.12 |
 
-Configures master-worker related options.
+Configures master-worker related options. These options are only used when an
+external haproxy instance is configured.
 
 * `master-exit-on-failure`: If `true`, kill all the remaining workers and exit
 from master in the case of an unexpected failure of a worker, eg a segfault.
+* `worker-max-reloads`: Defines how many reloads a haproxy worker should
+survive before receive a SIGTERM. The default value is `0` which means
+unlimited. This option limits the number of active workers and the haproxy's
+pod memory usage. Useful on workloads with long running connections, eg
+websockets, and clusters that frequently changes and forces haproxy to reload.
 
 See also:
 
+* [Example]({{% relref "/docs/examples/external-haproxy" %}}) page
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-master-worker
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#mworker-max-reloads
 * [master-socket]({{% relref "command-line#master-socket" %}}) command-line option
 
 ---

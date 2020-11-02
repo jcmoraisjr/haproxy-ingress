@@ -847,6 +847,7 @@ func TestInstanceEmptyExternal(t *testing.T) {
 	defer c.teardown()
 
 	c.config.global.External.MasterSocket = "/tmp/master.sock"
+	c.config.global.Master.WorkerMaxReloads = 20
 	c.config.global.Security.Username = "external"
 	c.config.global.Security.Groupname = "external"
 
@@ -862,6 +863,7 @@ global
     stats socket /var/run/haproxy.sock level admin expose-fd listeners mode 600
     maxconn 2000
     hard-stop-after 15m
+    mworker-max-reloads 20
     lua-load /etc/haproxy/lua/services.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
