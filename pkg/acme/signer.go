@@ -17,7 +17,6 @@ limitations under the License.
 package acme
 
 import (
-	"crypto/rsa"
 	"crypto/x509"
 	"fmt"
 	"reflect"
@@ -60,7 +59,6 @@ type SignerResolver interface {
 // TLSSecret ...
 type TLSSecret struct {
 	Crt *x509.Certificate
-	Key *rsa.PrivateKey
 }
 
 type signer struct {
