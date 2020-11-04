@@ -125,7 +125,7 @@ func (s *signer) verify(secretName string, domains []string) (verifyErr error) {
 	duedate := time.Now().Add(s.expiring)
 	tls := s.cache.GetTLSSecretContent(secretName)
 	strdomains := strings.Join(domains, ",")
-	if tls == nil || tls.Crt.NotAfter.Before(duedate) || !match(domains, tls.Crt.DNSNames) {
+	if tls == nil || tls.Crt.NotAfter.Before(duedate) || !match(domains, tls.Crt) {
 		var collector func(domains string, success bool)
 		var reason string
 		if tls == nil {
@@ -165,14 +165,10 @@ func (s *signer) verify(secretName string, domains []string) (verifyErr error) {
 
 // match return true if all hosts in hostnames (desired configuration)
 // are already in dnsnames (current certificate).
-func match(domains, dnsnames []string) bool {
+func match(domains []string, crt *x509.Certificate) bool {
+	found := false
 	for _, domain := range domains {
-		found := false
-		for _, dns := range dnsnames {
-			if domain == dns {
-				found = true
-			}
-		}
+		found = crt.VerifyHostname(domain) == nil
 		if !found {
 			return false
 		}
