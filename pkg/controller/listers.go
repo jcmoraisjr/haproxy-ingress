@@ -53,21 +53,23 @@ type listers struct {
 	hasPodLister  bool
 	hasNodeLister bool
 	//
-	ingressLister   listersv1beta1.IngressLister
-	endpointLister  listersv1.EndpointsLister
-	serviceLister   listersv1.ServiceLister
-	secretLister    listersv1.SecretLister
-	configMapLister listersv1.ConfigMapLister
-	podLister       listersv1.PodLister
-	nodeLister      listersv1.NodeLister
+	ingressLister      listersv1beta1.IngressLister
+	ingressClassLister listersv1beta1.IngressClassLister
+	endpointLister     listersv1.EndpointsLister
+	serviceLister      listersv1.ServiceLister
+	secretLister       listersv1.SecretLister
+	configMapLister    listersv1.ConfigMapLister
+	podLister          listersv1.PodLister
+	nodeLister         listersv1.NodeLister
 	//
-	ingressInformer   cache.SharedInformer
-	endpointInformer  cache.SharedInformer
-	serviceInformer   cache.SharedInformer
-	secretInformer    cache.SharedInformer
-	configMapInformer cache.SharedInformer
-	podInformer       cache.SharedInformer
-	nodeInformer      cache.SharedInformer
+	ingressInformer      cache.SharedInformer
+	ingressClassInformer cache.SharedInformer
+	endpointInformer     cache.SharedInformer
+	serviceInformer      cache.SharedInformer
+	secretInformer       cache.SharedInformer
+	configMapInformer    cache.SharedInformer
+	podInformer          cache.SharedInformer
+	nodeInformer         cache.SharedInformer
 }
 
 func createListers(
@@ -103,6 +105,7 @@ func createListers(
 		logger:   logger,
 	}
 	l.createIngressLister(ingressInformer.Networking().V1beta1().Ingresses())
+	l.createIngressClassLister(ingressInformer.Networking().V1beta1().IngressClasses())
 	l.createEndpointLister(resourceInformer.Core().V1().Endpoints())
 	l.createServiceLister(resourceInformer.Core().V1().Services())
 	l.createSecretLister(resourceInformer.Core().V1().Secrets())
@@ -125,6 +128,7 @@ func createListers(
 
 func (l *listers) RunAsync(stopCh <-chan struct{}) {
 	go l.ingressInformer.Run(stopCh)
+	go l.ingressClassInformer.Run(stopCh)
 	go l.endpointInformer.Run(stopCh)
 	go l.serviceInformer.Run(stopCh)
 	go l.secretInformer.Run(stopCh)
@@ -134,6 +138,7 @@ func (l *listers) RunAsync(stopCh <-chan struct{}) {
 	l.logger.Info("loading object cache...")
 	synced := cache.WaitForCacheSync(stopCh,
 		l.ingressInformer.HasSynced,
+		l.ingressClassInformer.HasSynced,
 		l.endpointInformer.HasSynced,
 		l.serviceInformer.HasSynced,
 		l.secretInformer.HasSynced,
@@ -204,6 +209,19 @@ func (l *listers) createIngressLister(informer informersv1beta1.IngressInformer)
 			}
 			l.recorder.Eventf(ing, api.EventTypeNormal, "DELETE", "Ingress %s/%s", ing.Namespace, ing.Name)
 			l.events.Notify(ing, nil)
+		},
+	})
+}
+
+func (l *listers) createIngressClassLister(informer informersv1beta1.IngressClassInformer) {
+	l.ingressClassLister = informer.Lister()
+	l.ingressClassInformer = informer.Informer()
+	l.ingressClassInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+		},
+		UpdateFunc: func(old, cur interface{}) {
+		},
+		DeleteFunc: func(obj interface{}) {
 		},
 	})
 }

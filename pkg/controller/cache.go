@@ -54,6 +54,7 @@ const dhparamFilename = "dhparam.pem"
 type k8scache struct {
 	ctx                    context.Context
 	client                 k8s.Interface
+	logger                 types.Logger
 	listers                *listers
 	controller             *controller.GenericController
 	cfg                    *controller.Configuration
@@ -133,6 +134,7 @@ func createCache(
 	cache := &k8scache{
 		ctx:                    context.Background(),
 		client:                 client,
+		logger:                 logger,
 		controller:             controller,
 		cfg:                    cfg,
 		tracker:                tracker,
@@ -551,11 +553,41 @@ func (c *k8scache) CreateOrUpdateConfigMap(cm *api.ConfigMap) (err error) {
 
 // implements ListerEvents
 func (c *k8scache) IsValidIngress(ing *networking.Ingress) bool {
-	ann, found := ing.Annotations["kubernetes.io/ingress.class"]
+	// check if ingress `hasAnn` and, if so, if it's valid `fromAnn` perspective
+	var hasAnn, fromAnn bool
+	var ann string
+	ann, hasAnn = ing.Annotations["kubernetes.io/ingress.class"]
 	if c.cfg.IgnoreIngressWithoutClass {
-		return found && ann == c.cfg.IngressClass
+		fromAnn = hasAnn && ann == c.cfg.IngressClass
+	} else {
+		fromAnn = !hasAnn || ann == c.cfg.IngressClass
 	}
-	return !found || ann == c.cfg.IngressClass
+
+	// check if ingress `hasClass` and, if so, if it's valid `fromClass` perspective
+	var hasClass, fromClass bool
+	if className := ing.Spec.IngressClassName; className != nil {
+		if ingClass, err := c.listers.ingressClassLister.Get(*className); ingClass != nil {
+			hasClass = true
+			fromClass = ingClass.Spec.Controller == "haproxy-ingress.github.io/controller"
+		} else if err != nil {
+			c.logger.Warn("error reading ingress class %s: %v", *className, err)
+		} else {
+			c.logger.Warn("ingress class not found: %s", *className)
+		}
+	}
+
+	// annotation has precedence, warn if both class and annotation are configured and they conflict
+	if hasAnn {
+		if hasClass && fromAnn != fromClass {
+			c.logger.Warn("ingress %s/%s has conflicting ingress class configuration, using annotation reference (%t)",
+				ing.Namespace, ing.Name, fromAnn)
+		}
+		return fromAnn
+	}
+	if hasClass {
+		return fromClass
+	}
+	return fromAnn
 }
 
 // implements ListerEvents
