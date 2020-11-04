@@ -253,6 +253,12 @@ func (hc *HAProxyController) GetSecret(name string) (*api.Secret, error) {
 	return hc.cache.GetSecret(name)
 }
 
+// IsValidClass ...
+// implements oldcontroller.NewCtrlIntf
+func (hc *HAProxyController) IsValidClass(ing *networking.Ingress) bool {
+	return hc.cache.IsValidIngress(ing)
+}
+
 // Name provides the complete name of the controller
 func (hc *HAProxyController) Name() string {
 	return "HAProxy Ingress Controller"

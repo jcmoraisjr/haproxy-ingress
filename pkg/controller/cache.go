@@ -56,6 +56,7 @@ type k8scache struct {
 	client                 k8s.Interface
 	listers                *listers
 	controller             *controller.GenericController
+	cfg                    *controller.Configuration
 	tracker                convtypes.Tracker
 	crossNS                bool
 	globalConfigMapKey     string
@@ -133,6 +134,7 @@ func createCache(
 		ctx:                    context.Background(),
 		client:                 client,
 		controller:             controller,
+		cfg:                    cfg,
 		tracker:                tracker,
 		crossNS:                cfg.AllowCrossNamespace,
 		globalConfigMapKey:     globalConfigMapName,
@@ -549,7 +551,11 @@ func (c *k8scache) CreateOrUpdateConfigMap(cm *api.ConfigMap) (err error) {
 
 // implements ListerEvents
 func (c *k8scache) IsValidIngress(ing *networking.Ingress) bool {
-	return c.controller.IsValidClass(ing)
+	ann, found := ing.Annotations["kubernetes.io/ingress.class"]
+	if c.cfg.IgnoreIngressWithoutClass {
+		return found && ann == c.cfg.IngressClass
+	}
+	return !found || ann == c.cfg.IngressClass
 }
 
 // implements ListerEvents

@@ -308,7 +308,7 @@ func (s *statusSync) updateStatus(newIngressPoint []apiv1.LoadBalancerIngress) e
 	batch := p.Batch()
 
 	for _, ing := range ings {
-		if !s.ic.IsValidClass(ing) {
+		if !s.ic.newctrl.IsValidClass(ing) {
 			continue
 		}
 

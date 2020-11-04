@@ -40,6 +40,7 @@ import (
 type NewCtrlIntf interface {
 	GetIngressList() ([]*networking.Ingress, error)
 	GetSecret(name string) (*apiv1.Secret, error)
+	IsValidClass(ing *networking.Ingress) bool
 }
 
 // GenericController holds the boilerplate code required to build an Ingress controlller.
@@ -125,20 +126,6 @@ func newIngressController(config *Configuration) *GenericController {
 	}
 
 	return &ic
-}
-
-// IngressClassKey ...
-const IngressClassKey = "kubernetes.io/ingress.class"
-
-// IsValidClass ...
-func (ic *GenericController) IsValidClass(ing *networking.Ingress) bool {
-	ann, found := ing.Annotations[IngressClassKey]
-
-	if ic.cfg.IgnoreIngressWithoutClass {
-		return found && ann == ic.cfg.IngressClass
-	}
-
-	return !found || ann == ic.cfg.IngressClass
 }
 
 // GetConfig expose the controller configuration
