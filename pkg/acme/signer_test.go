@@ -33,12 +33,14 @@ func TestNotifyVerify(t *testing.T) {
 	testCases := []struct {
 		input     string
 		expiresIn time.Duration
+		cert string
 		logging   string
 	}{
 		// 0
 		{
 			input:     "s1,d1.local",
 			expiresIn: 10 * 24 * time.Hour,
+			cert: dumbcrt,
 			logging: `
 INFO-V(2) acme: skipping sign, certificate is updated: secret=s1 domain(s)=d1.local`,
 		},
@@ -46,6 +48,7 @@ INFO-V(2) acme: skipping sign, certificate is updated: secret=s1 domain(s)=d1.lo
 		{
 			input:     "s1,d2.local",
 			expiresIn: -10 * 24 * time.Hour,
+			cert: dumbcrt,
 			logging: `
 INFO acme: authorizing: id=1 secret=s1 domain(s)=d2.local endpoint=https://acme-v2.local reason='certificate expires in 2020-12-01 16:33:14 +0000 UTC'
 INFO acme: new certificate issued: id=1 secret=s1 domain(s)=d2.local`,
@@ -54,6 +57,7 @@ INFO acme: new certificate issued: id=1 secret=s1 domain(s)=d2.local`,
 		{
 			input:     "s1,d3.local",
 			expiresIn: 10 * 24 * time.Hour,
+			cert: dumbcrt,
 			logging: `
 INFO acme: authorizing: id=1 secret=s1 domain(s)=d3.local endpoint=https://acme-v2.local reason='added one or more domains to an existing certificate'
 INFO acme: new certificate issued: id=1 secret=s1 domain(s)=d3.local`,
@@ -62,53 +66,33 @@ INFO acme: new certificate issued: id=1 secret=s1 domain(s)=d3.local`,
 		{
 			input:     "s2,d1.local",
 			expiresIn: 10 * 24 * time.Hour,
+			cert: dumbcrt,
 			logging: `
 INFO acme: authorizing: id=1 secret=s2 domain(s)=d1.local endpoint=https://acme-v2.local reason='certificate does not exist'
 INFO acme: new certificate issued: id=1 secret=s2 domain(s)=d1.local`,
 		},
-	}
-	c := setup(t)
-	defer c.teardown()
-	crt, _ := base64.StdEncoding.DecodeString(dumbcrt)
-	x509, _ := x509.ParseCertificate(crt)
-	c.cache.tlsSecret["s1"] = &TLSSecret{Crt: x509}
-	for _, test := range testCases {
-		signer := c.newSigner()
-		signer.account.Endpoint = "https://acme-v2.local"
-		signer.expiring = x509.NotAfter.Sub(time.Now().Add(test.expiresIn))
-		signer.Notify(test.input)
-		c.logger.CompareLogging(test.logging)
-	}
-}
-
-func TestNotifyWIldcardVerify(t *testing.T) {
-	testCases := []struct {
-		input     string
-		expiresIn time.Duration
-		logging   string
-	}{
 		{
-			input:     "s3,s3.dev.local",
+			input:     "s1,s3.dev.local",
 			expiresIn: 10 * 24 * time.Hour,
+			cert: dumbwildcardcrt,
 			logging: `
-INFO-V(2) acme: skipping sign, certificate is updated: secret=s3 domain(s)=s3.dev.local`,
+INFO-V(2) acme: skipping sign, certificate is updated: secret=s1 domain(s)=s3.dev.local`,
 		},
 		{
-			input:     "s3,other.s3.dev.local",
+			input:     "s1,other.s3.dev.local",
 			expiresIn: 10 * 24 * time.Hour,
+			cert: dumbwildcardcrt,
 			logging: `
-INFO acme: authorizing: id=1 secret=s3 domain(s)=other.s3.dev.local endpoint=https://acme-v2.local reason='added one or more domains to an existing certificate'
-INFO acme: new certificate issued: id=1 secret=s3 domain(s)=other.s3.dev.local`,
+INFO acme: authorizing: id=1 secret=s1 domain(s)=other.s3.dev.local endpoint=https://acme-v2.local reason='added one or more domains to an existing certificate'
+INFO acme: new certificate issued: id=1 secret=s1 domain(s)=other.s3.dev.local`,
 		},
 	}
 	c := setup(t)
 	defer c.teardown()
-	crt, _ := base64.StdEncoding.DecodeString(dumbwildcardcrt)
-
-	x509, _ := x509.ParseCertificate(crt)
-	c.cache.tlsSecret["s3"] = &TLSSecret{Crt: x509}
-
 	for _, test := range testCases {
+		crt, _ := base64.StdEncoding.DecodeString(test.cert)
+		x509, _ := x509.ParseCertificate(crt)
+		c.cache.tlsSecret["s1"] = &TLSSecret{Crt: x509}
 		signer := c.newSigner()
 		signer.account.Endpoint = "https://acme-v2.local"
 		signer.expiring = x509.NotAfter.Sub(time.Now().Add(test.expiresIn))
