@@ -166,16 +166,25 @@ func (s *signer) verify(secretName string, domains []string) (verifyErr error) {
 // match return true if all hosts in hostnames (desired configuration)
 // are already in dnsnames (current certificate).
 func match(domains, dnsnames []string) bool {
+	found := false
 	for _, domain := range domains {
-		found := false
-		for _, dns := range dnsnames {
-			if domain == dns {
-				found = true
-			}
-		}
+		found = inWdomain(dnsnames, domain)
 		if !found {
 			return false
 		}
 	}
 	return true
+}
+
+func inWdomain(wdomains []string, domain string) bool {
+	for _, suffix := range wdomains {
+		suffix := strings.Replace(suffix, "*", "", 1)
+		print("\n" + suffix + "\n")
+		print("\n" + domain + "\n")
+
+		if strings.HasSuffix(domain, suffix) {
+			return true
+		}
+	}
+	return false
 }
