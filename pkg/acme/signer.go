@@ -17,7 +17,6 @@ limitations under the License.
 package acme
 
 import (
-	"crypto/rsa"
 	"crypto/x509"
 	"fmt"
 	"reflect"
@@ -53,14 +52,13 @@ type Cache interface {
 
 // SignerResolver ...
 type SignerResolver interface {
-	GetTLSSecretContent(secretName string) *TLSSecret
+	GetTLSSecretContent(secretName string) (*TLSSecret, error)
 	SetTLSSecretContent(secretName string, pemCrt, pemKey []byte) error
 }
 
 // TLSSecret ...
 type TLSSecret struct {
 	Crt *x509.Certificate
-	Key *rsa.PrivateKey
 }
 
 type signer struct {
@@ -123,14 +121,14 @@ func (s *signer) Notify(item interface{}) error {
 
 func (s *signer) verify(secretName string, domains []string) (verifyErr error) {
 	duedate := time.Now().Add(s.expiring)
-	tls := s.cache.GetTLSSecretContent(secretName)
+	tls, errSecret := s.cache.GetTLSSecretContent(secretName)
 	strdomains := strings.Join(domains, ",")
-	if tls == nil || tls.Crt.NotAfter.Before(duedate) || !match(domains, tls.Crt) {
+	if errSecret != nil || tls.Crt.NotAfter.Before(duedate) || !match(domains, tls.Crt) {
 		var collector func(domains string, success bool)
 		var reason string
-		if tls == nil {
+		if errSecret != nil {
 			collector = s.metrics.IncCertSigningMissing
-			reason = "certificate does not exist"
+			reason = fmt.Sprintf("certificate does not exist (%v)", errSecret)
 		} else if tls.Crt.NotAfter.Before(duedate) {
 			collector = s.metrics.IncCertSigningExpiring
 			reason = fmt.Sprintf("certificate expires in %s", tls.Crt.NotAfter.String())
