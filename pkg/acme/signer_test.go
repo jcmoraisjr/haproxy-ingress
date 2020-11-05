@@ -20,6 +20,7 @@ import (
 	"crypto"
 	"crypto/x509"
 	"encoding/base64"
+	"fmt"
 	"testing"
 	"time"
 
@@ -68,7 +69,7 @@ INFO acme: new certificate issued: id=1 secret=s1 domain(s)=d3.local`,
 			expiresIn: 10 * 24 * time.Hour,
 			cert: dumbcrt,
 			logging: `
-INFO acme: authorizing: id=1 secret=s2 domain(s)=d1.local endpoint=https://acme-v2.local reason='certificate does not exist'
+INFO acme: authorizing: id=1 secret=s2 domain(s)=d1.local endpoint=https://acme-v2.local reason='certificate does not exist (secret not found: s2)'
 INFO acme: new certificate issued: id=1 secret=s2 domain(s)=d1.local`,
 		},
 		{
@@ -151,12 +152,12 @@ func (c *cache) GetToken(domain, uri string) string {
 	return ""
 }
 
-func (c *cache) GetTLSSecretContent(secretName string) *TLSSecret {
+func (c *cache) GetTLSSecretContent(secretName string) (*TLSSecret, error) {
 	tls, found := c.tlsSecret[secretName]
 	if found {
-		return tls
+		return tls, nil
 	}
-	return nil
+	return nil, fmt.Errorf("secret not found: %s", secretName)
 }
 
 func (c *cache) SetTLSSecretContent(secretName string, pemCrt, pemKey []byte) error {
