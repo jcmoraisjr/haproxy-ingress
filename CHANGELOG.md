@@ -192,6 +192,16 @@ Fixes and improvements since [v0.11-beta.2](#v011-beta2):
 * Fix dynamic update of the default backend [#680](https://github.com/jcmoraisjr/haproxy-ingress/pull/680) (jcmoraisjr)
 * Update embedded haproxy to 2.1.9 [06f2e65](https://github.com/jcmoraisjr/haproxy-ingress/commit/06f2e65ff6ec603a7abae9704bf0a32f66277b8e) (Joao Morais)
 
+### v0.11-beta.4
+
+Fixes and improvements since [v0.11-beta.3](#v011-beta3):
+
+* Fix line too long on backend parsing [#683](https://github.com/jcmoraisjr/haproxy-ingress/pull/683) (jcmoraisjr)
+* Fix basic auth backend tracking [#688](https://github.com/jcmoraisjr/haproxy-ingress/pull/688) (jcmoraisjr)
+* Allow signer to work with wildcard dns certs [#695](https://github.com/jcmoraisjr/haproxy-ingress/pull/695) (pbabilas)
+* Improve certificate validation of acme signer [#689](https://github.com/jcmoraisjr/haproxy-ingress/pull/689) (jcmoraisjr)
+* Update haproxy from 2.1.9 to 2.1.10 [9763c63](https://github.com/jcmoraisjr/haproxy-ingress/commit/9763c635d73dc3c853223304902b29ae3065cb32) (Joao Morais)
+
 ## v0.10.1
 
 Fixes and improvements since [v0.10](#v010):
