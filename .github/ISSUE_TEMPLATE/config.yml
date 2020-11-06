@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
 - name: Slack
-  url: http://jitec.com.br/slack/
-  about: Chat and get support from other HAProxy Ingress users.
+  url: https://kubernetes.slack.com/channels/haproxy-ingress
+  about: "We're in the #haproxy-ingress channel on Kubernetes Slack. Take an invite at https://slack.k8s.io if not subscribed yet"
 - name: Mailing List
   url: https://groups.google.com/forum/#!forum/haproxy-ingress
   about: Ask questions and follow announcements. Post via `haproxy-ingress@googlegroups.com` mail address without being subscribed.
