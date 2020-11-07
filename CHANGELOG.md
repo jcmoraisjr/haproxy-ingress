@@ -15,6 +15,7 @@
 
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
 * Max Verigin ([griever989](https://github.com/griever989))
+* Ricardo Katz ([rikatz](https://github.com/rikatz))
 
 **v0.12-snapshot.1**
 
@@ -54,6 +55,10 @@ Fixes:
 * Implement sort-backends [#677](https://github.com/jcmoraisjr/haproxy-ingress/pull/677) (jcmoraisjr)
 * Fix dynamic update of the default backend [#680](https://github.com/jcmoraisjr/haproxy-ingress/pull/680) (jcmoraisjr)
 
+Others:
+
+* Adds a GH Action to close stale issues [#615](https://github.com/jcmoraisjr/haproxy-ingress/pull/615) (rikatz)
+
 ## v0.11
 
 **Highlights of this version**
@@ -81,6 +86,7 @@ Fixes:
 * Eliot Hautefeuille ([hileef](https://github.com/hileef))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
 * MartinKirchner ([MartinKirchner](https://github.com/MartinKirchner))
+* pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
 * Robert Agbozo ([RobertTheProfessional](https://github.com/RobertTheProfessional))
 * Shagon94 ([Shagon94](https://github.com/Shagon94))
