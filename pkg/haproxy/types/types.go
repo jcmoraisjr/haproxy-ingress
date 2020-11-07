@@ -192,7 +192,8 @@ type HealthzConfig struct {
 
 // MasterConfig ...
 type MasterConfig struct {
-	ExitOnFailure bool
+	ExitOnFailure    bool
+	WorkerMaxReloads int
 }
 
 // PromConfig ...

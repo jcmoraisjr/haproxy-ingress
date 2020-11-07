@@ -96,4 +96,5 @@ const (
 	GlobalUseHAProxyUser               = "use-haproxy-user"
 	GlobalUseHTX                       = "use-htx"
 	GlobalUseProxyProtocol             = "use-proxy-protocol"
+	GlobalWorkerMaxReloads             = "worker-max-reloads"
 )

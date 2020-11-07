@@ -92,6 +92,9 @@ global
 {{- if $global.Timeout.Stop }}
     hard-stop-after {{ $global.Timeout.Stop }}
 {{- end }}
+{{- if and $global.External.IsExternal $global.Master.WorkerMaxReloads }}
+    mworker-max-reloads {{ $global.Master.WorkerMaxReloads }}
+{{- end }}
 {{- if $global.Syslog.Endpoint }}
     log {{ $global.Syslog.Endpoint }} len {{ $global.Syslog.Length }} format {{ $global.Syslog.Format }} local0
     log-tag {{ $global.Syslog.Tag }}
