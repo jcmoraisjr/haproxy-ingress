@@ -46,6 +46,9 @@ type tracker struct {
 	backendIngress  backendStringMap
 	ingressStorages stringStringMap
 	storagesIngress stringStringMap
+	// ingressClass
+	ingressClassHostname stringStringMap
+	hostnameIngressClass stringStringMap
 	// service
 	serviceHostname stringStringMap
 	hostnameService stringStringMap
@@ -59,6 +62,9 @@ type tracker struct {
 	// pod
 	podBackend stringBackendMap
 	backendPod backendStringMap
+	// ingressClass (missing)
+	ingressClassHostnameMissing stringStringMap
+	hostnameIngressClassMissing stringStringMap
 	// service (missing)
 	serviceHostnameMissing stringStringMap
 	hostnameServiceMissing stringStringMap
@@ -92,11 +98,14 @@ func (t *tracker) Track(isMissing bool, track convtypes.TrackingTarget, rtype co
 }
 
 func (t *tracker) TrackHostname(rtype convtypes.ResourceType, name, hostname string) {
-	validName(name)
+	validName(rtype, name)
 	switch rtype {
 	case convtypes.IngressType:
 		addStringTracking(&t.ingressHostname, name, hostname)
 		addStringTracking(&t.hostnameIngress, hostname, name)
+	case convtypes.IngressClassType:
+		addStringTracking(&t.ingressClassHostname, name, hostname)
+		addStringTracking(&t.hostnameIngressClass, hostname, name)
 	case convtypes.ServiceType:
 		addStringTracking(&t.serviceHostname, name, hostname)
 		addStringTracking(&t.hostnameService, hostname, name)
@@ -109,7 +118,7 @@ func (t *tracker) TrackHostname(rtype convtypes.ResourceType, name, hostname str
 }
 
 func (t *tracker) TrackBackend(rtype convtypes.ResourceType, name string, backendID hatypes.BackendID) {
-	validName(name)
+	validName(rtype, name)
 	switch rtype {
 	case convtypes.IngressType:
 		addStringBackendTracking(&t.ingressBackend, name, backendID)
@@ -126,7 +135,7 @@ func (t *tracker) TrackBackend(rtype convtypes.ResourceType, name string, backen
 }
 
 func (t *tracker) TrackUserlist(rtype convtypes.ResourceType, name, userlist string) {
-	validName(name)
+	validName(rtype, name)
 	switch rtype {
 	case convtypes.SecretType:
 		addStringTracking(&t.secretUserlist, name, userlist)
@@ -137,7 +146,7 @@ func (t *tracker) TrackUserlist(rtype convtypes.ResourceType, name, userlist str
 }
 
 func (t *tracker) TrackStorage(rtype convtypes.ResourceType, name, storage string) {
-	validName(name)
+	validName(rtype, name)
 	switch rtype {
 	case convtypes.IngressType:
 		addStringTracking(&t.ingressStorages, name, storage)
@@ -148,8 +157,11 @@ func (t *tracker) TrackStorage(rtype convtypes.ResourceType, name, storage strin
 }
 
 func (t *tracker) TrackMissingOnHostname(rtype convtypes.ResourceType, name, hostname string) {
-	validName(name)
+	validName(rtype, name)
 	switch rtype {
+	case convtypes.IngressClassType:
+		addStringTracking(&t.ingressClassHostnameMissing, name, hostname)
+		addStringTracking(&t.hostnameIngressClassMissing, hostname, name)
 	case convtypes.ServiceType:
 		addStringTracking(&t.serviceHostnameMissing, name, hostname)
 		addStringTracking(&t.hostnameServiceMissing, hostname, name)
@@ -162,7 +174,7 @@ func (t *tracker) TrackMissingOnHostname(rtype convtypes.ResourceType, name, hos
 }
 
 func (t *tracker) TrackMissingOnBackend(rtype convtypes.ResourceType, name string, backendID hatypes.BackendID) {
-	validName(name)
+	validName(rtype, name)
 	switch rtype {
 	case convtypes.SecretType:
 		addStringBackendTracking(&t.secretBackendMissing, name, backendID)
@@ -172,8 +184,13 @@ func (t *tracker) TrackMissingOnBackend(rtype convtypes.ResourceType, name strin
 	}
 }
 
-func validName(name string) {
-	if len(strings.Split(name, "/")) != 2 {
+func validName(rtype convtypes.ResourceType, name string) {
+	if name == "" {
+		panic(fmt.Errorf("tracking resource name cannot be empty"))
+	}
+	namespaced := rtype != convtypes.IngressClassType
+	slashCount := strings.Count(name, "/")
+	if (!namespaced && slashCount != 0) || (namespaced && slashCount != 1) {
 		panic(fmt.Errorf("invalid resource name: %s", name))
 	}
 }
@@ -188,6 +205,7 @@ func validName(name string) {
 //
 func (t *tracker) GetDirtyLinks(
 	oldIngressList, addIngressList []string,
+	oldIngressClassList, addIngressClassList []string,
 	oldServiceList, addServiceList []string,
 	oldSecretList, addSecretList []string,
 	addPodList []string,
@@ -226,6 +244,23 @@ func (t *tracker) GetDirtyLinks(
 	}
 	build(oldIngressList)
 	build(addIngressList)
+	//
+	for _, className := range oldIngressClassList {
+		for _, hostname := range t.getHostnamesByIngressClass(className) {
+			if _, found := hostsMap[hostname]; !found {
+				hostsMap[hostname] = empty{}
+				build(t.getIngressByHostname(hostname))
+			}
+		}
+	}
+	for _, className := range addIngressClassList {
+		for _, hostname := range t.getHostnamesByIngressClassMissing(className) {
+			if _, found := hostsMap[hostname]; !found {
+				hostsMap[hostname] = empty{}
+				build(t.getIngressByHostname(hostname))
+			}
+		}
+	}
 	//
 	for _, svcName := range oldServiceList {
 		for _, hostname := range t.getHostnamesByService(svcName) {
@@ -334,6 +369,14 @@ func (t *tracker) DeleteHostnames(hostnames []string) {
 			deleteStringTracking(&t.ingressHostname, ing, hostname)
 		}
 		deleteStringMapKey(&t.hostnameIngress, hostname)
+		for class := range t.hostnameIngressClass[hostname] {
+			deleteStringTracking(&t.ingressClassHostname, class, hostname)
+		}
+		deleteStringMapKey(&t.hostnameIngressClass, hostname)
+		for class := range t.hostnameIngressClassMissing[hostname] {
+			deleteStringTracking(&t.ingressClassHostnameMissing, class, hostname)
+		}
+		deleteStringMapKey(&t.hostnameIngressClassMissing, hostname)
 		for service := range t.hostnameService[hostname] {
 			deleteStringTracking(&t.serviceHostname, service, hostname)
 		}
@@ -432,6 +475,20 @@ func (t *tracker) getStoragesByIngress(ingName string) []string {
 		return nil
 	}
 	return getStringTracking(t.ingressStorages[ingName])
+}
+
+func (t *tracker) getHostnamesByIngressClass(ingressClassName string) []string {
+	if t.ingressClassHostname == nil {
+		return nil
+	}
+	return getStringTracking(t.ingressClassHostname[ingressClassName])
+}
+
+func (t *tracker) getHostnamesByIngressClassMissing(ingressClassName string) []string {
+	if t.ingressClassHostnameMissing == nil {
+		return nil
+	}
+	return getStringTracking(t.ingressClassHostnameMissing[ingressClassName])
 }
 
 func (t *tracker) getHostnamesByService(serviceName string) []string {

@@ -242,7 +242,13 @@ func (c *converter) syncPartial() {
 	addPodNames := pod2names(c.changed.Pods)
 	c.trackAddedIngress()
 	dirtyIngs, dirtyHosts, dirtyBacks, dirtyUsers, dirtyStorages :=
-		c.tracker.GetDirtyLinks(oldIngNames, addIngNames, oldSvcNames, addSvcNames, oldSecretNames, addSecretNames, addPodNames)
+		c.tracker.GetDirtyLinks(
+			oldIngNames, addIngNames,
+			[]string{}, []string{},
+			oldSvcNames, addSvcNames,
+			oldSecretNames, addSecretNames,
+			addPodNames,
+		)
 	c.tracker.DeleteHostnames(dirtyHosts)
 	c.tracker.DeleteBackends(dirtyBacks)
 	c.tracker.DeleteUserlists(dirtyUsers)

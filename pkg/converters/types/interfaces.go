@@ -68,7 +68,7 @@ type Tracker interface {
 	TrackBackend(rtype ResourceType, name string, backendID hatypes.BackendID)
 	TrackMissingOnHostname(rtype ResourceType, name, hostname string)
 	TrackStorage(rtype ResourceType, name, storage string)
-	GetDirtyLinks(oldIngressList, addIngressList, oldServiceList, addServiceList, oldSecretList, addSecretList, addPodList []string) (dirtyIngs, dirtyHosts []string, dirtyBacks []hatypes.BackendID, dirtyUsers, dirtyStorages []string)
+	GetDirtyLinks(oldIngressList, addIngressList, oldIngressClassList, addIngressClassList, oldServiceList, addServiceList, oldSecretList, addSecretList, addPodList []string) (dirtyIngs, dirtyHosts []string, dirtyBacks []hatypes.BackendID, dirtyUsers, dirtyStorages []string)
 	DeleteHostnames(hostnames []string)
 	DeleteBackends(backends []hatypes.BackendID)
 	DeleteUserlists(userlists []string)
@@ -102,6 +102,9 @@ type ResourceType int
 const (
 	// IngressType ...
 	IngressType ResourceType = iota
+
+	// IngressClassType ...
+	IngressClassType
 
 	// ServiceType ...
 	ServiceType
