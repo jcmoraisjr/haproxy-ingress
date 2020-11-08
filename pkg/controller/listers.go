@@ -40,6 +40,7 @@ import (
 // ListerEvents ...
 type ListerEvents interface {
 	IsValidIngress(ing *networking.Ingress) bool
+	IsValidIngressClass(ingClass *networking.IngressClass) bool
 	IsValidConfigMap(cm *api.ConfigMap) bool
 	Notify(old, cur interface{})
 }
@@ -218,10 +219,32 @@ func (l *listers) createIngressClassLister(informer informersv1beta1.IngressClas
 	l.ingressClassInformer = informer.Informer()
 	l.ingressClassInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
+			cls := obj.(*networking.IngressClass)
+			if l.events.IsValidIngressClass(cls) {
+				l.events.Notify(nil, cls)
+			}
 		},
 		UpdateFunc: func(old, cur interface{}) {
+			if reflect.DeepEqual(old, cur) {
+				return
+			}
+			oldClass := old.(*networking.IngressClass)
+			curClass := cur.(*networking.IngressClass)
+			oldValid := l.events.IsValidIngressClass(oldClass)
+			curValid := l.events.IsValidIngressClass(curClass)
+			if !oldValid && !curValid {
+				return
+			}
+			if !oldValid && curValid {
+				l.events.Notify(nil, curClass)
+			} else if oldValid && !curValid {
+				l.events.Notify(oldClass, nil)
+			} else {
+				l.events.Notify(oldClass, curClass)
+			}
 		},
 		DeleteFunc: func(obj interface{}) {
+			l.events.Notify(obj, nil)
 		},
 	})
 }

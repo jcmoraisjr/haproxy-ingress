@@ -76,17 +76,20 @@ type k8scache struct {
 	globalConfigMapDataNew map[string]string
 	tcpConfigMapDataNew    map[string]string
 	//
-	ingressesDel []*networking.Ingress
-	ingressesUpd []*networking.Ingress
-	ingressesAdd []*networking.Ingress
-	endpointsNew []*api.Endpoints
-	servicesDel  []*api.Service
-	servicesUpd  []*api.Service
-	servicesAdd  []*api.Service
-	secretsDel   []*api.Secret
-	secretsUpd   []*api.Secret
-	secretsAdd   []*api.Secret
-	podsNew      []*api.Pod
+	ingressesDel      []*networking.Ingress
+	ingressesUpd      []*networking.Ingress
+	ingressesAdd      []*networking.Ingress
+	ingressClassesDel []*networking.IngressClass
+	ingressClassesUpd []*networking.IngressClass
+	ingressClassesAdd []*networking.IngressClass
+	endpointsNew      []*api.Endpoints
+	servicesDel       []*api.Service
+	servicesUpd       []*api.Service
+	servicesAdd       []*api.Service
+	secretsDel        []*api.Secret
+	secretsUpd        []*api.Secret
+	secretsAdd        []*api.Secret
+	podsNew           []*api.Pod
 	//
 }
 
@@ -568,7 +571,7 @@ func (c *k8scache) IsValidIngress(ing *networking.Ingress) bool {
 	if className := ing.Spec.IngressClassName; className != nil {
 		if ingClass, err := c.listers.ingressClassLister.Get(*className); ingClass != nil {
 			hasClass = true
-			fromClass = ingClass.Spec.Controller == "haproxy-ingress.github.io/controller"
+			fromClass = c.IsValidIngressClass(ingClass)
 		} else if err != nil {
 			c.logger.Warn("error reading ingress class %s: %v", *className, err)
 		} else {
@@ -588,6 +591,10 @@ func (c *k8scache) IsValidIngress(ing *networking.Ingress) bool {
 		return fromClass
 	}
 	return fromAnn
+}
+
+func (c *k8scache) IsValidIngressClass(ingressClass *networking.IngressClass) bool {
+	return ingressClass.Spec.Controller == "haproxy-ingress.github.io/controller"
 }
 
 // implements ListerEvents
@@ -611,6 +618,10 @@ func (c *k8scache) Notify(old, cur interface{}) {
 			if cur == nil {
 				c.ingressesDel = append(c.ingressesDel, old.(*networking.Ingress))
 			}
+		case *networking.IngressClass:
+			if cur == nil {
+				c.ingressClassesDel = append(c.ingressClassesDel, old.(*networking.IngressClass))
+			}
 		case *api.Service:
 			if cur == nil {
 				c.servicesDel = append(c.servicesDel, old.(*api.Service))
@@ -631,6 +642,13 @@ func (c *k8scache) Notify(old, cur interface{}) {
 				c.ingressesAdd = append(c.ingressesAdd, ing)
 			} else {
 				c.ingressesUpd = append(c.ingressesUpd, ing)
+			}
+		case *networking.IngressClass:
+			cls := cur.(*networking.IngressClass)
+			if old == nil {
+				c.ingressClassesAdd = append(c.ingressClassesAdd, cls)
+			} else {
+				c.ingressClassesUpd = append(c.ingressClassesUpd, cls)
 			}
 		case *api.Endpoints:
 			c.endpointsNew = append(c.endpointsNew, cur.(*api.Endpoints))
@@ -694,6 +712,15 @@ func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
 	for _, ing := range c.ingressesAdd {
 		obj = append(obj, "add/ingress:"+ing.Namespace+"/"+ing.Name)
 	}
+	for _, cls := range c.ingressClassesDel {
+		obj = append(obj, "del/ingressClass:"+cls.Name)
+	}
+	for _, cls := range c.ingressClassesUpd {
+		obj = append(obj, "update/ingressClass:"+cls.Name)
+	}
+	for _, cls := range c.ingressClassesAdd {
+		obj = append(obj, "add/ingressClass:"+cls.Name)
+	}
 	for _, ep := range c.endpointsNew {
 		obj = append(obj, "update/endpoint:"+ep.Namespace+"/"+ep.Name)
 	}
@@ -720,22 +747,25 @@ func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
 	}
 	//
 	changed := &convtypes.ChangedObjects{
-		GlobalCur:       c.globalConfigMapData,
-		GlobalNew:       c.globalConfigMapDataNew,
-		TCPConfigMapCur: c.tcpConfigMapData,
-		TCPConfigMapNew: c.tcpConfigMapDataNew,
-		IngressesDel:    c.ingressesDel,
-		IngressesUpd:    c.ingressesUpd,
-		IngressesAdd:    c.ingressesAdd,
-		Endpoints:       c.endpointsNew,
-		ServicesDel:     c.servicesDel,
-		ServicesUpd:     c.servicesUpd,
-		ServicesAdd:     c.servicesAdd,
-		SecretsDel:      c.secretsDel,
-		SecretsUpd:      c.secretsUpd,
-		SecretsAdd:      c.secretsAdd,
-		Pods:            c.podsNew,
-		Objects:         obj,
+		GlobalCur:         c.globalConfigMapData,
+		GlobalNew:         c.globalConfigMapDataNew,
+		TCPConfigMapCur:   c.tcpConfigMapData,
+		TCPConfigMapNew:   c.tcpConfigMapDataNew,
+		IngressesDel:      c.ingressesDel,
+		IngressesUpd:      c.ingressesUpd,
+		IngressesAdd:      c.ingressesAdd,
+		IngressClassesDel: c.ingressClassesDel,
+		IngressClassesUpd: c.ingressClassesUpd,
+		IngressClassesAdd: c.ingressClassesAdd,
+		Endpoints:         c.endpointsNew,
+		ServicesDel:       c.servicesDel,
+		ServicesUpd:       c.servicesUpd,
+		ServicesAdd:       c.servicesAdd,
+		SecretsDel:        c.secretsDel,
+		SecretsUpd:        c.secretsUpd,
+		SecretsAdd:        c.secretsAdd,
+		Pods:              c.podsNew,
+		Objects:           obj,
 	}
 	//
 	c.podsNew = nil
@@ -758,6 +788,12 @@ func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
 	c.ingressesDel = nil
 	c.ingressesUpd = nil
 	c.ingressesAdd = nil
+	//
+	// IngressClass
+	//
+	c.ingressClassesDel = nil
+	c.ingressClassesUpd = nil
+	c.ingressClassesAdd = nil
 	//
 	// ConfigMaps
 	//

@@ -50,6 +50,8 @@ type ChangedObjects struct {
 	//
 	IngressesDel, IngressesUpd, IngressesAdd []*networking.Ingress
 	//
+	IngressClassesDel, IngressClassesUpd, IngressClassesAdd []*networking.IngressClass
+	//
 	Endpoints []*api.Endpoints
 	//
 	ServicesDel, ServicesUpd, ServicesAdd []*api.Service
