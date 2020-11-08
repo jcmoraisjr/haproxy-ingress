@@ -128,18 +128,31 @@ func createListers(
 }
 
 func (l *listers) RunAsync(stopCh <-chan struct{}) {
-	go l.ingressInformer.Run(stopCh)
+	syncFailed := func() {
+		runtime.HandleError(fmt.Errorf("initial cache sync has timed out or shutdown has requested"))
+	}
+	l.logger.Info("loading object cache...")
+
+	// wait ingress class lister initialize, ingress informers initialization depends on it
 	go l.ingressClassInformer.Run(stopCh)
+	ingClassSynced := cache.WaitForCacheSync(stopCh,
+		l.ingressClassInformer.HasSynced,
+	)
+	if !ingClassSynced {
+		syncFailed()
+		return
+	}
+
+	// initialize listers and informers
+	go l.ingressInformer.Run(stopCh)
 	go l.endpointInformer.Run(stopCh)
 	go l.serviceInformer.Run(stopCh)
 	go l.secretInformer.Run(stopCh)
 	go l.configMapInformer.Run(stopCh)
 	go l.podInformer.Run(stopCh)
 	go l.nodeInformer.Run(stopCh)
-	l.logger.Info("loading object cache...")
 	synced := cache.WaitForCacheSync(stopCh,
 		l.ingressInformer.HasSynced,
-		l.ingressClassInformer.HasSynced,
 		l.endpointInformer.HasSynced,
 		l.serviceInformer.HasSynced,
 		l.secretInformer.HasSynced,
@@ -151,7 +164,7 @@ func (l *listers) RunAsync(stopCh <-chan struct{}) {
 		l.logger.Info("cache successfully synced")
 		l.running = true
 	} else {
-		runtime.HandleError(fmt.Errorf("initial cache sync has timed out or shutdown has requested"))
+		syncFailed()
 	}
 }
 
