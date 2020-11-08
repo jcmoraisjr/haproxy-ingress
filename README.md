@@ -12,14 +12,28 @@ Updates made to the cluster are applied on the fly to the HAProxy instance.
 
 ## Use HAProxy Ingress
 
-Documentation:
+**Documentation:**
 
-* Home of HAProxy Ingress docs: [haproxy-ingress.github.io/docs](https://haproxy-ingress.github.io/docs/)
-* Global ConfigMap options and ingress/service annotations, now named configuration keys: [haproxy-ingress.github.io/docs/configuration/keys/](https://haproxy-ingress.github.io/docs/configuration/keys/)
-* Static command-line options: [haproxy-ingress.github.io/docs/configuration/command-line/](https://haproxy-ingress.github.io/docs/configuration/command-line/)
+* Getting started guide: [/docs/getting-started/](https://haproxy-ingress.github.io/docs/getting-started/)
+* Global and per ingress/service configuration keys: [/docs/configuration/keys/](https://haproxy-ingress.github.io/docs/configuration/keys/)
+* Command-line options: [/docs/configuration/command-line/](https://haproxy-ingress.github.io/docs/configuration/command-line/)
 * Old single-page doc (up to v0.8): [/release-0.8/README.md](https://github.com/jcmoraisjr/haproxy-ingress/blob/release-0.8/README.md)
 
-Community:
+**Supported versions:**
+
+| HAProxy Ingress        | HAProxy   | Kubernetes |
+|------------------------|-----------|------------|
+| `v0.12` (development)  | `2.2` (*) | `1.18+`    |
+| `v0.11` (beta quality) | `2.1`     | `1.14+`    |
+| `v0.10` **(latest)**   | `2.0`     | `1.8+`     |
+| `v0.9`                 | `1.9`     | `1.8+`     |
+| `v0.8`                 | `1.8`     | `1.8+`     |
+
+* Beta quality versions (`beta`/`canary` tags) has some new, but battle tested features, usually running on some of our production clusters
+* Development versions (`snapshot` tags) has major changes with few tests, usually not recommended for production
+* (*) Since `v0.12` HAProxy Ingress supports an external `2.0+` haproxy deployment
+
+**Community:**
 
 * [Slack](https://kubernetes.slack.com/channels/haproxy-ingress): We're in the [#haproxy-ingress](https://kubernetes.slack.com/channels/haproxy-ingress) channel on Kubernetes Slack. Take an invite [here](https://slack.k8s.io) if not subscribed yet
 * [Users mailing list](https://groups.google.com/forum/#!forum/haproxy-ingress): Announcements and discussion on a mailing list
