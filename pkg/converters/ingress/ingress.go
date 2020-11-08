@@ -191,6 +191,13 @@ func (c *converter) syncPartial() {
 		}
 		return inglist
 	}
+	cls2names := func(clss []*networking.IngressClass) []string {
+		clslist := make([]string, len(clss))
+		for i, cls := range clss {
+			clslist[i] = cls.Name
+		}
+		return clslist
+	}
 	svc2names := func(services []*api.Service) []string {
 		serviceList := make([]string, len(services))
 		for i, service := range services {
@@ -229,6 +236,10 @@ func (c *converter) syncPartial() {
 	updIngNames := ing2names(c.changed.IngressesUpd)
 	addIngNames := ing2names(c.changed.IngressesAdd)
 	oldIngNames := append(delIngNames, updIngNames...)
+	delClsNames := cls2names(c.changed.IngressClassesDel)
+	updClsNames := cls2names(c.changed.IngressClassesUpd)
+	addClsNames := cls2names(c.changed.IngressClassesAdd)
+	oldClsNames := append(delClsNames, updClsNames...)
 	delSvcNames := svc2names(c.changed.ServicesDel)
 	updSvcNames := svc2names(c.changed.ServicesUpd)
 	addSvcNames := svc2names(c.changed.ServicesAdd)
@@ -244,7 +255,7 @@ func (c *converter) syncPartial() {
 	dirtyIngs, dirtyHosts, dirtyBacks, dirtyUsers, dirtyStorages :=
 		c.tracker.GetDirtyLinks(
 			oldIngNames, addIngNames,
-			[]string{}, []string{},
+			oldClsNames, addClsNames,
 			oldSvcNames, addSvcNames,
 			oldSecretNames, addSecretNames,
 			addPodNames,
@@ -381,6 +392,7 @@ func (c *converter) syncIngress(ing *networking.Ingress) {
 		if hostname == "" {
 			hostname = hatypes.DefaultHost
 		}
+		_ = c.readClass(source, hostname, ing.Spec.IngressClassName)
 		host := c.addHost(hostname, source, annHost)
 		for _, path := range rule.HTTP.Paths {
 			uri := path.Path
@@ -521,6 +533,19 @@ func (c *converter) readPathType(path networking.HTTPIngressPath, ann string) ha
 		}
 	}
 	return match
+}
+
+func (c *converter) readClass(source *annotations.Source, hostname string, ingressClassName *string) *networking.IngressClass {
+	if ingressClassName != nil {
+		ingressClass, err := c.cache.GetIngressClass(*ingressClassName)
+		if err == nil {
+			c.tracker.TrackHostname(convtypes.IngressClassType, *ingressClassName, hostname)
+			return ingressClass
+		}
+		c.tracker.TrackMissingOnHostname(convtypes.IngressClassType, *ingressClassName, hostname)
+		c.logger.Warn("error reading ingress class of %s: %v", source, err)
+	}
+	return nil
 }
 
 func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcName, svcPort string, annHost, annBack map[string]string) error {

@@ -29,6 +29,7 @@ import (
 type Cache interface {
 	GetIngress(ingressName string) (*networking.Ingress, error)
 	GetIngressList() ([]*networking.Ingress, error)
+	GetIngressClass(className string) (*networking.IngressClass, error)
 	GetService(serviceName string) (*api.Service, error)
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
 	GetTerminatingPods(service *api.Service, track TrackingTarget) ([]*api.Pod, error)

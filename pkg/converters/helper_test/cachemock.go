@@ -36,6 +36,7 @@ type CacheMock struct {
 	tracker       convtypes.Tracker
 	Changed       *convtypes.ChangedObjects
 	IngList       []*networking.Ingress
+	IngClassList  []*networking.IngressClass
 	SvcList       []*api.Service
 	EpList        map[string]*api.Endpoints
 	TermPodList   map[string][]*api.Pod
@@ -81,6 +82,16 @@ func (c *CacheMock) GetIngress(ingressName string) (*networking.Ingress, error) 
 // GetIngressList ...
 func (c *CacheMock) GetIngressList() ([]*networking.Ingress, error) {
 	return c.IngList, nil
+}
+
+// GetIngressClass ...
+func (c *CacheMock) GetIngressClass(className string) (*networking.IngressClass, error) {
+	for _, ingClass := range c.IngClassList {
+		if ingClass.Name == className {
+			return ingClass, nil
+		}
+	}
+	return nil, fmt.Errorf("ingress class not found: %s", className)
 }
 
 // GetService ...

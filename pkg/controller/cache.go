@@ -201,6 +201,10 @@ func (c *k8scache) GetIngressList() ([]*networking.Ingress, error) {
 	return validIngList[:i], nil
 }
 
+func (c *k8scache) GetIngressClass(className string) (*networking.IngressClass, error) {
+	return c.listers.ingressClassLister.Get(className)
+}
+
 func (c *k8scache) GetService(serviceName string) (*api.Service, error) {
 	namespace, name, err := cache.SplitMetaNamespaceKey(serviceName)
 	if err != nil {
@@ -569,11 +573,11 @@ func (c *k8scache) IsValidIngress(ing *networking.Ingress) bool {
 	// check if ingress `hasClass` and, if so, if it's valid `fromClass` perspective
 	var hasClass, fromClass bool
 	if className := ing.Spec.IngressClassName; className != nil {
-		if ingClass, err := c.listers.ingressClassLister.Get(*className); ingClass != nil {
-			hasClass = true
+		hasClass = true
+		if ingClass, err := c.GetIngressClass(*className); ingClass != nil {
 			fromClass = c.IsValidIngressClass(ingClass)
 		} else if err != nil {
-			c.logger.Warn("error reading ingress class %s: %v", *className, err)
+			c.logger.Warn("error reading ingress class '%s': %v", *className, err)
 		} else {
 			c.logger.Warn("ingress class not found: %s", *className)
 		}
