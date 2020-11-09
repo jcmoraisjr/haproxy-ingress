@@ -358,6 +358,11 @@ func (l *listers) createConfigMapLister(informer informersv1.ConfigMapInformer) 
 				}
 			}
 		},
+		DeleteFunc: func(obj interface{}) {
+			if l.events.IsValidConfigMap(obj.(*api.ConfigMap)) {
+				l.events.Notify(obj, nil)
+			}
+		},
 	})
 }
 

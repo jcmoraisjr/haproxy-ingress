@@ -60,6 +60,7 @@ type k8scache struct {
 	cfg                    *controller.Configuration
 	tracker                convtypes.Tracker
 	crossNS                bool
+	podNamespace           string
 	globalConfigMapKey     string
 	tcpConfigMapKey        string
 	acmeSecretKeyName      string
@@ -89,6 +90,9 @@ type k8scache struct {
 	secretsDel        []*api.Secret
 	secretsUpd        []*api.Secret
 	secretsAdd        []*api.Secret
+	configMapsDel     []*api.ConfigMap
+	configMapsUpd     []*api.ConfigMap
+	configMapsAdd     []*api.ConfigMap
 	podsNew           []*api.Pod
 	//
 }
@@ -105,24 +109,24 @@ func createCache(
 	resync time.Duration,
 	waitBeforeUpdate time.Duration,
 ) *k8scache {
-	namespace := os.Getenv("POD_NAMESPACE")
-	if namespace == "" {
+	podNamespace := os.Getenv("POD_NAMESPACE")
+	if podNamespace == "" {
 		// TODO implement a smart fallback or error checking
 		// Fallback to a valid name if envvar is not provided. Should never be used because:
 		// - `namespace` is only used in `acme*`
 		// - `acme*` is only used by acme client and server
 		// - acme client and server are only used if leader elector is enabled
 		// - leader elector will panic if this envvar is not provided
-		namespace = "default"
+		podNamespace = "default"
 	}
 	cfg := controller.GetConfig()
 	acmeSecretKeyName := cfg.AcmeSecretKeyName
 	if !strings.Contains(acmeSecretKeyName, "/") {
-		acmeSecretKeyName = namespace + "/" + acmeSecretKeyName
+		acmeSecretKeyName = podNamespace + "/" + acmeSecretKeyName
 	}
 	acmeTokenConfigmapName := cfg.AcmeTokenConfigmapName
 	if !strings.Contains(acmeTokenConfigmapName, "/") {
-		acmeTokenConfigmapName = namespace + "/" + acmeTokenConfigmapName
+		acmeTokenConfigmapName = podNamespace + "/" + acmeTokenConfigmapName
 	}
 	globalConfigMapName := cfg.ConfigMapName
 	tcpConfigMapName := cfg.TCPConfigMapName
@@ -142,6 +146,7 @@ func createCache(
 		cfg:                    cfg,
 		tracker:                tracker,
 		crossNS:                cfg.AllowCrossNamespace,
+		podNamespace:           podNamespace,
 		globalConfigMapKey:     globalConfigMapName,
 		tcpConfigMapKey:        tcpConfigMapName,
 		acmeSecretKeyName:      acmeSecretKeyName,
@@ -603,6 +608,10 @@ func (c *k8scache) IsValidIngressClass(ingressClass *networking.IngressClass) bo
 
 // implements ListerEvents
 func (c *k8scache) IsValidConfigMap(cm *api.ConfigMap) bool {
+	// Ingress Class Parameters can use ConfigMaps in the controller namespace
+	if cm.Namespace == c.podNamespace {
+		return true
+	}
 	key := fmt.Sprintf("%s/%s", cm.Namespace, cm.Name)
 	return key == c.globalConfigMapKey || key == c.tcpConfigMapKey
 }
@@ -635,6 +644,10 @@ func (c *k8scache) Notify(old, cur interface{}) {
 				secret := old.(*api.Secret)
 				c.secretsDel = append(c.secretsDel, secret)
 				c.controller.DeleteSecret(fmt.Sprintf("%s/%s", secret.Namespace, secret.Name))
+			}
+		case *api.ConfigMap:
+			if cur == nil {
+				c.configMapsDel = append(c.configMapsDel, old.(*api.ConfigMap))
 			}
 		}
 	}
@@ -673,6 +686,11 @@ func (c *k8scache) Notify(old, cur interface{}) {
 			c.controller.UpdateSecret(fmt.Sprintf("%s/%s", secret.Namespace, secret.Name))
 		case *api.ConfigMap:
 			cm := cur.(*api.ConfigMap)
+			if old == nil {
+				c.configMapsAdd = append(c.configMapsAdd, cm)
+			} else {
+				c.configMapsUpd = append(c.configMapsUpd, cm)
+			}
 			key := fmt.Sprintf("%s/%s", cm.Namespace, cm.Name)
 			switch key {
 			case c.globalConfigMapKey:
@@ -746,6 +764,15 @@ func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
 	for _, secret := range c.secretsAdd {
 		obj = append(obj, "add/secret:"+secret.Namespace+"/"+secret.Name)
 	}
+	for _, cm := range c.configMapsDel {
+		obj = append(obj, "del/configmap:"+cm.Namespace+"/"+cm.Name)
+	}
+	for _, cm := range c.configMapsUpd {
+		obj = append(obj, "update/configmap:"+cm.Namespace+"/"+cm.Name)
+	}
+	for _, cm := range c.configMapsAdd {
+		obj = append(obj, "add/configmap:"+cm.Namespace+"/"+cm.Name)
+	}
 	for _, pod := range c.podsNew {
 		obj = append(obj, "update/pod:"+pod.Namespace+"/"+pod.Name)
 	}
@@ -768,6 +795,9 @@ func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
 		SecretsDel:        c.secretsDel,
 		SecretsUpd:        c.secretsUpd,
 		SecretsAdd:        c.secretsAdd,
+		ConfigMapsDel:     c.configMapsDel,
+		ConfigMapsUpd:     c.configMapsUpd,
+		ConfigMapsAdd:     c.configMapsAdd,
 		Pods:              c.podsNew,
 		Objects:           obj,
 	}
@@ -809,6 +839,9 @@ func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
 		c.tcpConfigMapData = c.tcpConfigMapDataNew
 		c.tcpConfigMapDataNew = nil
 	}
+	c.configMapsDel = nil
+	c.configMapsUpd = nil
+	c.configMapsAdd = nil
 	//
 	c.clear = true
 	c.needFullSync = false

@@ -59,6 +59,8 @@ type ChangedObjects struct {
 	//
 	SecretsDel, SecretsUpd, SecretsAdd []*api.Secret
 	//
+	ConfigMapsDel, ConfigMapsUpd, ConfigMapsAdd []*api.ConfigMap
+	//
 	Pods []*api.Pod
 	//
 	Objects []string
