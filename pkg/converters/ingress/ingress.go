@@ -256,6 +256,7 @@ func (c *converter) syncPartial() {
 		c.tracker.GetDirtyLinks(
 			oldIngNames, addIngNames,
 			oldClsNames, addClsNames,
+			[]string{}, []string{},
 			oldSvcNames, addSvcNames,
 			oldSecretNames, addSecretNames,
 			addPodNames,

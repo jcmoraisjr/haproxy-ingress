@@ -49,6 +49,9 @@ type tracker struct {
 	// ingressClass
 	ingressClassHostname stringStringMap
 	hostnameIngressClass stringStringMap
+	// configMap
+	configMapHostname stringStringMap
+	hostnameConfigMap stringStringMap
 	// service
 	serviceHostname stringStringMap
 	hostnameService stringStringMap
@@ -65,6 +68,9 @@ type tracker struct {
 	// ingressClass (missing)
 	ingressClassHostnameMissing stringStringMap
 	hostnameIngressClassMissing stringStringMap
+	// configMap (missing)
+	configMapHostnameMissing stringStringMap
+	hostnameConfigMapMissing stringStringMap
 	// service (missing)
 	serviceHostnameMissing stringStringMap
 	hostnameServiceMissing stringStringMap
@@ -106,6 +112,9 @@ func (t *tracker) TrackHostname(rtype convtypes.ResourceType, name, hostname str
 	case convtypes.IngressClassType:
 		addStringTracking(&t.ingressClassHostname, name, hostname)
 		addStringTracking(&t.hostnameIngressClass, hostname, name)
+	case convtypes.ConfigMapType:
+		addStringTracking(&t.configMapHostname, name, hostname)
+		addStringTracking(&t.hostnameConfigMap, hostname, name)
 	case convtypes.ServiceType:
 		addStringTracking(&t.serviceHostname, name, hostname)
 		addStringTracking(&t.hostnameService, hostname, name)
@@ -162,6 +171,9 @@ func (t *tracker) TrackMissingOnHostname(rtype convtypes.ResourceType, name, hos
 	case convtypes.IngressClassType:
 		addStringTracking(&t.ingressClassHostnameMissing, name, hostname)
 		addStringTracking(&t.hostnameIngressClassMissing, hostname, name)
+	case convtypes.ConfigMapType:
+		addStringTracking(&t.configMapHostnameMissing, name, hostname)
+		addStringTracking(&t.hostnameConfigMapMissing, hostname, name)
 	case convtypes.ServiceType:
 		addStringTracking(&t.serviceHostnameMissing, name, hostname)
 		addStringTracking(&t.hostnameServiceMissing, hostname, name)
@@ -206,6 +218,7 @@ func validName(rtype convtypes.ResourceType, name string) {
 func (t *tracker) GetDirtyLinks(
 	oldIngressList, addIngressList []string,
 	oldIngressClassList, addIngressClassList []string,
+	oldConfigMapList, addConfigMapList []string,
 	oldServiceList, addServiceList []string,
 	oldSecretList, addSecretList []string,
 	addPodList []string,
@@ -255,6 +268,23 @@ func (t *tracker) GetDirtyLinks(
 	}
 	for _, className := range addIngressClassList {
 		for _, hostname := range t.getHostnamesByIngressClassMissing(className) {
+			if _, found := hostsMap[hostname]; !found {
+				hostsMap[hostname] = empty{}
+				build(t.getIngressByHostname(hostname))
+			}
+		}
+	}
+	//
+	for _, className := range oldConfigMapList {
+		for _, hostname := range t.getHostnamesByConfigMap(className) {
+			if _, found := hostsMap[hostname]; !found {
+				hostsMap[hostname] = empty{}
+				build(t.getIngressByHostname(hostname))
+			}
+		}
+	}
+	for _, className := range addConfigMapList {
+		for _, hostname := range t.getHostnamesByConfigMapMissing(className) {
 			if _, found := hostsMap[hostname]; !found {
 				hostsMap[hostname] = empty{}
 				build(t.getIngressByHostname(hostname))
@@ -377,6 +407,14 @@ func (t *tracker) DeleteHostnames(hostnames []string) {
 			deleteStringTracking(&t.ingressClassHostnameMissing, class, hostname)
 		}
 		deleteStringMapKey(&t.hostnameIngressClassMissing, hostname)
+		for class := range t.hostnameConfigMap[hostname] {
+			deleteStringTracking(&t.configMapHostname, class, hostname)
+		}
+		deleteStringMapKey(&t.hostnameConfigMap, hostname)
+		for class := range t.hostnameConfigMapMissing[hostname] {
+			deleteStringTracking(&t.configMapHostnameMissing, class, hostname)
+		}
+		deleteStringMapKey(&t.hostnameConfigMapMissing, hostname)
 		for service := range t.hostnameService[hostname] {
 			deleteStringTracking(&t.serviceHostname, service, hostname)
 		}
@@ -489,6 +527,20 @@ func (t *tracker) getHostnamesByIngressClassMissing(ingressClassName string) []s
 		return nil
 	}
 	return getStringTracking(t.ingressClassHostnameMissing[ingressClassName])
+}
+
+func (t *tracker) getHostnamesByConfigMap(configMapName string) []string {
+	if t.configMapHostname == nil {
+		return nil
+	}
+	return getStringTracking(t.configMapHostname[configMapName])
+}
+
+func (t *tracker) getHostnamesByConfigMapMissing(configMapName string) []string {
+	if t.configMapHostnameMissing == nil {
+		return nil
+	}
+	return getStringTracking(t.configMapHostnameMissing[configMapName])
 }
 
 func (t *tracker) getHostnamesByService(serviceName string) []string {
