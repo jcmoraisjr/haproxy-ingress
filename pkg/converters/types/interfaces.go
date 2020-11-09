@@ -32,8 +32,10 @@ type Cache interface {
 	GetIngressClass(className string) (*networking.IngressClass, error)
 	GetService(serviceName string) (*api.Service, error)
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
+	GetConfigMap(configMapName string) (*api.ConfigMap, error)
 	GetTerminatingPods(service *api.Service, track TrackingTarget) ([]*api.Pod, error)
 	GetPod(podName string) (*api.Pod, error)
+	GetPodNamespace() string
 	GetTLSSecretPath(defaultNamespace, secretName string, track TrackingTarget) (CrtFile, error)
 	GetCASecretPath(defaultNamespace, secretName string, track TrackingTarget) (ca, crl File, err error)
 	GetDHSecretPath(defaultNamespace, secretName string) (File, error)

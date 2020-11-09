@@ -300,6 +300,10 @@ func (c *k8scache) GetPod(podName string) (*api.Pod, error) {
 	return c.client.CoreV1().Pods(namespace).Get(c.ctx, name, metav1.GetOptions{})
 }
 
+func (c *k8scache) GetPodNamespace() string {
+	return c.podNamespace
+}
+
 func (c *k8scache) buildSecretName(defaultNamespace, secretName string) (string, string, error) {
 	ns, name, err := cache.SplitMetaNamespaceKey(secretName)
 	if err != nil {

@@ -39,6 +39,7 @@ type CacheMock struct {
 	IngClassList  []*networking.IngressClass
 	SvcList       []*api.Service
 	EpList        map[string]*api.Endpoints
+	ConfigMapList map[string]*api.ConfigMap
 	TermPodList   map[string][]*api.Pod
 	PodList       map[string]*api.Pod
 	SecretTLSPath map[string]string
@@ -116,6 +117,14 @@ func (c *CacheMock) GetEndpoints(service *api.Service) (*api.Endpoints, error) {
 	return nil, fmt.Errorf("could not find endpoints for service '%s'", serviceName)
 }
 
+// GetConfigMap ...
+func (c *CacheMock) GetConfigMap(configMapName string) (*api.ConfigMap, error) {
+	if configMap, found := c.ConfigMapList[configMapName]; found {
+		return configMap, nil
+	}
+	return nil, fmt.Errorf("configmap not found: %s", configMapName)
+}
+
 // GetTerminatingPods ...
 func (c *CacheMock) GetTerminatingPods(service *api.Service, track convtypes.TrackingTarget) ([]*api.Pod, error) {
 	serviceName := service.Namespace + "/" + service.Name
@@ -131,6 +140,11 @@ func (c *CacheMock) GetPod(podName string) (*api.Pod, error) {
 		return pod, nil
 	}
 	return nil, fmt.Errorf("pod not found: '%s'", podName)
+}
+
+// GetPodNamespace ...
+func (c *CacheMock) GetPodNamespace() string {
+	return "ingress-controller"
 }
 
 // GetTLSSecretPath ...

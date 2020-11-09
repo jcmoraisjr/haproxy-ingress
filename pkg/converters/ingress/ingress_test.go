@@ -24,6 +24,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 	api "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -582,6 +583,64 @@ func TestSyncInvalidTLS(t *testing.T) {
 
 	c.logger.CompareLogging(`
 WARN using default certificate due to an error reading secret 'tls-invalid' on ingress 'default/echo': secret not found: 'default/tls-invalid'`)
+}
+
+func TestSyncIngressClass(t *testing.T) {
+	apiGroup1 := "some.io"
+	testCases := []struct {
+		parameters *api.TypedLocalObjectReference
+		logging    string
+	}{
+		// 0
+		{
+			parameters: &api.TypedLocalObjectReference{
+				APIGroup: &apiGroup1,
+				Kind:     "any",
+				Name:     "none",
+			},
+			logging: `WARN unsupported Parameters' APIGroup on Ingress Class 'haproxy-config': some.io`,
+		},
+		// 1
+		{
+			parameters: &api.TypedLocalObjectReference{
+				Kind: "any",
+				Name: "none",
+			},
+			logging: `WARN unsupported Parameters' Kind on Ingress Class 'haproxy-config': any`,
+		},
+		// 2
+		{
+			parameters: &api.TypedLocalObjectReference{
+				Kind: "ConfigMap",
+				Name: "none",
+			},
+			logging: `WARN error reading ConfigMap on Ingress Class 'haproxy-config': configmap not found: ingress-controller/none`,
+		},
+		// 3
+		{
+			parameters: &api.TypedLocalObjectReference{
+				Kind: "ConfigMap",
+				Name: "config",
+			},
+			logging: ``,
+		},
+	}
+	for _, test := range testCases {
+		c := setup(t)
+		c.cache.ConfigMapList = map[string]*api.ConfigMap{"ingress-controller/config": {}}
+		conv := c.createConverter()
+		ingClass := networking.IngressClass{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "haproxy-config",
+			},
+			Spec: networking.IngressClassSpec{
+				Parameters: test.parameters,
+			},
+		}
+		_ = conv.readParameters(&ingClass, "echo.example.com")
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
 }
 
 func TestSyncRootPathDefault(t *testing.T) {
@@ -1754,13 +1813,19 @@ func (c *testConfig) Sync(ing ...*networking.Ingress) {
 		// first run, set GlobalNew != nil and run SyncFull
 		c.cache.Changed.GlobalNew = map[string]string{}
 	}
+	c.cache.SecretTLSPath["system/default"] = "/tls/tls-default.pem"
+	conv := c.createConverter()
+	conv.updater = c.updater
+	conv.Sync()
+}
+
+func (c *testConfig) createConverter() *converter {
 	defaultConfig := func() map[string]string {
 		return map[string]string{
 			ingtypes.BackInitialWeight: "100",
 		}
 	}
-	c.cache.SecretTLSPath["system/default"] = "/tls/tls-default.pem"
-	conv := NewIngressConverter(
+	return NewIngressConverter(
 		&ingtypes.ConverterOptions{
 			Cache:            c.cache,
 			Logger:           c.logger,
@@ -1772,8 +1837,6 @@ func (c *testConfig) Sync(ing ...*networking.Ingress) {
 		},
 		c.hconfig,
 	).(*converter)
-	conv.updater = c.updater
-	conv.Sync()
 }
 
 func (c *testConfig) createSvc1Auto() (*api.Service, *api.Endpoints) {
