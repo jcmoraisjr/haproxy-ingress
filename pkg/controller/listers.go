@@ -133,7 +133,7 @@ func (l *listers) RunAsync(stopCh <-chan struct{}) {
 	}
 	l.logger.Info("loading object cache...")
 
-	// wait ingress class lister initialize, ingress informers initialization depends on it
+	// wait IngressClass lister initialize, ingress informers initialization depends on it
 	go l.ingressClassInformer.Run(stopCh)
 	ingClassSynced := cache.WaitForCacheSync(stopCh,
 		l.ingressClassInformer.HasSynced,

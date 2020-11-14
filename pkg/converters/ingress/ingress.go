@@ -563,7 +563,7 @@ func (c *converter) readIngressClass(source *annotations.Source, hostname string
 			return ingressClass
 		}
 		c.tracker.TrackMissingOnHostname(convtypes.IngressClassType, *ingressClassName, hostname)
-		c.logger.Warn("error reading ingress class of %s: %v", source, err)
+		c.logger.Warn("error reading IngressClass of %s: %v", source, err)
 	}
 	return nil
 }
@@ -648,11 +648,11 @@ func (c *converter) addBackendWithClass(source *annotations.Source, hostname, ur
 		c.logger.Warn("skipping backend '%s:%s' annotation(s) from %v due to conflict: %v",
 			svcName, svcPort, source, conflict)
 	}
-	// Merging Ingress Class Parameters with less priority
+	// Merging IngressClass Parameters with less priority
 	if ingressClass != nil {
 		if cfg := c.readParameters(ingressClass, hostname); cfg != nil {
 			// Using a work around to add a per resource default config:
-			// we add Ingress Class Parameters after service and ingress annotations,
+			// we add IngressClass Parameters after service and ingress annotations,
 			// ignoring conflicts. This would really conflict with other Parameters
 			// only if the same host+path is declared twice, but such duplication is
 			// already filtred out in the ingress parsing.
@@ -793,22 +793,22 @@ func (c *converter) parseParameters(ingressClass *networking.IngressClass, track
 	}
 	// Currently only ConfigMap is supported
 	if parameters.APIGroup != nil && *parameters.APIGroup != "" {
-		c.logger.Warn("unsupported Parameters' APIGroup on Ingress Class '%s': %s", ingressClass.Name, *parameters.APIGroup)
+		c.logger.Warn("unsupported Parameters' APIGroup on IngressClass '%s': %s", ingressClass.Name, *parameters.APIGroup)
 		return nil
 	}
 	if strings.ToLower(parameters.Kind) != "configmap" {
-		c.logger.Warn("unsupported Parameters' Kind on Ingress Class '%s': %s", ingressClass.Name, parameters.Kind)
+		c.logger.Warn("unsupported Parameters' Kind on IngressClass '%s': %s", ingressClass.Name, parameters.Kind)
 		return nil
 	}
 	podNamespace := c.cache.GetPodNamespace()
 	if podNamespace == "" {
-		c.logger.Warn("need to configure POD_NAMESPACE to use ConfigMap on Ingress Class '%s'", ingressClass.Name)
+		c.logger.Warn("need to configure POD_NAMESPACE to use ConfigMap on IngressClass '%s'", ingressClass.Name)
 		return nil
 	}
 	configMapName := podNamespace + "/" + parameters.Name
 	configMap, err := c.cache.GetConfigMap(configMapName)
 	if err != nil {
-		c.logger.Warn("error reading ConfigMap on Ingress Class '%s': %v", ingressClass.Name, err)
+		c.logger.Warn("error reading ConfigMap on IngressClass '%s': %v", ingressClass.Name, err)
 		c.tracker.TrackMissingOnHostname(convtypes.ConfigMapType, configMapName, trackingHostname)
 		return nil
 	}

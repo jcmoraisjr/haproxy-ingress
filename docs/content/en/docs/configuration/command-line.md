@@ -22,11 +22,11 @@ The following command-line options are supported:
 | [`--annotation-prefix`](#annotation-prefix)             | prefix without `/`         | `ingress.kubernetes.io` | v0.8  |
 | [`--backend-shards`](#backend-shards)                   | int                        | `0`                     | v0.11 |
 | [`--buckets-response-time`](#buckets-response-time)     | float64 slice           | `.0005,.001,.002,.005,.01` | v0.10 |
+| [`--controller-class`](#ingress-class)                  | suffix                     | ``                      | v0.12 |
 | [`--default-backend-service`](#default-backend-service) | namespace/servicename      | haproxy's 404 page      |       |
 | [`--default-ssl-certificate`](#default-ssl-certificate) | namespace/secretname       | fake, auto generated    |       |
 | [`--disable-pod-list`](#disable-pod-list)               | [true\|false]              | `false`                 | v0.11 |
 | [`--healthz-port`](#stats)                              | port number                | `10254`                 |       |
-| [`--ignore-ingress-without-class`](#ignore-ingress-without-class)| [true\|false]     | `false`                 | v0.10 |
 | [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |       |
 | [`--kubeconfig`](#kubeconfig)                           | /path/to/kubeconfig        | in cluster config       |       |
 | [`--master-socket`](#master-socket)                     | socket path                | use embedded haproxy    | v0.12 |
@@ -42,6 +42,7 @@ The following command-line options are supported:
 | [`--verify-hostname`](#verify-hostname)                 | [true\|false]              | `true`                  |       |
 | [`--wait-before-shutdown`](#wait-before-shutdown)       | seconds as integer         | `0`                     | v0.8  |
 | [`--wait-before-update`](#wait-before-update)           | duration                   | `200ms`                 | v0.11 |
+| [`--watch-ingress-without-class`](#ingress-class)       | [true\|false]              | `false`                 | v0.12 |
 | [`--watch-namespace`](#watch-namespace)                 | namespace                  | all namespaces          |       |
 
 ---
@@ -130,21 +131,35 @@ Disables in memory pod list and also pod watch for changes. Pod list and watch i
 
 ---
 
-## --ignore-ingress-without-class
+## Ingress Class
 
-Defines if the ingress without the ingress.class annotation will be considered or not. If `--ignore-ingress-without-class=true` then only the ingresses with the matching ingress.class annotation will be considered, ingresses with missing or different ingress.class annotation will not be considered. Default is false.
+More than one ingress controller is supported per Kubernetes cluster. These options allow to
+override the class of ingress resources that this instance of the controller should listen to.
+Classes that match will be used in the HAProxy configuration, other classes will be ignored.
+Ingress resources without class name and without class annotation is also ignored since v0.12,
+add the command-line option `--watch-ingress-without-class` to also listen to these ingress.
 
----
+These options have a new behavior since v0.12, see the corresponding documentation if using an
+older controller version.
 
-## --ingress-class
+* `--ingress-class`: defines the value of `kubernetes.io/ingress.class` annotation this controller
+should listen to. The default value is `haproxy` if not declared.
+* `--controller-class`: by default, HAProxy Ingress will watch IngressClasses whose
+`spec.controller` name is `haproxy-ingress.github.io/controller`. All ingress resources that
+link to these IngressClasses will be added to the configuration. The `--controller-class`
+command-line option customizes the controller name, allowing to run more than one HAProxy Ingress
+in the same cluster. Configuring `--controller-class=staging` would listen to IngressClasses whose
+controller name is `haproxy-ingress.github.io/controller/staging`.
+* `--watch-ingress-without-class`: defines if this controller should also listen to ingress resources
+that doesn't declare neither the `kubernetes.io/ingress.class` annotation nor the
+`<ingress>.spec.ingressClassName` field. The default since v0.12 is to ignore ingress without class
+annotation and class name.
+* `--ignore-ingress-without-class`: this option is ignored since v0.12. Use
+`--watch-ingress-without-class` instead.
 
-More than one ingress controller is supported per Kubernetes cluster. The `--ingress-class`
-argument allow to override the class name of ingress resources that this instance of the
-controller should listen to. Class names that match will be used in the HAProxy configuration.
-Other classes will be ignored.
+See also:
 
-The ingress resource must use the `kubernetes.io/ingress.class` annotation to name it's
-ingress class.
+* https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-class
 
 ---
 

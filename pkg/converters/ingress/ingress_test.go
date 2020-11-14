@@ -598,7 +598,7 @@ func TestSyncIngressClass(t *testing.T) {
 				Kind:     "any",
 				Name:     "none",
 			},
-			logging: `WARN unsupported Parameters' APIGroup on Ingress Class 'haproxy-config': some.io`,
+			logging: `WARN unsupported Parameters' APIGroup on IngressClass 'haproxy-config': some.io`,
 		},
 		// 1
 		{
@@ -606,7 +606,7 @@ func TestSyncIngressClass(t *testing.T) {
 				Kind: "any",
 				Name: "none",
 			},
-			logging: `WARN unsupported Parameters' Kind on Ingress Class 'haproxy-config': any`,
+			logging: `WARN unsupported Parameters' Kind on IngressClass 'haproxy-config': any`,
 		},
 		// 2
 		{
@@ -614,7 +614,7 @@ func TestSyncIngressClass(t *testing.T) {
 				Kind: "ConfigMap",
 				Name: "none",
 			},
-			logging: `WARN error reading ConfigMap on Ingress Class 'haproxy-config': configmap not found: ingress-controller/none`,
+			logging: `WARN error reading ConfigMap on IngressClass 'haproxy-config': configmap not found: ingress-controller/none`,
 		},
 		// 3
 		{

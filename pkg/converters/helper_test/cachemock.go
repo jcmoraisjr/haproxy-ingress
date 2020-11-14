@@ -92,7 +92,7 @@ func (c *CacheMock) GetIngressClass(className string) (*networking.IngressClass,
 			return ingClass, nil
 		}
 	}
-	return nil, fmt.Errorf("ingress class not found: %s", className)
+	return nil, fmt.Errorf("IngressClass not found: %s", className)
 }
 
 // GetService ...

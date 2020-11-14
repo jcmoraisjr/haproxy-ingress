@@ -62,10 +62,12 @@ type Configuration struct {
 	ResyncPeriod     time.Duration
 	WaitBeforeUpdate time.Duration
 
-	DefaultService string
-	IngressClass   string
-	WatchNamespace string
-	ConfigMapName  string
+	DefaultService           string
+	IngressClass             string
+	ControllerName           string
+	WatchIngressWithoutClass bool
+	WatchNamespace           string
+	ConfigMapName            string
 
 	ForceNamespaceIsolation bool
 	WaitBeforeShutdown      int
@@ -98,9 +100,8 @@ type Configuration struct {
 	ElectionID             string
 	UpdateStatusOnShutdown bool
 
-	BackendShards             int
-	SortEndpointsBy           string
-	IgnoreIngressWithoutClass bool
+	BackendShards   int
+	SortEndpointsBy string
 }
 
 // newIngressController creates an Ingress controller

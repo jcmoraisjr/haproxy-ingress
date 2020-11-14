@@ -573,10 +573,10 @@ func (c *k8scache) IsValidIngress(ing *networking.Ingress) bool {
 	var hasAnn, fromAnn bool
 	var ann string
 	ann, hasAnn = ing.Annotations["kubernetes.io/ingress.class"]
-	if c.cfg.IgnoreIngressWithoutClass {
-		fromAnn = hasAnn && ann == c.cfg.IngressClass
-	} else {
+	if c.cfg.WatchIngressWithoutClass {
 		fromAnn = !hasAnn || ann == c.cfg.IngressClass
+	} else {
+		fromAnn = hasAnn && ann == c.cfg.IngressClass
 	}
 
 	// check if ingress `hasClass` and, if so, if it's valid `fromClass` perspective
@@ -586,9 +586,9 @@ func (c *k8scache) IsValidIngress(ing *networking.Ingress) bool {
 		if ingClass, err := c.GetIngressClass(*className); ingClass != nil {
 			fromClass = c.IsValidIngressClass(ingClass)
 		} else if err != nil {
-			c.logger.Warn("error reading ingress class '%s': %v", *className, err)
+			c.logger.Warn("error reading IngressClass '%s': %v", *className, err)
 		} else {
-			c.logger.Warn("ingress class not found: %s", *className)
+			c.logger.Warn("IngressClass not found: %s", *className)
 		}
 	}
 
@@ -607,12 +607,12 @@ func (c *k8scache) IsValidIngress(ing *networking.Ingress) bool {
 }
 
 func (c *k8scache) IsValidIngressClass(ingressClass *networking.IngressClass) bool {
-	return ingressClass.Spec.Controller == "haproxy-ingress.github.io/controller"
+	return ingressClass.Spec.Controller == c.cfg.ControllerName
 }
 
 // implements ListerEvents
 func (c *k8scache) IsValidConfigMap(cm *api.ConfigMap) bool {
-	// Ingress Class Parameters can use ConfigMaps in the controller namespace
+	// IngressClass' Parameters can use ConfigMaps in the controller namespace
 	if cm.Namespace == c.podNamespace {
 		return true
 	}
