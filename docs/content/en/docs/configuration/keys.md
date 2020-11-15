@@ -34,21 +34,22 @@ the following conditions are met:
 * Ingress resources have its `ingressClassName` field assigning an IngressClass resource whose `controller` name is `haproxy-ingress.github.io/controller`
 * HAProxy Ingress was started with `--watch-ingress-without-class` command-line option
 
-See [Ingress Class]({{% relref "command-line/#ingressclass" %}}) command-line doc for
+See [Ingress Class]({{% relref "command-line/#ingress-class" %}}) command-line doc for
 customization options.
 
 The first two options give more control on which Ingress resources should be part of the
 final configuration. Class annotation and the IngressClass name can be changed on a running
 controller, the configuration will be adjusted on the fly to reflect the new status. If
 both options are configured in an Ingress resource, and they conflict - i.e. one of them
-says the controller belongs to HAProxy Ingress and the other says it does not belong - the
-annotation value wins and a warning is logged.
+says the controller belongs to HAProxy Ingress and the other says that it does not belong -
+the annotation value wins and a warning is logged.
 
 Adding a class annotation or defining an IngressClass name means "classify" an Ingress
 resource. The third and latest option asks HAProxy Ingress to also add "unclassified"
-ingress to the final configuration - i.e. add Ingress resources that does not have the
+Ingress to the final configuration - i.e. add Ingress resources that does not have the
 `kubernetes.io/ingress.class` annotation and also does not have the `ingressClassName`
-field.
+field. Note that this is a new behavior since v0.12. Up to v0.11 HAProxy Ingress listen
+to "unclassified" Ingress by default.
 
 # Strategies
 
@@ -64,12 +65,14 @@ so any Ingress spec configuration should work as stated by the Kubernetes docume
 Annotations and ConfigMap customizations extend the Ingress spec via the configuration
 keys, and this is what the rest of this documentation page is all about.
 
+The following sections describe in a few more details aboud configuration strategies.
+
 ## ConfigMap
 
 ConfigMap key/value options are read in the following conditions:
 
-* Global config, using `--configmap` command-line option. The installation process configures a global config ConfigMap named `haproxy-ingress` in the controller namespace. This is the only way to configure keys from the `Global` scope. See about scopes [later](#scope) in this page.
-* IngressClass config, using its `parameters` field linked to a ConfigMap declared in the same namespace of the controller. See about IngressClass [later](#ingressclass) in this page.
+* Global config, using `--configmap` command-line option. The installation process configures a Global config ConfigMap named `haproxy-ingress` in the controller namespace. This is the only way to configure keys from the `Global` scope. See about scopes [later](#scope) in this page.
+* IngressClass config, using its `parameters` field linked to a ConfigMap declared in the same namespace of the controller. See about IngressClass [later](#ingressclass) in this same section.
 
 A configuration key is used verbatim as the ConfigMap key name, without any prefix.
 The ConfigMap spec expects a string as the key value, so declare numbers and booleans
@@ -96,8 +99,8 @@ Annotations are read in the following conditions:
 
 A configuration key needs a prefix in front of its name to use as an annotation key.
 The default prefix is `ingress.kubernetes.io`, change with the `--annotation-prefix`
-command-line option. The annotation value spec expects a string as the key, so declare
-numbers and booleans as strings, HAProxy Ingress will convert it when needed.
+command-line option. The annotation value spec expects a string as the key value, so
+declare numbers and booleans as strings, HAProxy Ingress will convert them when needed.
 
 ```yaml
 apiVersion: networking.k8s.io/v1beta1
@@ -172,7 +175,7 @@ or spec), `Service` resources (annotations) or any referenced `ConfigMap` will
 reflect in the update of the final HAProxy configuration.
 
 If the new state cannot be dynamically applied and requires HAProxy to be reloaded,
-this will happen without loosing in progress requests and long running connections.
+this will happen preserving the in progress requests and the long running connections.
 
 ## Fragmentation
 
@@ -235,10 +238,11 @@ that was created first.
 
 ## Global
 
-Defines configuration keys that should be declared only in the global config
-ConfigMap resource. Configuration keys of the global scope declared as Ingress
-or Service annotations, and also in the IngressClass ConfigMap are ignored.
-Configuration keys of the global scope never conflict.
+Defines configuration keys that applies for all hostnames and backend
+services, and should be declared only in the Global config ConfigMap
+resource. Configuration keys of the Global scope declared as Ingress
+or Service annotations, and also in the IngressClass ConfigMap are
+ignored. Configuration keys of the Global scope never conflict.
 
 ## Host
 

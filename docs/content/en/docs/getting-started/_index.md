@@ -102,9 +102,9 @@ $ wget -qO- --no-check-certificate https://echoserver.192.168.1.11.nip.io
 
 ## What's next?
 
-Learn more about ingress from the Kubernetes docs:
+Learn more about Ingress and IngressClass resources:
 
-* [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) from Kubernetes docs
+* [Ingress and IngressClass resources](https://kubernetes.io/docs/concepts/services-networking/ingress/) from Kubernetes docs
 
 HAProxy Ingress has lots of configuration options. See the following tips to get started faster:
 
