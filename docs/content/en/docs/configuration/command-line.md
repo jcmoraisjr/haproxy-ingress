@@ -1,6 +1,6 @@
 ---
-title: "Command line"
-linkTitle: "Command line"
+title: "Command-line options"
+linkTitle: "Command-line"
 weight: 2
 description: >
   Static command-line configuration options.
@@ -17,7 +17,7 @@ The following command-line options are supported:
 | [`--acme-secret-key-name`](#acme)                       | [namespace]/secret-name    | `acme-private-key`      | v0.9  |
 | [`--acme-server`](#acme)                                | [true\|false]              | `false`                 | v0.9  |
 | [`--acme-token-configmap-name`](#acme)                  | [namespace]/configmap-name | `acme-validation-tokens` | v0.9 |
-| [`--acme-track-tls-annotation`](#acme)                  | [true\|false]              | `false`                 | v0.9 |
+| [`--acme-track-tls-annotation`](#acme)                  | [true\|false]              | `false`                 | v0.9  |
 | [`--allow-cross-namespace`](#allow-cross-namespace)     | [true\|false]              | `false`                 |       |
 | [`--annotation-prefix`](#annotation-prefix)             | prefix without `/`         | `ingress.kubernetes.io` | v0.8  |
 | [`--buckets-response-time`](#buckets-response-time)     | float64 slice           | `.0005,.001,.002,.005,.01` | v0.10 |
@@ -91,19 +91,16 @@ Configures the buckets of the histogram `haproxyingress_haproxy_response_time_se
 ## --default-backend-service
 
 Defines the `namespace/servicename` that should be used if the incoming request doesn't match any
-hostname, or the requested path doesn't match any location within the desired hostname.
-
-This is a mandatory argument used in the [deployment](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/deployment) example page.
+hostname, or the requested path doesn't match any location within the desired hostname. An internal
+404 error page is used if not declared.
 
 ---
 
 ## --default-ssl-certificate
 
 Defines the `namespace/secretname` of the default certificate that should be used if ingress
-resources using TLS configuration doesn't provide it's own certificate.
-
-This is a mandatory argument used in the [deployment](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/deployment) and
-[TLS termination](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/tls-termination) example pages.
+resources using TLS configuration doesn't provide it's own certificate. A self-signed fake
+certificate is used if not declared.
 
 ---
 
