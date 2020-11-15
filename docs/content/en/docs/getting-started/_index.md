@@ -6,6 +6,8 @@ description: >
   How to install HAProxy Ingress and expose the first service.
 ---
 
+The following sections walk through steps to have HAProxy Ingress working, watching ingress resources and exposing services.
+
 ## Prerequisites
 
 HAProxy Ingress needs a running Kubernetes cluster. Controller version v0.11 needs Kubernetes 1.14, while version v0.10 and older work on clusters as old as 1.6. HAProxy Ingress also works fine on local k8s deployments like [minikube](https://minikube.sigs.k8s.io) or [kind](https://kind.sigs.k8s.io).
@@ -44,6 +46,10 @@ $ helm install haproxy-ingress haproxy-ingress/haproxy-ingress \
   --set controller.hostNetwork=true
 ```
 
+{{% alert title="Note" %}}
+The configuration above will deploy the latest stable HAProxy Ingress. Add `--version '~<version>.0-0'` command-line option to install another version, including beta and snapshot - eg `--version '~0.12.0-0'` will install the v0.12 controller version.
+{{% /alert %}}
+
 The controller should be running in a few seconds. There are two important changes made in the example above:
 
 * namespace: we're instructing helm to install HAProxy Ingress in the `ingress-controller` namespace. This namespace will be created if it does not exist yet. The default behavior, if namespace is not provided, is to deploy the controller in the current namespace.
@@ -51,7 +57,7 @@ The controller should be running in a few seconds. There are two important chang
 
 HAProxy Ingress' Helm chart has a few more configuration options, see all of them in the chart [documentation](https://github.com/haproxy-ingress/charts/tree/master/haproxy-ingress).
 
-## Try it out!
+## Deploy and expose
 
 The following steps deploy an echoserver image and exposes it in the current namespace.
 
@@ -80,6 +86,8 @@ $ kubectl create -f - <<EOF
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
+  annotations:
+    kubernetes.io/ingress.class: haproxy
   name: echoserver
 spec:
   rules:
@@ -100,7 +108,7 @@ $ curl -k https://echoserver.192.168.1.11.nip.io
 $ wget -qO- --no-check-certificate https://echoserver.192.168.1.11.nip.io
 ```
 
-## What's next?
+## What's next
 
 Learn more about ingress from the Kubernetes docs:
 

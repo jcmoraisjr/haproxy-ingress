@@ -1,9 +1,9 @@
 ---
 title: "Configuration keys"
-linkTitle: "Configuration keys"
+linkTitle: "Keys"
 weight: 1
 description: >
-  List of all ingress/service annotations and global ConfigMap options.
+  List of all annotations and global ConfigMap options.
 ---
 
 Most of HAProxy Ingress configurations are made using a ConfigMap object or annotating
@@ -88,7 +88,7 @@ The table below describes all supported configuration keys.
 | Configuration key                                    | Data type                               | Scope   | Default value      |
 |------------------------------------------------------|-----------------------------------------|---------|--------------------|
 | [`acme-emails`](#acme)                               | email1,email2,...                       | Global  |                    |
-| [`acme-endpoint`](#acme)                             | v2-staging | v2 | endpoint              | Global  |                    |
+| [`acme-endpoint`](#acme)                             | [`v2-staging`\|`v2`\|`endpoint`]        | Global  |                    |
 | [`acme-expiring`](#acme)                             | number of days                          | Global  | `30`               |
 | [`acme-shared`](#acme)                               | [true\|false]                           | Global  | `false`            |
 | [`acme-terms-agreed`](#acme)                         | [true\|false]                           | Global  | `false`            |
@@ -1194,7 +1194,7 @@ See also:
 | `tcp-log-format`   | `Global` |         |       |
 
 Customize the tcp, http or https log format using log format variables. Only used if
-[syslog-endpoint](#syslog-endpoint) is also configured.
+[`syslog-endpoint`](#syslog) is also configured.
 
 * `http-log-format`: log format of all HTTP proxies, defaults to HAProxy default HTTP log format.
 * `https-log-format`: log format of TCP proxy used to inspect SNI extention. Use `default` to configure default TCP log format, defaults to not log.
@@ -1203,6 +1203,7 @@ Customize the tcp, http or https log format using log format variables. Only use
 See also:
 
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#8.2.4
+* [`syslog`](#syslog)
 
 ---
 

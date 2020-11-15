@@ -1,6 +1,6 @@
 ---
-title: "Command line"
-linkTitle: "Command line"
+title: "Command-line options"
+linkTitle: "Command-line"
 weight: 2
 description: >
   Static command-line configuration options.
@@ -17,7 +17,7 @@ The following command-line options are supported:
 | [`--acme-secret-key-name`](#acme)                       | [namespace]/secret-name    | `acme-private-key`      | v0.9  |
 | [`--acme-server`](#acme)                                | [true\|false]              | `false`                 | v0.9  |
 | [`--acme-token-configmap-name`](#acme)                  | [namespace]/configmap-name | `acme-validation-tokens` | v0.9 |
-| [`--acme-track-tls-annotation`](#acme)                  | [true\|false]              | `false`                 | v0.9 |
+| [`--acme-track-tls-annotation`](#acme)                  | [true\|false]              | `false`                 | v0.9  |
 | [`--allow-cross-namespace`](#allow-cross-namespace)     | [true\|false]              | `false`                 |       |
 | [`--annotation-prefix`](#annotation-prefix)             | prefix without `/`         | `ingress.kubernetes.io` | v0.8  |
 | [`--backend-shards`](#backend-shards)                   | int                        | `0`                     | v0.11 |
@@ -89,7 +89,7 @@ that shares ingress and service objects without conflicting each other.
 
 ## --backend-shards
 
-Defines how much files should be used to configure the haproxy backends. The default value is
+Defines how many files should be used to configure the haproxy backends. The default value is
 0 (zero) which uses one single file to configure the whole haproxy process. Values greather than
 0 (zero) splits the backend configuration into separated files. Only files with changed backends
 are parsed and written to disk, reducing io and cpu usage on big clusters - about 1000 or more
@@ -106,19 +106,16 @@ Configures the buckets of the histogram `haproxyingress_haproxy_response_time_se
 ## --default-backend-service
 
 Defines the `namespace/servicename` that should be used if the incoming request doesn't match any
-hostname, or the requested path doesn't match any location within the desired hostname.
-
-This is a mandatory argument used in the [deployment](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/deployment) example page.
+hostname, or the requested path doesn't match any location within the desired hostname. An internal
+404 error page is used if not declared.
 
 ---
 
 ## --default-ssl-certificate
 
 Defines the `namespace/secretname` of the default certificate that should be used if ingress
-resources using TLS configuration doesn't provide it's own certificate.
-
-This is a mandatory argument used in the [deployment](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/deployment) and
-[TLS termination](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/tls-termination) example pages.
+resources using TLS configuration doesn't provide it's own certificate. A self-signed fake
+certificate is used if not declared.
 
 ---
 
