@@ -6,82 +6,258 @@ description: >
   List of all ingress/service annotations and global ConfigMap options.
 ---
 
-Most of HAProxy Ingress configurations are made using a ConfigMap object or annotating
-the ingress or service object. Ingress or service annotations are used to make local
-configurations, and the ConfigMap is used to make global configurations or change
-default configuration values.
+Configuration keys are entry point configurations that allow users and admins to
+dynamically fine-tune HAProxy status. HAProxy Ingress reads configuration keys
+from Kubernetes resources, and this can be done in a couple of ways:
 
-# ConfigMap
+* Globally, from a ConfigMap
+* Per IngressClass, from a ConfigMap linked in the IngressClass' `parameters` field
+* Per Ingress, configuring or annotating Ingress resources
+* Per backend, annotating Service resources
 
-Global configurations and changing default values are made via a ConfigMap object.
-ConfigMap declaration is optional but highly recommended. Create an empty ConfigMap
-using `kubectl create configmap` and configures in the haproxy-ingress deployment using
-the command-line option `--configmap=<namespace>/<configmap-name>`.
+The list above also describes the precedence if the same configuration key is used
+in more than one resource: Global configurations can be overridden by IngressClass
+configurations, that can be overriden by Ingress resource configurations and so on.
+This hierarchy creates a flexible model, where commonly used configurations can be
+made in a higher level and overriden by local changes.
 
-Changes to any key in the ConfigMap object is applied on the fly, the haproxy instance
-is restarted or dynamically updated if needed.
+The following sections describe in a few more details how HAProxy Ingress classifies
+an Ingress to be part of the final configuration, and how it reads the configuration
+from Kubernetes resources.
 
-All configuration key names are supported as a ConfigMap keys. When declared, its value
-is used as the default value if not overwritten elsewhere.
+# Class matter
+
+HAProxy Ingress by default does not listen to Ingress resources, until one or more of
+the following conditions are met:
+
+* Ingress resources have the annotation `kubernetes.io/ingress.class` with the value `haproxy`
+* Ingress resources have its `ingressClassName` field assigning an IngressClass resource whose `controller` name is `haproxy-ingress.github.io/controller`
+* HAProxy Ingress was started with `--watch-ingress-without-class` command-line option
+
+See [Ingress Class]({{% relref "command-line/#ingressclass" %}}) command-line doc for
+customization options.
+
+The first two options give more control on which Ingress resources should be part of the
+final configuration. Class annotation and the IngressClass name can be changed on a running
+controller, the configuration will be adjusted on the fly to reflect the new status. If
+both options are configured in an Ingress resource, and they conflict - i.e. one of them
+says the controller belongs to HAProxy Ingress and the other says it does not belong - the
+annotation value wins and a warning is logged.
+
+Adding a class annotation or defining an IngressClass name means "classify" an Ingress
+resource. The third and latest option asks HAProxy Ingress to also add "unclassified"
+ingress to the final configuration - i.e. add Ingress resources that does not have the
+`kubernetes.io/ingress.class` annotation and also does not have the `ingressClassName`
+field.
+
+# Strategies
+
+HAProxy Ingress reads configuration on three distinct ways:
+
+* `ConfigMap` key/value data. ConfigMaps are assigned either via `--configmap` command-line option (used by Global options), or via parameters field of an `IngressClass`
+* Annotations from classified `Ingress` resources and also from `Services` that these Ingress are linking to
+* Spec configurations from classified `Ingress` resources
+
+HAProxy Ingress follows [Ingress v1 spec](https://v1-18.docs.kubernetes.io/docs/concepts/services-networking/ingress/),
+so any Ingress spec configuration should work as stated by the Kubernetes documentation.
+
+Annotations and ConfigMap customizations extend the Ingress spec via the configuration
+keys, and this is what the rest of this documentation page is all about.
+
+## ConfigMap
+
+ConfigMap key/value options are read in the following conditions:
+
+* Global config, using `--configmap` command-line option. The installation process configures a global config ConfigMap named `haproxy-ingress` in the controller namespace. This is the only way to configure keys from the `Global` scope. See about scopes [later](#scope) in this page.
+* IngressClass config, using its `parameters` field linked to a ConfigMap declared in the same namespace of the controller. See about IngressClass [later](#ingressclass) in this page.
 
 A configuration key is used verbatim as the ConfigMap key name, without any prefix.
 The ConfigMap spec expects a string as the key value, so declare numbers and booleans
 as strings, HAProxy Ingress will convert it when needed.
 
-# Ingress and services
+```yaml
+apiVersion: v1
+data:
+  balance-algorithm: leastconn
+  max-connections: "10000"
+  ssl-redirect: "true"
+kind: ConfigMap
+metadata:
+  name: haproxy-ingress
+  namespace: ingress-controller
+```
 
-Local configurations are made using ingress v1 spec, eg hostname, path, backend, port,
-secret name of the server certificate and key, and so on. Any other configuration
-which is not supported by the v1 spec should be made in the ingress or service object
-using annotations.
+## Annotation
 
-Changes to annotations in any ingress or service object is applied on the fly, the
-haproxy instance is restarted or dynamically updated if needed.
+Annotations are read in the following conditions:
 
-Annotation key names need a prefix in front of the configuration key. The default
-prefix is `ingress.kubernetes.io`, so eg the `ssl-redirect` configuration key should
-be declared as `ingress.kubernetes.io/ssl-redirect` with value `"true"` or `"false"`.
-The annotation value spec expects a string as the key, so declare numbers and
-booleans as strings, HAProxy Ingress will convert it when needed. The default
-annotation prefix can be changed using the `--annotation-prefix` command-line
-option.
+* From classified `Ingress` resources, see about classification in the [Class matter](#class-matter) section. `Ingresses` accept keys from the `Host` and `Backend` scopes. See about scopes [later](#scope) in this page.
+* From `Services` that classified Ingress resources are linking to. `Services` only accept keys from the `Backend` scope.
 
-An ingress object accepts configuration keys of scope `Host` or `Backend`. A
-service object accepts configuration keys of scope `Backend` only. See
-[Scope](#scope) below.
+A configuration key needs a prefix in front of its name to use as an annotation key.
+The default prefix is `ingress.kubernetes.io`, change with the `--annotation-prefix`
+command-line option. The annotation value spec expects a string as the key, so declare
+numbers and booleans as strings, HAProxy Ingress will convert it when needed.
 
-Configuration keys declared in services have the highest precedence, overwriting
-configuration keys declared in the ConfigMap and ingress objects. Ingress object
-overwrite the default value and the ConfigMap configuration.
+```yaml
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    ingress.kubernetes.io/balance-algorithm: roundrobin
+    ingress.kubernetes.io/maxconn-server: "500"
+    ingress.kubernetes.io/ssl-redirect: "false"
+  name: app
+  namespace: default
+spec:
+  ...
+```
+
+## IngressClass
+
+IngressClass configurations are read when the `ingressClassName` field of an Ingress
+resource links to an IngressClass that configures its `parameters` field.
+
+The IngressClass' `parameters` field currently only accepts ConfigMap resources, and
+the ConfigMap must be declared in the same namespace of the controller.
+
+{{% alert title="Note" %}}
+Even though a ConfigMap is used, configuration keys of the Global scope cannot be
+used and will be ignored.
+{{% /alert %}}
+
+The following resources create the same final configuration of the Annotation
+section [above](#annotation), with the benefit of allowing the reuse of the
+IngressClass+ConfigMap configuration.
+
+```yaml
+apiVersion: networking.k8s.io/v1beta1
+kind: IngressClass
+metadata:
+  name: my-class
+spec:
+  controller: haproxy-ingress.github.io/controller
+  parameters:
+    kind: ConfigMap
+    name: my-options
+```
+
+```yaml
+apiVersion: v1
+data:
+  balance-algorithm: roundrobin
+  maxconn-server: "500"
+  ssl-redirect: "false"
+kind: ConfigMap
+metadata:
+  name: my-options
+  namespace: ingress-controller
+```
+
+```yaml
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: app
+  namespace: default
+spec:
+  ingressClassName: my-class
+  ...
+```
+
+## Updates
+
+Changes to any configuration in any classified `Ingress` resources (annotations
+or spec), `Service` resources (annotations) or any referenced `ConfigMap` will
+reflect in the update of the final HAProxy configuration.
+
+If the new state cannot be dynamically applied and requires HAProxy to be reloaded,
+this will happen without loosing in progress requests and long running connections.
+
+## Fragmentation
+
+Ingress resources can be fragmented in order to add distinct configurations
+to distinct routes. For example:
+
+```yaml
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: app-front
+spec:
+  rules:
+  - host: app.local
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: frontend
+          servicePort: 8080
+```
+
+```yaml
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    ingress.kubernetes.io/rewrite-target: /
+  name: app-back
+spec:
+  rules:
+  - host: app.local
+    http:
+      paths:
+      - path: /api
+        backend:
+          serviceName: backend
+          servicePort: 8080
+```
+
+HAProxy Ingress will merge all the resources, so there is no difference if the
+configuration is in the same or in distinct Ingress. Distinct Ingress however
+might lead to conflicting configuration, more about conflict in the
+[scope](#scope) section below.
+
+There is no hard limit to the number of Ingresses or Services - clusters with
+tens of thousands of Ingress and Service resources report to work smoothly and
+fast with HAProxy Ingress.
 
 # Scope
 
-HAProxy Ingress configuration keys may be in one of three distinct scopes. A scope
-defines where a configuration key can be declared and how it interacts with ingress
-and service objects.
+HAProxy Ingress configuration keys may be in one of three distinct scopes:
+`Global`, `Host`, `Backend`. A scope defines where a configuration key can
+be declared and how it interacts with Ingress and Service resources.
 
-* Scope `Global`: Defines configuration keys that should be declared only in the
-ConfigMap object. Configuration keys of the global scope declared as ingress or
-service annotations are ignored. A configuration key of the global scope never
-conflict.
-* Scope `Host`: Defines configuration keys that binds to the hostname. Configuration
-keys of the host scope can be declared in the ConfigMap as a default value, or in
-an ingress object. A conflict warning will be logged if the same host configuration
-key with distinct values are declared in distict ingress objects but to the same
+Configuration keys declared in `Ingress` resources might conflict. More about
+the scenarios in the Host and Backend scopes below. A warning will be logged
+in the case of a conflict, and the used value will be of the Ingress resource
+that was created first.
+
+## Global
+
+Defines configuration keys that should be declared only in the global config
+ConfigMap resource. Configuration keys of the global scope declared as Ingress
+or Service annotations, and also in the IngressClass ConfigMap are ignored.
+Configuration keys of the global scope never conflict.
+
+## Host
+
+Defines configuration keys that binds to the hostname. Configuration
+keys of the host scope can be declared in any ConfigMap, or in any Ingress
+resource. A conflict happens when the same host configuration key with
+distinct values are declared in distinct Ingress resources but to the same
 hostname.
-* Scope `Backend`: Defines configuration keys that binds to the service object, which
-is converted to a HAProxy backend after the configuration parsing. Configuration keys
-of the backend scope can be declared in the ConfigMap as a default value, in an ingress
-object, or in a service object. A conflict warning will be logged if the same backend
-configuration key with distinct values are declared in distict ingress objects but
-to the same service or HAProxy backend. A backend configuration key declared in a
-service object overwrites the same configuration in an ingress object without
-conflicting.
 
-In the case of a conflict, the value of the ingress object which was created first
-will be used.
+## Backend
 
-# Configuration keys
+Defines configuration keys that binds to the Service resource, which
+is converted to a HAProxy backend after the configuration parsing. Configuration
+keys of the backend scope can be declared in any ConfigMap or as Ingress or Service
+annotation. A conflict happens when the same backend configuration key with distinct
+values are declared in distinct Ingress resources but to the same Service or HAProxy
+backend.
+
+# Keys
 
 The table below describes all supported configuration keys.
 

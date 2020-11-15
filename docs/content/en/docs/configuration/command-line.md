@@ -159,6 +159,7 @@ annotation and class name.
 
 See also:
 
+* [Class matter]({{% relref "keys/#class-matter" %}}) in the Configuration Keys doc
 * https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-class
 
 ---
