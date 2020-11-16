@@ -97,7 +97,7 @@ The table below describes all supported configuration keys.
 | [`agent-check-interval`](#agent-check)               | time with suffix                        | Backend |                    |
 | [`agent-check-port`](#agent-check)                   | backend agent listen port               | Backend |                    |
 | [`agent-check-send`](#agent-check)                   | string to send upon agent connection    | Backend |                    |
-| `app-root`                                           | /url                                    | Host    |                    |
+| [`app-root`](#app-root)                              | /url                                    | Host    |                    |
 | `auth-realm`                                         | realm string                            | Backend |                    |
 | `auth-secret`                                        | secret name                             | Backend |                    |
 | [`auth-tls-cert-header`](#auth-tls)                  | [true\|false]                           | Backend |                    |
@@ -416,6 +416,19 @@ See also:
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-agent-port
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-agent-inter
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-agent-send
+
+---
+
+## App root
+
+| Configuration key | Scope  | Default | Since  |
+|-------------------|--------|---------|--------|
+| `app-root`        | `Host` |         |        |
+
+Defines a distinct application root path. HAProxy will redirect requests to the
+configured path, using `302` status code, when the HTTP client sends a request
+to the root context of the configured domain. `app-root` key binds to the root
+context path, so it needs to be declared in the same Ingress that configures it.
 
 ---
 
