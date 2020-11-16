@@ -249,7 +249,7 @@ The table below describes all supported configuration keys.
 | [`var-namespace`](#var-namespace)                    | [true\|false]                           | Host    | `false`            |
 | [`waf`](#waf)                                        | "modsecurity"                           | Backend |                    |
 | [`waf-mode`](#waf)                                   | [deny\|detect]                          | Backend | `deny` (if waf is set) |
-| `whitelist-source-range`                             | CIDR                                    | Backend |                    |
+| [`whitelist-source-range`](#whitelist)               | Comma-separated IPs or CIDRs            | Backend |                    |
 
 ---
 
@@ -1878,3 +1878,17 @@ The default behavior here is `deny` if `waf` is set to `modsecurity`.
 See also:
 
 * [Modsecurity](#modsecurity) configuration keys.
+
+## Whitelist
+
+| Configuration key        | Scope     | Default | Since |
+|--------------------------|-----------|---------|-------|
+| `whitelist-source-range` | `Backend` |         |       |
+
+Defines a comma-separated list of source IPs or CIDRs allowed to connect. If not
+declared, any source IP is allowed. If declared, requests with source IP not
+included in the list are denied, and clients receive the HAProxy's 403 error page.
+
+See also:
+
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4.2-http-request%20deny
