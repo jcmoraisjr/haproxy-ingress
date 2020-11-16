@@ -40,6 +40,7 @@ import (
 // ListerEvents ...
 type ListerEvents interface {
 	IsValidIngress(ing *networking.Ingress) bool
+	IsValidIngressClass(ingClass *networking.IngressClass) bool
 	IsValidConfigMap(cm *api.ConfigMap) bool
 	Notify(old, cur interface{})
 }
@@ -53,21 +54,23 @@ type listers struct {
 	hasPodLister  bool
 	hasNodeLister bool
 	//
-	ingressLister   listersv1beta1.IngressLister
-	endpointLister  listersv1.EndpointsLister
-	serviceLister   listersv1.ServiceLister
-	secretLister    listersv1.SecretLister
-	configMapLister listersv1.ConfigMapLister
-	podLister       listersv1.PodLister
-	nodeLister      listersv1.NodeLister
+	ingressLister      listersv1beta1.IngressLister
+	ingressClassLister listersv1beta1.IngressClassLister
+	endpointLister     listersv1.EndpointsLister
+	serviceLister      listersv1.ServiceLister
+	secretLister       listersv1.SecretLister
+	configMapLister    listersv1.ConfigMapLister
+	podLister          listersv1.PodLister
+	nodeLister         listersv1.NodeLister
 	//
-	ingressInformer   cache.SharedInformer
-	endpointInformer  cache.SharedInformer
-	serviceInformer   cache.SharedInformer
-	secretInformer    cache.SharedInformer
-	configMapInformer cache.SharedInformer
-	podInformer       cache.SharedInformer
-	nodeInformer      cache.SharedInformer
+	ingressInformer      cache.SharedInformer
+	ingressClassInformer cache.SharedInformer
+	endpointInformer     cache.SharedInformer
+	serviceInformer      cache.SharedInformer
+	secretInformer       cache.SharedInformer
+	configMapInformer    cache.SharedInformer
+	podInformer          cache.SharedInformer
+	nodeInformer         cache.SharedInformer
 }
 
 func createListers(
@@ -103,6 +106,7 @@ func createListers(
 		logger:   logger,
 	}
 	l.createIngressLister(ingressInformer.Networking().V1beta1().Ingresses())
+	l.createIngressClassLister(ingressInformer.Networking().V1beta1().IngressClasses())
 	l.createEndpointLister(resourceInformer.Core().V1().Endpoints())
 	l.createServiceLister(resourceInformer.Core().V1().Services())
 	l.createSecretLister(resourceInformer.Core().V1().Secrets())
@@ -124,6 +128,22 @@ func createListers(
 }
 
 func (l *listers) RunAsync(stopCh <-chan struct{}) {
+	syncFailed := func() {
+		runtime.HandleError(fmt.Errorf("initial cache sync has timed out or shutdown has requested"))
+	}
+	l.logger.Info("loading object cache...")
+
+	// wait IngressClass lister initialize, ingress informers initialization depends on it
+	go l.ingressClassInformer.Run(stopCh)
+	ingClassSynced := cache.WaitForCacheSync(stopCh,
+		l.ingressClassInformer.HasSynced,
+	)
+	if !ingClassSynced {
+		syncFailed()
+		return
+	}
+
+	// initialize listers and informers
 	go l.ingressInformer.Run(stopCh)
 	go l.endpointInformer.Run(stopCh)
 	go l.serviceInformer.Run(stopCh)
@@ -131,7 +151,6 @@ func (l *listers) RunAsync(stopCh <-chan struct{}) {
 	go l.configMapInformer.Run(stopCh)
 	go l.podInformer.Run(stopCh)
 	go l.nodeInformer.Run(stopCh)
-	l.logger.Info("loading object cache...")
 	synced := cache.WaitForCacheSync(stopCh,
 		l.ingressInformer.HasSynced,
 		l.endpointInformer.HasSynced,
@@ -145,7 +164,7 @@ func (l *listers) RunAsync(stopCh <-chan struct{}) {
 		l.logger.Info("cache successfully synced")
 		l.running = true
 	} else {
-		runtime.HandleError(fmt.Errorf("initial cache sync has timed out or shutdown has requested"))
+		syncFailed()
 	}
 }
 
@@ -204,6 +223,41 @@ func (l *listers) createIngressLister(informer informersv1beta1.IngressInformer)
 			}
 			l.recorder.Eventf(ing, api.EventTypeNormal, "DELETE", "Ingress %s/%s", ing.Namespace, ing.Name)
 			l.events.Notify(ing, nil)
+		},
+	})
+}
+
+func (l *listers) createIngressClassLister(informer informersv1beta1.IngressClassInformer) {
+	l.ingressClassLister = informer.Lister()
+	l.ingressClassInformer = informer.Informer()
+	l.ingressClassInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			cls := obj.(*networking.IngressClass)
+			if l.events.IsValidIngressClass(cls) {
+				l.events.Notify(nil, cls)
+			}
+		},
+		UpdateFunc: func(old, cur interface{}) {
+			if reflect.DeepEqual(old, cur) {
+				return
+			}
+			oldClass := old.(*networking.IngressClass)
+			curClass := cur.(*networking.IngressClass)
+			oldValid := l.events.IsValidIngressClass(oldClass)
+			curValid := l.events.IsValidIngressClass(curClass)
+			if !oldValid && !curValid {
+				return
+			}
+			if !oldValid && curValid {
+				l.events.Notify(nil, curClass)
+			} else if oldValid && !curValid {
+				l.events.Notify(oldClass, nil)
+			} else {
+				l.events.Notify(oldClass, curClass)
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			l.events.Notify(obj, nil)
 		},
 	})
 }
@@ -302,6 +356,11 @@ func (l *listers) createConfigMapLister(informer informersv1.ConfigMapInformer) 
 				if l.events.IsValidConfigMap(cur.(*api.ConfigMap)) {
 					l.events.Notify(old, cur)
 				}
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			if l.events.IsValidConfigMap(obj.(*api.ConfigMap)) {
+				l.events.Notify(obj, nil)
 			}
 		},
 	})

@@ -82,13 +82,17 @@ func TestGetDirtyLinks(t *testing.T) {
 		trackedMissingHosts []hostTracking
 		trackedMissingBacks []backTracking
 		//
-		oldIngressList []string
-		addIngressList []string
-		oldServiceList []string
-		addServiceList []string
-		oldSecretList  []string
-		addSecretList  []string
-		addPodList     []string
+		oldIngressList      []string
+		addIngressList      []string
+		oldIngressClassList []string
+		addIngressClassList []string
+		oldConfigMapList    []string
+		addConfigMapList    []string
+		oldServiceList      []string
+		addServiceList      []string
+		oldSecretList       []string
+		addSecretList       []string
+		addPodList          []string
 		//
 		expDirtyIngs     []string
 		expDirtyHosts    []string
@@ -280,6 +284,38 @@ func TestGetDirtyLinks(t *testing.T) {
 			expDirtyIngs:     []string{"default/ing2"},
 			expDirtyStorages: []string{"crt2", "crt3"},
 		},
+		// 19
+		{
+			trackedHosts: []hostTracking{
+				{convtypes.IngressClassType, "haproxy", "app1.local"},
+			},
+			oldIngressClassList: []string{"haproxy"},
+			expDirtyHosts:       []string{"app1.local"},
+		},
+		// 20
+		{
+			trackedMissingHosts: []hostTracking{
+				{convtypes.IngressClassType, "haproxy", "app1.local"},
+			},
+			addIngressClassList: []string{"haproxy"},
+			expDirtyHosts:       []string{"app1.local"},
+		},
+		// 21
+		{
+			trackedHosts: []hostTracking{
+				{convtypes.ConfigMapType, "ingress/config", "app1.local"},
+			},
+			oldConfigMapList: []string{"ingress/config"},
+			expDirtyHosts:    []string{"app1.local"},
+		},
+		// 22
+		{
+			trackedMissingHosts: []hostTracking{
+				{convtypes.ConfigMapType, "ingress/config", "app1.local"},
+			},
+			addConfigMapList: []string{"ingress/config"},
+			expDirtyHosts:    []string{"app1.local"},
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
@@ -305,6 +341,10 @@ func TestGetDirtyLinks(t *testing.T) {
 			c.tracker.GetDirtyLinks(
 				test.oldIngressList,
 				test.addIngressList,
+				test.oldIngressClassList,
+				test.addIngressClassList,
+				test.oldConfigMapList,
+				test.addConfigMapList,
 				test.oldServiceList,
 				test.addServiceList,
 				test.oldSecretList,
@@ -335,17 +375,25 @@ func TestDeleteHostnames(t *testing.T) {
 		//
 		deleteHostnames []string
 		//
-		expIngressHostname stringStringMap
-		expHostnameIngress stringStringMap
-		expServiceHostname stringStringMap
-		expHostnameService stringStringMap
-		expSecretHostname  stringStringMap
-		expHostnameSecret  stringStringMap
+		expIngressHostname      stringStringMap
+		expHostnameIngress      stringStringMap
+		expIngressClassHostname stringStringMap
+		expHostnameIngressClass stringStringMap
+		expConfigMapHostname    stringStringMap
+		expHostnameConfigMap    stringStringMap
+		expServiceHostname      stringStringMap
+		expHostnameService      stringStringMap
+		expSecretHostname       stringStringMap
+		expHostnameSecret       stringStringMap
 		//
-		expServiceHostnameMissing stringStringMap
-		expHostnameServiceMissing stringStringMap
-		expSecretHostnameMissing  stringStringMap
-		expHostnameSecretMissing  stringStringMap
+		expIngressClassHostnameMissing stringStringMap
+		expHostnameIngressClassMissing stringStringMap
+		expConfigMapHostnameMissing    stringStringMap
+		expHostnameConfigMapMissing    stringStringMap
+		expServiceHostnameMissing      stringStringMap
+		expHostnameServiceMissing      stringStringMap
+		expSecretHostnameMissing       stringStringMap
+		expHostnameSecretMissing       stringStringMap
 	}{
 		// 0
 		{},
@@ -433,9 +481,47 @@ func TestDeleteHostnames(t *testing.T) {
 		// 12
 		{
 			trackedHosts: []hostTracking{
+				{convtypes.IngressClassType, "haproxy1", "domain1.local"},
+				{convtypes.IngressClassType, "haproxy2", "domain1.local"},
+			},
+			deleteHostnames: []string{"domain1.local", "domain2.local"},
+		},
+		// 13
+		{
+			trackedMissingHosts: []hostTracking{
+				{convtypes.IngressClassType, "haproxy1", "domain1.local"},
+				{convtypes.IngressClassType, "haproxy2", "domain1.local"},
+			},
+			deleteHostnames: []string{"domain1.local", "domain2.local"},
+		},
+		// 14
+		{
+			trackedHosts: []hostTracking{
+				{convtypes.ConfigMapType, "ingress/config1", "domain1.local"},
+				{convtypes.ConfigMapType, "ingress/config2", "domain1.local"},
+			},
+			deleteHostnames: []string{"domain1.local", "domain2.local"},
+		},
+		// 15
+		{
+			trackedMissingHosts: []hostTracking{
+				{convtypes.ConfigMapType, "ingress/config1", "domain1.local"},
+				{convtypes.ConfigMapType, "ingress/config2", "domain1.local"},
+			},
+			deleteHostnames: []string{"domain1.local", "domain2.local"},
+		},
+		// 16
+		{
+			trackedHosts: []hostTracking{
 				{convtypes.IngressType, "default/ing1", "domain1.local"},
 				{convtypes.IngressType, "default/ing1", "domain2.local"},
 				{convtypes.IngressType, "default/ing1", "domain3.local"},
+				{convtypes.IngressClassType, "haproxy", "domain1.local"},
+				{convtypes.IngressClassType, "haproxy", "domain2.local"},
+				{convtypes.IngressClassType, "haproxy", "domain3.local"},
+				{convtypes.ConfigMapType, "ingress/config", "domain1.local"},
+				{convtypes.ConfigMapType, "ingress/config", "domain2.local"},
+				{convtypes.ConfigMapType, "ingress/config", "domain3.local"},
 				{convtypes.ServiceType, "default/svc1", "domain1.local"},
 				{convtypes.ServiceType, "default/svc1", "domain2.local"},
 				{convtypes.ServiceType, "default/svc1", "domain3.local"},
@@ -443,13 +529,17 @@ func TestDeleteHostnames(t *testing.T) {
 				{convtypes.SecretType, "default/secret1", "domain2.local"},
 				{convtypes.SecretType, "default/secret1", "domain3.local"},
 			},
-			deleteHostnames:    []string{"domain1.local", "domain2.local"},
-			expIngressHostname: stringStringMap{"default/ing1": {"domain3.local": empty{}}},
-			expHostnameIngress: stringStringMap{"domain3.local": {"default/ing1": empty{}}},
-			expServiceHostname: stringStringMap{"default/svc1": {"domain3.local": empty{}}},
-			expHostnameService: stringStringMap{"domain3.local": {"default/svc1": empty{}}},
-			expSecretHostname:  stringStringMap{"default/secret1": {"domain3.local": empty{}}},
-			expHostnameSecret:  stringStringMap{"domain3.local": {"default/secret1": empty{}}},
+			deleteHostnames:         []string{"domain1.local", "domain2.local"},
+			expIngressHostname:      stringStringMap{"default/ing1": {"domain3.local": empty{}}},
+			expHostnameIngress:      stringStringMap{"domain3.local": {"default/ing1": empty{}}},
+			expIngressClassHostname: stringStringMap{"haproxy": {"domain3.local": empty{}}},
+			expHostnameIngressClass: stringStringMap{"domain3.local": {"haproxy": empty{}}},
+			expConfigMapHostname:    stringStringMap{"ingress/config": {"domain3.local": empty{}}},
+			expHostnameConfigMap:    stringStringMap{"domain3.local": {"ingress/config": empty{}}},
+			expServiceHostname:      stringStringMap{"default/svc1": {"domain3.local": empty{}}},
+			expHostnameService:      stringStringMap{"domain3.local": {"default/svc1": empty{}}},
+			expSecretHostname:       stringStringMap{"default/secret1": {"domain3.local": empty{}}},
+			expHostnameSecret:       stringStringMap{"domain3.local": {"default/secret1": empty{}}},
 		},
 	}
 	for i, test := range testCases {
@@ -463,10 +553,18 @@ func TestDeleteHostnames(t *testing.T) {
 		c.tracker.DeleteHostnames(test.deleteHostnames)
 		c.compareObjects("ingressHostname", i, c.tracker.ingressHostname, test.expIngressHostname)
 		c.compareObjects("hostnameIngress", i, c.tracker.hostnameIngress, test.expHostnameIngress)
+		c.compareObjects("ingressClassHostname", i, c.tracker.ingressClassHostname, test.expIngressClassHostname)
+		c.compareObjects("hostnameIngressClass", i, c.tracker.hostnameIngressClass, test.expHostnameIngressClass)
+		c.compareObjects("configMapHostname", i, c.tracker.configMapHostname, test.expConfigMapHostname)
+		c.compareObjects("hostnameConfigMap", i, c.tracker.hostnameConfigMap, test.expHostnameConfigMap)
 		c.compareObjects("serviceHostname", i, c.tracker.serviceHostname, test.expServiceHostname)
 		c.compareObjects("hostnameService", i, c.tracker.hostnameService, test.expHostnameService)
 		c.compareObjects("secretHostname", i, c.tracker.secretHostname, test.expSecretHostname)
 		c.compareObjects("hostnameSecret", i, c.tracker.hostnameSecret, test.expHostnameSecret)
+		c.compareObjects("ingressClassHostnameMissing", i, c.tracker.ingressClassHostnameMissing, test.expIngressClassHostnameMissing)
+		c.compareObjects("hostnameIngressClassMissing", i, c.tracker.hostnameIngressClassMissing, test.expHostnameIngressClassMissing)
+		c.compareObjects("configMapHostnameMissing", i, c.tracker.configMapHostnameMissing, test.expConfigMapHostnameMissing)
+		c.compareObjects("hostnameConfigMapMissing", i, c.tracker.hostnameConfigMapMissing, test.expHostnameConfigMapMissing)
 		c.compareObjects("serviceHostnameMissing", i, c.tracker.serviceHostnameMissing, test.expServiceHostnameMissing)
 		c.compareObjects("hostnameServiceMissing", i, c.tracker.hostnameServiceMissing, test.expHostnameServiceMissing)
 		c.compareObjects("secretHostnameMissing", i, c.tracker.secretHostnameMissing, test.expSecretHostnameMissing)

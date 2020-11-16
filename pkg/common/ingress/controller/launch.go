@@ -44,7 +44,16 @@ func NewIngressController(backend ingress.Controller) *GenericController {
     	the default backend.`)
 
 		ingressClass = flags.String("ingress-class", "",
-			`Name of the ingress class to route through this controller.`)
+			`Name of the IngressClass to route through this controller.`)
+
+		controllerClass = flags.String("controller-class", "",
+			`Defines an alternative controller name this controller should listen to. If empty, this controller will listen to
+		ingress resources whose controller's IngressClass is 'haproxy-ingress.github.io/controller'. Non empty values add a new /path,
+		eg controller-class=staging will make this controller look for 'haproxy-ingress.github.io/controller/staging'`)
+
+		watchIngressWithoutClass = flags.Bool("watch-ingress-without-class", false,
+			`Defines if this controller should also listen to ingress resources that doesn't declare neither the
+		kubernetes.io/ingress.class annotation nor the <ingress>.spec.ingressClassName field. Defaults to false`)
 
 		masterSocket = flags.String("master-socket", "",
 			`Defines the master CLI unix socket of an external HAProxy running in master-worker mode.
@@ -183,9 +192,8 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 			`Shows release information about the Ingress controller`)
 
 		ignoreIngressWithoutClass = flags.Bool("ignore-ingress-without-class", false,
-			`Defines if the ingress without the ingress.class annotation will be considered or not. If true then 
-			only the ingresses with the matching ingress.class annotation will be considered, ingresses with missing 
-			or different ingress.class annotation will not be considered. Default is false`)
+			`DEPRECATED, this option is ignored. Use --watch-ingress-without-class command-line option instead to define
+		if ingress without class should be tracked.`)
 	)
 
 	flags.AddGoFlagSet(flag.CommandLine)
@@ -207,7 +215,23 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 	glog.Info(backend.Info())
 
 	if *ingressClass != "" {
-		glog.Infof("Watching for ingress class: %s", *ingressClass)
+		glog.Infof("watching for ingress resources with 'kubernetes.io/ingress.class' annotation: %s", *ingressClass)
+	}
+
+	controllerName := "haproxy-ingress.github.io/controller"
+	if *controllerClass != "" {
+		controllerName += "/" + strings.TrimLeft(*controllerClass, "/")
+	}
+	glog.Infof("watching for ingress resources with IngressClass' controller name: %s", controllerName)
+
+	if *watchIngressWithoutClass {
+		glog.Infof("watching for ingress resources without any class reference - --watch-ingress-without-class is true")
+	} else {
+		glog.Infof("ignoring ingress resources without any class reference - --watch-ingress-without-class is false")
+	}
+
+	if *ignoreIngressWithoutClass {
+		glog.Infof("DEPRECATED: --ignore-ingress-without-class is now ignored and can be safely removed")
 	}
 
 	kubeClient, err := createApiserverClient(*apiserverHost, *kubeConfigFile)
@@ -314,44 +338,45 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 	}
 
 	config := &Configuration{
-		UpdateStatus:              *updateStatus,
-		ElectionID:                *electionID,
-		Client:                    kubeClient,
-		MasterSocket:              *masterSocket,
-		AcmeServer:                *acmeServer,
-		AcmeCheckPeriod:           *acmeCheckPeriod,
-		AcmeElectionID:            *acmeElectionID,
-		AcmeFailInitialDuration:   *acmeFailInitialDuration,
-		AcmeFailMaxDuration:       *acmeFailMaxDuration,
-		AcmeSecretKeyName:         *acmeSecretKeyName,
-		AcmeTokenConfigmapName:    *acmeTokenConfigmapName,
-		AcmeTrackTLSAnn:           *acmeTrackTLSAnn,
-		BucketsResponseTime:       *bucketsResponseTime,
-		RateLimitUpdate:           *rateLimitUpdate,
-		ResyncPeriod:              *resyncPeriod,
-		WaitBeforeUpdate:          *waitBeforeUpdate,
-		DefaultService:            *defaultSvc,
-		IngressClass:              *ingressClass,
-		WatchNamespace:            *watchNamespace,
-		ConfigMapName:             *configMap,
-		TCPConfigMapName:          *tcpConfigMapName,
-		AnnPrefix:                 *annPrefix,
-		DefaultSSLCertificate:     *defSSLCertificate,
-		VerifyHostname:            *verifyHostname,
-		DefaultHealthzURL:         *defHealthzURL,
-		StatsCollectProcPeriod:    *statsCollectProcPeriod,
-		PublishService:            *publishSvc,
-		Backend:                   backend,
-		ForceNamespaceIsolation:   *forceIsolation,
-		WaitBeforeShutdown:        *waitBeforeShutdown,
-		AllowCrossNamespace:       *allowCrossNamespace,
-		DisableNodeList:           *disableNodeList,
-		DisablePodList:            *disablePodList,
-		UpdateStatusOnShutdown:    *updateStatusOnShutdown,
-		BackendShards:             *backendShards,
-		SortEndpointsBy:           sortEndpoints,
-		UseNodeInternalIP:         *useNodeInternalIP,
-		IgnoreIngressWithoutClass: *ignoreIngressWithoutClass,
+		UpdateStatus:             *updateStatus,
+		ElectionID:               *electionID,
+		Client:                   kubeClient,
+		MasterSocket:             *masterSocket,
+		AcmeServer:               *acmeServer,
+		AcmeCheckPeriod:          *acmeCheckPeriod,
+		AcmeElectionID:           *acmeElectionID,
+		AcmeFailInitialDuration:  *acmeFailInitialDuration,
+		AcmeFailMaxDuration:      *acmeFailMaxDuration,
+		AcmeSecretKeyName:        *acmeSecretKeyName,
+		AcmeTokenConfigmapName:   *acmeTokenConfigmapName,
+		AcmeTrackTLSAnn:          *acmeTrackTLSAnn,
+		BucketsResponseTime:      *bucketsResponseTime,
+		RateLimitUpdate:          *rateLimitUpdate,
+		ResyncPeriod:             *resyncPeriod,
+		WaitBeforeUpdate:         *waitBeforeUpdate,
+		DefaultService:           *defaultSvc,
+		IngressClass:             *ingressClass,
+		ControllerName:           controllerName,
+		WatchIngressWithoutClass: *watchIngressWithoutClass,
+		WatchNamespace:           *watchNamespace,
+		ConfigMapName:            *configMap,
+		TCPConfigMapName:         *tcpConfigMapName,
+		AnnPrefix:                *annPrefix,
+		DefaultSSLCertificate:    *defSSLCertificate,
+		VerifyHostname:           *verifyHostname,
+		DefaultHealthzURL:        *defHealthzURL,
+		StatsCollectProcPeriod:   *statsCollectProcPeriod,
+		PublishService:           *publishSvc,
+		Backend:                  backend,
+		ForceNamespaceIsolation:  *forceIsolation,
+		WaitBeforeShutdown:       *waitBeforeShutdown,
+		AllowCrossNamespace:      *allowCrossNamespace,
+		DisableNodeList:          *disableNodeList,
+		DisablePodList:           *disablePodList,
+		UpdateStatusOnShutdown:   *updateStatusOnShutdown,
+		BackendShards:            *backendShards,
+		SortEndpointsBy:          sortEndpoints,
+		UseNodeInternalIP:        *useNodeInternalIP,
 	}
 
 	ic := newIngressController(config)

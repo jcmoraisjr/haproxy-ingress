@@ -10,7 +10,7 @@ The following sections walk through steps to have HAProxy Ingress working, watch
 
 ## Prerequisites
 
-HAProxy Ingress needs a running Kubernetes cluster. Controller version v0.11 needs Kubernetes 1.14, while version v0.10 and older work on clusters as old as 1.6. HAProxy Ingress also works fine on local k8s deployments like [minikube](https://minikube.sigs.k8s.io) or [kind](https://kind.sigs.k8s.io).
+HAProxy Ingress needs a running Kubernetes cluster. Controller version v0.12 needs Kubernetes 1.18 or newer, see other supported versions in the [README](https://github.com/jcmoraisjr/haproxy-ingress/#use-haproxy-ingress) file. HAProxy Ingress also works fine on local k8s deployments like [minikube](https://minikube.sigs.k8s.io) or [kind](https://kind.sigs.k8s.io).
 
 An ingress controller works exposing internal services to the external world, so another pre-requisite is that at least one cluster node is accessible externally. On cloud environments, a cloud load balancer can be configured to reach the ingress controller nodes.
 
@@ -110,9 +110,9 @@ $ wget -qO- --no-check-certificate https://echoserver.192.168.1.11.nip.io
 
 ## What's next
 
-Learn more about ingress from the Kubernetes docs:
+Learn more about Ingress and IngressClass resources:
 
-* [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) from Kubernetes docs
+* [Ingress and IngressClass resources](https://kubernetes.io/docs/concepts/services-networking/ingress/) from Kubernetes docs
 
 HAProxy Ingress has lots of configuration options. See the following tips to get started faster:
 

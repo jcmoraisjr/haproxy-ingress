@@ -29,10 +29,13 @@ import (
 type Cache interface {
 	GetIngress(ingressName string) (*networking.Ingress, error)
 	GetIngressList() ([]*networking.Ingress, error)
+	GetIngressClass(className string) (*networking.IngressClass, error)
 	GetService(serviceName string) (*api.Service, error)
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
+	GetConfigMap(configMapName string) (*api.ConfigMap, error)
 	GetTerminatingPods(service *api.Service, track TrackingTarget) ([]*api.Pod, error)
 	GetPod(podName string) (*api.Pod, error)
+	GetPodNamespace() string
 	GetTLSSecretPath(defaultNamespace, secretName string, track TrackingTarget) (CrtFile, error)
 	GetCASecretPath(defaultNamespace, secretName string, track TrackingTarget) (ca, crl File, err error)
 	GetDHSecretPath(defaultNamespace, secretName string) (File, error)
@@ -50,11 +53,15 @@ type ChangedObjects struct {
 	//
 	IngressesDel, IngressesUpd, IngressesAdd []*networking.Ingress
 	//
+	IngressClassesDel, IngressClassesUpd, IngressClassesAdd []*networking.IngressClass
+	//
 	Endpoints []*api.Endpoints
 	//
 	ServicesDel, ServicesUpd, ServicesAdd []*api.Service
 	//
 	SecretsDel, SecretsUpd, SecretsAdd []*api.Secret
+	//
+	ConfigMapsDel, ConfigMapsUpd, ConfigMapsAdd []*api.ConfigMap
 	//
 	Pods []*api.Pod
 	//
@@ -68,7 +75,7 @@ type Tracker interface {
 	TrackBackend(rtype ResourceType, name string, backendID hatypes.BackendID)
 	TrackMissingOnHostname(rtype ResourceType, name, hostname string)
 	TrackStorage(rtype ResourceType, name, storage string)
-	GetDirtyLinks(oldIngressList, addIngressList, oldServiceList, addServiceList, oldSecretList, addSecretList, addPodList []string) (dirtyIngs, dirtyHosts []string, dirtyBacks []hatypes.BackendID, dirtyUsers, dirtyStorages []string)
+	GetDirtyLinks(oldIngressList, addIngressList, oldIngressClassList, addIngressClassList, oldConfigMapList, addConfigMapList, oldServiceList, addServiceList, oldSecretList, addSecretList, addPodList []string) (dirtyIngs, dirtyHosts []string, dirtyBacks []hatypes.BackendID, dirtyUsers, dirtyStorages []string)
 	DeleteHostnames(hostnames []string)
 	DeleteBackends(backends []hatypes.BackendID)
 	DeleteUserlists(userlists []string)
@@ -102,6 +109,12 @@ type ResourceType int
 const (
 	// IngressType ...
 	IngressType ResourceType = iota
+
+	// IngressClassType ...
+	IngressClassType
+
+	// ConfigMapType ...
+	ConfigMapType
 
 	// ServiceType ...
 	ServiceType

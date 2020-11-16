@@ -71,6 +71,7 @@ func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Con
 		globalConfig:       annotations.NewMapBuilder(options.Logger, "", defaultConfig).NewMapper(),
 		hostAnnotations:    map[*hatypes.Host]*annotations.Mapper{},
 		backendAnnotations: map[*hatypes.Backend]*annotations.Mapper{},
+		ingressClasses:     map[string]*ingressClassConfig{},
 		needFullSync:       needFullSync,
 	}
 }
@@ -89,7 +90,14 @@ type converter struct {
 	globalConfig       *annotations.Mapper
 	hostAnnotations    map[*hatypes.Host]*annotations.Mapper
 	backendAnnotations map[*hatypes.Backend]*annotations.Mapper
+	ingressClasses     map[string]*ingressClassConfig
 	needFullSync       bool
+}
+
+type ingressClassConfig struct {
+	resourceType convtypes.ResourceType
+	resourceName string
+	config       map[string]string
 }
 
 func (c *converter) Sync() {
@@ -191,6 +199,20 @@ func (c *converter) syncPartial() {
 		}
 		return inglist
 	}
+	cls2names := func(clss []*networking.IngressClass) []string {
+		clslist := make([]string, len(clss))
+		for i, cls := range clss {
+			clslist[i] = cls.Name
+		}
+		return clslist
+	}
+	cm2names := func(cms []*api.ConfigMap) []string {
+		cmlist := make([]string, len(cms))
+		for i, cm := range cms {
+			cmlist[i] = cm.Namespace + "/" + cm.Name
+		}
+		return cmlist
+	}
 	svc2names := func(services []*api.Service) []string {
 		serviceList := make([]string, len(services))
 		for i, service := range services {
@@ -229,6 +251,14 @@ func (c *converter) syncPartial() {
 	updIngNames := ing2names(c.changed.IngressesUpd)
 	addIngNames := ing2names(c.changed.IngressesAdd)
 	oldIngNames := append(delIngNames, updIngNames...)
+	delClsNames := cls2names(c.changed.IngressClassesDel)
+	updClsNames := cls2names(c.changed.IngressClassesUpd)
+	addClsNames := cls2names(c.changed.IngressClassesAdd)
+	oldClsNames := append(delClsNames, updClsNames...)
+	delCMNames := cm2names(c.changed.ConfigMapsDel)
+	updCMNames := cm2names(c.changed.ConfigMapsUpd)
+	addCMNames := cm2names(c.changed.ConfigMapsAdd)
+	oldCMNames := append(delCMNames, updCMNames...)
 	delSvcNames := svc2names(c.changed.ServicesDel)
 	updSvcNames := svc2names(c.changed.ServicesUpd)
 	addSvcNames := svc2names(c.changed.ServicesAdd)
@@ -242,7 +272,14 @@ func (c *converter) syncPartial() {
 	addPodNames := pod2names(c.changed.Pods)
 	c.trackAddedIngress()
 	dirtyIngs, dirtyHosts, dirtyBacks, dirtyUsers, dirtyStorages :=
-		c.tracker.GetDirtyLinks(oldIngNames, addIngNames, oldSvcNames, addSvcNames, oldSecretNames, addSecretNames, addPodNames)
+		c.tracker.GetDirtyLinks(
+			oldIngNames, addIngNames,
+			oldClsNames, addClsNames,
+			oldCMNames, addCMNames,
+			oldSvcNames, addSvcNames,
+			oldSecretNames, addSecretNames,
+			addPodNames,
+		)
 	c.tracker.DeleteHostnames(dirtyHosts)
 	c.tracker.DeleteBackends(dirtyBacks)
 	c.tracker.DeleteUserlists(dirtyUsers)
@@ -375,6 +412,7 @@ func (c *converter) syncIngress(ing *networking.Ingress) {
 		if hostname == "" {
 			hostname = hatypes.DefaultHost
 		}
+		ingressClass := c.readIngressClass(source, hostname, ing.Spec.IngressClassName)
 		host := c.addHost(hostname, source, annHost)
 		for _, path := range rule.HTTP.Paths {
 			uri := path.Path
@@ -387,7 +425,7 @@ func (c *converter) syncIngress(ing *networking.Ingress) {
 			}
 			svcName, svcPort := readServiceNamePort(&path.Backend)
 			fullSvcName := ing.Namespace + "/" + svcName
-			backend, err := c.addBackend(source, hostname, uri, fullSvcName, svcPort, annBack)
+			backend, err := c.addBackendWithClass(source, hostname, uri, fullSvcName, svcPort, annBack, ingressClass)
 			if err != nil {
 				c.logger.Warn("skipping backend config of ingress '%s': %v", fullIngName, err)
 				continue
@@ -517,6 +555,19 @@ func (c *converter) readPathType(path networking.HTTPIngressPath, ann string) ha
 	return match
 }
 
+func (c *converter) readIngressClass(source *annotations.Source, hostname string, ingressClassName *string) *networking.IngressClass {
+	if ingressClassName != nil {
+		ingressClass, err := c.cache.GetIngressClass(*ingressClassName)
+		if err == nil {
+			c.tracker.TrackHostname(convtypes.IngressClassType, *ingressClassName, hostname)
+			return ingressClass
+		}
+		c.tracker.TrackMissingOnHostname(convtypes.IngressClassType, *ingressClassName, hostname)
+		c.logger.Warn("error reading IngressClass of %s: %v", source, err)
+	}
+	return nil
+}
+
 func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcName, svcPort string, annHost, annBack map[string]string) error {
 	hostname := hatypes.DefaultHost
 	uri := "/"
@@ -552,6 +603,10 @@ func (c *converter) addHost(hostname string, source *annotations.Source, ann map
 }
 
 func (c *converter) addBackend(source *annotations.Source, hostname, uri, fullSvcName, svcPort string, ann map[string]string) (*hatypes.Backend, error) {
+	return c.addBackendWithClass(source, hostname, uri, fullSvcName, svcPort, ann, nil)
+}
+
+func (c *converter) addBackendWithClass(source *annotations.Source, hostname, uri, fullSvcName, svcPort string, ann map[string]string, ingressClass *networking.IngressClass) (*hatypes.Backend, error) {
 	// TODO build a stronger tracking
 	svc, err := c.cache.GetService(fullSvcName)
 	if err != nil {
@@ -592,6 +647,17 @@ func (c *converter) addBackend(source *annotations.Source, hostname, uri, fullSv
 	if len(conflict) > 0 {
 		c.logger.Warn("skipping backend '%s:%s' annotation(s) from %v due to conflict: %v",
 			svcName, svcPort, source, conflict)
+	}
+	// Merging IngressClass Parameters with less priority
+	if ingressClass != nil {
+		if cfg := c.readParameters(ingressClass, hostname); cfg != nil {
+			// Using a work around to add a per resource default config:
+			// we add IngressClass Parameters after service and ingress annotations,
+			// ignoring conflicts. This would really conflict with other Parameters
+			// only if the same host+path is declared twice, but such duplication is
+			// already filtred out in the ingress parsing.
+			_ = mapper.AddAnnotations(source, pathlink, cfg)
+		}
 	}
 	// Configure endpoints
 	if !found {
@@ -701,6 +767,56 @@ func (c *converter) readAnnotations(annotations map[string]string) (annHost, ann
 		}
 	}
 	return annHost, annBack
+}
+
+func (c *converter) readParameters(ingressClass *networking.IngressClass, trackingHostname string) map[string]string {
+	ingClassConfig, found := c.ingressClasses[ingressClass.Name]
+	if !found {
+		ingClassConfig = c.parseParameters(ingressClass, trackingHostname)
+		if ingClassConfig == nil {
+			// error or Parameters reference not found, so create and assign an
+			// empty config to avoid re-parse Parameters on every ingress resource
+			ingClassConfig = &ingressClassConfig{}
+		}
+		c.ingressClasses[ingressClass.Name] = ingClassConfig
+	}
+	if ingClassConfig.resourceName != "" {
+		c.tracker.TrackHostname(ingClassConfig.resourceType, ingClassConfig.resourceName, trackingHostname)
+	}
+	return ingClassConfig.config
+}
+
+func (c *converter) parseParameters(ingressClass *networking.IngressClass, trackingHostname string) *ingressClassConfig {
+	parameters := ingressClass.Spec.Parameters
+	if parameters == nil {
+		return nil
+	}
+	// Currently only ConfigMap is supported
+	if parameters.APIGroup != nil && *parameters.APIGroup != "" {
+		c.logger.Warn("unsupported Parameters' APIGroup on IngressClass '%s': %s", ingressClass.Name, *parameters.APIGroup)
+		return nil
+	}
+	if strings.ToLower(parameters.Kind) != "configmap" {
+		c.logger.Warn("unsupported Parameters' Kind on IngressClass '%s': %s", ingressClass.Name, parameters.Kind)
+		return nil
+	}
+	podNamespace := c.cache.GetPodNamespace()
+	if podNamespace == "" {
+		c.logger.Warn("need to configure POD_NAMESPACE to use ConfigMap on IngressClass '%s'", ingressClass.Name)
+		return nil
+	}
+	configMapName := podNamespace + "/" + parameters.Name
+	configMap, err := c.cache.GetConfigMap(configMapName)
+	if err != nil {
+		c.logger.Warn("error reading ConfigMap on IngressClass '%s': %v", ingressClass.Name, err)
+		c.tracker.TrackMissingOnHostname(convtypes.ConfigMapType, configMapName, trackingHostname)
+		return nil
+	}
+	return &ingressClassConfig{
+		resourceType: convtypes.ConfigMapType,
+		resourceName: configMapName,
+		config:       configMap.Data,
+	}
 }
 
 func readServiceNamePort(backend *networking.IngressBackend) (string, string) {
