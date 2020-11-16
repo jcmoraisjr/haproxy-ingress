@@ -278,14 +278,14 @@ The table below describes all supported configuration keys.
 | [`agent-check-port`](#agent-check)                   | backend agent listen port               | Backend |                    |
 | [`agent-check-send`](#agent-check)                   | string to send upon agent connection    | Backend |                    |
 | [`app-root`](#app-root)                              | /url                                    | Host    |                    |
-| `auth-realm`                                         | realm string                            | Backend |                    |
-| `auth-secret`                                        | secret name                             | Backend |                    |
+| [`auth-realm`](#auth)                                | realm string                            | Backend |                    |
+| [`auth-secret`](#auth)                               | secret name                             | Backend |                    |
 | [`auth-tls-cert-header`](#auth-tls)                  | [true\|false]                           | Backend |                    |
 | [`auth-tls-error-page`](#auth-tls)                   | url                                     | Host    |                    |
 | [`auth-tls-secret`](#auth-tls)                       | namespace/secret name                   | Host    |                    |
 | [`auth-tls-strict`](#auth-tls)                       | [true\|false]                           | Host    |                    |
 | [`auth-tls-verify-client`](#auth-tls)                | [off\|optional\|on\|optional_no_ca]     | Host    |                    |
-| `auth-type`                                          | "basic"                                 | Backend |                    |
+| [`auth-type`](#auth)                                 | "basic"                                 | Backend |                    |
 | [`backend-check-interval`](#health-check)            | time with suffix                        | Backend | `2s`               |
 | [`backend-protocol`](#backend-protocol)              | [h1\|h2\|h1-ssl\|h2-ssl]                | Backend | `h1`               |
 | [`backend-server-naming`](#backend-server-naming)    | [sequence\|ip\|pod]                     | Backend | `sequence`         |
@@ -621,6 +621,34 @@ Defines a distinct application root path. HAProxy will redirect requests to the
 configured path, using `302` status code, when the HTTP client sends a request
 to the root context of the configured domain. `app-root` key binds to the root
 context path, so it needs to be declared in the same Ingress that configures it.
+
+---
+
+## Auth
+
+| Configuration key | Scope     | Default   | Since  |
+|-------------------|-----------|-----------|--------|
+| `auth-realm`      | `Backend` | localhost |        |
+| `auth-secret`     | `Backend` |           |        |
+| `auth-type`       | `Backend` |           |        |
+
+Configures authentication options.
+
+* `auth-type`: Defines the authentication type. Currently the only supported option is `basic`.
+* `auth-realm`: Optional, configures the authentication realm string. `localhost` will be used if not provided.
+* `auth-secret`: A secret name with users and passwords used to configure basic authentication. The secret can be in the same namespace of the Ingress resource, or any other namespace if cross namespace is enabled. Secret in the same namespace does not need to be prepended with `namespace/`.
+
+The secret referenced by `auth-secret` should have a key named `auth` with users and passwords, one per line. The following two formats are supported and both are supported in the same secret:
+
+* `<user>::<password>`: User and password are separated by 2 (two) colons. The password will be copied verbatim, stored in the configuration file in an insecure way.
+* `<user>:<password-hash>`: User and password are separated by 1 (one) colon. This syntax needs a password hash that can be generated with `mkpasswd`.
+
+See also:
+
+* [--allow-cross-namespace]({{% relref "command-line/#allow-cross-namespace" %}}) command-line option
+* [Auth TLS](#auth-tls) configuration keys
+* [OAuth](#oauth) configuration keys
+* [Auth Basic example](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/auth/basic) page
 
 ---
 
