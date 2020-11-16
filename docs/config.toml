@@ -93,7 +93,7 @@ url = "https://haproxy-ingress.github.io/v0.11/docs"
 
 [[params.versions]]
 version = "v0.10"
-url = "https://haproxy-ingress.github.io/docs"
+url = "https://haproxy-ingress.github.io/v0.10/docs"
 
 [[params.versions]]
 version = "v0.9"
