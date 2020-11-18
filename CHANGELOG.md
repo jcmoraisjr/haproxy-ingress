@@ -5,16 +5,19 @@
 **Highlights of this version**
 
 * HAProxy upgrade from 2.1 to 2.2.
+* IngressClass support
 * Ability to configure and run an external haproxy, version 2.0 or above, on a sidecar container.
 
 **Breaking backward compatibility from [v0.11](#v011)**
 
-* The default backend configured with `--default-backend-service` does not have a fixed name `_default_backend` anymore, but instead a dynamic name based on the namespace, service name and listening port number of the target service, as any other backend.
+* Ingress resources without `kubernetes.io/ingress.class` annotation was listened by default up to v0.11, now they are not. This will change the final configuration of clusters that 1) have Ingress resources without the class annotation and without the `ingressClassName` field, and 2) does not declare the `--ignore-ingress-without-class` command-line option. Add the command-line option `--watch-ingress-without-class` to bring back the default v0.11 behavior. See the [class matter](https://haproxy-ingress.github.io/v0.12/docs/configuration/keys/#class-matter) documentation.
+* The default backend configured with `--default-backend-service` does not have a fixed name `_default_backend` anymore, but instead a dynamic name based on the namespace, service name and listening port number of the target service, as any other backend. This will break configuration snippets that uses the old name.
 
 **Contributors**
 
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
 * Max Verigin ([griever989](https://github.com/griever989))
+* pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
 
 **v0.12-snapshot.1**
@@ -58,6 +61,29 @@ Fixes:
 Others:
 
 * Adds a GH Action to close stale issues [#615](https://github.com/jcmoraisjr/haproxy-ingress/pull/615) (rikatz)
+
+**v0.12-snapshot.2**
+
+New features and improvements:
+
+* Update go from 1.14.8 to 1.14.(latest) [3c8b444](https://github.com/jcmoraisjr/haproxy-ingress/commit/3c8b4440a64b474ee715c79e4d5b25393cdc8d24) (Joao Morais)
+* Add worker-max-reloads config option [#692](https://github.com/jcmoraisjr/haproxy-ingress/pull/692) (jcmoraisjr)
+  * Configuration keys:
+    * `worker-max-reloads` - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/keys/#master-worker)
+* Update haproxy from 2.2.4 to 2.2.5 [ac87843](https://github.com/jcmoraisjr/haproxy-ingress/commit/ac87843513b1a8ea304179082737eee9baa61eed) (Joao Morais)
+* Add ingress class support [#694](https://github.com/jcmoraisjr/haproxy-ingress/pull/694) (jcmoraisjr)
+  * Configuration keys:
+    * Class matter, Strategies and Scope sections of the Configuration keys [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/keys/)
+  * Command-line options:
+    * `--controller-class` - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/command-line/#ingress-class)
+    * `--watch-ingress-without-class` - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/command-line/#ingress-class)
+
+Fixes:
+
+* Fix line too long on backend parsing [#683](https://github.com/jcmoraisjr/haproxy-ingress/pull/683) (jcmoraisjr)
+* Fix basic auth backend tracking [#688](https://github.com/jcmoraisjr/haproxy-ingress/pull/688) (jcmoraisjr)
+* Allow signer to work with wildcard dns certs [#695](https://github.com/jcmoraisjr/haproxy-ingress/pull/695) (pbabilas)
+* Improve certificate validation of acme signer [#689](https://github.com/jcmoraisjr/haproxy-ingress/pull/689) (jcmoraisjr)
 
 ## v0.11
 
