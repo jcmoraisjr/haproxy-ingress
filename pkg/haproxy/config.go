@@ -163,7 +163,7 @@ func (c *config) WriteFrontendMaps() error {
 		//
 		CrtList: mapBuilder.AddMap(mapsDir + "/_front_bind_crt.list"),
 	}
-	fmaps.CrtList.AppendItem(c.frontend.DefaultCrtFile)
+	fmaps.CrtList.AppendItem(c.frontend.DefaultCrtFile + " !*")
 	hasVarNamespace := c.hosts.HasVarNamespace()
 	for _, host := range c.hosts.BuildSortedItems() {
 		if host.SSLPassthrough() {
