@@ -402,7 +402,7 @@ func (c *config) BuildFrontendGroup() error {
 				f.RootRedirMap.AppendHostname(host.Hostname, host.RootRedirect)
 			}
 		}
-		f.Bind.CrtList.AppendItem(c.defaultX509Cert)
+		f.Bind.CrtList.AppendItem(c.defaultX509Cert + " !*")
 		for _, tls := range f.Bind.TLS {
 			crtFile := tls.CrtFilename
 			if (crtFile == "" || crtFile == c.defaultX509Cert) && tls.CAFilename == "" {

@@ -1388,7 +1388,7 @@ frontend _front001
 d2.local/app yes
 `)
 	c.checkMap("_front001_bind_crt.list", `
-/var/haproxy/ssl/certs/default.pem
+/var/haproxy/ssl/certs/default.pem !*
 `)
 	c.checkMap("_global_k8s_ns.map", `
 d2.local/app d2
@@ -1571,7 +1571,7 @@ d2.local/app -
 `)
 
 	c.checkMap("_front001_bind_crt.list", `
-/var/haproxy/ssl/certs/default.pem
+/var/haproxy/ssl/certs/default.pem !*
 /var/haproxy/ssl/certs/d1.pem d1.local
 /var/haproxy/ssl/certs/d2.pem d2.local
 `)
@@ -1668,7 +1668,7 @@ d1.local/ yes
 d2.local/ yes
 `)
 	c.checkMap("_front001_bind_crt.list", `
-/var/haproxy/ssl/certs/default.pem
+/var/haproxy/ssl/certs/default.pem !*
 /var/haproxy/ssl/certs/default.pem [ca-file /var/haproxy/ssl/ca/d1.local.pem verify optional] d1.local
 /var/haproxy/ssl/certs/default.pem [ca-file /var/haproxy/ssl/ca/d2.local.pem crl-file /var/haproxy/ssl/ca/d2.local.crl.pem verify optional] d2.local
 `)
@@ -1844,11 +1844,11 @@ d3.local
 d4.local
 `)
 	c.checkMap("_front001_bind_crt.list", `
-/var/haproxy/ssl/certs/default.pem
+/var/haproxy/ssl/certs/default.pem !*
 /var/haproxy/ssl/certs/default.pem [ca-file /var/haproxy/ssl/ca/d1.local.pem verify optional] d1.local
 `)
 	c.checkMap("_front002_bind_crt.list", `
-/var/haproxy/ssl/certs/default.pem
+/var/haproxy/ssl/certs/default.pem !*
 /var/haproxy/ssl/certs/d.pem [ca-file /var/haproxy/ssl/ca/d2.local.pem verify optional] d21.local d22.local
 `)
 	c.checkMap("_global_http_front.map", `
@@ -2165,7 +2165,7 @@ d3.local/ d3_app-http_8080`)
 d2.local/ yes
 d3.local/ no`)
 	c.checkMap("_front001_bind_crt.list", `
-/var/haproxy/ssl/certs/default.pem
+/var/haproxy/ssl/certs/default.pem !*
 `)
 
 	c.logger.CompareLogging(defaultLogging)
