@@ -171,7 +171,7 @@ func (c *config) WriteFrontendMaps() error {
 		//
 		CrtList: mapBuilder.AddMap(mapsDir + "/_front_bind_crt.list"),
 	}
-	fmaps.CrtList.AppendItem(c.frontend.DefaultCrtFile)
+	fmaps.CrtList.AppendItem(c.frontend.DefaultCrtFile + " !*")
 	// Some maps use yes/no answers instead of a list with found/missing keys
 	// This approach avoid overlap:
 	//  1. match with path_beg/map_beg, /path has a feature and a declared /path/sub doesn't have

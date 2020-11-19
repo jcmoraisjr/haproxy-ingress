@@ -1563,7 +1563,7 @@ frontend _front_https
 d2.local/app yes
 `)
 	c.checkMap("_front_bind_crt.list", `
-/var/haproxy/ssl/certs/default.pem
+/var/haproxy/ssl/certs/default.pem !*
 `)
 	c.checkMap("_front_namespace__begin.map", `
 d2.local/app d2
@@ -1756,7 +1756,7 @@ d2.local/app -
 `)
 
 	c.checkMap("_front_bind_crt.list", `
-/var/haproxy/ssl/certs/default.pem
+/var/haproxy/ssl/certs/default.pem !*
 /var/haproxy/ssl/certs/d1.pem d1.local
 /var/haproxy/ssl/certs/d2.pem d2.local
 `)
@@ -1895,7 +1895,7 @@ d6.local/ yes
 ^[^.]+\.d1\.local/ yes
 `)
 	c.checkMap("_front_bind_crt.list", `
-/var/haproxy/ssl/certs/default.pem
+/var/haproxy/ssl/certs/default.pem !*
 /var/haproxy/ssl/certs/default.pem [ca-file /var/haproxy/ssl/ca/d1.local.pem verify optional] *.d1.local
 /var/haproxy/ssl/certs/default.pem [ca-file /var/haproxy/ssl/ca/d2.local.pem verify optional crl-file /var/haproxy/ssl/ca/d2.local.crl.pem] d2.local
 /var/haproxy/ssl/certs/default.pem [ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384] d3.local
@@ -2200,7 +2200,7 @@ d3.local/ d3_app-http_8080`)
 d2.local/ yes
 d3.local/ no`)
 	c.checkMap("_front_bind_crt.list", `
-/var/haproxy/ssl/certs/default.pem
+/var/haproxy/ssl/certs/default.pem !*
 `)
 
 	c.logger.CompareLogging(defaultLogging)
