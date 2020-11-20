@@ -280,6 +280,31 @@ usr2::clearpwd2`)}},
 				},
 			},
 		},
+		// 11
+		{
+			paths: []string{"/", "/admin"},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAuthType:   "basic",
+					ingtypes.BackAuthSecret: "basicpwd",
+				},
+				"/admin": {
+					ingtypes.BackAuthType:   "basic",
+					ingtypes.BackAuthSecret: "basicpwd",
+				},
+			},
+			secrets: conv_helper.SecretContent{"default/basicpwd": {"auth": []byte(`usr1:encpwd1`)}},
+			expUserlists: []*hatypes.Userlist{{Name: "default_basicpwd", Users: []hatypes.User{
+				{Name: "usr1", Passwd: "encpwd1", Encrypted: true},
+			}}},
+			expConfig: []*hatypes.BackendConfigAuth{
+				{
+					Paths:        createBackendPaths("/", "/admin"),
+					UserlistName: "default_basicpwd",
+					Realm:        "localhost",
+				},
+			},
+		},
 	}
 
 	for i, test := range testCase {
