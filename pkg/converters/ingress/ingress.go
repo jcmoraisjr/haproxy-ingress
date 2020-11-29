@@ -440,31 +440,30 @@ func (c *converter) syncIngress(ing *networking.Ingress) {
 				}
 			}
 		}
-		for _, tls := range ing.Spec.TLS {
-			for _, tlshost := range tls.Hosts {
-				if tlshost == hostname {
-					tlsPath := c.addTLS(source, tlshost, tls.SecretName)
-					if host.TLS.TLSHash == "" {
-						host.TLS.TLSFilename = tlsPath.Filename
-						host.TLS.TLSHash = tlsPath.SHA1Hash
-						host.TLS.TLSCommonName = tlsPath.CommonName
-						host.TLS.TLSNotAfter = tlsPath.NotAfter
-					} else if host.TLS.TLSHash != tlsPath.SHA1Hash {
-						msg := fmt.Sprintf("TLS of host '%s' was already assigned", host.Hostname)
-						if tls.SecretName != "" {
-							c.logger.Warn("skipping TLS secret '%s' of ingress '%s': %s", tls.SecretName, fullIngName, msg)
-						} else {
-							c.logger.Warn("skipping default TLS secret of ingress '%s': %s", fullIngName, msg)
-						}
-					}
+	}
+	for _, tls := range ing.Spec.TLS {
+		// tls secret
+		for _, hostname := range tls.Hosts {
+			host := c.addHost(hostname, source, annHost)
+			tlsPath := c.addTLS(source, hostname, tls.SecretName)
+			if host.TLS.TLSHash == "" {
+				host.TLS.TLSFilename = tlsPath.Filename
+				host.TLS.TLSHash = tlsPath.SHA1Hash
+				host.TLS.TLSCommonName = tlsPath.CommonName
+				host.TLS.TLSNotAfter = tlsPath.NotAfter
+			} else if host.TLS.TLSHash != tlsPath.SHA1Hash {
+				msg := fmt.Sprintf("TLS of host '%s' was already assigned", host.Hostname)
+				if tls.SecretName != "" {
+					c.logger.Warn("skipping TLS secret '%s' of ingress '%s': %s", tls.SecretName, fullIngName, msg)
+				} else {
+					c.logger.Warn("skipping default TLS secret of ingress '%s': %s", fullIngName, msg)
 				}
 			}
 		}
-	}
-	for _, tls := range ing.Spec.TLS {
-		// distinct prefix, read from the Annotations map
+		// acme tracking
 		var tlsAcme bool
 		if c.options.AcmeTrackTLSAnn {
+			// distinct prefix, read from the Annotations map
 			tlsAcmeStr, _ := ing.Annotations[ingtypes.ExtraTLSAcme]
 			tlsAcme, _ = strconv.ParseBool(tlsAcmeStr)
 		}
