@@ -405,16 +405,21 @@ d1.local/ path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.OAuth.Impl = "oauth2_proxy"
-				b.OAuth.BackendName = "system_oauth_4180"
-				b.OAuth.URIPrefix = "/oauth2"
-				b.OAuth.Headers = map[string]string{"X-Auth-Request-Email": "auth_response_email"}
+				oauth := &b.FindBackendPath(h.FindPath("/app2").Link).OAuth
+				oauth.Impl = "oauth2_proxy"
+				oauth.BackendName = "system_oauth_4180"
+				oauth.URIPrefix = "/oauth2"
+				oauth.Headers = map[string]string{"X-Auth-Request-Email": "auth_response_email"}
 			},
+			path: []string{"/app1", "/app2"},
 			expected: `
-    http-request set-header X-Real-IP %[src]
-    http-request lua.auth-request system_oauth_4180 /oauth2/auth
-    http-request redirect location /oauth2/start?rd=%[path] if !{ path_beg /oauth2/ } !{ var(txn.auth_response_successful) -m bool }
-    http-request set-header X-Auth-Request-Email %[var(txn.auth_response_email)] if { var(txn.auth_response_email) -m found }`,
+    # path01 = d1.local/app1
+    # path02 = d1.local/app2
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request set-header X-Real-IP %[src] if { var(txn.pathID) path02 }
+    http-request lua.auth-request system_oauth_4180 /oauth2/auth if { var(txn.pathID) path02 }
+    http-request redirect location /oauth2/start?rd=%[path] if !{ path_beg /oauth2/ } !{ var(txn.auth_response_successful) -m bool } { var(txn.pathID) path02 }
+    http-request set-header X-Auth-Request-Email %[var(txn.auth_response_email)] if { var(txn.auth_response_email) -m found } { var(txn.pathID) path02 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {

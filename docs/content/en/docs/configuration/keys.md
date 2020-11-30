@@ -371,9 +371,9 @@ The table below describes all supported configuration keys.
 | [`nbproc-ssl`](#nbproc)                              | number of process                       | Global  | `0`                |
 | [`nbthread`](#nbthread)                              | number of threads                       | Global  | `2`                |
 | [`no-tls-redirect-locations`](#ssl-redirect)         | comma-separated list of URIs            | Global  | `/.well-known/acme-challenge` |
-| [`oauth`](#oauth)                                    | "oauth2_proxy"                          | Backend |                    |
-| [`oauth-headers`](#oauth)                            | `<header>:<var>,...`                    | Backend |                    |
-| [`oauth-uri-prefix`](#oauth)                         | URI prefix                              | Backend |                    |
+| [`oauth`](#oauth)                                    | "oauth2_proxy"                          | Path    |                    |
+| [`oauth-headers`](#oauth)                            | `<header>:<var>,...`                    | Path    |                    |
+| [`oauth-uri-prefix`](#oauth)                         | URI prefix                              | Path    |                    |
 | [`path-type`](#path-type)                            | path matching type                      | Host    | `begin`            |
 | [`path-type-order`](#path-type)                      | comma-separated path type list          | Global  | `exact,prefix,begin,regex` |
 | [`prometheus-port`](#bind-port)                      | port number                             | Global  |                    |
@@ -1563,11 +1563,11 @@ See also:
 
 ## OAuth
 
-| Configuration key | Scope     | Default | Since |
-|-------------------|-----------|---------|-------|
-| `oauth`           | `Backend` |         |       |
-| `oauth-headers`   | `Backend` |         |       |
-| `oauth-uri-prefix`| `Backend` |         |       |
+| Configuration key | Scope  | Default | Since |
+|-------------------|--------|---------|-------|
+| `oauth`           | `Path` |         |       |
+| `oauth-headers`   | `Path` |         |       |
+| `oauth-uri-prefix`| `Path` |         |       |
 
 Configure OAuth2 via Bitly's `oauth2_proxy`.
 

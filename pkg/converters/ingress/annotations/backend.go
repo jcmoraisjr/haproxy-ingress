@@ -525,51 +525,54 @@ var (
 )
 
 func (c *updater) buildBackendOAuth(d *backData) {
-	oauth := d.mapper.Get(ingtypes.BackOAuth)
-	if oauth.Source == nil {
-		return
-	}
-	if oauth.Value != "oauth2_proxy" {
-		c.logger.Warn("ignoring invalid oauth implementation '%s' on %v", oauth, oauth.Source)
-		return
-	}
-	external := c.haproxy.Global().External
-	if external.IsExternal() && !external.HasLua {
-		c.logger.Warn("oauth2_proxy on %v needs Lua socket, install Lua libraries and enable 'external-has-lua' global config", oauth.Source)
-		return
-	}
-	uriPrefix := "/oauth2"
-	headers := []string{"X-Auth-Request-Email:auth_response_email"}
-	if prefix := d.mapper.Get(ingtypes.BackOAuthURIPrefix); prefix.Source != nil {
-		uriPrefix = prefix.Value
-	}
-	h := d.mapper.Get(ingtypes.BackOAuthHeaders)
-	if h.Source != nil {
-		headers = strings.Split(h.Value, ",")
-	}
-	uriPrefix = strings.TrimRight(uriPrefix, "/")
-	namespace := oauth.Source.Namespace
-	backend := c.findBackend(namespace, uriPrefix)
-	if backend == nil {
-		c.logger.Error("path '%s' was not found on namespace '%s'", uriPrefix, namespace)
-		return
-	}
-	headersMap := make(map[string]string, len(headers))
-	for _, header := range headers {
-		if len(header) == 0 {
+	for _, path := range d.backend.Paths {
+		config := d.mapper.GetConfig(path.Link)
+		oauth := config.Get(ingtypes.BackOAuth)
+		if oauth.Source == nil {
 			continue
 		}
-		if !oauthHeaderRegex.MatchString(header) {
-			c.logger.Warn("invalid header format '%s' on %v", header, h.Source)
+		if oauth.Value != "oauth2_proxy" {
+			c.logger.Warn("ignoring invalid oauth implementation '%s' on %v", oauth, oauth.Source)
 			continue
 		}
-		h := strings.Split(header, ":")
-		headersMap[h[0]] = h[1]
+		external := c.haproxy.Global().External
+		if external.IsExternal() && !external.HasLua {
+			c.logger.Warn("oauth2_proxy on %v needs Lua socket, install Lua libraries and enable 'external-has-lua' global config", oauth.Source)
+			return
+		}
+		uriPrefix := "/oauth2"
+		headers := []string{"X-Auth-Request-Email:auth_response_email"}
+		if prefix := config.Get(ingtypes.BackOAuthURIPrefix); prefix.Source != nil {
+			uriPrefix = prefix.Value
+		}
+		h := config.Get(ingtypes.BackOAuthHeaders)
+		if h.Source != nil {
+			headers = strings.Split(h.Value, ",")
+		}
+		uriPrefix = strings.TrimRight(uriPrefix, "/")
+		namespace := oauth.Source.Namespace
+		backend := c.findBackend(namespace, uriPrefix)
+		if backend == nil {
+			c.logger.Error("path '%s' was not found on namespace '%s'", uriPrefix, namespace)
+			continue
+		}
+		headersMap := make(map[string]string, len(headers))
+		for _, header := range headers {
+			if len(header) == 0 {
+				continue
+			}
+			if !oauthHeaderRegex.MatchString(header) {
+				c.logger.Warn("invalid header format '%s' on %v", header, h.Source)
+				continue
+			}
+			h := strings.Split(header, ":")
+			headersMap[h[0]] = h[1]
+		}
+		path.OAuth.Impl = oauth.Value
+		path.OAuth.BackendName = backend.ID
+		path.OAuth.URIPrefix = uriPrefix
+		path.OAuth.Headers = headersMap
 	}
-	d.backend.OAuth.Impl = oauth.Value
-	d.backend.OAuth.BackendName = backend.ID
-	d.backend.OAuth.URIPrefix = uriPrefix
-	d.backend.OAuth.Headers = headersMap
 }
 
 func (c *updater) findBackend(namespace, uriPrefix string) *hatypes.HostBackend {
