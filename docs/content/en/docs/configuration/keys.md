@@ -26,7 +26,7 @@ is used as the default value if not overwritten elsewhere.
 
 A configuration key is used verbatim as the ConfigMap key name, without any prefix.
 The ConfigMap spec expects a string as the key value, so declare numbers and booleans
-as strings, HAProxy Ingress will convert it when needed.
+as strings, HAProxy Ingress will convert them when needed.
 
 # Ingress and services
 
@@ -56,7 +56,7 @@ overwrite the default value and the ConfigMap configuration.
 
 # Scope
 
-HAProxy Ingress configuration keys may be in one of three distinct scopes. A scope
+HAProxy Ingress configuration keys may be in one of four distinct scopes. A scope
 defines where a configuration key can be declared and how it interacts with ingress
 and service objects.
 
@@ -77,6 +77,10 @@ configuration key with distinct values are declared in distict ingress objects b
 to the same service or HAProxy backend. A backend configuration key declared in a
 service object overwrites the same configuration in an ingress object without
 conflicting.
+* Scope `Path`: Defines configuration keys that bind to the hostname and the HTTP path.
+Configuration keys of the Path scope can be declared in any ConfigMap as a default
+value, or as Ingress or Service annotation. Configuration keys of the Path scope
+never conflict.
 
 In the case of a conflict, the value of the ingress object which was created first
 will be used.
@@ -98,14 +102,14 @@ The table below describes all supported configuration keys.
 | [`agent-check-port`](#agent-check)                   | backend agent listen port               | Backend |                    |
 | [`agent-check-send`](#agent-check)                   | string to send upon agent connection    | Backend |                    |
 | [`app-root`](#app-root)                              | /url                                    | Host    |                    |
-| [`auth-realm`](#auth)                                | realm string                            | Backend |                    |
-| [`auth-secret`](#auth)                               | secret name                             | Backend |                    |
+| [`auth-realm`](#auth)                                | realm string                            | Path    |                    |
+| [`auth-secret`](#auth)                               | secret name                             | Path    |                    |
 | [`auth-tls-cert-header`](#auth-tls)                  | [true\|false]                           | Backend |                    |
 | [`auth-tls-error-page`](#auth-tls)                   | url                                     | Host    |                    |
 | [`auth-tls-secret`](#auth-tls)                       | namespace/secret name                   | Host    |                    |
 | [`auth-tls-strict`](#auth-tls)                       | [true\|false]                           | Host    |                    |
 | [`auth-tls-verify-client`](#auth-tls)                | [off\|optional\|on\|optional_no_ca]     | Host    |                    |
-| [`auth-type`](#auth)                                 | "basic"                                 | Backend |                    |
+| [`auth-type`](#auth)                                 | "basic"                                 | Path    |                    |
 | [`backend-check-interval`](#health-check)            | time with suffix                        | Backend | `2s`               |
 | [`backend-protocol`](#backend-protocol)              | [h1\|h2\|h1-ssl\|h2-ssl]                | Backend | `h1`               |
 | [`backend-server-naming`](#backend-server-naming)    | [sequence\|ip\|pod]                     | Backend | `sequence`         |
@@ -130,13 +134,13 @@ The table below describes all supported configuration keys.
 | [`config-frontend`](#configuration-snippet)          | multiline HAProxy frontend config       | Global  |                    |
 | [`config-global`](#configuration-snippet)            | multiline HAProxy global config         | Global  |                    |
 | [`cookie-key`](#affinity)                            | secret key                              | Global  | `Ingress`          |
-| [`cors-allow-credentials`](#cors)                    | [true\|false]                           | Backend |                    |
-| [`cors-allow-headers`](#cors)                        | headers list                            | Backend |                    |
-| [`cors-allow-methods`](#cors)                        | methods list                            | Backend |                    |
-| [`cors-allow-origin`](#cors)                         | URL                                     | Backend |                    |
-| [`cors-enable`](#cors)                               | [true\|false]                           | Backend |                    |
-| [`cors-expose-headers`](#cors)                       | headers                                 | Backend |                    |
-| [`cors-max-age`](#cors)                              | time (seconds)                          | Backend |                    |
+| [`cors-allow-credentials`](#cors)                    | [true\|false]                           | Path    |                    |
+| [`cors-allow-headers`](#cors)                        | headers list                            | Path    |                    |
+| [`cors-allow-methods`](#cors)                        | methods list                            | Path    |                    |
+| [`cors-allow-origin`](#cors)                         | URL                                     | Path    |                    |
+| [`cors-enable`](#cors)                               | [true\|false]                           | Path    |                    |
+| [`cors-expose-headers`](#cors)                       | headers                                 | Path    |                    |
+| [`cors-max-age`](#cors)                              | time (seconds)                          | Path    |                    |
 | [`cpu-map`](#cpu-map)                                | haproxy CPU Map format                  | Global  |                    |
 | [`dns-accepted-payload-size`](#dns-resolvers)        | number                                  | Global  | `8192`             |
 | [`dns-cluster-domain`](#dns-resolvers)               | cluster name                            | Global  | `cluster.local`    |
@@ -157,10 +161,10 @@ The table below describes all supported configuration keys.
 | [`health-check-rise-count`](#health-check)           | number of successes                     | Backend |                    |
 | [`health-check-uri`](#health-check)                  | uri for http health checks              | Backend |                    |
 | [`healthz-port`](#bind-port)                         | port number                             | Global  | `10253`            |
-| [`hsts`](#hsts)                                      | [true\|false]                           | Backend | `true`             |
-| [`hsts-include-subdomains`](#hsts)                   | [true\|false]                           | Backend | `false`            |
-| [`hsts-max-age`](#hsts)                              | number of seconds                       | Backend | `15768000`         |
-| [`hsts-preload`](#hsts)                              | [true\|false]                           | Backend | `false`            |
+| [`hsts`](#hsts)                                      | [true\|false]                           | Path    | `true`             |
+| [`hsts-include-subdomains`](#hsts)                   | [true\|false]                           | Path    | `false`            |
+| [`hsts-max-age`](#hsts)                              | number of seconds                       | Path    | `15768000`         |
+| [`hsts-preload`](#hsts)                              | [true\|false]                           | Path    | `false`            |
 | [`http-log-format`](#log-format)                     | http log format                         | Global  | HAProxy default log format |
 | [`http-port`](#bind-port)                            | port number                             | Global  | `80`               |
 | [`https-log-format`](#log-format)                    | https(tcp) log format\|`default`        | Global  | do not log         |
@@ -186,9 +190,9 @@ The table below describes all supported configuration keys.
 | [`oauth-uri-prefix`](#oauth)                         | URI prefix                              | Backend |                    |
 | [`path-type`](#path-type)                            | path matching type                      | Host    | `begin`            |
 | [`prometheus-port`](#bind-port)                      | port number                             | Global  |                    |
-| [`proxy-body-size`](#proxy-body-size)                | size (bytes)                            | Backend | unlimited          |
+| [`proxy-body-size`](#proxy-body-size)                | size (bytes)                            | Path    | unlimited          |
 | [`proxy-protocol`](#proxy-protocol)                  | [v1\|v2\|v2-ssl\|v2-ssl-cn]             | Backend |                    |
-| [`rewrite-target`](#rewrite-target)                  | path string                             | Backend |                    |
+| [`rewrite-target`](#rewrite-target)                  | path string                             | Path    |                    |
 | [`secure-backends`](#secure-backend)                 | [true\|false]                           | Backend |                    |
 | [`secure-crt-secret`](#secure-backend)               | secret name                             | Backend |                    |
 | [`secure-verify-ca-secret`](#secure-backend)         | secret name                             | Backend |                    |
@@ -216,7 +220,7 @@ The table below describes all supported configuration keys.
 | [`ssl-options-host`](#ssl-options)                   | space-separated list                    | Host    | [see description](#ssl-options) |
 | [`ssl-passthrough`](#ssl-passthrough)                | [true\|false]                           | Host    |                    |
 | [`ssl-passthrough-http-port`](#ssl-passthrough)      | backend port                            | Host    |                    |
-| [`ssl-redirect`](#ssl-redirect)                      | [true\|false]                           | Backend | `true`             |
+| [`ssl-redirect`](#ssl-redirect)                      | [true\|false]                           | Path    | `true`             |
 | [`ssl-redirect-code`](#ssl-redirect)                 | http status code                        | Global  | `302`              |
 | [`stats-auth`](#stats)                               | user:passwd                             | Global  | no auth            |
 | [`stats-port`](#stats)                               | port number                             | Global  | `1936`             |
@@ -247,9 +251,9 @@ The table below describes all supported configuration keys.
 | [`use-proxy-protocol`](#proxy-protocol)              | [true\|false]                           | Global  | `false`            |
 | [`use-resolver`](#dns-resolvers)                     | resolver name                           | Backend |                    |
 | [`var-namespace`](#var-namespace)                    | [true\|false]                           | Host    | `false`            |
-| [`waf`](#waf)                                        | "modsecurity"                           | Backend |                    |
-| [`waf-mode`](#waf)                                   | [deny\|detect]                          | Backend | `deny` (if waf is set) |
-| [`whitelist-source-range`](#whitelist)               | Comma-separated IPs or CIDRs            | Backend |                    |
+| [`waf`](#waf)                                        | "modsecurity"                           | Path    |                    |
+| [`waf-mode`](#waf)                                   | [deny\|detect]                          | Path    | `deny` (if waf is set) |
+| [`whitelist-source-range`](#whitelist)               | Comma-separated IPs or CIDRs            | Path    |                    |
 
 ---
 
@@ -434,11 +438,11 @@ context path, so it needs to be declared in the same Ingress that configures it.
 
 ## Auth
 
-| Configuration key | Scope     | Default   | Since  |
-|-------------------|-----------|-----------|--------|
-| `auth-realm`      | `Backend` | localhost |        |
-| `auth-secret`     | `Backend` |           |        |
-| `auth-type`       | `Backend` |           |        |
+| Configuration key | Scope   | Default   | Since  |
+|-------------------|---------|-----------|--------|
+| `auth-realm`      | `Path`  | localhost |        |
+| `auth-secret`     | `Path`  |           |        |
+| `auth-type`       | `Path`  |           |        |
 
 Configures authentication options.
 
@@ -826,15 +830,15 @@ See also:
 
 ## CORS
 
-| Configuration key        | Scope     | Default      | Since |
-|--------------------------|-----------|--------------|-------|
-| `cors-allow-credentials` | `Backend` | `true`       |       |
-| `cors-allow-headers`     | `Backend` | *see below*  |       |
-| `cors-allow-methods`     | `Backend` | *see below*  |       |
-| `cors-allow-origin`      | `Backend` | `*`          |       |
-| `cors-enable`            | `Backend` | `false`      |       |
-| `cors-expose-headers`    | `Backend` |              | v0.8  |
-| `cors-max-age`           | `Backend` | `86400`      |       |
+| Configuration key        | Scope  | Default      | Since |
+|--------------------------|--------|--------------|-------|
+| `cors-allow-credentials` | `Path` | `true`       |       |
+| `cors-allow-headers`     | `Path` | *see below*  |       |
+| `cors-allow-methods`     | `Path` | *see below*  |       |
+| `cors-allow-origin`      | `Path` | `*`          |       |
+| `cors-enable`            | `Path` | `false`      |       |
+| `cors-expose-headers`    | `Path` |              | v0.8  |
+| `cors-max-age`           | `Path` | `86400`      |       |
 
 Add CORS headers on OPTIONS http command (preflight) and reponses.
 
@@ -1110,12 +1114,12 @@ See also:
 
 ## HSTS
 
-| Configuration key         | Scope     | Default    | Since |
-|---------------------------|-----------|------------|-------|
-| `hsts`                    | `Backend` | `true`     |       |
-| `hsts-include-subdomains` | `Backend` | `false`    |       |
-| `hsts-max-age`            | `Backend` | `15768000` |       |
-| `hsts-preload`            | `Backend` | `false`    |       |
+| Configuration key         | Scope  | Default    | Since |
+|---------------------------|--------|------------|-------|
+| `hsts`                    | `Path` | `true`     |       |
+| `hsts-include-subdomains` | `Path` | `false`    |       |
+| `hsts-max-age`            | `Path` | `15768000` |       |
+| `hsts-preload`            | `Path` | `false`    |       |
 
 Configure HSTS - HTTP Strict Transport Security. The following keys are supported:
 
@@ -1372,9 +1376,9 @@ Request and match examples:
 
 ## Proxy body size
 
-| Configuration key | Scope     | Default | Since |
-|-------------------|-----------|---------|-------|
-| `proxy-body-size` | `Backend` |         |       |
+| Configuration key | Scope  | Default | Since |
+|-------------------|--------|---------|-------|
+| `proxy-body-size` | `Path` |         |       |
 
 Define the maximum number of bytes HAProxy will allow on the body of requests. Default is
 to not check, which means requests of unlimited size. This limit can be changed per ingress
@@ -1416,9 +1420,9 @@ See also:
 
 ## Rewrite target
 
-| Configuration key | Scope     | Default | Since |
-|-------------------|-----------|---------|-------|
-| `rewrite-target`  | `Backend` |         |       |
+| Configuration key | Scope  | Default | Since |
+|-------------------|--------|---------|-------|
+| `rewrite-target`  | `Path` |         |       |
 
 Configures how URI of the requests should be rewritten before send the request to the backend.
 The following table shows some examples:
@@ -1669,11 +1673,11 @@ If using SSL passthrough, only root `/` path is supported.
 
 ## SSL redirect
 
-| Configuration key           | Scope     | Default                       | Since |
-|-----------------------------|-----------|-------------------------------|-------|
-| `no-tls-redirect-locations` | `Global`  | `/.well-known/acme-challenge` |       |
-| `ssl-redirect`              | `Backend` | `true`                        |       |
-| `ssl-redirect-code`         | `Global`  | `302`                         | v0.10 |
+| Configuration key           | Scope    | Default                       | Since |
+|-----------------------------|----------|-------------------------------|-------|
+| `no-tls-redirect-locations` | `Global` | `/.well-known/acme-challenge` |       |
+| `ssl-redirect`              | `Path`   | `true`                        |       |
+| `ssl-redirect-code`         | `Global` | `302`                         | v0.10 |
 
 Configures if an encripted connection should be used.
 
@@ -1860,10 +1864,10 @@ See also:
 
 ## WAF
 
-| Configuration key | Scope     | Default | Since |
-|-------------------|-----------|---------|-------|
-| `waf`             | `Backend` |         |       |
-| `waf-mode`        | `Backend` | `deny`  | v0.9  |
+| Configuration key | Scope  | Default | Since |
+|-------------------|--------|---------|-------|
+| `waf`             | `Path` |         |       |
+| `waf-mode`        | `Path` | `deny`  | v0.9  |
 
 Defines which web application firewall (WAF) implementation should be used
 to validate requests. Currently the only supported value is `modsecurity`.
@@ -1881,9 +1885,9 @@ See also:
 
 ## Whitelist
 
-| Configuration key        | Scope     | Default | Since |
-|--------------------------|-----------|---------|-------|
-| `whitelist-source-range` | `Backend` |         |       |
+| Configuration key        | Scope  | Default | Since |
+|--------------------------|--------|---------|-------|
+| `whitelist-source-range` | `Path` |         |       |
 
 Defines a comma-separated list of source IPs or CIDRs allowed to connect. If not
 declared, any source IP is allowed. If declared, requests with source IP not
