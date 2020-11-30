@@ -535,6 +535,7 @@ See also:
 | `session-cookie-keywords`       | `Backend` | `indirect nocache httponly` | v0.11 |
 | `session-cookie-name`           | `Backend` | `INGRESSCOOKIE`             |       |
 | `session-cookie-preserve`       | `Backend` | `false`                     | v0.12 |
+| `session-cookie-same-site`      | `Backend` | `false`                     | v0.12 |
 | `session-cookie-shared`         | `Backend` | `false`                     | v0.8  |
 | `session-cookie-strategy`       | `Backend` | `insert`                    |       |
 | `session-cookie-value-strategy` | `Backend` | `server-name`               | v0.12 |
@@ -547,6 +548,7 @@ Configure if HAProxy should maintain client requests to the same backend server.
 * `session-cookie-keywords`: additional options to the `cookie` option like `nocache`, `httponly`. For the sake of backwards compatibility the default is `indirect nocache httponly` if not declared and `strategy` is `insert`.
 * `session-cookie-name`: the name of the cookie. `INGRESSCOOKIE` is the default value if not declared.
 * `session-cookie-preserve`: indicates whether the session cookie will be set to `preserve` mode. If this mode is enabled, haproxy will allow backend servers to use a `Set-Cookie` HTTP header to emit their own persistence cookie value, meaning the backend servers have knowledge of which cookie value should route to which server. Since the cookie value is tightly coupled with a particular backend server in this scenario, this mode will cause dynamic updating to understand that it must keep the same cookie value associated with the same backend server. If this is disabled, dynamic updating is free to assign servers in a way that can make their cookie value no longer matching.
+* `session-cookie-same-site`: if `true`, adds the `SameSite=None; Secure` attributes, which configures the browser to send the persistence cookie with both cross-site and same-site requests. The default value is `false`, which means only same-site requests will send the persistence cookie.
 * `session-cookie-shared`: defines if the persistence cookie should be shared between all domains that uses this backend. Defaults to `false`. If `true` the `Set-Cookie` response will declare all the domains that shares this backend, indicating to the HTTP agent that all of them should use the same backend server.
 * `session-cookie-strategy`: the cookie strategy to use (insert, rewrite, prefix). `insert` is the default value if not declared.
 * `session-cookie-value-strategy`: the strategy to use to calculate the cookie value of a server (`server-name`, `pod-uid`). `server-name` is the default if not declared, and indicates that the cookie will be set based on the name defined in `backend-server-naming`. `pod-uid` indicates that the cookie will be set to the `UID` of the pod running the target server.
@@ -559,6 +561,7 @@ limitation was removed on v0.6.
 
 See also:
 
+* https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4-cookie
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-cookie
 * https://www.haproxy.com/blog/load-balancing-affinity-persistence-sticky-sessions-what-you-need-to-know/
