@@ -224,6 +224,11 @@ func (c *config) AddUserlist(name string, users []hatypes.User) *hatypes.Userlis
 }
 
 func (c *config) FindUserlist(name string) *hatypes.Userlist {
+	for _, userlist := range c.userlists {
+		if userlist.Name == name {
+			return userlist
+		}
+	}
 	return nil
 }
 
