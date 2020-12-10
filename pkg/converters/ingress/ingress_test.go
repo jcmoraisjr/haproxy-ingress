@@ -585,6 +585,21 @@ func TestSyncInvalidTLS(t *testing.T) {
 WARN using default certificate due to an error reading secret 'tls-invalid' on ingress 'default/echo': secret not found: 'default/tls-invalid'`)
 }
 
+func TestSyncTLSSecretWithoutHost(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	c.createSvc1Auto()
+	c.createSecretTLS1("default/tls-echo")
+	c.Sync(c.createIngTLS2("default/echo", "tls-echo:echo.example.com"))
+
+	c.compareConfigFront(`
+- hostname: echo.example.com
+  paths: []
+  tls:
+    tlsfilename: /tls/default/tls-echo.pem`)
+}
+
 func TestSyncIngressClass(t *testing.T) {
 	apiGroup1 := "some.io"
 	testCases := []struct {
@@ -1981,6 +1996,26 @@ func (c *testConfig) createIngTLS1(name, hostname, path, service, secretHostName
 		})
 	}
 	ing := c.createIng1(name, hostname, path, service)
+	ing.Spec.TLS = tls
+	return ing
+}
+
+func (c *testConfig) createIngTLS2(name, secretHostName string) *networking.Ingress {
+	tls := []networking.IngressTLS{}
+	for _, secret := range strings.Split(secretHostName, ";") {
+		ssecret := strings.Split(secret, ":")
+		hosts := []string{}
+		if len(ssecret) > 1 {
+			for _, host := range strings.Split(ssecret[1], ",") {
+				hosts = append(hosts, host)
+			}
+		}
+		tls = append(tls, networking.IngressTLS{
+			Hosts:      hosts,
+			SecretName: ssecret[0],
+		})
+	}
+	ing := c.createIng3(name)
 	ing.Spec.TLS = tls
 	return ing
 }
