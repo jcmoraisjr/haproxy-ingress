@@ -352,8 +352,10 @@ func (l *listers) createConfigMapLister(informer informersv1.ConfigMapInformer) 
 			}
 		},
 		UpdateFunc: func(old, cur interface{}) {
-			if !reflect.DeepEqual(old, cur) {
-				if l.events.IsValidConfigMap(cur.(*api.ConfigMap)) {
+			curCM := cur.(*api.ConfigMap)
+			if l.events.IsValidConfigMap(curCM) {
+				oldCM := old.(*api.ConfigMap)
+				if !reflect.DeepEqual(oldCM.Data, curCM.Data) {
 					l.events.Notify(old, cur)
 				}
 			}
