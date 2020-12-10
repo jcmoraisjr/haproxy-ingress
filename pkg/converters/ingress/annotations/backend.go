@@ -67,6 +67,7 @@ func (c *updater) buildBackendAffinity(d *backData) {
 	d.backend.Cookie.Keywords = keywordsValue
 	d.backend.Cookie.Dynamic = d.mapper.Get(ingtypes.BackSessionCookieDynamic).Bool()
 	d.backend.Cookie.Preserve = d.mapper.Get(ingtypes.BackSessionCookiePreserve).Bool()
+	d.backend.Cookie.SameSite = d.mapper.Get(ingtypes.BackSessionCookieSameSite).Bool()
 	d.backend.Cookie.Shared = d.mapper.Get(ingtypes.BackSessionCookieShared).Bool()
 
 	cookieStrategy := d.mapper.Get(ingtypes.BackSessionCookieValue)

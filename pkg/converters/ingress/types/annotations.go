@@ -120,6 +120,7 @@ const (
 	BackSessionCookieKeywords  = "session-cookie-keywords"
 	BackSessionCookieName      = "session-cookie-name"
 	BackSessionCookiePreserve  = "session-cookie-preserve"
+	BackSessionCookieSameSite  = "session-cookie-same-site"
 	BackSessionCookieShared    = "session-cookie-shared"
 	BackSessionCookieStrategy  = "session-cookie-strategy"
 	BackSessionCookieValue     = "session-cookie-value-strategy"

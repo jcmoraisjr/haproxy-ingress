@@ -87,6 +87,16 @@ func TestBackends(t *testing.T) {
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.Cookie.Name = "Ingress"
+				b.Cookie.Strategy = "insert"
+				b.Cookie.Keywords = "indirect nocache httponly"
+				b.Cookie.SameSite = true
+			},
+			expected: `
+    cookie Ingress insert attr SameSite=None secure indirect nocache httponly`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				config := hatypes.Cors{
 					Enabled:      true,
 					AllowOrigin:  "*",
