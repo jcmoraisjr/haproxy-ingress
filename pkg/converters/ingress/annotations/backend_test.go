@@ -1098,158 +1098,236 @@ func TestHSTS(t *testing.T) {
 func TestOAuth(t *testing.T) {
 	testCases := []struct {
 		annDefault map[string]string
-		ann        map[string]string
+		ann        map[string]map[string]string
 		external   bool
 		haslua     bool
 		backend    string
-		oauthExp   hatypes.OAuthConfig
+		oauthExp   map[string]hatypes.OAuthConfig
 		logging    string
 	}{
 		// 0
 		{
-			ann:      map[string]string{},
-			oauthExp: hatypes.OAuthConfig{},
+			ann:      map[string]map[string]string{},
+			oauthExp: map[string]hatypes.OAuthConfig{},
 		},
 		// 1
 		{
-			ann: map[string]string{
-				ingtypes.BackOAuth: "none",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackOAuth: "none",
+				},
+			},
+			oauthExp: map[string]hatypes.OAuthConfig{
+				"/": {},
 			},
 			logging: "WARN ignoring invalid oauth implementation 'none' on ingress 'default/ing1'",
 		},
 		// 2
 		{
-			ann: map[string]string{
-				ingtypes.BackOAuth: "oauth2_proxy",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackOAuth: "oauth2_proxy",
+				},
+			},
+			oauthExp: map[string]hatypes.OAuthConfig{
+				"/": {},
 			},
 			logging: "ERROR path '/oauth2' was not found on namespace 'default'",
 		},
 		// 3
 		{
-			ann: map[string]string{
-				ingtypes.BackOAuth: "oauth2_proxy",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackOAuth: "oauth2_proxy",
+				},
 			},
 			backend: "default:back:/oauth2",
-			oauthExp: hatypes.OAuthConfig{
-				Impl:        "oauth2_proxy",
-				BackendName: "default_back_8080",
-				URIPrefix:   "/oauth2",
-				Headers:     map[string]string{"X-Auth-Request-Email": "auth_response_email"},
+			oauthExp: map[string]hatypes.OAuthConfig{
+				"/": {
+					Impl:        "oauth2_proxy",
+					BackendName: "default_back_8080",
+					URIPrefix:   "/oauth2",
+					Headers:     map[string]string{"X-Auth-Request-Email": "auth_response_email"},
+				},
 			},
 		},
 		// 4
 		{
-			ann: map[string]string{
-				ingtypes.BackOAuth:          "oauth2_proxy",
-				ingtypes.BackOAuthURIPrefix: "/auth",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackOAuth:          "oauth2_proxy",
+					ingtypes.BackOAuthURIPrefix: "/auth",
+				},
 			},
 			backend: "default:back:/auth",
-			oauthExp: hatypes.OAuthConfig{
-				Impl:        "oauth2_proxy",
-				BackendName: "default_back_8080",
-				URIPrefix:   "/auth",
-				Headers:     map[string]string{"X-Auth-Request-Email": "auth_response_email"},
+			oauthExp: map[string]hatypes.OAuthConfig{
+				"/": {
+					Impl:        "oauth2_proxy",
+					BackendName: "default_back_8080",
+					URIPrefix:   "/auth",
+					Headers:     map[string]string{"X-Auth-Request-Email": "auth_response_email"},
+				},
 			},
 		},
 		// 5
 		{
-			ann: map[string]string{
-				ingtypes.BackOAuth:        "oauth2_proxy",
-				ingtypes.BackOAuthHeaders: "X-Auth-New:attr_from_lua",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackOAuth:        "oauth2_proxy",
+					ingtypes.BackOAuthHeaders: "X-Auth-New:attr_from_lua",
+				},
 			},
 			backend: "default:back:/oauth2",
-			oauthExp: hatypes.OAuthConfig{
-				Impl:        "oauth2_proxy",
-				BackendName: "default_back_8080",
-				URIPrefix:   "/oauth2",
-				Headers:     map[string]string{"X-Auth-New": "attr_from_lua"},
+			oauthExp: map[string]hatypes.OAuthConfig{
+				"/": {
+					Impl:        "oauth2_proxy",
+					BackendName: "default_back_8080",
+					URIPrefix:   "/oauth2",
+					Headers:     map[string]string{"X-Auth-New": "attr_from_lua"},
+				},
 			},
 		},
 		// 6
 		{
-			ann: map[string]string{
-				ingtypes.BackOAuth:        "oauth2_proxy",
-				ingtypes.BackOAuthHeaders: "space before:attr",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackOAuth:        "oauth2_proxy",
+					ingtypes.BackOAuthHeaders: "space before:attr",
+				},
 			},
 			backend: "default:back:/oauth2",
-			oauthExp: hatypes.OAuthConfig{
-				Impl:        "oauth2_proxy",
-				BackendName: "default_back_8080",
-				URIPrefix:   "/oauth2",
-				Headers:     map[string]string{},
+			oauthExp: map[string]hatypes.OAuthConfig{
+				"/": {
+					Impl:        "oauth2_proxy",
+					BackendName: "default_back_8080",
+					URIPrefix:   "/oauth2",
+					Headers:     map[string]string{},
+				},
 			},
 			logging: "WARN invalid header format 'space before:attr' on ingress 'default/ing1'",
 		},
 		// 7
 		{
-			ann: map[string]string{
-				ingtypes.BackOAuth:        "oauth2_proxy",
-				ingtypes.BackOAuthHeaders: "no-colon",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackOAuth:        "oauth2_proxy",
+					ingtypes.BackOAuthHeaders: "no-colon",
+				},
 			},
 			backend: "default:back:/oauth2",
-			oauthExp: hatypes.OAuthConfig{
-				Impl:        "oauth2_proxy",
-				BackendName: "default_back_8080",
-				URIPrefix:   "/oauth2",
-				Headers:     map[string]string{},
+			oauthExp: map[string]hatypes.OAuthConfig{
+				"/": {
+					Impl:        "oauth2_proxy",
+					BackendName: "default_back_8080",
+					URIPrefix:   "/oauth2",
+					Headers:     map[string]string{},
+				},
 			},
 			logging: "WARN invalid header format 'no-colon' on ingress 'default/ing1'",
 		},
 		// 8
 		{
-			ann: map[string]string{
-				ingtypes.BackOAuth:        "oauth2_proxy",
-				ingtypes.BackOAuthHeaders: "more:colons:unsupported",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackOAuth:        "oauth2_proxy",
+					ingtypes.BackOAuthHeaders: "more:colons:unsupported",
+				},
 			},
 			backend: "default:back:/oauth2",
-			oauthExp: hatypes.OAuthConfig{
-				Impl:        "oauth2_proxy",
-				BackendName: "default_back_8080",
-				URIPrefix:   "/oauth2",
-				Headers:     map[string]string{},
+			oauthExp: map[string]hatypes.OAuthConfig{
+				"/": {
+					Impl:        "oauth2_proxy",
+					BackendName: "default_back_8080",
+					URIPrefix:   "/oauth2",
+					Headers:     map[string]string{},
+				},
 			},
 			logging: "WARN invalid header format 'more:colons:unsupported' on ingress 'default/ing1'",
 		},
 		// 9
 		{
-			ann: map[string]string{
-				ingtypes.BackOAuth:        "oauth2_proxy",
-				ingtypes.BackOAuthHeaders: ",,X-Auth-Request-Email:auth_response_email,,X-Auth-New:attr_from_lua,",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackOAuth:        "oauth2_proxy",
+					ingtypes.BackOAuthHeaders: ",,X-Auth-Request-Email:auth_response_email,,X-Auth-New:attr_from_lua,",
+				},
 			},
 			backend: "default:back:/oauth2",
-			oauthExp: hatypes.OAuthConfig{
-				Impl:        "oauth2_proxy",
-				BackendName: "default_back_8080",
-				URIPrefix:   "/oauth2",
-				Headers: map[string]string{
-					"X-Auth-Request-Email": "auth_response_email",
-					"X-Auth-New":           "attr_from_lua",
+			oauthExp: map[string]hatypes.OAuthConfig{
+				"/": {
+					Impl:        "oauth2_proxy",
+					BackendName: "default_back_8080",
+					URIPrefix:   "/oauth2",
+					Headers: map[string]string{
+						"X-Auth-Request-Email": "auth_response_email",
+						"X-Auth-New":           "attr_from_lua",
+					},
 				},
 			},
 		},
 		// 10
 		{
-			ann: map[string]string{
-				ingtypes.BackOAuth: "oauth2_proxy",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackOAuth: "oauth2_proxy",
+				},
+				"/app": {
+					ingtypes.BackOAuth: "oauth2_proxy",
+				},
 			},
 			external: true,
 			backend:  "default:back:/oauth2",
-			oauthExp: hatypes.OAuthConfig{},
-			logging:  "WARN oauth2_proxy on ingress 'default/ing1' needs Lua socket, install Lua libraries and enable 'external-has-lua' global config",
+			oauthExp: map[string]hatypes.OAuthConfig{
+				"/":    {},
+				"/app": {},
+			},
+			logging: "WARN oauth2_proxy on ingress 'default/ing1' needs Lua socket, install Lua libraries and enable 'external-has-lua' global config",
 		},
 		// 11
 		{
-			ann: map[string]string{
-				ingtypes.BackOAuth: "oauth2_proxy",
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackOAuth: "oauth2_proxy",
+				},
+				"/app": {
+					ingtypes.BackOAuth: "oauth2_proxy",
+				},
 			},
 			external: true,
 			haslua:   true,
 			backend:  "default:back:/oauth2",
-			oauthExp: hatypes.OAuthConfig{
-				Impl:        "oauth2_proxy",
-				BackendName: "default_back_8080",
-				URIPrefix:   "/oauth2",
-				Headers:     map[string]string{"X-Auth-Request-Email": "auth_response_email"},
+			oauthExp: map[string]hatypes.OAuthConfig{
+				"/": {
+					Impl:        "oauth2_proxy",
+					BackendName: "default_back_8080",
+					URIPrefix:   "/oauth2",
+					Headers:     map[string]string{"X-Auth-Request-Email": "auth_response_email"},
+				},
+				"/app": {
+					Impl:        "oauth2_proxy",
+					BackendName: "default_back_8080",
+					URIPrefix:   "/oauth2",
+					Headers:     map[string]string{"X-Auth-Request-Email": "auth_response_email"},
+				},
+			},
+		},
+		// 12
+		{
+			ann: map[string]map[string]string{
+				"/": {},
+				"/app": {
+					ingtypes.BackOAuth: "oauth2_proxy",
+				},
+			},
+			backend: "default:back:/oauth2",
+			oauthExp: map[string]hatypes.OAuthConfig{
+				"/": {},
+				"/app": {
+					Impl:        "oauth2_proxy",
+					BackendName: "default_back_8080",
+					URIPrefix:   "/oauth2",
+					Headers:     map[string]string{"X-Auth-Request-Email": "auth_response_email"},
+				},
 			},
 		},
 	}
@@ -1261,7 +1339,7 @@ func TestOAuth(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		d := c.createBackendData("default/app", source, test.ann, test.annDefault)
+		d := c.createBackendMappingData("default/app", source, test.annDefault, test.ann, []string{})
 		if test.external {
 			c.haproxy.Global().External.MasterSocket = "/tmp/master.sock"
 		}
@@ -1272,7 +1350,11 @@ func TestOAuth(t *testing.T) {
 			c.haproxy.Hosts().AcquireHost("app.local").AddPath(backend, b[2], hatypes.MatchBegin)
 		}
 		c.createUpdater().buildBackendOAuth(d)
-		c.compareObjects("oauth", i, d.backend.OAuth, test.oauthExp)
+		actual := map[string]hatypes.OAuthConfig{}
+		for _, path := range d.backend.Paths {
+			actual[path.Path()] = path.OAuth
+		}
+		c.compareObjects("oauth", i, actual, test.oauthExp)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}

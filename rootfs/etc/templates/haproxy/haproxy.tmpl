@@ -548,14 +548,20 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $backend.OAuth.Impl }}
-{{- $oauth := $backend.OAuth }}
+{{- $oauthCfg := $backend.PathConfig "OAuth" }}
+{{- range $i, $oauth := $oauthCfg.Items }}
+{{- range $pathIDs := $oauthCfg.PathIDs $i }}
 {{- if eq $oauth.Impl "oauth2_proxy" }}
     http-request set-header X-Real-IP %[src]
+        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
     http-request lua.auth-request {{ $oauth.BackendName }} {{ $oauth.URIPrefix }}/auth
+        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
     http-request redirect location {{ $oauth.URIPrefix }}/start?rd=%[path] if !{ path_beg {{ $oauth.URIPrefix }}/ } !{ var(txn.auth_response_successful) -m bool }
+        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
 {{- range $header, $attr := $oauth.Headers }}
     http-request set-header {{ $header }} %[var(txn.{{ $attr }})] if { var(txn.{{ $attr }}) -m found }
+        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

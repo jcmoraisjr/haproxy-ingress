@@ -489,7 +489,6 @@ type Backend struct {
 	HealthCheck      HealthCheck
 	Limit            BackendLimit
 	ModeTCP          bool
-	OAuth            OAuthConfig
 	Resolver         string
 	Server           ServerConfig
 	Timeout          BackendTimeoutConfig
@@ -541,6 +540,7 @@ type BackendPath struct {
 	Cors          Cors
 	HSTS          HSTS
 	MaxBodySize   int64
+	OAuth         OAuthConfig
 	RewriteURL    string
 	SSLRedirect   bool
 	WAF           WAF
