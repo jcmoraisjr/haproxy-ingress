@@ -234,6 +234,14 @@ Fixes and improvements since [v0.11-beta.3](#v011-beta3):
 * Improve certificate validation of acme signer [#689](https://github.com/jcmoraisjr/haproxy-ingress/pull/689) (jcmoraisjr)
 * Update haproxy from 2.1.9 to 2.1.10 [9763c63](https://github.com/jcmoraisjr/haproxy-ingress/commit/9763c635d73dc3c853223304902b29ae3065cb32) (Joao Morais)
 
+## v0.10.3
+
+Fixes and improvements since [v0.10.2](#v0102):
+
+* Use default certificate only if provided SNI isn't found [#700](https://github.com/jcmoraisjr/haproxy-ingress/pull/700) (jcmoraisjr)
+* Add path scope [#705](https://github.com/jcmoraisjr/haproxy-ingress/pull/705) (jcmoraisjr)
+* Fix duplication of userlist [#701](https://github.com/jcmoraisjr/haproxy-ingress/pull/701) (jcmoraisjr)
+
 ## v0.10.2
 
 Fixes and improvements since [v0.10.1](#v0101):
