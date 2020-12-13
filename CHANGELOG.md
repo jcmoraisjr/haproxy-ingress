@@ -85,6 +85,26 @@ Fixes:
 * Allow signer to work with wildcard dns certs [#695](https://github.com/jcmoraisjr/haproxy-ingress/pull/695) (pbabilas)
 * Improve certificate validation of acme signer [#689](https://github.com/jcmoraisjr/haproxy-ingress/pull/689) (jcmoraisjr)
 
+**v0.12-snapshot.3**
+
+New features and improvements:
+
+* Add SameSite cookie attribute [#707](https://github.com/jcmoraisjr/haproxy-ingress/pull/707) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/keys/#affinity)
+  * Configuration keys:
+    * `session-cookie-same-site`
+* Independently configure rules and TLS [#702](https://github.com/jcmoraisjr/haproxy-ingress/pull/702) (jcmoraisjr)
+* Change oauth2 to path scope [#704](https://github.com/jcmoraisjr/haproxy-ingress/pull/704) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/keys/#oauth)
+* Update haproxy from 2.2.5 to 2.2.6 [b34edd0](https://github.com/jcmoraisjr/haproxy-ingress/commit/b34edd0dfb3bcf08552885df4d8904973bb8a2dc) (Joao Morais)
+
+Fixes:
+
+* Use default certificate only if provided SNI isn't found [#700](https://github.com/jcmoraisjr/haproxy-ingress/pull/700) (jcmoraisjr)
+* Only notifies ConfigMap updates if data changes [#703](https://github.com/jcmoraisjr/haproxy-ingress/pull/703) (jcmoraisjr)
+
+Docs:
+
+* Add path scope [#705](https://github.com/jcmoraisjr/haproxy-ingress/pull/705) (jcmoraisjr)
+
 ## v0.11.1
 
 Fixes and improvements since [v0.11](#v011):
