@@ -85,6 +85,12 @@ Fixes:
 * Allow signer to work with wildcard dns certs [#695](https://github.com/jcmoraisjr/haproxy-ingress/pull/695) (pbabilas)
 * Improve certificate validation of acme signer [#689](https://github.com/jcmoraisjr/haproxy-ingress/pull/689) (jcmoraisjr)
 
+## v0.11.1
+
+Fixes and improvements since [v0.11](#v011):
+
+* Use default certificate only if provided SNI isn't found [#700](https://github.com/jcmoraisjr/haproxy-ingress/pull/700) (jcmoraisjr)
+
 ## v0.11
 
 **Highlights of this version**
