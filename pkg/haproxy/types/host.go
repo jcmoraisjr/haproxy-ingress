@@ -85,6 +85,12 @@ func (h *Hosts) Shrink() {
 func (h *Hosts) Commit() {
 	h.itemsAdd = map[string]*Host{}
 	h.itemsDel = map[string]*Host{}
+	h.hasCommit = true
+}
+
+// HasCommit ...
+func (h *Hosts) HasCommit() bool {
+	return h.hasCommit
 }
 
 // Changed ...
