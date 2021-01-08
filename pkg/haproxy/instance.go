@@ -397,6 +397,12 @@ func (i *instance) updateCertExpiring() {
 	// TODO move to dynupdate when dynamic crt update is implemented
 	hostsAdd := i.config.Hosts().ItemsAdd()
 	hostsDel := i.config.Hosts().ItemsDel()
+	if !i.config.Hosts().HasCommit() {
+		// TODO the time between this reset and finishing to repopulate the gauge would lead
+		// to incomplete data scraped by Prometheus. This however happens only when a full parsing
+		// happens - edit globals, edit default crt, invalid data comming from lister events
+		i.metrics.ClearCertExpire()
+	}
 	for hostname, oldHost := range hostsDel {
 		if oldHost.TLS.HasTLS() {
 			curHost, found := hostsAdd[hostname]

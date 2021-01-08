@@ -306,6 +306,7 @@ type Hosts struct {
 	items, itemsAdd, itemsDel map[string]*Host
 	//
 	sslPassthroughCount int
+	hasCommit           bool
 }
 
 // Host ...
