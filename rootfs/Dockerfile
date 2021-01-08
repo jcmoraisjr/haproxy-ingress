@@ -17,7 +17,8 @@ RUN apk --no-cache add socat openssl lua5.3 lua-socket dumb-init
 
 COPY . /
 
-RUN addgroup -g 1001 haproxy\
+RUN deluser haproxy\
+ && addgroup -g 1001 haproxy\
  && adduser -u 1001 -G haproxy -D -s /bin/false haproxy\
  && mkdir -p /var/empty /var/lib/haproxy /etc/haproxy/maps /ingress-controller\
  && chown -R haproxy:haproxy /run /var/lib/haproxy /etc/haproxy /ingress-controller\
