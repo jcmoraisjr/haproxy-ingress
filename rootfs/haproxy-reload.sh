@@ -37,8 +37,9 @@ set -e
 HAPROXY_SOCKET=/var/run/haproxy/admin.sock
 HAPROXY_STATE=/var/lib/haproxy/state-global
 if [ -S $HAPROXY_SOCKET ]; then
-    echo "show servers state" | socat $HAPROXY_SOCKET - > $HAPROXY_STATE
-else
+    echo "show servers state" | socat $HAPROXY_SOCKET - > /tmp/state && mv /tmp/state $HAPROXY_STATE
+fi
+if [ ! -s $HAPROXY_STATE ]; then
     echo "#" > $HAPROXY_STATE
 fi
 case "$1" in
