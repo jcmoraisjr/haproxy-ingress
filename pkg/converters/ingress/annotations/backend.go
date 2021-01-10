@@ -776,7 +776,7 @@ func (c *updater) buildBackendWhitelistHTTP(d *backData) {
 	if !d.backend.ModeTCP {
 		for _, path := range d.backend.Paths {
 			config := d.mapper.GetConfig(path.Link)
-			path.WhitelistHTTP = c.splitCIDR(config.Get(ingtypes.BackWhitelistSourceRange))
+			path.AllowedIPHTTP, path.DeniedIPHTTP = c.readAccessConfig(config)
 		}
 	}
 }
@@ -785,9 +785,24 @@ func (c *updater) buildBackendWhitelistTCP(d *backData) {
 	if !d.backend.ModeTCP {
 		return
 	}
-	wlist := d.mapper.Get(ingtypes.BackWhitelistSourceRange)
-	if wlist.Source == nil {
-		return
+	d.backend.AllowedIPTCP, d.backend.DeniedIPTCP = c.readAccessConfig(d.mapper)
+}
+
+type configValueGetter interface {
+	Get(key string) *ConfigValue
+}
+
+func (c *updater) readAccessConfig(config configValueGetter) (allowed, denied hatypes.AccessConfig) {
+	allowcfg := config.Get(ingtypes.BackAllowlistSourceRange)
+	denycfg := config.Get(ingtypes.BackDenylistSourceRange)
+	whitecfg := config.Get(ingtypes.BackWhitelistSourceRange)
+	if allowcfg.Value == "" {
+		allowcfg = whitecfg
+	} else if whitecfg.Value != "" {
+		c.logger.Warn("both allowlist and whitelist were used on %s, ignoring whitelist content: %s",
+			whitecfg.Source, whitecfg.Value)
 	}
-	d.backend.WhitelistTCP = c.splitCIDR(wlist)
+	allowed.Rule, allowed.Exception = c.splitDualCIDR(allowcfg)
+	denied.Rule, denied.Exception = c.splitDualCIDR(denycfg)
+	return allowed, denied
 }

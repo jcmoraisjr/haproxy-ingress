@@ -137,11 +137,11 @@ func TestCreatePathConfig(t *testing.T) {
 		// 3
 		{
 			paths: []*BackendPath{
-				{ID: "path1", HSTS: HSTS{Enabled: true, MaxAge: 10}, WhitelistHTTP: []string{"10.0.0.0/8"}},
-				{ID: "path2", HSTS: HSTS{Enabled: true, MaxAge: 20}, WhitelistHTTP: []string{"10.0.0.0/8"}},
+				{ID: "path1", HSTS: HSTS{Enabled: true, MaxAge: 10}, AllowedIPHTTP: AccessConfig{Rule: []string{"10.0.0.0/8"}}},
+				{ID: "path2", HSTS: HSTS{Enabled: true, MaxAge: 20}, AllowedIPHTTP: AccessConfig{Rule: []string{"10.0.0.0/8"}}},
 				{ID: "path3", HSTS: HSTS{Enabled: true, MaxAge: 20}},
 			},
-			filter: "HSTS,WhitelistHTTP",
+			filter: "HSTS,AllowedIPHTTP",
 			expected: map[string][]pathConfig{
 				"HSTS": {
 					{
@@ -153,13 +153,14 @@ func TestCreatePathConfig(t *testing.T) {
 						config: HSTS{Enabled: true, MaxAge: 20},
 					},
 				},
-				"WhitelistHTTP": {
+				"AllowedIPHTTP": {
 					{
 						paths:  "path1,path2",
-						config: []string{"10.0.0.0/8"},
+						config: AccessConfig{Rule: []string{"10.0.0.0/8"}},
 					},
 					{
-						paths: "path3",
+						paths:  "path3",
+						config: AccessConfig{},
 					},
 				},
 			},

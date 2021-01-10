@@ -284,6 +284,7 @@ The table below describes all supported configuration keys.
 | [`agent-check-interval`](#agent-check)               | time with suffix                        | Backend |                    |
 | [`agent-check-port`](#agent-check)                   | backend agent listen port               | Backend |                    |
 | [`agent-check-send`](#agent-check)                   | string to send upon agent connection    | Backend |                    |
+| [`allowlist-source-range`](#allowlist)               | Comma-separated IPs or CIDRs            | Path    |                    |
 | [`app-root`](#app-root)                              | /url                                    | Host    |                    |
 | [`auth-realm`](#auth)                                | realm string                            | Path    |                    |
 | [`auth-secret`](#auth)                               | secret name                             | Path    |                    |
@@ -325,6 +326,7 @@ The table below describes all supported configuration keys.
 | [`cors-expose-headers`](#cors)                       | headers                                 | Path    |                    |
 | [`cors-max-age`](#cors)                              | time (seconds)                          | Path    |                    |
 | [`cpu-map`](#cpu-map)                                | haproxy CPU Map format                  | Global  |                    |
+| [`denylist-source-range`](#allowlist)                | Comma-separated IPs or CIDRs            | Path    |                    |
 | [`dns-accepted-payload-size`](#dns-resolvers)        | number                                  | Global  | `8192`             |
 | [`dns-cluster-domain`](#dns-resolvers)               | cluster name                            | Global  | `cluster.local`    |
 | [`dns-hold-obsolete`](#dns-resolvers)                | time with suffix                        | Global  | `0s`               |
@@ -443,7 +445,7 @@ The table below describes all supported configuration keys.
 | [`var-namespace`](#var-namespace)                    | [true\|false]                           | Host    | `false`            |
 | [`waf`](#waf)                                        | "modsecurity"                           | Path    |                    |
 | [`waf-mode`](#waf)                                   | [deny\|detect]                          | Path    | `deny` (if waf is set) |
-| [`whitelist-source-range`](#whitelist)               | Comma-separated IPs or CIDRs            | Path    |                    |
+| [`whitelist-source-range`](#allowlist)               | Comma-separated IPs or CIDRs            | Path    |                    |
 | [`worker-max-reloads`](#master-worker)               | number of reloads                       | Global  | `0`                |
 
 ---
@@ -618,6 +620,44 @@ See also:
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-agent-port
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-agent-inter
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-agent-send
+
+---
+
+## Allowlist
+
+| Configuration key        | Scope  | Default | Since |
+|--------------------------|--------|---------|-------|
+| `allowlist-source-range` | `Path` |         | v0.12 |
+| `denylist-source-range`  | `Path` |         | v0.12 |
+| `whitelist-source-range` | `Path` |         |       |
+
+Defines a comma-separated list of source IPs or CIDRs allowed or denied to connect.
+The default behavior is to allow all source IPs if neither the allow list nor the
+deny list are declared. The lists support IPv4 and IPv6.
+
+This is a path scoped configuration: distinct paths in the same hostname can have
+distinct configurations. However this doesn't happen if the backend has
+[ssl-passthrough](#ssl-passthrough), which uses HAProxy's TCP mode, in this case
+the allow and deny lists act as a backend scoped config.
+
+Since v0.12 IPs or CIDRs can be prefixed with `!`, which means an exception to the
+rule, so an allow list with `"10.0.0.0/8,!10.100.0.0/16"` will allow only IPs from
+the range `10.x.x.x`, except the range `10.100.x.x` which will continue to be denied.
+
+* `allowlist-source-range`: Used to deny requests by default, allowing only the IPs
+and CIDRs in the list, except IPs and CIDRs prefixed with `!` which will continue to
+be denied. `whitelist-source-range` is an alias to preserve backward compatibility,
+and will be ignored if `allowlist-source-range` is declared.
+* `denylist-source-range`: Used to allow requests by default, denying only the IPs
+and CIDRs in the list, except IPs and CIDRs prefixed with `!` which will continue to
+be allowed.
+
+Allowlist and denylist can be used together. The request will be denied if the
+configurations overlap and a source IP matches both the allowlist and denylist.
+
+See also:
+
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4.2-http-request%20deny
 
 ---
 
@@ -2154,17 +2194,3 @@ The default behavior here is `deny` if `waf` is set to `modsecurity`.
 See also:
 
 * [Modsecurity](#modsecurity) configuration keys.
-
-## Whitelist
-
-| Configuration key        | Scope  | Default | Since |
-|--------------------------|--------|---------|-------|
-| `whitelist-source-range` | `Path` |         |       |
-
-Defines a comma-separated list of source IPs or CIDRs allowed to connect. If not
-declared, any source IP is allowed. If declared, requests with source IP not
-included in the list are denied, and clients receive the HAProxy's 403 error page.
-
-See also:
-
-* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4.2-http-request%20deny

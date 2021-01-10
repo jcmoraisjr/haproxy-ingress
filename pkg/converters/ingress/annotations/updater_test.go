@@ -41,6 +41,73 @@ const (
 	fakeCAHash     = "1"
 )
 
+func TestSplitDualCIDR(t *testing.T) {
+	testCases := []struct {
+		list     string
+		expAllow []string
+		expDeny  []string
+		logging  string
+	}{
+		// 0
+		{
+			list:     "10.0.0.0/8",
+			expAllow: []string{"10.0.0.0/8"},
+		},
+		// 1
+		{
+			list:     "10.0.0.0/8,192.168.0.0/16",
+			expAllow: []string{"10.0.0.0/8", "192.168.0.0/16"},
+		},
+		// 2
+		{
+			list:     "fa00::/64",
+			expAllow: []string{"fa00::/64"},
+		},
+		// 3
+		{
+			list:    "10.0.0.0/64",
+			logging: `WARN skipping invalid IP or cidr on ingress 'default/ing': 10.0.0.0/64`,
+		},
+		// 4
+		{
+			list:     "10.0.0.0/64,192.168.0.0/16",
+			expAllow: []string{"192.168.0.0/16"},
+			logging:  `WARN skipping invalid IP or cidr on ingress 'default/ing': 10.0.0.0/64`,
+		},
+		// 5
+		{
+			list:     "10.0.0.0/8,!192.168.0.0/16",
+			expAllow: []string{"10.0.0.0/8"},
+			expDeny:  []string{"192.168.0.0/16"},
+		},
+		// 6
+		{
+			list:     "10.0.0.0/8,!192.168.0.0/64",
+			expAllow: []string{"10.0.0.0/8"},
+			logging:  `WARN skipping invalid IP or cidr on ingress 'default/ing': 192.168.0.0/64`,
+		},
+		// 7
+		{
+			list:     "10.0.0.0/8,!",
+			expAllow: []string{"10.0.0.0/8"},
+			logging:  `WARN skipping deny of an empty IP or CIDR on ingress 'default/ing'`,
+		},
+	}
+	source := &Source{Name: "ing", Namespace: "default", Type: "ingress"}
+	for i, test := range testCases {
+		c := setup(t)
+		cv := &ConfigValue{
+			Source: source,
+			Value:  test.list,
+		}
+		allow, deny := c.createUpdater().splitDualCIDR(cv)
+		c.compareObjects("allow list", i, allow, test.expAllow)
+		c.compareObjects("deny list", i, deny, test.expDeny)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
 type testConfig struct {
 	t       *testing.T
 	haproxy haproxy.Config

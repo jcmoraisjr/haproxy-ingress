@@ -323,11 +323,28 @@ backend {{ $backend.ID }}
 {{- if $backend.ModeTCP }}
 
 {{- /*------------------------------------*/}}
-{{- if $backend.WhitelistTCP }}
-{{- range $w1 := short 10 $backend.WhitelistTCP }}
-    acl wlist_src src{{ range $w := $w1 }} {{ $w }}{{ end }}
+{{- range $r1 := short 10 $backend.AllowedIPTCP.Rule }}
+    acl allow_rule_tcp src{{ range $r := $r1 }} {{ $r }}{{ end }}
 {{- end }}
-    tcp-request content reject if !wlist_src
+{{- range $e1 := short 10 $backend.AllowedIPTCP.Exception }}
+    acl allow_exception_tcp src{{ range $e := $e1 }} {{ $e }}{{ end }}
+{{- end }}
+{{- range $r1 := short 10 $backend.DeniedIPTCP.Rule }}
+    acl deny_rule_tcp src{{ range $r := $r1 }} {{ $r }}{{ end }}
+{{- end }}
+{{- range $e1 := short 10 $backend.DeniedIPTCP.Exception }}
+    acl deny_exception_tcp src{{ range $e := $e1 }} {{ $e }}{{ end }}
+{{- end }}
+{{- if $backend.AllowedIPTCP.Exception }}
+    tcp-request content reject if allow_exception_tcp
+{{- end }}
+{{- if $backend.AllowedIPTCP.Rule }}
+    tcp-request content reject if !allow_rule_tcp
+{{- end }}
+{{- if or $backend.DeniedIPTCP.Rule $backend.DeniedIPTCP.Exception }}
+    tcp-request content reject if
+        {{- if $backend.DeniedIPTCP.Rule }} deny_rule_tcp{{ end }}
+        {{- if $backend.DeniedIPTCP.Exception }} !deny_exception_tcp{{ end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -451,16 +468,41 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- $wlistCfg := $backend.PathConfig "WhitelistHTTP" }}
-{{- range $i, $wlist := $wlistCfg.Items }}
-{{- if $wlist }}
-{{- range $w1 := short 10 $wlist }}
-    acl wlist_src{{ $i }} src{{ range $w := $w1 }} {{ $w }}{{ end }}
+{{- $allowCfg := $backend.PathConfig "AllowedIPHTTP" }}
+{{- $denyCfg := $backend.PathConfig "DeniedIPHTTP" }}
+{{- range $i, $allow := $allowCfg.Items }}
+{{- range $r1 := short 10 $allow.Rule }}
+    acl allow_rule_src{{ $i }} src{{ range $r := $r1 }} {{ $r }}{{ end }}
 {{- end }}
-{{- range $pathIDs := $wlistCfg.PathIDs $i }}
+{{- range $e1 := short 10 $allow.Exception }}
+    acl allow_exception_src{{ $i }} src{{ range $e := $e1 }} {{ $e }}{{ end }}
+{{- end }}
+{{- range $pathIDs := $allowCfg.PathIDs $i }}
+{{- if $allow.Exception }}
     http-request deny if
         {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
-        {{- "" }} !wlist_src{{ $i }}
+        {{- "" }} allow_exception_src{{ $i }}
+{{- end }}
+{{- if $allow.Rule }}
+    http-request deny if
+        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- "" }} !allow_rule_src{{ $i }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- range $i, $deny := $denyCfg.Items }}
+{{- if or $deny.Rule $deny.Exception }}
+{{- range $r1 := short 10 $deny.Rule }}
+    acl deny_rule_src{{ $i }} src{{ range $r := $r1 }} {{ $r }}{{ end }}
+{{- end }}
+{{- range $e1 := short 10 $deny.Exception }}
+    acl deny_exception_src{{ $i }} src{{ range $e := $e1 }} {{ $e }}{{ end }}
+{{- end }}
+{{- range $pathIDs := $denyCfg.PathIDs $i }}
+    http-request deny if
+        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $deny.Rule }} deny_rule_src{{ $i }}{{ end }}
+        {{- if $deny.Exception }} !deny_exception_src{{ $i }}{{ end }}
 {{- end }}
 {{- end }}
 {{- end }}

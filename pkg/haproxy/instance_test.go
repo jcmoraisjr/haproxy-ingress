@@ -265,9 +265,10 @@ d1.local/path1 path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/app").Link).WhitelistHTTP = []string{"10.0.0.0/8", "192.168.0.0/16"}
-				b.FindBackendPath(h.FindPath("/api").Link).WhitelistHTTP = []string{"10.0.0.0/8", "192.168.0.0/16"}
-				b.FindBackendPath(h.FindPath("/path").Link).WhitelistHTTP = []string{"192.168.95.0/24"}
+				b.FindBackendPath(h.FindPath("/app").Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.FindBackendPath(h.FindPath("/api").Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.FindBackendPath(h.FindPath("/path").Link).AllowedIPHTTP.Rule = []string{"192.168.95.0/24"}
+				b.FindBackendPath(h.FindPath("/path").Link).AllowedIPHTTP.Exception = []string{"192.168.95.11"}
 			},
 			path: []string{"/app", "/api", "/path"},
 			expected: `
@@ -275,10 +276,12 @@ d1.local/path1 path01`,
     # path01 = d1.local/app
     # path03 = d1.local/path
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
-    acl wlist_src0 src 10.0.0.0/8 192.168.0.0/16
-    http-request deny if { var(txn.pathID) path01 path02 } !wlist_src0
-    acl wlist_src1 src 192.168.95.0/24
-    http-request deny if { var(txn.pathID) path03 } !wlist_src1`,
+    acl allow_rule_src0 src 10.0.0.0/8 192.168.0.0/16
+    http-request deny if { var(txn.pathID) path01 path02 } !allow_rule_src0
+    acl allow_rule_src1 src 192.168.95.0/24
+    acl allow_exception_src1 src 192.168.95.11
+    http-request deny if { var(txn.pathID) path03 } allow_exception_src1
+    http-request deny if { var(txn.pathID) path03 } !allow_rule_src1`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
 d1.local/path path03
@@ -288,11 +291,11 @@ d1.local/api path02`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/app").Link).WhitelistHTTP = []string{"10.0.0.0/8", "192.168.0.0/16"}
-				b.FindBackendPath(h.FindPath("/api").Link).WhitelistHTTP = []string{"10.0.0.0/8", "192.168.0.0/16"}
-				b.FindBackendPath(h.FindPath("/path").Link).WhitelistHTTP = []string{"10.0.0.0/8", "192.168.0.0/16"}
-				b.FindBackendPath(h.FindPath("/api/v[0-9]+/").Link).WhitelistHTTP = []string{"10.0.0.0/8", "192.168.0.0/16"}
-				b.FindBackendPath(h.FindPath("/").Link).WhitelistHTTP = []string{"172.17.0.0/16"}
+				b.FindBackendPath(h.FindPath("/app").Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.FindBackendPath(h.FindPath("/api").Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.FindBackendPath(h.FindPath("/path").Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.FindBackendPath(h.FindPath("/api/v[0-9]+/").Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.FindBackendPath(h.FindPath("/").Link).AllowedIPHTTP.Rule = []string{"172.17.0.0/16"}
 				h.FindPath("/app").Match = hatypes.MatchExact
 				h.FindPath("/path").Match = hatypes.MatchPrefix
 				h.FindPath("/api/v[0-9]+/").Match = hatypes.MatchRegex
@@ -308,10 +311,10 @@ d1.local/api path02`,
     http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpath__prefix.map) if !{ var(txn.pathID) -m found }
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map) if !{ var(txn.pathID) -m found }
     http-request set-var(txn.pathID) var(req.base),map_reg(/etc/haproxy/maps/_back_d1_app_8080_idpath__regex.map) if !{ var(txn.pathID) -m found }
-    acl wlist_src0 src 172.17.0.0/16
-    http-request deny if { var(txn.pathID) path01 } !wlist_src0
-    acl wlist_src1 src 10.0.0.0/8 192.168.0.0/16
-    http-request deny if { var(txn.pathID) path02 path03 path04 path05 } !wlist_src1`,
+    acl allow_rule_src0 src 172.17.0.0/16
+    http-request deny if { var(txn.pathID) path01 } !allow_rule_src0
+    acl allow_rule_src1 src 10.0.0.0/8 192.168.0.0/16
+    http-request deny if { var(txn.pathID) path02 path03 path04 path05 } !allow_rule_src1`,
 			expFronts: "<<frontends-default-match-4>>",
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__exact.map": `
@@ -327,7 +330,64 @@ d1.local/ path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/path").Link).WhitelistHTTP = []string{
+				b.FindBackendPath(h.FindPath("/app1").Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8"}
+				b.FindBackendPath(h.FindPath("/app1").Link).AllowedIPHTTP.Exception = []string{"10.0.110.0/24"}
+				b.FindBackendPath(h.FindPath("/app2").Link).DeniedIPHTTP.Rule = []string{"192.168.95.0/24"}
+				b.FindBackendPath(h.FindPath("/app2").Link).DeniedIPHTTP.Exception = []string{"192.168.95.128/28"}
+			},
+			path: []string{"/app1", "/app2", "/app3"},
+			expected: `
+    # path01 = d1.local/app1
+    # path02 = d1.local/app2
+    # path03 = d1.local/app3
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    acl allow_rule_src0 src 10.0.0.0/8
+    acl allow_exception_src0 src 10.0.110.0/24
+    http-request deny if { var(txn.pathID) path01 } allow_exception_src0
+    http-request deny if { var(txn.pathID) path01 } !allow_rule_src0
+    acl deny_rule_src1 src 192.168.95.0/24
+    acl deny_exception_src1 src 192.168.95.128/28
+    http-request deny if { var(txn.pathID) path02 } deny_rule_src1 !deny_exception_src1`,
+			expCheck: map[string]string{
+				"_back_d1_app_8080_idpath__begin.map": `
+d1.local/app3 path03
+d1.local/app2 path02
+d1.local/app1 path01`,
+			},
+		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.FindBackendPath(h.FindPath("/app1").Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8"}
+				b.FindBackendPath(h.FindPath("/app2").Link).AllowedIPHTTP.Exception = []string{"10.0.110.0/24"}
+				b.FindBackendPath(h.FindPath("/app3").Link).DeniedIPHTTP.Rule = []string{"192.168.95.0/24"}
+				b.FindBackendPath(h.FindPath("/app4").Link).DeniedIPHTTP.Exception = []string{"192.168.95.128/28"}
+			},
+			path: []string{"/app1", "/app2", "/app3", "/app4"},
+			expected: `
+    # path01 = d1.local/app1
+    # path02 = d1.local/app2
+    # path03 = d1.local/app3
+    # path04 = d1.local/app4
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    acl allow_rule_src0 src 10.0.0.0/8
+    http-request deny if { var(txn.pathID) path01 } !allow_rule_src0
+    acl allow_exception_src1 src 10.0.110.0/24
+    http-request deny if { var(txn.pathID) path02 } allow_exception_src1
+    acl deny_rule_src1 src 192.168.95.0/24
+    http-request deny if { var(txn.pathID) path03 } deny_rule_src1
+    acl deny_exception_src2 src 192.168.95.128/28
+    http-request deny if { var(txn.pathID) path04 } !deny_exception_src2`,
+			expCheck: map[string]string{
+				"_back_d1_app_8080_idpath__begin.map": `
+d1.local/app4 path04
+d1.local/app3 path03
+d1.local/app2 path02
+d1.local/app1 path01`,
+			},
+		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.FindBackendPath(h.FindPath("/path").Link).AllowedIPHTTP.Rule = []string{
 					"1.1.1.1", "1.1.1.2", "1.1.1.3", "1.1.1.4", "1.1.1.5",
 					"1.1.1.6", "1.1.1.7", "1.1.1.8", "1.1.1.9", "1.1.1.10",
 					"1.1.1.11",
@@ -339,9 +399,9 @@ d1.local/ path01`,
     # path01 = d1.local/app
     # path03 = d1.local/path
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
-    acl wlist_src1 src 1.1.1.1 1.1.1.2 1.1.1.3 1.1.1.4 1.1.1.5 1.1.1.6 1.1.1.7 1.1.1.8 1.1.1.9 1.1.1.10
-    acl wlist_src1 src 1.1.1.11
-    http-request deny if { var(txn.pathID) path03 } !wlist_src1`,
+    acl allow_rule_src1 src 1.1.1.1 1.1.1.2 1.1.1.3 1.1.1.4 1.1.1.5 1.1.1.6 1.1.1.7 1.1.1.8 1.1.1.9 1.1.1.10
+    acl allow_rule_src1 src 1.1.1.11
+    http-request deny if { var(txn.pathID) path03 } !allow_rule_src1`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
 d1.local/path path03
@@ -351,12 +411,35 @@ d1.local/api path02`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.WhitelistTCP = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.AllowedIPTCP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.AllowedIPTCP.Exception = []string{"192.168.95.0/24"}
 				b.ModeTCP = true
 			},
 			expected: `
-    acl wlist_src src 10.0.0.0/8 192.168.0.0/16
-    tcp-request content reject if !wlist_src`,
+    acl allow_rule_tcp src 10.0.0.0/8 192.168.0.0/16
+    acl allow_exception_tcp src 192.168.95.0/24
+    tcp-request content reject if allow_exception_tcp
+    tcp-request content reject if !allow_rule_tcp`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.DeniedIPTCP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.ModeTCP = true
+			},
+			expected: `
+    acl deny_rule_tcp src 10.0.0.0/8 192.168.0.0/16
+    tcp-request content reject if deny_rule_tcp`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.DeniedIPTCP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.DeniedIPTCP.Exception = []string{"192.168.95.0/24"}
+				b.ModeTCP = true
+			},
+			expected: `
+    acl deny_rule_tcp src 10.0.0.0/8 192.168.0.0/16
+    acl deny_exception_tcp src 192.168.95.0/24
+    tcp-request content reject if deny_rule_tcp !deny_exception_tcp`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
@@ -913,7 +996,7 @@ func TestPathIDsSplit(t *testing.T) {
 		h.AddPath(b, "/", hatypes.MatchBegin)
 		path := b.FindBackendPath(h.FindPath("/").Link)
 		path.SSLRedirect = true
-		path.WhitelistHTTP = []string{"10.0.0.0/8"}
+		path.AllowedIPHTTP.Rule = []string{"10.0.0.0/8"}
 		if i < max {
 			path.HSTS.Enabled = true
 			path.Cors.Enabled = true
@@ -966,8 +1049,8 @@ backend d1_app_8080
     # path32 = h32.local/
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
     http-request redirect scheme https if !https-request
-    acl wlist_src0 src 10.0.0.0/8
-    http-request deny if !wlist_src0
+    acl allow_rule_src0 src 10.0.0.0/8
+    http-request deny if !allow_rule_src0
     http-request set-var(txn.cors_max_age) str(0) if METH_OPTIONS { var(txn.pathID) ` + pathIDs01_30 + ` }
     http-request use-service lua.send-cors-preflight if METH_OPTIONS { var(txn.pathID) ` + pathIDs01_30 + ` }
     http-request set-var(txn.cors_max_age) str(0) if METH_OPTIONS { var(txn.pathID) path31 }

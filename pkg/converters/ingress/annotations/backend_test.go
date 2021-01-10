@@ -1892,10 +1892,13 @@ func TestWAF(t *testing.T) {
 
 func TestWhitelistHTTP(t *testing.T) {
 	testCases := []struct {
-		paths    []string
-		cidrlist map[string]map[string]string
-		expected map[string][]string
-		logging  string
+		paths       []string
+		cidrlist    map[string]map[string]string
+		expected    map[string][]string
+		expAllowExc map[string][]string
+		expDenyRule map[string][]string
+		expDenyExc  map[string][]string
+		logging     string
 	}{
 		// 0
 		{
@@ -1986,6 +1989,51 @@ WARN skipping invalid IP or cidr on ingress 'default/ing1': fa00::/129`,
 			logging: `
 WARN skipping invalid IP or cidr on ingress 'default/ing1': 10.0.0.0/48`,
 		},
+		// 7
+		{
+			paths: []string{"/"},
+			cidrlist: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAllowlistSourceRange: "10.0.0.0/8,192.168.0.0/24",
+					ingtypes.BackWhitelistSourceRange: "10.1.0.0/16",
+				},
+			},
+			expected: map[string][]string{
+				"/": {"10.0.0.0/8", "192.168.0.0/24"},
+			},
+			logging: `
+WARN both allowlist and whitelist were used on ingress 'default/ing1', ignoring whitelist content: 10.1.0.0/16`,
+		},
+		// 8
+		{
+			paths: []string{"/"},
+			cidrlist: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAllowlistSourceRange: "10.0.0.0/8,192.168.0.0/24,!10.100.0.0/16",
+				},
+			},
+			expected: map[string][]string{
+				"/": {"10.0.0.0/8", "192.168.0.0/24"},
+			},
+			expAllowExc: map[string][]string{
+				"/": {"10.100.0.0/16"},
+			},
+		},
+		// 9
+		{
+			paths: []string{"/"},
+			cidrlist: map[string]map[string]string{
+				"/": {
+					ingtypes.BackDenylistSourceRange: "192.168.0.0/24,!192.168.95.0/24",
+				},
+			},
+			expDenyRule: map[string][]string{
+				"/": {"192.168.0.0/24"},
+			},
+			expDenyExc: map[string][]string{
+				"/": {"192.168.95.0/24"},
+			},
+		},
 	}
 	source := &Source{Namespace: "default", Name: "ing1", Type: "ingress"}
 	for i, test := range testCases {
@@ -1993,12 +2041,39 @@ WARN skipping invalid IP or cidr on ingress 'default/ing1': 10.0.0.0/48`,
 		d := c.createBackendMappingData("default/app", source, map[string]string{}, test.cidrlist, test.paths)
 		c.createUpdater().buildBackendWhitelistHTTP(d)
 		actual := map[string][]string{}
+		actualAllowExc := map[string][]string{}
+		actualDenyRule := map[string][]string{}
+		actualDenyExc := map[string][]string{}
 		for _, path := range d.backend.Paths {
-			if len(path.WhitelistHTTP) > 0 {
-				actual[path.Path()] = path.WhitelistHTTP
+			if len(path.AllowedIPHTTP.Rule) > 0 {
+				actual[path.Path()] = path.AllowedIPHTTP.Rule
+			}
+			if len(path.AllowedIPHTTP.Exception) > 0 {
+				actualAllowExc[path.Path()] = path.AllowedIPHTTP.Exception
+			}
+			if len(path.DeniedIPHTTP.Rule) > 0 {
+				actualDenyRule[path.Path()] = path.DeniedIPHTTP.Rule
+			}
+			if len(path.DeniedIPHTTP.Exception) > 0 {
+				actualDenyExc[path.Path()] = path.DeniedIPHTTP.Exception
 			}
 		}
+		if test.expected == nil {
+			test.expected = map[string][]string{}
+		}
+		if test.expAllowExc == nil {
+			test.expAllowExc = map[string][]string{}
+		}
+		if test.expDenyRule == nil {
+			test.expDenyRule = map[string][]string{}
+		}
+		if test.expDenyExc == nil {
+			test.expDenyExc = map[string][]string{}
+		}
 		c.compareObjects("whitelist http", i, actual, test.expected)
+		c.compareObjects("whitelist http", i, actualAllowExc, test.expAllowExc)
+		c.compareObjects("whitelist http", i, actualDenyRule, test.expDenyRule)
+		c.compareObjects("whitelist http", i, actualDenyExc, test.expDenyExc)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
@@ -2047,7 +2122,7 @@ WARN skipping invalid IP or cidr on ingress 'default/ing1': 192.168.0/16`,
 		d := c.createBackendData("default/app", source, ann, map[string]string{})
 		d.backend.ModeTCP = true
 		c.createUpdater().buildBackendWhitelistTCP(d)
-		c.compareObjects("whitelist tcp", i, d.backend.WhitelistTCP, test.expected)
+		c.compareObjects("whitelist tcp", i, d.backend.AllowedIPTCP.Rule, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
