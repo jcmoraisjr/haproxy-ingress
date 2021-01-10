@@ -450,8 +450,12 @@ func (i *instance) reload() error {
 }
 
 func (i *instance) reloadEmbedded() error {
+	state := "0"
+	if i.config.Global().LoadServerState {
+		state = "1"
+	}
 	// TODO Move all magic strings to a single place
-	out, err := exec.Command("/haproxy-reload.sh", i.options.ReloadStrategy, i.options.HAProxyCfgDir).CombinedOutput()
+	out, err := exec.Command("/haproxy-reload.sh", i.options.ReloadStrategy, i.options.HAProxyCfgDir, state).CombinedOutput()
 	outstr := string(out)
 	if len(outstr) > 0 {
 		i.logger.Warn("output from haproxy:\n%v", outstr)

@@ -17,7 +17,7 @@
 #
 # A script to help with haproxy reloads. Needs sudo if haproxy uses :80 / :443.
 #
-# ./haproxy-reload.sh <strategy> <cfg>
+# ./haproxy-reload.sh <strategy> <cfg> [<need-state>]
 #
 # <strategy>: `native`
 #    Uses native HAProxy soft restart. Running it for the first time starts
@@ -27,6 +27,8 @@
 #    rebinding them, allowing hitless reloads.
 #
 # <cfg>: configuration file or directory
+#
+# <need-state>: optional, defaults to `false`, anything != 0 means `true`
 #
 # HAProxy options:
 #  -f config file
@@ -41,17 +43,21 @@ set -e
 
 PARAM_STRATEGY="$1"
 PARAM_CFG="$2"
+PARAM_STATE="${3:-0}"
 
 HAPROXY_SOCKET=/var/run/haproxy/admin.sock
 HAPROXY_STATE=/var/lib/haproxy/state-global
 HAPROXY_PID=/var/run/haproxy/haproxy.pid
 OLD_PID=$(cat "$HAPROXY_PID" 2>/dev/null || :)
 
-if [ -S "$HAPROXY_SOCKET" ]; then
-    echo "show servers state" | socat "$HAPROXY_SOCKET" - > /tmp/state && mv /tmp/state "$HAPROXY_STATE"
-fi
-if [ ! -s "$HAPROXY_STATE" ]; then
-    echo "#" > "$HAPROXY_STATE"
+# Only create the state file if the configuration need it
+if [ "$PARAM_STATE" != "0" ]; then
+    if [ -S "$HAPROXY_SOCKET" ]; then
+        echo "show servers state" | socat "$HAPROXY_SOCKET" - > /tmp/state && mv /tmp/state "$HAPROXY_STATE"
+    fi
+    if [ ! -s "$HAPROXY_STATE" ]; then
+        echo "#" > "$HAPROXY_STATE"
+    fi
 fi
 
 # Any strategy != `native` means `reusesocket` or `multibinder`
