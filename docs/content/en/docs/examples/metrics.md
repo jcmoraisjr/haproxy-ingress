@@ -31,7 +31,7 @@ The following patch adds ports `9105` and `10254` to the HAProxy Ingress contain
 Note: this patch will restart the controller!
 
 ```
-kubectl --namespace ingress-controller patch daemonset haproxy-ingress -p '{"spec":{"template":{"spec":{"containers":[{"name":"haproxy-ingress","ports":[{"name":"exporter","containerPort":9105},{"name":"ingress-stats","containerPort":10254}]}]}}}}'
+kubectl --namespace ingress-controller patch deployment haproxy-ingress -p '{"spec":{"template":{"spec":{"containers":[{"name":"haproxy-ingress","ports":[{"name":"exporter","containerPort":9105},{"name":"ingress-stats","containerPort":10254}]}]}}}}'
 ```
 
 ## Deploy Prometheus
@@ -44,6 +44,19 @@ kubectl create -f https://haproxy-ingress.github.io/docs/examples/metrics/promet
 
 {{% alert title="Note" %}}
 This deployment has no persistent volume, so all the collected metrics will be lost if the pod is recreated.
+{{% /alert %}}
+
+{{% alert title="Warning" color="warning" %}}
+If HAProxy Ingress wasn't deployed with Helm, change the following line in the `configmap/prometheus-cfg` resource, jobs `haproxy-ingress` and `haproxy-exporter`:
+
+```diff
+       relabel_configs:
+-      - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
++      - source_labels: [__meta_kubernetes_pod_label_run]
+         regex: haproxy-ingress
+```
+
+This will ensure that Prometheus finds the controller pods.
 {{% /alert %}}
 
 Check if Prometheus is up and running:
