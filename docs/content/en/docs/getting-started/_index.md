@@ -10,7 +10,7 @@ The following sections walk through steps to have HAProxy Ingress working, watch
 
 ## Prerequisites
 
-HAProxy Ingress needs a running Kubernetes cluster. Although it's recommended to always use an up-to-date one, it will also work on clusters version as old as 1.6. HAProxy Ingress also works fine on local k8s deployments like [minikube](https://minikube.sigs.k8s.io) or [kind](https://kind.sigs.k8s.io).
+HAProxy Ingress needs a running Kubernetes cluster. Although it's recommended to always use an up-to-date one, it will also work on clusters version as old as 1.6. HAProxy Ingress also works fine on local k8s deployments like [minikube](https://minikube.sigs.k8s.io), [kind](https://kind.sigs.k8s.io) or [k3d](https://k3d.io).
 
 An ingress controller works exposing internal services to the external world, so another pre-requisite is that at least one cluster node is accessible externally. On cloud environments, a cloud load balancer can be configured to reach the ingress controller nodes.
 
@@ -38,24 +38,35 @@ The default cluster can be changed either via `kubectl config set-context <clust
 
 Note that the user needs administrative privileges in the cluster to properly installs the controller.
 
-4) Install HAProxy Ingress using `haproxy-ingress` as the release name:
+4) Create a `haproxy-ingress-values.yaml` file with custom parameters:
+
+```yaml
+controller:
+  hostNetwork: true
+```
+
+HAProxy Ingress chart [documentation](https://github.com/haproxy-ingress/charts/blob/release-0.10/haproxy-ingress/README.md#configuration) has all the available options. See also further documentation in the [default values](https://github.com/haproxy-ingress/charts/blob/release-0.10/haproxy-ingress/values.yaml) file.
+
+5) Install HAProxy Ingress using `haproxy-ingress` as the release name and `haproxy-ingress-values.yaml` file as the custom parameters:
 
 ```shell
-$ helm install haproxy-ingress haproxy-ingress/haproxy-ingress \
-  --create-namespace --namespace=ingress-controller \
-  --set controller.hostNetwork=true
+$ helm install haproxy-ingress haproxy-ingress/haproxy-ingress\
+  --create-namespace --namespace ingress-controller\
+  --version 0.10.3\
+  -f haproxy-ingress-values.yaml
 ```
 
 {{% alert title="Note" %}}
-The configuration above will deploy the latest stable HAProxy Ingress. Add `--version '~<version>.0-0'` command-line option to install another version, including beta and snapshot - eg `--version '~0.12.0-0'` will install the v0.12 controller version.
+The command `install` above can be changed to `upgrade` to start a rolling update of HAProxy Ingress version or configuration. `template` can be used instead to generate the manifests without installing them - add either a redirect `... >haproxy-ingress-install.yaml` to save the output, or `--output-dir output/` command line option to save one file per manifest.
 {{% /alert %}}
 
-The controller should be running in a few seconds. There are two important changes made in the example above:
+The controller should be running in a few seconds. There are three important customizations made in the example above:
 
-* namespace: we're instructing helm to install HAProxy Ingress in the `ingress-controller` namespace. This namespace will be created if it does not exist yet. The default behavior, if namespace is not provided, is to deploy the controller in the current namespace.
-* hostNetwork: we're configuring the deployment to expose haproxy in the host network, which means bind all haproxy ports, including but not limited to 80 and 443, in the node's IPs. Maybe this isn't a proper configuration for your production - it depends on the options you have to expose a Kubernetes' service, but doing so we'll be able to send http/s requests on local development environments, or even baremetal and on premise deployments that doesn't have a fronting router or load balancer to expose the controller. In any case a service is also configured in the `ingress-controller` namespace which properly exposes haproxy.
+* version: a good practice, this will ensure that you'll have the same version installed even if a new release issued.
+* namespace: we're instructing helm to install HAProxy Ingress in the `ingress-controller` namespace. This namespace will be created if it does not exist yet. The default behavior, if namespace is not provided, is to deploy the controller in the kubectl's current namespace.
+* hostNetwork: we're configuring the deployment to expose haproxy in the host network, which means bind all haproxy ports, including but not limited to 80 and 443, in the node's IPs. Maybe this isn't a proper configuration for your production - it depends on the options you have to expose a Kubernetes' service, but doing so we'll be able to send http/s requests on local development environments, or even baremetal and on premise deployments that doesn't have a fronting router or load balancer to expose the controller. In any case a service is also configured in the `ingress-controller` namespace which tries to expose haproxy.
 
-HAProxy Ingress' Helm chart has a few more configuration options, see all of them in the chart [documentation](https://github.com/haproxy-ingress/charts/tree/master/haproxy-ingress).
+HAProxy Ingress' Helm chart has a few more configuration options, see all of them in the chart [documentation](https://github.com/haproxy-ingress/charts/blob/release-0.10/haproxy-ingress/README.md) and in the [default values](https://github.com/haproxy-ingress/charts/blob/release-0.10/haproxy-ingress/values.yaml) file.
 
 ## Deploy and expose
 
