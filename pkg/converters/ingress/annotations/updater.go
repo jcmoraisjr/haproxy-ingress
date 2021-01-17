@@ -87,19 +87,39 @@ func (c *updater) validateTime(cfg *ConfigValue) string {
 }
 
 func (c *updater) splitCIDR(cidrlist *ConfigValue) []string {
-	var cidrslice []string
+	allow, deny := c.splitDualCIDR(cidrlist)
+	if len(deny) > 0 {
+		c.logger.Warn("ignored deny list of IPs or CIDRs: %v", deny)
+	}
+	return allow
+}
+
+func (c *updater) splitDualCIDR(cidrlist *ConfigValue) (allow, deny []string) {
 	for _, cidr := range utils.Split(cidrlist.Value, ",") {
+		if cidr == "" {
+			continue
+		}
+		if cidr == "!" {
+			c.logger.Warn("skipping deny of an empty IP or CIDR on %v", cidrlist.Source)
+			continue
+		}
+		neg := cidr[0] == '!'
+		if neg {
+			cidr = cidr[1:]
+		}
 		var err error
 		if net.ParseIP(cidr) == nil {
 			_, _, err = net.ParseCIDR(cidr)
 		}
 		if err != nil {
 			c.logger.Warn("skipping invalid IP or cidr on %v: %s", cidrlist.Source, cidr)
+		} else if neg {
+			deny = append(deny, cidr)
 		} else {
-			cidrslice = append(cidrslice, cidr)
+			allow = append(allow, cidr)
 		}
 	}
-	return cidrslice
+	return allow, deny
 }
 
 func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mapper) {

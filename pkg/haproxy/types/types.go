@@ -480,10 +480,12 @@ type Backend struct {
 	// per backend config
 	//
 	AgentCheck       AgentCheck
+	AllowedIPTCP     AccessConfig
 	BalanceAlgorithm string
 	BlueGreen        BlueGreenConfig
 	Cookie           Cookie
 	CustomConfig     []string
+	DeniedIPTCP      AccessConfig
 	Dynamic          DynBackendConfig
 	EpCookieStrategy EndpointCookieStrategy
 	Headers          []*BackendHeader
@@ -494,7 +496,6 @@ type Backend struct {
 	Server           ServerConfig
 	Timeout          BackendTimeoutConfig
 	TLS              BackendTLSConfig
-	WhitelistTCP     []string
 }
 
 // Endpoint ...
@@ -537,15 +538,16 @@ type BackendPath struct {
 	//
 	// config fields
 	//
+	AllowedIPHTTP AccessConfig
 	AuthHTTP      AuthHTTP
 	Cors          Cors
+	DeniedIPHTTP  AccessConfig
 	HSTS          HSTS
 	MaxBodySize   int64
 	OAuth         OAuthConfig
 	RewriteURL    string
 	SSLRedirect   bool
 	WAF           WAF
-	WhitelistHTTP []string
 }
 
 // BackendHeader ...
@@ -584,6 +586,12 @@ type BackendLimit struct {
 	Connections int
 	RPS         int
 	Whitelist   []string
+}
+
+// AccessConfig ...
+type AccessConfig struct {
+	Rule      []string
+	Exception []string
 }
 
 // OAuthConfig ...
