@@ -24,6 +24,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
@@ -45,6 +46,7 @@ type InstanceOptions struct {
 	Metrics           types.Metrics
 	ReloadStrategy    string
 	SortEndpointsBy   string
+	StopCh            chan struct{}
 	ValidateConfig    bool
 	// TODO Fake is used to skip real haproxy calls. Use a mock instead.
 	fake bool
@@ -467,6 +469,27 @@ func (i *instance) reloadEmbedded() error {
 
 func (i *instance) reloadExternal() error {
 	socket := i.config.Global().External.MasterSocket
+	if !i.up {
+		// first run, wait until the external haproxy is running
+		// and successfully listening to the master socket.
+		var j int
+		i.logger.Info("waiting for the external haproxy...")
+		for {
+			var err error
+			if _, err = hautils.HAProxyCommand(socket, nil, "show info"); err == nil {
+				break
+			}
+			j++
+			if j%10 == 0 {
+				i.logger.Info("cannot connect to the master socket '%s': %v", socket, err)
+			}
+			select {
+			case <-i.options.StopCh:
+				return fmt.Errorf("received sigterm")
+			case <-time.After(time.Second):
+			}
+		}
+	}
 	if _, err := hautils.HAProxyCommand(socket, nil, "reload"); err != nil {
 		return fmt.Errorf("error sending reload to master socket: %w", err)
 	}
