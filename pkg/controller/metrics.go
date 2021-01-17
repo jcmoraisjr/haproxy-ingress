@@ -164,6 +164,10 @@ func (m *metrics) SetCertExpireDate(domain, cn string, notAfter *time.Time) {
 	m.certExpireGauge.WithLabelValues(domain, cn).Set(float64(notAfter.Unix()))
 }
 
+func (m *metrics) ClearCertExpire() {
+	m.certExpireGauge.Reset()
+}
+
 func (m *metrics) IncCertSigningMissing(domains string, success bool) {
 	m.certSigningCounter.WithLabelValues(domains, "missing", strconv.FormatBool(success)).Inc()
 }
