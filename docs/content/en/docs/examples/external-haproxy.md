@@ -6,10 +6,6 @@ description: >
   Demonstrate how to configure HAProxy Ingress to use an external haproxy deployment.
 ---
 
-{{% pageinfo %}}
-This is a `v0.12` example and need HAProxy Ingress `v0.12-snapshot.1` or above
-{{% /pageinfo %}}
-
 This example demonstrates how to configure HAProxy Ingress to manage an external
 haproxy instance deployed as a sidecar container. This approach decouple the
 controller and the running haproxy version, allowing the sysadmin to update any
@@ -17,31 +13,109 @@ of them independently of the other.
 
 ## Prerequisites
 
-This document has the following prerequisite:
+This document requires only a Kubernetes cluster. HAProxy Ingress doesn't need to be
+installed, and if so, the installation process should use the
+[Helm chart]({{% relref "/docs/getting-started#installation" %}}).
 
-* A Kubernetes cluster with a running HAProxy Ingress controller v0.12 or above.
-Follow The five minutes deployment in the [getting started]({{% relref "/docs/getting-started" %}}) guide.
-* A running and exposed application in the Kubernetes cluster, this getting started
-[deployment]({{% relref "/docs/getting-started#try-it-out" %}}) does the job.
+## Configure the controller
 
-## Update the deployment
+The easiest and recommended way to configure an external haproxy is using the Helm
+chart with a customized values file. Create the `haproxy-ingress-values.yaml` file with the
+following content:
 
-The following instruction patches the current HAProxy Ingress daemonset (this will also revert the command-line arguments to the default value):
+```yaml
+controller:
+  hostNetwork: false
+  config:
+    syslog-endpoint: stdout
+    syslog-format: raw
+  haproxy:
+    enabled: true
+    image:
+      repository: haproxy
+      tag: 2.3.4-alpine
+```
+
+Change the hostNetwork to `true` if your cluster doesn't provide a service loadbalancer.
+These parameters are also configuring an external haproxy, version 2.3.4, and configuring
+haproxy to log to stdout.
+
+Add the HAProxy Ingress Helm repository if using HAProxy Ingress' chart for the first time:
 
 ```
-$ kubectl --namespace ingress-controller patch daemonset haproxy-ingress \
--p "$(curl -sSL https://haproxy-ingress.github.io/v0.12/docs/examples/external-haproxy/daemonset-patch.yaml)"
+$ helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
 ```
 
-Check if the controller restarts without any problem:
+Install or upgrade HAProxy Ingress using the `haproxy-ingress-values.yaml` parameters:
+
+Hint: change `install` to `upgrade` if HAProxy Ingress is already installed with Helm.
+
+```
+$ helm install haproxy-ingress haproxy-ingress/haproxy-ingress\
+  --create-namespace --namespace=ingress-controller\
+  --version 0.12.0-beta.1 --devel\
+  -f haproxy-ingress-values.yaml
+```
+
+Check if the controller successfully starts or restarts:
 
 ```
 $ kubectl --namespace ingress-controller get pod -w
 ```
 
+## Test
+
+Open two distinct terminals to follow `haproxy-ingress` and `haproxy` logs:
+
+```
+$ kubectl --namespace ingress-controller get pod
+NAME                               READY   STATUS    RESTARTS   AGE
+haproxy-ingress-6f8848d6fb-gxmrk   2/2     Running   0          13s
+
+$ kubectl --namespace ingress-controller logs -f haproxy-ingress-6f8848d6fb-gxmrk -c haproxy-ingress
+```
+
+and
+
+```
+$ kubectl --namespace ingress-controller logs -f haproxy-ingress-6f8848d6fb-gxmrk -c haproxy
+```
+
+Do some `curl` to any exposed application, or just use the controller or service loadbalancer
+IP like the example below:
+
+```
+$ curl 192.168.1.11
+```
+
+HAProxy Ingress and the external haproxy should be logging their own events:
+
+`haproxy-ingress` container:
+
+```
+...
+I0117 17:30:27.282701       6 controller.go:87] HAProxy Ingress successfully initialized
+I0117 17:30:27.282743       6 leaderelection.go:243] attempting to acquire leader lease  ingress-controller/ingress-controller-leader-haproxy...
+I0117 17:30:27.335674       6 status.go:177] new leader elected: haproxy-ingress-6f8848d6fb-cxb6w
+I0117 17:30:27.392372       6 controller.go:321] starting haproxy update id=1
+I0117 17:30:27.392463       6 ingress.go:153] using auto generated fake certificate
+I0117 17:30:27.437047       6 instance.go:309] haproxy successfully reloaded (external)
+I0117 17:30:27.437217       6 controller.go:353] finish haproxy update id=1: parse_ingress=0.143483ms write_maps=0.149637ms write_config=0.971026ms reload_haproxy=43.498718ms total=44.762864ms
+I0117 17:30:58.066768       6 leaderelection.go:253] successfully acquired lease ingress-controller/ingress-controller-leader-haproxy
+I0117 17:30:58.066867       6 status.go:177] new leader elected: haproxy-ingress-6f8848d6fb-gxmrk
+```
+
+`haproxy` container:
+
+```
+...
+192.168.1.10:61116 [17/Jan/2021:17:32:36.050] _front_http _error404/<lua.send-404> 0/0/0/0/0 404 190 - - LR-- 1/1/0/0/0 0/0 "GET / HTTP/1.1"
+```
+
 ## What was changed?
 
-The sections below have details of what changed in the deployment.
+The sections below have details of what changed in the deployment compared with a
+default installation.
 
 ### Sidecar
 
@@ -50,9 +124,9 @@ This example configures 2 (two) new containers in the controllers' pod:
 * `haproxy` is the external haproxy deployment with two mandatory arguments: `-S` with the master CLI unix socket, and `-f` with the configuration files path
 * `init`, a Kubernetes' [initContainer](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/) used to create an initial and valid haproxy configuration.
 
-The `haproxy` container references the official Alpine based image `haproxy:alpine`,
-but can be any other customized image. The only requisite is to be 2.0 or newer due
-to some new keywords used by HAProxy Ingress.
+The `haproxy` container references the official Alpine based image `haproxy:2.3.4-alpine`,
+but can be any other. The only requisite is to be 2.0 or newer due to some new keywords
+used by HAProxy Ingress.
 
 The `init` container just copy a minimum and valid `haproxy.cfg`. This file is used
 to properly starts haproxy and configures its master CLI that HAProxy Ingress uses
@@ -77,59 +151,5 @@ The following directories must be shared:
 ### Liveness probe
 
 Default HAProxy Ingress deployment has a liveness probe to an haproxy's health
-check URI. The patch of this example moves the liveness probe from the HAProxy
-Ingress container to the haproxy one.
-
-## Test
-
-Open two distinct terminals to follow `haproxy-ingress` and `haproxy` logs:
-
-```
-$ kubectl --namespace ingress-controller get pod
-NAME                    READY   STATUS    RESTARTS   AGE
-haproxy-ingress-6bsvz   3/3     Running   0          17m
-
-$ kubectl --namespace ingress-controller logs -f haproxy-ingress-6bsvz -c haproxy-ingress
-```
-
-and
-
-```
-$ kubectl --namespace ingress-controller logs -f haproxy-ingress-6bsvz -c haproxy
-```
-
-Update syslog configuration using another terminal, this will make haproxy use stdout:
-
-```
-$ kubectl --namespace ingress-controller patch configmap haproxy-ingress -p '{"data":{"syslog-endpoint":"stdout","syslog-format":"raw"}}'
-```
-
-Do some `curl` to an exposed application deployed in the cluster:
-
-```
-$ kubectl get ing
-NAME    HOSTS                       ADDRESS   PORTS     AGE
-nginx   nginx.192.168.1.11.nip.io             80, 443   21m
-
-$ curl nginx.192.168.1.11.nip.io
-```
-
-During the ConfigMap update and the endpoint calls, HAProxy Ingress and the external
-haproxy should be logging its own events:
-
-`haproxy-ingress` container:
-
-```
-I0921 16:06:12.699201       6 controller.go:314] starting haproxy update id=8
-I0921 16:06:12.710723       6 instance.go:322] updating 1 host(s): [*.sub.t002.app.domain]
-I0921 16:06:12.710752       6 instance.go:339] updating 1 backend(s): [0_echoserver_8080]
-I0921 16:06:12.726794       6 instance.go:387] updated main cfg and 1 backend file(s): [002]
-I0921 16:06:12.788496       6 instance.go:301] haproxy successfully reloaded (external)
-I0921 16:06:12.790696       6 controller.go:346] finish haproxy update id=8: parse_ingress=1.323253ms write_maps=10.101055ms write_config=16.320063ms reload_haproxy=63.587362ms total=91.331733ms
-```
-
-`haproxy` container:
-
-```
-192.168.100.1:58167 [21/Sep/2020:16:06:15.003] _front_https~ t015_echoserver_8080/srv001 0/0/2/0/2 200 485 - - ---- 1/1/0/0/0 0/0 "GET https://t004.app.domain/ HTTP/2.0"
-```
+check URI. This example changes the liveness probe from the HAProxy Ingress
+container to the haproxy one.
