@@ -5,12 +5,14 @@
 **Highlights of this version**
 
 * HAProxy upgrade from 2.1 to 2.2.
-* IngressClass support
+* IngressClass resource support.
 * Ability to configure and run an external haproxy, version 2.0 or above, on a sidecar container.
 
 **Breaking backward compatibility from [v0.11](#v011)**
 
+* Kubernetes version 1.18 or newer.
 * Ingress resources without `kubernetes.io/ingress.class` annotation was listened by default up to v0.11, now they are not. This will change the final configuration of clusters that 1) have Ingress resources without the class annotation and without the `ingressClassName` field, and 2) does not declare the `--ignore-ingress-without-class` command-line option. Add the command-line option `--watch-ingress-without-class` to bring back the default v0.11 behavior. See the [class matter](https://haproxy-ingress.github.io/v0.12/docs/configuration/keys/#class-matter) documentation.
+* HAProxy Ingress service account needs `get`, `list` and `watch` access to the `ingressclass` resource from the `networking.k8s.io` api group.
 * The default backend configured with `--default-backend-service` does not have a fixed name `_default_backend` anymore, but instead a dynamic name based on the namespace, service name and listening port number of the target service, as any other backend. This will break configuration snippets that uses the old name.
 
 **Contributors**
