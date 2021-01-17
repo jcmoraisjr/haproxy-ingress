@@ -20,7 +20,7 @@
 * pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
 
-**v0.12-snapshot.1**
+## v0.12-beta.1
 
 New features and improvements:
 
@@ -49,23 +49,6 @@ New features and improvements:
     * `--sort-endpoints-by` - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/command-line/#sort-endpoints-by)
 * Update embedded haproxy to 2.2.4 [4ff2f55](https://github.com/jcmoraisjr/haproxy-ingress/commit/4ff2f550acb3e6e0975457cb89c381452edde228) (Joao Morais)
 * Configure default backend to not change backend ID [#681](https://github.com/jcmoraisjr/haproxy-ingress/pull/681) (jcmoraisjr)
-
-Fixes:
-
-* Fix rewrite target match [#668](https://github.com/jcmoraisjr/haproxy-ingress/pull/668) (jcmoraisjr)
-* Log socket response only if message is not empty [#675](https://github.com/jcmoraisjr/haproxy-ingress/pull/675) (jcmoraisjr)
-* Improve old and new backend comparison [#676](https://github.com/jcmoraisjr/haproxy-ingress/pull/676) (jcmoraisjr)
-* Implement sort-backends [#677](https://github.com/jcmoraisjr/haproxy-ingress/pull/677) (jcmoraisjr)
-* Fix dynamic update of the default backend [#680](https://github.com/jcmoraisjr/haproxy-ingress/pull/680) (jcmoraisjr)
-
-Others:
-
-* Adds a GH Action to close stale issues [#615](https://github.com/jcmoraisjr/haproxy-ingress/pull/615) (rikatz)
-
-**v0.12-snapshot.2**
-
-New features and improvements:
-
 * Update go from 1.14.8 to 1.14.(latest) [3c8b444](https://github.com/jcmoraisjr/haproxy-ingress/commit/3c8b4440a64b474ee715c79e4d5b25393cdc8d24) (Joao Morais)
 * Add worker-max-reloads config option [#692](https://github.com/jcmoraisjr/haproxy-ingress/pull/692) (jcmoraisjr)
   * Configuration keys:
@@ -77,33 +60,45 @@ New features and improvements:
   * Command-line options:
     * `--controller-class` - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/command-line/#ingress-class)
     * `--watch-ingress-without-class` - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/command-line/#ingress-class)
-
-Fixes:
-
-* Fix line too long on backend parsing [#683](https://github.com/jcmoraisjr/haproxy-ingress/pull/683) (jcmoraisjr)
-* Fix basic auth backend tracking [#688](https://github.com/jcmoraisjr/haproxy-ingress/pull/688) (jcmoraisjr)
-* Allow signer to work with wildcard dns certs [#695](https://github.com/jcmoraisjr/haproxy-ingress/pull/695) (pbabilas)
-* Improve certificate validation of acme signer [#689](https://github.com/jcmoraisjr/haproxy-ingress/pull/689) (jcmoraisjr)
-
-**v0.12-snapshot.3**
-
-New features and improvements:
-
 * Add SameSite cookie attribute [#707](https://github.com/jcmoraisjr/haproxy-ingress/pull/707) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/keys/#affinity)
   * Configuration keys:
     * `session-cookie-same-site`
 * Independently configure rules and TLS [#702](https://github.com/jcmoraisjr/haproxy-ingress/pull/702) (jcmoraisjr)
 * Change oauth2 to path scope [#704](https://github.com/jcmoraisjr/haproxy-ingress/pull/704) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/keys/#oauth)
 * Update haproxy from 2.2.5 to 2.2.6 [b34edd0](https://github.com/jcmoraisjr/haproxy-ingress/commit/b34edd0dfb3bcf08552885df4d8904973bb8a2dc) (Joao Morais)
+* Readd haproxy user in the docker image [#718](https://github.com/jcmoraisjr/haproxy-ingress/pull/718) (jcmoraisjr)
+* Create state file only if load-server-state is enabled [#721](https://github.com/jcmoraisjr/haproxy-ingress/pull/721) (jcmoraisjr)
+* Add deny access list and exception ip/cidr [#722](https://github.com/jcmoraisjr/haproxy-ingress/pull/722) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/keys/#allowlist)
+  * Configuration keys:
+    * `allowlist-source-range`
+    * `denylist-source-range`
+* Update embedded haproxy from 2.2.6 to 2.2.8 [ba3f80b](https://github.com/jcmoraisjr/haproxy-ingress/commit/ba3f80bdde3fd6dfcfc5c8a26166255dad49cd39) (Joao Morais)
 
 Fixes:
 
+* Fix rewrite target match [#668](https://github.com/jcmoraisjr/haproxy-ingress/pull/668) (jcmoraisjr)
+* Log socket response only if message is not empty [#675](https://github.com/jcmoraisjr/haproxy-ingress/pull/675) (jcmoraisjr)
+* Improve old and new backend comparison [#676](https://github.com/jcmoraisjr/haproxy-ingress/pull/676) (jcmoraisjr)
+* Implement sort-backends [#677](https://github.com/jcmoraisjr/haproxy-ingress/pull/677) (jcmoraisjr)
+* Fix dynamic update of the default backend [#680](https://github.com/jcmoraisjr/haproxy-ingress/pull/680) (jcmoraisjr)
+* Fix line too long on backend parsing [#683](https://github.com/jcmoraisjr/haproxy-ingress/pull/683) (jcmoraisjr)
+* Fix basic auth backend tracking [#688](https://github.com/jcmoraisjr/haproxy-ingress/pull/688) (jcmoraisjr)
+* Allow signer to work with wildcard dns certs [#695](https://github.com/jcmoraisjr/haproxy-ingress/pull/695) (pbabilas)
+* Improve certificate validation of acme signer [#689](https://github.com/jcmoraisjr/haproxy-ingress/pull/689) (jcmoraisjr)
 * Use default certificate only if provided SNI isn't found [#700](https://github.com/jcmoraisjr/haproxy-ingress/pull/700) (jcmoraisjr)
 * Only notifies ConfigMap updates if data changes [#703](https://github.com/jcmoraisjr/haproxy-ingress/pull/703) (jcmoraisjr)
+* Fix reload failure if admin socket refuses connection [#719](https://github.com/jcmoraisjr/haproxy-ingress/pull/719) (jcmoraisjr)
+* Clear the crt expire gauge when full sync [#717](https://github.com/jcmoraisjr/haproxy-ingress/pull/717) (jcmoraisjr)
+* Fix first conciliation if external haproxy is not running [#720](https://github.com/jcmoraisjr/haproxy-ingress/pull/720) (jcmoraisjr)
 
 Docs:
 
 * Add path scope [#705](https://github.com/jcmoraisjr/haproxy-ingress/pull/705) (jcmoraisjr)
+* Fix prometheus config [#723](https://github.com/jcmoraisjr/haproxy-ingress/pull/723) (jcmoraisjr)
+
+Others:
+
+* Adds a GH Action to close stale issues [#615](https://github.com/jcmoraisjr/haproxy-ingress/pull/615) (rikatz)
 
 ## v0.11.1
 
