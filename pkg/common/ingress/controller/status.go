@@ -30,7 +30,7 @@ import (
 
 	pool "gopkg.in/go-playground/pool.v3"
 	apiv1 "k8s.io/api/core/v1"
-	networking "k8s.io/api/networking/v1beta1"
+	networking "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -350,7 +350,7 @@ func runUpdate(ctx context.Context, ing *networking.Ingress, status []apiv1.Load
 			return true, nil
 		}
 
-		ingClient := client.NetworkingV1beta1().Ingresses(ing.Namespace)
+		ingClient := client.NetworkingV1().Ingresses(ing.Namespace)
 
 		currIng, err := ingClient.Get(ctx, ing.Name, metav1.GetOptions{})
 		if err != nil {

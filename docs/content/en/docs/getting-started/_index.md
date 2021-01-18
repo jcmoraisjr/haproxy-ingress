@@ -94,7 +94,7 @@ Obs.: `nip.io` is a convenient service which converts a valid domain name to any
 ```shell
 $ HOST=echoserver.192.168.1.11.nip.io
 $ kubectl create -f - <<EOF
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
@@ -105,10 +105,13 @@ spec:
   - host: $HOST
     http:
       paths:
-      - backend:
-          serviceName: echoserver
-          servicePort: 8080
-        path: /
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: echoserver
+            port:
+              number: 8080
 EOF
 ```
 

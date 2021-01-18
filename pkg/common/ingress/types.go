@@ -21,7 +21,7 @@ import (
 
 	"github.com/spf13/pflag"
 	apiv1 "k8s.io/api/core/v1"
-	networking "k8s.io/api/networking/v1beta1"
+	networking "k8s.io/api/networking/v1"
 	"k8s.io/apiserver/pkg/server/healthz"
 )
 

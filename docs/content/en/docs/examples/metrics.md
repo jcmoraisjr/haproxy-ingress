@@ -92,7 +92,7 @@ Create the ingress which will expose Grafana. Change `HOST` below to a domain of
 ```
 HOST=grafana.192.168.1.1.nip.io
 kubectl create -f - <<EOF
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: grafana
@@ -102,10 +102,13 @@ spec:
   - host: $HOST
     http:
       paths:
-      - backend:
-          serviceName: grafana
-          servicePort: 3000
-        path: /
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: grafana
+            port:
+              number: 3000
   tls:
   - hosts:
     - $HOST

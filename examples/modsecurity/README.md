@@ -80,7 +80,7 @@ No need to use a valid domain, `echo.domain` below is fine:
 
 ```console
 $ kubectl create -f - <<EOF
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
@@ -93,9 +93,12 @@ spec:
     http:
       paths:
       - path: /
+        pathType: Prefix
         backend:
-          serviceName: echo
-          servicePort: 8080
+          service:
+            name: echo
+            port:
+              number: 8080
 EOF
 ```
 

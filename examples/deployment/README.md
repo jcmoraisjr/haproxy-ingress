@@ -107,7 +107,7 @@ From now the optional web app should be deployed. Deploy an ingress resource to 
 
 ```console
 $ kubectl --namespace=ingress-controller create -f - <<EOF
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: app
@@ -117,9 +117,12 @@ spec:
     http:
       paths:
       - path: /
+        pathType: Prefix
         backend:
-          serviceName: http-svc
-          servicePort: 8080
+          service:
+            name: http-svc
+            port:
+              number: 8080
 EOF
 ```
 

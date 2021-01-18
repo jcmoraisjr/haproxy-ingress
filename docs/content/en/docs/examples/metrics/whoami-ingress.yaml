@@ -1,4 +1,4 @@
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
@@ -10,10 +10,13 @@ spec:
   - host: whoami.localdomain
     http:
       paths:
-      - backend:
-          serviceName: whoami
-          servicePort: 8000
-        path: /
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: whoami
+            port:
+              number: 8000
   tls:
   - hosts:
     - whoami.localdomain

@@ -24,7 +24,7 @@ import (
 	"strings"
 
 	api "k8s.io/api/core/v1"
-	networking "k8s.io/api/networking/v1beta1"
+	networking "k8s.io/api/networking/v1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/annotations"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
@@ -344,8 +344,8 @@ func (c *converter) syncPartial() {
 func (c *converter) trackAddedIngress() {
 	for _, ing := range c.changed.IngressesAdd {
 		name := ing.Namespace + "/" + ing.Name
-		if ing.Spec.Backend != nil {
-			backend := c.findBackend(ing.Namespace, ing.Spec.Backend)
+		if ing.Spec.DefaultBackend != nil {
+			backend := c.findBackend(ing.Namespace, ing.Spec.DefaultBackend)
 			if backend != nil {
 				c.tracker.TrackBackend(convtypes.IngressType, name, backend.BackendID())
 			}
@@ -365,7 +365,10 @@ func (c *converter) trackAddedIngress() {
 }
 
 func (c *converter) findBackend(namespace string, backend *networking.IngressBackend) *hatypes.Backend {
-	svcName, svcPort := readServiceNamePort(backend)
+	svcName, svcPort, err := readServiceNamePort(backend)
+	if err != nil {
+		return nil
+	}
 	fullSvcName := namespace + "/" + svcName
 	svc, err := c.cache.GetService(fullSvcName)
 	if err != nil {
@@ -397,9 +400,11 @@ func (c *converter) syncIngress(ing *networking.Ingress) {
 		Type:      "ingress",
 	}
 	annHost, annBack := c.readAnnotations(ing.Annotations)
-	if ing.Spec.Backend != nil {
-		svcName, svcPort := readServiceNamePort(ing.Spec.Backend)
-		err := c.addDefaultHostBackend(source, ing.Namespace+"/"+svcName, svcPort, annHost, annBack)
+	if ing.Spec.DefaultBackend != nil {
+		svcName, svcPort, err := readServiceNamePort(ing.Spec.DefaultBackend)
+		if err == nil {
+			err = c.addDefaultHostBackend(source, ing.Namespace+"/"+svcName, svcPort, annHost, annBack)
+		}
 		if err != nil {
 			c.logger.Warn("skipping default backend of ingress '%s': %v", fullIngName, err)
 		}
@@ -423,7 +428,11 @@ func (c *converter) syncIngress(ing *networking.Ingress) {
 				c.logger.Warn("skipping redeclared path '%s' of ingress '%s'", uri, fullIngName)
 				continue
 			}
-			svcName, svcPort := readServiceNamePort(&path.Backend)
+			svcName, svcPort, err := readServiceNamePort(&path.Backend)
+			if err != nil {
+				c.logger.Warn("skipping backend config of ingress '%s': %v", fullIngName, err)
+				continue
+			}
 			fullSvcName := ing.Namespace + "/" + svcName
 			backend, err := c.addBackendWithClass(source, hostname, uri, fullSvcName, svcPort, annBack, ingressClass)
 			if err != nil {
@@ -818,8 +827,14 @@ func (c *converter) parseParameters(ingressClass *networking.IngressClass, track
 	}
 }
 
-func readServiceNamePort(backend *networking.IngressBackend) (string, string) {
-	serviceName := backend.ServiceName
-	servicePort := backend.ServicePort.String()
-	return serviceName, servicePort
+func readServiceNamePort(backend *networking.IngressBackend) (string, string, error) {
+	if backend.Service == nil {
+		return "", "", fmt.Errorf("resource backend is not supported yet")
+	}
+	serviceName := backend.Service.Name
+	servicePort := backend.Service.Port.Name
+	if servicePort == "" {
+		servicePort = strconv.Itoa(int(backend.Service.Port.Number))
+	}
+	return serviceName, servicePort, nil
 }
