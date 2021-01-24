@@ -981,7 +981,7 @@ frontend _front_https
         {{- if $frontend.BindID }} id {{ $frontend.BindID }}{{ end }}
         {{- if $frontend.AcceptProxy }} accept-proxy{{ end }}
         {{- "" }} ssl alpn {{ $global.SSL.ALPN }}
-        {{- "" }} crt-list {{ $fmaps.CrtList.FilenameEmpty }}
+        {{- "" }} crt-list {{ $frontend.CrtListFile }}
         {{- "" }} ca-ignore-err all crt-ignore-err all
 {{- end }}
 
