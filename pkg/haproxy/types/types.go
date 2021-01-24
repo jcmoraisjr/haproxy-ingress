@@ -302,8 +302,6 @@ type FrontendMaps struct {
 	TLSNeedCrtList        *HostsMap
 	TLSInvalidCrtPagesMap *HostsMap
 	TLSMissingCrtPagesMap *HostsMap
-	//
-	CrtList *HostsMap
 }
 
 // Frontend ...
@@ -316,6 +314,7 @@ type Frontend struct {
 	//
 	DefaultCrtFile string
 	DefaultCrtHash string
+	CrtListFile    string
 }
 
 // DefaultHost ...
@@ -358,9 +357,6 @@ const (
 	MatchExact  = MatchType("exact")
 	MatchPrefix = MatchType("prefix")
 	MatchRegex  = MatchType("regex")
-	//
-	// IMPLEMENT a temp and partially supported match to configure crt-list
-	MatchEmpty = MatchType("")
 )
 
 // DefaultMatchOrder ...
