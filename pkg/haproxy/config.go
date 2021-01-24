@@ -168,10 +168,11 @@ func (c *config) WriteFrontendMaps() error {
 		TLSNeedCrtList:        mapBuilder.AddMap(mapsDir + "/_front_tls_needcrt.list"),
 		TLSInvalidCrtPagesMap: mapBuilder.AddMap(mapsDir + "/_front_tls_invalidcrt_pages.map"),
 		TLSMissingCrtPagesMap: mapBuilder.AddMap(mapsDir + "/_front_tls_missingcrt_pages.map"),
-		//
-		CrtList: mapBuilder.AddMap(mapsDir + "/_front_bind_crt.list"),
 	}
-	fmaps.CrtList.AppendItem(c.frontend.DefaultCrtFile + " !*")
+	// TODO crtList* to be removed after implement a template to the crt list
+	c.frontend.CrtListFile = mapsDir + "/_front_bind_crt.list"
+	var crtListItems []*hatypes.HostsMapEntry
+	crtListItems = append(crtListItems, &hatypes.HostsMapEntry{Key: c.frontend.DefaultCrtFile + " !*"})
 	// Some maps use yes/no answers instead of a list with found/missing keys
 	// This approach avoid overlap:
 	//  1. match with path_beg/map_beg, /path has a feature and a declared /path/sub doesn't have
@@ -293,8 +294,11 @@ func (c *config) WriteFrontendMaps() error {
 			} else {
 				crtListEntry = fmt.Sprintf("%s [%s] %s", crtFile, strings.Join(bindConf, " "), host.Hostname)
 			}
-			fmaps.CrtList.AppendItem(crtListEntry)
+			crtListItems = append(crtListItems, &hatypes.HostsMapEntry{Key: crtListEntry})
 		}
+	}
+	if err := c.options.mapsTemplate.WriteOutput(crtListItems, c.frontend.CrtListFile); err != nil {
+		return err
 	}
 	if err := writeMaps(mapBuilder, c.options.mapsTemplate); err != nil {
 		return err
@@ -338,11 +342,6 @@ func (c *config) WriteBackendMaps() error {
 
 func writeMaps(maps *hatypes.HostsMaps, template *template.Config) error {
 	for _, hmap := range maps.Items {
-		if f, err := hmap.Filename(hatypes.MatchEmpty); err == nil {
-			if err := template.WriteOutput(hmap.BuildSortedValues(hatypes.MatchEmpty), f); err != nil {
-				return err
-			}
-		}
 		for _, match := range hmap.UsedMatchTypes() {
 			filename, err := hmap.Filename(match)
 			if err != nil {

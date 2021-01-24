@@ -219,15 +219,6 @@ func (hm *HostsMap) BuildSortedValues(match MatchType) []*HostsMapEntry {
 	return hm.values[match]
 }
 
-// AppendItem ...
-func (hm *HostsMap) AppendItem(item string) {
-	values := hm.values[MatchEmpty]
-	values = append(values, &HostsMapEntry{
-		Key: item,
-	})
-	hm.values[MatchEmpty] = values
-}
-
 // HasHost ...
 func (hm *HostsMap) HasHost() bool {
 	for _, values := range hm.values {
@@ -293,11 +284,7 @@ func (hm *HostsMap) Filename(match MatchType) (string, error) {
 	}
 	filename, found := hm.filenames[match]
 	if !found {
-		if match == MatchEmpty {
-			filename = hm.basename
-		} else {
-			filename = strings.Replace(hm.basename, ".", "__"+string(match)+".", 1)
-		}
+		filename = strings.Replace(hm.basename, ".", "__"+string(match)+".", 1)
 		hm.filenames[match] = filename
 	}
 	return filename, nil
@@ -321,11 +308,6 @@ func (hm *HostsMap) FilenamePrefix() (string, error) {
 // FilenameRegex ...
 func (hm *HostsMap) FilenameRegex() (string, error) {
 	return hm.Filename(MatchRegex)
-}
-
-// FilenameEmpty ...
-func (hm *HostsMap) FilenameEmpty() (string, error) {
-	return hm.Filename(MatchEmpty)
 }
 
 func (he *HostsMapEntry) String() string {
