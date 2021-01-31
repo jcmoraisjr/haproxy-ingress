@@ -17,6 +17,7 @@ limitations under the License.
 package types
 
 import (
+	"container/list"
 	"time"
 )
 
@@ -270,16 +271,32 @@ type TCPProxyProt struct {
 type HostsMapEntry struct {
 	hostname string
 	path     string
+	match    MatchType
+	_upper   *list.Element
+	_elem    *list.Element
 	Key      string
 	Value    string
+}
+
+type hostsMapMatchFile struct {
+	entries []*HostsMapEntry
+	match   MatchType
+}
+
+// MatchFile ...
+type MatchFile struct {
+	matchFile *hostsMapMatchFile
+	filename  string
+	first     bool
 }
 
 // HostsMap ...
 type HostsMap struct {
 	basename   string
-	filenames  map[MatchType]string
-	values     map[MatchType][]*HostsMapEntry
 	matchOrder []MatchType
+	matchFiles []*MatchFile
+	rawhosts   map[string][]*HostsMapEntry
+	rawfiles   map[MatchType]*hostsMapMatchFile
 }
 
 // HostsMaps ...
