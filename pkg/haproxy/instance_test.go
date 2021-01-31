@@ -3406,7 +3406,7 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     mode http
     http-request use-service lua.send-404`,
 		"    <<set-req-base>>": `    http-request set-var(req.path) path
-    http-request set-var(req.host) hdr(host),regsub(:[0-9]+$,),lower
+    http-request set-var(req.host) hdr(host),field(1,:),lower
     http-request set-var(req.base) var(req.host),concat(,req.path)`,
 		"    <<http-headers>>": `    http-request set-header X-Forwarded-Proto http
     http-request del-header X-SSL-Client-CN
@@ -3445,7 +3445,7 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     mode http
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
     http-request set-var(req.path) path
-    http-request set-var(req.host) hdr(host),regsub(:[0-9]+$,),lower
+    http-request set-var(req.host) hdr(host),field(1,:),lower
     http-request set-var(req.base) var(req.host),concat(,req.path)
     http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map)
     <<https-headers>>
