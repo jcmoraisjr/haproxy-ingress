@@ -17,8 +17,11 @@ limitations under the License.
 package types
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
+
+	"github.com/kylelemons/godebug/diff"
 )
 
 var matchOrder = []MatchType{MatchExact, MatchPrefix, MatchBegin, MatchRegex}
@@ -58,13 +61,13 @@ func TestAddHostnameMapping(t *testing.T) {
 	for i, test := range testCases {
 		hm := CreateMaps(matchOrder).AddMap(test.filename)
 		hm.AddHostnameMapping(test.hostname, "backend")
-		values := hm.values[test.expmatch]
-		if len(values) != 1 {
-			t.Errorf("item %d, invalid match or value: %v", i, hm.values)
+		entries := hm.rawfiles[test.expmatch].entries
+		if len(entries) != 1 {
+			t.Errorf("item %d, invalid match or value: %v", i, hm.rawfiles)
 			continue
 		}
-		if values[0].Key != test.expected {
-			t.Errorf("item %d, expected key '%s' but was '%s'", i, test.expected, values[0].Key)
+		if entries[0].Key != test.expected {
+			t.Errorf("item %d, expected key '%s' but was '%s'", i, test.expected, entries[0].Key)
 			continue
 		}
 	}
@@ -183,13 +186,13 @@ func TestAddHostnamePathMapping(t *testing.T) {
 			Match: test.match,
 		}
 		hm.AddHostnamePathMapping(test.hostname, hostPath, "backend")
-		values := hm.values[test.expmatch]
-		if len(values) != 1 {
-			t.Errorf("item %d, invalid match or value: %v", i, hm.values)
+		entries := hm.rawfiles[test.expmatch].entries
+		if len(entries) != 1 {
+			t.Errorf("item %d, invalid match or value: %v", i, hm.rawfiles)
 			continue
 		}
-		if values[0].Key != test.expected {
-			t.Errorf("item %d, expected key '%s' but was '%s'", i, test.expected, values[0].Key)
+		if entries[0].Key != test.expected {
+			t.Errorf("item %d, expected key '%s' but was '%s'", i, test.expected, entries[0].Key)
 			continue
 		}
 	}
@@ -291,14 +294,195 @@ func TestAddAliasPathMapping(t *testing.T) {
 		}
 		hm.AddAliasPathMapping(alias, hostPath, "backend")
 		actual := map[MatchType][]string{}
-		for match := range hm.values {
-			for _, value := range hm.values[match] {
-				actual[match] = append(actual[match], value.Key)
+		for match := range hm.rawfiles {
+			for _, entry := range hm.rawfiles[match].entries {
+				actual[match] = append(actual[match], entry.Key)
 			}
 		}
 		if !reflect.DeepEqual(actual, test.expected) {
 			t.Errorf("item %d, expected values '%v' but was '%v'", i, test.expected, actual)
 			continue
+		}
+	}
+}
+
+func TestOverlap(t *testing.T) {
+	type data struct {
+		hostname string
+		path     string
+		match    MatchType
+		target   string
+	}
+	testCases := []struct {
+		data     []data
+		expected string
+	}{
+		// 0
+		{
+			data: []data{
+				data{hostname: "local1.tld", path: "/a", match: MatchBegin},
+				data{hostname: "local1.tld", path: "/ab", match: MatchBegin},
+			},
+			expected: `
+hosts__begin.map first:true,lower:true,method:beg
+local1.tld /ab begin
+local1.tld /a begin
+`,
+		},
+		// 1
+		{
+			data: []data{
+				data{hostname: "local1.tld", path: "/a", match: MatchBegin},
+				data{hostname: "local1.tld", path: "/ab", match: MatchPrefix},
+			},
+			expected: `
+hosts__prefix_01.map first:true,lower:false,method:dir
+local1.tld /ab prefix
+
+hosts__begin.map first:false,lower:true,method:beg
+local1.tld /a begin
+`,
+		},
+		// 2
+		{
+			data: []data{
+				data{hostname: "local1.tld", path: "/a", match: MatchBegin},
+				data{hostname: "local1.tld", path: "/ab.*", match: MatchRegex},
+			},
+			expected: `
+hosts__begin.map first:true,lower:true,method:beg
+local1.tld /a begin
+
+hosts__regex.map first:false,lower:false,method:reg
+^local1\.tld$ /ab.* regex
+`,
+		},
+		// 3
+		{
+			data: []data{
+				data{hostname: "local1.tld", path: "/a", match: MatchBegin},
+				data{hostname: "local2.tld", path: "/ab", match: MatchPrefix},
+			},
+			expected: `
+hosts__prefix.map first:true,lower:false,method:dir
+local2.tld /ab prefix
+
+hosts__begin.map first:false,lower:true,method:beg
+local1.tld /a begin
+`,
+		},
+		// 4
+		{
+			data: []data{
+				data{hostname: "local1.tld", path: "/a", match: MatchBegin},
+				data{hostname: "local1.tld", path: "/abc", match: MatchBegin},
+				data{hostname: "local1.tld", path: "/ab", match: MatchPrefix},
+				data{hostname: "local2.tld", path: "/a", match: MatchExact},
+			},
+			expected: `
+hosts__begin_01.map first:true,lower:true,method:beg
+local1.tld /abc begin
+
+hosts__prefix_02.map first:false,lower:false,method:dir
+local1.tld /ab prefix
+
+hosts__exact.map first:false,lower:false,method:str
+local2.tld /a exact
+
+hosts__begin.map first:false,lower:true,method:beg
+local1.tld /a begin
+`,
+		},
+		// 5
+		{
+			data: []data{
+				data{hostname: "local1.tld", path: "/abc", match: MatchBegin},
+				data{hostname: "local1.tld", path: "/ab", match: MatchPrefix},
+				data{hostname: "local1.tld", path: "/a", match: MatchBegin},
+				data{hostname: "local2.tld", path: "/a", match: MatchExact},
+				data{hostname: "local2.tld", path: "/abc", match: MatchExact},
+				data{hostname: "local2.tld", path: "/ab", match: MatchExact},
+			},
+			expected: `
+hosts__begin_01.map first:true,lower:true,method:beg
+local1.tld /abc begin
+
+hosts__prefix_02.map first:false,lower:false,method:dir
+local1.tld /ab prefix
+
+hosts__exact.map first:false,lower:false,method:str
+local2.tld /abc exact
+local2.tld /ab exact
+local2.tld /a exact
+
+hosts__begin.map first:false,lower:true,method:beg
+local1.tld /a begin
+`,
+		},
+		// 6
+		{
+			data: []data{
+				data{hostname: "local1.tld", path: "/abc", match: MatchBegin},
+				data{hostname: "local1.tld", path: "/ab", match: MatchPrefix},
+				data{hostname: "local1.tld", path: "/abcd", match: MatchExact},
+				data{hostname: "local1.tld", path: "/a", match: MatchBegin},
+			},
+			expected: `
+hosts__exact_01.map first:true,lower:false,method:str
+local1.tld /abcd exact
+
+hosts__begin_02.map first:false,lower:true,method:beg
+local1.tld /abc begin
+
+hosts__prefix_03.map first:false,lower:false,method:dir
+local1.tld /ab prefix
+
+hosts__begin.map first:false,lower:true,method:beg
+local1.tld /a begin
+`,
+		},
+		// 7
+		{
+			data: []data{
+				data{hostname: "local1.tld", path: "/ab", match: MatchPrefix},
+				data{hostname: "local1.tld", path: "/abc", match: MatchBegin},
+				data{hostname: "local1.tld", path: "/a", match: MatchBegin},
+				data{hostname: "local1.tld", path: "/abcd", match: MatchExact},
+			},
+			expected: `
+hosts__exact_01.map first:true,lower:false,method:str
+local1.tld /abcd exact
+
+hosts__begin_02.map first:false,lower:true,method:beg
+local1.tld /abc begin
+
+hosts__prefix_03.map first:false,lower:false,method:dir
+local1.tld /ab prefix
+
+hosts__begin.map first:false,lower:true,method:beg
+local1.tld /a begin
+`,
+		},
+	}
+	for i, test := range testCases {
+		hm := CreateMaps(matchOrder).AddMap("hosts.map")
+		for _, item := range test.data {
+			if item.path == "" {
+				hm.AddHostnameMapping(item.hostname, item.target)
+			} else {
+				hm.AddHostnamePathMapping(item.hostname, &HostPath{Path: item.path, Match: item.match}, item.target)
+			}
+		}
+		var output string
+		for _, m := range hm.MatchFiles() {
+			output += fmt.Sprintf("\n%s first:%t,lower:%t,method:%s", m.Filename(), m.First(), m.Lower(), m.Method())
+			for _, v := range m.Values() {
+				output += fmt.Sprintf("\n%s %s %s", v.hostname, v.path, v.match)
+			}
+			output += "\n"
+		}
+		if output != test.expected {
+			t.Errorf("item %d: \n%s", i, diff.Diff(test.expected, output))
 		}
 	}
 }

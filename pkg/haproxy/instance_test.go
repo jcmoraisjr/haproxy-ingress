@@ -314,8 +314,8 @@ d1.local/api path02`,
     # path05 = d1.local/api/v[0-9]+/
     # path02 = d1.local/app
     # path04 = d1.local/path
-    http-request set-var(txn.pathID) var(req.base),map_str(/etc/haproxy/maps/_back_d1_app_8080_idpath__exact.map)
-    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpath__prefix.map) if !{ var(txn.pathID) -m found }
+    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpath__prefix_01.map)
+    http-request set-var(txn.pathID) var(req.base),map_str(/etc/haproxy/maps/_back_d1_app_8080_idpath__exact_02.map) if !{ var(txn.pathID) -m found }
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map) if !{ var(txn.pathID) -m found }
     http-request set-var(txn.pathID) var(req.base),map_reg(/etc/haproxy/maps/_back_d1_app_8080_idpath__regex.map) if !{ var(txn.pathID) -m found }
     acl wlist_src0 src 10.0.0.0/8 192.168.0.0/16
@@ -324,10 +324,10 @@ d1.local/api path02`,
     http-request deny if { var(txn.pathID) path01 } !wlist_src1`,
 			expFronts: "<<frontends-default-match-4>>",
 			expCheck: map[string]string{
-				"_back_d1_app_8080_idpath__exact.map": `
-d1.local/app path02`,
-				"_back_d1_app_8080_idpath__prefix.map": `
+				"_back_d1_app_8080_idpath__prefix_01.map": `
 d1.local/path path04`,
+				"_back_d1_app_8080_idpath__exact_02.map": `
+d1.local/app path02`,
 				"_back_d1_app_8080_idpath__begin.map": `
 d1.local/api path03
 d1.local/ path01`,
@@ -3381,8 +3381,8 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     http-request set-var(req.redir) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_redir_tohttps__begin.map)
     http-request redirect scheme https if { var(req.redir) yes }`,
 		"    <<https-redirect-match-4>>": `    <<set-req-base>>
-    http-request set-var(req.redir) var(req.base),map_str(/etc/haproxy/maps/_front_redir_tohttps__exact.map)
-    http-request set-var(req.redir) var(req.base),map_dir(/etc/haproxy/maps/_front_redir_tohttps__prefix.map) if !{ var(req.redir) -m found }
+    http-request set-var(req.redir) var(req.base),map_dir(/etc/haproxy/maps/_front_redir_tohttps__prefix_01.map)
+    http-request set-var(req.redir) var(req.base),map_str(/etc/haproxy/maps/_front_redir_tohttps__exact_02.map) if !{ var(req.redir) -m found }
     http-request set-var(req.redir) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_redir_tohttps__begin.map) if !{ var(req.redir) -m found }
     http-request set-var(req.redir) var(req.base),map_reg(/etc/haproxy/maps/_front_redir_tohttps__regex.map) if !{ var(req.redir) -m found }
     http-request redirect scheme https if { var(req.redir) yes }`,
@@ -3408,8 +3408,8 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     bind :80
     <<https-redirect-match-4>>
     <<http-headers>>
-    http-request set-var(req.backend) var(req.base),map_str(/etc/haproxy/maps/_front_http_host__exact.map)
-    http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_host__prefix.map) if !{ var(req.backend) -m found }
+    http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_host__prefix_01.map)
+    http-request set-var(req.backend) var(req.base),map_str(/etc/haproxy/maps/_front_http_host__exact_02.map) if !{ var(req.backend) -m found }
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map) if !{ var(req.backend) -m found }
     http-request set-var(req.backend) var(req.base),map_reg(/etc/haproxy/maps/_front_http_host__regex.map) if !{ var(req.backend) -m found }
     use_backend %[var(req.backend)] if { var(req.backend) -m found }`,
@@ -3432,8 +3432,8 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     mode http
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
     <<set-req-base>>
-    http-request set-var(req.hostbackend) var(req.base),map_str(/etc/haproxy/maps/_front_https_host__exact.map)
-    http-request set-var(req.hostbackend) var(req.base),map_dir(/etc/haproxy/maps/_front_https_host__prefix.map) if !{ var(req.hostbackend) -m found }
+    http-request set-var(req.hostbackend) var(req.base),map_dir(/etc/haproxy/maps/_front_https_host__prefix_01.map)
+    http-request set-var(req.hostbackend) var(req.base),map_str(/etc/haproxy/maps/_front_https_host__exact_02.map) if !{ var(req.hostbackend) -m found }
     http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map) if !{ var(req.hostbackend) -m found }
     http-request set-var(req.hostbackend) var(req.base),map_reg(/etc/haproxy/maps/_front_https_host__regex.map) if !{ var(req.hostbackend) -m found }
     <<https-headers>>
