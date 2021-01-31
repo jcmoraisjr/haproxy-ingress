@@ -404,7 +404,7 @@ backend {{ $backend.ID }}
 {{- range $path := $backend.Paths }}
     # {{ $path.ID }} = {{ $path.Hostname }}{{ $path.Path }}
 {{- end }}
-{{- range $match := $backend.PathsMap.MatchTypes }}
+{{- range $match := $backend.PathsMap.MatchFiles }}
     http-request set-var(txn.pathID) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
@@ -843,7 +843,7 @@ listen _front__tls
     tcp-request inspect-delay 5s
 
 {{- /*------------------------------------*/}}
-{{- range $match := $fmaps.SSLPassthroughMap.MatchTypes }}
+{{- range $match := $fmaps.SSLPassthroughMap.MatchFiles }}
     tcp-request content set-var(req.sslpassback) req.ssl_sni,lower
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- if not $match.First }} if !{ var(req.sslpassback) -m found }{{ end }}
@@ -908,7 +908,7 @@ frontend _front_http
 {{- /*------------------------------------*/}}
 {{- $acmeexclusive := and $global.Acme.Enabled (not $global.Acme.Shared) }}
 {{- if $fmaps.RedirFromRootMap.HasHost }}
-{{- range $match := $fmaps.RedirFromRootMap.MatchTypes }}
+{{- range $match := $fmaps.RedirFromRootMap.MatchFiles }}
     http-request set-var(req.rootredir) var(req.host)
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- if not $match.First }} if !{ var(req.rootredir) -m found }{{ end }}
@@ -920,7 +920,7 @@ frontend _front_http
 
 {{- /*------------------------------------*/}}
 {{- if $fmaps.VarNamespaceMap.HasHost }}
-{{- range $match := $fmaps.VarNamespaceMap.MatchTypes }}
+{{- range $match := $fmaps.VarNamespaceMap.MatchFiles }}
     http-request set-var(txn.namespace) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
@@ -945,7 +945,7 @@ frontend _front_http
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- range $match := $fmaps.HTTPHostMap.MatchTypes }}
+{{- range $match := $fmaps.HTTPHostMap.MatchFiles }}
     http-request set-var(req.backend) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
@@ -995,14 +995,14 @@ frontend _front_https
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if or $fmaps.RedirFromRootMap.HasHost $fmaps.HTTPSHostMap.HasHost $fmaps.HTTPSSNIMap.HasHost $fmaps.TLSAuthList.HasHost $fmaps.TLSNeedCrtList.MatchTypes $fmaps.VarNamespaceMap.HasHost }}
+{{- if or $fmaps.RedirFromRootMap.HasHost $fmaps.HTTPSHostMap.HasHost $fmaps.HTTPSSNIMap.HasHost $fmaps.TLSAuthList.HasHost $fmaps.TLSNeedCrtList.HasHost $fmaps.VarNamespaceMap.HasHost }}
     http-request set-var(req.path) path
     http-request set-var(req.host) hdr(host),regsub(:[0-9]+$,),lower
     http-request set-var(req.base) var(req.host),concat(,req.path)
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- range $match := $fmaps.HTTPSHostMap.MatchTypes }}
+{{- range $match := $fmaps.HTTPSHostMap.MatchFiles }}
     http-request set-var(req.hostbackend) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
         {{- ""}},map_{{ $match.Method }}({{ $match.Filename }})
@@ -1011,7 +1011,7 @@ frontend _front_https
 
 {{- /*------------------------------------*/}}
 {{- if $fmaps.RedirFromRootMap.HasHost }}
-{{- range $match := $fmaps.RedirFromRootMap.MatchTypes }}
+{{- range $match := $fmaps.RedirFromRootMap.MatchFiles }}
     http-request set-var(req.rootredir) var(req.host)
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- if not $match.First }} if !{ var(req.rootredir) -m found }{{ end }}
@@ -1021,7 +1021,7 @@ frontend _front_https
 
 {{- /*------------------------------------*/}}
 {{- if $fmaps.VarNamespaceMap.HasHost }}
-{{- range $match := $fmaps.VarNamespaceMap.MatchTypes }}
+{{- range $match := $fmaps.VarNamespaceMap.MatchFiles }}
     http-request set-var(txn.namespace) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
@@ -1044,29 +1044,29 @@ frontend _front_https
     acl tls-has-crt ssl_c_used
 
 {{- if $mandatory }}
-{{- range $match := $fmaps.TLSNeedCrtList.MatchTypes }}
+{{- range $match := $fmaps.TLSNeedCrtList.MatchFiles }}
     acl tls-need-crt ssl_fc_sni -i -m {{ $match.Method }} -f {{ $match.Filename }}
 {{- end }}
 {{- end }}
 
-{{- range $match := $fmaps.TLSNeedCrtList.MatchTypes }}
+{{- range $match := $fmaps.TLSNeedCrtList.MatchFiles }}
     acl tls-host-need-crt var(req.host) -i -m {{ $match.Method }} -f {{ $match.Filename }}
 {{- end }}
     acl tls-has-invalid-crt ssl_c_ca_err gt 0
     acl tls-has-invalid-crt ssl_c_err gt 0
-{{- range $match := $fmaps.TLSAuthList.MatchTypes }}
+{{- range $match := $fmaps.TLSAuthList.MatchFiles }}
     acl tls-check-crt ssl_fc_sni -i -m {{ $match.Method }} -f {{ $match.Filename }}
 {{- end }}
 
 {{- if $fmaps.HTTPSSNIMap.HasHost }}
     http-request set-var(req.snibase) ssl_fc_sni,lower,concat(,req.path)
-{{- range $match := $fmaps.HTTPSSNIMap.MatchTypes }}
+{{- range $match := $fmaps.HTTPSSNIMap.MatchFiles }}
     http-request set-var(req.snibackend) var(req.snibase)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- if not $match.First }} if !{ var(req.snibackend) -m found }{{ end }}
 {{- end }}
-{{- range $match := $fmaps.HTTPSSNIMap.MatchTypes }}
+{{- range $match := $fmaps.HTTPSSNIMap.MatchFiles }}
     http-request set-var(req.snibackend) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
@@ -1079,7 +1079,7 @@ frontend _front_https
 {{- if not $fmaps.TLSMissingCrtPagesMap.HasHost }}
     http-request set-var(req.tls_nocrt_redir) str(_internal) if !tls-has-crt tls-need-crt
 {{- end }}
-{{- range $match := $fmaps.TLSMissingCrtPagesMap.MatchTypes }}
+{{- range $match := $fmaps.TLSMissingCrtPagesMap.MatchFiles }}
     http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }},_internal) if
         {{- if $match.First }} !tls-has-crt tls-need-crt
@@ -1090,7 +1090,7 @@ frontend _front_https
 {{- if not $fmaps.TLSInvalidCrtPagesMap.HasHost }}
     http-request set-var(req.tls_invalidcrt_redir) str(_internal) if tls-has-invalid-crt tls-check-crt
 {{- end }}
-{{- range $match := $fmaps.TLSInvalidCrtPagesMap.MatchTypes }}
+{{- range $match := $fmaps.TLSInvalidCrtPagesMap.MatchFiles }}
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }},_internal) if
         {{- if $match.First }} tls-has-invalid-crt tls-check-crt

@@ -17,6 +17,7 @@ limitations under the License.
 package types
 
 import (
+	"container/list"
 	"fmt"
 	"regexp"
 	"sort"
@@ -34,9 +35,9 @@ func CreateMaps(matchOrder []MatchType) *HostsMaps {
 func (hm *HostsMaps) AddMap(basename string) *HostsMap {
 	hmap := &HostsMap{
 		basename:   basename,
-		filenames:  map[MatchType]string{},
-		values:     map[MatchType][]*HostsMapEntry{},
 		matchOrder: hm.matchOrder,
+		rawhosts:   map[string][]*HostsMapEntry{},
+		rawfiles:   map[MatchType]*hostsMapMatchFile{},
 	}
 	hm.Items = append(hm.Items, hmap)
 	return hmap
@@ -121,38 +122,18 @@ func (hm *HostsMap) addTarget(hostname, path, target string, match MatchType) {
 	entry := &HostsMapEntry{
 		hostname: hostname,
 		path:     path,
+		match:    match,
 		Key:      bindHostnamePath(match, hostname, path),
 		Value:    target,
 	}
-	values := hm.values[match]
-	values = append(values, entry)
-	hm.values[match] = values
-}
-
-func (hm *HostsMap) sortValues(match MatchType) {
-	values := hm.values[match]
-	if match == MatchRegex {
-		// Keep regexes in order from most to least specific, based on rule length
-		sort.Slice(values, func(i, j int) bool {
-			k1 := values[i].Key
-			k2 := values[j].Key
-			if len(k1) != len(k2) {
-				return len(k1) > len(k2)
-			}
-			return k1 < k2
-		})
-	} else {
-		// Ascending order of hostnames and reverse order of paths within the same hostname
-		sort.Slice(values, func(i, j int) bool {
-			v1 := values[i]
-			v2 := values[j]
-			if v1.hostname == v2.hostname {
-				return v1.path > v2.path
-			}
-			return v1.Key < v2.Key
-		})
+	matchFile := hm.rawfiles[match]
+	if matchFile == nil {
+		matchFile = &hostsMapMatchFile{match: match}
+		hm.rawfiles[match] = matchFile
 	}
-	hm.values[match] = values
+	matchFile.entries = append(matchFile.entries, entry)
+	hm.rawhosts[hostname] = append(hm.rawhosts[hostname], entry)
+	hm.matchFiles = nil
 }
 
 func bindHostnamePath(match MatchType, hostname, path string) string {
@@ -169,102 +150,154 @@ func bindHostnamePath(match MatchType, hostname, path string) string {
 	return hostname + path
 }
 
-type matchTypeHelper struct {
-	hm    *HostsMap
-	match MatchType
-	first bool
+// MatchFiles ...
+func (hm *HostsMap) MatchFiles() []*MatchFile {
+	if len(hm.matchFiles) == 0 {
+		hm.matchFiles = hm.rebuildMatchFiles()
+	}
+	return hm.matchFiles
 }
 
-// MatchTypeHelper ...
-type MatchTypeHelper interface {
-	First() bool
-	Lower() bool
-	Method() string
-	Filename() (string, error)
-}
-
-func (h matchTypeHelper) First() bool               { return h.first }
-func (h matchTypeHelper) Lower() bool               { return h.hm.Lower(h.match) }
-func (h matchTypeHelper) Method() string            { return h.hm.Method(h.match) }
-func (h matchTypeHelper) Filename() (string, error) { return h.hm.Filename(h.match) }
-
-// UsedMatchTypes ...
-func (hm *HostsMap) UsedMatchTypes() []MatchType {
-	var matchTypes []MatchType
+func (hm *HostsMap) rebuildMatchFiles() (matchFiles []*MatchFile) {
+	order := &list.List{}
+	for _, entryList := range hm.rawhosts {
+		// /sub/dir need to be processed before /sub
+		sort.Slice(entryList, func(i, j int) bool {
+			return entryList[i].path > entryList[j].path
+		})
+		for i, e1 := range entryList {
+			if i < len(entryList) {
+				for _, e2 := range entryList[i+1:] {
+					// TODO regex is currently always the last match
+					if e1.match != e2.match && e1.match != MatchRegex && e2.match != MatchRegex && strings.HasPrefix(e1.path, e2.path) {
+						// here we have an overlap and distinct match files
+						// separate the entry that should be processed first
+						// into a match file with higher priority
+						el1 := e1._elem
+						if el1 == nil {
+							var m1 *hostsMapMatchFile
+							m1, el1 = findOrCreateMatchFile(order, e1.match, e1._upper, e2._elem)
+							m1.entries = append(m1.entries, e1)
+							e1._elem = el1
+						}
+						e2._upper = el1
+					}
+				}
+			}
+		}
+	}
+	orderCnt := order.Len()
 	for _, match := range hm.matchOrder {
-		if len(hm.values[match]) > 0 {
-			matchTypes = append(matchTypes, match)
+		matchFile := hm.rawfiles[match]
+		if matchFile != nil {
+			matchFile.shrink()
+			if len(matchFile.entries) > 0 {
+				order.PushBack(matchFile)
+			}
 		}
 	}
-	return matchTypes
+	matchFiles = make([]*MatchFile, 0, order.Len())
+	var i int
+	for e := order.Front(); e != nil; e = e.Next() {
+		i++
+		matchFile := e.Value.(*hostsMapMatchFile)
+		var suffix string
+		if i <= orderCnt {
+			suffix = fmt.Sprintf("__%s_%02d", matchFile.match, i)
+		} else {
+			suffix = fmt.Sprintf("__%s", matchFile.match)
+		}
+		matchFile.sort()
+		matchFiles = append(matchFiles, &MatchFile{
+			matchFile: matchFile,
+			filename:  strings.Replace(hm.basename, ".", suffix+".", 1),
+			first:     i == 1,
+		})
+	}
+	return matchFiles
 }
 
-// MatchTypes ...
-func (hm *HostsMap) MatchTypes() []MatchTypeHelper {
-	matchTypes := hm.UsedMatchTypes()
-	helper := make([]MatchTypeHelper, len(matchTypes))
-	for i, match := range matchTypes {
-		helper[i] = matchTypeHelper{
-			hm:    hm,
-			match: match,
-			first: i == 0,
+func findOrCreateMatchFile(order *list.List, match MatchType, starting, limit *list.Element) (matchFile *hostsMapMatchFile, element *list.Element) {
+	matchFile, element = findMatchFile(order, match, starting, limit)
+	if element == nil {
+		matchFile = &hostsMapMatchFile{match: match}
+		if limit == nil {
+			element = order.PushBack(matchFile)
+		} else {
+			element = order.InsertBefore(matchFile, limit)
 		}
 	}
-	return helper
+	return matchFile, element
 }
 
-// BuildSortedValues ...
-func (hm *HostsMap) BuildSortedValues(match MatchType) []*HostsMapEntry {
-	hm.sortValues(match)
-	return hm.values[match]
+func findMatchFile(order *list.List, match MatchType, starting, limit *list.Element) (matchFile *hostsMapMatchFile, element *list.Element) {
+	if starting == nil {
+		starting = order.Front()
+	}
+	for element = starting; element != limit; element = element.Next() {
+		matchFile = element.Value.(*hostsMapMatchFile)
+		if matchFile.match == match {
+			return matchFile, element
+		}
+	}
+	return nil, nil
 }
 
 // HasHost ...
 func (hm *HostsMap) HasHost() bool {
-	for _, values := range hm.values {
-		if len(values) > 0 {
+	for _, matchFile := range hm.rawfiles {
+		if len(matchFile.entries) > 0 {
 			return true
 		}
 	}
 	return false
 }
 
-// Has ...
-func (hm *HostsMap) Has(match MatchType) bool {
-	return len(hm.values[match]) > 0
+func (mf *hostsMapMatchFile) shrink() {
+	e := mf.entries
+	l := len(e)
+	for i := range e {
+		if e[i]._elem != nil {
+			l--
+			e[i] = e[l]
+		}
+	}
+	mf.entries = e[:l]
 }
 
-// HasBegin ...
-func (hm *HostsMap) HasBegin() bool {
-	return hm.Has(MatchBegin)
+func (mf *hostsMapMatchFile) sort() {
+	if mf.match == MatchRegex {
+		// Keep regexes in order from most to least specific, based on rule length
+		sort.Slice(mf.entries, func(i, j int) bool {
+			k1 := mf.entries[i].Key
+			k2 := mf.entries[j].Key
+			if len(k1) != len(k2) {
+				return len(k1) > len(k2)
+			}
+			return k1 < k2
+		})
+	} else {
+		// Ascending order of hostnames and reverse order of paths within the same hostname
+		sort.Slice(mf.entries, func(i, j int) bool {
+			v1 := mf.entries[i]
+			v2 := mf.entries[j]
+			if v1.hostname == v2.hostname {
+				return v1.path > v2.path
+			}
+			return v1.Key < v2.Key
+		})
+	}
 }
 
-// HasExact ...
-func (hm *HostsMap) HasExact() bool {
-	return hm.Has(MatchExact)
-}
-
-// HasPrefix ...
-func (hm *HostsMap) HasPrefix() bool {
-	return hm.Has(MatchPrefix)
-}
-
-// HasRegex ...
-func (hm *HostsMap) HasRegex() bool {
-	return hm.Has(MatchRegex)
-}
-
-// Lower ...
-func (hm *HostsMap) Lower(match MatchType) bool {
-	if match == MatchBegin {
+func (mf *hostsMapMatchFile) lower() bool {
+	if mf.match == MatchBegin {
 		return true
 	}
 	return false
 }
 
-// Method ...
-func (hm *HostsMap) Method(match MatchType) string {
-	switch match {
+func (mf *hostsMapMatchFile) method() string {
+	switch mf.match {
 	case MatchExact:
 		return "str"
 	case MatchPrefix:
@@ -274,40 +307,32 @@ func (hm *HostsMap) Method(match MatchType) string {
 	case MatchRegex:
 		return "reg"
 	}
-	panic(fmt.Errorf("unsupported match type: %s", match))
+	panic(fmt.Errorf("unsupported match type: %s", mf.match))
 }
 
 // Filename ...
-func (hm *HostsMap) Filename(match MatchType) (string, error) {
-	if !hm.Has(match) {
-		return "", fmt.Errorf("file content is empty")
-	}
-	filename, found := hm.filenames[match]
-	if !found {
-		filename = strings.Replace(hm.basename, ".", "__"+string(match)+".", 1)
-		hm.filenames[match] = filename
-	}
-	return filename, nil
+func (m MatchFile) Filename() string {
+	return m.filename
 }
 
-// FilenameBegin ...
-func (hm *HostsMap) FilenameBegin() (string, error) {
-	return hm.Filename(MatchBegin)
+// First ...
+func (m MatchFile) First() bool {
+	return m.first
 }
 
-// FilenameExact ...
-func (hm *HostsMap) FilenameExact() (string, error) {
-	return hm.Filename(MatchExact)
+// Lower ...
+func (m MatchFile) Lower() bool {
+	return m.matchFile.lower()
 }
 
-// FilenamePrefix ...
-func (hm *HostsMap) FilenamePrefix() (string, error) {
-	return hm.Filename(MatchPrefix)
+// Method ...
+func (m MatchFile) Method() string {
+	return m.matchFile.method()
 }
 
-// FilenameRegex ...
-func (hm *HostsMap) FilenameRegex() (string, error) {
-	return hm.Filename(MatchRegex)
+// Values ...
+func (m MatchFile) Values() []*HostsMapEntry {
+	return m.matchFile.entries
 }
 
 func (he *HostsMapEntry) String() string {
