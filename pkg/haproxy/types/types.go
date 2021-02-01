@@ -632,6 +632,8 @@ type ServerConfig struct {
 	Protocol      string
 	Secure        bool
 	SendProxy     string
+	SNI           string
+	VerifyHost    string
 }
 
 // BackendTimeoutConfig ...

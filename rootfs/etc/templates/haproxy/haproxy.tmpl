@@ -640,8 +640,10 @@ backend {{ $backend.ID }}
         {{- if $server.CipherSuites }} ciphersuites {{ $server.CipherSuites }}{{ end }}
         {{- if $server.Options }} {{ $server.Options }}{{ end }}
         {{- if $server.CrtFilename }} crt {{ $server.CrtFilename }}{{ end }}
+        {{- if $server.SNI }} sni {{ $server.SNI }}{{ end }}
         {{- if $server.CAFilename }} verify required ca-file {{ $server.CAFilename }}
             {{- if $server.CRLFilename }} crl-file {{ $server.CRLFilename }}{{ end }}
+            {{- if $server.VerifyHost }} verifyhost {{ $server.VerifyHost }}{{ end }}
         {{- else }} verify none
         {{- end }}
     {{- end }}

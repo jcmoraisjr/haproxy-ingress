@@ -512,6 +512,29 @@ d1.local/ path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.Server.Secure = true
+				b.Server.SNI = "var(req.host)"
+			},
+			srvsuffix: "ssl sni var(req.host) verify none",
+		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.Server.Secure = true
+				b.Server.CAFilename = "/var/haproxy/ssl/ca.pem"
+				b.Server.SNI = "ssl_fc_sni"
+			},
+			srvsuffix: "ssl sni ssl_fc_sni verify required ca-file /var/haproxy/ssl/ca.pem",
+		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.Server.Secure = true
+				b.Server.CAFilename = "/var/haproxy/ssl/ca.pem"
+				b.Server.VerifyHost = "domain.tld"
+			},
+			srvsuffix: "ssl verify required ca-file /var/haproxy/ssl/ca.pem verifyhost domain.tld",
+		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.Server.Protocol = "h2"
 			},
 			srvsuffix: "proto h2",
