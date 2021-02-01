@@ -1634,6 +1634,92 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 			},
 			logging: `WARN ignoring h2 protocol on service 'default/app1' due to HTX disabled, changing to h1`,
 		},
+		// 12
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackBackendProtocol: "h1-ssl",
+					ingtypes.BackSecureSNI:       "sni",
+				},
+			},
+			expected: hatypes.ServerConfig{
+				Secure:   true,
+				Protocol: "h1",
+				SNI:      "ssl_fc_sni",
+			},
+		},
+		// 13
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackBackendProtocol: "h1-ssl",
+					ingtypes.BackSecureSNI:       "host",
+				},
+			},
+			expected: hatypes.ServerConfig{
+				Secure:   true,
+				Protocol: "h1",
+				SNI:      "var(req.host)",
+			},
+		},
+		// 14
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackBackendProtocol: "h1-ssl",
+					ingtypes.BackSecureSNI:       "domain.tld",
+				},
+			},
+			expected: hatypes.ServerConfig{
+				Secure:   true,
+				Protocol: "h1",
+				SNI:      "str(domain.tld)",
+			},
+		},
+		// 15
+		{
+			source: Source{Namespace: "default", Name: "app", Type: "ingress"},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackBackendProtocol: "h1-ssl",
+					ingtypes.BackSecureSNI:       "invalid/domain",
+				},
+			},
+			expected: hatypes.ServerConfig{
+				Secure:   true,
+				Protocol: "h1",
+			},
+			logging: `WARN skipping invalid domain (SNI) on ingress 'default/app': invalid/domain`,
+		},
+		// 16
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackBackendProtocol:      "h1-ssl",
+					ingtypes.BackSecureVerifyHostname: "domain.tld",
+				},
+			},
+			expected: hatypes.ServerConfig{
+				Secure:     true,
+				Protocol:   "h1",
+				VerifyHost: "domain.tld",
+			},
+		},
+		// 17
+		{
+			source: Source{Namespace: "default", Name: "app", Type: "ingress"},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackBackendProtocol:      "h1-ssl",
+					ingtypes.BackSecureVerifyHostname: "invalid/domain",
+				},
+			},
+			expected: hatypes.ServerConfig{
+				Secure:   true,
+				Protocol: "h1",
+			},
+			logging: `WARN skipping invalid domain (verify-hostname) on ingress 'default/app': invalid/domain`,
+		},
 	}
 	for i, test := range testCase {
 		c := setup(t)
