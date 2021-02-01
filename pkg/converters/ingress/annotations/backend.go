@@ -586,6 +586,8 @@ func (c *updater) findBackend(namespace, uriPrefix string) *hatypes.HostBackend 
 	return nil
 }
 
+var validDomainRegex = regexp.MustCompile(`^[A-Za-z0-9.]*$`)
+
 func (c *updater) buildBackendProtocol(d *backData) {
 	proto := d.mapper.Get(ingtypes.BackBackendProtocol)
 	var protocol string
@@ -629,6 +631,27 @@ func (c *updater) buildBackendProtocol(d *backData) {
 			d.backend.Server.CrtHash = crtFile.SHA1Hash
 		} else {
 			c.logger.Warn("skipping client certificate on %v: %v", crt.Source, err)
+		}
+	}
+	if sni := d.mapper.Get(ingtypes.BackSecureSNI); sni.Value != "" {
+		switch sni.Value {
+		case "sni":
+			d.backend.Server.SNI = "ssl_fc_sni"
+		case "host":
+			d.backend.Server.SNI = "var(req.host)"
+		default:
+			if validDomainRegex.MatchString(sni.Value) {
+				d.backend.Server.SNI = fmt.Sprintf("str(%s)", sni.Value)
+			} else {
+				c.logger.Warn("skipping invalid domain (SNI) on %v: %s", sni.Source, sni.Value)
+			}
+		}
+	}
+	if host := d.mapper.Get(ingtypes.BackSecureVerifyHostname); host.Value != "" {
+		if validDomainRegex.MatchString(host.Value) {
+			d.backend.Server.VerifyHost = host.Value
+		} else {
+			c.logger.Warn("skipping invalid domain (verify-hostname) on %v: %s", host.Source, host.Value)
 		}
 	}
 	if ca := d.mapper.Get(ingtypes.BackSecureVerifyCASecret); ca.Value != "" {
