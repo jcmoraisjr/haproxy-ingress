@@ -384,7 +384,9 @@ The table below describes all supported configuration keys.
 | [`rewrite-target`](#rewrite-target)                  | path string                             | Path    |                    |
 | [`secure-backends`](#secure-backend)                 | [true\|false]                           | Backend |                    |
 | [`secure-crt-secret`](#secure-backend)               | secret name                             | Backend |                    |
+| [`secure-sni`](#secure-backend)                      | [`sni`\|`host`\|`<hostname>`]           | Backend |                    |
 | [`secure-verify-ca-secret`](#secure-backend)         | secret name                             | Backend |                    |
+| [`secure-verify-hostname`](#secure-backend)          | hostname                                | Backend |                    |
 | [`server-alias`](#server-alias)                      | domain name                             | Host    |                    |
 | [`server-alias-regex`](#server-alias)                | regex                                   | Host    |                    |
 | [`service-upstream`](#service-upstream)              | [true\|false]                           | Backend | `false`            |
@@ -1744,17 +1746,24 @@ The following table shows some examples:
 |---------------------------|-----------|---------|-------|
 | `secure-backends`         | `Backend` |         |       |
 | `secure-crt-secret`       | `Backend` |         |       |
+| `secure-sni`              | `Backend` |         | v0.11 |
 | `secure-verify-ca-secret` | `Backend` |         |       |
+| `secure-verify-hostname`  | `Backend` |         | v0.11 |
 
 Configure secure (TLS) connection to the backends.
 
 * `secure-backends`: Define as true if the backend provide a TLS connection.
 * `secure-crt-secret`: Optional secret name of client certificate and key. This cert/key pair must be provided if the backend requests a client certificate. Expected secret keys are `tls.crt` and `tls.key`, the same used if secret is built with `kubectl create secret tls <name>`.
-* `secure-verify-ca-secret`: Optional secret name with certificate authority bundle used to validate server certificate, preventing man-in-the-middle attacks. Expected secret key is `ca.crt`. Since v0.9, an optional `ca.crl` key can also provide a CRL in PEM format for the server to verify against.
+* `secure-sni`: Optional hostname that should be used as the SNI TLS extension sent to the backend server. If `host` is used as the content, the header Host from the incoming request is used as the SNI extension in the request to the backend. `sni` can also be used, which will use the same SNI from the incoming request. Note that, although the header Host is always right, the incoming SNI might be wrong if a TLS connection that's already opened is reused - this is a common practice on browsers connecting over http2. Any other value different of `host` or `sni` will be used verbatim and should be a valid domain. If `secure-verify-ca-secret` is also provided, this hostname is also used to validate the server certificate names.
+* `secure-verify-ca-secret`: Optional but recommended secret name with certificate authority bundle used to validate server certificate, preventing man-in-the-middle attacks. Expected secret key is `ca.crt`. Since v0.9, an optional `ca.crl` key can also provide a CRL in PEM format for the server to verify against. Configure either `secure-sni` or `secure-verify-hostname` to verify the certificate name.
+* `secure-verify-hostname`: Optional hostname used to verify the name of the server certificate, without using the SNI TLS extension. This option can only be used if `secure-verify-ca-secret` was provided, and only supports harcoded domains which is used verbatim.
 
 See also:
 
 * [Backend protocol](#backend-protocol) configuration key.
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-verify
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-verifyhost
+* https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#5.2-sni
 
 ---
 
