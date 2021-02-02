@@ -102,6 +102,17 @@ Others:
 
 * Adds a GH Action to close stale issues [#615](https://github.com/jcmoraisjr/haproxy-ingress/pull/615) (rikatz)
 
+### v0.12-beta.2
+
+Fixes and improvements since [v0.12-beta.1](#v012-beta1):
+
+* Use field converter to remove port from hdr host [#729](https://github.com/jcmoraisjr/haproxy-ingress/pull/729) (jcmoraisjr)
+* Add sni and verifyhost to secure connections [#730](https://github.com/jcmoraisjr/haproxy-ingress/pull/730) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/keys/#secure-backend)
+  * Configuration keys:
+    * `secure-sni`
+    * `secure-verify-hostname`
+* Fix path precedence of distinct match types [#728](https://github.com/jcmoraisjr/haproxy-ingress/pull/728) (jcmoraisjr)
+
 ## v0.11.1
 
 Fixes and improvements since [v0.11](#v011):
