@@ -902,7 +902,7 @@ frontend _front_http
 
 {{- /*------------------------------------*/}}
     http-request set-var(req.path) path
-    http-request set-var(req.host) hdr(host),regsub(:[0-9]+$,),lower
+    http-request set-var(req.host) hdr(host),field(1,:),lower
     http-request set-var(req.base) var(req.host),concat(,req.path)
 
 {{- /*------------------------------------*/}}
@@ -997,7 +997,7 @@ frontend _front_https
 {{- /*------------------------------------*/}}
 {{- if or $fmaps.RedirFromRootMap.HasHost $fmaps.HTTPSHostMap.HasHost $fmaps.HTTPSSNIMap.HasHost $fmaps.TLSAuthList.HasHost $fmaps.TLSNeedCrtList.MatchTypes $fmaps.VarNamespaceMap.HasHost }}
     http-request set-var(req.path) path
-    http-request set-var(req.host) hdr(host),regsub(:[0-9]+$,),lower
+    http-request set-var(req.host) hdr(host),field(1,:),lower
     http-request set-var(req.base) var(req.host),concat(,req.path)
 {{- end }}
 
