@@ -1644,8 +1644,8 @@ See also:
 
 Defines how the path of an incoming request should match a declared path in the ingress object.
 
-* `path-type`: Configures the path type. Case insensitive, so `Begin` and `begin` configures the same path type option. The ingress spec has priority, this option will only be used if the `pathType` attribute from the ingress spec is declared as `ImplementationSpecific` or is not declared.
-* `path-type-order`: Defines a comma-separated list of priority path types. First types has higher precedence, which means that if two distinct paths of two distinct types overlaps, the first in the list will be used to handle the request. All path types must be provided. Case insensitive, use all path types in lowercase.
+* `path-type`: Configures the path type. Case insensitive, so `Begin` and `begin` configures the same path type option. The ingress spec has priority, this option will only be used if the `pathType` attribute from the ingress spec is declared as `ImplementationSpecific`.
+* `path-type-order`: Defines a comma-separated list of the order that non overlapping paths should be matched. The default order starts with `exact` which is the fastest match, and finishes with `regex` which is the slowest one. All path types must be provided. Case insensitive, use all path types in lowercase. In the case of overlapping paths, eg `/dir/sub` and `/dir`, the one with the highest precedence, `/dir/sub` in the example, will always be checked first despite its match type.
 
 {{% alert title="Warning" color="warning" %}}
 Wildcard hostnames and alias-regex match incoming requests using the regex path type, even if the path itself has a distinct one. Changing the precedence order of paths also changes the precedence order of hostnames. See also [server-alias-regex](#server-alias) and [strict host](#strict-host).

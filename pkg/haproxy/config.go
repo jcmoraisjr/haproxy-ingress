@@ -160,10 +160,11 @@ func (c *config) WriteFrontendMaps() error {
 		TLSNeedCrtList:        mapBuilder.AddMap(mapsDir + "/_front_tls_needcrt.list"),
 		TLSInvalidCrtPagesMap: mapBuilder.AddMap(mapsDir + "/_front_tls_invalidcrt_pages.map"),
 		TLSMissingCrtPagesMap: mapBuilder.AddMap(mapsDir + "/_front_tls_missingcrt_pages.map"),
-		//
-		CrtList: mapBuilder.AddMap(mapsDir + "/_front_bind_crt.list"),
 	}
-	fmaps.CrtList.AppendItem(c.frontend.DefaultCrtFile + " !*")
+	// TODO crtList* to be removed after implement a template to the crt list
+	c.frontend.CrtListFile = mapsDir + "/_front_bind_crt.list"
+	var crtListItems []*hatypes.HostsMapEntry
+	crtListItems = append(crtListItems, &hatypes.HostsMapEntry{Key: c.frontend.DefaultCrtFile + " !*"})
 	hasVarNamespace := c.hosts.HasVarNamespace()
 	for _, host := range c.hosts.BuildSortedItems() {
 		if host.SSLPassthrough() {
@@ -272,8 +273,11 @@ func (c *config) WriteFrontendMaps() error {
 			} else {
 				crtListEntry = fmt.Sprintf("%s [%s] %s", crtFile, strings.Join(bindConf, " "), host.Hostname)
 			}
-			fmaps.CrtList.AppendItem(crtListEntry)
+			crtListItems = append(crtListItems, &hatypes.HostsMapEntry{Key: crtListEntry})
 		}
+	}
+	if err := c.options.mapsTemplate.WriteOutput(crtListItems, c.frontend.CrtListFile); err != nil {
+		return err
 	}
 	if err := writeMaps(mapBuilder, c.options.mapsTemplate); err != nil {
 		return err
@@ -317,17 +321,9 @@ func (c *config) WriteBackendMaps() error {
 
 func writeMaps(maps *hatypes.HostsMaps, template *template.Config) error {
 	for _, hmap := range maps.Items {
-		if f, err := hmap.Filename(hatypes.MatchEmpty); err == nil {
-			if err := template.WriteOutput(hmap.BuildSortedValues(hatypes.MatchEmpty), f); err != nil {
-				return err
-			}
-		}
-		for _, match := range hmap.UsedMatchTypes() {
-			filename, err := hmap.Filename(match)
-			if err != nil {
-				return err
-			}
-			if err := template.WriteOutput(hmap.BuildSortedValues(match), filename); err != nil {
+		for _, matchFile := range hmap.MatchFiles() {
+			filename := matchFile.Filename()
+			if err := template.WriteOutput(matchFile.Values(), filename); err != nil {
 				return err
 			}
 		}

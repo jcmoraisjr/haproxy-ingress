@@ -17,6 +17,7 @@ limitations under the License.
 package types
 
 import (
+	"container/list"
 	"time"
 )
 
@@ -270,16 +271,32 @@ type TCPProxyProt struct {
 type HostsMapEntry struct {
 	hostname string
 	path     string
+	match    MatchType
+	_upper   *list.Element
+	_elem    *list.Element
 	Key      string
 	Value    string
+}
+
+type hostsMapMatchFile struct {
+	entries []*HostsMapEntry
+	match   MatchType
+}
+
+// MatchFile ...
+type MatchFile struct {
+	matchFile *hostsMapMatchFile
+	filename  string
+	first     bool
 }
 
 // HostsMap ...
 type HostsMap struct {
 	basename   string
-	filenames  map[MatchType]string
-	values     map[MatchType][]*HostsMapEntry
 	matchOrder []MatchType
+	matchFiles []*MatchFile
+	rawhosts   map[string][]*HostsMapEntry
+	rawfiles   map[MatchType]*hostsMapMatchFile
 }
 
 // HostsMaps ...
@@ -302,8 +319,6 @@ type FrontendMaps struct {
 	TLSNeedCrtList        *HostsMap
 	TLSInvalidCrtPagesMap *HostsMap
 	TLSMissingCrtPagesMap *HostsMap
-	//
-	CrtList *HostsMap
 }
 
 // Frontend ...
@@ -316,6 +331,7 @@ type Frontend struct {
 	//
 	DefaultCrtFile string
 	DefaultCrtHash string
+	CrtListFile    string
 }
 
 // DefaultHost ...
@@ -358,9 +374,6 @@ const (
 	MatchExact  = MatchType("exact")
 	MatchPrefix = MatchType("prefix")
 	MatchRegex  = MatchType("regex")
-	//
-	// IMPLEMENT a temp and partially supported match to configure crt-list
-	MatchEmpty = MatchType("")
 )
 
 // DefaultMatchOrder ...
