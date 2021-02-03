@@ -287,6 +287,18 @@ Fixes and improvements since [v0.11-beta.3](#v011-beta3):
 * Improve certificate validation of acme signer [#689](https://github.com/jcmoraisjr/haproxy-ingress/pull/689) (jcmoraisjr)
 * Update haproxy from 2.1.9 to 2.1.10 [9763c63](https://github.com/jcmoraisjr/haproxy-ingress/commit/9763c635d73dc3c853223304902b29ae3065cb32) (Joao Morais)
 
+## v0.10.4
+
+Fixes and improvements since [v0.10.3](#v0103):
+
+* Fix reload failure if admin socket refuses connection [#719](https://github.com/jcmoraisjr/haproxy-ingress/pull/719) (jcmoraisjr)
+* Readd haproxy user in the docker image [#718](https://github.com/jcmoraisjr/haproxy-ingress/pull/718) (jcmoraisjr)
+* Update embedded haproxy to 2.0.20 [ae3cc40](https://github.com/jcmoraisjr/haproxy-ingress/commit/ae3cc4088edd321bb073e171361f7b769ca09fbd) (Joao Morais)
+
+Docs:
+
+* Fix prometheus config [#723](https://github.com/jcmoraisjr/haproxy-ingress/pull/723) (jcmoraisjr)
+
 ## v0.10.3
 
 Fixes and improvements since [v0.10.2](#v0102):
