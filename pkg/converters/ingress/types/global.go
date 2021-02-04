@@ -36,6 +36,8 @@ const (
 	GlobalConfigGlobal                 = "config-global"
 	GlobalCookieKey                    = "cookie-key"
 	GlobalCpuMap                       = "cpu-map"
+	GlobalDefaultBackendRedirect       = "default-backend-redirect"
+	GlobalDefaultBackendRedirectCode   = "default-backend-redirect-code"
 	GlobalDNSAcceptedPayloadSize       = "dns-accepted-payload-size"
 	GlobalDNSClusterDomain             = "dns-cluster-domain"
 	GlobalDNSHoldObsolete              = "dns-hold-obsolete"

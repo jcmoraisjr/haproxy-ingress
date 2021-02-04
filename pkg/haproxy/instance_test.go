@@ -963,6 +963,62 @@ empty/ default_empty_8080`)
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestDefaultBackendRedir(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	c.config.Global().DefaultBackendRedir = "https://example.tld"
+	c.config.Hosts().AcquireHost("empty").AddPath(c.config.Backends().AcquireBackend("default", "empty", "8080"), "/", hatypes.MatchBegin)
+
+	c.Update()
+
+	c.checkConfig(`
+global
+    daemon
+    unix-bind mode 0600
+    stats socket /var/run/haproxy.sock level admin expose-fd listeners mode 600
+    maxconn 2000
+    hard-stop-after 15m
+    lua-load /etc/haproxy/lua/auth-request.lua
+    lua-load /etc/haproxy/lua/services.lua
+    ssl-dh-param-file /var/haproxy/tls/dhparam.pem
+    ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
+    ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
+    ssl-default-bind-options no-sslv3
+    ssl-default-server-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
+    ssl-default-server-ciphersuites TLS_AES_128_GCM_SHA256
+defaults
+    log global
+    maxconn 2000
+    option redispatch
+    option dontlognull
+    option http-server-close
+    option http-keep-alive
+    timeout client          50s
+    timeout client-fin      50s
+    timeout connect         5s
+    timeout http-keep-alive 1m
+    timeout http-request    5s
+    timeout queue           5s
+    timeout server          50s
+    timeout server-fin      50s
+    timeout tunnel          1h
+backend default_empty_8080
+    mode http
+backend _error404
+    mode http
+    redirect location https://example.tld code 301
+<<frontends-default>>
+<<support>>
+`)
+
+	c.checkMap("_front_http_host__begin.map", `
+empty/ default_empty_8080`)
+	c.checkMap("_front_https_host__begin.map", `
+empty/ default_empty_8080`)
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestInstanceEmptyExternal(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
@@ -3284,6 +3340,7 @@ func (c *testConfig) configGlobal(global *hatypes.Global) {
 	global.Bind.HTTPBind = ":80"
 	global.Bind.HTTPSBind = ":443"
 	global.Cookie.Key = "Ingress"
+	global.DefaultBackendRedirCode = 301
 	global.Healthz.Port = 10253
 	global.Master.ExitOnFailure = true
 	global.MatchOrder = hatypes.DefaultMatchOrder
