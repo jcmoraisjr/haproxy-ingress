@@ -79,7 +79,7 @@ Configure the ingress resource. No need to change the host below, `bluegreen.exa
 
 ```
 $ kubectl create -f - <<EOF
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
@@ -93,10 +93,13 @@ spec:
   - host: bluegreen.example.com
     http:
       paths:
-      - backend:
-          serviceName: bluegreen
-          servicePort: 8000
-        path: /
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: bluegreen
+            port:
+              number: 8000
 EOF
 ```
 

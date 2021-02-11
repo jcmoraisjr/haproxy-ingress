@@ -103,7 +103,7 @@ command-line option. The annotation value spec expects a string as the key value
 declare numbers and booleans as strings, HAProxy Ingress will convert them when needed.
 
 ```yaml
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
@@ -134,7 +134,7 @@ section [above](#annotation), with the benefit of allowing the reuse of the
 IngressClass+ConfigMap configuration.
 
 ```yaml
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: IngressClass
 metadata:
   name: my-class
@@ -158,7 +158,7 @@ metadata:
 ```
 
 ```yaml
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: app
@@ -183,7 +183,7 @@ Ingress resources can be fragmented in order to add distinct configurations
 to distinct routes. For example:
 
 ```yaml
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: app-front
@@ -193,13 +193,16 @@ spec:
     http:
       paths:
       - path: /
+        pathType: Prefix
         backend:
-          serviceName: frontend
-          servicePort: 8080
+          service:
+            name: frontend
+            port:
+              number: 8080
 ```
 
 ```yaml
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
@@ -211,9 +214,12 @@ spec:
     http:
       paths:
       - path: /api
+        pathType: Prefix
         backend:
-          serviceName: backend
-          servicePort: 8080
+          service:
+            name: backend
+            port:
+              number: 8080
 ```
 
 HAProxy Ingress will merge all the resources, so there is no difference if the

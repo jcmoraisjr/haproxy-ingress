@@ -22,15 +22,15 @@ import (
 	"time"
 
 	api "k8s.io/api/core/v1"
-	networking "k8s.io/api/networking/v1beta1"
+	networking "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/informers"
-	informersv1 "k8s.io/client-go/informers/core/v1"
-	informersv1beta1 "k8s.io/client-go/informers/networking/v1beta1"
+	informerscore "k8s.io/client-go/informers/core/v1"
+	informersnetworking "k8s.io/client-go/informers/networking/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
-	listersv1 "k8s.io/client-go/listers/core/v1"
-	listersv1beta1 "k8s.io/client-go/listers/networking/v1beta1"
+	listerscore "k8s.io/client-go/listers/core/v1"
+	listersnetworking "k8s.io/client-go/listers/networking/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 
@@ -54,14 +54,14 @@ type listers struct {
 	hasPodLister  bool
 	hasNodeLister bool
 	//
-	ingressLister      listersv1beta1.IngressLister
-	ingressClassLister listersv1beta1.IngressClassLister
-	endpointLister     listersv1.EndpointsLister
-	serviceLister      listersv1.ServiceLister
-	secretLister       listersv1.SecretLister
-	configMapLister    listersv1.ConfigMapLister
-	podLister          listersv1.PodLister
-	nodeLister         listersv1.NodeLister
+	ingressLister      listersnetworking.IngressLister
+	ingressClassLister listersnetworking.IngressClassLister
+	endpointLister     listerscore.EndpointsLister
+	serviceLister      listerscore.ServiceLister
+	secretLister       listerscore.SecretLister
+	configMapLister    listerscore.ConfigMapLister
+	podLister          listerscore.PodLister
+	nodeLister         listerscore.NodeLister
 	//
 	ingressInformer      cache.SharedInformer
 	ingressClassInformer cache.SharedInformer
@@ -105,8 +105,8 @@ func createListers(
 		recorder: recorder,
 		logger:   logger,
 	}
-	l.createIngressLister(ingressInformer.Networking().V1beta1().Ingresses())
-	l.createIngressClassLister(ingressInformer.Networking().V1beta1().IngressClasses())
+	l.createIngressLister(ingressInformer.Networking().V1().Ingresses())
+	l.createIngressClassLister(ingressInformer.Networking().V1().IngressClasses())
 	l.createEndpointLister(resourceInformer.Core().V1().Endpoints())
 	l.createServiceLister(resourceInformer.Core().V1().Services())
 	l.createSecretLister(resourceInformer.Core().V1().Secrets())
@@ -168,7 +168,7 @@ func (l *listers) RunAsync(stopCh <-chan struct{}) {
 	}
 }
 
-func (l *listers) createIngressLister(informer informersv1beta1.IngressInformer) {
+func (l *listers) createIngressLister(informer informersnetworking.IngressInformer) {
 	l.ingressLister = informer.Lister()
 	l.ingressInformer = informer.Informer()
 	l.ingressInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -227,7 +227,7 @@ func (l *listers) createIngressLister(informer informersv1beta1.IngressInformer)
 	})
 }
 
-func (l *listers) createIngressClassLister(informer informersv1beta1.IngressClassInformer) {
+func (l *listers) createIngressClassLister(informer informersnetworking.IngressClassInformer) {
 	l.ingressClassLister = informer.Lister()
 	l.ingressClassInformer = informer.Informer()
 	l.ingressClassInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -262,7 +262,7 @@ func (l *listers) createIngressClassLister(informer informersv1beta1.IngressClas
 	})
 }
 
-func (l *listers) createEndpointLister(informer informersv1.EndpointsInformer) {
+func (l *listers) createEndpointLister(informer informerscore.EndpointsInformer) {
 	l.endpointLister = informer.Lister()
 	l.endpointInformer = informer.Informer()
 	l.endpointInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -282,7 +282,7 @@ func (l *listers) createEndpointLister(informer informersv1.EndpointsInformer) {
 	})
 }
 
-func (l *listers) createServiceLister(informer informersv1.ServiceInformer) {
+func (l *listers) createServiceLister(informer informerscore.ServiceInformer) {
 	l.serviceLister = informer.Lister()
 	l.serviceInformer = informer.Informer()
 	l.serviceInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -312,7 +312,7 @@ func (l *listers) createServiceLister(informer informersv1.ServiceInformer) {
 	})
 }
 
-func (l *listers) createSecretLister(informer informersv1.SecretInformer) {
+func (l *listers) createSecretLister(informer informerscore.SecretInformer) {
 	l.secretLister = informer.Lister()
 	l.secretInformer = informer.Informer()
 	l.secretInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -342,7 +342,7 @@ func (l *listers) createSecretLister(informer informersv1.SecretInformer) {
 	})
 }
 
-func (l *listers) createConfigMapLister(informer informersv1.ConfigMapInformer) {
+func (l *listers) createConfigMapLister(informer informerscore.ConfigMapInformer) {
 	l.configMapLister = informer.Lister()
 	l.configMapInformer = informer.Informer()
 	l.configMapInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -368,7 +368,7 @@ func (l *listers) createConfigMapLister(informer informersv1.ConfigMapInformer) 
 	})
 }
 
-func (l *listers) createPodLister(informer informersv1.PodInformer) {
+func (l *listers) createPodLister(informer informerscore.PodInformer) {
 	l.podLister = informer.Lister()
 	l.podInformer = informer.Informer()
 	l.podInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -385,7 +385,7 @@ func (l *listers) createPodLister(informer informersv1.PodInformer) {
 	})
 }
 
-func (l *listers) createNodeLister(informer informersv1.NodeInformer) {
+func (l *listers) createNodeLister(informer informerscore.NodeInformer) {
 	l.nodeLister = informer.Lister()
 	l.nodeInformer = informer.Informer()
 }

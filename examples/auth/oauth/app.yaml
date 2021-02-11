@@ -1,5 +1,5 @@
 ---
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
@@ -10,14 +10,20 @@ spec:
   - host: app.192.168.100.99.nip.io
     http:
       paths:
-      - backend:
-          serviceName: oauth2-proxy
-          servicePort: 4180
-        path: /oauth2
-      - backend:
-          serviceName: echoserver
-          servicePort: 8080
-        path: /
+      - path: /oauth2
+        pathType: Prefix
+        backend:
+          service:
+            name: oauth2-proxy
+            port:
+              number: 4180
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: echoserver
+            port:
+              number: 8080
   tls:
   - hosts:
     - app.192.168.100.99.nip.io

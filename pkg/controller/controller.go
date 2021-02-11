@@ -25,7 +25,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/pflag"
 	api "k8s.io/api/core/v1"
-	networking "k8s.io/api/networking/v1beta1"
+	networking "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"

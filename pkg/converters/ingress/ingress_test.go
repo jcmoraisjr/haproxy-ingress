@@ -17,13 +17,14 @@ limitations under the License.
 package ingress
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/kylelemons/godebug/diff"
 	yaml "gopkg.in/yaml.v2"
 	api "k8s.io/api/core/v1"
-	networking "k8s.io/api/networking/v1beta1"
+	networking "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -1923,11 +1924,23 @@ metadata:
   namespace: ` + sname[0]).(*api.Secret)
 }
 
+func createServicePort(port string) networking.ServiceBackendPort {
+	portNumber, err := strconv.Atoi(port)
+	if err == nil {
+		return networking.ServiceBackendPort{
+			Number: int32(portNumber),
+		}
+	}
+	return networking.ServiceBackendPort{
+		Name: port,
+	}
+}
+
 func (c *testConfig) createIng1(name, hostname, path, service string) *networking.Ingress {
 	sname := strings.Split(name, "/")
 	sservice := strings.Split(service, ":")
-	return c.createObject(`
-apiVersion: networking.k8s.io/v1beta1
+	ing := c.createObject(`
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: ` + sname[1] + `
@@ -1939,8 +1952,10 @@ spec:
       paths:
       - path: ` + path + `
         backend:
-          serviceName: ` + sservice[0] + `
-          servicePort: ` + sservice[1]).(*networking.Ingress)
+          service:
+            name: ` + sservice[0]).(*networking.Ingress)
+	ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port = createServicePort(sservice[1])
+	return ing
 }
 
 func (c *testConfig) createIng1Ann(name, hostname, path, service string, ann map[string]string) *networking.Ingress {
@@ -1952,22 +1967,24 @@ func (c *testConfig) createIng1Ann(name, hostname, path, service string, ann map
 func (c *testConfig) createIng2(name, service string) *networking.Ingress {
 	sname := strings.Split(name, "/")
 	sservice := strings.Split(service, ":")
-	return c.createObject(`
-apiVersion: networking.k8s.io/v1beta1
+	ing := c.createObject(`
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: ` + sname[1] + `
   namespace: ` + sname[0] + `
 spec:
-  backend:
-    serviceName: ` + sservice[0] + `
-    servicePort: ` + sservice[1]).(*networking.Ingress)
+  defaultBackend:
+    service:
+      name: ` + sservice[0]).(*networking.Ingress)
+	ing.Spec.DefaultBackend.Service.Port = createServicePort(sservice[1])
+	return ing
 }
 
 func (c *testConfig) createIng3(name string) *networking.Ingress {
 	sname := strings.Split(name, "/")
 	return c.createObject(`
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: ` + sname[1] + `
