@@ -326,6 +326,8 @@ The table below describes all supported configuration keys.
 | [`cors-expose-headers`](#cors)                       | headers                                 | Path    |                    |
 | [`cors-max-age`](#cors)                              | time (seconds)                          | Path    |                    |
 | [`cpu-map`](#cpu-map)                                | haproxy CPU Map format                  | Global  |                    |
+| [`default-backend-redirect`](#default-redirect)      | Location                                | Global  |                    |
+| [`default-backend-redirect-code`](#default-redirect) | HTTP status code                        | Global  | `302`              |
 | [`denylist-source-range`](#allowlist)                | Comma-separated IPs or CIDRs            | Path    |                    |
 | [`dns-accepted-payload-size`](#dns-resolvers)        | number                                  | Global  | `8192`             |
 | [`dns-cluster-domain`](#dns-resolvers)               | cluster name                            | Global  | `cluster.local`    |
@@ -1114,6 +1116,26 @@ See also:
 * [nbthread](#nbthread) configuration key
 * [nbproc](#nbproc) configuration key
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-cpu-map
+
+---
+
+## Default Redirect
+
+| Configuration key                | Scope    | Default | Since |
+|----------------------------------|----------|---------|-------|
+| `default-backend-redirect`       | `Global` |         |       |
+| `default-backend-redirect-code`  | `Global` | `302`   |       |
+
+Define a redirect location of the HAProxy for unknown resources.
+
+* `default-backend-redirect`: Defines a location in which Ingress should redirect 
+an user if the incoming request doesn't match any hostname, or the requested path 
+doesn't match any location within the desired hostname. An internal
+404 error page is used if not declared and also if `default-backend-service` was
+not configured on command line. 
+
+* `default-backend-redirect-code`: Defines the return code to be used when redirecting 
+a user. Defaults to 302 (Moved Temporarily)
 
 ---
 

@@ -800,7 +800,11 @@ backend _acme_challenge
 #
 backend _error404
     mode http
+{{- if $global.DefaultBackendRedir }}
+    redirect location {{ $global.DefaultBackendRedir }} code {{ $global.DefaultBackendRedirCode }}
+{{- else }}
     http-request use-service lua.send-404
+{{- end }}
 {{- end }}
 
 {{- end }}{{/* define "backend-support" */}}

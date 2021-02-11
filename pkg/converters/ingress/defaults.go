@@ -103,5 +103,6 @@ func createDefaults() map[string]string {
 		types.GlobalUseCpuMap:                    "true",
 		types.GlobalUseForwardedProto:            "true",
 		types.GlobalUseHTX:                       "true",
+		types.GlobalDefaultBackendRedirectCode:   "302",
 	}
 }
