@@ -66,14 +66,12 @@ func (d *dynUpdater) update() bool {
 	return updated
 }
 
+// checkConfigChange defines if dynamic update was successfully applied.
+// The udpated host and backend lists are fully verified even if a restart
+// should be made in order to leave haproxy as update as possible if a
+// reload fails.
 func (d *dynUpdater) checkConfigChange() bool {
-	// updated defines if dynamic update was successfully applied.
-	// The udpated backend list is fully verified even if a restart
-	// should be made (updated=false) in order to leave haproxy as
-	// update as possible if a reload fails.
-	// TODO use two steps update and perform full dynamic update
-	//      only if the reload failed.
-	updated := true
+	// TODO use two steps update and perform full dynamic update only if the reload failed.
 
 	var diff []string
 	if d.config.globalOld != nil && !reflect.DeepEqual(d.config.globalOld, d.config.global) {
@@ -82,16 +80,28 @@ func (d *dynUpdater) checkConfigChange() bool {
 	if d.config.tcpbackends.Changed() {
 		diff = append(diff, "tcp-services")
 	}
-	if d.config.hosts.Changed() {
-		diff = append(diff, "hosts")
-	}
 	if d.config.userlists.Changed() {
 		diff = append(diff, "userlists")
 	}
-	if len(diff) > 0 {
-		d.logger.InfoV(2, "diff outside backends: %v", diff)
-		updated = false
+	if !d.frontendUpdated() {
+		diff = append(diff, "hosts")
 	}
+	if !d.backendUpdated() {
+		diff = append(diff, "backends")
+	}
+	if len(diff) > 0 {
+		d.logger.InfoV(2, "need to reload due to config changes: %v", diff)
+		return false
+	}
+	return true
+}
+
+func (d *dynUpdater) frontendUpdated() bool {
+	return !d.config.hosts.Changed()
+}
+
+func (d *dynUpdater) backendUpdated() bool {
+	updated := true
 
 	// group reusable backends together
 	// return false on new backend which cannot be dynamically created

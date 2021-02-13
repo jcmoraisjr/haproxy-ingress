@@ -47,7 +47,7 @@ func TestDynUpdate(t *testing.T) {
 				c.config.Global().MaxConn = 1
 			},
 			dynamic: false,
-			logging: `INFO-V(2) diff outside backends: [global]`,
+			logging: `INFO-V(2) need to reload due to config changes: [global]`,
 		},
 		// 2
 		{
@@ -147,7 +147,9 @@ set server default_app_8080/srv001 weight 1`,
 				"srv008:127.0.0.1:1023:1",
 			},
 			dynamic: false,
-			logging: `INFO-V(2) added endpoints on backend 'default_app_8080'`,
+			logging: `
+INFO-V(2) added endpoints on backend 'default_app_8080'
+INFO-V(2) need to reload due to config changes: [backends]`,
 		},
 		// 6
 		{
@@ -364,7 +366,9 @@ INFO-V(2) disabled endpoint '172.17.0.4:8080' on backend/server 'default_app_808
 				"srv007:127.0.0.1:1023:1",
 			},
 			dynamic: false,
-			logging: `INFO-V(2) added endpoints on backend 'default_app_8080'`,
+			logging: `
+INFO-V(2) added endpoints on backend 'default_app_8080'
+INFO-V(2) need to reload due to config changes: [backends]`,
 		},
 		// 13
 		{
@@ -418,7 +422,9 @@ set server default_app_8080/srv002 weight 1
 			},
 			dynamic: false,
 			cmd:     ``,
-			logging: `INFO-V(2) added endpoints on backend 'default_app_8080'`,
+			logging: `
+INFO-V(2) added endpoints on backend 'default_app_8080'
+INFO-V(2) need to reload due to config changes: [backends]`,
 		},
 		// 15
 		{
@@ -430,7 +436,9 @@ set server default_app_8080/srv002 weight 1
 			},
 			dynamic: false,
 			cmd:     ``,
-			logging: `INFO-V(2) added backend 'default_app_8080'`,
+			logging: `
+INFO-V(2) added backend 'default_app_8080'
+INFO-V(2) need to reload due to config changes: [backends]`,
 		},
 		// 16
 		{
@@ -447,7 +455,9 @@ set server default_app_8080/srv002 weight 1
 			},
 			dynamic: false,
 			cmd:     ``,
-			logging: `INFO-V(2) added backend 'default_app_8080'`,
+			logging: `
+INFO-V(2) added backend 'default_app_8080'
+INFO-V(2) need to reload due to config changes: [backends]`,
 		},
 		// 17
 		{
@@ -495,7 +505,9 @@ set server default_app_8080/srv002 weight 1`,
 set server default_app_8080/srv002 addr 172.17.0.4 port 8080
 set server default_app_8080/srv002 state ready
 set server default_app_8080/srv002 weight 1`,
-			logging: `INFO-V(2) added endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
+			logging: `
+INFO-V(2) added endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'
+INFO-V(2) need to reload due to config changes: [backends]`,
 		},
 		// 19
 		{
@@ -518,7 +530,9 @@ set server default_app_8080/srv002 weight 1`,
 set server default_app_8080/srv002 state maint
 set server default_app_8080/srv002 addr 127.0.0.1 port 1023
 set server default_app_8080/srv002 weight 0`,
-			logging: `INFO-V(2) disabled endpoint '172.17.0.3:8080' on backend/server 'default_app_8080/srv002'`,
+			logging: `
+INFO-V(2) disabled endpoint '172.17.0.3:8080' on backend/server 'default_app_8080/srv002'
+INFO-V(2) need to reload due to config changes: [backends]`,
 		},
 		// 20
 		{
@@ -542,7 +556,9 @@ set server default_app_8080/srv002 weight 0`,
 set server default_app_8080/srv002 addr 172.17.0.4 port 8080
 set server default_app_8080/srv002 state ready
 set server default_app_8080/srv002 weight 1`,
-			logging: `INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
+			logging: `
+INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'
+INFO-V(2) need to reload due to config changes: [backends]`,
 		},
 		// 21
 		{
@@ -561,7 +577,9 @@ set server default_app_8080/srv002 weight 1`,
 				"srv001:172.17.0.3:8080:1",
 			},
 			dynamic: false,
-			logging: `INFO-V(2) backend 'default_app_8080' changed and its dynamic-scaling is 'false'`,
+			logging: `
+INFO-V(2) backend 'default_app_8080' changed and its dynamic-scaling is 'false'
+INFO-V(2) need to reload due to config changes: [backends]`,
 		},
 		// 22
 		{
@@ -675,7 +693,7 @@ set server default_app_8080/srv002 weight 1
 			},
 			dynamic: false,
 			cmd:     ``,
-			logging: ``,
+			logging: `INFO-V(2) need to reload due to config changes: [backends]`,
 		},
 		// 25 - test that we're able to update when a cookie value of acquired
 		// existing endpoint doesn't match and "preserve" cookie mode is not enabled
