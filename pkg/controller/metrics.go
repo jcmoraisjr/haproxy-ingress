@@ -123,6 +123,10 @@ func (m *metrics) HAProxySetServerResponseTime(duration time.Duration) {
 	m.responseTime.WithLabelValues("set_server").Observe(duration.Seconds())
 }
 
+func (m *metrics) HAProxySetSSLCertResponseTime(duration time.Duration) {
+	m.responseTime.WithLabelValues("set_ssl_cert").Observe(duration.Seconds())
+}
+
 func (m *metrics) ControllerProcTime(task string, duration time.Duration) {
 	m.ctlProcTimeSum.WithLabelValues(task).Add(duration.Seconds())
 	m.ctlProcCount.WithLabelValues(task).Inc()

@@ -279,6 +279,7 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 			return
 		}
 	}
+	i.updateCertExpiring()
 	if updated {
 		if updater.cmdCnt > 0 {
 			if i.options.ValidateConfig {
@@ -297,7 +298,6 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 		}
 		return
 	}
-	i.updateCertExpiring()
 	i.metrics.IncUpdateFull()
 	if err := i.reload(); err != nil {
 		i.logger.Error("error reloading server:\n%v", err)
@@ -401,7 +401,6 @@ func (i *instance) writeConfig() (err error) {
 }
 
 func (i *instance) updateCertExpiring() {
-	// TODO move to dynupdate when dynamic crt update is implemented
 	hostsAdd := i.config.Hosts().ItemsAdd()
 	hostsDel := i.config.Hosts().ItemsDel()
 	if !i.config.Hosts().HasCommit() {

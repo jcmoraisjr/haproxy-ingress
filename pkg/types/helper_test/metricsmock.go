@@ -40,6 +40,10 @@ func (m *MetricsMock) HAProxyShowInfoResponseTime(duration time.Duration) {
 func (m *MetricsMock) HAProxySetServerResponseTime(duration time.Duration) {
 }
 
+// HAProxySetSSLCertResponseTime ...
+func (m *MetricsMock) HAProxySetSSLCertResponseTime(duration time.Duration) {
+}
+
 // ControllerProcTime ...
 func (m *MetricsMock) ControllerProcTime(task string, duration time.Duration) {
 

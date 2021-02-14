@@ -35,6 +35,7 @@ func TestDynUpdate(t *testing.T) {
 		expected  []string
 		dynamic   bool
 		cmd       string
+		cmdOutput []string
 		logging   string
 	}{
 		// 0
@@ -787,6 +788,143 @@ set server default_app_8080/srv001 weight 1`,
 			},
 			dynamic: true,
 		},
+		// 28
+		{
+			doconfig1: func(c *testConfig) {
+				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				h2 := c.config.Hosts().AcquireHost("domain2.local")
+				h1.TLS.TLSFilename = "/tmp/domain1.pem"
+				h2.TLS.TLSFilename = "/tmp/domain2.pem"
+				h1.TLS.TLSHash = "1"
+				h2.TLS.TLSHash = "2"
+			},
+			doconfig2: func(c *testConfig) {
+				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				h2 := c.config.Hosts().AcquireHost("domain2.local")
+				h1.TLS.TLSFilename = "/tmp/domain1.pem"
+				h2.TLS.TLSFilename = "/tmp/domain2.pem"
+				h1.TLS.TLSHash = "1"
+				h2.TLS.TLSHash = "3"
+			},
+			dynamic: true,
+			cmd: `
+set ssl cert /tmp/domain2.pem <<
+<content>
+commit ssl cert /tmp/domain2.pem
+`,
+			cmdOutput: []string{
+				"Transaction created for certificate /tmp/domain2.pem!\n\n",
+				"Committing /tmp/domain2.pem.\nSuccess!\n\n",
+			},
+			logging: `
+INFO-V(2) response from server: Transaction created for certificate /tmp/domain2.pem!
+INFO-V(2) response from server: Committing /tmp/domain2.pem. \\ Success!
+INFO-V(2) certificate updated for domain2.local
+`,
+		},
+		// 29
+		{
+			doconfig1: func(c *testConfig) {
+				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				h1.TLS.TLSFilename = "/tmp/domain1.pem"
+				h1.TLS.TLSHash = "1"
+			},
+			doconfig2: func(c *testConfig) {
+				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				h1.TLS.TLSFilename = "/tmp/domain2.pem"
+				h1.TLS.TLSHash = "2"
+			},
+			dynamic: false,
+			logging: `
+INFO-V(2) diff outside server certificate of host 'domain1.local'
+INFO-V(2) need to reload due to config changes: [hosts]
+`,
+		},
+		// 30
+		{
+			doconfig1: func(c *testConfig) {
+				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				h2 := c.config.Hosts().AcquireHost("domain2.local")
+				h1.TLS.TLSFilename = "/tmp/domain1.pem"
+				h2.TLS.TLSFilename = ""
+				h1.TLS.TLSHash = "1"
+				h2.TLS.TLSHash = "2"
+			},
+			doconfig2: func(c *testConfig) {
+				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				h2 := c.config.Hosts().AcquireHost("domain2.local")
+				h1.TLS.TLSFilename = "/tmp/domain1.pem"
+				h2.TLS.TLSFilename = ""
+				h1.TLS.TLSHash = "3"
+				h2.TLS.TLSHash = "2"
+			},
+			dynamic: true,
+			cmd: `
+set ssl cert /tmp/domain1.pem <<
+<content>
+commit ssl cert /tmp/domain1.pem
+`,
+			cmdOutput: []string{
+				"Transaction created for certificate /tmp/domain1.pem!\n\n",
+				"Committing /tmp/domain1.pem.\nSuccess!\n\n",
+			},
+			logging: `
+INFO-V(2) response from server: Transaction created for certificate /tmp/domain1.pem!
+INFO-V(2) response from server: Committing /tmp/domain1.pem. \\ Success!
+INFO-V(2) certificate updated for domain1.local
+`,
+		},
+		// 31
+		{
+			doconfig1: func(c *testConfig) {
+				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				h1.TLS.TLSFilename = "/tmp/domain1.pem"
+				h1.TLS.TLSHash = "1"
+			},
+			doconfig2: func(c *testConfig) {
+				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				h1.TLS.TLSFilename = "/tmp/domain1.pem"
+				h1.TLS.TLSHash = "2"
+			},
+			dynamic: false,
+			cmd: `
+set ssl cert /tmp/domain1.pem <<
+<content>
+commit ssl cert /tmp/domain1.pem
+`,
+			cmdOutput: []string{
+				"Can't replace a certificate which is not referenced by the configuration!\nCan't update /tmp/domain1.pem!\n\n",
+				"No ongoing transaction! !\nCan't commit /tmp/domain1.pem!\n\n",
+			},
+			logging: `
+INFO-V(2) response from server: Can't replace a certificate which is not referenced by the configuration! \\ Can't update /tmp/domain1.pem!
+INFO-V(2) response from server: No ongoing transaction! ! \\ Can't commit /tmp/domain1.pem!
+WARN cannot update certificate for domain1.local
+INFO-V(2) need to reload due to config changes: [hosts]
+`,
+		},
+		// 32
+		{
+			doconfig1: func(c *testConfig) {
+				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				h1.TLS.TLSFilename = "/tmp/domain1.pem"
+				h1.TLS.TLSHash = "1"
+				c.config.Hosts().AcquireHost("domain2.local")
+			},
+			doconfig2: func(c *testConfig) {
+				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				h1.TLS.TLSFilename = "/tmp/domain1.pem"
+				h1.TLS.TLSHash = "1"
+			},
+			dynamic: false,
+			logging: `
+INFO-V(2) removed host 'domain2.local'
+INFO-V(2) need to reload due to config changes: [hosts]
+`,
+		},
+	}
+	readFile = func(filename string) ([]byte, error) {
+		return []byte("<content>"), nil
 	}
 	for i, test := range testCases {
 		c := setup(t)
@@ -794,6 +932,11 @@ set server default_app_8080/srv001 weight 1`,
 			test.doconfig1(c)
 		}
 		c.instance.config.Commit()
+		hostnames := []string{}
+		for hostname := range c.config.hosts.Items() {
+			hostnames = append(hostnames, hostname)
+		}
+		c.config.Hosts().RemoveAll(hostnames)
 		backendIDs := []types.BackendID{}
 		for _, backend := range c.config.Backends().Items() {
 			backendIDs = append(backendIDs, backend.BackendID())
@@ -808,7 +951,7 @@ set server default_app_8080/srv001 weight 1`,
 			for _, c := range command {
 				cmd = cmd + c + "\n"
 			}
-			return []string{}, nil
+			return test.cmdOutput, nil
 		}
 		dynamic := dynUpdater.update()
 		var actual []string

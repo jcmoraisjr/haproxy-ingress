@@ -18,9 +18,11 @@ package haproxy
 
 import (
 	"fmt"
+	"io/ioutil"
 	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
@@ -35,6 +37,11 @@ type dynUpdater struct {
 	cmd     func(socket string, observer func(duration time.Duration), commands ...string) ([]string, error)
 	cmdCnt  int
 	metrics types.Metrics
+}
+
+type hostPair struct {
+	old *hatypes.Host
+	cur *hatypes.Host
 }
 
 type backendPair struct {
@@ -97,7 +104,33 @@ func (d *dynUpdater) checkConfigChange() bool {
 }
 
 func (d *dynUpdater) frontendUpdated() bool {
-	return !d.config.hosts.Changed()
+	updated := true
+
+	hosts := make(map[string]*hostPair, len(d.config.hosts.ItemsDel()))
+	for _, host := range d.config.hosts.ItemsDel() {
+		hosts[host.Hostname] = &hostPair{old: host}
+	}
+	for _, host := range d.config.hosts.ItemsAdd() {
+		id := host.Hostname
+		h, found := hosts[id]
+		if !found {
+			d.logger.InfoV(2, "added host '%s'", id)
+			updated = false
+		} else {
+			h.cur = host
+		}
+	}
+
+	for _, pair := range hosts {
+		if pair.cur == nil {
+			d.logger.InfoV(2, "removed host '%s'", pair.old.Hostname)
+			updated = false
+		} else if !d.checkHostPair(pair) {
+			updated = false
+		}
+	}
+
+	return updated
 }
 
 func (d *dynUpdater) backendUpdated() bool {
@@ -132,6 +165,32 @@ func (d *dynUpdater) backendUpdated() bool {
 	return updated
 }
 
+func (d *dynUpdater) checkHostPair(pair *hostPair) bool {
+	oldHost := pair.old
+	curHost := pair.cur
+
+	updated := true
+
+	// check equality of everything but server certificate
+	// TODO move this check to the host type
+	oldHostCopy := *oldHost
+	oldHostCopy.TLS.TLSCommonName = curHost.TLS.TLSCommonName
+	oldHostCopy.TLS.TLSHash = curHost.TLS.TLSHash
+	oldHostCopy.TLS.TLSNotAfter = curHost.TLS.TLSNotAfter
+	if !reflect.DeepEqual(&oldHostCopy, curHost) {
+		d.logger.InfoV(2, "diff outside server certificate of host '%s'", curHost.Hostname)
+		updated = false
+	}
+
+	if curHost.TLS.HasTLS() && oldHost.TLS.TLSHash != curHost.TLS.TLSHash &&
+		oldHost.TLS.TLSFilename == curHost.TLS.TLSFilename &&
+		!d.execUpdateCert(curHost.Hostname, curHost.TLS.TLSFilename) {
+		updated = false
+	}
+
+	return updated
+}
+
 func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 	oldBack := pair.old
 	curBack := pair.cur
@@ -143,6 +202,7 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 	updated := true
 
 	// check equality of everything but endpoints
+	// TODO move this check to the backend type
 	oldBackCopy := *oldBack
 	oldBackCopy.ID = curBack.ID
 	oldBackCopy.Dynamic = curBack.Dynamic
@@ -296,6 +356,41 @@ func (d *dynUpdater) alignSlots() {
 			back.AddEmptyEndpoint()
 		}
 	}
+}
+
+var readFile func(filename string) ([]byte, error) = ioutil.ReadFile
+
+func (d *dynUpdater) execUpdateCert(hostname, filename string) bool {
+	// TODO read from the internal storage
+	payload, err := readFile(filename)
+	if err != nil {
+		d.logger.Error("error reading certificate file for %s: %v", hostname, err)
+		return false
+	}
+	// TODO removing an empty line between crt and key, runtime api didn't like it.
+	// Remove this work around after the factoring of the ssl storage.
+	payloadStr := strings.ReplaceAll(string(payload), "\n\n", "\n")
+	cmd := []string{
+		fmt.Sprintf("set ssl cert %s <<\n%s", filename, payloadStr),
+		fmt.Sprintf("commit ssl cert %s", filename),
+	}
+	msg, err := d.execCommand(d.metrics.HAProxySetSSLCertResponseTime, cmd)
+	if err != nil {
+		d.logger.Error("error updating certificate for %s: %v", hostname, err)
+		return false
+	}
+	for _, m := range msg {
+		if m != "" {
+			outmsg := strings.ReplaceAll(strings.TrimRight(m, "\n"), "\n", " \\\\ ")
+			d.logger.InfoV(2, "response from server: %s", outmsg)
+		}
+	}
+	if strings.Index(msg[1], "Success") < 0 {
+		d.logger.Warn("cannot update certificate for %s", hostname)
+		return false
+	}
+	d.logger.InfoV(2, "certificate updated for %s", hostname)
+	return true
 }
 
 func (d *dynUpdater) execDisableEndpoint(backname string, ep *hatypes.Endpoint) bool {
