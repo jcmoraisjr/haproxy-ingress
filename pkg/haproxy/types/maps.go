@@ -256,7 +256,7 @@ func (hm *HostsMap) HasHost() bool {
 func (mf *hostsMapMatchFile) shrink() {
 	e := mf.entries
 	l := len(e)
-	for i := range e {
+	for i := l - 1; i >= 0; i-- {
 		if e[i]._elem != nil {
 			l--
 			e[i] = e[l]
