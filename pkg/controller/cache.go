@@ -24,8 +24,10 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"reflect"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -304,6 +306,16 @@ func (c *k8scache) GetPodNamespace() string {
 	return c.podNamespace
 }
 
+var contentProtocolRegex = regexp.MustCompile(`^([a-z]+)://(.*)$`)
+
+func getContentProtocol(input string) (proto, content string) {
+	data := contentProtocolRegex.FindStringSubmatch(input)
+	if len(data) < 3 {
+		return "secret", input
+	}
+	return data[1], data[2]
+}
+
 func (c *k8scache) buildSecretName(defaultNamespace, secretName string) (string, string, error) {
 	ns, name, err := cache.SplitMetaNamespaceKey(secretName)
 	if err != nil {
@@ -325,7 +337,19 @@ func (c *k8scache) buildSecretName(defaultNamespace, secretName string) (string,
 }
 
 func (c *k8scache) GetTLSSecretPath(defaultNamespace, secretName string, track convtypes.TrackingTarget) (file convtypes.CrtFile, err error) {
-	namespace, name, err := c.buildSecretName(defaultNamespace, secretName)
+	proto, content := getContentProtocol(secretName)
+	if proto == "file" {
+		if _, err := os.Stat(content); err != nil {
+			return file, err
+		}
+		return convtypes.CrtFile{
+			Filename: content,
+			SHA1Hash: "-",
+		}, nil
+	} else if proto != "secret" {
+		return file, fmt.Errorf("unsupported protocol: %s", proto)
+	}
+	namespace, name, err := c.buildSecretName(defaultNamespace, content)
 	if err != nil {
 		return file, err
 	}
@@ -349,7 +373,36 @@ func (c *k8scache) GetTLSSecretPath(defaultNamespace, secretName string, track c
 }
 
 func (c *k8scache) GetCASecretPath(defaultNamespace, secretName string, track convtypes.TrackingTarget) (ca, crl convtypes.File, err error) {
-	namespace, name, err := c.buildSecretName(defaultNamespace, secretName)
+	proto, content := getContentProtocol(secretName)
+	if proto == "file" {
+		if content == "" {
+			return ca, crl, fmt.Errorf("empty file name")
+		}
+		files := strings.Split(content, ",")
+		if len(files) > 2 {
+			return ca, crl, fmt.Errorf("only one or two filenames should be used")
+		}
+		if _, err := os.Stat(files[0]); err != nil {
+			return ca, crl, err
+		}
+		ca = convtypes.File{
+			Filename: files[0],
+			SHA1Hash: "-",
+		}
+		if len(files) == 2 {
+			if _, err := os.Stat(files[1]); err != nil {
+				return ca, crl, err
+			}
+			crl = convtypes.File{
+				Filename: files[1],
+				SHA1Hash: "-",
+			}
+		}
+		return ca, crl, nil
+	} else if proto != "secret" {
+		return ca, crl, fmt.Errorf("unsupported protocol: %s", proto)
+	}
+	namespace, name, err := c.buildSecretName(defaultNamespace, content)
 	if err != nil {
 		return ca, crl, err
 	}
@@ -378,7 +431,19 @@ func (c *k8scache) GetCASecretPath(defaultNamespace, secretName string, track co
 }
 
 func (c *k8scache) GetDHSecretPath(defaultNamespace, secretName string) (file convtypes.File, err error) {
-	namespace, name, err := c.buildSecretName(defaultNamespace, secretName)
+	proto, content := getContentProtocol(secretName)
+	if proto == "file" {
+		if _, err := os.Stat(content); err != nil {
+			return file, err
+		}
+		return convtypes.File{
+			Filename: content,
+			SHA1Hash: "-",
+		}, nil
+	} else if proto != "secret" {
+		return file, fmt.Errorf("unsupported protocol: %s", proto)
+	}
+	namespace, name, err := c.buildSecretName(defaultNamespace, content)
 	if err != nil {
 		return file, err
 	}
@@ -403,7 +468,13 @@ func (c *k8scache) GetDHSecretPath(defaultNamespace, secretName string) (file co
 }
 
 func (c *k8scache) GetSecretContent(defaultNamespace, secretName, keyName string, track convtypes.TrackingTarget) ([]byte, error) {
-	namespace, name, err := c.buildSecretName(defaultNamespace, secretName)
+	proto, content := getContentProtocol(secretName)
+	if proto == "file" {
+		return ioutil.ReadFile(content)
+	} else if proto != "secret" {
+		return nil, fmt.Errorf("unsupported protocol: %s", proto)
+	}
+	namespace, name, err := c.buildSecretName(defaultNamespace, content)
 	if err != nil {
 		return nil, err
 	}
