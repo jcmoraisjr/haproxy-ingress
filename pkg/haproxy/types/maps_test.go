@@ -463,6 +463,84 @@ hosts__begin.map first:false,lower:true,method:beg
 local1.tld /a begin
 `,
 		},
+		// 8
+		{
+			data: []data{
+				data{hostname: "local1.tld", path: "/a", match: MatchPrefix},
+				data{hostname: "local1.tld", path: "/", match: MatchBegin},
+				data{hostname: "local2.tld", path: "/a", match: MatchPrefix},
+				data{hostname: "local2.tld", path: "/", match: MatchBegin},
+				data{hostname: "local3.tld", path: "/a", match: MatchPrefix},
+				data{hostname: "local4.tld", path: "/a", match: MatchPrefix},
+				data{hostname: "local4.tld", path: "/", match: MatchBegin},
+			},
+			expected: `
+hosts__prefix_01.map first:true,lower:false,method:dir
+local1.tld /a prefix
+local2.tld /a prefix
+local4.tld /a prefix
+
+hosts__prefix.map first:false,lower:false,method:dir
+local3.tld /a prefix
+
+hosts__begin.map first:false,lower:true,method:beg
+local1.tld / begin
+local2.tld / begin
+local4.tld / begin
+`,
+		},
+		// 9
+		{
+			data: []data{
+				data{hostname: "local1.tld", path: "/a", match: MatchPrefix},
+				data{hostname: "local2.tld", path: "/a", match: MatchPrefix},
+				data{hostname: "local2.tld", path: "/", match: MatchBegin},
+				data{hostname: "local3.tld", path: "/a", match: MatchPrefix},
+				data{hostname: "local3.tld", path: "/", match: MatchBegin},
+				data{hostname: "local4.tld", path: "/a", match: MatchPrefix},
+				data{hostname: "local4.tld", path: "/", match: MatchBegin},
+			},
+			expected: `
+hosts__prefix_01.map first:true,lower:false,method:dir
+local2.tld /a prefix
+local3.tld /a prefix
+local4.tld /a prefix
+
+hosts__prefix.map first:false,lower:false,method:dir
+local1.tld /a prefix
+
+hosts__begin.map first:false,lower:true,method:beg
+local2.tld / begin
+local3.tld / begin
+local4.tld / begin
+`,
+		},
+		// 10
+		{
+			data: []data{
+				data{hostname: "local1.tld", path: "/a", match: MatchPrefix},
+				data{hostname: "local1.tld", path: "/", match: MatchBegin},
+				data{hostname: "local2.tld", path: "/a", match: MatchPrefix},
+				data{hostname: "local2.tld", path: "/", match: MatchBegin},
+				data{hostname: "local3.tld", path: "/a", match: MatchPrefix},
+				data{hostname: "local3.tld", path: "/", match: MatchBegin},
+				data{hostname: "local4.tld", path: "/a", match: MatchPrefix},
+			},
+			expected: `
+hosts__prefix_01.map first:true,lower:false,method:dir
+local1.tld /a prefix
+local2.tld /a prefix
+local3.tld /a prefix
+
+hosts__prefix.map first:false,lower:false,method:dir
+local4.tld /a prefix
+
+hosts__begin.map first:false,lower:true,method:beg
+local1.tld / begin
+local2.tld / begin
+local3.tld / begin
+`,
+		},
 	}
 	for i, test := range testCases {
 		hm := CreateMaps(matchOrder).AddMap("hosts.map")
