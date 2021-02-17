@@ -113,6 +113,12 @@ Fixes and improvements since [v0.12-beta.1](#v012-beta1):
     * `secure-verify-hostname`
 * Fix path precedence of distinct match types [#728](https://github.com/jcmoraisjr/haproxy-ingress/pull/728) (jcmoraisjr)
 
+## v0.11.3
+
+Fixes and improvements since [v0.11.2](#v0112):
+
+* Fix shrinking of prioritized paths [#736](https://github.com/jcmoraisjr/haproxy-ingress/pull/736) (jcmoraisjr)
+
 ## v0.11.2
 
 Fixes and improvements since [v0.11.1](#v0111):
