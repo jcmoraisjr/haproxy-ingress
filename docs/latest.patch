@@ -1,0 +1,25 @@
+--- a/docs/config.toml
++++ b/docs/config.toml
+@@ -1,4 +1,4 @@
+-baseURL = "/v0.12"
++baseURL = "/"
+ title = "HAProxy Ingress"
+ 
+ enableRobotsTXT = true
+@@ -81,15 +81,7 @@ privacy_policy = ""
+ 
+ # Menu title if your navbar has a versions selector to access old versions of your site.
+ # This menu appears only if you have at least one [params.versions] set.
+-version_menu = "v0.12"
+-
+-[[params.versions]]
+-version = "Latest"
+-url = "https://haproxy-ingress.github.io/docs"
+-
+-[[params.versions]]
+-version = "v0.12"
+-url = "https://haproxy-ingress.github.io/v0.12/docs"
++version_menu = "v0.12 (latest)"
+ 
+ [[params.versions]]
+ version = "v0.11"
