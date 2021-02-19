@@ -21,17 +21,15 @@ Updates made to the cluster are applied on the fly to the HAProxy instance.
 
 **Supported versions:**
 
-| HAProxy Ingress        | HAProxy   | Kubernetes |
-|------------------------|-----------|------------|
-| `v0.12` (beta)         | `2.2` (*) | `1.18+`    |
-| `v0.11` **(latest)**   | `2.1`     | `1.14+`    |
-| `v0.10`                | `2.0`     | `1.8+`     |
-| `v0.9`                 | `1.9`     | `1.8+`     |
-| `v0.8`                 | `1.8`     | `1.8+`     |
+| HAProxy Ingress        | HAProxy | Kubernetes | Ext. HAProxy (*) |
+|------------------------|---------|------------|------------------|
+| `v0.12` **(latest)**   | `2.2`   | `1.18+`    | `2.0+`           |
+| `v0.11`                | `2.1`   | `1.14+`    | -                |
+| `v0.10`                | `2.0`   | `1.8+`     | -                |
 
 * Beta quality versions (`beta`/`canary` tags) has some new, but battle tested features, usually running on some of our production clusters
 * Development versions (`snapshot` tags) has major changes with few tests, usually not recommended for production
-* (*) Since `v0.12` HAProxy Ingress supports an external `2.0+` haproxy deployment
+* (**) Minimum supported HAProxy version if using an [external HAProxy](https://haproxy-ingress.github.io/docs/examples/external-haproxy/) instance
 
 **Community:**
 
