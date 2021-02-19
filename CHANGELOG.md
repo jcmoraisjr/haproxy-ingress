@@ -113,6 +113,17 @@ Fixes and improvements since [v0.12-beta.1](#v012-beta1):
     * `secure-verify-hostname`
 * Fix path precedence of distinct match types [#728](https://github.com/jcmoraisjr/haproxy-ingress/pull/728) (jcmoraisjr)
 
+### v0.12-post-beta.2 (match v0.12)
+
+Fixes and improvements since [v0.12-beta.2](#v012-beta2):
+
+* Add support for native redirection of default backend [#731](https://github.com/jcmoraisjr/haproxy-ingress/pull/731) (rikatz) - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/keys/#default-redirect)
+  * Configuration keys:
+    * `default-backend-redirect`
+    * `default-backend-redirect-code`
+* Fix shrinking of prioritized paths [#736](https://github.com/jcmoraisjr/haproxy-ingress/pull/736) (jcmoraisjr)
+* Update haproxy from 2.2.8 to 2.2.9 [a84aaa8](https://github.com/jcmoraisjr/haproxy-ingress/commit/a84aaa8121eae5b9a129a437ca90392a10432761) (Joao Morais)
+
 ## v0.11.3
 
 Fixes and improvements since [v0.11.2](#v0112):
