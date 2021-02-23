@@ -135,6 +135,21 @@ func TestHAProxyProcs(t *testing.T) {
 				},
 			},
 		},
+		// 7
+		{
+			cmdOutput: []string{`#<PID>          <type>          <relative PID>  <reloads>       <uptime>        <version>
+1001            master          0               1128            0d00h02m28s     2.2.3-0e58a34
+# workers
+3115            worker          1001            11              0d00h00m00s     2.2.3-0e58a34
+3116            worker          1002  `},
+			expOutput: &ProcTable{
+				Master: Proc{Type: "master", PID: 1001, RPID: 0, Reloads: 1128},
+				Workers: []Proc{
+					{Type: "worker", PID: 3115, RPID: 1001, Reloads: 11},
+					{Type: "worker", PID: 3116, RPID: 1002, Reloads: 0},
+				},
+			},
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
