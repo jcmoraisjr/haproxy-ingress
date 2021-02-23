@@ -747,8 +747,7 @@ func TestInstanceToHTTPSocket(t *testing.T) {
     acl tls-has-crt ssl_c_used
     acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_no_crt.list
     acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front001_no_crt.list
-    acl tls-has-invalid-crt ssl_c_ca_err gt 0
-    acl tls-has-invalid-crt ssl_c_err gt 0
+    acl tls-has-invalid-crt ssl_c_verify gt 0
     acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_inv_crt.list`,
 			expectedSetvar: `
     http-request set-var(req.path) path
@@ -787,8 +786,7 @@ func TestInstanceToHTTPSocket(t *testing.T) {
     acl tls-need-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front001_no_crt_regex.list
     acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front001_no_crt.list
     acl tls-host-need-crt var(req.host) -i -m reg -f /etc/haproxy/maps/_front001_no_crt_regex.list
-    acl tls-has-invalid-crt ssl_c_ca_err gt 0
-    acl tls-has-invalid-crt ssl_c_err gt 0
+    acl tls-has-invalid-crt ssl_c_verify gt 0
     acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_inv_crt.list
     acl tls-check-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front001_inv_crt_regex.list`,
 			expectedSetvar: `
@@ -824,8 +822,7 @@ func TestInstanceToHTTPSocket(t *testing.T) {
     acl tls-has-crt ssl_c_used
     acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_no_crt.list
     acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front001_no_crt.list
-    acl tls-has-invalid-crt ssl_c_ca_err gt 0
-    acl tls-has-invalid-crt ssl_c_err gt 0
+    acl tls-has-invalid-crt ssl_c_verify gt 0
     acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_inv_crt.list`,
 			expectedSetvar: `
     http-request set-var(req.path) path
@@ -1322,8 +1319,7 @@ frontend _front001
     acl tls-has-crt ssl_c_used
     acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_no_crt.list
     acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front001_no_crt.list
-    acl tls-has-invalid-crt ssl_c_ca_err gt 0
-    acl tls-has-invalid-crt ssl_c_err gt 0
+    acl tls-has-invalid-crt ssl_c_verify gt 0
     acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_inv_crt.list
     http-request set-var(req.path) path
     http-request set-var(req.snibase) ssl_fc_sni,concat(,req.path),lower
@@ -1470,8 +1466,7 @@ frontend _front001
     <<https-headers>>
     acl tls-has-crt ssl_c_used
     acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front001_no_crt.list
-    acl tls-has-invalid-crt ssl_c_ca_err gt 0
-    acl tls-has-invalid-crt ssl_c_err gt 0
+    acl tls-has-invalid-crt ssl_c_verify gt 0
     acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_inv_crt.list
     http-request set-var(req.path) path
     http-request set-var(req.snibase) ssl_fc_sni,concat(,req.path),lower
@@ -1495,8 +1490,7 @@ frontend _front002
     acl tls-has-crt ssl_c_used
     acl tls-need-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front002_no_crt.list
     acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front002_no_crt.list
-    acl tls-has-invalid-crt ssl_c_ca_err gt 0
-    acl tls-has-invalid-crt ssl_c_err gt 0
+    acl tls-has-invalid-crt ssl_c_verify gt 0
     acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front002_inv_crt.list
     http-request set-var(req.path) path
     http-request set-var(req.snibase) ssl_fc_sni,concat(,req.path),lower
@@ -2705,8 +2699,7 @@ frontend _front001
     <<https-headers>>
     acl tls-has-crt ssl_c_used
     acl tls-host-need-crt var(req.host) -i -f /etc/haproxy/maps/_front001_no_crt.list
-    acl tls-has-invalid-crt ssl_c_ca_err gt 0
-    acl tls-has-invalid-crt ssl_c_err gt 0
+    acl tls-has-invalid-crt ssl_c_verify gt 0
     acl tls-check-crt ssl_fc_sni -i -f /etc/haproxy/maps/_front001_inv_crt.list
     acl tls-check-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front001_inv_crt_regex.list
     http-request set-var(req.path) path
