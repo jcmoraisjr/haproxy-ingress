@@ -480,7 +480,7 @@ func (i *instance) reloadExternal() error {
 		i.logger.Info("waiting for the external haproxy...")
 		for {
 			var err error
-			if _, err = hautils.HAProxyCommand(socket, nil, "show info"); err == nil {
+			if _, err = hautils.HAProxyCommand(socket, nil, "show proc"); err == nil {
 				break
 			}
 			j++
