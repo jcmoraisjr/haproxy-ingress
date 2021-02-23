@@ -113,8 +113,8 @@ func HAProxyProcs(masterSocket string) (*ProcTable, error) {
 
 // buildProcTable parses `show proc` output and creates a corresponding ProcTable
 //
-//                   1               3               4               6               8               8
-//   0.......|.......6.......|.......2.......|.......8.......|.......4.......|.......0.......|.......8
+//                   1               3               4               6               8               9
+//   0.......|.......6.......|.......2.......|.......8.......|.......4.......|.......0.......|.......6
 //   #<PID>          <type>          <relative PID>  <reloads>       <uptime>        <version>
 //   1               master          0               2               0d00h01m28s     2.2.3-0e58a34
 //   # workers
@@ -129,6 +129,13 @@ func buildProcTable(procOutput string) *ProcTable {
 		return i
 	}
 	cut := func(s string, i, j int) string {
+		l := len(s)
+		if i >= l {
+			return ""
+		}
+		if j >= l {
+			j = l - 1
+		}
 		v := strings.TrimSpace(s[i:j])
 		if strings.HasPrefix(v, "[") {
 			return v[6 : len(v)-1] // `[was: 1]`
