@@ -969,8 +969,7 @@ frontend _front_https
 {{- range $match := $fmaps.TLSNeedCrtList.MatchFiles }}
     acl tls-host-need-crt var(req.host) -i -m {{ $match.Method }} -f {{ $match.Filename }}
 {{- end }}
-    acl tls-has-invalid-crt ssl_c_ca_err gt 0
-    acl tls-has-invalid-crt ssl_c_err gt 0
+    acl tls-has-invalid-crt ssl_c_verify gt 0
 {{- range $match := $fmaps.TLSAuthList.MatchFiles }}
     acl tls-check-crt ssl_fc_sni -i -m {{ $match.Method }} -f {{ $match.Filename }}
 {{- end }}
