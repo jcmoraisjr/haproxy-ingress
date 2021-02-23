@@ -930,8 +930,7 @@ frontend {{ $frontend.Name }}
 {{- if $frontend.TLSNoCrtErrorList.HasRegex }}
     acl tls-host-need-crt var(req.host) -i -m reg -f {{ $frontend.TLSNoCrtErrorList.RegexFile }}
 {{- end }}
-    acl tls-has-invalid-crt ssl_c_ca_err gt 0
-    acl tls-has-invalid-crt ssl_c_err gt 0
+    acl tls-has-invalid-crt ssl_c_verify gt 0
     acl tls-check-crt ssl_fc_sni -i -f {{ $frontend.TLSInvalidCrtErrorList.MatchFile }}
 {{- if $frontend.TLSInvalidCrtErrorList.HasRegex }}
     acl tls-check-crt ssl_fc_sni -i -m reg -f {{ $frontend.TLSInvalidCrtErrorList.RegexFile }}
