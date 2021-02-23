@@ -24,6 +24,20 @@ import (
 	"time"
 )
 
+func TestHAProxyCommand(t *testing.T) {
+	// needs a running HAProxy and admin socket at /tmp/h.sock
+	// also, it will output the response in the error pipe, so will always fail
+	// TODO create a test and temp server where HAProxyCommand can connect to
+	/*
+		out, err := HAProxyCommand("/tmp/h.sock", nil, "show info")
+		if err != nil {
+			t.Errorf("%v", err)
+		} else {
+			t.Errorf("%d %v", len(out[0]), out[0])
+		}
+	*/
+}
+
 func TestHAProxyProcs(t *testing.T) {
 	testCases := []struct {
 		cmdOutput []string
