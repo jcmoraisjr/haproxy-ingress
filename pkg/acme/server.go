@@ -69,6 +69,9 @@ func (s *server) Listen(stopCh chan struct{}) error {
 		s.logger.Info("acme: request token: domain=%s uri=%s", host, uri)
 	})
 	s.server = &http.Server{Addr: s.socket, Handler: handler}
+	if err := os.Remove(s.server.Addr); err != nil && !os.IsNotExist(err) {
+		s.logger.Warn("error removing an existent acme socket: %v", err)
+	}
 	l, err := net.Listen("unix", s.server.Addr)
 	if err != nil {
 		return err
