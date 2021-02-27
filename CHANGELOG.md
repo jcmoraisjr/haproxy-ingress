@@ -124,6 +124,13 @@ Fixes and improvements since [v0.12-beta.2](#v012-beta2):
 * Fix shrinking of prioritized paths [#736](https://github.com/jcmoraisjr/haproxy-ingress/pull/736) (jcmoraisjr)
 * Update haproxy from 2.2.8 to 2.2.9 [a84aaa8](https://github.com/jcmoraisjr/haproxy-ingress/commit/a84aaa8121eae5b9a129a437ca90392a10432761) (Joao Morais)
 
+## v0.11.4
+
+Fixes and improvements since [v0.11.3](#v0113):
+
+* Improve crt validation with ssl_c_verify [#743](https://github.com/jcmoraisjr/haproxy-ingress/pull/743) (jcmoraisjr)
+* Fix initial weight configuration [#742](https://github.com/jcmoraisjr/haproxy-ingress/pull/742) (jcmoraisjr)
+
 ## v0.11.3
 
 Fixes and improvements since [v0.11.2](#v0112):
