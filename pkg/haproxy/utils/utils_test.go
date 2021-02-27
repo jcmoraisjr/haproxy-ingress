@@ -24,6 +24,20 @@ import (
 	"time"
 )
 
+func TestHAProxyCommand(t *testing.T) {
+	// needs a running HAProxy and admin socket at /tmp/h.sock
+	// also, it will output the response in the error pipe, so will always fail
+	// TODO create a test and temp server where HAProxyCommand can connect to
+	/*
+		out, err := HAProxyCommand("/tmp/h.sock", nil, "show info")
+		if err != nil {
+			t.Errorf("%v", err)
+		} else {
+			t.Errorf("%d %v", len(out[0]), out[0])
+		}
+	*/
+}
+
 func TestHAProxyProcs(t *testing.T) {
 	testCases := []struct {
 		cmdOutput []string
@@ -132,6 +146,21 @@ func TestHAProxyProcs(t *testing.T) {
 					{Type: "worker", PID: 2112, RPID: 1001, Reloads: 128},
 					{Type: "worker", PID: 2113, RPID: 1002, Reloads: 128},
 					{Type: "worker", PID: 2114, RPID: 1003, Reloads: 128},
+				},
+			},
+		},
+		// 7
+		{
+			cmdOutput: []string{`#<PID>          <type>          <relative PID>  <reloads>       <uptime>        <version>
+1001            master          0               1128            0d00h02m28s     2.2.3-0e58a34
+# workers
+3115            worker          1001            11              0d00h00m00s     2.2.3-0e58a34
+3116            worker          1002  `},
+			expOutput: &ProcTable{
+				Master: Proc{Type: "master", PID: 1001, RPID: 0, Reloads: 1128},
+				Workers: []Proc{
+					{Type: "worker", PID: 3115, RPID: 1001, Reloads: 11},
+					{Type: "worker", PID: 3116, RPID: 1002, Reloads: 0},
 				},
 			},
 		},

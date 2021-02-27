@@ -39,20 +39,31 @@ func HAProxyCommand(socket string, observer func(duration time.Duration), comman
 			return msg, fmt.Errorf("error connecting to unix socket %s: %w", socket, err)
 		}
 		defer c.Close()
-		cmd = cmd + "\n"
-		if sent, err := c.Write([]byte(cmd)); err != nil {
+		if !strings.HasSuffix(cmd, "\n") {
+			// haproxy starts the command after receiving a line break
+			cmd += "\n"
+		}
+		if _, err := c.Write([]byte(cmd)); err != nil {
 			return msg, fmt.Errorf("error sending to unix socket %s: %w", socket, err)
-		} else if sent != len(cmd) {
-			return msg, fmt.Errorf("incomplete data sent to unix socket %s", socket)
 		}
-		readBuffer := make([]byte, 1024)
-		if r, err := c.Read(readBuffer); err != nil && err != io.EOF {
-			return msg, fmt.Errorf("error reading response buffer: %w", err)
-		} else if r > 2 {
-			msg = append(msg, string(readBuffer[:r-2]))
-		} else {
-			msg = append(msg, "")
+		readBuffer := make([]byte, 1536) // fits all the `show info` response in a single chunck
+		var response string
+		for {
+			r, err := c.Read(readBuffer)
+			if err != nil && err != io.EOF {
+				// ignore any successfully read data in the case of an error
+				return msg, fmt.Errorf("error reading response from unix socket %s: %w", socket, err)
+			}
+			response += string(readBuffer[:r])
+			if r == 0 || strings.HasSuffix(response, "\n\n") {
+				// end of the stream if empty (r==0) or response ended with two consecutive line breaks
+				// the line breaks are the way haproxy says we reach the end of the stream, since
+				// master socket seems to always work on interactive/prompt mode and doesn't close the
+				// connection
+				break
+			}
 		}
+		msg = append(msg, strings.TrimRight(response, "\n"))
 		if observer != nil {
 			observer(time.Since(start))
 		}
@@ -113,8 +124,8 @@ func HAProxyProcs(masterSocket string) (*ProcTable, error) {
 
 // buildProcTable parses `show proc` output and creates a corresponding ProcTable
 //
-//                   1               3               4               6               8               8
-//   0.......|.......6.......|.......2.......|.......8.......|.......4.......|.......0.......|.......8
+//                   1               3               4               6               8               9
+//   0.......|.......6.......|.......2.......|.......8.......|.......4.......|.......0.......|.......6
 //   #<PID>          <type>          <relative PID>  <reloads>       <uptime>        <version>
 //   1               master          0               2               0d00h01m28s     2.2.3-0e58a34
 //   # workers
@@ -129,6 +140,13 @@ func buildProcTable(procOutput string) *ProcTable {
 		return i
 	}
 	cut := func(s string, i, j int) string {
+		l := len(s)
+		if i >= l {
+			return ""
+		}
+		if j >= l {
+			j = l - 1
+		}
 		v := strings.TrimSpace(s[i:j])
 		if strings.HasPrefix(v, "[") {
 			return v[6 : len(v)-1] // `[was: 1]`
