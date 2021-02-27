@@ -571,7 +571,6 @@ func (c *converter) addBackend(source *annotations.Source, hostname, uri, fullSv
 			Type:      "service",
 		}, pathlink, ann)
 		c.backendAnnotations[backend] = mapper
-		backend.Server.InitialWeight = mapper.Get(ingtypes.BackInitialWeight).Int()
 	}
 	// Merging Ingress annotations
 	conflict := mapper.AddAnnotations(source, pathlink, ann)
@@ -581,6 +580,7 @@ func (c *converter) addBackend(source *annotations.Source, hostname, uri, fullSv
 	}
 	// Configure endpoints
 	if !found {
+		backend.Server.InitialWeight = mapper.Get(ingtypes.BackInitialWeight).Int()
 		switch mapper.Get(ingtypes.BackBackendServerNaming).Value {
 		case "ip":
 			backend.EpNaming = hatypes.EpIPPort
