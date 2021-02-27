@@ -1256,15 +1256,13 @@ func TestInstanceFrontingProxy(t *testing.T) {
     acl tls-has-crt ssl_c_used
     acl tls-need-crt ssl_fc_sni -i -m str -f /etc/haproxy/maps/_front_tls_needcrt__exact.list
     acl tls-host-need-crt var(req.host) -i -m str -f /etc/haproxy/maps/_front_tls_needcrt__exact.list
-    acl tls-has-invalid-crt ssl_c_ca_err gt 0
-    acl tls-has-invalid-crt ssl_c_err gt 0
+    acl tls-has-invalid-crt ssl_c_verify gt 0
     acl tls-check-crt ssl_fc_sni -i -m str -f /etc/haproxy/maps/_front_tls_auth__exact.list`
 		aclFrontRegex = `
     acl tls-has-crt ssl_c_used
     acl tls-need-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front_tls_needcrt__regex.list
     acl tls-host-need-crt var(req.host) -i -m reg -f /etc/haproxy/maps/_front_tls_needcrt__regex.list
-    acl tls-has-invalid-crt ssl_c_ca_err gt 0
-    acl tls-has-invalid-crt ssl_c_err gt 0
+    acl tls-has-invalid-crt ssl_c_verify gt 0
     acl tls-check-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front_tls_auth__regex.list`
 		aclBackWithSockID = `
     acl fronting-proxy so_id 11
@@ -2065,8 +2063,7 @@ frontend _front_https
     acl tls-need-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front_tls_needcrt__regex.list
     acl tls-host-need-crt var(req.host) -i -m str -f /etc/haproxy/maps/_front_tls_needcrt__exact.list
     acl tls-host-need-crt var(req.host) -i -m reg -f /etc/haproxy/maps/_front_tls_needcrt__regex.list
-    acl tls-has-invalid-crt ssl_c_ca_err gt 0
-    acl tls-has-invalid-crt ssl_c_err gt 0
+    acl tls-has-invalid-crt ssl_c_verify gt 0
     acl tls-check-crt ssl_fc_sni -i -m str -f /etc/haproxy/maps/_front_tls_auth__exact.list
     acl tls-check-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front_tls_auth__regex.list
     http-request set-var(req.snibase) ssl_fc_sni,lower,concat(,req.path)
@@ -3156,8 +3153,7 @@ frontend _front_https
     http-request redirect location %[var(req.rootredir)] if { path / } { var(req.rootredir) -m found }
     <<https-headers>>
     acl tls-has-crt ssl_c_used
-    acl tls-has-invalid-crt ssl_c_ca_err gt 0
-    acl tls-has-invalid-crt ssl_c_err gt 0
+    acl tls-has-invalid-crt ssl_c_verify gt 0
     acl tls-check-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front_tls_auth__regex.list
     http-request set-var(req.snibase) ssl_fc_sni,lower,concat(,req.path)
     http-request set-var(req.snibackend) var(req.snibase),map_reg(/etc/haproxy/maps/_front_https_sni__regex.map)
