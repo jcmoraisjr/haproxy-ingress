@@ -103,6 +103,7 @@ global
     log-tag {{ $global.Syslog.Tag }}
 {{- end }}
 {{- if or (not $global.External.IsExternal) $global.External.HasLua }}
+    lua-prepend-path /etc/haproxy/lua/?.lua
     lua-load /etc/haproxy/lua/auth-request.lua
 {{- end }}
     lua-load /etc/haproxy/lua/services.lua
@@ -623,7 +624,7 @@ backend {{ $backend.ID }}
     http-request redirect location {{ $oauth.URIPrefix }}/start?rd=%[path] if !{ path_beg {{ $oauth.URIPrefix }}/ } !{ var(txn.auth_response_successful) -m bool }
         {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
 {{- range $header, $attr := $oauth.Headers }}
-    http-request set-header {{ $header }} %[var(txn.{{ $attr }})] if { var(txn.{{ $attr }}) -m found }
+    http-request set-header {{ $header }} %[var({{ $attr }})] if { var({{ $attr }}) -m found }
         {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- end }}

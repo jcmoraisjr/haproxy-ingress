@@ -1288,7 +1288,7 @@ haproxy.
 
 * `external-has-lua`: Define as true if the external haproxy has Lua libraries
 installed in the operating system. Currently only [OAuth](#oauth) needs Lua
-socket installed and will not work if `external-has-lua` is not enabled.
+json module installed and will not work if `external-has-lua` is not enabled.
 
 See also:
 
@@ -1670,21 +1670,16 @@ See also:
 
 Configure OAuth2 via Bitly's `oauth2_proxy`.
 
-* `oauth`: Defines the oauth implementation. The only supported option is `oauth2_proxy`.
+* `oauth`: Defines the oauth implementation. The only supported option is `oauth2_proxy` or its alias `oauth2-proxy`.
 * `oauth-uri-prefix`: Defines the URI prefix of the oauth service. The default value is `/oauth2`. There should be a backend with this path in the ingress resource.
-* `oauth-headers`: Defines an optional comma-separated list of `<header>:<haproxy-var>` used to configure request headers to the upstream backends. The default value is `X-Auth-Request-Email:auth_response_email` which means configuring a header `X-Auth-Request-Email` with the value of the var `auth_response_email`. New variables can be added overwriting the default `auth-request.lua` script.
+* `oauth-headers`: Defines an optional comma-separated list of `<header>:<haproxy-var>` used to configure request headers to the upstream backends. The default value is `X-Auth-Request-Email:req.auth_response_header.x_auth_request_email` that configures a header `X-Auth-Request-Email` with the value of the var `req.auth_response_header.x_auth_request_email`. The [`auth-request.lua`](https://github.com/TimWolla/haproxy-auth-request) script, used by HAProxy Ingress, creates a new `req.auth_response_header.<sanitized_header_name>` variable for each response header received by `oauth2_proxy`.
 
-The `oauth2_proxy` implementation expects Bitly's [oauth2_proxy](https://github.com/bitly/oauth2_proxy)
-running as a backend of the same domain that should be protected. `oauth2_proxy` has support
-to GitHub, Google, Facebook, OIDC and many others.
-
-Note to v0.7 or below: All paths of a domain will have the same oauth configurations, despite if the path is configured
-on an ingress resource without oauth annotations. In other words, if two ingress resources share
-the same domain but only one has oauth annotations - the one that has at least the `oauth2_proxy`
-service - all paths from that domain will be protected.
+OAuth2 expects [oauth2-proxy](https://github.com/oauth2-proxy/oauth2-proxy),
+or any other compatible implementation running as a backend of the same domain that should be protected.
+`oauth2-proxy` has support to GitHub, Google, Facebook, OIDC and [others](https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/oauth_provider).
 
 {{% alert title="Note" %}}
-OAuth2 needs [`external-has-lua`](#external) enabled if running on an external haproxy deployment.
+OAuth2 needs [`external-has-lua`](#external) enabled if running on an external haproxy deployment. The external haproxy needs Lua json module installed (Alpine's `lua-json4` package)
 {{% /alert %}}
 
 See also:

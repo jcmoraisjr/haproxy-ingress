@@ -521,7 +521,7 @@ func (c *updater) buildBackendLimit(d *backData) {
 }
 
 var (
-	oauthHeaderRegex = regexp.MustCompile(`^[A-Za-z0-9-]+:[A-Za-z0-9-_]+$`)
+	oauthHeaderRegex = regexp.MustCompile(`^[A-Za-z0-9-]+:[A-Za-z0-9_.-]+$`)
 )
 
 func (c *updater) buildBackendOAuth(d *backData) {
@@ -531,23 +531,18 @@ func (c *updater) buildBackendOAuth(d *backData) {
 		if oauth.Source == nil {
 			continue
 		}
-		if oauth.Value != "oauth2_proxy" {
+		if oauth.Value != "oauth2_proxy" && oauth.Value != "oauth2-proxy" {
 			c.logger.Warn("ignoring invalid oauth implementation '%s' on %v", oauth, oauth.Source)
 			continue
 		}
 		external := c.haproxy.Global().External
 		if external.IsExternal() && !external.HasLua {
-			c.logger.Warn("oauth2_proxy on %v needs Lua socket, install Lua libraries and enable 'external-has-lua' global config", oauth.Source)
+			c.logger.Warn("oauth2_proxy on %v needs Lua json module, install lua-json4 and enable 'external-has-lua' global config", oauth.Source)
 			return
 		}
 		uriPrefix := "/oauth2"
-		headers := []string{"X-Auth-Request-Email:auth_response_email"}
 		if prefix := config.Get(ingtypes.BackOAuthURIPrefix); prefix.Source != nil {
 			uriPrefix = prefix.Value
-		}
-		h := config.Get(ingtypes.BackOAuthHeaders)
-		if h.Source != nil {
-			headers = strings.Split(h.Value, ",")
 		}
 		uriPrefix = strings.TrimRight(uriPrefix, "/")
 		namespace := oauth.Source.Namespace
@@ -556,6 +551,8 @@ func (c *updater) buildBackendOAuth(d *backData) {
 			c.logger.Error("path '%s' was not found on namespace '%s'", uriPrefix, namespace)
 			continue
 		}
+		h := config.Get(ingtypes.BackOAuthHeaders)
+		headers := strings.Split(h.Value, ",")
 		headersMap := make(map[string]string, len(headers))
 		for _, header := range headers {
 			if len(header) == 0 {

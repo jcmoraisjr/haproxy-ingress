@@ -1,8 +1,4 @@
--- From: https://raw.githubusercontent.com/TimWolla/haproxy-auth-request/a3392816dde80cc93448eabd3528deac8559f1a6/auth-request.lua
-
--- Changes:
--- 1. Add auth_response_email haproxy var from a response header
---    txn:set_var("txn.auth_response_email", h["x-auth-request-email"])
+-- From: https://raw.githubusercontent.com/TimWolla/haproxy-auth-request/c3c9349166fb4aa9a9b3964267f3eaa03117c3a3/auth-request.lua
 
 -- The MIT License (MIT)
 --
@@ -25,47 +21,41 @@
 -- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 -- SOFTWARE.
+--
+-- SPDX-License-Identifier: MIT
 
-local http = require("socket.http")
+local http = require("haproxy-lua-http")
 
---- Monkey Patches around bugs in haproxy's Socket class
--- This function calls core.tcp(), fixes a few methods and
--- returns the resulting socket.
--- @return Socket
-function create_sock()
-	local sock = core.tcp()
-
-	-- https://www.mail-archive.com/haproxy@formilux.org/msg28574.html
-	sock.old_receive = sock.receive
-	sock.receive = function(socket, pattern, prefix)
-		local a, b
-		if pattern == nil then pattern = "*l" end
-		if prefix == nil then
-			a, b = sock:old_receive(pattern)
-		else
-			a, b = sock:old_receive(pattern, prefix)
-		end
-		return a, b
-	end
-
-	-- https://www.mail-archive.com/haproxy@formilux.org/msg28604.html
-	sock.old_settimeout = sock.settimeout
-	sock.settimeout = function(socket, timeout)
-		socket:old_settimeout(timeout)
-
-		return 1
-	end
-
-	return sock
+function set_var_pre_2_2(txn, var, value)
+	return txn:set_var(var, value)
+end
+function set_var_post_2_2(txn, var, value)
+	return txn:set_var(var, value, true)
 end
 
+set_var = function(txn, var, value)
+	local success = pcall(set_var_post_2_2, txn, var, value)
+	if success then
+		set_var = set_var_post_2_2
+	else
+		set_var = set_var_pre_2_2
+	end
+
+	return set_var(txn, var, value)
+end
+
+function sanitize_header_for_variable(header)
+	return header:gsub("[^a-zA-Z0-9]", "_")
+end
+
+
 core.register_action("auth-request", { "http-req" }, function(txn, be, path)
-	txn:set_var("txn.auth_response_successful", false)
+	set_var(txn, "txn.auth_response_successful", false)
 
 	-- Check whether the given backend exists.
 	if core.backends[be] == nil then
 		txn:Alert("Unknown auth-request backend '" .. be .. "'")
-		txn:set_var("txn.auth_response_code", 500)
+		set_var(txn, "txn.auth_response_code", 500)
 		return
 	end
 
@@ -81,7 +71,7 @@ core.register_action("auth-request", { "http-req" }, function(txn, be, path)
 	end
 	if addr == nil then
 		txn:Warning("No servers available for auth-request backend: '" .. be .. "'")
-		txn:set_var("txn.auth_response_code", 500)
+		set_var(txn, "txn.auth_response_code", 500)
 		return
 	end
 
@@ -89,42 +79,45 @@ core.register_action("auth-request", { "http-req" }, function(txn, be, path)
 	-- socket.http's format.
 	local headers = {}
 	for header, values in pairs(txn.http:req_get_headers()) do
-		for i, v in pairs(values) do
-			if headers[header] == nil then
-				headers[header] = v
-			else
-				headers[header] = headers[header] .. ", " .. v
+		if header ~= 'content-length' then
+			for i, v in pairs(values) do
+				if headers[header] == nil then
+					headers[header] = v
+				else
+					headers[header] = headers[header] .. ", " .. v
+				end
 			end
 		end
 	end
 
 	-- Make request to backend.
-	local b, c, h = http.request {
+	local response, err = http.head {
 		url = "http://" .. addr .. path,
 		headers = headers,
-		create = create_sock,
-		-- Disable redirects, because DNS does not work here.
-		redirect = false
 	}
 
 	-- Check whether we received a valid HTTP response.
-	if b == nil then
-		txn:Warning("Failure in auth-request backend '" .. be .. "': " .. c)
-		txn:set_var("txn.auth_response_code", 500)
+	if response == nil then
+		txn:Warning("Failure in auth-request backend '" .. be .. "': " .. err)
+		set_var(txn, "txn.auth_response_code", 500)
 		return
 	end
 
+	set_var(txn, "txn.auth_response_code", response.status_code)
+
+	for header, value in response:get_headers(true) do
+		set_var(txn, "req.auth_response_header." .. sanitize_header_for_variable(header), value)
+	end
+
 	-- 2xx: Allow request.
-	if 200 <= c and c < 300 then
-		txn:set_var("txn.auth_response_successful", true)
-		txn:set_var("txn.auth_response_code", c)
-		txn:set_var("txn.auth_response_email", h["x-auth-request-email"])
-	-- 401 / 403: Do not allow request.
-	elseif c == 401 or c == 403 then
-		txn:set_var("txn.auth_response_code", c)
-	-- Everything else: Do not allow request and log.
-	else
-		txn:Warning("Invalid status code in auth-request backend '" .. be .. "': " .. c)
-		txn:set_var("txn.auth_response_code", c)
+	if 200 <= response.status_code and response.status_code < 300 then
+		set_var(txn, "txn.auth_response_successful", true)
+	-- Don't allow other codes.
+	-- Codes with Location: Passthrough location at redirect.
+	elseif response.status_code == 301 or response.status_code == 302 or response.status_code == 303 or response.status_code == 307 or response.status_code == 308 then
+		set_var(txn, "txn.auth_response_location", response:get_header("location", "last"))
+	-- 401 / 403: Do nothing, everything else: log.
+	elseif response.status_code ~= 401 and response.status_code ~= 403 then
+		txn:Warning("Invalid status code in auth-request backend '" .. be .. "': " .. response.status_code)
 	end
 end, 2)

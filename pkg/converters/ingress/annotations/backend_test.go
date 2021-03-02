@@ -1097,13 +1097,12 @@ func TestHSTS(t *testing.T) {
 
 func TestOAuth(t *testing.T) {
 	testCases := []struct {
-		annDefault map[string]string
-		ann        map[string]map[string]string
-		external   bool
-		haslua     bool
-		backend    string
-		oauthExp   map[string]hatypes.OAuthConfig
-		logging    string
+		ann      map[string]map[string]string
+		external bool
+		haslua   bool
+		backend  string
+		oauthExp map[string]hatypes.OAuthConfig
+		logging  string
 	}{
 		// 0
 		{
@@ -1147,7 +1146,7 @@ func TestOAuth(t *testing.T) {
 					Impl:        "oauth2_proxy",
 					BackendName: "default_back_8080",
 					URIPrefix:   "/oauth2",
-					Headers:     map[string]string{"X-Auth-Request-Email": "auth_response_email"},
+					Headers:     map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
 				},
 			},
 		},
@@ -1165,7 +1164,7 @@ func TestOAuth(t *testing.T) {
 					Impl:        "oauth2_proxy",
 					BackendName: "default_back_8080",
 					URIPrefix:   "/auth",
-					Headers:     map[string]string{"X-Auth-Request-Email": "auth_response_email"},
+					Headers:     map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
 				},
 			},
 		},
@@ -1249,7 +1248,7 @@ func TestOAuth(t *testing.T) {
 			ann: map[string]map[string]string{
 				"/": {
 					ingtypes.BackOAuth:        "oauth2_proxy",
-					ingtypes.BackOAuthHeaders: ",,X-Auth-Request-Email:auth_response_email,,X-Auth-New:attr_from_lua,",
+					ingtypes.BackOAuthHeaders: ",,X-Auth-Request-Email:req.auth_response_header.x_auth_request_email,,X-Auth-New:attr_from_lua,",
 				},
 			},
 			backend: "default:back:/oauth2",
@@ -1259,7 +1258,7 @@ func TestOAuth(t *testing.T) {
 					BackendName: "default_back_8080",
 					URIPrefix:   "/oauth2",
 					Headers: map[string]string{
-						"X-Auth-Request-Email": "auth_response_email",
+						"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email",
 						"X-Auth-New":           "attr_from_lua",
 					},
 				},
@@ -1281,7 +1280,7 @@ func TestOAuth(t *testing.T) {
 				"/":    {},
 				"/app": {},
 			},
-			logging: "WARN oauth2_proxy on ingress 'default/ing1' needs Lua socket, install Lua libraries and enable 'external-has-lua' global config",
+			logging: "WARN oauth2_proxy on ingress 'default/ing1' needs Lua json module, install lua-json4 and enable 'external-has-lua' global config",
 		},
 		// 11
 		{
@@ -1301,13 +1300,13 @@ func TestOAuth(t *testing.T) {
 					Impl:        "oauth2_proxy",
 					BackendName: "default_back_8080",
 					URIPrefix:   "/oauth2",
-					Headers:     map[string]string{"X-Auth-Request-Email": "auth_response_email"},
+					Headers:     map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
 				},
 				"/app": {
 					Impl:        "oauth2_proxy",
 					BackendName: "default_back_8080",
 					URIPrefix:   "/oauth2",
-					Headers:     map[string]string{"X-Auth-Request-Email": "auth_response_email"},
+					Headers:     map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
 				},
 			},
 		},
@@ -1326,7 +1325,7 @@ func TestOAuth(t *testing.T) {
 					Impl:        "oauth2_proxy",
 					BackendName: "default_back_8080",
 					URIPrefix:   "/oauth2",
-					Headers:     map[string]string{"X-Auth-Request-Email": "auth_response_email"},
+					Headers:     map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
 				},
 			},
 		},
@@ -1337,9 +1336,10 @@ func TestOAuth(t *testing.T) {
 		Name:      "ing1",
 		Type:      "ingress",
 	}
+	annDefault := map[string]string{ingtypes.BackOAuthHeaders: "X-Auth-Request-Email:req.auth_response_header.x_auth_request_email"}
 	for i, test := range testCases {
 		c := setup(t)
-		d := c.createBackendMappingData("default/app", source, test.annDefault, test.ann, []string{})
+		d := c.createBackendMappingData("default/app", source, annDefault, test.ann, []string{})
 		if test.external {
 			c.haproxy.Global().External.MasterSocket = "/tmp/master.sock"
 		}
