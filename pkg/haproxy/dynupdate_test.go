@@ -605,6 +605,26 @@ set server _default_backend/srv001 state ready
 set server _default_backend/srv001 weight 1`,
 			logging: `INFO-V(2) updated endpoint '172.17.0.3:8080' weight '1' state 'ready' on backend/server '_default_backend/srv001'`,
 		},
+		// 24
+		{
+			doconfig1: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.Resolver = "k8s"
+				b.AcquireEndpoint("172.17.0.2", 8080, "")
+				b.AddEmptyEndpoint()
+			},
+			doconfig2: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.Resolver = "k8s"
+				b.Dynamic.DynUpdate = true
+				b.AcquireEndpoint("172.17.0.3", 8080, "")
+			},
+			expected: []string{
+				"srv001:172.17.0.3:8080:1",
+				"srv002:127.0.0.1:1023:1",
+			},
+			dynamic: true,
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
