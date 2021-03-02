@@ -145,15 +145,20 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 		return false
 	}
 
+	// Resolver == update via DNS discovery
+	if curBack.Resolver != "" {
+		// DNS based updates finishes prematurelly. Ensure the ep
+		// list size of the new one is at least as big as the old one.
+		for i := len(curBack.Endpoints); i < len(oldBack.Endpoints); i++ {
+			curBack.AddEmptyEndpoint()
+		}
+		return len(oldBack.Endpoints) == len(curBack.Endpoints)
+	}
+
 	// can decrease endpoints, cannot increase
 	if len(oldBack.Endpoints) < len(curBack.Endpoints) {
 		d.logger.InfoV(2, "added endpoints on backend '%s'", curBack.ID)
 		return false
-	}
-
-	// Resolver == update via DNS discovery
-	if curBack.Resolver != "" {
-		return true
 	}
 
 	// most of the backends are equal, save some proc stopping here if deep equals
