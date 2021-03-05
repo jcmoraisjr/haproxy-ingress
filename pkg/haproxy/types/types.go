@@ -325,13 +325,31 @@ type FrontendMaps struct {
 	TLSMissingCrtPagesMap *HostsMap
 }
 
+// AuthProxy ...
+type AuthProxy struct {
+	BindList   []*AuthProxyBind
+	Name       string
+	RangeEnd   int
+	RangeStart int
+}
+
+// AuthProxyBind ...
+type AuthProxyBind struct {
+	AuthBackendName string
+	Backend         BackendID
+	LocalPort       int
+	SocketID        int
+}
+
 // Frontend ...
 type Frontend struct {
+	changed     bool
 	Maps        *FrontendMaps
 	BindName    string
 	BindSocket  string
 	BindID      int
 	AcceptProxy bool
+	AuthProxy   AuthProxy
 	//
 	DefaultCrtFile string
 	DefaultCrtHash string
@@ -460,6 +478,7 @@ const (
 type Backends struct {
 	items, itemsAdd, itemsDel map[string]*Backend
 	//
+	authBackends   map[string]*Backend
 	shards         []map[string]*Backend
 	changedShards  map[int]bool
 	DefaultBackend *Backend
@@ -557,6 +576,7 @@ type BackendPath struct {
 	//
 	AllowedIPHTTP AccessConfig
 	AuthHTTP      AuthHTTP
+	AuthExternal  AuthExternal
 	Cors          Cors
 	DeniedIPHTTP  AccessConfig
 	HSTS          HSTS
@@ -673,6 +693,14 @@ type Cookie struct {
 	Shared   bool
 	Strategy string
 	Keywords string
+}
+
+// AuthExternal ...
+type AuthExternal struct {
+	AuthBackendName string
+	Headers         map[string]string
+	Path            string
+	SignIn          string
 }
 
 // AuthHTTP ...

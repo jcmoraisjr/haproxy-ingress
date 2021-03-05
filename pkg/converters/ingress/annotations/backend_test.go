@@ -17,6 +17,7 @@ limitations under the License.
 package annotations
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"testing"
@@ -174,6 +175,171 @@ func TestAffinity(t *testing.T) {
 	}
 }
 
+func TestAuthExternal(t *testing.T) {
+	testCase := []struct {
+		url        string
+		signin     string
+		headers    string
+		isExternal bool
+		hasLua     bool
+		expBack    hatypes.AuthExternal
+		expIP      []string
+		logging    string
+	}{
+		// 0
+		{
+			url:     "10.0.0.1:8080/app",
+			logging: `WARN ignoring invalid auth URL on ingress 'default/ing1': 10.0.0.1:8080/app`,
+		},
+		// 1
+		{
+			url:     "fail://app1.local",
+			logging: `WARN ignoring auth URL with an invalid protocol on ingress 'default/ing1': fail`,
+		},
+		// 2
+		{
+			url:        "http://app1.local",
+			isExternal: true,
+			logging:    `WARN external authentication on ingress 'default/ing1' needs Lua json module, install lua-json4 and enable 'external-has-lua' global config`,
+		},
+		// 3
+		{
+			url: "http://app1.local",
+			expBack: hatypes.AuthExternal{
+				AuthBackendName: "_auth_4001",
+				Path:            "/",
+			},
+			expIP: []string{"10.0.0.2:80"},
+		},
+		// 4
+		{
+			url:        "http://app1.local",
+			isExternal: true,
+			hasLua:     true,
+			expBack: hatypes.AuthExternal{
+				AuthBackendName: "_auth_4001",
+				Path:            "/",
+			},
+			expIP: []string{"10.0.0.2:80"},
+		},
+		// 5
+		{
+			url: "http://app2.local/app",
+			expBack: hatypes.AuthExternal{
+				AuthBackendName: "_auth_4001",
+				Path:            "/app",
+			},
+			expIP: []string{"10.0.0.3:80", "10.0.0.4:80"},
+		},
+		// 6
+		{
+			url:     "http://appfail.local/app",
+			logging: `WARN ignoring auth URL with an invalid domain on ingress 'default/ing1': host not found: appfail.local`,
+		},
+		// 7
+		{
+			url: "http://app1.local:8080/app",
+			expBack: hatypes.AuthExternal{
+				AuthBackendName: "_auth_4001",
+				Path:            "/app",
+			},
+			expIP: []string{"10.0.0.2:8080"},
+		},
+		// 8
+		{
+			url: "http://10.0.0.200:8080/app",
+			expBack: hatypes.AuthExternal{
+				AuthBackendName: "_auth_4001",
+				Path:            "/app",
+			},
+			expIP: []string{"10.0.0.200:8080"},
+		},
+		// 9
+		{
+			url:    "http://10.0.0.200:8080/app",
+			signin: "http://invalid'",
+			expBack: hatypes.AuthExternal{
+				AuthBackendName: "_auth_4001",
+				Path:            "/app",
+			},
+			expIP:   []string{"10.0.0.200:8080"},
+			logging: `WARN ignoring invalid sign-in URL in ingress 'default/ing1': http://invalid'`,
+		},
+		// 10
+		{
+			url:    "http://app1.local/oauth2/auth",
+			signin: "http://app1.local/oauth2/start?rd=%[path]",
+			expBack: hatypes.AuthExternal{
+				AuthBackendName: "_auth_4001",
+				Path:            "/oauth2/auth",
+				SignIn:          "http://app1.local/oauth2/start?rd=%[path]",
+			},
+			expIP: []string{"10.0.0.2:80"},
+		},
+		// 11
+		{
+			url:     "http://app1.local/oauth2/auth",
+			signin:  "http://app1.local/oauth2/start?rd=%[path]",
+			headers: "x-mail:req.x_mail",
+			expBack: hatypes.AuthExternal{
+				Headers: map[string]string{
+					"x-mail": "req.x_mail",
+				},
+				AuthBackendName: "_auth_4001",
+				Path:            "/oauth2/auth",
+				SignIn:          "http://app1.local/oauth2/start?rd=%[path]",
+			},
+			expIP: []string{"10.0.0.2:80"},
+		},
+	}
+	source := &Source{
+		Namespace: "default",
+		Name:      "ing1",
+		Type:      "ingress",
+	}
+	lookupHost = func(host string) (addrs []string, err error) {
+		switch host {
+		case "app1.local":
+			return []string{"10.0.0.2"}, nil
+		case "app2.local":
+			return []string{"10.0.0.3", "10.0.0.4"}, nil
+		}
+		return nil, fmt.Errorf("host not found: %s", host)
+	}
+	for i, test := range testCase {
+		c := setup(t)
+		u := c.createUpdater()
+		c.haproxy.Frontend().AuthProxy.RangeStart = 4001
+		c.haproxy.Frontend().AuthProxy.RangeEnd = 4009
+		if test.isExternal {
+			c.haproxy.Global().External.MasterSocket = "/socket"
+		}
+		c.haproxy.Global().External.HasLua = test.hasLua
+		ann := map[string]map[string]string{
+			"/": {
+				ingtypes.BackAuthURL:     test.url,
+				ingtypes.BackAuthSignin:  test.signin,
+				ingtypes.BackAuthHeaders: test.headers,
+			},
+		}
+		d := c.createBackendMappingData("default/app", source, map[string]string{}, ann, []string{"/"})
+		u.buildBackendAuthExternal(d)
+		back := d.backend.Paths[0].AuthExternal
+		var iplist []string
+		bindList := c.haproxy.Frontend().AuthProxy.BindList
+		if len(bindList) > 0 {
+			auth := c.haproxy.Backends().FindBackendID(bindList[0].Backend)
+			for _, ep := range auth.Endpoints {
+				iplist = append(iplist, fmt.Sprintf("%s:%d", ep.IP, ep.Port))
+			}
+		}
+		c.compareObjects("auth external back", i, back, test.expBack)
+		c.compareObjects("auth external ip list", i, iplist, test.expIP)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
 func TestAuthHTTP(t *testing.T) {
 	testCase := []struct {
 		paths        []string
@@ -193,46 +359,25 @@ func TestAuthHTTP(t *testing.T) {
 		{
 			ann: map[string]map[string]string{
 				"/": {
-					ingtypes.BackAuthType: "fail",
-				},
-			},
-			expLogging: "ERROR unsupported authentication type on ingress 'default/ing1': fail",
-		},
-		// 2
-		{
-			ann: map[string]map[string]string{
-				"/": {
-					ingtypes.BackAuthType: "basic",
-				},
-			},
-			expLogging: "ERROR missing secret name on basic authentication on ingress 'default/ing1'",
-		},
-		// 3
-		{
-			ann: map[string]map[string]string{
-				"/": {
-					ingtypes.BackAuthType:   "basic",
 					ingtypes.BackAuthSecret: "mypwd",
 				},
 			},
 			expLogging: "ERROR error reading basic authentication on ingress 'default/ing1': secret not found: 'default/mypwd'",
 		},
-		// 4
+		// 2
 		{
 			ann: map[string]map[string]string{
 				"/": {
-					ingtypes.BackAuthType:   "basic",
 					ingtypes.BackAuthSecret: "mypwd",
 				},
 			},
 			secrets:    conv_helper.SecretContent{"default/mypwd": {"xx": []byte{}}},
 			expLogging: "ERROR error reading basic authentication on ingress 'default/ing1': secret 'default/mypwd' does not have file/key 'auth'",
 		},
-		// 5
+		// 3
 		{
 			ann: map[string]map[string]string{
 				"/": {
-					ingtypes.BackAuthType:   "basic",
 					ingtypes.BackAuthSecret: "mypwd",
 					ingtypes.BackAuthRealm:  `"a name"`,
 				},
@@ -243,12 +388,11 @@ func TestAuthHTTP(t *testing.T) {
 			}}},
 			expLogging: "WARN ignoring auth-realm with quotes on ingress 'default/ing1'",
 		},
-		// 6
+		// 4
 		{
 			source: &Source{Namespace: "ns1", Name: "i1", Type: "ingress"},
 			ann: map[string]map[string]string{
 				"/": {
-					ingtypes.BackAuthType:   "basic",
 					ingtypes.BackAuthSecret: "mypwd",
 				},
 			},
@@ -256,11 +400,10 @@ func TestAuthHTTP(t *testing.T) {
 			expUserlists: []*hatypes.Userlist{{Name: "ns1_mypwd"}},
 			expLogging:   "WARN userlist on ingress 'ns1/i1' for basic authentication is empty",
 		},
-		// 7
+		// 5
 		{
 			ann: map[string]map[string]string{
 				"/": {
-					ingtypes.BackAuthType:   "basic",
 					ingtypes.BackAuthSecret: "basicpwd",
 				},
 			},
@@ -270,11 +413,10 @@ func TestAuthHTTP(t *testing.T) {
 WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ingress 'default/ing1': missing password of user 'fail' line 1
 WARN userlist on ingress 'default/ing1' for basic authentication is empty`,
 		},
-		// 8
+		// 6
 		{
 			ann: map[string]map[string]string{
 				"/": {
-					ingtypes.BackAuthType:   "basic",
 					ingtypes.BackAuthSecret: "basicpwd",
 				},
 			},
@@ -286,11 +428,10 @@ nopwd`)}},
 			}}},
 			expLogging: "WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ingress 'default/ing1': missing password of user 'nopwd' line 3",
 		},
-		// 9
+		// 7
 		{
 			ann: map[string]map[string]string{
 				"/": {
-					ingtypes.BackAuthType:   "basic",
 					ingtypes.BackAuthSecret: "basicpwd",
 				},
 			},
@@ -307,12 +448,11 @@ WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ing
 WARN ignoring malformed usr/passwd on secret 'default/basicpwd', declared on ingress 'default/ing1': missing username line 5
 WARN userlist on ingress 'default/ing1' for basic authentication is empty`,
 		},
-		// 10
+		// 8
 		{
 			paths: []string{"/", "/admin"},
 			ann: map[string]map[string]string{
 				"/admin": {
-					ingtypes.BackAuthType:   "basic",
 					ingtypes.BackAuthSecret: "basicpwd",
 				},
 			},

@@ -128,6 +128,77 @@ func TestBackendCrud(t *testing.T) {
 	}
 }
 
+func TestAcquireAuthBackend(t *testing.T) {
+	type bk struct {
+		iplist   []string
+		port     int
+		hostname string
+	}
+	testCases := []struct {
+		backends []bk
+		expBack  map[string]string
+	}{
+		// 0
+		{
+			backends: []bk{
+				{iplist: []string{"10.0.0.1", "10.0.0.2"}, port: 8080},
+			},
+			expBack: map[string]string{
+				"10.0.0.1,10.0.0.2:8080:": "_auth_backend001_8080",
+			},
+		},
+		// 1
+		{
+			backends: []bk{
+				{iplist: []string{"10.0.0.1"}, port: 8080},
+				{iplist: []string{"10.0.0.1"}, port: 8081},
+			},
+			expBack: map[string]string{
+				"10.0.0.1:8080:": "_auth_backend001_8080",
+				"10.0.0.1:8081:": "_auth_backend002_8081",
+			},
+		},
+		// 2
+		{
+			backends: []bk{
+				{iplist: []string{"10.0.0.1"}, port: 8080},
+				{iplist: []string{"10.0.0.2"}, port: 8080},
+				{iplist: []string{"10.0.0.1"}, port: 8080},
+			},
+			expBack: map[string]string{
+				"10.0.0.1:8080:": "_auth_backend001_8080",
+				"10.0.0.2:8080:": "_auth_backend002_8080",
+			},
+		},
+		// 3
+		{
+			backends: []bk{
+				{iplist: []string{"10.0.0.1"}, port: 8080},
+				{iplist: []string{"10.0.0.2"}, port: 8080},
+				{iplist: []string{"10.0.0.1"}, port: 8080, hostname: "app1.local"},
+			},
+			expBack: map[string]string{
+				"10.0.0.1:8080:":           "_auth_backend001_8080",
+				"10.0.0.2:8080:":           "_auth_backend002_8080",
+				"10.0.0.1:8080:app1.local": "_auth_backend003_8080",
+			},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		backends := CreateBackends(0)
+		for _, b := range test.backends {
+			_ = backends.AcquireAuthBackend(b.iplist, b.port, b.hostname)
+		}
+		actual := map[string]string{}
+		for n, b := range backends.authBackends {
+			actual[n] = b.ID
+		}
+		c.compareObjects("auth backend", i, actual, test.expBack)
+		c.teardown()
+	}
+}
+
 func TestShrinkBackends(t *testing.T) {
 	ep0 := &Endpoint{IP: "127.0.0.1"}
 	ep11 := &Endpoint{IP: "192.168.0.11"}

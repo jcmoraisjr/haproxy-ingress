@@ -87,6 +87,9 @@ func (d *dynUpdater) checkConfigChange() bool {
 	if d.config.tcpbackends.Changed() {
 		diff = append(diff, "tcp-services")
 	}
+	if d.config.frontend.Changed() {
+		diff = append(diff, "frontend")
+	}
 	if d.config.userlists.Changed() {
 		diff = append(diff, "userlists")
 	}

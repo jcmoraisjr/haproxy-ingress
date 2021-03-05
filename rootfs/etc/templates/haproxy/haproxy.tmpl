@@ -613,6 +613,30 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- $authCfg := $backend.PathConfig "AuthExternal" }}
+{{- range $i, $auth := $authCfg.Items }}
+{{- range $pathIDs := $authCfg.PathIDs $i }}
+{{- if $auth.AuthBackendName }}
+    http-request set-header X-Real-IP %[src]
+        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+    http-request lua.auth-request {{ $auth.AuthBackendName }} {{ $auth.Path }}
+        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+{{- if $auth.SignIn }}
+    http-request redirect location {{ $auth.SignIn }} if !{ var(txn.auth_response_successful) -m bool }
+        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+{{- else }}
+    http-request deny if !{ var(txn.auth_response_successful) -m bool }
+        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+{{- end }}
+{{- range $header, $attr := $auth.Headers }}
+    http-request set-header {{ $header }} %[var({{ $attr }})] if { var({{ $attr }}) -m found }
+        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
 {{- $oauthCfg := $backend.PathConfig "OAuth" }}
 {{- range $i, $oauth := $oauthCfg.Items }}
 {{- range $pathIDs := $oauthCfg.PathIDs $i }}
@@ -859,6 +883,34 @@ backend _error404
 # #   FRONTENDS
 # #
 #
+{{- if $frontend.AuthProxy.BindList }}
+
+{{- $proxy := $frontend.AuthProxy }}
+{{- $use_socket := gt (len $proxy.BindList) 1 }}
+
+  # # # # # # # # # # # # # # # # # # #
+# #
+#     Authentication External
+#
+### helper backends used by auth-request.lua
+### using tcp ports - haproxy-lua-http.lua doesn't support unix socket
+{{- range $bind := $proxy.BindList }}
+backend {{ $bind.AuthBackendName }}
+    mode http
+    server {{ $bind.AuthBackendName }} 127.0.0.1:{{ $bind.LocalPort }}
+{{- end }}
+frontend {{ $proxy.Name }}
+    mode http
+{{- range $bind := $proxy.BindList }}
+    bind 127.0.0.1:{{ $bind.LocalPort }}
+        {{- if $use_socket }} id {{ $bind.SocketID }}{{ end }}
+{{- end }}
+{{- range $bind := $proxy.BindList }}
+    use_backend {{ $bind.Backend }}
+        {{- if $use_socket }} if { so_id {{ $bind.SocketID }} }{{ end }}
+{{- end }}
+{{- end }}
+
 {{- if $hosts.HasSSLPassthrough }}
 
   # # # # # # # # # # # # # # # # # # #

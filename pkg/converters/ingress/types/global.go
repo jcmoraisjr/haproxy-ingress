@@ -23,6 +23,7 @@ const (
 	GlobalAcmeExpiring                 = "acme-expiring"
 	GlobalAcmeShared                   = "acme-shared"
 	GlobalAcmeTermsAgreed              = "acme-terms-agreed"
+	GlobalAuthProxy                    = "auth-proxy"
 	GlobalBindFrontingProxy            = "bind-fronting-proxy"
 	GlobalBindHTTP                     = "bind-http"
 	GlobalBindHTTPS                    = "bind-https"

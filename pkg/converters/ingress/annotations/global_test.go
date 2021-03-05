@@ -23,6 +23,61 @@ import (
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
+func TestAuthProxy(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected hatypes.AuthProxy
+		logging  string
+	}{
+		// 0
+		{
+			input: "_name:100",
+			expected: hatypes.AuthProxy{
+				RangeStart: 0,
+				RangeEnd:   -1,
+			},
+			logging: `WARN invalid auth proxy configuration: _name:100`,
+		},
+		// 1
+		{
+			input: "_name:non-num",
+			expected: hatypes.AuthProxy{
+				RangeStart: 0,
+				RangeEnd:   -1,
+			},
+			logging: `WARN invalid auth proxy configuration: _name:non-num`,
+		},
+		// 2
+		{
+			input: "=invalid:100-101",
+			expected: hatypes.AuthProxy{
+				RangeStart: 0,
+				RangeEnd:   -1,
+			},
+			logging: `WARN invalid auth proxy configuration: =invalid:100-101`,
+		},
+		// 3
+		{
+			input: "_name:100-101",
+			expected: hatypes.AuthProxy{
+				Name:       "_name",
+				RangeStart: 100,
+				RangeEnd:   101,
+			},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createGlobalData(map[string]string{
+			ingtypes.GlobalAuthProxy: test.input,
+		})
+		c.createUpdater().buildGlobalAuthProxy(d)
+		c.compareObjects("bind", i, c.haproxy.Frontend().AuthProxy, test.expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
 func TestBind(t *testing.T) {
 	testCases := []struct {
 		ann      map[string]string

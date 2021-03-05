@@ -18,6 +18,7 @@ package annotations
 
 import (
 	"fmt"
+	"net"
 	"regexp"
 	"strconv"
 	"strings"
@@ -84,20 +85,105 @@ func (c *updater) buildBackendAffinity(d *backData) {
 	}
 }
 
+var (
+	lookupHost func(host string) (addrs []string, err error) = net.LookupHost
+
+	urlParseRegex   = regexp.MustCompile(`^([a-z]+)://([^][/: ]+)(:[0-9]{1,5})?([^"' ]*)$`)
+	validURLRegex   = regexp.MustCompile(`^[^"' ]*$`)
+	authHeaderRegex = regexp.MustCompile(`^[A-Za-z0-9-]+:[A-Za-z0-9_.-]+$`)
+)
+
+func (c *updater) buildBackendAuthExternal(d *backData) {
+	for _, path := range d.backend.Paths {
+		config := d.mapper.GetConfig(path.Link)
+		url := config.Get(ingtypes.BackAuthURL)
+		if url.Value == "" {
+			continue
+		}
+		external := c.haproxy.Global().External
+		if external.IsExternal() && !external.HasLua {
+			c.logger.Warn("external authentication on %v needs Lua json module, install lua-json4 and enable 'external-has-lua' global config", url.Source)
+			return
+		}
+
+		urlParse := urlParseRegex.FindStringSubmatch(url.Value)
+		if len(urlParse) < 5 {
+			c.logger.Warn("ignoring invalid auth URL on %v: %s", url.Source, url.Value)
+			continue
+		}
+		urlProto := urlParse[1]
+		urlHost := urlParse[2]
+		urlPort := strings.TrimLeft(urlParse[3], ":")
+		urlPath := urlParse[4]
+		if urlProto != "http" {
+			c.logger.Warn("ignoring auth URL with an invalid protocol on %v: %s", url.Source, urlProto)
+			continue
+		}
+		var ipList []string
+		var hostname string
+		if net.ParseIP(urlHost) != nil {
+			ipList = []string{urlHost}
+		} else {
+			var err error
+			if ipList, err = lookupHost(urlHost); err != nil {
+				c.logger.Warn("ignoring auth URL with an invalid domain on %v: %v", url.Source, err)
+				continue
+			}
+			hostname = urlHost
+		}
+		port, _ := strconv.Atoi(urlPort)
+		if port == 0 {
+			port = 80
+		}
+		if urlPath == "" {
+			urlPath = "/"
+		}
+
+		backend := c.haproxy.Backends().AcquireAuthBackend(ipList, port, hostname)
+		authBackendName, err := c.haproxy.Frontend().AcquireAuthBackendName(backend.BackendID())
+		if err != nil {
+			// TODO remove backend if not used elsewhere
+			c.logger.Warn("ignoring auth URL on %v: %v", url.Source, err)
+			continue
+		}
+
+		s := config.Get(ingtypes.BackAuthSignin)
+		signin := s.Value
+		if signin != "" && !validURLRegex.MatchString(signin) {
+			c.logger.Warn("ignoring invalid sign-in URL in %v: %s", s.Source, signin)
+			signin = ""
+		}
+
+		h := config.Get(ingtypes.BackAuthHeaders)
+		headers := strings.Split(h.Value, ",")
+		headersMap := make(map[string]string, len(headers))
+		for _, header := range headers {
+			if len(header) == 0 {
+				continue
+			}
+			if !authHeaderRegex.MatchString(header) {
+				c.logger.Warn("ignoring invalid header '%s' on %v", header, h.Source)
+				continue
+			}
+			h := strings.Split(header, ":")
+			headersMap[h[0]] = h[1]
+		}
+		if len(headersMap) == 0 {
+			headersMap = nil
+		}
+
+		path.AuthExternal.Headers = headersMap
+		path.AuthExternal.AuthBackendName = authBackendName
+		path.AuthExternal.Path = urlPath
+		path.AuthExternal.SignIn = signin
+	}
+}
+
 func (c *updater) buildBackendAuthHTTP(d *backData) {
 	for _, path := range d.backend.Paths {
 		config := d.mapper.GetConfig(path.Link)
-		authType := config.Get(ingtypes.BackAuthType)
-		if authType == nil || authType.Source == nil {
-			continue
-		}
-		if authType.Value != "basic" {
-			c.logger.Error("unsupported authentication type on %v: %s", authType.Source, authType.Value)
-			continue
-		}
 		authSecret := config.Get(ingtypes.BackAuthSecret)
-		if authSecret == nil || authSecret.Source == nil {
-			c.logger.Error("missing secret name on basic authentication on %v", authType.Source)
+		if authSecret.Value == "" {
 			continue
 		}
 		secretName := authSecret.Value
@@ -520,10 +606,6 @@ func (c *updater) buildBackendLimit(d *backData) {
 	d.backend.Limit.Whitelist = c.splitCIDR(d.mapper.Get(ingtypes.BackLimitWhitelist))
 }
 
-var (
-	oauthHeaderRegex = regexp.MustCompile(`^[A-Za-z0-9-]+:[A-Za-z0-9_.-]+$`)
-)
-
 func (c *updater) buildBackendOAuth(d *backData) {
 	for _, path := range d.backend.Paths {
 		config := d.mapper.GetConfig(path.Link)
@@ -558,7 +640,7 @@ func (c *updater) buildBackendOAuth(d *backData) {
 			if len(header) == 0 {
 				continue
 			}
-			if !oauthHeaderRegex.MatchString(header) {
+			if !authHeaderRegex.MatchString(header) {
 				c.logger.Warn("invalid header format '%s' on %v", header, h.Source)
 				continue
 			}
@@ -686,10 +768,6 @@ func (c *updater) buildBackendProxyProtocol(d *backData) {
 	}
 }
 
-var (
-	rewriteURLRegex = regexp.MustCompile(`^[^"' ]*$`)
-)
-
 func (c *updater) buildBackendRewriteURL(d *backData) {
 	for _, path := range d.backend.Paths {
 		config := d.mapper.GetConfig(path.Link)
@@ -697,7 +775,7 @@ func (c *updater) buildBackendRewriteURL(d *backData) {
 		if rewrite == nil || rewrite.Value == "" {
 			continue
 		}
-		if !rewriteURLRegex.MatchString(rewrite.Value) {
+		if !validURLRegex.MatchString(rewrite.Value) {
 			c.logger.Warn(
 				"rewrite-target does not allow white spaces or single/double quotes on %v: '%s'",
 				rewrite.Source, rewrite.Value)
