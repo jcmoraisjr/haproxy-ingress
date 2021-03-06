@@ -33,6 +33,9 @@
     {{- if $userlists }}
         {{- template "userlists" map $userlists }}
     {{- end }}
+    {{- if $global.CustomSections }}
+        {{- template "customsections" map $global.CustomSections }}
+    {{- end }}
     {{- if $tcpbackends }}
         {{- template "tcpbackends" map $global $tcpbackends }}
     {{- end }}
@@ -214,6 +217,19 @@ userlist {{ $userlist.Name }}
 {{- end }}
 {{- end }}
 {{- end }}{{/* define "userlists" */}}
+
+
+{{- define "customsections" }}
+{{- $customSections := .p1 }}
+
+  # # # # # # # # # # # # # # # # # # #
+# #
+#     CUSTOM SECTIONS
+#
+{{- range $l := $customSections }}
+{{ $l }}
+{{- end }}
+{{- end }}
 
 
 {{- define "tcpbackends" }}

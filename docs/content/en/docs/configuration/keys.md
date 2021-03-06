@@ -323,6 +323,7 @@ The table below describes all supported configuration keys.
 | [`config-defaults`](#configuration-snippet)          | multiline HAProxy config for the defaults section | Global |           |
 | [`config-frontend`](#configuration-snippet)          | multiline HAProxy frontend config       | Global  |                    |
 | [`config-global`](#configuration-snippet)            | multiline HAProxy global config         | Global  |                    |
+| [`config-sections`](#configuration-snippet)          | multiline HAProxy section declarations  | Global  |                    |
 | [`cookie-key`](#affinity)                            | secret key                              | Global  | `Ingress`          |
 | [`cors-allow-credentials`](#cors)                    | [true\|false]                           | Path    |                    |
 | [`cors-allow-headers`](#cors)                        | headers list                            | Path    |                    |
@@ -1015,6 +1016,7 @@ See also:
 | `config-defaults` | `Global`  |          | v0.8  |
 | `config-frontend` | `Global`  |          |       |
 | `config-global`   | `Global`  |          |       |
+| `config-sections` | `Global`  |          | v0.13 |
 
 Add HAProxy configuration snippet to the configuration file. Use multiline content
 to add more than one line of configuration.
@@ -1032,6 +1034,20 @@ Examples - ConfigMap:
 ```
 
 ```yaml
+    config-sections: |
+      cache icons
+          total-max-size 4
+          max-age 240
+      ring myring
+          format rfc3164
+          maxlen 1200
+          size 32764
+          timeout connect 5s
+          timeout server 10s
+          server syslogsrv 127.0.0.1:6514 log-proto octet-count
+```
+
+```yaml
     config-frontend: |
       capture request header X-User-Id len 32
 ```
@@ -1043,6 +1059,9 @@ Annotation:
       ingress.kubernetes.io/config-backend: |
         acl bar-url path /bar
         http-request deny if bar-url
+        http-request set-var(txn.path) path
+        http-request cache-use icons if { var(txn.path) -m end .ico }
+        http-response cache-store icons if { var(txn.path) -m end .ico }
 ```
 
 The following keys add a configuration snippet to the ...:
@@ -1051,6 +1070,7 @@ The following keys add a configuration snippet to the ...:
 * `config-global`: ... end of the HAProxy global section.
 * `config-defaults`: ... end of the HAProxy defaults section.
 * `config-frontend`: ... HAProxy frontend sections.
+* `config-sections`: ... HAProxy new section declarations.
 
 ---
 
