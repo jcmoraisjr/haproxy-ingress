@@ -115,8 +115,11 @@ hostname, or the requested path doesn't match any location within the desired ho
 ## --default-ssl-certificate
 
 Defines the `namespace/secretname` of the default certificate that should be used if ingress
-resources using TLS configuration doesn't provide it's own certificate. A self-signed fake
-certificate is used if not declared.
+resources using TLS configuration doesn't provide it's own certificate.  A filename prefixed
+with `file://` can be used, containing both certificate and private key in PEM format, eg
+`file:///dir/crt.pem`.
+
+A self-signed fake certificate is used if not declared, the secret or the file is not found.
 
 ---
 
@@ -309,9 +312,9 @@ The value of the ConfigMap entry is a colon separated list of the following argu
 1. `<portnumber>`, mandatory, is the port number the upstream service is listening - this is not related to the listening port of HAProxy.
 1. `<in-proxy>`, optional, should be defined as `PROXY` if HAProxy should expect requests using the [PROXY](https://www.haproxy.org/download/2.0/doc/proxy-protocol.txt) protocol. Leave empty to not use PROXY protocol. This is usually used only if there is another load balancer in front of HAProxy which supports the PROXY protocol. PROXY protocol v1 and v2 are supported.
 1. `<out-proxy>`, optional, should be defined as `PROXY` or `PROXY-V2` if the upstream service expect connections using the PROXY protocol v2. Use `PROXY-V1` instead if the upstream service only support v1 protocol. Leave empty to connect without using the PROXY protocol.
-1. `<namespace/secret-name>`, optional, used to configure SSL/TLS over the TCP connection. Secret should have `tls.crt` and `tls.key` pair used on TLS handshake. Leave empty to not use ssl-offload.
+1. `<namespace/secret-name>`, optional, used to configure SSL/TLS over the TCP connection. Secret should have `tls.crt` and `tls.key` pair used on TLS handshake. Leave empty to not use ssl-offload. A filename prefixed with `file://` can be used containing both certificate and private key in PEM format, eg `file:///dir/crt.pem`.
 1. `<check-interval>`, added in v0.10, optional and defaults to `2s`, configures a TCP check interval. Declare `-` (one single dash) as the time to disable it. Valid time is a number and a mandatory suffix: `us`, `ms`, `s`, `m`, `h` or `d`.
-1. `<namespace/secret-name>`, added in v0.10, optional, used to configure SSL/TLS client verification over the TCP connection. Secret should have `ca.crt` and optional `ca.crl`. Leave empty to not use ssl client verification.
+1. `<namespace/secret-name>`, added in v0.10, optional, used to configure SSL/TLS client verification over the TCP connection. Secret should have `ca.crt` and optional `ca.crl`. Leave empty to not use ssl client verification. A filename prefixed with `file://` can be used containing the CA bundle in PEM format, and optionally followed by a comma and the filename with the crl, eg `file:///dir/ca.pem` or `file:///dir/ca.pem,/dir/crl.pem`.
 
 Optional fields can be skipped using consecutive colons.
 

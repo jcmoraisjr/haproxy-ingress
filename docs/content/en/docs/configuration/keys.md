@@ -696,7 +696,7 @@ Configures authentication options.
 
 * `auth-type`: Defines the authentication type. Currently the only supported option is `basic`.
 * `auth-realm`: Optional, configures the authentication realm string. `localhost` will be used if not provided.
-* `auth-secret`: A secret name with users and passwords used to configure basic authentication. The secret can be in the same namespace of the Ingress resource, or any other namespace if cross namespace is enabled. Secret in the same namespace does not need to be prepended with `namespace/`.
+* `auth-secret`: A secret name with users and passwords used to configure basic authentication. The secret can be in the same namespace of the Ingress resource, or any other namespace if cross namespace is enabled. Secret in the same namespace does not need to be prepended with `namespace/`. A filename prefixed with `file://` can be used containing the list of users and passwords, eg `file:///dir/users.list`.
 
 The secret referenced by `auth-secret` should have a key named `auth` with users and passwords, one per line. The following two formats are supported and both are supported in the same secret:
 
@@ -739,7 +739,7 @@ The following keys are supported:
 
 * `auth-tls-cert-header`: If `true` HAProxy will add `X-SSL-Client-Cert` http header with a base64 encoding of the X509 certificate provided by the client. Default is to not provide the client certificate.
 * `auth-tls-error-page`: Optional URL of the page to redirect the user if he doesn't provide a certificate or the certificate is invalid.
-* `auth-tls-secret`: Mandatory secret name with `ca.crt` key providing all certificate authority bundles used to validate client certificates. Since v0.9, an optional `ca.crl` key can also provide a CRL in PEM format for the server to verify against.
+* `auth-tls-secret`: Mandatory secret name with `ca.crt` key providing all certificate authority bundles used to validate client certificates. Since v0.9, an optional `ca.crl` key can also provide a CRL in PEM format for the server to verify against. A filename prefixed with `file://` can be used containing the CA bundle in PEM format, and optionally followed by a comma and the filename with the crl, eg `file:///dir/ca.pem` or `file:///dir/ca.pem,/dir/crl.pem`.
 * `auth-tls-strict`: Defines if a wrong or incomplete configuration, eg missing secret with `ca.crt`, should forbid connection attempts. If `false`, the default value, a wrong or incomplete configuration will ignore the authentication config, allowing anonymous connection. If `true`, a strict configuration is used: all requests will be rejected with HTTP 495 or 496, or redirected to the error page if configured, until a proper `ca.crt` is provided. Strict configuration will only be used if `auth-tls-secret` has a secret name and `auth-tls-verify-client` is missing or is not configured as `off`.
 * `auth-tls-verify-client`: Optional configuration of Client Verification behavior. Supported values are `off`, `on`, `optional` and `optional_no_ca`. The default value is `on` if a valid secret is provided, `off` otherwise.
 * `ssl-fingerprint-lower`: Defines if the certificate fingerprint should be in lowercase hexadecimal digits. The default value is `false`, which uses uppercase digits.
@@ -1781,9 +1781,9 @@ The following table shows some examples:
 Configure secure (TLS) connection to the backends.
 
 * `secure-backends`: Define as true if the backend provide a TLS connection.
-* `secure-crt-secret`: Optional secret name of client certificate and key. This cert/key pair must be provided if the backend requests a client certificate. Expected secret keys are `tls.crt` and `tls.key`, the same used if secret is built with `kubectl create secret tls <name>`.
+* `secure-crt-secret`: Optional secret name of client certificate and key. This cert/key pair must be provided if the backend requests a client certificate. Expected secret keys are `tls.crt` and `tls.key`, the same used if secret is built with `kubectl create secret tls <name>`. A filename prefixed with `file://` can also be used, containing both certificate and private key in PEM format, eg `file:///dir/crt.pem`.
 * `secure-sni`: Optional hostname that should be used as the SNI TLS extension sent to the backend server. If `host` is used as the content, the header Host from the incoming request is used as the SNI extension in the request to the backend. `sni` can also be used, which will use the same SNI from the incoming request. Note that, although the header Host is always right, the incoming SNI might be wrong if a TLS connection that's already opened is reused - this is a common practice on browsers connecting over http2. Any other value different of `host` or `sni` will be used verbatim and should be a valid domain. If `secure-verify-ca-secret` is also provided, this hostname is also used to validate the server certificate names.
-* `secure-verify-ca-secret`: Optional but recommended secret name with certificate authority bundle used to validate server certificate, preventing man-in-the-middle attacks. Expected secret key is `ca.crt`. Since v0.9, an optional `ca.crl` key can also provide a CRL in PEM format for the server to verify against. Configure either `secure-sni` or `secure-verify-hostname` to verify the certificate name.
+* `secure-verify-ca-secret`: Optional but recommended secret name with certificate authority bundle used to validate server certificate, preventing man-in-the-middle attacks. Expected secret key is `ca.crt`. Since v0.9, an optional `ca.crl` key can also provide a CRL in PEM format for the server to verify against. A filename prefixed with `file://` can be used containing the CA bundle in PEM format, and optionally followed by a comma and the filename with the crl, eg `file:///dir/ca.pem` or `file:///dir/ca.pem,/dir/crl.pem`. Configure either `secure-sni` or `secure-verify-hostname` to verify the certificate name.
 * `secure-verify-hostname`: Optional hostname used to verify the name of the server certificate, without using the SNI TLS extension. This option can only be used if `secure-verify-ca-secret` was provided, and only supports harcoded domains which is used verbatim.
 
 See also:
@@ -1928,7 +1928,7 @@ See also:
 
 Configures Diffie-Hellman key exchange parameters.
 
-* `ssl-dh-param`: Configure the secret name which defines the DH parameters file used on ephemeral Diffie-Hellman key exchange during the SSL/TLS handshake.
+* `ssl-dh-param`: Configure the secret name which defines the DH parameters file used on ephemeral Diffie-Hellman key exchange during the SSL/TLS handshake. A filename prefixed with `file://` can be used containing the DH parameters file in PEM format, eg `file:///dir/dh-param.pem`.
 * `ssl-dh-default-max-size`: Define the maximum size of a temporary DH parameters used for key exchange. Only used if `ssl-dh-param` isn't provided.
 
 See also:
@@ -2054,7 +2054,7 @@ Configurations of the HAProxy statistics page:
 * `stats-auth`: Enable basic authentication with clear-text password - `<user>:<passwd>`
 * `stats-port`: Change the port HAProxy should listen to requests
 * `stats-proxy-protocol`: Define if the stats endpoint should enforce the PROXY protocol
-* `stats-ssl-cert`: Optional namespace/secret-name of `tls.crt` and `tls.key` pair used to enable SSL on stats page. Plain http will be used if not provided, the secret wasn't found or the secret doesn't have a crt/key pair.
+* `stats-ssl-cert`: Optional namespace/secret-name of `tls.crt` and `tls.key` pair used to enable SSL on stats page. A filename prefixed with `file://` can be used, containing both certificate and private key in PEM format, eg `file:///dir/crt.pem`. Plain http will be used if not provided, the secret wasn't found, the secret doesn't have a crt/key pair or the file is not found.
 
 ---
 
