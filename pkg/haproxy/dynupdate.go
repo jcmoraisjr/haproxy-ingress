@@ -151,6 +151,13 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 
 	// Resolver == update via DNS discovery
 	if curBack.Resolver != "" {
+		if updated {
+			// DNS based updates finishes prematurelly. Ensure the ep
+			// list size of the new one is at least as big as the old one.
+			for i := len(curBack.Endpoints); i < len(oldBack.Endpoints); i++ {
+				curBack.AddEmptyEndpoint()
+			}
+		}
 		return updated
 	}
 
