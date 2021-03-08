@@ -70,6 +70,7 @@ func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Con
 		mapBuilder:         annotations.NewMapBuilder(options.Logger, options.AnnotationPrefix+"/", defaultConfig),
 		updater:            annotations.NewUpdater(haproxy, options),
 		globalConfig:       annotations.NewMapBuilder(options.Logger, "", defaultConfig).NewMapper(),
+		tcpsvcAnnotations:  map[*hatypes.TCPService]*annotations.Mapper{},
 		hostAnnotations:    map[*hatypes.Host]*annotations.Mapper{},
 		backendAnnotations: map[*hatypes.Backend]*annotations.Mapper{},
 		ingressClasses:     map[string]*ingressClassConfig{},
@@ -89,6 +90,7 @@ type converter struct {
 	mapBuilder         *annotations.MapBuilder
 	updater            annotations.Updater
 	globalConfig       *annotations.Mapper
+	tcpsvcAnnotations  map[*hatypes.TCPService]*annotations.Mapper
 	hostAnnotations    map[*hatypes.Host]*annotations.Mapper
 	backendAnnotations map[*hatypes.Backend]*annotations.Mapper
 	ingressClasses     map[string]*ingressClassConfig
@@ -285,6 +287,16 @@ func (c *converter) syncPartial() {
 	c.tracker.DeleteBackends(dirtyBacks)
 	c.tracker.DeleteUserlists(dirtyUsers)
 	c.tracker.DeleteStorages(dirtyStorages)
+
+	// TCP services are currently in the host list due to how tracking is
+	// currently implemented. This is not a good solution because of their scopes -
+	// hosts and TCP services are managed by distinct entities in the haproxy model
+	//
+	// TODO Create a new tracker for services or another way to clean/remove
+	//      backends during service updates. See also normalizeHostname()
+	var dirtyTCPServices []string
+	dirtyHosts, dirtyTCPServices = splitHostsAndTCPServices(dirtyHosts)
+	c.haproxy.TCPServices().RemoveAll(dirtyTCPServices)
 	c.haproxy.Hosts().RemoveAll(dirtyHosts)
 	c.haproxy.Frontend().RemoveAuthBackendByTarget(dirtyBacks)
 	c.haproxy.Backends().RemoveAll(dirtyBacks)
@@ -352,8 +364,9 @@ func (c *converter) trackAddedIngress() {
 				c.tracker.TrackBackend(convtypes.IngressType, name, backend.BackendID())
 			}
 		}
+		port, _ := strconv.Atoi(ing.Annotations[c.options.AnnotationPrefix+"/"+ingtypes.HostTCPServicePort])
 		for _, rule := range ing.Spec.Rules {
-			c.tracker.TrackHostname(convtypes.IngressType, name, rule.Host)
+			c.tracker.TrackHostname(convtypes.IngressType, name, normalizeHostname(rule.Host, port))
 			if rule.HTTP != nil {
 				for _, path := range rule.HTTP.Paths {
 					backend := c.findBackend(ing.Namespace, &path.Backend)
@@ -383,6 +396,39 @@ func (c *converter) findBackend(namespace string, backend *networking.IngressBac
 	return c.haproxy.Backends().FindBackend(namespace, svcName, port.TargetPort.String())
 }
 
+// normalizeHostname adjusts the hostname according to the following rules:
+//
+//  * empty hostnames are changed to `hatypes.DefaultHost` which has a
+//    special meaning in the hosts entity
+//  * hostnames for tcp services receive the port number to distinguish
+//    two tcp services without hostname. hostnames are preserved, making it
+//    a bit easier to introduce sni based routing.
+//
+// Hostnames are used as the tracking ID by backends and secrets. This design
+// must be revisited - either evolving the tracking system, or abstracting
+// how backends and secrets are tracked, or removing the tracking at all.
+func normalizeHostname(hostname string, port int) string {
+	if hostname == "" {
+		hostname = hatypes.DefaultHost
+	}
+	if port > 0 {
+		return hostname + ":" + strconv.Itoa(port)
+	}
+	return hostname
+}
+
+func splitHostsAndTCPServices(hostnames []string) (hosts, tcpServices []string) {
+	hosts = make([]string, 0, len(hostnames))
+	for _, h := range hostnames {
+		if strings.Index(h, ":") >= 0 {
+			tcpServices = append(tcpServices, h)
+		} else {
+			hosts = append(hosts, h)
+		}
+	}
+	return hosts, tcpServices
+}
+
 func sortIngress(ingress []*networking.Ingress) {
 	sort.Slice(ingress, func(i, j int) bool {
 		i1 := ingress[i]
@@ -395,30 +441,35 @@ func sortIngress(ingress []*networking.Ingress) {
 }
 
 func (c *converter) syncIngress(ing *networking.Ingress) {
-	fullIngName := fmt.Sprintf("%s/%s", ing.Namespace, ing.Name)
+	annHost, annBack := c.readAnnotations(ing.Annotations)
+	tcpServicePort, _ := strconv.Atoi(annHost[ingtypes.HostTCPServicePort])
+	if tcpServicePort == 0 {
+		c.syncIngressHTTP(ing, annHost, annBack)
+	} else {
+		c.syncIngressTCP(ing, tcpServicePort, annHost, annBack)
+	}
+}
+
+func (c *converter) syncIngressHTTP(ing *networking.Ingress, annHost, annBack map[string]string) {
 	source := &annotations.Source{
 		Namespace: ing.Namespace,
 		Name:      ing.Name,
 		Type:      "ingress",
 	}
-	annHost, annBack := c.readAnnotations(ing.Annotations)
 	if ing.Spec.DefaultBackend != nil {
 		svcName, svcPort, err := readServiceNamePort(ing.Spec.DefaultBackend)
 		if err == nil {
 			err = c.addDefaultHostBackend(source, ing.Namespace+"/"+svcName, svcPort, annHost, annBack)
 		}
 		if err != nil {
-			c.logger.Warn("skipping default backend of ingress '%s': %v", fullIngName, err)
+			c.logger.Warn("skipping default backend of %v: %v", source, err)
 		}
 	}
 	for _, rule := range ing.Spec.Rules {
 		if rule.HTTP == nil {
 			continue
 		}
-		hostname := rule.Host
-		if hostname == "" {
-			hostname = hatypes.DefaultHost
-		}
+		hostname := normalizeHostname(rule.Host, 0)
 		ingressClass := c.readIngressClass(source, hostname, ing.Spec.IngressClassName)
 		host := c.addHost(hostname, source, annHost)
 		for _, path := range rule.HTTP.Paths {
@@ -427,18 +478,18 @@ func (c *converter) syncIngress(ing *networking.Ingress) {
 				uri = "/"
 			}
 			if host.FindPath(uri) != nil {
-				c.logger.Warn("skipping redeclared path '%s' of ingress '%s'", uri, fullIngName)
+				c.logger.Warn("skipping redeclared path '%s' of %v", uri, source)
 				continue
 			}
 			svcName, svcPort, err := readServiceNamePort(&path.Backend)
 			if err != nil {
-				c.logger.Warn("skipping backend config of ingress '%s': %v", fullIngName, err)
+				c.logger.Warn("skipping backend config of %v: %v", source, err)
 				continue
 			}
 			fullSvcName := ing.Namespace + "/" + svcName
 			backend, err := c.addBackendWithClass(source, hostname, uri, fullSvcName, svcPort, annBack, ingressClass)
 			if err != nil {
-				c.logger.Warn("skipping backend config of ingress '%s': %v", fullIngName, err)
+				c.logger.Warn("skipping backend config of %v: %v", source, err)
 				continue
 			}
 			match := c.readPathType(path, annHost[ingtypes.HostPathType])
@@ -476,9 +527,9 @@ func (c *converter) syncIngress(ing *networking.Ingress) {
 			} else if host.TLS.TLSHash != tlsPath.SHA1Hash {
 				msg := fmt.Sprintf("TLS of host '%s' was already assigned", host.Hostname)
 				if tls.SecretName != "" {
-					c.logger.Warn("skipping TLS secret '%s' of ingress '%s': %s", tls.SecretName, fullIngName, msg)
+					c.logger.Warn("skipping TLS secret '%s' of %v: %s", tls.SecretName, source, msg)
 				} else {
-					c.logger.Warn("skipping default TLS secret of ingress '%s': %s", fullIngName, msg)
+					c.logger.Warn("skipping default TLS secret of %v: %s", source, msg)
 				}
 			}
 		}
@@ -495,10 +546,91 @@ func (c *converter) syncIngress(ing *networking.Ingress) {
 		if tlsAcme {
 			if tls.SecretName != "" {
 				secretName := ing.Namespace + "/" + tls.SecretName
+				ingName := ing.Namespace + "/" + ing.Name
 				c.haproxy.AcmeData().Storages().Acquire(secretName).AddDomains(tls.Hosts)
-				c.tracker.TrackStorage(convtypes.IngressType, fullIngName, secretName)
+				c.tracker.TrackStorage(convtypes.IngressType, ingName, secretName)
 			} else {
-				c.logger.Warn("skipping cert signer of ingress '%s': missing secret name", fullIngName)
+				c.logger.Warn("skipping cert signer of %v: missing secret name", source)
+			}
+		}
+	}
+}
+
+func (c *converter) syncIngressTCP(ing *networking.Ingress, tcpServicePort int, annHost, annBack map[string]string) {
+	source := &annotations.Source{
+		Namespace: ing.Namespace,
+		Name:      ing.Name,
+		Type:      "ingress",
+	}
+	addIngressBackend := func(rawHostname string, ingressBackend *networking.IngressBackend) error {
+		hostname := normalizeHostname(rawHostname, tcpServicePort)
+		tcpService, err := c.addTCPService(source, hostname, tcpServicePort, annHost)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if tcpService.Backend.IsEmpty() {
+				c.haproxy.TCPServices().RemovePort(tcpServicePort)
+			}
+		}()
+		svcName, svcPort, err := readServiceNamePort(ingressBackend)
+		if err != nil {
+			return err
+		}
+		if !tcpService.Backend.IsEmpty() {
+			return fmt.Errorf("service '%s' on %v: backend for port '%d' was already assinged", svcName, source, tcpServicePort)
+		}
+		fullSvcName := ing.Namespace + "/" + svcName
+		ingressClass := c.readIngressClass(source, hostname, ing.Spec.IngressClassName)
+		backend, err := c.addBackendWithClass(source, hostname, "/", fullSvcName, svcPort, annBack, ingressClass)
+		if err != nil {
+			return err
+		}
+		tcpService.Backend = backend.BackendID()
+		return nil
+	}
+	if ing.Spec.DefaultBackend != nil {
+		err := addIngressBackend("", ing.Spec.DefaultBackend)
+		if err != nil {
+			c.logger.Warn("skipping default backend on %v: %v", source, err)
+		}
+	}
+	for _, rule := range ing.Spec.Rules {
+		if rule.HTTP == nil {
+			continue
+		}
+		for _, path := range rule.HTTP.Paths {
+			if path.Path != "" && path.Path != "/" {
+				c.logger.Warn("skipping backend declaration on path '%s' of %v: tcp services do not support path", path.Path, source)
+				continue
+			}
+			err := addIngressBackend(rule.Host, &path.Backend)
+			if err != nil {
+				c.logger.Warn("skipping path declaration on %v: %v", source, err)
+			}
+		}
+	}
+	for _, tls := range ing.Spec.TLS {
+		// tls secret
+		for _, hostname := range tls.Hosts {
+			tcpService := c.haproxy.TCPServices().FindTCPService(tcpServicePort)
+			if tcpService == nil {
+				c.logger.Warn("skipping TLS of tcp service on %v: backend was not configured", source)
+				continue
+			}
+			tlsPath := c.addTLS(source, normalizeHostname(hostname, tcpServicePort), tls.SecretName)
+			if tcpService.TLS.TLSHash == "" {
+				tcpService.TLS.TLSFilename = tlsPath.Filename
+				tcpService.TLS.TLSHash = tlsPath.SHA1Hash
+				tcpService.TLS.TLSCommonName = tlsPath.CommonName
+				tcpService.TLS.TLSNotAfter = tlsPath.NotAfter
+			} else if tcpService.TLS.TLSHash != tlsPath.SHA1Hash {
+				msg := fmt.Sprintf("TLS of tcp service port '%d' was already assigned", tcpServicePort)
+				if tls.SecretName != "" {
+					c.logger.Warn("skipping TLS secret '%s' of %v: %s", tls.SecretName, source, msg)
+				} else {
+					c.logger.Warn("skipping default TLS secret of %v: %s", source, msg)
+				}
 			}
 		}
 	}
@@ -518,6 +650,11 @@ func (c *converter) syncChangedEndpointCookies() {
 
 func (c *converter) fullSyncAnnotations() {
 	c.updater.UpdateGlobalConfig(c.haproxy, c.globalConfig)
+	for _, tcp := range c.haproxy.TCPServices().Items() {
+		if ann, found := c.tcpsvcAnnotations[tcp]; found {
+			c.updater.UpdateTCPServiceConfig(tcp, ann)
+		}
+	}
 	for _, host := range c.haproxy.Hosts().Items() {
 		if ann, found := c.hostAnnotations[host]; found {
 			c.updater.UpdateHostConfig(host, ann)
@@ -531,6 +668,11 @@ func (c *converter) fullSyncAnnotations() {
 }
 
 func (c *converter) partialSyncAnnotations() {
+	for _, tcp := range c.haproxy.TCPServices().Items() {
+		if ann, found := c.tcpsvcAnnotations[tcp]; found {
+			c.updater.UpdateTCPServiceConfig(tcp, ann)
+		}
+	}
 	for _, host := range c.haproxy.Hosts().ItemsAdd() {
 		if ann, found := c.hostAnnotations[host]; found {
 			c.updater.UpdateHostConfig(host, ann)
@@ -605,6 +747,24 @@ func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcNam
 	host := c.addHost(hostname, source, annHost)
 	host.AddPath(backend, uri, hatypes.MatchBegin)
 	return nil
+}
+
+func (c *converter) addTCPService(source *annotations.Source, hostname string, port int, ann map[string]string) (*hatypes.TCPService, error) {
+	tcpService, err := c.haproxy.TCPServices().AddTCPService(port)
+	if err != nil {
+		return nil, err
+	}
+	c.tracker.TrackHostname(convtypes.IngressType, source.FullName(), hostname)
+	mapper, found := c.tcpsvcAnnotations[tcpService]
+	if !found {
+		mapper = c.mapBuilder.NewMapper()
+		c.tcpsvcAnnotations[tcpService] = mapper
+	}
+	conflict := mapper.AddAnnotations(source, hatypes.CreatePathLink(hostname, "/"), ann)
+	if len(conflict) > 0 {
+		c.logger.Warn("skipping tcp service annotation(s) from %v due to conflict: %v", source, conflict)
+	}
+	return tcpService, nil
 }
 
 func (c *converter) addHost(hostname string, source *annotations.Source, ann map[string]string) *hatypes.Host {

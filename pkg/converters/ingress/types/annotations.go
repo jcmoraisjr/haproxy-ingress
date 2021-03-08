@@ -35,6 +35,8 @@ const (
 	HostSSLOptionsHost         = "ssl-options-host"
 	HostSSLPassthrough         = "ssl-passthrough"
 	HostSSLPassthroughHTTPPort = "ssl-passthrough-http-port"
+	HostTCPServicePort         = "tcp-service-port"
+	HostTCPServiceProxyProto   = "tcp-service-proxy-protool"
 	HostTLSALPN                = "tls-alpn"
 	HostVarNamespace           = "var-namespace"
 )
@@ -59,6 +61,8 @@ var (
 		HostSSLOptionsHost:         {},
 		HostSSLPassthrough:         {},
 		HostSSLPassthroughHTTPPort: {},
+		HostTCPServicePort:         {},
+		HostTCPServiceProxyProto:   {},
 		HostTLSALPN:                {},
 		HostVarNamespace:           {},
 	}

@@ -85,6 +85,9 @@ func (d *dynUpdater) checkConfigChange() bool {
 		diff = append(diff, "global")
 	}
 	if d.config.tcpbackends.Changed() {
+		diff = append(diff, "tcp-services (configmap)")
+	}
+	if d.config.tcpservices.Changed() {
 		diff = append(diff, "tcp-services")
 	}
 	if d.config.frontend.Changed() {

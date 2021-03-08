@@ -37,6 +37,7 @@ type Config interface {
 	AcmeData() *hatypes.AcmeData
 	Global() *hatypes.Global
 	TCPBackends() *hatypes.TCPBackends
+	TCPServices() *hatypes.TCPServices
 	Hosts() *hatypes.Hosts
 	Backends() *hatypes.Backends
 	Userlists() *hatypes.Userlists
@@ -56,6 +57,7 @@ type config struct {
 	hosts       *hatypes.Hosts
 	backends    *hatypes.Backends
 	tcpbackends *hatypes.TCPBackends
+	tcpservices *hatypes.TCPServices
 	userlists   *hatypes.Userlists
 }
 
@@ -77,6 +79,7 @@ func createConfig(options options) *config {
 		hosts:       hatypes.CreateHosts(),
 		backends:    hatypes.CreateBackends(options.shardCount),
 		tcpbackends: hatypes.CreateTCPBackends(),
+		tcpservices: hatypes.CreateTCPServices(),
 		userlists:   hatypes.CreateUserlists(),
 	}
 }
@@ -362,6 +365,10 @@ func (c *config) TCPBackends() *hatypes.TCPBackends {
 	return c.tcpbackends
 }
 
+func (c *config) TCPServices() *hatypes.TCPServices {
+	return c.tcpservices
+}
+
 func (c *config) Hosts() *hatypes.Hosts {
 	return c.hosts
 }
@@ -397,6 +404,7 @@ func (c *config) Commit() {
 	c.hosts.Commit()
 	c.backends.Commit()
 	c.tcpbackends.Commit()
+	c.tcpservices.Commit()
 	c.userlists.Commit()
 	c.acmeData.Storages().Commit()
 }

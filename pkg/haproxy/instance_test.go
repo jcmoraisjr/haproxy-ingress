@@ -1591,6 +1591,118 @@ frontend _front_https
 	}
 }
 
+func TestInstanceTCPServices(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.Backends().AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	h = c.config.Hosts().AcquireHost("d1.local")
+	h.AddPath(b, "/", hatypes.MatchBegin)
+
+	services := map[int]*hatypes.TCPService{
+		7000: {},
+		7001: {Backend: b.BackendID()},
+		7002: {Backend: b.BackendID(), ProxyProt: true},
+		7003: {Backend: b.BackendID(), ProxyProt: true, TLS: hatypes.TLSConfig{
+			TLSFilename: "/ssl/7003.pem",
+		}},
+		7004: {Backend: b.BackendID(), TLS: hatypes.TLSConfig{
+			TLSFilename: "/ssl/7004.pem",
+		}},
+		7005: {Backend: b.BackendID(), TLS: hatypes.TLSConfig{
+			TLSFilename: "/ssl/7005.pem",
+			CAFilename:  "/ssl/ca-7005.pem",
+		}},
+		7006: {Backend: b.BackendID(), TLS: hatypes.TLSConfig{
+			TLSFilename: "/ssl/7006.pem",
+			CAFilename:  "/ssl/ca-7006.pem",
+			CRLFilename: "/ssl/crl-7006.pem",
+		}},
+		7007: {Backend: b.BackendID(), TLS: hatypes.TLSConfig{
+			ALPN:        "h2,http/1.1",
+			TLSFilename: "/ssl/7007.pem",
+		}},
+		7008: {Backend: b.BackendID(), TLS: hatypes.TLSConfig{
+			TLSFilename:      "/ssl/7008.pem",
+			CAFilename:       "/ssl/ca-7008.pem",
+			CAVerifyOptional: true,
+		}},
+		7009: {Backend: b.BackendID(), TLS: hatypes.TLSConfig{
+			TLSFilename:  "/ssl/7009.pem",
+			Ciphers:      "ECDHE-ECDSA-AES128-GCM-SHA256",
+			CipherSuites: "TLS_AES_128_GCM_SHA256",
+		}},
+		7010: {Backend: b.BackendID(), TLS: hatypes.TLSConfig{
+			TLSFilename: "/ssl/7010.pem",
+			Options:     "force-tlsv13",
+		}},
+	}
+
+	for port, svc := range services {
+		s, _ := c.config.TCPServices().AddTCPService(port)
+		s.Backend = svc.Backend
+		s.ProxyProt = svc.ProxyProt
+		s.TLS = svc.TLS
+	}
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+frontend _front_tcp_7001
+    bind :7001
+    mode tcp
+    use_backend d1_app_8080
+frontend _front_tcp_7002
+    bind :7002 accept-proxy
+    mode tcp
+    use_backend d1_app_8080
+frontend _front_tcp_7003
+    bind :7003 accept-proxy ssl crt /ssl/7003.pem
+    mode tcp
+    use_backend d1_app_8080
+frontend _front_tcp_7004
+    bind :7004 ssl crt /ssl/7004.pem
+    mode tcp
+    use_backend d1_app_8080
+frontend _front_tcp_7005
+    bind :7005 ssl crt /ssl/7005.pem ca-file /ssl/ca-7005.pem verify required
+    mode tcp
+    use_backend d1_app_8080
+frontend _front_tcp_7006
+    bind :7006 ssl crt /ssl/7006.pem ca-file /ssl/ca-7006.pem verify required crl-file /ssl/crl-7006.pem
+    mode tcp
+    use_backend d1_app_8080
+frontend _front_tcp_7007
+    bind :7007 ssl crt /ssl/7007.pem alpn h2,http/1.1
+    mode tcp
+    use_backend d1_app_8080
+frontend _front_tcp_7008
+    bind :7008 ssl crt /ssl/7008.pem ca-file /ssl/ca-7008.pem verify optional
+    mode tcp
+    use_backend d1_app_8080
+frontend _front_tcp_7009
+    bind :7009 ssl crt /ssl/7009.pem ciphers ECDHE-ECDSA-AES128-GCM-SHA256 ciphersuites TLS_AES_128_GCM_SHA256
+    mode tcp
+    use_backend d1_app_8080
+frontend _front_tcp_7010
+    bind :7010 ssl crt /ssl/7010.pem force-tlsv13
+    mode tcp
+    use_backend d1_app_8080
+<<frontends-default>>
+<<support>>
+`)
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestInstanceTCPBackend(t *testing.T) {
 	testCases := []struct {
 		doconfig func(c *testConfig)
