@@ -24,6 +24,7 @@ import (
 type Metrics interface {
 	HAProxyShowInfoResponseTime(duration time.Duration)
 	HAProxySetServerResponseTime(duration time.Duration)
+	HAProxySetSSLCertResponseTime(duration time.Duration)
 	ControllerProcTime(task string, duration time.Duration)
 	AddIdleFactor(idle int)
 	IncUpdateNoop()
