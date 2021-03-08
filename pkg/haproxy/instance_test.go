@@ -2274,6 +2274,41 @@ frontend _front_https
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestInstanceCustomSections(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.Backends().AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	h = c.config.Hosts().AcquireHost("d1.local")
+	h.AddPath(b, "/", hatypes.MatchBegin)
+
+	c.config.Global().CustomSections = []string{
+		"cache icons",
+		"	total-max-size 4",
+		"	max-age 240",
+	}
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+cache icons
+	total-max-size 4
+	max-age 240
+backend d1_app_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+<<frontends-default>>
+<<support>>
+`)
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestInstanceSSLPassthrough(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
