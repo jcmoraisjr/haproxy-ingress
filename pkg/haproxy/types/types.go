@@ -452,7 +452,7 @@ type EndpointCookieStrategy int
 // ...
 const (
 	EpCookieName EndpointCookieStrategy = iota
-	EpCookiePodUid
+	EpCookiePodUID
 )
 
 // Backends ...

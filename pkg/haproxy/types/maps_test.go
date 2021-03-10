@@ -320,8 +320,8 @@ func TestOverlap(t *testing.T) {
 		// 0
 		{
 			data: []data{
-				data{hostname: "local1.tld", path: "/a", match: MatchBegin},
-				data{hostname: "local1.tld", path: "/ab", match: MatchBegin},
+				{hostname: "local1.tld", path: "/a", match: MatchBegin},
+				{hostname: "local1.tld", path: "/ab", match: MatchBegin},
 			},
 			expected: `
 hosts__begin.map first:true,lower:true,method:beg
@@ -332,8 +332,8 @@ local1.tld /a begin
 		// 1
 		{
 			data: []data{
-				data{hostname: "local1.tld", path: "/a", match: MatchBegin},
-				data{hostname: "local1.tld", path: "/ab", match: MatchPrefix},
+				{hostname: "local1.tld", path: "/a", match: MatchBegin},
+				{hostname: "local1.tld", path: "/ab", match: MatchPrefix},
 			},
 			expected: `
 hosts__prefix_01.map first:true,lower:false,method:dir
@@ -346,8 +346,8 @@ local1.tld /a begin
 		// 2
 		{
 			data: []data{
-				data{hostname: "local1.tld", path: "/a", match: MatchBegin},
-				data{hostname: "local1.tld", path: "/ab.*", match: MatchRegex},
+				{hostname: "local1.tld", path: "/a", match: MatchBegin},
+				{hostname: "local1.tld", path: "/ab.*", match: MatchRegex},
 			},
 			expected: `
 hosts__begin.map first:true,lower:true,method:beg
@@ -360,8 +360,8 @@ hosts__regex.map first:false,lower:false,method:reg
 		// 3
 		{
 			data: []data{
-				data{hostname: "local1.tld", path: "/a", match: MatchBegin},
-				data{hostname: "local2.tld", path: "/ab", match: MatchPrefix},
+				{hostname: "local1.tld", path: "/a", match: MatchBegin},
+				{hostname: "local2.tld", path: "/ab", match: MatchPrefix},
 			},
 			expected: `
 hosts__prefix.map first:true,lower:false,method:dir
@@ -374,10 +374,10 @@ local1.tld /a begin
 		// 4
 		{
 			data: []data{
-				data{hostname: "local1.tld", path: "/a", match: MatchBegin},
-				data{hostname: "local1.tld", path: "/abc", match: MatchBegin},
-				data{hostname: "local1.tld", path: "/ab", match: MatchPrefix},
-				data{hostname: "local2.tld", path: "/a", match: MatchExact},
+				{hostname: "local1.tld", path: "/a", match: MatchBegin},
+				{hostname: "local1.tld", path: "/abc", match: MatchBegin},
+				{hostname: "local1.tld", path: "/ab", match: MatchPrefix},
+				{hostname: "local2.tld", path: "/a", match: MatchExact},
 			},
 			expected: `
 hosts__begin_01.map first:true,lower:true,method:beg
@@ -396,12 +396,12 @@ local1.tld /a begin
 		// 5
 		{
 			data: []data{
-				data{hostname: "local1.tld", path: "/abc", match: MatchBegin},
-				data{hostname: "local1.tld", path: "/ab", match: MatchPrefix},
-				data{hostname: "local1.tld", path: "/a", match: MatchBegin},
-				data{hostname: "local2.tld", path: "/a", match: MatchExact},
-				data{hostname: "local2.tld", path: "/abc", match: MatchExact},
-				data{hostname: "local2.tld", path: "/ab", match: MatchExact},
+				{hostname: "local1.tld", path: "/abc", match: MatchBegin},
+				{hostname: "local1.tld", path: "/ab", match: MatchPrefix},
+				{hostname: "local1.tld", path: "/a", match: MatchBegin},
+				{hostname: "local2.tld", path: "/a", match: MatchExact},
+				{hostname: "local2.tld", path: "/abc", match: MatchExact},
+				{hostname: "local2.tld", path: "/ab", match: MatchExact},
 			},
 			expected: `
 hosts__begin_01.map first:true,lower:true,method:beg
@@ -422,10 +422,10 @@ local1.tld /a begin
 		// 6
 		{
 			data: []data{
-				data{hostname: "local1.tld", path: "/abc", match: MatchBegin},
-				data{hostname: "local1.tld", path: "/ab", match: MatchPrefix},
-				data{hostname: "local1.tld", path: "/abcd", match: MatchExact},
-				data{hostname: "local1.tld", path: "/a", match: MatchBegin},
+				{hostname: "local1.tld", path: "/abc", match: MatchBegin},
+				{hostname: "local1.tld", path: "/ab", match: MatchPrefix},
+				{hostname: "local1.tld", path: "/abcd", match: MatchExact},
+				{hostname: "local1.tld", path: "/a", match: MatchBegin},
 			},
 			expected: `
 hosts__exact_01.map first:true,lower:false,method:str
@@ -444,10 +444,10 @@ local1.tld /a begin
 		// 7
 		{
 			data: []data{
-				data{hostname: "local1.tld", path: "/ab", match: MatchPrefix},
-				data{hostname: "local1.tld", path: "/abc", match: MatchBegin},
-				data{hostname: "local1.tld", path: "/a", match: MatchBegin},
-				data{hostname: "local1.tld", path: "/abcd", match: MatchExact},
+				{hostname: "local1.tld", path: "/ab", match: MatchPrefix},
+				{hostname: "local1.tld", path: "/abc", match: MatchBegin},
+				{hostname: "local1.tld", path: "/a", match: MatchBegin},
+				{hostname: "local1.tld", path: "/abcd", match: MatchExact},
 			},
 			expected: `
 hosts__exact_01.map first:true,lower:false,method:str
@@ -466,13 +466,13 @@ local1.tld /a begin
 		// 8
 		{
 			data: []data{
-				data{hostname: "local1.tld", path: "/a", match: MatchPrefix},
-				data{hostname: "local1.tld", path: "/", match: MatchBegin},
-				data{hostname: "local2.tld", path: "/a", match: MatchPrefix},
-				data{hostname: "local2.tld", path: "/", match: MatchBegin},
-				data{hostname: "local3.tld", path: "/a", match: MatchPrefix},
-				data{hostname: "local4.tld", path: "/a", match: MatchPrefix},
-				data{hostname: "local4.tld", path: "/", match: MatchBegin},
+				{hostname: "local1.tld", path: "/a", match: MatchPrefix},
+				{hostname: "local1.tld", path: "/", match: MatchBegin},
+				{hostname: "local2.tld", path: "/a", match: MatchPrefix},
+				{hostname: "local2.tld", path: "/", match: MatchBegin},
+				{hostname: "local3.tld", path: "/a", match: MatchPrefix},
+				{hostname: "local4.tld", path: "/a", match: MatchPrefix},
+				{hostname: "local4.tld", path: "/", match: MatchBegin},
 			},
 			expected: `
 hosts__prefix_01.map first:true,lower:false,method:dir
@@ -492,13 +492,13 @@ local4.tld / begin
 		// 9
 		{
 			data: []data{
-				data{hostname: "local1.tld", path: "/a", match: MatchPrefix},
-				data{hostname: "local2.tld", path: "/a", match: MatchPrefix},
-				data{hostname: "local2.tld", path: "/", match: MatchBegin},
-				data{hostname: "local3.tld", path: "/a", match: MatchPrefix},
-				data{hostname: "local3.tld", path: "/", match: MatchBegin},
-				data{hostname: "local4.tld", path: "/a", match: MatchPrefix},
-				data{hostname: "local4.tld", path: "/", match: MatchBegin},
+				{hostname: "local1.tld", path: "/a", match: MatchPrefix},
+				{hostname: "local2.tld", path: "/a", match: MatchPrefix},
+				{hostname: "local2.tld", path: "/", match: MatchBegin},
+				{hostname: "local3.tld", path: "/a", match: MatchPrefix},
+				{hostname: "local3.tld", path: "/", match: MatchBegin},
+				{hostname: "local4.tld", path: "/a", match: MatchPrefix},
+				{hostname: "local4.tld", path: "/", match: MatchBegin},
 			},
 			expected: `
 hosts__prefix_01.map first:true,lower:false,method:dir
@@ -518,13 +518,13 @@ local4.tld / begin
 		// 10
 		{
 			data: []data{
-				data{hostname: "local1.tld", path: "/a", match: MatchPrefix},
-				data{hostname: "local1.tld", path: "/", match: MatchBegin},
-				data{hostname: "local2.tld", path: "/a", match: MatchPrefix},
-				data{hostname: "local2.tld", path: "/", match: MatchBegin},
-				data{hostname: "local3.tld", path: "/a", match: MatchPrefix},
-				data{hostname: "local3.tld", path: "/", match: MatchBegin},
-				data{hostname: "local4.tld", path: "/a", match: MatchPrefix},
+				{hostname: "local1.tld", path: "/a", match: MatchPrefix},
+				{hostname: "local1.tld", path: "/", match: MatchBegin},
+				{hostname: "local2.tld", path: "/a", match: MatchPrefix},
+				{hostname: "local2.tld", path: "/", match: MatchBegin},
+				{hostname: "local3.tld", path: "/a", match: MatchPrefix},
+				{hostname: "local3.tld", path: "/", match: MatchBegin},
+				{hostname: "local4.tld", path: "/a", match: MatchPrefix},
 			},
 			expected: `
 hosts__prefix_01.map first:true,lower:false,method:dir

@@ -699,7 +699,7 @@ func (c *converter) syncBackendEndpointCookies(backend *hatypes.Backend) {
 			switch backend.EpCookieStrategy {
 			default:
 				ep.CookieValue = ep.Name
-			case hatypes.EpCookiePodUid:
+			case hatypes.EpCookiePodUID:
 				if ep.TargetRef != "" {
 					pod, err := c.cache.GetPod(ep.TargetRef)
 					if err == nil {

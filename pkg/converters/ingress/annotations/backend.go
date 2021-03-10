@@ -73,7 +73,7 @@ func (c *updater) buildBackendAffinity(d *backData) {
 	cookieStrategy := d.mapper.Get(ingtypes.BackSessionCookieValue)
 	switch cookieStrategy.Value {
 	case "pod-uid":
-		d.backend.EpCookieStrategy = hatypes.EpCookiePodUid
+		d.backend.EpCookieStrategy = hatypes.EpCookiePodUID
 	case "server-name":
 		d.backend.EpCookieStrategy = hatypes.EpCookieName
 	default:

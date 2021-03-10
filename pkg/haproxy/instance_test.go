@@ -719,7 +719,7 @@ d1.local/ path01`,
 				b.Cookie.Name = "serverId"
 				b.Cookie.Strategy = "insert"
 				b.Cookie.Keywords = "nocache"
-				b.EpCookieStrategy = hatypes.EpCookiePodUid
+				b.EpCookieStrategy = hatypes.EpCookiePodUID
 				ep1 := *endpointS1
 				b.Endpoints = []*hatypes.Endpoint{&ep1}
 				b.Endpoints[0].CookieValue = "9d344d6c-6069-4aee-85e6-9348e70c71e6"
