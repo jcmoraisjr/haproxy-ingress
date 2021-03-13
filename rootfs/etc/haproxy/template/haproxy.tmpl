@@ -302,6 +302,9 @@ backend {{ $backend.ID }}
     # {{ $path.ID }} = {{ $path.Hostpath }}
 {{- end }}
     http-request set-var(txn.pathID) base,lower,map_beg({{ $backend.PathsMap.MatchFile }},_nomatch)
+{{- if $backend.PathsMap.HasRegex }}
+    http-request set-var(txn.pathID) base,lower,map_reg({{ $backend.PathsMap.RegexFile }},_nomatch) if { var(txn.pathID) _nomatch }
+{{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
