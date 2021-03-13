@@ -77,16 +77,13 @@ func (hm *HostsMap) AppendAliasRegex(base, value string) {
 }
 
 // AppendPath ...
-func (hm *HostsMap) AppendPath(path, id string) {
-	// always use case insensitive match
-	path = strings.ToLower(path)
-	hm.Match = append(hm.Match, &HostsMapEntry{
-		Key:   path,
-		Value: id,
-	})
-	sort.SliceStable(hm.Match, func(i, j int) bool {
-		return hm.Match[i].Key > hm.Match[j].Key
-	})
+func (hm *HostsMap) AppendPath(hostpath, id string) {
+	hm.AppendHostname(hostpath, id)
+	if !strings.HasPrefix(hostpath, "*.") {
+		sort.SliceStable(hm.Match, func(i, j int) bool {
+			return hm.Match[i].Key > hm.Match[j].Key
+		})
+	}
 }
 
 // AppendItem adds a generic item to the HostsMap.

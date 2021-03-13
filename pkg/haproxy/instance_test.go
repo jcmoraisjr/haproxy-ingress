@@ -906,6 +906,87 @@ frontend _front001
 	}
 }
 
+func TestMatchRegexBackend(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	h = c.config.AcquireHost("*.local")
+	h.AddPath(b, "/api")
+	h.AddPath(b, "/app")
+
+	b.WhitelistHTTP = []*hatypes.BackendConfigWhitelist{
+		{
+			Paths:  hatypes.NewBackendPaths(b.FindHostPath("*.local/app")),
+			Config: []string{"192.168.0.0/16"},
+		},
+		{
+			Paths:  hatypes.NewBackendPaths(b.FindHostPath("*.local/api")),
+			Config: []string{"10.0.0.0/8"},
+		},
+	}
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    # path01 = *.local/api
+    # path02 = *.local/app
+    http-request set-var(txn.pathID) base,lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath.map)
+    http-request set-var(txn.pathID) base,lower,map_reg(/etc/haproxy/maps/_back_d1_app_8080_idpath_regex.map) if !{ var(txn.pathID) -m found }
+    acl wlist_src0 src 192.168.0.0/16
+    http-request deny if { var(txn.pathID) path02 } !wlist_src0
+    acl wlist_src1 src 10.0.0.0/8
+    http-request deny if { var(txn.pathID) path01 } !wlist_src1
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+frontend _front_http
+    mode http
+    bind :80
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.redir) var(req.base),map_beg(/etc/haproxy/maps/_global_https_redir.map)
+    http-request redirect scheme https if { var(req.redir) yes }
+    http-request redirect scheme https if !{ var(req.redir) -m found } { var(req.base),map_reg(/etc/haproxy/maps/_global_https_redir_regex.map) yes }
+    http-request set-header X-Forwarded-Proto http
+    http-request del-header X-SSL-Client-CN
+    http-request del-header X-SSL-Client-DN
+    http-request del-header X-SSL-Client-SHA1
+    http-request del-header X-SSL-Client-Cert
+    http-request set-var(req.backend) var(req.base),map_beg(/etc/haproxy/maps/_global_http_front.map)
+    http-request set-var(req.backend) var(req.base),map_reg(/etc/haproxy/maps/_global_http_front_regex.map) if !{ var(req.backend) -m found }
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
+    default_backend _error404
+frontend _front001
+    mode http
+    bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front001_bind_crt.list ca-ignore-err all crt-ignore-err all
+    http-request set-var(req.base) base,lower,regsub(:[0-9]+/,/)
+    http-request set-var(req.hostbackend) var(req.base),map_beg(/etc/haproxy/maps/_front001_host.map)
+    http-request set-var(req.hostbackend) var(req.base),map_reg(/etc/haproxy/maps/_front001_host_regex.map) if !{ var(req.hostbackend) -m found }
+    http-request set-header X-Forwarded-Proto https
+    http-request del-header X-SSL-Client-CN
+    http-request del-header X-SSL-Client-DN
+    http-request del-header X-SSL-Client-SHA1
+    http-request del-header X-SSL-Client-Cert
+    use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
+    default_backend _error404
+<<support>>
+`)
+
+	c.checkMap("_back_d1_app_8080_idpath.map", ``)
+	c.checkMap("_back_d1_app_8080_idpath_regex.map", `
+^[^.]+\.local/app path02
+^[^.]+\.local/api path01
+`)
+
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestInstanceTCPBackend(t *testing.T) {
 	testCases := []struct {
 		doconfig func(c *testConfig)
