@@ -909,7 +909,7 @@ frontend _front_http
 {{- /*------------------------------------*/}}
     http-request set-var(req.path) path
     http-request set-var(req.host) hdr(host),field(1,:),lower
-    http-request set-var(req.base) var(req.host),concat(,req.path)
+    http-request set-var(req.base) var(req.host),concat(\#,req.path)
 
 {{- /*------------------------------------*/}}
 {{- $acmeexclusive := and $global.Acme.Enabled (not $global.Acme.Shared) }}
@@ -1004,7 +1004,7 @@ frontend _front_https
 {{- if or $fmaps.RedirFromRootMap.HasHost $fmaps.HTTPSHostMap.HasHost $fmaps.HTTPSSNIMap.HasHost $fmaps.TLSAuthList.HasHost $fmaps.TLSNeedCrtList.HasHost $fmaps.VarNamespaceMap.HasHost }}
     http-request set-var(req.path) path
     http-request set-var(req.host) hdr(host),field(1,:),lower
-    http-request set-var(req.base) var(req.host),concat(,req.path)
+    http-request set-var(req.base) var(req.host),concat(\#,req.path)
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -1064,7 +1064,7 @@ frontend _front_https
 {{- end }}
 
 {{- if $fmaps.HTTPSSNIMap.HasHost }}
-    http-request set-var(req.snibase) ssl_fc_sni,lower,concat(,req.path)
+    http-request set-var(req.snibase) ssl_fc_sni,lower,concat(\#,req.path)
 {{- range $match := $fmaps.HTTPSSNIMap.MatchFiles }}
     http-request set-var(req.snibackend) var(req.snibase)
         {{- if $match.Lower }},lower{{ end }}
