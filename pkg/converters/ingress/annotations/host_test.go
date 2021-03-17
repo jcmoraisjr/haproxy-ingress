@@ -23,6 +23,99 @@ import (
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
+func TestBuildHostRedirect(t *testing.T) {
+	testCases := []struct {
+		annPrev    map[string]string
+		ann        map[string]string
+		annDefault map[string]string
+		expected   hatypes.HostRedirectConfig
+		logging    string
+	}{
+		// 0
+		{
+			ann: map[string]string{
+				ingtypes.HostServerRedirect: "www.d.local",
+			},
+			expected: hatypes.HostRedirectConfig{RedirectHost: "www.d.local"},
+		},
+		// 1
+		{
+			ann: map[string]string{
+				ingtypes.HostServerRedirect:     "www.d.local",
+				ingtypes.HostServerRedirectCode: "301",
+			},
+			expected: hatypes.HostRedirectConfig{RedirectHost: "www.d.local", RedirectCode: 301},
+		},
+		// 2
+		{
+			annPrev: map[string]string{
+				ingtypes.HostServerRedirect: "www.d.local",
+			},
+			ann: map[string]string{
+				ingtypes.HostServerRedirect: "www.d.local",
+			},
+			logging: `WARN ignoring redirect from 'www.d.local' on ingress 'default/ing1', it's already targeting to 'dprev.local'`,
+		},
+		// 3
+		{
+			annPrev: map[string]string{
+				ingtypes.HostServerRedirectRegex: "[a-z]+\\.d\\.local",
+				ingtypes.HostServerRedirectCode:  "301",
+			},
+			ann: map[string]string{
+				ingtypes.HostServerRedirect: "www.d.local",
+			},
+			expected: hatypes.HostRedirectConfig{RedirectHost: "www.d.local"},
+		},
+		// 4
+		{
+			annPrev: map[string]string{
+				ingtypes.HostServerRedirectRegex: "[a-z]+\\.d\\.local",
+			},
+			ann: map[string]string{
+				ingtypes.HostServerRedirectRegex: "[a-z]+\\.d\\.local",
+			},
+			logging: `WARN ignoring regex redirect from '[a-z]+\.d\.local' on ingress 'default/ing1', it's already targeting to 'dprev.local'`,
+		},
+		// 5
+		{
+			ann: map[string]string{
+				ingtypes.HostServerRedirect: "*.d.local",
+			},
+			// haproxy/config's responsibility to convert wildcard hostnames to regex
+			expected: hatypes.HostRedirectConfig{RedirectHost: "*.d.local"},
+		},
+		// 6
+		{
+			annPrev: map[string]string{
+				ingtypes.HostServerRedirect: "*.d.local",
+			},
+			ann: map[string]string{
+				ingtypes.HostServerRedirect: "*.d.local",
+			},
+			logging: `WARN ignoring redirect from '*.d.local' on ingress 'default/ing1', it's already targeting to 'dprev.local'`,
+		},
+	}
+	sprev := &Source{Namespace: "prev", Name: "ingprev", Type: "ingress"}
+	source := &Source{Namespace: "default", Name: "ing1", Type: "ingress"}
+	for i, test := range testCases {
+		c := setup(t)
+		if test.annDefault == nil {
+			test.annDefault = map[string]string{}
+		}
+		dprev := c.createHostData(sprev, test.annPrev, test.annDefault)
+		d := c.createHostData(source, test.ann, test.annDefault)
+		dprev.host = c.haproxy.Hosts().AcquireHost("dprev.local")
+		d.host = c.haproxy.Hosts().AcquireHost("d.local")
+		updater := c.createUpdater()
+		updater.buildHostRedirect(dprev)
+		updater.buildHostRedirect(d)
+		c.compareObjects("host redirect", i, d.host.Redirect, test.expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
 func TestTLSConfig(t *testing.T) {
 	testCases := []struct {
 		annDefault map[string]string
