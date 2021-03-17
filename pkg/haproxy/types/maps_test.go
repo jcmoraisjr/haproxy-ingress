@@ -88,7 +88,7 @@ func TestAddHostnamePathMapping(t *testing.T) {
 			path:     "/",
 			match:    MatchBegin,
 			expmatch: MatchBegin,
-			expected: "example.local/",
+			expected: "example.local#/",
 		},
 		// 1
 		{
@@ -96,7 +96,7 @@ func TestAddHostnamePathMapping(t *testing.T) {
 			path:     "/",
 			match:    MatchBegin,
 			expmatch: MatchRegex,
-			expected: "^[^.]+\\.example\\.local/",
+			expected: "^[^.]+\\.example\\.local#/",
 		},
 		// 2
 		{
@@ -104,7 +104,7 @@ func TestAddHostnamePathMapping(t *testing.T) {
 			path:     "/path",
 			match:    MatchBegin,
 			expmatch: MatchRegex,
-			expected: "^[^.]+\\.example\\.local/path",
+			expected: "^[^.]+\\.example\\.local#/path",
 		},
 		// 3
 		{
@@ -112,7 +112,7 @@ func TestAddHostnamePathMapping(t *testing.T) {
 			path:     "/path",
 			match:    MatchRegex,
 			expmatch: MatchRegex,
-			expected: "^example\\.local/path",
+			expected: "^example\\.local#/path",
 		},
 		// 4
 		{
@@ -120,7 +120,7 @@ func TestAddHostnamePathMapping(t *testing.T) {
 			path:     "/path[0-9]$",
 			match:    MatchRegex,
 			expmatch: MatchRegex,
-			expected: "^example\\.local/path[0-9]$",
+			expected: "^example\\.local#/path[0-9]$",
 		},
 		// 5
 		{
@@ -128,7 +128,7 @@ func TestAddHostnamePathMapping(t *testing.T) {
 			path:     "/path/",
 			match:    MatchRegex,
 			expmatch: MatchRegex,
-			expected: "^example\\.local/path/",
+			expected: "^example\\.local#/path/",
 		},
 		// 6
 		{
@@ -136,7 +136,7 @@ func TestAddHostnamePathMapping(t *testing.T) {
 			path:     "/.*path$",
 			match:    MatchRegex,
 			expmatch: MatchRegex,
-			expected: "^[^.]+\\.example\\.local/.*path$",
+			expected: "^[^.]+\\.example\\.local#/.*path$",
 		},
 		// 7
 		{
@@ -144,7 +144,7 @@ func TestAddHostnamePathMapping(t *testing.T) {
 			path:     "/path",
 			match:    MatchPrefix,
 			expmatch: MatchPrefix,
-			expected: "example.local/path",
+			expected: "example.local#/path",
 		},
 		// 8
 		{
@@ -152,7 +152,7 @@ func TestAddHostnamePathMapping(t *testing.T) {
 			path:     "/path.new",
 			match:    MatchPrefix,
 			expmatch: MatchRegex,
-			expected: "^[^.]+\\.example\\.local/path\\.new(/.*)?",
+			expected: "^[^.]+\\.example\\.local#/path\\.new(/.*)?",
 		},
 		// 9
 		{
@@ -160,7 +160,7 @@ func TestAddHostnamePathMapping(t *testing.T) {
 			path:     "/path/",
 			match:    MatchPrefix,
 			expmatch: MatchRegex,
-			expected: "^[^.]+\\.example\\.local/path/",
+			expected: "^[^.]+\\.example\\.local#/path/",
 		},
 		// 10
 		{
@@ -168,7 +168,7 @@ func TestAddHostnamePathMapping(t *testing.T) {
 			path:     "/path",
 			match:    MatchExact,
 			expmatch: MatchExact,
-			expected: "example.local/path",
+			expected: "example.local#/path",
 		},
 		// 11
 		{
@@ -176,7 +176,7 @@ func TestAddHostnamePathMapping(t *testing.T) {
 			path:     "/path",
 			match:    MatchExact,
 			expmatch: MatchRegex,
-			expected: "^[^.]+\\.example\\.local/path$",
+			expected: "^[^.]+\\.example\\.local#/path$",
 		},
 	}
 	for i, test := range testCases {
@@ -213,7 +213,7 @@ func TestAddAliasPathMapping(t *testing.T) {
 			path:      "/",
 			match:     MatchBegin,
 			expected: map[MatchType][]string{
-				MatchBegin: {"example.local/"},
+				MatchBegin: {"example.local#/"},
 			},
 		},
 		// 1
@@ -222,7 +222,7 @@ func TestAddAliasPathMapping(t *testing.T) {
 			path:      "/",
 			match:     MatchBegin,
 			expected: map[MatchType][]string{
-				MatchRegex: {"^[^.]+\\.example\\.local/"},
+				MatchRegex: {"^[^.]+\\.example\\.local#/"},
 			},
 		},
 		// 2
@@ -231,7 +231,7 @@ func TestAddAliasPathMapping(t *testing.T) {
 			path:       "/",
 			match:      MatchBegin,
 			expected: map[MatchType][]string{
-				MatchRegex: {".*\\.local[^/]*/"},
+				MatchRegex: {".*\\.local[^/]*#/"},
 			},
 		},
 		// 3
@@ -240,7 +240,7 @@ func TestAddAliasPathMapping(t *testing.T) {
 			path:       "/",
 			match:      MatchExact,
 			expected: map[MatchType][]string{
-				MatchRegex: {"^.*\\.local[^/]*/$"},
+				MatchRegex: {"^.*\\.local[^/]*#/$"},
 			},
 		},
 		// 4
@@ -249,7 +249,7 @@ func TestAddAliasPathMapping(t *testing.T) {
 			path:       "/",
 			match:      MatchPrefix,
 			expected: map[MatchType][]string{
-				MatchRegex: {"^.*\\.local/"},
+				MatchRegex: {"^.*\\.local#/"},
 			},
 		},
 		// 5
@@ -258,7 +258,7 @@ func TestAddAliasPathMapping(t *testing.T) {
 			path:       "/path",
 			match:      MatchPrefix,
 			expected: map[MatchType][]string{
-				MatchRegex: {"\\.local/path(/.*)?"},
+				MatchRegex: {"\\.local#/path(/.*)?"},
 			},
 		},
 		// 6
@@ -267,7 +267,7 @@ func TestAddAliasPathMapping(t *testing.T) {
 			path:       "/path/",
 			match:      MatchPrefix,
 			expected: map[MatchType][]string{
-				MatchRegex: {"^.*\\.local/path/"},
+				MatchRegex: {"^.*\\.local#/path/"},
 			},
 		},
 		// 7
@@ -277,8 +277,8 @@ func TestAddAliasPathMapping(t *testing.T) {
 			path:       "/path",
 			match:      MatchBegin,
 			expected: map[MatchType][]string{
-				MatchBegin: {"example.local/path"},
-				MatchRegex: {"\\.local/path"},
+				MatchBegin: {"example.local#/path"},
+				MatchRegex: {"\\.local#/path"},
 			},
 		},
 	}
