@@ -2309,6 +2309,112 @@ backend d1_app_8080
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestInstanceCustomProxy(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.Backends().AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	h = c.config.Hosts().AcquireHost("d1.local")
+	h.AddPath(b, "/", hatypes.MatchBegin)
+	h.SetSSLPassthrough(true)
+
+	tcp := c.config.tcpbackends.Acquire("default_pgsql", 5432)
+	tcp.AddEndpoint("172.17.0.21", 5432)
+
+	c.config.Global().CustomProxy = map[string][]string{
+		"missing":                 {"## comment"},
+		"_tcp_default_pgsql_5432": {"## custom for _tcp_default_pgsql_5432"},
+		"d1_app_8080":             {"## custom for d1_app_8080"},
+		"_redirect_https":         {"## custom for _redirect_https"},
+		"_error404":               {"## custom for _error404", "## line 2"},
+		"_front__tls":             {"## custom for _front__tls"},
+		"_front_http":             {"## custom for _front_http"},
+		"_front_https":            {"## custom for _front_https"},
+		"stats":                   {"## custom for stats"},
+		"healthz":                 {"## custom for healthz"},
+	}
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+listen _tcp_default_pgsql_5432
+    bind :5432
+    mode tcp
+    ## custom for _tcp_default_pgsql_5432
+    server srv001 172.17.0.21:5432
+backend d1_app_8080
+    mode http
+    ## custom for d1_app_8080
+    server s1 172.17.0.11:8080 weight 100
+backend _redirect_https
+    mode http
+    ## custom for _redirect_https
+    http-request redirect scheme https
+backend _error404
+    mode http
+    ## custom for _error404
+    ## line 2
+    http-request use-service lua.send-404
+listen _front__tls
+    mode tcp
+    bind :443
+    tcp-request inspect-delay 5s
+    tcp-request content set-var(req.sslpassback) req.ssl_sni,lower,map_str(/etc/haproxy/maps/_front_sslpassthrough__exact.map)
+    ## custom for _front__tls
+    tcp-request content accept if { req.ssl_hello_type 1 }
+    use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
+    server _default_server_https_socket unix@/var/run/haproxy/_https_socket.sock send-proxy-v2
+frontend _front_http
+    mode http
+    bind :80
+    http-request set-var(req.path) path
+    http-request set-var(req.host) hdr(host),field(1,:),lower
+    http-request set-var(req.base) var(req.host),concat(,req.path)
+    http-request set-header X-Forwarded-Proto http
+    http-request del-header X-SSL-Client-CN
+    http-request del-header X-SSL-Client-DN
+    http-request del-header X-SSL-Client-SHA1
+    http-request del-header X-SSL-Client-Cert
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
+    ## custom for _front_http
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
+    default_backend _error404
+frontend _front_https
+    mode http
+    bind unix@/var/run/haproxy/_https_socket.sock accept-proxy ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
+    http-request set-header X-Forwarded-Proto https
+    http-request del-header X-SSL-Client-CN
+    http-request del-header X-SSL-Client-DN
+    http-request del-header X-SSL-Client-SHA1
+    http-request del-header X-SSL-Client-Cert
+    ## custom for _front_https
+    use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
+    default_backend _error404
+listen stats
+    mode http
+    bind :1936
+    stats enable
+    stats uri /
+    no log
+    option httpclose
+    stats show-legends
+    ## custom for stats
+frontend healthz
+    mode http
+    bind :10253
+    monitor-uri /healthz
+    http-request use-service lua.send-404
+    no log
+    ## custom for healthz
+`)
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestInstanceSSLPassthrough(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()

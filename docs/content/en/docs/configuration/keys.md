@@ -323,6 +323,7 @@ The table below describes all supported configuration keys.
 | [`config-defaults`](#configuration-snippet)          | multiline HAProxy config for the defaults section | Global |           |
 | [`config-frontend`](#configuration-snippet)          | multiline HAProxy frontend config       | Global  |                    |
 | [`config-global`](#configuration-snippet)            | multiline HAProxy global config         | Global  |                    |
+| [`config-proxy`](#configuration-snippet)             | multiline HAProxy custom proxy config   | Global  |                    |
 | [`config-sections`](#configuration-snippet)          | multiline HAProxy section declarations  | Global  |                    |
 | [`cookie-key`](#affinity)                            | secret key                              | Global  | `Ingress`          |
 | [`cors-allow-credentials`](#cors)                    | [true\|false]                           | Path    |                    |
@@ -1016,10 +1017,18 @@ See also:
 | `config-defaults` | `Global`  |          | v0.8  |
 | `config-frontend` | `Global`  |          |       |
 | `config-global`   | `Global`  |          |       |
+| `config-proxy`    | `Global`  |          | v0.13 |
 | `config-sections` | `Global`  |          | v0.13 |
 
 Add HAProxy configuration snippet to the configuration file. Use multiline content
 to add more than one line of configuration.
+
+* `config-backend`: Adds a configuration snippet to a HAProxy backend section.
+* `config-defaults`: Adds a configuration snippet to the end of the HAProxy defaults section.
+* `config-frontend`: Adds a configuration snippet to the HTTP and HTTPS frontend sections.
+* `config-global`: Adds a configuration snippet to the end of the HAProxy global section.
+* `config-proxy`: Adds a configuration snippet to any HAProxy proxy - listen, frontend or backend. It accepts a multi section configuration, where the name of the section is the name of a HAProxy proxy without the listen/frontend/backend prefix. A section whose proxy is not found is ignored. The content of each section should be indented, the first line without indentation is the start of a new section which will configure another proxy.
+* `config-sections`: Allows to declare new HAProxy sections. The configuration is used verbatim, without any indentation or validation.
 
 Examples - ConfigMap:
 
@@ -1031,6 +1040,14 @@ Examples - ConfigMap:
 ```yaml
     config-defaults: |
       option redispatch
+```
+
+```yaml
+    config-proxy: |
+      _tcp_default_postgresql_5432
+          tcp-request content reject if !{ src 10.0.0.0/8 }
+      _front__tls
+          tcp-request content reject if !{ src 10.0.0.0/8 } { req.ssl_sni -m reg ^intra\..* }
 ```
 
 ```yaml
@@ -1063,14 +1080,6 @@ Annotation:
         http-request cache-use icons if { var(txn.path) -m end .ico }
         http-response cache-store icons if { var(txn.path) -m end .ico }
 ```
-
-The following keys add a configuration snippet to the ...:
-
-* `config-backend`: ... HAProxy backend section.
-* `config-global`: ... end of the HAProxy global section.
-* `config-defaults`: ... end of the HAProxy defaults section.
-* `config-frontend`: ... HAProxy frontend sections.
-* `config-sections`: ... HAProxy new section declarations.
 
 ---
 
