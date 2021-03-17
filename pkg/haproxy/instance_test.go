@@ -2309,6 +2309,35 @@ backend d1_app_8080
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestInstanceCustomTCP(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	tcp := c.config.TCPBackends().Acquire("default_postgresql", 5432)
+	tcp.AddEndpoint("172.17.0.11", 5432)
+
+	c.config.global.CustomTCP = []string{"## custom for TCP", "## multi line"}
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+listen _tcp_default_postgresql_5432
+    bind :5432
+    mode tcp
+    ## custom for TCP
+    ## multi line
+    server srv001 172.17.0.11:5432
+<<backends-default>>
+<<frontend-http-clean>>
+    default_backend _error404
+<<frontend-https-clean>>
+    default_backend _error404
+<<support>>
+`)
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestInstanceCustomProxy(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()

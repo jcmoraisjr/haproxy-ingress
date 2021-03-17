@@ -269,6 +269,9 @@ listen {{ $proxy_name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- range $snippet := $global.CustomTCP }}
+    {{ $snippet }}
+{{- end }}
 {{- range $snippet := index $global.CustomProxy $proxy_name }}
     {{ $snippet }}
 {{- end }}

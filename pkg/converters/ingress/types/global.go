@@ -36,6 +36,7 @@ const (
 	GlobalConfigGlobal                 = "config-global"
 	GlobalConfigProxy                  = "config-proxy"
 	GlobalConfigSections               = "config-sections"
+	GlobalConfigTCP                    = "config-tcp"
 	GlobalCookieKey                    = "cookie-key"
 	GlobalCPUMap                       = "cpu-map"
 	GlobalDefaultBackendRedirect       = "default-backend-redirect"

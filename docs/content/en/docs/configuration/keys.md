@@ -325,6 +325,7 @@ The table below describes all supported configuration keys.
 | [`config-global`](#configuration-snippet)            | multiline config for the global section | Global  |                    |
 | [`config-proxy`](#configuration-snippet)             | multiline config for any proxy          | Global  |                    |
 | [`config-sections`](#configuration-snippet)          | multiline custom sections declaration   | Global  |                    |
+| [`config-tcp`](#configuration-snippet)               | multiline tcp-service config            | Global  |                    |
 | [`cookie-key`](#affinity)                            | secret key                              | Global  | `Ingress`          |
 | [`cors-allow-credentials`](#cors)                    | [true\|false]                           | Path    |                    |
 | [`cors-allow-headers`](#cors)                        | headers list                            | Path    |                    |
@@ -1019,6 +1020,7 @@ See also:
 | `config-global`   | `Global`  |          |       |
 | `config-proxy`    | `Global`  |          | v0.13 |
 | `config-sections` | `Global`  |          | v0.13 |
+| `config-tcp`      | `Global`  |          | v0.13 |
 
 Add HAProxy configuration snippet to the configuration file. Use multiline content
 to add more than one line of configuration.
@@ -1029,6 +1031,7 @@ to add more than one line of configuration.
 * `config-global`: Adds a configuration snippet to the end of the HAProxy global section.
 * `config-proxy`: Adds a configuration snippet to any HAProxy proxy - listen, frontend or backend. It accepts a multi section configuration, where the name of the section is the name of a HAProxy proxy without the listen/frontend/backend prefix. A section whose proxy is not found is ignored. The content of each section should be indented, the first line without indentation is the start of a new section which will configure another proxy.
 * `config-sections`: Allows to declare new HAProxy sections. The configuration is used verbatim, without any indentation or validation.
+* `config-tcp`: Adds a configuration snippet to the tcp-services sections.
 
 Examples - ConfigMap:
 
@@ -1040,6 +1043,11 @@ Examples - ConfigMap:
 ```yaml
     config-defaults: |
       option redispatch
+```
+
+```yaml
+    config-tcp: |
+      tcp-request content reject if !{ src 10.0.0.0/8 }
 ```
 
 ```yaml

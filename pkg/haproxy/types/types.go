@@ -80,6 +80,7 @@ type Global struct {
 	CustomFrontend          []string
 	CustomProxy             map[string][]string
 	CustomSections          []string
+	CustomTCP               []string
 }
 
 // GlobalBindConfig ...
