@@ -319,12 +319,12 @@ The table below describes all supported configuration keys.
 | [`blue-green-header`](#blue-green)                   | `HeaderName:LabelName` pair             | Backend |                    |
 | [`blue-green-mode`](#blue-green)                     | [pod\|deploy]                           | Backend |                    |
 | [`cert-signer`](#acme)                               | "acme"                                  | Host    |                    |
-| [`config-backend`](#configuration-snippet)           | multiline HAProxy backend config        | Backend |                    |
-| [`config-defaults`](#configuration-snippet)          | multiline HAProxy config for the defaults section | Global |           |
-| [`config-frontend`](#configuration-snippet)          | multiline HAProxy frontend config       | Global  |                    |
-| [`config-global`](#configuration-snippet)            | multiline HAProxy global config         | Global  |                    |
-| [`config-proxy`](#configuration-snippet)             | multiline HAProxy custom proxy config   | Global  |                    |
-| [`config-sections`](#configuration-snippet)          | multiline HAProxy section declarations  | Global  |                    |
+| [`config-backend`](#configuration-snippet)           | multiline backend config                | Backend |                    |
+| [`config-defaults`](#configuration-snippet)          | multiline config for the defaults section | Global |                   |
+| [`config-frontend`](#configuration-snippet)          | multiline HTTP and HTTPS frontend config | Global  |                   |
+| [`config-global`](#configuration-snippet)            | multiline config for the global section | Global  |                    |
+| [`config-proxy`](#configuration-snippet)             | multiline config for any proxy          | Global  |                    |
+| [`config-sections`](#configuration-snippet)          | multiline custom sections declaration   | Global  |                    |
 | [`cookie-key`](#affinity)                            | secret key                              | Global  | `Ingress`          |
 | [`cors-allow-credentials`](#cors)                    | [true\|false]                           | Path    |                    |
 | [`cors-allow-headers`](#cors)                        | headers list                            | Path    |                    |
