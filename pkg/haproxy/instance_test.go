@@ -2463,15 +2463,25 @@ func TestInstanceCustomProxy(t *testing.T) {
 	h.AddPath(b, "/", hatypes.MatchBegin)
 	h.SetSSLPassthrough(true)
 
+	auth := &c.config.Frontend().AuthProxy
+	auth.Name = "_front__auth"
+	auth.RangeStart = 4001
+	auth.RangeEnd = 4010
+	authBackend := c.config.Backends().AcquireAuthBackend([]string{"172.17.100.11"}, 5000, "")
+	_, _ = c.config.Frontend().AcquireAuthBackendName(authBackend.BackendID())
+
 	tcp := c.config.tcpbackends.Acquire("default_pgsql", 5432)
 	tcp.AddEndpoint("172.17.0.21", 5432)
 
 	c.config.Global().CustomProxy = map[string][]string{
 		"missing":                 {"## comment"},
 		"_tcp_default_pgsql_5432": {"## custom for _tcp_default_pgsql_5432"},
+		"_auth_backend001_5000":   {"## custom for _auth_backend001_5000"},
 		"d1_app_8080":             {"## custom for d1_app_8080"},
 		"_redirect_https":         {"## custom for _redirect_https"},
 		"_error404":               {"## custom for _error404", "## line 2"},
+		"_auth_4001":              {"## custom for _auth_4001"},
+		"_front__auth":            {"## custom for _front__auth"},
 		"_front__tls":             {"## custom for _front__tls"},
 		"_front_http":             {"## custom for _front_http"},
 		"_front_https":            {"## custom for _front_https"},
@@ -2488,6 +2498,10 @@ listen _tcp_default_pgsql_5432
     mode tcp
     ## custom for _tcp_default_pgsql_5432
     server srv001 172.17.0.21:5432
+backend _auth_backend001_5000
+    mode http
+    ## custom for _auth_backend001_5000
+    server srv001 172.17.100.11:5000 weight 1
 backend d1_app_8080
     mode http
     ## custom for d1_app_8080
@@ -2501,6 +2515,15 @@ backend _error404
     ## custom for _error404
     ## line 2
     http-request use-service lua.send-404
+backend _auth_4001
+    mode http
+    ## custom for _auth_4001
+    server _auth_4001 127.0.0.1:4001
+frontend _front__auth
+    mode http
+    bind 127.0.0.1:4001
+    ## custom for _front__auth
+    use_backend _auth_backend001_5000
 listen _front__tls
     mode tcp
     bind :443

@@ -897,6 +897,9 @@ backend _error404
 {{- range $bind := $proxy.BindList }}
 backend {{ $bind.AuthBackendName }}
     mode http
+{{- range $snippet := index $global.CustomProxy $bind.AuthBackendName }}
+    {{ $snippet }}
+{{- end }}
     server {{ $bind.AuthBackendName }} 127.0.0.1:{{ $bind.LocalPort }}
 {{- end }}
 frontend {{ $proxy.Name }}
@@ -904,6 +907,9 @@ frontend {{ $proxy.Name }}
 {{- range $bind := $proxy.BindList }}
     bind 127.0.0.1:{{ $bind.LocalPort }}
         {{- if $use_socket }} id {{ $bind.SocketID }}{{ end }}
+{{- end }}
+{{- range $snippet := index $global.CustomProxy $proxy.Name }}
+    {{ $snippet }}
 {{- end }}
 {{- range $bind := $proxy.BindList }}
     use_backend {{ $bind.Backend }}
