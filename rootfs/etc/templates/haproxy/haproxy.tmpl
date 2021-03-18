@@ -880,15 +880,32 @@ backend {{ $bind.AuthBackendName }}
 {{- end }}
     server {{ $bind.AuthBackendName }} 127.0.0.1:{{ $bind.LocalPort }}
 {{- end }}
+
+{{- /*------------------------------------*/}}
 frontend {{ $proxy.Name }}
     mode http
 {{- range $bind := $proxy.BindList }}
     bind 127.0.0.1:{{ $bind.LocalPort }}
         {{- if $use_socket }} id {{ $bind.SocketID }}{{ end }}
 {{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $global.Syslog.Endpoint }}
+{{- if eq $global.Syslog.AuthLogFormat "default" }}
+    option httplog
+{{- else if $global.Syslog.AuthLogFormat }}
+    log-format {{ $global.Syslog.AuthLogFormat }}
+{{- else }}
+    no log
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
 {{- range $snippet := index $global.CustomProxy $proxy.Name }}
     {{ $snippet }}
 {{- end }}
+
+{{- /*------------------------------------*/}}
 {{- range $bind := $proxy.BindList }}
     use_backend {{ $bind.Backend }}
         {{- if $use_socket }} if { so_id {{ $bind.SocketID }} }{{ end }}

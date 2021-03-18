@@ -292,6 +292,7 @@ The table below describes all supported configuration keys.
 | [`agent-check-send`](#agent-check)                   | string to send upon agent connection    | Backend |                    |
 | [`allowlist-source-range`](#allowlist)               | Comma-separated IPs or CIDRs            | Path    |                    |
 | [`app-root`](#app-root)                              | /url                                    | Host    |                    |
+| [`auth-log-format`](#log-format)                     | http log format for auth external       | Global  | do not log         |
 | [`auth-realm`](#auth)                                | realm string                            | Path    |                    |
 | [`auth-secret`](#auth)                               | secret name                             | Path    |                    |
 | [`auth-tls-cert-header`](#auth-tls)                  | [true\|false]                           | Backend |                    |
@@ -1519,6 +1520,7 @@ See also:
 
 | Configuration key  | Scope    | Default | Since |
 |--------------------|----------|---------|-------|
+| `auth-log-format`  | `Global` |         | v0.13 |
 | `http-log-format`  | `Global` |         |       |
 | `https-log-format` | `Global` |         |       |
 | `tcp-log-format`   | `Global` |         |       |
@@ -1526,6 +1528,7 @@ See also:
 Customize the tcp, http or https log format using log format variables. Only used if
 [`syslog-endpoint`](#syslog) is also configured.
 
+* `auth-log-format`: log format of all auth external frontends. Use `default` to configure default HTTP log format, defaults to not log.
 * `http-log-format`: log format of all HTTP proxies, defaults to HAProxy default HTTP log format.
 * `https-log-format`: log format of TCP proxy used to inspect SNI extention. Use `default` to configure default TCP log format, defaults to not log.
 * `tcp-log-format`: log format of TCP proxies, defaults to HAProxy default TCP log format. See also [TCP services configmap](#tcp-services-configmap) command-line option.

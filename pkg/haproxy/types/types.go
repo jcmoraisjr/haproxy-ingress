@@ -106,12 +106,14 @@ type ProcsConfig struct {
 
 // SyslogConfig ...
 type SyslogConfig struct {
-	Endpoint       string
-	Format         string
+	Endpoint string
+	Format   string
+	Length   int
+	Tag      string
+	//
+	AuthLogFormat  string
 	HTTPLogFormat  string
 	HTTPSLogFormat string
-	Length         int
-	Tag            string
 	TCPLogFormat   string
 }
 
