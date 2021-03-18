@@ -345,4 +345,21 @@ func (c *updater) buildGlobalCustomConfig(d *globalData) {
 	d.global.CustomDefaults = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigDefaults).Value)
 	d.global.CustomFrontend = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigFrontend).Value)
 	d.global.CustomSections = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigSections).Value)
+	proxy := map[string][]string{}
+	var curSection string
+	for _, line := range utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigProxy).Value) {
+		if line == "" {
+			continue
+		}
+		if line[0] != ' ' && line[0] != '\t' {
+			curSection = line
+			continue
+		}
+		proxy[curSection] = append(proxy[curSection], strings.TrimSpace(line))
+	}
+	if lines, hasEmpty := proxy[""]; hasEmpty {
+		c.logger.Warn("non scoped %d line(s) in the config-proxy configuration were ignored", len(lines))
+		delete(proxy, "")
+	}
+	d.global.CustomProxy = proxy
 }

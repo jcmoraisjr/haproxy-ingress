@@ -92,6 +92,64 @@ func TestBind(t *testing.T) {
 	}
 }
 
+func TestCustomConfigProxy(t *testing.T) {
+	testCases := []struct {
+		config   string
+		expected map[string][]string
+		logging  string
+	}{
+		// 0
+		{},
+		// 1
+		{
+			config: `
+proxy_1
+  acl test`,
+			expected: map[string][]string{
+				"proxy_1": {"acl test"},
+			},
+		},
+		// 2
+		{
+			config: `
+backend_1
+  acl ok always_true
+  http-request deny if !ok
+backend_2
+  ## two spaces
+    ## four spaces
+		## two tabs`,
+			expected: map[string][]string{
+				"backend_1": {"acl ok always_true", "http-request deny if !ok"},
+				"backend_2": {"## two spaces", "## four spaces", "## two tabs"},
+			},
+		},
+		// 3
+		{
+			config: `
+  ## trailing line 1
+proxy_1
+  acl ok always_true
+`,
+			expected: map[string][]string{
+				"proxy_1": {"acl ok always_true"},
+			},
+			logging: `WARN non scoped 1 line(s) in the config-proxy configuration were ignored`,
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createGlobalData(map[string]string{ingtypes.GlobalConfigProxy: test.config})
+		c.createUpdater().buildGlobalCustomConfig(d)
+		if test.expected == nil {
+			test.expected = map[string][]string{}
+		}
+		c.compareObjects("custom config", i, d.global.CustomProxy, test.expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
 func TestModSecurity(t *testing.T) {
 	testCases := []struct {
 		endpoints string

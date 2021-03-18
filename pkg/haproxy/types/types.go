@@ -78,6 +78,7 @@ type Global struct {
 	CustomConfig            []string
 	CustomDefaults          []string
 	CustomFrontend          []string
+	CustomProxy             map[string][]string
 	CustomSections          []string
 }
 

@@ -245,7 +245,8 @@ userlist {{ $userlist.Name }}
 #
 
 {{- range $backend := $tcpbackends }}
-listen _tcp_{{ $backend.Name }}_{{ $backend.Port }}
+{{- $proxy_name := printf "_tcp_%s_%d" $backend.Name $backend.Port }}
+listen {{ $proxy_name }}
 {{- $ssl := $backend.SSL }}
     bind {{ $global.Bind.TCPBindIP }}:{{ $backend.Port }}
         {{- if $ssl.Filename }} ssl crt {{ $ssl.Filename }}
@@ -265,6 +266,11 @@ listen _tcp_{{ $backend.Name }}_{{ $backend.Port }}
 {{- else }}
     no log
 {{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- range $snippet := index $global.CustomProxy $proxy_name }}
+    {{ $snippet }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -644,6 +650,9 @@ backend {{ $backend.ID }}
 {{- range $snippet := $backend.CustomConfig }}
     {{ $snippet }}
 {{- end }}
+{{- range $snippet := index $global.CustomProxy $backend.ID }}
+    {{ $snippet }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
 {{- $rewriteCfg := $backend.PathConfig "RewriteURL" }}
@@ -793,6 +802,9 @@ backend {{ $backend.ID }}
 #
 backend _redirect_https
     mode http
+{{- range $snippet := index $global.CustomProxy "_redirect_https" }}
+    {{ $snippet }}
+{{- end }}
     http-request redirect scheme https
         {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
 {{- end }}
@@ -805,6 +817,9 @@ backend _redirect_https
 #
 backend _acme_challenge
     mode http
+{{- range $snippet := index $global.CustomProxy "_acme_challenge" }}
+    {{ $snippet }}
+{{- end }}
     server _acme_server unix@{{ $global.Acme.Socket }}
 {{- end }}
 
@@ -816,6 +831,9 @@ backend _acme_challenge
 #
 backend _error404
     mode http
+{{- range $snippet := index $global.CustomProxy "_error404" }}
+    {{ $snippet }}
+{{- end }}
 {{- if $global.DefaultBackendRedir }}
     redirect location {{ $global.DefaultBackendRedir }} code {{ $global.DefaultBackendRedirCode }}
 {{- else }}
@@ -846,7 +864,8 @@ backend _error404
 # #
 #     TCP/TLS frontend
 #
-listen _front__tls
+{{- $proxy__front__tls := "_front__tls" }}
+listen {{ $proxy__front__tls }}
     mode tcp
     bind {{ $global.Bind.HTTPSBind }}{{ if $global.Bind.AcceptProxy }} accept-proxy{{ end }}
 
@@ -872,6 +891,11 @@ listen _front__tls
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- range $snippet := index $global.CustomProxy $proxy__front__tls }}
+    {{ $snippet }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
     tcp-request content accept if { req.ssl_hello_type 1 }
 
 {{- /*------------------------------------*/}}
@@ -887,7 +911,8 @@ listen _front__tls
 # #
 #     HTTP{{ if $hasFrontingProxy }} & Fronting Proxy{{ end }} frontend
 #
-frontend _front_http
+{{- $proxy__front_http := "_front_http" }}
+frontend {{ $proxy__front_http }}
     mode http
 {{- $hasPlainHTTPSocket := not $global.Bind.ShareHTTPPort }}
 {{- if and $global.Bind.HTTPBind $hasPlainHTTPSocket }}
@@ -978,6 +1003,9 @@ frontend _front_http
 {{- range $snippet := $global.CustomFrontend }}
     {{ $snippet }}
 {{- end }}
+{{- range $snippet := index $global.CustomProxy $proxy__front_http }}
+    {{ $snippet }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $acmeexclusive }}
@@ -994,7 +1022,8 @@ frontend _front_http
 # #
 #     HTTPS frontend
 #
-frontend _front_https
+{{- $proxy__front_https := "_front_https" }}
+frontend {{ $proxy__front_https }}
     mode http
 
 {{- /*------------------------------------*/}}
@@ -1132,6 +1161,9 @@ frontend _front_https
 {{- range $snippet := $global.CustomFrontend }}
     {{ $snippet }}
 {{- end }}
+{{- range $snippet := index $global.CustomProxy $proxy__front_https }}
+    {{ $snippet }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $fmaps.TLSAuthList.HasHost }}
@@ -1208,6 +1240,9 @@ listen stats
     no log
     option httpclose
     stats show-legends
+{{- range $snippet := index $global.CustomProxy "stats" }}
+    {{ $snippet }}
+{{- end }}
 
 {{- if $global.Prometheus.Port }}
 
@@ -1222,6 +1257,9 @@ frontend prometheus
     http-request use-service lua.send-prometheus-root if { path / }
     http-request use-service lua.send-404
     no log
+{{- range $snippet := index $global.CustomProxy "prometheus" }}
+    {{ $snippet }}
+{{- end }}
 {{- end }}
 
   # # # # # # # # # # # # # # # # # # #
@@ -1234,6 +1272,9 @@ frontend healthz
     monitor-uri /healthz
     http-request use-service lua.send-404
     no log
+{{- range $snippet := index $global.CustomProxy "healthz" }}
+    {{ $snippet }}
+{{- end }}
 
 {{- if $global.ModSecurity.Endpoints }}
 
@@ -1245,6 +1286,9 @@ backend spoe-modsecurity
     mode tcp
     timeout connect {{ $global.ModSecurity.Timeout.Connect }}
     timeout server  {{ $global.ModSecurity.Timeout.Server }}
+{{- range $snippet := index $global.CustomProxy "spoe-modsecurity" }}
+    {{ $snippet }}
+{{- end }}
 {{- range $i, $endpoint := $global.ModSecurity.Endpoints }}
     server modsec-spoa{{ $i }} {{ $endpoint }}
 {{- end }}
