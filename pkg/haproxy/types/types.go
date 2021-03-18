@@ -581,7 +581,6 @@ type BackendPath struct {
 	DeniedIPHTTP  AccessConfig
 	HSTS          HSTS
 	MaxBodySize   int64
-	OAuth         OAuthConfig
 	RewriteURL    string
 	SSLRedirect   bool
 	WAF           WAF
@@ -629,14 +628,6 @@ type BackendLimit struct {
 type AccessConfig struct {
 	Rule      []string
 	Exception []string
-}
-
-// OAuthConfig ...
-type OAuthConfig struct {
-	Impl        string
-	BackendName string
-	URIPrefix   string
-	Headers     map[string]string
 }
 
 // ServerConfig ...
@@ -697,6 +688,7 @@ type Cookie struct {
 
 // AuthExternal ...
 type AuthExternal struct {
+	Allow           string
 	AuthBackendName string
 	Headers         map[string]string
 	Path            string

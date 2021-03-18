@@ -622,6 +622,10 @@ func (c *updater) buildBackendOAuth(d *backData) {
 			c.logger.Warn("oauth2_proxy on %v needs Lua json module, install lua-json4 and enable 'external-has-lua' global config", oauth.Source)
 			return
 		}
+		if authURL := d.mapper.Get(ingtypes.BackAuthURL); authURL.Value != "" {
+			c.logger.Warn("ignoring oauth configuration on %v: auth-url was configured and has precedence", authURL.Source)
+			continue
+		}
 		uriPrefix := "/oauth2"
 		if prefix := config.Get(ingtypes.BackOAuthURIPrefix); prefix.Source != nil {
 			uriPrefix = prefix.Value
@@ -647,10 +651,11 @@ func (c *updater) buildBackendOAuth(d *backData) {
 			h := strings.Split(header, ":")
 			headersMap[h[0]] = h[1]
 		}
-		path.OAuth.Impl = oauth.Value
-		path.OAuth.BackendName = backend.ID
-		path.OAuth.URIPrefix = uriPrefix
-		path.OAuth.Headers = headersMap
+		path.AuthExternal.Headers = headersMap
+		path.AuthExternal.AuthBackendName = backend.ID
+		path.AuthExternal.Allow = uriPrefix + "/"
+		path.AuthExternal.Path = uriPrefix + "/auth"
+		path.AuthExternal.SignIn = uriPrefix + "/start?rd=%[path]"
 	}
 }
 

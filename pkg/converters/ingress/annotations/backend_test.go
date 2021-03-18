@@ -1241,13 +1241,13 @@ func TestOAuth(t *testing.T) {
 		external bool
 		haslua   bool
 		backend  string
-		oauthExp map[string]hatypes.OAuthConfig
+		authExp  map[string]hatypes.AuthExternal
 		logging  string
 	}{
 		// 0
 		{
-			ann:      map[string]map[string]string{},
-			oauthExp: map[string]hatypes.OAuthConfig{},
+			ann:     map[string]map[string]string{},
+			authExp: map[string]hatypes.AuthExternal{},
 		},
 		// 1
 		{
@@ -1256,7 +1256,7 @@ func TestOAuth(t *testing.T) {
 					ingtypes.BackOAuth: "none",
 				},
 			},
-			oauthExp: map[string]hatypes.OAuthConfig{
+			authExp: map[string]hatypes.AuthExternal{
 				"/": {},
 			},
 			logging: "WARN ignoring invalid oauth implementation 'none' on ingress 'default/ing1'",
@@ -1268,7 +1268,7 @@ func TestOAuth(t *testing.T) {
 					ingtypes.BackOAuth: "oauth2_proxy",
 				},
 			},
-			oauthExp: map[string]hatypes.OAuthConfig{
+			authExp: map[string]hatypes.AuthExternal{
 				"/": {},
 			},
 			logging: "ERROR path '/oauth2' was not found on namespace 'default'",
@@ -1281,12 +1281,13 @@ func TestOAuth(t *testing.T) {
 				},
 			},
 			backend: "default:back:/oauth2",
-			oauthExp: map[string]hatypes.OAuthConfig{
+			authExp: map[string]hatypes.AuthExternal{
 				"/": {
-					Impl:        "oauth2_proxy",
-					BackendName: "default_back_8080",
-					URIPrefix:   "/oauth2",
-					Headers:     map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
+					Allow:           "/oauth2/",
+					AuthBackendName: "default_back_8080",
+					Path:            "/oauth2/auth",
+					SignIn:          "/oauth2/start?rd=%[path]",
+					Headers:         map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
 				},
 			},
 		},
@@ -1299,12 +1300,13 @@ func TestOAuth(t *testing.T) {
 				},
 			},
 			backend: "default:back:/auth",
-			oauthExp: map[string]hatypes.OAuthConfig{
+			authExp: map[string]hatypes.AuthExternal{
 				"/": {
-					Impl:        "oauth2_proxy",
-					BackendName: "default_back_8080",
-					URIPrefix:   "/auth",
-					Headers:     map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
+					Allow:           "/auth/",
+					AuthBackendName: "default_back_8080",
+					Path:            "/auth/auth",
+					SignIn:          "/auth/start?rd=%[path]",
+					Headers:         map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
 				},
 			},
 		},
@@ -1317,12 +1319,13 @@ func TestOAuth(t *testing.T) {
 				},
 			},
 			backend: "default:back:/oauth2",
-			oauthExp: map[string]hatypes.OAuthConfig{
+			authExp: map[string]hatypes.AuthExternal{
 				"/": {
-					Impl:        "oauth2_proxy",
-					BackendName: "default_back_8080",
-					URIPrefix:   "/oauth2",
-					Headers:     map[string]string{"X-Auth-New": "attr_from_lua"},
+					Allow:           "/oauth2/",
+					AuthBackendName: "default_back_8080",
+					Path:            "/oauth2/auth",
+					SignIn:          "/oauth2/start?rd=%[path]",
+					Headers:         map[string]string{"X-Auth-New": "attr_from_lua"},
 				},
 			},
 		},
@@ -1335,12 +1338,13 @@ func TestOAuth(t *testing.T) {
 				},
 			},
 			backend: "default:back:/oauth2",
-			oauthExp: map[string]hatypes.OAuthConfig{
+			authExp: map[string]hatypes.AuthExternal{
 				"/": {
-					Impl:        "oauth2_proxy",
-					BackendName: "default_back_8080",
-					URIPrefix:   "/oauth2",
-					Headers:     map[string]string{},
+					Allow:           "/oauth2/",
+					AuthBackendName: "default_back_8080",
+					Path:            "/oauth2/auth",
+					SignIn:          "/oauth2/start?rd=%[path]",
+					Headers:         map[string]string{},
 				},
 			},
 			logging: "WARN invalid header format 'space before:attr' on ingress 'default/ing1'",
@@ -1354,12 +1358,13 @@ func TestOAuth(t *testing.T) {
 				},
 			},
 			backend: "default:back:/oauth2",
-			oauthExp: map[string]hatypes.OAuthConfig{
+			authExp: map[string]hatypes.AuthExternal{
 				"/": {
-					Impl:        "oauth2_proxy",
-					BackendName: "default_back_8080",
-					URIPrefix:   "/oauth2",
-					Headers:     map[string]string{},
+					Allow:           "/oauth2/",
+					AuthBackendName: "default_back_8080",
+					Path:            "/oauth2/auth",
+					SignIn:          "/oauth2/start?rd=%[path]",
+					Headers:         map[string]string{},
 				},
 			},
 			logging: "WARN invalid header format 'no-colon' on ingress 'default/ing1'",
@@ -1373,12 +1378,13 @@ func TestOAuth(t *testing.T) {
 				},
 			},
 			backend: "default:back:/oauth2",
-			oauthExp: map[string]hatypes.OAuthConfig{
+			authExp: map[string]hatypes.AuthExternal{
 				"/": {
-					Impl:        "oauth2_proxy",
-					BackendName: "default_back_8080",
-					URIPrefix:   "/oauth2",
-					Headers:     map[string]string{},
+					Allow:           "/oauth2/",
+					AuthBackendName: "default_back_8080",
+					Path:            "/oauth2/auth",
+					SignIn:          "/oauth2/start?rd=%[path]",
+					Headers:         map[string]string{},
 				},
 			},
 			logging: "WARN invalid header format 'more:colons:unsupported' on ingress 'default/ing1'",
@@ -1392,11 +1398,12 @@ func TestOAuth(t *testing.T) {
 				},
 			},
 			backend: "default:back:/oauth2",
-			oauthExp: map[string]hatypes.OAuthConfig{
+			authExp: map[string]hatypes.AuthExternal{
 				"/": {
-					Impl:        "oauth2_proxy",
-					BackendName: "default_back_8080",
-					URIPrefix:   "/oauth2",
+					Allow:           "/oauth2/",
+					AuthBackendName: "default_back_8080",
+					Path:            "/oauth2/auth",
+					SignIn:          "/oauth2/start?rd=%[path]",
 					Headers: map[string]string{
 						"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email",
 						"X-Auth-New":           "attr_from_lua",
@@ -1416,7 +1423,7 @@ func TestOAuth(t *testing.T) {
 			},
 			external: true,
 			backend:  "default:back:/oauth2",
-			oauthExp: map[string]hatypes.OAuthConfig{
+			authExp: map[string]hatypes.AuthExternal{
 				"/":    {},
 				"/app": {},
 			},
@@ -1435,18 +1442,20 @@ func TestOAuth(t *testing.T) {
 			external: true,
 			haslua:   true,
 			backend:  "default:back:/oauth2",
-			oauthExp: map[string]hatypes.OAuthConfig{
+			authExp: map[string]hatypes.AuthExternal{
 				"/": {
-					Impl:        "oauth2_proxy",
-					BackendName: "default_back_8080",
-					URIPrefix:   "/oauth2",
-					Headers:     map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
+					Allow:           "/oauth2/",
+					AuthBackendName: "default_back_8080",
+					Path:            "/oauth2/auth",
+					SignIn:          "/oauth2/start?rd=%[path]",
+					Headers:         map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
 				},
 				"/app": {
-					Impl:        "oauth2_proxy",
-					BackendName: "default_back_8080",
-					URIPrefix:   "/oauth2",
-					Headers:     map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
+					Allow:           "/oauth2/",
+					AuthBackendName: "default_back_8080",
+					Path:            "/oauth2/auth",
+					SignIn:          "/oauth2/start?rd=%[path]",
+					Headers:         map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
 				},
 			},
 		},
@@ -1459,15 +1468,31 @@ func TestOAuth(t *testing.T) {
 				},
 			},
 			backend: "default:back:/oauth2",
-			oauthExp: map[string]hatypes.OAuthConfig{
+			authExp: map[string]hatypes.AuthExternal{
 				"/": {},
 				"/app": {
-					Impl:        "oauth2_proxy",
-					BackendName: "default_back_8080",
-					URIPrefix:   "/oauth2",
-					Headers:     map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
+					Allow:           "/oauth2/",
+					AuthBackendName: "default_back_8080",
+					Path:            "/oauth2/auth",
+					SignIn:          "/oauth2/start?rd=%[path]",
+					Headers:         map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
 				},
 			},
+		},
+		// 13
+		{
+			ann: map[string]map[string]string{
+				"/": {},
+				"/app": {
+					ingtypes.BackAuthURL: "http://10.0.0.2:8000",
+					ingtypes.BackOAuth:   "oauth2_proxy",
+				},
+			},
+			authExp: map[string]hatypes.AuthExternal{
+				"/":    {},
+				"/app": {},
+			},
+			logging: `WARN ignoring oauth configuration on ingress 'default/ing1': auth-url was configured and has precedence`,
 		},
 	}
 
@@ -1490,11 +1515,11 @@ func TestOAuth(t *testing.T) {
 			c.haproxy.Hosts().AcquireHost("app.local").AddPath(backend, b[2], hatypes.MatchBegin)
 		}
 		c.createUpdater().buildBackendOAuth(d)
-		actual := map[string]hatypes.OAuthConfig{}
+		actual := map[string]hatypes.AuthExternal{}
 		for _, path := range d.backend.Paths {
-			actual[path.Path()] = path.OAuth
+			actual[path.Path()] = path.AuthExternal
 		}
-		c.compareObjects("oauth", i, actual, test.oauthExp)
+		c.compareObjects("oauth", i, actual, test.authExp)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
