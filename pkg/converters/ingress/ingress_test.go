@@ -1713,6 +1713,40 @@ WARN skipping backend 'echo5:8080' annotation(s) from ingress 'default/echo5' du
 WARN skipping backend 'echo7:8080' annotation(s) from ingress 'default/echo7' due to conflict: [balance-algorithm]`)
 }
 
+func TestSyncAnnAuthURL(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	c.createSvc1("default/echo", "http:8080", "172.17.1.101")
+	c.createSvc1("default/authsvc1", "http:8080", "172.17.1.110")
+	c.Sync(
+		c.createIng1Ann("default/echo1", "echo1.example.com", "/", "echo:8080",
+			map[string]string{
+				"ingress.kubernetes.io/auth-url": "svc://authsvc1:8080",
+			}),
+		c.createIng1Ann("default/echo2", "echo2.example.com", "/", "echo:8080",
+			map[string]string{
+				"ingress.kubernetes.io/auth-url": "svc://authsvc2:8080",
+			}),
+	)
+
+	c.compareConfigBack(`
+- id: default_authsvc1_8080
+  endpoints:
+  - ip: 172.17.1.110
+    port: 8080
+- id: default_echo_8080
+  endpoints:
+  - ip: 172.17.1.101
+    port: 8080
+- id: system_default_8080
+  endpoints:
+  - ip: 172.17.0.99
+    port: 8080
+`)
+	c.logger.CompareLogging(`WARN skipping auth-url on ingress 'default/echo2': service not found: 'default/authsvc2'`)
+}
+
 func TestSyncAnnPassthrough(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()

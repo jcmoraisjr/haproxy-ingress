@@ -16,6 +16,12 @@ limitations under the License.
 
 package utils
 
+import (
+	"fmt"
+	"regexp"
+	"strings"
+)
+
 // GCD calculates the Greatest Common Divisor between a and b
 func GCD(a, b int) int {
 	for b != 0 {
@@ -28,4 +34,19 @@ func GCD(a, b int) int {
 // LCM calculates the Least Common Multiple between a and b
 func LCM(a, b int) int {
 	return a * (b / GCD(a, b))
+}
+
+var parseURLRegex = regexp.MustCompile(`^([a-z]+)://([^][/: ]+)(:[-a-z0-9]+)?([^"' ]*)$`)
+
+func ParseURL(url string) (urlProto, urlHost, urlPort, urlPath string, err error) {
+	urlParse := parseURLRegex.FindStringSubmatch(url)
+	if len(urlParse) < 5 {
+		err = fmt.Errorf("invalid URL syntax: %s", url)
+		return
+	}
+	urlProto = urlParse[1]
+	urlHost = urlParse[2]
+	urlPort = strings.TrimLeft(urlParse[3], ":")
+	urlPath = urlParse[4]
+	return
 }

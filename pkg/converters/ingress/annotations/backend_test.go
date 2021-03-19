@@ -189,7 +189,7 @@ func TestAuthExternal(t *testing.T) {
 		// 0
 		{
 			url:     "10.0.0.1:8080/app",
-			logging: `WARN ignoring invalid auth URL on ingress 'default/ing1': 10.0.0.1:8080/app`,
+			logging: `WARN ignoring URL on ingress 'default/ing1': invalid URL syntax: 10.0.0.1:8080/app`,
 		},
 		// 1
 		{
@@ -291,6 +291,48 @@ func TestAuthExternal(t *testing.T) {
 			},
 			expIP: []string{"10.0.0.2:80"},
 		},
+		// 12
+		{
+			url: "https://10.0.0.200/auth",
+			expBack: hatypes.AuthExternal{
+				AuthBackendName: "_auth_4001",
+				Path:            "/auth",
+			},
+			expIP: []string{"10.0.0.200:443"},
+		},
+		// 13
+		{
+			url:     "svc://noservice",
+			logging: `WARN skipping auth-url on ingress 'default/ing1': missing service port: svc://noservice`,
+		},
+		// 14
+		{
+			url: "svc://noservice:80",
+			// svc not found, warn is issued in the ingress parsing
+		},
+		// 15
+		{
+			url:     "svc://authservice",
+			logging: `WARN skipping auth-url on ingress 'default/ing1': missing service port: svc://authservice`,
+		},
+		// 16
+		{
+			url: "svc://authservice:80",
+			expBack: hatypes.AuthExternal{
+				AuthBackendName: "_auth_4001",
+				Path:            "/",
+			},
+			expIP: []string{"10.0.0.11:8080"},
+		},
+		// 17
+		{
+			url: "svc://authservice:80/auth",
+			expBack: hatypes.AuthExternal{
+				AuthBackendName: "_auth_4001",
+				Path:            "/auth",
+			},
+			expIP: []string{"10.0.0.11:8080"},
+		},
 	}
 	source := &Source{
 		Namespace: "default",
@@ -315,6 +357,9 @@ func TestAuthExternal(t *testing.T) {
 			c.haproxy.Global().External.MasterSocket = "/socket"
 		}
 		c.haproxy.Global().External.HasLua = test.hasLua
+		// backend is used by svc protocol
+		b := c.haproxy.Backends().AcquireBackend("default", "authservice", "80")
+		b.AcquireEndpoint("10.0.0.11", 8080, "")
 		ann := map[string]map[string]string{
 			"/": {
 				ingtypes.BackAuthURL:     test.url,

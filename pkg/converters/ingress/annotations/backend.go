@@ -88,7 +88,6 @@ func (c *updater) buildBackendAffinity(d *backData) {
 var (
 	lookupHost func(host string) (addrs []string, err error) = net.LookupHost
 
-	urlParseRegex   = regexp.MustCompile(`^([a-z]+)://([^][/: ]+)(:[0-9]{1,5})?([^"' ]*)$`)
 	validURLRegex   = regexp.MustCompile(`^[^"' ]*$`)
 	authHeaderRegex = regexp.MustCompile(`^[A-Za-z0-9-]+:[A-Za-z0-9_.-]+$`)
 )
@@ -97,7 +96,7 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 	for _, path := range d.backend.Paths {
 		config := d.mapper.GetConfig(path.Link)
 		url := config.Get(ingtypes.BackAuthURL)
-		if url.Value == "" {
+		if url.Source == nil || url.Value == "" {
 			continue
 		}
 		external := c.haproxy.Global().External
@@ -106,40 +105,54 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 			return
 		}
 
-		urlParse := urlParseRegex.FindStringSubmatch(url.Value)
-		if len(urlParse) < 5 {
-			c.logger.Warn("ignoring invalid auth URL on %v: %s", url.Source, url.Value)
+		urlProto, urlHost, urlPort, urlPath, err := ingutils.ParseURL(url.Value)
+		if err != nil {
+			c.logger.Warn("ignoring URL on %v: %v", url.Source, err)
 			continue
 		}
-		urlProto := urlParse[1]
-		urlHost := urlParse[2]
-		urlPort := strings.TrimLeft(urlParse[3], ":")
-		urlPath := urlParse[4]
-		if urlProto != "http" {
+
+		var backend *hatypes.Backend
+		switch urlProto {
+		case "http", "https":
+			secure := urlProto == "https"
+			var ipList []string
+			var hostname string
+			if net.ParseIP(urlHost) != nil {
+				ipList = []string{urlHost}
+			} else {
+				var err error
+				if ipList, err = lookupHost(urlHost); err != nil {
+					c.logger.Warn("ignoring auth URL with an invalid domain on %v: %v", url.Source, err)
+					continue
+				}
+				hostname = urlHost
+			}
+			port, _ := strconv.Atoi(urlPort)
+			if port == 0 {
+				if secure {
+					port = 443
+				} else {
+					port = 80
+				}
+			}
+			backend = c.haproxy.Backends().AcquireAuthBackend(ipList, port, hostname)
+			if secure {
+				backend.Server.Secure = secure
+				backend.Server.SNI = fmt.Sprintf("str(%s)", hostname)
+			}
+		case "service", "svc":
+			if urlPort == "" {
+				c.logger.Warn("skipping auth-url on %v: missing service port: %s", url.Source, url.Value)
+			}
+			backend = c.haproxy.Backends().FindBackend(url.Source.Namespace, urlHost, urlPort)
+			if backend == nil {
+				// warn already logged when ingress parser tried to acquire the backend
+				continue
+			}
+		default:
 			c.logger.Warn("ignoring auth URL with an invalid protocol on %v: %s", url.Source, urlProto)
 			continue
 		}
-		var ipList []string
-		var hostname string
-		if net.ParseIP(urlHost) != nil {
-			ipList = []string{urlHost}
-		} else {
-			var err error
-			if ipList, err = lookupHost(urlHost); err != nil {
-				c.logger.Warn("ignoring auth URL with an invalid domain on %v: %v", url.Source, err)
-				continue
-			}
-			hostname = urlHost
-		}
-		port, _ := strconv.Atoi(urlPort)
-		if port == 0 {
-			port = 80
-		}
-		if urlPath == "" {
-			urlPath = "/"
-		}
-
-		backend := c.haproxy.Backends().AcquireAuthBackend(ipList, port, hostname)
 		authBackendName, err := c.haproxy.Frontend().AcquireAuthBackendName(backend.BackendID())
 		if err != nil {
 			// TODO remove backend if not used elsewhere
@@ -170,6 +183,10 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 		}
 		if len(headersMap) == 0 {
 			headersMap = nil
+		}
+
+		if urlPath == "" {
+			urlPath = "/"
 		}
 
 		path.AuthExternal.Headers = headersMap
