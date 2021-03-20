@@ -286,6 +286,7 @@ func (c *converter) syncPartial() {
 	c.tracker.DeleteUserlists(dirtyUsers)
 	c.tracker.DeleteStorages(dirtyStorages)
 	c.haproxy.Hosts().RemoveAll(dirtyHosts)
+	c.haproxy.Frontend().RemoveAuthBackendByTarget(dirtyBacks)
 	c.haproxy.Backends().RemoveAll(dirtyBacks)
 	c.haproxy.Userlists().RemoveAll(dirtyUsers)
 	c.haproxy.AcmeData().Storages().RemoveAll(dirtyStorages)

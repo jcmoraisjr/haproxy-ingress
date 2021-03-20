@@ -75,3 +75,116 @@ func TestAcquireAuthFrontendLocalPort(t *testing.T) {
 		c.teardown()
 	}
 }
+
+func TestRemoveAuthBackendExcept(t *testing.T) {
+	testCases := []struct {
+		input    []string
+		used     map[string]bool
+		expected []string
+	}{
+		// 0
+		{
+			input:    []string{"backend1", "backend2"},
+			used:     map[string]bool{"backend2": true},
+			expected: []string{"backend2"},
+		},
+		// 1
+		{
+			input:    []string{},
+			used:     map[string]bool{"backend2": true},
+			expected: []string{},
+		},
+		// 2
+		{
+			input:    []string{"backend1", "backend2"},
+			used:     map[string]bool{"backend1": true, "backend2": true},
+			expected: []string{"backend1", "backend2"},
+		},
+		// 3
+		{
+			input:    []string{"backend1", "backend2"},
+			used:     map[string]bool{},
+			expected: []string{},
+		},
+		// 4
+		{
+			input:    []string{"backend1", "backend2"},
+			used:     map[string]bool{"backend0": true, "backend2": true},
+			expected: []string{"backend2"},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		frontend := Frontend{}
+		for _, input := range test.input {
+			frontend.AuthProxy.BindList = append(frontend.AuthProxy.BindList, &AuthProxyBind{
+				AuthBackendName: input,
+			})
+		}
+		frontend.RemoveAuthBackendExcept(test.used)
+		actual := []string{}
+		for _, item := range frontend.AuthProxy.BindList {
+			actual = append(actual, item.AuthBackendName)
+		}
+		c.compareObjects("remove", i, actual, test.expected)
+		c.teardown()
+	}
+}
+
+func TestRemoveAuthBackendByTarget(t *testing.T) {
+	back0 := BackendID{Namespace: "default", Name: "backend0", Port: "8080"}
+	back1 := BackendID{Namespace: "default", Name: "backend1", Port: "8080"}
+	back2 := BackendID{Namespace: "default", Name: "backend2", Port: "8080"}
+	testCases := []struct {
+		input    []BackendID
+		removed  []BackendID
+		expected []BackendID
+	}{
+		// 0
+		{
+			input:    []BackendID{back1, back2},
+			removed:  []BackendID{back2},
+			expected: []BackendID{back1},
+		},
+		// 1
+		{
+			input:    []BackendID{},
+			removed:  []BackendID{back2},
+			expected: []BackendID{},
+		},
+		// 2
+		{
+			input:    []BackendID{back1, back2},
+			removed:  []BackendID{back1, back2},
+			expected: []BackendID{},
+		},
+		// 3
+		{
+			input:    []BackendID{back1, back2},
+			removed:  []BackendID{},
+			expected: []BackendID{back1, back2},
+		},
+		// 4
+		{
+			input:    []BackendID{back1, back2},
+			removed:  []BackendID{back0, back2},
+			expected: []BackendID{back1},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		frontend := Frontend{}
+		for _, input := range test.input {
+			frontend.AuthProxy.BindList = append(frontend.AuthProxy.BindList, &AuthProxyBind{
+				Backend: input,
+			})
+		}
+		frontend.RemoveAuthBackendByTarget(test.removed)
+		actual := []BackendID{}
+		for _, item := range frontend.AuthProxy.BindList {
+			actual = append(actual, item.Backend)
+		}
+		c.compareObjects("remove", i, actual, test.expected)
+		c.teardown()
+	}
+}

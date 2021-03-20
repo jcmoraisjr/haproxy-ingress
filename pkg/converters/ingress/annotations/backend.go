@@ -135,6 +135,7 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 					port = 80
 				}
 			}
+			// TODO track
 			backend = c.haproxy.Backends().AcquireAuthBackend(ipList, port, hostname)
 			if secure {
 				backend.Server.Secure = secure
@@ -153,11 +154,18 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 			c.logger.Warn("ignoring auth URL with an invalid protocol on %v: %s", url.Source, urlProto)
 			continue
 		}
+		// TODO track
 		authBackendName, err := c.haproxy.Frontend().AcquireAuthBackendName(backend.BackendID())
 		if err != nil {
-			// TODO remove backend if not used elsewhere
-			c.logger.Warn("ignoring auth URL on %v: %v", url.Source, err)
-			continue
+			// clean up and try again
+			used := c.haproxy.Backends().BuildUsedAuthBackends()
+			c.haproxy.Frontend().RemoveAuthBackendExcept(used)
+			authBackendName, err = c.haproxy.Frontend().AcquireAuthBackendName(backend.BackendID())
+			if err != nil {
+				// TODO remove backend if not used elsewhere
+				c.logger.Warn("ignoring auth URL on %v: %v", url.Source, err)
+				continue
+			}
 		}
 
 		s := config.Get(ingtypes.BackAuthSignin)

@@ -193,6 +193,20 @@ func (b *Backends) buildSortedItems(backendItems map[string]*Backend) []*Backend
 	return items
 }
 
+// BuildUsedAuthBackends ...
+func (b *Backends) BuildUsedAuthBackends() map[string]bool {
+	usedNames := map[string]bool{}
+	for _, backend := range b.items {
+		for _, path := range backend.Paths {
+			name := path.AuthExternal.AuthBackendName
+			if name != "" {
+				usedNames[name] = true
+			}
+		}
+	}
+	return usedNames
+}
+
 // AcquireBackend ...
 func (b *Backends) AcquireBackend(namespace, name, port string) *Backend {
 	if backend := b.FindBackend(namespace, name, port); backend != nil {
