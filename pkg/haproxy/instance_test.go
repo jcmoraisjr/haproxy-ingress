@@ -140,8 +140,8 @@ func TestBackends(t *testing.T) {
     http-response set-header Access-Control-Allow-Credentials "true" if { var(txn.pathID) path01 }`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
-d1.local/sub path02
-d1.local/ path01`,
+d1.local#/sub path02
+d1.local#/ path01`,
 			},
 		},
 		{
@@ -176,9 +176,9 @@ d1.local/ path01`,
     http-response set-header Strict-Transport-Security "max-age=15768000" if https-request { var(txn.pathID) path02 path03 }`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
-d1.local/uri path03
-d1.local/path path02
-d1.local/ path01`,
+d1.local#/uri path03
+d1.local#/path path02
+d1.local#/ path01`,
 			},
 		},
 		{
@@ -233,9 +233,9 @@ d1.local/ path01`,
     http-request replace-path ^/path3(.*)$       /sub2\1     if { var(txn.pathID) path03 }`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
-d1.local/path3 path03
-d1.local/path2 path02
-d1.local/path1 path01`,
+d1.local#/path3 path03
+d1.local#/path2 path02
+d1.local#/path1 path01`,
 			},
 		},
 		{
@@ -284,9 +284,9 @@ d1.local/path1 path01`,
     http-request deny if { var(txn.pathID) path03 } !allow_rule_src1`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
-d1.local/path path03
-d1.local/app path01
-d1.local/api path02`,
+d1.local#/path path03
+d1.local#/app path01
+d1.local#/api path02`,
 			},
 		},
 		{
@@ -318,14 +318,14 @@ d1.local/api path02`,
 			expFronts: "<<frontends-default-match-4>>",
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__prefix_01.map": `
-d1.local/path path04`,
+d1.local#/path path04`,
 				"_back_d1_app_8080_idpath__exact_02.map": `
-d1.local/app path02`,
+d1.local#/app path02`,
 				"_back_d1_app_8080_idpath__begin.map": `
-d1.local/api path03
-d1.local/ path01`,
+d1.local#/api path03
+d1.local#/ path01`,
 				"_back_d1_app_8080_idpath__regex.map": `
-^d1\.local/api/v[0-9]+/ path05`,
+^d1\.local#/api/v[0-9]+/ path05`,
 			},
 		},
 		{
@@ -350,9 +350,9 @@ d1.local/ path01`,
     http-request deny if { var(txn.pathID) path02 } deny_rule_src1 !deny_exception_src1`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
-d1.local/app3 path03
-d1.local/app2 path02
-d1.local/app1 path01`,
+d1.local#/app3 path03
+d1.local#/app2 path02
+d1.local#/app1 path01`,
 			},
 		},
 		{
@@ -379,10 +379,10 @@ d1.local/app1 path01`,
     http-request deny if { var(txn.pathID) path04 } !deny_exception_src2`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
-d1.local/app4 path04
-d1.local/app3 path03
-d1.local/app2 path02
-d1.local/app1 path01`,
+d1.local#/app4 path04
+d1.local#/app3 path03
+d1.local#/app2 path02
+d1.local#/app1 path01`,
 			},
 		},
 		{
@@ -404,9 +404,9 @@ d1.local/app1 path01`,
     http-request deny if { var(txn.pathID) path03 } !allow_rule_src1`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
-d1.local/path path03
-d1.local/app path01
-d1.local/api path02`,
+d1.local#/path path03
+d1.local#/app path01
+d1.local#/api path02`,
 			},
 		},
 		{
@@ -462,8 +462,8 @@ d1.local/api path02`,
     http-request use-service lua.send-413 if { var(txn.pathID) path02 } { req.body_size,sub(2048) gt 0 }`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
-d1.local/app path02
-d1.local/ path01`,
+d1.local#/app path02
+d1.local#/ path01`,
 			},
 		},
 		{
@@ -956,9 +956,9 @@ backend _error404
 `)
 
 	c.checkMap("_front_http_host__begin.map", `
-empty/ default_empty_8080`)
+empty#/ default_empty_8080`)
 	c.checkMap("_front_https_host__begin.map", `
-empty/ default_empty_8080`)
+empty#/ default_empty_8080`)
 
 	c.logger.CompareLogging(defaultLogging)
 }
@@ -1013,9 +1013,9 @@ backend _error404
 `)
 
 	c.checkMap("_front_http_host__begin.map", `
-empty/ default_empty_8080`)
+empty#/ default_empty_8080`)
 	c.checkMap("_front_https_host__begin.map", `
-empty/ default_empty_8080`)
+empty#/ default_empty_8080`)
 	c.logger.CompareLogging(defaultLogging)
 }
 
@@ -1230,13 +1230,13 @@ frontend _front_https
 `)
 
 	c.checkMap("_front_http_host__prefix.map", `
-d1.local/app default_d1_8080`)
+d1.local#/app default_d1_8080`)
 	c.checkMap("_front_http_host__regex.map", `
-^d1\.local/api/v[0-9]+/ default_d1_8080`)
+^d1\.local#/api/v[0-9]+/ default_d1_8080`)
 	c.checkMap("_front_https_host__prefix.map", `
-d1.local/app default_d1_8080`)
+d1.local#/app default_d1_8080`)
 	c.checkMap("_front_https_host__regex.map", `
-^d1\.local/api/v[0-9]+/ default_d1_8080`)
+^d1\.local#/api/v[0-9]+/ default_d1_8080`)
 
 	c.logger.CompareLogging(defaultLogging)
 }
@@ -1288,13 +1288,13 @@ func TestInstanceFrontingProxy(t *testing.T) {
     http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex]
     http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload"`
 		setvarBegin = `
-    http-request set-var(req.snibase) ssl_fc_sni,lower,concat(,req.path)
+    http-request set-var(req.snibase) ssl_fc_sni,lower,concat(\#,req.path)
     http-request set-var(req.snibackend) var(req.snibase),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin.map)
     http-request set-var(req.snibackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt
     http-request set-var(req.tls_nocrt_redir) str(_internal) if !tls-has-crt tls-need-crt
     http-request set-var(req.tls_invalidcrt_redir) str(_internal) if tls-has-invalid-crt tls-check-crt`
 		setvarRegex = `
-    http-request set-var(req.snibase) ssl_fc_sni,lower,concat(,req.path)
+    http-request set-var(req.snibase) ssl_fc_sni,lower,concat(\#,req.path)
     http-request set-var(req.snibackend) var(req.snibase),map_reg(/etc/haproxy/maps/_front_https_sni__regex.map)
     http-request set-var(req.snibackend) var(req.base),map_reg(/etc/haproxy/maps/_front_https_sni__regex.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt
     http-request set-var(req.tls_nocrt_redir) str(_internal) if !tls-has-crt tls-need-crt
@@ -1328,7 +1328,7 @@ func TestInstanceFrontingProxy(t *testing.T) {
     bind :80
     bind :8000 id 11
     acl fronting-proxy so_id 11` + frontUseProto,
-			expectedMap:      "d1.local/ d1_app_8080",
+			expectedMap:      "d1.local#/ d1_app_8080",
 			expectedACLFront: aclFrontExact,
 			expectedSetvar:   setvarBegin,
 		},
@@ -1355,7 +1355,7 @@ func TestInstanceFrontingProxy(t *testing.T) {
     http-request del-header X-SSL-Client-Cert if !fronting-proxy
     http-request set-var(req.backend) var(req.base),map_reg(/etc/haproxy/maps/_front_http_host__regex.map)
     use_backend %[var(req.backend)] if { var(req.backend) -m found }`,
-			expectedRegexMap: `^[^.]+\.d1\.local/ d1_app_8080`,
+			expectedRegexMap: `^[^.]+\.d1\.local#/ d1_app_8080`,
 			expectedACLFront: aclFrontRegex,
 			expectedSetvar:   setvarRegex,
 		},
@@ -1373,7 +1373,7 @@ func TestInstanceFrontingProxy(t *testing.T) {
     mode http
     bind :80
     acl fronting-proxy hdr(X-Forwarded-Proto) -m found` + frontUseProto,
-			expectedMap:      "d1.local/ d1_app_8080",
+			expectedMap:      "d1.local#/ d1_app_8080",
 			expectedACLFront: aclFrontExact,
 			expectedSetvar:   setvarBegin,
 		},
@@ -1392,7 +1392,7 @@ func TestInstanceFrontingProxy(t *testing.T) {
     <<set-req-base>>
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
     use_backend %[var(req.backend)] if { var(req.backend) -m found }`,
-			expectedMap:      "d1.local/ d1_app_8080",
+			expectedMap:      "d1.local#/ d1_app_8080",
 			expectedACLFront: aclFrontExact,
 			expectedSetvar:   setvarBegin,
 		},
@@ -1411,7 +1411,7 @@ func TestInstanceFrontingProxy(t *testing.T) {
     <<set-req-base>>
     http-request set-var(req.backend) var(req.base),map_reg(/etc/haproxy/maps/_front_http_host__regex.map)
     use_backend %[var(req.backend)] if { var(req.backend) -m found }`,
-			expectedRegexMap: `^[^.]+\.d1\.local/ d1_app_8080`,
+			expectedRegexMap: `^[^.]+\.d1\.local#/ d1_app_8080`,
 			expectedACLFront: aclFrontRegex,
 			expectedSetvar:   setvarRegex,
 		},
@@ -1429,7 +1429,7 @@ func TestInstanceFrontingProxy(t *testing.T) {
     <<set-req-base>>
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
     use_backend %[var(req.backend)] if { var(req.backend) -m found }`,
-			expectedMap:      "d1.local/ d1_app_8080",
+			expectedMap:      "d1.local#/ d1_app_8080",
 			expectedACLFront: aclFrontExact,
 			expectedSetvar:   setvarBegin,
 		},
@@ -1449,7 +1449,7 @@ func TestInstanceFrontingProxy(t *testing.T) {
     bind :80
     bind :8000 id 11
     acl fronting-proxy so_id 11` + frontUseProto,
-			expectedMap:      "d1.local/ d1_app_8080",
+			expectedMap:      "d1.local#/ d1_app_8080",
 			expectedACLFront: aclFrontExact,
 			expectedSetvar:   setvarBegin,
 		},
@@ -1468,7 +1468,7 @@ func TestInstanceFrontingProxy(t *testing.T) {
     mode http
     bind :80
     acl fronting-proxy hdr(X-Forwarded-Proto) -m found` + frontUseProto,
-			expectedMap:      "d1.local/ d1_app_8080",
+			expectedMap:      "d1.local#/ d1_app_8080",
 			expectedACLFront: aclFrontExact,
 			expectedSetvar:   setvarBegin,
 		},
@@ -1487,7 +1487,7 @@ func TestInstanceFrontingProxy(t *testing.T) {
     <<set-req-base>>
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
     use_backend %[var(req.backend)] if { var(req.backend) -m found }`,
-			expectedMap:      "d1.local/ d1_app_8080",
+			expectedMap:      "d1.local#/ d1_app_8080",
 			expectedACLFront: aclFrontExact,
 			expectedSetvar:   setvarBegin,
 		},
@@ -1505,7 +1505,7 @@ func TestInstanceFrontingProxy(t *testing.T) {
     <<set-req-base>>
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
     use_backend %[var(req.backend)] if { var(req.backend) -m found }`,
-			expectedMap:      "d1.local/ d1_app_8080",
+			expectedMap:      "d1.local#/ d1_app_8080",
 			expectedACLFront: aclFrontExact,
 			expectedSetvar:   setvarBegin,
 		},
@@ -1766,16 +1766,16 @@ frontend _front_https
 `)
 
 	c.checkMap("_front_http_host__begin.map", `
-d2.local/app d2_app_8080
+d2.local#/app d2_app_8080
 `)
 	c.checkMap("_front_bind_crt.list", `
 /var/haproxy/ssl/certs/default.pem !*
 `)
 	c.checkMap("_front_namespace__begin.map", `
-d2.local/app d2
+d2.local#/app d2
 `)
 	c.checkMap("_front_https_host__begin.map", `
-d2.local/app d2_app_8080
+d2.local#/app d2_app_8080
 `)
 
 	c.logger.CompareLogging(defaultLogging)
@@ -1806,12 +1806,12 @@ backend d1_app_8080
 <<support>>
 `)
 	c.checkMap("_front_http_host__begin.map", `
-d1.local/path d1_app_8080
-d1.local/ _error404
+d1.local#/path d1_app_8080
+d1.local#/ _error404
 `)
 	c.checkMap("_front_https_host__begin.map", `
-d1.local/path d1_app_8080
-d1.local/ _error404
+d1.local#/path d1_app_8080
+d1.local#/ _error404
 `)
 	c.logger.CompareLogging(defaultLogging)
 }
@@ -1855,12 +1855,12 @@ backend d2_app_8080
 <<support>>
 `)
 	c.checkMap("_front_http_host__begin.map", `
-d1.local/path d1_app_8080
-d1.local/ d2_app_8080
+d1.local#/path d1_app_8080
+d1.local#/ d2_app_8080
 `)
 	c.checkMap("_front_https_host__begin.map", `
-d1.local/path d1_app_8080
-d1.local/ d2_app_8080
+d1.local#/path d1_app_8080
+d1.local#/ d2_app_8080
 `)
 	c.logger.CompareLogging(defaultLogging)
 }
@@ -1938,22 +1938,22 @@ frontend _front_https
 `)
 
 	c.checkMap("_front_http_host__begin.map", `
-d1.local/ d1_app_8080
+d1.local#/ d1_app_8080
 `)
 	c.checkMap("_front_http_host__prefix.map", `
-d2.local/app d2_app_8080
+d2.local#/app d2_app_8080
 `)
 	c.checkMap("_front_https_host__begin.map", `
-d1.local/ d1_app_8080
+d1.local#/ d1_app_8080
 `)
 	c.checkMap("_front_https_host__prefix.map", `
-d2.local/app d2_app_8080
+d2.local#/app d2_app_8080
 `)
 	c.checkMap("_front_namespace__begin.map", `
-d1.local/ d1
+d1.local#/ d1
 `)
 	c.checkMap("_front_namespace__prefix.map", `
-d2.local/app -
+d2.local#/app -
 `)
 
 	c.checkMap("_front_bind_crt.list", `
@@ -2066,7 +2066,7 @@ frontend _front_https
     acl tls-has-invalid-crt ssl_c_verify gt 0
     acl tls-check-crt ssl_fc_sni -i -m str -f /etc/haproxy/maps/_front_tls_auth__exact.list
     acl tls-check-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front_tls_auth__regex.list
-    http-request set-var(req.snibase) ssl_fc_sni,lower,concat(,req.path)
+    http-request set-var(req.snibase) ssl_fc_sni,lower,concat(\#,req.path)
     http-request set-var(req.snibackend) var(req.snibase),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin.map)
     http-request set-var(req.snibackend) var(req.snibase),map_reg(/etc/haproxy/maps/_front_https_sni__regex.map) if !{ var(req.snibackend) -m found }
     http-request set-var(req.snibackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt
@@ -2088,14 +2088,14 @@ frontend _front_https
 `)
 
 	c.checkMap("_front_http_host__begin.map", `
-d2.local/ d_app_8080
-d3.local/ d_app_8080
-d4.local/ d_app_8080
-d5.local/ d_app_8080
-d6.local/ d_app_8080
+d2.local#/ d_app_8080
+d3.local#/ d_app_8080
+d4.local#/ d_app_8080
+d5.local#/ d_app_8080
+d6.local#/ d_app_8080
 `)
 	c.checkMap("_front_http_host__regex.map", `
-^[^.]+\.d1\.local/ d_app_8080
+^[^.]+\.d1\.local#/ d_app_8080
 `)
 	c.checkMap("_front_bind_crt.list", `
 /var/haproxy/ssl/certs/default.pem !*
@@ -2107,16 +2107,16 @@ d6.local/ d_app_8080
 /var/haproxy/ssl/certs/default.pem [ssl-min-ver TLSv1.0 ssl-max-ver TLSv1.2] d6.local
 `)
 	c.checkMap("_front_https_host__begin.map", `
-d3.local/ d_app_8080
-d4.local/ d_app_8080
-d5.local/ d_app_8080
-d6.local/ d_app_8080
+d3.local#/ d_app_8080
+d4.local#/ d_app_8080
+d5.local#/ d_app_8080
+d6.local#/ d_app_8080
 `)
 	c.checkMap("_front_https_sni__begin.map", `
-d2.local/ d_app_8080
+d2.local#/ d_app_8080
 `)
 	c.checkMap("_front_https_sni__regex.map", `
-^[^.]+\.d1\.local/ d_app_8080
+^[^.]+\.d1\.local#/ d_app_8080
 `)
 	c.checkMap("_front_tls_needcrt__exact.list", `
 d2.local
@@ -2206,16 +2206,16 @@ backend default_default-backend_8080
 `)
 
 	c.checkMap("_front_http_host__begin.map", `
-d.local/sub d_app3_8080
-d.local/app/sub d_app2_8080
-d.local/app d_app1_8080
-d.local/ d_app0_8080
+d.local#/sub d_app3_8080
+d.local#/app/sub d_app2_8080
+d.local#/app d_app1_8080
+d.local#/ d_app0_8080
 `)
 	c.checkMap("_front_https_host__begin.map", `
-d.local/sub d_app3_8080
-d.local/app/sub d_app2_8080
-d.local/app d_app1_8080
-d.local/ d_app0_8080
+d.local#/sub d_app3_8080
+d.local#/app/sub d_app2_8080
+d.local#/app d_app1_8080
+d.local#/ d_app0_8080
 `)
 
 	c.logger.CompareLogging(defaultLogging)
@@ -2486,8 +2486,8 @@ frontend _front_https
 d2.local d2_app_8080
 d3.local d3_app-ssl_8443`)
 	c.checkMap("_front_http_host__begin.map", `
-d2.local/ _redirect_https
-d3.local/ d3_app-http_8080`)
+d2.local#/ _redirect_https
+d3.local#/ d3_app-http_8080`)
 	c.checkMap("_front_bind_crt.list", `
 /var/haproxy/ssl/certs/default.pem !*
 `)
@@ -2564,14 +2564,14 @@ frontend _front_https
 `)
 
 	c.checkMap("_front_http_host__regex.map", `
-^[^.]+\.d1\.local/ d1_app_8080
+^[^.]+\.d1\.local#/ d1_app_8080
 `)
 	c.checkMap("_front_http_host__begin.map", `
-d2.local/app2 d2_app_8080
-d2.local/app1 d2_app_8080
+d2.local#/app2 d2_app_8080
+d2.local#/app1 d2_app_8080
 `)
 	c.checkMap("_front_http_host__regex.map", `
-^[^.]+\.d1\.local/ d1_app_8080
+^[^.]+\.d1\.local#/ d1_app_8080
 `)
 	c.checkMap("_front_redir_fromroot__exact.map", `
 d2.local /app1
@@ -2580,11 +2580,11 @@ d2.local /app1
 ^[^.]+\.d1\.local$ /app
 `)
 	c.checkMap("_front_https_host__begin.map", `
-d2.local/app2 d2_app_8080
-d2.local/app1 d2_app_8080
+d2.local#/app2 d2_app_8080
+d2.local#/app1 d2_app_8080
 `)
 	c.checkMap("_front_https_host__regex.map", `
-^[^.]+\.d1\.local/ d1_app_8080
+^[^.]+\.d1\.local#/ d1_app_8080
 `)
 
 	c.logger.CompareLogging(defaultLogging)
@@ -2652,21 +2652,21 @@ frontend _front_https
 `)
 
 	c.checkMap("_front_http_host__begin.map", `
-d1.local/ d1_app_8080
-d2.local/ d2_app_8080
-d3.local/ d3_app_8080
-sub.d2.local/ d2_app_8080
+d1.local#/ d1_app_8080
+d2.local#/ d2_app_8080
+d3.local#/ d3_app_8080
+sub.d2.local#/ d2_app_8080
 `)
 	c.checkMap("_front_https_host__begin.map", `
-d1.local/ d1_app_8080
-d2.local/ d2_app_8080
-d3.local/ d3_app_8080
-sub.d2.local/ d2_app_8080
+d1.local#/ d1_app_8080
+d2.local#/ d2_app_8080
+d3.local#/ d3_app_8080
+sub.d2.local#/ d2_app_8080
 `)
 	c.checkMap("_front_https_host__regex.map", `
-^[a-z]+\.d2\.local/ d2_app_8080
-^[^.]+\.d1\.local/ d1_app_8080
-d3\.local/ d3_app_8080
+^[a-z]+\.d2\.local#/ d2_app_8080
+^[^.]+\.d1\.local#/ d1_app_8080
+d3\.local#/ d3_app_8080
 `)
 	c.logger.CompareLogging(defaultLogging)
 }
@@ -3296,7 +3296,7 @@ frontend _front_https
     acl tls-has-crt ssl_c_used
     acl tls-has-invalid-crt ssl_c_verify gt 0
     acl tls-check-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front_tls_auth__regex.list
-    http-request set-var(req.snibase) ssl_fc_sni,lower,concat(,req.path)
+    http-request set-var(req.snibase) ssl_fc_sni,lower,concat(\#,req.path)
     http-request set-var(req.snibackend) var(req.snibase),map_reg(/etc/haproxy/maps/_front_https_sni__regex.map)
     http-request set-var(req.snibackend) var(req.base),map_reg(/etc/haproxy/maps/_front_https_sni__regex.map) if !{ var(req.snibackend) -m found } !tls-has-crt
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map_reg(/etc/haproxy/maps/_front_tls_invalidcrt_pages__regex.map,_internal) if tls-has-invalid-crt tls-check-crt
@@ -3310,28 +3310,28 @@ frontend _front_https
 `)
 
 	c.checkMap("_front_http_host__begin.map", `
-d1.local/ d1_app_8080
+d1.local#/ d1_app_8080
 `)
 	c.checkMap("_front_http_host__regex.map", `
-^[^.]+\.app\.d1\.local/ d1_app_8080
-^[^.]+\.sub\.d1\.local/ d1_app_8080
-^[^.]+\.d2\.local/ d2_app_8080
+^[^.]+\.app\.d1\.local#/ d1_app_8080
+^[^.]+\.sub\.d1\.local#/ d1_app_8080
+^[^.]+\.d2\.local#/ d2_app_8080
 `)
 	c.checkMap("_front_redir_fromroot__regex.map", `
 ^[^.]+\.d2\.local$ /app
 `)
 	c.checkMap("_front_https_host__begin.map", `
-d1.local/ d1_app_8080
+d1.local#/ d1_app_8080
 `)
 	c.checkMap("_front_https_host__regex.map", `
-^[^.]+\.app\.d1\.local/ d1_app_8080
-^[^.]+\.d2\.local/ d2_app_8080
+^[^.]+\.app\.d1\.local#/ d1_app_8080
+^[^.]+\.d2\.local#/ d2_app_8080
 `)
 	c.checkMap("_front_redir_fromroot__regex.map", `
 ^[^.]+\.d2\.local$ /app
 `)
 	c.checkMap("_front_https_sni__regex.map", `
-^[^.]+\.sub\.d1\.local/ d1_app_8080
+^[^.]+\.sub\.d1\.local#/ d1_app_8080
 `)
 	c.checkMap("_front_tls_auth__regex.list", `
 ^[^.]+\.sub\.d1\.local$
@@ -3624,7 +3624,7 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     http-request use-service lua.send-404`,
 		"    <<set-req-base>>": `    http-request set-var(req.path) path
     http-request set-var(req.host) hdr(host),field(1,:),lower
-    http-request set-var(req.base) var(req.host),concat(,req.path)`,
+    http-request set-var(req.base) var(req.host),concat(\#,req.path)`,
 		"    <<http-headers>>": `    http-request set-header X-Forwarded-Proto http
     http-request del-header X-SSL-Client-CN
     http-request del-header X-SSL-Client-DN
@@ -3663,7 +3663,7 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
     http-request set-var(req.path) path
     http-request set-var(req.host) hdr(host),field(1,:),lower
-    http-request set-var(req.base) var(req.host),concat(,req.path)
+    http-request set-var(req.base) var(req.host),concat(\#,req.path)
     http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map)
     <<https-headers>>
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }`,

@@ -123,7 +123,7 @@ func (hm *HostsMap) addTarget(hostname, path, target string, match MatchType) {
 		hostname: hostname,
 		path:     path,
 		match:    match,
-		Key:      bindHostnamePath(match, hostname, path),
+		Key:      buildMapKey(match, hostname, path),
 		Value:    target,
 	}
 	matchFile := hm.rawfiles[match]
@@ -136,7 +136,7 @@ func (hm *HostsMap) addTarget(hostname, path, target string, match MatchType) {
 	hm.matchFiles = nil
 }
 
-func bindHostnamePath(match MatchType, hostname, path string) string {
+func buildMapKey(match MatchType, hostname, path string) string {
 	if match == MatchRegex && hostname != "" && path != "" {
 		// we support hostname with ^/$ boundaries
 		// lets change the ending of the hostname
@@ -146,6 +146,21 @@ func bindHostnamePath(match MatchType, hostname, path string) string {
 		} else {
 			hostname = hostname + "[^/]*"
 		}
+	}
+	if path != "" {
+		// Fixes dir match type (Prefix from the ingress pathType) if a path or
+		// subpath matches a configured domain. Eg, this map:
+		//
+		//   domain.local/ backend1
+		//   sub.domain.local/ backend2
+		//
+		// and this request:
+		//
+		//   sub.domain.local/domain.local
+		//
+		// backend2 would be chosen on beg and reg match types, but backend1
+		// would be chosen if dir was used.
+		return hostname + "#" + path
 	}
 	return hostname + path
 }
