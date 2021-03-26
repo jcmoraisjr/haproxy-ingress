@@ -2374,7 +2374,7 @@ frontend _front_http
     bind :80
     http-request set-var(req.path) path
     http-request set-var(req.host) hdr(host),field(1,:),lower
-    http-request set-var(req.base) var(req.host),concat(,req.path)
+    http-request set-var(req.base) var(req.host),concat(\#,req.path)
     http-request set-header X-Forwarded-Proto http
     http-request del-header X-SSL-Client-CN
     http-request del-header X-SSL-Client-DN
