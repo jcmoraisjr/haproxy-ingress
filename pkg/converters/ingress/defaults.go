@@ -51,6 +51,7 @@ func createDefaults() map[string]string {
 		types.BackHSTSMaxAge:             "15768000",
 		types.BackHSTSPreload:            "false",
 		types.BackInitialWeight:          "1",
+		types.BackOAuthHeaders:           "X-Auth-Request-Email:req.auth_response_header.x_auth_request_email",
 		types.BackSessionCookieDynamic:   "true",
 		types.BackSessionCookiePreserve:  "false",
 		types.BackSessionCookieValue:     "server-name",
@@ -68,6 +69,7 @@ func createDefaults() map[string]string {
 		types.BackWAFMode:                "deny",
 		//
 		types.GlobalAcmeExpiring:                 "30",
+		types.GlobalAuthProxy:                    "_front__auth:14415-14499",
 		types.GlobalCookieKey:                    "Ingress",
 		types.GlobalDNSAcceptedPayloadSize:       "8192",
 		types.GlobalDNSClusterDomain:             "cluster.local",

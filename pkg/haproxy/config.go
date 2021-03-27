@@ -374,6 +374,7 @@ func (c *config) Commit() {
 		}
 		c.globalOld = &globalOld
 	}
+	c.frontend.Commit()
 	c.hosts.Commit()
 	c.backends.Commit()
 	c.tcpbackends.Commit()

@@ -106,12 +106,14 @@ type ProcsConfig struct {
 
 // SyslogConfig ...
 type SyslogConfig struct {
-	Endpoint       string
-	Format         string
+	Endpoint string
+	Format   string
+	Length   int
+	Tag      string
+	//
+	AuthLogFormat  string
 	HTTPLogFormat  string
 	HTTPSLogFormat string
-	Length         int
-	Tag            string
 	TCPLogFormat   string
 }
 
@@ -325,13 +327,31 @@ type FrontendMaps struct {
 	TLSMissingCrtPagesMap *HostsMap
 }
 
+// AuthProxy ...
+type AuthProxy struct {
+	BindList   []*AuthProxyBind
+	Name       string
+	RangeEnd   int
+	RangeStart int
+}
+
+// AuthProxyBind ...
+type AuthProxyBind struct {
+	AuthBackendName string
+	Backend         BackendID
+	LocalPort       int
+	SocketID        int
+}
+
 // Frontend ...
 type Frontend struct {
+	changed     bool
 	Maps        *FrontendMaps
 	BindName    string
 	BindSocket  string
 	BindID      int
 	AcceptProxy bool
+	AuthProxy   AuthProxy
 	//
 	DefaultCrtFile string
 	DefaultCrtHash string
@@ -460,6 +480,7 @@ const (
 type Backends struct {
 	items, itemsAdd, itemsDel map[string]*Backend
 	//
+	authBackends   map[string]*Backend
 	shards         []map[string]*Backend
 	changedShards  map[int]bool
 	DefaultBackend *Backend
@@ -557,11 +578,11 @@ type BackendPath struct {
 	//
 	AllowedIPHTTP AccessConfig
 	AuthHTTP      AuthHTTP
+	AuthExternal  AuthExternal
 	Cors          Cors
 	DeniedIPHTTP  AccessConfig
 	HSTS          HSTS
 	MaxBodySize   int64
-	OAuth         OAuthConfig
 	RewriteURL    string
 	SSLRedirect   bool
 	WAF           WAF
@@ -609,14 +630,6 @@ type BackendLimit struct {
 type AccessConfig struct {
 	Rule      []string
 	Exception []string
-}
-
-// OAuthConfig ...
-type OAuthConfig struct {
-	Impl        string
-	BackendName string
-	URIPrefix   string
-	Headers     map[string]string
 }
 
 // ServerConfig ...
@@ -673,6 +686,15 @@ type Cookie struct {
 	Shared   bool
 	Strategy string
 	Keywords string
+}
+
+// AuthExternal ...
+type AuthExternal struct {
+	Allow           string
+	AuthBackendName string
+	Headers         map[string]string
+	Path            string
+	SignIn          string
 }
 
 // AuthHTTP ...

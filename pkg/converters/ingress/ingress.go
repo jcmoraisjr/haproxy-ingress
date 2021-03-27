@@ -28,6 +28,7 @@ import (
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/annotations"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
+	ingutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/utils"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	convutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
@@ -285,6 +286,7 @@ func (c *converter) syncPartial() {
 	c.tracker.DeleteUserlists(dirtyUsers)
 	c.tracker.DeleteStorages(dirtyStorages)
 	c.haproxy.Hosts().RemoveAll(dirtyHosts)
+	c.haproxy.Frontend().RemoveAuthBackendByTarget(dirtyBacks)
 	c.haproxy.Backends().RemoveAll(dirtyBacks)
 	c.haproxy.Userlists().RemoveAll(dirtyUsers)
 	c.haproxy.AcmeData().Storages().RemoveAll(dirtyStorages)
@@ -446,6 +448,17 @@ func (c *converter) syncIngress(ing *networking.Ingress) {
 			if sslpassthrough && sslpasshttpport != "" {
 				if _, err := c.addBackend(source, hostname, uri, fullSvcName, sslpasshttpport, annBack); err != nil {
 					c.logger.Warn("skipping http port config of ssl-passthrough on %v: %v", source, err)
+				}
+			}
+			// pre-building the auth-url backend
+			// TODO move to updater.buildBackendAuthExternal()
+			if url := annBack[ingtypes.BackAuthURL]; url != "" {
+				urlProto, urlHost, urlPort, _, _ := ingutils.ParseURL(url)
+				if (urlProto == "service" || urlProto == "svc") && urlHost != "" && urlPort != "" {
+					_, err := c.addBackend(source, hostname, uri, ing.Namespace+"/"+urlHost, urlPort, map[string]string{})
+					if err != nil {
+						c.logger.Warn("skipping auth-url on %v: %v", source, err)
+					}
 				}
 			}
 		}

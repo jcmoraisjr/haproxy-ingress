@@ -103,6 +103,7 @@ global
     log-tag {{ $global.Syslog.Tag }}
 {{- end }}
 {{- if or (not $global.External.IsExternal) $global.External.HasLua }}
+    lua-prepend-path /etc/haproxy/lua/?.lua
     lua-load /etc/haproxy/lua/auth-request.lua
 {{- end }}
     lua-load /etc/haproxy/lua/services.lua
@@ -612,18 +613,20 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- $oauthCfg := $backend.PathConfig "OAuth" }}
-{{- range $i, $oauth := $oauthCfg.Items }}
-{{- range $pathIDs := $oauthCfg.PathIDs $i }}
-{{- if eq $oauth.Impl "oauth2_proxy" }}
+{{- $authCfg := $backend.PathConfig "AuthExternal" }}
+{{- range $i, $auth := $authCfg.Items }}
+{{- range $pathIDs := $authCfg.PathIDs $i }}
+{{- if $auth.AuthBackendName }}
     http-request set-header X-Real-IP %[src]
         {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
-    http-request lua.auth-request {{ $oauth.BackendName }} {{ $oauth.URIPrefix }}/auth
+    http-request lua.auth-request {{ $auth.AuthBackendName }} {{ $auth.Path }}
         {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
-    http-request redirect location {{ $oauth.URIPrefix }}/start?rd=%[path] if !{ path_beg {{ $oauth.URIPrefix }}/ } !{ var(txn.auth_response_successful) -m bool }
+    http-request {{ if $auth.SignIn }}redirect location {{ $auth.SignIn }}{{ else }}deny{{ end }}
+        {{- "" }} if !{ var(txn.auth_response_successful) -m bool }
+        {{- if $auth.Allow }} !{ path_beg {{ $auth.Allow }} }{{ end }}
         {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
-{{- range $header, $attr := $oauth.Headers }}
-    http-request set-header {{ $header }} %[var(txn.{{ $attr }})] if { var(txn.{{ $attr }}) -m found }
+{{- range $header, $attr := $auth.Headers }}
+    http-request set-header {{ $header }} %[var({{ $attr }})] if { var({{ $attr }}) -m found }
         {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- end }}
@@ -858,6 +861,57 @@ backend _error404
 # #   FRONTENDS
 # #
 #
+{{- if $frontend.AuthProxy.BindList }}
+
+{{- $proxy := $frontend.AuthProxy }}
+{{- $use_socket := gt (len $proxy.BindList) 1 }}
+
+  # # # # # # # # # # # # # # # # # # #
+# #
+#     Authentication External
+#
+### helper backends used by auth-request.lua
+### using tcp ports - haproxy-lua-http.lua doesn't support unix socket
+{{- range $bind := $proxy.BindList }}
+backend {{ $bind.AuthBackendName }}
+    mode http
+{{- range $snippet := index $global.CustomProxy $bind.AuthBackendName }}
+    {{ $snippet }}
+{{- end }}
+    server {{ $bind.AuthBackendName }} 127.0.0.1:{{ $bind.LocalPort }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+frontend {{ $proxy.Name }}
+    mode http
+{{- range $bind := $proxy.BindList }}
+    bind 127.0.0.1:{{ $bind.LocalPort }}
+        {{- if $use_socket }} id {{ $bind.SocketID }}{{ end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $global.Syslog.Endpoint }}
+{{- if eq $global.Syslog.AuthLogFormat "default" }}
+    option httplog
+{{- else if $global.Syslog.AuthLogFormat }}
+    log-format {{ $global.Syslog.AuthLogFormat }}
+{{- else }}
+    no log
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- range $snippet := index $global.CustomProxy $proxy.Name }}
+    {{ $snippet }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- range $bind := $proxy.BindList }}
+    use_backend {{ $bind.Backend }}
+        {{- if $use_socket }} if { so_id {{ $bind.SocketID }} }{{ end }}
+{{- end }}
+{{- end }}
+
 {{- if $hosts.HasSSLPassthrough }}
 
   # # # # # # # # # # # # # # # # # # #

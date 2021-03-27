@@ -18,8 +18,11 @@ package types
 
 import (
 	"crypto/md5"
+	"fmt"
 	"reflect"
 	"sort"
+	"strconv"
+	"strings"
 )
 
 // CreateBackends ...
@@ -32,6 +35,7 @@ func CreateBackends(shardCount int) *Backends {
 		items:         map[string]*Backend{},
 		itemsAdd:      map[string]*Backend{},
 		itemsDel:      map[string]*Backend{},
+		authBackends:  map[string]*Backend{},
 		shards:        shards,
 		changedShards: map[int]bool{},
 	}
@@ -189,6 +193,20 @@ func (b *Backends) buildSortedItems(backendItems map[string]*Backend) []*Backend
 	return items
 }
 
+// BuildUsedAuthBackends ...
+func (b *Backends) BuildUsedAuthBackends() map[string]bool {
+	usedNames := map[string]bool{}
+	for _, backend := range b.items {
+		for _, path := range backend.Paths {
+			name := path.AuthExternal.AuthBackendName
+			if name != "" {
+				usedNames[name] = true
+			}
+		}
+	}
+	return usedNames
+}
+
 // AcquireBackend ...
 func (b *Backends) AcquireBackend(namespace, name, port string) *Backend {
 	if backend := b.FindBackend(namespace, name, port); backend != nil {
@@ -202,6 +220,25 @@ func (b *Backends) AcquireBackend(namespace, name, port string) *Backend {
 		b.shards[backend.shard][backend.ID] = backend
 	}
 	b.changedShards[backend.shard] = true
+	return backend
+}
+
+// AcquireAuthBackend ...
+func (b *Backends) AcquireAuthBackend(ipList []string, port int, hostname string) *Backend {
+	sort.Strings(ipList)
+	key := fmt.Sprintf("%s:%d:%s", strings.Join(ipList, ","), port, hostname)
+	backend := b.authBackends[key]
+	if backend == nil {
+		name := fmt.Sprintf("backend%03d", len(b.authBackends)+1)
+		backend = b.AcquireBackend("_auth", name, strconv.Itoa(port))
+		if hostname != "" {
+			backend.CustomConfig = []string{"http-request set-header Host " + hostname}
+		}
+		for _, ip := range ipList {
+			_ = backend.AcquireEndpoint(ip, port, "")
+		}
+		b.authBackends[key] = backend
+	}
 	return backend
 }
 

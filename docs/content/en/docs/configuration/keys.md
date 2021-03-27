@@ -292,14 +292,18 @@ The table below describes all supported configuration keys.
 | [`agent-check-send`](#agent-check)                   | string to send upon agent connection    | Backend |                    |
 | [`allowlist-source-range`](#allowlist)               | Comma-separated IPs or CIDRs            | Path    |                    |
 | [`app-root`](#app-root)                              | /url                                    | Host    |                    |
-| [`auth-realm`](#auth)                                | realm string                            | Path    |                    |
-| [`auth-secret`](#auth)                               | secret name                             | Path    |                    |
+| [`auth-headers`](#auth-external)                     | `<header>:<var>,...`                    | Path    |                    |
+| [`auth-log-format`](#log-format)                     | http log format for auth external       | Global  | do not log         |
+| [`auth-proxy`](#auth-external)                       | frontend name and tcp port interval     | Global  | `_front__auth:14415-14499` |
+| [`auth-realm`](#auth-basic)                          | realm string                            | Path    |                    |
+| [`auth-secret`](#auth-basic)                         | secret name                             | Path    |                    |
+| [`auth-signin`](#auth-external)                      | Sign in URL                             | Path    |                    |
 | [`auth-tls-cert-header`](#auth-tls)                  | [true\|false]                           | Backend |                    |
 | [`auth-tls-error-page`](#auth-tls)                   | url                                     | Host    |                    |
 | [`auth-tls-secret`](#auth-tls)                       | namespace/secret name                   | Host    |                    |
 | [`auth-tls-strict`](#auth-tls)                       | [true\|false]                           | Host    |                    |
 | [`auth-tls-verify-client`](#auth-tls)                | [off\|optional\|on\|optional_no_ca]     | Host    |                    |
-| [`auth-type`](#auth)                                 | "basic"                                 | Path    |                    |
+| [`auth-url`](#auth-external)                         | Authentication URL                      | Path    |                    |
 | [`backend-check-interval`](#health-check)            | time with suffix                        | Backend | `2s`               |
 | [`backend-protocol`](#backend-protocol)              | [h1\|h2\|h1-ssl\|h2-ssl]                | Backend | `h1`               |
 | [`backend-server-naming`](#backend-server-naming)    | [sequence\|ip\|pod]                     | Backend | `sequence`         |
@@ -686,31 +690,87 @@ context path, so it needs to be declared in the same Ingress that configures it.
 
 ---
 
-## Auth
+## Auth Basic
 
 | Configuration key | Scope   | Default   | Since  |
 |-------------------|---------|-----------|--------|
 | `auth-realm`      | `Path`  | localhost |        |
 | `auth-secret`     | `Path`  |           |        |
-| `auth-type`       | `Path`  |           |        |
 
-Configures authentication options.
+Configures Basic Authentication options.
 
-* `auth-type`: Defines the authentication type. Currently the only supported option is `basic`.
-* `auth-realm`: Optional, configures the authentication realm string. `localhost` will be used if not provided.
 * `auth-secret`: A secret name with users and passwords used to configure basic authentication. The secret can be in the same namespace of the Ingress resource, or any other namespace if cross namespace is enabled. Secret in the same namespace does not need to be prepended with `namespace/`. A filename prefixed with `file://` can be used containing the list of users and passwords, eg `file:///dir/users.list`.
+* `auth-realm`: Optional, configures the authentication realm string. `localhost` will be used if not provided.
 
-The secret referenced by `auth-secret` should have a key named `auth` with users and passwords, one per line. The following two formats are supported and both are supported in the same secret:
+The secret referenced by `auth-secret` should have a key named `auth` with users and passwords, one per line. The following two formats are supported and both are supported in the same secret or file:
 
 * `<user>::<password>`: User and password are separated by 2 (two) colons. The password will be copied verbatim, stored in the configuration file in an insecure way.
 * `<user>:<password-hash>`: User and password are separated by 1 (one) colon. This syntax needs a password hash that can be generated with `mkpasswd`.
+
+{{% alert title="Note" %}}
+Up to v0.12 the configuration key `auth-type` was mandatory, it enabled the only supported authentication type `basic`. Since v0.13 this configuration is deprecated and both Basic and External authentication types can be enabled at the same time: configure `auth-secret` to enable basic authentication, and configure `auth-url` to enable external authentication.
+{{% /alert %}}
 
 See also:
 
 * [--allow-cross-namespace]({{% relref "command-line/#allow-cross-namespace" %}}) command-line option
 * [Auth TLS](#auth-tls) configuration keys
-* [OAuth](#oauth) configuration keys
 * [Auth Basic example](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/auth/basic) page
+
+---
+
+## Auth External
+
+| Configuration key | Scope    | Default                    | Since |
+|-------------------|--------- |----------------------------|-------|
+| `auth-headers`    | `Path`   |                            | v0.13 |
+| `auth-proxy`      | `Global` | `_front__auth:14415-14499` | v0.13 |
+| `auth-signin`     | `Path`   |                            | v0.13 |
+| `auth-url`        | `Path`   |                            | v0.13 |
+
+Configures External Authentication options.
+
+* `auth-url`: Configures the endpoint of an authentication service. HAProxy will make the request and wait for the response before send the request to the backend server. The authentication service should respond with a 2xx status code, otherwise the request is considered as not allowed and HAProxy will respond to the client with 403 deny. See below some usage instructions.
+* `auth-signin`: Optional, configures the endpoint of the sign in server used to redirect failed requests. HAProxy will respond the request with 403 deny if the authentication fails and `auth-signin` is not declared.
+* `auth-headers`: Optional, configures additional headers that should be sent to the backend server. Usage instructions later in this section.
+* `auth-proxy`: Optional, changes the name of a frontend proxy and a free TCP port range, used by `auth-request.lua` script to query the external authentication endpoint.
+
+HAProxy Ingress can configure haproxy to use an external HTTP service to validate every request made to a backend. The external authentication service will receive all the headers sent by the client, should accept HEAD requests, and should respond with HTTP status code between `200` and `299`, inclusive, if the request should be accepted. Any other status code will make haproxy redirect the client to a sign in endpoint, if configured, or will otherwise respond with HTTP status code `403` to the client.
+
+`auth-url` receives the authentication service endpoint. The url format is `<proto>://<name>[:<port>][<path>]`, which means:
+
+* `<proto>`: can be `http`, `https`, `service` or `svc`.
+* `<name>`: the IP or hostname if `http` or `https`, or the name of a service if `service`. `svc` is an alias to `service`. Note that the hostname is resolved to a list of IP when the ingress is parsed and will not be dynamically updated later if the DNS record changes.
+* `<port>`: the port number, must be provided if a service is used and can be omitted if using `http` or `https`.
+* `<path>`: optional, the fully qualified path to the authentication service.
+
+`http` and `https` protocols are straightforward: use them to connect to an IP or hostname without any further configuration. `http` adds the HTTP `Host` header if a hostname is used, and `https` adds also the sni extension. Note that `https` connects in an insecure way and currently cannot be customized. Do NOT use neither `http` nor `https` if haproxy -> authentication service communication has untrusted networks.
+
+`svc` protocol allows to use a Kubernetes service declared in the same namespace of the ingress or the service being annotated. The service can be of any type and a port must always be declared - both in the `auth-url` configuration and in the service resource. Using `svc` protocol allows to configure a secure connection, see [secure](#secure-backend) configuration keys and annotate them in the target service.
+
+A valid response (HTTP status code between `200` and `299`) from the external authentication service will allow the request to reach its backend server without further action. An invalid request, one that the authentication service respond without a 2xx status code, can be managed in two distinct ways: a HTTP status code 403 sent to the client or, if `auth-signin` is configured, this endpoint is sent back to the client in the `Location` header as a HTTP 302 response.
+
+The external authentication service can provide information to the backend server using HTTP headers. All response headers received from the external authentication service are available as haproxy request variables, named as `req.auth_response_header.<sanitized_header_name>`. Configures `auth-headers` configuration key with a comma-separated list of `<header>:<haproxy-var>` to send its content to the backend server. OAuth2-proxy for example sends a response with `X-Auth-Request-Email`, so configuring `auth-headers` with `X-Email:req.auth_response_header.x_auth_request_email` will send a header `X-Email` with the email content to the backend server.
+
+An [oauth2-proxy](https://github.com/oauth2-proxy/oauth2-proxy) service can be configured this way:
+
+* `auth-url` as `"https://<ip-or-hostname>/oauth2/auth"`. Do use and properly configure `svc` protocol instead if the network between HAProxy Ingress and the oauth2-proxy service is untrusted.
+* `auth-signin` as `"https://<ip-or-hostname>/oauth2/start?rd=%[path]"`. The content is parsed by haproxy as a [log-format](http://cbonte.github.io/haproxy-dconv/2.2/configuration.html#8.2.4) string and the result is copied verbatim to the `Location` header of a HTTP 302 response. The `rd` query field asks oauth2-proxy to preserve the path provided by the client.
+* `auth-headers` as `X-Auth-Request-Email:req.auth_response_header.x_auth_request_email`, this will create the header `X-Auth-Request-Email` with the user email provided by oauth2-proxy.
+
+OAuth2-proxy can be running in the Kubernetes cluster and served by this same controller, however remember to not expose the service in the same ingress that configures the `auth-url` and `auth-signin`, otherwise it will endless loop in a HTTP 403 error.
+
+HAProxy Ingress uses [`auth-request.lua`](https://github.com/TimWolla/haproxy-auth-request) script, which in turn uses HAProxy Technologies' [`haproxy-lua-http`](https://github.com/haproxytech/haproxy-lua-http/) to perform the authentication request and waits for the response. The request is managed by an internal haproxy frontend/backend pair, which can be fine tuned with `auth-proxy`. The default value is `_front__auth:14415-14499`: `_front__auth` is the name of the frontend helper and `14415-14499` is an [unassigned TCP port range](https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.txt) that `haproxy-lua-http` uses to connect and send the authentication request. Requests to this proxy can be added to the log, see [`auth-log-format`](#log-format") configuration key.
+
+{{% alert title="Note" %}}
+Auth External needs [`external-has-lua`](#external) enabled if running on an external haproxy deployment. The external haproxy needs Lua json module installed (Alpine's `lua-json4` package)
+{{% /alert %}}
+
+See also:
+
+* [Auth TLS](#auth-tls) configuration keys
+* [OAuth](#oauth) configuration keys
+* [`external-has-lua`](#external) configuration key.
 
 ---
 
@@ -1287,11 +1347,13 @@ external deployment is used. These options have no effect if using the embedded
 haproxy.
 
 * `external-has-lua`: Define as true if the external haproxy has Lua libraries
-installed in the operating system. Currently only [OAuth](#oauth) needs Lua
-socket installed and will not work if `external-has-lua` is not enabled.
+installed in the operating system. Currently [Auth External](#auth-external)
+and [OAuth](#oauth) need Lua json module installed (Alpine's `lua-json4`
+package) and will not work if `external-has-lua` is not enabled.
 
 See also:
 
+* [Auth External](#auth-external) configuration keys.
 * [OAuth](#oauth) configuration keys.
 * [master-socket]({{% relref "command-line#master-socket" %}}) command-line option
 
@@ -1519,6 +1581,7 @@ See also:
 
 | Configuration key  | Scope    | Default | Since |
 |--------------------|----------|---------|-------|
+| `auth-log-format`  | `Global` |         | v0.13 |
 | `http-log-format`  | `Global` |         |       |
 | `https-log-format` | `Global` |         |       |
 | `tcp-log-format`   | `Global` |         |       |
@@ -1526,6 +1589,7 @@ See also:
 Customize the tcp, http or https log format using log format variables. Only used if
 [`syslog-endpoint`](#syslog) is also configured.
 
+* `auth-log-format`: log format of all auth external frontends. Use `default` to configure default HTTP log format, defaults to not log.
 * `http-log-format`: log format of all HTTP proxies, defaults to HAProxy default HTTP log format.
 * `https-log-format`: log format of TCP proxy used to inspect SNI extention. Use `default` to configure default TCP log format, defaults to not log.
 * `tcp-log-format`: log format of TCP proxies, defaults to HAProxy default TCP log format. See also [TCP services configmap](#tcp-services-configmap) command-line option.
@@ -1534,6 +1598,7 @@ See also:
 
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#8.2.4
 * [`syslog`](#syslog)
+* [Auth External](#auth-external) configuration keys.
 
 ---
 
@@ -1668,27 +1733,23 @@ See also:
 | `oauth-headers`   | `Path` |         |       |
 | `oauth-uri-prefix`| `Path` |         |       |
 
-Configure OAuth2 via Bitly's `oauth2_proxy`.
+Configure OAuth2 via Bitly's `oauth2_proxy`. These options have less precedence if used with `auth-url` and `auth-signin`.
 
-* `oauth`: Defines the oauth implementation. The only supported option is `oauth2_proxy`.
+* `oauth`: Defines the oauth implementation. The only supported option is `oauth2_proxy` or its alias `oauth2-proxy`.
 * `oauth-uri-prefix`: Defines the URI prefix of the oauth service. The default value is `/oauth2`. There should be a backend with this path in the ingress resource.
-* `oauth-headers`: Defines an optional comma-separated list of `<header>:<haproxy-var>` used to configure request headers to the upstream backends. The default value is `X-Auth-Request-Email:auth_response_email` which means configuring a header `X-Auth-Request-Email` with the value of the var `auth_response_email`. New variables can be added overwriting the default `auth-request.lua` script.
+* `oauth-headers`: Defines an optional comma-separated list of `<header>:<haproxy-var>` used to configure request headers to the upstream backends. The default value is `X-Auth-Request-Email:req.auth_response_header.x_auth_request_email` that configures a header `X-Auth-Request-Email` with the value of the var `req.auth_response_header.x_auth_request_email`. The [`auth-request.lua`](https://github.com/TimWolla/haproxy-auth-request) script, used by HAProxy Ingress, creates a new `req.auth_response_header.<sanitized_header_name>` variable for each response header received by `oauth2_proxy`.
 
-The `oauth2_proxy` implementation expects Bitly's [oauth2_proxy](https://github.com/bitly/oauth2_proxy)
-running as a backend of the same domain that should be protected. `oauth2_proxy` has support
-to GitHub, Google, Facebook, OIDC and many others.
-
-Note to v0.7 or below: All paths of a domain will have the same oauth configurations, despite if the path is configured
-on an ingress resource without oauth annotations. In other words, if two ingress resources share
-the same domain but only one has oauth annotations - the one that has at least the `oauth2_proxy`
-service - all paths from that domain will be protected.
+OAuth2 expects [oauth2-proxy](https://github.com/oauth2-proxy/oauth2-proxy),
+or any other compatible implementation running as a backend of the same domain that should be protected.
+`oauth2-proxy` has support to GitHub, Google, Facebook, OIDC and [others](https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/oauth_provider).
 
 {{% alert title="Note" %}}
-OAuth2 needs [`external-has-lua`](#external) enabled if running on an external haproxy deployment.
+OAuth2 needs [`external-has-lua`](#external) enabled if running on an external haproxy deployment. The external haproxy needs Lua json module installed (Alpine's `lua-json4` package)
 {{% /alert %}}
 
 See also:
 
+* [Auth External](#auth-external) configuration keys.
 * [`external-has-lua`](#external) configuration key.
 * [example](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/auth/oauth) page.
 

@@ -29,7 +29,7 @@ built in the HAProxy configuration.
 
 ## Configure an OAuth2 provider
 
-[oauth2_proxy](https://github.com/bitly/oauth2_proxy#oauth-provider-configuration)
+[oauth2-proxy documentation](https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/oauth_provider/)
 has the steps to configure several OAuth2 providers.
 
 ## Deploy the proxy
@@ -38,7 +38,7 @@ Download and edit
 [oauth2-proxy.yaml](https://raw.githubusercontent.com/jcmoraisjr/haproxy-ingress/master/examples/auth/oauth/oauth2-proxy.yaml)
 to fit your needs. Change at least the following command-line options:
 
-* `--provider`: See the options on oauth2_proxy [readme](https://github.com/bitly/oauth2_proxy#oauth-provider-configuration).
+* `--provider`: See the options on oauth2-proxy [doc](https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/oauth_provider/).
 * `--client-id` and `--client-secret`: ID and secret from the OAuth provider.
 * `--cookie-secret`: A base64 encoded 128 bits value.
 * `--cookie-secure`: Use true if the application domain uses TLS, use false otherwise. This option is used to choose the protocol in the last redirect.

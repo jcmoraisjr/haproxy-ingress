@@ -19,6 +19,7 @@ package annotations
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -51,6 +52,24 @@ func (c *updater) buildGlobalAcme(d *globalData) {
 	d.global.Acme.Socket = "/var/run/haproxy/acme.sock"
 	d.global.Acme.Enabled = true
 	d.global.Acme.Shared = d.mapper.Get(ingtypes.GlobalAcmeShared).Bool()
+}
+
+var authProxyRegex = regexp.MustCompile(`^([A-Za-z_-]+):([0-9]{1,5})-([0-9]{1,5})$`)
+
+func (c *updater) buildGlobalAuthProxy(d *globalData) {
+	proxystr := d.mapper.Get(ingtypes.GlobalAuthProxy).Value
+	proxy := authProxyRegex.FindStringSubmatch(proxystr)
+	authproxy := &c.haproxy.Frontend().AuthProxy
+	if len(proxy) < 4 {
+		c.logger.Warn("invalid auth proxy configuration: %s", proxystr)
+		// start>end ensures that trying to create a frontend bind will fail
+		authproxy.RangeStart = 0
+		authproxy.RangeEnd = -1
+		return
+	}
+	authproxy.Name = proxy[1]
+	authproxy.RangeStart, _ = strconv.Atoi(proxy[2])
+	authproxy.RangeEnd, _ = strconv.Atoi(proxy[3])
 }
 
 func (c *updater) buildGlobalBind(d *globalData) {
@@ -186,10 +205,12 @@ func (c *updater) buildGlobalStats(d *globalData) {
 func (c *updater) buildGlobalSyslog(d *globalData) {
 	d.global.Syslog.Endpoint = d.mapper.Get(ingtypes.GlobalSyslogEndpoint).Value
 	d.global.Syslog.Format = d.mapper.Get(ingtypes.GlobalSyslogFormat).Value
-	d.global.Syslog.HTTPLogFormat = d.mapper.Get(ingtypes.GlobalHTTPLogFormat).Value
-	d.global.Syslog.HTTPSLogFormat = d.mapper.Get(ingtypes.GlobalHTTPSLogFormat).Value
 	d.global.Syslog.Length = d.mapper.Get(ingtypes.GlobalSyslogLength).Int()
 	d.global.Syslog.Tag = d.mapper.Get(ingtypes.GlobalSyslogTag).Value
+	//
+	d.global.Syslog.AuthLogFormat = d.mapper.Get(ingtypes.GlobalAuthLogFormat).Value
+	d.global.Syslog.HTTPLogFormat = d.mapper.Get(ingtypes.GlobalHTTPLogFormat).Value
+	d.global.Syslog.HTTPSLogFormat = d.mapper.Get(ingtypes.GlobalHTTPSLogFormat).Value
 	d.global.Syslog.TCPLogFormat = d.mapper.Get(ingtypes.GlobalTCPLogFormat).Value
 }
 

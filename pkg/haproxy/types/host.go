@@ -245,11 +245,6 @@ func (l *PathLink) Less(other PathLink, reversePath bool) bool {
 }
 
 // String ...
-func (f *Frontend) String() string {
-	return fmt.Sprintf("%+v", *f)
-}
-
-// String ...
 func (h *Host) String() string {
 	return fmt.Sprintf("%+v", *h)
 }
