@@ -33,11 +33,11 @@ controller:
     enabled: true
     image:
       repository: haproxy
-      tag: 2.3.4-alpine
+      tag: 2.3.8-alpine
 ```
 
 Change the hostNetwork to `true` if your cluster doesn't provide a service loadbalancer.
-These parameters are also configuring an external haproxy, version 2.3.4, and configuring
+These parameters are also configuring an external haproxy, version 2.3.8, and configuring
 haproxy to log to stdout.
 
 Add the HAProxy Ingress Helm repository if using HAProxy Ingress' chart for the first time:
@@ -53,7 +53,7 @@ Hint: change `install` to `upgrade` if HAProxy Ingress is already installed with
 ```
 $ helm install haproxy-ingress haproxy-ingress/haproxy-ingress\
   --create-namespace --namespace=ingress-controller\
-  --version 0.12.1\
+  --version 0.12.2\
   -f haproxy-ingress-values.yaml
 ```
 
