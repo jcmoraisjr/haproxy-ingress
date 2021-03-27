@@ -45,12 +45,22 @@ func (hm *HostsMaps) AddMap(basename string) *HostsMap {
 
 // AddHostnameMapping ...
 func (hm *HostsMap) AddHostnameMapping(hostname, target string) {
-	hostname, hasWildcard := convertWildcardToRegex(hostname)
-	if hasWildcard {
-		hm.addTarget(hostname, "", target, MatchRegex)
-	} else {
-		hm.addTarget(hostname, "", target, MatchExact)
+	hm.addHostnameMappingMatch(hostname, target, MatchExact)
+}
+
+// AddHostnameMappingRegex ...
+func (hm *HostsMap) AddHostnameMappingRegex(hostname, target string) {
+	hm.addHostnameMappingMatch(hostname, target, MatchRegex)
+}
+
+func (hm *HostsMap) addHostnameMappingMatch(hostname, target string, match MatchType) {
+	if match != MatchRegex {
+		var hasWildcard bool
+		if hostname, hasWildcard = convertWildcardToRegex(hostname); hasWildcard {
+			match = MatchRegex
+		}
 	}
+	hm.addTarget(hostname, "", target, match)
 }
 
 // AddHostnamePathMapping ...
@@ -227,7 +237,11 @@ func (hm *HostsMap) rebuildMatchFiles() (matchFiles []*MatchFile) {
 			matchFile: matchFile,
 			filename:  strings.Replace(hm.basename, ".", suffix+".", 1),
 			first:     i == 1,
+			last:      false,
 		})
+	}
+	if len(matchFiles) > 0 {
+		matchFiles[len(matchFiles)-1].last = true
 	}
 	return matchFiles
 }
@@ -333,6 +347,11 @@ func (m MatchFile) Filename() string {
 // First ...
 func (m MatchFile) First() bool {
 	return m.first
+}
+
+// Last ...
+func (m MatchFile) Last() bool {
+	return m.last
 }
 
 // Lower ...

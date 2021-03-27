@@ -66,6 +66,29 @@ func (h *Hosts) RemoveAll(hostnames []string) {
 	}
 }
 
+// FindTargetRedirect ...
+func (h *Hosts) FindTargetRedirect(redirfrom string, isRegex bool) *Host {
+	if redirfrom == "" {
+		return nil
+	}
+	// TODO this'd be somewhat expensive on full parsing,
+	// tens of thousands of ingress and most of them using redirect
+	if isRegex {
+		for _, host := range h.items {
+			if host.Redirect.RedirectHostRegex == redirfrom {
+				return host
+			}
+		}
+		return nil
+	}
+	for _, host := range h.items {
+		if host.Redirect.RedirectHost == redirfrom {
+			return host
+		}
+	}
+	return nil
+}
+
 // Shrink removes matching added and deleted hosts from the changing hashmap
 // tracker that has the same content. A matching added+deleted pair means
 // that a hostname was reparsed but its content wasn't changed.

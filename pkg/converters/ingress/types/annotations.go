@@ -27,6 +27,9 @@ const (
 	HostPathType               = "path-type"
 	HostServerAlias            = "server-alias"
 	HostServerAliasRegex       = "server-alias-regex"
+	HostServerRedirect         = "server-redirect"
+	HostServerRedirectCode     = "server-redirect-code"
+	HostServerRedirectRegex    = "server-redirect-regex"
 	HostSSLCiphers             = "ssl-ciphers"
 	HostSSLCipherSuites        = "ssl-cipher-suites"
 	HostSSLOptionsHost         = "ssl-options-host"
@@ -48,6 +51,9 @@ var (
 		HostServerAlias:            {},
 		HostPathType:               {},
 		HostServerAliasRegex:       {},
+		HostServerRedirect:         {},
+		HostServerRedirectCode:     {},
+		HostServerRedirectRegex:    {},
 		HostSSLCiphers:             {},
 		HostSSLCipherSuites:        {},
 		HostSSLOptionsHost:         {},

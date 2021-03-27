@@ -295,6 +295,7 @@ type MatchFile struct {
 	matchFile *hostsMapMatchFile
 	filename  string
 	first     bool
+	last      bool
 }
 
 // HostsMap ...
@@ -319,6 +320,8 @@ type FrontendMaps struct {
 	HTTPSSNIMap  *HostsMap
 	//
 	RedirFromRootMap  *HostsMap
+	RedirSourceMap    *HostsMap
+	RedirCodeMap      *HostsMap
 	SSLPassthroughMap *HostsMap
 	VarNamespaceMap   *HostsMap
 	//
@@ -357,6 +360,8 @@ type Frontend struct {
 	DefaultCrtFile string
 	DefaultCrtHash string
 	CrtListFile    string
+	//
+	DefaultServerRedirectCode int
 }
 
 // DefaultHost ...
@@ -381,6 +386,7 @@ type Host struct {
 	Paths    []*HostPath
 	//
 	Alias                  HostAliasConfig
+	Redirect               HostRedirectConfig
 	HTTPPassthroughBackend string
 	RootRedirect           string
 	TLS                    HostTLSConfig
@@ -438,6 +444,13 @@ type HostBackend struct {
 type HostAliasConfig struct {
 	AliasName  string
 	AliasRegex string
+}
+
+// HostRedirectConfig ...
+type HostRedirectConfig struct {
+	RedirectCode      int
+	RedirectHost      string
+	RedirectHostRegex string
 }
 
 // HostTLSConfig ...

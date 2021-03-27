@@ -143,6 +143,9 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	d.global.Master.WorkerMaxReloads = mapper.Get(ingtypes.GlobalWorkerMaxReloads).Int()
 	d.global.StrictHost = mapper.Get(ingtypes.GlobalStrictHost).Bool()
 	d.global.UseHTX = mapper.Get(ingtypes.GlobalUseHTX).Bool()
+	//
+	c.haproxy.Frontend().DefaultServerRedirectCode = mapper.Get(ingtypes.HostServerRedirectCode).Int()
+	//
 	c.buildGlobalAcme(d)
 	c.buildGlobalAuthProxy(d)
 	c.buildGlobalBind(d)
@@ -171,6 +174,7 @@ func (c *updater) UpdateHostConfig(host *hatypes.Host, mapper *Mapper) {
 	host.VarNamespace = mapper.Get(ingtypes.HostVarNamespace).Bool()
 	c.buildHostAuthTLS(data)
 	c.buildHostCertSigner(data)
+	c.buildHostRedirect(data)
 	c.buildHostSSLPassthrough(data)
 	c.buildHostTLSConfig(data)
 }
