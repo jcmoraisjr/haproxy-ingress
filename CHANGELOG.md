@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## v0.12.2
+
+Fixes and improvements since [v0.12.1](#v0121):
+
+* Fix incorrect reload if endpoint list grows [#746](https://github.com/jcmoraisjr/haproxy-ingress/pull/746) (jcmoraisjr)
+* Fix prefix path type if the path matches a domain [#756](https://github.com/jcmoraisjr/haproxy-ingress/pull/756) (jcmoraisjr)
+* Update go from 1.14.(latest) to 1.14.15 [0ad978d](https://github.com/jcmoraisjr/haproxy-ingress/commit/0ad978d209ada9bc38e3b7fcd6d961be1c32d2f3) (Joao Morais)
+* Update embedded haproxy from 2.2.9 to 2.2.11 and fixes CVE-2021-3450 (OpenSSL). [9d12c69](https://github.com/jcmoraisjr/haproxy-ingress/commit/9d12c694ad1629a78021c1a48825172ab64f5a34) (Joao Morais)
+
 ## v0.12.1
 
 Fixes and improvements since [v0.12](#v012):
