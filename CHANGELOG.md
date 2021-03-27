@@ -320,6 +320,15 @@ Fixes and improvements since [v0.11-beta.3](#v011-beta3):
 * Improve certificate validation of acme signer [#689](https://github.com/jcmoraisjr/haproxy-ingress/pull/689) (jcmoraisjr)
 * Update haproxy from 2.1.9 to 2.1.10 [9763c63](https://github.com/jcmoraisjr/haproxy-ingress/commit/9763c635d73dc3c853223304902b29ae3065cb32) (Joao Morais)
 
+## v0.10.6
+
+Fixes and improvements since [v0.10.5](#v0105):
+
+* Fix incorrect reload if endpoint list grows [#746](https://github.com/jcmoraisjr/haproxy-ingress/pull/746) (jcmoraisjr)
+* Fix backend matches if hostname uses wildcard [#752](https://github.com/jcmoraisjr/haproxy-ingress/pull/752) (jcmoraisjr)
+* Update haproxy from 2.0.20 to 2.0.21 and fixes CVE-2021-3450 (OpenSSL). [01708b9](https://github.com/jcmoraisjr/haproxy-ingress/commit/01708b909869861b385a922403844d2e6e857a6d) (Joao Morais)
+* Update go from 1.13.4 to 1.13.15 [5bd13b6](https://github.com/jcmoraisjr/haproxy-ingress/commit/5bd13b66e25cc65c6ef602676da6e3dea62826c9) (Joao Morais)
+
 ## v0.10.5
 
 Fixes and improvements since [v0.10.4](#v0104):
