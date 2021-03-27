@@ -133,6 +133,14 @@ Fixes and improvements since [v0.12-beta.2](#v012-beta2):
 * Fix shrinking of prioritized paths [#736](https://github.com/jcmoraisjr/haproxy-ingress/pull/736) (jcmoraisjr)
 * Update haproxy from 2.2.8 to 2.2.9 [a84aaa8](https://github.com/jcmoraisjr/haproxy-ingress/commit/a84aaa8121eae5b9a129a437ca90392a10432761) (Joao Morais)
 
+## v0.11.5
+
+Fixes and improvements since [v0.11.4](#v0114):
+
+* Fix incorrect reload if endpoint list grows [#746](https://github.com/jcmoraisjr/haproxy-ingress/pull/746) (jcmoraisjr)
+* Fix prefix path type if the path matches a domain [#756](https://github.com/jcmoraisjr/haproxy-ingress/pull/756) (jcmoraisjr)
+* Update haproxy from 2.1.11 to 2.1.12 and fixes CVE-2021-3450 (OpenSSL). [fd4dd10](https://github.com/jcmoraisjr/haproxy-ingress/commit/fd4dd10f41151de4515c8997660274196dc51b1f) (Joao Morais)
+
 ## v0.11.4
 
 Fixes and improvements since [v0.11.3](#v0113):
