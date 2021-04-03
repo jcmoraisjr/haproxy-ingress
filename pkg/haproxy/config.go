@@ -32,6 +32,7 @@ import (
 type Config interface {
 	Frontend() *hatypes.Frontend
 	SyncConfig()
+	WriteTCPServicesMaps() error
 	WriteFrontendMaps() error
 	WriteBackendMaps() error
 	AcmeData() *hatypes.AcmeData
@@ -137,6 +138,26 @@ func (c *config) SyncConfig() {
 			host.AddPath(back, "/", hatypes.MatchBegin)
 		}
 	}
+}
+
+// WriteTCPServicesMaps reads the model and writes haproxy's maps
+// used in the tcp services. Should be called before write the main
+// config file. This func doesn't change model state, except the
+// link to the tcp services maps.
+func (c *config) WriteTCPServicesMaps() error {
+	if !c.tcpservices.Changed() {
+		return nil
+	}
+	mapBuilder := hatypes.CreateMaps(c.global.MatchOrder)
+	for _, tcpPort := range c.tcpservices.Items() {
+		sniMap := mapBuilder.AddMap(fmt.Sprintf("%s/_tcp_sni_%d.map", c.options.mapsDir, tcpPort.Port()))
+		for _, tcpHost := range tcpPort.BuildSortedItems() {
+			sniMap.AddHostnameMapping(tcpHost.Hostname(), tcpHost.Backend.String())
+		}
+		tcpPort.SNIMap = sniMap
+	}
+	err := writeMaps(mapBuilder, c.options.mapsTemplate)
+	return err
 }
 
 // WriteFrontendMaps reads the model and writes haproxy's maps

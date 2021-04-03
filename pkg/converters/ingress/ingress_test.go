@@ -17,6 +17,7 @@ limitations under the License.
 package ingress
 
 import (
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -1469,7 +1470,8 @@ func TestSyncTCPServicePort(t *testing.T) {
 				{"7001"},
 			},
 			expect: `
-- backend: default_echo1_8080
+- backends: []
+  defaultbackend: default_echo1_8080
   port: 7001
   proxyprot: false
   tls: {}`,
@@ -1496,7 +1498,8 @@ func TestSyncTCPServicePort(t *testing.T) {
 				{"7001", "", "echo1:8080"},
 			},
 			expect: `
-- backend: default_echo1_8080
+- backends: []
+  defaultbackend: default_echo1_8080
   port: 7001
   proxyprot: false
   tls: {}`,
@@ -1508,11 +1511,12 @@ func TestSyncTCPServicePort(t *testing.T) {
 				{"7001", "/", "echo1:8080"},
 			},
 			expect: `
-- backend: default_echo1_8080
+- backends: []
+  defaultbackend: default_echo1_8080
   port: 7001
   proxyprot: false
   tls: {}`,
-			logging: `WARN skipping path declaration on ingress 'default/echo2': port '7001' was already used`,
+			logging: `WARN skipping path declaration on ingress 'default/echo2': tcp service :7001 was already assigned to default_echo1_8080`,
 		},
 		// 6
 		{
@@ -1520,7 +1524,8 @@ func TestSyncTCPServicePort(t *testing.T) {
 				{"7001", "/", "echo1:8080", "tls1"},
 			},
 			expect: `
-- backend: default_echo1_8080
+- backends: []
+  defaultbackend: default_echo1_8080
   port: 7001
   proxyprot: false
   tls:
@@ -1532,7 +1537,8 @@ func TestSyncTCPServicePort(t *testing.T) {
 				{"7001", "/", "echo1:8080", "tls-invalid"},
 			},
 			expect: `
-- backend: default_echo1_8080
+- backends: []
+  defaultbackend: default_echo1_8080
   port: 7001
   proxyprot: false
   tls:
@@ -1554,12 +1560,13 @@ func TestSyncTCPServicePort(t *testing.T) {
 				{"7001", "/", "echo1:8080", "tls1"},
 			},
 			expect: `
-- backend: default_echo1_8080
+- backends: []
+  defaultbackend: default_echo1_8080
   port: 7001
   proxyprot: false
   tls:
     tlsfilename: /tls/default/tls1.pem`,
-			logging: `WARN skipping path declaration on ingress 'default/echo2': port '7001' was already used`,
+			logging: `WARN skipping path declaration on ingress 'default/echo2': tcp service :7001 was already assigned to default_echo1_8080`,
 		},
 		// 10
 		{
@@ -1568,13 +1575,14 @@ func TestSyncTCPServicePort(t *testing.T) {
 				{"7001", "/", "echo1:8080", "tls2"},
 			},
 			expect: `
-- backend: default_echo1_8080
+- backends: []
+  defaultbackend: default_echo1_8080
   port: 7001
   proxyprot: false
   tls:
     tlsfilename: /tls/default/tls1.pem`,
 			logging: `
-WARN skipping path declaration on ingress 'default/echo2': port '7001' was already used
+WARN skipping path declaration on ingress 'default/echo2': tcp service :7001 was already assigned to default_echo1_8080
 WARN skipping TLS secret 'tls2' of ingress 'default/echo2': TLS of tcp service port '7001' was already assigned`,
 		},
 		// 11
@@ -1584,7 +1592,8 @@ WARN skipping TLS secret 'tls2' of ingress 'default/echo2': TLS of tcp service p
 				{"7001", "tls1"},
 			},
 			expect: `
-- backend: default_echo1_8080
+- backends: []
+  defaultbackend: default_echo1_8080
   port: 7001
   proxyprot: false
   tls:
@@ -1593,16 +1602,66 @@ WARN skipping TLS secret 'tls2' of ingress 'default/echo2': TLS of tcp service p
 		// 12
 		{
 			ing: [][]string{
-				{"7001", "/", "echo1:8080,echo2:8080"},
+				{"echo.local:7001", "/", "echo1:8080,echo2:8080"},
 			},
 			expect: `
-- backend: default_echo1_8080
+- backends:
+  - default_echo1_8080
+  defaultbackend: ""
   port: 7001
   proxyprot: false
   tls: {}`,
-			logging: `WARN skipping path declaration on ingress 'default/echo1': port '7001' was already used`,
+			logging: `WARN skipping path declaration on ingress 'default/echo1': tcp service echo.local:7001 was already assigned to default_echo1_8080`,
 		},
 		// 13
+		{
+			ing: [][]string{
+				{"echo1.local:7001", "/", "echo1:8080"},
+				{"echo2.local:7001", "/", "echo2:8080"},
+			},
+			expect: `
+- backends:
+  - default_echo1_8080
+  - default_echo2_8080
+  defaultbackend: ""
+  port: 7001
+  proxyprot: false
+  tls: {}`,
+		},
+		// 14
+		{
+			ing: [][]string{
+				{"echo1.local:7001", "/", "echo1:8080"},
+				{"echo2.local:7001", "/", "echo2:8080"},
+				{"echo2.local:7001", "/", "echo1:8080"},
+			},
+			expect: `
+- backends:
+  - default_echo1_8080
+  - default_echo2_8080
+  defaultbackend: ""
+  port: 7001
+  proxyprot: false
+  tls: {}`,
+			logging: `WARN skipping path declaration on ingress 'default/echo3': tcp service echo2.local:7001 was already assigned to default_echo2_8080`,
+		},
+		// 15
+		{
+			ing: [][]string{
+				{":7001", "/", "echo1:8080"},
+				{"echo1.local:7001", "/", "echo1:8080"},
+				{"echo2.local:7001", "/", "echo2:8080"},
+			},
+			expect: `
+- backends:
+  - default_echo1_8080
+  - default_echo2_8080
+  defaultbackend: default_echo1_8080
+  port: 7001
+  proxyprot: false
+  tls: {}`,
+		},
+		// 16
 		{
 			ing: [][]string{
 				{"7001", "/app", "echo1:8080"},
@@ -1610,7 +1669,7 @@ WARN skipping TLS secret 'tls2' of ingress 'default/echo2': TLS of tcp service p
 			expect:  `[]`,
 			logging: `WARN skipping backend declaration on path '/app' of ingress 'default/echo1': tcp services do not support path`,
 		},
-		// 14
+		// 17
 		{
 			ing: [][]string{
 				{"7001", "/", "echo1:8080"},
@@ -1618,16 +1677,19 @@ WARN skipping TLS secret 'tls2' of ingress 'default/echo2': TLS of tcp service p
 				{"7003", "/", "echo2:8080"},
 			},
 			expect: `
-- backend: default_echo1_8080
+- backends: []
+  defaultbackend: default_echo1_8080
   port: 7001
   proxyprot: false
   tls: {}
-- backend: default_echo1_8080
+- backends: []
+  defaultbackend: default_echo1_8080
   port: 7002
   proxyprot: true
   tls:
     tlsfilename: /tls/default/tls2.pem
-- backend: default_echo2_8080
+- backends: []
+  defaultbackend: default_echo2_8080
   port: 7003
   proxyprot: false
   tls: {}`,
@@ -1644,8 +1706,13 @@ WARN skipping TLS secret 'tls2' of ingress 'default/echo2': TLS of tcp service p
 		for _, params := range test.ing {
 			n := strconv.Itoa(len(c.cache.IngList) + 1)
 			name := "default/echo" + n
-			domain := "echo.local"
-			annPort := "ingress.kubernetes.io/" + ingtypes.HostTCPServicePort + "=" + params[0]
+			domain := ""
+			port := params[0]
+			if pos := strings.Index(port, ":"); pos >= 0 {
+				domain = port[:pos]
+				port = port[pos+1:]
+			}
+			annPort := "ingress.kubernetes.io/" + ingtypes.HostTCPServicePort + "=" + port
 			var ing *networking.Ingress
 			switch len(params) {
 			case 1:
@@ -2338,8 +2405,11 @@ type updaterMock struct{}
 func (u *updaterMock) UpdateGlobalConfig(haproxyConfig haproxy.Config, config *annotations.Mapper) {
 }
 
-func (u *updaterMock) UpdateTCPServiceConfig(tcp *hatypes.TCPService, mapper *annotations.Mapper) {
+func (u *updaterMock) UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *annotations.Mapper) {
 	tcp.ProxyProt = mapper.Get(ingtypes.HostTCPServiceProxyProto).Bool()
+}
+
+func (u *updaterMock) UpdateTCPHostConfig(tcp *hatypes.TCPServiceHost, mapper *annotations.Mapper) {
 }
 
 func (u *updaterMock) UpdateHostConfig(host *hatypes.Host, mapper *annotations.Mapper) {
@@ -2353,20 +2423,31 @@ func (u *updaterMock) UpdateBackendConfig(backend *hatypes.Backend, mapper *anno
 
 type (
 	tcpServiceMock struct {
-		Backend   string
-		Port      int
-		ProxyProt bool
-		TLS       tlsMock
+		Backends       []string
+		DefaultBackend string
+		Port           int
+		ProxyProt      bool
+		TLS            tlsMock
 	}
 )
 
-func convertTCPService(hatcpservices ...*hatypes.TCPService) []tcpServiceMock {
+func convertTCPService(hatcpserviceports ...*hatypes.TCPServicePort) []tcpServiceMock {
 	tcpServices := []tcpServiceMock{}
-	for _, hasvc := range hatcpservices {
+	for _, hasvc := range hatcpserviceports {
+		var backends []string
+		for _, h := range hasvc.Hosts() {
+			backends = append(backends, h.Backend.String())
+		}
+		sort.Strings(backends)
+		var defaultBackend string
+		if hasvc.DefaultHost() != nil {
+			defaultBackend = hasvc.DefaultHost().Backend.String()
+		}
 		svc := tcpServiceMock{
-			Backend:   hasvc.Backend.String(),
-			Port:      hasvc.Port(),
-			ProxyProt: hasvc.ProxyProt,
+			Backends:       backends,
+			DefaultBackend: defaultBackend,
+			Port:           hasvc.Port(),
+			ProxyProt:      hasvc.ProxyProt,
 			TLS: tlsMock{
 				TLSFilename: hasvc.TLS.TLSFilename,
 			},

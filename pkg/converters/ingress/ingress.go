@@ -70,7 +70,7 @@ func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Con
 		mapBuilder:         annotations.NewMapBuilder(options.Logger, options.AnnotationPrefix+"/", defaultConfig),
 		updater:            annotations.NewUpdater(haproxy, options),
 		globalConfig:       annotations.NewMapBuilder(options.Logger, "", defaultConfig).NewMapper(),
-		tcpsvcAnnotations:  map[*hatypes.TCPService]*annotations.Mapper{},
+		tcpsvcAnnotations:  map[*hatypes.TCPServicePort]*annotations.Mapper{},
 		hostAnnotations:    map[*hatypes.Host]*annotations.Mapper{},
 		backendAnnotations: map[*hatypes.Backend]*annotations.Mapper{},
 		ingressClasses:     map[string]*ingressClassConfig{},
@@ -90,7 +90,7 @@ type converter struct {
 	mapBuilder         *annotations.MapBuilder
 	updater            annotations.Updater
 	globalConfig       *annotations.Mapper
-	tcpsvcAnnotations  map[*hatypes.TCPService]*annotations.Mapper
+	tcpsvcAnnotations  map[*hatypes.TCPServicePort]*annotations.Mapper
 	hostAnnotations    map[*hatypes.Host]*annotations.Mapper
 	backendAnnotations map[*hatypes.Backend]*annotations.Mapper
 	ingressClasses     map[string]*ingressClassConfig
@@ -570,7 +570,7 @@ func (c *converter) syncIngressTCP(ing *networking.Ingress, tcpServicePort int, 
 		}
 		defer func() {
 			if tcpService.Backend.IsEmpty() {
-				c.haproxy.TCPServices().RemovePort(tcpServicePort)
+				c.haproxy.TCPServices().RemoveService(hostname)
 			}
 		}()
 		svcName, svcPort, err := readServiceNamePort(ingressBackend)
@@ -613,18 +613,18 @@ func (c *converter) syncIngressTCP(ing *networking.Ingress, tcpServicePort int, 
 	for _, tls := range ing.Spec.TLS {
 		// tls secret
 		for _, hostname := range tls.Hosts {
-			tcpService := c.haproxy.TCPServices().FindTCPService(tcpServicePort)
-			if tcpService == nil {
+			tcpPort := c.haproxy.TCPServices().FindTCPPort(tcpServicePort)
+			if tcpPort == nil {
 				c.logger.Warn("skipping TLS of tcp service on %v: backend was not configured", source)
 				continue
 			}
 			tlsPath := c.addTLS(source, normalizeHostname(hostname, tcpServicePort), tls.SecretName)
-			if tcpService.TLS.TLSHash == "" {
-				tcpService.TLS.TLSFilename = tlsPath.Filename
-				tcpService.TLS.TLSHash = tlsPath.SHA1Hash
-				tcpService.TLS.TLSCommonName = tlsPath.CommonName
-				tcpService.TLS.TLSNotAfter = tlsPath.NotAfter
-			} else if tcpService.TLS.TLSHash != tlsPath.SHA1Hash {
+			if tcpPort.TLS.TLSHash == "" {
+				tcpPort.TLS.TLSFilename = tlsPath.Filename
+				tcpPort.TLS.TLSHash = tlsPath.SHA1Hash
+				tcpPort.TLS.TLSCommonName = tlsPath.CommonName
+				tcpPort.TLS.TLSNotAfter = tlsPath.NotAfter
+			} else if tcpPort.TLS.TLSHash != tlsPath.SHA1Hash {
 				msg := fmt.Sprintf("TLS of tcp service port '%d' was already assigned", tcpServicePort)
 				if tls.SecretName != "" {
 					c.logger.Warn("skipping TLS secret '%s' of %v: %s", tls.SecretName, source, msg)
@@ -648,13 +648,20 @@ func (c *converter) syncChangedEndpointCookies() {
 	}
 }
 
-func (c *converter) fullSyncAnnotations() {
-	c.updater.UpdateGlobalConfig(c.haproxy, c.globalConfig)
-	for _, tcp := range c.haproxy.TCPServices().Items() {
-		if ann, found := c.tcpsvcAnnotations[tcp]; found {
-			c.updater.UpdateTCPServiceConfig(tcp, ann)
+func (c *converter) fullSyncTCP() {
+	for _, tcpPort := range c.haproxy.TCPServices().Items() {
+		if ann, found := c.tcpsvcAnnotations[tcpPort]; found {
+			c.updater.UpdateTCPPortConfig(tcpPort, ann)
+			for _, tcpHost := range tcpPort.Hosts() {
+				c.updater.UpdateTCPHostConfig(tcpHost, ann)
+			}
 		}
 	}
+}
+
+func (c *converter) fullSyncAnnotations() {
+	c.updater.UpdateGlobalConfig(c.haproxy, c.globalConfig)
+	c.fullSyncTCP()
 	for _, host := range c.haproxy.Hosts().Items() {
 		if ann, found := c.hostAnnotations[host]; found {
 			c.updater.UpdateHostConfig(host, ann)
@@ -668,11 +675,7 @@ func (c *converter) fullSyncAnnotations() {
 }
 
 func (c *converter) partialSyncAnnotations() {
-	for _, tcp := range c.haproxy.TCPServices().Items() {
-		if ann, found := c.tcpsvcAnnotations[tcp]; found {
-			c.updater.UpdateTCPServiceConfig(tcp, ann)
-		}
-	}
+	c.fullSyncTCP()
 	for _, host := range c.haproxy.Hosts().ItemsAdd() {
 		if ann, found := c.hostAnnotations[host]; found {
 			c.updater.UpdateHostConfig(host, ann)
@@ -749,22 +752,23 @@ func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcNam
 	return nil
 }
 
-func (c *converter) addTCPService(source *annotations.Source, hostname string, port int, ann map[string]string) (*hatypes.TCPService, error) {
-	tcpService, err := c.haproxy.TCPServices().AddTCPService(port)
-	if err != nil {
-		return nil, err
+func (c *converter) addTCPService(source *annotations.Source, hostname string, port int, ann map[string]string) (*hatypes.TCPServiceHost, error) {
+	tcpPort, tcpHost := c.haproxy.TCPServices().AcquireTCPService(hostname)
+	if !tcpHost.Backend.IsEmpty() {
+		tcpservice := strings.TrimPrefix(hostname, hatypes.DefaultHost)
+		return nil, fmt.Errorf("tcp service %s was already assigned to %s", tcpservice, tcpHost.Backend)
 	}
 	c.tracker.TrackHostname(convtypes.IngressType, source.FullName(), hostname)
-	mapper, found := c.tcpsvcAnnotations[tcpService]
+	mapper, found := c.tcpsvcAnnotations[tcpPort]
 	if !found {
 		mapper = c.mapBuilder.NewMapper()
-		c.tcpsvcAnnotations[tcpService] = mapper
+		c.tcpsvcAnnotations[tcpPort] = mapper
 	}
 	conflict := mapper.AddAnnotations(source, hatypes.CreatePathLink(hostname, "/"), ann)
 	if len(conflict) > 0 {
 		c.logger.Warn("skipping tcp service annotation(s) from %v due to conflict: %v", source, conflict)
 	}
-	return tcpService, nil
+	return tcpHost, nil
 }
 
 func (c *converter) addHost(hostname string, source *annotations.Source, ann map[string]string) *hatypes.Host {

@@ -921,12 +921,12 @@ frontend {{ $proxy.Name }}
 # #
 #     TCP SERVICES frontends
 #
-{{- range $tcpservice := $tcpservices }}
-{{- if not $tcpservice.Backend.IsEmpty }}
-frontend _front_tcp_{{ $tcpservice.Port }}
-{{- $tls := $tcpservice.TLS }}
-    bind {{ $global.Bind.TCPBindIP }}:{{ $tcpservice.Port }}
-        {{- if $tcpservice.ProxyProt }} accept-proxy{{ end }}
+{{- range $tcpport := $tcpservices }}
+{{- $proxy_name := printf "_front_tcp_%d" $tcpport.Port }}
+frontend {{ $proxy_name }}
+{{- $tls := $tcpport.TLS }}
+    bind {{ $global.Bind.TCPBindIP }}:{{ $tcpport.Port }}
+        {{- if $tcpport.ProxyProt }} accept-proxy{{ end }}
         {{- if $tls.TLSFilename }}
             {{- "" }} ssl crt {{ $tls.TLSFilename }}
             {{- if $tls.ALPN }} alpn {{ $tls.ALPN }}{{ end }}
@@ -952,9 +952,34 @@ frontend _front_tcp_{{ $tcpservice.Port }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-    use_backend {{ $tcpservice.Backend }}
+{{- if $tcpport.SNIMap.HasHost }}
+    tcp-request inspect-delay 5s
+{{- range $match := $tcpport.SNIMap.MatchFiles }}
+    tcp-request content set-var(req.tcpback) req.ssl_sni,lower
+        {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
+        {{- if not $match.First }} if !{ var(req.tcpback) -m found }{{ end }}
 {{- end }}
-{{- end }}{{/* isEmpty $tcpservice */}}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- range $snippet := index $global.CustomProxy $proxy_name }}
+    {{ $snippet }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $tcpport.SNIMap.HasHost }}
+    tcp-request content accept if { req.ssl_hello_type 1 }
+    use_backend %[var(req.tcpback)] if { var(req.tcpback) -m found }
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $tcpport.DefaultHost }}
+{{- $backend := $tcpport.DefaultHost.Backend }}
+{{- if not $backend.IsEmpty }}
+    default_backend {{ $backend }}
+{{- end }}
+{{- end }}
+{{- end }}{{/* range $tcpservices */}}
 {{- end }}{{/* has $tcpservices */}}
 
 {{- if $hosts.HasSSLPassthrough }}

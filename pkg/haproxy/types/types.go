@@ -240,16 +240,25 @@ type ModSecurityTimeoutConfig struct {
 
 // TCPServices ...
 type TCPServices struct {
-	items   map[int]*TCPService
+	items   map[int]*TCPServicePort
 	changed bool
 }
 
-// TCPService ...
-type TCPService struct {
-	port      int
-	Backend   BackendID
-	ProxyProt bool
-	TLS       TLSConfig
+// TCPServicePort ...
+type TCPServicePort struct {
+	port        int
+	hosts       map[string]*TCPServiceHost
+	defaultHost *TCPServiceHost
+	ProxyProt   bool
+	TLS         TLSConfig
+	//
+	SNIMap *HostsMap
+}
+
+// TCPServiceHost ...
+type TCPServiceHost struct {
+	hostname string
+	Backend  BackendID
 }
 
 // TLSConfig ...

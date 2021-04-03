@@ -17,7 +17,6 @@ limitations under the License.
 package types
 
 import (
-	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -26,33 +25,47 @@ import (
 // CreateTCPServices ...
 func CreateTCPServices() *TCPServices {
 	return &TCPServices{
-		items: map[int]*TCPService{},
+		items: map[int]*TCPServicePort{},
 	}
 }
 
-// AddTCPService ...
-func (s *TCPServices) AddTCPService(port int) (*TCPService, error) {
-	if _, found := s.items[port]; found {
-		return nil, fmt.Errorf("port '%d' was already used", port)
+// AcquireTCPService ...
+func (s *TCPServices) AcquireTCPService(service string) (*TCPServicePort, *TCPServiceHost) {
+	hostname, port := splitService(service)
+	tcpPort := s.acquireTCPPort(port)
+	tcpHost, found := tcpPort.acquireHost(hostname)
+	if !found {
+		s.changed = true
 	}
-	service := &TCPService{port: port}
-	s.items[port] = service
-	return service, nil
+	return tcpPort, tcpHost
 }
 
-// FindTCPService ...
-func (s *TCPServices) FindTCPService(port int) *TCPService {
+func (s *TCPServices) acquireTCPPort(port int) *TCPServicePort {
+	tcpPort, found := s.items[port]
+	if !found {
+		tcpPort = &TCPServicePort{
+			port:  port,
+			hosts: map[string]*TCPServiceHost{},
+		}
+		s.items[port] = tcpPort
+		s.changed = true
+	}
+	return tcpPort
+}
+
+// FindTCPPort ...
+func (s *TCPServices) FindTCPPort(port int) *TCPServicePort {
 	return s.items[port]
 }
 
 // Items ...
-func (s *TCPServices) Items() map[int]*TCPService {
+func (s *TCPServices) Items() map[int]*TCPServicePort {
 	return s.items
 }
 
 // BuildSortedItems ...
-func (s *TCPServices) BuildSortedItems() []*TCPService {
-	items := make([]*TCPService, 0, len(s.items))
+func (s *TCPServices) BuildSortedItems() []*TCPServicePort {
+	items := make([]*TCPServicePort, 0, len(s.items))
 	for _, item := range s.items {
 		items = append(items, item)
 	}
@@ -65,22 +78,44 @@ func (s *TCPServices) BuildSortedItems() []*TCPService {
 	return items
 }
 
-// RemovePort ...
-func (s *TCPServices) RemovePort(port int) {
-	if _, found := s.items[port]; found {
-		delete(s.items, port)
-		s.changed = true
+// The convention is to name tcp services as domain:port, all TCPServices receive
+// service name or hostname in this format. This convention is mostly used by
+// hostname tracking which is a ingress converter feature. Such convention and
+// tracking stuff shouldn't be reflecting here. Time to use a proper type without
+// conventions and assumptions.
+// TODO Use a proper service name or hostname type
+func splitService(service string) (hostname string, port int) {
+	hostname = service
+	if pos := strings.Index(hostname, ":"); pos >= 0 {
+		hostname = service[:pos]
+		port, _ = strconv.Atoi(service[pos+1:])
+	}
+	return hostname, port
+}
+
+// RemoveService ...
+func (s *TCPServices) RemoveService(service string) {
+	hostname, port := splitService(service)
+	if item, found := s.items[port]; found {
+		if _, hasHost := item.hosts[hostname]; hasHost {
+			delete(item.hosts, hostname)
+			s.changed = true
+		}
+		if hostname == DefaultHost {
+			item.defaultHost = nil
+			s.changed = true
+		}
+		if item.isEmpty() {
+			delete(s.items, port)
+			s.changed = true
+		}
 	}
 }
 
 // RemoveAll removes services declared as a slice of <hostname>:<port>
 func (s *TCPServices) RemoveAll(services []string) {
 	for _, svc := range services {
-		pos := strings.Index(svc, ":")
-		if pos >= 0 {
-			port, _ := strconv.Atoi(svc[pos+1:])
-			s.RemovePort(port)
-		}
+		s.RemoveService(svc)
 	}
 }
 
@@ -94,7 +129,57 @@ func (s *TCPServices) Commit() {
 	s.changed = false
 }
 
+func (s *TCPServicePort) isEmpty() bool {
+	return s.defaultHost == nil && len(s.hosts) == 0
+}
+
+func (s *TCPServicePort) acquireHost(hostname string) (tcpHost *TCPServiceHost, found bool) {
+	if hostname == DefaultHost && s.defaultHost != nil {
+		return s.defaultHost, true
+	}
+	tcpHost, found = s.hosts[hostname]
+	if !found {
+		tcpHost = &TCPServiceHost{hostname: hostname}
+		if hostname == DefaultHost {
+			s.defaultHost = tcpHost
+		} else {
+			s.hosts[hostname] = tcpHost
+		}
+	}
+	return tcpHost, found
+}
+
 // Port ...
-func (s *TCPService) Port() int {
+func (s *TCPServicePort) Port() int {
 	return s.port
+}
+
+// Hosts ...
+func (s *TCPServicePort) Hosts() map[string]*TCPServiceHost {
+	return s.hosts
+}
+
+// BuildSortedItems ...
+func (s *TCPServicePort) BuildSortedItems() []*TCPServiceHost {
+	items := make([]*TCPServiceHost, 0, len(s.hosts))
+	for _, item := range s.hosts {
+		items = append(items, item)
+	}
+	if len(items) == 0 {
+		return nil
+	}
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].hostname < items[j].hostname
+	})
+	return items
+}
+
+// DefaultHost ...
+func (s *TCPServicePort) DefaultHost() *TCPServiceHost {
+	return s.defaultHost
+}
+
+// Hostname ...
+func (s *TCPServiceHost) Hostname() string {
+	return s.hostname
 }
