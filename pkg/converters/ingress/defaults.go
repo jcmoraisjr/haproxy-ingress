@@ -103,6 +103,7 @@ func createDefaults() map[string]string {
 		types.GlobalTimeoutClient:                "50s",
 		types.GlobalTimeoutClientFin:             "50s",
 		types.GlobalTimeoutStop:                  "10m",
+		types.GlobalTCPServicesLogFormat:         "default",
 		types.GlobalUseCPUMap:                    "true",
 		types.GlobalUseForwardedProto:            "true",
 		types.GlobalUseHTX:                       "true",

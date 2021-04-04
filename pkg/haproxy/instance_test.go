@@ -3247,11 +3247,16 @@ func TestInstanceSyslog(t *testing.T) {
 	h = c.config.Hosts().AcquireHost("d1.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 
+	_, tcpHost := c.config.tcpservices.AcquireTCPService("<default>:7001")
+	tcpHost.Backend = b.BackendID()
+
 	syslog := &c.config.Global().Syslog
 	syslog.Endpoint = "127.0.0.1:1514"
 	syslog.Format = "rfc3164"
 	syslog.Length = 2048
 	syslog.Tag = "ingress"
+
+	syslog.TCPServicesLogFormat = "default"
 
 	c.Update()
 	c.checkConfig(`
@@ -3277,6 +3282,11 @@ backend d1_app_8080
     mode http
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
+frontend _front_tcp_7001
+    bind :7001
+    mode tcp
+    option tcplog
+    default_backend d1_app_8080
 frontend _front_http
     mode http
     bind :80

@@ -94,6 +94,7 @@ const (
 	GlobalSyslogLength                 = "syslog-length"
 	GlobalSyslogTag                    = "syslog-tag"
 	GlobalTCPLogFormat                 = "tcp-log-format"
+	GlobalTCPServicesLogFormat         = "tcp-services-log-format"
 	GlobalTimeoutClient                = "timeout-client"
 	GlobalTimeoutClientFin             = "timeout-client-fin"
 	GlobalTimeoutStop                  = "timeout-stop"

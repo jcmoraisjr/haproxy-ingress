@@ -212,6 +212,7 @@ func (c *updater) buildGlobalSyslog(d *globalData) {
 	d.global.Syslog.HTTPLogFormat = d.mapper.Get(ingtypes.GlobalHTTPLogFormat).Value
 	d.global.Syslog.HTTPSLogFormat = d.mapper.Get(ingtypes.GlobalHTTPSLogFormat).Value
 	d.global.Syslog.TCPLogFormat = d.mapper.Get(ingtypes.GlobalTCPLogFormat).Value
+	d.global.Syslog.TCPServicesLogFormat = d.mapper.Get(ingtypes.GlobalTCPServicesLogFormat).Value
 }
 
 func (c *updater) buildGlobalTimeout(d *globalData) {

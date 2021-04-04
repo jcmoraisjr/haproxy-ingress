@@ -942,10 +942,10 @@ frontend {{ $proxy_name }}
 
 {{- /*------------------------------------*/}}
 {{- if $global.Syslog.Endpoint }}
-{{- if eq $global.Syslog.TCPLogFormat "default" }}
+{{- if eq $global.Syslog.TCPServicesLogFormat "default" }}
     option tcplog
-{{- else if $global.Syslog.TCPLogFormat }}
-    log-format {{ $global.Syslog.TCPLogFormat }}
+{{- else if $global.Syslog.TCPServicesLogFormat }}
+    log-format {{ $global.Syslog.TCPServicesLogFormat }}
 {{- else }}
     no log
 {{- end }}

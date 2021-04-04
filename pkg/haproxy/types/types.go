@@ -112,10 +112,11 @@ type SyslogConfig struct {
 	Length   int
 	Tag      string
 	//
-	AuthLogFormat  string
-	HTTPLogFormat  string
-	HTTPSLogFormat string
-	TCPLogFormat   string
+	AuthLogFormat        string
+	HTTPLogFormat        string
+	HTTPSLogFormat       string
+	TCPLogFormat         string
+	TCPServicesLogFormat string
 }
 
 // TimeoutConfig ...
