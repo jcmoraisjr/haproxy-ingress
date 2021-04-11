@@ -167,6 +167,7 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 
 func (c *updater) UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *Mapper) {
 	tcp.CustomConfig = utils.LineToSlice(mapper.Get(ingtypes.HostConfigTCPService).Value)
+	tcp.LogFormat = mapper.Get(ingtypes.HostTCPServiceLogFormat).Value
 	tcp.ProxyProt = mapper.Get(ingtypes.HostTCPServiceProxyProto).Bool()
 }
 

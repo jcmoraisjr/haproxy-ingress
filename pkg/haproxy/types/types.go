@@ -112,11 +112,10 @@ type SyslogConfig struct {
 	Length   int
 	Tag      string
 	//
-	AuthLogFormat        string
-	HTTPLogFormat        string
-	HTTPSLogFormat       string
-	TCPLogFormat         string
-	TCPServicesLogFormat string
+	AuthLogFormat  string
+	HTTPLogFormat  string
+	HTTPSLogFormat string
+	TCPLogFormat   string
 }
 
 // TimeoutConfig ...
@@ -251,6 +250,7 @@ type TCPServicePort struct {
 	hosts        map[string]*TCPServiceHost
 	defaultHost  *TCPServiceHost
 	CustomConfig []string
+	LogFormat    string
 	ProxyProt    bool
 	TLS          TLSConfig
 	//

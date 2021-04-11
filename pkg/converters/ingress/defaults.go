@@ -30,12 +30,13 @@ const (
 
 func createDefaults() map[string]string {
 	return map[string]string{
-		types.HostAuthTLSStrict:      "false",
-		types.HostServerRedirectCode: "302",
-		types.HostSSLCiphers:         defaultSSLCiphers,
-		types.HostSSLCipherSuites:    defaultSSLCipherSuites,
-		types.HostSSLOptionsHost:     "",
-		types.HostTLSALPN:            "h2,http/1.1",
+		types.HostAuthTLSStrict:       "false",
+		types.HostServerRedirectCode:  "302",
+		types.HostSSLCiphers:          defaultSSLCiphers,
+		types.HostSSLCipherSuites:     defaultSSLCipherSuites,
+		types.HostSSLOptionsHost:      "",
+		types.HostTCPServiceLogFormat: "default",
+		types.HostTLSALPN:             "h2,http/1.1",
 		//
 		types.BackBackendServerNaming:    "sequence",
 		types.BackBackendServerSlotsInc:  "1",
@@ -103,7 +104,6 @@ func createDefaults() map[string]string {
 		types.GlobalTimeoutClient:                "50s",
 		types.GlobalTimeoutClientFin:             "50s",
 		types.GlobalTimeoutStop:                  "10m",
-		types.GlobalTCPServicesLogFormat:         "default",
 		types.GlobalUseCPUMap:                    "true",
 		types.GlobalUseForwardedProto:            "true",
 		types.GlobalUseHTX:                       "true",
