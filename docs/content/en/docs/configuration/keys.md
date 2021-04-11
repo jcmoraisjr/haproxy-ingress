@@ -94,7 +94,7 @@ metadata:
 
 Annotations are read in the following conditions:
 
-* From classified `Ingress` resources, see about classification in the [Class matter](#class-matter) section. `Ingresses` accept keys from the `Host`, `Backend` and `Path` scopes. See about scopes [later](#scope) in this page.
+* From classified `Ingress` resources, see about classification in the [Class matter](#class-matter) section. `Ingresses` accept keys from the `Host`, `Backend`, `Path` and `TCP` scopes. See about scopes [later](#scope) in this page.
 * From `Services` that classified Ingress resources are linking to. `Services` only accept keys from the `Backend` scope.
 
 A configuration key needs a prefix in front of its name to use as an annotation key.
@@ -233,14 +233,14 @@ fast with HAProxy Ingress.
 
 # Scope
 
-HAProxy Ingress configuration keys may be in one of four distinct scopes:
-`Global`, `Host`, `Backend`, `Path`. A scope defines where a configuration key
-can be declared and how it interacts with Ingress and Service resources.
+HAProxy Ingress configuration keys may be in one of five distinct scopes:
+`Global`, `Host`, `Backend`, `Path`, `TCP`. A scope defines where a configuration
+key can be declared and how it interacts with Ingress and Service resources.
 
 Configuration keys declared in `Ingress` resources might conflict. More about
-the scenarios in the `Host` and `Backend` scopes below. A warning will be logged
-in the case of a conflict, and the used value will be of the Ingress resource
-that was created first.
+the scenarios in the `Host`, `Backend` and `TCP` scopes below. A warning will
+be logged in the case of a conflict, and the used value will be of the Ingress
+resource that was created first.
 
 ## Global
 
@@ -273,6 +273,14 @@ Defines configuration keys that bind to the hostname and the HTTP path.
 Configuration keys of the Path scope can be declared in any ConfigMap as a default
 value, or as Ingress or Service annotation. Configuration keys of the Path scope
 never conflict.
+
+## TCP
+
+Defines configuration keys that bind on the port number of a TCP service.
+Configuration keys of the TCP scope can be declared in any ConfigMap as a default
+value, or as Ingress annotation. A conflict happens when the same TCP configuration
+key with distinct values are declared in distinct Ingress resources but to the same
+TCP port number.
 
 # Keys
 
@@ -329,7 +337,8 @@ The table below describes all supported configuration keys.
 | [`config-global`](#configuration-snippet)            | multiline config for the global section | Global  |                    |
 | [`config-proxy`](#configuration-snippet)             | multiline config for any proxy          | Global  |                    |
 | [`config-sections`](#configuration-snippet)          | multiline custom sections declaration   | Global  |                    |
-| [`config-tcp`](#configuration-snippet)               | multiline tcp-service config            | Global  |                    |
+| [`config-tcp`](#configuration-snippet)               | multiline ConfigMap based TCP config    | Global  |                    |
+| [`config-tcp-service`](#configuration-snippet)       | multiline TCP service config            | TCP     |                    |
 | [`cookie-key`](#affinity)                            | secret key                              | Global  | `Ingress`          |
 | [`cors-allow-credentials`](#cors)                    | [true\|false]                           | Path    |                    |
 | [`cors-allow-headers`](#cors)                        | headers list                            | Path    |                    |
@@ -442,7 +451,10 @@ The table below describes all supported configuration keys.
 | [`syslog-format`](#syslog)                           | rfc5424\|rfc3164                        | Global  | `rfc5424`          |
 | [`syslog-length`](#syslog)                           | maximum length                          | Global  | `1024`             |
 | [`syslog-tag`](#syslog)                              | syslog tag field string                 | Global  | `ingress`          |
-| [`tcp-log-format`](#log-format)                      | tcp log format                          | Global  | HAProxy default log format |
+| [`tcp-log-format`](#log-format)                      | ConfigMap based TCP log format          | Global  |                    |
+| [`tcp-service-log-format`](#log-format)              | TCP service log format                  | TCP     | HAProxy default log format |
+| [`tcp-service-port`](#tcp-services)                  | TCP service port number                 | TCP     |                    |
+| [`tcp-service-proxy-protocol`](#proxy-protocol)      | [true\|false]                           | TCP     | `false`            |
 | [`timeout-client`](#timeout)                         | time with suffix                        | Global  | `50s`              |
 | [`timeout-client-fin`](#timeout)                     | time with suffix                        | Global  | `50s`              |
 | [`timeout-connect`](#timeout)                        | time with suffix                        | Backend | `5s`               |
@@ -932,9 +944,9 @@ Define listening IPv4/IPv6 address on public HAProxy frontends. Since v0.10 the 
 value changed from `*` to an empty string, which haproxy interprets in the same way and
 binds on all IPv4 address.
 
-* `bind-ip-addr-tcp`: IP address of all TCP services declared on [`tcp-services`](#tcp-services-configmap) command-line option.
+* `bind-ip-addr-tcp`: IP address of all ConfigMap based TCP services declared on [`tcp-services-configmap`]({{% relref "command-line#tcp-services-configmap" %}}) command-line option.
 * `bind-ip-addr-healthz`: IP address of the health check URL.
-* `bind-ip-addr-http`: IP address of all HTTP/s frontends, port `:80` and `:443`, and also [`https-to-http-port`](#https-to-http-port) if declared.
+* `bind-ip-addr-http`: IP address of all HTTP/s frontends, port `:80` and `:443`, and also [`fronting-proxy-port`](#fronting-proxy-port) if declared.
 * `bind-ip-addr-prometheus`: IP address of the haproxy's internal Prometheus exporter.
 * `bind-ip-addr-stats`: IP address of the statistics page. See also [`stats-port`](#stats).
 
@@ -1075,15 +1087,16 @@ See also:
 
 ## Configuration snippet
 
-| Configuration key | Scope     | Default  | Since |
-|-------------------|-----------|----------|-------|
-| `config-backend`  | `Backend` |          |       |
-| `config-defaults` | `Global`  |          | v0.8  |
-| `config-frontend` | `Global`  |          |       |
-| `config-global`   | `Global`  |          |       |
-| `config-proxy`    | `Global`  |          | v0.13 |
-| `config-sections` | `Global`  |          | v0.13 |
-| `config-tcp`      | `Global`  |          | v0.13 |
+| Configuration key    | Scope     | Default  | Since |
+|----------------------|-----------|----------|-------|
+| `config-backend`     | `Backend` |          |       |
+| `config-defaults`    | `Global`  |          | v0.8  |
+| `config-frontend`    | `Global`  |          |       |
+| `config-global`      | `Global`  |          |       |
+| `config-proxy`       | `Global`  |          | v0.13 |
+| `config-sections`    | `Global`  |          | v0.13 |
+| `config-tcp`         | `Global`  |          | v0.13 |
+| `config-tcp-service` | `TCP`     |          | v0.13 |
 
 Add HAProxy configuration snippet to the configuration file. Use multiline content
 to add more than one line of configuration.
@@ -1094,7 +1107,8 @@ to add more than one line of configuration.
 * `config-global`: Adds a configuration snippet to the end of the HAProxy global section.
 * `config-proxy`: Adds a configuration snippet to any HAProxy proxy - listen, frontend or backend. It accepts a multi section configuration, where the name of the section is the name of a HAProxy proxy without the listen/frontend/backend prefix. A section whose proxy is not found is ignored. The content of each section should be indented, the first line without indentation is the start of a new section which will configure another proxy.
 * `config-sections`: Allows to declare new HAProxy sections. The configuration is used verbatim, without any indentation or validation.
-* `config-tcp`: Adds a configuration snippet to the tcp-services sections.
+* `config-tcp`: Adds a configuration snippet to the ConfigMap based TCP sections.
+* `config-tcp-service`: Adds a configuration snippet to a TCP service section.
 
 Examples - ConfigMap:
 
@@ -1140,7 +1154,7 @@ Examples - ConfigMap:
       capture request header X-User-Id len 32
 ```
 
-Annotation:
+Annotations:
 
 ```yaml
     annotations:
@@ -1150,6 +1164,13 @@ Annotation:
         http-request set-var(txn.path) path
         http-request cache-use icons if { var(txn.path) -m end .ico }
         http-response cache-store icons if { var(txn.path) -m end .ico }
+```
+
+```yaml
+    annotations:
+      ingress.kubernetes.io/config-tcp-service: |
+        timeout client 1m
+        timeout connect 15s
 ```
 
 ---
@@ -1590,12 +1611,13 @@ See also:
 
 ## Log format
 
-| Configuration key  | Scope    | Default | Since |
-|--------------------|----------|---------|-------|
-| `auth-log-format`  | `Global` |         | v0.13 |
-| `http-log-format`  | `Global` |         |       |
-| `https-log-format` | `Global` |         |       |
-| `tcp-log-format`   | `Global` |         |       |
+| Configuration key        | Scope    | Default | Since |
+|--------------------------|----------|---------|-------|
+| `auth-log-format`        | `Global` |         | v0.13 |
+| `http-log-format`        | `Global` |         |       |
+| `https-log-format`       | `Global` |         |       |
+| `tcp-log-format`         | `Global` |         |       |
+| `tcp-service-log-format` | `TCP`    |         | v0.13 |
 
 Customize the tcp, http or https log format using log format variables. Only used if
 [`syslog-endpoint`](#syslog) is also configured.
@@ -1603,13 +1625,15 @@ Customize the tcp, http or https log format using log format variables. Only use
 * `auth-log-format`: log format of all auth external frontends. Use `default` to configure default HTTP log format, defaults to not log.
 * `http-log-format`: log format of all HTTP proxies, defaults to HAProxy default HTTP log format.
 * `https-log-format`: log format of TCP proxy used to inspect SNI extention. Use `default` to configure default TCP log format, defaults to not log.
-* `tcp-log-format`: log format of TCP proxies, defaults to HAProxy default TCP log format. See also [TCP services configmap](#tcp-services-configmap) command-line option.
+* `tcp-log-format`: log format of the ConfigMap based TCP proxies. Defaults to HAProxy default TCP log format. See also [`--tcp-services-configmap`]({{% relref "command-line#tcp-services-configmap" %}}) command-line option.
+* `tcp-service-log-format`: log format of TCP frontends, configured via ingress resources and [`tcp-service-port`](#tcp-services) configuration key. Defaults to HAProxy default TCP log format.
 
 See also:
 
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#8.2.4
 * [`syslog`](#syslog)
 * [Auth External](#auth-external) configuration keys.
+* [TCP Services](#tcp-services) configuration keys.
 
 ---
 
@@ -1825,15 +1849,17 @@ See also:
 
 ## Proxy protocol
 
-| Configuration key    | Scope     | Default | Since |
-|----------------------|-----------|---------|-------|
-| `proxy-protocol`     | `Backend` | `no`    |       |
-| `use-proxy-protocol` | `Global`  | `false` |       |
+| Configuration key            | Scope     | Default | Since |
+|------------------------------|-----------|---------|-------|
+| `proxy-protocol`             | `Backend` | `no`    |       |
+| `tcp-service-proxy-protocol` | `TCP`     | `false` | v0.13 |
+| `use-proxy-protocol`         | `Global`  | `false` |       |
 
 Configures PROXY protocol in frontends and backends.
 
 * `proxy-protocol`: Define if the upstream backends support proxy protocol and what version of the protocol should be used. Supported values are `v1`, `v2`, `v2-ssl`, `v2-ssl-cn` or `no`. The default behavior if not declared is that the protocol is not supported by the backends and should not be used.
-* `use-proxy-protocol`: Define if HAProxy is behind another proxy that use the PROXY protocol. If `true`, ports `80` and `443` will expect the PROXY protocol. The stats endpoint (defaults to port `1936`) has it's own [`stats-proxy-protocol`](#stats) configuration key.
+* `use-proxy-protocol`: Define if HTTP services are behind another proxy that uses the PROXY protocol. If `true`, HTTP ports which defaults to `80` and `443` will expect the PROXY protocol, version 1 or 2. The stats endpoint (defaults to port `1936`) has its own [`stats-proxy-protocol`](#stats) configuration key.
+* `tcp-service-proxy-protocol`: Define if the TCP service is behind another proxy that uses the PROXY protocol. Configures as `"true"` if the proxy should expect requests using the PROXY protocol, version 1 or 2. The default value is `"false"`.
 
 See also:
 
@@ -2242,6 +2268,41 @@ See also:
 
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-log
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-log-tag
+
+---
+
+## TCP Services
+
+| Configuration key            | Scope | Default | Since |
+|------------------------------|-------|---------|-------|
+| `tcp-service-port`           | `TCP` |         | v0.13 |
+
+Configures a TCP proxy.
+
+* `tcp-service-port`: Defines the port number HAProxy should listen to.
+
+By default ingress resources configure HTTP services, and incoming requests are routed to backend servers based on hostnames and HTTP path. Whenever the `tcp-service-port` configuration key is added to an ingress resource, incoming requests are processed as TCP requests and the listening port number is used to route requests, using a dedicated frontend in tcp mode. Optionally, the TLS SNI extension can also be used to route incoming request if the hostname is declared in the ingress spec.
+
+Due to the limited data that can be inspected on TCP requests, a limited number of configuration keys work with TCP services:
+
+* `Backend` and `Path` scoped configuration keys work, provided that they are not HTTP related - eg [Cors](#cors) and [HSTS](#hsts) are ignored by TCP services, on the other hand [balance algorithm](#balance-algorithm), [Allow list](#allowlist) and [Blue/green](#blue-green) work just like in the HTTP requests counterpart.
+* All `Global` configuration keys related with the whole haproxy process will also be applied to TCP services, like max connections or syslog configurations.
+* All `Host` scoped configuration keys are currently unsupported
+
+Every TCP service port creates a dedicated haproxy frontend that can be [customized](#configuration-snippet) in three distinct ways:
+
+* `config-tcp-service` in the global ConfigMap, this will add the same configurations to all the TCP service frontends
+* `config-tcp-service` as an Ingress annotation, this will add the snippet in one TCP service
+* `config-proxy` in the global ConfigMap using `_front_tcp_<port-number>` as the proxy name, see in the [configuration snippet](#configuration-snippet) documentation how it works
+
+{{% alert title="Note" %}}
+The documentation continues to refer to the old, and now deprecated [`--tcp-services-configmap`]({{% relref "command-line#tcp-services-configmap" %}}) configuration options. Whenever we are talking about the deprecated option, we will refer it as the "ConfigMap based TCP".
+{{% /alert %}}
+
+See also:
+
+* [`config-tcp-service`](#configuration-snippet) configuration key
+* [`tcp-service-log-format`](#log-format) configuration key
 
 ---
 
