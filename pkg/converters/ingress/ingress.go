@@ -364,7 +364,7 @@ func (c *converter) trackAddedIngress() {
 				c.tracker.TrackBackend(convtypes.IngressType, name, backend.BackendID())
 			}
 		}
-		port, _ := strconv.Atoi(ing.Annotations[c.options.AnnotationPrefix+"/"+ingtypes.HostTCPServicePort])
+		port, _ := strconv.Atoi(ing.Annotations[c.options.AnnotationPrefix+"/"+ingtypes.TCPTCPServicePort])
 		for _, rule := range ing.Spec.Rules {
 			c.tracker.TrackHostname(convtypes.IngressType, name, normalizeHostname(rule.Host, port))
 			if rule.HTTP != nil {
@@ -441,12 +441,12 @@ func sortIngress(ingress []*networking.Ingress) {
 }
 
 func (c *converter) syncIngress(ing *networking.Ingress) {
-	annHost, annBack := c.readAnnotations(ing.Annotations)
-	tcpServicePort, _ := strconv.Atoi(annHost[ingtypes.HostTCPServicePort])
+	annTCP, annHost, annBack := c.readAnnotations(ing.Annotations)
+	tcpServicePort, _ := strconv.Atoi(annTCP[ingtypes.TCPTCPServicePort])
 	if tcpServicePort == 0 {
 		c.syncIngressHTTP(ing, annHost, annBack)
 	} else {
-		c.syncIngressTCP(ing, tcpServicePort, annHost, annBack)
+		c.syncIngressTCP(ing, tcpServicePort, annTCP, annBack)
 	}
 }
 
@@ -556,7 +556,7 @@ func (c *converter) syncIngressHTTP(ing *networking.Ingress, annHost, annBack ma
 	}
 }
 
-func (c *converter) syncIngressTCP(ing *networking.Ingress, tcpServicePort int, annHost, annBack map[string]string) {
+func (c *converter) syncIngressTCP(ing *networking.Ingress, tcpServicePort int, annTCP, annBack map[string]string) {
 	source := &annotations.Source{
 		Namespace: ing.Namespace,
 		Name:      ing.Name,
@@ -564,7 +564,7 @@ func (c *converter) syncIngressTCP(ing *networking.Ingress, tcpServicePort int, 
 	}
 	addIngressBackend := func(rawHostname string, ingressBackend *networking.IngressBackend) error {
 		hostname := normalizeHostname(rawHostname, tcpServicePort)
-		tcpService, err := c.addTCPService(source, hostname, tcpServicePort, annHost)
+		tcpService, err := c.addTCPService(source, hostname, tcpServicePort, annTCP)
 		if err != nil {
 			return err
 		}
@@ -818,7 +818,7 @@ func (c *converter) addBackendWithClass(source *annotations.Source, hostname, ur
 	if !found {
 		// New backend, initialize with service annotations, giving precedence
 		mapper = c.mapBuilder.NewMapper()
-		_, ann := c.readAnnotations(svc.Annotations)
+		_, _, ann := c.readAnnotations(svc.Annotations)
 		mapper.AddAnnotations(&annotations.Source{
 			Namespace: namespace,
 			Name:      svcName,
@@ -937,21 +937,24 @@ func (c *converter) addEndpoints(svc *api.Service, svcPort *api.ServicePort, bac
 	return nil
 }
 
-func (c *converter) readAnnotations(annotations map[string]string) (annHost, annBack map[string]string) {
+func (c *converter) readAnnotations(annotations map[string]string) (annTCP, annHost, annBack map[string]string) {
+	annTCP = make(map[string]string, len(annotations))
 	annHost = make(map[string]string, len(annotations))
 	annBack = make(map[string]string, len(annotations))
 	prefix := c.options.AnnotationPrefix + "/"
 	for annName, annValue := range annotations {
 		if strings.HasPrefix(annName, prefix) {
 			name := strings.TrimPrefix(annName, prefix)
-			if _, isHostAnn := ingtypes.AnnHost[name]; isHostAnn {
+			if _, isTCPAnn := ingtypes.AnnTCP[name]; isTCPAnn {
+				annTCP[name] = annValue
+			} else if _, isHostAnn := ingtypes.AnnHost[name]; isHostAnn {
 				annHost[name] = annValue
 			} else {
 				annBack[name] = annValue
 			}
 		}
 	}
-	return annHost, annBack
+	return annTCP, annHost, annBack
 }
 
 func (c *converter) readParameters(ingressClass *networking.IngressClass, trackingHostname string) map[string]string {

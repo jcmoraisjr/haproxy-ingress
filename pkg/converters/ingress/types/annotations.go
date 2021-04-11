@@ -16,6 +16,23 @@ limitations under the License.
 
 package types
 
+const (
+	TCPConfigTCPService     = "config-tcp-service"
+	TCPTCPServiceLogFormat  = "tcp-service-log-format"
+	TCPTCPServicePort       = "tcp-service-port"
+	TCPTCPServiceProxyProto = "tcp-service-proxy-protool"
+)
+
+var (
+	// AnnTCP ...
+	AnnTCP = map[string]struct{}{
+		TCPConfigTCPService:     {},
+		TCPTCPServiceLogFormat:  {},
+		TCPTCPServicePort:       {},
+		TCPTCPServiceProxyProto: {},
+	}
+)
+
 // Host Annotations
 const (
 	HostAppRoot                = "app-root"
@@ -24,7 +41,6 @@ const (
 	HostAuthTLSStrict          = "auth-tls-strict"
 	HostAuthTLSVerifyClient    = "auth-tls-verify-client"
 	HostCertSigner             = "cert-signer"
-	HostConfigTCPService       = "config-tcp-service"
 	HostPathType               = "path-type"
 	HostServerAlias            = "server-alias"
 	HostServerAliasRegex       = "server-alias-regex"
@@ -36,9 +52,6 @@ const (
 	HostSSLOptionsHost         = "ssl-options-host"
 	HostSSLPassthrough         = "ssl-passthrough"
 	HostSSLPassthroughHTTPPort = "ssl-passthrough-http-port"
-	HostTCPServiceLogFormat    = "tcp-service-log-format"
-	HostTCPServicePort         = "tcp-service-port"
-	HostTCPServiceProxyProto   = "tcp-service-proxy-protool"
 	HostTLSALPN                = "tls-alpn"
 	HostVarNamespace           = "var-namespace"
 )
@@ -52,7 +65,6 @@ var (
 		HostAuthTLSStrict:          {},
 		HostAuthTLSVerifyClient:    {},
 		HostCertSigner:             {},
-		HostConfigTCPService:       {},
 		HostServerAlias:            {},
 		HostPathType:               {},
 		HostServerAliasRegex:       {},
@@ -64,8 +76,6 @@ var (
 		HostSSLOptionsHost:         {},
 		HostSSLPassthrough:         {},
 		HostSSLPassthroughHTTPPort: {},
-		HostTCPServicePort:         {},
-		HostTCPServiceProxyProto:   {},
 		HostTLSALPN:                {},
 		HostVarNamespace:           {},
 	}

@@ -1673,7 +1673,7 @@ WARN skipping TLS secret 'tls2' of ingress 'default/echo2': TLS of tcp service p
 		{
 			ing: [][]string{
 				{"7001", "/", "echo1:8080"},
-				{"7002", "/", "echo1:8080", "tls2", "ingress.kubernetes.io/" + ingtypes.HostTCPServiceProxyProto + "=true"},
+				{"7002", "/", "echo1:8080", "tls2", "ingress.kubernetes.io/" + ingtypes.TCPTCPServiceProxyProto + "=true"},
 				{"7003", "/", "echo2:8080"},
 			},
 			expect: `
@@ -1712,7 +1712,7 @@ WARN skipping TLS secret 'tls2' of ingress 'default/echo2': TLS of tcp service p
 				domain = port[:pos]
 				port = port[pos+1:]
 			}
-			annPort := "ingress.kubernetes.io/" + ingtypes.HostTCPServicePort + "=" + port
+			annPort := "ingress.kubernetes.io/" + ingtypes.TCPTCPServicePort + "=" + port
 			var ing *networking.Ingress
 			switch len(params) {
 			case 1:
@@ -2406,7 +2406,7 @@ func (u *updaterMock) UpdateGlobalConfig(haproxyConfig haproxy.Config, config *a
 }
 
 func (u *updaterMock) UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *annotations.Mapper) {
-	tcp.ProxyProt = mapper.Get(ingtypes.HostTCPServiceProxyProto).Bool()
+	tcp.ProxyProt = mapper.Get(ingtypes.TCPTCPServiceProxyProto).Bool()
 }
 
 func (u *updaterMock) UpdateTCPHostConfig(tcp *hatypes.TCPServiceHost, mapper *annotations.Mapper) {
