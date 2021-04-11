@@ -1614,6 +1614,7 @@ func TestInstanceTCPServices(t *testing.T) {
 		backend   hatypes.BackendID
 		proxyProt bool
 		tls       hatypes.TLSConfig
+		custom    []string
 	}{
 		{
 			port: 7000,
@@ -1712,6 +1713,16 @@ func TestInstanceTCPServices(t *testing.T) {
 			hostname: "*.local4",
 			backend:  b3.BackendID(),
 		},
+		{
+			port:    7012,
+			backend: b.BackendID(),
+			custom:  []string{"## custom for TCP 7012"},
+		},
+		{
+			port:    7013,
+			backend: b.BackendID(),
+			custom:  []string{"## custom for TCP 7013", "## multi line"},
+		},
 	}
 
 	for _, svc := range services {
@@ -1722,6 +1733,7 @@ func TestInstanceTCPServices(t *testing.T) {
 		p, h := c.config.TCPServices().AcquireTCPService(fmt.Sprintf("%s:%d", hostname, svc.port))
 		p.ProxyProt = svc.proxyProt
 		p.TLS = svc.tls
+		p.CustomConfig = svc.custom
 		h.Backend = svc.backend
 	}
 
@@ -1792,6 +1804,17 @@ frontend _front_tcp_7011
     tcp-request content set-var(req.tcpback) req.ssl_sni,lower,map_reg(/etc/haproxy/maps/_tcp_sni_7011__regex.map) if !{ var(req.tcpback) -m found }
     tcp-request content accept if { req.ssl_hello_type 1 }
     use_backend %[var(req.tcpback)] if { var(req.tcpback) -m found }
+    default_backend d1_app_8080
+frontend _front_tcp_7012
+    bind :7012
+    mode tcp
+    ## custom for TCP 7012
+    default_backend d1_app_8080
+frontend _front_tcp_7013
+    bind :7013
+    mode tcp
+    ## custom for TCP 7013
+    ## multi line
     default_backend d1_app_8080
 <<frontends-default>>
 <<support>>

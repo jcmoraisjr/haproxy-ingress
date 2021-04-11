@@ -965,6 +965,9 @@ frontend {{ $proxy_name }}
 {{- range $snippet := index $global.CustomProxy $proxy_name }}
     {{ $snippet }}
 {{- end }}
+{{- range $snippet := $tcpport.CustomConfig }}
+    {{ $snippet }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $tcpport.SNIMap.HasHost }}

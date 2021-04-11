@@ -247,11 +247,12 @@ type TCPServices struct {
 
 // TCPServicePort ...
 type TCPServicePort struct {
-	port        int
-	hosts       map[string]*TCPServiceHost
-	defaultHost *TCPServiceHost
-	ProxyProt   bool
-	TLS         TLSConfig
+	port         int
+	hosts        map[string]*TCPServiceHost
+	defaultHost  *TCPServiceHost
+	CustomConfig []string
+	ProxyProt    bool
+	TLS          TLSConfig
 	//
 	SNIMap *HostsMap
 }

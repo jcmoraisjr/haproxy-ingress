@@ -24,6 +24,7 @@ const (
 	HostAuthTLSStrict          = "auth-tls-strict"
 	HostAuthTLSVerifyClient    = "auth-tls-verify-client"
 	HostCertSigner             = "cert-signer"
+	HostConfigTCPService       = "config-tcp-service"
 	HostPathType               = "path-type"
 	HostServerAlias            = "server-alias"
 	HostServerAliasRegex       = "server-alias-regex"
@@ -50,6 +51,7 @@ var (
 		HostAuthTLSStrict:          {},
 		HostAuthTLSVerifyClient:    {},
 		HostCertSigner:             {},
+		HostConfigTCPService:       {},
 		HostServerAlias:            {},
 		HostPathType:               {},
 		HostServerAliasRegex:       {},
