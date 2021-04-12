@@ -587,6 +587,7 @@ func (c *converter) syncIngressTCP(ing *networking.Ingress, tcpServicePort int, 
 			return err
 		}
 		tcpService.Backend = backend.BackendID()
+		backend.ModeTCP = true
 		return nil
 	}
 	if ing.Spec.DefaultBackend != nil {

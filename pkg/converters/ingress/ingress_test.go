@@ -1695,7 +1695,7 @@ WARN skipping TLS secret 'tls2' of ingress 'default/echo2': TLS of tcp service p
   tls: {}`,
 		},
 	}
-	for _, test := range testCases {
+	for i, test := range testCases {
 		c := setup(t)
 
 		c.createSvc1("default/echo1", "8080", "172.17.0.11")
@@ -1752,6 +1752,15 @@ WARN skipping TLS secret 'tls2' of ingress 'default/echo2': TLS of tcp service p
 		c.Sync()
 
 		c.compareConfigFront("[]")
+		for _, tcp := range c.hconfig.TCPServices().BuildSortedItems() {
+			for _, host := range tcp.Hosts() {
+				backend := c.hconfig.Backends().FindBackendID(host.Backend)
+				if !backend.ModeTCP {
+					t.Errorf("mode tcp in %d, backend %s, expected true but was false", i, backend.BackendID())
+				}
+
+			}
+		}
 		c.compareConfigTCPService(test.expect)
 		c.logger.CompareLogging(test.logging)
 
