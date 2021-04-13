@@ -2183,9 +2183,21 @@ func TestInstanceSSLPassthrough(t *testing.T) {
 	h = c.config.AcquireHost("d3.local")
 	h.AddPath(b, "/")
 	b.Endpoints = []*hatypes.Endpoint{endpointS41s}
+	b.ModeTCP = true
 	h.SSLPassthrough = true
 
 	b = c.config.AcquireBackend("d3", "app-http", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS41h}
+	h.HTTPPassthroughBackend = b.ID
+
+	b = c.config.AcquireBackend("d4", "app4-ssl", "8443")
+	h = c.config.AcquireHost("*")
+	h.AddPath(b, "/")
+	b.Endpoints = []*hatypes.Endpoint{endpointS41s}
+	b.ModeTCP = true
+	h.SSLPassthrough = true
+
+	b = c.config.AcquireBackend("d4", "app4-http", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS41h}
 	h.HTTPPassthroughBackend = b.ID
 
@@ -2200,7 +2212,13 @@ backend d3_app-http_8080
     mode http
     server s41h 172.17.0.141:8080 weight 100
 backend d3_app-ssl_8443
+    mode tcp
+    server s41s 172.17.0.141:8443 weight 100
+backend d4_app4-http_8080
     mode http
+    server s41h 172.17.0.141:8080 weight 100
+backend d4_app4-ssl_8443
+    mode tcp
     server s41s 172.17.0.141:8443 weight 100
 <<backends-default>>
 listen _front__tls
@@ -2211,8 +2229,10 @@ listen _front__tls
     tcp-request content accept if { req.ssl_hello_type 1 }
     use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
     # default backend
+    use_backend d4_app4-ssl_8443
     server _default_server_front001_socket unix@/var/run/_front001_socket.sock send-proxy-v2
 <<frontend-http>>
+    use_backend d4_app4-http_8080
     default_backend _error404
 frontend _front001
     mode http

@@ -195,6 +195,9 @@ func (c *converter) syncIngress(ing *extensions.Ingress) {
 
 func (c *converter) syncAnnotations() {
 	c.updater.UpdateGlobalConfig(c.haproxy, c.globalConfig)
+	if ann, found := c.hostAnnotations[c.haproxy.DefaultHost()]; found {
+		c.updater.UpdateHostConfig(c.haproxy.DefaultHost(), ann)
+	}
 	for _, host := range c.haproxy.Hosts() {
 		if ann, found := c.hostAnnotations[host]; found {
 			c.updater.UpdateHostConfig(host, ann)
