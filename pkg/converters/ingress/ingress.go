@@ -653,6 +653,10 @@ func (c *converter) fullSyncTCP() {
 	for _, tcpPort := range c.haproxy.TCPServices().Items() {
 		if ann, found := c.tcpsvcAnnotations[tcpPort]; found {
 			c.updater.UpdateTCPPortConfig(tcpPort, ann)
+			tcpHost := tcpPort.DefaultHost()
+			if tcpHost != nil {
+				c.updater.UpdateTCPHostConfig(tcpHost, ann)
+			}
 			for _, tcpHost := range tcpPort.Hosts() {
 				c.updater.UpdateTCPHostConfig(tcpHost, ann)
 			}
