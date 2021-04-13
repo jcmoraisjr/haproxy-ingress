@@ -957,6 +957,16 @@ listen {{ $proxy__front__tls }}
 
 {{- /*------------------------------------*/}}
     use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
+{{- $defaultHost := $hosts.DefaultHost }}
+{{- if $defaultHost }}
+{{- if $defaultHost.SSLPassthrough }}
+{{- range $path := $defaultHost.Paths }}
+{{- if eq $path.Path "/" }}
+    use_backend {{ $path.Backend.ID }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
     server _default_server{{ $frontend.BindName }} {{ $frontend.BindSocket }} send-proxy-v2
 {{- end }}
 
@@ -1076,6 +1086,11 @@ frontend {{ $proxy__front_http }}
     use_backend _acme_challenge if acme-challenge
 {{- end }}
 
+{{- if $hosts.DefaultHost }}
+{{- if $hosts.DefaultHost.HTTPPassthroughBackend }}
+    use_backend {{ $hosts.DefaultHost.HTTPPassthroughBackend }}
+{{- end }}
+{{- end }}
 {{- template "defaultbackend" map $hosts $defaultbackend }}
 
   # # # # # # # # # # # # # # # # # # #
@@ -1288,10 +1303,13 @@ frontend {{ $proxy__front_https }}
 {{- define "defaultbackend" }}
 {{- $hosts := .p1 }}
 {{- $defaultbackend := .p2 }}
-{{- if $hosts.DefaultHost }}
-{{- range $path := $hosts.DefaultHost.Paths }}
+{{- $defaultHost := $hosts.DefaultHost }}
+{{- if $defaultHost }}
+{{- if not $defaultHost.SSLPassthrough }}
+{{- range $path := $defaultHost.Paths }}
     use_backend {{ $path.Backend.ID }}
         {{- if ne $path.Path "/" }} if { path_beg {{ $path.Path }} }{{ end }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- if $defaultbackend }}
