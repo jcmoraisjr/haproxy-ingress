@@ -238,7 +238,7 @@ func (c *config) BuildFrontendGroup() error {
 	fgroupMaps := hatypes.CreateMaps()
 	fgroup := &hatypes.FrontendGroup{
 		Frontends:         frontends,
-		HasSSLPassthrough: len(sslpassthrough) > 0,
+		HasSSLPassthrough: len(sslpassthrough) > 0 || (c.defaultHost != nil && c.defaultHost.SSLPassthrough),
 		DefaultBind:       defaultBind,
 		Maps:              fgroupMaps,
 		HTTPFrontsMap:     fgroupMaps.AddMap(c.mapsDir + "/_global_http_front.map"),

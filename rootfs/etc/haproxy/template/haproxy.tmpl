@@ -681,6 +681,15 @@ listen _front__tls
 
 {{- /*------------------------------------*/}}
     # default backend
+{{- if $cfg.DefaultHost }}
+{{- if $cfg.DefaultHost.SSLPassthrough }}
+{{- range $path := $cfg.DefaultHost.Paths }}
+{{- if eq $path.Path "/" }}
+    use_backend {{ $path.Backend.ID }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
     server _default_server{{ $fgroup.DefaultBind.Name }} {{ $fgroup.DefaultBind.Socket }} send-proxy-v2
 {{- end }}
 
@@ -816,6 +825,11 @@ frontend _front_http
     use_backend _acme_challenge if acme-challenge
 {{- end }}
 
+{{- if $cfg.DefaultHost }}
+{{- if $cfg.DefaultHost.HTTPPassthroughBackend }}
+    use_backend {{ $cfg.DefaultHost.HTTPPassthroughBackend }}
+{{- end }}
+{{- end }}
 {{- template "defaultbackend" map $cfg }}
 
   # # # # # # # # # # # # # # # # # # #
@@ -1019,9 +1033,11 @@ frontend {{ $frontend.Name }}
 {{- define "defaultbackend" }}
 {{- $cfg := .p1 }}
 {{- if $cfg.DefaultHost }}
+{{- if not $cfg.DefaultHost.SSLPassthrough }}
 {{- range $path := $cfg.DefaultHost.Paths }}
     use_backend {{ $path.Backend.ID }}
         {{- if ne $path.Path "/" }} if { path_beg {{ $path.Path }} }{{ end }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- if $cfg.DefaultBackend }}
