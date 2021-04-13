@@ -1740,6 +1740,12 @@ func TestSyncAnnPassthrough(t *testing.T) {
 				"ingress.kubernetes.io/ssl-passthrough":           "true",
 				"ingress.kubernetes.io/ssl-passthrough-http-port": "9000",
 			}),
+		c.createIng2Ann("default/echo4", "echo:8443",
+			map[string]string{
+				"ingress.kubernetes.io/app-root":                  "/login",
+				"ingress.kubernetes.io/ssl-passthrough":           "true",
+				"ingress.kubernetes.io/ssl-passthrough-http-port": "9090",
+			}),
 	)
 
 	c.compareConfigFront(`
@@ -1751,6 +1757,14 @@ func TestSyncAnnPassthrough(t *testing.T) {
   paths:
   - path: /
     backend: default_echo_8443
+`)
+
+	c.compareConfigDefaultFront(`
+hostname: <default>
+paths:
+- path: /
+  backend: default_echo_8443
+rootredirect: /login
 `)
 
 	c.compareConfigBack(`
@@ -1962,6 +1976,12 @@ spec:
   backend:
     serviceName: ` + sservice[0] + `
     servicePort: ` + sservice[1]).(*networking.Ingress)
+}
+
+func (c *testConfig) createIng2Ann(name, service string, ann map[string]string) *networking.Ingress {
+	ing := c.createIng2(name, service)
+	ing.SetAnnotations(ann)
+	return ing
 }
 
 func (c *testConfig) createIng3(name string) *networking.Ingress {
