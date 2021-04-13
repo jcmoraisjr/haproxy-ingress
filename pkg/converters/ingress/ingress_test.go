@@ -17,6 +17,7 @@ limitations under the License.
 package ingress
 
 import (
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -944,6 +945,15 @@ func TestSyncMultiNamespace(t *testing.T) {
     port: 8080` + defaultBackendConfig)
 }
 
+func paramToMap(param ...string) map[string]string {
+	res := make(map[string]string, len(param))
+	for _, p := range param {
+		v := strings.SplitN(p, "=", 2)
+		res[v[0]] = v[1]
+	}
+	return res
+}
+
 func TestSyncPartial(t *testing.T) {
 	svcDefault := [][]string{
 		{"default/echo1", "8080", "172.17.0.11"},
@@ -1355,24 +1365,16 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
 		c.logger.Logging = []string{}
 
 		ings := func(slice *[]*networking.Ingress, params [][]string) {
-			paramToMap := func(param []string) map[string]string {
-				res := make(map[string]string, len(param))
-				for _, p := range param {
-					v := strings.SplitN(p, "=", 2)
-					res[v[0]] = v[1]
-				}
-				return res
-			}
 			for _, param := range params {
 				var ing *networking.Ingress
 				switch len(param) {
 				case 3:
 					ing = c.createIng2(param[0], param[1])
-					ing.SetAnnotations(paramToMap(param[2:]))
+					ing.SetAnnotations(paramToMap(param[2]))
 				case 4:
 					ing = c.createIng1(param[0], param[1], param[2], param[3])
 				case 5:
-					ing = c.createIng1Ann(param[0], param[1], param[2], param[3], paramToMap(param[4:]))
+					ing = c.createIng1Ann(param[0], param[1], param[2], param[3], paramToMap(param[4]))
 				}
 				*slice = append(*slice, ing)
 			}
@@ -1451,6 +1453,320 @@ func TestSyncPartialDefaultBackend(t *testing.T) {
  *  ANNOTATIONS
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+func TestSyncTCPServicePort(t *testing.T) {
+	testCases := []struct {
+		ing     [][]string
+		expect  string
+		logging string
+	}{
+		// 0
+		{
+			expect: `[]`,
+		},
+		// 1
+		{
+			ing: [][]string{
+				{"7001"},
+			},
+			expect: `
+- backends: []
+  defaultbackend: default_echo1_8080
+  port: 7001
+  proxyprot: false
+  tls: {}`,
+		},
+		// 2
+		{
+			ing: [][]string{
+				{"7001", "/", "echonotfound:8080"},
+			},
+			expect:  `[]`,
+			logging: `WARN skipping path declaration on ingress 'default/echo1': service not found: 'default/echonotfound'`,
+		},
+		// 3
+		{
+			ing: [][]string{
+				{"7001", "/", "echo1:notvalidport"},
+			},
+			expect:  `[]`,
+			logging: `WARN skipping path declaration on ingress 'default/echo1': port not found: 'notvalidport'`,
+		},
+		// 4
+		{
+			ing: [][]string{
+				{"7001", "", "echo1:8080"},
+			},
+			expect: `
+- backends: []
+  defaultbackend: default_echo1_8080
+  port: 7001
+  proxyprot: false
+  tls: {}`,
+		},
+		// 5
+		{
+			ing: [][]string{
+				{"7001", "/", "echo1:8080"},
+				{"7001", "/", "echo1:8080"},
+			},
+			expect: `
+- backends: []
+  defaultbackend: default_echo1_8080
+  port: 7001
+  proxyprot: false
+  tls: {}`,
+			logging: `WARN skipping path declaration on ingress 'default/echo2': tcp service :7001 was already assigned to default_echo1_8080`,
+		},
+		// 6
+		{
+			ing: [][]string{
+				{"7001", "/", "echo1:8080", "tls1"},
+			},
+			expect: `
+- backends: []
+  defaultbackend: default_echo1_8080
+  port: 7001
+  proxyprot: false
+  tls:
+    tlsfilename: /tls/default/tls1.pem`,
+		},
+		// 7
+		{
+			ing: [][]string{
+				{"7001", "/", "echo1:8080", "tls-invalid"},
+			},
+			expect: `
+- backends: []
+  defaultbackend: default_echo1_8080
+  port: 7001
+  proxyprot: false
+  tls:
+    tlsfilename: /tls/tls-default.pem`,
+			logging: `WARN using default certificate due to an error reading secret 'tls-invalid' on ingress 'default/echo1': secret not found: 'default/tls-invalid'`,
+		},
+		// 8
+		{
+			ing: [][]string{
+				{"7001", "tls1"},
+			},
+			expect:  `[]`,
+			logging: `WARN skipping TLS of tcp service on ingress 'default/echo1': backend was not configured`,
+		},
+		// 9
+		{
+			ing: [][]string{
+				{"7001", "/", "echo1:8080", "tls1"},
+				{"7001", "/", "echo1:8080", "tls1"},
+			},
+			expect: `
+- backends: []
+  defaultbackend: default_echo1_8080
+  port: 7001
+  proxyprot: false
+  tls:
+    tlsfilename: /tls/default/tls1.pem`,
+			logging: `WARN skipping path declaration on ingress 'default/echo2': tcp service :7001 was already assigned to default_echo1_8080`,
+		},
+		// 10
+		{
+			ing: [][]string{
+				{"7001", "/", "echo1:8080", "tls1"},
+				{"7001", "/", "echo1:8080", "tls2"},
+			},
+			expect: `
+- backends: []
+  defaultbackend: default_echo1_8080
+  port: 7001
+  proxyprot: false
+  tls:
+    tlsfilename: /tls/default/tls1.pem`,
+			logging: `
+WARN skipping path declaration on ingress 'default/echo2': tcp service :7001 was already assigned to default_echo1_8080
+WARN skipping TLS secret 'tls2' of ingress 'default/echo2': TLS of tcp service port '7001' was already assigned`,
+		},
+		// 11
+		{
+			ing: [][]string{
+				{"7001", "/", "echo1:8080"},
+				{"7001", "tls1"},
+			},
+			expect: `
+- backends: []
+  defaultbackend: default_echo1_8080
+  port: 7001
+  proxyprot: false
+  tls:
+    tlsfilename: /tls/default/tls1.pem`,
+		},
+		// 12
+		{
+			ing: [][]string{
+				{"echo.local:7001", "/", "echo1:8080,echo2:8080"},
+			},
+			expect: `
+- backends:
+  - default_echo1_8080
+  defaultbackend: ""
+  port: 7001
+  proxyprot: false
+  tls: {}`,
+			logging: `WARN skipping path declaration on ingress 'default/echo1': tcp service echo.local:7001 was already assigned to default_echo1_8080`,
+		},
+		// 13
+		{
+			ing: [][]string{
+				{"echo1.local:7001", "/", "echo1:8080"},
+				{"echo2.local:7001", "/", "echo2:8080"},
+			},
+			expect: `
+- backends:
+  - default_echo1_8080
+  - default_echo2_8080
+  defaultbackend: ""
+  port: 7001
+  proxyprot: false
+  tls: {}`,
+		},
+		// 14
+		{
+			ing: [][]string{
+				{"echo1.local:7001", "/", "echo1:8080"},
+				{"echo2.local:7001", "/", "echo2:8080"},
+				{"echo2.local:7001", "/", "echo1:8080"},
+			},
+			expect: `
+- backends:
+  - default_echo1_8080
+  - default_echo2_8080
+  defaultbackend: ""
+  port: 7001
+  proxyprot: false
+  tls: {}`,
+			logging: `WARN skipping path declaration on ingress 'default/echo3': tcp service echo2.local:7001 was already assigned to default_echo2_8080`,
+		},
+		// 15
+		{
+			ing: [][]string{
+				{":7001", "/", "echo1:8080"},
+				{"echo1.local:7001", "/", "echo1:8080"},
+				{"echo2.local:7001", "/", "echo2:8080"},
+			},
+			expect: `
+- backends:
+  - default_echo1_8080
+  - default_echo2_8080
+  defaultbackend: default_echo1_8080
+  port: 7001
+  proxyprot: false
+  tls: {}`,
+		},
+		// 16
+		{
+			ing: [][]string{
+				{"7001", "/app", "echo1:8080"},
+			},
+			expect:  `[]`,
+			logging: `WARN skipping backend declaration on path '/app' of ingress 'default/echo1': tcp services do not support path`,
+		},
+		// 17
+		{
+			ing: [][]string{
+				{"7001", "/", "echo1:8080"},
+				{"7002", "/", "echo1:8080", "tls2", "ingress.kubernetes.io/" + ingtypes.TCPTCPServiceProxyProto + "=true"},
+				{"7003", "/", "echo2:8080"},
+			},
+			expect: `
+- backends: []
+  defaultbackend: default_echo1_8080
+  port: 7001
+  proxyprot: false
+  tls: {}
+- backends: []
+  defaultbackend: default_echo1_8080
+  port: 7002
+  proxyprot: true
+  tls:
+    tlsfilename: /tls/default/tls2.pem
+- backends: []
+  defaultbackend: default_echo2_8080
+  port: 7003
+  proxyprot: false
+  tls: {}`,
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+
+		c.createSvc1("default/echo1", "8080", "172.17.0.11")
+		c.createSvc1("default/echo2", "8080", "172.17.0.12")
+		c.createSecretTLS1("default/tls1")
+		c.createSecretTLS1("default/tls2")
+
+		for _, params := range test.ing {
+			n := strconv.Itoa(len(c.cache.IngList) + 1)
+			name := "default/echo" + n
+			domain := ""
+			port := params[0]
+			if pos := strings.Index(port, ":"); pos >= 0 {
+				domain = port[:pos]
+				port = port[pos+1:]
+			}
+			annPort := "ingress.kubernetes.io/" + ingtypes.TCPTCPServicePort + "=" + port
+			var ing *networking.Ingress
+			switch len(params) {
+			case 1:
+				ing = c.createIng2(name, "echo1:8080")
+				ing.SetAnnotations(paramToMap(annPort))
+			case 2:
+				ing = c.createIngTLS1(name, domain, "/", ":", params[1])
+				ing.Spec.Rules = nil
+				ing.SetAnnotations(paramToMap(annPort))
+			case 3:
+				ssvc := strings.Split(params[2], ",") // two services (hence paths) in the same ing.Spec.Rules[*].HTTP
+				ing = c.createIng1Ann(name, domain, params[1], ssvc[0], paramToMap(annPort))
+				for _, svc := range ssvc[1:] {
+					// TODO migrate to an ingress constructor
+					http := ing.Spec.Rules[0].HTTP
+					path := networking.HTTPIngressPath{
+						Path: params[1], // + "/" + strconv.Itoa(len(http.Paths)),
+					}
+					s := strings.Split(svc, ":")
+					path.Backend.Service = &networking.IngressServiceBackend{
+						Name: s[0],
+						Port: createServicePort(s[1]),
+					}
+					http.Paths = append(http.Paths, path)
+				}
+			case 4:
+				ing = c.createIngTLS1(name, domain, params[1], params[2], params[3])
+				ing.SetAnnotations(paramToMap(annPort))
+			case 5:
+				ing = c.createIngTLS1(name, domain, params[1], params[2], params[3])
+				ing.SetAnnotations(paramToMap(annPort, params[4]))
+			default:
+				panic("invalid size")
+			}
+			c.cache.IngList = append(c.cache.IngList, ing)
+		}
+		c.Sync()
+
+		c.compareConfigFront("[]")
+		for _, tcp := range c.hconfig.TCPServices().BuildSortedItems() {
+			for _, host := range tcp.Hosts() {
+				backend := c.hconfig.Backends().FindBackendID(host.Backend)
+				if !backend.ModeTCP {
+					t.Errorf("mode tcp in %d, backend %s, expected true but was false", i, backend.BackendID())
+				}
+
+			}
+		}
+		c.compareConfigTCPService(test.expect)
+		c.logger.CompareLogging(test.logging)
+
+		c.teardown()
+	}
+}
 
 func TestSyncAnnFront(t *testing.T) {
 	c := setup(t)
@@ -2098,6 +2414,13 @@ type updaterMock struct{}
 func (u *updaterMock) UpdateGlobalConfig(haproxyConfig haproxy.Config, config *annotations.Mapper) {
 }
 
+func (u *updaterMock) UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *annotations.Mapper) {
+	tcp.ProxyProt = mapper.Get(ingtypes.TCPTCPServiceProxyProto).Bool()
+}
+
+func (u *updaterMock) UpdateTCPHostConfig(tcp *hatypes.TCPServiceHost, mapper *annotations.Mapper) {
+}
+
 func (u *updaterMock) UpdateHostConfig(host *hatypes.Host, mapper *annotations.Mapper) {
 	host.RootRedirect = mapper.Get(ingtypes.HostAppRoot).Value
 }
@@ -2105,6 +2428,46 @@ func (u *updaterMock) UpdateHostConfig(host *hatypes.Host, mapper *annotations.M
 func (u *updaterMock) UpdateBackendConfig(backend *hatypes.Backend, mapper *annotations.Mapper) {
 	backend.Server.MaxConn = mapper.Get(ingtypes.BackMaxconnServer).Int()
 	backend.BalanceAlgorithm = mapper.Get(ingtypes.BackBalanceAlgorithm).Value
+}
+
+type (
+	tcpServiceMock struct {
+		Backends       []string
+		DefaultBackend string
+		Port           int
+		ProxyProt      bool
+		TLS            tlsMock
+	}
+)
+
+func convertTCPService(hatcpserviceports ...*hatypes.TCPServicePort) []tcpServiceMock {
+	tcpServices := []tcpServiceMock{}
+	for _, hasvc := range hatcpserviceports {
+		var backends []string
+		for _, h := range hasvc.Hosts() {
+			backends = append(backends, h.Backend.String())
+		}
+		sort.Strings(backends)
+		var defaultBackend string
+		if hasvc.DefaultHost() != nil {
+			defaultBackend = hasvc.DefaultHost().Backend.String()
+		}
+		svc := tcpServiceMock{
+			Backends:       backends,
+			DefaultBackend: defaultBackend,
+			Port:           hasvc.Port(),
+			ProxyProt:      hasvc.ProxyProt,
+			TLS: tlsMock{
+				TLSFilename: hasvc.TLS.TLSFilename,
+			},
+		}
+		tcpServices = append(tcpServices, svc)
+	}
+	return tcpServices
+}
+
+func (c *testConfig) compareConfigTCPService(expected string) {
+	c.compareText(_yamlMarshal(convertTCPService(c.hconfig.TCPServices().BuildSortedItems()...)), expected)
 }
 
 type (

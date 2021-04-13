@@ -16,6 +16,23 @@ limitations under the License.
 
 package types
 
+const (
+	TCPConfigTCPService     = "config-tcp-service"
+	TCPTCPServiceLogFormat  = "tcp-service-log-format"
+	TCPTCPServicePort       = "tcp-service-port"
+	TCPTCPServiceProxyProto = "tcp-service-proxy-protool"
+)
+
+var (
+	// AnnTCP ...
+	AnnTCP = map[string]struct{}{
+		TCPConfigTCPService:     {},
+		TCPTCPServiceLogFormat:  {},
+		TCPTCPServicePort:       {},
+		TCPTCPServiceProxyProto: {},
+	}
+)
+
 // Host Annotations
 const (
 	HostAppRoot                = "app-root"

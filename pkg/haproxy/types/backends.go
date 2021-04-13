@@ -270,6 +270,11 @@ func (b *Backends) RemoveAll(backendID []BackendID) {
 	}
 }
 
+// IsEmpty ...
+func (b BackendID) IsEmpty() bool {
+	return b.Name == ""
+}
+
 func (b BackendID) String() string {
 	if b.id == "" {
 		b.id = buildID(b.Namespace, b.Name, b.Port)

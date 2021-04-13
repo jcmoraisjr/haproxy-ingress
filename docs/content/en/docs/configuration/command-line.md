@@ -306,6 +306,12 @@ Configure `--tcp-services-configmap` argument with `namespace/configmapname` res
 services and ports that HAProxy should listen to. Use the HAProxy's port number as the key of the
 ConfigMap.
 
+{{% alert title="Note" %}}
+Starting on v0.13, `--tcp-services-configmap` is deprecated. Use [`tcp-service-port`]({{% relref "keys#tcp-services" %}}) configuration key instead.
+
+The documentation refers to "ConfigMap based TCP" when taking about this configuration options, and it refers to "TCP Service" when talking about to the new, annotation based TCP configuration.
+{{% /alert %}}
+
 The value of the ConfigMap entry is a colon separated list of the following arguments:
 
 1. `<namespace>/<service-name>`, mandatory, is the well known notation of the service that will receive incoming connections.
@@ -342,6 +348,10 @@ HAProxy will listen 7 new ports:
 * `9995` will proxy to `admin` service, port `9900`, on the `system-prod` namespace. Upcoming connections should be encrypted, HAProxy will ssl-offload data using crt/key provided by `system-prod/tcp-9995` secret. Furthermore, clients must present a certificate that will be valid under the certificate authority (and optional certificate revocation list) provded in the `system-prod/tcp-9995-ca` secret. 
 
 Note: Check interval was added in v0.10 and defaults to `2s`. All declared services has check interval enabled, except `3306` which disabled it.
+
+See also:
+
+* [TCP Services]({{% relref "keys#tcp-services" %}}) configuration keys
 
 ---
 

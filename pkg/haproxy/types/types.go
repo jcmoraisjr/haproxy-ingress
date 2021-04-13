@@ -238,6 +238,48 @@ type ModSecurityTimeoutConfig struct {
 	Processing string
 }
 
+// TCPServices ...
+type TCPServices struct {
+	items   map[int]*TCPServicePort
+	changed bool
+}
+
+// TCPServicePort ...
+type TCPServicePort struct {
+	port         int
+	hosts        map[string]*TCPServiceHost
+	defaultHost  *TCPServiceHost
+	CustomConfig []string
+	LogFormat    string
+	ProxyProt    bool
+	TLS          TLSConfig
+	//
+	SNIMap *HostsMap
+}
+
+// TCPServiceHost ...
+type TCPServiceHost struct {
+	hostname string
+	Backend  BackendID
+}
+
+// TLSConfig ...
+type TLSConfig struct {
+	ALPN             string
+	CAFilename       string
+	CAHash           string
+	CAVerifyOptional bool
+	Ciphers          string
+	CipherSuites     string
+	CRLFilename      string
+	CRLHash          string
+	Options          string
+	TLSCommonName    string
+	TLSFilename      string
+	TLSHash          string
+	TLSNotAfter      time.Time
+}
+
 // TCPBackends ...
 type TCPBackends struct {
 	items, itemsAdd, itemsDel map[int]*TCPBackend
@@ -455,20 +497,8 @@ type HostRedirectConfig struct {
 
 // HostTLSConfig ...
 type HostTLSConfig struct {
-	ALPN             string
-	CAErrorPage      string
-	CAFilename       string
-	CAHash           string
-	CAVerifyOptional bool
-	Ciphers          string
-	CipherSuites     string
-	CRLFilename      string
-	CRLHash          string
-	Options          string
-	TLSCommonName    string
-	TLSFilename      string
-	TLSHash          string
-	TLSNotAfter      time.Time
+	TLSConfig
+	CAErrorPage string
 }
 
 // EndpointNaming ...

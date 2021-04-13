@@ -146,8 +146,10 @@ func TestTLSConfig(t *testing.T) {
 				ingtypes.HostAuthTLSStrict: "true",
 			},
 			expected: hatypes.HostTLSConfig{
-				CAFilename: fakeCAFilename,
-				CAHash:     fakeCAHash,
+				TLSConfig: hatypes.TLSConfig{
+					CAFilename: fakeCAFilename,
+					CAHash:     fakeCAHash,
+				},
 			},
 			logging: "ERROR error building TLS auth config on ingress 'system/ing1': secret not found: 'system/caerr'",
 		},
@@ -157,8 +159,10 @@ func TestTLSConfig(t *testing.T) {
 				ingtypes.HostAuthTLSSecret: "cafile",
 			},
 			expected: hatypes.HostTLSConfig{
-				CAFilename: "/path/ca.crt",
-				CAHash:     "c0e1bf73caf75d7353cf3ecdd20ceb2f6fa1cab1",
+				TLSConfig: hatypes.TLSConfig{
+					CAFilename: "/path/ca.crt",
+					CAHash:     "c0e1bf73caf75d7353cf3ecdd20ceb2f6fa1cab1",
+				},
 			},
 		},
 		// 5
@@ -182,10 +186,11 @@ func TestTLSConfig(t *testing.T) {
 				ingtypes.HostAuthTLSVerifyClient: "optional",
 			},
 			expected: hatypes.HostTLSConfig{
-				CAFilename:       fakeCAFilename,
-				CAHash:           fakeCAHash,
-				CAVerifyOptional: true,
-			},
+				TLSConfig: hatypes.TLSConfig{
+					CAFilename:       fakeCAFilename,
+					CAHash:           fakeCAHash,
+					CAVerifyOptional: true,
+				}},
 			logging: "ERROR error building TLS auth config on ingress 'system/ing1': secret not found: 'system/caerr'",
 		},
 		// 8
@@ -196,10 +201,11 @@ func TestTLSConfig(t *testing.T) {
 				ingtypes.HostAuthTLSVerifyClient: "optional",
 			},
 			expected: hatypes.HostTLSConfig{
-				CAFilename:       "/path/ca.crt",
-				CAHash:           "c0e1bf73caf75d7353cf3ecdd20ceb2f6fa1cab1",
-				CAVerifyOptional: true,
-			},
+				TLSConfig: hatypes.TLSConfig{
+					CAFilename:       "/path/ca.crt",
+					CAHash:           "c0e1bf73caf75d7353cf3ecdd20ceb2f6fa1cab1",
+					CAVerifyOptional: true,
+				}},
 		},
 		// 9
 		{
@@ -208,10 +214,11 @@ func TestTLSConfig(t *testing.T) {
 				ingtypes.HostAuthTLSVerifyClient: "optional",
 			},
 			expected: hatypes.HostTLSConfig{
-				CAFilename:       "/path/ca.crt",
-				CAHash:           "c0e1bf73caf75d7353cf3ecdd20ceb2f6fa1cab1",
-				CAVerifyOptional: true,
-			},
+				TLSConfig: hatypes.TLSConfig{
+					CAFilename:       "/path/ca.crt",
+					CAHash:           "c0e1bf73caf75d7353cf3ecdd20ceb2f6fa1cab1",
+					CAVerifyOptional: true,
+				}},
 		},
 		// 10
 		{
@@ -229,8 +236,9 @@ func TestTLSConfig(t *testing.T) {
 				ingtypes.HostSSLCiphers: "some-cipher-2:some-cipher-3",
 			},
 			expected: hatypes.HostTLSConfig{
-				Ciphers: "some-cipher-2:some-cipher-3",
-			},
+				TLSConfig: hatypes.TLSConfig{
+					Ciphers: "some-cipher-2:some-cipher-3",
+				}},
 		},
 		// 12
 		{
@@ -248,8 +256,9 @@ func TestTLSConfig(t *testing.T) {
 				ingtypes.HostSSLCipherSuites: "some-cipher-suite-2:some-cipher-suite-3",
 			},
 			expected: hatypes.HostTLSConfig{
-				CipherSuites: "some-cipher-suite-2:some-cipher-suite-3",
-			},
+				TLSConfig: hatypes.TLSConfig{
+					CipherSuites: "some-cipher-suite-2:some-cipher-suite-3",
+				}},
 		},
 		// 14
 		{
@@ -267,8 +276,9 @@ func TestTLSConfig(t *testing.T) {
 				ingtypes.HostTLSALPN: "h2",
 			},
 			expected: hatypes.HostTLSConfig{
-				ALPN: "h2",
-			},
+				TLSConfig: hatypes.TLSConfig{
+					ALPN: "h2",
+				}},
 		},
 		// 16
 		{
@@ -276,8 +286,9 @@ func TestTLSConfig(t *testing.T) {
 				ingtypes.HostSSLOptionsHost: "ssl-min-ver TLSv1.2",
 			},
 			expected: hatypes.HostTLSConfig{
-				Options: "ssl-min-ver TLSv1.2",
-			},
+				TLSConfig: hatypes.TLSConfig{
+					Options: "ssl-min-ver TLSv1.2",
+				}},
 		},
 		// 17
 		{
@@ -288,8 +299,9 @@ func TestTLSConfig(t *testing.T) {
 				ingtypes.HostSSLOptionsHost: "ssl-min-ver TLSv1.0 ssl-max-ver TLSv1.2",
 			},
 			expected: hatypes.HostTLSConfig{
-				Options: "ssl-min-ver TLSv1.0 ssl-max-ver TLSv1.2",
-			},
+				TLSConfig: hatypes.TLSConfig{
+					Options: "ssl-min-ver TLSv1.0 ssl-max-ver TLSv1.2",
+				}},
 		},
 	}
 	source := &Source{Namespace: "system", Name: "ing1", Type: "ingress"}

@@ -32,11 +32,13 @@ import (
 type Config interface {
 	Frontend() *hatypes.Frontend
 	SyncConfig()
+	WriteTCPServicesMaps() error
 	WriteFrontendMaps() error
 	WriteBackendMaps() error
 	AcmeData() *hatypes.AcmeData
 	Global() *hatypes.Global
 	TCPBackends() *hatypes.TCPBackends
+	TCPServices() *hatypes.TCPServices
 	Hosts() *hatypes.Hosts
 	Backends() *hatypes.Backends
 	Userlists() *hatypes.Userlists
@@ -56,6 +58,7 @@ type config struct {
 	hosts       *hatypes.Hosts
 	backends    *hatypes.Backends
 	tcpbackends *hatypes.TCPBackends
+	tcpservices *hatypes.TCPServices
 	userlists   *hatypes.Userlists
 }
 
@@ -77,6 +80,7 @@ func createConfig(options options) *config {
 		hosts:       hatypes.CreateHosts(),
 		backends:    hatypes.CreateBackends(options.shardCount),
 		tcpbackends: hatypes.CreateTCPBackends(),
+		tcpservices: hatypes.CreateTCPServices(),
 		userlists:   hatypes.CreateUserlists(),
 	}
 }
@@ -134,6 +138,26 @@ func (c *config) SyncConfig() {
 			host.AddPath(back, "/", hatypes.MatchBegin)
 		}
 	}
+}
+
+// WriteTCPServicesMaps reads the model and writes haproxy's maps
+// used in the tcp services. Should be called before write the main
+// config file. This func doesn't change model state, except the
+// link to the tcp services maps.
+func (c *config) WriteTCPServicesMaps() error {
+	if !c.tcpservices.Changed() {
+		return nil
+	}
+	mapBuilder := hatypes.CreateMaps(c.global.MatchOrder)
+	for _, tcpPort := range c.tcpservices.Items() {
+		sniMap := mapBuilder.AddMap(fmt.Sprintf("%s/_tcp_sni_%d.map", c.options.mapsDir, tcpPort.Port()))
+		for _, tcpHost := range tcpPort.BuildSortedItems() {
+			sniMap.AddHostnameMapping(tcpHost.Hostname(), tcpHost.Backend.String())
+		}
+		tcpPort.SNIMap = sniMap
+	}
+	err := writeMaps(mapBuilder, c.options.mapsTemplate)
+	return err
 }
 
 // WriteFrontendMaps reads the model and writes haproxy's maps
@@ -362,6 +386,10 @@ func (c *config) TCPBackends() *hatypes.TCPBackends {
 	return c.tcpbackends
 }
 
+func (c *config) TCPServices() *hatypes.TCPServices {
+	return c.tcpservices
+}
+
 func (c *config) Hosts() *hatypes.Hosts {
 	return c.hosts
 }
@@ -397,6 +425,7 @@ func (c *config) Commit() {
 	c.hosts.Commit()
 	c.backends.Commit()
 	c.tcpbackends.Commit()
+	c.tcpservices.Commit()
 	c.userlists.Commit()
 	c.acmeData.Storages().Commit()
 }

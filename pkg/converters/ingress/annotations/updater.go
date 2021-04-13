@@ -31,6 +31,8 @@ import (
 // Updater ...
 type Updater interface {
 	UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mapper)
+	UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *Mapper)
+	UpdateTCPHostConfig(host *hatypes.TCPServiceHost, mapper *Mapper)
 	UpdateHostConfig(host *hatypes.Host, mapper *Mapper)
 	UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper)
 }
@@ -161,6 +163,15 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	c.buildGlobalStats(d)
 	c.buildGlobalSyslog(d)
 	c.buildGlobalTimeout(d)
+}
+
+func (c *updater) UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *Mapper) {
+	tcp.CustomConfig = utils.LineToSlice(mapper.Get(ingtypes.TCPConfigTCPService).Value)
+	tcp.LogFormat = mapper.Get(ingtypes.TCPTCPServiceLogFormat).Value
+	tcp.ProxyProt = mapper.Get(ingtypes.TCPTCPServiceProxyProto).Bool()
+}
+
+func (c *updater) UpdateTCPHostConfig(host *hatypes.TCPServiceHost, mapper *Mapper) {
 }
 
 func (c *updater) UpdateHostConfig(host *hatypes.Host, mapper *Mapper) {

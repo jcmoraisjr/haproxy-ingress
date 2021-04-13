@@ -20,7 +20,8 @@
     {{- $cfg := .Cfg }}
     {{- $global := $cfg.Global }}
     {{- $userlists := $cfg.Userlists.BuildSortedItems }}
-    {{- $tcpbackends := $cfg.TCPBackends.BuildSortedItems}}
+    {{- $tcpbackends := $cfg.TCPBackends.BuildSortedItems }}
+    {{- $tcpservices := $cfg.TCPServices.BuildSortedItems }}
     {{- $backends := $cfg.Backends }}
     {{- $backendItems := $backends.BuildSortedItems }}
     {{- $frontend := $cfg.Frontend }}
@@ -43,9 +44,7 @@
         {{- template "backends" map $global $backendItems true }}
     {{- end }}
     {{- template "backend-support" map $global $hosts $backends }}
-    {{- if $fmaps }}
-        {{- template "frontends" map $global $frontend $hosts $fmaps $backends.DefaultBackend }}
-    {{- end }}
+    {{- template "frontends" map $global $frontend $hosts $fmaps $backends.DefaultBackend $tcpservices }}
     {{- template "frontend-support" map $global }}
 {{- else if and .Global .Backends }}
     {{- $global := .Global }}
@@ -241,7 +240,7 @@ userlist {{ $userlist.Name }}
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # #
-# #   TCP SERVICES
+# #   TCP SERVICES (legacy, via configmap)
 # #
 #
 
@@ -856,6 +855,7 @@ backend _error404
 {{- $hosts := .p3 }}
 {{- $fmaps := .p4 }}
 {{- $defaultbackend := .p5 }}
+{{- $tcpservices := .p6 }}
 
 
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -915,6 +915,76 @@ frontend {{ $proxy.Name }}
 {{- end }}
 {{- end }}
 
+{{- if $tcpservices }}
+
+  # # # # # # # # # # # # # # # # # # #
+# #
+#     TCP SERVICES frontends
+#
+{{- range $tcpport := $tcpservices }}
+{{- $proxy_name := printf "_front_tcp_%d" $tcpport.Port }}
+frontend {{ $proxy_name }}
+{{- $tls := $tcpport.TLS }}
+    bind {{ $global.Bind.TCPBindIP }}:{{ $tcpport.Port }}
+        {{- if $tcpport.ProxyProt }} accept-proxy{{ end }}
+        {{- if $tls.TLSFilename }}
+            {{- "" }} ssl crt {{ $tls.TLSFilename }}
+            {{- if $tls.ALPN }} alpn {{ $tls.ALPN }}{{ end }}
+            {{- if $tls.CAFilename }}
+                {{- "" }} ca-file {{ $tls.CAFilename }} verify {{ if $tls.CAVerifyOptional}}optional{{ else }}required{{ end }}
+                {{- if $tls.CRLFilename }} crl-file {{ $tls.CRLFilename }}{{ end }}
+            {{- end }}
+            {{- if $tls.Ciphers }} ciphers {{ $tls.Ciphers }}{{ end }}
+            {{- if $tls.CipherSuites }} ciphersuites {{ $tls.CipherSuites }}{{ end }}
+            {{- if $tls.Options }} {{ $tls.Options }}{{ end }}
+        {{- end }}
+    mode tcp
+
+{{- /*------------------------------------*/}}
+{{- if $global.Syslog.Endpoint }}
+{{- if eq $tcpport.LogFormat "default" }}
+    option tcplog
+{{- else if $tcpport.LogFormat }}
+    log-format {{ $tcpport.LogFormat }}
+{{- else }}
+    no log
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $tcpport.SNIMap.HasHost }}
+    tcp-request inspect-delay 5s
+{{- range $match := $tcpport.SNIMap.MatchFiles }}
+    tcp-request content set-var(req.tcpback) req.ssl_sni,lower
+        {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
+        {{- if not $match.First }} if !{ var(req.tcpback) -m found }{{ end }}
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- range $snippet := index $global.CustomProxy $proxy_name }}
+    {{ $snippet }}
+{{- end }}
+{{- range $snippet := $tcpport.CustomConfig }}
+    {{ $snippet }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $tcpport.SNIMap.HasHost }}
+    tcp-request content accept if { req.ssl_hello_type 1 }
+    use_backend %[var(req.tcpback)] if { var(req.tcpback) -m found }
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- if $tcpport.DefaultHost }}
+{{- $backend := $tcpport.DefaultHost.Backend }}
+{{- if not $backend.IsEmpty }}
+    default_backend {{ $backend }}
+{{- end }}
+{{- end }}
+{{- end }}{{/* range $tcpservices */}}
+{{- end }}{{/* has $tcpservices */}}
+
 {{- if $hosts.HasSSLPassthrough }}
 
   # # # # # # # # # # # # # # # # # # #
@@ -958,7 +1028,9 @@ listen {{ $proxy__front__tls }}
 {{- /*------------------------------------*/}}
     use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
     server _default_server{{ $frontend.BindName }} {{ $frontend.BindSocket }} send-proxy-v2
-{{- end }}
+{{- end }}{{/* HasSSLPassthrough */}}
+
+{{- if $fmaps }}
 
 {{- $hasFrontingProxy := $global.Bind.HasFrontingProxy }}
 {{- $frontingUseProto := and $hasFrontingProxy $global.Bind.FrontingUseProto }}
@@ -1253,6 +1325,7 @@ frontend {{ $proxy__front_https }}
 {{- end }}
 {{- template "defaultbackend" map $hosts $defaultbackend }}
 
+{{- end }}{{/* has $fmaps */}}
 {{- end }}{{/* define "frontends" */}}
 
 {{- /*------------------------------------*/}}

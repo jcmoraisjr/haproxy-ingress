@@ -1591,6 +1591,242 @@ frontend _front_https
 	}
 }
 
+func TestInstanceTCPServices(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.Backends().AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	h = c.config.Hosts().AcquireHost("d1.local")
+	h.AddPath(b, "/", hatypes.MatchBegin)
+
+	b2 := c.config.Backends().AcquireBackend("d2", "app", "8080")
+	b2.Endpoints = []*hatypes.Endpoint{endpointS21, endpointS22}
+	b3 := c.config.Backends().AcquireBackend("d3", "app", "8080")
+	b3.Endpoints = []*hatypes.Endpoint{endpointS31, endpointS32}
+
+	services := []struct {
+		port      int
+		hostname  string
+		backend   hatypes.BackendID
+		proxyProt bool
+		tls       hatypes.TLSConfig
+		custom    []string
+	}{
+		{
+			port: 7000,
+		},
+		{
+			port:    7001,
+			backend: b.BackendID(),
+		},
+		{
+			port:      7002,
+			backend:   b.BackendID(),
+			proxyProt: true,
+		},
+		{
+			port:      7003,
+			backend:   b.BackendID(),
+			proxyProt: true,
+			tls: hatypes.TLSConfig{
+				TLSFilename: "/ssl/7003.pem",
+			},
+		},
+		{
+			port:    7004,
+			backend: b.BackendID(),
+			tls: hatypes.TLSConfig{
+				TLSFilename: "/ssl/7004.pem",
+			},
+		},
+		{
+			port:    7005,
+			backend: b.BackendID(),
+			tls: hatypes.TLSConfig{
+				TLSFilename: "/ssl/7005.pem",
+				CAFilename:  "/ssl/ca-7005.pem",
+			},
+		},
+		{
+			port:    7006,
+			backend: b.BackendID(),
+			tls: hatypes.TLSConfig{
+				TLSFilename: "/ssl/7006.pem",
+				CAFilename:  "/ssl/ca-7006.pem",
+				CRLFilename: "/ssl/crl-7006.pem",
+			},
+		},
+		{
+			port:    7007,
+			backend: b.BackendID(),
+			tls: hatypes.TLSConfig{
+				ALPN:        "h2,http/1.1",
+				TLSFilename: "/ssl/7007.pem",
+			},
+		},
+		{
+			port:    7008,
+			backend: b.BackendID(),
+			tls: hatypes.TLSConfig{
+				TLSFilename:      "/ssl/7008.pem",
+				CAFilename:       "/ssl/ca-7008.pem",
+				CAVerifyOptional: true,
+			},
+		},
+		{
+			port:    7009,
+			backend: b.BackendID(),
+			tls: hatypes.TLSConfig{
+				TLSFilename:  "/ssl/7009.pem",
+				Ciphers:      "ECDHE-ECDSA-AES128-GCM-SHA256",
+				CipherSuites: "TLS_AES_128_GCM_SHA256",
+			},
+		},
+		{
+			port:    7010,
+			backend: b.BackendID(),
+			tls: hatypes.TLSConfig{
+				TLSFilename: "/ssl/7010.pem",
+				Options:     "force-tlsv13",
+			},
+		},
+		{
+			port:    7011,
+			backend: b.BackendID(),
+		},
+		{
+			port:     7011,
+			hostname: "local2",
+			backend:  b2.BackendID(),
+		},
+		{
+			port:     7011,
+			hostname: "local3",
+			backend:  b3.BackendID(),
+		},
+		{
+			port:     7011,
+			hostname: "*.local4",
+			backend:  b3.BackendID(),
+		},
+		{
+			port:    7012,
+			backend: b.BackendID(),
+			custom:  []string{"## custom for TCP 7012"},
+		},
+		{
+			port:    7013,
+			backend: b.BackendID(),
+			custom:  []string{"## custom for TCP 7013", "## multi line"},
+		},
+	}
+
+	for _, svc := range services {
+		hostname := svc.hostname
+		if hostname == "" {
+			hostname = hatypes.DefaultHost
+		}
+		p, h := c.config.TCPServices().AcquireTCPService(fmt.Sprintf("%s:%d", hostname, svc.port))
+		p.ProxyProt = svc.proxyProt
+		p.TLS = svc.tls
+		p.CustomConfig = svc.custom
+		h.Backend = svc.backend
+	}
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+backend d2_app_8080
+    mode http
+    server s21 172.17.0.121:8080 weight 100
+    server s22 172.17.0.122:8080 weight 100
+backend d3_app_8080
+    mode http
+    server s31 172.17.0.131:8080 weight 100
+    server s32 172.17.0.132:8080 weight 100
+<<backends-default>>
+frontend _front_tcp_7000
+    bind :7000
+    mode tcp
+frontend _front_tcp_7001
+    bind :7001
+    mode tcp
+    default_backend d1_app_8080
+frontend _front_tcp_7002
+    bind :7002 accept-proxy
+    mode tcp
+    default_backend d1_app_8080
+frontend _front_tcp_7003
+    bind :7003 accept-proxy ssl crt /ssl/7003.pem
+    mode tcp
+    default_backend d1_app_8080
+frontend _front_tcp_7004
+    bind :7004 ssl crt /ssl/7004.pem
+    mode tcp
+    default_backend d1_app_8080
+frontend _front_tcp_7005
+    bind :7005 ssl crt /ssl/7005.pem ca-file /ssl/ca-7005.pem verify required
+    mode tcp
+    default_backend d1_app_8080
+frontend _front_tcp_7006
+    bind :7006 ssl crt /ssl/7006.pem ca-file /ssl/ca-7006.pem verify required crl-file /ssl/crl-7006.pem
+    mode tcp
+    default_backend d1_app_8080
+frontend _front_tcp_7007
+    bind :7007 ssl crt /ssl/7007.pem alpn h2,http/1.1
+    mode tcp
+    default_backend d1_app_8080
+frontend _front_tcp_7008
+    bind :7008 ssl crt /ssl/7008.pem ca-file /ssl/ca-7008.pem verify optional
+    mode tcp
+    default_backend d1_app_8080
+frontend _front_tcp_7009
+    bind :7009 ssl crt /ssl/7009.pem ciphers ECDHE-ECDSA-AES128-GCM-SHA256 ciphersuites TLS_AES_128_GCM_SHA256
+    mode tcp
+    default_backend d1_app_8080
+frontend _front_tcp_7010
+    bind :7010 ssl crt /ssl/7010.pem force-tlsv13
+    mode tcp
+    default_backend d1_app_8080
+frontend _front_tcp_7011
+    bind :7011
+    mode tcp
+    tcp-request inspect-delay 5s
+    tcp-request content set-var(req.tcpback) req.ssl_sni,lower,map_str(/etc/haproxy/maps/_tcp_sni_7011__exact.map)
+    tcp-request content set-var(req.tcpback) req.ssl_sni,lower,map_reg(/etc/haproxy/maps/_tcp_sni_7011__regex.map) if !{ var(req.tcpback) -m found }
+    tcp-request content accept if { req.ssl_hello_type 1 }
+    use_backend %[var(req.tcpback)] if { var(req.tcpback) -m found }
+    default_backend d1_app_8080
+frontend _front_tcp_7012
+    bind :7012
+    mode tcp
+    ## custom for TCP 7012
+    default_backend d1_app_8080
+frontend _front_tcp_7013
+    bind :7013
+    mode tcp
+    ## custom for TCP 7013
+    ## multi line
+    default_backend d1_app_8080
+<<frontends-default>>
+<<support>>
+`)
+	c.checkMap("_tcp_sni_7011__exact.map", `
+local2 d2_app_8080
+local3 d3_app_8080`)
+	c.checkMap("_tcp_sni_7011__regex.map", `
+^[^.]+\.local4$ d3_app_8080`)
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestInstanceTCPBackend(t *testing.T) {
 	testCases := []struct {
 		doconfig func(c *testConfig)
@@ -2484,6 +2720,9 @@ func TestInstanceCustomProxy(t *testing.T) {
 	tcp := c.config.tcpbackends.Acquire("default_pgsql", 5432)
 	tcp.AddEndpoint("172.17.0.21", 5432)
 
+	_, tcpHost := c.config.tcpservices.AcquireTCPService(hatypes.DefaultHost + ":7001")
+	tcpHost.Backend = b.BackendID()
+
 	c.config.Global().CustomProxy = map[string][]string{
 		"missing":                 {"## comment"},
 		"_tcp_default_pgsql_5432": {"## custom for _tcp_default_pgsql_5432"},
@@ -2493,6 +2732,7 @@ func TestInstanceCustomProxy(t *testing.T) {
 		"_error404":               {"## custom for _error404", "## line 2"},
 		"_auth_4001":              {"## custom for _auth_4001"},
 		"_front__auth":            {"## custom for _front__auth"},
+		"_front_tcp_7001":         {"## custom for _front_tcp_7001"},
 		"_front__tls":             {"## custom for _front__tls"},
 		"_front_http":             {"## custom for _front_http"},
 		"_front_https":            {"## custom for _front_https"},
@@ -2535,6 +2775,11 @@ frontend _front__auth
     bind 127.0.0.1:4001
     ## custom for _front__auth
     use_backend _auth_backend001_5000
+frontend _front_tcp_7001
+    bind :7001
+    mode tcp
+    ## custom for _front_tcp_7001
+    default_backend d1_app_8080
 listen _front__tls
     mode tcp
     bind :443
@@ -3025,6 +3270,14 @@ func TestInstanceSyslog(t *testing.T) {
 	h = c.config.Hosts().AcquireHost("d1.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 
+	tcpPort1, tcpHost1 := c.config.tcpservices.AcquireTCPService("<default>:7001")
+	tcpPort1.LogFormat = "default"
+	tcpHost1.Backend = b.BackendID()
+
+	tcpPort2, tcpHost2 := c.config.tcpservices.AcquireTCPService("<default>:7002")
+	tcpPort2.LogFormat = "%[src]"
+	tcpHost2.Backend = b.BackendID()
+
 	syslog := &c.config.Global().Syslog
 	syslog.Endpoint = "127.0.0.1:1514"
 	syslog.Format = "rfc3164"
@@ -3055,6 +3308,16 @@ backend d1_app_8080
     mode http
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
+frontend _front_tcp_7001
+    bind :7001
+    mode tcp
+    option tcplog
+    default_backend d1_app_8080
+frontend _front_tcp_7002
+    bind :7002
+    mode tcp
+    log-format %[src]
+    default_backend d1_app_8080
 frontend _front_http
     mode http
     bind :80

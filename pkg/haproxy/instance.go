@@ -243,6 +243,11 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	defer i.config.Commit()
 	i.config.SyncConfig()
 	i.config.Shrink()
+	if err := i.config.WriteTCPServicesMaps(); err != nil {
+		i.logger.Error("error building tcp services maps: %v", err)
+		i.metrics.IncUpdateNoop()
+		return
+	}
 	if err := i.config.WriteFrontendMaps(); err != nil {
 		i.logger.Error("error building frontend maps: %v", err)
 		i.metrics.IncUpdateNoop()

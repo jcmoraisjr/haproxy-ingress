@@ -30,6 +30,8 @@ const (
 
 func createDefaults() map[string]string {
 	return map[string]string{
+		types.TCPTCPServiceLogFormat: "default",
+		//
 		types.HostAuthTLSStrict:      "false",
 		types.HostServerRedirectCode: "302",
 		types.HostSSLCiphers:         defaultSSLCiphers,
