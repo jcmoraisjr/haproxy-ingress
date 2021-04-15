@@ -667,6 +667,19 @@ Fixes and improvements since [v0.9-beta.4](#v09-beta4):
 * Fix logging messages [#559](https://github.com/jcmoraisjr/haproxy-ingress/pull/559)
 * Fix server-alias on http/80 [#570](https://github.com/jcmoraisjr/haproxy-ingress/pull/570)
 
+## v0.8.7
+
+Fixes and improvements since [v0.8.6](#v086):
+
+* Fix reload failure if admin socket refuses connection [#719](https://github.com/jcmoraisjr/haproxy-ingress/pull/719) (jcmoraisjr)
+* Update embedded haproxy to 1.8.28 [38f0194](https://github.com/jcmoraisjr/haproxy-ingress/commit/38f01944adbba41618260fcefd3366ec71cc25ea) (Joao Morais)
+* Improve crt validation with ssl_c_verify [#743](https://github.com/jcmoraisjr/haproxy-ingress/pull/743) (jcmoraisjr)
+* Fix initial weight configuration [#742](https://github.com/jcmoraisjr/haproxy-ingress/pull/742) (jcmoraisjr)
+* Fix incorrect reload if endpoint list grows [#746](https://github.com/jcmoraisjr/haproxy-ingress/pull/746) (jcmoraisjr)
+* Fix backend matches if hostname uses wildcard [#752](https://github.com/jcmoraisjr/haproxy-ingress/pull/752) (jcmoraisjr)
+* Fix default host if configured as ssl-passthrough [#764](https://github.com/jcmoraisjr/haproxy-ingress/pull/764) (jcmoraisjr)
+* Update haproxy from 1.8.28 to 1.8.30 [91fecdc](https://github.com/jcmoraisjr/haproxy-ingress/commit/91fecdc704e5d17c7f95a883924394408a484789) (Joao Morais)
+
 ## v0.8.6
 
 Fixes and improvements since [v0.8.5](#v085):
