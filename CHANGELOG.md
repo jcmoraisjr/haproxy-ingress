@@ -488,6 +488,17 @@ Fixes and improvements since [v0.10-beta.2](#v010-beta2):
 * Add service event handler [#633](https://github.com/jcmoraisjr/haproxy-ingress/pull/633)
 * Configure default crt on ingress parsing phase [#634](https://github.com/jcmoraisjr/haproxy-ingress/pull/634)
 
+## v0.9.3
+
+* Allow signer to work with wildcard dns certs [#695](https://github.com/jcmoraisjr/haproxy-ingress/pull/695) (pbabilas)
+* Add path scope [#705](https://github.com/jcmoraisjr/haproxy-ingress/pull/705) (jcmoraisjr)
+* Fix reload failure if admin socket refuses connection [#719](https://github.com/jcmoraisjr/haproxy-ingress/pull/719) (jcmoraisjr)
+* Improve crt validation with ssl_c_verify [#743](https://github.com/jcmoraisjr/haproxy-ingress/pull/743) (jcmoraisjr)
+* Fix initial weight configuration [#742](https://github.com/jcmoraisjr/haproxy-ingress/pull/742) (jcmoraisjr)
+* Fix incorrect reload if endpoint list grows [#746](https://github.com/jcmoraisjr/haproxy-ingress/pull/746) (jcmoraisjr)
+* Fix backend matches if hostname uses wildcard [#752](https://github.com/jcmoraisjr/haproxy-ingress/pull/752) (jcmoraisjr)
+* Fix default host if configured as ssl-passthrough [#764](https://github.com/jcmoraisjr/haproxy-ingress/pull/764) (jcmoraisjr)
+
 ## v0.9.2
 
 Fixes and improvements since [v0.9.1](#v091):
