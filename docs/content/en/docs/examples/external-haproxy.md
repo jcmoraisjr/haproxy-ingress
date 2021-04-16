@@ -33,7 +33,7 @@ controller:
     enabled: true
     image:
       repository: haproxy
-      tag: 2.3.4-alpine
+      tag: 2.3.9-alpine
 ```
 
 Change the hostNetwork to `true` if your cluster doesn't provide a service loadbalancer.
@@ -53,7 +53,7 @@ Hint: change `install` to `upgrade` if HAProxy Ingress is already installed with
 ```
 $ helm install haproxy-ingress haproxy-ingress/haproxy-ingress\
   --create-namespace --namespace=ingress-controller\
-  --version 0.12.0-beta.1 --devel\
+  --version 0.13.0-snapshot.1 --devel\
   -f haproxy-ingress-values.yaml
 ```
 
