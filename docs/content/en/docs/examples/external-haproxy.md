@@ -53,7 +53,7 @@ Hint: change `install` to `upgrade` if HAProxy Ingress is already installed with
 ```
 $ helm install haproxy-ingress haproxy-ingress/haproxy-ingress\
   --create-namespace --namespace=ingress-controller\
-  --version 0.12.2\
+  --version 0.12.3\
   -f haproxy-ingress-values.yaml
 ```
 
