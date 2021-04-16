@@ -1,5 +1,26 @@
 # CHANGELOG
 
+Active versions:
+
+* [v0.12](#v012)
+* [v0.11](#v011)
+* [v0.10](#v010)
+
+Critical fixes only:
+
+* [v0.9](#v09)
+* [v0.8](#v08)
+
+Unsupported:
+
+* [v0.7](#v07)
+* [v0.6](#v06)
+* [v0.5](#v05)
+* [v0.4](#v04)
+* [v0.3](#v03)
+* [v0.2](#v02)
+* [v0.1](#v01)
+
 ## v0.12.3
 
 Fixes and improvements since [v0.12.2](#v0122):
