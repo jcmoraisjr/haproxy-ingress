@@ -2,6 +2,7 @@
 
 Active versions:
 
+* [v0.13](#v013)
 * [v0.12](#v012)
 * [v0.11](#v011)
 * [v0.10](#v010)
@@ -20,6 +21,88 @@ Unsupported:
 * [v0.3](#v03)
 * [v0.2](#v02)
 * [v0.1](#v01)
+
+## v0.13
+
+**Highlights of this version**
+
+* HAProxy upgrade from 2.2 to 2.3.
+* Usage of Ingress v1 API
+* TCP services using ingress resources - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#tcp-services)
+* External authetication - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#auth-external)
+* Several new custom configurations - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#configuration-snippet)
+
+**Breaking backward compatibility from [v0.12](#v012)**
+
+* Kubernetes version 1.19 or newer.
+* OAuth2: `auth-request.lua` was updated and also the haproxy variable name with user's email address. This update will not impact if neither the Lua script nor the `oauth2-headers` configuration key were changed.
+* OAuth2 with external HAProxy sidecar: the new Lua script has dependency with `lua-json4` which should be installed in the external instance.
+* Basic Authentication: `auth-type` configuration key was deprecated and doesn't need to be used. This will only impact deployments that configures the `auth-secret` without configuring `auth-type` - in this scenario v0.12 won't configure Basic Authentication, but v0.13 will.
+
+**Contributors**
+
+* Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
+* Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+**v0.13-snapshot.1**
+
+New features and improvements:
+
+* Use field converter to remove port from hdr host [#729](https://github.com/jcmoraisjr/haproxy-ingress/pull/729) (jcmoraisjr)
+* Add sni and verifyhost to secure connections [#730](https://github.com/jcmoraisjr/haproxy-ingress/pull/730) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#secure-backend)
+  * Configuration keys:
+    * `secure-sni`
+    * `secure-verify-hostname`
+* Add support for native redirection of default backend [#731](https://github.com/jcmoraisjr/haproxy-ingress/pull/731) (rikatz) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#default-redirect)
+  * Configuration keys:
+    * `default-backend-redirect`
+    * `default-backend-redirect-code`
+* Update to networking.k8s.io/v1 api [#726](https://github.com/jcmoraisjr/haproxy-ingress/pull/726) (jcmoraisjr)
+* Improve crt validation with ssl_c_verify [#743](https://github.com/jcmoraisjr/haproxy-ingress/pull/743) (jcmoraisjr)
+* Add protocol to allow content sources other than secret [#735](https://github.com/jcmoraisjr/haproxy-ingress/pull/735) (jcmoraisjr)
+* Add dynamic update of frontend's TLS certificate [#734](https://github.com/jcmoraisjr/haproxy-ingress/pull/734) (jcmoraisjr)
+* Add custom-sections global option [#749](https://github.com/jcmoraisjr/haproxy-ingress/pull/749) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#configuration-snippet)
+  * Configuration keys:
+    * `config-sections`
+* Add custom-proxy configuration [#755](https://github.com/jcmoraisjr/haproxy-ingress/pull/755) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#configuration-snippet)
+  * Configuration keys:
+    * `config-proxy`
+* Add external authentication [#748](https://github.com/jcmoraisjr/haproxy-ingress/pull/748) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#auth-external)
+  * Configuration keys:
+    * `auth-headers`
+    * `auth-log-format`
+    * `auth-proxy`
+    * `auth-signin`
+    * `auth-url`
+* Add custom-tcp configuration [#757](https://github.com/jcmoraisjr/haproxy-ingress/pull/757) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#configuration-snippet)
+  * Configuration keys:
+    * `config-tcp`
+* Add server redirect options [#754](https://github.com/jcmoraisjr/haproxy-ingress/pull/754) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#server-redirect)
+  * Configuration keys:
+    * `server-redirect`
+    * `server-redirect-code`
+    * `server-redirect-regex`
+* Add ingress based TCP service option [#750](https://github.com/jcmoraisjr/haproxy-ingress/pull/750) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#tcp-services)
+  * Configuration keys:
+    * `config-tcp-service`
+    * `tcp-service-log-format`
+    * `tcp-service-port`
+    * `tcp-service-proxy-protocol`
+
+Fixes:
+
+* Fix path precedence of distinct match types [#728](https://github.com/jcmoraisjr/haproxy-ingress/pull/728) (jcmoraisjr)
+* Fix shrinking of prioritized paths [#736](https://github.com/jcmoraisjr/haproxy-ingress/pull/736) (jcmoraisjr)
+* Read the whole input when the response fills the buffer [#739](https://github.com/jcmoraisjr/haproxy-ingress/pull/739) (jcmoraisjr)
+* Remove unix socket before start acme server [#740](https://github.com/jcmoraisjr/haproxy-ingress/pull/740) (jcmoraisjr)
+* Fix initial weight configuration [#742](https://github.com/jcmoraisjr/haproxy-ingress/pull/742) (jcmoraisjr)
+* Fix incorrect reload if endpoint list grows [#746](https://github.com/jcmoraisjr/haproxy-ingress/pull/746) (jcmoraisjr)
+* Fix prefix path type if the path matches a domain [#756](https://github.com/jcmoraisjr/haproxy-ingress/pull/756) (jcmoraisjr)
+* Fix default host if configured as ssl-passthrough [#764](https://github.com/jcmoraisjr/haproxy-ingress/pull/764) (jcmoraisjr)
+
+Others:
+
+* Duplicate Travis CI to Github Actions [#732](https://github.com/jcmoraisjr/haproxy-ingress/pull/732) (rikatz)
 
 ## v0.12.3
 
