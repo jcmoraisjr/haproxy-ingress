@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v0.12.3
+
+Fixes and improvements since [v0.12.2](#v0122):
+
+* Fix default host if configured as ssl-passthrough [#764](https://github.com/jcmoraisjr/haproxy-ingress/pull/764) (jcmoraisjr)
+* Update embedded haproxy from 2.2.11 to 2.2.13 [7394764](https://github.com/jcmoraisjr/haproxy-ingress/commit/7394764e2c912af065b4d824a6057fe17d488555) (Joao Morais)
+
 ## v0.12.2
 
 Fixes and improvements since [v0.12.1](#v0121):
