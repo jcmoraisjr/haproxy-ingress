@@ -37,8 +37,8 @@ controller:
 ```
 
 Change the hostNetwork to `true` if your cluster doesn't provide a service loadbalancer.
-These parameters are also configuring an external haproxy, version 2.3.4, and configuring
-haproxy to log to stdout.
+These parameters are also configuring an external haproxy and configuring haproxy to log
+to stdout.
 
 Add the HAProxy Ingress Helm repository if using HAProxy Ingress' chart for the first time:
 
