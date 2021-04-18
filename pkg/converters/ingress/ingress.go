@@ -611,28 +611,33 @@ func (c *converter) syncIngressTCP(ing *networking.Ingress, tcpServicePort int, 
 			}
 		}
 	}
+	addTCPTLSSecret := func(secretName, rawHostname string) {
+		tcpPort := c.haproxy.TCPServices().FindTCPPort(tcpServicePort)
+		if tcpPort == nil {
+			c.logger.Warn("skipping TLS of tcp service on %v: backend was not configured", source)
+			return
+		}
+		tlsPath := c.addTLS(source, normalizeHostname(rawHostname, tcpServicePort), secretName)
+		if tcpPort.TLS.TLSHash == "" {
+			tcpPort.TLS.TLSFilename = tlsPath.Filename
+			tcpPort.TLS.TLSHash = tlsPath.SHA1Hash
+			tcpPort.TLS.TLSCommonName = tlsPath.CommonName
+			tcpPort.TLS.TLSNotAfter = tlsPath.NotAfter
+		} else if tcpPort.TLS.TLSHash != tlsPath.SHA1Hash {
+			msg := fmt.Sprintf("TLS of tcp service port '%d' was already assigned", tcpServicePort)
+			if secretName != "" {
+				c.logger.Warn("skipping TLS secret '%s' of %v: %s", secretName, source, msg)
+			} else {
+				c.logger.Warn("skipping default TLS secret of %v: %s", source, msg)
+			}
+		}
+	}
 	for _, tls := range ing.Spec.TLS {
-		// tls secret
+		if len(tls.Hosts) == 0 {
+			addTCPTLSSecret(tls.SecretName, "")
+		}
 		for _, hostname := range tls.Hosts {
-			tcpPort := c.haproxy.TCPServices().FindTCPPort(tcpServicePort)
-			if tcpPort == nil {
-				c.logger.Warn("skipping TLS of tcp service on %v: backend was not configured", source)
-				continue
-			}
-			tlsPath := c.addTLS(source, normalizeHostname(hostname, tcpServicePort), tls.SecretName)
-			if tcpPort.TLS.TLSHash == "" {
-				tcpPort.TLS.TLSFilename = tlsPath.Filename
-				tcpPort.TLS.TLSHash = tlsPath.SHA1Hash
-				tcpPort.TLS.TLSCommonName = tlsPath.CommonName
-				tcpPort.TLS.TLSNotAfter = tlsPath.NotAfter
-			} else if tcpPort.TLS.TLSHash != tlsPath.SHA1Hash {
-				msg := fmt.Sprintf("TLS of tcp service port '%d' was already assigned", tcpServicePort)
-				if tls.SecretName != "" {
-					c.logger.Warn("skipping TLS secret '%s' of %v: %s", tls.SecretName, source, msg)
-				} else {
-					c.logger.Warn("skipping default TLS secret of %v: %s", source, msg)
-				}
-			}
+			addTCPTLSSecret(tls.SecretName, hostname)
 		}
 	}
 }
