@@ -194,37 +194,30 @@ func (c *config) WriteFrontendMaps() error {
 	crtListItems = append(crtListItems, &hatypes.HostsMapEntry{Key: c.frontend.DefaultCrtFile + " !*"})
 	hasVarNamespace := c.hosts.HasVarNamespace()
 	for _, host := range c.hosts.BuildSortedItems() {
-		if host.SSLPassthrough() {
-			rootPath := host.FindPath("/")
-			if rootPath == nil {
-				// Cannot use this hostname if the root path wasn't declared.
-				// Silently skipping beucase we have not a logger here.
-				// However this skip should never happen because root path
-				// validation already happens in the annotation parsing phase.
-				continue
-			}
-			fmaps.SSLPassthroughMap.AddHostnameMapping(host.Hostname, rootPath.Backend.ID)
-			httpBackend := host.HTTPPassthroughBackend
-			if httpBackend == "" {
-				// redirect https if a ssl-passthrough domain does not have an HTTP backend
-				httpBackend = "_redirect_https"
-			}
-			fmaps.HTTPHostMap.AddHostnamePathMapping(host.Hostname, rootPath, httpBackend)
-			// ssl-passthrough is as simple as that, jump to the next host
-			continue
-		}
-		//
-		// Starting here to the end of the outer for-loop has only HTTP/L7 map configuration
-		//
 		for _, path := range host.Paths {
 			backendID := path.Backend.ID
 			// IMPLEMENT check if host.Alias.AliasName was already used as a hostname
-			if host.HasTLSAuth() {
-				fmaps.HTTPSSNIMap.AddHostnamePathMapping(host.Hostname, path, backendID)
-				fmaps.HTTPSSNIMap.AddAliasPathMapping(host.Alias, path, backendID)
+			if host.SSLPassthrough() {
+				// no ssl offload, cannot inspect incomming path, so tracking root only
+				if path.Path == "/" {
+					fmaps.SSLPassthroughMap.AddHostnameMapping(host.Hostname, backendID)
+					// the backend of the root path is the ssl-passthrough, which speaks TLS,
+					// so we cannot use it in the HTTP map. Change to the configured HTTP port
+					// in that server (if declared) or use a redirect otherwise.
+					backendID = host.HTTPPassthroughBackend
+					if backendID == "" {
+						backendID = "_redirect_https"
+					}
+				}
 			} else {
-				fmaps.HTTPSHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
-				fmaps.HTTPSHostMap.AddAliasPathMapping(host.Alias, path, backendID)
+				// ssl offload in place
+				if host.HasTLSAuth() {
+					fmaps.HTTPSSNIMap.AddHostnamePathMapping(host.Hostname, path, backendID)
+					fmaps.HTTPSSNIMap.AddAliasPathMapping(host.Alias, path, backendID)
+				} else {
+					fmaps.HTTPSHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
+					fmaps.HTTPSHostMap.AddAliasPathMapping(host.Alias, path, backendID)
+				}
 			}
 			fmaps.HTTPHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
 			fmaps.HTTPHostMap.AddAliasPathMapping(host.Alias, path, backendID)
@@ -238,6 +231,9 @@ func (c *config) WriteFrontendMaps() error {
 				}
 				fmaps.VarNamespaceMap.AddHostnamePathMapping(host.Hostname, path, ns)
 			}
+		}
+		if host.SSLPassthrough() {
+			continue
 		}
 		var redirectCode string
 		if host.Redirect.RedirectCode > 0 && host.Redirect.RedirectCode != c.frontend.DefaultServerRedirectCode {

@@ -2858,9 +2858,13 @@ func TestInstanceSSLPassthrough(t *testing.T) {
 	b.ModeTCP = true
 	h.SetSSLPassthrough(true)
 
-	b = c.config.Backends().AcquireBackend("d3", "app-http", "8080")
+	b = c.config.Backends().AcquireBackend("d3", "app1-http", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS41h}
 	h.HTTPPassthroughBackend = b.ID
+
+	b = c.config.Backends().AcquireBackend("d3", "app2-http", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS41h}
+	h.AddPath(b, "/app", hatypes.MatchBegin)
 
 	b = c.config.Backends().AcquireBackend("d4", "app4-ssl", "8443")
 	h = c.config.Hosts().AcquireHost(hatypes.DefaultHost)
@@ -2880,12 +2884,15 @@ func TestInstanceSSLPassthrough(t *testing.T) {
 backend d2_app_8080
     mode tcp
     server s31 172.17.0.131:8080 weight 100
-backend d3_app-http_8080
-    mode http
-    server s41h 172.17.0.141:8080 weight 100
 backend d3_app-ssl_8443
     mode tcp
     server s41s 172.17.0.141:8443 weight 100
+backend d3_app1-http_8080
+    mode http
+    server s41h 172.17.0.141:8080 weight 100
+backend d3_app2-http_8080
+    mode http
+    server s41h 172.17.0.141:8080 weight 100
 backend d4_app4-http_8080
     mode http
     server s41h 172.17.0.141:8080 weight 100
@@ -2923,10 +2930,13 @@ frontend _front_https
 
 	c.checkMap("_front_sslpassthrough__exact.map", `
 d2.local d2_app_8080
-d3.local d3_app-ssl_8443`)
+d3.local d3_app-ssl_8443
+`)
 	c.checkMap("_front_http_host__begin.map", `
 d2.local#/ _redirect_https
-d3.local#/ d3_app-http_8080`)
+d3.local#/app d3_app2-http_8080
+d3.local#/ d3_app1-http_8080
+`)
 	c.checkMap("_front_bind_crt.list", `
 /var/haproxy/ssl/certs/default.pem !*
 `)
