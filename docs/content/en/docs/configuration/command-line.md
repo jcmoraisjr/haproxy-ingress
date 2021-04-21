@@ -19,7 +19,7 @@ The following command-line options are supported:
 | [`--acme-token-configmap-name`](#acme)                  | [namespace]/configmap-name | `acme-validation-tokens` | v0.9 |
 | [`--acme-track-tls-annotation`](#acme)                  | [true\|false]              | `false`                 | v0.9  |
 | [`--allow-cross-namespace`](#allow-cross-namespace)     | [true\|false]              | `false`                 |       |
-| [`--annotation-prefix`](#annotation-prefix)             | prefix without `/`         | `ingress.kubernetes.io` | v0.8  |
+| [`--annotations-prefix`](#annotations-prefix)           | prefix list without `/`    | `haproxy-ingress.github.io,ingress.kubernetes.io` | v0.8  |
 | [`--backend-shards`](#backend-shards)                   | int                        | `0`                     | v0.11 |
 | [`--buckets-response-time`](#buckets-response-time)     | float64 slice           | `.0005,.001,.002,.005,.01` | v0.10 |
 | [`--controller-class`](#ingress-class)                  | suffix                     | ``                      | v0.12 |
@@ -78,13 +78,21 @@ annotation, where cross namespace reading were allowed without any configuration
 
 ---
 
-## --annotation-prefix
+## --annotations-prefix
 
-Changes the annotation prefix the controller should look for when parsing services and ingress
-objects. The default value is `ingress.kubernetes.io` if not declared, which means SSL Redirect
-should be configured with the annotation name `ingress.kubernetes.io/ssl-redirect`. Annotations
-with other prefix are ignored. This allows using HAProxy Ingress with other ingress controllers
-that shares ingress and service objects without conflicting each other.
+Configures a comma-separated list of annotations prefix that the controller should look for when
+parsing services and ingress objects. The default value is `haproxy-ingress.github.io,ingress.kubernetes.io`.
+The default configuration means declare eg a SSL Redirect annotation with
+`haproxy-ingress.github.io/ssl-redirect: "true"` or `ingress.kubernetes.io/ssl-redirect: "true"`.
+
+The order of the declaration is used to priorize one of them if the same configuration key is
+declared twice - if two distinct prefix is used to configure the same key in the same ingress or
+service resource, the value of the annotation with the prefix that was configured first in this
+command-line option is used.
+
+Annotations with other prefix or without any prefix are ignored. This allows to use HAProxy Ingress
+with other ingress controllers that shares ingress and service resources without conflicting each
+other.
 
 ---
 

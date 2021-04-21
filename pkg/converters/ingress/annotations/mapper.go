@@ -27,7 +27,6 @@ import (
 // MapBuilder ...
 type MapBuilder struct {
 	logger      types.Logger
-	annPrefix   string
 	annDefaults map[string]string
 }
 
@@ -64,10 +63,9 @@ type ConfigValue struct {
 }
 
 // NewMapBuilder ...
-func NewMapBuilder(logger types.Logger, annPrefix string, annDefaults map[string]string) *MapBuilder {
+func NewMapBuilder(logger types.Logger, annDefaults map[string]string) *MapBuilder {
 	return &MapBuilder{
 		logger:      logger,
-		annPrefix:   annPrefix,
 		annDefaults: annDefaults,
 	}
 }
@@ -178,8 +176,8 @@ func (c *Mapper) Get(key string) *ConfigValue {
 		}
 		if len(sources) > 0 {
 			c.logger.Warn(
-				"annotation '%s' from %s overrides the same annotation with distinct value from %s",
-				c.annPrefix+key, value.Source, sources)
+				"configuration key '%s' from %s overrides the same key with distinct value from %s",
+				key, value.Source, sources)
 		}
 	}
 	return value

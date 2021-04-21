@@ -98,7 +98,9 @@ Annotations are read in the following conditions:
 * From `Services` that classified Ingress resources are linking to. `Services` only accept keys from the `Backend` scope.
 
 A configuration key needs a prefix in front of its name to use as an annotation key.
-The default prefix is `ingress.kubernetes.io`, change with the `--annotation-prefix`
+The default prefix is `haproxy-ingress.github.io`, and `ingress.kubernetes.io` is also
+supported for backward compatibility. Change the prefix with the
+[`--annotations-prefix`]({{% relref "command-line#annotations-prefix" %}})
 command-line option. The annotation value spec expects a string as the key value, so
 declare numbers and booleans as strings, HAProxy Ingress will convert them when needed.
 

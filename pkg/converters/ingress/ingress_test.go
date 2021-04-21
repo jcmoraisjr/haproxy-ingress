@@ -1768,6 +1768,51 @@ WARN skipping TLS secret 'tls2' of ingress 'default/echo2': TLS of tcp service p
 	}
 }
 
+func TestAnnPrefix(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	prefix1 := "haproxy-ingress.github.io"
+	prefix2 := "ingress.kubernetes.io"
+	prefix3 := "haproxy"
+
+	conv := c.createConverter()
+	conv.options.AnnotationPrefix = []string{prefix1, prefix2, prefix3}
+
+	c.createSvc1Auto()
+	c.SyncConverter(
+		conv,
+		c.createIng1Ann("default/app1", "app.local", "/", "echo:8080", map[string]string{
+			prefix3 + "/" + ingtypes.HostAppRoot:          "true",
+			prefix2 + "/" + ingtypes.BackBalanceAlgorithm: "leastconn",
+			prefix1 + "/" + ingtypes.BackBalanceAlgorithm: "random",
+			prefix3 + "/" + ingtypes.BackMaxconnServer:    "1000",
+			prefix2 + "/" + ingtypes.BackMaxconnServer:    "1000",
+		}),
+	)
+
+	c.compareConfigFront(`
+- hostname: app.local
+  paths:
+  - path: /
+    backend: default_echo_8080
+  rootredirect: "true"
+`)
+	c.compareConfigBack(`
+- id: default_echo_8080
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+  balancealgorithm: random
+  maxconnserver: 1000
+- id: system_default_8080
+  endpoints:
+  - ip: 172.17.0.99
+    port: 8080
+`)
+	c.logger.CompareLogging(`WARN annotation 'ingress.kubernetes.io/balance-algorithm' on ingress 'default/app1' was ignored due to conflict with another annotation(s) for the same 'balance-algorithm' configuration key`)
+}
+
 func TestSyncAnnFront(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
@@ -2186,6 +2231,10 @@ var defaultBackendConfig = `
     port: 8080`
 
 func (c *testConfig) Sync(ing ...*networking.Ingress) {
+	c.SyncConverter(nil, ing...)
+}
+
+func (c *testConfig) SyncConverter(conv *converter, ing ...*networking.Ingress) {
 	if ing != nil {
 		c.cache.IngList = ing
 	}
@@ -2194,7 +2243,9 @@ func (c *testConfig) Sync(ing ...*networking.Ingress) {
 		c.cache.Changed.GlobalNew = map[string]string{}
 	}
 	c.cache.SecretTLSPath["system/default"] = "/tls/tls-default.pem"
-	conv := c.createConverter()
+	if conv == nil {
+		conv = c.createConverter()
+	}
 	conv.updater = c.updater
 	conv.Sync()
 }
@@ -2213,7 +2264,7 @@ func (c *testConfig) createConverter() *converter {
 			DefaultConfig:    defaultConfig,
 			DefaultBackend:   "system/default",
 			DefaultCrtSecret: "system/default",
-			AnnotationPrefix: "ingress.kubernetes.io",
+			AnnotationPrefix: []string{"ingress.kubernetes.io"},
 		},
 		c.hconfig,
 	).(*converter)
