@@ -90,8 +90,8 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    ingress.kubernetes.io/ssl-redirect: "false"
-    ingress.kubernetes.io/waf: "modsecurity"
+    haproxy-ingress.github.io/ssl-redirect: "false"
+    haproxy-ingress.github.io/waf: "modsecurity"
   name: echo
 spec:
   rules:

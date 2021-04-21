@@ -109,9 +109,9 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    ingress.kubernetes.io/balance-algorithm: roundrobin
-    ingress.kubernetes.io/maxconn-server: "500"
-    ingress.kubernetes.io/ssl-redirect: "false"
+    haproxy-ingress.github.io/balance-algorithm: roundrobin
+    haproxy-ingress.github.io/maxconn-server: "500"
+    haproxy-ingress.github.io/ssl-redirect: "false"
   name: app
   namespace: default
 spec:
@@ -208,7 +208,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    ingress.kubernetes.io/rewrite-target: /
+    haproxy-ingress.github.io/rewrite-target: /
   name: app-back
 spec:
   rules:
@@ -538,7 +538,7 @@ and certificate signing, and will also start a leader election to define which
 haproxy-ingress instance should perform authorizations and certificate signing.
 
 The haproxy-ingress leader tracks ingress objects that declares the annotation
-`ingress.kubernetes.io/cert-signer` with value `acme` and a configured secret name for
+`haproxy-ingress.github.io/cert-signer` with value `acme` and a configured secret name for
 TLS certificate. The annotation `kubernetes.io/tls-acme` with value `"true"` will also
 be used if the command-line option `--acme-track-tls-annotation` is declared. The
 secret does not need to exist. A new certificate will be issued if the certificate is
@@ -1160,7 +1160,7 @@ Annotations:
 
 ```yaml
     annotations:
-      ingress.kubernetes.io/config-backend: |
+      haproxy-ingress.github.io/config-backend: |
         acl bar-url path /bar
         http-request deny if bar-url
         http-request set-var(txn.path) path
@@ -1170,7 +1170,7 @@ Annotations:
 
 ```yaml
     annotations:
-      ingress.kubernetes.io/config-tcp-service: |
+      haproxy-ingress.github.io/config-tcp-service: |
         timeout client 1m
         timeout connect 15s
 ```
@@ -1487,7 +1487,7 @@ Configuration example:
 
 ```yaml
     annotations:
-      ingress.kubernetes.io/headers: |
+      haproxy-ingress.github.io/headers: |
         x-path: /
         host: %[service].%[namespace].svc.cluster.local
 ```

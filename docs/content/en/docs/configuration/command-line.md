@@ -73,7 +73,7 @@ See also:
 
 `--allow-cross-namespace` argument, if added, will allow reading secrets from one namespace to an
 ingress resource of another namespace. The default behavior is to deny such cross namespace reading.
-This adds a breaking change from `v0.4` to `v0.5` on `ingress.kubernetes.io/auth-tls-secret`
+This adds a breaking change from `v0.4` to `v0.5` on `haproxy-ingress.github.io/auth-tls-secret`
 annotation, where cross namespace reading were allowed without any configuration.
 
 ---
