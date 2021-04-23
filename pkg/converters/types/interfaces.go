@@ -46,15 +46,15 @@ type Cache interface {
 // ChangedObjects ...
 type ChangedObjects struct {
 	//
-	GlobalCur, GlobalNew map[string]string
+	GlobalConfigMapDataCur, GlobalConfigMapDataNew map[string]string
 	//
-	TCPConfigMapCur, TCPConfigMapNew map[string]string
+	TCPConfigMapDataCur, TCPConfigMapDataNew map[string]string
 	//
 	IngressesDel, IngressesUpd, IngressesAdd []*networking.Ingress
 	//
 	IngressClassesDel, IngressClassesUpd, IngressClassesAdd []*networking.IngressClass
 	//
-	Endpoints []*api.Endpoints
+	EndpointsNew []*api.Endpoints
 	//
 	ServicesDel, ServicesUpd, ServicesAdd []*api.Service
 	//
@@ -62,7 +62,7 @@ type ChangedObjects struct {
 	//
 	ConfigMapsDel, ConfigMapsUpd, ConfigMapsAdd []*api.ConfigMap
 	//
-	Pods []*api.Pod
+	PodsNew []*api.Pod
 	//
 	NeedFullSync bool
 	//

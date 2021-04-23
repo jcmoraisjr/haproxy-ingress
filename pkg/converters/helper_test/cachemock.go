@@ -216,8 +216,8 @@ func (c *CacheMock) GetSecretContent(defaultNamespace, secretName, keyName strin
 func (c *CacheMock) SwapChangedObjects() *convtypes.ChangedObjects {
 	changed := c.Changed
 	c.Changed = &convtypes.ChangedObjects{
-		GlobalCur:       changed.GlobalNew,
-		TCPConfigMapCur: changed.TCPConfigMapNew,
+		GlobalConfigMapDataCur: changed.GlobalConfigMapDataNew,
+		TCPConfigMapDataCur:    changed.TCPConfigMapDataNew,
 	}
 	// update c.IngList based on notifications
 	for i, ing := range c.IngList {
@@ -259,7 +259,7 @@ func (c *CacheMock) SwapChangedObjects() *convtypes.ChangedObjects {
 		c.SecretTLSPath[name] = "/tls/" + name + ".pem"
 	}
 	// update c.EpList based on notifications
-	for _, ep := range changed.Endpoints {
+	for _, ep := range changed.EndpointsNew {
 		c.EpList[ep.Namespace+"/"+ep.Name] = ep
 	}
 	c.SvcList = c.SvcList[:len(c.SvcList)-len(changed.ServicesDel)]

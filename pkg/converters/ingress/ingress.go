@@ -51,9 +51,9 @@ func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Con
 	// config option to allow partial parsing
 	// cache also need to know if partial parsing is enabled
 	needFullSync := changed.NeedFullSync || globalConfigNeedFullSync(changed)
-	globalConfig := changed.GlobalCur
-	if changed.GlobalNew != nil {
-		globalConfig = changed.GlobalNew
+	globalConfig := changed.GlobalConfigMapDataCur
+	if changed.GlobalConfigMapDataNew != nil {
+		globalConfig = changed.GlobalConfigMapDataNew
 	}
 	defaultConfig := options.DefaultConfig()
 	for key, value := range globalConfig {
@@ -129,7 +129,7 @@ func globalConfigNeedFullSync(changed *convtypes.ChangedObjects) bool {
 	//
 	// This might be improved after implement a way to guarantee that a global
 	// is just a haproxy global, default or frontend config.
-	cur, new := changed.GlobalCur, changed.GlobalNew
+	cur, new := changed.GlobalConfigMapDataCur, changed.GlobalConfigMapDataNew
 	return new != nil && !reflect.DeepEqual(cur, new)
 }
 
@@ -267,13 +267,13 @@ func (c *converter) syncPartial() {
 	updSvcNames := svc2names(c.changed.ServicesUpd)
 	addSvcNames := svc2names(c.changed.ServicesAdd)
 	oldSvcNames := append(delSvcNames, updSvcNames...)
-	updEndpointsNames := ep2names(c.changed.Endpoints)
+	updEndpointsNames := ep2names(c.changed.EndpointsNew)
 	oldSvcNames = append(oldSvcNames, updEndpointsNames...)
 	delSecretNames := secret2names(c.changed.SecretsDel)
 	updSecretNames := secret2names(c.changed.SecretsUpd)
 	addSecretNames := secret2names(c.changed.SecretsAdd)
 	oldSecretNames := append(delSecretNames, updSecretNames...)
-	addPodNames := pod2names(c.changed.Pods)
+	addPodNames := pod2names(c.changed.PodsNew)
 	c.trackAddedIngress()
 	dirtyIngs, dirtyHosts, dirtyBacks, dirtyUsers, dirtyStorages :=
 		c.tracker.GetDirtyLinks(
