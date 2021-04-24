@@ -27,12 +27,15 @@ import (
 	"k8s.io/client-go/informers"
 	informerscore "k8s.io/client-go/informers/core/v1"
 	informersnetworking "k8s.io/client-go/informers/networking/v1"
-	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	listerscore "k8s.io/client-go/listers/core/v1"
 	listersnetworking "k8s.io/client-go/listers/networking/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
+	gateway "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	informersgateway "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions"
+	informersgatewayv1alpha1 "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions/apis/v1alpha1"
+	listersgateway "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )
@@ -41,6 +44,8 @@ import (
 type ListerEvents interface {
 	IsValidIngress(ing *networking.Ingress) bool
 	IsValidIngressClass(ingClass *networking.IngressClass) bool
+	IsValidGateway(gw *gateway.Gateway) bool
+	IsValidGatewayClass(gwClass *gateway.GatewayClass) bool
 	IsValidConfigMap(cm *api.ConfigMap) bool
 	Notify(old, cur interface{})
 }
@@ -54,30 +59,45 @@ type listers struct {
 	hasPodLister  bool
 	hasNodeLister bool
 	//
-	ingressLister      listersnetworking.IngressLister
-	ingressClassLister listersnetworking.IngressClassLister
-	endpointLister     listerscore.EndpointsLister
-	serviceLister      listerscore.ServiceLister
-	secretLister       listerscore.SecretLister
-	configMapLister    listerscore.ConfigMapLister
-	podLister          listerscore.PodLister
-	nodeLister         listerscore.NodeLister
+	ingressLister       listersnetworking.IngressLister
+	ingressClassLister  listersnetworking.IngressClassLister
+	gatewayLister       listersgateway.GatewayLister
+	gatewayClassLister  listersgateway.GatewayClassLister
+	httpRouteLister     listersgateway.HTTPRouteLister
+	tlsRouteLister      listersgateway.TLSRouteLister
+	tcpRouteLister      listersgateway.TCPRouteLister
+	udpRouteLister      listersgateway.UDPRouteLister
+	backendPolicyLister listersgateway.BackendPolicyLister
+	endpointLister      listerscore.EndpointsLister
+	serviceLister       listerscore.ServiceLister
+	secretLister        listerscore.SecretLister
+	configMapLister     listerscore.ConfigMapLister
+	podLister           listerscore.PodLister
+	nodeLister          listerscore.NodeLister
 	//
-	ingressInformer      cache.SharedInformer
-	ingressClassInformer cache.SharedInformer
-	endpointInformer     cache.SharedInformer
-	serviceInformer      cache.SharedInformer
-	secretInformer       cache.SharedInformer
-	configMapInformer    cache.SharedInformer
-	podInformer          cache.SharedInformer
-	nodeInformer         cache.SharedInformer
+	ingressInformer       cache.SharedInformer
+	ingressClassInformer  cache.SharedInformer
+	gatewayInformer       cache.SharedInformer
+	gatewayClassInformer  cache.SharedInformer
+	httpRouteInformer     cache.SharedInformer
+	tlsRouteInformer      cache.SharedInformer
+	tcpRouteInformer      cache.SharedInformer
+	udpRouteInformer      cache.SharedInformer
+	backendPolicyInformer cache.SharedInformer
+	endpointInformer      cache.SharedInformer
+	serviceInformer       cache.SharedInformer
+	secretInformer        cache.SharedInformer
+	configMapInformer     cache.SharedInformer
+	podInformer           cache.SharedInformer
+	nodeInformer          cache.SharedInformer
 }
 
 func createListers(
 	events ListerEvents,
 	logger types.Logger,
 	recorder record.EventRecorder,
-	client k8s.Interface,
+	client types.Client,
+	watchGateway bool,
 	watchNamespace string,
 	isolateNamespace bool,
 	podWatch bool,
@@ -124,6 +144,24 @@ func createListers(
 	} else {
 		l.createNodeLister(localInformer.Core().V1().Nodes())
 	}
+
+	if watchGateway {
+		var option informersgateway.SharedInformerOption
+		if clusterWatch {
+			option = informersgateway.WithTweakListOptions(nil)
+		} else {
+			option = informersgateway.WithNamespace(watchNamespace)
+		}
+		informer := informersgateway.NewSharedInformerFactoryWithOptions(client, resync, option)
+		l.createGatewayLister(informer.Networking().V1alpha1().Gateways())
+		l.createGatewayClassLister(informer.Networking().V1alpha1().GatewayClasses())
+		l.createHTTPRouteLister(informer.Networking().V1alpha1().HTTPRoutes())
+		l.createTLSRouteLister(informer.Networking().V1alpha1().TLSRoutes())
+		l.createTCPRouteLister(informer.Networking().V1alpha1().TCPRoutes())
+		l.createUDPRouteLister(informer.Networking().V1alpha1().UDPRoutes())
+		l.createBackendPolicyLister(informer.Networking().V1alpha1().BackendPolicies())
+	}
+
 	return l
 }
 
@@ -132,6 +170,34 @@ func (l *listers) RunAsync(stopCh <-chan struct{}) {
 		runtime.HandleError(fmt.Errorf("initial cache sync has timed out or shutdown has requested"))
 	}
 	l.logger.Info("loading object cache...")
+
+	if l.gatewayClassInformer != nil {
+		go l.gatewayClassInformer.Run(stopCh)
+		if !cache.WaitForCacheSync(stopCh,
+			l.gatewayClassInformer.HasSynced,
+		) {
+			syncFailed()
+			return
+		}
+
+		go l.gatewayInformer.Run(stopCh)
+		go l.httpRouteInformer.Run(stopCh)
+		go l.tlsRouteInformer.Run(stopCh)
+		go l.tcpRouteInformer.Run(stopCh)
+		go l.udpRouteInformer.Run(stopCh)
+		go l.backendPolicyInformer.Run(stopCh)
+		if !cache.WaitForCacheSync(stopCh,
+			l.gatewayInformer.HasSynced,
+			l.httpRouteInformer.HasSynced,
+			l.tlsRouteInformer.HasSynced,
+			l.tcpRouteInformer.HasSynced,
+			l.udpRouteInformer.HasSynced,
+			l.backendPolicyInformer.HasSynced,
+		) {
+			syncFailed()
+			return
+		}
+	}
 
 	// wait IngressClass lister initialize, ingress informers initialization depends on it
 	go l.ingressClassInformer.Run(stopCh)
@@ -254,6 +320,173 @@ func (l *listers) createIngressClassLister(informer informersnetworking.IngressC
 				l.events.Notify(oldClass, nil)
 			} else {
 				l.events.Notify(oldClass, curClass)
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			l.events.Notify(obj, nil)
+		},
+	})
+}
+
+func (l *listers) createGatewayLister(informer informersgatewayv1alpha1.GatewayInformer) {
+	l.gatewayLister = informer.Lister()
+	l.gatewayInformer = informer.Informer()
+	l.gatewayInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			gw := obj.(*gateway.Gateway)
+			if l.events.IsValidGateway(gw) {
+				l.events.Notify(nil, gw)
+			}
+		},
+		UpdateFunc: func(old, cur interface{}) {
+			if reflect.DeepEqual(old, cur) {
+				return
+			}
+			oldGw := old.(*gateway.Gateway)
+			curGw := cur.(*gateway.Gateway)
+			oldValid := l.events.IsValidGateway(oldGw)
+			curValid := l.events.IsValidGateway(curGw)
+			if !oldValid && !curValid {
+				return
+			}
+			if !oldValid && curValid {
+				l.events.Notify(nil, curGw)
+			} else if oldValid && !curValid {
+				l.events.Notify(oldGw, nil)
+			} else {
+				l.events.Notify(oldGw, curGw)
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			gw, ok := obj.(*gateway.Gateway)
+			if !ok {
+				l.events.Notify(nil, nil)
+				return
+			}
+			if l.events.IsValidGateway(gw) {
+				l.events.Notify(gw, nil)
+			}
+		},
+	})
+}
+
+func (l *listers) createGatewayClassLister(informer informersgatewayv1alpha1.GatewayClassInformer) {
+	l.gatewayClassLister = informer.Lister()
+	l.gatewayClassInformer = informer.Informer()
+	l.gatewayClassInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			cls := obj.(*gateway.GatewayClass)
+			if l.events.IsValidGatewayClass(cls) {
+				l.events.Notify(nil, cls)
+			}
+		},
+		UpdateFunc: func(old, cur interface{}) {
+			if reflect.DeepEqual(old, cur) {
+				return
+			}
+			oldClass := old.(*gateway.GatewayClass)
+			curClass := cur.(*gateway.GatewayClass)
+			oldValid := l.events.IsValidGatewayClass(oldClass)
+			curValid := l.events.IsValidGatewayClass(curClass)
+			if !oldValid && !curValid {
+				return
+			}
+			if !oldValid && curValid {
+				l.events.Notify(nil, curClass)
+			} else if oldValid && !curValid {
+				l.events.Notify(oldClass, nil)
+			} else {
+				l.events.Notify(oldClass, curClass)
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			l.events.Notify(obj, nil)
+		},
+	})
+}
+
+func (l *listers) createHTTPRouteLister(informer informersgatewayv1alpha1.HTTPRouteInformer) {
+	l.httpRouteLister = informer.Lister()
+	l.httpRouteInformer = informer.Informer()
+	l.httpRouteInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			l.events.Notify(nil, obj)
+		},
+		UpdateFunc: func(old, cur interface{}) {
+			if !reflect.DeepEqual(old, cur) {
+				l.events.Notify(old, cur)
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			l.events.Notify(obj, nil)
+		},
+	})
+}
+
+func (l *listers) createTLSRouteLister(informer informersgatewayv1alpha1.TLSRouteInformer) {
+	l.tlsRouteLister = informer.Lister()
+	l.tlsRouteInformer = informer.Informer()
+	l.tlsRouteInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			l.events.Notify(nil, obj)
+		},
+		UpdateFunc: func(old, cur interface{}) {
+			if !reflect.DeepEqual(old, cur) {
+				l.events.Notify(old, cur)
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			l.events.Notify(obj, nil)
+		},
+	})
+}
+
+func (l *listers) createTCPRouteLister(informer informersgatewayv1alpha1.TCPRouteInformer) {
+	l.tcpRouteLister = informer.Lister()
+	l.tcpRouteInformer = informer.Informer()
+	l.tcpRouteInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			l.events.Notify(nil, obj)
+		},
+		UpdateFunc: func(old, cur interface{}) {
+			if !reflect.DeepEqual(old, cur) {
+				l.events.Notify(old, cur)
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			l.events.Notify(obj, nil)
+		},
+	})
+}
+
+func (l *listers) createUDPRouteLister(informer informersgatewayv1alpha1.UDPRouteInformer) {
+	l.udpRouteLister = informer.Lister()
+	l.udpRouteInformer = informer.Informer()
+	l.udpRouteInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			l.events.Notify(nil, obj)
+		},
+		UpdateFunc: func(old, cur interface{}) {
+			if !reflect.DeepEqual(old, cur) {
+				l.events.Notify(old, cur)
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			l.events.Notify(obj, nil)
+		},
+	})
+}
+
+func (l *listers) createBackendPolicyLister(informer informersgatewayv1alpha1.BackendPolicyInformer) {
+	l.backendPolicyLister = informer.Lister()
+	l.backendPolicyInformer = informer.Informer()
+	l.backendPolicyInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			l.events.Notify(nil, obj)
+		},
+		UpdateFunc: func(old, cur interface{}) {
+			if !reflect.DeepEqual(old, cur) {
+				l.events.Notify(old, cur)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {

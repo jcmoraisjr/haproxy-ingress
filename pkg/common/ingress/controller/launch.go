@@ -22,6 +22,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
+	gatewayv1alpha1 "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1alpha1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/k8s"
@@ -54,6 +56,8 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		watchIngressWithoutClass = flags.Bool("watch-ingress-without-class", false,
 			`Defines if this controller should also listen to ingress resources that doesn't declare neither the
 		kubernetes.io/ingress.class annotation nor the <ingress>.spec.ingressClassName field. Defaults to false`)
+
+		watchGateway = flags.Bool("watch-gateway", false, `Watch and parse resources from the Gateway API`)
 
 		masterSocket = flags.String("master-socket", "",
 			`Defines the master CLI unix socket of an external HAProxy running in master-worker mode.
@@ -234,6 +238,10 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		glog.Infof("DEPRECATED: --ignore-ingress-without-class is now ignored and can be safely removed")
 	}
 
+	if *watchGateway {
+		glog.Infof("watching for Gateway API resources - --watch-gateway is true")
+	}
+
 	kubeClient, err := createApiserverClient(*apiserverHost, *kubeConfigFile)
 	if err != nil {
 		handleFatalInitError(err)
@@ -375,6 +383,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		IngressClass:             *ingressClass,
 		ControllerName:           controllerName,
 		WatchIngressWithoutClass: *watchIngressWithoutClass,
+		WatchGateway:             *watchGateway,
 		WatchNamespace:           *watchNamespace,
 		ConfigMapName:            *configMap,
 		TCPConfigMapName:         *tcpConfigMapName,
@@ -490,13 +499,23 @@ func buildConfigFromFlags(masterURL, kubeconfigPath string) (*rest.Config, error
 		}).ClientConfig()
 }
 
+type client struct {
+	*kubernetes.Clientset
+	gateway *versioned.Clientset
+}
+
+// TODO is there a way to transparently embed k8s and crd clientsets into the outer struct?
+func (c *client) NetworkingV1alpha1() gatewayv1alpha1.NetworkingV1alpha1Interface {
+	return c.gateway.NetworkingV1alpha1()
+}
+
 // createApiserverClient creates new Kubernetes Apiserver client. When kubeconfig or apiserverHost param is empty
 // the function assumes that it is running inside a Kubernetes cluster and attempts to
 // discover the Apiserver. Otherwise, it connects to the Apiserver specified.
 //
 // apiserverHost param is in the format of protocol://address:port/pathPrefix, e.g.http://localhost:8001.
 // kubeConfig location of kubeconfig file
-func createApiserverClient(apiserverHost string, kubeConfig string) (*kubernetes.Clientset, error) {
+func createApiserverClient(apiserverHost string, kubeConfig string) (*client, error) {
 	cfg, err := buildConfigFromFlags(apiserverHost, kubeConfig)
 	if err != nil {
 		return nil, err
@@ -508,12 +527,16 @@ func createApiserverClient(apiserverHost string, kubeConfig string) (*kubernetes
 
 	glog.Infof("Creating API client for %s", cfg.Host)
 
-	client, err := kubernetes.NewForConfig(cfg)
+	k8s, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+	gateway, err := versioned.NewForConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	v, err := client.Discovery().ServerVersion()
+	v, err := k8s.Discovery().ServerVersion()
 	if err != nil {
 		return nil, err
 	}
@@ -521,7 +544,10 @@ func createApiserverClient(apiserverHost string, kubeConfig string) (*kubernetes
 	glog.Infof("Running in Kubernetes Cluster version v%v.%v (%v) - git (%v) commit %v - platform %v",
 		v.Major, v.Minor, v.GitVersion, v.GitTreeState, v.GitCommit, v.Platform)
 
-	return client, nil
+	return &client{
+		Clientset: k8s,
+		gateway:   gateway,
+	}, nil
 }
 
 /**

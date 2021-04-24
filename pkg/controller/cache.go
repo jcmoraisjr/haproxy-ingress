@@ -36,11 +36,11 @@ import (
 	networking "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
+	gateway "sigs.k8s.io/gateway-api/apis/v1alpha1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	cfile "github.com/jcmoraisjr/haproxy-ingress/pkg/common/file"
@@ -55,7 +55,7 @@ const dhparamFilename = "dhparam.pem"
 
 type k8scache struct {
 	ctx                    context.Context
-	client                 k8s.Interface
+	client                 types.Client
 	logger                 types.Logger
 	listers                *listers
 	controller             *controller.GenericController
@@ -79,10 +79,11 @@ type k8scache struct {
 
 func createCache(
 	logger types.Logger,
-	client k8s.Interface,
+	client types.Client,
 	controller *controller.GenericController,
 	tracker convtypes.Tracker,
 	updateQueue utils.Queue,
+	watchGateway bool,
 	watchNamespace string,
 	isolateNamespace bool,
 	disablePodList bool,
@@ -137,7 +138,7 @@ func createCache(
 		clear:                  true,
 	}
 	// TODO I'm a circular reference, can you fix me?
-	cache.listers = createListers(cache, logger, recorder, client, watchNamespace, isolateNamespace, !disablePodList, resync)
+	cache.listers = createListers(cache, logger, recorder, client, watchGateway, watchNamespace, isolateNamespace, !disablePodList, resync)
 	return cache
 }
 
@@ -187,6 +188,15 @@ func (c *k8scache) GetIngressList() ([]*networking.Ingress, error) {
 
 func (c *k8scache) GetIngressClass(className string) (*networking.IngressClass, error) {
 	return c.listers.ingressClassLister.Get(className)
+}
+
+var errGatewayDisabled = fmt.Errorf("Gateway API wasn't initialized")
+
+func (c *k8scache) GetGatewayClass(className string) (*gateway.GatewayClass, error) {
+	if c.listers.gatewayClassLister == nil {
+		return nil, errGatewayDisabled
+	}
+	return c.listers.gatewayClassLister.Get(className)
 }
 
 func (c *k8scache) GetService(serviceName string) (*api.Service, error) {
@@ -655,6 +665,25 @@ func (c *k8scache) IsValidIngressClass(ingressClass *networking.IngressClass) bo
 }
 
 // implements ListerEvents
+func (c *k8scache) IsValidGateway(gw *gateway.Gateway) bool {
+	className := gw.Spec.GatewayClassName
+	gwClass, err := c.GetGatewayClass(className)
+	if err != nil {
+		c.logger.Warn("error reading GatewayClass '%s': %v", className, err)
+		return false
+	} else if gwClass == nil {
+		c.logger.Warn("GatewayClass not found: %s", className)
+		return false
+	}
+	return c.IsValidGatewayClass(gwClass)
+}
+
+// implements ListerEvents
+func (c *k8scache) IsValidGatewayClass(gwClass *gateway.GatewayClass) bool {
+	return gwClass.Spec.Controller == c.cfg.ControllerName
+}
+
+// implements ListerEvents
 func (c *k8scache) IsValidConfigMap(cm *api.ConfigMap) bool {
 	// IngressClass' Parameters can use ConfigMaps in the controller namespace
 	if cm.Namespace == c.podNamespace {
@@ -683,6 +712,41 @@ func (c *k8scache) Notify(old, cur interface{}) {
 		case *networking.IngressClass:
 			if cur == nil {
 				ch.IngressClassesDel = append(ch.IngressClassesDel, old.(*networking.IngressClass))
+			}
+		case *gateway.Gateway:
+			if cur == nil {
+				ch.GatewaysDel = append(ch.GatewaysDel, old.(*gateway.Gateway))
+				ch.NeedFullSync = true
+			}
+		case *gateway.GatewayClass:
+			if cur == nil {
+				ch.GatewayClassesDel = append(ch.GatewayClassesDel, old.(*gateway.GatewayClass))
+				ch.NeedFullSync = true
+			}
+		case *gateway.HTTPRoute:
+			if cur == nil {
+				ch.HTTPRoutesDel = append(ch.HTTPRoutesDel, old.(*gateway.HTTPRoute))
+				ch.NeedFullSync = true
+			}
+		case *gateway.TLSRoute:
+			if cur == nil {
+				ch.TLSRoutesDel = append(ch.TLSRoutesDel, old.(*gateway.TLSRoute))
+				ch.NeedFullSync = true
+			}
+		case *gateway.TCPRoute:
+			if cur == nil {
+				ch.TCPRoutesDel = append(ch.TCPRoutesDel, old.(*gateway.TCPRoute))
+				ch.NeedFullSync = true
+			}
+		case *gateway.UDPRoute:
+			if cur == nil {
+				ch.UDPRoutesDel = append(ch.UDPRoutesDel, old.(*gateway.UDPRoute))
+				ch.NeedFullSync = true
+			}
+		case *gateway.BackendPolicy:
+			if cur == nil {
+				ch.BackendPoliciesDel = append(ch.BackendPoliciesDel, old.(*gateway.BackendPolicy))
+				ch.NeedFullSync = true
 			}
 		case *api.Service:
 			if cur == nil {
@@ -716,6 +780,62 @@ func (c *k8scache) Notify(old, cur interface{}) {
 			} else {
 				ch.IngressClassesUpd = append(ch.IngressClassesUpd, cls)
 			}
+		case *gateway.Gateway:
+			gw := cur.(*gateway.Gateway)
+			if old == nil {
+				ch.GatewaysAdd = append(ch.GatewaysAdd, gw)
+			} else {
+				ch.GatewaysUpd = append(ch.GatewaysUpd, gw)
+			}
+			ch.NeedFullSync = true
+		case *gateway.GatewayClass:
+			cls := cur.(*gateway.GatewayClass)
+			if old == nil {
+				ch.GatewayClassesAdd = append(ch.GatewayClassesAdd, cls)
+			} else {
+				ch.GatewayClassesUpd = append(ch.GatewayClassesUpd, cls)
+			}
+			ch.NeedFullSync = true
+		case *gateway.HTTPRoute:
+			hr := cur.(*gateway.HTTPRoute)
+			if old == nil {
+				ch.HTTPRoutesAdd = append(ch.HTTPRoutesAdd, hr)
+			} else {
+				ch.HTTPRoutesUpd = append(ch.HTTPRoutesUpd, hr)
+			}
+			ch.NeedFullSync = true
+		case *gateway.TLSRoute:
+			tr := cur.(*gateway.TLSRoute)
+			if old == nil {
+				ch.TLSRoutesAdd = append(ch.TLSRoutesAdd, tr)
+			} else {
+				ch.TLSRoutesUpd = append(ch.TLSRoutesUpd, tr)
+			}
+			ch.NeedFullSync = true
+		case *gateway.TCPRoute:
+			tr := cur.(*gateway.TCPRoute)
+			if old == nil {
+				ch.TCPRoutesAdd = append(ch.TCPRoutesAdd, tr)
+			} else {
+				ch.TCPRoutesUpd = append(ch.TCPRoutesUpd, tr)
+			}
+			ch.NeedFullSync = true
+		case *gateway.UDPRoute:
+			ur := cur.(*gateway.UDPRoute)
+			if old == nil {
+				ch.UDPRoutesAdd = append(ch.UDPRoutesAdd, ur)
+			} else {
+				ch.UDPRoutesUpd = append(ch.UDPRoutesUpd, ur)
+			}
+			ch.NeedFullSync = true
+		case *gateway.BackendPolicy:
+			bp := cur.(*gateway.BackendPolicy)
+			if old == nil {
+				ch.BackendPoliciesAdd = append(ch.BackendPoliciesAdd, bp)
+			} else {
+				ch.BackendPoliciesUpd = append(ch.BackendPoliciesUpd, bp)
+			}
+			ch.NeedFullSync = true
 		case *api.Endpoints:
 			ch.EndpointsNew = append(ch.EndpointsNew, cur.(*api.Endpoints))
 		case *api.Service:
@@ -793,6 +913,69 @@ func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
 	for _, cls := range ch.IngressClassesAdd {
 		obj = append(obj, "add/ingressClass:"+cls.Name)
 	}
+	for _, gw := range ch.GatewaysDel {
+		obj = append(obj, "del/gateway:"+gw.Namespace+"/"+gw.Name)
+	}
+	for _, gw := range ch.GatewaysUpd {
+		obj = append(obj, "update/gateway:"+gw.Namespace+"/"+gw.Name)
+	}
+	for _, gw := range ch.GatewaysAdd {
+		obj = append(obj, "add/gateway:"+gw.Namespace+"/"+gw.Name)
+	}
+	for _, gw := range ch.GatewayClassesDel {
+		obj = append(obj, "del/gatewayClass:"+gw.Namespace+"/"+gw.Name)
+	}
+	for _, gw := range ch.GatewayClassesUpd {
+		obj = append(obj, "update/gatewayClass:"+gw.Namespace+"/"+gw.Name)
+	}
+	for _, gw := range ch.GatewayClassesAdd {
+		obj = append(obj, "add/gatewayClass:"+gw.Namespace+"/"+gw.Name)
+	}
+	for _, hr := range ch.HTTPRoutesDel {
+		obj = append(obj, "del/httpRoute:"+hr.Namespace+"/"+hr.Name)
+	}
+	for _, hr := range ch.HTTPRoutesUpd {
+		obj = append(obj, "update/httpRoute:"+hr.Namespace+"/"+hr.Name)
+	}
+	for _, hr := range ch.HTTPRoutesAdd {
+		obj = append(obj, "add/httpRoute:"+hr.Namespace+"/"+hr.Name)
+	}
+	for _, tr := range ch.TLSRoutesDel {
+		obj = append(obj, "del/tlsRoute:"+tr.Namespace+"/"+tr.Name)
+	}
+	for _, tr := range ch.TLSRoutesUpd {
+		obj = append(obj, "update/tlsRoute:"+tr.Namespace+"/"+tr.Name)
+	}
+	for _, tr := range ch.TLSRoutesAdd {
+		obj = append(obj, "add/tlsRoute:"+tr.Namespace+"/"+tr.Name)
+	}
+	for _, tr := range ch.TCPRoutesDel {
+		obj = append(obj, "del/tcpRoute:"+tr.Namespace+"/"+tr.Name)
+	}
+	for _, tr := range ch.TCPRoutesUpd {
+		obj = append(obj, "update/tcpRoute:"+tr.Namespace+"/"+tr.Name)
+	}
+	for _, tr := range ch.TCPRoutesAdd {
+		obj = append(obj, "add/tcpRoute:"+tr.Namespace+"/"+tr.Name)
+	}
+	for _, ur := range ch.UDPRoutesDel {
+		obj = append(obj, "del/udpRoute:"+ur.Namespace+"/"+ur.Name)
+	}
+	for _, ur := range ch.UDPRoutesUpd {
+		obj = append(obj, "update/udpRoute:"+ur.Namespace+"/"+ur.Name)
+	}
+	for _, ur := range ch.UDPRoutesAdd {
+		obj = append(obj, "add/udpRoute:"+ur.Namespace+"/"+ur.Name)
+	}
+	for _, bp := range ch.BackendPoliciesDel {
+		obj = append(obj, "del/backendPolicy:"+bp.Namespace+"/"+bp.Name)
+	}
+	for _, bp := range ch.BackendPoliciesUpd {
+		obj = append(obj, "update/backendPolicy:"+bp.Namespace+"/"+bp.Name)
+	}
+	for _, bp := range ch.BackendPoliciesAdd {
+		obj = append(obj, "add/backendPolicy:"+bp.Namespace+"/"+bp.Name)
+	}
 	for _, ep := range ch.EndpointsNew {
 		obj = append(obj, "update/endpoint:"+ep.Namespace+"/"+ep.Name)
 	}
@@ -828,7 +1011,7 @@ func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
 	}
 	ch.Objects = obj
 	//
-	// leave ch with the old/cur state, cleanup c.changed to receive new events
+	// leave ch with the current state, cleanup c.changed to receive new events
 	c.changed = convtypes.ChangedObjects{
 		GlobalConfigMapDataCur: ch.GlobalConfigMapDataCur,
 		GlobalConfigMapDataNew: ch.GlobalConfigMapDataNew,

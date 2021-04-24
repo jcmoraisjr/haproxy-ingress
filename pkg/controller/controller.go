@@ -104,6 +104,7 @@ func (hc *HAProxyController) configController() {
 	hc.tracker = tracker.NewTracker()
 	hc.cache = createCache(
 		hc.logger, hc.cfg.Client, hc.controller, hc.tracker, hc.ingressQueue,
+		hc.cfg.WatchGateway,
 		hc.cfg.WatchNamespace, hc.cfg.ForceNamespaceIsolation,
 		hc.cfg.DisablePodList,
 		hc.cfg.ResyncPeriod,

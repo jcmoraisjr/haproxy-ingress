@@ -21,6 +21,7 @@ import (
 
 	api "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
+	gateway "sigs.k8s.io/gateway-api/apis/v1alpha1"
 
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
@@ -53,6 +54,20 @@ type ChangedObjects struct {
 	IngressesDel, IngressesUpd, IngressesAdd []*networking.Ingress
 	//
 	IngressClassesDel, IngressClassesUpd, IngressClassesAdd []*networking.IngressClass
+	//
+	GatewaysDel, GatewaysUpd, GatewaysAdd []*gateway.Gateway
+	//
+	GatewayClassesDel, GatewayClassesUpd, GatewayClassesAdd []*gateway.GatewayClass
+	//
+	HTTPRoutesDel, HTTPRoutesUpd, HTTPRoutesAdd []*gateway.HTTPRoute
+	//
+	TLSRoutesDel, TLSRoutesUpd, TLSRoutesAdd []*gateway.TLSRoute
+	//
+	TCPRoutesDel, TCPRoutesUpd, TCPRoutesAdd []*gateway.TCPRoute
+	//
+	UDPRoutesDel, UDPRoutesUpd, UDPRoutesAdd []*gateway.UDPRoute
+	//
+	BackendPoliciesDel, BackendPoliciesUpd, BackendPoliciesAdd []*gateway.BackendPolicy
 	//
 	EndpointsNew []*api.Endpoints
 	//
