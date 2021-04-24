@@ -49,7 +49,7 @@ func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Con
 	// IMPLEMENT
 	// config option to allow partial parsing
 	// cache also need to know if partial parsing is enabled
-	needFullSync := options.Cache.NeedFullSync() || globalConfigNeedFullSync(changed)
+	needFullSync := changed.NeedFullSync || globalConfigNeedFullSync(changed)
 	globalConfig := changed.GlobalCur
 	if changed.GlobalNew != nil {
 		globalConfig = changed.GlobalNew

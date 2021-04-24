@@ -38,7 +38,6 @@ type Cache interface {
 	GetDHSecretPath(defaultNamespace, secretName string) (File, error)
 	GetSecretContent(defaultNamespace, secretName, keyName string, track TrackingTarget) ([]byte, error)
 	SwapChangedObjects() *ChangedObjects
-	NeedFullSync() bool
 }
 
 // ChangedObjects ...
@@ -57,6 +56,8 @@ type ChangedObjects struct {
 	SecretsDel, SecretsUpd, SecretsAdd []*api.Secret
 	//
 	Pods []*api.Pod
+	//
+	NeedFullSync bool
 	//
 	Objects []string
 }
