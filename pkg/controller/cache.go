@@ -870,6 +870,7 @@ func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
 		ConfigMapsUpd:     c.configMapsUpd,
 		ConfigMapsAdd:     c.configMapsAdd,
 		Pods:              c.podsNew,
+		NeedFullSync:      c.needFullSync,
 		Objects:           obj,
 	}
 	//
@@ -917,11 +918,4 @@ func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
 	c.clear = true
 	c.needFullSync = false
 	return changed
-}
-
-// implements converters.types.Cache
-func (c *k8scache) NeedFullSync() bool {
-	c.stateMutex.RLock()
-	defer c.stateMutex.RUnlock()
-	return c.needFullSync
 }
