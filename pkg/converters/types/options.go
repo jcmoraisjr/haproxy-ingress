@@ -17,21 +17,20 @@ limitations under the License.
 package types
 
 import (
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )
 
 // ConverterOptions ...
 type ConverterOptions struct {
 	Logger           types.Logger
-	Cache            convtypes.Cache
-	Tracker          convtypes.Tracker
+	Cache            Cache
+	Tracker          Tracker
 	MasterSocket     string
 	DefaultConfig    func() map[string]string
 	DefaultBackend   string
 	DefaultCrtSecret string
-	FakeCrtFile      convtypes.CrtFile
-	FakeCAFile       convtypes.CrtFile
+	FakeCrtFile      CrtFile
+	FakeCAFile       CrtFile
 	AnnotationPrefix []string
 	AcmeTrackTLSAnn  bool
 }

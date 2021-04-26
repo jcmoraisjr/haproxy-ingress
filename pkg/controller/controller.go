@@ -35,7 +35,6 @@ import (
 	configmapconverter "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/configmap"
 	ingressconverter "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/tracker"
-	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
@@ -58,7 +57,7 @@ type HAProxyController struct {
 	controller        *controller.GenericController
 	cfg               *controller.Configuration
 	configMap         *api.ConfigMap
-	converterOptions  *ingtypes.ConverterOptions
+	converterOptions  *convtypes.ConverterOptions
 	reloadStrategy    *string
 	maxOldConfigFiles *int
 	validateConfig    *bool
@@ -139,7 +138,7 @@ func (hc *HAProxyController) configController() {
 	if err := hc.instance.ParseTemplates(); err != nil {
 		glog.Fatalf("error creating HAProxy instance: %v", err)
 	}
-	hc.converterOptions = &ingtypes.ConverterOptions{
+	hc.converterOptions = &convtypes.ConverterOptions{
 		Logger:           hc.logger,
 		Cache:            hc.cache,
 		Tracker:          hc.tracker,

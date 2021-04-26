@@ -42,7 +42,7 @@ type Config interface {
 }
 
 // NewIngressConverter ...
-func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Config) Config {
+func NewIngressConverter(options *convtypes.ConverterOptions, haproxy haproxy.Config) Config {
 	if options.DefaultConfig == nil {
 		options.DefaultConfig = createDefaults
 	}
@@ -80,7 +80,7 @@ func NewIngressConverter(options *ingtypes.ConverterOptions, haproxy haproxy.Con
 
 type converter struct {
 	haproxy            haproxy.Config
-	options            *ingtypes.ConverterOptions
+	options            *convtypes.ConverterOptions
 	changed            *convtypes.ChangedObjects
 	logger             types.Logger
 	cache              convtypes.Cache

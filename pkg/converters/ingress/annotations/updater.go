@@ -38,7 +38,7 @@ type Updater interface {
 }
 
 // NewUpdater ...
-func NewUpdater(haproxy haproxy.Config, options *ingtypes.ConverterOptions) Updater {
+func NewUpdater(haproxy haproxy.Config, options *convtypes.ConverterOptions) Updater {
 	return &updater{
 		haproxy: haproxy,
 		options: options,
@@ -51,7 +51,7 @@ func NewUpdater(haproxy haproxy.Config, options *ingtypes.ConverterOptions) Upda
 
 type updater struct {
 	haproxy haproxy.Config
-	options *ingtypes.ConverterOptions
+	options *convtypes.ConverterOptions
 	logger  types.Logger
 	cache   convtypes.Cache
 	tracker convtypes.Tracker
