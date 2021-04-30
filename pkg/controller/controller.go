@@ -32,8 +32,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/controller"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
-	configmapconverter "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/configmap"
-	ingressconverter "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/tracker"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
@@ -149,6 +148,7 @@ func (hc *HAProxyController) configController() {
 		FakeCrtFile:      hc.createFakeCrtFile(),
 		FakeCAFile:       hc.createFakeCAFile(),
 		AcmeTrackTLSAnn:  hc.cfg.AcmeTrackTLSAnn,
+		HasGateway:       hc.cache.hasGateway(),
 	}
 }
 
@@ -315,37 +315,11 @@ func (hc *HAProxyController) syncIngress(item interface{}) {
 		return
 	}
 
-	//
-	// ingress converter
-	//
 	hc.updateCount++
 	hc.logger.Info("starting haproxy update id=%d", hc.updateCount)
 	timer := utils.NewTimer(hc.metrics.ControllerProcTime)
-	ingConverter := ingressconverter.NewIngressConverter(
-		hc.converterOptions,
-		hc.instance.Config(),
-	)
-	ingConverter.Sync()
-	timer.Tick("parse_ingress")
 
-	//
-	// configmap converters
-	//
-	if hc.cfg.TCPConfigMapName != "" {
-		// TODO parses only when tcpconfigmap changes
-		tcpConfigmap, err := hc.cache.GetConfigMap(hc.cfg.TCPConfigMapName)
-		if err == nil && tcpConfigmap != nil {
-			tcpSvcConverter := configmapconverter.NewTCPServicesConverter(
-				hc.logger,
-				hc.instance.Config(),
-				hc.cache,
-			)
-			tcpSvcConverter.Sync(tcpConfigmap.Data)
-			timer.Tick("parse_tcp_svc")
-		} else {
-			hc.logger.Error("error reading TCP services: %v", err)
-		}
-	}
+	converters.NewConverter(timer, hc.instance.Config(), hc.converterOptions).Sync()
 
 	//
 	// update proxy

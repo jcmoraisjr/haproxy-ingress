@@ -33,4 +33,5 @@ type ConverterOptions struct {
 	FakeCAFile       CrtFile
 	AnnotationPrefix []string
 	AcmeTrackTLSAnn  bool
+	HasGateway       bool
 }

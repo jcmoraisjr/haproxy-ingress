@@ -24,6 +24,7 @@ import (
 
 	api "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
+	gateway "sigs.k8s.io/gateway-api/apis/v1alpha1"
 
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 )
@@ -93,6 +94,21 @@ func (c *CacheMock) GetIngressClass(className string) (*networking.IngressClass,
 		}
 	}
 	return nil, fmt.Errorf("IngressClass not found: %s", className)
+}
+
+// GetGateway ...
+func (c *CacheMock) GetGateway(gatewayName string) (*gateway.Gateway, error) {
+	return nil, nil
+}
+
+// GetGatewayList ...
+func (c *CacheMock) GetGatewayList() ([]*gateway.Gateway, error) {
+	return nil, nil
+}
+
+// GetHTTPRouteList ...
+func (c *CacheMock) GetHTTPRouteList(match map[string]string) ([]*gateway.HTTPRoute, error) {
+	return nil, nil
 }
 
 // GetService ...

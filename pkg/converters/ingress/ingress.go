@@ -38,30 +38,29 @@ import (
 
 // Config ...
 type Config interface {
-	Sync()
+	NeedFullSync() bool
+	Sync(full bool)
 }
 
 // NewIngressConverter ...
-func NewIngressConverter(options *convtypes.ConverterOptions, haproxy haproxy.Config) Config {
+func NewIngressConverter(options *convtypes.ConverterOptions, haproxy haproxy.Config, changed *convtypes.ChangedObjects) Config {
 	if options.DefaultConfig == nil {
 		options.DefaultConfig = createDefaults
 	}
-	changed := options.Cache.SwapChangedObjects()
 	// IMPLEMENT
 	// config option to allow partial parsing
 	// cache also need to know if partial parsing is enabled
-	needFullSync := changed.NeedFullSync || globalConfigNeedFullSync(changed)
-	globalConfig := changed.GlobalConfigMapDataCur
-	if changed.GlobalConfigMapDataNew != nil {
-		globalConfig = changed.GlobalConfigMapDataNew
+	globalConfig := changed.GlobalConfigMapDataNew
+	if globalConfig == nil {
+		globalConfig = changed.GlobalConfigMapDataCur
 	}
 	defaultConfig := options.DefaultConfig()
 	for key, value := range globalConfig {
 		defaultConfig[key] = value
 	}
-	return &converter{
-		haproxy:            haproxy,
+	c := &converter{
 		options:            options,
+		haproxy:            haproxy,
 		changed:            changed,
 		logger:             options.Logger,
 		cache:              options.Cache,
@@ -74,13 +73,14 @@ func NewIngressConverter(options *convtypes.ConverterOptions, haproxy haproxy.Co
 		hostAnnotations:    map[*hatypes.Host]*annotations.Mapper{},
 		backendAnnotations: map[*hatypes.Backend]*annotations.Mapper{},
 		ingressClasses:     map[string]*ingressClassConfig{},
-		needFullSync:       needFullSync,
 	}
+	c.readDefaultCertificate()
+	return c
 }
 
 type converter struct {
-	haproxy            haproxy.Config
 	options            *convtypes.ConverterOptions
+	haproxy            haproxy.Config
 	changed            *convtypes.ChangedObjects
 	logger             types.Logger
 	cache              convtypes.Cache
@@ -94,7 +94,6 @@ type converter struct {
 	hostAnnotations    map[*hatypes.Host]*annotations.Mapper
 	backendAnnotations map[*hatypes.Backend]*annotations.Mapper
 	ingressClasses     map[string]*ingressClassConfig
-	needFullSync       bool
 }
 
 type ingressClassConfig struct {
@@ -103,19 +102,30 @@ type ingressClassConfig struct {
 	config       map[string]string
 }
 
-func (c *converter) Sync() {
-	if c.needFullSync {
-		c.haproxy.Clear()
+func (c *converter) NeedFullSync() bool {
+	needFullSync := c.defaultCrtNeedFullSync() || c.globalConfigNeedFullSync()
+	if needFullSync && c.defaultCrt == c.options.FakeCrtFile {
+		c.logger.Info("using auto generated fake certificate")
 	}
+	return needFullSync
+}
+
+func (c *converter) Sync(full bool) {
 	c.syncDefaultCrt()
-	if c.needFullSync {
+	if full {
 		c.syncFull()
 	} else {
 		c.syncPartial()
 	}
 }
 
-func globalConfigNeedFullSync(changed *convtypes.ChangedObjects) bool {
+func (c *converter) defaultCrtNeedFullSync() bool {
+	frontend := c.haproxy.Frontend()
+	return frontend.DefaultCrtFile != c.defaultCrt.Filename ||
+		frontend.DefaultCrtHash != c.defaultCrt.SHA1Hash
+}
+
+func (c *converter) globalConfigNeedFullSync() bool {
 	// Currently if a global is changed, all the ingress objects are parsed again.
 	// This need to be done due to:
 	//
@@ -129,11 +139,11 @@ func globalConfigNeedFullSync(changed *convtypes.ChangedObjects) bool {
 	//
 	// This might be improved after implement a way to guarantee that a global
 	// is just a haproxy global, default or frontend config.
-	cur, new := changed.GlobalConfigMapDataCur, changed.GlobalConfigMapDataNew
+	cur, new := c.changed.GlobalConfigMapDataCur, c.changed.GlobalConfigMapDataNew
 	return new != nil && !reflect.DeepEqual(cur, new)
 }
 
-func (c *converter) syncDefaultCrt() {
+func (c *converter) readDefaultCertificate() {
 	crt := c.options.FakeCrtFile
 	if c.options.DefaultCrtSecret != "" {
 		var err error
@@ -143,21 +153,13 @@ func (c *converter) syncDefaultCrt() {
 			c.logger.Warn("using auto generated fake certificate due to an error reading default TLS certificate: %v", err)
 		}
 	}
-	frontend := c.haproxy.Frontend()
-	if !c.needFullSync {
-		if frontend.DefaultCrtFile != crt.Filename || frontend.DefaultCrtHash != crt.SHA1Hash {
-			// TODO implement a proper secret tracking and partial sync
-			c.haproxy.Clear()
-			frontend = c.haproxy.Frontend() // Clear() recreates internal objects
-			c.needFullSync = true
-		}
-	}
-	if c.needFullSync && crt == c.options.FakeCrtFile {
-		c.logger.Info("using auto generated fake certificate")
-	}
-	frontend.DefaultCrtFile = crt.Filename
-	frontend.DefaultCrtHash = crt.SHA1Hash
 	c.defaultCrt = crt
+}
+
+func (c *converter) syncDefaultCrt() {
+	frontend := c.haproxy.Frontend()
+	frontend.DefaultCrtFile = c.defaultCrt.Filename
+	frontend.DefaultCrtHash = c.defaultCrt.SHA1Hash
 }
 
 func (c *converter) syncDefaultBackend() {
@@ -244,10 +246,6 @@ func (c *converter) syncPartial() {
 			podList[i] = pod.Namespace + "/" + pod.Name
 		}
 		return podList
-	}
-
-	if len(c.changed.Objects) > 0 {
-		c.logger.InfoV(2, "applying %d change notification(s): %v", len(c.changed.Objects), c.changed.Objects)
 	}
 
 	// remove changed/deleted data

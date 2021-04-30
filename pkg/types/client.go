@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 )
 
+// Client ...
 type Client interface {
 	kubernetes.Interface
 	versioned.Interface

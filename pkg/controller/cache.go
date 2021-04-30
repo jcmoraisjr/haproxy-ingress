@@ -190,13 +190,70 @@ func (c *k8scache) GetIngressClass(className string) (*networking.IngressClass, 
 	return c.listers.ingressClassLister.Get(className)
 }
 
+func (c *k8scache) hasGateway() bool {
+	return c.listers.gatewayClassLister != nil
+}
+
 var errGatewayDisabled = fmt.Errorf("Gateway API wasn't initialized")
 
+func (c *k8scache) GetGateway(gatewayName string) (*gateway.Gateway, error) {
+	if !c.hasGateway() {
+		return nil, errGatewayDisabled
+	}
+	namespace, name, err := cache.SplitMetaNamespaceKey(gatewayName)
+	if err != nil {
+		return nil, err
+	}
+	gateway, err := c.listers.gatewayLister.Gateways(namespace).Get(name)
+	if gateway != nil && !c.IsValidGateway(gateway) {
+		return nil, fmt.Errorf("gateway class does not match")
+	}
+	return gateway, err
+}
+
+func (c *k8scache) GetGatewayList() ([]*gateway.Gateway, error) {
+	if !c.hasGateway() {
+		return nil, errGatewayDisabled
+	}
+	gwList, err := c.listers.gatewayLister.List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+	validGwList := make([]*gateway.Gateway, len(gwList))
+	var i int
+	for _, gw := range gwList {
+		if c.IsValidGateway(gw) {
+			validGwList[i] = gw
+			i++
+		}
+	}
+	return validGwList[:i], nil
+}
+
 func (c *k8scache) GetGatewayClass(className string) (*gateway.GatewayClass, error) {
-	if c.listers.gatewayClassLister == nil {
+	if !c.hasGateway() {
 		return nil, errGatewayDisabled
 	}
 	return c.listers.gatewayClassLister.Get(className)
+}
+
+func buildLabelSelector(match map[string]string) (labels.Selector, error) {
+	list := make([]string, 0, len(match))
+	for k, v := range match {
+		list = append(list, k+"="+v)
+	}
+	return labels.Parse(strings.Join(list, ","))
+}
+
+func (c *k8scache) GetHTTPRouteList(match map[string]string) ([]*gateway.HTTPRoute, error) {
+	if !c.hasGateway() {
+		return nil, errGatewayDisabled
+	}
+	selector, err := buildLabelSelector(match)
+	if err != nil {
+		return nil, err
+	}
+	return c.listers.httpRouteLister.List(selector)
 }
 
 func (c *k8scache) GetService(serviceName string) (*api.Service, error) {
@@ -236,14 +293,7 @@ func (c *k8scache) GetTerminatingPods(service *api.Service, track convtypes.Trac
 	if !c.listers.hasPodLister {
 		return nil, fmt.Errorf("pod lister wasn't started, remove --disable-pod-list command-line option to enable it")
 	}
-	// converting the service selector to slice of string
-	// in order to create the full match selector
-	var ls []string
-	for k, v := range service.Spec.Selector {
-		ls = append(ls, fmt.Sprintf("%s=%s", k, v))
-	}
-	// parsing the label selector from the previous selectors
-	l, err := labels.Parse(strings.Join(ls, ","))
+	l, err := buildLabelSelector(service.Spec.Selector)
 	if err != nil {
 		return nil, err
 	}

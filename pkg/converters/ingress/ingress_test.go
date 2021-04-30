@@ -17,6 +17,7 @@ limitations under the License.
 package ingress
 
 import (
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -645,6 +646,7 @@ func TestSyncIngressClass(t *testing.T) {
 	for _, test := range testCases {
 		c := setup(t)
 		c.cache.ConfigMapList = map[string]*api.ConfigMap{"ingress-controller/config": {}}
+		c.cache.SecretTLSPath["system/default"] = "/tls/tls-default.pem"
 		conv := c.createConverter()
 		ingClass := networking.IngressClass{
 			ObjectMeta: metav1.ObjectMeta{
@@ -1824,6 +1826,7 @@ func TestAnnPrefix(t *testing.T) {
 	prefix2 := "ingress.kubernetes.io"
 	prefix3 := "haproxy"
 
+	c.cache.SecretTLSPath["system/default"] = "/tls/tls-default.pem"
 	conv := c.createConverter()
 	conv.options.AnnotationPrefix = []string{prefix1, prefix2, prefix3}
 
@@ -2307,7 +2310,8 @@ func (c *testConfig) SyncConverter(conv *converter, ing ...*networking.Ingress) 
 		conv = c.createConverter()
 	}
 	conv.updater = c.updater
-	conv.Sync()
+	full := !reflect.DeepEqual(c.cache.Changed.GlobalConfigMapDataCur, c.cache.Changed.GlobalConfigMapDataNew)
+	conv.Sync(full)
 }
 
 func (c *testConfig) createConverter() *converter {
@@ -2327,6 +2331,7 @@ func (c *testConfig) createConverter() *converter {
 			AnnotationPrefix: []string{"ingress.kubernetes.io"},
 		},
 		c.hconfig,
+		c.cache.SwapChangedObjects(),
 	).(*converter)
 }
 

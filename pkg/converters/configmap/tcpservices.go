@@ -30,15 +30,16 @@ import (
 
 // TCPServicesConverter ...
 type TCPServicesConverter interface {
-	Sync(tcpservices map[string]string)
+	Sync()
 }
 
 // NewTCPServicesConverter ...
-func NewTCPServicesConverter(logger types.Logger, haproxy haproxy.Config, cache convtypes.Cache) TCPServicesConverter {
+func NewTCPServicesConverter(options *convtypes.ConverterOptions, haproxy haproxy.Config, changed *convtypes.ChangedObjects) TCPServicesConverter {
 	return &tcpSvcConverter{
-		logger:  logger,
-		cache:   cache,
+		logger:  options.Logger,
+		cache:   options.Cache,
 		haproxy: haproxy,
+		changed: changed,
 	}
 }
 
@@ -46,11 +47,12 @@ type tcpSvcConverter struct {
 	logger  types.Logger
 	cache   convtypes.Cache
 	haproxy haproxy.Config
+	changed *convtypes.ChangedObjects
 }
 
 var regexValidTime = regexp.MustCompile(`^[0-9]+(us|ms|s|m|h|d)$`)
 
-func (c *tcpSvcConverter) Sync(tcpservices map[string]string) {
+func (c *tcpSvcConverter) Sync() {
 	c.haproxy.TCPBackends().RemoveAll()
 
 	// map[key]value is:
@@ -63,6 +65,10 @@ func (c *tcpSvcConverter) Sync(tcpservices map[string]string) {
 	//   - 4: namespace/name of crt/key secret if should ssl-offload
 	//   - 5: check interval
 	//   - 6: namespace/name of ca/crl secret if should verify client ssl
+	tcpservices := c.changed.TCPConfigMapDataNew
+	if tcpservices == nil {
+		tcpservices = c.changed.TCPConfigMapDataCur
+	}
 	for k, v := range tcpservices {
 		publicport, err := strconv.Atoi(k)
 		if err != nil {

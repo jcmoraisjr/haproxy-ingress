@@ -23,6 +23,7 @@ import (
 
 	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/tracker"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	types_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/types/helper_test"
@@ -296,7 +297,12 @@ func TestTCPSvcSync(t *testing.T) {
 		c.cache.SecretTLSPath = test.secretCertMock
 		c.cache.SecretCAPath = test.secretCAMock
 		c.cache.SecretCRLPath = test.secretCRLMock
-		NewTCPServicesConverter(c.logger, c.haproxy, c.cache).Sync(test.services)
+		NewTCPServicesConverter(&types.ConverterOptions{
+			Logger: c.logger,
+			Cache:  c.cache,
+		}, c.haproxy, &types.ChangedObjects{
+			TCPConfigMapDataNew: test.services,
+		}).Sync()
 		backends := c.haproxy.TCPBackends().BuildSortedItems()
 		for _, b := range backends {
 			for _, ep := range b.Endpoints {
