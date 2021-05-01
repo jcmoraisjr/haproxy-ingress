@@ -73,21 +73,21 @@ func (c *updater) buildHostCertSigner(d *hostData) {
 
 func (c *updater) buildHostRedirect(d *hostData) {
 	// TODO need a host<->host tracking if a target is found
-	redir := d.mapper.Get(ingtypes.HostServerRedirect)
+	redir := d.mapper.Get(ingtypes.HostRedirectFrom)
 	if target := c.haproxy.Hosts().FindTargetRedirect(redir.Value, false); target != nil {
 		c.logger.Warn("ignoring redirect from '%s' on %v, it's already targeting to '%s'",
 			redir.Value, redir.Source, target.Hostname)
 	} else {
 		d.host.Redirect.RedirectHost = redir.Value
 	}
-	redirRegex := d.mapper.Get(ingtypes.HostServerRedirectRegex)
+	redirRegex := d.mapper.Get(ingtypes.HostRedirectFromRegex)
 	if target := c.haproxy.Hosts().FindTargetRedirect(redirRegex.Value, true); target != nil {
 		c.logger.Warn("ignoring regex redirect from '%s' on %v, it's already targeting to '%s'",
 			redirRegex.Value, redirRegex.Source, target.Hostname)
 	} else {
 		d.host.Redirect.RedirectHostRegex = redirRegex.Value
 	}
-	d.host.Redirect.RedirectCode = d.mapper.Get(ingtypes.HostServerRedirectCode).Int()
+	d.host.Redirect.RedirectCode = d.mapper.Get(ingtypes.HostRedirectFromCode).Int()
 }
 
 func (c *updater) buildHostSSLPassthrough(d *hostData) {

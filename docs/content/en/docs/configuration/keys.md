@@ -407,6 +407,9 @@ The table below describes all supported configuration keys.
 | [`prometheus-port`](#bind-port)                      | port number                             | Global  |                    |
 | [`proxy-body-size`](#proxy-body-size)                | size (bytes)                            | Path    | unlimited          |
 | [`proxy-protocol`](#proxy-protocol)                  | [v1\|v2\|v2-ssl\|v2-ssl-cn]             | Backend |                    |
+| [`redirect-from`](#redirect)                         | domain name                             | Host    |                    |
+| [`redirect-from-code`](#redirect)                    | http status code                        | Host    | `302`              |
+| [`redirect-from-regex`](#redirect)                   | regex                                   | Host    |                    |
 | [`rewrite-target`](#rewrite-target)                  | path string                             | Path    |                    |
 | [`secure-backends`](#secure-backend)                 | [true\|false]                           | Backend |                    |
 | [`secure-crt-secret`](#secure-backend)               | secret name                             | Backend |                    |
@@ -415,9 +418,6 @@ The table below describes all supported configuration keys.
 | [`secure-verify-hostname`](#secure-backend)          | hostname                                | Backend |                    |
 | [`server-alias`](#server-alias)                      | domain name                             | Host    |                    |
 | [`server-alias-regex`](#server-alias)                | regex                                   | Host    |                    |
-| [`server-redirect`](#server-redirect)                | domain name                             | Host    |                    |
-| [`server-redirect-code`](#server-redirect)           | http status code                        | Host    | `302`              |
-| [`server-redirect-regex`](#server-redirect)          | regex                                   | Host    |                    |
 | [`service-upstream`](#service-upstream)              | [true\|false]                           | Backend | `false`            |
 | [`session-cookie-dynamic`](#affinity)                | [true\|false]                           | Backend |                    |
 | [`session-cookie-keywords`](#affinity)               | cookie options                          | Backend | `indirect nocache httponly`     |
@@ -1874,6 +1874,29 @@ See also:
 
 ---
 
+## Redirect
+
+| Configuration key     | Scope  | Default | Since |
+|-----------------------|--------|---------|-------|
+| `redirect-from`       | `Host` |         | v0.13 |
+| `redirect-from-code`  | `Host` | `302`   | v0.13 |
+| `redirect-from-regex` | `Host` |         | v0.13 |
+
+Configures hostname redirect. Requests that matches the configuration will be redirected
+to the hostname of the ingress spec. Protocol, path and query string are preserved.
+
+The same source domain can be configured just once, and a target domain can be assigned
+just once as well, which means that this configuration can only be used on ingress
+resources that defines just one hostname. The redirect configuration has the lesser
+precedence, so if a source domain is also configured as a hostname in the ingress spec,
+or as an alias using annotation, the redirect will not happen.
+
+* `redirect-from`: Defines a source domain using hostname-like syntax, so wildcard domains can also be used.
+* `redirect-from-regex`: Defines a POSIX extended regular expression used to match a source domain. The regex will be used verbatim, so add `^` and `$` if strict hostname is desired and escape `\.` dots in order to strictly match them.
+* `redirect-from-code`: Which HTTP status code should be used in the redirect. A `302` response is used by default if not configured.
+
+---
+
 ## Rewrite target
 
 | Configuration key | Scope  | Default | Since |
@@ -1995,29 +2018,6 @@ attribute in the same ACL, and any of them might be used to match SNI extensions
 
 * `server-alias`: Defines an alias with hostname-like syntax. On v0.6 and older, wildcard `*` wasn't converted to match a subdomain. Regular expression was also accepted but dots were escaped, making this alias less useful as a regex. Starting v0.7 the same hostname syntax is used, so `*.my.domain` will match `app.my.domain` but won't match `sub.app.my.domain`.
 * `server-alias-regex`: Only in v0.7 and newer. Match hostname using a POSIX extended regular expression. The regex will be used verbatim, so add `^` and `$` if strict hostname is desired and escape `\.` dots in order to strictly match them. Some HTTP clients add the port number in the Host header, so remember to add `(:[0-9]+)?$` in the end of the regex if a dollar sign `$` is being used to match the end of the string.
-
----
-
-## Server redirect
-
-| Configuration key       | Scope  | Default | Since |
-|-------------------------|--------|---------|-------|
-| `server-redirect`       | `Host` |         | v0.13 |
-| `server-redirect-code`  | `Host` | `302`   | v0.13 |
-| `server-redirect-regex` | `Host` |         | v0.13 |
-
-Configures hostname redirect. Requests that matches the configuration will be redirected
-to the hostname of the ingress spec. Protocol, path and query string are preserved.
-
-The same source domain can be configured just once, and a target domain can be assigned
-just once as well, which means that this configuration can only be used on ingress
-resources that defines just one hostname. The redirect configuration has the lesser
-precedence, so if a source domain is also configured as a hostname in the ingress spec,
-or as an alias using annotation, the redirect will not happen.
-
-* `server-redirect`: Defines a source domain using hostname-like syntax, so wildcard domains can also be used.
-* `server-redirect-regex`: Defines a POSIX extended regular expression used to match a source domain. The regex will be used verbatim, so add `^` and `$` if strict hostname is desired and escape `\.` dots in order to strictly match them.
-* `server-redirect-code`: Which HTTP status code should be used in the redirect. A `302` response is used by default if not configured.
 
 ---
 

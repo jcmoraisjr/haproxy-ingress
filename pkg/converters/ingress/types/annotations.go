@@ -42,11 +42,11 @@ const (
 	HostAuthTLSVerifyClient    = "auth-tls-verify-client"
 	HostCertSigner             = "cert-signer"
 	HostPathType               = "path-type"
+	HostRedirectFrom           = "redirect-from"
+	HostRedirectFromCode       = "redirect-from-code"
+	HostRedirectFromRegex      = "redirect-from-regex"
 	HostServerAlias            = "server-alias"
 	HostServerAliasRegex       = "server-alias-regex"
-	HostServerRedirect         = "server-redirect"
-	HostServerRedirectCode     = "server-redirect-code"
-	HostServerRedirectRegex    = "server-redirect-regex"
 	HostSSLCiphers             = "ssl-ciphers"
 	HostSSLCipherSuites        = "ssl-cipher-suites"
 	HostSSLOptionsHost         = "ssl-options-host"
@@ -67,10 +67,10 @@ var (
 		HostCertSigner:             {},
 		HostServerAlias:            {},
 		HostPathType:               {},
+		HostRedirectFrom:           {},
+		HostRedirectFromCode:       {},
+		HostRedirectFromRegex:      {},
 		HostServerAliasRegex:       {},
-		HostServerRedirect:         {},
-		HostServerRedirectCode:     {},
-		HostServerRedirectRegex:    {},
 		HostSSLCiphers:             {},
 		HostSSLCipherSuites:        {},
 		HostSSLOptionsHost:         {},
