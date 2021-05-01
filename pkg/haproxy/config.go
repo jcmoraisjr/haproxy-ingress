@@ -19,7 +19,6 @@ package haproxy
 import (
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/jinzhu/copier"
@@ -179,7 +178,6 @@ func (c *config) WriteFrontendMaps() error {
 		//
 		RedirFromRootMap:  mapBuilder.AddMap(mapsDir + "/_front_redir_fromroot.map"),
 		RedirSourceMap:    mapBuilder.AddMap(mapsDir + "/_front_redir_source.map"),
-		RedirCodeMap:      mapBuilder.AddMap(mapsDir + "/_front_redir_code.map"),
 		SSLPassthroughMap: mapBuilder.AddMap(mapsDir + "/_front_sslpassthrough.map"),
 		VarNamespaceMap:   mapBuilder.AddMap(mapsDir + "/_front_namespace.map"),
 		//
@@ -235,21 +233,11 @@ func (c *config) WriteFrontendMaps() error {
 		if host.SSLPassthrough() {
 			continue
 		}
-		var redirectCode string
-		if host.Redirect.RedirectCode > 0 && host.Redirect.RedirectCode != c.frontend.DefaultServerRedirectCode {
-			redirectCode = strconv.Itoa(host.Redirect.RedirectCode)
-		}
 		if host.Redirect.RedirectHost != "" {
 			fmaps.RedirSourceMap.AddHostnameMapping(host.Redirect.RedirectHost, host.Hostname)
-			if redirectCode != "" {
-				fmaps.RedirCodeMap.AddHostnameMapping(host.Redirect.RedirectHost, redirectCode)
-			}
 		}
 		if host.Redirect.RedirectHostRegex != "" {
 			fmaps.RedirSourceMap.AddHostnameMappingRegex(host.Redirect.RedirectHostRegex, host.Hostname)
-			if redirectCode != "" {
-				fmaps.RedirCodeMap.AddHostnameMappingRegex(host.Redirect.RedirectHostRegex, redirectCode)
-			}
 		}
 		if host.HasTLSAuth() {
 			fmaps.TLSAuthList.AddHostnameMapping(host.Hostname, "")

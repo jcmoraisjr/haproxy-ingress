@@ -1357,16 +1357,8 @@ frontend {{ $proxy__front_https }}
         {{- "" }} if !{ var({{ $varbe }}) -m found }
         {{- if not $match.First }} !{ var(req.redirdest) -m found }{{ end }}
 {{- end }}
-{{- $hasCode := ne (len $fmaps.RedirCodeMap.MatchFiles) 0 }}
-{{- range $match := $fmaps.RedirCodeMap.MatchFiles }}
-    http-request set-var(req.redircode) var(req.host)
-        {{- if $match.Lower }},lower{{ end }}
-        {{- "" }},map_{{ $match.Method }}({{ $match.Filename }}{{ if $match.Last }},{{ $frontend.DefaultServerRedirectCode }}{{ end }})
-        {{- "" }} if { var(req.redirdest) -m found }
-        {{- if not $match.First }} !{ var(req.redircode) -m found }{{ end }}
-{{- end }}
     http-request redirect prefix //%[var(req.redirdest)]
-        {{- "" }} code {{ if $hasCode }}%[var(req.redircode)]{{ else }}{{ $frontend.DefaultServerRedirectCode }}{{ end }}
+        {{- "" }} code {{ $frontend.DefaultServerRedirectCode }}
         {{- "" }} if { var(req.redirdest) -m found }
 {{- end }}
 {{- end }}

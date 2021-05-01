@@ -41,10 +41,9 @@ func TestBuildHostRedirect(t *testing.T) {
 		// 1
 		{
 			ann: map[string]string{
-				ingtypes.HostRedirectFrom:     "www.d.local",
-				ingtypes.HostRedirectFromCode: "301",
+				ingtypes.HostRedirectFrom: "www.d.local",
 			},
-			expected: hatypes.HostRedirectConfig{RedirectHost: "www.d.local", RedirectCode: 301},
+			expected: hatypes.HostRedirectConfig{RedirectHost: "www.d.local"},
 		},
 		// 2
 		{
@@ -60,7 +59,6 @@ func TestBuildHostRedirect(t *testing.T) {
 		{
 			annPrev: map[string]string{
 				ingtypes.HostRedirectFromRegex: "[a-z]+\\.d\\.local",
-				ingtypes.HostRedirectFromCode:  "301",
 			},
 			ann: map[string]string{
 				ingtypes.HostRedirectFrom: "www.d.local",

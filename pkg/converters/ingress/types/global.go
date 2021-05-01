@@ -77,6 +77,7 @@ const (
 	GlobalPathTypeOrder                = "path-type-order"
 	GlobalUsername                     = "username"
 	GlobalPrometheusPort               = "prometheus-port"
+	GlobalRedirectFromCode             = "redirect-from-code"
 	GlobalSSLDHDefaultMaxSize          = "ssl-dh-default-max-size"
 	GlobalSSLDHParam                   = "ssl-dh-param"
 	GlobalSSLEngine                    = "ssl-engine"

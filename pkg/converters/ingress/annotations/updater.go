@@ -146,7 +146,7 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	d.global.StrictHost = mapper.Get(ingtypes.GlobalStrictHost).Bool()
 	d.global.UseHTX = mapper.Get(ingtypes.GlobalUseHTX).Bool()
 	//
-	c.haproxy.Frontend().DefaultServerRedirectCode = mapper.Get(ingtypes.HostRedirectFromCode).Int()
+	c.haproxy.Frontend().DefaultServerRedirectCode = mapper.Get(ingtypes.GlobalRedirectFromCode).Int()
 	//
 	c.buildGlobalAcme(d)
 	c.buildGlobalAuthProxy(d)

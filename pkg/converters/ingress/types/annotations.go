@@ -43,7 +43,6 @@ const (
 	HostCertSigner             = "cert-signer"
 	HostPathType               = "path-type"
 	HostRedirectFrom           = "redirect-from"
-	HostRedirectFromCode       = "redirect-from-code"
 	HostRedirectFromRegex      = "redirect-from-regex"
 	HostServerAlias            = "server-alias"
 	HostServerAliasRegex       = "server-alias-regex"
@@ -68,7 +67,6 @@ var (
 		HostServerAlias:            {},
 		HostPathType:               {},
 		HostRedirectFrom:           {},
-		HostRedirectFromCode:       {},
 		HostRedirectFromRegex:      {},
 		HostServerAliasRegex:       {},
 		HostSSLCiphers:             {},

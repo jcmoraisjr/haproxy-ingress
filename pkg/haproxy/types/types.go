@@ -363,7 +363,6 @@ type FrontendMaps struct {
 	//
 	RedirFromRootMap  *HostsMap
 	RedirSourceMap    *HostsMap
-	RedirCodeMap      *HostsMap
 	SSLPassthroughMap *HostsMap
 	VarNamespaceMap   *HostsMap
 	//
@@ -490,7 +489,6 @@ type HostAliasConfig struct {
 
 // HostRedirectConfig ...
 type HostRedirectConfig struct {
-	RedirectCode      int
 	RedirectHost      string
 	RedirectHostRegex string
 }

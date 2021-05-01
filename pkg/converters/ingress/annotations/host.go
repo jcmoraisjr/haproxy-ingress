@@ -87,7 +87,6 @@ func (c *updater) buildHostRedirect(d *hostData) {
 	} else {
 		d.host.Redirect.RedirectHostRegex = redirRegex.Value
 	}
-	d.host.Redirect.RedirectCode = d.mapper.Get(ingtypes.HostRedirectFromCode).Int()
 }
 
 func (c *updater) buildHostSSLPassthrough(d *hostData) {

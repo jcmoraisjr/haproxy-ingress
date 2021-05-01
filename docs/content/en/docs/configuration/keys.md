@@ -408,7 +408,7 @@ The table below describes all supported configuration keys.
 | [`proxy-body-size`](#proxy-body-size)                | size (bytes)                            | Path    | unlimited          |
 | [`proxy-protocol`](#proxy-protocol)                  | [v1\|v2\|v2-ssl\|v2-ssl-cn]             | Backend |                    |
 | [`redirect-from`](#redirect)                         | domain name                             | Host    |                    |
-| [`redirect-from-code`](#redirect)                    | http status code                        | Host    | `302`              |
+| [`redirect-from-code`](#redirect)                    | http status code                        | Global  | `302`              |
 | [`redirect-from-regex`](#redirect)                   | regex                                   | Host    |                    |
 | [`rewrite-target`](#rewrite-target)                  | path string                             | Path    |                    |
 | [`secure-backends`](#secure-backend)                 | [true\|false]                           | Backend |                    |
@@ -1876,11 +1876,11 @@ See also:
 
 ## Redirect
 
-| Configuration key     | Scope  | Default | Since |
-|-----------------------|--------|---------|-------|
-| `redirect-from`       | `Host` |         | v0.13 |
-| `redirect-from-code`  | `Host` | `302`   | v0.13 |
-| `redirect-from-regex` | `Host` |         | v0.13 |
+| Configuration key     | Scope    | Default | Since |
+|-----------------------|----------|---------|-------|
+| `redirect-from`       | `Host`   |         | v0.13 |
+| `redirect-from-code`  | `Global` | `302`   | v0.13 |
+| `redirect-from-regex` | `Host`   |         | v0.13 |
 
 Configures hostname redirect. Requests that matches the configuration will be redirected
 to the hostname of the ingress spec. Protocol, path and query string are preserved.

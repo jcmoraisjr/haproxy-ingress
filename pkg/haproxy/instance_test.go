@@ -3149,43 +3149,18 @@ func TestInstanceServerRedirect(t *testing.T) {
 		// 1
 		{
 			data: [3]hatypes.HostRedirectConfig{
-				{RedirectHost: "*.d1.local", RedirectCode: 301},
-			},
-			expHTTP: `
-    http-request set-var(req.redirdest) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_source__regex.map) if !{ var(req.backend) -m found }
-    http-request set-var(req.redircode) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_code__regex.map,302) if { var(req.redirdest) -m found }
-    http-request redirect prefix //%[var(req.redirdest)] code %[var(req.redircode)] if { var(req.redirdest) -m found }`,
-			expHTTPS: `
-    http-request set-var(req.redirdest) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_source__regex.map) if !{ var(req.hostbackend) -m found }
-    http-request set-var(req.redircode) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_code__regex.map,302) if { var(req.redirdest) -m found }
-    http-request redirect prefix //%[var(req.redirdest)] code %[var(req.redircode)] if { var(req.redirdest) -m found }`,
-			expMaps: map[string]string{
-				"_front_redir_source__regex.map": `
-^[^.]+\.d1\.local$ d1.local
-`,
-				"_front_redir_code__regex.map": `
-^[^.]+\.d1\.local$ 301`,
-			},
-		},
-		// 2
-		{
-			data: [3]hatypes.HostRedirectConfig{
 				{RedirectHost: "*.d1.local"},
-				{RedirectHost: "sub.d2.local", RedirectHostRegex: "^[a-z]+\\.d2\\.local$", RedirectCode: 301},
+				{RedirectHost: "sub.d2.local", RedirectHostRegex: "^[a-z]+\\.d2\\.local$"},
 				{RedirectHostRegex: "\\.d3\\.local$"},
 			},
 			expHTTP: `
     http-request set-var(req.redirdest) var(req.host),map_str(/etc/haproxy/maps/_front_redir_source__exact.map) if !{ var(req.backend) -m found }
     http-request set-var(req.redirdest) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_source__regex.map) if !{ var(req.backend) -m found } !{ var(req.redirdest) -m found }
-    http-request set-var(req.redircode) var(req.host),map_str(/etc/haproxy/maps/_front_redir_code__exact.map) if { var(req.redirdest) -m found }
-    http-request set-var(req.redircode) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_code__regex.map,302) if { var(req.redirdest) -m found } !{ var(req.redircode) -m found }
-    http-request redirect prefix //%[var(req.redirdest)] code %[var(req.redircode)] if { var(req.redirdest) -m found }`,
+    http-request redirect prefix //%[var(req.redirdest)] code 302 if { var(req.redirdest) -m found }`,
 			expHTTPS: `
     http-request set-var(req.redirdest) var(req.host),map_str(/etc/haproxy/maps/_front_redir_source__exact.map) if !{ var(req.hostbackend) -m found }
     http-request set-var(req.redirdest) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_source__regex.map) if !{ var(req.hostbackend) -m found } !{ var(req.redirdest) -m found }
-    http-request set-var(req.redircode) var(req.host),map_str(/etc/haproxy/maps/_front_redir_code__exact.map) if { var(req.redirdest) -m found }
-    http-request set-var(req.redircode) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_code__regex.map,302) if { var(req.redirdest) -m found } !{ var(req.redircode) -m found }
-    http-request redirect prefix //%[var(req.redirdest)] code %[var(req.redircode)] if { var(req.redirdest) -m found }`,
+    http-request redirect prefix //%[var(req.redirdest)] code 302 if { var(req.redirdest) -m found }`,
 			expMaps: map[string]string{
 				"_front_redir_source__exact.map": `
 sub.d2.local d2.local
@@ -3194,12 +3169,6 @@ sub.d2.local d2.local
 ^[a-z]+\.d2\.local$ d2.local
 ^[^.]+\.d1\.local$ d1.local
 \.d3\.local$ d3.local
-`,
-				"_front_redir_code__exact.map": `
-sub.d2.local 301
-`,
-				"_front_redir_code__regex.map": `
-^[a-z]+\.d2\.local$ 301
 `,
 			},
 		},
