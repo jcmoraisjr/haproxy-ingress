@@ -2163,10 +2163,17 @@ Defines if HAProxy should work in TCP proxy mode and leave the SSL offload to th
 SSL passthrough is a per domain configuration, which means that other domains can be
 configured to SSL offload on HAProxy.
 
-If using SSL passthrough, only root `/` path is supported.
+{{% alert title="Note" %}}
+Up to v0.12, `ssl-passthrough` supports only root `/` path. Since v0.13, non root paths are also supported and configured in the HAProxy's HTTP port.
+{{% /alert %}}
 
 * `ssl-passthrough`: Enable SSL passthrough if defined as `true`. The backend is then expected to SSL offload the incoming traffic. The default value is `false`, which means HAProxy should do the SSL handshake.
-* `ssl-passthrough-http-port`: Since v0.7. Optional HTTP port number of the backend. If defined, connections to the HAProxy HTTP port, default `80`, is sent to that port which expects to speak plain HTTP. If not defined, connections to the HTTP port will redirect connections to the HTTPS one.
+* `ssl-passthrough-http-port`: Optional HTTP port number of the backend. If defined, connections to the HAProxy's HTTP port, defaults to `80`, is sent to the configured port number of the backend, which expects to speak plain HTTP. If not defined, connections to the HTTP port will redirect the client to HTTPS.
+
+Hostnames configured as `ssl-passthrough` configures HAProxy in the following way:
+
+* Requests to the HTTPS port, defaults to `443`, will be sent to the backend and port number configured in the root `/` path of the domain. Such port must speak TLS and will make the TLS handshake with the client. There is no path inspection, so only one backend is supported.
+* Requests to the HTTP port, defaults to `80`, will follow the same rules of non `ssl-passthrough` domains: if the request matches a non root path, the configured backend will be used and it should speak plain HTTP, except if [`secure-backends`](#secure-backend) is also configured. If there isn't non root paths or if they doesn't match, the request will fall back to: redirect to HTTPS (default), or the request will be sent to `ssl-passthrough-http-port` port number of the ssl backend.
 
 ---
 
