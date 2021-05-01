@@ -74,7 +74,7 @@ type Configuration struct {
 	AllowCrossNamespace     bool
 	DisableNodeList         bool
 	DisablePodList          bool
-	AnnPrefix               string
+	AnnPrefix               []string
 
 	AcmeServer              bool
 	AcmeCheckPeriod         time.Duration

@@ -146,7 +146,7 @@ func (c *testConfig) createUpdater() *updater {
 }
 
 func (c *testConfig) createBackendData(svcFullName string, source *Source, ann, annDefault map[string]string) *backData {
-	mapper := NewMapBuilder(c.logger, "ing.k8s.io/", annDefault).NewMapper()
+	mapper := NewMapBuilder(c.logger, annDefault).NewMapper()
 	mapper.AddAnnotations(source, hatypes.CreatePathLink("domain.local", "/"), ann)
 	svcName := strings.Split(svcFullName, "/")
 	namespace := svcName[0]
@@ -191,7 +191,7 @@ func (c *testConfig) createBackendMappingData(
 }
 
 func (c *testConfig) createHostData(source *Source, ann, annDefault map[string]string) *hostData {
-	mapper := NewMapBuilder(c.logger, "", annDefault).NewMapper()
+	mapper := NewMapBuilder(c.logger, annDefault).NewMapper()
 	mapper.AddAnnotations(source, hatypes.CreatePathLink("domain.local", "/"), ann)
 	return &hostData{
 		host:   &hatypes.Host{},
@@ -208,6 +208,6 @@ func (c *testConfig) compareObjects(name string, index int, actual, expected int
 func (c *testConfig) createGlobalData(config map[string]string) *globalData {
 	return &globalData{
 		global: &hatypes.Global{},
-		mapper: NewMapBuilder(c.logger, "", config).NewMapper(),
+		mapper: NewMapBuilder(c.logger, config).NewMapper(),
 	}
 }

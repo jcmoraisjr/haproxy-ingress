@@ -60,12 +60,11 @@ func TestAddAnnotation(t *testing.T) {
 	pathPath := hatypes.CreatePathLink("domain.local", "/path")
 	pathURL := hatypes.CreatePathLink("domain.local", "/url")
 	testCases := []struct {
-		ann       []ann
-		annPrefix string
-		getKey    string
-		expMiss   bool
-		expVal    string
-		expLog    string
+		ann     []ann
+		getKey  string
+		expMiss bool
+		expVal  string
+		expLog  string
 	}{
 		// 0
 		{
@@ -73,10 +72,9 @@ func TestAddAnnotation(t *testing.T) {
 				{srcing1, pathRoot, "auth-basic", "default/basic1", false},
 				{srcing2, pathURL, "auth-basic", "default/basic2", false},
 			},
-			annPrefix: "ing/",
-			getKey:    "auth-basic",
-			expVal:    "default/basic1",
-			expLog:    "WARN annotation 'ing/auth-basic' from ingress 'default/ing1' overrides the same annotation with distinct value from [ingress 'default/ing2']",
+			getKey: "auth-basic",
+			expVal: "default/basic1",
+			expLog: "WARN configuration key 'auth-basic' from ingress 'default/ing1' overrides the same key with distinct value from [ingress 'default/ing2']",
 		},
 		// 1
 		{
@@ -86,10 +84,9 @@ func TestAddAnnotation(t *testing.T) {
 				{srcing3, pathPath, "auth-basic", "default/basic3", false},
 				{srcing4, pathApp, "auth-basic", "default/basic4", false},
 			},
-			annPrefix: "ing.k8s.io/",
-			getKey:    "auth-basic",
-			expVal:    "default/basic1",
-			expLog:    "WARN annotation 'ing.k8s.io/auth-basic' from ingress 'default/ing1' overrides the same annotation with distinct value from [ingress 'default/ing2' ingress 'default/ing3' ingress 'default/ing4']",
+			getKey: "auth-basic",
+			expVal: "default/basic1",
+			expLog: "WARN configuration key 'auth-basic' from ingress 'default/ing1' overrides the same key with distinct value from [ingress 'default/ing2' ingress 'default/ing3' ingress 'default/ing4']",
 		},
 		// 2
 		{
@@ -99,10 +96,9 @@ func TestAddAnnotation(t *testing.T) {
 				{srcing3, pathPath, "auth-basic", "default/basic1", false},
 				{srcing4, pathApp, "auth-basic", "default/basic2", false},
 			},
-			annPrefix: "ing.k8s.io/",
-			getKey:    "auth-basic",
-			expVal:    "default/basic1",
-			expLog:    "WARN annotation 'ing.k8s.io/auth-basic' from ingress 'default/ing1' overrides the same annotation with distinct value from [ingress 'default/ing4']",
+			getKey: "auth-basic",
+			expVal: "default/basic1",
+			expLog: "WARN configuration key 'auth-basic' from ingress 'default/ing1' overrides the same key with distinct value from [ingress 'default/ing4']",
 		},
 		// 3
 		{
@@ -131,7 +127,7 @@ func TestAddAnnotation(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		mapper := NewMapBuilder(c.logger, test.annPrefix, map[string]string{}).NewMapper()
+		mapper := NewMapBuilder(c.logger, map[string]string{}).NewMapper()
 		for j, ann := range test.ann {
 			if conflict := mapper.addAnnotation(ann.src, ann.path, ann.key, ann.val); conflict != ann.expConflict {
 				t.Errorf("expect conflict '%t' on '// %d (%d)', but was '%t'", ann.expConflict, i, j, conflict)
@@ -158,7 +154,6 @@ func TestGetAnnotation(t *testing.T) {
 	pathURL := hatypes.CreatePathLink("domain.local", "/url")
 	testCases := []struct {
 		ann       []ann
-		annPrefix string
 		getKey    string
 		expMiss   bool
 		expConfig []*PathConfig
@@ -202,7 +197,7 @@ func TestGetAnnotation(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		mapper := NewMapBuilder(c.logger, test.annPrefix, map[string]string{}).NewMapper()
+		mapper := NewMapBuilder(c.logger, map[string]string{}).NewMapper()
 		for j, ann := range test.ann {
 			if conflict := mapper.addAnnotation(ann.src, ann.path, ann.key, ann.val); conflict != ann.expConflict {
 				t.Errorf("expect conflict '%t' on '// %d (%d)', but was '%t'", ann.expConflict, i, j, conflict)
@@ -290,7 +285,7 @@ func TestGetDefault(t *testing.T) {
 	pathRoot := hatypes.CreatePathLink("domain.local", "/")
 	for i, test := range testCases {
 		c := setup(t)
-		mapper := NewMapBuilder(c.logger, "ing.k8s.io", test.annDefaults).NewMapper()
+		mapper := NewMapBuilder(c.logger, test.annDefaults).NewMapper()
 		mapper.AddAnnotations(&Source{}, pathRoot, test.ann)
 		for key, exp := range test.expAnn {
 			value := mapper.Get(key).Value

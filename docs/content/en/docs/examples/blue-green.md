@@ -83,10 +83,10 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    ingress.kubernetes.io/balance-algorithm: roundrobin
-    ingress.kubernetes.io/blue-green-deploy: group=blue=1,group=green=1
-    ingress.kubernetes.io/blue-green-mode: pod
-    ingress.kubernetes.io/ssl-redirect: "false"
+    haproxy-ingress.github.io/balance-algorithm: roundrobin
+    haproxy-ingress.github.io/blue-green-deploy: group=blue=1,group=green=1
+    haproxy-ingress.github.io/blue-green-mode: pod
+    haproxy-ingress.github.io/ssl-redirect: "false"
   name: bluegreen
 spec:
   rules:
@@ -162,7 +162,7 @@ instead of single pods.
 
 ```
 $ kubectl annotate --overwrite ingress bluegreen \
-  ingress.kubernetes.io/blue-green-mode=deploy
+  haproxy-ingress.github.io/blue-green-mode=deploy
 ```
 
 * BG Mode: deploy
@@ -182,7 +182,7 @@ Changing now the balance to 1/3 blue and 2/3 green:
 
 ```
 $ kubectl annotate --overwrite ingress bluegreen \
-  ingress.kubernetes.io/blue-green-deploy=group=blue=1,group=green=2
+  haproxy-ingress.github.io/blue-green-deploy=group=blue=1,group=green=2
 ```
 
 * BG Mode: deploy
@@ -227,7 +227,7 @@ After that, add the following annotation:
 
 ```
 $ kubectl annotate --overwrite ingress bluegreen \
-  ingress.kubernetes.io/blue-green-header=x-server:group
+  haproxy-ingress.github.io/blue-green-header=x-server:group
 ```
 
 Create (or update) the `hareq` alias. Change `IP` to your HAProxy Ingress controller
@@ -269,7 +269,7 @@ Choose an invalid group, the configured blue/green balance will be used:
 
 ```
 $ kubectl annotate --overwrite ingress bluegreen \
-  ingress.kubernetes.io/blue-green-deploy=group=blue=1,group=green=3
+  haproxy-ingress.github.io/blue-green-deploy=group=blue=1,group=green=3
 $ GROUP=invalid
 $ hareq
 Running 100 requests...

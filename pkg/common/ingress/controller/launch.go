@@ -109,8 +109,8 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		number of the name of the port.
 		The ports 80 and 443 are not allowed as external ports. This ports are reserved for the backend`)
 
-		annPrefix = flags.String("annotations-prefix", "ingress.kubernetes.io",
-			`Defines the prefix of ingress and service annotations`)
+		annPrefix = flags.String("annotations-prefix", "haproxy-ingress.github.io,ingress.kubernetes.io",
+			`Defines a comma-separated list of annotation prefix for ingress and service`)
 
 		rateLimitUpdate = flags.Float32("rate-limit-update", 0.5,
 			`Maximum of updates per second this controller should perform.
@@ -325,6 +325,23 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		glog.Fatal("Cannot use --allow-cross-namespace if --force-namespace-isolation is true")
 	}
 
+	var annPrefixList []string
+	for _, prefix := range strings.Split(*annPrefix, ",") {
+		prefix = strings.TrimSpace(prefix)
+		if prefix != "" {
+			annPrefixList = append(annPrefixList, prefix)
+		}
+	}
+	switch len(annPrefixList) {
+	case 0:
+		glog.Fatal("At least one annotation prefix should be configured")
+	case 1:
+		glog.Infof("using annotations prefix: %s", annPrefixList[0])
+	default:
+		glog.Infof("using %d distinct annotations prefix, with the following precedence: %s",
+			len(annPrefixList), strings.Join(annPrefixList, ", "))
+	}
+
 	sortEndpoints := strings.ToLower(*sortEndpointsBy)
 	if sortEndpoints == "" {
 		if *sortBackends {
@@ -361,7 +378,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		WatchNamespace:           *watchNamespace,
 		ConfigMapName:            *configMap,
 		TCPConfigMapName:         *tcpConfigMapName,
-		AnnPrefix:                *annPrefix,
+		AnnPrefix:                annPrefixList,
 		DefaultSSLCertificate:    *defSSLCertificate,
 		VerifyHostname:           *verifyHostname,
 		DefaultHealthzURL:        *defHealthzURL,
