@@ -1720,6 +1720,13 @@ WARN skipping TLS secret 'tls2' of ingress 'default/echo2': TLS of tcp service p
 				ing.SetAnnotations(paramToMap(annPort))
 			case 2:
 				ing = c.createIngTLS1(name, domain, "/", ":", params[1])
+				if strings.Index(params[1], ":") < 0 {
+					// remove default host in the array, this allows to
+					// test secret name without a hosts list
+					for i := range ing.Spec.TLS {
+						ing.Spec.TLS[i].Hosts = nil
+					}
+				}
 				ing.Spec.Rules = nil
 				ing.SetAnnotations(paramToMap(annPort))
 			case 3:
