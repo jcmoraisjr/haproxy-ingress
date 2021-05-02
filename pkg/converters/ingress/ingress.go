@@ -481,6 +481,11 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 				c.logger.Warn("skipping redeclared path '%s' of %v", uri, source)
 				continue
 			}
+			match := c.readPathType(path, annHost[ingtypes.HostPathType])
+			if redirectTo := annBack[ingtypes.BackRedirectTo]; redirectTo != "" {
+				host.AddRedirect(uri, match, redirectTo)
+				continue
+			}
 			svcName, svcPort, err := readServiceNamePort(&path.Backend)
 			if err != nil {
 				c.logger.Warn("skipping backend config of %v: %v", source, err)
@@ -492,7 +497,6 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 				c.logger.Warn("skipping backend config of %v: %v", source, err)
 				continue
 			}
-			match := c.readPathType(path, annHost[ingtypes.HostPathType])
 			host.AddPath(backend, uri, match)
 			sslpassthrough, _ := strconv.ParseBool(annHost[ingtypes.HostSSLPassthrough])
 			sslpasshttpport := annHost[ingtypes.HostSSLPassthroughHTTPPort]

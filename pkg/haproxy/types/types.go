@@ -362,7 +362,8 @@ type FrontendMaps struct {
 	HTTPSSNIMap  *HostsMap
 	//
 	RedirFromRootMap  *HostsMap
-	RedirSourceMap    *HostsMap
+	RedirFromMap      *HostsMap
+	RedirToMap        *HostsMap
 	SSLPassthroughMap *HostsMap
 	VarNamespaceMap   *HostsMap
 	//
@@ -402,7 +403,8 @@ type Frontend struct {
 	DefaultCrtHash string
 	CrtListFile    string
 	//
-	DefaultServerRedirectCode int
+	RedirectFromCode int
+	RedirectToCode   int
 }
 
 // DefaultHost ...
@@ -471,6 +473,7 @@ type HostPath struct {
 	Link    PathLink
 	Match   MatchType
 	Backend HostBackend
+	RedirTo string
 }
 
 // HostBackend ...

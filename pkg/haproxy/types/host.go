@@ -203,6 +203,15 @@ func (h *Host) FindPath(path string) *HostPath {
 
 // AddPath ...
 func (h *Host) AddPath(backend *Backend, path string, match MatchType) {
+	h.addPath(path, match, backend, "")
+}
+
+// AddRedirect ...
+func (h *Host) AddRedirect(path string, match MatchType, redirTo string) {
+	h.addPath(path, match, nil, redirTo)
+}
+
+func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo string) {
 	link := CreatePathLink(h.Hostname, path)
 	var hback HostBackend
 	if backend != nil {
@@ -213,7 +222,7 @@ func (h *Host) AddPath(backend *Backend, path string, match MatchType) {
 			Port:      backend.Port,
 		}
 		backend.AddBackendPath(link)
-	} else {
+	} else if redirTo == "" {
 		hback = HostBackend{ID: "_error404"}
 	}
 	h.Paths = append(h.Paths, &HostPath{
@@ -221,6 +230,7 @@ func (h *Host) AddPath(backend *Backend, path string, match MatchType) {
 		Link:    link,
 		Match:   match,
 		Backend: hback,
+		RedirTo: redirTo,
 	})
 	// reverse order in order to avoid overlap of sub-paths
 	sort.Slice(h.Paths, func(i, j int) bool {

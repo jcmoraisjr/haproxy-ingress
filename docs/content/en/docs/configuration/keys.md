@@ -410,6 +410,8 @@ The table below describes all supported configuration keys.
 | [`redirect-from`](#redirect)                         | domain name                             | Host    |                    |
 | [`redirect-from-code`](#redirect)                    | http status code                        | Global  | `302`              |
 | [`redirect-from-regex`](#redirect)                   | regex                                   | Host    |                    |
+| [`redirect-to`](#redirect)                           | fully qualified URL                     | Path    |                    |
+| [`redirect-to-code`](#redirect)                      | http status code                        | Global  | `302`              |
 | [`rewrite-target`](#rewrite-target)                  | path string                             | Path    |                    |
 | [`secure-backends`](#secure-backend)                 | [true\|false]                           | Backend |                    |
 | [`secure-crt-secret`](#secure-backend)               | secret name                             | Backend |                    |
@@ -705,6 +707,10 @@ Defines a distinct application root path. HAProxy will redirect requests to the
 configured path, using `302` status code, when the HTTP client sends a request
 to the root context of the configured domain. `app-root` key binds to the root
 context path, so it needs to be declared in the same Ingress that configures it.
+
+See also:
+
+* [Redirect](#redirect) configuration keys.
 
 ---
 
@@ -1881,19 +1887,84 @@ See also:
 | `redirect-from`       | `Host`   |         | v0.13 |
 | `redirect-from-code`  | `Global` | `302`   | v0.13 |
 | `redirect-from-regex` | `Host`   |         | v0.13 |
+| `redirect-to`         | `Path`   |         | v0.13 |
+| `redirect-to-code`    | `Global` | `302`   | v0.13 |
 
-Configures hostname redirect. Requests that matches the configuration will be redirected
-to the hostname of the ingress spec. Protocol, path and query string are preserved.
+Configures HTTP redirect. Redirect *from* matches source hostnames that should be redirected
+to the hostname declared in the ingess spec. Redirect *to* uses the hostname declared in the
+ingress spec as the matching source and redirects the request to the configured URL. See
+examples below.
+
+* `redirect-from`: Defines a source domain using hostname-like syntax, so wildcard domains can also be used. The request is redirected to the configured hostname, preserving protocol, path and query string.
+* `redirect-from-regex`: Defines a POSIX extended regular expression used to match a source domain. The regex will be used verbatim, so add `^` and `$` if strict hostname is desired and escape `\.` dots in order to strictly match them.
+* `redirect-from-code`: Which HTTP status code should be used in the redirect from. A `302` response is used by default if not configured.
+* `redirect-to`: Defines the destination URL to redirect the incoming request. The declared hostname and path are used only to match the request, the backend will not be used and it's only needed to be declared to satisfy ingress spec validation.
+* `redirect-to-code`: Which HTTP status code should be used in the redirect to. A `302` response is used by default if not configured.
+
+**Using redirect-from**
+
+The following configuration redirects `app.local` to `www.app.local`, preserving protocol,
+path and query string:
+
+```
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    haproxy-ingress.github.io/redirect-from: "app.local"
+  name: app
+spec:
+  rules:
+  - host: www.app.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app
+            port:
+              number: 8080
+```
 
 The same source domain can be configured just once, and a target domain can be assigned
 just once as well, which means that this configuration can only be used on ingress
 resources that defines just one hostname. The redirect configuration has the lesser
-precedence, so if a source domain is also configured as a hostname in the ingress spec,
+precedence, so if a source domain is also configured as a hostname on an ingress spec,
 or as an alias using annotation, the redirect will not happen.
 
-* `redirect-from`: Defines a source domain using hostname-like syntax, so wildcard domains can also be used.
-* `redirect-from-regex`: Defines a POSIX extended regular expression used to match a source domain. The regex will be used verbatim, so add `^` and `$` if strict hostname is desired and escape `\.` dots in order to strictly match them.
-* `redirect-from-code`: Which HTTP status code should be used in the redirect. A `302` response is used by default if not configured.
+**Using redirect-to**
+
+The following configuration redirects `app.local/...` to `https://www.app.local/login`,
+without preserving protocol, path or query string:
+
+Note: `www.app.local` should be configured on another ingress resource, and app service
+below will not be used.
+
+```
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    haproxy-ingress.github.io/redirect-to: "https://www.app.local/login"
+  name: app
+spec:
+  rules:
+  - host: app.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app
+            port:
+              number: 8080
+```
+
+See also:
+
+* [`app-root`](#app-root) configuration key.
 
 ---
 

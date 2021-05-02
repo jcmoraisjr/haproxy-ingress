@@ -95,6 +95,7 @@ func createDefaults() map[string]string {
 		types.GlobalNoTLSRedirectLocations:       "/.well-known/acme-challenge",
 		types.GlobalPathTypeOrder:                "exact,prefix,begin,regex",
 		types.GlobalRedirectFromCode:             "302",
+		types.GlobalRedirectToCode:               "302",
 		types.GlobalSSLDHDefaultMaxSize:          "2048",
 		types.GlobalSSLHeadersPrefix:             "X-SSL",
 		types.GlobalSSLOptions:                   defaultSSLOptions,

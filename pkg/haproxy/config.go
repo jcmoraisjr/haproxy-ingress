@@ -177,7 +177,8 @@ func (c *config) WriteFrontendMaps() error {
 		HTTPSSNIMap:  mapBuilder.AddMap(mapsDir + "/_front_https_sni.map"),
 		//
 		RedirFromRootMap:  mapBuilder.AddMap(mapsDir + "/_front_redir_fromroot.map"),
-		RedirSourceMap:    mapBuilder.AddMap(mapsDir + "/_front_redir_source.map"),
+		RedirFromMap:      mapBuilder.AddMap(mapsDir + "/_front_redir_from.map"),
+		RedirToMap:        mapBuilder.AddMap(mapsDir + "/_front_redir_to.map"),
 		SSLPassthroughMap: mapBuilder.AddMap(mapsDir + "/_front_sslpassthrough.map"),
 		VarNamespaceMap:   mapBuilder.AddMap(mapsDir + "/_front_namespace.map"),
 		//
@@ -195,30 +196,35 @@ func (c *config) WriteFrontendMaps() error {
 		for _, path := range host.Paths {
 			backendID := path.Backend.ID
 			// IMPLEMENT check if host.Alias.AliasName was already used as a hostname
-			if host.SSLPassthrough() {
-				// no ssl offload, cannot inspect incomming path, so tracking root only
-				if path.Path == "/" {
-					fmaps.SSLPassthroughMap.AddHostnameMapping(host.Hostname, backendID)
-					// the backend of the root path is the ssl-passthrough, which speaks TLS,
-					// so we cannot use it in the HTTP map. Change to the configured HTTP port
-					// in that server (if declared) or use a redirect otherwise.
-					backendID = host.HTTPPassthroughBackend
-					if backendID == "" {
-						backendID = "_redirect_https"
+			if backendID != "" {
+				if host.SSLPassthrough() {
+					// no ssl offload, cannot inspect incomming path, so tracking root only
+					if path.Path == "/" {
+						fmaps.SSLPassthroughMap.AddHostnameMapping(host.Hostname, backendID)
+						// the backend of the root path is the ssl-passthrough, which speaks TLS,
+						// so we cannot use it in the HTTP map. Change to the configured HTTP port
+						// in that server (if declared) or use a redirect otherwise.
+						backendID = host.HTTPPassthroughBackend
+						if backendID == "" {
+							backendID = "_redirect_https"
+						}
+					}
+				} else {
+					// ssl offload in place
+					if host.HasTLSAuth() {
+						fmaps.HTTPSSNIMap.AddHostnamePathMapping(host.Hostname, path, backendID)
+						fmaps.HTTPSSNIMap.AddAliasPathMapping(host.Alias, path, backendID)
+					} else {
+						fmaps.HTTPSHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
+						fmaps.HTTPSHostMap.AddAliasPathMapping(host.Alias, path, backendID)
 					}
 				}
-			} else {
-				// ssl offload in place
-				if host.HasTLSAuth() {
-					fmaps.HTTPSSNIMap.AddHostnamePathMapping(host.Hostname, path, backendID)
-					fmaps.HTTPSSNIMap.AddAliasPathMapping(host.Alias, path, backendID)
-				} else {
-					fmaps.HTTPSHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
-					fmaps.HTTPSHostMap.AddAliasPathMapping(host.Alias, path, backendID)
-				}
+				fmaps.HTTPHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
+				fmaps.HTTPHostMap.AddAliasPathMapping(host.Alias, path, backendID)
+			} else if path.RedirTo != "" {
+				fmaps.RedirToMap.AddHostnamePathMapping(host.Hostname, path, path.RedirTo)
+				fmaps.RedirToMap.AddAliasPathMapping(host.Alias, path, path.RedirTo)
 			}
-			fmaps.HTTPHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
-			fmaps.HTTPHostMap.AddAliasPathMapping(host.Alias, path, backendID)
 			if hasVarNamespace {
 				// add "-" on missing paths to avoid overlap
 				var ns string
@@ -234,10 +240,10 @@ func (c *config) WriteFrontendMaps() error {
 			continue
 		}
 		if host.Redirect.RedirectHost != "" {
-			fmaps.RedirSourceMap.AddHostnameMapping(host.Redirect.RedirectHost, host.Hostname)
+			fmaps.RedirFromMap.AddHostnameMapping(host.Redirect.RedirectHost, host.Hostname)
 		}
 		if host.Redirect.RedirectHostRegex != "" {
-			fmaps.RedirSourceMap.AddHostnameMappingRegex(host.Redirect.RedirectHostRegex, host.Hostname)
+			fmaps.RedirFromMap.AddHostnameMappingRegex(host.Redirect.RedirectHostRegex, host.Hostname)
 		}
 		if host.HasTLSAuth() {
 			fmaps.TLSAuthList.AddHostnameMapping(host.Hostname, "")
