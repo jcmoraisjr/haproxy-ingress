@@ -233,6 +233,11 @@ func (l *PathLink) IsEmpty() bool {
 	return l.hostname == "" && l.path == ""
 }
 
+// IsDefaultHost ...
+func (l *PathLink) IsDefaultHost() bool {
+	return l.hostname == DefaultHost
+}
+
 // Less ...
 func (l *PathLink) Less(other PathLink, reversePath bool) bool {
 	if l.hostname == other.hostname {

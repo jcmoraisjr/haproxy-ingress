@@ -147,7 +147,7 @@ func buildMapKey(match MatchType, hostname, path string) string {
 			hostname = hostname + "[^/]*"
 		}
 	}
-	if path != "" {
+	if hostname != "" && path != "" {
 		// Fixes dir match type (Prefix from the ingress pathType) if a path or
 		// subpath matches a configured domain. Eg, this map:
 		//

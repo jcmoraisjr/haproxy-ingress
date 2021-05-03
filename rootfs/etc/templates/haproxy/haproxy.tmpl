@@ -410,6 +410,13 @@ backend {{ $backend.ID }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- if not $match.First }} if !{ var(txn.pathID) -m found }{{ end }}
 {{- end }}
+{{- $pathsHasHost := $backend.PathsMap.HasHost }}
+{{- range $match := $backend.PathsDefaultHostMap.MatchFiles }}
+    http-request set-var(txn.pathID) var(req.path)
+        {{- if $match.Lower }},lower{{ end }}
+        {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
+        {{- if or $pathsHasHost (not $match.First) }} if !{ var(txn.pathID) -m found }{{ end }}
+{{- end }}
 {{- end }}
 
 {{- /* * Snippet of per-path configuration
@@ -967,6 +974,12 @@ frontend _front_http
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- if not $match.First }} if !{ var(req.backend) -m found }{{ end }}
 {{- end }}
+{{- range $match := $fmaps.DefaultHostMap.MatchFiles }}
+    http-request set-var(req.defaultbackend) var(req.path)
+        {{- if $match.Lower }},lower{{ end }}
+        {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
+        {{- "" }} if !{ var(req.backend) -m found }{{- if not $match.First }} !{ var(req.defaultbackend) -m found }{{ end }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
 {{- range $snippet := $global.CustomFrontend }}
@@ -1028,6 +1041,12 @@ frontend _front_https
         {{- if $match.Lower }},lower{{ end }}
         {{- ""}},map_{{ $match.Method }}({{ $match.Filename }})
         {{- if not $match.First }} if !{ var(req.hostbackend) -m found }{{ end }}
+{{- end }}
+{{- range $match := $fmaps.DefaultHostMap.MatchFiles }}
+    http-request set-var(req.defaultbackend) var(req.path)
+        {{- if $match.Lower }},lower{{ end }}
+        {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
+        {{- "" }} if !{ var(req.hostbackend) -m found }{{- if not $match.First }} !{ var(req.defaultbackend) -m found }{{ end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -1167,10 +1186,7 @@ frontend _front_https
 {{- $defaultHost := $hosts.DefaultHost }}
 {{- if $defaultHost }}
 {{- if not $defaultHost.SSLPassthrough }}
-{{- range $path := $defaultHost.Paths }}
-    use_backend {{ $path.Backend.ID }}
-        {{- if ne $path.Path "/" }} if { path_beg {{ $path.Path }} }{{ end }}
-{{- end }}
+    use_backend %[var(req.defaultbackend)]
 {{- end }}
 {{- end }}
 {{- if $defaultbackend }}
