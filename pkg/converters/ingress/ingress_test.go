@@ -787,9 +787,9 @@ func TestPathType(t *testing.T) {
 		ing := c.createIng1Ann("default/echo", "echo.localdomain", "/", "echo:8080", ann)
 		ing.Spec.Rules[0].HTTP.Paths[0].PathType = test.pathType
 		c.Sync(ing)
-		match := c.hconfig.Hosts().AcquireHost("echo.localdomain").FindPath("/").Match
-		if match != test.expected {
-			c.t.Errorf("path type does not match in %d: expected '%s', actual '%s'", i, test.expected, match)
+		match := c.hconfig.Hosts().AcquireHost("echo.localdomain").FindPath("/", test.expected)
+		if len(match) == 0 {
+			c.t.Errorf("path type does not match in %d: expected '%s', but wasn't found", i, test.expected)
 		}
 		c.logger.CompareLogging(test.logging)
 		c.teardown()

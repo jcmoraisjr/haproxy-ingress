@@ -119,12 +119,12 @@ func (c *config) SyncConfig() {
 				}
 			}
 		}
-		if c.global.StrictHost && host.FindPath("/") == nil {
+		if c.global.StrictHost && host.FindPath("/", hatypes.MatchBegin) == nil {
 			var back *hatypes.Backend
 			defaultHost := c.hosts.DefaultHost()
 			if defaultHost != nil {
-				if path := defaultHost.FindPath("/"); path != nil {
-					hback := path.Backend
+				if path := defaultHost.FindPath("/"); len(path) > 0 {
+					hback := path[0].Backend
 					back = c.backends.FindBackend(hback.Namespace, hback.Name, hback.Port)
 				}
 			}
@@ -349,14 +349,14 @@ func (c *config) WriteBackendMaps() error {
 				if h == nil {
 					continue
 				}
-				p := h.FindPath(path.Path())
-				if p == nil {
+				p := h.FindPath(path.Path(), path.Match())
+				if len(p) == 0 {
 					continue
 				}
 				if path.IsDefaultHost() {
-					pathsDefaultHostMap.AddHostnamePathMapping("", p, path.ID)
+					pathsDefaultHostMap.AddHostnamePathMapping("", p[0], path.ID)
 				} else {
-					pathsMap.AddHostnamePathMapping(path.Hostname(), p, path.ID)
+					pathsMap.AddHostnamePathMapping(path.Hostname(), p[0], path.ID)
 				}
 			}
 			backend.PathsMap = pathsMap

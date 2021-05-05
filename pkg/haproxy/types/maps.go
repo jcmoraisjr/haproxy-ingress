@@ -60,7 +60,7 @@ func (hm *HostsMap) addHostnameMappingMatch(hostname, target string, match Match
 			match = MatchRegex
 		}
 	}
-	hm.addTarget(hostname, "", target, match)
+	hm.addTarget(hostname, "", 0, target, match)
 }
 
 // AddHostnamePathMapping ...
@@ -77,7 +77,7 @@ func (hm *HostsMap) AddHostnamePathMapping(hostname string, hostPath *HostPath, 
 	} else if hostPath.Match == MatchRegex {
 		hostname = "^" + regexp.QuoteMeta(hostname) + "$"
 	}
-	hm.addTarget(hostname, path, target, match)
+	hm.addTarget(hostname, path, hostPath.order, target, match)
 }
 
 // AddAliasPathMapping ...
@@ -87,7 +87,7 @@ func (hm *HostsMap) AddAliasPathMapping(alias HostAliasConfig, path *HostPath, t
 	}
 	if alias.AliasRegex != "" {
 		pathstr := convertPathToRegex(path)
-		hm.addTarget(alias.AliasRegex, pathstr, target, MatchRegex)
+		hm.addTarget(alias.AliasRegex, pathstr, path.order, target, MatchRegex)
 	}
 }
 
@@ -123,7 +123,7 @@ func convertPathToRegex(hostPath *HostPath) string {
 	panic("unsupported match type")
 }
 
-func (hm *HostsMap) addTarget(hostname, path, target string, match MatchType) {
+func (hm *HostsMap) addTarget(hostname, path string, order int, target string, match MatchType) {
 	hostname = strings.ToLower(hostname)
 	if match == MatchBegin {
 		// this is the only match that uses case insensitive path
@@ -133,6 +133,7 @@ func (hm *HostsMap) addTarget(hostname, path, target string, match MatchType) {
 		hostname: hostname,
 		path:     path,
 		match:    match,
+		order:    order,
 		Key:      buildMapKey(match, hostname, path),
 		Value:    target,
 	}
@@ -303,6 +304,9 @@ func (mf *hostsMapMatchFile) sort() {
 			if len(k1) != len(k2) {
 				return len(k1) > len(k2)
 			}
+			if k1 == k2 {
+				return mf.entries[i].order < mf.entries[j].order
+			}
 			return k1 < k2
 		})
 	} else {
@@ -311,6 +315,9 @@ func (mf *hostsMapMatchFile) sort() {
 			v1 := mf.entries[i]
 			v2 := mf.entries[j]
 			if v1.hostname == v2.hostname {
+				if v1.path == v2.path {
+					return v1.order < v2.order
+				}
 				return v1.path > v2.path
 			}
 			return v1.Key < v2.Key

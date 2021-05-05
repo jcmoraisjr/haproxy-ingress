@@ -94,19 +94,20 @@ func (c *updater) buildHostSSLPassthrough(d *hostData) {
 	if !sslpassthrough.Bool() {
 		return
 	}
-	rootPath := d.host.FindPath("/")
-	if rootPath == nil {
+	rootPaths := d.host.FindPath("/")
+	if len(rootPaths) == 0 {
 		c.logger.Warn("skipping SSL of %s: root path was not configured", sslpassthrough.Source)
 		return
 	}
+	hostBackend := rootPaths[0].Backend
 	sslpassHTTPPort := d.mapper.Get(ingtypes.HostSSLPassthroughHTTPPort)
 	if sslpassHTTPPort.Source != nil {
-		httpBackend := c.haproxy.Backends().FindBackend(rootPath.Backend.Namespace, rootPath.Backend.Name, sslpassHTTPPort.Value)
+		httpBackend := c.haproxy.Backends().FindBackend(hostBackend.Namespace, hostBackend.Name, sslpassHTTPPort.Value)
 		if httpBackend != nil {
 			d.host.HTTPPassthroughBackend = httpBackend.ID
 		}
 	}
-	backend := c.haproxy.Backends().AcquireBackend(rootPath.Backend.Namespace, rootPath.Backend.Name, rootPath.Backend.Port)
+	backend := c.haproxy.Backends().AcquireBackend(hostBackend.Namespace, hostBackend.Name, hostBackend.Port)
 	backend.ModeTCP = true
 	d.host.SetSSLPassthrough(true)
 }

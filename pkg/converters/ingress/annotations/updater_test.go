@@ -147,7 +147,7 @@ func (c *testConfig) createUpdater() *updater {
 
 func (c *testConfig) createBackendData(svcFullName string, source *Source, ann, annDefault map[string]string) *backData {
 	mapper := NewMapBuilder(c.logger, annDefault).NewMapper()
-	mapper.AddAnnotations(source, hatypes.CreatePathLink("domain.local", "/"), ann)
+	mapper.AddAnnotations(source, hatypes.CreatePathLink("domain.local", "/", hatypes.MatchBegin), ann)
 	svcName := strings.Split(svcFullName, "/")
 	namespace := svcName[0]
 	name := svcName[1]
@@ -179,20 +179,20 @@ func (c *testConfig) createBackendMappingData(
 		paths[path] = struct{}{}
 	}
 	for path := range paths {
-		b := d.backend.AddBackendPath(hatypes.CreatePathLink(testingHostname, path))
+		b := d.backend.AddBackendPath(hatypes.CreatePathLink(testingHostname, path, hatypes.MatchBegin))
 		// ignoring ID which isn't the focus of the test
 		// removing on createBackendPaths() as well
 		b.ID = ""
 	}
 	for uri, ann := range urlAnnValue {
-		d.mapper.AddAnnotations(source, hatypes.CreatePathLink(testingHostname, uri), ann)
+		d.mapper.AddAnnotations(source, hatypes.CreatePathLink(testingHostname, uri, hatypes.MatchBegin), ann)
 	}
 	return d
 }
 
 func (c *testConfig) createHostData(source *Source, ann, annDefault map[string]string) *hostData {
 	mapper := NewMapBuilder(c.logger, annDefault).NewMapper()
-	mapper.AddAnnotations(source, hatypes.CreatePathLink("domain.local", "/"), ann)
+	mapper.AddAnnotations(source, hatypes.CreatePathLink("domain.local", "/", hatypes.MatchBegin), ann)
 	return &hostData{
 		host:   &hatypes.Host{},
 		mapper: mapper,

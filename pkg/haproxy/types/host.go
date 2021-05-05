@@ -32,10 +32,11 @@ func CreateHosts() *Hosts {
 }
 
 // CreatePathLink ...
-func CreatePathLink(hostname, path string) PathLink {
+func CreatePathLink(hostname, path string, match MatchType) PathLink {
 	return PathLink{
 		hostname: hostname,
 		path:     path,
+		match:    match,
 	}
 }
 
@@ -192,13 +193,25 @@ func (h *Hosts) HasVarNamespace() bool {
 }
 
 // FindPath ...
-func (h *Host) FindPath(path string) *HostPath {
+func (h *Host) FindPath(path string, match ...MatchType) (paths []*HostPath) {
 	for _, p := range h.Paths {
-		if p.Path == path {
-			return p
+		if p.Path == path && hasMatch(p, match) {
+			paths = append(paths, p)
 		}
 	}
-	return nil
+	return paths
+}
+
+func hasMatch(path *HostPath, match []MatchType) bool {
+	if len(match) == 0 {
+		return true
+	}
+	for _, m := range match {
+		if path.Match == m {
+			return true
+		}
+	}
+	return false
 }
 
 // AddPath ...
@@ -212,7 +225,7 @@ func (h *Host) AddRedirect(path string, match MatchType, redirTo string) {
 }
 
 func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo string) {
-	link := CreatePathLink(h.Hostname, path)
+	link := CreatePathLink(h.Hostname, path, match)
 	var hback HostBackend
 	if backend != nil {
 		hback = HostBackend{
@@ -231,10 +244,16 @@ func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo s
 		Match:   match,
 		Backend: hback,
 		RedirTo: redirTo,
+		order:   len(h.Paths),
 	})
 	// reverse order in order to avoid overlap of sub-paths
 	sort.Slice(h.Paths, func(i, j int) bool {
-		return h.Paths[i].Path > h.Paths[j].Path
+		p1 := h.Paths[i]
+		p2 := h.Paths[j]
+		if p1.Path == p2.Path {
+			return p1.order < p2.order
+		}
+		return p1.Path > p2.Path
 	})
 }
 
@@ -259,6 +278,11 @@ func (h *Host) SetSSLPassthrough(value bool) {
 		h.hosts.sslPassthroughCount--
 	}
 	h.sslPassthrough = value
+}
+
+// Hostname ...
+func (l *PathLink) Hostname() string {
+	return l.hostname
 }
 
 // IsEmpty ...
