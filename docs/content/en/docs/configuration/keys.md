@@ -402,7 +402,7 @@ The table below describes all supported configuration keys.
 | [`oauth`](#oauth)                                    | "oauth2_proxy"                          | Path    |                    |
 | [`oauth-headers`](#oauth)                            | `<header>:<var>,...`                    | Path    |                    |
 | [`oauth-uri-prefix`](#oauth)                         | URI prefix                              | Path    |                    |
-| [`path-type`](#path-type)                            | path matching type                      | Host    | `begin`            |
+| [`path-type`](#path-type)                            | path matching type                      | Path    | `begin`            |
 | [`path-type-order`](#path-type)                      | comma-separated path type list          | Global  | `exact,prefix,begin,regex` |
 | [`prometheus-port`](#bind-port)                      | port number                             | Global  |                    |
 | [`proxy-body-size`](#proxy-body-size)                | size (bytes)                            | Path    | unlimited          |
@@ -1802,7 +1802,7 @@ See also:
 
 | Configuration key | Scope    | Default                    | Since |
 |-------------------|----------|----------------------------|-------|
-| `path-type`       | `Host`   | `begin`                    | v0.11 |
+| `path-type`       | `Path`   | `begin`                    | v0.11 |
 | `path-type-order` | `Global` | `exact,prefix,begin,regex` | v0.12 |
 
 Defines how the path of an incoming request should match a declared path in the ingress object.
