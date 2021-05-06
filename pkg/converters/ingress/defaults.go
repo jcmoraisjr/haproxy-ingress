@@ -32,12 +32,11 @@ func createDefaults() map[string]string {
 	return map[string]string{
 		types.TCPTCPServiceLogFormat: "default",
 		//
-		types.HostAuthTLSStrict:      "false",
-		types.HostServerRedirectCode: "302",
-		types.HostSSLCiphers:         defaultSSLCiphers,
-		types.HostSSLCipherSuites:    defaultSSLCipherSuites,
-		types.HostSSLOptionsHost:     "",
-		types.HostTLSALPN:            "h2,http/1.1",
+		types.HostAuthTLSStrict:   "false",
+		types.HostSSLCiphers:      defaultSSLCiphers,
+		types.HostSSLCipherSuites: defaultSSLCipherSuites,
+		types.HostSSLOptionsHost:  "",
+		types.HostTLSALPN:         "h2,http/1.1",
 		//
 		types.BackBackendServerNaming:    "sequence",
 		types.BackBackendServerSlotsInc:  "1",
@@ -95,6 +94,8 @@ func createDefaults() map[string]string {
 		types.GlobalNbthread:                     "2",
 		types.GlobalNoTLSRedirectLocations:       "/.well-known/acme-challenge",
 		types.GlobalPathTypeOrder:                "exact,prefix,begin,regex",
+		types.GlobalRedirectFromCode:             "302",
+		types.GlobalRedirectToCode:               "302",
 		types.GlobalSSLDHDefaultMaxSize:          "2048",
 		types.GlobalSSLHeadersPrefix:             "X-SSL",
 		types.GlobalSSLOptions:                   defaultSSLOptions,

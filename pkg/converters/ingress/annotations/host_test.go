@@ -34,53 +34,51 @@ func TestBuildHostRedirect(t *testing.T) {
 		// 0
 		{
 			ann: map[string]string{
-				ingtypes.HostServerRedirect: "www.d.local",
+				ingtypes.HostRedirectFrom: "www.d.local",
 			},
 			expected: hatypes.HostRedirectConfig{RedirectHost: "www.d.local"},
 		},
 		// 1
 		{
 			ann: map[string]string{
-				ingtypes.HostServerRedirect:     "www.d.local",
-				ingtypes.HostServerRedirectCode: "301",
+				ingtypes.HostRedirectFrom: "www.d.local",
 			},
-			expected: hatypes.HostRedirectConfig{RedirectHost: "www.d.local", RedirectCode: 301},
+			expected: hatypes.HostRedirectConfig{RedirectHost: "www.d.local"},
 		},
 		// 2
 		{
 			annPrev: map[string]string{
-				ingtypes.HostServerRedirect: "www.d.local",
+				ingtypes.HostRedirectFrom: "www.d.local",
 			},
 			ann: map[string]string{
-				ingtypes.HostServerRedirect: "www.d.local",
+				ingtypes.HostRedirectFrom: "www.d.local",
 			},
 			logging: `WARN ignoring redirect from 'www.d.local' on ingress 'default/ing1', it's already targeting to 'dprev.local'`,
 		},
 		// 3
 		{
 			annPrev: map[string]string{
-				ingtypes.HostServerRedirectRegex: "[a-z]+\\.d\\.local",
-				ingtypes.HostServerRedirectCode:  "301",
+				ingtypes.HostRedirectFromRegex: "[a-z]+\\.d\\.local",
 			},
 			ann: map[string]string{
-				ingtypes.HostServerRedirect: "www.d.local",
+				ingtypes.HostRedirectFrom: "www.d.local",
 			},
 			expected: hatypes.HostRedirectConfig{RedirectHost: "www.d.local"},
 		},
 		// 4
 		{
 			annPrev: map[string]string{
-				ingtypes.HostServerRedirectRegex: "[a-z]+\\.d\\.local",
+				ingtypes.HostRedirectFromRegex: "[a-z]+\\.d\\.local",
 			},
 			ann: map[string]string{
-				ingtypes.HostServerRedirectRegex: "[a-z]+\\.d\\.local",
+				ingtypes.HostRedirectFromRegex: "[a-z]+\\.d\\.local",
 			},
 			logging: `WARN ignoring regex redirect from '[a-z]+\.d\.local' on ingress 'default/ing1', it's already targeting to 'dprev.local'`,
 		},
 		// 5
 		{
 			ann: map[string]string{
-				ingtypes.HostServerRedirect: "*.d.local",
+				ingtypes.HostRedirectFrom: "*.d.local",
 			},
 			// haproxy/config's responsibility to convert wildcard hostnames to regex
 			expected: hatypes.HostRedirectConfig{RedirectHost: "*.d.local"},
@@ -88,10 +86,10 @@ func TestBuildHostRedirect(t *testing.T) {
 		// 6
 		{
 			annPrev: map[string]string{
-				ingtypes.HostServerRedirect: "*.d.local",
+				ingtypes.HostRedirectFrom: "*.d.local",
 			},
 			ann: map[string]string{
-				ingtypes.HostServerRedirect: "*.d.local",
+				ingtypes.HostRedirectFrom: "*.d.local",
 			},
 			logging: `WARN ignoring redirect from '*.d.local' on ingress 'default/ing1', it's already targeting to 'dprev.local'`,
 		},

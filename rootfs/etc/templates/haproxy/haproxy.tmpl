@@ -1131,6 +1131,9 @@ frontend {{ $proxy__front_http }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- template "redirectTo" map $frontend $fmaps }}
+
+{{- /*------------------------------------*/}}
 {{- range $match := $fmaps.HTTPHostMap.MatchFiles }}
     http-request set-var(req.backend) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
@@ -1139,7 +1142,7 @@ frontend {{ $proxy__front_http }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- template "serverredirect" map $frontend $fmaps "req.backend" }}
+{{- template "redirectFrom" map $frontend $fmaps "req.backend" }}
 
 {{- /*------------------------------------*/}}
 {{- range $snippet := $global.CustomFrontend }}
@@ -1200,6 +1203,9 @@ frontend {{ $proxy__front_https }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- template "redirectTo" map $frontend $fmaps }}
+
+{{- /*------------------------------------*/}}
 {{- range $match := $fmaps.HTTPSHostMap.MatchFiles }}
     http-request set-var(req.hostbackend) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
@@ -1208,7 +1214,7 @@ frontend {{ $proxy__front_https }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- template "serverredirect" map $frontend $fmaps "req.hostbackend" }}
+{{- template "redirectFrom" map $frontend $fmaps "req.hostbackend" }}
 
 {{- /*------------------------------------*/}}
 {{- if $fmaps.RedirFromRootMap.HasHost }}
@@ -1345,29 +1351,37 @@ frontend {{ $proxy__front_https }}
 
 {{- /*------------------------------------*/}}
 {{- /*------------------------------------*/}}
-{{- define "serverredirect" }}
+{{- define "redirectFrom" }}
 {{- $frontend := .p1 }}
 {{- $fmaps := .p2 }}
 {{- $varbe := .p3 }}
-{{- if $fmaps.RedirSourceMap.MatchFiles }}
-{{- range $match := $fmaps.RedirSourceMap.MatchFiles }}
+{{- if $fmaps.RedirFromMap.MatchFiles }}
+{{- range $match := $fmaps.RedirFromMap.MatchFiles }}
     http-request set-var(req.redirdest) var(req.host)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- "" }} if !{ var({{ $varbe }}) -m found }
         {{- if not $match.First }} !{ var(req.redirdest) -m found }{{ end }}
 {{- end }}
-{{- $hasCode := ne (len $fmaps.RedirCodeMap.MatchFiles) 0 }}
-{{- range $match := $fmaps.RedirCodeMap.MatchFiles }}
-    http-request set-var(req.redircode) var(req.host)
-        {{- if $match.Lower }},lower{{ end }}
-        {{- "" }},map_{{ $match.Method }}({{ $match.Filename }}{{ if $match.Last }},{{ $frontend.DefaultServerRedirectCode }}{{ end }})
-        {{- "" }} if { var(req.redirdest) -m found }
-        {{- if not $match.First }} !{ var(req.redircode) -m found }{{ end }}
-{{- end }}
     http-request redirect prefix //%[var(req.redirdest)]
-        {{- "" }} code {{ if $hasCode }}%[var(req.redircode)]{{ else }}{{ $frontend.DefaultServerRedirectCode }}{{ end }}
+        {{- "" }} code {{ $frontend.RedirectFromCode }}
         {{- "" }} if { var(req.redirdest) -m found }
+{{- end }}
+{{- end }}
+
+{{- define "redirectTo" }}
+{{- $frontend := .p1 }}
+{{- $fmaps := .p2 }}
+{{- if $fmaps.RedirToMap.MatchFiles }}
+{{- range $match := $fmaps.RedirToMap.MatchFiles }}
+    http-request set-var(req.redirto) var(req.base)
+        {{- if $match.Lower }},lower{{ end }}
+        {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
+        {{- if not $match.First }} if !{ var(req.redirto) -m found }{{ end }}
+{{- end }}
+    http-request redirect location %[var(req.redirto)]
+        {{- "" }} code {{ $frontend.RedirectToCode }}
+        {{- "" }} if { var(req.redirto) -m found }
 {{- end }}
 {{- end }}
 

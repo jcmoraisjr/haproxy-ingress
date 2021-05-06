@@ -3120,7 +3120,7 @@ d3\.local#/ d3_app_8080
 	c.logger.CompareLogging(defaultLogging)
 }
 
-func TestInstanceServerRedirect(t *testing.T) {
+func TestInstanceRedirectFrom(t *testing.T) {
 	testCases := []struct {
 		data     [3]hatypes.HostRedirectConfig
 		code     int
@@ -3135,13 +3135,13 @@ func TestInstanceServerRedirect(t *testing.T) {
 			},
 			code: 301,
 			expHTTP: `
-    http-request set-var(req.redirdest) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_source__regex.map) if !{ var(req.backend) -m found }
+    http-request set-var(req.redirdest) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_from__regex.map) if !{ var(req.backend) -m found }
     http-request redirect prefix //%[var(req.redirdest)] code 301 if { var(req.redirdest) -m found }`,
 			expHTTPS: `
-    http-request set-var(req.redirdest) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_source__regex.map) if !{ var(req.hostbackend) -m found }
+    http-request set-var(req.redirdest) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_from__regex.map) if !{ var(req.hostbackend) -m found }
     http-request redirect prefix //%[var(req.redirdest)] code 301 if { var(req.redirdest) -m found }`,
 			expMaps: map[string]string{
-				"_front_redir_source__regex.map": `
+				"_front_redir_from__regex.map": `
 ^[^.]+\.d1\.local$ d1.local
 `,
 			},
@@ -3149,57 +3149,26 @@ func TestInstanceServerRedirect(t *testing.T) {
 		// 1
 		{
 			data: [3]hatypes.HostRedirectConfig{
-				{RedirectHost: "*.d1.local", RedirectCode: 301},
-			},
-			expHTTP: `
-    http-request set-var(req.redirdest) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_source__regex.map) if !{ var(req.backend) -m found }
-    http-request set-var(req.redircode) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_code__regex.map,302) if { var(req.redirdest) -m found }
-    http-request redirect prefix //%[var(req.redirdest)] code %[var(req.redircode)] if { var(req.redirdest) -m found }`,
-			expHTTPS: `
-    http-request set-var(req.redirdest) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_source__regex.map) if !{ var(req.hostbackend) -m found }
-    http-request set-var(req.redircode) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_code__regex.map,302) if { var(req.redirdest) -m found }
-    http-request redirect prefix //%[var(req.redirdest)] code %[var(req.redircode)] if { var(req.redirdest) -m found }`,
-			expMaps: map[string]string{
-				"_front_redir_source__regex.map": `
-^[^.]+\.d1\.local$ d1.local
-`,
-				"_front_redir_code__regex.map": `
-^[^.]+\.d1\.local$ 301`,
-			},
-		},
-		// 2
-		{
-			data: [3]hatypes.HostRedirectConfig{
 				{RedirectHost: "*.d1.local"},
-				{RedirectHost: "sub.d2.local", RedirectHostRegex: "^[a-z]+\\.d2\\.local$", RedirectCode: 301},
+				{RedirectHost: "sub.d2.local", RedirectHostRegex: "^[a-z]+\\.d2\\.local$"},
 				{RedirectHostRegex: "\\.d3\\.local$"},
 			},
 			expHTTP: `
-    http-request set-var(req.redirdest) var(req.host),map_str(/etc/haproxy/maps/_front_redir_source__exact.map) if !{ var(req.backend) -m found }
-    http-request set-var(req.redirdest) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_source__regex.map) if !{ var(req.backend) -m found } !{ var(req.redirdest) -m found }
-    http-request set-var(req.redircode) var(req.host),map_str(/etc/haproxy/maps/_front_redir_code__exact.map) if { var(req.redirdest) -m found }
-    http-request set-var(req.redircode) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_code__regex.map,302) if { var(req.redirdest) -m found } !{ var(req.redircode) -m found }
-    http-request redirect prefix //%[var(req.redirdest)] code %[var(req.redircode)] if { var(req.redirdest) -m found }`,
+    http-request set-var(req.redirdest) var(req.host),map_str(/etc/haproxy/maps/_front_redir_from__exact.map) if !{ var(req.backend) -m found }
+    http-request set-var(req.redirdest) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_from__regex.map) if !{ var(req.backend) -m found } !{ var(req.redirdest) -m found }
+    http-request redirect prefix //%[var(req.redirdest)] code 302 if { var(req.redirdest) -m found }`,
 			expHTTPS: `
-    http-request set-var(req.redirdest) var(req.host),map_str(/etc/haproxy/maps/_front_redir_source__exact.map) if !{ var(req.hostbackend) -m found }
-    http-request set-var(req.redirdest) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_source__regex.map) if !{ var(req.hostbackend) -m found } !{ var(req.redirdest) -m found }
-    http-request set-var(req.redircode) var(req.host),map_str(/etc/haproxy/maps/_front_redir_code__exact.map) if { var(req.redirdest) -m found }
-    http-request set-var(req.redircode) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_code__regex.map,302) if { var(req.redirdest) -m found } !{ var(req.redircode) -m found }
-    http-request redirect prefix //%[var(req.redirdest)] code %[var(req.redircode)] if { var(req.redirdest) -m found }`,
+    http-request set-var(req.redirdest) var(req.host),map_str(/etc/haproxy/maps/_front_redir_from__exact.map) if !{ var(req.hostbackend) -m found }
+    http-request set-var(req.redirdest) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_from__regex.map) if !{ var(req.hostbackend) -m found } !{ var(req.redirdest) -m found }
+    http-request redirect prefix //%[var(req.redirdest)] code 302 if { var(req.redirdest) -m found }`,
 			expMaps: map[string]string{
-				"_front_redir_source__exact.map": `
+				"_front_redir_from__exact.map": `
 sub.d2.local d2.local
 `,
-				"_front_redir_source__regex.map": `
+				"_front_redir_from__regex.map": `
 ^[a-z]+\.d2\.local$ d2.local
 ^[^.]+\.d1\.local$ d1.local
 \.d3\.local$ d3.local
-`,
-				"_front_redir_code__exact.map": `
-sub.d2.local 301
-`,
-				"_front_redir_code__regex.map": `
-^[a-z]+\.d2\.local$ 301
 `,
 			},
 		},
@@ -3231,9 +3200,9 @@ sub.d2.local 301
 		h.Redirect = test.data[2]
 
 		if test.code != 0 {
-			c.config.frontend.DefaultServerRedirectCode = test.code
+			c.config.frontend.RedirectFromCode = test.code
 		} else {
-			c.config.frontend.DefaultServerRedirectCode = 302
+			c.config.frontend.RedirectFromCode = 302
 		}
 
 		c.Update()
@@ -3271,6 +3240,155 @@ frontend _front_https
     http-request set-var(req.host) hdr(host),field(1,:),lower
     http-request set-var(req.base) var(req.host),concat(\#,req.path)
     http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map)` + test.expHTTPS + `
+    http-request set-header X-Forwarded-Proto https
+    http-request del-header X-SSL-Client-CN
+    http-request del-header X-SSL-Client-DN
+    http-request del-header X-SSL-Client-SHA1
+    http-request del-header X-SSL-Client-Cert
+    use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
+    default_backend _error404
+<<support>>
+`)
+		for file, content := range test.expMaps {
+			c.checkMap(file, content)
+		}
+		c.logger.CompareLogging(defaultLogging)
+	}
+}
+
+func TestInstanceRedirectTo(t *testing.T) {
+	testCases := []struct {
+		to       [3]string
+		code     int
+		expected string
+		expMaps  map[string]string
+	}{
+		// 0
+		{
+			to: [3]string{
+				"https://app.local",
+			},
+			expected: `
+    http-request set-var(req.redirto) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_redir_to__begin.map)
+    http-request redirect location %[var(req.redirto)] code 302 if { var(req.redirto) -m found }`,
+			expMaps: map[string]string{
+				"_front_redir_to__begin.map": `
+d1.local#/ https://app.local
+`,
+			},
+		},
+		// 1
+		{
+			to: [3]string{
+				"https://app.local/login",
+				"https://app.local/app2",
+			},
+			expected: `
+    http-request set-var(req.redirto) var(req.base),map_dir(/etc/haproxy/maps/_front_redir_to__prefix_01.map)
+    http-request set-var(req.redirto) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_redir_to__begin.map) if !{ var(req.redirto) -m found }
+    http-request redirect location %[var(req.redirto)] code 302 if { var(req.redirto) -m found }`,
+			expMaps: map[string]string{
+				"_front_redir_to__prefix_01.map": `
+d1.local#/app2 https://app.local/app2
+`,
+				"_front_redir_to__begin.map": `
+d1.local#/ https://app.local/login
+`,
+			},
+		},
+		// 2
+		{
+			to: [3]string{
+				"",
+				"https://app.local/app2",
+				"https://app.local/app3",
+			},
+			expected: `
+    http-request set-var(req.redirto) var(req.base),map_dir(/etc/haproxy/maps/_front_redir_to__prefix.map)
+    http-request redirect location %[var(req.redirto)] code 302 if { var(req.redirto) -m found }`,
+			expMaps: map[string]string{
+				"_front_redir_to__prefix.map": `
+d1.local#/app3 https://app.local/app3
+d1.local#/app2 https://app.local/app2
+`,
+			},
+		},
+	}
+
+	for _, test := range testCases {
+		c := setup(t)
+		defer c.teardown()
+
+		var h *hatypes.Host
+		var b *hatypes.Backend
+
+		h = c.config.Hosts().AcquireHost("d1.local")
+
+		b = c.config.Backends().AcquireBackend("d1", "app", "8080")
+		b.Endpoints = []*hatypes.Endpoint{endpointS1}
+		if test.to[0] != "" {
+			h.AddRedirect("/", hatypes.MatchBegin, test.to[0])
+		} else {
+			h.AddPath(b, "/", hatypes.MatchBegin)
+		}
+
+		b = c.config.Backends().AcquireBackend("d2", "app", "8080")
+		b.Endpoints = []*hatypes.Endpoint{endpointS21}
+		if test.to[1] != "" {
+			h.AddRedirect("/app2", hatypes.MatchPrefix, test.to[1])
+		} else {
+			h.AddPath(b, "/app2", hatypes.MatchBegin)
+		}
+
+		b = c.config.Backends().AcquireBackend("d3", "app", "8080")
+		b.Endpoints = []*hatypes.Endpoint{endpointS31}
+		if test.to[2] != "" {
+			h.AddRedirect("/app3", hatypes.MatchPrefix, test.to[2])
+		} else {
+			h.AddPath(b, "/app3", hatypes.MatchBegin)
+		}
+
+		if test.code != 0 {
+			c.config.frontend.RedirectToCode = test.code
+		} else {
+			c.config.frontend.RedirectToCode = 302
+		}
+
+		c.Update()
+		c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+backend d2_app_8080
+    mode http
+    server s21 172.17.0.121:8080 weight 100
+backend d3_app_8080
+    mode http
+    server s31 172.17.0.131:8080 weight 100
+<<backends-default>>
+frontend _front_http
+    mode http
+    bind :80
+    http-request set-var(req.path) path
+    http-request set-var(req.host) hdr(host),field(1,:),lower
+    http-request set-var(req.base) var(req.host),concat(\#,req.path)
+    http-request set-header X-Forwarded-Proto http
+    http-request del-header X-SSL-Client-CN
+    http-request del-header X-SSL-Client-DN
+    http-request del-header X-SSL-Client-SHA1
+    http-request del-header X-SSL-Client-Cert` + test.expected + `
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
+    default_backend _error404
+frontend _front_https
+    mode http
+    bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
+    http-request set-var(req.path) path
+    http-request set-var(req.host) hdr(host),field(1,:),lower
+    http-request set-var(req.base) var(req.host),concat(\#,req.path)` + test.expected + `
+    http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map)
     http-request set-header X-Forwarded-Proto https
     http-request del-header X-SSL-Client-CN
     http-request del-header X-SSL-Client-DN
