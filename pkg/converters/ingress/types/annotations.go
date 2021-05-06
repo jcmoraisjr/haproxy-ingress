@@ -41,7 +41,6 @@ const (
 	HostAuthTLSStrict          = "auth-tls-strict"
 	HostAuthTLSVerifyClient    = "auth-tls-verify-client"
 	HostCertSigner             = "cert-signer"
-	HostPathType               = "path-type"
 	HostRedirectFrom           = "redirect-from"
 	HostRedirectFromRegex      = "redirect-from-regex"
 	HostServerAlias            = "server-alias"
@@ -65,7 +64,6 @@ var (
 		HostAuthTLSVerifyClient:    {},
 		HostCertSigner:             {},
 		HostServerAlias:            {},
-		HostPathType:               {},
 		HostRedirectFrom:           {},
 		HostRedirectFromRegex:      {},
 		HostServerAliasRegex:       {},
@@ -133,6 +131,7 @@ const (
 	BackOAuth                  = "oauth"
 	BackOAuthHeaders           = "oauth-headers"
 	BackOAuthURIPrefix         = "oauth-uri-prefix"
+	BackPathType               = "path-type"
 	BackProxyBodySize          = "proxy-body-size"
 	BackProxyProtocol          = "proxy-protocol"
 	BackRedirectTo             = "redirect-to"

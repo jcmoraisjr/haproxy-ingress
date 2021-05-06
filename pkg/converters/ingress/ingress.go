@@ -481,7 +481,7 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 				c.logger.Warn("skipping redeclared path '%s' of %v", uri, source)
 				continue
 			}
-			match := c.readPathType(path, annHost[ingtypes.HostPathType])
+			match := c.readPathType(path, annBack[ingtypes.BackPathType])
 			if redirectTo := annBack[ingtypes.BackRedirectTo]; redirectTo != "" {
 				host.AddRedirect(uri, match, redirectTo)
 				continue
