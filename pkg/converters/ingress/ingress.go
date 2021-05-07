@@ -472,17 +472,23 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 		}
 		hostname := normalizeHostname(rule.Host, 0)
 		ingressClass := c.readIngressClass(source, hostname, ing.Spec.IngressClassName)
+		sslpassthrough, _ := strconv.ParseBool(annHost[ingtypes.HostSSLPassthrough])
 		host := c.addHost(hostname, source, annHost)
 		for _, path := range rule.HTTP.Paths {
 			uri := path.Path
 			if uri == "" {
 				uri = "/"
 			}
-			if host.FindPath(uri) != nil {
-				c.logger.Warn("skipping redeclared path '%s' of %v", uri, source)
+			match := c.readPathType(path, annBack[ingtypes.BackPathType])
+			if sslpassthrough && uri == "/" {
+				if host.FindPath(uri) != nil {
+					c.logger.Warn("skipping redeclared ssl-passthrough root path on %v", source)
+					continue
+				}
+			} else if host.FindPath(uri, match) != nil {
+				c.logger.Warn("skipping redeclared path '%s' type '%s' on %v", uri, match, source)
 				continue
 			}
-			match := c.readPathType(path, annBack[ingtypes.BackPathType])
 			if redirectTo := annBack[ingtypes.BackRedirectTo]; redirectTo != "" {
 				host.AddRedirect(uri, match, redirectTo)
 				continue
@@ -500,7 +506,6 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 				continue
 			}
 			host.AddPath(backend, uri, match)
-			sslpassthrough, _ := strconv.ParseBool(annHost[ingtypes.HostSSLPassthrough])
 			sslpasshttpport := annHost[ingtypes.HostSSLPassthroughHTTPPort]
 			if sslpassthrough && sslpasshttpport != "" {
 				if _, err := c.addBackend(source, pathLink, fullSvcName, sslpasshttpport, annBack); err != nil {
@@ -751,7 +756,7 @@ func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcNam
 	uri := "/"
 	match := hatypes.MatchBegin
 	if fr := c.haproxy.Hosts().FindHost(hostname); fr != nil {
-		if fr.FindPath(uri) != nil {
+		if fr.FindPath(uri, match) != nil {
 			return fmt.Errorf("path %s was already defined on default host", uri)
 		}
 	}
