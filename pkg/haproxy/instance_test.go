@@ -306,8 +306,8 @@ d1.local#/api path02`,
     # path05 = d1.local/api/v[0-9]+/
     # path02 = d1.local/app
     # path04 = d1.local/path
-    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpath__prefix_01.map)
-    http-request set-var(txn.pathID) var(req.base),map_str(/etc/haproxy/maps/_back_d1_app_8080_idpath__exact_02.map) if !{ var(txn.pathID) -m found }
+    http-request set-var(txn.pathID) var(req.base),map_str(/etc/haproxy/maps/_back_d1_app_8080_idpath__exact.map)
+    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpath__prefix_02.map) if !{ var(txn.pathID) -m found }
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map) if !{ var(txn.pathID) -m found }
     http-request set-var(txn.pathID) var(req.base),map_reg(/etc/haproxy/maps/_back_d1_app_8080_idpath__regex.map) if !{ var(txn.pathID) -m found }
     acl allow_rule_src0 src 172.17.0.0/16
@@ -316,10 +316,10 @@ d1.local#/api path02`,
     http-request deny if { var(txn.pathID) path02 path03 path04 path05 } !allow_rule_src1`,
 			expFronts: "<<frontends-default-match-4>>",
 			expCheck: map[string]string{
-				"_back_d1_app_8080_idpath__prefix_01.map": `
-d1.local#/path path04`,
-				"_back_d1_app_8080_idpath__exact_02.map": `
+				"_back_d1_app_8080_idpath__exact.map": `
 d1.local#/app path02`,
+				"_back_d1_app_8080_idpath__prefix_02.map": `
+d1.local#/path path04`,
 				"_back_d1_app_8080_idpath__begin.map": `
 d1.local#/api path03
 d1.local#/ path01`,
@@ -1999,8 +1999,8 @@ backend d1_app_8080
     # path01 = <default>/
     # path02 = <default>/app1
     # path03 = <default>/app2
-    http-request set-var(txn.pathID) var(req.path),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__prefix_01.map)
-    http-request set-var(txn.pathID) var(req.path),map_str(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__exact_02.map) if !{ var(txn.pathID) -m found }
+    http-request set-var(txn.pathID) var(req.path),map_str(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__exact.map)
+    http-request set-var(txn.pathID) var(req.path),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__prefix_02.map) if !{ var(txn.pathID) -m found }
     http-request set-var(txn.pathID) var(req.path),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__begin.map) if !{ var(txn.pathID) -m found }
     http-request redirect scheme https if !https-request { var(txn.pathID) path01 }
     http-request use-service lua.send-413 if { var(txn.pathID) path03 } { req.body_size,sub(32768) gt 0 }
@@ -2030,8 +2030,8 @@ frontend _front_http
     http-request set-var(txn.namespace) str(-) if !{ var(txn.namespace) -m found }
     <<http-headers>>
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
-    http-request set-var(req.defaultbackend) var(req.path),map_dir(/etc/haproxy/maps/_front_defaulthost__prefix_01.map) if !{ var(req.backend) -m found }
-    http-request set-var(req.defaultbackend) var(req.path),map_str(/etc/haproxy/maps/_front_defaulthost__exact_02.map) if !{ var(req.backend) -m found } !{ var(req.defaultbackend) -m found }
+    http-request set-var(req.defaultbackend) var(req.path),map_str(/etc/haproxy/maps/_front_defaulthost__exact.map) if !{ var(req.backend) -m found }
+    http-request set-var(req.defaultbackend) var(req.path),map_dir(/etc/haproxy/maps/_front_defaulthost__prefix_02.map) if !{ var(req.backend) -m found } !{ var(req.defaultbackend) -m found }
     http-request set-var(req.defaultbackend) var(req.path),lower,map_beg(/etc/haproxy/maps/_front_defaulthost__begin.map) if !{ var(req.backend) -m found } !{ var(req.defaultbackend) -m found }
     use_backend %[var(req.backend)] if { var(req.backend) -m found }
     use_backend %[var(req.defaultbackend)]
@@ -2041,8 +2041,8 @@ frontend _front_https
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
     <<set-req-base>>
     http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map)
-    http-request set-var(req.defaultbackend) var(req.path),map_dir(/etc/haproxy/maps/_front_defaulthost__prefix_01.map) if !{ var(req.hostbackend) -m found }
-    http-request set-var(req.defaultbackend) var(req.path),map_str(/etc/haproxy/maps/_front_defaulthost__exact_02.map) if !{ var(req.hostbackend) -m found } !{ var(req.defaultbackend) -m found }
+    http-request set-var(req.defaultbackend) var(req.path),map_str(/etc/haproxy/maps/_front_defaulthost__exact.map) if !{ var(req.hostbackend) -m found }
+    http-request set-var(req.defaultbackend) var(req.path),map_dir(/etc/haproxy/maps/_front_defaulthost__prefix_02.map) if !{ var(req.hostbackend) -m found } !{ var(req.defaultbackend) -m found }
     http-request set-var(req.defaultbackend) var(req.path),lower,map_beg(/etc/haproxy/maps/_front_defaulthost__begin.map) if !{ var(req.hostbackend) -m found } !{ var(req.defaultbackend) -m found }
     http-request set-var(txn.namespace) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_namespace__begin.map)
     http-request set-var(txn.namespace) str(-) if !{ var(txn.namespace) -m found }
@@ -2065,17 +2065,17 @@ d2.local#/app11 d2
 	c.checkMap("_front_https_host__begin.map", `
 d2.local#/app11 d2_app_8080
 `)
-	c.checkMap("_front_defaulthost__prefix_01.map", `
+	c.checkMap("_front_defaulthost__prefix_02.map", `
 /app2 d1_app_8080
 /app13 d2_app_8080`)
-	c.checkMap("_front_defaulthost__exact_02.map", `
-/app12 d2_app_8080
-/app1 d1_app_8080`)
+	c.checkMap("_front_defaulthost__exact.map", `
+/app1 d1_app_8080
+/app12 d2_app_8080`)
 	c.checkMap("_front_defaulthost__begin.map", `
 / d1_app_8080`)
-	c.checkMap("_back_d1_app_8080_idpathdef__exact_02.map", `
+	c.checkMap("_back_d1_app_8080_idpathdef__exact.map", `
 /app1 path02`)
-	c.checkMap("_back_d1_app_8080_idpathdef__prefix_01.map", `
+	c.checkMap("_back_d1_app_8080_idpathdef__prefix_02.map", `
 /app2 path03`)
 	c.checkMap("_back_d1_app_8080_idpathdef__begin.map", `
 / path01`)
@@ -4475,8 +4475,8 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     bind :80
     <<set-req-base>>
     <<http-headers>>
-    http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_host__prefix_01.map)
-    http-request set-var(req.backend) var(req.base),map_str(/etc/haproxy/maps/_front_http_host__exact_02.map) if !{ var(req.backend) -m found }
+    http-request set-var(req.backend) var(req.base),map_str(/etc/haproxy/maps/_front_http_host__exact.map)
+    http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_host__prefix_02.map) if !{ var(req.backend) -m found }
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map) if !{ var(req.backend) -m found }
     http-request set-var(req.backend) var(req.base),map_reg(/etc/haproxy/maps/_front_http_host__regex.map) if !{ var(req.backend) -m found }
     use_backend %[var(req.backend)] if { var(req.backend) -m found }`,
@@ -4499,8 +4499,8 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     mode http
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
     <<set-req-base>>
-    http-request set-var(req.hostbackend) var(req.base),map_dir(/etc/haproxy/maps/_front_https_host__prefix_01.map)
-    http-request set-var(req.hostbackend) var(req.base),map_str(/etc/haproxy/maps/_front_https_host__exact_02.map) if !{ var(req.hostbackend) -m found }
+    http-request set-var(req.hostbackend) var(req.base),map_str(/etc/haproxy/maps/_front_https_host__exact.map)
+    http-request set-var(req.hostbackend) var(req.base),map_dir(/etc/haproxy/maps/_front_https_host__prefix_02.map) if !{ var(req.hostbackend) -m found }
     http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map) if !{ var(req.hostbackend) -m found }
     http-request set-var(req.hostbackend) var(req.base),map_reg(/etc/haproxy/maps/_front_https_host__regex.map) if !{ var(req.hostbackend) -m found }
     <<https-headers>>

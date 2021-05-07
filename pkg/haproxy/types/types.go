@@ -329,8 +329,9 @@ type HostsMapEntry struct {
 }
 
 type hostsMapMatchFile struct {
-	entries []*HostsMapEntry
-	match   MatchType
+	entries  []*HostsMapEntry
+	match    MatchType
+	priority bool
 }
 
 // MatchFile ...

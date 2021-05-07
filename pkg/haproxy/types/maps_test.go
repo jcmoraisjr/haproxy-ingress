@@ -380,14 +380,14 @@ local1.tld /a begin
 				{hostname: "local2.tld", path: "/a", match: MatchExact},
 			},
 			expected: `
-hosts__begin_01.map first:true,lower:true,method:beg
+hosts__exact.map first:true,lower:false,method:str
+local2.tld /a exact
+
+hosts__begin_02.map first:false,lower:true,method:beg
 local1.tld /abc begin
 
-hosts__prefix_02.map first:false,lower:false,method:dir
+hosts__prefix_03.map first:false,lower:false,method:dir
 local1.tld /ab prefix
-
-hosts__exact.map first:false,lower:false,method:str
-local2.tld /a exact
 
 hosts__begin.map first:false,lower:true,method:beg
 local1.tld /a begin
@@ -404,16 +404,16 @@ local1.tld /a begin
 				{hostname: "local2.tld", path: "/ab", match: MatchExact},
 			},
 			expected: `
-hosts__begin_01.map first:true,lower:true,method:beg
+hosts__exact.map first:true,lower:false,method:str
+local2.tld /a exact
+local2.tld /ab exact
+local2.tld /abc exact
+
+hosts__begin_02.map first:false,lower:true,method:beg
 local1.tld /abc begin
 
-hosts__prefix_02.map first:false,lower:false,method:dir
+hosts__prefix_03.map first:false,lower:false,method:dir
 local1.tld /ab prefix
-
-hosts__exact.map first:false,lower:false,method:str
-local2.tld /abc exact
-local2.tld /ab exact
-local2.tld /a exact
 
 hosts__begin.map first:false,lower:true,method:beg
 local1.tld /a begin
@@ -428,7 +428,7 @@ local1.tld /a begin
 				{hostname: "local1.tld", path: "/a", match: MatchBegin},
 			},
 			expected: `
-hosts__exact_01.map first:true,lower:false,method:str
+hosts__exact.map first:true,lower:false,method:str
 local1.tld /abcd exact
 
 hosts__begin_02.map first:false,lower:true,method:beg
@@ -450,7 +450,7 @@ local1.tld /a begin
 				{hostname: "local1.tld", path: "/abcd", match: MatchExact},
 			},
 			expected: `
-hosts__exact_01.map first:true,lower:false,method:str
+hosts__exact.map first:true,lower:false,method:str
 local1.tld /abcd exact
 
 hosts__begin_02.map first:false,lower:true,method:beg
@@ -539,6 +539,28 @@ hosts__begin.map first:false,lower:true,method:beg
 local1.tld / begin
 local2.tld / begin
 local3.tld / begin
+`,
+		},
+		// 11
+		{
+			data: []data{
+				{hostname: "local1.tld", path: "/a", match: MatchRegex},
+				{hostname: "local1.tld", path: "/a", match: MatchBegin},
+				{hostname: "local1.tld", path: "/a", match: MatchPrefix},
+				{hostname: "local1.tld", path: "/a", match: MatchExact},
+			},
+			expected: `
+hosts__exact.map first:true,lower:false,method:str
+local1.tld /a exact
+
+hosts__prefix.map first:false,lower:false,method:dir
+local1.tld /a prefix
+
+hosts__begin.map first:false,lower:true,method:beg
+local1.tld /a begin
+
+hosts__regex.map first:false,lower:false,method:reg
+^local1\.tld$ /a regex
 `,
 		},
 	}
