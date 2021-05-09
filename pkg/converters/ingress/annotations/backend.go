@@ -85,11 +85,22 @@ func (c *updater) buildBackendAffinity(d *backData) {
 	}
 }
 
+var authRequestSanitizeHeaderRegex = regexp.MustCompile(`[^a-zA-Z0-9]`)
+var authRequestSrcIsVar = regexp.MustCompile(`^(proc|sess|txn|req|res)\.`)
+
+func buildAuthRequestVarName(srcHeader string) string {
+	if authRequestSrcIsVar.MatchString(srcHeader) {
+		return srcHeader
+	}
+	sanitized := authRequestSanitizeHeaderRegex.ReplaceAllLiteralString(strings.ToLower(srcHeader), "_")
+	return "req.auth_response_header." + sanitized
+}
+
 var (
 	lookupHost func(host string) (addrs []string, err error) = net.LookupHost
 
 	validURLRegex   = regexp.MustCompile(`^[^"' ]*$`)
-	authHeaderRegex = regexp.MustCompile(`^[A-Za-z0-9-]+:[A-Za-z0-9_.-]+$`)
+	authHeaderRegex = regexp.MustCompile(`^[A-Za-z0-9-]+(:[^:'" ]+)?$`)
 )
 
 func (c *updater) buildBackendAuthExternal(d *backData) {
@@ -187,7 +198,7 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 				continue
 			}
 			h := strings.Split(header, ":")
-			headersMap[h[0]] = h[1]
+			headersMap[h[0]] = buildAuthRequestVarName(h[len(h)-1])
 		}
 		if len(headersMap) == 0 {
 			headersMap = nil
@@ -674,7 +685,7 @@ func (c *updater) buildBackendOAuth(d *backData) {
 				continue
 			}
 			h := strings.Split(header, ":")
-			headersMap[h[0]] = h[1]
+			headersMap[h[0]] = buildAuthRequestVarName(h[len(h)-1])
 		}
 		path.AuthExternal.Headers = headersMap
 		path.AuthExternal.AuthBackendName = backend.ID
