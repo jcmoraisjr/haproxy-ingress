@@ -175,11 +175,88 @@ func TestAffinity(t *testing.T) {
 	}
 }
 
+func TestGlobToLuaPattern(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected string
+	}{
+		// 0
+		{
+			input:    "",
+			expected: "^$",
+		},
+		// 1
+		{
+			input:    "literal",
+			expected: "^literal$",
+		},
+		// 2
+		{
+			input:    "*",
+			expected: ".*",
+		},
+		// 3
+		{
+			input:    "*suffix",
+			expected: "^.*suffix$",
+		},
+		// 4
+		{
+			input:    "prefix*",
+			expected: "^prefix.*$",
+		},
+		// 5
+		{
+			input:    "*-suffix",
+			expected: "^.*%-suffix$",
+		},
+		// 6
+		{
+			input:    "prefix-*",
+			expected: "^prefix%-.*$",
+		},
+		// 7
+		{
+			input:    "in-*-between",
+			expected: "^in%-.*%-between$",
+		},
+		// 8
+		{
+			input:    "has-magic",
+			expected: "^has%-magic$",
+		},
+		// 9
+		{
+			input:    "has--magic",
+			expected: "^has%-%-magic$",
+		},
+		// 10
+		{
+			input:    "-has-magic",
+			expected: "^%-has%-magic$",
+		},
+		// 11
+		{
+			input:    "has-magic-",
+			expected: "^has%-magic%-$",
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		actual := globToLuaPattern(test.input)
+		c.compareObjects("pattern", i, actual, test.expected)
+		c.teardown()
+	}
+}
+
 func TestAuthExternal(t *testing.T) {
 	testCase := []struct {
 		url        string
 		signin     string
-		headers    string
+		method     string
+		hdrReq     string
+		hdrSucceed string
+		hdrFail    string
 		isExternal bool
 		hasLua     bool
 		expBack    hatypes.AuthExternal
@@ -207,7 +284,7 @@ func TestAuthExternal(t *testing.T) {
 			url: "http://app1.local",
 			expBack: hatypes.AuthExternal{
 				AuthBackendName: "_auth_4001",
-				Path:            "/",
+				AuthPath:        "/",
 			},
 			expIP: []string{"10.0.0.2:80"},
 		},
@@ -218,7 +295,7 @@ func TestAuthExternal(t *testing.T) {
 			hasLua:     true,
 			expBack: hatypes.AuthExternal{
 				AuthBackendName: "_auth_4001",
-				Path:            "/",
+				AuthPath:        "/",
 			},
 			expIP: []string{"10.0.0.2:80"},
 		},
@@ -227,7 +304,7 @@ func TestAuthExternal(t *testing.T) {
 			url: "http://app2.local/app",
 			expBack: hatypes.AuthExternal{
 				AuthBackendName: "_auth_4001",
-				Path:            "/app",
+				AuthPath:        "/app",
 			},
 			expIP: []string{"10.0.0.3:80", "10.0.0.4:80"},
 		},
@@ -241,7 +318,7 @@ func TestAuthExternal(t *testing.T) {
 			url: "http://app1.local:8080/app",
 			expBack: hatypes.AuthExternal{
 				AuthBackendName: "_auth_4001",
-				Path:            "/app",
+				AuthPath:        "/app",
 			},
 			expIP: []string{"10.0.0.2:8080"},
 		},
@@ -250,7 +327,7 @@ func TestAuthExternal(t *testing.T) {
 			url: "http://10.0.0.200:8080/app",
 			expBack: hatypes.AuthExternal{
 				AuthBackendName: "_auth_4001",
-				Path:            "/app",
+				AuthPath:        "/app",
 			},
 			expIP: []string{"10.0.0.200:8080"},
 		},
@@ -260,7 +337,7 @@ func TestAuthExternal(t *testing.T) {
 			signin: "http://invalid'",
 			expBack: hatypes.AuthExternal{
 				AuthBackendName: "_auth_4001",
-				Path:            "/app",
+				AuthPath:        "/app",
 			},
 			expIP:   []string{"10.0.0.200:8080"},
 			logging: `WARN ignoring invalid sign-in URL in ingress 'default/ing1': http://invalid'`,
@@ -271,23 +348,23 @@ func TestAuthExternal(t *testing.T) {
 			signin: "http://app1.local/oauth2/start?rd=%[path]",
 			expBack: hatypes.AuthExternal{
 				AuthBackendName: "_auth_4001",
-				Path:            "/oauth2/auth",
-				SignIn:          "http://app1.local/oauth2/start?rd=%[path]",
+				AuthPath:        "/oauth2/auth",
+				HeadersFail:     []string{"-"},
+				RedirectOnFail:  "http://app1.local/oauth2/start?rd=%[path]",
 			},
 			expIP: []string{"10.0.0.2:80"},
 		},
 		// 11
 		{
-			url:     "http://app1.local/oauth2/auth",
-			signin:  "http://app1.local/oauth2/start?rd=%[path]",
-			headers: "x-mail:req.x_mail",
+			url:        "http://app1.local/oauth2/auth",
+			signin:     "http://app1.local/oauth2/start?rd=%[path]",
+			hdrSucceed: "x-mail",
 			expBack: hatypes.AuthExternal{
-				Headers: map[string]string{
-					"x-mail": "req.x_mail",
-				},
 				AuthBackendName: "_auth_4001",
-				Path:            "/oauth2/auth",
-				SignIn:          "http://app1.local/oauth2/start?rd=%[path]",
+				AuthPath:        "/oauth2/auth",
+				HeadersSucceed:  []string{"^x%-mail$"},
+				HeadersFail:     []string{"-"},
+				RedirectOnFail:  "http://app1.local/oauth2/start?rd=%[path]",
 			},
 			expIP: []string{"10.0.0.2:80"},
 		},
@@ -296,7 +373,7 @@ func TestAuthExternal(t *testing.T) {
 			url: "https://10.0.0.200/auth",
 			expBack: hatypes.AuthExternal{
 				AuthBackendName: "_auth_4001",
-				Path:            "/auth",
+				AuthPath:        "/auth",
 			},
 			expIP: []string{"10.0.0.200:443"},
 		},
@@ -320,7 +397,7 @@ func TestAuthExternal(t *testing.T) {
 			url: "svc://authservice:80",
 			expBack: hatypes.AuthExternal{
 				AuthBackendName: "_auth_4001",
-				Path:            "/",
+				AuthPath:        "/",
 			},
 			expIP: []string{"10.0.0.11:8080"},
 		},
@@ -329,35 +406,79 @@ func TestAuthExternal(t *testing.T) {
 			url: "svc://authservice:80/auth",
 			expBack: hatypes.AuthExternal{
 				AuthBackendName: "_auth_4001",
-				Path:            "/auth",
+				AuthPath:        "/auth",
 			},
 			expIP: []string{"10.0.0.11:8080"},
 		},
 		// 18
 		{
-			url:     "http://app1.local",
-			headers: "x-mail,x-userid:x-user-uid,x-auth:req.x_auth",
+			url:        "http://app1.local",
+			hdrSucceed: "x-mail,x-userid,x-auth",
 			expBack: hatypes.AuthExternal{
-				Headers: map[string]string{
-					"x-mail":   "req.auth_response_header.x_mail",
-					"x-userid": "req.auth_response_header.x_user_uid",
-					"x-auth":   "req.x_auth",
-				},
 				AuthBackendName: "_auth_4001",
-				Path:            "/",
+				AuthPath:        "/",
+				HeadersSucceed:  []string{"^x%-mail$", "^x%-userid$", "^x%-auth$"},
 			},
 			expIP: []string{"10.0.0.2:80"},
 		},
 		// 19
 		{
 			url:     "http://app1.local",
-			headers: "x-mail:x- invalid",
+			hdrFail: "x-uid,X-Message",
 			expBack: hatypes.AuthExternal{
 				AuthBackendName: "_auth_4001",
-				Path:            "/",
+				AuthPath:        "/",
+				HeadersFail:     []string{"^x%-uid$", "^X%-Message$"},
+			},
+			expIP: []string{"10.0.0.2:80"},
+		},
+		// 20
+		{
+			url:     "http://app1.local",
+			hdrFail: "x-uid,x-message",
+			signin:  "http://app1.local/oauth2/start?rd=%[path]",
+			expBack: hatypes.AuthExternal{
+				AuthBackendName: "_auth_4001",
+				AuthPath:        "/",
+				HeadersFail:     []string{"-"},
+				RedirectOnFail:  "http://app1.local/oauth2/start?rd=%[path]",
 			},
 			expIP:   []string{"10.0.0.2:80"},
-			logging: `WARN ignoring invalid header 'x-mail:x- invalid' on ingress 'default/ing1'`,
+			logging: `WARN ignoring 'auth-headers-fail' on ingress 'default/ing1' due to signin (redirect) configuration`,
+		},
+		// 21
+		{
+			url:    "http://app1.local",
+			hdrReq: "x-token",
+			expBack: hatypes.AuthExternal{
+				AuthBackendName: "_auth_4001",
+				AuthPath:        "/",
+				HeadersRequest:  []string{"^x%-token$"},
+			},
+			expIP: []string{"10.0.0.2:80"},
+		},
+		// 22
+		{
+			url:    "http://app1.local",
+			method: "HEAD",
+			expBack: hatypes.AuthExternal{
+				AuthBackendName: "_auth_4001",
+				AuthPath:        "/",
+				Method:          "HEAD",
+			},
+			expIP: []string{"10.0.0.2:80"},
+		},
+		// 23
+		{
+			url:    "http://app1.local",
+			method: "invalid()",
+			expBack: hatypes.AuthExternal{
+				AuthBackendName: "_auth_4001",
+				AuthPath:        "/",
+				Method:          "GET",
+			},
+			expIP:   []string{"10.0.0.2:80"},
+			logging: `WARN invalid request method 'invalid()' on ingress 'default/ing1', using GET instead`,
 		},
 	}
 	source := &Source{
@@ -388,12 +509,29 @@ func TestAuthExternal(t *testing.T) {
 		b.AcquireEndpoint("10.0.0.11", 8080, "")
 		ann := map[string]map[string]string{
 			"/": {
-				ingtypes.BackAuthURL:     test.url,
-				ingtypes.BackAuthSignin:  test.signin,
-				ingtypes.BackAuthHeaders: test.headers,
+				ingtypes.BackAuthURL:    test.url,
+				ingtypes.BackAuthSignin: test.signin,
 			},
 		}
-		d := c.createBackendMappingData("default/app", source, map[string]string{}, ann, []string{"/"})
+		if test.method != "" {
+			ann["/"][ingtypes.BackAuthMethod] = test.method
+		}
+		if test.hdrReq != "" {
+			ann["/"][ingtypes.BackAuthHeadersRequest] = test.hdrReq
+		}
+		if test.hdrSucceed != "" {
+			ann["/"][ingtypes.BackAuthHeadersSucceed] = test.hdrSucceed
+		}
+		if test.hdrFail != "" {
+			ann["/"][ingtypes.BackAuthHeadersFail] = test.hdrFail
+		}
+		defaults := map[string]string{
+			ingtypes.BackAuthHeadersRequest: "*",
+			ingtypes.BackAuthHeadersSucceed: "*",
+			ingtypes.BackAuthHeadersFail:    "*",
+			ingtypes.BackAuthMethod:         "GET",
+		}
+		d := c.createBackendMappingData("default/app", source, defaults, ann, []string{"/"})
 		u.buildBackendAuthExternal(d)
 		back := d.backend.Paths[0].AuthExternal
 		var iplist []string
@@ -402,6 +540,21 @@ func TestAuthExternal(t *testing.T) {
 			auth := c.haproxy.Backends().FindBackendID(bindList[0].Backend)
 			for _, ep := range auth.Endpoints {
 				iplist = append(iplist, fmt.Sprintf("%s:%d", ep.IP, ep.Port))
+			}
+		}
+		if back.AuthBackendName != "" {
+			// succeeded, config defaults
+			if test.expBack.Method == "" {
+				test.expBack.Method = "GET"
+			}
+			if test.expBack.HeadersRequest == nil {
+				test.expBack.HeadersRequest = []string{".*"}
+			}
+			if test.expBack.HeadersSucceed == nil {
+				test.expBack.HeadersSucceed = []string{".*"}
+			}
+			if test.expBack.HeadersFail == nil {
+				test.expBack.HeadersFail = []string{".*"}
 			}
 		}
 		c.compareObjects("auth external back", i, back, test.expBack)
@@ -1354,11 +1507,11 @@ func TestOAuth(t *testing.T) {
 			backend: "default:back:/oauth2",
 			authExp: map[string]hatypes.AuthExternal{
 				"/": {
-					Allow:           "/oauth2/",
+					AllowedPath:     "/oauth2/",
 					AuthBackendName: "default_back_8080",
-					Path:            "/oauth2/auth",
-					SignIn:          "/oauth2/start?rd=%[path]",
-					Headers:         map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
+					AuthPath:        "/oauth2/auth",
+					RedirectOnFail:  "/oauth2/start?rd=%[path]",
+					HeadersVars:     map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
 				},
 			},
 		},
@@ -1373,11 +1526,11 @@ func TestOAuth(t *testing.T) {
 			backend: "default:back:/auth",
 			authExp: map[string]hatypes.AuthExternal{
 				"/": {
-					Allow:           "/auth/",
+					AllowedPath:     "/auth/",
 					AuthBackendName: "default_back_8080",
-					Path:            "/auth/auth",
-					SignIn:          "/auth/start?rd=%[path]",
-					Headers:         map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
+					AuthPath:        "/auth/auth",
+					RedirectOnFail:  "/auth/start?rd=%[path]",
+					HeadersVars:     map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
 				},
 			},
 		},
@@ -1392,11 +1545,11 @@ func TestOAuth(t *testing.T) {
 			backend: "default:back:/oauth2",
 			authExp: map[string]hatypes.AuthExternal{
 				"/": {
-					Allow:           "/oauth2/",
+					AllowedPath:     "/oauth2/",
 					AuthBackendName: "default_back_8080",
-					Path:            "/oauth2/auth",
-					SignIn:          "/oauth2/start?rd=%[path]",
-					Headers:         map[string]string{"X-Auth-New": "req.var_from_lua"},
+					AuthPath:        "/oauth2/auth",
+					RedirectOnFail:  "/oauth2/start?rd=%[path]",
+					HeadersVars:     map[string]string{"X-Auth-New": "req.var_from_lua"},
 				},
 			},
 		},
@@ -1411,11 +1564,11 @@ func TestOAuth(t *testing.T) {
 			backend: "default:back:/oauth2",
 			authExp: map[string]hatypes.AuthExternal{
 				"/": {
-					Allow:           "/oauth2/",
+					AllowedPath:     "/oauth2/",
 					AuthBackendName: "default_back_8080",
-					Path:            "/oauth2/auth",
-					SignIn:          "/oauth2/start?rd=%[path]",
-					Headers:         map[string]string{},
+					AuthPath:        "/oauth2/auth",
+					RedirectOnFail:  "/oauth2/start?rd=%[path]",
+					HeadersVars:     map[string]string{},
 				},
 			},
 			logging: "WARN invalid header format 'space before:attr' on ingress 'default/ing1'",
@@ -1431,11 +1584,11 @@ func TestOAuth(t *testing.T) {
 			backend: "default:back:/oauth2",
 			authExp: map[string]hatypes.AuthExternal{
 				"/": {
-					Allow:           "/oauth2/",
+					AllowedPath:     "/oauth2/",
 					AuthBackendName: "default_back_8080",
-					Path:            "/oauth2/auth",
-					SignIn:          "/oauth2/start?rd=%[path]",
-					Headers:         map[string]string{},
+					AuthPath:        "/oauth2/auth",
+					RedirectOnFail:  "/oauth2/start?rd=%[path]",
+					HeadersVars:     map[string]string{},
 				},
 			},
 			logging: "WARN invalid header format 'x-header:x- invalid' on ingress 'default/ing1'",
@@ -1451,11 +1604,11 @@ func TestOAuth(t *testing.T) {
 			backend: "default:back:/oauth2",
 			authExp: map[string]hatypes.AuthExternal{
 				"/": {
-					Allow:           "/oauth2/",
+					AllowedPath:     "/oauth2/",
 					AuthBackendName: "default_back_8080",
-					Path:            "/oauth2/auth",
-					SignIn:          "/oauth2/start?rd=%[path]",
-					Headers:         map[string]string{},
+					AuthPath:        "/oauth2/auth",
+					RedirectOnFail:  "/oauth2/start?rd=%[path]",
+					HeadersVars:     map[string]string{},
 				},
 			},
 			logging: "WARN invalid header format 'more:colons:unsupported' on ingress 'default/ing1'",
@@ -1471,11 +1624,11 @@ func TestOAuth(t *testing.T) {
 			backend: "default:back:/oauth2",
 			authExp: map[string]hatypes.AuthExternal{
 				"/": {
-					Allow:           "/oauth2/",
+					AllowedPath:     "/oauth2/",
 					AuthBackendName: "default_back_8080",
-					Path:            "/oauth2/auth",
-					SignIn:          "/oauth2/start?rd=%[path]",
-					Headers: map[string]string{
+					AuthPath:        "/oauth2/auth",
+					RedirectOnFail:  "/oauth2/start?rd=%[path]",
+					HeadersVars: map[string]string{
 						"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email",
 						"X-Auth-New":           "req.auth_response_header.x_header_from_auth",
 						"X-Auth-Other":         "req.other",
@@ -1516,18 +1669,18 @@ func TestOAuth(t *testing.T) {
 			backend:  "default:back:/oauth2",
 			authExp: map[string]hatypes.AuthExternal{
 				"/": {
-					Allow:           "/oauth2/",
+					AllowedPath:     "/oauth2/",
 					AuthBackendName: "default_back_8080",
-					Path:            "/oauth2/auth",
-					SignIn:          "/oauth2/start?rd=%[path]",
-					Headers:         map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
+					AuthPath:        "/oauth2/auth",
+					RedirectOnFail:  "/oauth2/start?rd=%[path]",
+					HeadersVars:     map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
 				},
 				"/app": {
-					Allow:           "/oauth2/",
+					AllowedPath:     "/oauth2/",
 					AuthBackendName: "default_back_8080",
-					Path:            "/oauth2/auth",
-					SignIn:          "/oauth2/start?rd=%[path]",
-					Headers:         map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
+					AuthPath:        "/oauth2/auth",
+					RedirectOnFail:  "/oauth2/start?rd=%[path]",
+					HeadersVars:     map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
 				},
 			},
 		},
@@ -1543,11 +1696,11 @@ func TestOAuth(t *testing.T) {
 			authExp: map[string]hatypes.AuthExternal{
 				"/": {},
 				"/app": {
-					Allow:           "/oauth2/",
+					AllowedPath:     "/oauth2/",
 					AuthBackendName: "default_back_8080",
-					Path:            "/oauth2/auth",
-					SignIn:          "/oauth2/start?rd=%[path]",
-					Headers:         map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
+					AuthPath:        "/oauth2/auth",
+					RedirectOnFail:  "/oauth2/start?rd=%[path]",
+					HeadersVars:     map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"},
 				},
 			},
 		},
@@ -1590,6 +1743,15 @@ func TestOAuth(t *testing.T) {
 		actual := map[string]hatypes.AuthExternal{}
 		for _, path := range d.backend.Paths {
 			actual[path.Path()] = path.AuthExternal
+		}
+		for k, v := range test.authExp {
+			if v.AuthBackendName != "" {
+				v.HeadersRequest = []string{".*"}
+				v.HeadersSucceed = []string{"-"}
+				v.HeadersFail = []string{"-"}
+				v.Method = "HEAD"
+				test.authExp[k] = v
+			}
 		}
 		c.compareObjects("oauth", i, actual, test.authExp)
 		c.logger.CompareLogging(test.logging)

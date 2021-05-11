@@ -19,6 +19,7 @@ package annotations
 import (
 	"fmt"
 	"net"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -96,11 +97,32 @@ func buildAuthRequestVarName(srcHeader string) string {
 	return "req.auth_response_header." + sanitized
 }
 
+func globToLuaPattern(s string) string {
+	if s == "*" {
+		return ".*"
+	}
+	var out string
+	var j int
+	for i, c := range s {
+		switch c {
+		case '*':
+			out += s[j:i] + ".*"
+			j = i + 1
+		// https://www.lua.org/manual/5.4/manual.html#6.4.1
+		case '^', '$', '(', ')', '%', '.', '[', ']', '+', '-', '?':
+			out += s[j:i] + "%"
+			j = i
+		}
+	}
+	return "^" + out + s[j:] + "$"
+}
+
 var (
 	lookupHost func(host string) (addrs []string, err error) = net.LookupHost
 
-	validURLRegex   = regexp.MustCompile(`^[^"' ]*$`)
-	authHeaderRegex = regexp.MustCompile(`^[A-Za-z0-9-]+(:[^:'" ]+)?$`)
+	validURLRegex    = regexp.MustCompile(`^[^"' ]*$`)
+	validMethodRegex = regexp.MustCompile(`^[A-Za-z]+$`)
+	authHeaderRegex  = regexp.MustCompile(`^[A-Za-z0-9-]+(:[^:'" ]+)?$`)
 )
 
 func (c *updater) buildBackendAuthExternal(d *backData) {
@@ -179,6 +201,13 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 			}
 		}
 
+		m := config.Get(ingtypes.BackAuthMethod)
+		method := m.Value
+		if !validMethodRegex.MatchString(method) {
+			c.logger.Warn("invalid request method '%s' on %s, using GET instead", method, m.Source)
+			method = "GET"
+		}
+
 		s := config.Get(ingtypes.BackAuthSignin)
 		signin := s.Value
 		if signin != "" && !validURLRegex.MatchString(signin) {
@@ -186,32 +215,39 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 			signin = ""
 		}
 
-		h := config.Get(ingtypes.BackAuthHeaders)
-		headers := strings.Split(h.Value, ",")
-		headersMap := make(map[string]string, len(headers))
-		for _, header := range headers {
-			if len(header) == 0 {
-				continue
-			}
-			if !authHeaderRegex.MatchString(header) {
-				c.logger.Warn("ignoring invalid header '%s' on %v", header, h.Source)
-				continue
-			}
-			h := strings.Split(header, ":")
-			headersMap[h[0]] = buildAuthRequestVarName(h[len(h)-1])
+		hdrRequest := strings.Split(config.Get(ingtypes.BackAuthHeadersRequest).Value, ",")
+		for i := range hdrRequest {
+			hdrRequest[i] = globToLuaPattern(hdrRequest[i])
 		}
-		if len(headersMap) == 0 {
-			headersMap = nil
+		hdrSucceed := strings.Split(config.Get(ingtypes.BackAuthHeadersSucceed).Value, ",")
+		for i := range hdrSucceed {
+			hdrSucceed[i] = globToLuaPattern(hdrSucceed[i])
+		}
+		hdrFail := strings.Split(config.Get(ingtypes.BackAuthHeadersFail).Value, ",")
+		for i := range hdrFail {
+			hdrFail[i] = globToLuaPattern(hdrFail[i])
+		}
+
+		if signin != "" {
+			if !reflect.DeepEqual(hdrFail, []string{".*"}) {
+				c.logger.Warn("ignoring '%s' on %v due to signin (redirect) configuration", ingtypes.BackAuthHeadersFail, s.Source)
+			}
+			// `-` instructs auth-request to not terminate the transaction,
+			// so HAProxy has the chance to configure the redirect.
+			hdrFail = []string{"-"}
 		}
 
 		if urlPath == "" {
 			urlPath = "/"
 		}
 
-		path.AuthExternal.Headers = headersMap
 		path.AuthExternal.AuthBackendName = authBackendName
-		path.AuthExternal.Path = urlPath
-		path.AuthExternal.SignIn = signin
+		path.AuthExternal.AuthPath = urlPath
+		path.AuthExternal.Method = method
+		path.AuthExternal.HeadersRequest = hdrRequest
+		path.AuthExternal.HeadersSucceed = hdrSucceed
+		path.AuthExternal.HeadersFail = hdrFail
+		path.AuthExternal.RedirectOnFail = signin
 	}
 }
 
@@ -687,11 +723,16 @@ func (c *updater) buildBackendOAuth(d *backData) {
 			h := strings.Split(header, ":")
 			headersMap[h[0]] = buildAuthRequestVarName(h[len(h)-1])
 		}
-		path.AuthExternal.Headers = headersMap
+
 		path.AuthExternal.AuthBackendName = backend.ID
-		path.AuthExternal.Allow = uriPrefix + "/"
-		path.AuthExternal.Path = uriPrefix + "/auth"
-		path.AuthExternal.SignIn = uriPrefix + "/start?rd=%[path]"
+		path.AuthExternal.AllowedPath = uriPrefix + "/"
+		path.AuthExternal.AuthPath = uriPrefix + "/auth"
+		path.AuthExternal.HeadersRequest = []string{".*"}
+		path.AuthExternal.HeadersSucceed = []string{"-"}
+		path.AuthExternal.HeadersFail = []string{"-"}
+		path.AuthExternal.HeadersVars = headersMap
+		path.AuthExternal.Method = "HEAD"
+		path.AuthExternal.RedirectOnFail = uriPrefix + "/start?rd=%[path]"
 	}
 }
 

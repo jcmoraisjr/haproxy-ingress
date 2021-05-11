@@ -1,4 +1,5 @@
 -- From: https://raw.githubusercontent.com/TimWolla/haproxy-auth-request/c3c9349166fb4aa9a9b3964267f3eaa03117c3a3/auth-request.lua
+-- Changed to fit HAProxy Ingress needs - https://github.com/TimWolla/haproxy-auth-request/issues/35
 
 -- The MIT License (MIT)
 --
@@ -26,6 +27,14 @@
 
 local http = require("haproxy-lua-http")
 
+core.register_action("auth-request", { "http-req" }, function(txn, be, path)
+	auth_request(txn, be, path, "HEAD", ".*")
+end, 2)
+
+core.register_action("auth-intercept", { "http-req" }, function(txn, be, path, method, hdr_req, hdr_succeed, hdr_fail)
+	auth_request(txn, be, path, method, hdr_req, hdr_succeed, hdr_fail)
+end, 6)
+
 function set_var_pre_2_2(txn, var, value)
 	return txn:set_var(var, value)
 end
@@ -48,8 +57,47 @@ function sanitize_header_for_variable(header)
 	return header:gsub("[^a-zA-Z0-9]", "_")
 end
 
+-- header_match checks whether the provided header matches the pattern.
+-- pattern is a comma-separated list of Lua Patterns.
+function header_match(header, pattern)
+	if header == "content-length" or pattern == "-" then
+		return false
+	end
+	for p in pattern:gmatch("[^,]*") do
+		if header:match(p) then
+			return true
+		end
+	end
+	return false
+end
 
-core.register_action("auth-request", { "http-req" }, function(txn, be, path)
+-- Terminates the transaction and sends the provided response to the client.
+-- rsp_headers filters header names that should be provided using Lua Patterns.
+function send_response(txn, response, hdr_fail)
+	local reply = txn:reply()
+	if response then
+		reply:set_status(response.status_code)
+		for header, value in response:get_headers(true) do
+			if header_match(header, hdr_fail) then
+				reply:add_header(header, value)
+			end
+		end
+		if response.content then
+			reply:set_body(response.content)
+		end
+	else
+		reply:set_status(500)
+	end
+	txn:done(reply)
+end
+
+-- auth_request does the request to the external authentication service and
+-- waits for the response. hdr_* are a comma-separated list of Lua Patterns
+-- used to identify the headers that should be copied between the requests
+-- and responses. A dash `-` means that the headers shouldn't be copied at all.
+-- `hdr_succeed == "-"` means that HAProxy vars should be created instead.
+-- `hdt_fail == "-"` means that the Lua script shouldn't terminare the request.
+function auth_request(txn, be, path, method, hdr_req, hdr_succeed, hdr_fail)
 	set_var(txn, "txn.auth_response_successful", false)
 
 	-- Check whether the given backend exists.
@@ -79,7 +127,7 @@ core.register_action("auth-request", { "http-req" }, function(txn, be, path)
 	-- socket.http's format.
 	local headers = {}
 	for header, values in pairs(txn.http:req_get_headers()) do
-		if header ~= 'content-length' then
+		if header_match(header, hdr_req) then
 			for i, v in pairs(values) do
 				if headers[header] == nil then
 					headers[header] = v
@@ -91,28 +139,53 @@ core.register_action("auth-request", { "http-req" }, function(txn, be, path)
 	end
 
 	-- Make request to backend.
-	local response, err = http.head {
+	local response, err = http.send(method:upper(), {
 		url = "http://" .. addr .. path,
 		headers = headers,
-	}
+	})
+
+	-- `rsp_on_failure == true` means that the Lua script should send the response
+	-- and terminate the transaction in the case of a failure. This will happen when
+	-- hdr_fail has any content and the content isn't a dash `-`.
+	local rsp_on_failure = hdr_fail ~= nil and hdr_fail ~= "-"
 
 	-- Check whether we received a valid HTTP response.
 	if response == nil then
 		txn:Warning("Failure in auth-request backend '" .. be .. "': " .. err)
-		set_var(txn, "txn.auth_response_code", 500)
+		if rsp_on_failure then
+			send_response(txn)
+		else
+			set_var(txn, "txn.auth_response_code", 500)
+		end
 		return
 	end
 
-	set_var(txn, "txn.auth_response_code", response.status_code)
+	local response_ok = 200 <= response.status_code and response.status_code < 300
 
-	for header, value in response:get_headers(true) do
-		set_var(txn, "req.auth_response_header." .. sanitize_header_for_variable(header), value)
+	-- Transaction is terminated if response is not 2xx (an authentication failure) and `rsp_on_failure` is true.
+	-- Only need to update variables or add new headers if the transaction will not be terminated.
+	if response_ok or not rsp_on_failure then
+		set_var(txn, "txn.auth_response_code", response.status_code)
+		if hdr_succeed == "-" then
+			for header, value in response:get_headers(true) do
+				set_var(txn, "req.auth_response_header." .. sanitize_header_for_variable(header), value)
+			end
+		else
+			for header, value in response:get_headers(true) do
+				if header_match(header, hdr_succeed) then
+					txn.http:req_add_header(header, value)
+				end
+			end
+		end
 	end
 
-	-- 2xx: Allow request.
-	if 200 <= response.status_code and response.status_code < 300 then
+	-- response_ok means 2xx: allow request.
+	if response_ok then
 		set_var(txn, "txn.auth_response_successful", true)
-	-- Don't allow other codes.
+	-- Don't allow codes < 200 or >= 300.
+	-- Forward the response to the client if required.
+	elseif rsp_on_failure then
+		send_response(txn, response, hdr_fail)
 	-- Codes with Location: Passthrough location at redirect.
 	elseif response.status_code == 301 or response.status_code == 302 or response.status_code == 303 or response.status_code == 307 or response.status_code == 308 then
 		set_var(txn, "txn.auth_response_location", response:get_header("location", "last"))
@@ -120,4 +193,4 @@ core.register_action("auth-request", { "http-req" }, function(txn, be, path)
 	elseif response.status_code ~= 401 and response.status_code ~= 403 then
 		txn:Warning("Invalid status code in auth-request backend '" .. be .. "': " .. response.status_code)
 	end
-end, 2)
+end

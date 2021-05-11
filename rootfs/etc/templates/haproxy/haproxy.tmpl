@@ -628,14 +628,22 @@ backend {{ $backend.ID }}
 {{- if $auth.AuthBackendName }}
     http-request set-header X-Real-IP %[src]
         {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
-    http-request lua.auth-request {{ $auth.AuthBackendName }} {{ $auth.Path }}
-        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
-    http-request {{ if $auth.SignIn }}redirect location {{ $auth.SignIn }}{{ else }}deny{{ end }}
-        {{- "" }} if !{ var(txn.auth_response_successful) -m bool }
-        {{- if $auth.Allow }} !{ path_beg {{ $auth.Allow }} }{{ end }}
+    http-request lua.auth-intercept {{ $auth.AuthBackendName }} {{ $auth.AuthPath }} {{ $auth.Method }}
+        {{- printf " '%s' '%s' '%s'" ($auth.HeadersRequest | join ",") ($auth.HeadersSucceed | join ",") ($auth.HeadersFail | join ",") }}
+        {{- if or $auth.AllowedPath $pathIDs }} if{{ end }}
+        {{- if $auth.AllowedPath }} !{ path_beg {{ $auth.AllowedPath }} }{{ end }}
         {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
-{{- range $header, $attr := $auth.Headers }}
+{{- if $auth.RedirectOnFail }}
+    http-request redirect location {{ $auth.RedirectOnFail }}
+{{- else }}
+    http-request deny
+{{- end }}
+        {{- "" }} if !{ var(txn.auth_response_successful) -m bool }
+        {{- if $auth.AllowedPath }} !{ path_beg {{ $auth.AllowedPath }} }{{ end }}
+        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+{{- range $header, $attr := $auth.HeadersVars }}
     http-request set-header {{ $header }} %[var({{ $attr }})] if { var({{ $attr }}) -m found }
+        {{- if $auth.AllowedPath }} !{ path_beg {{ $auth.AllowedPath }} }{{ end }}
         {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- end }}
