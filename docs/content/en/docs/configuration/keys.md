@@ -761,6 +761,8 @@ Configures External Authentication options.
 
 HAProxy Ingress can configure haproxy to use an external HTTP service to validate every request made to a backend. The external authentication service will receive all the headers sent by the client, should accept HEAD requests, and should respond with HTTP status code between `200` and `299`, inclusive, if the request should be accepted. Any other status code will make haproxy redirect the client to a sign in endpoint, if configured, or will otherwise respond with HTTP status code `403` to the client.
 
+**External service URL**
+
 `auth-url` receives the authentication service endpoint. The url format is `<proto>://<name>[:<port>][<path>]`, which means:
 
 * `<proto>`: can be `http`, `https`, `service` or `svc`.
@@ -774,15 +776,25 @@ HAProxy Ingress can configure haproxy to use an external HTTP service to validat
 
 A valid response (HTTP status code between `200` and `299`) from the external authentication service will allow the request to reach its backend server without further action. An invalid request, one that the authentication service respond without a 2xx status code, can be managed in two distinct ways: a HTTP status code 403 sent to the client or, if `auth-signin` is configured, this endpoint is sent back to the client in the `Location` header as a HTTP 302 response.
 
-The external authentication service can provide information to the backend server using HTTP headers. All response headers received from the external authentication service are available as haproxy request variables, named as `req.auth_response_header.<sanitized_header_name>`. Configures `auth-headers` configuration key with a comma-separated list of `<header>:<haproxy-var>` to send its content to the backend server. OAuth2-proxy for example sends a response with `X-Auth-Request-Email`, so configuring `auth-headers` with `X-Email:req.auth_response_header.x_auth_request_email` will send a header `X-Email` with the email content to the backend server.
+**Forwarding response headers**
+
+The external authentication service can provide information to the backend server using HTTP headers. Configure `auth-headers` with a comma-separated list of header names that should be forwarded to the backend. Each header name can be followed by a colon and a source header with another name, or a HAProxy variable name. Examples:
+
+* `auth-headers: "x-mail,x-user"`: copies the `x-mail` and `x-user` HTTP headers from the external authentication service to the backend server using the same header names.
+* `auth-headers: "x-mail:x-auth-request-email"`: sends the `x-mail` HTTP header with the content provided by the `x-auth-request-email` header from the external authentication service. This exact configuration can be used to forward the email of the logged in user from oauth2-proxy service.
+* `auth-headers: "x-mail:req.x_mail"`: sends the content of the `req.x_mail` HAProxy variable to the backend server.
+
+**OAuth2-proxy**
 
 An [oauth2-proxy](https://github.com/oauth2-proxy/oauth2-proxy) service can be configured this way:
 
 * `auth-url` as `"https://<ip-or-hostname>/oauth2/auth"`. Do use and properly configure `svc` protocol instead if the network between HAProxy Ingress and the oauth2-proxy service is untrusted.
 * `auth-signin` as `"https://<ip-or-hostname>/oauth2/start?rd=%[path]"`. The content is parsed by haproxy as a [log-format](http://cbonte.github.io/haproxy-dconv/2.2/configuration.html#8.2.4) string and the result is copied verbatim to the `Location` header of a HTTP 302 response. The `rd` query field asks oauth2-proxy to preserve the path provided by the client.
-* `auth-headers` as `X-Auth-Request-Email:req.auth_response_header.x_auth_request_email`, this will create the header `X-Auth-Request-Email` with the user email provided by oauth2-proxy.
+* `auth-headers` as `X-Auth-Request-Email`, this will copy the `X-Auth-Request-Email` HTTP header from the oauth2-proxy service with the user email.
 
 OAuth2-proxy can be running in the Kubernetes cluster and served by this same controller, however remember to not expose the service in the same ingress that configures the `auth-url` and `auth-signin`, otherwise it will endless loop in a HTTP 403 error.
+
+**Dependencies and port range**
 
 HAProxy Ingress uses [`auth-request.lua`](https://github.com/TimWolla/haproxy-auth-request) script, which in turn uses HAProxy Technologies' [`haproxy-lua-http`](https://github.com/haproxytech/haproxy-lua-http/) to perform the authentication request and waits for the response. The request is managed by an internal haproxy frontend/backend pair, which can be fine tuned with `auth-proxy`. The default value is `_front__auth:14415-14499`: `_front__auth` is the name of the frontend helper and `14415-14499` is an [unassigned TCP port range](https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.txt) that `haproxy-lua-http` uses to connect and send the authentication request. Requests to this proxy can be added to the log, see [`auth-log-format`](#log-format") configuration key.
 
@@ -1780,7 +1792,7 @@ Configure OAuth2 via Bitly's `oauth2_proxy`. These options have less precedence 
 
 * `oauth`: Defines the oauth implementation. The only supported option is `oauth2_proxy` or its alias `oauth2-proxy`.
 * `oauth-uri-prefix`: Defines the URI prefix of the oauth service. The default value is `/oauth2`. There should be a backend with this path in the ingress resource.
-* `oauth-headers`: Defines an optional comma-separated list of `<header>:<haproxy-var>` used to configure request headers to the upstream backends. The default value is `X-Auth-Request-Email:req.auth_response_header.x_auth_request_email` that configures a header `X-Auth-Request-Email` with the value of the var `req.auth_response_header.x_auth_request_email`. The [`auth-request.lua`](https://github.com/TimWolla/haproxy-auth-request) script, used by HAProxy Ingress, creates a new `req.auth_response_header.<sanitized_header_name>` variable for each response header received by `oauth2_proxy`.
+* `oauth-headers`: Defines an optional comma-separated list of `<header>[:<source>]` used to configure request headers to the upstream backend. The default value is `X-Auth-Request-Email` which copies this HTTP header from oauth2-proxy service response to the backend service. An optional `<source>` can be provided with another HTTP header or an internal HAProxy variable.
 
 OAuth2 expects [oauth2-proxy](https://github.com/oauth2-proxy/oauth2-proxy),
 or any other compatible implementation running as a backend of the same domain that should be protected.

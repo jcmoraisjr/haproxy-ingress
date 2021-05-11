@@ -333,6 +333,32 @@ func TestAuthExternal(t *testing.T) {
 			},
 			expIP: []string{"10.0.0.11:8080"},
 		},
+		// 18
+		{
+			url:     "http://app1.local",
+			headers: "x-mail,x-userid:x-user-uid,x-auth:req.x_auth",
+			expBack: hatypes.AuthExternal{
+				Headers: map[string]string{
+					"x-mail":   "req.auth_response_header.x_mail",
+					"x-userid": "req.auth_response_header.x_user_uid",
+					"x-auth":   "req.x_auth",
+				},
+				AuthBackendName: "_auth_4001",
+				Path:            "/",
+			},
+			expIP: []string{"10.0.0.2:80"},
+		},
+		// 19
+		{
+			url:     "http://app1.local",
+			headers: "x-mail:x- invalid",
+			expBack: hatypes.AuthExternal{
+				AuthBackendName: "_auth_4001",
+				Path:            "/",
+			},
+			expIP:   []string{"10.0.0.2:80"},
+			logging: `WARN ignoring invalid header 'x-mail:x- invalid' on ingress 'default/ing1'`,
+		},
 	}
 	source := &Source{
 		Namespace: "default",
@@ -1360,7 +1386,7 @@ func TestOAuth(t *testing.T) {
 			ann: map[string]map[string]string{
 				"/": {
 					ingtypes.BackOAuth:        "oauth2_proxy",
-					ingtypes.BackOAuthHeaders: "X-Auth-New:attr_from_lua",
+					ingtypes.BackOAuthHeaders: "X-Auth-New:req.var_from_lua",
 				},
 			},
 			backend: "default:back:/oauth2",
@@ -1370,7 +1396,7 @@ func TestOAuth(t *testing.T) {
 					AuthBackendName: "default_back_8080",
 					Path:            "/oauth2/auth",
 					SignIn:          "/oauth2/start?rd=%[path]",
-					Headers:         map[string]string{"X-Auth-New": "attr_from_lua"},
+					Headers:         map[string]string{"X-Auth-New": "req.var_from_lua"},
 				},
 			},
 		},
@@ -1399,7 +1425,7 @@ func TestOAuth(t *testing.T) {
 			ann: map[string]map[string]string{
 				"/": {
 					ingtypes.BackOAuth:        "oauth2_proxy",
-					ingtypes.BackOAuthHeaders: "no-colon",
+					ingtypes.BackOAuthHeaders: "x-header:x- invalid",
 				},
 			},
 			backend: "default:back:/oauth2",
@@ -1412,7 +1438,7 @@ func TestOAuth(t *testing.T) {
 					Headers:         map[string]string{},
 				},
 			},
-			logging: "WARN invalid header format 'no-colon' on ingress 'default/ing1'",
+			logging: "WARN invalid header format 'x-header:x- invalid' on ingress 'default/ing1'",
 		},
 		// 8
 		{
@@ -1439,7 +1465,7 @@ func TestOAuth(t *testing.T) {
 			ann: map[string]map[string]string{
 				"/": {
 					ingtypes.BackOAuth:        "oauth2_proxy",
-					ingtypes.BackOAuthHeaders: ",,X-Auth-Request-Email:req.auth_response_header.x_auth_request_email,,X-Auth-New:attr_from_lua,",
+					ingtypes.BackOAuthHeaders: ",,X-Auth-Request-Email,,X-Auth-New:x-header-from-auth,,,X-Auth-Other:req.other",
 				},
 			},
 			backend: "default:back:/oauth2",
@@ -1451,7 +1477,8 @@ func TestOAuth(t *testing.T) {
 					SignIn:          "/oauth2/start?rd=%[path]",
 					Headers: map[string]string{
 						"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email",
-						"X-Auth-New":           "attr_from_lua",
+						"X-Auth-New":           "req.auth_response_header.x_header_from_auth",
+						"X-Auth-Other":         "req.other",
 					},
 				},
 			},
@@ -1546,7 +1573,7 @@ func TestOAuth(t *testing.T) {
 		Name:      "ing1",
 		Type:      "ingress",
 	}
-	annDefault := map[string]string{ingtypes.BackOAuthHeaders: "X-Auth-Request-Email:req.auth_response_header.x_auth_request_email"}
+	annDefault := map[string]string{ingtypes.BackOAuthHeaders: "X-Auth-Request-Email"}
 	for i, test := range testCases {
 		c := setup(t)
 		d := c.createBackendMappingData("default/app", source, annDefault, test.ann, []string{})
