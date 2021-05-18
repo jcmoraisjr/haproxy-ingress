@@ -186,12 +186,20 @@ func (c *config) WriteFrontendMaps() error {
 		TLSNeedCrtList:        mapBuilder.AddMap(mapsDir + "/_front_tls_needcrt.list"),
 		TLSInvalidCrtPagesMap: mapBuilder.AddMap(mapsDir + "/_front_tls_invalidcrt_pages.map"),
 		TLSMissingCrtPagesMap: mapBuilder.AddMap(mapsDir + "/_front_tls_missingcrt_pages.map"),
+		//
+		DefaultHostMap: mapBuilder.AddMap(mapsDir + "/_front_defaulthost.map"),
 	}
 	// TODO crtList* to be removed after implement a template to the crt list
 	c.frontend.CrtListFile = mapsDir + "/_front_bind_crt.list"
 	var crtListItems []*hatypes.HostsMapEntry
 	crtListItems = append(crtListItems, &hatypes.HostsMapEntry{Key: c.frontend.DefaultCrtFile + " !*"})
 	hasVarNamespace := c.hosts.HasVarNamespace()
+	defaultHost := c.hosts.DefaultHost()
+	if defaultHost != nil && !defaultHost.SSLPassthrough() {
+		for _, path := range defaultHost.Paths {
+			fmaps.DefaultHostMap.AddHostnamePathMapping("", path, path.Backend.ID)
+		}
+	}
 	for _, host := range c.hosts.BuildSortedItems() {
 		for _, path := range host.Paths {
 			backendID := path.Backend.ID
@@ -334,6 +342,7 @@ func (c *config) WriteBackendMaps() error {
 		if backend.NeedACL() {
 			mapsPrefix := c.options.mapsDir + "/_back_" + backend.ID
 			pathsMap := mapBuilder.AddMap(mapsPrefix + "_idpath.map")
+			pathsDefaultHostMap := mapBuilder.AddMap(mapsPrefix + "_idpathdef.map")
 			for _, path := range backend.Paths {
 				// IMPLEMENT add HostPath link into the backend path
 				h := c.hosts.FindHost(path.Hostname())
@@ -344,9 +353,14 @@ func (c *config) WriteBackendMaps() error {
 				if p == nil {
 					continue
 				}
-				pathsMap.AddHostnamePathMapping(path.Hostname(), p, path.ID)
+				if path.IsDefaultHost() {
+					pathsDefaultHostMap.AddHostnamePathMapping("", p, path.ID)
+				} else {
+					pathsMap.AddHostnamePathMapping(path.Hostname(), p, path.ID)
+				}
 			}
 			backend.PathsMap = pathsMap
+			backend.PathsDefaultHostMap = pathsDefaultHostMap
 		}
 	}
 	return writeMaps(mapBuilder, c.options.mapsTemplate)

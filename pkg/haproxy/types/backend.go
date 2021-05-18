@@ -365,6 +365,11 @@ func (p *BackendPath) Hostname() string {
 	return p.Link.hostname
 }
 
+// IsDefaultHost ...
+func (p *BackendPath) IsDefaultHost() bool {
+	return p.Link.IsDefaultHost()
+}
+
 // Path ...
 func (p *BackendPath) Path() string {
 	return p.Link.path
