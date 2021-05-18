@@ -419,7 +419,7 @@ func TestSyncRedeclarePath(t *testing.T) {
     port: 8080` + defaultBackendConfig)
 
 	c.logger.CompareLogging(`
-WARN skipping redeclared path '/p1' of ingress 'default/echo1'`)
+WARN skipping redeclared path '/p1' type 'begin' on ingress 'default/echo1'`)
 }
 
 func TestSyncTLSDefault(t *testing.T) {
@@ -787,9 +787,9 @@ func TestPathType(t *testing.T) {
 		ing := c.createIng1Ann("default/echo", "echo.localdomain", "/", "echo:8080", ann)
 		ing.Spec.Rules[0].HTTP.Paths[0].PathType = test.pathType
 		c.Sync(ing)
-		match := c.hconfig.Hosts().AcquireHost("echo.localdomain").FindPath("/").Match
-		if match != test.expected {
-			c.t.Errorf("path type does not match in %d: expected '%s', actual '%s'", i, test.expected, match)
+		match := c.hconfig.Hosts().AcquireHost("echo.localdomain").FindPath("/", test.expected)
+		if len(match) == 0 {
+			c.t.Errorf("path type does not match in %d: expected '%s', but wasn't found", i, test.expected)
 		}
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
@@ -889,7 +889,7 @@ func TestSyncDefaultBackendReusedPath2(t *testing.T) {
     port: 8080` + defaultBackendConfig)
 
 	c.logger.CompareLogging(`
-WARN skipping redeclared path '/' of ingress 'default/echo2'`)
+WARN skipping redeclared path '/' type 'begin' on ingress 'default/echo2'`)
 }
 
 func TestSyncEmptyHTTP(t *testing.T) {
@@ -943,6 +943,47 @@ func TestSyncMultiNamespace(t *testing.T) {
   endpoints:
   - ip: 172.17.0.12
     port: 8080` + defaultBackendConfig)
+}
+
+func TestSyncAllowPathDup(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	c.createSvc1("default/echo", "8080", "172.17.0.11")
+
+	c.Sync(
+		c.createIng1Ann("default/echo1", "echo.example.com", "/app", "echo:8080", map[string]string{
+			"ingress.kubernetes.io/path-type":       "prefix",
+			"ingress.kubernetes.io/proxy-body-size": "32768",
+		}),
+		c.createIng1Ann("default/echo2", "echo.example.com", "/app", "echo:8080", map[string]string{
+			"ingress.kubernetes.io/path-type":       "exact",
+			"ingress.kubernetes.io/proxy-body-size": "65536",
+		}),
+	)
+
+	c.compareConfigFront(`
+- hostname: echo.example.com
+  paths:
+  - path: /app
+    match: prefix
+    backend: default_echo_8080
+  - path: /app
+    match: exact
+    backend: default_echo_8080`)
+
+	c.compareConfigBack(`
+- id: default_echo_8080
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+  paths:
+  - path: /app
+    match: prefix
+    maxbodysize: 32768
+  - path: /app
+    match: exact
+    maxbodysize: 65536` + defaultBackendConfig)
 }
 
 func paramToMap(param ...string) map[string]string {
@@ -2138,10 +2179,19 @@ func TestSyncAnnPassthrough(t *testing.T) {
 				"ingress.kubernetes.io/ssl-passthrough":           "true",
 				"ingress.kubernetes.io/ssl-passthrough-http-port": "8080",
 			}),
+		c.createIng1Ann("default/echo1a", "echo1.example.com", "/app", "echo:8080",
+			map[string]string{
+				"ingress.kubernetes.io/ssl-passthrough":           "true",
+				"ingress.kubernetes.io/ssl-passthrough-http-port": "8080",
+			}),
 		c.createIng1Ann("default/echo2", "echo2.example.com", "/", "echo:8443",
 			map[string]string{
 				"ingress.kubernetes.io/ssl-passthrough":           "true",
 				"ingress.kubernetes.io/ssl-passthrough-http-port": "9000",
+			}),
+		c.createIng1Ann("default/echo2a", "echo2.example.com", "/", "echo:8443",
+			map[string]string{
+				"ingress.kubernetes.io/ssl-passthrough": "true",
 			}),
 		c.createIng2Ann("default/echo4", "echo:8443",
 			map[string]string{
@@ -2154,6 +2204,8 @@ func TestSyncAnnPassthrough(t *testing.T) {
 	c.compareConfigFront(`
 - hostname: echo1.example.com
   paths:
+  - path: /app
+    backend: default_echo_8080
   - path: /
     backend: default_echo_8443
 - hostname: echo2.example.com
@@ -2187,6 +2239,7 @@ rootredirect: /login
 
 	c.logger.CompareLogging(`
 WARN skipping http port config of ssl-passthrough on ingress 'default/echo2': port not found: '9000'
+WARN skipping redeclared ssl-passthrough root path on ingress 'default/echo2a'
 `)
 }
 
@@ -2506,6 +2559,10 @@ func (u *updaterMock) UpdateHostConfig(host *hatypes.Host, mapper *annotations.M
 func (u *updaterMock) UpdateBackendConfig(backend *hatypes.Backend, mapper *annotations.Mapper) {
 	backend.Server.MaxConn = mapper.Get(ingtypes.BackMaxconnServer).Int()
 	backend.BalanceAlgorithm = mapper.Get(ingtypes.BackBalanceAlgorithm).Value
+	for _, path := range backend.Paths {
+		config := mapper.GetConfig(path.Link)
+		path.MaxBodySize = config.Get(ingtypes.BackProxyBodySize).Int64()
+	}
 }
 
 type (
@@ -2551,6 +2608,7 @@ func (c *testConfig) compareConfigTCPService(expected string) {
 type (
 	pathMock struct {
 		Path      string
+		Match     string `yaml:",omitempty"`
 		BackendID string `yaml:"backend"`
 	}
 	timeoutMock struct {
@@ -2572,7 +2630,11 @@ func convertHost(hafronts ...*hatypes.Host) []hostMock {
 	for _, f := range hafronts {
 		paths := []pathMock{}
 		for _, p := range f.Paths {
-			paths = append(paths, pathMock{Path: p.Path, BackendID: p.Backend.ID})
+			var match string
+			if p.Match != hatypes.MatchBegin {
+				match = string(p.Match)
+			}
+			paths = append(paths, pathMock{Path: p.Path, Match: match, BackendID: p.Backend.ID})
 		}
 		hosts = append(hosts, hostMock{
 			Hostname:     f.Hostname,
@@ -2603,11 +2665,17 @@ type (
 		Port  int
 		Drain bool `yaml:",omitempty"`
 	}
+	backendPathMock struct {
+		Path        string
+		Match       string
+		MaxBodySize int64
+	}
 	backendMock struct {
 		ID               string
-		Endpoints        []endpointMock `yaml:",omitempty"`
-		BalanceAlgorithm string         `yaml:",omitempty"`
-		MaxConnServer    int            `yaml:",omitempty"`
+		Endpoints        []endpointMock    `yaml:",omitempty"`
+		Paths            []backendPathMock `yaml:",omitempty"`
+		BalanceAlgorithm string            `yaml:",omitempty"`
+		MaxConnServer    int               `yaml:",omitempty"`
 	}
 )
 
@@ -2618,9 +2686,16 @@ func convertBackend(habackends ...*hatypes.Backend) []backendMock {
 		for _, e := range b.Endpoints {
 			endpoints = append(endpoints, endpointMock{IP: e.IP, Port: e.Port, Drain: e.Weight == 0})
 		}
+		var paths []backendPathMock
+		for _, p := range b.Paths {
+			if p.MaxBodySize > 0 {
+				paths = append(paths, backendPathMock{Path: p.Path(), Match: string(p.Match()), MaxBodySize: p.MaxBodySize})
+			}
+		}
 		backends = append(backends, backendMock{
 			ID:               b.ID,
 			Endpoints:        endpoints,
+			Paths:            paths,
 			BalanceAlgorithm: b.BalanceAlgorithm,
 			MaxConnServer:    b.Server.MaxConn,
 		})

@@ -60,7 +60,7 @@ func (hm *HostsMap) addHostnameMappingMatch(hostname, target string, match Match
 			match = MatchRegex
 		}
 	}
-	hm.addTarget(hostname, "", target, match)
+	hm.addTarget(hostname, "", 0, target, match)
 }
 
 // AddHostnamePathMapping ...
@@ -77,7 +77,7 @@ func (hm *HostsMap) AddHostnamePathMapping(hostname string, hostPath *HostPath, 
 	} else if hostPath.Match == MatchRegex {
 		hostname = "^" + regexp.QuoteMeta(hostname) + "$"
 	}
-	hm.addTarget(hostname, path, target, match)
+	hm.addTarget(hostname, path, hostPath.order, target, match)
 }
 
 // AddAliasPathMapping ...
@@ -87,7 +87,7 @@ func (hm *HostsMap) AddAliasPathMapping(alias HostAliasConfig, path *HostPath, t
 	}
 	if alias.AliasRegex != "" {
 		pathstr := convertPathToRegex(path)
-		hm.addTarget(alias.AliasRegex, pathstr, target, MatchRegex)
+		hm.addTarget(alias.AliasRegex, pathstr, path.order, target, MatchRegex)
 	}
 }
 
@@ -123,7 +123,7 @@ func convertPathToRegex(hostPath *HostPath) string {
 	panic("unsupported match type")
 }
 
-func (hm *HostsMap) addTarget(hostname, path, target string, match MatchType) {
+func (hm *HostsMap) addTarget(hostname, path string, order int, target string, match MatchType) {
 	hostname = strings.ToLower(hostname)
 	if match == MatchBegin {
 		// this is the only match that uses case insensitive path
@@ -133,6 +133,7 @@ func (hm *HostsMap) addTarget(hostname, path, target string, match MatchType) {
 		hostname: hostname,
 		path:     path,
 		match:    match,
+		order:    order,
 		Key:      buildMapKey(match, hostname, path),
 		Value:    target,
 	}
@@ -193,8 +194,7 @@ func (hm *HostsMap) rebuildMatchFiles() (matchFiles []*MatchFile) {
 		for i, e1 := range entryList {
 			if i < len(entryList) {
 				for _, e2 := range entryList[i+1:] {
-					// TODO regex is currently always the last match
-					if e1.match != e2.match && e1.match != MatchRegex && e2.match != MatchRegex && strings.HasPrefix(e1.path, e2.path) {
+					if overlaps(e1, e2) {
 						// here we have an overlap and distinct match files
 						// separate the entry that should be processed first
 						// into a match file with higher priority
@@ -211,13 +211,23 @@ func (hm *HostsMap) rebuildMatchFiles() (matchFiles []*MatchFile) {
 			}
 		}
 	}
-	orderCnt := order.Len()
 	for _, match := range hm.matchOrder {
 		matchFile := hm.rawfiles[match]
 		if matchFile != nil {
 			matchFile.shrink()
 			if len(matchFile.entries) > 0 {
-				order.PushBack(matchFile)
+				if matchFile.match == MatchExact {
+					// exact match is always processed first - it never overlaps if checked first, and it's faster.
+					// we could respect the match order configured by the sysadmin and split in more map files if
+					// a begin or prefix overlaps, but this doesn't make sense - it would create an even
+					// more complex group of match files which would run slower for nothing.
+					order.PushFront(matchFile)
+				} else {
+					// ordinary match files are processed with less priority, in the order
+					// defined by matchOrder, `path-type-order`, except for `exact` which
+					// always have priority
+					order.PushBack(matchFile)
+				}
 			}
 		}
 	}
@@ -227,7 +237,7 @@ func (hm *HostsMap) rebuildMatchFiles() (matchFiles []*MatchFile) {
 		i++
 		matchFile := e.Value.(*hostsMapMatchFile)
 		var suffix string
-		if i <= orderCnt {
+		if matchFile.priority {
 			suffix = fmt.Sprintf("__%s_%02d", matchFile.match, i)
 		} else {
 			suffix = fmt.Sprintf("__%s", matchFile.match)
@@ -246,10 +256,24 @@ func (hm *HostsMap) rebuildMatchFiles() (matchFiles []*MatchFile) {
 	return matchFiles
 }
 
+// Checks if two hostmap entries overlaps
+// A hostmap entry is a path and its match type from a hostname
+// An overlap happens when /app/sub and a /app belongs to the same
+// hostname and has distinct match types
+// Exact is removed from the check because it always has priority and never overlaps
+// Regex is removed because all of its entries are processed together, giving priority to longer regexps
+func overlaps(e1, e2 *HostsMapEntry) bool {
+	return e1.match != e2.match &&
+		e1.path != e2.path &&
+		e1.match != MatchExact && e2.match != MatchExact &&
+		e1.match != MatchRegex && e2.match != MatchRegex &&
+		strings.HasPrefix(e1.path, e2.path)
+}
+
 func findOrCreateMatchFile(order *list.List, match MatchType, starting, limit *list.Element) (matchFile *hostsMapMatchFile, element *list.Element) {
 	matchFile, element = findMatchFile(order, match, starting, limit)
 	if element == nil {
-		matchFile = &hostsMapMatchFile{match: match}
+		matchFile = &hostsMapMatchFile{match: match, priority: true}
 		if limit == nil {
 			element = order.PushBack(matchFile)
 		} else {
@@ -295,7 +319,18 @@ func (mf *hostsMapMatchFile) shrink() {
 }
 
 func (mf *hostsMapMatchFile) sort() {
-	if mf.match == MatchRegex {
+	switch mf.match {
+	case MatchExact:
+		// Ascending order of the keys
+		sort.Slice(mf.entries, func(i, j int) bool {
+			v1 := mf.entries[i]
+			v2 := mf.entries[j]
+			if v1.Key == v2.Key {
+				return v1.order < v2.order
+			}
+			return v1.Key < v2.Key
+		})
+	case MatchRegex:
 		// Keep regexes in order from most to least specific, based on rule length
 		sort.Slice(mf.entries, func(i, j int) bool {
 			k1 := mf.entries[i].Key
@@ -303,14 +338,20 @@ func (mf *hostsMapMatchFile) sort() {
 			if len(k1) != len(k2) {
 				return len(k1) > len(k2)
 			}
+			if k1 == k2 {
+				return mf.entries[i].order < mf.entries[j].order
+			}
 			return k1 < k2
 		})
-	} else {
+	default:
 		// Ascending order of hostnames and reverse order of paths within the same hostname
 		sort.Slice(mf.entries, func(i, j int) bool {
 			v1 := mf.entries[i]
 			v2 := mf.entries[j]
 			if v1.hostname == v2.hostname {
+				if v1.path == v2.path {
+					return v1.order < v2.order
+				}
 				return v1.path > v2.path
 			}
 			return v1.Key < v2.Key

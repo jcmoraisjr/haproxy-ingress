@@ -21,18 +21,18 @@ import (
 )
 
 func TestCreatePathLink(t *testing.T) {
-	l1 := CreatePathLink("domain.local", "/app")
-	l2 := CreatePathLink("domain.local", "/app")
+	l1 := CreatePathLink("domain.local", "/app", MatchBegin)
+	l2 := CreatePathLink("domain.local", "/app", MatchBegin)
 	if l1 != l2 {
 		t.Errorf("two distinct path links with same host and path should match")
 	}
-	l3 := CreatePathLink("domain1.local", "/app")
-	l4 := CreatePathLink("domain2.local", "/app")
+	l3 := CreatePathLink("domain1.local", "/app", MatchBegin)
+	l4 := CreatePathLink("domain2.local", "/app", MatchBegin)
 	if l3 == l4 {
 		t.Errorf("path links with distinct domains should not match")
 	}
-	l5 := CreatePathLink("domain.local", "/app1")
-	l6 := CreatePathLink("domain.local", "/app2")
+	l5 := CreatePathLink("domain.local", "/app1", MatchBegin)
+	l6 := CreatePathLink("domain.local", "/app2", MatchBegin)
 	if l5 == l6 {
 		t.Errorf("path links with distinct paths should not match")
 	}
@@ -90,6 +90,92 @@ func TestShrinkHosts(t *testing.T) {
 		h.Shrink()
 		c.compareObjects("add", i, h.itemsAdd, expAdd)
 		c.compareObjects("del", i, h.itemsDel, expDel)
+		c.teardown()
+	}
+}
+
+func TestAddFindPath(t *testing.T) {
+	b := CreateBackends(0)
+	b1 := b.AcquireBackend("default", "b1", "8080")
+	b2 := b.AcquireBackend("default", "b2", "8080")
+	b3 := b.AcquireBackend("default", "b3", "8080")
+	type path struct {
+		backend *Backend
+		path    string
+		match   MatchType
+	}
+	testCases := []struct {
+		paths     []path
+		order     []string
+		findPath  string
+		findMatch []MatchType
+		found     []string
+	}{
+		// 0
+		{
+			paths: []path{
+				{backend: b1, path: "/", match: MatchBegin},
+				{backend: b2, path: "/app", match: MatchBegin},
+				{backend: b3, path: "/login", match: MatchBegin},
+			},
+			order:     []string{"b3", "b2", "b1"},
+			findPath:  "/",
+			findMatch: []MatchType{MatchExact},
+			found:     []string{},
+		},
+		// 1
+		{
+			paths: []path{
+				{backend: b1, path: "/", match: MatchBegin},
+				{backend: b2, path: "/", match: MatchExact},
+				{backend: b3, path: "/login", match: MatchExact},
+			},
+			order:     []string{"b3", "b1", "b2"},
+			findPath:  "/",
+			findMatch: []MatchType{MatchBegin},
+			found:     []string{"b1"},
+		},
+		// 2
+		{
+			paths: []path{
+				{backend: b1, path: "/", match: MatchBegin},
+				{backend: b2, path: "/", match: MatchExact},
+				{backend: b3, path: "/login", match: MatchExact},
+			},
+			order:     []string{"b3", "b1", "b2"},
+			findPath:  "/",
+			findMatch: []MatchType{},
+			found:     []string{"b1", "b2"},
+		},
+		// 3
+		{
+			paths: []path{
+				{backend: b1, path: "/", match: MatchBegin},
+				{backend: b2, path: "/", match: MatchBegin},
+				{backend: b3, path: "/login", match: MatchBegin},
+			},
+			order:     []string{"b3", "b1", "b2"},
+			findPath:  "/",
+			findMatch: []MatchType{MatchBegin},
+			found:     []string{"b1", "b2"},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		h := CreateHosts().AcquireHost("d1.local")
+		for _, p := range test.paths {
+			h.AddPath(p.backend, p.path, p.match)
+		}
+		actualOrder := []string{}
+		for _, p := range h.Paths {
+			actualOrder = append(actualOrder, p.Backend.Name)
+		}
+		actualFound := []string{}
+		for _, p := range h.FindPath(test.findPath, test.findMatch...) {
+			actualFound = append(actualFound, p.Backend.Name)
+		}
+		c.compareObjects("order", i, actualOrder, test.order)
+		c.compareObjects("find", i, actualFound, test.found)
 		c.teardown()
 	}
 }

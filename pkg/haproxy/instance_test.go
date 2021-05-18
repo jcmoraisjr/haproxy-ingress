@@ -43,6 +43,7 @@ func TestBackends(t *testing.T) {
 	testCases := []struct {
 		doconfig  func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend)
 		path      []string
+		match     []hatypes.MatchType
 		skipSrv   bool
 		srvsuffix string
 		expected  string
@@ -104,8 +105,8 @@ func TestBackends(t *testing.T) {
 					AllowMethods: "GET, PUT, POST, DELETE, PATCH, OPTIONS",
 					MaxAge:       86400,
 				}
-				b.FindBackendPath(h.FindPath("/").Link).Cors = config
-				b.FindBackendPath(h.FindPath("/sub").Link).Cors = config
+				b.FindBackendPath(h.FindPath("/")[0].Link).Cors = config
+				b.FindBackendPath(h.FindPath("/sub")[0].Link).Cors = config
 			},
 			path: []string{"/", "/sub"},
 			expected: `
@@ -125,7 +126,7 @@ func TestBackends(t *testing.T) {
 					MaxAge:           86400,
 					AllowCredentials: true,
 				}
-				b.FindBackendPath(h.FindPath("/").Link).Cors = config
+				b.FindBackendPath(h.FindPath("/")[0].Link).Cors = config
 			},
 			path: []string{"/", "/sub"},
 			expected: `
@@ -146,19 +147,19 @@ d1.local#/ path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/").Link).HSTS = hatypes.HSTS{
+				b.FindBackendPath(h.FindPath("/")[0].Link).HSTS = hatypes.HSTS{
 					Enabled:    true,
 					MaxAge:     15768000,
 					Preload:    true,
 					Subdomains: true,
 				}
-				b.FindBackendPath(h.FindPath("/path").Link).HSTS = hatypes.HSTS{
+				b.FindBackendPath(h.FindPath("/path")[0].Link).HSTS = hatypes.HSTS{
 					Enabled:    true,
 					MaxAge:     15768000,
 					Preload:    false,
 					Subdomains: false,
 				}
-				b.FindBackendPath(h.FindPath("/uri").Link).HSTS = hatypes.HSTS{
+				b.FindBackendPath(h.FindPath("/uri")[0].Link).HSTS = hatypes.HSTS{
 					Enabled:    true,
 					MaxAge:     15768000,
 					Preload:    false,
@@ -192,7 +193,7 @@ d1.local#/ path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/app").Link).RewriteURL = "/"
+				b.FindBackendPath(h.FindPath("/app")[0].Link).RewriteURL = "/"
 			},
 			path: []string{"/app"},
 			expected: `
@@ -200,7 +201,7 @@ d1.local#/ path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/app").Link).RewriteURL = "/other"
+				b.FindBackendPath(h.FindPath("/app")[0].Link).RewriteURL = "/other"
 			},
 			path: []string{"/app"},
 			expected: `
@@ -208,8 +209,8 @@ d1.local#/ path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/app").Link).RewriteURL = "/other/"
-				b.FindBackendPath(h.FindPath("/app/sub").Link).RewriteURL = "/other/"
+				b.FindBackendPath(h.FindPath("/app")[0].Link).RewriteURL = "/other/"
+				b.FindBackendPath(h.FindPath("/app/sub")[0].Link).RewriteURL = "/other/"
 			},
 			path: []string{"/app", "/app/sub"},
 			expected: `
@@ -218,9 +219,9 @@ d1.local#/ path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/path1").Link).RewriteURL = "/sub1"
-				b.FindBackendPath(h.FindPath("/path2").Link).RewriteURL = "/sub2"
-				b.FindBackendPath(h.FindPath("/path3").Link).RewriteURL = "/sub2"
+				b.FindBackendPath(h.FindPath("/path1")[0].Link).RewriteURL = "/sub1"
+				b.FindBackendPath(h.FindPath("/path2")[0].Link).RewriteURL = "/sub2"
+				b.FindBackendPath(h.FindPath("/path3")[0].Link).RewriteURL = "/sub2"
 			},
 			path: []string{"/path1", "/path2", "/path3"},
 			expected: `
@@ -240,7 +241,7 @@ d1.local#/path1 path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/app").Link).SSLRedirect = true
+				b.FindBackendPath(h.FindPath("/app")[0].Link).SSLRedirect = true
 			},
 			path: []string{"/app", "/path"},
 			expected: `
@@ -252,7 +253,7 @@ d1.local#/path1 path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/app").Link).SSLRedirect = true
+				b.FindBackendPath(h.FindPath("/app")[0].Link).SSLRedirect = true
 				g.SSL.RedirectCode = 301
 			},
 			path: []string{"/app", "/path"},
@@ -265,10 +266,10 @@ d1.local#/path1 path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/app").Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
-				b.FindBackendPath(h.FindPath("/api").Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
-				b.FindBackendPath(h.FindPath("/path").Link).AllowedIPHTTP.Rule = []string{"192.168.95.0/24"}
-				b.FindBackendPath(h.FindPath("/path").Link).AllowedIPHTTP.Exception = []string{"192.168.95.11"}
+				b.FindBackendPath(h.FindPath("/app")[0].Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.FindBackendPath(h.FindPath("/api")[0].Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.FindBackendPath(h.FindPath("/path")[0].Link).AllowedIPHTTP.Rule = []string{"192.168.95.0/24"}
+				b.FindBackendPath(h.FindPath("/path")[0].Link).AllowedIPHTTP.Exception = []string{"192.168.95.11"}
 			},
 			path: []string{"/app", "/api", "/path"},
 			expected: `
@@ -291,24 +292,22 @@ d1.local#/api path02`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/app").Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
-				b.FindBackendPath(h.FindPath("/api").Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
-				b.FindBackendPath(h.FindPath("/path").Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
-				b.FindBackendPath(h.FindPath("/api/v[0-9]+/").Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
-				b.FindBackendPath(h.FindPath("/").Link).AllowedIPHTTP.Rule = []string{"172.17.0.0/16"}
-				h.FindPath("/app").Match = hatypes.MatchExact
-				h.FindPath("/path").Match = hatypes.MatchPrefix
-				h.FindPath("/api/v[0-9]+/").Match = hatypes.MatchRegex
+				b.FindBackendPath(h.FindPath("/app")[0].Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.FindBackendPath(h.FindPath("/api")[0].Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.FindBackendPath(h.FindPath("/path")[0].Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.FindBackendPath(h.FindPath("/api/v[0-9]+/")[0].Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
+				b.FindBackendPath(h.FindPath("/")[0].Link).AllowedIPHTTP.Rule = []string{"172.17.0.0/16"}
 			},
-			path: []string{"/", "/app", "/api", "/path", "/api/v[0-9]+/"},
+			path:  []string{"/", "/app", "/api", "/path", "/api/v[0-9]+/"},
+			match: []hatypes.MatchType{hatypes.MatchBegin, hatypes.MatchExact, hatypes.MatchBegin, hatypes.MatchPrefix, hatypes.MatchRegex},
 			expected: `
     # path01 = d1.local/
     # path03 = d1.local/api
     # path05 = d1.local/api/v[0-9]+/
     # path02 = d1.local/app
     # path04 = d1.local/path
-    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpath__prefix_01.map)
-    http-request set-var(txn.pathID) var(req.base),map_str(/etc/haproxy/maps/_back_d1_app_8080_idpath__exact_02.map) if !{ var(txn.pathID) -m found }
+    http-request set-var(txn.pathID) var(req.base),map_str(/etc/haproxy/maps/_back_d1_app_8080_idpath__exact.map)
+    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpath__prefix_02.map) if !{ var(txn.pathID) -m found }
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map) if !{ var(txn.pathID) -m found }
     http-request set-var(txn.pathID) var(req.base),map_reg(/etc/haproxy/maps/_back_d1_app_8080_idpath__regex.map) if !{ var(txn.pathID) -m found }
     acl allow_rule_src0 src 172.17.0.0/16
@@ -317,10 +316,10 @@ d1.local#/api path02`,
     http-request deny if { var(txn.pathID) path02 path03 path04 path05 } !allow_rule_src1`,
 			expFronts: "<<frontends-default-match-4>>",
 			expCheck: map[string]string{
-				"_back_d1_app_8080_idpath__prefix_01.map": `
-d1.local#/path path04`,
-				"_back_d1_app_8080_idpath__exact_02.map": `
+				"_back_d1_app_8080_idpath__exact.map": `
 d1.local#/app path02`,
+				"_back_d1_app_8080_idpath__prefix_02.map": `
+d1.local#/path path04`,
 				"_back_d1_app_8080_idpath__begin.map": `
 d1.local#/api path03
 d1.local#/ path01`,
@@ -330,10 +329,10 @@ d1.local#/ path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/app1").Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8"}
-				b.FindBackendPath(h.FindPath("/app1").Link).AllowedIPHTTP.Exception = []string{"10.0.110.0/24"}
-				b.FindBackendPath(h.FindPath("/app2").Link).DeniedIPHTTP.Rule = []string{"192.168.95.0/24"}
-				b.FindBackendPath(h.FindPath("/app2").Link).DeniedIPHTTP.Exception = []string{"192.168.95.128/28"}
+				b.FindBackendPath(h.FindPath("/app1")[0].Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8"}
+				b.FindBackendPath(h.FindPath("/app1")[0].Link).AllowedIPHTTP.Exception = []string{"10.0.110.0/24"}
+				b.FindBackendPath(h.FindPath("/app2")[0].Link).DeniedIPHTTP.Rule = []string{"192.168.95.0/24"}
+				b.FindBackendPath(h.FindPath("/app2")[0].Link).DeniedIPHTTP.Exception = []string{"192.168.95.128/28"}
 			},
 			path: []string{"/app1", "/app2", "/app3"},
 			expected: `
@@ -357,10 +356,10 @@ d1.local#/app1 path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/app1").Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8"}
-				b.FindBackendPath(h.FindPath("/app2").Link).AllowedIPHTTP.Exception = []string{"10.0.110.0/24"}
-				b.FindBackendPath(h.FindPath("/app3").Link).DeniedIPHTTP.Rule = []string{"192.168.95.0/24"}
-				b.FindBackendPath(h.FindPath("/app4").Link).DeniedIPHTTP.Exception = []string{"192.168.95.128/28"}
+				b.FindBackendPath(h.FindPath("/app1")[0].Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8"}
+				b.FindBackendPath(h.FindPath("/app2")[0].Link).AllowedIPHTTP.Exception = []string{"10.0.110.0/24"}
+				b.FindBackendPath(h.FindPath("/app3")[0].Link).DeniedIPHTTP.Rule = []string{"192.168.95.0/24"}
+				b.FindBackendPath(h.FindPath("/app4")[0].Link).DeniedIPHTTP.Exception = []string{"192.168.95.128/28"}
 			},
 			path: []string{"/app1", "/app2", "/app3", "/app4"},
 			expected: `
@@ -387,7 +386,7 @@ d1.local#/app1 path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/path").Link).AllowedIPHTTP.Rule = []string{
+				b.FindBackendPath(h.FindPath("/path")[0].Link).AllowedIPHTTP.Rule = []string{
 					"1.1.1.1", "1.1.1.2", "1.1.1.3", "1.1.1.4", "1.1.1.5",
 					"1.1.1.6", "1.1.1.7", "1.1.1.8", "1.1.1.9", "1.1.1.10",
 					"1.1.1.11",
@@ -443,8 +442,8 @@ d1.local#/api path02`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/").Link).MaxBodySize = 1024
-				b.FindBackendPath(h.FindPath("/app").Link).MaxBodySize = 1024
+				b.FindBackendPath(h.FindPath("/")[0].Link).MaxBodySize = 1024
+				b.FindBackendPath(h.FindPath("/app")[0].Link).MaxBodySize = 1024
 			},
 			path: []string{"/", "/app"},
 			expected: `
@@ -452,7 +451,7 @@ d1.local#/api path02`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/app").Link).MaxBodySize = 2048
+				b.FindBackendPath(h.FindPath("/app")[0].Link).MaxBodySize = 2048
 			},
 			path: []string{"/", "/app"},
 			expected: `
@@ -488,7 +487,7 @@ d1.local#/ path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				auth := &b.FindBackendPath(h.FindPath("/app1").Link).AuthExternal
+				auth := &b.FindBackendPath(h.FindPath("/app1")[0].Link).AuthExternal
 				auth.AuthBackendName = "_auth_4001"
 				auth.Path = "/oauth2/auth"
 			},
@@ -503,7 +502,7 @@ d1.local#/ path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				auth := &b.FindBackendPath(h.FindPath("/app1").Link).AuthExternal
+				auth := &b.FindBackendPath(h.FindPath("/app1")[0].Link).AuthExternal
 				auth.AuthBackendName = "_auth_4001"
 				auth.Path = "/oauth2/auth"
 				auth.SignIn = "http://auth.local/auth1"
@@ -775,8 +774,12 @@ d1.local#/ path01`,
 		b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 		b.Endpoints = []*hatypes.Endpoint{endpointS1}
 		h = c.config.Hosts().AcquireHost("d1.local")
-		for _, p := range test.path {
-			h.AddPath(b, p, hatypes.MatchBegin)
+		for j, p := range test.path {
+			match := hatypes.MatchBegin
+			if test.match != nil {
+				match = test.match[j]
+			}
+			h.AddPath(b, p, match)
 		}
 		test.doconfig(c.config.Global(), h, b)
 
@@ -1090,7 +1093,7 @@ func TestPathIDsSplit(t *testing.T) {
 	for i := 1; i <= max; i++ {
 		h := c.config.Hosts().AcquireHost(fmt.Sprintf("h%02d.local", i))
 		h.AddPath(b, "/", hatypes.MatchBegin)
-		path := b.FindBackendPath(h.FindPath("/").Link)
+		path := b.FindBackendPath(h.FindPath("/")[0].Link)
 		path.SSLRedirect = true
 		path.AllowedIPHTTP.Rule = []string{"10.0.0.0/8"}
 		if i < max {
@@ -1538,8 +1541,8 @@ func TestInstanceFrontingProxy(t *testing.T) {
 		h = c.config.Hosts().AcquireHost(test.domain)
 		h.AddPath(b, "/", hatypes.MatchBegin)
 		b.Endpoints = []*hatypes.Endpoint{endpointS1}
-		b.FindBackendPath(h.FindPath("/").Link).SSLRedirect = test.sslRedirect
-		b.FindBackendPath(h.FindPath("/").Link).HSTS = hatypes.HSTS{
+		b.FindBackendPath(h.FindPath("/")[0].Link).SSLRedirect = test.sslRedirect
+		b.FindBackendPath(h.FindPath("/")[0].Link).HSTS = hatypes.HSTS{
 			Enabled:    true,
 			MaxAge:     15768000,
 			Subdomains: true,
@@ -1969,9 +1972,9 @@ func TestInstanceDefaultHost(t *testing.T) {
 	hdef.AddPath(b, "/", hatypes.MatchBegin)
 	hdef.AddPath(b, "/app1", hatypes.MatchExact)
 	hdef.AddPath(b, "/app2", hatypes.MatchPrefix)
-	b.FindBackendPath(hdef.FindPath("/").Link).SSLRedirect = true
-	b.FindBackendPath(hdef.FindPath("/app1").Link).RewriteURL = "/"
-	b.FindBackendPath(hdef.FindPath("/app2").Link).MaxBodySize = 32768
+	b.FindBackendPath(hdef.FindPath("/")[0].Link).SSLRedirect = true
+	b.FindBackendPath(hdef.FindPath("/app1")[0].Link).RewriteURL = "/"
+	b.FindBackendPath(hdef.FindPath("/app2")[0].Link).MaxBodySize = 32768
 
 	b = c.config.Backends().AcquireBackend("d2", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
@@ -1982,9 +1985,9 @@ func TestInstanceDefaultHost(t *testing.T) {
 	h.AddPath(b, "/app11", hatypes.MatchBegin)
 	hdef.AddPath(b, "/app12", hatypes.MatchExact)
 	hdef.AddPath(b, "/app13", hatypes.MatchPrefix)
-	b.FindBackendPath(h.FindPath("/app11").Link).SSLRedirect = true
-	b.FindBackendPath(hdef.FindPath("/app12").Link).RewriteURL = "/"
-	b.FindBackendPath(hdef.FindPath("/app13").Link).MaxBodySize = 65536
+	b.FindBackendPath(h.FindPath("/app11")[0].Link).SSLRedirect = true
+	b.FindBackendPath(hdef.FindPath("/app12")[0].Link).RewriteURL = "/"
+	b.FindBackendPath(hdef.FindPath("/app13")[0].Link).MaxBodySize = 65536
 
 	c.Update()
 	c.checkConfig(`
@@ -1996,8 +1999,8 @@ backend d1_app_8080
     # path01 = <default>/
     # path02 = <default>/app1
     # path03 = <default>/app2
-    http-request set-var(txn.pathID) var(req.path),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__prefix_01.map)
-    http-request set-var(txn.pathID) var(req.path),map_str(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__exact_02.map) if !{ var(txn.pathID) -m found }
+    http-request set-var(txn.pathID) var(req.path),map_str(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__exact.map)
+    http-request set-var(txn.pathID) var(req.path),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__prefix_02.map) if !{ var(txn.pathID) -m found }
     http-request set-var(txn.pathID) var(req.path),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__begin.map) if !{ var(txn.pathID) -m found }
     http-request redirect scheme https if !https-request { var(txn.pathID) path01 }
     http-request use-service lua.send-413 if { var(txn.pathID) path03 } { req.body_size,sub(32768) gt 0 }
@@ -2027,8 +2030,8 @@ frontend _front_http
     http-request set-var(txn.namespace) str(-) if !{ var(txn.namespace) -m found }
     <<http-headers>>
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
-    http-request set-var(req.defaultbackend) var(req.path),map_dir(/etc/haproxy/maps/_front_defaulthost__prefix_01.map) if !{ var(req.backend) -m found }
-    http-request set-var(req.defaultbackend) var(req.path),map_str(/etc/haproxy/maps/_front_defaulthost__exact_02.map) if !{ var(req.backend) -m found } !{ var(req.defaultbackend) -m found }
+    http-request set-var(req.defaultbackend) var(req.path),map_str(/etc/haproxy/maps/_front_defaulthost__exact.map) if !{ var(req.backend) -m found }
+    http-request set-var(req.defaultbackend) var(req.path),map_dir(/etc/haproxy/maps/_front_defaulthost__prefix_02.map) if !{ var(req.backend) -m found } !{ var(req.defaultbackend) -m found }
     http-request set-var(req.defaultbackend) var(req.path),lower,map_beg(/etc/haproxy/maps/_front_defaulthost__begin.map) if !{ var(req.backend) -m found } !{ var(req.defaultbackend) -m found }
     use_backend %[var(req.backend)] if { var(req.backend) -m found }
     use_backend %[var(req.defaultbackend)]
@@ -2038,8 +2041,8 @@ frontend _front_https
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
     <<set-req-base>>
     http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map)
-    http-request set-var(req.defaultbackend) var(req.path),map_dir(/etc/haproxy/maps/_front_defaulthost__prefix_01.map) if !{ var(req.hostbackend) -m found }
-    http-request set-var(req.defaultbackend) var(req.path),map_str(/etc/haproxy/maps/_front_defaulthost__exact_02.map) if !{ var(req.hostbackend) -m found } !{ var(req.defaultbackend) -m found }
+    http-request set-var(req.defaultbackend) var(req.path),map_str(/etc/haproxy/maps/_front_defaulthost__exact.map) if !{ var(req.hostbackend) -m found }
+    http-request set-var(req.defaultbackend) var(req.path),map_dir(/etc/haproxy/maps/_front_defaulthost__prefix_02.map) if !{ var(req.hostbackend) -m found } !{ var(req.defaultbackend) -m found }
     http-request set-var(req.defaultbackend) var(req.path),lower,map_beg(/etc/haproxy/maps/_front_defaulthost__begin.map) if !{ var(req.hostbackend) -m found } !{ var(req.defaultbackend) -m found }
     http-request set-var(txn.namespace) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_namespace__begin.map)
     http-request set-var(txn.namespace) str(-) if !{ var(txn.namespace) -m found }
@@ -2062,17 +2065,17 @@ d2.local#/app11 d2
 	c.checkMap("_front_https_host__begin.map", `
 d2.local#/app11 d2_app_8080
 `)
-	c.checkMap("_front_defaulthost__prefix_01.map", `
+	c.checkMap("_front_defaulthost__prefix_02.map", `
 /app2 d1_app_8080
 /app13 d2_app_8080`)
-	c.checkMap("_front_defaulthost__exact_02.map", `
-/app12 d2_app_8080
-/app1 d1_app_8080`)
+	c.checkMap("_front_defaulthost__exact.map", `
+/app1 d1_app_8080
+/app12 d2_app_8080`)
 	c.checkMap("_front_defaulthost__begin.map", `
 / d1_app_8080`)
-	c.checkMap("_back_d1_app_8080_idpathdef__exact_02.map", `
+	c.checkMap("_back_d1_app_8080_idpathdef__exact.map", `
 /app1 path02`)
-	c.checkMap("_back_d1_app_8080_idpathdef__prefix_01.map", `
+	c.checkMap("_back_d1_app_8080_idpathdef__prefix_02.map", `
 /app2 path03`)
 	c.checkMap("_back_d1_app_8080_idpathdef__begin.map", `
 / path01`)
@@ -2204,7 +2207,7 @@ func TestInstanceFrontend(t *testing.T) {
 	b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 	h = c.config.Hosts().AcquireHost("d1.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
-	b.FindBackendPath(h.FindPath("/").Link).SSLRedirect = true
+	b.FindBackendPath(h.FindPath("/")[0].Link).SSLRedirect = true
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 	h.VarNamespace = true
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/d1.pem"
@@ -2213,7 +2216,7 @@ func TestInstanceFrontend(t *testing.T) {
 	b = c.config.Backends().AcquireBackend("d2", "app", "8080")
 	h = c.config.Hosts().AcquireHost("d2.local")
 	h.AddPath(b, "/app", hatypes.MatchPrefix)
-	b.FindBackendPath(h.FindPath("/app").Link).SSLRedirect = true
+	b.FindBackendPath(h.FindPath("/app")[0].Link).SSLRedirect = true
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/d2.pem"
 	h.TLS.TLSHash = "2"
@@ -2586,12 +2589,12 @@ func TestInstanceSomePaths(t *testing.T) {
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
 	h.TLS.TLSHash = "0"
 	h.AddPath(b, "/", hatypes.MatchBegin)
-	b.FindBackendPath(h.FindPath("/").Link).SSLRedirect = true
+	b.FindBackendPath(h.FindPath("/")[0].Link).SSLRedirect = true
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 
 	b = c.config.Backends().AcquireBackend("d", "app1", "8080")
 	h.AddPath(b, "/app", hatypes.MatchBegin)
-	b.FindBackendPath(h.FindPath("/app").Link).SSLRedirect = true
+	b.FindBackendPath(h.FindPath("/app")[0].Link).SSLRedirect = true
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 
 	b = c.config.Backends().AcquireBackend("d", "app2", "8080")
@@ -2916,7 +2919,7 @@ func TestInstanceSSLPassthrough(t *testing.T) {
 	b = c.config.Backends().AcquireBackend("d2", "app", "8080")
 	h = c.config.Hosts().AcquireHost("d2.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
-	b.FindBackendPath(h.FindPath("/").Link).SSLRedirect = true
+	b.FindBackendPath(h.FindPath("/")[0].Link).SSLRedirect = true
 	b.Endpoints = []*hatypes.Endpoint{endpointS31}
 	// TODO should ingress converter configure mode tcp?
 	b.ModeTCP = true
@@ -3711,7 +3714,7 @@ userlist default_auth2
 		for _, list := range test.lists {
 			c.config.Userlists().Replace(list.name, list.users)
 		}
-		b.FindBackendPath(h.FindPath("/admin").Link).AuthHTTP = hatypes.AuthHTTP{
+		b.FindBackendPath(h.FindPath("/admin")[0].Link).AuthHTTP = hatypes.AuthHTTP{
 			UserlistName: test.listname,
 			Realm:        test.realm,
 		}
@@ -4009,7 +4012,7 @@ func TestModSecurity(t *testing.T) {
 			test.path = "/"
 		}
 		h.AddPath(b, test.path, hatypes.MatchBegin)
-		b.FindBackendPath(h.FindPath(test.path).Link).WAF = hatypes.WAF{
+		b.FindBackendPath(h.FindPath(test.path)[0].Link).WAF = hatypes.WAF{
 			Module: test.waf,
 			Mode:   test.wafmode,
 		}
@@ -4472,8 +4475,8 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     bind :80
     <<set-req-base>>
     <<http-headers>>
-    http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_host__prefix_01.map)
-    http-request set-var(req.backend) var(req.base),map_str(/etc/haproxy/maps/_front_http_host__exact_02.map) if !{ var(req.backend) -m found }
+    http-request set-var(req.backend) var(req.base),map_str(/etc/haproxy/maps/_front_http_host__exact.map)
+    http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_host__prefix_02.map) if !{ var(req.backend) -m found }
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map) if !{ var(req.backend) -m found }
     http-request set-var(req.backend) var(req.base),map_reg(/etc/haproxy/maps/_front_http_host__regex.map) if !{ var(req.backend) -m found }
     use_backend %[var(req.backend)] if { var(req.backend) -m found }`,
@@ -4496,8 +4499,8 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     mode http
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
     <<set-req-base>>
-    http-request set-var(req.hostbackend) var(req.base),map_dir(/etc/haproxy/maps/_front_https_host__prefix_01.map)
-    http-request set-var(req.hostbackend) var(req.base),map_str(/etc/haproxy/maps/_front_https_host__exact_02.map) if !{ var(req.hostbackend) -m found }
+    http-request set-var(req.hostbackend) var(req.base),map_str(/etc/haproxy/maps/_front_https_host__exact.map)
+    http-request set-var(req.hostbackend) var(req.base),map_dir(/etc/haproxy/maps/_front_https_host__prefix_02.map) if !{ var(req.hostbackend) -m found }
     http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map) if !{ var(req.hostbackend) -m found }
     http-request set-var(req.hostbackend) var(req.base),map_reg(/etc/haproxy/maps/_front_https_host__regex.map) if !{ var(req.hostbackend) -m found }
     <<https-headers>>

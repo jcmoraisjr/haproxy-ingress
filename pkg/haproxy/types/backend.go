@@ -375,6 +375,11 @@ func (p *BackendPath) Path() string {
 	return p.Link.path
 }
 
+// Match ...
+func (p *BackendPath) Match() MatchType {
+	return p.Link.match
+}
+
 // String ...
 func (b *TCPBackend) String() string {
 	return fmt.Sprintf("%+v", *b)

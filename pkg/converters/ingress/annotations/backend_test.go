@@ -1634,8 +1634,8 @@ func TestRewriteURL(t *testing.T) {
 			ann = map[string]string{ingtypes.BackRewriteTarget: test.input}
 		}
 		d := c.createBackendData("default/app", &test.source, map[string]string{}, map[string]string{})
-		d.backend.AddBackendPath(hatypes.CreatePathLink("d1.local", "/"))
-		d.mapper.AddAnnotations(&test.source, hatypes.CreatePathLink("d1.local", "/"), ann)
+		d.backend.AddBackendPath(hatypes.CreatePathLink("d1.local", "/", hatypes.MatchBegin))
+		d.mapper.AddAnnotations(&test.source, hatypes.CreatePathLink("d1.local", "/", hatypes.MatchBegin), ann)
 		c.createUpdater().buildBackendRewriteURL(d)
 		actual := d.backend.Paths[0].RewriteURL
 		c.compareObjects("rewrite", i, actual, test.expected)
