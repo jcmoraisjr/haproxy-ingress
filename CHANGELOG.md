@@ -27,7 +27,7 @@ Unsupported:
 **Highlights of this version**
 
 * HAProxy upgrade from 2.2 to 2.3.
-* Usage of Ingress v1 API
+* Ingress API upgrade from `networking.k8s.io/v1beta1` to `networking.k8s.io/v1`.
 * TCP services using ingress resources - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#tcp-services)
 * External authetication - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#auth-external)
 * Several new custom configurations - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#configuration-snippet)
@@ -77,11 +77,7 @@ New features and improvements:
 * Add custom-tcp configuration [#757](https://github.com/jcmoraisjr/haproxy-ingress/pull/757) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#configuration-snippet)
   * Configuration keys:
     * `config-tcp`
-* Add server redirect options [#754](https://github.com/jcmoraisjr/haproxy-ingress/pull/754) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#server-redirect)
-  * Configuration keys:
-    * `server-redirect`
-    * `server-redirect-code`
-    * `server-redirect-regex`
+* Add server redirect options [#754](https://github.com/jcmoraisjr/haproxy-ingress/pull/754) (jcmoraisjr)
 * Add ingress based TCP service option [#750](https://github.com/jcmoraisjr/haproxy-ingress/pull/750) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#tcp-services)
   * Configuration keys:
     * `config-tcp-service`
@@ -103,6 +99,38 @@ Fixes:
 Others:
 
 * Duplicate Travis CI to Github Actions [#732](https://github.com/jcmoraisjr/haproxy-ingress/pull/732) (rikatz)
+
+**v0.13-snapshot.2**
+
+New features and improvements:
+
+* Add non root path support on ssl-passthrough [#767](https://github.com/jcmoraisjr/haproxy-ingress/pull/767) (jcmoraisjr)
+* Allow default crt on tcp service [#766](https://github.com/jcmoraisjr/haproxy-ingress/pull/766) (jcmoraisjr)
+* Allow to configure a list of annotations prefix [#769](https://github.com/jcmoraisjr/haproxy-ingress/pull/769) (jcmoraisjr)
+* Add new redirect options [#776](https://github.com/jcmoraisjr/haproxy-ingress/pull/776) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#redirect)
+  * Configuration keys:
+    * `redirect-from`
+    * `redirect-from-code`
+    * `redirect-from-regex`
+    * `redirect-to`
+    * `redirect-to-code`
+* Accept header names in auth and oauth-headers [#780](https://github.com/jcmoraisjr/haproxy-ingress/pull/780) (jcmoraisjr)
+* Add the ability to use the same host+path more than once [#779](https://github.com/jcmoraisjr/haproxy-ingress/pull/779) (jcmoraisjr)
+* Add option to copy headers to and from auth external [#782](https://github.com/jcmoraisjr/haproxy-ingress/pull/782) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#auth-external)
+  * Configuration keys:
+    * `auth-headers-fail`
+    * `auth-headers-request`
+    * `auth-headers-succeed`
+    * `auth-method`
+* Update embedded haproxy from 2.3.9 to 2.3.10 [0a76276](https://github.com/jcmoraisjr/haproxy-ingress/commit/0a762765df04780b76e4d043739ca3b4a5bd965d) (Joao Morais)
+* Update golang from 1.15.11 to 1.15.12 [2dc9af0](https://github.com/jcmoraisjr/haproxy-ingress/commit/2dc9af09d690f7d83fcad2c2e0897b51ece582bd) (Joao Morais)
+* Update client-go from v0.20.2 to v0.20.7 [56a9328](https://github.com/jcmoraisjr/haproxy-ingress/commit/56a9328fb8490d3cc12e3462c12062ecfc032408) (Joao Morais)
+
+Fixes:
+
+* Fix reading of needFullSync status [#772](https://github.com/jcmoraisjr/haproxy-ingress/pull/772) (jcmoraisjr)
+* Fix path-type conflict warning [#778](https://github.com/jcmoraisjr/haproxy-ingress/pull/778) (jcmoraisjr)
+* Fix per path filter of default host rules [#777](https://github.com/jcmoraisjr/haproxy-ingress/pull/777) (jcmoraisjr)
 
 ## v0.12.3
 
