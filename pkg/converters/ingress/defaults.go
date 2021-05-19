@@ -38,6 +38,10 @@ func createDefaults() map[string]string {
 		types.HostSSLOptionsHost:  "",
 		types.HostTLSALPN:         "h2,http/1.1",
 		//
+		types.BackAuthHeadersFail:        "*",
+		types.BackAuthHeadersRequest:     "*",
+		types.BackAuthHeadersSucceed:     "*",
+		types.BackAuthMethod:             "GET",
 		types.BackBackendServerNaming:    "sequence",
 		types.BackBackendServerSlotsInc:  "1",
 		types.BackSlotsMinFree:           "6",

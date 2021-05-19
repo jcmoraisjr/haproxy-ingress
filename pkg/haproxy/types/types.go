@@ -742,11 +742,15 @@ type Cookie struct {
 
 // AuthExternal ...
 type AuthExternal struct {
-	Allow           string
+	AllowedPath     string
 	AuthBackendName string
-	Headers         map[string]string
-	Path            string
-	SignIn          string
+	AuthPath        string
+	HeadersFail     []string
+	HeadersRequest  []string
+	HeadersSucceed  []string
+	HeadersVars     map[string]string
+	Method          string
+	RedirectOnFail  string
 }
 
 // AuthHTTP ...
