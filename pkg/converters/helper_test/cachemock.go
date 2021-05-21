@@ -39,6 +39,9 @@ type CacheMock struct {
 	IngList       []*networking.Ingress
 	IngClassList  []*networking.IngressClass
 	SvcList       []*api.Service
+	GwList        []*gateway.Gateway
+	GwClassList   []*gateway.GatewayClass
+	HTTPRouteList []*gateway.HTTPRoute
 	EpList        map[string]*api.Endpoints
 	ConfigMapList map[string]*api.ConfigMap
 	TermPodList   map[string][]*api.Pod
@@ -103,12 +106,26 @@ func (c *CacheMock) GetGateway(gatewayName string) (*gateway.Gateway, error) {
 
 // GetGatewayList ...
 func (c *CacheMock) GetGatewayList() ([]*gateway.Gateway, error) {
-	return nil, nil
+	return c.GwList, nil
 }
 
 // GetHTTPRouteList ...
 func (c *CacheMock) GetHTTPRouteList(match map[string]string) ([]*gateway.HTTPRoute, error) {
-	return nil, nil
+	routeMatch := func(route *gateway.HTTPRoute) bool {
+		for k, v := range match {
+			if route.Labels[k] != v {
+				return false
+			}
+		}
+		return true
+	}
+	var routes []*gateway.HTTPRoute
+	for _, route := range c.HTTPRouteList {
+		if routeMatch(route) {
+			routes = append(routes, route)
+		}
+	}
+	return routes, nil
 }
 
 // GetService ...

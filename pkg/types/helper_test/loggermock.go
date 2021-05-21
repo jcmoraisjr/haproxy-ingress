@@ -73,10 +73,24 @@ func (l *LoggerMock) CompareLogging(expected string) {
 	l.Logging = []string{}
 }
 
+// CompareLoggingID ...
+func (l *LoggerMock) CompareLoggingID(id string, expected string) {
+	l.compareTextID(id, strings.Join(l.Logging, "\n"), expected)
+	l.Logging = []string{}
+}
+
 func (l *LoggerMock) compareText(actual, expected string) {
 	txt1 := "\n" + strings.Trim(expected, "\n")
 	txt2 := "\n" + strings.Trim(actual, "\n")
 	if txt1 != txt2 {
 		l.T.Error(diff.Diff(txt1, txt2))
+	}
+}
+
+func (l *LoggerMock) compareTextID(id string, actual, expected string) {
+	txt1 := "\n" + strings.Trim(expected, "\n")
+	txt2 := "\n" + strings.Trim(actual, "\n")
+	if txt1 != txt2 {
+		l.T.Errorf("diff on %s:\n%s", id, diff.Diff(txt1, txt2))
 	}
 }

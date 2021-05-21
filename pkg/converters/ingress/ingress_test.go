@@ -18,13 +18,11 @@ package ingress
 
 import (
 	"reflect"
-	"sort"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/kylelemons/godebug/diff"
-	yaml "gopkg.in/yaml.v2"
 	api "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -2532,11 +2530,6 @@ func (c *testConfig) createObject(cfg string) runtime.Object {
 	return obj
 }
 
-func _yamlMarshal(in interface{}) string {
-	out, _ := yaml.Marshal(in)
-	return string(out)
-}
-
 func (c *testConfig) compareText(actual, expected string) {
 	txt1 := "\n" + strings.Trim(expected, "\n")
 	txt2 := "\n" + strings.Trim(actual, "\n")
@@ -2570,144 +2563,23 @@ func (u *updaterMock) UpdateBackendConfig(backend *hatypes.Backend, mapper *anno
 	}
 }
 
-type (
-	tcpServiceMock struct {
-		Backends       []string
-		DefaultBackend string
-		Port           int
-		ProxyProt      bool
-		TLS            tlsMock
-	}
-)
-
-func convertTCPService(hatcpserviceports ...*hatypes.TCPServicePort) []tcpServiceMock {
-	tcpServices := []tcpServiceMock{}
-	for _, hasvc := range hatcpserviceports {
-		var backends []string
-		for _, h := range hasvc.Hosts() {
-			backends = append(backends, h.Backend.String())
-		}
-		sort.Strings(backends)
-		var defaultBackend string
-		if hasvc.DefaultHost() != nil {
-			defaultBackend = hasvc.DefaultHost().Backend.String()
-		}
-		svc := tcpServiceMock{
-			Backends:       backends,
-			DefaultBackend: defaultBackend,
-			Port:           hasvc.Port(),
-			ProxyProt:      hasvc.ProxyProt,
-			TLS: tlsMock{
-				TLSFilename: hasvc.TLS.TLSFilename,
-			},
-		}
-		tcpServices = append(tcpServices, svc)
-	}
-	return tcpServices
-}
-
 func (c *testConfig) compareConfigTCPService(expected string) {
-	c.compareText(_yamlMarshal(convertTCPService(c.hconfig.TCPServices().BuildSortedItems()...)), expected)
-}
-
-type (
-	pathMock struct {
-		Path      string
-		Match     string `yaml:",omitempty"`
-		BackendID string `yaml:"backend"`
-	}
-	timeoutMock struct {
-		Client string `yaml:",omitempty"`
-	}
-	tlsMock struct {
-		TLSFilename string `yaml:",omitempty"`
-	}
-	hostMock struct {
-		Hostname     string
-		Paths        []pathMock
-		RootRedirect string  `yaml:",omitempty"`
-		TLS          tlsMock `yaml:",omitempty"`
-	}
-)
-
-func convertHost(hafronts ...*hatypes.Host) []hostMock {
-	hosts := []hostMock{}
-	for _, f := range hafronts {
-		paths := []pathMock{}
-		for _, p := range f.Paths {
-			var match string
-			if p.Match != hatypes.MatchBegin {
-				match = string(p.Match)
-			}
-			paths = append(paths, pathMock{Path: p.Path, Match: match, BackendID: p.Backend.ID})
-		}
-		hosts = append(hosts, hostMock{
-			Hostname:     f.Hostname,
-			Paths:        paths,
-			RootRedirect: f.RootRedirect,
-			TLS:          tlsMock{TLSFilename: f.TLS.TLSFilename},
-		})
-	}
-	return hosts
+	c.compareText(conv_helper.MarshalTCPServices(c.hconfig.TCPServices().BuildSortedItems()...), expected)
 }
 
 func (c *testConfig) compareConfigFront(expected string) {
-	c.compareText(_yamlMarshal(convertHost(c.hconfig.Hosts().BuildSortedItems()...)), expected)
+	c.compareText(conv_helper.MarshalHosts(c.hconfig.Hosts().BuildSortedItems()...), expected)
 }
 
 func (c *testConfig) compareConfigDefaultFront(expected string) {
 	host := c.hconfig.Hosts().DefaultHost()
 	if host != nil {
-		c.compareText(_yamlMarshal(convertHost(host)[0]), expected)
+		c.compareText(conv_helper.MarshalHost(host), expected)
 	} else {
 		c.compareText("[]", expected)
 	}
 }
 
-type (
-	endpointMock struct {
-		IP    string
-		Port  int
-		Drain bool `yaml:",omitempty"`
-	}
-	backendPathMock struct {
-		Path        string
-		Match       string
-		MaxBodySize int64
-	}
-	backendMock struct {
-		ID               string
-		Endpoints        []endpointMock    `yaml:",omitempty"`
-		Paths            []backendPathMock `yaml:",omitempty"`
-		BalanceAlgorithm string            `yaml:",omitempty"`
-		MaxConnServer    int               `yaml:",omitempty"`
-	}
-)
-
-func convertBackend(habackends ...*hatypes.Backend) []backendMock {
-	backends := []backendMock{}
-	for _, b := range habackends {
-		endpoints := []endpointMock{}
-		for _, e := range b.Endpoints {
-			endpoints = append(endpoints, endpointMock{IP: e.IP, Port: e.Port, Drain: e.Weight == 0})
-		}
-		var paths []backendPathMock
-		for _, p := range b.Paths {
-			if p.MaxBodySize > 0 {
-				paths = append(paths, backendPathMock{Path: p.Path(), Match: string(p.Match()), MaxBodySize: p.MaxBodySize})
-			}
-		}
-		backends = append(backends, backendMock{
-			ID:               b.ID,
-			Endpoints:        endpoints,
-			Paths:            paths,
-			BalanceAlgorithm: b.BalanceAlgorithm,
-			MaxConnServer:    b.Server.MaxConn,
-		})
-	}
-	return backends
-}
-
 func (c *testConfig) compareConfigBack(expected string) {
-	c.compareText(_yamlMarshal(convertBackend(c.hconfig.Backends().BuildSortedItems()...)), expected)
+	c.compareText(conv_helper.MarshalBackends(c.hconfig.Backends().BuildSortedItems()...), expected)
 }
