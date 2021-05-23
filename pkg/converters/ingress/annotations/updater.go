@@ -56,6 +56,7 @@ type updater struct {
 	cache   convtypes.Cache
 	tracker convtypes.Tracker
 	fakeCA  convtypes.CrtFile
+	srcIPs  map[string][]net.IP
 }
 
 type globalData struct {
@@ -220,6 +221,7 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) 
 	c.buildBackendProxyProtocol(data)
 	c.buildBackendRewriteURL(data)
 	c.buildBackendServerNaming(data)
+	c.buildBackendSourceAddressIntf(data)
 	c.buildBackendSSL(data)
 	c.buildBackendSSLRedirect(data)
 	c.buildBackendTimeout(data)

@@ -16,6 +16,7 @@ limitations under the License.
 
 package types
 
+// TCP Service Annotations
 const (
 	TCPConfigTCPService     = "config-tcp-service"
 	TCPTCPServiceLogFormat  = "tcp-service-log-format"
@@ -154,6 +155,7 @@ const (
 	BackSessionCookieShared    = "session-cookie-shared"
 	BackSessionCookieStrategy  = "session-cookie-strategy"
 	BackSessionCookieValue     = "session-cookie-value-strategy"
+	BackSourceAddressIntf      = "source-address-intf"
 	BackSSLCipherSuitesBackend = "ssl-cipher-suites-backend"
 	BackSSLCiphersBackend      = "ssl-ciphers-backend"
 	BackSSLFingerprintLower    = "ssl-fingerprint-lower"

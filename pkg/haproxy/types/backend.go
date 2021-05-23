@@ -94,6 +94,17 @@ func (b *Backend) addEndpoint(ip string, port int, targetRef string) *Endpoint {
 	return endpoint
 }
 
+func (b *Backend) fillSourceIPs() {
+	l := len(b.SourceIPs)
+	if l > 0 {
+		i := int(b.hash64 % uint64(l))
+		for _, ep := range b.Endpoints {
+			ep.SourceIP = b.SourceIPs[i].String()
+			i = (i + 1) % l
+		}
+	}
+}
+
 func (b *Backend) sortEndpoints(sortBy string) {
 	ep := b.Endpoints
 	switch sortBy {

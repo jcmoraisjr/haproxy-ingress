@@ -432,6 +432,7 @@ The table below describes all supported configuration keys.
 | [`session-cookie-strategy`](#affinity)               | [insert\|prefix\|rewrite]               | Backend |                    |
 | [`session-cookie-value-strategy`](#affinity)         | [server-name\|pod-uid]                  | Backend | `server-name`      |
 | [`slots-min-free`](#dynamic-scaling)                 | minimum number of free slots            | Backend | `0`                |
+| [`source-address-intf`](#source-address-intf)        | `<intf1>[,<intf2>...]`                  | Backend |                    |
 | [`ssl-cipher-suites`](#ssl-ciphers)                  | colon-separated list                    | Host    | [see description](#ssl-ciphers) |
 | [`ssl-cipher-suites-backend`](#ssl-ciphers)          | colon-separated list                    | Backend | [see description](#ssl-ciphers) |
 | [`ssl-ciphers`](#ssl-ciphers)                        | colon-separated list                    | Host    | [see description](#ssl-ciphers) |
@@ -2133,6 +2134,38 @@ Defines if the HAProxy backend/server endpoints should be configured with the
 service VIP/IPVS. If `false`, the default value, the endpoints will be used and
 HAProxy will load balance the requests between them. If defined as `true` the
 service's ClusterIP is used instead.
+
+---
+
+## Source Address Intf
+
+| Configuration key     | Scope     | Default | Since |
+|-----------------------|-----------|---------|-------|
+| `source-address-intf` | `Backend` |         | v0.13 |
+
+Configures a list of network interface names whose IPv4 address should be used as the source address for outgoing connections.
+
+* `source-address-intf`: Comma separated list of network interface names
+
+As the default behavior, HAProxy will leave the operating system choose the most apropriate address. However the same source address will be used, even if the network interface has more IP address or other interfaces can also reach the destination, leading to outgoing TCP port exaustion on deployments that needs more than 64k concurrent connections. Using more source IPs allows to bypass the maximum of 64k concurrent connections per instance.
+
+HAProxy Ingress will list all IPv4 from all provided interfaces, ignoring interfaces that cannot be found, does not have IPv4, or cannot list its IPs. The IP addresses will be distributed among all the servers/endpoints, where each distinct server will use an IP from the list as its source address for its outgoing connections. If there are more replicas than IPs, some IPs from the list will be used more than once. If there are more IPs than replicas, some of the IPs from the list will not be used in a particular backend, but can be used on others that shares the configuration. The IP distribution consistently starts on distinct positions on distinct backends, fairly distributing all the IPs from the list on workloads with a big amount of backends with one or so servers each. If all the interfaces failed to list IP address, HAProxy falls back to the default behavior and leaves the operating system to choose the source IP.
+
+Update also `/proc/sys/net/ipv4/ip_local_port_range` in the HAProxy hosts to allow each source IP use more than its default 28k ephemeral ports.
+
+{{% alert title="Note" %}}
+Neither HAProxy Ingress nor HAProxy will validate if the configured network interface and/or their IPs are valid sources for the outgoing connection, its up to the admin to ensure that the correct interface is properly configured.
+{{% /alert %}}
+
+{{% alert title="Warning" color="warning" %}}
+The source IP is a static configuration added on each backend server. This configuration cannot be used on backends that use DNS resolver.
+{{% /alert %}}
+
+See also:
+
+* http://cbonte.github.io/haproxy-dconv/2.2/configuration.html#4-source
+* http://cbonte.github.io/haproxy-dconv/2.2/configuration.html#5.2-source
+* https://www.kernel.org/doc/html/v5.12/networking/ip-sysctl.html#ip-variables
 
 ---
 
