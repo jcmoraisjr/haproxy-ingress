@@ -33,7 +33,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress/controller"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/tracker"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
