@@ -25,6 +25,7 @@ The following command-line options are supported:
 | [`--controller-class`](#ingress-class)                  | suffix                     | ``                      | v0.12 |
 | [`--default-backend-service`](#default-backend-service) | namespace/servicename      | haproxy's 404 page      |       |
 | [`--default-ssl-certificate`](#default-ssl-certificate) | namespace/secretname       | fake, auto generated    |       |
+| [`--disable-api-warnings`](#disable-api-warnings)       | [true\|false]              | `false`                 | v0.12 |
 | [`--disable-pod-list`](#disable-pod-list)               | [true\|false]              | `false`                 | v0.11 |
 | [`--healthz-port`](#stats)                              | port number                | `10254`                 |       |
 | [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |       |
@@ -117,6 +118,13 @@ hostname, or the requested path doesn't match any location within the desired ho
 Defines the `namespace/secretname` of the default certificate that should be used if ingress
 resources using TLS configuration doesn't provide it's own certificate. A self-signed fake
 certificate is used if not declared.
+
+## --disable-api-warnings
+
+Since v0.12.4
+
+Disable warning logs sent from the API server. Most of the warnings are related with API
+deprecation. The default behavior is to log all API server warnings.
 
 ---
 
