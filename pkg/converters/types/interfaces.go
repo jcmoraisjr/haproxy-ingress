@@ -33,7 +33,7 @@ type Cache interface {
 	GetIngressClass(className string) (*networking.IngressClass, error)
 	GetGateway(gatewayName string) (*gateway.Gateway, error)
 	GetGatewayList() ([]*gateway.Gateway, error)
-	GetHTTPRouteList(match map[string]string) ([]*gateway.HTTPRoute, error)
+	GetHTTPRouteList(namespace string, match map[string]string) ([]*gateway.HTTPRoute, error)
 	GetService(serviceName string) (*api.Service, error)
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
 	GetConfigMap(configMapName string) (*api.ConfigMap, error)
@@ -94,11 +94,14 @@ type Tracker interface {
 	TrackBackend(rtype ResourceType, name string, backendID hatypes.BackendID)
 	TrackMissingOnHostname(rtype ResourceType, name, hostname string)
 	TrackStorage(rtype ResourceType, name, storage string)
+	TrackGateway(rtype ResourceType, name string)
 	GetDirtyLinks(oldIngressList, addIngressList, oldIngressClassList, addIngressClassList, oldConfigMapList, addConfigMapList, oldServiceList, addServiceList, oldSecretList, addSecretList, addPodList []string) (dirtyIngs, dirtyHosts []string, dirtyBacks []hatypes.BackendID, dirtyUsers, dirtyStorages []string)
+	GetGatewayChanged(oldSecretList, addSecretList, oldServiceList, addServiceList []string) bool
 	DeleteHostnames(hostnames []string)
 	DeleteBackends(backends []hatypes.BackendID)
 	DeleteUserlists(userlists []string)
 	DeleteStorages(storages []string)
+	DeleteGateway()
 }
 
 // TrackingTarget ...
@@ -106,6 +109,7 @@ type TrackingTarget struct {
 	Hostname string
 	Backend  hatypes.BackendID
 	Userlist string
+	Gateway  bool
 }
 
 // File ...

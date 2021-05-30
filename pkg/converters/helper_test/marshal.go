@@ -32,6 +32,7 @@ type (
 		Paths            []backendPathMock `yaml:",omitempty"`
 		BalanceAlgorithm string            `yaml:",omitempty"`
 		MaxConnServer    int               `yaml:",omitempty"`
+		ModeTCP          bool              `yaml:",omitempty"`
 	}
 	backendPathMock struct {
 		Path        string
@@ -39,9 +40,10 @@ type (
 		MaxBodySize int64
 	}
 	endpointMock struct {
-		IP    string
-		Port  int
-		Drain bool `yaml:",omitempty"`
+		IP     string
+		Port   int
+		Drain  bool `yaml:",omitempty"`
+		Weight int  `yaml:",omitempty"`
 	}
 	// host
 	hostMock struct {
@@ -49,6 +51,8 @@ type (
 		Paths        []pathMock
 		RootRedirect string  `yaml:",omitempty"`
 		TLS          tlsMock `yaml:",omitempty"`
+		Passthrough  bool    `yaml:",omitempty"`
+		HTTPPassBack string  `yaml:",omitempty"`
 	}
 	pathMock struct {
 		Path      string
@@ -70,11 +74,24 @@ type (
 
 // MarshalBackends ...
 func MarshalBackends(habackends ...*hatypes.Backend) string {
+	return yamlMarshal(marshalBackends(false, habackends...))
+}
+
+// MarshalBackendsWeight ...
+func MarshalBackendsWeight(habackends ...*hatypes.Backend) string {
+	return yamlMarshal(marshalBackends(true, habackends...))
+}
+
+func marshalBackends(weight bool, habackends ...*hatypes.Backend) []backendMock {
 	backends := []backendMock{}
 	for _, b := range habackends {
 		endpoints := []endpointMock{}
 		for _, e := range b.Endpoints {
-			endpoints = append(endpoints, endpointMock{IP: e.IP, Port: e.Port, Drain: e.Weight == 0})
+			endpoint := endpointMock{IP: e.IP, Port: e.Port, Drain: e.Weight == 0}
+			if weight {
+				endpoint.Weight = e.Weight
+			}
+			endpoints = append(endpoints, endpoint)
 		}
 		var paths []backendPathMock
 		for _, p := range b.Paths {
@@ -88,9 +105,10 @@ func MarshalBackends(habackends ...*hatypes.Backend) string {
 			Paths:            paths,
 			BalanceAlgorithm: b.BalanceAlgorithm,
 			MaxConnServer:    b.Server.MaxConn,
+			ModeTCP:          b.ModeTCP,
 		})
 	}
-	return yamlMarshal(backends)
+	return backends
 }
 
 // MarshalHost ...
@@ -119,6 +137,8 @@ func marshalHosts(hafronts ...*hatypes.Host) []hostMock {
 			Paths:        paths,
 			RootRedirect: f.RootRedirect,
 			TLS:          tlsMock{TLSFilename: f.TLS.TLSFilename},
+			Passthrough:  f.SSLPassthrough(),
+			HTTPPassBack: f.HTTPPassthroughBackend,
 		})
 	}
 	return hosts

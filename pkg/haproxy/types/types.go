@@ -488,6 +488,7 @@ type HostBackend struct {
 	Namespace string
 	Name      string
 	Port      string
+	ModeTCP   bool
 }
 
 // HostAliasConfig ...

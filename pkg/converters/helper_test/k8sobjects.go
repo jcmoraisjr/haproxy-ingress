@@ -75,6 +75,17 @@ subsets:
 	return svc, ep
 }
 
+// CreateSecret ...
+func CreateSecret(secretName string) *api.Secret {
+	sname := strings.Split(secretName, "/")
+	return CreateObject(`
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ` + sname[1] + `
+  namespace: ` + sname[0]).(*api.Secret)
+}
+
 // CreateObject ...
 func CreateObject(cfg string) runtime.Object {
 	decode := scheme.Codecs.UniversalDeserializer().Decode

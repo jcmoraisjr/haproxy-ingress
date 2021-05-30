@@ -110,8 +110,11 @@ func (c *CacheMock) GetGatewayList() ([]*gateway.Gateway, error) {
 }
 
 // GetHTTPRouteList ...
-func (c *CacheMock) GetHTTPRouteList(match map[string]string) ([]*gateway.HTTPRoute, error) {
+func (c *CacheMock) GetHTTPRouteList(namespace string, match map[string]string) ([]*gateway.HTTPRoute, error) {
 	routeMatch := func(route *gateway.HTTPRoute) bool {
+		if namespace != "" && route.Namespace != namespace {
+			return false
+		}
 		for k, v := range match {
 			if route.Labels[k] != v {
 				return false

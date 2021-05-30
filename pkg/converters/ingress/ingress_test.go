@@ -2393,13 +2393,7 @@ func (c *testConfig) createSecretTLS1(secretName string) {
 }
 
 func (c *testConfig) createSecretTLS2(secretName string) *api.Secret {
-	sname := strings.Split(secretName, "/")
-	return c.createObject(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: ` + sname[1] + `
-  namespace: ` + sname[0]).(*api.Secret)
+	return conv_helper.CreateSecret(secretName)
 }
 
 func createServicePort(port string) networking.ServiceBackendPort {

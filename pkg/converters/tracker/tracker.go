@@ -79,6 +79,9 @@ type tracker struct {
 	hostnameSecretMissing stringStringMap
 	secretBackendMissing  stringBackendMap
 	backendSecretMissing  backendStringMap
+	// gateway
+	secretGateway  map[string]empty
+	serviceGateway map[string]empty
 }
 
 func (t *tracker) Track(isMissing bool, track convtypes.TrackingTarget, rtype convtypes.ResourceType, name string) {
@@ -100,6 +103,9 @@ func (t *tracker) Track(isMissing bool, track convtypes.TrackingTarget, rtype co
 		if !isMissing {
 			t.TrackUserlist(rtype, name, track.Userlist)
 		}
+	}
+	if track.Gateway {
+		t.TrackGateway(rtype, name)
 	}
 }
 
@@ -165,6 +171,24 @@ func (t *tracker) TrackStorage(rtype convtypes.ResourceType, name, storage strin
 	}
 }
 
+func (t *tracker) TrackGateway(rtype convtypes.ResourceType, name string) {
+	validName(rtype, name)
+	switch rtype {
+	case convtypes.SecretType:
+		if t.secretGateway == nil {
+			t.secretGateway = map[string]empty{}
+		}
+		t.secretGateway[name] = empty{}
+	case convtypes.ServiceType:
+		if t.serviceGateway == nil {
+			t.serviceGateway = map[string]empty{}
+		}
+		t.serviceGateway[name] = empty{}
+	default:
+		panic(fmt.Errorf("unsupported resource type %d", rtype))
+	}
+}
+
 func (t *tracker) TrackMissingOnHostname(rtype convtypes.ResourceType, name, hostname string) {
 	validName(rtype, name)
 	switch rtype {
@@ -194,6 +218,39 @@ func (t *tracker) TrackMissingOnBackend(rtype convtypes.ResourceType, name strin
 	default:
 		panic(fmt.Errorf("unsupported resource type %d", rtype))
 	}
+}
+
+func (t *tracker) GetGatewayChanged(oldSecretList, addSecretList, oldServiceList, addServiceList []string) bool {
+	if t.secretGateway != nil {
+		for _, secret := range oldSecretList {
+			if _, found := t.secretGateway[secret]; found {
+				return true
+			}
+		}
+		for _, secret := range addSecretList {
+			if _, found := t.secretGateway[secret]; found {
+				return true
+			}
+		}
+	}
+	if t.serviceGateway != nil {
+		for _, service := range oldServiceList {
+			if _, found := t.serviceGateway[service]; found {
+				return true
+			}
+		}
+		for _, service := range addServiceList {
+			if _, found := t.serviceGateway[service]; found {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (t *tracker) DeleteGateway() {
+	t.secretGateway = nil
+	t.serviceGateway = nil
 }
 
 func validName(rtype convtypes.ResourceType, name string) {

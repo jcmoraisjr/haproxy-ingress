@@ -245,13 +245,16 @@ func buildLabelSelector(match map[string]string) (labels.Selector, error) {
 	return labels.Parse(strings.Join(list, ","))
 }
 
-func (c *k8scache) GetHTTPRouteList(match map[string]string) ([]*gateway.HTTPRoute, error) {
+func (c *k8scache) GetHTTPRouteList(namespace string, match map[string]string) ([]*gateway.HTTPRoute, error) {
 	if !c.hasGateway() {
 		return nil, errGatewayDisabled
 	}
 	selector, err := buildLabelSelector(match)
 	if err != nil {
 		return nil, err
+	}
+	if namespace != "" {
+		return c.listers.httpRouteLister.HTTPRoutes(namespace).List(selector)
 	}
 	return c.listers.httpRouteLister.List(selector)
 }
@@ -972,14 +975,14 @@ func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
 	for _, gw := range ch.GatewaysAdd {
 		obj = append(obj, "add/gateway:"+gw.Namespace+"/"+gw.Name)
 	}
-	for _, gw := range ch.GatewayClassesDel {
-		obj = append(obj, "del/gatewayClass:"+gw.Namespace+"/"+gw.Name)
+	for _, cls := range ch.GatewayClassesDel {
+		obj = append(obj, "del/gatewayClass:"+cls.Name)
 	}
-	for _, gw := range ch.GatewayClassesUpd {
-		obj = append(obj, "update/gatewayClass:"+gw.Namespace+"/"+gw.Name)
+	for _, cls := range ch.GatewayClassesUpd {
+		obj = append(obj, "update/gatewayClass:"+cls.Name)
 	}
-	for _, gw := range ch.GatewayClassesAdd {
-		obj = append(obj, "add/gatewayClass:"+gw.Namespace+"/"+gw.Name)
+	for _, cls := range ch.GatewayClassesAdd {
+		obj = append(obj, "add/gatewayClass:"+cls.Name)
 	}
 	for _, hr := range ch.HTTPRoutesDel {
 		obj = append(obj, "del/httpRoute:"+hr.Namespace+"/"+hr.Name)
