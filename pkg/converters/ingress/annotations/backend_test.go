@@ -1612,6 +1612,49 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 			},
 			logging: `WARN skipping invalid domain (verify-hostname) on ingress 'default/app': invalid/domain`,
 		},
+		// 18
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackBackendProtocol:      "h1-ssl",
+					ingtypes.BackSecureVerifyHostname: "valid-domain.tld",
+				},
+			},
+			expected: hatypes.ServerConfig{
+				Protocol:   "h1",
+				Secure:     true,
+				VerifyHost: "valid-domain.tld",
+			},
+		},
+		// 19
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackBackendProtocol:      "h1-ssl",
+					ingtypes.BackSecureVerifyHostname: "sub.valid-domain.tld",
+				},
+			},
+			expected: hatypes.ServerConfig{
+				Protocol:   "h1",
+				Secure:     true,
+				VerifyHost: "sub.valid-domain.tld",
+			},
+		},
+		// 20
+		{
+			source: Source{Namespace: "default", Name: "app", Type: "ingress"},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackBackendProtocol:      "h1-ssl",
+					ingtypes.BackSecureVerifyHostname: "invalid-domain",
+				},
+			},
+			expected: hatypes.ServerConfig{
+				Protocol: "h1",
+				Secure:   true,
+			},
+			logging: `WARN skipping invalid domain (verify-hostname) on ingress 'default/app': invalid-domain`,
+		},
 	}
 	for i, test := range testCase {
 		c := setup(t)
