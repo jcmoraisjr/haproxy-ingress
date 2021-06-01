@@ -47,8 +47,8 @@ type converters struct {
 
 func (c *converters) Sync() {
 	changed := c.options.Cache.SwapChangedObjects()
-	gatewayConverter := gateway.NewGatewayConverter(c.options, c.haproxy, changed)
 	ingressConverter := ingress.NewIngressConverter(c.options, c.haproxy, changed)
+	gatewayConverter := gateway.NewGatewayConverter(c.options, c.haproxy, changed, ingressConverter)
 
 	needFullSync := changed.NeedFullSync ||
 		gatewayConverter.NeedFullSync() ||

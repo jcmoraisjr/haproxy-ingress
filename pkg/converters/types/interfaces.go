@@ -112,6 +112,11 @@ type TrackingTarget struct {
 	Gateway  bool
 }
 
+// AnnotationReader ...
+type AnnotationReader interface {
+	ReadAnnotations(backend *hatypes.Backend, services []*api.Service, pathLinks []hatypes.PathLink)
+}
+
 // File ...
 type File struct {
 	Filename string

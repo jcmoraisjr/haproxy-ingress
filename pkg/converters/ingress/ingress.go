@@ -40,6 +40,7 @@ import (
 type Config interface {
 	NeedFullSync() bool
 	Sync(full bool)
+	ReadAnnotations(backend *hatypes.Backend, services []*api.Service, pathLinks []hatypes.PathLink)
 }
 
 // NewIngressConverter ...
@@ -94,6 +95,25 @@ type converter struct {
 	hostAnnotations    map[*hatypes.Host]*annotations.Mapper
 	backendAnnotations map[*hatypes.Backend]*annotations.Mapper
 	ingressClasses     map[string]*ingressClassConfig
+}
+
+func (c *converter) ReadAnnotations(backend *hatypes.Backend, services []*api.Service, pathLinks []hatypes.PathLink) {
+	mapper := c.mapBuilder.NewMapper()
+	for _, service := range services {
+		source := &annotations.Source{
+			Namespace: service.Namespace,
+			Name:      service.Name,
+			Type:      "Service",
+		}
+		_, _, ann := c.readAnnotations(source, service.Annotations)
+		for _, pathLink := range pathLinks {
+			conflict := mapper.AddAnnotations(source, pathLink, ann)
+			if len(conflict) > 0 {
+				c.logger.Warn("skipping %s annotation(s) due to conflict: %v", source, conflict)
+			}
+		}
+	}
+	c.updater.UpdateBackendConfig(backend, mapper)
 }
 
 type ingressClassConfig struct {

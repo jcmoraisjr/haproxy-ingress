@@ -1193,6 +1193,7 @@ func (c *testConfig) createConverter() Config {
 		},
 		c.hconfig,
 		c.cache.SwapChangedObjects(),
+		nil,
 	)
 }
 

@@ -38,7 +38,7 @@ type Config interface {
 }
 
 // NewGatewayConverter ...
-func NewGatewayConverter(options *convtypes.ConverterOptions, haproxy haproxy.Config, changed *convtypes.ChangedObjects) Config {
+func NewGatewayConverter(options *convtypes.ConverterOptions, haproxy haproxy.Config, changed *convtypes.ChangedObjects, annotationReader convtypes.AnnotationReader) Config {
 	return &converter{
 		options: options,
 		haproxy: haproxy,
@@ -46,6 +46,7 @@ func NewGatewayConverter(options *convtypes.ConverterOptions, haproxy haproxy.Co
 		logger:  options.Logger,
 		cache:   options.Cache,
 		tracker: options.Tracker,
+		ann:     annotationReader,
 	}
 }
 
@@ -56,6 +57,7 @@ type converter struct {
 	logger  types.Logger
 	cache   convtypes.Cache
 	tracker convtypes.Tracker
+	ann     convtypes.AnnotationReader
 }
 
 func (c *converter) NeedFullSync() bool {
@@ -189,24 +191,27 @@ func (c *converter) createHTTPRoutes(source *Source, httpListeners []*gatewayv1a
 			}
 			for index, rule := range route.Spec.Rules {
 				// TODO implement rule.Filters
-				backend := c.createBackend(routeSource, fmt.Sprintf("_rule%d", index), rule.ForwardTo)
+				backend, services := c.createBackend(routeSource, fmt.Sprintf("_rule%d", index), rule.ForwardTo)
 				if backend != nil {
 					passthrough := listener.TLS != nil && listener.TLS.Mode == gatewayv1alpha1.TLSModePassthrough
 					if passthrough {
 						backend.ModeTCP = true
 					}
 					hostnames := c.filterHostnames(listener.Hostname, route.Spec.Hostnames)
-					hosts := c.createHTTPHosts(routeSource, hostnames, rule.Matches, backend)
+					hosts, pathLinks := c.createHTTPHosts(routeSource, hostnames, rule.Matches, backend)
 					c.applyCertRef(source, routeSource, hosts, listener, route)
+					if c.ann != nil {
+						c.ann.ReadAnnotations(backend, services, pathLinks)
+					}
 				}
 			}
 		}
 	}
 }
 
-func (c *converter) createBackend(source *Source, index string, forwardTo []gatewayv1alpha1.HTTPRouteForwardTo) *hatypes.Backend {
+func (c *converter) createBackend(source *Source, index string, forwardTo []gatewayv1alpha1.HTTPRouteForwardTo) (*hatypes.Backend, []*api.Service) {
 	if habackend := c.haproxy.Backends().FindBackend(source.namespace, source.name, index); habackend != nil {
-		return habackend
+		return habackend, nil
 	}
 	type backend struct {
 		service string
@@ -215,6 +220,7 @@ func (c *converter) createBackend(source *Source, index string, forwardTo []gate
 		cl      convutils.WeightCluster
 	}
 	var backends []backend
+	var svclist []*api.Service
 	for _, fw := range forwardTo {
 		if fw.ServiceName == nil || fw.Port == nil {
 			// TODO handle the missing of the serviceName
@@ -228,6 +234,7 @@ func (c *converter) createBackend(source *Source, index string, forwardTo []gate
 			c.logger.Warn("skipping service '%s' on %s: %v", *fw.ServiceName, source, err)
 			continue
 		}
+		svclist = append(svclist, svc)
 		portStr := strconv.Itoa(int(*fw.Port))
 		svcport := convutils.FindServicePort(svc, portStr)
 		if svcport == nil {
@@ -252,7 +259,7 @@ func (c *converter) createBackend(source *Source, index string, forwardTo []gate
 		// TODO implement fw.Filters
 	}
 	if len(backends) == 0 {
-		return nil
+		return nil, nil
 	}
 	habackend := c.haproxy.Backends().AcquireBackend(source.namespace, source.name, index)
 	cl := make([]*convutils.WeightCluster, len(backends))
@@ -266,10 +273,10 @@ func (c *converter) createBackend(source *Source, index string, forwardTo []gate
 			ep.Weight = cl[i].Weight
 		}
 	}
-	return habackend
+	return habackend, svclist
 }
 
-func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha1.Hostname, matches []gatewayv1alpha1.HTTPRouteMatch, backend *hatypes.Backend) (hosts []*hatypes.Host) {
+func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha1.Hostname, matches []gatewayv1alpha1.HTTPRouteMatch, backend *hatypes.Backend) (hosts []*hatypes.Host, pathLinks []hatypes.PathLink) {
 	if backend.ModeTCP && len(matches) > 0 {
 		c.logger.Warn("ignoring match from %s: backend is configured as TCP mode", source)
 		matches = nil
@@ -309,11 +316,12 @@ func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha1.
 			h.AddPath(backend, path, haMatch)
 			handlePassthrough(path, h, backend)
 			hosts = append(hosts, h)
+			pathLinks = append(pathLinks, hatypes.CreatePathLink(hstr, path, haMatch))
 		}
 		// TODO implement match.Headers
 		// TODO implement match.ExtensionRef
 	}
-	return hosts
+	return hosts, pathLinks
 }
 
 func handlePassthrough(path string, h *hatypes.Host, b *hatypes.Backend) {
