@@ -97,7 +97,10 @@ func (c *converter) NeedFullSync() bool {
 	updEndpointsNames := ep2names(c.changed.EndpointsNew)
 	oldSvcNames = append(oldSvcNames, updEndpointsNames...)
 	changed := c.tracker.GetGatewayChanged(oldSecretNames, addSecretNames, oldSvcNames, addSvcNames)
-	c.tracker.DeleteGateway()
+	if changed {
+		// only remove old links if they will be recreated
+		c.tracker.DeleteGateway()
+	}
 	return changed
 }
 
