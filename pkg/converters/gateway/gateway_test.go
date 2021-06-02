@@ -254,7 +254,7 @@ paths:
 `,
 		},
 		{
-			id: "path-match-types-1",
+			id: "match-path-types-1",
 			config: func(c *testConfig) {
 				c.createGateway1("default/web", "gateway=web")
 				route := c.createHTTPRoute2("default/web", "gateway=web", "echoserver:8080", "/app0,/app1,/app2,/app3,/app4")
@@ -288,6 +288,31 @@ paths:
   - ip: 172.17.0.11
     port: 8080
     weight: 128
+`,
+		},
+		{
+			id: "match-path-mode-tcp-1",
+			config: func(c *testConfig) {
+				g := c.createGateway1("default/web", "gateway=web")
+				c.createHTTPRoute2("default/web", "gateway=web", "echoserver:8080", "/")
+				c.createService1("default/echoserver", "8080", "172.17.0.11")
+				g.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{Mode: gateway.TLSModePassthrough}
+			},
+			expDefaultHost: `
+hostname: <default>
+paths:
+- path: /
+  match: prefix
+  backend: default_web__rule0
+passthrough: true
+`,
+			expBackends: `
+- id: default_web__rule0
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+    weight: 128
+  modetcp: true
 `,
 		},
 		{
@@ -1284,6 +1309,7 @@ func (c *testConfig) createHTTPRoute2(name, labels, service, paths string) *gate
 	for _, path := range strings.Split(paths, ",") {
 		match := gateway.HTTPRouteMatch{
 			Path: gateway.HTTPPathMatch{
+				Type:  gateway.PathMatchPrefix,
 				Value: path,
 			},
 		}

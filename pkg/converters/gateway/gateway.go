@@ -278,7 +278,11 @@ func (c *converter) createBackend(source *Source, index string, forwardTo []gate
 
 func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha1.Hostname, matches []gatewayv1alpha1.HTTPRouteMatch, backend *hatypes.Backend) (hosts []*hatypes.Host, pathLinks []hatypes.PathLink) {
 	if backend.ModeTCP && len(matches) > 0 {
-		c.logger.Warn("ignoring match from %s: backend is configured as TCP mode", source)
+		if len(matches) > 1 || matches[0].Path.Type != gatewayv1alpha1.PathMatchPrefix || matches[0].Path.Value != "/" {
+			// avoid to warn if path == "/" and type == "Prefix"
+			// TODO revisit in v0.3.0 Gateway API
+			c.logger.Warn("ignoring match from %s: backend is configured as TCP mode", source)
+		}
 		matches = nil
 	}
 	if len(matches) == 0 {
