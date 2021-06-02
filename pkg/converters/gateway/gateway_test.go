@@ -71,7 +71,7 @@ paths:
 `,
 		},
 		{
-			id: "match-group",
+			id: "match-group-1",
 			config: func(c *testConfig) {
 				g := c.createGateway1("default/web", "gateway=web")
 				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
@@ -91,6 +91,63 @@ paths:
   - ip: 172.17.0.11
     port: 8080
     weight: 128
+`,
+		},
+		{
+			id: "match-group-2",
+			resConfig: []string{`
+apiVersion: networking.x-k8s.io/v1alpha1
+kind: Gateway
+metadata:
+  name: web
+  namespace: default
+spec:
+  gatewayClassName: haproxy
+  listeners:
+  - protocol: HTTPS
+    port: 443
+    routes:
+      kind: HTTPRoute
+      selector:
+        matchLabels:
+          gateway: web1
+  - protocol: HTTP
+    port: 80
+    routes:
+      kind: HTTPRoute
+      selector:
+        matchLabels:
+          gateway: web2
+    tls:
+      mode: Passthrough
+`},
+			config: func(c *testConfig) {
+				c.createHTTPRoute1("default/web1", "gateway=web1", "echoserver1:8080")
+				c.createHTTPRoute1("default/web2", "gateway=web2", "echoserver2:8443")
+				c.createService1("default/echoserver1", "8080", "172.17.0.11")
+				c.createService1("default/echoserver2", "8443", "172.17.0.12")
+			},
+			expDefaultHost: `
+hostname: <default>
+paths:
+- path: /
+  match: prefix
+  backend: default_web2__rule0
+passthrough: true
+httppassback: default_web1__rule0
+`,
+			expBackends: `
+- id: default_web1__rule0
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+    weight: 128
+- id: default_web2__rule0
+  endpoints:
+  - ip: 172.17.0.12
+    port: 8443
+    weight: 128
+  modetcp: true
 `,
 		},
 		{

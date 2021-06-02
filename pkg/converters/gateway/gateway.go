@@ -143,11 +143,12 @@ func (c *converter) syncGateway(gateway *gatewayv1alpha1.Gateway) {
 		name:      gateway.Name,
 	}
 	var httpListeners []*gatewayv1alpha1.Listener
-	for _, listener := range gateway.Spec.Listeners {
+	for i := range gateway.Spec.Listeners {
+		listener := &gateway.Spec.Listeners[i]
 		if listener.Routes.Group == "" || listener.Routes.Group == group {
 			switch strings.ToLower(listener.Routes.Kind) {
 			case "httproute":
-				httpListeners = append(httpListeners, &listener)
+				httpListeners = append(httpListeners, listener)
 			default:
 				c.logger.Warn("ignoring unsupported listener type '%s/%s' on %s", group, listener.Routes.Kind, source)
 			}
