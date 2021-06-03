@@ -36,11 +36,11 @@ import (
 	networking "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
+	gateway "sigs.k8s.io/gateway-api/apis/v1alpha1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	cfile "github.com/jcmoraisjr/haproxy-ingress/pkg/common/file"
@@ -55,7 +55,7 @@ const dhparamFilename = "dhparam.pem"
 
 type k8scache struct {
 	ctx                    context.Context
-	client                 k8s.Interface
+	client                 types.Client
 	logger                 types.Logger
 	listers                *listers
 	controller             *controller.GenericController
@@ -68,43 +68,22 @@ type k8scache struct {
 	acmeSecretKeyName      string
 	acmeTokenConfigmapName string
 	//
+	changed convtypes.ChangedObjects
+	//
 	updateQueue      utils.Queue
 	stateMutex       sync.RWMutex
 	waitBeforeUpdate time.Duration
 	clear            bool
-	needFullSync     bool
-	//
-	globalConfigMapData    map[string]string
-	tcpConfigMapData       map[string]string
-	globalConfigMapDataNew map[string]string
-	tcpConfigMapDataNew    map[string]string
-	//
-	ingressesDel      []*networking.Ingress
-	ingressesUpd      []*networking.Ingress
-	ingressesAdd      []*networking.Ingress
-	ingressClassesDel []*networking.IngressClass
-	ingressClassesUpd []*networking.IngressClass
-	ingressClassesAdd []*networking.IngressClass
-	endpointsNew      []*api.Endpoints
-	servicesDel       []*api.Service
-	servicesUpd       []*api.Service
-	servicesAdd       []*api.Service
-	secretsDel        []*api.Secret
-	secretsUpd        []*api.Secret
-	secretsAdd        []*api.Secret
-	configMapsDel     []*api.ConfigMap
-	configMapsUpd     []*api.ConfigMap
-	configMapsAdd     []*api.ConfigMap
-	podsNew           []*api.Pod
 	//
 }
 
 func createCache(
 	logger types.Logger,
-	client k8s.Interface,
+	client types.Client,
 	controller *controller.GenericController,
 	tracker convtypes.Tracker,
 	updateQueue utils.Queue,
+	watchGateway bool,
 	watchNamespace string,
 	isolateNamespace bool,
 	disablePodList bool,
@@ -157,10 +136,9 @@ func createCache(
 		updateQueue:            updateQueue,
 		waitBeforeUpdate:       waitBeforeUpdate,
 		clear:                  true,
-		needFullSync:           false,
 	}
 	// TODO I'm a circular reference, can you fix me?
-	cache.listers = createListers(cache, logger, recorder, client, watchNamespace, isolateNamespace, !disablePodList, resync)
+	cache.listers = createListers(cache, logger, recorder, client, watchGateway, watchNamespace, isolateNamespace, !disablePodList, resync)
 	return cache
 }
 
@@ -212,6 +190,75 @@ func (c *k8scache) GetIngressClass(className string) (*networking.IngressClass, 
 	return c.listers.ingressClassLister.Get(className)
 }
 
+func (c *k8scache) hasGateway() bool {
+	return c.listers.gatewayClassLister != nil
+}
+
+var errGatewayDisabled = fmt.Errorf("Gateway API wasn't initialized")
+
+func (c *k8scache) GetGateway(gatewayName string) (*gateway.Gateway, error) {
+	if !c.hasGateway() {
+		return nil, errGatewayDisabled
+	}
+	namespace, name, err := cache.SplitMetaNamespaceKey(gatewayName)
+	if err != nil {
+		return nil, err
+	}
+	gateway, err := c.listers.gatewayLister.Gateways(namespace).Get(name)
+	if gateway != nil && !c.IsValidGateway(gateway) {
+		return nil, fmt.Errorf("gateway class does not match")
+	}
+	return gateway, err
+}
+
+func (c *k8scache) GetGatewayList() ([]*gateway.Gateway, error) {
+	if !c.hasGateway() {
+		return nil, errGatewayDisabled
+	}
+	gwList, err := c.listers.gatewayLister.List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+	validGwList := make([]*gateway.Gateway, len(gwList))
+	var i int
+	for _, gw := range gwList {
+		if c.IsValidGateway(gw) {
+			validGwList[i] = gw
+			i++
+		}
+	}
+	return validGwList[:i], nil
+}
+
+func (c *k8scache) GetGatewayClass(className string) (*gateway.GatewayClass, error) {
+	if !c.hasGateway() {
+		return nil, errGatewayDisabled
+	}
+	return c.listers.gatewayClassLister.Get(className)
+}
+
+func buildLabelSelector(match map[string]string) (labels.Selector, error) {
+	list := make([]string, 0, len(match))
+	for k, v := range match {
+		list = append(list, k+"="+v)
+	}
+	return labels.Parse(strings.Join(list, ","))
+}
+
+func (c *k8scache) GetHTTPRouteList(namespace string, match map[string]string) ([]*gateway.HTTPRoute, error) {
+	if !c.hasGateway() {
+		return nil, errGatewayDisabled
+	}
+	selector, err := buildLabelSelector(match)
+	if err != nil {
+		return nil, err
+	}
+	if namespace != "" {
+		return c.listers.httpRouteLister.HTTPRoutes(namespace).List(selector)
+	}
+	return c.listers.httpRouteLister.List(selector)
+}
+
 func (c *k8scache) GetService(serviceName string) (*api.Service, error) {
 	namespace, name, err := cache.SplitMetaNamespaceKey(serviceName)
 	if err != nil {
@@ -249,14 +296,7 @@ func (c *k8scache) GetTerminatingPods(service *api.Service, track convtypes.Trac
 	if !c.listers.hasPodLister {
 		return nil, fmt.Errorf("pod lister wasn't started, remove --disable-pod-list command-line option to enable it")
 	}
-	// converting the service selector to slice of string
-	// in order to create the full match selector
-	var ls []string
-	for k, v := range service.Spec.Selector {
-		ls = append(ls, fmt.Sprintf("%s=%s", k, v))
-	}
-	// parsing the label selector from the previous selectors
-	l, err := labels.Parse(strings.Join(ls, ","))
+	l, err := buildLabelSelector(service.Spec.Selector)
 	if err != nil {
 		return nil, err
 	}
@@ -678,6 +718,25 @@ func (c *k8scache) IsValidIngressClass(ingressClass *networking.IngressClass) bo
 }
 
 // implements ListerEvents
+func (c *k8scache) IsValidGateway(gw *gateway.Gateway) bool {
+	className := gw.Spec.GatewayClassName
+	gwClass, err := c.GetGatewayClass(className)
+	if err != nil {
+		c.logger.Warn("error reading GatewayClass '%s': %v", className, err)
+		return false
+	} else if gwClass == nil {
+		c.logger.Warn("GatewayClass not found: %s", className)
+		return false
+	}
+	return c.IsValidGatewayClass(gwClass)
+}
+
+// implements ListerEvents
+func (c *k8scache) IsValidGatewayClass(gwClass *gateway.GatewayClass) bool {
+	return gwClass.Spec.Controller == c.cfg.ControllerName
+}
+
+// implements ListerEvents
 func (c *k8scache) IsValidConfigMap(cm *api.ConfigMap) bool {
 	// IngressClass' Parameters can use ConfigMaps in the controller namespace
 	if cm.Namespace == c.podNamespace {
@@ -696,29 +755,65 @@ func (c *k8scache) Notify(old, cur interface{}) {
 	// old != nil: has the `old` state of a changed or removed object
 	// cur != nil: has the `cur` state of a changed or a just created object
 	// old and cur == nil: cannot identify what was changed, need to start a full resync
+	ch := &c.changed
 	if old != nil {
 		switch old.(type) {
 		case *networking.Ingress:
 			if cur == nil {
-				c.ingressesDel = append(c.ingressesDel, old.(*networking.Ingress))
+				ch.IngressesDel = append(ch.IngressesDel, old.(*networking.Ingress))
 			}
 		case *networking.IngressClass:
 			if cur == nil {
-				c.ingressClassesDel = append(c.ingressClassesDel, old.(*networking.IngressClass))
+				ch.IngressClassesDel = append(ch.IngressClassesDel, old.(*networking.IngressClass))
+			}
+		case *gateway.Gateway:
+			if cur == nil {
+				ch.GatewaysDel = append(ch.GatewaysDel, old.(*gateway.Gateway))
+				ch.NeedFullSync = true
+			}
+		case *gateway.GatewayClass:
+			if cur == nil {
+				ch.GatewayClassesDel = append(ch.GatewayClassesDel, old.(*gateway.GatewayClass))
+				ch.NeedFullSync = true
+			}
+		case *gateway.HTTPRoute:
+			if cur == nil {
+				ch.HTTPRoutesDel = append(ch.HTTPRoutesDel, old.(*gateway.HTTPRoute))
+				ch.NeedFullSync = true
+			}
+		case *gateway.TLSRoute:
+			if cur == nil {
+				ch.TLSRoutesDel = append(ch.TLSRoutesDel, old.(*gateway.TLSRoute))
+				ch.NeedFullSync = true
+			}
+		case *gateway.TCPRoute:
+			if cur == nil {
+				ch.TCPRoutesDel = append(ch.TCPRoutesDel, old.(*gateway.TCPRoute))
+				ch.NeedFullSync = true
+			}
+		case *gateway.UDPRoute:
+			if cur == nil {
+				ch.UDPRoutesDel = append(ch.UDPRoutesDel, old.(*gateway.UDPRoute))
+				ch.NeedFullSync = true
+			}
+		case *gateway.BackendPolicy:
+			if cur == nil {
+				ch.BackendPoliciesDel = append(ch.BackendPoliciesDel, old.(*gateway.BackendPolicy))
+				ch.NeedFullSync = true
 			}
 		case *api.Service:
 			if cur == nil {
-				c.servicesDel = append(c.servicesDel, old.(*api.Service))
+				ch.ServicesDel = append(ch.ServicesDel, old.(*api.Service))
 			}
 		case *api.Secret:
 			if cur == nil {
 				secret := old.(*api.Secret)
-				c.secretsDel = append(c.secretsDel, secret)
+				ch.SecretsDel = append(ch.SecretsDel, secret)
 				c.controller.DeleteSecret(fmt.Sprintf("%s/%s", secret.Namespace, secret.Name))
 			}
 		case *api.ConfigMap:
 			if cur == nil {
-				c.configMapsDel = append(c.configMapsDel, old.(*api.ConfigMap))
+				ch.ConfigMapsDel = append(ch.ConfigMapsDel, old.(*api.ConfigMap))
 			}
 		}
 	}
@@ -727,54 +822,110 @@ func (c *k8scache) Notify(old, cur interface{}) {
 		case *networking.Ingress:
 			ing := cur.(*networking.Ingress)
 			if old == nil {
-				c.ingressesAdd = append(c.ingressesAdd, ing)
+				ch.IngressesAdd = append(ch.IngressesAdd, ing)
 			} else {
-				c.ingressesUpd = append(c.ingressesUpd, ing)
+				ch.IngressesUpd = append(ch.IngressesUpd, ing)
 			}
 		case *networking.IngressClass:
 			cls := cur.(*networking.IngressClass)
 			if old == nil {
-				c.ingressClassesAdd = append(c.ingressClassesAdd, cls)
+				ch.IngressClassesAdd = append(ch.IngressClassesAdd, cls)
 			} else {
-				c.ingressClassesUpd = append(c.ingressClassesUpd, cls)
+				ch.IngressClassesUpd = append(ch.IngressClassesUpd, cls)
 			}
+		case *gateway.Gateway:
+			gw := cur.(*gateway.Gateway)
+			if old == nil {
+				ch.GatewaysAdd = append(ch.GatewaysAdd, gw)
+			} else {
+				ch.GatewaysUpd = append(ch.GatewaysUpd, gw)
+			}
+			ch.NeedFullSync = true
+		case *gateway.GatewayClass:
+			cls := cur.(*gateway.GatewayClass)
+			if old == nil {
+				ch.GatewayClassesAdd = append(ch.GatewayClassesAdd, cls)
+			} else {
+				ch.GatewayClassesUpd = append(ch.GatewayClassesUpd, cls)
+			}
+			ch.NeedFullSync = true
+		case *gateway.HTTPRoute:
+			hr := cur.(*gateway.HTTPRoute)
+			if old == nil {
+				ch.HTTPRoutesAdd = append(ch.HTTPRoutesAdd, hr)
+			} else {
+				ch.HTTPRoutesUpd = append(ch.HTTPRoutesUpd, hr)
+			}
+			ch.NeedFullSync = true
+		case *gateway.TLSRoute:
+			tr := cur.(*gateway.TLSRoute)
+			if old == nil {
+				ch.TLSRoutesAdd = append(ch.TLSRoutesAdd, tr)
+			} else {
+				ch.TLSRoutesUpd = append(ch.TLSRoutesUpd, tr)
+			}
+			ch.NeedFullSync = true
+		case *gateway.TCPRoute:
+			tr := cur.(*gateway.TCPRoute)
+			if old == nil {
+				ch.TCPRoutesAdd = append(ch.TCPRoutesAdd, tr)
+			} else {
+				ch.TCPRoutesUpd = append(ch.TCPRoutesUpd, tr)
+			}
+			ch.NeedFullSync = true
+		case *gateway.UDPRoute:
+			ur := cur.(*gateway.UDPRoute)
+			if old == nil {
+				ch.UDPRoutesAdd = append(ch.UDPRoutesAdd, ur)
+			} else {
+				ch.UDPRoutesUpd = append(ch.UDPRoutesUpd, ur)
+			}
+			ch.NeedFullSync = true
+		case *gateway.BackendPolicy:
+			bp := cur.(*gateway.BackendPolicy)
+			if old == nil {
+				ch.BackendPoliciesAdd = append(ch.BackendPoliciesAdd, bp)
+			} else {
+				ch.BackendPoliciesUpd = append(ch.BackendPoliciesUpd, bp)
+			}
+			ch.NeedFullSync = true
 		case *api.Endpoints:
-			c.endpointsNew = append(c.endpointsNew, cur.(*api.Endpoints))
+			ch.EndpointsNew = append(ch.EndpointsNew, cur.(*api.Endpoints))
 		case *api.Service:
 			svc := cur.(*api.Service)
 			if old == nil {
-				c.servicesAdd = append(c.servicesAdd, svc)
+				ch.ServicesAdd = append(ch.ServicesAdd, svc)
 			} else {
-				c.servicesUpd = append(c.servicesUpd, svc)
+				ch.ServicesUpd = append(ch.ServicesUpd, svc)
 			}
 		case *api.Secret:
 			secret := cur.(*api.Secret)
 			if old == nil {
-				c.secretsAdd = append(c.secretsAdd, secret)
+				ch.SecretsAdd = append(ch.SecretsAdd, secret)
 			} else {
-				c.secretsUpd = append(c.secretsUpd, secret)
+				ch.SecretsUpd = append(ch.SecretsUpd, secret)
 			}
 			c.controller.UpdateSecret(fmt.Sprintf("%s/%s", secret.Namespace, secret.Name))
 		case *api.ConfigMap:
 			cm := cur.(*api.ConfigMap)
 			if old == nil {
-				c.configMapsAdd = append(c.configMapsAdd, cm)
+				ch.ConfigMapsAdd = append(ch.ConfigMapsAdd, cm)
 			} else {
-				c.configMapsUpd = append(c.configMapsUpd, cm)
+				ch.ConfigMapsUpd = append(ch.ConfigMapsUpd, cm)
 			}
 			key := fmt.Sprintf("%s/%s", cm.Namespace, cm.Name)
 			switch key {
 			case c.globalConfigMapKey:
-				c.globalConfigMapDataNew = cm.Data
+				ch.GlobalConfigMapDataNew = cm.Data
 			case c.tcpConfigMapKey:
-				c.tcpConfigMapDataNew = cm.Data
+				ch.TCPConfigMapDataNew = cm.Data
 			}
 		case *api.Pod:
-			c.podsNew = append(c.podsNew, cur.(*api.Pod))
+			ch.PodsNew = append(ch.PodsNew, cur.(*api.Pod))
 		}
 	}
 	if old == nil && cur == nil {
-		c.needFullSync = true
+		ch.NeedFullSync = true
 	}
 	if c.clear {
 		// Wait before notify, giving the time to receive
@@ -789,133 +940,146 @@ func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
 	c.stateMutex.Lock()
 	defer c.stateMutex.Unlock()
 	//
+	ch := c.changed
 	var obj []string
-	if c.globalConfigMapDataNew != nil && !reflect.DeepEqual(c.globalConfigMapData, c.globalConfigMapDataNew) {
+	if ch.GlobalConfigMapDataNew != nil && !reflect.DeepEqual(ch.GlobalConfigMapDataCur, ch.GlobalConfigMapDataNew) {
 		obj = append(obj, "update/global")
 	}
-	if c.tcpConfigMapDataNew != nil && !reflect.DeepEqual(c.tcpConfigMapData, c.tcpConfigMapDataNew) {
+	if ch.TCPConfigMapDataNew != nil && !reflect.DeepEqual(ch.TCPConfigMapDataCur, ch.TCPConfigMapDataNew) {
 		obj = append(obj, "update/tcp-services")
 	}
-	for _, ing := range c.ingressesDel {
+	for _, ing := range ch.IngressesDel {
 		obj = append(obj, "del/ingress:"+ing.Namespace+"/"+ing.Name)
 	}
-	for _, ing := range c.ingressesUpd {
+	for _, ing := range ch.IngressesUpd {
 		obj = append(obj, "update/ingress:"+ing.Namespace+"/"+ing.Name)
 	}
-	for _, ing := range c.ingressesAdd {
+	for _, ing := range ch.IngressesAdd {
 		obj = append(obj, "add/ingress:"+ing.Namespace+"/"+ing.Name)
 	}
-	for _, cls := range c.ingressClassesDel {
+	for _, cls := range ch.IngressClassesDel {
 		obj = append(obj, "del/ingressClass:"+cls.Name)
 	}
-	for _, cls := range c.ingressClassesUpd {
+	for _, cls := range ch.IngressClassesUpd {
 		obj = append(obj, "update/ingressClass:"+cls.Name)
 	}
-	for _, cls := range c.ingressClassesAdd {
+	for _, cls := range ch.IngressClassesAdd {
 		obj = append(obj, "add/ingressClass:"+cls.Name)
 	}
-	for _, ep := range c.endpointsNew {
+	for _, gw := range ch.GatewaysDel {
+		obj = append(obj, "del/gateway:"+gw.Namespace+"/"+gw.Name)
+	}
+	for _, gw := range ch.GatewaysUpd {
+		obj = append(obj, "update/gateway:"+gw.Namespace+"/"+gw.Name)
+	}
+	for _, gw := range ch.GatewaysAdd {
+		obj = append(obj, "add/gateway:"+gw.Namespace+"/"+gw.Name)
+	}
+	for _, cls := range ch.GatewayClassesDel {
+		obj = append(obj, "del/gatewayClass:"+cls.Name)
+	}
+	for _, cls := range ch.GatewayClassesUpd {
+		obj = append(obj, "update/gatewayClass:"+cls.Name)
+	}
+	for _, cls := range ch.GatewayClassesAdd {
+		obj = append(obj, "add/gatewayClass:"+cls.Name)
+	}
+	for _, hr := range ch.HTTPRoutesDel {
+		obj = append(obj, "del/httpRoute:"+hr.Namespace+"/"+hr.Name)
+	}
+	for _, hr := range ch.HTTPRoutesUpd {
+		obj = append(obj, "update/httpRoute:"+hr.Namespace+"/"+hr.Name)
+	}
+	for _, hr := range ch.HTTPRoutesAdd {
+		obj = append(obj, "add/httpRoute:"+hr.Namespace+"/"+hr.Name)
+	}
+	for _, tr := range ch.TLSRoutesDel {
+		obj = append(obj, "del/tlsRoute:"+tr.Namespace+"/"+tr.Name)
+	}
+	for _, tr := range ch.TLSRoutesUpd {
+		obj = append(obj, "update/tlsRoute:"+tr.Namespace+"/"+tr.Name)
+	}
+	for _, tr := range ch.TLSRoutesAdd {
+		obj = append(obj, "add/tlsRoute:"+tr.Namespace+"/"+tr.Name)
+	}
+	for _, tr := range ch.TCPRoutesDel {
+		obj = append(obj, "del/tcpRoute:"+tr.Namespace+"/"+tr.Name)
+	}
+	for _, tr := range ch.TCPRoutesUpd {
+		obj = append(obj, "update/tcpRoute:"+tr.Namespace+"/"+tr.Name)
+	}
+	for _, tr := range ch.TCPRoutesAdd {
+		obj = append(obj, "add/tcpRoute:"+tr.Namespace+"/"+tr.Name)
+	}
+	for _, ur := range ch.UDPRoutesDel {
+		obj = append(obj, "del/udpRoute:"+ur.Namespace+"/"+ur.Name)
+	}
+	for _, ur := range ch.UDPRoutesUpd {
+		obj = append(obj, "update/udpRoute:"+ur.Namespace+"/"+ur.Name)
+	}
+	for _, ur := range ch.UDPRoutesAdd {
+		obj = append(obj, "add/udpRoute:"+ur.Namespace+"/"+ur.Name)
+	}
+	for _, bp := range ch.BackendPoliciesDel {
+		obj = append(obj, "del/backendPolicy:"+bp.Namespace+"/"+bp.Name)
+	}
+	for _, bp := range ch.BackendPoliciesUpd {
+		obj = append(obj, "update/backendPolicy:"+bp.Namespace+"/"+bp.Name)
+	}
+	for _, bp := range ch.BackendPoliciesAdd {
+		obj = append(obj, "add/backendPolicy:"+bp.Namespace+"/"+bp.Name)
+	}
+	for _, ep := range ch.EndpointsNew {
 		obj = append(obj, "update/endpoint:"+ep.Namespace+"/"+ep.Name)
 	}
-	for _, svc := range c.servicesDel {
+	for _, svc := range ch.ServicesDel {
 		obj = append(obj, "del/service:"+svc.Namespace+"/"+svc.Name)
 	}
-	for _, svc := range c.servicesUpd {
+	for _, svc := range ch.ServicesUpd {
 		obj = append(obj, "update/service:"+svc.Namespace+"/"+svc.Name)
 	}
-	for _, svc := range c.servicesAdd {
+	for _, svc := range ch.ServicesAdd {
 		obj = append(obj, "add/service:"+svc.Namespace+"/"+svc.Name)
 	}
-	for _, secret := range c.secretsDel {
+	for _, secret := range ch.SecretsDel {
 		obj = append(obj, "del/secret:"+secret.Namespace+"/"+secret.Name)
 	}
-	for _, secret := range c.secretsUpd {
+	for _, secret := range ch.SecretsUpd {
 		obj = append(obj, "update/secret:"+secret.Namespace+"/"+secret.Name)
 	}
-	for _, secret := range c.secretsAdd {
+	for _, secret := range ch.SecretsAdd {
 		obj = append(obj, "add/secret:"+secret.Namespace+"/"+secret.Name)
 	}
-	for _, cm := range c.configMapsDel {
+	for _, cm := range ch.ConfigMapsDel {
 		obj = append(obj, "del/configmap:"+cm.Namespace+"/"+cm.Name)
 	}
-	for _, cm := range c.configMapsUpd {
+	for _, cm := range ch.ConfigMapsUpd {
 		obj = append(obj, "update/configmap:"+cm.Namespace+"/"+cm.Name)
 	}
-	for _, cm := range c.configMapsAdd {
+	for _, cm := range ch.ConfigMapsAdd {
 		obj = append(obj, "add/configmap:"+cm.Namespace+"/"+cm.Name)
 	}
-	for _, pod := range c.podsNew {
+	for _, pod := range ch.PodsNew {
 		obj = append(obj, "update/pod:"+pod.Namespace+"/"+pod.Name)
 	}
+	ch.Objects = obj
 	//
-	changed := &convtypes.ChangedObjects{
-		GlobalCur:         c.globalConfigMapData,
-		GlobalNew:         c.globalConfigMapDataNew,
-		TCPConfigMapCur:   c.tcpConfigMapData,
-		TCPConfigMapNew:   c.tcpConfigMapDataNew,
-		IngressesDel:      c.ingressesDel,
-		IngressesUpd:      c.ingressesUpd,
-		IngressesAdd:      c.ingressesAdd,
-		IngressClassesDel: c.ingressClassesDel,
-		IngressClassesUpd: c.ingressClassesUpd,
-		IngressClassesAdd: c.ingressClassesAdd,
-		Endpoints:         c.endpointsNew,
-		ServicesDel:       c.servicesDel,
-		ServicesUpd:       c.servicesUpd,
-		ServicesAdd:       c.servicesAdd,
-		SecretsDel:        c.secretsDel,
-		SecretsUpd:        c.secretsUpd,
-		SecretsAdd:        c.secretsAdd,
-		ConfigMapsDel:     c.configMapsDel,
-		ConfigMapsUpd:     c.configMapsUpd,
-		ConfigMapsAdd:     c.configMapsAdd,
-		Pods:              c.podsNew,
-		NeedFullSync:      c.needFullSync,
-		Objects:           obj,
+	// leave ch with the current state, cleanup c.changed to receive new events
+	c.changed = convtypes.ChangedObjects{
+		GlobalConfigMapDataCur: ch.GlobalConfigMapDataCur,
+		GlobalConfigMapDataNew: ch.GlobalConfigMapDataNew,
+		TCPConfigMapDataCur:    ch.TCPConfigMapDataCur,
+		TCPConfigMapDataNew:    ch.TCPConfigMapDataNew,
 	}
-	//
-	c.podsNew = nil
-	c.endpointsNew = nil
-	//
-	// Secrets
-	//
-	c.secretsDel = nil
-	c.secretsUpd = nil
-	c.secretsAdd = nil
-	//
-	// Services
-	//
-	c.servicesDel = nil
-	c.servicesUpd = nil
-	c.servicesAdd = nil
-	//
-	// Ingress
-	//
-	c.ingressesDel = nil
-	c.ingressesUpd = nil
-	c.ingressesAdd = nil
-	//
-	// IngressClass
-	//
-	c.ingressClassesDel = nil
-	c.ingressClassesUpd = nil
-	c.ingressClassesAdd = nil
-	//
-	// ConfigMaps
-	//
-	if c.globalConfigMapDataNew != nil {
-		c.globalConfigMapData = c.globalConfigMapDataNew
-		c.globalConfigMapDataNew = nil
+	if ch.GlobalConfigMapDataNew != nil {
+		c.changed.GlobalConfigMapDataCur = ch.GlobalConfigMapDataNew
+		c.changed.GlobalConfigMapDataNew = nil
 	}
-	if c.tcpConfigMapDataNew != nil {
-		c.tcpConfigMapData = c.tcpConfigMapDataNew
-		c.tcpConfigMapDataNew = nil
+	if ch.TCPConfigMapDataNew != nil {
+		c.changed.TCPConfigMapDataCur = ch.TCPConfigMapDataNew
+		c.changed.TCPConfigMapDataNew = nil
 	}
-	c.configMapsDel = nil
-	c.configMapsUpd = nil
-	c.configMapsAdd = nil
 	//
 	c.clear = true
-	c.needFullSync = false
-	return changed
+	return &ch
 }

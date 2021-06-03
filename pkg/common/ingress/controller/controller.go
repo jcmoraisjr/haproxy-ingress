@@ -27,12 +27,12 @@ import (
 
 	apiv1 "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
-	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )
 
 // NewCtrlIntf is a temporary interface used by this generic and now
@@ -55,7 +55,7 @@ type GenericController struct {
 
 // Configuration contains all the settings required by an Ingress controller
 type Configuration struct {
-	Client       clientset.Interface
+	Client       types.Client
 	MasterSocket string
 
 	RateLimitUpdate  float32
@@ -66,6 +66,7 @@ type Configuration struct {
 	IngressClass             string
 	ControllerName           string
 	WatchIngressWithoutClass bool
+	WatchGateway             bool
 	WatchNamespace           string
 	ConfigMapName            string
 

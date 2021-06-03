@@ -24,6 +24,7 @@ import (
 
 	api "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
+	gateway "sigs.k8s.io/gateway-api/apis/v1alpha1"
 
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 )
@@ -38,6 +39,9 @@ type CacheMock struct {
 	IngList       []*networking.Ingress
 	IngClassList  []*networking.IngressClass
 	SvcList       []*api.Service
+	GwList        []*gateway.Gateway
+	GwClassList   []*gateway.GatewayClass
+	HTTPRouteList []*gateway.HTTPRoute
 	EpList        map[string]*api.Endpoints
 	ConfigMapList map[string]*api.ConfigMap
 	TermPodList   map[string][]*api.Pod
@@ -93,6 +97,38 @@ func (c *CacheMock) GetIngressClass(className string) (*networking.IngressClass,
 		}
 	}
 	return nil, fmt.Errorf("IngressClass not found: %s", className)
+}
+
+// GetGateway ...
+func (c *CacheMock) GetGateway(gatewayName string) (*gateway.Gateway, error) {
+	return nil, nil
+}
+
+// GetGatewayList ...
+func (c *CacheMock) GetGatewayList() ([]*gateway.Gateway, error) {
+	return c.GwList, nil
+}
+
+// GetHTTPRouteList ...
+func (c *CacheMock) GetHTTPRouteList(namespace string, match map[string]string) ([]*gateway.HTTPRoute, error) {
+	routeMatch := func(route *gateway.HTTPRoute) bool {
+		if namespace != "" && route.Namespace != namespace {
+			return false
+		}
+		for k, v := range match {
+			if route.Labels[k] != v {
+				return false
+			}
+		}
+		return true
+	}
+	var routes []*gateway.HTTPRoute
+	for _, route := range c.HTTPRouteList {
+		if routeMatch(route) {
+			routes = append(routes, route)
+		}
+	}
+	return routes, nil
 }
 
 // GetService ...
@@ -216,8 +252,8 @@ func (c *CacheMock) GetSecretContent(defaultNamespace, secretName, keyName strin
 func (c *CacheMock) SwapChangedObjects() *convtypes.ChangedObjects {
 	changed := c.Changed
 	c.Changed = &convtypes.ChangedObjects{
-		GlobalCur:       changed.GlobalNew,
-		TCPConfigMapCur: changed.TCPConfigMapNew,
+		GlobalConfigMapDataCur: changed.GlobalConfigMapDataNew,
+		TCPConfigMapDataCur:    changed.TCPConfigMapDataNew,
 	}
 	// update c.IngList based on notifications
 	for i, ing := range c.IngList {
@@ -259,7 +295,7 @@ func (c *CacheMock) SwapChangedObjects() *convtypes.ChangedObjects {
 		c.SecretTLSPath[name] = "/tls/" + name + ".pem"
 	}
 	// update c.EpList based on notifications
-	for _, ep := range changed.Endpoints {
+	for _, ep := range changed.EndpointsNew {
 		c.EpList[ep.Namespace+"/"+ep.Name] = ep
 	}
 	c.SvcList = c.SvcList[:len(c.SvcList)-len(changed.ServicesDel)]

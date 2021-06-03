@@ -27,6 +27,7 @@ import (
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	ingutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/utils"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
+	convutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/utils"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
@@ -356,12 +357,11 @@ func (c *updater) buildBackendBlueGreenBalance(d *backData) {
 			return
 		}
 	}
-	initialWeight := d.mapper.Get(ingtypes.BackInitialWeight).Int()
 	type deployWeight struct {
 		labelName  string
 		labelValue string
-		weight     int
 		endpoints  []*hatypes.Endpoint
+		cl         convutils.WeightCluster
 	}
 	var deployWeights []*deployWeight
 	for _, weight := range strings.Split(balance.Value, ",") {
@@ -386,8 +386,8 @@ func (c *updater) buildBackendBlueGreenBalance(d *backData) {
 		dw := &deployWeight{
 			labelName:  dwSlice[0],
 			labelValue: dwSlice[1],
-			weight:     int(w),
 		}
+		dw.cl.Weight = int(w)
 		deployWeights = append(deployWeights, dw)
 	}
 	for _, ep := range d.backend.Endpoints {
@@ -400,9 +400,9 @@ func (c *updater) buildBackendBlueGreenBalance(d *backData) {
 			for _, dw := range deployWeights {
 				if label, found := pod.Labels[dw.labelName]; found {
 					if label == dw.labelValue {
-						// mode == pod and gcdGroupWeight == 0 need ep.Weight assgined,
+						// mode == pod needs ep.Weight assgined,
 						// otherwise ep.Weight will be rewritten after rebalance
-						ep.Weight = dw.weight
+						ep.Weight = dw.cl.Weight
 						dw.endpoints = append(dw.endpoints, ep)
 						hasLabel = true
 					}
@@ -424,6 +424,7 @@ func (c *updater) buildBackendBlueGreenBalance(d *backData) {
 		if len(dw.endpoints) == 0 {
 			c.logger.InfoV(3, "blue/green balance label '%s=%s' on %v does not reference any endpoint", dw.labelName, dw.labelValue, balance.Source)
 		}
+		dw.cl.Length = len(dw.endpoints)
 	}
 	if mode := d.mapper.Get(ingtypes.BackBlueGreenMode); mode.Value == "pod" {
 		// mode == pod, same weight as defined on balance annotation,
@@ -433,67 +434,15 @@ func (c *updater) buildBackendBlueGreenBalance(d *backData) {
 		c.logger.Warn("unsupported blue/green mode '%s' on %s, falling back to 'deploy'", mode.Value, mode.Source)
 	}
 	// mode == deploy, need to recalc based on the number of replicas
-	lcmCount := 0
-	for _, dw := range deployWeights {
-		count := len(dw.endpoints)
-		if count == 0 {
-			continue
-		}
-		if lcmCount > 0 {
-			lcmCount = ingutils.LCM(lcmCount, count)
-		} else {
-			lcmCount = count
-		}
+	cl := make([]*convutils.WeightCluster, len(deployWeights))
+	for i := range deployWeights {
+		cl[i] = &deployWeights[i].cl
 	}
-	if lcmCount == 0 {
-		// all counts are zero, this config won't be used
-		return
-	}
-	gcdGroupWeight := 0
-	minWeight := -1
-	maxWeight := 0
-	for _, dw := range deployWeights {
-		count := len(dw.endpoints)
-		if count == 0 || dw.weight == 0 {
-			continue
-		}
-		groupWeight := dw.weight * lcmCount / count
-		if gcdGroupWeight > 0 {
-			gcdGroupWeight = ingutils.GCD(gcdGroupWeight, groupWeight)
-		} else {
-			gcdGroupWeight = groupWeight
-		}
-		if groupWeight < minWeight || minWeight < 0 {
-			minWeight = groupWeight
-		}
-		if groupWeight > maxWeight {
-			maxWeight = groupWeight
-		}
-	}
-	if gcdGroupWeight == 0 {
-		// all weights are zero, no need to rebalance
-		return
-	}
-	// Agent works better if weight is `initial-weight` or
-	// at least the higher value weightFactor will let it to be
-	// weightFactorMin has how many times minWeight is lesser than `initial-weight`.
-	weightFactorMin := float32(initialWeight*gcdGroupWeight) / float32(minWeight)
-	// HAProxy weight must be between 0..256.
-	// weightFactor has how many times the max weight will be greater than 256.
-	weightFactor := weightFactorMin * float32(maxWeight) / float32(256*gcdGroupWeight)
-	// LCM of denominators and GCD of the results are known. Updating ep.Weight
-	for _, dw := range deployWeights {
+	initialWeight := d.mapper.Get(ingtypes.BackInitialWeight).Int()
+	convutils.RebalanceWeight(cl, initialWeight)
+	for i, dw := range deployWeights {
 		for _, ep := range dw.endpoints {
-			weight := weightFactorMin * float32(dw.weight*lcmCount) / float32(len(dw.endpoints)*gcdGroupWeight)
-			if weightFactor > 1 {
-				propWeight := int(weight / weightFactor)
-				if propWeight == 0 && dw.weight > 0 {
-					propWeight = 1
-				}
-				ep.Weight = propWeight
-			} else {
-				ep.Weight = int(weight)
-			}
+			ep.Weight = cl[i].Weight
 		}
 	}
 }

@@ -1,7 +1,7 @@
 ---
 title: "Template"
 linkTitle: "Template"
-weight: 3
+weight: 5
 description: >
   Overwrite the default template files.
 ---

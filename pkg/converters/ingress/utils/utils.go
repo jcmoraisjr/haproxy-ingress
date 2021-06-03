@@ -22,22 +22,9 @@ import (
 	"strings"
 )
 
-// GCD calculates the Greatest Common Divisor between a and b
-func GCD(a, b int) int {
-	for b != 0 {
-		r := a % b
-		a, b = b, r
-	}
-	return a
-}
-
-// LCM calculates the Least Common Multiple between a and b
-func LCM(a, b int) int {
-	return a * (b / GCD(a, b))
-}
-
 var parseURLRegex = regexp.MustCompile(`^([a-z]+)://([^][/: ]+)(:[-a-z0-9]+)?([^"' ]*)$`)
 
+// ParseURL ...
 func ParseURL(url string) (urlProto, urlHost, urlPort, urlPath string, err error) {
 	urlParse := parseURLRegex.FindStringSubmatch(url)
 	if len(urlParse) < 5 {

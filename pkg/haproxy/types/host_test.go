@@ -17,6 +17,7 @@ limitations under the License.
 package types
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -176,6 +177,81 @@ func TestAddFindPath(t *testing.T) {
 		}
 		c.compareObjects("order", i, actualOrder, test.order)
 		c.compareObjects("find", i, actualFound, test.found)
+		c.teardown()
+	}
+}
+
+func TestRemovePath(t *testing.T) {
+	testCases := []struct {
+		addPaths    string
+		removePaths string
+		expPaths    string
+	}{
+		// 0
+		{
+			addPaths:    "/app1",
+			removePaths: "/app1",
+			expPaths:    "",
+		},
+		// 1
+		{
+			addPaths:    "/app1,/app2",
+			removePaths: "/app1",
+			expPaths:    "/app2",
+		},
+		// 2
+		{
+			addPaths:    "/app1,/app2",
+			removePaths: "/app2",
+			expPaths:    "/app1",
+		},
+		// 3
+		{
+			addPaths:    "/app2,/app1",
+			removePaths: "/app1",
+			expPaths:    "/app2",
+		},
+		// 4
+		{
+			addPaths:    "/app2,/app1",
+			removePaths: "/app1",
+			expPaths:    "/app2",
+		},
+		// 5
+		{
+			addPaths:    "/app1,/app2",
+			removePaths: "/app3",
+			expPaths:    "/app2,/app1",
+		},
+		// 6
+		{
+			addPaths:    "/app1,/app2",
+			removePaths: "/app1,/app2",
+			expPaths:    "",
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		b := CreateBackends(0).AcquireBackend("default", "b", "8080")
+		h := CreateHosts().AcquireHost("d1.local")
+		for _, path := range strings.Split(test.addPaths, ",") {
+			h.AddPath(b, path, MatchPrefix)
+		}
+		for _, path := range strings.Split(test.removePaths, ",") {
+			p := h.FindPath(path)
+			if len(p) == 1 {
+				h.RemovePath(p[0])
+			}
+		}
+		var paths []string
+		for _, path := range h.Paths {
+			paths = append(paths, path.Path)
+		}
+		var expected []string
+		if test.expPaths != "" {
+			expected = strings.Split(test.expPaths, ",")
+		}
+		c.compareObjects("paths", i, paths, expected)
 		c.teardown()
 	}
 }

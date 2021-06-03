@@ -233,6 +233,7 @@ func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo s
 			Namespace: backend.Namespace,
 			Name:      backend.Name,
 			Port:      backend.Port,
+			ModeTCP:   backend.ModeTCP,
 		}
 		backend.AddBackendPath(link)
 	} else if redirTo == "" {
@@ -255,6 +256,22 @@ func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo s
 		}
 		return p1.Path > p2.Path
 	})
+}
+
+// RemovePath ...
+func (h *Host) RemovePath(hpath *HostPath) {
+	var j int
+	for i := range h.Paths {
+		if j < i {
+			h.Paths[j] = h.Paths[i]
+		}
+		if h.Paths[i] != hpath {
+			j++
+		}
+	}
+	if j < len(h.Paths) {
+		h.Paths = h.Paths[:j]
+	}
 }
 
 // HasTLSAuth ...

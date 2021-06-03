@@ -21,6 +21,7 @@ import (
 
 	api "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
+	gateway "sigs.k8s.io/gateway-api/apis/v1alpha1"
 
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
@@ -30,6 +31,9 @@ type Cache interface {
 	GetIngress(ingressName string) (*networking.Ingress, error)
 	GetIngressList() ([]*networking.Ingress, error)
 	GetIngressClass(className string) (*networking.IngressClass, error)
+	GetGateway(gatewayName string) (*gateway.Gateway, error)
+	GetGatewayList() ([]*gateway.Gateway, error)
+	GetHTTPRouteList(namespace string, match map[string]string) ([]*gateway.HTTPRoute, error)
 	GetService(serviceName string) (*api.Service, error)
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
 	GetConfigMap(configMapName string) (*api.ConfigMap, error)
@@ -46,15 +50,29 @@ type Cache interface {
 // ChangedObjects ...
 type ChangedObjects struct {
 	//
-	GlobalCur, GlobalNew map[string]string
+	GlobalConfigMapDataCur, GlobalConfigMapDataNew map[string]string
 	//
-	TCPConfigMapCur, TCPConfigMapNew map[string]string
+	TCPConfigMapDataCur, TCPConfigMapDataNew map[string]string
 	//
 	IngressesDel, IngressesUpd, IngressesAdd []*networking.Ingress
 	//
 	IngressClassesDel, IngressClassesUpd, IngressClassesAdd []*networking.IngressClass
 	//
-	Endpoints []*api.Endpoints
+	GatewaysDel, GatewaysUpd, GatewaysAdd []*gateway.Gateway
+	//
+	GatewayClassesDel, GatewayClassesUpd, GatewayClassesAdd []*gateway.GatewayClass
+	//
+	HTTPRoutesDel, HTTPRoutesUpd, HTTPRoutesAdd []*gateway.HTTPRoute
+	//
+	TLSRoutesDel, TLSRoutesUpd, TLSRoutesAdd []*gateway.TLSRoute
+	//
+	TCPRoutesDel, TCPRoutesUpd, TCPRoutesAdd []*gateway.TCPRoute
+	//
+	UDPRoutesDel, UDPRoutesUpd, UDPRoutesAdd []*gateway.UDPRoute
+	//
+	BackendPoliciesDel, BackendPoliciesUpd, BackendPoliciesAdd []*gateway.BackendPolicy
+	//
+	EndpointsNew []*api.Endpoints
 	//
 	ServicesDel, ServicesUpd, ServicesAdd []*api.Service
 	//
@@ -62,7 +80,7 @@ type ChangedObjects struct {
 	//
 	ConfigMapsDel, ConfigMapsUpd, ConfigMapsAdd []*api.ConfigMap
 	//
-	Pods []*api.Pod
+	PodsNew []*api.Pod
 	//
 	NeedFullSync bool
 	//
@@ -76,11 +94,14 @@ type Tracker interface {
 	TrackBackend(rtype ResourceType, name string, backendID hatypes.BackendID)
 	TrackMissingOnHostname(rtype ResourceType, name, hostname string)
 	TrackStorage(rtype ResourceType, name, storage string)
+	TrackGateway(rtype ResourceType, name string)
 	GetDirtyLinks(oldIngressList, addIngressList, oldIngressClassList, addIngressClassList, oldConfigMapList, addConfigMapList, oldServiceList, addServiceList, oldSecretList, addSecretList, addPodList []string) (dirtyIngs, dirtyHosts []string, dirtyBacks []hatypes.BackendID, dirtyUsers, dirtyStorages []string)
+	GetGatewayChanged(oldSecretList, addSecretList, oldServiceList, addServiceList []string) bool
 	DeleteHostnames(hostnames []string)
 	DeleteBackends(backends []hatypes.BackendID)
 	DeleteUserlists(userlists []string)
 	DeleteStorages(storages []string)
+	DeleteGateway()
 }
 
 // TrackingTarget ...
@@ -88,6 +109,12 @@ type TrackingTarget struct {
 	Hostname string
 	Backend  hatypes.BackendID
 	Userlist string
+	Gateway  bool
+}
+
+// AnnotationReader ...
+type AnnotationReader interface {
+	ReadAnnotations(backend *hatypes.Backend, services []*api.Service, pathLinks []hatypes.PathLink)
 }
 
 // File ...

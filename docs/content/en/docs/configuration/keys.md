@@ -1,7 +1,7 @@
 ---
 title: "Configuration keys"
 linkTitle: "Keys"
-weight: 1
+weight: 3
 description: >
   List of all annotations and global ConfigMap options.
 ---
