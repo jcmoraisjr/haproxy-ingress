@@ -696,7 +696,7 @@ func (c *updater) findBackend(namespace, uriPrefix string) *hatypes.HostBackend 
 	return nil
 }
 
-var validDomainRegex = regexp.MustCompile(`^[A-Za-z0-9.]*$`)
+var validDomainRegex = regexp.MustCompile(`^([A-Za-z0-9-]{1,63}\.)+[A-Za-z]{2,6}$`)
 
 func (c *updater) buildBackendProtocol(d *backData) {
 	proto := d.mapper.Get(ingtypes.BackBackendProtocol)
