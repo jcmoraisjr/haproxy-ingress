@@ -826,6 +826,49 @@ func (c *updater) buildBackendServerNaming(d *backData) {
 	}
 }
 
+var listAddrs func(ifname string) []net.Addr = func(ifname string) []net.Addr {
+	intf, _ := net.InterfaceByName(ifname)
+	if intf == nil {
+		return nil
+	}
+	addrs, _ := intf.Addrs()
+	return addrs
+}
+
+func (c *updater) buildBackendSourceAddressIntf(d *backData) {
+	sources := d.mapper.Get(ingtypes.BackSourceAddressIntf).Value
+	if sources == "" {
+		return
+	}
+	sourceIPs, found := c.srcIPs[sources]
+	if !found {
+		for _, ifname := range strings.Split(sources, ",") {
+			var newIPs []net.IP
+			for _, addr := range listAddrs(ifname) {
+				ip := net.ParseIP(addr.String())
+				if ip == nil {
+					ip, _, _ = net.ParseCIDR(addr.String())
+				}
+				if ip != nil && len(ip.To4()) == net.IPv4len {
+					// currently only IPv4
+					newIPs = append(newIPs, ip)
+				}
+			}
+			if newIPs == nil {
+				c.logger.Warn("network interface '%s' not found or does not have any IPv4 address", ifname)
+			}
+			sourceIPs = append(sourceIPs, newIPs...)
+		}
+		if c.srcIPs == nil {
+			c.srcIPs = map[string][]net.IP{}
+		}
+		// cache the lookup in the updater, it's created a new one
+		// per sync and reused between all the backend buildings
+		c.srcIPs[sources] = sourceIPs
+	}
+	d.backend.SourceIPs = sourceIPs
+}
+
 func (c *updater) buildBackendSSL(d *backData) {
 	d.backend.TLS.AddCertHeader = d.mapper.Get(ingtypes.BackAuthTLSCertHeader).Bool()
 	d.backend.TLS.FingerprintLower = d.mapper.Get(ingtypes.BackSSLFingerprintLower).Bool()

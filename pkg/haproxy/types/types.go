@@ -18,6 +18,7 @@ package types
 
 import (
 	"container/list"
+	"net"
 	"time"
 )
 
@@ -553,11 +554,13 @@ type Backend struct {
 	//
 	// IMPLEMENT
 	// use BackendID
+	hash64    uint64
 	shard     int
 	ID        string
 	Namespace string
 	Name      string
 	Port      string
+	SourceIPs []net.IP
 	Endpoints []*Endpoint
 	EpNaming  EndpointNaming
 	//
@@ -596,6 +599,7 @@ type Endpoint struct {
 	IP          string
 	Name        string
 	Port        int
+	SourceIP    string
 	Target      string
 	TargetRef   string
 	Weight      int

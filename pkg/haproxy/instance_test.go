@@ -19,6 +19,7 @@ package haproxy
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -548,6 +549,15 @@ d1.local#/ path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.SourceIPs = []net.IP{net.ParseIP("192.168.0.2"), net.ParseIP("192.168.0.3")}
+			},
+			// IP distribution starts based on the hash of the backend name.
+			// Here it's starting from the second item, but this should change if
+			// the number of IPs or the name of the backend change.
+			srvsuffix: "source 192.168.0.3",
+		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.HealthCheck.Interval = "2s"
 			},
 			srvsuffix: "check inter 2s",
@@ -800,7 +810,8 @@ d1.local#/ path01`,
 		var b *hatypes.Backend
 
 		b = c.config.Backends().AcquireBackend("d1", "app", "8080")
-		b.Endpoints = []*hatypes.Endpoint{endpointS1}
+		ep := *endpointS1
+		b.Endpoints = []*hatypes.Endpoint{&ep}
 		h = c.config.Hosts().AcquireHost("d1.local")
 		for j, p := range test.path {
 			match := hatypes.MatchBegin

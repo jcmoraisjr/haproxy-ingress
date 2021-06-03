@@ -150,6 +150,13 @@ func (b *Backends) ChangedShards() []int {
 	return changed
 }
 
+// FillSourceIPs ...
+func (b *Backends) FillSourceIPs() {
+	for _, backend := range b.itemsAdd {
+		backend.fillSourceIPs()
+	}
+}
+
 // SortChangedEndpoints ...
 func (b *Backends) SortChangedEndpoints(sortBy string) {
 	for _, backend := range b.itemsAdd {
@@ -284,28 +291,30 @@ func (b BackendID) String() string {
 
 func createBackend(shards int, namespace, name, port string) *Backend {
 	id := buildID(namespace, name, port)
+	hash := md5.Sum([]byte(id))
+	part0 := uint64(hash[0])<<56 |
+		uint64(hash[1])<<48 |
+		uint64(hash[2])<<40 |
+		uint64(hash[3])<<32 |
+		uint64(hash[4])<<24 |
+		uint64(hash[5])<<16 |
+		uint64(hash[6])<<8 |
+		uint64(hash[7])
+	part1 := uint64(hash[8])<<56 |
+		uint64(hash[9])<<48 |
+		uint64(hash[10])<<40 |
+		uint64(hash[11])<<32 |
+		uint64(hash[12])<<24 |
+		uint64(hash[13])<<16 |
+		uint64(hash[14])<<8 |
+		uint64(hash[15])
+	hash64 := uint64(part0 ^ part1)
 	var shard int
 	if shards > 0 {
-		hash := md5.Sum([]byte(id))
-		part0 := uint64(hash[0])<<56 |
-			uint64(hash[1])<<48 |
-			uint64(hash[2])<<40 |
-			uint64(hash[3])<<32 |
-			uint64(hash[4])<<24 |
-			uint64(hash[5])<<16 |
-			uint64(hash[6])<<8 |
-			uint64(hash[7])
-		part1 := uint64(hash[8])<<56 |
-			uint64(hash[9])<<48 |
-			uint64(hash[10])<<40 |
-			uint64(hash[11])<<32 |
-			uint64(hash[12])<<24 |
-			uint64(hash[13])<<16 |
-			uint64(hash[14])<<8 |
-			uint64(hash[15])
-		shard = int(uint64(part0^part1) % uint64(shards))
+		shard = int(hash64 % uint64(shards))
 	}
 	return &Backend{
+		hash64:    hash64,
 		shard:     shard,
 		ID:        id,
 		Namespace: namespace,

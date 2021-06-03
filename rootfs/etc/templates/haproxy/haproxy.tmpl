@@ -764,6 +764,7 @@ backend {{ $backend.ID }}
         {{- if not $ep.Enabled }} disabled{{ end }}
         {{- "" }} weight {{ $ep.Weight }}
         {{- if and ($backend.CookieAffinity) ($ep.CookieValue) }} cookie {{ $ep.CookieValue }}{{ end }}
+        {{- if $ep.SourceIP }} source {{ $ep.SourceIP }}{{ end }}
         {{- template "backend" map $backend }}
 {{- end }}
 {{- end }}

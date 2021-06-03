@@ -18,6 +18,7 @@ package annotations
 
 import (
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 	"testing"
@@ -2128,6 +2129,70 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 		c.cache.SecretCAPath = test.caSecrets
 		c.createUpdater().buildBackendProtocol(d)
 		c.compareObjects("secure", i, d.backend.Server, test.expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
+type addr struct {
+	ip string
+}
+
+func (a addr) Network() string {
+	return ""
+}
+func (a addr) String() string {
+	return a.ip
+}
+
+func TestSourceAddrIntf(t *testing.T) {
+	ip2 := addr{"192.168.0.2/24"}
+	ip3 := addr{"192.168.0.3/24"}
+	ip4 := addr{"192.168.0.4"}
+	ip5 := addr{"192.168.0.5fail"}
+	ip6 := addr{"fa00::6"}
+	host1 := map[string][]net.Addr{
+		"eth0": {ip2, ip3},
+		"en0":  {ip4, ip5, ip6},
+	}
+	host2 := map[string][]net.Addr{
+		"eth0": {ip2},
+	}
+	testCases := []struct {
+		ifs     map[string][]net.Addr
+		source  string
+		expIPs  []string
+		logging string
+	}{
+		// 0
+		{
+			ifs:    host1,
+			source: "eth0,en0",
+			expIPs: []string{"192.168.0.2", "192.168.0.3", "192.168.0.4"},
+		},
+		// 1
+		{
+			ifs:     host2,
+			source:  "eth0,en0",
+			expIPs:  []string{"192.168.0.2"},
+			logging: `WARN network interface 'en0' not found or does not have any IPv4 address`,
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		listAddrs = func(ifname string) []net.Addr {
+			return test.ifs[ifname]
+		}
+		d := c.createBackendData("default/app", &Source{}, map[string]string{
+			ingtypes.BackSourceAddressIntf: test.source,
+		}, map[string]string{})
+		u := c.createUpdater()
+		u.buildBackendSourceAddressIntf(d)
+		var sources []string
+		for _, ip := range d.backend.SourceIPs {
+			sources = append(sources, ip.String())
+		}
+		c.compareObjects("ip", i, sources, test.expIPs)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}

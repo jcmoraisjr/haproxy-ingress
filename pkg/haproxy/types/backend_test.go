@@ -17,6 +17,7 @@ limitations under the License.
 package types
 
 import (
+	"net"
 	"reflect"
 	"strings"
 	"testing"
@@ -83,6 +84,78 @@ func TestAddBackendPath(t *testing.T) {
 		if !reflect.DeepEqual(b.Paths, test.expected) {
 			t.Errorf("backend.Paths differs on %d - actual: %v - expected: %v", i, b.Paths, test.expected)
 		}
+	}
+}
+
+func TestFillSourceIPs(t *testing.T) {
+	testCases := []struct {
+		name string
+		ep   []string
+		src  []string
+		exp  []string
+	}{
+		// 0
+		{
+			name: "echoserver",
+			ep:   []string{"10.0.0.2", "10.0.0.3", "10.0.0.4"},
+			exp:  []string{"", "", ""},
+		},
+		// 1
+		{
+			name: "echoserver",
+			ep:   []string{"10.0.0.2", "10.0.0.3", "10.0.0.4", "", ""},
+			src:  []string{"10.0.0.102", "10.0.0.103", "10.0.0.104"},
+			exp:  []string{"10.0.0.104", "10.0.0.102", "10.0.0.103", "10.0.0.104", "10.0.0.102"},
+		},
+		// 2
+		{
+			name: "other",
+			ep:   []string{"10.0.0.2", "10.0.0.3", "10.0.0.4", "", ""},
+			src:  []string{"10.0.0.102", "10.0.0.103", "10.0.0.104"},
+			exp:  []string{"10.0.0.102", "10.0.0.103", "10.0.0.104", "10.0.0.102", "10.0.0.103"},
+		},
+		// 3
+		{
+			name: "echoserver",
+			ep:   []string{"10.0.0.2", "10.0.0.3", "10.0.0.4"},
+			src:  []string{"10.0.0.102"},
+			exp:  []string{"10.0.0.102", "10.0.0.102", "10.0.0.102"},
+		},
+		// 4
+		{
+			name: "echoserver",
+			ep:   []string{"10.0.0.2", "10.0.0.3", "10.0.0.4"},
+			src:  []string{"10.0.0.102", "10.0.0.103"},
+			exp:  []string{"10.0.0.103", "10.0.0.102", "10.0.0.103"},
+		},
+		// 5
+		{
+			name: "echoserver",
+			ep:   []string{"10.0.0.2", "10.0.0.3"},
+			src:  []string{"10.0.0.102", "10.0.0.103", "10.0.0.104"},
+			exp:  []string{"10.0.0.104", "10.0.0.102"},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		b := createBackend(0, "default", test.name, "8080")
+		for _, e := range test.ep {
+			if e != "" {
+				b.AcquireEndpoint(e, 8080, "")
+			} else {
+				b.AddEmptyEndpoint()
+			}
+		}
+		for _, s := range test.src {
+			b.SourceIPs = append(b.SourceIPs, net.ParseIP(s))
+		}
+		b.fillSourceIPs()
+		var src []string
+		for _, ep := range b.Endpoints {
+			src = append(src, ep.SourceIP)
+		}
+		c.compareObjects("ip", i, src, test.exp)
+		c.teardown()
 	}
 }
 

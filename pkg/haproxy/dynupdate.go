@@ -313,7 +313,11 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 }
 
 func (d *dynUpdater) checkEndpointPair(backend *hatypes.Backend, pair *epPair) bool {
-	if reflect.DeepEqual(pair.old, pair.cur) {
+	oldEPCopy := *pair.old
+	// SourceIP is lazily updated via FillSourceIPs() after dynupdate run
+	// A reload is already scheduled due to backend.SourceIPs changed
+	oldEPCopy.SourceIP = pair.cur.SourceIP
+	if reflect.DeepEqual(&oldEPCopy, pair.cur) {
 		return true
 	}
 	if backend.Cookie.Preserve && pair.old.CookieValue != pair.cur.CookieValue {
