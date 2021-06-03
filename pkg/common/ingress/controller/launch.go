@@ -38,7 +38,10 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 			"to connect to in the format of protocol://address:port, e.g., "+
 			"http://localhost:8080. If not specified, the assumption is that the binary runs inside a "+
 			"Kubernetes cluster and local discovery is attempted.")
+
 		kubeConfigFile = flags.String("kubeconfig", "", "Path to kubeconfig file with authorization and master location information.")
+
+		disableAPIWarnings = flags.Bool("disable-api-warnings", false, "Declare to disable warnings from the API server.")
 
 		defaultSvc = flags.String("default-backend-service", "",
 			`Service used to serve a 404 page for the default backend. Takes the form
@@ -242,7 +245,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		glog.Infof("watching for Gateway API resources - --watch-gateway is true")
 	}
 
-	kubeClient, err := createApiserverClient(*apiserverHost, *kubeConfigFile)
+	kubeClient, err := createApiserverClient(*apiserverHost, *kubeConfigFile, *disableAPIWarnings)
 	if err != nil {
 		handleFatalInitError(err)
 	}
@@ -515,7 +518,7 @@ func (c *client) NetworkingV1alpha1() gatewayv1alpha1.NetworkingV1alpha1Interfac
 //
 // apiserverHost param is in the format of protocol://address:port/pathPrefix, e.g.http://localhost:8001.
 // kubeConfig location of kubeconfig file
-func createApiserverClient(apiserverHost string, kubeConfig string) (*client, error) {
+func createApiserverClient(apiserverHost string, kubeConfig string, disableWarnings bool) (*client, error) {
 	cfg, err := buildConfigFromFlags(apiserverHost, kubeConfig)
 	if err != nil {
 		return nil, err
@@ -524,6 +527,10 @@ func createApiserverClient(apiserverHost string, kubeConfig string) (*client, er
 	cfg.QPS = defaultQPS
 	cfg.Burst = defaultBurst
 	cfg.ContentType = "application/vnd.kubernetes.protobuf"
+
+	if disableWarnings {
+		cfg.WarningHandler = rest.NoWarnings{}
+	}
 
 	glog.Infof("Creating API client for %s", cfg.Host)
 

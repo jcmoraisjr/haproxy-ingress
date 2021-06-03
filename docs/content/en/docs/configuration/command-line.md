@@ -25,6 +25,7 @@ The following command-line options are supported:
 | [`--controller-class`](#ingress-class)                  | suffix                     | ``                      | v0.12 |
 | [`--default-backend-service`](#default-backend-service) | namespace/servicename      | haproxy's 404 page      |       |
 | [`--default-ssl-certificate`](#default-ssl-certificate) | namespace/secretname       | fake, auto generated    |       |
+| [`--disable-api-warnings`](#disable-api-warnings)       | [true\|false]              | `false`                 | v0.12 |
 | [`--disable-pod-list`](#disable-pod-list)               | [true\|false]              | `false`                 | v0.11 |
 | [`--healthz-port`](#stats)                              | port number                | `10254`                 |       |
 | [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |       |
@@ -129,6 +130,13 @@ with `file://` can be used, containing both certificate and private key in PEM f
 `file:///dir/crt.pem`.
 
 A self-signed fake certificate is used if not declared, the secret or the file is not found.
+
+## --disable-api-warnings
+
+Since v0.12.4
+
+Disable warning logs sent from the API server. Most of the warnings are related with API
+deprecation. The default behavior is to log all API server warnings.
 
 ---
 
