@@ -1,7 +1,7 @@
 ---
 title: "Command-line options"
 linkTitle: "Command-line"
-weight: 2
+weight: 4
 description: >
   Static command-line configuration options.
 ---
@@ -42,6 +42,7 @@ The following command-line options are supported:
 | [`--verify-hostname`](#verify-hostname)                 | [true\|false]              | `true`                  |       |
 | [`--wait-before-shutdown`](#wait-before-shutdown)       | seconds as integer         | `0`                     | v0.8  |
 | [`--wait-before-update`](#wait-before-update)           | duration                   | `200ms`                 | v0.11 |
+| [`--watch-gateway`](#watch-gateway)                     | [true\|false]              | `false`                 | v0.13 |
 | [`--watch-ingress-without-class`](#ingress-class)       | [true\|false]              | `false`                 | v0.12 |
 | [`--watch-namespace`](#watch-namespace)                 | namespace                  | all namespaces          |       |
 
@@ -390,6 +391,15 @@ Since v0.11
 Defines the amount of time to wait before start a reconciliation event and update haproxy.
 The purpose of this delay is to group all the notifications of a batch update and apply pending
 changes in one single shot. The default value is `200ms`.
+
+---
+
+## --watch-gateway
+
+Since v0.13
+
+Enables Gateway API watch and parse. The Gateway API CRDs should be installed before enable
+this option. See also the Gateway API configuration [doc]({{% relref "gateway-api" %}}).
 
 ---
 
