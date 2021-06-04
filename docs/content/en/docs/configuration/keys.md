@@ -433,7 +433,7 @@ The table below describes all supported configuration keys.
 | [`session-cookie-value-strategy`](#affinity)         | [server-name\|pod-uid]                  | Backend | `server-name`      |
 | [`slots-min-free`](#dynamic-scaling)                 | minimum number of free slots            | Backend | `0`                |
 | [`source-address-intf`](#source-address-intf)        | `<intf1>[,<intf2>...]`                  | Backend |                    |
-| [`ssl-always-add-https`](#ssl-always-add-https)      | [true\|false]                           | Host    | `true`             |
+| [`ssl-always-add-https`](#ssl-always-add-https)      | [true\|false]                           | Host    | `false`            |
 | [`ssl-cipher-suites`](#ssl-ciphers)                  | colon-separated list                    | Host    | [see description](#ssl-ciphers) |
 | [`ssl-cipher-suites-backend`](#ssl-ciphers)          | colon-separated list                    | Backend | [see description](#ssl-ciphers) |
 | [`ssl-ciphers`](#ssl-ciphers)                        | colon-separated list                    | Host    | [see description](#ssl-ciphers) |
@@ -2174,13 +2174,13 @@ See also:
 
 | Configuration key      | Scope | Default | Since   |
 |------------------------|-------|---------|---------|
-| `ssl-always-add-https` | Host  | `true`  | v0.12.4 |
+| `ssl-always-add-https` | Host  | `false` | v0.12.4 |
 
 Every hostname declared on an Ingress resource is added to an internal HTTP map. If at least one Ingress adds the hostname in the `tls` attribute, the hostname is also added to an internal HTTPS map and does ssl offload using the default certificate. A secret name can also be added in the `tls` attribute, overriding the certificate used in the TLS handshake.
 
 `ssl-always-add-https` asks the controller to always add the domain in the internal HTTP and HTTPS maps, even if the `tls` attribute isn't declared. If `false`, a missing `tls` attribute will only declare the domain in the HTTP map and `ssl-redirect` is ignored. If `true`, a missing `tls` attribute adds the domain in the HTTPS map, and the TLS handshake will use the default certificate. If `tls` attribute is used, this configuration is ignored.
 
-The default value is `true` up to v0.12 releases to preserve historical behavior of this controller. The default value can be globally changed in the global ConfigMap.
+The default value is `false` since v0.13 to correctly implement Ingress spec. The default value can be globally changed in the global ConfigMap.
 
 ---
 

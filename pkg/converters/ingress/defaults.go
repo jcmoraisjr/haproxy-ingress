@@ -33,7 +33,7 @@ func createDefaults() map[string]string {
 		types.TCPTCPServiceLogFormat: "default",
 		//
 		types.HostAuthTLSStrict:     "false",
-		types.HostSSLAlwaysAddHTTPS: "true",
+		types.HostSSLAlwaysAddHTTPS: "false",
 		types.HostSSLCiphers:        defaultSSLCiphers,
 		types.HostSSLCipherSuites:   defaultSSLCipherSuites,
 		types.HostSSLOptionsHost:    "",
