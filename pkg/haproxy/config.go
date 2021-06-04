@@ -203,7 +203,7 @@ func (c *config) WriteFrontendMaps() error {
 			if host.HasTLSAuth() {
 				fmaps.HTTPSSNIMap.AddHostnamePathMapping(host.Hostname, path, backendID)
 				fmaps.HTTPSSNIMap.AddAliasPathMapping(host.Alias, path, backendID)
-			} else {
+			} else if host.HasTLS() {
 				fmaps.HTTPSHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
 				fmaps.HTTPSHostMap.AddAliasPathMapping(host.Alias, path, backendID)
 			}

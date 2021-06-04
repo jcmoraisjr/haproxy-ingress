@@ -435,6 +435,7 @@ type HostTLSConfig struct {
 	TLSFilename      string
 	TLSHash          string
 	TLSNotAfter      time.Time
+	UseDefaultCrt    bool
 }
 
 // EndpointNaming ...
@@ -546,6 +547,11 @@ type BackendPathItem struct {
 	config interface{}
 }
 
+// HostResolver ...
+type HostResolver interface {
+	HasTLS() bool
+}
+
 // BackendPath ...
 type BackendPath struct {
 	//
@@ -553,6 +559,7 @@ type BackendPath struct {
 	//
 	ID   string
 	Link PathLink
+	Host HostResolver
 	//
 	// config fields
 	//

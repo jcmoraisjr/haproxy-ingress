@@ -807,6 +807,24 @@ backend d1_app_8080
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+func TestInstanceClean(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+<<backends-default>>
+<<frontend-http-clean>>
+    default_backend _error404
+<<frontend-https-clean>>
+    default_backend _error404
+<<support>>
+`)
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestInstanceBare(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
@@ -828,6 +846,36 @@ backend d1_app_8080
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
 <<frontends-default>>
+<<support>>
+`)
+	c.logger.CompareLogging(defaultLogging)
+}
+
+func TestInstanceBareHTTP(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.Backends().AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	h = c.config.Hosts().AcquireHost("d1.local")
+	h.TLS.UseDefaultCrt = false
+	h.AddPath(b, "/", hatypes.MatchBegin)
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+<<frontend-http>>
+    default_backend _error404
+<<frontend-https-clean>>
+    default_backend _error404
 <<support>>
 `)
 	c.logger.CompareLogging(defaultLogging)
@@ -1832,6 +1880,48 @@ d2.local#/app11 path01`)
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestInstanceUseDefaultCrt(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	b = c.config.Backends().AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	h = c.config.Hosts().AcquireHost("d1.local")
+	h.TLS.UseDefaultCrt = false
+	h.AddPath(b, "/", hatypes.MatchBegin)
+
+	b = c.config.Backends().AcquireBackend("d2", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS21}
+	h = c.config.Hosts().AcquireHost("d2.local")
+	h.TLS.UseDefaultCrt = true
+	h.AddPath(b, "/", hatypes.MatchBegin)
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+backend d2_app_8080
+    mode http
+    server s21 172.17.0.121:8080 weight 100
+<<backends-default>>
+<<frontends-default>>
+<<support>>
+`)
+	c.checkMap("_front_http_host__begin.map", `
+d1.local#/ d1_app_8080
+d2.local#/ d2_app_8080
+`)
+	c.checkMap("_front_https_host__begin.map", `
+d2.local#/ d2_app_8080
+`)
+	c.logger.CompareLogging(defaultLogging)
+}
 func TestInstanceStrictHost(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()

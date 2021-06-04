@@ -27,6 +27,7 @@ const (
 	HostPathType               = "path-type"
 	HostServerAlias            = "server-alias"
 	HostServerAliasRegex       = "server-alias-regex"
+	HostSSLAlwaysAddHTTPS      = "ssl-always-add-https"
 	HostSSLCiphers             = "ssl-ciphers"
 	HostSSLCipherSuites        = "ssl-cipher-suites"
 	HostSSLOptionsHost         = "ssl-options-host"
@@ -48,6 +49,7 @@ var (
 		HostServerAlias:            {},
 		HostPathType:               {},
 		HostServerAliasRegex:       {},
+		HostSSLAlwaysAddHTTPS:      {},
 		HostSSLCiphers:             {},
 		HostSSLCipherSuites:        {},
 		HostSSLOptionsHost:         {},

@@ -167,6 +167,7 @@ func (c *updater) UpdateHostConfig(host *hatypes.Host, mapper *Mapper) {
 	host.RootRedirect = mapper.Get(ingtypes.HostAppRoot).Value
 	host.Alias.AliasName = mapper.Get(ingtypes.HostServerAlias).Value
 	host.Alias.AliasRegex = mapper.Get(ingtypes.HostServerAliasRegex).Value
+	host.TLS.UseDefaultCrt = mapper.Get(ingtypes.HostSSLAlwaysAddHTTPS).Bool()
 	host.VarNamespace = mapper.Get(ingtypes.HostVarNamespace).Bool()
 	c.buildHostAuthTLS(data)
 	c.buildHostCertSigner(data)

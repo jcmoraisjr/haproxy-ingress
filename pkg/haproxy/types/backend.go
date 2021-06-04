@@ -267,7 +267,7 @@ func (b *Backend) createPathConfig() map[string]*BackendPathConfig {
 	for i := 0; i < pathType.NumField(); i++ {
 		name := pathType.Field(i).Name
 		// filter out core fields
-		if name != "ID" && name != "Link" {
+		if name != "ID" && name != "Link" && name != "Host" {
 			pathconfig[name] = &BackendPathConfig{}
 		}
 	}
