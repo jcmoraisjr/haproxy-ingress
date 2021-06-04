@@ -163,6 +163,12 @@ func (c *testConfig) createBackendData(svcFullName string, source *Source, ann, 
 
 const testingHostname = "host.local"
 
+type hostResolver struct{}
+
+func (h *hostResolver) HasTLS() bool {
+	return true
+}
+
 func (c *testConfig) createBackendMappingData(
 	svcFullName string,
 	source *Source,
@@ -183,6 +189,7 @@ func (c *testConfig) createBackendMappingData(
 		// ignoring ID which isn't the focus of the test
 		// removing on createBackendPaths() as well
 		b.ID = ""
+		b.Host = &hostResolver{}
 	}
 	for uri, ann := range urlAnnValue {
 		d.mapper.AddAnnotations(source, hatypes.CreatePathLink(testingHostname, uri, hatypes.MatchBegin), ann)

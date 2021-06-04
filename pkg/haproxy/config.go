@@ -217,7 +217,7 @@ func (c *config) WriteFrontendMaps() error {
 							backendID = "_redirect_https"
 						}
 					}
-				} else {
+				} else if host.HasTLS() {
 					// ssl offload in place
 					if host.HasTLSAuth() {
 						fmaps.HTTPSSNIMap.AddHostnamePathMapping(host.Hostname, path, backendID)
