@@ -96,7 +96,8 @@ end
 -- used to identify the headers that should be copied between the requests
 -- and responses. A dash `-` means that the headers shouldn't be copied at all.
 -- `hdr_succeed == "-"` means that HAProxy vars should be created instead.
--- `hdt_fail == "-"` means that the Lua script shouldn't terminare the request.
+-- `hdr_fail == "-"` means that the Lua script shouldn't terminare the request.
+-- `method == "*"` means that the same method used by the client should be used to the auth service.
 function auth_request(txn, be, path, method, hdr_req, hdr_succeed, hdr_fail)
 	set_var(txn, "txn.auth_response_successful", false)
 
@@ -139,6 +140,9 @@ function auth_request(txn, be, path, method, hdr_req, hdr_succeed, hdr_fail)
 	end
 
 	-- Make request to backend.
+	if method == "*" then
+		method = txn.sf:method()
+	end
 	local response, err = http.send(method:upper(), {
 		url = "http://" .. addr .. path,
 		headers = headers,
