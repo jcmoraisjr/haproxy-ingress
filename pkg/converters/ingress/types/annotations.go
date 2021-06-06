@@ -46,6 +46,7 @@ const (
 	HostRedirectFromRegex      = "redirect-from-regex"
 	HostServerAlias            = "server-alias"
 	HostServerAliasRegex       = "server-alias-regex"
+	HostSSLAlwaysAddHTTPS      = "ssl-always-add-https"
 	HostSSLCiphers             = "ssl-ciphers"
 	HostSSLCipherSuites        = "ssl-cipher-suites"
 	HostSSLOptionsHost         = "ssl-options-host"
@@ -68,6 +69,7 @@ var (
 		HostRedirectFrom:           {},
 		HostRedirectFromRegex:      {},
 		HostServerAliasRegex:       {},
+		HostSSLAlwaysAddHTTPS:      {},
 		HostSSLCiphers:             {},
 		HostSSLCipherSuites:        {},
 		HostSSLOptionsHost:         {},

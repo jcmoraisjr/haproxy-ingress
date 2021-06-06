@@ -126,6 +126,10 @@ func (h *Hosts) createHost(hostname string) *Host {
 	return &Host{
 		Hostname: hostname,
 		hosts:    h,
+		TLS: HostTLSConfig{
+			// TODO revisit instance_test to allow change this default value to `false`
+			UseDefaultCrt: true,
+		},
 	}
 }
 
@@ -224,6 +228,11 @@ func (h *Host) AddRedirect(path string, match MatchType, redirTo string) {
 	h.addPath(path, match, nil, redirTo)
 }
 
+type hostResolver struct {
+	useDefaultCrt *bool
+	crtHash       *string
+}
+
 func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo string) {
 	link := CreatePathLink(h.Hostname, path, match)
 	var hback HostBackend
@@ -233,9 +242,13 @@ func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo s
 			Namespace: backend.Namespace,
 			Name:      backend.Name,
 			Port:      backend.Port,
-			ModeTCP:   backend.ModeTCP,
+			ModeTCP:   &backend.ModeTCP,
 		}
-		backend.AddBackendPath(link)
+		bpath := backend.AddBackendPath(link)
+		bpath.Host = &hostResolver{
+			useDefaultCrt: &h.TLS.UseDefaultCrt,
+			crtHash:       &h.TLS.TLSHash,
+		}
 	} else if redirTo == "" {
 		hback = HostBackend{ID: "_error404"}
 	}
@@ -272,6 +285,15 @@ func (h *Host) RemovePath(hpath *HostPath) {
 	if j < len(h.Paths) {
 		h.Paths = h.Paths[:j]
 	}
+}
+
+// HasTLS ...
+func (h *Host) HasTLS() bool {
+	return h.TLS.UseDefaultCrt || h.TLS.TLSHash != ""
+}
+
+func (h *hostResolver) HasTLS() bool {
+	return *h.useDefaultCrt || *h.crtHash != ""
 }
 
 // HasTLSAuth ...

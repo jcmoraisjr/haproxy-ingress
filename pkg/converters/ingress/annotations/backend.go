@@ -884,8 +884,8 @@ func (c *updater) buildBackendSSL(d *backData) {
 func (c *updater) buildBackendSSLRedirect(d *backData) {
 	noTLSRedir := utils.Split(d.mapper.Get(ingtypes.GlobalNoTLSRedirectLocations).Value, ",")
 	for _, path := range d.backend.Paths {
-		config := d.mapper.GetConfig(path.Link)
-		redir := config.Get(ingtypes.BackSSLRedirect).Bool()
+		redir := path.Host != nil && path.Host.HasTLS() &&
+			d.mapper.GetConfig(path.Link).Get(ingtypes.BackSSLRedirect).Bool()
 		if redir {
 			for _, noredir := range noTLSRedir {
 				if strings.HasPrefix(path.Path(), noredir) {

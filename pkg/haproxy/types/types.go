@@ -489,7 +489,7 @@ type HostBackend struct {
 	Namespace string
 	Name      string
 	Port      string
-	ModeTCP   bool
+	ModeTCP   *bool
 }
 
 // HostAliasConfig ...
@@ -507,7 +507,8 @@ type HostRedirectConfig struct {
 // HostTLSConfig ...
 type HostTLSConfig struct {
 	TLSConfig
-	CAErrorPage string
+	CAErrorPage   string
+	UseDefaultCrt bool
 }
 
 // EndpointNaming ...
@@ -623,6 +624,11 @@ type BackendPathItem struct {
 	config interface{}
 }
 
+// HostResolver ...
+type HostResolver interface {
+	HasTLS() bool
+}
+
 // BackendPath ...
 type BackendPath struct {
 	//
@@ -630,6 +636,7 @@ type BackendPath struct {
 	//
 	ID   string
 	Link PathLink
+	Host HostResolver
 	//
 	// config fields
 	//
