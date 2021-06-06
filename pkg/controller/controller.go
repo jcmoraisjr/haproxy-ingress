@@ -57,6 +57,7 @@ type HAProxyController struct {
 	cfg               *controller.Configuration
 	configMap         *api.ConfigMap
 	converterOptions  *convtypes.ConverterOptions
+	dynamicConfig     *convtypes.DynamicConfig
 	reloadStrategy    *string
 	maxOldConfigFiles *int
 	validateConfig    *bool
@@ -100,14 +101,10 @@ func (hc *HAProxyController) configController() {
 	hc.metrics = createMetrics(hc.cfg.BucketsResponseTime)
 	hc.ingressQueue = utils.NewRateLimitingQueue(hc.cfg.RateLimitUpdate, hc.syncIngress)
 	hc.tracker = tracker.NewTracker()
-	hc.cache = createCache(
-		hc.logger, hc.cfg.Client, hc.controller, hc.tracker, hc.ingressQueue,
-		hc.cfg.WatchGateway,
-		hc.cfg.WatchNamespace, hc.cfg.ForceNamespaceIsolation,
-		hc.cfg.DisablePodList,
-		hc.cfg.ResyncPeriod,
-		hc.cfg.WaitBeforeUpdate,
-	)
+	hc.dynamicConfig = &convtypes.DynamicConfig{
+		StaticCrossNamespaceSecrets: hc.cfg.AllowCrossNamespace,
+	}
+	hc.cache = createCache(hc.logger, hc.controller, hc.tracker, hc.dynamicConfig, hc.ingressQueue)
 	var acmeSigner acme.Signer
 	if hc.cfg.AcmeServer {
 		electorID := fmt.Sprintf("%s-%s", hc.cfg.AcmeElectionID, hc.cfg.IngressClass)
@@ -141,6 +138,7 @@ func (hc *HAProxyController) configController() {
 		Logger:           hc.logger,
 		Cache:            hc.cache,
 		Tracker:          hc.tracker,
+		DynamicConfig:    hc.dynamicConfig,
 		MasterSocket:     hc.cfg.MasterSocket,
 		AnnotationPrefix: hc.cfg.AnnPrefix,
 		DefaultBackend:   hc.cfg.DefaultService,

@@ -17,9 +17,11 @@ limitations under the License.
 package annotations
 
 import (
+	"reflect"
 	"testing"
 
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
+	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
@@ -331,6 +333,88 @@ k8s3=10.0.1.31:10053,10.0.1.32:10053,10.0.1.33:10053,
 		d := c.createGlobalData(test.config)
 		c.createUpdater().buildGlobalDNS(d)
 		c.compareObjects("dns", i, d.global.DNS, test.expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
+func TestDynamic(t *testing.T) {
+	testCases := []struct {
+		config        map[string]string
+		staticSecrets bool
+		expected      convtypes.DynamicConfig
+		logging       string
+	}{
+		// 0
+		{
+			config: map[string]string{
+				ingtypes.GlobalCrossNamespaceSecretsCA: "error",
+			},
+			logging: `
+WARN ignoring invalid value 'error' on global 'cross-namespace-secrets-ca', using 'deny'
+`,
+		},
+		// 1
+		{
+			config: map[string]string{
+				ingtypes.GlobalCrossNamespaceSecretsCA:  "allow",
+				ingtypes.GlobalCrossNamespaceSecretsCrt: "fail",
+			},
+			expected: convtypes.DynamicConfig{
+				CrossNamespaceSecretCA: true,
+			},
+			logging: `
+WARN ignoring invalid value 'fail' on global 'cross-namespace-secrets-crt', using 'deny'
+`,
+		},
+		// 2
+		{
+			config: map[string]string{
+				ingtypes.GlobalCrossNamespaceSecretsCA:  "deny",
+				ingtypes.GlobalCrossNamespaceSecretsCrt: "allow",
+			},
+			expected: convtypes.DynamicConfig{
+				CrossNamespaceSecretCertificate: true,
+			},
+		},
+		// 3
+		{
+			config: map[string]string{
+				ingtypes.GlobalCrossNamespaceSecretsCA:     "allow",
+				ingtypes.GlobalCrossNamespaceSecretsCrt:    "allow",
+				ingtypes.GlobalCrossNamespaceSecretsPasswd: "allow",
+				ingtypes.GlobalCrossNamespaceServices:      "allow",
+			},
+			expected: convtypes.DynamicConfig{
+				CrossNamespaceSecretCA:          true,
+				CrossNamespaceSecretCertificate: true,
+				CrossNamespaceSecretPasswd:      true,
+				CrossNamespaceServices:          true,
+			},
+		},
+		// 4
+		{
+			config: map[string]string{
+				ingtypes.GlobalCrossNamespaceSecretsCA: "allow",
+			},
+			staticSecrets: true,
+			expected: convtypes.DynamicConfig{
+				CrossNamespaceSecretCA:          true,
+				CrossNamespaceSecretCertificate: true,
+				CrossNamespaceSecretPasswd:      true,
+				StaticCrossNamespaceSecrets:     true,
+			},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createGlobalData(test.config)
+		u := c.createUpdater()
+		u.options.DynamicConfig.StaticCrossNamespaceSecrets = test.staticSecrets
+		u.buildGlobalDynamic(d)
+		if !reflect.DeepEqual(*u.options.DynamicConfig, test.expected) {
+			c.compareObjects("dynamic", i, *u.options.DynamicConfig, test.expected)
+		}
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}

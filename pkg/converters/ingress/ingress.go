@@ -201,6 +201,7 @@ func (c *converter) syncFull() {
 		return
 	}
 	sortIngress(ingList)
+	c.updater.UpdateGlobalConfig(c.haproxy, c.globalConfig)
 	c.syncDefaultBackend()
 	for _, ing := range ingList {
 		c.syncIngress(ing)
@@ -403,8 +404,7 @@ func (c *converter) findBackend(namespace string, backend *networking.IngressBac
 	if err != nil {
 		return nil
 	}
-	fullSvcName := namespace + "/" + svcName
-	svc, err := c.cache.GetService(fullSvcName)
+	svc, err := c.cache.GetService(namespace, svcName)
 	if err != nil {
 		return nil
 	}
@@ -535,7 +535,11 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 			if url := annBack[ingtypes.BackAuthURL]; url != "" {
 				urlProto, urlHost, urlPort, _, _ := ingutils.ParseURL(url)
 				if (urlProto == "service" || urlProto == "svc") && urlHost != "" && urlPort != "" {
-					_, err := c.addBackend(source, pathLink, ing.Namespace+"/"+urlHost, urlPort, map[string]string{})
+					authSvcName := urlHost
+					if strings.Index(authSvcName, "/") < 0 {
+						authSvcName = ing.Namespace + "/" + authSvcName
+					}
+					_, err := c.addBackend(source, pathLink, authSvcName, urlPort, map[string]string{})
 					if err != nil {
 						c.logger.Warn("skipping auth-url on %v: %v", source, err)
 					}
@@ -695,7 +699,6 @@ func (c *converter) fullSyncTCP() {
 }
 
 func (c *converter) fullSyncAnnotations() {
-	c.updater.UpdateGlobalConfig(c.haproxy, c.globalConfig)
 	c.fullSyncTCP()
 	for _, host := range c.haproxy.Hosts().Items() {
 		if ann, found := c.hostAnnotations[host]; found {
@@ -830,7 +833,7 @@ func (c *converter) addBackend(source *annotations.Source, pathLink hatypes.Path
 
 func (c *converter) addBackendWithClass(source *annotations.Source, pathLink hatypes.PathLink, fullSvcName, svcPort string, ann map[string]string, ingressClass *networking.IngressClass) (*hatypes.Backend, error) {
 	// TODO build a stronger tracking
-	svc, err := c.cache.GetService(fullSvcName)
+	svc, err := c.cache.GetService(source.Namespace, fullSvcName)
 	hostname := pathLink.Hostname()
 	if err != nil {
 		c.tracker.TrackMissingOnHostname(convtypes.ServiceType, fullSvcName, hostname)

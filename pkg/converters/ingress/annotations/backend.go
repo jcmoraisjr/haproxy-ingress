@@ -178,8 +178,16 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 		case "service", "svc":
 			if urlPort == "" {
 				c.logger.Warn("skipping auth-url on %v: missing service port: %s", url.Source, url.Value)
+				continue
 			}
-			backend = c.haproxy.Backends().FindBackend(url.Source.Namespace, urlHost, urlPort)
+			ssvc := strings.Split(urlHost, "/")
+			namespace := url.Source.Namespace
+			name := ssvc[0]
+			if len(ssvc) == 2 {
+				namespace = ssvc[0]
+				name = ssvc[1]
+			}
+			backend = c.haproxy.Backends().FindBackend(namespace, name, urlPort)
 			if backend == nil {
 				// warn already logged when ingress parser tried to acquire the backend
 				continue
@@ -266,9 +274,9 @@ func (c *updater) buildBackendAuthHTTP(d *backData) {
 		listName := strings.Replace(secretName, "/", "_", 1)
 		userlist := c.haproxy.Userlists().Find(listName)
 		if userlist == nil {
-			userb, err := c.cache.GetSecretContent(
+			userb, err := c.cache.GetPasswdSecretContent(
 				authSecret.Source.Namespace,
-				authSecret.Value, "auth",
+				authSecret.Value,
 				convtypes.TrackingTarget{
 					Backend:  d.backend.BackendID(),
 					Userlist: listName,

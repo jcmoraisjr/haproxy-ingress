@@ -61,7 +61,7 @@ type k8scache struct {
 	controller             *controller.GenericController
 	cfg                    *controller.Configuration
 	tracker                convtypes.Tracker
-	crossNS                bool
+	dynamicConfig          *convtypes.DynamicConfig
 	podNamespace           string
 	globalConfigMapKey     string
 	tcpConfigMapKey        string
@@ -79,16 +79,10 @@ type k8scache struct {
 
 func createCache(
 	logger types.Logger,
-	client types.Client,
 	controller *controller.GenericController,
 	tracker convtypes.Tracker,
+	configOptions *convtypes.DynamicConfig,
 	updateQueue utils.Queue,
-	watchGateway bool,
-	watchNamespace string,
-	isolateNamespace bool,
-	disablePodList bool,
-	resync time.Duration,
-	waitBeforeUpdate time.Duration,
 ) *k8scache {
 	podNamespace := os.Getenv("POD_NAMESPACE")
 	if podNamespace == "" {
@@ -114,19 +108,19 @@ func createCache(
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(logger.Info)
 	eventBroadcaster.StartRecordingToSink(&typedv1.EventSinkImpl{
-		Interface: client.CoreV1().Events(watchNamespace),
+		Interface: cfg.Client.CoreV1().Events(cfg.WatchNamespace),
 	})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, api.EventSource{
 		Component: "ingress-controller",
 	})
 	cache := &k8scache{
 		ctx:                    context.Background(),
-		client:                 client,
+		client:                 cfg.Client,
 		logger:                 logger,
 		controller:             controller,
 		cfg:                    cfg,
 		tracker:                tracker,
-		crossNS:                cfg.AllowCrossNamespace,
+		dynamicConfig:          configOptions,
 		podNamespace:           podNamespace,
 		globalConfigMapKey:     globalConfigMapName,
 		tcpConfigMapKey:        tcpConfigMapName,
@@ -134,11 +128,21 @@ func createCache(
 		acmeTokenConfigmapName: acmeTokenConfigmapName,
 		stateMutex:             sync.RWMutex{},
 		updateQueue:            updateQueue,
-		waitBeforeUpdate:       waitBeforeUpdate,
+		waitBeforeUpdate:       cfg.WaitBeforeUpdate,
 		clear:                  true,
 	}
 	// TODO I'm a circular reference, can you fix me?
-	cache.listers = createListers(cache, logger, recorder, client, watchGateway, watchNamespace, isolateNamespace, !disablePodList, resync)
+	cache.listers = createListers(
+		cache,
+		logger,
+		recorder,
+		cfg.Client,
+		cfg.WatchGateway,
+		cfg.WatchNamespace,
+		cfg.ForceNamespaceIsolation,
+		!cfg.DisablePodList,
+		cfg.ResyncPeriod,
+	)
 	return cache
 }
 
@@ -259,8 +263,8 @@ func (c *k8scache) GetHTTPRouteList(namespace string, match map[string]string) (
 	return c.listers.httpRouteLister.List(selector)
 }
 
-func (c *k8scache) GetService(serviceName string) (*api.Service, error) {
-	namespace, name, err := cache.SplitMetaNamespaceKey(serviceName)
+func (c *k8scache) GetService(defaultNamespace, serviceName string) (*api.Service, error) {
+	namespace, name, err := c.buildResourceName(defaultNamespace, "service", serviceName, c.dynamicConfig.CrossNamespaceServices)
 	if err != nil {
 		return nil, err
 	}
@@ -356,8 +360,8 @@ func getContentProtocol(input string) (proto, content string) {
 	return data[1], data[2]
 }
 
-func (c *k8scache) buildSecretName(defaultNamespace, secretName string) (string, string, error) {
-	ns, name, err := cache.SplitMetaNamespaceKey(secretName)
+func (c *k8scache) buildResourceName(defaultNamespace, kind, resourceName string, allowCrossNamespace bool) (string, string, error) {
+	ns, name, err := cache.SplitMetaNamespaceKey(resourceName)
 	if err != nil {
 		return "", "", err
 	}
@@ -367,12 +371,12 @@ func (c *k8scache) buildSecretName(defaultNamespace, secretName string) (string,
 	if ns == "" {
 		return defaultNamespace, name, nil
 	}
-	if c.crossNS || ns == defaultNamespace {
+	if allowCrossNamespace || ns == defaultNamespace {
 		return ns, name, nil
 	}
 	return "", "", fmt.Errorf(
-		"trying to read secret '%s' from namespace '%s', but cross-namespace reading is disabled; use --allow-cross-namespace to enable",
-		secretName, defaultNamespace,
+		"trying to read %s '%s' cross namespaces '%s' and '%s', but cross-namespace reading is disabled",
+		kind, resourceName, ns, defaultNamespace,
 	)
 }
 
@@ -389,7 +393,7 @@ func (c *k8scache) GetTLSSecretPath(defaultNamespace, secretName string, track c
 	} else if proto != "secret" {
 		return file, fmt.Errorf("unsupported protocol: %s", proto)
 	}
-	namespace, name, err := c.buildSecretName(defaultNamespace, content)
+	namespace, name, err := c.buildResourceName(defaultNamespace, "secret", content, c.dynamicConfig.CrossNamespaceSecretCertificate)
 	if err != nil {
 		return file, err
 	}
@@ -442,7 +446,7 @@ func (c *k8scache) GetCASecretPath(defaultNamespace, secretName string, track co
 	} else if proto != "secret" {
 		return ca, crl, fmt.Errorf("unsupported protocol: %s", proto)
 	}
-	namespace, name, err := c.buildSecretName(defaultNamespace, content)
+	namespace, name, err := c.buildResourceName(defaultNamespace, "secret", content, c.dynamicConfig.CrossNamespaceSecretCA)
 	if err != nil {
 		return ca, crl, err
 	}
@@ -483,7 +487,7 @@ func (c *k8scache) GetDHSecretPath(defaultNamespace, secretName string) (file co
 	} else if proto != "secret" {
 		return file, fmt.Errorf("unsupported protocol: %s", proto)
 	}
-	namespace, name, err := c.buildSecretName(defaultNamespace, content)
+	namespace, name, err := c.buildResourceName(defaultNamespace, "secret", content, true)
 	if err != nil {
 		return file, err
 	}
@@ -507,14 +511,14 @@ func (c *k8scache) GetDHSecretPath(defaultNamespace, secretName string) (file co
 	return file, nil
 }
 
-func (c *k8scache) GetSecretContent(defaultNamespace, secretName, keyName string, track convtypes.TrackingTarget) ([]byte, error) {
+func (c *k8scache) GetPasswdSecretContent(defaultNamespace, secretName string, track convtypes.TrackingTarget) ([]byte, error) {
 	proto, content := getContentProtocol(secretName)
 	if proto == "file" {
 		return ioutil.ReadFile(content)
 	} else if proto != "secret" {
 		return nil, fmt.Errorf("unsupported protocol: %s", proto)
 	}
-	namespace, name, err := c.buildSecretName(defaultNamespace, content)
+	namespace, name, err := c.buildResourceName(defaultNamespace, "secret", content, c.dynamicConfig.CrossNamespaceSecretPasswd)
 	if err != nil {
 		return nil, err
 	}
@@ -523,6 +527,7 @@ func (c *k8scache) GetSecretContent(defaultNamespace, secretName, keyName string
 		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return nil, err
 	}
+	keyName := "auth"
 	data, found := secret.Data[keyName]
 	if !found {
 		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)

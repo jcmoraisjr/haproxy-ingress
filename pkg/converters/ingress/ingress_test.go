@@ -2323,6 +2323,7 @@ func (c *testConfig) createConverter() *converter {
 			Cache:            c.cache,
 			Logger:           c.logger,
 			Tracker:          c.tracker,
+			DynamicConfig:    &convtypes.DynamicConfig{},
 			DefaultConfig:    defaultConfig,
 			DefaultBackend:   "system/default",
 			DefaultCrtSecret: "system/default",

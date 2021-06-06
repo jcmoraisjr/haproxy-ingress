@@ -19,7 +19,6 @@ package controller
 import (
 	"crypto/x509"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -165,27 +164,6 @@ func (ic *GenericController) GetCertificate(namespace, secretName string) (*ingr
 		return nil, err
 	}
 	return nil, fmt.Errorf("secret '%v' have neither ca.crt nor tls.crt/tls.key pair", name)
-}
-
-// GetFullResourceName add the currentNamespace prefix if name doesn't provide one
-// and AllowCrossNamespace is allowing this
-func (ic GenericController) GetFullResourceName(name, currentNamespace string) string {
-	if name == "" {
-		return ""
-	}
-	if strings.Index(name, "/") == -1 {
-		// there isn't a slash, just the resource name
-		return fmt.Sprintf("%v/%v", currentNamespace, name)
-	} else if !ic.cfg.AllowCrossNamespace {
-		// there IS a slash: namespace/resourcename
-		// and cross namespace isn't allowed
-		ns := strings.Split(name, "/")[0]
-		if ns != currentNamespace {
-			// concat currentNamespace in order to fail resource reading
-			return fmt.Sprintf("%v/%v", currentNamespace, name)
-		}
-	}
-	return name
 }
 
 // UpdateSecret ...

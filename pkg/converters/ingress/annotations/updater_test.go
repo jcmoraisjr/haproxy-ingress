@@ -142,6 +142,9 @@ func (c *testConfig) createUpdater() *updater {
 			Filename: fakeCAFilename,
 			SHA1Hash: fakeCAHash,
 		},
+		options: &convtypes.ConverterOptions{
+			DynamicConfig: &convtypes.DynamicConfig{},
+		},
 	}
 }
 

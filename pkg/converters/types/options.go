@@ -25,6 +25,7 @@ type ConverterOptions struct {
 	Logger           types.Logger
 	Cache            Cache
 	Tracker          Tracker
+	DynamicConfig    *DynamicConfig
 	MasterSocket     string
 	DefaultConfig    func() map[string]string
 	DefaultBackend   string
@@ -34,4 +35,14 @@ type ConverterOptions struct {
 	AnnotationPrefix []string
 	AcmeTrackTLSAnn  bool
 	HasGateway       bool
+}
+
+// DynamicConfig ...
+type DynamicConfig struct {
+	CrossNamespaceSecretCertificate bool
+	CrossNamespaceSecretCA          bool
+	CrossNamespaceSecretPasswd      bool
+	CrossNamespaceServices          bool
+	// config from the command-line for backward compatibility
+	StaticCrossNamespaceSecrets bool
 }

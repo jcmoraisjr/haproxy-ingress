@@ -353,6 +353,10 @@ The table below describes all supported configuration keys.
 | [`cors-expose-headers`](#cors)                       | headers                                 | Path    |                    |
 | [`cors-max-age`](#cors)                              | time (seconds)                          | Path    |                    |
 | [`cpu-map`](#cpu-map)                                | haproxy CPU Map format                  | Global  |                    |
+| [`cross-namespace-secrets-ca`](#cross-namespace)     | [allow\|deny]                           | Global  | `deny`             |
+| [`cross-namespace-secrets-crt`](#cross-namespace)    | [allow\|deny]                           | Global  | `deny`             |
+| [`cross-namespace-secrets-passwd`](#cross-namespace) | [allow\|deny]                           | Global  | `deny`             |
+| [`cross-namespace-services`](#cross-namespace)       | [allow\|deny]                           | Global  | `deny`             |
 | [`default-backend-redirect`](#default-redirect)      | Location                                | Global  |                    |
 | [`default-backend-redirect-code`](#default-redirect) | HTTP status code                        | Global  | `302`              |
 | [`denylist-source-range`](#allowlist)                | Comma-separated IPs or CIDRs            | Path    |                    |
@@ -781,7 +785,7 @@ Configures External Authentication options.
 
 `http` and `https` protocols are straightforward: use them to connect to an IP or hostname without any further configuration. `http` adds the HTTP `Host` header if a hostname is used, and `https` adds also the sni extension. Note that `https` connects in an insecure way and currently cannot be customized. Do NOT use neither `http` nor `https` if haproxy -> authentication service communication has untrusted networks.
 
-`svc` protocol allows to use a Kubernetes service declared in the same namespace of the ingress or the service being annotated. The service can be of any type and a port must always be declared - both in the `auth-url` configuration and in the service resource. Using `svc` protocol allows to configure a secure connection, see [secure](#secure-backend) configuration keys and annotate them in the target service.
+`svc` protocol allows to use a Kubernetes service declared in the same namespace of the ingress or the service being annotated. Services on other namespaces can also be used in the form `svc://namespace/servicename:port/path` if global config [`cross-namespace-services`](#cross-namespace) was configured as `allow`. The service can be of any type and a port must always be declared - both in the `auth-url` configuration and in the service resource. Using `svc` protocol allows to configure a secure connection, see [secure](#secure-backend) configuration keys and annotate them in the target service.
 
 Configuration examples:
 
@@ -1276,6 +1280,28 @@ See also:
 * [nbthread](#nbthread) configuration key
 * [nbproc](#nbproc) configuration key
 * https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#3.1-cpu-map
+
+---
+
+## Cross Namespace
+
+| Configuration key                | Scope    | Default | Since |
+|----------------------------------|----------|---------|-------|
+| `cross-namespace-secrets-ca`     | `Global` | `deny`  | v0.13 |
+| `cross-namespace-secrets-crt`    | `Global` | `deny`  | v0.13 |
+| `cross-namespace-secrets-passwd` | `Global` | `deny`  | v0.13 |
+| `cross-namespace-services`       | `Global` | `deny`  | v0.13 |
+
+Defines if resources declared on a namespace can read resources declared on another namespace. Supported values are `allow` or `deny`. The default configuration denies access from all cross namespace access.
+
+* `cross-namespace-secrets-ca`: Allows or denies cross namespace reading of CA bundles and CRL files, used by [`auth-tls-secret`](#auth-tls) and [`secure-verify-ca-secret`](#secure-backend) configuration keys.
+* `cross-namespace-secrets-crt`: Allows or denies cross namespace reading of x509 certificates and private keys, used by gateway's, httpRoute's and ingress' tls attribute, and also [`secure-crt-secret`](#secure-backend) configuration key.
+* `cross-namespace-secrets-passwd`: Allows or denies cross namespace reading of password files, used by [`auth-secret`](#auth-basic) configuration key.
+* `cross-namespace-services`: Allows or denies cross namespace reading of Kubernetes Service resources, used by [`auth-url`](#auth-external) configuration key.
+
+{{% alert title="Note" %}}
+[`--allow-cross-namespace`]({{% relref "command-line#allow-cross-namespace" %}}) command-line option, if declared, overrides all the secret related configuration keys.
+{{% /alert %}}
 
 ---
 
