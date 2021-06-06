@@ -481,6 +481,29 @@ func TestAuthExternal(t *testing.T) {
 			expIP:   []string{"10.0.0.2:80"},
 			logging: `WARN invalid request method 'invalid()' on ingress 'default/ing1', using GET instead`,
 		},
+		// 24
+		{
+			url:    "http://app1.local",
+			method: "*",
+			expBack: hatypes.AuthExternal{
+				AuthBackendName: "_auth_4001",
+				AuthPath:        "/",
+				Method:          "*",
+			},
+			expIP: []string{"10.0.0.2:80"},
+		},
+		// 25
+		{
+			url:    "http://app1.local",
+			method: "**",
+			expBack: hatypes.AuthExternal{
+				AuthBackendName: "_auth_4001",
+				AuthPath:        "/",
+				Method:          "GET",
+			},
+			expIP:   []string{"10.0.0.2:80"},
+			logging: `WARN invalid request method '**' on ingress 'default/ing1', using GET instead`,
+		},
 	}
 	source := &Source{
 		Namespace: "default",

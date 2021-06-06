@@ -763,7 +763,7 @@ See also:
 Configures External Authentication options.
 
 * `auth-url`: Configures the endpoint(s) of the authentication service. All requests made to the target backend server will be validated by the authentication service before continue, which should respond with `2xx` HTTP status code, otherwise the request is considered as failed. In the case of a failure, the backend server is not used and the client receives the response from the authentication service.
-* `auth-method`: Configures the HTTP method used in the request to the external authentication service. The default value is `GET`.
+* `auth-method`: Configures the HTTP method used in the request to the external authentication service. Use an asterisk `*` to copy the same method used in the client request. The default value is `GET`.
 * `auth-headers-request`: Configures a comma-separated list of header names that should be copied from the client to the authentication service. All HTTP headers will be copied if not declared.
 * `auth-headers-succeed`: Configures a comma-separated list of header names that should be copied from the authentication service to the backend server if the authentication succeed. All HTTP headers will be copied if not declared.
 * `auth-headers-fail`: Configures a comma-separated list of header names that should be copied from the authentication service to the client if the authentication fail. This option is ignored if `auth-signin` is used. All HTTP headers will be copied if not declared.

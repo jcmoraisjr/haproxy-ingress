@@ -122,7 +122,7 @@ var (
 	lookupHost func(host string) (addrs []string, err error) = net.LookupHost
 
 	validURLRegex    = regexp.MustCompile(`^[^"' ]*$`)
-	validMethodRegex = regexp.MustCompile(`^[A-Za-z]+$`)
+	validMethodRegex = regexp.MustCompile(`^([A-Za-z]+|\*)$`)
 	authHeaderRegex  = regexp.MustCompile(`^[A-Za-z0-9-]+(:[^:'" ]+)?$`)
 )
 
