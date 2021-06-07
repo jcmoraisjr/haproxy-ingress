@@ -2820,6 +2820,13 @@ func TestDNS(t *testing.T) {
 	h = c.config.Hosts().AcquireHost("d2.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 
+	b = c.config.Backends().AcquireBackend("d3", "app", "http")
+	b.DNSPort = "named"
+	b.Endpoints = []*hatypes.Endpoint{endpointS21, endpointS22}
+	b.Resolver = "k8s"
+	h = c.config.Hosts().AcquireHost("d3.local")
+	h.AddPath(b, "/", hatypes.MatchBegin)
+
 	c.Update()
 	c.checkConfig(`
 <<global>>
@@ -2838,6 +2845,9 @@ backend d1_app_8080
 backend d2_app_http
     mode http
     server-template srv 2 _http._tcp.app.d2.svc.cluster.local resolvers k8s resolve-prefer ipv4 init-addr none weight 1
+backend d3_app_http
+    mode http
+    server-template srv 2 _named._tcp.app.d3.svc.cluster.local resolvers k8s resolve-prefer ipv4 init-addr none weight 1
 <<backends-default>>
 <<frontends-default>>
 <<support>>

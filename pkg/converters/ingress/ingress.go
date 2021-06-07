@@ -627,6 +627,7 @@ func (c *converter) addBackendWithClass(source *annotations.Source, hostname, ur
 	}
 	backend := c.haproxy.Backends().AcquireBackend(namespace, svcName, port.TargetPort.String())
 	c.tracker.TrackBackend(convtypes.IngressType, source.FullName(), backend.BackendID())
+	backend.DNSPort = readDNSPort(svc.Spec.ClusterIP == api.ClusterIPNone, port)
 	pathlink := hatypes.CreatePathLink(hostname, uri)
 	mapper, found := c.backendAnnotations[backend]
 	if !found {
@@ -681,6 +682,21 @@ func (c *converter) addBackendWithClass(source *annotations.Source, hostname, ur
 		}
 	}
 	return backend, nil
+}
+
+func readDNSPort(headlessService bool, port *api.ServicePort) string {
+	targetPort := port.TargetPort.String()
+	targetPortNum, _ := strconv.Atoi(targetPort)
+	if targetPortNum > 0 {
+		if headlessService {
+			return targetPort
+		}
+		return strconv.Itoa(int(port.Port))
+	}
+	if port.Name == "" {
+		return targetPort
+	}
+	return port.Name
 }
 
 func (c *converter) syncBackendEndpointCookies(backend *hatypes.Backend) {
