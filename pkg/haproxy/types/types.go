@@ -449,6 +449,7 @@ type Backend struct {
 	Namespace string
 	Name      string
 	Port      string
+	DNSPort   string
 	Endpoints []*Endpoint
 	EpNaming  EndpointNaming
 	Paths     []*BackendPath
