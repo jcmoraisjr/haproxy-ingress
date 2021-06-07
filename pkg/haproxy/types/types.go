@@ -561,6 +561,7 @@ type Backend struct {
 	Namespace string
 	Name      string
 	Port      string
+	DNSPort   string
 	SourceIPs []net.IP
 	Endpoints []*Endpoint
 	EpNaming  EndpointNaming
