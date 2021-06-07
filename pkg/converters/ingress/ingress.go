@@ -259,6 +259,7 @@ func (c *converter) addBackend(source *annotations.Source, hostpath, fullSvcName
 		return nil, fmt.Errorf("port not found: '%s'", svcPort)
 	}
 	backend := c.haproxy.AcquireBackend(namespace, svcName, port.TargetPort.String())
+	backend.DNSPort = readDNSPort(svc.Spec.ClusterIP == api.ClusterIPNone, port)
 	mapper, found := c.backendAnnotations[backend]
 	if !found {
 		// New backend, initialize with service annotations, giving precedence
@@ -301,6 +302,21 @@ func (c *converter) addBackend(source *annotations.Source, hostpath, fullSvcName
 		}
 	}
 	return backend, nil
+}
+
+func readDNSPort(headlessService bool, port *api.ServicePort) string {
+	targetPort := port.TargetPort.String()
+	targetPortNum, _ := strconv.Atoi(targetPort)
+	if targetPortNum > 0 {
+		if headlessService {
+			return targetPort
+		}
+		return strconv.Itoa(int(port.Port))
+	}
+	if port.Name == "" {
+		return targetPort
+	}
+	return port.Name
 }
 
 func (c *converter) addTLS(source *annotations.Source, secretName string) convtypes.CrtFile {
