@@ -49,6 +49,13 @@ kubectl kustomize\
  kubectl apply -f -
 ```
 
+Add the following deployment and service if echoserver isn't running yet:
+
+```
+kubectl --namespace default create deployment echoserver --image k8s.gcr.io/echoserver:1.3
+kubectl --namespace default expose deployment echoserver --port=8080
+```
+
 Add the [`--watch-gateway`]({{% relref "command-line#watch-gateway" %}}) command-line option in the `haproxy-ingress-values.yaml` file and [`helm upgrade ...`]({{% relref "/docs/getting-started#installation" %}}) the controller (or simply edit the deployment):
 
 ```yaml
@@ -91,7 +98,7 @@ spec:
           gateway: echo
 ```
 
-HTTPRoutes configure the hostnames and target services. Create a HTTPRoute with the following content, changing to a hostname that resolves to a HAProxy Ingress node:
+HTTPRoutes configure the hostnames and target services. Create a HTTPRoute with the following content, changing `echoserver-from-gateway.local` to a hostname that resolves to a HAProxy Ingress node:
 
 ```yaml
 apiVersion: networking.x-k8s.io/v1alpha1
@@ -103,7 +110,7 @@ metadata:
   namespace: default
 spec:
   hostnames:
-  - echoserver-from-gateway.192.168.1.11.nip.io
+  - echoserver-from-gateway.local
   rules:
   - forwardTo:
     - serviceName: echoserver
@@ -113,6 +120,6 @@ spec:
 Send a request to our just configured route:
 
 ```
-curl http://echoserver-from-gateway.192.168.1.11.nip.io
-wget -qO- http://echoserver-from-gateway.192.168.1.11.nip.io
+curl http://echoserver-from-gateway.local
+wget -qO- http://echoserver-from-gateway.local
 ```

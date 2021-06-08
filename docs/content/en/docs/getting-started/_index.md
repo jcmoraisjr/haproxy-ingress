@@ -70,59 +70,46 @@ HAProxy Ingress' Helm chart has a few more configuration options, see all of the
 
 ## Deploy and expose
 
-The following steps deploy an echoserver image and exposes it in the current namespace.
+The following steps deploy an echoserver image and exposes it in the current namespace using an Ingress resource. See [here]({{% relref "/docs/configuration/gateway-api" %}}) how to expose using Gateway API.
 
 1) Create the echoserver's deployment and service:
 
 ```shell
-$ kubectl create deployment echoserver --image k8s.gcr.io/echoserver:1.3
-$ kubectl expose deployment echoserver --port=8080
+$ kubectl --namespace default create deployment echoserver --image k8s.gcr.io/echoserver:1.3
+$ kubectl --namespace default expose deployment echoserver --port=8080
 ```
 
 2) Check if echoserver is up and running:
 
 ```shell
-$ kubectl get pod -w
+$ kubectl -n default get pod -w
 NAME                          READY   STATUS    RESTARTS   AGE
 echoserver-5b6fb6dd96-68jwp   1/1     Running   0          27s
 ```
 
-3) Make HAProxy Ingress exposes the echoserver service. Change `HOST` value in the example below to a hostname that resolves to an ingress controller node.
+3) Make HAProxy Ingress exposes the echoserver service. Change `echoserver.local` value in the `--rule` option below to a hostname that resolves to an ingress controller node.
 
 Obs.: `nip.io` is a convenient service which converts a valid domain name to any IP, either public or local. See [here](https://nip.io) how it works.
 
 ```shell
-$ HOST=echoserver.192.168.1.11.nip.io
-$ kubectl create -f - <<EOF
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  annotations:
-    kubernetes.io/ingress.class: haproxy
-  name: echoserver
-spec:
-  rules:
-  - host: $HOST
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: echoserver
-            port:
-              number: 8080
-EOF
+$ kubectl --namespace default create ingress echoserver\
+  --annotation kubernetes.io/ingress.class=haproxy\
+  --rule="echoserver.local/*=echoserver:8080"
 ```
 
 4) Send a request to our echoserver.
 
 ```shell
-$ curl -k https://echoserver.192.168.1.11.nip.io
-$ wget -qO- --no-check-certificate https://echoserver.192.168.1.11.nip.io
+$ curl -k https://echoserver.local
+$ wget -qO- --no-check-certificate https://echoserver.local
 ```
 
 ## What's next
+
+See what differs to expose services using Gateway API:
+
+* [Gateway API introduction](https://gateway-api.sigs.k8s.io/) from Kubernetes' SIG-Network documentation
+* [Getting started]({{% relref "/docs/configuration/gateway-api" %}}) with Gateway API and HAProxy Ingress
 
 Learn more about Ingress and IngressClass resources:
 
