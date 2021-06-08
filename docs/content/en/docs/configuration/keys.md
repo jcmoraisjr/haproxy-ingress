@@ -1245,7 +1245,7 @@ See also:
 Add CORS headers on OPTIONS http command (preflight) and reponses.
 
 * `cors-enable`: Enable CORS if defined as `true`.
-* `cors-allow-origin`: Optional, configures `Access-Control-Allow-Origin` header which defines the URL that may access the resource. Defaults to `*`.
+* `cors-allow-origin`: Optional, configures `Access-Control-Allow-Origin` header which defines the URL that may access the resource. Defaults to `*`. This option accepts a comma-separated list of origins, the response will be dynamically built based on the `Origin` request header. If `Origin` belogs to the list, its content will be sent back to the client in the `Access-Control-Allow-Origin` header, otherwise the first item of the list will be used.
 * `cors-allow-methods`: Optional, configures `Access-Control-Allow-Methods` header which defines the allowed methods. Default value is `GET, PUT, POST, DELETE, PATCH, OPTIONS`.
 * `cors-allow-headers`: Optional, configures `Access-Control-Allow-Headers` header which defines the allowed headers. Default value is `DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization`.
 * `cors-allow-credentials`: Optional, configures `Access-Control-Allow-Credentials` header which defines whether or not credentials (cookies, authorization headers or client certificates) should be exposed. Defaults to `true`.

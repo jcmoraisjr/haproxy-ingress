@@ -778,7 +778,7 @@ type Cors struct {
 	AllowCredentials bool
 	AllowHeaders     string
 	AllowMethods     string
-	AllowOrigin      string
+	AllowOrigin      []string
 	ExposeHeaders    string
 	MaxAge           int
 }

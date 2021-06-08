@@ -528,7 +528,7 @@ func (c *updater) buildBackendCors(d *backData) {
 				AllowCredentials: config.Get(ingtypes.BackCorsAllowCredentials).Bool(),
 				AllowHeaders:     config.Get(ingtypes.BackCorsAllowHeaders).Value,
 				AllowMethods:     config.Get(ingtypes.BackCorsAllowMethods).Value,
-				AllowOrigin:      config.Get(ingtypes.BackCorsAllowOrigin).Value,
+				AllowOrigin:      strings.Split(config.Get(ingtypes.BackCorsAllowOrigin).Value, ","),
 				ExposeHeaders:    config.Get(ingtypes.BackCorsExposeHeaders).Value,
 				MaxAge:           config.Get(ingtypes.BackCorsMaxAge).Int(),
 			}
