@@ -19,6 +19,7 @@ package annotations
 import (
 	"regexp"
 	"strconv"
+	"strings"
 
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
@@ -54,11 +55,13 @@ var validators = map[string]func(v validate) (string, bool){
 		return "", false
 	},
 	ingtypes.BackCorsAllowOrigin: func(v validate) (string, bool) {
-		if corsOriginRegex.MatchString(v.value) {
-			return v.value, true
+		for _, value := range strings.Split(v.value, ",") {
+			if !corsOriginRegex.MatchString(value) {
+				v.logger.Warn("ignoring invalid cors origin on %s: %s", v.source, value)
+				return "", false
+			}
 		}
-		v.logger.Warn("ignoring invalid cors origin on %s: %s", v.source, v.value)
-		return "", false
+		return v.value, true
 	},
 	ingtypes.BackCorsExposeHeaders: func(v validate) (string, bool) {
 		if corsHeadersRegex.MatchString(v.value) {

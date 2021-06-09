@@ -1254,9 +1254,10 @@ func TestBodySize(t *testing.T) {
 const (
 	corsDefaultHeaders = "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
 	corsDefaultMethods = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
-	corsDefaultOrigin  = "*"
 	corsDefaultMaxAge  = 86400
 )
+
+var corsDefaultOrigin = []string{"*"}
 
 func TestCors(t *testing.T) {
 	testCases := []struct {
@@ -1314,16 +1315,62 @@ func TestCors(t *testing.T) {
 				},
 			},
 		},
+		// 3
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackCorsEnable:      "true",
+					ingtypes.BackCorsAllowOrigin: "http://d1.local,https://d2.local,https://d3.local",
+				},
+			},
+			expected: map[string]hatypes.Cors{
+				"/": {
+					Enabled:          true,
+					AllowCredentials: false,
+					AllowHeaders:     corsDefaultHeaders,
+					AllowMethods:     corsDefaultMethods,
+					AllowOrigin:      []string{"http://d1.local", "https://d2.local", "https://d3.local"},
+					ExposeHeaders:    "",
+					MaxAge:           corsDefaultMaxAge,
+				},
+			},
+		},
+		// 4
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackCorsEnable:      "true",
+					ingtypes.BackCorsAllowOrigin: "https://d1.local,https://d2.local,invalid",
+				},
+			},
+			expected: map[string]hatypes.Cors{
+				"/": {
+					Enabled:          true,
+					AllowCredentials: false,
+					AllowHeaders:     corsDefaultHeaders,
+					AllowMethods:     corsDefaultMethods,
+					AllowOrigin:      corsDefaultOrigin,
+					ExposeHeaders:    "",
+					MaxAge:           corsDefaultMaxAge,
+				},
+			},
+			logging: `WARN ignoring invalid cors origin on ingress 'default/ing': invalid`,
+		},
 	}
 	annDefault := map[string]string{
 		ingtypes.BackCorsAllowHeaders: corsDefaultHeaders,
 		ingtypes.BackCorsAllowMethods: corsDefaultMethods,
-		ingtypes.BackCorsAllowOrigin:  corsDefaultOrigin,
+		ingtypes.BackCorsAllowOrigin:  strings.Join(corsDefaultOrigin, ","),
 		ingtypes.BackCorsMaxAge:       strconv.Itoa(corsDefaultMaxAge),
+	}
+	source := &Source{
+		Namespace: "default",
+		Name:      "ing",
+		Type:      "ingress",
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		d := c.createBackendMappingData("default/app", &Source{}, annDefault, test.ann, test.paths)
+		d := c.createBackendMappingData("default/app", source, annDefault, test.ann, test.paths)
 		c.createUpdater().buildBackendCors(d)
 		actual := map[string]hatypes.Cors{}
 		for _, path := range d.backend.Paths {

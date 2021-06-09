@@ -600,7 +600,11 @@ backend {{ $backend.ID }}
 {{- /*------------------------------------*/}}
 {{- $corsCfg := $backend.PathConfig "Cors" }}
 {{- range $i, $cors := $corsCfg.Items }}
-{{- if $cors.Enabled }}
+{{- if and $cors.Enabled $cors.AllowOrigin }}
+{{- $dynamicOrigin := gt (len $cors.AllowOrigin) 1 }}
+{{- if $dynamicOrigin }}
+    http-request set-var(txn.hdr_origin{{ $i }}) req.hdr(Origin)
+{{- end }}
 {{- range $pathIDs := $corsCfg.PathIDs $i }}
     http-request set-var(txn.cors_max_age) str({{ $cors.MaxAge }}) if METH_OPTIONS
         {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
@@ -711,10 +715,25 @@ backend {{ $backend.ID }}
 
 {{- /*------------------------------------*/}}
 {{- range $i, $cors := $corsCfg.Items }}
-{{- if $cors.Enabled }}
+{{- if and $cors.Enabled $cors.AllowOrigin }}
+{{- $dynamicOrigin := gt (len $cors.AllowOrigin) 1 }}
+{{- if $dynamicOrigin }}
+{{- range $a1 := short 5 $cors.AllowOrigin }}
+    acl cors_allow_origin{{ $i }} var(txn.hdr_origin{{ $i }}){{ range $a := $a1 }} {{ $a }}{{ end }}
+{{- end }}
+{{- end }}
 {{- range $pathIDs := $corsCfg.PathIDs $i }}
-    http-response set-header Access-Control-Allow-Origin  "{{ $cors.AllowOrigin }}"
-        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+    http-response set-header Access-Control-Allow-Origin
+        {{- if $dynamicOrigin }}  "%[var(txn.hdr_origin{{ $i }})]"{{ else }}  "{{ index $cors.AllowOrigin 0 }}"{{ end }}
+        {{- if or $dynamicOrigin $pathIDs }} if
+            {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+            {{- if $dynamicOrigin }} cors_allow_origin{{ $i }}{{ end }}
+        {{- end }}
+{{- if $dynamicOrigin }}
+    http-response set-header Access-Control-Allow-Origin  "{{ index $cors.AllowOrigin 0 }}"
+        {{- "" }} if{{ if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- "" }} !cors_allow_origin{{ $i }}
+{{- end }}
     http-response set-header Access-Control-Allow-Methods "{{ $cors.AllowMethods }}"
         {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
     http-response set-header Access-Control-Allow-Headers "{{ $cors.AllowHeaders }}"
@@ -725,6 +744,10 @@ backend {{ $backend.ID }}
 {{- end }}
 {{- if $cors.ExposeHeaders }}
     http-response set-header Access-Control-Expose-Headers "{{ $cors.ExposeHeaders }}"
+        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+{{- end }}
+{{- if $dynamicOrigin }}
+    http-response set-header Vary Origin
         {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- end }}
