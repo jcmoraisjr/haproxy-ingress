@@ -854,6 +854,8 @@ func (c *converter) addBackendWithClass(source *annotations.Source, pathLink hat
 	}
 	backend := c.haproxy.Backends().AcquireBackend(namespace, svcName, port.TargetPort.String())
 	c.tracker.TrackBackend(convtypes.IngressType, source.FullName(), backend.BackendID())
+	// TODO converg backend Port and DNSPort; see also tmpl's server-template
+	backend.DNSPort = readDNSPort(svc.Spec.ClusterIP == api.ClusterIPNone, port)
 	mapper, found := c.backendAnnotations[backend]
 	if !found {
 		// New backend, initialize with service annotations, giving precedence
@@ -907,6 +909,21 @@ func (c *converter) addBackendWithClass(source *annotations.Source, pathLink hat
 		}
 	}
 	return backend, nil
+}
+
+func readDNSPort(headlessService bool, port *api.ServicePort) string {
+	targetPort := port.TargetPort.String()
+	targetPortNum, _ := strconv.Atoi(targetPort)
+	if targetPortNum > 0 {
+		if headlessService {
+			return targetPort
+		}
+		return strconv.Itoa(int(port.Port))
+	}
+	if port.Name == "" {
+		return targetPort
+	}
+	return port.Name
 }
 
 func (c *converter) syncBackendEndpointCookies(backend *hatypes.Backend) {

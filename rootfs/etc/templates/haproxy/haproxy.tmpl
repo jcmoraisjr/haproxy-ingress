@@ -758,11 +758,12 @@ backend {{ $backend.ID }}
 
 {{- /*------------------------------------*/}}
 {{- if $backend.Resolver }}
-{{- $portIsNumber := ne (int64 $backend.Port) 0 }}
+{{- $dnsPort := iif (ne $backend.DNSPort "") $backend.DNSPort $backend.Port }}
+{{- $portIsNumber := ne (int64 $dnsPort) 0 }}
     server-template srv {{ len $backend.Endpoints }}
-        {{- " " }}{{ if not $portIsNumber }}_{{ $backend.Port }}._tcp.{{ end }}
+        {{- " " }}{{ if not $portIsNumber }}_{{ $dnsPort }}._tcp.{{ end }}
         {{- $backend.Name }}.{{ $backend.Namespace }}.svc.{{ $global.DNS.ClusterDomain }}
-        {{- if $portIsNumber }}:{{ $backend.Port }}{{ end }}
+        {{- if $portIsNumber }}:{{ $dnsPort }}{{ end }}
         {{- "" }} resolvers {{ $backend.Resolver }} resolve-prefer ipv4 init-addr none
         {{- "" }} weight {{ $backend.Server.InitialWeight }}
         {{- template "backend" map $backend }}
