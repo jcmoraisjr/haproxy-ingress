@@ -28,6 +28,7 @@ Unsupported:
 
 * HAProxy upgrade from 2.2 to 2.3.
 * Ingress API upgrade from `networking.k8s.io/v1beta1` to `networking.k8s.io/v1`.
+* Partial implementation of Gateway API - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/gateway-api/)
 * TCP services using ingress resources - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#tcp-services)
 * External authetication - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#auth-external)
 * Several new custom configurations - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#configuration-snippet)
@@ -35,16 +36,19 @@ Unsupported:
 **Breaking backward compatibility from [v0.12](#v012)**
 
 * Kubernetes version 1.19 or newer.
+* External HAProxy version 2.2 or newer.
+* TLS configuration: v0.12 and older versions add hostnames to the HTTP and HTTPS maps despite the TLS attribute configuration. v0.13 will only add hostnames to the HTTPS map if the Ingress' TLS attribute lists the hostname, leading to 404 errors on misconfigured clusters. This behavior can be changed with `ssl-always-add-https` as a global or per hostname configuration, see the configuration [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#ssl-always-add-https).
 * OAuth2: `auth-request.lua` was updated and also the haproxy variable name with user's email address. This update will not impact if neither the Lua script nor the `oauth2-headers` configuration key were changed.
 * OAuth2 with external HAProxy sidecar: the new Lua script has dependency with `lua-json4` which should be installed in the external instance.
 * Basic Authentication: `auth-type` configuration key was deprecated and doesn't need to be used. This will only impact deployments that configures the `auth-secret` without configuring `auth-type` - in this scenario v0.12 won't configure Basic Authentication, but v0.13 will.
+* SSL passthrough: Hostnames configured as `ssl-passthrough` will now add non root paths `/` of these hostnames to the HAProxy's HTTP port. v0.12 and older controller versions log a warning and ignore such configuration. HTTPS requests have no impact.
 
 **Contributors**
 
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
 
-**v0.13-snapshot.1**
+**v0.13.0-snapshot.1**
 
 New features and improvements:
 
@@ -100,7 +104,7 @@ Others:
 
 * Duplicate Travis CI to Github Actions [#732](https://github.com/jcmoraisjr/haproxy-ingress/pull/732) (rikatz)
 
-**v0.13-snapshot.2**
+**v0.13.0-snapshot.2**
 
 New features and improvements:
 
@@ -131,6 +135,34 @@ Fixes:
 * Fix reading of needFullSync status [#772](https://github.com/jcmoraisjr/haproxy-ingress/pull/772) (jcmoraisjr)
 * Fix path-type conflict warning [#778](https://github.com/jcmoraisjr/haproxy-ingress/pull/778) (jcmoraisjr)
 * Fix per path filter of default host rules [#777](https://github.com/jcmoraisjr/haproxy-ingress/pull/777) (jcmoraisjr)
+
+**v0.13.0-snapshot.3**
+
+New features and improvements:
+
+* Add Gateway API support (part 1) [#775](https://github.com/jcmoraisjr/haproxy-ingress/pull/775) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/gateway-api/)
+* Allow more than 64k outgoing conn with source addr [#784](https://github.com/jcmoraisjr/haproxy-ingress/pull/784) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#source-address-intf)
+  * Configuration keys:
+    * `source-address-intf`
+* Add option to disable API server warnings [#789](https://github.com/jcmoraisjr/haproxy-ingress/pull/789) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/command-line/#disable-api-warnings)
+  * Command-line options:
+    * `--disable-api-warnings`
+* Add ssl-always-add-https config key [#793](https://github.com/jcmoraisjr/haproxy-ingress/pull/793) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#ssl-always-add-https)
+  * Configuration keys:
+    * `ssl-always-add-https`
+* Add option to copy client method to auth-url [#794](https://github.com/jcmoraisjr/haproxy-ingress/pull/794) (jcmoraisjr)
+* Add dynamic update for cross namespace reading [#795](https://github.com/jcmoraisjr/haproxy-ingress/pull/795) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#cross-namespace)
+  * Configuration keys:
+    * `cross-namespace-secrets-ca`
+    * `cross-namespace-secrets-crt`
+    * `cross-namespace-secrets-passwd`
+    * `cross-namespace-services`
+* Allow a list of origins in cors-allow-origin config [#797](https://github.com/jcmoraisjr/haproxy-ingress/pull/797) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#cors)
+
+Fixes:
+
+* Fix domain validation on secure backend keys [#791](https://github.com/jcmoraisjr/haproxy-ingress/pull/791) (jcmoraisjr)
+* Use the port name on DNS resolver template [#796](https://github.com/jcmoraisjr/haproxy-ingress/pull/796) (jcmoraisjr)
 
 ## v0.12.3
 
