@@ -78,6 +78,10 @@ ingress resource of another namespace. The default behavior is to deny such cros
 This adds a breaking change from `v0.4` to `v0.5` on `haproxy-ingress.github.io/auth-tls-secret`
 annotation, where cross namespace reading were allowed without any configuration.
 
+See also:
+
+* [cross namespace]({{% relref "keys#cross-namespace" %}}) configuration keys.
+
 ---
 
 ## --annotations-prefix

@@ -230,7 +230,7 @@ func (c *converter) createBackend(source *Source, index string, forwardTo []gate
 		}
 		svcName := source.namespace + "/" + *fw.ServiceName
 		c.tracker.TrackGateway(convtypes.ServiceType, svcName)
-		svc, err := c.cache.GetService(svcName)
+		svc, err := c.cache.GetService("", svcName)
 		if err != nil {
 			c.logger.Warn("skipping service '%s' on %s: %v", *fw.ServiceName, source, err)
 			continue

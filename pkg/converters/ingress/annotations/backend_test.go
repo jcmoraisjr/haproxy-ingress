@@ -413,6 +413,15 @@ func TestAuthExternal(t *testing.T) {
 		},
 		// 18
 		{
+			url: "svc://default/authservice:80/auth",
+			expBack: hatypes.AuthExternal{
+				AuthBackendName: "_auth_4001",
+				AuthPath:        "/auth",
+			},
+			expIP: []string{"10.0.0.11:8080"},
+		},
+		// 19
+		{
 			url:        "http://app1.local",
 			hdrSucceed: "x-mail,x-userid,x-auth",
 			expBack: hatypes.AuthExternal{
@@ -422,7 +431,7 @@ func TestAuthExternal(t *testing.T) {
 			},
 			expIP: []string{"10.0.0.2:80"},
 		},
-		// 19
+		// 20
 		{
 			url:     "http://app1.local",
 			hdrFail: "x-uid,X-Message",
@@ -433,7 +442,7 @@ func TestAuthExternal(t *testing.T) {
 			},
 			expIP: []string{"10.0.0.2:80"},
 		},
-		// 20
+		// 21
 		{
 			url:     "http://app1.local",
 			hdrFail: "x-uid,x-message",
@@ -447,7 +456,7 @@ func TestAuthExternal(t *testing.T) {
 			expIP:   []string{"10.0.0.2:80"},
 			logging: `WARN ignoring 'auth-headers-fail' on ingress 'default/ing1' due to signin (redirect) configuration`,
 		},
-		// 21
+		// 22
 		{
 			url:    "http://app1.local",
 			hdrReq: "x-token",
@@ -458,7 +467,7 @@ func TestAuthExternal(t *testing.T) {
 			},
 			expIP: []string{"10.0.0.2:80"},
 		},
-		// 22
+		// 23
 		{
 			url:    "http://app1.local",
 			method: "HEAD",
@@ -469,7 +478,7 @@ func TestAuthExternal(t *testing.T) {
 			},
 			expIP: []string{"10.0.0.2:80"},
 		},
-		// 23
+		// 24
 		{
 			url:    "http://app1.local",
 			method: "invalid()",
@@ -481,7 +490,7 @@ func TestAuthExternal(t *testing.T) {
 			expIP:   []string{"10.0.0.2:80"},
 			logging: `WARN invalid request method 'invalid()' on ingress 'default/ing1', using GET instead`,
 		},
-		// 24
+		// 25
 		{
 			url:    "http://app1.local",
 			method: "*",
@@ -492,7 +501,7 @@ func TestAuthExternal(t *testing.T) {
 			},
 			expIP: []string{"10.0.0.2:80"},
 		},
-		// 25
+		// 26
 		{
 			url:    "http://app1.local",
 			method: "**",

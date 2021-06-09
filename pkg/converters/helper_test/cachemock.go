@@ -67,11 +67,11 @@ func NewCacheMock(tracker convtypes.Tracker) *CacheMock {
 	}
 }
 
-func (c *CacheMock) buildSecretName(defaultNamespace, secretName string) string {
-	if defaultNamespace == "" || strings.Index(secretName, "/") >= 0 {
-		return secretName
+func (c *CacheMock) buildResourceName(defaultNamespace, resourceName string) string {
+	if defaultNamespace == "" || strings.Index(resourceName, "/") >= 0 {
+		return resourceName
 	}
-	return defaultNamespace + "/" + secretName
+	return defaultNamespace + "/" + resourceName
 }
 
 // GetIngress ...
@@ -132,8 +132,9 @@ func (c *CacheMock) GetHTTPRouteList(namespace string, match map[string]string) 
 }
 
 // GetService ...
-func (c *CacheMock) GetService(serviceName string) (*api.Service, error) {
-	sname := strings.Split(serviceName, "/")
+func (c *CacheMock) GetService(defaultNamespace, serviceName string) (*api.Service, error) {
+	fullname := c.buildResourceName(defaultNamespace, serviceName)
+	sname := strings.Split(fullname, "/")
 	if len(sname) == 2 {
 		for _, svc := range c.SvcList {
 			if svc.Namespace == sname[0] && svc.Name == sname[1] {
@@ -185,7 +186,7 @@ func (c *CacheMock) GetPodNamespace() string {
 
 // GetTLSSecretPath ...
 func (c *CacheMock) GetTLSSecretPath(defaultNamespace, secretName string, track convtypes.TrackingTarget) (convtypes.CrtFile, error) {
-	fullname := c.buildSecretName(defaultNamespace, secretName)
+	fullname := c.buildResourceName(defaultNamespace, secretName)
 	if path, found := c.SecretTLSPath[fullname]; found {
 		c.tracker.Track(false, track, convtypes.SecretType, fullname)
 		return convtypes.CrtFile{
@@ -201,7 +202,7 @@ func (c *CacheMock) GetTLSSecretPath(defaultNamespace, secretName string, track 
 
 // GetCASecretPath ...
 func (c *CacheMock) GetCASecretPath(defaultNamespace, secretName string, track convtypes.TrackingTarget) (ca, crl convtypes.File, err error) {
-	fullname := c.buildSecretName(defaultNamespace, secretName)
+	fullname := c.buildResourceName(defaultNamespace, secretName)
 	if path, found := c.SecretCAPath[fullname]; found {
 		ca = convtypes.File{
 			Filename: path,
@@ -223,7 +224,7 @@ func (c *CacheMock) GetCASecretPath(defaultNamespace, secretName string, track c
 
 // GetDHSecretPath ...
 func (c *CacheMock) GetDHSecretPath(defaultNamespace, secretName string) (convtypes.File, error) {
-	fullname := c.buildSecretName(defaultNamespace, secretName)
+	fullname := c.buildResourceName(defaultNamespace, secretName)
 	if path, found := c.SecretDHPath[fullname]; found {
 		return convtypes.File{
 			Filename: path,
@@ -233,10 +234,11 @@ func (c *CacheMock) GetDHSecretPath(defaultNamespace, secretName string) (convty
 	return convtypes.File{}, fmt.Errorf("secret not found: '%s'", fullname)
 }
 
-// GetSecretContent ...
-func (c *CacheMock) GetSecretContent(defaultNamespace, secretName, keyName string, track convtypes.TrackingTarget) ([]byte, error) {
-	fullname := c.buildSecretName(defaultNamespace, secretName)
+// GetPasswdSecretContent ...
+func (c *CacheMock) GetPasswdSecretContent(defaultNamespace, secretName string, track convtypes.TrackingTarget) ([]byte, error) {
+	fullname := c.buildResourceName(defaultNamespace, secretName)
 	if content, found := c.SecretContent[fullname]; found {
+		keyName := "auth"
 		if val, found := content[keyName]; found {
 			c.tracker.Track(false, track, convtypes.SecretType, fullname)
 			return val, nil

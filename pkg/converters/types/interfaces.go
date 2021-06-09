@@ -34,7 +34,7 @@ type Cache interface {
 	GetGateway(gatewayName string) (*gateway.Gateway, error)
 	GetGatewayList() ([]*gateway.Gateway, error)
 	GetHTTPRouteList(namespace string, match map[string]string) ([]*gateway.HTTPRoute, error)
-	GetService(serviceName string) (*api.Service, error)
+	GetService(defaultNamespace, serviceName string) (*api.Service, error)
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
 	GetConfigMap(configMapName string) (*api.ConfigMap, error)
 	GetTerminatingPods(service *api.Service, track TrackingTarget) ([]*api.Pod, error)
@@ -43,7 +43,7 @@ type Cache interface {
 	GetTLSSecretPath(defaultNamespace, secretName string, track TrackingTarget) (CrtFile, error)
 	GetCASecretPath(defaultNamespace, secretName string, track TrackingTarget) (ca, crl File, err error)
 	GetDHSecretPath(defaultNamespace, secretName string) (File, error)
-	GetSecretContent(defaultNamespace, secretName, keyName string, track TrackingTarget) ([]byte, error)
+	GetPasswdSecretContent(defaultNamespace, secretName string, track TrackingTarget) ([]byte, error)
 	SwapChangedObjects() *ChangedObjects
 }
 

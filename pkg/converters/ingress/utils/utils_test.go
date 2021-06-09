@@ -25,48 +25,79 @@ func TestParseURL(t *testing.T) {
 	testCases := []struct {
 		url string
 		exp string
+		err string
 	}{
 		// 0
 		{
 			url: "proto://",
-			exp: " |  |  |  | invalid URL syntax: proto://",
+			err: "invalid URL syntax: proto://",
 		},
 		// 1
 		{
 			url: "10.0.0.1",
-			exp: " |  |  |  | invalid URL syntax: 10.0.0.1",
+			err: "invalid URL syntax: 10.0.0.1",
 		},
 		// 2
 		{
 			url: "proto://10.0.0.1",
-			exp: "proto | 10.0.0.1 |  |  | <nil>",
+			exp: "proto | 10.0.0.1 |  | ",
 		},
 		// 3
 		{
 			url: "proto://:8080",
-			exp: " |  |  |  | invalid URL syntax: proto://:8080",
+			err: "invalid URL syntax: proto://:8080",
 		},
 		// 4
 		{
 			url: "proto://10.0.0.1:8080",
-			exp: "proto | 10.0.0.1 | 8080 |  | <nil>",
+			exp: "proto | 10.0.0.1 | 8080 | ",
 		},
 		// 5
 		{
 			url: "proto://10.0.0.1/app",
-			exp: "proto | 10.0.0.1 |  | /app | <nil>",
+			exp: "proto | 10.0.0.1 |  | /app",
 		},
 		// 6
 		{
 			url: "proto://10.0.0.1:named-port/App",
-			exp: "proto | 10.0.0.1 | named-port | /App | <nil>",
+			exp: "proto | 10.0.0.1 | named-port | /App",
+		},
+		// 7
+		{
+			url: "proto://domain.local/app",
+			exp: "proto | domain.local |  | /app",
+		},
+		// 8
+		{
+			url: "proto://name/app",
+			exp: "proto | name |  | /app",
+		},
+		// 9
+		{
+			url: "proto://name/app:8080",
+			exp: "proto | name/app | 8080 | ",
+		},
+		// 10
+		{
+			url: "proto://name:8080/app",
+			exp: "proto | name | 8080 | /app",
 		},
 	}
 	for i, test := range testCases {
 		proto, host, port, path, err := ParseURL(test.url)
-		actual := fmt.Sprintf("%s | %s | %s | %s | %v", proto, host, port, path, err)
+		actual := fmt.Sprintf("%s | %s | %s | %s", proto, host, port, path)
+		if test.exp == "" {
+			test.exp = " |  |  | "
+		}
 		if actual != test.exp {
 			t.Errorf("expected '%s' on %d, but was '%s'", test.exp, i, actual)
+		}
+		if err != nil {
+			if err.Error() != test.err {
+				t.Errorf("expected error '%s' on %d, but was '%s'", test.err, i, err.Error())
+			}
+		} else if test.err != "" {
+			t.Errorf("expected error '%s' on %d, but there was no error", test.err, i)
 		}
 	}
 }

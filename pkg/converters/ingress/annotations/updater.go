@@ -19,6 +19,7 @@ package annotations
 import (
 	"net"
 	"regexp"
+	"strings"
 
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
@@ -89,6 +90,16 @@ func (c *updater) validateTime(cfg *ConfigValue) string {
 	return cfg.Value
 }
 
+func (c *updater) validateAllowDeny(d *globalData, key string) (allow bool) {
+	cfg := d.mapper.Get(key)
+	value := strings.ToLower(cfg.Value)
+	allow = value == "allow"
+	if value != "" && value != "allow" && value != "deny" {
+		c.logger.Warn("ignoring invalid value '%s' on global '%s', using 'deny'", cfg.Value, key)
+	}
+	return allow
+}
+
 func (c *updater) splitCIDR(cidrlist *ConfigValue) []string {
 	allow, deny := c.splitDualCIDR(cidrlist)
 	if len(deny) > 0 {
@@ -155,6 +166,7 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	c.buildGlobalBind(d)
 	c.buildGlobalCustomConfig(d)
 	c.buildGlobalDNS(d)
+	c.buildGlobalDynamic(d)
 	c.buildGlobalForwardFor(d)
 	c.buildGlobalHTTPStoHTTP(d)
 	c.buildGlobalModSecurity(d)

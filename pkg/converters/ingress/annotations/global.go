@@ -346,9 +346,22 @@ func (c *updater) buildGlobalDNS(d *globalData) {
 	d.global.DNS.ClusterDomain = d.mapper.Get(ingtypes.GlobalDNSClusterDomain).Value
 }
 
-var (
-	forwardRegex = regexp.MustCompile(`^(add|update|ignore|ifmissing)$`)
-)
+func (c *updater) buildGlobalDynamic(d *globalData) {
+	// Secrets
+	staticSecrets := c.options.DynamicConfig.StaticCrossNamespaceSecrets
+	c.options.DynamicConfig.CrossNamespaceSecretCA =
+		staticSecrets || c.validateAllowDeny(d, ingtypes.GlobalCrossNamespaceSecretsCA)
+	c.options.DynamicConfig.CrossNamespaceSecretCertificate =
+		staticSecrets || c.validateAllowDeny(d, ingtypes.GlobalCrossNamespaceSecretsCrt)
+	c.options.DynamicConfig.CrossNamespaceSecretPasswd =
+		staticSecrets || c.validateAllowDeny(d, ingtypes.GlobalCrossNamespaceSecretsPasswd)
+
+	// Services
+	c.options.DynamicConfig.CrossNamespaceServices =
+		c.validateAllowDeny(d, ingtypes.GlobalCrossNamespaceServices)
+}
+
+var forwardRegex = regexp.MustCompile(`^(add|update|ignore|ifmissing)$`)
 
 func (c *updater) buildGlobalForwardFor(d *globalData) {
 	if forwardFor := d.mapper.Get(ingtypes.GlobalForwardfor).Value; forwardRegex.MatchString(forwardFor) {

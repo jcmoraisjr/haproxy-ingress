@@ -80,7 +80,7 @@ func (c *tcpSvcConverter) Sync() {
 			c.logger.Warn("skipping empty TCP service name on public port %d", publicport)
 			continue
 		}
-		service, err := c.cache.GetService(svc.name)
+		service, err := c.cache.GetService("", svc.name)
 		if err != nil {
 			c.logger.Warn("skipping TCP service on public port %d: %v", publicport, err)
 			continue
