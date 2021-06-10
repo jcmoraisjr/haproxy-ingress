@@ -25,6 +25,7 @@ push:
 tag-push:
 ifeq ($(GIT_TAG),true)
 ifeq ($(TRAVIS_PULL_REQUEST),false)
+	@docker login -u="$(DOCKER_USR_PULL)" -p="$(DOCKER_PWD_PULL)" $(DOCKER_HUB_PULL)
 	@docker login -u="$(DOCKER_USR)" -p="$(DOCKER_PWD)" $(DOCKER_HUB)
 	@$(MAKE) image push
 endif
