@@ -314,7 +314,7 @@ func (c *k8scache) GetTLSSecretPath(defaultNamespace, secretName string, track c
 		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return file, err
 	}
-	if sslCert.PemFileName == "" {
+	if sslCert.PemFileName == "" || sslCert.Certificate == nil {
 		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return file, fmt.Errorf("secret '%s/%s' does not have keys 'tls.crt' and 'tls.key'", namespace, name)
 	}
