@@ -145,7 +145,7 @@ func (c *cache) GetTLSSecretPath(defaultNamespace, secretName string) (file conv
 	if err != nil {
 		return file, err
 	}
-	if sslCert.PemFileName == "" {
+	if sslCert.PemFileName == "" || sslCert.Certificate == nil {
 		return file, fmt.Errorf("secret '%s' does not have keys 'tls.crt' and 'tls.key'", fullname)
 	}
 	file = convtypes.CrtFile{
