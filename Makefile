@@ -29,3 +29,7 @@ install:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go install \
 	  -v -installsuffix cgo \
 	  $(ROOT_PKG)
+
+.PHONY: docker-builder
+docker-builder:
+	docker build -t $(REPO):$(TAG) . -f builder/Dockerfile
