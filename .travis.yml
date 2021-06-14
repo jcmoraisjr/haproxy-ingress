@@ -5,4 +5,4 @@ services:
 - docker
 sudo: required
 script:
-- make build test tag-push
+- make build test
