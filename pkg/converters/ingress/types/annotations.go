@@ -21,7 +21,7 @@ const (
 	TCPConfigTCPService     = "config-tcp-service"
 	TCPTCPServiceLogFormat  = "tcp-service-log-format"
 	TCPTCPServicePort       = "tcp-service-port"
-	TCPTCPServiceProxyProto = "tcp-service-proxy-protool"
+	TCPTCPServiceProxyProto = "tcp-service-proxy-protocol"
 )
 
 var (
