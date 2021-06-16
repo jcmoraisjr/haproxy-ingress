@@ -23,7 +23,7 @@ Updates made to the cluster are applied on the fly to the HAProxy instance.
 
 | HAProxy Ingress                                      | HAProxy | Kubernetes | External HAProxy (*) |
 |------------------------------------------------------|---------|------------|----------------------|
-| [`v0.13`](CHANGELOG/CHANGELOG-v0.13.md) (snapshot)   | `2.3`   | `1.19+`    | `2.2+`               |
+| [`v0.13`](CHANGELOG/CHANGELOG-v0.13.md) (beta)       | `2.3`   | `1.19+`    | `2.2+`               |
 | `v0.12` **(latest)**                                 | `2.2`   | `1.18+`    | `2.0+`               |
 | `v0.11`                                              | `2.1`   | `1.14+`    | -                    |
 | `v0.10`                                              | `2.0`   | `1.8+`     | -                    |
