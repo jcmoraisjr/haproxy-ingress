@@ -604,12 +604,12 @@ func TestSyncTLSSecretWithoutHost(t *testing.T) {
 func TestSyncIngressClass(t *testing.T) {
 	apiGroup1 := "some.io"
 	testCases := []struct {
-		parameters *api.TypedLocalObjectReference
+		parameters *networking.IngressClassParametersReference
 		logging    string
 	}{
 		// 0
 		{
-			parameters: &api.TypedLocalObjectReference{
+			parameters: &networking.IngressClassParametersReference{
 				APIGroup: &apiGroup1,
 				Kind:     "any",
 				Name:     "none",
@@ -618,7 +618,7 @@ func TestSyncIngressClass(t *testing.T) {
 		},
 		// 1
 		{
-			parameters: &api.TypedLocalObjectReference{
+			parameters: &networking.IngressClassParametersReference{
 				Kind: "any",
 				Name: "none",
 			},
@@ -626,7 +626,7 @@ func TestSyncIngressClass(t *testing.T) {
 		},
 		// 2
 		{
-			parameters: &api.TypedLocalObjectReference{
+			parameters: &networking.IngressClassParametersReference{
 				Kind: "ConfigMap",
 				Name: "none",
 			},
@@ -634,7 +634,7 @@ func TestSyncIngressClass(t *testing.T) {
 		},
 		// 3
 		{
-			parameters: &api.TypedLocalObjectReference{
+			parameters: &networking.IngressClassParametersReference{
 				Kind: "ConfigMap",
 				Name: "config",
 			},
