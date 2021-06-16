@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.12!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.13.0-beta.1](#v0130-beta1)
+  * [Reference](#reference-b1)
+  * [Improvements](#improvements-b1)
+  * [Fixes](#fixes-b1)
 * [v0.13.0-snapshot.3](#v0130-snapshot3)
   * [Reference](#reference-s3)
   * [Improvements](#improvements-s3)
@@ -41,8 +45,35 @@ Breaking backward compatibility from v0.12
 
 ## Contributors
 
+* Bart Versluijs ([bartversluijs](https://github.com/bartversluijs))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.13.0-beta.1
+
+## Reference (b1)
+
+* Release date: `2021-06-16`
+* Helm chart: `--version 0.13.0-beta.1 --devel`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.0-beta.1`
+* Image (Docker): `jcmoraisjr/haproxy-ingress:v0.13.0-beta.1`
+* Embedded HAProxy version: `2.3.10`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.13.0-beta.1`
+
+## Improvements (b1)
+
+New features and improvements since `v0.13.0-snapshot.3`:
+
+* update golang from 1.15.12 to 1.15.13 [7f8ddbf](https://github.com/jcmoraisjr/haproxy-ingress/commit/7f8ddbfb78ac4a251a07e923ff5e50604a68d2be) (Joao Morais)
+
+## Fixes (b1)
+
+* Fix reading of tls secret without crt or key [#799](https://github.com/jcmoraisjr/haproxy-ingress/pull/799) (jcmoraisjr)
+* Fix typo in 'tcp-service-proxy-protocol' annotation [#800](https://github.com/jcmoraisjr/haproxy-ingress/pull/800) (bartversluijs)
+
+## Other
+
+* build: move from travis to github actions [80059ea](https://github.com/jcmoraisjr/haproxy-ingress/commit/80059eac3c923b7b698a529d83ac3bac43814e57) (Joao Morais)
 
 # v0.13.0-snapshot.3
 
@@ -56,7 +87,7 @@ Breaking backward compatibility from v0.12
 
 ## Improvements (s3)
 
-New features and improvements:
+New features and improvements since `v0.13.0-snapshot.2`:
 
 * Add Gateway API support (part 1) [#775](https://github.com/jcmoraisjr/haproxy-ingress/pull/775) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/gateway-api/)
 * Allow more than 64k outgoing conn with source addr [#784](https://github.com/jcmoraisjr/haproxy-ingress/pull/784) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#source-address-intf)
@@ -94,7 +125,7 @@ New features and improvements:
 
 ## Improvements (s2)
 
-New features and improvements:
+New features and improvements since `v0.13.0-snapshot.1`:
 
 * Add non root path support on ssl-passthrough [#767](https://github.com/jcmoraisjr/haproxy-ingress/pull/767) (jcmoraisjr)
 * Allow default crt on tcp service [#766](https://github.com/jcmoraisjr/haproxy-ingress/pull/766) (jcmoraisjr)
@@ -136,7 +167,7 @@ New features and improvements:
 
 ## Improvements (s1)
 
-New features and improvements:
+New features and improvements since `v0.12-beta.1`:
 
 * Use field converter to remove port from hdr host [#729](https://github.com/jcmoraisjr/haproxy-ingress/pull/729) (jcmoraisjr)
 * Add sni and verifyhost to secure connections [#730](https://github.com/jcmoraisjr/haproxy-ingress/pull/730) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#secure-backend)
