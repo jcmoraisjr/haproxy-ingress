@@ -18,6 +18,7 @@ package ingress
 
 import (
 	"fmt"
+	"hash/fnv"
 	"reflect"
 	"sort"
 	"strconv"
@@ -207,7 +208,7 @@ func (c *converter) syncFull() {
 		c.syncIngress(ing)
 	}
 	c.fullSyncAnnotations()
-	c.syncEndpointCookies()
+	c.syncEndpoints()
 }
 
 func (c *converter) syncPartial() {
@@ -360,7 +361,7 @@ func (c *converter) syncPartial() {
 		c.syncIngress(ing)
 	}
 	c.partialSyncAnnotations()
-	c.syncChangedEndpointCookies()
+	c.syncChangedEndpoints()
 }
 
 // trackAddedIngress add tracking hostnames and backends to new ingress objects
@@ -671,15 +672,17 @@ func (c *converter) syncIngressTCP(source *annotations.Source, ing *networking.I
 	}
 }
 
-func (c *converter) syncEndpointCookies() {
+func (c *converter) syncEndpoints() {
 	for _, backend := range c.haproxy.Backends().Items() {
 		c.syncBackendEndpointCookies(backend)
+		c.syncBackendEndpointHashes(backend)
 	}
 }
 
-func (c *converter) syncChangedEndpointCookies() {
+func (c *converter) syncChangedEndpoints() {
 	for _, backend := range c.haproxy.Backends().ItemsAdd() {
 		c.syncBackendEndpointCookies(backend)
+		c.syncBackendEndpointHashes(backend)
 	}
 }
 
@@ -945,6 +948,52 @@ func (c *converter) syncBackendEndpointCookies(backend *hatypes.Backend) {
 				}
 			}
 		}
+	}
+}
+
+func (c *converter) syncBackendEndpointHashes(backend *hatypes.Backend) {
+	if !backend.Server.AssignID {
+		return
+	}
+
+	// We need to take the endpoints in some order to resolve hash collisions... TargetRef will do
+	eps := make([]*hatypes.Endpoint, len(backend.Endpoints))
+	copy(eps, backend.Endpoints)
+	sort.SliceStable(eps, func(i, j int) bool {
+		ep1 := eps[i]
+		ep2 := eps[j]
+		return ep1.TargetRef < ep2.TargetRef
+	})
+
+	usedPUIDS := map[uint32]struct{}{}
+	for _, ep := range eps {
+		if ep.TargetRef == "" {
+			continue
+		}
+
+		var hash uint32
+		pod, err := c.cache.GetPod(ep.TargetRef)
+		if err == nil {
+			hasher := fnv.New32a()
+			hasher.Write([]byte(pod.UID))
+			// We get a uint32, but haproxy uses an int32 and insists on it being nonnegative,
+			// so truncate to 31 bits.
+			hash = hasher.Sum32() & 0x7fffffff
+		} else {
+			hash = 1
+			c.logger.Error("error calculating hash value for pod %s; ID assignment won't be stable: %v", ep.TargetRef, err)
+		}
+		for {
+            // If the ID is already used, linearly probe to find one that's not. 0 is an invalid value for haproxy, so we
+            // can let endpoints where we don't want a PUID have 0, but we should skip it here.
+			_, exists := usedPUIDS[hash]
+			if hash != 0 && !exists {
+				break
+			}
+			hash = (hash + 1) & 0x7fffffff
+		}
+		usedPUIDS[hash] = struct{}{}
+		ep.PUID = int32(hash)
 	}
 }
 
