@@ -3,6 +3,9 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.11!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.12.4](#v0124)
+  * [Reference](#reference-r4)
+  * [Fixes and improvements](#fixes-and-improvements-r4)
 * [v0.12.3](#v0123)
   * [Reference](#reference-r3)
   * [Fixes and improvements](#fixes-and-improvements-r3)
@@ -58,6 +61,39 @@ Breaking backward compatibility from v0.11
 * Max Verigin ([griever989](https://github.com/griever989))
 * pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.12.4
+
+## Reference (r4)
+
+* Release date: `2021-06-17`
+* Helm chart: `--version 0.12.4`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.12.4`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.12.4`
+* Embedded HAProxy version: `2.2.14`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.12.4`
+
+## Fixes and improvements (r4)
+
+Fixes and improvements since `v0.12.3`:
+
+* Fix reading of needFullSync status [#772](https://github.com/jcmoraisjr/haproxy-ingress/pull/772) (jcmoraisjr)
+* Fix per path filter of default host rules [#777](https://github.com/jcmoraisjr/haproxy-ingress/pull/777) (jcmoraisjr)
+* Add option to disable API server warnings [#789](https://github.com/jcmoraisjr/haproxy-ingress/pull/789) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/command-line/#disable-api-warnings)
+  * Command-line options:
+    * `--disable-api-warnings`
+* Fix domain validation on secure backend keys [#791](https://github.com/jcmoraisjr/haproxy-ingress/pull/791) (jcmoraisjr)
+* Add ssl-always-add-https config key [#793](https://github.com/jcmoraisjr/haproxy-ingress/pull/793) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#ssl-always-add-https)
+  * Configuration keys:
+    * `ssl-always-add-https`
+* Use the port name on DNS resolver template [#796](https://github.com/jcmoraisjr/haproxy-ingress/pull/796) (jcmoraisjr)
+* Fix reading of tls secret without crt or key [#799](https://github.com/jcmoraisjr/haproxy-ingress/pull/799) (jcmoraisjr)
+* update embedded haproxy from 2.2.13 to 2.2.14 [aa0a234](https://github.com/jcmoraisjr/haproxy-ingress/commit/aa0a234523cad45ca0432f8036f2bff704143d63) (Joao Morais)
+* update client-go from 0.19.0 to 0.19.11 [b0b30c8](https://github.com/jcmoraisjr/haproxy-ingress/commit/b0b30c8aa80c621a55bf11fc6bdaf98dcdd84d80) (Joao Morais)
+
+## Other
+
+* build: move from travis to github actions [1e137dc](https://github.com/jcmoraisjr/haproxy-ingress/commit/1e137dc982f87e9d9f18cf1b25615768ee432ed0) (Joao Morais)
 
 # v0.12.3
 
