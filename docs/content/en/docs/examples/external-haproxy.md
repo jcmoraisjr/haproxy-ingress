@@ -50,10 +50,17 @@ Install or upgrade HAProxy Ingress using the `haproxy-ingress-values.yaml` param
 
 Hint: change `install` to `upgrade` if HAProxy Ingress is already installed with Helm.
 
+{{% alert title="Note" %}}
+We're asking helm to install the latest v0.12 controller version, which will work
+on this example, but it's a best practice to use a proper chart version when moving to
+staging or production. Check all stable versions with `helm search repo haproxy-ingress/ -l`
+and update the `--version` command-line below.
+{{% /alert %}}
+
 ```
 $ helm install haproxy-ingress haproxy-ingress/haproxy-ingress\
   --create-namespace --namespace=ingress-controller\
-  --version 0.12.3\
+  --version 0.12\
   -f haproxy-ingress-values.yaml
 ```
 
