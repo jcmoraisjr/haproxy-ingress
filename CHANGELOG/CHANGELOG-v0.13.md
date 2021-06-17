@@ -56,7 +56,7 @@ Breaking backward compatibility from v0.12
 * Release date: `2021-06-16`
 * Helm chart: `--version 0.13.0-beta.1 --devel`
 * Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.0-beta.1`
-* Image (Docker): `jcmoraisjr/haproxy-ingress:v0.13.0-beta.1`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.0-beta.1`
 * Embedded HAProxy version: `2.3.10`
 * GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.13.0-beta.1`
 
@@ -82,7 +82,7 @@ New features and improvements since `v0.13.0-snapshot.3`:
 * Release date: `2021-06-09`
 * Helm chart: `--version 0.13.0-snapshot.3 --devel`
 * Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.0-snapshot.3`
-* Image (Docker): `jcmoraisjr/haproxy-ingress:v0.13.0-snapshot.3`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.0-snapshot.3`
 * Embedded HAProxy version: `2.3.10`
 
 ## Improvements (s3)
@@ -120,7 +120,7 @@ New features and improvements since `v0.13.0-snapshot.2`:
 * Release date: `2021-05-19`
 * Helm chart: `--version 0.13.0-snapshot.2 --devel`
 * Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.0-snapshot.2`
-* Image (Docker): `jcmoraisjr/haproxy-ingress:v0.13.0-snapshot.2`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.0-snapshot.2`
 * Embedded HAProxy version: `2.3.10`
 
 ## Improvements (s2)
@@ -162,7 +162,7 @@ New features and improvements since `v0.13.0-snapshot.1`:
 * Release date: `2021-04-16`
 * Helm chart: `--version 0.13.0-snapshot.1 --devel`
 * Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.0-snapshot.1`
-* Image (Docker): `jcmoraisjr/haproxy-ingress:v0.13.0-snapshot.1`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.0-snapshot.1`
 * Embedded HAProxy version: `2.3.9`
 
 ## Improvements (s1)
