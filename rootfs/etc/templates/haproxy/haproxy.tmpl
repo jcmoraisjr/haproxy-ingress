@@ -789,6 +789,7 @@ backend {{ $backend.ID }}
         {{- "" }} weight {{ $ep.Weight }}
         {{- if and ($backend.CookieAffinity) ($ep.CookieValue) }} cookie {{ $ep.CookieValue }}{{ end }}
         {{- if $ep.SourceIP }} source {{ $ep.SourceIP }}{{ end }}
+        {{- if $ep.PUID }} id {{ $ep.PUID }}{{ end }}
         {{- template "backend" map $backend }}
 {{- end }}
 {{- end }}
