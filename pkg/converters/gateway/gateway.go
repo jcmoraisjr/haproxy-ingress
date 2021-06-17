@@ -145,7 +145,7 @@ func (c *converter) syncGateway(gateway *gatewayv1alpha1.Gateway) {
 	var httpListeners []*gatewayv1alpha1.Listener
 	for i := range gateway.Spec.Listeners {
 		listener := &gateway.Spec.Listeners[i]
-		if listener.Routes.Group == "" || listener.Routes.Group == group {
+		if listener.Routes.Group == nil || *listener.Routes.Group == "" || *listener.Routes.Group == group {
 			switch strings.ToLower(listener.Routes.Kind) {
 			case "httproute":
 				httpListeners = append(httpListeners, listener)
@@ -167,15 +167,17 @@ func (c *converter) createHTTPRoutes(source *Source, httpListeners []*gatewayv1a
 		// TODO implement listener.Routes.Kind
 		// TODO implement listener.Routes.Selector.MatchExpressions
 		var namespace string
-		switch listener.Routes.Namespaces.From {
-		case gatewayv1alpha1.RouteSelectAll:
-			namespace = ""
-		case gatewayv1alpha1.RouteSelectSame:
-			namespace = source.namespace
-		case gatewayv1alpha1.RouteSelectSelector:
-			// TODO implement
-			namespace = source.namespace
-		default:
+		if listener.Routes.Namespaces != nil && listener.Routes.Namespaces.From != nil {
+			switch *listener.Routes.Namespaces.From {
+			case gatewayv1alpha1.RouteSelectAll:
+				namespace = ""
+			case gatewayv1alpha1.RouteSelectSame:
+				namespace = source.namespace
+			case gatewayv1alpha1.RouteSelectSelector:
+				// TODO implement
+				namespace = source.namespace
+			}
+		} else {
 			namespace = source.namespace
 		}
 		routes, err := c.cache.GetHTTPRouteList(namespace, listener.Routes.Selector.MatchLabels)
@@ -194,7 +196,7 @@ func (c *converter) createHTTPRoutes(source *Source, httpListeners []*gatewayv1a
 				// TODO implement rule.Filters
 				backend, services := c.createBackend(routeSource, fmt.Sprintf("_rule%d", index), rule.ForwardTo)
 				if backend != nil {
-					passthrough := listener.TLS != nil && listener.TLS.Mode == gatewayv1alpha1.TLSModePassthrough
+					passthrough := listener.TLS != nil && listener.TLS.Mode != nil && *listener.TLS.Mode == gatewayv1alpha1.TLSModePassthrough
 					if passthrough {
 						backend.ModeTCP = true
 					}
@@ -247,12 +249,16 @@ func (c *converter) createBackend(source *Source, index string, forwardTo []gate
 			c.logger.Warn("skipping service '%s' on %s: %v", *fw.ServiceName, source, err)
 			continue
 		}
+		weight := 1
+		if fw.Weight != nil {
+			weight = int(*fw.Weight)
+		}
 		backends = append(backends, backend{
 			service: *fw.ServiceName,
 			port:    svcport.TargetPort.String(),
 			epready: epready,
 			cl: convutils.WeightCluster{
-				Weight: int(fw.Weight),
+				Weight: weight,
 				Length: len(epready),
 			},
 		})
@@ -279,37 +285,36 @@ func (c *converter) createBackend(source *Source, index string, forwardTo []gate
 
 func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha1.Hostname, matches []gatewayv1alpha1.HTTPRouteMatch, backend *hatypes.Backend) (hosts []*hatypes.Host, pathLinks []hatypes.PathLink) {
 	if backend.ModeTCP && len(matches) > 0 {
-		if len(matches) > 1 || matches[0].Path.Type != gatewayv1alpha1.PathMatchPrefix || matches[0].Path.Value != "/" {
-			// avoid to warn if path == "/" and type == "Prefix"
-			// TODO revisit in v0.3.0 Gateway API
-			c.logger.Warn("ignoring match from %s: backend is configured as TCP mode", source)
-		}
+		c.logger.Warn("ignoring match from %s: backend is configured as TCP mode", source)
 		matches = nil
 	}
 	if len(matches) == 0 {
-		matches = []gatewayv1alpha1.HTTPRouteMatch{
-			{
-				Path: gatewayv1alpha1.HTTPPathMatch{
-					Type:  gatewayv1alpha1.PathMatchPrefix,
-					Value: "/",
-				},
-			},
-		}
+		matches = []gatewayv1alpha1.HTTPRouteMatch{{}}
 	}
 	for _, match := range matches {
-		path := match.Path.Value
+		var path string
+		var haMatch hatypes.MatchType
+		if match.Path != nil {
+			if match.Path.Value != nil {
+				path = *match.Path.Value
+			}
+			if match.Path.Type != nil {
+				switch *match.Path.Type {
+				case gatewayv1alpha1.PathMatchExact:
+					haMatch = hatypes.MatchExact
+				case gatewayv1alpha1.PathMatchPrefix:
+					haMatch = hatypes.MatchPrefix
+				case gatewayv1alpha1.PathMatchRegularExpression:
+					haMatch = hatypes.MatchRegex
+				case gatewayv1alpha1.PathMatchImplementationSpecific:
+					haMatch = hatypes.MatchBegin
+				}
+			}
+		}
 		if path == "" {
 			path = "/"
 		}
-		var haMatch hatypes.MatchType
-		switch match.Path.Type {
-		case gatewayv1alpha1.PathMatchExact:
-			haMatch = hatypes.MatchExact
-		case gatewayv1alpha1.PathMatchRegularExpression:
-			haMatch = hatypes.MatchRegex
-		case gatewayv1alpha1.PathMatchImplementationSpecific:
-			haMatch = hatypes.MatchBegin
-		default:
+		if haMatch == "" {
 			haMatch = hatypes.MatchPrefix
 		}
 		for _, hostname := range hostnames {
@@ -376,13 +381,16 @@ func (c *converter) applyCertRef(gwSource, routeSource *Source, hosts []*hatypes
 	var certRef, certFallbackRef *gatewayv1alpha1.LocalObjectReference
 	var crtSource *Source
 	if listener.TLS != nil {
-		if listener.TLS.Mode == gatewayv1alpha1.TLSModePassthrough {
+		if listener.TLS.Mode != nil && *listener.TLS.Mode == gatewayv1alpha1.TLSModePassthrough {
 			for _, host := range hosts {
 				// backend was already changed to ModeTCP; hosts.match was already
 				// changed to root path only and a warning was already logged if needed
 				host.SetSSLPassthrough(true)
 			}
-		} else if route.Spec.TLS != nil && listener.TLS.RouteOverride.Certificate == gatewayv1alpha1.TLSROuteOVerrideAllow {
+		} else if route.Spec.TLS != nil &&
+			listener.TLS.RouteOverride != nil &&
+			listener.TLS.RouteOverride.Certificate != nil &&
+			*listener.TLS.RouteOverride.Certificate == gatewayv1alpha1.TLSROuteOVerrideAllow {
 			certRef = &route.Spec.TLS.CertificateRef
 			certFallbackRef = listener.TLS.CertificateRef
 			crtSource = routeSource

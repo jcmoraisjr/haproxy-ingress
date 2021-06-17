@@ -76,7 +76,8 @@ paths:
 				g := c.createGateway1("default/web", "gateway=web")
 				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
-				g.Spec.Listeners[0].Routes.Group = g.GroupVersionKind().Group
+				group := g.GroupVersionKind().Group
+				g.Spec.Listeners[0].Routes.Group = &group
 			},
 			expDefaultHost: `
 hostname: <default>
@@ -316,10 +317,14 @@ paths:
 				c.createGateway1("default/web", "gateway=web")
 				route := c.createHTTPRoute2("default/web", "gateway=web", "echoserver:8080", "/app0,/app1,/app2,/app3,/app4")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
-				route.Spec.Rules[0].Matches[1].Path.Type = gateway.PathMatchExact
-				route.Spec.Rules[0].Matches[2].Path.Type = gateway.PathMatchPrefix
-				route.Spec.Rules[0].Matches[3].Path.Type = gateway.PathMatchRegularExpression
-				route.Spec.Rules[0].Matches[4].Path.Type = gateway.PathMatchImplementationSpecific
+				g1 := gateway.PathMatchExact
+				g2 := gateway.PathMatchPrefix
+				g3 := gateway.PathMatchRegularExpression
+				g4 := gateway.PathMatchImplementationSpecific
+				route.Spec.Rules[0].Matches[1].Path.Type = &g1
+				route.Spec.Rules[0].Matches[2].Path.Type = &g2
+				route.Spec.Rules[0].Matches[3].Path.Type = &g3
+				route.Spec.Rules[0].Matches[4].Path.Type = &g4
 			},
 			expDefaultHost: `
 hostname: <default>
@@ -351,9 +356,10 @@ paths:
 			id: "match-path-mode-tcp-1",
 			config: func(c *testConfig) {
 				g := c.createGateway1("default/web", "gateway=web")
-				c.createHTTPRoute2("default/web", "gateway=web", "echoserver:8080", "/")
+				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
-				g.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{Mode: gateway.TLSModePassthrough}
+				passthrough := gateway.TLSModePassthrough
+				g.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{Mode: &passthrough}
 			},
 			expDefaultHost: `
 hostname: <default>
@@ -467,7 +473,8 @@ func TestSyncHTTPRouteNamespaceFilter(t *testing.T) {
 				g := c.createGateway1("ns1/gwweb", "gateway=web")
 				c.createHTTPRoute1("ns2/routeweb", "gateway=web", "echoserver:8080")
 				c.createService1("ns2/echoserver", "8080", "172.17.0.11")
-				g.Spec.Listeners[0].Routes.Namespaces.From = gateway.RouteSelectSame
+				same := gateway.RouteSelectSame
+				g.Spec.Listeners[0].Routes.Namespaces = &gateway.RouteNamespaces{From: &same}
 			},
 		},
 		{
@@ -476,7 +483,8 @@ func TestSyncHTTPRouteNamespaceFilter(t *testing.T) {
 				g := c.createGateway1("ns1/gwweb", "gateway=web")
 				c.createHTTPRoute1("ns2/routeweb", "gateway=web", "echoserver:8080")
 				c.createService1("ns2/echoserver", "8080", "172.17.0.11")
-				g.Spec.Listeners[0].Routes.Namespaces.From = gateway.RouteSelectAll
+				all := gateway.RouteSelectAll
+				g.Spec.Listeners[0].Routes.Namespaces = &gateway.RouteNamespaces{From: &all}
 			},
 			expDefaultHost: `
 hostname: <default>
@@ -725,6 +733,8 @@ paths:
 }
 
 func TestSyncHTTPRouteTLS(t *testing.T) {
+	allow := gateway.TLSROuteOVerrideAllow
+	deny := gateway.TLSRouteOverrideDeny
 	runTestSync(t, []testCaseSync{
 		{
 			id: "tls-listener-err-1",
@@ -829,7 +839,7 @@ tls:
 				gw := c.createGateway2("default/web", "gateway=web", "crt1")
 				r := c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
-				gw.Spec.Listeners[0].TLS.RouteOverride.Certificate = gateway.TLSRouteOverrideDeny
+				gw.Spec.Listeners[0].TLS.RouteOverride = &gateway.TLSOverridePolicy{Certificate: &deny}
 				r.Spec.TLS = &gateway.RouteTLSConfig{}
 				r.Spec.TLS.CertificateRef.Name = "crt2"
 				c.cache.SecretTLSPath["default/crt1"] = "/tls/crt1.pem"
@@ -858,7 +868,7 @@ tls:
 				gw := c.createGateway2("default/web", "gateway=web", "crt1")
 				r := c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
-				gw.Spec.Listeners[0].TLS.RouteOverride.Certificate = gateway.TLSROuteOVerrideAllow
+				gw.Spec.Listeners[0].TLS.RouteOverride = &gateway.TLSOverridePolicy{Certificate: &allow}
 				r.Spec.TLS = &gateway.RouteTLSConfig{}
 				r.Spec.TLS.CertificateRef.Name = "crt2"
 				c.cache.SecretTLSPath["default/crt1"] = "/tls/crt1.pem"
@@ -889,7 +899,7 @@ tls:
 				r2 := c.createHTTPRoute2("default/web2", "gateway=web", "echoserver2:8080", "/app2")
 				c.createService1("default/echoserver1", "8080", "172.17.0.11")
 				c.createService1("default/echoserver2", "8080", "172.17.0.12")
-				gw.Spec.Listeners[0].TLS.RouteOverride.Certificate = gateway.TLSROuteOVerrideAllow
+				gw.Spec.Listeners[0].TLS.RouteOverride = &gateway.TLSOverridePolicy{Certificate: &allow}
 				r1.Spec.Hostnames = append(r1.Spec.Hostnames, "domain1.local")
 				r1.Spec.Hostnames = append(r1.Spec.Hostnames, "domain2.local")
 				r2.Spec.Hostnames = append(r2.Spec.Hostnames, "domain1.local")
@@ -947,7 +957,7 @@ WARN skipping certificate reference on HTTPRoute 'default/web2' for hostname dom
 				gw := c.createGateway2("default/webgw", "gateway=web", "crt-listener")
 				r := c.createHTTPRoute1("default/webroute", "gateway=web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
-				gw.Spec.Listeners[0].TLS.RouteOverride.Certificate = gateway.TLSROuteOVerrideAllow
+				gw.Spec.Listeners[0].TLS.RouteOverride = &gateway.TLSOverridePolicy{Certificate: &allow}
 				r.Spec.TLS = &gateway.RouteTLSConfig{}
 				r.Spec.TLS.CertificateRef.Name = "crt-route"
 				c.cache.SecretTLSPath["default/crt-listener"] = "/tls/crt-listener.pem"
@@ -978,7 +988,7 @@ tls:
 				gw := c.createGateway2("default/webgw", "gateway=web", "crt-listener")
 				r := c.createHTTPRoute1("default/webroute", "gateway=web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
-				gw.Spec.Listeners[0].TLS.RouteOverride.Certificate = gateway.TLSROuteOVerrideAllow
+				gw.Spec.Listeners[0].TLS.RouteOverride = &gateway.TLSOverridePolicy{Certificate: &allow}
 				r.Spec.TLS = &gateway.RouteTLSConfig{}
 				r.Spec.TLS.CertificateRef.Name = "crt-route"
 			},
@@ -1005,6 +1015,7 @@ paths:
 }
 
 func TestSyncHTTPRouteTLSPassthrough(t *testing.T) {
+	passthrough := gateway.TLSModePassthrough
 	runTestSync(t, []testCaseSync{
 		{
 			id: "https-1",
@@ -1012,9 +1023,7 @@ func TestSyncHTTPRouteTLSPassthrough(t *testing.T) {
 				g := c.createGateway1("default/web", "gateway=web")
 				r := c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8443")
 				c.createService1("default/echoserver", "8443", "172.17.0.11")
-				g.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{
-					Mode: gateway.TLSModePassthrough,
-				}
+				g.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{Mode: &passthrough}
 				r.Spec.Hostnames = append(r.Spec.Hostnames, "domain.local")
 			},
 			expHosts: `
@@ -1043,9 +1052,7 @@ func TestSyncHTTPRouteTLSPassthrough(t *testing.T) {
 				r2 := c.createHTTPRoute1("default/web2", "gateway=web2", "echoserver2:8443")
 				c.createService1("default/echoserver1", "8080", "172.17.0.11")
 				c.createService1("default/echoserver2", "8443", "172.17.0.12")
-				g.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{
-					Mode: gateway.TLSModePassthrough,
-				}
+				g.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{Mode: &passthrough}
 				r1.Spec.Hostnames = append(r1.Spec.Hostnames, "domain.local")
 				r2.Spec.Hostnames = append(r2.Spec.Hostnames, "domain.local")
 			},
@@ -1081,9 +1088,7 @@ func TestSyncHTTPRouteTLSPassthrough(t *testing.T) {
 				r2 := c.createHTTPRoute1("default/web2", "gateway=web2", "echoserver2:8080")
 				c.createService1("default/echoserver1", "8443", "172.17.0.11")
 				c.createService1("default/echoserver2", "8080", "172.17.0.12")
-				g.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{
-					Mode: gateway.TLSModePassthrough,
-				}
+				g.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{Mode: &passthrough}
 				r1.Spec.Hostnames = append(r1.Spec.Hostnames, "domain.local")
 				r2.Spec.Hostnames = append(r2.Spec.Hostnames, "domain.local")
 			},
@@ -1122,9 +1127,7 @@ func TestSyncHTTPRouteTLSPassthrough(t *testing.T) {
 				c.createService1("default/echoserver1", "8080", "172.17.0.11")
 				c.createService1("default/echoserver2", "8443", "172.17.0.12")
 				c.createService1("default/echoserver3", "8080", "172.17.0.13")
-				g.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{
-					Mode: gateway.TLSModePassthrough,
-				}
+				g.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{Mode: &passthrough}
 				r1.Spec.Hostnames = append(r1.Spec.Hostnames, "domain.local")
 				r2.Spec.Hostnames = append(r2.Spec.Hostnames, "domain.local")
 				r3.Spec.Hostnames = append(r3.Spec.Hostnames, "domain.local")
@@ -1169,9 +1172,7 @@ func TestSyncHTTPRouteTLSPassthrough(t *testing.T) {
 				g := c.createGateway1("default/web", "gateway=web")
 				r1 := c.createHTTPRoute2("default/web", "gateway=web", "echoserver:8443", "/app")
 				c.createService1("default/echoserver", "8443", "172.17.0.11")
-				g.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{
-					Mode: gateway.TLSModePassthrough,
-				}
+				g.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{Mode: &passthrough}
 				r1.Spec.Hostnames = append(r1.Spec.Hostnames, "domain.local")
 			},
 			expLogging: `
@@ -1363,11 +1364,13 @@ spec:
 
 func (c *testConfig) createHTTPRoute2(name, labels, service, paths string) *gateway.HTTPRoute {
 	r := c.createHTTPRoute1(name, labels, service)
+	prefix := gateway.PathMatchPrefix
 	for _, path := range strings.Split(paths, ",") {
+		p := path
 		match := gateway.HTTPRouteMatch{
-			Path: gateway.HTTPPathMatch{
-				Type:  gateway.PathMatchPrefix,
-				Value: path,
+			Path: &gateway.HTTPPathMatch{
+				Type:  &prefix,
+				Value: &p,
 			},
 		}
 		r.Spec.Rules[0].Matches = append(r.Spec.Rules[0].Matches, match)
