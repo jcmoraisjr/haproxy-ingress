@@ -1030,11 +1030,9 @@ frontend _front_https
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if or $fmaps.RedirFromRootMap.HasHost $fmaps.HTTPSHostMap.HasHost $fmaps.HTTPSSNIMap.HasHost $fmaps.TLSAuthList.HasHost $fmaps.TLSNeedCrtList.HasHost $fmaps.VarNamespaceMap.HasHost }}
     http-request set-var(req.path) path
     http-request set-var(req.host) hdr(host),field(1,:),lower
     http-request set-var(req.base) var(req.host),concat(\#,req.path)
-{{- end }}
 
 {{- /*------------------------------------*/}}
 {{- range $match := $fmaps.HTTPSHostMap.MatchFiles }}
