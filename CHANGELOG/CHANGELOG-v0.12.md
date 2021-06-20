@@ -3,6 +3,9 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.11!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.12.5](#v0125)
+  * [Reference](#reference-r5)
+  * [Fixes and improvements](#fixes-and-improvements-r5)
 * [v0.12.4](#v0124)
   * [Reference](#reference-r4)
   * [Fixes and improvements](#fixes-and-improvements-r4)
@@ -61,6 +64,23 @@ Breaking backward compatibility from v0.11
 * Max Verigin ([griever989](https://github.com/griever989))
 * pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.12.5
+
+## Reference (r5)
+
+* Release date: `2021-06-20`
+* Helm chart: `--version 0.12.5`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.12.5`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.12.5`
+* Embedded HAProxy version: `2.2.14`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.12.5`
+
+## Fixes and improvements (r5)
+
+Fixes and improvements since `v0.12.4`:
+
+* Fix backend match if no ingress use host match [#802](https://github.com/jcmoraisjr/haproxy-ingress/pull/802) (jcmoraisjr)
 
 # v0.12.4
 
