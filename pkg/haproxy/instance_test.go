@@ -3101,14 +3101,8 @@ listen _front__tls
 frontend _front_http
     mode http
     bind :80
-    http-request set-var(req.path) path
-    http-request set-var(req.host) hdr(host),field(1,:),lower
-    http-request set-var(req.base) var(req.host),concat(\#,req.path)
-    http-request set-header X-Forwarded-Proto http
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<set-req-base>>
+    <<http-headers>>
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
     ## custom for _front_http
     use_backend %[var(req.backend)] if { var(req.backend) -m found }
@@ -3116,11 +3110,8 @@ frontend _front_http
 frontend _front_https
     mode http
     bind unix@/var/run/haproxy/_https_socket.sock accept-proxy ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
-    http-request set-header X-Forwarded-Proto https
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<set-req-base>>
+    <<https-headers>>
     ## custom for _front_https
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     default_backend _error404
@@ -3227,11 +3218,8 @@ listen _front__tls
 frontend _front_https
     mode http
     bind unix@/var/run/haproxy/_https_socket.sock accept-proxy ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
-    http-request set-header X-Forwarded-Proto https
-    http-request del-header X-SSL-Client-CN
-    http-request del-header X-SSL-Client-DN
-    http-request del-header X-SSL-Client-SHA1
-    http-request del-header X-SSL-Client-Cert
+    <<set-req-base>>
+    <<https-headers>>
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     default_backend _error404
 <<support>>
@@ -4753,6 +4741,7 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
 		"<<frontend-https-clean>>": `frontend _front_https
     mode http
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
+    <<set-req-base>>
     <<https-headers>>
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }`,
 		"<<frontends-default>>": `<<frontend-http>>
