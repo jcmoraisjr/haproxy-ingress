@@ -223,6 +223,14 @@ Fixes and improvements since [v0.11-beta.3](#v011-beta3):
 * Improve certificate validation of acme signer [#689](https://github.com/jcmoraisjr/haproxy-ingress/pull/689) (jcmoraisjr)
 * Update haproxy from 2.1.9 to 2.1.10 [9763c63](https://github.com/jcmoraisjr/haproxy-ingress/commit/9763c635d73dc3c853223304902b29ae3065cb32) (Joao Morais)
 
+## v0.10.8
+
+Fixes and improvements since [v0.10.7](#v0107):
+
+* Use the port name on DNS resolver template [#796](https://github.com/jcmoraisjr/haproxy-ingress/pull/796) (jcmoraisjr)
+* Fix reading of tls secret without crt or key [#799](https://github.com/jcmoraisjr/haproxy-ingress/pull/799) (jcmoraisjr)
+* build: move from travis to github actions [7a81577](https://github.com/jcmoraisjr/haproxy-ingress/commit/7a8157753ff7842b4757f81c9c91ba261f5c77e7) (Joao Morais)
+
 ## v0.10.7
 
 Fixes and improvements since [v0.10.6](#v0106):
