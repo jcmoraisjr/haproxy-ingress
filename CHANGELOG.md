@@ -22,6 +22,16 @@ Unsupported:
 * [v0.2](#v02)
 * [v0.1](#v01)
 
+## v0.11.7
+
+Fixes and improvements since [v0.11.6](#v0116):
+
+* Fix reading of needFullSync status [#772](https://github.com/jcmoraisjr/haproxy-ingress/pull/772) (jcmoraisjr)
+* Fix domain validation on secure backend keys [#791](https://github.com/jcmoraisjr/haproxy-ingress/pull/791) (jcmoraisjr)
+* Use the port name on DNS resolver template [#796](https://github.com/jcmoraisjr/haproxy-ingress/pull/796) (jcmoraisjr)
+* Fix reading of tls secret without crt or key [#799](https://github.com/jcmoraisjr/haproxy-ingress/pull/799) (jcmoraisjr)
+* build: move from travis to github actions [19c275c](https://github.com/jcmoraisjr/haproxy-ingress/commit/19c275cfd5c3b8fe70aa92686c7b6e41ca5ae388) (Joao Morais)
+
 ## v0.11.6
 
 Fixes and improvements since [v0.11.5](#v0115):
