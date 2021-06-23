@@ -51,6 +51,7 @@ The following command-line options are supported:
 | [`--update-status-on-shutdown`](#update-status-on-shutdown) | [true\|false]          | `true`                  |       |
 | [`--validate-config`](#validate-config)                 | [true\|false]              | `false`                 |       |
 | [`--verify-hostname`](#verify-hostname)                 | [true\|false]              | `true`                  |       |
+| [`--version`](#version)                                 | [true\|false]              | `false`                 |       |
 | [`--wait-before-shutdown`](#wait-before-shutdown)       | seconds as integer         | `0`                     | v0.8  |
 | [`--wait-before-update`](#wait-before-update)           | duration                   | `200ms`                 | v0.11 |
 | [`--watch-gateway`](#watch-gateway)                     | [true\|false]              | `false`                 | v0.13 |
@@ -474,6 +475,12 @@ match the hostname are discarded and a warning is logged into the ingress contro
 
 Use `--verify-hostname=false` argument to bypass this validation. If used, HAProxy will provide
 the certificate declared in the `secretName` ignoring if the certificate is or is not valid.
+
+---
+
+## --version
+
+Show release information about the ingress controller.
 
 ---
 
