@@ -48,6 +48,7 @@ The following command-line options are supported:
 | [`--sync-period`](#sync-period)                         | time                       | `10m`                   |       |
 | [`--tcp-services-configmap`](#tcp-services-configmap)   | namespace/configmapname    | no tcp svc              |       |
 | [`--update-status`](#update-status)                     | [true\|false]              | `true`                  |       |
+| [`--update-status-on-shutdown`](#update-status-on-shutdown) | [true\|false]          | `true`                  |       |
 | [`--verify-hostname`](#verify-hostname)                 | [true\|false]              | `true`                  |       |
 | [`--wait-before-shutdown`](#wait-before-shutdown)       | seconds as integer         | `0`                     | v0.8  |
 | [`--wait-before-update`](#wait-before-update)           | duration                   | `200ms`                 | v0.11 |
@@ -441,6 +442,14 @@ See also:
 
 Indicates whether the ingress controller should update the `status` attribute of all the Ingress
 resources that this controller is tracking.  Defaults to `true`.
+
+---
+
+## --update-status-on-shutdown
+
+Indicates whether the ingress controller should update the `status` attribute of all the Ingress
+resources that this controller is tracking when the controller is being stopped.  Defaults to
+`true`.
 
 ---
 
