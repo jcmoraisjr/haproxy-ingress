@@ -23,6 +23,7 @@ The following command-line options are supported:
 | [`--apiserver-host`](#apiserver-host)                   | address of K8s API server  |                         |       |
 | [`--backend-shards`](#backend-shards)                   | int                        | `0`                     | v0.11 |
 | [`--buckets-response-time`](#buckets-response-time)     | float64 slice           | `.0005,.001,.002,.005,.01` | v0.10 |
+| [`--configmap`](#configmap)                             | namespace/configmapname    |                         |       |
 | [`--controller-class`](#ingress-class)                  | suffix                     | `""`                    | v0.12 |
 | [`--default-backend-service`](#default-backend-service) | namespace/servicename      | haproxy's 404 page      |       |
 | [`--default-ssl-certificate`](#default-ssl-certificate) | namespace/secretname       | fake, auto generated    |       |
@@ -125,6 +126,18 @@ services.
 ## --buckets-response-time
 
 Configures the buckets of the histogram `haproxyingress_haproxy_response_time_seconds`, used to compute the response time of the haproxy's admin socket. The response time unit is in seconds.
+
+---
+
+## --configmap
+
+The name of the ConfigMap that contains the custom configuration to use, in the format
+`namespace/configmapname`.  Beware that in version 0.12 and below, an incorrect value here will
+silently fail.  Version 0.13 and later will crash if the ConfigMap is unreadable or nonexistent.
+
+See also:
+
+* [custom-configuration example using `--configmap`](https://github.com/jcmoraisjr/haproxy-ingress/blob/master/examples/custom-configuration/README.md)
 
 ---
 
