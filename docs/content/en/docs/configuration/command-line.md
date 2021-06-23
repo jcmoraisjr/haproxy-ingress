@@ -30,6 +30,7 @@ The following command-line options are supported:
 | [`--disable-api-warnings`](#disable-api-warnings)       | [true\|false]              | `false`                 | v0.12 |
 | [`--disable-pod-list`](#disable-pod-list)               | [true\|false]              | `false`                 | v0.11 |
 | [`--election-id`](#election-id)                         | identifier                 | `ingress-controller-leader` |   |
+| [`--force-namespace-isolation`](#force-namespace-isolation) | [true\|false]          | `false`                 |       |
 | [`--healthz-port`](#stats)                              | port number                | `10254`                 |       |
 | [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |       |
 | [`--kubeconfig`](#kubeconfig)                           | /path/to/kubeconfig        | in cluster config       |       |
@@ -181,6 +182,15 @@ Disables in memory pod list and also pod watch for changes. Pod list and watch i
 ## --election-id
 
 The ID to be used for electing ingress controller leader.  Defaults to `ingress-controller-leader`.
+
+---
+
+## --force-namespace-isolation
+
+Whether to force namespace isolation.  This flag is required to avoid the reference of secrets,
+configmaps or the default backend service located in a different namespace than specified in the
+flag `--watch-namespace` (which defaults to all namespaces, so you will probably want to set that
+flag, too).
 
 ---
 
