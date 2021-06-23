@@ -31,6 +31,7 @@ The following command-line options are supported:
 | [`--disable-pod-list`](#disable-pod-list)               | [true\|false]              | `false`                 | v0.11 |
 | [`--election-id`](#election-id)                         | identifier                 | `ingress-controller-leader` |   |
 | [`--force-namespace-isolation`](#force-namespace-isolation) | [true\|false]          | `false`                 |       |
+| [`--health-check-path`](#stats)                         | path                       | `/healthz`              |       |
 | [`--healthz-port`](#stats)                              | port number                | `10254`                 |       |
 | [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |       |
 | [`--kubeconfig`](#kubeconfig)                           | /path/to/kubeconfig        | in cluster config       |       |
@@ -357,6 +358,7 @@ Configures an endpoint with statistics, debugging and health checks. The followi
 
 Options:
 
+* `--health-check-path`: Defines the URL to be used as a health check for the default server.  Defaults to `/healthz`.
 * `--healthz-port`: Defines the port number haproxy-ingress should listen to. Defaults to `10254`.
 * `--profiling`: Configures if the profiling URI should be enabled. Defaults to `true`.
 * `--stats-collect-processing-period`: Defines the interval between two consecutive readings of haproxy's `Idle_pct`, used to generate `haproxy_processing_seconds_total` metric. haproxy updates Idle_pct every `500ms`, which makes that the best configuration value, and it's also the default if not configured. Values higher than `500ms` will produce a less accurate collect. Change to 0 (zero) to disable this metric.
