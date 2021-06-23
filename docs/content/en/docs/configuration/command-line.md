@@ -47,6 +47,7 @@ The following command-line options are supported:
 | [`--stats-collect-processing-period`](#stats)           | time                       | `500ms`                 | v0.10 |
 | [`--sync-period`](#sync-period)                         | time                       | `10m`                   |       |
 | [`--tcp-services-configmap`](#tcp-services-configmap)   | namespace/configmapname    | no tcp svc              |       |
+| [`--update-status`](#update-status)                     | [true\|false]              | `true`                  |       |
 | [`--verify-hostname`](#verify-hostname)                 | [true\|false]              | `true`                  |       |
 | [`--wait-before-shutdown`](#wait-before-shutdown)       | seconds as integer         | `0`                     | v0.8  |
 | [`--wait-before-update`](#wait-before-update)           | duration                   | `200ms`                 | v0.11 |
@@ -433,6 +434,13 @@ Note: Check interval was added in v0.10 and defaults to `2s`. All declared servi
 See also:
 
 * [TCP Services]({{% relref "keys#tcp-services" %}}) configuration keys
+
+---
+
+## --update-status
+
+Indicates whether the ingress controller should update the `status` attribute of all the Ingress
+resources that this controller is tracking.  Defaults to `true`.
 
 ---
 
