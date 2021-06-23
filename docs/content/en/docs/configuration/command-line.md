@@ -41,6 +41,7 @@ The following command-line options are supported:
 | [`--publish-service`](#publish-service)                 | namespace/servicename      |                         |       |
 | [`--rate-limit-update`](#rate-limit-update)             | uploads per second (float) | `0.5`                   |       |
 | [`--reload-strategy`](#reload-strategy)                 | [native\|reusesocket]      | `reusesocket`           |       |
+| [`--report-node-internal-ip-address`](#report-node-internal-ip-address) | [true\|false] | `false`              |       |
 | [`--sort-backends`](#sort-backends)                     | [true\|false]              | `false`                 |       |
 | [`--sort-endpoints-by`](#sort-endpoints-by)             | [endpoint\|ip\|name\|random] | `endpoint`            | v0.11 |
 | [`--stats-collect-processing-period`](#stats)           | time                       | `500ms`                 | v0.10 |
@@ -310,6 +311,13 @@ HAProxy should use. The following options are available:
 * `reusesocket`: (starting on v0.6) Uses HAProxy `-x` command-line option to pass the listening sockets between old and new HAProxy process, allowing hitless reloads. This is the default option since v0.8.
 * `multibinder`: (deprecated on v0.6) Uses GitHub's [multibinder](https://github.com/github/multibinder). This [link](https://githubengineering.com/glb-part-2-haproxy-zero-downtime-zero-delay-reloads-with-multibinder/)
 describes how it works.
+
+---
+
+## --report-node-internal-ip-address
+
+Sets whether the node's IP address returned in the ingress status should be the node's internal
+instead of the external IP address.  Defaults to `false`.
 
 ---
 
