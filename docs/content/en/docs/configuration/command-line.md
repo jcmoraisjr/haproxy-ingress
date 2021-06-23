@@ -20,6 +20,7 @@ The following command-line options are supported:
 | [`--acme-track-tls-annotation`](#acme)                  | [true\|false]              | `false`                 | v0.9  |
 | [`--allow-cross-namespace`](#allow-cross-namespace)     | [true\|false]              | `false`                 |       |
 | [`--annotations-prefix`](#annotations-prefix)           | prefix list without `/`    | `haproxy-ingress.github.io,ingress.kubernetes.io` | v0.8  |
+| [`--apiserver-host`](#apiserver-host)                   | address of K8s API server  |                         |       |
 | [`--backend-shards`](#backend-shards)                   | int                        | `0`                     | v0.11 |
 | [`--buckets-response-time`](#buckets-response-time)     | float64 slice           | `.0005,.001,.002,.005,.01` | v0.10 |
 | [`--controller-class`](#ingress-class)                  | suffix                     | `""`                    | v0.12 |
@@ -99,6 +100,15 @@ command-line option is used.
 Annotations with other prefix or without any prefix are ignored. This allows to use HAProxy Ingress
 with other ingress controllers that shares ingress and service resources without conflicting each
 other.
+
+---
+
+## --apiserver-host
+
+Allows you to specify an explicit host for the Kubernetes API server, in the format of
+`protocol://address:port`, e.g., `http://localhost:8080`.  If this value isn't specified, the
+assumption is that the binary is running inside a Kubernetes cluster and local discovery will be
+attempted.
 
 ---
 
