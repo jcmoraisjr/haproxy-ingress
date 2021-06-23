@@ -145,6 +145,8 @@ with `file://` can be used, containing both certificate and private key in PEM f
 
 A self-signed fake certificate is used if not declared, the secret or the file is not found.
 
+---
+
 ## --disable-api-warnings
 
 Since v0.12.4
