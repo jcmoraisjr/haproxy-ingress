@@ -49,6 +49,7 @@ The following command-line options are supported:
 | [`--tcp-services-configmap`](#tcp-services-configmap)   | namespace/configmapname    | no tcp svc              |       |
 | [`--update-status`](#update-status)                     | [true\|false]              | `true`                  |       |
 | [`--update-status-on-shutdown`](#update-status-on-shutdown) | [true\|false]          | `true`                  |       |
+| [`--validate-config`](#validate-config)                 | [true\|false]              | `false`                 |       |
 | [`--verify-hostname`](#verify-hostname)                 | [true\|false]              | `true`                  |       |
 | [`--wait-before-shutdown`](#wait-before-shutdown)       | seconds as integer         | `0`                     | v0.8  |
 | [`--wait-before-update`](#wait-before-update)           | duration                   | `200ms`                 | v0.11 |
@@ -450,6 +451,17 @@ resources that this controller is tracking.  Defaults to `true`.
 Indicates whether the ingress controller should update the `status` attribute of all the Ingress
 resources that this controller is tracking when the controller is being stopped.  Defaults to
 `true`.
+
+---
+
+## --validate-config
+
+Determines whether the resulting configuration files should be validated when a dynamic update was
+applied. Default value is `false`, which means the validation will only happen when HAProxy needs to
+be reloaded.
+
+If validation fails, HAProxy Ingress will log the error and set the metric
+`haproxyingress_update_success` to zero, indicating failure.
 
 ---
 
