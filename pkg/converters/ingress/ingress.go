@@ -953,7 +953,7 @@ func (c *converter) syncBackendEndpointCookies(backend *hatypes.Backend) {
 
 func (c *converter) syncBackendEndpointHashes(backend *hatypes.Backend) {
 	mapper := c.backendAnnotations[backend]
-	if mapper != nil && !mapper.Get(ingtypes.BackAssignBackendServerID).Bool() {
+	if mapper == nil || !mapper.Get(ingtypes.BackAssignBackendServerID).Bool() {
 		return
 	}
 
