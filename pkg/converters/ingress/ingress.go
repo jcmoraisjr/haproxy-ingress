@@ -952,7 +952,8 @@ func (c *converter) syncBackendEndpointCookies(backend *hatypes.Backend) {
 }
 
 func (c *converter) syncBackendEndpointHashes(backend *hatypes.Backend) {
-	if !backend.Server.AssignID {
+	mapper := c.backendAnnotations[backend]
+	if mapper != nil && !mapper.Get(ingtypes.BackAssignBackendServerID).Bool() {
 		return
 	}
 
@@ -984,8 +985,8 @@ func (c *converter) syncBackendEndpointHashes(backend *hatypes.Backend) {
 			c.logger.Error("error calculating hash value for pod %s; ID assignment won't be stable: %v", ep.TargetRef, err)
 		}
 		for {
-            // If the ID is already used, linearly probe to find one that's not. 0 is an invalid value for haproxy, so we
-            // can let endpoints where we don't want a PUID have 0, but we should skip it here.
+			// If the ID is already used, linearly probe to find one that's not. 0 is an invalid value for haproxy, so we
+			// can let endpoints where we don't want a PUID have 0, but we should skip it here.
 			_, exists := usedPUIDS[hash]
 			if hash != 0 && !exists {
 				break

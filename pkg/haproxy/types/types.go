@@ -717,7 +717,6 @@ type ServerConfig struct {
 	SendProxy     string
 	SNI           string
 	VerifyHost    string
-	AssignID      bool
 }
 
 // BackendTimeoutConfig ...
