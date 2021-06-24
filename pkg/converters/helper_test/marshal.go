@@ -42,8 +42,9 @@ type (
 	endpointMock struct {
 		IP     string
 		Port   int
-		Drain  bool `yaml:",omitempty"`
-		Weight int  `yaml:",omitempty"`
+		Drain  bool  `yaml:",omitempty"`
+		Weight int   `yaml:",omitempty"`
+		PUID   int32 `yaml:",omitempty"`
 	}
 	// host
 	hostMock struct {
