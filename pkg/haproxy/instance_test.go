@@ -901,6 +901,12 @@ d1.local#/ path01`,
 			expected: `
     cookie serverId insert preserve nocache`,
 		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.Endpoints[0].PUID = 1234567
+			},
+			srvsuffix: "id 1234567",
+		},
 	}
 	for _, test := range testCases {
 		c := setup(t)
