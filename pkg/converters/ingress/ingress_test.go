@@ -323,26 +323,26 @@ func TestSyncServerIDs(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	_, ep := c.createSvc1("default/echo", "8080", "172.17.1.101,172.17.1.102,172.17.1.103")
+	svc, ep := c.createSvc1("default/echo", "8080", "172.17.1.101,172.17.1.102,172.17.1.103")
+	ep.Subsets[0].Addresses[0].TargetRef.Name = "echo-1"
+	ep.Subsets[0].Addresses[1].TargetRef.Name = "echo-2"
+	ep.Subsets[0].Addresses[2].TargetRef.Name = "echo-3"
+
 	c.cache.PodList = make(map[string]*api.Pod)
 	c.cache.PodList["default/echo-1"] = c.createPod1("default/echo-1", "172.17.1.101", "http:8080")
 	c.cache.PodList["default/echo-2"] = c.createPod1("default/echo-2", "172.17.1.102", "http:8080")
 	c.cache.PodList["default/echo-3"] = c.createPod1("default/echo-3", "172.17.1.102", "http:8080")
 
+	c.cache.PodList["default/echo-1"].UID = "efcd888a-49db-4257-9de8-476b53f02ded"
 	// These are known collisions of FNV1a. We should give these two pods different IDs. Since
 	// echo-2 has the lexicographically first TargetRef, it should get the lower one.
-	c.cache.PodList["default/echo-1"].UID = "efcd888a-49db-4257-9de8-476b53f02ded"
 	c.cache.PodList["default/echo-2"].UID = "costarring"
 	c.cache.PodList["default/echo-3"].UID = "liquid"
 
-	c.cache.Changed.EndpointsNew = []*api.Endpoints{ep}
+	svc.Annotations = map[string]string{"ingress.kubernetes.io/" + ingtypes.BackAssignBackendServerID: "true"}
 	c.Sync(
 		c.createIng1("default/echo", "echo.example.com", "/", "echo:8080"),
 	)
-
-	// TODO this doesn't work.
-	be := c.hconfig.Backends().FindBackend("default", "echo", "8080")
-	be.Server.AssignID = true
 
 	c.compareConfigBack(`
 - id: default_echo_8080
