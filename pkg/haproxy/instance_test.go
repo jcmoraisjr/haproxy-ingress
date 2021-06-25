@@ -597,9 +597,9 @@ d1.local#/ path01`,
 				auth := &b.FindBackendPath(h.FindPath("/app1")[0].Link).AuthExternal
 				auth.AuthBackendName = "_auth_4001"
 				auth.AuthPath = "/oauth2/auth"
-				auth.HeadersRequest = []string{".*"}
-				auth.HeadersSucceed = []string{".*"}
-				auth.HeadersFail = []string{".*"}
+				auth.HeadersRequest = []string{"*"}
+				auth.HeadersSucceed = []string{"*"}
+				auth.HeadersFail = []string{"*"}
 				auth.Method = "GET"
 			},
 			path: []string{"/app1", "/app2"},
@@ -608,7 +608,7 @@ d1.local#/ path01`,
     # path02 = d1.local/app2
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
     http-request set-header X-Real-IP %[src] if { var(txn.pathID) path01 }
-    http-request lua.auth-intercept _auth_4001 /oauth2/auth GET '.*' '.*' '.*' if { var(txn.pathID) path01 }
+    http-request lua.auth-intercept _auth_4001 /oauth2/auth GET '*' '*' '*' if { var(txn.pathID) path01 }
     http-request deny if !{ var(txn.auth_response_successful) -m bool } { var(txn.pathID) path01 }`,
 		},
 		{
@@ -616,9 +616,9 @@ d1.local#/ path01`,
 				auth := &b.FindBackendPath(h.FindPath("/app1")[0].Link).AuthExternal
 				auth.AuthBackendName = "_auth_4001"
 				auth.AuthPath = "/oauth2/auth"
-				auth.HeadersRequest = []string{"^X%-UserID1$", "^X%-Token1$"}
-				auth.HeadersSucceed = []string{"^X%-UserID2$", "^X%-Token2$"}
-				auth.HeadersFail = []string{"^X%-UserID3$", "^X%-Token3$"}
+				auth.HeadersRequest = []string{"X-UserID1", "X-Token1"}
+				auth.HeadersSucceed = []string{"X-UserID2", "X-Token2"}
+				auth.HeadersFail = []string{"X-UserID3", "X-Token3"}
 				auth.Method = "GET"
 				auth.RedirectOnFail = "http://auth.local/auth1"
 			},
@@ -628,7 +628,7 @@ d1.local#/ path01`,
     # path02 = d1.local/app2
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
     http-request set-header X-Real-IP %[src] if { var(txn.pathID) path01 }
-    http-request lua.auth-intercept _auth_4001 /oauth2/auth GET '^X%-UserID1$,^X%-Token1$' '^X%-UserID2$,^X%-Token2$' '^X%-UserID3$,^X%-Token3$' if { var(txn.pathID) path01 }
+    http-request lua.auth-intercept _auth_4001 /oauth2/auth GET 'X-UserID1,X-Token1' 'X-UserID2,X-Token2' 'X-UserID3,X-Token3' if { var(txn.pathID) path01 }
     http-request redirect location http://auth.local/auth1 if !{ var(txn.auth_response_successful) -m bool } { var(txn.pathID) path01 }`,
 		},
 		{
@@ -636,7 +636,7 @@ d1.local#/ path01`,
 				auth := &b.FindBackendPath(h.FindPath("/app1")[0].Link).AuthExternal
 				auth.AuthBackendName = "_auth_4001"
 				auth.AuthPath = "/oauth2/auth"
-				auth.HeadersRequest = []string{".*"}
+				auth.HeadersRequest = []string{"*"}
 				auth.HeadersSucceed = []string{"-"}
 				auth.HeadersFail = []string{"-"}
 				auth.HeadersVars = map[string]string{"X-Auth-Request-Email": "req.auth_response_header.x_auth_request_email"}
@@ -649,7 +649,7 @@ d1.local#/ path01`,
     # path02 = d1.local/app2
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
     http-request set-header X-Real-IP %[src] if { var(txn.pathID) path01 }
-    http-request lua.auth-intercept _auth_4001 /oauth2/auth HEAD '.*' '-' '-' if { var(txn.pathID) path01 }
+    http-request lua.auth-intercept _auth_4001 /oauth2/auth HEAD '*' '-' '-' if { var(txn.pathID) path01 }
     http-request redirect location http://auth.local/login if !{ var(txn.auth_response_successful) -m bool } { var(txn.pathID) path01 }
     http-request set-header X-Auth-Request-Email %[var(req.auth_response_header.x_auth_request_email)] if { var(req.auth_response_header.x_auth_request_email) -m found } { var(txn.pathID) path01 }`,
 		},

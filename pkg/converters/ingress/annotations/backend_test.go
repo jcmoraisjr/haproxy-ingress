@@ -176,80 +176,6 @@ func TestAffinity(t *testing.T) {
 	}
 }
 
-func TestGlobToLuaPattern(t *testing.T) {
-	testCases := []struct {
-		input    string
-		expected string
-	}{
-		// 0
-		{
-			input:    "",
-			expected: "^$",
-		},
-		// 1
-		{
-			input:    "literal",
-			expected: "^literal$",
-		},
-		// 2
-		{
-			input:    "*",
-			expected: ".*",
-		},
-		// 3
-		{
-			input:    "*suffix",
-			expected: "^.*suffix$",
-		},
-		// 4
-		{
-			input:    "prefix*",
-			expected: "^prefix.*$",
-		},
-		// 5
-		{
-			input:    "*-suffix",
-			expected: "^.*%-suffix$",
-		},
-		// 6
-		{
-			input:    "prefix-*",
-			expected: "^prefix%-.*$",
-		},
-		// 7
-		{
-			input:    "in-*-between",
-			expected: "^in%-.*%-between$",
-		},
-		// 8
-		{
-			input:    "has-magic",
-			expected: "^has%-magic$",
-		},
-		// 9
-		{
-			input:    "has--magic",
-			expected: "^has%-%-magic$",
-		},
-		// 10
-		{
-			input:    "-has-magic",
-			expected: "^%-has%-magic$",
-		},
-		// 11
-		{
-			input:    "has-magic-",
-			expected: "^has%-magic%-$",
-		},
-	}
-	for i, test := range testCases {
-		c := setup(t)
-		actual := globToLuaPattern(test.input)
-		c.compareObjects("pattern", i, actual, test.expected)
-		c.teardown()
-	}
-}
-
 func TestAuthExternal(t *testing.T) {
 	testCase := []struct {
 		url        string
@@ -363,7 +289,7 @@ func TestAuthExternal(t *testing.T) {
 			expBack: hatypes.AuthExternal{
 				AuthBackendName: "_auth_4001",
 				AuthPath:        "/oauth2/auth",
-				HeadersSucceed:  []string{"^x%-mail$"},
+				HeadersSucceed:  []string{"x-mail"},
 				HeadersFail:     []string{"-"},
 				RedirectOnFail:  "http://app1.local/oauth2/start?rd=%[path]",
 			},
@@ -427,7 +353,7 @@ func TestAuthExternal(t *testing.T) {
 			expBack: hatypes.AuthExternal{
 				AuthBackendName: "_auth_4001",
 				AuthPath:        "/",
-				HeadersSucceed:  []string{"^x%-mail$", "^x%-userid$", "^x%-auth$"},
+				HeadersSucceed:  []string{"x-mail", "x-userid", "x-auth"},
 			},
 			expIP: []string{"10.0.0.2:80"},
 		},
@@ -438,7 +364,7 @@ func TestAuthExternal(t *testing.T) {
 			expBack: hatypes.AuthExternal{
 				AuthBackendName: "_auth_4001",
 				AuthPath:        "/",
-				HeadersFail:     []string{"^x%-uid$", "^X%-Message$"},
+				HeadersFail:     []string{"x-uid", "X-Message"},
 			},
 			expIP: []string{"10.0.0.2:80"},
 		},
@@ -463,7 +389,7 @@ func TestAuthExternal(t *testing.T) {
 			expBack: hatypes.AuthExternal{
 				AuthBackendName: "_auth_4001",
 				AuthPath:        "/",
-				HeadersRequest:  []string{"^x%-token$"},
+				HeadersRequest:  []string{"x-token"},
 			},
 			expIP: []string{"10.0.0.2:80"},
 		},
@@ -581,13 +507,13 @@ func TestAuthExternal(t *testing.T) {
 				test.expBack.Method = "GET"
 			}
 			if test.expBack.HeadersRequest == nil {
-				test.expBack.HeadersRequest = []string{".*"}
+				test.expBack.HeadersRequest = []string{"*"}
 			}
 			if test.expBack.HeadersSucceed == nil {
-				test.expBack.HeadersSucceed = []string{".*"}
+				test.expBack.HeadersSucceed = []string{"*"}
 			}
 			if test.expBack.HeadersFail == nil {
-				test.expBack.HeadersFail = []string{".*"}
+				test.expBack.HeadersFail = []string{"*"}
 			}
 		}
 		c.compareObjects("auth external back", i, back, test.expBack)
@@ -1826,7 +1752,7 @@ func TestOAuth(t *testing.T) {
 		}
 		for k, v := range test.authExp {
 			if v.AuthBackendName != "" {
-				v.HeadersRequest = []string{".*"}
+				v.HeadersRequest = []string{"*"}
 				v.HeadersSucceed = []string{"-"}
 				v.HeadersFail = []string{"-"}
 				v.Method = "HEAD"
