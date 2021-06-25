@@ -98,26 +98,6 @@ func buildAuthRequestVarName(srcHeader string) string {
 	return "req.auth_response_header." + sanitized
 }
 
-func globToLuaPattern(s string) string {
-	if s == "*" {
-		return ".*"
-	}
-	var out string
-	var j int
-	for i, c := range s {
-		switch c {
-		case '*':
-			out += s[j:i] + ".*"
-			j = i + 1
-		// https://www.lua.org/manual/5.4/manual.html#6.4.1
-		case '^', '$', '(', ')', '%', '.', '[', ']', '+', '-', '?':
-			out += s[j:i] + "%"
-			j = i
-		}
-	}
-	return "^" + out + s[j:] + "$"
-}
-
 var (
 	lookupHost func(host string) (addrs []string, err error) = net.LookupHost
 
@@ -225,20 +205,11 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 		}
 
 		hdrRequest := strings.Split(config.Get(ingtypes.BackAuthHeadersRequest).Value, ",")
-		for i := range hdrRequest {
-			hdrRequest[i] = globToLuaPattern(hdrRequest[i])
-		}
 		hdrSucceed := strings.Split(config.Get(ingtypes.BackAuthHeadersSucceed).Value, ",")
-		for i := range hdrSucceed {
-			hdrSucceed[i] = globToLuaPattern(hdrSucceed[i])
-		}
 		hdrFail := strings.Split(config.Get(ingtypes.BackAuthHeadersFail).Value, ",")
-		for i := range hdrFail {
-			hdrFail[i] = globToLuaPattern(hdrFail[i])
-		}
 
 		if signin != "" {
-			if !reflect.DeepEqual(hdrFail, []string{".*"}) {
+			if !reflect.DeepEqual(hdrFail, []string{"*"}) {
 				c.logger.Warn("ignoring '%s' on %v due to signin (redirect) configuration", ingtypes.BackAuthHeadersFail, s.Source)
 			}
 			// `-` instructs auth-request to not terminate the transaction,
@@ -684,7 +655,7 @@ func (c *updater) buildBackendOAuth(d *backData) {
 		path.AuthExternal.AuthBackendName = backend.ID
 		path.AuthExternal.AllowedPath = uriPrefix + "/"
 		path.AuthExternal.AuthPath = uriPrefix + "/auth"
-		path.AuthExternal.HeadersRequest = []string{".*"}
+		path.AuthExternal.HeadersRequest = []string{"*"}
 		path.AuthExternal.HeadersSucceed = []string{"-"}
 		path.AuthExternal.HeadersFail = []string{"-"}
 		path.AuthExternal.HeadersVars = headersMap
