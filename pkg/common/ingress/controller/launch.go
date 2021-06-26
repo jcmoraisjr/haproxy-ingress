@@ -195,6 +195,19 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		handleFatalInitError(err)
 	}
 
+	if *configMap != "" {
+		ns, name, err := k8s.ParseNameNS(*configMap)
+		if err != nil {
+			glog.Errorf("invalid format for configmap %s: %v", *configMap, err)
+		}
+
+		_, err = kubeClient.CoreV1().ConfigMaps(ns).Get(name, metav1.GetOptions{})
+		if err != nil {
+			glog.Errorf("error reading configmap '%s': %v", *configMap, err)
+		}
+		glog.Infof("watching for global config options from configmap '%s' - --configmap was defined", *configMap)
+	}
+
 	if *defaultSvc != "" {
 		ns, name, err := k8s.ParseNameNS(*defaultSvc)
 		if err != nil {
