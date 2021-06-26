@@ -42,8 +42,9 @@ type (
 	endpointMock struct {
 		IP     string
 		Port   int
-		Drain  bool `yaml:",omitempty"`
-		Weight int  `yaml:",omitempty"`
+		Drain  bool  `yaml:",omitempty"`
+		Weight int   `yaml:",omitempty"`
+		PUID   int32 `yaml:",omitempty"`
 	}
 	// host
 	hostMock struct {
@@ -87,7 +88,7 @@ func marshalBackends(weight bool, habackends ...*hatypes.Backend) []backendMock 
 	for _, b := range habackends {
 		endpoints := []endpointMock{}
 		for _, e := range b.Endpoints {
-			endpoint := endpointMock{IP: e.IP, Port: e.Port, Drain: e.Weight == 0}
+			endpoint := endpointMock{IP: e.IP, Port: e.Port, Drain: e.Weight == 0, PUID: e.PUID}
 			if weight {
 				endpoint.Weight = e.Weight
 			}

@@ -606,6 +606,7 @@ type Endpoint struct {
 	TargetRef   string
 	Weight      int
 	CookieValue string
+	PUID        int32 // Proxy Unique ID, referenced as "id" in haproxy server lines
 }
 
 // BlueGreenConfig ...
