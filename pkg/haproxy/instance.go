@@ -75,6 +75,7 @@ func CreateInstance(logger types.Logger, options InstanceOptions) Instance {
 
 type instance struct {
 	up          bool
+	failedSince *time.Time
 	logger      types.Logger
 	options     *InstanceOptions
 	haproxyTmpl *template.Config
@@ -238,7 +239,7 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	// this should be taken into account when refactoring this func:
 	//   - dynUpdater might change config state, so it should be called before templates.Write()
 	//   - i.metrics.IncUpdate<Status>() should be called always, but only once
-	//   - i.metrics.UpdateSuccessful(<bool>) should be called only if haproxy is reloaded or cfg is validated
+	//   - i.updateSuccessful(<bool>) should be called only if haproxy is reloaded or cfg is validated
 	//
 	defer i.config.Commit()
 	i.config.SyncConfig()
@@ -286,6 +287,11 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 		}
 	}
 	i.updateCertExpiring()
+	defer func() {
+		if i.failedSince != nil {
+			i.logger.Error("haproxy failed to reload, first occurence at %s", i.failedSince.Format("2006-01-02 15:04:05.999999 -0700 MST"))
+		}
+	}()
 	if updated {
 		if updater.cmdCnt > 0 {
 			if i.options.ValidateConfig {
@@ -294,7 +300,7 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 					i.logger.Error("error validating config file:\n%v", err)
 				}
 				timer.Tick("validate_cfg")
-				i.metrics.UpdateSuccessful(err == nil)
+				i.updateSuccessful(err == nil)
 			}
 			i.logger.Info("haproxy updated without needing to reload. Commands sent: %d", updater.cmdCnt)
 			i.metrics.IncUpdateDynamic()
@@ -307,12 +313,12 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	i.metrics.IncUpdateFull()
 	if err := i.reload(); err != nil {
 		i.logger.Error("error reloading server:\n%v", err)
-		i.metrics.UpdateSuccessful(false)
+		i.updateSuccessful(false)
 		timer.Tick("reload_haproxy")
 		return
 	}
 	i.up = true
-	i.metrics.UpdateSuccessful(true)
+	i.updateSuccessful(true)
 	if i.config.Global().External.IsExternal() {
 		i.logger.Info("haproxy successfully reloaded (external)")
 	} else {
@@ -404,6 +410,16 @@ func (i *instance) writeConfig() (err error) {
 		}
 	}
 	return err
+}
+
+func (i *instance) updateSuccessful(success bool) {
+	if success {
+		i.failedSince = nil
+	} else if i.failedSince == nil {
+		now := time.Now()
+		i.failedSince = &now
+	}
+	i.metrics.UpdateSuccessful(success)
 }
 
 func (i *instance) updateCertExpiring() {
