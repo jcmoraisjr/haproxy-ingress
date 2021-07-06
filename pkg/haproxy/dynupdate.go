@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
@@ -300,12 +301,16 @@ func (d *dynUpdater) execDisableEndpoint(backname string, ep *hatypes.Endpoint) 
 		d.logger.Error("error disabling endpoint %s/%s: %v", backname, ep.Name, err)
 		return false
 	}
-	d.logger.InfoV(2, "disabled endpoint '%s' on backend/server '%s/%s'", ep.Target, backname, ep.Name)
 	for _, m := range msg {
 		if m != "" {
+			if !cmdResponseOK("set server", m) {
+				d.logger.Warn("unrecognized response disabling endpoint %s/%s: %s", backname, ep.Name, m)
+				return false
+			}
 			d.logger.InfoV(2, "response from server: %s", m)
 		}
 	}
+	d.logger.InfoV(2, "disabled endpoint '%s' on backend/server '%s/%s'", ep.Target, backname, ep.Name)
 	return true
 }
 
@@ -322,14 +327,18 @@ func (d *dynUpdater) execEnableEndpoint(backname string, oldEP, curEP *hatypes.E
 		d.logger.Error("error adding/updating endpoint %s/%s: %v", backname, curEP.Name, err)
 		return false
 	}
-	event := map[bool]string{true: "updated", false: "added"}[oldEP != nil]
-	d.logger.InfoV(2, "%s endpoint '%s' weight '%d' state '%s' on backend/server '%s/%s'",
-		event, curEP.Target, curEP.Weight, state, backname, curEP.Name)
 	for _, m := range msg {
 		if m != "" {
+			if !cmdResponseOK("set server", m) {
+				d.logger.Warn("unrecognized response adding/updating endpoint %s/%s: %s", backname, curEP.Name, m)
+				return false
+			}
 			d.logger.InfoV(2, "response from server: %s", m)
 		}
 	}
+	event := map[bool]string{true: "updated", false: "added"}[oldEP != nil]
+	d.logger.InfoV(2, "%s endpoint '%s' weight '%d' state '%s' on backend/server '%s/%s'",
+		event, curEP.Target, curEP.Weight, state, backname, curEP.Name)
 	return true
 }
 
@@ -337,4 +346,13 @@ func (d *dynUpdater) execCommand(observer func(duration time.Duration), cmd []st
 	msg, err := d.cmd(d.socket, observer, cmd...)
 	d.cmdCnt = d.cmdCnt + len(cmd)
 	return msg, err
+}
+
+func cmdResponseOK(cmd, response string) bool {
+	switch cmd {
+	case "set server":
+		return response == "" || strings.HasPrefix(response, "IP changed from ") || strings.HasPrefix(response, "no need to change ")
+	default:
+		panic(fmt.Errorf("invalid cmd: %s", cmd))
+	}
 }
