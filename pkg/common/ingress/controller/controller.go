@@ -73,7 +73,6 @@ type Configuration struct {
 	ForceNamespaceIsolation bool
 	WaitBeforeShutdown      int
 	AllowCrossNamespace     bool
-	DisableNodeList         bool
 	DisablePodList          bool
 	DisableExternalName     bool
 	AnnPrefix               []string

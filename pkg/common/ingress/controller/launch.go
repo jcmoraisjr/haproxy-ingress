@@ -178,9 +178,6 @@ one, applying every new configuration changes made between this interval`)
 			`Defines if the ingress controller can reference resources of another namespaces.
 		Cannot be used if force-namespace-isolation is true`)
 
-		disableNodeList = flags.Bool("disable-node-list", false,
-			`Disable querying nodes. If --force-namespace-isolation is true, this should also be set.`)
-
 		disablePodList = flags.Bool("disable-pod-list", false,
 			`Defines if HAProxy Ingress should disable pod watch and in memory list. Pod list is
 		mandatory for drain-support (should not be disabled) and optional for blue/green.`)
@@ -208,6 +205,10 @@ one, applying every new configuration changes made between this interval`)
 
 		showVersion = flags.Bool("version", false,
 			`Shows release information about the Ingress controller`)
+
+		disableNodeList = flags.Bool("disable-node-list", false,
+			`DEPRECATED: This flag used to disable node listing due to missing permissions.
+Actually node listing isn't needed and it is always disabled`)
 
 		ignoreIngressWithoutClass = flags.Bool("ignore-ingress-without-class", false,
 			`DEPRECATED, this option is ignored. Use --watch-ingress-without-class command-line option instead to define
@@ -250,6 +251,10 @@ one, applying every new configuration changes made between this interval`)
 
 	if *ignoreIngressWithoutClass {
 		glog.Infof("DEPRECATED: --ignore-ingress-without-class is now ignored and can be safely removed")
+	}
+
+	if *disableNodeList {
+		glog.Infof("DEPRECATED: --disable-node-list is now ignored and can be safely removed")
 	}
 
 	if *watchGateway {
@@ -425,7 +430,6 @@ one, applying every new configuration changes made between this interval`)
 		ForceNamespaceIsolation:  *forceIsolation,
 		WaitBeforeShutdown:       *waitBeforeShutdown,
 		AllowCrossNamespace:      *allowCrossNamespace,
-		DisableNodeList:          *disableNodeList,
 		DisablePodList:           *disablePodList,
 		DisableExternalName:      *disableExternalName,
 		UpdateStatusOnShutdown:   *updateStatusOnShutdown,
