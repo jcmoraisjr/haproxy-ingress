@@ -557,7 +557,13 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 set server default_app_8080/srv002 addr 172.17.0.4 port 8080
 set server default_app_8080/srv002 state ready
 set server default_app_8080/srv002 weight 1`,
+			cmdOutput: []string{
+				"IP changed from '172.17.0.3' to '172.17.0.4', no need to change the port by 'stats socket command'",
+				"",
+				"",
+			},
 			logging: `
+INFO-V(2) response from server: IP changed from '172.17.0.3' to '172.17.0.4', no need to change the port by 'stats socket command'
 INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'
 INFO-V(2) need to reload due to config changes: [backends]`,
 		},
@@ -791,6 +797,76 @@ set server default_app_8080/srv001 weight 1`,
 		// 28
 		{
 			doconfig1: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.AcquireEndpoint("172.17.0.2", 8080, "").Name = "srv002"
+				b.AcquireEndpoint("172.17.0.3", 8080, "").Name = "srv003"
+			},
+			doconfig2: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.Dynamic.DynUpdate = true
+				b.AcquireEndpoint("172.17.0.4", 8080, "").Name = "srv004"
+				b.AcquireEndpoint("172.17.0.5", 8080, "").Name = "srv005"
+			},
+			expected: []string{
+				"srv002:172.17.0.4:8080:1",
+				"srv003:172.17.0.5:8080:1",
+			},
+			dynamic: false,
+			cmd: `
+set server default_app_8080/srv002 addr 172.17.0.4 port 8080
+set server default_app_8080/srv002 state ready
+set server default_app_8080/srv002 weight 1
+set server default_app_8080/srv003 addr 172.17.0.5 port 8080
+set server default_app_8080/srv003 state ready
+set server default_app_8080/srv003 weight 1
+`,
+			cmdOutput: []string{
+				"No such server.",
+				"No such server.",
+			},
+			logging: `
+WARN unrecognized response adding/updating endpoint default_app_8080/srv002: No such server.
+WARN unrecognized response adding/updating endpoint default_app_8080/srv003: No such server.
+INFO-V(2) need to reload due to config changes: [backends]
+`,
+		},
+		// 29
+		{
+			doconfig1: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.AcquireEndpoint("172.17.0.2", 8080, "").Name = "srv002"
+				b.AcquireEndpoint("172.17.0.3", 8080, "").Name = "srv003"
+			},
+			doconfig2: func(c *testConfig) {
+				b := c.config.Backends().AcquireBackend("default", "app", "8080")
+				b.Dynamic.DynUpdate = true
+			},
+			expected: []string{
+				"srv002:127.0.0.1:1023:1",
+				"srv003:127.0.0.1:1023:1",
+			},
+			dynamic: false,
+			cmd: `
+set server default_app_8080/srv002 state maint
+set server default_app_8080/srv002 addr 127.0.0.1 port 1023
+set server default_app_8080/srv002 weight 0
+set server default_app_8080/srv003 state maint
+set server default_app_8080/srv003 addr 127.0.0.1 port 1023
+set server default_app_8080/srv003 weight 0
+`,
+			cmdOutput: []string{
+				"No such server.",
+				"No such server.",
+			},
+			logging: `
+WARN unrecognized response disabling endpoint default_app_8080/srv002: No such server.
+WARN unrecognized response disabling endpoint default_app_8080/srv003: No such server.
+INFO-V(2) need to reload due to config changes: [backends]
+`,
+		},
+		// 28
+		{
+			doconfig1: func(c *testConfig) {
 				h1 := c.config.Hosts().AcquireHost("domain1.local")
 				h2 := c.config.Hosts().AcquireHost("domain2.local")
 				h1.TLS.TLSFilename = "/tmp/domain1.pem"
@@ -819,7 +895,7 @@ commit ssl cert /tmp/domain2.pem
 			logging: `
 INFO-V(2) response from server: Transaction created for certificate /tmp/domain2.pem!
 INFO-V(2) response from server: Committing /tmp/domain2.pem. \\ Success!
-INFO-V(2) certificate updated for domain2.local
+INFO certificate updated for domain2.local
 `,
 		},
 		// 29
@@ -871,7 +947,7 @@ commit ssl cert /tmp/domain1.pem
 			logging: `
 INFO-V(2) response from server: Transaction created for certificate /tmp/domain1.pem!
 INFO-V(2) response from server: Committing /tmp/domain1.pem. \\ Success!
-INFO-V(2) certificate updated for domain1.local
+INFO certificate updated for domain1.local
 `,
 		},
 		// 31
