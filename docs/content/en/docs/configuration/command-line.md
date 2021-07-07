@@ -516,3 +516,7 @@ this option. See also the Gateway API configuration [doc]({{% relref "gateway-ap
 By default the proxy will be configured using all namespaces from the Kubernetes cluster. Use
 `--watch-namespace` with the name of a namespace to watch and build the configuration of a
 single namespace.
+
+You may also want to use `--force-namespace-isolation` to completely disallow referencing secrets,
+configmaps or the default backend service located in a different namespace than specified with
+`--watch-namespace`.
