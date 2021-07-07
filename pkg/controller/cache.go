@@ -24,6 +24,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"net"
 	"os"
 	"reflect"
 	"strings"
@@ -58,6 +59,7 @@ type k8scache struct {
 	controller             *controller.GenericController
 	tracker                convtypes.Tracker
 	crossNS                bool
+	disableExternalName    bool
 	globalConfigMapKey     string
 	tcpConfigMapKey        string
 	acmeSecretKeyName      string
@@ -135,6 +137,7 @@ func createCache(
 		controller:             controller,
 		tracker:                tracker,
 		crossNS:                cfg.AllowCrossNamespace,
+		disableExternalName:    cfg.DisableExternalName,
 		globalConfigMapKey:     globalConfigMapName,
 		tcpConfigMapKey:        tcpConfigMapName,
 		acmeSecretKeyName:      acmeSecretKeyName,
@@ -152,6 +155,13 @@ func createCache(
 
 func (c *k8scache) RunAsync(stopCh <-chan struct{}) {
 	c.listers.RunAsync(stopCh)
+}
+
+func (c *k8scache) ExternalNameLookup(externalName string) ([]net.IP, error) {
+	if c.disableExternalName {
+		return nil, fmt.Errorf("external name lookup is disabled")
+	}
+	return net.LookupIP(externalName)
 }
 
 func (c *k8scache) GetIngressPodName() (namespace, podname string, err error) {

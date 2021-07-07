@@ -19,6 +19,7 @@ package helper_test
 import (
 	"crypto/sha1"
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -37,6 +38,7 @@ type CacheMock struct {
 	Changed       *convtypes.ChangedObjects
 	IngList       []*networking.Ingress
 	SvcList       []*api.Service
+	LookupList    map[string][]net.IP
 	EpList        map[string]*api.Endpoints
 	TermPodList   map[string][]*api.Pod
 	PodList       map[string]*api.Pod
@@ -53,6 +55,7 @@ func NewCacheMock(tracker convtypes.Tracker) *CacheMock {
 		tracker:     tracker,
 		Changed:     &convtypes.ChangedObjects{},
 		SvcList:     []*api.Service{},
+		LookupList:  map[string][]net.IP{},
 		EpList:      map[string]*api.Endpoints{},
 		TermPodList: map[string][]*api.Pod{},
 		SecretTLSPath: map[string]string{
@@ -66,6 +69,14 @@ func (c *CacheMock) buildSecretName(defaultNamespace, secretName string) string 
 		return secretName
 	}
 	return defaultNamespace + "/" + secretName
+}
+
+// ExternalNameLookup ...
+func (c *CacheMock) ExternalNameLookup(externalName string) ([]net.IP, error) {
+	if ip, found := c.LookupList[externalName]; found {
+		return ip, nil
+	}
+	return nil, fmt.Errorf("hostname not found")
 }
 
 // GetIngress ...
