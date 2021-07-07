@@ -18,7 +18,6 @@ package utils
 
 import (
 	"fmt"
-	"net"
 	"strconv"
 
 	api "k8s.io/api/core/v1"
@@ -76,7 +75,7 @@ type Endpoint struct {
 // CreateEndpoints ...
 func CreateEndpoints(cache types.Cache, svc *api.Service, svcPort *api.ServicePort) (ready, notReady []*Endpoint, err error) {
 	if svc.Spec.Type == api.ServiceTypeExternalName {
-		ready, err := createEndpointsExternalName(svc, svcPort)
+		ready, err := createEndpointsExternalName(cache, svc, svcPort)
 		return ready, nil, err
 	}
 	endpoints, err := cache.GetEndpoints(svc)
@@ -115,15 +114,13 @@ func CreateSvcEndpoint(svc *api.Service, svcPort *api.ServicePort) (endpoint *En
 	return newEndpointIP(svc.Spec.ClusterIP, int(port)), nil
 }
 
-var lookup = net.LookupIP
-
-func createEndpointsExternalName(svc *api.Service, svcPort *api.ServicePort) (endpoints []*Endpoint, err error) {
+func createEndpointsExternalName(cache types.Cache, svc *api.Service, svcPort *api.ServicePort) (endpoints []*Endpoint, err error) {
 	// TODO add support to undeclared ServicePort
 	port := int(svcPort.Port)
 	if port <= 0 {
 		return nil, fmt.Errorf("invalid port number: %d", port)
 	}
-	addr, err := lookup(svc.Spec.ExternalName)
+	addr, err := cache.ExternalNameLookup(svc.Spec.ExternalName)
 	if err != nil {
 		return nil, err
 	}
