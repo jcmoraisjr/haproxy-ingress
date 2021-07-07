@@ -17,6 +17,7 @@ limitations under the License.
 package types
 
 import (
+	"net"
 	"time"
 
 	api "k8s.io/api/core/v1"
@@ -24,6 +25,7 @@ import (
 
 // Cache ...
 type Cache interface {
+	ExternalNameLookup(externalName string) ([]net.IP, error)
 	GetService(serviceName string) (*api.Service, error)
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
 	GetTerminatingPods(service *api.Service) ([]*api.Pod, error)

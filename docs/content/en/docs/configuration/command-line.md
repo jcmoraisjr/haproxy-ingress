@@ -23,6 +23,7 @@ The following command-line options are supported:
 | [`--buckets-response-time`](#buckets-response-time)     | float64 slice           | `.0005,.001,.002,.005,.01` | v0.10 |
 | [`--default-backend-service`](#default-backend-service) | namespace/servicename      | haproxy's 404 page      |       |
 | [`--default-ssl-certificate`](#default-ssl-certificate) | namespace/secretname       | fake, auto generated    |       |
+| [`--disable-external-name`](#disable-external-name)     | [true\|false]              | `false`                 | v0.10 |
 | [`--healthz-port`](#stats)                              | port number                | `10254`                 |       |
 | [`--ignore-ingress-without-class`](#ignore-ingress-without-class)| [true\|false]     | `false`                 | v0.10 |
 | [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |       |
@@ -101,6 +102,14 @@ hostname, or the requested path doesn't match any location within the desired ho
 Defines the `namespace/secretname` of the default certificate that should be used if ingress
 resources using TLS configuration doesn't provide it's own certificate. A self-signed fake
 certificate is used if not declared.
+
+---
+
+## --disable-external-name
+
+Since v0.10.9
+
+Services of type ExternalName uses DNS lookup to define the target server IP list. Declare `--disable-external-name` to disable a DNS based target IP list, refusing services of type ExternalName.
 
 ---
 

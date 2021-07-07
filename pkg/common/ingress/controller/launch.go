@@ -149,6 +149,9 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		disableNodeList = flags.Bool("disable-node-list", false,
 			`Disable querying nodes. If --force-namespace-isolation is true, this should also be set.`)
 
+		disableExternalName = flags.Bool("disable-external-name", false,
+			`Disables services of type ExternalName`)
+
 		updateStatusOnShutdown = flags.Bool("update-status-on-shutdown", true, `Indicates if the
 		ingress controller should update the Ingress status IP/hostname when the controller
 		is being stopped. Default is true`)
@@ -324,6 +327,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		WaitBeforeShutdown:        *waitBeforeShutdown,
 		AllowCrossNamespace:       *allowCrossNamespace,
 		DisableNodeList:           *disableNodeList,
+		DisableExternalName:       *disableExternalName,
 		UpdateStatusOnShutdown:    *updateStatusOnShutdown,
 		SortBackends:              *sortBackends,
 		UseNodeInternalIP:         *useNodeInternalIP,

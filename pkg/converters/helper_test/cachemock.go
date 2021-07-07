@@ -19,6 +19,7 @@ package helper_test
 import (
 	"crypto/sha1"
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -33,6 +34,7 @@ type SecretContent map[string]map[string][]byte
 // CacheMock ...
 type CacheMock struct {
 	SvcList       []*api.Service
+	LookupList    map[string][]net.IP
 	EpList        map[string]*api.Endpoints
 	TermPodList   map[string][]*api.Pod
 	PodList       map[string]*api.Pod
@@ -47,6 +49,7 @@ type CacheMock struct {
 func NewCacheMock() *CacheMock {
 	return &CacheMock{
 		SvcList:     []*api.Service{},
+		LookupList:  map[string][]net.IP{},
 		EpList:      map[string]*api.Endpoints{},
 		TermPodList: map[string][]*api.Pod{},
 		SecretTLSPath: map[string]string{
@@ -60,6 +63,14 @@ func (c *CacheMock) buildSecretName(defaultNamespace, secretName string) string 
 		return secretName
 	}
 	return defaultNamespace + "/" + secretName
+}
+
+// ExternalNameLookup ...
+func (c *CacheMock) ExternalNameLookup(externalName string) ([]net.IP, error) {
+	if ip, found := c.LookupList[externalName]; found {
+		return ip, nil
+	}
+	return nil, fmt.Errorf("hostname not found")
 }
 
 // GetService ...

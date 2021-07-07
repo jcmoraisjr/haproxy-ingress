@@ -23,6 +23,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"net"
 	"os"
 	"strings"
 
@@ -45,6 +46,7 @@ type cache struct {
 	listers                *ingress.StoreLister
 	controller             *controller.GenericController
 	crossNS                bool
+	disableExternalName    bool
 	acmeSecretKeyName      string
 	acmeTokenConfigmapName string
 }
@@ -74,9 +76,17 @@ func newCache(client k8s.Interface, listers *ingress.StoreLister, controller *co
 		listers:                listers,
 		controller:             controller,
 		crossNS:                cfg.AllowCrossNamespace,
+		disableExternalName:    cfg.DisableExternalName,
 		acmeSecretKeyName:      acmeSecretKeyName,
 		acmeTokenConfigmapName: acmeTokenConfigmapName,
 	}
+}
+
+func (c *cache) ExternalNameLookup(externalName string) ([]net.IP, error) {
+	if c.disableExternalName {
+		return nil, fmt.Errorf("external name lookup is disabled")
+	}
+	return net.LookupIP(externalName)
 }
 
 func (c *cache) GetIngressPodName() (namespace, podname string, err error) {
