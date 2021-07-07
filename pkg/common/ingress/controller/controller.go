@@ -58,6 +58,7 @@ type Configuration struct {
 	MasterSocket string
 
 	RateLimitUpdate  float32
+	ReloadInterval   time.Duration
 	ResyncPeriod     time.Duration
 	WaitBeforeUpdate time.Duration
 
