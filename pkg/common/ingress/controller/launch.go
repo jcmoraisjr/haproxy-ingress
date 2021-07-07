@@ -124,6 +124,14 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		Default is 0.5, which means wait 2 seconds between Ingress updates in order
 		to add more changes in a single reload`)
 
+		reloadInterval = flags.Duration("reload-interval", 0,
+			`Minimal time between two consecutive HAProxy reloads. The default value is 0,
+which means to always reload HAProxy just after a configuration change enforces
+a reload. The interval should be configured with a time suffix, eg 30s means
+that if two distinct and consecutive configuration changes enforce a reload,
+the second reload will be enqueued until 30 seconds have passed from the first
+one, applying every new configuration changes made between this interval`)
+
 		waitBeforeUpdate = flags.Duration("wait-before-update", 200*time.Millisecond,
 			`Amount of time to wait before start a reconciliation and update haproxy,
 		giving the time to receive all/most of the changes of a batch update.`)
@@ -393,6 +401,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		AcmeTrackTLSAnn:          *acmeTrackTLSAnn,
 		BucketsResponseTime:      *bucketsResponseTime,
 		RateLimitUpdate:          *rateLimitUpdate,
+		ReloadInterval:           *reloadInterval,
 		ResyncPeriod:             *resyncPeriod,
 		WaitBeforeUpdate:         *waitBeforeUpdate,
 		DefaultService:           *defaultSvc,
