@@ -26,6 +26,7 @@ The following command-line options are supported:
 | [`--default-backend-service`](#default-backend-service) | namespace/servicename      | haproxy's 404 page      |       |
 | [`--default-ssl-certificate`](#default-ssl-certificate) | namespace/secretname       | fake, auto generated    |       |
 | [`--disable-api-warnings`](#disable-api-warnings)       | [true\|false]              | `false`                 | v0.12 |
+| [`--disable-external-name`](#disable-external-name)     | [true\|false]              | `false`                 | v0.10 |
 | [`--disable-pod-list`](#disable-pod-list)               | [true\|false]              | `false`                 | v0.11 |
 | [`--healthz-port`](#stats)                              | port number                | `10254`                 |       |
 | [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |       |
@@ -125,6 +126,14 @@ Since v0.12.4
 
 Disable warning logs sent from the API server. Most of the warnings are related with API
 deprecation. The default behavior is to log all API server warnings.
+
+---
+
+## --disable-external-name
+
+Since v0.10.9
+
+Services of type ExternalName uses DNS lookup to define the target server IP list. Declare `--disable-external-name` to disable a DNS based target IP list, refusing services of type ExternalName.
 
 ---
 

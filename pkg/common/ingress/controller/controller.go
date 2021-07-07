@@ -74,6 +74,7 @@ type Configuration struct {
 	AllowCrossNamespace     bool
 	DisableNodeList         bool
 	DisablePodList          bool
+	DisableExternalName     bool
 	AnnPrefix               string
 
 	AcmeServer              bool

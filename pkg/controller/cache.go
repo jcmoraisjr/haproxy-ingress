@@ -24,6 +24,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"net"
 	"os"
 	"reflect"
 	"strings"
@@ -164,6 +165,13 @@ func createCache(
 
 func (c *k8scache) RunAsync(stopCh <-chan struct{}) {
 	c.listers.RunAsync(stopCh)
+}
+
+func (c *k8scache) ExternalNameLookup(externalName string) ([]net.IP, error) {
+	if c.cfg.DisableExternalName {
+		return nil, fmt.Errorf("external name lookup is disabled")
+	}
+	return net.LookupIP(externalName)
 }
 
 func (c *k8scache) GetIngressPodName() (namespace, podname string, err error) {
