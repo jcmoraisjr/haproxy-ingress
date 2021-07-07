@@ -17,6 +17,7 @@ limitations under the License.
 package types
 
 import (
+	"net"
 	"time"
 
 	api "k8s.io/api/core/v1"
@@ -28,6 +29,7 @@ import (
 
 // Cache ...
 type Cache interface {
+	ExternalNameLookup(externalName string) ([]net.IP, error)
 	GetIngress(ingressName string) (*networking.Ingress, error)
 	GetIngressList() ([]*networking.Ingress, error)
 	GetIngressClass(className string) (*networking.IngressClass, error)

@@ -17,7 +17,6 @@ limitations under the License.
 package utils
 
 import (
-	"fmt"
 	"net"
 	"reflect"
 	"testing"
@@ -34,15 +33,10 @@ func TestCreateEndpointsExternalName(t *testing.T) {
 	svc, _ := helper_test.CreateService("default/echo", "8080", "")
 	svc.Spec.Type = api.ServiceTypeExternalName
 	svc.Spec.ExternalName = "domain.local"
-	lookup = func(host string) ([]net.IP, error) {
-		if host == "domain.local" {
-			return []net.IP{net.ParseIP("10.0.1.10"), net.ParseIP("10.0.1.11")}, nil
-		}
-		return nil, fmt.Errorf("hostname not found")
-	}
-
+	cache := helper_test.NewCacheMock(nil)
+	cache.LookupList["domain.local"] = []net.IP{net.ParseIP("10.0.1.10"), net.ParseIP("10.0.1.11")}
 	svcPort := FindServicePort(svc, "8080")
-	ready, notReady, err := CreateEndpoints(nil, svc, svcPort)
+	ready, notReady, err := CreateEndpoints(cache, svc, svcPort)
 	expected := []*Endpoint{
 		{
 			IP:   "10.0.1.10",

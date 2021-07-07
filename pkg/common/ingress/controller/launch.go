@@ -185,6 +185,9 @@ one, applying every new configuration changes made between this interval`)
 			`Defines if HAProxy Ingress should disable pod watch and in memory list. Pod list is
 		mandatory for drain-support (should not be disabled) and optional for blue/green.`)
 
+		disableExternalName = flags.Bool("disable-external-name", false,
+			`Disables services of type ExternalName`)
+
 		updateStatusOnShutdown = flags.Bool("update-status-on-shutdown", true, `Indicates if the
 		ingress controller should update the Ingress status IP/hostname when the controller
 		is being stopped. Default is true`)
@@ -424,6 +427,7 @@ one, applying every new configuration changes made between this interval`)
 		AllowCrossNamespace:      *allowCrossNamespace,
 		DisableNodeList:          *disableNodeList,
 		DisablePodList:           *disablePodList,
+		DisableExternalName:      *disableExternalName,
 		UpdateStatusOnShutdown:   *updateStatusOnShutdown,
 		BackendShards:            *backendShards,
 		SortEndpointsBy:          sortEndpoints,
