@@ -49,6 +49,7 @@ The following command-line options are supported:
 | [`--tcp-services-configmap`](#tcp-services-configmap)   | namespace/configmapname    | no tcp svc              |       |
 | [`--update-status`](#update-status)                     | [true\|false]              | `true`                  |       |
 | [`--update-status-on-shutdown`](#update-status-on-shutdown) | [true\|false]          | `true`                  |       |
+| [`--v`](#v)                                             | log level as integer       | `1`                     |       |
 | [`--validate-config`](#validate-config)                 | [true\|false]              | `false`                 |       |
 | [`--verify-hostname`](#verify-hostname)                 | [true\|false]              | `true`                  |       |
 | [`--version`](#version)                                 | [true\|false]              | `false`                 |       |
@@ -452,6 +453,14 @@ resources that this controller is tracking.  Defaults to `true`.
 Indicates whether the ingress controller should update the `status` attribute of all the Ingress
 resources that this controller is tracking when the controller is being stopped.  Defaults to
 `true`.
+
+---
+
+## --v
+
+Configures the log verbosity.  `1` is the default value and outputs only errors, warnings and a few
+update events.  `2` is a good balance between low verbosity and rich details about controller
+events.  `3` is also available and provides even more details.
 
 ---
 
