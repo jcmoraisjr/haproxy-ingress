@@ -629,6 +629,10 @@ backend {{ $backend.ID }}
 {{- $authCfg := $backend.PathConfig "AuthExternal" }}
 {{- range $i, $auth := $authCfg.Items }}
 {{- range $pathIDs := $authCfg.PathIDs $i }}
+{{- if $auth.AlwaysDeny }}
+    http-request deny
+        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+{{- else }}
 {{- if $auth.AuthBackendName }}
     http-request set-header X-Real-IP %[src]
         {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
@@ -649,6 +653,7 @@ backend {{ $backend.ID }}
     http-request set-header {{ $header }} %[var({{ $attr }})] if { var({{ $attr }}) -m found }
         {{- if $auth.AllowedPath }} !{ path_beg {{ $auth.AllowedPath }} }{{ end }}
         {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

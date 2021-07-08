@@ -193,17 +193,20 @@ func TestAuthExternal(t *testing.T) {
 		// 0
 		{
 			url:     "10.0.0.1:8080/app",
+			expBack: hatypes.AuthExternal{AlwaysDeny: true},
 			logging: `WARN ignoring URL on ingress 'default/ing1': invalid URL syntax: 10.0.0.1:8080/app`,
 		},
 		// 1
 		{
 			url:     "fail://app1.local",
+			expBack: hatypes.AuthExternal{AlwaysDeny: true},
 			logging: `WARN ignoring auth URL with an invalid protocol on ingress 'default/ing1': fail`,
 		},
 		// 2
 		{
 			url:        "http://app1.local",
 			isExternal: true,
+			expBack:    hatypes.AuthExternal{AlwaysDeny: true},
 			logging:    `WARN external authentication on ingress 'default/ing1' needs Lua json module, install lua-json4 and enable 'external-has-lua' global config`,
 		},
 		// 3
@@ -238,6 +241,7 @@ func TestAuthExternal(t *testing.T) {
 		// 6
 		{
 			url:     "http://appfail.local/app",
+			expBack: hatypes.AuthExternal{AlwaysDeny: true},
 			logging: `WARN ignoring auth URL with an invalid domain on ingress 'default/ing1': host not found: appfail.local`,
 		},
 		// 7
@@ -307,16 +311,19 @@ func TestAuthExternal(t *testing.T) {
 		// 13
 		{
 			url:     "svc://noservice",
+			expBack: hatypes.AuthExternal{AlwaysDeny: true},
 			logging: `WARN skipping auth-url on ingress 'default/ing1': missing service port: svc://noservice`,
 		},
 		// 14
 		{
-			url: "svc://noservice:80",
+			url:     "svc://noservice:80",
+			expBack: hatypes.AuthExternal{AlwaysDeny: true},
 			// svc not found, warn is issued in the ingress parsing
 		},
 		// 15
 		{
 			url:     "svc://authservice",
+			expBack: hatypes.AuthExternal{AlwaysDeny: true},
 			logging: `WARN skipping auth-url on ingress 'default/ing1': missing service port: svc://authservice`,
 		},
 		// 16
@@ -1607,7 +1614,7 @@ func TestOAuth(t *testing.T) {
 				},
 			},
 			authExp: map[string]hatypes.AuthExternal{
-				"/": {},
+				"/": {AlwaysDeny: true},
 			},
 			logging: "WARN ignoring invalid oauth implementation 'none' on ingress 'default/ing1'",
 		},
@@ -1619,7 +1626,7 @@ func TestOAuth(t *testing.T) {
 				},
 			},
 			authExp: map[string]hatypes.AuthExternal{
-				"/": {},
+				"/": {AlwaysDeny: true},
 			},
 			logging: "ERROR path '/oauth2' was not found on namespace 'default'",
 		},
@@ -1775,10 +1782,13 @@ func TestOAuth(t *testing.T) {
 			external: true,
 			backend:  "default:back:/oauth2",
 			authExp: map[string]hatypes.AuthExternal{
-				"/":    {},
-				"/app": {},
+				"/":    {AlwaysDeny: true},
+				"/app": {AlwaysDeny: true},
 			},
-			logging: "WARN oauth2_proxy on ingress 'default/ing1' needs Lua json module, install lua-json4 and enable 'external-has-lua' global config",
+			logging: `
+WARN oauth2_proxy on ingress 'default/ing1' needs Lua json module, install lua-json4 and enable 'external-has-lua' global config
+WARN oauth2_proxy on ingress 'default/ing1' needs Lua json module, install lua-json4 and enable 'external-has-lua' global config
+`,
 		},
 		// 11
 		{
