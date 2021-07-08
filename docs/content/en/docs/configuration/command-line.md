@@ -41,6 +41,7 @@ The following command-line options are supported:
 | [`--profiling`](#stats)                                 | [true\|false]              | `true`                  |       |
 | [`--publish-service`](#publish-service)                 | namespace/servicename      |                         |       |
 | [`--rate-limit-update`](#rate-limit-update)             | uploads per second (float) | `0.5`                   |       |
+| [`--reload-interval`](#reload-interval)                 | time                       | `0`                     | v0.13 |
 | [`--reload-strategy`](#reload-strategy)                 | [native\|reusesocket]      | `reusesocket`           |       |
 | [`--report-node-internal-ip-address`](#report-node-internal-ip-address) | [true\|false] | `false`              |       |
 | [`--sort-backends`](#sort-backends)                     | [true\|false]              | `false`                 |       |
@@ -305,15 +306,37 @@ Use `--publish-service=namespace/servicename` to indicate the services fronting 
 
 ## --rate-limit-update
 
-Use `--rate-limit-update` to change how much time to wait between HAProxy reloads. Note that the first
-update is always immediate, the delay will only prevent two or more updates in the same time frame.
-Moreover reloads will only occur if the cluster configuration has changed, otherwise no reload will
-occur despite of the rate limit configuration.
+Use `--rate-limit-update` to change how much time to wait between two consecutive configuration updates.
+A configuration update is the process of read all enqueued Kubernetes events, reflect in the HAProxy
+model and immediately apply everything that does not need a reload, eg server certificate endpoint
+updates. Note that the first configuration update is always immediate, the delay will only prevent
+two or more consecutive updates in the same time frame - the second update will be enqueued and
+processed later, satisfying the rate limit configuration. Moreover, updates will only happen if
+Kubernetes reports changing events. The default value is `0.5` which means to wait two seconds between
+two consecutive configuration changes.
 
-This argument receives the allowed reloads per second. The default value is `0.5` which means no more
-than one reload will occur within `2` seconds. The lower limit is `0.05` which means one reload within
-`20` seconds. The highest one is `10` which will allow ingress controller to reload HAProxy up to 10
-times per second.
+Up to v0.12 this was the only way to limit how often HAProxy would be reloaded, but this also prevents
+to dynamically update HAProxy as fast as possible. v0.13 adds [`--reload-interval`](#reload-interval),
+which allows a higher rate limit update with a lower rate of reloads.
+
+See also [`--reload-interval`](#reload-interval).
+
+---
+
+## --reload-interval
+
+Since v0.13
+
+Configures the minimal time between two consecutive HAProxy reloads. The default value is `0`,
+which means to always reload HAProxy just after a configuration change requires a reload. The
+interval should be configured with a time suffix, e.g., `30s` means that if two distinct and
+consecutive configuration changes enforce a reload, the second reload will be enqueued until 30
+seconds have passed from the first one, applying every new configuration changes made between
+this interval.
+
+Higher values help to limit the number of active instances and save some memory on large clusters
+with long connections. Note however that, if two consecutive updates require a reload, the second
+one will delay up to the configured duration to be reflected by HAProxy.
 
 ---
 

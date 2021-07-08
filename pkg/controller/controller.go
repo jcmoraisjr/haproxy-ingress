@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -49,10 +50,13 @@ type HAProxyController struct {
 	metrics           *metrics
 	tracker           convtypes.Tracker
 	stopCh            chan struct{}
+	writeModelMutex   sync.Mutex
 	ingressQueue      utils.Queue
 	acmeQueue         utils.Queue
+	reloadQueue       utils.Queue
 	leaderelector     types.LeaderElector
 	updateCount       int
+	reloadCount       int
 	controller        *controller.GenericController
 	cfg               *controller.Configuration
 	configMap         *api.ConfigMap
@@ -116,12 +120,17 @@ func (hc *HAProxyController) configController() {
 			acmeSigner.Notify,
 		)
 	}
+	hc.writeModelMutex = sync.Mutex{}
+	if hc.cfg.ReloadInterval.Seconds() > 0 {
+		hc.reloadQueue = utils.NewRateLimitingQueue(float32(1/hc.cfg.ReloadInterval.Seconds()), hc.reloadHAProxy)
+	}
 	instanceOptions := haproxy.InstanceOptions{
 		HAProxyCfgDir:     "/etc/haproxy",
 		HAProxyMapsDir:    ingress.DefaultMapsDirectory,
 		BackendShards:     hc.cfg.BackendShards,
 		AcmeSigner:        acmeSigner,
 		AcmeQueue:         hc.acmeQueue,
+		ReloadQueue:       hc.reloadQueue,
 		LeaderElector:     hc.leaderelector,
 		Metrics:           hc.metrics,
 		ReloadStrategy:    *hc.reloadStrategy,
@@ -153,6 +162,9 @@ func (hc *HAProxyController) configController() {
 func (hc *HAProxyController) startServices() {
 	hc.cache.RunAsync(hc.stopCh)
 	go hc.ingressQueue.Run()
+	if hc.reloadQueue != nil {
+		go hc.reloadQueue.Run()
+	}
 	if hc.cfg.StatsCollectProcPeriod.Milliseconds() > 0 {
 		go wait.Until(func() {
 			hc.instance.CalcIdleMetric()
@@ -178,6 +190,9 @@ func (hc *HAProxyController) startServices() {
 
 func (hc *HAProxyController) stopServices() {
 	hc.ingressQueue.ShutDown()
+	if hc.reloadQueue != nil {
+		hc.reloadQueue.ShutDown()
+	}
 	if hc.acmeQueue != nil {
 		hc.acmeQueue.ShutDown()
 	}
@@ -313,6 +328,9 @@ func (hc *HAProxyController) syncIngress(item interface{}) {
 		return
 	}
 
+	hc.writeModelMutex.Lock()
+	defer hc.writeModelMutex.Unlock()
+
 	hc.updateCount++
 	hc.logger.Info("starting haproxy update id=%d", hc.updateCount)
 	timer := utils.NewTimer(hc.metrics.ControllerProcTime)
@@ -324,4 +342,16 @@ func (hc *HAProxyController) syncIngress(item interface{}) {
 	//
 	hc.instance.Update(timer)
 	hc.logger.Info("finish haproxy update id=%d: %s", hc.updateCount, timer.AsString("total"))
+}
+
+func (hc *HAProxyController) reloadHAProxy(item interface{}) {
+	hc.writeModelMutex.Lock()
+	defer hc.writeModelMutex.Unlock()
+
+	hc.reloadCount++
+	hc.logger.Info("starting haproxy reload id=%d", hc.reloadCount)
+	timer := utils.NewTimer(hc.metrics.ControllerProcTime)
+
+	hc.instance.Reload(timer)
+	hc.logger.Info("finish haproxy reload id=%d: %s", hc.reloadCount, timer.AsString("total"))
 }

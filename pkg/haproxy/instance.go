@@ -44,6 +44,7 @@ type InstanceOptions struct {
 	LeaderElector     types.LeaderElector
 	MaxOldConfigFiles int
 	Metrics           types.Metrics
+	ReloadQueue       utils.Queue
 	ReloadStrategy    string
 	SortEndpointsBy   string
 	StopCh            chan struct{}
@@ -59,6 +60,7 @@ type Instance interface {
 	Config() Config
 	CalcIdleMetric()
 	Update(timer *utils.Timer)
+	Reload(timer *utils.Timer)
 }
 
 // CreateInstance ...
@@ -310,11 +312,21 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 		}
 		return
 	}
+	if i.options.ReloadQueue != nil {
+		i.options.ReloadQueue.Notify()
+		i.logger.InfoV(2, "haproxy reload enqueued")
+	} else {
+		i.Reload(timer)
+	}
+}
+
+func (i *instance) Reload(timer *utils.Timer) {
 	i.metrics.IncUpdateFull()
-	if err := i.reload(); err != nil {
+	err := i.reloadHAProxy()
+	timer.Tick("reload_haproxy")
+	if err != nil {
 		i.logger.Error("error reloading server:\n%v", err)
 		i.updateSuccessful(false)
-		timer.Tick("reload_haproxy")
 		return
 	}
 	i.up = true
@@ -324,7 +336,6 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	} else {
 		i.logger.Info("haproxy successfully reloaded (embedded)")
 	}
-	timer.Tick("reload_haproxy")
 }
 
 func (i *instance) logChanged() {
@@ -467,7 +478,7 @@ func (i *instance) check() error {
 	return nil
 }
 
-func (i *instance) reload() error {
+func (i *instance) reloadHAProxy() error {
 	if i.options.fake {
 		i.logger.Info("(test) reload was skipped")
 		return nil
