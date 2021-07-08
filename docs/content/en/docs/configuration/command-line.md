@@ -20,14 +20,19 @@ The following command-line options are supported:
 | [`--acme-track-tls-annotation`](#acme)                  | [true\|false]              | `false`                 | v0.9  |
 | [`--allow-cross-namespace`](#allow-cross-namespace)     | [true\|false]              | `false`                 |       |
 | [`--annotation-prefix`](#annotation-prefix)             | prefix without `/`         | `ingress.kubernetes.io` | v0.8  |
+| [`--apiserver-host`](#apiserver-host)                   | address of K8s API server  |                         |       |
 | [`--backend-shards`](#backend-shards)                   | int                        | `0`                     | v0.11 |
 | [`--buckets-response-time`](#buckets-response-time)     | float64 slice           | `.0005,.001,.002,.005,.01` | v0.10 |
-| [`--controller-class`](#ingress-class)                  | suffix                     | ``                      | v0.12 |
+| [`--configmap`](#configmap)                             | namespace/configmapname    |                         |       |
+| [`--controller-class`](#ingress-class)                  | suffix                     | `""`                    | v0.12 |
 | [`--default-backend-service`](#default-backend-service) | namespace/servicename      | haproxy's 404 page      |       |
 | [`--default-ssl-certificate`](#default-ssl-certificate) | namespace/secretname       | fake, auto generated    |       |
 | [`--disable-api-warnings`](#disable-api-warnings)       | [true\|false]              | `false`                 | v0.12 |
 | [`--disable-external-name`](#disable-external-name)     | [true\|false]              | `false`                 | v0.10 |
 | [`--disable-pod-list`](#disable-pod-list)               | [true\|false]              | `false`                 | v0.11 |
+| [`--election-id`](#election-id)                         | identifier                 | `ingress-controller-leader` |   |
+| [`--force-namespace-isolation`](#force-namespace-isolation) | [true\|false]          | `false`                 |       |
+| [`--health-check-path`](#stats)                         | path                       | `/healthz`              |       |
 | [`--healthz-port`](#stats)                              | port number                | `10254`                 |       |
 | [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |       |
 | [`--kubeconfig`](#kubeconfig)                           | /path/to/kubeconfig        | in cluster config       |       |
@@ -37,11 +42,18 @@ The following command-line options are supported:
 | [`--publish-service`](#publish-service)                 | namespace/servicename      |                         |       |
 | [`--rate-limit-update`](#rate-limit-update)             | uploads per second (float) | `0.5`                   |       |
 | [`--reload-strategy`](#reload-strategy)                 | [native\|reusesocket]      | `reusesocket`           |       |
+| [`--report-node-internal-ip-address`](#report-node-internal-ip-address) | [true\|false] | `false`              |       |
 | [`--sort-backends`](#sort-backends)                     | [true\|false]              | `false`                 |       |
 | [`--sort-endpoints-by`](#sort-endpoints-by)             | [endpoint\|ip\|name\|random] | `endpoint`            | v0.11 |
 | [`--stats-collect-processing-period`](#stats)           | time                       | `500ms`                 | v0.10 |
+| [`--sync-period`](#sync-period)                         | time                       | `10m`                   |       |
 | [`--tcp-services-configmap`](#tcp-services-configmap)   | namespace/configmapname    | no tcp svc              |       |
+| [`--update-status`](#update-status)                     | [true\|false]              | `true`                  |       |
+| [`--update-status-on-shutdown`](#update-status-on-shutdown) | [true\|false]          | `true`                  |       |
+| [`--v`](#v)                                             | log level as integer       | `1`                     |       |
+| [`--validate-config`](#validate-config)                 | [true\|false]              | `false`                 |       |
 | [`--verify-hostname`](#verify-hostname)                 | [true\|false]              | `true`                  |       |
+| [`--version`](#version)                                 | [true\|false]              | `false`                 |       |
 | [`--wait-before-shutdown`](#wait-before-shutdown)       | seconds as integer         | `0`                     | v0.8  |
 | [`--wait-before-update`](#wait-before-update)           | duration                   | `200ms`                 | v0.11 |
 | [`--watch-ingress-without-class`](#ingress-class)       | [true\|false]              | `false`                 | v0.12 |
@@ -90,6 +102,15 @@ that shares ingress and service objects without conflicting each other.
 
 ---
 
+## --apiserver-host
+
+Allows you to specify an explicit host for the Kubernetes API server, in the format of
+`protocol://address:port`, e.g., `http://localhost:8080`.  If this value isn't specified, the
+assumption is that the binary is running inside a Kubernetes cluster and local discovery will be
+attempted.
+
+---
+
 ## --backend-shards
 
 Defines how many files should be used to configure the haproxy backends. The default value is
@@ -106,6 +127,18 @@ Configures the buckets of the histogram `haproxyingress_haproxy_response_time_se
 
 ---
 
+## --configmap
+
+The name of the ConfigMap that contains the custom configuration to use, in the format
+`namespace/configmapname`.  Beware that in version 0.12 and below, an incorrect value here will
+silently fail.  Version 0.13 and later will crash if the ConfigMap is unreadable or nonexistent.
+
+See also:
+
+* [custom-configuration example using `--configmap`](https://github.com/jcmoraisjr/haproxy-ingress/blob/master/examples/custom-configuration/README.md)
+
+---
+
 ## --default-backend-service
 
 Defines the `namespace/servicename` that should be used if the incoming request doesn't match any
@@ -119,6 +152,8 @@ hostname, or the requested path doesn't match any location within the desired ho
 Defines the `namespace/secretname` of the default certificate that should be used if ingress
 resources using TLS configuration doesn't provide it's own certificate. A self-signed fake
 certificate is used if not declared.
+
+---
 
 ## --disable-api-warnings
 
@@ -142,6 +177,21 @@ Services of type ExternalName uses DNS lookup to define the target server IP lis
 Since v0.11
 
 Disables in memory pod list and also pod watch for changes. Pod list and watch is used by `drain-support` option, which will not work if pod list is disabled. Blue/green and `session-cookie-value-strategy` set to `pod-uid` also use pod list if enabled, otherwise k8s api is called if needed. The default value is `false`, which means pods will be watched and listed in memory.
+
+---
+
+## --election-id
+
+The ID to be used for electing ingress controller leader.  Defaults to `ingress-controller-leader`.
+
+---
+
+## --force-namespace-isolation
+
+Whether to force namespace isolation.  This flag is required to avoid the reference of secrets,
+configmaps or the default backend service located in a different namespace than specified in the
+flag `--watch-namespace` (which defaults to all namespaces, so you will probably want to set that
+flag, too).
 
 ---
 
@@ -263,6 +313,13 @@ describes how it works.
 
 ---
 
+## --report-node-internal-ip-address
+
+Sets whether the node's IP address returned in the ingress status should be the node's internal
+instead of the external IP address.  Defaults to `false`.
+
+---
+
 ## --sort-backends
 
 Defines if backend's endpoints should be sorted by name. Since v0.8 the endpoints will stay in the
@@ -308,9 +365,17 @@ Configures an endpoint with statistics, debugging and health checks. The followi
 
 Options:
 
+* `--health-check-path`: Defines the URL to be used as a health check for the default server.  Defaults to `/healthz`.
 * `--healthz-port`: Defines the port number haproxy-ingress should listen to. Defaults to `10254`.
 * `--profiling`: Configures if the profiling URI should be enabled. Defaults to `true`.
 * `--stats-collect-processing-period`: Defines the interval between two consecutive readings of haproxy's `Idle_pct`, used to generate `haproxy_processing_seconds_total` metric. haproxy updates Idle_pct every `500ms`, which makes that the best configuration value, and it's also the default if not configured. Values higher than `500ms` will produce a less accurate collect. Change to 0 (zero) to disable this metric.
+
+---
+
+## --sync-period
+
+Configures the default resync period of the Kubernetes client's informer factory. Defaults to 10
+minutes.
 
 ---
 
@@ -353,9 +418,43 @@ HAProxy will listen 7 new ports:
 * `8000` will proxy to `http` service, port `8000`, on the `system-prod` namespace. The upstream service will expect connections using the PROXY protocol but it only supports v1.
 * `9900` will proxy to `admin` service, port `9900`, on the `system-prod` namespace. Clients should connect using the PROXY protocol v1 or v2. Upcoming connections should be encrypted, HAProxy will ssl-offload data using crt/key provided by `system-prod/tcp-9900` secret.
 * `9990` and `9999` will proxy to the same `admin` service and `9999` port and the upstream service will expect connections using the PROXY protocol v2. The HAProxy frontend, however, will only expect PROXY protocol v1 or v2 on it's port `9999`.
-* `9995` will proxy to `admin` service, port `9900`, on the `system-prod` namespace. Upcoming connections should be encrypted, HAProxy will ssl-offload data using crt/key provided by `system-prod/tcp-9995` secret. Furthermore, clients must present a certificate that will be valid under the certificate authority (and optional certificate revocation list) provded in the `system-prod/tcp-9995-ca` secret. 
+* `9995` will proxy to `admin` service, port `9900`, on the `system-prod` namespace. Upcoming connections should be encrypted, HAProxy will ssl-offload data using crt/key provided by `system-prod/tcp-9995` secret. Furthermore, clients must present a certificate that will be valid under the certificate authority (and optional certificate revocation list) provded in the `system-prod/tcp-9995-ca` secret.
 
 Note: Check interval was added in v0.10 and defaults to `2s`. All declared services has check interval enabled, except `3306` which disabled it.
+
+---
+
+## --update-status
+
+Indicates whether the ingress controller should update the `status` attribute of all the Ingress
+resources that this controller is tracking.  Defaults to `true`.
+
+---
+
+## --update-status-on-shutdown
+
+Indicates whether the ingress controller should update the `status` attribute of all the Ingress
+resources that this controller is tracking when the controller is being stopped.  Defaults to
+`true`.
+
+---
+
+## --v
+
+Configures the log verbosity.  `1` is the default value and outputs only errors, warnings and a few
+update events.  `2` is a good balance between low verbosity and rich details about controller
+events.  `3` is also available and provides even more details.
+
+---
+
+## --validate-config
+
+Determines whether the resulting configuration files should be validated when a dynamic update was
+applied. Default value is `false`, which means the validation will only happen when HAProxy needs to
+be reloaded.
+
+If validation fails, HAProxy Ingress will log the error and set the metric
+`haproxyingress_update_success` to zero, indicating failure.
 
 ---
 
@@ -368,6 +467,12 @@ match the hostname are discarded and a warning is logged into the ingress contro
 
 Use `--verify-hostname=false` argument to bypass this validation. If used, HAProxy will provide
 the certificate declared in the `secretName` ignoring if the certificate is or is not valid.
+
+---
+
+## --version
+
+Show release information about the ingress controller.
 
 ---
 
@@ -394,3 +499,7 @@ changes in one single shot. The default value is `200ms`.
 By default the proxy will be configured using all namespaces from the Kubernetes cluster. Use
 `--watch-namespace` with the name of a namespace to watch and build the configuration of a
 single namespace.
+
+You may also want to use `--force-namespace-isolation` to completely disallow referencing secrets,
+configmaps or the default backend service located in a different namespace than specified with
+`--watch-namespace`.
