@@ -31,5 +31,6 @@ type ConverterOptions struct {
 	FakeCrtFile      convtypes.CrtFile
 	FakeCAFile       convtypes.CrtFile
 	AnnotationPrefix string
+	DisableKeywords  []string
 	AcmeTrackTLSAnn  bool
 }

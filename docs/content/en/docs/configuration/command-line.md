@@ -23,6 +23,7 @@ The following command-line options are supported:
 | [`--buckets-response-time`](#buckets-response-time)     | float64 slice           | `.0005,.001,.002,.005,.01` | v0.10 |
 | [`--default-backend-service`](#default-backend-service) | namespace/servicename      | haproxy's 404 page      |       |
 | [`--default-ssl-certificate`](#default-ssl-certificate) | namespace/secretname       | fake, auto generated    |       |
+| [`--disable-config-keywords`](#disable-config-keywords) | comma-separated list of keywords | `""`              | v0.10 |
 | [`--disable-external-name`](#disable-external-name)     | [true\|false]              | `false`                 | v0.10 |
 | [`--healthz-port`](#stats)                              | port number                | `10254`                 |       |
 | [`--ignore-ingress-without-class`](#ignore-ingress-without-class)| [true\|false]     | `false`                 | v0.10 |
@@ -102,6 +103,18 @@ hostname, or the requested path doesn't match any location within the desired ho
 Defines the `namespace/secretname` of the default certificate that should be used if ingress
 resources using TLS configuration doesn't provide it's own certificate. A self-signed fake
 certificate is used if not declared.
+
+---
+
+## --disable-config-keywords
+
+Since v0.10.9
+
+Defines a comma-separated list of HAProxy keywords that should not be used on annotation based configuration snippets. Configuration snippets added as a global config does not follow this option. Use an asterisk `*` to disable configuration snippets using annotations.
+
+Every keyword in the configuration will be compared with the first token of every configuration line, ignoring tabs and spaces. If a match occur, all the configuration snippet will be ignored and a warning is logged.
+
+The default value is an empty string, enabling the configuration and accepting any HAProxy keyword.
 
 ---
 

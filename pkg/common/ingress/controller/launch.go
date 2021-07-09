@@ -152,6 +152,12 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		disableExternalName = flags.Bool("disable-external-name", false,
 			`Disables services of type ExternalName`)
 
+		disableConfigKeywords = flags.String("disable-config-keywords", "",
+			`Defines a comma-separated list of HAProxy keywords that should not be used on
+annotation based configuration snippets. Configuration snippets added as a
+global config does not follow this option. Use an asterisk * to disable
+configuration snippets using annotations.`)
+
 		updateStatusOnShutdown = flags.Bool("update-status-on-shutdown", true, `Indicates if the
 		ingress controller should update the Ingress status IP/hostname when the controller
 		is being stopped. Default is true`)
@@ -328,6 +334,7 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 		AllowCrossNamespace:       *allowCrossNamespace,
 		DisableNodeList:           *disableNodeList,
 		DisableExternalName:       *disableExternalName,
+		DisableConfigKeywords:     *disableConfigKeywords,
 		UpdateStatusOnShutdown:    *updateStatusOnShutdown,
 		SortBackends:              *sortBackends,
 		UseNodeInternalIP:         *useNodeInternalIP,

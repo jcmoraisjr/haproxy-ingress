@@ -69,6 +69,7 @@ type Configuration struct {
 	AllowCrossNamespace     bool
 	DisableNodeList         bool
 	DisableExternalName     bool
+	DisableConfigKeywords   string
 	AnnPrefix               string
 
 	AcmeServer              bool
