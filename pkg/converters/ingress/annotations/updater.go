@@ -182,7 +182,6 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) 
 	}
 	// TODO check ModeTCP with HTTP annotations
 	backend.BalanceAlgorithm = mapper.Get(ingtypes.BackBalanceAlgorithm).Value
-	backend.CustomConfig = utils.LineToSlice(mapper.Get(ingtypes.BackConfigBackend).Value)
 	backend.Server.MaxConn = mapper.Get(ingtypes.BackMaxconnServer).Int()
 	backend.Server.MaxQueue = mapper.Get(ingtypes.BackMaxQueueServer).Int()
 	c.buildBackendAffinity(data)
@@ -191,6 +190,7 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) 
 	c.buildBackendBlueGreenSelector(data)
 	c.buildBackendBodySize(data)
 	c.buildBackendCors(data)
+	c.buildBackendCustomConfig(data)
 	c.buildBackendDNS(data)
 	c.buildBackendDynamic(data)
 	c.buildBackendAgentCheck(data)

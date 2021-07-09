@@ -429,6 +429,50 @@ func (c *updater) buildBackendCors(d *backData) {
 	}
 }
 
+func (c *updater) buildBackendCustomConfig(d *backData) {
+	config := d.mapper.Get(ingtypes.BackConfigBackend)
+	if config.Source == nil {
+		return
+	}
+	lines := utils.LineToSlice(config.Value)
+	if len(lines) == 0 {
+		return
+	}
+	for _, keyword := range c.options.DisableKeywords {
+		if keyword == "*" {
+			c.logger.Warn("skipping configuration snippet on %s: custom configuration is disabled", config.Source)
+			return
+		}
+		for _, line := range lines {
+			if firstToken(line) == keyword {
+				c.logger.Warn("skipping configuration snippet on %s: keyword '%s' not allowed", config.Source, keyword)
+				return
+			}
+		}
+	}
+	d.backend.CustomConfig = lines
+}
+
+// kindly provided by strings/strings.go
+var asciiSpace = [256]uint8{'\t': 1, '\n': 1, '\v': 1, '\f': 1, '\r': 1, ' ': 1}
+
+func firstToken(s string) string {
+	// only ascii spaces supported, code<128
+	start := 0
+	for ; len(s) > start; start++ {
+		if asciiSpace[s[start]] == 0 {
+			break
+		}
+	}
+	end := start
+	for ; len(s) > end; end++ {
+		if asciiSpace[s[end]] == 1 {
+			break
+		}
+	}
+	return s[start:end]
+}
+
 func (c *updater) buildBackendDNS(d *backData) {
 	resolverName := d.mapper.Get(ingtypes.BackUseResolver).Value
 	if resolverName == "" {
