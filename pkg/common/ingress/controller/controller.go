@@ -76,6 +76,7 @@ type Configuration struct {
 	DisableNodeList         bool
 	DisablePodList          bool
 	DisableExternalName     bool
+	DisableConfigKeywords   string
 	AnnPrefix               []string
 
 	AcmeServer              bool
