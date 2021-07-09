@@ -24,6 +24,7 @@ The following command-line options are supported:
 | [`--buckets-response-time`](#buckets-response-time)     | float64 slice           | `.0005,.001,.002,.005,.01` | v0.10 |
 | [`--default-backend-service`](#default-backend-service) | namespace/servicename      | haproxy's 404 page      |       |
 | [`--default-ssl-certificate`](#default-ssl-certificate) | namespace/secretname       | fake, auto generated    |       |
+| [`--disable-config-keywords`](#disable-config-keywords) | comma-separated list of keywords | `""`              | v0.10 |
 | [`--disable-external-name`](#disable-external-name)     | [true\|false]              | `false`                 | v0.10 |
 | [`--disable-pod-list`](#disable-pod-list)               | [true\|false]              | `false`                 | v0.11 |
 | [`--healthz-port`](#stats)                              | port number                | `10254`                 |       |
@@ -124,6 +125,18 @@ certificate is used if not declared.
 Since v0.11
 
 Disables in memory pod list and also pod watch for changes. Pod list and watch is used by `drain-support` option, which will not work if pod list is disabled. Blue/green also uses pod list if enabled, otherwise k8s api is called if needed. The default value is `false`, which means pods will be watched and listed in memory.
+
+---
+
+## --disable-config-keywords
+
+Since v0.10.9
+
+Defines a comma-separated list of HAProxy keywords that should not be used on annotation based configuration snippets. Configuration snippets added as a global config does not follow this option. Use an asterisk `*` to disable configuration snippets using annotations.
+
+Every keyword in the configuration will be compared with the first token of every configuration line, ignoring tabs and spaces. If a match occur, all the configuration snippet will be ignored and a warning is logged.
+
+The default value is an empty string, enabling the configuration and accepting any HAProxy keyword.
 
 ---
 

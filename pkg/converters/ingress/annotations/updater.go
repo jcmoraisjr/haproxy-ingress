@@ -39,6 +39,7 @@ type Updater interface {
 func NewUpdater(haproxy haproxy.Config, options *ingtypes.ConverterOptions) Updater {
 	return &updater{
 		haproxy: haproxy,
+		options: options,
 		logger:  options.Logger,
 		cache:   options.Cache,
 		tracker: options.Tracker,
@@ -48,6 +49,7 @@ func NewUpdater(haproxy haproxy.Config, options *ingtypes.ConverterOptions) Upda
 
 type updater struct {
 	haproxy haproxy.Config
+	options *ingtypes.ConverterOptions
 	logger  types.Logger
 	cache   convtypes.Cache
 	tracker convtypes.Tracker
@@ -152,7 +154,6 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) 
 	}
 	// TODO check ModeTCP with HTTP annotations
 	backend.BalanceAlgorithm = mapper.Get(ingtypes.BackBalanceAlgorithm).Value
-	backend.CustomConfig = utils.LineToSlice(mapper.Get(ingtypes.BackConfigBackend).Value)
 	backend.Server.MaxConn = mapper.Get(ingtypes.BackMaxconnServer).Int()
 	backend.Server.MaxQueue = mapper.Get(ingtypes.BackMaxQueueServer).Int()
 	c.buildBackendAffinity(data)
@@ -161,6 +162,7 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) 
 	c.buildBackendBlueGreenSelector(data)
 	c.buildBackendBodySize(data)
 	c.buildBackendCors(data)
+	c.buildBackendCustomConfig(data)
 	c.buildBackendDNS(data)
 	c.buildBackendDynamic(data)
 	c.buildBackendAgentCheck(data)
