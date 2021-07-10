@@ -141,9 +141,9 @@ func (c *updater) buildGlobalProc(d *globalData) {
 	}
 	procs := balance + ssl
 	threads := d.mapper.Get(ingtypes.GlobalNbthread).Int()
-	if threads < 1 {
-		c.logger.Warn("invalid value of nbthread configmap option (%v), using 1", threads)
-		threads = 1
+	if threads < 0 {
+		c.logger.Warn("ignoring invalid value of nbthread: %d", threads)
+		threads = 0
 	}
 	bindprocBalance := "1"
 	if balance > 1 {

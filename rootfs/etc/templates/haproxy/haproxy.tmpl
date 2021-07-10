@@ -78,7 +78,7 @@ global
 {{- if gt $global.Procs.Nbproc 1 }}
     nbproc {{ $global.Procs.Nbproc }}
 {{- end }}
-{{- if gt $global.Procs.Nbthread 1 }}
+{{- if $global.Procs.Nbthread }}
     nbthread {{ $global.Procs.Nbthread }}
 {{- end }}
 {{- if $global.Procs.CPUMap }}
