@@ -34,19 +34,22 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 	var (
 		flags = pflag.NewFlagSet("", pflag.ExitOnError)
 
-		apiserverHost = flags.String("apiserver-host", "", "The address of the Kubernetes Apiserver "+
-			"to connect to in the format of protocol://address:port, e.g., "+
-			"http://localhost:8080. If not specified, the assumption is that the binary runs inside a "+
-			"Kubernetes cluster and local discovery is attempted.")
+		apiserverHost = flags.String("apiserver-host", "",
+			`The address of the Kubernetes API server to connect to, in the format of
+protocol://address:port, e.g., http://localhost:8080. If not specified, the
+assumption is that the binary runs inside a Kubernetes cluster and local
+discovery is attempted.`)
 
-		kubeConfigFile = flags.String("kubeconfig", "", "Path to kubeconfig file with authorization and master location information.")
+		kubeConfigFile = flags.String("kubeconfig", "",
+			`Path to kubeconfig file with authorization and master location information.`)
 
-		disableAPIWarnings = flags.Bool("disable-api-warnings", false, "Declare to disable warnings from the API server.")
+		disableAPIWarnings = flags.Bool("disable-api-warnings", false,
+			`Disable warnings from the API server.`)
 
 		defaultSvc = flags.String("default-backend-service", "",
 			`Service used to serve a 404 page for the default backend. Takes the form
-    	namespace/name. The controller uses the first node port of this Service for
-    	the default backend.`)
+namespace/name. The controller uses the first node port of this Service for the
+default backend.`)
 
 		ingressClass = flags.String("ingress-class", "haproxy",
 			`Name of the IngressClass to route through this controller.`)
@@ -55,8 +58,9 @@ func NewIngressController(backend ingress.Controller) *GenericController {
 			`Name of the reload strategy. Options are: native or reusesocket`)
 
 		maxOldConfigFiles = flags.Int("max-old-config-files", 0,
-			`Maximum old haproxy timestamped config files to allow before being cleaned up.
-A value <= 0 indicates a single non-timestamped config file will be used`)
+			`Maximum number of old HAProxy timestamped config files to retain. Older files
+are cleaned up. A value <= 0 indicates only a single non-timestamped config
+file will be retained.`)
 
 		validateConfig = flags.Bool("validate-config", false,
 			`Define if the resulting configuration files should be validated when a dynamic
@@ -66,26 +70,30 @@ Ingress will log the error and set the metric 'haproxyingress_update_success'
 as failed (zero)`)
 
 		controllerClass = flags.String("controller-class", "",
-			`Defines an alternative controller name this controller should listen to. If empty, this controller will listen to
-		ingress resources whose controller's IngressClass is 'haproxy-ingress.github.io/controller'. Non empty values add a new /path,
-		eg controller-class=staging will make this controller look for 'haproxy-ingress.github.io/controller/staging'`)
+			`Defines an alternative controller name this controller should listen to. If
+empty, this controller will listen to ingress resources whose controller's
+IngressClass is 'haproxy-ingress.github.io/controller'. Non-empty values add a
+new /path, e.g., controller-class=staging will make this controller look for
+'haproxy-ingress.github.io/controller/staging'`)
 
 		watchIngressWithoutClass = flags.Bool("watch-ingress-without-class", false,
-			`Defines if this controller should also listen to ingress resources that doesn't declare neither the
-		kubernetes.io/ingress.class annotation nor the <ingress>.spec.ingressClassName field. Defaults to false`)
+			`Defines if this controller should also listen to ingress resources that don't
+declare neither the kubernetes.io/ingress.class annotation nor the
+<ingress>.spec.ingressClassName field. Defaults to false`)
 
-		watchGateway = flags.Bool("watch-gateway", false, `Watch and parse resources from the Gateway API`)
+		watchGateway = flags.Bool("watch-gateway", false,
+			`Watch and parse resources from the Gateway API`)
 
 		masterSocket = flags.String("master-socket", "",
-			`Defines the master CLI unix socket of an external HAProxy running in master-worker mode.
-		Defaults to use the embedded HAProxy if not declared.`)
+			`Defines the master CLI unix socket of an external HAProxy running in
+master-worker mode. Defaults to use the embedded HAProxy if not declared.`)
 
 		configMap = flags.String("configmap", "",
 			`Name of the ConfigMap that contains the custom configuration to use`)
 
 		acmeServer = flags.Bool("acme-server", false,
-			`Enables acme server. This server is used to receive and answer challenges from
-		Lets Encrypt or other acme implementations.`)
+			`Enables ACME server. This server is used to receive and answer challenges from
+Let's Encrypt or other ACME implementations.`)
 
 		acmeCheckPeriod = flags.Duration("acme-check-period", 24*time.Hour,
 			`Time between checks of invalid or expiring certificates`)
@@ -94,49 +102,48 @@ as failed (zero)`)
 			`Prefix of the election ID used to choose the acme leader`)
 
 		acmeFailInitialDuration = flags.Duration("acme-fail-initial-duration", 5*time.Minute,
-			`The initial time to wait to retry sign a new certificate after a failure.
-		The time between retries will grow exponentially until 'acme-fail-max-duration'`)
+			`The initial time to wait to retry sign a new certificate after a failure. The
+time between retries will grow exponentially until 'acme-fail-max-duration'`)
 
 		acmeFailMaxDuration = flags.Duration("acme-fail-max-duration", 8*time.Hour,
 			`The maximum time to wait after failing to sign a new certificate`)
 
 		acmeSecretKeyName = flags.String("acme-secret-key-name", "acme-private-key",
 			`Name and an optional namespace of the secret which will store the acme account
-		private key. If a namespace is not provided, the secret will be created in the same
-		namespace of the controller pod`)
+private key. If a namespace is not provided, the secret will be created in the
+same namespace of the controller pod`)
 
 		acmeTokenConfigmapName = flags.String("acme-token-configmap-name", "acme-validation-tokens",
 			`Name and an optional namespace of the configmap which will store acme tokens
-		used to answer the acme challenges. If a namespace is not provided, the secret will be created
-		in the same namespace of the controller pod`)
+used to answer the acme challenges. If a namespace is not provided, the secret
+will be created in the same namespace of the controller pod`)
 
 		acmeTrackTLSAnn = flags.Bool("acme-track-tls-annotation", false,
 			`Enable tracking of ingress objects annotated with 'kubernetes.io/tls-acme'`)
 
-		bucketsResponseTime = flags.Float64Slice("buckets-response-time",
-			[]float64{.0005, .001, .002, .005, .01},
-			`Configures the buckets of the histogram used to compute the response time of the haproxy's admin socket.
-		The response time unit is in seconds.`)
+		bucketsResponseTime = flags.Float64Slice("buckets-response-time", []float64{.0005, .001, .002, .005, .01},
+			`Configures the buckets of the histogram used to compute the response time of
+the haproxy's admin socket. The response time unit is in seconds.`)
 
 		publishSvc = flags.String("publish-service", "",
-			`Service fronting the ingress controllers. Takes the form
- 		namespace/name. The controller will set the endpoint records on the
- 		ingress objects to reflect those on the service.`)
+			`Service fronting the ingress controllers. Takes the form namespace/name. The
+controller will set the endpoint records on the ingress objects to reflect
+those on the service.`)
 
 		tcpConfigMapName = flags.String("tcp-services-configmap", "",
-			`Name of the ConfigMap that contains the definition of the TCP services to expose.
-		The key in the map indicates the external port to be used. The value is the name of the
-		service with the format namespace/serviceName and the port of the service could be a
-		number of the name of the port.
-		The ports 80 and 443 are not allowed as external ports. This ports are reserved for the backend`)
+			`Name of the ConfigMap that contains the definition of the TCP services to
+expose. The key in the map indicates the external port to be used. The value is
+the name of the service with the format namespace/serviceName and the port of
+the service could be a number of the name of the port. The ports 80 and 443 are
+not allowed as external ports. This ports are reserved for the backend`)
 
 		annPrefix = flags.String("annotations-prefix", "haproxy-ingress.github.io,ingress.kubernetes.io",
 			`Defines a comma-separated list of annotation prefix for ingress and service`)
 
 		rateLimitUpdate = flags.Float32("rate-limit-update", 0.5,
-			`Maximum of updates per second this controller should perform.
-		Default is 0.5, which means wait 2 seconds between Ingress updates in order
-		to add more changes in a single reload`)
+			`Maximum of updates per second this controller should perform. Default is 0.5,
+which means wait 2 seconds between Ingress updates in order to add more changes
+in a single reload`)
 
 		reloadInterval = flags.Duration("reload-interval", 0,
 			`Minimal time between two consecutive HAProxy reloads. The default value is 0,
@@ -147,75 +154,85 @@ the second reload will be enqueued until 30 seconds have passed from the first
 one, applying every new configuration changes made between this interval`)
 
 		waitBeforeUpdate = flags.Duration("wait-before-update", 200*time.Millisecond,
-			`Amount of time to wait before start a reconciliation and update haproxy,
-		giving the time to receive all/most of the changes of a batch update.`)
+			`Amount of time to wait before start a reconciliation and update haproxy, giving
+the time to receive all/most of the changes of a batch update.`)
 
 		resyncPeriod = flags.Duration("sync-period", 600*time.Second,
-			`Relist and confirm cloud resources this often. Default is 10 minutes`)
+			`Configures the default resync period of Kubernetes' informer factory.`)
 
 		watchNamespace = flags.String("watch-namespace", apiv1.NamespaceAll,
 			`Namespace to watch for Ingress. Default is to watch all namespaces`)
 
-		healthzPort = flags.Int("healthz-port", 10254, "port for healthz endpoint.")
+		healthzPort = flags.Int("healthz-port", 10254,
+			`port for healthz endpoint.`)
 
 		statsCollectProcPeriod = flags.Duration("stats-collect-processing-period", 500*time.Millisecond,
-			`Defines the interval between two consecutive readings of haproxy's Idle_pct. haproxy
-		updates Idle_pct every 500ms, which makes that the best configuration value.
-		Change to 0 (zero) to disable this metric.`)
+			`Defines the interval between two consecutive readings of haproxy's Idle_pct.
+haproxy updates Idle_pct every 500ms, which makes that the best configuration
+value. Change to 0 (zero) to disable this metric.`)
 
-		profiling = flags.Bool("profiling", true, `Enable profiling via web interface host:port/debug/pprof/`)
+		profiling = flags.Bool("profiling", true,
+			`Enable profiling via web interface host:port/debug/pprof/`)
 
-		defSSLCertificate = flags.String("default-ssl-certificate", "", `Name of the secret
-		that contains a SSL certificate to be used as default for a HTTPS catch-all server`)
+		defSSLCertificate = flags.String("default-ssl-certificate", "",
+			`Name of the secret that contains a SSL certificate to be used as
+default for a HTTPS catch-all server`)
 
 		verifyHostname = flags.Bool("verify-hostname", true,
-			`Defines if the controller should verify if the provided certificate is valid, ie, it's
-		SAN extension has the hostname. Default is true`)
+			`Defines if the controller should verify if the provided certificate is valid,
+ie, it's SAN extension has the hostname.`)
 
-		defHealthzURL = flags.String("health-check-path", "/healthz", `Defines
-		the URL to be used as health check inside in the default server.`)
+		defHealthzURL = flags.String("health-check-path", "/healthz",
+			`Defines the URL to be used as health check inside in the default server.`)
 
-		updateStatus = flags.Bool("update-status", true, `Indicates if the
-		ingress controller should update the Ingress status IP/hostname. Default is true`)
+		updateStatus = flags.Bool("update-status", true,
+			`Indicates if the controller should update the 'status' attribute of all the
+Ingress resources that this controller is tracking.`)
 
-		electionID = flags.String("election-id", "ingress-controller-leader", `Election id to use for status update.`)
+		electionID = flags.String("election-id", "ingress-controller-leader",
+			`Election id to be used for status update.`)
 
 		forceIsolation = flags.Bool("force-namespace-isolation", false,
-			`Force namespace isolation. This flag is required to avoid the reference of secrets,
-		configmaps or the default backend service located in a different namespace than the specified
-		in the flag --watch-namespace.`)
+			`Force namespace isolation. This flag is required to avoid the reference of
+secrets, configmaps or the default backend service located in a different
+namespace than the specified in the flag --watch-namespace.`)
 
-		waitBeforeShutdown = flags.Int("wait-before-shutdown", 0, `Define time controller waits until it shuts down
-		when SIGTERM signal was received`)
+		waitBeforeShutdown = flags.Int("wait-before-shutdown", 0,
+			`Define time controller waits until it shuts down when SIGTERM signal was
+received`)
 
 		allowCrossNamespace = flags.Bool("allow-cross-namespace", false,
-			`Defines if the ingress controller can reference resources of another namespaces.
-		Cannot be used if force-namespace-isolation is true`)
+			`Defines if the ingress controller can reference resources of another
+namespaces. Cannot be used if force-namespace-isolation is true`)
 
 		disablePodList = flags.Bool("disable-pod-list", false,
-			`Defines if HAProxy Ingress should disable pod watch and in memory list. Pod list is
-		mandatory for drain-support (should not be disabled) and optional for blue/green.`)
+			`Defines if HAProxy Ingress should disable pod watch and in memory list. Pod
+list is mandatory for drain-support (should not be disabled) and optional for
+blue/green.`)
 
 		disableExternalName = flags.Bool("disable-external-name", false,
 			`Disables services of type ExternalName`)
 
-		updateStatusOnShutdown = flags.Bool("update-status-on-shutdown", true, `Indicates if the
-		ingress controller should update the Ingress status IP/hostname when the controller
-		is being stopped. Default is true`)
+		updateStatusOnShutdown = flags.Bool("update-status-on-shutdown", true,
+			`Indicates if the ingress controller should update the Ingress status
+IP/hostname when the controller is being stopped.`)
 
 		backendShards = flags.Int("backend-shards", 0,
 			`Defines how much files should be used to configure the haproxy backends`)
 
 		sortBackends = flags.Bool("sort-backends", false,
-			`Defines if backend's endpoints should be sorted by name. This option has less precedence than
-		--sort-endpoints-by if both are declared.`)
+			`Defines if backend's endpoints should be sorted by name. This option has less
+precedence than --sort-endpoints-by if both are declared.`)
 
 		sortEndpointsBy = flags.String("sort-endpoints-by", "",
-			`Defines how to sort backend's endpoints. Allowed values are: 'endpoint' - same k8s endpoint order (default);
-		'name' - server/endpoint name; 'ip' - server/endpoint IP and port; 'random' - shuffle endpoints on every haproxy reload`)
+			`Defines how to sort backend's endpoints. Allowed values are: 'endpoint' - same
+k8s endpoint order (default); 'name' - server/endpoint name;
+'ip' - server/endpoint IP and port; 'random' - shuffle endpoints on every
+haproxy reload`)
 
 		useNodeInternalIP = flags.Bool("report-node-internal-ip-address", false,
-			`Defines if the nodes IP address to be returned in the ingress status should be the internal instead of the external IP address`)
+			`Defines if the nodes IP address to be returned in the ingress status should be
+the internal instead of the external IP address`)
 
 		showVersion = flags.Bool("version", false,
 			`Shows release information about the Ingress controller`)
@@ -225,8 +242,9 @@ one, applying every new configuration changes made between this interval`)
 Actually node listing isn't needed and it is always disabled`)
 
 		ignoreIngressWithoutClass = flags.Bool("ignore-ingress-without-class", false,
-			`DEPRECATED, this option is ignored. Use --watch-ingress-without-class command-line option instead to define
-		if ingress without class should be tracked.`)
+			`DEPRECATED, this option is ignored. Use --watch-ingress-without-class
+command-line option instead to define if ingress without class should be
+tracked.`)
 	)
 
 	flags.AddGoFlagSet(flag.CommandLine)
