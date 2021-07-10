@@ -655,6 +655,18 @@ d1.local#/ path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				auth := &b.FindBackendPath(h.FindPath("/app1")[0].Link).AuthExternal
+				auth.AlwaysDeny = true
+			},
+			path: []string{"/app1", "/app2"},
+			expected: `
+    # path01 = d1.local/app1
+    # path02 = d1.local/app2
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request deny { var(txn.pathID) path01 }`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.SourceIPs = []net.IP{net.ParseIP("192.168.0.2"), net.ParseIP("192.168.0.3")}
 			},
 			// IP distribution starts based on the hash of the backend name.

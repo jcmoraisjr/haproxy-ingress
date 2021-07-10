@@ -757,6 +757,7 @@ type Cookie struct {
 // AuthExternal ...
 type AuthExternal struct {
 	AllowedPath     string
+	AlwaysDeny      bool
 	AuthBackendName string
 	AuthPath        string
 	HeadersFail     []string

@@ -113,10 +113,15 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 		if url.Source == nil || url.Value == "" {
 			continue
 		}
+
+		// starting here the auth backend should be configured or requests should be denied
+		// AlwaysDeny will be changed to false if the configuration succeeed
+		path.AuthExternal.AlwaysDeny = true
+
 		external := c.haproxy.Global().External
 		if external.IsExternal() && !external.HasLua {
 			c.logger.Warn("external authentication on %v needs Lua json module, install lua-json4 and enable 'external-has-lua' global config", url.Source)
-			return
+			continue
 		}
 
 		urlProto, urlHost, urlPort, urlPath, err := ingutils.ParseURL(url.Value)
@@ -221,6 +226,7 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 			urlPath = "/"
 		}
 
+		path.AuthExternal.AlwaysDeny = false
 		path.AuthExternal.AuthBackendName = authBackendName
 		path.AuthExternal.AuthPath = urlPath
 		path.AuthExternal.Method = method
@@ -613,6 +619,11 @@ func (c *updater) buildBackendOAuth(d *backData) {
 		if oauth.Source == nil {
 			continue
 		}
+
+		// starting here the auth backend should be configured or requests should be denied
+		// AlwaysDeny will be changed to false if the configuration succeeed
+		path.AuthExternal.AlwaysDeny = true
+
 		if oauth.Value != "oauth2_proxy" && oauth.Value != "oauth2-proxy" {
 			c.logger.Warn("ignoring invalid oauth implementation '%s' on %v", oauth, oauth.Source)
 			continue
@@ -620,10 +631,11 @@ func (c *updater) buildBackendOAuth(d *backData) {
 		external := c.haproxy.Global().External
 		if external.IsExternal() && !external.HasLua {
 			c.logger.Warn("oauth2_proxy on %v needs Lua json module, install lua-json4 and enable 'external-has-lua' global config", oauth.Source)
-			return
+			continue
 		}
 		if authURL := d.mapper.Get(ingtypes.BackAuthURL); authURL.Value != "" {
 			c.logger.Warn("ignoring oauth configuration on %v: auth-url was configured and has precedence", authURL.Source)
+			path.AuthExternal.AlwaysDeny = false
 			continue
 		}
 		uriPrefix := "/oauth2"
@@ -652,6 +664,7 @@ func (c *updater) buildBackendOAuth(d *backData) {
 			headersMap[h[0]] = buildAuthRequestVarName(h[len(h)-1])
 		}
 
+		path.AuthExternal.AlwaysDeny = false
 		path.AuthExternal.AuthBackendName = backend.ID
 		path.AuthExternal.AllowedPath = uriPrefix + "/"
 		path.AuthExternal.AuthPath = uriPrefix + "/auth"
