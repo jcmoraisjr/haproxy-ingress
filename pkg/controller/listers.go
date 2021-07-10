@@ -56,8 +56,7 @@ type listers struct {
 	recorder record.EventRecorder
 	running  bool
 	//
-	hasPodLister  bool
-	hasNodeLister bool
+	hasPodLister bool
 	//
 	ingressLister       listersnetworking.IngressLister
 	ingressClassLister  listersnetworking.IngressClassLister
@@ -73,7 +72,6 @@ type listers struct {
 	secretLister        listerscore.SecretLister
 	configMapLister     listerscore.ConfigMapLister
 	podLister           listerscore.PodLister
-	nodeLister          listerscore.NodeLister
 	//
 	ingressInformer       cache.SharedInformer
 	ingressClassInformer  cache.SharedInformer
@@ -89,7 +87,6 @@ type listers struct {
 	secretInformer        cache.SharedInformer
 	configMapInformer     cache.SharedInformer
 	podInformer           cache.SharedInformer
-	nodeInformer          cache.SharedInformer
 }
 
 func createListers(
@@ -136,13 +133,6 @@ func createListers(
 		l.hasPodLister = true
 	} else {
 		l.createPodLister(localInformer.Core().V1().Pods())
-	}
-	if clusterWatch {
-		// ignoring --disable-node-list
-		l.createNodeLister(resourceInformer.Core().V1().Nodes())
-		l.hasNodeLister = true
-	} else {
-		l.createNodeLister(localInformer.Core().V1().Nodes())
 	}
 
 	if watchGateway {
@@ -216,7 +206,6 @@ func (l *listers) RunAsync(stopCh <-chan struct{}) {
 	go l.secretInformer.Run(stopCh)
 	go l.configMapInformer.Run(stopCh)
 	go l.podInformer.Run(stopCh)
-	go l.nodeInformer.Run(stopCh)
 	synced := cache.WaitForCacheSync(stopCh,
 		l.ingressInformer.HasSynced,
 		l.endpointInformer.HasSynced,
@@ -224,7 +213,6 @@ func (l *listers) RunAsync(stopCh <-chan struct{}) {
 		l.secretInformer.HasSynced,
 		l.configMapInformer.HasSynced,
 		l.podInformer.HasSynced,
-		l.nodeInformer.HasSynced,
 	)
 	if synced {
 		l.logger.Info("cache successfully synced")
@@ -616,9 +604,4 @@ func (l *listers) createPodLister(informer informerscore.PodInformer) {
 			l.events.Notify(obj, nil)
 		},
 	})
-}
-
-func (l *listers) createNodeLister(informer informerscore.NodeInformer) {
-	l.nodeLister = informer.Lister()
-	l.nodeInformer = informer.Informer()
 }
