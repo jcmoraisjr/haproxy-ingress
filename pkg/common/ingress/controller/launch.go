@@ -48,8 +48,22 @@ func NewIngressController(backend ingress.Controller) *GenericController {
     	namespace/name. The controller uses the first node port of this Service for
     	the default backend.`)
 
-		ingressClass = flags.String("ingress-class", "",
+		ingressClass = flags.String("ingress-class", "haproxy",
 			`Name of the IngressClass to route through this controller.`)
+
+		reloadStrategy = flags.String("reload-strategy", "reusesocket",
+			`Name of the reload strategy. Options are: native or reusesocket`)
+
+		maxOldConfigFiles = flags.Int("max-old-config-files", 0,
+			`Maximum old haproxy timestamped config files to allow before being cleaned up.
+A value <= 0 indicates a single non-timestamped config file will be used`)
+
+		validateConfig = flags.Bool("validate-config", false,
+			`Define if the resulting configuration files should be validated when a dynamic
+update was applied. Default value is false, which means the validation will
+only happen when HAProxy needs to be reloaded. If validation fails, HAProxy
+Ingress will log the error and set the metric 'haproxyingress_update_success'
+as failed (zero)`)
 
 		controllerClass = flags.String("controller-class", "",
 			`Defines an alternative controller name this controller should listen to. If empty, this controller will listen to
@@ -261,6 +275,13 @@ Actually node listing isn't needed and it is always disabled`)
 		glog.Infof("watching for Gateway API resources - --watch-gateway is true")
 	}
 
+	if !(*reloadStrategy == "native" || *reloadStrategy == "reusesocket" || *reloadStrategy == "multibinder") {
+		glog.Fatalf("Unsupported reload strategy: %v", *reloadStrategy)
+	}
+	if *reloadStrategy == "multibinder" {
+		glog.Warningf("multibinder is deprecated, using reusesocket strategy instead. update your deployment configuration")
+	}
+
 	kubeClient, err := createApiserverClient(*apiserverHost, *kubeConfigFile, *disableAPIWarnings)
 	if err != nil {
 		handleFatalInitError(err)
@@ -419,6 +440,9 @@ Actually node listing isn't needed and it is always disabled`)
 		WatchGateway:             *watchGateway,
 		WatchNamespace:           *watchNamespace,
 		ConfigMapName:            *configMap,
+		ReloadStrategy:           *reloadStrategy,
+		MaxOldConfigFiles:        *maxOldConfigFiles,
+		ValidateConfig:           *validateConfig,
 		TCPConfigMapName:         *tcpConfigMapName,
 		AnnPrefix:                annPrefixList,
 		DefaultSSLCertificate:    *defSSLCertificate,

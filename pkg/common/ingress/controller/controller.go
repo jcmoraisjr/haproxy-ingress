@@ -70,6 +70,10 @@ type Configuration struct {
 	WatchNamespace           string
 	ConfigMapName            string
 
+	ReloadStrategy    string
+	MaxOldConfigFiles int
+	ValidateConfig    bool
+
 	ForceNamespaceIsolation bool
 	WaitBeforeShutdown      int
 	AllowCrossNamespace     bool

@@ -44,27 +44,24 @@ import (
 
 // HAProxyController has internal data of a HAProxyController instance
 type HAProxyController struct {
-	instance          haproxy.Instance
-	logger            *logger
-	cache             *k8scache
-	metrics           *metrics
-	tracker           convtypes.Tracker
-	stopCh            chan struct{}
-	writeModelMutex   sync.Mutex
-	ingressQueue      utils.Queue
-	acmeQueue         utils.Queue
-	reloadQueue       utils.Queue
-	leaderelector     types.LeaderElector
-	updateCount       int
-	reloadCount       int
-	controller        *controller.GenericController
-	cfg               *controller.Configuration
-	configMap         *api.ConfigMap
-	converterOptions  *convtypes.ConverterOptions
-	dynamicConfig     *convtypes.DynamicConfig
-	reloadStrategy    *string
-	maxOldConfigFiles *int
-	validateConfig    *bool
+	instance         haproxy.Instance
+	logger           *logger
+	cache            *k8scache
+	metrics          *metrics
+	tracker          convtypes.Tracker
+	stopCh           chan struct{}
+	writeModelMutex  sync.Mutex
+	ingressQueue     utils.Queue
+	acmeQueue        utils.Queue
+	reloadQueue      utils.Queue
+	leaderelector    types.LeaderElector
+	updateCount      int
+	reloadCount      int
+	controller       *controller.GenericController
+	cfg              *controller.Configuration
+	configMap        *api.ConfigMap
+	converterOptions *convtypes.ConverterOptions
+	dynamicConfig    *convtypes.DynamicConfig
 }
 
 // NewHAProxyController constructor
@@ -95,9 +92,6 @@ func (hc *HAProxyController) Start() {
 }
 
 func (hc *HAProxyController) configController() {
-	if *hc.reloadStrategy == "multibinder" {
-		glog.Warningf("multibinder is deprecated, using reusesocket strategy instead. update your deployment configuration")
-	}
 	hc.cfg = hc.controller.GetConfig()
 	hc.stopCh = hc.controller.GetStopCh()
 	hc.controller.SetNewCtrl(hc)
@@ -133,11 +127,11 @@ func (hc *HAProxyController) configController() {
 		ReloadQueue:       hc.reloadQueue,
 		LeaderElector:     hc.leaderelector,
 		Metrics:           hc.metrics,
-		ReloadStrategy:    *hc.reloadStrategy,
-		MaxOldConfigFiles: *hc.maxOldConfigFiles,
+		ReloadStrategy:    hc.cfg.ReloadStrategy,
+		MaxOldConfigFiles: hc.cfg.MaxOldConfigFiles,
 		SortEndpointsBy:   hc.cfg.SortEndpointsBy,
 		StopCh:            hc.stopCh,
-		ValidateConfig:    *hc.validateConfig,
+		ValidateConfig:    hc.cfg.ValidateConfig,
 	}
 	hc.instance = haproxy.CreateInstance(hc.logger, instanceOptions)
 	if err := hc.instance.ParseTemplates(); err != nil {
@@ -297,24 +291,10 @@ func (hc *HAProxyController) UpdateIngressStatus(*networking.Ingress) []api.Load
 // ConfigureFlags allow to configure more flags before the parsing of
 // command line arguments
 func (hc *HAProxyController) ConfigureFlags(flags *pflag.FlagSet) {
-	hc.reloadStrategy = flags.String("reload-strategy", "reusesocket",
-		`Name of the reload strategy. Options are: native or reusesocket (default)`)
-	hc.maxOldConfigFiles = flags.Int("max-old-config-files", 0,
-		`Maximum old haproxy timestamped config files to allow before being cleaned up. A value <= 0 indicates a single non-timestamped config file will be used`)
-	hc.validateConfig = flags.Bool("validate-config", false,
-		`Define if the resulting configuration files should be validated when a dynamic update was applied. Default value is false, which means the validation will only happen when HAProxy need to be reloaded.`)
-	ingressClass := flags.Lookup("ingress-class")
-	if ingressClass != nil {
-		ingressClass.Value.Set("haproxy")
-		ingressClass.DefValue = "haproxy"
-	}
 }
 
 // OverrideFlags allows controller to override command line parameter flags
 func (hc *HAProxyController) OverrideFlags(flags *pflag.FlagSet) {
-	if !(*hc.reloadStrategy == "native" || *hc.reloadStrategy == "reusesocket" || *hc.reloadStrategy == "multibinder") {
-		glog.Fatalf("Unsupported reload strategy: %v", *hc.reloadStrategy)
-	}
 }
 
 // SetConfig receives the ConfigMap the user has configured
