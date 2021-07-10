@@ -69,18 +69,43 @@ func TestParseURL(t *testing.T) {
 		},
 		// 8
 		{
+			url: "proto://name/",
+			exp: "proto | name |  | /",
+		},
+		// 9
+		{
 			url: "proto://name/app",
 			exp: "proto | name |  | /app",
 		},
-		// 9
+		// 10
+		{
+			url: "proto://name/app/sub",
+			exp: "proto | name |  | /app/sub",
+		},
+		// 11
 		{
 			url: "proto://name/app:8080",
 			exp: "proto | name/app | 8080 | ",
 		},
-		// 10
+		// 12
+		{
+			url: "proto://name/app:8080/sub",
+			exp: "proto | name/app | 8080 | /sub",
+		},
+		// 13
 		{
 			url: "proto://name:8080/app",
 			exp: "proto | name | 8080 | /app",
+		},
+		// 14
+		{
+			url: "proto://name:8080/app/sub",
+			exp: "proto | name | 8080 | /app/sub",
+		},
+		// 15
+		{
+			url: "proto://ns/name:8080/app/sub",
+			exp: "proto | ns/name | 8080 | /app/sub",
 		},
 	}
 	for i, test := range testCases {
