@@ -33,6 +33,7 @@ type ConverterOptions struct {
 	FakeCrtFile      CrtFile
 	FakeCAFile       CrtFile
 	AnnotationPrefix []string
+	DisableKeywords  []string
 	AcmeTrackTLSAnn  bool
 	HasGateway       bool
 }

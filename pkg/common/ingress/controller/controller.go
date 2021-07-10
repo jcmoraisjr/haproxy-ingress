@@ -79,6 +79,7 @@ type Configuration struct {
 	AllowCrossNamespace     bool
 	DisablePodList          bool
 	DisableExternalName     bool
+	DisableConfigKeywords   string
 	AnnPrefix               []string
 
 	AcmeServer              bool
