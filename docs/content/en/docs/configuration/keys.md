@@ -405,7 +405,7 @@ The table below describes all supported configuration keys.
 | [`modsecurity-timeout-idle`](#modsecurity)           | time with suffix                        | Global  | `30s`              |
 | [`modsecurity-timeout-processing`](#modsecurity)     | time with suffix                        | Global  | `1s`               |
 | [`nbproc-ssl`](#nbproc)                              | number of process                       | Global  | `0`                |
-| [`nbthread`](#nbthread)                              | number of threads                       | Global  | `2`                |
+| [`nbthread`](#nbthread)                              | number of threads                       | Global  |                    |
 | [`no-tls-redirect-locations`](#ssl-redirect)         | comma-separated list of URIs            | Global  | `/.well-known/acme-challenge` |
 | [`oauth`](#oauth)                                    | "oauth2_proxy"                          | Path    |                    |
 | [`oauth-headers`](#oauth)                            | `<header>:<var>,...`                    | Path    |                    |
@@ -1815,14 +1815,14 @@ See also:
 
 | Configuration key | Scope    | Default | Since |
 |-------------------|----------|---------|-------|
-| `nbthread`        | `Global` | `2`     |       |
+| `nbthread`        | `Global` |         |       |
 
 Define the number of threads a single HAProxy process should use to all its
-processing. If using with [nbproc](#nbproc), every single HAProxy process will
-share this same configuration.
+processing. If not declared, the number of threads will be adjusted to the
+number of available CPUs on platforms that support CPU affinity.
 
-If using two or more threads on a single HAProxy process, `cpu-map` is used to
-bind each thread on its own CPU core.
+If using two or more threads, `cpu-map` is used by default to bind each
+thread on its own CPU core.
 
 See also:
 
