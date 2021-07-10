@@ -25,10 +25,11 @@ HAProxy Ingress is released as a Docker image on top of Alpine's flavor of
 
 To get an overview of the individual releases and to read the changelog per release follow this [link](https://github.com/jcmoraisjr/haproxy-ingress/releases).
 
-Images are built by [Travis CI](https://travis-ci.org/jcmoraisjr/haproxy-ingress) and
-deployed to [quay.io](https://quay.io/repository/jcmoraisjr/haproxy-ingress?tag=latest&tab=tags)
-whenever a tag is applied. The `latest` tag will always point to the latest stable version while
-`canary` tag will always point to the latest beta-quality and release-candidate versions.
+Images are built by a [GitHub Workflow](https://github.com/jcmoraisjr/haproxy-ingress/actions/workflows/image.yaml)
+and deployed to [quay.io](https://quay.io/repository/jcmoraisjr/haproxy-ingress) and
+[Docker Hub](https://hub.docker.com/r/jcmoraisjr/haproxy-ingress) whenever a tag is applied.
+The `latest` tag will always point to the latest stable version while `canary` tag will always
+point to the latest beta-quality and release-candidate versions.
 
 Before the beta-quality releases, the source code could also be tagged and images deployed.
 The `snapshot` tag will always point to the latest tagged version, which could be a release,
