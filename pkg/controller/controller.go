@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -148,6 +149,7 @@ func (hc *HAProxyController) configController() {
 		DefaultCrtSecret: hc.cfg.DefaultSSLCertificate,
 		FakeCrtFile:      hc.createFakeCrtFile(),
 		FakeCAFile:       hc.createFakeCAFile(),
+		DisableKeywords:  strings.Split(hc.cfg.DisableConfigKeywords, ","),
 		AcmeTrackTLSAnn:  hc.cfg.AcmeTrackTLSAnn,
 		HasGateway:       hc.cache.hasGateway(),
 	}

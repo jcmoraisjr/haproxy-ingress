@@ -1315,6 +1315,126 @@ func TestCors(t *testing.T) {
 	}
 }
 
+func TestCustomConfig(t *testing.T) {
+	testCases := []struct {
+		disabled []string
+		config   string
+		expected []string
+		logging  string
+	}{
+		// 0
+		{
+			config:   "  server srv001 127.0.0.1:8080",
+			expected: []string{"  server srv001 127.0.0.1:8080"},
+		},
+		// 1
+		{
+			disabled: []string{"server"},
+			config:   "  server srv001 127.0.0.1:8080",
+			logging:  `WARN skipping configuration snippet on Ingress 'default/app': keyword 'server' not allowed`,
+		},
+		// 2
+		{
+			disabled: []string{"*"},
+			config:   "  server srv001 127.0.0.1:8080",
+			logging:  `WARN skipping configuration snippet on Ingress 'default/app': custom configuration is disabled`,
+		},
+		// 3
+		{
+			disabled: []string{"http-response"},
+			config: `
+  http-request set-header x-id 1 if { path / }
+`,
+			expected: []string{"", "  http-request set-header x-id 1 if { path / }"},
+		},
+		// 4
+		{
+			disabled: []string{"http-response"},
+			config: `
+  acl rootpath path /
+  http-request set-header x-id 1 if rootpath
+`,
+			expected: []string{"", "  acl rootpath path /", "  http-request set-header x-id 1 if rootpath"},
+		},
+		// 5
+		{
+			disabled: []string{"http-response", "acl"},
+			config: `
+  acl rootpath path /
+  http-request set-header x-id 1 if rootpath
+`,
+			logging: `WARN skipping configuration snippet on Ingress 'default/app': keyword 'acl' not allowed`,
+		},
+		// 6
+		{
+			disabled: []string{"http"},
+			config:   "  http-request set-header x-id 1 if { path / }",
+			expected: []string{"  http-request set-header x-id 1 if { path / }"},
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		source := &Source{
+			Type:      "Ingress",
+			Namespace: "default",
+			Name:      "app",
+		}
+		ann := map[string]map[string]string{
+			"/": {ingtypes.BackConfigBackend: test.config},
+		}
+		d := c.createBackendMappingData("default/app", source, map[string]string{}, ann, []string{"/"})
+		updater := c.createUpdater()
+		updater.options.DisableKeywords = test.disabled
+		updater.buildBackendCustomConfig(d)
+		c.compareObjects("custom config", i, d.backend.CustomConfig, test.expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
+func TestFirstToken(t *testing.T) {
+	testCases := []struct {
+		line     string
+		expected string
+	}{
+		// 0
+		{
+			line:     "",
+			expected: "",
+		},
+		// 1
+		{
+			line:     "server",
+			expected: "server",
+		},
+		// 2
+		{
+			line:     "server svc",
+			expected: "server",
+		},
+		// 3
+		{
+			line:     "\tserver\tsvc",
+			expected: "server",
+		},
+		// 4
+		{
+			line:     " \tserver \tsvc",
+			expected: "server",
+		},
+		// 5
+		{
+			line:     "  server  svc",
+			expected: "server",
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		c.compareObjects("token", i, firstToken(test.line), test.expected)
+		c.teardown()
+	}
+}
+
 func TestHeaders(t *testing.T) {
 	testCases := []struct {
 		headers  string
