@@ -3,6 +3,11 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.12!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.13.0-beta.2](#v0130-beta2)
+  * [Reference](#reference-b2)
+  * [Release notes](#release-notes-b2)
+  * [Improvements](#improvements-b2)
+  * [Fixes](#fixes-b2)
 * [v0.13.0-beta.1](#v0130-beta1)
   * [Reference](#reference-b1)
   * [Improvements](#improvements-b1)
@@ -37,6 +42,8 @@ Breaking backward compatibility from v0.12
 
 * Kubernetes minimal version changed from 1.18 to 1.19.
 * External HAProxy minimal version changed from 2.0 to 2.2.
+* Threads: by default HAProxy process will automatically configure `nbthread` to the number of available CPUs, instead of `2`, if `nbthread` is not declared and the platform supports CPU affinity. There is no change in the behavior if `nbthread` is declared.
+* Global ConfigMap: a missing ConfigMap configured with `--configmap` used to be ignored, now the controller will crash if the resource does not exist.
 * TLS configuration: v0.12 and older versions add hostnames to the HTTP and HTTPS maps despite the TLS attribute configuration. v0.13 will only add hostnames to the HTTPS map if the Ingress' TLS attribute lists the hostname, leading to 404 errors on misconfigured clusters. This behavior can be changed with `ssl-always-add-https` as a global or per hostname configuration, see the configuration [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#ssl-always-add-https).
 * OAuth2: `auth-request.lua` was updated and also the haproxy variable name with user's email address. This update will not impact if neither the Lua script nor the `oauth2-headers` configuration key were changed.
 * OAuth2 with external HAProxy sidecar: the new Lua script has dependency with `lua-json4` which should be installed in the external instance.
@@ -45,9 +52,76 @@ Breaking backward compatibility from v0.12
 
 ## Contributors
 
+* Andrew Rodland ([arodland](https://github.com/arodland))
 * Bart Versluijs ([bartversluijs](https://github.com/bartversluijs))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
+* paul ([toothbrush](https://github.com/toothbrush))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.13.0-beta.2
+
+## Reference (b2)
+
+* Release date: `2021-07-11`
+* Helm chart: `--version 0.13.0-beta.2 --devel`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.0-beta.2`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.0-beta.2`
+* Embedded HAProxy version: `2.3.12`
+
+## Release notes (b2)
+
+The number of changes is unusual for a beta quality update. Some of the new features were missed when the first beta was tagged, and some of them updated the upgrade notes / backward compatibility changes:
+
+* The default number of threads isn’t 2 anymore. If not provided, HAProxy will configure it based on the number of CPUs it is allowed to use and this should happen on platforms that support CPU affinity. Deployments that configure nbthread will not be affected.
+* A missing ConfigMap configured in the command-line option `--configmap` will now crash the controller. This misconfiguration used to be ignored. v0.12 and older will warn without crashing.
+
+Other notable changes are:
+
+* Improvement of the synchronization between the HAProxy state and the in-memory model that reflects that state. The controller used to trust that a state change sent to the admin socket is properly applied. Now every HAProxy response is parsed and the controller will enforce a reload if it doesn’t recognize the change as a valid one.
+* auth-url was incorrectly parsing an URL whose domain doesn’t have a dot, depending on the number of paths. This is a common scenario when a Kubernetes’ service name is used as a domain name. Besides that, a misconfigured oauth or external authentication were ignoring the configuration, leading the backend without the authentication. Now the attempt to configure oauth or auth external will deny requests to the backend in the case of a misconfiguration.
+* An invalid configuration file could be built if all the parsed ingress resources don’t configure a hostname.
+* Andrew Rodland added `assign-backend-server-id` configuration key that assigns predictable IDs to backend servers, improving hash based balance algorithms to properly work if the list of servers is partially changed.
+* A new command-line option `—reload-interval` adds the ability to distinguish between the frequency that the controller parses configuration changes and tries to apply dynamically, and the frequency that HAProxy should be reloaded. The former should be as fast as possible, the later, depending on the frequency, could lead to a high memory consumption depending on the long running connections timeout, like websockets.
+* Two new security options were added: `--disable-external-name` can be used to not allow backend server discovery using an external domain, and `--disable-config-keywords` can be used to partially or completely disable configuration snippets via ingress or service annotations.
+* The `auth-request.lua` script, used by oauth and external authentication, was updated to the official version from Tim’s repository. We were using a customized version due to the new external authentication options, waiting for the contributions to get merged to the main line. There were no visible changes in the functionality.
+* Paul improved the command-line documentation, adding some undocumented options that the controller supports.
+
+## Improvements (b2)
+
+New features and improvements since `v0.13.0-beta.1`:
+
+* Stable IDs for consistent-hash load balancing [#801](https://github.com/jcmoraisjr/haproxy-ingress/pull/801) (arodland) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#backend-server-id)
+  * Configuration keys:
+    * `assign-backend-server-id`
+* Ensure that configured global ConfigMap exists [#804](https://github.com/jcmoraisjr/haproxy-ingress/pull/804) (jcmoraisjr)
+* Update auth-request.lua script [#809](https://github.com/jcmoraisjr/haproxy-ingress/pull/809) (jcmoraisjr)
+* Add log of reload error on every reconciliation [#811](https://github.com/jcmoraisjr/haproxy-ingress/pull/811) (jcmoraisjr)
+* Add reload interval command-line option [#815](https://github.com/jcmoraisjr/haproxy-ingress/pull/815) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/command-line/#reload-interval)
+  * Command-line options:
+    * `--reload-interval`
+* Add disable-external-name command-line option [#816](https://github.com/jcmoraisjr/haproxy-ingress/pull/816) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/command-line/#disable-external-name)
+  * Command-line options:
+    * `--disable-external-name`
+* Add disable-config-keywords command-line options [#820](https://github.com/jcmoraisjr/haproxy-ingress/pull/820) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/command-line/#disable-config-keywords)
+  * Command-line options:
+    * `--disable-config-keywords`
+* Updates to the help output of command-line options [#814](https://github.com/jcmoraisjr/haproxy-ingress/pull/814) (jcmoraisjr)
+* Change nbthread to use all CPUs by default [#821](https://github.com/jcmoraisjr/haproxy-ingress/pull/821) (jcmoraisjr)
+* update client-go from 0.20.7 to 0.20.8 [136026a](https://github.com/jcmoraisjr/haproxy-ingress/commit/136026a1d6c1558d4474a4286d1400fe8791a858) (Joao Morais)
+* update embedded haproxy from 2.3.10 to 2.3.12 [38c0499](https://github.com/jcmoraisjr/haproxy-ingress/commit/38c04993293718147162f9ae342775e082ecad1c) (Joao Morais)
+
+## Fixes (b2)
+
+* Fix backend match if no ingress use host match [#802](https://github.com/jcmoraisjr/haproxy-ingress/pull/802) (jcmoraisjr)
+* Reload haproxy if a backend server cannot be found [#810](https://github.com/jcmoraisjr/haproxy-ingress/pull/810) (jcmoraisjr)
+* Fix auth-url parsing if hostname misses a dot [#818](https://github.com/jcmoraisjr/haproxy-ingress/pull/818) (jcmoraisjr)
+* Always deny requests of failed auth configurations [#819](https://github.com/jcmoraisjr/haproxy-ingress/pull/819) (jcmoraisjr)
+
+## Other
+
+* docs: Add all command-line options to list. [#806](https://github.com/jcmoraisjr/haproxy-ingress/pull/806) (toothbrush)
+* docs: update haproxy doc link to 2.2 [032db56](https://github.com/jcmoraisjr/haproxy-ingress/commit/032db56c78cd7d9db88de58b39e238fa66b18987) (Joao Morais)
+* build: remove travis-ci configs [4ac3938](https://github.com/jcmoraisjr/haproxy-ingress/commit/4ac3938d8ee7bb242d8e6db1882eb378feb47762) (Joao Morais)
 
 # v0.13.0-beta.1
 
