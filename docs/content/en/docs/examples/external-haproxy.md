@@ -33,12 +33,12 @@ controller:
     enabled: true
     image:
       repository: haproxy
-      tag: 2.3.8-alpine
+      tag: 2.3.12-alpine
 ```
 
 Change the hostNetwork to `true` if your cluster doesn't provide a service loadbalancer.
-These parameters are also configuring an external haproxy, version 2.3.8, and configuring
-haproxy to log to stdout.
+These parameters are also configuring an external haproxy and configuring it to log to
+stdout.
 
 Add the HAProxy Ingress Helm repository if using HAProxy Ingress' chart for the first time:
 
@@ -131,9 +131,10 @@ This example configures 2 (two) new containers in the controllers' pod:
 * `haproxy` is the external haproxy deployment with two mandatory arguments: `-S` with the master CLI unix socket, and `-f` with the configuration files path
 * `init`, a Kubernetes' [initContainer](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/) used to create an initial and valid haproxy configuration.
 
-The `haproxy` container references the official Alpine based image `haproxy:2.3.4-alpine`,
-but can be any other. The only requisite is to be 2.0 or newer due to some new keywords
-used by HAProxy Ingress.
+The `haproxy` container references the official Alpine based image `haproxy:2.3.12-alpine`,
+but can be any other, provided that it isn't older than the minimal required version. The
+minimal version for the external HAProxy can be found in the
+[README](https://github.com/jcmoraisjr/haproxy-ingress/#use-haproxy-ingress) file.
 
 The `init` container just copy a minimum and valid `haproxy.cfg`. This file is used
 to properly starts haproxy and configures its master CLI that HAProxy Ingress uses
