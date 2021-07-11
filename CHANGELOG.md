@@ -233,6 +233,19 @@ Fixes and improvements since [v0.11-beta.3](#v011-beta3):
 * Improve certificate validation of acme signer [#689](https://github.com/jcmoraisjr/haproxy-ingress/pull/689) (jcmoraisjr)
 * Update haproxy from 2.1.9 to 2.1.10 [9763c63](https://github.com/jcmoraisjr/haproxy-ingress/commit/9763c635d73dc3c853223304902b29ae3065cb32) (Joao Morais)
 
+## v0.10.9
+
+Fixes and improvements since [v0.10.8](#v0108):
+
+* Ensure that configured global ConfigMap exists [#804](https://github.com/jcmoraisjr/haproxy-ingress/pull/804) (jcmoraisjr)
+* Add disable-external-name command-line option [#816](https://github.com/jcmoraisjr/haproxy-ingress/pull/816) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.10/docs/configuration/command-line/#disable-external-name)
+  * Command-line options:
+    * `--disable-external-name`
+* Add disable-config-keywords command-line options [#820](https://github.com/jcmoraisjr/haproxy-ingress/pull/820) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.10/docs/configuration/command-line/#disable-config-keywords)
+  * Command-line options:
+    * `--disable-config-keywords`
+* build: remove travis-ci configs [8c7fc79](https://github.com/jcmoraisjr/haproxy-ingress/commit/8c7fc794ef20a87da86bbfe80f61b7d864580c04) (Joao Morais)
+
 ## v0.10.8
 
 Fixes and improvements since [v0.10.7](#v0107):
