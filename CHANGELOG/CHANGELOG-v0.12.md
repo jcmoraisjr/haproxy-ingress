@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.11!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.12.6](#v0126)
+  * [Reference](#reference-r6)
+  * [Release notes](#release-notes-r6)
+  * [Fixes and improvements](#fixes-and-improvements-r6)
 * [v0.12.5](#v0125)
   * [Reference](#reference-r5)
   * [Fixes and improvements](#fixes-and-improvements-r5)
@@ -62,8 +66,46 @@ Breaking backward compatibility from v0.11
 
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
 * Max Verigin ([griever989](https://github.com/griever989))
+* paul ([toothbrush](https://github.com/toothbrush))
 * pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.12.6
+
+## Reference (r6)
+
+* Release date: `2021-07-11`
+* Helm chart: `--version 0.12.6`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.12.6`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.12.6`
+* Embedded HAProxy version: `2.2.14`
+
+## Release notes (r6)
+
+This release improves the synchronization between HAProxy state and the in memory model that reflects that state. The controller used to trust that a state change sent to the admin socket is properly applied. Now every HAProxy response is parsed and the controller will enforce a reload if it doesn’t recognize the change as a valid one.
+
+Some new security options were added as well: `--disable-external-name` can be used to not allow backend server discovery using an external domain, and `--disable-config-keywords` can be used to partially or completely disable configuration snippets via ingress or service annotations.
+
+A warning will be emitted if the configured global ConfigMap does not exist. This used to be ignored, and v0.12 will only log this misconfiguration to preserve backward compatibility.
+
+Paul improved the command-line documentation, adding some undocumented options that the controller supports.
+
+## Fixes and improvements (r6)
+
+Fixes and improvements since `v0.12.5`:
+
+* Ensure that configured global ConfigMap exists [#804](https://github.com/jcmoraisjr/haproxy-ingress/pull/804) (jcmoraisjr)
+* Reload haproxy if a backend server cannot be found [#810](https://github.com/jcmoraisjr/haproxy-ingress/pull/810) (jcmoraisjr)
+* Add disable-external-name command-line option [#816](https://github.com/jcmoraisjr/haproxy-ingress/pull/816) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/command-line/#disable-external-name)
+  * Command-line options:
+    * `--disable-external-name`
+* docs: Add all command-line options to list. [#806](https://github.com/jcmoraisjr/haproxy-ingress/pull/806) (toothbrush)
+* Add disable-config-keywords command-line options [#820](https://github.com/jcmoraisjr/haproxy-ingress/pull/820) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/command-line/#disable-config-keywords)
+  * Command-line options:
+    * `--disable-config-keywords`
+* docs: update haproxy doc link to 2.2 [986d754](https://github.com/jcmoraisjr/haproxy-ingress/commit/986d75427fe0966de92e7625887456cd44ef77f7) (Joao Morais)
+* build: remove travis-ci configs [0d134de](https://github.com/jcmoraisjr/haproxy-ingress/commit/0d134de09a636673bd67d1b5750759edd5dbbe85) (Joao Morais)
+* update client-go from 0.19.11 to 0.19.12 [aee8cd2](https://github.com/jcmoraisjr/haproxy-ingress/commit/aee8cd2b4a046488a7cd07c8a42061f8154f96c3) (Joao Morais)
 
 # v0.12.5
 
