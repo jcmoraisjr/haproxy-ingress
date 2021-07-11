@@ -20,9 +20,9 @@ require (
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/pool.v3 v3.1.1
 	gopkg.in/yaml.v2 v2.3.0
-	k8s.io/api v0.20.7
-	k8s.io/apimachinery v0.20.7
-	k8s.io/apiserver v0.20.7
-	k8s.io/client-go v0.20.7
+	k8s.io/api v0.20.8
+	k8s.io/apimachinery v0.20.8
+	k8s.io/apiserver v0.20.8
+	k8s.io/client-go v0.20.8
 	sigs.k8s.io/gateway-api v0.2.0
 )
