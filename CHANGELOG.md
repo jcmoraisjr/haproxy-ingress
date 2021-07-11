@@ -22,6 +22,19 @@ Unsupported:
 * [v0.2](#v02)
 * [v0.1](#v01)
 
+## v0.11.8
+
+Fixes and improvements since [v0.11.7](#v0117):
+
+* Ensure that configured global ConfigMap exists [#804](https://github.com/jcmoraisjr/haproxy-ingress/pull/804) (jcmoraisjr)
+* Add disable-external-name command-line option [#816](https://github.com/jcmoraisjr/haproxy-ingress/pull/816) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.11/docs/configuration/command-line/#disable-external-name)
+  * Command-line options:
+    * `--disable-external-name`
+* Add disable-config-keywords command-line options [#820](https://github.com/jcmoraisjr/haproxy-ingress/pull/820) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.11/docs/configuration/command-line/#disable-config-keywords)
+  * Command-line options:
+    * `--disable-config-keywords`
+* build: remove travis-ci configs [f38a933](https://github.com/jcmoraisjr/haproxy-ingress/commit/f38a933bf2a2a6b223ffd050c9b57509f11e3d10) (Joao Morais)
+
 ## v0.11.7
 
 Fixes and improvements since [v0.11.6](#v0116):
