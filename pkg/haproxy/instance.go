@@ -27,9 +27,9 @@ import (
 	"time"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/socket"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
-	hautils "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
@@ -188,7 +188,7 @@ func (i *instance) CalcIdleMetric() {
 	if !i.up {
 		return
 	}
-	msg, err := hautils.HAProxyCommand(i.config.Global().AdminSocket, i.metrics.HAProxyShowInfoResponseTime, "show info")
+	msg, err := socket.HAProxyCommand(i.config.Global().AdminSocket, i.metrics.HAProxyShowInfoResponseTime, "show info")
 	if err != nil {
 		i.logger.Error("error reading admin socket: %v", err)
 		return
@@ -504,7 +504,7 @@ func (i *instance) reloadEmbedded() error {
 }
 
 func (i *instance) reloadExternal() error {
-	socket := i.config.Global().External.MasterSocket
+	masterSocket := i.config.Global().External.MasterSocket
 	if !i.up {
 		// first run, wait until the external haproxy is running
 		// and successfully listening to the master socket.
@@ -512,12 +512,12 @@ func (i *instance) reloadExternal() error {
 		i.logger.Info("waiting for the external haproxy...")
 		for {
 			var err error
-			if _, err = hautils.HAProxyCommand(socket, nil, "show proc"); err == nil {
+			if _, err = socket.HAProxyCommand(masterSocket, nil, "show proc"); err == nil {
 				break
 			}
 			j++
 			if j%10 == 0 {
-				i.logger.Info("cannot connect to the master socket '%s': %v", socket, err)
+				i.logger.Info("cannot connect to the master socket '%s': %v", masterSocket, err)
 			}
 			select {
 			case <-i.options.StopCh:
@@ -526,10 +526,10 @@ func (i *instance) reloadExternal() error {
 			}
 		}
 	}
-	if _, err := hautils.HAProxyCommand(socket, nil, "reload"); err != nil {
+	if _, err := socket.HAProxyCommand(masterSocket, nil, "reload"); err != nil {
 		return fmt.Errorf("error sending reload to master socket: %w", err)
 	}
-	out, err := hautils.HAProxyProcs(socket)
+	out, err := socket.HAProxyProcs(masterSocket)
 	if err != nil {
 		return fmt.Errorf("error reading procs from master socket: %w", err)
 	}

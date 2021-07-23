@@ -25,8 +25,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/socket"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )
 
@@ -59,7 +59,7 @@ func (i *instance) newDynUpdater() *dynUpdater {
 		logger:  i.logger,
 		config:  i.config.(*config),
 		socket:  i.config.Global().AdminSocket,
-		cmd:     utils.HAProxyCommand,
+		cmd:     socket.HAProxyCommand,
 		metrics: i.metrics,
 	}
 }
