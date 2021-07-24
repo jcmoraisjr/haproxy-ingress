@@ -22,6 +22,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	k8snet "k8s.io/apimachinery/pkg/util/net"
@@ -29,46 +30,149 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
-// HAProxyCommand ...
-func HAProxyCommand(socket string, observer func(duration time.Duration), command ...string) ([]string, error) {
+// HAProxySocket ...
+type HAProxySocket interface {
+	Address() string
+	Send(observer func(duration time.Duration), command ...string) ([]string, error)
+	Down()
+	Close() error
+}
+
+type sock struct {
+	address   string
+	listening bool
+	keepalive bool
+	conn      net.Conn
+	buffer    []byte
+	mutex     sync.Mutex
+}
+
+// NewSocket ...
+func NewSocket(address string) HAProxySocket {
+	return &sock{
+		address:   address,
+		listening: true,
+		keepalive: true,
+		mutex:     sync.Mutex{},
+	}
+}
+
+// Address ...
+func (s *sock) Address() string {
+	return s.address
+}
+
+// Send ...
+func (s *sock) Send(observer func(duration time.Duration), command ...string) ([]string, error) {
+	// we've distinct threads using and cleaning up socket instances
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	var msg []string
 	for _, cmd := range command {
 		start := time.Now()
-		c, err := net.Dial("unix", socket)
+		response, err := s.send(cmd)
 		if err != nil {
-			return msg, fmt.Errorf("error connecting to unix socket %s: %w", socket, err)
+			return msg, err
 		}
-		defer c.Close()
-		if !strings.HasSuffix(cmd, "\n") {
-			// haproxy starts the command after receiving a line break
-			cmd += "\n"
-		}
-		if _, err := c.Write([]byte(cmd)); err != nil {
-			return msg, fmt.Errorf("error sending to unix socket %s: %w", socket, err)
-		}
-		readBuffer := make([]byte, 1536) // fits all the `show info` response in a single chunck
-		var response string
-		for {
-			r, err := c.Read(readBuffer)
-			if err != nil && err != io.EOF {
-				// ignore any successfully read data in the case of an error
-				return msg, fmt.Errorf("error reading response from unix socket %s: %w", socket, err)
-			}
-			response += string(readBuffer[:r])
-			if r == 0 || strings.HasSuffix(response, "\n\n") {
-				// end of the stream if empty (r==0) or response ended with two consecutive line breaks
-				// the line breaks are the way haproxy says we reach the end of the stream, since
-				// master socket seems to always work on interactive/prompt mode and doesn't close the
-				// connection
-				break
-			}
-		}
-		msg = append(msg, strings.TrimRight(response, "\n"))
 		if observer != nil {
 			observer(time.Since(start))
 		}
+		msg = append(msg, response)
 	}
 	return msg, nil
+}
+
+func (s *sock) Down() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.listening = false
+}
+
+// Close ...
+func (s *sock) Close() error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.close()
+}
+
+func (s *sock) close() error {
+	if s.conn != nil {
+		err := s.conn.Close()
+		s.conn = nil
+		return err
+	}
+	return nil
+}
+
+func (s *sock) send(cmd string) (string, error) {
+	c, err := s.acquireConn()
+	if err != nil {
+		return "", fmt.Errorf("error connecting to %s: %w", s.address, err)
+	}
+	if !strings.HasSuffix(cmd, "\n") {
+		// haproxy starts the command after receiving a line break
+		cmd += "\n"
+	}
+	if n, err := c.Write([]byte(cmd)); err != nil {
+		if n == 0 && s.listening && !k8snet.IsConnectionRefused(err) {
+			// nothing was sent, server socket is still alive
+			// but current connection is broken, try a new connection
+			c, err = s.newConn()
+			if err == nil {
+				_, err = c.Write([]byte(cmd))
+			}
+		}
+		if err != nil {
+			return "", fmt.Errorf("error writing to %s: %w", s.address, err)
+		}
+	}
+	var response string
+	for {
+		r, err := c.Read(s.buffer)
+		if err != nil && err != io.EOF {
+			// ignore any successfully read data in the case of an error
+			return "", fmt.Errorf("error reading response from %s: %w", s.address, err)
+		}
+		response += string(s.buffer[:r])
+		if r == 0 ||
+			strings.HasSuffix(response, "\n> ") ||
+			strings.HasSuffix(response, "master> ") ||
+			strings.HasSuffix(response, "\n\n") {
+			// end of the stream if empty (r==0), ended with an interactive prompt ("> "),
+			// master prompt ("master> ") or it's a non interactive response ("\n\n").
+			// ps: currently master doesn't close the connection even in non interactive mode.
+			break
+		}
+	}
+	// remove the last line breaks and all trailing chars, that might be
+	// the cli prompt ("> ") or the master prompt ("master> ")
+	i := strings.LastIndex(response, "\n")
+	return strings.TrimRight(response[:i+1], "\n"), nil
+}
+
+func (s *sock) acquireConn() (net.Conn, error) {
+	if s.buffer == nil {
+		s.buffer = make([]byte, 1536)
+	}
+	if s.conn == nil {
+		c, err := net.Dial("unix", s.address)
+		if err != nil {
+			return nil, err
+		}
+		s.conn = c
+		if s.keepalive {
+			// Master socket is always in keep alive mode, even without calling prompt.
+			// Currently keep alive is always true, so we are good. Need to be revisited
+			// if a false state is desired.
+			s.send("prompt")
+		}
+	}
+	return s.conn, nil
+}
+
+func (s *sock) newConn() (net.Conn, error) {
+	s.close()
+	return s.acquireConn()
 }
 
 // ProcTable ...
@@ -86,8 +190,6 @@ type Proc struct {
 	Reloads int
 }
 
-var haproxyCmd func(string, func(duration time.Duration), ...string) ([]string, error) = HAProxyCommand
-
 // HAProxyProcs reads and converts `show proc` from the master CLI to a ProcTable
 // instance. Waits for the reload to complete while master CLI is down and the
 // attempt to connect leads to a connection refused. Some context:
@@ -96,7 +198,7 @@ var haproxyCmd func(string, func(duration time.Duration), ...string) ([]string, 
 // and aritmetically betweem 128ms and 1s in order to save CPU on long reload events
 // and quit fast on the fastest ones. The whole processing time can be calculated by
 // the caller as the haproxy reload time.
-func HAProxyProcs(masterSocket string) (*ProcTable, error) {
+func HAProxyProcs(masterSocket HAProxySocket) (*ProcTable, error) {
 	maxLogWait := 64 * time.Millisecond
 	logFactor := 2
 	maxArithWait := 1024 * time.Millisecond
@@ -104,7 +206,7 @@ func HAProxyProcs(masterSocket string) (*ProcTable, error) {
 	wait := time.Millisecond
 	for {
 		time.Sleep(wait)
-		out, err := haproxyCmd(masterSocket, nil, "show proc")
+		out, err := masterSocket.Send(nil, "show proc")
 		if err == nil || !k8snet.IsConnectionRefused(err) {
 			if len(out) > 0 {
 				return buildProcTable(out[0]), err

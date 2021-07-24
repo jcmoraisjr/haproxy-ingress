@@ -24,18 +24,72 @@ import (
 	"time"
 )
 
-func TestHAProxyCommand(t *testing.T) {
-	// needs a running HAProxy and admin socket at /tmp/h.sock
-	// also, it will output the response in the error pipe, so will always fail
+func TestSocket(t *testing.T) {
+	// needs a running HAProxy and admin socket at /tmp/h.sock with stats timeout 5s
+	// start with haproxy -f h.cfg -W -S /tmp/m.sock
+	// it will output the response in the error pipe, so will always fail
 	// TODO create a test and temp server where HAProxyCommand can connect to
-	/*
-		out, err := HAProxyCommand("/tmp/h.sock", nil, "show info")
-		if err != nil {
-			t.Errorf("%v", err)
+	//
+	// testSocket(t)
+}
+
+func testSocket(t *testing.T) {
+	testCases := []struct {
+		cmd        string
+		master     bool
+		waitBefore time.Duration
+	}{
+		// 0
+		{
+			cmd:        "show sess",
+			waitBefore: 0,
+		},
+		// 1
+		{
+			cmd:        "show info",
+			waitBefore: 3 * time.Second,
+		},
+		// 2
+		{
+			cmd:        "show sess",
+			waitBefore: 7 * time.Second,
+		},
+		// 3
+		{
+			cmd:        "show proc",
+			master:     true,
+			waitBefore: 0,
+		},
+		// 4
+		{
+			cmd:        "show cli sockets",
+			master:     true,
+			waitBefore: 3 * time.Second,
+		},
+		// 5
+		{
+			cmd:        "show proc",
+			master:     true,
+			waitBefore: 7 * time.Second,
+		},
+	}
+	clientSocket := NewSocket("/tmp/h.sock")
+	masterSocket := NewSocket("/tmp/m.sock")
+	for _, test := range testCases {
+		time.Sleep(test.waitBefore)
+		var sock HAProxySocket
+		if test.master {
+			sock = masterSocket
 		} else {
-			t.Errorf("%d %v", len(out[0]), out[0])
+			sock = clientSocket
 		}
-	*/
+		out, err := sock.Send(nil, test.cmd)
+		if err == nil {
+			t.Errorf("\nlen: %d\nbytes: %v\n%v", len(out[0]), []byte(out[0]), out[0])
+		} else {
+			t.Errorf("%v", err)
+		}
+	}
 }
 
 func TestHAProxyProcs(t *testing.T) {
@@ -167,9 +221,11 @@ func TestHAProxyProcs(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		c.cmdOutput = test.cmdOutput
-		c.cmdError = test.cmdError
-		out, err := HAProxyProcs("socket")
+		cli := &clientMock{
+			cmdOutput: test.cmdOutput,
+			cmdError:  test.cmdError,
+		}
+		out, err := HAProxyProcs(cli)
 		if !reflect.DeepEqual(out, test.expOutput) {
 			t.Errorf("output differs on %d - expected: %+v, actual: %+v", i, test.expOutput, out)
 		}
@@ -207,10 +263,12 @@ func TestHAProxyProcsLoop(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		c.cmdError = syscall.ECONNREFUSED
-		time.AfterFunc(test.reload, func() { c.cmdError = nil })
+		cli := &clientMock{
+			cmdError: syscall.ECONNREFUSED,
+		}
+		time.AfterFunc(test.reload, func() { cli.cmdError = nil })
 		start := time.Now()
-		_, err := HAProxyProcs("")
+		_, err := HAProxyProcs(cli)
 		if err != nil {
 			t.Errorf("%d should not return an error: %w", i, err)
 		}
@@ -218,30 +276,43 @@ func TestHAProxyProcsLoop(t *testing.T) {
 		if elapsed < test.minDelay {
 			t.Errorf("elapsed in %d is '%s' and should not be lower than min '%s'", i, elapsed.String(), test.minDelay.String())
 		}
-		if c.callCnt > test.maxCnt {
-			t.Errorf("callCnt in %d is '%d' and should not be greater than max '%d'", i, c.callCnt, test.maxCnt)
+		if cli.callCnt > test.maxCnt {
+			t.Errorf("callCnt in %d is '%d' and should not be greater than max '%d'", i, cli.callCnt, test.maxCnt)
 		}
+		c.tearDown()
 	}
 }
 
 type testConfig struct {
-	t         *testing.T
-	cmdOutput []string
-	cmdError  error
-	callCnt   int
+	t *testing.T
 }
 
 func setup(t *testing.T) *testConfig {
 	c := &testConfig{
 		t: t,
 	}
-	haproxyCmd = c.haproxyCommand
 	return c
 }
 
 func (c *testConfig) tearDown() {}
 
-func (c *testConfig) haproxyCommand(string, func(duration time.Duration), ...string) ([]string, error) {
+type clientMock struct {
+	cmdOutput []string
+	cmdError  error
+	callCnt   int
+}
+
+func (c *clientMock) Address() string {
+	return ""
+}
+
+func (c *clientMock) Send(observer func(duration time.Duration), command ...string) ([]string, error) {
 	c.callCnt++
 	return c.cmdOutput, c.cmdError
+}
+
+func (c *clientMock) Down() {}
+
+func (c *clientMock) Close() error {
+	return nil
 }

@@ -33,8 +33,7 @@ import (
 type dynUpdater struct {
 	logger  types.Logger
 	config  *config
-	socket  string
-	cmd     func(socket string, observer func(duration time.Duration), commands ...string) ([]string, error)
+	socket  socket.HAProxySocket
 	cmdCnt  int
 	metrics types.Metrics
 }
@@ -54,12 +53,11 @@ type epPair struct {
 	cur *hatypes.Endpoint
 }
 
-func (i *instance) newDynUpdater() *dynUpdater {
+func (i *instance) newDynUpdater(socket socket.HAProxySocket) *dynUpdater {
 	return &dynUpdater{
 		logger:  i.logger,
 		config:  i.config.(*config),
-		socket:  i.config.Global().AdminSocket,
-		cmd:     socket.HAProxyCommand,
+		socket:  socket,
 		metrics: i.metrics,
 	}
 }
@@ -457,7 +455,7 @@ func (d *dynUpdater) execEnableEndpoint(backname string, oldEP, curEP *hatypes.E
 }
 
 func (d *dynUpdater) execCommand(observer func(duration time.Duration), cmd []string) ([]string, error) {
-	msg, err := d.cmd(d.socket, observer, cmd...)
+	msg, err := d.socket.Send(observer, cmd...)
 	d.cmdCnt = d.cmdCnt + len(cmd)
 	return msg, err
 }
