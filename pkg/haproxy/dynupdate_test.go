@@ -1056,6 +1056,10 @@ func (cli *clientMock) Address() string {
 	return ""
 }
 
+func (cli *clientMock) HasConn() bool {
+	return true
+}
+
 func (cli *clientMock) Send(observer func(duration time.Duration), command ...string) ([]string, error) {
 	for _, c := range command {
 		cli.cmd = cli.cmd + c + "\n"
@@ -1063,7 +1067,9 @@ func (cli *clientMock) Send(observer func(duration time.Duration), command ...st
 	return cli.cmdOutput, nil
 }
 
-func (cli *clientMock) Down() {}
+func (cli *clientMock) Unlistening() error {
+	return nil
+}
 
 func (cli *clientMock) Close() error {
 	return nil

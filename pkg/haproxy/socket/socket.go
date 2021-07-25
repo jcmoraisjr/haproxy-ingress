@@ -30,43 +30,73 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
+// NewSocket ...
+func NewSocket(address string, keepalive bool) HAProxySocket {
+	return &sock{
+		address:   address,
+		listening: true,
+		keepalive: keepalive,
+	}
+}
+
+// NewSocketConcurrent ...
+func NewSocketConcurrent(address string, keepalive bool) HAProxySocket {
+	return &sock{
+		mutex:     &sync.Mutex{},
+		address:   address,
+		listening: true,
+		keepalive: keepalive,
+	}
+}
+
 // HAProxySocket ...
 type HAProxySocket interface {
 	Address() string
+	HasConn() bool
 	Send(observer func(duration time.Duration), command ...string) ([]string, error)
-	Down()
+	Unlistening() error
 	Close() error
 }
 
 type sock struct {
+	mutex     *sync.Mutex
 	address   string
 	listening bool
 	keepalive bool
 	conn      net.Conn
 	buffer    []byte
-	mutex     sync.Mutex
 }
 
-// NewSocket ...
-func NewSocket(address string) HAProxySocket {
-	return &sock{
-		address:   address,
-		listening: true,
-		keepalive: true,
-		mutex:     sync.Mutex{},
+func (s *sock) lock() {
+	if s.mutex != nil {
+		s.mutex.Lock()
 	}
 }
 
-// Address ...
+func (s *sock) unlock() {
+	if s.mutex != nil {
+		s.mutex.Unlock()
+	}
+}
+
 func (s *sock) Address() string {
 	return s.address
 }
 
-// Send ...
+func (s *sock) HasConn() bool {
+	return s.conn != nil
+}
+
 func (s *sock) Send(observer func(duration time.Duration), command ...string) ([]string, error) {
 	// we've distinct threads using and cleaning up socket instances
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.lock()
+	defer s.unlock()
+	if !s.keepalive && len(command) > 1 {
+		// reuse the same connection to send more than one command
+		if _, err := s.send("prompt"); err != nil {
+			return nil, err
+		}
+	}
 	var msg []string
 	for _, cmd := range command {
 		start := time.Now()
@@ -79,19 +109,25 @@ func (s *sock) Send(observer func(duration time.Duration), command ...string) ([
 		}
 		msg = append(msg, response)
 	}
+	if !s.keepalive {
+		s.close()
+	}
 	return msg, nil
 }
 
-func (s *sock) Down() {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+func (s *sock) Unlistening() error {
+	s.lock()
+	defer s.unlock()
+	if _, err := s.acquireConn(); err != nil {
+		return err
+	}
 	s.listening = false
+	return nil
 }
 
-// Close ...
 func (s *sock) Close() error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.lock()
+	defer s.unlock()
 	return s.close()
 }
 
@@ -114,9 +150,9 @@ func (s *sock) send(cmd string) (string, error) {
 		cmd += "\n"
 	}
 	if n, err := c.Write([]byte(cmd)); err != nil {
-		if n == 0 && s.listening && !k8snet.IsConnectionRefused(err) {
-			// nothing was sent, server socket is still alive
-			// but current connection is broken, try a new connection
+		if n == 0 && s.keepalive && s.listening && !k8snet.IsConnectionRefused(err) {
+			// nothing was sent, maybe an old connection (keep alive true), server socket
+			// is still alive but current connection is broken, try a new connection
 			c, err = s.newConn()
 			if err == nil {
 				_, err = c.Write([]byte(cmd))
@@ -155,6 +191,9 @@ func (s *sock) acquireConn() (net.Conn, error) {
 		s.buffer = make([]byte, 1536)
 	}
 	if s.conn == nil {
+		if !s.listening {
+			return nil, fmt.Errorf("cannot connect to '%s': listening is down", s.address)
+		}
 		c, err := net.Dial("unix", s.address)
 		if err != nil {
 			return nil, err
@@ -162,8 +201,7 @@ func (s *sock) acquireConn() (net.Conn, error) {
 		s.conn = c
 		if s.keepalive {
 			// Master socket is always in keep alive mode, even without calling prompt.
-			// Currently keep alive is always true, so we are good. Need to be revisited
-			// if a false state is desired.
+			// However calling prompt doesn't hurt.
 			s.send("prompt")
 		}
 	}

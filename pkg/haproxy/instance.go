@@ -192,7 +192,7 @@ func (i *instance) CalcIdleMetric() {
 		return
 	}
 	if i.idleChkSock == nil {
-		i.idleChkSock = socket.NewSocket(i.config.Global().AdminSocket)
+		i.idleChkSock = socket.NewSocket(i.config.Global().AdminSocket, false)
 	}
 	msg, err := i.idleChkSock.Send(i.metrics.HAProxyShowInfoResponseTime, "show info")
 	if err != nil {
@@ -273,7 +273,7 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 		i.logChanged()
 	}
 	if i.adminSock == nil {
-		i.adminSock = socket.NewSocket(i.config.Global().AdminSocket)
+		i.adminSock = socket.NewSocket(i.config.Global().AdminSocket, false)
 	}
 	updater := i.newDynUpdater(i.adminSock)
 	updated := updater.update()
@@ -530,7 +530,7 @@ func (i *instance) reloadEmbedded() error {
 
 func (i *instance) reloadExternal() error {
 	if i.masterSock == nil {
-		i.masterSock = socket.NewSocket(i.config.Global().External.MasterSocket)
+		i.masterSock = socket.NewSocket(i.config.Global().External.MasterSocket, false)
 	}
 	if !i.up {
 		// first run, wait until the external haproxy is running
