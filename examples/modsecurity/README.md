@@ -146,25 +146,3 @@ m-multi"] [tag "attack-lfi"] [tag "OWASP_CRS/WEB_ATTACK/FILE_INJECTION"] [tag "W
 unique_id ""]
 ...
 ```
-
-## Deploy ModSecurity Agent With a Sidecar Container for Audit Logs
-
-
-A ModSecurity agent can be deployed with an additional sidecar container so you can have access to the logs stored in the AuditLog file. If you are using the default configuration of the ModSecurity agent, the logs written to the AuditLog specified are not reachable in the agent container's STDOUT.
-
-In order to read information written to that file, you must add a sidecar container to the method of deployment of the ModSecurity agent in Kubernetes. This is especially useful if you set the SecRuleEngine configuration to DetectionOnly.
-
-Update the ModSecurity agent daemonset to have a sidecar container to read the audit log file to STDOUT
-
-```
-$ kubectl apply -f https://raw.githubusercontent.com/jcmoraisjr/haproxy-ingress/master/examples/modsecurity/modsecurity-daemonset-auditlog-sidecar.yaml
-daemonset "modsecurity-spoa" configured
-```
-
-Now the ModSecurity agent pods will have two containers to get logs from: one for the traditional ModSecurity logs and one for the logs written to the AuditLog file.
-
-```
-$ kubectl -n ingress-controller get pod -lrun=modsecurity-spoa -owide
-NAME                     READY     STATUS    RESTARTS   AGE       IP               NODE
-modsecurity-spoa-pp6jz   2/2       Running   0          7s        192.168.100.99   192.168.100.99
-```
