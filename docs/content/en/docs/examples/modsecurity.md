@@ -175,3 +175,42 @@ $ kubectl -n ingress-controller get pod -lrun=modsecurity-spoa -owide
 NAME                     READY     STATUS    RESTARTS   AGE       IP               NODE
 modsecurity-spoa-pp6jz   2/2       Running   0          7s        192.168.100.99   192.168.100.99
 ```
+
+## Deploy ModSecurity Agent That Automatically Scales
+
+The ModSecurity daemonset can be configured to automatically schedule new pods on new nodes as they are scaled up. With this type of configuration, there is no need to add new labels to nodes whenever you need to schedule another ModSecurity pod.
+Additionally, a service can be created as a single point of access to the ModSecurity daemonset pods. With the service, you would never have to edit the ConfigMap in the `ingress-controller` namespace after the initial deployment.
+
+In order to automatically schedule ModSecurity pods on new nodes in the cluster, you can update your daemonset to remove the NodeSelector condition.
+```
+$ kubectl apply -f https://haproxy-ingress.github.io/resources/modsecurity-daemonset-autoscale.yaml
+daemonset "modsecurity-spoa" configured
+```
+
+You can now create the service that provides a ClusterIP address for the HAProxy ConfigMap.
+```
+kubectl create -f https://haproxy-ingress.github.io/resources/modsecurity-service.yaml
+service "modsecurity-svc" created
+```
+
+Once the service is created, you can obtain the ClusterIP address to be used later in the ConfigMap.
+```
+$ kubectl -n ingress-controller get svc
+NAME                     TYPE       CLUSTERIP        EXTERNAL-IP  PORT(S)     AGE
+modsecurity-svc          ClusterIP  172.20.216.246   <none>       12345/TCP   7m
+```
+
+Edit the ConfigMap key `modsecurity-endpoints` with the new ClusterIP address of the service. The default port number of the agent is `12345`.
+A `kubectl -n ingress-controller edit configmap haproxy-ingress` should work.
+
+Example of a ConfigMap content if the ModSecurity service has a ClusterIP of `172.20.216.246`:
+
+```yaml
+apiVersion: v1
+data:
+  modsecurity-endpoints: 172.20.216.246:12345
+  ...
+kind: ConfigMap
+```
+
+The DaemonSet is now configured to scale automatically on new without ever needing to edit the ConfigMap for the new pods that are added.
