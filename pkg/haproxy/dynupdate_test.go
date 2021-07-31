@@ -1021,14 +1021,10 @@ INFO-V(2) need to reload due to config changes: [hosts]
 		if test.doconfig2 != nil {
 			test.doconfig2(c)
 		}
-		var cmd string
-		dynUpdater := c.instance.newDynUpdater()
-		dynUpdater.cmd = func(socket string, observer func(duration time.Duration), command ...string) ([]string, error) {
-			for _, c := range command {
-				cmd = cmd + c + "\n"
-			}
-			return test.cmdOutput, nil
+		clientMock := &clientMock{
+			cmdOutput: test.cmdOutput,
 		}
+		dynUpdater := c.instance.newDynUpdater(clientMock)
 		dynamic := dynUpdater.update()
 		var actual []string
 		for _, ep := range c.config.Backends().AcquireBackend("default", "app", "8080").Endpoints {
@@ -1041,7 +1037,7 @@ INFO-V(2) need to reload due to config changes: [hosts]
 		if dynamic != test.dynamic {
 			t.Errorf("dynamic expected as '%t' on %d, but was '%t'", test.dynamic, i, dynamic)
 		}
-		cmd = strings.TrimSpace(cmd)
+		cmd := strings.TrimSpace(clientMock.cmd)
 		test.cmd = strings.TrimSpace(test.cmd)
 		if cmd != test.cmd {
 			t.Errorf("cmd differs on %d:\n%s", i, diff.Diff(test.cmd, cmd))
@@ -1049,4 +1045,32 @@ INFO-V(2) need to reload due to config changes: [hosts]
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
+}
+
+type clientMock struct {
+	cmd       string
+	cmdOutput []string
+}
+
+func (cli *clientMock) Address() string {
+	return ""
+}
+
+func (cli *clientMock) HasConn() bool {
+	return true
+}
+
+func (cli *clientMock) Send(observer func(duration time.Duration), command ...string) ([]string, error) {
+	for _, c := range command {
+		cli.cmd = cli.cmd + c + "\n"
+	}
+	return cli.cmdOutput, nil
+}
+
+func (cli *clientMock) Unlistening() error {
+	return nil
+}
+
+func (cli *clientMock) Close() error {
+	return nil
 }

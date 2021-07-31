@@ -14,28 +14,131 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
+package socket
 
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 	"syscall"
 	"testing"
 	"time"
 )
 
-func TestHAProxyCommand(t *testing.T) {
-	// needs a running HAProxy and admin socket at /tmp/h.sock
-	// also, it will output the response in the error pipe, so will always fail
+func TestSocket(t *testing.T) {
+	// needs a running HAProxy and admin socket at /tmp/h.sock with stats timeout 1s
+	// start with haproxy -f h.cfg -W -S /tmp/m.sock
 	// TODO create a test and temp server where HAProxyCommand can connect to
-	/*
-		out, err := HAProxyCommand("/tmp/h.sock", nil, "show info")
-		if err != nil {
-			t.Errorf("%v", err)
+	//
+	// testSocket(t, false)
+	// testSocket(t, true)
+}
+
+func testSocket(t *testing.T, keepalive bool) {
+	clisock := "/tmp/h.sock"
+	mastersock := "/tmp/m.sock"
+	socketTimeout := time.Second
+	regexpOneSession := regexp.MustCompile("^0x[0-9a-f]+: proto=[^\n]+$")
+	regexpTwoSessions := regexp.MustCompile("^(0x[0-9a-f]+: proto=[^\n]+\n?){2}$")
+	regexpThreeSessions := regexp.MustCompile("^(0x[0-9a-f]+: proto=[^\n]+\n?){3}$")
+	regexpShowInfo := regexp.MustCompile("\nNbthread: [0-9]+\n")
+	regexpShowProc := regexp.MustCompile("^#<PID>          <type>          <relative PID>  <reloads>       <uptime>        <version>      \n")
+	regexpShowCliSockets := regexp.MustCompile("^# socket lvl processes\n")
+	var regexpPos1ShowSess, regexpPos2ShowSess *regexp.Regexp
+	if keepalive {
+		regexpPos1ShowSess = regexpTwoSessions
+		regexpPos2ShowSess = regexpThreeSessions
+	} else {
+		regexpPos1ShowSess = regexpOneSession
+		regexpPos2ShowSess = regexpOneSession
+	}
+	testCases := []struct {
+		cmd        []string
+		cmdChk     []*regexp.Regexp
+		cmdPos     string
+		cmdPosChk  *regexp.Regexp
+		master     bool
+		waitBefore time.Duration
+	}{
+		// 0
+		{
+			cmd:       []string{"show sess"},
+			cmdChk:    []*regexp.Regexp{regexpOneSession},
+			cmdPos:    "show sess",
+			cmdPosChk: regexpPos1ShowSess,
+		},
+		// 1
+		{
+			waitBefore: socketTimeout / 4,
+			cmd:        []string{"show info"},
+			cmdChk:     []*regexp.Regexp{regexpShowInfo},
+			cmdPos:     "show sess",
+			cmdPosChk:  regexpPos2ShowSess,
+		},
+		// 2
+		{
+			waitBefore: 3 * socketTimeout / 2,
+			cmd:        []string{"show sess"},
+			cmdChk:     []*regexp.Regexp{regexpOneSession},
+			cmdPos:     "show sess",
+			cmdPosChk:  regexpPos1ShowSess,
+		},
+		// 3
+		{
+			cmd:    []string{"show sess", "show info"},
+			cmdChk: []*regexp.Regexp{regexpPos1ShowSess, regexpShowInfo},
+		},
+		// 4
+		{
+			cmd:    []string{"show proc"},
+			cmdChk: []*regexp.Regexp{regexpShowProc},
+			master: true,
+		},
+		// 5
+		{
+			cmd:    []string{"show cli sockets"},
+			cmdChk: []*regexp.Regexp{regexpShowCliSockets},
+			master: true,
+		},
+	}
+	clientSocket := make([]HAProxySocket, len(testCases))
+	clientSocketPos := make([]HAProxySocket, len(testCases))
+	masterSocket := make([]HAProxySocket, len(testCases))
+	for i, test := range testCases {
+		clientSocket[i] = NewSocket(clisock, keepalive)
+		clientSocketPos[i] = NewSocket(clisock, false)
+		masterSocket[i] = NewSocket(mastersock, keepalive)
+		time.Sleep(test.waitBefore)
+		var sock, sockPos HAProxySocket
+		if test.master {
+			sock = masterSocket[i]
 		} else {
-			t.Errorf("%d %v", len(out[0]), out[0])
+			if test.waitBefore > socketTimeout && i > 0 {
+				// reuse a connection, use newConn()
+				clientSocket[i] = clientSocket[i-1]
+			}
+			sock = clientSocket[i]
+			sockPos = clientSocketPos[i]
 		}
-	*/
+		if out, err := sock.Send(nil, test.cmd...); err == nil {
+			for j, o := range out {
+				if test.cmdChk[j] == nil || !test.cmdChk[j].MatchString(o) {
+					t.Errorf("cmd '%s' on %d keepalive %t output\nlen: %d\nbytes: %v\n%v", test.cmd, i, keepalive, len(o), []byte(o), o)
+				}
+			}
+			if test.cmdPos != "" {
+				if out, err = sockPos.Send(nil, test.cmdPos); err == nil {
+					if test.cmdPosChk == nil || !test.cmdPosChk.MatchString(out[0]) {
+						t.Errorf("cmdPos '%s' on %d keepalive %t output\nlen: %d\nbytes: %v\n%v", test.cmdPos, i, keepalive, len(out[0]), []byte(out[0]), out[0])
+					}
+				} else {
+					t.Errorf("cmdPos error on %d keepalive %t: %v", i, keepalive, err)
+				}
+			}
+		} else {
+			t.Errorf("cmd error on %d keepalive %t: %v", i, keepalive, err)
+		}
+	}
 }
 
 func TestHAProxyProcs(t *testing.T) {
@@ -167,9 +270,11 @@ func TestHAProxyProcs(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		c.cmdOutput = test.cmdOutput
-		c.cmdError = test.cmdError
-		out, err := HAProxyProcs("socket")
+		cli := &clientMock{
+			cmdOutput: test.cmdOutput,
+			cmdError:  test.cmdError,
+		}
+		out, err := HAProxyProcs(cli)
 		if !reflect.DeepEqual(out, test.expOutput) {
 			t.Errorf("output differs on %d - expected: %+v, actual: %+v", i, test.expOutput, out)
 		}
@@ -207,10 +312,12 @@ func TestHAProxyProcsLoop(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		c.cmdError = syscall.ECONNREFUSED
-		time.AfterFunc(test.reload, func() { c.cmdError = nil })
+		cli := &clientMock{
+			cmdError: syscall.ECONNREFUSED,
+		}
+		time.AfterFunc(test.reload, func() { cli.cmdError = nil })
 		start := time.Now()
-		_, err := HAProxyProcs("")
+		_, err := HAProxyProcs(cli)
 		if err != nil {
 			t.Errorf("%d should not return an error: %w", i, err)
 		}
@@ -218,30 +325,49 @@ func TestHAProxyProcsLoop(t *testing.T) {
 		if elapsed < test.minDelay {
 			t.Errorf("elapsed in %d is '%s' and should not be lower than min '%s'", i, elapsed.String(), test.minDelay.String())
 		}
-		if c.callCnt > test.maxCnt {
-			t.Errorf("callCnt in %d is '%d' and should not be greater than max '%d'", i, c.callCnt, test.maxCnt)
+		if cli.callCnt > test.maxCnt {
+			t.Errorf("callCnt in %d is '%d' and should not be greater than max '%d'", i, cli.callCnt, test.maxCnt)
 		}
+		c.tearDown()
 	}
 }
 
 type testConfig struct {
-	t         *testing.T
-	cmdOutput []string
-	cmdError  error
-	callCnt   int
+	t *testing.T
 }
 
 func setup(t *testing.T) *testConfig {
 	c := &testConfig{
 		t: t,
 	}
-	haproxyCmd = c.haproxyCommand
 	return c
 }
 
 func (c *testConfig) tearDown() {}
 
-func (c *testConfig) haproxyCommand(string, func(duration time.Duration), ...string) ([]string, error) {
+type clientMock struct {
+	cmdOutput []string
+	cmdError  error
+	callCnt   int
+}
+
+func (c *clientMock) Address() string {
+	return ""
+}
+
+func (c *clientMock) HasConn() bool {
+	return true
+}
+
+func (c *clientMock) Send(observer func(duration time.Duration), command ...string) ([]string, error) {
 	c.callCnt++
 	return c.cmdOutput, c.cmdError
+}
+
+func (c *clientMock) Unlistening() error {
+	return nil
+}
+
+func (c *clientMock) Close() error {
+	return nil
 }

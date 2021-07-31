@@ -27,9 +27,9 @@ import (
 	"time"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/socket"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
-	hautils "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
@@ -84,6 +84,9 @@ type instance struct {
 	mapsTmpl    *template.Config
 	modsecTmpl  *template.Config
 	config      Config
+	adminSock   socket.HAProxySocket
+	masterSock  socket.HAProxySocket
+	idleChkSock socket.HAProxySocket
 	metrics     types.Metrics
 }
 
@@ -188,7 +191,10 @@ func (i *instance) CalcIdleMetric() {
 	if !i.up {
 		return
 	}
-	msg, err := hautils.HAProxyCommand(i.config.Global().AdminSocket, i.metrics.HAProxyShowInfoResponseTime, "show info")
+	if i.idleChkSock == nil {
+		i.idleChkSock = socket.NewSocket(i.config.Global().AdminSocket, false)
+	}
+	msg, err := i.idleChkSock.Send(i.metrics.HAProxyShowInfoResponseTime, "show info")
 	if err != nil {
 		i.logger.Error("error reading admin socket: %v", err)
 		return
@@ -266,7 +272,10 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 		// TODO update tests and remove `if !fake` above
 		i.logChanged()
 	}
-	updater := i.newDynUpdater()
+	if i.adminSock == nil {
+		i.adminSock = socket.NewSocket(i.config.Global().AdminSocket, false)
+	}
+	updater := i.newDynUpdater(i.adminSock)
 	updated := updater.update()
 	if i.options.SortEndpointsBy != "random" {
 		i.config.Backends().SortChangedEndpoints(i.options.SortEndpointsBy)
@@ -330,11 +339,27 @@ func (i *instance) Reload(timer *utils.Timer) {
 		return
 	}
 	i.up = true
+	i.releaseSockets()
 	i.updateSuccessful(true)
 	if i.config.Global().External.IsExternal() {
 		i.logger.Info("haproxy successfully reloaded (external)")
 	} else {
 		i.logger.Info("haproxy successfully reloaded (embedded)")
+	}
+}
+
+func (i *instance) releaseSockets() {
+	if i.idleChkSock != nil {
+		i.idleChkSock.Close()
+		i.idleChkSock = nil
+	}
+	if i.adminSock != nil {
+		i.adminSock.Close()
+		i.adminSock = nil
+	}
+	if i.masterSock != nil {
+		i.masterSock.Close()
+		i.masterSock = nil
 	}
 }
 
@@ -504,7 +529,9 @@ func (i *instance) reloadEmbedded() error {
 }
 
 func (i *instance) reloadExternal() error {
-	socket := i.config.Global().External.MasterSocket
+	if i.masterSock == nil {
+		i.masterSock = socket.NewSocket(i.config.Global().External.MasterSocket, false)
+	}
 	if !i.up {
 		// first run, wait until the external haproxy is running
 		// and successfully listening to the master socket.
@@ -512,12 +539,12 @@ func (i *instance) reloadExternal() error {
 		i.logger.Info("waiting for the external haproxy...")
 		for {
 			var err error
-			if _, err = hautils.HAProxyCommand(socket, nil, "show proc"); err == nil {
+			if _, err = i.masterSock.Send(nil, "show proc"); err == nil {
 				break
 			}
 			j++
 			if j%10 == 0 {
-				i.logger.Info("cannot connect to the master socket '%s': %v", socket, err)
+				i.logger.Info("cannot connect to the master socket '%s': %v", i.masterSock.Address(), err)
 			}
 			select {
 			case <-i.options.StopCh:
@@ -526,10 +553,10 @@ func (i *instance) reloadExternal() error {
 			}
 		}
 	}
-	if _, err := hautils.HAProxyCommand(socket, nil, "reload"); err != nil {
+	if _, err := i.masterSock.Send(nil, "reload"); err != nil {
 		return fmt.Errorf("error sending reload to master socket: %w", err)
 	}
-	out, err := hautils.HAProxyProcs(socket)
+	out, err := socket.HAProxyProcs(i.masterSock)
 	if err != nil {
 		return fmt.Errorf("error reading procs from master socket: %w", err)
 	}
