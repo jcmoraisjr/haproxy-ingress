@@ -886,6 +886,7 @@ INFO-V(2) need to reload due to config changes: [backends]
 			cmd: `
 set ssl cert /tmp/domain2.pem <<
 <content>
+
 commit ssl cert /tmp/domain2.pem
 `,
 			cmdOutput: []string{
@@ -938,6 +939,7 @@ INFO-V(2) need to reload due to config changes: [hosts]
 			cmd: `
 set ssl cert /tmp/domain1.pem <<
 <content>
+
 commit ssl cert /tmp/domain1.pem
 `,
 			cmdOutput: []string{
@@ -966,6 +968,7 @@ INFO certificate updated for domain1.local
 			cmd: `
 set ssl cert /tmp/domain1.pem <<
 <content>
+
 commit ssl cert /tmp/domain1.pem
 `,
 			cmdOutput: []string{

@@ -102,6 +102,7 @@ func (s *sock) Send(observer func(duration time.Duration), command ...string) ([
 		start := time.Now()
 		response, err := s.send(cmd)
 		if err != nil {
+			s.close()
 			return msg, err
 		}
 		if observer != nil {
