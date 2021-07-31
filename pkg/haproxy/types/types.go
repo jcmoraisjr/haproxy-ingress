@@ -72,6 +72,8 @@ type Global struct {
 	Prometheus              PromConfig
 	Security                SecurityConfig
 	Stats                   StatsConfig
+	CloseSessionsDuration   time.Duration
+	TimeoutStopDuration     time.Duration
 	StrictHost              bool
 	UseHTX                  bool
 	DefaultBackendRedir     string
@@ -124,6 +126,7 @@ type TimeoutConfig struct {
 	BackendTimeoutConfig
 	Client    string
 	ClientFin string
+	Stats     string
 	Stop      string
 }
 

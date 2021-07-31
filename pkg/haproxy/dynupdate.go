@@ -53,11 +53,11 @@ type epPair struct {
 	cur *hatypes.Endpoint
 }
 
-func (i *instance) newDynUpdater(socket socket.HAProxySocket) *dynUpdater {
+func (i *instance) newDynUpdater() *dynUpdater {
 	return &dynUpdater{
 		logger:  i.logger,
 		config:  i.config.(*config),
-		socket:  socket,
+		socket:  i.conns.DynUpdate(),
 		metrics: i.metrics,
 	}
 }

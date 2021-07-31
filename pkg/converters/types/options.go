@@ -27,6 +27,7 @@ type ConverterOptions struct {
 	Tracker          Tracker
 	DynamicConfig    *DynamicConfig
 	MasterSocket     string
+	AdminSocket      string
 	DefaultConfig    func() map[string]string
 	DefaultBackend   string
 	DefaultCrtSecret string
@@ -35,6 +36,7 @@ type ConverterOptions struct {
 	AnnotationPrefix []string
 	DisableKeywords  []string
 	AcmeTrackTLSAnn  bool
+	TrackInstances   bool
 	HasGateway       bool
 }
 

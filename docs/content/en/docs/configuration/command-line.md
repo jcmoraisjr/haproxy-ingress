@@ -50,6 +50,7 @@ The following command-line options are supported:
 | [`--stats-collect-processing-period`](#stats)           | time                       | `500ms`                 | v0.10 |
 | [`--sync-period`](#sync-period)                         | time                       | `10m`                   |       |
 | [`--tcp-services-configmap`](#tcp-services-configmap)   | namespace/configmapname    | no tcp svc              |       |
+| [`--track-old-instances`](#track-old-instances)         | [true\|false]              | `false`                 | v0.14 |
 | [`--update-status`](#update-status)                     | [true\|false]              | `true`                  |       |
 | [`--update-status-on-shutdown`](#update-status-on-shutdown) | [true\|false]          | `true`                  |       |
 | [`--v`](#v)                                             | log level as integer       | `1`                     |       |
@@ -483,6 +484,24 @@ Note: Check interval was added in v0.10 and defaults to `2s`. All declared servi
 See also:
 
 * [TCP Services]({{% relref "keys#tcp-services" %}}) configuration keys
+
+---
+
+## --track-old-instances
+
+Since v0.14
+
+Creates an internal list of connections to old HAProxy instances. These connections are used to
+read or send data to stopping instances, which is usually serving long lived connections like
+TCP services or websockets.
+
+Enabling this option will make old HAProxy instances to not stop before `timeout-stop` timeout,
+even if all the remaining sessions finish, so only enable it if using a feature that requests
+it.
+
+See also:
+
+* [`close-sessions-duration`]({{% relref "keys#close-sessions-duration" %}}) configuration key
 
 ---
 

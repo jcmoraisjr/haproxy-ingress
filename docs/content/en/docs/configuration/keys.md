@@ -337,6 +337,7 @@ The table below describes all supported configuration keys.
 | [`blue-green-header`](#blue-green)                   | `HeaderName:LabelName` pair             | Backend |                    |
 | [`blue-green-mode`](#blue-green)                     | [pod\|deploy]                           | Backend |                    |
 | [`cert-signer`](#acme)                               | "acme"                                  | Host    |                    |
+| [`close-sessions-duration`](#close-sessions-duration) | time with suffix or percentage         | Global  | leave sessions open |
 | [`config-backend`](#configuration-snippet)           | multiline backend config                | Backend |                    |
 | [`config-defaults`](#configuration-snippet)          | multiline config for the defaults section | Global |                   |
 | [`config-frontend`](#configuration-snippet)          | multiline HTTP and HTTPS frontend config | Global  |                   |
@@ -1132,6 +1133,43 @@ See also:
 * [disable-pod-list]({{% relref "command-line/#disable-pod-list" %}}) command-line option doc.
 * https://cbonte.github.io/haproxy-dconv/2.2/configuration.html#5.2-weight (`weight` based balance)
 * https://cbonte.github.io/haproxy-dconv/2.2/configuration.html#4-use-server (`use-server` based selector)
+
+---
+
+## Close sessions duration
+
+| Configuration key         | Scope    | Default  | Since |
+|---------------------------|----------|----------|-------|
+| `close-sessions-duration` | `Global` |          | v0.14 |
+
+Defines the amount of time used to close active sessions before a stopping instance times out
+and terminates. A stopping instance is an haproxy that doesn't listen sockets anymore, has an
+old configuration, and it's just waiting remaining connections to terminate.
+
+Long lived sessions, like websockets or TCP connections, are usually closed only when the
+`timeout-stop` of the old instance expires. Depending on how the clients are configured,
+all the disconnected clients will reconnect almost at the same time. `close-sessions-duration`
+configures the amount of time used to fairly distribute the sessions shutdown, so distributing
+client reconnections to the new HAProxy instance.
+
+The default behavior is to not anticipate the disconnections, so all the active sessions will
+be closed at the same time when `timeout-stop` expires. `close-sessions-duration` will only
+take effect if `timeout-stop` configuration key and `--track-old-instances` command-line option
+are also configured.
+
+The duration needs a suffix, which can be a time suffix like `s` (seconds), `m` (minutes) or
+`h` (hours), or a `%` that represents a percentage of the `timeout-stop` configuration:
+
+* `10m` means that the last 10 minutes of the `timeout-stop` will be used to distribute sessions shutdown
+* `10%` and a `timeout-stop` of `1h`, means that the last 6 minutes of the `timeout-stop` will be used to distribute sessions shutdown
+
+If the suffix is a time unit, the resulting value should be lower than the `timeout-stop`
+configuration. If the suffix is a percentage, the value should be between `2%` and `98%`.
+
+See also:
+
+* [`track-old-instances`]({{% relref "command-line#track-old-instances" %}}) command-line option
+* [`timeout-stop`](#timeout) configuration key
 
 ---
 

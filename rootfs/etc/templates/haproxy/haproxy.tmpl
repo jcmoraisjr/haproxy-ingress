@@ -86,6 +86,9 @@ global
 {{- end }}
     stats socket {{ default "--" $global.AdminSocket }} level admin expose-fd listeners mode 600
         {{- if gt $global.Procs.Nbproc 1 }} process 1{{ end }}
+{{- if $global.Timeout.Stats }}
+    stats timeout {{ $global.Timeout.Stats }}
+{{- end }}
 {{- if $global.LoadServerState }}
     server-state-file state-global
     server-state-base /var/lib/haproxy/

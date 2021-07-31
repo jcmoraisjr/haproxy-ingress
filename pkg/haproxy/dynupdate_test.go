@@ -1024,7 +1024,8 @@ INFO-V(2) need to reload due to config changes: [hosts]
 		clientMock := &clientMock{
 			cmdOutput: test.cmdOutput,
 		}
-		dynUpdater := c.instance.newDynUpdater(clientMock)
+		dynUpdater := c.instance.newDynUpdater()
+		dynUpdater.socket = clientMock
 		dynamic := dynUpdater.update()
 		var actual []string
 		for _, ep := range c.config.Backends().AcquireBackend("default", "app", "8080").Endpoints {

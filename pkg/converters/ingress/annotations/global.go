@@ -91,6 +91,49 @@ func (c *updater) buildGlobalBind(d *globalData) {
 	}
 }
 
+func (c *updater) buildGlobalCloseSessions(d *globalData) {
+	durationCfg := d.mapper.Get(ingtypes.GlobalCloseSessionsDuration).Value
+	if durationCfg == "" {
+		return
+	}
+	if !c.options.TrackInstances {
+		c.logger.Warn("ignoring close-sessions-duration config: tracking old instances is disabled")
+		return
+	}
+	timeoutCfg := d.mapper.Get(ingtypes.GlobalTimeoutStop).Value
+	if timeoutCfg == "" {
+		c.logger.Warn("ignoring close-sessions-duration config: timeout-stop need to be configured")
+		return
+	}
+	timeout, err := time.ParseDuration(timeoutCfg)
+	if err != nil {
+		c.logger.Warn("ignoring close-sessions-duration due to invalid timeout-stop config: %v", err)
+		return
+	}
+	var duration time.Duration
+	if strings.HasSuffix(durationCfg, "%") {
+		pct, _ := strconv.Atoi(durationCfg[:len(durationCfg)-1])
+		if pct < 2 || pct > 98 {
+			c.logger.Warn("ignoring '%s' for close-sessions-duration value: value should be between 5%% and 95%%", durationCfg)
+			return
+		}
+		duration = timeout * time.Duration(pct) / 100
+	} else {
+		duration, err = time.ParseDuration(durationCfg)
+		if err == nil {
+			if duration >= timeout {
+				err = fmt.Errorf("close-sessions-duration should be lower than timeout-stop")
+			}
+		}
+		if err != nil {
+			c.logger.Warn("ignoring invalid close-sessions-duration config: %v", err)
+			return
+		}
+	}
+	d.global.CloseSessionsDuration = duration
+	d.global.Timeout.Stats = timeoutCfg
+}
+
 func (c *updater) buildGlobalPathTypeOrder(d *globalData) {
 	matchTypes := make(map[hatypes.MatchType]struct{}, len(hatypes.DefaultMatchOrder))
 	for _, match := range hatypes.DefaultMatchOrder {
@@ -225,6 +268,9 @@ func (c *updater) buildGlobalTimeout(d *globalData) {
 	d.global.Timeout.ServerFin = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutServerFin))
 	d.global.Timeout.Stop = c.validateTime(d.mapper.Get(ingtypes.GlobalTimeoutStop))
 	d.global.Timeout.Tunnel = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutTunnel))
+	if timeoutStop, err := time.ParseDuration(d.global.Timeout.Stop); err == nil {
+		d.global.TimeoutStopDuration = timeoutStop
+	}
 }
 
 func (c *updater) buildSecurity(d *globalData) {
