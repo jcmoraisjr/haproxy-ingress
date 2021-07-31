@@ -242,7 +242,7 @@ The table below describes all supported configuration keys.
 | [`timeout-queue`](#timeout)                          | time with suffix                        | Backend | `5s`               |
 | [`timeout-server`](#timeout)                         | time with suffix                        | Backend | `50s`              |
 | [`timeout-server-fin`](#timeout)                     | time with suffix                        | Backend | `50s`              |
-| [`timeout-stop`](#timeout)                           | time with suffix                        | Global  | no timeout         |
+| [`timeout-stop`](#timeout)                           | time with suffix                        | Global  | `10m`              |
 | [`timeout-tunnel`](#timeout)                         | time with suffix                        | Backend | `1h`               |
 | [`tls-alpn`](#tls-alpn)                              | TLS ALPN advertisement                  | Host    | `h2,http/1.1`      |
 | [`use-chroot`](#security)                            | [true\|false]                           | Global  | `false`            |
@@ -1793,7 +1793,7 @@ See also:
 | `timeout-queue`        | `Backend` | `5s`    |       |
 | `timeout-server`       | `Backend` | `50s`   |       |
 | `timeout-server-fin`   | `Backend` | `50s`   |       |
-| `timeout-stop`         | `Global`  |         |       |
+| `timeout-stop`         | `Global`  | `10m`   |       |
 | `timeout-tunnel`       | `Backend` | `1h`    |       |
 
 Define timeout configurations. The unit defaults to milliseconds if missing, change the unit with `s`, `m`, `h`, ... suffix.
