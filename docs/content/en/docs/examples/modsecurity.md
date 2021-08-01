@@ -26,31 +26,34 @@ adjust the steps to fit your need.
 
 The ModSecurity agent used is [jcmoraisjr/modsecurity-spoa](https://github.com/jcmoraisjr/modsecurity-spoa).
 
-Create the ModSecurity agent daemonset:
+Create the ModSecurity agent deployment with 3 running pods:
 
 ```
-$ kubectl create -f https://haproxy-ingress.github.io/resources/modsecurity-daemonset.yaml
-daemonset "modsecurity-spoa" created
+$ kubectl create -f https://haproxy-ingress.github.io/resources/modsecurity-deployment.yaml
+deployment "modsecurity-spoa" created
 ```
 
-Select the node(s) where ModSecurity agent should run:
-
-```
-$ kubectl get node
-NAME             STATUS    AGE       VERSION
-192.168.100.99   Ready     102d      v1.9.2
-...
-
-$ kubectl label node 192.168.100.99 waf=modsec
-node "192.168.100.99" labeled
-```
 
 Check if the agent is up and running:
 
 ```
-$ kubectl -n ingress-controller get pod -lrun=modsecurity-spoa -owide
-NAME                     READY     STATUS    RESTARTS   AGE       IP               NODE
-modsecurity-spoa-pp6jz   1/1       Running   0          7s        192.168.100.99   192.168.100.99
+$ kubectl -n ingress-controller get deployment -lrun=modsecurity-spoa
+NAME                     READY     UP-TO-DATE   AVAILABLE  AGE  
+modsecurity-spoa         3/3       3            3          7s   
+```
+
+
+You can now create the service that provides a ClusterIP address for the HAProxy ConfigMap.
+```
+kubectl expose deployment modsecurity-spoa --port=12345 --type=ClusterIP
+service/modsecurity-spoa exposed
+```
+
+Once the service is created, you can obtain the ClusterIP address to be used later in the ConfigMap.
+```
+$ kubectl -n ingress-controller get svc
+NAME                     TYPE       CLUSTERIP        EXTERNAL-IP  PORT(S)     AGE
+modsecurity-spoa         ClusterIP  172.20.216.246   <none>       12345/TCP   7m
 ```
 
 ## Configuring HAProxy Ingress
@@ -59,13 +62,12 @@ Add the ConfigMap key `modsecurity-endpoints` with a comma-separated list of `IP
 of the ModSecurity agent server(s). The default port number of the agent is `12345`.
 A `kubectl -n ingress-controller edit configmap haproxy-ingress` should work.
 
-Example of a ConfigMap content if ModSecurity agents has IPs `192.168.100.99` and
-`192.168.100.100`:
+Example of a ConfigMap content if the ModSecurity service has a ClusterIP of `172.20.216.246`:
 
 ```yaml
 apiVersion: v1
 data:
-  modsecurity-endpoints: 192.168.100.99:12345,192.168.100.100:12345
+  modsecurity-endpoints: 172.20.216.246:12345
   ...
 kind: ConfigMap
 ```
@@ -161,56 +163,19 @@ A ModSecurity agent can be deployed with an additional sidecar container so you 
 
 In order to read information written to that file, you must add a sidecar container to the method of deployment of the ModSecurity agent in Kubernetes. This is especially useful if you set the SecRuleEngine configuration to DetectionOnly.
 
-Update the ModSecurity agent daemonset to have a sidecar container to read the audit log file to STDOUT
+Update the ModSecurity agent deployment to have a sidecar container to read the audit log file to STDOUT
 
 ```
-$ kubectl apply -f https://haproxy-ingress.github.io/resources/modsecurity-daemonset-auditlog-sidecar.yaml
-daemonset "modsecurity-spoa" configured
+$ kubectl apply -f https://haproxy-ingress.github.io/resources/modsecurity-deployment-auditlog-sidecar.yaml
+deployment "modsecurity-spoa" configured
 ```
 
 Now the ModSecurity agent pods will have two containers to get logs from: one for the traditional ModSecurity logs and one for the logs written to the AuditLog file.
 
 ```
-$ kubectl -n ingress-controller get pod -lrun=modsecurity-spoa -owide
-NAME                     READY     STATUS    RESTARTS   AGE       IP               NODE
-modsecurity-spoa-pp6jz   2/2       Running   0          7s        192.168.100.99   192.168.100.99
+$ kubectl -n ingress-controller get pod -lrun=modsecurity-spoa
+NAME                     READY     STATUS    RESTARTS   AGE
+modsecurity-spoa-pp6jz   2/2       Running   0          7s       
+modsecurity-spoa-yu8lk   2/2       Running   0          7s   
+modsecurity-spoa-wq5nh   2/2       Running   0          7s
 ```
-
-## Deploy ModSecurity Agent That Automatically Scales
-
-The ModSecurity daemonset can be configured to automatically schedule new pods on new nodes as they are scaled up. With this type of configuration, there is no need to add new labels to nodes whenever you need to schedule another ModSecurity pod.
-Additionally, a service can be created as a single point of access to the ModSecurity daemonset pods. With the service, you would never have to edit the ConfigMap in the `ingress-controller` namespace after the initial deployment.
-
-In order to automatically schedule ModSecurity pods on new nodes in the cluster, you can update your daemonset to remove the NodeSelector condition.
-```
-$ kubectl apply -f https://haproxy-ingress.github.io/resources/modsecurity-daemonset-autoscale.yaml
-daemonset "modsecurity-spoa" configured
-```
-
-You can now create the service that provides a ClusterIP address for the HAProxy ConfigMap.
-```
-kubectl create -f https://haproxy-ingress.github.io/resources/modsecurity-service.yaml
-service "modsecurity-svc" created
-```
-
-Once the service is created, you can obtain the ClusterIP address to be used later in the ConfigMap.
-```
-$ kubectl -n ingress-controller get svc
-NAME                     TYPE       CLUSTERIP        EXTERNAL-IP  PORT(S)     AGE
-modsecurity-svc          ClusterIP  172.20.216.246   <none>       12345/TCP   7m
-```
-
-Edit the ConfigMap key `modsecurity-endpoints` with the new ClusterIP address of the service. The default port number of the agent is `12345`.
-A `kubectl -n ingress-controller edit configmap haproxy-ingress` should work.
-
-Example of a ConfigMap content if the ModSecurity service has a ClusterIP of `172.20.216.246`:
-
-```yaml
-apiVersion: v1
-data:
-  modsecurity-endpoints: 172.20.216.246:12345
-  ...
-kind: ConfigMap
-```
-
-The DaemonSet is now configured to scale automatically on new without ever needing to edit the ConfigMap for the new pods that are added.

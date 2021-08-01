@@ -1,12 +1,13 @@
 ---
 apiVersion: apps/v1
-kind: DaemonSet
+kind: Deployment
 metadata:
   labels:
     run: modsecurity-spoa
   name: modsecurity-spoa
   namespace: ingress-controller
 spec:
+  replicas: 3
   selector:
     matchLabels:
       run: modsecurity-spoa
@@ -27,7 +28,3 @@ spec:
           name: spop
           protocol: TCP
       hostNetwork: true
-      nodeSelector:
-        waf: modsec
-  updateStrategy:
-    type: RollingUpdate
