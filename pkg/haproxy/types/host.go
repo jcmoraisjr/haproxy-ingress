@@ -230,7 +230,7 @@ func (h *Host) AddRedirect(path string, match MatchType, redirTo string) {
 
 type hostResolver struct {
 	useDefaultCrt *bool
-	crtHash       *string
+	crtFilename   *string
 }
 
 func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo string) {
@@ -247,7 +247,7 @@ func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo s
 		bpath := backend.AddBackendPath(link)
 		bpath.Host = &hostResolver{
 			useDefaultCrt: &h.TLS.UseDefaultCrt,
-			crtHash:       &h.TLS.TLSHash,
+			crtFilename:   &h.TLS.TLSFilename,
 		}
 	} else if redirTo == "" {
 		hback = HostBackend{ID: "_error404"}
@@ -293,7 +293,7 @@ func (h *Host) HasTLS() bool {
 }
 
 func (h *hostResolver) HasTLS() bool {
-	return *h.useDefaultCrt || *h.crtHash != ""
+	return *h.useDefaultCrt || *h.crtFilename != ""
 }
 
 // HasTLSAuth ...
