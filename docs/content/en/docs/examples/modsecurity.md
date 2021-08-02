@@ -37,7 +37,7 @@ deployment "modsecurity-spoa" created
 Check if the agent is up and running:
 
 ```
-$ kubectl -n ingress-controller get deployment -lrun=modsecurity-spoa
+$ kubectl -n ingress-controller get deployment modsecurity-spoa
 NAME                     READY     UP-TO-DATE   AVAILABLE  AGE  
 modsecurity-spoa         3/3       3            3          7s   
 ```
