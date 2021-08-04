@@ -767,7 +767,7 @@ paths:
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 				gw.Spec.Listeners[0].TLS.CertificateRef.Group = "acme.io"
 			},
-			expLogging: `WARN skipping certificate reference on Gateway 'default/web': unsupported Group 'acme.io'`,
+			expLogging: `WARN skipping certificate reference on Gateway 'default/web': unsupported Group 'acme.io', supported groups are 'core' and ''`,
 			expDefaultHost: `
 hostname: <default>
 paths:
@@ -791,7 +791,7 @@ paths:
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 				gw.Spec.Listeners[0].TLS.CertificateRef.Kind = "ConfigMap"
 			},
-			expLogging: `WARN skipping certificate reference on Gateway 'default/web': unsupported Kind 'ConfigMap'`,
+			expLogging: `WARN skipping certificate reference on Gateway 'default/web': unsupported Kind 'ConfigMap', the only supported kind is 'Secret'`,
 			expDefaultHost: `
 hostname: <default>
 paths:
