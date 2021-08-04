@@ -422,11 +422,15 @@ func (c *converter) applyCertRef(gwSource, routeSource *Source, hosts []*hatypes
 }
 
 func (c *converter) readCertRef(namespace string, certRef *gatewayv1alpha1.LocalObjectReference) (crtFile convtypes.CrtFile, err error) {
-	if certRef.Group != "" {
-		return crtFile, fmt.Errorf("unsupported Group '%s'", certRef.Group)
+	// In v1alpha1, the `group` cannot be left empty and is expected to be equal
+	// to "core" for the Secret kind. In v1alpha2, the `group` can be left empty
+	// and "core" is implied when the group is left empty. The discussion is
+	// available at https://github.com/kubernetes-sigs/gateway-api/pull/562.
+	if certRef.Group != "" && certRef.Group != "core" {
+		return crtFile, fmt.Errorf("unsupported Group '%s', supported groups are 'core' and ''", certRef.Group)
 	}
 	if certRef.Kind != "" && strings.ToLower(certRef.Kind) != "secret" {
-		return crtFile, fmt.Errorf("unsupported Kind '%s'", certRef.Kind)
+		return crtFile, fmt.Errorf("unsupported Kind '%s', the only supported kind is 'Secret'", certRef.Kind)
 	}
 	return c.cache.GetTLSSecretPath(namespace, certRef.Name, convtypes.TrackingTarget{Gateway: true})
 }
