@@ -26,9 +26,19 @@ import (
 )
 
 func TestSocket(t *testing.T) {
-	// needs a running HAProxy and admin socket at /tmp/h.sock with stats timeout 1s
+	// needs a running HAProxy with the conf below
+	//     global
+	//         stats socket unix@/tmp/h.sock level admin
+	//         stats timeout 1s
+	//     defaults
+	//         timeout client 1m
+	//         timeout server 1m
+	//         timeout connect 5s
+	//     listen l1
+	//         bind :8000
+	//         bind :8443 ssl crt /tmp/crt.pem
 	// start with haproxy -f h.cfg -W -S /tmp/m.sock
-	// TODO create a test and temp server where HAProxyCommand can connect to
+	// TODO create a test and temp server where socket commands can connect to
 	//
 	// testSocket(t, false)
 	// testSocket(t, true)
@@ -37,6 +47,7 @@ func TestSocket(t *testing.T) {
 func testSocket(t *testing.T, keepalive bool) {
 	clisock := "/tmp/h.sock"
 	mastersock := "/tmp/m.sock"
+	crtFile := "/tmp/crt.pem"
 	socketTimeout := time.Second
 	regexpOneSession := regexp.MustCompile("^0x[0-9a-f]+: proto=[^\n]+$")
 	regexpTwoSessions := regexp.MustCompile("^(0x[0-9a-f]+: proto=[^\n]+\n?){2}$")
@@ -100,6 +111,17 @@ func testSocket(t *testing.T, keepalive bool) {
 			cmdChk: []*regexp.Regexp{regexpShowCliSockets},
 			master: true,
 		},
+		// 6
+		{
+			cmd: []string{
+				fmt.Sprintf("set ssl cert %s <<\n%s\n", crtFile, crtPayload),
+				fmt.Sprintf("commit ssl cert %s", crtFile),
+			},
+			cmdChk: []*regexp.Regexp{
+				regexp.MustCompile(`Transaction created for.*/tmp/crt.pem!$`),
+				regexp.MustCompile(`Success!`),
+			},
+		},
 	}
 	clientSocket := make([]HAProxySocket, len(testCases))
 	clientSocketPos := make([]HAProxySocket, len(testCases))
@@ -123,7 +145,7 @@ func testSocket(t *testing.T, keepalive bool) {
 		if out, err := sock.Send(nil, test.cmd...); err == nil {
 			for j, o := range out {
 				if test.cmdChk[j] == nil || !test.cmdChk[j].MatchString(o) {
-					t.Errorf("cmd '%s' on %d keepalive %t output\nlen: %d\nbytes: %v\n%v", test.cmd, i, keepalive, len(o), []byte(o), o)
+					t.Errorf("cmd '%s' on %d keepalive %t output\nlen: %d\nbytes: %v\n%v", test.cmd[j], i, keepalive, len(o), []byte(o), o)
 				}
 			}
 			if test.cmdPos != "" {
@@ -140,6 +162,53 @@ func testSocket(t *testing.T, keepalive bool) {
 		}
 	}
 }
+
+const crtPayload = `-----BEGIN CERTIFICATE-----
+MIICpDCCAYwCCQDIBIkh7vGNLTANBgkqhkiG9w0BAQsFADAUMRIwEAYDVQQDDAls
+b2NhbGhvc3QwHhcNMjEwNzMxMjE1MTE4WhcNMjEwODMwMjE1MTE4WjAUMRIwEAYD
+VQQDDAlsb2NhbGhvc3QwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC3
+dZe4HdLAvu444orR2aOSVyHwTqxNaq36GiSu8Xv3QWzUBhOgsZ8qF5kYXQnFyJNr
+xcI0/JKZsy8F4buiibjL8+SyDdHrFMN+3kPv5xd5IC55pb+jFKgtuJPNeHJ+Rjaa
+k/gGlwnLm6RRIZ9387SFfJhoWQiUT9+sBK3wJoxlLVKyqhmbqvRRi3yWm3kkQyDL
+Psi7fofn6pkxuKaxUEx6+i8RA5sfYXQxy5xwGSdfRiNsUbnZDde1B49dRKik9VWM
+NeJ9mmx0oaBg6KGmkv+5ymMs0dqDYNB4W36rjZt/I7XLC0GcEvOZFGt/f6KoRcvG
+fYXOfaixFaqWCrvuwKS3AgMBAAEwDQYJKoZIhvcNAQELBQADggEBACriKYnsAUKL
+UH31jvkJpx6dTO2ZxRVj7N6EqLCPYg8ICMSaykL4fhhl0glolkpTeBSvWf+wTbAI
+6n5yBY7HYLYHgZiR+LxsJJhxvgaVTp9HQJ5DWKffiLs8pTI7dnzOFt02xcSQFKMQ
+0V29XRyx0tOt2SmksFDTe4sGn7nRnK+QH6zjwqpFvoPS34Ydr31EDrD/dUTTXAQ4
+kQ0vp7q2cIlLveuOctt0ErQzRjmY2l61XRALngJR2s4IwxHTlvFd+La0/TOW07gz
+2Iy6IRd4biaotF2sMlb8KeEC09qBhc7uqf2SE0gAUGgai0bzjmZWTAGOt47vKz4k
+5GOIEZDcZlg=
+-----END CERTIFICATE-----
+-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC3dZe4HdLAvu44
+4orR2aOSVyHwTqxNaq36GiSu8Xv3QWzUBhOgsZ8qF5kYXQnFyJNrxcI0/JKZsy8F
+4buiibjL8+SyDdHrFMN+3kPv5xd5IC55pb+jFKgtuJPNeHJ+Rjaak/gGlwnLm6RR
+IZ9387SFfJhoWQiUT9+sBK3wJoxlLVKyqhmbqvRRi3yWm3kkQyDLPsi7fofn6pkx
+uKaxUEx6+i8RA5sfYXQxy5xwGSdfRiNsUbnZDde1B49dRKik9VWMNeJ9mmx0oaBg
+6KGmkv+5ymMs0dqDYNB4W36rjZt/I7XLC0GcEvOZFGt/f6KoRcvGfYXOfaixFaqW
+CrvuwKS3AgMBAAECggEAEY9m60+neZ2M7dL5WKbNWleOvxK4uVxJtNPFyR0CMaOI
+iC7guBPoWT4TAFr/cXgGbF1sfmfinGWjTZvSuvcVwifhLw3VlvvQzpb1x8PF4mkr
+Kaes1S5H/sBZHWS3CNEtrtQU/IR+goeuTbm7Kt8f21sWt342LQQMM8nq4D7AV3q6
+ZGRjvNytDMdJVEJTIaGWZdBu/TgOgaYTJ3qirRUREkN8UHWey0QfEbCLuvlCxVyg
+Bc4tQRF63vgILsAwGQdicbe/RLjlOjsMKFwQyMpT7mSXUREbrTeYiCDQAXZxzdK1
+PNSaLwyYwNUer6ahlrXgOVRwoAUNK+uSWobhz63E4QKBgQDw6X+JjeMQliVSWX+n
+NMKtskcYuOOEa4uNMlB40uVkU7QeZqbMe6a4uS7PDW/D6vhAg1yiJ83/ixdm3YBo
+IMM4RLj3HUPaL5fomR55ukde8Zgl5W2jqONbBNi9ugv4TISRxiZ4ZAvIAaCoFRf3
+tA2xshIL0hNlBwpj53MPaPew0QKBgQDC8vbkZb/534r4l3nKBS7pD/SYEamYC6vw
+y7WhP+w6Fgd65Utpb5PzBWGcZHUpj4IbdG/tfCqqpH50syv/K8gxjrvuLEyIwX8n
+F88BpjhrAY20vkDNQ+QGLJG5tXTvTBDqfwDSX94Kw1Pzii7PV6daJI2tTlVnFpvQ
+NQKp2NmfBwKBgBCPbHXvK/Gi8JPVlSHQTaWVALAhXXpnziL5l3CGxr/7xQDl+4dI
+5LAEAsS23rzv9PqyTPbUl6N+UzB9/2qo/eJrTu+lsllYNjAF/oNNm8RaBSRtvfin
+DmHeVmvMUzBRSjefEFvsPKcV/Y4wTQJ4/Qv++qCXYz/pmPw/F7iydXxRAoGAZMfm
+CrzvOeXumgT02RNE5QdykwrOeePOx3UIOIwrOvwYcdgH3EHqYj/t7kOgrhOaV0ci
+dcsy43SWSw41OH0RyUzYqpAMIManTTZptZiQogDzmPSh23u1bdusmizMfsj8Fb4C
+Vr9osne39rcA6/+MbHVpKKbOT7TIaCJ/df68whECgYEAotmmXBsVxlrGev8Idnut
+P7eOp7uHMV8pq7r+FX+VTUELmYpZBvDKi0pPHRDMsUKJlOCiDQaC+7u4hJh27fjM
++ZiWZWtSEvhEUgehlxollglhh/vL+Cv/o7PucVqtSyv/v5cs3hSJCmTR2Z1G1DHs
+30newKUAPkQo6uSiKXwXRIg=
+-----END PRIVATE KEY-----
+`
 
 func TestHAProxyProcs(t *testing.T) {
 	testCases := []struct {

@@ -379,7 +379,7 @@ func (d *dynUpdater) execUpdateCert(hostname, filename string) bool {
 	// Remove this work around after the factoring of the ssl storage.
 	payloadStr := strings.ReplaceAll(string(payload), "\n\n", "\n")
 	cmd := []string{
-		fmt.Sprintf("set ssl cert %s <<\n%s", filename, payloadStr),
+		fmt.Sprintf("set ssl cert %s <<\n%s\n", filename, payloadStr),
 		fmt.Sprintf("commit ssl cert %s", filename),
 	}
 	msg, err := d.execCommand(d.metrics.HAProxySetSSLCertResponseTime, cmd)
