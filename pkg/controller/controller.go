@@ -122,6 +122,8 @@ func (hc *HAProxyController) configController() {
 	instanceOptions := haproxy.InstanceOptions{
 		HAProxyCfgDir:     "/etc/haproxy",
 		HAProxyMapsDir:    ingress.DefaultMapsDirectory,
+		MasterSocket:      hc.cfg.MasterSocket,
+		AdminSocket:       "/var/run/haproxy/admin.sock",
 		BackendShards:     hc.cfg.BackendShards,
 		AcmeSigner:        acmeSigner,
 		AcmeQueue:         hc.acmeQueue,
@@ -132,6 +134,7 @@ func (hc *HAProxyController) configController() {
 		MaxOldConfigFiles: hc.cfg.MaxOldConfigFiles,
 		SortEndpointsBy:   hc.cfg.SortEndpointsBy,
 		StopCh:            hc.stopCh,
+		TrackInstances:    hc.cfg.TrackOldInstances,
 		ValidateConfig:    hc.cfg.ValidateConfig,
 	}
 	hc.instance = haproxy.CreateInstance(hc.logger, instanceOptions)
@@ -143,7 +146,8 @@ func (hc *HAProxyController) configController() {
 		Cache:            hc.cache,
 		Tracker:          hc.tracker,
 		DynamicConfig:    hc.dynamicConfig,
-		MasterSocket:     hc.cfg.MasterSocket,
+		MasterSocket:     instanceOptions.MasterSocket,
+		AdminSocket:      instanceOptions.AdminSocket,
 		AnnotationPrefix: hc.cfg.AnnPrefix,
 		DefaultBackend:   hc.cfg.DefaultService,
 		DefaultCrtSecret: hc.cfg.DefaultSSLCertificate,
@@ -151,6 +155,7 @@ func (hc *HAProxyController) configController() {
 		FakeCAFile:       hc.createFakeCAFile(),
 		DisableKeywords:  strings.Split(hc.cfg.DisableConfigKeywords, ","),
 		AcmeTrackTLSAnn:  hc.cfg.AcmeTrackTLSAnn,
+		TrackInstances:   hc.cfg.TrackOldInstances,
 		HasGateway:       hc.cache.hasGateway(),
 	}
 }

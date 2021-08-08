@@ -42,12 +42,15 @@ type InstanceOptions struct {
 	HAProxyCfgDir     string
 	HAProxyMapsDir    string
 	LeaderElector     types.LeaderElector
+	MasterSocket      string
+	AdminSocket       string
 	MaxOldConfigFiles int
 	Metrics           types.Metrics
 	ReloadQueue       utils.Queue
 	ReloadStrategy    string
 	SortEndpointsBy   string
 	StopCh            chan struct{}
+	TrackInstances    bool
 	ValidateConfig    bool
 	// TODO Fake is used to skip real haproxy calls. Use a mock instead.
 	fake bool
@@ -71,6 +74,7 @@ func CreateInstance(logger types.Logger, options InstanceOptions) Instance {
 		haproxyTmpl: template.CreateConfig(),
 		mapsTmpl:    template.CreateConfig(),
 		modsecTmpl:  template.CreateConfig(),
+		conns:       newConnections(options.MasterSocket, options.AdminSocket),
 		metrics:     options.Metrics,
 	}
 }
@@ -84,9 +88,7 @@ type instance struct {
 	mapsTmpl    *template.Config
 	modsecTmpl  *template.Config
 	config      Config
-	adminSock   socket.HAProxySocket
-	masterSock  socket.HAProxySocket
-	idleChkSock socket.HAProxySocket
+	conns       *connections
 	metrics     types.Metrics
 }
 
@@ -191,10 +193,7 @@ func (i *instance) CalcIdleMetric() {
 	if !i.up {
 		return
 	}
-	if i.idleChkSock == nil {
-		i.idleChkSock = socket.NewSocket(i.config.Global().AdminSocket, false)
-	}
-	msg, err := i.idleChkSock.Send(i.metrics.HAProxyShowInfoResponseTime, "show info")
+	msg, err := i.conns.IdleChk().Send(i.metrics.HAProxyShowInfoResponseTime, "show info")
 	if err != nil {
 		i.logger.Error("error reading admin socket: %v", err)
 		return
@@ -272,10 +271,7 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 		// TODO update tests and remove `if !fake` above
 		i.logChanged()
 	}
-	if i.adminSock == nil {
-		i.adminSock = socket.NewSocket(i.config.Global().AdminSocket, false)
-	}
-	updater := i.newDynUpdater(i.adminSock)
+	updater := i.newDynUpdater()
 	updated := updater.update()
 	if i.options.SortEndpointsBy != "random" {
 		i.config.Backends().SortChangedEndpoints(i.options.SortEndpointsBy)
@@ -331,36 +327,33 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 
 func (i *instance) Reload(timer *utils.Timer) {
 	i.metrics.IncUpdateFull()
+	if i.options.TrackInstances {
+		timeoutStopDur := i.config.Global().TimeoutStopDuration
+		closeSessDur := i.config.Global().CloseSessionsDuration
+		i.conns.TrackCurrentInstance(timeoutStopDur, closeSessDur)
+	}
 	err := i.reloadHAProxy()
 	timer.Tick("reload_haproxy")
 	if err != nil {
 		i.logger.Error("error reloading server:\n%v", err)
 		i.updateSuccessful(false)
+		if i.options.TrackInstances {
+			i.conns.ReleaseLastInstance()
+		}
 		return
 	}
 	i.up = true
-	i.releaseSockets()
 	i.updateSuccessful(true)
+	message := "haproxy successfully reloaded"
 	if i.config.Global().External.IsExternal() {
-		i.logger.Info("haproxy successfully reloaded (external)")
+		message += " (external)"
 	} else {
-		i.logger.Info("haproxy successfully reloaded (embedded)")
+		message += " (embedded)"
 	}
-}
-
-func (i *instance) releaseSockets() {
-	if i.idleChkSock != nil {
-		i.idleChkSock.Close()
-		i.idleChkSock = nil
+	if i.options.TrackInstances {
+		message += "; tracked instance(s): " + strconv.Itoa(i.conns.OldInstancesCount())
 	}
-	if i.adminSock != nil {
-		i.adminSock.Close()
-		i.adminSock = nil
-	}
-	if i.masterSock != nil {
-		i.masterSock.Close()
-		i.masterSock = nil
-	}
+	i.logger.Info(message)
 }
 
 func (i *instance) logChanged() {
@@ -529,9 +522,7 @@ func (i *instance) reloadEmbedded() error {
 }
 
 func (i *instance) reloadExternal() error {
-	if i.masterSock == nil {
-		i.masterSock = socket.NewSocket(i.config.Global().External.MasterSocket, false)
-	}
+	masterSock := i.conns.Master()
 	if !i.up {
 		// first run, wait until the external haproxy is running
 		// and successfully listening to the master socket.
@@ -539,12 +530,12 @@ func (i *instance) reloadExternal() error {
 		i.logger.Info("waiting for the external haproxy...")
 		for {
 			var err error
-			if _, err = i.masterSock.Send(nil, "show proc"); err == nil {
+			if _, err = masterSock.Send(nil, "show proc"); err == nil {
 				break
 			}
 			j++
 			if j%10 == 0 {
-				i.logger.Info("cannot connect to the master socket '%s': %v", i.masterSock.Address(), err)
+				i.logger.Info("cannot connect to the master socket '%s': %v", masterSock.Address(), err)
 			}
 			select {
 			case <-i.options.StopCh:
@@ -553,10 +544,10 @@ func (i *instance) reloadExternal() error {
 			}
 		}
 	}
-	if _, err := i.masterSock.Send(nil, "reload"); err != nil {
+	if _, err := masterSock.Send(nil, "reload"); err != nil {
 		return fmt.Errorf("error sending reload to master socket: %w", err)
 	}
-	out, err := socket.HAProxyProcs(i.masterSock)
+	out, err := socket.HAProxyProcs(masterSock)
 	if err != nil {
 		return fmt.Errorf("error reading procs from master socket: %w", err)
 	}

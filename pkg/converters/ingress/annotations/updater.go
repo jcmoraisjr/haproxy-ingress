@@ -142,8 +142,7 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 		global:   haproxyConfig.Global(),
 		mapper:   mapper,
 	}
-	// TODO Move all magic strings to a single place
-	d.global.AdminSocket = "/var/run/haproxy/admin.sock"
+	d.global.AdminSocket = c.options.AdminSocket
 	d.global.MaxConn = mapper.Get(ingtypes.GlobalMaxConnections).Int()
 	d.global.DefaultBackendRedir = mapper.Get(ingtypes.GlobalDefaultBackendRedirect).String()
 	d.global.DefaultBackendRedirCode = mapper.Get(ingtypes.GlobalDefaultBackendRedirectCode).Int()
@@ -164,6 +163,7 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	c.buildGlobalAcme(d)
 	c.buildGlobalAuthProxy(d)
 	c.buildGlobalBind(d)
+	c.buildGlobalCloseSessions(d)
 	c.buildGlobalCustomConfig(d)
 	c.buildGlobalDNS(d)
 	c.buildGlobalDynamic(d)

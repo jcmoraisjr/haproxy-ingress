@@ -99,6 +99,7 @@ type Configuration struct {
 	DefaultHealthzURL      string
 	StatsCollectProcPeriod time.Duration
 	PublishService         string
+	TrackOldInstances      bool
 	Backend                ingress.Controller
 
 	UpdateStatus           bool

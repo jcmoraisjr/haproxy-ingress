@@ -33,6 +33,7 @@ const (
 	GlobalBindIPAddrPrometheus         = "bind-ip-addr-prometheus"
 	GlobalBindIPAddrStats              = "bind-ip-addr-stats"
 	GlobalBindIPAddrTCP                = "bind-ip-addr-tcp"
+	GlobalCloseSessionsDuration        = "close-sessions-duration"
 	GlobalConfigDefaults               = "config-defaults"
 	GlobalConfigFrontend               = "config-frontend"
 	GlobalConfigGlobal                 = "config-global"

@@ -236,6 +236,11 @@ k8s endpoint order (default); 'name' - server/endpoint name;
 'ip' - server/endpoint IP and port; 'random' - shuffle endpoints on every
 haproxy reload`)
 
+		trackOldInstances = flags.Bool("track-old-instances", false,
+			`Creates an internal list of connections to old HAProxy instances. These
+connections are used to read or send data to stopping instances, which is
+usually serving long lived connections like TCP services or websockets.`)
+
 		useNodeInternalIP = flags.Bool("report-node-internal-ip-address", false,
 			`Defines if the nodes IP address to be returned in the ingress status should be
 the internal instead of the external IP address`)
@@ -481,6 +486,7 @@ tracked.`)
 		DisablePodList:           *disablePodList,
 		DisableExternalName:      *disableExternalName,
 		DisableConfigKeywords:    *disableConfigKeywords,
+		TrackOldInstances:        *trackOldInstances,
 		UpdateStatusOnShutdown:   *updateStatusOnShutdown,
 		BackendShards:            *backendShards,
 		SortEndpointsBy:          sortEndpoints,

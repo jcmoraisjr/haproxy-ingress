@@ -19,6 +19,7 @@ package annotations
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
@@ -145,6 +146,88 @@ func TestBind(t *testing.T) {
 		d.mapper.AddAnnotations(nil, hatypes.CreatePathLink("-", "-", hatypes.MatchBegin), test.ann)
 		c.createUpdater().buildGlobalBind(d)
 		c.compareObjects("bind", i, d.global.Bind, test.expected)
+		c.teardown()
+	}
+}
+
+func TestCloseSessions(t *testing.T) {
+	testCases := []struct {
+		annDuration string
+		annStop     string
+		expDuration time.Duration
+		untrack     bool
+		logging     string
+	}{
+		// 0
+		{},
+		// 1
+		{
+			annDuration: "5m",
+			annStop:     "10m",
+			untrack:     true,
+			logging:     `WARN ignoring close-sessions-duration config: tracking old instances is disabled`,
+		},
+		// 2
+		{
+			annDuration: "10m",
+			logging:     `WARN ignoring close-sessions-duration config: timeout-stop need to be configured`,
+		},
+		// 3
+		{
+			annDuration: "10m",
+			annStop:     "10%",
+			logging:     `WARN ignoring close-sessions-duration due to invalid timeout-stop config: time: unknown unit "%" in duration "10%"`,
+		},
+		// 4
+		{
+			annDuration: "1%",
+			annStop:     "10m",
+			logging:     `WARN ignoring '1%' for close-sessions-duration value: value should be between 5% and 95%`,
+		},
+		// 5
+		{
+			annDuration: "99%",
+			annStop:     "10m",
+			logging:     `WARN ignoring '99%' for close-sessions-duration value: value should be between 5% and 95%`,
+		},
+		// 6
+		{
+			annDuration: "10x",
+			annStop:     "10m",
+			logging:     `WARN ignoring invalid close-sessions-duration config: time: unknown unit "x" in duration "10x"`,
+		},
+		// 7
+		{
+			annDuration: "10m",
+			annStop:     "10m",
+			logging:     `WARN ignoring invalid close-sessions-duration config: close-sessions-duration should be lower than timeout-stop`,
+		},
+		// 8
+		{
+			annDuration: "5m",
+			annStop:     "10m",
+			expDuration: 5 * time.Minute,
+		},
+		// 9
+		{
+			annDuration: "5%",
+			annStop:     "10m",
+			expDuration: 30 * time.Second,
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createGlobalData(map[string]string{
+			ingtypes.GlobalCloseSessionsDuration: test.annDuration,
+			ingtypes.GlobalTimeoutStop:           test.annStop,
+		})
+		u := c.createUpdater()
+		if !test.untrack {
+			u.options.TrackInstances = true
+		}
+		u.buildGlobalCloseSessions(d)
+		c.compareObjects("close sessions duration", i, d.global.CloseSessionsDuration, test.expDuration)
+		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
 }
