@@ -244,7 +244,8 @@ func (d *dynUpdater) checkEndpointPair(backname string, pair *epPair) bool {
 }
 
 func (d *dynUpdater) alignSlots() {
-	for _, back := range d.config.Backends().Items() {
+	backends := d.config.Backends()
+	for _, back := range backends.Items() {
 		if !back.Dynamic.DynUpdate {
 			// no need to add empty slots if won't dynamically update
 			continue
@@ -255,6 +256,7 @@ func (d *dynUpdater) alignSlots() {
 			blockSize = 1
 		}
 		var newFreeSlots int
+		changed := false
 		if minFreeSlots == 0 && len(back.Endpoints) == 0 {
 			newFreeSlots = blockSize
 		} else {
@@ -266,6 +268,7 @@ func (d *dynUpdater) alignSlots() {
 			}
 			for i := totalFreeSlots; i < minFreeSlots; i++ {
 				back.AddEmptyEndpoint()
+				changed = true
 			}
 			// * []endpoints == group of blocks
 			// * block == group of slots
@@ -275,6 +278,16 @@ func (d *dynUpdater) alignSlots() {
 		}
 		for i := 0; i < newFreeSlots; i++ {
 			back.AddEmptyEndpoint()
+			changed = true
+		}
+		if changed {
+			// backends from the Items() map are read only and their changes might not be
+			// reflected in the final configuration. Currently only sharded backends have
+			// this behavior but this can be expanded to another scenarios in the future,
+			// so this should be properly handled by the model.
+			//
+			// TODO move to the model the responsibility to know that a backend was changed.
+			backends.BackendChanged(back)
 		}
 	}
 }
