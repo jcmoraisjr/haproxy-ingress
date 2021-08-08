@@ -58,7 +58,7 @@ func (b *Backends) Shrink() {
 	changed := false
 	for name, del := range b.itemsDel {
 		if add, found := b.itemsAdd[name]; found {
-			if backendsMatch(add, del) {
+			if len(add.Endpoints) <= len(del.Endpoints) && backendsMatch(add, del) {
 				// Such changed backend, when removed from the tracking, need to
 				// be reincluded into the current state hashmap `items` and also
 				// into its shard hashmap when backend sharding is enabled.
@@ -78,10 +78,10 @@ func (b *Backends) Shrink() {
 	if changed {
 		b.changedShards = map[int]bool{}
 		for _, back := range b.itemsAdd {
-			b.changedShards[back.shard] = true
+			b.BackendChanged(back)
 		}
 		for _, back := range b.itemsDel {
-			b.changedShards[back.shard] = true
+			b.BackendChanged(back)
 		}
 	}
 }
@@ -132,6 +132,11 @@ func (b *Backends) Commit() {
 // Changed ...
 func (b *Backends) Changed() bool {
 	return len(b.itemsAdd) > 0 || len(b.itemsDel) > 0
+}
+
+// BackendChanged ...
+func (b *Backends) BackendChanged(backend *Backend) {
+	b.changedShards[backend.shard] = true
 }
 
 // ChangedShards ...
@@ -201,7 +206,7 @@ func (b *Backends) AcquireBackend(namespace, name, port string) *Backend {
 	if shardCount > 0 {
 		b.shards[backend.shard][backend.ID] = backend
 	}
-	b.changedShards[backend.shard] = true
+	b.BackendChanged(backend)
 	return backend
 }
 
@@ -223,7 +228,7 @@ func (b *Backends) RemoveAll(backendID []BackendID) {
 			if len(b.shards) > 0 {
 				delete(b.shards[item.shard], id)
 			}
-			b.changedShards[item.shard] = true
+			b.BackendChanged(item)
 			b.itemsDel[id] = item
 			if item == b.DefaultBackend {
 				b.DefaultBackend = nil
