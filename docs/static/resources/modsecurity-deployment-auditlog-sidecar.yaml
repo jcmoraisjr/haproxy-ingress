@@ -27,7 +27,6 @@ spec:
             - "1"
             ports:
             - containerPort: 12345
-              hostPort: 12345
               name: spop
               protocol: TCP
             volumeMounts:
@@ -39,4 +38,3 @@ spec:
             volumeMounts:
             - name: varlog
               mountPath: /var/log
-          hostNetwork: true

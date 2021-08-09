@@ -30,7 +30,7 @@ Create the ModSecurity agent deployment with 3 running pods:
 
 ```
 $ kubectl create -f https://haproxy-ingress.github.io/resources/modsecurity-deployment.yaml
-deployment "modsecurity-spoa" created
+deployment.apps/modsecurity-spoa created
 ```
 
 
@@ -45,13 +45,12 @@ modsecurity-spoa         3/3       3            3          7s
 
 You can now create the service that provides a ClusterIP address for the HAProxy ConfigMap.
 ```
-kubectl expose deployment modsecurity-spoa --port=12345 --type=ClusterIP
-service/modsecurity-spoa exposed
+$ kubectl -n ingress-controller expose deployment modsecurity-spoa --port=12345 --type=ClusterIP
 ```
 
 Once the service is created, you can obtain the ClusterIP address to be used later in the ConfigMap.
 ```
-$ kubectl -n ingress-controller get svc
+$ kubectl -n ingress-controller get service modsecurity-spoa
 NAME                     TYPE       CLUSTERIP        EXTERNAL-IP  PORT(S)     AGE
 modsecurity-spoa         ClusterIP  172.20.216.246   <none>       12345/TCP   7m
 ```
@@ -138,8 +137,10 @@ Check the agent logs:
 
 ```
 $ kubectl -n ingress-controller get pod -lrun=modsecurity-spoa
-NAME                     READY     STATUS    RESTARTS   AGE
-modsecurity-spoa-5g5h2   1/1       Running   0          1h
+NAME                                READY   STATUS    RESTARTS   AGE
+modsecurity-spoa-6f757ffd88-9qt2f   1/1     Running   0          11m
+modsecurity-spoa-6f757ffd88-vwtzr   1/1     Running   0          11m
+modsecurity-spoa-6f757ffd88-q4rvm   1/1     Running   0          11m
 ...
 
 $ kubectl -n ingress-controller logs --tail=10 modsecurity-spoa-5g5h2
@@ -174,8 +175,8 @@ Now the ModSecurity agent pods will have two containers to get logs from: one fo
 
 ```
 $ kubectl -n ingress-controller get pod -lrun=modsecurity-spoa
-NAME                     READY     STATUS    RESTARTS   AGE
-modsecurity-spoa-pp6jz   2/2       Running   0          7s       
-modsecurity-spoa-yu8lk   2/2       Running   0          7s   
-modsecurity-spoa-wq5nh   2/2       Running   0          7s
+NAME                                READY   STATUS    RESTARTS   AGE
+modsecurity-spoa-6596c6b444-cht27   2/2     Running   0          14m
+modsecurity-spoa-6596c6b444-kw2tr   2/2     Running   0          14m
+modsecurity-spoa-6596c6b444-mkndw   2/2     Running   0          14m
 ```
