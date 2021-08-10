@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.11!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.12.7](#v0127)
+  * [Reference](#reference-r7)
+  * [Release notes](#release-notes-r7)
+  * [Fixes and improvements](#fixes-and-improvements-r7)
 * [v0.12.6](#v0126)
   * [Reference](#reference-r6)
   * [Release notes](#release-notes-r6)
@@ -69,6 +73,30 @@ Breaking backward compatibility from v0.11
 * paul ([toothbrush](https://github.com/toothbrush))
 * pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.12.7
+
+## Reference (r7)
+
+* Release date: `2021-08-10`
+* Helm chart: `--version 0.12.7`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.12.7`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.12.7`
+* Embedded HAProxy version: `2.2.15`
+
+## Release notes (r7)
+
+This release fixes a failure in the synchronization between the in memory HAProxy model and the state of the running HAProxy instance. The internal model reflects how HAProxy should be configured based on ingress resources. The states can be out of sync when new empty slots are added to backends that wasn't in edit state, and only affects sharded backends (`--backend-shards` > 0).
+
+The embedded HAProxy version was updated from `2.2.14` to `2.2.15`.
+
+## Fixes and improvements (r7)
+
+Fixes and improvements since `v0.12.6`:
+
+* Fix change notification of backend shard [#835](https://github.com/jcmoraisjr/haproxy-ingress/pull/835) (jcmoraisjr)
+* update embedded haproxy from 2.2.14 to 2.2.15 [ab0566b](https://github.com/jcmoraisjr/haproxy-ingress/commit/ab0566ba0b94b45d6aebd30dc4febb81cb8bcaaf) (Joao Morais)
+* update client-go from v0.19.12 to v0.19.13 [c94936c](https://github.com/jcmoraisjr/haproxy-ingress/commit/c94936cda337562f59793dddcfa43ca3646c72af) (Joao Morais)
 
 # v0.12.6
 
