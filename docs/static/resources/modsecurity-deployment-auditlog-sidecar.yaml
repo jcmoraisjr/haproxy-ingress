@@ -15,26 +15,26 @@ spec:
     metadata:
       labels:
         run: modsecurity-spoa
-        spec:
-          volumes:
+      spec:
+        volumes:
+        - name: varlog
+          emptyDir: {}
+        containers:
+        - name: modsecurity-spoa
+          image: quay.io/jcmoraisjr/modsecurity-spoa
+          args:
+          - -n
+          - "1"
+          ports:
+          - containerPort: 12345
+            name: spop
+            protocol: TCP
+          volumeMounts:
           - name: varlog
-            emptyDir: {}
-          containers:
-          - name: modsecurity-spoa
-            image: quay.io/jcmoraisjr/modsecurity-spoa
-            args:
-            - -n
-            - "1"
-            ports:
-            - containerPort: 12345
-              name: spop
-              protocol: TCP
-            volumeMounts:
-            - name: varlog
-              mountPath: /var/log
-          - name: audit-log
-            image: busybox
-            args: [/bin/sh, -c, 'tail -n+1 -f /var/log/modsec_audit.log']
-            volumeMounts:
-            - name: varlog
-              mountPath: /var/log
+            mountPath: /var/log
+        - name: audit-log
+          image: busybox
+          args: [/bin/sh, -c, 'tail -n+1 -f /var/log/modsec_audit.log']
+          volumeMounts:
+          - name: varlog
+            mountPath: /var/log

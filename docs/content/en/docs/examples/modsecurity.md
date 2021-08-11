@@ -46,6 +46,7 @@ modsecurity-spoa         3/3       3            3          7s
 You can now create the service that provides a ClusterIP address for the HAProxy ConfigMap.
 ```
 $ kubectl -n ingress-controller expose deployment modsecurity-spoa --port=12345 --type=ClusterIP
+service/modsecurity-spoa exposed
 ```
 
 Once the service is created, you can obtain the ClusterIP address to be used later in the ConfigMap.
@@ -143,7 +144,7 @@ modsecurity-spoa-6f757ffd88-vwtzr   1/1     Running   0          11m
 modsecurity-spoa-6f757ffd88-q4rvm   1/1     Running   0          11m
 ...
 
-$ kubectl -n ingress-controller logs --tail=10 modsecurity-spoa-5g5h2
+$ kubectl -n ingress-controller logs --tail=10 modsecurity-spoa-6f757ffd88-9qt2f
 ...
 1527464273.942819 [00] [client 127.0.0.1] ModSecurity: Access denied with code 403 (phase 2). Matche
 d phrase "etc/passwd" at ARGS:p. [file "/etc/modsecurity/owasp-modsecurity-crs/rules/REQUEST-930-APP
