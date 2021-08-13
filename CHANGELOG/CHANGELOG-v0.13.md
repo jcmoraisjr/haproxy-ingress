@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.12!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.13.0](#v0130)
+  * [Reference](#reference-r0)
+  * [Release notes](#release-notes-r0)
+  * [Fixes and improvements](#fixes-and-improvements-r0)
 * [v0.13.0-beta.2](#v0130-beta2)
   * [Reference](#reference-b2)
   * [Release notes](#release-notes-b2)
@@ -30,6 +34,7 @@
 Highlights of this version
 
 * HAProxy upgrade from 2.2 to 2.3.
+* Add arm64 image
 * Ingress API upgrade from `networking.k8s.io/v1beta1` to `networking.k8s.io/v1`.
 * Partial implementation of Gateway API - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/gateway-api/)
 * TCP services using ingress resources - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#tcp-services)
@@ -55,8 +60,46 @@ Breaking backward compatibility from v0.12
 * Andrew Rodland ([arodland](https://github.com/arodland))
 * Bart Versluijs ([bartversluijs](https://github.com/bartversluijs))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
+* Neil Seward ([sealneaward](https://github.com/sealneaward))
 * paul ([toothbrush](https://github.com/toothbrush))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.13.0
+
+## Reference (r0)
+
+* Release date: `2021-08-13`
+* Helm chart: `--version 0.13.0`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.0`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.0`
+* Embedded HAProxy version: `2.3.12`
+
+## Release notes (r0)
+
+This is the first v0.13 release graduated as GA. The following fixes have been made since the last beta version:
+
+- A failure in the synchronization between the in memory HAProxy model and the state of the running HAProxy instance was fixed. The internal model reflects how HAProxy should be configured based on ingress resources. The states can be out of sync when new empty slots are added to backends that weren't in edit state, and only affects sharded backends (`--backend-shards` > 0).
+- Dynamic server certificate update was fixed. A HAProxy reload was always being scheduled due to an unrelated change in the internal model
+
+Other notable changes are:
+
+- Images for arm64 will be generated for v0.13 and newer versions
+- A FAQ section was added in the documentation
+- Neil made some improvements to the ModSecurity example
+- Golang was updated to a new patch (still 1.15 branch) and also client-go library (still v0.20 branch)
+
+## Fixes and improvements (r0)
+
+Fixes and improvements since `v0.13.0-beta.2`:
+
+* docs: add section for AuditLog sidecar for ModSecurity daemonset [#825](https://github.com/jcmoraisjr/haproxy-ingress/pull/825) (sealneaward)
+* Fix dynamic update of frontend crt [#829](https://github.com/jcmoraisjr/haproxy-ingress/pull/829) (jcmoraisjr)
+* Fix change notification of backend shard [#835](https://github.com/jcmoraisjr/haproxy-ingress/pull/835) (jcmoraisjr)
+* docs: changing NodeSelector to ClusterIP service for ModSecurity [#826](https://github.com/jcmoraisjr/haproxy-ingress/pull/826) (sealneaward)
+* Add arm64 build [#836](https://github.com/jcmoraisjr/haproxy-ingress/pull/836) (jcmoraisjr)
+* docs: add a faq [#837](https://github.com/jcmoraisjr/haproxy-ingress/pull/837) (jcmoraisjr)
+* update golang from 1.15.13 to 1.15.15 [72282c6](https://github.com/jcmoraisjr/haproxy-ingress/commit/72282c6f89c2ff48ee19e8f75e26ade4670cb284) (Joao Morais)
+* update client-go from v0.20.8 to v0.20.10 [0127cdd](https://github.com/jcmoraisjr/haproxy-ingress/commit/0127cddddac6a2579f98606c8df91df4d80f94b7) (Joao Morais)
 
 # v0.13.0-beta.2
 
