@@ -246,6 +246,12 @@ Fixes and improvements since [v0.11-beta.3](#v011-beta3):
 * Improve certificate validation of acme signer [#689](https://github.com/jcmoraisjr/haproxy-ingress/pull/689) (jcmoraisjr)
 * Update haproxy from 2.1.9 to 2.1.10 [9763c63](https://github.com/jcmoraisjr/haproxy-ingress/commit/9763c635d73dc3c853223304902b29ae3065cb32) (Joao Morais)
 
+## v0.10.10
+
+Fixes and improvements since [v0.10.9](#v0109):
+
+* update embedded haproxy from 2.0.22 to 2.0.24 [1a44f00](https://github.com/jcmoraisjr/haproxy-ingress/commit/1a44f00195be951fa55d988517684417fe6622ea) (Joao Morais)
+
 ## v0.10.9
 
 Fixes and improvements since [v0.10.8](#v0108):
