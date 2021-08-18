@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.12!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.13.1](#v0131)
+  * [Reference](#reference-r1)
+  * [Release notes](#release-notes-r1)
+  * [Fixes and improvements](#fixes-and-improvements-r1)
 * [v0.13.0](#v0130)
   * [Reference](#reference-r0)
   * [Release notes](#release-notes-r0)
@@ -63,6 +67,26 @@ Breaking backward compatibility from v0.12
 * Neil Seward ([sealneaward](https://github.com/sealneaward))
 * paul ([toothbrush](https://github.com/toothbrush))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.13.1
+
+## Reference (r1)
+
+* Release date: `2021-08-17`
+* Helm chart: `--version 0.13.1`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.1`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.1`
+* Embedded HAProxy version: `2.3.13`
+
+## Release notes (r1)
+
+This release updates the embedded HAProxy version from `2.3.12` to `2.3.13`, which fixes some HAProxy's HTTP/2 vulnerabilities. A malicious request can abuse the H2 `:method` pseudo-header to forge malformed HTTP/1 requests, which can be accepted by some vulnerable backend servers. The following announce from the HAProxy's mailing list has the details: https://www.mail-archive.com/haproxy@formilux.org/msg41041.html
+
+## Fixes and improvements (r1)
+
+Fixes and improvements since `v0.13.0`:
+
+* update embedded haproxy from 2.3.12 to 2.3.13 [744445b](https://github.com/jcmoraisjr/haproxy-ingress/commit/744445b4db17000986f9b46d4d769cbe1e6e7302) (Joao Morais)
 
 # v0.13.0
 
