@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.11!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.12.8](#v0128)
+  * [Reference](#reference-r8)
+  * [Release notes](#release-notes-r8)
+  * [Fixes and improvements](#fixes-and-improvements-r8)
 * [v0.12.7](#v0127)
   * [Reference](#reference-r7)
   * [Release notes](#release-notes-r7)
@@ -73,6 +77,26 @@ Breaking backward compatibility from v0.11
 * paul ([toothbrush](https://github.com/toothbrush))
 * pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.12.8
+
+## Reference (r8)
+
+* Release date: `2021-08-17`
+* Helm chart: `--version 0.12.8`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.12.8`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.12.8`
+* Embedded HAProxy version: `2.2.16`
+
+## Release notes (r8)
+
+This release updates the embedded HAProxy version from `2.2.15` to `2.2.16`, which fixes some HAProxy's HTTP/2 vulnerabilities. A malicious request can abuse the H2 `:method` pseudo-header to forge malformed HTTP/1 requests, which can be accepted by some vulnerable backend servers. The following announce from the HAProxy's mailing list has the details: https://www.mail-archive.com/haproxy@formilux.org/msg41041.html
+
+## Fixes and improvements (r8)
+
+Fixes and improvements since `v0.12.7`:
+
+* update embedded haproxy from 2.2.15 to 2.2.16 [dd07840](https://github.com/jcmoraisjr/haproxy-ingress/commit/dd07840794463dde8e190c5677ebacebdafd2e4e) (Joao Morais)
 
 # v0.12.7
 
