@@ -299,7 +299,7 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	i.updateCertExpiring()
 	defer func() {
 		if i.failedSince != nil {
-			i.logger.Error("haproxy failed to reload, first occurence at %s", i.failedSince.Format("2006-01-02 15:04:05.999999 -0700 MST"))
+			i.logger.Error("haproxy failed to reload, first occurrence at %s", i.failedSince.Format("2006-01-02 15:04:05.999999 -0700 MST"))
 		}
 	}()
 	if updated {
@@ -460,7 +460,7 @@ func (i *instance) updateCertExpiring() {
 	if !i.config.Hosts().HasCommit() {
 		// TODO the time between this reset and finishing to repopulate the gauge would lead
 		// to incomplete data scraped by Prometheus. This however happens only when a full parsing
-		// happens - edit globals, edit default crt, invalid data comming from lister events
+		// happens - edit globals, edit default crt, invalid data coming from lister events
 		i.metrics.ClearCertExpire()
 	}
 	for hostname, oldHost := range hostsDel {

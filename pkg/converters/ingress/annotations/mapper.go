@@ -119,7 +119,7 @@ func (c *Mapper) addAnnotation(source *Source, path hatypes.PathLink, key, value
 		Value:  realValue,
 	}
 	config.keys[key] = configValue
-	pathConfigs, _ := c.configByKey[key]
+	pathConfigs := c.configByKey[key]
 	pathConfigs = append(pathConfigs, &PathConfig{
 		path:  path,
 		value: configValue,

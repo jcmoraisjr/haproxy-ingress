@@ -111,7 +111,7 @@ func SendToSocket(socket string, command string) error {
 		return err
 	}
 	readBuffer := make([]byte, 2048)
-	rcvd, err := c.Read(readBuffer)
+	rcvd, _ := c.Read(readBuffer)
 	if rcvd > 2 {
 		glog.Infof("haproxy stat socket response: \"%s\"", string(readBuffer[:rcvd-2]))
 	}

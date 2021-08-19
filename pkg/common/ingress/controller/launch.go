@@ -529,7 +529,7 @@ func registerHandlers(enableProfiling bool, port int, ic *GenericController) {
 			if count > 0 {
 				out = fmt.Sprintf("Acme check successfully started. Added %d certificate(s) in the processing queue.\n", count)
 			} else {
-				out = fmt.Sprintf("Acme certificate list is empty.\n")
+				out = "Acme certificate list is empty.\n"
 			}
 		}
 		w.Write([]byte(out))

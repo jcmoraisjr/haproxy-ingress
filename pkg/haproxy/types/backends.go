@@ -312,7 +312,7 @@ func createBackend(shards int, namespace, name, port string) *Backend {
 		uint64(hash[13])<<16 |
 		uint64(hash[14])<<8 |
 		uint64(hash[15])
-	hash64 := uint64(part0 ^ part1)
+	hash64 := part0 ^ part1
 	var shard int
 	if shards > 0 {
 		shard = int(hash64 % uint64(shards))
