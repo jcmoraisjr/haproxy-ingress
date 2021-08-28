@@ -82,7 +82,7 @@ func (c *converters) Sync() {
 	//
 	// configmap converters
 	//
-	if needFullSync || changed.TCPConfigMapDataNew != nil {
+	if changed.TCPConfigMapDataCur != nil {
 		tcpSvcConverter := configmap.NewTCPServicesConverter(c.options, c.haproxy, changed)
 		tcpSvcConverter.Sync()
 		c.timer.Tick("parse_tcp_svc")
