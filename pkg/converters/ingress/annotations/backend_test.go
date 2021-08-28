@@ -1238,7 +1238,7 @@ func TestOAuth(t *testing.T) {
 				},
 			},
 			oauthExp: map[string]hatypes.OAuthConfig{
-				"/": {},
+				"/": {AlwaysDeny: true},
 			},
 			logging: "WARN ignoring invalid oauth implementation 'none' on ingress 'default/ing1'",
 		},
@@ -1250,7 +1250,7 @@ func TestOAuth(t *testing.T) {
 				},
 			},
 			oauthExp: map[string]hatypes.OAuthConfig{
-				"/": {},
+				"/": {AlwaysDeny: true},
 			},
 			logging: "ERROR path '/oauth2' was not found on namespace 'default'",
 		},
@@ -1398,10 +1398,13 @@ func TestOAuth(t *testing.T) {
 			external: true,
 			backend:  "default:back:/oauth2",
 			oauthExp: map[string]hatypes.OAuthConfig{
-				"/":    {},
-				"/app": {},
+				"/":    {AlwaysDeny: true},
+				"/app": {AlwaysDeny: true},
 			},
-			logging: "WARN oauth2_proxy on ingress 'default/ing1' needs Lua socket, install Lua libraries and enable 'external-has-lua' global config",
+			logging: `
+WARN oauth2_proxy on ingress 'default/ing1' needs Lua socket, install Lua libraries and enable 'external-has-lua' global config
+WARN oauth2_proxy on ingress 'default/ing1' needs Lua socket, install Lua libraries and enable 'external-has-lua' global config
+`,
 		},
 		// 11
 		{

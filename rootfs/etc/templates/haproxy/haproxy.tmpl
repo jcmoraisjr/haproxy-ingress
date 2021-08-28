@@ -600,7 +600,10 @@ backend {{ $backend.ID }}
 {{- $oauthCfg := $backend.PathConfig "OAuth" }}
 {{- range $i, $oauth := $oauthCfg.Items }}
 {{- range $pathIDs := $oauthCfg.PathIDs $i }}
-{{- if eq $oauth.Impl "oauth2_proxy" }}
+{{- if $oauth.AlwaysDeny }}
+    http-request deny
+        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+{{- else if eq $oauth.Impl "oauth2_proxy" }}
     http-request set-header X-Real-IP %[src]
         {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
     http-request lua.auth-request {{ $oauth.BackendName }} {{ $oauth.URIPrefix }}/auth
