@@ -2624,6 +2624,7 @@ func TestWhitelistHTTP(t *testing.T) {
 		cidrlist    map[string]map[string]string
 		expected    map[string][]string
 		expAllowExc map[string][]string
+		expAllowHdr map[string]string
 		expDenyRule map[string][]string
 		expDenyExc  map[string][]string
 		logging     string
@@ -2762,6 +2763,18 @@ WARN both allowlist and whitelist were used on ingress 'default/ing1', ignoring 
 				"/": {"192.168.95.0/24"},
 			},
 		},
+		// 10
+		{
+			paths: []string{"/"},
+			cidrlist: map[string]map[string]string{
+				"/": {
+					ingtypes.BackAllowlistSourceHeader: "X-Forwarded-For",
+				},
+			},
+			expAllowHdr: map[string]string{
+				"/": "X-Forwarded-For",
+			},
+		},
 	}
 	source := &Source{Namespace: "default", Name: "ing1", Type: "ingress"}
 	for i, test := range testCases {
@@ -2770,6 +2783,7 @@ WARN both allowlist and whitelist were used on ingress 'default/ing1', ignoring 
 		c.createUpdater().buildBackendWhitelistHTTP(d)
 		actual := map[string][]string{}
 		actualAllowExc := map[string][]string{}
+		actualAllowHdr := map[string]string{}
 		actualDenyRule := map[string][]string{}
 		actualDenyExc := map[string][]string{}
 		for _, path := range d.backend.Paths {
@@ -2778,6 +2792,9 @@ WARN both allowlist and whitelist were used on ingress 'default/ing1', ignoring 
 			}
 			if len(path.AllowedIPHTTP.Exception) > 0 {
 				actualAllowExc[path.Path()] = path.AllowedIPHTTP.Exception
+			}
+			if len(path.AllowedIPHTTP.SourceHeader) > 0 {
+				actualAllowHdr[path.Path()] = path.AllowedIPHTTP.SourceHeader
 			}
 			if len(path.DeniedIPHTTP.Rule) > 0 {
 				actualDenyRule[path.Path()] = path.DeniedIPHTTP.Rule
@@ -2798,10 +2815,14 @@ WARN both allowlist and whitelist were used on ingress 'default/ing1', ignoring 
 		if test.expDenyExc == nil {
 			test.expDenyExc = map[string][]string{}
 		}
+		if test.expAllowHdr == nil {
+			test.expAllowHdr = map[string]string{}
+		}
 		c.compareObjects("whitelist http", i, actual, test.expected)
 		c.compareObjects("whitelist http", i, actualAllowExc, test.expAllowExc)
 		c.compareObjects("whitelist http", i, actualDenyRule, test.expDenyRule)
 		c.compareObjects("whitelist http", i, actualDenyExc, test.expDenyExc)
+		c.compareObjects("whitelist http", i, actualAllowHdr, test.expAllowHdr)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}

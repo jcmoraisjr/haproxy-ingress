@@ -88,6 +88,7 @@ const (
 	BackAgentCheckPort         = "agent-check-port"
 	BackAgentCheckSend         = "agent-check-send"
 	BackAllowlistSourceRange   = "allowlist-source-range"
+	BackAllowlistSourceHeader  = "allowlist-source-header"
 	BackAssignBackendServerID  = "assign-backend-server-id"
 	BackAuthRealm              = "auth-realm"
 	BackAuthSecret             = "auth-secret"

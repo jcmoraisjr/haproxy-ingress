@@ -697,8 +697,9 @@ type BackendLimit struct {
 
 // AccessConfig ...
 type AccessConfig struct {
-	Rule      []string
-	Exception []string
+	Rule         []string
+	Exception    []string
+	SourceHeader string
 }
 
 // ServerConfig ...
