@@ -419,7 +419,9 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $backend.OAuth.Impl }}
+{{- if $backend.OAuth.AlwaysDeny }}
+    http-request deny
+{{- else if $backend.OAuth.Impl }}
 {{- $oauth := $backend.OAuth }}
 {{- if eq $oauth.Impl "oauth2_proxy" }}
     http-request set-header X-Real-IP %[src]

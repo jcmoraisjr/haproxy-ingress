@@ -1168,12 +1168,18 @@ func TestOAuth(t *testing.T) {
 			ann: map[string]string{
 				ingtypes.BackOAuth: "none",
 			},
+			oauthExp: hatypes.OAuthConfig{
+				AlwaysDeny: true,
+			},
 			logging: "WARN ignoring invalid oauth implementation 'none' on ingress 'default/ing1'",
 		},
 		// 2
 		{
 			ann: map[string]string{
 				ingtypes.BackOAuth: "oauth2_proxy",
+			},
+			oauthExp: hatypes.OAuthConfig{
+				AlwaysDeny: true,
 			},
 			logging: "ERROR path '/oauth2' was not found on namespace 'default'",
 		},

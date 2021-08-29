@@ -568,6 +568,9 @@ func (c *updater) buildBackendOAuth(d *backData) {
 	if oauth.Source == nil {
 		return
 	}
+	// starting here the oauth backend should be configured or requests should be denied
+	// AlwaysDeny will be changed to false if the configuration succeed
+	d.backend.OAuth.AlwaysDeny = true
 	if oauth.Value != "oauth2_proxy" {
 		c.logger.Warn("ignoring invalid oauth implementation '%s' on %v", oauth, oauth.Source)
 		return
@@ -600,6 +603,7 @@ func (c *updater) buildBackendOAuth(d *backData) {
 		h := strings.Split(header, ":")
 		headersMap[h[0]] = h[1]
 	}
+	d.backend.OAuth.AlwaysDeny = false
 	d.backend.OAuth.Impl = oauth.Value
 	d.backend.OAuth.BackendName = backend.ID
 	d.backend.OAuth.URIPrefix = uriPrefix
