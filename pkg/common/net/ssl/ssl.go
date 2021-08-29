@@ -138,8 +138,13 @@ func AddOrUpdateCertAndKey(name string, cert, key, ca []byte) (*ingress.SSLCert,
 	if len(ca) > 0 {
 		bundle := x509.NewCertPool()
 		bundle.AppendCertsFromPEM(ca)
+
+		intBundle := x509.NewCertPool()
+		intBundle.AppendCertsFromPEM(cert)
+
 		opts := x509.VerifyOptions{
-			Roots: bundle,
+			Roots:         bundle,
+			Intermediates: intBundle,
 		}
 
 		_, err := pemCert.Verify(opts)
