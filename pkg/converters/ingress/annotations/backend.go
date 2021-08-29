@@ -1004,6 +1004,7 @@ func (c *updater) readAccessConfig(config configValueGetter) (allowed, denied ha
 	allowcfg := config.Get(ingtypes.BackAllowlistSourceRange)
 	denycfg := config.Get(ingtypes.BackDenylistSourceRange)
 	whitecfg := config.Get(ingtypes.BackWhitelistSourceRange)
+	headercfg := config.Get(ingtypes.BackAllowlistSourceHeader)
 	if allowcfg.Value == "" {
 		allowcfg = whitecfg
 	} else if whitecfg.Value != "" {
@@ -1012,5 +1013,6 @@ func (c *updater) readAccessConfig(config configValueGetter) (allowed, denied ha
 	}
 	allowed.Rule, allowed.Exception = c.splitDualCIDR(allowcfg)
 	denied.Rule, denied.Exception = c.splitDualCIDR(denycfg)
+	allowed.SourceHeader = headercfg.Value
 	return allowed, denied
 }
