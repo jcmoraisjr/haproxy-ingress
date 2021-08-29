@@ -512,6 +512,9 @@ backend {{ $backend.ID }}
 {{- range $e1 := short 10 $allow.Exception }}
     acl allow_exception_src{{ $i }} src{{ range $e := $e1 }} {{ $e }}{{ end }}
 {{- end }}
+{{- if $allow.SourceHeader }}
+    http-request set-src hdr({{ $allow.SourceHeader }})
+{{- end }}
 {{- range $pathIDs := $allowCfg.PathIDs $i }}
 {{- if $allow.Exception }}
     http-request deny if

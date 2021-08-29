@@ -301,6 +301,7 @@ The table below describes all supported configuration keys.
 | [`agent-check-port`](#agent-check)                   | backend agent listen port               | Backend |                    |
 | [`agent-check-send`](#agent-check)                   | string to send upon agent connection    | Backend |                    |
 | [`allowlist-source-range`](#allowlist)               | Comma-separated IPs or CIDRs            | Path    |                    |
+| [`allowlist-source-header`](#allowlist)              | Header name that will be used as a src  | Path    |                    |
 | [`app-root`](#app-root)                              | /url                                    | Host    |                    |
 | [`assign-backend-server-id`](#backend-server-id)     | [true\|false]                           | Backend | `false`            |
 | [`auth-headers-fail`](#auth-external)                | `<header>,...`                          | Path    | `*`                |
@@ -672,11 +673,12 @@ See also:
 
 ## Allowlist
 
-| Configuration key        | Scope  | Default | Since |
-|--------------------------|--------|---------|-------|
-| `allowlist-source-range` | `Path` |         | v0.12 |
-| `denylist-source-range`  | `Path` |         | v0.12 |
-| `whitelist-source-range` | `Path` |         |       |
+| Configuration key        | Scope  | Default | Since   |
+|--------------------------|--------|---------|---------|
+| `allowlist-source-range` | `Path` |         | v0.12   |
+| `denylist-source-range`  | `Path` |         | v0.12   |
+| `whitelist-source-range` | `Path` |         |         |
+| `allowlist-source-header`| `Path` |         | v0.13.2 |
 
 Defines a comma-separated list of source IPs or CIDRs allowed or denied to connect.
 The default behavior is to allow all source IPs if neither the allow list nor the
@@ -698,13 +700,23 @@ and will be ignored if `allowlist-source-range` is declared.
 * `denylist-source-range`: Used to allow requests by default, denying only the IPs
 and CIDRs in the list, except IPs and CIDRs prefixed with `!` which will continue to
 be allowed.
+* `allowlist-source-header`: Used to define a header from which source IP will be 
+taken in order to compare with the allow and deny list. If not defined a normal source 
+will be used. This option is useful when ingress is hidden behind reverse proxy but you 
+still want to control access to separate paths from ingress configuration.
 
 Allowlist and denylist can be used together. The request will be denied if the
 configurations overlap and a source IP matches both the allowlist and denylist.
 
+{{% alert title="Warning" color="warning" %}}
+Setting a `allowlist-source-header` comes with a security risk. You must ensure that 
+the selected header can be trusted!
+{{% /alert %}}
+
 See also:
 
 * https://cbonte.github.io/haproxy-dconv/2.2/configuration.html#4.2-http-request%20deny
+* https://cbonte.github.io/haproxy-dconv/2.2/configuration.html#4.2-http-request%20set-src
 
 ---
 
