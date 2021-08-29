@@ -294,7 +294,7 @@ func (c *converter) syncPartial() {
 //
 // All state change works removing hosts and backs objects in an old state and
 // resyncing ingress objects to recreate hosts and backs in a new state. This
-// works very well, except with new ingress objects that references hosts or
+// works very well, except with ingress objects that starts to reference hosts or
 // backs that already exist - all the tracking starts from the ingress parsing.
 //
 // trackAddedIngress does the same tracking the sync ingress already do, but
@@ -303,7 +303,7 @@ func (c *converter) syncPartial() {
 // here and removed before parse the added ingress which will readd such hosts
 // and backs
 func (c *converter) trackAddedIngress() {
-	for _, ing := range c.changed.IngressesAdd {
+	for _, ing := range append(c.changed.IngressesAdd, c.changed.IngressesUpd...) {
 		name := ing.Namespace + "/" + ing.Name
 		if ing.Spec.Backend != nil {
 			backend := c.findBackend(ing.Namespace, ing.Spec.Backend)
