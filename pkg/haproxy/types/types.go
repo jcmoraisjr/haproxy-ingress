@@ -623,6 +623,7 @@ type BackendLimit struct {
 
 // OAuthConfig ...
 type OAuthConfig struct {
+	AlwaysDeny  bool
 	Impl        string
 	BackendName string
 	URIPrefix   string

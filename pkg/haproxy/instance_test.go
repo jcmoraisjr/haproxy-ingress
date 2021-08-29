@@ -432,6 +432,13 @@ d1.local#/ path01`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.OAuth.AlwaysDeny = true
+			},
+			expected: `
+    http-request deny`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.OAuth.Impl = "oauth2_proxy"
 				b.OAuth.BackendName = "system_oauth_4180"
 				b.OAuth.URIPrefix = "/oauth2"
