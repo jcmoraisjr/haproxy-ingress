@@ -26,3 +26,18 @@ spec:
         - containerPort: 12345
           name: spop
           protocol: TCP
+        resources:
+          limits:
+            cpu: 200m
+            memory: 150Mi
+          requests:
+            cpu: 200m
+            memory: 150Mi
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          successThreshold: 1
+          tcpSocket:
+            port: 12345
+          timeoutSeconds: 4

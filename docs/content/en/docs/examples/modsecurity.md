@@ -33,6 +33,11 @@ $ kubectl create -f https://haproxy-ingress.github.io/resources/modsecurity-depl
 deployment.apps/modsecurity-spoa created
 ```
 
+{{% alert title="Note" %}}
+This deployment configures a small amount of requests and limits resources,
+remember to adjust them before moving to production.
+{{% /alert %}}
+
 
 Check if the agent is up and running:
 
