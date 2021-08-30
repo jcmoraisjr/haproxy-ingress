@@ -663,7 +663,7 @@ d1.local#/ path01`,
     # path01 = d1.local/app1
     # path02 = d1.local/app2
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
-    http-request deny { var(txn.pathID) path01 }`,
+    http-request deny if { var(txn.pathID) path01 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {

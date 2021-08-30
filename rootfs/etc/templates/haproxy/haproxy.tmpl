@@ -637,7 +637,7 @@ backend {{ $backend.ID }}
 {{- range $pathIDs := $authCfg.PathIDs $i }}
 {{- if $auth.AlwaysDeny }}
     http-request deny
-        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
 {{- else }}
 {{- if $auth.AuthBackendName }}
     http-request set-header X-Real-IP %[src]
