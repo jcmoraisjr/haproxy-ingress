@@ -489,6 +489,18 @@ d1.local#/ path01`,
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				oauth := &b.FindBackendPath(h.FindPath("/app2").Link).OAuth
+				oauth.AlwaysDeny = true
+			},
+			path: []string{"/app1", "/app2"},
+			expected: `
+    # path01 = d1.local/app1
+    # path02 = d1.local/app2
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request deny if { var(txn.pathID) path02 }`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				oauth := &b.FindBackendPath(h.FindPath("/app2").Link).OAuth
 				oauth.Impl = "oauth2_proxy"
 				oauth.BackendName = "system_oauth_4180"
 				oauth.URIPrefix = "/oauth2"

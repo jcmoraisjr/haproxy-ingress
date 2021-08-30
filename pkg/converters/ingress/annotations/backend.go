@@ -575,6 +575,9 @@ func (c *updater) buildBackendOAuth(d *backData) {
 		if oauth.Source == nil {
 			continue
 		}
+		// starting here the oauth backend should be configured or requests should be denied
+		// AlwaysDeny will be changed to false if the configuration succeed
+		path.OAuth.AlwaysDeny = true
 		if oauth.Value != "oauth2_proxy" {
 			c.logger.Warn("ignoring invalid oauth implementation '%s' on %v", oauth, oauth.Source)
 			continue
@@ -582,7 +585,7 @@ func (c *updater) buildBackendOAuth(d *backData) {
 		external := c.haproxy.Global().External
 		if external.IsExternal() && !external.HasLua {
 			c.logger.Warn("oauth2_proxy on %v needs Lua socket, install Lua libraries and enable 'external-has-lua' global config", oauth.Source)
-			return
+			continue
 		}
 		uriPrefix := "/oauth2"
 		headers := []string{"X-Auth-Request-Email:auth_response_email"}
@@ -612,6 +615,7 @@ func (c *updater) buildBackendOAuth(d *backData) {
 			h := strings.Split(header, ":")
 			headersMap[h[0]] = h[1]
 		}
+		path.OAuth.AlwaysDeny = false
 		path.OAuth.Impl = oauth.Value
 		path.OAuth.BackendName = backend.ID
 		path.OAuth.URIPrefix = uriPrefix
