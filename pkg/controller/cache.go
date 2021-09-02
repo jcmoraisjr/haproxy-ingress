@@ -304,7 +304,7 @@ func (c *k8scache) GetEndpoints(service *api.Service) (*api.Endpoints, error) {
 
 // GetTerminatingPods returns the pods that are terminating and belong
 // (based on the Spec.Selector) to the supplied service.
-func (c *k8scache) GetTerminatingPods(service *api.Service, track convtypes.TrackingTarget) (pl []*api.Pod, err error) {
+func (c *k8scache) GetTerminatingPods(service *api.Service, track []convtypes.TrackingRef) (pl []*api.Pod, err error) {
 	if !c.listers.hasPodLister {
 		return nil, fmt.Errorf("pod lister wasn't started, remove --disable-pod-list command-line option to enable it")
 	}
@@ -318,7 +318,7 @@ func (c *k8scache) GetTerminatingPods(service *api.Service, track convtypes.Trac
 	}
 	for _, p := range list {
 		// all pods need to be tracked despite of the terminating status
-		c.tracker.Track(false, track, convtypes.PodType, p.Namespace+"/"+p.Name)
+		c.tracker.TrackRefName(track, convtypes.ResourcePod, p.Namespace+"/"+p.Name)
 		if isTerminatingPod(service, p) {
 			pl = append(pl, p)
 		}
@@ -388,7 +388,7 @@ func (c *k8scache) buildResourceName(defaultNamespace, kind, resourceName string
 	)
 }
 
-func (c *k8scache) GetTLSSecretPath(defaultNamespace, secretName string, track convtypes.TrackingTarget) (file convtypes.CrtFile, err error) {
+func (c *k8scache) GetTLSSecretPath(defaultNamespace, secretName string, track []convtypes.TrackingRef) (file convtypes.CrtFile, err error) {
 	proto, content := getContentProtocol(secretName)
 	if proto == "file" {
 		if _, err := os.Stat(content); err != nil {
@@ -405,13 +405,12 @@ func (c *k8scache) GetTLSSecretPath(defaultNamespace, secretName string, track c
 	if err != nil {
 		return file, err
 	}
+	c.tracker.TrackRefName(track, convtypes.ResourceSecret, namespace+"/"+name)
 	sslCert, err := c.controller.GetCertificate(namespace, name)
 	if err != nil {
-		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return file, err
 	}
 	if sslCert.PemFileName == "" || sslCert.Certificate == nil {
-		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return file, fmt.Errorf("secret '%s/%s' does not have keys 'tls.crt' and 'tls.key'", namespace, name)
 	}
 	file = convtypes.CrtFile{
@@ -420,11 +419,10 @@ func (c *k8scache) GetTLSSecretPath(defaultNamespace, secretName string, track c
 		CommonName: sslCert.Certificate.Subject.CommonName,
 		NotAfter:   sslCert.Certificate.NotAfter,
 	}
-	c.tracker.Track(false, track, convtypes.SecretType, namespace+"/"+name)
 	return file, nil
 }
 
-func (c *k8scache) GetCASecretPath(defaultNamespace, secretName string, track convtypes.TrackingTarget) (ca, crl convtypes.File, err error) {
+func (c *k8scache) GetCASecretPath(defaultNamespace, secretName string, track []convtypes.TrackingRef) (ca, crl convtypes.File, err error) {
 	proto, content := getContentProtocol(secretName)
 	if proto == "file" {
 		if content == "" {
@@ -458,13 +456,12 @@ func (c *k8scache) GetCASecretPath(defaultNamespace, secretName string, track co
 	if err != nil {
 		return ca, crl, err
 	}
+	c.tracker.TrackRefName(track, convtypes.ResourceSecret, namespace+"/"+name)
 	sslCert, err := c.controller.GetCertificate(namespace, name)
 	if err != nil {
-		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return ca, crl, err
 	}
 	if sslCert.CAFileName == "" {
-		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return ca, crl, fmt.Errorf("secret '%s/%s' does not have key 'ca.crt'", namespace, name)
 	}
 	ca = convtypes.File{
@@ -478,7 +475,6 @@ func (c *k8scache) GetCASecretPath(defaultNamespace, secretName string, track co
 			SHA1Hash: sslCert.PemSHA,
 		}
 	}
-	c.tracker.Track(false, track, convtypes.SecretType, namespace+"/"+name)
 	return ca, crl, nil
 }
 
@@ -519,7 +515,7 @@ func (c *k8scache) GetDHSecretPath(defaultNamespace, secretName string) (file co
 	return file, nil
 }
 
-func (c *k8scache) GetPasswdSecretContent(defaultNamespace, secretName string, track convtypes.TrackingTarget) ([]byte, error) {
+func (c *k8scache) GetPasswdSecretContent(defaultNamespace, secretName string, track []convtypes.TrackingRef) ([]byte, error) {
 	proto, content := getContentProtocol(secretName)
 	if proto == "file" {
 		return ioutil.ReadFile(content)
@@ -530,18 +526,16 @@ func (c *k8scache) GetPasswdSecretContent(defaultNamespace, secretName string, t
 	if err != nil {
 		return nil, err
 	}
+	c.tracker.TrackRefName(track, convtypes.ResourceSecret, namespace+"/"+name)
 	secret, err := c.listers.secretLister.Secrets(namespace).Get(name)
 	if err != nil {
-		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return nil, err
 	}
 	keyName := "auth"
 	data, found := secret.Data[keyName]
 	if !found {
-		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return nil, fmt.Errorf("secret '%s/%s' does not have key '%s'", namespace, name, keyName)
 	}
-	c.tracker.Track(false, track, convtypes.SecretType, namespace+"/"+name)
 	return data, nil
 }
 

@@ -64,11 +64,12 @@ func (f *Frontend) RemoveAuthBackendExcept(used map[string]bool) {
 	f.AuthProxy.BindList = bindList[:i]
 }
 
-func (f *Frontend) RemoveAuthBackendByTarget(backends []BackendID) {
+// RemoveAuthBackendByTarget ...
+func (f *Frontend) RemoveAuthBackendByTarget(backends []string) {
 	bindList := f.AuthProxy.BindList
 	var i int
 	for _, bind := range bindList {
-		if !hasBackend(backends, bind.Backend) {
+		if !hasBackend(backends, bind.Backend.String()) {
 			bindList[i] = bind
 			i++
 		}
@@ -76,7 +77,7 @@ func (f *Frontend) RemoveAuthBackendByTarget(backends []BackendID) {
 	f.AuthProxy.BindList = bindList[:i]
 }
 
-func hasBackend(backends []BackendID, backend BackendID) bool {
+func hasBackend(backends []string, backend string) bool {
 	for _, back := range backends {
 		if back == backend {
 			return true

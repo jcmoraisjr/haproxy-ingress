@@ -98,10 +98,14 @@ func (c *converter) NeedFullSync() bool {
 	oldSvcNames := append(delSvcNames, updSvcNames...)
 	updEndpointsNames := ep2names(c.changed.EndpointsNew)
 	oldSvcNames = append(oldSvcNames, updEndpointsNames...)
-	changed := c.tracker.GetGatewayChanged(oldSecretNames, addSecretNames, oldSvcNames, addSvcNames)
+	links := c.tracker.QueryLinks(map[convtypes.ResourceType][]string{
+		convtypes.ResourceSecret:  append(oldSecretNames, addSecretNames...),
+		convtypes.ResourceService: append(oldSvcNames, addSvcNames...),
+	}, false)
+	_, changed := links[convtypes.ResourceGateway]
 	if changed {
 		// only remove old links if they will be recreated
-		c.tracker.DeleteGateway()
+		c.tracker.ClearLinks()
 	}
 	return changed
 }
@@ -231,7 +235,7 @@ func (c *converter) createBackend(source *Source, index string, forwardTo []gate
 			continue
 		}
 		svcName := source.namespace + "/" + *fw.ServiceName
-		c.tracker.TrackGateway(convtypes.ServiceType, svcName)
+		c.tracker.TrackNames(convtypes.ResourceService, svcName, convtypes.ResourceGateway, "gw")
 		svc, err := c.cache.GetService("", svcName)
 		if err != nil {
 			c.logger.Warn("skipping service '%s' on %s: %v", *fw.ServiceName, source, err)
@@ -440,5 +444,6 @@ func (c *converter) readCertRef(namespace string, certRef *gatewayv1alpha1.Local
 	if certRef.Kind != "" && strings.ToLower(certRef.Kind) != "secret" {
 		return crtFile, fmt.Errorf("unsupported Kind '%s', the only supported kind is 'Secret'", certRef.Kind)
 	}
-	return c.cache.GetTLSSecretPath(namespace, certRef.Name, convtypes.TrackingTarget{Gateway: true})
+	return c.cache.GetTLSSecretPath(namespace, certRef.Name,
+		[]convtypes.TrackingRef{{Context: convtypes.ResourceGateway, UniqueName: "gw"}})
 }
