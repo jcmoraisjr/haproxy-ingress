@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.12!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.13.2](#v0132)
+  * [Reference](#reference-r2)
+  * [Release notes](#release-notes-r2)
+  * [Fixes and improvements](#fixes-and-improvements-r2)
 * [v0.13.1](#v0131)
   * [Reference](#reference-r1)
   * [Release notes](#release-notes-r1)
@@ -64,9 +68,49 @@ Breaking backward compatibility from v0.12
 * Andrew Rodland ([arodland](https://github.com/arodland))
 * Bart Versluijs ([bartversluijs](https://github.com/bartversluijs))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
+* Maël Valais ([maelvls](https://github.com/maelvls))
 * Neil Seward ([sealneaward](https://github.com/sealneaward))
 * paul ([toothbrush](https://github.com/toothbrush))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+* Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
+
+# v0.13.2
+
+## Reference (r2)
+
+* Release date: `2021-09-05`
+* Helm chart: `--version 0.13.2`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.2`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.2`
+* Embedded HAProxy version: `2.3.13`
+
+## Release notes (r2)
+
+This release fixes a couple of issues found in the v0.13 branch:
+
+* An ingress resource configuration could not be applied if an ingress resource starts to reference a service that was already being referenced by another ingress;
+* An invalid configuration could be generated, preventing haproxy to reload, if an invalid oauth or auth external configuration is added (e.g. missing service name) to a fraction of the paths of a backend;
+* Updates to endpoints of a ConfigMap based TCP service wasn't being updated to the haproxy listener;
+* Wojciech Chojnowski fixed Gateway API's certificateRef configuration - v1alpha1 requires the group field but HAProxy Ingress was refusing "core" as its content. The merge was done to master before v0.13.0 tag, but the merge to v0.13 branch was missing.
+
+Also, Maël Valais added a new configuration key that allows to use the value of a HTTP header as the source address used by allow and deny lists, making it possible to properly configure source headers when HAProxy is behind a reverse proxy.
+
+## Fixes and improvements (r2)
+
+Fixes and improvements since `v0.13.1`:
+
+* Fix endpoint update of configmap based tcp services [#842](https://github.com/jcmoraisjr/haproxy-ingress/pull/842) (jcmoraisjr)
+* Fix config parsing on misconfigured auth external [#844](https://github.com/jcmoraisjr/haproxy-ingress/pull/844) (jcmoraisjr)
+* Fix validation if ca is used with crt and key [#845](https://github.com/jcmoraisjr/haproxy-ingress/pull/845) (jcmoraisjr)
+* Fix ingress update to an existing backend [#847](https://github.com/jcmoraisjr/haproxy-ingress/pull/847) (jcmoraisjr)
+* Feature/allowlist behind reverse proxy [#846](https://github.com/jcmoraisjr/haproxy-ingress/pull/846) (DCkQ6) - [doc](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#allowlist)
+  * Configuration keys:
+    * `allowlist-source-header`
+* Gateway API: when using v1alpha1, certificateRef.group now accepts "core" [#833](https://github.com/jcmoraisjr/haproxy-ingress/pull/833) (maelvls)
+
+## Other
+
+* docs: add modsec resource limits to controls V2 memory consumption [#841](https://github.com/jcmoraisjr/haproxy-ingress/pull/841) (sealneaward)
 
 # v0.13.1
 
