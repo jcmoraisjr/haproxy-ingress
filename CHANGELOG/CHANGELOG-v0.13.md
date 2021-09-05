@@ -91,9 +91,9 @@ This release fixes a couple of issues found in the v0.13 branch:
 * An ingress resource configuration could not be applied if an ingress resource starts to reference a service that was already being referenced by another ingress;
 * An invalid configuration could be generated, preventing haproxy to reload, if an invalid oauth or auth external configuration is added (e.g. missing service name) to a fraction of the paths of a backend;
 * Updates to endpoints of a ConfigMap based TCP service wasn't being updated to the haproxy listener;
-* Wojciech Chojnowski fixed Gateway API's certificateRef configuration - v1alpha1 requires the group field but HAProxy Ingress was refusing "core" as its content. The merge was done to master before v0.13.0 tag, but the merge to v0.13 branch was missing.
+* Maël Valais fixed Gateway API's certificateRef configuration - v1alpha1 requires the group field but HAProxy Ingress was refusing "core" as its content. The merge was done to master before v0.13.0 tag, but the merge to v0.13 branch was missing.
 
-Also, Maël Valais added a new configuration key that allows to use the value of a HTTP header as the source address used by allow and deny lists, making it possible to properly configure source headers when HAProxy is behind a reverse proxy.
+Also, Wojciech Chojnowski added a new configuration key that allows to use the value of a HTTP header as the source address used by allow and deny lists, making it possible to properly configure source headers when HAProxy is behind a reverse proxy.
 
 ## Fixes and improvements (r2)
 
