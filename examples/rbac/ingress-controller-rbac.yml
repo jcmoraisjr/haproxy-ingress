@@ -41,8 +41,10 @@ rules:
       - list
       - watch
   - apiGroups:
-      - "extensions"
+      - extensions
+      - networking.k8s.io
     resources:
+      - ingressclasses
       - ingresses
     verbs:
       - get
@@ -56,7 +58,8 @@ rules:
       - create
       - patch
   - apiGroups:
-      - "extensions"
+      - extensions
+      - networking.k8s.io
     resources:
       - ingresses/status
     verbs:
