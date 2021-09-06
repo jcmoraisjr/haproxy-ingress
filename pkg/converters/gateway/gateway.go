@@ -65,48 +65,11 @@ func (c *converter) NeedFullSync() bool {
 	// full sync from the Gateway API resource
 	// changes. Check if other changed resources
 	// impact anyone related with the Gateway API.
-	//
-	// TODO reused from ingress, move tracking code to a common place.
-	secret2names := func(secrets []*api.Secret) []string {
-		secretList := make([]string, len(secrets))
-		for i, secret := range secrets {
-			secretList[i] = secret.Namespace + "/" + secret.Name
-		}
-		return secretList
-	}
-	svc2names := func(services []*api.Service) []string {
-		serviceList := make([]string, len(services))
-		for i, service := range services {
-			serviceList[i] = service.Namespace + "/" + service.Name
-		}
-		return serviceList
-	}
-	ep2names := func(endpoints []*api.Endpoints) []string {
-		epList := make([]string, len(endpoints))
-		for i, ep := range endpoints {
-			epList[i] = ep.Namespace + "/" + ep.Name
-		}
-		return epList
-	}
-	delSecretNames := secret2names(c.changed.SecretsDel)
-	updSecretNames := secret2names(c.changed.SecretsUpd)
-	addSecretNames := secret2names(c.changed.SecretsAdd)
-	oldSecretNames := append(delSecretNames, updSecretNames...)
-	delSvcNames := svc2names(c.changed.ServicesDel)
-	updSvcNames := svc2names(c.changed.ServicesUpd)
-	addSvcNames := svc2names(c.changed.ServicesAdd)
-	oldSvcNames := append(delSvcNames, updSvcNames...)
-	updEndpointsNames := ep2names(c.changed.EndpointsNew)
-	oldSvcNames = append(oldSvcNames, updEndpointsNames...)
-	links := c.tracker.QueryLinks(map[convtypes.ResourceType][]string{
-		convtypes.ResourceSecret:  append(oldSecretNames, addSecretNames...),
-		convtypes.ResourceService: append(oldSvcNames, addSvcNames...),
+	links := c.tracker.QueryLinks(convtypes.TrackingLinks{
+		convtypes.ResourceSecret:  c.changed.Links[convtypes.ResourceSecret],
+		convtypes.ResourceService: c.changed.Links[convtypes.ResourceService],
 	}, false)
 	_, changed := links[convtypes.ResourceGateway]
-	if changed {
-		// only remove old links if they will be recreated
-		c.tracker.ClearLinks()
-	}
 	return changed
 }
 

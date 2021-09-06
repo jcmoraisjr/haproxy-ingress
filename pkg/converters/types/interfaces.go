@@ -87,6 +87,7 @@ type ChangedObjects struct {
 	NeedFullSync bool
 	//
 	Objects []string
+	Links   TrackingLinks
 }
 
 // ResourceType ...

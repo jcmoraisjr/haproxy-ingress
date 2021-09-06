@@ -264,6 +264,43 @@ func (c *CacheMock) SwapChangedObjects() *convtypes.ChangedObjects {
 		GlobalConfigMapDataCur: changed.GlobalConfigMapDataNew,
 		TCPConfigMapDataCur:    changed.TCPConfigMapDataNew,
 	}
+	// update changed.Links based on notifications
+	changedLinks := convtypes.TrackingLinks{}
+	addChanges := func(ctx convtypes.ResourceType, ns, n string) {
+		fullname := ns + "/" + n
+		changedLinks[ctx] = append(changedLinks[ctx], fullname)
+	}
+	for _, ing := range changed.IngressesDel {
+		addChanges(convtypes.ResourceIngress, ing.Namespace, ing.Name)
+	}
+	for _, ing := range changed.IngressesUpd {
+		addChanges(convtypes.ResourceIngress, ing.Namespace, ing.Name)
+	}
+	for _, ing := range changed.IngressesAdd {
+		addChanges(convtypes.ResourceIngress, ing.Namespace, ing.Name)
+	}
+	for _, svc := range changed.ServicesDel {
+		addChanges(convtypes.ResourceService, svc.Namespace, svc.Name)
+	}
+	for _, svc := range changed.ServicesUpd {
+		addChanges(convtypes.ResourceService, svc.Namespace, svc.Name)
+	}
+	for _, svc := range changed.ServicesAdd {
+		addChanges(convtypes.ResourceService, svc.Namespace, svc.Name)
+	}
+	for _, secret := range changed.SecretsDel {
+		addChanges(convtypes.ResourceSecret, secret.Namespace, secret.Name)
+	}
+	for _, secret := range changed.SecretsUpd {
+		addChanges(convtypes.ResourceSecret, secret.Namespace, secret.Name)
+	}
+	for _, secret := range changed.SecretsAdd {
+		addChanges(convtypes.ResourceSecret, secret.Namespace, secret.Name)
+	}
+	for _, ep := range changed.EndpointsNew {
+		addChanges(convtypes.ResourceService, ep.Namespace, ep.Name)
+	}
+	changed.Links = changedLinks
 	// update c.IngList based on notifications
 	for i, ing := range c.IngList {
 		for _, ingUpd := range changed.IngressesUpd {

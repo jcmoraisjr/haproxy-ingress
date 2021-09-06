@@ -212,106 +212,14 @@ func (c *converter) syncFull() {
 }
 
 func (c *converter) syncPartial() {
-	// conventions:
-	//
-	//   * del, upd, add: events from the listers
-	//   * old, new:      old state (deleted, before change) and new state (after change, added)
-	//   * dirty:         has impact due to a direct or indirect change
-	//
-
-	// helper funcs
-	ing2names := func(ings []*networking.Ingress) []string {
-		inglist := make([]string, len(ings))
-		for i, ing := range ings {
-			inglist[i] = ing.Namespace + "/" + ing.Name
-		}
-		return inglist
-	}
-	cls2names := func(clss []*networking.IngressClass) []string {
-		clslist := make([]string, len(clss))
-		for i, cls := range clss {
-			clslist[i] = cls.Name
-		}
-		return clslist
-	}
-	cm2names := func(cms []*api.ConfigMap) []string {
-		cmlist := make([]string, len(cms))
-		for i, cm := range cms {
-			cmlist[i] = cm.Namespace + "/" + cm.Name
-		}
-		return cmlist
-	}
-	svc2names := func(services []*api.Service) []string {
-		serviceList := make([]string, len(services))
-		for i, service := range services {
-			serviceList[i] = service.Namespace + "/" + service.Name
-		}
-		return serviceList
-	}
-	ep2names := func(endpoints []*api.Endpoints) []string {
-		epList := make([]string, len(endpoints))
-		for i, ep := range endpoints {
-			epList[i] = ep.Namespace + "/" + ep.Name
-		}
-		return epList
-	}
-	secret2names := func(secrets []*api.Secret) []string {
-		secretList := make([]string, len(secrets))
-		for i, secret := range secrets {
-			secretList[i] = secret.Namespace + "/" + secret.Name
-		}
-		return secretList
-	}
-	pod2names := func(pods []*api.Pod) []string {
-		podList := make([]string, len(pods))
-		for i, pod := range pods {
-			podList[i] = pod.Namespace + "/" + pod.Name
-		}
-		return podList
-	}
-
-	// remove changed/deleted data
-	delIngNames := ing2names(c.changed.IngressesDel)
-	updIngNames := ing2names(c.changed.IngressesUpd)
-	addIngNames := ing2names(c.changed.IngressesAdd)
-	oldIngNames := append(delIngNames, updIngNames...)
-	delClsNames := cls2names(c.changed.IngressClassesDel)
-	updClsNames := cls2names(c.changed.IngressClassesUpd)
-	addClsNames := cls2names(c.changed.IngressClassesAdd)
-	oldClsNames := append(delClsNames, updClsNames...)
-	delCMNames := cm2names(c.changed.ConfigMapsDel)
-	updCMNames := cm2names(c.changed.ConfigMapsUpd)
-	addCMNames := cm2names(c.changed.ConfigMapsAdd)
-	oldCMNames := append(delCMNames, updCMNames...)
-	delSvcNames := svc2names(c.changed.ServicesDel)
-	updSvcNames := svc2names(c.changed.ServicesUpd)
-	addSvcNames := svc2names(c.changed.ServicesAdd)
-	oldSvcNames := append(delSvcNames, updSvcNames...)
-	updEndpointsNames := ep2names(c.changed.EndpointsNew)
-	oldSvcNames = append(oldSvcNames, updEndpointsNames...)
-	delSecretNames := secret2names(c.changed.SecretsDel)
-	updSecretNames := secret2names(c.changed.SecretsUpd)
-	addSecretNames := secret2names(c.changed.SecretsAdd)
-	oldSecretNames := append(delSecretNames, updSecretNames...)
-	addPodNames := pod2names(c.changed.PodsNew)
 	c.trackAddedIngress()
+	trackedLinks := c.tracker.QueryLinks(c.changed.Links, true)
 
-	links := c.tracker.QueryLinks(
-		map[convtypes.ResourceType][]string{
-			convtypes.ResourceIngress:      append(oldIngNames, addIngNames...),
-			convtypes.ResourceIngressClass: append(oldClsNames, addClsNames...),
-			convtypes.ResourceConfigMap:    append(oldCMNames, addCMNames...),
-			convtypes.ResourceService:      append(oldSvcNames, addSvcNames...),
-			convtypes.ResourceSecret:       append(oldSecretNames, addSecretNames...),
-			convtypes.ResourcePod:          addPodNames,
-		},
-		true,
-	)
-	dirtyIngs := links[convtypes.ResourceIngress]
-	dirtyHosts := links[convtypes.ResourceHAHostname]
-	dirtyBacks := links[convtypes.ResourceHABackend]
-	dirtyUsers := links[convtypes.ResourceHAUserlist]
-	dirtyStorages := links[convtypes.ResourceAcmeData]
+	dirtyIngs := trackedLinks[convtypes.ResourceIngress]
+	dirtyHosts := trackedLinks[convtypes.ResourceHAHostname]
+	dirtyBacks := trackedLinks[convtypes.ResourceHABackend]
+	dirtyUsers := trackedLinks[convtypes.ResourceHAUserlist]
+	dirtyStorages := trackedLinks[convtypes.ResourceAcmeData]
 
 	// TCP services are currently in the host list due to how tracking is
 	// currently implemented. This is not a good solution because of their scopes -
@@ -334,8 +242,8 @@ func (c *converter) syncPartial() {
 	for _, ing := range dirtyIngs {
 		ingMap[ing] = nil
 	}
-	for _, ing := range delIngNames {
-		delete(ingMap, ing)
+	for _, ing := range c.changed.IngressesDel {
+		delete(ingMap, ing.Namespace+"/"+ing.Name)
 	}
 	for _, ing := range c.changed.IngressesAdd {
 		ingMap[ing.Namespace+"/"+ing.Name] = ing
