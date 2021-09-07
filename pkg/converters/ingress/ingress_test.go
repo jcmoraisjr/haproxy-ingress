@@ -1509,6 +1509,45 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
 	}
 }
 
+func TestSyncPartialTCPService(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	c.createSvc1("default/echo1", "8080", "172.17.0.11")
+	ing := c.createIng2("default/echo1", "echo1:8080")
+	ing.SetAnnotations(map[string]string{"ingress.kubernetes.io/" + ingtypes.TCPTCPServicePort: "7001"})
+	c.Sync(ing)
+	c.hconfig.Commit()
+	c.logger.Logging = []string{}
+
+	_, ep := conv_helper.CreateService("default/echo1", "8080", "172.17.0.11,172.17.0.21")
+	c.cache.Changed.EndpointsNew = []*api.Endpoints{ep}
+	c.Sync()
+
+	c.compareConfigFront(`[]`)
+	c.compareConfigBack(`
+- id: default_echo1_8080
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+  - ip: 172.17.0.21
+    port: 8080
+  modetcp: true
+- id: system_default_8080
+  endpoints:
+  - ip: 172.17.0.99
+    port: 8080
+`)
+	c.compareConfigTCPService(`
+- backends: []
+  defaultbackend: default_echo1_8080
+  port: 7001
+  proxyprot: false
+  tls: {}
+`)
+	c.logger.CompareLogging(`INFO-V(2) syncing 0 host(s) and 1 backend(s)`)
+}
+
 func TestSyncPartialDefaultBackend(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()

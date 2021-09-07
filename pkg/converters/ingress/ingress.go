@@ -216,19 +216,12 @@ func (c *converter) syncPartial() {
 	trackedLinks := c.tracker.QueryLinks(c.changed.Links, true)
 
 	dirtyIngs := trackedLinks[convtypes.ResourceIngress]
+	dirtyTCPServices := trackedLinks[convtypes.RersourceHATCPService]
 	dirtyHosts := trackedLinks[convtypes.ResourceHAHostname]
 	dirtyBacks := trackedLinks[convtypes.ResourceHABackend]
 	dirtyUsers := trackedLinks[convtypes.ResourceHAUserlist]
 	dirtyStorages := trackedLinks[convtypes.ResourceAcmeData]
 
-	// TCP services are currently in the host list due to how tracking is
-	// currently implemented. This is not a good solution because of their scopes -
-	// hosts and TCP services are managed by distinct entities in the haproxy model
-	//
-	// TODO Create a new tracker for services or another way to clean/remove
-	//      backends during service updates. See also normalizeHostname()
-	var dirtyTCPServices []string
-	dirtyHosts, dirtyTCPServices = splitHostsAndTCPServices(dirtyHosts)
 	c.haproxy.TCPServices().RemoveAll(dirtyTCPServices)
 	c.haproxy.Hosts().RemoveAll(dirtyHosts)
 	c.haproxy.Frontend().RemoveAuthBackendByTarget(dirtyBacks)
@@ -298,8 +291,12 @@ func (c *converter) trackAddedIngress() {
 			}
 		}
 		port, _ := strconv.Atoi(c.readConfigKey(ing.Annotations, ingtypes.TCPTCPServicePort))
+		ctx := convtypes.ResourceHAHostname
+		if port > 0 {
+			ctx = convtypes.RersourceHATCPService
+		}
 		for _, rule := range ing.Spec.Rules {
-			c.tracker.TrackNames(convtypes.ResourceIngress, name, convtypes.ResourceHAHostname, normalizeHostname(rule.Host, port))
+			c.tracker.TrackNames(convtypes.ResourceIngress, name, ctx, normalizeHostname(rule.Host, port))
 			if rule.HTTP != nil {
 				for _, path := range rule.HTTP.Paths {
 					backend := c.findBackend(ing.Namespace, &path.Backend)
@@ -336,9 +333,6 @@ func (c *converter) findBackend(namespace string, backend *networking.IngressBac
 //    two tcp services without hostname. hostnames are preserved, making it
 //    a bit easier to introduce sni based routing.
 //
-// Hostnames are used as the tracking ID by backends and secrets. This design
-// must be revisited - either evolving the tracking system, or abstracting
-// how backends and secrets are tracked, or removing the tracking at all.
 func normalizeHostname(hostname string, port int) string {
 	if hostname == "" {
 		hostname = hatypes.DefaultHost
@@ -347,18 +341,6 @@ func normalizeHostname(hostname string, port int) string {
 		return hostname + ":" + strconv.Itoa(port)
 	}
 	return hostname
-}
-
-func splitHostsAndTCPServices(hostnames []string) (hosts, tcpServices []string) {
-	hosts = make([]string, 0, len(hostnames))
-	for _, h := range hostnames {
-		if strings.Index(h, ":") >= 0 {
-			tcpServices = append(tcpServices, h)
-		} else {
-			hosts = append(hosts, h)
-		}
-	}
-	return hosts, tcpServices
 }
 
 func sortIngress(ingress []*networking.Ingress) {
@@ -698,7 +680,7 @@ func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcNam
 	pathLink := hatypes.CreatePathLink(hostname, uri, match)
 	backend, err := c.addBackend(source, pathLink, fullSvcName, svcPort, annBack)
 	if err != nil {
-		c.tracker.TrackNames(source.Type, source.FullName(), convtypes.ResourceHAHostname, hostname)
+		c.tracker.TrackNames(source.Type, source.FullName(), convtypes.ResourceService, fullSvcName)
 		return err
 	}
 	host := c.addHost(hostname, source, annHost)
@@ -712,7 +694,7 @@ func (c *converter) addTCPService(source *annotations.Source, hostname string, p
 		tcpservice := strings.TrimPrefix(hostname, hatypes.DefaultHost)
 		return nil, fmt.Errorf("tcp service %s was already assigned to %s", tcpservice, tcpHost.Backend)
 	}
-	c.tracker.TrackNames(source.Type, source.FullName(), convtypes.ResourceHAHostname, hostname)
+	c.tracker.TrackNames(source.Type, source.FullName(), convtypes.RersourceHATCPService, hostname)
 	mapper, found := c.tcpsvcAnnotations[tcpPort]
 	if !found {
 		mapper = c.mapBuilder.NewMapper()
@@ -749,10 +731,18 @@ func (c *converter) addBackendWithClass(source *annotations.Source, pathLink hat
 	// TODO build a stronger tracking
 	svc, err := c.cache.GetService(source.Namespace, fullSvcName)
 	hostname := pathLink.Hostname()
+	ctx := convtypes.ResourceHAHostname
+	if strings.Index(hostname, ":") >= 0 {
+		// TODO this is the wrong way to identify if this is a tcp service. But
+		// it works. There is a refactor to be made in some haproxy model types
+		// to better fit gateway api, this should help here, otherwise we'll
+		// need to evolve to an implementation that's not based on assumptions.
+		ctx = convtypes.RersourceHATCPService
+	}
 	c.tracker.TrackRefName([]convtypes.TrackingRef{
 		{Context: convtypes.ResourceService, UniqueName: fullSvcName},
 		{Context: convtypes.ResourceEndpoints, UniqueName: fullSvcName},
-	}, convtypes.ResourceHAHostname, hostname)
+	}, ctx, hostname)
 	if err != nil {
 		return nil, err
 	}
@@ -916,7 +906,7 @@ func (c *converter) addTLS(source *annotations.Source, hostname, secretName stri
 		tlsFile, err := c.cache.GetTLSSecretPath(
 			source.Namespace,
 			secretName,
-			[]convtypes.TrackingRef{{Context: convtypes.ResourceHAHostname, UniqueName: hostname}},
+			[]convtypes.TrackingRef{{Context: source.Type, UniqueName: source.FullName()}},
 		)
 		if err == nil {
 			return tlsFile

@@ -112,9 +112,10 @@ const (
 	ResourceSecret    ResourceType = "Secret"
 	ResourcePod       ResourceType = "Pod"
 
-	ResourceHAHostname ResourceType = "HAHostname"
-	ResourceHABackend  ResourceType = "HABackend"
-	ResourceHAUserlist ResourceType = "HAUserlist"
+	RersourceHATCPService ResourceType = "HATCPService"
+	ResourceHAHostname    ResourceType = "HAHostname"
+	ResourceHABackend     ResourceType = "HABackend"
+	ResourceHAUserlist    ResourceType = "HAUserlist"
 
 	ResourceAcmeData ResourceType = "AcmeData"
 )
