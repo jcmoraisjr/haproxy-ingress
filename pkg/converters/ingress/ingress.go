@@ -749,7 +749,10 @@ func (c *converter) addBackendWithClass(source *annotations.Source, pathLink hat
 	// TODO build a stronger tracking
 	svc, err := c.cache.GetService(source.Namespace, fullSvcName)
 	hostname := pathLink.Hostname()
-	c.tracker.TrackNames(convtypes.ResourceService, fullSvcName, convtypes.ResourceHAHostname, hostname)
+	c.tracker.TrackRefName([]convtypes.TrackingRef{
+		{Context: convtypes.ResourceService, UniqueName: fullSvcName},
+		{Context: convtypes.ResourceEndpoints, UniqueName: fullSvcName},
+	}, convtypes.ResourceHAHostname, hostname)
 	if err != nil {
 		return nil, err
 	}

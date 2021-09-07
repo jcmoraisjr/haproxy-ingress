@@ -108,6 +108,7 @@ const (
 
 	ResourceConfigMap ResourceType = "ConfigMap"
 	ResourceService   ResourceType = "Service"
+	ResourceEndpoints ResourceType = "Endpoints"
 	ResourceSecret    ResourceType = "Secret"
 	ResourcePod       ResourceType = "Pod"
 

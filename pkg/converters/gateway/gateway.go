@@ -66,8 +66,9 @@ func (c *converter) NeedFullSync() bool {
 	// changes. Check if other changed resources
 	// impact anyone related with the Gateway API.
 	links := c.tracker.QueryLinks(convtypes.TrackingLinks{
-		convtypes.ResourceSecret:  c.changed.Links[convtypes.ResourceSecret],
-		convtypes.ResourceService: c.changed.Links[convtypes.ResourceService],
+		convtypes.ResourceSecret:    c.changed.Links[convtypes.ResourceSecret],
+		convtypes.ResourceService:   c.changed.Links[convtypes.ResourceService],
+		convtypes.ResourceEndpoints: c.changed.Links[convtypes.ResourceEndpoints],
 	}, false)
 	_, changed := links[convtypes.ResourceGateway]
 	return changed
@@ -198,7 +199,10 @@ func (c *converter) createBackend(source *Source, index string, forwardTo []gate
 			continue
 		}
 		svcName := source.namespace + "/" + *fw.ServiceName
-		c.tracker.TrackNames(convtypes.ResourceService, svcName, convtypes.ResourceGateway, "gw")
+		c.tracker.TrackRefName([]convtypes.TrackingRef{
+			{Context: convtypes.ResourceService, UniqueName: svcName},
+			{Context: convtypes.ResourceEndpoints, UniqueName: svcName},
+		}, convtypes.ResourceGateway, "gw")
 		svc, err := c.cache.GetService("", svcName)
 		if err != nil {
 			c.logger.Warn("skipping service '%s' on %s: %v", *fw.ServiceName, source, err)

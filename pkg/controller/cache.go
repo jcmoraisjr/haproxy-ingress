@@ -1052,7 +1052,7 @@ func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
 		addChanges(convtypes.ResourceBackendPolicy, eventAdd, bp.Namespace, bp.Name)
 	}
 	for _, ep := range ch.EndpointsNew {
-		addChanges(convtypes.ResourceService, eventUpdate, ep.Namespace, ep.Name)
+		addChanges(convtypes.ResourceEndpoints, eventUpdate, ep.Namespace, ep.Name)
 	}
 	for _, svc := range ch.ServicesDel {
 		addChanges(convtypes.ResourceService, eventDel, svc.Namespace, svc.Name)

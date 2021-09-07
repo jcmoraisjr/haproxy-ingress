@@ -298,7 +298,7 @@ func (c *CacheMock) SwapChangedObjects() *convtypes.ChangedObjects {
 		addChanges(convtypes.ResourceSecret, secret.Namespace, secret.Name)
 	}
 	for _, ep := range changed.EndpointsNew {
-		addChanges(convtypes.ResourceService, ep.Namespace, ep.Name)
+		addChanges(convtypes.ResourceEndpoints, ep.Namespace, ep.Name)
 	}
 	changed.Links = changedLinks
 	// update c.IngList based on notifications
