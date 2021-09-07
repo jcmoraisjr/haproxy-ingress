@@ -188,7 +188,7 @@ func (c *converter) syncDefaultBackend() {
 		pathLink := hatypes.CreatePathLink(hatypes.DefaultHost, "/", hatypes.MatchBegin)
 		if backend, err := c.addBackend(&c.defaultBackSource, pathLink, c.options.DefaultBackend, "", map[string]string{}); err == nil {
 			c.haproxy.Backends().DefaultBackend = backend
-			c.tracker.TrackNames(convtypes.ResourceIngress, c.defaultBackSource.FullName(), convtypes.ResourceHAHostname, hatypes.DefaultHost)
+			c.tracker.TrackNames(c.defaultBackSource.Type, c.defaultBackSource.FullName(), convtypes.ResourceHAHostname, hatypes.DefaultHost)
 		} else {
 			c.logger.Error("error reading default service: %v", err)
 		}
@@ -402,7 +402,7 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 			continue
 		}
 		hostname := normalizeHostname(rule.Host, 0)
-		ingressClass := c.readIngressClass(source, hostname, ing.Spec.IngressClassName)
+		ingressClass := c.readIngressClass(source, ing.Spec.IngressClassName)
 		sslpassthrough, _ := strconv.ParseBool(annHost[ingtypes.HostSSLPassthrough])
 		host := c.addHost(hostname, source, annHost)
 		for _, path := range rule.HTTP.Paths {
@@ -523,7 +523,7 @@ func (c *converter) syncIngressTCP(source *annotations.Source, ing *networking.I
 		}
 		fullSvcName := ing.Namespace + "/" + svcName
 		pathLink := hatypes.CreatePathLink(hostname, "/", hatypes.MatchExact)
-		ingressClass := c.readIngressClass(source, hostname, ing.Spec.IngressClassName)
+		ingressClass := c.readIngressClass(source, ing.Spec.IngressClassName)
 		backend, err := c.addBackendWithClass(source, pathLink, fullSvcName, svcPort, annBack, ingressClass)
 		if err != nil {
 			return err
@@ -674,9 +674,9 @@ func (c *converter) readPathType(path networking.HTTPIngressPath, ann string) ha
 	return match
 }
 
-func (c *converter) readIngressClass(source *annotations.Source, hostname string, ingressClassName *string) *networking.IngressClass {
+func (c *converter) readIngressClass(source *annotations.Source, ingressClassName *string) *networking.IngressClass {
 	if ingressClassName != nil {
-		c.tracker.TrackNames(convtypes.ResourceIngressClass, *ingressClassName, convtypes.ResourceHAHostname, hostname)
+		c.tracker.TrackNames(convtypes.ResourceIngressClass, *ingressClassName, source.Type, source.FullName())
 		ingressClass, err := c.cache.GetIngressClass(*ingressClassName)
 		if err == nil {
 			return ingressClass
@@ -698,7 +698,7 @@ func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcNam
 	pathLink := hatypes.CreatePathLink(hostname, uri, match)
 	backend, err := c.addBackend(source, pathLink, fullSvcName, svcPort, annBack)
 	if err != nil {
-		c.tracker.TrackNames(convtypes.ResourceIngress, source.FullName(), convtypes.ResourceHAHostname, hostname)
+		c.tracker.TrackNames(source.Type, source.FullName(), convtypes.ResourceHAHostname, hostname)
 		return err
 	}
 	host := c.addHost(hostname, source, annHost)
@@ -712,7 +712,7 @@ func (c *converter) addTCPService(source *annotations.Source, hostname string, p
 		tcpservice := strings.TrimPrefix(hostname, hatypes.DefaultHost)
 		return nil, fmt.Errorf("tcp service %s was already assigned to %s", tcpservice, tcpHost.Backend)
 	}
-	c.tracker.TrackNames(convtypes.ResourceIngress, source.FullName(), convtypes.ResourceHAHostname, hostname)
+	c.tracker.TrackNames(source.Type, source.FullName(), convtypes.ResourceHAHostname, hostname)
 	mapper, found := c.tcpsvcAnnotations[tcpPort]
 	if !found {
 		mapper = c.mapBuilder.NewMapper()
@@ -728,7 +728,7 @@ func (c *converter) addTCPService(source *annotations.Source, hostname string, p
 func (c *converter) addHost(hostname string, source *annotations.Source, ann map[string]string) *hatypes.Host {
 	// TODO build a stronger tracking
 	host := c.haproxy.Hosts().AcquireHost(hostname)
-	c.tracker.TrackNames(convtypes.ResourceIngress, source.FullName(), convtypes.ResourceHAHostname, hostname)
+	c.tracker.TrackNames(source.Type, source.FullName(), convtypes.ResourceHAHostname, hostname)
 	mapper, found := c.hostAnnotations[host]
 	if !found {
 		mapper = c.mapBuilder.NewMapper()
@@ -766,7 +766,7 @@ func (c *converter) addBackendWithClass(source *annotations.Source, pathLink hat
 		return nil, fmt.Errorf("port not found: '%s'", svcPort)
 	}
 	backend := c.haproxy.Backends().AcquireBackend(namespace, svcName, port.TargetPort.String())
-	c.tracker.TrackNames(convtypes.ResourceIngress, source.FullName(), convtypes.ResourceHABackend, backend.ID)
+	c.tracker.TrackNames(source.Type, source.FullName(), convtypes.ResourceHABackend, backend.ID)
 	// TODO converg backend Port and DNSPort; see also tmpl's server-template
 	backend.DNSPort = readDNSPort(svc.Spec.ClusterIP == api.ClusterIPNone, port)
 	mapper, found := c.backendAnnotations[backend]
@@ -789,7 +789,7 @@ func (c *converter) addBackendWithClass(source *annotations.Source, pathLink hat
 	}
 	// Merging IngressClass Parameters with less priority
 	if ingressClass != nil {
-		if cfg := c.readParameters(ingressClass, hostname); cfg != nil {
+		if cfg := c.readParameters(ingressClass); cfg != nil {
 			// Using a work around to add a per resource default config:
 			// we add IngressClass Parameters after service and ingress annotations,
 			// ignoring conflicts. This would really conflict with other Parameters
@@ -1001,10 +1001,10 @@ func (c *converter) readConfigKeys(source *annotations.Source, ann map[string]st
 	return keys
 }
 
-func (c *converter) readParameters(ingressClass *networking.IngressClass, trackingHostname string) map[string]string {
+func (c *converter) readParameters(ingressClass *networking.IngressClass) map[string]string {
 	ingClassConfig, found := c.ingressClasses[ingressClass.Name]
 	if !found {
-		ingClassConfig = c.parseParameters(ingressClass, trackingHostname)
+		ingClassConfig = c.parseParameters(ingressClass)
 		if ingClassConfig == nil {
 			// error or Parameters reference not found, so create and assign an
 			// empty config to avoid re-parse Parameters on every ingress resource
@@ -1012,13 +1012,10 @@ func (c *converter) readParameters(ingressClass *networking.IngressClass, tracki
 		}
 		c.ingressClasses[ingressClass.Name] = ingClassConfig
 	}
-	if ingClassConfig.resourceName != "" {
-		c.tracker.TrackNames(ingClassConfig.resourceType, ingClassConfig.resourceName, convtypes.ResourceHAHostname, trackingHostname)
-	}
 	return ingClassConfig.config
 }
 
-func (c *converter) parseParameters(ingressClass *networking.IngressClass, trackingHostname string) *ingressClassConfig {
+func (c *converter) parseParameters(ingressClass *networking.IngressClass) *ingressClassConfig {
 	parameters := ingressClass.Spec.Parameters
 	if parameters == nil {
 		return nil
@@ -1038,10 +1035,10 @@ func (c *converter) parseParameters(ingressClass *networking.IngressClass, track
 		return nil
 	}
 	configMapName := podNamespace + "/" + parameters.Name
+	c.tracker.TrackNames(convtypes.ResourceConfigMap, configMapName, convtypes.ResourceIngressClass, ingressClass.Name)
 	configMap, err := c.cache.GetConfigMap(configMapName)
 	if err != nil {
 		c.logger.Warn("error reading ConfigMap on IngressClass '%s': %v", ingressClass.Name, err)
-		c.tracker.TrackNames(convtypes.ResourceConfigMap, configMapName, convtypes.ResourceHAHostname, trackingHostname)
 		return nil
 	}
 	return &ingressClassConfig{

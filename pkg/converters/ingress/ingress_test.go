@@ -698,7 +698,7 @@ func TestSyncIngressClass(t *testing.T) {
 				Parameters: test.parameters,
 			},
 		}
-		_ = conv.readParameters(&ingClass, "echo.example.com")
+		_ = conv.readParameters(&ingClass)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
