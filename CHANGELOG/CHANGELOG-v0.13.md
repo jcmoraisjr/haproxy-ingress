@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.12!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.13.3](#v0133)
+  * [Reference](#reference-r3)
+  * [Release notes](#release-notes-r3)
+  * [Fixes and improvements](#fixes-and-improvements-r3)
 * [v0.13.2](#v0132)
   * [Reference](#reference-r2)
   * [Release notes](#release-notes-r2)
@@ -73,6 +77,26 @@ Breaking backward compatibility from v0.12
 * paul ([toothbrush](https://github.com/toothbrush))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
+
+# v0.13.3
+
+## Reference (r3)
+
+* Release date: `2021-09-08`
+* Helm chart: `--version 0.13.3`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.3`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.3`
+* Embedded HAProxy version: `2.3.14`
+
+## Release notes (r3)
+
+This release updates the embedded HAProxy version from `2.3.13` to `2.3.14`, which fixes a HAProxy's vulnerability with the Content-Length HTTP header. CVE-2021-40346 was assigned. The following announce from the HAProxy's mailing list has the details and possible workaround: https://www.mail-archive.com/haproxy@formilux.org/msg41114.html
+
+## Fixes and improvements (r3)
+
+Fixes and improvements since `v0.13.2`:
+
+* update embedded haproxy from 2.3.13 to 2.3.14 [25caf65](https://github.com/jcmoraisjr/haproxy-ingress/commit/25caf65c35e21c5eceae40a30d66a6d62434ae8e) (Joao Morais)
 
 # v0.13.2
 
