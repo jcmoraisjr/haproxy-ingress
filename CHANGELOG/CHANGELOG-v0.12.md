@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.11!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.12.9](#v0129)
+  * [Reference](#reference-r9)
+  * [Release notes](#release-notes-r9)
+  * [Fixes and improvements](#fixes-and-improvements-r9)
 * [v0.12.8](#v0128)
   * [Reference](#reference-r8)
   * [Release notes](#release-notes-r8)
@@ -77,6 +81,34 @@ Breaking backward compatibility from v0.11
 * paul ([toothbrush](https://github.com/toothbrush))
 * pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.12.9
+
+## Reference (r9)
+
+* Release date: `2021-09-08`
+* Helm chart: `--version 0.12.9`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.12.9`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.12.9`
+* Embedded HAProxy version: `2.2.17`
+
+## Release notes (r9)
+
+This release updates the embedded HAProxy version from `2.2.16` to `2.2.17`, which fixes a HAProxy's vulnerability with the Content-Length HTTP header. CVE-2021-40346 was assigned. The following announce from the HAProxy's mailing list has the details and possible workaround: https://www.mail-archive.com/haproxy@formilux.org/msg41114.html
+
+Some controller issues were fixed as well:
+
+* A misconfigured oauth (e.g. a missing service name) was allowing requests to reach the backend instead of deny the requests.
+* An ingress resource configuration could not be applied if an ingress resource starts to reference a service that was already being referenced by another ingress;
+
+## Fixes and improvements (r9)
+
+Fixes and improvements since `v0.12.8`:
+
+* always deny requests if oauth is misconfigured (#843) [c075258](https://github.com/jcmoraisjr/haproxy-ingress/commit/c075258b962cc94bba9d298279d696a314f54771) (Joao Morais)
+* fix ingress update to an existing backend [8119212](https://github.com/jcmoraisjr/haproxy-ingress/commit/81192120e1c600096ddca5883d6e5d99baad93e4) (Joao Morais)
+* update embedded haproxy from 2.2.16 to 2.2.17 [ac9ccf0](https://github.com/jcmoraisjr/haproxy-ingress/commit/ac9ccf0307736391f9fbfb28d3de15ef3540ca0b) (Joao Morais)
+* update client-go from v0.19.13 to v0.19.14 [6dd9de1](https://github.com/jcmoraisjr/haproxy-ingress/commit/6dd9de11cdc22e891d759b2ddebe3427242f67b0) (Joao Morais)
 
 # v0.12.8
 
