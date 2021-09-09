@@ -24,7 +24,6 @@ import (
 	"time"
 
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
-	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
@@ -236,7 +235,7 @@ func (c *updater) buildGlobalStats(d *globalData) {
 	d.global.Stats.BindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrStats).Value
 	d.global.Stats.Port = d.mapper.Get(ingtypes.GlobalStatsPort).Int()
 	if tlsSecret := d.mapper.Get(ingtypes.GlobalStatsSSLCert).Value; tlsSecret != "" {
-		if tls, err := c.cache.GetTLSSecretPath("", tlsSecret, convtypes.TrackingTarget{}); err == nil {
+		if tls, err := c.cache.GetTLSSecretPath("", tlsSecret, nil); err == nil {
 			d.global.Stats.TLSFilename = tls.Filename
 			d.global.Stats.TLSHash = tls.SHA1Hash
 		} else {

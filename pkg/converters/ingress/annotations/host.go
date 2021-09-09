@@ -34,7 +34,7 @@ func (c *updater) buildHostAuthTLS(d *hostData) {
 	if cafile, crlfile, err := c.cache.GetCASecretPath(
 		tlsSecret.Source.Namespace,
 		tlsSecret.Value,
-		convtypes.TrackingTarget{Hostname: d.host.Hostname},
+		[]convtypes.TrackingRef{{Context: convtypes.ResourceHAHostname, UniqueName: d.host.Hostname}},
 	); err == nil {
 		tls.CAFilename = cafile.Filename
 		tls.CAHash = cafile.SHA1Hash

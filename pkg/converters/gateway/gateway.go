@@ -65,44 +65,12 @@ func (c *converter) NeedFullSync() bool {
 	// full sync from the Gateway API resource
 	// changes. Check if other changed resources
 	// impact anyone related with the Gateway API.
-	//
-	// TODO reused from ingress, move tracking code to a common place.
-	secret2names := func(secrets []*api.Secret) []string {
-		secretList := make([]string, len(secrets))
-		for i, secret := range secrets {
-			secretList[i] = secret.Namespace + "/" + secret.Name
-		}
-		return secretList
-	}
-	svc2names := func(services []*api.Service) []string {
-		serviceList := make([]string, len(services))
-		for i, service := range services {
-			serviceList[i] = service.Namespace + "/" + service.Name
-		}
-		return serviceList
-	}
-	ep2names := func(endpoints []*api.Endpoints) []string {
-		epList := make([]string, len(endpoints))
-		for i, ep := range endpoints {
-			epList[i] = ep.Namespace + "/" + ep.Name
-		}
-		return epList
-	}
-	delSecretNames := secret2names(c.changed.SecretsDel)
-	updSecretNames := secret2names(c.changed.SecretsUpd)
-	addSecretNames := secret2names(c.changed.SecretsAdd)
-	oldSecretNames := append(delSecretNames, updSecretNames...)
-	delSvcNames := svc2names(c.changed.ServicesDel)
-	updSvcNames := svc2names(c.changed.ServicesUpd)
-	addSvcNames := svc2names(c.changed.ServicesAdd)
-	oldSvcNames := append(delSvcNames, updSvcNames...)
-	updEndpointsNames := ep2names(c.changed.EndpointsNew)
-	oldSvcNames = append(oldSvcNames, updEndpointsNames...)
-	changed := c.tracker.GetGatewayChanged(oldSecretNames, addSecretNames, oldSvcNames, addSvcNames)
-	if changed {
-		// only remove old links if they will be recreated
-		c.tracker.DeleteGateway()
-	}
+	links := c.tracker.QueryLinks(convtypes.TrackingLinks{
+		convtypes.ResourceSecret:    c.changed.Links[convtypes.ResourceSecret],
+		convtypes.ResourceService:   c.changed.Links[convtypes.ResourceService],
+		convtypes.ResourceEndpoints: c.changed.Links[convtypes.ResourceEndpoints],
+	}, false)
+	_, changed := links[convtypes.ResourceGateway]
 	return changed
 }
 
@@ -231,7 +199,10 @@ func (c *converter) createBackend(source *Source, index string, forwardTo []gate
 			continue
 		}
 		svcName := source.namespace + "/" + *fw.ServiceName
-		c.tracker.TrackGateway(convtypes.ServiceType, svcName)
+		c.tracker.TrackRefName([]convtypes.TrackingRef{
+			{Context: convtypes.ResourceService, UniqueName: svcName},
+			{Context: convtypes.ResourceEndpoints, UniqueName: svcName},
+		}, convtypes.ResourceGateway, "gw")
 		svc, err := c.cache.GetService("", svcName)
 		if err != nil {
 			c.logger.Warn("skipping service '%s' on %s: %v", *fw.ServiceName, source, err)
@@ -440,5 +411,6 @@ func (c *converter) readCertRef(namespace string, certRef *gatewayv1alpha1.Local
 	if certRef.Kind != "" && strings.ToLower(certRef.Kind) != "secret" {
 		return crtFile, fmt.Errorf("unsupported Kind '%s', the only supported kind is 'Secret'", certRef.Kind)
 	}
-	return c.cache.GetTLSSecretPath(namespace, certRef.Name, convtypes.TrackingTarget{Gateway: true})
+	return c.cache.GetTLSSecretPath(namespace, certRef.Name,
+		[]convtypes.TrackingRef{{Context: convtypes.ResourceGateway, UniqueName: "gw"}})
 }

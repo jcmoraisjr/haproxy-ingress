@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strconv"
 
+	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )
@@ -53,7 +54,7 @@ type PathConfig struct {
 type Source struct {
 	Namespace string
 	Name      string
-	Type      string
+	Type      convtypes.ResourceType
 }
 
 // ConfigValue ...
@@ -229,5 +230,5 @@ func (m *PathConfig) String() string {
 
 // String ...
 func (s *Source) String() string {
-	return s.Type + " '" + s.FullName() + "'"
+	return fmt.Sprintf("%s '%s'", s.Type, s.FullName())
 }

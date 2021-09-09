@@ -97,7 +97,7 @@ func (c *tcpSvcConverter) Sync() {
 		}
 		var crtfile convtypes.CrtFile
 		if svc.secretTLS != "" {
-			crtfile, err = c.cache.GetTLSSecretPath("", svc.secretTLS, convtypes.TrackingTarget{})
+			crtfile, err = c.cache.GetTLSSecretPath("", svc.secretTLS, nil)
 			if err != nil {
 				c.logger.Warn("skipping TCP service on public port %d: %v", publicport, err)
 				continue
@@ -105,7 +105,7 @@ func (c *tcpSvcConverter) Sync() {
 		}
 		var cafile, crlfile convtypes.File
 		if svc.secretCA != "" {
-			cafile, crlfile, err = c.cache.GetCASecretPath("", svc.secretCA, convtypes.TrackingTarget{})
+			cafile, crlfile, err = c.cache.GetCASecretPath("", svc.secretCA, nil)
 			if err != nil {
 				c.logger.Warn("skipping TCP service on public port %d: %v", publicport, err)
 				continue

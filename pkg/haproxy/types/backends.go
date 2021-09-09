@@ -265,9 +265,8 @@ func (b *Backends) FindBackendID(backendID BackendID) *Backend {
 }
 
 // RemoveAll ...
-func (b *Backends) RemoveAll(backendID []BackendID) {
-	for _, backend := range backendID {
-		id := backend.String()
+func (b *Backends) RemoveAll(backendID []string) {
+	for _, id := range backendID {
 		if item, found := b.items[id]; found {
 			if len(b.shards) > 0 {
 				delete(b.shards[item.shard], id)

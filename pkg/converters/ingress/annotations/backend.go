@@ -254,9 +254,9 @@ func (c *updater) buildBackendAuthHTTP(d *backData) {
 			userb, err := c.cache.GetPasswdSecretContent(
 				authSecret.Source.Namespace,
 				authSecret.Value,
-				convtypes.TrackingTarget{
-					Backend:  d.backend.BackendID(),
-					Userlist: listName,
+				[]convtypes.TrackingRef{
+					{Context: convtypes.ResourceHABackend, UniqueName: d.backend.ID},
+					{Context: convtypes.ResourceHAUserlist, UniqueName: listName},
 				},
 			)
 			if err != nil {
@@ -277,7 +277,7 @@ func (c *updater) buildBackendAuthHTTP(d *backData) {
 		// Backends need always to be tracked because only hosts and backends tracking can properly start a partial update
 		// Tracker will take care of deduplicate trackings
 		// TODO build a stronger tracking
-		c.tracker.TrackBackend(convtypes.SecretType, secretName, d.backend.BackendID())
+		c.tracker.TrackNames(convtypes.ResourceSecret, secretName, convtypes.ResourceHABackend, d.backend.ID)
 		realm := "localhost" // HAProxy's backend name would be used if missing
 		authRealm := config.Get(ingtypes.BackAuthRealm)
 		if authRealm == nil || authRealm.Source == nil {
@@ -771,7 +771,7 @@ func (c *updater) buildBackendProtocol(d *backData) {
 		if crtFile, err := c.cache.GetTLSSecretPath(
 			crt.Source.Namespace,
 			crt.Value,
-			convtypes.TrackingTarget{Backend: d.backend.BackendID()},
+			[]convtypes.TrackingRef{{Context: convtypes.ResourceHABackend, UniqueName: d.backend.ID}},
 		); err == nil {
 			d.backend.Server.CrtFilename = crtFile.Filename
 			d.backend.Server.CrtHash = crtFile.SHA1Hash
@@ -804,7 +804,7 @@ func (c *updater) buildBackendProtocol(d *backData) {
 		if caFile, crlFile, err := c.cache.GetCASecretPath(
 			ca.Source.Namespace,
 			ca.Value,
-			convtypes.TrackingTarget{Backend: d.backend.BackendID()},
+			[]convtypes.TrackingRef{{Context: convtypes.ResourceHABackend, UniqueName: d.backend.ID}},
 		); err == nil {
 			d.backend.Server.CAFilename = caFile.Filename
 			d.backend.Server.CAHash = caFile.SHA1Hash

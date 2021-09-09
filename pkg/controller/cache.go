@@ -304,7 +304,7 @@ func (c *k8scache) GetEndpoints(service *api.Service) (*api.Endpoints, error) {
 
 // GetTerminatingPods returns the pods that are terminating and belong
 // (based on the Spec.Selector) to the supplied service.
-func (c *k8scache) GetTerminatingPods(service *api.Service, track convtypes.TrackingTarget) (pl []*api.Pod, err error) {
+func (c *k8scache) GetTerminatingPods(service *api.Service, track []convtypes.TrackingRef) (pl []*api.Pod, err error) {
 	if !c.listers.hasPodLister {
 		return nil, fmt.Errorf("pod lister wasn't started, remove --disable-pod-list command-line option to enable it")
 	}
@@ -318,7 +318,7 @@ func (c *k8scache) GetTerminatingPods(service *api.Service, track convtypes.Trac
 	}
 	for _, p := range list {
 		// all pods need to be tracked despite of the terminating status
-		c.tracker.Track(false, track, convtypes.PodType, p.Namespace+"/"+p.Name)
+		c.tracker.TrackRefName(track, convtypes.ResourcePod, p.Namespace+"/"+p.Name)
 		if isTerminatingPod(service, p) {
 			pl = append(pl, p)
 		}
@@ -388,7 +388,7 @@ func (c *k8scache) buildResourceName(defaultNamespace, kind, resourceName string
 	)
 }
 
-func (c *k8scache) GetTLSSecretPath(defaultNamespace, secretName string, track convtypes.TrackingTarget) (file convtypes.CrtFile, err error) {
+func (c *k8scache) GetTLSSecretPath(defaultNamespace, secretName string, track []convtypes.TrackingRef) (file convtypes.CrtFile, err error) {
 	proto, content := getContentProtocol(secretName)
 	if proto == "file" {
 		if _, err := os.Stat(content); err != nil {
@@ -405,13 +405,12 @@ func (c *k8scache) GetTLSSecretPath(defaultNamespace, secretName string, track c
 	if err != nil {
 		return file, err
 	}
+	c.tracker.TrackRefName(track, convtypes.ResourceSecret, namespace+"/"+name)
 	sslCert, err := c.controller.GetCertificate(namespace, name)
 	if err != nil {
-		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return file, err
 	}
 	if sslCert.PemFileName == "" || sslCert.Certificate == nil {
-		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return file, fmt.Errorf("secret '%s/%s' does not have keys 'tls.crt' and 'tls.key'", namespace, name)
 	}
 	file = convtypes.CrtFile{
@@ -420,11 +419,10 @@ func (c *k8scache) GetTLSSecretPath(defaultNamespace, secretName string, track c
 		CommonName: sslCert.Certificate.Subject.CommonName,
 		NotAfter:   sslCert.Certificate.NotAfter,
 	}
-	c.tracker.Track(false, track, convtypes.SecretType, namespace+"/"+name)
 	return file, nil
 }
 
-func (c *k8scache) GetCASecretPath(defaultNamespace, secretName string, track convtypes.TrackingTarget) (ca, crl convtypes.File, err error) {
+func (c *k8scache) GetCASecretPath(defaultNamespace, secretName string, track []convtypes.TrackingRef) (ca, crl convtypes.File, err error) {
 	proto, content := getContentProtocol(secretName)
 	if proto == "file" {
 		if content == "" {
@@ -458,13 +456,12 @@ func (c *k8scache) GetCASecretPath(defaultNamespace, secretName string, track co
 	if err != nil {
 		return ca, crl, err
 	}
+	c.tracker.TrackRefName(track, convtypes.ResourceSecret, namespace+"/"+name)
 	sslCert, err := c.controller.GetCertificate(namespace, name)
 	if err != nil {
-		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return ca, crl, err
 	}
 	if sslCert.CAFileName == "" {
-		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return ca, crl, fmt.Errorf("secret '%s/%s' does not have key 'ca.crt'", namespace, name)
 	}
 	ca = convtypes.File{
@@ -478,7 +475,6 @@ func (c *k8scache) GetCASecretPath(defaultNamespace, secretName string, track co
 			SHA1Hash: sslCert.PemSHA,
 		}
 	}
-	c.tracker.Track(false, track, convtypes.SecretType, namespace+"/"+name)
 	return ca, crl, nil
 }
 
@@ -519,7 +515,7 @@ func (c *k8scache) GetDHSecretPath(defaultNamespace, secretName string) (file co
 	return file, nil
 }
 
-func (c *k8scache) GetPasswdSecretContent(defaultNamespace, secretName string, track convtypes.TrackingTarget) ([]byte, error) {
+func (c *k8scache) GetPasswdSecretContent(defaultNamespace, secretName string, track []convtypes.TrackingRef) ([]byte, error) {
 	proto, content := getContentProtocol(secretName)
 	if proto == "file" {
 		return ioutil.ReadFile(content)
@@ -530,18 +526,16 @@ func (c *k8scache) GetPasswdSecretContent(defaultNamespace, secretName string, t
 	if err != nil {
 		return nil, err
 	}
+	c.tracker.TrackRefName(track, convtypes.ResourceSecret, namespace+"/"+name)
 	secret, err := c.listers.secretLister.Secrets(namespace).Get(name)
 	if err != nil {
-		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return nil, err
 	}
 	keyName := "auth"
 	data, found := secret.Data[keyName]
 	if !found {
-		c.tracker.Track(true, track, convtypes.SecretType, namespace+"/"+name)
 		return nil, fmt.Errorf("secret '%s/%s' does not have key '%s'", namespace, name, keyName)
 	}
-	c.tracker.Track(false, track, convtypes.SecretType, namespace+"/"+name)
 	return data, nil
 }
 
@@ -953,129 +947,145 @@ func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
 	c.stateMutex.Lock()
 	defer c.stateMutex.Unlock()
 	//
+	var changedObj []string
+	changedLinks := convtypes.TrackingLinks{}
+	type event string
+	var eventDel event = "del"
+	var eventUpdate event = "update"
+	var eventAdd event = "add"
+	addChanges := func(ctx convtypes.ResourceType, ev event, ns, n string) {
+		var fullname string
+		if ns != "" {
+			fullname = ns + "/" + n
+		} else {
+			fullname = n
+		}
+		changedObj = append(changedObj, fmt.Sprintf("%s/%s:%s", ev, ctx, fullname))
+		changedLinks[ctx] = append(changedLinks[ctx], fullname)
+	}
 	ch := c.changed
-	var obj []string
 	if ch.GlobalConfigMapDataNew != nil && !reflect.DeepEqual(ch.GlobalConfigMapDataCur, ch.GlobalConfigMapDataNew) {
-		obj = append(obj, "update/global")
+		changedObj = append(changedObj, "update/global")
 	}
 	if ch.TCPConfigMapDataNew != nil && !reflect.DeepEqual(ch.TCPConfigMapDataCur, ch.TCPConfigMapDataNew) {
-		obj = append(obj, "update/tcp-services")
+		changedObj = append(changedObj, "update/tcp-services")
 	}
 	for _, ing := range ch.IngressesDel {
-		obj = append(obj, "del/ingress:"+ing.Namespace+"/"+ing.Name)
+		addChanges(convtypes.ResourceIngress, eventDel, ing.Namespace, ing.Name)
 	}
 	for _, ing := range ch.IngressesUpd {
-		obj = append(obj, "update/ingress:"+ing.Namespace+"/"+ing.Name)
+		addChanges(convtypes.ResourceIngress, eventUpdate, ing.Namespace, ing.Name)
 	}
 	for _, ing := range ch.IngressesAdd {
-		obj = append(obj, "add/ingress:"+ing.Namespace+"/"+ing.Name)
+		addChanges(convtypes.ResourceIngress, eventAdd, ing.Namespace, ing.Name)
 	}
 	for _, cls := range ch.IngressClassesDel {
-		obj = append(obj, "del/ingressClass:"+cls.Name)
+		addChanges(convtypes.ResourceIngressClass, eventDel, "", cls.Name)
 	}
 	for _, cls := range ch.IngressClassesUpd {
-		obj = append(obj, "update/ingressClass:"+cls.Name)
+		addChanges(convtypes.ResourceIngressClass, eventUpdate, "", cls.Name)
 	}
 	for _, cls := range ch.IngressClassesAdd {
-		obj = append(obj, "add/ingressClass:"+cls.Name)
+		addChanges(convtypes.ResourceIngressClass, eventAdd, "", cls.Name)
 	}
 	for _, gw := range ch.GatewaysDel {
-		obj = append(obj, "del/gateway:"+gw.Namespace+"/"+gw.Name)
+		addChanges(convtypes.ResourceGateway, eventDel, gw.Namespace, gw.Name)
 	}
 	for _, gw := range ch.GatewaysUpd {
-		obj = append(obj, "update/gateway:"+gw.Namespace+"/"+gw.Name)
+		addChanges(convtypes.ResourceGateway, eventUpdate, gw.Namespace, gw.Name)
 	}
 	for _, gw := range ch.GatewaysAdd {
-		obj = append(obj, "add/gateway:"+gw.Namespace+"/"+gw.Name)
+		addChanges(convtypes.ResourceGateway, eventAdd, gw.Namespace, gw.Name)
 	}
 	for _, cls := range ch.GatewayClassesDel {
-		obj = append(obj, "del/gatewayClass:"+cls.Name)
+		addChanges(convtypes.ResourceGatewayClass, eventDel, "", cls.Name)
 	}
 	for _, cls := range ch.GatewayClassesUpd {
-		obj = append(obj, "update/gatewayClass:"+cls.Name)
+		addChanges(convtypes.ResourceGatewayClass, eventUpdate, "", cls.Name)
 	}
 	for _, cls := range ch.GatewayClassesAdd {
-		obj = append(obj, "add/gatewayClass:"+cls.Name)
+		addChanges(convtypes.ResourceGatewayClass, eventAdd, "", cls.Name)
 	}
 	for _, hr := range ch.HTTPRoutesDel {
-		obj = append(obj, "del/httpRoute:"+hr.Namespace+"/"+hr.Name)
+		addChanges(convtypes.ResourceHTTPRoute, eventDel, hr.Namespace, hr.Name)
 	}
 	for _, hr := range ch.HTTPRoutesUpd {
-		obj = append(obj, "update/httpRoute:"+hr.Namespace+"/"+hr.Name)
+		addChanges(convtypes.ResourceHTTPRoute, eventUpdate, hr.Namespace, hr.Name)
 	}
 	for _, hr := range ch.HTTPRoutesAdd {
-		obj = append(obj, "add/httpRoute:"+hr.Namespace+"/"+hr.Name)
+		addChanges(convtypes.ResourceHTTPRoute, eventAdd, hr.Namespace, hr.Name)
 	}
 	for _, tr := range ch.TLSRoutesDel {
-		obj = append(obj, "del/tlsRoute:"+tr.Namespace+"/"+tr.Name)
+		addChanges(convtypes.ResourceTLSRoute, eventDel, tr.Namespace, tr.Name)
 	}
 	for _, tr := range ch.TLSRoutesUpd {
-		obj = append(obj, "update/tlsRoute:"+tr.Namespace+"/"+tr.Name)
+		addChanges(convtypes.ResourceTLSRoute, eventUpdate, tr.Namespace, tr.Name)
 	}
 	for _, tr := range ch.TLSRoutesAdd {
-		obj = append(obj, "add/tlsRoute:"+tr.Namespace+"/"+tr.Name)
+		addChanges(convtypes.ResourceTLSRoute, eventAdd, tr.Namespace, tr.Name)
 	}
 	for _, tr := range ch.TCPRoutesDel {
-		obj = append(obj, "del/tcpRoute:"+tr.Namespace+"/"+tr.Name)
+		addChanges(convtypes.ResourceTCPRoute, eventDel, tr.Namespace, tr.Name)
 	}
 	for _, tr := range ch.TCPRoutesUpd {
-		obj = append(obj, "update/tcpRoute:"+tr.Namespace+"/"+tr.Name)
+		addChanges(convtypes.ResourceTCPRoute, eventUpdate, tr.Namespace, tr.Name)
 	}
 	for _, tr := range ch.TCPRoutesAdd {
-		obj = append(obj, "add/tcpRoute:"+tr.Namespace+"/"+tr.Name)
+		addChanges(convtypes.ResourceTCPRoute, eventAdd, tr.Namespace, tr.Name)
 	}
 	for _, ur := range ch.UDPRoutesDel {
-		obj = append(obj, "del/udpRoute:"+ur.Namespace+"/"+ur.Name)
+		addChanges(convtypes.ResourceUDPRoute, eventDel, ur.Namespace, ur.Name)
 	}
 	for _, ur := range ch.UDPRoutesUpd {
-		obj = append(obj, "update/udpRoute:"+ur.Namespace+"/"+ur.Name)
+		addChanges(convtypes.ResourceUDPRoute, eventUpdate, ur.Namespace, ur.Name)
 	}
 	for _, ur := range ch.UDPRoutesAdd {
-		obj = append(obj, "add/udpRoute:"+ur.Namespace+"/"+ur.Name)
+		addChanges(convtypes.ResourceUDPRoute, eventAdd, ur.Namespace, ur.Name)
 	}
 	for _, bp := range ch.BackendPoliciesDel {
-		obj = append(obj, "del/backendPolicy:"+bp.Namespace+"/"+bp.Name)
+		addChanges(convtypes.ResourceBackendPolicy, eventDel, bp.Namespace, bp.Name)
 	}
 	for _, bp := range ch.BackendPoliciesUpd {
-		obj = append(obj, "update/backendPolicy:"+bp.Namespace+"/"+bp.Name)
+		addChanges(convtypes.ResourceBackendPolicy, eventUpdate, bp.Namespace, bp.Name)
 	}
 	for _, bp := range ch.BackendPoliciesAdd {
-		obj = append(obj, "add/backendPolicy:"+bp.Namespace+"/"+bp.Name)
+		addChanges(convtypes.ResourceBackendPolicy, eventAdd, bp.Namespace, bp.Name)
 	}
 	for _, ep := range ch.EndpointsNew {
-		obj = append(obj, "update/endpoint:"+ep.Namespace+"/"+ep.Name)
+		addChanges(convtypes.ResourceEndpoints, eventUpdate, ep.Namespace, ep.Name)
 	}
 	for _, svc := range ch.ServicesDel {
-		obj = append(obj, "del/service:"+svc.Namespace+"/"+svc.Name)
+		addChanges(convtypes.ResourceService, eventDel, svc.Namespace, svc.Name)
 	}
 	for _, svc := range ch.ServicesUpd {
-		obj = append(obj, "update/service:"+svc.Namespace+"/"+svc.Name)
+		addChanges(convtypes.ResourceService, eventUpdate, svc.Namespace, svc.Name)
 	}
 	for _, svc := range ch.ServicesAdd {
-		obj = append(obj, "add/service:"+svc.Namespace+"/"+svc.Name)
+		addChanges(convtypes.ResourceService, eventAdd, svc.Namespace, svc.Name)
 	}
 	for _, secret := range ch.SecretsDel {
-		obj = append(obj, "del/secret:"+secret.Namespace+"/"+secret.Name)
+		addChanges(convtypes.ResourceSecret, eventDel, secret.Namespace, secret.Name)
 	}
 	for _, secret := range ch.SecretsUpd {
-		obj = append(obj, "update/secret:"+secret.Namespace+"/"+secret.Name)
+		addChanges(convtypes.ResourceSecret, eventUpdate, secret.Namespace, secret.Name)
 	}
 	for _, secret := range ch.SecretsAdd {
-		obj = append(obj, "add/secret:"+secret.Namespace+"/"+secret.Name)
+		addChanges(convtypes.ResourceSecret, eventAdd, secret.Namespace, secret.Name)
 	}
 	for _, cm := range ch.ConfigMapsDel {
-		obj = append(obj, "del/configmap:"+cm.Namespace+"/"+cm.Name)
+		addChanges(convtypes.ResourceConfigMap, eventDel, cm.Namespace, cm.Name)
 	}
 	for _, cm := range ch.ConfigMapsUpd {
-		obj = append(obj, "update/configmap:"+cm.Namespace+"/"+cm.Name)
+		addChanges(convtypes.ResourceConfigMap, eventUpdate, cm.Namespace, cm.Name)
 	}
 	for _, cm := range ch.ConfigMapsAdd {
-		obj = append(obj, "add/configmap:"+cm.Namespace+"/"+cm.Name)
+		addChanges(convtypes.ResourceConfigMap, eventAdd, cm.Namespace, cm.Name)
 	}
 	for _, pod := range ch.PodsNew {
-		obj = append(obj, "update/pod:"+pod.Namespace+"/"+pod.Name)
+		addChanges(convtypes.ResourcePod, eventUpdate, pod.Namespace, pod.Name)
 	}
-	ch.Objects = obj
+	ch.Objects = changedObj
+	ch.Links = changedLinks
 	//
 	// leave ch with the current state, cleanup c.changed to receive new events
 	c.changed = convtypes.ChangedObjects{

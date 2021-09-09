@@ -137,37 +137,37 @@ func TestRemoveAuthBackendByTarget(t *testing.T) {
 	back2 := BackendID{Namespace: "default", Name: "backend2", Port: "8080"}
 	testCases := []struct {
 		input    []BackendID
-		removed  []BackendID
+		removed  []string
 		expected []BackendID
 	}{
 		// 0
 		{
 			input:    []BackendID{back1, back2},
-			removed:  []BackendID{back2},
+			removed:  []string{back2.String()},
 			expected: []BackendID{back1},
 		},
 		// 1
 		{
 			input:    []BackendID{},
-			removed:  []BackendID{back2},
+			removed:  []string{back2.String()},
 			expected: []BackendID{},
 		},
 		// 2
 		{
 			input:    []BackendID{back1, back2},
-			removed:  []BackendID{back1, back2},
+			removed:  []string{back1.String(), back2.String()},
 			expected: []BackendID{},
 		},
 		// 3
 		{
 			input:    []BackendID{back1, back2},
-			removed:  []BackendID{},
+			removed:  []string{},
 			expected: []BackendID{back1, back2},
 		},
 		// 4
 		{
 			input:    []BackendID{back1, back2},
-			removed:  []BackendID{back0, back2},
+			removed:  []string{back0.String(), back2.String()},
 			expected: []BackendID{back1},
 		},
 	}

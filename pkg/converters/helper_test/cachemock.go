@@ -174,7 +174,7 @@ func (c *CacheMock) GetConfigMap(configMapName string) (*api.ConfigMap, error) {
 }
 
 // GetTerminatingPods ...
-func (c *CacheMock) GetTerminatingPods(service *api.Service, track convtypes.TrackingTarget) ([]*api.Pod, error) {
+func (c *CacheMock) GetTerminatingPods(service *api.Service, track []convtypes.TrackingRef) ([]*api.Pod, error) {
 	serviceName := service.Namespace + "/" + service.Name
 	if pods, found := c.TermPodList[serviceName]; found {
 		return pods, nil
@@ -196,10 +196,10 @@ func (c *CacheMock) GetPodNamespace() string {
 }
 
 // GetTLSSecretPath ...
-func (c *CacheMock) GetTLSSecretPath(defaultNamespace, secretName string, track convtypes.TrackingTarget) (convtypes.CrtFile, error) {
+func (c *CacheMock) GetTLSSecretPath(defaultNamespace, secretName string, track []convtypes.TrackingRef) (convtypes.CrtFile, error) {
 	fullname := c.buildResourceName(defaultNamespace, secretName)
+	c.tracker.TrackRefName(track, convtypes.ResourceSecret, fullname)
 	if path, found := c.SecretTLSPath[fullname]; found {
-		c.tracker.Track(false, track, convtypes.SecretType, fullname)
 		return convtypes.CrtFile{
 			Filename:   path,
 			SHA1Hash:   fmt.Sprintf("%x", sha1.Sum([]byte(path))),
@@ -207,20 +207,19 @@ func (c *CacheMock) GetTLSSecretPath(defaultNamespace, secretName string, track 
 			NotAfter:   time.Now().AddDate(0, 0, 30),
 		}, nil
 	}
-	c.tracker.Track(true, track, convtypes.SecretType, fullname)
 	return convtypes.CrtFile{}, fmt.Errorf("secret not found: '%s'", fullname)
 }
 
 // GetCASecretPath ...
-func (c *CacheMock) GetCASecretPath(defaultNamespace, secretName string, track convtypes.TrackingTarget) (ca, crl convtypes.File, err error) {
+func (c *CacheMock) GetCASecretPath(defaultNamespace, secretName string, track []convtypes.TrackingRef) (ca, crl convtypes.File, err error) {
 	fullname := c.buildResourceName(defaultNamespace, secretName)
+	c.tracker.TrackRefName(track, convtypes.ResourceSecret, fullname)
 	if path, found := c.SecretCAPath[fullname]; found {
 		ca = convtypes.File{
 			Filename: path,
 			SHA1Hash: fmt.Sprintf("%x", sha1.Sum([]byte(path))),
 		}
 	} else {
-		c.tracker.Track(true, track, convtypes.SecretType, fullname)
 		return ca, crl, fmt.Errorf("secret not found: '%s'", fullname)
 	}
 	if path, found := c.SecretCRLPath[fullname]; found {
@@ -229,7 +228,6 @@ func (c *CacheMock) GetCASecretPath(defaultNamespace, secretName string, track c
 			SHA1Hash: fmt.Sprintf("%x", sha1.Sum([]byte(path))),
 		}
 	}
-	c.tracker.Track(false, track, convtypes.SecretType, fullname)
 	return ca, crl, nil
 }
 
@@ -246,18 +244,16 @@ func (c *CacheMock) GetDHSecretPath(defaultNamespace, secretName string) (convty
 }
 
 // GetPasswdSecretContent ...
-func (c *CacheMock) GetPasswdSecretContent(defaultNamespace, secretName string, track convtypes.TrackingTarget) ([]byte, error) {
+func (c *CacheMock) GetPasswdSecretContent(defaultNamespace, secretName string, track []convtypes.TrackingRef) ([]byte, error) {
 	fullname := c.buildResourceName(defaultNamespace, secretName)
+	c.tracker.TrackRefName(track, convtypes.ResourceSecret, fullname)
 	if content, found := c.SecretContent[fullname]; found {
 		keyName := "auth"
 		if val, found := content[keyName]; found {
-			c.tracker.Track(false, track, convtypes.SecretType, fullname)
 			return val, nil
 		}
-		c.tracker.Track(true, track, convtypes.SecretType, fullname)
 		return nil, fmt.Errorf("secret '%s' does not have file/key '%s'", fullname, keyName)
 	}
-	c.tracker.Track(true, track, convtypes.SecretType, fullname)
 	return nil, fmt.Errorf("secret not found: '%s'", fullname)
 }
 
@@ -268,6 +264,43 @@ func (c *CacheMock) SwapChangedObjects() *convtypes.ChangedObjects {
 		GlobalConfigMapDataCur: changed.GlobalConfigMapDataNew,
 		TCPConfigMapDataCur:    changed.TCPConfigMapDataNew,
 	}
+	// update changed.Links based on notifications
+	changedLinks := convtypes.TrackingLinks{}
+	addChanges := func(ctx convtypes.ResourceType, ns, n string) {
+		fullname := ns + "/" + n
+		changedLinks[ctx] = append(changedLinks[ctx], fullname)
+	}
+	for _, ing := range changed.IngressesDel {
+		addChanges(convtypes.ResourceIngress, ing.Namespace, ing.Name)
+	}
+	for _, ing := range changed.IngressesUpd {
+		addChanges(convtypes.ResourceIngress, ing.Namespace, ing.Name)
+	}
+	for _, ing := range changed.IngressesAdd {
+		addChanges(convtypes.ResourceIngress, ing.Namespace, ing.Name)
+	}
+	for _, svc := range changed.ServicesDel {
+		addChanges(convtypes.ResourceService, svc.Namespace, svc.Name)
+	}
+	for _, svc := range changed.ServicesUpd {
+		addChanges(convtypes.ResourceService, svc.Namespace, svc.Name)
+	}
+	for _, svc := range changed.ServicesAdd {
+		addChanges(convtypes.ResourceService, svc.Namespace, svc.Name)
+	}
+	for _, secret := range changed.SecretsDel {
+		addChanges(convtypes.ResourceSecret, secret.Namespace, secret.Name)
+	}
+	for _, secret := range changed.SecretsUpd {
+		addChanges(convtypes.ResourceSecret, secret.Namespace, secret.Name)
+	}
+	for _, secret := range changed.SecretsAdd {
+		addChanges(convtypes.ResourceSecret, secret.Namespace, secret.Name)
+	}
+	for _, ep := range changed.EndpointsNew {
+		addChanges(convtypes.ResourceEndpoints, ep.Namespace, ep.Name)
+	}
+	changed.Links = changedLinks
 	// update c.IngList based on notifications
 	for i, ing := range c.IngList {
 		for _, ingUpd := range changed.IngressesUpd {

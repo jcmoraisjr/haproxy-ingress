@@ -17,768 +17,331 @@ limitations under the License.
 package tracker
 
 import (
-	"reflect"
+	"fmt"
 	"sort"
+	"strings"
 	"testing"
 
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
-	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
+	"github.com/kylelemons/godebug/diff"
 )
 
-type hostTracking struct {
-	rtype    convtypes.ResourceType
-	name     string
-	hostname string
-}
+func TestTrack(t *testing.T) {
+	ing1 := convtypes.TrackingRef{Context: "ingress", UniqueName: "default/ing1"}
+	ing2 := convtypes.TrackingRef{Context: "ingress", UniqueName: "default/ing2"}
+	ing3 := convtypes.TrackingRef{Context: "ingress", UniqueName: "default/ing3"}
+	back1 := convtypes.TrackingRef{Context: "backend", UniqueName: "default_echo1_8080"}
+	back2 := convtypes.TrackingRef{Context: "backend", UniqueName: "default_echo2_8080"}
+	back3 := convtypes.TrackingRef{Context: "backend", UniqueName: "default_echo3_8080"}
+	back4 := convtypes.TrackingRef{Context: "backend", UniqueName: "default_echo4_8080"}
+	back5 := convtypes.TrackingRef{Context: "backend", UniqueName: "default_echo5_8080"}
+	back6 := convtypes.TrackingRef{Context: "backend", UniqueName: "default_echo6_8080"}
 
-type backTracking struct {
-	rtype   convtypes.ResourceType
-	name    string
-	backend hatypes.BackendID
-}
+	cfgBefore1 := `
+backend
+  default_echo1_8080
+    ingress:default/ing1
+  default_echo2_8080
+    ingress:default/ing1
+  default_echo3_8080
+    ingress:default/ing2
+  default_echo4_8080
+    ingress:default/ing2
+  default_echo5_8080
+    ingress:default/ing3
+  default_echo6_8080
+    ingress:default/ing3
+ingress
+  default/ing1
+    backend:default_echo1_8080
+    backend:default_echo2_8080
+  default/ing2
+    backend:default_echo3_8080
+    backend:default_echo4_8080
+  default/ing3
+    backend:default_echo5_8080
+    backend:default_echo6_8080
+`
+	cfgAfter1 := `
+backend
+  default_echo5_8080
+    ingress:default/ing3
+  default_echo6_8080
+    ingress:default/ing3
+ingress
+  default/ing3
+    backend:default_echo5_8080
+    backend:default_echo6_8080
+`
+	cfgLinks1 := `
+backend
+  default_echo1_8080
+  default_echo2_8080
+  default_echo3_8080
+  default_echo4_8080
+ingress
+  default/ing1
+  default/ing2
+`
 
-type userTracking struct {
-	rtype    convtypes.ResourceType
-	name     string
-	userlist string
-}
-
-type storageTracking struct {
-	rtype   convtypes.ResourceType
-	name    string
-	storage string
-}
-
-var (
-	back1a = hatypes.BackendID{
-		Namespace: "default",
-		Name:      "svc1",
-		Port:      "8080",
+	type refs struct {
+		left  convtypes.TrackingRef
+		right convtypes.TrackingRef
 	}
-	back1b = hatypes.BackendID{
-		Namespace: "default",
-		Name:      "svc1",
-		Port:      "8080",
+	type refname struct {
+		left         []convtypes.TrackingRef
+		rightContext convtypes.ResourceType
+		rightName    string
 	}
-	back2a = hatypes.BackendID{
-		Namespace: "default",
-		Name:      "svc2",
-		Port:      "8080",
+	type names struct {
+		leftContext  convtypes.ResourceType
+		leftName     string
+		rightContext convtypes.ResourceType
+		rightName    string
 	}
-	back2b = hatypes.BackendID{
-		Namespace: "default",
-		Name:      "svc2",
-		Port:      "8080",
-	}
-)
 
-func TestGetDirtyLinks(t *testing.T) {
 	testCases := []struct {
-		trackedHosts    []hostTracking
-		trackedBacks    []backTracking
-		trackedUsers    []userTracking
-		trackedStorages []storageTracking
-		//
-		trackedMissingHosts []hostTracking
-		trackedMissingBacks []backTracking
-		//
-		oldIngressList      []string
-		addIngressList      []string
-		oldIngressClassList []string
-		addIngressClassList []string
-		oldConfigMapList    []string
-		addConfigMapList    []string
-		oldServiceList      []string
-		addServiceList      []string
-		oldSecretList       []string
-		addSecretList       []string
-		addPodList          []string
-		//
-		expDirtyIngs     []string
-		expDirtyHosts    []string
-		expDirtyBacks    []hatypes.BackendID
-		expDirtyUsers    []string
-		expDirtyStorages []string
+		trackingRefs      []refs
+		trackingRefName   []refname
+		trackingNames     []names
+		queryContext      convtypes.ResourceType
+		queryNames        []string
+		preserveMatches   bool
+		clearAfter        bool
+		expTrackingBefore string
+		expTrackingAfter  string
+		expOutputLinks    string
 	}{
 		// 0
 		{},
 		// 1
 		{
-			oldIngressList: []string{"default/ing1"},
-			expDirtyIngs:   []string{"default/ing1"},
+			queryContext: ing1.Context,
+			queryNames:   []string{ing1.UniqueName},
 		},
 		// 2
 		{
-			oldServiceList: []string{"default/svc1"},
+			trackingRefs: []refs{
+				{ing1, convtypes.TrackingRef{}},
+			},
 		},
 		// 3
 		{
-			trackedHosts: []hostTracking{
-				{convtypes.IngressType, "default/ing1", "domain1.local"},
+			trackingRefs: []refs{
+				{ing1, ing1},
 			},
+			queryContext:    ing1.Context,
+			queryNames:      []string{ing1.UniqueName},
+			preserveMatches: true,
+			expTrackingBefore: `
+ingress
+  default/ing1
+    ingress:default/ing1
+`,
+			expTrackingAfter: `
+ingress
+  default/ing1
+    ingress:default/ing1
+`,
+			expOutputLinks: `
+ingress
+  default/ing1
+`,
 		},
 		// 4
 		{
-			trackedHosts: []hostTracking{
-				{convtypes.IngressType, "default/ing1", "domain1.local"},
+			trackingRefs: []refs{
+				{ing1, ing1},
 			},
-			oldIngressList: []string{"default/ing1"},
-			expDirtyIngs:   []string{"default/ing1"},
-			expDirtyHosts:  []string{"domain1.local"},
+			queryContext: ing1.Context,
+			queryNames:   []string{ing1.UniqueName},
+			clearAfter:   true,
+			expTrackingBefore: `
+ingress
+  default/ing1
+    ingress:default/ing1
+`,
+			expTrackingAfter: ``,
+			expOutputLinks: `
+ingress
+  default/ing1
+`,
 		},
 		// 5
 		{
-			trackedHosts: []hostTracking{
-				{convtypes.IngressType, "default/ing1", "domain1.local"},
-				{convtypes.ServiceType, "default/svc1", "domain1.local"},
+			trackingRefs: []refs{
+				{ing1, ing1},
 			},
-			oldServiceList: []string{"default/svc1"},
-			expDirtyIngs:   []string{"default/ing1"},
-			expDirtyHosts:  []string{"domain1.local"},
+			queryContext: ing1.Context,
+			queryNames:   []string{ing1.UniqueName},
+			expTrackingBefore: `
+ingress
+  default/ing1
+    ingress:default/ing1
+`,
+			expTrackingAfter: `
+ingress
+`,
+			expOutputLinks: `
+ingress
+  default/ing1
+`,
 		},
 		// 6
 		{
-			trackedHosts: []hostTracking{
-				{convtypes.IngressType, "default/ing1", "domain1.local"},
-				{convtypes.SecretType, "default/secret1", "domain1.local"},
+			trackingRefs: []refs{
+				{ing1, ing1},
 			},
-			oldSecretList: []string{"default/secret1"},
-			expDirtyIngs:  []string{"default/ing1"},
-			expDirtyHosts: []string{"domain1.local"},
+			queryContext: ing2.Context,
+			queryNames:   []string{ing2.UniqueName},
+			expTrackingBefore: `
+ingress
+  default/ing1
+    ingress:default/ing1
+`,
+			expTrackingAfter: `
+ingress
+  default/ing1
+    ingress:default/ing1
+`,
+			expOutputLinks: ``,
 		},
 		// 7
 		{
-			trackedHosts: []hostTracking{
-				{convtypes.IngressType, "default/ing1", "domain1.local"},
+			trackingRefs: []refs{
+				{ing1, back1},
+				{back1, ing2},
+				{ing2, back2},
+				{back2, ing1},
 			},
-			trackedMissingHosts: []hostTracking{
-				{convtypes.ServiceType, "default/svc1", "domain1.local"},
-			},
-			addServiceList: []string{"default/svc1"},
-			expDirtyIngs:   []string{"default/ing1"},
-			expDirtyHosts:  []string{"domain1.local"},
+			queryContext: ing1.Context,
+			queryNames:   []string{ing1.UniqueName},
+			expTrackingBefore: `
+backend
+  default_echo1_8080
+    ingress:default/ing1
+    ingress:default/ing2
+  default_echo2_8080
+    ingress:default/ing1
+    ingress:default/ing2
+ingress
+  default/ing1
+    backend:default_echo1_8080
+    backend:default_echo2_8080
+  default/ing2
+    backend:default_echo1_8080
+    backend:default_echo2_8080
+`,
+			expTrackingAfter: `
+backend
+ingress
+`,
+			expOutputLinks: `
+backend
+  default_echo1_8080
+  default_echo2_8080
+ingress
+  default/ing1
+  default/ing2
+`,
 		},
 		// 8
 		{
-			trackedHosts: []hostTracking{
-				{convtypes.IngressType, "default/ing1", "domain1.local"},
+			trackingRefs: []refs{
+				{ing1, back1},
+				{ing1, back2},
+				{ing2, back3},
 			},
-			trackedMissingHosts: []hostTracking{
-				{convtypes.SecretType, "default/secret1", "domain1.local"},
-			},
-			addSecretList: []string{"default/secret1"},
-			expDirtyIngs:  []string{"default/ing1"},
-			expDirtyHosts: []string{"domain1.local"},
+			queryContext: ing1.Context,
+			queryNames:   []string{ing1.UniqueName},
+			expTrackingBefore: `
+backend
+  default_echo1_8080
+    ingress:default/ing1
+  default_echo2_8080
+    ingress:default/ing1
+  default_echo3_8080
+    ingress:default/ing2
+ingress
+  default/ing1
+    backend:default_echo1_8080
+    backend:default_echo2_8080
+  default/ing2
+    backend:default_echo3_8080
+`,
+			expTrackingAfter: `
+backend
+  default_echo3_8080
+    ingress:default/ing2
+ingress
+  default/ing2
+    backend:default_echo3_8080
+`,
+			expOutputLinks: `
+backend
+  default_echo1_8080
+  default_echo2_8080
+ingress
+  default/ing1
+`,
 		},
 		// 9
 		{
-			trackedHosts: []hostTracking{
-				{convtypes.IngressType, "default/ing1", "domain1.local"},
-				{convtypes.IngressType, "default/ing2", "domain2.local"},
+			trackingRefs: []refs{
+				{ing1, back1},
+				{ing1, back2},
+				{ing2, back3},
+				{ing2, back4},
+				{ing3, back5},
+				{ing3, back6},
 			},
-			oldIngressList: []string{"default/ing1"},
-			expDirtyIngs:   []string{"default/ing1"},
-			expDirtyHosts:  []string{"domain1.local"},
+			queryContext:      ing1.Context,
+			queryNames:        []string{ing1.UniqueName, ing2.UniqueName},
+			expTrackingBefore: cfgBefore1,
+			expTrackingAfter:  cfgAfter1,
+			expOutputLinks:    cfgLinks1,
 		},
 		// 10
 		{
-			trackedHosts: []hostTracking{
-				{convtypes.IngressType, "default/ing1", "domain1.local"},
-				{convtypes.IngressType, "default/ing2", "domain1.local"},
-				{convtypes.IngressType, "default/ing3", "domain2.local"},
+			trackingRefs: []refs{
+				{ing1, back1},
+				{ing2, back3},
 			},
-			oldIngressList: []string{"default/ing1"},
-			expDirtyIngs:   []string{"default/ing1", "default/ing2"},
-			expDirtyHosts:  []string{"domain1.local"},
-		},
-		// 11
-		{
-			trackedHosts: []hostTracking{
-				{convtypes.IngressType, "default/ing1", "domain1.local"},
-				{convtypes.IngressType, "default/ing2", "domain1.local"},
-				{convtypes.IngressType, "default/ing2", "domain2.local"},
-				{convtypes.IngressType, "default/ing3", "domain2.local"},
+			trackingRefName: []refname{
+				{[]convtypes.TrackingRef{ing1}, back2.Context, back2.UniqueName},
+				{[]convtypes.TrackingRef{ing2}, back4.Context, back4.UniqueName},
 			},
-			oldIngressList: []string{"default/ing1"},
-			expDirtyIngs:   []string{"default/ing1", "default/ing2", "default/ing3"},
-			expDirtyHosts:  []string{"domain1.local", "domain2.local"},
-		},
-		// 12
-		{
-			trackedHosts: []hostTracking{
-				{convtypes.IngressType, "default/ing1", "domain1.local"},
-				{convtypes.IngressType, "default/ing2", "domain2.local"},
+			trackingNames: []names{
+				{ing3.Context, ing3.UniqueName, back5.Context, back5.UniqueName},
+				{ing3.Context, ing3.UniqueName, back6.Context, back6.UniqueName},
 			},
-			trackedBacks: []backTracking{
-				{convtypes.IngressType, "default/ing1", back1a},
-			},
-			oldIngressList: []string{"default/ing1"},
-			expDirtyIngs:   []string{"default/ing1"},
-			expDirtyHosts:  []string{"domain1.local"},
-			expDirtyBacks:  []hatypes.BackendID{back1b},
-		},
-		// 13
-		{
-			trackedHosts: []hostTracking{
-				{convtypes.IngressType, "default/ing1", "domain1.local"},
-				{convtypes.IngressType, "default/ing2", "domain2.local"},
-				{convtypes.IngressType, "default/ing3", "domain3.local"},
-			},
-			trackedBacks: []backTracking{
-				{convtypes.IngressType, "default/ing1", back1a},
-				{convtypes.IngressType, "default/ing2", back2a},
-				{convtypes.IngressType, "default/ing3", back1b},
-			},
-			oldIngressList: []string{"default/ing1"},
-			expDirtyIngs:   []string{"default/ing1", "default/ing3"},
-			expDirtyHosts:  []string{"domain1.local", "domain3.local"},
-			expDirtyBacks:  []hatypes.BackendID{back1b},
-		},
-		// 14
-		{
-			trackedBacks: []backTracking{
-				{convtypes.IngressType, "default/ing1", back1a},
-				{convtypes.SecretType, "default/secret1", back1a},
-			},
-			oldSecretList: []string{"default/secret1"},
-			expDirtyIngs:  []string{"default/ing1"},
-			expDirtyBacks: []hatypes.BackendID{back1b},
-		},
-		// 15
-		{
-			trackedMissingBacks: []backTracking{
-				{convtypes.SecretType, "default/secret1", back1a},
-			},
-			addSecretList: []string{"default/secret1"},
-			expDirtyBacks: []hatypes.BackendID{back1b},
-		},
-		// 16
-		{
-			trackedUsers: []userTracking{
-				{convtypes.SecretType, "default/secret1", "usr1"},
-				{convtypes.SecretType, "default/secret2", "usr2"},
-			},
-			oldSecretList: []string{"default/secret1"},
-			expDirtyUsers: []string{"usr1"},
-		},
-		// 17
-		{
-			trackedBacks: []backTracking{
-				{convtypes.PodType, "default/pod1", back1a},
-				{convtypes.PodType, "default/pod2", back1a},
-				{convtypes.PodType, "default/pod3", back2a},
-				{convtypes.PodType, "default/pod4", back2a},
-			},
-			addPodList:    []string{"default/pod3"},
-			expDirtyBacks: []hatypes.BackendID{back2b},
-		},
-		// 18
-		{
-			trackedStorages: []storageTracking{
-				{convtypes.IngressType, "default/ing1", "crt1"},
-				{convtypes.IngressType, "default/ing2", "crt2"},
-				{convtypes.IngressType, "default/ing2", "crt3"},
-				{convtypes.IngressType, "default/ing3", "crt4"},
-			},
-			oldIngressList:   []string{"default/ing2"},
-			expDirtyIngs:     []string{"default/ing2"},
-			expDirtyStorages: []string{"crt2", "crt3"},
-		},
-		// 19
-		{
-			trackedHosts: []hostTracking{
-				{convtypes.IngressClassType, "haproxy", "app1.local"},
-			},
-			oldIngressClassList: []string{"haproxy"},
-			expDirtyHosts:       []string{"app1.local"},
-		},
-		// 20
-		{
-			trackedMissingHosts: []hostTracking{
-				{convtypes.IngressClassType, "haproxy", "app1.local"},
-			},
-			addIngressClassList: []string{"haproxy"},
-			expDirtyHosts:       []string{"app1.local"},
-		},
-		// 21
-		{
-			trackedHosts: []hostTracking{
-				{convtypes.ConfigMapType, "ingress/config", "app1.local"},
-			},
-			oldConfigMapList: []string{"ingress/config"},
-			expDirtyHosts:    []string{"app1.local"},
-		},
-		// 22
-		{
-			trackedMissingHosts: []hostTracking{
-				{convtypes.ConfigMapType, "ingress/config", "app1.local"},
-			},
-			addConfigMapList: []string{"ingress/config"},
-			expDirtyHosts:    []string{"app1.local"},
+			queryContext:      ing1.Context,
+			queryNames:        []string{ing1.UniqueName, ing2.UniqueName},
+			expTrackingBefore: cfgBefore1,
+			expTrackingAfter:  cfgAfter1,
+			expOutputLinks:    cfgLinks1,
 		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		for _, trackedHost := range test.trackedHosts {
-			c.tracker.TrackHostname(trackedHost.rtype, trackedHost.name, trackedHost.hostname)
+		for _, t := range test.trackingRefs {
+			c.tracker.TrackRefs(t.left, t.right)
 		}
-		for _, trackedBack := range test.trackedBacks {
-			c.tracker.TrackBackend(trackedBack.rtype, trackedBack.name, trackedBack.backend)
+		for _, t := range test.trackingRefName {
+			c.tracker.TrackRefName(t.left, t.rightContext, t.rightName)
 		}
-		for _, trackedUser := range test.trackedUsers {
-			c.tracker.TrackUserlist(trackedUser.rtype, trackedUser.name, trackedUser.userlist)
+		for _, t := range test.trackingNames {
+			c.tracker.TrackNames(t.leftContext, t.leftName, t.rightContext, t.rightName)
 		}
-		for _, trackedStorage := range test.trackedStorages {
-			c.tracker.TrackStorage(trackedStorage.rtype, trackedStorage.name, trackedStorage.storage)
+		c.compareTrackingMap(i, test.expTrackingBefore)
+		links := c.tracker.QueryLinks(convtypes.TrackingLinks{
+			test.queryContext: test.queryNames,
+		}, !test.preserveMatches)
+		if test.clearAfter {
+			c.tracker.ClearLinks()
 		}
-		for _, trackedMissingHost := range test.trackedMissingHosts {
-			c.tracker.TrackMissingOnHostname(trackedMissingHost.rtype, trackedMissingHost.name, trackedMissingHost.hostname)
-		}
-		for _, trackedMissingBack := range test.trackedMissingBacks {
-			c.tracker.TrackMissingOnBackend(trackedMissingBack.rtype, trackedMissingBack.name, trackedMissingBack.backend)
-		}
-		dirtyIngs, dirtyHosts, dirtyBacks, dirtyUsers, dirtyStorages :=
-			c.tracker.GetDirtyLinks(
-				test.oldIngressList,
-				test.addIngressList,
-				test.oldIngressClassList,
-				test.addIngressClassList,
-				test.oldConfigMapList,
-				test.addConfigMapList,
-				test.oldServiceList,
-				test.addServiceList,
-				test.oldSecretList,
-				test.addSecretList,
-				test.addPodList,
-			)
-		sort.Strings(dirtyIngs)
-		sort.Strings(dirtyHosts)
-		sort.Slice(dirtyBacks, func(i, j int) bool {
-			return dirtyBacks[i].String() < dirtyBacks[j].String()
-		})
-		sort.Strings(dirtyUsers)
-		sort.Strings(dirtyStorages)
-		c.compareObjects("dirty ingress", i, dirtyIngs, test.expDirtyIngs)
-		c.compareObjects("dirty hosts", i, dirtyHosts, test.expDirtyHosts)
-		c.compareObjects("dirty backs", i, dirtyBacks, test.expDirtyBacks)
-		c.compareObjects("dirty users", i, dirtyUsers, test.expDirtyUsers)
-		c.compareObjects("dirty storages", i, dirtyStorages, test.expDirtyStorages)
-		c.teardown()
-	}
-}
-
-func TestDeleteHostnames(t *testing.T) {
-	testCases := []struct {
-		trackedHosts []hostTracking
-		//
-		trackedMissingHosts []hostTracking
-		//
-		deleteHostnames []string
-		//
-		expIngressHostname      stringStringMap
-		expHostnameIngress      stringStringMap
-		expIngressClassHostname stringStringMap
-		expHostnameIngressClass stringStringMap
-		expConfigMapHostname    stringStringMap
-		expHostnameConfigMap    stringStringMap
-		expServiceHostname      stringStringMap
-		expHostnameService      stringStringMap
-		expSecretHostname       stringStringMap
-		expHostnameSecret       stringStringMap
-		//
-		expIngressClassHostnameMissing stringStringMap
-		expHostnameIngressClassMissing stringStringMap
-		expConfigMapHostnameMissing    stringStringMap
-		expHostnameConfigMapMissing    stringStringMap
-		expServiceHostnameMissing      stringStringMap
-		expHostnameServiceMissing      stringStringMap
-		expSecretHostnameMissing       stringStringMap
-		expHostnameSecretMissing       stringStringMap
-	}{
-		// 0
-		{},
-		// 1
-		{
-			deleteHostnames: []string{"domain1.local"},
-		},
-		// 2
-		{
-			trackedHosts: []hostTracking{
-				{convtypes.IngressType, "default/ing1", "domain1.local"},
-			},
-			expIngressHostname: stringStringMap{"default/ing1": {"domain1.local": empty{}}},
-			expHostnameIngress: stringStringMap{"domain1.local": {"default/ing1": empty{}}},
-		},
-		// 3
-		{
-			trackedHosts: []hostTracking{
-				{convtypes.IngressType, "default/ing1", "domain1.local"},
-			},
-			deleteHostnames: []string{"domain1.local"},
-		},
-		// 4
-		{
-			trackedHosts: []hostTracking{
-				{convtypes.ServiceType, "default/svc1", "domain1.local"},
-			},
-			deleteHostnames: []string{"domain1.local"},
-		},
-		// 5
-		{
-			trackedMissingHosts: []hostTracking{
-				{convtypes.ServiceType, "default/svc1", "domain1.local"},
-			},
-			deleteHostnames: []string{"domain1.local"},
-		},
-		// 6
-		{
-			trackedHosts: []hostTracking{
-				{convtypes.SecretType, "default/secret1", "domain1.local"},
-			},
-			deleteHostnames: []string{"domain1.local"},
-		},
-		// 7
-		{
-			trackedMissingHosts: []hostTracking{
-				{convtypes.SecretType, "default/secret1", "domain1.local"},
-			},
-			deleteHostnames: []string{"domain1.local"},
-		},
-		// 8
-		{
-			trackedHosts: []hostTracking{
-				{convtypes.IngressType, "default/ing1", "domain1.local"},
-				{convtypes.IngressType, "default/ing1", "domain2.local"},
-			},
-			deleteHostnames: []string{"domain1.local", "domain2.local"},
-		},
-		// 9
-		{
-			trackedHosts: []hostTracking{
-				{convtypes.IngressType, "default/ing1", "domain1.local"},
-				{convtypes.IngressType, "default/ing1", "domain2.local"},
-			},
-			deleteHostnames:    []string{"domain1.local"},
-			expIngressHostname: stringStringMap{"default/ing1": {"domain2.local": empty{}}},
-			expHostnameIngress: stringStringMap{"domain2.local": {"default/ing1": empty{}}},
-		},
-		// 10
-		{
-			trackedHosts: []hostTracking{
-				{convtypes.IngressType, "default/ing1", "domain1.local"},
-				{convtypes.IngressType, "default/ing2", "domain1.local"},
-			},
-			deleteHostnames: []string{"domain1.local"},
-		},
-		// 11
-		{
-			trackedHosts: []hostTracking{
-				{convtypes.IngressType, "default/ing1", "domain1.local"},
-				{convtypes.IngressType, "default/ing2", "domain1.local"},
-			},
-			deleteHostnames: []string{"domain1.local", "domain2.local"},
-		},
-		// 12
-		{
-			trackedHosts: []hostTracking{
-				{convtypes.IngressClassType, "haproxy1", "domain1.local"},
-				{convtypes.IngressClassType, "haproxy2", "domain1.local"},
-			},
-			deleteHostnames: []string{"domain1.local", "domain2.local"},
-		},
-		// 13
-		{
-			trackedMissingHosts: []hostTracking{
-				{convtypes.IngressClassType, "haproxy1", "domain1.local"},
-				{convtypes.IngressClassType, "haproxy2", "domain1.local"},
-			},
-			deleteHostnames: []string{"domain1.local", "domain2.local"},
-		},
-		// 14
-		{
-			trackedHosts: []hostTracking{
-				{convtypes.ConfigMapType, "ingress/config1", "domain1.local"},
-				{convtypes.ConfigMapType, "ingress/config2", "domain1.local"},
-			},
-			deleteHostnames: []string{"domain1.local", "domain2.local"},
-		},
-		// 15
-		{
-			trackedMissingHosts: []hostTracking{
-				{convtypes.ConfigMapType, "ingress/config1", "domain1.local"},
-				{convtypes.ConfigMapType, "ingress/config2", "domain1.local"},
-			},
-			deleteHostnames: []string{"domain1.local", "domain2.local"},
-		},
-		// 16
-		{
-			trackedHosts: []hostTracking{
-				{convtypes.IngressType, "default/ing1", "domain1.local"},
-				{convtypes.IngressType, "default/ing1", "domain2.local"},
-				{convtypes.IngressType, "default/ing1", "domain3.local"},
-				{convtypes.IngressClassType, "haproxy", "domain1.local"},
-				{convtypes.IngressClassType, "haproxy", "domain2.local"},
-				{convtypes.IngressClassType, "haproxy", "domain3.local"},
-				{convtypes.ConfigMapType, "ingress/config", "domain1.local"},
-				{convtypes.ConfigMapType, "ingress/config", "domain2.local"},
-				{convtypes.ConfigMapType, "ingress/config", "domain3.local"},
-				{convtypes.ServiceType, "default/svc1", "domain1.local"},
-				{convtypes.ServiceType, "default/svc1", "domain2.local"},
-				{convtypes.ServiceType, "default/svc1", "domain3.local"},
-				{convtypes.SecretType, "default/secret1", "domain1.local"},
-				{convtypes.SecretType, "default/secret1", "domain2.local"},
-				{convtypes.SecretType, "default/secret1", "domain3.local"},
-			},
-			deleteHostnames:         []string{"domain1.local", "domain2.local"},
-			expIngressHostname:      stringStringMap{"default/ing1": {"domain3.local": empty{}}},
-			expHostnameIngress:      stringStringMap{"domain3.local": {"default/ing1": empty{}}},
-			expIngressClassHostname: stringStringMap{"haproxy": {"domain3.local": empty{}}},
-			expHostnameIngressClass: stringStringMap{"domain3.local": {"haproxy": empty{}}},
-			expConfigMapHostname:    stringStringMap{"ingress/config": {"domain3.local": empty{}}},
-			expHostnameConfigMap:    stringStringMap{"domain3.local": {"ingress/config": empty{}}},
-			expServiceHostname:      stringStringMap{"default/svc1": {"domain3.local": empty{}}},
-			expHostnameService:      stringStringMap{"domain3.local": {"default/svc1": empty{}}},
-			expSecretHostname:       stringStringMap{"default/secret1": {"domain3.local": empty{}}},
-			expHostnameSecret:       stringStringMap{"domain3.local": {"default/secret1": empty{}}},
-		},
-	}
-	for i, test := range testCases {
-		c := setup(t)
-		for _, trackedHost := range test.trackedHosts {
-			c.tracker.TrackHostname(trackedHost.rtype, trackedHost.name, trackedHost.hostname)
-		}
-		for _, trackedMissingHost := range test.trackedMissingHosts {
-			c.tracker.TrackMissingOnHostname(trackedMissingHost.rtype, trackedMissingHost.name, trackedMissingHost.hostname)
-		}
-		c.tracker.DeleteHostnames(test.deleteHostnames)
-		c.compareObjects("ingressHostname", i, c.tracker.ingressHostname, test.expIngressHostname)
-		c.compareObjects("hostnameIngress", i, c.tracker.hostnameIngress, test.expHostnameIngress)
-		c.compareObjects("ingressClassHostname", i, c.tracker.ingressClassHostname, test.expIngressClassHostname)
-		c.compareObjects("hostnameIngressClass", i, c.tracker.hostnameIngressClass, test.expHostnameIngressClass)
-		c.compareObjects("configMapHostname", i, c.tracker.configMapHostname, test.expConfigMapHostname)
-		c.compareObjects("hostnameConfigMap", i, c.tracker.hostnameConfigMap, test.expHostnameConfigMap)
-		c.compareObjects("serviceHostname", i, c.tracker.serviceHostname, test.expServiceHostname)
-		c.compareObjects("hostnameService", i, c.tracker.hostnameService, test.expHostnameService)
-		c.compareObjects("secretHostname", i, c.tracker.secretHostname, test.expSecretHostname)
-		c.compareObjects("hostnameSecret", i, c.tracker.hostnameSecret, test.expHostnameSecret)
-		c.compareObjects("ingressClassHostnameMissing", i, c.tracker.ingressClassHostnameMissing, test.expIngressClassHostnameMissing)
-		c.compareObjects("hostnameIngressClassMissing", i, c.tracker.hostnameIngressClassMissing, test.expHostnameIngressClassMissing)
-		c.compareObjects("configMapHostnameMissing", i, c.tracker.configMapHostnameMissing, test.expConfigMapHostnameMissing)
-		c.compareObjects("hostnameConfigMapMissing", i, c.tracker.hostnameConfigMapMissing, test.expHostnameConfigMapMissing)
-		c.compareObjects("serviceHostnameMissing", i, c.tracker.serviceHostnameMissing, test.expServiceHostnameMissing)
-		c.compareObjects("hostnameServiceMissing", i, c.tracker.hostnameServiceMissing, test.expHostnameServiceMissing)
-		c.compareObjects("secretHostnameMissing", i, c.tracker.secretHostnameMissing, test.expSecretHostnameMissing)
-		c.compareObjects("hostnameSecretMissing", i, c.tracker.hostnameSecretMissing, test.expHostnameSecretMissing)
-		c.teardown()
-	}
-}
-
-func TestDeleteBackends(t *testing.T) {
-	testCases := []struct {
-		trackedBacks []backTracking
-		//
-		trackedMissingBacks []backTracking
-		//
-		deleteBackends []hatypes.BackendID
-		//
-		expIngressBackend stringBackendMap
-		expBackendIngress backendStringMap
-		expSecretBackend  stringBackendMap
-		expBackendSecret  backendStringMap
-		//
-		expSecretBackendMissing stringBackendMap
-		expBackendSecretMissing backendStringMap
-	}{
-		// 0
-		{},
-		// 1
-		{
-			deleteBackends: []hatypes.BackendID{back1b},
-		},
-		// 2
-		{
-			trackedBacks: []backTracking{
-				{convtypes.IngressType, "default/ing1", back1a},
-			},
-			expBackendIngress: backendStringMap{back1b: {"default/ing1": empty{}}},
-			expIngressBackend: stringBackendMap{"default/ing1": {back1b: empty{}}},
-		},
-		// 3
-		{
-			trackedBacks: []backTracking{
-				{convtypes.IngressType, "default/ing1", back1a},
-			},
-			deleteBackends: []hatypes.BackendID{back1b},
-		},
-		// 4
-		{
-			trackedBacks: []backTracking{
-				{convtypes.IngressType, "default/ing1", back1a},
-				{convtypes.IngressType, "default/ing2", back1a},
-				{convtypes.IngressType, "default/ing2", back2a},
-			},
-			deleteBackends:    []hatypes.BackendID{back1b},
-			expBackendIngress: backendStringMap{back2b: {"default/ing2": empty{}}},
-			expIngressBackend: stringBackendMap{"default/ing2": {back2b: empty{}}},
-		},
-		// 5
-		{
-			trackedBacks: []backTracking{
-				{convtypes.SecretType, "default/secret1", back1a},
-				{convtypes.SecretType, "default/secret2", back1a},
-				{convtypes.SecretType, "default/secret2", back2a},
-			},
-			trackedMissingBacks: []backTracking{
-				{convtypes.SecretType, "default/secret1", back1a},
-				{convtypes.SecretType, "default/secret2", back1a},
-				{convtypes.SecretType, "default/secret2", back2a},
-			},
-			deleteBackends:          []hatypes.BackendID{back1b},
-			expSecretBackend:        stringBackendMap{"default/secret2": {back2b: empty{}}},
-			expBackendSecret:        backendStringMap{back2b: {"default/secret2": empty{}}},
-			expSecretBackendMissing: stringBackendMap{"default/secret2": {back2b: empty{}}},
-			expBackendSecretMissing: backendStringMap{back2b: {"default/secret2": empty{}}},
-		},
-	}
-	for i, test := range testCases {
-		c := setup(t)
-		for _, trackedBack := range test.trackedBacks {
-			c.tracker.TrackBackend(trackedBack.rtype, trackedBack.name, trackedBack.backend)
-		}
-		for _, trackedMissingBack := range test.trackedMissingBacks {
-			c.tracker.TrackMissingOnBackend(trackedMissingBack.rtype, trackedMissingBack.name, trackedMissingBack.backend)
-		}
-		c.tracker.DeleteBackends(test.deleteBackends)
-		c.compareObjects("ingressBackend", i, c.tracker.ingressBackend, test.expIngressBackend)
-		c.compareObjects("backendIngress", i, c.tracker.backendIngress, test.expBackendIngress)
-		c.compareObjects("secretBackend", i, c.tracker.secretBackend, test.expSecretBackend)
-		c.compareObjects("backendSecret", i, c.tracker.backendSecret, test.expBackendSecret)
-		c.compareObjects("secretBackendMissing", i, c.tracker.secretBackendMissing, test.expSecretBackendMissing)
-		c.compareObjects("backendSecretMissing", i, c.tracker.backendSecretMissing, test.expBackendSecretMissing)
-		c.teardown()
-	}
-}
-
-func TestDeleteUserlists(t *testing.T) {
-	testCases := []struct {
-		trackedUsers []userTracking
-		//
-		deleteUserlists []string
-		//
-		expSecretUserlist stringStringMap
-		expUserlistSecret stringStringMap
-	}{
-		// 0
-		{},
-		// 1
-		{
-			deleteUserlists: []string{"usr1"},
-		},
-		// 2
-		{
-			trackedUsers: []userTracking{
-				{convtypes.SecretType, "default/secret1", "usr1"},
-			},
-			expUserlistSecret: stringStringMap{"usr1": {"default/secret1": empty{}}},
-			expSecretUserlist: stringStringMap{"default/secret1": {"usr1": empty{}}},
-		},
-		// 3
-		{
-			trackedUsers: []userTracking{
-				{convtypes.SecretType, "default/secret1", "usr1"},
-			},
-			deleteUserlists:   []string{"usr2"},
-			expUserlistSecret: stringStringMap{"usr1": {"default/secret1": empty{}}},
-			expSecretUserlist: stringStringMap{"default/secret1": {"usr1": empty{}}},
-		},
-		// 4
-		{
-			trackedUsers: []userTracking{
-				{convtypes.SecretType, "default/secret1", "usr1"},
-			},
-			deleteUserlists: []string{"usr1"},
-		},
-		// 5
-		{
-			trackedUsers: []userTracking{
-				{convtypes.SecretType, "default/secret1", "usr1"},
-				{convtypes.SecretType, "default/secret2", "usr2"},
-			},
-			deleteUserlists:   []string{"usr2"},
-			expUserlistSecret: stringStringMap{"usr1": {"default/secret1": empty{}}},
-			expSecretUserlist: stringStringMap{"default/secret1": {"usr1": empty{}}},
-		},
-	}
-	for i, test := range testCases {
-		c := setup(t)
-		for _, trackedUser := range test.trackedUsers {
-			c.tracker.TrackUserlist(trackedUser.rtype, trackedUser.name, trackedUser.userlist)
-		}
-		c.tracker.DeleteUserlists(test.deleteUserlists)
-		c.compareObjects("secretUserlist", i, c.tracker.secretUserlist, test.expSecretUserlist)
-		c.compareObjects("userlistSecret", i, c.tracker.userlistSecret, test.expUserlistSecret)
-		c.teardown()
-	}
-}
-
-func TestDeleteStorages(t *testing.T) {
-	testCases := []struct {
-		trackedStorages []storageTracking
-		//
-		deleteStorages []string
-		//
-		expIngressStorages stringStringMap
-		expStoragesIngress stringStringMap
-	}{
-		// 0
-		{},
-		// 1
-		{
-			deleteStorages: []string{"crt1"},
-		},
-		// 2
-		{
-			trackedStorages: []storageTracking{
-				{convtypes.IngressType, "default/ingress1", "crt1"},
-			},
-			expIngressStorages: stringStringMap{"default/ingress1": {"crt1": empty{}}},
-			expStoragesIngress: stringStringMap{"crt1": {"default/ingress1": empty{}}},
-		},
-		// 3
-		{
-			trackedStorages: []storageTracking{
-				{convtypes.IngressType, "default/ingress1", "crt1"},
-			},
-			deleteStorages:     []string{"crt2"},
-			expIngressStorages: stringStringMap{"default/ingress1": {"crt1": empty{}}},
-			expStoragesIngress: stringStringMap{"crt1": {"default/ingress1": empty{}}},
-		},
-		// 4
-		{
-			trackedStorages: []storageTracking{
-				{convtypes.IngressType, "default/ingress1", "crt1"},
-			},
-			deleteStorages: []string{"crt1"},
-		},
-		// 5
-		{
-			trackedStorages: []storageTracking{
-				{convtypes.IngressType, "default/ingress1", "crt1"},
-				{convtypes.IngressType, "default/ingress2", "crt2"},
-			},
-			deleteStorages:     []string{"crt2"},
-			expIngressStorages: stringStringMap{"default/ingress1": {"crt1": empty{}}},
-			expStoragesIngress: stringStringMap{"crt1": {"default/ingress1": empty{}}},
-		},
-	}
-	for i, test := range testCases {
-		c := setup(t)
-		for _, trackedStorage := range test.trackedStorages {
-			c.tracker.TrackStorage(trackedStorage.rtype, trackedStorage.name, trackedStorage.storage)
-		}
-		c.tracker.DeleteStorages(test.deleteStorages)
-		c.compareObjects("ingressStorages", i, c.tracker.ingressStorages, test.expIngressStorages)
-		c.compareObjects("storagesIngress", i, c.tracker.storagesIngress, test.expStoragesIngress)
+		c.compareTrackingMap(i, test.expTrackingAfter)
+		c.compareOutputLinks(i, links, test.expOutputLinks)
 		c.teardown()
 	}
 }
@@ -795,10 +358,84 @@ func setup(t *testing.T) *testConfig {
 	}
 }
 
-func (c *testConfig) teardown() {}
+func (c *testConfig) teardown() {
+}
 
-func (c *testConfig) compareObjects(name string, index int, actual, expected interface{}) {
-	if !reflect.DeepEqual(actual, expected) {
-		c.t.Errorf("%s on %d differs - expected: %v - actual: %v", name, index, expected, actual)
+func (c *testConfig) compareTrackingMap(i int, expected string) {
+	actual := trackingMap2string(c.tracker)
+	c.compareText(i, actual, expected)
+}
+
+func (c *testConfig) compareOutputLinks(i int, links convtypes.TrackingLinks, expected string) {
+	actual := outputlinks2string(links)
+	c.compareText(i, actual, expected)
+}
+
+func (c *testConfig) compareText(i int, actual, expected string) {
+	txt1 := "\n" + strings.Trim(expected, "\n")
+	txt2 := "\n" + strings.Trim(actual, "\n")
+	if txt1 != txt2 {
+		c.t.Errorf("diff on %d:%s", i, diff.Diff(txt1, txt2))
 	}
+}
+
+func trackingMap2string(tracker *tracker) string {
+	tracking := tracker.tracking
+	context := make([]convtypes.ResourceType, 0, len(tracking))
+	for ctx := range tracking {
+		context = append(context, ctx)
+	}
+	sort.Slice(context, func(i, j int) bool {
+		return context[i] < context[j]
+	})
+	out := "\n"
+	for _, ctx := range context {
+		out += fmt.Sprintf("%s\n", ctx)
+		refs := tracking[ctx]
+		names := make([]string, 0, len(refs))
+		for name := range refs {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		for _, name := range names {
+			out += fmt.Sprintf("  %s\n", name)
+			targets := refs[name]
+			targetrefs := make([]convtypes.TrackingRef, 0, len(targets))
+			for t := range targets {
+				targetrefs = append(targetrefs, t)
+			}
+			sort.Slice(targetrefs, func(i, j int) bool {
+				t1 := targetrefs[i]
+				t2 := targetrefs[j]
+				if t1.Context == t2.Context {
+					return t1.UniqueName < t2.UniqueName
+				}
+				return t1.Context < t2.Context
+			})
+			for _, t := range targetrefs {
+				out += fmt.Sprintf("    %s:%s\n", t.Context, t.UniqueName)
+			}
+		}
+	}
+	return out
+}
+
+func outputlinks2string(links convtypes.TrackingLinks) string {
+	context := make([]convtypes.ResourceType, 0, len(links))
+	for ctx := range links {
+		context = append(context, ctx)
+	}
+	sort.Slice(context, func(i, j int) bool {
+		return context[i] < context[j]
+	})
+	out := "\n"
+	for _, ctx := range context {
+		refs := links[ctx]
+		sort.Strings(refs)
+		out += fmt.Sprintf("%s\n", ctx)
+		for _, r := range refs {
+			out += fmt.Sprintf("  %s\n", r)
+		}
+	}
+	return out
 }

@@ -103,11 +103,11 @@ func TestBackendCrud(t *testing.T) {
 			p := strings.Split(add, "_")
 			backends.AcquireBackend(p[0], p[1], p[2])
 		}
-		var backendIDs []BackendID
+		var backendIDs []string
 		for _, del := range test.del {
 			p := strings.Split(del, "_")
 			if b := backends.FindBackend(p[0], p[1], p[2]); b != nil {
-				backendIDs = append(backendIDs, b.BackendID())
+				backendIDs = append(backendIDs, b.ID)
 			}
 		}
 		backends.RemoveAll(backendIDs)

@@ -54,6 +54,7 @@ func (c *converters) Sync() {
 		gatewayConverter.NeedFullSync() ||
 		ingressConverter.NeedFullSync()
 	if needFullSync {
+		c.options.Tracker.ClearLinks()
 		c.haproxy.Clear()
 	}
 	l := len(changed.Objects)

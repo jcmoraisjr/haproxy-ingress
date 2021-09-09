@@ -60,7 +60,7 @@ func TestSyncSvcNotFound(t *testing.T) {
 	c.compareConfigBack(defaultBackendConfig)
 
 	c.logger.CompareLogging(`
-WARN skipping backend config of ingress 'default/echo': service not found: 'default/notfound'`)
+WARN skipping backend config of Ingress 'default/echo': service not found: 'default/notfound'`)
 }
 
 func TestSyncDefaultSvcNotFound(t *testing.T) {
@@ -107,7 +107,7 @@ func TestSyncSvcPortNotFound(t *testing.T) {
 `)
 
 	c.logger.CompareLogging(`
-WARN skipping backend config of ingress 'default/echo': port not found: 'non'
+WARN skipping backend config of Ingress 'default/echo': port not found: 'non'
 `)
 }
 
@@ -152,7 +152,7 @@ func TestSyncSvcNamedPort(t *testing.T) {
 `)
 
 	c.logger.CompareLogging(`
-WARN skipping backend config of ingress 'default/echo4': port not found: '9000'
+WARN skipping backend config of Ingress 'default/echo4': port not found: '9000'
 `)
 }
 
@@ -462,7 +462,7 @@ func TestSyncRedeclarePath(t *testing.T) {
     port: 8080` + defaultBackendConfig)
 
 	c.logger.CompareLogging(`
-WARN skipping redeclared path '/p1' type 'begin' on ingress 'default/echo1'`)
+WARN skipping redeclared path '/p1' type 'begin' on Ingress 'default/echo1'`)
 }
 
 func TestSyncTLSDefault(t *testing.T) {
@@ -497,7 +497,7 @@ func TestSyncTLSSecretNotFound(t *testing.T) {
     tlsfilename: /tls/tls-default.pem`)
 
 	c.logger.CompareLogging(`
-WARN using default certificate due to an error reading secret 'ing-tls' on ingress 'default/echo': secret not found: 'default/ing-tls'`)
+WARN using default certificate due to an error reading secret 'ing-tls' on Ingress 'default/echo': secret not found: 'default/ing-tls'`)
 }
 
 func TestSyncTLSCustom(t *testing.T) {
@@ -535,7 +535,7 @@ func TestSyncRedeclareTLS(t *testing.T) {
     tlsfilename: /tls/default/tls-echo1.pem`)
 
 	c.logger.CompareLogging(`
-WARN skipping TLS secret 'tls-echo2' of ingress 'default/echo1': TLS of host 'echo.example.com' was already assigned`)
+WARN skipping TLS secret 'tls-echo2' of Ingress 'default/echo1': TLS of host 'echo.example.com' was already assigned`)
 }
 
 func TestSyncRedeclareSameTLS(t *testing.T) {
@@ -582,7 +582,7 @@ func TestSyncRedeclareTLSDefaultFirst(t *testing.T) {
     tlsfilename: /tls/tls-default.pem`)
 
 	c.logger.CompareLogging(`
-WARN skipping TLS secret 'tls-echo1' of ingress 'default/echo2': TLS of host 'echo.example.com' was already assigned`)
+WARN skipping TLS secret 'tls-echo1' of Ingress 'default/echo2': TLS of host 'echo.example.com' was already assigned`)
 }
 
 func TestSyncRedeclareTLSCustomFirst(t *testing.T) {
@@ -607,7 +607,7 @@ func TestSyncRedeclareTLSCustomFirst(t *testing.T) {
     tlsfilename: /tls/default/tls-echo1.pem`)
 
 	c.logger.CompareLogging(`
-WARN skipping default TLS secret of ingress 'default/echo2': TLS of host 'echo.example.com' was already assigned`)
+WARN skipping default TLS secret of Ingress 'default/echo2': TLS of host 'echo.example.com' was already assigned`)
 }
 
 func TestSyncInvalidTLS(t *testing.T) {
@@ -627,7 +627,7 @@ func TestSyncInvalidTLS(t *testing.T) {
     tlsfilename: /tls/tls-default.pem`)
 
 	c.logger.CompareLogging(`
-WARN using default certificate due to an error reading secret 'tls-invalid' on ingress 'default/echo': secret not found: 'default/tls-invalid'`)
+WARN using default certificate due to an error reading secret 'tls-invalid' on Ingress 'default/echo': secret not found: 'default/tls-invalid'`)
 }
 
 func TestSyncTLSSecretWithoutHost(t *testing.T) {
@@ -698,7 +698,7 @@ func TestSyncIngressClass(t *testing.T) {
 				Parameters: test.parameters,
 			},
 		}
-		_ = conv.readParameters(&ingClass, "echo.example.com")
+		_ = conv.readParameters(&ingClass)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
@@ -821,7 +821,7 @@ func TestPathType(t *testing.T) {
 		{
 			pathType: &pathNewFromSpec,
 			expected: hatypes.MatchBegin,
-			logging:  "WARN unsupported 'NewFromSpec' pathType from ingress spec, using 'ImplementationSpecific' instead.",
+			logging:  "WARN unsupported 'NewFromSpec' pathType from Ingress spec, using 'ImplementationSpecific' instead.",
 		},
 	}
 	for i, test := range testCases {
@@ -871,7 +871,7 @@ func TestSyncBackendSvcNotFound(t *testing.T) {
 	c.compareConfigBack(defaultBackendConfig)
 
 	c.logger.CompareLogging(`
-WARN skipping default backend of ingress 'default/echo': service not found: 'default/notfound'`)
+WARN skipping default backend of Ingress 'default/echo': service not found: 'default/notfound'`)
 }
 
 func TestSyncBackendReuseDefaultSvc(t *testing.T) {
@@ -910,7 +910,7 @@ func TestSyncDefaultBackendReusedPath1(t *testing.T) {
     port: 8080` + defaultBackendConfig)
 
 	c.logger.CompareLogging(`
-WARN skipping default backend of ingress 'default/echo2': path / was already defined on default host`)
+WARN skipping default backend of Ingress 'default/echo2': path / was already defined on default host`)
 }
 
 func TestSyncDefaultBackendReusedPath2(t *testing.T) {
@@ -933,7 +933,7 @@ func TestSyncDefaultBackendReusedPath2(t *testing.T) {
     port: 8080` + defaultBackendConfig)
 
 	c.logger.CompareLogging(`
-WARN skipping redeclared path '/' type 'begin' on ingress 'default/echo2'`)
+WARN skipping redeclared path '/' type 'begin' on Ingress 'default/echo2'`)
 }
 
 func TestSyncEmptyHTTP(t *testing.T) {
@@ -1228,7 +1228,7 @@ func TestSyncPartial(t *testing.T) {
 				{"default/echo2", "8080", "172.17.0.12"},
 			},
 			logging: explogging + `
-WARN skipping backend config of ingress 'default/echo2': service not found: 'default/echo2'`,
+WARN skipping backend config of Ingress 'default/echo2': service not found: 'default/echo2'`,
 			expFront: `
 - hostname: echo.example.com
   paths:
@@ -1281,8 +1281,8 @@ WARN skipping backend config of ingress 'default/echo2': service not found: 'def
 			ingtls: ingTLSDefault,
 			secDel: secTLSDefault,
 			logging: explogging + `
-WARN using default certificate due to an error reading secret 'tls1' on ingress 'default/echo1': secret not found: 'default/tls1'
-WARN using default certificate due to an error reading secret 'default/tls1' on ingress 'default/echo2': secret not found: 'default/tls1'`,
+WARN using default certificate due to an error reading secret 'tls1' on Ingress 'default/echo1': secret not found: 'default/tls1'
+WARN using default certificate due to an error reading secret 'default/tls1' on Ingress 'default/echo2': secret not found: 'default/tls1'`,
 			expFront: expFrontDefault + `
   tls:
     tlsfilename: /tls/tls-default.pem`,
@@ -1509,6 +1509,45 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
 	}
 }
 
+func TestSyncPartialTCPService(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	c.createSvc1("default/echo1", "8080", "172.17.0.11")
+	ing := c.createIng2("default/echo1", "echo1:8080")
+	ing.SetAnnotations(map[string]string{"ingress.kubernetes.io/" + ingtypes.TCPTCPServicePort: "7001"})
+	c.Sync(ing)
+	c.hconfig.Commit()
+	c.logger.Logging = []string{}
+
+	_, ep := conv_helper.CreateService("default/echo1", "8080", "172.17.0.11,172.17.0.21")
+	c.cache.Changed.EndpointsNew = []*api.Endpoints{ep}
+	c.Sync()
+
+	c.compareConfigFront(`[]`)
+	c.compareConfigBack(`
+- id: default_echo1_8080
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+  - ip: 172.17.0.21
+    port: 8080
+  modetcp: true
+- id: system_default_8080
+  endpoints:
+  - ip: 172.17.0.99
+    port: 8080
+`)
+	c.compareConfigTCPService(`
+- backends: []
+  defaultbackend: default_echo1_8080
+  port: 7001
+  proxyprot: false
+  tls: {}
+`)
+	c.logger.CompareLogging(`INFO-V(2) syncing 0 host(s) and 1 backend(s)`)
+}
+
 func TestSyncPartialDefaultBackend(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
@@ -1567,7 +1606,7 @@ func TestSyncTCPServicePort(t *testing.T) {
 				{"7001", "/", "echonotfound:8080"},
 			},
 			expect:  `[]`,
-			logging: `WARN skipping path declaration on ingress 'default/echo1': service not found: 'default/echonotfound'`,
+			logging: `WARN skipping path declaration on Ingress 'default/echo1': service not found: 'default/echonotfound'`,
 		},
 		// 3
 		{
@@ -1575,7 +1614,7 @@ func TestSyncTCPServicePort(t *testing.T) {
 				{"7001", "/", "echo1:notvalidport"},
 			},
 			expect:  `[]`,
-			logging: `WARN skipping path declaration on ingress 'default/echo1': port not found: 'notvalidport'`,
+			logging: `WARN skipping path declaration on Ingress 'default/echo1': port not found: 'notvalidport'`,
 		},
 		// 4
 		{
@@ -1601,7 +1640,7 @@ func TestSyncTCPServicePort(t *testing.T) {
   port: 7001
   proxyprot: false
   tls: {}`,
-			logging: `WARN skipping path declaration on ingress 'default/echo2': tcp service :7001 was already assigned to default_echo1_8080`,
+			logging: `WARN skipping path declaration on Ingress 'default/echo2': tcp service :7001 was already assigned to default_echo1_8080`,
 		},
 		// 6
 		{
@@ -1628,7 +1667,7 @@ func TestSyncTCPServicePort(t *testing.T) {
   proxyprot: false
   tls:
     tlsfilename: /tls/tls-default.pem`,
-			logging: `WARN using default certificate due to an error reading secret 'tls-invalid' on ingress 'default/echo1': secret not found: 'default/tls-invalid'`,
+			logging: `WARN using default certificate due to an error reading secret 'tls-invalid' on Ingress 'default/echo1': secret not found: 'default/tls-invalid'`,
 		},
 		// 8
 		{
@@ -1636,7 +1675,7 @@ func TestSyncTCPServicePort(t *testing.T) {
 				{"7001", "tls1"},
 			},
 			expect:  `[]`,
-			logging: `WARN skipping TLS of tcp service on ingress 'default/echo1': backend was not configured`,
+			logging: `WARN skipping TLS of tcp service on Ingress 'default/echo1': backend was not configured`,
 		},
 		// 9
 		{
@@ -1651,7 +1690,7 @@ func TestSyncTCPServicePort(t *testing.T) {
   proxyprot: false
   tls:
     tlsfilename: /tls/default/tls1.pem`,
-			logging: `WARN skipping path declaration on ingress 'default/echo2': tcp service :7001 was already assigned to default_echo1_8080`,
+			logging: `WARN skipping path declaration on Ingress 'default/echo2': tcp service :7001 was already assigned to default_echo1_8080`,
 		},
 		// 10
 		{
@@ -1667,8 +1706,8 @@ func TestSyncTCPServicePort(t *testing.T) {
   tls:
     tlsfilename: /tls/default/tls1.pem`,
 			logging: `
-WARN skipping path declaration on ingress 'default/echo2': tcp service :7001 was already assigned to default_echo1_8080
-WARN skipping TLS secret 'tls2' of ingress 'default/echo2': TLS of tcp service port '7001' was already assigned`,
+WARN skipping path declaration on Ingress 'default/echo2': tcp service :7001 was already assigned to default_echo1_8080
+WARN skipping TLS secret 'tls2' of Ingress 'default/echo2': TLS of tcp service port '7001' was already assigned`,
 		},
 		// 11
 		{
@@ -1696,7 +1735,7 @@ WARN skipping TLS secret 'tls2' of ingress 'default/echo2': TLS of tcp service p
   port: 7001
   proxyprot: false
   tls: {}`,
-			logging: `WARN skipping path declaration on ingress 'default/echo1': tcp service echo.local:7001 was already assigned to default_echo1_8080`,
+			logging: `WARN skipping path declaration on Ingress 'default/echo1': tcp service echo.local:7001 was already assigned to default_echo1_8080`,
 		},
 		// 13
 		{
@@ -1728,7 +1767,7 @@ WARN skipping TLS secret 'tls2' of ingress 'default/echo2': TLS of tcp service p
   port: 7001
   proxyprot: false
   tls: {}`,
-			logging: `WARN skipping path declaration on ingress 'default/echo3': tcp service echo2.local:7001 was already assigned to default_echo2_8080`,
+			logging: `WARN skipping path declaration on Ingress 'default/echo3': tcp service echo2.local:7001 was already assigned to default_echo2_8080`,
 		},
 		// 15
 		{
@@ -1752,7 +1791,7 @@ WARN skipping TLS secret 'tls2' of ingress 'default/echo2': TLS of tcp service p
 				{"7001", "/app", "echo1:8080"},
 			},
 			expect:  `[]`,
-			logging: `WARN skipping backend declaration on path '/app' of ingress 'default/echo1': tcp services do not support path`,
+			logging: `WARN skipping backend declaration on path '/app' of Ingress 'default/echo1': tcp services do not support path`,
 		},
 		// 17
 		{
@@ -1903,7 +1942,7 @@ func TestAnnPrefix(t *testing.T) {
   - ip: 172.17.0.99
     port: 8080
 `)
-	c.logger.CompareLogging(`WARN annotation 'ingress.kubernetes.io/balance-algorithm' on ingress 'default/app1' was ignored due to conflict with another annotation(s) for the same 'balance-algorithm' configuration key`)
+	c.logger.CompareLogging(`WARN annotation 'ingress.kubernetes.io/balance-algorithm' on Ingress 'default/app1' was ignored due to conflict with another annotation(s) for the same 'balance-algorithm' configuration key`)
 }
 
 func TestSyncAnnFront(t *testing.T) {
@@ -2057,7 +2096,7 @@ func TestSyncAnnBackSvcIngConflict(t *testing.T) {
   balancealgorithm: leastconn` + defaultBackendConfig)
 
 	c.logger.CompareLogging(`
-WARN skipping backend 'echo:8080' annotation(s) from ingress 'default/echo' due to conflict: [balance-algorithm]`)
+WARN skipping backend 'echo:8080' annotation(s) from Ingress 'default/echo' due to conflict: [balance-algorithm]`)
 }
 
 func TestSyncAnnBacksSvcIng(t *testing.T) {
@@ -2163,8 +2202,8 @@ func TestSyncAnnBackDefault(t *testing.T) {
   balancealgorithm: roundrobin`)
 
 	c.logger.CompareLogging(`
-WARN skipping backend 'echo5:8080' annotation(s) from ingress 'default/echo5' due to conflict: [balance-algorithm]
-WARN skipping backend 'echo7:8080' annotation(s) from ingress 'default/echo7' due to conflict: [balance-algorithm]`)
+WARN skipping backend 'echo5:8080' annotation(s) from Ingress 'default/echo5' due to conflict: [balance-algorithm]
+WARN skipping backend 'echo7:8080' annotation(s) from Ingress 'default/echo7' due to conflict: [balance-algorithm]`)
 }
 
 func TestSyncAnnAuthURL(t *testing.T) {
@@ -2198,7 +2237,7 @@ func TestSyncAnnAuthURL(t *testing.T) {
   - ip: 172.17.0.99
     port: 8080
 `)
-	c.logger.CompareLogging(`WARN skipping auth-url on ingress 'default/echo2': service not found: 'default/authsvc2'`)
+	c.logger.CompareLogging(`WARN skipping auth-url on Ingress 'default/echo2': service not found: 'default/authsvc2'`)
 }
 
 func TestSyncAnnPassthrough(t *testing.T) {
@@ -2283,8 +2322,8 @@ rootredirect: /login
 `)
 
 	c.logger.CompareLogging(`
-WARN skipping http port config of ssl-passthrough on ingress 'default/echo2': port not found: '9000'
-WARN skipping redeclared ssl-passthrough root path on ingress 'default/echo2a'
+WARN skipping http port config of ssl-passthrough on Ingress 'default/echo2': port not found: '9000'
+WARN skipping redeclared ssl-passthrough root path on Ingress 'default/echo2a'
 `)
 }
 

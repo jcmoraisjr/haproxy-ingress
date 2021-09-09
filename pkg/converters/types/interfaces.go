@@ -39,13 +39,13 @@ type Cache interface {
 	GetService(defaultNamespace, serviceName string) (*api.Service, error)
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
 	GetConfigMap(configMapName string) (*api.ConfigMap, error)
-	GetTerminatingPods(service *api.Service, track TrackingTarget) ([]*api.Pod, error)
+	GetTerminatingPods(service *api.Service, track []TrackingRef) ([]*api.Pod, error)
 	GetPod(podName string) (*api.Pod, error)
 	GetPodNamespace() string
-	GetTLSSecretPath(defaultNamespace, secretName string, track TrackingTarget) (CrtFile, error)
-	GetCASecretPath(defaultNamespace, secretName string, track TrackingTarget) (ca, crl File, err error)
+	GetTLSSecretPath(defaultNamespace, secretName string, track []TrackingRef) (CrtFile, error)
+	GetCASecretPath(defaultNamespace, secretName string, track []TrackingRef) (ca, crl File, err error)
 	GetDHSecretPath(defaultNamespace, secretName string) (File, error)
-	GetPasswdSecretContent(defaultNamespace, secretName string, track TrackingTarget) ([]byte, error)
+	GetPasswdSecretContent(defaultNamespace, secretName string, track []TrackingRef) ([]byte, error)
 	SwapChangedObjects() *ChangedObjects
 }
 
@@ -87,31 +87,55 @@ type ChangedObjects struct {
 	NeedFullSync bool
 	//
 	Objects []string
+	Links   TrackingLinks
 }
+
+// ResourceType ...
+type ResourceType string
+
+// ...
+const (
+	ResourceIngress      ResourceType = "Ingress"
+	ResourceIngressClass ResourceType = "IngressClass"
+
+	ResourceGateway       ResourceType = "Gateway"
+	ResourceGatewayClass  ResourceType = "GatewayClass"
+	ResourceHTTPRoute     ResourceType = "HTTPRoute"
+	ResourceTLSRoute      ResourceType = "TLSRoute"
+	ResourceTCPRoute      ResourceType = "TCPRoute"
+	ResourceUDPRoute      ResourceType = "UDPRoute"
+	ResourceBackendPolicy ResourceType = "BackendPolicy"
+
+	ResourceConfigMap ResourceType = "ConfigMap"
+	ResourceService   ResourceType = "Service"
+	ResourceEndpoints ResourceType = "Endpoints"
+	ResourceSecret    ResourceType = "Secret"
+	ResourcePod       ResourceType = "Pod"
+
+	RersourceHATCPService ResourceType = "HATCPService"
+	ResourceHAHostname    ResourceType = "HAHostname"
+	ResourceHABackend     ResourceType = "HABackend"
+	ResourceHAUserlist    ResourceType = "HAUserlist"
+
+	ResourceAcmeData ResourceType = "AcmeData"
+)
+
+// TrackingRef ...
+type TrackingRef struct {
+	Context    ResourceType
+	UniqueName string
+}
+
+// TrackingLinks ...
+type TrackingLinks map[ResourceType][]string
 
 // Tracker ...
 type Tracker interface {
-	Track(isMissing bool, track TrackingTarget, rtype ResourceType, name string)
-	TrackHostname(rtype ResourceType, name, hostname string)
-	TrackBackend(rtype ResourceType, name string, backendID hatypes.BackendID)
-	TrackMissingOnHostname(rtype ResourceType, name, hostname string)
-	TrackStorage(rtype ResourceType, name, storage string)
-	TrackGateway(rtype ResourceType, name string)
-	GetDirtyLinks(oldIngressList, addIngressList, oldIngressClassList, addIngressClassList, oldConfigMapList, addConfigMapList, oldServiceList, addServiceList, oldSecretList, addSecretList, addPodList []string) (dirtyIngs, dirtyHosts []string, dirtyBacks []hatypes.BackendID, dirtyUsers, dirtyStorages []string)
-	GetGatewayChanged(oldSecretList, addSecretList, oldServiceList, addServiceList []string) bool
-	DeleteHostnames(hostnames []string)
-	DeleteBackends(backends []hatypes.BackendID)
-	DeleteUserlists(userlists []string)
-	DeleteStorages(storages []string)
-	DeleteGateway()
-}
-
-// TrackingTarget ...
-type TrackingTarget struct {
-	Hostname string
-	Backend  hatypes.BackendID
-	Userlist string
-	Gateway  bool
+	TrackNames(leftContext ResourceType, leftName string, rightContext ResourceType, rightName string)
+	TrackRefName(left []TrackingRef, rightContext ResourceType, rightName string)
+	TrackRefs(left, right TrackingRef)
+	QueryLinks(input TrackingLinks, removeMatches bool) TrackingLinks
+	ClearLinks()
 }
 
 // AnnotationReader ...
@@ -132,26 +156,3 @@ type CrtFile struct {
 	CommonName string
 	NotAfter   time.Time
 }
-
-// ResourceType ...
-type ResourceType int
-
-const (
-	// IngressType ...
-	IngressType ResourceType = iota
-
-	// IngressClassType ...
-	IngressClassType
-
-	// ConfigMapType ...
-	ConfigMapType
-
-	// ServiceType ...
-	ServiceType
-
-	// SecretType ...
-	SecretType
-
-	// PodType ...
-	PodType
-)

@@ -24,8 +24,6 @@ import (
 	"time"
 
 	"github.com/kylelemons/godebug/diff"
-
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
 func TestDynUpdate(t *testing.T) {
@@ -1016,9 +1014,9 @@ INFO-V(2) need to reload due to config changes: [hosts]
 			hostnames = append(hostnames, hostname)
 		}
 		c.config.Hosts().RemoveAll(hostnames)
-		backendIDs := []types.BackendID{}
+		backendIDs := []string{}
 		for _, backend := range c.config.Backends().Items() {
-			backendIDs = append(backendIDs, backend.BackendID())
+			backendIDs = append(backendIDs, backend.ID)
 		}
 		c.config.Backends().RemoveAll(backendIDs)
 		if test.doconfig2 != nil {
