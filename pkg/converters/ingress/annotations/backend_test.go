@@ -937,9 +937,15 @@ func TestCors(t *testing.T) {
 }
 
 func TestCustomConfig(t *testing.T) {
+	defaultSource := &Source{
+		Type:      "Ingress",
+		Namespace: "default",
+		Name:      "app",
+	}
 	testCases := []struct {
 		disabled []string
 		config   string
+		source   *Source
 		expected []string
 		logging  string
 	}{
@@ -952,13 +958,14 @@ func TestCustomConfig(t *testing.T) {
 		{
 			disabled: []string{"server"},
 			config:   "  server srv001 127.0.0.1:8080",
+			source:   defaultSource,
 			logging:  `WARN skipping configuration snippet on Ingress 'default/app': keyword 'server' not allowed`,
 		},
 		// 2
 		{
 			disabled: []string{"*"},
 			config:   "  server srv001 127.0.0.1:8080",
-			logging:  `WARN skipping configuration snippet on Ingress 'default/app': custom configuration is disabled`,
+			logging:  `WARN skipping configuration snippet on global config: custom configuration is disabled`,
 		},
 		// 3
 		{
@@ -984,6 +991,7 @@ func TestCustomConfig(t *testing.T) {
   acl rootpath path /
   http-request set-header x-id 1 if rootpath
 `,
+			source:  defaultSource,
 			logging: `WARN skipping configuration snippet on Ingress 'default/app': keyword 'acl' not allowed`,
 		},
 		// 6
@@ -995,15 +1003,10 @@ func TestCustomConfig(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		source := &Source{
-			Type:      "Ingress",
-			Namespace: "default",
-			Name:      "app",
-		}
 		ann := map[string]map[string]string{
 			"/": {ingtypes.BackConfigBackend: test.config},
 		}
-		d := c.createBackendMappingData("default/app", source, map[string]string{}, ann, []string{"/"})
+		d := c.createBackendMappingData("default/app", test.source, map[string]string{}, ann, []string{"/"})
 		updater := c.createUpdater()
 		updater.options.DisableKeywords = test.disabled
 		updater.buildBackendCustomConfig(d)
