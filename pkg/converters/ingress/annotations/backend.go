@@ -461,21 +461,22 @@ func (c *updater) buildBackendCors(d *backData) {
 
 func (c *updater) buildBackendCustomConfig(d *backData) {
 	config := d.mapper.Get(ingtypes.BackConfigBackend)
-	if config.Source == nil {
-		return
-	}
 	lines := utils.LineToSlice(config.Value)
 	if len(lines) == 0 {
 		return
 	}
+	source := "global config"
+	if config.Source != nil {
+		source = config.Source.String()
+	}
 	for _, keyword := range c.options.DisableKeywords {
 		if keyword == "*" {
-			c.logger.Warn("skipping configuration snippet on %s: custom configuration is disabled", config.Source)
+			c.logger.Warn("skipping configuration snippet on %s: custom configuration is disabled", source)
 			return
 		}
 		for _, line := range lines {
 			if firstToken(line) == keyword {
-				c.logger.Warn("skipping configuration snippet on %s: keyword '%s' not allowed", config.Source, keyword)
+				c.logger.Warn("skipping configuration snippet on %s: keyword '%s' not allowed", source, keyword)
 				return
 			}
 		}
