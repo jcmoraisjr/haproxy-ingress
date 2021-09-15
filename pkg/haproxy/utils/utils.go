@@ -43,6 +43,7 @@ func HAProxyCommand(socket string, observer func(duration time.Duration), comman
 			// haproxy starts the command after receiving a line break
 			cmd += "\n"
 		}
+		c.SetDeadline(time.Now().Add(5 * time.Second))
 		if _, err := c.Write([]byte(cmd)); err != nil {
 			return msg, fmt.Errorf("error sending to unix socket %s: %w", socket, err)
 		}
