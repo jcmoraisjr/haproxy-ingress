@@ -2,6 +2,10 @@
 
 * [Major improvements](#major-improvements)
 * [Contributors](#contributors)
+* [v0.10.12](#v01012)
+  * [Reference](#reference-r12)
+  * [Release notes](#release-notes-r12)
+  * [Fixes and improvements](#fixes-and-improvements-r12)
 * [v0.10.11](#v01011)
   * [Reference](#reference-r11)
   * [Release notes](#release-notes-r11)
@@ -90,6 +94,27 @@ Highlights of this version:
 * Robert Agbozo ([RobertTheProfessional](https://github.com/RobertTheProfessional))
 * Sankul ([dark-shade](https://github.com/dark-shade))
 * Tadeu Andrade ([mtatheonly](https://github.com/mtatheonly))
+
+# v0.10.12
+
+## Reference (r12)
+
+* Release date: `2021-09-16`
+* Helm chart: `--version 0.10.12`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.10.12`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.10.12`
+* Embedded HAProxy version: `2.0.25`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.10.12`
+
+## Release notes (r12)
+
+This release fixes a regression introduced in [#820](https://github.com/jcmoraisjr/haproxy-ingress/pull/820): a globally configured config-backend snippet wasn't being applied in the final configuration. Annotation based snippets weren't impacted.
+
+## Fixes and improvements (r12)
+
+Fixes and improvements since `v0.10.11`:
+
+* Fix global config-backend snippet config [#856](https://github.com/jcmoraisjr/haproxy-ingress/pull/856) (jcmoraisjr)
 
 # v0.10.11
 
