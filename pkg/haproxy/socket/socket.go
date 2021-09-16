@@ -32,20 +32,22 @@ import (
 
 // NewSocket ...
 func NewSocket(address string, keepalive bool) HAProxySocket {
-	return &sock{
-		address:   address,
-		listening: true,
-		keepalive: keepalive,
-	}
+	return newSocket(address, keepalive)
 }
 
 // NewSocketConcurrent ...
 func NewSocketConcurrent(address string, keepalive bool) HAProxySocket {
+	s := newSocket(address, keepalive)
+	s.mutex = &sync.Mutex{}
+	return s
+}
+
+func newSocket(address string, keepalive bool) *sock {
 	return &sock{
-		mutex:     &sync.Mutex{},
 		address:   address,
 		listening: true,
 		keepalive: keepalive,
+		timeout:   5 * time.Second,
 	}
 }
 
@@ -64,6 +66,7 @@ type sock struct {
 	listening bool
 	keepalive bool
 	conn      net.Conn
+	timeout   time.Duration
 	buffer    []byte
 }
 
@@ -206,6 +209,7 @@ func (s *sock) acquireConn() (net.Conn, error) {
 			s.send("prompt")
 		}
 	}
+	s.conn.SetDeadline(time.Now().Add(s.timeout))
 	return s.conn, nil
 }
 
