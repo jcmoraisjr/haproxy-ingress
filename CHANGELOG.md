@@ -4,7 +4,6 @@ Supported versions:
 
 * [v0.13](CHANGELOG/CHANGELOG-v0.13.md)
 * [v0.12](CHANGELOG/CHANGELOG-v0.12.md)
-* [v0.11](#v011)
 * [v0.10](CHANGELOG/CHANGELOG-v0.10.md)
 
 Critical fixes:
@@ -13,6 +12,7 @@ Critical fixes:
 
 Unsupported:
 
+* [v0.11](#v011)
 * [v0.9](#v09)
 * [v0.7](#v07)
 * [v0.6](#v06)
@@ -21,6 +21,15 @@ Unsupported:
 * [v0.3](#v03)
 * [v0.2](#v02)
 * [v0.1](#v01)
+
+## v0.11.9
+
+Fixes and improvements since [v0.11.8](#v0118):
+
+* Fix change notification of backend shard [#835](https://github.com/jcmoraisjr/haproxy-ingress/pull/835) (jcmoraisjr)
+* always deny requests if oauth is misconfigured (#843) [ef76e17](https://github.com/jcmoraisjr/haproxy-ingress/commit/ef76e17cb4b12fdcde14f4654aa728f75585f9e8) (Joao Morais)
+* Fix ingress update to an existing backend [#847](https://github.com/jcmoraisjr/haproxy-ingress/pull/847) (jcmoraisjr)
+* Fix global config-backend snippet config [#856](https://github.com/jcmoraisjr/haproxy-ingress/pull/856) (jcmoraisjr)
 
 ## v0.11.8
 
