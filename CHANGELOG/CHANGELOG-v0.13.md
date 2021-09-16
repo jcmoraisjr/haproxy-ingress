@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.12!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.13.4](#v0134)
+  * [Reference](#reference-r4)
+  * [Release notes](#release-notes-r4)
+  * [Fixes and improvements](#fixes-and-improvements-r4)
 * [v0.13.3](#v0133)
   * [Reference](#reference-r3)
   * [Release notes](#release-notes-r3)
@@ -77,6 +81,32 @@ Breaking backward compatibility from v0.12
 * paul ([toothbrush](https://github.com/toothbrush))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
+
+# v0.13.4
+
+## Reference (r4)
+
+* Release date: `2021-09-16`
+* Helm chart: `--version 0.13.4`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.4`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.4`
+* Embedded HAProxy version: `2.3.14`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.13.4`
+
+## Release notes (r4)
+
+This release fixes the following issues:
+
+- a regression introduced in [#820](https://github.com/jcmoraisjr/haproxy-ingress/pull/820): a globally configured config-backend snippet wasn't being applied in the final configuration. Annotation based snippets weren't impacted;
+- the event loop of the configuration parser was being blocked by certificate updates due to the missing of sending an end-of-command to the haproxy client socket, and also the missing of a read/write timeout.
+
+## Fixes and improvements (r4)
+
+Fixes and improvements since `v0.13.3`:
+
+* Fix set ssl cert end-of-command [#828](https://github.com/jcmoraisjr/haproxy-ingress/pull/828) (jcmoraisjr)
+* Add read and write timeout to the unix socket [#855](https://github.com/jcmoraisjr/haproxy-ingress/pull/855) (jcmoraisjr)
+* Fix global config-backend snippet config [#856](https://github.com/jcmoraisjr/haproxy-ingress/pull/856) (jcmoraisjr)
 
 # v0.13.3
 
