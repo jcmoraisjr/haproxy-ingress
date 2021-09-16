@@ -25,7 +25,7 @@ Updates made to the cluster are applied on the fly to the HAProxy instance.
 | [`v0.13`](CHANGELOG/CHANGELOG-v0.13.md) **(latest)** | `2.3`                | `1.19+`                  | `2.2+`                   |
 | [`v0.12`](CHANGELOG/CHANGELOG-v0.12.md)              | `2.2`                | `1.18` - `1.21`          | `2.0+`                   |
 | `v0.11`                                              | `2.1`                | `1.14` - `1.21`          | -                        |
-| `v0.10`                                              | `2.0`                | `1.8` - `1.21`           | -                        |
+| [`v0.10`](CHANGELOG/CHANGELOG-v0.10.md)              | `2.0`                | `1.8` - `1.21`           | -                        |
 
 * Beta quality versions (`beta` / `canary` tags) has some new, but battle tested features, usually running on some of our production clusters
 * Development versions (`alpha` / `snapshot` tags) has major changes with few tests, usually not recommended for production

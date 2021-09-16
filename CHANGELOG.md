@@ -1,19 +1,19 @@
 # CHANGELOG
 
-Active versions:
+Supported versions:
 
 * [v0.13](CHANGELOG/CHANGELOG-v0.13.md)
 * [v0.12](CHANGELOG/CHANGELOG-v0.12.md)
 * [v0.11](#v011)
-* [v0.10](#v010)
+* [v0.10](CHANGELOG/CHANGELOG-v0.10.md)
 
-Critical fixes only:
+Critical fixes:
 
-* [v0.9](#v09)
 * [v0.8](#v08)
 
 Unsupported:
 
+* [v0.9](#v09)
 * [v0.7](#v07)
 * [v0.6](#v06)
 * [v0.5](#v05)
@@ -245,198 +245,6 @@ Fixes and improvements since [v0.11-beta.3](#v011-beta3):
 * Allow signer to work with wildcard dns certs [#695](https://github.com/jcmoraisjr/haproxy-ingress/pull/695) (pbabilas)
 * Improve certificate validation of acme signer [#689](https://github.com/jcmoraisjr/haproxy-ingress/pull/689) (jcmoraisjr)
 * Update haproxy from 2.1.9 to 2.1.10 [9763c63](https://github.com/jcmoraisjr/haproxy-ingress/commit/9763c635d73dc3c853223304902b29ae3065cb32) (Joao Morais)
-
-## v0.10.11
-
-Fixes and improvements since [v0.10.10](#v01010):
-
-* always deny requests if oauth is misconfigured [1ff88ec](https://github.com/jcmoraisjr/haproxy-ingress/commit/1ff88ecf02cfb5a7c20e1a913d65bfa5931280cf) (Joao Morais)
-* update embedded haproxy from 2.0.24 to 2.0.25 [01631b4](https://github.com/jcmoraisjr/haproxy-ingress/commit/01631b44bf1e98e83311dabcde5482932e81817f) (Joao Morais)
-
-## v0.10.10
-
-Fixes and improvements since [v0.10.9](#v0109):
-
-* update embedded haproxy from 2.0.22 to 2.0.24 [1a44f00](https://github.com/jcmoraisjr/haproxy-ingress/commit/1a44f00195be951fa55d988517684417fe6622ea) (Joao Morais)
-
-## v0.10.9
-
-Fixes and improvements since [v0.10.8](#v0108):
-
-* Ensure that configured global ConfigMap exists [#804](https://github.com/jcmoraisjr/haproxy-ingress/pull/804) (jcmoraisjr)
-* Add disable-external-name command-line option [#816](https://github.com/jcmoraisjr/haproxy-ingress/pull/816) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.10/docs/configuration/command-line/#disable-external-name)
-  * Command-line options:
-    * `--disable-external-name`
-* Add disable-config-keywords command-line options [#820](https://github.com/jcmoraisjr/haproxy-ingress/pull/820) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.10/docs/configuration/command-line/#disable-config-keywords)
-  * Command-line options:
-    * `--disable-config-keywords`
-* build: remove travis-ci configs [8c7fc79](https://github.com/jcmoraisjr/haproxy-ingress/commit/8c7fc794ef20a87da86bbfe80f61b7d864580c04) (Joao Morais)
-
-## v0.10.8
-
-Fixes and improvements since [v0.10.7](#v0107):
-
-* Use the port name on DNS resolver template [#796](https://github.com/jcmoraisjr/haproxy-ingress/pull/796) (jcmoraisjr)
-* Fix reading of tls secret without crt or key [#799](https://github.com/jcmoraisjr/haproxy-ingress/pull/799) (jcmoraisjr)
-* build: move from travis to github actions [7a81577](https://github.com/jcmoraisjr/haproxy-ingress/commit/7a8157753ff7842b4757f81c9c91ba261f5c77e7) (Joao Morais)
-
-## v0.10.7
-
-Fixes and improvements since [v0.10.6](#v0106):
-
-* Fix default host if configured as ssl-passthrough [#764](https://github.com/jcmoraisjr/haproxy-ingress/pull/764) (jcmoraisjr)
-* Update embedded haproxy from 2.0.21 to 2.0.22 [9a57a6c](https://github.com/jcmoraisjr/haproxy-ingress/commit/9a57a6ce0cb9763284c837b4f17c4891dff74509) (Joao Morais)
-
-## v0.10.6
-
-Fixes and improvements since [v0.10.5](#v0105):
-
-* Fix incorrect reload if endpoint list grows [#746](https://github.com/jcmoraisjr/haproxy-ingress/pull/746) (jcmoraisjr)
-* Fix backend matches if hostname uses wildcard [#752](https://github.com/jcmoraisjr/haproxy-ingress/pull/752) (jcmoraisjr)
-* Update haproxy from 2.0.20 to 2.0.21 and fixes CVE-2021-3450 (OpenSSL). [01708b9](https://github.com/jcmoraisjr/haproxy-ingress/commit/01708b909869861b385a922403844d2e6e857a6d) (Joao Morais)
-* Update go from 1.13.4 to 1.13.15 [5bd13b6](https://github.com/jcmoraisjr/haproxy-ingress/commit/5bd13b66e25cc65c6ef602676da6e3dea62826c9) (Joao Morais)
-
-## v0.10.5
-
-Fixes and improvements since [v0.10.4](#v0104):
-
-* Improve crt validation with ssl_c_verify [#743](https://github.com/jcmoraisjr/haproxy-ingress/pull/743) (jcmoraisjr)
-* Fix initial weight configuration [#742](https://github.com/jcmoraisjr/haproxy-ingress/pull/742) (jcmoraisjr)
-
-## v0.10.4
-
-Fixes and improvements since [v0.10.3](#v0103):
-
-* Fix reload failure if admin socket refuses connection [#719](https://github.com/jcmoraisjr/haproxy-ingress/pull/719) (jcmoraisjr)
-* Readd haproxy user in the docker image [#718](https://github.com/jcmoraisjr/haproxy-ingress/pull/718) (jcmoraisjr)
-* Update embedded haproxy to 2.0.20 [ae3cc40](https://github.com/jcmoraisjr/haproxy-ingress/commit/ae3cc4088edd321bb073e171361f7b769ca09fbd) (Joao Morais)
-
-Docs:
-
-* Fix prometheus config [#723](https://github.com/jcmoraisjr/haproxy-ingress/pull/723) (jcmoraisjr)
-
-## v0.10.3
-
-Fixes and improvements since [v0.10.2](#v0102):
-
-* Use default certificate only if provided SNI isn't found [#700](https://github.com/jcmoraisjr/haproxy-ingress/pull/700) (jcmoraisjr)
-* Add path scope [#705](https://github.com/jcmoraisjr/haproxy-ingress/pull/705) (jcmoraisjr)
-* Fix duplication of userlist [#701](https://github.com/jcmoraisjr/haproxy-ingress/pull/701) (jcmoraisjr)
-
-## v0.10.2
-
-Fixes and improvements since [v0.10.1](#v0101):
-
-* Fix line too long on backend parsing [#683](https://github.com/jcmoraisjr/haproxy-ingress/pull/683) (jcmoraisjr)
-* Allow signer to work with wildcard dns certs [#695](https://github.com/jcmoraisjr/haproxy-ingress/pull/695) (pbabilas)
-* Update embedded haproxy from 2.0.18 to 2.0.19 [b7b0ca9](https://github.com/jcmoraisjr/haproxy-ingress/commit/b7b0ca9961da9f0896ee14e2e68348e5005f2a9c) (Joao Morais)
-
-## v0.10.1
-
-Fixes and improvements since [v0.10](#v010):
-
-* Fix rewrite target match [#668](https://github.com/jcmoraisjr/haproxy-ingress/pull/668) (jcmoraisjr)
-* Implement sort-backends [#677](https://github.com/jcmoraisjr/haproxy-ingress/pull/677) (jcmoraisjr)
-* Update embedded haproxy to 2.0.18 [d9ac2c8](https://github.com/jcmoraisjr/haproxy-ingress/commit/d9ac2c8baffd4d1eab7a2d86180ff470c3f494a3) (Joao Morais)
-
-## v0.10
-
-Highlights of this version:
-
-* HAProxy upgrade from 1.9 to 2.0
-* Metrics:
-  * HAProxy's internal Prometheus exporter, see the [doc](https://haproxy-ingress.github.io/v0.10/docs/configuration/keys/#bind-port)
-  * HAProxy Ingress exporter for Prometheus
-  * HAProxy Ingress dashboard for Grafana, see the [metrics example](https://haproxy-ingress.github.io/v0.10/docs/examples/metrics/)
-
-### v0.10-beta.1
-
-New features and improvements:
-
-* Update to haproxy 2.0.11 [#414](https://github.com/jcmoraisjr/haproxy-ingress/pull/414)
-* Remove v0.7 controller [#483](https://github.com/jcmoraisjr/haproxy-ingress/pull/483)
-* Add frontend to the internal prometheus exporter [#486](https://github.com/jcmoraisjr/haproxy-ingress/pull/486)
-  * Configuration keys:
-    * `bind-ip-addr-prometheus` - [doc](https://haproxy-ingress.github.io/v0.10/docs/configuration/keys/#bind-ip-addr)
-    * `prometheus-port` - [doc](https://haproxy-ingress.github.io/v0.10/docs/configuration/keys/#bind-port)
-* Defaults to not create prometheus listener [#491](https://github.com/jcmoraisjr/haproxy-ingress/pull/491)
-* Metric collector and exporter [#487](https://github.com/jcmoraisjr/haproxy-ingress/pull/487) - [doc](https://haproxy-ingress.github.io/v0.10/docs/configuration/command-line/#stats)
-  * Command-line options:
-    * `--healthz-port`
-    * `--profiling`
-    * `--stats-collect-processing-period`
-* Change unix sockets user to haproxy [#504](https://github.com/jcmoraisjr/haproxy-ingress/pull/504)
-* Add CN label in the cert_expire metric [#501](https://github.com/jcmoraisjr/haproxy-ingress/pull/501)
-* Sort tcp services by name and port [#506](https://github.com/jcmoraisjr/haproxy-ingress/pull/506)
-* Add backend-server-naming key [#507](https://github.com/jcmoraisjr/haproxy-ingress/pull/507) - [doc](https://haproxy-ingress.github.io/v0.10/docs/configuration/keys/#backend-server-naming)
-  * Configuration keys:
-    * `backend-server-naming`
-* Add ssl-redirect-code global config key [#511](https://github.com/jcmoraisjr/haproxy-ingress/pull/511) - [doc](https://haproxy-ingress.github.io/v0.10/docs/configuration/keys/#ssl-redirect)
-  * Configuration keys:
-    * `ssl-redirect-code`
-* Add modsecurity timeout connect/server [#512](https://github.com/jcmoraisjr/haproxy-ingress/pull/512) - [doc](https://haproxy-ingress.github.io/v0.10/docs/configuration/keys/#modsecurity)
-  * Configuration keys:
-    * `modsecurity-timeout-connect`
-    * `modsecurity-timeout-server`
-* Add ssl-fingerprint-lower config key [#515](https://github.com/jcmoraisjr/haproxy-ingress/pull/515) - [doc](https://haproxy-ingress.github.io/v0.10/docs/configuration/keys/#auth-tls)
-  * Configuration keys:
-    * `ssl-fingerprint-lower`
-* Remove haproxy warning filter [#514](https://github.com/jcmoraisjr/haproxy-ingress/pull/514)
-* Create frontends even without ingress [#516](https://github.com/jcmoraisjr/haproxy-ingress/pull/516)
-* Add auth-tls-strict configuration key [#513](https://github.com/jcmoraisjr/haproxy-ingress/pull/513) - [doc](https://haproxy-ingress.github.io/v0.10/docs/configuration/keys/#auth-tls)
-  * Configuration keys:
-    * `auth-tls-strict`
-* Update to haproxy 2.0.12 [#518](https://github.com/jcmoraisjr/haproxy-ingress/pull/518)
-* Update to haproxy 2.0.13 [#521](https://github.com/jcmoraisjr/haproxy-ingress/pull/521)
-* Ignore ingresses without specified class [#527](https://github.com/jcmoraisjr/haproxy-ingress/pull/527) - [doc](https://haproxy-ingress.github.io/v0.10/docs/configuration/command-line/#ignore-ingress-without-class)
-  * Command-line options:
-    * `--ignore-ingress-without-class`
-* Improve certificate sign logs [#533](https://github.com/jcmoraisjr/haproxy-ingress/pull/533)
-* Add cert signing metrics [#535](https://github.com/jcmoraisjr/haproxy-ingress/pull/535)
-* Add buckets-response-time command-line option [#537](https://github.com/jcmoraisjr/haproxy-ingress/pull/537) - [doc](https://haproxy-ingress.github.io/v0.10/docs/configuration/command-line/#buckets-response-time)
-  * Command-line options:
-    * `--buckets-response-time`
-* Add external call to certificate check [#539](https://github.com/jcmoraisjr/haproxy-ingress/pull/#539) - [doc](https://haproxy-ingress.github.io/v0.10/docs/configuration/command-line/#stats)
-* docs: add crt signing metrics in the dashboard [#540](https://github.com/jcmoraisjr/haproxy-ingress/pull/#540) - [doc](https://haproxy-ingress.github.io/v0.10/docs/examples/metrics/)
-* Update HAProxy from 2.0.13 to 2.0.14, which fixes CVE-2020-11100
-* Add check interval on tcp service [#576](https://github.com/jcmoraisjr/haproxy-ingress/pull/576)
-  * Command-line option:
-    * `--tcp-services-configmap` (update) - [doc](https://haproxy-ingress.github.io/v0.10/docs/configuration/command-line/#tcp-services-configmap)
-* Add use-forwarded-proto config key [#577](https://github.com/jcmoraisjr/haproxy-ingress/pull/577)
-  * Configuration keys:
-    *  `use-forwarded-proto` - [doc](https://haproxy-ingress.github.io/v0.10/docs/configuration/keys/#fronting-proxy-port)
-
-Fixes:
-
-* Fix TLS handshake on backend [#520](https://github.com/jcmoraisjr/haproxy-ingress/pull/520)
-* Update crt metric if date changes [#524](https://github.com/jcmoraisjr/haproxy-ingress/pull/524)
-* Clear acme work queue on stopped leading [#526](https://github.com/jcmoraisjr/haproxy-ingress/pull/526)
-* Restart the leader elector when stop leading [#532](https://github.com/jcmoraisjr/haproxy-ingress/pull/532)
-* Fix race on failure rate limit queue [#534](https://github.com/jcmoraisjr/haproxy-ingress/pull/534)
-* Fix processing count metric name [#536](https://github.com/jcmoraisjr/haproxy-ingress/pull/536)
-* Fix label naming of cert signing metric [#538](https://github.com/jcmoraisjr/haproxy-ingress/pull/#538)
-* Fix logging messages [#559](https://github.com/jcmoraisjr/haproxy-ingress/pull/559)
-* Fix server-alias on http/80 [#570](https://github.com/jcmoraisjr/haproxy-ingress/pull/570)
-* Fix permission using watch-namespace [#578](https://github.com/jcmoraisjr/haproxy-ingress/pull/578)
-
-### v0.10-beta.2
-
-Fixes and improvements since [v0.10-beta.1](#v010-beta1):
-
-* Allow overriding CPU Map [#588](https://github.com/jcmoraisjr/haproxy-ingress/pull/588) - [doc](https://haproxy-ingress.github.io/v0.10/docs/configuration/keys/#cpu-map)
-  * Configuration keys:
-    * `cpu-map`
-    * `use-cpu-map`
-* TCP Services : SSL : Optionally Verify Client [#589](https://github.com/jcmoraisjr/haproxy-ingress/pull/589) - [doc](https://haproxy-ingress.github.io/v0.10/docs/configuration/command-line/#tcp-services-configmap)
-* Update haproxy from 2.0.14 to 2.0.15
-
-### v0.10-beta.3
-
-Fixes and improvements since [v0.10-beta.2](#v010-beta2):
-
-* Update haproxy from 2.0.15 to 2.0.17
-* Add service event handler [#633](https://github.com/jcmoraisjr/haproxy-ingress/pull/633)
-* Configure default crt on ingress parsing phase [#634](https://github.com/jcmoraisjr/haproxy-ingress/pull/634)
 
 ## v0.9.3
 
