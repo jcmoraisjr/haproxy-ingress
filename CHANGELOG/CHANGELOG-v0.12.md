@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.11!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.12.10](#v01210)
+  * [Reference](#reference-r10)
+  * [Release notes](#release-notes-r10)
+  * [Fixes and improvements](#fixes-and-improvements-r10)
 * [v0.12.9](#v0129)
   * [Reference](#reference-r9)
   * [Release notes](#release-notes-r9)
@@ -81,6 +85,27 @@ Breaking backward compatibility from v0.11
 * paul ([toothbrush](https://github.com/toothbrush))
 * pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.12.10
+
+## Reference (r10)
+
+* Release date: `2021-09-16`
+* Helm chart: `--version 0.12.10`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.12.10`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.12.10`
+* Embedded HAProxy version: `2.2.17`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.12.10`
+
+## Release notes (r10)
+
+This release fixes a regression introduced in [#820](https://github.com/jcmoraisjr/haproxy-ingress/pull/820): a globally configured config-backend snippet wasn't being applied in the final configuration. Annotation based snippets weren't impacted.
+
+## Fixes and improvements (r10)
+
+Fixes and improvements since `v0.12.9`:
+
+* Fix global config-backend snippet config [#856](https://github.com/jcmoraisjr/haproxy-ingress/pull/856) (jcmoraisjr)
 
 # v0.12.9
 
