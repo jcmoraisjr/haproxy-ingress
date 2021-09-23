@@ -36,6 +36,7 @@ The following command-line options are supported:
 | [`--health-check-path`](#stats)                         | path                       | `/healthz`              |       |
 | [`--healthz-port`](#stats)                              | port number                | `10254`                 |       |
 | [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |       |
+| [`--ingress-class-precedence`](#ingress-class)          | [true\|false]              | `false`                 | v0.13.5 |
 | [`--kubeconfig`](#kubeconfig)                           | /path/to/kubeconfig        | in cluster config       |       |
 | [`--master-socket`](#master-socket)                     | socket path                | use embedded haproxy    | v0.12 |
 | [`--max-old-config-files`](#max-old-config-files)       | num of files               | `0`                     |       |
@@ -244,6 +245,8 @@ link to these IngressClasses will be added to the configuration. The `--controll
 command-line option customizes the controller name, allowing to run more than one HAProxy Ingress
 in the same cluster. Configuring `--controller-class=staging` would listen to IngressClasses whose
 controller name is `haproxy-ingress.github.io/controller/staging`.
+* `--ingress-class-precedence`: defines if IngressClass resource should take precedence over
+kubernetes.io/ingress.class annotation if both are defined and conflicting.
 * `--watch-ingress-without-class`: defines if this controller should also listen to ingress resources
 that doesn't declare neither the `kubernetes.io/ingress.class` annotation nor the
 `<ingress>.spec.ingressClassName` field. The default since v0.12 is to ignore ingress without class

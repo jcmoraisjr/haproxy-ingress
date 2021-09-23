@@ -54,6 +54,10 @@ default backend.`)
 		ingressClass = flags.String("ingress-class", "haproxy",
 			`Name of the IngressClass to route through this controller.`)
 
+		ingressClassPrecedence = flags.Bool("ingress-class-precedence", false,
+			`Defines if IngressClass resource should take precedence over
+kubernetes.io/ingress.class annotation if both are defined and conflicting.`)
+
 		reloadStrategy = flags.String("reload-strategy", "reusesocket",
 			`Name of the reload strategy. Options are: native or reusesocket`)
 
@@ -459,6 +463,7 @@ tracked.`)
 		WaitBeforeUpdate:         *waitBeforeUpdate,
 		DefaultService:           *defaultSvc,
 		IngressClass:             *ingressClass,
+		IngressClassPrecedence:   *ingressClassPrecedence,
 		ControllerName:           controllerName,
 		WatchIngressWithoutClass: *watchIngressWithoutClass,
 		WatchGateway:             *watchGateway,
