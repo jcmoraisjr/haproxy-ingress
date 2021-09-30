@@ -706,9 +706,17 @@ func (c *k8scache) IsValidIngress(ing *networking.Ingress) bool {
 		}
 	}
 
-	// annotation has precedence, warn if both class and annotation are configured and they conflict
+	// annotation has precedence by default,
+	// c.cfg.IngressClassPrecedence as `true` gives precedence to IngressClass
+	// if both class and annotation are configured and they conflict
 	if hasAnn {
 		if hasClass && fromAnn != fromClass {
+			if c.cfg.IngressClassPrecedence {
+				c.logger.Warn("ingress %s/%s has conflicting ingress class configuration, "+
+					"using ingress class reference because of --ingress-class-precedence enabled (%t)",
+					ing.Namespace, ing.Name, fromClass)
+				return fromClass
+			}
 			c.logger.Warn("ingress %s/%s has conflicting ingress class configuration, using annotation reference (%t)",
 				ing.Namespace, ing.Name, fromAnn)
 		}

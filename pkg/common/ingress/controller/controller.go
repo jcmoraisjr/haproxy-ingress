@@ -64,6 +64,7 @@ type Configuration struct {
 
 	DefaultService           string
 	IngressClass             string
+	IngressClassPrecedence   bool
 	ControllerName           string
 	WatchIngressWithoutClass bool
 	WatchGateway             bool
