@@ -755,8 +755,12 @@ backend {{ $backend.ID }}
         {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- if $dynamicOrigin }}
+    http-response set-header Vary %[res.hdr(Vary)],Origin
+        {{- "" }} if { res.hdr(Vary) -m found }
+        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
     http-response set-header Vary Origin
-        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- "" }} if ! { res.hdr(Vary) -m found }
+        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- end }}
 {{- end }}
