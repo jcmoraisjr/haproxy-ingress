@@ -83,7 +83,7 @@ func buildAcmeStorages(items map[string]*AcmeCerts) []string {
 			j++
 		}
 		sort.Strings(certs)
-		storages[i] = name + "," + strings.Join(certs, ",")
+		storages[i] = name + "," + item.preferredChain + "," + strings.Join(certs, ",")
 		i++
 	}
 	return storages
@@ -119,6 +119,15 @@ func (c *AcmeCerts) AddDomains(domains []string) {
 	for _, domain := range domains {
 		c.certs[domain] = struct{}{}
 	}
+}
+
+// AssignPreferredChain ...
+func (c *AcmeCerts) AssignPreferredChain(preferredChain string) error {
+	if c.preferredChain != "" && c.preferredChain != preferredChain {
+		return fmt.Errorf("preferred chain already assigned to '%s'", c.preferredChain)
+	}
+	c.preferredChain = preferredChain
+	return nil
 }
 
 // IsExternal ...

@@ -475,7 +475,13 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 			if tls.SecretName != "" {
 				secretName := ing.Namespace + "/" + tls.SecretName
 				ingName := ing.Namespace + "/" + ing.Name
-				c.haproxy.AcmeData().Storages().Acquire(secretName).AddDomains(tls.Hosts)
+				acmeStorage := c.haproxy.AcmeData().Storages().Acquire(secretName)
+				acmeStorage.AddDomains(tls.Hosts)
+				if preferredChain := annHost[ingtypes.HostAcmePreferredChain]; preferredChain != "" {
+					if err := acmeStorage.AssignPreferredChain(preferredChain); err != nil {
+						c.logger.Warn("preferred chain ignored on %v due to an error: %v", source, err)
+					}
+				}
 				c.tracker.TrackNames(convtypes.ResourceIngress, ingName, convtypes.ResourceAcmeData, secretName)
 			} else {
 				c.logger.Warn("skipping cert signer of %v: missing secret name", source)

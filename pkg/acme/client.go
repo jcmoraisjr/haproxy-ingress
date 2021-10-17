@@ -86,7 +86,7 @@ type ClientResolver interface {
 
 // Client ...
 type Client interface {
-	Sign(dnsnames []string) (crt, key []byte, err error)
+	Sign(dnsnames []string, preferredChain string) (crt, key []byte, err error)
 }
 
 type client struct {
@@ -128,7 +128,7 @@ func (c *client) ensureAccount() error {
 	return nil
 }
 
-func (c *client) Sign(dnsnames []string) (crt, key []byte, err error) {
+func (c *client) Sign(dnsnames []string, preferredChain string) (crt, key []byte, err error) {
 	if len(dnsnames) == 0 {
 		return crt, key, fmt.Errorf("dnsnames is empty")
 	}
@@ -142,7 +142,7 @@ func (c *client) Sign(dnsnames []string) (crt, key []byte, err error) {
 	csrTemplate := &x509.CertificateRequest{}
 	csrTemplate.Subject.CommonName = dnsnames[0]
 	csrTemplate.DNSNames = dnsnames
-	return c.signRequest(order, csrTemplate)
+	return c.signRequest(order, csrTemplate, preferredChain)
 }
 
 func (c *client) authorize(dnsnames []string, order *acme.Order) error {
@@ -180,7 +180,7 @@ func (c *client) authorize(dnsnames []string, order *acme.Order) error {
 	return nil
 }
 
-func (c *client) signRequest(order *acme.Order, csrTemplate *x509.CertificateRequest) (crt, key []byte, err error) {
+func (c *client) signRequest(order *acme.Order, csrTemplate *x509.CertificateRequest, preferredChain string) (crt, key []byte, err error) {
 	keys, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return crt, key, err
@@ -189,8 +189,8 @@ func (c *client) signRequest(order *acme.Order, csrTemplate *x509.CertificateReq
 	if err != nil {
 		return crt, key, err
 	}
-	rawCerts, err := c.client.FinalizeOrder(c.ctx, order.FinalizeURL, csr)
-	if err != nil {
+	rawCerts, err := c.client.FinalizeOrder(c.ctx, order.FinalizeURL, csr, preferredChain)
+	if err != nil && rawCerts == nil {
 		return crt, key, err
 	}
 	key = pem.EncodeToMemory(&pem.Block{
@@ -203,5 +203,5 @@ func (c *client) signRequest(order *acme.Order, csrTemplate *x509.CertificateReq
 			Bytes: rawCert,
 		})...)
 	}
-	return crt, key, nil
+	return crt, key, err
 }

@@ -34,58 +34,58 @@ func TestNotifyVerify(t *testing.T) {
 	testCases := []struct {
 		input     string
 		expiresIn time.Duration
-		cert string
+		cert      string
 		logging   string
 	}{
 		// 0
 		{
-			input:     "s1,d1.local",
+			input:     "s1,,d1.local",
 			expiresIn: 10 * 24 * time.Hour,
-			cert: dumbcrt,
+			cert:      dumbcrt,
 			logging: `
 INFO-V(2) acme: skipping sign, certificate is updated: secret=s1 domain(s)=d1.local`,
 		},
 		// 1
 		{
-			input:     "s1,d2.local",
+			input:     "s1,,d2.local",
 			expiresIn: -10 * 24 * time.Hour,
-			cert: dumbcrt,
+			cert:      dumbcrt,
 			logging: `
 INFO acme: authorizing: id=1 secret=s1 domain(s)=d2.local endpoint=https://acme-v2.local reason='certificate expires in 2020-12-01 16:33:14 +0000 UTC'
-INFO acme: new certificate issued: id=1 secret=s1 domain(s)=d2.local`,
+INFO acme: new certificate issued: id=1 secret=s1 domain(s)=d2.local preferred-chain=`,
 		},
 		// 2
 		{
-			input:     "s1,d3.local",
+			input:     "s1,,d3.local",
 			expiresIn: 10 * 24 * time.Hour,
-			cert: dumbcrt,
+			cert:      dumbcrt,
 			logging: `
 INFO acme: authorizing: id=1 secret=s1 domain(s)=d3.local endpoint=https://acme-v2.local reason='added one or more domains to an existing certificate'
-INFO acme: new certificate issued: id=1 secret=s1 domain(s)=d3.local`,
+INFO acme: new certificate issued: id=1 secret=s1 domain(s)=d3.local preferred-chain=`,
 		},
 		// 3
 		{
-			input:     "s2,d1.local",
+			input:     "s2,,d1.local",
 			expiresIn: 10 * 24 * time.Hour,
-			cert: dumbcrt,
+			cert:      dumbcrt,
 			logging: `
 INFO acme: authorizing: id=1 secret=s2 domain(s)=d1.local endpoint=https://acme-v2.local reason='certificate does not exist (secret not found: s2)'
-INFO acme: new certificate issued: id=1 secret=s2 domain(s)=d1.local`,
+INFO acme: new certificate issued: id=1 secret=s2 domain(s)=d1.local preferred-chain=`,
 		},
 		{
-			input:     "s1,s3.dev.local",
+			input:     "s1,,s3.dev.local",
 			expiresIn: 10 * 24 * time.Hour,
-			cert: dumbwildcardcrt,
+			cert:      dumbwildcardcrt,
 			logging: `
 INFO-V(2) acme: skipping sign, certificate is updated: secret=s1 domain(s)=s3.dev.local`,
 		},
 		{
-			input:     "s1,other.s3.dev.local",
+			input:     "s1,,other.s3.dev.local",
 			expiresIn: 10 * 24 * time.Hour,
-			cert: dumbwildcardcrt,
+			cert:      dumbwildcardcrt,
 			logging: `
 INFO acme: authorizing: id=1 secret=s1 domain(s)=other.s3.dev.local endpoint=https://acme-v2.local reason='added one or more domains to an existing certificate'
-INFO acme: new certificate issued: id=1 secret=s1 domain(s)=other.s3.dev.local`,
+INFO acme: new certificate issued: id=1 secret=s1 domain(s)=other.s3.dev.local preferred-chain=`,
 		},
 	}
 	c := setup(t)
@@ -132,8 +132,8 @@ func (c *config) newSigner() *signer {
 
 type clientMock struct{}
 
-func (c *clientMock) Sign(domains []string) (crt, key []byte, err error) {
-	return nil, nil, nil
+func (c *clientMock) Sign(domains []string, preferredChain string) (crt, key []byte, err error) {
+	return []byte("fake-crt"), []byte("fake-key"), nil
 }
 
 type cache struct {

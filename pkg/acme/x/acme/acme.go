@@ -21,6 +21,7 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
@@ -31,6 +32,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"sync"
 	"time"
@@ -212,7 +214,11 @@ func (c *Client) CreateOrder(ctx context.Context, order *Order) (*Order, error) 
 //
 // Callers are encouraged to parse the returned certificate chain to ensure it
 // is valid and has the expected attributes.
-func (c *Client) FinalizeOrder(ctx context.Context, finalizeURL string, csr []byte) (der [][]byte, err error) {
+//
+// altcn, if not empty, sbould have the Issuer's CN of the topmost certificate of
+// the chain, if the acme server offers multiple certificate chains. If a match
+// isn't found, an error will be returned along with the default certificate.
+func (c *Client) FinalizeOrder(ctx context.Context, finalizeURL string, csr []byte, altcn string) (der [][]byte, err error) {
 	if _, err := c.Discover(ctx); err != nil {
 		return nil, err
 	}
@@ -249,8 +255,32 @@ func (c *Client) FinalizeOrder(ctx context.Context, finalizeURL string, csr []by
 	if o.Status != StatusValid {
 		return nil, fmt.Errorf("acme: unexpected order status %q", o.Status)
 	}
+	der, altURLs, err := c.getCertAndAlternates(ctx, o.CertificateURL)
+	if altcn == "" || err != nil || matchCN(der, altcn) {
+		return der, err
+	}
+	defaultDER := der
+	for _, altURL := range altURLs {
+		der, _, err = c.getCertAndAlternates(ctx, altURL)
+		if err != nil {
+			return defaultDER, err
+		}
+		if matchCN(der, altcn) {
+			return der, err
+		}
+	}
+	return defaultDER, fmt.Errorf("acme: alternate chain not found for Common Name '%s', using default chain", altcn)
+}
 
-	return c.getCert(ctx, o.CertificateURL)
+func matchCN(der [][]byte, cn string) bool {
+	if len(der) == 0 {
+		return false
+	}
+	crt, err := x509.ParseCertificate(der[len(der)-1])
+	if err != nil {
+		return false
+	}
+	return crt.Issuer.CommonName == cn
 }
 
 // GetOrder retrieves an order identified by url.
@@ -821,18 +851,20 @@ func nonceFromHeader(h http.Header) string {
 	return h.Get("Replay-Nonce")
 }
 
-func (c *Client) getCert(ctx context.Context, url string) ([][]byte, error) {
+var linkRegex = regexp.MustCompile(`<(.*)>;rel="alternate"`)
+
+func (c *Client) getCertAndAlternates(ctx context.Context, url string) ([][]byte, []string, error) {
 	res, err := c.postWithJWSAccount(ctx, url, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer res.Body.Close()
 	data, err := ioutil.ReadAll(io.LimitReader(res.Body, maxChainSize+1))
 	if err != nil {
-		return nil, fmt.Errorf("acme: error getting certificate: %v", err)
+		return nil, nil, fmt.Errorf("acme: error getting certificate: %v", err)
 	}
 	if len(data) > maxChainSize {
-		return nil, errors.New("acme: certificate chain is too big")
+		return nil, nil, errors.New("acme: certificate chain is too big")
 	}
 	var chain [][]byte
 	for {
@@ -840,19 +872,26 @@ func (c *Client) getCert(ctx context.Context, url string) ([][]byte, error) {
 		p, data = pem.Decode(data)
 		if p == nil {
 			if len(chain) == 0 {
-				return nil, errors.New("acme: invalid PEM certificate chain")
+				return nil, nil, errors.New("acme: invalid PEM certificate chain")
 			}
 			break
 		}
 		if len(chain) == maxChainLen {
-			return nil, errors.New("acme: certificate chain is too long")
+			return nil, nil, errors.New("acme: certificate chain is too long")
 		}
 		if p.Type != "CERTIFICATE" {
-			return nil, fmt.Errorf("acme: invalid PEM block type %q", p.Type)
+			return nil, nil, fmt.Errorf("acme: invalid PEM block type %q", p.Type)
 		}
 		chain = append(chain, p.Bytes)
 	}
-	return chain, nil
+	var alts []string
+	for _, alt := range res.Header["Link"] {
+		links := linkRegex.FindStringSubmatch(alt)
+		if len(links) > 0 {
+			alts = append(alts, links[1])
+		}
+	}
+	return chain, alts, nil
 }
 
 // responseError creates an error of Error type from resp.
