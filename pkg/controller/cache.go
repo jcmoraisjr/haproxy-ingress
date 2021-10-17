@@ -663,7 +663,7 @@ func (c *k8scache) SetToken(domain string, uri, token string) error {
 
 func (c *k8scache) CreateOrUpdateSecret(secret *api.Secret) (err error) {
 	cli := c.client.CoreV1().Secrets(secret.Namespace)
-	if _, err := c.listers.secretLister.Secrets(secret.Namespace).Get(secret.Name); err != nil {
+	if _, err = c.listers.secretLister.Secrets(secret.Namespace).Get(secret.Name); err != nil {
 		_, err = cli.Create(c.ctx, secret, metav1.CreateOptions{})
 	} else {
 		_, err = cli.Update(c.ctx, secret, metav1.UpdateOptions{})
@@ -673,7 +673,7 @@ func (c *k8scache) CreateOrUpdateSecret(secret *api.Secret) (err error) {
 
 func (c *k8scache) CreateOrUpdateConfigMap(cm *api.ConfigMap) (err error) {
 	cli := c.client.CoreV1().ConfigMaps(cm.Namespace)
-	if _, err := c.listers.configMapLister.ConfigMaps(cm.Namespace).Get(cm.Name); err != nil {
+	if _, err = c.listers.configMapLister.ConfigMaps(cm.Namespace).Get(cm.Name); err != nil {
 		_, err = cli.Create(c.ctx, cm, metav1.CreateOptions{})
 	} else {
 		_, err = cli.Update(c.ctx, cm, metav1.UpdateOptions{})
