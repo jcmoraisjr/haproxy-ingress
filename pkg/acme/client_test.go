@@ -22,6 +22,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -36,9 +37,21 @@ const (
 	// Optional, nothing will be done if any value is missing.
 	//
 	// DO NOT COMMIT+PUSH THE CLIENT KEY!
+	//
+	// single line base64 encoded client's private key in DER format
+	// $ openssl genrsa |openssl rsa -outform der |base64 -w0 >privkey ## omit -w0 on macOS/Darwin/BSD
 	clientkey = ``
-	email     = ``
-	domain    = ``
+	// email that should be assigned to the account
+	email = ``
+	// domain used to execute the challenge
+	domain = ``
+	// an optional preferred chain - note that currently (oct/2021) Let's Encrypt
+	// staging doesn't have an alternate chain
+	chain = ``
+	// a local path where the response of the challenge should be writted
+	// if empty the challenge will be written to /tmp/out and the test will
+	// wait 20s to continue
+	wwwpublic = ``
 )
 
 func TestSign(t *testing.T) {
@@ -58,7 +71,7 @@ func TestSign(t *testing.T) {
 	}
 	// TODO test resulting crt
 	// TODO debug/fine logging in the Sign() steps
-	_, _, err = client.Sign([]string{domain})
+	_, _, err = client.Sign([]string{domain}, chain)
 	if err != nil {
 		t.Errorf("error signing certificate: %v", err)
 	}
@@ -78,6 +91,16 @@ func (c *clientResolver) GetKey() (crypto.Signer, error) {
 }
 
 func (c *clientResolver) SetToken(domain string, uri, token string) error {
+	if wwwpublic != "" {
+		file := wwwpublic + uri
+		if token == "" {
+			return os.Remove(file)
+		}
+		if err := os.MkdirAll(wwwpublic+"/.well-known/acme-challenge", 0755); err != nil {
+			return err
+		}
+		return ioutil.WriteFile(file, []byte(token), 0644)
+	}
 	if token == "" {
 		return nil
 	}

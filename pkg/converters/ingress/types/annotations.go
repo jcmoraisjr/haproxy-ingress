@@ -36,6 +36,7 @@ var (
 
 // Host Annotations
 const (
+	HostAcmePreferredChain     = "acme-preferred-chain"
 	HostAppRoot                = "app-root"
 	HostAuthTLSErrorPage       = "auth-tls-error-page"
 	HostAuthTLSSecret          = "auth-tls-secret"
@@ -59,6 +60,7 @@ const (
 var (
 	// AnnHost ...
 	AnnHost = map[string]struct{}{
+		HostAcmePreferredChain:     {},
 		HostAppRoot:                {},
 		HostAuthTLSErrorPage:       {},
 		HostAuthTLSSecret:          {},

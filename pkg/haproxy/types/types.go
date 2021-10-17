@@ -38,7 +38,8 @@ type AcmeStorages struct {
 
 // AcmeCerts ...
 type AcmeCerts struct {
-	certs map[string]struct{}
+	certs          map[string]struct{}
+	preferredChain string
 }
 
 // Acme ...

@@ -127,10 +127,13 @@ func (i *instance) acmeEnsureConfig(acmeConfig *hatypes.AcmeData) bool {
 
 func (i *instance) acmeAddStorage(storage string) {
 	// TODO change to a proper entity
-	index := strings.Index(storage, ",")
-	name := storage[:index]
-	domains := storage[index+1:]
-	i.logger.InfoV(3, "enqueue certificate for processing: storage=%s domain(s)=%s", name, domains)
+	items := strings.Split(storage, ",")
+	if len(items) >= 2 {
+		name := items[0]
+		prefChain := items[1]
+		domains := strings.Join(items[2:], ",")
+		i.logger.InfoV(3, "enqueue certificate for processing: storage=%s domain(s)=%s preferred-chain=%s", name, domains, prefChain)
+	}
 	i.options.AcmeQueue.Add(storage)
 }
 
