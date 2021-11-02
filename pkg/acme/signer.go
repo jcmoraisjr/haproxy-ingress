@@ -114,12 +114,13 @@ func (s *signer) Notify(item interface{}) error {
 	}
 	cert := strings.Split(item.(string), ",")
 	secretName := cert[0]
-	domains := cert[1:]
-	err := s.verify(secretName, domains)
+	preferredChain := cert[1]
+	domains := cert[2:]
+	err := s.verify(secretName, preferredChain, domains)
 	return err
 }
 
-func (s *signer) verify(secretName string, domains []string) (verifyErr error) {
+func (s *signer) verify(secretName, preferredChain string, domains []string) (verifyErr error) {
 	duedate := time.Now().Add(s.expiring)
 	tls, errSecret := s.cache.GetTLSSecretContent(secretName)
 	strdomains := strings.Join(domains, ",")
@@ -139,11 +140,14 @@ func (s *signer) verify(secretName string, domains []string) (verifyErr error) {
 		s.verifyCount++
 		s.logger.Info("acme: authorizing: id=%d secret=%s domain(s)=%s endpoint=%s reason='%s'",
 			s.verifyCount, secretName, strdomains, s.account.Endpoint, reason)
-		crt, key, err := s.client.Sign(domains)
-		if err == nil {
+		crt, key, err := s.client.Sign(domains, preferredChain)
+		if crt != nil && key != nil {
+			if err != nil {
+				s.logger.Warn("warning from client: %v", err)
+			}
 			if errTLS := s.cache.SetTLSSecretContent(secretName, crt, key); errTLS == nil {
-				s.logger.Info("acme: new certificate issued: id=%d secret=%s domain(s)=%s",
-					s.verifyCount, secretName, strdomains)
+				s.logger.Info("acme: new certificate issued: id=%d secret=%s domain(s)=%s preferred-chain=%s",
+					s.verifyCount, secretName, strdomains, preferredChain)
 			} else {
 				s.logger.Warn("acme: error storing new certificate: id=%d secret=%s domain(s)=%s error=%v",
 					s.verifyCount, secretName, strdomains, errTLS)

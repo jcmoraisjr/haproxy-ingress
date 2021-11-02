@@ -710,7 +710,7 @@ func TestFinalizeOrder(t *testing.T) {
 	notBefore := time.Now()
 	notAfter := notBefore.AddDate(0, 2, 0)
 	timeNow = func() time.Time { return notBefore }
-	var sampleCert []byte
+	var intermCACert, intermCACertSelfSigned, sampleCert []byte
 
 	var ts *httptest.Server
 	var orderGets int
@@ -720,7 +720,17 @@ func TestFinalizeOrder(t *testing.T) {
 			return
 		}
 		if r.URL.Path == "/cert" && r.Method == "POST" {
+			w.Header().Set("Link", fmt.Sprintf(`<%s/directory>;rel="index"`, ts.URL))
+			w.Header().Set("Link", fmt.Sprintf(`<%s>;rel="alternate"`, ts.URL+"/cert/1"))
 			pem.Encode(w, &pem.Block{Type: "CERTIFICATE", Bytes: sampleCert})
+			pem.Encode(w, &pem.Block{Type: "CERTIFICATE", Bytes: intermCACert})
+			return
+		}
+		if r.URL.Path == "/cert/1" && r.Method == "POST" {
+			w.Header().Set("Link", fmt.Sprintf(`<%s/directory>;rel="index"`, ts.URL))
+			w.Header().Set("Link", fmt.Sprintf(`<%s>;rel="alternate"`, ts.URL+"/cert"))
+			pem.Encode(w, &pem.Block{Type: "CERTIFICATE", Bytes: sampleCert})
+			pem.Encode(w, &pem.Block{Type: "CERTIFICATE", Bytes: intermCACertSelfSigned})
 			return
 		}
 		if r.URL.Path == "/order" {
@@ -750,6 +760,7 @@ func TestFinalizeOrder(t *testing.T) {
 		template := x509.Certificate{
 			SerialNumber: big.NewInt(int64(1)),
 			Subject: pkix.Name{
+				CommonName:   "example.com",
 				Organization: []string{"goacme"},
 			},
 			NotBefore: notBefore,
@@ -760,8 +771,28 @@ func TestFinalizeOrder(t *testing.T) {
 			BasicConstraintsValid: true,
 		}
 
+		rootCA := template
+		rootCA.Subject = pkix.Name{
+			CommonName:   "ACME Root CA",
+			Organization: []string{"goacme"},
+		}
+
+		intermCA := template
+		intermCA.Subject = pkix.Name{
+			CommonName:   "ACME Intermediate CA",
+			Organization: []string{"goacme"},
+		}
+
 		var err error
-		sampleCert, err = x509.CreateCertificate(rand.Reader, &template, &template, &testKeyEC.PublicKey, testKeyEC)
+		intermCACert, err = x509.CreateCertificate(rand.Reader, &intermCA, &rootCA, &testKeyEC.PublicKey, testKeyEC)
+		if err != nil {
+			t.Fatalf("Error creating certificate: %v", err)
+		}
+		intermCACertSelfSigned, err = x509.CreateCertificate(rand.Reader, &intermCA, &intermCA, &testKeyEC.PublicKey, testKeyEC)
+		if err != nil {
+			t.Fatalf("Error creating certificate: %v", err)
+		}
+		sampleCert, err = x509.CreateCertificate(rand.Reader, &template, &intermCA, &testKeyEC.PublicKey, testKeyEC)
 		if err != nil {
 			t.Fatalf("Error creating certificate: %v", err)
 		}
@@ -788,13 +819,62 @@ func TestFinalizeOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	c := Client{Key: testKeyEC, accountURL: "https://example.com/acme/account", dir: &Directory{NewNonceURL: ts.URL}}
-	cert, err := c.FinalizeOrder(context.Background(), ts.URL, csrb)
-	if err != nil {
-		t.Fatal(err)
+	testCases := []struct {
+		altCN   string
+		errMsg  string
+		issuer  []string
+		subject []string
+	}{
+		{
+			altCN:   "",
+			issuer:  []string{"ACME Intermediate CA", "ACME Root CA"},
+			subject: []string{"example.com", "ACME Intermediate CA"},
+		},
+		{
+			altCN:   "non",
+			issuer:  []string{"ACME Intermediate CA", "ACME Root CA"},
+			subject: []string{"example.com", "ACME Intermediate CA"},
+			errMsg:  "acme: alternate chain not found for Common Name 'non', using default chain",
+		},
+		{
+			altCN:   "ACME Root CA",
+			issuer:  []string{"ACME Intermediate CA", "ACME Root CA"},
+			subject: []string{"example.com", "ACME Intermediate CA"},
+		},
+		{
+			altCN:   "ACME Intermediate CA",
+			issuer:  []string{"ACME Intermediate CA", "ACME Intermediate CA"},
+			subject: []string{"example.com", "ACME Intermediate CA"},
+		},
 	}
-	if cert == nil {
-		t.Errorf("cert is nil")
+
+	for _, test := range testCases {
+		c := Client{Key: testKeyEC, accountURL: "https://example.com/acme/account", dir: &Directory{NewNonceURL: ts.URL}}
+		cert, err := c.FinalizeOrder(context.Background(), ts.URL, csrb, test.altCN)
+		if err != nil || test.errMsg != "" {
+			if err == nil {
+				t.Errorf("expected error message: %s", test.errMsg)
+			} else if test.errMsg == "" {
+				t.Error(err)
+			} else if err.Error() != test.errMsg {
+				t.Errorf("error differs. expected: '%s'; actual: '%v'", test.errMsg, err)
+			}
+		}
+		var issuer, subject []string
+		for _, der := range cert {
+			crt, err := x509.ParseCertificate(der)
+			if err != nil {
+				t.Fatal(err)
+			}
+			issuer = append(issuer, crt.Issuer.CommonName)
+			subject = append(subject, crt.Subject.CommonName)
+		}
+		if !reflect.DeepEqual(issuer, test.issuer) {
+			t.Errorf("issuer differs. altCN: '%s'; expected: '%v'; actual: '%v'", test.altCN, test.issuer, issuer)
+		}
+		if !reflect.DeepEqual(subject, test.subject) {
+			t.Errorf("subject differs. altCN: '%s'; expected: '%v'; actual: '%v'", test.altCN, test.subject, subject)
+		}
 	}
 }
 

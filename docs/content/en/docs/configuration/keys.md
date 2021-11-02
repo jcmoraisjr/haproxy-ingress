@@ -293,6 +293,7 @@ The table below describes all supported configuration keys.
 | [`acme-emails`](#acme)                               | email1,email2,...                       | Global  |                    |
 | [`acme-endpoint`](#acme)                             | [`v2-staging`\|`v2`\|`endpoint`]        | Global  |                    |
 | [`acme-expiring`](#acme)                             | number of days                          | Global  | `30`               |
+| [`acme-preferred-chain`](#acme)                      | CN (Common Name) of the issuer          | Host    |                    |
 | [`acme-shared`](#acme)                               | [true\|false]                           | Global  | `false`            |
 | [`acme-terms-agreed`](#acme)                         | [true\|false]                           | Global  | `false`            |
 | [`affinity`](#affinity)                              | affinity type                           | Backend |                    |
@@ -500,14 +501,15 @@ The table below describes all supported configuration keys.
 
 ## Acme
 
-| Configuration key   | Scope    | Default | Since |
-|---------------------|----------|---------|-------|
-| `acme-emails`       | `Global` |         | v0.9  |
-| `acme-endpoint`     | `Global` |         | v0.9  |
-| `acme-expiring`     | `Global` | `30`    | v0.9  |
-| `acme-shared`       | `Global` | `false` | v0.9  |
-| `acme-terms-agreed` | `Global` | `false` | v0.9  |
-| `cert-signer`       | `Host`   |         | v0.9  |
+| Configuration key      | Scope    | Default | Since   |
+|------------------------|----------|---------|---------|
+| `acme-emails`          | `Global` |         | v0.9    |
+| `acme-endpoint`        | `Global` |         | v0.9    |
+| `acme-expiring`        | `Global` | `30`    | v0.9    |
+| `acme-preferred-chain` | `Host`   |         | v0.13.5 |
+| `acme-shared`          | `Global` | `false` | v0.9    |
+| `acme-terms-agreed`    | `Global` | `false` | v0.9    |
+| `cert-signer`          | `Host`   |         | v0.9    |
 
 Configures dynamic options used to authorize and sign certificates against a server
 which implements the acme protocol, version 2.
@@ -520,6 +522,7 @@ Supported acme configuration keys:
 * `acme-emails`: mandatory, a comma-separated list of emails used to configure the client account. The account will be updated if this option is changed.
 * `acme-endpoint`: mandatory, endpoint of the acme environment. `v2-staging` and `v02-staging` are alias to `https://acme-staging-v02.api.letsencrypt.org`, while `v2` and `v02` are alias to `https://acme-v02.api.letsencrypt.org`.
 * `acme-expiring`: how many days before expiring a certificate should be considered old and should be updated. Defaults to `30` days.
+* `acme-preferred-chain`: optional, defines the Issuer's CN (Common Name) of the topmost certificate in the chain, if the acme server offers multiple certificate chains. The default certificate chain will be used if empty or no match is found. Note that changing this option will not force a new certificate to be issued if a valid one is already in place and actual and preferred chains differ. A new certificate can be emitted by changing the secret name in the ingress resource, or removing the secret being referenced.
 * `acme-shared`: defines if another certificate signer is running in the cluster. If `false`, the default value, any request to `/.well-known/acme-challenge/` is sent to the local acme server despite any ingress object configuration. Otherwise, if `true`, a configured ingress object would take precedence.
 * `acme-terms-agreed`: mandatory, it should be defined as `true`, otherwise certificates won't be issued.
 * `cert-signer`: defines the certificate signer that should be used to authorize and sign new certificates. The only supported value is `"acme"`. Add this config as an annotation in the ingress object that should have its certificate managed by haproxy-ingress and signed by the configured acme environment. The annotation `kubernetes.io/tls-acme: "true"` is also supported if the command-line option `--acme-track-tls-annotation` is used.

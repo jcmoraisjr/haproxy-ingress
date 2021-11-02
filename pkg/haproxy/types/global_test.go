@@ -24,49 +24,81 @@ import (
 
 func TestBuildAcmeStorages(t *testing.T) {
 	testCases := []struct {
-		certs    [][]string
-		expected []string
+		certs     [][]string
+		expected  []string
+		expErrors []string
 	}{
 		// 0
 		{
 			certs: [][]string{
-				{"cert1", "d1.local"},
+				{"cert1", "", "d1.local"},
 			},
 			expected: []string{
-				"cert1,d1.local",
+				"cert1,,d1.local",
 			},
 		},
 		// 1
 		{
 			certs: [][]string{
-				{"cert1", "d1.local", "d2.local"},
-				{"cert1", "d2.local", "d3.local"},
+				{"cert1", "", "d1.local", "d2.local"},
+				{"cert1", "", "d2.local", "d3.local"},
 			},
 			expected: []string{
-				"cert1,d1.local,d2.local,d3.local",
+				"cert1,,d1.local,d2.local,d3.local",
 			},
 		},
 		// 2
 		{
 			certs: [][]string{
-				{"cert1", "d1.local", "d2.local"},
-				{"cert2", "d2.local", "d3.local"},
+				{"cert1", "", "d1.local", "d2.local"},
+				{"cert2", "", "d2.local", "d3.local"},
 			},
 			expected: []string{
-				"cert1,d1.local,d2.local",
-				"cert2,d2.local,d3.local",
+				"cert1,,d1.local,d2.local",
+				"cert2,,d2.local,d3.local",
+			},
+		},
+		// 3
+		{
+			certs: [][]string{
+				{"cert1", "", "d1.local", "d2.local"},
+				{"cert1", "Alt Root CA", "d2.local", "d3.local"},
+			},
+			expected: []string{
+				"cert1,Alt Root CA,d1.local,d2.local,d3.local",
+			},
+		},
+		// 4
+		{
+			certs: [][]string{
+				{"cert1", "New Root CA", "d1.local", "d2.local"},
+				{"cert1", "Alt Root CA", "d2.local", "d3.local"},
+			},
+			expected: []string{
+				"cert1,New Root CA,d1.local,d2.local,d3.local",
+			},
+			expErrors: []string{
+				"preferred chain already assigned to 'New Root CA'",
 			},
 		},
 	}
 	for i, test := range testCases {
 		acme := AcmeData{}
+		var errors []string
 		for _, cert := range test.certs {
-			acme.Storages().Acquire(cert[0]).AddDomains(cert[1:])
+			storage := acme.Storages().Acquire(cert[0])
+			if err := storage.AssignPreferredChain(cert[1]); err != nil {
+				errors = append(errors, err.Error())
+			}
+			storage.AddDomains(cert[2:])
 		}
 		storages := acme.Storages().BuildAcmeStorages()
 		sort.Strings(storages)
 		if !reflect.DeepEqual(storages, test.expected) {
 			t.Errorf("acme certs differs on %d - expected: %+v, actual: %+v", i, test.expected, storages)
+		}
+		if !reflect.DeepEqual(errors, test.expErrors) {
+			t.Errorf("assignment errors differ on %d - expected: %v, actual: %v", i, test.expErrors, errors)
 		}
 	}
 }
@@ -85,45 +117,45 @@ func TestShrink(t *testing.T) {
 		},
 		// 1
 		{
-			itemAdd: map[string]*AcmeCerts{"cert1": {d1}},
-			expAdd:  map[string]*AcmeCerts{"cert1": {d1}},
+			itemAdd: map[string]*AcmeCerts{"cert1": {d1, ""}},
+			expAdd:  map[string]*AcmeCerts{"cert1": {d1, ""}},
 			expDel:  map[string]*AcmeCerts{},
 		},
 		// 2
 		{
-			itemAdd: map[string]*AcmeCerts{"cert1": {d1}},
-			itemDel: map[string]*AcmeCerts{"cert1": {d1}},
+			itemAdd: map[string]*AcmeCerts{"cert1": {d1, ""}},
+			itemDel: map[string]*AcmeCerts{"cert1": {d1, ""}},
 			expAdd:  map[string]*AcmeCerts{},
 			expDel:  map[string]*AcmeCerts{},
 		},
 		// 3
 		{
 			itemAdd: map[string]*AcmeCerts{
-				"cert1": {d1},
-				"cert2": {d1},
+				"cert1": {d1, ""},
+				"cert2": {d1, ""},
 			},
 			itemDel: map[string]*AcmeCerts{
-				"cert1": {d1},
-				"cert2": {d2},
+				"cert1": {d1, ""},
+				"cert2": {d2, ""},
 			},
 			expAdd: map[string]*AcmeCerts{
-				"cert2": {d1},
+				"cert2": {d1, ""},
 			},
 			expDel: map[string]*AcmeCerts{
-				"cert2": {d2},
+				"cert2": {d2, ""},
 			},
 		},
 		// 4
 		{
 			itemAdd: map[string]*AcmeCerts{
-				"cert1": {d1},
-				"cert2": {d1},
+				"cert1": {d1, ""},
+				"cert2": {d1, ""},
 			},
 			itemDel: map[string]*AcmeCerts{
-				"cert1": {d1},
+				"cert1": {d1, ""},
 			},
 			expAdd: map[string]*AcmeCerts{
-				"cert2": {d1},
+				"cert2": {d1, ""},
 			},
 			expDel: map[string]*AcmeCerts{},
 		},
