@@ -1,3 +1,4 @@
+{{ if eq (getenv "HUGO_ENV") "production" }}
 <script>
   var _paq = window._paq = window._paq || [];
   _paq.push(['trackPageView']);
@@ -11,3 +12,4 @@
   })();
 </script>
 <noscript><p><img src="//tags.joaomora.is/matomo.php?idsite=3&amp;rec=1" style="border:0;" alt="" /></p></noscript>
+{{ end }}
