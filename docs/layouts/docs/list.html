@@ -1,0 +1,16 @@
+{{ define "main" }}
+<div class="td-content">
+	<div class="alert alert-secondary" role="alert" style="background: #FFEED8;">
+		<h3>This version is no longer maintained</h3>
+		<p>
+			This is the documentation of v0.11, which is no longer actively maintained.
+			See the <a href="/docs">latest version</a> for up-to-date documentation.
+		</p>
+	</div>
+	<h1>{{ .Title }}</h1>
+	{{ with .Params.description }}<div class="lead">{{ . | markdownify }}</div>{{ end }}
+	{{ .Content }}
+	{{ partial "section-index.html" . }}
+	<div class="text-muted mt-5 pt-3 border-top">{{ partial "page-meta-lastmod.html" . }}</div>
+</div>
+{{ end }}
