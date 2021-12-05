@@ -360,10 +360,7 @@ func (mf *hostsMapMatchFile) sort() {
 }
 
 func (mf *hostsMapMatchFile) lower() bool {
-	if mf.match == MatchBegin {
-		return true
-	}
-	return false
+	return mf.match == MatchBegin
 }
 
 func (mf *hostsMapMatchFile) method() string {

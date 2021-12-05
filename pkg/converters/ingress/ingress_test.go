@@ -1844,7 +1844,7 @@ WARN skipping TLS secret 'tls2' of Ingress 'default/echo2': TLS of tcp service p
 				ing.SetAnnotations(paramToMap(annPort))
 			case 2:
 				ing = c.createIngTLS1(name, domain, "/", ":", params[1])
-				if strings.Index(params[1], ":") < 0 {
+				if !strings.Contains(params[1], ":") {
 					// remove default host in the array, this allows to
 					// test secret name without a hosts list
 					for i := range ing.Spec.TLS {
@@ -2562,9 +2562,7 @@ func (c *testConfig) createIngTLS1(name, hostname, path, service, secretHostName
 		ssecret := strings.Split(secret, ":")
 		hosts := []string{}
 		if len(ssecret) > 1 {
-			for _, host := range strings.Split(ssecret[1], ",") {
-				hosts = append(hosts, host)
-			}
+			hosts = append(hosts, strings.Split(ssecret[1], ",")...)
 		}
 		if len(hosts) == 0 {
 			hosts = []string{hostname}
@@ -2585,9 +2583,7 @@ func (c *testConfig) createIngTLS2(name, secretHostName string) *networking.Ingr
 		ssecret := strings.Split(secret, ":")
 		hosts := []string{}
 		if len(ssecret) > 1 {
-			for _, host := range strings.Split(ssecret[1], ",") {
-				hosts = append(hosts, host)
-			}
+			hosts = append(hosts, strings.Split(ssecret[1], ",")...)
 		}
 		tls = append(tls, networking.IngressTLS{
 			Hosts:      hosts,

@@ -168,10 +168,7 @@ func (c *Client) CreateOrder(ctx context.Context, order *Order) (*Order, error) 
 		Identifiers: make([]wireAuthzID, len(order.Identifiers)),
 	}
 	for i, id := range order.Identifiers {
-		req.Identifiers[i] = wireAuthzID{
-			Type:  id.Type,
-			Value: id.Value,
-		}
+		req.Identifiers[i] = wireAuthzID(id)
 	}
 	if !order.NotBefore.IsZero() {
 		req.NotBefore = order.NotBefore.Format(time.RFC3339)

@@ -390,7 +390,7 @@ func TestHAProxyProcsLoop(t *testing.T) {
 		if err != nil {
 			t.Errorf("%d should not return an error: %v", i, err)
 		}
-		elapsed := time.Now().Sub(start)
+		elapsed := time.Since(start)
 		if elapsed < test.minDelay {
 			t.Errorf("elapsed in %d is '%s' and should not be lower than min '%s'", i, elapsed.String(), test.minDelay.String())
 		}

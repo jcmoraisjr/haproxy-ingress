@@ -295,7 +295,7 @@ type Authorization struct {
 	Expires time.Time
 
 	// Challenges is the list of challenges that the client can fulfill in order
-	// to prove posession of the identifier. For valid/invalid authorizations,
+	// to prove possession of the identifier. For valid/invalid authorizations,
 	// this is the list of challenges that were used.
 	Challenges []*Challenge
 }

@@ -25,10 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-type task struct {
-	steps []string
-}
-
 func TestQueueNotRunning(t *testing.T) {
 	q := NewQueue(nil)
 	q.ShutDown()
@@ -132,7 +128,7 @@ func TestRate(t *testing.T) {
 	}
 	time.Sleep(200 * time.Millisecond)
 	q.ShutDown()
-	duration := time.Now().Sub(start)
+	duration := time.Since(start)
 	if len(items) != 4 {
 		t.Errorf("expected 4 items but sync was called %d time(s)", len(items))
 	}

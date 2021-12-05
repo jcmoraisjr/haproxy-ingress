@@ -99,7 +99,7 @@ func (ic *GenericController) getPemCertificate(secret *apiv1.Secret) (*ingress.S
 		}
 
 	} else if ca != nil {
-		crl, _ := secret.Data["ca.crl"]
+		crl := secret.Data["ca.crl"]
 		s, err = ssl.AddCertAuth(nsSecName, ca, crl)
 
 		if err != nil {

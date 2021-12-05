@@ -72,7 +72,7 @@ func (d *dynUpdater) update() bool {
 }
 
 // checkConfigChange defines if dynamic update was successfully applied.
-// The udpated host and backend lists are fully verified even if a restart
+// The updated host and backend lists are fully verified even if a restart
 // should be made in order to leave haproxy as update as possible if a
 // reload fails.
 func (d *dynUpdater) checkConfigChange() bool {
@@ -158,7 +158,7 @@ func (d *dynUpdater) backendUpdated() bool {
 	}
 
 	// try to dynamically update every single backend
-	// true if deep equals or sucessfully updated
+	// true if deep equals or successfully updated
 	// false if cannot be dynamically updated or update failed
 	for _, pair := range backends {
 		if pair.cur != nil && !d.checkBackendPair(pair) {
@@ -226,7 +226,7 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 	// Resolver == update via DNS discovery
 	if curBack.Resolver != "" {
 		if updated {
-			// DNS based updates finishes prematurelly. Ensure the ep
+			// DNS based updates finishes prematurely. Ensure the ep
 			// list size of the new one is at least as big as the old one.
 			for i := len(curBack.Endpoints); i < len(oldBack.Endpoints); i++ {
 				curBack.AddEmptyEndpoint()
@@ -379,7 +379,7 @@ func (d *dynUpdater) alignSlots() {
 	}
 }
 
-var readFile func(filename string) ([]byte, error) = ioutil.ReadFile
+var readFile = ioutil.ReadFile
 
 func (d *dynUpdater) execUpdateCert(hostname, filename string) bool {
 	// TODO read from the internal storage
@@ -478,7 +478,7 @@ func cmdResponseOK(cmd, response string) bool {
 	case "set server":
 		return response == "" || strings.HasPrefix(response, "IP changed from ") || strings.HasPrefix(response, "no need to change ")
 	case "commit ssl cert":
-		return strings.Index(response, "Success") >= 0
+		return strings.Contains(response, "Success")
 	default:
 		panic(fmt.Errorf("invalid cmd: %s", cmd))
 	}

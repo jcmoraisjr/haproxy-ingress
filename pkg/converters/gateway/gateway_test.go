@@ -1381,11 +1381,11 @@ func (c *testConfig) createHTTPRoute2(name, labels, service, paths string) *gate
 func (c *testConfig) createGatewayResources(res []string) {
 	for _, cfg := range res {
 		obj := CreateObject(cfg)
-		switch obj.(type) {
+		switch obj := obj.(type) {
 		case *gateway.Gateway:
-			c.cache.GwList = append(c.cache.GwList, obj.(*gateway.Gateway))
+			c.cache.GwList = append(c.cache.GwList, obj)
 		case *gateway.HTTPRoute:
-			c.cache.HTTPRouteList = append(c.cache.HTTPRouteList, obj.(*gateway.HTTPRoute))
+			c.cache.HTTPRouteList = append(c.cache.HTTPRouteList, obj)
 		default:
 			panic(fmt.Errorf("unknown object type: %s", obj.GetObjectKind().GroupVersionKind().String()))
 		}

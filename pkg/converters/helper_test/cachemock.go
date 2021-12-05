@@ -71,7 +71,7 @@ func NewCacheMock(tracker convtypes.Tracker) *CacheMock {
 }
 
 func (c *CacheMock) buildResourceName(defaultNamespace, resourceName string) string {
-	if defaultNamespace == "" || strings.Index(resourceName, "/") >= 0 {
+	if defaultNamespace == "" || strings.Contains(resourceName, "/") {
 		return resourceName
 	}
 	return defaultNamespace + "/" + resourceName
@@ -315,9 +315,7 @@ func (c *CacheMock) SwapChangedObjects() *convtypes.ChangedObjects {
 		}
 	}
 	c.IngList = c.IngList[:len(c.IngList)-len(changed.IngressesDel)]
-	for _, ingAdd := range changed.IngressesAdd {
-		c.IngList = append(c.IngList, ingAdd)
-	}
+	c.IngList = append(c.IngList, changed.IngressesAdd...)
 	// update c.SvcList based on notifications
 	for i, svc := range c.SvcList {
 		for _, svcUpd := range changed.ServicesUpd {
@@ -345,9 +343,7 @@ func (c *CacheMock) SwapChangedObjects() *convtypes.ChangedObjects {
 		c.EpList[ep.Namespace+"/"+ep.Name] = ep
 	}
 	c.SvcList = c.SvcList[:len(c.SvcList)-len(changed.ServicesDel)]
-	for _, svcAdd := range changed.ServicesAdd {
-		c.SvcList = append(c.SvcList, svcAdd)
-	}
+	c.SvcList = append(c.SvcList, changed.ServicesAdd...)
 	return changed
 }
 

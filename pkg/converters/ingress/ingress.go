@@ -431,7 +431,7 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 				urlProto, urlHost, urlPort, _, _ := ingutils.ParseURL(url)
 				if (urlProto == "service" || urlProto == "svc") && urlHost != "" && urlPort != "" {
 					authSvcName := urlHost
-					if strings.Index(authSvcName, "/") < 0 {
+					if !strings.Contains(authSvcName, "/") {
 						authSvcName = ing.Namespace + "/" + authSvcName
 					}
 					_, err := c.addBackend(source, pathLink, authSvcName, urlPort, map[string]string{})
@@ -465,7 +465,7 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 		var tlsAcme bool
 		if c.options.AcmeTrackTLSAnn {
 			// distinct prefix, read from the Annotations map
-			tlsAcmeStr, _ := ing.Annotations[ingtypes.ExtraTLSAcme]
+			tlsAcmeStr := ing.Annotations[ingtypes.ExtraTLSAcme]
 			tlsAcme, _ = strconv.ParseBool(tlsAcmeStr)
 		}
 		if !tlsAcme {
@@ -738,7 +738,7 @@ func (c *converter) addBackendWithClass(source *annotations.Source, pathLink hat
 	svc, err := c.cache.GetService(source.Namespace, fullSvcName)
 	hostname := pathLink.Hostname()
 	ctx := convtypes.ResourceHAHostname
-	if strings.Index(hostname, ":") >= 0 {
+	if strings.Contains(hostname, ":") {
 		// TODO this is the wrong way to identify if this is a tcp service. But
 		// it works. There is a refactor to be made in some haproxy model types
 		// to better fit gateway api, this should help here, otherwise we'll

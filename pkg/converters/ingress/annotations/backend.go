@@ -99,7 +99,7 @@ func buildAuthRequestVarName(srcHeader string) string {
 }
 
 var (
-	lookupHost func(host string) (addrs []string, err error) = net.LookupHost
+	lookupHost = net.LookupHost
 
 	validURLRegex    = regexp.MustCompile(`^[^"' ]*$`)
 	validMethodRegex = regexp.MustCompile(`^([A-Za-z]+|\*)$`)
@@ -115,7 +115,7 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 		}
 
 		// starting here the auth backend should be configured or requests should be denied
-		// AlwaysDeny will be changed to false if the configuration succeeed
+		// AlwaysDeny will be changed to false if the configuration succeed
 		path.AuthExternal.AlwaysDeny = true
 
 		external := c.haproxy.Global().External
@@ -245,7 +245,7 @@ func (c *updater) buildBackendAuthHTTP(d *backData) {
 			continue
 		}
 		secretName := authSecret.Value
-		if strings.Index(secretName, "/") < 0 {
+		if !strings.Contains(secretName, "/") {
 			secretName = authSecret.Source.Namespace + "/" + secretName
 		}
 		listName := strings.Replace(secretName, "/", "_", 1)
@@ -282,7 +282,7 @@ func (c *updater) buildBackendAuthHTTP(d *backData) {
 		authRealm := config.Get(ingtypes.BackAuthRealm)
 		if authRealm == nil || authRealm.Source == nil {
 			// leave default
-		} else if strings.Index(authRealm.Value, `"`) >= 0 {
+		} else if strings.Contains(authRealm.Value, `"`) {
 			c.logger.Warn("ignoring auth-realm with quotes on %v", authRealm.Source)
 		} else if authRealm.Value != "" {
 			realm = authRealm.Value
@@ -666,7 +666,7 @@ func (c *updater) buildBackendOAuth(d *backData) {
 		}
 
 		// starting here the auth backend should be configured or requests should be denied
-		// AlwaysDeny will be changed to false if the configuration succeeed
+		// AlwaysDeny will be changed to false if the configuration succeed
 		path.AuthExternal.AlwaysDeny = true
 
 		if oauth.Value != "oauth2_proxy" && oauth.Value != "oauth2-proxy" {
@@ -863,7 +863,7 @@ func (c *updater) buildBackendServerNaming(d *backData) {
 	}
 }
 
-var listAddrs func(ifname string) []net.Addr = func(ifname string) []net.Addr {
+var listAddrs = func(ifname string) []net.Addr {
 	intf, _ := net.InterfaceByName(ifname)
 	if intf == nil {
 		return nil

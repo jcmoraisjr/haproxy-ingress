@@ -376,7 +376,7 @@ func (c *updater) buildGlobalDNS(d *globalData) {
 			if ns == "" {
 				continue
 			}
-			if strings.Index(ns, ":") < 0 {
+			if !strings.Contains(ns, ":") {
 				// missing port number
 				ns += ":53"
 			}

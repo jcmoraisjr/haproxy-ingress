@@ -772,84 +772,84 @@ func (c *k8scache) Notify(old, cur interface{}) {
 	// old and cur == nil: cannot identify what was changed, need to start a full resync
 	ch := &c.changed
 	if old != nil {
-		switch old.(type) {
+		switch old := old.(type) {
 		case *networking.Ingress:
 			if cur == nil {
-				ch.IngressesDel = append(ch.IngressesDel, old.(*networking.Ingress))
+				ch.IngressesDel = append(ch.IngressesDel, old)
 			}
 		case *networking.IngressClass:
 			if cur == nil {
-				ch.IngressClassesDel = append(ch.IngressClassesDel, old.(*networking.IngressClass))
+				ch.IngressClassesDel = append(ch.IngressClassesDel, old)
 			}
 		case *gateway.Gateway:
 			if cur == nil {
-				ch.GatewaysDel = append(ch.GatewaysDel, old.(*gateway.Gateway))
+				ch.GatewaysDel = append(ch.GatewaysDel, old)
 				ch.NeedFullSync = true
 			}
 		case *gateway.GatewayClass:
 			if cur == nil {
-				ch.GatewayClassesDel = append(ch.GatewayClassesDel, old.(*gateway.GatewayClass))
+				ch.GatewayClassesDel = append(ch.GatewayClassesDel, old)
 				ch.NeedFullSync = true
 			}
 		case *gateway.HTTPRoute:
 			if cur == nil {
-				ch.HTTPRoutesDel = append(ch.HTTPRoutesDel, old.(*gateway.HTTPRoute))
+				ch.HTTPRoutesDel = append(ch.HTTPRoutesDel, old)
 				ch.NeedFullSync = true
 			}
 		case *gateway.TLSRoute:
 			if cur == nil {
-				ch.TLSRoutesDel = append(ch.TLSRoutesDel, old.(*gateway.TLSRoute))
+				ch.TLSRoutesDel = append(ch.TLSRoutesDel, old)
 				ch.NeedFullSync = true
 			}
 		case *gateway.TCPRoute:
 			if cur == nil {
-				ch.TCPRoutesDel = append(ch.TCPRoutesDel, old.(*gateway.TCPRoute))
+				ch.TCPRoutesDel = append(ch.TCPRoutesDel, old)
 				ch.NeedFullSync = true
 			}
 		case *gateway.UDPRoute:
 			if cur == nil {
-				ch.UDPRoutesDel = append(ch.UDPRoutesDel, old.(*gateway.UDPRoute))
+				ch.UDPRoutesDel = append(ch.UDPRoutesDel, old)
 				ch.NeedFullSync = true
 			}
 		case *gateway.BackendPolicy:
 			if cur == nil {
-				ch.BackendPoliciesDel = append(ch.BackendPoliciesDel, old.(*gateway.BackendPolicy))
+				ch.BackendPoliciesDel = append(ch.BackendPoliciesDel, old)
 				ch.NeedFullSync = true
 			}
 		case *api.Service:
 			if cur == nil {
-				ch.ServicesDel = append(ch.ServicesDel, old.(*api.Service))
+				ch.ServicesDel = append(ch.ServicesDel, old)
 			}
 		case *api.Secret:
 			if cur == nil {
-				secret := old.(*api.Secret)
+				secret := old
 				ch.SecretsDel = append(ch.SecretsDel, secret)
 				c.controller.DeleteSecret(fmt.Sprintf("%s/%s", secret.Namespace, secret.Name))
 			}
 		case *api.ConfigMap:
 			if cur == nil {
-				ch.ConfigMapsDel = append(ch.ConfigMapsDel, old.(*api.ConfigMap))
+				ch.ConfigMapsDel = append(ch.ConfigMapsDel, old)
 			}
 		}
 	}
 	if cur != nil {
-		switch cur.(type) {
+		switch cur := cur.(type) {
 		case *networking.Ingress:
-			ing := cur.(*networking.Ingress)
+			ing := cur
 			if old == nil {
 				ch.IngressesAdd = append(ch.IngressesAdd, ing)
 			} else {
 				ch.IngressesUpd = append(ch.IngressesUpd, ing)
 			}
 		case *networking.IngressClass:
-			cls := cur.(*networking.IngressClass)
+			cls := cur
 			if old == nil {
 				ch.IngressClassesAdd = append(ch.IngressClassesAdd, cls)
 			} else {
 				ch.IngressClassesUpd = append(ch.IngressClassesUpd, cls)
 			}
 		case *gateway.Gateway:
-			gw := cur.(*gateway.Gateway)
+			gw := cur
 			if old == nil {
 				ch.GatewaysAdd = append(ch.GatewaysAdd, gw)
 			} else {
@@ -857,7 +857,7 @@ func (c *k8scache) Notify(old, cur interface{}) {
 			}
 			ch.NeedFullSync = true
 		case *gateway.GatewayClass:
-			cls := cur.(*gateway.GatewayClass)
+			cls := cur
 			if old == nil {
 				ch.GatewayClassesAdd = append(ch.GatewayClassesAdd, cls)
 			} else {
@@ -865,7 +865,7 @@ func (c *k8scache) Notify(old, cur interface{}) {
 			}
 			ch.NeedFullSync = true
 		case *gateway.HTTPRoute:
-			hr := cur.(*gateway.HTTPRoute)
+			hr := cur
 			if old == nil {
 				ch.HTTPRoutesAdd = append(ch.HTTPRoutesAdd, hr)
 			} else {
@@ -873,7 +873,7 @@ func (c *k8scache) Notify(old, cur interface{}) {
 			}
 			ch.NeedFullSync = true
 		case *gateway.TLSRoute:
-			tr := cur.(*gateway.TLSRoute)
+			tr := cur
 			if old == nil {
 				ch.TLSRoutesAdd = append(ch.TLSRoutesAdd, tr)
 			} else {
@@ -881,7 +881,7 @@ func (c *k8scache) Notify(old, cur interface{}) {
 			}
 			ch.NeedFullSync = true
 		case *gateway.TCPRoute:
-			tr := cur.(*gateway.TCPRoute)
+			tr := cur
 			if old == nil {
 				ch.TCPRoutesAdd = append(ch.TCPRoutesAdd, tr)
 			} else {
@@ -889,7 +889,7 @@ func (c *k8scache) Notify(old, cur interface{}) {
 			}
 			ch.NeedFullSync = true
 		case *gateway.UDPRoute:
-			ur := cur.(*gateway.UDPRoute)
+			ur := cur
 			if old == nil {
 				ch.UDPRoutesAdd = append(ch.UDPRoutesAdd, ur)
 			} else {
@@ -897,7 +897,7 @@ func (c *k8scache) Notify(old, cur interface{}) {
 			}
 			ch.NeedFullSync = true
 		case *gateway.BackendPolicy:
-			bp := cur.(*gateway.BackendPolicy)
+			bp := cur
 			if old == nil {
 				ch.BackendPoliciesAdd = append(ch.BackendPoliciesAdd, bp)
 			} else {
@@ -905,16 +905,16 @@ func (c *k8scache) Notify(old, cur interface{}) {
 			}
 			ch.NeedFullSync = true
 		case *api.Endpoints:
-			ch.EndpointsNew = append(ch.EndpointsNew, cur.(*api.Endpoints))
+			ch.EndpointsNew = append(ch.EndpointsNew, cur)
 		case *api.Service:
-			svc := cur.(*api.Service)
+			svc := cur
 			if old == nil {
 				ch.ServicesAdd = append(ch.ServicesAdd, svc)
 			} else {
 				ch.ServicesUpd = append(ch.ServicesUpd, svc)
 			}
 		case *api.Secret:
-			secret := cur.(*api.Secret)
+			secret := cur
 			if old == nil {
 				ch.SecretsAdd = append(ch.SecretsAdd, secret)
 			} else {
@@ -922,7 +922,7 @@ func (c *k8scache) Notify(old, cur interface{}) {
 			}
 			c.controller.UpdateSecret(fmt.Sprintf("%s/%s", secret.Namespace, secret.Name))
 		case *api.ConfigMap:
-			cm := cur.(*api.ConfigMap)
+			cm := cur
 			if old == nil {
 				ch.ConfigMapsAdd = append(ch.ConfigMapsAdd, cm)
 			} else {
@@ -936,7 +936,7 @@ func (c *k8scache) Notify(old, cur interface{}) {
 				ch.TCPConfigMapDataNew = cm.Data
 			}
 		case *api.Pod:
-			ch.PodsNew = append(ch.PodsNew, cur.(*api.Pod))
+			ch.PodsNew = append(ch.PodsNew, cur)
 		}
 	}
 	if old == nil && cur == nil {

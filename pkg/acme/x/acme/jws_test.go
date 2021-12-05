@@ -49,7 +49,7 @@ EQeIP6dZtv8IMgtGIb91QX9pXvP0aznzQKwYIA8nZgoENCPfiMTPiEDT9e/0lObO
 `
 
 	// This thumbprint is for the testKey defined above.
-	testKeyThumbprint = "6nicxzh6WETQlrvdchkz-U3e3DOQZ4heJKU63rfqMqQ"
+	// testKeyThumbprint = "6nicxzh6WETQlrvdchkz-U3e3DOQZ4heJKU63rfqMqQ"
 
 	// openssl ecparam -name secp256k1 -genkey -noout
 	testKeyECPEM = `

@@ -61,11 +61,11 @@ func (s *server) Listen(stopCh chan struct{}) error {
 		token := s.resolver.GetToken(host, uri)
 		if token == "" {
 			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "404 not found\n")
+			fmt.Fprint(w, "404 not found\n")
 			s.logger.Warn("acme: url token not found: domain=%s uri=%s", host, uri)
 			return
 		}
-		fmt.Fprintf(w, token)
+		fmt.Fprint(w, token)
 		s.logger.Info("acme: request token: domain=%s uri=%s", host, uri)
 	})
 	s.server = &http.Server{Addr: s.socket, Handler: handler}
