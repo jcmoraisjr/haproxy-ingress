@@ -20,7 +20,7 @@ See below the [getting started steps](#getting-started).
 
 ## Conformance
 
-Gateway API spec is partially implemented in the v0.13 release. The following list describes what is (or is not) supported. All the items are already in the v0.14 backlog, except when stated otherwise:
+Gateway API v1alpha1 spec is partially implemented in the v0.13 release. The following list describes what is (or is not) supported:
 
 * Target Services can be annotated with [Backend or Path scoped]({{% relref "keys#scope" %}}) configuration keys, this will continue to be supported.
 * Gateway API resources doesn't support annotations, this will continue to be unsupported, extensions to the Gateway API spec will be added in the extension points of the API.
@@ -32,6 +32,8 @@ Gateway API spec is partially implemented in the v0.13 release. The following li
 * HTTPRoute's Matches doesn't support Headers.
 * HTTPRoute's Rules and ForwardTo doesn't support Filters.
 * Resources status aren't updated.
+
+Version v1alpha2 should be partially implemented in v0.14 (beta version starting jan/22) and fully implemented in v0.15 (Q2'22).
 
 ## Ingress
 
