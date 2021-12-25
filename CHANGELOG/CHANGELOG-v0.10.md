@@ -2,6 +2,10 @@
 
 * [Major improvements](#major-improvements)
 * [Contributors](#contributors)
+* [v0.10.13](#v01013)
+  * [Reference](#reference-r13)
+  * [Release notes](#release-notes-r13)
+  * [Fixes and improvements](#fixes-and-improvements-r13)
 * [v0.10.12](#v01012)
   * [Reference](#reference-r12)
   * [Release notes](#release-notes-r12)
@@ -94,6 +98,27 @@ Highlights of this version:
 * Robert Agbozo ([RobertTheProfessional](https://github.com/RobertTheProfessional))
 * Sankul ([dark-shade](https://github.com/dark-shade))
 * Tadeu Andrade ([mtatheonly](https://github.com/mtatheonly))
+
+# v0.10.13
+
+## Reference (r13)
+
+* Release date: `2021-12-25`
+* Helm chart: `--version 0.10.13`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.10.13`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.10.13`
+* Embedded HAProxy version: `2.0.26`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.10.13`
+
+## Release notes (r13)
+
+This release updates embedded HAProxy from 2.0.25 to 2.0.26.
+
+## Fixes and improvements (r13)
+
+Fixes and improvements since `v0.10.12`:
+
+* update embedded haproxy from 2.0.25 to 2.0.26 [e107144](https://github.com/jcmoraisjr/haproxy-ingress/commit/e107144853191e5290f3f28a99ed9aedf383ea2c) (Joao Morais)
 
 # v0.10.12
 
