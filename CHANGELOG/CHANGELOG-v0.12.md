@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.11!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.12.11](#v01211)
+  * [Reference](#reference-r11)
+  * [Release notes](#release-notes-r11)
+  * [Fixes and improvements](#fixes-and-improvements-r11)
 * [v0.12.10](#v01210)
   * [Reference](#reference-r10)
   * [Release notes](#release-notes-r10)
@@ -85,6 +89,31 @@ Breaking backward compatibility from v0.11
 * paul ([toothbrush](https://github.com/toothbrush))
 * pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.12.11
+
+## Reference (r11)
+
+* Release date: `2021-12-25`
+* Helm chart: `--version 0.12.11`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.12.11`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.12.11`
+* Embedded HAProxy version: `2.2.19`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.12.11`
+
+## Release notes (r11)
+
+This release fixes an error message if the controller doesn't have permission to update a secret. The update is needed when the embedded acme signer is used. Before this update, a missing permission would fail the update of the secret without notifying the failure in the logs.
+
+Also, the embedded HAProxy version was updated to 2.2.19, and client-go was updated to v0.19.16.
+
+## Fixes and improvements (r11)
+
+Fixes and improvements since `v0.12.10`:
+
+* Fix error message on secret/cm update failure [#863](https://github.com/jcmoraisjr/haproxy-ingress/pull/863) (jcmoraisjr)
+* update embedded haproxy from 2.2.17 to 2.2.19 [a4aa3f6](https://github.com/jcmoraisjr/haproxy-ingress/commit/a4aa3f6d68dc2278a759d0dd859471138775923a) (Joao Morais)
+* update client-go from v0.19.14 to v0.19.16 [8d19d40](https://github.com/jcmoraisjr/haproxy-ingress/commit/8d19d406aeb61ec51ebbfe05a1c7365639234344) (Joao Morais)
 
 # v0.12.10
 
