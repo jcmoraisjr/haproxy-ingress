@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.12!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.13.5](#v0135)
+  * [Reference](#reference-r5)
+  * [Release notes](#release-notes-r5)
+  * [Fixes and improvements](#fixes-and-improvements-r5)
 * [v0.13.4](#v0134)
   * [Reference](#reference-r4)
   * [Release notes](#release-notes-r4)
@@ -77,10 +81,56 @@ Breaking backward compatibility from v0.12
 * Bart Versluijs ([bartversluijs](https://github.com/bartversluijs))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
 * Maël Valais ([maelvls](https://github.com/maelvls))
+* Mateusz Kubaczyk ([mkubaczyk](https://github.com/mkubaczyk))
+* Michał Zielonka ([michal800106](https://github.com/michal800106))
 * Neil Seward ([sealneaward](https://github.com/sealneaward))
 * paul ([toothbrush](https://github.com/toothbrush))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
+
+# v0.13.5
+
+## Reference (r5)
+
+* Release date: `2021-12-25`
+* Helm chart: `--version 0.13.5`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.5`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.5`
+* Embedded HAProxy version: `2.3.16`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.13.5`
+
+## Release notes (r5)
+
+This release fixes the following issues:
+
+- An error message was missing in the controller doesn't have permission to update a secret. The update is needed when the embedded acme signer is used. Before this update, a missing permission would fail the update of the secret without notifying the failure in the logs.
+- Michał Zielonka fixed the overwrite of the Vary header when Cors is used with two or more Allow Origin.
+
+There is also a number of new features and improvements:
+
+- Mateusz Kubaczyk added an option to allow change the precedence from class annotation to IngressClass resource when both are used to classify an ingress resource.
+- Added a configuration that allows to change the default certificate chain issued by Let's Encrypt. The old behavior and currently the default option builds a bundle whose the topmost certificate is issued by `DST X3`, which will fail if the client has `DST X3` on its trust store and uses openssl 1.0.x. See the [Let's Encrypt documentation](https://letsencrypt.org/docs/dst-root-ca-x3-expiration-september-2021/) about the `DST X3` expiration.
+- Full Gateway API implementation was rescheduled to v0.15 (Q2'22), while v0.14 will be updated to support v1alpha2 version with similar limitations of v0.13. See the [Gateway API documentation](https://haproxy-ingress.github.io/v0.13/docs/configuration/gateway-api/).
+- New target platforms: `arm/v7`, `arm/v6` and `s390x`, all of them for Linux.
+- Embedded HAProxy was updated to 2.3.16.
+- client-go was updated to v0.20.14.
+
+## Fixes and improvements (r5)
+
+Fixes and improvements since `v0.13.4`:
+
+* Add --ingress-class-precedence to allow IngressClass taking precedence over annotation [#857](https://github.com/jcmoraisjr/haproxy-ingress/pull/857) (mkubaczyk) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/command-line/#ingress-class)
+  * Command-line options:
+    * `--ingress-class-precedence`
+* Fix error message on secret/cm update failure [#863](https://github.com/jcmoraisjr/haproxy-ingress/pull/863) (jcmoraisjr)
+* Add acme-preferred-chain config key [#864](https://github.com/jcmoraisjr/haproxy-ingress/pull/864) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#acme)
+  * Configuration keys:
+    * `acme-preferred-chain`
+* Remove setting vary origin header always when multiple origins are set [#861](https://github.com/jcmoraisjr/haproxy-ingress/pull/861) (michal800106)
+* docs: rescheduling gateway api implementation [ebfe0a2](https://github.com/jcmoraisjr/haproxy-ingress/commit/ebfe0a234bacd4554b2d8d9114fa922d2277fae0) (Joao Morais)
+* Add new target platforms [#870](https://github.com/jcmoraisjr/haproxy-ingress/pull/870) (jcmoraisjr)
+* update embedded haproxy from 2.3.14 to 2.3.16 [d996e22](https://github.com/jcmoraisjr/haproxy-ingress/commit/d996e223139b93db76fb51341f9400b86aae4ac2) (Joao Morais)
+* update client-go from v0.20.10 to v0.20.14 [4b61fb8](https://github.com/jcmoraisjr/haproxy-ingress/commit/4b61fb8312191d1b5f831a16bba751ee31c333bf) (Joao Morais)
 
 # v0.13.4
 
