@@ -453,6 +453,9 @@ func (c *updater) buildBackendCustomConfig(d *backData) {
 		source = config.Source.String()
 	}
 	for _, keyword := range c.options.DisableKeywords {
+		if keyword == "" {
+			continue
+		}
 		if keyword == "*" {
 			c.logger.Warn("skipping configuration snippet on %s: custom configuration is disabled", source)
 			return

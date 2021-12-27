@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -133,7 +132,7 @@ func (hc *HAProxyController) configController() {
 		DefaultCrtSecret: hc.cfg.DefaultSSLCertificate,
 		FakeCrtFile:      hc.createFakeCrtFile(),
 		FakeCAFile:       hc.createFakeCAFile(),
-		DisableKeywords:  strings.Split(hc.cfg.DisableConfigKeywords, ","),
+		DisableKeywords:  utils.Split(hc.cfg.DisableConfigKeywords, ","),
 		AcmeTrackTLSAnn:  hc.cfg.AcmeTrackTLSAnn,
 	}
 }
