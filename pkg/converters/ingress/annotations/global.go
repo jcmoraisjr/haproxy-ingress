@@ -48,7 +48,7 @@ func (c *updater) buildGlobalAcme(d *globalData) {
 	d.acmeData.Expiring = time.Duration(d.mapper.Get(ingtypes.GlobalAcmeExpiring).Int()) * 24 * time.Hour
 	d.acmeData.TermsAgreed = termsAgreed
 	d.global.Acme.Prefix = "/.well-known/acme-challenge/"
-	d.global.Acme.Socket = "/var/run/haproxy/acme.sock"
+	d.global.Acme.Socket = c.options.AcmeSocket
 	d.global.Acme.Enabled = true
 	d.global.Acme.Shared = d.mapper.Get(ingtypes.GlobalAcmeShared).Bool()
 }

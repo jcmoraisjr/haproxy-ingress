@@ -143,6 +143,7 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 		mapper:   mapper,
 	}
 	d.global.AdminSocket = c.options.AdminSocket
+	d.global.LocalFSPrefix = c.options.LocalFSPrefix
 	d.global.MaxConn = mapper.Get(ingtypes.GlobalMaxConnections).Int()
 	d.global.DefaultBackendRedir = mapper.Get(ingtypes.GlobalDefaultBackendRedirect).String()
 	d.global.DefaultBackendRedirCode = mapper.Get(ingtypes.GlobalDefaultBackendRedirectCode).Int()

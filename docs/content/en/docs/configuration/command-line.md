@@ -38,6 +38,7 @@ The following command-line options are supported:
 | [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |       |
 | [`--ingress-class-precedence`](#ingress-class)          | [true\|false]              | `false`                 | v0.13.5 |
 | [`--kubeconfig`](#kubeconfig)                           | /path/to/kubeconfig        | in cluster config       |       |
+| [`--local-filesystem-prefix`](#local-filesystem-prefix) | temporary base directory   |                         | v0.14 |
 | [`--master-socket`](#master-socket)                     | socket path                | use embedded haproxy    | v0.12 |
 | [`--max-old-config-files`](#max-old-config-files)       | num of files               | `0`                     |       |
 | [`--profiling`](#stats)                                 | [true\|false]              | `true`                  |       |
@@ -268,6 +269,17 @@ Ingress controller will try to connect to the Kubernetes master using environmen
 service account. This behavior can be changed using `--kubeconfig` argument that reference a
 kubeconfig file with master endpoint and credentials. This is a mandatory argument if the controller
 is deployed outside of the Kubernetes cluster.
+
+---
+
+## --local-filesystem-prefix
+
+Since v0.14
+
+Enables HAProxy Ingress to run in local mode. Define `--local-filesystem-prefix` with a temporary
+directory HAProxy Ingress should create and maintain all the configuration files. Useful for local
+deployment. Start HAProxy Ingress in the root directory of the repository when using
+`--local-filesystem-prefix`, or simply use via `make run`.
 
 ---
 

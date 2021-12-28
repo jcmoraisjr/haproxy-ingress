@@ -66,6 +66,7 @@ type Global struct {
 	ForwardFor              string
 	LoadServerState         bool
 	AdminSocket             string
+	LocalFSPrefix           string
 	External                ExternalConfig
 	Healthz                 HealthzConfig
 	Master                  MasterConfig
