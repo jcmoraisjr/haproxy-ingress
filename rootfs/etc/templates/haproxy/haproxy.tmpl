@@ -412,7 +412,7 @@ backend {{ $backend.ID }}
 {{- if and (not $frontingIgnoreProto) (or $backend.HasHSTS $backend.HasSSLRedirect) }}
     acl https-request ssl_fc
 {{- if $frontingUseProto }}
-    acl https-request var(txn.proto) https
+    acl https-request var(txn.proto) -m str https
 {{- end }}
 {{- end }}
 {{- if $backend.TLS.HasTLSAuth }}
@@ -450,7 +450,7 @@ backend {{ $backend.ID }}
 {{- range $i, $attr := $attrCfg.Items }}
 {{- range $pathIDs := $attrCfg.PathIDs $i }}
     some haproxy keyword {{ $attr }}
-        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} if { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -473,7 +473,7 @@ backend {{ $backend.ID }}
     http-request redirect scheme https
         {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
         {{- "" }} if{{ if $hasFrontingProxy }} !fronting-proxy{{ end }} !https-request
-        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -515,12 +515,12 @@ backend {{ $backend.ID }}
 {{- range $pathIDs := $allowCfg.PathIDs $i }}
 {{- if $allow.Exception }}
     http-request deny if
-        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
         {{- "" }} allow_exception_src{{ $i }}
 {{- end }}
 {{- if $allow.Rule }}
     http-request deny if
-        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
         {{- "" }} !allow_rule_src{{ $i }}
 {{- end }}
 {{- end }}
@@ -535,7 +535,7 @@ backend {{ $backend.ID }}
 {{- end }}
 {{- range $pathIDs := $denyCfg.PathIDs $i }}
     http-request deny if
-        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
         {{- if $deny.Rule }} deny_rule_src{{ $i }}{{ end }}
         {{- if $deny.Exception }} !deny_exception_src{{ $i }}{{ end }}
 {{- end }}
@@ -550,7 +550,7 @@ backend {{ $backend.ID }}
     http-request auth
         {{- if $authHTTP.Realm }} realm "{{ $authHTTP.Realm }}"{{ end }}
         {{- "" }} if{{ if and $backend.HasCorsEnabled }} !METH_OPTIONS{{ end }}
-        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
         {{- "" }} !{ http_auth({{ $authHTTP.UserlistName }}) }
 {{- end }}
 {{- end }}
@@ -562,7 +562,7 @@ backend {{ $backend.ID }}
 {{- if $maxbody }}
 {{- range $pathIDs := $maxbodyCfg.PathIDs $i }}
     http-request use-service lua.send-413 if
-        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
         {{- "" }} { req.body_size,sub({{ $maxbody }}) gt 0 }
 {{- end }}
 {{- end }}
@@ -576,7 +576,7 @@ backend {{ $backend.ID }}
 {{- if eq $waf.Mode "deny" }}
 {{- range $pathIDs := $wafCfg.PathIDs $i }}
     http-request deny if { var(txn.modsec.code) -m int gt 0 }
-        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -610,9 +610,9 @@ backend {{ $backend.ID }}
 {{- end }}
 {{- range $pathIDs := $corsCfg.PathIDs $i }}
     http-request set-var(txn.cors_max_age) str({{ $cors.MaxAge }}) if METH_OPTIONS
-        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
     http-request use-service lua.send-cors-preflight if METH_OPTIONS
-        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -634,16 +634,16 @@ backend {{ $backend.ID }}
 {{- range $pathIDs := $authCfg.PathIDs $i }}
 {{- if $auth.AlwaysDeny }}
     http-request deny
-        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} if { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- else }}
 {{- if $auth.AuthBackendName }}
     http-request set-header X-Real-IP %[src]
-        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} if { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
     http-request lua.auth-intercept {{ $auth.AuthBackendName }} {{ $auth.AuthPath }} {{ $auth.Method }}
         {{- printf " '%s' '%s' '%s'" ($auth.HeadersRequest | join ",") ($auth.HeadersSucceed | join ",") ($auth.HeadersFail | join ",") }}
         {{- if or $auth.AllowedPath $pathIDs }} if{{ end }}
         {{- if $auth.AllowedPath }} !{ path_beg {{ $auth.AllowedPath }} }{{ end }}
-        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- if $auth.RedirectOnFail }}
     http-request redirect location {{ $auth.RedirectOnFail }}
 {{- else }}
@@ -651,11 +651,11 @@ backend {{ $backend.ID }}
 {{- end }}
         {{- "" }} if !{ var(txn.auth_response_successful) -m bool }
         {{- if $auth.AllowedPath }} !{ path_beg {{ $auth.AllowedPath }} }{{ end }}
-        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- range $header, $attr := $auth.HeadersVars }}
     http-request set-header {{ $header }} %[var({{ $attr }})] if { var({{ $attr }}) -m found }
         {{- if $auth.AllowedPath }} !{ path_beg {{ $auth.AllowedPath }} }{{ end }}
-        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -694,10 +694,10 @@ backend {{ $backend.ID }}
 {{- range $path := ($rewriteCfg.Paths $i) }}
 {{- if eq $rewrite "/" }}
     http-request replace-path ^{{ $path.Path }}/?(.*)$     {{ $rewrite }}\1
-        {{- if $needACL }}     if { var(txn.pathID) {{ $path.ID }} }{{ end }}
+        {{- if $needACL }}     if { var(txn.pathID) -m str {{ $path.ID }} }{{ end }}
 {{- else }}
     http-request replace-path ^{{ $path.Path }}(.*)$       {{ $rewrite }}{{ if hasSuffix $path.Path "/" }}/{{ end }}\1
-        {{- if $needACL }}     if { var(txn.pathID) {{ $path.ID }} }{{ end }}
+        {{- if $needACL }}     if { var(txn.pathID) -m str {{ $path.ID }} }{{ end }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -715,7 +715,7 @@ backend {{ $backend.ID }}
         {{- if $hsts.Preload }}; preload{{ end }}"
         {{- if or $needSSLACL $pathIDs }} if
             {{- if $needSSLACL }} https-request{{ end }}
-            {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+            {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
         {{- end }}
 {{- end }}
 {{- end }}
@@ -727,40 +727,40 @@ backend {{ $backend.ID }}
 {{- $dynamicOrigin := gt (len $cors.AllowOrigin) 1 }}
 {{- if $dynamicOrigin }}
 {{- range $a1 := short 5 $cors.AllowOrigin }}
-    acl cors_allow_origin{{ $i }} var(txn.hdr_origin{{ $i }}){{ range $a := $a1 }} {{ $a }}{{ end }}
+    acl cors_allow_origin{{ $i }} var(txn.hdr_origin{{ $i }}) -m str{{ range $a := $a1 }} {{ $a }}{{ end }}
 {{- end }}
 {{- end }}
 {{- range $pathIDs := $corsCfg.PathIDs $i }}
     http-response set-header Access-Control-Allow-Origin
         {{- if $dynamicOrigin }}  "%[var(txn.hdr_origin{{ $i }})]"{{ else }}  "{{ index $cors.AllowOrigin 0 }}"{{ end }}
         {{- if or $dynamicOrigin $pathIDs }} if
-            {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+            {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
             {{- if $dynamicOrigin }} cors_allow_origin{{ $i }}{{ end }}
         {{- end }}
 {{- if $dynamicOrigin }}
     http-response set-header Access-Control-Allow-Origin  "{{ index $cors.AllowOrigin 0 }}"
-        {{- "" }} if{{ if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- "" }} if{{ if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
         {{- "" }} !cors_allow_origin{{ $i }}
 {{- end }}
     http-response set-header Access-Control-Allow-Methods "{{ $cors.AllowMethods }}"
-        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} if { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
     http-response set-header Access-Control-Allow-Headers "{{ $cors.AllowHeaders }}"
-        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} if { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- if $cors.AllowCredentials }}
     http-response set-header Access-Control-Allow-Credentials "{{ $cors.AllowCredentials }}"
-        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} if { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- if $cors.ExposeHeaders }}
     http-response set-header Access-Control-Expose-Headers "{{ $cors.ExposeHeaders }}"
-        {{- if $pathIDs }} if { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} if { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- if $dynamicOrigin }}
     http-response set-header Vary %[res.hdr(Vary)],Origin
         {{- "" }} if { res.hdr(Vary) -m found }
-        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
     http-response set-header Vary Origin
         {{- "" }} if ! { res.hdr(Vary) -m found }
-        {{- if $pathIDs }} { var(txn.pathID) {{ $pathIDs }} }{{ end }}
+        {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -1352,7 +1352,7 @@ frontend {{ $proxy__front_https }}
     http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }},_internal) if
         {{- if $match.First }} !tls-has-crt tls-need-crt
-        {{- else }} { var(req.tls_nocrt_redir) _internal }{{ end }}
+        {{- else }} { var(req.tls_nocrt_redir) -m str _internal }{{ end }}
 {{- end }}
 {{- end }}
 
@@ -1363,15 +1363,15 @@ frontend {{ $proxy__front_https }}
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }},_internal) if
         {{- if $match.First }} tls-has-invalid-crt tls-check-crt
-        {{- else }} { var(req.tls_invalidcrt_redir) _internal }{{ end }}
+        {{- else }} { var(req.tls_invalidcrt_redir) -m str _internal }{{ end }}
 {{- end }}
 {{- if and $mandatory $fmaps.TLSMissingCrtPagesMap.HasHost }}
     http-request redirect location %[var(req.tls_nocrt_redir)] code 303
-        {{- "" }} if { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) _internal }
+        {{- "" }} if { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) -m str _internal }
 {{- end }}
 {{- if $fmaps.TLSInvalidCrtPagesMap.HasHost }}
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303
-        {{- "" }} if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
+        {{- "" }} if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) -m str _internal }
 {{- end }}
 
 {{- end }}{{/* if $fmaps.TLSAuthList.HasHost */}}
@@ -1390,14 +1390,14 @@ frontend {{ $proxy__front_https }}
         {{- "" }} tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
 {{- if $fmaps.TLSNeedCrtList.HasHost }}
     http-request use-service lua.send-496 if
-        {{- "" }} { var(req.tls_nocrt_redir) _internal }
+        {{- "" }} { var(req.tls_nocrt_redir) -m str _internal }
 {{- /* HTTP 421 instead of 404 if missing sni or the provided one doesn't read client crt. */}}
 {{- /* Waiting move the tls-auth stuff to the backend to implement a proper config. */}}
     http-request use-service lua.send-421 if
         {{- "" }} !tls-has-crt tls-host-need-crt
 {{- end }}
     http-request use-service lua.send-495 if
-        {{- "" }} { var(req.tls_invalidcrt_redir) _internal }
+        {{- "" }} { var(req.tls_invalidcrt_redir) -m str _internal }
 {{- end }}
 
 {{- /*------------------------------------*/}}
