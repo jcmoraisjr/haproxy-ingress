@@ -85,6 +85,7 @@ type Global struct {
 	CustomProxy             map[string][]string
 	CustomSections          []string
 	CustomTCP               []string
+	HTTP2InitialWindowSize  int
 }
 
 // GlobalBindConfig ...

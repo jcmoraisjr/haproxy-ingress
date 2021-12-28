@@ -135,6 +135,9 @@ global
 {{- if $global.SSL.BackendCipherSuites }}
     ssl-default-server-ciphersuites {{ $global.SSL.BackendCipherSuites }}
 {{- end }}
+{{- if $global.HTTP2InitialWindowSize }}
+    tune.h2.initial-window-size {{ $global.HTTP2InitialWindowSize }}
+{{- end }}
 {{- range $snippet := $global.CustomConfig }}
     {{ $snippet }}
 {{- end }}

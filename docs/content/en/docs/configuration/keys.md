@@ -496,6 +496,7 @@ The table below describes all supported configuration keys.
 | [`waf-mode`](#waf)                                   | [deny\|detect]                          | Path    | `deny` (if waf is set) |
 | [`whitelist-source-range`](#allowlist)               | Comma-separated IPs or CIDRs            | Path    |                    |
 | [`worker-max-reloads`](#master-worker)               | number of reloads                       | Global  | `0`                |
+| ['http2-initial-window-size']                        | HTTP2 initial window size (bytes)       | Global  | `268435456`        |
 
 ---
 
@@ -2668,3 +2669,21 @@ The default behavior here is `deny` if `waf` is set to `modsecurity`.
 See also:
 
 * [Modsecurity](#modsecurity) configuration keys.
+
+## HTTP2 initial window size
+
+| Configuration key             | Scope    | Default     | Since  |
+|-------------------------------|----------|-------------|--------|
+| `http2-initial-window-size`   | `Global` | `268435456` | v0.13.6|
+
+This setting affects upload speeds over haproxy-ingress. Without a sufficiently large initial window size,
+uploads may appear slow if latency is high enough.
+For example, to sustain a 200Mbit connection using the default haproxy intial window size of `65535`,
+RTT cannot be higher than 2.6ms:
+`65535 / 25000000 = 0.0026214`
+
+Therefore, haproxy-ingress will apply a larger size by default. 
+
+See also:
+
+* https://cbonte.github.io/haproxy-dconv/2.2/configuration.html#tune.h2.initial-window-size

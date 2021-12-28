@@ -1155,6 +1155,7 @@ global
     ssl-default-bind-options no-sslv3
     ssl-default-server-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-server-ciphersuites TLS_AES_128_GCM_SHA256
+    tune.h2.initial-window-size 536870912
 defaults
     log global
     maxconn 2000
@@ -1213,6 +1214,7 @@ global
     ssl-default-bind-options no-sslv3
     ssl-default-server-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-server-ciphersuites TLS_AES_128_GCM_SHA256
+    tune.h2.initial-window-size 536870912
 defaults
     log global
     maxconn 2000
@@ -1274,6 +1276,7 @@ global
     ssl-default-bind-options no-sslv3
     ssl-default-server-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-server-ciphersuites TLS_AES_128_GCM_SHA256
+    tune.h2.initial-window-size 536870912
 <<defaults>>
 backend default_empty_8080
     mode http
@@ -1405,6 +1408,7 @@ global
     ssl-default-bind-options no-sslv3
     ssl-default-server-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-server-ciphersuites TLS_AES_128_GCM_SHA256
+    tune.h2.initial-window-size 536870912
 <<defaults>>
 backend default_empty_8080
     mode http
@@ -3730,6 +3734,7 @@ global
     ssl-default-bind-options no-sslv3
     ssl-default-server-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-server-ciphersuites TLS_AES_128_GCM_SHA256
+    tune.h2.initial-window-size 536870912
 <<defaults>>
 backend d1_app_8080
     mode http
@@ -4537,6 +4542,7 @@ func (c *testConfig) configGlobal(global *hatypes.Global) {
 	global.Timeout.Stop = "15m"
 	global.Timeout.Tunnel = "1h"
 	global.UseHTX = true
+	global.HTTP2InitialWindowSize = 268435456 * 2
 }
 
 var endpointS0 = &hatypes.Endpoint{
@@ -4638,7 +4644,8 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
     ssl-default-bind-options no-sslv3
     ssl-default-server-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
-    ssl-default-server-ciphersuites TLS_AES_128_GCM_SHA256`,
+    ssl-default-server-ciphersuites TLS_AES_128_GCM_SHA256
+    tune.h2.initial-window-size 536870912`,
 		"<<defaults>>": `defaults
     log global
     maxconn 2000

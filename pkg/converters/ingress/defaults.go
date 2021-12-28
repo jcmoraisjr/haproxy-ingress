@@ -114,5 +114,6 @@ func createDefaults() map[string]string {
 		types.GlobalUseForwardedProto:            "true",
 		types.GlobalUseHTX:                       "true",
 		types.GlobalDefaultBackendRedirectCode:   "302",
+		types.GlobalHTTP2InitialWindowSize:       "268435456",
 	}
 }

@@ -156,6 +156,7 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	d.global.Master.WorkerMaxReloads = mapper.Get(ingtypes.GlobalWorkerMaxReloads).Int()
 	d.global.StrictHost = mapper.Get(ingtypes.GlobalStrictHost).Bool()
 	d.global.UseHTX = mapper.Get(ingtypes.GlobalUseHTX).Bool()
+	d.global.HTTP2InitialWindowSize = mapper.Get(ingtypes.GlobalHTTP2InitialWindowSize).Int()
 	//
 	c.haproxy.Frontend().RedirectFromCode = mapper.Get(ingtypes.GlobalRedirectFromCode).Int()
 	c.haproxy.Frontend().RedirectToCode = mapper.Get(ingtypes.GlobalRedirectToCode).Int()

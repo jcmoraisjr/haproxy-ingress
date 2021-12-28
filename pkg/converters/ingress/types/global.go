@@ -111,4 +111,5 @@ const (
 	GlobalUseHTX                       = "use-htx"
 	GlobalUseProxyProtocol             = "use-proxy-protocol"
 	GlobalWorkerMaxReloads             = "worker-max-reloads"
+	GlobalHTTP2InitialWindowSize       = "http2-initial-window-size"
 )
