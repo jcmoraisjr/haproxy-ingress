@@ -1,4 +1,5 @@
 .vscode
+bin
 rootfs/haproxy-ingress-controller
 
 # IntelliJ

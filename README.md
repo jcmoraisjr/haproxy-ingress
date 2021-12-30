@@ -38,19 +38,67 @@ Updates made to the cluster are applied on the fly to the HAProxy instance.
 
 ## Develop HAProxy Ingress
 
-Building:
+The instructions below are valid for v0.14 and newer. See [v0.13](https://github.com/jcmoraisjr/haproxy-ingress/blob/release-0.13/README.md#develop-haproxy-ingress) branch for older versions.
+
+**Building and running locally:**
 
 ```
 mkdir -p $GOPATH/src/github.com/jcmoraisjr
 cd $GOPATH/src/github.com/jcmoraisjr
 git clone https://github.com/jcmoraisjr/haproxy-ingress.git
 cd haproxy-ingress
-make
+make run
 ```
 
-The following `make` targets are currently supported:
+Dependencies to run locally:
 
-* `install`: run `go install` which saves some building time.
-* `build` (default): compiles HAProxy Ingress and generates an ELF (Linux) executable at `rootfs/haproxy-ingress-controller` despite the source platform.
-* `test`: run unit tests
-* `image`: generates a Docker image tagged `localhost/haproxy-ingress:latest`
+* Golang
+* HAProxy compiled with `USE_OPENSSL=1` and `USE_LUA=1`
+* [golangci-lint](https://golangci-lint.run/) is used when running `make lint` or `make test` targets
+* Lua with `lua-json` (`luarocks install lua-json`) if using Auth External or OAuth
+* Kubernetes network should be reachable from the local machine for a proper e2e test
+
+**Building container image:**
+
+Fast build - cross compile for linux/amd64 (locally) and generate `localhost/haproxy-ingress:latest`:
+
+```
+make image
+```
+
+Official image - build in a multi-stage Dockerfile and generate `localhost/haproxy-ingress:latest`:
+
+```
+make docker-build
+```
+
+Deploy local image using Helm:
+
+```
+helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
+helm install haproxy-ingress haproxy-ingress/haproxy-ingress\
+  --create-namespace --namespace=ingress-controller\
+  --set controller.image.repository=localhost/haproxy-ingress\
+  --set controller.image.tag=latest\
+  --set controller.image.pullPolicy=Never
+```
+
+**make options:**
+
+The following `make` variables are supported:
+
+* `CONTROLLER_TAG` (defaults to `localhost/haproxy-ingress:latest`): tag name for `make image` and `make docker-build`.
+* `LOCAL_FS_PREFIX` (defaults to `/tmp/haproxy-ingress`): temporary directory for `make run`.
+* `KUBECONFIG` (defaults to `$KUBECONFIG`, or `$(HOME)/.kube/config` if the former is empty): Kubernetes from where to read Ingress configurations.
+* `CONTROLLER_CONFIGMAP`: `<namespace>/<name>` of the ConfigMap with global configurations.
+* `CONTROLLER_ARGS`: space separated list of additional command-line arguments.
+
+The following `make` targets are supported:
+
+* `build` (default): Compiles HAProxy Ingress using the default OS and arch, and generates an executable at `bin/controller`.
+* `run`: Runs HAProxy Ingress locally.
+* `lint`: Runs [`golangci-lint`](https://golangci-lint.run/).
+* `test`: Runs unit tests.
+* `linux-build`: Compiles HAProxy Ingress and generates an ELF (Linux) executable despite the source platform at `rootfs/haproxy-ingress-controller`. Used by `image` step.
+* `image`: Compiles HAProxy Ingress locally and generates a Docker image.
+* `docker-build`: Compiles HAProxy Ingress and generates a Docker image using a multi-stage Dockerfile.

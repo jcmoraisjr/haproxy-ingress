@@ -38,12 +38,15 @@ import (
 type InstanceOptions struct {
 	AcmeSigner        acme.Signer
 	AcmeQueue         utils.Queue
+	RootFSPrefix      string
+	LocalFSPrefix     string
 	BackendShards     int
 	HAProxyCfgDir     string
 	HAProxyMapsDir    string
 	LeaderElector     types.LeaderElector
 	MasterSocket      string
 	AdminSocket       string
+	AcmeSocket        string
 	MaxOldConfigFiles int
 	Metrics           types.Metrics
 	ReloadQueue       utils.Queue
@@ -64,6 +67,7 @@ type Instance interface {
 	CalcIdleMetric()
 	Update(timer *utils.Timer)
 	Reload(timer *utils.Timer)
+	Shutdown()
 }
 
 // CreateInstance ...
@@ -150,10 +154,11 @@ func (i *instance) ParseTemplates() error {
 	i.haproxyTmpl.ClearTemplates()
 	i.mapsTmpl.ClearTemplates()
 	i.modsecTmpl.ClearTemplates()
+	templatesDir := i.options.RootFSPrefix + "/etc/templates"
 	if err := i.modsecTmpl.NewTemplate(
 		"modsecurity.tmpl",
-		"/etc/templates/modsecurity/modsecurity.tmpl",
-		"/etc/haproxy/spoe-modsecurity.conf",
+		templatesDir+"/modsecurity/modsecurity.tmpl",
+		i.options.HAProxyCfgDir+"/spoe-modsecurity.conf",
 		0,
 		1024,
 	); err != nil {
@@ -161,8 +166,8 @@ func (i *instance) ParseTemplates() error {
 	}
 	if err := i.haproxyTmpl.NewTemplate(
 		"haproxy.tmpl",
-		"/etc/templates/haproxy/haproxy.tmpl",
-		"/etc/haproxy/haproxy.cfg",
+		templatesDir+"/haproxy/haproxy.tmpl",
+		i.options.HAProxyCfgDir+"/haproxy.cfg",
 		i.options.MaxOldConfigFiles,
 		16384,
 	); err != nil {
@@ -170,7 +175,7 @@ func (i *instance) ParseTemplates() error {
 	}
 	err := i.mapsTmpl.NewTemplate(
 		"map.tmpl",
-		"/etc/templates/map/map.tmpl",
+		templatesDir+"/map/map.tmpl",
 		"",
 		0,
 		2048,
@@ -359,6 +364,24 @@ func (i *instance) Reload(timer *utils.Timer) {
 	i.logger.Info(message)
 }
 
+func (i *instance) Shutdown() {
+	if !i.up || i.config.Global().External.IsExternal() {
+		return
+	}
+	i.logger.Info("shutting down embedded haproxy")
+	out, err := exec.Command(
+		i.options.RootFSPrefix+"/haproxy-shutdown.sh",
+		i.options.LocalFSPrefix,
+	).CombinedOutput()
+	outstr := string(out)
+	if outstr != "" {
+		i.logger.Warn("output from the shutdown process: %v", outstr)
+	}
+	if err != nil {
+		i.logger.Error("error shutting down haproxy: %v", err)
+	}
+}
+
 func (i *instance) logChanged() {
 	hostsAdd := i.config.Hosts().ItemsAdd()
 	if len(hostsAdd) < 100 {
@@ -516,7 +539,13 @@ func (i *instance) reloadEmbedded() error {
 		state = "1"
 	}
 	// TODO Move all magic strings to a single place
-	out, err := exec.Command("/haproxy-reload.sh", i.options.ReloadStrategy, i.options.HAProxyCfgDir, state).CombinedOutput()
+	out, err := exec.Command(
+		i.options.RootFSPrefix+"/haproxy-reload.sh",
+		i.options.ReloadStrategy,
+		i.options.HAProxyCfgDir,
+		i.options.LocalFSPrefix,
+		state,
+	).CombinedOutput()
 	outstr := string(out)
 	if len(outstr) > 0 {
 		i.logger.Warn("output from haproxy:\n%v", outstr)

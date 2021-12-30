@@ -27,11 +27,14 @@ import (
 
 // Default<Type>Directory defines the location where HAProxy Ingress' generated
 // files should be created.
+//
+// These vars are dynamically changed, see launch.go
 var (
 	DefaultCrtDirectory     = "/var/lib/haproxy/crt"
 	DefaultDHParamDirectory = "/var/lib/haproxy/dhparam"
 	DefaultCACertsDirectory = "/var/lib/haproxy/cacerts"
 	DefaultCrlDirectory     = "/var/lib/haproxy/crl"
+	DefaultVarRunDirectory  = "/var/run/haproxy"
 	DefaultMapsDirectory    = "/etc/haproxy/maps"
 )
 

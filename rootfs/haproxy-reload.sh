@@ -43,11 +43,12 @@ set -e
 
 PARAM_STRATEGY="$1"
 PARAM_CFG="$2"
-PARAM_STATE="${3:-0}"
+PARAM_LOCAL_FS_PREFIX="$3"
+PARAM_STATE="${4:-0}"
 
-HAPROXY_SOCKET=/var/run/haproxy/admin.sock
-HAPROXY_STATE=/var/lib/haproxy/state-global
-HAPROXY_PID=/var/run/haproxy/haproxy.pid
+HAPROXY_SOCKET="${PARAM_LOCAL_FS_PREFIX}/var/run/haproxy/admin.sock"
+HAPROXY_STATE="${PARAM_LOCAL_FS_PREFIX}/var/lib/haproxy/state-global"
+HAPROXY_PID="${PARAM_LOCAL_FS_PREFIX}/var/run/haproxy/haproxy.pid"
 OLD_PID=$(cat "$HAPROXY_PID" 2>/dev/null || :)
 
 # Only create the state file if the configuration need it

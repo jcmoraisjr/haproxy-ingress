@@ -98,7 +98,7 @@ func (c *config) SyncConfig() {
 		// frontend with `inspect-delay` and `req.ssl_sni`
 		bindName := "_https_socket"
 		c.frontend.BindName = bindName
-		c.frontend.BindSocket = fmt.Sprintf("unix@/var/run/haproxy/%s.sock", bindName)
+		c.frontend.BindSocket = fmt.Sprintf("unix@%s/var/run/haproxy/%s.sock", c.global.LocalFSPrefix, bindName)
 		c.frontend.AcceptProxy = true
 	} else {
 		// One single HAProxy's frontend and bind

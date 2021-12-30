@@ -43,6 +43,10 @@ discovery is attempted.`)
 		kubeConfigFile = flags.String("kubeconfig", "",
 			`Path to kubeconfig file with authorization and master location information.`)
 
+		localFSPrefix = flags.String("local-filesystem-prefix", "",
+			`Defines the prefix of a temporary directory HAProxy Ingress should create and
+maintain all the configuration files. Useful for local deployment.`)
+
 		disableAPIWarnings = flags.Bool("disable-api-warnings", false,
 			`Disable warnings from the API server.`)
 
@@ -403,15 +407,18 @@ tracked.`)
 		glog.Fatalf("resync period (%vs) is too low", resyncPeriod.Seconds())
 	}
 
-	for _, dir := range []string{
-		ingress.DefaultCrtDirectory,
-		ingress.DefaultDHParamDirectory,
-		ingress.DefaultCACertsDirectory,
-		ingress.DefaultCrlDirectory,
-		ingress.DefaultMapsDirectory,
+	for _, dir := range []*string{
+		&ingress.DefaultCrtDirectory,
+		&ingress.DefaultDHParamDirectory,
+		&ingress.DefaultCACertsDirectory,
+		&ingress.DefaultCrlDirectory,
+		&ingress.DefaultVarRunDirectory,
+		&ingress.DefaultMapsDirectory,
 	} {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			glog.Fatalf("Failed to mkdir %s: %v", dir, err)
+		// TODO evolve this ugly trick to a proper struct that allows custom configuration
+		*dir = *localFSPrefix + *dir
+		if err := os.MkdirAll(*dir, 0755); err != nil {
+			glog.Fatalf("Failed to mkdir %s: %v", *dir, err)
 		}
 	}
 
@@ -477,6 +484,7 @@ tracked.`)
 		ReloadStrategy:           *reloadStrategy,
 		MaxOldConfigFiles:        *maxOldConfigFiles,
 		ValidateConfig:           *validateConfig,
+		LocalFSPrefix:            *localFSPrefix,
 		TCPConfigMapName:         *tcpConfigMapName,
 		AnnPrefix:                annPrefixList,
 		DefaultSSLCertificate:    *defSSLCertificate,

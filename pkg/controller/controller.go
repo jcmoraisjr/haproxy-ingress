@@ -118,11 +118,18 @@ func (hc *HAProxyController) configController() {
 	if hc.cfg.ReloadInterval.Seconds() > 0 {
 		hc.reloadQueue = utils.NewRateLimitingQueue(float32(1/hc.cfg.ReloadInterval.Seconds()), hc.reloadHAProxy)
 	}
+	var rootFSPrefix string
+	if hc.cfg.LocalFSPrefix != "" {
+		rootFSPrefix = "rootfs"
+	}
 	instanceOptions := haproxy.InstanceOptions{
-		HAProxyCfgDir:     "/etc/haproxy",
+		RootFSPrefix:      rootFSPrefix,
+		LocalFSPrefix:     hc.cfg.LocalFSPrefix,
+		HAProxyCfgDir:     hc.cfg.LocalFSPrefix + "/etc/haproxy",
 		HAProxyMapsDir:    ingress.DefaultMapsDirectory,
 		MasterSocket:      hc.cfg.MasterSocket,
-		AdminSocket:       "/var/run/haproxy/admin.sock",
+		AdminSocket:       ingress.DefaultVarRunDirectory + "/admin.sock",
+		AcmeSocket:        ingress.DefaultVarRunDirectory + "/acme.sock",
 		BackendShards:     hc.cfg.BackendShards,
 		AcmeSigner:        acmeSigner,
 		AcmeQueue:         hc.acmeQueue,
@@ -145,8 +152,10 @@ func (hc *HAProxyController) configController() {
 		Cache:            hc.cache,
 		Tracker:          hc.tracker,
 		DynamicConfig:    hc.dynamicConfig,
+		LocalFSPrefix:    hc.cfg.LocalFSPrefix,
 		MasterSocket:     instanceOptions.MasterSocket,
 		AdminSocket:      instanceOptions.AdminSocket,
+		AcmeSocket:       instanceOptions.AcmeSocket,
 		AnnotationPrefix: hc.cfg.AnnPrefix,
 		DefaultBackend:   hc.cfg.DefaultService,
 		DefaultCrtSecret: hc.cfg.DefaultSSLCertificate,
@@ -174,8 +183,7 @@ func (hc *HAProxyController) startServices() {
 		go hc.leaderelector.Run(hc.stopCh)
 	}
 	if hc.cfg.AcmeServer {
-		// TODO deduplicate acme socket
-		server := acme.NewServer(hc.logger, "/var/run/haproxy/acme.sock", hc.cache)
+		server := acme.NewServer(hc.logger, hc.converterOptions.AcmeSocket, hc.cache)
 		// TODO move goroutine from the server to the controller
 		if err := server.Listen(hc.stopCh); err != nil {
 			hc.logger.Fatal("error creating the acme server listener: %v", err)
@@ -189,6 +197,7 @@ func (hc *HAProxyController) startServices() {
 }
 
 func (hc *HAProxyController) stopServices() {
+	hc.instance.Shutdown()
 	hc.ingressQueue.ShutDown()
 	if hc.reloadQueue != nil {
 		hc.reloadQueue.ShutDown()

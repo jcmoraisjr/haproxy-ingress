@@ -91,7 +91,7 @@ global
 {{- end }}
 {{- if $global.LoadServerState }}
     server-state-file state-global
-    server-state-base /var/lib/haproxy/
+    server-state-base {{ $global.LocalFSPrefix }}/var/lib/haproxy/
 {{- end }}
     maxconn {{ $global.MaxConn }}
 {{- if $global.Timeout.Stop }}
@@ -105,10 +105,10 @@ global
     log-tag {{ $global.Syslog.Tag }}
 {{- end }}
 {{- if or (not $global.External.IsExternal) $global.External.HasLua }}
-    lua-prepend-path /etc/haproxy/lua/?.lua
-    lua-load /etc/haproxy/lua/auth-request.lua
+    lua-prepend-path {{ $global.LocalFSPrefix }}/etc/haproxy/lua/?.lua
+    lua-load {{ $global.LocalFSPrefix }}/etc/haproxy/lua/auth-request.lua
 {{- end }}
-    lua-load /etc/haproxy/lua/services.lua
+    lua-load {{ $global.LocalFSPrefix }}/etc/haproxy/lua/services.lua
 {{- if $global.SSL.DHParam.Filename }}
     ssl-dh-param-file {{ $global.SSL.DHParam.Filename }}
 {{- else }}
@@ -573,7 +573,7 @@ backend {{ $backend.ID }}
 
 {{- /*------------------------------------*/}}
 {{- if and $global.ModSecurity.Endpoints $backend.HasModsec }}
-    filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
+    filter spoe engine modsecurity config {{ $global.LocalFSPrefix }}/etc/haproxy/spoe-modsecurity.conf
 {{- $wafCfg := $backend.PathConfig "WAF" }}
 {{- range $i, $waf := $wafCfg.Items }}
 {{- if eq $waf.Mode "deny" }}

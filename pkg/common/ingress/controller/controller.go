@@ -74,6 +74,7 @@ type Configuration struct {
 	ReloadStrategy    string
 	MaxOldConfigFiles int
 	ValidateConfig    bool
+	LocalFSPrefix     string
 
 	ForceNamespaceIsolation bool
 	WaitBeforeShutdown      int

@@ -26,8 +26,10 @@ type ConverterOptions struct {
 	Cache            Cache
 	Tracker          Tracker
 	DynamicConfig    *DynamicConfig
+	LocalFSPrefix    string
 	MasterSocket     string
 	AdminSocket      string
+	AcmeSocket       string
 	DefaultConfig    func() map[string]string
 	DefaultBackend   string
 	DefaultCrtSecret string
