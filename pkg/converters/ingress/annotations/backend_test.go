@@ -1379,6 +1379,17 @@ func TestCustomConfig(t *testing.T) {
 			config:   "  http-request set-header x-id 1 if { path / }",
 			expected: []string{"  http-request set-header x-id 1 if { path / }"},
 		},
+		// 7
+		{
+			disabled: []string{"server", ""},
+			config: `
+  acl rootpath path /
+
+  http-request set-header x-id 1 if rootpath
+`,
+			source:   defaultSource,
+			expected: []string{"", "  acl rootpath path /", "", "  http-request set-header x-id 1 if rootpath"},
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
