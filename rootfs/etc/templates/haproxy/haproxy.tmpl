@@ -61,7 +61,7 @@
 {{- define "global" }}
 {{- $global := .p1 }}
 global
-{{- if $global.External.IsExternal }}
+{{- if $global.Master.IsMasterWorker }}
     master-worker{{ if not $global.Master.ExitOnFailure }} no-exit-on-failure{{ end }}
 {{- else }}
     daemon
@@ -97,7 +97,7 @@ global
 {{- if $global.Timeout.Stop }}
     hard-stop-after {{ $global.Timeout.Stop }}
 {{- end }}
-{{- if and $global.External.IsExternal $global.Master.WorkerMaxReloads }}
+{{- if and $global.Master.IsMasterWorker $global.Master.WorkerMaxReloads }}
     mworker-max-reloads {{ $global.Master.WorkerMaxReloads }}
 {{- end }}
 {{- if $global.Syslog.Endpoint }}

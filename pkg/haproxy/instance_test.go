@@ -1249,7 +1249,10 @@ func TestInstanceEmptyExternal(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	c.config.global.External.MasterSocket = "/tmp/master.sock"
+	c.instance.options.IsExternal = true
+	c.instance.options.IsMasterWorker = true
+	c.config.global.External.IsExternal = true
+	c.config.global.Master.IsMasterWorker = true
 	c.config.global.Master.WorkerMaxReloads = 20
 	c.config.global.Security.Username = "external"
 	c.config.global.Security.Groupname = "external"
@@ -4605,7 +4608,7 @@ var endpointS41h = &hatypes.Endpoint{
 
 var defaultLogging = `
 INFO (test) reload was skipped
-INFO haproxy successfully reloaded (embedded)`
+INFO haproxy successfully reloaded (embedded daemon)`
 
 func _yamlMarshal(in interface{}) string {
 	out, _ := yaml.Marshal(in)

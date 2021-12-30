@@ -27,6 +27,7 @@ type ConverterOptions struct {
 	Tracker          Tracker
 	DynamicConfig    *DynamicConfig
 	LocalFSPrefix    string
+	IsExternal       bool
 	MasterSocket     string
 	AdminSocket      string
 	AcmeSocket       string

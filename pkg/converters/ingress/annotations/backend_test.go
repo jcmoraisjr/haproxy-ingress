@@ -467,7 +467,7 @@ func TestAuthExternal(t *testing.T) {
 		c.haproxy.Frontend().AuthProxy.RangeStart = 4001
 		c.haproxy.Frontend().AuthProxy.RangeEnd = 4009
 		if test.isExternal {
-			c.haproxy.Global().External.MasterSocket = "/socket"
+			c.haproxy.Global().External.IsExternal = true
 		}
 		c.haproxy.Global().External.HasLua = test.hasLua
 		// backend is used by svc protocol
@@ -1881,7 +1881,7 @@ WARN oauth2_proxy on ingress 'default/ing1' needs Lua json module, install lua-j
 		c := setup(t)
 		d := c.createBackendMappingData("default/app", source, annDefault, test.ann, []string{})
 		if test.external {
-			c.haproxy.Global().External.MasterSocket = "/tmp/master.sock"
+			c.haproxy.Global().External.IsExternal = true
 		}
 		c.haproxy.Global().External.HasLua = test.haslua
 		if test.backend != "" {

@@ -17,9 +17,11 @@ limitations under the License.
 package socket
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -250,7 +252,7 @@ func HAProxyProcs(masterSocket HAProxySocket) (*ProcTable, error) {
 	for {
 		time.Sleep(wait)
 		out, err := masterSocket.Send(nil, "show proc")
-		if err == nil || !k8snet.IsConnectionRefused(err) {
+		if !waitHAProxy(masterSocket, err) {
 			if len(out) > 0 {
 				return buildProcTable(out[0]), err
 			}
@@ -265,6 +267,23 @@ func HAProxyProcs(masterSocket HAProxySocket) (*ProcTable, error) {
 			wait = wait + arithFactor
 		}
 	}
+}
+
+func waitHAProxy(sock HAProxySocket, err error) bool {
+	if err == nil {
+		// connection succeeded, no need to wait (wait = FALSE)
+		return false
+	}
+	if k8snet.IsConnectionRefused(err) {
+		// connection refused, give more time to haproxy (wait = TRUE)
+		return true
+	}
+	// now check if err (which is not nil) means unix socket not found
+	// should continue if socket not found, giving more time to haproxy create it
+	_, e := os.Stat(sock.Address())
+	notFound := e != nil && errors.Is(err, os.ErrNotExist)
+	// should wait (wait = TRUE) if file was not found
+	return notFound
 }
 
 // buildProcTable parses `show proc` output and creates a corresponding ProcTable

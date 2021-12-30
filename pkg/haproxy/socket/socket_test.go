@@ -214,6 +214,7 @@ func TestHAProxyProcs(t *testing.T) {
 	testCases := []struct {
 		cmdOutput []string
 		cmdError  error
+		hasSock   bool
 		expOutput *ProcTable
 		expError  bool
 	}{
@@ -225,6 +226,7 @@ func TestHAProxyProcs(t *testing.T) {
 		{
 			cmdError: fmt.Errorf("fail"),
 			expError: true,
+			hasSock:  true,
 		},
 		// 2
 		{
@@ -342,6 +344,7 @@ func TestHAProxyProcs(t *testing.T) {
 		cli := &clientMock{
 			cmdOutput: test.cmdOutput,
 			cmdError:  test.cmdError,
+			hasSock:   test.hasSock,
 		}
 		out, err := HAProxyProcs(cli)
 		if !reflect.DeepEqual(out, test.expOutput) {
@@ -418,9 +421,13 @@ type clientMock struct {
 	cmdOutput []string
 	cmdError  error
 	callCnt   int
+	hasSock   bool
 }
 
 func (c *clientMock) Address() string {
+	if c.hasSock {
+		return "/dev/null"
+	}
 	return ""
 }
 

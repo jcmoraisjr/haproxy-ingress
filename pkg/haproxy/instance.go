@@ -18,12 +18,14 @@ package haproxy
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
@@ -32,6 +34,7 @@ import (
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 // InstanceOptions ...
@@ -44,6 +47,8 @@ type InstanceOptions struct {
 	HAProxyCfgDir     string
 	HAProxyMapsDir    string
 	LeaderElector     types.LeaderElector
+	IsMasterWorker    bool
+	IsExternal        bool
 	MasterSocket      string
 	AdminSocket       string
 	AcmeSocket        string
@@ -73,6 +78,7 @@ type Instance interface {
 // CreateInstance ...
 func CreateInstance(logger types.Logger, options InstanceOptions) Instance {
 	return &instance{
+		waitProc:    make(chan struct{}),
 		logger:      logger,
 		options:     &options,
 		haproxyTmpl: template.CreateConfig(),
@@ -85,6 +91,7 @@ func CreateInstance(logger types.Logger, options InstanceOptions) Instance {
 
 type instance struct {
 	up          bool
+	waitProc    chan struct{}
 	failedSince *time.Time
 	logger      types.Logger
 	options     *InstanceOptions
@@ -343,7 +350,7 @@ func (i *instance) Reload(timer *utils.Timer) {
 	err := i.reloadHAProxy()
 	timer.Tick("reload_haproxy")
 	if err != nil {
-		i.logger.Error("error reloading server:\n%v", err)
+		i.logger.Error("error reloading server: %v", err)
 		i.updateSuccessful(false)
 		if i.options.TrackInstances {
 			i.conns.ReleaseLastInstance()
@@ -353,10 +360,12 @@ func (i *instance) Reload(timer *utils.Timer) {
 	i.up = true
 	i.updateSuccessful(true)
 	message := "haproxy successfully reloaded"
-	if i.config.Global().External.IsExternal() {
+	if i.options.IsExternal {
 		message += " (external)"
+	} else if i.options.IsMasterWorker {
+		message += " (embedded master-worker)"
 	} else {
-		message += " (embedded)"
+		message += " (embedded daemon)"
 	}
 	if i.options.TrackInstances {
 		message += "; tracked instance(s): " + strconv.Itoa(i.conns.OldInstancesCount())
@@ -365,7 +374,12 @@ func (i *instance) Reload(timer *utils.Timer) {
 }
 
 func (i *instance) Shutdown() {
-	if !i.up || i.config.Global().External.IsExternal() {
+	if !i.up || i.options.IsExternal {
+		// lifecycle isn't controlled by HAProxy Ingress
+		return
+	}
+	if i.options.IsMasterWorker {
+		<-i.waitProc
 		return
 	}
 	i.logger.Info("shutting down embedded haproxy")
@@ -509,7 +523,7 @@ func (i *instance) check() error {
 		i.logger.Info("(test) check was skipped")
 		return nil
 	}
-	if i.config.Global().External.IsExternal() {
+	if i.options.IsExternal {
 		// TODO check config on remote haproxy
 	} else {
 		// TODO Move all magic strings to a single place
@@ -527,13 +541,15 @@ func (i *instance) reloadHAProxy() error {
 		i.logger.Info("(test) reload was skipped")
 		return nil
 	}
-	if i.config.Global().External.IsExternal() {
+	if i.options.IsExternal {
 		return i.reloadExternal()
+	} else if i.options.IsMasterWorker {
+		return i.reloadEmbeddedMasterWorker()
 	}
-	return i.reloadEmbedded()
+	return i.reloadEmbeddedDaemon()
 }
 
-func (i *instance) reloadEmbedded() error {
+func (i *instance) reloadEmbeddedDaemon() error {
 	state := "0"
 	if i.config.Global().LoadServerState {
 		state = "1"
@@ -553,33 +569,104 @@ func (i *instance) reloadEmbedded() error {
 	return err
 }
 
+func (i *instance) reloadEmbeddedMasterWorker() error {
+	if !i.up {
+		go func() {
+			wait.Until(i.startHAProxySync, 4*time.Second, i.options.StopCh)
+			close(i.waitProc)
+		}()
+		if err := i.waitMaster(); err != nil {
+			return err
+		}
+	} else {
+		if err := i.reloadWorker(); err != nil {
+			return err
+		}
+	}
+	return i.waitWorker()
+}
+
+func (i *instance) startHAProxySync() {
+	cmd := exec.Command(
+		"haproxy",
+		"-W",
+		"-S", i.options.MasterSocket+",mode,600",
+		"-f", i.options.HAProxyCfgDir)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		i.logger.Error("error starting haproxy: %v", err)
+		return
+	}
+	wait := make(chan struct{})
+	go func() {
+		if err := cmd.Wait(); err != nil {
+			if exitError, ok := err.(*exec.ExitError); ok {
+				i.logger.Info("haproxy stopped (exit code: %d)", exitError.ExitCode())
+			} else {
+				i.logger.Error("error while running haproxy: %v", err)
+			}
+		} else {
+			i.logger.Info("haproxy stopped")
+		}
+		close(wait)
+	}()
+	select {
+	case <-i.options.StopCh:
+		i.logger.Info("stopping haproxy master process (pid: %d)", cmd.Process.Pid)
+		cmd.Process.Signal(syscall.SIGTERM)
+		<-wait
+	case <-wait:
+	}
+}
+
 func (i *instance) reloadExternal() error {
-	masterSock := i.conns.Master()
 	if !i.up {
 		// first run, wait until the external haproxy is running
 		// and successfully listening to the master socket.
-		var j int
-		i.logger.Info("waiting for the external haproxy...")
-		for {
-			var err error
-			if _, err = masterSock.Send(nil, "show proc"); err == nil {
-				break
-			}
-			j++
-			if j%10 == 0 {
-				i.logger.Info("cannot connect to the master socket '%s': %v", masterSock.Address(), err)
-			}
-			select {
-			case <-i.options.StopCh:
-				return fmt.Errorf("received sigterm")
-			case <-time.After(time.Second):
-			}
+		if err := i.waitMaster(); err != nil {
+			return err
 		}
 	}
-	if _, err := masterSock.Send(nil, "reload"); err != nil {
+	if err := i.reloadWorker(); err != nil {
+		return err
+	}
+	return i.waitWorker()
+}
+
+func (i *instance) waitMaster() error {
+	if i.options.IsExternal {
+		i.logger.Info("waiting for the external haproxy...")
+	} else {
+		i.logger.Info("waiting for master socket...")
+	}
+	errCh := make(chan error)
+	masterSock := i.conns.Master()
+	go func() {
+		_, err := socket.HAProxyProcs(masterSock)
+		errCh <- err
+	}()
+	for {
+		select {
+		case err := <-errCh:
+			return err
+		case <-i.options.StopCh:
+			return fmt.Errorf("received sigterm")
+		case <-time.After(10 * time.Second):
+			i.logger.Info("... still waiting for the master socket '%s'", masterSock.Address())
+		}
+	}
+}
+
+func (i *instance) reloadWorker() error {
+	if _, err := i.conns.Master().Send(nil, "reload"); err != nil {
 		return fmt.Errorf("error sending reload to master socket: %w", err)
 	}
-	out, err := socket.HAProxyProcs(masterSock)
+	return nil
+}
+
+func (i *instance) waitWorker() error {
+	out, err := socket.HAProxyProcs(i.conns.Master())
 	if err != nil {
 		return fmt.Errorf("error reading procs from master socket: %w", err)
 	}

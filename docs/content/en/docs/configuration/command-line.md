@@ -40,6 +40,7 @@ The following command-line options are supported:
 | [`--kubeconfig`](#kubeconfig)                           | /path/to/kubeconfig        | in cluster config       |       |
 | [`--local-filesystem-prefix`](#local-filesystem-prefix) | temporary base directory   |                         | v0.14 |
 | [`--master-socket`](#master-socket)                     | socket path                | use embedded haproxy    | v0.12 |
+| [`--master-worker`](#master-worker)                     | [true\|false]              | false                   | v0.14 |
 | [`--max-old-config-files`](#max-old-config-files)       | num of files               | `0`                     |       |
 | [`--profiling`](#stats)                                 | [true\|false]              | `true`                  |       |
 | [`--publish-service`](#publish-service)                 | namespace/servicename      |                         |       |
@@ -303,6 +304,18 @@ See also:
 
 * [example]({{% relref "../examples/external-haproxy" %}}) page.
 * [External]({{% relref "keys#external" %}}) and [Master-worker]({{% relref "keys#master-worker" %}}) configuration keys
+
+---
+
+## --master-worker
+
+Since v0.14
+
+Defines if haproxy should be configured in master-worker mode. If `false`, one single process
+is forked in the background. If `true`, a master process is started in the foreground and can
+be used to manage current and old worker processes. The default value is `false`, which
+preserves historical behavior of HAProxy Ingress. External HAProxy deployment needs
+master-worker mode and will enforce `--master-worker` as `true` if configured.
 
 ---
 

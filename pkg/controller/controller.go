@@ -118,6 +118,10 @@ func (hc *HAProxyController) configController() {
 	if hc.cfg.ReloadInterval.Seconds() > 0 {
 		hc.reloadQueue = utils.NewRateLimitingQueue(float32(1/hc.cfg.ReloadInterval.Seconds()), hc.reloadHAProxy)
 	}
+	masterSocket := hc.cfg.MasterSocket
+	if masterSocket == "" && hc.cfg.MasterWorker {
+		masterSocket = ingress.DefaultVarRunDirectory + "/master.sock"
+	}
 	var rootFSPrefix string
 	if hc.cfg.LocalFSPrefix != "" {
 		rootFSPrefix = "rootfs"
@@ -127,7 +131,9 @@ func (hc *HAProxyController) configController() {
 		LocalFSPrefix:     hc.cfg.LocalFSPrefix,
 		HAProxyCfgDir:     hc.cfg.LocalFSPrefix + "/etc/haproxy",
 		HAProxyMapsDir:    ingress.DefaultMapsDirectory,
-		MasterSocket:      hc.cfg.MasterSocket,
+		IsMasterWorker:    hc.cfg.MasterWorker,
+		IsExternal:        hc.cfg.MasterSocket != "",
+		MasterSocket:      masterSocket,
 		AdminSocket:       ingress.DefaultVarRunDirectory + "/admin.sock",
 		AcmeSocket:        ingress.DefaultVarRunDirectory + "/acme.sock",
 		BackendShards:     hc.cfg.BackendShards,
@@ -153,6 +159,7 @@ func (hc *HAProxyController) configController() {
 		Tracker:          hc.tracker,
 		DynamicConfig:    hc.dynamicConfig,
 		LocalFSPrefix:    hc.cfg.LocalFSPrefix,
+		IsExternal:       instanceOptions.IsExternal,
 		MasterSocket:     instanceOptions.MasterSocket,
 		AdminSocket:      instanceOptions.AdminSocket,
 		AcmeSocket:       instanceOptions.AcmeSocket,
