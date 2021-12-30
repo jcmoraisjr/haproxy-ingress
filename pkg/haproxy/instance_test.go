@@ -132,12 +132,12 @@ func TestBackends(t *testing.T) {
     # path01 = d1.local/
     # path02 = d1.local/sub
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
-    http-request set-var(txn.cors_max_age) str(86400) if METH_OPTIONS { var(txn.pathID) path01 }
-    http-request use-service lua.send-cors-preflight if METH_OPTIONS { var(txn.pathID) path01 }
-    http-response set-header Access-Control-Allow-Origin  "*" if { var(txn.pathID) path01 }
-    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) path01 }
-    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if { var(txn.pathID) path01 }
-    http-response set-header Access-Control-Allow-Credentials "true" if { var(txn.pathID) path01 }`,
+    http-request set-var(txn.cors_max_age) str(86400) if METH_OPTIONS { var(txn.pathID) -m str path01 }
+    http-request use-service lua.send-cors-preflight if METH_OPTIONS { var(txn.pathID) -m str path01 }
+    http-response set-header Access-Control-Allow-Origin  "*" if { var(txn.pathID) -m str path01 }
+    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) -m str path01 }
+    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if { var(txn.pathID) -m str path01 }
+    http-response set-header Access-Control-Allow-Credentials "true" if { var(txn.pathID) -m str path01 }`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
 d1.local#/sub path02
@@ -172,8 +172,8 @@ d1.local#/ path01`,
     # path02 = d1.local/path
     # path03 = d1.local/uri
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
-    http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload" if https-request { var(txn.pathID) path01 }
-    http-response set-header Strict-Transport-Security "max-age=15768000" if https-request { var(txn.pathID) path02 path03 }`,
+    http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload" if https-request { var(txn.pathID) -m str path01 }
+    http-response set-header Strict-Transport-Security "max-age=15768000" if https-request { var(txn.pathID) -m str path02 path03 }`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
 d1.local#/uri path03
@@ -228,9 +228,9 @@ d1.local#/ path01`,
     # path02 = d1.local/path2
     # path03 = d1.local/path3
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
-    http-request replace-path ^/path1(.*)$       /sub1\1     if { var(txn.pathID) path01 }
-    http-request replace-path ^/path2(.*)$       /sub2\1     if { var(txn.pathID) path02 }
-    http-request replace-path ^/path3(.*)$       /sub2\1     if { var(txn.pathID) path03 }`,
+    http-request replace-path ^/path1(.*)$       /sub1\1     if { var(txn.pathID) -m str path01 }
+    http-request replace-path ^/path2(.*)$       /sub2\1     if { var(txn.pathID) -m str path02 }
+    http-request replace-path ^/path3(.*)$       /sub2\1     if { var(txn.pathID) -m str path03 }`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
 d1.local#/path3 path03
@@ -248,7 +248,7 @@ d1.local#/path1 path01`,
     # path01 = d1.local/app
     # path02 = d1.local/path
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
-    http-request redirect scheme https if !https-request { var(txn.pathID) path01 }`,
+    http-request redirect scheme https if !https-request { var(txn.pathID) -m str path01 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
@@ -261,7 +261,7 @@ d1.local#/path1 path01`,
     # path01 = d1.local/app
     # path02 = d1.local/path
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
-    http-request redirect scheme https code 301 if !https-request { var(txn.pathID) path01 }`,
+    http-request redirect scheme https code 301 if !https-request { var(txn.pathID) -m str path01 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
@@ -277,11 +277,11 @@ d1.local#/path1 path01`,
     # path03 = d1.local/path
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
     acl allow_rule_src0 src 10.0.0.0/8 192.168.0.0/16
-    http-request deny if { var(txn.pathID) path01 path02 } !allow_rule_src0
+    http-request deny if { var(txn.pathID) -m str path01 path02 } !allow_rule_src0
     acl allow_rule_src1 src 192.168.95.0/24
     acl allow_exception_src1 src 192.168.95.11
-    http-request deny if { var(txn.pathID) path03 } allow_exception_src1
-    http-request deny if { var(txn.pathID) path03 } !allow_rule_src1`,
+    http-request deny if { var(txn.pathID) -m str path03 } allow_exception_src1
+    http-request deny if { var(txn.pathID) -m str path03 } !allow_rule_src1`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
 d1.local#/path path03
@@ -312,9 +312,9 @@ d1.local#/api path02`,
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map) if !{ var(txn.pathID) -m found }
     http-request set-var(txn.pathID) var(req.base),map_reg(/etc/haproxy/maps/_back_d1_app_8080_idpath__regex.map) if !{ var(txn.pathID) -m found }
     acl allow_rule_src0 src 172.17.0.0/16
-    http-request deny if { var(txn.pathID) path01 } !allow_rule_src0
+    http-request deny if { var(txn.pathID) -m str path01 } !allow_rule_src0
     acl allow_rule_src1 src 10.0.0.0/8 192.168.0.0/16
-    http-request deny if { var(txn.pathID) path02 path03 path04 path05 } !allow_rule_src1`,
+    http-request deny if { var(txn.pathID) -m str path02 path03 path04 path05 } !allow_rule_src1`,
 			expFronts: "<<frontends-default-match-4>>",
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__prefix_01.map": `
@@ -343,11 +343,11 @@ d1.local#/ path01`,
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
     acl allow_rule_src0 src 10.0.0.0/8
     acl allow_exception_src0 src 10.0.110.0/24
-    http-request deny if { var(txn.pathID) path01 } allow_exception_src0
-    http-request deny if { var(txn.pathID) path01 } !allow_rule_src0
+    http-request deny if { var(txn.pathID) -m str path01 } allow_exception_src0
+    http-request deny if { var(txn.pathID) -m str path01 } !allow_rule_src0
     acl deny_rule_src1 src 192.168.95.0/24
     acl deny_exception_src1 src 192.168.95.128/28
-    http-request deny if { var(txn.pathID) path02 } deny_rule_src1 !deny_exception_src1`,
+    http-request deny if { var(txn.pathID) -m str path02 } deny_rule_src1 !deny_exception_src1`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
 d1.local#/app3 path03
@@ -370,13 +370,13 @@ d1.local#/app1 path01`,
     # path04 = d1.local/app4
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
     acl allow_rule_src0 src 10.0.0.0/8
-    http-request deny if { var(txn.pathID) path01 } !allow_rule_src0
+    http-request deny if { var(txn.pathID) -m str path01 } !allow_rule_src0
     acl allow_exception_src1 src 10.0.110.0/24
-    http-request deny if { var(txn.pathID) path02 } allow_exception_src1
+    http-request deny if { var(txn.pathID) -m str path02 } allow_exception_src1
     acl deny_rule_src1 src 192.168.95.0/24
-    http-request deny if { var(txn.pathID) path03 } deny_rule_src1
+    http-request deny if { var(txn.pathID) -m str path03 } deny_rule_src1
     acl deny_exception_src2 src 192.168.95.128/28
-    http-request deny if { var(txn.pathID) path04 } !deny_exception_src2`,
+    http-request deny if { var(txn.pathID) -m str path04 } !deny_exception_src2`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
 d1.local#/app4 path04
@@ -401,7 +401,7 @@ d1.local#/app1 path01`,
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
     acl allow_rule_src1 src 1.1.1.1 1.1.1.2 1.1.1.3 1.1.1.4 1.1.1.5 1.1.1.6 1.1.1.7 1.1.1.8 1.1.1.9 1.1.1.10
     acl allow_rule_src1 src 1.1.1.11
-    http-request deny if { var(txn.pathID) path03 } !allow_rule_src1`,
+    http-request deny if { var(txn.pathID) -m str path03 } !allow_rule_src1`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
 d1.local#/path path03
@@ -459,7 +459,7 @@ d1.local#/api path02`,
     # path01 = d1.local/
     # path02 = d1.local/app
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
-    http-request use-service lua.send-413 if { var(txn.pathID) path02 } { req.body_size,sub(2048) gt 0 }`,
+    http-request use-service lua.send-413 if { var(txn.pathID) -m str path02 } { req.body_size,sub(2048) gt 0 }`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
 d1.local#/app path02
@@ -496,7 +496,7 @@ d1.local#/ path01`,
     # path01 = d1.local/app1
     # path02 = d1.local/app2
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
-    http-request deny if { var(txn.pathID) path02 }`,
+    http-request deny if { var(txn.pathID) -m str path02 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
@@ -511,10 +511,10 @@ d1.local#/ path01`,
     # path01 = d1.local/app1
     # path02 = d1.local/app2
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
-    http-request set-header X-Real-IP %[src] if { var(txn.pathID) path02 }
-    http-request lua.auth-request system_oauth_4180 /oauth2/auth if { var(txn.pathID) path02 }
-    http-request redirect location /oauth2/start?rd=%[path] if !{ path_beg /oauth2/ } !{ var(txn.auth_response_successful) -m bool } { var(txn.pathID) path02 }
-    http-request set-header X-Auth-Request-Email %[var(txn.auth_response_email)] if { var(txn.auth_response_email) -m found } { var(txn.pathID) path02 }`,
+    http-request set-header X-Real-IP %[src] if { var(txn.pathID) -m str path02 }
+    http-request lua.auth-request system_oauth_4180 /oauth2/auth if { var(txn.pathID) -m str path02 }
+    http-request redirect location /oauth2/start?rd=%[path] if !{ path_beg /oauth2/ } !{ var(txn.auth_response_successful) -m bool } { var(txn.pathID) -m str path02 }
+    http-request set-header X-Auth-Request-Email %[var(txn.auth_response_email)] if { var(txn.auth_response_email) -m found } { var(txn.pathID) -m str path02 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
@@ -1190,18 +1190,18 @@ backend d1_app_8080
     http-request redirect scheme https if !https-request
     acl allow_rule_src0 src 10.0.0.0/8
     http-request deny if !allow_rule_src0
-    http-request set-var(txn.cors_max_age) str(0) if METH_OPTIONS { var(txn.pathID) ` + pathIDs01_30 + ` }
-    http-request use-service lua.send-cors-preflight if METH_OPTIONS { var(txn.pathID) ` + pathIDs01_30 + ` }
-    http-request set-var(txn.cors_max_age) str(0) if METH_OPTIONS { var(txn.pathID) path31 }
-    http-request use-service lua.send-cors-preflight if METH_OPTIONS { var(txn.pathID) path31 }
-    http-response set-header Strict-Transport-Security "max-age=0" if { var(txn.pathID) ` + pathIDs01_30 + ` }
-    http-response set-header Strict-Transport-Security "max-age=0" if { var(txn.pathID) path31 }
-    http-response set-header Access-Control-Allow-Origin  "*" if { var(txn.pathID) ` + pathIDs01_30 + ` }
-    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) ` + pathIDs01_30 + ` }
-    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent" if { var(txn.pathID) ` + pathIDs01_30 + ` }
-    http-response set-header Access-Control-Allow-Origin  "*" if { var(txn.pathID) path31 }
-    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) path31 }
-    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent" if { var(txn.pathID) path31 }
+    http-request set-var(txn.cors_max_age) str(0) if METH_OPTIONS { var(txn.pathID) -m str ` + pathIDs01_30 + ` }
+    http-request use-service lua.send-cors-preflight if METH_OPTIONS { var(txn.pathID) -m str ` + pathIDs01_30 + ` }
+    http-request set-var(txn.cors_max_age) str(0) if METH_OPTIONS { var(txn.pathID) -m str path31 }
+    http-request use-service lua.send-cors-preflight if METH_OPTIONS { var(txn.pathID) -m str path31 }
+    http-response set-header Strict-Transport-Security "max-age=0" if { var(txn.pathID) -m str ` + pathIDs01_30 + ` }
+    http-response set-header Strict-Transport-Security "max-age=0" if { var(txn.pathID) -m str path31 }
+    http-response set-header Access-Control-Allow-Origin  "*" if { var(txn.pathID) -m str ` + pathIDs01_30 + ` }
+    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) -m str ` + pathIDs01_30 + ` }
+    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent" if { var(txn.pathID) -m str ` + pathIDs01_30 + ` }
+    http-response set-header Access-Control-Allow-Origin  "*" if { var(txn.pathID) -m str path31 }
+    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) -m str path31 }
+    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent" if { var(txn.pathID) -m str path31 }
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
 <<frontends-default>>
@@ -1327,11 +1327,11 @@ func TestInstanceFrontingProxy(t *testing.T) {
 		aclBackWithSockID = `
     acl fronting-proxy so_id 11
     acl https-request ssl_fc
-    acl https-request var(txn.proto) https`
+    acl https-request var(txn.proto) -m str https`
 		aclBackWithHdr = `
     acl fronting-proxy hdr(X-Forwarded-Proto) -m found
     acl https-request ssl_fc
-    acl https-request var(txn.proto) https`
+    acl https-request var(txn.proto) -m str https`
 		setHeaderWithACL = `
     http-request set-header X-SSL-Client-CN   %{+Q}[ssl_c_s_dn(cn)]   if local-offload
     http-request set-header X-SSL-Client-DN   %{+Q}[ssl_c_s_dn]       if local-offload
@@ -1614,9 +1614,9 @@ frontend _front_https
     http-request del-header X-SSL-Client-SHA1
     http-request del-header X-SSL-Client-Cert` + test.expectedACLFront + test.expectedSetvar + `
     http-request use-service lua.send-421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
-    http-request use-service lua.send-496 if { var(req.tls_nocrt_redir) _internal }
+    http-request use-service lua.send-496 if { var(req.tls_nocrt_redir) -m str _internal }
     http-request use-service lua.send-421 if !tls-has-crt tls-host-need-crt
-    http-request use-service lua.send-495 if { var(req.tls_invalidcrt_redir) _internal }
+    http-request use-service lua.send-495 if { var(req.tls_invalidcrt_redir) -m str _internal }
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     use_backend %[var(req.snibackend)] if { var(req.snibackend) -m found }
     default_backend _error404
@@ -1805,9 +1805,9 @@ backend d1_app_8080
     http-request set-var(txn.pathID) var(req.path),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__prefix_01.map)
     http-request set-var(txn.pathID) var(req.path),map_str(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__exact_02.map) if !{ var(txn.pathID) -m found }
     http-request set-var(txn.pathID) var(req.path),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__begin.map) if !{ var(txn.pathID) -m found }
-    http-request redirect scheme https if !https-request { var(txn.pathID) path01 }
-    http-request use-service lua.send-413 if { var(txn.pathID) path03 } { req.body_size,sub(32768) gt 0 }
-    http-request replace-path ^/app1/?(.*)$     /\1     if { var(txn.pathID) path02 }
+    http-request redirect scheme https if !https-request { var(txn.pathID) -m str path01 }
+    http-request use-service lua.send-413 if { var(txn.pathID) -m str path03 } { req.body_size,sub(32768) gt 0 }
+    http-request replace-path ^/app1/?(.*)$     /\1     if { var(txn.pathID) -m str path02 }
     server s1 172.17.0.11:8080 weight 100
 backend d2_app_8080
     mode http
@@ -1818,9 +1818,9 @@ backend d2_app_8080
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d2_app_8080_idpath__begin.map)
     http-request set-var(txn.pathID) var(req.path),map_str(/etc/haproxy/maps/_back_d2_app_8080_idpathdef__exact.map) if !{ var(txn.pathID) -m found }
     http-request set-var(txn.pathID) var(req.path),map_dir(/etc/haproxy/maps/_back_d2_app_8080_idpathdef__prefix.map) if !{ var(txn.pathID) -m found }
-    http-request redirect scheme https if !https-request { var(txn.pathID) path01 }
-    http-request use-service lua.send-413 if { var(txn.pathID) path03 } { req.body_size,sub(65536) gt 0 }
-    http-request replace-path ^/app12/?(.*)$     /\1     if { var(txn.pathID) path02 }
+    http-request redirect scheme https if !https-request { var(txn.pathID) -m str path01 }
+    http-request use-service lua.send-413 if { var(txn.pathID) -m str path03 } { req.body_size,sub(65536) gt 0 }
+    http-request replace-path ^/app12/?(.*)$     /\1     if { var(txn.pathID) -m str path02 }
     server s1 172.17.0.11:8080 weight 100
 backend default_default-backend_8080
     mode http
@@ -2245,15 +2245,15 @@ frontend _front_https
     http-request set-var(req.snibackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt
     http-request set-var(req.snibackend) var(req.base),map_reg(/etc/haproxy/maps/_front_https_sni__regex.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt
     http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower,map_str(/etc/haproxy/maps/_front_tls_missingcrt_pages__exact.map,_internal) if !tls-has-crt tls-need-crt
-    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower,map_reg(/etc/haproxy/maps/_front_tls_missingcrt_pages__regex.map,_internal) if { var(req.tls_nocrt_redir) _internal }
+    http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower,map_reg(/etc/haproxy/maps/_front_tls_missingcrt_pages__regex.map,_internal) if { var(req.tls_nocrt_redir) -m str _internal }
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map_str(/etc/haproxy/maps/_front_tls_invalidcrt_pages__exact.map,_internal) if tls-has-invalid-crt tls-check-crt
-    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map_reg(/etc/haproxy/maps/_front_tls_invalidcrt_pages__regex.map,_internal) if { var(req.tls_invalidcrt_redir) _internal }
-    http-request redirect location %[var(req.tls_nocrt_redir)] code 303 if { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) _internal }
-    http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
+    http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map_reg(/etc/haproxy/maps/_front_tls_invalidcrt_pages__regex.map,_internal) if { var(req.tls_invalidcrt_redir) -m str _internal }
+    http-request redirect location %[var(req.tls_nocrt_redir)] code 303 if { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) -m str _internal }
+    http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) -m str _internal }
     http-request use-service lua.send-421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
-    http-request use-service lua.send-496 if { var(req.tls_nocrt_redir) _internal }
+    http-request use-service lua.send-496 if { var(req.tls_nocrt_redir) -m str _internal }
     http-request use-service lua.send-421 if !tls-has-crt tls-host-need-crt
-    http-request use-service lua.send-495 if { var(req.tls_invalidcrt_redir) _internal }
+    http-request use-service lua.send-495 if { var(req.tls_invalidcrt_redir) -m str _internal }
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     use_backend %[var(req.snibackend)] if { var(req.snibackend) -m found }
     default_backend default_default-backend_8080
@@ -2964,7 +2964,7 @@ backend d1_app_8080
     # path01 = d1.local/
     # path02 = d1.local/admin
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
-    http-request auth` + realm + ` if { var(txn.pathID) path02 } !{ http_auth(` + test.listname + `) }
+    http-request auth` + realm + ` if { var(txn.pathID) -m str path02 } !{ http_auth(` + test.listname + `) }
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
 <<frontends-default>>
@@ -3223,7 +3223,7 @@ func TestModSecurity(t *testing.T) {
     # path01 = d1.local/sub
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
-    http-request deny if { var(txn.modsec.code) -m int gt 0 } { var(txn.pathID) path01 }`,
+    http-request deny if { var(txn.modsec.code) -m int gt 0 } { var(txn.pathID) -m str path01 }`,
 			modsecExp: `
     timeout connect 1s
     timeout server  2s
@@ -3358,9 +3358,9 @@ frontend _front_https
     http-request set-var(req.snibackend) var(req.snibase),map_reg(/etc/haproxy/maps/_front_https_sni__regex.map)
     http-request set-var(req.snibackend) var(req.base),map_reg(/etc/haproxy/maps/_front_https_sni__regex.map) if !{ var(req.snibackend) -m found } !tls-has-crt
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map_reg(/etc/haproxy/maps/_front_tls_invalidcrt_pages__regex.map,_internal) if tls-has-invalid-crt tls-check-crt
-    http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) _internal }
+    http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) -m str _internal }
     http-request use-service lua.send-421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
-    http-request use-service lua.send-495 if { var(req.tls_invalidcrt_redir) _internal }
+    http-request use-service lua.send-495 if { var(req.tls_invalidcrt_redir) -m str _internal }
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     use_backend %[var(req.snibackend)] if { var(req.snibackend) -m found }
     default_backend _error404
