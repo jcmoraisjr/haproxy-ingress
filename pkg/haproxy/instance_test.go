@@ -1804,13 +1804,16 @@ func TestInstanceTCPServices(t *testing.T) {
 
 	var h *hatypes.Host
 	var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
+	b.ModeTCP = true
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 	h = c.config.Hosts().AcquireHost("d1.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 
 	b2 := c.config.Backends().AcquireBackend("d2", "app", "8080")
+	b2.ModeTCP = true
 	b2.Endpoints = []*hatypes.Endpoint{endpointS21, endpointS22}
 	b3 := c.config.Backends().AcquireBackend("d3", "app", "8080")
+	b3.ModeTCP = true
 	b3.Endpoints = []*hatypes.Endpoint{endpointS31, endpointS32}
 
 	services := []struct {
@@ -1955,14 +1958,14 @@ func TestInstanceTCPServices(t *testing.T) {
 <<global>>
 <<defaults>>
 backend d1_app_8080
-    mode http
+    mode tcp
     server s1 172.17.0.11:8080 weight 100
 backend d2_app_8080
-    mode http
+    mode tcp
     server s21 172.17.0.121:8080 weight 100
     server s22 172.17.0.122:8080 weight 100
 backend d3_app_8080
-    mode http
+    mode tcp
     server s31 172.17.0.131:8080 weight 100
     server s32 172.17.0.132:8080 weight 100
 <<backends-default>>
