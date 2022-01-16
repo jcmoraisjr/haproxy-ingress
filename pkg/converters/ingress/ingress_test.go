@@ -17,6 +17,7 @@ limitations under the License.
 package ingress
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -1818,6 +1819,20 @@ WARN skipping TLS secret 'tls2' of Ingress 'default/echo2': TLS of tcp service p
   proxyprot: false
   tls: {}`,
 		},
+		// 18
+		{
+			ing: [][]string{
+				{"7001", "/", "echo1:8080", "tls1", "ingress.kubernetes.io/" + ingtypes.HostAuthTLSSecret + "=ca"},
+			},
+			expect: `
+- backends: []
+  defaultbackend: default_echo1_8080
+  port: 7001
+  proxyprot: false
+  tls:
+    tlsfilename: /tls/default/tls1.pem
+    cafilename: /tls/default/ca.pem`,
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
@@ -2353,6 +2368,7 @@ func setup(t *testing.T) *testConfig {
 		cache:   conv_helper.NewCacheMock(tracker),
 		logger:  logger,
 		tracker: tracker,
+		updater: &updaterMock{},
 	}
 	c.createSvc1("system/default", "8080", "172.17.0.99")
 	return c
@@ -2621,7 +2637,11 @@ func (u *updaterMock) UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *a
 	tcp.ProxyProt = mapper.Get(ingtypes.TCPTCPServiceProxyProto).Bool()
 }
 
-func (u *updaterMock) UpdateTCPHostConfig(tcp *hatypes.TCPServiceHost, mapper *annotations.Mapper) {
+func (u *updaterMock) UpdateTCPHostConfig(tcpPort *hatypes.TCPServicePort, tcpHost *hatypes.TCPServiceHost, mapper *annotations.Mapper) {
+	caSecret := mapper.Get(ingtypes.HostAuthTLSSecret).Value
+	if caSecret != "" {
+		tcpPort.TLS.CAFilename = fmt.Sprintf("/tls/default/%s.pem", caSecret)
+	}
 }
 
 func (u *updaterMock) UpdateHostConfig(host *hatypes.Host, mapper *annotations.Mapper) {

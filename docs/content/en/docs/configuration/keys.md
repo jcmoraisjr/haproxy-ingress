@@ -2539,7 +2539,9 @@ Due to the limited data that can be inspected on TCP requests, a limited number 
 
 * `Backend` and `Path` scoped configuration keys work, provided that they are not HTTP related - eg [Cors](#cors) and [HSTS](#hsts) are ignored by TCP services, on the other hand [balance algorithm](#balance-algorithm), [Allow list](#allowlist) and [Blue/green](#blue-green) work just like in the HTTP requests counterpart.
 * All `Global` configuration keys related with the whole haproxy process will also be applied to TCP services, like max connections or syslog configurations.
-* All `Host` scoped configuration keys are currently unsupported
+* Regarding `Host` scoped configuration keys:
+  * on v0.13, all `Host` scoped configuration keys are unsupported
+  * on v0.14, [auth-tls](#auth-tls) are supported
 
 Every TCP service port creates a dedicated haproxy frontend that can be [customized](#configuration-snippet) in three distinct ways:
 

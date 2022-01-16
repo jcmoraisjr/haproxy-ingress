@@ -62,6 +62,7 @@ type (
 	}
 	tlsMock struct {
 		TLSFilename string `yaml:",omitempty"`
+		CAFilename  string `yaml:",omitempty"`
 	}
 	// tcp
 	tcpServiceMock struct {
@@ -165,6 +166,7 @@ func MarshalTCPServices(hatcpserviceports ...*hatypes.TCPServicePort) string {
 			ProxyProt:      hasvc.ProxyProt,
 			TLS: tlsMock{
 				TLSFilename: hasvc.TLS.TLSFilename,
+				CAFilename:  hasvc.TLS.CAFilename,
 			},
 		}
 		tcpServices = append(tcpServices, svc)

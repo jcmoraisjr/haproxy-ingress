@@ -590,12 +590,11 @@ func (c *converter) fullSyncTCP() {
 	for _, tcpPort := range c.haproxy.TCPServices().Items() {
 		if ann, found := c.tcpsvcAnnotations[tcpPort]; found {
 			c.updater.UpdateTCPPortConfig(tcpPort, ann)
-			tcpHost := tcpPort.DefaultHost()
-			if tcpHost != nil {
-				c.updater.UpdateTCPHostConfig(tcpHost, ann)
+			if tcpHost := tcpPort.DefaultHost(); tcpHost != nil {
+				c.updater.UpdateTCPHostConfig(tcpPort, tcpHost, ann)
 			}
 			for _, tcpHost := range tcpPort.Hosts() {
-				c.updater.UpdateTCPHostConfig(tcpHost, ann)
+				c.updater.UpdateTCPHostConfig(tcpPort, tcpHost, ann)
 			}
 		}
 	}
@@ -964,6 +963,11 @@ func (c *converter) readAnnotations(source *annotations.Source, ann map[string]s
 			annTCP[key] = value
 		} else if _, isHostAnn := ingtypes.AnnHost[key]; isHostAnn {
 			annHost[key] = value
+			// TCP services read both TCP and Host scoped configuration keys
+			// in a single step. Our approach is to add all Host keys to the
+			// TCP mapper. We're concatenating them here instead of concatenate
+			// later when creating the TCP mapper.
+			annTCP[key] = value
 		} else {
 			annBack[key] = value
 		}
