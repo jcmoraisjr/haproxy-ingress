@@ -446,7 +446,7 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 		// tls secret
 		for _, hostname := range tls.Hosts {
 			host := c.addHost(hostname, source, annHost)
-			tlsPath := c.addTLS(source, hostname, tls.SecretName)
+			tlsPath := c.addTLS(source, tls.SecretName)
 			if host.TLS.TLSHash == "" {
 				host.TLS.TLSFilename = tlsPath.Filename
 				host.TLS.TLSHash = tlsPath.SHA1Hash
@@ -541,13 +541,14 @@ func (c *converter) syncIngressTCP(source *annotations.Source, ing *networking.I
 			}
 		}
 	}
-	addTCPTLSSecret := func(secretName, rawHostname string) {
+	for _, tls := range ing.Spec.TLS {
+		secretName := tls.SecretName
 		tcpPort := c.haproxy.TCPServices().FindTCPPort(tcpServicePort)
 		if tcpPort == nil {
 			c.logger.Warn("skipping TLS of tcp service on %v: backend was not configured", source)
 			return
 		}
-		tlsPath := c.addTLS(source, normalizeHostname(rawHostname, tcpServicePort), secretName)
+		tlsPath := c.addTLS(source, secretName)
 		if tcpPort.TLS.TLSHash == "" {
 			tcpPort.TLS.TLSFilename = tlsPath.Filename
 			tcpPort.TLS.TLSHash = tlsPath.SHA1Hash
@@ -560,14 +561,6 @@ func (c *converter) syncIngressTCP(source *annotations.Source, ing *networking.I
 			} else {
 				c.logger.Warn("skipping default TLS secret of %v: %s", source, msg)
 			}
-		}
-	}
-	for _, tls := range ing.Spec.TLS {
-		if len(tls.Hosts) == 0 {
-			addTCPTLSSecret(tls.SecretName, "")
-		}
-		for _, hostname := range tls.Hosts {
-			addTCPTLSSecret(tls.SecretName, hostname)
 		}
 	}
 }
@@ -906,7 +899,7 @@ func (c *converter) syncBackendEndpointHashes(backend *hatypes.Backend) {
 	}
 }
 
-func (c *converter) addTLS(source *annotations.Source, hostname, secretName string) convtypes.CrtFile {
+func (c *converter) addTLS(source *annotations.Source, secretName string) convtypes.CrtFile {
 	if secretName != "" {
 		tlsFile, err := c.cache.GetTLSSecretPath(
 			source.Namespace,
