@@ -194,8 +194,8 @@ type DrainConfig struct {
 
 // ExternalConfig ...
 type ExternalConfig struct {
-	HasLua       bool
-	MasterSocket string
+	HasLua     bool
+	IsExternal bool
 }
 
 // HealthzConfig ...
@@ -207,6 +207,7 @@ type HealthzConfig struct {
 // MasterConfig ...
 type MasterConfig struct {
 	ExitOnFailure    bool
+	IsMasterWorker   bool
 	WorkerMaxReloads int
 }
 

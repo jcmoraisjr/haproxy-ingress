@@ -1769,8 +1769,9 @@ See also:
 | `master-exit-on-failure` | `Global` | `true`  | v0.12 |
 | `worker-max-reloads`     | `Global` | `0`     | v0.12 |
 
-Configures master-worker related options. These options are only used when an
-external haproxy instance is configured.
+Configures master-worker related options. These options are only used when
+[`--master-worker`]({{% relref "command-line#master-worker" %}})
+command-line option is configured as `true`.
 
 * `master-exit-on-failure`: If `true`, kill all the remaining workers and exit
 from master in the case of an unexpected failure of a worker, eg a segfault.
@@ -1782,10 +1783,10 @@ websockets, and clusters that frequently changes and forces haproxy to reload.
 
 See also:
 
-* [Example]({{% relref "/docs/examples/external-haproxy" %}}) page
+* [External HAProxy example]({{% relref "/docs/examples/external-haproxy" %}}) page
 * https://cbonte.github.io/haproxy-dconv/2.2/configuration.html#3.1-master-worker
 * https://cbonte.github.io/haproxy-dconv/2.2/configuration.html#mworker-max-reloads
-* [master-socket]({{% relref "command-line#master-socket" %}}) command-line option
+* [master-socket]({{% relref "command-line#master-socket" %}}) and [master-worker]({{% relref "command-line#master-worker" %}}) command-line options
 
 ---
 

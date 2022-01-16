@@ -119,7 +119,7 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 		path.AuthExternal.AlwaysDeny = true
 
 		external := c.haproxy.Global().External
-		if external.IsExternal() && !external.HasLua {
+		if external.IsExternal && !external.HasLua {
 			c.logger.Warn("external authentication on %v needs Lua json module, install lua-json4 and enable 'external-has-lua' global config", url.Source)
 			continue
 		}
@@ -677,7 +677,7 @@ func (c *updater) buildBackendOAuth(d *backData) {
 			continue
 		}
 		external := c.haproxy.Global().External
-		if external.IsExternal() && !external.HasLua {
+		if external.IsExternal && !external.HasLua {
 			c.logger.Warn("oauth2_proxy on %v needs Lua json module, install lua-json4 and enable 'external-has-lua' global config", oauth.Source)
 			continue
 		}

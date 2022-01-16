@@ -55,6 +55,7 @@ type GenericController struct {
 // Configuration contains all the settings required by an Ingress controller
 type Configuration struct {
 	Client       types.Client
+	MasterWorker bool
 	MasterSocket string
 
 	RateLimitUpdate  float32

@@ -130,11 +130,6 @@ func (c *AcmeCerts) AssignPreferredChain(preferredChain string) error {
 	return nil
 }
 
-// IsExternal ...
-func (e *ExternalConfig) IsExternal() bool {
-	return e.MasterSocket != ""
-}
-
 func (dns *DNSConfig) String() string {
 	return fmt.Sprintf("%+v", *dns)
 }

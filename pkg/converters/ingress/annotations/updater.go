@@ -151,9 +151,10 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	d.global.DrainSupport.Redispatch = mapper.Get(ingtypes.GlobalDrainSupportRedispatch).Bool()
 	d.global.Cookie.Key = mapper.Get(ingtypes.GlobalCookieKey).Value
 	d.global.External.HasLua = mapper.Get(ingtypes.GlobalExternalHasLua).Bool()
-	d.global.External.MasterSocket = c.options.MasterSocket
+	d.global.External.IsExternal = c.options.IsExternal
 	d.global.LoadServerState = mapper.Get(ingtypes.GlobalLoadServerState).Bool()
 	d.global.Master.ExitOnFailure = mapper.Get(ingtypes.GlobalMasterExitOnFailure).Bool()
+	d.global.Master.IsMasterWorker = c.options.MasterSocket != ""
 	d.global.Master.WorkerMaxReloads = mapper.Get(ingtypes.GlobalWorkerMaxReloads).Int()
 	d.global.StrictHost = mapper.Get(ingtypes.GlobalStrictHost).Bool()
 	d.global.UseHTX = mapper.Get(ingtypes.GlobalUseHTX).Bool()

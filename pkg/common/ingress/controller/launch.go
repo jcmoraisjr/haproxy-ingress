@@ -92,6 +92,12 @@ declare neither the kubernetes.io/ingress.class annotation nor the
 		watchGateway = flags.Bool("watch-gateway", false,
 			`Watch and parse resources from the Gateway API`)
 
+		masterWorker = flags.Bool("master-worker", false,
+			`Defines if haproxy should be configured in master-worker mode. If 'false', one
+single process is forked in the background. If 'true', a master process is
+started in the foreground and can be used to manage current and old worker
+processes.`)
+
 		masterSocket = flags.String("master-socket", "",
 			`Defines the master CLI unix socket of an external HAProxy running in
 master-worker mode. Defaults to use the embedded HAProxy if not declared.`)
@@ -312,6 +318,20 @@ tracked.`)
 		glog.Infof("watching for Gateway API resources - --watch-gateway is true")
 	}
 
+	masterWorkerCfg := *masterWorker
+	if !masterWorkerCfg && *masterSocket != "" {
+		// TODO Change to FATAL when default masterWorker changes to true
+		glog.Warningf("changing --master-worker=true due to external haproxy configuration")
+		masterWorkerCfg = true
+	}
+	if *masterSocket != "" {
+		glog.Infof("running external haproxy, master unix socket: %s", *masterSocket)
+	} else if masterWorkerCfg {
+		glog.Info("running embedded haproxy, mode is master-worker")
+	} else {
+		glog.Info("running embedded haproxy, mode is daemon")
+	}
+
 	if !(*reloadStrategy == "native" || *reloadStrategy == "reusesocket" || *reloadStrategy == "multibinder") {
 		glog.Fatalf("Unsupported reload strategy: %v", *reloadStrategy)
 	}
@@ -459,6 +479,7 @@ tracked.`)
 		UpdateStatus:             *updateStatus,
 		ElectionID:               *electionID,
 		Client:                   kubeClient,
+		MasterWorker:             masterWorkerCfg,
 		MasterSocket:             *masterSocket,
 		AcmeServer:               *acmeServer,
 		AcmeCheckPeriod:          *acmeCheckPeriod,
