@@ -669,6 +669,7 @@ backend {{ $backend.ID }}
         {{- if $cookie.Preserve }} preserve{{ end }}
         {{- if $cookie.SameSite }} attr SameSite=None secure{{ end }}
         {{- if $cookie.Keywords }} {{ $cookie.Keywords }}{{ end }}
+        {{- if $cookie.Domain }} domain {{ $cookie.Domain }}{{ end }}
         {{- if $cookie.Shared }}
             {{- range $hostname := $backend.Hostnames }} domain {{ $hostname }}{{ end }}
         {{- end }}
