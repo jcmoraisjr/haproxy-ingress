@@ -67,11 +67,19 @@ func (c *updater) buildBackendAffinity(d *backData) {
 		// just warn, no error, for keeping backwards compatibility where "preserve" may have been used in the "keywords" section
 		c.logger.Warn("session-cookie-keywords on %s contains 'preserve'; consider using 'session-cookie-preserve' instead for better dynamic update cookie persistence", keywords.Source)
 	}
+	domain := d.mapper.Get(ingtypes.BackSessionCookieDomain).Value
 	d.backend.Cookie.Keywords = keywordsValue
+	d.backend.Cookie.Domain = domain
 	d.backend.Cookie.Dynamic = d.mapper.Get(ingtypes.BackSessionCookieDynamic).Bool()
 	d.backend.Cookie.Preserve = d.mapper.Get(ingtypes.BackSessionCookiePreserve).Bool()
 	d.backend.Cookie.SameSite = d.mapper.Get(ingtypes.BackSessionCookieSameSite).Bool()
-	d.backend.Cookie.Shared = d.mapper.Get(ingtypes.BackSessionCookieShared).Bool()
+	shared := d.mapper.Get(ingtypes.BackSessionCookieShared)
+	if domain == "" {
+		d.backend.Cookie.Shared = shared.Bool()
+	} else if shared.Bool() {
+		c.logger.Warn("ignoring '%s' configuration on %s, domain is configured as '%s', which has precedence",
+			ingtypes.BackSessionCookieShared, shared.Source, domain)
+	}
 
 	cookieStrategy := d.mapper.Get(ingtypes.BackSessionCookieValue)
 	switch cookieStrategy.Value {

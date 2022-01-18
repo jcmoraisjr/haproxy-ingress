@@ -158,6 +158,24 @@ func TestAffinity(t *testing.T) {
 			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "insert", Dynamic: false, Keywords: "indirect nocache httponly"},
 			expLogging: "WARN invalid session-cookie-value-strategy 'err' on ingress 'default/ing1', using 'server-name' instead",
 		},
+		// 13
+		{
+			ann: map[string]string{
+				ingtypes.BackAffinity:            "cookie",
+				ingtypes.BackSessionCookieDomain: "example.com",
+			},
+			expCookie: hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "insert", Domain: "example.com", Keywords: "indirect nocache httponly"},
+		},
+		// 14
+		{
+			ann: map[string]string{
+				ingtypes.BackAffinity:            "cookie",
+				ingtypes.BackSessionCookieDomain: "example.com",
+				ingtypes.BackSessionCookieShared: "true",
+			},
+			expCookie:  hatypes.Cookie{Name: "INGRESSCOOKIE", Strategy: "insert", Domain: "example.com", Keywords: "indirect nocache httponly"},
+			expLogging: "WARN ignoring 'session-cookie-shared' configuration on ingress 'default/ing1', domain is configured as 'example.com', which has precedence",
+		},
 	}
 
 	source := &Source{

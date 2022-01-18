@@ -153,6 +153,7 @@ const (
 	BackSecureVerifyCASecret   = "secure-verify-ca-secret"
 	BackSecureVerifyHostname   = "secure-verify-hostname"
 	BackServiceUpstream        = "service-upstream"
+	BackSessionCookieDomain    = "session-cookie-domain"
 	BackSessionCookieDynamic   = "session-cookie-dynamic"
 	BackSessionCookieKeywords  = "session-cookie-keywords"
 	BackSessionCookieName      = "session-cookie-name"
