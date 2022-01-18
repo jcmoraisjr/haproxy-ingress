@@ -753,6 +753,7 @@ type UserlistConfig struct {
 // Cookie ...
 type Cookie struct {
 	Name     string
+	Domain   string
 	Dynamic  bool
 	Preserve bool
 	SameSite bool

@@ -89,6 +89,16 @@ func TestBackends(t *testing.T) {
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.Cookie.Name = "ingress-controller"
+				b.Cookie.Domain = "example.com"
+				b.Cookie.Strategy = "insert"
+				b.Cookie.Keywords = "indirect nocache httponly"
+			},
+			expected: `
+    cookie ingress-controller insert indirect nocache httponly domain example.com`,
+		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
 				b.Cookie.Name = "Ingress"
 				b.Cookie.Strategy = "insert"
 				b.Cookie.Keywords = "indirect nocache httponly"
