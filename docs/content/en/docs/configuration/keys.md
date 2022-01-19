@@ -297,7 +297,7 @@ The table below describes all supported configuration keys.
 | [`backend-check-interval`](#health-check)            | time with suffix                        | Backend | `2s`               |
 | [`backend-protocol`](#backend-protocol)              | [h1\|h2\|h1-ssl\|h2-ssl]                | Backend | `h1`               |
 | [`backend-server-naming`](#backend-server-naming)    | [sequence\|ip\|pod]                     | Backend | `sequence`         |
-| [`backend-server-slots-increment`](#dynamic-scaling) | number of slots                         | Backend | `32`               |
+| [`backend-server-slots-increment`](#dynamic-scaling) | number of slots                         | Backend | `1`                |
 | [`balance-algorithm`](#balance-algorithm)            | algorithm name                          | Backend | `roundrobin`       |
 | [`bind-fronting-proxy`](#bind)                       | ip + port                               | Global  |                    |
 | [`bind-http`](#bind)                                 | ip + port                               | Global  |                    |
