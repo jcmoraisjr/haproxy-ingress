@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.12!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.13.6](#v0136)
+  * [Reference](#reference-r6)
+  * [Release notes](#release-notes-r6)
+  * [Fixes and improvements](#fixes-and-improvements-r6)
 * [v0.13.5](#v0135)
   * [Reference](#reference-r5)
   * [Release notes](#release-notes-r5)
@@ -87,6 +91,42 @@ Breaking backward compatibility from v0.12
 * paul ([toothbrush](https://github.com/toothbrush))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
+
+# v0.13.6
+
+## Reference (r6)
+
+* Release date: `2022-01-22`
+* Helm chart: `--version 0.13.6`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.6`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.6`
+* Embedded HAProxy version: `2.3.17`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.13.6`
+
+## Release notes (r6)
+
+This release fixes the following issues:
+
+- Backend configuration snippets with blank lines were being rejected due to a wrong parsing of a missing `--disable-config-keywords` command-line option.
+- Annotation based TCP services were incorrectly fetching the SNI extension of an encrypted connection that's decyphered by HAProxy. `req.ssl_sni` was being used instead of `ssl_fc_sni`.
+
+Besides that, a few other improvements were made:
+
+- All `var()` sample fetch now have the `-m str` match method. This fixes compatiblity with HAProxy 2.5, which now enforces a match method when using `var()`. This however isn't enough to use HAProxy 2.5 as an external HAProxy due to incompatibility changes made in the master socket responses, hence the update in the [supported HAProxy versions](https://github.com/jcmoraisjr/haproxy-ingress/#use-haproxy-ingress). A future HAProxy Ingress release will make v0.12 and v0.13 branches compatible with HAProxy 2.5.
+- A new configuration key `session-cookie-domain` was added due to how modern browsers parses the `domain` cookie attribute. Prefer to use this new configuration key instead of `session-cookie-shared`. Further information can be found in the [affinity documentation](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#affinity).
+- Embedded HAProxy was updated from 2.3.16 to 2.3.17.
+- client-go was updated from v0.20.14 to v0.20.15.
+
+## Fixes and improvements (r6)
+
+* Add disableKeywords only if defined [#876](https://github.com/jcmoraisjr/haproxy-ingress/pull/876) (jcmoraisjr)
+* Add match method on all var() sample fetch method [#879](https://github.com/jcmoraisjr/haproxy-ingress/pull/879) (jcmoraisjr)
+* Fix sni sample fetch on ssl decyphered tcp conns [#884](https://github.com/jcmoraisjr/haproxy-ingress/pull/884) (jcmoraisjr)
+* Add session-cookie-domain configuration key [#889](https://github.com/jcmoraisjr/haproxy-ingress/pull/889) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#affinity)
+  * Configuration keys:
+    * `session-cookie-domain`
+* update embedded haproxy from 2.3.16 to 2.3.17 [7ff2708](https://github.com/jcmoraisjr/haproxy-ingress/commit/7ff2708621d4535e007912f07e790e1cffe83ddc) (Joao Morais)
+* update client-go from v0.20.14 to v0.20.15 [d16ba3e](https://github.com/jcmoraisjr/haproxy-ingress/commit/d16ba3e5d29c54acb7f3aba5d9279d8b5cc46789) (Joao Morais)
 
 # v0.13.5
 
