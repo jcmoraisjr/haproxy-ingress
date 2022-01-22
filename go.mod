@@ -21,9 +21,9 @@ require (
 	gopkg.in/go-playground/pool.v3 v3.1.1
 	gopkg.in/yaml.v2 v2.3.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
-	k8s.io/api v0.20.14
-	k8s.io/apimachinery v0.20.14
-	k8s.io/apiserver v0.20.14
-	k8s.io/client-go v0.20.14
+	k8s.io/api v0.20.15
+	k8s.io/apimachinery v0.20.15
+	k8s.io/apiserver v0.20.15
+	k8s.io/client-go v0.20.15
 	sigs.k8s.io/gateway-api v0.2.0
 )
