@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.11!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.12.12](#v01212)
+  * [Reference](#reference-r12)
+  * [Release notes](#release-notes-r12)
+  * [Fixes and improvements](#fixes-and-improvements-r12)
 * [v0.12.11](#v01211)
   * [Reference](#reference-r11)
   * [Release notes](#release-notes-r11)
@@ -89,6 +93,32 @@ Breaking backward compatibility from v0.11
 * paul ([toothbrush](https://github.com/toothbrush))
 * pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.12.12
+
+## Reference (r12)
+
+* Release date: `2022-01-22`
+* Helm chart: `--version 0.12.12`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.12.12`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.12.12`
+* Embedded HAProxy version: `2.2.20`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.12.12`
+
+## Release notes (r12)
+
+This release fixes backend configuration snippets with blank lines. Such blanck lines were being rejected due to a wrong parsing of a missing `--disable-config-keywords` command-line option.
+
+Besides that, a few other improvements were made:
+
+- All `var()` sample fetch now have the `-m str` match method. This fixes compatiblity with HAProxy 2.5, which now enforces a match method when using `var()`. This however isn't enough to use HAProxy 2.5 as an external HAProxy due to incompatibility changes made in the master socket responses, hence the update in the [supported HAProxy versions](https://github.com/jcmoraisjr/haproxy-ingress/#use-haproxy-ingress). A future HAProxy Ingress release will make v0.12 and v0.13 branches compatible with HAProxy 2.5.
+- Embedded HAProxy was updated from 2.2.19 to 2.2.20.
+
+## Fixes and improvements (r12)
+
+* Add disableKeywords only if defined [#876](https://github.com/jcmoraisjr/haproxy-ingress/pull/876) (jcmoraisjr)
+* Add match method on all var() sample fetch method [#879](https://github.com/jcmoraisjr/haproxy-ingress/pull/879) (jcmoraisjr)
+* update embedded haproxy from 2.2.19 to 2.2.20 [72dabd4](https://github.com/jcmoraisjr/haproxy-ingress/commit/72dabd4de200da9a71c3d66dd56865acafa03849) (Joao Morais)
 
 # v0.12.11
 
