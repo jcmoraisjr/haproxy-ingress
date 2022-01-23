@@ -16,7 +16,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.7.1
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/crypto v0.0.0-20201216223049-8b5274cf687f
+	golang.org/x/crypto v0.0.0-20220112180741-5e0467b6c7ce
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/pool.v3 v3.1.1
 	gopkg.in/yaml.v2 v2.4.0
