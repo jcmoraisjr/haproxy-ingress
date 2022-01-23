@@ -69,7 +69,7 @@ make image
 Official image - build in a multi-stage Dockerfile and generate `localhost/haproxy-ingress:latest`:
 
 ```
-make docker-build
+make docker-builder
 ```
 
 Deploy local image using Helm:
@@ -87,7 +87,7 @@ helm install haproxy-ingress haproxy-ingress/haproxy-ingress\
 
 The following `make` variables are supported:
 
-* `CONTROLLER_TAG` (defaults to `localhost/haproxy-ingress:latest`): tag name for `make image` and `make docker-build`.
+* `CONTROLLER_TAG` (defaults to `localhost/haproxy-ingress:latest`): tag name for `make image` and `make docker-builder`.
 * `LOCAL_FS_PREFIX` (defaults to `/tmp/haproxy-ingress`): temporary directory for `make run`.
 * `KUBECONFIG` (defaults to `$KUBECONFIG`, or `$(HOME)/.kube/config` if the former is empty): Kubernetes from where to read Ingress configurations.
 * `CONTROLLER_CONFIGMAP`: `<namespace>/<name>` of the ConfigMap with global configurations.
@@ -101,4 +101,4 @@ The following `make` targets are supported:
 * `test`: Runs unit tests.
 * `linux-build`: Compiles HAProxy Ingress and generates an ELF (Linux) executable despite the source platform at `rootfs/haproxy-ingress-controller`. Used by `image` step.
 * `image`: Compiles HAProxy Ingress locally and generates a Docker image.
-* `docker-build`: Compiles HAProxy Ingress and generates a Docker image using a multi-stage Dockerfile.
+* `docker-builder`: Compiles HAProxy Ingress and generates a Docker image using a multi-stage Dockerfile.
