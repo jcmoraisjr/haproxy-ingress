@@ -45,7 +45,7 @@ It mostly depends on the workload, and the following list has some tips to impro
 * Configure [`worker-max-reloads`]({{% relref "/docs/configuration/keys#master-worker" %}}) if [external HAProxy]({{% relref "/docs/examples/external-haproxy" %}}) is used and the ingress hosts have a limited amount of memory.
 * Configure [`source-address-intf`]({{% relref "/docs/configuration/keys#source-address-intf" %}}) if the number of concurrent outgoing connections might be greater than 64k, or at least `/proc/sys/net/ipv4/ip_local_port_range` if the number of connections might be greater than 28k.
 * Avoid usage of [`ssl-passthrough`]({{% relref "/docs/configuration/keys#ssl-passthrough" %}}) if possible, moving the needed ones to a new ingress class. `ssl-passthrough` enforces the creation of a new internal proxy, duplicating the number of connections and generating a bit more latency.
-* Use dynamic scaling [`dynamic-scaling`]({{% relref "/docs/configuration/keys/#dynamic-scaling" %}}) and increase the value of [`backend-server-slots-increment`] for workloads that auto-scale. This reduces the amount of full haproxy reloads every time a backend auto-scales.
+* Use dynamic scaling [`dynamic-scaling`]({{% relref "/docs/configuration/keys/#dynamic-scaling" %}}) and increase the value of [`backend-server-slots-increment`] or [`slots-min-free`] for workloads that rapidly auto-scale. This reduces the amount of full haproxy reloads when a backend rapidly auto-scales.
 
 Improving the controller performance:
 
