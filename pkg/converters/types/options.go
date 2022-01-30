@@ -40,7 +40,7 @@ type ConverterOptions struct {
 	DisableKeywords  []string
 	AcmeTrackTLSAnn  bool
 	TrackInstances   bool
-	HasGateway       bool
+	HasGatewayA1     bool
 }
 
 // DynamicConfig ...

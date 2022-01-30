@@ -18,11 +18,11 @@ package types
 
 import (
 	"k8s.io/client-go/kubernetes"
-	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
+	gatewayversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 )
 
 // Client ...
 type Client interface {
 	kubernetes.Interface
-	versioned.Interface
+	gatewayversioned.Interface
 }

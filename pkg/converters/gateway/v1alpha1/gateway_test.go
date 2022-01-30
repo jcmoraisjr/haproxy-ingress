@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package gateway
+package v1alpha1
 
 import (
 	"fmt"
@@ -25,7 +25,7 @@ import (
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	gateway "sigs.k8s.io/gateway-api/apis/v1alpha1"
-	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/scheme"
+	"sigs.k8s.io/gateway-api/pkg/client/clientset/gateway/versioned/scheme"
 
 	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
@@ -1299,7 +1299,7 @@ metadata:
   name: haproxy
 spec:
   controller: haproxy-ingress.github.io/controller`).(*gateway.GatewayClass)
-	c.cache.GwClassList = append(c.cache.GwClassList, gc)
+	c.cache.GatewayA1ClassList = append(c.cache.GatewayA1ClassList, gc)
 	return gc
 }
 
@@ -1324,7 +1324,7 @@ spec:
 		l := strings.Split(label, "=")
 		gw.Spec.Listeners[0].Routes.Selector.MatchLabels[l[0]] = l[1]
 	}
-	c.cache.GwList = append(c.cache.GwList, gw)
+	c.cache.GatewayA1List = append(c.cache.GatewayA1List, gw)
 	return gw
 }
 
@@ -1358,7 +1358,7 @@ spec:
 		l := strings.Split(label, "=")
 		r.ObjectMeta.Labels[l[0]] = l[1]
 	}
-	c.cache.HTTPRouteList = append(c.cache.HTTPRouteList, r)
+	c.cache.HTTPRouteA1List = append(c.cache.HTTPRouteA1List, r)
 	return r
 }
 
@@ -1383,9 +1383,9 @@ func (c *testConfig) createGatewayResources(res []string) {
 		obj := CreateObject(cfg)
 		switch obj := obj.(type) {
 		case *gateway.Gateway:
-			c.cache.GwList = append(c.cache.GwList, obj)
+			c.cache.GatewayA1List = append(c.cache.GatewayA1List, obj)
 		case *gateway.HTTPRoute:
-			c.cache.HTTPRouteList = append(c.cache.HTTPRouteList, obj)
+			c.cache.HTTPRouteA1List = append(c.cache.HTTPRouteA1List, obj)
 		default:
 			panic(fmt.Errorf("unknown object type: %s", obj.GetObjectKind().GroupVersionKind().String()))
 		}

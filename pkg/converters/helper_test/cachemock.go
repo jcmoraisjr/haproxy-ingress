@@ -25,7 +25,7 @@ import (
 
 	api "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
-	gateway "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 )
@@ -35,14 +35,17 @@ type SecretContent map[string]map[string][]byte
 
 // CacheMock ...
 type CacheMock struct {
-	tracker       convtypes.Tracker
-	Changed       *convtypes.ChangedObjects
-	IngList       []*networking.Ingress
-	IngClassList  []*networking.IngressClass
-	SvcList       []*api.Service
-	GwList        []*gateway.Gateway
-	GwClassList   []*gateway.GatewayClass
-	HTTPRouteList []*gateway.HTTPRoute
+	tracker convtypes.Tracker
+	Changed *convtypes.ChangedObjects
+	//
+	IngList      []*networking.Ingress
+	IngClassList []*networking.IngressClass
+	SvcList      []*api.Service
+	//
+	GatewayA1List      []*gatewayv1alpha1.Gateway
+	GatewayA1ClassList []*gatewayv1alpha1.GatewayClass
+	HTTPRouteA1List    []*gatewayv1alpha1.HTTPRoute
+	//
 	LookupList    map[string][]net.IP
 	EpList        map[string]*api.Endpoints
 	ConfigMapList map[string]*api.ConfigMap
@@ -110,19 +113,19 @@ func (c *CacheMock) GetIngressClass(className string) (*networking.IngressClass,
 	return nil, fmt.Errorf("IngressClass not found: %s", className)
 }
 
-// GetGateway ...
-func (c *CacheMock) GetGateway(gatewayName string) (*gateway.Gateway, error) {
+// GetGatewayA1 ...
+func (c *CacheMock) GetGatewayA1(gatewayName string) (*gatewayv1alpha1.Gateway, error) {
 	return nil, nil
 }
 
-// GetGatewayList ...
-func (c *CacheMock) GetGatewayList() ([]*gateway.Gateway, error) {
-	return c.GwList, nil
+// GetGatewayA1List ...
+func (c *CacheMock) GetGatewayA1List() ([]*gatewayv1alpha1.Gateway, error) {
+	return c.GatewayA1List, nil
 }
 
-// GetHTTPRouteList ...
-func (c *CacheMock) GetHTTPRouteList(namespace string, match map[string]string) ([]*gateway.HTTPRoute, error) {
-	routeMatch := func(route *gateway.HTTPRoute) bool {
+// GetHTTPRouteA1List ...
+func (c *CacheMock) GetHTTPRouteA1List(namespace string, match map[string]string) ([]*gatewayv1alpha1.HTTPRoute, error) {
+	routeMatch := func(route *gatewayv1alpha1.HTTPRoute) bool {
 		if namespace != "" && route.Namespace != namespace {
 			return false
 		}
@@ -133,8 +136,8 @@ func (c *CacheMock) GetHTTPRouteList(namespace string, match map[string]string) 
 		}
 		return true
 	}
-	var routes []*gateway.HTTPRoute
-	for _, route := range c.HTTPRouteList {
+	var routes []*gatewayv1alpha1.HTTPRoute
+	for _, route := range c.HTTPRouteA1List {
 		if routeMatch(route) {
 			routes = append(routes, route)
 		}

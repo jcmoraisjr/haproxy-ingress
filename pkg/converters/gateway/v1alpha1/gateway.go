@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package gateway
+package v1alpha1
 
 import (
 	"fmt"
@@ -70,7 +70,7 @@ func (c *converter) NeedFullSync() bool {
 		convtypes.ResourceService:   c.changed.Links[convtypes.ResourceService],
 		convtypes.ResourceEndpoints: c.changed.Links[convtypes.ResourceEndpoints],
 	}, false)
-	_, changed := links[convtypes.ResourceGateway]
+	_, changed := links[convtypes.ResourceGatewayA1]
 	return changed
 }
 
@@ -80,7 +80,7 @@ func (c *converter) Sync(full bool) {
 		return
 	}
 	// TODO partial parsing
-	gateways, err := c.cache.GetGatewayList()
+	gateways, err := c.cache.GetGatewayA1List()
 	if err != nil {
 		c.logger.Warn("error reading gateway list: %v", err)
 		return
@@ -148,7 +148,7 @@ func (c *converter) createHTTPRoutes(source *Source, httpListeners []*gatewayv1a
 		} else {
 			namespace = source.namespace
 		}
-		routes, err := c.cache.GetHTTPRouteList(namespace, listener.Routes.Selector.MatchLabels)
+		routes, err := c.cache.GetHTTPRouteA1List(namespace, listener.Routes.Selector.MatchLabels)
 		if err != nil {
 			c.logger.Warn("skipping HTTPRoutes routes from %s: %v", source, err)
 			continue
@@ -202,7 +202,7 @@ func (c *converter) createBackend(source *Source, index string, forwardTo []gate
 		c.tracker.TrackRefName([]convtypes.TrackingRef{
 			{Context: convtypes.ResourceService, UniqueName: svcName},
 			{Context: convtypes.ResourceEndpoints, UniqueName: svcName},
-		}, convtypes.ResourceGateway, "gw")
+		}, convtypes.ResourceGatewayA1, "gw")
 		svc, err := c.cache.GetService("", svcName)
 		if err != nil {
 			c.logger.Warn("skipping service '%s' on %s: %v", *fw.ServiceName, source, err)
@@ -412,5 +412,5 @@ func (c *converter) readCertRef(namespace string, certRef *gatewayv1alpha1.Local
 		return crtFile, fmt.Errorf("unsupported Kind '%s', the only supported kind is 'Secret'", certRef.Kind)
 	}
 	return c.cache.GetTLSSecretPath(namespace, certRef.Name,
-		[]convtypes.TrackingRef{{Context: convtypes.ResourceGateway, UniqueName: "gw"}})
+		[]convtypes.TrackingRef{{Context: convtypes.ResourceGatewayA1, UniqueName: "gw"}})
 }

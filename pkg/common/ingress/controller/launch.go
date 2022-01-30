@@ -22,8 +22,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1alpha1"
+	gatewayversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
+	gatewayversionedv1alpha1 "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1alpha1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/k8s"
@@ -623,11 +623,11 @@ func buildConfigFromFlags(masterURL, kubeconfigPath string) (*rest.Config, error
 
 type client struct {
 	*kubernetes.Clientset
-	gateway *versioned.Clientset
+	gateway *gatewayversioned.Clientset
 }
 
 // TODO is there a way to transparently embed k8s and crd clientsets into the outer struct?
-func (c *client) NetworkingV1alpha1() gatewayv1alpha1.NetworkingV1alpha1Interface {
+func (c *client) NetworkingV1alpha1() gatewayversionedv1alpha1.NetworkingV1alpha1Interface {
 	return c.gateway.NetworkingV1alpha1()
 }
 
@@ -657,7 +657,7 @@ func createApiserverClient(apiserverHost string, kubeConfig string, disableWarni
 	if err != nil {
 		return nil, err
 	}
-	gateway, err := versioned.NewForConfig(cfg)
+	gateway, err := gatewayversioned.NewForConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
