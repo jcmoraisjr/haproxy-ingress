@@ -33,6 +33,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	gateway "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 	informersgateway "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions"
 	informersgatewayv1alpha1 "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions/apis/v1alpha1"
 	listersgateway "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha1"
@@ -136,20 +137,38 @@ func createListers(
 	}
 
 	if watchGateway {
-		var option informersgateway.SharedInformerOption
-		if clusterWatch {
-			option = informersgateway.WithTweakListOptions(nil)
-		} else {
-			option = informersgateway.WithNamespace(watchNamespace)
+		gv := "networking.x-k8s.io/v1alpha1"
+		hasAPI := false
+		if client, ok := client.(versioned.Interface); ok {
+			resources, err := client.Discovery().ServerResourcesForGroupVersion(gv)
+			if err == nil && resources != nil {
+				names := map[string]bool{}
+				for _, r := range resources.APIResources {
+					names[r.SingularName] = true
+				}
+				hasAPI =
+					names["gatewayclass"] && names["gateway"] && names["httproute"] &&
+						names["tlsroute"] && names["tcproute"] && names["udproute"] && names["backendpolicy"]
+			}
 		}
-		informer := informersgateway.NewSharedInformerFactoryWithOptions(client, resync, option)
-		l.createGatewayLister(informer.Networking().V1alpha1().Gateways())
-		l.createGatewayClassLister(informer.Networking().V1alpha1().GatewayClasses())
-		l.createHTTPRouteLister(informer.Networking().V1alpha1().HTTPRoutes())
-		l.createTLSRouteLister(informer.Networking().V1alpha1().TLSRoutes())
-		l.createTCPRouteLister(informer.Networking().V1alpha1().TCPRoutes())
-		l.createUDPRouteLister(informer.Networking().V1alpha1().UDPRoutes())
-		l.createBackendPolicyLister(informer.Networking().V1alpha1().BackendPolicies())
+		if hasAPI {
+			var option informersgateway.SharedInformerOption
+			if clusterWatch {
+				option = informersgateway.WithTweakListOptions(nil)
+			} else {
+				option = informersgateway.WithNamespace(watchNamespace)
+			}
+			informer := informersgateway.NewSharedInformerFactoryWithOptions(client, resync, option)
+			l.createGatewayLister(informer.Networking().V1alpha1().Gateways())
+			l.createGatewayClassLister(informer.Networking().V1alpha1().GatewayClasses())
+			l.createHTTPRouteLister(informer.Networking().V1alpha1().HTTPRoutes())
+			l.createTLSRouteLister(informer.Networking().V1alpha1().TLSRoutes())
+			l.createTCPRouteLister(informer.Networking().V1alpha1().TCPRoutes())
+			l.createUDPRouteLister(informer.Networking().V1alpha1().UDPRoutes())
+			l.createBackendPolicyLister(informer.Networking().V1alpha1().BackendPolicies())
+		} else {
+			l.logger.Warn("gateway API '%s' was not found, skipping", gv)
+		}
 	}
 
 	return l
