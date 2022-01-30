@@ -23,6 +23,7 @@ import (
 	api "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
@@ -66,6 +67,12 @@ type ChangedObjects struct {
 	//
 	HTTPRoutesA1Del, HTTPRoutesA1Upd, HTTPRoutesA1Add []*gatewayv1alpha1.HTTPRoute
 	//
+	GatewaysDel, GatewaysUpd, GatewaysAdd []*gatewayv1alpha2.Gateway
+	//
+	GatewayClassesDel, GatewayClassesUpd, GatewayClassesAdd []*gatewayv1alpha2.GatewayClass
+	//
+	HTTPRoutesDel, HTTPRoutesUpd, HTTPRoutesAdd []*gatewayv1alpha2.HTTPRoute
+	//
 	EndpointsNew []*api.Endpoints
 	//
 	ServicesDel, ServicesUpd, ServicesAdd []*api.Service
@@ -93,6 +100,10 @@ const (
 	ResourceGatewayA1      ResourceType = "GatewayA1"
 	ResourceGatewayClassA1 ResourceType = "GatewayClassA1"
 	ResourceHTTPRouteA1    ResourceType = "HTTPRouteA1"
+
+	ResourceGateway      ResourceType = "Gateway"
+	ResourceGatewayClass ResourceType = "GatewayClass"
+	ResourceHTTPRoute    ResourceType = "HTTPRoute"
 
 	ResourceConfigMap ResourceType = "ConfigMap"
 	ResourceService   ResourceType = "Service"

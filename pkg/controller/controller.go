@@ -172,6 +172,7 @@ func (hc *HAProxyController) configController() {
 		AcmeTrackTLSAnn:  hc.cfg.AcmeTrackTLSAnn,
 		TrackInstances:   hc.cfg.TrackOldInstances,
 		HasGatewayA1:     hc.cache.hasGatewayA1(),
+		HasGateway:       hc.cache.hasGateway(),
 	}
 }
 
