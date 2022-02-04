@@ -33,10 +33,10 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
-	gatewayversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
-	informersgateway "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions"
-	informersgatewayv1alpha1 "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions/apis/v1alpha1"
-	listersgatewayv1alpha1 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha1"
+	gatewayversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/networking/versioned"
+	informersgateway "sigs.k8s.io/gateway-api/pkg/client/informers/networking/externalversions"
+	informersgatewayv1alpha1 "sigs.k8s.io/gateway-api/pkg/client/informers/networking/externalversions/apis/v1alpha1"
+	listersgatewayv1alpha1 "sigs.k8s.io/gateway-api/pkg/client/listers/networking/apis/v1alpha1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )

@@ -22,8 +22,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	gatewayversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
-	gatewayversionedv1alpha1 "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1alpha1"
+	gatewayversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/networking/versioned"
+	gatewayversionedv1alpha1 "sigs.k8s.io/gateway-api/pkg/client/clientset/networking/versioned/typed/apis/v1alpha1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/k8s"

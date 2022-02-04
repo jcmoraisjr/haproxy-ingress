@@ -18,7 +18,7 @@ package types
 
 import (
 	"k8s.io/client-go/kubernetes"
-	gatewayversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
+	gatewayversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/networking/versioned"
 )
 
 // Client ...
