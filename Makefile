@@ -52,7 +52,7 @@ linux-build:
 image: linux-build
 	docker build -t $(CONTROLLER_TAG) rootfs
 
-.PHONY: docker-builder
-docker-builder:
+.PHONY: docker-build
+docker-build:
 	@rm -f rootfs/haproxy-ingress-controller
 	docker build -t $(CONTROLLER_TAG) . -f builder/Dockerfile
