@@ -33,7 +33,7 @@ import (
 type Updater interface {
 	UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mapper)
 	UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *Mapper)
-	UpdateTCPHostConfig(host *hatypes.TCPServiceHost, mapper *Mapper)
+	UpdateTCPHostConfig(tcpPort *hatypes.TCPServicePort, tcpHost *hatypes.TCPServiceHost, mapper *Mapper)
 	UpdateHostConfig(host *hatypes.Host, mapper *Mapper)
 	UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper)
 }
@@ -64,6 +64,12 @@ type globalData struct {
 	acmeData *hatypes.AcmeData
 	global   *hatypes.Global
 	mapper   *Mapper
+}
+
+type tcpData struct {
+	tcpPort *hatypes.TCPServicePort
+	tcpHost *hatypes.TCPServiceHost
+	mapper  *Mapper
 }
 
 type hostData struct {
@@ -187,7 +193,13 @@ func (c *updater) UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *Mappe
 	tcp.ProxyProt = mapper.Get(ingtypes.TCPTCPServiceProxyProto).Bool()
 }
 
-func (c *updater) UpdateTCPHostConfig(host *hatypes.TCPServiceHost, mapper *Mapper) {
+func (c *updater) UpdateTCPHostConfig(tcpPort *hatypes.TCPServicePort, tcpHost *hatypes.TCPServiceHost, mapper *Mapper) {
+	data := &tcpData{
+		tcpPort: tcpPort,
+		tcpHost: tcpHost,
+		mapper:  mapper,
+	}
+	c.buildTCPAuthTLS(data)
 }
 
 func (c *updater) UpdateHostConfig(host *hatypes.Host, mapper *Mapper) {

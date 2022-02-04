@@ -19,22 +19,23 @@ package annotations
 import (
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
-func (c *updater) buildHostAuthTLS(d *hostData) {
-	tlsSecret := d.mapper.Get(ingtypes.HostAuthTLSSecret)
+func (c *updater) setAuthTLSConfig(mapper *Mapper, target *types.TLSConfig, hostname string) bool {
+	tlsSecret := mapper.Get(ingtypes.HostAuthTLSSecret)
 	if tlsSecret.Source == nil || tlsSecret.Value == "" {
-		return
+		return false
 	}
-	verify := d.mapper.Get(ingtypes.HostAuthTLSVerifyClient)
+	verify := mapper.Get(ingtypes.HostAuthTLSVerifyClient)
 	if verify.Value == "off" {
-		return
+		return false
 	}
-	tls := &d.host.TLS
+	tls := target
 	if cafile, crlfile, err := c.cache.GetCASecretPath(
 		tlsSecret.Source.Namespace,
 		tlsSecret.Value,
-		[]convtypes.TrackingRef{{Context: convtypes.ResourceHAHostname, UniqueName: d.host.Hostname}},
+		[]convtypes.TrackingRef{{Context: convtypes.ResourceHAHostname, UniqueName: hostname}},
 	); err == nil {
 		tls.CAFilename = cafile.Filename
 		tls.CAHash = cafile.SHA1Hash
@@ -43,7 +44,7 @@ func (c *updater) buildHostAuthTLS(d *hostData) {
 	} else {
 		c.logger.Error("error building TLS auth config on %s: %v", tlsSecret.Source, err)
 	}
-	if tls.CAFilename == "" && d.mapper.Get(ingtypes.HostAuthTLSStrict).Bool() {
+	if tls.CAFilename == "" && mapper.Get(ingtypes.HostAuthTLSStrict).Bool() {
 		// Here we have a misconfigured auth-tls and auth-tls-strict as `true`.
 		// Using a fake and self-generated CA so any connection attempt will fail with
 		// HTTP 495 (invalid crt) or 496 (crt wasn't provided) instead of allow the request.
@@ -51,7 +52,17 @@ func (c *updater) buildHostAuthTLS(d *hostData) {
 		tls.CAHash = c.fakeCA.SHA1Hash
 	}
 	tls.CAVerifyOptional = verify.Value == "optional" || verify.Value == "optional_no_ca"
-	tls.CAErrorPage = d.mapper.Get(ingtypes.HostAuthTLSErrorPage).Value
+	return true
+}
+
+func (c *updater) buildTCPAuthTLS(d *tcpData) {
+	_ = c.setAuthTLSConfig(d.mapper, &d.tcpPort.TLS, d.tcpHost.Hostname())
+}
+
+func (c *updater) buildHostAuthTLS(d *hostData) {
+	if c.setAuthTLSConfig(d.mapper, &d.host.TLS.TLSConfig, d.host.Hostname) {
+		d.host.TLS.CAErrorPage = d.mapper.Get(ingtypes.HostAuthTLSErrorPage).Value
+	}
 }
 
 func (c *updater) buildHostCertSigner(d *hostData) {

@@ -446,7 +446,7 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 		// tls secret
 		for _, hostname := range tls.Hosts {
 			host := c.addHost(hostname, source, annHost)
-			tlsPath := c.addTLS(source, hostname, tls.SecretName)
+			tlsPath := c.addTLS(source, tls.SecretName)
 			if host.TLS.TLSHash == "" {
 				host.TLS.TLSFilename = tlsPath.Filename
 				host.TLS.TLSHash = tlsPath.SHA1Hash
@@ -541,13 +541,14 @@ func (c *converter) syncIngressTCP(source *annotations.Source, ing *networking.I
 			}
 		}
 	}
-	addTCPTLSSecret := func(secretName, rawHostname string) {
+	for _, tls := range ing.Spec.TLS {
+		secretName := tls.SecretName
 		tcpPort := c.haproxy.TCPServices().FindTCPPort(tcpServicePort)
 		if tcpPort == nil {
 			c.logger.Warn("skipping TLS of tcp service on %v: backend was not configured", source)
 			return
 		}
-		tlsPath := c.addTLS(source, normalizeHostname(rawHostname, tcpServicePort), secretName)
+		tlsPath := c.addTLS(source, secretName)
 		if tcpPort.TLS.TLSHash == "" {
 			tcpPort.TLS.TLSFilename = tlsPath.Filename
 			tcpPort.TLS.TLSHash = tlsPath.SHA1Hash
@@ -560,14 +561,6 @@ func (c *converter) syncIngressTCP(source *annotations.Source, ing *networking.I
 			} else {
 				c.logger.Warn("skipping default TLS secret of %v: %s", source, msg)
 			}
-		}
-	}
-	for _, tls := range ing.Spec.TLS {
-		if len(tls.Hosts) == 0 {
-			addTCPTLSSecret(tls.SecretName, "")
-		}
-		for _, hostname := range tls.Hosts {
-			addTCPTLSSecret(tls.SecretName, hostname)
 		}
 	}
 }
@@ -590,12 +583,11 @@ func (c *converter) fullSyncTCP() {
 	for _, tcpPort := range c.haproxy.TCPServices().Items() {
 		if ann, found := c.tcpsvcAnnotations[tcpPort]; found {
 			c.updater.UpdateTCPPortConfig(tcpPort, ann)
-			tcpHost := tcpPort.DefaultHost()
-			if tcpHost != nil {
-				c.updater.UpdateTCPHostConfig(tcpHost, ann)
+			if tcpHost := tcpPort.DefaultHost(); tcpHost != nil {
+				c.updater.UpdateTCPHostConfig(tcpPort, tcpHost, ann)
 			}
 			for _, tcpHost := range tcpPort.Hosts() {
-				c.updater.UpdateTCPHostConfig(tcpHost, ann)
+				c.updater.UpdateTCPHostConfig(tcpPort, tcpHost, ann)
 			}
 		}
 	}
@@ -907,7 +899,7 @@ func (c *converter) syncBackendEndpointHashes(backend *hatypes.Backend) {
 	}
 }
 
-func (c *converter) addTLS(source *annotations.Source, hostname, secretName string) convtypes.CrtFile {
+func (c *converter) addTLS(source *annotations.Source, secretName string) convtypes.CrtFile {
 	if secretName != "" {
 		tlsFile, err := c.cache.GetTLSSecretPath(
 			source.Namespace,
@@ -964,6 +956,11 @@ func (c *converter) readAnnotations(source *annotations.Source, ann map[string]s
 			annTCP[key] = value
 		} else if _, isHostAnn := ingtypes.AnnHost[key]; isHostAnn {
 			annHost[key] = value
+			// TCP services read both TCP and Host scoped configuration keys
+			// in a single step. Our approach is to add all Host keys to the
+			// TCP mapper. We're concatenating them here instead of concatenate
+			// later when creating the TCP mapper.
+			annTCP[key] = value
 		} else {
 			annBack[key] = value
 		}
