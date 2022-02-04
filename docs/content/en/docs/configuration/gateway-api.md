@@ -14,7 +14,7 @@ The following steps configure the Kubernetes cluster and HAProxy Ingress to read
 
 * Manually install the Gateway API CRDs, see the Gateway API [documentation](https://gateway-api.sigs.k8s.io/v1alpha1/guides/getting-started/#installing-gateway-api-crds-manually)
     * ... or simply `kubectl kustomize "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0" | kubectl apply -f -`
-* Add the controller's [`--watch-gateway`]({{% relref "command-line#watch-gateway" %}}) command-line option
+* Start (or restart) the controller
 
 See below the [getting started steps](#getting-started).
 
@@ -56,15 +56,6 @@ Add the following deployment and service if echoserver isn't running yet:
 ```
 kubectl --namespace default create deployment echoserver --image k8s.gcr.io/echoserver:1.3
 kubectl --namespace default expose deployment echoserver --port=8080
-```
-
-Add the [`--watch-gateway`]({{% relref "command-line#watch-gateway" %}}) command-line option in the `haproxy-ingress-values.yaml` file and [`helm upgrade ...`]({{% relref "/docs/getting-started#installation" %}}) the controller (or simply edit the deployment):
-
-```yaml
-controller:
-  ...
-  extraArgs:
-    watch-gateway: "true"
 ```
 
 A GatewayClass enables Gateways to be read and parsed by HAProxy Ingress. Create a GatewayClass with the following content:

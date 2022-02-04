@@ -89,7 +89,7 @@ new /path, e.g., controller-class=staging will make this controller look for
 declare neither the kubernetes.io/ingress.class annotation nor the
 <ingress>.spec.ingressClassName field. Defaults to false`)
 
-		watchGateway = flags.Bool("watch-gateway", false,
+		watchGateway = flags.Bool("watch-gateway", true,
 			`Watch and parse resources from the Gateway API`)
 
 		masterWorker = flags.Bool("master-worker", false,

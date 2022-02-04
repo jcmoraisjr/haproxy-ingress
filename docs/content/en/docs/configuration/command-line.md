@@ -607,8 +607,11 @@ changes in one single shot. The default value is `200ms`.
 
 Since v0.13
 
-Enables Gateway API watch and parse. The Gateway API CRDs should be installed before enable
-this option. See also the Gateway API configuration [doc]({{% relref "gateway-api" %}}).
+Enables Gateway API watch and parse. This option is enabled by default since v0.14 and controller
+will start the listener only if the Gateway API CRDs are found. Add `--watch-gateway=false`
+option to instruct the controller to not try to listen to the CRDs. The controller should be
+restarted if the CRDs are installed after starting the controller. See also the Gateway API
+configuration [doc]({{% relref "gateway-api" %}}).
 
 ---
 
