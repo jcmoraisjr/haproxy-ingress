@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang:1.16.5-alpine AS builder
+FROM golang:1.17.6-alpine AS builder
 
 ARG GIT_TAG
-
+WORKDIR /src
 RUN apk --no-cache add git
 
-COPY / /src
+COPY . .
 
-RUN cd /src\
- && GIT_TAG=${GIT_TAG:-latest}\
+RUN GIT_TAG=${GIT_TAG:-latest}\
  && GIT_COMMIT=git-$(git rev-parse --short HEAD)\
  && GIT_REPO=$(git config --get remote.origin.url)\
  && VERSION_PKG=github.com/jcmoraisjr/haproxy-ingress/pkg/version\
