@@ -37,9 +37,12 @@ type Cache interface {
 	GetGatewayA1(gatewayName string) (*gatewayv1alpha1.Gateway, error)
 	GetGatewayA1List() ([]*gatewayv1alpha1.Gateway, error)
 	GetHTTPRouteA1List(namespace string, match map[string]string) ([]*gatewayv1alpha1.HTTPRoute, error)
+	GetGatewayMap() (map[string]*gatewayv1alpha2.Gateway, error)
+	GetHTTPRouteList() ([]*gatewayv1alpha2.HTTPRoute, error)
 	GetService(defaultNamespace, serviceName string) (*api.Service, error)
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
 	GetConfigMap(configMapName string) (*api.ConfigMap, error)
+	GetNamespace(name string) (*api.Namespace, error)
 	GetTerminatingPods(service *api.Service, track []TrackingRef) ([]*api.Pod, error)
 	GetPod(podName string) (*api.Pod, error)
 	GetPodNamespace() string

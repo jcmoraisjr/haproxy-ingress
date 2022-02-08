@@ -26,6 +26,7 @@ import (
 	api "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 )
@@ -46,6 +47,11 @@ type CacheMock struct {
 	GatewayA1ClassList []*gatewayv1alpha1.GatewayClass
 	HTTPRouteA1List    []*gatewayv1alpha1.HTTPRoute
 	//
+	GatewayList      map[string]*gatewayv1alpha2.Gateway
+	GatewayClassList []*gatewayv1alpha2.GatewayClass
+	HTTPRouteList    []*gatewayv1alpha2.HTTPRoute
+	//
+	NsList        map[string]*api.Namespace
 	LookupList    map[string][]net.IP
 	EpList        map[string]*api.Endpoints
 	ConfigMapList map[string]*api.ConfigMap
@@ -64,6 +70,8 @@ func NewCacheMock(tracker convtypes.Tracker) *CacheMock {
 		tracker:     tracker,
 		Changed:     &convtypes.ChangedObjects{},
 		SvcList:     []*api.Service{},
+		GatewayList: map[string]*gatewayv1alpha2.Gateway{},
+		NsList:      map[string]*api.Namespace{},
 		LookupList:  map[string][]net.IP{},
 		EpList:      map[string]*api.Endpoints{},
 		TermPodList: map[string][]*api.Pod{},
@@ -123,6 +131,11 @@ func (c *CacheMock) GetGatewayA1List() ([]*gatewayv1alpha1.Gateway, error) {
 	return c.GatewayA1List, nil
 }
 
+// GetGatewayMap ...
+func (c *CacheMock) GetGatewayMap() (map[string]*gatewayv1alpha2.Gateway, error) {
+	return c.GatewayList, nil
+}
+
 // GetHTTPRouteA1List ...
 func (c *CacheMock) GetHTTPRouteA1List(namespace string, match map[string]string) ([]*gatewayv1alpha1.HTTPRoute, error) {
 	routeMatch := func(route *gatewayv1alpha1.HTTPRoute) bool {
@@ -143,6 +156,11 @@ func (c *CacheMock) GetHTTPRouteA1List(namespace string, match map[string]string
 		}
 	}
 	return routes, nil
+}
+
+// GetHTTPRouteList ...
+func (c *CacheMock) GetHTTPRouteList() ([]*gatewayv1alpha2.HTTPRoute, error) {
+	return c.HTTPRouteList, nil
 }
 
 // GetService ...
@@ -174,6 +192,14 @@ func (c *CacheMock) GetConfigMap(configMapName string) (*api.ConfigMap, error) {
 		return configMap, nil
 	}
 	return nil, fmt.Errorf("configmap not found: %s", configMapName)
+}
+
+// GetNamespace ...
+func (c *CacheMock) GetNamespace(name string) (*api.Namespace, error) {
+	if ns, found := c.NsList[name]; found {
+		return ns, nil
+	}
+	return nil, fmt.Errorf("namespace not found: %s", name)
 }
 
 // GetTerminatingPods ...

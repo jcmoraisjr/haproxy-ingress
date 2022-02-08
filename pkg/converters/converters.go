@@ -53,6 +53,7 @@ func (c *converters) Sync() {
 	gatewayA1Converter := gatewayv1alpha1.NewGatewayConverter(c.options, c.haproxy, changed, ingressConverter)
 
 	needFullSync := changed.NeedFullSync ||
+		gatewayConverter.NeedFullSync() ||
 		gatewayA1Converter.NeedFullSync() ||
 		ingressConverter.NeedFullSync()
 	if needFullSync {
