@@ -171,6 +171,7 @@ func (hc *HAProxyController) configController() {
 		DisableKeywords:  utils.Split(hc.cfg.DisableConfigKeywords, ","),
 		AcmeTrackTLSAnn:  hc.cfg.AcmeTrackTLSAnn,
 		TrackInstances:   hc.cfg.TrackOldInstances,
+		HasGatewayA1:     hc.cache.hasGatewayA1(),
 		HasGateway:       hc.cache.hasGateway(),
 	}
 }

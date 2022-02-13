@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The HAProxy Ingress Controller Authors.
+Copyright 2022 The HAProxy Ingress Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,9 +23,10 @@ import (
 
 	"github.com/kylelemons/godebug/diff"
 	api "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	gateway "sigs.k8s.io/gateway-api/apis/v1alpha1"
-	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/scheme"
+	gateway "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gwapischeme "sigs.k8s.io/gateway-api/pkg/client/clientset/gateway/versioned/scheme"
 
 	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
@@ -47,12 +48,13 @@ type testCaseSync struct {
 }
 
 func TestSyncHTTPRouteCore(t *testing.T) {
+	otherGroup := gateway.Group("other.k8s.io")
 	runTestSync(t, []testCaseSync{
 		{
 			id: "minimum",
 			config: func(c *testConfig) {
-				c.createGateway1("default/web", "gateway=web")
-				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
+				c.createGateway1("default/web", "l1")
+				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 			},
 			expDefaultHost: `
@@ -71,23 +73,34 @@ paths:
 `,
 		},
 		{
-			id: "match-group-1",
+			id: "cross-namespace-1",
 			config: func(c *testConfig) {
-				g := c.createGateway1("default/web", "gateway=web")
-				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
-				c.createService1("default/echoserver", "8080", "172.17.0.11")
-				group := g.GroupVersionKind().Group
-				g.Spec.Listeners[0].Routes.Group = &group
+				c.createGateway1("ns1/web", "l1")
+				c.createHTTPRoute1("ns2/web", "ns1/web", "echoserver:8080")
+				c.createService1("ns2/echoserver", "8080", "172.17.0.11")
+			},
+			expLogging: `
+WARN skipping attachment of HTTPRoute 'ns2/web' to Gateway 'ns1/web' listener 'l1': listener does not allow the route
+`,
+		},
+		{
+			id: "cross-namespace-2",
+			config: func(c *testConfig) {
+				g := c.createGateway1("ns1/web", "l1")
+				c.createHTTPRoute1("ns2/web", "ns1/web", "echoserver:8080")
+				c.createService1("ns2/echoserver", "8080", "172.17.0.11")
+				all := gateway.NamespacesFromAll
+				g.Spec.Listeners[0].AllowedRoutes.Namespaces.From = &all
 			},
 			expDefaultHost: `
 hostname: <default>
 paths:
 - path: /
   match: prefix
-  backend: default_web__rule0
+  backend: ns2_web__rule0
 `,
 			expBackends: `
-- id: default_web__rule0
+- id: ns2_web__rule0
   endpoints:
   - ip: 172.17.0.11
     port: 8080
@@ -95,185 +108,77 @@ paths:
 `,
 		},
 		{
-			id: "match-group-2",
-			resConfig: []string{`
-apiVersion: networking.x-k8s.io/v1alpha1
-kind: Gateway
-metadata:
-  name: web
-  namespace: default
-spec:
-  gatewayClassName: haproxy
-  listeners:
-  - protocol: HTTPS
-    port: 443
-    routes:
-      kind: HTTPRoute
-      selector:
-        matchLabels:
-          gateway: web1
-  - protocol: HTTP
-    port: 80
-    routes:
-      kind: HTTPRoute
-      selector:
-        matchLabels:
-          gateway: web2
-    tls:
-      mode: Passthrough
-`},
+			id: "cross-namespace-3",
 			config: func(c *testConfig) {
-				c.createHTTPRoute1("default/web1", "gateway=web1", "echoserver1:8080")
-				c.createHTTPRoute1("default/web2", "gateway=web2", "echoserver2:8443")
+				c.createNamespace("ns2", "name=ns2")
+				c.createGateway1("ns1/web", "l1:name=ns1")
+				c.createHTTPRoute1("ns2/web", "ns1/web", "echoserver:8080")
+				c.createService1("ns2/echoserver", "8080", "172.17.0.11")
+			},
+			expLogging: `
+WARN skipping attachment of HTTPRoute 'ns2/web' to Gateway 'ns1/web' listener 'l1': listener does not allow the route
+`,
+		},
+		{
+			id: "cross-namespace-4",
+			config: func(c *testConfig) {
+				c.createNamespace("ns2", "name=ns2")
+				c.createGateway1("ns1/web", "l1:name=ns2")
+				c.createHTTPRoute1("ns2/web", "ns1/web", "echoserver:8080")
+				c.createService1("ns2/echoserver", "8080", "172.17.0.11")
+			},
+			expDefaultHost: `
+hostname: <default>
+paths:
+- path: /
+  match: prefix
+  backend: ns2_web__rule0
+`,
+			expBackends: `
+- id: ns2_web__rule0
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+    weight: 128
+`,
+		},
+		{
+			id: "cross-namespace-5",
+			config: func(c *testConfig) {
+				c.createGateway1("ns2/web", "l1")
+				c.createHTTPRoute1("ns2/web", "ns1/web", "echoserver:8080")
+				c.createService1("ns2/echoserver", "8080", "172.17.0.11")
+			},
+			expLogging: `
+WARN HTTPRoute 'ns2/web' references a gateway that was not found: ns1/web
+`,
+		},
+		{
+			id: "allowed-kind-1",
+			config: func(c *testConfig) {
+				g := c.createGateway1("default/web", "l1,l2")
+				c.createHTTPRoute2("default/web1", "web:l1", "echoserver1:8080", "/app1")
+				c.createHTTPRoute2("default/web2", "web:l2", "echoserver2:8080", "/app2")
 				c.createService1("default/echoserver1", "8080", "172.17.0.11")
-				c.createService1("default/echoserver2", "8443", "172.17.0.12")
+				c.createService1("default/echoserver2", "8080", "172.17.0.12")
+				g.Spec.Listeners[0].AllowedRoutes.Kinds = []gateway.RouteGroupKind{
+					{Kind: "HTTPRoute"},
+					{Group: &otherGroup, Kind: "HTTPRoute"},
+				}
+				g.Spec.Listeners[1].AllowedRoutes.Kinds = []gateway.RouteGroupKind{
+					{Group: &gatewayGroup, Kind: "HTTPRoute"},
+					{Group: &gatewayGroup, Kind: "OtherRoute"},
+				}
 			},
 			expDefaultHost: `
 hostname: <default>
 paths:
-- path: /
+- path: /app2
   match: prefix
   backend: default_web2__rule0
-passthrough: true
-httppassback: default_web1__rule0
-`,
-			expBackends: `
-- id: default_web1__rule0
-  endpoints:
-  - ip: 172.17.0.11
-    port: 8080
-    weight: 128
-- id: default_web2__rule0
-  endpoints:
-  - ip: 172.17.0.12
-    port: 8443
-    weight: 128
-  modetcp: true
-`,
-		},
-		{
-			id: "missing-service-1",
-			config: func(c *testConfig) {
-				c.createGateway1("default/web", "gateway=web")
-				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
-			},
-			expLogging: `
-WARN skipping service 'echoserver' on HTTPRoute 'default/web': service not found: 'default/echoserver'
-`,
-		},
-		{
-			id: "missing-port-1",
-			config: func(c *testConfig) {
-				c.createGateway1("default/web", "gateway=web")
-				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8081")
-				c.createService1("default/echoserver", "8080", "172.17.0.11")
-			},
-			expLogging: `
-WARN skipping service 'echoserver' on HTTPRoute 'default/web': port '8081' not found
-`,
-		},
-		{
-			id: "missing-service-ref-1",
-			resConfig: []string{`
-apiVersion: networking.x-k8s.io/v1alpha1
-kind: HTTPRoute
-metadata:
-  labels:
-    gateway: web
-  name: web
-  namespace: default
-spec:
-  rules:
-  - forwardTo:
-    - weight: 128
-`},
-			config: func(c *testConfig) {
-				c.createGateway1("default/web", "gateway=web")
-				c.createService1("default/echoserver", "8080", "172.17.0.11")
-			},
-		},
-		{
-			id: "invalid-kind-1",
-			resConfig: []string{`
-apiVersion: networking.x-k8s.io/v1alpha1
-kind: Gateway
-metadata:
-  name: web
-  namespace: default
-spec:
-  gatewayClassName: haproxy
-  listeners:
-  - protocol: HTTP
-    port: 80
-    routes:
-      kind: AcmeRoute
-`},
-			expLogging: `WARN ignoring unsupported listener type 'networking.x-k8s.io/AcmeRoute' on Gateway 'default/web'`,
-		},
-		{
-			id: "another-group-1",
-			resConfig: []string{`
-apiVersion: networking.x-k8s.io/v1alpha1
-kind: Gateway
-metadata:
-  name: web
-  namespace: default
-spec:
-  gatewayClassName: haproxy
-  listeners:
-  - protocol: HTTP
-    port: 80
-    routes:
-      group: acme.io
-      kind: AcmeRoute
-`},
-		},
-		{
-			id: "find-labels-1",
-			config: func(c *testConfig) {
-				c.createGateway1("default/web", "gateway=web3")
-				c.createHTTPRoute1("default/web1", "gateway=web1", "echoserver1:8080")
-				c.createHTTPRoute1("default/web2", "gateway=web2", "echoserver2:8080")
-				c.createHTTPRoute1("default/web3", "gateway=web3", "echoserver3:8080")
-				c.createService1("default/echoserver1", "8080", "172.17.0.11")
-				c.createService1("default/echoserver2", "8080", "172.17.0.12")
-				c.createService1("default/echoserver3", "8080", "172.17.0.13")
-			},
-			expDefaultHost: `
-hostname: <default>
-paths:
-- path: /
-  match: prefix
-  backend: default_web3__rule0
-`,
-			expBackends: `
-- id: default_web3__rule0
-  endpoints:
-  - ip: 172.17.0.13
-    port: 8080
-    weight: 128
-`,
-		},
-		{
-			id: "find-labels-2",
-			config: func(c *testConfig) {
-				c.createGateway1("default/web", "gateway=web")
-				c.createHTTPRoute1("default/web1", "gateway=web", "echoserver1:8080")
-				c.createHTTPRoute1("default/web2", "gateway=web", "echoserver2:8080")
-				c.createHTTPRoute1("default/web3", "gateway=web3", "echoserver3:8080")
-				c.createService1("default/echoserver1", "8080", "172.17.0.11")
-				c.createService1("default/echoserver2", "8080", "172.17.0.12")
-				c.createService1("default/echoserver3", "8080", "172.17.0.13")
-			},
-			expDefaultHost: `
-hostname: <default>
-paths:
-- path: /
+- path: /app1
   match: prefix
   backend: default_web1__rule0
-- path: /
-  match: prefix
-  backend: default_web2__rule0
 `,
 			expBackends: `
 - id: default_web1__rule0
@@ -289,167 +194,100 @@ paths:
 `,
 		},
 		{
-			id: "custom-host-and-path-1",
+			id: "allowed-kind-2",
 			config: func(c *testConfig) {
-				c.createGateway1("default/web", "gateway=web")
-				route := c.createHTTPRoute2("default/web", "gateway=web", "echoserver:8080", "/app")
+				g := c.createGateway1("default/web", "l1")
+				c.createHTTPRoute1("default/web", "web:l1", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
-				route.Spec.Hostnames = append(route.Spec.Hostnames, "domain1.local")
+				g.Spec.Listeners[0].AllowedRoutes.Kinds = []gateway.RouteGroupKind{
+					{Kind: "OtherRoute"},
+					{Group: &gatewayGroup, Kind: "OtherRoute"},
+					{Group: &otherGroup, Kind: "HTTPRoute"},
+				}
 			},
-			expHosts: `
-- hostname: domain1.local
-  paths:
-  - path: /app
-    match: prefix
-    backend: default_web__rule0
-`,
-			expBackends: `
-- id: default_web__rule0
-  endpoints:
-  - ip: 172.17.0.11
-    port: 8080
-    weight: 128
+			expLogging: `
+WARN skipping attachment of HTTPRoute 'default/web' to Gateway 'default/web' listener 'l1': listener does not allow route of Kind 'HTTPRoute'
 `,
 		},
 		{
-			id: "match-path-types-1",
+			id: "multi-listener-1",
+			resConfig: []string{`
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: Gateway
+metadata:
+  name: web
+  namespace: default
+spec:
+  gatewayClassName: haproxy
+  listeners:
+  - name: h1
+    allowedRoutes:
+      namespaces:
+        from: Same
+  - name: h2
+    allowedRoutes:
+      namespaces:
+        from: Same
+`},
 			config: func(c *testConfig) {
-				c.createGateway1("default/web", "gateway=web")
-				route := c.createHTTPRoute2("default/web", "gateway=web", "echoserver:8080", "/app0,/app1,/app2,/app3,/app4")
-				c.createService1("default/echoserver", "8080", "172.17.0.11")
-				g1 := gateway.PathMatchExact
-				g2 := gateway.PathMatchPrefix
-				g3 := gateway.PathMatchRegularExpression
-				g4 := gateway.PathMatchImplementationSpecific
-				route.Spec.Rules[0].Matches[1].Path.Type = &g1
-				route.Spec.Rules[0].Matches[2].Path.Type = &g2
-				route.Spec.Rules[0].Matches[3].Path.Type = &g3
-				route.Spec.Rules[0].Matches[4].Path.Type = &g4
-			},
-			expDefaultHost: `
-hostname: <default>
-paths:
-- path: /app4
-  backend: default_web__rule0
-- path: /app3
-  match: regex
-  backend: default_web__rule0
-- path: /app2
-  match: prefix
-  backend: default_web__rule0
-- path: /app1
-  match: exact
-  backend: default_web__rule0
-- path: /app0
-  match: prefix
-  backend: default_web__rule0
-`,
-			expBackends: `
-- id: default_web__rule0
-  endpoints:
-  - ip: 172.17.0.11
-    port: 8080
-    weight: 128
-`,
-		},
-		{
-			id: "match-path-mode-tcp-1",
-			config: func(c *testConfig) {
-				g := c.createGateway1("default/web", "gateway=web")
-				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
-				c.createService1("default/echoserver", "8080", "172.17.0.11")
-				passthrough := gateway.TLSModePassthrough
-				g.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{Mode: &passthrough}
-			},
-			expDefaultHost: `
-hostname: <default>
-paths:
-- path: /
-  match: prefix
-  backend: default_web__rule0
-passthrough: true
-`,
-			expBackends: `
-- id: default_web__rule0
-  endpoints:
-  - ip: 172.17.0.11
-    port: 8080
-    weight: 128
-  modetcp: true
-`,
-		},
-		{
-			id: "multi-path-1",
-			config: func(c *testConfig) {
-				c.createGateway1("default/web", "gateway=web")
-				c.createHTTPRoute2("default/web", "gateway=web", "echoserver:8080", "/app1,/app2")
-				c.createService1("default/echoserver", "8080", "172.17.0.11")
+				c.createHTTPRoute2("default/web1", "web:h1", "echoserver1:8080", "/app1")
+				c.createHTTPRoute2("default/web2", "web:h2", "echoserver2:8080", "/app2")
+				c.createService1("default/echoserver1", "8080", "172.17.0.11")
+				c.createService1("default/echoserver2", "8080", "172.17.0.12")
 			},
 			expDefaultHost: `
 hostname: <default>
 paths:
 - path: /app2
   match: prefix
-  backend: default_web__rule0
+  backend: default_web2__rule0
 - path: /app1
   match: prefix
-  backend: default_web__rule0
+  backend: default_web1__rule0
 `,
 			expBackends: `
-- id: default_web__rule0
+- id: default_web1__rule0
   endpoints:
   - ip: 172.17.0.11
+    port: 8080
+    weight: 128
+- id: default_web2__rule0
+  endpoints:
+  - ip: 172.17.0.12
     port: 8080
     weight: 128
 `,
 		},
 		{
-			id: "listener-hostname-1",
+			id: "tls-listener-no-refs-1",
 			config: func(c *testConfig) {
-				g := c.createGateway1("default/web", "gateway=web")
-				r := c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
-				c.createService1("default/echoserver", "8080", "172.17.0.11")
-				hostname := gateway.Hostname("domain.local")
-				g.Spec.Listeners[0].Hostname = &hostname
-				r.Spec.Hostnames = append(r.Spec.Hostnames, "other.local")
+				c.createGateway1("default/web", "l1,l2")
+				r1 := c.createHTTPRoute2("default/web1", "web:l1", "echoserver1:8080", "/")
+				r2 := c.createHTTPRoute2("default/web2", "web:l2", "echoserver2:8080", "/")
+				c.createService1("default/echoserver1", "8080", "172.17.0.11")
+				c.createService1("default/echoserver2", "8080", "172.17.0.12")
+				r1.Spec.Hostnames = []gateway.Hostname{"host1.local"}
+				r2.Spec.Hostnames = []gateway.Hostname{"host1.local"}
 			},
+			expLogging: `
+WARN skipping redeclared path '/' type 'prefix' on HTTPRoute 'default/web2'
+`,
 			expHosts: `
-- hostname: domain.local
+- hostname: host1.local
   paths:
   - path: /
     match: prefix
-    backend: default_web__rule0
+    backend: default_web1__rule0
 `,
 			expBackends: `
-- id: default_web__rule0
+- id: default_web1__rule0
   endpoints:
   - ip: 172.17.0.11
     port: 8080
     weight: 128
-`,
-		},
-		{
-			id: "reouse-httproute-1",
-			config: func(c *testConfig) {
-				c.createGateway1("default/web1", "gateway=web")
-				c.createGateway1("default/web2", "gateway=web")
-				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
-				c.createService1("default/echoserver", "8080", "172.17.0.11")
-			},
-			expDefaultHost: `
-hostname: <default>
-paths:
-- path: /
-  match: prefix
-  backend: default_web__rule0
-- path: /
-  match: prefix
-  backend: default_web__rule0
-`,
-			expBackends: `
-- id: default_web__rule0
+- id: default_web2__rule0
   endpoints:
-  - ip: 172.17.0.11
+  - ip: 172.17.0.12
     port: 8080
     weight: 128
 `,
@@ -457,60 +295,13 @@ paths:
 	})
 }
 
-func TestSyncHTTPRouteNamespaceFilter(t *testing.T) {
-	runTestSync(t, []testCaseSync{
-		{
-			id: "filter-1",
-			config: func(c *testConfig) {
-				c.createGateway1("ns1/gwweb", "gateway=web")
-				c.createHTTPRoute1("ns2/routeweb", "gateway=web", "echoserver:8080")
-				c.createService1("ns2/echoserver", "8080", "172.17.0.11")
-			},
-		},
-		{
-			id: "filter-2",
-			config: func(c *testConfig) {
-				g := c.createGateway1("ns1/gwweb", "gateway=web")
-				c.createHTTPRoute1("ns2/routeweb", "gateway=web", "echoserver:8080")
-				c.createService1("ns2/echoserver", "8080", "172.17.0.11")
-				same := gateway.RouteSelectSame
-				g.Spec.Listeners[0].Routes.Namespaces = &gateway.RouteNamespaces{From: &same}
-			},
-		},
-		{
-			id: "filter-3",
-			config: func(c *testConfig) {
-				g := c.createGateway1("ns1/gwweb", "gateway=web")
-				c.createHTTPRoute1("ns2/routeweb", "gateway=web", "echoserver:8080")
-				c.createService1("ns2/echoserver", "8080", "172.17.0.11")
-				all := gateway.RouteSelectAll
-				g.Spec.Listeners[0].Routes.Namespaces = &gateway.RouteNamespaces{From: &all}
-			},
-			expDefaultHost: `
-hostname: <default>
-paths:
-- path: /
-  match: prefix
-  backend: ns2_routeweb__rule0
-`,
-			expBackends: `
-- id: ns2_routeweb__rule0
-  endpoints:
-  - ip: 172.17.0.11
-    port: 8080
-    weight: 128
-`,
-		},
-	})
-}
-
-func TestSyncHTTPRouteTracked(t *testing.T) {
+func TestSyncHTTPRouteTracking(t *testing.T) {
 	runTestSync(t, []testCaseSync{
 		{
 			id: "remove-secret-1",
 			config: func(c *testConfig) {
-				c.createGateway2("default/web", "gateway=web", "crt")
-				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
+				c.createGateway2("default/web", "l1", "crt")
+				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 				c.cache.SecretTLSPath["default/crt"] = "/tls/crt.pem"
 			},
@@ -522,8 +313,8 @@ func TestSyncHTTPRouteTracked(t *testing.T) {
 		{
 			id: "remove-secret-2",
 			config: func(c *testConfig) {
-				c.createGateway2("default/web", "gateway=web", "crt")
-				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
+				c.createGateway2("default/web", "l1", "crt")
+				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 				c.cache.SecretTLSPath["default/crt"] = "/tls/crt.pem"
 			},
@@ -535,8 +326,8 @@ func TestSyncHTTPRouteTracked(t *testing.T) {
 		{
 			id: "add-secret-1",
 			config: func(c *testConfig) {
-				c.createGateway2("default/web", "gateway=web", "crt")
-				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
+				c.createGateway2("default/web", "l1", "crt")
+				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 			},
 			configTrack: func(c *testConfig) {
@@ -544,14 +335,14 @@ func TestSyncHTTPRouteTracked(t *testing.T) {
 			},
 			expFullSync: false,
 			expLogging: `
-WARN skipping certificate reference on Gateway 'default/web': secret not found: 'default/crt'
+WARN skipping certificate reference on Gateway 'default/web' listener 'l1': secret not found: 'default/crt'
 `,
 		},
 		{
 			id: "add-secret-2",
 			config: func(c *testConfig) {
-				c.createGateway2("default/web", "gateway=web", "crt")
-				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
+				c.createGateway2("default/web", "l1", "crt")
+				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 			},
 			configTrack: func(c *testConfig) {
@@ -559,14 +350,14 @@ WARN skipping certificate reference on Gateway 'default/web': secret not found: 
 			},
 			expFullSync: true,
 			expLogging: `
-WARN skipping certificate reference on Gateway 'default/web': secret not found: 'default/crt'
+WARN skipping certificate reference on Gateway 'default/web' listener 'l1': secret not found: 'default/crt'
 `,
 		},
 		{
 			id: "update-secret-1",
 			config: func(c *testConfig) {
-				c.createGateway2("default/web", "gateway=web", "crt")
-				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
+				c.createGateway2("default/web", "l1", "crt")
+				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 				c.cache.SecretTLSPath["default/crt"] = "/tls/crt.pem"
 			},
@@ -578,8 +369,8 @@ WARN skipping certificate reference on Gateway 'default/web': secret not found: 
 		{
 			id: "remove-service-1",
 			config: func(c *testConfig) {
-				c.createGateway1("default/web", "gateway=web")
-				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
+				c.createGateway1("default/web", "l1")
+				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 			},
 			configTrack: func(c *testConfig) {
@@ -591,8 +382,8 @@ WARN skipping certificate reference on Gateway 'default/web': secret not found: 
 		{
 			id: "remove-service-2",
 			config: func(c *testConfig) {
-				c.createGateway1("default/web", "gateway=web")
-				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
+				c.createGateway1("default/web", "l1")
+				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 			},
 			configTrack: func(c *testConfig) {
@@ -604,8 +395,8 @@ WARN skipping certificate reference on Gateway 'default/web': secret not found: 
 		{
 			id: "add-service-1",
 			config: func(c *testConfig) {
-				c.createGateway1("default/web", "gateway=web")
-				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
+				c.createGateway1("default/web", "l1")
+				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 			},
 			configTrack: func(c *testConfig) {
 				svc, _ := c.createService1("default/echoserver", "8080", "172.17.0.11")
@@ -619,8 +410,8 @@ WARN skipping service 'echoserver' on HTTPRoute 'default/web': service not found
 		{
 			id: "change-endpoint-1",
 			config: func(c *testConfig) {
-				c.createGateway1("default/web", "gateway=web")
-				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
+				c.createGateway1("default/web", "l1")
+				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 			},
 			configTrack: func(c *testConfig) {
@@ -637,25 +428,25 @@ func TestSyncHTTPRouteWeight(t *testing.T) {
 		{
 			id: "multi-backend-weight-1",
 			resConfig: []string{`
-apiVersion: networking.x-k8s.io/v1alpha1
+apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: HTTPRoute
 metadata:
-  labels:
-    gateway: web
   name: web
   namespace: default
 spec:
+  parentRefs:
+  - name: web
   rules:
-  - forwardTo:
-    - serviceName: echoserver1
+  - backendRefs:
+    - name: echoserver1
       port: 8080
       weight: 4
-    - serviceName: echoserver2
+    - name: echoserver2
       port: 8080
       weight: 1
 `},
 			config: func(c *testConfig) {
-				c.createGateway1("default/web", "gateway=web")
+				c.createGateway1("default/web", "l1")
 				c.createService1("default/echoserver1", "8080", "172.17.0.11")
 				c.createService1("default/echoserver2", "8080", "172.17.0.12")
 			},
@@ -680,7 +471,7 @@ paths:
 		{
 			id: "multi-backend-weight-2",
 			resConfig: []string{`
-apiVersion: networking.x-k8s.io/v1alpha1
+apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: HTTPRoute
 metadata:
   labels:
@@ -688,17 +479,19 @@ metadata:
   name: web
   namespace: default
 spec:
+  parentRefs:
+  - name: web
   rules:
-  - forwardTo:
-    - serviceName: echoserver1
+  - backendRefs:
+    - name: echoserver1
       port: 8080
       weight: 4
-    - serviceName: echoserver2
+    - name: echoserver2
       port: 8080
       weight: 1
 `},
 			config: func(c *testConfig) {
-				c.createGateway1("default/web", "gateway=web")
+				c.createGateway1("default/web", "l1")
 				c.createService1("default/echoserver1", "8080", "172.17.0.11")
 				c.createService1("default/echoserver2", "8080", "172.17.0.12,172.17.0.13,172.17.0.14,172.17.0.15")
 			},
@@ -732,211 +525,109 @@ paths:
 	})
 }
 
-func TestSyncHTTPRouteTLS(t *testing.T) {
-	allow := gateway.TLSROuteOVerrideAllow
-	deny := gateway.TLSRouteOverrideDeny
+func TestSyncGatewayTLS(t *testing.T) {
+	defaultBackend := `
+- id: default_web__rule0
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+    weight: 128
+`
+	defaultHTTPHost := `
+hostname: <default>
+paths:
+- path: /
+  match: prefix
+  backend: default_web__rule0
+`
+	defaultHTTPSHost := `
+hostname: <default>
+paths:
+- path: /
+  match: prefix
+  backend: default_web__rule0
+tls:
+  tlsfilename: /tls/default/crt.pem
+`
 	runTestSync(t, []testCaseSync{
 		{
-			id: "tls-listener-err-1",
+			id: "tls-listener-missing-secret-1",
 			config: func(c *testConfig) {
-				c.createGateway2("default/web", "gateway=web", "crt")
-				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
+				c.createGateway2("default/web", "l1", "crt")
+				c.createHTTPRoute1("default/web", "web:l1", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 			},
-			expLogging: `WARN skipping certificate reference on Gateway 'default/web': secret not found: 'default/crt'`,
-			expDefaultHost: `
-hostname: <default>
-paths:
-- path: /
-  match: prefix
-  backend: default_web__rule0
+			expLogging: `
+WARN skipping certificate reference on Gateway 'default/web' listener 'l1': secret not found: 'default/crt'
 `,
-			expBackends: `
-- id: default_web__rule0
-  endpoints:
-  - ip: 172.17.0.11
-    port: 8080
-    weight: 128
-`,
-		},
-		{
-			id: "tls-listener-err-2",
-			config: func(c *testConfig) {
-				gw := c.createGateway2("default/web", "gateway=web", "crt")
-				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
-				c.createService1("default/echoserver", "8080", "172.17.0.11")
-				gw.Spec.Listeners[0].TLS.CertificateRef.Group = "acme.io"
-			},
-			expLogging: `WARN skipping certificate reference on Gateway 'default/web': unsupported Group 'acme.io', supported groups are 'core' and ''`,
-			expDefaultHost: `
-hostname: <default>
-paths:
-- path: /
-  match: prefix
-  backend: default_web__rule0
-`,
-			expBackends: `
-- id: default_web__rule0
-  endpoints:
-  - ip: 172.17.0.11
-    port: 8080
-    weight: 128
-`,
-		},
-		{
-			id: "tls-listener-err-3",
-			config: func(c *testConfig) {
-				gw := c.createGateway2("default/web", "gateway=web", "crt")
-				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
-				c.createService1("default/echoserver", "8080", "172.17.0.11")
-				gw.Spec.Listeners[0].TLS.CertificateRef.Kind = "ConfigMap"
-			},
-			expLogging: `WARN skipping certificate reference on Gateway 'default/web': unsupported Kind 'ConfigMap', the only supported kind is 'Secret'`,
-			expDefaultHost: `
-hostname: <default>
-paths:
-- path: /
-  match: prefix
-  backend: default_web__rule0
-`,
-			expBackends: `
-- id: default_web__rule0
-  endpoints:
-  - ip: 172.17.0.11
-    port: 8080
-    weight: 128
-`,
+			expDefaultHost: defaultHTTPHost,
+			expBackends:    defaultBackend,
 		},
 		{
 			id: "tls-listener-1",
 			config: func(c *testConfig) {
-				gw := c.createGateway2("default/web", "gateway=web", "crt")
-				c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
+				c.createSecret1("default/crt")
+				c.createGateway2("default/web", "l1", "crt")
+				c.createHTTPRoute1("default/web", "web:l1", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
-				gw.Spec.Listeners[0].TLS.CertificateRef.Kind = "Secret"
-				c.cache.SecretTLSPath["default/crt"] = "/tls/crt.pem"
 			},
-			expDefaultHost: `
-hostname: <default>
-paths:
-- path: /
-  match: prefix
-  backend: default_web__rule0
-tls:
-  tlsfilename: /tls/crt.pem
-`,
-			expBackends: `
-- id: default_web__rule0
-  endpoints:
-  - ip: 172.17.0.11
-    port: 8080
-    weight: 128
-`,
+			expDefaultHost: defaultHTTPSHost,
+			expBackends:    defaultBackend,
 		},
 		{
-			id: "tls-listener-override-1",
+			id: "tls-listener-more-refs-1",
 			config: func(c *testConfig) {
-				gw := c.createGateway2("default/web", "gateway=web", "crt1")
-				r := c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
+				c.createSecret1("default/crt")
+				c.createSecret1("default/crt2")
+				c.createGateway2("default/web", "l1", "crt,crt2")
+				c.createHTTPRoute1("default/web", "web:l1", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
-				gw.Spec.Listeners[0].TLS.RouteOverride = &gateway.TLSOverridePolicy{Certificate: &deny}
-				r.Spec.TLS = &gateway.RouteTLSConfig{}
-				r.Spec.TLS.CertificateRef.Name = "crt2"
-				c.cache.SecretTLSPath["default/crt1"] = "/tls/crt1.pem"
-				c.cache.SecretTLSPath["default/crt2"] = "/tls/crt2.pem"
-			},
-			expDefaultHost: `
-hostname: <default>
-paths:
-- path: /
-  match: prefix
-  backend: default_web__rule0
-tls:
-  tlsfilename: /tls/crt1.pem
-`,
-			expBackends: `
-- id: default_web__rule0
-  endpoints:
-  - ip: 172.17.0.11
-    port: 8080
-    weight: 128
-`,
-		},
-		{
-			id: "tls-listener-override-2",
-			config: func(c *testConfig) {
-				gw := c.createGateway2("default/web", "gateway=web", "crt1")
-				r := c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8080")
-				c.createService1("default/echoserver", "8080", "172.17.0.11")
-				gw.Spec.Listeners[0].TLS.RouteOverride = &gateway.TLSOverridePolicy{Certificate: &allow}
-				r.Spec.TLS = &gateway.RouteTLSConfig{}
-				r.Spec.TLS.CertificateRef.Name = "crt2"
-				c.cache.SecretTLSPath["default/crt1"] = "/tls/crt1.pem"
-				c.cache.SecretTLSPath["default/crt2"] = "/tls/crt2.pem"
-			},
-			expDefaultHost: `
-hostname: <default>
-paths:
-- path: /
-  match: prefix
-  backend: default_web__rule0
-tls:
-  tlsfilename: /tls/crt2.pem
-`,
-			expBackends: `
-- id: default_web__rule0
-  endpoints:
-  - ip: 172.17.0.11
-    port: 8080
-    weight: 128
-`,
-		},
-		{
-			id: "tls-route-err-1",
-			config: func(c *testConfig) {
-				gw := c.createGateway2("default/web", "gateway=web", "crt0")
-				r1 := c.createHTTPRoute2("default/web1", "gateway=web", "echoserver1:8080", "/app1")
-				r2 := c.createHTTPRoute2("default/web2", "gateway=web", "echoserver2:8080", "/app2")
-				c.createService1("default/echoserver1", "8080", "172.17.0.11")
-				c.createService1("default/echoserver2", "8080", "172.17.0.12")
-				gw.Spec.Listeners[0].TLS.RouteOverride = &gateway.TLSOverridePolicy{Certificate: &allow}
-				r1.Spec.Hostnames = append(r1.Spec.Hostnames, "domain1.local")
-				r1.Spec.Hostnames = append(r1.Spec.Hostnames, "domain2.local")
-				r2.Spec.Hostnames = append(r2.Spec.Hostnames, "domain1.local")
-				r2.Spec.Hostnames = append(r2.Spec.Hostnames, "domain2.local")
-				r1.Spec.TLS = &gateway.RouteTLSConfig{}
-				r1.Spec.TLS.CertificateRef.Name = "crt1"
-				r2.Spec.TLS = &gateway.RouteTLSConfig{}
-				r2.Spec.TLS.CertificateRef.Name = "crt2"
-				c.cache.SecretTLSPath["default/crt0"] = "/tls/crt0.pem"
-				c.cache.SecretTLSPath["default/crt1"] = "/tls/crt1.pem"
-				c.cache.SecretTLSPath["default/crt2"] = "/tls/crt2.pem"
 			},
 			expLogging: `
-WARN skipping certificate reference on HTTPRoute 'default/web2' for hostname domain1.local: a TLS certificate was already assigned
-WARN skipping certificate reference on HTTPRoute 'default/web2' for hostname domain2.local: a TLS certificate was already assigned
+WARN skipping one or more certificate references on Gateway 'default/web' listener 'l1': listener currently supports only the first referenced certificate
+`,
+			expDefaultHost: defaultHTTPSHost,
+			expBackends:    defaultBackend,
+		},
+		{
+			id: "tls-listener-no-refs-1",
+			config: func(c *testConfig) {
+				c.createSecret1("default/crt1")
+				g := c.createGateway2("default/web", "l1", "crt1")
+				c.createHTTPRoute1("default/web", "web:l1", "echoserver:8080")
+				c.createService1("default/echoserver", "8080", "172.17.0.11")
+				g.Spec.Listeners[0].TLS.CertificateRefs = nil
+			},
+			expLogging: `
+WARN skipping certificate reference on Gateway 'default/web' listener 'l1': listener has no certificate reference
+`,
+			expDefaultHost: defaultHTTPHost,
+			expBackends:    defaultBackend,
+		},
+		{
+			id: "tls-listener-reassign-crt-1",
+			config: func(c *testConfig) {
+				c.createSecret1("default/crt1")
+				c.createSecret1("default/crt2")
+				c.createGateway2("default/web", "l1,l2", "crt1").Spec.Listeners[1].TLS.CertificateRefs[0].Name = "crt2"
+				r1 := c.createHTTPRoute1("default/web1", "web:l1", "echoserver1:8080")
+				r2 := c.createHTTPRoute1("default/web2", "web:l2", "echoserver2:8080")
+				c.createService1("default/echoserver1", "8080", "172.17.0.11")
+				c.createService1("default/echoserver2", "8080", "172.17.0.12")
+				r1.Spec.Hostnames = []gateway.Hostname{"host1.local"}
+				r2.Spec.Hostnames = []gateway.Hostname{"host1.local"}
+			},
+			expLogging: `
+WARN skipping redeclared path '/' type 'prefix' on HTTPRoute 'default/web2'
 `,
 			expHosts: `
-- hostname: domain1.local
+- hostname: host1.local
   paths:
-  - path: /app2
-    match: prefix
-    backend: default_web2__rule0
-  - path: /app1
+  - path: /
     match: prefix
     backend: default_web1__rule0
   tls:
-    tlsfilename: /tls/crt1.pem
-- hostname: domain2.local
-  paths:
-  - path: /app2
-    match: prefix
-    backend: default_web2__rule0
-  - path: /app1
-    match: prefix
-    backend: default_web1__rule0
-  tls:
-    tlsfilename: /tls/crt1.pem
+    tlsfilename: /tls/default/crt1.pem
 `,
 			expBackends: `
 - id: default_web1__rule0
@@ -951,77 +642,17 @@ WARN skipping certificate reference on HTTPRoute 'default/web2' for hostname dom
     weight: 128
 `,
 		},
-		{
-			id: "tls-route-fallback-err-1",
-			config: func(c *testConfig) {
-				gw := c.createGateway2("default/webgw", "gateway=web", "crt-listener")
-				r := c.createHTTPRoute1("default/webroute", "gateway=web", "echoserver:8080")
-				c.createService1("default/echoserver", "8080", "172.17.0.11")
-				gw.Spec.Listeners[0].TLS.RouteOverride = &gateway.TLSOverridePolicy{Certificate: &allow}
-				r.Spec.TLS = &gateway.RouteTLSConfig{}
-				r.Spec.TLS.CertificateRef.Name = "crt-route"
-				c.cache.SecretTLSPath["default/crt-listener"] = "/tls/crt-listener.pem"
-			},
-			expLogging: `
-WARN falling back to the listener configured certificate due to an error reading on HTTPRoute 'default/webroute': secret not found: 'default/crt-route'
-`,
-			expDefaultHost: `
-hostname: <default>
-paths:
-- path: /
-  match: prefix
-  backend: default_webroute__rule0
-tls:
-  tlsfilename: /tls/crt-listener.pem
-`,
-			expBackends: `
-- id: default_webroute__rule0
-  endpoints:
-  - ip: 172.17.0.11
-    port: 8080
-    weight: 128
-`,
-		},
-		{
-			id: "tls-route-fallback-err-2",
-			config: func(c *testConfig) {
-				gw := c.createGateway2("default/webgw", "gateway=web", "crt-listener")
-				r := c.createHTTPRoute1("default/webroute", "gateway=web", "echoserver:8080")
-				c.createService1("default/echoserver", "8080", "172.17.0.11")
-				gw.Spec.Listeners[0].TLS.RouteOverride = &gateway.TLSOverridePolicy{Certificate: &allow}
-				r.Spec.TLS = &gateway.RouteTLSConfig{}
-				r.Spec.TLS.CertificateRef.Name = "crt-route"
-			},
-			expLogging: `
-WARN skipping listener certificate reference on Gateway 'default/webgw': secret not found: 'default/crt-listener'
-WARN skipping route certificate reference on HTTPRoute 'default/webroute': secret not found: 'default/crt-route'
-`,
-			expDefaultHost: `
-hostname: <default>
-paths:
-- path: /
-  match: prefix
-  backend: default_webroute__rule0
-`,
-			expBackends: `
-- id: default_webroute__rule0
-  endpoints:
-  - ip: 172.17.0.11
-    port: 8080
-    weight: 128
-`,
-		},
 	})
 }
 
-func TestSyncHTTPRouteTLSPassthrough(t *testing.T) {
+func TestSyncGatewayTLSPassthrough(t *testing.T) {
 	passthrough := gateway.TLSModePassthrough
 	runTestSync(t, []testCaseSync{
 		{
-			id: "https-1",
+			id: "passthrough-1",
 			config: func(c *testConfig) {
-				g := c.createGateway1("default/web", "gateway=web")
-				r := c.createHTTPRoute1("default/web", "gateway=web", "echoserver:8443")
+				g := c.createGateway1("default/web", "l1")
+				r := c.createHTTPRoute1("default/web", "web", "echoserver:8443")
 				c.createService1("default/echoserver", "8443", "172.17.0.11")
 				g.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{Mode: &passthrough}
 				r.Spec.Hostnames = append(r.Spec.Hostnames, "domain.local")
@@ -1044,17 +675,16 @@ func TestSyncHTTPRouteTLSPassthrough(t *testing.T) {
 `,
 		},
 		{
-			id: "http-than-https-1",
+			id: "passthrough-and-http-first-1",
 			config: func(c *testConfig) {
-				c.createGateway1("default/web1", "gateway=web1")
-				g := c.createGateway1("default/web2", "gateway=web2")
-				r1 := c.createHTTPRoute1("default/web1", "gateway=web1", "echoserver1:8080")
-				r2 := c.createHTTPRoute1("default/web2", "gateway=web2", "echoserver2:8443")
+				g := c.createGateway1("default/web", "l1,l2")
+				r1 := c.createHTTPRoute2("default/web1", "web:l1", "echoserver1:8080", "/")
+				r2 := c.createHTTPRoute1("default/web2", "web:l2", "echoserver2:8443")
 				c.createService1("default/echoserver1", "8080", "172.17.0.11")
 				c.createService1("default/echoserver2", "8443", "172.17.0.12")
-				g.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{Mode: &passthrough}
-				r1.Spec.Hostnames = append(r1.Spec.Hostnames, "domain.local")
-				r2.Spec.Hostnames = append(r2.Spec.Hostnames, "domain.local")
+				g.Spec.Listeners[1].TLS = &gateway.GatewayTLSConfig{Mode: &passthrough}
+				r1.Spec.Hostnames = []gateway.Hostname{"domain.local"}
+				r2.Spec.Hostnames = []gateway.Hostname{"domain.local"}
 			},
 			expHosts: `
 - hostname: domain.local
@@ -1080,17 +710,16 @@ func TestSyncHTTPRouteTLSPassthrough(t *testing.T) {
 `,
 		},
 		{
-			id: "https-than-http-1",
+			id: "passthrough-and-http-last-1",
 			config: func(c *testConfig) {
-				g := c.createGateway1("default/web1", "gateway=web1")
-				c.createGateway1("default/web2", "gateway=web2")
-				r1 := c.createHTTPRoute1("default/web1", "gateway=web1", "echoserver1:8443")
-				r2 := c.createHTTPRoute1("default/web2", "gateway=web2", "echoserver2:8080")
+				g := c.createGateway1("default/web", "l1,l2")
+				r1 := c.createHTTPRoute1("default/web1", "web:l1", "echoserver1:8443")
+				r2 := c.createHTTPRoute2("default/web2", "web:l2", "echoserver2:8080", "/")
 				c.createService1("default/echoserver1", "8443", "172.17.0.11")
 				c.createService1("default/echoserver2", "8080", "172.17.0.12")
 				g.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{Mode: &passthrough}
-				r1.Spec.Hostnames = append(r1.Spec.Hostnames, "domain.local")
-				r2.Spec.Hostnames = append(r2.Spec.Hostnames, "domain.local")
+				r1.Spec.Hostnames = []gateway.Hostname{"domain.local"}
+				r2.Spec.Hostnames = []gateway.Hostname{"domain.local"}
 			},
 			expHosts: `
 - hostname: domain.local
@@ -1116,43 +745,40 @@ func TestSyncHTTPRouteTLSPassthrough(t *testing.T) {
 `,
 		},
 		{
-			id: "http-than-https-than-http-1",
+			id: "passthrough-and-http-dup-passthrough-1",
 			config: func(c *testConfig) {
-				c.createGateway1("default/web1", "gateway=web1")
-				g := c.createGateway1("default/web2", "gateway=web2")
-				c.createGateway1("default/web3", "gateway=web3")
-				r1 := c.createHTTPRoute2("default/web1", "gateway=web1", "echoserver1:8080", "/,/app1")
-				r2 := c.createHTTPRoute1("default/web2", "gateway=web2", "echoserver2:8443")
-				r3 := c.createHTTPRoute2("default/web3", "gateway=web3", "echoserver3:8080", "/app2")
-				c.createService1("default/echoserver1", "8080", "172.17.0.11")
+				g := c.createGateway1("default/web", "l1,l2,l3")
+				r1 := c.createHTTPRoute1("default/web1", "web:l1", "echoserver1:8443")
+				r2 := c.createHTTPRoute1("default/web2", "web:l2", "echoserver2:8443")
+				r3 := c.createHTTPRoute2("default/web3", "web:l3", "echoserver3:8080", "/")
+				c.createService1("default/echoserver1", "8443", "172.17.0.11")
 				c.createService1("default/echoserver2", "8443", "172.17.0.12")
 				c.createService1("default/echoserver3", "8080", "172.17.0.13")
 				g.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{Mode: &passthrough}
-				r1.Spec.Hostnames = append(r1.Spec.Hostnames, "domain.local")
-				r2.Spec.Hostnames = append(r2.Spec.Hostnames, "domain.local")
-				r3.Spec.Hostnames = append(r3.Spec.Hostnames, "domain.local")
+				g.Spec.Listeners[1].TLS = &gateway.GatewayTLSConfig{Mode: &passthrough}
+				r1.Spec.Hostnames = []gateway.Hostname{"domain.local"}
+				r2.Spec.Hostnames = []gateway.Hostname{"domain.local"}
+				r3.Spec.Hostnames = []gateway.Hostname{"domain.local"}
 			},
+			expLogging: `
+WARN skipping redeclared ssl-passthrough root path on HTTPRoute 'default/web2'
+`,
 			expHosts: `
 - hostname: domain.local
   paths:
-  - path: /app2
-    match: prefix
-    backend: default_web3__rule0
-  - path: /app1
-    match: prefix
-    backend: default_web1__rule0
   - path: /
     match: prefix
-    backend: default_web2__rule0
+    backend: default_web1__rule0
   passthrough: true
-  httppassback: default_web1__rule0
+  httppassback: default_web3__rule0
 `,
 			expBackends: `
 - id: default_web1__rule0
   endpoints:
   - ip: 172.17.0.11
-    port: 8080
+    port: 8443
     weight: 128
+  modetcp: true
 - id: default_web2__rule0
   endpoints:
   - ip: 172.17.0.12
@@ -1167,16 +793,99 @@ func TestSyncHTTPRouteTLSPassthrough(t *testing.T) {
 `,
 		},
 		{
-			id: "https-with-match-1",
+			id: "passthrough-and-http-dup-http-1",
 			config: func(c *testConfig) {
-				g := c.createGateway1("default/web", "gateway=web")
-				r1 := c.createHTTPRoute2("default/web", "gateway=web", "echoserver:8443", "/app")
-				c.createService1("default/echoserver", "8443", "172.17.0.11")
+				g := c.createGateway1("default/web", "l1,l2,l3")
+				r1 := c.createHTTPRoute1("default/web1", "web:l1", "echoserver1:8443")
+				r2 := c.createHTTPRoute2("default/web2", "web:l2", "echoserver2:8080", "/")
+				r3 := c.createHTTPRoute2("default/web3", "web:l3", "echoserver3:8080", "/")
+				c.createService1("default/echoserver1", "8443", "172.17.0.11")
+				c.createService1("default/echoserver2", "8080", "172.17.0.12")
+				c.createService1("default/echoserver3", "8080", "172.17.0.13")
 				g.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{Mode: &passthrough}
-				r1.Spec.Hostnames = append(r1.Spec.Hostnames, "domain.local")
+				r1.Spec.Hostnames = []gateway.Hostname{"domain.local"}
+				r2.Spec.Hostnames = []gateway.Hostname{"domain.local"}
+				r3.Spec.Hostnames = []gateway.Hostname{"domain.local"}
 			},
 			expLogging: `
-WARN ignoring match from HTTPRoute 'default/web': backend is configured as TCP mode
+WARN skipping redeclared http root path on HTTPRoute 'default/web3'
+`,
+			expHosts: `
+- hostname: domain.local
+  paths:
+  - path: /
+    match: prefix
+    backend: default_web1__rule0
+  passthrough: true
+  httppassback: default_web2__rule0
+`,
+			expBackends: `
+- id: default_web1__rule0
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8443
+    weight: 128
+  modetcp: true
+- id: default_web2__rule0
+  endpoints:
+  - ip: 172.17.0.12
+    port: 8080
+    weight: 128
+- id: default_web3__rule0
+  endpoints:
+  - ip: 172.17.0.13
+    port: 8080
+    weight: 128
+`,
+		},
+		{
+			id: "passthrough-and-http-path-1",
+			config: func(c *testConfig) {
+				g := c.createGateway1("default/web", "l1,l2")
+				r1 := c.createHTTPRoute2("default/web1", "web:l1", "echoserver1:8080", "/app")
+				r2 := c.createHTTPRoute1("default/web2", "web:l2", "echoserver2:8443")
+				c.createService1("default/echoserver1", "8080", "172.17.0.11")
+				c.createService1("default/echoserver2", "8443", "172.17.0.12")
+				g.Spec.Listeners[1].TLS = &gateway.GatewayTLSConfig{Mode: &passthrough}
+				r1.Spec.Hostnames = []gateway.Hostname{"domain.local"}
+				r2.Spec.Hostnames = []gateway.Hostname{"domain.local"}
+			},
+			expHosts: `
+- hostname: domain.local
+  paths:
+  - path: /app
+    match: prefix
+    backend: default_web1__rule0
+  - path: /
+    match: prefix
+    backend: default_web2__rule0
+  passthrough: true
+`,
+			expBackends: `
+- id: default_web1__rule0
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+    weight: 128
+- id: default_web2__rule0
+  endpoints:
+  - ip: 172.17.0.12
+    port: 8443
+    weight: 128
+  modetcp: true
+`,
+		},
+		{
+			id: "passthrough-with-match-1",
+			config: func(c *testConfig) {
+				g := c.createGateway1("default/web", "l1")
+				r1 := c.createHTTPRoute2("default/web", "web", "echoserver:8443", "/app")
+				c.createService1("default/echoserver", "8443", "172.17.0.11")
+				g.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{Mode: &passthrough}
+				r1.Spec.Hostnames = []gateway.Hostname{"domain.local"}
+			},
+			expLogging: `
+WARN ignoring match from HTTPRoute 'default/web': backend is TCP or SSL Passthrough
 `,
 			expHosts: `
 - hostname: domain.local
@@ -1280,8 +989,22 @@ func (c *testConfig) createConverter() Config {
 	)
 }
 
+func (c *testConfig) createNamespace(name, labels string) *api.Namespace {
+	ns := &api.Namespace{}
+	ns.Name = name
+	ns.Labels = map[string]string{}
+	for _, label := range strings.Split(labels, ",") {
+		l := strings.Split(label, "=")
+		ns.Labels[l[0]] = l[1]
+	}
+	c.cache.NsList[name] = ns
+	return ns
+}
+
 func (c *testConfig) createSecret1(secretName string) *api.Secret {
-	return conv_helper.CreateSecret(secretName)
+	s := conv_helper.CreateSecret(secretName)
+	c.cache.SecretTLSPath[secretName] = "/tls/" + secretName + ".pem"
+	return s
 }
 
 func (c *testConfig) createService1(name, port, ip string) (*api.Service, *api.Endpoints) {
@@ -1293,78 +1016,111 @@ func (c *testConfig) createService1(name, port, ip string) (*api.Service, *api.E
 
 func (c *testConfig) createGatewayClass1() *gateway.GatewayClass {
 	gc := CreateObject(`
-apiVersion: networking.x-k8s.io/v1alpha1
+apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: GatewayClass
 metadata:
   name: haproxy
 spec:
   controller: haproxy-ingress.github.io/controller`).(*gateway.GatewayClass)
-	c.cache.GwClassList = append(c.cache.GwClassList, gc)
+	c.cache.GatewayClassList = append(c.cache.GatewayClassList, gc)
 	return gc
 }
 
-func (c *testConfig) createGateway1(name, matchLabels string) *gateway.Gateway {
+func (c *testConfig) createGateway1(name, listeners string) *gateway.Gateway {
 	n := strings.Split(name, "/")
 	gw := CreateObject(`
-apiVersion: networking.x-k8s.io/v1alpha1
+apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: Gateway
 metadata:
   name: ` + n[1] + `
   namespace: ` + n[0] + `
 spec:
   gatewayClassName: haproxy
-  listeners:
-  - protocol: HTTP
-    port: 80
-    routes:
-      kind: HTTPRoute
-      selector:
-        matchLabels: {}`).(*gateway.Gateway)
-	for _, label := range strings.Split(matchLabels, ",") {
-		l := strings.Split(label, "=")
-		gw.Spec.Listeners[0].Routes.Selector.MatchLabels[l[0]] = l[1]
+  listeners: []`).(*gateway.Gateway)
+	for _, listener := range strings.Split(listeners, ",") {
+		l := gateway.Listener{}
+		var lname, lselector string
+		if i := strings.Index(listener, ":"); i >= 0 {
+			lname = listener[:i]
+			lselector = listener[i+1:]
+		} else {
+			lname = listener
+		}
+		l.Name = gateway.SectionName(lname)
+		from := gateway.NamespacesFromSame
+		var selector *v1.LabelSelector
+		if lselector != "" {
+			from = gateway.NamespacesFromSelector
+			selector = &v1.LabelSelector{
+				MatchLabels: map[string]string{},
+			}
+			for _, sel := range strings.Split(lselector, ";") {
+				s := strings.Split(sel, "=")
+				selector.MatchLabels[s[0]] = s[1]
+			}
+		}
+		l.AllowedRoutes = &gateway.AllowedRoutes{
+			Namespaces: &gateway.RouteNamespaces{
+				From:     &from,
+				Selector: selector,
+			},
+		}
+		gw.Spec.Listeners = append(gw.Spec.Listeners, l)
 	}
-	c.cache.GwList = append(c.cache.GwList, gw)
+	c.cache.GatewayList[name] = gw
 	return gw
 }
 
-func (c *testConfig) createGateway2(name, matchLabel, secretName string) *gateway.Gateway {
-	gw := c.createGateway1(name, matchLabel)
-	gw.Spec.Listeners[0].TLS = &gateway.GatewayTLSConfig{
-		CertificateRef: &gateway.LocalObjectReference{
-			Name: secretName,
-		},
+func (c *testConfig) createGateway2(name, listeners, secretName string) *gateway.Gateway {
+	gw := c.createGateway1(name, listeners)
+	for l := range gw.Spec.Listeners {
+		tls := &gateway.GatewayTLSConfig{}
+		for _, s := range strings.Split(secretName, ",") {
+			tls.CertificateRefs = append(tls.CertificateRefs, &gateway.SecretObjectReference{
+				Name: gateway.ObjectName(s),
+			})
+		}
+		gw.Spec.Listeners[l].TLS = tls
 	}
 	return gw
 }
 
-func (c *testConfig) createHTTPRoute1(name, labels, service string) *gateway.HTTPRoute {
+func (c *testConfig) createHTTPRoute1(name, parent, service string) *gateway.HTTPRoute {
 	n := strings.Split(name, "/")
+	var pns, pn, ps string
+	if i := strings.Index(parent, "/"); i >= 0 {
+		pns = parent[:i]
+		pn = parent[i+1:]
+	} else {
+		pn = parent
+	}
+	if i := strings.Index(pn, ":"); i >= 0 {
+		ps = pn[i+1:]
+		pn = pn[:i]
+	}
 	svc := strings.Split(service, ":")
 	r := CreateObject(`
+apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: HTTPRoute
-apiVersion: networking.x-k8s.io/v1alpha1
 metadata:
-  labels: {}
   name: ` + n[1] + `
   namespace: ` + n[0] + `
 spec:
+  parentRefs:
+  - name: ` + pn + `
+    namespace: ` + pns + `
+    sectionName: ` + ps + `
   rules:
-  - forwardTo:
-    - serviceName: ` + svc[0] + `
-      port: ` + svc[1] + `
-      weight: 1`).(*gateway.HTTPRoute)
-	for _, label := range strings.Split(labels, ",") {
-		l := strings.Split(label, "=")
-		r.ObjectMeta.Labels[l[0]] = l[1]
-	}
+  - backendRefs:
+    - name: ` + svc[0] + `
+      port: ` + svc[1]).(*gateway.HTTPRoute)
 	c.cache.HTTPRouteList = append(c.cache.HTTPRouteList, r)
 	return r
 }
 
-func (c *testConfig) createHTTPRoute2(name, labels, service, paths string) *gateway.HTTPRoute {
-	r := c.createHTTPRoute1(name, labels, service)
-	prefix := gateway.PathMatchPrefix
+func (c *testConfig) createHTTPRoute2(name, parent, service, paths string) *gateway.HTTPRoute {
+	r := c.createHTTPRoute1(name, parent, service)
+	prefix := gateway.PathMatchPathPrefix
 	for _, path := range strings.Split(paths, ",") {
 		p := path
 		match := gateway.HTTPRouteMatch{
@@ -1383,9 +1139,11 @@ func (c *testConfig) createGatewayResources(res []string) {
 		obj := CreateObject(cfg)
 		switch obj := obj.(type) {
 		case *gateway.Gateway:
-			c.cache.GwList = append(c.cache.GwList, obj)
+			c.cache.GatewayList[obj.Namespace+"/"+obj.Name] = obj
 		case *gateway.HTTPRoute:
 			c.cache.HTTPRouteList = append(c.cache.HTTPRouteList, obj)
+		case nil:
+			panic(fmt.Errorf("object is nil, cfg is %s", cfg))
 		default:
 			panic(fmt.Errorf("unknown object type: %s", obj.GetObjectKind().GroupVersionKind().String()))
 		}
@@ -1393,10 +1151,10 @@ func (c *testConfig) createGatewayResources(res []string) {
 }
 
 func CreateObject(cfg string) runtime.Object {
-	decode := scheme.Codecs.UniversalDeserializer().Decode
+	decode := gwapischeme.Codecs.UniversalDeserializer().Decode
 	obj, _, err := decode([]byte(cfg), nil, nil)
 	if err != nil {
-		return nil
+		panic(err)
 	}
 	return obj
 }

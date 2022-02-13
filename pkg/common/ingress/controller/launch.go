@@ -22,8 +22,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1alpha1"
+	gwapigatewayversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/gateway/versioned"
+	gwapinetworkingversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/networking/versioned"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/k8s"
@@ -623,12 +623,16 @@ func buildConfigFromFlags(masterURL, kubeconfigPath string) (*rest.Config, error
 
 type client struct {
 	*kubernetes.Clientset
-	gateway *versioned.Clientset
+	gateway    *gwapigatewayversioned.Clientset
+	networking *gwapinetworkingversioned.Clientset
 }
 
-// TODO is there a way to transparently embed k8s and crd clientsets into the outer struct?
-func (c *client) NetworkingV1alpha1() gatewayv1alpha1.NetworkingV1alpha1Interface {
-	return c.gateway.NetworkingV1alpha1()
+func (c *client) GatewayAPIV1alpha1() gwapinetworkingversioned.Interface {
+	return c.networking
+}
+
+func (c *client) GatewayAPIV1alpha2() gwapigatewayversioned.Interface {
+	return c.gateway
 }
 
 // createApiserverClient creates new Kubernetes Apiserver client. When kubeconfig or apiserverHost param is empty
@@ -657,7 +661,11 @@ func createApiserverClient(apiserverHost string, kubeConfig string, disableWarni
 	if err != nil {
 		return nil, err
 	}
-	gateway, err := versioned.NewForConfig(cfg)
+	gateway, err := gwapigatewayversioned.NewForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+	networking, err := gwapinetworkingversioned.NewForConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -671,8 +679,9 @@ func createApiserverClient(apiserverHost string, kubeConfig string, disableWarni
 		v.Major, v.Minor, v.GitVersion, v.GitTreeState, v.GitCommit, v.Platform)
 
 	return &client{
-		Clientset: k8s,
-		gateway:   gateway,
+		Clientset:  k8s,
+		gateway:    gateway,
+		networking: networking,
 	}, nil
 }
 

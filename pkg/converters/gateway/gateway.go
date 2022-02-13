@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The HAProxy Ingress Controller Authors.
+Copyright 2022 The HAProxy Ingress Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,11 +18,13 @@ package gateway
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
-	"strings"
 
 	api "k8s.io/api/core/v1"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	convutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/utils"
@@ -61,33 +63,44 @@ type converter struct {
 }
 
 func (c *converter) NeedFullSync() bool {
-	// cache.Notify() already reflect the need of
-	// full sync from the Gateway API resource
-	// changes. Check if other changed resources
-	// impact anyone related with the Gateway API.
-	links := c.tracker.QueryLinks(convtypes.TrackingLinks{
-		convtypes.ResourceSecret:    c.changed.Links[convtypes.ResourceSecret],
-		convtypes.ResourceService:   c.changed.Links[convtypes.ResourceService],
-		convtypes.ResourceEndpoints: c.changed.Links[convtypes.ResourceEndpoints],
-	}, false)
+	// Gateway API currently does not support partial parsing, so any change
+	// on resources tracked by any gateway API resource will return true to
+	// NeedFullSync(), which is the only way to Sync() start a reconciliation.
+	links := c.tracker.QueryLinks(c.changed.Links, false)
 	_, changed := links[convtypes.ResourceGateway]
 	return changed
 }
 
 func (c *converter) Sync(full bool) {
 	if !full {
-		// there is no change in the Gateway API resources
 		return
 	}
 	// TODO partial parsing
-	gateways, err := c.cache.GetGatewayList()
+	gateways, err := c.cache.GetGatewayMap()
 	if err != nil {
 		c.logger.Warn("error reading gateway list: %v", err)
 		return
 	}
-	for _, gateway := range gateways {
-		c.syncGateway(gateway)
+	httpRoutes, err := c.cache.GetHTTPRouteList()
+	if err != nil {
+		c.logger.Warn("error reading httpRoute list: %v", err)
+		return
 	}
+	sortHTTPRoutes(httpRoutes)
+	for _, httpRoute := range httpRoutes {
+		c.syncHTTPRoute(gateways, httpRoute)
+	}
+}
+
+func sortHTTPRoutes(httpRoutes []*gatewayv1alpha2.HTTPRoute) {
+	sort.Slice(httpRoutes, func(i, j int) bool {
+		h1 := httpRoutes[i]
+		h2 := httpRoutes[j]
+		if h1.CreationTimestamp != h2.CreationTimestamp {
+			return h1.CreationTimestamp.Before(&h2.CreationTimestamp)
+		}
+		return h1.Namespace+"/"+h1.Name < h2.Namespace+"/"+h2.Name
+	})
 }
 
 // Source ...
@@ -102,130 +115,189 @@ func (s *Source) String() string {
 	return fmt.Sprintf("%s '%s/%s'", s.kind, s.namespace, s.name)
 }
 
-func (c *converter) syncGateway(gateway *gatewayv1alpha1.Gateway) {
-	// TODO implement gateway.Spec.Addresses
-	group := "networking.x-k8s.io"
-	source := &Source{
-		kind:      "Gateway",
-		namespace: gateway.Namespace,
-		name:      gateway.Name,
-	}
-	var httpListeners []*gatewayv1alpha1.Listener
-	for i := range gateway.Spec.Listeners {
-		listener := &gateway.Spec.Listeners[i]
-		if listener.Routes.Group == nil || *listener.Routes.Group == "" || *listener.Routes.Group == group {
-			switch strings.ToLower(listener.Routes.Kind) {
-			case "httproute":
-				httpListeners = append(httpListeners, listener)
-			default:
-				c.logger.Warn("ignoring unsupported listener type '%s/%s' on %s", group, listener.Routes.Kind, source)
-			}
-		}
-	}
-	// TODO implement TLS listeners
-	// TODO implement TCP listeners
-	c.createHTTPRoutes(source, httpListeners)
-}
+var (
+	gatewayGroup  = gatewayv1alpha2.Group(gatewayv1alpha2.GroupName)
+	gatewayKind   = gatewayv1alpha2.Kind("Gateway")
+	httpRouteKind = gatewayv1alpha2.Kind("HTTPRoute")
+)
 
-func (c *converter) createHTTPRoutes(source *Source, httpListeners []*gatewayv1alpha1.Listener) {
-	for _, listener := range httpListeners {
-		// TODO implement listener.Port
-		// TODO implement listener.Protocol
-		// TODO implement listener.Routes.Group
-		// TODO implement listener.Routes.Kind
-		// TODO implement listener.Routes.Selector.MatchExpressions
-		var namespace string
-		if listener.Routes.Namespaces != nil && listener.Routes.Namespaces.From != nil {
-			switch *listener.Routes.Namespaces.From {
-			case gatewayv1alpha1.RouteSelectAll:
-				namespace = ""
-			case gatewayv1alpha1.RouteSelectSame:
-				namespace = source.namespace
-			case gatewayv1alpha1.RouteSelectSelector:
-				// TODO implement
-				namespace = source.namespace
-			}
-		} else {
-			namespace = source.namespace
+func (c *converter) syncHTTPRoute(gateways map[string]*gatewayv1alpha2.Gateway, httpRoute *gatewayv1alpha2.HTTPRoute) {
+	httpRouteSource := &Source{
+		kind:      string(httpRouteKind),
+		namespace: httpRoute.Namespace,
+		name:      httpRoute.Name,
+	}
+	for _, parentRef := range httpRoute.Spec.ParentRefs {
+		parentGroup := gatewayGroup
+		parentKind := gatewayKind
+		if parentRef.Group != nil && *parentRef.Group != "" {
+			parentGroup = *parentRef.Group
 		}
-		routes, err := c.cache.GetHTTPRouteList(namespace, listener.Routes.Selector.MatchLabels)
-		if err != nil {
-			c.logger.Warn("skipping HTTPRoutes routes from %s: %v", source, err)
+		if parentRef.Kind != nil && *parentRef.Kind != "" {
+			parentKind = *parentRef.Kind
+		}
+		if parentGroup != gatewayGroup || parentKind != gatewayKind {
+			c.logger.Warn("ignoring unsupported Group/Kind reference on %s: %s/%s",
+				httpRouteSource, parentGroup, parentKind)
 			continue
 		}
-		for _, route := range routes {
-			// TODO filter by route.Spec.Gateways
-			routeSource := &Source{
-				kind:      "HTTPRoute",
-				namespace: route.Namespace,
-				name:      route.Name,
-			}
-			for index, rule := range route.Spec.Rules {
-				// TODO implement rule.Filters
-				backend, services := c.createBackend(routeSource, fmt.Sprintf("_rule%d", index), rule.ForwardTo)
-				if backend != nil {
-					passthrough := listener.TLS != nil && listener.TLS.Mode != nil && *listener.TLS.Mode == gatewayv1alpha1.TLSModePassthrough
-					if passthrough {
-						backend.ModeTCP = true
-					}
-					hostnames := c.filterHostnames(listener.Hostname, route.Spec.Hostnames)
-					hosts, pathLinks := c.createHTTPHosts(routeSource, hostnames, rule.Matches, backend)
-					c.applyCertRef(source, routeSource, hosts, listener, route)
-					if c.ann != nil {
-						c.ann.ReadAnnotations(backend, services, pathLinks)
-					}
+		namespace := httpRoute.Namespace
+		if parentRef.Namespace != nil && *parentRef.Namespace != "" {
+			namespace = string(*parentRef.Namespace)
+		}
+		gateway, found := gateways[namespace+"/"+string(parentRef.Name)]
+		if !found {
+			c.logger.Warn("%s references a gateway that was not found: %s/%s",
+				httpRouteSource, namespace, parentRef.Name)
+			continue
+		}
+		gatewaySource := &Source{
+			kind:      string(gatewayKind),
+			namespace: gateway.Namespace,
+			name:      gateway.Name,
+		}
+		// TODO implement gateway.Spec.Addresses
+		err := c.syncHTTPRouteGateway(httpRouteSource, httpRoute, gatewaySource, gateway, parentRef.SectionName)
+		if err != nil {
+			c.logger.Warn("cannot attach %s to %s: %s", httpRouteSource, gatewaySource, err)
+		}
+	}
+}
+
+func (c *converter) syncHTTPRouteGateway(httpRouteSource *Source, httpRoute *gatewayv1alpha2.HTTPRoute, gatewaySource *Source, gateway *gatewayv1alpha2.Gateway, sectionName *gatewayv1alpha2.SectionName) error {
+	for _, listener := range gateway.Spec.Listeners {
+		if sectionName != nil && *sectionName != listener.Name {
+			continue
+		}
+		if err := c.checkListenerAllowed(gatewaySource, httpRouteSource, &listener); err != nil {
+			c.logger.Warn("skipping attachment of %s to %s listener '%s': %s",
+				httpRouteSource, gatewaySource, listener.Name, err)
+			continue
+		}
+		for index, rule := range httpRoute.Spec.Rules {
+			// TODO implement rule.Filters
+			backend, services := c.createBackend(httpRouteSource, fmt.Sprintf("_rule%d", index), rule.BackendRefs)
+			if backend != nil {
+				passthrough := listener.TLS != nil && listener.TLS.Mode != nil && *listener.TLS.Mode == gatewayv1alpha2.TLSModePassthrough
+				if passthrough {
+					backend.ModeTCP = true
+				}
+				hostnames := c.filterHostnames(listener.Hostname, httpRoute.Spec.Hostnames)
+				hosts, pathLinks := c.createHTTPHosts(httpRouteSource, hostnames, rule.Matches, backend)
+				c.applyCertRef(gatewaySource, &listener, hosts)
+				if c.ann != nil {
+					c.ann.ReadAnnotations(backend, services, pathLinks)
 				}
 			}
 		}
 	}
+	return nil
 }
 
-func (c *converter) createBackend(source *Source, index string, forwardTo []gatewayv1alpha1.HTTPRouteForwardTo) (*hatypes.Backend, []*api.Service) {
+var errRouteNotAllowed = fmt.Errorf("listener does not allow the route")
+
+func (c *converter) checkListenerAllowed(gatewaySource, routeSource *Source, listener *gatewayv1alpha2.Listener) error {
+	if listener == nil || listener.AllowedRoutes == nil {
+		return errRouteNotAllowed
+	}
+	if err := checkListenerAllowedKind(routeSource, listener.AllowedRoutes.Kinds); err != nil {
+		return err
+	}
+	if err := c.checkListenerAllowedNamespace(gatewaySource, routeSource, listener.AllowedRoutes.Namespaces); err != nil {
+		return err
+	}
+	return nil
+}
+
+func checkListenerAllowedKind(routeSource *Source, kinds []gatewayv1alpha2.RouteGroupKind) error {
+	if len(kinds) == 0 {
+		return nil
+	}
+	for _, kind := range kinds {
+		if (kind.Group == nil || *kind.Group == gatewayGroup) && kind.Kind == gatewayv1alpha2.Kind(routeSource.kind) {
+			return nil
+		}
+	}
+	return fmt.Errorf("listener does not allow route of Kind '%s'", routeSource.kind)
+}
+
+func (c *converter) checkListenerAllowedNamespace(gatewaySource, routeSource *Source, namespaces *gatewayv1alpha2.RouteNamespaces) error {
+	if namespaces == nil || namespaces.From == nil {
+		return errRouteNotAllowed
+	}
+	if *namespaces.From == gatewayv1alpha2.NamespacesFromSame && routeSource.namespace == gatewaySource.namespace {
+		return nil
+	}
+	if *namespaces.From == gatewayv1alpha2.NamespacesFromAll {
+		return nil
+	}
+	if *namespaces.From == gatewayv1alpha2.NamespacesFromSelector {
+		if namespaces.Selector == nil {
+			return errRouteNotAllowed
+		}
+		selector, err := v1.LabelSelectorAsSelector(namespaces.Selector)
+		if err != nil {
+			return err
+		}
+		ns, err := c.cache.GetNamespace(routeSource.namespace)
+		if err != nil {
+			return err
+		}
+		if selector.Matches(labels.Set(ns.Labels)) {
+			return nil
+		}
+	}
+	return errRouteNotAllowed
+}
+
+func (c *converter) createBackend(source *Source, index string, backendRefs []gatewayv1alpha2.HTTPBackendRef) (*hatypes.Backend, []*api.Service) {
 	if habackend := c.haproxy.Backends().FindBackend(source.namespace, source.name, index); habackend != nil {
 		return habackend, nil
 	}
 	type backend struct {
-		service string
+		service gatewayv1alpha2.ObjectName
 		port    string
 		epready []*convutils.Endpoint
 		cl      convutils.WeightCluster
 	}
 	var backends []backend
 	var svclist []*api.Service
-	for _, fw := range forwardTo {
-		if fw.ServiceName == nil || fw.Port == nil {
-			// TODO handle the missing of the serviceName
-			// TODO implement nil fw.Port
+	for _, back := range backendRefs {
+		if back.Port == nil {
+			// TODO implement nil back.Port
 			continue
 		}
-		svcName := source.namespace + "/" + *fw.ServiceName
+		// TODO implement back.Group
+		// TODO implement back.Kind
+		// TODO implement back.Namespace
+		svcName := source.namespace + "/" + string(back.Name)
 		c.tracker.TrackRefName([]convtypes.TrackingRef{
 			{Context: convtypes.ResourceService, UniqueName: svcName},
 			{Context: convtypes.ResourceEndpoints, UniqueName: svcName},
 		}, convtypes.ResourceGateway, "gw")
 		svc, err := c.cache.GetService("", svcName)
 		if err != nil {
-			c.logger.Warn("skipping service '%s' on %s: %v", *fw.ServiceName, source, err)
+			c.logger.Warn("skipping service '%s' on %s: %v", back.Name, source, err)
 			continue
 		}
 		svclist = append(svclist, svc)
-		portStr := strconv.Itoa(int(*fw.Port))
+		portStr := strconv.Itoa(int(*back.Port))
 		svcport := convutils.FindServicePort(svc, portStr)
 		if svcport == nil {
-			c.logger.Warn("skipping service '%s' on %s: port '%s' not found", *fw.ServiceName, source, portStr)
+			c.logger.Warn("skipping service '%s' on %s: port '%s' not found", back.Name, source, portStr)
 			continue
 		}
 		epready, _, err := convutils.CreateEndpoints(c.cache, svc, svcport)
 		if err != nil {
-			c.logger.Warn("skipping service '%s' on %s: %v", *fw.ServiceName, source, err)
+			c.logger.Warn("skipping service '%s' on %s: %v", back.Name, source, err)
 			continue
 		}
 		weight := 1
-		if fw.Weight != nil {
-			weight = int(*fw.Weight)
+		if back.Weight != nil {
+			weight = int(*back.Weight)
 		}
 		backends = append(backends, backend{
-			service: *fw.ServiceName,
+			service: back.Name,
 			port:    svcport.TargetPort.String(),
 			epready: epready,
 			cl: convutils.WeightCluster{
@@ -233,8 +305,8 @@ func (c *converter) createBackend(source *Source, index string, forwardTo []gate
 				Length: len(epready),
 			},
 		})
-		// TODO implement fw.BackendRef
-		// TODO implement fw.Filters
+		// TODO implement back.BackendRef
+		// TODO implement back.Filters
 	}
 	if len(backends) == 0 {
 		return nil, nil
@@ -254,13 +326,13 @@ func (c *converter) createBackend(source *Source, index string, forwardTo []gate
 	return habackend, svclist
 }
 
-func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha1.Hostname, matches []gatewayv1alpha1.HTTPRouteMatch, backend *hatypes.Backend) (hosts []*hatypes.Host, pathLinks []hatypes.PathLink) {
+func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha2.Hostname, matches []gatewayv1alpha2.HTTPRouteMatch, backend *hatypes.Backend) (hosts []*hatypes.Host, pathLinks []hatypes.PathLink) {
 	if backend.ModeTCP && len(matches) > 0 {
-		c.logger.Warn("ignoring match from %s: backend is configured as TCP mode", source)
+		c.logger.Warn("ignoring match from %s: backend is TCP or SSL Passthrough", source)
 		matches = nil
 	}
 	if len(matches) == 0 {
-		matches = []gatewayv1alpha1.HTTPRouteMatch{{}}
+		matches = []gatewayv1alpha2.HTTPRouteMatch{{}}
 	}
 	for _, match := range matches {
 		var path string
@@ -271,14 +343,12 @@ func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha1.
 			}
 			if match.Path.Type != nil {
 				switch *match.Path.Type {
-				case gatewayv1alpha1.PathMatchExact:
+				case gatewayv1alpha2.PathMatchExact:
 					haMatch = hatypes.MatchExact
-				case gatewayv1alpha1.PathMatchPrefix:
+				case gatewayv1alpha2.PathMatchPathPrefix:
 					haMatch = hatypes.MatchPrefix
-				case gatewayv1alpha1.PathMatchRegularExpression:
+				case gatewayv1alpha2.PathMatchRegularExpression:
 					haMatch = hatypes.MatchRegex
-				case gatewayv1alpha1.PathMatchImplementationSpecific:
-					haMatch = hatypes.MatchBegin
 				}
 			}
 		}
@@ -294,9 +364,22 @@ func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha1.
 				hstr = hatypes.DefaultHost
 			}
 			h := c.haproxy.Hosts().AcquireHost(hstr)
+			if h.FindPath(path, haMatch) != nil {
+				if backend.ModeTCP && h.SSLPassthrough() {
+					c.logger.Warn("skipping redeclared ssl-passthrough root path on %s", source)
+					continue
+				}
+				if !backend.ModeTCP && !h.SSLPassthrough() {
+					c.logger.Warn("skipping redeclared path '%s' type '%s' on %s", path, haMatch, source)
+					continue
+				}
+			}
+			c.tracker.TrackRefName([]convtypes.TrackingRef{
+				{Context: convtypes.ResourceHAHostname, UniqueName: h.Hostname},
+			}, convtypes.ResourceGateway, "gw")
 			h.TLS.UseDefaultCrt = false
 			h.AddPath(backend, path, haMatch)
-			handlePassthrough(path, h, backend)
+			c.handlePassthrough(path, h, backend, source)
 			hosts = append(hosts, h)
 			pathLinks = append(pathLinks, hatypes.CreatePathLink(hstr, path, haMatch))
 		}
@@ -306,9 +389,9 @@ func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha1.
 	return hosts, pathLinks
 }
 
-func handlePassthrough(path string, h *hatypes.Host, b *hatypes.Backend) {
+func (c *converter) handlePassthrough(path string, h *hatypes.Host, b *hatypes.Backend, source *Source) {
 	// Special handling for TLS passthrough due to current haproxy.Host limitation
-	// v0.14 will refactor haproxy.Host, allowing to remove this whole func
+	// v0.15 will refactor haproxy.Host, allowing to remove this whole func
 	if path != "/" || (!b.ModeTCP && !h.SSLPassthrough()) {
 		// only matter if root path
 		// we also don't care if both present (b.ModeTCP) and past
@@ -329,6 +412,8 @@ func handlePassthrough(path string, h *hatypes.Host, b *hatypes.Backend) {
 				} else {
 					h.HTTPPassthroughBackend = b.ID
 				}
+			} else {
+				c.logger.Warn("skipping redeclared http root path on %s", source)
 			}
 			// and
 			// 2. remove it from the target HTTPS configuration
@@ -337,80 +422,68 @@ func handlePassthrough(path string, h *hatypes.Host, b *hatypes.Backend) {
 	}
 }
 
-func (c *converter) filterHostnames(listenerHostname *gatewayv1alpha1.Hostname, routeHostnames []gatewayv1alpha1.Hostname) []gatewayv1alpha1.Hostname {
+func (c *converter) filterHostnames(listenerHostname *gatewayv1alpha2.Hostname, routeHostnames []gatewayv1alpha2.Hostname) []gatewayv1alpha2.Hostname {
 	if listenerHostname == nil || *listenerHostname == "" || *listenerHostname == "*" {
 		if len(routeHostnames) == 0 {
-			return []gatewayv1alpha1.Hostname{"*"}
+			return []gatewayv1alpha2.Hostname{"*"}
 		}
 		return routeHostnames
 	}
 	// TODO implement proper filter to wildcard based listenerHostnames -- `*.domain.local`
-	return []gatewayv1alpha1.Hostname{*listenerHostname}
+	return []gatewayv1alpha2.Hostname{*listenerHostname}
 }
 
-func (c *converter) applyCertRef(gwSource, routeSource *Source, hosts []*hatypes.Host, listener *gatewayv1alpha1.Listener, route *gatewayv1alpha1.HTTPRoute) {
-	var certRef, certFallbackRef *gatewayv1alpha1.LocalObjectReference
-	var crtSource *Source
-	if listener.TLS != nil {
-		if listener.TLS.Mode != nil && *listener.TLS.Mode == gatewayv1alpha1.TLSModePassthrough {
-			for _, host := range hosts {
-				// backend was already changed to ModeTCP; hosts.match was already
-				// changed to root path only and a warning was already logged if needed
-				host.SetSSLPassthrough(true)
-			}
-		} else if route.Spec.TLS != nil &&
-			listener.TLS.RouteOverride != nil &&
-			listener.TLS.RouteOverride.Certificate != nil &&
-			*listener.TLS.RouteOverride.Certificate == gatewayv1alpha1.TLSROuteOVerrideAllow {
-			certRef = &route.Spec.TLS.CertificateRef
-			certFallbackRef = listener.TLS.CertificateRef
-			crtSource = routeSource
-		} else {
-			certRef = listener.TLS.CertificateRef
-			crtSource = gwSource
-		}
+func (c *converter) applyCertRef(source *Source, listener *gatewayv1alpha2.Listener, hosts []*hatypes.Host) {
+	if listener.TLS == nil {
+		return
 	}
-	if certRef != nil {
-		crtFile, err := c.readCertRef(crtSource.namespace, certRef)
-		if err != nil {
-			if certFallbackRef != nil {
-				var err2 error
-				crtFile, err2 = c.readCertRef(crtSource.namespace, certFallbackRef)
-				if err2 != nil {
-					c.logger.Warn("skipping listener certificate reference on %s: %v", gwSource, err2)
-					c.logger.Warn("skipping route certificate reference on %s: %v", crtSource, err)
-					return
-				}
-				c.logger.Warn("falling back to the listener configured certificate due to an error reading on %s: %v", crtSource, err)
-			} else {
-				c.logger.Warn("skipping certificate reference on %s: %v", crtSource, err)
-				return
-			}
-		}
+	if listener.TLS.Mode != nil && *listener.TLS.Mode == gatewayv1alpha2.TLSModePassthrough {
 		for _, host := range hosts {
-			if host.TLS.TLSHash != "" && host.TLS.TLSHash != crtFile.SHA1Hash {
-				c.logger.Warn("skipping certificate reference on %s for hostname %s: a TLS certificate was already assigned",
-					crtSource, host.Hostname)
-				continue
-			}
-			host.TLS.TLSCommonName = crtFile.CommonName
-			host.TLS.TLSFilename = crtFile.Filename
-			host.TLS.TLSHash = crtFile.SHA1Hash
+			// backend was already changed to ModeTCP; hosts.match was already
+			// changed to root path only and a warning was already logged if needed
+			host.SetSSLPassthrough(true)
 		}
+		return
+	}
+	certRefs := listener.TLS.CertificateRefs
+	if len(certRefs) == 0 {
+		c.logger.Warn("skipping certificate reference on %s listener '%s': listener has no certificate reference",
+			source, listener.Name)
+		return
+	}
+	// TODO Support more certificates
+	if len(certRefs) > 1 {
+		err := fmt.Errorf("listener currently supports only the first referenced certificate")
+		c.logger.Warn("skipping one or more certificate references on %s listener '%s': %s",
+			source, listener.Name, err)
+	}
+	certRef := certRefs[0]
+	crtFile, err := c.readCertRef(source.namespace, certRef)
+	if err != nil {
+		c.logger.Warn("skipping certificate reference on %s listener '%s': %s",
+			source, listener.Name, err)
+		return
+	}
+	for _, host := range hosts {
+		if host.TLS.TLSHash != "" && host.TLS.TLSHash != crtFile.SHA1Hash {
+			c.logger.Warn("skipping certificate reference on %s listener '%s' for hostname '%s': a TLS certificate was already assigned",
+				source, listener.Name, host.Hostname)
+			continue
+		}
+		host.TLS.TLSCommonName = crtFile.CommonName
+		host.TLS.TLSFilename = crtFile.Filename
+		host.TLS.TLSHash = crtFile.SHA1Hash
 	}
 }
 
-func (c *converter) readCertRef(namespace string, certRef *gatewayv1alpha1.LocalObjectReference) (crtFile convtypes.CrtFile, err error) {
-	// In v1alpha1, the `group` cannot be left empty and is expected to be equal
-	// to "core" for the Secret kind. In v1alpha2, the `group` can be left empty
-	// and "core" is implied when the group is left empty. The discussion is
-	// available at https://github.com/kubernetes-sigs/gateway-api/pull/562.
-	if certRef.Group != "" && certRef.Group != "core" {
-		return crtFile, fmt.Errorf("unsupported Group '%s', supported groups are 'core' and ''", certRef.Group)
+func (c *converter) readCertRef(namespace string, certRef *gatewayv1alpha2.SecretObjectReference) (crtFile convtypes.CrtFile, err error) {
+	if certRef.Group != nil && *certRef.Group != "" && *certRef.Group != "core" {
+		return crtFile, fmt.Errorf("unsupported Group '%s', supported groups are 'core' and ''", *certRef.Group)
 	}
-	if certRef.Kind != "" && strings.ToLower(certRef.Kind) != "secret" {
-		return crtFile, fmt.Errorf("unsupported Kind '%s', the only supported kind is 'Secret'", certRef.Kind)
+	if certRef.Kind != nil && *certRef.Kind != "" && *certRef.Kind != "Secret" {
+		return crtFile, fmt.Errorf("unsupported Kind '%s', the only supported kind is 'Secret'", *certRef.Kind)
 	}
-	return c.cache.GetTLSSecretPath(namespace, certRef.Name,
+	// TODO implement certRef.Namespace
+	return c.cache.GetTLSSecretPath(namespace, string(certRef.Name),
 		[]convtypes.TrackingRef{{Context: convtypes.ResourceGateway, UniqueName: "gw"}})
 }

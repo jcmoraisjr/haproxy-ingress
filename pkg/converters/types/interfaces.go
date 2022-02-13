@@ -22,7 +22,8 @@ import (
 
 	api "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
-	gateway "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
@@ -33,12 +34,15 @@ type Cache interface {
 	GetIngress(ingressName string) (*networking.Ingress, error)
 	GetIngressList() ([]*networking.Ingress, error)
 	GetIngressClass(className string) (*networking.IngressClass, error)
-	GetGateway(gatewayName string) (*gateway.Gateway, error)
-	GetGatewayList() ([]*gateway.Gateway, error)
-	GetHTTPRouteList(namespace string, match map[string]string) ([]*gateway.HTTPRoute, error)
+	GetGatewayA1(gatewayName string) (*gatewayv1alpha1.Gateway, error)
+	GetGatewayA1List() ([]*gatewayv1alpha1.Gateway, error)
+	GetHTTPRouteA1List(namespace string, match map[string]string) ([]*gatewayv1alpha1.HTTPRoute, error)
+	GetGatewayMap() (map[string]*gatewayv1alpha2.Gateway, error)
+	GetHTTPRouteList() ([]*gatewayv1alpha2.HTTPRoute, error)
 	GetService(defaultNamespace, serviceName string) (*api.Service, error)
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
 	GetConfigMap(configMapName string) (*api.ConfigMap, error)
+	GetNamespace(name string) (*api.Namespace, error)
 	GetTerminatingPods(service *api.Service, track []TrackingRef) ([]*api.Pod, error)
 	GetPod(podName string) (*api.Pod, error)
 	GetPodNamespace() string
@@ -60,19 +64,17 @@ type ChangedObjects struct {
 	//
 	IngressClassesDel, IngressClassesUpd, IngressClassesAdd []*networking.IngressClass
 	//
-	GatewaysDel, GatewaysUpd, GatewaysAdd []*gateway.Gateway
+	GatewaysA1Del, GatewaysA1Upd, GatewaysA1Add []*gatewayv1alpha1.Gateway
 	//
-	GatewayClassesDel, GatewayClassesUpd, GatewayClassesAdd []*gateway.GatewayClass
+	GatewayClassesA1Del, GatewayClassesA1Upd, GatewayClassesA1Add []*gatewayv1alpha1.GatewayClass
 	//
-	HTTPRoutesDel, HTTPRoutesUpd, HTTPRoutesAdd []*gateway.HTTPRoute
+	HTTPRoutesA1Del, HTTPRoutesA1Upd, HTTPRoutesA1Add []*gatewayv1alpha1.HTTPRoute
 	//
-	TLSRoutesDel, TLSRoutesUpd, TLSRoutesAdd []*gateway.TLSRoute
+	GatewaysDel, GatewaysUpd, GatewaysAdd []*gatewayv1alpha2.Gateway
 	//
-	TCPRoutesDel, TCPRoutesUpd, TCPRoutesAdd []*gateway.TCPRoute
+	GatewayClassesDel, GatewayClassesUpd, GatewayClassesAdd []*gatewayv1alpha2.GatewayClass
 	//
-	UDPRoutesDel, UDPRoutesUpd, UDPRoutesAdd []*gateway.UDPRoute
-	//
-	BackendPoliciesDel, BackendPoliciesUpd, BackendPoliciesAdd []*gateway.BackendPolicy
+	HTTPRoutesDel, HTTPRoutesUpd, HTTPRoutesAdd []*gatewayv1alpha2.HTTPRoute
 	//
 	EndpointsNew []*api.Endpoints
 	//
@@ -98,13 +100,13 @@ const (
 	ResourceIngress      ResourceType = "Ingress"
 	ResourceIngressClass ResourceType = "IngressClass"
 
-	ResourceGateway       ResourceType = "Gateway"
-	ResourceGatewayClass  ResourceType = "GatewayClass"
-	ResourceHTTPRoute     ResourceType = "HTTPRoute"
-	ResourceTLSRoute      ResourceType = "TLSRoute"
-	ResourceTCPRoute      ResourceType = "TCPRoute"
-	ResourceUDPRoute      ResourceType = "UDPRoute"
-	ResourceBackendPolicy ResourceType = "BackendPolicy"
+	ResourceGatewayA1      ResourceType = "GatewayA1"
+	ResourceGatewayClassA1 ResourceType = "GatewayClassA1"
+	ResourceHTTPRouteA1    ResourceType = "HTTPRouteA1"
+
+	ResourceGateway      ResourceType = "Gateway"
+	ResourceGatewayClass ResourceType = "GatewayClass"
+	ResourceHTTPRoute    ResourceType = "HTTPRoute"
 
 	ResourceConfigMap ResourceType = "ConfigMap"
 	ResourceService   ResourceType = "Service"
