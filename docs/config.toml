@@ -96,16 +96,8 @@ version = "v0.12"
 url = "https://haproxy-ingress.github.io/v0.12/docs"
 
 [[params.versions]]
-version = "v0.11"
-url = "https://haproxy-ingress.github.io/v0.11/docs"
-
-[[params.versions]]
 version = "v0.10"
 url = "https://haproxy-ingress.github.io/v0.10/docs"
-
-[[params.versions]]
-version = "v0.9"
-url = "https://haproxy-ingress.github.io/v0.9/docs"
 
 # User interface configuration
 [params.ui]
