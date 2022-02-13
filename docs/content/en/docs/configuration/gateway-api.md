@@ -43,7 +43,7 @@ A single HAProxy Ingress deployment can manage Ingress and Gateway API resources
 
 Add the following steps to the [Getting Started guide]({{% relref "/docs/getting-started" %}}) in order to expose the echoserver service along with the Gateway API:
 
-[Manually install](https://gateway-api.sigs.k8s.io/guides/getting-started/#installing-gateway-api-crds-manually) the Gateway API CRDs:
+[Manually install](https://gateway-api.sigs.k8s.io/v1alpha1/guides/getting-started/#installing-gateway-api-crds-manually) the Gateway API CRDs:
 
 ```
 kubectl kustomize\
