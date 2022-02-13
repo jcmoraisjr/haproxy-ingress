@@ -1,5 +1,3 @@
-diff --git a/docs/config.toml b/docs/config.toml
-index fa1a4041..0d5088db 100644
 --- a/docs/config.toml
 +++ b/docs/config.toml
 @@ -1,4 +1,4 @@
@@ -8,7 +6,7 @@ index fa1a4041..0d5088db 100644
  title = "HAProxy Ingress"
  
  enableRobotsTXT = true
-@@ -81,16 +81,12 @@ privacy_policy = ""
+@@ -81,15 +81,15 @@ privacy_policy = ""
  
  # Menu title if your navbar has a versions selector to access old versions of your site.
  # This menu appears only if you have at least one [params.versions] set.
@@ -17,13 +15,15 @@ index fa1a4041..0d5088db 100644
  
  [[params.versions]]
 -version = "Latest"
-+version = "v0.13 (latest)"
- url = "https://haproxy-ingress.github.io/docs"
+-url = "https://haproxy-ingress.github.io/docs"
++version = "v0.14 (alpha)"
++url = "https://haproxy-ingress.github.io/v0.14/docs"
  
--[[params.versions]]
+ [[params.versions]]
 -version = "v0.13"
 -url = "https://haproxy-ingress.github.io/v0.13/docs"
--
++version = "v0.13 (latest)"
++url = "https://haproxy-ingress.github.io/docs"
+ 
  [[params.versions]]
  version = "v0.12"
- url = "https://haproxy-ingress.github.io/v0.12/docs"
