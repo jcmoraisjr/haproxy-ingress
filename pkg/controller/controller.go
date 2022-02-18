@@ -23,11 +23,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/spf13/pflag"
 	api "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/klog/v2"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
@@ -151,7 +151,7 @@ func (hc *HAProxyController) configController() {
 	}
 	hc.instance = haproxy.CreateInstance(hc.logger, instanceOptions)
 	if err := hc.instance.ParseTemplates(); err != nil {
-		glog.Fatalf("error creating HAProxy instance: %v", err)
+		klog.Fatalf("error creating HAProxy instance: %v", err)
 	}
 	hc.converterOptions = &convtypes.ConverterOptions{
 		Logger:           hc.logger,
@@ -229,7 +229,7 @@ func (hc *HAProxyController) createFakeCAFile() (crtFile convtypes.CrtFile) {
 	fakeCA, _ := ssl.GetFakeSSLCert([]string{}, "Fake CA", []string{})
 	fakeCAFile, err := ssl.AddCertAuth("fake-ca", fakeCA, []byte{})
 	if err != nil {
-		glog.Fatalf("error generating fake CA: %v", err)
+		klog.Fatalf("error generating fake CA: %v", err)
 	}
 	crtFile = convtypes.CrtFile{
 		Filename: fakeCAFile.PemFileName,
@@ -265,7 +265,7 @@ func (hc *HAProxyController) OnNewLeader(identity string) {
 func (hc *HAProxyController) Stop() error {
 	if hc.cfg.WaitBeforeShutdown > 0 {
 		waitBeforeShutdown := time.Duration(hc.cfg.WaitBeforeShutdown) * time.Second
-		glog.Infof("Waiting %v before stopping components", waitBeforeShutdown)
+		klog.Infof("Waiting %v before stopping components", waitBeforeShutdown)
 		time.Sleep(waitBeforeShutdown)
 	}
 	err := hc.controller.Stop()

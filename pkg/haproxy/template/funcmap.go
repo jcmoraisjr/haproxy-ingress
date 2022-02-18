@@ -22,8 +22,8 @@ import (
 	gotemplate "text/template"
 
 	"github.com/Masterminds/sprig"
-	"github.com/golang/glog"
 	"github.com/imdario/mergo"
+	"k8s.io/klog/v2"
 )
 
 func createFuncMap() gotemplate.FuncMap {
@@ -59,7 +59,7 @@ func createFuncMap() gotemplate.FuncMap {
 		},
 	}
 	if err := mergo.Merge(&fnc, sprig.TxtFuncMap()); err != nil {
-		glog.Fatalf("Cannot merge funcMap and sprig.FuncMap(): %v", err)
+		klog.Fatalf("Cannot merge funcMap and sprig.FuncMap(): %v", err)
 	}
 	return fnc
 }

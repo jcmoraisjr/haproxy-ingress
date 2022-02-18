@@ -4,7 +4,6 @@ go 1.17
 
 require (
 	github.com/Masterminds/sprig v2.22.0+incompatible
-	github.com/golang/glog v1.0.0
 	github.com/imdario/mergo v0.3.12
 	github.com/jinzhu/copier v0.3.5
 	github.com/kylelemons/godebug v1.1.0
@@ -19,6 +18,7 @@ require (
 	k8s.io/apimachinery v0.23.3
 	k8s.io/apiserver v0.23.3
 	k8s.io/client-go v0.23.3
+	k8s.io/klog/v2 v2.40.1
 	sigs.k8s.io/gateway-api v0.4.1
 )
 
@@ -61,7 +61,6 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	k8s.io/component-base v0.23.3 // indirect
-	k8s.io/klog/v2 v2.30.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20211115234752-e816edb12b65 // indirect
 	k8s.io/utils v0.0.0-20211116205334-6203023598ed // indirect
 	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect

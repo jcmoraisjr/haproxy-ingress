@@ -19,7 +19,7 @@ package controller
 import (
 	"fmt"
 
-	"github.com/golang/glog"
+	"k8s.io/klog/v2"
 )
 
 type logger struct {
@@ -34,23 +34,23 @@ func (l *logger) build(msg string, args []interface{}) string {
 }
 
 func (l *logger) InfoV(v int, msg string, args ...interface{}) {
-	if glog.V(glog.Level(v)) {
-		glog.InfoDepth(l.depth, l.build(msg, args))
+	if klog.V(klog.Level(v)).Enabled() {
+		klog.InfoDepth(l.depth, l.build(msg, args))
 	}
 }
 
 func (l *logger) Info(msg string, args ...interface{}) {
-	glog.InfoDepth(l.depth, l.build(msg, args))
+	klog.InfoDepth(l.depth, l.build(msg, args))
 }
 
 func (l *logger) Warn(msg string, args ...interface{}) {
-	glog.WarningDepth(l.depth, l.build(msg, args))
+	klog.WarningDepth(l.depth, l.build(msg, args))
 }
 
 func (l *logger) Error(msg string, args ...interface{}) {
-	glog.ErrorDepth(l.depth, l.build(msg, args))
+	klog.ErrorDepth(l.depth, l.build(msg, args))
 }
 
 func (l *logger) Fatal(msg string, args ...interface{}) {
-	glog.FatalDepth(l.depth, l.build(msg, args))
+	klog.FatalDepth(l.depth, l.build(msg, args))
 }

@@ -12,7 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"
 	apiv1 "k8s.io/api/core/v1"
@@ -22,6 +21,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/klog/v2"
 	gwapigatewayversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/gateway/versioned"
 	gwapinetworkingversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/networking/versioned"
 
@@ -272,6 +272,7 @@ command-line option instead to define if ingress without class should be
 tracked.`)
 	)
 
+	klog.InitFlags(flag.CommandLine)
 	flags.AddGoFlagSet(flag.CommandLine)
 	backend.ConfigureFlags(flags)
 	flags.Parse(os.Args)
@@ -288,55 +289,55 @@ tracked.`)
 
 	flag.Set("logtostderr", "true")
 
-	glog.Info(backend.Info())
+	klog.Info(backend.Info())
 
 	if *ingressClass != "" {
-		glog.Infof("watching for ingress resources with 'kubernetes.io/ingress.class' annotation: %s", *ingressClass)
+		klog.Infof("watching for ingress resources with 'kubernetes.io/ingress.class' annotation: %s", *ingressClass)
 	}
 
 	controllerName := "haproxy-ingress.github.io/controller"
 	if *controllerClass != "" {
 		controllerName += "/" + strings.TrimLeft(*controllerClass, "/")
 	}
-	glog.Infof("watching for ingress resources with IngressClass' controller name: %s", controllerName)
+	klog.Infof("watching for ingress resources with IngressClass' controller name: %s", controllerName)
 
 	if *watchIngressWithoutClass {
-		glog.Infof("watching for ingress resources without any class reference - --watch-ingress-without-class is true")
+		klog.Infof("watching for ingress resources without any class reference - --watch-ingress-without-class is true")
 	} else {
-		glog.Infof("ignoring ingress resources without any class reference - --watch-ingress-without-class is false")
+		klog.Infof("ignoring ingress resources without any class reference - --watch-ingress-without-class is false")
 	}
 
 	if *ignoreIngressWithoutClass {
-		glog.Infof("DEPRECATED: --ignore-ingress-without-class is now ignored and can be safely removed")
+		klog.Infof("DEPRECATED: --ignore-ingress-without-class is now ignored and can be safely removed")
 	}
 
 	if *disableNodeList {
-		glog.Infof("DEPRECATED: --disable-node-list is now ignored and can be safely removed")
+		klog.Infof("DEPRECATED: --disable-node-list is now ignored and can be safely removed")
 	}
 
 	if *watchGateway {
-		glog.Infof("watching for Gateway API resources - --watch-gateway is true")
+		klog.Infof("watching for Gateway API resources - --watch-gateway is true")
 	}
 
 	masterWorkerCfg := *masterWorker
 	if !masterWorkerCfg && *masterSocket != "" {
 		// TODO Change to FATAL when default masterWorker changes to true
-		glog.Warningf("changing --master-worker=true due to external haproxy configuration")
+		klog.Warningf("changing --master-worker=true due to external haproxy configuration")
 		masterWorkerCfg = true
 	}
 	if *masterSocket != "" {
-		glog.Infof("running external haproxy, master unix socket: %s", *masterSocket)
+		klog.Infof("running external haproxy, master unix socket: %s", *masterSocket)
 	} else if masterWorkerCfg {
-		glog.Info("running embedded haproxy, mode is master-worker")
+		klog.Info("running embedded haproxy, mode is master-worker")
 	} else {
-		glog.Info("running embedded haproxy, mode is daemon")
+		klog.Info("running embedded haproxy, mode is daemon")
 	}
 
 	if !(*reloadStrategy == "native" || *reloadStrategy == "reusesocket" || *reloadStrategy == "multibinder") {
-		glog.Fatalf("Unsupported reload strategy: %v", *reloadStrategy)
+		klog.Fatalf("Unsupported reload strategy: %v", *reloadStrategy)
 	}
 	if *reloadStrategy == "multibinder" {
-		glog.Warningf("multibinder is deprecated, using reusesocket strategy instead. update your deployment configuration")
+		klog.Warningf("multibinder is deprecated, using reusesocket strategy instead. update your deployment configuration")
 	}
 
 	kubeClient, err := createApiserverClient(*apiserverHost, *kubeConfigFile, *disableAPIWarnings)
@@ -349,82 +350,82 @@ tracked.`)
 	if *configMap != "" {
 		ns, name, err := k8s.ParseNameNS(*configMap)
 		if err != nil {
-			glog.Fatalf("invalid format for configmap %s: %v", *configMap, err)
+			klog.Fatalf("invalid format for configmap %s: %v", *configMap, err)
 		}
 
 		_, err = kubeClient.CoreV1().ConfigMaps(ns).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
-			glog.Fatalf("error reading configmap '%s': %v", *configMap, err)
+			klog.Fatalf("error reading configmap '%s': %v", *configMap, err)
 		}
-		glog.Infof("watching for global config options from configmap '%s' - --configmap was defined", *configMap)
+		klog.Infof("watching for global config options from configmap '%s' - --configmap was defined", *configMap)
 	}
 
 	if *defaultSvc != "" {
 		ns, name, err := k8s.ParseNameNS(*defaultSvc)
 		if err != nil {
-			glog.Fatalf("invalid format for service %v: %v", *defaultSvc, err)
+			klog.Fatalf("invalid format for service %v: %v", *defaultSvc, err)
 		}
 
 		_, err = kubeClient.CoreV1().Services(ns).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			if strings.Contains(err.Error(), "cannot get services in the namespace") {
-				glog.Fatalf("✖ It seems the cluster it is running with Authorization enabled (like RBAC) and there is no permissions for the ingress controller. Please check the configuration")
+				klog.Fatalf("✖ It seems the cluster it is running with Authorization enabled (like RBAC) and there is no permissions for the ingress controller. Please check the configuration")
 			}
-			glog.Fatalf("no service with name %v found: %v", *defaultSvc, err)
+			klog.Fatalf("no service with name %v found: %v", *defaultSvc, err)
 		}
-		glog.Infof("validated %v as the default backend", *defaultSvc)
+		klog.Infof("validated %v as the default backend", *defaultSvc)
 	}
 
 	if *publishSvc != "" {
 		ns, name, err := k8s.ParseNameNS(*publishSvc)
 		if err != nil {
-			glog.Fatalf("invalid service format: %v", err)
+			klog.Fatalf("invalid service format: %v", err)
 		}
 
 		svc, err := kubeClient.CoreV1().Services(ns).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
-			glog.Fatalf("unexpected error getting information about service %v: %v", *publishSvc, err)
+			klog.Fatalf("unexpected error getting information about service %v: %v", *publishSvc, err)
 		}
 
 		if len(svc.Status.LoadBalancer.Ingress) == 0 {
 			if len(svc.Spec.ExternalIPs) > 0 {
-				glog.Infof("service %v validated as assigned with externalIP", *publishSvc)
+				klog.Infof("service %v validated as assigned with externalIP", *publishSvc)
 			} else {
 				// We could poll here, but we instead just exit and rely on k8s to restart us
-				glog.Fatalf("service %s does not (yet) have ingress points", *publishSvc)
+				klog.Fatalf("service %s does not (yet) have ingress points", *publishSvc)
 			}
 		} else {
-			glog.Infof("service %v validated as source of Ingress status", *publishSvc)
+			klog.Infof("service %v validated as source of Ingress status", *publishSvc)
 		}
 	}
 
 	if *watchNamespace != "" {
 		_, err = kubeClient.NetworkingV1().Ingresses(*watchNamespace).List(ctx, metav1.ListOptions{Limit: 1})
 		if err != nil {
-			glog.Fatalf("no watchNamespace with name %v found: %v", *watchNamespace, err)
+			klog.Fatalf("no watchNamespace with name %v found: %v", *watchNamespace, err)
 		}
 	} else {
 		_, err = kubeClient.CoreV1().Services("default").Get(ctx, "kubernetes", metav1.GetOptions{})
 		if err != nil {
-			glog.Fatalf("error connecting to the apiserver: %v", err)
+			klog.Fatalf("error connecting to the apiserver: %v", err)
 		}
 	}
 
 	if *rateLimitUpdate <= 0 {
-		glog.Fatalf("rate limit must be greater than zero")
+		klog.Fatalf("rate limit must be greater than zero")
 	}
 
 	if *rateLimitUpdate < 0.05 {
-		glog.Fatalf("rate limit update (%v) is too low: %v seconds between Ingress reloads. Use at least 0.05, which means 20 seconds between reloads",
+		klog.Fatalf("rate limit update (%v) is too low: %v seconds between Ingress reloads. Use at least 0.05, which means 20 seconds between reloads",
 			*rateLimitUpdate, 1.0 / *rateLimitUpdate)
 	}
 
 	if *rateLimitUpdate > 10 {
-		glog.Fatalf("rate limit update is too high: up to %v Ingress reloads per second (max is 10)", *rateLimitUpdate)
+		klog.Fatalf("rate limit update is too high: up to %v Ingress reloads per second (max is 10)", *rateLimitUpdate)
 	}
 
 	if resyncPeriod.Seconds() < 10 {
-		glog.Fatalf("resync period (%vs) is too low", resyncPeriod.Seconds())
+		klog.Fatalf("resync period (%vs) is too low", resyncPeriod.Seconds())
 	}
 
 	for _, dir := range []*string{
@@ -438,12 +439,12 @@ tracked.`)
 		// TODO evolve this ugly trick to a proper struct that allows custom configuration
 		*dir = *localFSPrefix + *dir
 		if err := os.MkdirAll(*dir, 0755); err != nil {
-			glog.Fatalf("Failed to mkdir %s: %v", *dir, err)
+			klog.Fatalf("Failed to mkdir %s: %v", *dir, err)
 		}
 	}
 
 	if *forceIsolation && *allowCrossNamespace {
-		glog.Fatal("Cannot use --allow-cross-namespace if --force-namespace-isolation is true")
+		klog.Fatal("Cannot use --allow-cross-namespace if --force-namespace-isolation is true")
 	}
 
 	var annPrefixList []string
@@ -455,11 +456,11 @@ tracked.`)
 	}
 	switch len(annPrefixList) {
 	case 0:
-		glog.Fatal("At least one annotation prefix should be configured")
+		klog.Fatal("At least one annotation prefix should be configured")
 	case 1:
-		glog.Infof("using annotations prefix: %s", annPrefixList[0])
+		klog.Infof("using annotations prefix: %s", annPrefixList[0])
 	default:
-		glog.Infof("using %d distinct annotations prefix, with the following precedence: %s",
+		klog.Infof("using %d distinct annotations prefix, with the following precedence: %s",
 			len(annPrefixList), strings.Join(annPrefixList, ", "))
 	}
 
@@ -472,7 +473,7 @@ tracked.`)
 		}
 	}
 	if !stringInSlice(sortEndpoints, []string{"ep", "endpoint", "ip", "name", "random"}) {
-		glog.Fatalf("Unsupported --sort-endpoint-by option: %s", sortEndpoints)
+		klog.Fatalf("Unsupported --sort-endpoint-by option: %s", sortEndpoints)
 	}
 
 	config := &Configuration{
@@ -573,7 +574,7 @@ func registerHandlers(enableProfiling bool, port int, ic *GenericController) {
 	mux.HandleFunc("/stop", func(w http.ResponseWriter, r *http.Request) {
 		err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
 		if err != nil {
-			glog.Errorf("unexpected error: %v", err)
+			klog.Errorf("unexpected error: %v", err)
 		}
 	})
 
@@ -588,7 +589,7 @@ func registerHandlers(enableProfiling bool, port int, ic *GenericController) {
 		Addr:    fmt.Sprintf(":%v", port),
 		Handler: mux,
 	}
-	glog.Fatal(server.ListenAndServe())
+	klog.Fatal(server.ListenAndServe())
 }
 
 const (
@@ -655,7 +656,7 @@ func createApiserverClient(apiserverHost string, kubeConfig string, disableWarni
 		cfg.WarningHandler = rest.NoWarnings{}
 	}
 
-	glog.Infof("Creating API client for %s", cfg.Host)
+	klog.Infof("Creating API client for %s", cfg.Host)
 
 	k8s, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
@@ -675,7 +676,7 @@ func createApiserverClient(apiserverHost string, kubeConfig string, disableWarni
 		return nil, err
 	}
 
-	glog.Infof("Running in Kubernetes Cluster version v%v.%v (%v) - git (%v) commit %v - platform %v",
+	klog.Infof("Running in Kubernetes Cluster version v%v.%v (%v) - git (%v) commit %v - platform %v",
 		v.Major, v.Minor, v.GitVersion, v.GitTreeState, v.GitCommit, v.Platform)
 
 	return &client{
@@ -690,7 +691,7 @@ func createApiserverClient(apiserverHost string, kubeConfig string, disableWarni
  * message and quits the server.
  */
 func handleFatalInitError(err error) {
-	glog.Fatalf("Error while initializing connection to Kubernetes apiserver. "+
+	klog.Fatalf("Error while initializing connection to Kubernetes apiserver. "+
 		"This most likely means that the cluster is misconfigured (e.g., it has "+
 		"invalid apiserver certificates or service accounts configuration). Reason: %s", err)
 }

@@ -21,7 +21,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/golang/glog"
+	"k8s.io/klog/v2"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller"
 )
@@ -34,16 +34,16 @@ func main() {
 	code := 0
 	err := <-errCh
 	if err != nil {
-		glog.Warningf("Error stopping Ingress: %v", err)
+		klog.Warningf("Error stopping Ingress: %v", err)
 		code++
 	}
-	glog.Infof("Exiting (%v)", code)
+	klog.Infof("Exiting (%v)", code)
 	os.Exit(code)
 }
 
 func handleSignal(hc *controller.HAProxyController, err chan error) {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGTERM, syscall.SIGINT)
-	glog.Infof("Shutting down with signal %v", <-sig)
+	klog.Infof("Shutting down with signal %v", <-sig)
 	err <- hc.Stop()
 }

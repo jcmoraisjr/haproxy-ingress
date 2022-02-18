@@ -34,9 +34,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
-
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/klog/v2"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/file"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
@@ -56,7 +55,7 @@ func AddOrUpdateCertAndKey(name string, cert, key, ca []byte) (*ingress.SSLCert,
 	if err != nil {
 		return nil, fmt.Errorf("could not create temp pem file %v: %v", pemFileName, err)
 	}
-	glog.V(3).Infof("Creating temp file %v for Keypair: %v", tempPemFile.Name(), pemName)
+	klog.V(3).Infof("Creating temp file %v for Keypair: %v", tempPemFile.Name(), pemName)
 
 	_, err = tempPemFile.Write(cert)
 	if err != nil {
@@ -114,11 +113,11 @@ func AddOrUpdateCertAndKey(name string, cert, key, ca []byte) (*ingress.SSLCert,
 	}
 
 	if len(pemCert.Extensions) > 0 {
-		glog.V(3).Info("parsing ssl certificate extensions")
+		klog.V(3).Info("parsing ssl certificate extensions")
 		for _, ext := range getExtension(pemCert, oidExtensionSubjectAltName) {
 			dns, _, _, err := parseSANExtension(ext.Value)
 			if err != nil {
-				glog.Warningf("unexpected error parsing certificate extensions: %v", err)
+				klog.Warningf("unexpected error parsing certificate extensions: %v", err)
 				continue
 			}
 
@@ -309,7 +308,7 @@ func AddCertAuth(name string, ca, crl []byte) (*ingress.SSLCert, error) {
 		PemSHA = file.SHA1(caFileName)
 	}
 
-	glog.V(3).Infof("Created CA Certificate for Authentication: %v", caFileName)
+	klog.V(3).Infof("Created CA Certificate for Authentication: %v", caFileName)
 	return &ingress.SSLCert{
 		CAFileName:  caFileName,
 		CRLFileName: crlFileName,
@@ -325,7 +324,7 @@ func AddOrUpdateDHParam(name string, dh []byte) (string, error) {
 
 	tempPemFile, err := ioutil.TempFile(ingress.DefaultDHParamDirectory, pemName)
 
-	glog.V(3).Infof("Creating temp file %v for DH param: %v", tempPemFile.Name(), pemName)
+	klog.V(3).Infof("Creating temp file %v for DH param: %v", tempPemFile.Name(), pemName)
 	if err != nil {
 		return "", fmt.Errorf("could not create temp pem file %v: %v", pemFileName, err)
 	}
@@ -376,7 +375,7 @@ func GetFakeSSLCert(o []string, cn string, dns []string) (cert, key []byte) {
 	priv, err = rsa.GenerateKey(rand.Reader, 2048)
 
 	if err != nil {
-		glog.Fatalf("failed to generate fake private key: %s", err)
+		klog.Fatalf("failed to generate fake private key: %s", err)
 	}
 
 	notBefore := time.Now()
@@ -387,7 +386,7 @@ func GetFakeSSLCert(o []string, cn string, dns []string) (cert, key []byte) {
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 
 	if err != nil {
-		glog.Fatalf("failed to generate fake serial number: %s", err)
+		klog.Fatalf("failed to generate fake serial number: %s", err)
 	}
 
 	template := x509.Certificate{
@@ -406,7 +405,7 @@ func GetFakeSSLCert(o []string, cn string, dns []string) (cert, key []byte) {
 	}
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.(*rsa.PrivateKey).PublicKey, priv)
 	if err != nil {
-		glog.Fatalf("Failed to create fake certificate: %s", err)
+		klog.Fatalf("Failed to create fake certificate: %s", err)
 	}
 
 	cert = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})

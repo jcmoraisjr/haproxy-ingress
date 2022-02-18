@@ -24,16 +24,16 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/net/ssl"
 
-	"github.com/golang/glog"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/klog/v2"
 )
 
 // SyncSecret keeps in sync Secrets used by Ingress rules with the files on
 // disk to allow copy of the content of the secret to disk to be used
 // by external processes.
 func (ic *GenericController) SyncSecret(key string) {
-	glog.V(3).Infof("starting syncing of secret %v", key)
+	klog.V(3).Infof("starting syncing of secret %v", key)
 
 	secret, err := ic.newctrl.GetSecret(key)
 	if err != nil {
@@ -42,7 +42,7 @@ func (ic *GenericController) SyncSecret(key string) {
 
 	cert, err := ic.getPemCertificate(secret)
 	if err != nil {
-		glog.V(3).Infof("syncing a non ca/crt secret %v", key)
+		klog.V(3).Infof("syncing a non ca/crt secret %v", key)
 		return
 	}
 
@@ -54,14 +54,14 @@ func (ic *GenericController) SyncSecret(key string) {
 			// no need to update
 			return
 		}
-		glog.Infof("updating secret %v in the local store", key)
+		klog.Infof("updating secret %v in the local store", key)
 		ic.sslCertTracker.Update(key, cert)
 		// this update must trigger an update
 		// (like an update event from a change in Ingress)
 		return
 	}
 
-	glog.V(3).Infof("adding secret %v to the local store", key)
+	klog.V(3).Infof("adding secret %v to the local store", key)
 	ic.sslCertTracker.Add(key, cert)
 	// this update must trigger an update
 	// (like an update event from a change in Ingress)
@@ -93,9 +93,9 @@ func (ic *GenericController) getPemCertificate(secret *apiv1.Secret) (*ingress.S
 			return nil, fmt.Errorf("unexpected error creating pem file: %v", err)
 		}
 
-		glog.V(3).Infof("found 'tls.crt' and 'tls.key', configuring %v as a TLS Secret (CN: %v)", secretName, s.CN)
+		klog.V(3).Infof("found 'tls.crt' and 'tls.key', configuring %v as a TLS Secret (CN: %v)", secretName, s.CN)
 		if ca != nil {
-			glog.V(3).Infof("found 'ca.crt', secret %v can also be used for Certificate Authentication", secretName)
+			klog.V(3).Infof("found 'ca.crt', secret %v can also be used for Certificate Authentication", secretName)
 		}
 
 	} else if ca != nil {
@@ -108,7 +108,7 @@ func (ic *GenericController) getPemCertificate(secret *apiv1.Secret) (*ingress.S
 
 		// makes this secret in 'syncSecret' to be used for Certificate Authentication
 		// this does not enable Certificate Authentication
-		glog.V(3).Infof("found only 'ca.crt', configuring %v as an Certificate Authentication Secret", secretName)
+		klog.V(3).Infof("found only 'ca.crt', configuring %v as an Certificate Authentication Secret", secretName)
 
 	} else {
 		return nil, fmt.Errorf("no keypair or CA cert could be found in %v", secretName)
