@@ -17,9 +17,11 @@ limitations under the License.
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -85,6 +87,9 @@ type Proc struct {
 	PID     int
 	RPID    int
 	Reloads int
+	Failed  int
+	Uptime  string
+	Version string
 }
 
 var haproxyCmd func(string, func(duration time.Duration), ...string) ([]string, error) = HAProxyCommand
@@ -106,7 +111,7 @@ func HAProxyProcs(masterSocket string) (*ProcTable, error) {
 	for {
 		time.Sleep(wait)
 		out, err := haproxyCmd(masterSocket, nil, "show proc")
-		if err == nil || !k8snet.IsConnectionRefused(err) {
+		if !waitHAProxy(masterSocket, err) {
 			if len(out) > 0 {
 				return buildProcTable(out[0]), err
 			}
@@ -123,8 +128,27 @@ func HAProxyProcs(masterSocket string) (*ProcTable, error) {
 	}
 }
 
+func waitHAProxy(sock string, err error) bool {
+	if err == nil {
+		// connection succeeded, no need to wait (wait = FALSE)
+		return false
+	}
+	if k8snet.IsConnectionRefused(err) || k8snet.IsConnectionReset(err) {
+		// connection refused or connection reset, give more time to haproxy (wait = TRUE)
+		return true
+	}
+	// now check if err (which is not nil) means unix socket not found
+	// should continue if socket not found, giving more time to haproxy create it
+	_, e := os.Stat(sock)
+	notFound := e != nil && errors.Is(err, os.ErrNotExist)
+	// should wait (wait = TRUE) if file was not found
+	return notFound
+}
+
 // buildProcTable parses `show proc` output and creates a corresponding ProcTable
 //
+//
+// layout 2.2 up to 2.4
 //                   1               3               4               6               8               9
 //   0.......|.......6.......|.......2.......|.......8.......|.......4.......|.......0.......|.......6
 //   #<PID>          <type>          <relative PID>  <reloads>       <uptime>        <version>
@@ -135,7 +159,182 @@ func HAProxyProcs(masterSocket string) (*ProcTable, error) {
 //   2               worker          [was: 1]        1               0d00h00m28s     2.2.3-0e58a34
 //   # programs
 //
+//
+// layout 2.5+
+//                   1               3               4               6               8
+//   0.......|.......6.......|.......2.......|.......8.......|.......4.......|.......0
+//   #<PID>          <type>          <reloads>       <uptime>        <version>
+//   1               master          4200 [failed: 42] 0d00h01m28s     2.5.3-abf078b
+//   # workers
+//   3               worker          0               0d00h00m00s     2.5.3-abf078b
+//   # old workers
+//   2               worker          1               0d00h00m28s     2.5.3-abf078b
+//   # programs
+//
 func buildProcTable(procOutput string) *ProcTable {
+	if strings.Index(procOutput, "relative PID") > 0 {
+		// TODO remove after v0.14
+		return buildProcTable24(procOutput)
+	}
+	procTable := ProcTable{}
+	old := false
+	l := linereader()
+	for _, line := range utils.LineToSlice(procOutput) {
+		if strings.HasPrefix(line, "#<PID>") {
+			l.parseHeader(line)
+		} else if len(line) > 0 && line[0] != '#' {
+			l.feed(line)
+			rpid := l.asInt("<relative_PID>")
+			if rpid == 0 {
+				rpid = l.asInt("<relative_PID>.was")
+			}
+			proc := Proc{
+				PID:     l.asInt("<PID>"),
+				Type:    l.asString("<type>"),
+				RPID:    rpid,
+				Reloads: l.asInt("<reloads>"),
+				Failed:  l.asInt("<reloads>.failed"),
+				Uptime:  l.asString("<uptime>"),
+				Version: l.asString("<version>"),
+			}
+			if proc.Type == "master" {
+				procTable.Master = proc
+			} else if old {
+				procTable.OldWorkers = append(procTable.OldWorkers, proc)
+			} else {
+				procTable.Workers = append(procTable.Workers, proc)
+			}
+		} else if line == "# old workers" {
+			old = true
+		}
+	}
+	return &procTable
+}
+
+type line struct {
+	t       *tokenizer
+	headers []string
+	hwidth  int
+	fields  map[string]string
+}
+
+func linereader() *line {
+	return &line{t: &tokenizer{}, hwidth: 16}
+}
+
+func (l *line) parseHeader(h string) {
+	s := strings.TrimPrefix(h, "#")
+	var inside bool
+	var pos []int
+	for i := range s {
+		switch s[i] {
+		case '<':
+			inside = true
+		case '>':
+			inside = false
+		case ' ':
+			if inside {
+				pos = append(pos, i)
+			}
+		}
+	}
+	for _, i := range pos {
+		s = s[:i] + "_" + s[i+1:]
+	}
+	l.headers = strings.Fields(s)
+	l.fields = nil
+}
+
+func (l *line) feed(line string) {
+	t := l.t
+	t.reset(line)
+	fields := map[string]string{}
+	pos := 0
+	for _, h := range l.headers {
+		t.skipSpaces()
+		for !t.eof() && t.pos-pos < l.hwidth {
+			name, value := t.readField()
+			if name == "" {
+				fields[h] = value
+			} else {
+				fields[h+"."+name] = value
+			}
+			t.skipSpaces()
+		}
+		pos = t.pos
+	}
+	l.fields = fields
+}
+
+func (l *line) asString(h string) string {
+	return l.fields[h]
+}
+
+func (l *line) asInt(h string) int {
+	i, _ := strconv.Atoi(l.asString(h))
+	return i
+}
+
+type tokenizer struct {
+	buf string
+	len int
+	pos int
+}
+
+func (t *tokenizer) reset(buf string) {
+	t.buf = buf
+	t.len = len(buf)
+	t.pos = 0
+}
+
+func (t *tokenizer) eof() bool {
+	return t.pos >= t.len
+}
+
+var isSpace = [256]bool{'\t': true, '\r': true, '\n': true, ' ': true}
+var isSpecial = [256]bool{'[': true, ':': true, ']': true}
+
+func (t *tokenizer) skipSpaces() {
+	for !t.eof() && isSpace[t.buf[t.pos]] {
+		t.pos++
+	}
+}
+
+func (t *tokenizer) readNextToken() string {
+	t.skipSpaces()
+	pos := t.pos
+	if isSpecial[t.buf[pos]] {
+		return string(t.buf[pos])
+	}
+	for pos < t.len && !isSpace[t.buf[pos]] && !isSpecial[t.buf[pos]] {
+		pos++
+	}
+	return t.buf[t.pos:pos]
+}
+
+func (t *tokenizer) readToken() string {
+	token := t.readNextToken()
+	t.pos += len(token)
+	return token
+}
+
+func (t *tokenizer) readField() (string, string) {
+	token := t.readToken()
+	if token != "[" {
+		// e.g. `1` or `worker`
+		return "", token
+	}
+	// e.g. `[failed: 2]` or `[was: 1]`
+	name := t.readToken()
+	_ = t.readToken() // `:`
+	value := t.readToken()
+	for !t.eof() && t.readToken() != "]" {
+		//
+	}
+	return name, value
+}
+
+func buildProcTable24(procOutput string) *ProcTable {
 	atoi := func(s string) int {
 		i, _ := strconv.Atoi(s)
 		return i

@@ -164,6 +164,66 @@ func TestHAProxyProcs(t *testing.T) {
 				},
 			},
 		},
+		// 8
+		{
+			cmdOutput: []string{`#<PID>          <type>          <reloads>       <uptime>        <version>
+94292           master          0 [failed: 0]   0d00h00m04s     2.5.3-abf078b
+# workers
+94293           worker       	   0               0d00h00m04s     2.5.3-abf078b
+# programs
+`},
+			expOutput: &ProcTable{
+				Master: Proc{Type: "master", PID: 94292, Reloads: 0, Failed: 0, Uptime: "0d00h00m04s", Version: "2.5.3-abf078b"},
+				Workers: []Proc{
+					{Type: "worker", PID: 94293, Reloads: 0, Uptime: "0d00h00m04s", Version: "2.5.3-abf078b"},
+				},
+			},
+		},
+		// 9
+		{
+			cmdOutput: []string{`#<PID>          <type>          <reloads>       <uptime>        <version>
+94292           master          1035 [failed: 57] 0d00h09m40s     2.5.3-abf078b
+# workers
+913             worker          57              0d00h04m45s     2.5.3-abf078b
+# programs
+`},
+			expOutput: &ProcTable{
+				Master: Proc{Type: "master", PID: 94292, Reloads: 1035, Failed: 57, Uptime: "0d00h09m40s", Version: "2.5.3-abf078b"},
+				Workers: []Proc{
+					{Type: "worker", PID: 913, Reloads: 57, Uptime: "0d00h04m45s", Version: "2.5.3-abf078b"},
+				},
+			},
+		},
+		// 10
+		{
+			cmdOutput: []string{`#<PID>          <type>          <reloads>       <uptime>        <version>
+2965            master          1420 [failed: 0] 0d00h11m09s     2.5.3-abf078b
+# workers
+10668           worker          0               0d00h00m59s     2.5.3-abf078b
+# old workers
+9529            worker          240             0d00h01m50s     2.5.3-abf078b
+9463            worker          254             0d00h01m53s     2.5.3-abf078b
+9401            worker          268             0d00h01m56s     2.5.3-abf078b
+9335            worker          282             0d00h01m59s     2.5.3-abf078b
+9273            worker          296             0d00h02m02s     2.5.3-abf078b
+9209            worker          310             0d00h02m05s     2.5.3-abf078b
+# programs
+`},
+			expOutput: &ProcTable{
+				Master: Proc{Type: "master", PID: 2965, Reloads: 1420, Failed: 0, Uptime: "0d00h11m09s", Version: "2.5.3-abf078b"},
+				Workers: []Proc{
+					{Type: "worker", PID: 10668, Reloads: 0, Uptime: "0d00h00m59s", Version: "2.5.3-abf078b"},
+				},
+				OldWorkers: []Proc{
+					{Type: "worker", PID: 9529, Reloads: 240, Uptime: "0d00h01m50s", Version: "2.5.3-abf078b"},
+					{Type: "worker", PID: 9463, Reloads: 254, Uptime: "0d00h01m53s", Version: "2.5.3-abf078b"},
+					{Type: "worker", PID: 9401, Reloads: 268, Uptime: "0d00h01m56s", Version: "2.5.3-abf078b"},
+					{Type: "worker", PID: 9335, Reloads: 282, Uptime: "0d00h01m59s", Version: "2.5.3-abf078b"},
+					{Type: "worker", PID: 9273, Reloads: 296, Uptime: "0d00h02m02s", Version: "2.5.3-abf078b"},
+					{Type: "worker", PID: 9209, Reloads: 310, Uptime: "0d00h02m05s", Version: "2.5.3-abf078b"},
+				},
+			},
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
