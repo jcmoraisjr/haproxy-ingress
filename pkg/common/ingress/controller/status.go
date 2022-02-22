@@ -25,8 +25,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
+	"k8s.io/klog/v2"
 
 	pool "gopkg.in/go-playground/pool.v3"
 	apiv1 "k8s.io/api/core/v1"
@@ -94,43 +94,43 @@ func (s statusSync) Shutdown() {
 	}
 
 	if !s.ic.cfg.UpdateStatusOnShutdown {
-		glog.Warningf("skipping update of status of Ingress rules")
+		klog.Warningf("skipping update of status of Ingress rules")
 		return
 	}
 
-	glog.Infof("updating status of Ingress rules (remove)")
+	klog.Infof("updating status of Ingress rules (remove)")
 
 	addrs, err := s.runningAddresses()
 	if err != nil {
-		glog.Errorf("error obtaining running IPs: %v", addrs)
+		klog.Errorf("error obtaining running IPs: %v", addrs)
 		return
 	}
 
 	if len(addrs) > 1 {
 		// leave the job to the next leader
-		glog.Infof("leaving status update for next leader (%v)", len(addrs))
+		klog.Infof("leaving status update for next leader (%v)", len(addrs))
 		return
 	}
 
 	if s.isRunningMultiplePods() {
-		glog.V(2).Infof("skipping Ingress status update (multiple pods running - another one will be elected as master)")
+		klog.V(2).Infof("skipping Ingress status update (multiple pods running - another one will be elected as master)")
 		return
 	}
 
-	glog.Infof("removing address from ingress status (%v)", addrs)
+	klog.Infof("removing address from ingress status (%v)", addrs)
 	if err := s.updateStatus([]apiv1.LoadBalancerIngress{}); err != nil {
-		glog.Errorf("cannot update status due to an error: %s", err.Error())
+		klog.Errorf("cannot update status due to an error: %s", err.Error())
 	}
 }
 
 func (s *statusSync) sync(key interface{}) error {
 	if s.syncQueue.IsShuttingDown() {
-		glog.V(2).Infof("skipping Ingress status update (shutting down in progress)")
+		klog.V(2).Infof("skipping Ingress status update (shutting down in progress)")
 		return nil
 	}
 
 	if !s.elector.IsLeader() {
-		glog.V(2).Infof("skipping Ingress status update (I am not the current leader)")
+		klog.V(2).Infof("skipping Ingress status update (I am not the current leader)")
 		return nil
 	}
 
@@ -153,7 +153,7 @@ func (s statusSync) keyfunc(input interface{}) (interface{}, error) {
 func NewStatusSyncer(ic *GenericController) StatusSync {
 	pod, err := k8s.GetPodDetails(ic.cfg.Client)
 	if err != nil {
-		glog.Fatalf("unexpected error obtaining pod information: %v", err)
+		klog.Fatalf("unexpected error obtaining pod information: %v", err)
 	}
 
 	st := statusSync{
@@ -168,13 +168,13 @@ func NewStatusSyncer(ic *GenericController) StatusSync {
 
 	callbacks := leaderelection.LeaderCallbacks{
 		OnStartedLeading: func(context.Context) {
-			glog.V(2).Infof("I am the new status update leader")
+			klog.V(2).Infof("I am the new status update leader")
 		},
 		OnStoppedLeading: func() {
-			glog.V(2).Infof("I am not status update leader anymore")
+			klog.V(2).Infof("I am not status update leader anymore")
 		},
 		OnNewLeader: func(identity string) {
-			glog.Infof("new leader elected: %v", identity)
+			klog.Infof("new leader elected: %v", identity)
 		},
 	}
 
@@ -205,7 +205,7 @@ func NewStatusSyncer(ic *GenericController) StatusSync {
 	})
 
 	if err != nil {
-		glog.Fatalf("unexpected error starting leader election: %v", err)
+		klog.Fatalf("unexpected error starting leader election: %v", err)
 	}
 
 	st.elector = le
@@ -344,7 +344,7 @@ func runUpdate(ctx context.Context, ing *networking.Ingress, status []apiv1.Load
 		sort.SliceStable(curIPs, lessLoadBalancerIngress(curIPs))
 
 		if ingressSliceEqual(addrs, curIPs) {
-			glog.V(3).Infof("skipping update of Ingress %v/%v (no change)", ing.Namespace, ing.Name)
+			klog.V(3).Infof("skipping update of Ingress %v/%v (no change)", ing.Namespace, ing.Name)
 			return true, nil
 		}
 
@@ -355,11 +355,11 @@ func runUpdate(ctx context.Context, ing *networking.Ingress, status []apiv1.Load
 			return nil, errors.Wrap(err, fmt.Sprintf("unexpected error searching Ingress %v/%v", ing.Namespace, ing.Name))
 		}
 
-		glog.Infof("updating Ingress %v/%v status to %v", currIng.Namespace, currIng.Name, addrs)
+		klog.Infof("updating Ingress %v/%v status to %v", currIng.Namespace, currIng.Name, addrs)
 		currIng.Status.LoadBalancer.Ingress = addrs
 		_, err = ingClient.UpdateStatus(ctx, currIng, metav1.UpdateOptions{})
 		if err != nil {
-			glog.Warningf("error updating ingress rule: %v", err)
+			klog.Warningf("error updating ingress rule: %v", err)
 		}
 
 		return true, nil

@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/glog"
+	"k8s.io/klog/v2"
 
 	apiv1 "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
@@ -118,7 +118,7 @@ type Configuration struct {
 func newIngressController(config *Configuration) *GenericController {
 
 	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(glog.Infof)
+	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{
 		Interface: config.Client.CoreV1().Events(config.WatchNamespace),
 	})
@@ -133,7 +133,7 @@ func newIngressController(config *Configuration) *GenericController {
 	if config.UpdateStatus {
 		ic.syncStatus = NewStatusSyncer(&ic)
 	} else {
-		glog.Warning("Update of ingress status is disabled (flag --update-status=false was specified)")
+		klog.Warning("Update of ingress status is disabled (flag --update-status=false was specified)")
 	}
 
 	return &ic
@@ -194,7 +194,7 @@ func (ic GenericController) Stop() error {
 	defer ic.stopLock.Unlock()
 
 	if ic.stopCh != nil {
-		glog.Infof("shutting down controller queues")
+		klog.Infof("shutting down controller queues")
 		close(ic.stopCh)
 		if ic.syncStatus != nil {
 			ic.syncStatus.Shutdown()
@@ -219,7 +219,7 @@ func (ic *GenericController) CreateDefaultSSLCertificate() (path, hash string, c
 	)
 	c, err := ssl.AddOrUpdateCertAndKey("default-fake-certificate", defCert, defKey, []byte{})
 	if err != nil {
-		glog.Fatalf("Error generating self signed certificate: %v", err)
+		klog.Fatalf("Error generating self signed certificate: %v", err)
 	}
 	return c.PemFileName, c.PemSHA, c.Certificate
 }
