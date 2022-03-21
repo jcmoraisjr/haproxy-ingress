@@ -171,7 +171,8 @@ func (c *config) WriteFrontendMaps() error {
 	defaultHost := c.hosts.DefaultHost()
 	if defaultHost != nil && !defaultHost.SSLPassthrough() {
 		for _, path := range defaultHost.Paths {
-			fmaps.DefaultHostMap.AddHostnamePathMapping("", path, path.Backend.ID)
+			// using DefaultHost ID as hostname, see types.maps.go/buildMapKey()
+			fmaps.DefaultHostMap.AddHostnamePathMapping(hatypes.DefaultHost, path, path.Backend.ID)
 		}
 	}
 	for _, host := range c.hosts.BuildSortedItems() {
@@ -321,7 +322,8 @@ func (c *config) WriteBackendMaps() error {
 					continue
 				}
 				if path.IsDefaultHost() {
-					pathsDefaultHostMap.AddHostnamePathMapping("", p, path.ID)
+					// using DefaultHost ID as hostname, see types.maps.go/buildMapKey()
+					pathsDefaultHostMap.AddHostnamePathMapping(hatypes.DefaultHost, p, path.ID)
 				} else {
 					pathsMap.AddHostnamePathMapping(path.Hostname(), p, path.ID)
 				}
