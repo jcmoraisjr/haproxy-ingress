@@ -437,7 +437,7 @@ backend {{ $backend.ID }}
 {{- end }}
 {{- $pathsHasHost := $backend.PathsMap.HasHost }}
 {{- range $match := $backend.PathsDefaultHostMap.MatchFiles }}
-    http-request set-var(txn.pathID) var(req.path)
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- if or $pathsHasHost (not $match.First) }} if !{ var(txn.pathID) -m found }{{ end }}
@@ -1195,10 +1195,11 @@ frontend {{ $proxy__front_http }}
         {{- if not $match.First }} if !{ var(req.backend) -m found }{{ end }}
 {{- end }}
 {{- range $match := $fmaps.DefaultHostMap.MatchFiles }}
-    http-request set-var(req.defaultbackend) var(req.path)
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
-        {{- "" }} if !{ var(req.backend) -m found }{{- if not $match.First }} !{ var(req.defaultbackend) -m found }{{ end }}
+        {{- "" }} if !{ var(req.backend) -m found }
+        {{- if not $match.First }} !{ var(req.defaultbackend) -m found }{{ end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -1271,10 +1272,11 @@ frontend {{ $proxy__front_https }}
         {{- if not $match.First }} if !{ var(req.hostbackend) -m found }{{ end }}
 {{- end }}
 {{- range $match := $fmaps.DefaultHostMap.MatchFiles }}
-    http-request set-var(req.defaultbackend) var(req.path)
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
-        {{- "" }} if !{ var(req.hostbackend) -m found }{{- if not $match.First }} !{ var(req.defaultbackend) -m found }{{ end }}
+        {{- "" }} if !{ var(req.hostbackend) -m found }
+        {{- if not $match.First }} !{ var(req.defaultbackend) -m found }{{ end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}

@@ -171,6 +171,16 @@ func buildMapKey(match MatchType, hostname, path string) string {
 		//
 		// backend2 would be chosen on beg and reg match types, but backend1
 		// would be chosen if dir was used.
+		//
+		// The default hostname adds a hostname as well due to how map_dir()
+		// converter behaves in HAProxy:
+		//
+		//   /
+		//   <default>#/
+		//
+		// the former pattern doesn't match `/app` but it should, so the
+		// hostname part is added which will make the later pattern match
+		// with `<default>#/app`
 		return hostname + "#" + path
 	}
 	return hostname + path
