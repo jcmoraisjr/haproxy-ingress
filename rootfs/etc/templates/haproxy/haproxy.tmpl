@@ -598,6 +598,11 @@ backend {{ $backend.ID }}
     http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1 %{+Q}[ssl_c_sha1,hex
         {{- if $backend.TLS.FingerprintLower }},lower{{ end }}]
         {{- if $needSSLACL }}   if local-offload{{ end }}
+{{- if $backend.TLS.Sha2Bits }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-SHA2 %{+Q}[ssl_c_der,sha2({{ $backend.TLS.Sha2Bits }}),hex
+        {{- if $backend.TLS.FingerprintLower }},lower{{ end }}]
+        {{- if $needSSLACL }} if local-offload{{ end }}
+{{- end }}
 {{- if $backend.TLS.AddCertHeader }}
     http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-Cert %{+Q}[ssl_c_der,base64]{{ if $needSSLACL }} if local-offload{{ end }}
 {{- end }}
@@ -1183,6 +1188,8 @@ frontend {{ $proxy__front_http }}
         {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1
         {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
+    http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-SHA2
+        {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-Cert
         {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
 {{- end }}
@@ -1310,6 +1317,7 @@ frontend {{ $proxy__front_https }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-CN
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-DN
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1
+    http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-SHA2
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-Cert
 
 {{- /*------------------------------------*/}}

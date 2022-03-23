@@ -742,6 +742,7 @@ type BackendTLSConfig struct {
 	AddCertHeader    bool
 	FingerprintLower bool
 	HasTLSAuth       bool
+	Sha2Bits         int
 }
 
 // UserlistConfig ...

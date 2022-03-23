@@ -920,6 +920,13 @@ func (c *updater) buildBackendSourceAddressIntf(d *backData) {
 func (c *updater) buildBackendSSL(d *backData) {
 	d.backend.TLS.AddCertHeader = d.mapper.Get(ingtypes.BackAuthTLSCertHeader).Bool()
 	d.backend.TLS.FingerprintLower = d.mapper.Get(ingtypes.BackSSLFingerprintLower).Bool()
+	sha2bits := d.mapper.Get(ingtypes.BackSSLFingerprintSha2Bits)
+	sha2bitsVal := sha2bits.Int()
+	if sha2bitsVal == 0 || sha2bitsVal == 224 || sha2bitsVal == 256 || sha2bitsVal == 384 || sha2bitsVal == 512 {
+		d.backend.TLS.Sha2Bits = sha2bitsVal
+	} else if sha2bits.Source != nil {
+		c.logger.Warn("ignoring SHA-2 fingerprint on %s due to an invalid number of bits: %d", sha2bits.Source, sha2bitsVal)
+	}
 	if cfg := d.mapper.Get(ingtypes.BackSSLCiphersBackend); cfg.Source != nil {
 		d.backend.Server.Ciphers = cfg.Value
 	}

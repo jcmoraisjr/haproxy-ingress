@@ -451,6 +451,7 @@ The table below describes all supported configuration keys.
 | [`ssl-dh-param`](#ssl-dh)                            | namespace/secret name                   | Global  | no custom DH param |
 | [`ssl-engine`](#ssl-engine)                          | OpenSSL engine name and parameters      | Global  | no engine set      |
 | [`ssl-fingerprint-lower`](#auth-tls)                 | [true\|false]                           | Backend | `false`            |
+| [`ssl-fingerprint-sha2-bits`](#auth-tls)             | Bits of the SHA-2 fingerprint           | Backend |                    |
 | [`ssl-headers-prefix`](#auth-tls)                    | prefix                                  | Global  | `X-SSL`            |
 | [`ssl-mode-async`](#ssl-engine)                      | [true\|false]                           | Global  | `false`            |
 | [`ssl-options`](#ssl-options)                        | space-separated list                    | Global  | [see description](#ssl-options) |
@@ -848,15 +849,16 @@ See also:
 
 ## Auth TLS
 
-| Configuration key        | Scope     | Default | Since  |
-|--------------------------|-----------|---------|--------|
-| `auth-tls-cert-header`   | `Backend` | `false` |        |
-| `auth-tls-error-page`    | `Host`    |         |        |
-| `auth-tls-secret`        | `Host`    |         |        |
-| `auth-tls-strict`        | `Host`    | `true`  | v0.8.1 |
-| `auth-tls-verify-client` | `Host`    |         |        |
-| `ssl-fingerprint-lower`  | `Backend` | `false` | v0.10  |
-| `ssl-headers-prefix`     | `Global`  | `X-SSL` |        |
+| Configuration key           | Scope     | Default | Since  |
+|-----------------------------|-----------|---------|--------|
+| `auth-tls-cert-header`      | `Backend` | `false` |        |
+| `auth-tls-error-page`       | `Host`    |         |        |
+| `auth-tls-secret`           | `Host`    |         |        |
+| `auth-tls-strict`           | `Host`    | `true`  | v0.8.1 |
+| `auth-tls-verify-client`    | `Host`    |         |        |
+| `ssl-fingerprint-lower`     | `Backend` | `false` | v0.10  |
+| `ssl-fingerprint-sha2-bits` | `Backend` |         | v0.14  |
+| `ssl-headers-prefix`        | `Global`  | `X-SSL` |        |
 
 Configure client authentication with X509 certificate. The following headers are
 added to the request:
@@ -864,6 +866,11 @@ added to the request:
 * `X-SSL-Client-SHA1`: Hex encoding of the SHA-1 fingerprint of the X509 certificate. The default output uses uppercase hexadecimal digits, configure `ssl-fingerprint-lower` to `true` to use lowercase digits instead.
 * `X-SSL-Client-DN`: Distinguished name of the certificate
 * `X-SSL-Client-CN`: Common name of the certificate
+
+These headers can also be added depending on the configuration:
+
+* `X-SSL-Client-SHA2`: Only if `ssl-fingerprint-sha2-bits` is declared. Hex encoding of the SHA-2 fingerprint of the X509 certificate. Valid `ssl-fingerprint-sha2-bits` values are `224`, `256`, `384` or `512`. The default output uses uppercase hexadecimal digits, configure `ssl-fingerprint-lower` to `true` to use lowercase digits instead.
+* `X-SSL-Client-Cert`: Only if `auth-tls-cert-header` is `true`. Base64 encoding of the X509 certificate in DER format.
 
 The prefix of the header names can be configured with `ssl-headers-prefix` key.
 The default value is to `X-SSL`, which will create a `X-SSL-Client-DN` header with
@@ -877,6 +884,7 @@ The following keys are supported:
 * `auth-tls-strict`: Defines if a wrong or incomplete configuration, eg missing secret with `ca.crt`, should forbid connection attempts. If `false`, a wrong or incomplete configuration will ignore the authentication config, allowing anonymous connection. If `true`, a strict configuration is used: all requests will be rejected with HTTP 495 or 496, or redirected to the error page if configured, until a proper `ca.crt` is provided. Strict configuration will only be used if `auth-tls-secret` has a secret name and `auth-tls-verify-client` is missing or is not configured as `off`. This options used to have `false` as the default value up to v0.13, changing its default to `true` since v0.14 to improve security.
 * `auth-tls-verify-client`: Optional configuration of Client Verification behavior. Supported values are `off`, `on`, `optional` and `optional_no_ca`. The default value is `on` if a valid secret is provided, `off` otherwise.
 * `ssl-fingerprint-lower`: Defines if the certificate fingerprint should be in lowercase hexadecimal digits. The default value is `false`, which uses uppercase digits.
+* `ssl-fingerprint-sha2-bits`: Defines the number of bits of the SHA-2 fingerprint of the client certificate. Valid values are `224`, `256`, `384` or `512`. The header `X-SSL-Client-SHA2` will only be added if this option is declared.
 * `ssl-headers-prefix`: Configures which prefix should be used on HTTP headers. Since [RFC 6648](https://tools.ietf.org/html/rfc6648) `X-` prefix on unstandardized headers changed from a convention to deprecation. This configuration allows to select which pattern should be used on header names.
 
 See also:
