@@ -2,6 +2,10 @@
 
 * [Major improvements](#major-improvements)
 * [Contributors](#contributors)
+* [v0.10.14](#v01014)
+  * [Reference](#reference-r14)
+  * [Release notes](#release-notes-r14)
+  * [Fixes and improvements](#fixes-and-improvements-r14)
 * [v0.10.13](#v01013)
   * [Reference](#reference-r13)
   * [Release notes](#release-notes-r13)
@@ -98,6 +102,31 @@ Highlights of this version:
 * Robert Agbozo ([RobertTheProfessional](https://github.com/RobertTheProfessional))
 * Sankul ([dark-shade](https://github.com/dark-shade))
 * Tadeu Andrade ([mtatheonly](https://github.com/mtatheonly))
+
+# v0.10.14
+
+## Reference (r14)
+
+* Release date: `2022-03-26`
+* Helm chart: `--version 0.10.14`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.10.14`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.10.14`
+* Embedded HAProxy version: `2.0.28`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.10.14`
+
+## Release notes (r14)
+
+This release fixes backend configuration snippets with blank lines. Such blanck lines were being rejected due to a wrong parsing of a missing `--disable-config-keywords` command-line option.
+
+Also, the embedded HAProxy version was updated from 2.0.26 to 2.0.28.
+
+## Fixes and improvements (r14)
+
+Fixes and improvements since `v0.10.13`:
+
+* Add disableKeywords only if defined [#876](https://github.com/jcmoraisjr/haproxy-ingress/pull/876) (jcmoraisjr)
+* Remove initial whitespaces from haproxy template [#910](https://github.com/jcmoraisjr/haproxy-ingress/pull/910) (ironashram)
+* update embedded haproxy from 2.0.26 to 2.0.28 [97f105c](https://github.com/jcmoraisjr/haproxy-ingress/commit/97f105c908149d642af80432e916697b3234a234) (Joao Morais)
 
 # v0.10.13
 
