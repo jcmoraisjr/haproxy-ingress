@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.11!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.12.13](#v01213)
+  * [Reference](#reference-r13)
+  * [Release notes](#release-notes-r13)
+  * [Fixes and improvements](#fixes-and-improvements-r13)
 * [v0.12.12](#v01212)
   * [Reference](#reference-r12)
   * [Release notes](#release-notes-r12)
@@ -93,6 +97,33 @@ Breaking backward compatibility from v0.11
 * paul ([toothbrush](https://github.com/toothbrush))
 * pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.12.13
+
+## Reference (r13)
+
+* Release date: `2022-03-26`
+* Helm chart: `--version 0.12.13`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.12.13`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.12.13`
+* Embedded HAProxy version: `2.2.22`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.12.13`
+
+## Release notes (r13)
+
+This release fixes the match of the Prefix path type when the host is not declared (default host) and the pattern is a single slash. The configured service was not being selected if the incoming path doesn't finish with a slash.
+
+Other notable changes include:
+
+- Add compatibility with HAProxy 2.5 deployed as external/sidecar. Version 2.5 changed the lay out of the `show proc` command of the master API.
+- Embedded HAProxy version was updated from 2.2.20 to 2.2.22.
+
+## Fixes and improvements (r13)
+
+* Add haproxy 2.5 support for external haproxy [#905](https://github.com/jcmoraisjr/haproxy-ingress/pull/905) (jcmoraisjr)
+* Fix match of prefix pathtype if using default host [#908](https://github.com/jcmoraisjr/haproxy-ingress/pull/908) (jcmoraisjr)
+* Remove initial whitespaces from haproxy template [#910](https://github.com/jcmoraisjr/haproxy-ingress/pull/910) (ironashram)
+* update embedded haproxy from 2.2.20 to 2.2.22 [7270300](https://github.com/jcmoraisjr/haproxy-ingress/commit/7270300c92d93e8a233c8f572cc64263429fb279) (Joao Morais)
 
 # v0.12.12
 
