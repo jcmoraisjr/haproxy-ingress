@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.12!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.13.7](#v0137)
+  * [Reference](#reference-r7)
+  * [Release notes](#release-notes-r7)
+  * [Fixes and improvements](#fixes-and-improvements-r7)
 * [v0.13.6](#v0136)
   * [Reference](#reference-r6)
   * [Release notes](#release-notes-r6)
@@ -83,6 +87,7 @@ Breaking backward compatibility from v0.12
 
 * Andrew Rodland ([arodland](https://github.com/arodland))
 * Bart Versluijs ([bartversluijs](https://github.com/bartversluijs))
+* ironashram ([ironashram](https://github.com/ironashram))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
 * Maël Valais ([maelvls](https://github.com/maelvls))
 * Mateusz Kubaczyk ([mkubaczyk](https://github.com/mkubaczyk))
@@ -90,7 +95,38 @@ Breaking backward compatibility from v0.12
 * Neil Seward ([sealneaward](https://github.com/sealneaward))
 * paul ([toothbrush](https://github.com/toothbrush))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+* Roman Gherta ([rgherta](https://github.com/rgherta))
+* ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
+
+# v0.13.7
+
+## Reference (r7)
+
+* Release date: `2022-03-26`
+* Helm chart: `--version 0.13.7`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.7`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.7`
+* Embedded HAProxy version: `2.3.19`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.13.7`
+
+## Release notes (r7)
+
+This release fixes the match of the Prefix path type when the host is not declared (default host) and the pattern is a single slash. The configured service was not being selected if the incoming path doesn't finish with a slash.
+
+Other notable changes include:
+
+- Add compatibility with HAProxy 2.5 deployed as external/sidecar. Version 2.5 changed the lay out of the `show proc` command of the master API.
+- Embedded HAProxy version was updated from 2.3.17 to 2.3.19.
+
+## Fixes and improvements (r7)
+
+* Upgrade crypto dependency [#895](https://github.com/jcmoraisjr/haproxy-ingress/pull/895) (rgherta)
+* docs: include tuning of free backend slots in performance suggestions [#891](https://github.com/jcmoraisjr/haproxy-ingress/pull/891) (ssanders1449)
+* Add haproxy 2.5 support for external haproxy [#905](https://github.com/jcmoraisjr/haproxy-ingress/pull/905) (jcmoraisjr)
+* Fix match of prefix pathtype if using default host [#908](https://github.com/jcmoraisjr/haproxy-ingress/pull/908) (jcmoraisjr)
+* Remove initial whitespaces from haproxy template [#910](https://github.com/jcmoraisjr/haproxy-ingress/pull/910) (ironashram)
+* update embedded haproxy from 2.3.17 to 2.3.19 [5b99b0c](https://github.com/jcmoraisjr/haproxy-ingress/commit/5b99b0c2f3e44fb704d1d2ce461a334ac6076cea) (Joao Morais)
 
 # v0.13.6
 
