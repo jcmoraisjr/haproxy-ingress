@@ -1,0 +1,26 @@
+-- # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+-- # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+-- # #
+-- # #   HAProxy Ingress Controller
+-- # #   --------------------------
+-- # #   This file is automatically updated, do not edit
+-- # #
+-- #
+
+{{- range $response := . }}
+
+core.register_service("{{ $response.Name }}", "http", function(applet)
+    response = [==[
+{{- range $line := $response.Body }}
+{{ $line }}
+{{- end }}
+]==]
+    applet:set_status({{ $response.StatusCode }}, "{{ $response.StatusReason }}")
+{{- range $h := $response.Headers }}
+    applet:add_header("{{ $h.Name }}", "{{ $h.Value }}")
+{{- end }}
+    applet:start_response()
+    applet:send(response)
+end)
+
+{{- end }}

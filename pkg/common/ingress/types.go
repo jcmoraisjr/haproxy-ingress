@@ -35,7 +35,10 @@ var (
 	DefaultCACertsDirectory = "/var/lib/haproxy/cacerts"
 	DefaultCrlDirectory     = "/var/lib/haproxy/crl"
 	DefaultVarRunDirectory  = "/var/run/haproxy"
-	DefaultMapsDirectory    = "/etc/haproxy/maps"
+	//
+	DefaultErrorfilesDirectory = "/etc/haproxy/errorfiles"
+	DefaultLuaScriptsDirectory = "/etc/haproxy/lua"
+	DefaultMapsDirectory       = "/etc/haproxy/maps"
 )
 
 // Controller holds the methods to handle an Ingress backend

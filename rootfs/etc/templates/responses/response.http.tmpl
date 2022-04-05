@@ -1,0 +1,7 @@
+HTTP/1.1 {{ .StatusCode }} {{ .StatusReason }}
+{{- range $header := .Headers }}
+{{ $header.Name }}: {{ $header.Value }}
+{{- end }}
+{{ range $line := .Body }}
+{{ $line }}
+{{- end }}

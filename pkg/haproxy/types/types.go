@@ -84,6 +84,8 @@ type Global struct {
 	CustomDefaults          []string
 	CustomFrontend          []string
 	CustomProxy             map[string][]string
+	CustomHTTPLuaResponses  []HTTPResponse
+	CustomHTTPHAResponses   []HTTPResponse
 	CustomSections          []string
 	CustomTCP               []string
 }
@@ -243,6 +245,21 @@ type ModSecurityTimeoutConfig struct {
 	Hello      string
 	Idle       string
 	Processing string
+}
+
+// HTTPResponse ...
+type HTTPResponse struct {
+	Name         string
+	Headers      []HTTPHeader
+	Body         []string
+	StatusCode   int
+	StatusReason string
+}
+
+// HTTPHeader ...
+type HTTPHeader struct {
+	Name  string
+	Value string
 }
 
 // TCPServices ...

@@ -22,6 +22,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kylelemons/godebug/diff"
+
 	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
@@ -212,6 +214,14 @@ func (c *testConfig) createHostData(source *Source, ann, annDefault map[string]s
 func (c *testConfig) compareObjects(name string, index int, actual, expected interface{}) {
 	if !reflect.DeepEqual(actual, expected) {
 		c.t.Errorf("%s on %d differs - expected: %v - actual: %v", name, index, expected, actual)
+	}
+}
+
+func (c *testConfig) compareText(name string, index int, actual, expected string) {
+	txtActual := "\n" + strings.Trim(actual, "\n")
+	txtExpected := "\n" + strings.Trim(expected, "\n")
+	if txtActual != txtExpected {
+		c.t.Errorf("\ndiff of %s on %d:%s", name, index, diff.Diff(txtExpected, txtActual))
 	}
 }
 
