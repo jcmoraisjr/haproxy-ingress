@@ -670,7 +670,9 @@ func (i *instance) waitWorker() error {
 	if err != nil {
 		return fmt.Errorf("error reading procs from master socket: %w", err)
 	}
-	if len(out.Workers) == 0 {
+	if len(out.Workers) == 0 || out.Master.Failed > 0 {
+		// `len(out.Workers) == 0` => haproxy 2.2 to 2.4
+		// `out.Master.Failed > 0` => haproxy 2.5+
 		return fmt.Errorf("external haproxy was not successfully reloaded")
 	}
 	return nil
