@@ -1010,7 +1010,7 @@ frontend {{ $proxy_name }}
 
 {{- /*------------------------------------*/}}
 {{- if $tcpport.SNIMap.HasHost }}
-{{- if $tls.TLSFilename }}
+{{- if not $tls.TLSFilename }}
     tcp-request inspect-delay 5s
 {{- end }}
 {{- range $match := $tcpport.SNIMap.MatchFiles }}
@@ -1030,7 +1030,7 @@ frontend {{ $proxy_name }}
 
 {{- /*------------------------------------*/}}
 {{- if $tcpport.SNIMap.HasHost }}
-{{- if $tls.TLSFilename }}
+{{- if not $tls.TLSFilename }}
     tcp-request content accept if { req.ssl_hello_type 1 }
 {{- end }}
     use_backend %[var(req.tcpback)] if { var(req.tcpback) -m found }

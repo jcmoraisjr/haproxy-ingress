@@ -2037,9 +2037,7 @@ frontend _front_tcp_7011
 frontend _front_tcp_7012
     bind :7012 ssl crt /ssl/7012.pem
     mode tcp
-    tcp-request inspect-delay 5s
     tcp-request content set-var(req.tcpback) ssl_fc_sni,lower,map_str(/etc/haproxy/maps/_tcp_sni_7012__exact.map)
-    tcp-request content accept if { req.ssl_hello_type 1 }
     use_backend %[var(req.tcpback)] if { var(req.tcpback) -m found }
 frontend _front_tcp_7013
     bind :7013
