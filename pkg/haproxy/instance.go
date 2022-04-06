@@ -78,14 +78,17 @@ type Instance interface {
 // CreateInstance ...
 func CreateInstance(logger types.Logger, options InstanceOptions) Instance {
 	return &instance{
-		waitProc:    make(chan struct{}),
-		logger:      logger,
-		options:     &options,
-		haproxyTmpl: template.CreateConfig(),
-		mapsTmpl:    template.CreateConfig(),
-		modsecTmpl:  template.CreateConfig(),
-		conns:       newConnections(options.MasterSocket, options.AdminSocket),
-		metrics:     options.Metrics,
+		waitProc: make(chan struct{}),
+		logger:   logger,
+		options:  &options,
+		conns:    newConnections(options.MasterSocket, options.AdminSocket),
+		metrics:  options.Metrics,
+		//
+		haproxyTmpl:     template.CreateConfig(),
+		mapsTmpl:        template.CreateConfig(),
+		modsecTmpl:      template.CreateConfig(),
+		haResponseTmpl:  template.CreateConfig(),
+		luaResponseTmpl: template.CreateConfig(),
 	}
 }
 
@@ -95,12 +98,15 @@ type instance struct {
 	failedSince *time.Time
 	logger      types.Logger
 	options     *InstanceOptions
-	haproxyTmpl *template.Config
-	mapsTmpl    *template.Config
-	modsecTmpl  *template.Config
 	config      Config
 	conns       *connections
 	metrics     types.Metrics
+	//
+	haproxyTmpl     *template.Config
+	mapsTmpl        *template.Config
+	modsecTmpl      *template.Config
+	haResponseTmpl  *template.Config
+	luaResponseTmpl *template.Config
 }
 
 func (i *instance) AcmeCheck(source string) (int, error) {
@@ -161,6 +167,8 @@ func (i *instance) ParseTemplates() error {
 	i.haproxyTmpl.ClearTemplates()
 	i.mapsTmpl.ClearTemplates()
 	i.modsecTmpl.ClearTemplates()
+	i.haResponseTmpl.ClearTemplates()
+	i.luaResponseTmpl.ClearTemplates()
 	templatesDir := i.options.RootFSPrefix + "/etc/templates"
 	if err := i.modsecTmpl.NewTemplate(
 		"modsecurity.tmpl",
@@ -180,14 +188,34 @@ func (i *instance) ParseTemplates() error {
 	); err != nil {
 		return err
 	}
-	err := i.mapsTmpl.NewTemplate(
+	if err := i.mapsTmpl.NewTemplate(
 		"map.tmpl",
 		templatesDir+"/map/map.tmpl",
 		"",
 		0,
 		2048,
-	)
-	return err
+	); err != nil {
+		return err
+	}
+	if err := i.haResponseTmpl.NewTemplate(
+		"response.http.tmpl",
+		templatesDir+"/responses/response.http.tmpl",
+		"",
+		0,
+		2048,
+	); err != nil {
+		return err
+	}
+	if err := i.luaResponseTmpl.NewTemplate(
+		"responses.lua.tmpl",
+		templatesDir+"/responses/responses.lua.tmpl",
+		i.options.HAProxyCfgDir+"/lua/responses.lua",
+		0,
+		2048,
+	); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (i *instance) Config() Config {
@@ -438,6 +466,23 @@ func (i *instance) writeConfig() (err error) {
 	// modsec template execution
 	//
 	err = i.modsecTmpl.Write(i.config)
+	if err != nil {
+		return err
+	}
+	//
+	// custom responses template execution, raw HTTP HAProxy based
+	//
+	for _, response := range i.config.Global().CustomHTTPHAResponses {
+		err = i.haResponseTmpl.WriteOutput(
+			response, fmt.Sprintf("%s/errorfiles/%s.http", i.options.HAProxyCfgDir, response.Name))
+		if err != nil {
+			return err
+		}
+	}
+	//
+	// custom responses template execution, Lua script based
+	//
+	err = i.luaResponseTmpl.Write(i.config.Global().CustomHTTPLuaResponses)
 	if err != nil {
 		return err
 	}

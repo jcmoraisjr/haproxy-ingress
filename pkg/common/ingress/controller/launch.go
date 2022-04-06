@@ -434,6 +434,8 @@ tracked.`)
 		&ingress.DefaultCACertsDirectory,
 		&ingress.DefaultCrlDirectory,
 		&ingress.DefaultVarRunDirectory,
+		&ingress.DefaultErrorfilesDirectory,
+		&ingress.DefaultLuaScriptsDirectory,
 		&ingress.DefaultMapsDirectory,
 	} {
 		// TODO evolve this ugly trick to a proper struct that allows custom configuration

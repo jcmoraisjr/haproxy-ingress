@@ -109,6 +109,7 @@ global
     lua-load {{ $global.LocalFSPrefix }}/etc/haproxy/lua/auth-request.lua
 {{- end }}
     lua-load {{ $global.LocalFSPrefix }}/etc/haproxy/lua/services.lua
+    lua-load {{ $global.LocalFSPrefix }}/etc/haproxy/lua/responses.lua
 {{- if $global.SSL.DHParam.Filename }}
     ssl-dh-param-file {{ $global.SSL.DHParam.Filename }}
 {{- else }}
@@ -158,6 +159,9 @@ defaults
     option http-keep-alive
 {{- if not $global.UseHTX }}
     no option http-use-htx
+{{- end }}
+{{- range $response := $global.CustomHTTPHAResponses }}
+    errorfile {{ $response.Name }} {{ $global.LocalFSPrefix }}/etc/haproxy/errorfiles/{{ $response.Name }}.http
 {{- end }}
     timeout client          {{ default "--" $global.Timeout.Client }}
 {{- if $global.Timeout.ClientFin }}

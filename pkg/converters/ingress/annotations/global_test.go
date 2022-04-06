@@ -17,7 +17,9 @@ limitations under the License.
 package annotations
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -787,6 +789,242 @@ func TestSecurity(t *testing.T) {
 		d := c.createGlobalData(test.ann)
 		c.createUpdater().buildSecurity(d)
 		c.compareObjects("fronting proxy", i, d.global.Security, test.expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
+func TestCustomResponse(t *testing.T) {
+	const default404 = `
+---
+send-404 404 'Not Found'
+[{Content-Length 83} {Content-Type text/html} {Cache-Control no-cache}]
+<html><body><h1>404 Not Found</h1>
+The requested URL was not found.
+</body></html>
+`
+	testCases := []struct {
+		config   map[string]string
+		expected string
+		logging  string
+	}{
+		// 0
+		{
+			config: map[string]string{
+				ingtypes.GlobalHTTPResponse404: `404 Not Found`,
+			},
+			expected: `
+---
+send-404 404 'Not Found'
+[{Content-Length 0}]
+`,
+		},
+		// 1
+		{
+			config: map[string]string{
+				ingtypes.GlobalHTTPResponse404: `404
+h1:value1
+h2: value2
+h3:  value3
+h4 : value4
+ h5:value5
+
+payload
+`,
+			},
+			expected: `
+---
+send-404 404 'Not Found'
+[{Content-Length 8} {h1 value1} {h2 value2} {h3 value3} {h4 value4} {h5 value5}]
+payload
+`,
+		},
+		// 2
+		{
+			config: map[string]string{
+				ingtypes.GlobalHTTPResponse404: `404`,
+				ingtypes.GlobalHTTPResponse413: `413 Too Large
+
+<h1>
+  413 two spaces left
+413 to spaces right  
+</h1>
+`,
+			},
+			expected: `
+---
+send-404 404 'Not Found'
+[{Content-Length 0}]
+---
+send-413 413 'Too Large'
+[{Content-Length 53}]
+<h1>
+  413 two spaces left
+413 to spaces right
+</h1>
+`,
+		},
+		// 3
+		{
+			config: map[string]string{
+				ingtypes.GlobalHTTPResponse404: `999 Invalid Code`,
+			},
+			expected: default404,
+			logging:  `WARN ignoring 'http-response-404' due to a malformed response: invalid status code: 999`,
+		},
+		// 4
+		{
+			config: map[string]string{
+				ingtypes.GlobalHTTPResponse404: `404
+h space: value
+`,
+			},
+			expected: default404,
+			logging:  `WARN ignoring 'http-response-404' due to a malformed response: invalid chars in the header name: 'h space'`,
+		},
+		// 5
+		{
+			config: map[string]string{
+				ingtypes.GlobalHTTPResponse404: `404
+h invalid
+`,
+			},
+			expected: default404,
+			logging:  `WARN ignoring 'http-response-404' due to a malformed response: missing a colon ':' in the header declaration: h invalid`,
+		},
+		// 6
+		{
+			config: map[string]string{
+				ingtypes.GlobalHTTPResponse404: `404
+h: "invalid"
+`,
+			},
+			expected: default404,
+			logging:  `WARN ignoring 'http-response-404' due to a malformed response: invalid chars in the header value: '"invalid"'`,
+		},
+		// 7
+		{
+			config: map[string]string{
+				ingtypes.GlobalHTTPResponse404: `404
+h:
+`,
+			},
+			expected: default404,
+			logging:  `WARN ignoring 'http-response-404' due to a malformed response: header name and value must not be empty: 'h:'`,
+		},
+		// 8
+		{
+			config: map[string]string{
+				ingtypes.GlobalHTTPResponse404: `404
+: v
+`,
+			},
+			expected: default404,
+			logging:  `WARN ignoring 'http-response-404' due to a malformed response: header name and value must not be empty: ': v'`,
+		},
+		// 9
+		{
+			config: map[string]string{
+				ingtypes.GlobalHTTPResponse404: `404
+h1: value1
+
+payload lua ]==] conflict
+`,
+			},
+			expected: default404,
+			logging:  `WARN ignoring 'http-response-404' due to a malformed response: the string ']==]' cannot be used in the body`,
+		},
+		// 10
+		{
+			config: map[string]string{
+				ingtypes.GlobalHTTPResponse413: `
+body`,
+			},
+			expected: `
+---
+send-413 413 'Payload Too Large'
+[{Content-Length 5}]
+body
+`,
+		},
+		// 11
+		{
+			config: map[string]string{
+				ingtypes.GlobalHTTPResponse421: `h1: value1`,
+			},
+			expected: `
+---
+send-421 421 'Misdirected Request'
+[{Content-Length 0} {h1 value1}]
+`,
+		},
+		// 12
+		{
+			config: map[string]string{
+				ingtypes.GlobalHTTPResponse495: `h1: value1
+
+body`,
+			},
+			expected: `
+---
+send-495 495 'SSL Certificate Error'
+[{Content-Length 5} {h1 value1}]
+body
+`,
+		},
+		// 13
+		{
+			config: map[string]string{
+				ingtypes.GlobalHTTPResponse503: `h1: value1
+
+body`,
+			},
+			expected: `
+---
+503 503 'Service Unavailable'
+[{Content-Length 5} {h1 value1}]
+body
+`,
+		},
+		// 14
+		{
+			config: map[string]string{
+				ingtypes.GlobalHTTPResponse403: `Content-length: 10
+
+body`,
+			},
+			expected: `
+---
+403 403 'Forbidden'
+[{Content-Length 5}]
+body
+`,
+		},
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createGlobalData(test.config)
+		c.createUpdater().buildGlobalCustomResponses(d)
+		var has string
+		for _, rsp := range customHTTPResponses {
+			for key := range test.config {
+				if rsp.key == key {
+					has += rsp.name + ","
+				}
+			}
+		}
+		var actual string
+		for _, response := range append(d.global.CustomHTTPLuaResponses, d.global.CustomHTTPHAResponses...) {
+			if !strings.Contains(has, response.Name) {
+				continue
+			}
+			actual += fmt.Sprintf("---\n%s %d '%s'\n%v\n",
+				response.Name, response.StatusCode, response.StatusReason, response.Headers)
+			for _, l := range response.Body {
+				actual += l + "\n"
+			}
+		}
+		c.compareText("custom responses", i, actual, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}

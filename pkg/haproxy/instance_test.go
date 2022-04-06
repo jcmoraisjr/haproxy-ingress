@@ -1159,6 +1159,7 @@ global
     lua-prepend-path /etc/haproxy/lua/?.lua
     lua-load /etc/haproxy/lua/auth-request.lua
     lua-load /etc/haproxy/lua/services.lua
+    lua-load /etc/haproxy/lua/responses.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -1217,6 +1218,7 @@ global
     lua-prepend-path /etc/haproxy/lua/?.lua
     lua-load /etc/haproxy/lua/auth-request.lua
     lua-load /etc/haproxy/lua/services.lua
+    lua-load /etc/haproxy/lua/responses.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -1281,6 +1283,7 @@ global
     hard-stop-after 15m
     mworker-max-reloads 20
     lua-load /etc/haproxy/lua/services.lua
+    lua-load /etc/haproxy/lua/responses.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -1412,6 +1415,7 @@ global
     lua-prepend-path /etc/haproxy/lua/?.lua
     lua-load /etc/haproxy/lua/auth-request.lua
     lua-load /etc/haproxy/lua/services.lua
+    lua-load /etc/haproxy/lua/responses.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -3169,6 +3173,169 @@ frontend healthz
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestCustomResponseLua(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	c.config.global.CustomHTTPLuaResponses = []hatypes.HTTPResponse{
+		{
+			Name: "send-404",
+			Headers: []hatypes.HTTPHeader{
+				{Name: "content-length", Value: "25"},
+				{Name: "server", Value: "haproxy"},
+			},
+			Body:         []string{"<p>", "  404 Not Found", "</p>"},
+			StatusCode:   404,
+			StatusReason: "Not Found",
+		},
+		{
+			Name: "send-496",
+			Headers: []hatypes.HTTPHeader{
+				{Name: "content-length", Value: "40"},
+				{Name: "server", Value: "haproxy"},
+			},
+			Body:         []string{"<p>", "  496 SSL Certificate Required", "</p>"},
+			StatusCode:   496,
+			StatusReason: "SSL Certificate Required",
+		},
+	}
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+<<backends-default>>
+<<frontend-http-clean>>
+    default_backend _error404
+<<frontend-https-clean>>
+    default_backend _error404
+<<support>>
+`)
+
+	c.compareText("responses.lua", c.readConfig(c.tempdir+"/responses.lua"), `
+core.register_service("send-404", "http", function(applet)
+    response = [==[
+<p>
+  404 Not Found
+</p>
+]==]
+    applet:set_status(404, "Not Found")
+    applet:add_header("content-length", "25")
+    applet:add_header("server", "haproxy")
+    applet:start_response()
+    applet:send(response)
+end)
+core.register_service("send-496", "http", function(applet)
+    response = [==[
+<p>
+  496 SSL Certificate Required
+</p>
+]==]
+    applet:set_status(496, "SSL Certificate Required")
+    applet:add_header("content-length", "40")
+    applet:add_header("server", "haproxy")
+    applet:start_response()
+    applet:send(response)
+end)
+`)
+
+	c.logger.CompareLogging(defaultLogging)
+}
+
+func TestCustomResponseHAProxy(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	c.config.global.CustomHTTPHAResponses = []hatypes.HTTPResponse{
+		{
+			Name: "403",
+			Headers: []hatypes.HTTPHeader{
+				{Name: "content-length", Value: "25"},
+				{Name: "server", Value: "haproxy"},
+			},
+			Body:         []string{"<p>", "  403 Forbidden", "</p>"},
+			StatusCode:   403,
+			StatusReason: "Forbidden",
+		},
+		{
+			Name: "503",
+			Headers: []hatypes.HTTPHeader{
+				{Name: "content-length", Value: "35"},
+				{Name: "server", Value: "haproxy"},
+			},
+			Body:         []string{"<p>", "  503 Service Unavailable", "</p>"},
+			StatusCode:   503,
+			StatusReason: "Service Unavailable",
+		},
+		{
+			Name: "504",
+			Headers: []hatypes.HTTPHeader{
+				{Name: "content-length", Value: "0"},
+				{Name: "location", Value: "https://other.local"},
+			},
+			StatusCode:   302,
+			StatusReason: "Found",
+		},
+	}
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+defaults
+    log global
+    maxconn 2000
+    option redispatch
+    option dontlognull
+    option http-server-close
+    option http-keep-alive
+    errorfile 403 /etc/haproxy/errorfiles/403.http
+    errorfile 503 /etc/haproxy/errorfiles/503.http
+    errorfile 504 /etc/haproxy/errorfiles/504.http
+    timeout client          50s
+    timeout client-fin      50s
+    timeout connect         5s
+    timeout http-keep-alive 1m
+    timeout http-request    5s
+    timeout queue           5s
+    timeout server          50s
+    timeout server-fin      50s
+    timeout tunnel          1h
+<<backends-default>>
+<<frontend-http-clean>>
+    default_backend _error404
+<<frontend-https-clean>>
+    default_backend _error404
+<<support>>
+`)
+
+	c.compareRawText("haproxy-403.http", c.readRawConfig(c.tempdir+"/errorfiles/403.http"),
+		`HTTP/1.1 403 Forbidden
+content-length: 25
+server: haproxy
+
+<p>
+  403 Forbidden
+</p>
+`)
+	c.compareRawText("haproxy-503.http", c.readRawConfig(c.tempdir+"/errorfiles/503.http"),
+		`HTTP/1.1 503 Service Unavailable
+content-length: 35
+server: haproxy
+
+<p>
+  503 Service Unavailable
+</p>
+`)
+	c.compareRawText("haproxy-504.http", c.readRawConfig(c.tempdir+"/errorfiles/504.http"),
+		`HTTP/1.1 302 Found
+content-length: 0
+location: https://other.local
+
+`)
+
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestInstanceSSLPassthrough(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
@@ -3765,6 +3932,7 @@ global
     lua-prepend-path /etc/haproxy/lua/?.lua
     lua-load /etc/haproxy/lua/auth-request.lua
     lua-load /etc/haproxy/lua/services.lua
+    lua-load /etc/haproxy/lua/responses.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -4502,6 +4670,10 @@ func setupOptions(options testOptions) *testConfig {
 	if err != nil {
 		t.Errorf("error creating tempdir: %v", err)
 	}
+	err = os.Mkdir(filepath.Join(tempdir, "errorfiles"), 0755)
+	if err != nil {
+		t.Errorf("error creating temp subdir: %v", err)
+	}
 	instance := CreateInstance(logger, InstanceOptions{
 		HAProxyCfgDir:  tempdir,
 		HAProxyMapsDir: tempdir,
@@ -4527,6 +4699,24 @@ func setupOptions(options testOptions) *testConfig {
 		2048,
 	); err != nil {
 		t.Errorf("error parsing map.tmpl: %v", err)
+	}
+	if err := instance.haResponseTmpl.NewTemplate(
+		"response.http.tmpl",
+		"../../rootfs/etc/templates/responses/response.http.tmpl",
+		"",
+		0,
+		2048,
+	); err != nil {
+		t.Errorf("error parsing responses.lua.tmpl: %v", err)
+	}
+	if err := instance.luaResponseTmpl.NewTemplate(
+		"responses.lua.tmpl",
+		"../../rootfs/etc/templates/responses/responses.lua.tmpl",
+		filepath.Join(tempdir, "responses.lua"),
+		0,
+		2048,
+	); err != nil {
+		t.Errorf("error parsing responses.lua.tmpl: %v", err)
 	}
 	config := instance.Config().(*config)
 	config.frontend.DefaultCrtFile = "/var/haproxy/ssl/certs/default.pem"
@@ -4674,6 +4864,7 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     lua-prepend-path /etc/haproxy/lua/?.lua
     lua-load /etc/haproxy/lua/auth-request.lua
     lua-load /etc/haproxy/lua/services.lua
+    lua-load /etc/haproxy/lua/responses.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -4806,22 +4997,29 @@ func (c *testConfig) checkMap(mapName, expected string) {
 	c.compareText(mapName, actual, expected)
 }
 
-var replaceComments = regexp.MustCompile(`(?m)^[ \t]{0,2}(#.*)?[\r\n]+`)
+var replaceComments = regexp.MustCompile(`(?m)^[ \t]{0,2}(--.*|#.*)?[\r\n]+`)
 
 func (c *testConfig) readConfig(fileName string) string {
+	return replaceComments.ReplaceAllString(c.readRawConfig(fileName), ``)
+}
+
+func (c *testConfig) readRawConfig(fileName string) string {
 	config, err := ioutil.ReadFile(fileName)
 	if err != nil {
 		c.t.Errorf("error reading config file: %v", err)
 		return ""
 	}
-	configStr := replaceComments.ReplaceAllString(string(config), ``)
-	return configStr
+	return string(config)
 }
 
 func (c *testConfig) compareText(name, actual, expected string) {
 	txtActual := "\n" + strings.Trim(actual, "\n")
 	txtExpected := "\n" + strings.Trim(expected, "\n")
-	if txtActual != txtExpected {
-		c.t.Error("\ndiff of " + name + ":" + diff.Diff(txtExpected, txtActual))
+	c.compareRawText(name, txtActual, txtExpected)
+}
+
+func (c *testConfig) compareRawText(name, actual, expected string) {
+	if actual != expected {
+		c.t.Error("\ndiff of " + name + ":" + diff.Diff(expected, actual))
 	}
 }

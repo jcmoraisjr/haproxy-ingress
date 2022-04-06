@@ -173,6 +173,7 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	c.buildGlobalBind(d)
 	c.buildGlobalCloseSessions(d)
 	c.buildGlobalCustomConfig(d)
+	c.buildGlobalCustomResponses(d)
 	c.buildGlobalDNS(d)
 	c.buildGlobalDynamic(d)
 	c.buildGlobalForwardFor(d)

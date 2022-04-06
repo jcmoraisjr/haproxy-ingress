@@ -443,3 +443,204 @@ func (c *updater) buildGlobalCustomConfig(d *globalData) {
 	}
 	d.global.CustomProxy = proxy
 }
+
+// TODO these defaults should be in default.go but currently ingress parsing
+// doesn't preserve the hardcoded default, overwriting it with the user's
+// provided one. We need it in the case the user input has some error.
+// Need to improve this behavior and then we can move this to the defaults.
+const (
+	httpResponse404 = `404
+Content-Type: text/html
+Cache-Control: no-cache
+
+<html><body><h1>404 Not Found</h1>
+The requested URL was not found.
+</body></html>
+`
+
+	httpResponse413 = `413
+Content-Type: text/html
+Cache-Control: no-cache
+
+<html><body><h1>413 Request Entity Too Large</h1>
+The request is too large.
+</body></html>
+`
+
+	httpResponse421 = `421
+Content-Type: text/html
+Cache-Control: no-cache
+
+<html><body><h1>421 Misdirected Request</h1>
+Request sent to a non-authoritative server.
+</body></html>
+`
+
+	httpResponse495 = `495
+Content-Type: text/html
+Cache-Control: no-cache
+
+<html><body><h1>495 SSL Certificate Error</h1>
+An invalid certificate has been provided.
+</body></html>
+`
+
+	httpResponse496 = `496
+Content-Type: text/html
+Cache-Control: no-cache
+
+<html><body><h1>496 SSL Certificate Required</h1>
+A client certificate must be provided.
+</body></html>
+`
+
+	httpResponsePrometheusRoot = `200
+Content-Type: text/html
+Cache-Control: no-cache
+
+<html>
+<head><title>HAProxy Exporter</title></head>
+<body><h1>HAProxy Exporter</h1>
+<a href='/metrics'>Metrics</a>
+</body></html>
+`
+)
+
+var customHTTPResponses = []struct {
+	name   string
+	code   int
+	reason string
+	key    string
+	def    string
+}{
+	// Lua based
+	{"send-prometheus-root", 200, "OK", ingtypes.GlobalHTTPResponsePrometheusRoot, httpResponsePrometheusRoot},
+	{"send-404", 404, "Not Found", ingtypes.GlobalHTTPResponse404, httpResponse404},
+	{"send-413", 413, "Payload Too Large", ingtypes.GlobalHTTPResponse413, httpResponse413},
+	{"send-421", 421, "Misdirected Request", ingtypes.GlobalHTTPResponse421, httpResponse421},
+	{"send-495", 495, "SSL Certificate Error", ingtypes.GlobalHTTPResponse495, httpResponse495},
+	{"send-496", 496, "SSL Certificate Required", ingtypes.GlobalHTTPResponse496, httpResponse496},
+	// HAProxy based, default isn't used because the response will be ignored if conf is missing
+	// This configuration assumes that:
+	//  - `name` will be used as the internal status code, `code` is the real status that should be returned
+	//  - `def` should always be empty, this is used to distinguish between Lua and HAProxy based config
+	{"200", 200, "OK", ingtypes.GlobalHTTPResponse200, ""},
+	{"400", 400, "Bad Request", ingtypes.GlobalHTTPResponse400, ""},
+	{"401", 401, "Unauthorized", ingtypes.GlobalHTTPResponse401, ""},
+	{"403", 403, "Forbidden", ingtypes.GlobalHTTPResponse403, ""},
+	{"405", 405, "Method Not Allowed", ingtypes.GlobalHTTPResponse405, ""},
+	{"407", 407, "Proxy Authentication Required", ingtypes.GlobalHTTPResponse407, ""},
+	{"408", 408, "Request Timeout", ingtypes.GlobalHTTPResponse408, ""},
+	{"410", 410, "Gone", ingtypes.GlobalHTTPResponse410, ""},
+	{"425", 425, "Too Early", ingtypes.GlobalHTTPResponse425, ""},
+	{"429", 429, "Too Many Requests", ingtypes.GlobalHTTPResponse429, ""},
+	{"500", 500, "Internal Server Error", ingtypes.GlobalHTTPResponse500, ""},
+	{"501", 501, "Not Implemented", ingtypes.GlobalHTTPResponse501, ""},
+	{"502", 502, "Bad Gateway", ingtypes.GlobalHTTPResponse502, ""},
+	{"503", 503, "Service Unavailable", ingtypes.GlobalHTTPResponse503, ""},
+	{"504", 504, "Gateway Timeout", ingtypes.GlobalHTTPResponse504, ""},
+}
+
+func (c *updater) buildGlobalCustomResponses(d *globalData) {
+	var haResponses []hatypes.HTTPResponse
+	var luaResponses []hatypes.HTTPResponse
+	for _, data := range customHTTPResponses {
+		var response *hatypes.HTTPResponse
+		var err error
+		if content := d.mapper.Get(data.key).Value; content != "" {
+			response, err = parseHeadAndBody(content)
+			if err != nil {
+				c.logger.Warn("ignoring '%s' due to a malformed response: %v", data.key, err)
+			}
+		}
+		if data.def != "" {
+			// there is a default value, so a valid response should
+			// always be provided -- used by Lua script based responses
+			if response == nil || err != nil {
+				response, err = parseHeadAndBody(data.def)
+			}
+			if err != nil {
+				// this means that the default is broken
+				panic(err)
+			}
+		}
+		if response == nil {
+			// response is optional and wasn't created, just skip
+			continue
+		}
+		response.Name = data.name
+		if response.StatusCode == 0 {
+			response.StatusCode = data.code
+		}
+		if response.StatusReason == "" {
+			response.StatusReason = data.reason
+		}
+		if data.def == "" {
+			// this is currently the simplest way to distinguish between
+			// Lua and HAProxy based responses
+			haResponses = append(haResponses, *response)
+		} else {
+			luaResponses = append(luaResponses, *response)
+		}
+	}
+	d.global.CustomHTTPHAResponses = haResponses
+	d.global.CustomHTTPLuaResponses = luaResponses
+}
+
+var statusCodeRegex = regexp.MustCompile(`^([0-9]{3})( [A-Za-z ]+)?$`)
+
+func parseHeadAndBody(content string) (*hatypes.HTTPResponse, error) {
+	body := false
+	bodysize := 0
+	response := &hatypes.HTTPResponse{}
+	response.Headers = []hatypes.HTTPHeader{{Name: "Content-Length"}}
+	for i, line := range utils.LineToSlice(content) {
+		line = strings.TrimRight(line, " ")
+		if i == 0 && statusCodeRegex.MatchString(line) {
+			// very first line with status code pattern
+			status := statusCodeRegex.FindStringSubmatch(line)
+			code, _ := strconv.Atoi(status[1])
+			if code < 101 || code > 599 {
+				return nil, fmt.Errorf("invalid status code: %s", status[1])
+			}
+			response.StatusCode = code
+			response.StatusReason = strings.TrimSpace(status[2])
+		} else if line == "" {
+			// no more headers
+			body = true
+		} else if !body {
+			// header
+			pos := strings.Index(line, ":")
+			if pos < 0 {
+				return nil, fmt.Errorf("missing a colon ':' in the header declaration: %s", line)
+			}
+			header := hatypes.HTTPHeader{
+				Name:  strings.TrimSpace(line[:pos]),
+				Value: strings.TrimSpace(line[pos+1:]),
+			}
+			if strings.ToLower(header.Name) == "content-length" {
+				// we will overwrite anything the user tried to add
+				continue
+			}
+			if strings.ContainsAny(header.Name, `" `) {
+				return nil, fmt.Errorf("invalid chars in the header name: '%s'", header.Name)
+			}
+			if header.Name == "" || header.Value == "" {
+				return nil, fmt.Errorf("header name and value must not be empty: '%s'", line)
+			}
+			if strings.ContainsAny(header.Value, `"`) {
+				return nil, fmt.Errorf("invalid chars in the header value: '%s'", header.Value)
+			}
+			response.Headers = append(response.Headers, header)
+		} else {
+			// body
+			if strings.Contains(line, "]==]") {
+				return nil, fmt.Errorf("the string ']==]' cannot be used in the body")
+			}
+			response.Body = append(response.Body, line)
+			bodysize += len([]byte(line)) + 1 // length of the line as an array of bytes, plus a unix line break
+		}
+	}
+	response.Headers[0].Value = strconv.Itoa(bodysize)
+	return response, nil
+}
