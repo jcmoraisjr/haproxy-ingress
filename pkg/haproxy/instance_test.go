@@ -1489,6 +1489,7 @@ func TestInstanceFrontingProxy(t *testing.T) {
     http-request del-header X-SSL-Client-CN if !fronting-proxy
     http-request del-header X-SSL-Client-DN if !fronting-proxy
     http-request del-header X-SSL-Client-SHA1 if !fronting-proxy
+    http-request del-header X-SSL-Client-SHA2 if !fronting-proxy
     http-request del-header X-SSL-Client-Cert if !fronting-proxy
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
     use_backend %[var(req.backend)] if { var(req.backend) -m found }`
@@ -1592,6 +1593,7 @@ func TestInstanceFrontingProxy(t *testing.T) {
     http-request del-header X-SSL-Client-CN if !fronting-proxy
     http-request del-header X-SSL-Client-DN if !fronting-proxy
     http-request del-header X-SSL-Client-SHA1 if !fronting-proxy
+    http-request del-header X-SSL-Client-SHA2 if !fronting-proxy
     http-request del-header X-SSL-Client-Cert if !fronting-proxy
     http-request set-var(req.backend) var(req.base),map_reg(/etc/haproxy/maps/_front_http_host__regex.map)
     use_backend %[var(req.backend)] if { var(req.backend) -m found }`,
@@ -1790,6 +1792,7 @@ frontend _front_https
     http-request del-header X-SSL-Client-CN
     http-request del-header X-SSL-Client-DN
     http-request del-header X-SSL-Client-SHA1
+    http-request del-header X-SSL-Client-SHA2
     http-request del-header X-SSL-Client-Cert` + test.expectedACLFront + test.expectedSetvar + `
     http-request use-service lua.send-421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
     http-request use-service lua.send-496 if { var(req.tls_nocrt_redir) -m str _internal }
@@ -2623,6 +2626,7 @@ func TestInstanceFrontendCA(t *testing.T) {
 	}
 	b.TLS.AddCertHeader = true
 	b.TLS.FingerprintLower = true
+	b.TLS.Sha2Bits = 384
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 
 	c.Update()
@@ -2637,6 +2641,7 @@ backend d_app_8080
     http-request set-header X-SSL-Client-CN   %{+Q}[ssl_c_s_dn(cn)]
     http-request set-header X-SSL-Client-DN   %{+Q}[ssl_c_s_dn]
     http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex,lower]
+    http-request set-header X-SSL-Client-SHA2 %{+Q}[ssl_c_der,sha2(384),hex,lower]
     http-request set-header X-SSL-Client-Cert %{+Q}[ssl_c_der,base64]
     server s1 172.17.0.11:8080 weight 100
 backend default_default-backend_8080
@@ -2964,6 +2969,7 @@ frontend _front_https
     http-request del-header X-SSL-Client-CN
     http-request del-header X-SSL-Client-DN
     http-request del-header X-SSL-Client-SHA1
+    http-request del-header X-SSL-Client-SHA2
     http-request del-header X-SSL-Client-Cert
     # new header
     http-response set-header X-Server HAProxy
@@ -3546,6 +3552,7 @@ frontend _front_http
     http-request del-header X-SSL-Client-CN
     http-request del-header X-SSL-Client-DN
     http-request del-header X-SSL-Client-SHA1
+    http-request del-header X-SSL-Client-SHA2
     http-request del-header X-SSL-Client-Cert
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)` + test.expHTTP + `
     use_backend %[var(req.backend)] if { var(req.backend) -m found }
@@ -3561,6 +3568,7 @@ frontend _front_https
     http-request del-header X-SSL-Client-CN
     http-request del-header X-SSL-Client-DN
     http-request del-header X-SSL-Client-SHA1
+    http-request del-header X-SSL-Client-SHA2
     http-request del-header X-SSL-Client-Cert
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     default_backend _error404
@@ -3691,6 +3699,7 @@ frontend _front_http
     http-request del-header X-SSL-Client-CN
     http-request del-header X-SSL-Client-DN
     http-request del-header X-SSL-Client-SHA1
+    http-request del-header X-SSL-Client-SHA2
     http-request del-header X-SSL-Client-Cert` + test.expected + `
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
     use_backend %[var(req.backend)] if { var(req.backend) -m found }
@@ -3706,6 +3715,7 @@ frontend _front_https
     http-request del-header X-SSL-Client-CN
     http-request del-header X-SSL-Client-DN
     http-request del-header X-SSL-Client-SHA1
+    http-request del-header X-SSL-Client-SHA2
     http-request del-header X-SSL-Client-Cert
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     default_backend _error404
@@ -4696,11 +4706,13 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     http-request del-header X-SSL-Client-CN
     http-request del-header X-SSL-Client-DN
     http-request del-header X-SSL-Client-SHA1
+    http-request del-header X-SSL-Client-SHA2
     http-request del-header X-SSL-Client-Cert`,
 		"    <<https-headers>>": `    http-request set-header X-Forwarded-Proto https
     http-request del-header X-SSL-Client-CN
     http-request del-header X-SSL-Client-DN
     http-request del-header X-SSL-Client-SHA1
+    http-request del-header X-SSL-Client-SHA2
     http-request del-header X-SSL-Client-Cert`,
 		"<<frontend-http>>": `frontend _front_http
     mode http

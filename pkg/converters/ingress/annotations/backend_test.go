@@ -2408,6 +2408,54 @@ func TestSourceAddrIntf(t *testing.T) {
 	}
 }
 
+func TestSSL(t *testing.T) {
+	type sslMock struct {
+		sha2bits int
+	}
+	testCases := []struct {
+		ann        map[string]string
+		annDefault map[string]string
+		expected   sslMock
+		logging    string
+	}{
+		// 0
+		{
+			annDefault: map[string]string{ingtypes.BackSSLFingerprintSha2Bits: "128"},
+		},
+		// 1
+		{
+			annDefault: map[string]string{ingtypes.BackSSLFingerprintSha2Bits: "256"},
+			expected:   sslMock{sha2bits: 256},
+		},
+		// 2
+		{
+			ann:     map[string]string{ingtypes.BackSSLFingerprintSha2Bits: "128"},
+			logging: `WARN ignoring SHA-2 fingerprint on ingress 'default/ing1' due to an invalid number of bits: 128`,
+		},
+		// 3
+		{
+			ann:      map[string]string{ingtypes.BackSSLFingerprintSha2Bits: "256"},
+			expected: sslMock{sha2bits: 256},
+		},
+	}
+	source := &Source{
+		Namespace: "default",
+		Name:      "ing1",
+		Type:      "ingress",
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createBackendData("default/app", source, test.ann, test.annDefault)
+		c.createUpdater().buildBackendSSL(d)
+		actual := sslMock{
+			sha2bits: d.backend.TLS.Sha2Bits,
+		}
+		c.compareObjects("ssl", i, actual, test.expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
 func TestSSLRedirect(t *testing.T) {
 	testCases := []struct {
 		annDefault map[string]string

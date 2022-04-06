@@ -166,6 +166,7 @@ const (
 	BackSSLCipherSuitesBackend = "ssl-cipher-suites-backend"
 	BackSSLCiphersBackend      = "ssl-ciphers-backend"
 	BackSSLFingerprintLower    = "ssl-fingerprint-lower"
+	BackSSLFingerprintSha2Bits = "ssl-fingerprint-sha2-bits"
 	BackSSLOptionsBackend      = "ssl-options-backend"
 	BackSSLRedirect            = "ssl-redirect"
 	BackTimeoutConnect         = "timeout-connect"
