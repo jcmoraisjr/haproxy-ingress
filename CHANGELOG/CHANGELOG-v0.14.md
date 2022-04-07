@@ -3,6 +3,11 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.13!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.14.0-alpha.2](#v0140-alpha2)
+  * [Reference](#reference-a2)
+  * [Release notes](#release-notes-a2)
+  * [Improvements](#improvements-a2)
+  * [Fixes](#fixes-a2)
 * [v0.14.0-alpha.1](#v0140-alpha1)
   * [Reference](#reference-a1)
   * [Improvements](#improvements-a1)
@@ -14,6 +19,7 @@ Highlights of this version
 
 * Embedded HAProxy upgrade from 2.3 to 2.4.
 * Partial Gateway API v1alpha2 support, see the [Gateway API getting started page](https://haproxy-ingress.github.io/v0.14/docs/configuration/gateway-api/).
+* Option to customize the response payload for any of the status codes managed by HAProxy or HAProxy Ingress, see the [HTTP Responses](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#http-response) configuration key documentation.
 * Option to run the embedded HAProxy as Master Worker. Running HAProxy as Master Worker enables [worker-max-reloads](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#master-worker) option without the need to configure as an external deployment, enables HAProxy logging to stdout, and also has a better management of the running process. This option is not enabled by default, see the [master worker documentation](https://haproxy-ingress.github.io/v0.14/docs/configuration/command-line/#master-worker) for further information.
 * HAProxy Ingress can now be easily launched in the development environment with the help of the `--local-filesystem-prefix` command-line option. See also the command-line option [documentation](https://haproxy-ingress.github.io/v0.14/docs/configuration/command-line/#local-filesystem-prefix) and the new `make` variables and targets in the [README](https://github.com/jcmoraisjr/haproxy-ingress/#develop-haproxy-ingress) file.
 
@@ -23,14 +29,17 @@ Breaking backward compatibility from v0.13:
 
 * Default `auth-tls-strict` configuration key value changed from `false` to `true`. This update will change the behavior of misconfigured client auth configurations: when `false` misconfigured mTLS send requests to the backend without any authentication, when `true` misconfigured mTLS will always fail the request. See also the [auth TLS documentation](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#auth-tls).
 * Default `--watch-gateway` command-line option changed from `false` to `true`. On v0.13 this option can only be enabled if the Gateway API CRDs are installed, otherwise the controller would refuse to start. Since v0.14 the controller will always check if the CRDs are installed. This will change the behavior on clusters that has Gateway API resources and doesn't declare the command-line option: v0.13 would ignore the resources and v0.14 would find and apply them. See also the [watch gateway documentation](https://haproxy-ingress.github.io/v0.14/docs/configuration/command-line/#watch-gateway).
+* All the response payload managed by the controller using Lua script was rewritten in a backward compatible behavior, however deployments that overrides the `services.lua` script might break. See the [HTTP Responses](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#http-response) documentation on how to customize HTTP responses using controller's configuration keys.
 
 ## Contributors
 
 * Ameya Lokare ([juggernaut](https://github.com/juggernaut))
 * Andrew Rodland ([arodland](https://github.com/arodland))
+* ironashram ([ironashram](https://github.com/ironashram))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
 * Maël Valais ([maelvls](https://github.com/maelvls))
 * Manuel Rüger ([mrueg](https://github.com/mrueg))
+* Marvin Rösch ([PaleoCrafter](https://github.com/PaleoCrafter))
 * Mateusz Kubaczyk ([mkubaczyk](https://github.com/mkubaczyk))
 * Michał Zielonka ([michal800106](https://github.com/michal800106))
 * Neil Seward ([sealneaward](https://github.com/sealneaward))
@@ -38,6 +47,57 @@ Breaking backward compatibility from v0.13:
 * Roman Gherta ([rgherta](https://github.com/rgherta))
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
+
+# v0.14.0-alpha.2
+
+## Reference (a2)
+
+* Release date: `2022-04-07`
+* Helm chart: `--version 0.14.0-alpha.2 --devel`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.14.0-alpha.2`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.14.0-alpha.2`
+* Embedded HAProxy version: `2.4.15`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.14.0-alpha.2`
+
+## Release notes (a2)
+
+This is the second and last alpha release of v0.14, which fixes the following issues:
+
+- The configured service was not being selected if the incoming path doesn't finish with a slash, the host is not declared in the ingress resource (using default host), the path type is Prefix, and the pattern is a single slash.
+- Marvin Rösch fixed a delay of 5 seconds to connect to a server using a TCP service. Such delay happens whenever a host is used in the ingress resource and the SSL offload is made by HAProxy.
+
+Other visible improvements include:
+
+- Add compatibility with HAProxy 2.5 deployed as external/sidecar. Version 2.5 changed the lay out of the `show proc` command of the master API.
+- Add the ability to overwrite any of the HAProxy generated response payloads, see the [HTTP Response documentation](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#http-response)
+- Add `ssl-fingerprint-sha2-bits` configuration key which adds a HTTP header with the SHA-2 fingerprint of client certificates.
+- Update to the latest version of golang 1.17, client-go v0.23 and haproxy 2.4
+
+There is also a few other internal and non visible improvements. First beta version should be tagged within a week or so, after finish some exploratory tests.
+
+## Improvements (a2)
+
+New features and improvements since `v0.14.0-alpha.1`:
+
+* Replace glog with klog/v2 [#904](https://github.com/jcmoraisjr/haproxy-ingress/pull/904) (mrueg)
+* Remove initial whitespaces from haproxy template [#910](https://github.com/jcmoraisjr/haproxy-ingress/pull/910) (ironashram)
+* Add haproxy 2.5 support for external haproxy [#905](https://github.com/jcmoraisjr/haproxy-ingress/pull/905) (jcmoraisjr)
+* Add ssl-fingerprint-sha2-bits configuration key [#911](https://github.com/jcmoraisjr/haproxy-ingress/pull/911) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#auth-tls)
+  * Configuration keys:
+    * `ssl-fingerprint-sha2-bits`
+* Add http-response configuration keys [#915](https://github.com/jcmoraisjr/haproxy-ingress/pull/915) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#http-response)
+  * Configuration keys:
+    * `http-response-<code>`
+    * `http-response-prometheus-root`
+* update embedded haproxy from 2.4.12 to 2.4.15 [c29ddf5](https://github.com/jcmoraisjr/haproxy-ingress/commit/c29ddf5a10d9a843a0ab83f62a85a42c95248bea) (Joao Morais)
+* update client-go from v0.23.3 to v0.23.5 [a507389](https://github.com/jcmoraisjr/haproxy-ingress/commit/a507389acc4bbffb5358e03a446622b1d77dd60c) (Joao Morais)
+* update golang from 1.17.6 to 1.17.8 [5b78816](https://github.com/jcmoraisjr/haproxy-ingress/commit/5b78816c9a013919df12161b1b614724f4764d62) (Joao Morais)
+
+## Fixes (a2)
+
+* Fix match of prefix pathtype if using default host [#908](https://github.com/jcmoraisjr/haproxy-ingress/pull/908) (jcmoraisjr)
+* Only inspect SSL handshake for SNI routing for SSL passthrough [#914](https://github.com/jcmoraisjr/haproxy-ingress/pull/914) (PaleoCrafter)
+* Fix reload failure detection on 2.5+ [#916](https://github.com/jcmoraisjr/haproxy-ingress/pull/916) (jcmoraisjr)
 
 # v0.14.0-alpha.1
 
