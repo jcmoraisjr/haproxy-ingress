@@ -76,7 +76,7 @@ func createDefaults() map[string]string {
 		types.BackWAFMode:                "deny",
 		//
 		types.GlobalAcmeExpiring:                 "30",
-		types.GlobalAuthProxy:                    "_front__auth:14415-14499",
+		types.GlobalAuthProxy:                    "_front__auth__local:14415-14499",
 		types.GlobalCookieKey:                    "Ingress",
 		types.GlobalDNSAcceptedPayloadSize:       "8192",
 		types.GlobalDNSClusterDomain:             "cluster.local",

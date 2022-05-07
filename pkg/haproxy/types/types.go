@@ -421,6 +421,7 @@ type AuthProxyBind struct {
 type Frontend struct {
 	changed     bool
 	Maps        *FrontendMaps
+	Name        string
 	BindName    string
 	BindSocket  string
 	BindID      int

@@ -782,7 +782,7 @@ See also:
 | `auth-headers-request`  | `Path`   | `*`                        | v0.13 |
 | `auth-headers-succeed`  | `Path`   | `*`                        | v0.13 |
 | `auth-method`           | `Path`   | `GET`                      | v0.13 |
-| `auth-proxy`            | `Global` | `_front__auth:14415-14499` | v0.13 |
+| `auth-proxy`            | `Global` | `_front__auth__local:14415-14499` | v0.13 |
 | `auth-signin`           | `Path`   |                            | v0.13 |
 | `auth-url`              | `Path`   |                            | v0.13 |
 
