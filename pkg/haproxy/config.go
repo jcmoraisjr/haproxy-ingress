@@ -97,11 +97,13 @@ func (c *config) SyncConfig() {
 		// using ssl-passthrough config, so need a `mode tcp`
 		// frontend with `inspect-delay` and `req.ssl_sni`
 		bindName := "_https_socket"
+		c.frontend.Name = "_front_https__local"
 		c.frontend.BindName = bindName
 		c.frontend.BindSocket = fmt.Sprintf("unix@%s/var/run/haproxy/%s.sock", c.global.LocalFSPrefix, bindName)
 		c.frontend.AcceptProxy = true
 	} else {
 		// One single HAProxy's frontend and bind
+		c.frontend.Name = "_front_https"
 		c.frontend.BindName = "_public"
 		c.frontend.BindSocket = c.global.Bind.HTTPSBind
 		c.frontend.AcceptProxy = c.global.Bind.AcceptProxy

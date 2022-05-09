@@ -1251,8 +1251,7 @@ frontend {{ $proxy__front_http }}
 # #
 #     HTTPS frontend
 #
-{{- $proxy__front_https := "_front_https" }}
-frontend {{ $proxy__front_https }}
+frontend {{ $frontend.Name }}
     mode http
 
 {{- /*------------------------------------*/}}
@@ -1402,7 +1401,7 @@ frontend {{ $proxy__front_https }}
 {{- range $snippet := $global.CustomFrontend }}
     {{ $snippet }}
 {{- end }}
-{{- range $snippet := index $global.CustomProxy $proxy__front_https }}
+{{- range $snippet := index $global.CustomProxy $frontend.Name }}
     {{ $snippet }}
 {{- end }}
 

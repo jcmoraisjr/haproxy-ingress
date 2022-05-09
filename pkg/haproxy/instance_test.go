@@ -3082,7 +3082,7 @@ func TestInstanceCustomProxy(t *testing.T) {
 		"_front_tcp_7001":         {"## custom for _front_tcp_7001"},
 		"_front__tls":             {"## custom for _front__tls"},
 		"_front_http":             {"## custom for _front_http"},
-		"_front_https":            {"## custom for _front_https"},
+		"_front_https__local":     {"## custom for _front_https__local"},
 		"stats":                   {"## custom for stats"},
 		"healthz":                 {"## custom for healthz"},
 	}
@@ -3145,12 +3145,12 @@ frontend _front_http
     ## custom for _front_http
     use_backend %[var(req.backend)] if { var(req.backend) -m found }
     default_backend _error404
-frontend _front_https
+frontend _front_https__local
     mode http
     bind unix@/var/run/haproxy/_https_socket.sock accept-proxy ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
     <<set-req-base>>
     <<https-headers>>
-    ## custom for _front_https
+    ## custom for _front_https__local
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     default_backend _error404
 listen stats
@@ -3414,7 +3414,7 @@ listen _front__tls
 <<frontend-http>>
     use_backend d4_app4-http_8080
     default_backend _error404
-frontend _front_https
+frontend _front_https__local
     mode http
     bind unix@/var/run/haproxy/_https_socket.sock accept-proxy ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
     <<set-req-base>>
