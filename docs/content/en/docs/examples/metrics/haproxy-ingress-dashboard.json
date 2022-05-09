@@ -73,7 +73,7 @@
   "gnetId": 12056,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1651950771950,
+  "iteration": 1652057245788,
   "links": [
     {
       "asDropdown": false,
@@ -750,7 +750,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "sum(rate(haproxy_frontend_http_responses_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy!~\"(_front__auth|.*__local)\"}[1m]))",
+          "expr": "sum(rate(haproxy_frontend_http_responses_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy!~\"_front__auth.*\"}[1m]))",
           "format": "time_series",
           "instant": false,
           "interval": "",
@@ -963,7 +963,7 @@
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 8
+            "y": 2
           },
           "id": 34,
           "links": [],
@@ -1059,7 +1059,7 @@
             "h": 5,
             "w": 12,
             "x": 12,
-            "y": 8
+            "y": 2
           },
           "id": 54,
           "links": [],
@@ -1149,7 +1149,7 @@
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 13
+            "y": 7
           },
           "id": 26,
           "links": [],
@@ -1239,7 +1239,7 @@
             "h": 5,
             "w": 12,
             "x": 12,
-            "y": 13
+            "y": 7
           },
           "id": 37,
           "links": [],
@@ -1673,7 +1673,7 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "exemplar": true,
-              "expr": "sum(rate(haproxy_frontend_http_responses_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy!~\"(_front__auth|.*__local)\"}[1m])) by (hostname)",
+              "expr": "sum(rate(haproxy_frontend_http_responses_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy!~\"_front__auth.*\"}[1m])) by (hostname)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -2351,7 +2351,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 6
+            "y": 21
           },
           "id": 6,
           "links": [],
@@ -2436,7 +2436,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 6
+            "y": 21
           },
           "id": 14,
           "links": [],
@@ -2543,7 +2543,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 14
+            "y": 29
           },
           "id": 24,
           "links": [],
@@ -2632,7 +2632,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 14
+            "y": 29
           },
           "id": 10,
           "links": [],
@@ -3073,7 +3073,7 @@
       },
       {
         "current": {
-          "selected": false,
+          "selected": true,
           "text": "v0.14+",
           "value": "(.*__local)"
         },
