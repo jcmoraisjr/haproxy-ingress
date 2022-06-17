@@ -515,13 +515,19 @@ func (c *updater) buildBackendCors(d *backData) {
 	for _, path := range d.backend.Paths {
 		config := d.mapper.GetConfig(path.Link)
 		enabled := config.Get(ingtypes.BackCorsEnable).Bool()
+
 		if enabled {
+			var allowOriginRegex []string
+			if regex := config.Get(ingtypes.BackCorsAllowOriginRegex).Value; regex != "" {
+				allowOriginRegex = strings.Split(regex, " ")
+			}
 			path.Cors = hatypes.Cors{
 				Enabled:          enabled,
 				AllowCredentials: config.Get(ingtypes.BackCorsAllowCredentials).Bool(),
 				AllowHeaders:     config.Get(ingtypes.BackCorsAllowHeaders).Value,
 				AllowMethods:     config.Get(ingtypes.BackCorsAllowMethods).Value,
 				AllowOrigin:      strings.Split(config.Get(ingtypes.BackCorsAllowOrigin).Value, ","),
+				AllowOriginRegex: allowOriginRegex,
 				ExposeHeaders:    config.Get(ingtypes.BackCorsExposeHeaders).Value,
 				MaxAge:           config.Get(ingtypes.BackCorsMaxAge).Int(),
 			}

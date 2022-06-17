@@ -116,6 +116,7 @@ const (
 	BackCorsAllowHeaders       = "cors-allow-headers"
 	BackCorsAllowMethods       = "cors-allow-methods"
 	BackCorsAllowOrigin        = "cors-allow-origin"
+	BackCorsAllowOriginRegex   = "cors-allow-origin-regex"
 	BackCorsEnable             = "cors-enable"
 	BackCorsExposeHeaders      = "cors-expose-headers"
 	BackCorsMaxAge             = "cors-max-age"

@@ -63,6 +63,18 @@ var validators = map[string]func(v validate) (string, bool){
 		}
 		return v.value, true
 	},
+	ingtypes.BackCorsAllowOriginRegex: func(v validate) (string, bool) {
+		// Space-separated not comma-separated,
+		// because comma is needed in regex (PCRE) for {n,m} repetition
+		for _, value := range strings.Split(v.value, " ") {
+			_, err := regexp.Compile(value)
+			if err != nil {
+				v.logger.Warn("ignoring invalid cors origin regex on %s: %s", v.source, value)
+				return "", false
+			}
+		}
+		return v.value, true
+	},
 	ingtypes.BackCorsExposeHeaders: func(v validate) (string, bool) {
 		if corsHeadersRegex.MatchString(v.value) {
 			return v.value, true
