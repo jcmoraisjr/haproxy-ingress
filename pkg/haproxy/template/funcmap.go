@@ -19,6 +19,7 @@ package template
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	gotemplate "text/template"
 
 	"github.com/Masterminds/sprig"
@@ -56,6 +57,11 @@ func createFuncMap() gotemplate.FuncMap {
 				out[i] = list.Slice(size*i, last).Interface()
 			}
 			return out
+		},
+		"haquote": func(s string) string {
+			// put in single quotes
+			// escape single quotes inside as ' "'" ' (without the spaces)
+			return "'" + strings.ReplaceAll(s, `'`, `'"'"'`) + "'"
 		},
 	}
 	if err := mergo.Merge(&fnc, sprig.TxtFuncMap()); err != nil {
