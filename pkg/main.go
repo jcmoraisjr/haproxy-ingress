@@ -23,11 +23,11 @@ import (
 
 	"k8s.io/klog/v2"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/legacy"
 )
 
 func main() {
-	hc := controller.NewHAProxyController()
+	hc := legacy.NewHAProxyController()
 	errCh := make(chan error)
 	go handleSignal(hc, errCh)
 	hc.Start()
@@ -41,7 +41,7 @@ func main() {
 	os.Exit(code)
 }
 
-func handleSignal(hc *controller.HAProxyController, err chan error) {
+func handleSignal(hc *legacy.HAProxyController, err chan error) {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGTERM, syscall.SIGINT)
 	klog.Infof("Shutting down with signal %v", <-sig)
