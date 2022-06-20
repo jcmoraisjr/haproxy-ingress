@@ -33,7 +33,7 @@ type validate struct {
 }
 
 var (
-	corsOriginRegex  = regexp.MustCompile(`^(https?://[A-Za-z0-9\-\.]*(:[0-9]+)?|\*)?$`)
+	corsOriginRegex  = regexp.MustCompile(`^(https?://[A-Za-z0-9\-\.]*(:[0-9]+)?|\*)$`)
 	corsMethodsRegex = regexp.MustCompile(`^([A-Za-z]+,?\s?)+$`)
 	corsHeadersRegex = regexp.MustCompile(`^([A-Za-z0-9\-\_]+,?\s?)+$`)
 )
