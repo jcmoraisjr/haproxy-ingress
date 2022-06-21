@@ -325,7 +325,7 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	}
 	i.config.Backends().FillSourceIPs()
 	if !updated || updater.cmdCnt > 0 {
-		// only need to rewrtite config files if:
+		// only need to rewrite config files if:
 		//   - !updated           - there are changes that cannot be dynamically applied
 		//   - updater.cmdCnt > 0 - there are changes that was dynamically applied
 		err := i.writeConfig()

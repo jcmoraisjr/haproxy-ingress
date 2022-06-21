@@ -79,7 +79,7 @@ func TestGetNodeIP(t *testing.T) {
 					},
 				},
 			},
-		}}}), "notexistnode", "", true},
+		}}}), "nonexistentnode", "", true},
 
 		// node  exist
 		{testclient.NewSimpleClientset(&apiv1.NodeList{Items: []apiv1.Node{{

@@ -17,9 +17,9 @@ from Kubernetes resources, and this can be done in a couple of ways:
 
 The list above also describes the precedence if the same configuration key is used
 in more than one resource: Global configurations can be overridden by IngressClass
-configurations, that can be overriden by Ingress resource configurations and so on.
+configurations, that can be overridden by Ingress resource configurations and so on.
 This hierarchy creates a flexible model, where commonly used configurations can be
-made in a higher level and overriden by local changes.
+made in a higher level and overridden by local changes.
 
 The following sections describe in a few more details how HAProxy Ingress classifies
 an Ingress to be part of the final configuration, and how it reads the configuration
@@ -813,7 +813,7 @@ Configuration examples:
 
 * `auth-url: "http://10.0.0.2"`: Authentication service accepts plain HTTP connection, TCP port `80` and root path are used.
 * `auth-url: "https://10.0.0.2/auth"`: Authentication service accepts HTTPS connection, TCP port `443` and path `/auth` are used.
-* `auth-url: "https://auth.local:8443"`: Domain `auth.local` is resolved during configuration building, and requests will be distributed among all its IPs, using the default load balance algorithm. Authentication service accepts HTTPS connection, TCP port `8443` and root path are used. SNI extention and Host header are added to the request.
+* `auth-url: "https://auth.local:8443"`: Domain `auth.local` is resolved during configuration building, and requests will be distributed among all its IPs, using the default load balance algorithm. Authentication service accepts HTTPS connection, TCP port `8443` and root path are used. SNI extension and Host header are added to the request.
 * `auth-url: "svc://auth-cluster:8443/auth"`: A service named `auth-cluster` will be used as the destination of the request, service port `8443` and path `/auth`. The service can be annotated with Backend and Path scoped configuration keys, eg [`secure-backends`](#secure-backend) to provide a secure connection.
 
 **Forwarding headers**
@@ -929,7 +929,7 @@ See also:
 
 Configures how to name backend servers.
 
-* `sequence`: Names backend servers with a prefixed number sequence: `srv001`, `srv002`, and so on. This is the default configuration and the preferred option if dynamic udpate is used. `seq` is an alias to `sequence`.
+* `sequence`: Names backend servers with a prefixed number sequence: `srv001`, `srv002`, and so on. This is the default configuration and the preferred option if dynamic update is used. `seq` is an alias to `sequence`.
 * `pod`: Uses the k8s pod name as the backend server name. This option doesn't work on backends whose [`service-upstream`](#service-upstream) is `true`, falling back to `sequence`.
 * `ip`: Uses target's `<ip>:<port>` as the server name.
 
@@ -945,7 +945,7 @@ HAProxy Ingress won't refuse to change the default naming if dynamic update is `
 |----------------------------|-----------|---------|---------|
 | `assign-backend-server-id` | `Backend` | `false` | `v0.13` |
 
-When `true`, each backend server will receive an `id` in HAProxy config based on the Kubernetes UID of the pod backing it. When using a hash-based [`balance-algorithm`](#balance-algorithm) (for example `uri` or `source`) together with consistent hashing, this will maintain the stability of assignments when pods are added or removed — that is, a given URI component or source IP will mostly keep hashing to the same server. When this seetting is `false`, an addition or deletion in the server list may disturb the hash assignments of some or all of the remaining servers.
+When `true`, each backend server will receive an `id` in HAProxy config based on the Kubernetes UID of the pod backing it. When using a hash-based [`balance-algorithm`](#balance-algorithm) (for example `uri` or `source`) together with consistent hashing, this will maintain the stability of assignments when pods are added or removed — that is, a given URI component or source IP will mostly keep hashing to the same server. When this setting is `false`, an addition or deletion in the server list may disturb the hash assignments of some or all of the remaining servers.
 
 Server IDs can't dynamically updated, so if this option is enabled, adding or removing a server will cause a reload even when [`dynamic-scaling`](#dynamic-scaling) is true.
 
@@ -976,7 +976,7 @@ See also:
 Configures listening IP and port for HTTP/s incoming requests. These
 configuration keys have backward compatibility with [Bind IP addr](#bind-ip-addr),
 [Bind port](#bind-port) and [Fronting proxy](#fronting-proxy-port) keys.
-The bind configuration keys in this section have precedente if declared.
+The bind configuration keys in this section have precedence if declared.
 
 Any HAProxy supported option can be used, this will be copied verbatim to the
 bind keyword. See HAProxy
@@ -1046,8 +1046,8 @@ See also:
 | `prometheus-port` | `Global` |         | v0.10 |
 
 * `healthz-port`: Define the port number HAProxy should listen to in order to answer for health checking requests. Use `/healthz` as the request path.
-* `http-port`: Define the port number of unencripted HTTP connections.
-* `https-port`: Define the port number of encripted HTTPS connections.
+* `http-port`: Define the port number of unencrypted HTTP connections.
+* `https-port`: Define the port number of encrypted HTTPS connections.
 * `prometheus-port`: Define the port number of the haproxy's internal Prometheus exporter. Defaults to not create the listener. A listener without being scraped does not use system resources, except for the listening port. The internal exporter supports scope filter as a query string, eg `/metrics?scope=frontend&scope=backend` will only export frontends and backends. See the full description in the [HAProxy's Prometheus exporter doc](https://git.haproxy.org/?p=haproxy-2.0.git;a=blob;f=contrib/prometheus-exporter/README;hb=HEAD).
 
 {{% alert title="Note" %}}
@@ -1302,7 +1302,7 @@ Configuration of connection limits.
 
 * `max-connections`: Define the maximum concurrent connections on all proxies. Defaults to `2000` connections, which is also the HAProxy default configuration.
 * `maxconn-server`: Defines the maximum concurrent connections each server of a backend should receive. If not specified or a value lesser than or equal zero is used, an unlimited number of connections will be allowed. When the limit is reached, new connections will wait on a queue.
-* `maxqueue-server`: Defines the maximum number of connections should wait in the queue of a server. When this number is reached, new requests will be redispached to another server, breaking sticky session if configured. The queue will be unlimited if the annotation is not specified or a value lesser than or equal to zero is used.
+* `maxqueue-server`: Defines the maximum number of connections should wait in the queue of a server. When this number is reached, new requests will be redispatched to another server, breaking sticky session if configured. The queue will be unlimited if the annotation is not specified or a value lesser than or equal to zero is used.
 
 See also:
 
@@ -1879,7 +1879,7 @@ Customize the tcp, http or https log format using log format variables. Only use
 
 * `auth-log-format`: log format of all auth external frontends. Use `default` to configure default HTTP log format, defaults to not log.
 * `http-log-format`: log format of all HTTP proxies, defaults to HAProxy default HTTP log format.
-* `https-log-format`: log format of TCP proxy used to inspect SNI extention. Use `default` to configure default TCP log format, defaults to not log.
+* `https-log-format`: log format of TCP proxy used to inspect SNI extension. Use `default` to configure default TCP log format, defaults to not log.
 * `tcp-log-format`: log format of the ConfigMap based TCP proxies. Defaults to HAProxy default TCP log format. See also [`--tcp-services-configmap`]({{% relref "command-line#tcp-services-configmap" %}}) command-line option.
 * `tcp-service-log-format`: log format of TCP frontends, configured via ingress resources and [`tcp-service-port`](#tcp-services) configuration key. Defaults to HAProxy default TCP log format.
 
@@ -2147,7 +2147,7 @@ See also:
 | `redirect-to-code`    | `Global` | `302`   | v0.13 |
 
 Configures HTTP redirect. Redirect *from* matches source hostnames that should be redirected
-to the hostname declared in the ingess spec. Redirect *to* uses the hostname declared in the
+to the hostname declared in the ingress spec. Redirect *to* uses the hostname declared in the
 ingress spec as the matching source and redirects the request to the configured URL. See
 examples below.
 
@@ -2263,7 +2263,7 @@ Configure secure (TLS) connection to the backends.
 * `secure-crt-secret`: Optional secret name of client certificate and key. This cert/key pair must be provided if the backend requests a client certificate. Expected secret keys are `tls.crt` and `tls.key`, the same used if secret is built with `kubectl create secret tls <name>`. A filename prefixed with `file://` can also be used, containing both certificate and private key in PEM format, eg `file:///dir/crt.pem`.
 * `secure-sni`: Optional hostname that should be used as the SNI TLS extension sent to the backend server. If `host` is used as the content, the header Host from the incoming request is used as the SNI extension in the request to the backend. `sni` can also be used, which will use the same SNI from the incoming request. Note that, although the header Host is always right, the incoming SNI might be wrong if a TLS connection that's already opened is reused - this is a common practice on browsers connecting over http2. Any other value different of `host` or `sni` will be used verbatim and should be a valid domain. If `secure-verify-ca-secret` is also provided, this hostname is also used to validate the server certificate names.
 * `secure-verify-ca-secret`: Optional but recommended secret name with certificate authority bundle used to validate server certificate, preventing man-in-the-middle attacks. Expected secret key is `ca.crt`. Since v0.9, an optional `ca.crl` key can also provide a CRL in PEM format for the server to verify against. A filename prefixed with `file://` can be used containing the CA bundle in PEM format, and optionally followed by a comma and the filename with the crl, eg `file:///dir/ca.pem` or `file:///dir/ca.pem,/dir/crl.pem`. Configure either `secure-sni` or `secure-verify-hostname` to verify the certificate name.
-* `secure-verify-hostname`: Optional hostname used to verify the name of the server certificate, without using the SNI TLS extension. This option can only be used if `secure-verify-ca-secret` was provided, and only supports harcoded domains which is used verbatim.
+* `secure-verify-hostname`: Optional hostname used to verify the name of the server certificate, without using the SNI TLS extension. This option can only be used if `secure-verify-ca-secret` was provided, and only supports hardcoded domains which is used verbatim.
 
 See also:
 
@@ -2371,7 +2371,7 @@ Configures a list of network interface names whose IPv4 address should be used a
 
 * `source-address-intf`: Comma separated list of network interface names
 
-As the default behavior, HAProxy will leave the operating system choose the most apropriate address. However the same source address will be used, even if the network interface has more IP address or other interfaces can also reach the destination, leading to outgoing TCP port exaustion on deployments that needs more than 64k concurrent connections. Using more source IPs allows to bypass the maximum of 64k concurrent connections per instance.
+As the default behavior, HAProxy will leave the operating system choose the most appropriate address. However the same source address will be used, even if the network interface has more IP address or other interfaces can also reach the destination, leading to outgoing TCP port exhaustion on deployments that needs more than 64k concurrent connections. Using more source IPs allows to bypass the maximum of 64k concurrent connections per instance.
 
 HAProxy Ingress will list all IPv4 from all provided interfaces, ignoring interfaces that cannot be found, does not have IPv4, or cannot list its IPs. The IP addresses will be distributed among all the servers/endpoints, where each distinct server will use an IP from the list as its source address for its outgoing connections. If there are more replicas than IPs, some IPs from the list will be used more than once. If there are more IPs than replicas, some of the IPs from the list will not be used in a particular backend, but can be used on others that shares the configuration. The IP distribution consistently starts on distinct positions on distinct backends, fairly distributing all the IPs from the list on workloads with a big amount of backends with one or so servers each. If all the interfaces failed to list IP address, HAProxy falls back to the default behavior and leaves the operating system to choose the source IP.
 
@@ -2560,9 +2560,9 @@ Hostnames configured as `ssl-passthrough` configures HAProxy in the following wa
 | `ssl-redirect`              | `Path`   | `true`                        |       |
 | `ssl-redirect-code`         | `Global` | `302`                         | v0.10 |
 
-Configures if an encripted connection should be used.
+Configures if an encrypted connection should be used.
 
-* `ssl-redirect`: Defines if HAProxy should send a `302 redirect` response to requests made on unencripted connections. Note that this configuration will only make effect if TLS is [configured](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/tls-termination).
+* `ssl-redirect`: Defines if HAProxy should send a `302 redirect` response to requests made on unencrypted connections. Note that this configuration will only make effect if TLS is [configured](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/tls-termination).
 * `ssl-redirect-code`: Defines the HTTP status code used in the redirect. The default value is `302` if not declared. Supported values are `301`, `302`, `303`, `307` and `308`.
 * `no-tls-redirect-locations`: Defines a comma-separated list of URLs that should be removed from the TLS redirect. Requests to `:80` http port and starting with one of the URLs from the list will not be redirected to https despite of the TLS redirect configuration. This option defaults to `/.well-known/acme-challenge`, used by ACME protocol.
 
@@ -2793,7 +2793,7 @@ to validate requests. Currently the only supported value is `modsecurity`.
 
 This configuration has no effect if the ModSecurity endpoints are not configured.
 
-The `waf-mode` key defines wether the WAF should be `deny` or `detect` for that Backend. 
+The `waf-mode` key defines whether the WAF should be `deny` or `detect` for that Backend. 
 If the WAF is in `detect` mode the requests are passed to ModSecurity and logged, but not denied.
 
 The default behavior here is `deny` if `waf` is set to `modsecurity`.

@@ -110,7 +110,7 @@ parsing services and ingress objects. The default value is `haproxy-ingress.gith
 The default configuration means declare eg a SSL Redirect annotation with
 `haproxy-ingress.github.io/ssl-redirect: "true"` or `ingress.kubernetes.io/ssl-redirect: "true"`.
 
-The order of the declaration is used to priorize one of them if the same configuration key is
+The order of the declaration is used to prioritize one of them if the same configuration key is
 declared twice - if two distinct prefix is used to configure the same key in the same ingress or
 service resource, the value of the annotation with the prefix that was configured first in this
 command-line option is used.
@@ -133,7 +133,7 @@ attempted.
 ## --backend-shards
 
 Defines how many files should be used to configure the haproxy backends. The default value is
-0 (zero) which uses one single file to configure the whole haproxy process. Values greather than
+0 (zero) which uses one single file to configure the whole haproxy process. Values greater than
 0 (zero) splits the backend configuration into separated files. Only files with changed backends
 are parsed and written to disk, reducing io and cpu usage on big clusters - about 1000 or more
 services.
@@ -505,7 +505,7 @@ HAProxy will listen 7 new ports:
 * `8000` will proxy to `http` service, port `8000`, on the `system-prod` namespace. The upstream service will expect connections using the PROXY protocol but it only supports v1.
 * `9900` will proxy to `admin` service, port `9900`, on the `system-prod` namespace. Clients should connect using the PROXY protocol v1 or v2. Upcoming connections should be encrypted, HAProxy will ssl-offload data using crt/key provided by `system-prod/tcp-9900` secret.
 * `9990` and `9999` will proxy to the same `admin` service and `9999` port and the upstream service will expect connections using the PROXY protocol v2. The HAProxy frontend, however, will only expect PROXY protocol v1 or v2 on it's port `9999`.
-* `9995` will proxy to `admin` service, port `9900`, on the `system-prod` namespace. Upcoming connections should be encrypted, HAProxy will ssl-offload data using crt/key provided by `system-prod/tcp-9995` secret. Furthermore, clients must present a certificate that will be valid under the certificate authority (and optional certificate revocation list) provded in the `system-prod/tcp-9995-ca` secret.
+* `9995` will proxy to `admin` service, port `9900`, on the `system-prod` namespace. Upcoming connections should be encrypted, HAProxy will ssl-offload data using crt/key provided by `system-prod/tcp-9995` secret. Furthermore, clients must present a certificate that will be valid under the certificate authority (and optional certificate revocation list) provided in the `system-prod/tcp-9995-ca` secret.
 
 Note: Check interval was added in v0.10 and defaults to `2s`. All declared services has check interval enabled, except `3306` which disabled it.
 

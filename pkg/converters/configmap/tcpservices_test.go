@@ -288,9 +288,9 @@ func TestTCPSvcSync(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		for svckey, endpoinds := range test.svcmock {
+		for svckey, endpoints := range test.svcmock {
 			svcport := strings.Split(svckey, ":")
-			svc, ep := conv_helper.CreateService(svcport[0], svcport[1], endpoinds)
+			svc, ep := conv_helper.CreateService(svcport[0], svcport[1], endpoints)
 			c.cache.SvcList = append(c.cache.SvcList, svc)
 			c.cache.EpList[svcport[0]] = ep
 		}

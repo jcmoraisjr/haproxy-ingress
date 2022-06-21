@@ -243,7 +243,7 @@ type Proc struct {
 // attempt to connect leads to a connection refused. Some context:
 // https://www.mail-archive.com/haproxy@formilux.org/msg38415.html
 // The amount of time between attempts increases exponentially between 1ms and 64ms,
-// and aritmetically betweem 128ms and 1s in order to save CPU on long reload events
+// and arithmetically between 128ms and 1s in order to save CPU on long reload events
 // and quit fast on the fastest ones. The whole processing time can be calculated by
 // the caller as the haproxy reload time.
 func HAProxyProcs(masterSocket HAProxySocket) (*ProcTable, error) {

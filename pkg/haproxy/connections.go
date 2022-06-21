@@ -53,7 +53,7 @@ func (c *connections) TrackCurrentInstance(timeoutStopDur, closeSessDur time.Dur
 	if closeSessDur > 0 && closeSessDur < timeoutStopDur {
 		// schedule shutdown sessions
 		time.AfterFunc(timeoutStopDur-closeSessDur, func() {
-			// All the shuwdowns run synchronously and exits after all the
+			// All the shutdowns run synchronously and exits after all the
 			// remaining sessions have been shutdown, or in the case of an error.
 			// When it finishes we can safely close the connection
 			shutdownSessionsSync(sock, closeSessDur)

@@ -42,7 +42,7 @@ type NewCtrlIntf interface {
 	IsValidClass(ing *networking.Ingress) bool
 }
 
-// GenericController holds the boilerplate code required to build an Ingress controlller.
+// GenericController holds the boilerplate code required to build an Ingress controller.
 type GenericController struct {
 	cfg            *Configuration
 	newctrl        NewCtrlIntf

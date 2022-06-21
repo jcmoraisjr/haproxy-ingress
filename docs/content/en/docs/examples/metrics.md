@@ -116,7 +116,7 @@ controller:
 
 ## Configure the dashboard
 
-Import [this](https://grafana.com/grafana/dashboards/12056) Grafana dashboard. If Grafana was deployed using the steps provided in this walktrought:
+Import [this](https://grafana.com/grafana/dashboards/12056) Grafana dashboard. If Grafana was deployed using the steps provided in this walkthrough:
 
 * Open Grafana page - the URL is the same provided in the `prometheus-operator-values.yaml` file and should resolve to the ingress deployment
 * Log in to Grafana, user is `admin` and the first password is `prom-operator`
@@ -173,7 +173,7 @@ Status Codes  [code:count]               200:1
 Error Set:
 ```
 
-Now the real test. Adjust the duration and rate (number of requests per second) if needed. A dual core VM dedicated to HAProxy Ingress should accept a few thousands requests per second. Lets configure `200` which should move some lines in the dashoard:
+Now the real test. Adjust the duration and rate (number of requests per second) if needed. A dual core VM dedicated to HAProxy Ingress should accept a few thousands requests per second. Lets configure `200` which should move some lines in the dashboard:
 
 ```
 IP=192.168.0.11

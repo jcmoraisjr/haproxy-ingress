@@ -534,7 +534,7 @@ Improvements on the new internal representation and converters:
   * Authentication with client certificate is used - this will not be a limitation on v0.9 controller and HAProxy 1.9.x
   * `ssl-passthrough` is used
   * Conflicting `timeout client` declared as annotations
-* Fix HAProxy config parsing of a very long list of whitelist CIDRs or a very long list of overlaping /paths in the same domain
+* Fix HAProxy config parsing of a very long list of whitelist CIDRs or a very long list of overlapping /paths in the same domain
 
 Fixes and improvements since [v0.7](#v07):
 
@@ -775,7 +775,7 @@ Fixes and improvements since [v0.6](#v06):
 
 Fixes and improvements since [v0.7-beta.1](#v07-beta1):
 
-* Fix ssl-passthrought (only v0.7) [#258](https://github.com/jcmoraisjr/haproxy-ingress/pull/258)
+* Fix ssl-passthrough (only v0.7) [#258](https://github.com/jcmoraisjr/haproxy-ingress/pull/258)
 
 ### v0.7-beta.3
 
@@ -948,7 +948,7 @@ Fixes and improvements since [v0.6-beta.5](#v06-beta5):
 
 Fixes and improvements since [v0.6-beta.6](#v06-beta6):
 
-* Restrict access of sticky session cookie by client Javascript code - [#251](https://github.com/jcmoraisjr/haproxy-ingress/pull/251)
+* Restrict access of sticky session cookie by client JavaScript code - [#251](https://github.com/jcmoraisjr/haproxy-ingress/pull/251)
 
 ## v0.5
 
