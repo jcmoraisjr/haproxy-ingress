@@ -2,7 +2,7 @@
 
 This example demonstrates how to configure
 [blue/green deployment](https://www.martinfowler.com/bliki/BlueGreenDeployment.html)
-on HAProxy Ingress controller, in order to route requests based on distict weight on
+on HAProxy Ingress controller, in order to route requests based on distinct weight on
 deployment groups as well as selecting a group based on http header or cookie value.
 
 ## Prerequisites

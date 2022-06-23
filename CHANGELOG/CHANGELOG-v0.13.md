@@ -66,7 +66,7 @@ Highlights of this version
 * Ingress API upgrade from `networking.k8s.io/v1beta1` to `networking.k8s.io/v1`.
 * Partial implementation of Gateway API - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/gateway-api/)
 * TCP services using ingress resources - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#tcp-services)
-* External authetication - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#auth-external)
+* External authentication - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#auth-external)
 * Several new custom configurations - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#configuration-snippet)
 
 ## Upgrade notes
@@ -144,11 +144,11 @@ Other notable changes include:
 This release fixes the following issues:
 
 - Backend configuration snippets with blank lines were being rejected due to a wrong parsing of a missing `--disable-config-keywords` command-line option.
-- Annotation based TCP services were incorrectly fetching the SNI extension of an encrypted connection that's decyphered by HAProxy. `req.ssl_sni` was being used instead of `ssl_fc_sni`.
+- Annotation based TCP services were incorrectly fetching the SNI extension of an encrypted connection that's deciphered by HAProxy. `req.ssl_sni` was being used instead of `ssl_fc_sni`.
 
 Besides that, a few other improvements were made:
 
-- All `var()` sample fetch now have the `-m str` match method. This fixes compatiblity with HAProxy 2.5, which now enforces a match method when using `var()`. This however isn't enough to use HAProxy 2.5 as an external HAProxy due to incompatibility changes made in the master socket responses, hence the update in the [supported HAProxy versions](https://github.com/jcmoraisjr/haproxy-ingress/#use-haproxy-ingress). A future HAProxy Ingress release will make v0.12 and v0.13 branches compatible with HAProxy 2.5.
+- All `var()` sample fetch now have the `-m str` match method. This fixes compatibility with HAProxy 2.5, which now enforces a match method when using `var()`. This however isn't enough to use HAProxy 2.5 as an external HAProxy due to incompatibility changes made in the master socket responses, hence the update in the [supported HAProxy versions](https://github.com/jcmoraisjr/haproxy-ingress/#use-haproxy-ingress). A future HAProxy Ingress release will make v0.12 and v0.13 branches compatible with HAProxy 2.5.
 - A new configuration key `session-cookie-domain` was added due to how modern browsers parses the `domain` cookie attribute. Prefer to use this new configuration key instead of `session-cookie-shared`. Further information can be found in the [affinity documentation](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#affinity).
 - Embedded HAProxy was updated from 2.3.16 to 2.3.17.
 - client-go was updated from v0.20.14 to v0.20.15.
@@ -157,7 +157,7 @@ Besides that, a few other improvements were made:
 
 * Add disableKeywords only if defined [#876](https://github.com/jcmoraisjr/haproxy-ingress/pull/876) (jcmoraisjr)
 * Add match method on all var() sample fetch method [#879](https://github.com/jcmoraisjr/haproxy-ingress/pull/879) (jcmoraisjr)
-* Fix sni sample fetch on ssl decyphered tcp conns [#884](https://github.com/jcmoraisjr/haproxy-ingress/pull/884) (jcmoraisjr)
+* Fix sni sample fetch on ssl deciphered tcp conns [#884](https://github.com/jcmoraisjr/haproxy-ingress/pull/884) (jcmoraisjr)
 * Add session-cookie-domain configuration key [#889](https://github.com/jcmoraisjr/haproxy-ingress/pull/889) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#affinity)
   * Configuration keys:
     * `session-cookie-domain`
@@ -584,4 +584,4 @@ New features and improvements since `v0.12-beta.1`:
 
 ## Other
 
-* Duplicate Travis CI to Github Actions [#732](https://github.com/jcmoraisjr/haproxy-ingress/pull/732) (rikatz)
+* Duplicate Travis CI to GitHub Actions [#732](https://github.com/jcmoraisjr/haproxy-ingress/pull/732) (rikatz)

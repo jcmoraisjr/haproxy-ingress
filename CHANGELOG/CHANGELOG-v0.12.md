@@ -138,11 +138,11 @@ Other notable changes include:
 
 ## Release notes (r12)
 
-This release fixes backend configuration snippets with blank lines. Such blanck lines were being rejected due to a wrong parsing of a missing `--disable-config-keywords` command-line option.
+This release fixes backend configuration snippets with blank lines. Such blank lines were being rejected due to a wrong parsing of a missing `--disable-config-keywords` command-line option.
 
 Besides that, a few other improvements were made:
 
-- All `var()` sample fetch now have the `-m str` match method. This fixes compatiblity with HAProxy 2.5, which now enforces a match method when using `var()`. This however isn't enough to use HAProxy 2.5 as an external HAProxy due to incompatibility changes made in the master socket responses, hence the update in the [supported HAProxy versions](https://github.com/jcmoraisjr/haproxy-ingress/#use-haproxy-ingress). A future HAProxy Ingress release will make v0.12 and v0.13 branches compatible with HAProxy 2.5.
+- All `var()` sample fetch now have the `-m str` match method. This fixes compatibility with HAProxy 2.5, which now enforces a match method when using `var()`. This however isn't enough to use HAProxy 2.5 as an external HAProxy due to incompatibility changes made in the master socket responses, hence the update in the [supported HAProxy versions](https://github.com/jcmoraisjr/haproxy-ingress/#use-haproxy-ingress). A future HAProxy Ingress release will make v0.12 and v0.13 branches compatible with HAProxy 2.5.
 - Embedded HAProxy was updated from 2.2.19 to 2.2.20.
 
 ## Fixes and improvements (r12)

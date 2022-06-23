@@ -393,7 +393,7 @@ func (c *updater) buildBackendBlueGreenBalance(d *backData) {
 			for _, dw := range deployWeights {
 				if label, found := pod.Labels[dw.labelName]; found {
 					if label == dw.labelValue {
-						// mode == pod needs ep.Weight assgined,
+						// mode == pod needs ep.Weight assigned,
 						// otherwise ep.Weight will be rewritten after rebalance
 						ep.Weight = dw.cl.Weight
 						dw.endpoints = append(dw.endpoints, ep)

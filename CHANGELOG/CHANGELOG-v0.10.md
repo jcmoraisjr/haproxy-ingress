@@ -116,7 +116,7 @@ Highlights of this version:
 
 ## Release notes (r14)
 
-This release fixes backend configuration snippets with blank lines. Such blanck lines were being rejected due to a wrong parsing of a missing `--disable-config-keywords` command-line option.
+This release fixes backend configuration snippets with blank lines. Such blank lines were being rejected due to a wrong parsing of a missing `--disable-config-keywords` command-line option.
 
 Also, the embedded HAProxy version was updated from 2.0.26 to 2.0.28.
 

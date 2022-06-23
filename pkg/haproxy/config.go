@@ -209,7 +209,7 @@ func (c *config) WriteFrontendMaps() error {
 			// IMPLEMENT check if host.Alias.AliasName was already used as a hostname
 			if backendID != "" {
 				if host.SSLPassthrough() {
-					// no ssl offload, cannot inspect incomming path, so tracking root only
+					// no ssl offload, cannot inspect incoming path, so tracking root only
 					if path.Path == "/" {
 						fmaps.SSLPassthroughMap.AddHostnameMapping(host.Hostname, backendID)
 						// the backend of the root path is the ssl-passthrough, which speaks TLS,

@@ -30,7 +30,7 @@ Breaking backward compatibility from v0.13:
 * Default `auth-tls-strict` configuration key value changed from `false` to `true`. This update will change the behavior of misconfigured client auth configurations: when `false` misconfigured mTLS send requests to the backend without any authentication, when `true` misconfigured mTLS will always fail the request. See also the [auth TLS documentation](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#auth-tls).
 * Default `--watch-gateway` command-line option changed from `false` to `true`. On v0.13 this option can only be enabled if the Gateway API CRDs are installed, otherwise the controller would refuse to start. Since v0.14 the controller will always check if the CRDs are installed. This will change the behavior on clusters that has Gateway API resources and doesn't declare the command-line option: v0.13 would ignore the resources and v0.14 would find and apply them. See also the [watch gateway documentation](https://haproxy-ingress.github.io/v0.14/docs/configuration/command-line/#watch-gateway).
 * All the response payload managed by the controller using Lua script was rewritten in a backward compatible behavior, however deployments that overrides the `services.lua` script might break. See the [HTTP Responses](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#http-response) documentation on how to customize HTTP responses using controller's configuration keys.
-* Two frontends changed their names, which can break deployments that uses the frontend name on metrics, logging, or in the `config-proxy` global configuration key. Frontends changed are: `_front_https`, changed its name to `_front_https__local` if at least one ssl-passthrough is configured, and `_front__auth`, changed its default value to `_front__auth__local`. These changes were made to make the metric's dashboad consistent despite the ssl-passthrough configuration. See the new [metrics example page](https://haproxy-ingress.github.io/v0.14/docs/examples/metrics/) and update your dashboard if using HAProxy Ingress' one.
+* Two frontends changed their names, which can break deployments that uses the frontend name on metrics, logging, or in the `config-proxy` global configuration key. Frontends changed are: `_front_https`, changed its name to `_front_https__local` if at least one ssl-passthrough is configured, and `_front__auth`, changed its default value to `_front__auth__local`. These changes were made to make the metric's dashboard consistent despite the ssl-passthrough configuration. See the new [metrics example page](https://haproxy-ingress.github.io/v0.14/docs/examples/metrics/) and update your dashboard if using HAProxy Ingress' one.
 
 ## Contributors
 
@@ -185,10 +185,10 @@ New features and improvements since `v0.13-beta.1`:
 * Fix global config-backend snippet config [#856](https://github.com/jcmoraisjr/haproxy-ingress/pull/856) (jcmoraisjr)
 * Remove setting vary origin header always when multiple origins are set [#861](https://github.com/jcmoraisjr/haproxy-ingress/pull/861) (michal800106)
 * Fix error message on secret/cm update failure [#863](https://github.com/jcmoraisjr/haproxy-ingress/pull/863) (jcmoraisjr)
-* Fix typo: s/distict/distinct [#867](https://github.com/jcmoraisjr/haproxy-ingress/pull/867) (juggernaut)
+* Fix typo: distinct [#867](https://github.com/jcmoraisjr/haproxy-ingress/pull/867) (juggernaut)
 * Add disableKeywords only if defined [#876](https://github.com/jcmoraisjr/haproxy-ingress/pull/876) (jcmoraisjr)
 * Add match method on all var() sample fetch method [#879](https://github.com/jcmoraisjr/haproxy-ingress/pull/879) (jcmoraisjr)
-* Fix sni sample fetch on ssl decyphered tcp conns [#884](https://github.com/jcmoraisjr/haproxy-ingress/pull/884) (jcmoraisjr)
+* Fix sni sample fetch on ssl deciphered tcp conns [#884](https://github.com/jcmoraisjr/haproxy-ingress/pull/884) (jcmoraisjr)
 * Fix docker-build target name [#896](https://github.com/jcmoraisjr/haproxy-ingress/pull/896) (rgherta)
 
 ## Other

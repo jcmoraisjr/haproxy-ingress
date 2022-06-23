@@ -409,7 +409,7 @@
           "refId": "A"
         }
       ],
-      "title": "Connnection rate",
+      "title": "Connection rate",
       "type": "stat"
     },
     {
@@ -1974,7 +1974,7 @@
               "refId": "B"
             }
           ],
-          "title": "Cluster wide throughtput",
+          "title": "Cluster wide throughput",
           "type": "timeseries"
         },
         {
