@@ -22,6 +22,7 @@ import (
 
 	api "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
@@ -47,6 +48,7 @@ type Cache interface {
 	GetDHSecretPath(defaultNamespace, secretName string) (File, error)
 	GetPasswdSecretContent(defaultNamespace, secretName string, track []TrackingRef) ([]byte, error)
 	SwapChangedObjects() *ChangedObjects
+	UpdateStatus(obj client.Object)
 }
 
 // ChangedObjects ...

@@ -17,6 +17,7 @@ limitations under the License.
 package utils
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -31,6 +32,7 @@ type Queue interface {
 	Notify()
 	Remove(item interface{})
 	Run()
+	RunWithContext(context.Context)
 	ShuttingDown() bool
 	ShutDown()
 }
@@ -116,14 +118,32 @@ func (q *queue) Remove(item interface{}) {
 }
 
 func (q *queue) Run() {
+	q.RunWithContext(context.TODO())
+}
+
+func (q *queue) RunWithContext(ctx context.Context) {
 	if q.running != nil {
 		// queue already running
 		return
 	}
+	if ctx != nil && ctx != context.TODO() {
+		// only start for contexts that have a chance to be canceled
+		go func() {
+			<-ctx.Done()
+			q.ShutDown()
+		}()
+	}
 	q.running = make(chan struct{})
 	for {
 		if q.rateLimiter != nil {
-			q.rateLimiter.Accept()
+			if ctx == nil {
+				q.rateLimiter.Accept()
+			} else {
+				err := q.rateLimiter.Wait(ctx)
+				if err == context.Canceled {
+					return
+				}
+			}
 		}
 		item, quit := q.workqueue.Get()
 		if q.rateLimiter != nil {

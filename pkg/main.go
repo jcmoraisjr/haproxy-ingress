@@ -19,14 +19,20 @@ package main
 import (
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"k8s.io/klog/v2"
 
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/launch"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/legacy"
 )
 
 func main() {
+	if strings.ToUpper(os.Getenv("HAPROXY_INGRESS_RUNTIME")) != "LEGACY" {
+		launch.Run()
+		return
+	}
 	hc := legacy.NewHAProxyController()
 	errCh := make(chan error)
 	go handleSignal(hc, errCh)

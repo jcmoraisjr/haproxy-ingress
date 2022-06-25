@@ -31,8 +31,9 @@ type Timer struct {
 
 // Tick ...
 type Tick struct {
-	Event string
-	When  time.Time
+	Event    string
+	When     time.Time
+	Duration time.Duration
 }
 
 // NewTimer ...
@@ -46,31 +47,51 @@ func NewTimer(observer func(task string, duration time.Duration)) *Timer {
 // Tick ...
 func (t *Timer) Tick(eventLabel string) {
 	now := time.Now()
+	var last time.Time
+	if len(t.Ticks) > 0 {
+		last = t.Ticks[len(t.Ticks)-1].When
+	} else {
+		last = t.Start
+	}
+	duration := now.Sub(last)
 	if t.observer != nil {
-		var last time.Time
-		if len(t.Ticks) > 0 {
-			last = t.Ticks[len(t.Ticks)-1].When
-		} else {
-			last = t.Start
-		}
-		t.observer(eventLabel, now.Sub(last))
+		t.observer(eventLabel, duration)
 	}
 	t.Ticks = append(t.Ticks, &Tick{
-		Event: eventLabel,
-		When:  now,
+		Event:    eventLabel,
+		When:     now,
+		Duration: duration,
 	})
 }
 
 // AsString ...
 func (t *Timer) AsString(totalLabel string) string {
 	out := make([]string, 0, len(t.Ticks)+1)
-	last := t.Start
+	var total time.Duration
 	for _, tick := range t.Ticks {
-		out = append(out, fmt.Sprintf("%s=%fms", tick.Event, tick.When.Sub(last).Seconds()*1000))
-		last = tick.When
+		out = append(out, fmt.Sprintf("%s=%fms", tick.Event, tick.Duration.Seconds()*1000))
+		total = total + tick.Duration
 	}
 	if totalLabel != "" {
-		out = append(out, fmt.Sprintf("%s=%fms", totalLabel, last.Sub(t.Start).Seconds()*1000))
+		out = append(out, fmt.Sprintf("%s=%fms", totalLabel, total.Seconds()*1000))
 	}
 	return strings.Join(out, " ")
+}
+
+// AsValues ...
+func (t *Timer) AsValues(totalLabel string) []interface{} {
+	out := make([]interface{}, 0, 2*(len(t.Ticks)+1))
+	var total time.Duration
+	for _, tick := range t.Ticks {
+		// AsValues() is used by structured logging, so changing
+		// underscore `_` by dash `-` which is our key naming pattern.
+		out = append(out, strings.ReplaceAll(tick.Event, "_", "-")+"-ms")
+		out = append(out, float32(tick.Duration.Seconds()*1000))
+		total = total + tick.Duration
+	}
+	if totalLabel != "" {
+		out = append(out, strings.ReplaceAll(totalLabel, "_", "-")+"-ms")
+		out = append(out, float32(total.Seconds()*1000))
+	}
+	return out
 }

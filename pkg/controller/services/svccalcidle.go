@@ -1,5 +1,5 @@
 /*
-Copyright 2017 The Kubernetes Authors.
+Copyright 2022 The HAProxy Ingress Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,20 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package version
+package services
 
-// Info ...
-type Info struct {
-	Name, Release, Build, Repository string
+import (
+	"context"
+	"time"
+
+	"k8s.io/apimachinery/pkg/util/wait"
+
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
+)
+
+type svcCalcIdle struct {
+	instance haproxy.Instance
+	period   time.Duration
 }
 
-var (
-	// NAME Name of the controller
-	NAME = "HAProxy Ingress"
-	// RELEASE Release version
-	RELEASE = "UNKNOWN"
-	// COMMIT Short sha from git commit
-	COMMIT = "UNKNOWN"
-	// REPO Git repository URL
-	REPO = "UNKNOWN"
-)
+func (s *svcCalcIdle) Start(ctx context.Context) error {
+	wait.UntilWithContext(ctx, func(ctx context.Context) {
+		s.instance.CalcIdleMetric()
+	}, s.period)
+	return nil
+}

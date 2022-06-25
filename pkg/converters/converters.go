@@ -31,10 +31,11 @@ type Config interface {
 }
 
 // NewConverter ...
-func NewConverter(timer *utils.Timer, haproxy haproxy.Config, options *convtypes.ConverterOptions) Config {
+func NewConverter(timer *utils.Timer, haproxy haproxy.Config, changed *convtypes.ChangedObjects, options *convtypes.ConverterOptions) Config {
 	return &converters{
 		timer:   timer,
 		haproxy: haproxy,
+		changed: changed,
 		options: options,
 	}
 }
@@ -42,11 +43,15 @@ func NewConverter(timer *utils.Timer, haproxy haproxy.Config, options *convtypes
 type converters struct {
 	timer   *utils.Timer
 	haproxy haproxy.Config
+	changed *convtypes.ChangedObjects
 	options *convtypes.ConverterOptions
 }
 
 func (c *converters) Sync() {
-	changed := c.options.Cache.SwapChangedObjects()
+	changed := c.changed
+	if changed == nil {
+		changed = c.options.Cache.SwapChangedObjects()
+	}
 	ingressConverter := ingress.NewIngressConverter(c.options, c.haproxy, changed)
 	gatewayConverter := gateway.NewGatewayConverter(c.options, c.haproxy, changed, ingressConverter)
 

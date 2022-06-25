@@ -57,7 +57,7 @@ type InstanceOptions struct {
 	ReloadQueue       utils.Queue
 	ReloadStrategy    string
 	SortEndpointsBy   string
-	StopCh            chan struct{}
+	StopCh            <-chan struct{}
 	TrackInstances    bool
 	ValidateConfig    bool
 	// TODO Fake is used to skip real haproxy calls. Use a mock instead.
@@ -609,7 +609,7 @@ func (i *instance) reloadEmbeddedDaemon() error {
 	).CombinedOutput()
 	outstr := string(out)
 	if len(outstr) > 0 {
-		i.logger.Warn("output from haproxy:\n%v", outstr)
+		i.logger.Info("output from haproxy:\n%v", outstr)
 	}
 	return err
 }
