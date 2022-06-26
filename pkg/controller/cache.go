@@ -836,6 +836,8 @@ func (c *k8scache) Notify(old, cur interface{}) {
 			if cur == nil {
 				ch.ConfigMapsDel = append(ch.ConfigMapsDel, old.(*api.ConfigMap))
 			}
+		case cache.DeletedFinalStateUnknown:
+			ch.NeedFullSync = true
 		}
 	}
 	if cur != nil {
@@ -943,6 +945,8 @@ func (c *k8scache) Notify(old, cur interface{}) {
 			}
 		case *api.Pod:
 			ch.PodsNew = append(ch.PodsNew, cur.(*api.Pod))
+		case cache.DeletedFinalStateUnknown:
+			ch.NeedFullSync = true
 		}
 	}
 	if old == nil && cur == nil {

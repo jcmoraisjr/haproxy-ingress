@@ -260,17 +260,8 @@ func (l *listers) createIngressLister(informer informersnetworking.IngressInform
 		DeleteFunc: func(obj interface{}) {
 			ing, ok := obj.(*networking.Ingress)
 			if !ok {
-				tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-				if !ok {
-					l.logger.Error("couldn't get object from tombstone %#v", obj)
-					l.events.Notify(nil, nil)
-					return
-				}
-				if ing, ok = tombstone.Obj.(*networking.Ingress); !ok {
-					l.logger.Error("Tombstone contained object that is not an Ingress: %#v", obj)
-					l.events.Notify(nil, nil)
-					return
-				}
+				l.events.Notify(nil, nil)
+				return
 			}
 			if !l.events.IsValidIngress(ing) {
 				return
@@ -516,19 +507,7 @@ func (l *listers) createServiceLister(informer informerscore.ServiceInformer) {
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			svc, ok := obj.(*api.Service)
-			if !ok {
-				tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-				if !ok {
-					l.logger.Error("couldn't get object from tombstone %#v", obj)
-					return
-				}
-				if svc, ok = tombstone.Obj.(*api.Service); !ok {
-					l.logger.Error("Tombstone contained object that is not a Service: %#v", obj)
-					return
-				}
-			}
-			l.events.Notify(svc, nil)
+			l.events.Notify(obj, nil)
 		},
 	})
 }
@@ -546,19 +525,7 @@ func (l *listers) createSecretLister(informer informerscore.SecretInformer) {
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			sec, ok := obj.(*api.Secret)
-			if !ok {
-				tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-				if !ok {
-					l.logger.Error("couldn't get object from tombstone %#v", obj)
-					return
-				}
-				if sec, ok = tombstone.Obj.(*api.Secret); !ok {
-					l.logger.Error("Tombstone contained object that is not a Secret: %#v", obj)
-					return
-				}
-			}
-			l.events.Notify(sec, nil)
+			l.events.Notify(obj, nil)
 		},
 	})
 }
@@ -582,8 +549,13 @@ func (l *listers) createConfigMapLister(informer informerscore.ConfigMapInformer
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			if l.events.IsValidConfigMap(obj.(*api.ConfigMap)) {
-				l.events.Notify(obj, nil)
+			cm, ok := obj.(*api.ConfigMap)
+			if !ok {
+				l.events.Notify(nil, nil)
+				return
+			}
+			if l.events.IsValidConfigMap(cm) {
+				l.events.Notify(cm, nil)
 			}
 		},
 	})
