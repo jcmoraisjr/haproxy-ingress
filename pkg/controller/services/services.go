@@ -25,12 +25,14 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 	ctrlutils "github.com/jcmoraisjr/haproxy-ingress/pkg/controller/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
@@ -42,9 +44,10 @@ type Services struct {
 	legacylogger *lfactory
 	log          logr.Logger
 	//
+	acmeClient   *svcAcmeClient
+	acmeServer   *svcAcmeServer
 	cache        *c
 	converterOpt *convtypes.ConverterOptions
-	hasAcme      bool
 	instance     haproxy.Instance
 	metrics      *metrics
 	modelMutex   sync.Mutex
@@ -77,6 +80,8 @@ func (s *Services) setup(ctx context.Context) error {
 	dynConfig := &convtypes.DynamicConfig{
 		StaticCrossNamespaceSecrets: cfg.AllowCrossNamespace,
 	}
+	acmeSocket := cfg.DefaultDirVarRun + "/acme.sock"
+	adminSocket := cfg.DefaultDirVarRun + "/admin.sock"
 	masterSocket := cfg.MasterSocket
 	if masterSocket == "" && cfg.MasterWorker {
 		masterSocket = cfg.DefaultDirVarRun + "/master.sock"
@@ -94,6 +99,18 @@ func (s *Services) setup(ctx context.Context) error {
 	svcleader := initSvcLeader(ctx)
 	svcstatus := initSvcStatusUpdater(ctx, s.Client)
 	cache := createCacheFacade(ctx, s.Client, cfg, tracker, sslCerts, dynConfig, svcstatus.Update)
+	var acmeClient *svcAcmeClient
+	var acmeServer *svcAcmeServer
+	var acmeSigner acme.Signer
+	var acmeQueue utils.QueueFacade
+	var acmeLeaderElector types.LeaderElector
+	if cfg.AcmeServer {
+		acmeClient = initSvcAcmeClient(ctx, s.Config, s.legacylogger, cache, metrics, svcleader, s.acmePeriodicCheck)
+		acmeServer = initSvcAcmeServer(ctx, s.legacylogger, cache, acmeSocket)
+		acmeSigner = acmeClient.signer
+		acmeQueue = acmeClient
+		acmeLeaderElector = acmeClient
+	}
 	instanceOptions := haproxy.InstanceOptions{
 		RootFSPrefix:      rootFSPrefix,
 		LocalFSPrefix:     cfg.LocalFSPrefix,
@@ -102,8 +119,8 @@ func (s *Services) setup(ctx context.Context) error {
 		IsMasterWorker:    cfg.MasterWorker,
 		IsExternal:        cfg.MasterSocket != "",
 		MasterSocket:      masterSocket,
-		AdminSocket:       cfg.DefaultDirVarRun + "/admin.sock",
-		AcmeSocket:        cfg.DefaultDirVarRun + "/acme.sock",
+		AdminSocket:       adminSocket,
+		AcmeSocket:        acmeSocket,
 		BackendShards:     cfg.BackendShards,
 		Metrics:           metrics,
 		ReloadQueue:       reloadQueue,
@@ -113,10 +130,9 @@ func (s *Services) setup(ctx context.Context) error {
 		StopCh:            ctx.Done(),
 		TrackInstances:    cfg.TrackOldInstances,
 		ValidateConfig:    cfg.ValidateConfig,
-		// TODO:
-		// AcmeSigner:    acmeSigner,
-		// AcmeQueue:     acmeQueue,
-		// LeaderElector: leaderElector,
+		AcmeSigner:        acmeSigner,
+		AcmeQueue:         acmeQueue,
+		LeaderElector:     acmeLeaderElector,
 	}
 	converterOptions := &convtypes.ConverterOptions{
 		Logger:           s.legacylogger.new("converter"),
@@ -143,9 +159,10 @@ func (s *Services) setup(ctx context.Context) error {
 	if err := instance.ParseTemplates(); err != nil {
 		return fmt.Errorf("error creating HAProxy instance: %w", err)
 	}
+	s.acmeClient = acmeClient
+	s.acmeServer = acmeServer
 	s.cache = cache
 	s.converterOpt = converterOptions
-	s.hasAcme = false
 	s.instance = instance
 	s.metrics = metrics
 	s.modelMutex = sync.Mutex{}
@@ -179,19 +196,25 @@ func (s *Services) withManager(mgr ctrl.Manager) error {
 			return err
 		}
 	}
-	if s.hasAcme {
-		if err := mgr.Add(&svcAcmeClient{
-			//
-		}); err != nil {
+	if s.acmeClient != nil {
+		if err := mgr.Add(s.acmeClient); err != nil {
 			return err
 		}
-		if err := mgr.Add(ctrlutils.DistributedService(&svcAcmeServer{
-			//
-		})); err != nil {
+	}
+	if s.acmeServer != nil {
+		if err := mgr.Add(ctrlutils.DistributedService(s.acmeServer)); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (s *Services) acmeExternalCallCheck() (count int, err error) {
+	return s.acmeCheck("external call")
+}
+
+func (s *Services) acmePeriodicCheck() (count int, err error) {
+	return s.acmeCheck("periodic check")
 }
 
 // LeaderChangedSubscriber ...
@@ -212,8 +235,30 @@ func (s *Services) ReconcileIngress(changed *convtypes.ChangedObjects) {
 	s.log.Info("starting haproxy update", "id", s.updateCount)
 	timer := utils.NewTimer(s.metrics.ControllerProcTime)
 	converters.NewConverter(timer, s.instance.Config(), changed, s.converterOpt).Sync()
-	s.instance.Update(timer)
+	if s.svcleader.getIsLeader() {
+		s.instance.AcmeUpdate()
+	}
+	s.instance.HAProxyUpdate(timer)
 	s.log.WithValues("id", s.updateCount).WithValues(timer.AsValues("total")...).Info("finish haproxy update")
+}
+
+func (s *Services) acmeCheck(source string) (count int, err error) {
+	if !s.svcleader.getIsLeader() {
+		err = fmt.Errorf("cannot check acme certificates, this controller is not the leader")
+		s.log.Error(err, "error checking acme certificates")
+		return 0, err
+	}
+	s.modelMutex.Lock()
+	defer s.modelMutex.Unlock()
+	count, err = s.instance.AcmeCheck(source)
+	if err != nil {
+		s.log.Error(err, "failed checking acme certificates", "source", source)
+	} else if count > 0 {
+		s.log.Info("checking acme certificates", "source", source, "count", count)
+	} else {
+		s.log.Info("acme certificate list is empty", "source", source)
+	}
+	return count, err
 }
 
 func (s *Services) reloadHAProxy(interface{}) {

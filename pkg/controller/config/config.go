@@ -143,7 +143,7 @@ time between retries will grow exponentially until 'acme-fail-max-duration'`)
 private key. If a namespace is not provided, the secret will be created in the
 same namespace of the controller pod`)
 
-	acmeTokenConfigmapName := flag.String("acme-token-configmap-name", "acme-validation-tokens",
+	acmeTokenConfigMapName := flag.String("acme-token-configmap-name", "acme-validation-tokens",
 		`Name and an optional namespace of the configmap which will store acme tokens
 used to answer the acme challenges. If a namespace is not provided, the secret
 will be created in the same namespace of the controller pod`)
@@ -442,12 +442,21 @@ define if ingress without class should be tracked.`)
 	}
 
 	election := *updateStatus || *acmeServer || hasGateway
-	var electionNamespace string
+	var podNamespace string
 	if election {
-		electionNamespace = os.Getenv("POD_NAMESPACE")
-		if electionNamespace == "" {
+		podNamespace = os.Getenv("POD_NAMESPACE")
+		if podNamespace == "" {
 			return nil, fmt.Errorf("missing POD_NAMESPACE envvar")
 		}
+	}
+
+	acmeSecretKeyNamespaceName := *acmeSecretKeyName
+	if !strings.Contains(acmeSecretKeyNamespaceName, "/") {
+		acmeSecretKeyNamespaceName = podNamespace + "/" + acmeSecretKeyNamespaceName
+	}
+	acmeTokenConfigMapNamespaceName := *acmeTokenConfigMapName
+	if !strings.Contains(acmeTokenConfigMapNamespaceName, "/") {
+		acmeTokenConfigMapNamespaceName = podNamespace + "/" + acmeTokenConfigMapNamespaceName
 	}
 
 	masterWorkerCfg := *masterWorker
@@ -612,9 +621,9 @@ define if ingress without class should be tracked.`)
 		AcmeCheckPeriod:          *acmeCheckPeriod,
 		AcmeFailInitialDuration:  *acmeFailInitialDuration,
 		AcmeFailMaxDuration:      *acmeFailMaxDuration,
-		AcmeSecretKeyName:        *acmeSecretKeyName,
+		AcmeSecretKeyName:        acmeSecretKeyNamespaceName,
 		AcmeServer:               *acmeServer,
-		AcmeTokenConfigmapName:   *acmeTokenConfigmapName,
+		AcmeTokenConfigMapName:   acmeTokenConfigMapNamespaceName,
 		AcmeTrackTLSAnn:          *acmeTrackTLSAnn,
 		AllowCrossNamespace:      *allowCrossNamespace,
 		AnnPrefix:                annPrefixList,
@@ -635,7 +644,7 @@ define if ingress without class should be tracked.`)
 		DisableKeywords:          disableKeywords,
 		Election:                 election,
 		ElectionID:               *electionID,
-		ElectionNamespace:        electionNamespace,
+		ElectionNamespace:        podNamespace,
 		ForceNamespaceIsolation:  *forceIsolation,
 		HasGateway:               hasGateway,
 		IngressClass:             *ingressClass,
@@ -753,7 +762,7 @@ type Config struct {
 	AcmeFailMaxDuration      time.Duration
 	AcmeSecretKeyName        string
 	AcmeServer               bool
-	AcmeTokenConfigmapName   string
+	AcmeTokenConfigMapName   string
 	AcmeTrackTLSAnn          bool
 	AllowCrossNamespace      bool
 	AnnPrefix                []string

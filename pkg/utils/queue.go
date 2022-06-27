@@ -27,14 +27,19 @@ import (
 
 // Queue ...
 type Queue interface {
-	Add(item interface{})
+	QueueFacade
 	Clear()
 	Notify()
-	Remove(item interface{})
 	Run()
 	RunWithContext(context.Context)
 	ShuttingDown() bool
 	ShutDown()
+}
+
+// QueueFacade ...
+type QueueFacade interface {
+	Add(item interface{})
+	Remove(item interface{})
 }
 
 type queue struct {

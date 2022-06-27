@@ -20,6 +20,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/tls"
 	"crypto/x509"
@@ -261,6 +262,18 @@ func (s *SSL) createFakeCertAndCA() (crtFile, caFile convtypes.CrtFile, err erro
 		SHA1Hash: sslCA.PemSHA,
 	}
 	return crtFile, caFile, nil
+}
+
+func (s *SSL) createPKCS1PrivateKey(bits int) ([]byte, error) {
+	key, err := rsa.GenerateKey(rand.Reader, bits)
+	if err != nil {
+		return nil, err
+	}
+	pemEncode := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	})
+	return pemEncode, nil
 }
 
 func (s *SSL) getCertificate(secret *api.Secret) (*sslCert, error) {

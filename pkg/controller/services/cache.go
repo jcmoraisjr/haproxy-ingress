@@ -18,6 +18,9 @@ package services
 
 import (
 	"context"
+	"crypto"
+	"crypto/rsa"
+	"crypto/x509"
 	"fmt"
 	"net"
 	"os"
@@ -27,12 +30,15 @@ import (
 	"github.com/go-logr/logr"
 	api "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/cache"
 	clientcache "k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 )
@@ -69,6 +75,18 @@ func (c *c) get(key string, obj client.Object) error {
 		return err
 	}
 	return c.client.Get(c.ctx, types.NamespacedName{Namespace: ns, Name: n}, obj)
+}
+
+func (c *c) createOrUpdate(obj client.Object) error {
+	if err := c.client.Update(c.ctx, obj); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+		if err := c.client.Create(c.ctx, obj); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func buildResourceName(defaultNamespace, kind, resourceName string, allowCrossNamespace bool) (string, string, error) {
@@ -505,4 +523,129 @@ func (c *c) SwapChangedObjects() *convtypes.ChangedObjects {
 
 func (c *c) UpdateStatus(obj client.Object) {
 	c.status(obj)
+}
+
+//
+// Starting acme.Cache implementation
+//
+
+// implements acme.Cache
+func (c *c) GetKey() (crypto.Signer, error) {
+	secretName := c.config.AcmeSecretKeyName
+	secret := api.Secret{}
+	err := c.get(secretName, &secret)
+	var key *rsa.PrivateKey
+	if err == nil {
+		pemKey, found := secret.Data[api.TLSPrivateKeyKey]
+		if !found {
+			return nil, fmt.Errorf("secret '%s' does not have a private key", secretName)
+		}
+		der, err := c.sslCerts.checkValidPEM(pemKey, "RSA PRIVATE KEY")
+		if err != nil {
+			return nil, err
+		}
+		key, err = x509.ParsePKCS1PrivateKey(der)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if key == nil {
+		namespace, name, err := cache.SplitMetaNamespaceKey(secretName)
+		if err != nil {
+			return nil, err
+		}
+		pemEncode, err := c.sslCerts.createPKCS1PrivateKey(2048)
+		if err != nil {
+			return nil, err
+		}
+		newSecret := api.Secret{}
+		newSecret.Namespace = namespace
+		newSecret.Name = name
+		newSecret.Data = map[string][]byte{api.TLSPrivateKeyKey: pemEncode}
+		if err := c.createOrUpdate(&newSecret); err != nil {
+			return nil, err
+		}
+	}
+	return key, nil
+}
+
+// implements acme.Cache
+func (c *c) SetToken(domain string, uri, token string) error {
+	namespace, name, err := clientcache.SplitMetaNamespaceKey(c.config.AcmeTokenConfigMapName)
+	if err != nil {
+		return err
+	}
+	config := api.ConfigMap{}
+	err = c.client.Get(c.ctx, types.NamespacedName{Namespace: namespace, Name: name}, &config)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			return err
+		}
+		config.Namespace = namespace
+		config.Name = name
+	}
+	if config.Data == nil {
+		config.Data = make(map[string]string, 1)
+	}
+	if token != "" {
+		config.Data[domain] = uri + "=" + token
+	} else {
+		delete(config.Data, domain)
+	}
+	return c.createOrUpdate(&config)
+}
+
+// implements acme.Cache
+func (c *c) GetToken(domain, uri string) string {
+	config := api.ConfigMap{}
+	err := c.get(c.config.AcmeTokenConfigMapName, &config)
+	if err != nil {
+		return ""
+	}
+	data, found := config.Data[domain]
+	if !found {
+		return ""
+	}
+	prefix := uri + "="
+	if !strings.HasPrefix(data, prefix) {
+		return ""
+	}
+	return strings.TrimPrefix(data, prefix)
+}
+
+// implements acme.Cache
+func (c *c) GetTLSSecretContent(secretName string) (*acme.TLSSecret, error) {
+	secret := api.Secret{}
+	err := c.get(secretName, &secret)
+	if err != nil {
+		return nil, err
+	}
+	pemCrt, foundCrt := secret.Data[api.TLSCertKey]
+	if !foundCrt {
+		return nil, fmt.Errorf("secret '%s' does not have '%s' key", secretName, api.TLSCertKey)
+	}
+	x509, err := c.sslCerts.checkValidCertPEM(pemCrt)
+	if err != nil {
+		return nil, fmt.Errorf("error validating x509 certificate: %w", err)
+	}
+	return &acme.TLSSecret{
+		Crt: x509,
+	}, nil
+}
+
+// implements acme.Cache
+func (c *c) SetTLSSecretContent(secretName string, pemCrt, pemKey []byte) error {
+	namespace, name, err := cache.SplitMetaNamespaceKey(secretName)
+	if err != nil {
+		return err
+	}
+	secret := api.Secret{}
+	secret.Namespace = namespace
+	secret.Name = name
+	secret.Type = api.SecretTypeTLS
+	secret.Data = map[string][]byte{
+		api.TLSCertKey:       pemCrt,
+		api.TLSPrivateKeyKey: pemKey,
+	}
+	return c.createOrUpdate(&secret)
 }

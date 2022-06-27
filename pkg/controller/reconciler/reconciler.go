@@ -47,9 +47,11 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 }
 
 func (r *IngressReconciler) leaderChanged(isLeader bool) {
-	changed := r.watchers.getChangedObjects()
-	changed.NeedFullSync = true
-	r.Services.ReconcileIngress(changed)
+	if isLeader {
+		changed := r.watchers.getChangedObjects()
+		changed.NeedFullSync = true
+		r.Services.ReconcileIngress(changed)
+	}
 }
 
 // SetupWithManager ...

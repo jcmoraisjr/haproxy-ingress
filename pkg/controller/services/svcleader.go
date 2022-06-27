@@ -41,6 +41,10 @@ func (s *svcLeader) addsubscriber(f SvcLeaderChangedFnc) {
 	s.subscribers = append(s.subscribers, f)
 }
 
+func (s *svcLeader) getIsLeader() bool {
+	return s.isLeader
+}
+
 func (s *svcLeader) Start(ctx context.Context) error {
 	s.log.Info("leader acquired")
 	s.isLeader = true

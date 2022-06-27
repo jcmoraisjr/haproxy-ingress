@@ -40,7 +40,7 @@ import (
 // InstanceOptions ...
 type InstanceOptions struct {
 	AcmeSigner        acme.Signer
-	AcmeQueue         utils.Queue
+	AcmeQueue         utils.QueueFacade
 	RootFSPrefix      string
 	LocalFSPrefix     string
 	BackendShards     int
@@ -70,7 +70,8 @@ type Instance interface {
 	ParseTemplates() error
 	Config() Config
 	CalcIdleMetric()
-	Update(timer *utils.Timer)
+	AcmeUpdate()
+	HAProxyUpdate(timer *utils.Timer)
 	Reload(timer *utils.Timer)
 	Shutdown()
 }
@@ -253,12 +254,7 @@ func (i *instance) CalcIdleMetric() {
 	i.metrics.AddIdleFactor(idle)
 }
 
-func (i *instance) Update(timer *utils.Timer) {
-	i.acmeUpdate()
-	i.haproxyUpdate(timer)
-}
-
-func (i *instance) acmeUpdate() {
+func (i *instance) AcmeUpdate() {
 	if i.config == nil || i.options.AcmeQueue == nil {
 		return
 	}
@@ -280,7 +276,7 @@ func (i *instance) acmeUpdate() {
 	}
 }
 
-func (i *instance) haproxyUpdate(timer *utils.Timer) {
+func (i *instance) HAProxyUpdate(timer *utils.Timer) {
 	// nil config, just ignore
 	if i.config == nil {
 		return

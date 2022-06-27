@@ -342,7 +342,8 @@ func (hc *HAProxyController) syncIngress(item interface{}) {
 	//
 	// update proxy
 	//
-	hc.instance.Update(timer)
+	hc.instance.AcmeUpdate()
+	hc.instance.HAProxyUpdate(timer)
 	hc.logger.Info("finish haproxy update id=%d: %s", hc.updateCount, timer.AsString("total"))
 }
 
