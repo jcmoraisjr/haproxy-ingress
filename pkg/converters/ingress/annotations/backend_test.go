@@ -1307,6 +1307,70 @@ func TestCors(t *testing.T) {
 			},
 			logging: `WARN ignoring invalid cors origin on ingress 'default/ing': invalid`,
 		},
+		// 5
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackCorsEnable:           "true",
+					ingtypes.BackCorsAllowOriginRegex: `^http://d1\.local$ ^https?://d[23]\.local https://([a-z]*\.){0,3}d3\.local$`,
+				},
+			},
+			expected: map[string]hatypes.Cors{
+				"/": {
+					Enabled:          true,
+					AllowCredentials: false,
+					AllowHeaders:     corsDefaultHeaders,
+					AllowMethods:     corsDefaultMethods,
+					AllowOrigin:      corsDefaultOrigin,
+					AllowOriginRegex: []string{`^http://d1\.local$`, `^https?://d[23]\.local`, `https://([a-z]*\.){0,3}d3\.local$`},
+					ExposeHeaders:    "",
+					MaxAge:           corsDefaultMaxAge,
+				},
+			},
+		},
+		// 6
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackCorsEnable:           "true",
+					ingtypes.BackCorsAllowOriginRegex: "https://d1.local https://d2.local http://(unmatched",
+				},
+			},
+			expected: map[string]hatypes.Cors{
+				"/": {
+					Enabled:          true,
+					AllowCredentials: false,
+					AllowHeaders:     corsDefaultHeaders,
+					AllowMethods:     corsDefaultMethods,
+					AllowOrigin:      corsDefaultOrigin,
+					ExposeHeaders:    "",
+					MaxAge:           corsDefaultMaxAge,
+				},
+			},
+			logging: `WARN ignoring invalid cors origin regex on ingress 'default/ing': http://(unmatched`,
+		},
+		// 7
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackCorsEnable:           "true",
+					ingtypes.BackCorsAllowOrigin:      "http://d4.local,https://d5.local,https://d6.local",
+					ingtypes.BackCorsAllowOriginRegex: `^http://d1\.local$ ^https?://d[23]\.local https://([a-z]*\.){0,3}d3\.local$`,
+				},
+			},
+			expected: map[string]hatypes.Cors{
+				"/": {
+					Enabled:          true,
+					AllowCredentials: false,
+					AllowHeaders:     corsDefaultHeaders,
+					AllowMethods:     corsDefaultMethods,
+					AllowOrigin:      []string{"http://d4.local", "https://d5.local", "https://d6.local"},
+					AllowOriginRegex: []string{`^http://d1\.local$`, `^https?://d[23]\.local`, `https://([a-z]*\.){0,3}d3\.local$`},
+					ExposeHeaders:    "",
+					MaxAge:           corsDefaultMaxAge,
+				},
+			},
+		},
 	}
 	annDefault := map[string]string{
 		ingtypes.BackCorsAllowHeaders: corsDefaultHeaders,

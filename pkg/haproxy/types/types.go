@@ -809,6 +809,7 @@ type Cors struct {
 	AllowHeaders     string
 	AllowMethods     string
 	AllowOrigin      []string
+	AllowOriginRegex []string
 	ExposeHeaders    string
 	MaxAge           int
 }

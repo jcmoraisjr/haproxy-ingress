@@ -33,7 +33,7 @@ type validate struct {
 }
 
 var (
-	corsOriginRegex  = regexp.MustCompile(`^(https?://[A-Za-z0-9\-\.]*(:[0-9]+)?|\*)?$`)
+	corsOriginRegex  = regexp.MustCompile(`^(https?://[A-Za-z0-9\-\.]*(:[0-9]+)?|\*)$`)
 	corsMethodsRegex = regexp.MustCompile(`^([A-Za-z]+,?\s?)+$`)
 	corsHeadersRegex = regexp.MustCompile(`^([A-Za-z0-9\-\_]+,?\s?)+$`)
 )
@@ -58,6 +58,18 @@ var validators = map[string]func(v validate) (string, bool){
 		for _, value := range strings.Split(v.value, ",") {
 			if !corsOriginRegex.MatchString(value) {
 				v.logger.Warn("ignoring invalid cors origin on %s: %s", v.source, value)
+				return "", false
+			}
+		}
+		return v.value, true
+	},
+	ingtypes.BackCorsAllowOriginRegex: func(v validate) (string, bool) {
+		// Space-separated not comma-separated,
+		// because comma is needed in regex (PCRE) for {n,m} repetition
+		for _, value := range strings.Split(v.value, " ") {
+			_, err := regexp.Compile(value)
+			if err != nil {
+				v.logger.Warn("ignoring invalid cors origin regex on %s: %s", v.source, value)
 				return "", false
 			}
 		}
