@@ -58,7 +58,7 @@ func (r *IngressReconciler) leaderChanged(isLeader bool) {
 func (r *IngressReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
 	r.watchers = createWatchers(ctx, r.Config, r.Services.GetIsValidResource())
 	opt := controller.Options{
-		LogConstructor: func(*reconcile.Request) logr.Logger { return logr.FromContextOrDiscard(ctx) },
+		LogConstructor: func(*reconcile.Request) logr.Logger { return logr.FromContextOrDiscard(ctx).WithName("reconciler") },
 		RateLimiter:    createRateLimiter(r.Config),
 		Reconciler:     r,
 		RecoverPanic:   true,

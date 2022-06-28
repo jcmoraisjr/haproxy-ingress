@@ -155,7 +155,7 @@ func (i *instance) acmeAddStorage(storage string) {
 		name := items[0]
 		prefChain := items[1]
 		domains := strings.Join(items[2:], ",")
-		i.logger.InfoV(3, "enqueue certificate for processing: storage=%s domain(s)=%s preferred-chain=%s", name, domains, prefChain)
+		i.logger.InfoV(2, "enqueue certificate for processing: storage=%s domain(s)=%s preferred-chain=%s", name, domains, prefChain)
 	}
 	i.options.AcmeQueue.Add(storage)
 }

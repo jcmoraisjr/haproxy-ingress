@@ -76,11 +76,14 @@ func (l *l) Warn(msg string, args ...interface{}) {
 	if len(args) > 0 {
 		msg = fmt.Sprintf(msg, args...)
 	}
-	l.v1.Error(nil, msg)
+	l.v1.Info("warning: " + msg)
 }
 
 func (l *l) Error(msg string, args ...interface{}) {
-	l.v1.Error(fmt.Errorf(msg, args...), "")
+	if len(args) > 0 {
+		msg = fmt.Sprintf(msg, args...)
+	}
+	l.v1.Error(nil, msg)
 }
 
 func (l *l) Fatal(msg string, args ...interface{}) {
