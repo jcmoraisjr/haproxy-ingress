@@ -21,7 +21,6 @@ import (
 	"os"
 
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/reconciler"
@@ -48,21 +47,11 @@ func Run() {
 		LeaderElectionID:        config.ElectionID,
 		LeaderElectionNamespace: config.ElectionNamespace,
 		Namespace:               config.WatchNamespace,
-		HealthProbeBindAddress:  config.ProbeAddr,
-		MetricsBindAddress:      config.MetricsAddr,
+		HealthProbeBindAddress:  "0",
+		MetricsBindAddress:      "0",
 	})
 	if err != nil {
 		launchLog.Error(err, "unable to start manager")
-		os.Exit(1)
-	}
-
-	launchLog.Info("configuring probes")
-	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		launchLog.Error(err, "unable to set up health check")
-		os.Exit(1)
-	}
-	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		launchLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
 

@@ -35,6 +35,19 @@ type metrics struct {
 	lastTrack          time.Time
 }
 
+func (m *metrics) register(reg prometheus.Registerer) {
+	reg.MustRegister(
+		m.responseTime,
+		m.ctlProcTimeSum,
+		m.ctlProcCount,
+		m.procSecondsCounter,
+		m.updatesCounter,
+		m.updateSuccessGauge,
+		m.certExpireGauge,
+		m.certSigningCounter,
+	)
+}
+
 func createMetrics(bucketsResponseTime []float64) *metrics {
 	namespace := "haproxyingress"
 	metrics := &metrics{
@@ -104,14 +117,6 @@ func createMetrics(bucketsResponseTime []float64) *metrics {
 			[]string{"domains", "reason", "success"},
 		),
 	}
-	prometheus.MustRegister(metrics.responseTime)
-	prometheus.MustRegister(metrics.ctlProcTimeSum)
-	prometheus.MustRegister(metrics.ctlProcCount)
-	prometheus.MustRegister(metrics.procSecondsCounter)
-	prometheus.MustRegister(metrics.updatesCounter)
-	prometheus.MustRegister(metrics.updateSuccessGauge)
-	prometheus.MustRegister(metrics.certExpireGauge)
-	prometheus.MustRegister(metrics.certSigningCounter)
 	return metrics
 }
 
