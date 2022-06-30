@@ -26,10 +26,6 @@ defaults
     timeout server 1s
     timeout client 1s
     timeout connect 1s
-frontend healthz
-    mode http
-    bind :$port
-    monitor-uri /healthz
 EOF
 else
     # Copy static files to /etc/haproxy, which cannot have static content
