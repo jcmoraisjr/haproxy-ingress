@@ -16,7 +16,7 @@
  [[params.versions]]
 -version = "Latest"
 -url = "https://haproxy-ingress.github.io/docs"
-+version = "v0.14 (alpha)"
++version = "v0.14 (beta)"
 +url = "https://haproxy-ingress.github.io/v0.14/docs"
  
  [[params.versions]]

@@ -7,7 +7,7 @@ jobs:
   build-image:
     runs-on: ubuntu-latest
     env:
-      EXTRA_TAGS: latest canary
+      EXTRA_TAGS: latest
     steps:
     - name: Configure envvars
       run: |
