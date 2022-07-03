@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.11!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.12.14](#v01214)
+  * [Reference](#reference-r14)
+  * [Release notes](#release-notes-r14)
+  * [Fixes and improvements](#fixes-and-improvements-r14)
 * [v0.12.13](#v01213)
   * [Reference](#reference-r13)
   * [Release notes](#release-notes-r13)
@@ -97,6 +101,34 @@ Breaking backward compatibility from v0.11
 * paul ([toothbrush](https://github.com/toothbrush))
 * pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.12.14
+
+## Reference (r14)
+
+* Release date: `2022-07-03`
+* Helm chart: `--version 0.12.14`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.12.14`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.12.14`
+* Embedded HAProxy version: `2.2.24`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.12.14`
+
+## Release notes (r14)
+
+This release fixes the following issues:
+
+- A possible type cast failure reported by monkeymorgan was fixed, which could happen on outages of the apiserver and some resources are removed from the api before the controller starts to watch the api again.
+- The external HAProxy now starts without a readiness endpoing configured. This avoids to add a just deployed controller as available before it has beed properly configured. Starting liveness was raised in the helm chart, so that huge environments have time enough to start.
+
+Dependencies:
+
+- Embedded HAProxy version was updated from 2.2.22 to 2.2.24.
+
+## Fixes and improvements (r14)
+
+* Check type assertion on all informers [#934](https://github.com/jcmoraisjr/haproxy-ingress/pull/934) (jcmoraisjr)
+* Remove readiness endpoint from starting config [#937](https://github.com/jcmoraisjr/haproxy-ingress/pull/937) (jcmoraisjr)
+* update embedded haproxy from 2.2.22 to 2.2.24 [281abab](https://github.com/jcmoraisjr/haproxy-ingress/commit/281ababedc4df2ea9c314c7da4851d7e776f03ad) (Joao Morais)
 
 # v0.12.13
 
