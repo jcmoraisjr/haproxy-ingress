@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.12!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.13.8](#v0138)
+  * [Reference](#reference-r8)
+  * [Release notes](#release-notes-r8)
+  * [Fixes and improvements](#fixes-and-improvements-r8)
 * [v0.13.7](#v0137)
   * [Reference](#reference-r7)
   * [Release notes](#release-notes-r7)
@@ -98,6 +102,41 @@ Breaking backward compatibility from v0.12
 * Roman Gherta ([rgherta](https://github.com/rgherta))
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
+
+# v0.13.8
+
+## Reference (r8)
+
+* Release date: `2022-07-03`
+* Helm chart: `--version 0.13.8`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.8`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.8`
+* Embedded HAProxy version: `2.3.20`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.13.8`
+
+## Release notes (r8)
+
+This release fixes the following issues:
+
+- A possible typecast failure reported by monkeymorgan was fixed, which could happen on outages of the apiserver and some resources are removed from the api before the controller starts to watch the api again.
+- A lock was added before checking for expiring certificates when the embedded acme client is configured. This lock prevents the check routine to read the internal model while another thread is modifying it to apply a configuration change.
+- The external HAProxy now starts without a readiness endpoint configured. This avoids adding a just deployed controller as available before it has been properly configured. Starting liveness was raised in the helm chart, so that huge environments have time enough to start.
+
+Other notable changes include:
+
+- Metrics example now uses Prometheus Operator and the service monitor provided by the helm chart.
+
+Dependencies:
+
+- Embedded HAProxy version was updated from 2.3.19 to 2.3.20. This is the latest HAProxy change, 2.3 branch is now considered unmaintained.
+
+## Fixes and improvements (r8)
+
+* Change metrics example to use servicemonitor [#919](https://github.com/jcmoraisjr/haproxy-ingress/pull/919) (jcmoraisjr)
+* Check type assertion on all informers [#934](https://github.com/jcmoraisjr/haproxy-ingress/pull/934) (jcmoraisjr)
+* Add lock before call acmeCheck() [#935](https://github.com/jcmoraisjr/haproxy-ingress/pull/935) (jcmoraisjr)
+* Remove readiness endpoint from starting config [#937](https://github.com/jcmoraisjr/haproxy-ingress/pull/937) (jcmoraisjr)
+* update embedded haproxy from 2.3.19 to 2.3.20 [d435c7c](https://github.com/jcmoraisjr/haproxy-ingress/commit/d435c7c0ef0fed034cfea93b0e13bbef6dcfd7cb) (Joao Morais)
 
 # v0.13.7
 

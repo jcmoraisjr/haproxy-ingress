@@ -117,8 +117,8 @@ Breaking backward compatibility from v0.11
 
 This release fixes the following issues:
 
-- A possible type cast failure reported by monkeymorgan was fixed, which could happen on outages of the apiserver and some resources are removed from the api before the controller starts to watch the api again.
-- The external HAProxy now starts without a readiness endpoing configured. This avoids to add a just deployed controller as available before it has beed properly configured. Starting liveness was raised in the helm chart, so that huge environments have time enough to start.
+- A possible typecast failure reported by monkeymorgan was fixed, which could happen on outages of the apiserver and some resources are removed from the api before the controller starts to watch the api again.
+- The external HAProxy now starts without a readiness endpoint configured. This avoids adding a just deployed controller as available before it has been properly configured. Starting liveness was raised in the helm chart, so that huge environments have time enough to start.
 
 Dependencies:
 
