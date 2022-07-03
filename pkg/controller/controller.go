@@ -198,7 +198,7 @@ func (hc *HAProxyController) startServices() {
 		}
 		go hc.acmeQueue.Run()
 		go wait.JitterUntil(func() {
-			_, _ = hc.instance.AcmeCheck("periodic check")
+			_, _ = hc.acmeCheck("periodic check")
 		}, hc.cfg.AcmeCheckPeriod, 0, false, hc.stopCh)
 	}
 	hc.controller.StartAsync()
@@ -240,13 +240,13 @@ func (hc *HAProxyController) createFakeCAFile() (crtFile convtypes.CrtFile) {
 
 // AcmeCheck ...
 func (hc *HAProxyController) AcmeCheck() (int, error) {
-	return hc.instance.AcmeCheck("external call")
+	return hc.acmeCheck("external call")
 }
 
 // OnStartedLeading ...
 // implements LeaderSubscriber
 func (hc *HAProxyController) OnStartedLeading(ctx context.Context) {
-	_, _ = hc.instance.AcmeCheck("started leading")
+	_, _ = hc.acmeCheck("started leading")
 }
 
 // OnStoppedLeading ...
@@ -345,6 +345,12 @@ func (hc *HAProxyController) syncIngress(item interface{}) {
 	//
 	hc.instance.Update(timer)
 	hc.logger.Info("finish haproxy update id=%d: %s", hc.updateCount, timer.AsString("total"))
+}
+
+func (hc *HAProxyController) acmeCheck(source string) (int, error) {
+	hc.writeModelMutex.Lock()
+	defer hc.writeModelMutex.Unlock()
+	return hc.instance.AcmeCheck(source)
 }
 
 func (hc *HAProxyController) reloadHAProxy(item interface{}) {
