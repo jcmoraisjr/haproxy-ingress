@@ -3,6 +3,11 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.13!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.14.0-beta.1](#v0140-beta1)
+  * [Reference](#reference-b1)
+  * [Release notes](#release-notes-b1)
+  * [Improvements](#improvements-b1)
+  * [Fixes](#fixes-b1)
 * [v0.14.0-alpha.2](#v0140-alpha2)
   * [Reference](#reference-a2)
   * [Release notes](#release-notes-a2)
@@ -38,6 +43,7 @@ Breaking backward compatibility from v0.13:
 * Andrew Rodland ([arodland](https://github.com/arodland))
 * ironashram ([ironashram](https://github.com/ironashram))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
+* Josh Soref ([jsoref](https://github.com/jsoref))
 * Maël Valais ([maelvls](https://github.com/maelvls))
 * Manuel Rüger ([mrueg](https://github.com/mrueg))
 * Marvin Rösch ([PaleoCrafter](https://github.com/PaleoCrafter))
@@ -48,6 +54,59 @@ Breaking backward compatibility from v0.13:
 * Roman Gherta ([rgherta](https://github.com/rgherta))
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
+* wolf-cosmose ([wolf-cosmose](https://github.com/wolf-cosmose))
+
+# v0.14.0-beta.1
+
+## Reference (b1)
+
+* Release date: `2022-07-03`
+* Helm chart: `--version 0.14.0-beta.1 --devel`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.14.0-beta.1`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.14.0-beta.1`
+* Embedded HAProxy version: `2.4.17`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.14.0-beta.1`
+
+## Release notes (b1)
+
+This is the first beta release of the v0.14 version, which fixes some issues from the previous tag:
+
+- A possible typecast failure reported by monkeymorgan was fixed, which could happen on outages of the apiserver and some resources are removed from the api before the controller starts to watch the api again.
+- A lock was added before checking for expiring certificates when the embedded acme client is configured. This lock prevents the check routine to read the internal model while another thread is modifying it to apply a configuration change.
+- The external HAProxy now starts without a readiness endpoint configured. This avoids adding a just deployed controller as available before it has been properly configured. Starting liveness was raised in the helm chart, so that huge environments have time enough to start.
+
+Other visible improvements include:
+
+- Josh Soref fixed a lot of typos in the documentation and comments.
+- wolf-cosmose implemented a regex based Cors Allow Origin option.
+- Metrics example now uses Prometheus Operator and the service monitor provided by the helm chart.
+- Some internal frontend names were changed to allow consistent metrics despite the ssl-passthrough configuration, see the [upgrade notes](#upgrade-notes).
+
+Dependencies:
+
+- Embedded HAProxy version was updated from 2.4.15 to 2.4.17.
+- Golang updated from 1.17.8 to 1.17.11.
+- Client-go updated from v0.23.5 to v0.23.8.
+
+## Improvements (b1)
+
+New features and improvements since `v0.14.0-alpha.2`:
+
+* Change metrics example to use servicemonitor [#919](https://github.com/jcmoraisjr/haproxy-ingress/pull/919) (jcmoraisjr)
+* Add suffix to name of local frontend proxies [#922](https://github.com/jcmoraisjr/haproxy-ingress/pull/922) (jcmoraisjr)
+* Spelling [#928](https://github.com/jcmoraisjr/haproxy-ingress/pull/928) (jsoref)
+* Add cors-allow-origin-regex annotation [#927](https://github.com/jcmoraisjr/haproxy-ingress/pull/927) (wolf-cosmose) - [doc](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#cors)
+  * Configuration keys:
+    * `cors-allow-origin-regex`
+* update embedded haproxy from 2.4.15 to 2.4.17 [1958457](https://github.com/jcmoraisjr/haproxy-ingress/commit/1958457420b808dc154ee690d5e8f8cb9c6c212b) (Joao Morais)
+* update golang from 1.17.8 to 1.17.11 [801a425](https://github.com/jcmoraisjr/haproxy-ingress/commit/801a425576a3be25e98429fe19ea04f7562123f1) (Joao Morais)
+* update client-go from v0.23.5 to v0.23.8 [200f885](https://github.com/jcmoraisjr/haproxy-ingress/commit/200f885cf83b88d3c4ae27c95530a7326786f981) (Joao Morais)
+
+## Fixes (b1)
+
+* Check type assertion on all informers [#934](https://github.com/jcmoraisjr/haproxy-ingress/pull/934) (jcmoraisjr)
+* Add lock before call acmeCheck() [#935](https://github.com/jcmoraisjr/haproxy-ingress/pull/935) (jcmoraisjr)
+* Remove readiness endpoint from starting config [#937](https://github.com/jcmoraisjr/haproxy-ingress/pull/937) (jcmoraisjr)
 
 # v0.14.0-alpha.2
 
