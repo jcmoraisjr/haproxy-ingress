@@ -387,7 +387,7 @@ func (h *hdlr) notify(event string, o client.Object, q workqueue.RateLimitingInt
 	if h.full {
 		h.w.ch.NeedFullSync = true
 	}
-	q.AddAfter(reconcile.Request{}, h.w.cfg.WaitBeforeUpdate)
+	q.AddRateLimited(reconcile.Request{})
 	if h.w.run {
 		h.w.log.Info("notify", "event", event, "kind", reflect.TypeOf(o), "namespace", o.GetNamespace(), "name", o.GetName())
 	}
