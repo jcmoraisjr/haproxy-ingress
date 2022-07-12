@@ -28,14 +28,14 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
-var _ svcStatusUpdateFnc = (&svcStatusUpdater{}).Update
+var _ svcStatusUpdateFnc = (&svcStatusUpdater{}).update
 
 type svcStatusUpdateFnc func(client.Object)
 
 func initSvcStatusUpdater(ctx context.Context, client client.Client) *svcStatusUpdater {
 	s := &svcStatusUpdater{}
 	s.client = client
-	s.queue = utils.NewFailureRateLimitingQueue(250*time.Millisecond, 2*time.Minute, s.Notify)
+	s.queue = utils.NewFailureRateLimitingQueue(250*time.Millisecond, 2*time.Minute, s.notify)
 	s.log = logr.FromContextOrDiscard(ctx).WithName("status")
 	return s
 }
@@ -48,33 +48,40 @@ type svcStatusUpdater struct {
 	queue    utils.Queue
 }
 
-func (s *svcStatusUpdater) Update(obj client.Object) {
+func (s *svcStatusUpdater) update(obj client.Object) {
 	if s.isleader {
 		s.queue.Add(obj)
 	}
 }
 
-func (s *svcStatusUpdater) Notify(item interface{}) error {
-	new := item.(client.Object)
-	ns := new.GetNamespace()
-	name := new.GetName()
-	typ := reflect.TypeOf(new)
-	newVal := reflect.ValueOf(new)
-	curVal := reflect.New(typ)
-	cur := reflect.Indirect(curVal).Interface().(client.Object)
-	err := s.client.Get(s.ctx, types.NamespacedName{Namespace: ns, Name: name}, cur)
-	if err != nil {
-		s.log.Error(err, "cannot read status", "kind", typ, "namespace", ns, "name", name)
-		return err
+func (s *svcStatusUpdater) notify(item interface{}) error {
+	obj := item.(client.Object)
+	namespace := obj.GetNamespace()
+	name := obj.GetName()
+	log := s.log.WithValues("kind", reflect.TypeOf(obj), "namespace", namespace, "name", name)
+	if err := s.client.Status().Update(s.ctx, obj); err != nil {
+		// usually `obj` is up to date, but in case of a concurrent
+		// update, we'll refresh the object into a new instance and
+		// copy the updated status to it.
+		typ := reflect.TypeOf(obj)
+		if typ.Kind() == reflect.Pointer {
+			typ = typ.Elem()
+		}
+		new := reflect.New(typ).Interface().(client.Object)
+		if err := s.client.Get(s.ctx, types.NamespacedName{Namespace: namespace, Name: name}, new); err != nil {
+			log.Error(err, "cannot read status")
+			return err
+		}
+		// a reflection trick to copy the updated status from the outdated object to the new updated one
+		reflect.ValueOf(new).Elem().FieldByName("Status").Set(
+			reflect.ValueOf(obj).Elem().FieldByName("Status"))
+		if err := s.client.Status().Update(s.ctx, new); err != nil {
+			log.Error(err, "cannot update status")
+			return err
+		}
 	}
-	if reflect.DeepEqual(curVal.Interface(), newVal.Interface()) {
-		return nil
-	}
-	err = s.client.Status().Update(s.ctx, new)
-	if err != nil {
-		s.log.Error(err, "cannot update status", "kind", typ, "namespace", ns, "name", name)
-	}
-	return err
+	log.V(1).Info("status updated")
+	return nil
 }
 
 func (s *svcStatusUpdater) Start(ctx context.Context) error {
@@ -82,6 +89,11 @@ func (s *svcStatusUpdater) Start(ctx context.Context) error {
 	s.isleader = true
 	s.queue.RunWithContext(ctx)
 	s.isleader = false
-	s.ctx = nil
+	// s.ctx wasn't cleaned up here so lazy notifications
+	// doesn't crashloop due to nil ctx.
 	return nil
+}
+
+func (s *svcStatusUpdater) CanShutdown() bool {
+	return s.queue.Len() == 0
 }

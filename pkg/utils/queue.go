@@ -32,6 +32,7 @@ type Queue interface {
 	Notify()
 	Run()
 	RunWithContext(context.Context)
+	Len() int
 	ShuttingDown() bool
 	ShutDown()
 }
@@ -188,6 +189,12 @@ func (q *queue) forgotten(item interface{}) bool {
 		return true
 	}
 	return false
+}
+
+func (q *queue) Len() int {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
+	return q.workqueue.Len()
 }
 
 func (q *queue) Clear() {

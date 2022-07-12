@@ -56,6 +56,7 @@ type Services struct {
 	svcleader    *svcLeader
 	svchealthz   *svcHealthz
 	svcstatus    *svcStatusUpdater
+	svcstatusing *svcStatusIng
 	updateCount  int
 }
 
@@ -100,7 +101,8 @@ func (s *Services) setup(ctx context.Context) error {
 	svcleader := initSvcLeader(ctx)
 	svchealthz := initSvcHealthz(ctx, cfg, metrics, s.acmeExternalCallCheck)
 	svcstatus := initSvcStatusUpdater(ctx, s.Client)
-	cache := createCacheFacade(ctx, s.Client, cfg, tracker, sslCerts, dynConfig, svcstatus.Update)
+	cache := createCacheFacade(ctx, s.Client, cfg, tracker, sslCerts, dynConfig, svcstatus.update)
+	svcstatusing := initSvcStatusIng(ctx, cfg, s.Client, cache, svcstatus.update)
 	var acmeClient *svcAcmeClient
 	var acmeServer *svcAcmeServer
 	var acmeSigner acme.Signer
@@ -172,6 +174,7 @@ func (s *Services) setup(ctx context.Context) error {
 	s.svcleader = svcleader
 	s.svchealthz = svchealthz
 	s.svcstatus = svcstatus
+	s.svcstatusing = svcstatusing
 	return nil
 }
 
@@ -180,7 +183,10 @@ func (s *Services) withManager(mgr ctrl.Manager) error {
 		if err := mgr.Add(s.svcleader); err != nil {
 			return err
 		}
-		if err := mgr.Add(s.svcstatus); err != nil {
+		if err := mgr.Add(ctrlutils.DelayedShutdown(s.svcstatus)); err != nil {
+			return err
+		}
+		if err := mgr.Add(s.svcstatusing); err != nil {
 			return err
 		}
 	}
