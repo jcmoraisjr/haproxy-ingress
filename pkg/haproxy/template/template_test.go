@@ -18,7 +18,6 @@ package template
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -281,7 +280,7 @@ func (c *testConfig) newTemplate(content string, rotate int) {
 	templatePath := c.tempdir + string(os.PathSeparator) + templateFileName
 	outputFileName := fmt.Sprintf("h%d.cfg", cnt)
 	outputPath := c.tempdirOutput + string(os.PathSeparator) + outputFileName
-	if err := ioutil.WriteFile(templatePath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(templatePath, []byte(content), 0644); err != nil {
 		c.t.Errorf("error writing template file: %v", err)
 	}
 	if err := c.templateConfig.NewTemplate(templateFileName, templatePath, outputPath, rotate, 1024); err != nil {
@@ -294,17 +293,17 @@ func (c *testConfig) outputs(index int) []string {
 	files, _ := filepath.Glob(file + ".*")
 	contents := []string{}
 	for _, f := range files {
-		cnt, _ := ioutil.ReadFile(f)
+		cnt, _ := os.ReadFile(f)
 		contents = append(contents, string(cnt))
 	}
-	cnt, _ := ioutil.ReadFile(file)
+	cnt, _ := os.ReadFile(file)
 	contents = append(contents, string(cnt))
 	return contents
 }
 
 func setup(t *testing.T) *testConfig {
 	logger := &helper_test.LoggerMock{T: t}
-	tempdir, err := ioutil.TempDir("", "")
+	tempdir, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Errorf("error creating tempdir: %v", err)
 	}

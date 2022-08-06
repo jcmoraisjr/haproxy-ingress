@@ -18,7 +18,6 @@ package haproxy
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -4763,7 +4762,7 @@ func setup(t *testing.T) *testConfig {
 func setupOptions(options testOptions) *testConfig {
 	t := options.t
 	logger := &helper_test.LoggerMock{T: t}
-	tempdir, err := ioutil.TempDir("", "")
+	tempdir, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Errorf("error creating tempdir: %v", err)
 	}
@@ -5101,7 +5100,7 @@ func (c *testConfig) readConfig(fileName string) string {
 }
 
 func (c *testConfig) readRawConfig(fileName string) string {
-	config, err := ioutil.ReadFile(fileName)
+	config, err := os.ReadFile(fileName)
 	if err != nil {
 		c.t.Errorf("error reading config file: %v", err)
 		return ""

@@ -21,7 +21,6 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -99,13 +98,13 @@ func (c *clientResolver) SetToken(domain string, uri, token string) error {
 		if err := os.MkdirAll(wwwpublic+"/.well-known/acme-challenge", 0755); err != nil {
 			return err
 		}
-		return ioutil.WriteFile(file, []byte(token), 0644)
+		return os.WriteFile(file, []byte(token), 0644)
 	}
 	if token == "" {
 		return nil
 	}
 	out := fmt.Sprintf("%s%s = %s", domain, uri, token)
-	ioutil.WriteFile("/tmp/out", []byte(out), 0644)
+	os.WriteFile("/tmp/out", []byte(out), 0644)
 	// 20s to copy the challenge from /tmp/out and update the server
 	time.Sleep(20 * time.Second)
 	return nil

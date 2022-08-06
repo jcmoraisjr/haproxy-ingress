@@ -327,12 +327,11 @@ func (c *converter) findBackend(namespace string, backend *networking.IngressBac
 
 // normalizeHostname adjusts the hostname according to the following rules:
 //
-//  * empty hostnames are changed to `hatypes.DefaultHost` which has a
-//    special meaning in the hosts entity
-//  * hostnames for tcp services receive the port number to distinguish
-//    two tcp services without hostname. hostnames are preserved, making it
-//    a bit easier to introduce sni based routing.
-//
+//   - empty hostnames are changed to `hatypes.DefaultHost` which has a
+//     special meaning in the hosts entity
+//   - hostnames for tcp services receive the port number to distinguish
+//     two tcp services without hostname. hostnames are preserved, making it
+//     a bit easier to introduce sni based routing.
 func normalizeHostname(hostname string, port int) string {
 	if hostname == "" {
 		hostname = hatypes.DefaultHost

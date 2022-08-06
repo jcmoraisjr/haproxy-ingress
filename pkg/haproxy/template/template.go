@@ -19,7 +19,6 @@ package template
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	gotemplate "text/template"
 )
@@ -114,7 +113,7 @@ func (t *template) writeToDisk(output string) error {
 			t.configFiles = t.configFiles[1:]
 		}
 	}
-	if err := ioutil.WriteFile(output, t.rawConfig.Bytes(), 0644); err != nil {
+	if err := os.WriteFile(output, t.rawConfig.Bytes(), 0644); err != nil {
 		return fmt.Errorf("cannot write %s: %v", output, err)
 	}
 	return nil
