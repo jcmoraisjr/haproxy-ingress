@@ -29,7 +29,7 @@ RUN cd /src\
     -ldflags "-s -w -X ${VERSION_PKG}.RELEASE=${GIT_TAG} -X ${VERSION_PKG}.COMMIT=${GIT_COMMIT} -X ${VERSION_PKG}.REPO=${GIT_REPO}"\
     -o haproxy-ingress pkg/main.go
 
-FROM haproxy:2.3.20-alpine
+FROM haproxy:2.3.21-alpine
 
 RUN apk upgrade --no-cache && apk --no-cache add socat openssl lua5.3 lua-json4 dumb-init
 
