@@ -13,7 +13,7 @@
 # limitations under the License.
 
 FROM haproxy:2.3.20-alpine
-RUN apk --no-cache add socat openssl lua5.3 lua-json4 dumb-init
+RUN apk upgrade --no-cache && apk --no-cache add socat openssl lua5.3 lua-json4 dumb-init
 
 COPY . /
 
