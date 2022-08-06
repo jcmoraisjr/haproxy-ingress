@@ -18,7 +18,7 @@ package haproxy
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"reflect"
 	"sort"
 	"strconv"
@@ -379,7 +379,7 @@ func (d *dynUpdater) alignSlots() {
 	}
 }
 
-var readFile = ioutil.ReadFile
+var readFile = os.ReadFile
 
 func (d *dynUpdater) execUpdateCert(hostname, filename string) bool {
 	// TODO read from the internal storage

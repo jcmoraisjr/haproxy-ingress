@@ -24,7 +24,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"reflect"
@@ -559,7 +558,7 @@ func (c *k8scache) GetDHSecretPath(defaultNamespace, secretName string) (file co
 func (c *k8scache) GetPasswdSecretContent(defaultNamespace, secretName string, track []convtypes.TrackingRef) ([]byte, error) {
 	proto, content := getContentProtocol(secretName)
 	if proto == "file" {
-		return ioutil.ReadFile(content)
+		return os.ReadFile(content)
 	} else if proto != "secret" {
 		return nil, fmt.Errorf("unsupported protocol: %s", proto)
 	}

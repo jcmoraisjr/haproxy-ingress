@@ -291,30 +291,29 @@ func waitHAProxy(sock HAProxySocket, err error) bool {
 
 // buildProcTable parses `show proc` output and creates a corresponding ProcTable
 //
-//
 // layout 2.2 up to 2.4
-//                   1               3               4               6               8               9
-//   0.......|.......6.......|.......2.......|.......8.......|.......4.......|.......0.......|.......6
-//   #<PID>          <type>          <relative PID>  <reloads>       <uptime>        <version>
-//   1               master          0               2               0d00h01m28s     2.2.3-0e58a34
-//   # workers
-//   3               worker          1               0               0d00h00m00s     2.2.3-0e58a34
-//   # old workers
-//   2               worker          [was: 1]        1               0d00h00m28s     2.2.3-0e58a34
-//   # programs
 //
+//	                1               3               4               6               8               9
+//	0.......|.......6.......|.......2.......|.......8.......|.......4.......|.......0.......|.......6
+//	#<PID>          <type>          <relative PID>  <reloads>       <uptime>        <version>
+//	1               master          0               2               0d00h01m28s     2.2.3-0e58a34
+//	# workers
+//	3               worker          1               0               0d00h00m00s     2.2.3-0e58a34
+//	# old workers
+//	2               worker          [was: 1]        1               0d00h00m28s     2.2.3-0e58a34
+//	# programs
 //
 // layout 2.5+
-//                   1               3               4               6               8
-//   0.......|.......6.......|.......2.......|.......8.......|.......4.......|.......0
-//   #<PID>          <type>          <reloads>       <uptime>        <version>
-//   1               master          4200 [failed: 42] 0d00h01m28s     2.5.3-abf078b
-//   # workers
-//   3               worker          0               0d00h00m00s     2.5.3-abf078b
-//   # old workers
-//   2               worker          1               0d00h00m28s     2.5.3-abf078b
-//   # programs
 //
+//	                1               3               4               6               8
+//	0.......|.......6.......|.......2.......|.......8.......|.......4.......|.......0
+//	#<PID>          <type>          <reloads>       <uptime>        <version>
+//	1               master          4200 [failed: 42] 0d00h01m28s     2.5.3-abf078b
+//	# workers
+//	3               worker          0               0d00h00m00s     2.5.3-abf078b
+//	# old workers
+//	2               worker          1               0d00h00m28s     2.5.3-abf078b
+//	# programs
 func buildProcTable(procOutput string) *ProcTable {
 	if strings.Index(procOutput, "relative PID") > 0 {
 		// TODO remove after v0.14

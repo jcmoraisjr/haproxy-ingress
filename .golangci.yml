@@ -1,5 +1,8 @@
 run:
   deadline: 5m
+  skip-dirs:
+    - pkg/acme/x
+    - pkg/common
 
 linters:
   disable-all: true
