@@ -210,7 +210,7 @@ func (c *config) WriteFrontendMaps() error {
 			if backendID != "" {
 				if host.SSLPassthrough() {
 					// no ssl offload, cannot inspect incoming path, so tracking root only
-					if path.Path == "/" {
+					if path.Path() == "/" {
 						fmaps.SSLPassthroughMap.AddHostnameMapping(host.Hostname, backendID)
 						// the backend of the root path is the ssl-passthrough, which speaks TLS,
 						// so we cannot use it in the HTTP map. Change to the configured HTTP port

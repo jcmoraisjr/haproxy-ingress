@@ -129,10 +129,10 @@ func marshalHosts(hafronts ...*hatypes.Host) []hostMock {
 		paths := []pathMock{}
 		for _, p := range f.Paths {
 			var match string
-			if p.Match != hatypes.MatchBegin {
-				match = string(p.Match)
+			if p.Match() != hatypes.MatchBegin {
+				match = string(p.Match())
 			}
-			paths = append(paths, pathMock{Path: p.Path, Match: match, BackendID: p.Backend.ID})
+			paths = append(paths, pathMock{Path: p.Path(), Match: match, BackendID: p.Backend.ID})
 		}
 		hosts = append(hosts, hostMock{
 			Hostname:     f.Hostname,

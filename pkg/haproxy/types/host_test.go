@@ -245,7 +245,7 @@ func TestRemovePath(t *testing.T) {
 		}
 		var paths []string
 		for _, path := range h.Paths {
-			paths = append(paths, path.Path)
+			paths = append(paths, path.Path())
 		}
 		var expected []string
 		if test.expPaths != "" {

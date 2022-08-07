@@ -199,23 +199,11 @@ func (h *Hosts) HasVarNamespace() bool {
 // FindPath ...
 func (h *Host) FindPath(path string, match ...MatchType) (paths []*HostPath) {
 	for _, p := range h.Paths {
-		if p.Path == path && hasMatch(p, match) {
+		if p.Link.path == path && p.hasMatch(match) {
 			paths = append(paths, p)
 		}
 	}
 	return paths
-}
-
-func hasMatch(path *HostPath, match []MatchType) bool {
-	if len(match) == 0 {
-		return true
-	}
-	for _, m := range match {
-		if path.Match == m {
-			return true
-		}
-	}
-	return false
 }
 
 // AddPath ...
@@ -253,9 +241,7 @@ func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo s
 		hback = HostBackend{ID: "_error404"}
 	}
 	h.Paths = append(h.Paths, &HostPath{
-		Path:    path,
 		Link:    link,
-		Match:   match,
 		Backend: hback,
 		RedirTo: redirTo,
 		order:   len(h.Paths),
@@ -264,10 +250,10 @@ func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo s
 	sort.Slice(h.Paths, func(i, j int) bool {
 		p1 := h.Paths[i]
 		p2 := h.Paths[j]
-		if p1.Path == p2.Path {
+		if p1.Link.path == p2.Link.path {
 			return p1.order < p2.order
 		}
-		return p1.Path > p2.Path
+		return p1.Link.path > p2.Link.path
 	})
 }
 
@@ -317,6 +303,28 @@ func (h *Host) SetSSLPassthrough(value bool) {
 		h.hosts.sslPassthroughCount--
 	}
 	h.sslPassthrough = value
+}
+
+// Path ...
+func (h *HostPath) Path() string {
+	return h.Link.path
+}
+
+// Match ...
+func (h *HostPath) Match() MatchType {
+	return h.Link.match
+}
+
+func (h *HostPath) hasMatch(match []MatchType) bool {
+	if len(match) == 0 {
+		return true
+	}
+	for _, m := range match {
+		if h.Link.match == m {
+			return true
+		}
+	}
+	return false
 }
 
 // Hostname ...

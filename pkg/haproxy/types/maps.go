@@ -66,15 +66,15 @@ func (hm *HostsMap) addHostnameMappingMatch(hostname, target string, match Match
 // AddHostnamePathMapping ...
 func (hm *HostsMap) AddHostnamePathMapping(hostname string, hostPath *HostPath, target string) {
 	hostname, hasWildcard := convertWildcardToRegex(hostname)
-	path := hostPath.Path
-	match := hostPath.Match
+	path := hostPath.Path()
+	match := hostPath.Match()
 	// TODO paths of a wildcard hostname will always have less precedence
 	// despite the match type because the whole hostname+path will fill a
 	// MatchRegex map, which has the lesser precedence in the template.
 	if hasWildcard {
 		path = convertPathToRegex(hostPath)
 		match = MatchRegex
-	} else if hostPath.Match == MatchRegex {
+	} else if match == MatchRegex {
 		hostname = "^" + regexp.QuoteMeta(hostname) + "$"
 	}
 	hm.addTarget(hostname, path, hostPath.order, target, match)
@@ -106,19 +106,20 @@ func convertWildcardToRegex(hostname string) (h string, hasWildcard bool) {
 // validation - paths need to start with a slash. There is no
 // implicit `$`, so regex behaves pretty much like `begin`.
 func convertPathToRegex(hostPath *HostPath) string {
-	switch hostPath.Match {
+	path := hostPath.Path()
+	switch hostPath.Match() {
 	case MatchBegin:
-		return regexp.QuoteMeta(hostPath.Path)
+		return regexp.QuoteMeta(path)
 	case MatchExact:
-		return regexp.QuoteMeta(hostPath.Path) + "$"
+		return regexp.QuoteMeta(path) + "$"
 	case MatchPrefix:
-		path := regexp.QuoteMeta(hostPath.Path)
+		path = regexp.QuoteMeta(path)
 		if strings.HasSuffix(path, "/") {
 			return path
 		}
 		return path + "(/.*)?"
 	case MatchRegex:
-		return hostPath.Path
+		return path
 	}
 	panic("unsupported match type")
 }

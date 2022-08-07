@@ -182,8 +182,10 @@ func TestAddHostnamePathMapping(t *testing.T) {
 	for i, test := range testCases {
 		hm := CreateMaps(matchOrder).AddMap(test.filename)
 		hostPath := &HostPath{
-			Path:  test.path,
-			Match: test.match,
+			Link: PathLink{
+				path:  test.path,
+				match: test.match,
+			},
 		}
 		hm.AddHostnamePathMapping(test.hostname, hostPath, "backend")
 		entries := hm.rawfiles[test.expmatch].entries
@@ -285,8 +287,10 @@ func TestAddAliasPathMapping(t *testing.T) {
 	for i, test := range testCases {
 		hm := CreateMaps(matchOrder).AddMap(test.filename)
 		hostPath := &HostPath{
-			Path:  test.path,
-			Match: test.match,
+			Link: PathLink{
+				path:  test.path,
+				match: test.match,
+			},
 		}
 		alias := HostAliasConfig{
 			AliasName:  test.aliasName,
@@ -570,7 +574,7 @@ hosts__regex.map first:false,lower:false,method:reg
 			if item.path == "" {
 				hm.AddHostnameMapping(item.hostname, item.target)
 			} else {
-				hm.AddHostnamePathMapping(item.hostname, &HostPath{Path: item.path, Match: item.match}, item.target)
+				hm.AddHostnamePathMapping(item.hostname, &HostPath{Link: PathLink{path: item.path, match: item.match}}, item.target)
 			}
 		}
 		var output string
