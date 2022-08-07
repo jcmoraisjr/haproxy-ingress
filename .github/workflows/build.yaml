@@ -13,7 +13,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v1
       with:
-        go-version: 1.15.15
+        go-version: 1.16.15
     - uses: actions/checkout@v2
     - name: Run build
       run: go build -o haproxy-ingress pkg/main.go
