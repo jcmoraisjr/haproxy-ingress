@@ -16,7 +16,7 @@ FROM haproxy:2.4.17-alpine
 
 USER root
 
-RUN apk --no-cache add socat openssl lua5.3 lua-json4 dumb-init
+RUN apk upgrade --no-cache && apk --no-cache add socat openssl lua5.3 lua-json4 dumb-init
 
 COPY . /
 
