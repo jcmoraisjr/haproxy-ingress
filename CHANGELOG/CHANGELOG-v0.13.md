@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.12!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.13.9](#v0139)
+  * [Reference](#reference-r9)
+  * [Release notes](#release-notes-r9)
+  * [Fixes and improvements](#fixes-and-improvements-r9)
 * [v0.13.8](#v0138)
   * [Reference](#reference-r8)
   * [Release notes](#release-notes-r8)
@@ -93,6 +97,7 @@ Breaking backward compatibility from v0.12
 * Bart Versluijs ([bartversluijs](https://github.com/bartversluijs))
 * ironashram ([ironashram](https://github.com/ironashram))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
+* Karan Chaudhary ([lafolle](https://github.com/lafolle))
 * Maël Valais ([maelvls](https://github.com/maelvls))
 * Mateusz Kubaczyk ([mkubaczyk](https://github.com/mkubaczyk))
 * Michał Zielonka ([michal800106](https://github.com/michal800106))
@@ -102,6 +107,35 @@ Breaking backward compatibility from v0.12
 * Roman Gherta ([rgherta](https://github.com/rgherta))
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
+
+# v0.13.9
+
+## Reference (r9)
+
+* Release date: `2022-08-07`
+* Helm chart: `--version 0.13.9`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.9`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.9`
+* Embedded HAProxy version: `2.3.21`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.13.9`
+
+## Release notes (r9)
+
+This release updates dependencies with known vulnerabilities in the operating system packages, and also in the code dependencies.
+
+Dependencies:
+
+- Embedded HAProxy version was updated from 2.3.20 to 2.3.21. Although already unmaintained, the HAProxy team tagged a new version, and now it should really be the last one.
+- Golang was updated from 1.15 branch to 1.16, in order to fix some known vulnerabilities.
+- Several OS packages and golang dependencies were updated, including but not limited to pcre and libssl.
+
+## Fixes and improvements (r9)
+
+* Add apk upgrade on container building [#941](https://github.com/jcmoraisjr/haproxy-ingress/pull/941) (jcmoraisjr)
+* update dependencies [6e9c709](https://github.com/jcmoraisjr/haproxy-ingress/commit/6e9c70949f248cd9e44b3c20754e5a01f36317cc) (Joao Morais)
+* update embedded haproxy from 2.3.20 to 2.3.21 [617e123](https://github.com/jcmoraisjr/haproxy-ingress/commit/617e1239340769423ec366bbef9bd4fc1232871a) (Joao Morais)
+* Documents the expected format for --configmap key [#940](https://github.com/jcmoraisjr/haproxy-ingress/pull/940) (lafolle)
+* update golang from 1.15.15 to 1.16.15 [285ffb9](https://github.com/jcmoraisjr/haproxy-ingress/commit/285ffb9c85f0e3ca1c28dc6450c2c3e43a0de402) (Joao Morais)
 
 # v0.13.8
 
