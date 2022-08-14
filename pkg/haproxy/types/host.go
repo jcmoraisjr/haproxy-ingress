@@ -31,8 +31,8 @@ func CreateHosts() *Hosts {
 	}
 }
 
-// CreatePathLink ...
-func CreatePathLink(hostname, path string, match MatchType) PathLink {
+// CreateHostPathLink ...
+func CreateHostPathLink(hostname, path string, match MatchType) PathLink {
 	return PathLink{
 		hostname: hostname,
 		path:     path,
@@ -222,7 +222,7 @@ type hostResolver struct {
 }
 
 func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo string) {
-	link := CreatePathLink(h.Hostname, path, match)
+	link := CreateHostPathLink(h.Hostname, path, match)
 	var hback HostBackend
 	if backend != nil {
 		hback = HostBackend{

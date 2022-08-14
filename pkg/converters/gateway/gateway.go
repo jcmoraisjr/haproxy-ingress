@@ -381,7 +381,7 @@ func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha2.
 			h.AddPath(backend, path, haMatch)
 			c.handlePassthrough(path, h, backend, source)
 			hosts = append(hosts, h)
-			pathLinks = append(pathLinks, hatypes.CreatePathLink(hstr, path, haMatch))
+			pathLinks = append(pathLinks, hatypes.CreateHostPathLink(hstr, path, haMatch))
 		}
 		// TODO implement match.Headers
 		// TODO implement match.ExtensionRef

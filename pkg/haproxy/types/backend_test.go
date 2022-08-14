@@ -79,7 +79,7 @@ func TestAddBackendPath(t *testing.T) {
 	for i, test := range testCases {
 		b := &Backend{}
 		for _, p := range test.input {
-			b.AddBackendPath(CreatePathLink("d1.local", p, MatchBegin))
+			b.AddBackendPath(CreateHostPathLink("d1.local", p, MatchBegin))
 		}
 		if !reflect.DeepEqual(b.Paths, test.expected) {
 			t.Errorf("backend.Paths differs on %d - actual: %v - expected: %v", i, b.Paths, test.expected)

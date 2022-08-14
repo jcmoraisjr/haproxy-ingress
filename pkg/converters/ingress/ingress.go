@@ -185,7 +185,7 @@ func (c *converter) syncDefaultCrt() {
 
 func (c *converter) syncDefaultBackend() {
 	if c.options.DefaultBackend != "" {
-		pathLink := hatypes.CreatePathLink(hatypes.DefaultHost, "/", hatypes.MatchBegin)
+		pathLink := hatypes.CreateHostPathLink(hatypes.DefaultHost, "/", hatypes.MatchBegin)
 		if backend, err := c.addBackend(&c.defaultBackSource, pathLink, c.options.DefaultBackend, "", map[string]string{}); err == nil {
 			c.haproxy.Backends().DefaultBackend = backend
 			c.tracker.TrackNames(c.defaultBackSource.Type, c.defaultBackSource.FullName(), convtypes.ResourceHAHostname, hatypes.DefaultHost)
@@ -410,7 +410,7 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 				c.logger.Warn("skipping backend config of %v: %v", source, err)
 				continue
 			}
-			pathLink := hatypes.CreatePathLink(hostname, uri, match)
+			pathLink := hatypes.CreateHostPathLink(hostname, uri, match)
 			fullSvcName := ing.Namespace + "/" + svcName
 			backend, err := c.addBackendWithClass(source, pathLink, fullSvcName, svcPort, annBack, ingressClass)
 			if err != nil {
@@ -509,7 +509,7 @@ func (c *converter) syncIngressTCP(source *annotations.Source, ing *networking.I
 			return fmt.Errorf("service '%s' on %v: backend for port '%d' was already assigned", svcName, source, tcpServicePort)
 		}
 		fullSvcName := ing.Namespace + "/" + svcName
-		pathLink := hatypes.CreatePathLink(hostname, "/", hatypes.MatchExact)
+		pathLink := hatypes.CreateHostPathLink(hostname, "/", hatypes.MatchExact)
 		ingressClass := c.readIngressClass(source, ing.Spec.IngressClassName)
 		backend, err := c.addBackendWithClass(source, pathLink, fullSvcName, svcPort, annBack, ingressClass)
 		if err != nil {
@@ -674,7 +674,7 @@ func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcNam
 			return fmt.Errorf("path %s was already defined on default host", uri)
 		}
 	}
-	pathLink := hatypes.CreatePathLink(hostname, uri, match)
+	pathLink := hatypes.CreateHostPathLink(hostname, uri, match)
 	backend, err := c.addBackend(source, pathLink, fullSvcName, svcPort, annBack)
 	if err != nil {
 		c.tracker.TrackNames(source.Type, source.FullName(), convtypes.ResourceService, fullSvcName)
@@ -697,7 +697,7 @@ func (c *converter) addTCPService(source *annotations.Source, hostname string, p
 		mapper = c.mapBuilder.NewMapper()
 		c.tcpsvcAnnotations[tcpPort] = mapper
 	}
-	conflict := mapper.AddAnnotations(source, hatypes.CreatePathLink(hostname, "/", hatypes.MatchExact), ann)
+	conflict := mapper.AddAnnotations(source, hatypes.CreateHostPathLink(hostname, "/", hatypes.MatchExact), ann)
 	if len(conflict) > 0 {
 		c.logger.Warn("skipping tcp service annotation(s) from %v due to conflict: %v", source, conflict)
 	}
@@ -713,7 +713,7 @@ func (c *converter) addHost(hostname string, source *annotations.Source, ann map
 		mapper = c.mapBuilder.NewMapper()
 		c.hostAnnotations[host] = mapper
 	}
-	conflict := mapper.AddAnnotations(source, hatypes.CreatePathLink(hostname, "/", hatypes.MatchExact), ann)
+	conflict := mapper.AddAnnotations(source, hatypes.CreateHostPathLink(hostname, "/", hatypes.MatchExact), ann)
 	if len(conflict) > 0 {
 		c.logger.Warn("skipping host annotation(s) from %v due to conflict: %v", source, conflict)
 	}
