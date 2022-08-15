@@ -32,47 +32,47 @@ func TestAddBackendPath(t *testing.T) {
 		{
 			input: []string{"/"},
 			expected: []*BackendPath{
-				{ID: "path01", Link: PathLink{"d1.local", "/", MatchBegin}},
+				{ID: "path01", Link: CreateHostPathLink("d1.local", "/", MatchBegin)},
 			},
 		},
 		// 1
 		{
 			input: []string{"/app", "/app"},
 			expected: []*BackendPath{
-				{ID: "path01", Link: PathLink{"d1.local", "/app", MatchBegin}},
+				{ID: "path01", Link: CreateHostPathLink("d1.local", "/app", MatchBegin)},
 			},
 		},
 		// 2
 		{
 			input: []string{"/app", "/root"},
 			expected: []*BackendPath{
-				{ID: "path01", Link: PathLink{"d1.local", "/app", MatchBegin}},
-				{ID: "path02", Link: PathLink{"d1.local", "/root", MatchBegin}},
+				{ID: "path01", Link: CreateHostPathLink("d1.local", "/app", MatchBegin)},
+				{ID: "path02", Link: CreateHostPathLink("d1.local", "/root", MatchBegin)},
 			},
 		},
 		// 3
 		{
 			input: []string{"/app", "/root", "/root"},
 			expected: []*BackendPath{
-				{ID: "path01", Link: PathLink{"d1.local", "/app", MatchBegin}},
-				{ID: "path02", Link: PathLink{"d1.local", "/root", MatchBegin}},
+				{ID: "path01", Link: CreateHostPathLink("d1.local", "/app", MatchBegin)},
+				{ID: "path02", Link: CreateHostPathLink("d1.local", "/root", MatchBegin)},
 			},
 		},
 		// 4
 		{
 			input: []string{"/app", "/root", "/app"},
 			expected: []*BackendPath{
-				{ID: "path01", Link: PathLink{"d1.local", "/app", MatchBegin}},
-				{ID: "path02", Link: PathLink{"d1.local", "/root", MatchBegin}},
+				{ID: "path01", Link: CreateHostPathLink("d1.local", "/app", MatchBegin)},
+				{ID: "path02", Link: CreateHostPathLink("d1.local", "/root", MatchBegin)},
 			},
 		},
 		// 5
 		{
 			input: []string{"/", "/app", "/root"},
 			expected: []*BackendPath{
-				{ID: "path01", Link: PathLink{"d1.local", "/", MatchBegin}},
-				{ID: "path02", Link: PathLink{"d1.local", "/app", MatchBegin}},
-				{ID: "path03", Link: PathLink{"d1.local", "/root", MatchBegin}},
+				{ID: "path01", Link: CreateHostPathLink("d1.local", "/", MatchBegin)},
+				{ID: "path02", Link: CreateHostPathLink("d1.local", "/app", MatchBegin)},
+				{ID: "path03", Link: CreateHostPathLink("d1.local", "/root", MatchBegin)},
 			},
 		},
 	}

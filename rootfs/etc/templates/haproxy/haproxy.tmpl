@@ -440,7 +440,7 @@ backend {{ $backend.ID }}
     http-request set-var(txn.pathID) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
-        {{- if not $match.First }} if !{ var(txn.pathID) -m found }{{ end }}
+        {{- template "httpFilters" map $match "txn.pathID" 1 }}
 {{- end }}
 {{- $pathsHasHost := $backend.PathsMap.HasHost }}
 {{- range $match := $backend.PathsDefaultHostMap.MatchFiles }}
@@ -448,6 +448,7 @@ backend {{ $backend.ID }}
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- if or $pathsHasHost (not $match.First) }} if !{ var(txn.pathID) -m found }{{ end }}
+        {{- template "httpFilters" map $match "" 0 }}
 {{- end }}
 {{- end }}
 
@@ -458,7 +459,6 @@ backend {{ $backend.ID }}
 {{- range $pathIDs := $attrCfg.PathIDs $i }}
     some haproxy keyword {{ $attr }}
         {{- if $pathIDs }} if { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
-{{- end }}
 {{- end }}
 {{- end }}
    *
@@ -1183,7 +1183,7 @@ frontend {{ $proxy__front_http }}
     http-request set-var(txn.namespace) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
-        {{- if not $match.First }} if !{ var(txn.namespace) -m found }{{ end }}
+        {{- template "httpFilters" map $match "txn.namespace" 1 }}
 {{- end }}
     http-request set-var(txn.namespace) str(-)
         {{- "" }} if !{ var(txn.namespace) -m found }
@@ -1213,14 +1213,14 @@ frontend {{ $proxy__front_http }}
     http-request set-var(req.backend) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
-        {{- if not $match.First }} if !{ var(req.backend) -m found }{{ end }}
+        {{- template "httpFilters" map $match "req.backend" 1 }}
 {{- end }}
 {{- range $match := $fmaps.DefaultHostMap.MatchFiles }}
     http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- "" }} if !{ var(req.backend) -m found }
-        {{- if not $match.First }} !{ var(req.defaultbackend) -m found }{{ end }}
+        {{- template "httpFilters" map $match "req.defaultbackend" 0 }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -1288,15 +1288,15 @@ frontend {{ $frontend.Name }}
 {{- range $match := $fmaps.HTTPSHostMap.MatchFiles }}
     http-request set-var(req.hostbackend) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
-        {{- ""}},map_{{ $match.Method }}({{ $match.Filename }})
-        {{- if not $match.First }} if !{ var(req.hostbackend) -m found }{{ end }}
+        {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
+        {{- template "httpFilters" map $match "req.hostbackend" 1 }}
 {{- end }}
 {{- range $match := $fmaps.DefaultHostMap.MatchFiles }}
     http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- "" }} if !{ var(req.hostbackend) -m found }
-        {{- if not $match.First }} !{ var(req.defaultbackend) -m found }{{ end }}
+        {{- template "httpFilters" map $match "req.defaultbackend" 0 }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -1318,7 +1318,7 @@ frontend {{ $frontend.Name }}
     http-request set-var(txn.namespace) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
-        {{- if not $match.First }} if !{ var(txn.namespace) -m found }{{ end }}
+        {{- template "httpFilters" map $match "txn.namespace" 1 }}
 {{- end }}
     http-request set-var(txn.namespace) str(-)
         {{- "" }} if !{ var(txn.namespace) -m found }
@@ -1357,7 +1357,7 @@ frontend {{ $frontend.Name }}
     http-request set-var(req.snibackend) var(req.snibase)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
-        {{- if not $match.First }} if !{ var(req.snibackend) -m found }{{ end }}
+        {{- template "httpFilters" map $match "req.snibackend" 1 }}
 {{- end }}
 {{- range $match := $fmaps.HTTPSSNIMap.MatchFiles }}
     http-request set-var(req.snibackend) var(req.base)
@@ -1365,6 +1365,7 @@ frontend {{ $frontend.Name }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- "" }} if !{ var(req.snibackend) -m found } !tls-has-crt
         {{- if $fmaps.TLSNeedCrtList.HasHost }} !tls-host-need-crt{{ end }}
+        {{- template "httpFilters" map $match "" 0 }}
 {{- end }}
 {{- end }}
 
@@ -1456,6 +1457,8 @@ frontend {{ $frontend.Name }}
 {{- end }}
 {{- end }}
 
+{{- /*------------------------------------*/}}
+{{- /*------------------------------------*/}}
 {{- define "redirectTo" }}
 {{- $frontend := .p1 }}
 {{- $fmaps := .p2 }}
@@ -1464,11 +1467,28 @@ frontend {{ $frontend.Name }}
     http-request set-var(req.redirto) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
-        {{- if not $match.First }} if !{ var(req.redirto) -m found }{{ end }}
+        {{- template "httpFilters" map $match "req.redirto" 1 }}
 {{- end }}
     http-request redirect location %[var(req.redirto)]
         {{- "" }} code {{ $frontend.RedirectToCode }}
         {{- "" }} if { var(req.redirto) -m found }
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- /*------------------------------------*/}}
+{{- define "httpFilters" }}
+{{- $match := .p1 }}
+{{- $varbe := .p2 }}
+{{- $needIfStmt := .p3 }}
+{{- if $varbe }}
+{{- if $needIfStmt }}
+    {{- if or (not $match.First) $match.Headers }} if{{ end }}
+{{- end }}
+    {{- if not $match.First }} !{ var({{ $varbe }}) -m found }{{ end }}
+{{- end }}
+{{- if $match.Headers }}
+    {{- range $header := $match.Headers }} { hdr({{ $header.Name }}){{ if $header.Regex }} -m reg{{ end }} -- "{{ $header.Value }}" }{{ end }}
 {{- end }}
 {{- end }}
 

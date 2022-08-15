@@ -19,6 +19,7 @@ package types
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/kylelemons/godebug/diff"
@@ -315,6 +316,7 @@ func TestOverlap(t *testing.T) {
 		hostname string
 		path     string
 		match    MatchType
+		headers  *HTTPHeaderMatch
 		target   string
 	}
 	testCases := []struct {
@@ -567,6 +569,110 @@ hosts__regex.map first:false,lower:false,method:reg
 ^local1\.tld$ /a regex
 `,
 		},
+		// 12
+		{
+			data: []data{
+				{hostname: "local1.tld", path: "/a3", match: MatchExact, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+				{hostname: "local1.tld", path: "/a2", match: MatchExact},
+				{hostname: "local1.tld", path: "/a1", match: MatchExact, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+				{hostname: "local1.tld", path: "/a0", match: MatchExact},
+			},
+			expected: `
+hosts__exact_01.map first:true,lower:false,method:str headers=['x-user':'myname1',regex:false]
+local1.tld /a1 exact
+local1.tld /a3 exact
+
+hosts__exact.map first:false,lower:false,method:str
+local1.tld /a0 exact
+local1.tld /a2 exact
+`,
+		},
+		// 13
+		{
+			data: []data{
+				{hostname: "local1.tld", path: "/a3", match: MatchExact, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+				{hostname: "local1.tld", path: "/a2", match: MatchExact, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+				{hostname: "local1.tld", path: "/a1", match: MatchExact},
+				{hostname: "local1.tld", path: "/a0", match: MatchExact},
+			},
+			expected: `
+hosts__exact_01.map first:true,lower:false,method:str headers=['x-user':'myname1',regex:false]
+local1.tld /a2 exact
+local1.tld /a3 exact
+
+hosts__exact.map first:false,lower:false,method:str
+local1.tld /a0 exact
+local1.tld /a1 exact
+`,
+		},
+		// 14
+		{
+			data: []data{
+				{hostname: "local1.tld", path: "/a3", match: MatchExact},
+				{hostname: "local1.tld", path: "/a2", match: MatchExact},
+				{hostname: "local1.tld", path: "/a1", match: MatchExact, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+				{hostname: "local1.tld", path: "/a0", match: MatchExact, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname2"}}},
+			},
+			expected: `
+hosts__exact_01.map first:true,lower:false,method:str headers=['x-user':'myname2',regex:false]
+local1.tld /a0 exact
+
+hosts__exact_02.map first:false,lower:false,method:str headers=['x-user':'myname1',regex:false]
+local1.tld /a1 exact
+
+hosts__exact.map first:false,lower:false,method:str
+local1.tld /a2 exact
+local1.tld /a3 exact
+`,
+		},
+		// 15
+		{
+			data: []data{
+				{hostname: "local1.tld", path: "/a3", match: MatchBegin},
+				{hostname: "local1.tld", path: "/a2", match: MatchPrefix},
+				{hostname: "local1.tld", path: "/a1", match: MatchBegin, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+				{hostname: "local1.tld", path: "/a0", match: MatchPrefix, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+			},
+			expected: `
+hosts__begin_01.map first:true,lower:true,method:beg headers=['x-user':'myname1',regex:false]
+local1.tld /a1 begin
+
+hosts__prefix_02.map first:false,lower:false,method:dir headers=['x-user':'myname1',regex:false]
+local1.tld /a0 prefix
+
+hosts__prefix.map first:false,lower:false,method:dir
+local1.tld /a2 prefix
+
+hosts__begin.map first:false,lower:true,method:beg
+local1.tld /a3 begin
+`,
+		},
+		// 16
+		{
+			data: []data{
+				{hostname: "local1.tld", path: "/a0", match: MatchPrefix, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+			},
+			expected: `
+hosts__prefix_01.map first:true,lower:false,method:dir headers=['x-user':'myname1',regex:false]
+local1.tld /a0 prefix
+`,
+		},
+		// 17
+		{
+			data: []data{
+				{hostname: "local1.tld", path: "/a2", match: MatchPrefix, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname2"}}},
+				{hostname: "local1.tld", path: "/a1", match: MatchPrefix, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+				{hostname: "local1.tld", path: "/a0", match: MatchPrefix, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+			},
+			expected: `
+hosts__prefix_01.map first:true,lower:false,method:dir headers=['x-user':'myname1',regex:false]
+local1.tld /a1 prefix
+local1.tld /a0 prefix
+
+hosts__prefix_02.map first:false,lower:false,method:dir headers=['x-user':'myname2',regex:false]
+local1.tld /a2 prefix
+`,
+		},
 	}
 	for i, test := range testCases {
 		hm := CreateMaps(matchOrder).AddMap("hosts.map")
@@ -574,12 +680,19 @@ hosts__regex.map first:false,lower:false,method:reg
 			if item.path == "" {
 				hm.AddHostnameMapping(item.hostname, item.target)
 			} else {
-				hm.AddHostnamePathMapping(item.hostname, &HostPath{Link: PathLink{path: item.path, match: item.match}}, item.target)
+				hm.AddHostnamePathMapping(item.hostname, &HostPath{Link: PathLink{path: item.path, match: item.match, headers: item.headers}}, item.target)
 			}
 		}
 		var output string
 		for _, m := range hm.MatchFiles() {
 			output += fmt.Sprintf("\n%s first:%t,lower:%t,method:%s", m.Filename(), m.First(), m.Lower(), m.Method())
+			if m.Headers() != nil {
+				output += " headers=["
+				for _, v := range *m.Headers() {
+					output += fmt.Sprintf("'%s':'%s',regex:%t;", v.Name, v.Value, v.Regex)
+				}
+				output = strings.TrimRight(output, ";") + "]"
+			}
 			for _, v := range m.Values() {
 				output += fmt.Sprintf("\n%s %s %s", v.hostname, v.path, v.match)
 			}

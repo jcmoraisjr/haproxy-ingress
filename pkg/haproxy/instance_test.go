@@ -41,7 +41,7 @@ import (
 
 func TestBackends(t *testing.T) {
 	testCases := []struct {
-		doconfig  func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend)
+		doconfig  func(c *config, h *hatypes.Host, b *hatypes.Backend)
 		path      []string
 		match     []hatypes.MatchType
 		skipSrv   bool
@@ -51,7 +51,7 @@ func TestBackends(t *testing.T) {
 		expCheck  map[string]string
 	}{
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Cookie.Name = "ingress-controller"
 				b.Cookie.Strategy = "insert"
 				b.Cookie.Keywords = "indirect nocache httponly"
@@ -64,7 +64,7 @@ func TestBackends(t *testing.T) {
     cookie ingress-controller insert indirect nocache httponly`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Cookie.Name = "Ingress"
 				b.Cookie.Strategy = "prefix"
 				b.Cookie.Dynamic = true
@@ -74,7 +74,7 @@ func TestBackends(t *testing.T) {
     dynamic-cookie-key "Ingress"`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Cookie.Name = "Ingress"
 				b.Cookie.Strategy = "insert"
 				b.Cookie.Dynamic = true
@@ -87,7 +87,7 @@ func TestBackends(t *testing.T) {
     dynamic-cookie-key "Ingress"`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Cookie.Name = "ingress-controller"
 				b.Cookie.Domain = "example.com"
 				b.Cookie.Strategy = "insert"
@@ -97,7 +97,7 @@ func TestBackends(t *testing.T) {
     cookie ingress-controller insert indirect nocache httponly domain example.com`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Cookie.Name = "Ingress"
 				b.Cookie.Strategy = "insert"
 				b.Cookie.Keywords = "indirect nocache httponly"
@@ -107,7 +107,7 @@ func TestBackends(t *testing.T) {
     cookie Ingress insert attr SameSite=None secure indirect nocache httponly`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				config1 := hatypes.Cors{
 					Enabled:      true,
 					AllowOrigin:  []string{"http://d11.local", "https://d12.local"},
@@ -162,7 +162,7 @@ func TestBackends(t *testing.T) {
     http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if { var(txn.pathID) -m str path04 }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				config := hatypes.Cors{
 					Enabled:      true,
 					AllowOrigin:  []string{"https://d11.local", "https://d12.local"},
@@ -186,7 +186,7 @@ func TestBackends(t *testing.T) {
     http-response set-header Vary Origin if ! { res.hdr(Vary) -m found }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				config := hatypes.Cors{
 					Enabled:          true,
 					AllowOrigin:      []string{"https://d11.local", "https://d12.local"},
@@ -212,7 +212,7 @@ func TestBackends(t *testing.T) {
     http-response set-header Vary Origin if ! { res.hdr(Vary) -m found }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				config := hatypes.Cors{
 					Enabled:          true,
 					AllowOrigin:      []string{"https://d11.local"},
@@ -238,7 +238,7 @@ func TestBackends(t *testing.T) {
     http-response set-header Vary Origin if ! { res.hdr(Vary) -m found }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				config := hatypes.Cors{
 					Enabled:          true,
 					AllowOrigin:      []string{"https://d11.local"},
@@ -264,7 +264,7 @@ func TestBackends(t *testing.T) {
     http-response set-header Vary Origin if ! { res.hdr(Vary) -m found }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				config := hatypes.Cors{
 					Enabled:      true,
 					AllowOrigin:  []string{"https://d11.local"},
@@ -284,7 +284,7 @@ func TestBackends(t *testing.T) {
 		},
 		// ignore AllowOriginRegex if we don't have at least one AllowOrigin
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				config := hatypes.Cors{
 					Enabled:          true,
 					AllowOrigin:      []string{},
@@ -299,7 +299,7 @@ func TestBackends(t *testing.T) {
 			expected: ``,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				config := hatypes.Cors{
 					Enabled:      true,
 					AllowOrigin:  []string{},
@@ -313,7 +313,7 @@ func TestBackends(t *testing.T) {
 			expected: ``,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				config := hatypes.Cors{
 					Enabled:      true,
 					AllowOrigin:  []string{"*"},
@@ -333,7 +333,7 @@ func TestBackends(t *testing.T) {
     http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				config := hatypes.Cors{
 					Enabled:          true,
 					AllowOrigin:      []string{"*"},
@@ -362,7 +362,7 @@ d1.local#/ path01`,
 			},
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.FindBackendPath(h.FindPath("/")[0].Link).HSTS = hatypes.HSTS{
 					Enabled:    true,
 					MaxAge:     15768000,
@@ -399,8 +399,8 @@ d1.local#/ path01`,
 			},
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
-				g.ForwardFor = "add"
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
+				c.global.ForwardFor = "add"
 			},
 			expected: `
     http-request set-header X-Original-Forwarded-For %[hdr(x-forwarded-for)] if { hdr(x-forwarded-for) -m found }
@@ -408,7 +408,7 @@ d1.local#/ path01`,
     option forwardfor`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.FindBackendPath(h.FindPath("/app")[0].Link).RewriteURL = "/"
 			},
 			path: []string{"/app"},
@@ -416,7 +416,7 @@ d1.local#/ path01`,
     http-request replace-path ^/app/?(.*)$     /\1`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.FindBackendPath(h.FindPath("/app")[0].Link).RewriteURL = "/other"
 			},
 			path: []string{"/app"},
@@ -424,7 +424,7 @@ d1.local#/ path01`,
     http-request replace-path ^/app(.*)$       /other\1`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.FindBackendPath(h.FindPath("/app")[0].Link).RewriteURL = "/other/"
 				b.FindBackendPath(h.FindPath("/app/sub")[0].Link).RewriteURL = "/other/"
 			},
@@ -434,7 +434,7 @@ d1.local#/ path01`,
     http-request replace-path ^/app/sub(.*)$       /other/\1`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.FindBackendPath(h.FindPath("/path1")[0].Link).RewriteURL = "/sub1"
 				b.FindBackendPath(h.FindPath("/path2")[0].Link).RewriteURL = "/sub2"
 				b.FindBackendPath(h.FindPath("/path3")[0].Link).RewriteURL = "/sub2"
@@ -456,7 +456,7 @@ d1.local#/path1 path01`,
 			},
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.FindBackendPath(h.FindPath("/app")[0].Link).SSLRedirect = true
 			},
 			path: []string{"/app", "/path"},
@@ -468,9 +468,9 @@ d1.local#/path1 path01`,
     http-request redirect scheme https if !https-request { var(txn.pathID) -m str path01 }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.FindBackendPath(h.FindPath("/app")[0].Link).SSLRedirect = true
-				g.SSL.RedirectCode = 301
+				c.global.SSL.RedirectCode = 301
 			},
 			path: []string{"/app", "/path"},
 			expected: `
@@ -481,7 +481,7 @@ d1.local#/path1 path01`,
     http-request redirect scheme https code 301 if !https-request { var(txn.pathID) -m str path01 }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.FindBackendPath(h.FindPath("/app")[0].Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
 				b.FindBackendPath(h.FindPath("/api")[0].Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
 				b.FindBackendPath(h.FindPath("/path")[0].Link).AllowedIPHTTP.Rule = []string{"192.168.95.0/24"}
@@ -507,7 +507,7 @@ d1.local#/api path02`,
 			},
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.FindBackendPath(h.FindPath("/app")[0].Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
 				b.FindBackendPath(h.FindPath("/api")[0].Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
 				b.FindBackendPath(h.FindPath("/path")[0].Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
@@ -544,7 +544,7 @@ d1.local#/ path01`,
 			},
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.FindBackendPath(h.FindPath("/app1")[0].Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8"}
 				b.FindBackendPath(h.FindPath("/app1")[0].Link).AllowedIPHTTP.Exception = []string{"10.0.110.0/24"}
 				b.FindBackendPath(h.FindPath("/app2")[0].Link).DeniedIPHTTP.Rule = []string{"192.168.95.0/24"}
@@ -571,7 +571,7 @@ d1.local#/app1 path01`,
 			},
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.FindBackendPath(h.FindPath("/app1")[0].Link).AllowedIPHTTP.Rule = []string{"10.0.0.0/8"}
 				b.FindBackendPath(h.FindPath("/app2")[0].Link).AllowedIPHTTP.Exception = []string{"10.0.110.0/24"}
 				b.FindBackendPath(h.FindPath("/app3")[0].Link).DeniedIPHTTP.Rule = []string{"192.168.95.0/24"}
@@ -601,7 +601,7 @@ d1.local#/app1 path01`,
 			},
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.FindBackendPath(h.FindPath("/path")[0].Link).AllowedIPHTTP.Rule = []string{
 					"1.1.1.1", "1.1.1.2", "1.1.1.3", "1.1.1.4", "1.1.1.5",
 					"1.1.1.6", "1.1.1.7", "1.1.1.8", "1.1.1.9", "1.1.1.10",
@@ -625,7 +625,7 @@ d1.local#/api path02`,
 			},
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.AllowedIPTCP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
 				b.AllowedIPTCP.Exception = []string{"192.168.95.0/24"}
 				b.ModeTCP = true
@@ -637,7 +637,7 @@ d1.local#/api path02`,
     tcp-request content reject if !allow_rule_tcp`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.DeniedIPTCP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
 				b.ModeTCP = true
 			},
@@ -646,7 +646,7 @@ d1.local#/api path02`,
     tcp-request content reject if deny_rule_tcp`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.DeniedIPTCP.Rule = []string{"10.0.0.0/8", "192.168.0.0/16"}
 				b.DeniedIPTCP.Exception = []string{"192.168.95.0/24"}
 				b.ModeTCP = true
@@ -657,7 +657,7 @@ d1.local#/api path02`,
     tcp-request content reject if deny_rule_tcp !deny_exception_tcp`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.FindBackendPath(h.FindPath("/")[0].Link).MaxBodySize = 1024
 				b.FindBackendPath(h.FindPath("/app")[0].Link).MaxBodySize = 1024
 			},
@@ -666,7 +666,7 @@ d1.local#/api path02`,
     http-request use-service lua.send-413 if { req.body_size,sub(1024) gt 0 }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.FindBackendPath(h.FindPath("/app")[0].Link).MaxBodySize = 2048
 			},
 			path: []string{"/", "/app"},
@@ -682,7 +682,7 @@ d1.local#/ path01`,
 			},
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Headers = []*hatypes.BackendHeader{
 					{Name: "Name", Value: "Value"},
 				}
@@ -691,7 +691,7 @@ d1.local#/ path01`,
     http-request set-header Name Value`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Headers = []*hatypes.BackendHeader{
 					{Name: "X-ID", Value: "abc"},
 					{Name: "Host", Value: "app.domain"},
@@ -702,7 +702,7 @@ d1.local#/ path01`,
     http-request set-header Host app.domain`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				auth := &b.FindBackendPath(h.FindPath("/app1")[0].Link).AuthExternal
 				auth.AuthBackendName = "_auth_4001"
 				auth.AuthPath = "/oauth2/auth"
@@ -721,7 +721,7 @@ d1.local#/ path01`,
     http-request deny if !{ var(txn.auth_response_successful) -m bool } { var(txn.pathID) -m str path01 }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				auth := &b.FindBackendPath(h.FindPath("/app1")[0].Link).AuthExternal
 				auth.AuthBackendName = "_auth_4001"
 				auth.AuthPath = "/oauth2/auth"
@@ -741,7 +741,7 @@ d1.local#/ path01`,
     http-request redirect location http://auth.local/auth1 if !{ var(txn.auth_response_successful) -m bool } { var(txn.pathID) -m str path01 }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				auth := &b.FindBackendPath(h.FindPath("/app1")[0].Link).AuthExternal
 				auth.AuthBackendName = "_auth_4001"
 				auth.AuthPath = "/oauth2/auth"
@@ -763,7 +763,7 @@ d1.local#/ path01`,
     http-request set-header X-Auth-Request-Email %[var(req.auth_response_header.x_auth_request_email)] if { var(req.auth_response_header.x_auth_request_email) -m found } { var(txn.pathID) -m str path01 }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				auth := &b.FindBackendPath(h.FindPath("/app1")[0].Link).AuthExternal
 				auth.AlwaysDeny = true
 			},
@@ -775,7 +775,7 @@ d1.local#/ path01`,
     http-request deny if { var(txn.pathID) -m str path01 }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.SourceIPs = []net.IP{net.ParseIP("192.168.0.2"), net.ParseIP("192.168.0.3")}
 			},
 			// IP distribution starts based on the hash of the backend name.
@@ -784,13 +784,13 @@ d1.local#/ path01`,
 			srvsuffix: "source 192.168.0.3",
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.HealthCheck.Interval = "2s"
 			},
 			srvsuffix: "check inter 2s",
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.HealthCheck.URI = "/check"
 				b.HealthCheck.Port = 4000
 			},
@@ -799,20 +799,20 @@ d1.local#/ path01`,
 			srvsuffix: "check port 4000",
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.AgentCheck.Port = 8000
 				b.AgentCheck.Interval = "2s"
 			},
 			srvsuffix: "agent-check agent-port 8000 agent-inter 2s",
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Server.Secure = true
 			},
 			srvsuffix: "ssl verify none",
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Server.Secure = true
 				b.Server.Ciphers = "ECDHE-ECDSA-AES128-GCM-SHA256"
 				b.Server.CipherSuites = "TLS_AES_128_GCM_SHA256"
@@ -820,7 +820,7 @@ d1.local#/ path01`,
 			srvsuffix: "ssl ciphers ECDHE-ECDSA-AES128-GCM-SHA256 ciphersuites TLS_AES_128_GCM_SHA256 verify none",
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Server.Secure = true
 				b.Server.CrtFilename = "/var/haproxy/ssl/client.pem"
 				b.Server.CipherSuites = "TLS_AES_128_GCM_SHA256"
@@ -829,21 +829,21 @@ d1.local#/ path01`,
 			srvsuffix: "ssl ciphersuites TLS_AES_128_GCM_SHA256 no-sslv3 no-tlsv10 no-tlsv11 no-tlsv12 no-tls-tickets crt /var/haproxy/ssl/client.pem verify none",
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Server.Secure = true
 				b.Server.CrtFilename = "/var/haproxy/ssl/client.pem"
 			},
 			srvsuffix: "ssl crt /var/haproxy/ssl/client.pem verify none",
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Server.Secure = true
 				b.Server.CAFilename = "/var/haproxy/ssl/ca.pem"
 			},
 			srvsuffix: "ssl verify required ca-file /var/haproxy/ssl/ca.pem",
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Server.Secure = true
 				b.Server.CAFilename = "/var/haproxy/ssl/ca.pem"
 				b.Server.CRLFilename = "/var/haproxy/ssl/crl.pem"
@@ -851,14 +851,14 @@ d1.local#/ path01`,
 			srvsuffix: "ssl verify required ca-file /var/haproxy/ssl/ca.pem crl-file /var/haproxy/ssl/crl.pem",
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Server.Secure = true
 				b.Server.SNI = "var(req.host)"
 			},
 			srvsuffix: "ssl sni var(req.host) verify none",
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Server.Secure = true
 				b.Server.CAFilename = "/var/haproxy/ssl/ca.pem"
 				b.Server.SNI = "ssl_fc_sni"
@@ -866,7 +866,7 @@ d1.local#/ path01`,
 			srvsuffix: "ssl sni ssl_fc_sni verify required ca-file /var/haproxy/ssl/ca.pem",
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Server.Secure = true
 				b.Server.CAFilename = "/var/haproxy/ssl/ca.pem"
 				b.Server.VerifyHost = "domain.tld"
@@ -874,20 +874,20 @@ d1.local#/ path01`,
 			srvsuffix: "ssl verify required ca-file /var/haproxy/ssl/ca.pem verifyhost domain.tld",
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Server.Protocol = "h2"
 			},
 			srvsuffix: "proto h2",
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Server.Protocol = "h2"
 				b.Server.Secure = true
 			},
 			srvsuffix: "proto h2 alpn h2 ssl verify none",
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Server.Protocol = "h2"
 				b.Server.Secure = true
 				b.Server.CAFilename = "/var/haproxy/ssl/ca.pem"
@@ -895,7 +895,7 @@ d1.local#/ path01`,
 			srvsuffix: "proto h2 alpn h2 ssl verify required ca-file /var/haproxy/ssl/ca.pem",
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Limit.Connections = 200
 				b.Limit.RPS = 20
 				b.Limit.Whitelist = []string{"192.168.0.0/16", "10.1.1.101"}
@@ -908,7 +908,7 @@ d1.local#/ path01`,
     http-request deny deny_status 429 if !wlist_conn { sc1_conn_rate gt 20 }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Limit.RPS = 20
 			},
 			expected: `
@@ -917,7 +917,7 @@ d1.local#/ path01`,
     http-request deny deny_status 429 if { sc1_conn_rate gt 20 }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Limit.Connections = 200
 			},
 			expected: `
@@ -926,7 +926,7 @@ d1.local#/ path01`,
     http-request deny deny_status 429 if { sc1_conn_cur gt 200 }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.ModeTCP = true
 				b.Limit.Connections = 200
 				b.Limit.RPS = 20
@@ -940,13 +940,13 @@ d1.local#/ path01`,
     tcp-request content reject if !wlist_conn { sc1_conn_rate gt 20 }`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Server.SendProxy = "send-proxy-v2"
 			},
 			srvsuffix: "send-proxy-v2",
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.BlueGreen.CookieName = "ServerName"
 				e1, e2, e3 := *endpointS31, *endpointS32, *endpointS33
 				b.Endpoints = []*hatypes.Endpoint{&e1, &e2, &e3}
@@ -960,7 +960,7 @@ d1.local#/ path01`,
     server s33 172.17.0.133:8080 weight 100`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.BlueGreen.HeaderName = "X-Svc"
 				e1, e2, e3 := *endpointS31, *endpointS32, *endpointS33
 				b.Endpoints = []*hatypes.Endpoint{&e1, &e2, &e3}
@@ -974,7 +974,7 @@ d1.local#/ path01`,
     server s33 172.17.0.133:8080 weight 100`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.BlueGreen.CookieName = "ServerName"
 				b.BlueGreen.HeaderName = "X-Svc"
 				e1, e2, e3 := *endpointS31, *endpointS32, *endpointS33
@@ -994,7 +994,7 @@ d1.local#/ path01`,
 		},
 		// simulates a config where the cookie value is a pod id
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Cookie.Name = "serverId"
 				b.Cookie.Strategy = "insert"
 				b.Cookie.Keywords = "nocache"
@@ -1009,7 +1009,7 @@ d1.local#/ path01`,
 		},
 		// simulates a config where the cookie "preserve" option is used
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Cookie.Name = "serverId"
 				b.Cookie.Strategy = "insert"
 				b.Cookie.Preserve = true
@@ -1023,10 +1023,75 @@ d1.local#/ path01`,
     cookie serverId insert preserve nocache`,
 		},
 		{
-			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.Endpoints[0].PUID = 1234567
 			},
 			srvsuffix: "id 1234567",
+		},
+		{
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
+				link1 := hatypes.CreateHostPathLink("", "/app1", hatypes.MatchPrefix)
+				link2 := hatypes.CreateHostPathLink("", "/app2", hatypes.MatchPrefix)
+				link1.WithHeadersMatch(hatypes.HTTPHeaderMatch{{Name: "x-user", Value: "myusr1"}})
+				link2.WithHeadersMatch(hatypes.HTTPHeaderMatch{{Name: "x-user", Value: "myusr2"}})
+
+				hdef := c.hosts.AcquireHost(hatypes.DefaultHost)
+				link3 := hdef.AddLink(b, link1)
+				link4 := hdef.AddLink(b, link2)
+				b.FindBackendPath(link3).MaxBodySize = 1048576
+				b.FindBackendPath(link4).MaxBodySize = 2097152
+
+				link5 := h.AddLink(b, link1)
+				link6 := h.AddLink(b, link2)
+				b.FindBackendPath(link5).MaxBodySize = 1048576
+				b.FindBackendPath(link6).MaxBodySize = 2097152
+			},
+			expected: `
+    # path02 = <default>/app1
+    # path03 = <default>/app2
+    # path01 = d1.local/
+    # path04 = d1.local/app1
+    # path05 = d1.local/app2
+    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpath__prefix_01.map) if { hdr(x-user) -- "myusr2" }
+    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpath__prefix_02.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- "myusr1" }
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map) if !{ var(txn.pathID) -m found }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__prefix_01.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- "myusr2" }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__prefix_02.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- "myusr1" }
+    http-request use-service lua.send-413 if { var(txn.pathID) -m str path02 path04 } { req.body_size,sub(1048576) gt 0 }
+    http-request use-service lua.send-413 if { var(txn.pathID) -m str path03 path05 } { req.body_size,sub(2097152) gt 0 }`,
+			expFronts: `frontend _front_http
+    mode http
+    bind :80
+    <<set-req-base>>
+    <<http-headers>>
+    http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_host__prefix_01.map) if { hdr(x-user) -- "myusr1" }
+    http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_host__prefix_02.map) if !{ var(req.backend) -m found } { hdr(x-user) -- "myusr2" }
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map) if !{ var(req.backend) -m found }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_defaulthost__prefix_01.map) if !{ var(req.backend) -m found } { hdr(x-user) -- "myusr1" }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_defaulthost__prefix_02.map) if !{ var(req.backend) -m found } !{ var(req.defaultbackend) -m found } { hdr(x-user) -- "myusr2" }
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
+    use_backend %[var(req.defaultbackend)]
+    default_backend _error404
+frontend _front_https
+    mode http
+    bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
+    <<set-req-base>>
+    http-request set-var(req.hostbackend) var(req.base),map_dir(/etc/haproxy/maps/_front_https_host__prefix_01.map) if { hdr(x-user) -- "myusr1" }
+    http-request set-var(req.hostbackend) var(req.base),map_dir(/etc/haproxy/maps/_front_https_host__prefix_02.map) if !{ var(req.hostbackend) -m found } { hdr(x-user) -- "myusr2" }
+    http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map) if !{ var(req.hostbackend) -m found }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_defaulthost__prefix_01.map) if !{ var(req.hostbackend) -m found } { hdr(x-user) -- "myusr1" }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_defaulthost__prefix_02.map) if !{ var(req.hostbackend) -m found } !{ var(req.defaultbackend) -m found } { hdr(x-user) -- "myusr2" }
+    <<https-headers>>
+    use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
+    use_backend %[var(req.defaultbackend)]
+    default_backend _error404`,
+			expCheck: map[string]string{
+				"_back_d1_app_8080_idpath__prefix_01.map":    "d1.local#/app2 path05",
+				"_back_d1_app_8080_idpath__prefix_02.map":    "d1.local#/app1 path04",
+				"_back_d1_app_8080_idpath__begin.map":        "d1.local#/ path01",
+				"_back_d1_app_8080_idpathdef__prefix_01.map": "<default>#/app2 path03",
+				"_back_d1_app_8080_idpathdef__prefix_02.map": "<default>#/app1 path02",
+			},
 		},
 	}
 	for _, test := range testCases {
@@ -1051,7 +1116,7 @@ d1.local#/ path01`,
 			}
 			h.AddPath(b, p, match)
 		}
-		test.doconfig(c.config.Global(), h, b)
+		test.doconfig(c.config, h, b)
 
 		var mode string
 		if b.ModeTCP {
@@ -2664,6 +2729,290 @@ d2.local#/app -
 /var/haproxy/ssl/certs/default.pem !*
 /var/haproxy/ssl/certs/d1.pem d1.local
 /var/haproxy/ssl/certs/d2.pem d2.local
+`)
+
+	c.logger.CompareLogging(defaultLogging)
+}
+
+func TestInstanceFrontendMatchHeader(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	c.config.frontend.RedirectToCode = 302
+
+	def := c.config.Backends().AcquireBackend("default", "default-backend", "8080")
+	def.Endpoints = []*hatypes.Endpoint{endpointS0}
+	c.config.Backends().DefaultBackend = def
+
+	var h1, h2, h3, h4, h5 *hatypes.Host
+	var b1, b21 *hatypes.Backend
+	var link1, link2, link3 hatypes.PathLink
+
+	// http/s
+	//
+	// h2/app2        +x-version         => b21
+	// h4/app2        +x-version         => b21 (http)
+	// h5/app2        +x-version         => b21
+	//
+	// h2/            +x-user +x-version => b1
+	// h4/            +x-user +x-version => b1 (http)
+	// h5/            +x-user +x-version => b1
+	//
+	// h2/                               => b1
+	// h3/                               => b1
+	// h4/                               => b1 (http)
+	// h5/                               => b1
+	//
+
+	// default
+	//
+	// <default>/app2 +x-version         => b21
+	//
+	// <default>/     +x-user +x-version => b1
+	//
+	// <default>/                        => b1
+	//
+
+	// varNamespace
+	//
+	// h5/app2        +x-version         => b21
+	//
+	// h5/            +x-user +x-version => b1
+	//
+	// h5/                               => b1
+	//
+
+	// sni
+	//
+	// h4/app2        +x-version         => b21
+	//
+	// h4/            +x-user +x-version => b1
+	//
+	// h4/                               => b1
+	//
+
+	// redirects
+	//
+	// h3/app3        +x-version         => /login3
+	// h3/app2        +x-version         => /login2
+	//
+	// h3/            +x-user +x-version => /login1
+	//
+
+	b1 = c.config.Backends().AcquireBackend("b1", "app", "8080")
+	b21 = c.config.Backends().AcquireBackend("b21", "app", "8080")
+	b1.Endpoints = []*hatypes.Endpoint{endpointS1}
+	b21.Endpoints = []*hatypes.Endpoint{endpointS21}
+	h1 = c.config.Hosts().AcquireHost(hatypes.DefaultHost)
+	h2 = c.config.Hosts().AcquireHost("h2.local")
+	h2.TLS.TLSFilename = "/var/haproxy/ssl/certs/h2.pem"
+	h3 = c.config.hosts.AcquireHost("h3.local")
+	h4 = c.config.hosts.AcquireHost("h4.local")
+	h4.TLS.TLSFilename = "/var/haproxy/ssl/certs/h4.pem"
+	h4.TLS.CAFilename = "/var/haproxy/ssl/cacerts/h4.pem"
+	h4.TLS.CAHash = "1"
+	h5 = c.config.hosts.AcquireHost("h5.local")
+	h5.VarNamespace = true
+
+	h1.AddPath(b1, "/", hatypes.MatchBegin)
+	h2.AddPath(b1, "/", hatypes.MatchBegin)
+	h3.AddPath(b1, "/", hatypes.MatchBegin)
+	h4.AddPath(b1, "/", hatypes.MatchBegin)
+	h5.AddPath(b1, "/", hatypes.MatchBegin)
+
+	link1 = hatypes.CreateHostPathLink("", "/", hatypes.MatchBegin)
+	link1.WithHeadersMatch(hatypes.HTTPHeaderMatch{
+		{Name: "x-user", Value: "id"},
+		{Name: "x-version", Value: "^[Ss]taging$", Regex: true},
+	})
+	link2 = hatypes.CreateHostPathLink("", "/app2", hatypes.MatchBegin)
+	link2.WithHeadersMatch(hatypes.HTTPHeaderMatch{
+		{Name: "x-version", Value: "^[Tt]est$", Regex: true},
+	})
+	link3 = hatypes.CreateHostPathLink("", "/app3", hatypes.MatchBegin)
+	link3.WithHeadersMatch(hatypes.HTTPHeaderMatch{
+		{Name: "x-version", Value: "^[Tt]est$", Regex: true},
+	})
+
+	h1.AddLink(b1, link1)
+	h1.AddLink(b21, link2)
+
+	h2.AddLink(b1, link1)
+	h2.AddLink(b21, link2)
+
+	h3.AddLinkRedirect(link1, "/login1")
+	h3.AddLinkRedirect(link2, "/login2")
+	h3.AddLinkRedirect(link3, "/login3")
+
+	h4.AddLink(b1, link1)
+	h4.AddLink(b21, link2)
+
+	h5.AddLink(b1, link1)
+	h5.AddLink(b21, link2)
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend b1_app_8080
+    mode http
+    acl local-offload ssl_fc
+    http-request set-header X-SSL-Client-CN   %{+Q}[ssl_c_s_dn(cn)]   if local-offload
+    http-request set-header X-SSL-Client-DN   %{+Q}[ssl_c_s_dn]       if local-offload
+    http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex]   if local-offload
+    server s1 172.17.0.11:8080 weight 100
+backend b21_app_8080
+    mode http
+    acl local-offload ssl_fc
+    http-request set-header X-SSL-Client-CN   %{+Q}[ssl_c_s_dn(cn)]   if local-offload
+    http-request set-header X-SSL-Client-DN   %{+Q}[ssl_c_s_dn]       if local-offload
+    http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex]   if local-offload
+    server s21 172.17.0.121:8080 weight 100
+backend default_default-backend_8080
+    mode http
+    server s0 172.17.0.99:8080 weight 100
+frontend _front_http
+    mode http
+    bind :80
+    <<set-req-base>>
+    http-request set-var(txn.namespace) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_namespace__begin_01.map) if { hdr(x-user) -- "id" } { hdr(x-version) -m reg -- "^[Ss]taging$" }
+    http-request set-var(txn.namespace) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_namespace__begin_02.map) if !{ var(txn.namespace) -m found } { hdr(x-version) -m reg -- "^[Tt]est$" }
+    http-request set-var(txn.namespace) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_namespace__begin.map) if !{ var(txn.namespace) -m found }
+    http-request set-var(txn.namespace) str(-) if !{ var(txn.namespace) -m found }
+    <<http-headers>>
+    http-request set-var(req.redirto) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_redir_to__begin_01.map) if { hdr(x-user) -- "id" } { hdr(x-version) -m reg -- "^[Ss]taging$" }
+    http-request set-var(req.redirto) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_redir_to__begin_02.map) if !{ var(req.redirto) -m found } { hdr(x-version) -m reg -- "^[Tt]est$" }
+    http-request redirect location %[var(req.redirto)] code 302 if { var(req.redirto) -m found }
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin_01.map) if { hdr(x-user) -- "id" } { hdr(x-version) -m reg -- "^[Ss]taging$" }
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin_02.map) if !{ var(req.backend) -m found } { hdr(x-version) -m reg -- "^[Tt]est$" }
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map) if !{ var(req.backend) -m found }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_front_defaulthost__begin_01.map) if !{ var(req.backend) -m found } { hdr(x-user) -- "id" } { hdr(x-version) -m reg -- "^[Ss]taging$" }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_front_defaulthost__begin_02.map) if !{ var(req.backend) -m found } !{ var(req.defaultbackend) -m found } { hdr(x-version) -m reg -- "^[Tt]est$" }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_front_defaulthost__begin.map) if !{ var(req.backend) -m found } !{ var(req.defaultbackend) -m found }
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
+    use_backend %[var(req.defaultbackend)]
+    default_backend default_default-backend_8080
+frontend _front_https
+    mode http
+    bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
+    <<set-req-base>>
+    http-request set-var(req.redirto) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_redir_to__begin_01.map) if { hdr(x-user) -- "id" } { hdr(x-version) -m reg -- "^[Ss]taging$" }
+    http-request set-var(req.redirto) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_redir_to__begin_02.map) if !{ var(req.redirto) -m found } { hdr(x-version) -m reg -- "^[Tt]est$" }
+    http-request redirect location %[var(req.redirto)] code 302 if { var(req.redirto) -m found }
+    http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin_01.map) if { hdr(x-user) -- "id" } { hdr(x-version) -m reg -- "^[Ss]taging$" }
+    http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin_02.map) if !{ var(req.hostbackend) -m found } { hdr(x-version) -m reg -- "^[Tt]est$" }
+    http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map) if !{ var(req.hostbackend) -m found }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_front_defaulthost__begin_01.map) if !{ var(req.hostbackend) -m found } { hdr(x-user) -- "id" } { hdr(x-version) -m reg -- "^[Ss]taging$" }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_front_defaulthost__begin_02.map) if !{ var(req.hostbackend) -m found } !{ var(req.defaultbackend) -m found } { hdr(x-version) -m reg -- "^[Tt]est$" }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_front_defaulthost__begin.map) if !{ var(req.hostbackend) -m found } !{ var(req.defaultbackend) -m found }
+    http-request set-var(txn.namespace) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_namespace__begin_01.map) if { hdr(x-user) -- "id" } { hdr(x-version) -m reg -- "^[Ss]taging$" }
+    http-request set-var(txn.namespace) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_namespace__begin_02.map) if !{ var(txn.namespace) -m found } { hdr(x-version) -m reg -- "^[Tt]est$" }
+    http-request set-var(txn.namespace) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_namespace__begin.map) if !{ var(txn.namespace) -m found }
+    http-request set-var(txn.namespace) str(-) if !{ var(txn.namespace) -m found }
+    <<https-headers>>
+    acl tls-has-crt ssl_c_used
+    acl tls-need-crt ssl_fc_sni -i -m str -f /etc/haproxy/maps/_front_tls_needcrt__exact.list
+    acl tls-host-need-crt var(req.host) -i -m str -f /etc/haproxy/maps/_front_tls_needcrt__exact.list
+    acl tls-has-invalid-crt ssl_c_verify gt 0
+    acl tls-check-crt ssl_fc_sni -i -m str -f /etc/haproxy/maps/_front_tls_auth__exact.list
+    http-request set-var(req.snibase) ssl_fc_sni,lower,concat(\#,req.path)
+    http-request set-var(req.snibackend) var(req.snibase),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin_01.map) if { hdr(x-user) -- "id" } { hdr(x-version) -m reg -- "^[Ss]taging$" }
+    http-request set-var(req.snibackend) var(req.snibase),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin_02.map) if !{ var(req.snibackend) -m found } { hdr(x-version) -m reg -- "^[Tt]est$" }
+    http-request set-var(req.snibackend) var(req.snibase),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin.map) if !{ var(req.snibackend) -m found }
+    http-request set-var(req.snibackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin_01.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt { hdr(x-user) -- "id" } { hdr(x-version) -m reg -- "^[Ss]taging$" }
+    http-request set-var(req.snibackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin_02.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt { hdr(x-version) -m reg -- "^[Tt]est$" }
+    http-request set-var(req.snibackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt
+    http-request set-var(req.tls_nocrt_redir) str(_internal) if !tls-has-crt tls-need-crt
+    http-request set-var(req.tls_invalidcrt_redir) str(_internal) if tls-has-invalid-crt tls-check-crt
+    http-request use-service lua.send-421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
+    http-request use-service lua.send-496 if { var(req.tls_nocrt_redir) -m str _internal }
+    http-request use-service lua.send-421 if !tls-has-crt tls-host-need-crt
+    http-request use-service lua.send-495 if { var(req.tls_invalidcrt_redir) -m str _internal }
+    use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
+    use_backend %[var(req.snibackend)] if { var(req.snibackend) -m found }
+    use_backend %[var(req.defaultbackend)]
+    default_backend default_default-backend_8080
+<<support>>
+`)
+
+	c.checkMap("_front_redir_to__begin_02.map", `
+h3.local#/app3 /login3
+h3.local#/app2 /login2
+`)
+	c.checkMap("_front_redir_to__begin_01.map", `
+h3.local#/ /login1
+`)
+	c.checkMap("_front_http_host__begin_01.map", `
+h2.local#/ b1_app_8080
+h4.local#/ b1_app_8080
+h5.local#/ b1_app_8080
+`)
+	c.checkMap("_front_http_host__begin_02.map", `
+h2.local#/app2 b21_app_8080
+h4.local#/app2 b21_app_8080
+h5.local#/app2 b21_app_8080
+`)
+	c.checkMap("_front_http_host__begin.map", `
+h2.local#/ b1_app_8080
+h3.local#/ b1_app_8080
+h4.local#/ b1_app_8080
+h5.local#/ b1_app_8080
+`)
+	c.checkMap("_front_https_host__begin_01.map", `
+h2.local#/ b1_app_8080
+h5.local#/ b1_app_8080
+`)
+	c.checkMap("_front_https_host__begin_02.map", `
+h2.local#/app2 b21_app_8080
+h5.local#/app2 b21_app_8080
+`)
+	c.checkMap("_front_https_host__begin.map", `
+h2.local#/ b1_app_8080
+h3.local#/ b1_app_8080
+h5.local#/ b1_app_8080
+`)
+	c.checkMap("_front_https_sni__begin_01.map", `
+h4.local#/ b1_app_8080
+`)
+	c.checkMap("_front_https_sni__begin_02.map", `
+h4.local#/app2 b21_app_8080
+`)
+	c.checkMap("_front_https_sni__begin.map", `
+h4.local#/ b1_app_8080
+`)
+	c.checkMap("_front_namespace__begin_01.map", `
+h2.local#/ -
+h3.local#/ -
+h4.local#/ -
+h5.local#/ b1
+`)
+	c.checkMap("_front_namespace__begin_02.map", `
+h2.local#/app2 -
+h3.local#/app3 -
+h3.local#/app2 -
+h4.local#/app2 -
+h5.local#/app2 b21
+`)
+	c.checkMap("_front_namespace__begin.map", `
+h2.local#/ -
+h3.local#/ -
+h4.local#/ -
+h5.local#/ b1
+`)
+	c.checkMap("_front_defaulthost__begin_01.map", `
+<default>#/ b1_app_8080
+`)
+	c.checkMap("_front_defaulthost__begin_02.map", `
+<default>#/app2 b21_app_8080
+`)
+	c.checkMap("_front_defaulthost__begin.map", `
+<default>#/ b1_app_8080
+`)
+
+	c.checkMap("_front_bind_crt.list", `
+/var/haproxy/ssl/certs/default.pem !*
+/var/haproxy/ssl/certs/h2.pem h2.local
+/var/haproxy/ssl/certs/h4.pem [ca-file /var/haproxy/ssl/cacerts/h4.pem verify optional] h4.local
 `)
 
 	c.logger.CompareLogging(defaultLogging)
@@ -5027,9 +5376,7 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
 		"<<frontend-https>>": `frontend _front_https
     mode http
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
-    http-request set-var(req.path) path
-    http-request set-var(req.host) hdr(host),field(1,:),lower
-    http-request set-var(req.base) var(req.host),concat(\#,req.path)
+    <<set-req-base>>
     http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map)
     <<https-headers>>
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }`,

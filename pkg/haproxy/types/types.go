@@ -345,6 +345,7 @@ type HostsMapEntry struct {
 	hostname string
 	path     string
 	match    MatchType
+	headers  *HTTPHeaderMatch
 	order    int
 	_upper   *list.Element
 	_elem    *list.Element
@@ -355,6 +356,7 @@ type HostsMapEntry struct {
 type hostsMapMatchFile struct {
 	entries  []*HostsMapEntry
 	match    MatchType
+	headers  *HTTPHeaderMatch
 	priority bool
 }
 
@@ -482,6 +484,23 @@ const (
 // DefaultMatchOrder ...
 var DefaultMatchOrder = []MatchType{MatchExact, MatchPrefix, MatchBegin, MatchRegex}
 
+// HTTPHeaderMatch ...
+type HTTPHeaderMatch []HTTPMatch
+
+// HTTPMatch ...
+type HTTPMatch struct {
+	// Each HTTPMatch uses 16 + len(Name) + len(Value) + 7 (if Regex) bytes.
+	// Keyword and converter uses about 120 bytes.
+	//
+	// Three HTTPMatch whose Name has 24 bytes and Value has 256 bytes will consume:
+	//   3 * (16 + 24 + 256) + 120 = 1008, or 1029 if Regex is true
+	//
+	// This should be below 2048.
+	Regex bool
+	Name  string
+	Value string
+}
+
 // PathLink is a unique identifier of a request
 // configuration. Several request based configurations
 // uses this identifier to distinguish if an acl should
@@ -490,6 +509,7 @@ type PathLink struct {
 	hostname string
 	path     string
 	match    MatchType
+	headers  *HTTPHeaderMatch
 }
 
 // HostPath ...

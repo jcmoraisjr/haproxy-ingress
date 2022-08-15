@@ -211,6 +211,20 @@ func (h *Host) AddPath(backend *Backend, path string, match MatchType) {
 	h.addPath(path, match, backend, "")
 }
 
+// AddLink ...
+func (h *Host) AddLink(backend *Backend, link PathLink) PathLink {
+	link.hostname = h.Hostname
+	h.addLink(backend, link, "")
+	return link
+}
+
+// AddLinkRedirect ...
+func (h *Host) AddLinkRedirect(link PathLink, redirTo string) PathLink {
+	link.hostname = h.Hostname
+	h.addLink(nil, link, redirTo)
+	return link
+}
+
 // AddRedirect ...
 func (h *Host) AddRedirect(path string, match MatchType, redirTo string) {
 	h.addPath(path, match, nil, redirTo)
@@ -223,6 +237,10 @@ type hostResolver struct {
 
 func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo string) {
 	link := CreateHostPathLink(h.Hostname, path, match)
+	h.addLink(backend, link, redirTo)
+}
+
+func (h *Host) addLink(backend *Backend, link PathLink, redirTo string) {
 	var hback HostBackend
 	if backend != nil {
 		hback = HostBackend{
@@ -325,6 +343,12 @@ func (h *HostPath) hasMatch(match []MatchType) bool {
 		}
 	}
 	return false
+}
+
+// WithHeadersMatch ...
+func (l *PathLink) WithHeadersMatch(headers HTTPHeaderMatch) *PathLink {
+	l.headers = &headers
+	return l
 }
 
 // Hostname ...
