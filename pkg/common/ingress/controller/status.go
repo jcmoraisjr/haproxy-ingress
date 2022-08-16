@@ -25,7 +25,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"k8s.io/klog/v2"
 
 	pool "gopkg.in/go-playground/pool.v3"
@@ -352,7 +351,7 @@ func runUpdate(ctx context.Context, ing *networking.Ingress, status []apiv1.Load
 
 		currIng, err := ingClient.Get(ctx, ing.Name, metav1.GetOptions{})
 		if err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("unexpected error searching Ingress %v/%v", ing.Namespace, ing.Name))
+			return nil, fmt.Errorf("unexpected error searching Ingress %v/%v: %w", ing.Namespace, ing.Name, err)
 		}
 
 		klog.Infof("updating Ingress %v/%v status to %v", currIng.Namespace, currIng.Name, addrs)
