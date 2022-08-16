@@ -22,7 +22,7 @@ import (
 	"strings"
 	gotemplate "text/template"
 
-	"github.com/Masterminds/sprig"
+	"github.com/Masterminds/sprig/v3"
 	"github.com/imdario/mergo"
 	"k8s.io/klog/v2"
 )
