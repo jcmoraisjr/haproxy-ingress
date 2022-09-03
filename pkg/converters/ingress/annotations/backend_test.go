@@ -1540,7 +1540,7 @@ func TestHeaders(t *testing.T) {
 		// 0
 		{
 			headers: `invalid`,
-			logging: `WARN ignored missing header name or value on ingress 'ing1/app': invalid`,
+			logging: `WARN ignoring header on ingress 'ing1/app': missing header name or value: invalid`,
 		},
 		// 1
 		{

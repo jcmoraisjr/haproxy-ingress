@@ -1488,7 +1488,7 @@ frontend {{ $frontend.Name }}
     {{- if not $match.First }} !{ var({{ $varbe }}) -m found }{{ end }}
 {{- end }}
 {{- if $match.Headers }}
-    {{- range $header := $match.Headers }} { hdr({{ $header.Name }}){{ if $header.Regex }} -m reg{{ end }} -- '{{ $header.Value }}' }{{ end }}
+    {{- range $header := $match.Headers }} { hdr({{ $header.Name }}){{ if $header.Regex }} -m reg{{ end }} -- {{ $header.Value | haquote }} }{{ end }}
 {{- end }}
 {{- end }}
 

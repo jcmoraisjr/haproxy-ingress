@@ -206,11 +206,21 @@ func (h *Hosts) HasVarNamespace() bool {
 // FindPath ...
 func (h *Host) FindPath(path string, match ...MatchType) (paths []*HostPath) {
 	for _, p := range h.Paths {
-		if p.Link.path == path && p.hasMatch(match) {
+		if p.Link.path == path && p.Link.headers == nil && p.hasMatch(match) {
 			paths = append(paths, p)
 		}
 	}
 	return paths
+}
+
+// FindPathWithLink ...
+func (h *Host) FindPathWithLink(link *PathLink) (path *HostPath) {
+	for _, p := range h.Paths {
+		if p.Link.Equals(link) {
+			return p
+		}
+	}
+	return nil
 }
 
 // AddPath ...
@@ -337,6 +347,11 @@ func (h *HostPath) Path() string {
 	return h.Link.path
 }
 
+// Headers ...
+func (h *HostPath) Headers() HTTPHeaderMatch {
+	return h.Link.headers
+}
+
 // Match ...
 func (h *HostPath) Match() MatchType {
 	return h.Link.match
@@ -388,6 +403,13 @@ func (l *PathLink) WithHostname(hostname string) *PathLink {
 // WithHeadersMatch ...
 func (l *PathLink) WithHeadersMatch(headers HTTPHeaderMatch) *PathLink {
 	l.headers = headers
+	l.updatehash()
+	return l
+}
+
+// AddHeadersMatch ...
+func (l *PathLink) AddHeadersMatch(headers HTTPHeaderMatch) *PathLink {
+	l.headers = append(l.headers, headers...)
 	l.updatehash()
 	return l
 }
