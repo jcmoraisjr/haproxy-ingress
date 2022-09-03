@@ -35,7 +35,7 @@ type MapBuilder struct {
 type Mapper struct {
 	MapBuilder
 	configByKey  map[string][]*PathConfig
-	configByPath map[hatypes.PathLink]*KeyConfig
+	configByPath map[hatypes.PathLinkHash]*KeyConfig
 }
 
 // KeyConfig ...
@@ -77,7 +77,7 @@ func (b *MapBuilder) NewMapper() *Mapper {
 		MapBuilder: *b,
 		//
 		configByKey:  map[string][]*PathConfig{},
-		configByPath: map[hatypes.PathLink]*KeyConfig{},
+		configByPath: map[hatypes.PathLinkHash]*KeyConfig{},
 	}
 }
 
@@ -96,10 +96,10 @@ func (c *Mapper) addAnnotation(source *Source, path hatypes.PathLink, key, value
 		panic("path link cannot be empty")
 	}
 	// check overlap
-	config, configfound := c.configByPath[path]
+	config, configfound := c.configByPath[path.Hash()]
 	if !configfound {
 		config = newKeyConfig(c)
-		c.configByPath[path] = config
+		c.configByPath[path.Hash()] = config
 	}
 	if cv, found := config.keys[key]; found {
 		// there is a conflict only if values differ
@@ -153,11 +153,11 @@ func (c *Mapper) findPathConfig(key string) ([]*PathConfig, bool) {
 
 // GetConfig ...
 func (c *Mapper) GetConfig(path hatypes.PathLink) *KeyConfig {
-	if config, found := c.configByPath[path]; found {
+	if config, found := c.configByPath[path.Hash()]; found {
 		return config
 	}
 	config := newKeyConfig(c)
-	c.configByPath[path] = config
+	c.configByPath[path.Hash()] = config
 	return config
 }
 

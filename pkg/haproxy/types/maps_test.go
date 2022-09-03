@@ -316,7 +316,7 @@ func TestOverlap(t *testing.T) {
 		hostname string
 		path     string
 		match    MatchType
-		headers  *HTTPHeaderMatch
+		headers  HTTPHeaderMatch
 		target   string
 	}
 	testCases := []struct {
@@ -572,9 +572,9 @@ hosts__regex.map first:false,lower:false,method:reg
 		// 12
 		{
 			data: []data{
-				{hostname: "local1.tld", path: "/a3", match: MatchExact, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+				{hostname: "local1.tld", path: "/a3", match: MatchExact, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
 				{hostname: "local1.tld", path: "/a2", match: MatchExact},
-				{hostname: "local1.tld", path: "/a1", match: MatchExact, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+				{hostname: "local1.tld", path: "/a1", match: MatchExact, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
 				{hostname: "local1.tld", path: "/a0", match: MatchExact},
 			},
 			expected: `
@@ -590,8 +590,8 @@ local1.tld /a2 exact
 		// 13
 		{
 			data: []data{
-				{hostname: "local1.tld", path: "/a3", match: MatchExact, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
-				{hostname: "local1.tld", path: "/a2", match: MatchExact, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+				{hostname: "local1.tld", path: "/a3", match: MatchExact, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+				{hostname: "local1.tld", path: "/a2", match: MatchExact, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
 				{hostname: "local1.tld", path: "/a1", match: MatchExact},
 				{hostname: "local1.tld", path: "/a0", match: MatchExact},
 			},
@@ -610,8 +610,8 @@ local1.tld /a1 exact
 			data: []data{
 				{hostname: "local1.tld", path: "/a3", match: MatchExact},
 				{hostname: "local1.tld", path: "/a2", match: MatchExact},
-				{hostname: "local1.tld", path: "/a1", match: MatchExact, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
-				{hostname: "local1.tld", path: "/a0", match: MatchExact, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname2"}}},
+				{hostname: "local1.tld", path: "/a1", match: MatchExact, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+				{hostname: "local1.tld", path: "/a0", match: MatchExact, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname2"}}},
 			},
 			expected: `
 hosts__exact_01.map first:true,lower:false,method:str headers=['x-user':'myname2',regex:false]
@@ -630,8 +630,8 @@ local1.tld /a3 exact
 			data: []data{
 				{hostname: "local1.tld", path: "/a3", match: MatchBegin},
 				{hostname: "local1.tld", path: "/a2", match: MatchPrefix},
-				{hostname: "local1.tld", path: "/a1", match: MatchBegin, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
-				{hostname: "local1.tld", path: "/a0", match: MatchPrefix, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+				{hostname: "local1.tld", path: "/a1", match: MatchBegin, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+				{hostname: "local1.tld", path: "/a0", match: MatchPrefix, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
 			},
 			expected: `
 hosts__begin_01.map first:true,lower:true,method:beg headers=['x-user':'myname1',regex:false]
@@ -650,7 +650,7 @@ local1.tld /a3 begin
 		// 16
 		{
 			data: []data{
-				{hostname: "local1.tld", path: "/a0", match: MatchPrefix, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+				{hostname: "local1.tld", path: "/a0", match: MatchPrefix, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
 			},
 			expected: `
 hosts__prefix_01.map first:true,lower:false,method:dir headers=['x-user':'myname1',regex:false]
@@ -660,9 +660,9 @@ local1.tld /a0 prefix
 		// 17
 		{
 			data: []data{
-				{hostname: "local1.tld", path: "/a2", match: MatchPrefix, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname2"}}},
-				{hostname: "local1.tld", path: "/a1", match: MatchPrefix, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
-				{hostname: "local1.tld", path: "/a0", match: MatchPrefix, headers: &HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+				{hostname: "local1.tld", path: "/a2", match: MatchPrefix, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname2"}}},
+				{hostname: "local1.tld", path: "/a1", match: MatchPrefix, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+				{hostname: "local1.tld", path: "/a0", match: MatchPrefix, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
 			},
 			expected: `
 hosts__prefix_01.map first:true,lower:false,method:dir headers=['x-user':'myname1',regex:false]
@@ -688,7 +688,7 @@ local1.tld /a2 prefix
 			output += fmt.Sprintf("\n%s first:%t,lower:%t,method:%s", m.Filename(), m.First(), m.Lower(), m.Method())
 			if m.Headers() != nil {
 				output += " headers=["
-				for _, v := range *m.Headers() {
+				for _, v := range m.Headers() {
 					output += fmt.Sprintf("'%s':'%s',regex:%t;", v.Name, v.Value, v.Regex)
 				}
 				output = strings.TrimRight(output, ";") + "]"

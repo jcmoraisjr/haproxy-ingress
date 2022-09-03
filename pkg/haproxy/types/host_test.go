@@ -24,18 +24,40 @@ import (
 func TestCreatePathLink(t *testing.T) {
 	l1 := CreateHostPathLink("domain.local", "/app", MatchBegin)
 	l2 := CreateHostPathLink("domain.local", "/app", MatchBegin)
-	if l1 != l2 {
+	if !l1.Equals(l2) {
 		t.Errorf("two distinct path links with same host and path should match")
 	}
 	l3 := CreateHostPathLink("domain1.local", "/app", MatchBegin)
 	l4 := CreateHostPathLink("domain2.local", "/app", MatchBegin)
-	if l3 == l4 {
+	if l3.Equals(l4) {
 		t.Errorf("path links with distinct domains should not match")
 	}
 	l5 := CreateHostPathLink("domain.local", "/app1", MatchBegin)
 	l6 := CreateHostPathLink("domain.local", "/app2", MatchBegin)
-	if l5 == l6 {
+	if l5.Equals(l6) {
 		t.Errorf("path links with distinct paths should not match")
+	}
+	l7 := CreateHostPathLink("domain.local", "/app", MatchBegin)
+	l7.WithHeadersMatch(HTTPHeaderMatch{
+		{Name: "h1", Value: "v1", Regex: true},
+	})
+	l8 := CreateHostPathLink("domain.local", "/app", MatchBegin)
+	l8.WithHeadersMatch(HTTPHeaderMatch{
+		{Name: "h1", Value: "v1", Regex: true},
+	})
+	if !l7.Equals(l8) {
+		t.Errorf("path links with same headers should match")
+	}
+	l9 := CreateHostPathLink("domain.local", "/app", MatchBegin)
+	l9.WithHeadersMatch(HTTPHeaderMatch{
+		{Name: "h1", Value: "v1", Regex: true},
+	})
+	l10 := CreateHostPathLink("domain.local", "/app", MatchBegin)
+	l10.WithHeadersMatch(HTTPHeaderMatch{
+		{Name: "h1", Value: "v2", Regex: true},
+	})
+	if l9.Equals(l10) {
+		t.Errorf("path links with distinct headers should not match")
 	}
 }
 

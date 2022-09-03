@@ -125,7 +125,7 @@ func convertPathToRegex(hostPath *HostPath) string {
 	panic("unsupported match type")
 }
 
-func (hm *HostsMap) addTarget(hostname, path string, headers *HTTPHeaderMatch, order int, target string, match MatchType) {
+func (hm *HostsMap) addTarget(hostname, path string, headers []HTTPMatch, order int, target string, match MatchType) {
 	hostname = strings.ToLower(hostname)
 	if match == MatchBegin {
 		// this is the only match that uses case insensitive path
@@ -455,7 +455,7 @@ func (m MatchFile) Method() string {
 }
 
 // Headers ...
-func (m MatchFile) Headers() *HTTPHeaderMatch {
+func (m MatchFile) Headers() HTTPHeaderMatch {
 	return m.matchFile.headers
 }
 
@@ -472,14 +472,8 @@ func (he *HostsMapEntry) hasSameFilter(other *HostsMapEntry) bool {
 	return he.headers.equals(other.headers)
 }
 
-func (h *HTTPHeaderMatch) equals(other *HTTPHeaderMatch) bool {
-	if h == other {
-		return true
-	}
-	if h == nil || other == nil {
-		return false
-	}
-	return reflect.DeepEqual(*h, *other)
+func (h HTTPHeaderMatch) equals(other HTTPHeaderMatch) bool {
+	return reflect.DeepEqual(h, other)
 }
 
 func (he *HostsMapEntry) String() string {

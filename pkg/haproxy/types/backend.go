@@ -137,7 +137,7 @@ func (b *Backend) CookieAffinity() bool {
 func (b *Backend) FindBackendPath(link PathLink) *BackendPath {
 	// IMPLEMENT change to a map
 	for _, p := range b.Paths {
-		if p.Link == link {
+		if p.Link.Equals(link) {
 			return p
 		}
 	}

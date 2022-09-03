@@ -345,7 +345,7 @@ type HostsMapEntry struct {
 	hostname string
 	path     string
 	match    MatchType
-	headers  *HTTPHeaderMatch
+	headers  HTTPHeaderMatch
 	order    int
 	_upper   *list.Element
 	_elem    *list.Element
@@ -356,7 +356,7 @@ type HostsMapEntry struct {
 type hostsMapMatchFile struct {
 	entries  []*HostsMapEntry
 	match    MatchType
-	headers  *HTTPHeaderMatch
+	headers  HTTPHeaderMatch
 	priority bool
 }
 
@@ -501,15 +501,19 @@ type HTTPMatch struct {
 	Value string
 }
 
+// PathLinkHash ...
+type PathLinkHash string
+
 // PathLink is a unique identifier of a request
 // configuration. Several request based configurations
 // uses this identifier to distinguish if an acl should
 // or should not be applied.
 type PathLink struct {
+	hash     PathLinkHash
 	hostname string
 	path     string
 	match    MatchType
-	headers  *HTTPHeaderMatch
+	headers  HTTPHeaderMatch
 }
 
 // HostPath ...
