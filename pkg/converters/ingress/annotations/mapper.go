@@ -46,7 +46,7 @@ type KeyConfig struct {
 
 // PathConfig ...
 type PathConfig struct {
-	path  hatypes.PathLink
+	path  *hatypes.PathLink
 	value *ConfigValue
 }
 
@@ -90,7 +90,7 @@ func newKeyConfig(mapper *Mapper) *KeyConfig {
 
 // Add a new annotation to the current mapper.
 // Return the conflict state: true if a conflict was found, false if the annotation was assigned or at least handled
-func (c *Mapper) addAnnotation(source *Source, path hatypes.PathLink, key, value string) bool {
+func (c *Mapper) addAnnotation(source *Source, path *hatypes.PathLink, key, value string) bool {
 	if path.IsEmpty() {
 		// empty means default value, cannot register as an annotation
 		panic("path link cannot be empty")
@@ -129,7 +129,7 @@ func (c *Mapper) addAnnotation(source *Source, path hatypes.PathLink, key, value
 }
 
 // AddAnnotations ...
-func (c *Mapper) AddAnnotations(source *Source, path hatypes.PathLink, ann map[string]string) (conflicts []string) {
+func (c *Mapper) AddAnnotations(source *Source, path *hatypes.PathLink, ann map[string]string) (conflicts []string) {
 	conflicts = make([]string, 0, len(ann))
 	for key, value := range ann {
 		if conflict := c.addAnnotation(source, path, key, value); conflict {
@@ -152,7 +152,7 @@ func (c *Mapper) findPathConfig(key string) ([]*PathConfig, bool) {
 }
 
 // GetConfig ...
-func (c *Mapper) GetConfig(path hatypes.PathLink) *KeyConfig {
+func (c *Mapper) GetConfig(path *hatypes.PathLink) *KeyConfig {
 	if config, found := c.configByPath[path.Hash()]; found {
 		return config
 	}

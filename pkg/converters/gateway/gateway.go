@@ -326,7 +326,7 @@ func (c *converter) createBackend(source *Source, index string, backendRefs []ga
 	return habackend, svclist
 }
 
-func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha2.Hostname, matches []gatewayv1alpha2.HTTPRouteMatch, backend *hatypes.Backend) (hosts []*hatypes.Host, pathLinks []hatypes.PathLink) {
+func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha2.Hostname, matches []gatewayv1alpha2.HTTPRouteMatch, backend *hatypes.Backend) (hosts []*hatypes.Host, pathLinks []*hatypes.PathLink) {
 	if backend.ModeTCP && len(matches) > 0 {
 		c.logger.Warn("ignoring match from %s: backend is TCP or SSL Passthrough", source)
 		matches = nil

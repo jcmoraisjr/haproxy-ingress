@@ -134,7 +134,7 @@ func (b *Backend) CookieAffinity() bool {
 }
 
 // FindBackendPath ...
-func (b *Backend) FindBackendPath(link PathLink) *BackendPath {
+func (b *Backend) FindBackendPath(link *PathLink) *BackendPath {
 	// IMPLEMENT change to a map
 	for _, p := range b.Paths {
 		if p.Link.Equals(link) {
@@ -145,7 +145,7 @@ func (b *Backend) FindBackendPath(link PathLink) *BackendPath {
 }
 
 // AddBackendPath ...
-func (b *Backend) AddBackendPath(link PathLink) *BackendPath {
+func (b *Backend) AddBackendPath(link *PathLink) *BackendPath {
 	backendPath := b.FindBackendPath(link)
 	if backendPath != nil {
 		return backendPath

@@ -41,7 +41,7 @@ import (
 type Config interface {
 	NeedFullSync() bool
 	Sync(full bool)
-	ReadAnnotations(backend *hatypes.Backend, services []*api.Service, pathLinks []hatypes.PathLink)
+	ReadAnnotations(backend *hatypes.Backend, services []*api.Service, pathLinks []*hatypes.PathLink)
 }
 
 // NewIngressConverter ...
@@ -98,7 +98,7 @@ type converter struct {
 	ingressClasses     map[string]*ingressClassConfig
 }
 
-func (c *converter) ReadAnnotations(backend *hatypes.Backend, services []*api.Service, pathLinks []hatypes.PathLink) {
+func (c *converter) ReadAnnotations(backend *hatypes.Backend, services []*api.Service, pathLinks []*hatypes.PathLink) {
 	mapper := c.mapBuilder.NewMapper()
 	for _, service := range services {
 		source := &annotations.Source{
@@ -720,11 +720,11 @@ func (c *converter) addHost(hostname string, source *annotations.Source, ann map
 	return host
 }
 
-func (c *converter) addBackend(source *annotations.Source, pathLink hatypes.PathLink, fullSvcName, svcPort string, ann map[string]string) (*hatypes.Backend, error) {
+func (c *converter) addBackend(source *annotations.Source, pathLink *hatypes.PathLink, fullSvcName, svcPort string, ann map[string]string) (*hatypes.Backend, error) {
 	return c.addBackendWithClass(source, pathLink, fullSvcName, svcPort, ann, nil)
 }
 
-func (c *converter) addBackendWithClass(source *annotations.Source, pathLink hatypes.PathLink, fullSvcName, svcPort string, ann map[string]string, ingressClass *networking.IngressClass) (*hatypes.Backend, error) {
+func (c *converter) addBackendWithClass(source *annotations.Source, pathLink *hatypes.PathLink, fullSvcName, svcPort string, ann map[string]string, ingressClass *networking.IngressClass) (*hatypes.Backend, error) {
 	// TODO build a stronger tracking
 	svc, err := c.cache.GetService(source.Namespace, fullSvcName)
 	hostname := pathLink.Hostname()

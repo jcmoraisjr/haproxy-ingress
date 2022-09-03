@@ -25,7 +25,7 @@ import (
 
 type ann struct {
 	src         *Source
-	path        hatypes.PathLink
+	path        *hatypes.PathLink
 	key         string
 	val         string
 	expConflict bool

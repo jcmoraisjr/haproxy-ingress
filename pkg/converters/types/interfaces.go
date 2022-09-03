@@ -142,7 +142,7 @@ type Tracker interface {
 
 // AnnotationReader ...
 type AnnotationReader interface {
-	ReadAnnotations(backend *hatypes.Backend, services []*api.Service, pathLinks []hatypes.PathLink)
+	ReadAnnotations(backend *hatypes.Backend, services []*api.Service, pathLinks []*hatypes.PathLink)
 }
 
 // File ...

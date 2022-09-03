@@ -1030,21 +1030,17 @@ d1.local#/ path01`,
 		},
 		{
 			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
-				link1 := hatypes.CreateHostPathLink("", "/app1", hatypes.MatchPrefix)
-				link2 := hatypes.CreateHostPathLink("", "/app2", hatypes.MatchPrefix)
-				link1.WithHeadersMatch(hatypes.HTTPHeaderMatch{{Name: "x-user", Value: "myusr1"}})
-				link2.WithHeadersMatch(hatypes.HTTPHeaderMatch{{Name: "x-user", Value: "myusr2"}})
+				link1 := hatypes.CreatePathLink("/app1", hatypes.MatchPrefix).
+					WithHeadersMatch(hatypes.HTTPHeaderMatch{{Name: "x-user", Value: "myusr1"}})
+				link2 := hatypes.CreatePathLink("/app2", hatypes.MatchPrefix).
+					WithHeadersMatch(hatypes.HTTPHeaderMatch{{Name: "x-user", Value: "myusr2"}})
 
 				hdef := c.hosts.AcquireHost(hatypes.DefaultHost)
-				link3 := hdef.AddLink(b, link1)
-				link4 := hdef.AddLink(b, link2)
-				b.FindBackendPath(link3).MaxBodySize = 1048576
-				b.FindBackendPath(link4).MaxBodySize = 2097152
+				b.FindBackendPath(hdef.AddLink(b, link1)).MaxBodySize = 1048576
+				b.FindBackendPath(hdef.AddLink(b, link2)).MaxBodySize = 2097152
 
-				link5 := h.AddLink(b, link1)
-				link6 := h.AddLink(b, link2)
-				b.FindBackendPath(link5).MaxBodySize = 1048576
-				b.FindBackendPath(link6).MaxBodySize = 2097152
+				b.FindBackendPath(h.AddLink(b, link1)).MaxBodySize = 1048576
+				b.FindBackendPath(h.AddLink(b, link2)).MaxBodySize = 2097152
 			},
 			expected: `
     # path02 = <default>/app1
@@ -2746,7 +2742,7 @@ func TestInstanceFrontendMatchHeader(t *testing.T) {
 
 	var h1, h2, h3, h4, h5 *hatypes.Host
 	var b1, b21 *hatypes.Backend
-	var link1, link2, link3 hatypes.PathLink
+	var link1, link2, link3 *hatypes.PathLink
 
 	// http/s
 	//
@@ -2820,16 +2816,16 @@ func TestInstanceFrontendMatchHeader(t *testing.T) {
 	h4.AddPath(b1, "/", hatypes.MatchBegin)
 	h5.AddPath(b1, "/", hatypes.MatchBegin)
 
-	link1 = hatypes.CreateHostPathLink("", "/", hatypes.MatchBegin)
+	link1 = hatypes.CreatePathLink("/", hatypes.MatchBegin)
 	link1.WithHeadersMatch(hatypes.HTTPHeaderMatch{
 		{Name: "x-user", Value: "id"},
 		{Name: "x-version", Value: "^[Ss]taging$", Regex: true},
 	})
-	link2 = hatypes.CreateHostPathLink("", "/app2", hatypes.MatchBegin)
+	link2 = hatypes.CreatePathLink("/app2", hatypes.MatchBegin)
 	link2.WithHeadersMatch(hatypes.HTTPHeaderMatch{
 		{Name: "x-version", Value: "^[Tt]est$", Regex: true},
 	})
-	link3 = hatypes.CreateHostPathLink("", "/app3", hatypes.MatchBegin)
+	link3 = hatypes.CreatePathLink("/app3", hatypes.MatchBegin)
 	link3.WithHeadersMatch(hatypes.HTTPHeaderMatch{
 		{Name: "x-version", Value: "^[Tt]est$", Regex: true},
 	})
