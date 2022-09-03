@@ -1048,11 +1048,11 @@ d1.local#/ path01`,
     # path01 = d1.local/
     # path04 = d1.local/app1
     # path05 = d1.local/app2
-    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpath__prefix_01.map) if { hdr(x-user) -- "myusr2" }
-    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpath__prefix_02.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- "myusr1" }
+    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpath__prefix_01.map) if { hdr(x-user) -- 'myusr2' }
+    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpath__prefix_02.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- 'myusr1' }
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map) if !{ var(txn.pathID) -m found }
-    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__prefix_01.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- "myusr2" }
-    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__prefix_02.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- "myusr1" }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__prefix_01.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- 'myusr2' }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__prefix_02.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- 'myusr1' }
     http-request use-service lua.send-413 if { var(txn.pathID) -m str path02 path04 } { req.body_size,sub(1048576) gt 0 }
     http-request use-service lua.send-413 if { var(txn.pathID) -m str path03 path05 } { req.body_size,sub(2097152) gt 0 }`,
 			expFronts: `frontend _front_http
@@ -1060,11 +1060,11 @@ d1.local#/ path01`,
     bind :80
     <<set-req-base>>
     <<http-headers>>
-    http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_host__prefix_01.map) if { hdr(x-user) -- "myusr1" }
-    http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_host__prefix_02.map) if !{ var(req.backend) -m found } { hdr(x-user) -- "myusr2" }
+    http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_host__prefix_01.map) if { hdr(x-user) -- 'myusr1' }
+    http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_host__prefix_02.map) if !{ var(req.backend) -m found } { hdr(x-user) -- 'myusr2' }
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map) if !{ var(req.backend) -m found }
-    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_defaulthost__prefix_01.map) if !{ var(req.backend) -m found } { hdr(x-user) -- "myusr1" }
-    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_defaulthost__prefix_02.map) if !{ var(req.backend) -m found } !{ var(req.defaultbackend) -m found } { hdr(x-user) -- "myusr2" }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_defaulthost__prefix_01.map) if !{ var(req.backend) -m found } { hdr(x-user) -- 'myusr1' }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_defaulthost__prefix_02.map) if !{ var(req.backend) -m found } !{ var(req.defaultbackend) -m found } { hdr(x-user) -- 'myusr2' }
     use_backend %[var(req.backend)] if { var(req.backend) -m found }
     use_backend %[var(req.defaultbackend)]
     default_backend _error404
@@ -1072,11 +1072,11 @@ frontend _front_https
     mode http
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
     <<set-req-base>>
-    http-request set-var(req.hostbackend) var(req.base),map_dir(/etc/haproxy/maps/_front_https_host__prefix_01.map) if { hdr(x-user) -- "myusr1" }
-    http-request set-var(req.hostbackend) var(req.base),map_dir(/etc/haproxy/maps/_front_https_host__prefix_02.map) if !{ var(req.hostbackend) -m found } { hdr(x-user) -- "myusr2" }
+    http-request set-var(req.hostbackend) var(req.base),map_dir(/etc/haproxy/maps/_front_https_host__prefix_01.map) if { hdr(x-user) -- 'myusr1' }
+    http-request set-var(req.hostbackend) var(req.base),map_dir(/etc/haproxy/maps/_front_https_host__prefix_02.map) if !{ var(req.hostbackend) -m found } { hdr(x-user) -- 'myusr2' }
     http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map) if !{ var(req.hostbackend) -m found }
-    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_defaulthost__prefix_01.map) if !{ var(req.hostbackend) -m found } { hdr(x-user) -- "myusr1" }
-    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_defaulthost__prefix_02.map) if !{ var(req.hostbackend) -m found } !{ var(req.defaultbackend) -m found } { hdr(x-user) -- "myusr2" }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_defaulthost__prefix_01.map) if !{ var(req.hostbackend) -m found } { hdr(x-user) -- 'myusr1' }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_defaulthost__prefix_02.map) if !{ var(req.hostbackend) -m found } !{ var(req.defaultbackend) -m found } { hdr(x-user) -- 'myusr2' }
     <<https-headers>>
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     use_backend %[var(req.defaultbackend)]
@@ -2871,19 +2871,19 @@ frontend _front_http
     mode http
     bind :80
     <<set-req-base>>
-    http-request set-var(txn.namespace) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_namespace__begin_01.map) if { hdr(x-user) -- "id" } { hdr(x-version) -m reg -- "^[Ss]taging$" }
-    http-request set-var(txn.namespace) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_namespace__begin_02.map) if !{ var(txn.namespace) -m found } { hdr(x-version) -m reg -- "^[Tt]est$" }
+    http-request set-var(txn.namespace) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_namespace__begin_01.map) if { hdr(x-user) -- 'id' } { hdr(x-version) -m reg -- '^[Ss]taging$' }
+    http-request set-var(txn.namespace) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_namespace__begin_02.map) if !{ var(txn.namespace) -m found } { hdr(x-version) -m reg -- '^[Tt]est$' }
     http-request set-var(txn.namespace) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_namespace__begin.map) if !{ var(txn.namespace) -m found }
     http-request set-var(txn.namespace) str(-) if !{ var(txn.namespace) -m found }
     <<http-headers>>
-    http-request set-var(req.redirto) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_redir_to__begin_01.map) if { hdr(x-user) -- "id" } { hdr(x-version) -m reg -- "^[Ss]taging$" }
-    http-request set-var(req.redirto) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_redir_to__begin_02.map) if !{ var(req.redirto) -m found } { hdr(x-version) -m reg -- "^[Tt]est$" }
+    http-request set-var(req.redirto) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_redir_to__begin_01.map) if { hdr(x-user) -- 'id' } { hdr(x-version) -m reg -- '^[Ss]taging$' }
+    http-request set-var(req.redirto) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_redir_to__begin_02.map) if !{ var(req.redirto) -m found } { hdr(x-version) -m reg -- '^[Tt]est$' }
     http-request redirect location %[var(req.redirto)] code 302 if { var(req.redirto) -m found }
-    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin_01.map) if { hdr(x-user) -- "id" } { hdr(x-version) -m reg -- "^[Ss]taging$" }
-    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin_02.map) if !{ var(req.backend) -m found } { hdr(x-version) -m reg -- "^[Tt]est$" }
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin_01.map) if { hdr(x-user) -- 'id' } { hdr(x-version) -m reg -- '^[Ss]taging$' }
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin_02.map) if !{ var(req.backend) -m found } { hdr(x-version) -m reg -- '^[Tt]est$' }
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map) if !{ var(req.backend) -m found }
-    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_front_defaulthost__begin_01.map) if !{ var(req.backend) -m found } { hdr(x-user) -- "id" } { hdr(x-version) -m reg -- "^[Ss]taging$" }
-    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_front_defaulthost__begin_02.map) if !{ var(req.backend) -m found } !{ var(req.defaultbackend) -m found } { hdr(x-version) -m reg -- "^[Tt]est$" }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_front_defaulthost__begin_01.map) if !{ var(req.backend) -m found } { hdr(x-user) -- 'id' } { hdr(x-version) -m reg -- '^[Ss]taging$' }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_front_defaulthost__begin_02.map) if !{ var(req.backend) -m found } !{ var(req.defaultbackend) -m found } { hdr(x-version) -m reg -- '^[Tt]est$' }
     http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_front_defaulthost__begin.map) if !{ var(req.backend) -m found } !{ var(req.defaultbackend) -m found }
     use_backend %[var(req.backend)] if { var(req.backend) -m found }
     use_backend %[var(req.defaultbackend)]
@@ -2892,17 +2892,17 @@ frontend _front_https
     mode http
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
     <<set-req-base>>
-    http-request set-var(req.redirto) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_redir_to__begin_01.map) if { hdr(x-user) -- "id" } { hdr(x-version) -m reg -- "^[Ss]taging$" }
-    http-request set-var(req.redirto) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_redir_to__begin_02.map) if !{ var(req.redirto) -m found } { hdr(x-version) -m reg -- "^[Tt]est$" }
+    http-request set-var(req.redirto) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_redir_to__begin_01.map) if { hdr(x-user) -- 'id' } { hdr(x-version) -m reg -- '^[Ss]taging$' }
+    http-request set-var(req.redirto) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_redir_to__begin_02.map) if !{ var(req.redirto) -m found } { hdr(x-version) -m reg -- '^[Tt]est$' }
     http-request redirect location %[var(req.redirto)] code 302 if { var(req.redirto) -m found }
-    http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin_01.map) if { hdr(x-user) -- "id" } { hdr(x-version) -m reg -- "^[Ss]taging$" }
-    http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin_02.map) if !{ var(req.hostbackend) -m found } { hdr(x-version) -m reg -- "^[Tt]est$" }
+    http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin_01.map) if { hdr(x-user) -- 'id' } { hdr(x-version) -m reg -- '^[Ss]taging$' }
+    http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin_02.map) if !{ var(req.hostbackend) -m found } { hdr(x-version) -m reg -- '^[Tt]est$' }
     http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map) if !{ var(req.hostbackend) -m found }
-    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_front_defaulthost__begin_01.map) if !{ var(req.hostbackend) -m found } { hdr(x-user) -- "id" } { hdr(x-version) -m reg -- "^[Ss]taging$" }
-    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_front_defaulthost__begin_02.map) if !{ var(req.hostbackend) -m found } !{ var(req.defaultbackend) -m found } { hdr(x-version) -m reg -- "^[Tt]est$" }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_front_defaulthost__begin_01.map) if !{ var(req.hostbackend) -m found } { hdr(x-user) -- 'id' } { hdr(x-version) -m reg -- '^[Ss]taging$' }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_front_defaulthost__begin_02.map) if !{ var(req.hostbackend) -m found } !{ var(req.defaultbackend) -m found } { hdr(x-version) -m reg -- '^[Tt]est$' }
     http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_front_defaulthost__begin.map) if !{ var(req.hostbackend) -m found } !{ var(req.defaultbackend) -m found }
-    http-request set-var(txn.namespace) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_namespace__begin_01.map) if { hdr(x-user) -- "id" } { hdr(x-version) -m reg -- "^[Ss]taging$" }
-    http-request set-var(txn.namespace) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_namespace__begin_02.map) if !{ var(txn.namespace) -m found } { hdr(x-version) -m reg -- "^[Tt]est$" }
+    http-request set-var(txn.namespace) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_namespace__begin_01.map) if { hdr(x-user) -- 'id' } { hdr(x-version) -m reg -- '^[Ss]taging$' }
+    http-request set-var(txn.namespace) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_namespace__begin_02.map) if !{ var(txn.namespace) -m found } { hdr(x-version) -m reg -- '^[Tt]est$' }
     http-request set-var(txn.namespace) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_namespace__begin.map) if !{ var(txn.namespace) -m found }
     http-request set-var(txn.namespace) str(-) if !{ var(txn.namespace) -m found }
     <<https-headers>>
@@ -2912,11 +2912,11 @@ frontend _front_https
     acl tls-has-invalid-crt ssl_c_verify gt 0
     acl tls-check-crt ssl_fc_sni -i -m str -f /etc/haproxy/maps/_front_tls_auth__exact.list
     http-request set-var(req.snibase) ssl_fc_sni,lower,concat(\#,req.path)
-    http-request set-var(req.snibackend) var(req.snibase),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin_01.map) if { hdr(x-user) -- "id" } { hdr(x-version) -m reg -- "^[Ss]taging$" }
-    http-request set-var(req.snibackend) var(req.snibase),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin_02.map) if !{ var(req.snibackend) -m found } { hdr(x-version) -m reg -- "^[Tt]est$" }
+    http-request set-var(req.snibackend) var(req.snibase),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin_01.map) if { hdr(x-user) -- 'id' } { hdr(x-version) -m reg -- '^[Ss]taging$' }
+    http-request set-var(req.snibackend) var(req.snibase),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin_02.map) if !{ var(req.snibackend) -m found } { hdr(x-version) -m reg -- '^[Tt]est$' }
     http-request set-var(req.snibackend) var(req.snibase),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin.map) if !{ var(req.snibackend) -m found }
-    http-request set-var(req.snibackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin_01.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt { hdr(x-user) -- "id" } { hdr(x-version) -m reg -- "^[Ss]taging$" }
-    http-request set-var(req.snibackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin_02.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt { hdr(x-version) -m reg -- "^[Tt]est$" }
+    http-request set-var(req.snibackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin_01.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt { hdr(x-user) -- 'id' } { hdr(x-version) -m reg -- '^[Ss]taging$' }
+    http-request set-var(req.snibackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin_02.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt { hdr(x-version) -m reg -- '^[Tt]est$' }
     http-request set-var(req.snibackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt
     http-request set-var(req.tls_nocrt_redir) str(_internal) if !tls-has-crt tls-need-crt
     http-request set-var(req.tls_invalidcrt_redir) str(_internal) if tls-has-invalid-crt tls-check-crt
