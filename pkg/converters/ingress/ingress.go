@@ -26,6 +26,7 @@ import (
 
 	api "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/annotations"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
@@ -859,7 +860,18 @@ func (c *converter) addBackendWithClass(source *annotations.Source, pathLink hat
 	}
 	port := convutils.FindServicePort(svc, svcPort)
 	if port == nil {
-		return nil, fmt.Errorf("port not found: '%s'", svcPort)
+		if svc.Spec.Type != api.ServiceTypeExternalName || len(svc.Spec.Ports) > 0 {
+			return nil, fmt.Errorf("port not found: '%s'", svcPort)
+		}
+		portNumber, _ := strconv.Atoi(svcPort)
+		if portNumber == 0 {
+			return nil, fmt.Errorf("service %s has no port and ingress port is not numerical: '%s'",
+				api.ServiceTypeExternalName, svcPort)
+		}
+		port = &api.ServicePort{
+			Port:       int32(portNumber),
+			TargetPort: intstr.FromInt(portNumber),
+		}
 	}
 	backend := c.haproxy.Backends().AcquireBackend(namespace, svcName, port.TargetPort.String())
 	c.tracker.TrackBackend(convtypes.IngressType, source.FullName(), backend.BackendID())
