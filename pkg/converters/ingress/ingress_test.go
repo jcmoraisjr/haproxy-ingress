@@ -18,6 +18,7 @@ package ingress
 
 import (
 	"fmt"
+	"net"
 	"reflect"
 	"strconv"
 	"strings"
@@ -174,6 +175,69 @@ func TestSyncSvcUpstream(t *testing.T) {
   endpoints:
   - ip: 10.0.0.2
     port: 8080` + defaultBackendConfig)
+}
+
+func TestSyncSvcExternalName(t *testing.T) {
+	createSvc := func(c *testConfig, port string) *api.Service {
+		svc, _ := conv_helper.CreateService("default/echo", port, "")
+		if port == "" {
+			svc.Spec.Ports = nil
+		}
+		svc.Spec.Type = api.ServiceTypeExternalName
+		svc.Spec.ExternalName = "domain.local"
+		c.cache.SvcList = append(c.cache.SvcList, svc)
+		c.cache.LookupList["domain.local"] = []net.IP{net.ParseIP("172.17.1.101"), net.ParseIP("172.17.1.102")}
+		return svc
+	}
+	createIng := func(c *testConfig, port string) *networking.Ingress {
+		return c.createIng1("default/echo", "echo.example.com", "/", "echo:"+port)
+	}
+	testCases := []struct {
+		build   func(c *testConfig) (*api.Service, *networking.Ingress)
+		expect  string
+		logging string
+	}{
+		{
+			build: func(c *testConfig) (*api.Service, *networking.Ingress) {
+				svc := createSvc(c, "8080")
+				ing := createIng(c, "8000")
+				return svc, ing
+			},
+			logging: `WARN skipping backend config of Ingress 'default/echo': port not found: '8000'`,
+		},
+		{
+			build: func(c *testConfig) (*api.Service, *networking.Ingress) {
+				svc := createSvc(c, "")
+				ing := c.createIng1("default/echo", "echo.example.com", "/", "echo:http")
+				return svc, ing
+			},
+			logging: `WARN skipping backend config of Ingress 'default/echo': service ExternalName has no port and ingress port is not numerical: 'http'`,
+		},
+		{
+			build: func(c *testConfig) (*api.Service, *networking.Ingress) {
+				svc := createSvc(c, "")
+				ing := c.createIng1("default/echo", "echo.example.com", "/", "echo:8000")
+				return svc, ing
+			},
+			expect: `
+- id: default_echo_8000
+  endpoints:
+  - ip: 172.17.1.101
+    port: 8000
+  - ip: 172.17.1.102
+    port: 8000`,
+		},
+	}
+	for _, test := range testCases {
+		c := setup(t)
+
+		_, ing := test.build(c)
+		c.Sync(ing)
+		c.compareConfigBack(test.expect + defaultBackendConfig)
+		c.logger.CompareLogging(test.logging)
+
+		c.teardown()
+	}
 }
 
 func TestSyncSingle(t *testing.T) {
