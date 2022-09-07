@@ -22,8 +22,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/klog/v2"
-	gwapigatewayversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/gateway/versioned"
-	gwapinetworkingversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/networking/versioned"
+	gwapiversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/ingress"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/common/k8s"
@@ -626,15 +625,10 @@ func buildConfigFromFlags(masterURL, kubeconfigPath string) (*rest.Config, error
 
 type client struct {
 	*kubernetes.Clientset
-	gateway    *gwapigatewayversioned.Clientset
-	networking *gwapinetworkingversioned.Clientset
+	gateway *gwapiversioned.Clientset
 }
 
-func (c *client) GatewayAPIV1alpha1() gwapinetworkingversioned.Interface {
-	return c.networking
-}
-
-func (c *client) GatewayAPIV1alpha2() gwapigatewayversioned.Interface {
+func (c *client) GatewayAPIV1alpha2() gwapiversioned.Interface {
 	return c.gateway
 }
 
@@ -664,11 +658,7 @@ func createApiserverClient(apiserverHost string, kubeConfig string, disableWarni
 	if err != nil {
 		return nil, err
 	}
-	gateway, err := gwapigatewayversioned.NewForConfig(cfg)
-	if err != nil {
-		return nil, err
-	}
-	networking, err := gwapinetworkingversioned.NewForConfig(cfg)
+	gateway, err := gwapiversioned.NewForConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -682,9 +672,8 @@ func createApiserverClient(apiserverHost string, kubeConfig string, disableWarni
 		v.Major, v.Minor, v.GitVersion, v.GitTreeState, v.GitCommit, v.Platform)
 
 	return &client{
-		Clientset:  k8s,
-		gateway:    gateway,
-		networking: networking,
+		Clientset: k8s,
+		gateway:   gateway,
 	}, nil
 }
 

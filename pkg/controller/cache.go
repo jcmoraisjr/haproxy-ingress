@@ -40,7 +40,6 @@ import (
 	typedv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
@@ -202,50 +201,11 @@ func (c *k8scache) GetIngressClass(className string) (*networking.IngressClass, 
 	return c.listers.ingressClassLister.Get(className)
 }
 
-func (c *k8scache) hasGatewayA1() bool {
-	return c.listers.gatewayClassA1Lister != nil
-}
-
 func (c *k8scache) hasGateway() bool {
 	return c.listers.gatewayClassLister != nil
 }
 
-var errGatewayA1Disabled = fmt.Errorf("Gateway API v1alpha1 wasn't initialized")
 var errGatewayA2Disabled = fmt.Errorf("Gateway API v1alpha2 wasn't initialized")
-
-func (c *k8scache) GetGatewayA1(gatewayName string) (*gatewayv1alpha1.Gateway, error) {
-	if !c.hasGatewayA1() {
-		return nil, errGatewayA1Disabled
-	}
-	namespace, name, err := cache.SplitMetaNamespaceKey(gatewayName)
-	if err != nil {
-		return nil, err
-	}
-	gateway, err := c.listers.gatewayA1Lister.Gateways(namespace).Get(name)
-	if gateway != nil && !c.IsValidGatewayA1(gateway) {
-		return nil, fmt.Errorf("gateway class does not match")
-	}
-	return gateway, err
-}
-
-func (c *k8scache) GetGatewayA1List() ([]*gatewayv1alpha1.Gateway, error) {
-	if !c.hasGatewayA1() {
-		return nil, errGatewayA1Disabled
-	}
-	gwList, err := c.listers.gatewayA1Lister.List(labels.Everything())
-	if err != nil {
-		return nil, err
-	}
-	validGwList := make([]*gatewayv1alpha1.Gateway, len(gwList))
-	var i int
-	for _, gw := range gwList {
-		if c.IsValidGatewayA1(gw) {
-			validGwList[i] = gw
-			i++
-		}
-	}
-	return validGwList[:i], nil
-}
 
 func (c *k8scache) GetGatewayMap() (map[string]*gatewayv1alpha2.Gateway, error) {
 	if !c.hasGateway() {
@@ -264,13 +224,6 @@ func (c *k8scache) GetGatewayMap() (map[string]*gatewayv1alpha2.Gateway, error) 
 	return validGwList, nil
 }
 
-func (c *k8scache) GetGatewayClassA1(className string) (*gatewayv1alpha1.GatewayClass, error) {
-	if !c.hasGatewayA1() {
-		return nil, errGatewayA1Disabled
-	}
-	return c.listers.gatewayClassA1Lister.Get(className)
-}
-
 func (c *k8scache) GetGatewayClass(className string) (*gatewayv1alpha2.GatewayClass, error) {
 	if !c.hasGateway() {
 		return nil, errGatewayA2Disabled
@@ -284,20 +237,6 @@ func buildLabelSelector(match map[string]string) (labels.Selector, error) {
 		list = append(list, k+"="+v)
 	}
 	return labels.Parse(strings.Join(list, ","))
-}
-
-func (c *k8scache) GetHTTPRouteA1List(namespace string, match map[string]string) ([]*gatewayv1alpha1.HTTPRoute, error) {
-	if !c.hasGatewayA1() {
-		return nil, errGatewayA1Disabled
-	}
-	selector, err := buildLabelSelector(match)
-	if err != nil {
-		return nil, err
-	}
-	if namespace != "" {
-		return c.listers.httpRouteA1Lister.HTTPRoutes(namespace).List(selector)
-	}
-	return c.listers.httpRouteA1Lister.List(selector)
 }
 
 func (c *k8scache) GetHTTPRouteList() ([]*gatewayv1alpha2.HTTPRoute, error) {
@@ -773,20 +712,6 @@ func (c *k8scache) IsValidIngressClass(ingressClass *networking.IngressClass) bo
 }
 
 // implements ListerEvents
-func (c *k8scache) IsValidGatewayA1(gw *gatewayv1alpha1.Gateway) bool {
-	className := gw.Spec.GatewayClassName
-	gwClass, err := c.GetGatewayClassA1(className)
-	if err != nil {
-		c.logger.Warn("error reading GatewayClass v1alpha1 '%s': %v", className, err)
-		return false
-	} else if gwClass == nil {
-		c.logger.Warn("GatewayClass v1alpha1 not found: %s", className)
-		return false
-	}
-	return c.IsValidGatewayClassA1(gwClass)
-}
-
-// implements ListerEvents
 func (c *k8scache) IsValidGateway(gw *gatewayv1alpha2.Gateway) bool {
 	className := gw.Spec.GatewayClassName
 	gwClass, err := c.GetGatewayClass(string(className))
@@ -798,11 +723,6 @@ func (c *k8scache) IsValidGateway(gw *gatewayv1alpha2.Gateway) bool {
 		return false
 	}
 	return c.IsValidGatewayClass(gwClass)
-}
-
-// implements ListerEvents
-func (c *k8scache) IsValidGatewayClassA1(gwClass *gatewayv1alpha1.GatewayClass) bool {
-	return gwClass.Spec.Controller == c.cfg.ControllerName
 }
 
 // implements ListerEvents
@@ -840,19 +760,19 @@ func (c *k8scache) Notify(old, cur interface{}) {
 			if cur == nil {
 				ch.IngressClassesDel = append(ch.IngressClassesDel, old)
 			}
-		case *gatewayv1alpha1.Gateway:
+		case *gatewayv1alpha2.Gateway:
 			if cur == nil {
-				ch.GatewaysA1Del = append(ch.GatewaysA1Del, old)
+				ch.GatewaysDel = append(ch.GatewaysDel, old)
 				ch.NeedFullSync = true
 			}
-		case *gatewayv1alpha1.GatewayClass:
+		case *gatewayv1alpha2.GatewayClass:
 			if cur == nil {
-				ch.GatewayClassesA1Del = append(ch.GatewayClassesA1Del, old)
+				ch.GatewayClassesDel = append(ch.GatewayClassesDel, old)
 				ch.NeedFullSync = true
 			}
-		case *gatewayv1alpha1.HTTPRoute:
+		case *gatewayv1alpha2.HTTPRoute:
 			if cur == nil {
-				ch.HTTPRoutesA1Del = append(ch.HTTPRoutesA1Del, old)
+				ch.HTTPRoutesDel = append(ch.HTTPRoutesDel, old)
 				ch.NeedFullSync = true
 			}
 		case *api.Service:
@@ -889,30 +809,6 @@ func (c *k8scache) Notify(old, cur interface{}) {
 			} else {
 				ch.IngressClassesUpd = append(ch.IngressClassesUpd, cls)
 			}
-		case *gatewayv1alpha1.Gateway:
-			gw := cur
-			if old == nil {
-				ch.GatewaysA1Add = append(ch.GatewaysA1Add, gw)
-			} else {
-				ch.GatewaysA1Upd = append(ch.GatewaysA1Upd, gw)
-			}
-			ch.NeedFullSync = true
-		case *gatewayv1alpha1.GatewayClass:
-			cls := cur
-			if old == nil {
-				ch.GatewayClassesA1Add = append(ch.GatewayClassesA1Add, cls)
-			} else {
-				ch.GatewayClassesA1Upd = append(ch.GatewayClassesA1Upd, cls)
-			}
-			ch.NeedFullSync = true
-		case *gatewayv1alpha1.HTTPRoute:
-			hr := cur
-			if old == nil {
-				ch.HTTPRoutesA1Add = append(ch.HTTPRoutesA1Add, hr)
-			} else {
-				ch.HTTPRoutesA1Upd = append(ch.HTTPRoutesA1Upd, hr)
-			}
-			ch.NeedFullSync = true
 		case *gatewayv1alpha2.Gateway:
 			gw := cur
 			if old == nil {
@@ -1030,33 +926,6 @@ func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
 	}
 	for _, cls := range ch.IngressClassesAdd {
 		addChanges(convtypes.ResourceIngressClass, eventAdd, "", cls.Name)
-	}
-	for _, gw := range ch.GatewaysA1Del {
-		addChanges(convtypes.ResourceGatewayA1, eventDel, gw.Namespace, gw.Name)
-	}
-	for _, gw := range ch.GatewaysA1Upd {
-		addChanges(convtypes.ResourceGatewayA1, eventUpdate, gw.Namespace, gw.Name)
-	}
-	for _, gw := range ch.GatewaysA1Add {
-		addChanges(convtypes.ResourceGatewayA1, eventAdd, gw.Namespace, gw.Name)
-	}
-	for _, cls := range ch.GatewayClassesA1Del {
-		addChanges(convtypes.ResourceGatewayClassA1, eventDel, "", cls.Name)
-	}
-	for _, cls := range ch.GatewayClassesA1Upd {
-		addChanges(convtypes.ResourceGatewayClassA1, eventUpdate, "", cls.Name)
-	}
-	for _, cls := range ch.GatewayClassesA1Add {
-		addChanges(convtypes.ResourceGatewayClassA1, eventAdd, "", cls.Name)
-	}
-	for _, hr := range ch.HTTPRoutesA1Del {
-		addChanges(convtypes.ResourceHTTPRouteA1, eventDel, hr.Namespace, hr.Name)
-	}
-	for _, hr := range ch.HTTPRoutesA1Upd {
-		addChanges(convtypes.ResourceHTTPRouteA1, eventUpdate, hr.Namespace, hr.Name)
-	}
-	for _, hr := range ch.HTTPRoutesA1Add {
-		addChanges(convtypes.ResourceHTTPRouteA1, eventAdd, hr.Namespace, hr.Name)
 	}
 	for _, gw := range ch.GatewaysDel {
 		addChanges(convtypes.ResourceGateway, eventDel, gw.Namespace, gw.Name)
