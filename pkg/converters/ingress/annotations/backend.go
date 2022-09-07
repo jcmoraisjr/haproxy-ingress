@@ -637,17 +637,14 @@ func (c *updater) buildBackendHeaders(d *backData) {
 		return
 	}
 	for _, header := range utils.LineToSlice(headers.Value) {
-		header = strings.TrimSpace(header)
-		if header == "" {
+		name, value, err := utils.SplitHeaderNameValue(header)
+		if err != nil {
+			c.logger.Warn("ignoring header on %s: %v", headers.Source, err)
 			continue
 		}
-		idx := strings.IndexAny(header, ": ")
-		if idx <= 0 {
-			c.logger.Warn("ignored missing header name or value on %v: %s", headers.Source, header)
+		if name == "" {
 			continue
 		}
-		name := strings.TrimRight(header[:idx], ":")
-		value := strings.TrimSpace(header[idx+1:])
 		// TODO this should use a structured type and a smart match/replace if growing a bit more
 		value = strings.ReplaceAll(value, "%[service]", d.backend.Name)
 		value = strings.ReplaceAll(value, "%[namespace]", d.backend.Namespace)
@@ -742,7 +739,7 @@ func (c *updater) buildBackendOAuth(d *backData) {
 func (c *updater) findBackend(namespace, uriPrefix string) *hatypes.HostBackend {
 	for _, host := range c.haproxy.Hosts().Items() {
 		for _, path := range host.Paths {
-			if strings.TrimRight(path.Path, "/") == uriPrefix && path.Backend.Namespace == namespace {
+			if strings.TrimRight(path.Path(), "/") == uriPrefix && path.Backend.Namespace == namespace {
 				return &path.Backend
 			}
 		}

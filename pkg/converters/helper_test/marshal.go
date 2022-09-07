@@ -57,8 +57,14 @@ type (
 	}
 	pathMock struct {
 		Path      string
-		Match     string `yaml:",omitempty"`
-		BackendID string `yaml:"backend"`
+		Match     string        `yaml:",omitempty"`
+		Headers   []headersMock `yaml:",omitempty"`
+		BackendID string        `yaml:"backend"`
+	}
+	headersMock struct {
+		Name  string
+		Value string
+		Regex bool
 	}
 	tlsMock struct {
 		TLSFilename string `yaml:",omitempty"`
@@ -129,10 +135,19 @@ func marshalHosts(hafronts ...*hatypes.Host) []hostMock {
 		paths := []pathMock{}
 		for _, p := range f.Paths {
 			var match string
-			if p.Match != hatypes.MatchBegin {
-				match = string(p.Match)
+			if p.Match() != hatypes.MatchBegin {
+				match = string(p.Match())
 			}
-			paths = append(paths, pathMock{Path: p.Path, Match: match, BackendID: p.Backend.ID})
+			headers := p.Headers()
+			var hmock []headersMock
+			for _, h := range headers {
+				hmock = append(hmock, headersMock{
+					Regex: h.Regex,
+					Name:  h.Name,
+					Value: h.Value,
+				})
+			}
+			paths = append(paths, pathMock{Path: p.Path(), Match: match, Headers: hmock, BackendID: p.Backend.ID})
 		}
 		hosts = append(hosts, hostMock{
 			Hostname:     f.Hostname,

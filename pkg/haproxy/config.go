@@ -210,7 +210,7 @@ func (c *config) WriteFrontendMaps() error {
 			if backendID != "" {
 				if host.SSLPassthrough() {
 					// no ssl offload, cannot inspect incoming path, so tracking root only
-					if path.Path == "/" {
+					if path.Path() == "/" {
 						fmaps.SSLPassthroughMap.AddHostnameMapping(host.Hostname, backendID)
 						// the backend of the root path is the ssl-passthrough, which speaks TLS,
 						// so we cannot use it in the HTTP map. Change to the configured HTTP port
@@ -352,15 +352,15 @@ func (c *config) WriteBackendMaps() error {
 				if h == nil {
 					continue
 				}
-				p := h.FindPath(path.Path(), path.Match())
-				if len(p) == 0 {
+				p := h.FindPathWithLink(path.Link)
+				if p == nil {
 					continue
 				}
 				if path.IsDefaultHost() {
 					// using DefaultHost ID as hostname, see types.maps.go/buildMapKey()
-					pathsDefaultHostMap.AddHostnamePathMapping(hatypes.DefaultHost, p[0], path.ID)
+					pathsDefaultHostMap.AddHostnamePathMapping(hatypes.DefaultHost, p, path.ID)
 				} else {
-					pathsMap.AddHostnamePathMapping(path.Hostname(), p[0], path.ID)
+					pathsMap.AddHostnamePathMapping(path.Hostname(), p, path.ID)
 				}
 			}
 			backend.PathsMap = pathsMap

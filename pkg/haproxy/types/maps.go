@@ -19,6 +19,7 @@ package types
 import (
 	"container/list"
 	"fmt"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -60,24 +61,24 @@ func (hm *HostsMap) addHostnameMappingMatch(hostname, target string, match Match
 			match = MatchRegex
 		}
 	}
-	hm.addTarget(hostname, "", 0, target, match)
+	hm.addTarget(hostname, "", nil, 0, target, match)
 }
 
 // AddHostnamePathMapping ...
 func (hm *HostsMap) AddHostnamePathMapping(hostname string, hostPath *HostPath, target string) {
 	hostname, hasWildcard := convertWildcardToRegex(hostname)
-	path := hostPath.Path
-	match := hostPath.Match
+	path := hostPath.Path()
+	match := hostPath.Match()
 	// TODO paths of a wildcard hostname will always have less precedence
 	// despite the match type because the whole hostname+path will fill a
 	// MatchRegex map, which has the lesser precedence in the template.
 	if hasWildcard {
 		path = convertPathToRegex(hostPath)
 		match = MatchRegex
-	} else if hostPath.Match == MatchRegex {
+	} else if match == MatchRegex {
 		hostname = "^" + regexp.QuoteMeta(hostname) + "$"
 	}
-	hm.addTarget(hostname, path, hostPath.order, target, match)
+	hm.addTarget(hostname, path, hostPath.Link.headers, hostPath.order, target, match)
 }
 
 // AddAliasPathMapping ...
@@ -87,7 +88,7 @@ func (hm *HostsMap) AddAliasPathMapping(alias HostAliasConfig, path *HostPath, t
 	}
 	if alias.AliasRegex != "" {
 		pathstr := convertPathToRegex(path)
-		hm.addTarget(alias.AliasRegex, pathstr, path.order, target, MatchRegex)
+		hm.addTarget(alias.AliasRegex, pathstr, path.Link.headers, path.order, target, MatchRegex)
 	}
 }
 
@@ -106,24 +107,25 @@ func convertWildcardToRegex(hostname string) (h string, hasWildcard bool) {
 // validation - paths need to start with a slash. There is no
 // implicit `$`, so regex behaves pretty much like `begin`.
 func convertPathToRegex(hostPath *HostPath) string {
-	switch hostPath.Match {
+	path := hostPath.Path()
+	switch hostPath.Match() {
 	case MatchBegin:
-		return regexp.QuoteMeta(hostPath.Path)
+		return regexp.QuoteMeta(path)
 	case MatchExact:
-		return regexp.QuoteMeta(hostPath.Path) + "$"
+		return regexp.QuoteMeta(path) + "$"
 	case MatchPrefix:
-		path := regexp.QuoteMeta(hostPath.Path)
+		path = regexp.QuoteMeta(path)
 		if strings.HasSuffix(path, "/") {
 			return path
 		}
 		return path + "(/.*)?"
 	case MatchRegex:
-		return hostPath.Path
+		return path
 	}
 	panic("unsupported match type")
 }
 
-func (hm *HostsMap) addTarget(hostname, path string, order int, target string, match MatchType) {
+func (hm *HostsMap) addTarget(hostname, path string, headers []HTTPMatch, order int, target string, match MatchType) {
 	hostname = strings.ToLower(hostname)
 	if match == MatchBegin {
 		// this is the only match that uses case insensitive path
@@ -133,6 +135,7 @@ func (hm *HostsMap) addTarget(hostname, path string, order int, target string, m
 		hostname: hostname,
 		path:     path,
 		match:    match,
+		headers:  headers,
 		order:    order,
 		Key:      buildMapKey(match, hostname, path),
 		Value:    target,
@@ -195,32 +198,54 @@ func (hm *HostsMap) MatchFiles() []*MatchFile {
 }
 
 func (hm *HostsMap) rebuildMatchFiles() (matchFiles []*MatchFile) {
-	order := &list.List{}
+	listWithFilters := list.New()
+	order := list.New()
+
+	// Iterates over all the raw map entries, looking for extra map files
+	// that should be created. overlaps() defines if two entries
+	// should be placed on distinct maps due to overlap or extra filters.
 	for _, entryList := range hm.rawhosts {
-		// /sub/dir need to be processed before /sub
+		// priorities should be processed first:
+		// - /sub/dir need to be processed before /sub
+		// - with-filters need to be processed before without-filters
 		sort.Slice(entryList, func(i, j int) bool {
-			return entryList[i].path > entryList[j].path
+			e1 := entryList[i]
+			e2 := entryList[j]
+			if e1.headers.equals(e2.headers) {
+				return e1.path > e2.path
+			}
+			return e1.hasFilter()
 		})
+		if len(entryList) == 1 {
+			e1 := entryList[0]
+			if e1.hasFilter() {
+				_ = findOrCreateMatchFile(listWithFilters, e1)
+			}
+		}
 		for i, e1 := range entryList {
-			if i < len(entryList) {
-				for _, e2 := range entryList[i+1:] {
-					if overlaps(e1, e2) {
-						// here we have an overlap and distinct match files
-						// separate the entry that should be processed first
-						// into a match file with higher priority
-						el1 := e1._elem
-						if el1 == nil {
-							var m1 *hostsMapMatchFile
-							m1, el1 = findOrCreateMatchFile(order, e1.match, e1._upper, e2._elem)
-							m1.entries = append(m1.entries, e1)
-							e1._elem = el1
-						}
-						e2._upper = el1
+			f1 := e1.hasFilter()
+			for _, e2 := range entryList[i+1:] {
+				f2 := e2.hasFilter()
+				if !f1 && !f2 {
+					// Both e1 and e2 does not have filter, so they share the same list, `order`
+					findOrCreateMatchFileIfOverlaps(order, e1, e2)
+				} else {
+					// either e1 or e2 have filter and entries with filter should always be moved to a new match.
+					// move either or both (if f[12]) if not moved yet (_elem == nil).
+					if f1 && e1._elem == nil {
+						_ = findOrCreateMatchFile(listWithFilters, e1)
+					}
+					if f2 && e2._elem == nil {
+						_ = findOrCreateMatchFile(listWithFilters, e2)
 					}
 				}
 			}
 		}
 	}
+
+	// Create the default match files. All the entries without overlap or filters
+	// will be placed here. Other entries were already removed and placed on new
+	// map files created in the former for-loop
 	for _, match := range hm.matchOrder {
 		matchFile := hm.rawfiles[match]
 		if matchFile != nil {
@@ -241,6 +266,10 @@ func (hm *HostsMap) rebuildMatchFiles() (matchFiles []*MatchFile) {
 			}
 		}
 	}
+
+	// Add entries with filters as high priority and create
+	// the final []matchFiles in the correct order.
+	order.PushFrontList(listWithFilters)
 	matchFiles = make([]*MatchFile, 0, order.Len())
 	var i int
 	for e := order.Front(); e != nil; e = e.Next() {
@@ -280,26 +309,39 @@ func overlaps(e1, e2 *HostsMapEntry) bool {
 		strings.HasPrefix(e1.path, e2.path)
 }
 
-func findOrCreateMatchFile(order *list.List, match MatchType, starting, limit *list.Element) (matchFile *hostsMapMatchFile, element *list.Element) {
-	matchFile, element = findMatchFile(order, match, starting, limit)
-	if element == nil {
-		matchFile = &hostsMapMatchFile{match: match, priority: true}
-		if limit == nil {
-			element = order.PushBack(matchFile)
-		} else {
-			element = order.InsertBefore(matchFile, limit)
+func findOrCreateMatchFileIfOverlaps(order *list.List, e1, e2 *HostsMapEntry) {
+	if overlaps(e1, e2) || !e1.hasSameFilter(e2) {
+		el1 := e1._elem
+		if el1 == nil {
+			el1 = findOrCreateMatchFile(order, e1)
 		}
+		e2._upper = el1
 	}
-	return matchFile, element
 }
 
-func findMatchFile(order *list.List, match MatchType, starting, limit *list.Element) (matchFile *hostsMapMatchFile, element *list.Element) {
+func findOrCreateMatchFile(order *list.List, e1 *HostsMapEntry) *list.Element {
+	matchFile, element := findMatchFile(order, e1)
+	if element == nil {
+		matchFile = &hostsMapMatchFile{
+			match:    e1.match,
+			headers:  e1.headers,
+			priority: true,
+		}
+		element = order.PushBack(matchFile)
+	}
+	matchFile.entries = append(matchFile.entries, e1)
+	e1._elem = element
+	return element
+}
+
+func findMatchFile(order *list.List, e1 *HostsMapEntry) (matchFile *hostsMapMatchFile, element *list.Element) {
+	starting := e1._upper
 	if starting == nil {
 		starting = order.Front()
 	}
-	for element = starting; element != limit; element = element.Next() {
+	for element = starting; element != nil; element = element.Next() {
 		matchFile = element.Value.(*hostsMapMatchFile)
-		if matchFile.match == match {
+		if matchFile.match == e1.match && matchFile.headers.equals(e1.headers) {
 			return matchFile, element
 		}
 	}
@@ -412,9 +454,26 @@ func (m MatchFile) Method() string {
 	return m.matchFile.method()
 }
 
+// Headers ...
+func (m MatchFile) Headers() HTTPHeaderMatch {
+	return m.matchFile.headers
+}
+
 // Values ...
 func (m MatchFile) Values() []*HostsMapEntry {
 	return m.matchFile.entries
+}
+
+func (he *HostsMapEntry) hasFilter() bool {
+	return he.headers != nil
+}
+
+func (he *HostsMapEntry) hasSameFilter(other *HostsMapEntry) bool {
+	return he.headers.equals(other.headers)
+}
+
+func (h HTTPHeaderMatch) equals(other HTTPHeaderMatch) bool {
+	return reflect.DeepEqual(h, other)
 }
 
 func (he *HostsMapEntry) String() string {

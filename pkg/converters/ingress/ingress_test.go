@@ -2285,6 +2285,31 @@ WARN skipping backend 'echo5:8080' annotation(s) from Ingress 'default/echo5' du
 WARN skipping backend 'echo7:8080' annotation(s) from Ingress 'default/echo7' due to conflict: [balance-algorithm]`)
 }
 
+func TestSyncAnnBackHeaderMatch(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	c.createSvc1("default/echo", "http:8080", "172.17.1.101")
+	c.Sync(
+		c.createIng1Ann("default/echo1", "echo1.example.com", "/", "echo:8080",
+			map[string]string{
+				"ingress.kubernetes.io/http-header-match": "x-env: staging",
+			}),
+	)
+
+	c.compareConfigFront(`
+- hostname: echo1.example.com
+  paths:
+  - path: /
+    headers:
+    - name: x-env
+      value: staging
+      regex: false
+    backend: default_echo_8080
+`)
+	c.logger.CompareLogging(``)
+}
+
 func TestSyncAnnAuthURL(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()

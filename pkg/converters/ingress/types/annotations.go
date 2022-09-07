@@ -133,6 +133,8 @@ const (
 	BackHSTSIncludeSubdomains  = "hsts-include-subdomains"
 	BackHSTSMaxAge             = "hsts-max-age"
 	BackHSTSPreload            = "hsts-preload"
+	BackHTTPHeaderMatch        = "http-header-match"
+	BackHTTPHeaderMatchRegex   = "http-header-match-regex"
 	BackInitialWeight          = "initial-weight"
 	BackLimitConnections       = "limit-connections"
 	BackLimitRPS               = "limit-rps"

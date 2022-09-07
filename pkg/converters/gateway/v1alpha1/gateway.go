@@ -254,7 +254,7 @@ func (c *converter) createBackend(source *Source, index string, forwardTo []gate
 	return habackend, svclist
 }
 
-func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha1.Hostname, matches []gatewayv1alpha1.HTTPRouteMatch, backend *hatypes.Backend) (hosts []*hatypes.Host, pathLinks []hatypes.PathLink) {
+func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha1.Hostname, matches []gatewayv1alpha1.HTTPRouteMatch, backend *hatypes.Backend) (hosts []*hatypes.Host, pathLinks []*hatypes.PathLink) {
 	if backend.ModeTCP && len(matches) > 0 {
 		c.logger.Warn("ignoring match from %s: backend is configured as TCP mode", source)
 		matches = nil
@@ -298,7 +298,7 @@ func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha1.
 			h.AddPath(backend, path, haMatch)
 			handlePassthrough(path, h, backend)
 			hosts = append(hosts, h)
-			pathLinks = append(pathLinks, hatypes.CreatePathLink(hstr, path, haMatch))
+			pathLinks = append(pathLinks, hatypes.CreateHostPathLink(hstr, path, haMatch))
 		}
 		// TODO implement match.Headers
 		// TODO implement match.ExtensionRef

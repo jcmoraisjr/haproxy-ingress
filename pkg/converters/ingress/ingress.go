@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -36,13 +37,14 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
 // Config ...
 type Config interface {
 	NeedFullSync() bool
 	Sync(full bool)
-	ReadAnnotations(backend *hatypes.Backend, services []*api.Service, pathLinks []hatypes.PathLink)
+	ReadAnnotations(backend *hatypes.Backend, services []*api.Service, pathLinks []*hatypes.PathLink)
 }
 
 // NewIngressConverter ...
@@ -99,7 +101,7 @@ type converter struct {
 	ingressClasses     map[string]*ingressClassConfig
 }
 
-func (c *converter) ReadAnnotations(backend *hatypes.Backend, services []*api.Service, pathLinks []hatypes.PathLink) {
+func (c *converter) ReadAnnotations(backend *hatypes.Backend, services []*api.Service, pathLinks []*hatypes.PathLink) {
 	mapper := c.mapBuilder.NewMapper()
 	for _, service := range services {
 		source := &annotations.Source{
@@ -186,7 +188,7 @@ func (c *converter) syncDefaultCrt() {
 
 func (c *converter) syncDefaultBackend() {
 	if c.options.DefaultBackend != "" {
-		pathLink := hatypes.CreatePathLink(hatypes.DefaultHost, "/", hatypes.MatchBegin)
+		pathLink := hatypes.CreateHostPathLink(hatypes.DefaultHost, "/", hatypes.MatchBegin)
 		if backend, err := c.addBackend(&c.defaultBackSource, pathLink, c.options.DefaultBackend, "", map[string]string{}); err == nil {
 			c.haproxy.Backends().DefaultBackend = backend
 			c.tracker.TrackNames(c.defaultBackSource.Type, c.defaultBackSource.FullName(), convtypes.ResourceHAHostname, hatypes.DefaultHost)
@@ -393,12 +395,19 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 				uri = "/"
 			}
 			match := c.readPathType(path, annBack[ingtypes.BackPathType])
+			pathLink := hatypes.CreateHostPathLink(hostname, uri, match)
+			if headerMatch := annBack[ingtypes.BackHTTPHeaderMatch]; headerMatch != "" {
+				c.addHeaderMatch(source, pathLink, headerMatch, false)
+			}
+			if headerMatch := annBack[ingtypes.BackHTTPHeaderMatchRegex]; headerMatch != "" {
+				c.addHeaderMatch(source, pathLink, headerMatch, true)
+			}
 			if sslpassthrough && uri == "/" {
 				if host.FindPath(uri) != nil {
 					c.logger.Warn("skipping redeclared ssl-passthrough root path on %v", source)
 					continue
 				}
-			} else if host.FindPath(uri, match) != nil {
+			} else if host.FindPathWithLink(pathLink) != nil {
 				c.logger.Warn("skipping redeclared path '%s' type '%s' on %v", uri, match, source)
 				continue
 			}
@@ -411,14 +420,13 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 				c.logger.Warn("skipping backend config of %v: %v", source, err)
 				continue
 			}
-			pathLink := hatypes.CreatePathLink(hostname, uri, match)
 			fullSvcName := ing.Namespace + "/" + svcName
 			backend, err := c.addBackendWithClass(source, pathLink, fullSvcName, svcPort, annBack, ingressClass)
 			if err != nil {
 				c.logger.Warn("skipping backend config of %v: %v", source, err)
 				continue
 			}
-			host.AddPath(backend, uri, match)
+			host.AddLink(backend, pathLink)
 			sslpasshttpport := annHost[ingtypes.HostSSLPassthroughHTTPPort]
 			if sslpassthrough && sslpasshttpport != "" {
 				if _, err := c.addBackend(source, pathLink, fullSvcName, sslpasshttpport, annBack); err != nil {
@@ -510,7 +518,7 @@ func (c *converter) syncIngressTCP(source *annotations.Source, ing *networking.I
 			return fmt.Errorf("service '%s' on %v: backend for port '%d' was already assigned", svcName, source, tcpServicePort)
 		}
 		fullSvcName := ing.Namespace + "/" + svcName
-		pathLink := hatypes.CreatePathLink(hostname, "/", hatypes.MatchExact)
+		pathLink := hatypes.CreateHostPathLink(hostname, "/", hatypes.MatchExact)
 		ingressClass := c.readIngressClass(source, ing.Spec.IngressClassName)
 		backend, err := c.addBackendWithClass(source, pathLink, fullSvcName, svcPort, annBack, ingressClass)
 		if err != nil {
@@ -675,7 +683,7 @@ func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcNam
 			return fmt.Errorf("path %s was already defined on default host", uri)
 		}
 	}
-	pathLink := hatypes.CreatePathLink(hostname, uri, match)
+	pathLink := hatypes.CreateHostPathLink(hostname, uri, match)
 	backend, err := c.addBackend(source, pathLink, fullSvcName, svcPort, annBack)
 	if err != nil {
 		c.tracker.TrackNames(source.Type, source.FullName(), convtypes.ResourceService, fullSvcName)
@@ -698,7 +706,7 @@ func (c *converter) addTCPService(source *annotations.Source, hostname string, p
 		mapper = c.mapBuilder.NewMapper()
 		c.tcpsvcAnnotations[tcpPort] = mapper
 	}
-	conflict := mapper.AddAnnotations(source, hatypes.CreatePathLink(hostname, "/", hatypes.MatchExact), ann)
+	conflict := mapper.AddAnnotations(source, hatypes.CreateHostPathLink(hostname, "/", hatypes.MatchExact), ann)
 	if len(conflict) > 0 {
 		c.logger.Warn("skipping tcp service annotation(s) from %v due to conflict: %v", source, conflict)
 	}
@@ -714,18 +722,45 @@ func (c *converter) addHost(hostname string, source *annotations.Source, ann map
 		mapper = c.mapBuilder.NewMapper()
 		c.hostAnnotations[host] = mapper
 	}
-	conflict := mapper.AddAnnotations(source, hatypes.CreatePathLink(hostname, "/", hatypes.MatchExact), ann)
+	conflict := mapper.AddAnnotations(source, hatypes.CreateHostPathLink(hostname, "/", hatypes.MatchExact), ann)
 	if len(conflict) > 0 {
 		c.logger.Warn("skipping host annotation(s) from %v due to conflict: %v", source, conflict)
 	}
 	return host
 }
 
-func (c *converter) addBackend(source *annotations.Source, pathLink hatypes.PathLink, fullSvcName, svcPort string, ann map[string]string) (*hatypes.Backend, error) {
+func (c *converter) addHeaderMatch(source *annotations.Source, pathLink *hatypes.PathLink, headerMatch string, regex bool) {
+	var headers hatypes.HTTPHeaderMatch
+	for _, header := range utils.LineToSlice(headerMatch) {
+		name, value, err := utils.SplitHeaderNameValue(header)
+		if err != nil {
+			c.logger.Warn("ignoring header on %s: %v", source, err)
+		}
+		if name == "" {
+			continue
+		}
+		if regex {
+			if _, err := regexp.Compile(value); err != nil {
+				c.logger.Warn("ignoring invalid regex on %s: %v", source, err)
+				continue
+			}
+		}
+		headers = append(headers, hatypes.HTTPMatch{
+			Regex: regex,
+			Name:  name,
+			Value: value,
+		})
+	}
+	if len(headers) > 0 {
+		pathLink.AddHeadersMatch(headers)
+	}
+}
+
+func (c *converter) addBackend(source *annotations.Source, pathLink *hatypes.PathLink, fullSvcName, svcPort string, ann map[string]string) (*hatypes.Backend, error) {
 	return c.addBackendWithClass(source, pathLink, fullSvcName, svcPort, ann, nil)
 }
 
-func (c *converter) addBackendWithClass(source *annotations.Source, pathLink hatypes.PathLink, fullSvcName, svcPort string, ann map[string]string, ingressClass *networking.IngressClass) (*hatypes.Backend, error) {
+func (c *converter) addBackendWithClass(source *annotations.Source, pathLink *hatypes.PathLink, fullSvcName, svcPort string, ann map[string]string, ingressClass *networking.IngressClass) (*hatypes.Backend, error) {
 	// TODO build a stronger tracking
 	svc, err := c.cache.GetService(source.Namespace, fullSvcName)
 	hostname := pathLink.Hostname()

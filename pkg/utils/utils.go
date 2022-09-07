@@ -48,6 +48,22 @@ func LineToSlice(s string) []string {
 	return strings.Split(strings.TrimRight(s, "\n"), "\n")
 }
 
+// SplitHeaderNameValue splits a header line declaration into header name and value.
+// Note that name and value might be empty for an empty input.
+func SplitHeaderNameValue(header string) (name, value string, err error) {
+	header = strings.TrimSpace(header)
+	if header == "" {
+		return "", "", nil
+	}
+	idx := strings.IndexAny(header, ": ")
+	if idx <= 0 {
+		return "", "", fmt.Errorf("missing header name or value: %s", header)
+	}
+	name = strings.TrimRight(header[:idx], ":")
+	value = strings.TrimSpace(header[idx+1:])
+	return name, value, nil
+}
+
 // MergeMap copy keys from a `data` map to a `resultTo` tagged object
 func MergeMap(data map[string]string, resultTo interface{}) error {
 	if data != nil {

@@ -390,6 +390,8 @@ The table below describes all supported configuration keys.
 | [`hsts-include-subdomains`](#hsts)                   | [true\|false]                           | Path    | `false`            |
 | [`hsts-max-age`](#hsts)                              | number of seconds                       | Path    | `15768000`         |
 | [`hsts-preload`](#hsts)                              | [true\|false]                           | Path    | `false`            |
+| [`http-header-match`](#http-match)                   | header name and value, exact match      | Path    |                    |
+| [`http-header-match-regex`](#http-match)             | header name and value, regex match      | Path    |                    |
 | [`http-log-format`](#log-format)                     | http log format                         | Global  | HAProxy default log format |
 | [`http-port`](#bind-port)                            | port number                             | Global  | `80`               |
 | [`http-response-<code>`](#http-response)             | response output                         | Global  |                    |
@@ -1683,6 +1685,48 @@ Configure HSTS - HTTP Strict Transport Security. The following keys are supporte
 See also:
 
 * https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security
+
+---
+
+## HTTP Match
+
+| Configuration key               | Scope    | Default | Since |
+|---------------------------------|----------|---------|-------|
+| `http-header-match`             | `Path`   |         | v0.15 |
+| `http-header-match-regex`       | `Path`   |         | v0.15 |
+
+Add HTTP constraints for request routing.
+
+* `http-header-match`: Add HTTP header with exact match, one header name and value pair per line. The first white space, or colon followed by an optional white space, separates the header name and the match value. the header name is case insensitive while the value is case sensitive.
+* `http-header-match-regex`: Same as `http-header-match` but using regex match. Anchors are not added, so the value `bar` would match with `foobar` and `barbaz`, while `^bar` would only match with `barbaz`.
+
+More than one annotation can be used at the same time, and more than one match can be used in the same annotation. All the matches from all the annotations will be grouped together, and all of them must evaluate to true in order to the request be accepted and sent to the backend.
+
+**Examples**
+
+Match the header `X-Env` with value `staging` - header name is case insensitive, header value is case sensitive:
+
+```yaml
+    annotations:
+      haproxy-ingress.github.io/http-header-match: "X-Env: staging"
+```
+
+Match the header `X-Env` with value `staging`, and header `X-User` with value `admin`:
+
+```yaml
+    annotations:
+      haproxy-ingress.github.io/http-header-match: |
+        X-Env: staging
+        X-User: admin
+```
+
+Match the header `X-Env` with value that matches the regex `^(test|staging)$`:
+
+```yaml
+    annotations:
+      haproxy-ingress.github.io/http-header-match-regex: |
+        X-Env: ^(test|staging)$
+```
 
 ---
 

@@ -32,12 +32,19 @@ func CreateHosts() *Hosts {
 }
 
 // CreatePathLink ...
-func CreatePathLink(hostname, path string, match MatchType) PathLink {
-	return PathLink{
+func CreatePathLink(path string, match MatchType) *PathLink {
+	return CreateHostPathLink("", path, match)
+}
+
+// CreateHostPathLink ...
+func CreateHostPathLink(hostname, path string, match MatchType) *PathLink {
+	pathlink := &PathLink{
 		hostname: hostname,
 		path:     path,
 		match:    match,
 	}
+	pathlink.updatehash()
+	return pathlink
 }
 
 // AcquireHost ...
@@ -199,28 +206,42 @@ func (h *Hosts) HasVarNamespace() bool {
 // FindPath ...
 func (h *Host) FindPath(path string, match ...MatchType) (paths []*HostPath) {
 	for _, p := range h.Paths {
-		if p.Path == path && hasMatch(p, match) {
+		if p.Link.path == path && p.Link.headers == nil && p.hasMatch(match) {
 			paths = append(paths, p)
 		}
 	}
 	return paths
 }
 
-func hasMatch(path *HostPath, match []MatchType) bool {
-	if len(match) == 0 {
-		return true
-	}
-	for _, m := range match {
-		if path.Match == m {
-			return true
+// FindPathWithLink ...
+func (h *Host) FindPathWithLink(link *PathLink) (path *HostPath) {
+	for _, p := range h.Paths {
+		if p.Link.Equals(link) {
+			return p
 		}
 	}
-	return false
+	return nil
 }
 
 // AddPath ...
 func (h *Host) AddPath(backend *Backend, path string, match MatchType) {
 	h.addPath(path, match, backend, "")
+}
+
+// AddLink ...
+func (h *Host) AddLink(backend *Backend, link *PathLink) *PathLink {
+	newlink := *link
+	newlink.WithHostname(h.Hostname)
+	h.addLink(backend, &newlink, "")
+	return &newlink
+}
+
+// AddLinkRedirect ...
+func (h *Host) AddLinkRedirect(link *PathLink, redirTo string) *PathLink {
+	newlink := *link
+	newlink.WithHostname(h.Hostname)
+	h.addLink(nil, &newlink, redirTo)
+	return &newlink
 }
 
 // AddRedirect ...
@@ -234,7 +255,11 @@ type hostResolver struct {
 }
 
 func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo string) {
-	link := CreatePathLink(h.Hostname, path, match)
+	link := CreateHostPathLink(h.Hostname, path, match)
+	h.addLink(backend, link, redirTo)
+}
+
+func (h *Host) addLink(backend *Backend, link *PathLink, redirTo string) {
 	var hback HostBackend
 	if backend != nil {
 		hback = HostBackend{
@@ -253,9 +278,7 @@ func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo s
 		hback = HostBackend{ID: "_error404"}
 	}
 	h.Paths = append(h.Paths, &HostPath{
-		Path:    path,
 		Link:    link,
-		Match:   match,
 		Backend: hback,
 		RedirTo: redirTo,
 		order:   len(h.Paths),
@@ -264,10 +287,10 @@ func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo s
 	sort.Slice(h.Paths, func(i, j int) bool {
 		p1 := h.Paths[i]
 		p2 := h.Paths[j]
-		if p1.Path == p2.Path {
+		if p1.Link.path == p2.Link.path {
 			return p1.order < p2.order
 		}
-		return p1.Path > p2.Path
+		return p1.Link.path > p2.Link.path
 	})
 }
 
@@ -319,6 +342,78 @@ func (h *Host) SetSSLPassthrough(value bool) {
 	h.sslPassthrough = value
 }
 
+// Path ...
+func (h *HostPath) Path() string {
+	return h.Link.path
+}
+
+// Headers ...
+func (h *HostPath) Headers() HTTPHeaderMatch {
+	return h.Link.headers
+}
+
+// Match ...
+func (h *HostPath) Match() MatchType {
+	return h.Link.match
+}
+
+func (h *HostPath) hasMatch(match []MatchType) bool {
+	if len(match) == 0 {
+		return true
+	}
+	for _, m := range match {
+		if h.Link.match == m {
+			return true
+		}
+	}
+	return false
+}
+
+func (l *PathLink) updatehash() {
+	hash := l.hostname + "\n" + l.path + "\n" + string(l.match)
+	for _, h := range l.headers {
+		hash += "\n" + "h:" + h.Name + ":" + h.Value
+		if h.Regex {
+			hash += "(regex)"
+		}
+	}
+	l.hash = PathLinkHash(hash)
+}
+
+// Hash ...
+func (l *PathLink) Hash() PathLinkHash {
+	return l.hash
+}
+
+// Equals ...
+func (l *PathLink) Equals(other *PathLink) bool {
+	if l == nil || other == nil {
+		return l == other
+	}
+	return l.hash == other.hash
+}
+
+// WithHostname ...
+func (l *PathLink) WithHostname(hostname string) *PathLink {
+	l.hostname = hostname
+	l.updatehash()
+	return l
+}
+
+// WithHeadersMatch ...
+func (l *PathLink) WithHeadersMatch(headers HTTPHeaderMatch) *PathLink {
+	l.headers = headers
+	l.updatehash()
+	return l
+}
+
+// AddHeadersMatch ...
+func (l *PathLink) AddHeadersMatch(headers HTTPHeaderMatch) *PathLink {
+	l.headers = append(l.headers, headers...)
+	l.updatehash()
+	return l
+}
+
 // Hostname ...
 func (l *PathLink) Hostname() string {
 	return l.hostname
@@ -335,7 +430,7 @@ func (l *PathLink) IsDefaultHost() bool {
 }
 
 // Less ...
-func (l *PathLink) Less(other PathLink, reversePath bool) bool {
+func (l *PathLink) Less(other *PathLink, reversePath bool) bool {
 	if l.hostname == other.hostname {
 		if reversePath {
 			return l.path > other.path

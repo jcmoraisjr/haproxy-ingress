@@ -145,7 +145,7 @@ func TestBind(t *testing.T) {
 			ingtypes.GlobalHTTPSPort:      "443",
 			ingtypes.GlobalBindIPAddrHTTP: "*",
 		})
-		d.mapper.AddAnnotations(nil, hatypes.CreatePathLink("-", "-", hatypes.MatchBegin), test.ann)
+		d.mapper.AddAnnotations(nil, hatypes.CreateHostPathLink("-", "-", hatypes.MatchBegin), test.ann)
 		c.createUpdater().buildGlobalBind(d)
 		c.compareObjects("bind", i, d.global.Bind, test.expected)
 		c.teardown()
