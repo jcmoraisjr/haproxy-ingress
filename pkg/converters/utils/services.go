@@ -115,7 +115,6 @@ func CreateSvcEndpoint(svc *api.Service, svcPort *api.ServicePort) (endpoint *En
 }
 
 func createEndpointsExternalName(cache types.Cache, svc *api.Service, svcPort *api.ServicePort) (endpoints []*Endpoint, err error) {
-	// TODO add support to undeclared ServicePort
 	port := int(svcPort.Port)
 	if port <= 0 {
 		return nil, fmt.Errorf("invalid port number: %d", port)
