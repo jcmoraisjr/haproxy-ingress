@@ -457,7 +457,7 @@ func (c *converter) applyCertRef(source *Source, listener *gatewayv1alpha2.Liste
 		c.logger.Warn("skipping one or more certificate references on %s listener '%s': %s",
 			source, listener.Name, err)
 	}
-	certRef := certRefs[0]
+	certRef := &certRefs[0]
 	crtFile, err := c.readCertRef(source.namespace, certRef)
 	if err != nil {
 		c.logger.Warn("skipping certificate reference on %s listener '%s': %s",

@@ -26,7 +26,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	gateway "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	gwapischeme "sigs.k8s.io/gateway-api/pkg/client/clientset/gateway/versioned/scheme"
+	gwapischeme "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/scheme"
 
 	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
@@ -1076,7 +1076,7 @@ func (c *testConfig) createGateway2(name, listeners, secretName string) *gateway
 	for l := range gw.Spec.Listeners {
 		tls := &gateway.GatewayTLSConfig{}
 		for _, s := range strings.Split(secretName, ",") {
-			tls.CertificateRefs = append(tls.CertificateRefs, &gateway.SecretObjectReference{
+			tls.CertificateRefs = append(tls.CertificateRefs, gateway.SecretObjectReference{
 				Name: gateway.ObjectName(s),
 			})
 		}

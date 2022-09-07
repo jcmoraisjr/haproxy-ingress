@@ -34,14 +34,10 @@ import (
 	listersnetworking "k8s.io/client-go/listers/networking/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	gwapiinformersgateway "sigs.k8s.io/gateway-api/pkg/client/informers/gateway/externalversions"
-	gwapiinformersgatewayv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/informers/gateway/externalversions/apis/v1alpha2"
-	gwapiinformersnetworking "sigs.k8s.io/gateway-api/pkg/client/informers/networking/externalversions"
-	gwapiinformersnetworkingv1alpha1 "sigs.k8s.io/gateway-api/pkg/client/informers/networking/externalversions/apis/v1alpha1"
-	gwapilistersgatewayv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/listers/gateway/apis/v1alpha2"
-	gwapilistersgatewayv1alpha1 "sigs.k8s.io/gateway-api/pkg/client/listers/networking/apis/v1alpha1"
+	gwapiinformersgateway "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions"
+	gwapiinformersgatewayv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions/apis/v1alpha2"
+	gwapilistersgatewayv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha2"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )
@@ -50,9 +46,7 @@ import (
 type ListerEvents interface {
 	IsValidIngress(ing *networking.Ingress) bool
 	IsValidIngressClass(ingClass *networking.IngressClass) bool
-	IsValidGatewayA1(gw *gatewayv1alpha1.Gateway) bool
 	IsValidGateway(gw *gatewayv1alpha2.Gateway) bool
-	IsValidGatewayClassA1(gwClass *gatewayv1alpha1.GatewayClass) bool
 	IsValidGatewayClass(gwClass *gatewayv1alpha2.GatewayClass) bool
 	IsValidConfigMap(cm *api.ConfigMap) bool
 	Notify(old, cur interface{})
@@ -66,33 +60,27 @@ type listers struct {
 	//
 	hasPodLister bool
 	//
-	ingressLister        listersnetworking.IngressLister
-	ingressClassLister   listersnetworking.IngressClassLister
-	gatewayA1Lister      gwapilistersgatewayv1alpha1.GatewayLister
-	gatewayClassA1Lister gwapilistersgatewayv1alpha1.GatewayClassLister
-	httpRouteA1Lister    gwapilistersgatewayv1alpha1.HTTPRouteLister
-	gatewayLister        gwapilistersgatewayv1alpha2.GatewayLister
-	gatewayClassLister   gwapilistersgatewayv1alpha2.GatewayClassLister
-	httpRouteLister      gwapilistersgatewayv1alpha2.HTTPRouteLister
-	endpointLister       listerscore.EndpointsLister
-	serviceLister        listerscore.ServiceLister
-	secretLister         listerscore.SecretLister
-	configMapLister      listerscore.ConfigMapLister
-	podLister            listerscore.PodLister
+	ingressLister      listersnetworking.IngressLister
+	ingressClassLister listersnetworking.IngressClassLister
+	gatewayLister      gwapilistersgatewayv1alpha2.GatewayLister
+	gatewayClassLister gwapilistersgatewayv1alpha2.GatewayClassLister
+	httpRouteLister    gwapilistersgatewayv1alpha2.HTTPRouteLister
+	endpointLister     listerscore.EndpointsLister
+	serviceLister      listerscore.ServiceLister
+	secretLister       listerscore.SecretLister
+	configMapLister    listerscore.ConfigMapLister
+	podLister          listerscore.PodLister
 	//
-	ingressInformer        cache.SharedInformer
-	ingressClassInformer   cache.SharedInformer
-	gatewayA1Informer      cache.SharedInformer
-	gatewayClassA1Informer cache.SharedInformer
-	httpRouteA1Informer    cache.SharedInformer
-	gatewayInformer        cache.SharedInformer
-	gatewayClassInformer   cache.SharedInformer
-	httpRouteInformer      cache.SharedInformer
-	endpointInformer       cache.SharedInformer
-	serviceInformer        cache.SharedInformer
-	secretInformer         cache.SharedInformer
-	configMapInformer      cache.SharedInformer
-	podInformer            cache.SharedInformer
+	ingressInformer      cache.SharedInformer
+	ingressClassInformer cache.SharedInformer
+	gatewayInformer      cache.SharedInformer
+	gatewayClassInformer cache.SharedInformer
+	httpRouteInformer    cache.SharedInformer
+	endpointInformer     cache.SharedInformer
+	serviceInformer      cache.SharedInformer
+	secretInformer       cache.SharedInformer
+	configMapInformer    cache.SharedInformer
+	podInformer          cache.SharedInformer
 }
 
 func createListers(
@@ -142,21 +130,6 @@ func createListers(
 	}
 
 	if watchGateway {
-		if hasGatewayAPI(client.GatewayAPIV1alpha1().Discovery(), gatewayv1alpha1.GroupVersion, "gatewayclass", "gateway", "httproute") {
-			var option gwapiinformersnetworking.SharedInformerOption
-			if clusterWatch {
-				option = gwapiinformersnetworking.WithTweakListOptions(nil)
-			} else {
-				option = gwapiinformersnetworking.WithNamespace(watchNamespace)
-			}
-			informer := gwapiinformersnetworking.NewSharedInformerFactoryWithOptions(client.GatewayAPIV1alpha1(), resync, option)
-			l.createGatewayClassA1Lister(informer.Networking().V1alpha1().GatewayClasses())
-			l.createGatewayA1Lister(informer.Networking().V1alpha1().Gateways())
-			l.createHTTPRouteA1Lister(informer.Networking().V1alpha1().HTTPRoutes())
-			l.logger.Warn("watching '%s'", gatewayv1alpha1.GroupVersion)
-		} else {
-			l.logger.Warn("gateway API '%s' was not found, skipping", gatewayv1alpha1.GroupVersion)
-		}
 		if hasGatewayAPI(client.GatewayAPIV1alpha2().Discovery(), gatewayv1alpha2.GroupVersion, "gatewayclass", "gateway", "httproute") {
 			var option gwapiinformersgateway.SharedInformerOption
 			if clusterWatch {
@@ -209,20 +182,6 @@ func (l *listers) RunAsync(stopCh <-chan struct{}) {
 			l.gatewayClassInformer.HasSynced,
 			l.gatewayInformer.HasSynced,
 			l.httpRouteInformer.HasSynced,
-		) {
-			syncFailed()
-			return
-		}
-	}
-
-	if l.gatewayClassA1Informer != nil {
-		go l.gatewayClassA1Informer.Run(stopCh)
-		go l.gatewayA1Informer.Run(stopCh)
-		go l.httpRouteA1Informer.Run(stopCh)
-		if !cache.WaitForCacheSync(stopCh,
-			l.gatewayClassA1Informer.HasSynced,
-			l.gatewayA1Informer.HasSynced,
-			l.httpRouteA1Informer.HasSynced,
 		) {
 			syncFailed()
 			return
@@ -347,48 +306,6 @@ func (l *listers) createIngressClassLister(informer informersnetworking.IngressC
 	})
 }
 
-func (l *listers) createGatewayA1Lister(informer gwapiinformersnetworkingv1alpha1.GatewayInformer) {
-	l.gatewayA1Lister = informer.Lister()
-	l.gatewayA1Informer = informer.Informer()
-	l.gatewayA1Informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			gw := obj.(*gatewayv1alpha1.Gateway)
-			if l.events.IsValidGatewayA1(gw) {
-				l.events.Notify(nil, gw)
-			}
-		},
-		UpdateFunc: func(old, cur interface{}) {
-			if reflect.DeepEqual(old, cur) {
-				return
-			}
-			oldGw := old.(*gatewayv1alpha1.Gateway)
-			curGw := cur.(*gatewayv1alpha1.Gateway)
-			oldValid := l.events.IsValidGatewayA1(oldGw)
-			curValid := l.events.IsValidGatewayA1(curGw)
-			if !oldValid && !curValid {
-				return
-			}
-			if !oldValid && curValid {
-				l.events.Notify(nil, curGw)
-			} else if oldValid && !curValid {
-				l.events.Notify(oldGw, nil)
-			} else {
-				l.events.Notify(oldGw, curGw)
-			}
-		},
-		DeleteFunc: func(obj interface{}) {
-			gw, ok := obj.(*gatewayv1alpha1.Gateway)
-			if !ok {
-				l.events.Notify(nil, nil)
-				return
-			}
-			if l.events.IsValidGatewayA1(gw) {
-				l.events.Notify(gw, nil)
-			}
-		},
-	})
-}
-
 func (l *listers) createGatewayLister(informer gwapiinformersgatewayv1alpha2.GatewayInformer) {
 	l.gatewayLister = informer.Lister()
 	l.gatewayInformer = informer.Informer()
@@ -431,41 +348,6 @@ func (l *listers) createGatewayLister(informer gwapiinformersgatewayv1alpha2.Gat
 	})
 }
 
-func (l *listers) createGatewayClassA1Lister(informer gwapiinformersnetworkingv1alpha1.GatewayClassInformer) {
-	l.gatewayClassA1Lister = informer.Lister()
-	l.gatewayClassA1Informer = informer.Informer()
-	l.gatewayClassA1Informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			cls := obj.(*gatewayv1alpha1.GatewayClass)
-			if l.events.IsValidGatewayClassA1(cls) {
-				l.events.Notify(nil, cls)
-			}
-		},
-		UpdateFunc: func(old, cur interface{}) {
-			if reflect.DeepEqual(old, cur) {
-				return
-			}
-			oldClass := old.(*gatewayv1alpha1.GatewayClass)
-			curClass := cur.(*gatewayv1alpha1.GatewayClass)
-			oldValid := l.events.IsValidGatewayClassA1(oldClass)
-			curValid := l.events.IsValidGatewayClassA1(curClass)
-			if !oldValid && !curValid {
-				return
-			}
-			if !oldValid && curValid {
-				l.events.Notify(nil, curClass)
-			} else if oldValid && !curValid {
-				l.events.Notify(oldClass, nil)
-			} else {
-				l.events.Notify(oldClass, curClass)
-			}
-		},
-		DeleteFunc: func(obj interface{}) {
-			l.events.Notify(obj, nil)
-		},
-	})
-}
-
 func (l *listers) createGatewayClassLister(informer gwapiinformersgatewayv1alpha2.GatewayClassInformer) {
 	l.gatewayClassLister = informer.Lister()
 	l.gatewayClassInformer = informer.Informer()
@@ -493,24 +375,6 @@ func (l *listers) createGatewayClassLister(informer gwapiinformersgatewayv1alpha
 				l.events.Notify(oldClass, nil)
 			} else {
 				l.events.Notify(oldClass, curClass)
-			}
-		},
-		DeleteFunc: func(obj interface{}) {
-			l.events.Notify(obj, nil)
-		},
-	})
-}
-
-func (l *listers) createHTTPRouteA1Lister(informer gwapiinformersnetworkingv1alpha1.HTTPRouteInformer) {
-	l.httpRouteA1Lister = informer.Lister()
-	l.httpRouteA1Informer = informer.Informer()
-	l.httpRouteA1Informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			l.events.Notify(nil, obj)
-		},
-		UpdateFunc: func(old, cur interface{}) {
-			if !reflect.DeepEqual(old, cur) {
-				l.events.Notify(old, cur)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
