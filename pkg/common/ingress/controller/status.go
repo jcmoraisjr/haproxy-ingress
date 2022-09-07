@@ -185,18 +185,25 @@ func NewStatusSyncer(ic *GenericController) StatusSync {
 		Host:      hostname,
 	})
 
-	lock := resourcelock.ConfigMapLock{
-		ConfigMapMeta: metav1.ObjectMeta{Namespace: pod.Namespace, Name: electionID},
-		Client:        ic.cfg.Client.CoreV1(),
-		LockConfig: resourcelock.ResourceLockConfig{
+	lock, err := resourcelock.New(
+		resourcelock.ConfigMapsLeasesResourceLock,
+		pod.Namespace,
+		electionID,
+		ic.cfg.Client.CoreV1(),
+		ic.cfg.Client.CoordinationV1(),
+		resourcelock.ResourceLockConfig{
 			Identity:      pod.Name,
 			EventRecorder: recorder,
 		},
+	)
+
+	if err != nil {
+		klog.Fatalf("unexpected error configuring leader election resource lock: %v", err)
 	}
 
 	ttl := 30 * time.Second
 	le, err := leaderelection.NewLeaderElector(leaderelection.LeaderElectionConfig{
-		Lock:          &lock,
+		Lock:          lock,
 		LeaseDuration: ttl,
 		RenewDeadline: ttl / 2,
 		RetryPeriod:   ttl / 4,
