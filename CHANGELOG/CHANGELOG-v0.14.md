@@ -3,6 +3,11 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.13!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.14.0-beta.2](#v0140-beta2)
+  * [Reference](#reference-b2)
+  * [Release notes](#release-notes-b2)
+  * [Improvements](#improvements-b2)
+  * [Fixes](#fixes-b2)
 * [v0.14.0-beta.1](#v0140-beta1)
   * [Reference](#reference-b1)
   * [Release notes](#release-notes-b1)
@@ -44,6 +49,7 @@ Breaking backward compatibility from v0.13:
 * ironashram ([ironashram](https://github.com/ironashram))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
 * Josh Soref ([jsoref](https://github.com/jsoref))
+* Karan Chaudhary ([lafolle](https://github.com/lafolle))
 * Maël Valais ([maelvls](https://github.com/maelvls))
 * Manuel Rüger ([mrueg](https://github.com/mrueg))
 * Marvin Rösch ([PaleoCrafter](https://github.com/PaleoCrafter))
@@ -55,6 +61,49 @@ Breaking backward compatibility from v0.13:
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
 * wolf-cosmose ([wolf-cosmose](https://github.com/wolf-cosmose))
+
+# v0.14.0-beta.2
+
+## Reference (b2)
+
+* Release date: `2022-09-07`
+* Helm chart: `--version 0.14.0-beta.2 --devel`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.14.0-beta.2`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.14.0-beta.2`
+* Embedded HAProxy version: `2.4.18`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.14.0-beta.2`
+
+## Release notes (b2)
+
+This is the second beta release of the v0.14 version, which fixes a small regression added in v0.8. Up to version v0.7 HAProxy Ingress accepted services of type External Name without port declaration, in this case the same port number configured in the ingress resource was used to configure the backend. Since the v0.8 refactor, a port configuration became mandatory in the service resource. This update brings the v0.7 behavior again, so services of type External Name have port declaration optional.
+
+Other visible improvements include:
+
+- Image generation now updates OS dependencies added by the upstream image, which avoids to release images with known vulnerabilities
+- Manuel Rüger updated some old and deprecated dependency versions
+
+Dependencies:
+
+- Embedded HAProxy version was updated from 2.4.17 to 2.4.18.
+- Golang updated from 1.17.11 to 1.17.13.
+- Client-go updated from v0.23.8 to v0.23.10.
+
+## Improvements (b2)
+
+New features and improvements since `v0.14.0-beta.1`:
+
+* Documents the expected format for --configmap key [#940](https://github.com/jcmoraisjr/haproxy-ingress/pull/940) (lafolle)
+* Add apk upgrade on container building [#941](https://github.com/jcmoraisjr/haproxy-ingress/pull/941) (jcmoraisjr)
+* Update client-go from v0.23.8 to v0.23.9 and indirect dependencies [#943](https://github.com/jcmoraisjr/haproxy-ingress/pull/943) (jcmoraisjr)
+* Migrate to new versions / off deprecated packages. [#945](https://github.com/jcmoraisjr/haproxy-ingress/pull/945) (mrueg)
+* update client-go from v0.23.9 to v0.23.10 [e290714](https://github.com/jcmoraisjr/haproxy-ingress/commit/e290714025da1b35b3b93763e12ded688663ca68) (Joao Morais)
+* update embedded haproxy from 2.4.17 to 2.4.18 [d2a88db](https://github.com/jcmoraisjr/haproxy-ingress/commit/d2a88db9f1c255d3f43597833818c53c0d0ff334) (Joao Morais)
+* update golang from 1.17.11 to 1.17.13 [0de7ef6](https://github.com/jcmoraisjr/haproxy-ingress/commit/0de7ef6234a067c99b993f2a9ae1c027e0033053) (Joao Morais)
+
+## Fixes (b2)
+
+* Fix go lint issues [#942](https://github.com/jcmoraisjr/haproxy-ingress/pull/942) (jcmoraisjr)
+* Add support for service external name without port [#946](https://github.com/jcmoraisjr/haproxy-ingress/pull/946) (jcmoraisjr)
 
 # v0.14.0-beta.1
 
