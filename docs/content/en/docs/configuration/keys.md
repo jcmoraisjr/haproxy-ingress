@@ -1979,6 +1979,7 @@ See also:
 | `modsecurity-timeout-idle`       | `Global` | `30s`   |       |
 | `modsecurity-timeout-processing` | `Global` | `1s`    |       |
 | `modsecurity-timeout-server`     | `Global` | `5s`    | v0.10 |
+| `modsecurity-args`               | `Global` | `unique-id method path query req.ver req.hdrs_bin req.body_size req.body` | v0.14 |
 
 Configure modsecurity agent. These options only have effect if `modsecurity-endpoints`
 is configured.
@@ -1999,6 +2000,7 @@ The following keys are supported:
 * `modsecurity-timeout-idle`: Defines the maximum time to wait before close an idle connection. Default value is `30s`.
 * `modsecurity-timeout-processing`: Defines the maximum time to wait for the whole ModSecurity processing. Default value is `1s`.
 * `modsecurity-timeout-server`: Defines the maximum time to wait for an agent response. Configures the haproxy's timeout server. Defaults to `5s` if not configured.
+* `modsecurity-args`: Space separated list of arguments that HAProxy will send to the modsecurity agent. You can override this to e.g. prevent sending the request body to modsecurity which will improve performance, but reduce security. The arguments must be valid HAProxy "[fetches](https://www.haproxy.com/documentation/hapee/latest/configuration/fetches/overview/)".
 
 See also:
 
