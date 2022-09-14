@@ -4437,14 +4437,17 @@ frontend healthz
 	}
 }
 
+// TestModSecurity ensures that ModSecurity-related config eventually lands in the templated HAProxy config files
 func TestModSecurity(t *testing.T) {
 	testCases := []struct {
-		waf        string
-		wafmode    string
-		path       string
-		endpoints  []string
-		backendExp string
-		modsecExp  string
+		waf             string
+		wafmode         string
+		path            string
+		endpoints       []string
+		backendExp      string
+		modsecExp       string
+		modsecAgentArgs []string
+		modsecAgentExp  string
 	}{
 		{
 			waf:        "modsecurity",
@@ -4515,6 +4518,23 @@ func TestModSecurity(t *testing.T) {
     timeout server  2s
     server modsec-spoa0 10.0.0.101:12345`,
 		},
+		// Test setting custom args
+		{
+			waf:       "modsecurity",
+			wafmode:   "detect",
+			endpoints: []string{"10.0.0.101:12345"},
+			backendExp: `
+    filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf`,
+			modsecExp: `
+    timeout connect 1s
+    timeout server  2s
+    server modsec-spoa0 10.0.0.101:12345`,
+
+			modsecAgentArgs: []string{"unique-id", "method", "path", "query", "req.ver", "req.hdrs_bin"},
+			modsecAgentExp: `
+    args   unique-id method path query req.ver req.hdrs_bin
+    event  on-backend-http-request`,
+		},
 	}
 	for _, test := range testCases {
 		c := setup(t)
@@ -4539,6 +4559,7 @@ func TestModSecurity(t *testing.T) {
 		globalModsec.Endpoints = test.endpoints
 		globalModsec.Timeout.Connect = "1s"
 		globalModsec.Timeout.Server = "2s"
+		globalModsec.Args = test.modsecAgentArgs
 
 		c.Update()
 
@@ -4557,6 +4578,9 @@ backend d1_app_8080
 <<backends-default>>
 <<frontends-default>>
 <<support>>` + modsec)
+		if test.modsecAgentExp != "" {
+			c.containsText("spoe-modsecurity.conf", c.readConfig(c.tempdir+"/spoe-modsecurity.conf"), test.modsecAgentExp)
+		}
 
 		c.logger.CompareLogging(defaultLogging)
 		c.teardown()
@@ -4803,7 +4827,7 @@ func setupOptions(options testOptions) *testConfig {
 		0,
 		2048,
 	); err != nil {
-		t.Errorf("error parsing responses.lua.tmpl: %v", err)
+		t.Errorf("error parsing responses.http.tmpl: %v", err)
 	}
 	if err := instance.luaResponseTmpl.NewTemplate(
 		"responses.lua.tmpl",
@@ -4813,6 +4837,15 @@ func setupOptions(options testOptions) *testConfig {
 		2048,
 	); err != nil {
 		t.Errorf("error parsing responses.lua.tmpl: %v", err)
+	}
+	if err := instance.modsecTmpl.NewTemplate(
+		"modsecurity.tmpl",
+		"../../rootfs/etc/templates/modsecurity/modsecurity.tmpl",
+		filepath.Join(tempdir, "spoe-modsecurity.conf"),
+		0,
+		1024,
+	); err != nil {
+		t.Errorf("error parsing modsecurity.tmpl: %v", err)
 	}
 	config := instance.Config().(*config)
 	config.frontend.DefaultCrtFile = "/var/haproxy/ssl/certs/default.pem"
@@ -5112,6 +5145,12 @@ func (c *testConfig) compareText(name, actual, expected string) {
 	txtActual := "\n" + strings.Trim(actual, "\n")
 	txtExpected := "\n" + strings.Trim(expected, "\n")
 	c.compareRawText(name, txtActual, txtExpected)
+}
+
+func (c *testConfig) containsText(name, s string, substr string) {
+	if !strings.Contains(s, substr) {
+		c.t.Error("\nFile " + name + " did not contain the expected substring.\nsubstring: " + substr + "\nfile contents:\n" + s)
+	}
 }
 
 func (c *testConfig) compareRawText(name, actual, expected string) {

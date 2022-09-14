@@ -90,6 +90,7 @@ func createDefaults() map[string]string {
 		types.GlobalHTTPSPort:                    "443",
 		types.GlobalMasterExitOnFailure:          "true",
 		types.GlobalMaxConnections:               "2000",
+		types.GlobalModsecurityArgs:              "unique-id method path query req.ver req.hdrs_bin req.body_size req.body", // Ref: https://github.com/haproxy/spoa-modsecurity/blob/3c895f3e7dd291dba19d57ba054b277e6fb80ca4/README#L70
 		types.GlobalModsecurityTimeoutConnect:    "5s",
 		types.GlobalModsecurityTimeoutHello:      "100ms",
 		types.GlobalModsecurityTimeoutIdle:       "30s",

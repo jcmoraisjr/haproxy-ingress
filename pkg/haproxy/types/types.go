@@ -181,6 +181,7 @@ type DNSNameserver struct {
 type ModSecurityConfig struct {
 	Endpoints []string
 	Timeout   ModSecurityTimeoutConfig
+	Args      []string
 }
 
 // CookieConfig ...
