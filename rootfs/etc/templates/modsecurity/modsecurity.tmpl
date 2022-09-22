@@ -16,5 +16,5 @@ spoe-agent modsecurity-agent
     timeout      processing  {{ $modsec.Timeout.Processing }}
     use-backend  spoe-modsecurity
 spoe-message check-request
-    args   unique-id method path query req.ver req.hdrs_bin req.body_size req.body
+    args   {{ $modsec.Args | join " " }}
     event  on-backend-http-request

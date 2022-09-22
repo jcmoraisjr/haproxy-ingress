@@ -90,6 +90,7 @@ const (
 	GlobalLoadServerState              = "load-server-state"
 	GlobalMasterExitOnFailure          = "master-exit-on-failure"
 	GlobalMaxConnections               = "max-connections"
+	GlobalModsecurityArgs              = "modsecurity-args"
 	GlobalModsecurityEndpoints         = "modsecurity-endpoints"
 	GlobalModsecurityTimeoutConnect    = "modsecurity-timeout-connect"
 	GlobalModsecurityTimeoutHello      = "modsecurity-timeout-hello"

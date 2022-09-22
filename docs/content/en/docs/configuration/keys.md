@@ -408,6 +408,7 @@ The table below describes all supported configuration keys.
 | [`max-connections`](#connection)                     | number                                  | Global  | `2000`             |
 | [`maxconn-server`](#connection)                      | qty                                     | Backend |                    |
 | [`maxqueue-server`](#connection)                     | qty                                     | Backend |                    |
+| [`modsecurity-args`](#modsecurity)                   | space-separated list of strings         | Global  | `unique-id method path query req.ver req.hdrs_bin req.body_size req.body` |
 | [`modsecurity-endpoints`](#modsecurity)              | comma-separated list of IP:port (spoa)  | Global  | no waf config      |
 | [`modsecurity-timeout-hello`](#modsecurity)          | time with suffix                        | Global  | `100ms`            |
 | [`modsecurity-timeout-idle`](#modsecurity)           | time with suffix                        | Global  | `30s`              |
@@ -711,16 +712,16 @@ and will be ignored if `allowlist-source-range` is declared.
 * `denylist-source-range`: Used to allow requests by default, denying only the IPs
 and CIDRs in the list, except IPs and CIDRs prefixed with `!` which will continue to
 be allowed.
-* `allowlist-source-header`: Used to define a header from which source IP will be 
-taken in order to compare with the allow and deny list. If not defined a normal source 
-will be used. This option is useful when ingress is hidden behind reverse proxy but you 
+* `allowlist-source-header`: Used to define a header from which source IP will be
+taken in order to compare with the allow and deny list. If not defined a normal source
+will be used. This option is useful when ingress is hidden behind reverse proxy but you
 still want to control access to separate paths from ingress configuration.
 
 Allowlist and denylist can be used together. The request will be denied if the
 configurations overlap and a source IP matches both the allowlist and denylist.
 
 {{% alert title="Warning" color="warning" %}}
-Setting a `allowlist-source-header` comes with a security risk. You must ensure that 
+Setting a `allowlist-source-header` comes with a security risk. You must ensure that
 the selected header can be trusted!
 {{% /alert %}}
 
@@ -1397,13 +1398,13 @@ Defines if resources declared on a namespace can read resources declared on anot
 
 Define a redirect location of the HAProxy for unknown resources.
 
-* `default-backend-redirect`: Defines a location in which Ingress should redirect 
-an user if the incoming request doesn't match any hostname, or the requested path 
+* `default-backend-redirect`: Defines a location in which Ingress should redirect
+an user if the incoming request doesn't match any hostname, or the requested path
 doesn't match any location within the desired hostname. An internal
 404 error page is used if not declared and also if `default-backend-service` was
-not configured on command line. 
+not configured on command line.
 
-* `default-backend-redirect-code`: Defines the return code to be used when redirecting 
+* `default-backend-redirect-code`: Defines the return code to be used when redirecting
 a user. Defaults to 302 (Moved Temporarily)
 
 ---
@@ -1973,12 +1974,14 @@ See also:
 
 | Configuration key                | Scope    | Default | Since |
 |----------------------------------|----------|---------|-------|
+| `modsecurity-args`               | `Global` | `unique-id method path query req.ver req.hdrs_bin req.body_size req.body` | v0.14 |
 | `modsecurity-endpoints`          | `Global` |         |       |
 | `modsecurity-timeout-connect`    | `Global` | `5s`    | v0.10 |
 | `modsecurity-timeout-hello`      | `Global` | `100ms` |       |
 | `modsecurity-timeout-idle`       | `Global` | `30s`   |       |
 | `modsecurity-timeout-processing` | `Global` | `1s`    |       |
 | `modsecurity-timeout-server`     | `Global` | `5s`    | v0.10 |
+
 
 Configure modsecurity agent. These options only have effect if `modsecurity-endpoints`
 is configured.
@@ -1993,6 +1996,7 @@ Since v0.8 the spoe filter is configured on a per-backend basis.
 
 The following keys are supported:
 
+* `modsecurity-args`: Space separated list of arguments that HAProxy will send to the modsecurity agent. You can override this to e.g. prevent sending the request body to modsecurity which will improve performance, but reduce security. The arguments must be valid HAProxy [sample fetch methods](https://www.haproxy.com/documentation/hapee/latest/configuration/fetches/overview/).
 * `modsecurity-endpoints`: Comma separated list of ModSecurity agent endpoints.
 * `modsecurity-timeout-connect`: Defines the maximum time to wait for the connection to the agent be established. Configures the haproxy's timeout connect. Defaults to `5s` if not configured.
 * `modsecurity-timeout-hello`: Defines the maximum time to wait for the AGENT-HELLO frame from the agent. Default value is `100ms`.
@@ -2686,7 +2690,7 @@ A request to `my.domain.com/b` would serve:
 |-------------------|-----------|------------|-------|
 | `syslog-endpoint` | `Global`  |            |       |
 | `syslog-format`   | `Global`  | `rfc5424`  | v0.8  |
-| `syslog-length`   | `Global`  | `1024`     | v0.9  | 
+| `syslog-length`   | `Global`  | `1024`     | v0.9  |
 | `syslog-tag`      | `Global`  | `ingress`  | v0.8  |
 
 Logging configurations.
@@ -2842,7 +2846,7 @@ to validate requests. Currently the only supported value is `modsecurity`.
 
 This configuration has no effect if the ModSecurity endpoints are not configured.
 
-The `waf-mode` key defines whether the WAF should be `deny` or `detect` for that Backend. 
+The `waf-mode` key defines whether the WAF should be `deny` or `detect` for that Backend.
 If the WAF is in `detect` mode the requests are passed to ModSecurity and logged, but not denied.
 
 The default behavior here is `deny` if `waf` is set to `modsecurity`.
