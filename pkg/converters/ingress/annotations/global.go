@@ -423,7 +423,8 @@ func (c *updater) buildGlobalForwardFor(d *globalData) {
 func (c *updater) buildGlobalCustomConfig(d *globalData) {
 	d.global.CustomConfig = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigGlobal).Value)
 	d.global.CustomDefaults = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigDefaults).Value)
-	d.global.CustomFrontend = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigFrontend).Value)
+	d.global.CustomFrontendEarly = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigFrontendEarly).Value)
+	d.global.CustomFrontendLate = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigFrontendLate).Value)
 	d.global.CustomSections = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigSections).Value)
 	d.global.CustomTCP = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigTCP).Value)
 	proxy := map[string][]string{}
