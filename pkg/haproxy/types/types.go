@@ -82,7 +82,8 @@ type Global struct {
 	DefaultBackendRedirCode int
 	CustomConfig            []string
 	CustomDefaults          []string
-	CustomFrontend          []string
+	CustomFrontendEarly     []string
+	CustomFrontendLate      []string
 	CustomProxy             map[string][]string
 	CustomHTTPLuaResponses  []HTTPResponse
 	CustomHTTPHAResponses   []HTTPResponse
