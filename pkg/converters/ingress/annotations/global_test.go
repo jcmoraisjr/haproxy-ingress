@@ -304,6 +304,10 @@ func TestCustomConfigFrontendLegacy(t *testing.T) {
 			expected: []string{"http-response set-header X-Server HAProxy"},
 		},
 		// 1
+		{
+			config:   "# New Header\nhttp-response set-header X-Server HAProxy",
+			expected: []string{"# New Header", "http-response set-header X-Server HAProxy"},
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
