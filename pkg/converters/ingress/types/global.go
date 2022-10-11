@@ -35,6 +35,7 @@ const (
 	GlobalBindIPAddrTCP                = "bind-ip-addr-tcp"
 	GlobalCloseSessionsDuration        = "close-sessions-duration"
 	GlobalConfigDefaults               = "config-defaults"
+	GlobalConfigFrontend               = "config-frontend"
 	GlobalConfigFrontendEarly          = "config-frontend-early"
 	GlobalConfigFrontendLate           = "config-frontend-late"
 	GlobalConfigGlobal                 = "config-global"

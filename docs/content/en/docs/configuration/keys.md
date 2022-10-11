@@ -342,8 +342,9 @@ The table below describes all supported configuration keys.
 | [`close-sessions-duration`](#close-sessions-duration) | time with suffix or percentage         | Global  | leave sessions open |
 | [`config-backend`](#configuration-snippet)           | multiline backend config                | Backend |                    |
 | [`config-defaults`](#configuration-snippet)          | multiline config for the defaults section | Global |                   |
+| [`config-frontend`](#configuration-snippet)          | multiline HTTP and HTTPS frontend config | Global | |
 | [`config-frontend-early`](#configuration-snippet)    | multiline HTTP and HTTPS frontend config, applied before any builtin logic | Global  |                   |
-| [`config-frontend-late`](#configuration-snippet)     | multiline HTTP and HTTPS frontend config, previously known as `config-frontend` | Global  |                   |
+| [`config-frontend-late`](#configuration-snippet)     | multiline HTTP and HTTPS frontend config, same as `config-frontend` | Global  |                   |
 | [`config-global`](#configuration-snippet)            | multiline config for the global section | Global  |                    |
 | [`config-proxy`](#configuration-snippet)             | multiline config for any proxy          | Global  |                    |
 | [`config-sections`](#configuration-snippet)          | multiline custom sections declaration   | Global  |                    |
@@ -1211,8 +1212,9 @@ See also:
 |-------------------------|-----------|----------|-------|
 | `config-backend`        | `Backend` |          |       |
 | `config-defaults`       | `Global`  |          | v0.8  |
-| `config-frontend-early` | `Global`  |          | v0.15?|
-| `config-frontend-late`  | `Global`  |          | v0.15?|
+| `config-frontend`       | `Global`  |          |       |
+| `config-frontend-early` | `Global`  |          | v0.15 |
+| `config-frontend-late`  | `Global`  |          | v0.15 |
 | `config-global`         | `Global`  |          |       |
 | `config-proxy`          | `Global`  |          | v0.13 |
 | `config-sections`       | `Global`  |          | v0.13 |
@@ -1224,8 +1226,9 @@ to add more than one line of configuration.
 
 * `config-backend`: Adds a configuration snippet to a HAProxy backend section.
 * `config-defaults`: Adds a configuration snippet to the end of the HAProxy defaults section.
+* `config-frontend`: Adds a configuration snippet to the HTTP and HTTPS frontend sections.
 * `config-frontend-early`: Adds a configuration snippet to the HTTP and HTTPS frontend sections, before any builtin logic.
-* `config-frontend-late`: Adds a configuration snippet to the HTTP and HTTPS frontend sections, previously known as `config-frontend`.
+* `config-frontend-late`: Adds a configuration snippet to the HTTP and HTTPS frontend sections, same as `config-frontend`.
 * `config-global`: Adds a configuration snippet to the end of the HAProxy global section.
 * `config-proxy`: Adds a configuration snippet to any HAProxy proxy - listen, frontend or backend. It accepts a multi section configuration, where the name of the section is the name of a HAProxy proxy without the listen/frontend/backend prefix. A section whose proxy is not found is ignored. The content of each section should be indented, the first line without indentation is the start of a new section which will configure another proxy.
 * `config-sections`: Allows to declare new HAProxy sections. The configuration is used verbatim, without any indentation or validation.
@@ -1269,6 +1272,11 @@ Examples - ConfigMap:
           timeout connect 5s
           timeout server 10s
           server syslogsrv 127.0.0.1:6514 log-proto octet-count
+```
+
+```yaml
+    config-frontend: |
+      capture request header X-User-Id len 32
 ```
 
 ```yaml

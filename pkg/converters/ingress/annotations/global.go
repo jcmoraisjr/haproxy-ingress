@@ -424,7 +424,19 @@ func (c *updater) buildGlobalCustomConfig(d *globalData) {
 	d.global.CustomConfig = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigGlobal).Value)
 	d.global.CustomDefaults = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigDefaults).Value)
 	d.global.CustomFrontendEarly = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigFrontendEarly).Value)
-	d.global.CustomFrontendLate = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigFrontendLate).Value)
+	// Keep old behavior for config-frontend mapping it to config-frontend-late
+	// If both are specified a warning is returned and config-frontend-late is used instead
+	customFrontendLate := utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigFrontendLate).Value)
+	customFrontend := utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigFrontend).Value)
+	selectedCustomFrontendConf := customFrontendLate
+
+	if len(customFrontendLate) == 0 {
+		selectedCustomFrontendConf = customFrontend
+	} else if len(customFrontend) > 0 {
+		c.logger.Warn("both config-frontend and config-frontend-late were used ignoring config-frontend")
+	}
+	d.global.CustomFrontendLate = selectedCustomFrontendConf
+
 	d.global.CustomSections = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigSections).Value)
 	d.global.CustomTCP = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigTCP).Value)
 	proxy := map[string][]string{}

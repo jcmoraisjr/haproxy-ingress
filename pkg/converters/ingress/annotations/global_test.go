@@ -292,6 +292,32 @@ proxy_1
 	}
 }
 
+func TestCustomConfigFrontendLegacy(t *testing.T) {
+	testCases := []struct {
+		config   string
+		expected []string
+		logging  string
+	}{
+		// 0
+		{
+			config:   "http-response set-header X-Server HAProxy",
+			expected: []string{"http-response set-header X-Server HAProxy"},
+		},
+		// 1
+	}
+	for i, test := range testCases {
+		c := setup(t)
+		d := c.createGlobalData(map[string]string{ingtypes.GlobalConfigFrontend: test.config})
+		c.createUpdater().buildGlobalCustomConfig(d)
+		if test.expected == nil {
+			test.expected = []string{}
+		}
+		c.compareObjects("custom config", i, d.global.CustomFrontendLate, test.expected)
+		c.logger.CompareLogging(test.logging)
+		c.teardown()
+	}
+}
+
 func TestModSecurity(t *testing.T) {
 	testCases := []struct {
 		endpoints string
