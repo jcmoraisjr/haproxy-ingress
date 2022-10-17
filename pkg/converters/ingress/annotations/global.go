@@ -433,7 +433,7 @@ func (c *updater) buildGlobalCustomConfig(d *globalData) {
 	if len(customFrontendLate) == 0 {
 		selectedCustomFrontendConf = customFrontend
 	} else if len(customFrontend) > 0 {
-		c.logger.Warn("both config-frontend and config-frontend-late were used ignoring config-frontend")
+		c.logger.Warn("both config-frontend and config-frontend-late were used, ignoring config-frontend")
 	}
 	d.global.CustomFrontendLate = selectedCustomFrontendConf
 

@@ -292,9 +292,10 @@ proxy_1
 	}
 }
 
-func TestCustomConfigFrontendLegacy(t *testing.T) {
+func TestCustomConfigFrontendLate(t *testing.T) {
 	testCases := []struct {
 		config   string
+		legacy   string
 		expected []string
 		logging  string
 	}{
@@ -308,10 +309,25 @@ func TestCustomConfigFrontendLegacy(t *testing.T) {
 			config:   "# New Header\nhttp-response set-header X-Server HAProxy",
 			expected: []string{"# New Header", "http-response set-header X-Server HAProxy"},
 		},
+		// 2
+		{
+			legacy:   "# Legacy frontend\nhttp-response set-header X-Server HAProxy",
+			expected: []string{"# Legacy frontend", "http-response set-header X-Server HAProxy"},
+		},
+		// 3
+		{
+			config:   "# New Header\nhttp-response set-header X-Server HAProxy",
+			legacy:   "# Legacy frontend\nhttp-response set-header X-Server HAProxy",
+			expected: []string{"# New Header", "http-response set-header X-Server HAProxy"},
+			logging:  `WARN both config-frontend and config-frontend-late were used, ignoring config-frontend`,
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		d := c.createGlobalData(map[string]string{ingtypes.GlobalConfigFrontend: test.config})
+		d := c.createGlobalData(map[string]string{
+			ingtypes.GlobalConfigFrontend:     test.legacy,
+			ingtypes.GlobalConfigFrontendLate: test.config,
+		})
 		c.createUpdater().buildGlobalCustomConfig(d)
 		if test.expected == nil {
 			test.expected = []string{}

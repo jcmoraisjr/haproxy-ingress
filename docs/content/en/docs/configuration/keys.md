@@ -1226,7 +1226,7 @@ to add more than one line of configuration.
 
 * `config-backend`: Adds a configuration snippet to a HAProxy backend section.
 * `config-defaults`: Adds a configuration snippet to the end of the HAProxy defaults section.
-* `config-frontend`: Adds a configuration snippet to the HTTP and HTTPS frontend sections.
+* `config-frontend`: Adds a configuration snippet to the HTTP and HTTPS frontend sections, alias for `config-frontend-late`.
 * `config-frontend-early`: Adds a configuration snippet to the HTTP and HTTPS frontend sections, before any builtin logic.
 * `config-frontend-late`: Adds a configuration snippet to the HTTP and HTTPS frontend sections, same as `config-frontend`.
 * `config-global`: Adds a configuration snippet to the end of the HAProxy global section.
