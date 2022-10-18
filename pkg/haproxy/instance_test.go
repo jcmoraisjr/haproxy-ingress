@@ -3382,7 +3382,11 @@ func TestInstanceCustomFrontend(t *testing.T) {
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 	h = c.config.Hosts().AcquireHost("d1.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
-	c.config.Global().CustomFrontend = []string{
+	c.config.Global().CustomFrontendEarly = []string{
+		"# dummy tcp-request",
+		"tcp-request connection accept",
+	}
+	c.config.Global().CustomFrontendLate = []string{
 		"# new header",
 		"http-response set-header X-Server HAProxy",
 	}
@@ -3398,6 +3402,8 @@ backend d1_app_8080
 frontend _front_http
     mode http
     bind :80
+    # dummy tcp-request
+    tcp-request connection accept
     <<set-req-base>>
     <<http-headers>>
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
@@ -3408,6 +3414,8 @@ frontend _front_http
 frontend _front_https
     mode http
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
+    # dummy tcp-request
+    tcp-request connection accept
     <<set-req-base>>
     http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map)
     http-request set-header X-Forwarded-Proto https

@@ -1155,6 +1155,11 @@ frontend {{ $proxy__front_http }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- range $snippet := $global.CustomFrontendEarly }}
+    {{ $snippet }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
 {{- if $global.Acme.Enabled }}
     acl acme-challenge path_beg {{ $global.Acme.Prefix }}
 {{- end }}
@@ -1227,7 +1232,7 @@ frontend {{ $proxy__front_http }}
 {{- template "redirectFrom" map $frontend $fmaps "req.backend" }}
 
 {{- /*------------------------------------*/}}
-{{- range $snippet := $global.CustomFrontend }}
+{{- range $snippet := $global.CustomFrontendLate }}
     {{ $snippet }}
 {{- end }}
 {{- range $snippet := index $global.CustomProxy $proxy__front_http }}
@@ -1274,6 +1279,11 @@ frontend {{ $frontend.Name }}
 {{- else }}
     option httplog
 {{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- range $snippet := $global.CustomFrontendEarly }}
+    {{ $snippet }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -1402,7 +1412,7 @@ frontend {{ $frontend.Name }}
 {{- end }}{{/* if $fmaps.TLSAuthList.HasHost */}}
 
 {{- /*------------------------------------*/}}
-{{- range $snippet := $global.CustomFrontend }}
+{{- range $snippet := $global.CustomFrontendLate }}
     {{ $snippet }}
 {{- end }}
 {{- range $snippet := index $global.CustomProxy $frontend.Name }}
