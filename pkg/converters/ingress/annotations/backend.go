@@ -997,8 +997,11 @@ func (c *updater) buildBackendWAF(d *backData) {
 			c.logger.Warn("ignoring invalid WAF mode '%s' on %s, using 'deny' instead", mode, wafMode.Source)
 			mode = "deny"
 		}
+		wafFailClosed := config.Get(ingtypes.BackWAFFailClosed).Bool()
+
 		path.WAF.Module = module
 		path.WAF.Mode = mode
+		path.WAF.FailClosed = wafFailClosed
 	}
 }
 
