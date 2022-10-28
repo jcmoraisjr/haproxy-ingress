@@ -582,11 +582,11 @@ backend {{ $backend.ID }}
 {{- range $i, $waf := $wafCfg.Items }}
 {{- if eq $waf.Mode "deny" }}
 {{- range $pathIDs := $wafCfg.PathIDs $i }}
-    {{- if $waf.FailClosed }}
+{{- if $waf.FailClosed }}
     http-request deny if !{ var(txn.modsec.code) -m int eq 0 }
-    {{- else }}
+{{- else }}
     http-request deny if { var(txn.modsec.code) -m int gt 0 }
-    {{- end }}
+{{- end }}
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- end }}
