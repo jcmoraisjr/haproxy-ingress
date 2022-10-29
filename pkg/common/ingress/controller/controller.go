@@ -219,7 +219,7 @@ func (ic *GenericController) CreateDefaultSSLCertificate() (path, hash string, c
 	)
 	c, err := ssl.AddOrUpdateCertAndKey("default-fake-certificate", defCert, defKey, []byte{})
 	if err != nil {
-		klog.Fatalf("Error generating self signed certificate: %v", err)
+		klog.Exitf("Error generating self signed certificate: %v", err)
 	}
 	return c.PemFileName, c.PemSHA, c.Certificate
 }
