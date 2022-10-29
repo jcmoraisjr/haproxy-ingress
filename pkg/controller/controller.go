@@ -151,7 +151,7 @@ func (hc *HAProxyController) configController() {
 	}
 	hc.instance = haproxy.CreateInstance(hc.logger, instanceOptions)
 	if err := hc.instance.ParseTemplates(); err != nil {
-		klog.Fatalf("error creating HAProxy instance: %v", err)
+		klog.Exitf("error creating HAProxy instance: %v", err)
 	}
 	hc.converterOptions = &convtypes.ConverterOptions{
 		Logger:           hc.logger,
@@ -229,7 +229,7 @@ func (hc *HAProxyController) createFakeCAFile() (crtFile convtypes.CrtFile) {
 	fakeCA, _ := ssl.GetFakeSSLCert([]string{}, "Fake CA", []string{})
 	fakeCAFile, err := ssl.AddCertAuth("fake-ca", fakeCA, []byte{})
 	if err != nil {
-		klog.Fatalf("error generating fake CA: %v", err)
+		klog.Exitf("error generating fake CA: %v", err)
 	}
 	crtFile = convtypes.CrtFile{
 		Filename: fakeCAFile.PemFileName,

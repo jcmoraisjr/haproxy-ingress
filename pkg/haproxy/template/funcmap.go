@@ -65,7 +65,7 @@ func createFuncMap() gotemplate.FuncMap {
 		},
 	}
 	if err := mergo.Merge(&fnc, sprig.TxtFuncMap()); err != nil {
-		klog.Fatalf("Cannot merge funcMap and sprig.FuncMap(): %v", err)
+		klog.Exitf("Cannot merge funcMap and sprig.FuncMap(): %v", err)
 	}
 	return fnc
 }

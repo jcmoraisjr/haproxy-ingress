@@ -152,7 +152,7 @@ func (s statusSync) keyfunc(input interface{}) (interface{}, error) {
 func NewStatusSyncer(ic *GenericController) StatusSync {
 	pod, err := k8s.GetPodDetails(ic.cfg.Client)
 	if err != nil {
-		klog.Fatalf("unexpected error obtaining pod information: %v", err)
+		klog.Exitf("unexpected error obtaining pod information: %v", err)
 	}
 
 	st := statusSync{
@@ -204,7 +204,7 @@ func NewStatusSyncer(ic *GenericController) StatusSync {
 	})
 
 	if err != nil {
-		klog.Fatalf("unexpected error starting leader election: %v", err)
+		klog.Exitf("unexpected error starting leader election: %v", err)
 	}
 
 	st.elector = le

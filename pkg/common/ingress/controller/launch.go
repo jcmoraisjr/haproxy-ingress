@@ -334,7 +334,7 @@ tracked.`)
 	}
 
 	if !(*reloadStrategy == "native" || *reloadStrategy == "reusesocket" || *reloadStrategy == "multibinder") {
-		klog.Fatalf("Unsupported reload strategy: %v", *reloadStrategy)
+		klog.Exitf("Unsupported reload strategy: %v", *reloadStrategy)
 	}
 	if *reloadStrategy == "multibinder" {
 		klog.Warningf("multibinder is deprecated, using reusesocket strategy instead. update your deployment configuration")
@@ -350,12 +350,12 @@ tracked.`)
 	if *configMap != "" {
 		ns, name, err := k8s.ParseNameNS(*configMap)
 		if err != nil {
-			klog.Fatalf("invalid format for configmap %s: %v", *configMap, err)
+			klog.Exitf("invalid format for configmap %s: %v", *configMap, err)
 		}
 
 		_, err = kubeClient.CoreV1().ConfigMaps(ns).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
-			klog.Fatalf("error reading configmap '%s': %v", *configMap, err)
+			klog.Exitf("error reading configmap '%s': %v", *configMap, err)
 		}
 		klog.Infof("watching for global config options from configmap '%s' - --configmap was defined", *configMap)
 	}
@@ -363,15 +363,15 @@ tracked.`)
 	if *defaultSvc != "" {
 		ns, name, err := k8s.ParseNameNS(*defaultSvc)
 		if err != nil {
-			klog.Fatalf("invalid format for service %v: %v", *defaultSvc, err)
+			klog.Exitf("invalid format for service %v: %v", *defaultSvc, err)
 		}
 
 		_, err = kubeClient.CoreV1().Services(ns).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			if strings.Contains(err.Error(), "cannot get services in the namespace") {
-				klog.Fatalf("✖ It seems the cluster it is running with Authorization enabled (like RBAC) and there is no permissions for the ingress controller. Please check the configuration")
+				klog.Exitf("✖ It seems the cluster it is running with Authorization enabled (like RBAC) and there is no permissions for the ingress controller. Please check the configuration")
 			}
-			klog.Fatalf("no service with name %v found: %v", *defaultSvc, err)
+			klog.Exitf("no service with name %v found: %v", *defaultSvc, err)
 		}
 		klog.Infof("validated %v as the default backend", *defaultSvc)
 	}
@@ -379,12 +379,12 @@ tracked.`)
 	if *publishSvc != "" {
 		ns, name, err := k8s.ParseNameNS(*publishSvc)
 		if err != nil {
-			klog.Fatalf("invalid service format: %v", err)
+			klog.Exitf("invalid service format: %v", err)
 		}
 
 		svc, err := kubeClient.CoreV1().Services(ns).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
-			klog.Fatalf("unexpected error getting information about service %v: %v", *publishSvc, err)
+			klog.Exitf("unexpected error getting information about service %v: %v", *publishSvc, err)
 		}
 
 		if len(svc.Status.LoadBalancer.Ingress) == 0 {
@@ -392,7 +392,7 @@ tracked.`)
 				klog.Infof("service %v validated as assigned with externalIP", *publishSvc)
 			} else {
 				// We could poll here, but we instead just exit and rely on k8s to restart us
-				klog.Fatalf("service %s does not (yet) have ingress points", *publishSvc)
+				klog.Exitf("service %s does not (yet) have ingress points", *publishSvc)
 			}
 		} else {
 			klog.Infof("service %v validated as source of Ingress status", *publishSvc)
@@ -402,30 +402,30 @@ tracked.`)
 	if *watchNamespace != "" {
 		_, err = kubeClient.NetworkingV1().Ingresses(*watchNamespace).List(ctx, metav1.ListOptions{Limit: 1})
 		if err != nil {
-			klog.Fatalf("no watchNamespace with name %v found: %v", *watchNamespace, err)
+			klog.Exitf("no watchNamespace with name %v found: %v", *watchNamespace, err)
 		}
 	} else {
 		_, err = kubeClient.CoreV1().Services("default").Get(ctx, "kubernetes", metav1.GetOptions{})
 		if err != nil {
-			klog.Fatalf("error connecting to the apiserver: %v", err)
+			klog.Exitf("error connecting to the apiserver: %v", err)
 		}
 	}
 
 	if *rateLimitUpdate <= 0 {
-		klog.Fatalf("rate limit must be greater than zero")
+		klog.Exitf("rate limit must be greater than zero")
 	}
 
 	if *rateLimitUpdate < 0.05 {
-		klog.Fatalf("rate limit update (%v) is too low: %v seconds between Ingress reloads. Use at least 0.05, which means 20 seconds between reloads",
+		klog.Exitf("rate limit update (%v) is too low: %v seconds between Ingress reloads. Use at least 0.05, which means 20 seconds between reloads",
 			*rateLimitUpdate, 1.0 / *rateLimitUpdate)
 	}
 
 	if *rateLimitUpdate > 10 {
-		klog.Fatalf("rate limit update is too high: up to %v Ingress reloads per second (max is 10)", *rateLimitUpdate)
+		klog.Exitf("rate limit update is too high: up to %v Ingress reloads per second (max is 10)", *rateLimitUpdate)
 	}
 
 	if resyncPeriod.Seconds() < 10 {
-		klog.Fatalf("resync period (%vs) is too low", resyncPeriod.Seconds())
+		klog.Exitf("resync period (%vs) is too low", resyncPeriod.Seconds())
 	}
 
 	for _, dir := range []*string{
@@ -441,12 +441,12 @@ tracked.`)
 		// TODO evolve this ugly trick to a proper struct that allows custom configuration
 		*dir = *localFSPrefix + *dir
 		if err := os.MkdirAll(*dir, 0755); err != nil {
-			klog.Fatalf("Failed to mkdir %s: %v", *dir, err)
+			klog.Exitf("Failed to mkdir %s: %v", *dir, err)
 		}
 	}
 
 	if *forceIsolation && *allowCrossNamespace {
-		klog.Fatal("Cannot use --allow-cross-namespace if --force-namespace-isolation is true")
+		klog.Exit("Cannot use --allow-cross-namespace if --force-namespace-isolation is true")
 	}
 
 	var annPrefixList []string
@@ -458,7 +458,7 @@ tracked.`)
 	}
 	switch len(annPrefixList) {
 	case 0:
-		klog.Fatal("At least one annotation prefix should be configured")
+		klog.Exit("At least one annotation prefix should be configured")
 	case 1:
 		klog.Infof("using annotations prefix: %s", annPrefixList[0])
 	default:
@@ -475,7 +475,7 @@ tracked.`)
 		}
 	}
 	if !stringInSlice(sortEndpoints, []string{"ep", "endpoint", "ip", "name", "random"}) {
-		klog.Fatalf("Unsupported --sort-endpoint-by option: %s", sortEndpoints)
+		klog.Exitf("Unsupported --sort-endpoint-by option: %s", sortEndpoints)
 	}
 
 	config := &Configuration{
@@ -591,7 +591,7 @@ func registerHandlers(enableProfiling bool, port int, ic *GenericController) {
 		Addr:    fmt.Sprintf(":%v", port),
 		Handler: mux,
 	}
-	klog.Fatal(server.ListenAndServe())
+	klog.Exit(server.ListenAndServe())
 }
 
 const (
@@ -693,7 +693,7 @@ func createApiserverClient(apiserverHost string, kubeConfig string, disableWarni
  * message and quits the server.
  */
 func handleFatalInitError(err error) {
-	klog.Fatalf("Error while initializing connection to Kubernetes apiserver. "+
+	klog.Exitf("Error while initializing connection to Kubernetes apiserver. "+
 		"This most likely means that the cluster is misconfigured (e.g., it has "+
 		"invalid apiserver certificates or service accounts configuration). Reason: %s", err)
 }

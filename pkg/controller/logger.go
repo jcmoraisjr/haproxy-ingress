@@ -52,5 +52,5 @@ func (l *logger) Error(msg string, args ...interface{}) {
 }
 
 func (l *logger) Fatal(msg string, args ...interface{}) {
-	klog.FatalDepth(l.depth, l.build(msg, args))
+	klog.ExitDepth(l.depth, l.build(msg, args))
 }
