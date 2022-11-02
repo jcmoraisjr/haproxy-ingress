@@ -37,6 +37,7 @@ type connections struct {
 	masterSock   string
 	adminSock    string
 	oldInstances []socket.HAProxySocket
+	admin        socket.HAProxySocket
 	master       socket.HAProxySocket
 	dynUpdate    socket.HAProxySocket
 	idleChk      socket.HAProxySocket
@@ -124,6 +125,13 @@ func shutdownSessionsSync(sock socket.HAProxySocket, duration time.Duration) {
 		// but it's currently between the end of the former and the start of the next.
 		time.Sleep(interval)
 	}
+}
+
+func (c *connections) Admin() socket.HAProxySocket {
+	if c.admin == nil {
+		c.admin = socket.NewSocket(c.adminSock, false)
+	}
+	return c.admin
 }
 
 func (c *connections) Master() socket.HAProxySocket {
