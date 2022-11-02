@@ -705,7 +705,9 @@ func (i *instance) waitMaster() error {
 
 func (i *instance) reloadWorker() error {
 	if i.config.Global().LoadServerState {
-		i.persistServersState()
+		if err := i.persistServersState(); err != nil {
+			i.logger.Warn("failed to persist servers state before worker reload: %w", err)
+		}
 	}
 	if _, err := i.conns.Master().Send(nil, "reload"); err != nil {
 		return fmt.Errorf("error sending reload to master socket: %w", err)
