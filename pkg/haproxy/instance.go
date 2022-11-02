@@ -704,6 +704,9 @@ func (i *instance) waitMaster() error {
 }
 
 func (i *instance) reloadWorker() error {
+	if i.config.Global().LoadServerState {
+		i.persistServersState()
+	}
 	if _, err := i.conns.Master().Send(nil, "reload"); err != nil {
 		return fmt.Errorf("error sending reload to master socket: %w", err)
 	}
@@ -720,5 +723,26 @@ func (i *instance) waitWorker() error {
 		// `out.Master.Failed > 0` => haproxy 2.5+
 		return fmt.Errorf("external haproxy was not successfully reloaded")
 	}
+	return nil
+}
+
+func (i *instance) retrieveServersState() (string, error) {
+	if state, err := i.conns.Admin().Send(nil, "show servers state"); err != nil {
+		return "", fmt.Errorf("failed to retrieve servers state from external haproxy; %w", err)
+	} else {
+		return state[0], nil
+	}
+}
+
+func (i *instance) persistServersState() error {
+	if state, err := i.retrieveServersState(); err != nil {
+		return err
+	} else {
+		stateFilePath := filepath.Join(i.config.Global().LocalFSPrefix, "/var/lib/haproxy/state-global")
+		if err := os.WriteFile(stateFilePath, []byte(state), os.ModePerm); err != nil {
+			return fmt.Errorf("failed to persist servers state to file '%s': %w", stateFilePath, err)
+		}
+	}
+
 	return nil
 }
