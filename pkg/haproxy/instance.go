@@ -741,7 +741,7 @@ func (i *instance) persistServersState() error {
 		return err
 	} else {
 		stateFilePath := filepath.Join(i.config.Global().LocalFSPrefix, "/var/lib/haproxy/state-global")
-		if err := os.WriteFile(stateFilePath, []byte(state), os.ModePerm); err != nil {
+		if err := os.WriteFile(stateFilePath, []byte(state), 0o644); err != nil {
 			return fmt.Errorf("failed to persist servers state to file '%s': %w", stateFilePath, err)
 		}
 	}
