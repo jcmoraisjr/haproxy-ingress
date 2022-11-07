@@ -18,6 +18,7 @@ package haproxy
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -529,6 +530,11 @@ func (i *instance) reloadExternal() error {
 			}
 		}
 	}
+	if i.config.Global().LoadServerState {
+		if err := i.persistServersState(); err != nil {
+			i.logger.Warn("failed to persist servers state before worker reload: %w", err)
+		}
+	}
 	if _, err := hautils.HAProxyCommand(socket, nil, "reload"); err != nil {
 		return fmt.Errorf("error sending reload to master socket: %w", err)
 	}
@@ -539,5 +545,29 @@ func (i *instance) reloadExternal() error {
 	if len(out.Workers) == 0 {
 		return fmt.Errorf("external haproxy was not successfully reloaded")
 	}
+	return nil
+}
+
+func (i *instance) retrieveServersState() (string, error) {
+	socket := i.config.Global().AdminSocket
+	state, err := hautils.HAProxyCommand(socket, nil, "show servers state")
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve servers state from external haproxy; %w", err)
+	}
+
+	return state[0], nil
+}
+
+func (i *instance) persistServersState() error {
+	state, err := i.retrieveServersState()
+	if err != nil {
+		return err
+	}
+
+	stateFilePath := "/var/lib/haproxy/state-global"
+	if err := os.WriteFile(stateFilePath, []byte(state), 0o644); err != nil {
+		return fmt.Errorf("failed to persist servers state to file '%s': %w", stateFilePath, err)
+	}
+
 	return nil
 }
