@@ -729,21 +729,23 @@ func (i *instance) waitWorker() error {
 }
 
 func (i *instance) retrieveServersState() (string, error) {
-	if state, err := i.conns.Admin().Send(nil, "show servers state"); err != nil {
+	state, err := i.conns.Admin().Send(nil, "show servers state")
+	if err != nil {
 		return "", fmt.Errorf("failed to retrieve servers state from external haproxy; %w", err)
-	} else {
-		return state[0], nil
 	}
+
+	return state[0], nil
 }
 
 func (i *instance) persistServersState() error {
-	if state, err := i.retrieveServersState(); err != nil {
+	state, err := i.retrieveServersState()
+	if err != nil {
 		return err
-	} else {
-		stateFilePath := filepath.Join(i.config.Global().LocalFSPrefix, "/var/lib/haproxy/state-global")
-		if err := os.WriteFile(stateFilePath, []byte(state), 0o644); err != nil {
-			return fmt.Errorf("failed to persist servers state to file '%s': %w", stateFilePath, err)
-		}
+	}
+
+	stateFilePath := filepath.Join(i.config.Global().LocalFSPrefix, "/var/lib/haproxy/state-global")
+	if err := os.WriteFile(stateFilePath, []byte(state), 0o644); err != nil {
+		return fmt.Errorf("failed to persist servers state to file '%s': %w", stateFilePath, err)
 	}
 
 	return nil
