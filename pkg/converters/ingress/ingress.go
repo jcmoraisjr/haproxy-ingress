@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	api "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networking "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
@@ -256,6 +257,14 @@ func (c *converter) syncPartial() {
 		}
 		return epList
 	}
+	eps2names := func(endpointSlices []*discoveryv1.EndpointSlice) []string {
+		epsList := make([]string, len(endpointSlices))
+		for i, ep := range endpointSlices {
+			epsList[i] = ep.Namespace + "/" + ep.Name[:strings.LastIndex(ep.Name, "-")]
+		}
+		return epsList
+
+	}
 	secret2names := func(secrets []*api.Secret) []string {
 		secretList := make([]string, len(secrets))
 		for i, secret := range secrets {
@@ -288,6 +297,15 @@ func (c *converter) syncPartial() {
 	updSvcNames := svc2names(c.changed.ServicesUpd)
 	addSvcNames := svc2names(c.changed.ServicesAdd)
 	oldSvcNames := append(delSvcNames, updSvcNames...)
+	// If --enable-endpointslices-api is true then endpoints updates won't be populated
+	delEndpointSliceNames := eps2names(c.changed.EndpointSlicesDel)
+	updEndpointSliceNames := eps2names(c.changed.EndpointSlicesUpd)
+	addEndpointSliceNames := eps2names(c.changed.EndpointSlicesAdd)
+	changedEndpointSlicesNames := append(delEndpointSliceNames, updEndpointSliceNames...)
+	changedEndpointSlicesNames = append(changedEndpointSlicesNames, addEndpointSliceNames...)
+	oldSvcNames = append(oldSvcNames, changedEndpointSlicesNames...)
+
+	// If --enable-endpointslices-api is true then endpoints updates won't be populated
 	updEndpointsNames := ep2names(c.changed.EndpointsNew)
 	oldSvcNames = append(oldSvcNames, updEndpointsNames...)
 	delSecretNames := secret2names(c.changed.SecretsDel)
@@ -419,11 +437,11 @@ func (c *converter) findBackend(namespace string, backend *networking.IngressBac
 
 // normalizeHostname adjusts the hostname according to the following rules:
 //
-//  * empty hostnames are changed to `hatypes.DefaultHost` which has a
-//    special meaning in the hosts entity
-//  * hostnames for tcp services receive the port number to distinguish
-//    two tcp services without hostname. hostnames are preserved, making it
-//    a bit easier to introduce sni based routing.
+//   - empty hostnames are changed to `hatypes.DefaultHost` which has a
+//     special meaning in the hosts entity
+//   - hostnames for tcp services receive the port number to distinguish
+//     two tcp services without hostname. hostnames are preserved, making it
+//     a bit easier to introduce sni based routing.
 //
 // Hostnames are used as the tracking ID by backends and secrets. This design
 // must be revisited - either evolving the tracking system, or abstracting
@@ -1032,7 +1050,7 @@ func (c *converter) addTLS(source *annotations.Source, hostname, secretName stri
 }
 
 func (c *converter) addEndpoints(svc *api.Service, svcPort *api.ServicePort, backend *hatypes.Backend) error {
-	ready, notReady, err := convutils.CreateEndpoints(c.cache, svc, svcPort)
+	ready, notReady, err := convutils.CreateEndpoints(c.cache, svc, svcPort, c.options.EnableEndpointSlicesAPI)
 	if err != nil {
 		return err
 	}

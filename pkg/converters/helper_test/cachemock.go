@@ -24,6 +24,7 @@ import (
 	"time"
 
 	api "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networking "k8s.io/api/networking/v1"
 	gateway "sigs.k8s.io/gateway-api/apis/v1alpha1"
 
@@ -45,6 +46,7 @@ type CacheMock struct {
 	HTTPRouteList []*gateway.HTTPRoute
 	LookupList    map[string][]net.IP
 	EpList        map[string]*api.Endpoints
+	EpsList map[string][]*discoveryv1.EndpointSlice
 	ConfigMapList map[string]*api.ConfigMap
 	TermPodList   map[string][]*api.Pod
 	PodList       map[string]*api.Pod
@@ -63,11 +65,20 @@ func NewCacheMock(tracker convtypes.Tracker) *CacheMock {
 		SvcList:     []*api.Service{},
 		LookupList:  map[string][]net.IP{},
 		EpList:      map[string]*api.Endpoints{},
+		EpsList: map[string][]*discoveryv1.EndpointSlice{},
 		TermPodList: map[string][]*api.Pod{},
 		SecretTLSPath: map[string]string{
 			"system/ingress-default": "/tls/tls-default.pem",
 		},
 	}
+}
+
+func (c *CacheMock) GetEndpointSlices(service *api.Service) ([]*discoveryv1.EndpointSlice, error) {
+	serviceName := service.Namespace + "/" + service.Name
+	if ep, found := c.EpsList[serviceName]; found {
+		return ep, nil
+	}
+	return nil, fmt.Errorf("could not find endpointslices for service '%s'", serviceName)
 }
 
 func (c *CacheMock) buildResourceName(defaultNamespace, resourceName string) string {

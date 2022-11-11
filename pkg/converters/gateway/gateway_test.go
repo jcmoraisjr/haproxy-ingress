@@ -1284,9 +1284,10 @@ func (c *testConfig) createSecret1(secretName string) *api.Secret {
 }
 
 func (c *testConfig) createService1(name, port, ip string) (*api.Service, *api.Endpoints) {
-	svc, ep := conv_helper.CreateService(name, port, ip)
+	svc, ep, eps := conv_helper.CreateService(name, port, ip)
 	c.cache.SvcList = append(c.cache.SvcList, svc)
 	c.cache.EpList[name] = ep
+	c.cache.EpsList[name] = eps
 	return svc, ep
 }
 

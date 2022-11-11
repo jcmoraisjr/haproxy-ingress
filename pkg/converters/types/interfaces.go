@@ -21,6 +21,7 @@ import (
 	"time"
 
 	api "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networking "k8s.io/api/networking/v1"
 	gateway "sigs.k8s.io/gateway-api/apis/v1alpha1"
 
@@ -47,6 +48,7 @@ type Cache interface {
 	GetDHSecretPath(defaultNamespace, secretName string) (File, error)
 	GetPasswdSecretContent(defaultNamespace, secretName string, track TrackingTarget) ([]byte, error)
 	SwapChangedObjects() *ChangedObjects
+	GetEndpointSlices(service *api.Service) ([]*discoveryv1.EndpointSlice, error)
 }
 
 // ChangedObjects ...
@@ -75,6 +77,8 @@ type ChangedObjects struct {
 	BackendPoliciesDel, BackendPoliciesUpd, BackendPoliciesAdd []*gateway.BackendPolicy
 	//
 	EndpointsNew []*api.Endpoints
+	//
+	EndpointSlicesDel, EndpointSlicesUpd, EndpointSlicesAdd []*discoveryv1.EndpointSlice
 	//
 	ServicesDel, ServicesUpd, ServicesAdd []*api.Service
 	//

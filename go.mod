@@ -30,10 +30,10 @@ require (
 	gopkg.in/go-playground/pool.v3 v3.1.1
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/api v0.20.15
-	k8s.io/apimachinery v0.20.15
+	k8s.io/api v0.21.14
+	k8s.io/apimachinery v0.21.14
 	k8s.io/apiserver v0.20.15
-	k8s.io/client-go v0.20.15
+	k8s.io/client-go v0.21.14
 	k8s.io/klog/v2 v2.30.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20211115234752-e816edb12b65 // indirect
 	sigs.k8s.io/gateway-api v0.2.0

@@ -109,6 +109,7 @@ type Configuration struct {
 
 	BackendShards   int
 	SortEndpointsBy string
+	EnableEndpointSlicesAPI bool
 }
 
 // newIngressController creates an Ingress controller

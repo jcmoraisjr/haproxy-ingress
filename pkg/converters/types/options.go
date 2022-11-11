@@ -36,6 +36,7 @@ type ConverterOptions struct {
 	DisableKeywords  []string
 	AcmeTrackTLSAnn  bool
 	HasGateway       bool
+	EnableEndpointSlicesAPI bool
 }
 
 // DynamicConfig ...

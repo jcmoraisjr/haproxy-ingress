@@ -178,7 +178,7 @@ func TestSyncSvcUpstream(t *testing.T) {
 
 func TestSyncSvcExternalName(t *testing.T) {
 	createSvc := func(c *testConfig, port string) *api.Service {
-		svc, _ := conv_helper.CreateService("default/echo", port, "")
+		svc, _, _ := conv_helper.CreateService("default/echo", port, "")
 		if port == "" {
 			svc.Spec.Ports = nil
 		}
@@ -712,12 +712,12 @@ func TestSyncTLSSecretWithoutHost(t *testing.T) {
 func TestSyncIngressClass(t *testing.T) {
 	apiGroup1 := "some.io"
 	testCases := []struct {
-		parameters *api.TypedLocalObjectReference
+		parameters *networking.IngressClassParametersReference
 		logging    string
 	}{
 		// 0
 		{
-			parameters: &api.TypedLocalObjectReference{
+			parameters: &networking.IngressClassParametersReference{
 				APIGroup: &apiGroup1,
 				Kind:     "any",
 				Name:     "none",
@@ -726,7 +726,7 @@ func TestSyncIngressClass(t *testing.T) {
 		},
 		// 1
 		{
-			parameters: &api.TypedLocalObjectReference{
+			parameters: &networking.IngressClassParametersReference{
 				Kind: "any",
 				Name: "none",
 			},
@@ -734,7 +734,7 @@ func TestSyncIngressClass(t *testing.T) {
 		},
 		// 2
 		{
-			parameters: &api.TypedLocalObjectReference{
+			parameters: &networking.IngressClassParametersReference{
 				Kind: "ConfigMap",
 				Name: "none",
 			},
@@ -742,7 +742,7 @@ func TestSyncIngressClass(t *testing.T) {
 		},
 		// 3
 		{
-			parameters: &api.TypedLocalObjectReference{
+			parameters: &networking.IngressClassParametersReference{
 				Kind: "ConfigMap",
 				Name: "config",
 			},
@@ -1542,7 +1542,7 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
 		}
 		endp := func(slice *[]*api.Endpoints, params [][]string) {
 			for _, param := range params {
-				_, ep := conv_helper.CreateService(param[0], param[1], param[2])
+				_, ep, _ := conv_helper.CreateService(param[0], param[1], param[2])
 				*slice = append(*slice, ep)
 			}
 		}
@@ -1583,7 +1583,7 @@ func TestSyncPartialDefaultBackend(t *testing.T) {
 	c.logger.Logging = []string{}
 
 	// the mock of the default backend is hardcoded to system/default:8080 at 172.17.0.99
-	_, ep := conv_helper.CreateService("system/default", "8080", "172.17.0.90")
+	_, ep, _ := conv_helper.CreateService("system/default", "8080", "172.17.0.90")
 	c.cache.Changed.EndpointsNew = []*api.Endpoints{ep}
 	c.Sync()
 
@@ -2459,7 +2459,7 @@ func (c *testConfig) createSvc1Ann(name, port, endpoints string, ann map[string]
 }
 
 func (c *testConfig) createSvc1(name, port, endpoints string) (*api.Service, *api.Endpoints) {
-	svc, ep := conv_helper.CreateService(name, port, endpoints)
+	svc, ep, eps := conv_helper.CreateService(name, port, endpoints)
 	// TODO change SvcList to map
 	var has bool
 	for i, svc1 := range c.cache.SvcList {
@@ -2473,6 +2473,7 @@ func (c *testConfig) createSvc1(name, port, endpoints string) (*api.Service, *ap
 		c.cache.SvcList = append(c.cache.SvcList, svc)
 	}
 	c.cache.EpList[name] = ep
+	c.cache.EpsList[name] = eps
 	return svc, ep
 }
 
