@@ -503,7 +503,6 @@ The table below describes all supported configuration keys.
 | [`username`](#security)                              | haproxy user name                       | Global  | `haproxy`          |
 | [`var-namespace`](#var-namespace)                    | [true\|false]                           | Host    | `false`            |
 | [`waf`](#waf)                                        | "modsecurity"                           | Path    |                    |
-| [`waf-fail-closed`](#waf)                            | [true\|false]                           | Path    | `true` |
 | [`waf-mode`](#waf)                                   | [deny\|detect]                          | Path    | `deny` (if waf is set) |
 | [`whitelist-source-range`](#allowlist)               | Comma-separated IPs or CIDRs            | Path    |                    |
 | [`worker-max-reloads`](#master-worker)               | number of reloads                       | Global  | `0`                |
@@ -2856,20 +2855,16 @@ See also:
 | Configuration key | Scope  | Default | Since |
 |-------------------|--------|---------|-------|
 | `waf`             | `Path` |         |       |
-| `waf-fail-closed` | `Path` | `true`  | v0.14 |
 | `waf-mode`        | `Path` | `deny`  | v0.9  |
-
 
 Defines which web application firewall (WAF) implementation should be used
 to validate requests. Currently the only supported value is `modsecurity`.
 
 This configuration has no effect if the ModSecurity endpoints are not configured.
 
-The `waf-fail-closed` key determines whether an error from the WAF (such as a timeout) should
-cause the request to be denied ("true") or allowed ("false"). In v0.14, this defaults to "false" for backwards compatibility. In v0.15, this defaults to "true" which means that errors or timeouts will cause requests to be denied.
-
 The `waf-mode` key defines whether the WAF should be `deny` or `detect` for that Backend.
 If the WAF is in `detect` mode the requests are passed to ModSecurity and logged, but not denied.
+
 The default behavior here is `deny` if `waf` is set to `modsecurity`.
 
 See also:

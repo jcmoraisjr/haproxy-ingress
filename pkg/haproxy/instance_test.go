@@ -4794,7 +4794,6 @@ frontend healthz
 func TestModSecurity(t *testing.T) {
 	testCases := []struct {
 		waf             string
-		wafFailClosed   bool
 		wafmode         string
 		path            string
 		endpoints       []string
@@ -4804,42 +4803,38 @@ func TestModSecurity(t *testing.T) {
 		modsecAgentExp  string
 	}{
 		{
-			waf:           "modsecurity",
-			wafFailClosed: true,
-			wafmode:       "On",
-			endpoints:     []string{},
-			backendExp:    ``,
-			modsecExp:     ``,
+			waf:        "modsecurity",
+			wafmode:    "On",
+			endpoints:  []string{},
+			backendExp: ``,
+			modsecExp:  ``,
 		},
 		{
-			waf:           "",
-			wafFailClosed: true,
-			wafmode:       "",
-			endpoints:     []string{"10.0.0.101:12345"},
-			backendExp:    ``,
+			waf:        "",
+			wafmode:    "",
+			endpoints:  []string{"10.0.0.101:12345"},
+			backendExp: ``,
 			modsecExp: `
     timeout connect 1s
     timeout server  2s
     server modsec-spoa0 10.0.0.101:12345`,
 		},
 		{
-			waf:           "modsecurity",
-			wafFailClosed: true,
-			wafmode:       "deny",
-			endpoints:     []string{"10.0.0.101:12345"},
+			waf:       "modsecurity",
+			wafmode:   "deny",
+			endpoints: []string{"10.0.0.101:12345"},
 			backendExp: `
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
-    http-request deny if !{ var(txn.modsec.code) -m int eq 0 }`,
+    http-request deny if { var(txn.modsec.code) -m int gt 0 }`,
 			modsecExp: `
     timeout connect 1s
     timeout server  2s
     server modsec-spoa0 10.0.0.101:12345`,
 		},
 		{
-			waf:           "modsecurity",
-			wafFailClosed: true,
-			wafmode:       "detect",
-			endpoints:     []string{"10.0.0.101:12345"},
+			waf:       "modsecurity",
+			wafmode:   "detect",
+			endpoints: []string{"10.0.0.101:12345"},
 			backendExp: `
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf`,
 			modsecExp: `
@@ -4848,13 +4843,12 @@ func TestModSecurity(t *testing.T) {
     server modsec-spoa0 10.0.0.101:12345`,
 		},
 		{
-			waf:           "modsecurity",
-			wafFailClosed: true,
-			wafmode:       "deny",
-			endpoints:     []string{"10.0.0.101:12345", "10.0.0.102:12345"},
+			waf:       "modsecurity",
+			wafmode:   "deny",
+			endpoints: []string{"10.0.0.101:12345", "10.0.0.102:12345"},
 			backendExp: `
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
-    http-request deny if !{ var(txn.modsec.code) -m int eq 0 }`,
+    http-request deny if { var(txn.modsec.code) -m int gt 0 }`,
 			modsecExp: `
     timeout connect 1s
     timeout server  2s
@@ -4862,17 +4856,16 @@ func TestModSecurity(t *testing.T) {
     server modsec-spoa1 10.0.0.102:12345`,
 		},
 		{
-			waf:           "modsecurity",
-			wafFailClosed: true,
-			wafmode:       "deny",
-			endpoints:     []string{"10.0.0.101:12345"},
-			path:          "/sub",
+			waf:       "modsecurity",
+			wafmode:   "deny",
+			endpoints: []string{"10.0.0.101:12345"},
+			path:      "/sub",
 			backendExp: `
     # path02 = d1.local/
     # path01 = d1.local/sub
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
-    http-request deny if !{ var(txn.modsec.code) -m int eq 0 } { var(txn.pathID) -m str path01 }`,
+    http-request deny if { var(txn.modsec.code) -m int gt 0 } { var(txn.pathID) -m str path01 }`,
 			modsecExp: `
     timeout connect 1s
     timeout server  2s
@@ -4880,10 +4873,9 @@ func TestModSecurity(t *testing.T) {
 		},
 		// Test setting custom args
 		{
-			waf:           "modsecurity",
-			wafFailClosed: true,
-			wafmode:       "detect",
-			endpoints:     []string{"10.0.0.101:12345"},
+			waf:       "modsecurity",
+			wafmode:   "detect",
+			endpoints: []string{"10.0.0.101:12345"},
 			backendExp: `
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf`,
 			modsecExp: `
@@ -4895,20 +4887,6 @@ func TestModSecurity(t *testing.T) {
 			modsecAgentExp: `
     args   unique-id method path query req.ver req.hdrs_bin
     event  on-backend-http-request`,
-		},
-		// Test waf-fail-closed=false
-		{
-			waf:           "modsecurity",
-			wafFailClosed: false,
-			wafmode:       "deny",
-			endpoints:     []string{"10.0.0.101:12345"},
-			backendExp: `
-    filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
-    http-request deny if { var(txn.modsec.code) -m int gt 0 }`,
-			modsecExp: `
-    timeout connect 1s
-    timeout server  2s
-    server modsec-spoa0 10.0.0.101:12345`,
 		},
 	}
 	for _, test := range testCases {
@@ -4923,9 +4901,8 @@ func TestModSecurity(t *testing.T) {
 		}
 		h.AddPath(b, test.path, hatypes.MatchBegin)
 		b.FindBackendPath(h.FindPath(test.path)[0].Link).WAF = hatypes.WAF{
-			Module:     test.waf,
-			Mode:       test.wafmode,
-			FailClosed: test.wafFailClosed,
+			Module: test.waf,
+			Mode:   test.wafmode,
 		}
 		if test.path != "/" {
 			h.AddPath(b, "/", hatypes.MatchBegin)
