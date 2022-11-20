@@ -12,8 +12,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-logr/logr"
+	"github.com/go-logr/zapr"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"
+	"go.uber.org/zap"
+	"go.uber.org/zap/buffer"
+	"go.uber.org/zap/zapcore"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/server/healthz"
@@ -259,6 +264,28 @@ usually serving long lived connections like TCP services or websockets.`)
 			`Defines if the nodes IP address to be returned in the ingress status should be
 the internal instead of the external IP address`)
 
+		logZap = flag.Bool("log-zap", false,
+			`Enables zap as the log sink for all the logging outputs.`)
+
+		logDev = flag.Bool("log-dev", false,
+			`Defines if development style logging should be used. Needs --log-zap enabled.`)
+
+		logCaller = flag.Bool("log-caller", false,
+			`Defines if the log output should add a reference of the caller with file name
+and line number. Needs --log-zap enabled.`)
+
+		logEnableStacktrace = flag.Bool("log-enable-stacktrace", false,
+			`Defines if error output should add stracktraces. Needs --log-zap enabled.`)
+
+		logEncoder = flag.String("log-encoder", "",
+			`Defines the log encoder. Options are: 'console' or 'json'. Defaults to 'json' if
+--log-dev is false and 'console' if --log-dev is true. Needs --log-zap enabled.`)
+
+		logEncodeTime = flag.String("log-encode-time", "",
+			`Configures the encode time used in the logs. Options are: rfc3339nano, rfc3339,
+iso8601, millis, nanos. Defaults to 'rfc3339nano' if --log-dev is false and
+'iso8601' if --log-dev is true. Needs --log-zap enabled.`)
+
 		showVersion = flags.Bool("version", false,
 			`Shows release information about the Ingress controller`)
 
@@ -272,7 +299,12 @@ command-line option instead to define if ingress without class should be
 tracked.`)
 	)
 
-	klog.InitFlags(flag.CommandLine)
+	logLevel := new(klog.Level)
+	*logLevel = 2     // this is the default for -h
+	logLevel.Set("2") // this is the real default
+	flag.Var(logLevel, "v",
+		`Number for the log level verbosity. 1: info; 2: add low verbosity debug.`)
+
 	flags.AddGoFlagSet(flag.CommandLine)
 	backend.ConfigureFlags(flags)
 	flags.Parse(os.Args)
@@ -285,11 +317,27 @@ tracked.`)
 		os.Exit(0)
 	}
 
+	if *logZap {
+		klog.SetLogger(newZapLogger(*logDev, *logCaller, *logEnableStacktrace, *logEncoder, *logEncodeTime))
+	} else if *logDev || *logCaller || *logEnableStacktrace || *logEncoder != "" || *logEncodeTime != "" {
+		klog.Exit("--log-dev, --log-caller, --log-enable-stacktrace --log-encoder and --log-encode-time are only supported if --log-zap is enabled.")
+	}
+
 	backend.OverrideFlags(flags)
 
 	flag.Set("logtostderr", "true")
 
-	klog.Info(backend.Info())
+	if *logZap {
+		versionInfo := backend.Info()
+		klog.InfoS("version info",
+			"controller-publicname", versionInfo.Name,
+			"controller-release", versionInfo.Release,
+			"controller-build", versionInfo.Build,
+			"controller-repo", versionInfo.Repository,
+		)
+	} else {
+		klog.Info(backend.Info())
+	}
 
 	if *ingressClass != "" {
 		klog.Infof("watching for ingress resources with 'kubernetes.io/ingress.class' annotation: %s", *ingressClass)
@@ -533,6 +581,68 @@ tracked.`)
 	ic := newIngressController(config)
 	go registerHandlers(*profiling, *healthzPort, ic)
 	return ic
+}
+
+func newZapLogger(logDev, logCaller, logEnableStacktrace bool, logEncoder, logEncodeTime string) logr.Logger {
+	var zc zap.Config
+	if logDev {
+		zc = zap.NewDevelopmentConfig()
+	} else {
+		zc = zap.NewProductionConfig()
+	}
+
+	encoderName := logEncoder
+	if encoderName == "" {
+		encoderName = zc.Encoding
+	}
+
+	encodeTime := logEncodeTime
+	if encodeTime == "" {
+		if logDev {
+			encodeTime = "iso8601"
+		} else {
+			encodeTime = "rfc3339nano"
+		}
+	}
+
+	var baseEncoder func(zapcore.EncoderConfig) zapcore.Encoder
+	switch encoderName {
+	case "json":
+		baseEncoder = zapcore.NewJSONEncoder
+	case "console":
+		baseEncoder = zapcore.NewConsoleEncoder
+	default:
+		klog.Exitf("invalid encode name: %s", logEncoder)
+	}
+
+	klogEncoderName := "klog"
+	if err := zap.RegisterEncoder(klogEncoderName, func(ec zapcore.EncoderConfig) (zapcore.Encoder, error) {
+		return klogEncoder{baseEncoder(ec)}, nil
+	}); err != nil {
+		klog.Exitf("error registering log encoder: %v", err)
+	}
+
+	zc.Encoding = klogEncoderName
+	zc.DisableStacktrace = !logEnableStacktrace
+	zc.EncoderConfig.EncodeTime.UnmarshalText([]byte(encodeTime))
+
+	zl, err := zc.Build(
+		zap.WithCaller(logCaller),
+	)
+	if err != nil {
+		klog.Exitf("error configuring zap logger: %v", err)
+	}
+	return zapr.NewLogger(zl)
+}
+
+type klogEncoder struct {
+	zapcore.Encoder
+}
+
+func (e klogEncoder) EncodeEntry(entry zapcore.Entry, fields []zapcore.Field) (*buffer.Buffer, error) {
+	// klog always add a hardcoded line break that mess the zap output
+	entry.Message = strings.TrimRight(entry.Message, "\n")
+	return e.Encoder.EncodeEntry(entry, fields)
 }
 
 func registerHandlers(enableProfiling bool, port int, ic *GenericController) {
