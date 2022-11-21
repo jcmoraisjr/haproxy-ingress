@@ -181,7 +181,6 @@ const (
 	BackTimeoutTunnel          = "timeout-tunnel"
 	BackUseResolver            = "use-resolver"
 	BackWAF                    = "waf"
-	BackWAFFailClosed          = "waf-fail-closed"
 	BackWAFMode                = "waf-mode"
 	BackWhitelistSourceRange   = "whitelist-source-range"
 )

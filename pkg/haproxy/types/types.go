@@ -850,8 +850,6 @@ type HSTS struct {
 type WAF struct {
 	// Mode defines On or DetectionOnly
 	Mode string
-	// Whether WAF errors should cause the request to be denied
-	FailClosed bool
 	// Which WAF Module should be used
 	Module string
 }

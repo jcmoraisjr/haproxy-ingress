@@ -73,7 +73,6 @@ func createDefaults() map[string]string {
 		types.BackTimeoutServer:          "50s",
 		types.BackTimeoutServerFin:       "50s",
 		types.BackTimeoutTunnel:          "1h",
-		types.BackWAFFailClosed:          "true",
 		types.BackWAFMode:                "deny",
 		//
 		types.GlobalAcmeExpiring:                 "30",
