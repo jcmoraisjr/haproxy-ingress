@@ -4,12 +4,15 @@ go 1.19
 
 require (
 	github.com/Masterminds/sprig/v3 v3.2.2
+	github.com/go-logr/logr v1.2.3
+	github.com/go-logr/zapr v1.2.3
 	github.com/imdario/mergo v0.3.13
 	github.com/jinzhu/copier v0.3.5
 	github.com/kylelemons/godebug v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/prometheus/client_golang v1.13.0
 	github.com/spf13/pflag v1.0.5
+	go.uber.org/zap v1.19.0
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	gopkg.in/go-playground/pool.v3 v3.1.1
 	gopkg.in/yaml.v2 v2.4.0
@@ -32,7 +35,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.8.0 // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
-	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.19.5 // indirect
 	github.com/go-openapi/swag v0.19.14 // indirect
@@ -59,6 +61,8 @@ require (
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
+	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/net v0.0.0-20220805013720-a33c5aa5df48 // indirect
 	golang.org/x/oauth2 v0.0.0-20220722155238-128564f6959c // indirect
 	golang.org/x/sys v0.0.0-20220804214406-8e32c043e418 // indirect
