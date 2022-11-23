@@ -39,6 +39,12 @@ The following command-line options are supported:
 | [`--ingress-class-precedence`](#ingress-class)          | [true\|false]              | `false`                 | v0.13.5 |
 | [`--kubeconfig`](#kubeconfig)                           | /path/to/kubeconfig        | in cluster config       |       |
 | [`--local-filesystem-prefix`](#local-filesystem-prefix) | temporary base directory   |                         | v0.14 |
+| [`--log-zap`](#logging)                                 | [true\|false]              | `false`                 | v0.14 |
+| [`--log-dev`](#logging)                                 | [true\|false]              | `false`                 | v0.14 |
+| [`--log-caller`](#logging)                              | [true\|false]              | `false`                 | v0.14 |
+| [`--log-enable-stacktrace`](#logging)                   | [true\|false]              | `false`                 | v0.14 |
+| [`--log-encoder`](#logging)                             | encoder name               | `json` (prod), `console` (dev) | v0.14 |
+| [`--log-encode-time`](#logging)                         | encoder name               | `rfc3339nano` (prod), `iso8601` (dev) | v0.14 |
 | [`--master-socket`](#master-socket)                     | socket path                | use embedded haproxy    | v0.12 |
 | [`--master-worker`](#master-worker)                     | [true\|false]              | false                   | v0.14 |
 | [`--max-old-config-files`](#max-old-config-files)       | num of files               | `0`                     |       |
@@ -56,7 +62,7 @@ The following command-line options are supported:
 | [`--track-old-instances`](#track-old-instances)         | [true\|false]              | `false`                 | v0.14 |
 | [`--update-status`](#update-status)                     | [true\|false]              | `true`                  |       |
 | [`--update-status-on-shutdown`](#update-status-on-shutdown) | [true\|false]          | `true`                  |       |
-| [`--v`](#v)                                             | log level as integer       | `1`                     |       |
+| [`--v`](#logging)                                       | log level as integer       | `2`                     |       |
 | [`--validate-config`](#validate-config)                 | [true\|false]              | `false`                 |       |
 | [`--verify-hostname`](#verify-hostname)                 | [true\|false]              | `true`                  |       |
 | [`--version`](#version)                                 | [true\|false]              | `false`                 |       |
@@ -281,6 +287,22 @@ Enables HAProxy Ingress to run in local mode. Define `--local-filesystem-prefix`
 directory HAProxy Ingress should create and maintain all the configuration files. Useful for local
 deployment. Start HAProxy Ingress in the root directory of the repository when using
 `--local-filesystem-prefix`, or simply use via `make run`.
+
+---
+
+## Logging
+
+Since v0.14
+
+Logging configuration options.
+
+* `--log-zap`: Configures [zap](https://pkg.go.dev/go.uber.org/zap) as the controller's logger sink. [klog](https://github.com/kubernetes/klog) output is used if not enabled. Most of the logging options need zap enabled.
+* `--log-dev`: Defines if development style logging should be used. Defaults to production. Needs `--log-zap` enabled.
+* `--log-caller`: Defines if the log output should add a reference of the caller with file name and line number. Defaults to not add. Needs `--log-zap` enabled.
+* `--log-enable-stacktrace`: Defines if error output should add stracktraces. Defaults to not add. Needs `--log-zap` enabled.
+* `--log-encoder`: Defines the log encoder. Options are: `console` or `json`. Defaults to `json` if `--log-dev` is disabled and `console` if `--log-dev` is enabled. Needs `--log-zap` enabled.
+* `--log-encode-time`: Configures the encode time used in the logs. Options are: `rfc3339nano`, `rfc3339`, `iso8601`, `millis`, `nanos`. Defaults to `rfc3339nano` if `--log-dev` is disabled and `iso8601` if `--log-dev` is enabled. Needs `--log-zap` enabled.
+* `--v`: Number of the log level verbosity. 1: info; 2: add low verbosity debug. Defaults to 2.
 
 ---
 
@@ -545,14 +567,6 @@ resources that this controller is tracking.  Defaults to `true`.
 Indicates whether the ingress controller should update the `status` attribute of all the Ingress
 resources that this controller is tracking when the controller is being stopped.  Defaults to
 `true`.
-
----
-
-## --v
-
-Configures the log verbosity.  `1` is the default value and outputs only errors, warnings and a few
-update events.  `2` is a good balance between low verbosity and rich details about controller
-events.  `3` is also available and provides even more details.
 
 ---
 
