@@ -1,0 +1,73 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    run: coraza-spoa
+  name: coraza-spoa
+  namespace: ingress-controller
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      run: coraza-spoa
+  template:
+    metadata:
+      labels:
+        run: coraza-spoa
+    spec:
+      containers:
+      - name: coraza-spoa
+        # NOTE: Built based on this PR: https://github.com/corazawaf/coraza-spoa/pull/36
+        # An official coraza-spoa image will be released by the upstream project soon.
+        image: quay.io/jcmoraisjr/coraza-spoa:experimental
+        ports:
+        - containerPort: 12345
+          name: spop
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 200m
+            memory: 150Mi
+          requests:
+            cpu: 200m
+            memory: 150Mi
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          successThreshold: 1
+          tcpSocket:
+            port: 12345
+          timeoutSeconds: 4
+      volumeMounts:
+      - name: coraza-config
+        mountPath: /config.yaml
+        subPath: config.yaml
+        readOnly: true
+    volumes:
+    - name: coraza-config
+      configMap:
+        name: coraza-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coraza-config
+  namespace: ingress-controller
+data:
+  # Check the official documentation: https://github.com/corazawaf/coraza-spoa
+  config.yaml: |
+    bind: :12345
+    default_application: default_app
+    applications:
+      default_app:
+        include:
+          - /etc/coraza-spoa/coraza.conf
+          - /etc/coraza-spoa/crs-setup.conf
+          - /etc/coraza-spoa/rules/*.conf
+
+        transaction_ttl: 60000
+        transaction_active_limit: 100000
+        log_level: info
+        log_file: /dev/stdout

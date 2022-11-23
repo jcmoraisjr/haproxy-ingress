@@ -345,6 +345,7 @@ func (c *updater) buildGlobalModSecurity(d *globalData) {
 	d.global.ModSecurity.Timeout.Processing = c.validateTime(d.mapper.Get(ingtypes.GlobalModsecurityTimeoutProcessing))
 	d.global.ModSecurity.Timeout.Server = c.validateTime(d.mapper.Get(ingtypes.GlobalModsecurityTimeoutServer))
 	d.global.ModSecurity.Args = utils.Split(d.mapper.Get(ingtypes.GlobalModsecurityArgs).Value, " ")
+	d.global.ModSecurity.UseCoraza = d.mapper.Get(ingtypes.GlobalModsecurityUseCoraza).Bool()
 }
 
 func (c *updater) buildGlobalDNS(d *globalData) {

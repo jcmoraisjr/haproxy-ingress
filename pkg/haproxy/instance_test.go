@@ -4448,6 +4448,8 @@ func TestModSecurity(t *testing.T) {
 		modsecExp       string
 		modsecAgentArgs []string
 		modsecAgentExp  string
+		modsecUseCoraza bool
+		modsecOtherExp  string
 	}{
 		{
 			waf:        "modsecurity",
@@ -4529,11 +4531,38 @@ func TestModSecurity(t *testing.T) {
     timeout connect 1s
     timeout server  2s
     server modsec-spoa0 10.0.0.101:12345`,
+			modsecOtherExp: `
+    messages     check-request
+    option       var-prefix  modsec`,
 
 			modsecAgentArgs: []string{"unique-id", "method", "path", "query", "req.ver", "req.hdrs_bin"},
 			modsecAgentExp: `
+spoe-message check-request
     args   unique-id method path query req.ver req.hdrs_bin
     event  on-backend-http-request`,
+		},
+		// Test modsecurity-use-coraza
+		{
+			waf:       "modsecurity",
+			wafmode:   "deny",
+			endpoints: []string{"10.0.0.101:12345"},
+			backendExp: `
+    filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
+    http-request deny deny_status 504 if { var(txn.coraza.error) -m int gt 0 }
+    http-request deny if !{ var(txn.coraza.fail) -m int eq 0 }`,
+			modsecExp: `
+    timeout connect 1s
+    timeout server  2s
+    server modsec-spoa0 10.0.0.101:12345`,
+			modsecAgentArgs: []string{"app=hdr(host)", "id=unique-id", "src-ip=src", "src-port=src_port", "dst-ip=dst", "dst-port=dst_port", "method=method", "path=path", "query=query", "version=req.ver", "headers=req.hdrs", "body=req.body"},
+			modsecAgentExp: `
+spoe-message coraza-req
+    args   app=hdr(host) id=unique-id src-ip=src src-port=src_port dst-ip=dst dst-port=dst_port method=method path=path query=query version=req.ver headers=req.hdrs body=req.body
+    event  on-backend-http-request`,
+			modsecOtherExp: `
+    messages     coraza-req
+    option       var-prefix  coraza`,
+			modsecUseCoraza: true,
 		},
 	}
 	for _, test := range testCases {
@@ -4560,7 +4589,7 @@ func TestModSecurity(t *testing.T) {
 		globalModsec.Timeout.Connect = "1s"
 		globalModsec.Timeout.Server = "2s"
 		globalModsec.Args = test.modsecAgentArgs
-
+		globalModsec.UseCoraza = test.modsecUseCoraza
 		c.Update()
 
 		var modsec string
@@ -4569,7 +4598,20 @@ func TestModSecurity(t *testing.T) {
 backend spoe-modsecurity
     mode tcp` + test.modsecExp
 		}
-		c.checkConfig(`
+		// unique-id-format must be set when using Coraza
+		if test.modsecUseCoraza {
+			c.checkConfig(`
+<<global>>
+<<defaults>>
+    unique-id-format        %[uuid()]
+backend d1_app_8080
+    mode http` + test.backendExp + `
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+<<frontends-default>>
+<<support>>` + modsec)
+		} else {
+			c.checkConfig(`
 <<global>>
 <<defaults>>
 backend d1_app_8080
@@ -4578,8 +4620,12 @@ backend d1_app_8080
 <<backends-default>>
 <<frontends-default>>
 <<support>>` + modsec)
+		}
 		if test.modsecAgentExp != "" {
 			c.containsText("spoe-modsecurity.conf", c.readConfig(c.tempdir+"/spoe-modsecurity.conf"), test.modsecAgentExp)
+		}
+		if test.modsecOtherExp != "" {
+			c.containsText("spoe-modsecurity.conf", c.readConfig(c.tempdir+"/spoe-modsecurity.conf"), test.modsecOtherExp)
 		}
 
 		c.logger.CompareLogging(defaultLogging)

@@ -182,6 +182,7 @@ type ModSecurityConfig struct {
 	Endpoints []string
 	Timeout   ModSecurityTimeoutConfig
 	Args      []string
+	UseCoraza bool
 }
 
 // CookieConfig ...
