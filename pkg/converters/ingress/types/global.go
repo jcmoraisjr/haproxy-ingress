@@ -99,6 +99,7 @@ const (
 	GlobalModsecurityTimeoutIdle       = "modsecurity-timeout-idle"
 	GlobalModsecurityTimeoutProcessing = "modsecurity-timeout-processing"
 	GlobalModsecurityTimeoutServer     = "modsecurity-timeout-server"
+	GlobalModsecurityUseCoraza         = "modsecurity-use-coraza"
 	GlobalNbprocBalance                = "nbproc-balance"
 	GlobalNbprocSSL                    = "nbproc-ssl"
 	GlobalNbthread                     = "nbthread"

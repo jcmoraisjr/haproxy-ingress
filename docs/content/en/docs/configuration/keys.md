@@ -415,6 +415,7 @@ The table below describes all supported configuration keys.
 | [`modsecurity-timeout-hello`](#modsecurity)          | time with suffix                        | Global  | `100ms`            |
 | [`modsecurity-timeout-idle`](#modsecurity)           | time with suffix                        | Global  | `30s`              |
 | [`modsecurity-timeout-processing`](#modsecurity)     | time with suffix                        | Global  | `1s`               |
+| [`modsecurity-use-coraza`](#modsecurity)             | [true\|false]                           | Global  | `false`               |
 | [`nbproc-ssl`](#nbproc)                              | number of process                       | Global  | `0`                |
 | [`nbthread`](#nbthread)                              | number of threads                       | Global  |                    |
 | [`no-tls-redirect-locations`](#ssl-redirect)         | comma-separated list of URIs            | Global  | `/.well-known/acme-challenge` |
@@ -1997,6 +1998,7 @@ See also:
 | `modsecurity-timeout-idle`       | `Global` | `30s`   |       |
 | `modsecurity-timeout-processing` | `Global` | `1s`    |       |
 | `modsecurity-timeout-server`     | `Global` | `5s`    | v0.10 |
+| `modsecurity-use-coraza`         | `Global` | `false` | v0.14 |
 
 
 Configure modsecurity agent. These options only have effect if `modsecurity-endpoints`
@@ -2019,10 +2021,11 @@ The following keys are supported:
 * `modsecurity-timeout-idle`: Defines the maximum time to wait before close an idle connection. Default value is `30s`.
 * `modsecurity-timeout-processing`: Defines the maximum time to wait for the whole ModSecurity processing. Default value is `1s`.
 * `modsecurity-timeout-server`: Defines the maximum time to wait for an agent response. Configures the haproxy's timeout server. Defaults to `5s` if not configured.
+* `modsecurity-use-coraza`: Defines whether the generated SPOE config should include Coraza-specific values. In order to use Coraza instead of Modsecurity, you must set this to "true" and also set `modsecurity-args` based on the instructions in the [coraza-spoa repository](https://github.com/corazawaf/coraza-spoa). A full example can be found [here]({{% relref "../examples/modsecurity#using-coraza-instead-of-modsecurity" %}}).
 
 See also:
 
-* [example]({{% relref "../examples/modsecurity" %}}) page.
+* [modsecurity example]({{% relref "../examples/modsecurity" %}}) page.
 * [`waf`](#waf) configuration key.
 * https://www.haproxy.org/download/2.0/doc/SPOE.txt
 * https://docs.haproxy.org/2.4/configuration.html#9.3
@@ -2858,7 +2861,7 @@ See also:
 | `waf-mode`        | `Path` | `deny`  | v0.9  |
 
 Defines which web application firewall (WAF) implementation should be used
-to validate requests. Currently the only supported value is `modsecurity`.
+to validate requests. Currently the only supported value is `modsecurity`, which also supports Coraza endpoints when `modsecurity-use-coraza` is set to "true".
 
 This configuration has no effect if the ModSecurity endpoints are not configured.
 

@@ -9,12 +9,24 @@
 {{- $modsec := .Global.ModSecurity }}
 [modsecurity]
 spoe-agent modsecurity-agent
+{{- if .Global.ModSecurity.UseCoraza }}
+    messages     coraza-req
+    option       var-prefix  coraza
+{{- else }}
     messages     check-request
     option       var-prefix  modsec
+{{- end }}
     timeout      hello       {{ $modsec.Timeout.Hello }}
     timeout      idle        {{ $modsec.Timeout.Idle }}
     timeout      processing  {{ $modsec.Timeout.Processing }}
     use-backend  spoe-modsecurity
+    log          global
+    option       dontlog-normal
+
+{{- if .Global.ModSecurity.UseCoraza }}
+spoe-message coraza-req
+{{- else }}
 spoe-message check-request
+{{- end }}
     args   {{ $modsec.Args | join " " }}
     event  on-backend-http-request

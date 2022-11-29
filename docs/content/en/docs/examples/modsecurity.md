@@ -43,8 +43,8 @@ Check if the agent is up and running:
 
 ```
 $ kubectl -n ingress-controller get deployment modsecurity-spoa
-NAME                     READY     UP-TO-DATE   AVAILABLE  AGE  
-modsecurity-spoa         3/3       3            3          7s   
+NAME                     READY     UP-TO-DATE   AVAILABLE  AGE
+modsecurity-spoa         3/3       3            3          7s
 ```
 
 
@@ -186,3 +186,28 @@ modsecurity-spoa-6596c6b444-cht27   2/2     Running   0          14m
 modsecurity-spoa-6596c6b444-kw2tr   2/2     Running   0          14m
 modsecurity-spoa-6596c6b444-mkndw   2/2     Running   0          14m
 ```
+
+## Using Coraza instead of ModSecurity
+
+Since the maintainers of ModSecurity are dropping support in 2024, [OWASP has created a replacement called Coraza](https://coreruleset.org/20211222/talking-about-modsecurity-and-the-new-coraza-waf/) which is a drop-in replacement for ModSecurity.
+
+In order to use Coraza, the process is essentially the same as described in the above sections, with a few exceptions. First, in the haproxy-ingress ConfigMap, add the following two additional keys:
+
+```yaml
+  modsecurity-use-coraza: true
+  modsecurity-args: "app=hdr(host) id=unique-id src-ip=src src-port=src_port dst-ip=dst dst-port=dst_port method=method path=path query=query version=req.ver headers=req.hdrs body=req.body"
+```
+
+You may require different `modsecurity-args` depending on your Coraza config and your version of coraza-spoa. Check the [coraza-spoa README](https://github.com/corazawaf/coraza-spoa) for full details.
+
+Second, you'll need to change the spoa-modsecurity container image to a coraza-spoa image and create a configmap to hold the Coraza config.yaml. A complete example with all the changes can be found [here](/resources/coraza-deployment.yaml).
+
+{{% alert title="Warning" color="warning" %}}
+The coraza-spoa image that we provide in the above example is based on [an experimental branch of coraza-spoa](https://github.com/corazawaf/coraza-spoa/pull/36). For production environments, it would be best to wait until the experimental changes are merged and [an official image is released](https://github.com/corazawaf/coraza-spoa/issues/37).
+{{% /alert %}}
+
+### Troubleshooting Coraza
+
+* Ensure that the `bind` port in Coraza's config.yaml matches the port in `modsecurity-endpoints`.
+* Pay close attention to the `modsecurity-args` (specifically the `app` arg) and make sure they are set according to the coraza-spoa docs since the exact args may vary depending on your version of coraza-spoa.
+* For more complex issues, it may help to set `log_level: debug` in Coraza.

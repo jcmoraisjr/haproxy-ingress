@@ -1,4 +1,5 @@
 package-lock.json
 public/
 resources/
+!static/resources/
 node_modules/
