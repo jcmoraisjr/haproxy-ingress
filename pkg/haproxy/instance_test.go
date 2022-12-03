@@ -4065,6 +4065,7 @@ func TestInstanceRedirectFrom(t *testing.T) {
 	testCases := []struct {
 		data     [3]hatypes.HostRedirectConfig
 		code     int
+		acme     bool
 		expHTTP  string
 		expHTTPS string
 		expMaps  map[string]string
@@ -4113,6 +4114,25 @@ sub.d2.local d2.local
 `,
 			},
 		},
+		// 2
+		{
+			data: [3]hatypes.HostRedirectConfig{
+				{RedirectHost: "*.d1.local"},
+			},
+			code: 301,
+			acme: true,
+			expHTTP: `
+    http-request set-var(req.redirdest) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_from__regex.map) if !acme-challenge !{ var(req.backend) -m found }
+    http-request redirect prefix //%[var(req.redirdest)] code 301 if !acme-challenge { var(req.redirdest) -m found }`,
+			expHTTPS: `
+    http-request set-var(req.redirdest) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_from__regex.map) if !{ var(req.hostbackend) -m found }
+    http-request redirect prefix //%[var(req.redirdest)] code 301 if { var(req.redirdest) -m found }`,
+			expMaps: map[string]string{
+				"_front_redir_from__regex.map": `
+^[^.]+\.d1\.local$ d1.local
+`,
+			},
+		},
 	}
 
 	for _, test := range testCases {
@@ -4144,6 +4164,20 @@ sub.d2.local d2.local
 			c.config.frontend.RedirectFromCode = 302
 		}
 
+		var acmeBackend, acmeACL, acmeUseBackend string
+		if test.acme {
+			acmeBackend = `
+backend _acme_challenge
+    mode http
+    server _acme_server unix@local`
+			acmeACL = `
+    acl acme-challenge path_beg `
+			acmeUseBackend = `
+    use_backend _acme_challenge if acme-challenge`
+			c.config.global.Acme.Socket = "local"
+			c.config.global.Acme.Enabled = true
+		}
+
 		c.Update()
 		c.checkConfig(`
 <<global>>
@@ -4156,11 +4190,11 @@ backend d2_app_8080
     server s21 172.17.0.121:8080 weight 100
 backend d3_app_8080
     mode http
-    server s31 172.17.0.131:8080 weight 100
+    server s31 172.17.0.131:8080 weight 100` + acmeBackend + `
 <<backends-default>>
 frontend _front_http
     mode http
-    bind :80
+    bind :80` + acmeACL + `
     http-request set-var(req.path) path
     http-request set-var(req.host) hdr(host),field(1,:),lower
     http-request set-var(req.base) var(req.host),concat(\#,req.path)
@@ -4170,7 +4204,7 @@ frontend _front_http
     http-request del-header X-SSL-Client-SHA1
     http-request del-header X-SSL-Client-SHA2
     http-request del-header X-SSL-Client-Cert
-    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)` + test.expHTTP + `
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)` + test.expHTTP + acmeUseBackend + `
     use_backend %[var(req.backend)] if { var(req.backend) -m found }
     default_backend _error404
 frontend _front_https
@@ -4201,7 +4235,9 @@ func TestInstanceRedirectTo(t *testing.T) {
 	testCases := []struct {
 		to       [3]string
 		code     int
+		acme     bool
 		expected string
+		expHTTPS string
 		expMaps  map[string]string
 	}{
 		// 0
@@ -4254,6 +4290,24 @@ d1.local#/app2 https://app.local/app2
 `,
 			},
 		},
+		// 3
+		{
+			to: [3]string{
+				"https://app.local",
+			},
+			acme: true,
+			expected: `
+    http-request set-var(req.redirto) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_redir_to__begin.map) if !acme-challenge
+    http-request redirect location %[var(req.redirto)] code 302 if !acme-challenge { var(req.redirto) -m found }`,
+			expHTTPS: `
+    http-request set-var(req.redirto) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_redir_to__begin.map)
+    http-request redirect location %[var(req.redirto)] code 302 if { var(req.redirto) -m found }`,
+			expMaps: map[string]string{
+				"_front_redir_to__begin.map": `
+d1.local#/ https://app.local
+`,
+			},
+		},
 	}
 
 	for _, test := range testCases {
@@ -4285,10 +4339,28 @@ d1.local#/app2 https://app.local/app2
 			h.AddPath(b, "/app3", hatypes.MatchBegin)
 		}
 
+		if test.expHTTPS == "" {
+			test.expHTTPS = test.expected
+		}
+
 		if test.code != 0 {
 			c.config.frontend.RedirectToCode = test.code
 		} else {
 			c.config.frontend.RedirectToCode = 302
+		}
+
+		var acmeBackend, acmeACL, acmeUseBackend string
+		if test.acme {
+			acmeBackend = `
+backend _acme_challenge
+    mode http
+    server _acme_server unix@local`
+			acmeACL = `
+    acl acme-challenge path_beg `
+			acmeUseBackend = `
+    use_backend _acme_challenge if acme-challenge`
+			c.config.global.Acme.Socket = "local"
+			c.config.global.Acme.Enabled = true
 		}
 
 		c.Update()
@@ -4303,11 +4375,11 @@ backend d2_app_8080
     server s21 172.17.0.121:8080 weight 100
 backend d3_app_8080
     mode http
-    server s31 172.17.0.131:8080 weight 100
+    server s31 172.17.0.131:8080 weight 100` + acmeBackend + `
 <<backends-default>>
 frontend _front_http
     mode http
-    bind :80
+    bind :80` + acmeACL + `
     http-request set-var(req.path) path
     http-request set-var(req.host) hdr(host),field(1,:),lower
     http-request set-var(req.base) var(req.host),concat(\#,req.path)
@@ -4317,7 +4389,7 @@ frontend _front_http
     http-request del-header X-SSL-Client-SHA1
     http-request del-header X-SSL-Client-SHA2
     http-request del-header X-SSL-Client-Cert` + test.expected + `
-    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)` + acmeUseBackend + `
     use_backend %[var(req.backend)] if { var(req.backend) -m found }
     default_backend _error404
 frontend _front_https
@@ -4325,7 +4397,7 @@ frontend _front_https
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
     http-request set-var(req.path) path
     http-request set-var(req.host) hdr(host),field(1,:),lower
-    http-request set-var(req.base) var(req.host),concat(\#,req.path)` + test.expected + `
+    http-request set-var(req.base) var(req.host),concat(\#,req.path)` + test.expHTTPS + `
     http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map)
     http-request set-header X-Forwarded-Proto https
     http-request del-header X-SSL-Client-CN
