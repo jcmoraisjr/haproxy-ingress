@@ -829,7 +829,7 @@ There are three distinct configurations to forward header names:
 
 The first option will always be used, the second one only on succeeded requests, the last one only on failures.
 
-These configuration keys can be defined as a comma-separated list of header names. All HTTP headers will be copied if not declared. Each header name can use wildcard.
+These configuration keys can be defined as a comma-separated list of header names. All HTTP headers will be copied if not declared. Each header name can use wildcard. Using a dash `-` or an empty string instructs the controller not to copy any header.
 
 Configuration examples:
 

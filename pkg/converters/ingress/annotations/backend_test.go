@@ -202,6 +202,7 @@ func TestAuthExternal(t *testing.T) {
 		hdrReq     string
 		hdrSucceed string
 		hdrFail    string
+		hdrEmpty   bool
 		isExternal bool
 		hasLua     bool
 		expBack    hatypes.AuthExternal
@@ -464,6 +465,19 @@ func TestAuthExternal(t *testing.T) {
 			expIP:   []string{"10.0.0.2:80"},
 			logging: `WARN invalid request method '**' on ingress 'default/ing1', using GET instead`,
 		},
+		// 27
+		{
+			url:      "http://app1.local",
+			hdrEmpty: true,
+			expBack: hatypes.AuthExternal{
+				AuthBackendName: "_auth_4001",
+				AuthPath:        "/",
+				HeadersRequest:  []string{"-"},
+				HeadersSucceed:  []string{"-"},
+				HeadersFail:     []string{"-"},
+			},
+			expIP: []string{"10.0.0.2:80"},
+		},
 	}
 	source := &Source{
 		Namespace: "default",
@@ -500,13 +514,13 @@ func TestAuthExternal(t *testing.T) {
 		if test.method != "" {
 			ann["/"][ingtypes.BackAuthMethod] = test.method
 		}
-		if test.hdrReq != "" {
+		if test.hdrEmpty || test.hdrReq != "" {
 			ann["/"][ingtypes.BackAuthHeadersRequest] = test.hdrReq
 		}
-		if test.hdrSucceed != "" {
+		if test.hdrEmpty || test.hdrSucceed != "" {
 			ann["/"][ingtypes.BackAuthHeadersSucceed] = test.hdrSucceed
 		}
-		if test.hdrFail != "" {
+		if test.hdrEmpty || test.hdrFail != "" {
 			ann["/"][ingtypes.BackAuthHeadersFail] = test.hdrFail
 		}
 		defaults := map[string]string{
