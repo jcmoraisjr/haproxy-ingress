@@ -3,6 +3,11 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.13!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.14.0-beta.3](#v0140-beta3)
+  * [Reference](#reference-b3)
+  * [Release notes](#release-notes-b3)
+  * [Improvements](#improvements-b3)
+  * [Fixes](#fixes-b3)
 * [v0.14.0-beta.2](#v0140-beta2)
   * [Reference](#reference-b2)
   * [Release notes](#release-notes-b2)
@@ -45,11 +50,13 @@ Breaking backward compatibility from v0.13:
 ## Contributors
 
 * Ameya Lokare ([juggernaut](https://github.com/juggernaut))
+* Andrej Baran ([andrejbaran](https://github.com/andrejbaran))
 * Andrew Rodland ([arodland](https://github.com/arodland))
 * ironashram ([ironashram](https://github.com/ironashram))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
 * Josh Soref ([jsoref](https://github.com/jsoref))
 * Karan Chaudhary ([lafolle](https://github.com/lafolle))
+* Mac Chaffee ([mac-chaffee](https://github.com/mac-chaffee))
 * Maël Valais ([maelvls](https://github.com/maelvls))
 * Manuel Rüger ([mrueg](https://github.com/mrueg))
 * Marvin Rösch ([PaleoCrafter](https://github.com/PaleoCrafter))
@@ -61,6 +68,61 @@ Breaking backward compatibility from v0.13:
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
 * wolf-cosmose ([wolf-cosmose](https://github.com/wolf-cosmose))
+
+# v0.14.0-beta.3
+
+## Reference (b3)
+
+* Release date: `2022-12-10`
+* Helm chart: `--version 0.14.0-beta.3 --devel`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.14.0-beta.3`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.14.0-beta.3`
+* Embedded HAProxy version: `2.4.19`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.14.0-beta.3`
+
+## Release notes (b3)
+
+This is the third and last beta version of the v0.14 release branch. It fixed some minor issues:
+
+- Embedded Acme signer can now sign certificates for hosts used on redirects
+- `auth-headers-*` configuration keys, from Auth External, used to break the HAProxy configuration if declared empty. Now an empty value makes none of the headers being copied.
+
+Other visible improvements include:
+
+- Andrej Baran added support for Load Server State on external HAProxy
+- Mac Chaffee added [Coraza WAF](https://coraza.io) support, see the [example page](https://haproxy-ingress.github.io/v0.14/docs/examples/modsecurity/#using-coraza-instead-of-modsecurity) on how to configure it.
+- Zap added as an optional logger sink, which adds the ability to control a few more logging options. See the [logging command-line options doc](https://haproxy-ingress.github.io/v0.14/docs/configuration/command-line/#logging).
+
+Dependencies:
+
+- Embedded HAProxy version was updated from 2.4.18 to 2.4.19.
+- Client-go updated from v0.23.10 to v0.23.14.
+
+## Improvements (b3)
+
+New features and improvements since `v0.14.0-beta.2`:
+
+* Change klog.Fatal to klog.Exit [#955](https://github.com/jcmoraisjr/haproxy-ingress/pull/955) (jcmoraisjr)
+* Enable Load Server State feature for external haproxy [#957](https://github.com/jcmoraisjr/haproxy-ingress/pull/957) (andrejbaran)
+* Add Zap as a logger sink option [#967](https://github.com/jcmoraisjr/haproxy-ingress/pull/967) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.14/docs/configuration/command-line/#logging)
+  * Command-line options:
+    * `--log-zap`
+    * `--log-dev`
+    * `--log-caller`
+    * `--log-enable-stacktrace`
+    * `--log-encoder`
+    * `--log-encode-time`
+* Allow ability to customize modsecurity args [#948](https://github.com/jcmoraisjr/haproxy-ingress/pull/948) (mac-chaffee) - [doc](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#modsecurity)
+  * Configuration keys:
+    * `modsecurity-args`
+* Coraza support [#964](https://github.com/jcmoraisjr/haproxy-ingress/pull/964) (mac-chaffee) - [doc](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#modsecurity)
+  * Configuration keys:
+    * `modsecurity-use-coraza`
+
+## Fixes (b3)
+
+* Fix host redirects when acme is enabled [#971](https://github.com/jcmoraisjr/haproxy-ingress/pull/971) (jcmoraisjr)
+* Makes auth-headers not copying on empty string [#972](https://github.com/jcmoraisjr/haproxy-ingress/pull/972) (jcmoraisjr)
 
 # v0.14.0-beta.2
 
