@@ -217,9 +217,21 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 			signin = ""
 		}
 
-		hdrRequest := strings.Split(config.Get(ingtypes.BackAuthHeadersRequest).Value, ",")
-		hdrSucceed := strings.Split(config.Get(ingtypes.BackAuthHeadersSucceed).Value, ",")
-		hdrFail := strings.Split(config.Get(ingtypes.BackAuthHeadersFail).Value, ",")
+		annHdrRequest := config.Get(ingtypes.BackAuthHeadersRequest).Value
+		if annHdrRequest == "" {
+			annHdrRequest = "-"
+		}
+		annHdrSucceed := config.Get(ingtypes.BackAuthHeadersSucceed).Value
+		if annHdrSucceed == "" {
+			annHdrSucceed = "-"
+		}
+		annHdrFail := config.Get(ingtypes.BackAuthHeadersFail).Value
+		if annHdrFail == "" {
+			annHdrFail = "-"
+		}
+		hdrRequest := strings.Split(annHdrRequest, ",")
+		hdrSucceed := strings.Split(annHdrSucceed, ",")
+		hdrFail := strings.Split(annHdrFail, ",")
 
 		if signin != "" {
 			if !reflect.DeepEqual(hdrFail, []string{"*"}) {
