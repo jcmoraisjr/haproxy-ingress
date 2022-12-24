@@ -51,7 +51,18 @@ func (c *updater) setAuthTLSConfig(mapper *Mapper, target *types.TLSConfig, host
 		tls.CAFilename = c.fakeCA.Filename
 		tls.CAHash = c.fakeCA.SHA1Hash
 	}
-	tls.CAVerifyOptional = verify.Value == "optional" || verify.Value == "optional_no_ca"
+	switch verify.Value {
+	case "optional_no_ca":
+		tls.CAVerify = types.CAVerifySkipCheck
+	case "optional":
+		tls.CAVerify = types.CAVerifyOptional
+	case "on":
+		tls.CAVerify = types.CAVerifyAlways
+	default:
+		if tls.CAFilename != "" {
+			tls.CAVerify = types.CAVerifyAlways
+		}
+	}
 	return true
 }
 

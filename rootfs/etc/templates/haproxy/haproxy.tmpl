@@ -1010,6 +1010,7 @@ frontend {{ $proxy_name }}
             {{- if $tls.ALPN }} alpn {{ $tls.ALPN }}{{ end }}
             {{- if $tls.CAFilename }}
                 {{- "" }} ca-file {{ $tls.CAFilename }} verify {{ if $tls.CAVerifyOptional}}optional{{ else }}required{{ end }}
+                {{- if (eq $tls.CAVerify "skip-check") }} ca-ignore-err all crt-ignore-err all{{ end }}
                 {{- if $tls.CRLFilename }} crl-file {{ $tls.CRLFilename }}{{ end }}
             {{- end }}
             {{- if $tls.Ciphers }} ciphers {{ $tls.Ciphers }}{{ end }}
