@@ -290,21 +290,31 @@ type TCPServiceHost struct {
 	Backend  BackendID
 }
 
+// CAVerify ...
+type CAVerify string
+
+// ...
+const (
+	CAVerifySkipCheck CAVerify = "skip-check"
+	CAVerifyOptional  CAVerify = "optional"
+	CAVerifyAlways    CAVerify = "always"
+)
+
 // TLSConfig ...
 type TLSConfig struct {
-	ALPN             string
-	CAFilename       string
-	CAHash           string
-	CAVerifyOptional bool
-	Ciphers          string
-	CipherSuites     string
-	CRLFilename      string
-	CRLHash          string
-	Options          string
-	TLSCommonName    string
-	TLSFilename      string
-	TLSHash          string
-	TLSNotAfter      time.Time
+	ALPN          string
+	CAFilename    string
+	CAHash        string
+	CAVerify      CAVerify
+	Ciphers       string
+	CipherSuites  string
+	CRLFilename   string
+	CRLHash       string
+	Options       string
+	TLSCommonName string
+	TLSFilename   string
+	TLSHash       string
+	TLSNotAfter   time.Time
 }
 
 // TCPBackends ...

@@ -1996,9 +1996,9 @@ func TestInstanceTCPServices(t *testing.T) {
 			port:    7008,
 			backend: b.BackendID(),
 			tls: hatypes.TLSConfig{
-				TLSFilename:      "/ssl/7008.pem",
-				CAFilename:       "/ssl/ca-7008.pem",
-				CAVerifyOptional: true,
+				TLSFilename: "/ssl/7008.pem",
+				CAFilename:  "/ssl/ca-7008.pem",
+				CAVerify:    hatypes.CAVerifySkipCheck,
 			},
 		},
 		{
@@ -2117,7 +2117,7 @@ frontend _front_tcp_7007
     mode tcp
     default_backend d1_app_8080
 frontend _front_tcp_7008
-    bind :7008 ssl crt /ssl/7008.pem ca-file /ssl/ca-7008.pem verify optional
+    bind :7008 ssl crt /ssl/7008.pem ca-file /ssl/ca-7008.pem verify optional ca-ignore-err all crt-ignore-err all
     mode tcp
     default_backend d1_app_8080
 frontend _front_tcp_7009
@@ -4734,7 +4734,7 @@ func TestInstanceWildcardHostname(t *testing.T) {
 	h.AddPath(b, "/", hatypes.MatchBegin)
 	h.TLS.CAFilename = "/var/haproxy/ssl/ca/d1.local.pem"
 	h.TLS.CAHash = "1"
-	h.TLS.CAVerifyOptional = true
+	h.TLS.CAVerify = hatypes.CAVerifyOptional
 	h.TLS.CAErrorPage = "http://sub.d1.local/error.html"
 	for _, path := range b.Paths {
 		path.SSLRedirect = true
