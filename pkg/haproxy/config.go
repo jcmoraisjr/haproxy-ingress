@@ -257,14 +257,16 @@ func (c *config) WriteFrontendMaps() error {
 			fmaps.RedirFromMap.AddHostnameMappingRegex(host.Redirect.RedirectHostRegex, host.Hostname)
 		}
 		if host.HasTLSAuth() {
-			fmaps.TLSAuthList.AddHostnameMapping(host.Hostname, "")
-			if !host.TLS.CAVerifyOptional {
+			if host.TLS.CAVerify != hatypes.CAVerifySkipCheck {
+				fmaps.TLSAuthList.AddHostnameMapping(host.Hostname, "")
+			}
+			if !host.TLS.CAVerifyOptional() {
 				fmaps.TLSNeedCrtList.AddHostnameMapping(host.Hostname, "")
 			}
 			page := host.TLS.CAErrorPage
 			if page != "" {
 				fmaps.TLSInvalidCrtPagesMap.AddHostnameMapping(host.Hostname, page)
-				if !host.TLS.CAVerifyOptional {
+				if !host.TLS.CAVerifyOptional() {
 					fmaps.TLSMissingCrtPagesMap.AddHostnameMapping(host.Hostname, page)
 				}
 			}

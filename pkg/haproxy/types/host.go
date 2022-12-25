@@ -445,6 +445,11 @@ func (h *Host) String() string {
 	return fmt.Sprintf("%+v", *h)
 }
 
+// CAVerifyOptional ...
+func (tls *TLSConfig) CAVerifyOptional() bool {
+	return tls.CAVerify == CAVerifyOptional || tls.CAVerify == CAVerifySkipCheck
+}
+
 // HasTLS ...
 func (h *HostTLSConfig) HasTLS() bool {
 	return h.TLSFilename != ""
