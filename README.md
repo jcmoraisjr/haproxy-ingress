@@ -3,7 +3,7 @@
 [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) controller
 implementation for [HAProxy](http://www.haproxy.org/) loadbalancer.
 
-[![build](https://img.shields.io/github/workflow/status/jcmoraisjr/haproxy-ingress/build?logo=github)](https://github.com/jcmoraisjr/haproxy-ingress/actions/workflows/build.yaml) [![helm](https://img.shields.io/badge/helm%20chart-ready-blue?logo=helm)](https://artifacthub.io/packages/helm/haproxy-ingress/haproxy-ingress)
+[![build](https://img.shields.io/github/actions/workflow/status/jcmoraisjr/haproxy-ingress/build.yaml?branch=master&logo=github)](https://github.com/jcmoraisjr/haproxy-ingress/actions/workflows/build.yaml) [![helm](https://img.shields.io/badge/helm%20chart-ready-blue?logo=helm)](https://artifacthub.io/packages/helm/haproxy-ingress/haproxy-ingress)
 
 HAProxy Ingress is a Kubernetes ingress controller: it configures a HAProxy instance
 to route incoming requests from an external network to the in-cluster applications.
@@ -22,8 +22,8 @@ Updates made to the cluster are applied on the fly to the HAProxy instance.
 
 | HAProxy Ingress                                      | Embedded<br/>HAProxy | Supported<br/>Kubernetes | External<br/>HAProxy (*) |
 |------------------------------------------------------|----------------------|--------------------------|--------------------------|
-| [`v0.14`](CHANGELOG/CHANGELOG-v0.14.md) **(beta)**   | `2.4`                | `1.19+`                  | `2.2+`                   |
-| [`v0.13`](CHANGELOG/CHANGELOG-v0.13.md) **(latest)** | `2.3`                | `1.19+`                  | `2.2+`                   |
+| [`v0.14`](CHANGELOG/CHANGELOG-v0.14.md) **(latest)** | `2.4`                | `1.19+`                  | `2.2+`                   |
+| [`v0.13`](CHANGELOG/CHANGELOG-v0.13.md)              | `2.3`                | `1.19+`                  | `2.2+`                   |
 | [`v0.12`](CHANGELOG/CHANGELOG-v0.12.md)              | `2.2`                | `1.18` - `1.21`          | `2.0+`                   |
 | [`v0.10`](CHANGELOG/CHANGELOG-v0.10.md)              | `2.0`                | `1.8` - `1.21`           | -                        |
 

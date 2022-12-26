@@ -1214,8 +1214,8 @@ See also:
 | `config-backend`        | `Backend` |          |       |
 | `config-defaults`       | `Global`  |          | v0.8  |
 | `config-frontend`       | `Global`  |          |       |
-| `config-frontend-early` | `Global`  |          | v0.15 |
-| `config-frontend-late`  | `Global`  |          | v0.15 |
+| `config-frontend-early` | `Global`  |          | v0.14 |
+| `config-frontend-late`  | `Global`  |          | v0.14 |
 | `config-global`         | `Global`  |          |       |
 | `config-proxy`          | `Global`  |          | v0.13 |
 | `config-sections`       | `Global`  |          | v0.13 |
