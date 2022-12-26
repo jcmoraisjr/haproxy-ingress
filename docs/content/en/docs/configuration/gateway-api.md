@@ -33,9 +33,11 @@ Gateway API v1alpha2 spec is partially implemented in the v0.14 release. The fol
 * HTTPRoute's Rules and BackendRefs don't support Filters.
 * Resources status aren't updated.
 
-Version v1alpha2 should be fully implemented in v0.15 (Q2'22).
+Version v1beta1 should be fully implemented in v0.15 (Q1'23).
 
-Version v1alpha1 support should be dropped in v0.16.
+Version v1alpha1 support should be dropped in v0.15.
+
+Version v1alpha2 support should be dropped in v0.16.
 
 ## Ingress
 
