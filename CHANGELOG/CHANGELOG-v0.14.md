@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.13!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.14.0](#v0140)
+  * [Reference](#reference-r0)
+  * [Release notes](#release-notes-r0)
+  * [Fixes and improvements](#fixes-and-improvements-r0)
 * [v0.14.0-beta.3](#v0140-beta3)
   * [Reference](#reference-b3)
   * [Release notes](#release-notes-b3)
@@ -34,6 +38,7 @@ Highlights of this version
 
 * Embedded HAProxy upgrade from 2.3 to 2.4.
 * Partial Gateway API v1alpha2 support, see the [Gateway API getting started page](https://haproxy-ingress.github.io/v0.14/docs/configuration/gateway-api/).
+* [Coraza](https://coraza.io/) added as a Web Application Firewall (WAF) backend option, see the [example page](https://haproxy-ingress.github.io/v0.14/docs/examples/modsecurity/#using-coraza-instead-of-modsecurity).
 * Option to customize the response payload for any of the status codes managed by HAProxy or HAProxy Ingress, see the [HTTP Responses](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#http-response) configuration key documentation.
 * Option to run the embedded HAProxy as Master Worker. Running HAProxy as Master Worker enables [worker-max-reloads](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#master-worker) option without the need to configure as an external deployment, enables HAProxy logging to stdout, and also has a better management of the running process. This option is not enabled by default, see the [master worker documentation](https://haproxy-ingress.github.io/v0.14/docs/configuration/command-line/#master-worker) for further information.
 * HAProxy Ingress can now be easily launched in the development environment with the help of the `--local-filesystem-prefix` command-line option. See also the command-line option [documentation](https://haproxy-ingress.github.io/v0.14/docs/configuration/command-line/#local-filesystem-prefix) and the new `make` variables and targets in the [README](https://github.com/jcmoraisjr/haproxy-ingress/#develop-haproxy-ingress) file.
@@ -53,7 +58,6 @@ Breaking backward compatibility from v0.13:
 * Ameya Lokare ([juggernaut](https://github.com/juggernaut))
 * Andrej Baran ([andrejbaran](https://github.com/andrejbaran))
 * Andrew Rodland ([arodland](https://github.com/arodland))
-* ironashram ([ironashram](https://github.com/ironashram))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
 * Josh Soref ([jsoref](https://github.com/jsoref))
 * Karan Chaudhary ([lafolle](https://github.com/lafolle))
@@ -63,12 +67,53 @@ Breaking backward compatibility from v0.13:
 * Marvin Rösch ([PaleoCrafter](https://github.com/PaleoCrafter))
 * Mateusz Kubaczyk ([mkubaczyk](https://github.com/mkubaczyk))
 * Michał Zielonka ([michal800106](https://github.com/michal800106))
+* Michele Palazzi ([ironashram](https://github.com/ironashram))
 * Neil Seward ([sealneaward](https://github.com/sealneaward))
 * paul ([toothbrush](https://github.com/toothbrush))
 * Roman Gherta ([rgherta](https://github.com/rgherta))
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
 * wolf-cosmose ([wolf-cosmose](https://github.com/wolf-cosmose))
+
+# v0.14.0
+
+## Reference (r0)
+
+* Release date: `2022-12-26`
+* Helm chart: `--version 0.14.0`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.14.0`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.14.0`
+* Embedded HAProxy version: `2.4.20`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.14.0`
+
+## Release notes (r0)
+
+This is the first v0.14 release graduated as GA, which adds these major improvements since v0.13:
+
+- [Coraza](https://coraza.io/) Web Application Firewall (WAF) support, see the example page [here](https://haproxy-ingress.github.io/v0.14/docs/examples/modsecurity/#using-coraza-instead-of-modsecurity).
+- Customization of all HAProxy generated response payload, see the documentation [here](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#http-response).
+- Gateway API support improvement - although we're not fully compliant yet, see the documentation [here](https://haproxy-ingress.github.io/v0.14/docs/configuration/gateway-api/).
+
+The following improvements have been made since the last beta version:
+
+- Michele Palazzi added a new configuration snippet that allows to add customized configurations before any builtin frontend logic.
+- Ability to configure mutual TLS authentication without validating the client certificate. This adds a breaking backward compatibility from v0.13: `auth-tls-verify-client` configured as `optional_no_ca` used to make client certificate validation, now that validation is bypassed.
+
+Dependencies:
+
+- Embedded HAProxy version was updated from 2.4.19 to 2.4.20.
+- Golang updated from 1.17.13 to 1.18.9
+- Client-go updated from v0.23.14 to v0.23.15.
+
+## Fixes and improvements (r0)
+
+New features and improvements since `v0.14.0-beta.3`:
+
+* Move CustomFrontend before any http-req in haproxy template [#951](https://github.com/jcmoraisjr/haproxy-ingress/pull/951) (ironashram) [doc](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#configuration-snippet)
+  * Configuration keys:
+    * `config-frontend-early`
+    * `config-frontend-late`
+* Make optional_no_ca bypass proxy side validations [#976](https://github.com/jcmoraisjr/haproxy-ingress/pull/976) (jcmoraisjr)
 
 # v0.14.0-beta.3
 
