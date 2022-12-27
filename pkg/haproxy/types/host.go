@@ -188,6 +188,16 @@ func (h *Hosts) releaseHost(host *Host) {
 	}
 }
 
+// HasTLSAuth ...
+func (h *Hosts) HasTLSAuth() bool {
+	for _, host := range h.items {
+		if host.TLS.CAFilename != "" {
+			return true
+		}
+	}
+	return false
+}
+
 // HasSSLPassthrough ...
 func (h *Hosts) HasSSLPassthrough() bool {
 	return h.sslPassthroughCount > 0

@@ -1361,7 +1361,8 @@ frontend {{ $frontend.Name }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-Cert
 
 {{- /*------------------------------------*/}}
-{{- if $fmaps.TLSAuthList.HasHost }}
+{{- $hasTLSAuth := or $hosts.HasTLSAuth  }}
+{{- if $hasTLSAuth }}
 {{- $mandatory := $fmaps.TLSNeedCrtList.HasHost }}
     acl tls-has-crt ssl_c_used
 
@@ -1409,6 +1410,7 @@ frontend {{ $frontend.Name }}
 {{- end }}
 {{- end }}
 
+{{- if $fmaps.TLSAuthList.HasHost }}
 {{- if not $fmaps.TLSInvalidCrtPagesMap.HasHost }}
     http-request set-var(req.tls_invalidcrt_redir) str(_internal) if tls-has-invalid-crt tls-check-crt
 {{- end }}
@@ -1426,8 +1428,9 @@ frontend {{ $frontend.Name }}
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303
         {{- "" }} if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) -m str _internal }
 {{- end }}
+{{- end }}
 
-{{- end }}{{/* if $fmaps.TLSAuthList.HasHost */}}
+{{- end }}{{/* if $hasTLSAuth */}}
 
 {{- /*------------------------------------*/}}
 {{- range $snippet := $global.CustomFrontendLate }}
@@ -1438,9 +1441,10 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $fmaps.TLSAuthList.HasHost }}
+{{- if $hasTLSAuth }}
     http-request use-service lua.send-421 if
         {{- "" }} tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
+{{- if $fmaps.TLSAuthList.HasHost }}
 {{- if $fmaps.TLSNeedCrtList.HasHost }}
     http-request use-service lua.send-496 if
         {{- "" }} { var(req.tls_nocrt_redir) -m str _internal }
@@ -1452,11 +1456,12 @@ frontend {{ $frontend.Name }}
     http-request use-service lua.send-495 if
         {{- "" }} { var(req.tls_invalidcrt_redir) -m str _internal }
 {{- end }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
     use_backend %[var(req.hostbackend)]
         {{- "" }} if { var(req.hostbackend) -m found }
-{{- if $fmaps.TLSAuthList.HasHost }}
+{{- if $hasTLSAuth }}
     use_backend %[var(req.snibackend)]
         {{- "" }} if { var(req.snibackend) -m found }
 {{- end }}

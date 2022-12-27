@@ -5179,6 +5179,74 @@ d1.local#/ d1_app_8080
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestCAVerifySkip(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+
+	var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+
+	h = c.config.Hosts().AcquireHost("d1.local")
+	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
+	h.TLS.TLSHash = "0"
+	h.AddPath(b, "/", hatypes.MatchBegin)
+	h.TLS.CAFilename = "/var/haproxy/ssl/ca/d1.local.pem"
+	h.TLS.CAHash = "1"
+	h.TLS.CAVerify = hatypes.CAVerifySkipCheck
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    acl local-offload ssl_fc
+    http-request set-header X-SSL-Client-CN   %{+Q}[ssl_c_s_dn(cn)]   if local-offload
+    http-request set-header X-SSL-Client-DN   %{+Q}[ssl_c_s_dn]       if local-offload
+    http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex]   if local-offload
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+frontend _front_http
+    mode http
+    bind :80
+    <<set-req-base>>
+    <<http-headers>>
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
+    default_backend _error404
+frontend _front_https
+    mode http
+    bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
+    <<set-req-base>>
+    <<https-headers>>
+    acl tls-has-crt ssl_c_used
+    acl tls-has-invalid-crt ssl_c_verify gt 0
+    http-request set-var(req.snibase) ssl_fc_sni,lower,concat(\#,req.path)
+    http-request set-var(req.snibackend) var(req.snibase),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin.map)
+    http-request set-var(req.snibackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin.map) if !{ var(req.snibackend) -m found } !tls-has-crt
+    http-request use-service lua.send-421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
+    use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
+    use_backend %[var(req.snibackend)] if { var(req.snibackend) -m found }
+    default_backend _error404
+<<support>>
+`)
+
+	c.checkMap("_front_http_host__begin.map", `
+d1.local#/ d1_app_8080
+`)
+	c.checkMap("_front_bind_crt.list", `
+/var/haproxy/ssl/certs/default.pem !*
+/var/haproxy/ssl/certs/default.pem [ca-file /var/haproxy/ssl/ca/d1.local.pem verify optional] d1.local
+`)
+	c.checkMap("_front_https_sni__begin.map", `
+d1.local#/ d1_app_8080
+`)
+
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestShards(t *testing.T) {
 	c := setupOptions(testOptions{
 		t:          t,
