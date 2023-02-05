@@ -182,7 +182,11 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 			}
 			backend = c.haproxy.Backends().FindBackend(namespace, name, urlPort)
 			if backend == nil {
-				// warn already logged when ingress parser tried to acquire the backend
+				// warn was already logged in the ingress if a service couldn't be found,
+				// but we still need to add a warning here because, in the current code base,
+				// a valid named service can lead to a broken configuration. See ingress'
+				// counterpart code.
+				c.logger.Warn("skipping auth-url on %v: service '%s:%s' was not found", url.Source, name, urlPort)
 				continue
 			}
 		default:
