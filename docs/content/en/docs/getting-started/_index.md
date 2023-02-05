@@ -109,6 +109,9 @@ spec:
           serviceName: echoserver
           servicePort: 8080
         path: /
+  tls:
+  - hosts:
+    - $HOST
 EOF
 ```
 
