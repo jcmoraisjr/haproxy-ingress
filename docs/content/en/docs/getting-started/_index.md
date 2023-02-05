@@ -94,7 +94,7 @@ Obs.: `nip.io` is a convenient service which converts a valid domain name to any
 ```shell
 $ kubectl --namespace default create ingress echoserver\
   --annotation kubernetes.io/ingress.class=haproxy\
-  --rule="echoserver.local/*=echoserver:8080"
+  --rule="echoserver.local/*=echoserver:8080,tls"
 ```
 
 4) Send a request to our echoserver.
