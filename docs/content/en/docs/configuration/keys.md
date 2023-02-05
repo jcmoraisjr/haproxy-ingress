@@ -807,7 +807,7 @@ Configures External Authentication options.
 
 * `<proto>`: can be `http`, `https`, `service` or `svc`.
 * `<name>`: the IP or hostname if `http` or `https`, or the name of a service if `service`. `svc` is an alias to `service`. Note that the hostname is resolved to a list of IP when the ingress is parsed and will not be dynamically updated later if the DNS record changes.
-* `<port>`: the port number, must be provided if a service is used and can be omitted if using `http` or `https`.
+* `<port>`: the port number, must be provided if a service is used and can be omitted if using `http` or `https`. If the service uses named ports, use the service's `port.targetPort` field value instead.
 * `<path>`: optional, the fully qualified path to the authentication service.
 
 `http` and `https` protocols are straightforward: use them to connect to an IP or hostname without any further configuration. `http` adds the HTTP `Host` header if a hostname is used, and `https` adds also the sni extension. Note that `https` connects in an insecure way and currently cannot be customized. Do NOT use neither `http` nor `https` if haproxy -> authentication service communication has untrusted networks.

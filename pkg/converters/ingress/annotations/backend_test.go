@@ -337,7 +337,7 @@ func TestAuthExternal(t *testing.T) {
 		{
 			url:     "svc://noservice:80",
 			expBack: hatypes.AuthExternal{AlwaysDeny: true},
-			// svc not found, warn is issued in the ingress parsing
+			logging: `WARN skipping auth-url on ingress 'default/ing1': service 'noservice:80' was not found`,
 		},
 		// 15
 		{

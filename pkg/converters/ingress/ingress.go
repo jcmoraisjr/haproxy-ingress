@@ -427,6 +427,11 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 			}
 			// pre-building the auth-url backend
 			// TODO move to updater.buildBackendAuthExternal()
+			// TODO addBackend() might change the portName on named port configurations to enforce consistency,
+			// however updater's FindBackend() won't do it, leading to a silently broken configuration.
+			// See https://github.com/jcmoraisjr/haproxy-ingress/issues/981
+			// Moving this logic to updater will fix this behavior, in the mean time we'll add a few more
+			// tips in the doc.
 			if url := annBack[ingtypes.BackAuthURL]; url != "" {
 				urlProto, urlHost, urlPort, _, _ := ingutils.ParseURL(url)
 				if (urlProto == "service" || urlProto == "svc") && urlHost != "" && urlPort != "" {
