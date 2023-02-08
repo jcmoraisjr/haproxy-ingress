@@ -1625,6 +1625,31 @@ func TestSyncAnnBacksSvcIng(t *testing.T) {
   maxconnserver: 10` + defaultBackendConfig)
 }
 
+func TestSyncAnnBackSvcPath(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	c.createSvc1Ann("default/echo1", "8080", "172.17.0.11", map[string]string{
+		"ingress.kubernetes.io/proxy-body-size": "32768",
+	})
+
+	c.Sync(
+		c.createIng1("default/echo1", "echo.example.com", "/app1", "echo1:8080"),
+		c.createIng1("default/echo2", "echo.example.com", "/app2", "echo1:8080"),
+	)
+
+	c.compareConfigBack(`
+- id: default_echo1_8080
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+  paths:
+  - path: /app1
+    maxbodysize: 32768
+  - path: /app2
+    maxbodysize: 32768` + defaultBackendConfig)
+}
+
 func TestSyncAnnBackDefault(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
@@ -2074,6 +2099,9 @@ func (u *updaterMock) UpdateHostConfig(host *hatypes.Host, mapper *annotations.M
 func (u *updaterMock) UpdateBackendConfig(backend *hatypes.Backend, mapper *annotations.Mapper) {
 	backend.Server.MaxConn = mapper.Get(ingtypes.BackMaxconnServer).Int()
 	backend.BalanceAlgorithm = mapper.Get(ingtypes.BackBalanceAlgorithm).Value
+	for _, path := range backend.Paths {
+		path.MaxBodySize = mapper.Get(ingtypes.BackProxyBodySize).Int64()
+	}
 }
 
 type (
@@ -2131,9 +2159,14 @@ type (
 		Port  int
 		Drain bool `yaml:",omitempty"`
 	}
+	backPathMock struct {
+		Path        string
+		MaxBodySize int64
+	}
 	backendMock struct {
 		ID               string
 		Endpoints        []endpointMock `yaml:",omitempty"`
+		Paths            []backPathMock `yaml:",omitempty"`
 		BalanceAlgorithm string         `yaml:",omitempty"`
 		MaxConnServer    int            `yaml:",omitempty"`
 	}
@@ -2146,9 +2179,19 @@ func convertBackend(habackends ...*hatypes.Backend) []backendMock {
 		for _, e := range b.Endpoints {
 			endpoints = append(endpoints, endpointMock{IP: e.IP, Port: e.Port, Drain: e.Weight == 0})
 		}
+		var paths []backPathMock
+		for _, path := range b.Paths {
+			if path.MaxBodySize > 0 {
+				paths = append(paths, backPathMock{
+					Path:        path.Path(),
+					MaxBodySize: path.MaxBodySize,
+				})
+			}
+		}
 		backends = append(backends, backendMock{
 			ID:               b.ID,
 			Endpoints:        endpoints,
+			Paths:            paths,
 			BalanceAlgorithm: b.BalanceAlgorithm,
 			MaxConnServer:    b.Server.MaxConn,
 		})

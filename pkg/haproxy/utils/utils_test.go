@@ -272,7 +272,7 @@ func TestHAProxyProcsLoop(t *testing.T) {
 		start := time.Now()
 		_, err := HAProxyProcs("")
 		if err != nil {
-			t.Errorf("%d should not return an error: %w", i, err)
+			t.Errorf("%d should not return an error: %v", i, err)
 		}
 		elapsed := time.Now().Sub(start)
 		if elapsed < test.minDelay {
