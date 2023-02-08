@@ -2198,6 +2198,33 @@ func TestSyncAnnBacksSvcIng(t *testing.T) {
   maxconnserver: 10` + defaultBackendConfig)
 }
 
+func TestSyncAnnBackSvcPath(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	c.createSvc1Ann("default/echo1", "8080", "172.17.0.11", map[string]string{
+		"ingress.kubernetes.io/proxy-body-size": "32768",
+	})
+
+	c.Sync(
+		c.createIng1("default/echo1", "echo.example.com", "/app1", "echo1:8080"),
+		c.createIng1("default/echo2", "echo.example.com", "/app2", "echo1:8080"),
+	)
+
+	c.compareConfigBack(`
+- id: default_echo1_8080
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+  paths:
+  - path: /app1
+    match: begin
+    maxbodysize: 32768
+  - path: /app2
+    match: begin
+    maxbodysize: 32768` + defaultBackendConfig)
+}
+
 func TestSyncAnnBackDefault(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
