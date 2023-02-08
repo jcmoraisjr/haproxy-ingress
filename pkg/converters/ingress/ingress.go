@@ -262,16 +262,16 @@ func (c *converter) addBackend(source *annotations.Source, hostpath, fullSvcName
 	backend.DNSPort = readDNSPort(svc.Spec.ClusterIP == api.ClusterIPNone, port)
 	mapper, found := c.backendAnnotations[backend]
 	if !found {
-		// New backend, initialize with service annotations, giving precedence
 		mapper = c.mapBuilder.NewMapper()
-		_, ann := c.readAnnotations(svc.Annotations)
-		mapper.AddAnnotations(&annotations.Source{
-			Namespace: namespace,
-			Name:      svcName,
-			Type:      "service",
-		}, hostpath, ann)
 		c.backendAnnotations[backend] = mapper
 	}
+	// Starting with service annotations, giving precedence
+	_, svcann := c.readAnnotations(svc.Annotations)
+	mapper.AddAnnotations(&annotations.Source{
+		Namespace: namespace,
+		Name:      svcName,
+		Type:      "service",
+	}, hostpath, svcann)
 	// Merging Ingress annotations
 	conflict := mapper.AddAnnotations(source, hostpath, ann)
 	if len(conflict) > 0 {
