@@ -813,16 +813,16 @@ func (c *converter) addBackendWithClass(source *annotations.Source, pathLink *ha
 	backend.DNSPort = readDNSPort(svc.Spec.ClusterIP == api.ClusterIPNone, port)
 	mapper, found := c.backendAnnotations[backend]
 	if !found {
-		// New backend, initialize with service annotations, giving precedence
 		mapper = c.mapBuilder.NewMapper()
-		_, _, ann := c.readAnnotations(source, svc.Annotations)
-		mapper.AddAnnotations(&annotations.Source{
-			Namespace: namespace,
-			Name:      svcName,
-			Type:      convtypes.ResourceService,
-		}, pathLink, ann)
 		c.backendAnnotations[backend] = mapper
 	}
+	// Starting with service annotations, giving precedence
+	_, _, svcann := c.readAnnotations(source, svc.Annotations)
+	mapper.AddAnnotations(&annotations.Source{
+		Namespace: namespace,
+		Name:      svcName,
+		Type:      convtypes.ResourceService,
+	}, pathLink, svcann)
 	// Merging Ingress annotations
 	conflict := mapper.AddAnnotations(source, pathLink, ann)
 	if len(conflict) > 0 {
