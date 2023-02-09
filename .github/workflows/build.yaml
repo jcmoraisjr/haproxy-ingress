@@ -14,7 +14,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v1
       with:
-        go-version: 1.18.9
+        go-version: 1.18.10
     - uses: actions/checkout@v2
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v2
