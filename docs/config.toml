@@ -1,4 +1,4 @@
-baseURL = "https://haproxy-ingress.github.io"
+baseURL = "/"
 title = "HAProxy Ingress"
 
 enableRobotsTXT = true
