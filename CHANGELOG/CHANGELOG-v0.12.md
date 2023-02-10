@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.11!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.12.15](#v01215)
+  * [Reference](#reference-r15)
+  * [Release notes](#release-notes-r15)
+  * [Fixes and improvements](#fixes-and-improvements-r15)
 * [v0.12.14](#v01214)
   * [Reference](#reference-r14)
   * [Release notes](#release-notes-r14)
@@ -96,11 +100,52 @@ Breaking backward compatibility from v0.11
 
 ## Contributors
 
+* Andrej Baran ([andrejbaran](https://github.com/andrejbaran))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
 * Max Verigin ([griever989](https://github.com/griever989))
 * paul ([toothbrush](https://github.com/toothbrush))
 * pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.12.15
+
+## Reference (r15)
+
+* Release date: `2023-02-10`
+* Helm chart: `--version 0.12.15`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.12.15`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.12.15`
+* Embedded HAProxy version: `2.2.28`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.12.15`
+
+## Release notes (r15)
+
+Warning: due to the update of some old dependencies with vulnerability, the Go version used to compile this release was updated from 1.14 to 1.17, and client-go was updated from v0.19 to v0.21.
+
+This release fixes the following issues:
+
+- Service resources accept annotations just like ingress ones. However services annotated with path scoped annotations, like `haproxy-ingress.github.io/cors-enable` and `haproxy-ingress.github.io/auth-url`, were applying the configuration to just one of the paths pointing the service. So, considering `domain.local/path1` and `domain.local/path2` pointing to `svc1`, an annotation added to `svc1` would only be applied to one of the paths.
+- Known operating system vulnerabilities were not being fixed or updated during the creation of the controller container image.
+
+Other notable changes include:
+
+- Andrej Baran made `load-server-state` to work on HAProxy deployed as an external container.
+
+Dependencies:
+
+- Embedded HAProxy version was updated from 2.2.24 to 2.2.28.
+- Go updated from 1.14.15 to 1.17.13.
+- Client-go updated from v0.19.16 to v0.21.14.
+
+## Fixes and improvements (r15)
+
+New features and improvements since `v0.12.14`:
+
+* Add apk upgrade on container building [#941](https://github.com/jcmoraisjr/haproxy-ingress/pull/941) (jcmoraisjr)
+* Enable Load Server State feature for external haproxy [#957](https://github.com/jcmoraisjr/haproxy-ingress/pull/957) (andrejbaran)
+* Fix path scoped annotation on service resources [#984](https://github.com/jcmoraisjr/haproxy-ingress/pull/984) (jcmoraisjr)
+* update embedded haproxy from 2.2.24 to 2.2.28 [7ae609a](https://github.com/jcmoraisjr/haproxy-ingress/commit/7ae609adfadb1000cfd968ec671cfa692f5bc832) (Joao Morais)
+* update go from 1.14.15 to 1.17.13 and dependencies [2554d7f](https://github.com/jcmoraisjr/haproxy-ingress/commit/2554d7f9660f69cba56634de97a1e8228f44c57d) (Joao Morais)
 
 # v0.12.14
 
