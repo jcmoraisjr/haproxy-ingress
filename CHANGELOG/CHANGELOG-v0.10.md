@@ -2,6 +2,10 @@
 
 * [Major improvements](#major-improvements)
 * [Contributors](#contributors)
+* [v0.10.15](#v01015)
+  * [Reference](#reference-r15)
+  * [Release notes](#release-notes-r15)
+  * [Fixes and improvements](#fixes-and-improvements-r15)
 * [v0.10.14](#v01014)
   * [Reference](#reference-r14)
   * [Release notes](#release-notes-r14)
@@ -102,6 +106,40 @@ Highlights of this version:
 * Robert Agbozo ([RobertTheProfessional](https://github.com/RobertTheProfessional))
 * Sankul ([dark-shade](https://github.com/dark-shade))
 * Tadeu Andrade ([mtatheonly](https://github.com/mtatheonly))
+
+# v0.10.15
+
+## Reference (r15)
+
+* Release date: `2023-02-10`
+* Helm chart: `--version 0.10.15`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.10.15`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.10.15`
+* Embedded HAProxy version: `2.0.30`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.10.15`
+
+## Release notes (r15)
+
+Warning: due to the update of some old dependencies with vulnerability, the Go version used to compile this release was updated from 1.13 to 1.17.
+
+This release fixes the following issues:
+
+- Service resources accept annotations just like ingress ones. However services annotated with path scoped annotations, like `haproxy-ingress.github.io/cors-enable` and `haproxy-ingress.github.io/auth-url`, were applying the configuration to just one of the paths pointing the service. So, considering `domain.local/path1` and `domain.local/path2` pointing to `svc1`, an annotation added to `svc1` would only be applied to one of the paths.
+- Known operating system vulnerabilities were not being fixed or updated during the creation of the controller container image.
+
+Dependencies:
+
+- Embedded HAProxy version was updated from 2.0.28 to 2.0.30.
+- Go updated from 1.13.15 to 1.17.13.
+
+## Fixes and improvements (r15)
+
+New features and improvements since `v0.10.14`:
+
+* Add apk upgrade on container building [#941](https://github.com/jcmoraisjr/haproxy-ingress/pull/941) (jcmoraisjr)
+* Fix path scoped annotation on service resources [#984](https://github.com/jcmoraisjr/haproxy-ingress/pull/984) (jcmoraisjr)
+* update embedded haproxy from 2.0.28 to 2.0.30 [4cf4333](https://github.com/jcmoraisjr/haproxy-ingress/commit/4cf4333d574cd65be9f9a4e893b51b287aa68a09) (Joao Morais)
+* update go from 1.13.15 to 1.17.13 and dependencies [2b04c6a](https://github.com/jcmoraisjr/haproxy-ingress/commit/2b04c6a2b812f52fd48f51d51307b63234d92793) (Joao Morais)
 
 # v0.10.14
 
