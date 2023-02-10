@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.13!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.14.1](#v0141)
+  * [Reference](#reference-r1)
+  * [Release notes](#release-notes-r1)
+  * [Fixes and improvements](#fixes-and-improvements-r1)
 * [v0.14.0](#v0140)
   * [Reference](#reference-r0)
   * [Release notes](#release-notes-r0)
@@ -74,6 +78,45 @@ Breaking backward compatibility from v0.13:
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
 * wolf-cosmose ([wolf-cosmose](https://github.com/wolf-cosmose))
+
+# v0.14.1
+
+## Reference (r1)
+
+* Release date: `2023-02-10`
+* Helm chart: `--version 0.14.1`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.14.1`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.14.1`
+* Embedded HAProxy version: `2.4.21`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.14.1`
+
+## Release notes (r1)
+
+This release fixes the following issues:
+
+- Service resources accept annotations just like ingress ones. However services annotated with path scoped annotations, like `haproxy-ingress.github.io/cors-enable` and `haproxy-ingress.github.io/auth-url`, were applying the configuration to just one of the paths pointing the service. So, considering `domain.local/path1` and `domain.local/path2` pointing to `svc1`, an annotation added to `svc1` would only be applied to one of the paths.
+- A wrong named port configured on the external auth was being silently ignored. This update adds this information in the documentation and also adds a warning in the log. See auth external [documentation](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#auth-external).
+
+Other notable changes include:
+
+- Mutual TLS authentication (mTLS, Auth TLS) was being skipped on v0.14 if all the domains that configure mTLS are configured with `optional_no_ca`.
+
+Dependencies:
+
+- Embedded HAProxy version was updated from 2.4.20 to 2.4.21.
+- Go updated from 1.18.9 to 1.18.10.
+- Client-go updated from v0.23.15 to v0.23.16.
+
+## Fixes and improvements (r1)
+
+New features and improvements since `v0.14.0`:
+
+* Fix path scoped annotation on service resources [#984](https://github.com/jcmoraisjr/haproxy-ingress/pull/984) (jcmoraisjr)
+* Fix mTLS when all hosts are optional_no_ca [#977](https://github.com/jcmoraisjr/haproxy-ingress/pull/977) (jcmoraisjr)
+* Add warning if auth external svc isnt found [#982](https://github.com/jcmoraisjr/haproxy-ingress/pull/982) (jcmoraisjr)
+* update embedded haproxy from 2.4.20 to 2.4.21 [2b503d6](https://github.com/jcmoraisjr/haproxy-ingress/commit/2b503d6c029074703f04586fcff687254bc6d47c) (Joao Morais)
+* update go from 1.18.9 to 1.18.10 [717eea3](https://github.com/jcmoraisjr/haproxy-ingress/commit/717eea3a7cccb9130a4a4726623cad52393476e7) (Joao Morais)
+* update dependencies [a8da9b8](https://github.com/jcmoraisjr/haproxy-ingress/commit/a8da9b80af265a2f80453d2b72223dc3c4ba958a) (Joao Morais)
 
 # v0.14.0
 
