@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.12!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.13.10](#v01310)
+  * [Reference](#reference-r10)
+  * [Release notes](#release-notes-r10)
+  * [Fixes and improvements](#fixes-and-improvements-r10)
 * [v0.13.9](#v0139)
   * [Reference](#reference-r9)
   * [Release notes](#release-notes-r9)
@@ -93,6 +97,7 @@ Breaking backward compatibility from v0.12
 
 ## Contributors
 
+* Andrej Baran ([andrejbaran](https://github.com/andrejbaran))
 * Andrew Rodland ([arodland](https://github.com/arodland))
 * Bart Versluijs ([bartversluijs](https://github.com/bartversluijs))
 * ironashram ([ironashram](https://github.com/ironashram))
@@ -107,6 +112,50 @@ Breaking backward compatibility from v0.12
 * Roman Gherta ([rgherta](https://github.com/rgherta))
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
+
+# v0.13.10
+
+## Reference (r10)
+
+* Release date: `2023-02-10`
+* Helm chart: `--version 0.13.10`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.10`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.10`
+* Embedded HAProxy version: `2.3.21`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.13.10`
+
+## Release notes (r10)
+
+Warning: due to the update of some old dependencies with vulnerability, the Go version used to compile this release was updated from 1.16 to 1.17, and client-go was updated from v0.20 to v0.23.
+
+This release fixes the following issues:
+
+- Service resources accept annotations just like ingress ones. However services annotated with path scoped annotations, like `haproxy-ingress.github.io/cors-enable` and `haproxy-ingress.github.io/auth-url`, were applying the configuration to just one of the paths pointing the service. So, considering `domain.local/path1` and `domain.local/path2` pointing to `svc1`, an annotation added to `svc1` would only be applied to one of the paths.
+- A wrong named port configured on the external auth was being silently ignored. This update adds this information in the documentation and also adds a warning in the log. See auth external [documentation](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#auth-external).
+
+Other notable changes include:
+
+- Services of type External Name can now be configured without a port number. If the port is missing in the service, the port number declared in the ingress resource is used.
+- Andrej Baran made `load-server-state` to work on HAProxy deployed as an external container.
+- Some redirect configuration keys have the ability to send a request to another domain or path. This was happening with ACME validation as well. Now a redirect will only be effective if the request isn't an ACME validation.
+- Auth headers, from the auth external configuration keys, used to break the configuration when declared empty. Now an empty value disables the copy of the HTTP headers.
+
+Dependencies:
+
+- Go updated from 1.16.15 to 1.17.13.
+- Client-go updated from v0.20.15 to v0.23.16.
+
+## Fixes and improvements (r10)
+
+New features and improvements since `v0.13.9`:
+
+* Add support for service external name without port [#946](https://github.com/jcmoraisjr/haproxy-ingress/pull/946) (jcmoraisjr)
+* Enable Load Server State feature for external haproxy [#957](https://github.com/jcmoraisjr/haproxy-ingress/pull/957) (andrejbaran)
+* Fix host redirects when acme is enabled [#971](https://github.com/jcmoraisjr/haproxy-ingress/pull/971) (jcmoraisjr)
+* Makes auth-headers not copying on empty string [#972](https://github.com/jcmoraisjr/haproxy-ingress/pull/972) (jcmoraisjr)
+* Fix path scoped annotation on service resources [#984](https://github.com/jcmoraisjr/haproxy-ingress/pull/984) (jcmoraisjr)
+* Add warning if auth external svc isnt found [#982](https://github.com/jcmoraisjr/haproxy-ingress/pull/982) (jcmoraisjr)
+* update go from 1.16.15 to 1.17.13 and dependencies [3319f97](https://github.com/jcmoraisjr/haproxy-ingress/commit/3319f97e67fa3d5b8871193b3234cb77e4e6cff8) (Joao Morais)
 
 # v0.13.9
 
