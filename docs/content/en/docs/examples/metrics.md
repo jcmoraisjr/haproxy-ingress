@@ -25,8 +25,7 @@ grafana:
   enabled: true
   ingress:
     enabled: true
-    annotations:
-      kubernetes.io/ingress.class: haproxy
+    ingressClassName: haproxy
     hosts:
     - grafana.192.168.0.11.nip.io
     tls:

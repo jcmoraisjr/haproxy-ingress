@@ -92,8 +92,8 @@ echoserver-5b6fb6dd96-68jwp   1/1     Running   0          27s
 Obs.: `nip.io` is a convenient service which converts a valid domain name to any IP, either public or local. See [here](https://nip.io) how it works.
 
 ```shell
-$ kubectl --namespace default create ingress echoserver\
-  --annotation kubernetes.io/ingress.class=haproxy\
+$ kubectl --namespace default create ingress echoserver \
+  --class=haproxy \
   --rule="echoserver.local/*=echoserver:8080,tls"
 ```
 
