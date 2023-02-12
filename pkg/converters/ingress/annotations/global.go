@@ -409,16 +409,22 @@ func (c *updater) buildGlobalDynamic(d *globalData) {
 }
 
 var forwardRegex = regexp.MustCompile(`^(add|update|ignore|ifmissing)$`)
+var headerNameRegex = regexp.MustCompile(`^[A-Za-z0-9-]*$`)
 
 func (c *updater) buildGlobalForwardFor(d *globalData) {
-	if forwardFor := d.mapper.Get(ingtypes.GlobalForwardfor).Value; forwardRegex.MatchString(forwardFor) {
-		d.global.ForwardFor = forwardFor
-	} else {
-		if forwardFor != "" {
-			c.logger.Warn("Invalid forwardfor value option on configmap: '%s'. Using 'add' instead", forwardFor)
+	// TODO: need a small refactor on map builder and ingress converter creation,
+	// so that globals can be validated via validator as any other annotation based config
+	validateString := func(regex *regexp.Regexp, key, defaultValue string) string {
+		value := d.mapper.Get(key).Value
+		if !regex.MatchString(value) {
+			c.logger.Warn("Invalid %s value option on ConfigMap: '%s'. Using '%s' instead", key, value, defaultValue)
+			return defaultValue
 		}
-		d.global.ForwardFor = "add"
+		return value
 	}
+	d.global.ForwardFor = validateString(forwardRegex, ingtypes.GlobalForwardfor, "add")
+	d.global.OriginalForwardedForHdr = validateString(headerNameRegex, ingtypes.GlobalOriginalForwardedForHdr, "X-Original-Forwarded-For")
+	d.global.RealIPHdr = validateString(headerNameRegex, ingtypes.GlobalRealIPHdr, "X-Real-IP")
 }
 
 func (c *updater) buildGlobalCustomConfig(d *globalData) {

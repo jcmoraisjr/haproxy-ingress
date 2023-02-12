@@ -422,11 +422,13 @@ The table below describes all supported configuration keys.
 | [`oauth`](#oauth)                                    | "oauth2_proxy"                          | Path    |                    |
 | [`oauth-headers`](#oauth)                            | `<header>:<var>,...`                    | Path    |                    |
 | [`oauth-uri-prefix`](#oauth)                         | URI prefix                              | Path    |                    |
+| [`original-forwarded-for-hdr`](#forwardfor)          | header name                             | Global  | `X-Original-Forwarded-For` |
 | [`path-type`](#path-type)                            | path matching type                      | Path    | `begin`            |
 | [`path-type-order`](#path-type)                      | comma-separated path type list          | Global  | `exact,prefix,begin,regex` |
 | [`prometheus-port`](#bind-port)                      | port number                             | Global  |                    |
 | [`proxy-body-size`](#proxy-body-size)                | size (bytes)                            | Path    | unlimited          |
 | [`proxy-protocol`](#proxy-protocol)                  | [v1\|v2\|v2-ssl\|v2-ssl-cn]             | Backend |                    |
+| [`real-ip-hdr`](#forwardfor)                         | header name                             | Global  | `X-Real-IP`        |
 | [`redirect-from`](#redirect)                         | domain name                             | Host    |                    |
 | [`redirect-from-code`](#redirect)                    | http status code                        | Global  | `302`              |
 | [`redirect-from-regex`](#redirect)                   | regex                                   | Host    |                    |
@@ -1553,25 +1555,24 @@ See also:
 
 ## Forwardfor
 
-| Configuration key | Scope     | Default | Since |
-|-------------------|-----------|---------|-------|
-| `forwardfor`      | `Global`  | `add`   |       |
+| Configuration key            | Scope     | Default                    | Since   |
+|------------------------------|-----------|----------------------------|---------|
+| `forwardfor`                 | `Global`  | `add`                      |         |
+| `original-forwarded-for-hdr` | `Global`  | `X-Original-Forwarded-For` | `v0.15` |
+| `real-ip-hdr`                | `Global`  | `X-Real-IP`                | `v0.15` |
 
-Define how the `X-Forwarded-For` header should be handled by haproxy.
+Defines `X-Forwarded-For` header and source address handling.
 
-Options:
+* `forwardfor`: Defines how `X-Forwarded-For` header should be handled, options are `add`, `update`, `ignore` and `ifmissing`. See details below.
+* `original-forwarded-for-hdr`: Defines a header name for the original `X-Forwarded-For` header value, if present. Defaults to `X-Original-Forwarded-For` header, and an empty string disables this header declaration.
+* `real-ip-hdr`: Defines a header name that should receive the source IP address, despite of any `X-Forwarded-For` configuration. Defaults to `X-Real-IP` header, and an empty string disables this header declaration.
 
-* `add`: haproxy should generate a `X-Forwarded-For` header with the source IP
-address. This is the default option and should be used on untrusted networks.
-If the request has a `XFF` header, its value is copied to
-`X-Original-Forwarded-For`.
-* `update`: Only on `v0.9` and above. haproxy should preserve any `X-Forwarded-For`
-header, if provided, updating with the source IP address, which should be a
-fronting TCP or HTTP proxy/load balancer.
-* `ignore`: do nothing - only send the `X-Forwarded-For` header if the client
-provided one, without updating its content.
-* `ifmissing`: add `X-Forwarded-For` header only if the incoming request
-doesn't provide one.
+`forwardfor` options:
+
+* `add`: haproxy should generate a `X-Forwarded-For` header with the source IP address. This is the default option and should be used on untrusted networks.
+* `update`: haproxy should preserve any `X-Forwarded-For` header, if provided, updating with the source IP address, which should be a fronting TCP or HTTP proxy/load balancer.
+* `ignore`: Do nothing - only send the `X-Forwarded-For` header if the client provided one, without updating its content.
+* `ifmissing`: Add `X-Forwarded-For` header only if the incoming request doesn't provide one.
 
 See also:
 

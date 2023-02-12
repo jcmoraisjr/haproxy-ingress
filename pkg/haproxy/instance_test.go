@@ -400,15 +400,6 @@ d1.local#/ path01`,
 		},
 		{
 			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
-				c.global.ForwardFor = "add"
-			},
-			expected: `
-    http-request set-header X-Original-Forwarded-For %[hdr(x-forwarded-for)] if { hdr(x-forwarded-for) -m found }
-    http-request del-header x-forwarded-for
-    option forwardfor`,
-		},
-		{
-			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				b.FindBackendPath(h.FindPath("/app")[0].Link).RewriteURL = "/"
 			},
 			path: []string{"/app"},
@@ -716,7 +707,6 @@ d1.local#/ path01`,
     # path01 = d1.local/app1
     # path02 = d1.local/app2
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
-    http-request set-header X-Real-IP %[src] if { var(txn.pathID) -m str path01 }
     http-request lua.auth-intercept _auth_4001 /oauth2/auth GET '*' '*' '*' if { var(txn.pathID) -m str path01 }
     http-request deny if !{ var(txn.auth_response_successful) -m bool } { var(txn.pathID) -m str path01 }`,
 		},
@@ -736,7 +726,6 @@ d1.local#/ path01`,
     # path01 = d1.local/app1
     # path02 = d1.local/app2
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
-    http-request set-header X-Real-IP %[src] if { var(txn.pathID) -m str path01 }
     http-request lua.auth-intercept _auth_4001 /oauth2/auth GET 'X-UserID1,X-Token1' 'X-UserID2,X-Token2' 'X-UserID3,X-Token3' if { var(txn.pathID) -m str path01 }
     http-request redirect location http://auth.local/auth1 if !{ var(txn.auth_response_successful) -m bool } { var(txn.pathID) -m str path01 }`,
 		},
@@ -757,7 +746,6 @@ d1.local#/ path01`,
     # path01 = d1.local/app1
     # path02 = d1.local/app2
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
-    http-request set-header X-Real-IP %[src] if { var(txn.pathID) -m str path01 }
     http-request lua.auth-intercept _auth_4001 /oauth2/auth HEAD '*' '-' '-' if { var(txn.pathID) -m str path01 }
     http-request redirect location http://auth.local/login if !{ var(txn.auth_response_successful) -m bool } { var(txn.pathID) -m str path01 }
     http-request set-header X-Auth-Request-Email %[var(req.auth_response_header.x_auth_request_email)] if { var(req.auth_response_header.x_auth_request_email) -m found } { var(txn.pathID) -m str path01 }`,
@@ -2634,6 +2622,10 @@ func TestInstanceFrontend(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
+	c.config.global.ForwardFor = "add"
+	c.config.global.OriginalForwardedForHdr = "X-Original-Forwarded-For"
+	c.config.global.RealIPHdr = "X-Real-IP"
+
 	def := c.config.Backends().AcquireBackend("default", "default-backend", "8080")
 	def.Endpoints = []*hatypes.Endpoint{endpointS0}
 	c.config.Backends().DefaultBackend = def
@@ -2685,6 +2677,10 @@ frontend _front_http
     <<http-headers>>
     http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_host__prefix.map)
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map) if !{ var(req.backend) -m found }
+    http-request set-header X-Original-Forwarded-For %[hdr(x-forwarded-for)] if { hdr(x-forwarded-for) -m found }
+    http-request del-header x-forwarded-for
+    option forwardfor
+    http-request set-header X-Real-IP %[src]
     use_backend %[var(req.backend)] if { var(req.backend) -m found }
     default_backend default_default-backend_8080
 frontend _front_https
@@ -2697,6 +2693,10 @@ frontend _front_https
     http-request set-var(txn.namespace) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_namespace__begin.map) if !{ var(txn.namespace) -m found }
     http-request set-var(txn.namespace) str(-) if !{ var(txn.namespace) -m found }
     <<https-headers>>
+    http-request set-header X-Original-Forwarded-For %[hdr(x-forwarded-for)] if { hdr(x-forwarded-for) -m found }
+    http-request del-header x-forwarded-for
+    option forwardfor
+    http-request set-header X-Real-IP %[src]
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     default_backend default_default-backend_8080
 <<support>>
