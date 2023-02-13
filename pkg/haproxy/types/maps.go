@@ -416,7 +416,11 @@ func (mf *hostsMapMatchFile) lower() bool {
 }
 
 func (mf *hostsMapMatchFile) method() string {
-	switch mf.match {
+	return haMatchMethod(mf.match)
+}
+
+func haMatchMethod(match MatchType) string {
+	switch match {
 	case MatchExact:
 		return "str"
 	case MatchPrefix:
@@ -426,7 +430,7 @@ func (mf *hostsMapMatchFile) method() string {
 	case MatchRegex:
 		return "reg"
 	}
-	panic(fmt.Errorf("unsupported match type: %s", mf.match))
+	panic(fmt.Errorf("unsupported match type: %s", match))
 }
 
 // Filename ...
