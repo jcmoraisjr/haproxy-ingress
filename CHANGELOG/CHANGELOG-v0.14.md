@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.13!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.14.2](#v0142)
+  * [Reference](#reference-r2)
+  * [Release notes](#release-notes-r2)
+  * [Fixes and improvements](#fixes-and-improvements-r2)
 * [v0.14.1](#v0141)
   * [Reference](#reference-r1)
   * [Release notes](#release-notes-r1)
@@ -78,6 +82,32 @@ Breaking backward compatibility from v0.13:
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
 * wolf-cosmose ([wolf-cosmose](https://github.com/wolf-cosmose))
+
+# v0.14.2
+
+## Reference (r2)
+
+* Release date: `2023-02-14`
+* Helm chart: `--version 0.14.2`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.14.2`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.14.2`
+* Embedded HAProxy version: `2.4.22`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.14.2`
+
+## Release notes (r2)
+
+This release fixes CVE-2023-25725 on HAProxy. See HAProxy's release notes regarding the issue and a possible work around: https://www.mail-archive.com/haproxy@formilux.org/msg43229.html
+
+Dependencies:
+
+- Embedded HAProxy version was updated from 2.4.21 to 2.4.22.
+
+## Fixes and improvements (r2)
+
+New features and improvements since `v0.14.1`:
+
+* update dependencies [0efcd77](https://github.com/jcmoraisjr/haproxy-ingress/commit/0efcd77c8395792e81b4272458ac488fdedd8d45) (Joao Morais)
+* update embedded haproxy from 2.4.21 to 2.4.22 [a8c942b](https://github.com/jcmoraisjr/haproxy-ingress/commit/a8c942b7c3f21475c3e090896a4d8f11199fd274) (Joao Morais)
 
 # v0.14.1
 
