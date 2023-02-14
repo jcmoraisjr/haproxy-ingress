@@ -39,6 +39,7 @@ func createDefaults() map[string]string {
 		types.HostSSLOptionsHost:    "",
 		types.HostTLSALPN:           "h2,http/1.1",
 		//
+		types.BackAuthExternalPlacement:  "backend",
 		types.BackAuthHeadersFail:        "*",
 		types.BackAuthHeadersRequest:     "*",
 		types.BackAuthHeadersSucceed:     "*",

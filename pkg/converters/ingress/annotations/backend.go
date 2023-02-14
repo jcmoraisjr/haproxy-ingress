@@ -114,150 +114,153 @@ var (
 	authHeaderRegex  = regexp.MustCompile(`^[A-Za-z0-9-]+(:[^:'" ]+)?$`)
 )
 
+func (c *updater) setAuthExternal(config ConfigValueGetter, auth *hatypes.AuthExternal, url *ConfigValue) {
+	// auth backend should be configured or requests should be denied
+	// AlwaysDeny will be changed to false if the configuration succeed
+	auth.AlwaysDeny = true
+
+	external := c.haproxy.Global().External
+	if external.IsExternal && !external.HasLua {
+		c.logger.Warn("external authentication on %v needs Lua json module, install lua-json4 and enable 'external-has-lua' global config", url.Source)
+		return
+	}
+
+	urlProto, urlHost, urlPort, urlPath, err := ingutils.ParseURL(url.Value)
+	if err != nil {
+		c.logger.Warn("ignoring URL on %v: %v", url.Source, err)
+		return
+	}
+
+	var backend *hatypes.Backend
+	switch urlProto {
+	case "http", "https":
+		secure := urlProto == "https"
+		var ipList []string
+		var hostname string
+		if net.ParseIP(urlHost) != nil {
+			ipList = []string{urlHost}
+		} else {
+			var err error
+			if ipList, err = lookupHost(urlHost); err != nil {
+				c.logger.Warn("ignoring auth URL with an invalid domain on %v: %v", url.Source, err)
+				return
+			}
+			hostname = urlHost
+		}
+		port, _ := strconv.Atoi(urlPort)
+		if port == 0 {
+			if secure {
+				port = 443
+			} else {
+				port = 80
+			}
+		}
+		// TODO track
+		backend = c.haproxy.Backends().AcquireAuthBackend(ipList, port, hostname)
+		if secure {
+			backend.Server.Secure = secure
+			backend.Server.SNI = fmt.Sprintf("str(%s)", hostname)
+		}
+	case "service", "svc":
+		if urlPort == "" {
+			c.logger.Warn("skipping auth-url on %v: missing service port: %s", url.Source, url.Value)
+			return
+		}
+		ssvc := strings.Split(urlHost, "/")
+		namespace := url.Source.Namespace
+		name := ssvc[0]
+		if len(ssvc) == 2 {
+			namespace = ssvc[0]
+			name = ssvc[1]
+		}
+		backend = c.haproxy.Backends().FindBackend(namespace, name, urlPort)
+		if backend == nil {
+			// warn was already logged in the ingress if a service couldn't be found,
+			// but we still need to add a warning here because, in the current code base,
+			// a valid named service can lead to a broken configuration. See ingress'
+			// counterpart code.
+			c.logger.Warn("skipping auth-url on %v: service '%s:%s' was not found", url.Source, name, urlPort)
+			return
+		}
+	default:
+		c.logger.Warn("ignoring auth URL with an invalid protocol on %v: %s", url.Source, urlProto)
+		return
+	}
+	// TODO track
+	authBackendName, err := c.haproxy.Frontend().AcquireAuthBackendName(backend.BackendID())
+	if err != nil {
+		// clean up and try again
+		used := c.haproxy.Backends().BuildUsedAuthBackends()
+		c.haproxy.Frontend().RemoveAuthBackendExcept(used)
+		authBackendName, err = c.haproxy.Frontend().AcquireAuthBackendName(backend.BackendID())
+		if err != nil {
+			// TODO remove backend if not used elsewhere
+			c.logger.Warn("ignoring auth URL on %v: %v", url.Source, err)
+			return
+		}
+	}
+
+	m := config.Get(ingtypes.BackAuthMethod)
+	method := m.Value
+	if !validMethodRegex.MatchString(method) {
+		c.logger.Warn("invalid request method '%s' on %s, using GET instead", method, m.Source)
+		method = "GET"
+	}
+
+	s := config.Get(ingtypes.BackAuthSignin)
+	signin := s.Value
+	if signin != "" && !validURLRegex.MatchString(signin) {
+		c.logger.Warn("ignoring invalid sign-in URL in %v: %s", s.Source, signin)
+		signin = ""
+	}
+
+	annHdrRequest := config.Get(ingtypes.BackAuthHeadersRequest).Value
+	if annHdrRequest == "" {
+		annHdrRequest = "-"
+	}
+	annHdrSucceed := config.Get(ingtypes.BackAuthHeadersSucceed).Value
+	if annHdrSucceed == "" {
+		annHdrSucceed = "-"
+	}
+	annHdrFail := config.Get(ingtypes.BackAuthHeadersFail).Value
+	if annHdrFail == "" {
+		annHdrFail = "-"
+	}
+	hdrRequest := strings.Split(annHdrRequest, ",")
+	hdrSucceed := strings.Split(annHdrSucceed, ",")
+	hdrFail := strings.Split(annHdrFail, ",")
+
+	if signin != "" {
+		if !reflect.DeepEqual(hdrFail, []string{"*"}) {
+			c.logger.Warn("ignoring '%s' on %v due to signin (redirect) configuration", ingtypes.BackAuthHeadersFail, s.Source)
+		}
+		// `-` instructs auth-request to not terminate the transaction,
+		// so HAProxy has the chance to configure the redirect.
+		hdrFail = []string{"-"}
+	}
+
+	if urlPath == "" {
+		urlPath = "/"
+	}
+
+	auth.AlwaysDeny = false
+	auth.AuthBackendName = authBackendName
+	auth.AuthPath = urlPath
+	auth.Method = method
+	auth.HeadersRequest = hdrRequest
+	auth.HeadersSucceed = hdrSucceed
+	auth.HeadersFail = hdrFail
+	auth.RedirectOnFail = signin
+}
+
 func (c *updater) buildBackendAuthExternal(d *backData) {
 	for _, path := range d.backend.Paths {
 		config := d.mapper.GetConfig(path.Link)
+		isBackend := config.Get(ingtypes.BackAuthExternalPlacement).ToLower() == "backend"
 		url := config.Get(ingtypes.BackAuthURL)
-		if url.Source == nil || url.Value == "" {
-			continue
+		if isBackend && url.Source != nil && url.Value != "" {
+			c.setAuthExternal(config, &path.AuthExternal, url)
 		}
-
-		// starting here the auth backend should be configured or requests should be denied
-		// AlwaysDeny will be changed to false if the configuration succeed
-		path.AuthExternal.AlwaysDeny = true
-
-		external := c.haproxy.Global().External
-		if external.IsExternal && !external.HasLua {
-			c.logger.Warn("external authentication on %v needs Lua json module, install lua-json4 and enable 'external-has-lua' global config", url.Source)
-			continue
-		}
-
-		urlProto, urlHost, urlPort, urlPath, err := ingutils.ParseURL(url.Value)
-		if err != nil {
-			c.logger.Warn("ignoring URL on %v: %v", url.Source, err)
-			continue
-		}
-
-		var backend *hatypes.Backend
-		switch urlProto {
-		case "http", "https":
-			secure := urlProto == "https"
-			var ipList []string
-			var hostname string
-			if net.ParseIP(urlHost) != nil {
-				ipList = []string{urlHost}
-			} else {
-				var err error
-				if ipList, err = lookupHost(urlHost); err != nil {
-					c.logger.Warn("ignoring auth URL with an invalid domain on %v: %v", url.Source, err)
-					continue
-				}
-				hostname = urlHost
-			}
-			port, _ := strconv.Atoi(urlPort)
-			if port == 0 {
-				if secure {
-					port = 443
-				} else {
-					port = 80
-				}
-			}
-			// TODO track
-			backend = c.haproxy.Backends().AcquireAuthBackend(ipList, port, hostname)
-			if secure {
-				backend.Server.Secure = secure
-				backend.Server.SNI = fmt.Sprintf("str(%s)", hostname)
-			}
-		case "service", "svc":
-			if urlPort == "" {
-				c.logger.Warn("skipping auth-url on %v: missing service port: %s", url.Source, url.Value)
-				continue
-			}
-			ssvc := strings.Split(urlHost, "/")
-			namespace := url.Source.Namespace
-			name := ssvc[0]
-			if len(ssvc) == 2 {
-				namespace = ssvc[0]
-				name = ssvc[1]
-			}
-			backend = c.haproxy.Backends().FindBackend(namespace, name, urlPort)
-			if backend == nil {
-				// warn was already logged in the ingress if a service couldn't be found,
-				// but we still need to add a warning here because, in the current code base,
-				// a valid named service can lead to a broken configuration. See ingress'
-				// counterpart code.
-				c.logger.Warn("skipping auth-url on %v: service '%s:%s' was not found", url.Source, name, urlPort)
-				continue
-			}
-		default:
-			c.logger.Warn("ignoring auth URL with an invalid protocol on %v: %s", url.Source, urlProto)
-			continue
-		}
-		// TODO track
-		authBackendName, err := c.haproxy.Frontend().AcquireAuthBackendName(backend.BackendID())
-		if err != nil {
-			// clean up and try again
-			used := c.haproxy.Backends().BuildUsedAuthBackends()
-			c.haproxy.Frontend().RemoveAuthBackendExcept(used)
-			authBackendName, err = c.haproxy.Frontend().AcquireAuthBackendName(backend.BackendID())
-			if err != nil {
-				// TODO remove backend if not used elsewhere
-				c.logger.Warn("ignoring auth URL on %v: %v", url.Source, err)
-				continue
-			}
-		}
-
-		m := config.Get(ingtypes.BackAuthMethod)
-		method := m.Value
-		if !validMethodRegex.MatchString(method) {
-			c.logger.Warn("invalid request method '%s' on %s, using GET instead", method, m.Source)
-			method = "GET"
-		}
-
-		s := config.Get(ingtypes.BackAuthSignin)
-		signin := s.Value
-		if signin != "" && !validURLRegex.MatchString(signin) {
-			c.logger.Warn("ignoring invalid sign-in URL in %v: %s", s.Source, signin)
-			signin = ""
-		}
-
-		annHdrRequest := config.Get(ingtypes.BackAuthHeadersRequest).Value
-		if annHdrRequest == "" {
-			annHdrRequest = "-"
-		}
-		annHdrSucceed := config.Get(ingtypes.BackAuthHeadersSucceed).Value
-		if annHdrSucceed == "" {
-			annHdrSucceed = "-"
-		}
-		annHdrFail := config.Get(ingtypes.BackAuthHeadersFail).Value
-		if annHdrFail == "" {
-			annHdrFail = "-"
-		}
-		hdrRequest := strings.Split(annHdrRequest, ",")
-		hdrSucceed := strings.Split(annHdrSucceed, ",")
-		hdrFail := strings.Split(annHdrFail, ",")
-
-		if signin != "" {
-			if !reflect.DeepEqual(hdrFail, []string{"*"}) {
-				c.logger.Warn("ignoring '%s' on %v due to signin (redirect) configuration", ingtypes.BackAuthHeadersFail, s.Source)
-			}
-			// `-` instructs auth-request to not terminate the transaction,
-			// so HAProxy has the chance to configure the redirect.
-			hdrFail = []string{"-"}
-		}
-
-		if urlPath == "" {
-			urlPath = "/"
-		}
-
-		path.AuthExternal.AlwaysDeny = false
-		path.AuthExternal.AuthBackendName = authBackendName
-		path.AuthExternal.AuthPath = urlPath
-		path.AuthExternal.Method = method
-		path.AuthExternal.HeadersRequest = hdrRequest
-		path.AuthExternal.HeadersSucceed = hdrSucceed
-		path.AuthExternal.HeadersFail = hdrFail
-		path.AuthExternal.RedirectOnFail = signin
 	}
 }
 
@@ -1034,11 +1037,7 @@ func (c *updater) buildBackendWhitelistTCP(d *backData) {
 	d.backend.AllowedIPTCP, d.backend.DeniedIPTCP = c.readAccessConfig(d.mapper)
 }
 
-type configValueGetter interface {
-	Get(key string) *ConfigValue
-}
-
-func (c *updater) readAccessConfig(config configValueGetter) (allowed, denied hatypes.AccessConfig) {
+func (c *updater) readAccessConfig(config ConfigValueGetter) (allowed, denied hatypes.AccessConfig) {
 	allowcfg := config.Get(ingtypes.BackAllowlistSourceRange)
 	denycfg := config.Get(ingtypes.BackDenylistSourceRange)
 	whitecfg := config.Get(ingtypes.BackWhitelistSourceRange)

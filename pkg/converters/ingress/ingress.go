@@ -1013,6 +1013,9 @@ func (c *converter) readAnnotations(source *annotations.Source, ann map[string]s
 			// later when creating the TCP mapper.
 			annTCP[key] = value
 		} else {
+			if _, isDuoAnn := ingtypes.AnnDuo[key]; isDuoAnn {
+				annHost[key] = value
+			}
 			annBack[key] = value
 		}
 	}
