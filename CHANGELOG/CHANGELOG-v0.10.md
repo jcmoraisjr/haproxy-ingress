@@ -2,6 +2,10 @@
 
 * [Major improvements](#major-improvements)
 * [Contributors](#contributors)
+* [v0.10.16](#v01016)
+  * [Reference](#reference-r16)
+  * [Release notes](#release-notes-r16)
+  * [Fixes and improvements](#fixes-and-improvements-r16)
 * [v0.10.15](#v01015)
   * [Reference](#reference-r15)
   * [Release notes](#release-notes-r15)
@@ -106,6 +110,32 @@ Highlights of this version:
 * Robert Agbozo ([RobertTheProfessional](https://github.com/RobertTheProfessional))
 * Sankul ([dark-shade](https://github.com/dark-shade))
 * Tadeu Andrade ([mtatheonly](https://github.com/mtatheonly))
+
+# v0.10.16
+
+## Reference (r16)
+
+* Release date: `2023-02-14`
+* Helm chart: `--version 0.10.16`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.10.16`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.10.16`
+* Embedded HAProxy version: `2.0.31`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.10.16`
+
+## Release notes (r16)
+
+This release fixes CVE-2023-25725 on HAProxy. See HAProxy's release notes regarding the issue and a possible work around: https://www.mail-archive.com/haproxy@formilux.org/msg43229.html
+
+Dependencies:
+
+- Embedded HAProxy version was updated from 2.0.30 to 2.0.31.
+
+## Fixes and improvements (r16)
+
+New features and improvements since `v0.10.15`:
+
+* update dependencies [a8ca4ab](https://github.com/jcmoraisjr/haproxy-ingress/commit/a8ca4abcb1b0d0bb8e60b239ee6781a19f5e1f8d) (Joao Morais)
+* update embedded haproxy from 2.0.30 to 2.0.31 [d5a7c4c](https://github.com/jcmoraisjr/haproxy-ingress/commit/d5a7c4c5f487fae8d9d9deb0ab1b464678f72456) (Joao Morais)
 
 # v0.10.15
 
