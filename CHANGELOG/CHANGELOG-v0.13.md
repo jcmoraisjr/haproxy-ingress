@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.12!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.13.11](#v01311)
+  * [Reference](#reference-r11)
+  * [Release notes](#release-notes-r11)
+  * [Fixes and improvements](#fixes-and-improvements-r11)
 * [v0.13.10](#v01310)
   * [Reference](#reference-r10)
   * [Release notes](#release-notes-r10)
@@ -112,6 +116,34 @@ Breaking backward compatibility from v0.12
 * Roman Gherta ([rgherta](https://github.com/rgherta))
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
+
+# v0.13.11
+
+## Reference (r11)
+
+* Release date: `2023-02-18`
+* Helm chart: `--version 0.13.11`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.11`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.11`
+* Embedded HAProxy version: `2.4.22`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.13.11`
+
+## Release notes (r11)
+
+This release fixes CVE-2023-25725 on HAProxy. See HAProxy's release notes regarding the issue and a possible work around: https://www.mail-archive.com/haproxy@formilux.org/msg43229.html
+
+Note also that HAProxy Ingress v0.13 used to follow HAProxy 2.3 branch, which is already deprecated. This release also changes HAProxy branch from 2.3 to 2.4. HAProxy has a good history of preserving backward compatibility and, while we prefer to stick on a single branch of our main dependencies, we cannot ignore a known vulnerability.
+
+Dependencies:
+
+- Embedded HAProxy version was updated from 2.3.21 to 2.4.22.
+
+## Fixes and improvements (r11)
+
+New features and improvements since `v0.13.10`:
+
+* update dependencies [ae47b5a](https://github.com/jcmoraisjr/haproxy-ingress/commit/ae47b5a22f722dae0e5a107a3a367ffe100f2bd9) (Joao Morais)
+* update haproxy from 2.3.21 to 2.4.22 [f3c8850](https://github.com/jcmoraisjr/haproxy-ingress/commit/f3c88507de1b54ff6edd432344db6077499c77b2) (Joao Morais)
 
 # v0.13.10
 
