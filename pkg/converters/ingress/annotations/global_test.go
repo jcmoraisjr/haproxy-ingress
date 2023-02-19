@@ -553,52 +553,85 @@ WARN ignoring invalid value 'fail' on global 'cross-namespace-secrets-crt', usin
 
 func TestForwardFor(t *testing.T) {
 	testCases := []struct {
-		conf     string
-		expected string
-		logging  string
+		ffconf  string
+		orighdr string
+		realhdr string
+		ffexp   string
+		origexp string
+		realexp string
+		logging string
 	}{
 		// 0
-		{
-			conf:     "",
-			expected: "add",
-			logging:  "",
-		},
+		{},
 		// 1
 		{
-			conf:     "non",
-			expected: "add",
-			logging:  "WARN Invalid forwardfor value option on configmap: 'non'. Using 'add' instead",
+			ffconf:  "non",
+			logging: "WARN Invalid forwardfor value option on ConfigMap: 'non'. Using 'add' instead",
 		},
 		// 2
 		{
-			conf:     "add",
-			expected: "add",
-			logging:  "",
+			ffconf: "add",
 		},
 		// 3
 		{
-			conf:     "ignore",
-			expected: "ignore",
-			logging:  "",
+			ffconf: "ignore",
+			ffexp:  "ignore",
 		},
 		// 4
 		{
-			conf:     "ifmissing",
-			expected: "ifmissing",
-			logging:  "",
+			ffconf: "ifmissing",
+			ffexp:  "ifmissing",
 		},
 		// 5
 		{
-			conf:     "update",
-			expected: "update",
-			logging:  "",
+			ffconf: "update",
+			ffexp:  "update",
+		},
+		// 6
+		{
+			orighdr: "X_Orig",
+			origexp: "X-Original-Forwarded-For",
+			logging: "WARN Invalid original-forwarded-for-hdr value option on ConfigMap: 'X_Orig'. Using 'X-Original-Forwarded-For' instead",
+		},
+		// 7
+		{
+			orighdr: "X-Orig",
+			origexp: "X-Orig",
+		},
+		// 8
+		{
+			realhdr: "X_Real",
+			realexp: "X-Real-IP",
+			logging: "WARN Invalid real-ip-hdr value option on ConfigMap: 'X_Real'. Using 'X-Real-IP' instead",
+		},
+		// 9
+		{
+			realhdr: "X-Real",
+			realexp: "X-Real",
+		},
+		// 9
+		{
+			realhdr: "X-Real",
+			realexp: "X-Real",
 		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		d := c.createGlobalData(map[string]string{ingtypes.GlobalForwardfor: test.conf})
+		if test.ffconf == "" {
+			test.ffconf = "add"
+		}
+		d := c.createGlobalData(map[string]string{
+			ingtypes.GlobalForwardfor:              test.ffconf,
+			ingtypes.GlobalOriginalForwardedForHdr: test.orighdr,
+			ingtypes.GlobalRealIPHdr:               test.realhdr,
+		})
 		c.createUpdater().buildGlobalForwardFor(d)
-		c.compareObjects("forward-for", i, d.global.ForwardFor, test.expected)
+		if test.ffexp == "" {
+			test.ffexp = "add"
+		}
+		c.compareObjects("forward-for", i, d.global.ForwardFor, test.ffexp)
+		c.compareObjects("original-hdr", i, d.global.OriginalForwardedForHdr, test.origexp)
+		c.compareObjects("real-ip-hdr", i, d.global.RealIPHdr, test.realexp)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}

@@ -104,9 +104,10 @@ const (
 	GlobalNbprocSSL                    = "nbproc-ssl"
 	GlobalNbthread                     = "nbthread"
 	GlobalNoTLSRedirectLocations       = "no-tls-redirect-locations"
+	GlobalOriginalForwardedForHdr      = "original-forwarded-for-hdr"
 	GlobalPathTypeOrder                = "path-type-order"
-	GlobalUsername                     = "username"
 	GlobalPrometheusPort               = "prometheus-port"
+	GlobalRealIPHdr                    = "real-ip-hdr"
 	GlobalRedirectFromCode             = "redirect-from-code"
 	GlobalRedirectToCode               = "redirect-to-code"
 	GlobalSSLDHDefaultMaxSize          = "ssl-dh-default-max-size"
@@ -135,5 +136,6 @@ const (
 	GlobalUseHAProxyUser               = "use-haproxy-user"
 	GlobalUseHTX                       = "use-htx"
 	GlobalUseProxyProtocol             = "use-proxy-protocol"
+	GlobalUsername                     = "username"
 	GlobalWorkerMaxReloads             = "worker-max-reloads"
 )

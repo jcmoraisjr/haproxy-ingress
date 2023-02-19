@@ -64,6 +64,8 @@ type Global struct {
 	DrainSupport            DrainConfig
 	Acme                    Acme
 	ForwardFor              string
+	OriginalForwardedForHdr string
+	RealIPHdr               string
 	LoadServerState         bool
 	AdminSocket             string
 	LocalFSPrefix           string

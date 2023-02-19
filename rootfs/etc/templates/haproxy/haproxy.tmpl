@@ -639,17 +639,6 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if eq $global.ForwardFor "add" }}
-    http-request set-header X-Original-Forwarded-For %[hdr(x-forwarded-for)] if { hdr(x-forwarded-for) -m found }
-    http-request del-header x-forwarded-for
-    option forwardfor
-{{- else if eq $global.ForwardFor "update" }}
-    option forwardfor
-{{- else if eq $global.ForwardFor "ifmissing" }}
-    option forwardfor if-none
-{{- end }}
-
-{{- /*------------------------------------*/}}
 {{- $authCfg := $backend.PathConfig "AuthExternal" }}
 {{- range $i, $auth := $authCfg.Items }}
 {{- range $pathIDs := $authCfg.PathIDs $i }}
@@ -658,8 +647,6 @@ backend {{ $backend.ID }}
         {{- if $pathIDs }} if { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- else }}
 {{- if $auth.AuthBackendName }}
-    http-request set-header X-Real-IP %[src]
-        {{- if $pathIDs }} if { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
     http-request lua.auth-intercept {{ $auth.AuthBackendName }} {{ $auth.AuthPath }} {{ $auth.Method }}
         {{- printf " '%s' '%s' '%s'" ($auth.HeadersRequest | join ",") ($auth.HeadersSucceed | join ",") ($auth.HeadersFail | join ",") }}
         {{- if or $auth.AllowedPath $pathIDs }} if{{ end }}
@@ -1250,6 +1237,9 @@ frontend {{ $proxy__front_http }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- template "sourceIP" map $global }}
+
+{{- /*------------------------------------*/}}
 {{- range $snippet := $global.CustomFrontendLate }}
     {{ $snippet }}
 {{- end }}
@@ -1359,6 +1349,9 @@ frontend {{ $frontend.Name }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-SHA2
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-Cert
+
+{{- /*------------------------------------*/}}
+{{- template "sourceIP" map $global }}
 
 {{- /*------------------------------------*/}}
 {{- $hasTLSAuth := or $hosts.HasTLSAuth  }}
@@ -1492,6 +1485,26 @@ frontend {{ $frontend.Name }}
         {{- "" }} if
         {{- if $acls }} {{ $acls }}{{ end }}
         {{- "" }} { var(req.redirdest) -m found }
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- /*------------------------------------*/}}
+{{- define "sourceIP" }}
+{{- $global := .p1 }}
+{{- if eq $global.ForwardFor "add" }}
+{{- if $global.OriginalForwardedForHdr }}
+    http-request set-header {{ $global.OriginalForwardedForHdr }} %[hdr(x-forwarded-for)] if { hdr(x-forwarded-for) -m found }
+{{- end }}
+    http-request del-header x-forwarded-for
+    option forwardfor
+{{- else if eq $global.ForwardFor "update" }}
+    option forwardfor
+{{- else if eq $global.ForwardFor "ifmissing" }}
+    option forwardfor if-none
+{{- end }}
+{{- if $global.RealIPHdr }}
+    http-request set-header {{ $global.RealIPHdr }} %[src]
 {{- end }}
 {{- end }}
 
