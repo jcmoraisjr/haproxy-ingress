@@ -1,4 +1,4 @@
-baseURL = "/v0.14"
+baseURL = "/"
 title = "HAProxy Ingress"
 
 enableRobotsTXT = true
@@ -85,23 +85,23 @@ version_menu = "v0.14"
 
 [[params.versions]]
 version = "Latest"
-url = "https://haproxy-ingress.github.io/docs"
+url = "/docs"
 
 [[params.versions]]
 version = "v0.14"
-url = "https://haproxy-ingress.github.io/v0.14/docs"
+url = "/v0.14/docs"
 
 [[params.versions]]
 version = "v0.13"
-url = "https://haproxy-ingress.github.io/v0.13/docs"
+url = "/v0.13/docs"
 
 [[params.versions]]
 version = "v0.12"
-url = "https://haproxy-ingress.github.io/v0.12/docs"
+url = "/v0.12/docs"
 
 [[params.versions]]
 version = "v0.10"
-url = "https://haproxy-ingress.github.io/v0.10/docs"
+url = "/v0.10/docs"
 
 # User interface configuration
 [params.ui]
