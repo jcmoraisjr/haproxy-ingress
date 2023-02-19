@@ -25,6 +25,7 @@ import (
 
 	"github.com/go-logr/logr"
 	api "k8s.io/api/core/v1"
+	networking "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -55,7 +56,7 @@ type svcStatusIng struct {
 	cache  *c
 	status svcStatusUpdateFnc
 	period time.Duration
-	curr   []api.LoadBalancerIngress
+	curr   []networking.IngressLoadBalancerIngress
 }
 
 func (s *svcStatusIng) Start(ctx context.Context) error {
@@ -69,7 +70,7 @@ func (s *svcStatusIng) Start(ctx context.Context) error {
 	return nil
 }
 
-func (s *svcStatusIng) update(ctx context.Context, lb []api.LoadBalancerIngress) error {
+func (s *svcStatusIng) update(ctx context.Context, lb []networking.IngressLoadBalancerIngress) error {
 	ingList, err := s.cache.GetIngressList()
 	if err != nil {
 		return err
@@ -98,7 +99,7 @@ func (s *svcStatusIng) shutdown(ctx context.Context) {
 }
 
 func (s *svcStatusIng) sync(ctx context.Context) {
-	var lb []api.LoadBalancerIngress
+	var lb []networking.IngressLoadBalancerIngress
 	if s.cfg.PublishService != "" {
 		// read Hostnames and IPs from the configured service
 		svc := api.Service{}
@@ -107,23 +108,25 @@ func (s *svcStatusIng) sync(ctx context.Context) {
 			s.log.Error(err, "failed to read load balancer service")
 			return
 		}
-		lb = svc.Status.LoadBalancer.Ingress
+		for _, ing := range svc.Status.LoadBalancer.Ingress {
+			lb = append(lb, networking.IngressLoadBalancerIngress{IP: ing.IP, Hostname: ing.Hostname})
+		}
 		for _, ip := range svc.Spec.ExternalIPs {
-			lb = append(lb, api.LoadBalancerIngress{IP: ip})
+			lb = append(lb, networking.IngressLoadBalancerIngress{IP: ip})
 		}
 	} else if len(s.cfg.PublishAddressHostnames)+len(s.cfg.PublishAddressIPs) > 0 {
 		// read Hostnames and IPs from the static option
 		for _, addr := range s.cfg.PublishAddressHostnames {
-			lb = append(lb, api.LoadBalancerIngress{Hostname: addr})
+			lb = append(lb, networking.IngressLoadBalancerIngress{Hostname: addr})
 		}
 		for _, addr := range s.cfg.PublishAddressIPs {
-			lb = append(lb, api.LoadBalancerIngress{IP: addr})
+			lb = append(lb, networking.IngressLoadBalancerIngress{IP: addr})
 		}
 	} else if iplist := s.getNodeIPs(ctx); len(iplist) > 0 {
 		// read IPs from the nodes where the controllers are running
 		// if the controller has permission to do so.
 		for _, ip := range iplist {
-			lb = append(lb, api.LoadBalancerIngress{IP: ip})
+			lb = append(lb, networking.IngressLoadBalancerIngress{IP: ip})
 		}
 	} else {
 		// fall back to an empty list and log an error if everything else failed

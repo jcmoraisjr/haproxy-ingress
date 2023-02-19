@@ -117,7 +117,7 @@ func (s statusSync) Shutdown() {
 	}
 
 	klog.Infof("removing address from ingress status (%v)", addrs)
-	if err := s.updateStatus([]apiv1.LoadBalancerIngress{}); err != nil {
+	if err := s.updateStatus([]networking.IngressLoadBalancerIngress{}); err != nil {
 		klog.Errorf("cannot update status due to an error: %s", err.Error())
 	}
 }
@@ -280,13 +280,13 @@ func stringInSlice(a string, slice []string) bool {
 }
 
 // sliceToStatus converts a slice of IP and/or hostnames to LoadBalancerIngress
-func sliceToStatus(endpoints []string) []apiv1.LoadBalancerIngress {
-	lbi := []apiv1.LoadBalancerIngress{}
+func sliceToStatus(endpoints []string) []networking.IngressLoadBalancerIngress {
+	lbi := []networking.IngressLoadBalancerIngress{}
 	for _, ep := range endpoints {
 		if net.ParseIP(ep) == nil {
-			lbi = append(lbi, apiv1.LoadBalancerIngress{Hostname: ep})
+			lbi = append(lbi, networking.IngressLoadBalancerIngress{Hostname: ep})
 		} else {
-			lbi = append(lbi, apiv1.LoadBalancerIngress{IP: ep})
+			lbi = append(lbi, networking.IngressLoadBalancerIngress{IP: ep})
 		}
 	}
 
@@ -300,7 +300,7 @@ func sliceToStatus(endpoints []string) []apiv1.LoadBalancerIngress {
 // updateStatus changes the status information of Ingress rules
 // If the backend function CustomIngressStatus returns a value different
 // of nil then it uses the returned value or the newIngressPoint values
-func (s *statusSync) updateStatus(newIngressPoint []apiv1.LoadBalancerIngress) error {
+func (s *statusSync) updateStatus(newIngressPoint []networking.IngressLoadBalancerIngress) error {
 	ings, err := s.ic.newctrl.GetIngressList()
 	if err != nil {
 		return err
@@ -316,11 +316,11 @@ func (s *statusSync) updateStatus(newIngressPoint []apiv1.LoadBalancerIngress) e
 			continue
 		}
 
-		var callback func(*networking.Ingress) []apiv1.LoadBalancerIngress
+		var callback func(*networking.Ingress) []networking.IngressLoadBalancerIngress
 		if s.ic.cfg.Backend != nil {
 			callback = s.ic.cfg.Backend.UpdateIngressStatus
 		} else {
-			callback = func(*networking.Ingress) []apiv1.LoadBalancerIngress { return nil }
+			callback = func(*networking.Ingress) []networking.IngressLoadBalancerIngress { return nil }
 		}
 		batch.Queue(runUpdate(s.ctx, ing, newIngressPoint, s.ic.cfg.Client, callback))
 	}
@@ -331,9 +331,9 @@ func (s *statusSync) updateStatus(newIngressPoint []apiv1.LoadBalancerIngress) e
 	return nil
 }
 
-func runUpdate(ctx context.Context, ing *networking.Ingress, status []apiv1.LoadBalancerIngress,
+func runUpdate(ctx context.Context, ing *networking.Ingress, status []networking.IngressLoadBalancerIngress,
 	client clientset.Interface,
-	statusFunc func(*networking.Ingress) []apiv1.LoadBalancerIngress) pool.WorkFunc {
+	statusFunc func(*networking.Ingress) []networking.IngressLoadBalancerIngress) pool.WorkFunc {
 	return func(wu pool.WorkUnit) (interface{}, error) {
 		if wu.IsCancelled() {
 			return nil, nil
@@ -372,7 +372,7 @@ func runUpdate(ctx context.Context, ing *networking.Ingress, status []apiv1.Load
 	}
 }
 
-func lessLoadBalancerIngress(addrs []apiv1.LoadBalancerIngress) func(int, int) bool {
+func lessLoadBalancerIngress(addrs []networking.IngressLoadBalancerIngress) func(int, int) bool {
 	return func(a, b int) bool {
 		switch strings.Compare(addrs[a].Hostname, addrs[b].Hostname) {
 		case -1:
@@ -384,7 +384,7 @@ func lessLoadBalancerIngress(addrs []apiv1.LoadBalancerIngress) func(int, int) b
 	}
 }
 
-func ingressSliceEqual(lhs, rhs []apiv1.LoadBalancerIngress) bool {
+func ingressSliceEqual(lhs, rhs []networking.IngressLoadBalancerIngress) bool {
 	if len(lhs) != len(rhs) {
 		return false
 	}

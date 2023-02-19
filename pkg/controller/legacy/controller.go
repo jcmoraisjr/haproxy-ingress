@@ -306,7 +306,7 @@ func (hc *HAProxyController) Check(_ *http.Request) error {
 
 // UpdateIngressStatus custom callback used to update the status in an Ingress rule
 // If the function returns nil the standard functions will be executed.
-func (hc *HAProxyController) UpdateIngressStatus(*networking.Ingress) []api.LoadBalancerIngress {
+func (hc *HAProxyController) UpdateIngressStatus(*networking.Ingress) []networking.IngressLoadBalancerIngress {
 	return nil
 }
 

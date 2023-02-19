@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/pflag"
-	apiv1 "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
 	"k8s.io/apiserver/pkg/server/healthz"
 )
@@ -59,7 +58,7 @@ type Controller interface {
 	// UpdateIngressStatus custom callback used to update the status in an Ingress rule
 	// This allows custom implementations
 	// If the function returns nil the standard functions will be executed.
-	UpdateIngressStatus(*networking.Ingress) []apiv1.LoadBalancerIngress
+	UpdateIngressStatus(*networking.Ingress) []networking.IngressLoadBalancerIngress
 }
 
 // BackendInfo returns information about the backend.
