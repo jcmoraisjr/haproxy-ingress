@@ -2356,19 +2356,21 @@ See also:
 | `use-haproxy-user` | `Global` | `false` | v0.9  |
 | `username`         | `Global` |         | v0.12 |
 
-Change security options.
+{{% alert title="Warning" color="warning" %}}
+Since v0.15 HAProxy Ingress starts as the non root user `haproxy`, UID `99`, so all the configurations below can only be used if deployment's security context is changed to run the container as UID `0`.
+{{% /alert %}}
 
-* `username` and `groupname`: Changes the user and group names used to run haproxy as non root. The default value is an empty string, which means leave haproxy running as root. Note that even running as root, haproxy always drops its own privileges before start its event loop. Both options should be declared to the configuration take effect. Note that this configuration means "running haproxy as non root", it's only useful when the haproxy container starts as root.
-* `use-chroot`: If `true`, configures haproxy to perform a `chroot()` in the empty and non-writable directory `/var/empty` during the startup process, just before it drops its own privileges. Only root can perform a `chroot()`, so HAProxy Ingress container should start as UID `0` if this option is configured as `true`. See **Using chroot()** section below.
+Change security options for deployments starting as root user.
+
+* `username` and `groupname`: Changes the user and group names used to run haproxy as non root. The default value is an empty string, which means leave haproxy running as root. Note that even running as root, haproxy always drops its own privileges before start its event loop. Both options should be declared to the configuration take effect.
+* `use-chroot`: If `true`, configures haproxy to perform a `chroot()` in the empty and non-writable directory `/var/empty` during the startup process, just before it drops its own privileges. See **Using chroot()** section below.
 * `use-haproxy-user`: If `true`, configures `username` and `groupname` configuration keys as `haproxy`. See `username` and `groupname` above. Note that this user and group exists in the embedded haproxy, and should exist in the external haproxy if used. In the case of a conflict, `username` and `groupname` declaration will have priority and `use-haproxy-user` will be ignored. If `false`, the default value, user and group names will not be changed.
 
-**Starting as non root**
+**Starting as root**
 
-In the default configuration HAProxy Ingress container starts as root. Since v0.9 it's also possible to configure the container to start as `haproxy` user, UID `1001`.
+In the default configuration HAProxy Ingress container starts as the non root user `haproxy`, UID `99`. Since its 2.4 version, `docker.io/haproxy` image starts as the same user and UID.
 
-If using the embedded haproxy, read the [Security considerations](https://docs.haproxy.org/2.4/management.html#13) from HAProxy doc before change the starting user.
-
-If using an external haproxy, configures the pod's securityContext (instead of the container's one) which will make Kubernetes create the shared file system with write access, so the controller can create and update configuration, maps and certificate files.
+Starting as root can be useful to configure chroot, and [Security Considerations](https://docs.haproxy.org/2.4/management.html#13) from the HAProxy doc describes some other use cases.
 
 The starting user can be changed in the deployment or daemonset's pod template using the following configuration:
 
@@ -2377,10 +2379,16 @@ The starting user can be changed in the deployment or daemonset's pod template u
   template:
     spec:
       securityContext:
-        runAsUser: 1001
+        runAsUser: 0
 ```
 
-Note that ports below 1024 cannot be bound if the container starts as non-root.
+Configuring the Helm chart:
+
+```yaml
+controller:
+  securityContext:
+    runAsUser: 0
+```
 
 **Using chroot()**
 
@@ -2389,7 +2397,7 @@ Beware of some chroot limitations:
 {{% alert title="Note" %}}
 HAProxy does not have access to the file system after configure a `chroot()`. Unix sockets located outside the chroot directory are used in the following conditions:
 
-* At least one `ssl-passthrough` is used, or `timeout-client` is used as an Ingress annotation (`timeout-client` as a configmap option is fine). Both configurations create a fronting TCP proxy inside haproxy, which uses an unix socket to communicate with the HTTP frontend.
+* At least one `ssl-passthrough` is used. It enforces the creation of a fronting TCP proxy inside haproxy, which uses an unix socket to communicate with the HTTP frontend.
 * Internal ACME signer is used. HAProxy Ingress creates an internal server to answer the ACME challenge, and haproxy forwards the challenge requests to this server using an unix socket.
 
 So only enable `use-chroot` if not using these features.
