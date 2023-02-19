@@ -431,7 +431,7 @@ func (c *updater) buildBackendBlueGreenBalance(d *backData) {
 	}
 	for _, dw := range deployWeights {
 		if len(dw.endpoints) == 0 {
-			c.logger.InfoV(3, "blue/green balance label '%s=%s' on %v does not reference any endpoint", dw.labelName, dw.labelValue, balance.Source)
+			c.logger.InfoV(2, "blue/green balance label '%s=%s' on %v does not reference any endpoint", dw.labelName, dw.labelValue, balance.Source)
 		}
 		dw.cl.Length = len(dw.endpoints)
 	}

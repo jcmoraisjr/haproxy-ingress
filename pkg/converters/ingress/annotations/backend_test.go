@@ -925,28 +925,28 @@ func TestBlueGreen(t *testing.T) {
 			expWeights: []int{0, 100},
 			expLogging: `
 WARN endpoint '172.17.0.11:8080' on ingress 'default/ing1' was removed from balance: endpoint does not reference a pod
-INFO-V(3) blue/green balance label 'v=1' on ingress 'default/ing1' does not reference any endpoint`,
+INFO-V(2) blue/green balance label 'v=1' on ingress 'default/ing1' does not reference any endpoint`,
 		},
 		// 19
 		{
 			ann:        buildAnn("v=1=50,v=non=25", "deploy"),
 			endpoints:  buildEndpoints("pod0101-01,pod0102-01"),
 			expWeights: []int{100, 0},
-			expLogging: "INFO-V(3) blue/green balance label 'v=non' on ingress 'default/ing1' does not reference any endpoint",
+			expLogging: "INFO-V(2) blue/green balance label 'v=non' on ingress 'default/ing1' does not reference any endpoint",
 		},
 		// 20
 		{
 			ann:        buildAnn("v=1=50,v=non=25", "pod"),
 			endpoints:  buildEndpoints("pod0101-01,pod0102-01"),
 			expWeights: []int{50, 0},
-			expLogging: "INFO-V(3) blue/green balance label 'v=non' on ingress 'default/ing1' does not reference any endpoint",
+			expLogging: "INFO-V(2) blue/green balance label 'v=non' on ingress 'default/ing1' does not reference any endpoint",
 		},
 		// 21
 		{
 			ann:        buildAnn("v=1=50,non=2=25", "deploy"),
 			endpoints:  buildEndpoints("pod0101-01,pod0102-01"),
 			expWeights: []int{100, 0},
-			expLogging: "INFO-V(3) blue/green balance label 'non=2' on ingress 'default/ing1' does not reference any endpoint",
+			expLogging: "INFO-V(2) blue/green balance label 'non=2' on ingress 'default/ing1' does not reference any endpoint",
 		},
 		// 22
 		{
@@ -955,7 +955,7 @@ INFO-V(3) blue/green balance label 'v=1' on ingress 'default/ing1' does not refe
 			expWeights: []int{100, 0},
 			expLogging: `
 WARN endpoint '172.17.0.11:8080' on ingress 'default/ing1' was removed from balance: pod not found: 'pod0102-non'
-INFO-V(3) blue/green balance label 'v=2' on ingress 'default/ing1' does not reference any endpoint`,
+INFO-V(2) blue/green balance label 'v=2' on ingress 'default/ing1' does not reference any endpoint`,
 		},
 		// 23
 		{
@@ -964,7 +964,7 @@ INFO-V(3) blue/green balance label 'v=2' on ingress 'default/ing1' does not refe
 			expWeights: []int{50, 0},
 			expLogging: `
 WARN endpoint '172.17.0.11:8080' on ingress 'default/ing1' was removed from balance: pod not found: 'pod0102-non'
-INFO-V(3) blue/green balance label 'v=2' on ingress 'default/ing1' does not reference any endpoint`,
+INFO-V(2) blue/green balance label 'v=2' on ingress 'default/ing1' does not reference any endpoint`,
 		},
 		// 24
 		{
@@ -986,9 +986,9 @@ INFO-V(3) blue/green balance label 'v=2' on ingress 'default/ing1' does not refe
 			endpoints:  buildEndpoints(""),
 			expWeights: []int{},
 			expLogging: `
-INFO-V(3) blue/green balance label 'v=1' on ingress 'default/ing1' does not reference any endpoint
-INFO-V(3) blue/green balance label 'v=2' on ingress 'default/ing1' does not reference any endpoint
-INFO-V(3) blue/green balance label 'v=3' on ingress 'default/ing1' does not reference any endpoint`,
+INFO-V(2) blue/green balance label 'v=1' on ingress 'default/ing1' does not reference any endpoint
+INFO-V(2) blue/green balance label 'v=2' on ingress 'default/ing1' does not reference any endpoint
+INFO-V(2) blue/green balance label 'v=3' on ingress 'default/ing1' does not reference any endpoint`,
 		},
 		// 27
 		{

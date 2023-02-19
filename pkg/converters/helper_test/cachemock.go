@@ -25,6 +25,7 @@ import (
 
 	api "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
@@ -248,6 +249,9 @@ func (c *CacheMock) GetPasswdSecretContent(defaultNamespace, secretName string, 
 	}
 	return nil, fmt.Errorf("secret not found: '%s'", fullname)
 }
+
+// UpdateStatus ...
+func (c *CacheMock) UpdateStatus(client.Object) {}
 
 // SwapChangedObjects ...
 func (c *CacheMock) SwapChangedObjects() *convtypes.ChangedObjects {

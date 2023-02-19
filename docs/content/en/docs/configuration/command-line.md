@@ -34,6 +34,7 @@ The following command-line options are supported:
 | [`--election-id`](#election-id)                         | identifier                 | `ingress-controller-leader` |   |
 | [`--force-namespace-isolation`](#force-namespace-isolation) | [true\|false]          | `false`                 |       |
 | [`--health-check-path`](#stats)                         | path                       | `/healthz`              |       |
+| [`--healthz-addr`](#stats)                              | tcp address                | `:10254`                | v0.15 |
 | [`--healthz-port`](#stats)                              | port number                | `10254`                 |       |
 | [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |       |
 | [`--ingress-class-precedence`](#ingress-class)          | [true\|false]              | `false`                 | v0.13.5 |
@@ -49,14 +50,18 @@ The following command-line options are supported:
 | [`--master-worker`](#master-worker)                     | [true\|false]              | false                   | v0.14 |
 | [`--max-old-config-files`](#max-old-config-files)       | num of files               | `0`                     |       |
 | [`--profiling`](#stats)                                 | [true\|false]              | `true`                  |       |
+| [`--publish-address`](#publish-address)                 | list of hostname/IP        |                         | v0.15 |
 | [`--publish-service`](#publish-service)                 | namespace/servicename      |                         |       |
 | [`--rate-limit-update`](#rate-limit-update)             | uploads per second (float) | `0.5`                   |       |
 | [`--reload-interval`](#reload-interval)                 | time                       | `0`                     | v0.13 |
+| [`--ready-check-path`](#stats)                          | path                       | `/readyz`               | v0.15 |
 | [`--reload-strategy`](#reload-strategy)                 | [native\|reusesocket]      | `reusesocket`           |       |
 | [`--report-node-internal-ip-address`](#report-node-internal-ip-address) | [true\|false] | `false`              |       |
 | [`--sort-backends`](#sort-backends)                     | [true\|false]              | `false`                 |       |
+| [`--shutdown-timeout`](#shutdown-timeout)               | time                       | `25s`                   | v0.15 |
 | [`--sort-endpoints-by`](#sort-endpoints-by)             | [endpoint\|ip\|name\|random] | `endpoint`            | v0.11 |
 | [`--stats-collect-processing-period`](#stats)           | time                       | `500ms`                 | v0.10 |
+| [`--stop-handler`](#stats)                              | [true\|false]              | `false`                 | v0.15 |
 | [`--sync-period`](#sync-period)                         | time                       | `10m`                   |       |
 | [`--tcp-services-configmap`](#tcp-services-configmap)   | namespace/configmapname    | no tcp svc              |       |
 | [`--track-old-instances`](#track-old-instances)         | [true\|false]              | `false`                 | v0.14 |
@@ -82,7 +87,7 @@ against a server which implements the acme protocol, version 2.
 Supported acme command-line options:
 
 * `--acme-check-period`: interval between checks for expiring certificates. Defaults to `24h`.
-* `--acme-election-id`: prefix of the ConfigMap name used to store the leader election data. Only the leader of a haproxy-ingress cluster should start the authorization and sign certificate process. Defaults to `acme-leader`.
+* `--acme-election-id`: deprecated on v0.15, use [`--election-id`](#election-id) instead.
 * `--acme-fail-initial-duration`: the starting time to wait and retry after a failed authorization and sign process. Defaults to `5m`.
 * `--acme-fail-max-duration`: the time between retries of failed authorization will exponentially grow up to the max duration time. Defaults to `8h`.
 * `--acme-secret-key-name`: secret name used to store the client private key. Defaults to `acme-private-key`. A new key, hence a new client, is created if the secret does not exist.
@@ -214,24 +219,39 @@ Services of type ExternalName uses DNS lookup to define the target server IP lis
 
 ## --disable-pod-list
 
-Since v0.11
+Since v0.11, deprecated since v0.15
 
-Disables in memory pod list and also pod watch for changes. Pod list and watch is used by the `drain-support` and `assign-backend-server-id` options, which will not work if pod list is disabled. Blue/green and `session-cookie-value-strategy` set to `pod-uid` also use pod list if enabled, otherwise k8s api is called if needed. The default value is `false`, which means pods will be watched and listed in memory.
+Disables in memory pod list and also pod watch for changes. Pod list and watch is used by the `drain-support` and `assign-backend-server-id` options, which will not work if pod list is disabled. Blue/green and `session-cookie-value-strategy` set to `pod-uid` also use pod list if enabled, otherwise k8s api is called if needed. The default value is `false`, which means pods will be watched and listed in memory. Since v0.15 all the listers are managed by controller-runtime, making this option deprecated.
 
 ---
 
 ## --election-id
 
-The ID to be used for electing ingress controller leader.  Defaults to `ingress-controller-leader`.
+The ID to be used for electing ingress controller leader. A leader needs to be elected in the following use cases:
+
+* Ingress Status update, see [`--update-status`](#update-status)
+* Embedded Acme signer, see [acme](#acme)
+* Gateway API, see [`--watch-gateway`](#watch-gateway)
+
+Defaults to `fc5ae9f3.haproxy-ingress.github.io` if not configured.
 
 ---
 
 ## --force-namespace-isolation
 
+Deprecated since v0.15
+
 Whether to force namespace isolation.  This flag is required to avoid the reference of secrets,
 configmaps or the default backend service located in a different namespace than specified in the
 flag `--watch-namespace` (which defaults to all namespaces, so you will probably want to set that
-flag, too).
+flag, too). Since v0.15 isolation is controlled by the [`--allow-cross-namespace`](#allow-cross-namespace)
+and [`--watch-namespace`](#watch-namespace) command-line options, making `--force-namespace-isolation`
+deprecated.
+
+See also:
+
+* [`--allow-cross-namespace`](#allow-cross-namespace) command-line option
+* [`--watch-namespace`](#watch-namespace) command-line option
 
 ---
 
@@ -350,6 +370,20 @@ remove old configuration files. If `0`, the default value, a single `haproxy.cfg
 
 ---
 
+## --publish-address
+
+Since v0.15
+
+Defines a comma separated list of hostname or IP addresses that should be used to configure
+ingress status. This option cannot be used if [`--publish-service`](#publish-service) is configured.
+
+See also:
+
+* [`--update-status`](#update-status) command-line option
+* [`--publish-service`](#publish-service) command-line option
+
+---
+
 ## --publish-service
 
 Some infrastructure tools like `external-DNS` relay in the ingress status to created access routes to the services exposed with ingress object.
@@ -364,7 +398,12 @@ status:
     - hostname: <ingressControllerLoadbalancerFQDN>
 ```
 
-Use `--publish-service=namespace/servicename` to indicate the services fronting the ingress controller. The controller mirrors the address of this service's endpoints to the load-balancer status of all Ingress objects it satisfies.
+Use `--publish-service=namespace/servicename` to indicate the services fronting the ingress controller. The controller mirrors the address of this service's endpoints to the load-balancer status of all Ingress objects it satisfies. This option cannot be used if [`--publish-address`](#publish-address) is configured.
+
+See also:
+
+* [`--update-status`](#update-status) command-line option
+* [`--publish-address`](#publish-address) command-line option
 
 ---
 
@@ -419,7 +458,20 @@ describes how it works.
 ## --report-node-internal-ip-address
 
 Sets whether the node's IP address returned in the ingress status should be the node's internal
-instead of the external IP address.  Defaults to `false`.
+instead of the external IP address. Defaults to `false`. This option is ignored if either [`--publish-service`](#publish-service) or [`--publish-address`](#publish-address) are configured.
+
+See also:
+
+* [`-update-status`](#update-status) command-line option
+
+---
+
+## --shutdown-timeout
+
+Defines the amount of time the controller should wait, after receiving a
+SIGINT or a SIGTERM, for all of its internal services to gracefully stop before
+shutting down the process. It starts to count after --wait-before-shutdown has
+been passed, if configured. Defaults to `25s`.
 
 ---
 
@@ -460,6 +512,7 @@ Defines in which order the endpoints of a backend should be sorted.
 Configures an endpoint with statistics, debugging and health checks. The following URIs are provided:
 
 * `/healthz`: a healthz URI for the haproxy-ingress
+* `/readyz`: a readiness URI for the haproxy-ingress
 * `/metrics`: Prometheus compatible metrics exporter
 * `/acme/check` (`POST`): starts check for missing, expiring or outdated certificates controlled by acme client. Should be issued in the leader.
 * `/debug/pprof`: profiling tools
@@ -467,11 +520,13 @@ Configures an endpoint with statistics, debugging and health checks. The followi
 * `/stop`: stops haproxy-ingress controller
 
 Options:
-
-* `--health-check-path`: Defines the URL to be used as a health check for the default server.  Defaults to `/healthz`.
-* `--healthz-port`: Defines the port number haproxy-ingress should listen to. Defaults to `10254`.
+* `--health-check-path`: Defines the URL to be used as a health check for haproxy ingress. Defaults to `/healthz`.
+* `--health-addr`: Defines the address haproxy-ingress should listen to. Defaults to `:10254`.
+* `--healthz-port`: (deprecated since v0.15) Defines the port number haproxy-ingress should listen to. Use `--healthz-addr` instead. Defaults to `10254`.
 * `--profiling`: Configures if the profiling URI should be enabled. Defaults to `true`.
+* `--ready-check-path`: Defines the URL to be used as a readiness check for haproxy ingress. Defaults to `/readyz`.
 * `--stats-collect-processing-period`: Defines the interval between two consecutive readings of haproxy's `Idle_pct`, used to generate `haproxy_processing_seconds_total` metric. haproxy updates Idle_pct every `500ms`, which makes that the best configuration value, and it's also the default if not configured. Values higher than `500ms` will produce a less accurate collect. Change to 0 (zero) to disable this metric.
+* `--stop-handler`: Allows to stop the controller via a POST request to `<host>:<healthzport>/stop` endpoint. Default value is `false`.
 
 ---
 
@@ -558,7 +613,23 @@ See also:
 ## --update-status
 
 Indicates whether the ingress controller should update the `status` attribute of all the Ingress
-resources that this controller is tracking.  Defaults to `true`.
+resources that this controller is tracking. The default value is `true`. Ingress status is updated
+with the external IPs of the ingress endpoints, and these IPs can be generated on distinct ways:
+
+* Configuring [`--publish-service`](#publish-service) with a Kubernetes service resource name
+fronting the ingress controller pods
+* Configuring [`--publish-address`](#publish-address) with hostname and/or IP addresses of ingress hosts/pods
+* Node IP where ingress controllers are running are used if neither `--publish-service` nor `--publish-address` are configured. Node's External IP is used by default, add [`--report-node-internal-ip-address`](#report-node-internal-ip-address) to use internal IP instead.
+
+When enabled, `--update-status` enforces a leader election. A leader must be elected to update
+Ingress API. See also [`--election-id`](#election-id).
+
+See also:
+
+* [`--publish-service`](#publish-service) command-line option
+* [`--publish-address`](#publish-address) command-line option
+* [`--report-node-internal-ip-address`](#report-node-internal-ip-address) command-line option
+* [`--update-status-on-shutdown`](#update-status-on-shutdown) command-line option
 
 ---
 
@@ -567,6 +638,10 @@ resources that this controller is tracking.  Defaults to `true`.
 Indicates whether the ingress controller should update the `status` attribute of all the Ingress
 resources that this controller is tracking when the controller is being stopped.  Defaults to
 `true`.
+
+See also:
+
+* [`--update-status`](#update-status) command-line option
 
 ---
 
@@ -627,6 +702,8 @@ option to instruct the controller to not try to listen to the CRDs. The controll
 restarted if the CRDs are installed after starting the controller. See also the Gateway API
 configuration [doc]({{% relref "gateway-api" %}}).
 
+When enabled, `--watch-gateway` enforces a leader election. A leader must be elected to update Gateway API status. See also [`--election-id`](#election-id).
+
 ---
 
 ## --watch-namespace
@@ -634,7 +711,3 @@ configuration [doc]({{% relref "gateway-api" %}}).
 By default the proxy will be configured using all namespaces from the Kubernetes cluster. Use
 `--watch-namespace` with the name of a namespace to watch and build the configuration of a
 single namespace.
-
-You may also want to use `--force-namespace-isolation` to completely disallow referencing secrets,
-configmaps or the default backend service located in a different namespace than specified with
-`--watch-namespace`.

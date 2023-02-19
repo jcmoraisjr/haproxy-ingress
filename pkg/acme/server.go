@@ -43,7 +43,7 @@ type ServerResolver interface {
 
 // Server ...
 type Server interface {
-	Listen(stopCh chan struct{}) error
+	Listen(stopCh <-chan struct{}) error
 }
 
 type server struct {
@@ -53,7 +53,7 @@ type server struct {
 	socket   string
 }
 
-func (s *server) Listen(stopCh chan struct{}) error {
+func (s *server) Listen(stopCh <-chan struct{}) error {
 	handler := http.NewServeMux()
 	handler.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		host := r.Host

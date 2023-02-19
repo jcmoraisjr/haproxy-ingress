@@ -1,5 +1,5 @@
 /*
-Copyright 2017 The Kubernetes Authors.
+Copyright 2022 The HAProxy Ingress Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,20 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package version
+package services
 
-// Info ...
-type Info struct {
-	Name, Release, Build, Repository string
-}
-
-var (
-	// NAME Name of the controller
-	NAME = "HAProxy Ingress"
-	// RELEASE Release version
-	RELEASE = "UNKNOWN"
-	// COMMIT Short sha from git commit
-	COMMIT = "UNKNOWN"
-	// REPO Git repository URL
-	REPO = "UNKNOWN"
+import (
+	networking "k8s.io/api/networking/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
+
+// IsValidResource ...
+type IsValidResource interface {
+	IsValidGateway(gw *gatewayv1alpha2.Gateway) bool
+	IsValidGatewayClass(gwcls *gatewayv1alpha2.GatewayClass) bool
+	IsValidIngress(ing *networking.Ingress) bool
+	IsValidIngressClass(ing *networking.IngressClass) bool
+}

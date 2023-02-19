@@ -40,7 +40,7 @@ import (
 // InstanceOptions ...
 type InstanceOptions struct {
 	AcmeSigner        acme.Signer
-	AcmeQueue         utils.Queue
+	AcmeQueue         utils.QueueFacade
 	RootFSPrefix      string
 	LocalFSPrefix     string
 	BackendShards     int
@@ -57,7 +57,7 @@ type InstanceOptions struct {
 	ReloadQueue       utils.Queue
 	ReloadStrategy    string
 	SortEndpointsBy   string
-	StopCh            chan struct{}
+	StopCh            <-chan struct{}
 	TrackInstances    bool
 	ValidateConfig    bool
 	// TODO Fake is used to skip real haproxy calls. Use a mock instead.
@@ -70,7 +70,8 @@ type Instance interface {
 	ParseTemplates() error
 	Config() Config
 	CalcIdleMetric()
-	Update(timer *utils.Timer)
+	AcmeUpdate()
+	HAProxyUpdate(timer *utils.Timer)
 	Reload(timer *utils.Timer)
 	Shutdown()
 }
@@ -154,7 +155,7 @@ func (i *instance) acmeAddStorage(storage string) {
 		name := items[0]
 		prefChain := items[1]
 		domains := strings.Join(items[2:], ",")
-		i.logger.InfoV(3, "enqueue certificate for processing: storage=%s domain(s)=%s preferred-chain=%s", name, domains, prefChain)
+		i.logger.InfoV(2, "enqueue certificate for processing: storage=%s domain(s)=%s preferred-chain=%s", name, domains, prefChain)
 	}
 	i.options.AcmeQueue.Add(storage)
 }
@@ -253,12 +254,7 @@ func (i *instance) CalcIdleMetric() {
 	i.metrics.AddIdleFactor(idle)
 }
 
-func (i *instance) Update(timer *utils.Timer) {
-	i.acmeUpdate()
-	i.haproxyUpdate(timer)
-}
-
-func (i *instance) acmeUpdate() {
+func (i *instance) AcmeUpdate() {
 	if i.config == nil || i.options.AcmeQueue == nil {
 		return
 	}
@@ -280,7 +276,7 @@ func (i *instance) acmeUpdate() {
 	}
 }
 
-func (i *instance) haproxyUpdate(timer *utils.Timer) {
+func (i *instance) HAProxyUpdate(timer *utils.Timer) {
 	// nil config, just ignore
 	if i.config == nil {
 		return
@@ -609,7 +605,7 @@ func (i *instance) reloadEmbeddedDaemon() error {
 	).CombinedOutput()
 	outstr := string(out)
 	if len(outstr) > 0 {
-		i.logger.Warn("output from haproxy:\n%v", outstr)
+		i.logger.Info("output from haproxy:\n%v", outstr)
 	}
 	return err
 }

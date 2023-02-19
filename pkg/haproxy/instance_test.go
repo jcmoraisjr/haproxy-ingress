@@ -5513,7 +5513,8 @@ func _yamlMarshal(in interface{}) string {
 
 func (c *testConfig) Update() {
 	timer := utils.NewTimer(nil)
-	c.instance.Update(timer)
+	c.instance.AcmeUpdate()
+	c.instance.HAProxyUpdate(timer)
 }
 
 func (c *testConfig) checkConfig(expected string) {

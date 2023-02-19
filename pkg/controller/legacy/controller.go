@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controller
+package legacy
 
 import (
 	"context"
@@ -49,7 +49,7 @@ type HAProxyController struct {
 	cache            *k8scache
 	metrics          *metrics
 	tracker          convtypes.Tracker
-	stopCh           chan struct{}
+	stopCh           <-chan struct{}
 	writeModelMutex  sync.Mutex
 	ingressQueue     utils.Queue
 	acmeQueue        utils.Queue
@@ -337,12 +337,13 @@ func (hc *HAProxyController) syncIngress(item interface{}) {
 	hc.logger.Info("starting haproxy update id=%d", hc.updateCount)
 	timer := utils.NewTimer(hc.metrics.ControllerProcTime)
 
-	converters.NewConverter(timer, hc.instance.Config(), hc.converterOptions).Sync()
+	converters.NewConverter(timer, hc.instance.Config(), nil, hc.converterOptions).Sync()
 
 	//
 	// update proxy
 	//
-	hc.instance.Update(timer)
+	hc.instance.AcmeUpdate()
+	hc.instance.HAProxyUpdate(timer)
 	hc.logger.Info("finish haproxy update id=%d: %s", hc.updateCount, timer.AsString("total"))
 }
 

@@ -17,6 +17,7 @@ limitations under the License.
 package utils
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -26,13 +27,20 @@ import (
 
 // Queue ...
 type Queue interface {
-	Add(item interface{})
+	QueueFacade
 	Clear()
 	Notify()
-	Remove(item interface{})
 	Run()
+	RunWithContext(context.Context)
+	Len() int
 	ShuttingDown() bool
 	ShutDown()
+}
+
+// QueueFacade ...
+type QueueFacade interface {
+	Add(item interface{})
+	Remove(item interface{})
 }
 
 type queue struct {
@@ -116,14 +124,32 @@ func (q *queue) Remove(item interface{}) {
 }
 
 func (q *queue) Run() {
+	q.RunWithContext(context.TODO())
+}
+
+func (q *queue) RunWithContext(ctx context.Context) {
 	if q.running != nil {
 		// queue already running
 		return
 	}
+	if ctx != nil && ctx != context.TODO() {
+		// only start for contexts that have a chance to be canceled
+		go func() {
+			<-ctx.Done()
+			q.ShutDown()
+		}()
+	}
 	q.running = make(chan struct{})
 	for {
 		if q.rateLimiter != nil {
-			q.rateLimiter.Accept()
+			if ctx == nil {
+				q.rateLimiter.Accept()
+			} else {
+				err := q.rateLimiter.Wait(ctx)
+				if err == context.Canceled {
+					return
+				}
+			}
 		}
 		item, quit := q.workqueue.Get()
 		if q.rateLimiter != nil {
@@ -163,6 +189,12 @@ func (q *queue) forgotten(item interface{}) bool {
 		return true
 	}
 	return false
+}
+
+func (q *queue) Len() int {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
+	return q.workqueue.Len()
 }
 
 func (q *queue) Clear() {
