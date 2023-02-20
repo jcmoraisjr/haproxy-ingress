@@ -102,7 +102,10 @@ func (s *Services) setup(ctx context.Context) error {
 	svchealthz := initSvcHealthz(ctx, cfg, metrics, s.acmeExternalCallCheck)
 	svcstatus := initSvcStatusUpdater(ctx, s.Client)
 	cache := createCacheFacade(ctx, s.Client, cfg, tracker, sslCerts, dynConfig, svcstatus.update)
-	svcstatusing := initSvcStatusIng(ctx, cfg, s.Client, cache, svcstatus.update)
+	var svcstatusing *svcStatusIng
+	if cfg.UpdateStatus {
+		svcstatusing = initSvcStatusIng(ctx, cfg, s.Client, cache, svcstatus.update)
+	}
 	var acmeClient *svcAcmeClient
 	var acmeServer *svcAcmeServer
 	var acmeSigner acme.Signer
@@ -157,7 +160,6 @@ func (s *Services) setup(ctx context.Context) error {
 		AcmeTrackTLSAnn:  cfg.AcmeTrackTLSAnn,
 		TrackInstances:   cfg.TrackOldInstances,
 		HasGateway:       cfg.HasGateway,
-		UpdateStatus:     cfg.UpdateStatus,
 	}
 	instance := haproxy.CreateInstance(s.legacylogger.new("haproxy"), instanceOptions)
 	if err := instance.ParseTemplates(); err != nil {
@@ -186,8 +188,10 @@ func (s *Services) withManager(mgr ctrl.Manager) error {
 		if err := mgr.Add(ctrlutils.DelayedShutdown(s.svcstatus)); err != nil {
 			return err
 		}
-		if err := mgr.Add(s.svcstatusing); err != nil {
-			return err
+		if s.svcstatusing != nil {
+			if err := mgr.Add(s.svcstatusing); err != nil {
+				return err
+			}
 		}
 	}
 	if s.reloadQueue != nil {
