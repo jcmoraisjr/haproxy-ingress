@@ -22,6 +22,17 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
+func (c *updater) buildHostAuthExternal(d *hostData) {
+	isFrontend := d.mapper.Get(ingtypes.BackAuthExternalPlacement).ToLower() == "frontend"
+	url := d.mapper.Get(ingtypes.BackAuthURL)
+	if isFrontend && url.Source != nil && url.Value != "" {
+		for _, path := range d.host.Paths {
+			path.AuthExt = &types.AuthExternal{}
+			c.setAuthExternal(d.mapper, path.AuthExt, url)
+		}
+	}
+}
+
 func (c *updater) setAuthTLSConfig(mapper *Mapper, target *types.TLSConfig, hostname string) bool {
 	tlsSecret := mapper.Get(ingtypes.HostAuthTLSSecret)
 	if tlsSecret.Source == nil || tlsSecret.Value == "" {

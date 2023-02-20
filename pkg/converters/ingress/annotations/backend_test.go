@@ -524,10 +524,11 @@ func TestAuthExternal(t *testing.T) {
 			ann["/"][ingtypes.BackAuthHeadersFail] = test.hdrFail
 		}
 		defaults := map[string]string{
-			ingtypes.BackAuthHeadersRequest: "*",
-			ingtypes.BackAuthHeadersSucceed: "*",
-			ingtypes.BackAuthHeadersFail:    "*",
-			ingtypes.BackAuthMethod:         "GET",
+			ingtypes.BackAuthExternalPlacement: "backend",
+			ingtypes.BackAuthHeadersRequest:    "*",
+			ingtypes.BackAuthHeadersSucceed:    "*",
+			ingtypes.BackAuthHeadersFail:       "*",
+			ingtypes.BackAuthMethod:            "GET",
 		}
 		d := c.createBackendMappingData("default/app", source, defaults, ann, []string{"/"})
 		u.buildBackendAuthExternal(d)

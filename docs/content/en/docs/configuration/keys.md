@@ -305,6 +305,7 @@ The table below describes all supported configuration keys.
 | [`allowlist-source-header`](#allowlist)              | Header name that will be used as a src  | Path    |                    |
 | [`app-root`](#app-root)                              | /url                                    | Host    |                    |
 | [`assign-backend-server-id`](#backend-server-id)     | [true\|false]                           | Backend | `false`            |
+| [`auth-external-placement`](#auth-external)          | [backend\|frontend]                     | Path    | `backend`          |
 | [`auth-headers-fail`](#auth-external)                | `<header>,...`                          | Path    | `*`                |
 | [`auth-headers-request`](#auth-external)             | `<header>,...`                          | Path    | `*`                |
 | [`auth-headers-succeed`](#auth-external)             | `<header>,...`                          | Path    | `*`                |
@@ -785,19 +786,21 @@ See also:
 
 ## Auth External
 
-| Configuration key       | Scope    | Default                    | Since |
-|-------------------------|--------- |----------------------------|-------|
-| `auth-headers-fail`     | `Path`   | `*`                        | v0.13 |
-| `auth-headers-request`  | `Path`   | `*`                        | v0.13 |
-| `auth-headers-succeed`  | `Path`   | `*`                        | v0.13 |
-| `auth-method`           | `Path`   | `GET`                      | v0.13 |
-| `auth-proxy`            | `Global` | `_front__auth__local:14415-14499` | v0.13 |
-| `auth-signin`           | `Path`   |                            | v0.13 |
-| `auth-url`              | `Path`   |                            | v0.13 |
+| Configuration key         | Scope    | Default   | Since |
+|---------------------------|--------- |-----------|-------|
+| `auth-external-placement` | `Path`   | `backend` | v0.15 |
+| `auth-headers-fail`       | `Path`   | `*`       | v0.13 |
+| `auth-headers-request`    | `Path`   | `*`       | v0.13 |
+| `auth-headers-succeed`    | `Path`   | `*`       | v0.13 |
+| `auth-method`             | `Path`   | `GET`     | v0.13 |
+| `auth-proxy`              | `Global` | `_front__auth__local:14415-14499` | v0.13 |
+| `auth-signin`             | `Path`   |           | v0.13 |
+| `auth-url`                | `Path`   |           | v0.13 |
 
 Configures External Authentication options.
 
 * `auth-url`: Configures the endpoint(s) of the authentication service. All requests made to the target backend server will be validated by the authentication service before continue, which should respond with `2xx` HTTP status code, otherwise the request is considered as failed. In the case of a failure, the backend server is not used and the client receives the response from the authentication service.
+* `auth-external-placement`: Defines where the external service call should be configured. Options are `backend` and `frontend`. Default value is `backend` and this is the value that has the better performance. Use `frontend` if the external service create HTTP headers used on early stages, e.g. [HTTP header routing constraints](#http-match). Note that placing the external authentication configuration in the frontend comes with a performance penalty, because all the incomming requests will need to evaluate the ACLs of this configuration. Avoid placing too much (dozens) paths in the frontend on high loaded proxies.
 * `auth-method`: Configures the HTTP method used in the request to the external authentication service. Use an asterisk `*` to copy the same method used in the client request. The default value is `GET`.
 * `auth-headers-request`: Configures a comma-separated list of header names that should be copied from the client to the authentication service. All HTTP headers will be copied if not declared.
 * `auth-headers-succeed`: Configures a comma-separated list of header names that should be copied from the authentication service to the backend server if the authentication succeed. All HTTP headers will be copied if not declared.
@@ -1721,6 +1724,8 @@ Add HTTP constraints for request routing.
 
 More than one annotation can be used at the same time, and more than one match can be used in the same annotation. All the matches from all the annotations will be grouped together, and all of them must evaluate to true in order to the request be accepted and sent to the backend.
 
+Note that any match that potentially changes the backend of a request, like HTTP match, must be running in the HAProxy frontend, so earlier than most of other matching rules. External authentication is an example. See [`auth-external-placement`](#auth-external) configuration key if using external authentication to provide headers to HTTP match rules.
+
 **Examples**
 
 Match the header `X-Env` with value `staging` - header name is case insensitive, header value is case sensitive:
@@ -1746,6 +1751,10 @@ Match the header `X-Env` with value that matches the regex `^(test|staging)$`:
       haproxy-ingress.github.io/http-header-match-regex: |
         X-Env: ^(test|staging)$
 ```
+
+See also:
+
+* [`auth-external-placement`](#auth-external) configuration key
 
 ---
 

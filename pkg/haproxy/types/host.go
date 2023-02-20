@@ -234,15 +234,15 @@ func (h *Host) FindPathWithLink(link *PathLink) (path *HostPath) {
 }
 
 // AddPath ...
-func (h *Host) AddPath(backend *Backend, path string, match MatchType) {
-	h.addPath(path, match, backend, "")
+func (h *Host) AddPath(backend *Backend, path string, match MatchType) *HostPath {
+	return h.addPath(path, match, backend, "")
 }
 
 // AddLink ...
 func (h *Host) AddLink(backend *Backend, link *PathLink) *PathLink {
 	newlink := *link
 	newlink.WithHostname(h.Hostname)
-	h.addLink(backend, &newlink, "")
+	_ = h.addLink(backend, &newlink, "")
 	return &newlink
 }
 
@@ -250,13 +250,13 @@ func (h *Host) AddLink(backend *Backend, link *PathLink) *PathLink {
 func (h *Host) AddLinkRedirect(link *PathLink, redirTo string) *PathLink {
 	newlink := *link
 	newlink.WithHostname(h.Hostname)
-	h.addLink(nil, &newlink, redirTo)
+	_ = h.addLink(nil, &newlink, redirTo)
 	return &newlink
 }
 
 // AddRedirect ...
 func (h *Host) AddRedirect(path string, match MatchType, redirTo string) {
-	h.addPath(path, match, nil, redirTo)
+	_ = h.addPath(path, match, nil, redirTo)
 }
 
 type hostResolver struct {
@@ -264,12 +264,12 @@ type hostResolver struct {
 	crtFilename   *string
 }
 
-func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo string) {
+func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo string) *HostPath {
 	link := CreateHostPathLink(h.Hostname, path, match)
-	h.addLink(backend, link, redirTo)
+	return h.addLink(backend, link, redirTo)
 }
 
-func (h *Host) addLink(backend *Backend, link *PathLink, redirTo string) {
+func (h *Host) addLink(backend *Backend, link *PathLink, redirTo string) *HostPath {
 	var hback HostBackend
 	if backend != nil {
 		hback = HostBackend{
@@ -287,12 +287,13 @@ func (h *Host) addLink(backend *Backend, link *PathLink, redirTo string) {
 	} else if redirTo == "" {
 		hback = HostBackend{ID: "_error404"}
 	}
-	h.Paths = append(h.Paths, &HostPath{
+	path := &HostPath{
 		Link:    link,
 		Backend: hback,
 		RedirTo: redirTo,
 		order:   len(h.Paths),
-	})
+	}
+	h.Paths = append(h.Paths, path)
 	// reverse order in order to avoid overlap of sub-paths
 	sort.Slice(h.Paths, func(i, j int) bool {
 		p1 := h.Paths[i]
@@ -302,6 +303,7 @@ func (h *Host) addLink(backend *Backend, link *PathLink, redirTo string) {
 		}
 		return p1.Link.path > p2.Link.path
 	})
+	return path
 }
 
 // RemovePath ...
@@ -448,6 +450,16 @@ func (l *PathLink) Less(other *PathLink, reversePath bool) bool {
 		return l.path < other.path
 	}
 	return l.hostname < other.hostname
+}
+
+// HAMatch ...
+func (l *PathLink) HAMatch() string {
+	return haMatchMethod(l.match)
+}
+
+// Key ...
+func (l *PathLink) Key() string {
+	return buildMapKey(l.match, l.hostname, l.path)
 }
 
 // String ...

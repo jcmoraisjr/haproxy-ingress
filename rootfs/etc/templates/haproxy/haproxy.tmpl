@@ -642,31 +642,7 @@ backend {{ $backend.ID }}
 {{- $authCfg := $backend.PathConfig "AuthExternal" }}
 {{- range $i, $auth := $authCfg.Items }}
 {{- range $pathIDs := $authCfg.PathIDs $i }}
-{{- if $auth.AlwaysDeny }}
-    http-request deny
-        {{- if $pathIDs }} if { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
-{{- else }}
-{{- if $auth.AuthBackendName }}
-    http-request lua.auth-intercept {{ $auth.AuthBackendName }} {{ $auth.AuthPath }} {{ $auth.Method }}
-        {{- printf " '%s' '%s' '%s'" ($auth.HeadersRequest | join ",") ($auth.HeadersSucceed | join ",") ($auth.HeadersFail | join ",") }}
-        {{- if or $auth.AllowedPath $pathIDs }} if{{ end }}
-        {{- if $auth.AllowedPath }} !{ path_beg {{ $auth.AllowedPath }} }{{ end }}
-        {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
-{{- if $auth.RedirectOnFail }}
-    http-request redirect location {{ $auth.RedirectOnFail }}
-{{- else }}
-    http-request deny
-{{- end }}
-        {{- "" }} if !{ var(txn.auth_response_successful) -m bool }
-        {{- if $auth.AllowedPath }} !{ path_beg {{ $auth.AllowedPath }} }{{ end }}
-        {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
-{{- range $header, $attr := $auth.HeadersVars }}
-    http-request set-header {{ $header }} %[var({{ $attr }})] if { var({{ $attr }}) -m found }
-        {{- if $auth.AllowedPath }} !{ path_beg {{ $auth.AllowedPath }} }{{ end }}
-        {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
-{{- end }}
-{{- end }}
-{{- end }}
+{{- template "authExternal" map $auth (iif (eq $pathIDs "") "" (printf "{ var(txn.pathID) -m str %s }" $pathIDs)) }}
 {{- end }}
 {{- end }}
 
@@ -1215,6 +1191,9 @@ frontend {{ $proxy__front_http }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- template "authExternalFrontend" map $hosts }}
+
+{{- /*------------------------------------*/}}
 {{- range $match := $fmaps.HTTPHostMap.MatchFiles }}
     http-request set-var(req.backend) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
@@ -1301,6 +1280,9 @@ frontend {{ $frontend.Name }}
 
 {{- /*------------------------------------*/}}
 {{- template "redirectTo" map $frontend $fmaps "" }}
+
+{{- /*------------------------------------*/}}
+{{- template "authExternalFrontend" map $hosts }}
 
 {{- /*------------------------------------*/}}
 {{- range $match := $fmaps.HTTPSHostMap.MatchFiles }}
@@ -1527,6 +1509,51 @@ frontend {{ $frontend.Name }}
         {{- "" }} if
         {{- if $acls }} {{ $acls }}{{ end }}
         {{- "" }} { var(req.redirto) -m found }
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- /*------------------------------------*/}}
+{{- define "authExternal" }}
+{{- $auth := .p1 }}
+{{- $condition := .p2 }}
+{{- if $auth.AlwaysDeny }}
+    http-request deny
+        {{- if $condition }} if {{ $condition }}{{ end }}
+{{- else }}
+{{- if $auth.AuthBackendName }}
+    http-request lua.auth-intercept {{ $auth.AuthBackendName }} {{ $auth.AuthPath }} {{ $auth.Method }}
+        {{- printf " '%s' '%s' '%s'" ($auth.HeadersRequest | join ",") ($auth.HeadersSucceed | join ",") ($auth.HeadersFail | join ",") }}
+        {{- if or $auth.AllowedPath $condition }} if{{ end }}
+        {{- if $auth.AllowedPath }} !{ path_beg {{ $auth.AllowedPath }} }{{ end }}
+        {{- if $condition }} {{ $condition }}{{ end }}
+{{- if $auth.RedirectOnFail }}
+    http-request redirect location {{ $auth.RedirectOnFail }}
+{{- else }}
+    http-request deny
+{{- end }}
+        {{- "" }} if !{ var(txn.auth_response_successful) -m bool }
+        {{- if $auth.AllowedPath }} !{ path_beg {{ $auth.AllowedPath }} }{{ end }}
+        {{- if $condition }} {{ $condition }}{{ end }}
+{{- range $header, $attr := $auth.HeadersVars }}
+    http-request set-header {{ $header }} %[var({{ $attr }})] if { var({{ $attr }}) -m found }
+        {{- if $auth.AllowedPath }} !{ path_beg {{ $auth.AllowedPath }} }{{ end }}
+        {{- if $condition }} {{ $condition }}{{ end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- /*------------------------------------*/}}
+{{- define "authExternalFrontend" }}
+{{- $hosts := .p1 }}
+{{- range $host := $hosts.Items }}
+{{- range $path := $host.Paths }}
+{{- if $path.AuthExt }}
+{{- template "authExternal" map $path.AuthExt (printf "{ var(req.base) -m str %s '%s' }" $path.Link.HAMatch $path.Link.Key) }}
+{{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
 

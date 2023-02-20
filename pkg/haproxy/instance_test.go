@@ -3292,6 +3292,135 @@ backend d1_app_8080
 	}
 }
 
+func TestInstanceFrontendAuthExternal(t *testing.T) {
+	backend1ID := "d_app1_8080"
+	allHeaders := []string{"*"}
+	testCases := []struct {
+		authext   *hatypes.AuthExternal
+		expconfig string
+		logging   string
+	}{
+		// 0
+		{},
+		// 1
+		{
+			authext: &hatypes.AuthExternal{},
+		},
+		// 2
+		{
+			authext: &hatypes.AuthExternal{
+				AuthBackendName: backend1ID,
+				AuthPath:        "/auth",
+				Method:          "GET",
+				HeadersFail:     allHeaders,
+				HeadersRequest:  allHeaders,
+				HeadersSucceed:  allHeaders,
+			},
+			expconfig: `
+    http-request lua.auth-intercept d_app1_8080 /auth GET '*' '*' '*' if { var(req.base) -m str beg 'd.local#/' }
+    http-request deny if !{ var(txn.auth_response_successful) -m bool } { var(req.base) -m str beg 'd.local#/' }`,
+		},
+		// 3
+		{
+			authext: &hatypes.AuthExternal{
+				AuthBackendName: backend1ID,
+				AuthPath:        "/auth",
+				Method:          "POST",
+				HeadersFail:     []string{"X-Reason"},
+				HeadersRequest:  allHeaders,
+				HeadersSucceed:  allHeaders,
+				HeadersVars:     map[string]string{"X-UserID": "req.auth_response_header.x_user_id"},
+			},
+			expconfig: `
+    http-request lua.auth-intercept d_app1_8080 /auth POST '*' '*' 'X-Reason' if { var(req.base) -m str beg 'd.local#/' }
+    http-request deny if !{ var(txn.auth_response_successful) -m bool } { var(req.base) -m str beg 'd.local#/' }
+    http-request set-header X-UserID %[var(req.auth_response_header.x_user_id)] if { var(req.auth_response_header.x_user_id) -m found } { var(req.base) -m str beg 'd.local#/' }`,
+		},
+		// 4
+		{
+			authext: &hatypes.AuthExternal{
+				AuthBackendName: backend1ID,
+				AuthPath:        "/auth",
+				Method:          "POST",
+				HeadersFail:     allHeaders,
+				HeadersRequest:  []string{"X-UserID", "X-GroupID"},
+				HeadersSucceed:  allHeaders,
+				RedirectOnFail:  "/login",
+			},
+			expconfig: `
+    http-request lua.auth-intercept d_app1_8080 /auth POST 'X-UserID,X-GroupID' '*' '*' if { var(req.base) -m str beg 'd.local#/' }
+    http-request redirect location /login if !{ var(txn.auth_response_successful) -m bool } { var(req.base) -m str beg 'd.local#/' }`,
+		},
+		// 5
+		{
+			authext: &hatypes.AuthExternal{
+				AuthBackendName: backend1ID,
+				AuthPath:        "/login",
+				Method:          "POST",
+				HeadersFail:     allHeaders,
+				HeadersRequest:  allHeaders,
+				HeadersSucceed:  []string{"X-Region", "X-Tenant"},
+				RedirectOnFail:  "/login",
+				AllowedPath:     "/login",
+			},
+			expconfig: `
+    http-request lua.auth-intercept d_app1_8080 /login POST '*' 'X-Region,X-Tenant' '*' if !{ path_beg /login } { var(req.base) -m str beg 'd.local#/' }
+    http-request redirect location /login if !{ var(txn.auth_response_successful) -m bool } !{ path_beg /login } { var(req.base) -m str beg 'd.local#/' }`,
+		},
+		// 6
+		{
+			authext: &hatypes.AuthExternal{
+				AlwaysDeny: true,
+			},
+			expconfig: `
+    http-request deny if { var(req.base) -m str beg 'd.local#/' }`,
+		},
+	}
+
+	for _, test := range testCases {
+		c := setup(t)
+		defer c.teardown()
+
+		h := c.config.Hosts().AcquireHost("d.local")
+		b := c.config.Backends().AcquireBackend("d", "app1", "8080")
+
+		path := h.AddPath(b, "/", hatypes.MatchBegin)
+		path.AuthExt = test.authext
+
+		c.Update()
+		c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d_app1_8080
+    mode http
+backend _error404
+    mode http
+    http-request use-service lua.send-404
+frontend _front_http
+    mode http
+    bind :80
+    <<set-req-base>>
+    <<http-headers>>` + test.expconfig + `
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
+    default_backend _error404
+frontend _front_https
+    mode http
+    bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
+    <<set-req-base>>` + test.expconfig + `
+    http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map)
+    <<https-headers>>
+    use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
+    default_backend _error404
+<<support>>
+`)
+		if test.logging == "" {
+			test.logging = defaultLogging
+		}
+		c.logger.CompareLogging(test.logging)
+	}
+}
+
 func TestInstanceSomePaths(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()

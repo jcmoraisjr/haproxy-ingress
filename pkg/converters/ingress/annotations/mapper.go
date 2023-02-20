@@ -19,11 +19,16 @@ package annotations
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )
+
+type ConfigValueGetter interface {
+	Get(key string) *ConfigValue
+}
 
 // MapBuilder ...
 type MapBuilder struct {
@@ -198,6 +203,11 @@ func (c *KeyConfig) Get(key string) *ConfigValue {
 // String ...
 func (cv *ConfigValue) String() string {
 	return cv.Value
+}
+
+// ToLower ...
+func (cv *ConfigValue) ToLower() string {
+	return strings.ToLower(cv.Value)
 }
 
 // Bool ...

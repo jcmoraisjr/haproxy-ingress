@@ -540,6 +540,7 @@ type PathLink struct {
 type HostPath struct {
 	order   int
 	Link    *PathLink
+	AuthExt *AuthExternal
 	Backend HostBackend
 	RedirTo string
 }

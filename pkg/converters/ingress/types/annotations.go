@@ -80,6 +80,19 @@ var (
 		HostTLSALPN:                {},
 		HostVarNamespace:           {},
 	}
+
+	// AnnDuo is the list of annotations that should be added
+	// on both host and backend annotations list.
+	// TODO: merge tcp, host and backend config keys into a single list?
+	AnnDuo = map[string]struct{}{
+		BackAuthExternalPlacement: {},
+		BackAuthHeadersFail:       {},
+		BackAuthHeadersRequest:    {},
+		BackAuthHeadersSucceed:    {},
+		BackAuthMethod:            {},
+		BackAuthSignin:            {},
+		BackAuthURL:               {},
+	}
 )
 
 // Backend Annotations
@@ -92,14 +105,15 @@ const (
 	BackAllowlistSourceRange   = "allowlist-source-range"
 	BackAllowlistSourceHeader  = "allowlist-source-header"
 	BackAssignBackendServerID  = "assign-backend-server-id"
-	BackAuthRealm              = "auth-realm"
-	BackAuthSecret             = "auth-secret"
-	BackAuthSignin             = "auth-signin"
-	BackAuthTLSCertHeader      = "auth-tls-cert-header"
+	BackAuthExternalPlacement  = "auth-external-placement"
 	BackAuthHeadersFail        = "auth-headers-fail"
 	BackAuthHeadersRequest     = "auth-headers-request"
 	BackAuthHeadersSucceed     = "auth-headers-succeed"
 	BackAuthMethod             = "auth-method"
+	BackAuthRealm              = "auth-realm"
+	BackAuthSecret             = "auth-secret"
+	BackAuthSignin             = "auth-signin"
+	BackAuthTLSCertHeader      = "auth-tls-cert-header"
 	BackAuthURL                = "auth-url"
 	BackBackendCheckInterval   = "backend-check-interval"
 	BackBackendProtocol        = "backend-protocol"
