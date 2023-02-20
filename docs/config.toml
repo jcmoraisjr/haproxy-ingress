@@ -67,6 +67,7 @@ github_repo = "https://github.com/jcmoraisjr/haproxy-ingress"
 
 # Specify a value here if your content directory is not in your repo's root directory
 github_subdir = "docs"
+github_branch = "master"
 
 # Google Custom Search Engine ID. Remove or comment out to disable search.
 # gcs_engine_id = ""
@@ -80,27 +81,31 @@ privacy_policy = ""
 
 # Menu title if your navbar has a versions selector to access old versions of your site.
 # This menu appears only if you have at least one [params.versions] set.
-version_menu = "v0.14"
+version_menu = "v0.15"
 
 [[params.versions]]
 version = "Latest"
-url = "https://haproxy-ingress.github.io/docs"
+url = "/docs"
+
+[[params.versions]]
+version = "v0.15"
+url = "/v0.15/docs"
 
 [[params.versions]]
 version = "v0.14"
-url = "https://haproxy-ingress.github.io/v0.14/docs"
+url = "/v0.14/docs"
 
 [[params.versions]]
 version = "v0.13"
-url = "https://haproxy-ingress.github.io/v0.13/docs"
+url = "/v0.13/docs"
 
 [[params.versions]]
 version = "v0.12"
-url = "https://haproxy-ingress.github.io/v0.12/docs"
+url = "/v0.12/docs"
 
 [[params.versions]]
 version = "v0.10"
-url = "https://haproxy-ingress.github.io/v0.10/docs"
+url = "/v0.10/docs"
 
 # User interface configuration
 [params.ui]
