@@ -18,7 +18,7 @@ package converters
 
 import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/configmap"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/gateway"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/gatewayv1alpha2"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
@@ -53,7 +53,7 @@ func (c *converters) Sync() {
 		changed = c.options.Cache.SwapChangedObjects()
 	}
 	ingressConverter := ingress.NewIngressConverter(c.options, c.haproxy, changed)
-	gatewayConverter := gateway.NewGatewayConverter(c.options, c.haproxy, changed, ingressConverter)
+	gatewayConverter := gatewayv1alpha2.NewGatewayConverter(c.options, c.haproxy, changed, ingressConverter)
 
 	needFullSync := changed.NeedFullSync ||
 		gatewayConverter.NeedFullSync() ||
