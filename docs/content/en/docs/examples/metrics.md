@@ -58,6 +58,8 @@ The steps below configures HAProxy Ingress' Helm chart to add a new ServiceMonit
 Merge the content below to the actual `haproxy-ingress-values.yaml` file:
 ```yaml
 controller:
+  ingressClassResource:
+    enabled: true
   stats:
     enabled: true
   metrics:
@@ -139,7 +141,7 @@ kubectl --namespace default create deploy dory --image jcmoraisjr/dory
 kubectl --namespace default scale deploy dory --replicas=4
 kubectl --namespace default expose deploy dory --port 8000
 kubectl --namespace default create ingress dory\
-  --annotation kubernetes.io/ingress.class=haproxy\
+  --class=haproxy\
   --annotation haproxy-ingress.github.io/ssl-redirect=false\
   --rule="dory.localdomain/*=dory:8000,tls=dory"
 ```
