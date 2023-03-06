@@ -103,6 +103,7 @@ const (
 	GlobalNbprocBalance                = "nbproc-balance"
 	GlobalNbprocSSL                    = "nbproc-ssl"
 	GlobalNbthread                     = "nbthread"
+	GlobalNoRedirectLocations          = "no-redirect-locations"
 	GlobalNoTLSRedirectLocations       = "no-tls-redirect-locations"
 	GlobalPathTypeOrder                = "path-type-order"
 	GlobalUsername                     = "username"
