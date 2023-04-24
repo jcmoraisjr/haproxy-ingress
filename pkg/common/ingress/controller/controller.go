@@ -110,8 +110,9 @@ type Configuration struct {
 	ElectionID             string
 	UpdateStatusOnShutdown bool
 
-	BackendShards   int
-	SortEndpointsBy string
+	BackendShards           int
+	SortEndpointsBy         string
+	EnableEndpointSlicesAPI bool
 }
 
 // newIngressController creates an Ingress controller

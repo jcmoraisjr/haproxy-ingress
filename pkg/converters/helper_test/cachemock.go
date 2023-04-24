@@ -24,6 +24,7 @@ import (
 	"time"
 
 	api "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networking "k8s.io/api/networking/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
@@ -50,6 +51,7 @@ type CacheMock struct {
 	NsList        map[string]*api.Namespace
 	LookupList    map[string][]net.IP
 	EpList        map[string]*api.Endpoints
+	EpsList       map[string][]*discoveryv1.EndpointSlice
 	ConfigMapList map[string]*api.ConfigMap
 	TermPodList   map[string][]*api.Pod
 	PodList       map[string]*api.Pod
@@ -346,4 +348,12 @@ func (c *CacheMock) SwapChangedObjects() *convtypes.ChangedObjects {
 // NeedFullSync ...
 func (c *CacheMock) NeedFullSync() bool {
 	return false
+}
+
+func (c *CacheMock) GetEndpointSlices(service *api.Service) ([]*discoveryv1.EndpointSlice, error) {
+	serviceName := service.Namespace + "/" + service.Name
+	if ep, found := c.EpsList[serviceName]; found {
+		return ep, nil
+	}
+	return nil, fmt.Errorf("could not find endpointslices for service '%s'", serviceName)
 }

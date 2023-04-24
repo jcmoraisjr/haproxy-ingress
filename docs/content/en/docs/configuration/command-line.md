@@ -60,6 +60,7 @@ The following command-line options are supported:
 | [`--sort-backends`](#sort-backends)                     | [true\|false]              | `false`                 |       |
 | [`--shutdown-timeout`](#shutdown-timeout)               | time                       | `25s`                   | v0.15 |
 | [`--sort-endpoints-by`](#sort-endpoints-by)             | [endpoint\|ip\|name\|random] | `endpoint`            | v0.11 |
+| [`--enable-endpointslices-api`](#enable-endpointslices-api)             | [true\|false] | `false`              | v0.14 |
 | [`--stats-collect-processing-period`](#stats)           | time                       | `500ms`                 | v0.10 |
 | [`--stop-handler`](#stats)                              | [true\|false]              | `false`                 | v0.15 |
 | [`--sync-period`](#sync-period)                         | time                       | `10m`                   |       |
@@ -504,6 +505,14 @@ Defines in which order the endpoints of a backend should be sorted.
 * `ip`: sort endpoints by the IP and port of the destination server
 * `name`: sort the endpoints by the name given to the server, see also [backend-server-naming]({{% relref "keys#backend-server-naming" %}})
 * `random`: randomly shuffle the endpoints every time haproxy needs to be reloaded, this option avoids to always send requests to the same endpoints depending on the balancing algorithm
+
+---
+
+## --enable-endpointslices-api
+
+Since v0.14
+
+Uses EndpointSlices API info, rather than Endpoints API, to fetch service endpoints info. By default it is disabled. EndpointSlices API was stablised from Kubernetes v1.21.
 
 ---
 

@@ -179,7 +179,7 @@ func TestSyncSvcUpstream(t *testing.T) {
 
 func TestSyncSvcExternalName(t *testing.T) {
 	createSvc := func(c *testConfig, port string) *api.Service {
-		svc, _ := conv_helper.CreateService("default/echo", port, "")
+		svc, _, _ := conv_helper.CreateService("default/echo", port, "")
 		if port == "" {
 			svc.Spec.Ports = nil
 		}
@@ -1543,7 +1543,7 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
 		}
 		endp := func(slice *[]*api.Endpoints, params [][]string) {
 			for _, param := range params {
-				_, ep := conv_helper.CreateService(param[0], param[1], param[2])
+				_, ep, _ := conv_helper.CreateService(param[0], param[1], param[2])
 				*slice = append(*slice, ep)
 			}
 		}
@@ -1585,7 +1585,7 @@ func TestSyncPartialTCPService(t *testing.T) {
 	c.hconfig.Commit()
 	c.logger.Logging = []string{}
 
-	_, ep := conv_helper.CreateService("default/echo1", "8080", "172.17.0.11,172.17.0.21")
+	_, ep, _ := conv_helper.CreateService("default/echo1", "8080", "172.17.0.11,172.17.0.21")
 	c.cache.Changed.EndpointsNew = []*api.Endpoints{ep}
 	c.Sync()
 
@@ -1623,7 +1623,7 @@ func TestSyncPartialDefaultBackend(t *testing.T) {
 	c.logger.Logging = []string{}
 
 	// the mock of the default backend is hardcoded to system/default:8080 at 172.17.0.99
-	_, ep := conv_helper.CreateService("system/default", "8080", "172.17.0.90")
+	_, ep, _ := conv_helper.CreateService("system/default", "8080", "172.17.0.90")
 	c.cache.Changed.EndpointsNew = []*api.Endpoints{ep}
 	c.Sync()
 
@@ -2566,7 +2566,7 @@ func (c *testConfig) createSvc1Ann(name, port, endpoints string, ann map[string]
 }
 
 func (c *testConfig) createSvc1(name, port, endpoints string) (*api.Service, *api.Endpoints) {
-	svc, ep := conv_helper.CreateService(name, port, endpoints)
+	svc, ep, _ := conv_helper.CreateService(name, port, endpoints)
 	// TODO change SvcList to map
 	var has bool
 	for i, svc1 := range c.cache.SvcList {

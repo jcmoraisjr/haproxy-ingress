@@ -23,6 +23,7 @@ import (
 	api "k8s.io/api/core/v1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
+	discoveryv1 "k8s.io/api/discovery/v1"
 )
 
 // FindServicePort ...
@@ -72,16 +73,7 @@ type Endpoint struct {
 	TargetRef string
 }
 
-// CreateEndpoints ...
-func CreateEndpoints(cache types.Cache, svc *api.Service, svcPort *api.ServicePort) (ready, notReady []*Endpoint, err error) {
-	if svc.Spec.Type == api.ServiceTypeExternalName {
-		ready, err := createEndpointsExternalName(cache, svc, svcPort)
-		return ready, nil, err
-	}
-	endpoints, err := cache.GetEndpoints(svc)
-	if err != nil {
-		return nil, nil, err
-	}
+func createEndpoints(endpoints *api.Endpoints, svcPort *api.ServicePort) (ready, notReady []*Endpoint, err error) {
 	for _, subset := range endpoints.Subsets {
 		for _, epPort := range subset.Ports {
 			if matchPort(svcPort, &epPort) {
@@ -96,6 +88,87 @@ func CreateEndpoints(cache types.Cache, svc *api.Service, svcPort *api.ServicePo
 		}
 	}
 	return ready, notReady, nil
+}
+
+func createEndpointSlices(endpointSlices []*discoveryv1.EndpointSlice, svcPort *api.ServicePort) (ready, notReady []*Endpoint, err error) {
+	for _, endpointSlice := range endpointSlices {
+		for _, epPort := range endpointSlice.Ports {
+			// A pod corresponding to an endpoint slice can expose multiple ports.
+			// In current case we are only interested in those ports in which the
+			// service is interested in. Service's interest is reflected by svcPort.
+
+			// Protocols must match. Example, no point routing UDP traffic to TCP port.
+			svcPortProtocol := api.ProtocolTCP
+			if svcPort.Protocol != "" {
+				svcPortProtocol = svcPort.Protocol
+			}
+			if svcPortProtocol != *epPort.Protocol {
+				continue
+			}
+
+			// From the docs of core.v1.ServicePort:
+			//
+			// When considering the endpoints for a Service, this [Name field of service]
+			// must match the 'name' field in the EndpointPort.
+			if svcPort.Name != "" && svcPort.Name != *epPort.Name {
+				continue
+			}
+
+			for _, endpoint := range endpointSlice.Endpoints {
+				// From the API docs of EndpointConditions:
+				//
+				// "ready indicates that this endpoint is prepared to receive traffic,
+				// according to whatever system is managing the endpoint. A nil value
+				// indicates an unknown state. In most cases consumers should interpret this
+				// unknown state as ready. For compatibility reasons, ready should never be
+				// "true" for terminating endpoints."
+				if endpoint.Conditions.Ready == nil || *endpoint.Conditions.Ready {
+					domainEndpoint := Endpoint{
+						// kube-proxy also consults the first address in the Endpoint.
+						// https://github.com/kubernetes/kubernetes/issues/106267
+						// Using that as an argument to justify why we are using first
+						// address here.
+						IP:        endpoint.Addresses[0],
+						Port:      int(*epPort.Port),
+						TargetRef: targetRefToString(endpoint.TargetRef),
+					}
+					ready = append(ready, &domainEndpoint)
+				} else {
+					// https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/
+					// Default EndpointSliceTerminatingCondition is false in 1.21
+					// Default EndpointSliceTerminatingCondition is true in 1.22
+					domainEndpoint := Endpoint{
+						IP:        endpoint.Addresses[0],
+						Port:      int(*epPort.Port),
+						TargetRef: targetRefToString(endpoint.TargetRef),
+					}
+					notReady = append(notReady, &domainEndpoint)
+				}
+			}
+		}
+	}
+	return ready, notReady, nil
+}
+
+// CreateEndpoints ...
+func CreateEndpoints(cache types.Cache, svc *api.Service, svcPort *api.ServicePort, useEndpointSlices bool) (ready, notReady []*Endpoint, err error) {
+	switch {
+	case svc.Spec.Type == api.ServiceTypeExternalName:
+		ready, err := createEndpointsExternalName(cache, svc, svcPort)
+		return ready, nil, err
+	case useEndpointSlices:
+		endpoints, err := cache.GetEndpointSlices(svc)
+		if err != nil {
+			return nil, nil, err
+		}
+		return createEndpointSlices(endpoints, svcPort)
+	default:
+		endpoints, err := cache.GetEndpoints(svc)
+		if err != nil {
+			return nil, nil, err
+		}
+		return createEndpoints(endpoints, svcPort)
+	}
 }
 
 func matchPort(svcPort *api.ServicePort, epPort *api.EndpointPort) bool {

@@ -966,7 +966,7 @@ func (c *converter) addTLS(source *annotations.Source, secretName string) convty
 }
 
 func (c *converter) addEndpoints(svc *api.Service, svcPort *api.ServicePort, backend *hatypes.Backend) error {
-	ready, notReady, err := convutils.CreateEndpoints(c.cache, svc, svcPort)
+	ready, notReady, err := convutils.CreateEndpoints(c.cache, svc, svcPort, c.options.EnableEPSlices)
 	if err != nil {
 		return err
 	}
