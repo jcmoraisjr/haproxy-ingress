@@ -32,6 +32,7 @@ The following command-line options are supported:
 | [`--disable-external-name`](#disable-external-name)     | [true\|false]              | `false`                 | v0.10 |
 | [`--disable-pod-list`](#disable-pod-list)               | [true\|false]              | `false`                 | v0.11 |
 | [`--election-id`](#election-id)                         | identifier                 | `ingress-controller-leader` |   |
+| [`--enable-endpointslices-api`](#enable-endpointslices-api) | [true\|false]          | `false`                 | v0.14.3 |
 | [`--force-namespace-isolation`](#force-namespace-isolation) | [true\|false]          | `false`                 |       |
 | [`--health-check-path`](#stats)                         | path                       | `/healthz`              |       |
 | [`--healthz-port`](#stats)                              | port number                | `10254`                 |       |
@@ -223,6 +224,14 @@ Disables in memory pod list and also pod watch for changes. Pod list and watch i
 ## --election-id
 
 The ID to be used for electing ingress controller leader.  Defaults to `ingress-controller-leader`.
+
+---
+
+## --enable-endpointslices-api
+
+Since v0.14.3
+
+Uses EndpointSlices API info, rather than Endpoints API, to fetch service endpoints info. By default it is disabled. EndpointSlices API was stablised from Kubernetes v1.21.
 
 ---
 

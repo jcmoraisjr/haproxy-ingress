@@ -42,6 +42,7 @@ type ConverterOptions struct {
 	TrackInstances   bool
 	HasGatewayA1     bool
 	HasGateway       bool
+	EnableEPSlices   bool
 }
 
 // DynamicConfig ...

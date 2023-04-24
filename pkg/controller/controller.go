@@ -173,6 +173,7 @@ func (hc *HAProxyController) configController() {
 		TrackInstances:   hc.cfg.TrackOldInstances,
 		HasGatewayA1:     hc.cache.hasGatewayA1(),
 		HasGateway:       hc.cache.hasGateway(),
+		EnableEPSlices:   hc.cfg.EnableEndpointSlicesAPI,
 	}
 }
 

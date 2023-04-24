@@ -215,7 +215,7 @@ func (c *converter) createBackend(source *Source, index string, forwardTo []gate
 			c.logger.Warn("skipping service '%s' on %s: port '%s' not found", *fw.ServiceName, source, portStr)
 			continue
 		}
-		epready, _, err := convutils.CreateEndpoints(c.cache, svc, svcport)
+		epready, _, err := convutils.CreateEndpoints(c.cache, svc, svcport, c.options.EnableEPSlices)
 		if err != nil {
 			c.logger.Warn("skipping service '%s' on %s: %v", *fw.ServiceName, source, err)
 			continue

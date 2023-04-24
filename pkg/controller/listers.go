@@ -22,15 +22,18 @@ import (
 	"time"
 
 	api "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networking "k8s.io/api/networking/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	discovery "k8s.io/client-go/discovery"
 	"k8s.io/client-go/informers"
 	informerscore "k8s.io/client-go/informers/core/v1"
+	informersdiscovery "k8s.io/client-go/informers/discovery/v1"
 	informersnetworking "k8s.io/client-go/informers/networking/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	listerscore "k8s.io/client-go/listers/core/v1"
+	listersdiscovery "k8s.io/client-go/listers/discovery/v1"
 	listersnetworking "k8s.io/client-go/listers/networking/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
@@ -59,10 +62,11 @@ type ListerEvents interface {
 }
 
 type listers struct {
-	events   ListerEvents
-	logger   types.Logger
-	recorder record.EventRecorder
-	running  bool
+	events                  ListerEvents
+	logger                  types.Logger
+	recorder                record.EventRecorder
+	running                 bool
+	enableEndpointSlicesAPI bool
 	//
 	hasPodLister bool
 	//
@@ -75,6 +79,7 @@ type listers struct {
 	gatewayClassLister   gwapilistersgatewayv1alpha2.GatewayClassLister
 	httpRouteLister      gwapilistersgatewayv1alpha2.HTTPRouteLister
 	endpointLister       listerscore.EndpointsLister
+	endpointSliceLister  listersdiscovery.EndpointSliceLister
 	serviceLister        listerscore.ServiceLister
 	secretLister         listerscore.SecretLister
 	configMapLister      listerscore.ConfigMapLister
@@ -89,6 +94,7 @@ type listers struct {
 	gatewayClassInformer   cache.SharedInformer
 	httpRouteInformer      cache.SharedInformer
 	endpointInformer       cache.SharedInformer
+	endpointSliceInformer  cache.SharedInformer
 	serviceInformer        cache.SharedInformer
 	secretInformer         cache.SharedInformer
 	configMapInformer      cache.SharedInformer
@@ -105,6 +111,7 @@ func createListers(
 	isolateNamespace bool,
 	podWatch bool,
 	resync time.Duration,
+	enableEndpointSlicesAPI bool,
 ) *listers {
 	clusterWatch := watchNamespace == api.NamespaceAll
 	clusterOption := informers.WithTweakListOptions(nil)
@@ -124,13 +131,18 @@ func createListers(
 		localInformer = informers.NewSharedInformerFactory(fake.NewSimpleClientset(), 0)
 	}
 	l := &listers{
-		events:   events,
-		recorder: recorder,
-		logger:   logger,
+		events:                  events,
+		recorder:                recorder,
+		logger:                  logger,
+		enableEndpointSlicesAPI: enableEndpointSlicesAPI,
 	}
 	l.createIngressLister(ingressInformer.Networking().V1().Ingresses())
 	l.createIngressClassLister(ingressInformer.Networking().V1().IngressClasses())
-	l.createEndpointLister(resourceInformer.Core().V1().Endpoints())
+	if enableEndpointSlicesAPI {
+		l.createEndpointSliceLister(resourceInformer.Discovery().V1().EndpointSlices())
+	} else {
+		l.createEndpointLister(resourceInformer.Core().V1().Endpoints())
+	}
 	l.createServiceLister(resourceInformer.Core().V1().Services())
 	l.createSecretLister(resourceInformer.Core().V1().Secrets())
 	l.createConfigMapLister(resourceInformer.Core().V1().ConfigMaps())
@@ -241,19 +253,33 @@ func (l *listers) RunAsync(stopCh <-chan struct{}) {
 
 	// initialize listers and informers
 	go l.ingressInformer.Run(stopCh)
-	go l.endpointInformer.Run(stopCh)
 	go l.serviceInformer.Run(stopCh)
 	go l.secretInformer.Run(stopCh)
 	go l.configMapInformer.Run(stopCh)
 	go l.podInformer.Run(stopCh)
-	synced := cache.WaitForCacheSync(stopCh,
-		l.ingressInformer.HasSynced,
-		l.endpointInformer.HasSynced,
-		l.serviceInformer.HasSynced,
-		l.secretInformer.HasSynced,
-		l.configMapInformer.HasSynced,
-		l.podInformer.HasSynced,
-	)
+	var synced bool
+	if l.enableEndpointSlicesAPI {
+		go l.endpointSliceInformer.Run(stopCh)
+		synced = cache.WaitForCacheSync(stopCh,
+			l.ingressInformer.HasSynced,
+			l.endpointSliceInformer.HasSynced,
+			l.serviceInformer.HasSynced,
+			l.secretInformer.HasSynced,
+			l.configMapInformer.HasSynced,
+			l.podInformer.HasSynced,
+		)
+
+	} else {
+		go l.endpointInformer.Run(stopCh)
+		synced = cache.WaitForCacheSync(stopCh,
+			l.ingressInformer.HasSynced,
+			l.endpointInformer.HasSynced,
+			l.serviceInformer.HasSynced,
+			l.secretInformer.HasSynced,
+			l.configMapInformer.HasSynced,
+			l.podInformer.HasSynced,
+		)
+	}
 	if synced {
 		l.logger.Info("cache successfully synced")
 		l.running = true
@@ -531,6 +557,32 @@ func (l *listers) createHTTPRouteLister(informer gwapiinformersgatewayv1alpha2.H
 				l.events.Notify(old, cur)
 			}
 		},
+		DeleteFunc: func(obj interface{}) {
+			l.events.Notify(obj, nil)
+		},
+	})
+}
+
+func (l *listers) createEndpointSliceLister(informer informersdiscovery.EndpointSliceInformer) {
+	l.endpointSliceLister = informer.Lister()
+	l.endpointSliceInformer = informer.Informer()
+	l.endpointSliceInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+
+		// A new EndpointSlice shows up
+		AddFunc: func(obj interface{}) {
+			l.events.Notify(nil, obj)
+		},
+
+		// Existing EndpointSlice is updated
+		UpdateFunc: func(old, cur interface{}) {
+			oldEPSlice := old.(*discoveryv1.EndpointSlice)
+			curEPSlice := cur.(*discoveryv1.EndpointSlice)
+			if !reflect.DeepEqual(oldEPSlice.Endpoints, curEPSlice.Endpoints) {
+				l.events.Notify(oldEPSlice, curEPSlice)
+			}
+		},
+
+		// Existing EndpointSlice is deleted
 		DeleteFunc: func(obj interface{}) {
 			l.events.Notify(obj, nil)
 		},

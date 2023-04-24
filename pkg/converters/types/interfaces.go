@@ -21,6 +21,7 @@ import (
 	"time"
 
 	api "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networking "k8s.io/api/networking/v1"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
@@ -41,6 +42,7 @@ type Cache interface {
 	GetHTTPRouteList() ([]*gatewayv1alpha2.HTTPRoute, error)
 	GetService(defaultNamespace, serviceName string) (*api.Service, error)
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
+	GetEndpointSlices(service *api.Service) ([]*discoveryv1.EndpointSlice, error)
 	GetConfigMap(configMapName string) (*api.ConfigMap, error)
 	GetNamespace(name string) (*api.Namespace, error)
 	GetTerminatingPods(service *api.Service, track []TrackingRef) ([]*api.Pod, error)
@@ -77,6 +79,8 @@ type ChangedObjects struct {
 	HTTPRoutesDel, HTTPRoutesUpd, HTTPRoutesAdd []*gatewayv1alpha2.HTTPRoute
 	//
 	EndpointsNew []*api.Endpoints
+	//
+	EndpointSlicesUpd []*discoveryv1.EndpointSlice
 	//
 	ServicesDel, ServicesUpd, ServicesAdd []*api.Service
 	//

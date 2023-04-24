@@ -33,6 +33,7 @@ import (
 	"time"
 
 	api "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networking "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -143,8 +144,18 @@ func createCache(
 		cfg.ForceNamespaceIsolation,
 		!cfg.DisablePodList,
 		cfg.ResyncPeriod,
+		cfg.EnableEndpointSlicesAPI,
 	)
 	return cache
+}
+
+func (c *k8scache) GetEndpointSlices(service *api.Service) ([]*discoveryv1.EndpointSlice, error) {
+	serviceNameLabel := map[string]string{"kubernetes.io/service-name": service.Name}
+	selector, err := buildLabelSelector(serviceNameLabel)
+	if err != nil {
+		return nil, err
+	}
+	return c.listers.endpointSliceLister.EndpointSlices(service.Namespace).List(selector)
 }
 
 func (c *k8scache) RunAsync(stopCh <-chan struct{}) {
@@ -939,6 +950,8 @@ func (c *k8scache) Notify(old, cur interface{}) {
 			ch.NeedFullSync = true
 		case *api.Endpoints:
 			ch.EndpointsNew = append(ch.EndpointsNew, cur)
+		case *discoveryv1.EndpointSlice:
+			ch.EndpointSlicesUpd = append(ch.EndpointSlicesUpd, cur)
 		case *api.Service:
 			svc := cur
 			if old == nil {
@@ -1087,6 +1100,9 @@ func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
 	}
 	for _, ep := range ch.EndpointsNew {
 		addChanges(convtypes.ResourceEndpoints, eventUpdate, ep.Namespace, ep.Name)
+	}
+	for _, eps := range ch.EndpointSlicesUpd {
+		addChanges(convtypes.ResourceEndpoints, eventUpdate, eps.Namespace, eps.Labels["kubernetes.io/service-name"])
 	}
 	for _, svc := range ch.ServicesDel {
 		addChanges(convtypes.ResourceService, eventDel, svc.Namespace, svc.Name)

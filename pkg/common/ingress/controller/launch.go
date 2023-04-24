@@ -297,6 +297,10 @@ Actually node listing isn't needed and it is always disabled`)
 			`DEPRECATED, this option is ignored. Use --watch-ingress-without-class
 command-line option instead to define if ingress without class should be
 tracked.`)
+
+		enableEndpointSlicesAPI = flags.Bool("enable-endpointslices-api", false,
+			`Enables EndpointSlices API and disables watching Endpoints API. Only enable in
+k8s >=1.21+`)
 	)
 
 	logLevel := new(klog.Level)
@@ -379,6 +383,10 @@ tracked.`)
 		klog.Info("running embedded haproxy, mode is master-worker")
 	} else {
 		klog.Info("running embedded haproxy, mode is daemon")
+	}
+
+	if *enableEndpointSlicesAPI {
+		klog.Infof("watching endpointslices - --enable-endpointslices-api is true")
 	}
 
 	if !(*reloadStrategy == "native" || *reloadStrategy == "reusesocket" || *reloadStrategy == "multibinder") {
@@ -576,6 +584,7 @@ tracked.`)
 		BackendShards:            *backendShards,
 		SortEndpointsBy:          sortEndpoints,
 		UseNodeInternalIP:        *useNodeInternalIP,
+		EnableEndpointSlicesAPI:  *enableEndpointSlicesAPI,
 	}
 
 	ic := newIngressController(config)
