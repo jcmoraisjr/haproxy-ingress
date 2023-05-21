@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	api "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
 )
@@ -30,13 +31,13 @@ func TestCreateEndpointsExternalName(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	svc, _ := helper_test.CreateService("default/echo", "8080", "")
+	svc, _, _ := helper_test.CreateService("default/echo", "8080", "")
 	svc.Spec.Type = api.ServiceTypeExternalName
 	svc.Spec.ExternalName = "domain.local"
 	cache := helper_test.NewCacheMock(nil)
 	cache.LookupList["domain.local"] = []net.IP{net.ParseIP("10.0.1.10"), net.ParseIP("10.0.1.11")}
 	svcPort := FindServicePort(svc, "8080")
-	ready, notReady, err := CreateEndpoints(cache, svc, svcPort)
+	ready, notReady, err := CreateEndpoints(cache, svc, svcPort, true)
 	expected := []*Endpoint{
 		{
 			IP:   "10.0.1.10",
@@ -96,7 +97,7 @@ func TestCreateEndpoints(t *testing.T) {
 	}
 	for _, test := range testCases {
 		c := setup(t)
-		svc, ep := helper_test.CreateService("default/echo", test.declarePort, test.endpoints)
+		svc, ep, eps := helper_test.CreateService("default/echo", test.declarePort, test.endpoints)
 		for _, ss := range ep.Subsets {
 			for i := range ss.Addresses {
 				ss.Addresses[i].TargetRef = nil
@@ -108,15 +109,25 @@ func TestCreateEndpoints(t *testing.T) {
 		cache := &helper_test.CacheMock{
 			SvcList: []*api.Service{svc},
 			EpList:  map[string]*api.Endpoints{"default/echo": ep},
+			EpsList: map[string][]*discoveryv1.EndpointSlice{"default/echo": eps},
 		}
 		port := FindServicePort(svc, test.findPort)
+
+		// Test with Endpoints API
 		var endpoints []*Endpoint
 		if port != nil {
-			endpoints, _, _ = CreateEndpoints(cache, svc, port)
+			endpoints, _, _ = CreateEndpoints(cache, svc, port, false)
 		}
 		if !reflect.DeepEqual(endpoints, test.expected) {
 			t.Errorf("endpoints differ: expected=%+v actual=%+v", test.expected, endpoints)
 		}
+
+		// Test with EndpointSlice API
+		endpoints, _, _ = CreateEndpoints(cache, svc, port, true)
+		if !reflect.DeepEqual(endpoints, test.expected) {
+			t.Errorf("endpoints differ: expected=%+v actual=%+v", test.expected, endpoints)
+		}
+
 		c.teardown()
 	}
 }

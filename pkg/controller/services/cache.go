@@ -29,6 +29,7 @@ import (
 
 	"github.com/go-logr/logr"
 	api "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networking "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -285,6 +286,12 @@ func (c *c) GetService(defaultNamespace, serviceName string) (*api.Service, erro
 	err = c.client.Get(c.ctx, types.NamespacedName{Namespace: namespace, Name: name}, &service)
 	return &service, err
 
+}
+
+func (c *c) GetEndpointSlices(service *api.Service) ([]*discoveryv1.EndpointSlice, error) {
+	// TODO: endpoint slices to be implemented for new controller runtime. For now
+	// only exists in legacy controller.
+	return nil, nil
 }
 
 func (c *c) GetEndpoints(service *api.Service) (*api.Endpoints, error) {

@@ -172,6 +172,7 @@ func (hc *HAProxyController) configController() {
 		AcmeTrackTLSAnn:  hc.cfg.AcmeTrackTLSAnn,
 		TrackInstances:   hc.cfg.TrackOldInstances,
 		HasGateway:       hc.cache.hasGateway(),
+		EnableEPSlices:   hc.cfg.EnableEndpointSlicesAPI,
 	}
 }
 
