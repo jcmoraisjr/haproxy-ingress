@@ -866,6 +866,21 @@ func (c *k8scache) Notify(old, cur interface{}) {
 				ch.HTTPRoutesA1Del = append(ch.HTTPRoutesA1Del, old)
 				ch.NeedFullSync = true
 			}
+		case *gatewayv1alpha2.Gateway:
+			if cur == nil {
+				ch.GatewaysDel = append(ch.GatewaysDel, old)
+				ch.NeedFullSync = true
+			}
+		case *gatewayv1alpha2.GatewayClass:
+			if cur == nil {
+				ch.GatewayClassesDel = append(ch.GatewayClassesDel, old)
+				ch.NeedFullSync = true
+			}
+		case *gatewayv1alpha2.HTTPRoute:
+			if cur == nil {
+				ch.HTTPRoutesDel = append(ch.HTTPRoutesDel, old)
+				ch.NeedFullSync = true
+			}
 		case *api.Service:
 			if cur == nil {
 				ch.ServicesDel = append(ch.ServicesDel, old)
