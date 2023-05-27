@@ -94,7 +94,9 @@ func (c *converters) Sync() {
 	//
 	// configmap converters
 	//
-	if changed.TCPConfigMapDataCur != nil {
+	if changed.TCPConfigMapDataCur != nil || changed.TCPConfigMapDataNew != nil {
+		// cur != nil ensures we've tcp services applied in the case of a full reconciliation
+		// new != nil ensures we've tcp services applied on the very first reconciliation
 		tcpSvcConverter := configmap.NewTCPServicesConverter(c.options, c.haproxy, changed)
 		tcpSvcConverter.Sync()
 		c.timer.Tick("parse_tcp_svc")
