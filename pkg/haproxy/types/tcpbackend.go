@@ -18,6 +18,7 @@ package types
 
 import (
 	"fmt"
+	"sort"
 )
 
 // AddEndpoint ...
@@ -29,5 +30,9 @@ func (b *TCPBackend) AddEndpoint(ip string, port int) *TCPEndpoint {
 		Target: fmt.Sprintf("%s:%d", ip, port),
 	}
 	b.Endpoints = append(b.Endpoints, ep)
+	// ensures predictable result, so Changed() works properly
+	sort.Slice(b.Endpoints, func(i, j int) bool {
+		return b.Endpoints[i].Target < b.Endpoints[j].Target
+	})
 	return ep
 }
