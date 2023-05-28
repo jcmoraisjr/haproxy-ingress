@@ -1184,11 +1184,7 @@ frontend {{ $proxy__front_http }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $global.Acme.Enabled }}
-    {{- template "redirectTo" map $frontend $fmaps "!acme-challenge" }}
-{{- else }}
-    {{- template "redirectTo" map $frontend $fmaps "" }}
-{{- end }}
+{{- template "redirectTo" map $global $frontend $fmaps }}
 
 {{- /*------------------------------------*/}}
 {{- template "authExternalFrontend" map $hosts }}
@@ -1209,11 +1205,7 @@ frontend {{ $proxy__front_http }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $global.Acme.Enabled }}
-    {{- template "redirectFrom" map $frontend $fmaps "req.backend" "!acme-challenge" }}
-{{- else }}
-    {{- template "redirectFrom" map $frontend $fmaps "req.backend" "" }}
-{{- end }}
+{{- template "redirectFrom" map $global $frontend $fmaps "req.backend" }}
 
 {{- /*------------------------------------*/}}
 {{- template "sourceIP" map $global }}
@@ -1279,7 +1271,7 @@ frontend {{ $frontend.Name }}
     http-request set-var(req.base) var(req.host),concat(\#,req.path)
 
 {{- /*------------------------------------*/}}
-{{- template "redirectTo" map $frontend $fmaps "" }}
+{{- template "redirectTo" map $global $frontend $fmaps }}
 
 {{- /*------------------------------------*/}}
 {{- template "authExternalFrontend" map $hosts }}
@@ -1300,7 +1292,7 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- template "redirectFrom" map $frontend $fmaps "req.hostbackend" "" }}
+{{- template "redirectFrom" map $global $frontend $fmaps "req.hostbackend" }}
 
 {{- /*------------------------------------*/}}
 {{- if $fmaps.RedirFromRootMap.HasHost }}
@@ -1448,24 +1440,24 @@ frontend {{ $frontend.Name }}
 {{- /*------------------------------------*/}}
 {{- /*------------------------------------*/}}
 {{- define "redirectFrom" }}
-{{- $frontend := .p1 }}
-{{- $fmaps := .p2 }}
-{{- $varbe := .p3 }}
-{{- $acls := .p4 }}
+{{- $global := .p1 }}
+{{- $frontend := .p2 }}
+{{- $fmaps := .p3 }}
+{{- $varbe := .p4 }}
 {{- if $fmaps.RedirFromMap.MatchFiles }}
 {{- range $match := $fmaps.RedirFromMap.MatchFiles }}
     http-request set-var(req.redirdest) var(req.host)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- "" }} if
-        {{- if $acls }} {{ $acls }}{{ end }}
+        {{- if $global.NoRedirects }} !{ path_beg{{ range $global.NoRedirects }} "{{ . }}"{{ end }} }{{ end }}
         {{- "" }} !{ var({{ $varbe }}) -m found }
         {{- if not $match.First }} !{ var(req.redirdest) -m found }{{ end }}
 {{- end }}
     http-request redirect prefix //%[var(req.redirdest)]
         {{- "" }} code {{ $frontend.RedirectFromCode }}
         {{- "" }} if
-        {{- if $acls }} {{ $acls }}{{ end }}
+        {{- if $global.NoRedirects }} !{ path_beg{{ range $global.NoRedirects }} "{{ . }}"{{ end }} }{{ end }}
         {{- "" }} { var(req.redirdest) -m found }
 {{- end }}
 {{- end }}
@@ -1493,21 +1485,21 @@ frontend {{ $frontend.Name }}
 {{- /*------------------------------------*/}}
 {{- /*------------------------------------*/}}
 {{- define "redirectTo" }}
-{{- $frontend := .p1 }}
-{{- $fmaps := .p2 }}
-{{- $acls := .p3 }}
+{{- $global := .p1 }}
+{{- $frontend := .p2 }}
+{{- $fmaps := .p3 }}
 {{- if $fmaps.RedirToMap.MatchFiles }}
 {{- range $match := $fmaps.RedirToMap.MatchFiles }}
     http-request set-var(req.redirto) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
-        {{- if $acls }} if {{ $acls }}{{ end }}
-        {{- template "httpFilters" map $match "req.redirto" (not $acls) }}
+        {{- if $global.NoRedirects }} if !{ path_beg{{ range $global.NoRedirects }} "{{ . }}"{{ end }} }{{ end }}
+        {{- template "httpFilters" map $match "req.redirto" (not $global.NoRedirects) }}
 {{- end }}
     http-request redirect location %[var(req.redirto)]
         {{- "" }} code {{ $frontend.RedirectToCode }}
         {{- "" }} if
-        {{- if $acls }} {{ $acls }}{{ end }}
+        {{- if $global.NoRedirects }} !{ path_beg{{ range $global.NoRedirects }} "{{ . }}"{{ end }} }{{ end }}
         {{- "" }} { var(req.redirto) -m found }
 {{- end }}
 {{- end }}

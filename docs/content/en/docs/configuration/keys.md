@@ -419,6 +419,7 @@ The table below describes all supported configuration keys.
 | [`modsecurity-use-coraza`](#modsecurity)             | [true\|false]                           | Global  | `false`               |
 | [`nbproc-ssl`](#nbproc)                              | number of process                       | Global  | `0`                |
 | [`nbthread`](#nbthread)                              | number of threads                       | Global  |                    |
+| [`no-redirect-locations`](#redirect)                 | comma-separated list of URIs            | Global  | `/.well-known/acme-challenge` |
 | [`no-tls-redirect-locations`](#ssl-redirect)         | comma-separated list of URIs            | Global  | `/.well-known/acme-challenge` |
 | [`oauth`](#oauth)                                    | "oauth2_proxy"                          | Path    |                    |
 | [`oauth-headers`](#oauth)                            | `<header>:<var>,...`                    | Path    |                    |
@@ -2220,13 +2221,14 @@ See also:
 
 ## Redirect
 
-| Configuration key     | Scope    | Default | Since |
-|-----------------------|----------|---------|-------|
-| `redirect-from`       | `Host`   |         | v0.13 |
-| `redirect-from-code`  | `Global` | `302`   | v0.13 |
-| `redirect-from-regex` | `Host`   |         | v0.13 |
-| `redirect-to`         | `Path`   |         | v0.13 |
-| `redirect-to-code`    | `Global` | `302`   | v0.13 |
+| Configuration key       | Scope    | Default                       | Since   |
+|-------------------------|----------|-------------------------------|---------|
+| `no-redirect-locations` | `Global` | `/.well-known/acme-challenge` | v0.14.3 |
+| `redirect-from`         | `Host`   |                               | v0.13   |
+| `redirect-from-code`    | `Global` | `302`                         | v0.13   |
+| `redirect-from-regex`   | `Host`   |                               | v0.13   |
+| `redirect-to`           | `Path`   |                               | v0.13   |
+| `redirect-to-code`      | `Global` | `302`                         | v0.13   |
 
 Configures HTTP redirect. Redirect *from* matches source hostnames that should be redirected
 to the hostname declared in the ingress spec. Redirect *to* uses the hostname declared in the
@@ -2238,6 +2240,7 @@ examples below.
 * `redirect-from-code`: Which HTTP status code should be used in the redirect from. A `302` response is used by default if not configured.
 * `redirect-to`: Defines the destination URL to redirect the incoming request. The declared hostname and path are used only to match the request, the backend will not be used and it's only needed to be declared to satisfy ingress spec validation.
 * `redirect-to-code`: Which HTTP status code should be used in the redirect to. A `302` response is used by default if not configured.
+* `no-redirect-locations`: Defines a comma-separated list of paths that should be ignored by all the redirects. Default value is `/.well-known/acme-challenge`, used by ACME protocol. Configure as an empty string to make the redirect happen on all paths, including the ACME challenge.
 
 **Using redirect-from**
 

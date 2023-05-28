@@ -82,6 +82,7 @@ type Global struct {
 	UseHTX                  bool
 	DefaultBackendRedir     string
 	DefaultBackendRedirCode int
+	NoRedirects             []string
 	CustomConfig            []string
 	CustomDefaults          []string
 	CustomFrontendEarly     []string
