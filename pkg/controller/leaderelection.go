@@ -24,7 +24,6 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 
 	api "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/leaderelection"
@@ -52,16 +51,22 @@ func NewLeaderElector(id string, logger *logger, cache *k8scache, subscriber Lea
 		logger.Fatal("error reading ingress controller pod: %v", err)
 	}
 
-	lock := &resourcelock.ConfigMapLock{
-		Client:        cache.client.CoreV1(),
-		ConfigMapMeta: metav1.ObjectMeta{Namespace: namespace, Name: id},
-		LockConfig: resourcelock.ResourceLockConfig{
+	lock, err := resourcelock.New(
+		resourcelock.ConfigMapsLeasesResourceLock,
+		namespace,
+		id,
+		cache.client.CoreV1(),
+		cache.client.CoordinationV1(),
+		resourcelock.ResourceLockConfig{
 			Identity: podname,
 			EventRecorder: record.NewBroadcaster().NewRecorder(scheme.Scheme, api.EventSource{
 				Component: "haproxy-ingress-leader-elector",
 				Host:      hostname,
 			}),
 		},
+	)
+	if err != nil {
+		logger.Fatal("error starting leader election: %v", err)
 	}
 	callbacks := leaderelection.LeaderCallbacks{
 		OnStartedLeading: func(ctx context.Context) {
