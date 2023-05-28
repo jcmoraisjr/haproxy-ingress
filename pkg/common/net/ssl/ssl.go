@@ -57,6 +57,14 @@ func AddOrUpdateCertAndKey(name string, cert, key, ca []byte) (*ingress.SSLCert,
 	}
 	klog.V(3).Infof("Creating temp file %v for Keypair: %v", tempPemFile.Name(), pemName)
 
+	// Controller v0.14 and older should be running as root, so trying to change
+	// tmpfile owner to haproxy PID, in that case it has a chance to read if running
+	// as a sidecar. No problem if err, should be permission due to controller not
+	// be running as root. HAProxy sidecar should be running as 99 or 0, so no
+	// problem as well. Other HAProxy distros might be using another PID, which
+	// this change won't be neither helping nor impacting.
+	_ = os.Chown(tempPemFile.Name(), 99, 99)
+
 	_, err = tempPemFile.Write(cert)
 	if err != nil {
 		return nil, fmt.Errorf("could not write to pem file %v: %v", tempPemFile.Name(), err)
