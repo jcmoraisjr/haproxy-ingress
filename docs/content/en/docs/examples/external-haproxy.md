@@ -25,20 +25,99 @@ following content:
 
 ```yaml
 controller:
-  hostNetwork: false
   config:
     syslog-endpoint: stdout
     syslog-format: raw
   haproxy:
     enabled: true
-    image:
-      repository: haproxy
-      tag: 2.3.12-alpine
+    securityContext:
+      runAsUser: 0
 ```
 
-Change the hostNetwork to `true` if your cluster doesn't provide a service loadbalancer.
-These parameters are also configuring an external haproxy and configuring it to log to
-stdout.
+These parameters are configuring an external haproxy and configuring haproxy to log
+to stdout. Also, haproxy is configured as root so it has permission to bind ports `:80`
+and `:443`. By default haproxy container is started as UID `99`.
+
+### A word about security
+
+haproxy historically started as root so it has the permissions needed to bind to privileged ports,
+configure chroot, configure file descriptor limits, and other administrative tasks. haproxy then
+drops its own privileges just before starting its event loop. See
+[Security Considerations](https://docs.haproxy.org/2.4/management.html#13) from the documentation.
+
+Since 2.4, haproxy container has been started as UID `99`. There are a few ways to give it
+permissions to bind privileged port, none of them is provided by default by HAProxy Ingress Helm
+chart because all of them has some sort of limitation. Choose one of the options below that best
+suits the needs of your environment:
+
+1. Configure haproxy to start as root, This is the configuration provided above, but it will not
+work if cluster policies deny containers running as root.
+1. Some container runtime engines, like Docker `20.10` or newer, or Containerd embedded in k3s,
+reconfigure the starting of unprivileged ports so haproxy should work out of the box listening
+to `:80` and `:443` without the need to run as root. Give it a try by removing the
+`securityContext` configuration altogether:
+
+    ```yaml
+    controller:
+      config:
+        syslog-endpoint: stdout
+        syslog-format: raw
+      haproxy:
+        enabled: true
+    ```
+
+1. Change haproxy listening port to unprivileged ports, like `8080` and `8443`:
+
+    > Note that, if exposing haproxy via `hostNetwork`, end users would need to connect to `:8443` instead of the well known `:443`, so this is only an option if the cluster provides LoadBalancer services
+
+    ```yaml
+    controller:
+      config:
+        syslog-endpoint: stdout
+        syslog-format: raw
+        http-port: "8080"
+        https-port: "8443"
+      service:
+        httpPorts:
+        - port: 80
+          targetPort: 8080
+        httpsPorts:
+        - port: 443
+          targetPort: 8443
+        type: LoadBalancer
+      haproxy:
+        enabled: true
+    ```
+
+1. Change the haproxy image by adding the `NET_BIND_SERVICE`
+[capability](https://man7.org/linux/man-pages/man7/capabilities.7.html) to the haproxy binary:
+
+    ```Dockerfile
+    FROM haproxy:X.X-alpine
+    USER root
+    RUN apk add -U libcap-utils
+    RUN setcap 'cap_net_bind_service=+ep' /usr/local/sbin/haproxy
+    USER haproxy
+    ```
+
+1. Reconfigure the start of unprivileged port to `80` or below using the following configuration:
+
+    > This configuration does not work if `hostNetwork` is configured as `true`, and does not work on Kernel versions older than 4.11.
+
+    ```yaml
+    controller:
+      config:
+        syslog-endpoint: stdout
+        syslog-format: raw
+      haproxy:
+        enabled: true
+        securityContext:
+          sysctls:
+            name: net.ipv4.ip_unprivileged_port_start
+            value: "1"
+    ```
+
+## Install the controller
 
 Add the HAProxy Ingress Helm repository if using HAProxy Ingress' chart for the first time:
 
@@ -48,19 +127,9 @@ $ helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
 
 Install or upgrade HAProxy Ingress using the `haproxy-ingress-values.yaml` parameters:
 
-Hint: change `install` to `upgrade` if HAProxy Ingress is already installed with Helm.
-
-{{% alert title="Note" %}}
-We're asking helm to install the latest v0.12 controller version, which will work
-on this example, but it's a best practice to use a proper chart version when moving to
-staging or production. Check all stable versions with `helm search repo haproxy-ingress/ -l`
-and update the `--version` command-line below.
-{{% /alert %}}
-
 ```
-$ helm install haproxy-ingress haproxy-ingress/haproxy-ingress\
-  --create-namespace --namespace=ingress-controller\
-  --version 0.12\
+$ helm upgrade haproxy-ingress haproxy-ingress/haproxy-ingress\
+  --install --create-namespace --namespace=ingress-controller\
   -f haproxy-ingress-values.yaml
 ```
 
