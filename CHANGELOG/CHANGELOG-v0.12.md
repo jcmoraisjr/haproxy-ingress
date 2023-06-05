@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.11!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.12.17](#v01217)
+  * [Reference](#reference-r17)
+  * [Release notes](#release-notes-r17)
+  * [Fixes and improvements](#fixes-and-improvements-r17)
 * [v0.12.16](#v01216)
   * [Reference](#reference-r16)
   * [Release notes](#release-notes-r16)
@@ -110,6 +114,33 @@ Breaking backward compatibility from v0.11
 * paul ([toothbrush](https://github.com/toothbrush))
 * pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.12.17
+
+## Reference (r17)
+
+* Release date: `2023-06-05`
+* Helm chart: `--version 0.12.17`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.12.17`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.12.17`
+* Embedded HAProxy version: `2.2.29`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.12.17`
+
+## Release notes (r17)
+
+This release fixes External HAProxy failure with message "cannot open the file '/var/lib/haproxy/crt/default-fake-certificate.pem'.". This happened due to missing permission to read certificate and private key files when HAProxy container starts as non root, which is the default since HAProxy 2.4.
+
+Other notable changes include:
+
+- An update to the External HAProxy example page adds options to fix permission failures to bind ports `:80` and `:443`, see the [example page](https://haproxy-ingress.github.io/v0.12/docs/examples/external-haproxy/#a-word-about-security).
+
+## Fixes and improvements (r17)
+
+New features and improvements since `v0.12.16`:
+
+* Ensure predictable tcp by sorting endpoints [#1003](https://github.com/jcmoraisjr/haproxy-ingress/pull/1003) (jcmoraisjr)
+* Change owner of crt/key files to haproxy pid [#1004](https://github.com/jcmoraisjr/haproxy-ingress/pull/1004) (jcmoraisjr)
+* add security considerations on external haproxy [520ca15](https://github.com/jcmoraisjr/haproxy-ingress/commit/520ca15992df514376876249d3e1edfc820ae15c) (Joao Morais)
 
 # v0.12.16
 
@@ -447,11 +478,11 @@ Fixes and improvements since `v0.12.3`:
 
 * Fix reading of needFullSync status [#772](https://github.com/jcmoraisjr/haproxy-ingress/pull/772) (jcmoraisjr)
 * Fix per path filter of default host rules [#777](https://github.com/jcmoraisjr/haproxy-ingress/pull/777) (jcmoraisjr)
-* Add option to disable API server warnings [#789](https://github.com/jcmoraisjr/haproxy-ingress/pull/789) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/command-line/#disable-api-warnings)
+* Add option to disable API server warnings [#789](https://github.com/jcmoraisjr/haproxy-ingress/pull/789) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/command-line/#disable-api-warnings)
   * Command-line options:
     * `--disable-api-warnings`
 * Fix domain validation on secure backend keys [#791](https://github.com/jcmoraisjr/haproxy-ingress/pull/791) (jcmoraisjr)
-* Add ssl-always-add-https config key [#793](https://github.com/jcmoraisjr/haproxy-ingress/pull/793) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#ssl-always-add-https)
+* Add ssl-always-add-https config key [#793](https://github.com/jcmoraisjr/haproxy-ingress/pull/793) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.12/docs/configuration/keys/#ssl-always-add-https)
   * Configuration keys:
     * `ssl-always-add-https`
 * Use the port name on DNS resolver template [#796](https://github.com/jcmoraisjr/haproxy-ingress/pull/796) (jcmoraisjr)
