@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.12!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.13.12](#v01312)
+  * [Reference](#reference-r12)
+  * [Release notes](#release-notes-r12)
+  * [Fixes and improvements](#fixes-and-improvements-r12)
 * [v0.13.11](#v01311)
   * [Reference](#reference-r11)
   * [Release notes](#release-notes-r11)
@@ -116,6 +120,42 @@ Breaking backward compatibility from v0.12
 * Roman Gherta ([rgherta](https://github.com/rgherta))
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
+
+# v0.13.12
+
+## Reference (r12)
+
+* Release date: `2023-06-05`
+* Helm chart: `--version 0.13.12`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.12`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.12`
+* Embedded HAProxy version: `2.4.22`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.13.12`
+
+## Release notes (r12)
+
+This release fixes some issues found in the v0.13 branch:
+
+- External HAProxy was failing with the message "cannot open the file '/var/lib/haproxy/crt/default-fake-certificate.pem'.". This happened due to missing permission to read certificate and private key files when HAProxy container starts as non root, which is the default since HAProxy 2.4.
+- ConfigMap based TCP services was randomly missing when the controller started, being reincluded only after the first reconciliation.
+
+Other notable changes include:
+
+- An update to the External HAProxy example page adds options to fix permission failures to bind ports `:80` and `:443`, see the [example page](https://haproxy-ingress.github.io/v0.13/docs/examples/external-haproxy/#a-word-about-security).
+
+Dependencies:
+
+- Update client-go from v0.23.16 to v0.23.17
+
+## Fixes and improvements (r12)
+
+Fixes and improvements since `v0.13.11`:
+
+* Fixes configmap based tcp sync [#1001](https://github.com/jcmoraisjr/haproxy-ingress/pull/1001) (jcmoraisjr)
+* Ensure predictable tcp by sorting endpoints [#1003](https://github.com/jcmoraisjr/haproxy-ingress/pull/1003) (jcmoraisjr)
+* Change owner of crt/key files to haproxy pid [#1004](https://github.com/jcmoraisjr/haproxy-ingress/pull/1004) (jcmoraisjr)
+* update client-go from v0.23.16 to v0.23.17 [2f3abbb](https://github.com/jcmoraisjr/haproxy-ingress/commit/2f3abbb60f7008fd28600fd0f69b348fa10a4619) (Joao Morais)
+* add security considerations on external haproxy [d21dc67](https://github.com/jcmoraisjr/haproxy-ingress/commit/d21dc6730f579bb0713a6f0600cca4d51c80bb38) (Joao Morais)
 
 # v0.13.11
 
