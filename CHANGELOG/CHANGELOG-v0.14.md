@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.13!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.14.3](#v0143)
+  * [Reference](#reference-r3)
+  * [Release notes](#release-notes-r3)
+  * [Fixes and improvements](#fixes-and-improvements-r3)
 * [v0.14.2](#v0142)
   * [Reference](#reference-r2)
   * [Release notes](#release-notes-r2)
@@ -83,6 +87,54 @@ Breaking backward compatibility from v0.13:
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
 * wolf-cosmose ([wolf-cosmose](https://github.com/wolf-cosmose))
 
+# v0.14.3
+
+## Reference (r3)
+
+* Release date: `2023-06-05`
+* Helm chart: `--version 0.14.3`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.14.3`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.14.3`
+* Embedded HAProxy version: `2.4.22`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.14.3`
+
+## Release notes (r3)
+
+This release fixes some issues found in the v0.14 branch:
+
+- External HAProxy was failing with the message "cannot open the file '/var/lib/haproxy/crt/default-fake-certificate.pem'.". This happened due to missing permission to read certificate and private key files when HAProxy container starts as non root, which is the default since HAProxy 2.4.
+- ConfigMap based TCP services was randomly missing when the controller started, being reincluded only after the first reconciliation.
+- Gateway API v1alpha2 was missing delete events, which means that the controller wasn't updating the configuration when a Gateway API resource was removed.
+
+Other notable changes include:
+
+- Karan Chaudhary added EndpointSlices support. v0.14 branch has this option disabled by default, enable it by adding `--enable-endpointslices-api` command-line option.
+- HTTP redirect now has an option to skip some paths, the default configuration adds an exception to `/.well-known/acme-challenge`.
+- An update to the External HAProxy example page adds options to fix permission failures to bind ports `:80` and `:443`, see the [example page](https://haproxy-ingress.github.io/v0.14/docs/examples/external-haproxy/#a-word-about-security).
+
+Dependencies:
+
+- Update client-go from v0.23.16 to v0.24.14
+- Update golang from 1.18.10 to 1.19.9
+
+## Fixes and improvements (r3)
+
+Fixes and improvements since `v0.14.2`:
+
+* Skip acme-challenge path on to/from redirects [#995](https://github.com/jcmoraisjr/haproxy-ingress/pull/995) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#redirect)
+  * Configuration keys:
+    * `no-redirect-locations`
+* Fixes configmap based tcp sync [#1001](https://github.com/jcmoraisjr/haproxy-ingress/pull/1001) (jcmoraisjr)
+* Adds support for EndpointSlices API in master [#959](https://github.com/jcmoraisjr/haproxy-ingress/pull/959) (lafolle) - [doc](https://haproxy-ingress.github.io/v0.14/docs/configuration/command-line/#enable-endpointslices-api)
+  * Command-line options:
+    * `--enable-endpointslices-api`
+* Fix gw-v1alpha2 delete notifications [#1002](https://github.com/jcmoraisjr/haproxy-ingress/pull/1002) (jcmoraisjr)
+* Ensure predictable tcp by sorting endpoints [#1003](https://github.com/jcmoraisjr/haproxy-ingress/pull/1003) (jcmoraisjr)
+* Change owner of crt/key files to haproxy pid [#1004](https://github.com/jcmoraisjr/haproxy-ingress/pull/1004) (jcmoraisjr)
+* update client-go from v0.23.16 to v0.24.14 [3246e19](https://github.com/jcmoraisjr/haproxy-ingress/commit/3246e196c28a17e9bc58c9b0cdaa3ee37c8d98b2) (Joao Morais)
+* add security considerations on external haproxy [61e1df7](https://github.com/jcmoraisjr/haproxy-ingress/commit/61e1df776aad8dd4d8c68e42719d46f61a7b3646) (Joao Morais)
+* update golang from 1.18.10 to 1.19.9 [52ede0f](https://github.com/jcmoraisjr/haproxy-ingress/commit/52ede0f8e10979e36838f3525da2afda5fe283c7) (Joao Morais)
+
 # v0.14.2
 
 ## Reference (r2)
@@ -125,7 +177,7 @@ New features and improvements since `v0.14.1`:
 This release fixes the following issues:
 
 - Service resources accept annotations just like ingress ones. However services annotated with path scoped annotations, like `haproxy-ingress.github.io/cors-enable` and `haproxy-ingress.github.io/auth-url`, were applying the configuration to just one of the paths pointing the service. So, considering `domain.local/path1` and `domain.local/path2` pointing to `svc1`, an annotation added to `svc1` would only be applied to one of the paths.
-- A wrong named port configured on the external auth was being silently ignored. This update adds this information in the documentation and also adds a warning in the log. See auth external [documentation](https://haproxy-ingress.github.io/v0.13/docs/configuration/keys/#auth-external).
+- A wrong named port configured on the external auth was being silently ignored. This update adds this information in the documentation and also adds a warning in the log. See auth external [documentation](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#auth-external).
 
 Other notable changes include:
 
