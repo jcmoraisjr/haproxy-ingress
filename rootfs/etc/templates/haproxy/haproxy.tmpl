@@ -404,6 +404,14 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- range $snippet := $backend.CustomConfig }}
+    {{ $snippet }}
+{{- end }}
+{{- range $snippet := index $global.CustomProxy $backend.ID }}
+    {{ $snippet }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
 {{- /*             MODE HTTP              */}}
 {{- /*------------------------------------*/}}
 {{- else }}{{/*** if $backend.ModeTCP ***/}}
