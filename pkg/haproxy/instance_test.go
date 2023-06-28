@@ -932,6 +932,14 @@ d1.local#/ path01`,
 			},
 			srvsuffix: "id 1234567",
 		},
+		{
+			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
+				b.ModeTCP = true
+				b.CustomConfig = []string{"## custom for TCP backend"}
+			},
+			expected: `
+    ## custom for TCP backend`,
+		},
 	}
 	for _, test := range testCases {
 		c := setup(t)
@@ -3067,6 +3075,14 @@ func TestInstanceCustomProxy(t *testing.T) {
 	h.AddPath(b, "/", hatypes.MatchBegin)
 	h.SetSSLPassthrough(true)
 
+	var h2 *hatypes.Host
+	var b2 = c.config.Backends().AcquireBackend("d2", "app", "8080")
+	b2.Endpoints = []*hatypes.Endpoint{endpointS21}
+	b2.ModeTCP = true
+	h2 = c.config.Hosts().AcquireHost("d2.local")
+	h2.AddPath(b, "/", hatypes.MatchBegin)
+	h2.SetSSLPassthrough(true)
+
 	auth := &c.config.Frontend().AuthProxy
 	auth.Name = "_front__auth"
 	auth.RangeStart = 4001
@@ -3085,6 +3101,7 @@ func TestInstanceCustomProxy(t *testing.T) {
 		"_tcp_default_pgsql_5432": {"## custom for _tcp_default_pgsql_5432"},
 		"_auth_backend001_5000":   {"## custom for _auth_backend001_5000"},
 		"d1_app_8080":             {"## custom for d1_app_8080"},
+		"d2_app_8080":             {"## custom for d2_app_8080"},
 		"_redirect_https":         {"## custom for _redirect_https"},
 		"_error404":               {"## custom for _error404", "## line 2"},
 		"_auth_4001":              {"## custom for _auth_4001"},
@@ -3114,6 +3131,10 @@ backend d1_app_8080
     mode http
     ## custom for d1_app_8080
     server s1 172.17.0.11:8080 weight 100
+backend d2_app_8080
+    mode tcp
+    ## custom for d2_app_8080
+    server s21 172.17.0.121:8080 weight 100
 backend _redirect_https
     mode http
     ## custom for _redirect_https
