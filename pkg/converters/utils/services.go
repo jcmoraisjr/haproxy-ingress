@@ -18,6 +18,7 @@ package utils
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 
 	api "k8s.io/api/core/v1"
@@ -70,6 +71,7 @@ func FindContainerPort(pod *api.Pod, svcPort *api.ServicePort) int {
 type Endpoint struct {
 	IP        string
 	Port      int
+	Target    string
 	TargetRef string
 }
 
@@ -79,10 +81,10 @@ func createEndpoints(endpoints *api.Endpoints, svcPort *api.ServicePort) (ready,
 			if matchPort(svcPort, &epPort) {
 				port := int(epPort.Port)
 				for _, addr := range subset.Addresses {
-					ready = append(ready, newEndpointAddr(&addr, port))
+					ready = append(ready, newEndpoint(addr.IP, port, addr.TargetRef))
 				}
 				for _, addr := range subset.NotReadyAddresses {
-					notReady = append(notReady, newEndpointAddr(&addr, port))
+					notReady = append(notReady, newEndpoint(addr.IP, port, addr.TargetRef))
 				}
 			}
 		}
@@ -115,6 +117,12 @@ func createEndpointSlices(endpointSlices []*discoveryv1.EndpointSlice, svcPort *
 			}
 
 			for _, endpoint := range endpointSlice.Endpoints {
+				// kube-proxy also consults the first address in the Endpoint.
+				// https://github.com/kubernetes/kubernetes/issues/106267
+				// Using that as an argument to justify why we are using first
+				// address here.
+				domainEndpoint := newEndpoint(endpoint.Addresses[0], int(*epPort.Port), endpoint.TargetRef)
+
 				// From the API docs of EndpointConditions:
 				//
 				// "ready indicates that this endpoint is prepared to receive traffic,
@@ -123,26 +131,12 @@ func createEndpointSlices(endpointSlices []*discoveryv1.EndpointSlice, svcPort *
 				// unknown state as ready. For compatibility reasons, ready should never be
 				// "true" for terminating endpoints."
 				if endpoint.Conditions.Ready == nil || *endpoint.Conditions.Ready {
-					domainEndpoint := Endpoint{
-						// kube-proxy also consults the first address in the Endpoint.
-						// https://github.com/kubernetes/kubernetes/issues/106267
-						// Using that as an argument to justify why we are using first
-						// address here.
-						IP:        endpoint.Addresses[0],
-						Port:      int(*epPort.Port),
-						TargetRef: targetRefToString(endpoint.TargetRef),
-					}
-					ready = append(ready, &domainEndpoint)
+					ready = append(ready, domainEndpoint)
 				} else {
 					// https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/
 					// Default EndpointSliceTerminatingCondition is false in 1.21
 					// Default EndpointSliceTerminatingCondition is true in 1.22
-					domainEndpoint := Endpoint{
-						IP:        endpoint.Addresses[0],
-						Port:      int(*epPort.Port),
-						TargetRef: targetRefToString(endpoint.TargetRef),
-					}
-					notReady = append(notReady, &domainEndpoint)
+					notReady = append(notReady, domainEndpoint)
 				}
 			}
 		}
@@ -154,21 +148,28 @@ func createEndpointSlices(endpointSlices []*discoveryv1.EndpointSlice, svcPort *
 func CreateEndpoints(cache types.Cache, svc *api.Service, svcPort *api.ServicePort, useEndpointSlices bool) (ready, notReady []*Endpoint, err error) {
 	switch {
 	case svc.Spec.Type == api.ServiceTypeExternalName:
-		ready, err := createEndpointsExternalName(cache, svc, svcPort)
-		return ready, nil, err
+		ready, err = createEndpointsExternalName(cache, svc, svcPort)
 	case useEndpointSlices:
-		endpoints, err := cache.GetEndpointSlices(svc)
-		if err != nil {
-			return nil, nil, err
+		endpoints, err1 := cache.GetEndpointSlices(svc)
+		if err1 != nil {
+			return nil, nil, err1
 		}
-		return createEndpointSlices(endpoints, svcPort)
+		ready, notReady, err = createEndpointSlices(endpoints, svcPort)
 	default:
-		endpoints, err := cache.GetEndpoints(svc)
-		if err != nil {
-			return nil, nil, err
+		endpoints, err1 := cache.GetEndpoints(svc)
+		if err1 != nil {
+			return nil, nil, err1
 		}
-		return createEndpoints(endpoints, svcPort)
+		ready, notReady, err = createEndpoints(endpoints, svcPort)
 	}
+	// ensures predictable result, allowing to compare old and new states
+	sort.Slice(ready, func(i, j int) bool {
+		return ready[i].Target < ready[j].Target
+	})
+	sort.Slice(notReady, func(i, j int) bool {
+		return notReady[i].Target < notReady[j].Target
+	})
+	return ready, notReady, err
 }
 
 func matchPort(svcPort *api.ServicePort, epPort *api.EndpointPort) bool {
@@ -184,7 +185,7 @@ func CreateSvcEndpoint(svc *api.Service, svcPort *api.ServicePort) (endpoint *En
 	if port <= 0 {
 		return nil, fmt.Errorf("invalid port number: %d", port)
 	}
-	return newEndpointIP(svc.Spec.ClusterIP, int(port)), nil
+	return newEndpoint(svc.Spec.ClusterIP, int(port), nil), nil
 }
 
 func createEndpointsExternalName(cache types.Cache, svc *api.Service, svcPort *api.ServicePort) (endpoints []*Endpoint, err error) {
@@ -198,30 +199,22 @@ func createEndpointsExternalName(cache types.Cache, svc *api.Service, svcPort *a
 	}
 	endpoints = make([]*Endpoint, len(addr))
 	for i, ip := range addr {
-		endpoints[i] = newEndpointIP(ip.String(), port)
+		endpoints[i] = newEndpoint(ip.String(), port, nil)
 	}
 	return endpoints, nil
 }
 
-func newEndpointAddr(addr *api.EndpointAddress, port int) *Endpoint {
+func newEndpoint(ip string, port int, targetRef *api.ObjectReference) *Endpoint {
+	var targetRefStr string
+	if targetRef != nil {
+		targetRefStr = fmt.Sprintf("%s/%s", targetRef.Namespace, targetRef.Name)
+
+	}
 	return &Endpoint{
-		IP:        addr.IP,
+		IP:        ip,
 		Port:      port,
-		TargetRef: targetRefToString(addr.TargetRef),
-	}
-}
-
-func targetRefToString(targetRef *api.ObjectReference) string {
-	if targetRef == nil {
-		return ""
-	}
-	return fmt.Sprintf("%s/%s", targetRef.Namespace, targetRef.Name)
-}
-
-func newEndpointIP(ip string, port int) *Endpoint {
-	return &Endpoint{
-		IP:   ip,
-		Port: port,
+		Target:    ip + ":" + strconv.Itoa(port),
+		TargetRef: targetRefStr,
 	}
 }
 
