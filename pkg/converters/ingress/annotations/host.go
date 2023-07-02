@@ -110,14 +110,14 @@ func (c *updater) buildHostRedirect(d *hostData) {
 	if target := c.haproxy.Hosts().FindTargetRedirect(redir.Value, false); target != nil {
 		c.logger.Warn("ignoring redirect from '%s' on %v, it's already targeting to '%s'",
 			redir.Value, redir.Source, target.Hostname)
-	} else {
+	} else if len(d.host.Paths) > 0 {
 		d.host.Redirect.RedirectHost = redir.Value
 	}
 	redirRegex := d.mapper.Get(ingtypes.HostRedirectFromRegex)
 	if target := c.haproxy.Hosts().FindTargetRedirect(redirRegex.Value, true); target != nil {
 		c.logger.Warn("ignoring regex redirect from '%s' on %v, it's already targeting to '%s'",
 			redirRegex.Value, redirRegex.Source, target.Hostname)
-	} else {
+	} else if len(d.host.Paths) > 0 {
 		d.host.Redirect.RedirectHostRegex = redirRegex.Value
 	}
 }
