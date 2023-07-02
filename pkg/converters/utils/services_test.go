@@ -39,12 +39,14 @@ func TestCreateEndpointsExternalName(t *testing.T) {
 	ready, notReady, err := CreateEndpoints(cache, svc, svcPort)
 	expected := []*Endpoint{
 		{
-			IP:   "10.0.1.10",
-			Port: 8080,
+			IP:     "10.0.1.10",
+			Port:   8080,
+			Target: "10.0.1.10:8080",
 		},
 		{
-			IP:   "10.0.1.11",
-			Port: 8080,
+			IP:     "10.0.1.11",
+			Port:   8080,
+			Target: "10.0.1.11:8080",
 		},
 	}
 	if !reflect.DeepEqual(ready, expected) {
@@ -71,8 +73,8 @@ func TestCreateEndpoints(t *testing.T) {
 			declarePort: "svcport:8080:http",
 			findPort:    "8080",
 			expected: []*Endpoint{
-				{IP: "172.17.0.11", Port: 8080},
-				{IP: "172.17.0.12", Port: 8080},
+				{IP: "172.17.0.11", Port: 8080, Target: "172.17.0.11:8080"},
+				{IP: "172.17.0.12", Port: 8080, Target: "172.17.0.12:8080"},
 			},
 		},
 		// 1
@@ -81,7 +83,7 @@ func TestCreateEndpoints(t *testing.T) {
 			declarePort: "svcport:8080:http",
 			findPort:    "svcport",
 			expected: []*Endpoint{
-				{IP: "172.17.0.11", Port: 8080},
+				{IP: "172.17.0.11", Port: 8080, Target: "172.17.0.11:8080"},
 			},
 		},
 		// 2
@@ -90,7 +92,7 @@ func TestCreateEndpoints(t *testing.T) {
 			declarePort: "svcport:8000:http",
 			findPort:    "http",
 			expected: []*Endpoint{
-				{IP: "172.17.0.12", Port: 8000},
+				{IP: "172.17.0.12", Port: 8000, Target: "172.17.0.12:8000"},
 			},
 		},
 	}
