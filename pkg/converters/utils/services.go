@@ -18,6 +18,7 @@ package utils
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 
 	api "k8s.io/api/core/v1"
@@ -69,32 +70,40 @@ func FindContainerPort(pod *api.Pod, svcPort *api.ServicePort) int {
 type Endpoint struct {
 	IP        string
 	Port      int
+	Target    string
 	TargetRef string
 }
 
 // CreateEndpoints ...
 func CreateEndpoints(cache types.Cache, svc *api.Service, svcPort *api.ServicePort) (ready, notReady []*Endpoint, err error) {
 	if svc.Spec.Type == api.ServiceTypeExternalName {
-		ready, err := createEndpointsExternalName(cache, svc, svcPort)
-		return ready, nil, err
-	}
-	endpoints, err := cache.GetEndpoints(svc)
-	if err != nil {
-		return nil, nil, err
-	}
-	for _, subset := range endpoints.Subsets {
-		for _, epPort := range subset.Ports {
-			if matchPort(svcPort, &epPort) {
-				port := int(epPort.Port)
-				for _, addr := range subset.Addresses {
-					ready = append(ready, newEndpointAddr(&addr, port))
-				}
-				for _, addr := range subset.NotReadyAddresses {
-					notReady = append(notReady, newEndpointAddr(&addr, port))
+		ready, err = createEndpointsExternalName(cache, svc, svcPort)
+	} else {
+		endpoints, err1 := cache.GetEndpoints(svc)
+		if err1 != nil {
+			return nil, nil, err1
+		}
+		for _, subset := range endpoints.Subsets {
+			for _, epPort := range subset.Ports {
+				if matchPort(svcPort, &epPort) {
+					port := int(epPort.Port)
+					for _, addr := range subset.Addresses {
+						ready = append(ready, newEndpoint(addr.IP, port, addr.TargetRef))
+					}
+					for _, addr := range subset.NotReadyAddresses {
+						notReady = append(notReady, newEndpoint(addr.IP, port, addr.TargetRef))
+					}
 				}
 			}
 		}
 	}
+	// ensures predictable result, allowing to compare old and new states
+	sort.Slice(ready, func(i, j int) bool {
+		return ready[i].Target < ready[j].Target
+	})
+	sort.Slice(notReady, func(i, j int) bool {
+		return notReady[i].Target < notReady[j].Target
+	})
 	return ready, notReady, nil
 }
 
@@ -111,7 +120,7 @@ func CreateSvcEndpoint(svc *api.Service, svcPort *api.ServicePort) (endpoint *En
 	if port <= 0 {
 		return nil, fmt.Errorf("invalid port number: %d", port)
 	}
-	return newEndpointIP(svc.Spec.ClusterIP, int(port)), nil
+	return newEndpoint(svc.Spec.ClusterIP, int(port), nil), nil
 }
 
 func createEndpointsExternalName(cache types.Cache, svc *api.Service, svcPort *api.ServicePort) (endpoints []*Endpoint, err error) {
@@ -125,30 +134,22 @@ func createEndpointsExternalName(cache types.Cache, svc *api.Service, svcPort *a
 	}
 	endpoints = make([]*Endpoint, len(addr))
 	for i, ip := range addr {
-		endpoints[i] = newEndpointIP(ip.String(), port)
+		endpoints[i] = newEndpoint(ip.String(), port, nil)
 	}
 	return endpoints, nil
 }
 
-func newEndpointAddr(addr *api.EndpointAddress, port int) *Endpoint {
+func newEndpoint(ip string, port int, targetRef *api.ObjectReference) *Endpoint {
+	var targetRefStr string
+	if targetRef != nil {
+		targetRefStr = fmt.Sprintf("%s/%s", targetRef.Namespace, targetRef.Name)
+
+	}
 	return &Endpoint{
-		IP:        addr.IP,
+		IP:        ip,
 		Port:      port,
-		TargetRef: targetRefToString(addr.TargetRef),
-	}
-}
-
-func targetRefToString(targetRef *api.ObjectReference) string {
-	if targetRef == nil {
-		return ""
-	}
-	return fmt.Sprintf("%s/%s", targetRef.Namespace, targetRef.Name)
-}
-
-func newEndpointIP(ip string, port int) *Endpoint {
-	return &Endpoint{
-		IP:   ip,
-		Port: port,
+		Target:    ip + ":" + strconv.Itoa(port),
+		TargetRef: targetRefStr,
 	}
 }
 
