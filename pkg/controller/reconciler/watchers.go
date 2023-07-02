@@ -139,7 +139,6 @@ func (w *watchers) handlersCore() []*hdlr {
 			typ: &api.Endpoints{},
 			res: types.ResourceEndpoints,
 			pr: []predicate.Predicate{
-				predicate.GenerationChangedPredicate{},
 				predicate.Funcs{
 					UpdateFunc: func(ue event.UpdateEvent) bool {
 						old := ue.ObjectOld.(*api.Endpoints)
