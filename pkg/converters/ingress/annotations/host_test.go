@@ -28,6 +28,7 @@ func TestBuildHostRedirect(t *testing.T) {
 		annPrev    map[string]string
 		ann        map[string]string
 		annDefault map[string]string
+		nopath     bool
 		expected   hatypes.HostRedirectConfig
 		logging    string
 	}{
@@ -93,6 +94,16 @@ func TestBuildHostRedirect(t *testing.T) {
 			},
 			logging: `WARN ignoring redirect from '*.d.local' on ingress 'default/ing1', it's already targeting to 'dprev.local'`,
 		},
+		// 7
+		{
+			annPrev: map[string]string{
+				ingtypes.HostRedirectFrom: "www.d.local",
+			},
+			ann: map[string]string{
+				ingtypes.HostRedirectFrom: "www.d.local",
+			},
+			nopath: true,
+		},
 	}
 	sprev := &Source{Namespace: "prev", Name: "ingprev", Type: "ingress"}
 	source := &Source{Namespace: "default", Name: "ing1", Type: "ingress"}
@@ -101,10 +112,15 @@ func TestBuildHostRedirect(t *testing.T) {
 		if test.annDefault == nil {
 			test.annDefault = map[string]string{}
 		}
+		b := c.haproxy.Backends().AcquireBackend("default", "d", "8080")
 		dprev := c.createHostData(sprev, test.annPrev, test.annDefault)
 		d := c.createHostData(source, test.ann, test.annDefault)
 		dprev.host = c.haproxy.Hosts().AcquireHost("dprev.local")
 		d.host = c.haproxy.Hosts().AcquireHost("d.local")
+		if !test.nopath {
+			dprev.host.AddPath(b, "/", hatypes.MatchPrefix)
+			d.host.AddPath(b, "/", hatypes.MatchPrefix)
+		}
 		updater := c.createUpdater()
 		updater.buildHostRedirect(dprev)
 		updater.buildHostRedirect(d)
