@@ -43,6 +43,8 @@ Note that the user needs administrative privileges in the cluster to properly in
 ```yaml
 controller:
   hostNetwork: true
+  ingressClassResource:
+    enabled: true
 ```
 
 HAProxy Ingress chart [documentation](https://github.com/haproxy-ingress/charts/blob/release-0.15/haproxy-ingress/README.md#configuration) has all the available options. See also further documentation in the [default values](https://github.com/haproxy-ingress/charts/blob/release-0.15/haproxy-ingress/values.yaml) file.
@@ -60,11 +62,12 @@ $ helm install haproxy-ingress haproxy-ingress/haproxy-ingress\
 The command `install` above can be changed to `upgrade` to start a rolling update of HAProxy Ingress version or configuration. `template` can be used instead to generate the manifests without installing them - add either a redirect `... >haproxy-ingress-install.yaml` to save the output, or `--output-dir output/` command line option to save one file per manifest.
 {{% /alert %}}
 
-The controller should be running in a few seconds. There are three important customizations made in the example above:
+The controller should be running in a few seconds. There are four important customizations made in the example above:
 
 * version: a good practice, this will ensure that you'll have the same version installed even if a new release issued.
 * namespace: we're instructing helm to install HAProxy Ingress in the `ingress-controller` namespace. This namespace will be created if it does not exist yet. The default behavior, if namespace is not provided, is to deploy the controller in the kubectl's current namespace.
 * hostNetwork: we're configuring the deployment to expose haproxy in the host network, which means bind all haproxy ports, including but not limited to 80 and 443, in the node's IPs. Maybe this isn't a proper configuration for your production - it depends on the options you have to expose a Kubernetes' service, but doing so we'll be able to send http/s requests on local development environments, or even baremetal and on premise deployments that doesn't have a fronting router or load balancer to expose the controller. In any case a service is also configured in the `ingress-controller` namespace which tries to expose haproxy.
+* ingressClassResource.enabled: This causes the helm chart to apply an [IngressClass](https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-class) to your cluster. IngressClasses are how HAProxy Ingress knows which of your Ingresses that it should control. IngressClasses replace the [kubernetes.io/ingress.class](https://kubernetes.io/docs/concepts/services-networking/ingress/#deprecated-annotation) annotation used in Kubernetes versions before v1.18.
 
 HAProxy Ingress' Helm chart has a few more configuration options, see all of them in the chart [documentation](https://github.com/haproxy-ingress/charts/blob/release-0.15/haproxy-ingress/README.md) and in the [default values](https://github.com/haproxy-ingress/charts/blob/release-0.15/haproxy-ingress/values.yaml) file.
 
@@ -92,8 +95,8 @@ echoserver-5b6fb6dd96-68jwp   1/1     Running   0          27s
 Obs.: `nip.io` is a convenient service which converts a valid domain name to any IP, either public or local. See [here](https://nip.io) how it works.
 
 ```shell
-$ kubectl --namespace default create ingress echoserver\
-  --annotation kubernetes.io/ingress.class=haproxy\
+$ kubectl --namespace default create ingress echoserver \
+  --class=haproxy \
   --rule="echoserver.local/*=echoserver:8080,tls"
 ```
 
