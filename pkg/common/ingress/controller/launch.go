@@ -298,8 +298,7 @@ command-line option instead to define if ingress without class should be
 tracked.`)
 
 		enableEndpointSlicesAPI = flags.Bool("enable-endpointslices-api", false,
-			`Enables EndpointSlices API and disables watching Endpoints API. Only enable
-			in
+			`Enables EndpointSlices API and disables watching Endpoints API. Only enable in
 k8s >=1.21+`)
 	)
 

@@ -24,6 +24,7 @@ import (
 
 	"github.com/go-logr/logr"
 	api "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networking "k8s.io/api/networking/v1"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -139,6 +140,7 @@ func (w *watchers) handlersCore() []*hdlr {
 			typ: &api.Endpoints{},
 			res: types.ResourceEndpoints,
 			pr: []predicate.Predicate{
+				predicate.NewPredicateFuncs(func(object client.Object) bool { return !w.cfg.EnableEndpointSliceAPI }),
 				predicate.Funcs{
 					UpdateFunc: func(ue event.UpdateEvent) bool {
 						old := ue.ObjectOld.(*api.Endpoints)
@@ -146,6 +148,28 @@ func (w *watchers) handlersCore() []*hdlr {
 						return !reflect.DeepEqual(old.Subsets, new.Subsets)
 					},
 				},
+			},
+		},
+		{
+			typ: &discoveryv1.EndpointSlice{},
+			res: types.ResourceEndpoints,
+			pr: []predicate.Predicate{
+				predicate.NewPredicateFuncs(func(object client.Object) bool { return w.cfg.EnableEndpointSliceAPI }),
+				predicate.Funcs{
+					UpdateFunc: func(ue event.UpdateEvent) bool {
+						old := ue.ObjectOld.(*discoveryv1.EndpointSlice)
+						new := ue.ObjectNew.(*discoveryv1.EndpointSlice)
+						return !reflect.DeepEqual(old.Endpoints, new.Endpoints)
+					},
+				},
+			},
+			name: func(obj client.Object) string {
+				if labels := obj.GetLabels(); labels != nil {
+					if name := labels["kubernetes.io/service-name"]; name != "" {
+						return name
+					}
+				}
+				return obj.GetName()
 			},
 		},
 		{
@@ -319,6 +343,7 @@ type hdlr struct {
 	add,
 	del func(o client.Object)
 	upd  func(old, new client.Object)
+	name func(obj client.Object) string
 	full bool
 }
 
@@ -372,8 +397,13 @@ func (h *hdlr) Generic(e event.GenericEvent, q workqueue.RateLimitingInterface) 
 }
 
 func (h *hdlr) compose(ev string, obj client.Object) {
+	var fullname string
+	if h.name != nil {
+		fullname = h.name(obj)
+	} else {
+		fullname = obj.GetName()
+	}
 	ns := obj.GetNamespace()
-	fullname := obj.GetName()
 	if ns != "" {
 		fullname = ns + "/" + fullname
 	}

@@ -287,6 +287,10 @@ usually serving long lived connections like TCP services or websockets.`)
 		`Defines if the nodes IP address to be returned in the ingress status should be
 the internal instead of the external IP address`)
 
+	enableEndpointSlicesAPI := flag.Bool("enable-endpointslices-api", false,
+		`Enables EndpointSlices API and disables watching Endpoints API. Only enable in
+k8s >=1.21+`)
+
 	logZap := flag.Bool("log-zap", false,
 		`Enables zap as the log sink for all the logging outputs.`)
 
@@ -480,6 +484,10 @@ define if ingress without class should be tracked.`)
 		"gatewayclass", "gateway", "httproute")
 	if hasGateway {
 		configLog.Info("found custom resource definition for gateway API v1alpha2")
+	}
+
+	if *enableEndpointSlicesAPI {
+		configLog.Info("watching endpointslices - --enable-endpointslices-api is true")
 	}
 
 	if *publishSvc != "" && *publishAddress != "" {
@@ -710,6 +718,7 @@ define if ingress without class should be tracked.`)
 		Election:                 election,
 		ElectionID:               *electionID,
 		ElectionNamespace:        podNamespace,
+		EnableEndpointSliceAPI:   *enableEndpointSlicesAPI,
 		ForceNamespaceIsolation:  *forceIsolation,
 		HasGateway:               hasGateway,
 		HealthzAddr:              healthz,
@@ -920,6 +929,7 @@ type Config struct {
 	Election                 bool
 	ElectionID               string
 	ElectionNamespace        string
+	EnableEndpointSliceAPI   bool
 	ForceNamespaceIsolation  bool
 	HasGateway               bool
 	HealthzAddr              string
