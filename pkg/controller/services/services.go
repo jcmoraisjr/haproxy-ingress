@@ -160,6 +160,7 @@ func (s *Services) setup(ctx context.Context) error {
 		AcmeTrackTLSAnn:  cfg.AcmeTrackTLSAnn,
 		TrackInstances:   cfg.TrackOldInstances,
 		HasGateway:       cfg.HasGateway,
+		EnableEPSlices:   cfg.EnableEndpointSliceAPI,
 	}
 	instance := haproxy.CreateInstance(s.legacylogger.new("haproxy"), instanceOptions)
 	if err := instance.ParseTemplates(); err != nil {
