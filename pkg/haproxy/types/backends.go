@@ -56,6 +56,20 @@ func (b *Backends) ItemsDel() map[string]*Backend {
 	return b.itemsDel
 }
 
+func (b *Backends) Clear() {
+	nb := CreateBackends(len(b.shards))
+	for i := range nb.shards {
+		if len(nb.shards[i]) > 0 {
+			// flag only shards with at least one backend associated,
+			// so it has the chance to be updated (removed or cleaned)
+			// in the case the new state doesn't add any backend to it.
+			b.backendShardChanged(i)
+		}
+	}
+	nb.itemsDel = b.items
+	*b = *nb
+}
+
 // Shrink compares deleted and added backends with the same name - ie changed
 // objects - and remove both from the changing hashmap tracker when they match.
 func (b *Backends) Shrink() {
@@ -140,7 +154,11 @@ func (b *Backends) Changed() bool {
 
 // BackendChanged ...
 func (b *Backends) BackendChanged(backend *Backend) {
-	b.changedShards[backend.shard] = true
+	b.backendShardChanged(backend.shard)
+}
+
+func (b *Backends) backendShardChanged(shard int) {
+	b.changedShards[shard] = true
 }
 
 // ChangedShards ...
