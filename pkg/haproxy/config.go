@@ -414,6 +414,12 @@ func (c *config) Userlists() *hatypes.Userlists {
 
 func (c *config) Clear() {
 	config := createConfig(c.options)
+
+	// copying backend state, so shards with all the backends removed can be
+	// properly identified and updated when a full reconciliation happens
+	config.backends = c.backends
+	config.backends.Clear()
+
 	*c = *config
 }
 
