@@ -1385,6 +1385,26 @@ func TestCors(t *testing.T) {
 				},
 			},
 		},
+		// 8
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackCorsEnable:       "true",
+					ingtypes.BackCorsAllowHeaders: "*",
+				},
+			},
+			expected: map[string]hatypes.Cors{
+				"/": {
+					Enabled:          true,
+					AllowCredentials: false,
+					AllowHeaders:     "*",
+					AllowMethods:     corsDefaultMethods,
+					AllowOrigin:      corsDefaultOrigin,
+					ExposeHeaders:    "",
+					MaxAge:           corsDefaultMaxAge,
+				},
+			},
+		},
 	}
 	annDefault := map[string]string{
 		ingtypes.BackCorsAllowHeaders: corsDefaultHeaders,
