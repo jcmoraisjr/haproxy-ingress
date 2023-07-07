@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM haproxy:2.2.29-alpine
+FROM haproxy:2.2.30-alpine
 RUN apk upgrade --no-cache && apk --no-cache add socat openssl lua5.3 lua-socket dumb-init
 
 COPY . /
