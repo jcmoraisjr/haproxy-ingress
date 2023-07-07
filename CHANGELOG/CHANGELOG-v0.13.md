@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.12!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.13.13](#v01313)
+  * [Reference](#reference-r13)
+  * [Release notes](#release-notes-r13)
+  * [Fixes and improvements](#fixes-and-improvements-r13)
 * [v0.13.12](#v01312)
   * [Reference](#reference-r12)
   * [Release notes](#release-notes-r12)
@@ -108,6 +112,9 @@ Breaking backward compatibility from v0.12
 * Andrej Baran ([andrejbaran](https://github.com/andrejbaran))
 * Andrew Rodland ([arodland](https://github.com/arodland))
 * Bart Versluijs ([bartversluijs](https://github.com/bartversluijs))
+* Chris Boot ([bootc](https://github.com/bootc))
+* Dmitry Misharov ([quarckster](https://github.com/quarckster))
+* genofire ([genofire](https://github.com/genofire))
 * ironashram ([ironashram](https://github.com/ironashram))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
 * Karan Chaudhary ([lafolle](https://github.com/lafolle))
@@ -120,6 +127,48 @@ Breaking backward compatibility from v0.12
 * Roman Gherta ([rgherta](https://github.com/rgherta))
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
+
+# v0.13.13
+
+## Reference (r13)
+
+* Release date: `2023-07-07`
+* Helm chart: `--version 0.13.13`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.13`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.13`
+* Embedded HAProxy version: `2.4.23`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.13.13`
+
+## Release notes (r13)
+
+This release fixes some issues found in the v0.13 branch:
+
+- An endless redirect might happen when configuring redirects on domains whose TLS secret declares two or more domains
+- A wildcard was not being accepted by the CORS Allowed Header configuration
+- Unused HAProxy backends might leak in the configuration, depending on how the configuration is changed, when backend sharding is enabled
+- Configuration snippet was missing on backends in TCP mode
+- ConfigMap based TCP services were making HAProxy to reload without need, depending on the order that service endpoints were being listed
+
+Dependencies:
+
+- embedded haproxy from 2.4.22 to 2.4.23
+
+## Fixes and improvements (r13)
+
+Fixes and improvements since `v0.13.12`:
+
+* Create endpoints on a predictable order [#1011](https://github.com/jcmoraisjr/haproxy-ingress/pull/1011) (jcmoraisjr)
+* Redirect hosts only to domains with associated backends [#1010](https://github.com/jcmoraisjr/haproxy-ingress/pull/1010) (jcmoraisjr)
+* Fix shard render when the last backend is removed [#1015](https://github.com/jcmoraisjr/haproxy-ingress/pull/1015) (jcmoraisjr)
+* Add wildcard as a valid cors allowed header [#1016](https://github.com/jcmoraisjr/haproxy-ingress/pull/1016) (jcmoraisjr)
+* update embedded haproxy from 2.4.22 to 2.4.23 [0d5826d](https://github.com/jcmoraisjr/haproxy-ingress/commit/0d5826d51a91395f1087c7d9058809434d94e8d0) (Joao Morais)
+* fix: config-backend annotation also for TCP-Backends [#1009](https://github.com/jcmoraisjr/haproxy-ingress/pull/1009) (genofire)
+
+Chart improvements since `v0.13.12`:
+
+* Add lifecycle hooks to external HAProxy container [#72](https://github.com/haproxy-ingress/charts/pull/72) (bootc)
+* chore: update HorizontalPodAutoscaler apiVersion [#71](https://github.com/haproxy-ingress/charts/pull/71) (quarckster)
+* add conditional PodDisruptionBudget [#73](https://github.com/haproxy-ingress/charts/pull/73) (jcmoraisjr)
 
 # v0.13.12
 
