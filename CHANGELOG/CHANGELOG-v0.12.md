@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.11!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.12.18](#v01218)
+  * [Reference](#reference-r18)
+  * [Release notes](#release-notes-r18)
+  * [Fixes and improvements](#fixes-and-improvements-r18)
 * [v0.12.17](#v01217)
   * [Reference](#reference-r17)
   * [Release notes](#release-notes-r17)
@@ -114,6 +118,38 @@ Breaking backward compatibility from v0.11
 * paul ([toothbrush](https://github.com/toothbrush))
 * pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.12.18
+
+## Reference (r18)
+
+* Release date: `2023-07-07`
+* Helm chart: `--version 0.12.18`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.12.18`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.12.18`
+* Embedded HAProxy version: `2.2.30`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.12.18`
+
+## Release notes (r18)
+
+This release fixes some issues found in the v0.12 branch:
+
+- A wildcard was not being accepted by the CORS Allowed Header configuration
+- Unused HAProxy backends might leak in the configuration, depending on how the configuration is changed, when backend sharding is enabled
+- ConfigMap based TCP services were making HAProxy to reload without need, depending on the order that service endpoints were being listed
+
+Dependencies:
+
+- embedded haproxy from 2.2.29 to 2.2.30
+
+## Fixes and improvements (r18)
+
+New features and improvements since `v0.12.17`:
+
+* Create endpoints on a predictable order [#1011](https://github.com/jcmoraisjr/haproxy-ingress/pull/1011) (jcmoraisjr)
+* Fix shard render when the last backend is removed [#1015](https://github.com/jcmoraisjr/haproxy-ingress/pull/1015) (jcmoraisjr)
+* Add wildcard as a valid cors allowed header [#1016](https://github.com/jcmoraisjr/haproxy-ingress/pull/1016) (jcmoraisjr)
+* update embedded haproxy from 2.2.29 to 2.2.30 [3b57c0f](https://github.com/jcmoraisjr/haproxy-ingress/commit/3b57c0fe96a9d3c283963c4638261150a6db8587) (Joao Morais)
 
 # v0.12.17
 
