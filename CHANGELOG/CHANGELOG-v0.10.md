@@ -2,6 +2,10 @@
 
 * [Major improvements](#major-improvements)
 * [Contributors](#contributors)
+* [v0.10.17](#v01017)
+  * [Reference](#reference-r17)
+  * [Release notes](#release-notes-r17)
+  * [Fixes and improvements](#fixes-and-improvements-r17)
 * [v0.10.16](#v01016)
   * [Reference](#reference-r16)
   * [Release notes](#release-notes-r16)
@@ -110,6 +114,37 @@ Highlights of this version:
 * Robert Agbozo ([RobertTheProfessional](https://github.com/RobertTheProfessional))
 * Sankul ([dark-shade](https://github.com/dark-shade))
 * Tadeu Andrade ([mtatheonly](https://github.com/mtatheonly))
+
+# v0.10.17
+
+## Reference (r17)
+
+* Release date: `2023-07-07`
+* Helm chart: `--version 0.10.17`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.10.17`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.10.17`
+* Embedded HAProxy version: `2.0.32`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.10.17`
+
+## Release notes (r17)
+
+This release fixes some issues found in the v0.10 branch:
+
+- A wildcard was not being accepted by the CORS Allowed Header configuration
+- ConfigMap based TCP services were making HAProxy to reload without need, depending on the order that service endpoints were being listed
+
+Dependencies:
+
+- embedded haproxy from 2.0.31 to 2.0.32
+
+## Fixes and improvements (r17)
+
+New features and improvements since `v0.10.16`:
+
+* Ensure predictable tcp by sorting endpoints [#1003](https://github.com/jcmoraisjr/haproxy-ingress/pull/1003) (jcmoraisjr)
+* Create endpoints on a predictable order [#1011](https://github.com/jcmoraisjr/haproxy-ingress/pull/1011) (jcmoraisjr)
+* Add wildcard as a valid cors allowed header [#1016](https://github.com/jcmoraisjr/haproxy-ingress/pull/1016) (jcmoraisjr)
+* update embedded haproxy from 2.0.31 to 2.0.32 [40ec4c9](https://github.com/jcmoraisjr/haproxy-ingress/commit/40ec4c920f40c37c07973c64354ac9e30e4b92de) (Joao Morais)
 
 # v0.10.16
 
