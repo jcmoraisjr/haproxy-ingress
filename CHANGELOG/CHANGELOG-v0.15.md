@@ -6,6 +6,11 @@
   * [Upgrading with embedded Acme](#upgrading-with-embedded-acme)
   * [Upgrading with custom repositories](#upgrading-with-custom-repositories)
 * [Contributors](#contributors)
+* [v0.15.0-alpha.2](#v0150-alpha2)
+  * [Reference](#reference-a2)
+  * [Release notes](#release-notes-a2)
+  * [Improvements](#improvements-a2)
+  * [Fixes](#fixes-a2)
 * [v0.15.0-alpha.1](#v0150-alpha1)
   * [Reference](#reference-a1)
   * [Release notes](#release-notes-a1)
@@ -29,6 +34,7 @@ Breaking backward compatibility from v0.14:
 * Election ID was changed, see the [documentation](https://haproxy-ingress.github.io/v0.15/docs/configuration/command-line/#election-id) for customization options. Election ID is used by embedded Acme signer and status updater to, respectively, request certificates and update ingress status. A cluster of HAProxy Ingress controllers will elect two controllers at the same time during the rolling update from any other version to v0.15. Ingress status does not have an impact. See [Upgrading with embedded Acme](#upgrading-with-embedded-acme) below for details about upgrading with embedded Acme signer enabled.
 * Helm chart has now a distinct field for the registry of an image, which should impact charts that configure custom repositories. See [Upgrading with custom repositories](#upgrading-with-custom-repositories) below for the details.
 * Log debug level is enabled by default. HAProxy Ingress has a good balance between low verbosity and useful information on its debug level.
+* Default image for the log sidecar changed from `whereisaaron/kube-syslog-sidecar` to `ghcr.io/crisu1710/kube-syslog-sidecar:0.2.0`. It is the same codebase, just adding support for multiple architectures.
 
 ### Deprecated command-line options
 
@@ -78,10 +84,99 @@ See the full syntax and default values in the [README.md](https://github.com/hap
 
 * Andrej Baran ([andrejbaran](https://github.com/andrejbaran))
 * Błażej Frydlewicz ([blafry](https://github.com/blafry))
+* Chris Boot ([bootc](https://github.com/bootc))
+* Dmitry Misharov ([quarckster](https://github.com/quarckster))
+* genofire ([genofire](https://github.com/genofire))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
+* Karan Chaudhary ([lafolle](https://github.com/lafolle))
 * Mac Chaffee ([mac-chaffee](https://github.com/mac-chaffee))
+* Manuel Rüger ([mrueg](https://github.com/mrueg))
 * Michele Palazzi ([ironashram](https://github.com/ironashram))
+* Robin Schneider ([Crisu1710](https://github.com/Crisu1710))
 * Tomasz Zurkowski ([doriath](https://github.com/doriath))
+
+# v0.15.0-alpha.2
+
+## Reference (a2)
+
+* Release date: `2023-07-13`
+* Helm chart: `--version 0.15.0-alpha.2 --devel`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.15.0-alpha.2`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.15.0-alpha.2`
+* Embedded HAProxy version: `2.6.14`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.15.0-alpha.2`
+
+## Release notes (a2)
+
+This is the second tag of the v0.15 branch. Most of the changes are fixes or improvements merged to stable branches. We still have some refactors under development which are prerequisites for a better Gateway API support. Such refactors will also be applied as new configuration keys, benefiting also Ingress workloads.
+
+Exclusive v0.15 changes include:
+
+- Robin Schneider added a new default image for the log sidecar with multi architecture support
+- Fix the notification of endpoint changes
+
+Other changes already merged to the stable branches:
+
+- Karan Chaudhary added EndpointSlices support. This option is disabled by default, enable it by adding `--enable-endpointslices-api` command-line option.
+- HTTP redirect now has an option to skip some paths, the default configuration adds an exception to `/.well-known/acme-challenge`.
+- External HAProxy was failing with the message "cannot open the file '/var/lib/haproxy/crt/default-fake-certificate.pem'.". This happened due to missing permission to read certificate and private key files when HAProxy container starts as non root, which is the default since HAProxy 2.4.
+- An update to the External HAProxy example page adds options to fix permission failures to bind ports `:80` and `:443`, see the [example page](https://haproxy-ingress.github.io/v0.15/docs/examples/external-haproxy/#a-word-about-security).
+
+Fixes merged to stable branches:
+
+- ConfigMap based TCP services was randomly missing when the controller started, being reincluded only after the first reconciliation.
+- An endless redirect might happen when configuring redirects on domains whose TLS secret declares two or more domains
+- Configuration snippet was missing on backends in TCP mode
+- ConfigMap based TCP services were making HAProxy to reload without need, depending on the order that service endpoints were being listed
+- Unused HAProxy backends might leak in the configuration, depending on how the configuration is changed, when backend sharding is enabled
+- A wildcard was not being accepted by the CORS Allowed Header configuration
+
+Dependencies:
+
+- embedded haproxy from 2.6.9 to 2.6.14
+- client-go from v0.26.5 to v0.26.6
+- controller-runtime from v0.14.4 to v0.14.6
+- golang from 1.19.10 to 1.19.11
+
+## Improvements (a2)
+
+New features and improvements since `v0.15.0-alpha.1`:
+
+* Adds support for EndpointSlices API in master [#959](https://github.com/jcmoraisjr/haproxy-ingress/pull/959) (lafolle) - [doc](https://haproxy-ingress.github.io/v0.15/docs/configuration/command-line/#enable-endpointslices-api)
+  * Command-line options:
+    * `--enable-endpointslices-api`
+* Skip acme-challenge path on to/from redirects [#995](https://github.com/jcmoraisjr/haproxy-ingress/pull/995) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.15/docs/configuration/keys/#redirect)
+  * Configuration keys:
+    * `no-redirect-locations`
+* Ensure predictable tcp by sorting endpoints [#1003](https://github.com/jcmoraisjr/haproxy-ingress/pull/1003) (jcmoraisjr)
+* Change owner of crt/key files to haproxy pid [#1004](https://github.com/jcmoraisjr/haproxy-ingress/pull/1004) (jcmoraisjr)
+* Update dependencies [#1006](https://github.com/jcmoraisjr/haproxy-ingress/pull/1006) (mrueg)
+* Prefer ingressClassName over annotations in docs [#986](https://github.com/jcmoraisjr/haproxy-ingress/pull/986) (mac-chaffee)
+* Add endpointslice api on v0.15 handler [#1013](https://github.com/jcmoraisjr/haproxy-ingress/pull/1013) (jcmoraisjr)
+* update golang from 1.19.10 to 1.19.11 [cec71c2](https://github.com/jcmoraisjr/haproxy-ingress/commit/cec71c2f495d31449114c0d2a1513ee826f9cd3f) (Joao Morais)
+* update client-go from v0.26.5 to v0.26.6 [ce93e8a](https://github.com/jcmoraisjr/haproxy-ingress/commit/ce93e8a1c408304b3eac4539a0749304b1622153) (Joao Morais)
+* update dependencies [925e6b1](https://github.com/jcmoraisjr/haproxy-ingress/commit/925e6b1739e9c9900ba7aca77363ee427e91bf3f) (Joao Morais)
+
+Chart improvements since `v0.15.0-alpha.1`:
+
+* improve log sidecar for multiple architectures [#62](https://github.com/haproxy-ingress/charts/pull/62) (Crisu1710)
+* Enables endpointslicesapi [#66](https://github.com/haproxy-ingress/charts/pull/66) (lafolle)
+* ignore PodSecurityPolicy on cluster v1.25 or newer [53c8373](https://github.com/haproxy-ingress/charts/commit/53c83735318da4d0dcbba706fdb06cd0a75258ce) (Joao Morais)
+* Defaults securityContext to allow privileged ports [#68](https://github.com/haproxy-ingress/charts/pull/68) (jcmoraisjr)
+* Revert default securityContext config [#70](https://github.com/haproxy-ingress/charts/pull/70) (jcmoraisjr)
+* Add lifecycle hooks to external HAProxy container [#72](https://github.com/haproxy-ingress/charts/pull/72) (bootc)
+* chore: update HorizontalPodAutoscaler apiVersion [#71](https://github.com/haproxy-ingress/charts/pull/71) (quarckster)
+* add conditional PodDisruptionBudget [#73](https://github.com/haproxy-ingress/charts/pull/73) (jcmoraisjr)
+
+## Fixes (a2)
+
+* Fixes configmap based tcp sync [#1001](https://github.com/jcmoraisjr/haproxy-ingress/pull/1001) (jcmoraisjr)
+* Redirect hosts only to domains with associated backends [#1010](https://github.com/jcmoraisjr/haproxy-ingress/pull/1010) (jcmoraisjr)
+* fix: config-backend annotation also for TCP-Backends [#1009](https://github.com/jcmoraisjr/haproxy-ingress/pull/1009) (genofire)
+* Create endpoints on a predictable order [#1011](https://github.com/jcmoraisjr/haproxy-ingress/pull/1011) (jcmoraisjr)
+* Remove generation predicate on endpoints [#1012](https://github.com/jcmoraisjr/haproxy-ingress/pull/1012) (jcmoraisjr)
+* Fix shard render when the last backend is removed [#1015](https://github.com/jcmoraisjr/haproxy-ingress/pull/1015) (jcmoraisjr)
+* Add wildcard as a valid cors allowed header [#1016](https://github.com/jcmoraisjr/haproxy-ingress/pull/1016) (jcmoraisjr)
 
 # v0.15.0-alpha.1
 
