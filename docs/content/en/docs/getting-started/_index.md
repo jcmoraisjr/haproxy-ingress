@@ -54,7 +54,7 @@ HAProxy Ingress chart [documentation](https://github.com/haproxy-ingress/charts/
 ```shell
 $ helm install haproxy-ingress haproxy-ingress/haproxy-ingress\
   --create-namespace --namespace ingress-controller\
-  --version 0.15.0-alpha.1 --devel\
+  --version 0.15.0-alpha.2 --devel\
   -f haproxy-ingress-values.yaml
 ```
 
