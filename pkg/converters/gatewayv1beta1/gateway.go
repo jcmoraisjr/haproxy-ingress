@@ -1,5 +1,5 @@
 /*
-Copyright 2022 The HAProxy Ingress Controller Authors.
+Copyright 2023 The HAProxy Ingress Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package gatewayv1alpha2
+package gatewayv1beta1
 
 import (
 	"fmt"
@@ -24,7 +24,6 @@ import (
 	api "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
@@ -77,12 +76,12 @@ func (c *converter) Sync(full bool) {
 		return
 	}
 	// TODO partial parsing
-	gateways, err := c.cache.GetGatewayA2Map()
+	gateways, err := c.cache.GetGatewayB1Map()
 	if err != nil {
 		c.logger.Warn("error reading gateway list: %v", err)
 		return
 	}
-	httpRoutes, err := c.cache.GetHTTPRouteA2List()
+	httpRoutes, err := c.cache.GetHTTPRouteB1List()
 	if err != nil {
 		c.logger.Warn("error reading httpRoute list: %v", err)
 		return
@@ -93,7 +92,7 @@ func (c *converter) Sync(full bool) {
 	}
 }
 
-func sortHTTPRoutes(httpRoutes []*gatewayv1alpha2.HTTPRoute) {
+func sortHTTPRoutes(httpRoutes []*gatewayv1beta1.HTTPRoute) {
 	sort.Slice(httpRoutes, func(i, j int) bool {
 		h1 := httpRoutes[i]
 		h2 := httpRoutes[j]
@@ -117,12 +116,12 @@ func (s *Source) String() string {
 }
 
 var (
-	gatewayGroup  = gatewayv1alpha2.Group(gatewayv1alpha2.GroupName)
-	gatewayKind   = gatewayv1alpha2.Kind("Gateway")
-	httpRouteKind = gatewayv1alpha2.Kind("HTTPRoute")
+	gatewayGroup  = gatewayv1beta1.Group(gatewayv1beta1.GroupName)
+	gatewayKind   = gatewayv1beta1.Kind("Gateway")
+	httpRouteKind = gatewayv1beta1.Kind("HTTPRoute")
 )
 
-func (c *converter) syncHTTPRoute(gateways map[string]*gatewayv1alpha2.Gateway, httpRoute *gatewayv1alpha2.HTTPRoute) {
+func (c *converter) syncHTTPRoute(gateways map[string]*gatewayv1beta1.Gateway, httpRoute *gatewayv1beta1.HTTPRoute) {
 	httpRouteSource := &Source{
 		kind:      string(httpRouteKind),
 		namespace: httpRoute.Namespace,
@@ -165,7 +164,7 @@ func (c *converter) syncHTTPRoute(gateways map[string]*gatewayv1alpha2.Gateway, 
 	}
 }
 
-func (c *converter) syncHTTPRouteGateway(httpRouteSource *Source, httpRoute *gatewayv1alpha2.HTTPRoute, gatewaySource *Source, gateway *gatewayv1alpha2.Gateway, sectionName *gatewayv1alpha2.SectionName) error {
+func (c *converter) syncHTTPRouteGateway(httpRouteSource *Source, httpRoute *gatewayv1beta1.HTTPRoute, gatewaySource *Source, gateway *gatewayv1beta1.Gateway, sectionName *gatewayv1beta1.SectionName) error {
 	for _, listener := range gateway.Spec.Listeners {
 		if sectionName != nil && *sectionName != listener.Name {
 			continue
@@ -197,7 +196,7 @@ func (c *converter) syncHTTPRouteGateway(httpRouteSource *Source, httpRoute *gat
 
 var errRouteNotAllowed = fmt.Errorf("listener does not allow the route")
 
-func (c *converter) checkListenerAllowed(gatewaySource, routeSource *Source, listener *gatewayv1alpha2.Listener) error {
+func (c *converter) checkListenerAllowed(gatewaySource, routeSource *Source, listener *gatewayv1beta1.Listener) error {
 	if listener == nil || listener.AllowedRoutes == nil {
 		return errRouteNotAllowed
 	}
@@ -210,19 +209,19 @@ func (c *converter) checkListenerAllowed(gatewaySource, routeSource *Source, lis
 	return nil
 }
 
-func checkListenerAllowedKind(routeSource *Source, kinds []gatewayv1alpha2.RouteGroupKind) error {
+func checkListenerAllowedKind(routeSource *Source, kinds []gatewayv1beta1.RouteGroupKind) error {
 	if len(kinds) == 0 {
 		return nil
 	}
 	for _, kind := range kinds {
-		if (kind.Group == nil || *kind.Group == gatewayGroup) && kind.Kind == gatewayv1alpha2.Kind(routeSource.kind) {
+		if (kind.Group == nil || *kind.Group == gatewayGroup) && kind.Kind == gatewayv1beta1.Kind(routeSource.kind) {
 			return nil
 		}
 	}
 	return fmt.Errorf("listener does not allow route of Kind '%s'", routeSource.kind)
 }
 
-func (c *converter) checkListenerAllowedNamespace(gatewaySource, routeSource *Source, namespaces *gatewayv1alpha2.RouteNamespaces) error {
+func (c *converter) checkListenerAllowedNamespace(gatewaySource, routeSource *Source, namespaces *gatewayv1beta1.RouteNamespaces) error {
 	if namespaces == nil || namespaces.From == nil {
 		return errRouteNotAllowed
 	}
@@ -251,12 +250,12 @@ func (c *converter) checkListenerAllowedNamespace(gatewaySource, routeSource *So
 	return errRouteNotAllowed
 }
 
-func (c *converter) createBackend(source *Source, index string, backendRefs []gatewayv1alpha2.HTTPBackendRef) (*hatypes.Backend, []*api.Service) {
+func (c *converter) createBackend(source *Source, index string, backendRefs []gatewayv1beta1.HTTPBackendRef) (*hatypes.Backend, []*api.Service) {
 	if habackend := c.haproxy.Backends().FindBackend(source.namespace, source.name, index); habackend != nil {
 		return habackend, nil
 	}
 	type backend struct {
-		service gatewayv1alpha2.ObjectName
+		service gatewayv1beta1.ObjectName
 		port    string
 		epready []*convutils.Endpoint
 		cl      convutils.WeightCluster
@@ -327,13 +326,13 @@ func (c *converter) createBackend(source *Source, index string, backendRefs []ga
 	return habackend, svclist
 }
 
-func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha2.Hostname, matches []gatewayv1alpha2.HTTPRouteMatch, backend *hatypes.Backend) (hosts []*hatypes.Host, pathLinks []*hatypes.PathLink) {
+func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1beta1.Hostname, matches []gatewayv1beta1.HTTPRouteMatch, backend *hatypes.Backend) (hosts []*hatypes.Host, pathLinks []*hatypes.PathLink) {
 	if backend.ModeTCP && len(matches) > 0 {
 		c.logger.Warn("ignoring match from %s: backend is TCP or SSL Passthrough", source)
 		matches = nil
 	}
 	if len(matches) == 0 {
-		matches = []gatewayv1alpha2.HTTPRouteMatch{{}}
+		matches = []gatewayv1beta1.HTTPRouteMatch{{}}
 	}
 	for _, match := range matches {
 		var path string
@@ -365,7 +364,17 @@ func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha2.
 				hstr = hatypes.DefaultHost
 			}
 			h := c.haproxy.Hosts().AcquireHost(hstr)
-			if h.FindPath(path, haMatch) != nil {
+			pathlink := hatypes.CreateHostPathLink(hstr, path, haMatch)
+			var haheaders hatypes.HTTPHeaderMatch
+			for _, header := range match.Headers {
+				haheaders = append(haheaders, hatypes.HTTPMatch{
+					Name:  string(header.Name),
+					Value: header.Value,
+					Regex: header.Type != nil && *header.Type == gatewayv1beta1.HeaderMatchRegularExpression,
+				})
+			}
+			pathlink.WithHeadersMatch(haheaders)
+			if h.FindPathWithLink(pathlink) != nil {
 				if backend.ModeTCP && h.SSLPassthrough() {
 					c.logger.Warn("skipping redeclared ssl-passthrough root path on %s", source)
 					continue
@@ -379,10 +388,10 @@ func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha2.
 				{Context: convtypes.ResourceHAHostname, UniqueName: h.Hostname},
 			}, convtypes.ResourceGateway, "gw")
 			h.TLS.UseDefaultCrt = false
-			h.AddPath(backend, path, haMatch)
+			h.AddLink(backend, pathlink)
 			c.handlePassthrough(path, h, backend, source)
 			hosts = append(hosts, h)
-			pathLinks = append(pathLinks, hatypes.CreateHostPathLink(hstr, path, haMatch))
+			pathLinks = append(pathLinks, pathlink)
 		}
 		// TODO implement match.Headers
 		// TODO implement match.ExtensionRef
@@ -423,18 +432,18 @@ func (c *converter) handlePassthrough(path string, h *hatypes.Host, b *hatypes.B
 	}
 }
 
-func (c *converter) filterHostnames(listenerHostname *gatewayv1alpha2.Hostname, routeHostnames []gatewayv1alpha2.Hostname) []gatewayv1alpha2.Hostname {
+func (c *converter) filterHostnames(listenerHostname *gatewayv1beta1.Hostname, routeHostnames []gatewayv1beta1.Hostname) []gatewayv1beta1.Hostname {
 	if listenerHostname == nil || *listenerHostname == "" || *listenerHostname == "*" {
 		if len(routeHostnames) == 0 {
-			return []gatewayv1alpha2.Hostname{"*"}
+			return []gatewayv1beta1.Hostname{"*"}
 		}
 		return routeHostnames
 	}
 	// TODO implement proper filter to wildcard based listenerHostnames -- `*.domain.local`
-	return []gatewayv1alpha2.Hostname{*listenerHostname}
+	return []gatewayv1beta1.Hostname{*listenerHostname}
 }
 
-func (c *converter) applyCertRef(source *Source, listener *gatewayv1alpha2.Listener, hosts []*hatypes.Host) {
+func (c *converter) applyCertRef(source *Source, listener *gatewayv1beta1.Listener, hosts []*hatypes.Host) {
 	if listener.TLS == nil {
 		return
 	}
@@ -477,7 +486,7 @@ func (c *converter) applyCertRef(source *Source, listener *gatewayv1alpha2.Liste
 	}
 }
 
-func (c *converter) readCertRef(namespace string, certRef *gatewayv1alpha2.SecretObjectReference) (crtFile convtypes.CrtFile, err error) {
+func (c *converter) readCertRef(namespace string, certRef *gatewayv1beta1.SecretObjectReference) (crtFile convtypes.CrtFile, err error) {
 	if certRef.Group != nil && *certRef.Group != "" && *certRef.Group != "core" {
 		return crtFile, fmt.Errorf("unsupported Group '%s', supported groups are 'core' and ''", *certRef.Group)
 	}

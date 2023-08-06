@@ -13,7 +13,7 @@ description: >
 The following steps configure the Kubernetes cluster and HAProxy Ingress to read and parse Gateway API resources:
 
 * Manually install the Gateway API CRDs, see the Gateway API [documentation](https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api)
-    * ... or simply `kubectl kustomize "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.5.0" | kubectl apply -f -`
+    * ... or simply `kubectl kustomize "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.7.1" | kubectl apply -f -`
 * Start (or restart) the controller
 
 See below the [getting started steps](#getting-started).
@@ -51,7 +51,7 @@ Add the following steps to the [Getting Started guide]({{% relref "/docs/getting
 
 ```
 kubectl kustomize\
- "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.5.0" |\
+ "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.7.1" |\
  kubectl apply -f -
 ```
 

@@ -49,6 +49,7 @@ import (
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 	gwapiversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
@@ -384,6 +385,7 @@ define if ingress without class should be tracked.`)
 	scheme := runtime.NewScheme()
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(gatewayv1alpha2.AddToScheme(scheme))
+	utilruntime.Must(gatewayv1beta1.AddToScheme(scheme))
 
 	var kubeConfig *rest.Config
 	if *apiserverHost == "" {
@@ -478,12 +480,19 @@ define if ingress without class should be tracked.`)
 		configLog.Info("watching for Gateway API resources - --watch-gateway is true")
 	}
 
-	hasGateway := *watchGateway && configHasAPI(
+	hasGatewayA2 := *watchGateway && configHasAPI(
 		clientGateway.Discovery(),
 		gatewayv1alpha2.GroupVersion,
 		"gatewayclass", "gateway", "httproute")
-	if hasGateway {
+	if hasGatewayA2 {
 		configLog.Info("found custom resource definition for gateway API v1alpha2")
+	}
+	hasGatewayB1 := *watchGateway && configHasAPI(
+		clientGateway.Discovery(),
+		gatewayv1beta1.GroupVersion,
+		"gatewayclass", "gateway", "httproute")
+	if hasGatewayB1 {
+		configLog.Info("found custom resource definition for gateway API v1beta1")
 	}
 
 	if *enableEndpointSlicesAPI {
@@ -720,7 +729,8 @@ define if ingress without class should be tracked.`)
 		ElectionNamespace:        podNamespace,
 		EnableEndpointSliceAPI:   *enableEndpointSlicesAPI,
 		ForceNamespaceIsolation:  *forceIsolation,
-		HasGateway:               hasGateway,
+		HasGatewayA2:             hasGatewayA2,
+		HasGatewayB1:             hasGatewayB1,
 		HealthzAddr:              healthz,
 		HealthzURL:               *healthzURL,
 		IngressClass:             *ingressClass,
@@ -931,7 +941,8 @@ type Config struct {
 	ElectionNamespace        string
 	EnableEndpointSliceAPI   bool
 	ForceNamespaceIsolation  bool
-	HasGateway               bool
+	HasGatewayA2             bool
+	HasGatewayB1             bool
 	HealthzAddr              string
 	HealthzURL               string
 	IngressClass             string

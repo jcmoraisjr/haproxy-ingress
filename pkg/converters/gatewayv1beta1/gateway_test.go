@@ -1,5 +1,5 @@
 /*
-Copyright 2022 The HAProxy Ingress Controller Authors.
+Copyright 2023 The HAProxy Ingress Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package gatewayv1alpha2
+package gatewayv1beta1
 
 import (
 	"fmt"
@@ -25,8 +25,7 @@ import (
 	api "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	gateway "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gateway "sigs.k8s.io/gateway-api/apis/v1beta1"
 	gwapischeme "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/scheme"
 
 	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
@@ -90,7 +89,7 @@ WARN skipping attachment of HTTPRoute 'ns2/web' to Gateway 'ns1/web' listener 'l
 				g := c.createGateway1("ns1/web", "l1")
 				c.createHTTPRoute1("ns2/web", "ns1/web", "echoserver:8080")
 				c.createService1("ns2/echoserver", "8080", "172.17.0.11")
-				all := gatewayv1beta1.NamespacesFromAll
+				all := gateway.NamespacesFromAll
 				g.Spec.Listeners[0].AllowedRoutes.Namespaces.From = &all
 			},
 			expDefaultHost: `
@@ -213,7 +212,7 @@ WARN skipping attachment of HTTPRoute 'default/web' to Gateway 'default/web' lis
 		{
 			id: "multi-listener-1",
 			resConfig: []string{`
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1beta1
 kind: Gateway
 metadata:
   name: web
@@ -429,7 +428,7 @@ func TestSyncHTTPRouteWeight(t *testing.T) {
 		{
 			id: "multi-backend-weight-1",
 			resConfig: []string{`
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
   name: web
@@ -472,7 +471,7 @@ paths:
 		{
 			id: "multi-backend-weight-2",
 			resConfig: []string{`
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
   labels:
@@ -647,7 +646,7 @@ WARN skipping redeclared path '/' type 'prefix' on HTTPRoute 'default/web2'
 }
 
 func TestSyncGatewayTLSPassthrough(t *testing.T) {
-	passthrough := gatewayv1beta1.TLSModePassthrough
+	passthrough := gateway.TLSModePassthrough
 	runTestSync(t, []testCaseSync{
 		{
 			id: "passthrough-1",
@@ -1017,20 +1016,20 @@ func (c *testConfig) createService1(name, port, ip string) (*api.Service, *api.E
 
 func (c *testConfig) createGatewayClass1() *gateway.GatewayClass {
 	gc := CreateObject(`
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1beta1
 kind: GatewayClass
 metadata:
   name: haproxy
 spec:
   controller: haproxy-ingress.github.io/controller`).(*gateway.GatewayClass)
-	c.cache.GatewayClassA2List = append(c.cache.GatewayClassA2List, gc)
+	c.cache.GatewayClassB1List = append(c.cache.GatewayClassB1List, gc)
 	return gc
 }
 
 func (c *testConfig) createGateway1(name, listeners string) *gateway.Gateway {
 	n := strings.Split(name, "/")
 	gw := CreateObject(`
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1beta1
 kind: Gateway
 metadata:
   name: ` + n[1] + `
@@ -1048,10 +1047,10 @@ spec:
 			lname = listener
 		}
 		l.Name = gateway.SectionName(lname)
-		from := gatewayv1beta1.NamespacesFromSame
+		from := gateway.NamespacesFromSame
 		var selector *v1.LabelSelector
 		if lselector != "" {
-			from = gatewayv1beta1.NamespacesFromSelector
+			from = gateway.NamespacesFromSelector
 			selector = &v1.LabelSelector{
 				MatchLabels: map[string]string{},
 			}
@@ -1068,7 +1067,7 @@ spec:
 		}
 		gw.Spec.Listeners = append(gw.Spec.Listeners, l)
 	}
-	c.cache.GatewayA2List[name] = gw
+	c.cache.GatewayB1List[name] = gw
 	return gw
 }
 
@@ -1101,7 +1100,7 @@ func (c *testConfig) createHTTPRoute1(name, parent, service string) *gateway.HTT
 	}
 	svc := strings.Split(service, ":")
 	r := CreateObject(`
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
   name: ` + n[1] + `
@@ -1115,13 +1114,13 @@ spec:
   - backendRefs:
     - name: ` + svc[0] + `
       port: ` + svc[1]).(*gateway.HTTPRoute)
-	c.cache.HTTPRouteA2List = append(c.cache.HTTPRouteA2List, r)
+	c.cache.HTTPRouteB1List = append(c.cache.HTTPRouteB1List, r)
 	return r
 }
 
 func (c *testConfig) createHTTPRoute2(name, parent, service, paths string) *gateway.HTTPRoute {
 	r := c.createHTTPRoute1(name, parent, service)
-	prefix := gatewayv1beta1.PathMatchPathPrefix
+	prefix := gateway.PathMatchPathPrefix
 	for _, path := range strings.Split(paths, ",") {
 		p := path
 		match := gateway.HTTPRouteMatch{
@@ -1140,9 +1139,9 @@ func (c *testConfig) createGatewayResources(res []string) {
 		obj := CreateObject(cfg)
 		switch obj := obj.(type) {
 		case *gateway.Gateway:
-			c.cache.GatewayA2List[obj.Namespace+"/"+obj.Name] = obj
+			c.cache.GatewayB1List[obj.Namespace+"/"+obj.Name] = obj
 		case *gateway.HTTPRoute:
-			c.cache.HTTPRouteA2List = append(c.cache.HTTPRouteA2List, obj)
+			c.cache.HTTPRouteB1List = append(c.cache.HTTPRouteB1List, obj)
 		case nil:
 			panic(fmt.Errorf("object is nil, cfg is %s", cfg))
 		default:

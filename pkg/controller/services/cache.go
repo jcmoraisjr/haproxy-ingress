@@ -38,6 +38,7 @@ import (
 	clientcache "k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
@@ -69,6 +70,7 @@ type c struct {
 }
 
 var errGatewayA2Disabled = fmt.Errorf("Gateway API v1alpha2 wasn't initialized")
+var errGatewayB1Disabled = fmt.Errorf("Gateway API v1beta1 wasn't initialized")
 
 func (c *c) get(key string, obj client.Object) error {
 	ns, n, err := clientcache.SplitMetaNamespaceKey(key)
@@ -169,9 +171,9 @@ func (c *c) IsValidIngressClass(ingressClass *networking.IngressClass) bool {
 	return ingressClass.Spec.Controller == c.config.ControllerName
 }
 
-func (c *c) IsValidGateway(gw *gatewayv1alpha2.Gateway) bool {
+func (c *c) IsValidGatewayA2(gw *gatewayv1alpha2.Gateway) bool {
 	className := gw.Spec.GatewayClassName
-	gwClass, err := c.getGatewayClass(string(className))
+	gwClass, err := c.getGatewayClassA2(string(className))
 	if err != nil {
 		c.log.Error(err, "error reading GatewayClass v1alpha2", "classname", className)
 		return false
@@ -179,18 +181,44 @@ func (c *c) IsValidGateway(gw *gatewayv1alpha2.Gateway) bool {
 		c.log.Error(nil, "GatewayClass v1alpha2 not found", "classname", className)
 		return false
 	}
-	return c.IsValidGatewayClass(gwClass)
+	return c.IsValidGatewayClassA2(gwClass)
 }
 
-func (c *c) IsValidGatewayClass(gwClass *gatewayv1alpha2.GatewayClass) bool {
+func (c *c) IsValidGatewayB1(gw *gatewayv1beta1.Gateway) bool {
+	className := gw.Spec.GatewayClassName
+	gwClass, err := c.getGatewayClassB1(string(className))
+	if err != nil {
+		c.log.Error(err, "error reading GatewayClass v1beta1", "classname", className)
+		return false
+	} else if gwClass == nil {
+		c.log.Error(nil, "GatewayClass v1beta1 not found", "classname", className)
+		return false
+	}
+	return c.IsValidGatewayClassB1(gwClass)
+}
+
+func (c *c) IsValidGatewayClassA2(gwClass *gatewayv1alpha2.GatewayClass) bool {
 	return gwClass.Spec.ControllerName == gatewayv1alpha2.GatewayController(c.config.ControllerName)
 }
 
-func (c *c) getGatewayClass(className string) (*gatewayv1alpha2.GatewayClass, error) {
-	if !c.config.HasGateway {
+func (c *c) IsValidGatewayClassB1(gwClass *gatewayv1beta1.GatewayClass) bool {
+	return gwClass.Spec.ControllerName == gatewayv1beta1.GatewayController(c.config.ControllerName)
+}
+
+func (c *c) getGatewayClassA2(className string) (*gatewayv1alpha2.GatewayClass, error) {
+	if !c.config.HasGatewayA2 {
 		return nil, errGatewayA2Disabled
 	}
 	class := gatewayv1alpha2.GatewayClass{}
+	err := c.get(className, &class)
+	return &class, err
+}
+
+func (c *c) getGatewayClassB1(className string) (*gatewayv1beta1.GatewayClass, error) {
+	if !c.config.HasGatewayB1 {
+		return nil, errGatewayB1Disabled
+	}
+	class := gatewayv1beta1.GatewayClass{}
 	err := c.get(className, &class)
 	return &class, err
 }
@@ -242,8 +270,8 @@ func buildLabelSelector(match map[string]string) (labels.Selector, error) {
 	return labels.Parse(strings.Join(list, ","))
 }
 
-func (c *c) GetGatewayMap() (map[string]*gatewayv1alpha2.Gateway, error) {
-	if !c.config.HasGateway {
+func (c *c) GetGatewayA2Map() (map[string]*gatewayv1alpha2.Gateway, error) {
+	if !c.config.HasGatewayA2 {
 		return nil, errGatewayA2Disabled
 	}
 	list := gatewayv1alpha2.GatewayList{}
@@ -254,15 +282,34 @@ func (c *c) GetGatewayMap() (map[string]*gatewayv1alpha2.Gateway, error) {
 	validList := make(map[string]*gatewayv1alpha2.Gateway, len(list.Items))
 	for i := range list.Items {
 		gw := &list.Items[i]
-		if c.IsValidGateway(gw) {
+		if c.IsValidGatewayA2(gw) {
 			validList[gw.Namespace+"/"+gw.Name] = gw
 		}
 	}
 	return validList, nil
 }
 
-func (c *c) GetHTTPRouteList() ([]*gatewayv1alpha2.HTTPRoute, error) {
-	if !c.config.HasGateway {
+func (c *c) GetGatewayB1Map() (map[string]*gatewayv1beta1.Gateway, error) {
+	if !c.config.HasGatewayB1 {
+		return nil, errGatewayB1Disabled
+	}
+	list := gatewayv1beta1.GatewayList{}
+	err := c.client.List(c.ctx, &list)
+	if err != nil {
+		return nil, err
+	}
+	validList := make(map[string]*gatewayv1beta1.Gateway, len(list.Items))
+	for i := range list.Items {
+		gw := &list.Items[i]
+		if c.IsValidGatewayB1(gw) {
+			validList[gw.Namespace+"/"+gw.Name] = gw
+		}
+	}
+	return validList, nil
+}
+
+func (c *c) GetHTTPRouteA2List() ([]*gatewayv1alpha2.HTTPRoute, error) {
+	if !c.config.HasGatewayA2 {
 		return nil, errGatewayA2Disabled
 	}
 	list := gatewayv1alpha2.HTTPRouteList{}
@@ -271,6 +318,22 @@ func (c *c) GetHTTPRouteList() ([]*gatewayv1alpha2.HTTPRoute, error) {
 		return nil, err
 	}
 	refList := make([]*gatewayv1alpha2.HTTPRoute, len(list.Items))
+	for i := range list.Items {
+		refList[i] = &list.Items[i]
+	}
+	return refList, nil
+}
+
+func (c *c) GetHTTPRouteB1List() ([]*gatewayv1beta1.HTTPRoute, error) {
+	if !c.config.HasGatewayB1 {
+		return nil, errGatewayB1Disabled
+	}
+	list := gatewayv1beta1.HTTPRouteList{}
+	err := c.client.List(c.ctx, &list)
+	if err != nil {
+		return nil, err
+	}
+	refList := make([]*gatewayv1beta1.HTTPRoute, len(list.Items))
 	for i := range list.Items {
 		refList[i] = &list.Items[i]
 	}

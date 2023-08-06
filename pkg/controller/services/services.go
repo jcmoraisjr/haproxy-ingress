@@ -159,7 +159,8 @@ func (s *Services) setup(ctx context.Context) error {
 		DisableKeywords:  cfg.DisableKeywords,
 		AcmeTrackTLSAnn:  cfg.AcmeTrackTLSAnn,
 		TrackInstances:   cfg.TrackOldInstances,
-		HasGateway:       cfg.HasGateway,
+		HasGatewayA2:     cfg.HasGatewayA2,
+		HasGatewayB1:     cfg.HasGatewayB1,
 		EnableEPSlices:   cfg.EnableEndpointSliceAPI,
 	}
 	instance := haproxy.CreateInstance(s.legacylogger.new("haproxy"), instanceOptions)
