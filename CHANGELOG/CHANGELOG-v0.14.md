@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.13!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.14.5](#v0145)
+  * [Reference](#reference-r5)
+  * [Release notes](#release-notes-r5)
+  * [Fixes and improvements](#fixes-and-improvements-r5)
 * [v0.14.4](#v0144)
   * [Reference](#reference-r4)
   * [Release notes](#release-notes-r4)
@@ -79,6 +83,7 @@ Breaking backward compatibility from v0.13:
 * genofire ([genofire](https://github.com/genofire))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
 * Josh Soref ([jsoref](https://github.com/jsoref))
+* Jurriaan Wijnberg ([jr01](https://github.com/jr01))
 * Karan Chaudhary ([lafolle](https://github.com/lafolle))
 * Mac Chaffee ([mac-chaffee](https://github.com/mac-chaffee))
 * Maël Valais ([maelvls](https://github.com/maelvls))
@@ -93,6 +98,41 @@ Breaking backward compatibility from v0.13:
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
 * wolf-cosmose ([wolf-cosmose](https://github.com/wolf-cosmose))
+
+# v0.14.5
+
+## Reference (r5)
+
+* Release date: `2023-09-01`
+* Helm chart: `--version 0.14.5`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.14.5`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.14.5`
+* Embedded HAProxy version: `2.4.24`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.14.5`
+
+## Release notes (r5)
+
+This release updates embedded HAProxy, which fixes some major issues regarding header parsing. See the full HAProxy changelog: https://www.mail-archive.com/haproxy@formilux.org/msg43901.html
+
+Jurriaan added support for automount service account token.
+
+Dependencies:
+
+- embedded haproxy from 2.4.23 to 2.4.24
+- client-go from v0.24.15 to v0.24.17
+- golang from 1.19.10 to 1.19.12
+
+## Fixes and improvements (r5)
+
+Fixes and improvements since `v0.14.4`:
+
+* Bump haproxy to 2.4.24, golang to 1.19.2 [#1022](https://github.com/jcmoraisjr/haproxy-ingress/pull/1022) (mrueg)
+* update client-go from v0.24.15 to v0.24.17 [ae927ee](https://github.com/jcmoraisjr/haproxy-ingress/commit/ae927ee78eb8a21d4453477fabc390e4582d6d88) (Joao Morais)
+
+Chart improvements since `v0.14.4`:
+
+* Add support to disable automountServiceAccountToken [#74](https://github.com/haproxy-ingress/charts/pull/74) (jr01)
+* Use of automount service account on v1.22 and newer [#75](https://github.com/haproxy-ingress/charts/pull/75) (jcmoraisjr)
 
 # v0.14.4
 
