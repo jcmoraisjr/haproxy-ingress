@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.11!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.12.19](#v01219)
+  * [Reference](#reference-r19)
+  * [Release notes](#release-notes-r19)
+  * [Fixes and improvements](#fixes-and-improvements-r19)
 * [v0.12.18](#v01218)
   * [Reference](#reference-r18)
   * [Release notes](#release-notes-r18)
@@ -118,6 +122,31 @@ Breaking backward compatibility from v0.11
 * paul ([toothbrush](https://github.com/toothbrush))
 * pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.12.19
+
+## Reference (r19)
+
+* Release date: `2023-09-01`
+* Helm chart: `--version 0.12.19`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.12.19`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.12.19`
+* Embedded HAProxy version: `2.2.31`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.12.19`
+
+## Release notes (r19)
+
+This release updates embedded HAProxy, which fixes some major issues regarding header parsing. See the full HAProxy changelog: https://www.mail-archive.com/haproxy@formilux.org/msg43903.html
+
+Dependencies:
+
+- embedded haproxy from 2.2.30 to 2.2.31
+
+## Fixes and improvements (r19)
+
+New features and improvements since `v0.12.18`:
+
+* update embedded haproxy from 2.2.30 to 2.2.31 [af837e5](https://github.com/jcmoraisjr/haproxy-ingress/commit/af837e5d370657110c5e17e9df97af1904e09bf0) (Joao Morais)
 
 # v0.12.18
 
