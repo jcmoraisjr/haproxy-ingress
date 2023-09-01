@@ -2,6 +2,10 @@
 
 * [Major improvements](#major-improvements)
 * [Contributors](#contributors)
+* [v0.10.18](#v01018)
+  * [Reference](#reference-r18)
+  * [Release notes](#release-notes-r18)
+  * [Fixes and improvements](#fixes-and-improvements-r18)
 * [v0.10.17](#v01017)
   * [Reference](#reference-r17)
   * [Release notes](#release-notes-r17)
@@ -114,6 +118,31 @@ Highlights of this version:
 * Robert Agbozo ([RobertTheProfessional](https://github.com/RobertTheProfessional))
 * Sankul ([dark-shade](https://github.com/dark-shade))
 * Tadeu Andrade ([mtatheonly](https://github.com/mtatheonly))
+
+# v0.10.18
+
+## Reference (r18)
+
+* Release date: `2023-09-01`
+* Helm chart: `--version 0.10.18`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.10.18`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.10.18`
+* Embedded HAProxy version: `2.0.33`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.10.18`
+
+## Release notes (r18)
+
+This release updates embedded HAProxy, which fixes some major issues regarding header parsing. See the full HAProxy changelog: https://www.mail-archive.com/haproxy@formilux.org/msg43904.html
+
+Dependencies:
+
+- embedded haproxy from 2.0.32 to 2.0.33
+
+## Fixes and improvements (r18)
+
+New features and improvements since `v0.10.17`:
+
+* update embedded haproxy from 2.0.32 to 2.0.33 [d92e58f](https://github.com/jcmoraisjr/haproxy-ingress/commit/d92e58faf1417c8a7205e19b2725dbfc1bb447d4) (Joao Morais)
 
 # v0.10.17
 
