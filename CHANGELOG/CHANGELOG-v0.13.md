@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.12!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.13.14](#v01314)
+  * [Reference](#reference-r14)
+  * [Release notes](#release-notes-r14)
+  * [Fixes and improvements](#fixes-and-improvements-r14)
 * [v0.13.13](#v01313)
   * [Reference](#reference-r13)
   * [Release notes](#release-notes-r13)
@@ -127,6 +131,31 @@ Breaking backward compatibility from v0.12
 * Roman Gherta ([rgherta](https://github.com/rgherta))
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
+
+# v0.13.14
+
+## Reference (r14)
+
+* Release date: `2023-09-01`
+* Helm chart: `--version 0.13.14`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.14`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.14`
+* Embedded HAProxy version: `2.4.24`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.13.14`
+
+## Release notes (r14)
+
+This release updates embedded HAProxy, which fixes some major issues regarding header parsing. See the full HAProxy changelog: https://www.mail-archive.com/haproxy@formilux.org/msg43901.html
+
+Dependencies:
+
+- embedded haproxy from 2.4.23 to 2.4.24
+
+## Fixes and improvements (r14)
+
+Fixes and improvements since `v0.13.13`:
+
+* Bump haproxy 2.4.24 [#1021](https://github.com/jcmoraisjr/haproxy-ingress/pull/1021) (mrueg)
 
 # v0.13.13
 
