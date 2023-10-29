@@ -20,7 +20,7 @@ require (
 	k8s.io/apimachinery v0.26.6
 	k8s.io/apiserver v0.26.6
 	k8s.io/client-go v0.26.6
-	k8s.io/klog/v2 v2.90.0
+	k8s.io/klog/v2 v2.100.1
 	k8s.io/utils v0.0.0-20230209194617-a36077c30491
 	sigs.k8s.io/controller-runtime v0.14.6
 	sigs.k8s.io/gateway-api v0.5.0
