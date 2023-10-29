@@ -23,7 +23,7 @@ jobs:
         )
         echo "GIT_TAG=$GIT_TAG" >> $GITHUB_ENV
         echo "TAGS=$TAGS" >> $GITHUB_ENV
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: docker/login-action@v3
       with:
         username: jcmoraisjr
