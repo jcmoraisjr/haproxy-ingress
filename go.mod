@@ -7,7 +7,7 @@ require (
 	github.com/go-logr/logr v1.2.4
 	github.com/go-logr/zapr v1.2.4
 	github.com/imdario/mergo v0.3.16
-	github.com/jinzhu/copier v0.3.5
+	github.com/jinzhu/copier v0.4.0
 	github.com/kylelemons/godebug v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/prometheus/client_golang v1.16.0
