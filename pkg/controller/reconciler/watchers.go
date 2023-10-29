@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/services"
@@ -63,8 +64,11 @@ type watchers struct {
 func (w *watchers) getHandlers() []*hdlr {
 	handlers := w.handlersCore()
 	handlers = append(handlers, w.handlersIngress()...)
-	if w.cfg.HasGateway {
+	if w.cfg.HasGatewayA2 {
 		handlers = append(handlers, w.handlersGatewayv1alpha2()...)
+	}
+	if w.cfg.HasGatewayB1 {
+		handlers = append(handlers, w.handlersGatewayv1beta1()...)
 	}
 	for _, h := range handlers {
 		h.w = w
@@ -263,23 +267,23 @@ func (w *watchers) handlersGatewayv1alpha2() []*hdlr {
 			res:  types.ResourceGateway,
 			full: true,
 			add: func(o client.Object) {
-				w.ch.GatewaysAdd = append(w.ch.GatewaysAdd, o.(*gatewayv1alpha2.Gateway))
+				w.ch.GatewaysA2Add = append(w.ch.GatewaysA2Add, o.(*gatewayv1alpha2.Gateway))
 			},
 			upd: func(old, new client.Object) {
 				oldgw := old.(*gatewayv1alpha2.Gateway)
 				newgw := new.(*gatewayv1alpha2.Gateway)
-				oldValid := w.val.IsValidGateway(oldgw)
-				newValid := w.val.IsValidGateway(newgw)
+				oldValid := w.val.IsValidGatewayA2(oldgw)
+				newValid := w.val.IsValidGatewayA2(newgw)
 				if oldValid && newValid {
-					w.ch.GatewaysUpd = append(w.ch.GatewaysUpd, newgw)
+					w.ch.GatewaysA2Upd = append(w.ch.GatewaysA2Upd, newgw)
 				} else if !oldValid && newValid {
-					w.ch.GatewaysAdd = append(w.ch.GatewaysAdd, newgw)
+					w.ch.GatewaysA2Add = append(w.ch.GatewaysA2Add, newgw)
 				} else if oldValid && !newValid {
-					w.ch.GatewaysDel = append(w.ch.GatewaysDel, oldgw)
+					w.ch.GatewaysA2Del = append(w.ch.GatewaysA2Del, oldgw)
 				}
 			},
 			del: func(o client.Object) {
-				w.ch.GatewaysDel = append(w.ch.GatewaysDel, o.(*gatewayv1alpha2.Gateway))
+				w.ch.GatewaysA2Del = append(w.ch.GatewaysA2Del, o.(*gatewayv1alpha2.Gateway))
 			},
 			pr: []predicate.Predicate{
 				predicate.GenerationChangedPredicate{},
@@ -289,43 +293,122 @@ func (w *watchers) handlersGatewayv1alpha2() []*hdlr {
 			typ: &gatewayv1alpha2.GatewayClass{},
 			res: types.ResourceGatewayClass,
 			add: func(o client.Object) {
-				w.ch.GatewayClassesAdd = append(w.ch.GatewayClassesAdd, o.(*gatewayv1alpha2.GatewayClass))
+				w.ch.GatewayClassesA2Add = append(w.ch.GatewayClassesA2Add, o.(*gatewayv1alpha2.GatewayClass))
 			},
 			upd: func(old, new client.Object) {
 				oldgwcls := old.(*gatewayv1alpha2.GatewayClass)
 				newgwcls := new.(*gatewayv1alpha2.GatewayClass)
-				oldValid := w.val.IsValidGatewayClass(oldgwcls)
-				newValid := w.val.IsValidGatewayClass(newgwcls)
+				oldValid := w.val.IsValidGatewayClassA2(oldgwcls)
+				newValid := w.val.IsValidGatewayClassA2(newgwcls)
 				if oldValid && newValid {
-					w.ch.GatewayClassesUpd = append(w.ch.GatewayClassesUpd, newgwcls)
+					w.ch.GatewayClassesA2Upd = append(w.ch.GatewayClassesA2Upd, newgwcls)
 				} else if !oldValid && newValid {
-					w.ch.GatewayClassesAdd = append(w.ch.GatewayClassesAdd, newgwcls)
+					w.ch.GatewayClassesA2Add = append(w.ch.GatewayClassesA2Add, newgwcls)
 				} else if oldValid && !newValid {
-					w.ch.GatewayClassesDel = append(w.ch.GatewayClassesDel, oldgwcls)
+					w.ch.GatewayClassesA2Del = append(w.ch.GatewayClassesA2Del, oldgwcls)
 				}
 			},
 			del: func(o client.Object) {
-				w.ch.GatewayClassesDel = append(w.ch.GatewayClassesDel, o.(*gatewayv1alpha2.GatewayClass))
+				w.ch.GatewayClassesA2Del = append(w.ch.GatewayClassesA2Del, o.(*gatewayv1alpha2.GatewayClass))
 			},
 			full: true,
 			pr: []predicate.Predicate{
 				predicate.GenerationChangedPredicate{},
 				predicate.Funcs{
 					CreateFunc: func(ce event.CreateEvent) bool {
-						return w.val.IsValidGatewayClass(ce.Object.(*gatewayv1alpha2.GatewayClass))
+						return w.val.IsValidGatewayClassA2(ce.Object.(*gatewayv1alpha2.GatewayClass))
 					},
 					DeleteFunc: func(de event.DeleteEvent) bool {
-						return w.val.IsValidGatewayClass(de.Object.(*gatewayv1alpha2.GatewayClass))
+						return w.val.IsValidGatewayClassA2(de.Object.(*gatewayv1alpha2.GatewayClass))
 					},
 					UpdateFunc: func(ue event.UpdateEvent) bool {
-						return w.val.IsValidGatewayClass(ue.ObjectOld.(*gatewayv1alpha2.GatewayClass)) ||
-							w.val.IsValidGatewayClass(ue.ObjectNew.(*gatewayv1alpha2.GatewayClass))
+						return w.val.IsValidGatewayClassA2(ue.ObjectOld.(*gatewayv1alpha2.GatewayClass)) ||
+							w.val.IsValidGatewayClassA2(ue.ObjectNew.(*gatewayv1alpha2.GatewayClass))
 					},
 				},
 			},
 		},
 		{
 			typ:  &gatewayv1alpha2.HTTPRoute{},
+			res:  types.ResourceHTTPRoute,
+			full: true,
+			pr: []predicate.Predicate{
+				predicate.GenerationChangedPredicate{},
+			},
+		},
+	}
+}
+
+func (w *watchers) handlersGatewayv1beta1() []*hdlr {
+	return []*hdlr{
+		{
+			typ:  &gatewayv1beta1.Gateway{},
+			res:  types.ResourceGateway,
+			full: true,
+			add: func(o client.Object) {
+				w.ch.GatewaysB1Add = append(w.ch.GatewaysB1Add, o.(*gatewayv1beta1.Gateway))
+			},
+			upd: func(old, new client.Object) {
+				oldgw := old.(*gatewayv1beta1.Gateway)
+				newgw := new.(*gatewayv1beta1.Gateway)
+				oldValid := w.val.IsValidGatewayB1(oldgw)
+				newValid := w.val.IsValidGatewayB1(newgw)
+				if oldValid && newValid {
+					w.ch.GatewaysB1Upd = append(w.ch.GatewaysB1Upd, newgw)
+				} else if !oldValid && newValid {
+					w.ch.GatewaysB1Add = append(w.ch.GatewaysB1Add, newgw)
+				} else if oldValid && !newValid {
+					w.ch.GatewaysB1Del = append(w.ch.GatewaysB1Del, oldgw)
+				}
+			},
+			del: func(o client.Object) {
+				w.ch.GatewaysB1Del = append(w.ch.GatewaysB1Del, o.(*gatewayv1beta1.Gateway))
+			},
+			pr: []predicate.Predicate{
+				predicate.GenerationChangedPredicate{},
+			},
+		},
+		{
+			typ: &gatewayv1beta1.GatewayClass{},
+			res: types.ResourceGatewayClass,
+			add: func(o client.Object) {
+				w.ch.GatewayClassesB1Add = append(w.ch.GatewayClassesB1Add, o.(*gatewayv1beta1.GatewayClass))
+			},
+			upd: func(old, new client.Object) {
+				oldgwcls := old.(*gatewayv1beta1.GatewayClass)
+				newgwcls := new.(*gatewayv1beta1.GatewayClass)
+				oldValid := w.val.IsValidGatewayClassB1(oldgwcls)
+				newValid := w.val.IsValidGatewayClassB1(newgwcls)
+				if oldValid && newValid {
+					w.ch.GatewayClassesB1Upd = append(w.ch.GatewayClassesB1Upd, newgwcls)
+				} else if !oldValid && newValid {
+					w.ch.GatewayClassesB1Add = append(w.ch.GatewayClassesB1Add, newgwcls)
+				} else if oldValid && !newValid {
+					w.ch.GatewayClassesB1Del = append(w.ch.GatewayClassesB1Del, oldgwcls)
+				}
+			},
+			del: func(o client.Object) {
+				w.ch.GatewayClassesB1Del = append(w.ch.GatewayClassesB1Del, o.(*gatewayv1beta1.GatewayClass))
+			},
+			full: true,
+			pr: []predicate.Predicate{
+				predicate.GenerationChangedPredicate{},
+				predicate.Funcs{
+					CreateFunc: func(ce event.CreateEvent) bool {
+						return w.val.IsValidGatewayClassB1(ce.Object.(*gatewayv1beta1.GatewayClass))
+					},
+					DeleteFunc: func(de event.DeleteEvent) bool {
+						return w.val.IsValidGatewayClassB1(de.Object.(*gatewayv1beta1.GatewayClass))
+					},
+					UpdateFunc: func(ue event.UpdateEvent) bool {
+						return w.val.IsValidGatewayClassB1(ue.ObjectOld.(*gatewayv1beta1.GatewayClass)) ||
+							w.val.IsValidGatewayClassB1(ue.ObjectNew.(*gatewayv1beta1.GatewayClass))
+					},
+				},
+			},
+		},
+		{
+			typ:  &gatewayv1beta1.HTTPRoute{},
 			res:  types.ResourceHTTPRoute,
 			full: true,
 			pr: []predicate.Predicate{

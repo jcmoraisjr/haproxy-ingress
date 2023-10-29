@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package gateway
+package gatewayv1alpha2
 
 import (
 	"fmt"
@@ -25,6 +25,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	convutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/utils"
@@ -76,12 +77,12 @@ func (c *converter) Sync(full bool) {
 		return
 	}
 	// TODO partial parsing
-	gateways, err := c.cache.GetGatewayMap()
+	gateways, err := c.cache.GetGatewayA2Map()
 	if err != nil {
 		c.logger.Warn("error reading gateway list: %v", err)
 		return
 	}
-	httpRoutes, err := c.cache.GetHTTPRouteList()
+	httpRoutes, err := c.cache.GetHTTPRouteA2List()
 	if err != nil {
 		c.logger.Warn("error reading httpRoute list: %v", err)
 		return
@@ -178,7 +179,7 @@ func (c *converter) syncHTTPRouteGateway(httpRouteSource *Source, httpRoute *gat
 			// TODO implement rule.Filters
 			backend, services := c.createBackend(httpRouteSource, fmt.Sprintf("_rule%d", index), rule.BackendRefs)
 			if backend != nil {
-				passthrough := listener.TLS != nil && listener.TLS.Mode != nil && *listener.TLS.Mode == gatewayv1alpha2.TLSModePassthrough
+				passthrough := listener.TLS != nil && listener.TLS.Mode != nil && *listener.TLS.Mode == gatewayv1beta1.TLSModePassthrough
 				if passthrough {
 					backend.ModeTCP = true
 				}
@@ -225,13 +226,13 @@ func (c *converter) checkListenerAllowedNamespace(gatewaySource, routeSource *So
 	if namespaces == nil || namespaces.From == nil {
 		return errRouteNotAllowed
 	}
-	if *namespaces.From == gatewayv1alpha2.NamespacesFromSame && routeSource.namespace == gatewaySource.namespace {
+	if *namespaces.From == gatewayv1beta1.NamespacesFromSame && routeSource.namespace == gatewaySource.namespace {
 		return nil
 	}
-	if *namespaces.From == gatewayv1alpha2.NamespacesFromAll {
+	if *namespaces.From == gatewayv1beta1.NamespacesFromAll {
 		return nil
 	}
-	if *namespaces.From == gatewayv1alpha2.NamespacesFromSelector {
+	if *namespaces.From == gatewayv1beta1.NamespacesFromSelector {
 		if namespaces.Selector == nil {
 			return errRouteNotAllowed
 		}
@@ -343,11 +344,11 @@ func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha2.
 			}
 			if match.Path.Type != nil {
 				switch *match.Path.Type {
-				case gatewayv1alpha2.PathMatchExact:
+				case gatewayv1beta1.PathMatchExact:
 					haMatch = hatypes.MatchExact
-				case gatewayv1alpha2.PathMatchPathPrefix:
+				case gatewayv1beta1.PathMatchPathPrefix:
 					haMatch = hatypes.MatchPrefix
-				case gatewayv1alpha2.PathMatchRegularExpression:
+				case gatewayv1beta1.PathMatchRegularExpression:
 					haMatch = hatypes.MatchRegex
 				}
 			}
@@ -437,7 +438,7 @@ func (c *converter) applyCertRef(source *Source, listener *gatewayv1alpha2.Liste
 	if listener.TLS == nil {
 		return
 	}
-	if listener.TLS.Mode != nil && *listener.TLS.Mode == gatewayv1alpha2.TLSModePassthrough {
+	if listener.TLS.Mode != nil && *listener.TLS.Mode == gatewayv1beta1.TLSModePassthrough {
 		for _, host := range hosts {
 			// backend was already changed to ModeTCP; hosts.match was already
 			// changed to root path only and a warning was already logged if needed

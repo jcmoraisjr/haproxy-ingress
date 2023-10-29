@@ -43,6 +43,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	cfile "github.com/jcmoraisjr/haproxy-ingress/pkg/common/file"
@@ -218,8 +219,9 @@ func (c *k8scache) hasGateway() bool {
 }
 
 var errGatewayA2Disabled = fmt.Errorf("Gateway API v1alpha2 wasn't initialized")
+var errGatewayB1Disabled = fmt.Errorf("Legacy controller does not support Gateway API v1beta1")
 
-func (c *k8scache) GetGatewayMap() (map[string]*gatewayv1alpha2.Gateway, error) {
+func (c *k8scache) GetGatewayA2Map() (map[string]*gatewayv1alpha2.Gateway, error) {
 	if !c.hasGateway() {
 		return nil, errGatewayA2Disabled
 	}
@@ -236,11 +238,19 @@ func (c *k8scache) GetGatewayMap() (map[string]*gatewayv1alpha2.Gateway, error) 
 	return validGwList, nil
 }
 
-func (c *k8scache) GetGatewayClass(className string) (*gatewayv1alpha2.GatewayClass, error) {
+func (c *k8scache) GetGatewayB1Map() (map[string]*gatewayv1beta1.Gateway, error) {
+	return nil, errGatewayB1Disabled
+}
+
+func (c *k8scache) GetGatewayClassA2(className string) (*gatewayv1alpha2.GatewayClass, error) {
 	if !c.hasGateway() {
 		return nil, errGatewayA2Disabled
 	}
 	return c.listers.gatewayClassLister.Get(className)
+}
+
+func (c *k8scache) GetGatewayClassB1(className string) (*gatewayv1alpha2.GatewayClass, error) {
+	return nil, errGatewayB1Disabled
 }
 
 func buildLabelSelector(match map[string]string) (labels.Selector, error) {
@@ -251,11 +261,15 @@ func buildLabelSelector(match map[string]string) (labels.Selector, error) {
 	return labels.Parse(strings.Join(list, ","))
 }
 
-func (c *k8scache) GetHTTPRouteList() ([]*gatewayv1alpha2.HTTPRoute, error) {
+func (c *k8scache) GetHTTPRouteA2List() ([]*gatewayv1alpha2.HTTPRoute, error) {
 	if !c.hasGateway() {
 		return nil, errGatewayA2Disabled
 	}
 	return c.listers.httpRouteLister.List(labels.Everything())
+}
+
+func (c *k8scache) GetHTTPRouteB1List() ([]*gatewayv1beta1.HTTPRoute, error) {
+	return nil, errGatewayB1Disabled
 }
 
 func (c *k8scache) GetService(defaultNamespace, serviceName string) (*api.Service, error) {
@@ -726,7 +740,7 @@ func (c *k8scache) IsValidIngressClass(ingressClass *networking.IngressClass) bo
 // implements ListerEvents
 func (c *k8scache) IsValidGateway(gw *gatewayv1alpha2.Gateway) bool {
 	className := gw.Spec.GatewayClassName
-	gwClass, err := c.GetGatewayClass(string(className))
+	gwClass, err := c.GetGatewayClassA2(string(className))
 	if err != nil {
 		c.logger.Warn("error reading GatewayClass v1alpha2 '%s': %v", className, err)
 		return false
@@ -778,17 +792,17 @@ func (c *k8scache) Notify(old, cur interface{}) {
 			}
 		case *gatewayv1alpha2.Gateway:
 			if cur == nil {
-				ch.GatewaysDel = append(ch.GatewaysDel, old)
+				ch.GatewaysA2Del = append(ch.GatewaysA2Del, old)
 				ch.NeedFullSync = true
 			}
 		case *gatewayv1alpha2.GatewayClass:
 			if cur == nil {
-				ch.GatewayClassesDel = append(ch.GatewayClassesDel, old)
+				ch.GatewayClassesA2Del = append(ch.GatewayClassesA2Del, old)
 				ch.NeedFullSync = true
 			}
 		case *gatewayv1alpha2.HTTPRoute:
 			if cur == nil {
-				ch.HTTPRoutesDel = append(ch.HTTPRoutesDel, old)
+				ch.HTTPRoutesA2Del = append(ch.HTTPRoutesA2Del, old)
 				ch.NeedFullSync = true
 			}
 		case *api.Service:
@@ -828,25 +842,25 @@ func (c *k8scache) Notify(old, cur interface{}) {
 		case *gatewayv1alpha2.Gateway:
 			gw := cur
 			if old == nil {
-				ch.GatewaysAdd = append(ch.GatewaysAdd, gw)
+				ch.GatewaysA2Add = append(ch.GatewaysA2Add, gw)
 			} else {
-				ch.GatewaysUpd = append(ch.GatewaysUpd, gw)
+				ch.GatewaysA2Upd = append(ch.GatewaysA2Upd, gw)
 			}
 			ch.NeedFullSync = true
 		case *gatewayv1alpha2.GatewayClass:
 			cls := cur
 			if old == nil {
-				ch.GatewayClassesAdd = append(ch.GatewayClassesAdd, cls)
+				ch.GatewayClassesA2Add = append(ch.GatewayClassesA2Add, cls)
 			} else {
-				ch.GatewayClassesUpd = append(ch.GatewayClassesUpd, cls)
+				ch.GatewayClassesA2Upd = append(ch.GatewayClassesA2Upd, cls)
 			}
 			ch.NeedFullSync = true
 		case *gatewayv1alpha2.HTTPRoute:
 			hr := cur
 			if old == nil {
-				ch.HTTPRoutesAdd = append(ch.HTTPRoutesAdd, hr)
+				ch.HTTPRoutesA2Add = append(ch.HTTPRoutesA2Add, hr)
 			} else {
-				ch.HTTPRoutesUpd = append(ch.HTTPRoutesUpd, hr)
+				ch.HTTPRoutesA2Upd = append(ch.HTTPRoutesA2Upd, hr)
 			}
 			ch.NeedFullSync = true
 		case *api.Endpoints:
@@ -945,31 +959,31 @@ func (c *k8scache) SwapChangedObjects() *convtypes.ChangedObjects {
 	for _, cls := range ch.IngressClassesAdd {
 		addChanges(convtypes.ResourceIngressClass, eventAdd, "", cls.Name)
 	}
-	for _, gw := range ch.GatewaysDel {
+	for _, gw := range ch.GatewaysA2Del {
 		addChanges(convtypes.ResourceGateway, eventDel, gw.Namespace, gw.Name)
 	}
-	for _, gw := range ch.GatewaysUpd {
+	for _, gw := range ch.GatewaysA2Upd {
 		addChanges(convtypes.ResourceGateway, eventUpdate, gw.Namespace, gw.Name)
 	}
-	for _, gw := range ch.GatewaysAdd {
+	for _, gw := range ch.GatewaysA2Add {
 		addChanges(convtypes.ResourceGateway, eventAdd, gw.Namespace, gw.Name)
 	}
-	for _, cls := range ch.GatewayClassesDel {
+	for _, cls := range ch.GatewayClassesA2Del {
 		addChanges(convtypes.ResourceGatewayClass, eventDel, "", cls.Name)
 	}
-	for _, cls := range ch.GatewayClassesUpd {
+	for _, cls := range ch.GatewayClassesA2Upd {
 		addChanges(convtypes.ResourceGatewayClass, eventUpdate, "", cls.Name)
 	}
-	for _, cls := range ch.GatewayClassesAdd {
+	for _, cls := range ch.GatewayClassesA2Add {
 		addChanges(convtypes.ResourceGatewayClass, eventAdd, "", cls.Name)
 	}
-	for _, hr := range ch.HTTPRoutesDel {
+	for _, hr := range ch.HTTPRoutesA2Del {
 		addChanges(convtypes.ResourceHTTPRoute, eventDel, hr.Namespace, hr.Name)
 	}
-	for _, hr := range ch.HTTPRoutesUpd {
+	for _, hr := range ch.HTTPRoutesA2Upd {
 		addChanges(convtypes.ResourceHTTPRoute, eventUpdate, hr.Namespace, hr.Name)
 	}
-	for _, hr := range ch.HTTPRoutesAdd {
+	for _, hr := range ch.HTTPRoutesA2Add {
 		addChanges(convtypes.ResourceHTTPRoute, eventAdd, hr.Namespace, hr.Name)
 	}
 	for _, ep := range ch.EndpointsNew {

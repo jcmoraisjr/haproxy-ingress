@@ -25,6 +25,7 @@ import (
 	networking "k8s.io/api/networking/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
@@ -35,8 +36,10 @@ type Cache interface {
 	GetIngress(ingressName string) (*networking.Ingress, error)
 	GetIngressList() ([]*networking.Ingress, error)
 	GetIngressClass(className string) (*networking.IngressClass, error)
-	GetGatewayMap() (map[string]*gatewayv1alpha2.Gateway, error)
-	GetHTTPRouteList() ([]*gatewayv1alpha2.HTTPRoute, error)
+	GetGatewayA2Map() (map[string]*gatewayv1alpha2.Gateway, error)
+	GetGatewayB1Map() (map[string]*gatewayv1beta1.Gateway, error)
+	GetHTTPRouteA2List() ([]*gatewayv1alpha2.HTTPRoute, error)
+	GetHTTPRouteB1List() ([]*gatewayv1beta1.HTTPRoute, error)
 	GetService(defaultNamespace, serviceName string) (*api.Service, error)
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
 	GetConfigMap(configMapName string) (*api.ConfigMap, error)
@@ -65,11 +68,18 @@ type ChangedObjects struct {
 	IngressClassesDel, IngressClassesUpd, IngressClassesAdd []*networking.IngressClass
 	//
 	//
-	GatewaysDel, GatewaysUpd, GatewaysAdd []*gatewayv1alpha2.Gateway
+	GatewaysA2Del, GatewaysA2Upd, GatewaysA2Add []*gatewayv1alpha2.Gateway
 	//
-	GatewayClassesDel, GatewayClassesUpd, GatewayClassesAdd []*gatewayv1alpha2.GatewayClass
+	GatewayClassesA2Del, GatewayClassesA2Upd, GatewayClassesA2Add []*gatewayv1alpha2.GatewayClass
 	//
-	HTTPRoutesDel, HTTPRoutesUpd, HTTPRoutesAdd []*gatewayv1alpha2.HTTPRoute
+	HTTPRoutesA2Del, HTTPRoutesA2Upd, HTTPRoutesA2Add []*gatewayv1alpha2.HTTPRoute
+	//
+	GatewaysB1Del, GatewaysB1Upd, GatewaysB1Add []*gatewayv1beta1.Gateway
+	//
+	GatewayClassesB1Del, GatewayClassesB1Upd, GatewayClassesB1Add []*gatewayv1beta1.GatewayClass
+	//
+	HTTPRoutesB1Del, HTTPRoutesB1Upd, HTTPRoutesB1Add []*gatewayv1beta1.HTTPRoute
+	//
 	//
 	EndpointsNew []*api.Endpoints
 	//
