@@ -27,6 +27,7 @@ import (
 	discoveryv1 "k8s.io/api/discovery/v1"
 	networking "k8s.io/api/networking/v1"
 	"k8s.io/client-go/util/workqueue"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -430,8 +431,8 @@ type hdlr struct {
 	full bool
 }
 
-func (h *hdlr) getSource() source.Source {
-	return &source.Kind{Type: h.typ}
+func (h *hdlr) getSource(c cache.Cache) source.Source {
+	return source.Kind(c, h.typ)
 }
 
 func (h *hdlr) getEventHandler() handler.EventHandler {
@@ -442,7 +443,7 @@ func (h *hdlr) getPredicates() []predicate.Predicate {
 	return h.pr
 }
 
-func (h *hdlr) Create(e event.CreateEvent, q workqueue.RateLimitingInterface) {
+func (h *hdlr) Create(ctx context.Context, e event.CreateEvent, q workqueue.RateLimitingInterface) {
 	h.w.mu.Lock()
 	defer h.w.mu.Unlock()
 	if h.add != nil {
@@ -452,7 +453,7 @@ func (h *hdlr) Create(e event.CreateEvent, q workqueue.RateLimitingInterface) {
 	h.notify("create", e.Object, q)
 }
 
-func (h *hdlr) Update(e event.UpdateEvent, q workqueue.RateLimitingInterface) {
+func (h *hdlr) Update(ctx context.Context, e event.UpdateEvent, q workqueue.RateLimitingInterface) {
 	h.w.mu.Lock()
 	defer h.w.mu.Unlock()
 	if h.upd != nil {
@@ -462,7 +463,7 @@ func (h *hdlr) Update(e event.UpdateEvent, q workqueue.RateLimitingInterface) {
 	h.notify("update", e.ObjectNew, q)
 }
 
-func (h *hdlr) Delete(e event.DeleteEvent, q workqueue.RateLimitingInterface) {
+func (h *hdlr) Delete(ctx context.Context, e event.DeleteEvent, q workqueue.RateLimitingInterface) {
 	h.w.mu.Lock()
 	defer h.w.mu.Unlock()
 	if h.del != nil {
@@ -472,7 +473,7 @@ func (h *hdlr) Delete(e event.DeleteEvent, q workqueue.RateLimitingInterface) {
 	h.notify("delete", e.Object, q)
 }
 
-func (h *hdlr) Generic(e event.GenericEvent, q workqueue.RateLimitingInterface) {
+func (h *hdlr) Generic(ctx context.Context, e event.GenericEvent, q workqueue.RateLimitingInterface) {
 	h.w.mu.Lock()
 	defer h.w.mu.Unlock()
 	h.w.ch.NeedFullSync = true

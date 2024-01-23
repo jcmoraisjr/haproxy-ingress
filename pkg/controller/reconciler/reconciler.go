@@ -20,7 +20,7 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -62,7 +62,7 @@ func (r *IngressReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manag
 		LogConstructor: func(*reconcile.Request) logr.Logger { return logr.FromContextOrDiscard(ctx).WithName("reconciler") },
 		RateLimiter:    createRateLimiter(r.Config),
 		Reconciler:     r,
-		RecoverPanic:   pointer.Bool(true),
+		RecoverPanic:   ptr.To(true),
 	}
 	c, err := controller.NewUnmanaged("ingress", mgr, opt)
 	if err != nil {
@@ -70,7 +70,7 @@ func (r *IngressReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manag
 	}
 	for _, handler := range r.watchers.getHandlers() {
 		if err := c.Watch(
-			handler.getSource(),
+			handler.getSource(mgr.GetCache()),
 			handler.getEventHandler(),
 			handler.getPredicates()...,
 		); err != nil {

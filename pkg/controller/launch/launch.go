@@ -21,6 +21,8 @@ import (
 	"os"
 
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/reconciler"
@@ -46,11 +48,15 @@ func Run() {
 		LeaderElection:          config.Election,
 		LeaderElectionID:        config.ElectionID,
 		LeaderElectionNamespace: config.ElectionNamespace,
-		Namespace:               config.WatchNamespace,
-		SyncPeriod:              config.ResyncPeriod,
 		GracefulShutdownTimeout: config.ShutdownTimeout,
 		HealthProbeBindAddress:  "0",
-		MetricsBindAddress:      "0",
+		Metrics: server.Options{
+			BindAddress: "0",
+		},
+		Cache: cache.Options{
+			SyncPeriod:        config.ResyncPeriod,
+			DefaultNamespaces: config.WatchNamespaces,
+		},
 	})
 	if err != nil {
 		launchLog.Error(err, "unable to start manager")

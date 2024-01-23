@@ -48,6 +48,7 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
+	crcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 	gwapiversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
@@ -199,7 +200,7 @@ the time to receive all/most of the changes of a batch update.`)
 		`Configures the default resync period of Kubernetes' informer factory.`)
 
 	watchNamespace := flag.String("watch-namespace", v1.NamespaceAll,
-		`Namespace to watch for Ingress. Default is to watch all namespaces`)
+		`Comma-separated list of namespaces to watch for Ingress. Default is to watch all namespaces`)
 
 	statsCollectProcPeriod := flag.Duration("stats-collect-processing-period", 500*time.Millisecond,
 		`Defines the interval between two consecutive readings of haproxy's Idle_pct.
@@ -605,10 +606,15 @@ define if ingress without class should be tracked.`)
 		}
 	}
 
+	var watchNamespaces map[string]crcache.Config
 	if *watchNamespace != "" {
 		_, err := client.NetworkingV1().Ingresses(*watchNamespace).List(ctx, metav1.ListOptions{Limit: 1})
 		if err != nil {
 			return nil, fmt.Errorf("no watchNamespace with name '%s' found: %w", *watchNamespace, err)
+		}
+		watchNamespaces = make(map[string]crcache.Config)
+		for _, ns := range strings.Split(*watchNamespace, ",") {
+			watchNamespaces[ns] = crcache.Config{}
 		}
 	} else {
 		_, err := client.CoreV1().Services("default").Get(ctx, "kubernetes", metav1.GetOptions{})
@@ -767,7 +773,7 @@ define if ingress without class should be tracked.`)
 		VersionInfo:              versionInfo,
 		WaitBeforeUpdate:         *waitBeforeUpdate,
 		WatchIngressWithoutClass: *watchIngressWithoutClass,
-		WatchNamespace:           *watchNamespace,
+		WatchNamespaces:          watchNamespaces,
 	}, nil
 }
 
@@ -979,5 +985,5 @@ type Config struct {
 	VersionInfo              version.Info
 	WaitBeforeUpdate         time.Duration
 	WatchIngressWithoutClass bool
-	WatchNamespace           string
+	WatchNamespaces          map[string]crcache.Config
 }

@@ -186,7 +186,7 @@ func NewStatusSyncer(ic *GenericController) StatusSync {
 	})
 
 	lock, err := resourcelock.New(
-		resourcelock.ConfigMapsLeasesResourceLock,
+		resourcelock.LeasesResourceLock,
 		pod.Namespace,
 		electionID,
 		ic.cfg.Client.CoreV1(),

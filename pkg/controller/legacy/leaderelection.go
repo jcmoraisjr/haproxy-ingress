@@ -52,7 +52,7 @@ func NewLeaderElector(id string, logger *logger, cache *k8scache, subscriber Lea
 	}
 
 	lock, err := resourcelock.New(
-		resourcelock.ConfigMapsLeasesResourceLock,
+		resourcelock.LeasesResourceLock,
 		namespace,
 		id,
 		cache.client.CoreV1(),
