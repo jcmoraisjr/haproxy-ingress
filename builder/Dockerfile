@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang:1.19.12-alpine AS builder
+FROM golang:1.19.13-alpine AS builder
 
 ARG GIT_TAG
 WORKDIR /src
