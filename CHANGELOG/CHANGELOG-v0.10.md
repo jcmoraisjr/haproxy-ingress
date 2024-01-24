@@ -2,6 +2,10 @@
 
 * [Major improvements](#major-improvements)
 * [Contributors](#contributors)
+* [v0.10.19](#v01019)
+  * [Reference](#reference-r19)
+  * [Release notes](#release-notes-r19)
+  * [Fixes and improvements](#fixes-and-improvements-r19)
 * [v0.10.18](#v01018)
   * [Reference](#reference-r18)
   * [Release notes](#release-notes-r18)
@@ -118,6 +122,32 @@ Highlights of this version:
 * Robert Agbozo ([RobertTheProfessional](https://github.com/RobertTheProfessional))
 * Sankul ([dark-shade](https://github.com/dark-shade))
 * Tadeu Andrade ([mtatheonly](https://github.com/mtatheonly))
+
+# v0.10.19
+
+## Reference (r19)
+
+* Release date: `2024-01-24`
+* Helm chart: `--version 0.10.19`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.10.19`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.10.19`
+* Embedded HAProxy version: `2.0.34`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.10.19`
+
+## Release notes (r19)
+
+This is a security release that updates the embedded HAProxy, the Alpine base image, and cryptographic related dependencies.
+
+Dependencies:
+
+- embedded haproxy from 2.0.33 to 2.0.34
+
+## Fixes and improvements (r19)
+
+New features and improvements since `v0.10.18`:
+
+* update embedded haproxy from 2.0.33 to 2.0.34 [16c3e40](https://github.com/jcmoraisjr/haproxy-ingress/commit/16c3e4086e61f8d5c64d1864882af3e521544cb3) (Joao Morais)
+* update dependencies [254949d](https://github.com/jcmoraisjr/haproxy-ingress/commit/254949d61a49b40d0b6ed27a3da7f407e58000d8) (Joao Morais)
 
 # v0.10.18
 
