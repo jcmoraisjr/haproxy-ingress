@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.11!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.12.20](#v01220)
+  * [Reference](#reference-r20)
+  * [Release notes](#release-notes-r20)
+  * [Fixes and improvements](#fixes-and-improvements-r20)
 * [v0.12.19](#v01219)
   * [Reference](#reference-r19)
   * [Release notes](#release-notes-r19)
@@ -122,6 +126,32 @@ Breaking backward compatibility from v0.11
 * paul ([toothbrush](https://github.com/toothbrush))
 * pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.12.20
+
+## Reference (r20)
+
+* Release date: `2024-01-24`
+* Helm chart: `--version 0.12.20`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.12.20`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.12.20`
+* Embedded HAProxy version: `2.2.32`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.12.20`
+
+## Release notes (r20)
+
+This is a security release that updates the embedded HAProxy, the Alpine base image, and cryptographic related dependencies.
+
+Dependencies:
+
+- embedded haproxy from 2.2.31 to 2.2.32
+
+## Fixes and improvements (r20)
+
+New features and improvements since `v0.12.19`:
+
+* update embedded haproxy from 2.2.31 to 2.2.32 [86d6b41](https://github.com/jcmoraisjr/haproxy-ingress/commit/86d6b419910ec85fae49b8908332e3d737c8ebc6) (Joao Morais)
+* update dependencies [96c71a6](https://github.com/jcmoraisjr/haproxy-ingress/commit/96c71a676966e8428b190b15d89bd10d44e817ad) (Joao Morais)
 
 # v0.12.19
 
