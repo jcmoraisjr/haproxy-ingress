@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.12!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.13.15](#v01315)
+  * [Reference](#reference-r15)
+  * [Release notes](#release-notes-r15)
+  * [Fixes and improvements](#fixes-and-improvements-r15)
 * [v0.13.14](#v01314)
   * [Reference](#reference-r14)
   * [Release notes](#release-notes-r14)
@@ -131,6 +135,32 @@ Breaking backward compatibility from v0.12
 * Roman Gherta ([rgherta](https://github.com/rgherta))
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
+
+# v0.13.15
+
+## Reference (r15)
+
+* Release date: `2024-01-24`
+* Helm chart: `--version 0.13.15`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.15`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.13.15`
+* Embedded HAProxy version: `2.4.25`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.13.15`
+
+## Release notes (r15)
+
+This is a security release that updates the embedded HAProxy, the Alpine base image, and cryptographic related dependencies.
+
+Dependencies:
+
+- embedded haproxy from 2.4.24 to 2.4.25
+
+## Fixes and improvements (r15)
+
+Fixes and improvements since `v0.13.14`:
+
+* update embedded haproxy from 2.4.24 to 2.4.25 [96e06f1](https://github.com/jcmoraisjr/haproxy-ingress/commit/96e06f13ca3b726fea5fb43ffb7556c3bd6bf24f) (Joao Morais)
+* update dependencies [5ecf169](https://github.com/jcmoraisjr/haproxy-ingress/commit/5ecf169db703af2cc7972cebcf75926e8aa471d7) (Joao Morais)
 
 # v0.13.14
 
