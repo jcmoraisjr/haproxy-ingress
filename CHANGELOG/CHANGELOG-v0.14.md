@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.13!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.14.6](#v0146)
+  * [Reference](#reference-r6)
+  * [Release notes](#release-notes-r6)
+  * [Fixes and improvements](#fixes-and-improvements-r6)
 * [v0.14.5](#v0145)
   * [Reference](#reference-r5)
   * [Release notes](#release-notes-r5)
@@ -90,6 +94,7 @@ Breaking backward compatibility from v0.13:
 * Manuel Rüger ([mrueg](https://github.com/mrueg))
 * Marvin Rösch ([PaleoCrafter](https://github.com/PaleoCrafter))
 * Mateusz Kubaczyk ([mkubaczyk](https://github.com/mkubaczyk))
+* Matt Low ([mlow](https://github.com/mlow))
 * Michał Zielonka ([michal800106](https://github.com/michal800106))
 * Michele Palazzi ([ironashram](https://github.com/ironashram))
 * Neil Seward ([sealneaward](https://github.com/sealneaward))
@@ -98,6 +103,38 @@ Breaking backward compatibility from v0.13:
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
 * wolf-cosmose ([wolf-cosmose](https://github.com/wolf-cosmose))
+
+# v0.14.6
+
+## Reference (r6)
+
+* Release date: `2024-01-24`
+* Helm chart: `--version 0.14.6`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.14.6`
+* Image (Docker Hub): `jcmoraisjr/haproxy-ingress:v0.14.6`
+* Embedded HAProxy version: `2.4.25`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.14.6`
+
+## Release notes (r6)
+
+This is a security release that updates the embedded HAProxy, the Alpine base image, and cryptographic related dependencies.
+
+Dependencies:
+
+- embedded haproxy from 2.4.24 to 2.4.25
+- golang from 1.19.12 to 1.19.13
+
+## Fixes and improvements (r6)
+
+Fixes and improvements since `v0.14.5`:
+
+* update dependencies [bd475a0](https://github.com/jcmoraisjr/haproxy-ingress/commit/bd475a04356a9bb95a86475f641259ef4b0f6e79) (Joao Morais)
+* update embedded haproxy from 2.4.24 to 2.4.25 [2fb1da1](https://github.com/jcmoraisjr/haproxy-ingress/commit/2fb1da14a2a87aa78cb151fc4fafe7750f272dcc) (Joao Morais)
+* update go from 1.19.12 to 1.19.13 [f8ad9b0](https://github.com/jcmoraisjr/haproxy-ingress/commit/f8ad9b0796a4c29699497b298dec3222dd9fd295) (Joao Morais)
+
+Chart improvements since `v0.14.5`:
+
+* Allow setting the spec.loadBalancerClass of created Services [#77](https://github.com/haproxy-ingress/charts/pull/77) (mlow)
 
 # v0.14.5
 
