@@ -65,11 +65,12 @@ func Run(cfg *config.Config) error {
 	}
 
 	launchLog.Info("configuring ingress reconciler")
-	if err := (&reconciler.IngressReconciler{
+	ingress := &reconciler.IngressReconciler{
 		Client:   mgr.GetClient(),
 		Config:   cfg,
 		Services: services,
-	}).SetupWithManager(ctx, mgr); err != nil {
+	}
+	if err := ingress.SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create controller: %w", err)
 	}
 

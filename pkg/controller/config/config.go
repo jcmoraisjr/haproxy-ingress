@@ -33,7 +33,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/buffer"
 	"go.uber.org/zap/zapcore"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -77,13 +77,16 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 
 	if !opt.LogZap {
 		if opt.LogDev || opt.LogCaller || opt.LogEnableStacktrace || opt.LogEncoder != "" || opt.LogEncodeTime != "" {
-			klog.Exit("--log-dev, --log-caller, --log-enable-stacktrace --log-encoder and --log-encode-time are only supported if --log-zap is enabled.")
+			return nil, fmt.Errorf("--log-dev, --log-caller, --log-enable-stacktrace --log-encoder and --log-encode-time are only supported if --log-zap is enabled")
 		}
 		var level klog.Level
 		level.Set(strconv.Itoa(opt.LogLevel - 1))
 		ctrl.SetLogger(klog.NewKlogr())
 	} else {
-		logger := newZapLogger(opt.LogDev, opt.LogLevel, opt.LogCaller, opt.LogEnableStacktrace, opt.LogEncoder, opt.LogEncodeTime)
+		logger, err := newZapLogger(opt.LogDev, opt.LogLevel, opt.LogCaller, opt.LogEnableStacktrace, opt.LogEncoder, opt.LogEncodeTime)
+		if err != nil {
+			return nil, err
+		}
 		ctrl.SetLogger(logger)
 		klog.SetLogger(logger)
 	}
@@ -100,14 +103,11 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 	switch {
 	case restConfig != nil:
 		kubeConfig = restConfig
-	case opt.ApiserverHost == "" || opt.KubeConfig.String() == "":
-		var err error
-		kubeConfig, err = ctrl.GetConfig()
-		if err != nil {
-			return nil, err
-		}
-	default:
+	case opt.ApiserverHost != "":
 		kubeConfigFile := opt.KubeConfig.String()
+		if kubeConfigFile == "" {
+			return nil, fmt.Errorf("--kubeconfig is mandatory when --apiserver-host is configured")
+		}
 		var err error
 		kubeConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 			&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeConfigFile},
@@ -119,10 +119,17 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		if err != nil {
 			return nil, err
 		}
+	default:
+		var err error
+		kubeConfig, err = ctrl.GetConfig()
+		if err != nil {
+			return nil, err
+		}
 	}
 	if opt.DisableAPIWarnings {
 		kubeConfig.WarningHandler = rest.NoWarnings{}
 	}
+
 	// `kubeConfig` is the real `*rest.Config` used
 	// by the manager to create the controller's client
 	//
@@ -350,7 +357,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		return nil, fmt.Errorf("resync period (%vs) is too low", opt.ResyncPeriod.Seconds())
 	}
 
-	if opt.WatchNamespace != v1.NamespaceAll && opt.AllowCrossNamespace {
+	if opt.WatchNamespace != corev1.NamespaceAll && opt.AllowCrossNamespace {
 		return nil, fmt.Errorf("cannot use --watch-namespace if --force-namespace-isolation is true")
 	}
 
@@ -488,7 +495,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 	}, nil
 }
 
-func newZapLogger(logDev bool, logLevel int, logCaller, logEnableStacktrace bool, logEncoder, logEncodeTime string) logr.Logger {
+func newZapLogger(logDev bool, logLevel int, logCaller, logEnableStacktrace bool, logEncoder, logEncodeTime string) (logr.Logger, error) {
 	var zc zap.Config
 	if logDev {
 		zc = zap.NewDevelopmentConfig()
@@ -517,14 +524,14 @@ func newZapLogger(logDev bool, logLevel int, logCaller, logEnableStacktrace bool
 	case "console":
 		baseEncoder = zapcore.NewConsoleEncoder
 	default:
-		klog.Exitf("invalid encode name: %s", logEncoder)
+		return logr.Logger{}, fmt.Errorf("invalid encode name: %s", logEncoder)
 	}
 
 	klogEncoderName := "klog"
 	if err := zap.RegisterEncoder(klogEncoderName, func(ec zapcore.EncoderConfig) (zapcore.Encoder, error) {
 		return klogEncoder{baseEncoder(ec)}, nil
 	}); err != nil {
-		klog.Exitf("error registering log encoder: %v", err)
+		return logr.Logger{}, fmt.Errorf("error registering log encoder: %v", err)
 	}
 
 	zc.Encoding = klogEncoderName
@@ -537,9 +544,9 @@ func newZapLogger(logDev bool, logLevel int, logCaller, logEnableStacktrace bool
 		zap.AddCallerSkip(0),
 	)
 	if err != nil {
-		klog.Exitf("error configuring zap logger: %v", err)
+		return logr.Logger{}, fmt.Errorf("error configuring zap logger: %v", err)
 	}
-	return zapr.NewLogger(zl)
+	return zapr.NewLogger(zl), nil
 }
 
 type klogEncoder struct {

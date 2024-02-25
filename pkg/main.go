@@ -46,8 +46,7 @@ func run() {
 	fs.Parse(os.Args[1:])
 	cfg, err := config.Create(opt)
 	if err != nil {
-		log.Printf("unable to parse static config: %s\n", err)
-		os.Exit(1)
+		log.Fatalf("unable to parse static config: %s\n", err)
 	}
 	if err := launch.Run(cfg); err != nil {
 		log.Fatal(err.Error())

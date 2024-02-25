@@ -19,10 +19,6 @@ type stringValue struct {
 	val string
 }
 
-func (s *stringValue) Get() interface{} {
-	return s.val
-}
-
 func (s *stringValue) Set(val string) error {
 	s.val = val
 	return nil
@@ -42,10 +38,6 @@ func FlagFloat64SliceVar(fs *flag.FlagSet, p *[]float64, name string, value []fl
 }
 
 type float64SliceValue []float64
-
-func (f *float64SliceValue) Get() interface{} {
-	return (*[]float64)(f)
-}
 
 func (f *float64SliceValue) Set(val string) error {
 	s := strings.Split(val, ",")

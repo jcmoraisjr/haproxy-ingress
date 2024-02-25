@@ -4,7 +4,7 @@ import (
 	"flag"
 	"time"
 
-	core "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
@@ -24,7 +24,7 @@ func NewOptions() *Options {
 		RateLimitUpdate:         0.5,
 		WaitBeforeUpdate:        200 * time.Millisecond,
 		ResyncPeriod:            10 * time.Hour,
-		WatchNamespace:          core.NamespaceAll,
+		WatchNamespace:          corev1.NamespaceAll,
 		StatsCollectProcPeriod:  500 * time.Millisecond,
 		HealthzAddr:             ":10254",
 		HealthzURL:              "/healthz",
@@ -130,7 +130,8 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 	fs.StringVar(&o.ApiserverHost, "apiserver-host", o.ApiserverHost, ""+
 		"The address of the Kubernetes API server to connect to, in the format of "+
 		"protocol://address:port, e.g., http://localhost:8080. If not specified, the "+
-		"default value from in cluster discovery or from a provided kubeconfig is used.",
+		"default value from in cluster discovery or from a provided kubeconfig is used. "+
+		"A valid kubeconfig must be provided if used.",
 	)
 
 	fs.StringVar(&o.LocalFSPrefix, "local-filesystem-prefix", o.LocalFSPrefix, ""+
