@@ -17,8 +17,7 @@ limitations under the License.
 package launch
 
 import (
-	"log"
-	"os"
+	"fmt"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -30,62 +29,54 @@ import (
 )
 
 // Run ...
-func Run() {
-	config, err := config.Create()
-	if err != nil {
-		log.Printf("unable to parse static config: %s\n", err)
-		os.Exit(1)
-	}
-
+func Run(cfg *config.Config) error {
 	rootLogger := ctrl.Log
 	launchLog := rootLogger.WithName("launch")
-	ctx := config.RootContext
+	ctx := cfg.RootContext
 
 	launchLog.Info("configuring manager")
-	mgr, err := ctrl.NewManager(config.KubeConfig, ctrl.Options{
+	mgr, err := ctrl.NewManager(cfg.KubeConfig, ctrl.Options{
 		Logger:                  rootLogger.WithName("manager"),
-		Scheme:                  config.Scheme,
-		LeaderElection:          config.Election,
-		LeaderElectionID:        config.ElectionID,
-		LeaderElectionNamespace: config.ElectionNamespace,
-		GracefulShutdownTimeout: config.ShutdownTimeout,
+		Scheme:                  cfg.Scheme,
+		LeaderElection:          cfg.Election,
+		LeaderElectionID:        cfg.ElectionID,
+		LeaderElectionNamespace: cfg.ElectionNamespace,
+		GracefulShutdownTimeout: cfg.ShutdownTimeout,
 		HealthProbeBindAddress:  "0",
 		Metrics: server.Options{
 			BindAddress: "0",
 		},
 		Cache: cache.Options{
-			SyncPeriod:        config.ResyncPeriod,
-			DefaultNamespaces: config.WatchNamespaces,
+			SyncPeriod:        cfg.ResyncPeriod,
+			DefaultNamespaces: cfg.WatchNamespaces,
 		},
 	})
 	if err != nil {
-		launchLog.Error(err, "unable to start manager")
-		os.Exit(1)
+		return fmt.Errorf("unable to start manager: %w", err)
 	}
 
 	launchLog.Info("configuring services")
 	services := &services.Services{
 		Client: mgr.GetClient(),
-		Config: config,
+		Config: cfg,
 	}
 	if err := services.SetupWithManager(ctx, mgr); err != nil {
-		launchLog.Error(err, "unable to create services")
-		os.Exit(1)
+		return fmt.Errorf("unable to create services: %w", err)
 	}
 
 	launchLog.Info("configuring ingress reconciler")
 	if err := (&reconciler.IngressReconciler{
 		Client:   mgr.GetClient(),
-		Config:   config,
+		Config:   cfg,
 		Services: services,
 	}).SetupWithManager(ctx, mgr); err != nil {
-		launchLog.Error(err, "unable to create controller")
-		os.Exit(1)
+		return fmt.Errorf("unable to create controller: %w", err)
 	}
 
 	launchLog.Info("starting manager")
 	if err := mgr.Start(ctx); err != nil {
-		launchLog.Error(err, "problem running manager")
-		os.Exit(1)
+		return fmt.Errorf("problem running manager: %w", err)
 	}
+
+	return nil
 }
