@@ -764,7 +764,7 @@ backend {{ $backend.ID }}
         {{- if $pathIDs }} if { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- if $dynamicOrigin }}
-    http-response set-header Vary %[res.hdr(Vary)],Origin
+    http-response set-header Vary %[res.fhdr(Vary)],Origin
         {{- "" }} if { res.hdr(Vary) -m found }
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
     http-response set-header Vary Origin
