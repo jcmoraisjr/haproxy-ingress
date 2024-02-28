@@ -145,7 +145,7 @@ func TestBackends(t *testing.T) {
     http-response set-header Access-Control-Allow-Origin  "http://d11.local" if { var(txn.pathID) -m str path01 path02 } !cors_allow_origin0
     http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) -m str path01 path02 }
     http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if { var(txn.pathID) -m str path01 path02 }
-    http-response set-header Vary %[res.hdr(Vary)],Origin if { res.hdr(Vary) -m found } { var(txn.pathID) -m str path01 path02 }
+    http-response set-header Vary %[res.fhdr(Vary)],Origin if { res.hdr(Vary) -m found } { var(txn.pathID) -m str path01 path02 }
     http-response set-header Vary Origin if ! { res.hdr(Vary) -m found } { var(txn.pathID) -m str path01 path02 }
     acl cors_allow_origin1 var(txn.hdr_origin1) -m str https://d21.local https://d22.local https://d23.local https://d24.local https://d25.local
     acl cors_allow_origin1 var(txn.hdr_origin1) -m str https://d26.local
@@ -155,7 +155,7 @@ func TestBackends(t *testing.T) {
     http-response set-header Access-Control-Allow-Origin  "https://d21.local" if { var(txn.pathID) -m str path03 } !cors_allow_origin1
     http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) -m str path03 }
     http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if { var(txn.pathID) -m str path03 }
-    http-response set-header Vary %[res.hdr(Vary)],Origin if { res.hdr(Vary) -m found } { var(txn.pathID) -m str path03 }
+    http-response set-header Vary %[res.fhdr(Vary)],Origin if { res.hdr(Vary) -m found } { var(txn.pathID) -m str path03 }
     http-response set-header Vary Origin if ! { res.hdr(Vary) -m found } { var(txn.pathID) -m str path03 }
     http-response set-header Access-Control-Allow-Origin  "https://d31.local" if { var(txn.pathID) -m str path04 }
     http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) -m str path04 }
@@ -182,7 +182,7 @@ func TestBackends(t *testing.T) {
     http-response set-header Access-Control-Allow-Origin  "https://d11.local" if !cors_allow_origin0
     http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
     http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
-    http-response set-header Vary %[res.hdr(Vary)],Origin if { res.hdr(Vary) -m found }
+    http-response set-header Vary %[res.fhdr(Vary)],Origin if { res.hdr(Vary) -m found }
     http-response set-header Vary Origin if ! { res.hdr(Vary) -m found }`,
 		},
 		{
@@ -208,7 +208,7 @@ func TestBackends(t *testing.T) {
     http-response set-header Access-Control-Allow-Origin  "https://d11.local" if !cors_allow_origin0
     http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
     http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
-    http-response set-header Vary %[res.hdr(Vary)],Origin if { res.hdr(Vary) -m found }
+    http-response set-header Vary %[res.fhdr(Vary)],Origin if { res.hdr(Vary) -m found }
     http-response set-header Vary Origin if ! { res.hdr(Vary) -m found }`,
 		},
 		{
@@ -234,7 +234,7 @@ func TestBackends(t *testing.T) {
     http-response set-header Access-Control-Allow-Origin  "https://d11.local" if !cors_allow_origin0
     http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
     http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
-    http-response set-header Vary %[res.hdr(Vary)],Origin if { res.hdr(Vary) -m found }
+    http-response set-header Vary %[res.fhdr(Vary)],Origin if { res.hdr(Vary) -m found }
     http-response set-header Vary Origin if ! { res.hdr(Vary) -m found }`,
 		},
 		{
@@ -260,7 +260,7 @@ func TestBackends(t *testing.T) {
     http-response set-header Access-Control-Allow-Origin  "https://d11.local" if !cors_allow_origin0
     http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
     http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
-    http-response set-header Vary %[res.hdr(Vary)],Origin if { res.hdr(Vary) -m found }
+    http-response set-header Vary %[res.fhdr(Vary)],Origin if { res.hdr(Vary) -m found }
     http-response set-header Vary Origin if ! { res.hdr(Vary) -m found }`,
 		},
 		{
