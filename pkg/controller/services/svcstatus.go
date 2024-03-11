@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
@@ -41,15 +40,27 @@ func initSvcStatusUpdater(ctx context.Context, client client.Client) *svcStatusU
 }
 
 type svcStatusUpdater struct {
-	client   client.Client
-	ctx      context.Context
-	isleader bool
-	log      logr.Logger
-	queue    utils.Queue
+	client  client.Client
+	ctx     context.Context
+	running bool
+	log     logr.Logger
+	queue   utils.Queue
+}
+
+func (s *svcStatusUpdater) Start(ctx context.Context) error {
+	s.ctx = ctx
+	s.running = true
+	s.queue.RunWithContext(ctx)
+	s.running = false
+	return nil
+}
+
+func (s *svcStatusUpdater) CanShutdown() bool {
+	return s.queue.Len() == 0
 }
 
 func (s *svcStatusUpdater) update(obj client.Object) {
-	if s.isleader {
+	if s.running {
 		s.queue.Add(obj)
 	}
 }
@@ -59,41 +70,14 @@ func (s *svcStatusUpdater) notify(item interface{}) error {
 	namespace := obj.GetNamespace()
 	name := obj.GetName()
 	log := s.log.WithValues("kind", reflect.TypeOf(obj), "namespace", namespace, "name", name)
-	if err := s.client.Status().Update(s.ctx, obj); err != nil {
-		// usually `obj` is up to date, but in case of a concurrent
-		// update, we'll refresh the object into a new instance and
-		// copy the updated status to it.
-		typ := reflect.TypeOf(obj)
-		if typ.Kind() == reflect.Pointer {
-			typ = typ.Elem()
-		}
-		new := reflect.New(typ).Interface().(client.Object)
-		if err := s.client.Get(s.ctx, types.NamespacedName{Namespace: namespace, Name: name}, new); err != nil {
-			log.Error(err, "cannot read status")
-			return err
-		}
-		// a reflection trick to copy the updated status from the outdated object to the new updated one
-		reflect.ValueOf(new).Elem().FieldByName("Status").Set(
-			reflect.ValueOf(obj).Elem().FieldByName("Status"))
-		if err := s.client.Status().Update(s.ctx, new); err != nil {
-			log.Error(err, "cannot update status")
-			return err
-		}
+
+	from := obj.DeepCopyObject().(client.Object)
+	reflect.ValueOf(from).Elem().FieldByName("Status").SetZero()
+	if err := s.client.Status().Patch(s.ctx, obj, client.MergeFrom(from)); err != nil {
+		log.Error(err, "cannot update status")
+		return err
 	}
+
 	log.V(1).Info("status updated")
 	return nil
-}
-
-func (s *svcStatusUpdater) Start(ctx context.Context) error {
-	s.ctx = ctx
-	s.isleader = true
-	s.queue.RunWithContext(ctx)
-	s.isleader = false
-	// s.ctx wasn't cleaned up here so lazy notifications
-	// doesn't crashloop due to nil ctx.
-	return nil
-}
-
-func (s *svcStatusUpdater) CanShutdown() bool {
-	return s.queue.Len() == 0
 }

@@ -8,7 +8,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	"github.com/jcmoraisjr/haproxy-ingress/tests/framework"
@@ -20,6 +23,17 @@ func TestIntegration(t *testing.T) {
 
 	f := framework.NewFramework(ctx, t)
 	httpPort := f.CreateHTTPServer(ctx, t)
+
+	lbingpre1 := "127.0.0.1"
+	require.NotEqual(t, framework.PublishAddress, lbingpre1)
+
+	svcpre1 := f.CreateService(ctx, t, httpPort)
+	ingpre1 := f.CreateIngress(ctx, t, svcpre1)
+	ingpre1.Status.LoadBalancer.Ingress = []networkingv1.IngressLoadBalancerIngress{{IP: lbingpre1}}
+	err := f.Client().Status().Update(ctx, ingpre1)
+	require.NoError(t, err)
+
+	f.StartController(ctx, t)
 
 	t.Run("hello world", func(t *testing.T) {
 		t.Parallel()
@@ -70,6 +84,36 @@ func TestIntegration(t *testing.T) {
 				}
 			}
 			assert.Fail(collect, "lease event not found")
+		}, 10*time.Second, time.Second)
+	})
+
+	expectedIngressStatus := networkingv1.IngressStatus{
+		LoadBalancer: networkingv1.IngressLoadBalancerStatus{
+			Ingress: []networkingv1.IngressLoadBalancerIngress{{IP: framework.PublishAddress}},
+		},
+	}
+
+	t.Run("should update ingress status", func(t *testing.T) {
+		t.Parallel()
+		svc := f.CreateService(ctx, t, httpPort)
+		ing := f.CreateIngress(ctx, t, svc)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			err := f.Client().Get(ctx, client.ObjectKeyFromObject(ing), ing)
+			if !assert.NoError(collect, err) {
+				return
+			}
+			assert.Equal(collect, expectedIngressStatus, ing.Status)
+		}, 10*time.Second, time.Second)
+	})
+
+	t.Run("should override old status", func(t *testing.T) {
+		t.Parallel()
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			err := f.Client().Get(ctx, client.ObjectKeyFromObject(ingpre1), ingpre1)
+			if !assert.NoError(collect, err) {
+				return
+			}
+			assert.Equal(collect, expectedIngressStatus, ingpre1.Status)
 		}, 10*time.Second, time.Second)
 	})
 }

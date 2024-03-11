@@ -130,11 +130,10 @@ func (s *svcStatusIng) sync(ctx context.Context) {
 		}
 	} else {
 		// fall back to an empty list and log an error if everything else failed
-		s.log.Error(nil,
-			"cannot configure ingress status due to a failure reading the published hostnames/IPs; "+
-				"either fix the configuration or the permission failures, "+
-				"configure --publish-service or --publish-address command-line options, "+
-				"or disable status update with --update-status=false")
+		s.log.Error(fmt.Errorf("cannot configure ingress status due to a failure reading the published hostnames/IPs"), ""+
+			"either fix the configuration or the permission failures, "+
+			"configure --publish-service or --publish-address command-line options, "+
+			"or disable status update with --update-status=false")
 	}
 	sort.Slice(lb, func(i, j int) bool {
 		if lb[i].Hostname == lb[j].Hostname {

@@ -36,6 +36,10 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/tests/framework/options"
 )
 
+const (
+	PublishAddress = "10.0.1.1"
+)
+
 func NewFramework(ctx context.Context, t *testing.T) *framework {
 	wd, err := os.Getwd()
 	require.NoError(t, err)
@@ -63,11 +67,10 @@ func NewFramework(ctx context.Context, t *testing.T) *framework {
 	cli, err := client.NewWithWatch(config, client.Options{Scheme: scheme})
 	require.NoError(t, err)
 
-	startController(ctx, t, config, cli)
-
 	return &framework{
 		scheme: scheme,
 		codec:  codec,
+		config: config,
 		cli:    cli,
 	}
 }
@@ -75,6 +78,7 @@ func NewFramework(ctx context.Context, t *testing.T) *framework {
 type framework struct {
 	scheme *runtime.Scheme
 	codec  serializer.CodecFactory
+	config *rest.Config
 	cli    client.WithWatch
 }
 
@@ -119,7 +123,7 @@ func startApiserver(t *testing.T) *rest.Config {
 	return config
 }
 
-func startController(ctx context.Context, t *testing.T, config *rest.Config, cli client.WithWatch) {
+func (f *framework) StartController(ctx context.Context, t *testing.T) {
 	t.Log("starting controller")
 
 	err := os.RemoveAll("/tmp/haproxy-ingress")
@@ -150,17 +154,17 @@ func startController(ctx context.Context, t *testing.T, config *rest.Config, cli
 		"http-port":  "18080",
 		"https-port": "18443",
 	}
-	err = cli.Create(ctx, &global)
+	err = f.cli.Create(ctx, &global)
 	require.NoError(t, err)
 
 	opt := ctrlconfig.NewOptions()
 	opt.MasterWorker = true
 	opt.LocalFSPrefix = "/tmp/haproxy-ingress"
-	opt.PublishAddress = "127.0.0.1"
+	opt.PublishAddress = PublishAddress
 	opt.ConfigMap = "default/ingress-controller"
 	os.Setenv("POD_NAMESPACE", "default")
 	ctx, cancel := context.WithCancel(ctx)
-	cfg, err := ctrlconfig.CreateWithConfig(ctx, config, opt)
+	cfg, err := ctrlconfig.CreateWithConfig(ctx, f.config, opt)
 	require.NoError(t, err)
 
 	done := make(chan bool)
