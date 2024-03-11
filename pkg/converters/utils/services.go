@@ -76,15 +76,25 @@ type Endpoint struct {
 }
 
 func createEndpoints(endpoints *api.Endpoints, svcPort *api.ServicePort) (ready, notReady []*Endpoint, err error) {
+	var ipOverride string
+	if ann := endpoints.Annotations; ann != nil {
+		ipOverride = ann["haproxy-ingress.github.io/ip-override"]
+	}
+	resolveIP := func(ip string) string {
+		if ipOverride != "" {
+			return ipOverride
+		}
+		return ip
+	}
 	for _, subset := range endpoints.Subsets {
 		for _, epPort := range subset.Ports {
 			if matchPort(svcPort, &epPort) {
 				port := int(epPort.Port)
 				for _, addr := range subset.Addresses {
-					ready = append(ready, newEndpoint(addr.IP, port, addr.TargetRef))
+					ready = append(ready, newEndpoint(resolveIP(addr.IP), port, addr.TargetRef))
 				}
 				for _, addr := range subset.NotReadyAddresses {
-					notReady = append(notReady, newEndpoint(addr.IP, port, addr.TargetRef))
+					notReady = append(notReady, newEndpoint(resolveIP(addr.IP), port, addr.TargetRef))
 				}
 			}
 		}

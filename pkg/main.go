@@ -17,6 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"flag"
+	"log"
 	"os"
 	"os/signal"
 	"strings"
@@ -24,15 +26,34 @@ import (
 
 	"k8s.io/klog/v2"
 
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/launch"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/legacy"
 )
 
 func main() {
 	if strings.ToUpper(os.Getenv("HAPROXY_INGRESS_RUNTIME")) != "LEGACY" {
-		launch.Run()
-		return
+		run()
+	} else {
+		runLegacy()
 	}
+}
+
+func run() {
+	fs := flag.NewFlagSet("HAProxy Ingress", flag.ExitOnError)
+	opt := config.NewOptions()
+	opt.AddFlags(fs)
+	fs.Parse(os.Args[1:])
+	cfg, err := config.Create(opt)
+	if err != nil {
+		log.Fatalf("unable to parse static config: %s\n", err)
+	}
+	if err := launch.Run(cfg); err != nil {
+		log.Fatal(err.Error())
+	}
+}
+
+func runLegacy() {
 	hc := legacy.NewHAProxyController()
 	errCh := make(chan error)
 	go handleSignal(hc, errCh)

@@ -13,6 +13,10 @@ KUBECONFIG?=$(HOME)/.kube/config
 CONTROLLER_CONFIGMAP?=
 CONTROLLER_ARGS?=
 
+LOCALBIN?=$(shell pwd)/bin
+LOCAL_GOTESTSUM=$(LOCALBIN)/gotestsum
+LOCAL_SETUP_ENVTEST=$(LOCALBIN)/setup-envtest
+
 .PHONY: build
 build:
 	CGO_ENABLED=0 go build \
@@ -32,14 +36,28 @@ run: build
 	  --configmap=$(CONTROLLER_CONFIGMAP)\
 	  $(CONTROLLER_ARGS)
 
+.PHONY: gotestsum
+gotestsum:
+	test -x $(LOCAL_GOTESTSUM) || GOBIN=$(LOCALBIN) go install gotest.tools/gotestsum@latest
+
 .PHONY: lint
 lint:
 	golangci-lint run
 
 .PHONY: test
-test: lint
+test: lint gotestsum
 	## fix race and add -race param
-	go test -tags cgo ./...
+	$(LOCAL_GOTESTSUM) --format=testname -- -tags=cgo ./pkg/...
+
+.PHONY: setup-envtest
+setup-envtest:
+	test -x $(LOCAL_SETUP_ENVTEST) || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+	$(LOCAL_SETUP_ENVTEST) use 1.29.1 --bin-dir $(LOCALBIN)
+
+.PHONY: test-integration
+test-integration: gotestsum setup-envtest
+	KUBEBUILDER_ASSETS="$(shell $(LOCAL_SETUP_ENVTEST) use 1.29.1 --bin-dir $(LOCALBIN) -i -p path)"\
+		$(LOCAL_GOTESTSUM) --format=testname -- -count=1 -tags=cgo ./tests/integration/...
 
 .PHONY: linux-build
 linux-build:
