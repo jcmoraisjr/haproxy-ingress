@@ -116,11 +116,11 @@ func (i *instance) AcmeCheck(source string) (int, error) {
 		return count, fmt.Errorf("controller wasn't started yet")
 	}
 	if i.options.AcmeQueue == nil {
-		return count, fmt.Errorf("Acme queue wasn't configured")
+		return count, fmt.Errorf("acme queue wasn't configured")
 	}
 	hasAccount := i.acmeEnsureConfig(i.config.AcmeData())
 	if !hasAccount {
-		return count, fmt.Errorf("Cannot create or retrieve the acme client account")
+		return count, fmt.Errorf("cannot create or retrieve the acme client account")
 	}
 	le := i.options.LeaderElector
 	if !le.IsLeader() {

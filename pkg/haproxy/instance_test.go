@@ -26,7 +26,6 @@ import (
 	"testing"
 
 	"github.com/kylelemons/godebug/diff"
-	yaml "gopkg.in/yaml.v2"
 
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types/helper_test"
@@ -5623,11 +5622,6 @@ var endpointS41h = &hatypes.Endpoint{
 var defaultLogging = `
 INFO (test) reload was skipped
 INFO haproxy successfully reloaded (embedded daemon)`
-
-func _yamlMarshal(in interface{}) string {
-	out, _ := yaml.Marshal(in)
-	return string(out)
-}
 
 func (c *testConfig) Update() {
 	timer := utils.NewTimer(nil)

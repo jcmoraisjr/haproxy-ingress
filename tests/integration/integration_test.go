@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	"github.com/jcmoraisjr/haproxy-ingress/tests/framework"
@@ -49,5 +51,25 @@ func TestIntegration(t *testing.T) {
 		res := f.Request(ctx, t, http.MethodGet, f.Host(ing), "/", options.ExpectResponseCode(http.StatusFound))
 		assert.False(t, res.EchoResponse)
 		assert.Equal(t, fmt.Sprintf("https://%s/", f.Host(ing)), res.HTTPResponse.Header.Get("location"))
+	})
+
+	t.Run("should take leader", func(t *testing.T) {
+		t.Parallel()
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			events := corev1.EventList{}
+			err := f.Client().List(ctx, &events)
+			if !assert.NoError(collect, err) {
+				return
+			}
+			for _, event := range events.Items {
+				lease := event.InvolvedObject
+				t.Logf("lease: %+v message: %s", lease, event.Message)
+				if lease.Kind == "Lease" && lease.Namespace == "default" && lease.Name == "class-haproxy.haproxy-ingress.github.io" {
+					assert.Regexp(collect, `became leader$`, event.Message)
+					return
+				}
+			}
+			assert.Fail(collect, "lease event not found")
+		}, 10*time.Second, time.Second)
 	})
 }

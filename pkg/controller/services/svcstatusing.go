@@ -70,7 +70,7 @@ func (s *svcStatusIng) Start(ctx context.Context) error {
 	return nil
 }
 
-func (s *svcStatusIng) update(ctx context.Context, lb []networking.IngressLoadBalancerIngress) error {
+func (s *svcStatusIng) update(_ context.Context, lb []networking.IngressLoadBalancerIngress) error {
 	ingList, err := s.cache.GetIngressList()
 	if err != nil {
 		return err

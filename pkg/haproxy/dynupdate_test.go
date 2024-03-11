@@ -1000,7 +1000,7 @@ INFO-V(2) need to reload due to config changes: [hosts]
 `,
 		},
 	}
-	readFile = func(filename string) ([]byte, error) {
+	readFile = func(_ string) ([]byte, error) {
 		return []byte("<content>"), nil
 	}
 	for i, test := range testCases {

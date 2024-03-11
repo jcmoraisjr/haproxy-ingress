@@ -111,7 +111,7 @@ func (s *svcAcmeClient) Start(ctx context.Context) error {
 
 // implements utils.QueueFacade
 func (s *svcAcmeClient) Add(item interface{}) {
-	if s.leader.getIsLeader() {
+	if s.leader.isLeader() {
 		s.queue.Add(item)
 	}
 }

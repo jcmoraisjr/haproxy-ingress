@@ -44,7 +44,6 @@ import (
 
 func createWatchers(ctx context.Context, cfg *config.Config, val services.IsValidResource) *watchers {
 	w := &watchers{
-		mu:  sync.Mutex{},
 		log: logr.FromContextOrDiscard(ctx).WithName("watchers"),
 		cfg: cfg,
 		val: val,
@@ -102,6 +101,12 @@ func (w *watchers) initCh() {
 	}
 	w.ch = newch
 	w.ch.Links = types.TrackingLinks{}
+}
+
+func (w *watchers) running() bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.run
 }
 
 func (w *watchers) handlersCore() []*hdlr {
@@ -487,8 +492,7 @@ func (h *hdlr) compose(ev string, obj client.Object) {
 	} else {
 		fullname = obj.GetName()
 	}
-	ns := obj.GetNamespace()
-	if ns != "" {
+	if ns := obj.GetNamespace(); ns != "" {
 		fullname = ns + "/" + fullname
 	}
 	ch := h.w.ch

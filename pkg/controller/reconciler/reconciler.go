@@ -28,7 +28,6 @@ import (
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/services"
-	ctrlutils "github.com/jcmoraisjr/haproxy-ingress/pkg/controller/utils"
 )
 
 // IngressReconciler ...
@@ -48,7 +47,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 }
 
 func (r *IngressReconciler) leaderChanged(isLeader bool) {
-	if isLeader {
+	if isLeader && r.watchers.running() {
 		changed := r.watchers.getChangedObjects()
 		changed.NeedFullSync = true
 		r.Services.ReconcileIngress(changed)
@@ -78,5 +77,5 @@ func (r *IngressReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manag
 		}
 	}
 	r.Services.LeaderChangedSubscriber(r.leaderChanged)
-	return mgr.Add(ctrlutils.DistributedService(c))
+	return mgr.Add(c)
 }

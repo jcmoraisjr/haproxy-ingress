@@ -25,11 +25,10 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 )
 
-func createRateLimiter(config *config.Config) ratelimiter.RateLimiter {
+func createRateLimiter(cfg *config.Config) ratelimiter.RateLimiter {
 	return &rateLimiter{
-		mu:    sync.Mutex{},
-		delta: time.Duration(float64(time.Second) / config.RateLimitUpdate),
-		wait:  config.WaitBeforeUpdate,
+		delta: time.Duration(float64(time.Second) / cfg.RateLimitUpdate),
+		wait:  cfg.WaitBeforeUpdate,
 	}
 }
 
@@ -40,7 +39,7 @@ type rateLimiter struct {
 	last  time.Time
 }
 
-func (r *rateLimiter) When(item interface{}) time.Duration {
+func (r *rateLimiter) When(_ interface{}) time.Duration {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	now := time.Now()

@@ -237,11 +237,23 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 	podNamespace := os.Getenv("POD_NAMESPACE")
 	podName := os.Getenv("POD_NAME")
 
-	// we could `|| hasGateway[version...]` instead of `|| *watchGateway` here,
+	// we could `|| hasGateway[version...]` instead of `|| opt.WatchGateway` here,
 	// but we're choosing a consistent startup behavior despite of the cluster configuration.
 	election := opt.UpdateStatus || opt.AcmeServer || opt.WatchGateway
 	if election && podNamespace == "" {
 		return nil, fmt.Errorf("POD_NAMESPACE envvar should be configured when --update-status=true, --acme-server=true, or --watch-gateway=true")
+	}
+	if election && opt.IngressClass == "" {
+		return nil, fmt.Errorf("--ingress-class should not be empty when --update-status=true, --acme-server=true, or --watch-gateway=true")
+	}
+	var electionID string
+	if election {
+		if strings.Contains(opt.ElectionID, "%s") {
+			electionID = fmt.Sprintf(opt.ElectionID, opt.IngressClass)
+		} else {
+			// backward compatibility behavior
+			electionID = opt.ElectionID + "-" + opt.IngressClass
+		}
 	}
 
 	if opt.UpdateStatus && podName == "" && opt.PublishSvc == "" && len(publishAddressHostnames)+len(publishAddressIPs) == 0 {
@@ -449,7 +461,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		DisableExternalName:      opt.DisableExternalName,
 		DisableKeywords:          disableKeywords,
 		Election:                 election,
-		ElectionID:               opt.ElectionID,
+		ElectionID:               electionID,
 		ElectionNamespace:        podNamespace,
 		EnableEndpointSliceAPI:   opt.EnableEndpointSlicesAPI,
 		ForceNamespaceIsolation:  opt.ForceIsolation,
