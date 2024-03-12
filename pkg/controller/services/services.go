@@ -98,7 +98,10 @@ func (s *Services) setup(ctx context.Context) error {
 	}
 	tracker := tracker.NewTracker()
 	metrics := createMetrics(cfg.BucketsResponseTime)
-	svcleader := initSvcLeader(ctx)
+	svcleader, err := initSvcLeader(ctx, cfg)
+	if err != nil {
+		return err
+	}
 	svchealthz := initSvcHealthz(ctx, cfg, metrics, s.acmeExternalCallCheck)
 	svcstatus := initSvcStatusUpdater(ctx, s.Client)
 	cache := createCacheFacade(ctx, s.Client, cfg, tracker, sslCerts, dynConfig, svcstatus.update)
@@ -187,42 +190,42 @@ func (s *Services) withManager(mgr ctrl.Manager) error {
 		if err := mgr.Add(s.svcleader); err != nil {
 			return err
 		}
-		if err := mgr.Add(ctrlutils.DelayedShutdown(s.svcstatus)); err != nil {
+		if err := s.svcleader.addRunnable(ctrlutils.DelayedShutdown(s.svcstatus)); err != nil {
 			return err
 		}
 		if s.svcstatusing != nil {
-			if err := mgr.Add(s.svcstatusing); err != nil {
+			if err := s.svcleader.addRunnable(s.svcstatusing); err != nil {
+				return err
+			}
+		}
+		if s.acmeClient != nil {
+			if err := s.svcleader.addRunnable(s.acmeClient); err != nil {
 				return err
 			}
 		}
 	}
 	if s.reloadQueue != nil {
-		if err := mgr.Add(ctrlutils.DistributedService(&svcReloadQueue{
+		if err := mgr.Add(&svcReloadQueue{
 			queue: s.reloadQueue,
-		})); err != nil {
+		}); err != nil {
 			return err
 		}
 	}
 	if s.Config.StatsCollectProcPeriod > 0 {
-		if err := mgr.Add(ctrlutils.DistributedService(&svcCalcIdle{
+		if err := mgr.Add(&svcCalcIdle{
 			instance: s.instance,
 			period:   s.Config.StatsCollectProcPeriod,
-		})); err != nil {
-			return err
-		}
-	}
-	if s.acmeClient != nil {
-		if err := mgr.Add(s.acmeClient); err != nil {
+		}); err != nil {
 			return err
 		}
 	}
 	if s.acmeServer != nil {
-		if err := mgr.Add(ctrlutils.DistributedService(s.acmeServer)); err != nil {
+		if err := mgr.Add(s.acmeServer); err != nil {
 			return err
 		}
 	}
 	if s.svchealthz != nil {
-		if err := mgr.Add(ctrlutils.DistributedService(s.svchealthz)); err != nil {
+		if err := mgr.Add(s.svchealthz); err != nil {
 			return err
 		}
 	}
@@ -239,7 +242,7 @@ func (s *Services) acmePeriodicCheck() (count int, err error) {
 
 // LeaderChangedSubscriber ...
 func (s *Services) LeaderChangedSubscriber(f SvcLeaderChangedFnc) {
-	s.svcleader.addsubscriber(f)
+	s.svcleader.addSubscriber(f)
 }
 
 // GetIsValidResource ...
@@ -255,7 +258,7 @@ func (s *Services) ReconcileIngress(changed *convtypes.ChangedObjects) {
 	s.log.Info("starting haproxy update", "id", s.updateCount)
 	timer := utils.NewTimer(s.metrics.ControllerProcTime)
 	converters.NewConverter(timer, s.instance.Config(), changed, s.converterOpt).Sync()
-	if s.svcleader.getIsLeader() {
+	if s.svcleader.isLeader() {
 		s.instance.AcmeUpdate()
 	}
 	s.instance.HAProxyUpdate(timer)
@@ -263,7 +266,7 @@ func (s *Services) ReconcileIngress(changed *convtypes.ChangedObjects) {
 }
 
 func (s *Services) acmeCheck(source string) (count int, err error) {
-	if !s.svcleader.getIsLeader() {
+	if !s.svcleader.isLeader() {
 		err = fmt.Errorf("cannot check acme certificates, this controller is not the leader")
 		s.log.Error(err, "error checking acme certificates")
 		return 0, err

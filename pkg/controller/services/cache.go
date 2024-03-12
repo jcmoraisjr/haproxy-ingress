@@ -35,7 +35,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
-	clientcache "k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
@@ -69,11 +68,11 @@ type c struct {
 	status    svcStatusUpdateFnc
 }
 
-var errGatewayA2Disabled = fmt.Errorf("Gateway API v1alpha2 wasn't initialized")
-var errGatewayB1Disabled = fmt.Errorf("Gateway API v1beta1 wasn't initialized")
+var errGatewayA2Disabled = fmt.Errorf("gateway API v1alpha2 wasn't initialized")
+var errGatewayB1Disabled = fmt.Errorf("gateway API v1beta1 wasn't initialized")
 
 func (c *c) get(key string, obj client.Object) error {
-	ns, n, err := clientcache.SplitMetaNamespaceKey(key)
+	ns, n, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return err
 	}
@@ -93,7 +92,7 @@ func (c *c) createOrUpdate(obj client.Object) error {
 }
 
 func buildResourceName(defaultNamespace, kind, resourceName string, allowCrossNamespace bool) (string, string, error) {
-	ns, name, err := clientcache.SplitMetaNamespaceKey(resourceName)
+	ns, name, err := cache.SplitMetaNamespaceKey(resourceName)
 	if err != nil {
 		return "", "", err
 	}
@@ -641,7 +640,7 @@ func (c *c) GetKey() (crypto.Signer, error) {
 
 // implements acme.Cache
 func (c *c) SetToken(domain string, uri, token string) error {
-	namespace, name, err := clientcache.SplitMetaNamespaceKey(c.config.AcmeTokenConfigMapName)
+	namespace, name, err := cache.SplitMetaNamespaceKey(c.config.AcmeTokenConfigMapName)
 	if err != nil {
 		return err
 	}

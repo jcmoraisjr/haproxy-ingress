@@ -32,7 +32,7 @@ func NewOptions() *Options {
 		Profiling:               true,
 		VerifyHostname:          true,
 		UpdateStatus:            true,
-		ElectionID:              "fc5ae9f3.haproxy-ingress.github.io",
+		ElectionID:              "class-%s.haproxy-ingress.github.io",
 		ShutdownTimeout:         25 * time.Second,
 		UpdateStatusOnShutdown:  true,
 		LogLevel:                2,
@@ -345,7 +345,10 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 	)
 
 	fs.StringVar(&o.ElectionID, "election-id", o.ElectionID, ""+
-		"Election id to be used for status update and certificate sign.",
+		"Election ID to be used for status update and certificate signing. An optional "+
+		"%s is used as a placeholder for the IngressClass name, and if not provided, the "+
+		"IngressClass is concatenated in the end of the provided value to compose the "+
+		"real Election ID, for backward compatibility.",
 	)
 
 	fs.StringVar(&o.WaitBeforeShutdown, "wait-before-shutdown", o.WaitBeforeShutdown, ""+

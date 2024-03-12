@@ -38,9 +38,6 @@ func Run(cfg *config.Config) error {
 	mgr, err := ctrl.NewManager(cfg.KubeConfig, ctrl.Options{
 		Logger:                  rootLogger.WithName("manager"),
 		Scheme:                  cfg.Scheme,
-		LeaderElection:          cfg.Election,
-		LeaderElectionID:        cfg.ElectionID,
-		LeaderElectionNamespace: cfg.ElectionNamespace,
 		GracefulShutdownTimeout: cfg.ShutdownTimeout,
 		HealthProbeBindAddress:  "0",
 		Metrics: server.Options{

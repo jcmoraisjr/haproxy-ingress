@@ -18,44 +18,138 @@ package services
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/go-logr/logr"
+	"golang.org/x/sync/errgroup"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	crleaderelection "sigs.k8s.io/controller-runtime/pkg/leaderelection"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
+)
+
+const (
+	// Default values taken from
+	// https://github.com/kubernetes/component-base/blob/master/config/v1alpha1/defaults.go
+	defaultLeaseDuration = 15 * time.Second
+	defaultRenewDeadline = 10 * time.Second
+	defaultRetryPeriod   = 2 * time.Second
 )
 
 // SvcLeaderChangedFnc ...
 type SvcLeaderChangedFnc func(isLeader bool)
 
-func initSvcLeader(ctx context.Context) *svcLeader {
-	return &svcLeader{
+func initSvcLeader(ctx context.Context, cfg *config.Config) (*svcLeader, error) {
+	r, err := initRecorderProvider(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	rl, err := crleaderelection.NewResourceLock(cfg.KubeConfig, r, crleaderelection.Options{
+		LeaderElection:             cfg.Election,
+		LeaderElectionID:           cfg.ElectionID,
+		LeaderElectionNamespace:    cfg.ElectionNamespace,
+		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	s := &svcLeader{
 		log: logr.FromContextOrDiscard(ctx).WithName("leader"),
 	}
+
+	if rl != nil {
+		s.le, err = leaderelection.NewLeaderElector(leaderelection.LeaderElectionConfig{
+			Name:          cfg.ElectionID,
+			Lock:          rl,
+			LeaseDuration: defaultLeaseDuration,
+			RenewDeadline: defaultRenewDeadline,
+			RetryPeriod:   defaultRetryPeriod,
+			Callbacks: leaderelection.LeaderCallbacks{
+				OnStartedLeading: s.OnStartedLeading,
+				OnStoppedLeading: s.OnStoppedLeading,
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return s, nil
 }
 
 type svcLeader struct {
-	isLeader    bool
+	le          *leaderelection.LeaderElector
 	log         logr.Logger
+	runnables   []manager.Runnable
+	rgroup      *errgroup.Group
+	rcancel     context.CancelFunc
 	subscribers []SvcLeaderChangedFnc
 }
 
-func (s *svcLeader) addsubscriber(f SvcLeaderChangedFnc) {
-	s.subscribers = append(s.subscribers, f)
-}
-
-func (s *svcLeader) getIsLeader() bool {
-	return s.isLeader
-}
-
 func (s *svcLeader) Start(ctx context.Context) error {
+	if s.le != nil {
+		s.le.Run(ctx)
+	}
+	<-ctx.Done()
+	return nil
+}
+
+func (s *svcLeader) OnStartedLeading(ctx context.Context) {
 	s.log.Info("leader acquired")
-	s.isLeader = true
+
+	ctxwg, cancel := context.WithCancel(ctx)
+	wg, ctxrun := errgroup.WithContext(ctxwg)
+	for i := range s.runnables {
+		r := s.runnables[i]
+		wg.Go(func() error {
+			return r.Start(ctxrun)
+		})
+	}
+	s.rgroup = wg
+	s.rcancel = cancel
+
 	for _, f := range s.subscribers {
 		go f(true)
 	}
-	<-ctx.Done()
-	s.isLeader = false
+}
+
+func (s *svcLeader) OnStoppedLeading() {
 	for _, f := range s.subscribers {
 		go f(false)
 	}
+
+	if s.rcancel != nil && s.rgroup != nil {
+		s.rcancel()
+		err := s.rgroup.Wait()
+		if err != nil {
+			s.log.Error(err, "error stop leading")
+		}
+	} else {
+		s.log.Error(fmt.Errorf("cannot stop services, leader was not taken"), "error stop leading")
+	}
+	s.rcancel = nil
+	s.rgroup = nil
+
 	s.log.Info("stopped leading")
+}
+
+func (s *svcLeader) addRunnable(r manager.Runnable) error {
+	s.runnables = append(s.runnables, r)
 	return nil
+}
+
+func (s *svcLeader) addSubscriber(f SvcLeaderChangedFnc) {
+	s.subscribers = append(s.subscribers, f)
+}
+
+func (s *svcLeader) isLeader() bool {
+	if s.le != nil {
+		return s.le.IsLeader()
+	}
+	return false
 }

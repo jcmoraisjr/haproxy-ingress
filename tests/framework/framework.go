@@ -114,7 +114,7 @@ func startApiserver(t *testing.T) *rest.Config {
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		require.NoError(t, e.Stop())
+		assert.NoError(t, e.Stop())
 	})
 	return config
 }
@@ -154,12 +154,11 @@ func startController(ctx context.Context, t *testing.T, config *rest.Config, cli
 	require.NoError(t, err)
 
 	opt := ctrlconfig.NewOptions()
-	opt.UpdateStatus = false
-	opt.WatchGateway = false
 	opt.MasterWorker = true
 	opt.LocalFSPrefix = "/tmp/haproxy-ingress"
 	opt.PublishAddress = "127.0.0.1"
 	opt.ConfigMap = "default/ingress-controller"
+	os.Setenv("POD_NAMESPACE", "default")
 	ctx, cancel := context.WithCancel(ctx)
 	cfg, err := ctrlconfig.CreateWithConfig(ctx, config, opt)
 	require.NoError(t, err)
@@ -167,7 +166,7 @@ func startController(ctx context.Context, t *testing.T, config *rest.Config, cli
 	done := make(chan bool)
 	go func() {
 		err := launch.Run(cfg)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		done <- true
 	}()
 
@@ -201,7 +200,9 @@ func (f *framework) Request(ctx context.Context, t *testing.T, method, host, pat
 	if opt.ExpectResponseCode > 0 {
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
 			res, err = cli.Do(req)
-			require.NoError(collect, err)
+			if !assert.NoError(collect, err) {
+				return
+			}
 			assert.Equal(collect, opt.ExpectResponseCode, res.StatusCode)
 		}, 5*time.Second, time.Second)
 	} else {
@@ -232,6 +233,10 @@ func (f *framework) Request(ctx context.Context, t *testing.T, method, host, pat
 		EchoResponse: echoResponse,
 		ReqHeaders:   reqHeaders,
 	}
+}
+
+func (f *framework) Client() client.WithWatch {
+	return f.cli
 }
 
 func (f *framework) CreateService(ctx context.Context, t *testing.T, serverPort int32, o ...options.Object) *corev1.Service {
@@ -265,7 +270,7 @@ spec:
 		svc.Namespace = "default"
 		svc.Name = name
 		err := f.cli.Delete(ctx, &svc)
-		require.NoError(t, client.IgnoreNotFound(err))
+		assert.NoError(t, client.IgnoreNotFound(err))
 	})
 	return svc
 }
@@ -301,7 +306,7 @@ subsets:
 		ep.Namespace = "default"
 		ep.Name = name
 		err := f.cli.Delete(ctx, &ep)
-		require.NoError(t, client.IgnoreNotFound(err))
+		assert.NoError(t, client.IgnoreNotFound(err))
 	})
 	return ep
 }
@@ -362,7 +367,7 @@ spec:
 		ing.Namespace = "default"
 		ing.Name = name
 		err := f.cli.Delete(ctx, &ing)
-		require.NoError(t, client.IgnoreNotFound(err))
+		assert.NoError(t, client.IgnoreNotFound(err))
 	})
 	return ing
 }
@@ -383,7 +388,7 @@ func (f *framework) CreateHTTPServer(ctx context.Context, t *testing.T) int32 {
 			}
 		}
 		_, err := w.Write([]byte(content))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
 	serverPort := int32(32768 + rand.Intn(32767))
@@ -401,7 +406,7 @@ func (f *framework) CreateHTTPServer(ctx context.Context, t *testing.T) int32 {
 
 	t.Cleanup(func() {
 		err := server.Shutdown(context.Background())
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		<-done
 	})
 	return serverPort

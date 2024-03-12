@@ -19,12 +19,14 @@ package utils
 import (
 	"context"
 	"time"
+
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 // DelayedShutdown adds a delay in the shutdown event, so the
 // runnable has some time to listen to events from other runnables
 // triggered during their shutdown
-func DelayedShutdown(svc DelayedService) DSD {
+func DelayedShutdown(svc DelayedService) manager.Runnable {
 	return &dsd{
 		svc:           svc,
 		startingDelay: 200 * time.Millisecond,
@@ -32,14 +34,9 @@ func DelayedShutdown(svc DelayedService) DSD {
 	}
 }
 
-// DSD ...
-type DSD interface {
-	Start(context.Context) error
-}
-
 // DelayedService ...
 type DelayedService interface {
-	Start(context.Context) error
+	manager.Runnable
 	CanShutdown() bool
 }
 
