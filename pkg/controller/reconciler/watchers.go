@@ -143,6 +143,13 @@ func (w *watchers) handlersCore() []*hdlr {
 				predicate.Or(
 					predicate.AnnotationChangedPredicate{},
 					predicate.GenerationChangedPredicate{},
+					predicate.NewPredicateFuncs(func(object client.Object) bool {
+						if w.cfg.PublishService == "" {
+							return false
+						}
+						svc := object.(*api.Service)
+						return svc.Namespace+"/"+svc.Name == w.cfg.PublishService
+					}),
 				),
 			},
 		},

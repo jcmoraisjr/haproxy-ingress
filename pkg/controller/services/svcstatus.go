@@ -40,18 +40,18 @@ func initSvcStatusUpdater(ctx context.Context, client client.Client) *svcStatusU
 }
 
 type svcStatusUpdater struct {
-	client  client.Client
-	ctx     context.Context
-	running bool
-	log     logr.Logger
-	queue   utils.Queue
+	client client.Client
+	ctx    context.Context
+	run    bool
+	log    logr.Logger
+	queue  utils.Queue
 }
 
 func (s *svcStatusUpdater) Start(ctx context.Context) error {
 	s.ctx = ctx
-	s.running = true
+	s.run = true
 	s.queue.RunWithContext(ctx)
-	s.running = false
+	s.run = false
 	return nil
 }
 
@@ -60,7 +60,7 @@ func (s *svcStatusUpdater) CanShutdown() bool {
 }
 
 func (s *svcStatusUpdater) update(obj client.Object) {
-	if s.running {
+	if s.run {
 		s.queue.Add(obj)
 	}
 }

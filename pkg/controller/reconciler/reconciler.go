@@ -42,15 +42,15 @@ type IngressReconciler struct {
 // Reconcile ...
 func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	changed := r.watchers.getChangedObjects()
-	r.Services.ReconcileIngress(changed)
+	r.Services.ReconcileIngress(ctx, changed)
 	return ctrl.Result{}, nil
 }
 
-func (r *IngressReconciler) leaderChanged(isLeader bool) {
+func (r *IngressReconciler) leaderChanged(ctx context.Context, isLeader bool) {
 	if isLeader && r.watchers.running() {
 		changed := r.watchers.getChangedObjects()
 		changed.NeedFullSync = true
-		r.Services.ReconcileIngress(changed)
+		r.Services.ReconcileIngress(ctx, changed)
 	}
 }
 

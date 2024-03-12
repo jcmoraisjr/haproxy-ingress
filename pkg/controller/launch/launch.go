@@ -35,6 +35,10 @@ func Run(cfg *config.Config) error {
 	ctx := cfg.RootContext
 
 	launchLog.Info("configuring manager")
+	var defaultNamespaces map[string]cache.Config
+	if cfg.WatchNamespace != "" {
+		defaultNamespaces = map[string]cache.Config{cfg.WatchNamespace: {}}
+	}
 	mgr, err := ctrl.NewManager(cfg.KubeConfig, ctrl.Options{
 		Logger:                  rootLogger.WithName("manager"),
 		Scheme:                  cfg.Scheme,
@@ -45,7 +49,7 @@ func Run(cfg *config.Config) error {
 		},
 		Cache: cache.Options{
 			SyncPeriod:        cfg.ResyncPeriod,
-			DefaultNamespaces: cfg.WatchNamespaces,
+			DefaultNamespaces: defaultNamespaces,
 		},
 	})
 	if err != nil {

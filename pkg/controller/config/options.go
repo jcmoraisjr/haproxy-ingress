@@ -64,7 +64,7 @@ type Options struct {
 	AcmeTokenConfigMapName   string
 	AcmeTrackTLSAnn          bool
 	BucketsResponseTime      []float64
-	PublishSvc               string
+	PublishService           string
 	PublishAddress           string
 	TCPConfigMapName         string
 	AnnPrefix                string
@@ -249,7 +249,7 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 		"the haproxy's admin socket. The response time unit is in seconds.",
 	)
 
-	fs.StringVar(&o.PublishSvc, "publish-service", o.PublishSvc, ""+
+	fs.StringVar(&o.PublishService, "publish-service", o.PublishService, ""+
 		"Service fronting the ingress controllers. Takes the form namespace/name. The "+
 		"controller will set the endpoint records on the ingress objects to reflect "+
 		"those on the service.",
@@ -297,8 +297,7 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 	)
 
 	fs.StringVar(&o.WatchNamespace, "watch-namespace", o.WatchNamespace, ""+
-		"Comma-separated list of namespaces to watch for Ingress. Default is to watch "+
-		"all namespaces",
+		"Namespace to watch for Ingress. Default is to watch all namespaces.",
 	)
 
 	fs.DurationVar(&o.StatsCollectProcPeriod, "stats-collect-processing-period", o.StatsCollectProcPeriod, ""+

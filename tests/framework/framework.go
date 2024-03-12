@@ -37,7 +37,9 @@ import (
 )
 
 const (
-	PublishAddress = "10.0.1.1"
+	PublishSvcName  = "default/publish"
+	PublishAddress  = "10.0.1.1"
+	PublishHostname = "ingress.local"
 )
 
 func NewFramework(ctx context.Context, t *testing.T) *framework {
@@ -157,10 +159,23 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 	err = f.cli.Create(ctx, &global)
 	require.NoError(t, err)
 
+	publishService := corev1.Service{}
+	publishService.Namespace = "default"
+	publishService.Name = "publish"
+	publishService.Spec.Type = corev1.ServiceTypeLoadBalancer
+	publishService.Spec.Ports = []corev1.ServicePort{{Port: 80}}
+	err = f.cli.Create(ctx, &publishService)
+	require.NoError(t, err)
+	publishService.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{
+		{IP: PublishAddress, Hostname: PublishHostname},
+	}
+	err = f.cli.Status().Update(ctx, &publishService)
+	require.NoError(t, err)
+
 	opt := ctrlconfig.NewOptions()
 	opt.MasterWorker = true
 	opt.LocalFSPrefix = "/tmp/haproxy-ingress"
-	opt.PublishAddress = PublishAddress
+	opt.PublishService = PublishSvcName
 	opt.ConfigMap = "default/ingress-controller"
 	os.Setenv("POD_NAMESPACE", "default")
 	ctx, cancel := context.WithCancel(ctx)
