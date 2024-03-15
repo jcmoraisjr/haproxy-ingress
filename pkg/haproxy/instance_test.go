@@ -4617,8 +4617,14 @@ spoe-message check-request
 			endpoints: []string{"10.0.0.101:12345"},
 			backendExp: `
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
+    http-request redirect code 302 location %[var(txn.coraza.data)] if { var(txn.coraza.action) -m str redirect }
+    http-response redirect code 302 location %[var(txn.coraza.data)] if { var(txn.coraza.action) -m str redirect }
+    http-request deny deny_status 403 hdr waf-block "request"  if { var(txn.coraza.action) -m str deny }
+    http-response deny deny_status 403 hdr waf-block "response" if { var(txn.coraza.action) -m str deny }
+    http-request silent-drop if { var(txn.coraza.action) -m str drop }
+    http-response silent-drop if { var(txn.coraza.action) -m str drop }
     http-request deny deny_status 504 if { var(txn.coraza.error) -m int gt 0 }
-    http-request deny if !{ var(txn.coraza.fail) -m int eq 0 }`,
+    http-response deny deny_status 504 if { var(txn.coraza.error) -m int gt 0 }`,
 			modsecExp: `
     timeout connect 1s
     timeout server  2s
