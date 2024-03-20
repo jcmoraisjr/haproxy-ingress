@@ -200,26 +200,28 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		configLog.Info("watching for Gateway API resources - --watch-gateway is true")
 	}
 
-	hasGatewayA2 := opt.WatchGateway && configHasAPI(
-		clientGateway.Discovery(),
-		gatewayv1alpha2.GroupVersion,
-		"gatewayclass", "gateway", "httproute")
-	if hasGatewayA2 {
-		configLog.Info("found custom resource definition for gateway API v1alpha2")
-	}
-	hasGatewayB1 := opt.WatchGateway && configHasAPI(
-		clientGateway.Discovery(),
-		gatewayv1beta1.GroupVersion,
-		"gatewayclass", "gateway", "httproute")
-	if hasGatewayB1 {
-		configLog.Info("found custom resource definition for gateway API v1beta1")
-	}
-	hasGatewayV1 := opt.WatchGateway && configHasAPI(
-		clientGateway.Discovery(),
-		gatewayv1.GroupVersion,
-		"gatewayclass", "gateway", "httproute")
-	if hasGatewayV1 {
-		configLog.Info("found custom resource definition for gateway API v1")
+	var hasGatewayV1, hasGatewayB1, hasGatewayA2 bool
+	if opt.WatchGateway {
+		gwapis := []string{"gatewayclass", "gateway", "httproute"}
+
+		gwV1 := configHasAPI(clientGateway.Discovery(), gatewayv1.GroupVersion, gwapis...)
+		if gwV1 {
+			configLog.Info("found custom resource definition for gateway API v1")
+		}
+		gwB1 := configHasAPI(clientGateway.Discovery(), gatewayv1beta1.GroupVersion, gwapis...)
+		if gwB1 {
+			configLog.Info("found custom resource definition for gateway API v1beta1")
+		}
+		gwA2 := configHasAPI(clientGateway.Discovery(), gatewayv1alpha2.GroupVersion, gwapis...)
+		if gwA2 {
+			configLog.Info("found custom resource definition for gateway API v1alpha2")
+		}
+
+		// only one GatewayClass/Gateway/HTTPRoute version should be enabled at the same time,
+		// otherwise we'd be retrieving the same duplicated resource from distinct api endpoints.
+		hasGatewayV1 = gwV1
+		hasGatewayB1 = gwB1 && !hasGatewayV1
+		hasGatewayA2 = gwA2 && !hasGatewayB1
 	}
 
 	if opt.EnableEndpointSlicesAPI {

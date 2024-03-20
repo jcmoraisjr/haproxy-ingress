@@ -18,11 +18,15 @@ package converters
 
 import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/configmap"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/gatewayv1"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/gateway"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
+
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 // Config ...
@@ -53,7 +57,7 @@ func (c *converters) Sync() {
 		changed = c.options.Cache.SwapChangedObjects()
 	}
 	ingressConverter := ingress.NewIngressConverter(c.options, c.haproxy, changed)
-	gatewayConverter := gatewayv1.NewGatewayConverter(c.options, c.haproxy, changed, ingressConverter)
+	gatewayConverter := gateway.NewGatewayConverter(c.options, c.haproxy, changed, ingressConverter)
 
 	needFullSync := changed.NeedFullSync ||
 		gatewayConverter.NeedFullSync() ||
@@ -75,13 +79,13 @@ func (c *converters) Sync() {
 	// gateway converter
 	//
 	if c.options.HasGatewayV1 {
-		gatewayConverter.Sync(needFullSync)
+		gatewayConverter.Sync(needFullSync, &gatewayv1.Gateway{})
 	}
 	if c.options.HasGatewayB1 {
-		gatewayConverter.SyncB1(needFullSync)
+		gatewayConverter.Sync(needFullSync, &gatewayv1beta1.Gateway{})
 	}
 	if c.options.HasGatewayA2 {
-		gatewayConverter.SyncA2(needFullSync)
+		gatewayConverter.Sync(needFullSync, &gatewayv1alpha2.Gateway{})
 	}
 	if c.options.HasGatewayA2 || c.options.HasGatewayB1 || c.options.HasGatewayV1 {
 		c.timer.Tick("parse_gateway")

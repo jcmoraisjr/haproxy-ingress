@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package gatewayv1
+package gateway_test
 
 import (
 	"fmt"
@@ -28,6 +28,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gwapischeme "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/scheme"
 
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/gateway"
 	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
@@ -48,6 +49,7 @@ type testCaseSync struct {
 }
 
 func TestSyncHTTPRouteCore(t *testing.T) {
+	gatewayGroup := gatewayv1.Group(gatewayv1.GroupName)
 	otherGroup := gatewayv1.Group("other.k8s.io")
 	runTestSync(t, []testCaseSync{
 		{
@@ -971,11 +973,11 @@ func setup(t *testing.T) *testConfig {
 
 func (c *testConfig) sync() {
 	conv := c.createConverter()
-	conv.Sync(true)
+	conv.Sync(true, &gatewayv1.Gateway{})
 }
 
-func (c *testConfig) createConverter() Config {
-	return NewGatewayConverter(
+func (c *testConfig) createConverter() gateway.Config {
+	return gateway.NewGatewayConverter(
 		&convtypes.ConverterOptions{
 			Cache:   c.cache,
 			Logger:  c.logger,

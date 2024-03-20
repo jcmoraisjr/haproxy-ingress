@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package gatewayv1
+package gateway
 
 import (
 	"fmt"
@@ -40,9 +40,7 @@ import (
 // Config ...
 type Config interface {
 	NeedFullSync() bool
-	SyncA2(full bool)
-	SyncB1(full bool)
-	Sync(full bool)
+	Sync(full bool, gwtyp client.Object)
 }
 
 // NewGatewayConverter ...
@@ -77,64 +75,69 @@ func (c *converter) NeedFullSync() bool {
 	return changed
 }
 
-func (c *converter) SyncA2(full bool) {
+func (c *converter) Sync(full bool, gwtyp client.Object) {
 	// TODO partial parsing
 	if !full {
 		return
 	}
+
+	var httpRoutesSource []*httpRouteSource
+	var err error
+	switch gwtyp.(type) {
+	case *gatewayv1alpha2.Gateway:
+		httpRoutesSource, err = c.getHTTPRoutesSourceA2()
+	case *gatewayv1beta1.Gateway:
+		httpRoutesSource, err = c.getHTTPRoutesSourceB1()
+	case *gatewayv1.Gateway:
+		httpRoutesSource, err = c.getHTTPRoutesSource()
+	default:
+		panic(fmt.Errorf("unsupported gateway api type: %T", gwtyp))
+	}
+	if err != nil {
+		c.logger.Error(err.Error())
+		return
+	}
+
+	sortHTTPRoutes(httpRoutesSource)
+	for _, httpRoute := range httpRoutesSource {
+		c.syncHTTPRoute(httpRoute, gwtyp)
+	}
+}
+
+func (c *converter) getHTTPRoutesSourceA2() ([]*httpRouteSource, error) {
 	httpRoutes, err := c.cache.GetHTTPRouteA2List()
 	if err != nil {
-		c.logger.Warn("error reading httpRoute list: %v", err)
-		return
+		return nil, fmt.Errorf("error reading httpRoute list: %w", err)
 	}
 	httpRoutesSource := make([]*httpRouteSource, len(httpRoutes))
 	for i := range httpRoutes {
 		httpRoutesSource[i] = newHTTPRouteSource(httpRoutes[i], &httpRoutes[i].Spec)
 	}
-	sortHTTPRoutes(httpRoutesSource)
-	for _, httpRoute := range httpRoutesSource {
-		c.syncHTTPRoute(httpRoute, &gatewayv1alpha2.Gateway{})
-	}
+	return httpRoutesSource, nil
 }
 
-func (c *converter) SyncB1(full bool) {
-	// TODO partial parsing
-	if !full {
-		return
-	}
+func (c *converter) getHTTPRoutesSourceB1() ([]*httpRouteSource, error) {
 	httpRoutes, err := c.cache.GetHTTPRouteB1List()
 	if err != nil {
-		c.logger.Warn("error reading httpRoute list: %v", err)
-		return
+		return nil, fmt.Errorf("error reading httpRoute list: %w", err)
 	}
 	httpRoutesSource := make([]*httpRouteSource, len(httpRoutes))
 	for i := range httpRoutes {
 		httpRoutesSource[i] = newHTTPRouteSource(httpRoutes[i], &httpRoutes[i].Spec)
 	}
-	sortHTTPRoutes(httpRoutesSource)
-	for _, httpRoute := range httpRoutesSource {
-		c.syncHTTPRoute(httpRoute, &gatewayv1beta1.Gateway{})
-	}
+	return httpRoutesSource, nil
 }
 
-func (c *converter) Sync(full bool) {
-	// TODO partial parsing
-	if !full {
-		return
-	}
+func (c *converter) getHTTPRoutesSource() ([]*httpRouteSource, error) {
 	httpRoutes, err := c.cache.GetHTTPRouteList()
 	if err != nil {
-		c.logger.Warn("error reading httpRoute list: %v", err)
-		return
+		return nil, fmt.Errorf("error reading httpRoute list: %w", err)
 	}
 	httpRoutesSource := make([]*httpRouteSource, len(httpRoutes))
 	for i := range httpRoutes {
 		httpRoutesSource[i] = newHTTPRouteSource(httpRoutes[i], &httpRoutes[i].Spec)
 	}
-	sortHTTPRoutes(httpRoutesSource)
-	for _, httpRoute := range httpRoutesSource {
-		c.syncHTTPRoute(httpRoute, &gatewayv1.Gateway{})
-	}
+	return httpRoutesSource, nil
 }
 
 func sortHTTPRoutes(httpRoutesSource []*httpRouteSource) {
