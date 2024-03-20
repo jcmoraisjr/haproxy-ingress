@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
@@ -69,6 +70,9 @@ func (w *watchers) getHandlers() []*hdlr {
 	}
 	if w.cfg.HasGatewayB1 {
 		handlers = append(handlers, w.handlersGatewayv1beta1()...)
+	}
+	if w.cfg.HasGatewayV1 {
+		handlers = append(handlers, w.handlersGatewayv1()...)
 	}
 	for _, h := range handlers {
 		h.w = w
@@ -422,6 +426,47 @@ func (w *watchers) handlersGatewayv1beta1() []*hdlr {
 		},
 		{
 			typ:  &gatewayv1beta1.HTTPRoute{},
+			res:  types.ResourceHTTPRoute,
+			full: true,
+			pr: []predicate.Predicate{
+				predicate.GenerationChangedPredicate{},
+			},
+		},
+	}
+}
+
+func (w *watchers) handlersGatewayv1() []*hdlr {
+	return []*hdlr{
+		{
+			typ:  &gatewayv1.Gateway{},
+			res:  types.ResourceGateway,
+			full: true,
+			pr: []predicate.Predicate{
+				predicate.GenerationChangedPredicate{},
+			},
+		},
+		{
+			typ:  &gatewayv1.GatewayClass{},
+			res:  types.ResourceGatewayClass,
+			full: true,
+			pr: []predicate.Predicate{
+				predicate.GenerationChangedPredicate{},
+				predicate.Funcs{
+					CreateFunc: func(ce event.CreateEvent) bool {
+						return w.val.IsValidGatewayClass(ce.Object.(*gatewayv1.GatewayClass))
+					},
+					DeleteFunc: func(de event.DeleteEvent) bool {
+						return w.val.IsValidGatewayClass(de.Object.(*gatewayv1.GatewayClass))
+					},
+					UpdateFunc: func(ue event.UpdateEvent) bool {
+						return w.val.IsValidGatewayClass(ue.ObjectOld.(*gatewayv1.GatewayClass)) ||
+							w.val.IsValidGatewayClass(ue.ObjectNew.(*gatewayv1.GatewayClass))
+					},
+				},
+			},
+		},
+		{
+			typ:  &gatewayv1.HTTPRoute{},
 			res:  types.ResourceHTTPRoute,
 			full: true,
 			pr: []predicate.Predicate{

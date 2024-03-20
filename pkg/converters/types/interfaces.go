@@ -24,6 +24,7 @@ import (
 	discoveryv1 "k8s.io/api/discovery/v1"
 	networking "k8s.io/api/networking/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
@@ -36,10 +37,12 @@ type Cache interface {
 	GetIngress(ingressName string) (*networking.Ingress, error)
 	GetIngressList() ([]*networking.Ingress, error)
 	GetIngressClass(className string) (*networking.IngressClass, error)
-	GetGatewayA2Map() (map[string]*gatewayv1alpha2.Gateway, error)
-	GetGatewayB1Map() (map[string]*gatewayv1beta1.Gateway, error)
+	GetGatewayA2(namespace, name string) (*gatewayv1alpha2.Gateway, error)
+	GetGatewayB1(namespace, name string) (*gatewayv1beta1.Gateway, error)
+	GetGateway(namespace, name string) (*gatewayv1.Gateway, error)
 	GetHTTPRouteA2List() ([]*gatewayv1alpha2.HTTPRoute, error)
 	GetHTTPRouteB1List() ([]*gatewayv1beta1.HTTPRoute, error)
+	GetHTTPRouteList() ([]*gatewayv1.HTTPRoute, error)
 	GetService(defaultNamespace, serviceName string) (*api.Service, error)
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
 	GetConfigMap(configMapName string) (*api.ConfigMap, error)

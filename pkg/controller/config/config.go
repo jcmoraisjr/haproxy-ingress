@@ -47,6 +47,7 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 	gwapiversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
@@ -97,6 +98,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(gatewayv1alpha2.AddToScheme(scheme))
 	utilruntime.Must(gatewayv1beta1.AddToScheme(scheme))
+	utilruntime.Must(gatewayv1.AddToScheme(scheme))
 
 	var kubeConfig *rest.Config
 	switch {
@@ -211,6 +213,13 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		"gatewayclass", "gateway", "httproute")
 	if hasGatewayB1 {
 		configLog.Info("found custom resource definition for gateway API v1beta1")
+	}
+	hasGatewayV1 := opt.WatchGateway && configHasAPI(
+		clientGateway.Discovery(),
+		gatewayv1.GroupVersion,
+		"gatewayclass", "gateway", "httproute")
+	if hasGatewayV1 {
+		configLog.Info("found custom resource definition for gateway API v1")
 	}
 
 	if opt.EnableEndpointSlicesAPI {
@@ -461,6 +470,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		ForceNamespaceIsolation:  opt.ForceIsolation,
 		HasGatewayA2:             hasGatewayA2,
 		HasGatewayB1:             hasGatewayB1,
+		HasGatewayV1:             hasGatewayV1,
 		HealthzAddr:              healthz,
 		HealthzURL:               opt.HealthzURL,
 		IngressClass:             opt.IngressClass,
@@ -639,6 +649,7 @@ type Config struct {
 	ForceNamespaceIsolation  bool
 	HasGatewayA2             bool
 	HasGatewayB1             bool
+	HasGatewayV1             bool
 	HealthzAddr              string
 	HealthzURL               string
 	IngressClass             string

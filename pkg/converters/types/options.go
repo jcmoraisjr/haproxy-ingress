@@ -42,6 +42,7 @@ type ConverterOptions struct {
 	TrackInstances   bool
 	HasGatewayA2     bool
 	HasGatewayB1     bool
+	HasGatewayV1     bool
 	EnableEPSlices   bool
 }
 

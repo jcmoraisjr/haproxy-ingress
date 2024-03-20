@@ -42,6 +42,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
@@ -218,28 +219,27 @@ func (c *k8scache) hasGateway() bool {
 	return c.listers.gatewayClassLister != nil
 }
 
-var errGatewayA2Disabled = fmt.Errorf("Gateway API v1alpha2 wasn't initialized")
-var errGatewayB1Disabled = fmt.Errorf("Legacy controller does not support Gateway API v1beta1")
+var errGatewayA2Disabled = fmt.Errorf("gateway API v1alpha2 wasn't initialized")
+var errGatewayB1Disabled = fmt.Errorf("legacy controller does not support Gateway API v1beta1")
+var errGatewayV1Disabled = fmt.Errorf("legacy controller does not support Gateway API v1")
 
-func (c *k8scache) GetGatewayA2Map() (map[string]*gatewayv1alpha2.Gateway, error) {
+func (c *k8scache) GetGatewayA2(namespace, name string) (*gatewayv1alpha2.Gateway, error) {
 	if !c.hasGateway() {
 		return nil, errGatewayA2Disabled
 	}
-	gwList, err := c.listers.gatewayLister.List(labels.Everything())
-	if err != nil {
-		return nil, err
+	gw, err := c.listers.gatewayLister.Gateways(namespace).Get(name)
+	if err == nil && !c.IsValidGateway(gw) {
+		return nil, nil
 	}
-	validGwList := make(map[string]*gatewayv1alpha2.Gateway, len(gwList))
-	for _, gw := range gwList {
-		if c.IsValidGateway(gw) {
-			validGwList[gw.Namespace+"/"+gw.Name] = gw
-		}
-	}
-	return validGwList, nil
+	return gw, nil
 }
 
-func (c *k8scache) GetGatewayB1Map() (map[string]*gatewayv1beta1.Gateway, error) {
+func (c *k8scache) GetGatewayB1(namespace, name string) (*gatewayv1beta1.Gateway, error) {
 	return nil, errGatewayB1Disabled
+}
+
+func (c *k8scache) GetGateway(namespace, name string) (*gatewayv1.Gateway, error) {
+	return nil, errGatewayV1Disabled
 }
 
 func (c *k8scache) GetGatewayClassA2(className string) (*gatewayv1alpha2.GatewayClass, error) {
@@ -247,10 +247,6 @@ func (c *k8scache) GetGatewayClassA2(className string) (*gatewayv1alpha2.Gateway
 		return nil, errGatewayA2Disabled
 	}
 	return c.listers.gatewayClassLister.Get(className)
-}
-
-func (c *k8scache) GetGatewayClassB1(className string) (*gatewayv1alpha2.GatewayClass, error) {
-	return nil, errGatewayB1Disabled
 }
 
 func buildLabelSelector(match map[string]string) (labels.Selector, error) {
@@ -270,6 +266,10 @@ func (c *k8scache) GetHTTPRouteA2List() ([]*gatewayv1alpha2.HTTPRoute, error) {
 
 func (c *k8scache) GetHTTPRouteB1List() ([]*gatewayv1beta1.HTTPRoute, error) {
 	return nil, errGatewayB1Disabled
+}
+
+func (c *k8scache) GetHTTPRouteList() ([]*gatewayv1.HTTPRoute, error) {
+	return nil, errGatewayV1Disabled
 }
 
 func (c *k8scache) GetService(defaultNamespace, serviceName string) (*api.Service, error) {

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	goruntime "runtime"
 	"strconv"
@@ -20,6 +21,8 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -28,6 +31,7 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
@@ -42,7 +46,9 @@ const (
 	PublishHostname = "ingress.local"
 )
 
-func NewFramework(ctx context.Context, t *testing.T) *framework {
+func NewFramework(ctx context.Context, t *testing.T, o ...options.Framework) *framework {
+	opt := options.ParseFrameworkOptions(o...)
+
 	wd, err := os.Getwd()
 	require.NoError(t, err)
 	if filepath.Base(wd) == "integration" {
@@ -58,12 +64,13 @@ func NewFramework(ctx context.Context, t *testing.T) *framework {
 	}
 	t.Logf("using haproxy %s\n", full)
 
-	config := startApiserver(t)
+	config := startApiserver(t, opt.CRDPaths)
 
 	scheme := runtime.NewScheme()
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(gatewayv1alpha2.AddToScheme(scheme))
 	utilruntime.Must(gatewayv1beta1.AddToScheme(scheme))
+	utilruntime.Must(gatewayv1.AddToScheme(scheme))
 	codec := serializer.NewCodecFactory(scheme)
 
 	cli, err := client.NewWithWatch(config, client.Options{Scheme: scheme})
@@ -109,12 +116,14 @@ func haproxyVersion(t *testing.T) (major, minor int, full string) {
 	return major, minor, full
 }
 
-func startApiserver(t *testing.T) *rest.Config {
+func startApiserver(t *testing.T, crdPaths []string) *rest.Config {
 	t.Log("starting apiserver")
 
 	e := envtest.Environment{
 		// run `make setup-envtest` to download envtest binaries.
 		BinaryAssetsDirectory: filepath.Join("bin", "k8s", fmt.Sprintf("1.29.1-%s-%s", goruntime.GOOS, goruntime.GOARCH)),
+		CRDDirectoryPaths:     crdPaths,
+		ErrorIfCRDPathMissing: true,
 	}
 	config, err := e.Start()
 	require.NoError(t, err)
@@ -330,18 +339,7 @@ subsets:
 	return ep
 }
 
-func (f *framework) Host(ing *networking.Ingress, ruleId ...int) string {
-	var rule int
-	if len(ruleId) > 0 {
-		rule = ruleId[0]
-	}
-	if rules := ing.Spec.Rules; len(rules) >= rule {
-		return rules[rule].Host
-	}
-	return ""
-}
-
-func (f *framework) CreateIngress(ctx context.Context, t *testing.T, svc *corev1.Service, o ...options.Object) *networking.Ingress {
+func (f *framework) CreateIngress(ctx context.Context, t *testing.T, svc *corev1.Service, o ...options.Object) (*networking.Ingress, string) {
 	opt := options.ParseObjectOptions(o...)
 	data := `
 apiVersion: networking.k8s.io/v1
@@ -388,13 +386,174 @@ spec:
 		err := f.cli.Delete(ctx, &ing)
 		assert.NoError(t, client.IgnoreNotFound(err))
 	})
-	return ing
+	return ing, hostname
 }
 
-func (f *framework) CreateObject(t *testing.T, data string) runtime.Object {
+func (f *framework) CreateGatewayClassA2(ctx context.Context, t *testing.T, o ...options.Object) *gatewayv1alpha2.GatewayClass {
+	return f.CreateGatewayClass(ctx, t, gatewayv1alpha2.GroupVersion.Version, o...).(*gatewayv1alpha2.GatewayClass)
+}
+
+func (f *framework) CreateGatewayClassB1(ctx context.Context, t *testing.T, o ...options.Object) *gatewayv1beta1.GatewayClass {
+	return f.CreateGatewayClass(ctx, t, gatewayv1beta1.GroupVersion.Version, o...).(*gatewayv1beta1.GatewayClass)
+}
+
+func (f *framework) CreateGatewayClassV1(ctx context.Context, t *testing.T, o ...options.Object) *gatewayv1.GatewayClass {
+	return f.CreateGatewayClass(ctx, t, gatewayv1.GroupVersion.Version, o...).(*gatewayv1.GatewayClass)
+}
+
+func (f *framework) CreateGatewayClass(ctx context.Context, t *testing.T, version string, o ...options.Object) client.Object {
+	opt := options.ParseObjectOptions(o...)
+	api := v1.GroupVersion{Group: gatewayv1.GroupName, Version: version}.String()
+	data := fmt.Sprintf(`
+apiVersion: %s
+kind: GatewayClass
+metadata:
+  name: ""
+spec:
+  controllerName: haproxy-ingress.github.io/controller
+`, api)
+	name := randomName("gc")
+
+	gc := f.CreateObject(t, data)
+	gc.SetName(name)
+	opt.Apply(gc)
+
+	t.Logf("creating GatewayClass %s\n", gc.GetName())
+
+	err := f.cli.Create(ctx, gc)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		gc := unstructured.Unstructured{}
+		gc.SetAPIVersion(api)
+		gc.SetKind("GatewayClass")
+		gc.SetName(name)
+		err := f.cli.Delete(ctx, &gc)
+		assert.NoError(t, client.IgnoreNotFound(err))
+	})
+	return gc
+}
+
+func (f *framework) CreateGatewayA2(ctx context.Context, t *testing.T, gc *gatewayv1alpha2.GatewayClass, o ...options.Object) *gatewayv1alpha2.Gateway {
+	return f.CreateGateway(ctx, t, gatewayv1alpha2.GroupVersion.Version, (*gatewayv1.GatewayClass)(gc), o...).(*gatewayv1alpha2.Gateway)
+}
+
+func (f *framework) CreateGatewayB1(ctx context.Context, t *testing.T, gc *gatewayv1beta1.GatewayClass, o ...options.Object) *gatewayv1beta1.Gateway {
+	return f.CreateGateway(ctx, t, gatewayv1beta1.GroupVersion.Version, (*gatewayv1.GatewayClass)(gc), o...).(*gatewayv1beta1.Gateway)
+}
+
+func (f *framework) CreateGatewayV1(ctx context.Context, t *testing.T, gc *gatewayv1.GatewayClass, o ...options.Object) *gatewayv1.Gateway {
+	return f.CreateGateway(ctx, t, gatewayv1.GroupVersion.Version, gc, o...).(*gatewayv1.Gateway)
+}
+
+func (f *framework) CreateGateway(ctx context.Context, t *testing.T, version string, gc *gatewayv1.GatewayClass, o ...options.Object) client.Object {
+	opt := options.ParseObjectOptions(o...)
+	api := v1.GroupVersion{Group: gatewayv1.GroupName, Version: version}.String()
+	data := fmt.Sprintf(`
+apiVersion: %s
+kind: Gateway
+metadata:
+  name: ""
+  namespace: default
+spec:
+  gatewayClassName: ""
+  listeners:
+  - protocol: HTTP
+    port: 80
+    name: echoserver-gw
+`, api)
+	name := randomName("gw")
+
+	gw := f.CreateObject(t, data)
+	gw.SetName(name)
+	spec := reflect.ValueOf(gw).Elem().FieldByName("Spec").Addr().Interface().(*gatewayv1.GatewaySpec)
+	spec.GatewayClassName = gatewayv1.ObjectName(gc.Name)
+	opt.Apply(gw)
+
+	t.Logf("creating Gateway %s/%s\n", gw.GetNamespace(), gw.GetName())
+
+	err := f.cli.Create(ctx, gw)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		gw := unstructured.Unstructured{}
+		gw.SetAPIVersion(api)
+		gw.SetKind("Gateway")
+		gw.SetNamespace("default")
+		gw.SetName(name)
+		err := f.cli.Delete(ctx, &gw)
+		assert.NoError(t, client.IgnoreNotFound(err))
+	})
+	return gw
+}
+
+func (f *framework) CreateHTTPRouteA2(ctx context.Context, t *testing.T, gw *gatewayv1alpha2.Gateway, svc *corev1.Service, o ...options.Object) (*gatewayv1alpha2.HTTPRoute, string) {
+	route, hostname := f.CreateHTTPRoute(ctx, t, gatewayv1alpha2.GroupVersion.Version, (*gatewayv1.Gateway)(gw), svc, o...)
+	return route.(*gatewayv1alpha2.HTTPRoute), hostname
+}
+
+func (f *framework) CreateHTTPRouteB1(ctx context.Context, t *testing.T, gw *gatewayv1beta1.Gateway, svc *corev1.Service, o ...options.Object) (*gatewayv1beta1.HTTPRoute, string) {
+	route, hostname := f.CreateHTTPRoute(ctx, t, gatewayv1beta1.GroupVersion.Version, (*gatewayv1.Gateway)(gw), svc, o...)
+	return route.(*gatewayv1beta1.HTTPRoute), hostname
+}
+
+func (f *framework) CreateHTTPRouteV1(ctx context.Context, t *testing.T, gw *gatewayv1.Gateway, svc *corev1.Service, o ...options.Object) (*gatewayv1.HTTPRoute, string) {
+	route, hostname := f.CreateHTTPRoute(ctx, t, gatewayv1.GroupVersion.Version, gw, svc, o...)
+	return route.(*gatewayv1.HTTPRoute), hostname
+}
+
+func (f *framework) CreateHTTPRoute(ctx context.Context, t *testing.T, version string, gw *gatewayv1.Gateway, svc *corev1.Service, o ...options.Object) (client.Object, string) {
+	opt := options.ParseObjectOptions(o...)
+	api := v1.GroupVersion{Group: gatewayv1.GroupName, Version: version}.String()
+	data := fmt.Sprintf(`
+apiVersion: %s
+kind: HTTPRoute
+metadata:
+  name: ""
+  namespace: default
+spec:
+  parentRefs:
+  - name: ""
+  hostnames:
+  - ""
+  rules:
+  - backendRefs:
+    - name: ""
+      port: 0
+`, api)
+	name := randomName("httproute")
+	hostname := name + ".local"
+
+	route := f.CreateObject(t, data)
+	route.SetName(name)
+	spec := reflect.ValueOf(route).Elem().FieldByName("Spec").Addr().Interface().(*gatewayv1.HTTPRouteSpec)
+	spec.ParentRefs[0].Name = gatewayv1.ObjectName(gw.Name)
+	spec.Hostnames[0] = gatewayv1.Hostname(hostname)
+	spec.Rules[0].BackendRefs[0].Name = gatewayv1.ObjectName(svc.Name)
+	spec.Rules[0].BackendRefs[0].Port = (*gatewayv1.PortNumber)(&svc.Spec.Ports[0].Port)
+	opt.Apply(route)
+
+	t.Logf("creating HTTPRoute %s/%s\n", route.GetNamespace(), route.GetName())
+
+	err := f.cli.Create(ctx, route)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		route := unstructured.Unstructured{}
+		route.SetAPIVersion(api)
+		route.SetKind("HTTPRoute")
+		route.SetNamespace("default")
+		route.SetName(name)
+		err := f.cli.Delete(ctx, &route)
+		assert.NoError(t, client.IgnoreNotFound(err))
+	})
+	return route, hostname
+}
+
+func (f *framework) CreateObject(t *testing.T, data string) client.Object {
 	obj, _, err := f.codec.UniversalDeserializer().Decode([]byte(data), nil, nil)
 	require.NoError(t, err)
-	return obj
+	return obj.(client.Object)
 }
 
 func (f *framework) CreateHTTPServer(ctx context.Context, t *testing.T) int32 {

@@ -27,6 +27,7 @@ import (
 	discoveryv1 "k8s.io/api/discovery/v1"
 	networking "k8s.io/api/networking/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
@@ -45,12 +46,9 @@ type CacheMock struct {
 	IngClassList []*networking.IngressClass
 	SvcList      []*api.Service
 	//
-	GatewayA2List      map[string]*gatewayv1alpha2.Gateway
-	GatewayClassA2List []*gatewayv1alpha2.GatewayClass
-	HTTPRouteA2List    []*gatewayv1alpha2.HTTPRoute
-	GatewayB1List      map[string]*gatewayv1beta1.Gateway
-	GatewayClassB1List []*gatewayv1beta1.GatewayClass
-	HTTPRouteB1List    []*gatewayv1beta1.HTTPRoute
+	HTTPRouteList    []*gatewayv1.HTTPRoute
+	GatewayList      []*gatewayv1.Gateway
+	GatewayClassList []*gatewayv1.GatewayClass
 	//
 	NsList        map[string]*api.Namespace
 	LookupList    map[string][]net.IP
@@ -69,15 +67,14 @@ type CacheMock struct {
 // NewCacheMock ...
 func NewCacheMock(tracker convtypes.Tracker) *CacheMock {
 	return &CacheMock{
-		tracker:       tracker,
-		Changed:       &convtypes.ChangedObjects{},
-		SvcList:       []*api.Service{},
-		GatewayA2List: map[string]*gatewayv1alpha2.Gateway{},
-		GatewayB1List: map[string]*gatewayv1beta1.Gateway{},
-		NsList:        map[string]*api.Namespace{},
-		LookupList:    map[string][]net.IP{},
-		EpList:        map[string]*api.Endpoints{},
-		TermPodList:   map[string][]*api.Pod{},
+		tracker:     tracker,
+		Changed:     &convtypes.ChangedObjects{},
+		SvcList:     []*api.Service{},
+		GatewayList: []*gatewayv1.Gateway{},
+		NsList:      map[string]*api.Namespace{},
+		LookupList:  map[string][]net.IP{},
+		EpList:      map[string]*api.Endpoints{},
+		TermPodList: map[string][]*api.Pod{},
 		SecretTLSPath: map[string]string{
 			"system/ingress-default": "/tls/tls-default.pem",
 		},
@@ -124,24 +121,39 @@ func (c *CacheMock) GetIngressClass(className string) (*networking.IngressClass,
 	return nil, fmt.Errorf("IngressClass not found: %s", className)
 }
 
-// GetGatewayA2Map ...
-func (c *CacheMock) GetGatewayA2Map() (map[string]*gatewayv1alpha2.Gateway, error) {
-	return c.GatewayA2List, nil
-}
-
-// GetHTTPRouteA2List ...
+// GetHTTPRouteList ...
 func (c *CacheMock) GetHTTPRouteA2List() ([]*gatewayv1alpha2.HTTPRoute, error) {
-	return c.HTTPRouteA2List, nil
+	return nil, fmt.Errorf("missing implementation")
 }
 
-// GetGatewayB1Map ...
-func (c *CacheMock) GetGatewayB1Map() (map[string]*gatewayv1beta1.Gateway, error) {
-	return c.GatewayB1List, nil
-}
-
-// GetHTTPRouteB1List ...
+// GetHTTPRouteList ...
 func (c *CacheMock) GetHTTPRouteB1List() ([]*gatewayv1beta1.HTTPRoute, error) {
-	return c.HTTPRouteB1List, nil
+	return nil, fmt.Errorf("missing implementation")
+}
+
+// GetHTTPRouteList ...
+func (c *CacheMock) GetHTTPRouteList() ([]*gatewayv1.HTTPRoute, error) {
+	return c.HTTPRouteList, nil
+}
+
+// GetGatewayA2 ...
+func (c *CacheMock) GetGatewayA2(namespace, name string) (*gatewayv1alpha2.Gateway, error) {
+	return nil, fmt.Errorf("missing implementation")
+}
+
+// GetGatewayB1 ...
+func (c *CacheMock) GetGatewayB1(namespace, name string) (*gatewayv1beta1.Gateway, error) {
+	return nil, fmt.Errorf("missing implementation")
+}
+
+// GetGateway ...
+func (c *CacheMock) GetGateway(namespace, name string) (*gatewayv1.Gateway, error) {
+	for _, gw := range c.GatewayList {
+		if gw.Namespace == namespace && gw.Name == name {
+			return gw, nil
+		}
+	}
+	return nil, fmt.Errorf("gateway not found: %s/%s", namespace, name)
 }
 
 // GetService ...

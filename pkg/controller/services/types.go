@@ -18,6 +18,7 @@ package services
 
 import (
 	networking "k8s.io/api/networking/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
@@ -28,6 +29,8 @@ type IsValidResource interface {
 	IsValidGatewayClassA2(gwcls *gatewayv1alpha2.GatewayClass) bool
 	IsValidGatewayB1(gw *gatewayv1beta1.Gateway) bool
 	IsValidGatewayClassB1(gwcls *gatewayv1beta1.GatewayClass) bool
+	IsValidGateway(gw *gatewayv1.Gateway) bool
+	IsValidGatewayClass(gwcls *gatewayv1.GatewayClass) bool
 	IsValidIngress(ing *networking.Ingress) bool
 	IsValidIngressClass(ing *networking.IngressClass) bool
 }
