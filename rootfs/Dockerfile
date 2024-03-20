@@ -16,13 +16,14 @@ FROM haproxy:2.6.16-alpine
 
 USER root
 
-RUN apk upgrade --no-cache && apk --no-cache add socat openssl lua5.3 lua-json4 dumb-init
+RUN apk upgrade --no-cache && apk --no-cache add libcap-utils socat openssl lua5.3 lua-json4 dumb-init
 
 COPY . /
 
 RUN mkdir -p /var/empty /etc/haproxy /var/lib/haproxy /var/run/haproxy\
  && chown -R haproxy:haproxy /etc/haproxy /var/lib/haproxy /var/run/haproxy\
- && chmod 0 /var/empty
+ && chmod 0 /var/empty\
+ && setcap 'cap_net_bind_service=+ep' /usr/local/sbin/haproxy
 
 STOPSIGNAL SIGTERM
 USER haproxy
