@@ -47,7 +47,6 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
-	crcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 	gwapiversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
@@ -218,7 +217,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		configLog.Info("watching endpointslices - --enable-endpointslices-api is true")
 	}
 
-	if opt.PublishSvc != "" && opt.PublishAddress != "" {
+	if opt.PublishService != "" && opt.PublishAddress != "" {
 		return nil, fmt.Errorf("configure only one of --publish-service or --publish-address")
 	}
 
@@ -256,7 +255,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		}
 	}
 
-	if opt.UpdateStatus && podName == "" && opt.PublishSvc == "" && len(publishAddressHostnames)+len(publishAddressIPs) == 0 {
+	if opt.UpdateStatus && podName == "" && opt.PublishService == "" && len(publishAddressHostnames)+len(publishAddressIPs) == 0 {
 		return nil, fmt.Errorf("one of --publish-service, --publish-address or POD_NAME envvar should be configured when --update-status=true")
 	}
 
@@ -317,34 +316,29 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		configLog.Info("using default backend", "service", opt.DefaultSvc)
 	}
 
-	if opt.PublishSvc != "" {
-		ns, name, err := cache.SplitMetaNamespaceKey(opt.PublishSvc)
+	if svc := opt.PublishService; svc != "" {
+		ns, name, err := cache.SplitMetaNamespaceKey(svc)
 		if err != nil {
 			return nil, fmt.Errorf("invalid service format: %w", err)
 		}
 		svc, err := client.CoreV1().Services(ns).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
-			return nil, fmt.Errorf("error getting information about service '%s': %w", opt.PublishSvc, err)
+			return nil, fmt.Errorf("error getting information about service '%s': %w", svc, err)
 		}
 		if len(svc.Status.LoadBalancer.Ingress) == 0 {
 			if len(svc.Spec.ExternalIPs) == 0 {
-				return nil, fmt.Errorf("service '%s' does not (yet) have ingress points", opt.PublishSvc)
+				return nil, fmt.Errorf("service '%s' does not (yet) have ingress points", svc)
 			}
-			configLog.Info("service validated as assigned with externalIP", "service", opt.PublishSvc)
+			configLog.Info("service validated as assigned with externalIP", "service", svc)
 		} else {
-			configLog.Info("service validated as source of Ingress status", "service", opt.PublishSvc)
+			configLog.Info("service validated as source of Ingress status", "service", svc)
 		}
 	}
 
-	var watchNamespaces map[string]crcache.Config
 	if opt.WatchNamespace != "" {
 		_, err := client.NetworkingV1().Ingresses(opt.WatchNamespace).List(ctx, metav1.ListOptions{Limit: 1})
 		if err != nil {
-			return nil, fmt.Errorf("no watchNamespace with name '%s' found: %w", opt.WatchNamespace, err)
-		}
-		watchNamespaces = make(map[string]crcache.Config)
-		for _, ns := range strings.Split(opt.WatchNamespace, ",") {
-			watchNamespaces[ns] = crcache.Config{}
+			return nil, fmt.Errorf("no namespace with name '%s' found: %w", opt.WatchNamespace, err)
 		}
 	} else {
 		_, err := client.CoreV1().Services("default").List(ctx, metav1.ListOptions{})
@@ -481,7 +475,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		Profiling:                opt.Profiling,
 		PublishAddressHostnames:  publishAddressHostnames,
 		PublishAddressIPs:        publishAddressIPs,
-		PublishService:           opt.PublishSvc,
+		PublishService:           opt.PublishService,
 		RateLimitUpdate:          opt.RateLimitUpdate,
 		ReadyzURL:                opt.ReadyzURL,
 		ReloadInterval:           opt.ReloadInterval,
@@ -503,7 +497,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		VersionInfo:              versionInfo,
 		WaitBeforeUpdate:         opt.WaitBeforeUpdate,
 		WatchIngressWithoutClass: opt.WatchIngressWithoutClass,
-		WatchNamespaces:          watchNamespaces,
+		WatchNamespace:           opt.WatchNamespace,
 	}, nil
 }
 
@@ -681,5 +675,5 @@ type Config struct {
 	VersionInfo              version.Info
 	WaitBeforeUpdate         time.Duration
 	WatchIngressWithoutClass bool
-	WatchNamespaces          map[string]crcache.Config
+	WatchNamespace           string
 }

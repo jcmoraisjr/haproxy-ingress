@@ -40,7 +40,7 @@ const (
 )
 
 // SvcLeaderChangedFnc ...
-type SvcLeaderChangedFnc func(isLeader bool)
+type SvcLeaderChangedFnc func(ctx context.Context, isLeader bool)
 
 func initSvcLeader(ctx context.Context, cfg *config.Config) (*svcLeader, error) {
 	r, err := initRecorderProvider(cfg)
@@ -59,6 +59,7 @@ func initSvcLeader(ctx context.Context, cfg *config.Config) (*svcLeader, error) 
 	}
 
 	s := &svcLeader{
+		ctx: ctx,
 		log: logr.FromContextOrDiscard(ctx).WithName("leader"),
 	}
 
@@ -83,6 +84,7 @@ func initSvcLeader(ctx context.Context, cfg *config.Config) (*svcLeader, error) 
 }
 
 type svcLeader struct {
+	ctx         context.Context
 	le          *leaderelection.LeaderElector
 	log         logr.Logger
 	runnables   []manager.Runnable
@@ -114,13 +116,13 @@ func (s *svcLeader) OnStartedLeading(ctx context.Context) {
 	s.rcancel = cancel
 
 	for _, f := range s.subscribers {
-		go f(true)
+		go f(ctx, true)
 	}
 }
 
 func (s *svcLeader) OnStoppedLeading() {
 	for _, f := range s.subscribers {
-		go f(false)
+		go f(s.ctx, false)
 	}
 
 	if s.rcancel != nil && s.rgroup != nil {

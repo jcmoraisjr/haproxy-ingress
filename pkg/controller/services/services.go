@@ -105,10 +105,7 @@ func (s *Services) setup(ctx context.Context) error {
 	svchealthz := initSvcHealthz(ctx, cfg, metrics, s.acmeExternalCallCheck)
 	svcstatus := initSvcStatusUpdater(ctx, s.Client)
 	cache := createCacheFacade(ctx, s.Client, cfg, tracker, sslCerts, dynConfig, svcstatus.update)
-	var svcstatusing *svcStatusIng
-	if cfg.UpdateStatus {
-		svcstatusing = initSvcStatusIng(ctx, cfg, s.Client, cache, svcstatus.update)
-	}
+	svcstatusing := initSvcStatusIng(ctx, cfg, s.Client, cache, svcstatus.update)
 	var acmeClient *svcAcmeClient
 	var acmeServer *svcAcmeServer
 	var acmeSigner acme.Signer
@@ -193,7 +190,7 @@ func (s *Services) withManager(mgr ctrl.Manager) error {
 		if err := s.svcleader.addRunnable(ctrlutils.DelayedShutdown(s.svcstatus)); err != nil {
 			return err
 		}
-		if s.svcstatusing != nil {
+		if s.Config.UpdateStatus {
 			if err := s.svcleader.addRunnable(s.svcstatusing); err != nil {
 				return err
 			}
@@ -251,7 +248,7 @@ func (s *Services) GetIsValidResource() IsValidResource {
 }
 
 // ReconcileIngress ...
-func (s *Services) ReconcileIngress(changed *convtypes.ChangedObjects) {
+func (s *Services) ReconcileIngress(ctx context.Context, changed *convtypes.ChangedObjects) {
 	s.modelMutex.Lock()
 	defer s.modelMutex.Unlock()
 	s.updateCount++
@@ -262,6 +259,7 @@ func (s *Services) ReconcileIngress(changed *convtypes.ChangedObjects) {
 		s.instance.AcmeUpdate()
 	}
 	s.instance.HAProxyUpdate(timer)
+	s.svcstatusing.changed(ctx, changed)
 	s.log.WithValues("id", s.updateCount).WithValues(timer.AsValues("total")...).Info("finish haproxy update")
 }
 
