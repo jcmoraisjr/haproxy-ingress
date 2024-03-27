@@ -18,12 +18,15 @@ package converters
 
 import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/configmap"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/gatewayv1alpha2"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/gatewayv1beta1"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/gateway"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
+
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 // Config ...
@@ -54,12 +57,10 @@ func (c *converters) Sync() {
 		changed = c.options.Cache.SwapChangedObjects()
 	}
 	ingressConverter := ingress.NewIngressConverter(c.options, c.haproxy, changed)
-	gatewayA2Converter := gatewayv1alpha2.NewGatewayConverter(c.options, c.haproxy, changed, ingressConverter)
-	gatewayB1Converter := gatewayv1beta1.NewGatewayConverter(c.options, c.haproxy, changed, ingressConverter)
+	gatewayConverter := gateway.NewGatewayConverter(c.options, c.haproxy, changed, ingressConverter)
 
 	needFullSync := changed.NeedFullSync ||
-		gatewayB1Converter.NeedFullSync() ||
-		gatewayA2Converter.NeedFullSync() ||
+		gatewayConverter.NeedFullSync() ||
 		ingressConverter.NeedFullSync()
 	if needFullSync {
 		c.options.Tracker.ClearLinks()
@@ -77,13 +78,16 @@ func (c *converters) Sync() {
 	//
 	// gateway converter
 	//
+	if c.options.HasGatewayV1 {
+		gatewayConverter.Sync(needFullSync, &gatewayv1.Gateway{})
+	}
 	if c.options.HasGatewayB1 {
-		gatewayB1Converter.Sync(needFullSync)
+		gatewayConverter.Sync(needFullSync, &gatewayv1beta1.Gateway{})
 	}
 	if c.options.HasGatewayA2 {
-		gatewayA2Converter.Sync(needFullSync)
+		gatewayConverter.Sync(needFullSync, &gatewayv1alpha2.Gateway{})
 	}
-	if c.options.HasGatewayA2 || c.options.HasGatewayB1 {
+	if c.options.HasGatewayA2 || c.options.HasGatewayB1 || c.options.HasGatewayV1 {
 		c.timer.Tick("parse_gateway")
 	}
 

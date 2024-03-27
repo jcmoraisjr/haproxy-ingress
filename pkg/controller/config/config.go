@@ -47,6 +47,7 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 	gwapiversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
@@ -97,6 +98,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(gatewayv1alpha2.AddToScheme(scheme))
 	utilruntime.Must(gatewayv1beta1.AddToScheme(scheme))
+	utilruntime.Must(gatewayv1.AddToScheme(scheme))
 
 	var kubeConfig *rest.Config
 	switch {
@@ -198,19 +200,28 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		configLog.Info("watching for Gateway API resources - --watch-gateway is true")
 	}
 
-	hasGatewayA2 := opt.WatchGateway && configHasAPI(
-		clientGateway.Discovery(),
-		gatewayv1alpha2.GroupVersion,
-		"gatewayclass", "gateway", "httproute")
-	if hasGatewayA2 {
-		configLog.Info("found custom resource definition for gateway API v1alpha2")
-	}
-	hasGatewayB1 := opt.WatchGateway && configHasAPI(
-		clientGateway.Discovery(),
-		gatewayv1beta1.GroupVersion,
-		"gatewayclass", "gateway", "httproute")
-	if hasGatewayB1 {
-		configLog.Info("found custom resource definition for gateway API v1beta1")
+	var hasGatewayV1, hasGatewayB1, hasGatewayA2 bool
+	if opt.WatchGateway {
+		gwapis := []string{"gatewayclass", "gateway", "httproute"}
+
+		gwV1 := configHasAPI(clientGateway.Discovery(), gatewayv1.GroupVersion, gwapis...)
+		if gwV1 {
+			configLog.Info("found custom resource definition for gateway API v1")
+		}
+		gwB1 := configHasAPI(clientGateway.Discovery(), gatewayv1beta1.GroupVersion, gwapis...)
+		if gwB1 {
+			configLog.Info("found custom resource definition for gateway API v1beta1")
+		}
+		gwA2 := configHasAPI(clientGateway.Discovery(), gatewayv1alpha2.GroupVersion, gwapis...)
+		if gwA2 {
+			configLog.Info("found custom resource definition for gateway API v1alpha2")
+		}
+
+		// only one GatewayClass/Gateway/HTTPRoute version should be enabled at the same time,
+		// otherwise we'd be retrieving the same duplicated resource from distinct api endpoints.
+		hasGatewayV1 = gwV1
+		hasGatewayB1 = gwB1 && !hasGatewayV1
+		hasGatewayA2 = gwA2 && !hasGatewayB1
 	}
 
 	if opt.EnableEndpointSlicesAPI {
@@ -461,6 +472,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		ForceNamespaceIsolation:  opt.ForceIsolation,
 		HasGatewayA2:             hasGatewayA2,
 		HasGatewayB1:             hasGatewayB1,
+		HasGatewayV1:             hasGatewayV1,
 		HealthzAddr:              healthz,
 		HealthzURL:               opt.HealthzURL,
 		IngressClass:             opt.IngressClass,
@@ -639,6 +651,7 @@ type Config struct {
 	ForceNamespaceIsolation  bool
 	HasGatewayA2             bool
 	HasGatewayB1             bool
+	HasGatewayV1             bool
 	HealthzAddr              string
 	HealthzURL               string
 	IngressClass             string

@@ -19,7 +19,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/tests/framework/options"
 )
 
-func TestIntegration(t *testing.T) {
+func TestIntegrationIngress(t *testing.T) {
 	ctx := context.Background()
 
 	f := framework.NewFramework(ctx, t)
@@ -29,7 +29,7 @@ func TestIntegration(t *testing.T) {
 	require.NotEqual(t, framework.PublishAddress, lbingpre1)
 
 	svcpre1 := f.CreateService(ctx, t, httpPort)
-	ingpre1 := f.CreateIngress(ctx, t, svcpre1)
+	ingpre1, _ := f.CreateIngress(ctx, t, svcpre1)
 	ingpre1.Status.LoadBalancer.Ingress = []networkingv1.IngressLoadBalancerIngress{{IP: lbingpre1}}
 	err := f.Client().Status().Update(ctx, ingpre1)
 	require.NoError(t, err)
@@ -39,8 +39,8 @@ func TestIntegration(t *testing.T) {
 	t.Run("hello world", func(t *testing.T) {
 		t.Parallel()
 		svc := f.CreateService(ctx, t, httpPort)
-		ing := f.CreateIngress(ctx, t, svc)
-		res := f.Request(ctx, t, http.MethodGet, f.Host(ing), "/", options.ExpectResponseCode(http.StatusOK))
+		_, hostname := f.CreateIngress(ctx, t, svc)
+		res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
 		assert.True(t, res.EchoResponse)
 		assert.Equal(t, "http", res.ReqHeaders["x-forwarded-proto"])
 	})
@@ -48,24 +48,24 @@ func TestIntegration(t *testing.T) {
 	t.Run("should not redirect to https", func(t *testing.T) {
 		t.Parallel()
 		svc := f.CreateService(ctx, t, httpPort)
-		ing := f.CreateIngress(ctx, t, svc,
+		_, hostname := f.CreateIngress(ctx, t, svc,
 			options.DefaultHostTLS(),
 			options.AddConfigKeyAnnotations(map[string]string{ingtypes.BackSSLRedirect: "false"}),
 		)
-		res := f.Request(ctx, t, http.MethodGet, f.Host(ing), "/", options.ExpectResponseCode(http.StatusOK))
+		res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
 		assert.True(t, res.EchoResponse)
 	})
 
 	t.Run("should redirect to https", func(t *testing.T) {
 		t.Parallel()
 		svc := f.CreateService(ctx, t, httpPort)
-		ing := f.CreateIngress(ctx, t, svc,
+		_, hostname := f.CreateIngress(ctx, t, svc,
 			options.DefaultHostTLS(),
 			options.AddConfigKeyAnnotations(map[string]string{ingtypes.BackSSLRedirect: "true"}),
 		)
-		res := f.Request(ctx, t, http.MethodGet, f.Host(ing), "/", options.ExpectResponseCode(http.StatusFound))
+		res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusFound))
 		assert.False(t, res.EchoResponse)
-		assert.Equal(t, fmt.Sprintf("https://%s/", f.Host(ing)), res.HTTPResponse.Header.Get("location"))
+		assert.Equal(t, fmt.Sprintf("https://%s/", hostname), res.HTTPResponse.Header.Get("location"))
 	})
 
 	t.Run("should take leader", func(t *testing.T) {
@@ -100,7 +100,7 @@ func TestIntegration(t *testing.T) {
 		t.Parallel()
 		svc := f.CreateService(ctx, t, httpPort)
 
-		ing1 := f.CreateIngress(ctx, t, svc)
+		ing1, _ := f.CreateIngress(ctx, t, svc)
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 			err := f.Client().Get(ctx, client.ObjectKeyFromObject(ing1), ing1)
 			if !assert.NoError(collect, err) {
@@ -110,7 +110,7 @@ func TestIntegration(t *testing.T) {
 		}, 5*time.Second, time.Second)
 
 		// testing two consecutive syncs
-		ing2 := f.CreateIngress(ctx, t, svc)
+		ing2, _ := f.CreateIngress(ctx, t, svc)
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 			err := f.Client().Get(ctx, client.ObjectKeyFromObject(ing2), ing2)
 			if !assert.NoError(collect, err) {
@@ -123,7 +123,7 @@ func TestIntegration(t *testing.T) {
 	t.Run("should sync ingress status from publish service", func(t *testing.T) {
 		t.Parallel()
 		svc := f.CreateService(ctx, t, httpPort)
-		ing := f.CreateIngress(ctx, t, svc)
+		ing, _ := f.CreateIngress(ctx, t, svc)
 
 		// check initial status
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
@@ -193,4 +193,59 @@ func TestIntegration(t *testing.T) {
 	// should limit read and update when watching namespace
 
 	// should sync status on new leader
+}
+
+func TestIntegrationGateway(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("v1alpha2", func(t *testing.T) {
+		f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v040-v1alpha2"))
+		f.StartController(ctx, t)
+		httpPort := f.CreateHTTPServer(ctx, t)
+		gc := f.CreateGatewayClassA2(ctx, t)
+
+		t.Run("hello world", func(t *testing.T) {
+			t.Parallel()
+			gw := f.CreateGatewayA2(ctx, t, gc)
+			svc := f.CreateService(ctx, t, httpPort)
+			_, hostname := f.CreateHTTPRouteA2(ctx, t, gw, svc)
+			res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
+			assert.True(t, res.EchoResponse)
+			assert.Equal(t, "http", res.ReqHeaders["x-forwarded-proto"])
+		})
+	})
+
+	t.Run("v1beta1", func(t *testing.T) {
+		f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v050-v1beta1-experimental"))
+		f.StartController(ctx, t)
+		httpPort := f.CreateHTTPServer(ctx, t)
+		gc := f.CreateGatewayClassB1(ctx, t)
+
+		t.Run("hello world", func(t *testing.T) {
+			t.Parallel()
+			gw := f.CreateGatewayB1(ctx, t, gc)
+			svc := f.CreateService(ctx, t, httpPort)
+			_, hostname := f.CreateHTTPRouteB1(ctx, t, gw, svc)
+			res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
+			assert.True(t, res.EchoResponse)
+			assert.Equal(t, "http", res.ReqHeaders["x-forwarded-proto"])
+		})
+	})
+
+	t.Run("v1", func(t *testing.T) {
+		f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v100-v1-experimental"))
+		f.StartController(ctx, t)
+		httpPort := f.CreateHTTPServer(ctx, t)
+		gc := f.CreateGatewayClassV1(ctx, t)
+
+		t.Run("hello world", func(t *testing.T) {
+			t.Parallel()
+			gw := f.CreateGatewayV1(ctx, t, gc)
+			svc := f.CreateService(ctx, t, httpPort)
+			_, hostname := f.CreateHTTPRouteV1(ctx, t, gw, svc)
+			res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
+			assert.True(t, res.EchoResponse)
+			assert.Equal(t, "http", res.ReqHeaders["x-forwarded-proto"])
+		})
+	})
 }
