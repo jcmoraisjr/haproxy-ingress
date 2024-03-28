@@ -12,8 +12,8 @@ description: >
 
 The following steps configure the Kubernetes cluster and HAProxy Ingress to read and parse Gateway API resources:
 
-* Manually install the Gateway API CRDs from the standard channel. See the Gateway API [documentation](https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api)
-    * ... or simply `kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.0.0/standard-install.yaml`
+* Manually install the Gateway API CRDs from the experimental channel - HAProxy Ingress supports TCPRoute which is not included in the standard channel. See the Gateway API [documentation](https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api)
+    * ... or simply `kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.0.0/experimental-install.yaml`
     * `v1.0.0` is just a reference for a fresh new deployment, Gateway API `v0.4.0` or any newer versions are supported.
 * Start (or restart) the controller
 
@@ -25,9 +25,9 @@ Gateway API `v1alpha2`, `v1beta1` and `v1` specs are partially implemented in v0
 
 * Target Services can be annotated with [Backend or Path scoped]({{% relref "keys#scope" %}}) configuration keys, this will continue to be supported.
 * Gateway API resources doesn't support annotations, this is planned to continue to be unsupported. Extensions to the Gateway API spec will be added in the extension points of the API.
-* Only the `GatewayClass`, `Gateway` and `HTTPRoute` resource definitions are implemented.
+* Only the `GatewayClass`, `Gateway`, `TCPRoute` and `HTTPRoute` resource definitions are implemented.
 * The controller doesn't implement partial parsing yet for Gateway API resources, changes should be a bit slow on clusters with thousands of Ingress, Gateway API resources or Services.
-* Gateway's Listener Port and Protocol are not implemented - Port uses the global [bind-port]({{% relref "keys#bind-port" %}}) configuration and Protocol is based on the presence or absence of the TLS attribute.
+* Gateway's Listener Port and Protocol are implemented for TCPRoute, but they are not implemented for HTTPRoute - for HTTP workloads, Port uses the global [bind-port]({{% relref "keys#bind-port" %}}) configuration and Protocol is based on the presence or absence of the TLS attribute.
 * Gateway's Addresses is not implemented - binding addresses use the global [bind-ip-addr]({{% relref "keys#bind-ip-addr" %}}) configuration.
 * Gateway's Hostname only supports empty/absence of Hostname or a single `*`, any other string will override the HTTPRoute Hostnames configuration without any merging.
 * HTTPRoute's Rules and BackendRefs don't support Filters.
@@ -51,7 +51,7 @@ Add the following steps to the [Getting Started guide]({{% relref "/docs/getting
 [Manually install](https://gateway-api.sigs.k8s.io/v1alpha2/guides/getting-started/#installing-gateway-api-crds-manually) the Gateway API CRDs:
 
 ```
-kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.0.0/standard-install.yaml
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.0.0/experimental-install.yaml
 ```
 
 Add the following deployment and service if echoserver isn't running yet:

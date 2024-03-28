@@ -43,6 +43,7 @@ type ConverterOptions struct {
 	HasGatewayA2     bool
 	HasGatewayB1     bool
 	HasGatewayV1     bool
+	HasTCPRouteA2    bool
 	EnableEPSlices   bool
 }
 

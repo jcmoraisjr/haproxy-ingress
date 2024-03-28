@@ -23,12 +23,12 @@ func TestIntegrationIngress(t *testing.T) {
 	ctx := context.Background()
 
 	f := framework.NewFramework(ctx, t)
-	httpPort := f.CreateHTTPServer(ctx, t)
+	httpServerPort := f.CreateHTTPServer(ctx, t)
 
 	lbingpre1 := "127.0.0.1"
 	require.NotEqual(t, framework.PublishAddress, lbingpre1)
 
-	svcpre1 := f.CreateService(ctx, t, httpPort)
+	svcpre1 := f.CreateService(ctx, t, httpServerPort)
 	ingpre1, _ := f.CreateIngress(ctx, t, svcpre1)
 	ingpre1.Status.LoadBalancer.Ingress = []networkingv1.IngressLoadBalancerIngress{{IP: lbingpre1}}
 	err := f.Client().Status().Update(ctx, ingpre1)
@@ -38,7 +38,7 @@ func TestIntegrationIngress(t *testing.T) {
 
 	t.Run("hello world", func(t *testing.T) {
 		t.Parallel()
-		svc := f.CreateService(ctx, t, httpPort)
+		svc := f.CreateService(ctx, t, httpServerPort)
 		_, hostname := f.CreateIngress(ctx, t, svc)
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
 		assert.True(t, res.EchoResponse)
@@ -47,7 +47,7 @@ func TestIntegrationIngress(t *testing.T) {
 
 	t.Run("should not redirect to https", func(t *testing.T) {
 		t.Parallel()
-		svc := f.CreateService(ctx, t, httpPort)
+		svc := f.CreateService(ctx, t, httpServerPort)
 		_, hostname := f.CreateIngress(ctx, t, svc,
 			options.DefaultHostTLS(),
 			options.AddConfigKeyAnnotations(map[string]string{ingtypes.BackSSLRedirect: "false"}),
@@ -58,7 +58,7 @@ func TestIntegrationIngress(t *testing.T) {
 
 	t.Run("should redirect to https", func(t *testing.T) {
 		t.Parallel()
-		svc := f.CreateService(ctx, t, httpPort)
+		svc := f.CreateService(ctx, t, httpServerPort)
 		_, hostname := f.CreateIngress(ctx, t, svc,
 			options.DefaultHostTLS(),
 			options.AddConfigKeyAnnotations(map[string]string{ingtypes.BackSSLRedirect: "true"}),
@@ -98,7 +98,7 @@ func TestIntegrationIngress(t *testing.T) {
 
 	t.Run("should update ingress status", func(t *testing.T) {
 		t.Parallel()
-		svc := f.CreateService(ctx, t, httpPort)
+		svc := f.CreateService(ctx, t, httpServerPort)
 
 		ing1, _ := f.CreateIngress(ctx, t, svc)
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
@@ -122,7 +122,7 @@ func TestIntegrationIngress(t *testing.T) {
 
 	t.Run("should sync ingress status from publish service", func(t *testing.T) {
 		t.Parallel()
-		svc := f.CreateService(ctx, t, httpPort)
+		svc := f.CreateService(ctx, t, httpServerPort)
 		ing, _ := f.CreateIngress(ctx, t, svc)
 
 		// check initial status
@@ -201,13 +201,13 @@ func TestIntegrationGateway(t *testing.T) {
 	t.Run("v1alpha2", func(t *testing.T) {
 		f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v040-v1alpha2"))
 		f.StartController(ctx, t)
-		httpPort := f.CreateHTTPServer(ctx, t)
+		httpServerPort := f.CreateHTTPServer(ctx, t)
 		gc := f.CreateGatewayClassA2(ctx, t)
 
 		t.Run("hello world", func(t *testing.T) {
 			t.Parallel()
 			gw := f.CreateGatewayA2(ctx, t, gc)
-			svc := f.CreateService(ctx, t, httpPort)
+			svc := f.CreateService(ctx, t, httpServerPort)
 			_, hostname := f.CreateHTTPRouteA2(ctx, t, gw, svc)
 			res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
 			assert.True(t, res.EchoResponse)
@@ -218,13 +218,13 @@ func TestIntegrationGateway(t *testing.T) {
 	t.Run("v1beta1", func(t *testing.T) {
 		f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v050-v1beta1-experimental"))
 		f.StartController(ctx, t)
-		httpPort := f.CreateHTTPServer(ctx, t)
+		httpServerPort := f.CreateHTTPServer(ctx, t)
 		gc := f.CreateGatewayClassB1(ctx, t)
 
 		t.Run("hello world", func(t *testing.T) {
 			t.Parallel()
 			gw := f.CreateGatewayB1(ctx, t, gc)
-			svc := f.CreateService(ctx, t, httpPort)
+			svc := f.CreateService(ctx, t, httpServerPort)
 			_, hostname := f.CreateHTTPRouteB1(ctx, t, gw, svc)
 			res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
 			assert.True(t, res.EchoResponse)
@@ -235,17 +235,29 @@ func TestIntegrationGateway(t *testing.T) {
 	t.Run("v1", func(t *testing.T) {
 		f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v100-v1-experimental"))
 		f.StartController(ctx, t)
-		httpPort := f.CreateHTTPServer(ctx, t)
+		httpServerPort := f.CreateHTTPServer(ctx, t)
+		tcpServerPort := f.CreateTCPServer(ctx, t)
 		gc := f.CreateGatewayClassV1(ctx, t)
 
 		t.Run("hello world", func(t *testing.T) {
 			t.Parallel()
 			gw := f.CreateGatewayV1(ctx, t, gc)
-			svc := f.CreateService(ctx, t, httpPort)
+			svc := f.CreateService(ctx, t, httpServerPort)
 			_, hostname := f.CreateHTTPRouteV1(ctx, t, gw, svc)
 			res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
 			assert.True(t, res.EchoResponse)
 			assert.Equal(t, "http", res.ReqHeaders["x-forwarded-proto"])
+		})
+
+		t.Run("expose TCPRoute", func(t *testing.T) {
+			t.Parallel()
+			gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("pgserver", "TCP", 15432))
+			svc := f.CreateService(ctx, t, tcpServerPort)
+			_ = f.CreateTCPRouteA2(ctx, t, gw, svc)
+			res1 := f.TCPRequest(ctx, t, 15432, "ping")
+			assert.Equal(t, "ping", res1)
+			res2 := f.TCPRequest(ctx, t, 15432, "reply")
+			assert.Equal(t, "reply", res2)
 		})
 	})
 }
