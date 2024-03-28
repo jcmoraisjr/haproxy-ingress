@@ -1,6 +1,10 @@
 package options
 
-import "sigs.k8s.io/controller-runtime/pkg/client"
+import (
+	"math/rand"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
 
 type Object func(o *objectOpt)
 
@@ -22,13 +26,38 @@ func DefaultHostTLS() Object {
 	}
 }
 
+func Listener(name, proto string, port int32) Object {
+	return func(o *objectOpt) {
+		o.GatewayOpt.Listeners = append(o.GatewayOpt.Listeners, ListenerOpt{
+			Name:  name,
+			Proto: proto,
+			Port:  port,
+		})
+	}
+}
+
+func TCPListener() Object {
+	return Listener("tcpservice-gw", "TCP", int32(32768+rand.Intn(32767)))
+}
+
 type objectOpt struct {
 	Ann map[string]string
 	IngressOpt
+	GatewayOpt
 }
 
 type IngressOpt struct {
 	DefaultTLS bool
+}
+
+type GatewayOpt struct {
+	Listeners []ListenerOpt
+}
+
+type ListenerOpt struct {
+	Name  string
+	Proto string
+	Port  int32
 }
 
 func (o *objectOpt) Apply(obj client.Object) {

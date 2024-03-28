@@ -43,6 +43,7 @@ type Cache interface {
 	GetHTTPRouteA2List() ([]*gatewayv1alpha2.HTTPRoute, error)
 	GetHTTPRouteB1List() ([]*gatewayv1beta1.HTTPRoute, error)
 	GetHTTPRouteList() ([]*gatewayv1.HTTPRoute, error)
+	GetTCPRouteList() ([]*gatewayv1alpha2.TCPRoute, error)
 	GetService(defaultNamespace, serviceName string) (*api.Service, error)
 	GetEndpoints(service *api.Service) (*api.Endpoints, error)
 	GetConfigMap(configMapName string) (*api.ConfigMap, error)
@@ -117,6 +118,7 @@ const (
 	ResourceGateway      ResourceType = "Gateway"
 	ResourceGatewayClass ResourceType = "GatewayClass"
 	ResourceHTTPRoute    ResourceType = "HTTPRoute"
+	ResourceTCPRoute     ResourceType = "TCPRoute"
 
 	ResourceConfigMap ResourceType = "ConfigMap"
 	ResourceService   ResourceType = "Service"
