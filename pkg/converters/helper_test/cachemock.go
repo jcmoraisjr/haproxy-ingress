@@ -47,6 +47,7 @@ type CacheMock struct {
 	SvcList      []*api.Service
 	//
 	HTTPRouteList    []*gatewayv1.HTTPRoute
+	TCPRouteList     []*gatewayv1alpha2.TCPRoute
 	GatewayList      []*gatewayv1.Gateway
 	GatewayClassList []*gatewayv1.GatewayClass
 	//
@@ -134,6 +135,10 @@ func (c *CacheMock) GetHTTPRouteB1List() ([]*gatewayv1beta1.HTTPRoute, error) {
 // GetHTTPRouteList ...
 func (c *CacheMock) GetHTTPRouteList() ([]*gatewayv1.HTTPRoute, error) {
 	return c.HTTPRouteList, nil
+}
+
+func (c *CacheMock) GetTCPRouteList() ([]*gatewayv1alpha2.TCPRoute, error) {
+	return c.TCPRouteList, nil
 }
 
 // GetGatewayA2 ...

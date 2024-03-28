@@ -74,6 +74,9 @@ func (w *watchers) getHandlers() []*hdlr {
 	if w.cfg.HasGatewayV1 {
 		handlers = append(handlers, w.handlersGatewayv1()...)
 	}
+	if w.cfg.HasTCPRouteA2 {
+		handlers = append(handlers, w.handlersTCPRoutev1alpha2()...)
+	}
 	for _, h := range handlers {
 		h.w = w
 	}
@@ -468,6 +471,19 @@ func (w *watchers) handlersGatewayv1() []*hdlr {
 		{
 			typ:  &gatewayv1.HTTPRoute{},
 			res:  types.ResourceHTTPRoute,
+			full: true,
+			pr: []predicate.Predicate{
+				predicate.GenerationChangedPredicate{},
+			},
+		},
+	}
+}
+
+func (w *watchers) handlersTCPRoutev1alpha2() []*hdlr {
+	return []*hdlr{
+		{
+			typ:  &gatewayv1alpha2.TCPRoute{},
+			res:  types.ResourceTCPRoute,
 			full: true,
 			pr: []predicate.Predicate{
 				predicate.GenerationChangedPredicate{},

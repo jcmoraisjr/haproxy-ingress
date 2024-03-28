@@ -201,7 +201,7 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 		"processes.",
 	)
 
-	flag.StringVar(&o.MasterSocket, "master-socket", o.MasterSocket, ""+
+	fs.StringVar(&o.MasterSocket, "master-socket", o.MasterSocket, ""+
 		"Defines the master CLI unix socket of an external HAProxy running in "+
 		"master-worker mode. Defaults to use the embedded HAProxy if not declared.",
 	)

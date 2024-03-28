@@ -18,6 +18,7 @@ package gateway_test
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -26,6 +27,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gwapischeme "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/scheme"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/gateway"
@@ -44,6 +46,7 @@ type testCaseSync struct {
 	expFullSync    bool
 	expDefaultHost string
 	expHosts       string
+	expTCPServices string
 	expBackends    string
 	expLogging     string
 }
@@ -113,7 +116,7 @@ paths:
 			id: "cross-namespace-3",
 			config: func(c *testConfig) {
 				c.createNamespace("ns2", "name=ns2")
-				c.createGateway1("ns1/web", "l1:name=ns1")
+				c.createGateway1("ns1/web", "l1::name=ns1")
 				c.createHTTPRoute1("ns2/web", "ns1/web", "echoserver:8080")
 				c.createService1("ns2/echoserver", "8080", "172.17.0.11")
 			},
@@ -125,7 +128,7 @@ WARN skipping attachment of HTTPRoute 'ns2/web' to Gateway 'ns1/web' listener 'l
 			id: "cross-namespace-4",
 			config: func(c *testConfig) {
 				c.createNamespace("ns2", "name=ns2")
-				c.createGateway1("ns1/web", "l1:name=ns2")
+				c.createGateway1("ns1/web", "l1::name=ns2")
 				c.createHTTPRoute1("ns2/web", "ns1/web", "echoserver:8080")
 				c.createService1("ns2/echoserver", "8080", "172.17.0.11")
 			},
@@ -521,6 +524,34 @@ paths:
   - ip: 172.17.0.15
     port: 8080
     weight: 16
+`,
+		},
+	})
+}
+
+func TestSyncTCPRouteCore(t *testing.T) {
+	runTestSync(t, []testCaseSync{
+		{
+			id: "minimum",
+			config: func(c *testConfig) {
+				c.createGateway1("default/pg", "l1:5432")
+				c.createTCPRoute1("default/pg", "pg", "postgres:15432")
+				c.createService1("default/postgres", "15432", "172.17.0.11")
+			},
+			expTCPServices: `
+- backends: []
+  defaultbackend: default_pg__tcprule0
+  port: 5432
+  proxyprot: false
+  tls: {}
+`,
+			expBackends: `
+- id: default_pg__tcprule0
+  endpoints:
+  - ip: 172.17.0.11
+    port: 15432
+    weight: 128
+  modetcp: true
 `,
 		},
 	})
@@ -934,11 +965,15 @@ func runTestSync(t *testing.T, testCases []testCaseSync) {
 				if test.expHosts == "" {
 					test.expHosts = "[]"
 				}
+				if test.expTCPServices == "" {
+					test.expTCPServices = "[]"
+				}
 				if test.expBackends == "" {
 					test.expBackends = "[]"
 				}
 				c.compareConfigDefaultHost(test.id, test.expDefaultHost)
 				c.compareConfigHosts(test.id, test.expHosts)
+				c.compareConfigTCPServices(test.id, test.expTCPServices)
 				c.compareConfigBacks(test.id, test.expBackends)
 			}
 
@@ -979,9 +1014,10 @@ func (c *testConfig) sync() {
 func (c *testConfig) createConverter() gateway.Config {
 	return gateway.NewGatewayConverter(
 		&convtypes.ConverterOptions{
-			Cache:   c.cache,
-			Logger:  c.logger,
-			Tracker: c.tracker,
+			Cache:         c.cache,
+			Logger:        c.logger,
+			Tracker:       c.tracker,
+			HasTCPRouteA2: true,
 		},
 		c.hconfig,
 		c.cache.SwapChangedObjects(),
@@ -1028,13 +1064,21 @@ spec:
 	for _, listener := range strings.Split(listeners, ",") {
 		l := gatewayv1.Listener{}
 		var lname, lselector string
-		if i := strings.Index(listener, ":"); i >= 0 {
-			lname = listener[:i]
-			lselector = listener[i+1:]
-		} else {
-			lname = listener
+		var lport gatewayv1.PortNumber
+		lsplit := strings.Split(listener, ":")
+		lname = lsplit[0]
+		if len(lsplit) > 2 {
+			lselector = lsplit[2]
+		}
+		if len(lsplit) > 1 && lsplit[1] != "" {
+			port, err := strconv.Atoi(lsplit[1])
+			if err != nil {
+				panic(err)
+			}
+			lport = gatewayv1.PortNumber(port)
 		}
 		l.Name = gatewayv1.SectionName(lname)
+		l.Port = lport
 		from := gatewayv1.NamespacesFromSame
 		var selector *v1.LabelSelector
 		if lselector != "" {
@@ -1073,9 +1117,8 @@ func (c *testConfig) createGateway2(name, listeners, secretName string) *gateway
 	return gw
 }
 
-func (c *testConfig) createHTTPRoute1(name, parent, service string) *gatewayv1.HTTPRoute {
-	n := strings.Split(name, "/")
-	var pns, pn, ps string
+func splitRouteInfo(name, parent, service string) (n, svc []string, pns, pn, ps string) {
+	n = strings.Split(name, "/")
 	if i := strings.Index(parent, "/"); i >= 0 {
 		pns = parent[:i]
 		pn = parent[i+1:]
@@ -1086,7 +1129,12 @@ func (c *testConfig) createHTTPRoute1(name, parent, service string) *gatewayv1.H
 		ps = pn[i+1:]
 		pn = pn[:i]
 	}
-	svc := strings.Split(service, ":")
+	svc = strings.Split(service, ":")
+	return
+}
+
+func (c *testConfig) createHTTPRoute1(name, parent, service string) *gatewayv1.HTTPRoute {
+	n, svc, pns, pn, ps := splitRouteInfo(name, parent, service)
 	r := CreateObject(`
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -1119,6 +1167,27 @@ func (c *testConfig) createHTTPRoute2(name, parent, service, paths string) *gate
 		}
 		r.Spec.Rules[0].Matches = append(r.Spec.Rules[0].Matches, match)
 	}
+	return r
+}
+
+func (c *testConfig) createTCPRoute1(name, parent, service string) *gatewayv1alpha2.TCPRoute {
+	n, svc, pns, pn, ps := splitRouteInfo(name, parent, service)
+	r := CreateObject(`
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: ` + n[1] + `
+  namespace: ` + n[0] + `
+spec:
+  parentRefs:
+  - name: ` + pn + `
+    namespace: ` + pns + `
+    sectionName: ` + ps + `
+  rules:
+  - backendRefs:
+    - name: ` + svc[0] + `
+      port: ` + svc[1]).(*gatewayv1alpha2.TCPRoute)
+	c.cache.TCPRouteList = append(c.cache.TCPRouteList, r)
 	return r
 }
 
@@ -1166,6 +1235,10 @@ func (c *testConfig) compareConfigDefaultHost(id string, expected string) {
 
 func (c *testConfig) compareConfigHosts(id string, expected string) {
 	c.compareText(id, conv_helper.MarshalHosts(c.hconfig.Hosts().BuildSortedItems()...), expected)
+}
+
+func (c *testConfig) compareConfigTCPServices(id string, expected string) {
+	c.compareText(id, conv_helper.MarshalTCPServices(c.hconfig.TCPServices().BuildSortedItems()...), expected)
 }
 
 func (c *testConfig) compareConfigBacks(id string, expected string) {
