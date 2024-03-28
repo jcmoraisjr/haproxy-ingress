@@ -18,9 +18,9 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 )
 
-func initSvcHealthz(ctx context.Context, cfg *config.Config, metrics *metrics, acmeCheck svcAcmeCheckFnc) *svcHealthz {
+func initSvcHealthz(ctx context.Context, cfg *config.Config, metrics *metrics, acmeCheck svcAcmeCheckFnc) (*svcHealthz, error) {
 	if cfg.HealthzAddr == "" {
-		return nil
+		return nil, nil
 	}
 	s := &svcHealthz{
 		log: logr.FromContextOrDiscard(ctx).WithName("healthz"),
@@ -38,7 +38,11 @@ func initSvcHealthz(ctx context.Context, cfg *config.Config, metrics *metrics, a
 		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 	}
-	mux.Handle("/metrics", s.createMetricsHandler(metrics))
+	mhandler, err := s.createMetricsHandler(metrics)
+	if err != nil {
+		return nil, fmt.Errorf("error creating metrics handler: %v", err)
+	}
+	mux.Handle("/metrics", mhandler)
 	if cfg.StopHandler {
 		mux.Handle("/stop", s.createStopHandler())
 	}
@@ -46,7 +50,7 @@ func initSvcHealthz(ctx context.Context, cfg *config.Config, metrics *metrics, a
 		Addr:    cfg.HealthzAddr,
 		Handler: mux,
 	}
-	return s
+	return s, nil
 }
 
 type svcHealthz struct {
@@ -79,7 +83,7 @@ func (s *svcHealthz) createRootHealthzHandler() http.HandlerFunc {
 			return
 		}
 		w.Header().Set("Content-Type", contentType)
-		w.Write([]byte(page))
+		_, _ = w.Write([]byte(page))
 	}
 }
 
@@ -103,7 +107,7 @@ func (s *svcHealthz) createAcmeHandler(acmeCheck func() (int, error)) http.Handl
 				out = "Acme certificate list is empty.\n"
 			}
 		}
-		w.Write([]byte(out))
+		_, _ = w.Write([]byte(out))
 	}
 }
 
@@ -111,15 +115,17 @@ func (s *svcHealthz) createBuildHandler(cfg *config.Config) http.HandlerFunc {
 	build, _ := json.Marshal(cfg.VersionInfo)
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(build)
+		_, _ = w.Write(build)
 	}
 }
 
-func (s *svcHealthz) createMetricsHandler(metrics *metrics) http.Handler {
+func (s *svcHealthz) createMetricsHandler(metrics *metrics) (http.Handler, error) {
 	registry := prometheus.NewRegistry()
-	registry.Register(collectors.NewGoCollector())
+	if err := registry.Register(collectors.NewGoCollector()); err != nil {
+		return nil, err
+	}
 	metrics.register(registry)
-	return promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
+	return promhttp.HandlerFor(registry, promhttp.HandlerOpts{}), nil
 }
 
 func (s *svcHealthz) createStopHandler() http.HandlerFunc {
@@ -131,21 +137,23 @@ func (s *svcHealthz) createStopHandler() http.HandlerFunc {
 		err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("failed to stop process: %s\n", err)))
+			_, _ = w.Write([]byte(fmt.Sprintf("failed to stop process: %s\n", err)))
 		} else {
-			w.Write([]byte("controller process is stopping now\n"))
+			_, _ = w.Write([]byte("controller process is stopping now\n"))
 		}
 	}
 }
 
 func handle404(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusNotFound)
-	w.Write([]byte("404 page not found\n"))
+	_, _ = w.Write([]byte("404 page not found\n"))
 }
 
 func (s *svcHealthz) Start(ctx context.Context) error {
 	s.log.Info("starting", "address", s.server.Addr)
-	go s.server.ListenAndServe()
+	go func() {
+		_ = s.server.ListenAndServe()
+	}()
 	<-ctx.Done()
 	stopctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

@@ -369,7 +369,9 @@ func (i *instance) Reload(timer *utils.Timer) {
 	if i.options.TrackInstances {
 		timeoutStopDur := i.config.Global().TimeoutStopDuration
 		closeSessDur := i.config.Global().CloseSessionsDuration
-		i.conns.TrackCurrentInstance(timeoutStopDur, closeSessDur)
+		if err := i.conns.TrackCurrentInstance(timeoutStopDur, closeSessDur); err != nil {
+			i.logger.Error("error tracking instance: %v", err)
+		}
 	}
 	err := i.reloadHAProxy()
 	timer.Tick("reload_haproxy")
@@ -655,7 +657,9 @@ func (i *instance) startHAProxySync() {
 	select {
 	case <-i.options.StopCh:
 		i.logger.Info("stopping haproxy master process (pid: %d)", cmd.Process.Pid)
-		cmd.Process.Signal(syscall.SIGTERM)
+		if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+			i.logger.Error("error stopping haproxy process: %v", err)
+		}
 		<-wait
 	case <-wait:
 	}

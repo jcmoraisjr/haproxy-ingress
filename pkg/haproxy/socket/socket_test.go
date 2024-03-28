@@ -49,6 +49,7 @@ func TestSocket(t *testing.T) {
 	// testSocket(t, true)
 }
 
+//nolint:unused
 func testSocket(t *testing.T, keepalive bool) {
 	clisock := "/tmp/h.sock"
 	mastersock := "/tmp/m.sock"
@@ -168,6 +169,7 @@ func testSocket(t *testing.T, keepalive bool) {
 	}
 }
 
+//nolint:unused
 const crtPayload = `-----BEGIN CERTIFICATE-----
 MIICpDCCAYwCCQDIBIkh7vGNLTANBgkqhkiG9w0BAQsFADAUMRIwEAYDVQQDDAls
 b2NhbGhvc3QwHhcNMjEwNzMxMjE1MTE4WhcNMjEwODMwMjE1MTE4WjAUMRIwEAYD
