@@ -1291,18 +1291,6 @@ func (c *testConfig) createService1(name, port, ip string) (*api.Service, *api.E
 	return svc, ep
 }
 
-func (c *testConfig) createGatewayClass1() *gateway.GatewayClass {
-	gc := CreateObject(`
-apiVersion: networking.x-k8s.io/v1alpha1
-kind: GatewayClass
-metadata:
-  name: haproxy
-spec:
-  controller: haproxy-ingress.github.io/controller`).(*gateway.GatewayClass)
-	c.cache.GatewayA1ClassList = append(c.cache.GatewayA1ClassList, gc)
-	return gc
-}
-
 func (c *testConfig) createGateway1(name, matchLabels string) *gateway.Gateway {
 	n := strings.Split(name, "/")
 	gw := CreateObject(`

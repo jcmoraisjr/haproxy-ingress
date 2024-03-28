@@ -104,7 +104,9 @@ func (c *clientResolver) SetToken(domain string, uri, token string) error {
 		return nil
 	}
 	out := fmt.Sprintf("%s%s = %s", domain, uri, token)
-	os.WriteFile("/tmp/out", []byte(out), 0644)
+	if err := os.WriteFile("/tmp/out", []byte(out), 0644); err != nil {
+		return err
+	}
 	// 20s to copy the challenge from /tmp/out and update the server
 	time.Sleep(20 * time.Second)
 	return nil

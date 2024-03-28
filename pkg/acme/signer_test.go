@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	types_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/types/helper_test"
 )
 
@@ -97,7 +99,8 @@ INFO acme: new certificate issued: id=1 secret=s1 domain(s)=other.s3.dev.local p
 		signer := c.newSigner()
 		signer.account.Endpoint = "https://acme-v2.local"
 		signer.expiring = x509.NotAfter.Sub(time.Now().Add(test.expiresIn))
-		signer.Notify(test.input)
+		err := signer.Notify(test.input)
+		require.NoError(t, err)
 		c.logger.CompareLogging(test.logging)
 	}
 }

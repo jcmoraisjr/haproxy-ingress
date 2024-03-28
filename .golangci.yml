@@ -4,8 +4,8 @@ issues:
   exclude-dirs:
     - pkg/acme/x
     - pkg/common
+    - pkg/controller/legacy
 linters:
-  disable-all: true
   enable:
     - gofmt
     - goimports

@@ -208,11 +208,13 @@ func (s *sock) acquireConn() (net.Conn, error) {
 		if s.keepalive {
 			// Master socket is always in keep alive mode, even without calling prompt.
 			// However calling prompt doesn't hurt.
-			s.send("prompt")
+			if _, err := s.send("prompt"); err != nil {
+				return nil, err
+			}
 		}
 	}
-	s.conn.SetDeadline(time.Now().Add(s.timeout))
-	return s.conn, nil
+	err := s.conn.SetDeadline(time.Now().Add(s.timeout))
+	return s.conn, err
 }
 
 func (s *sock) newConn() (net.Conn, error) {
