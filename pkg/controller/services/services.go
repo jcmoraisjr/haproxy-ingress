@@ -102,7 +102,10 @@ func (s *Services) setup(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	svchealthz := initSvcHealthz(ctx, cfg, metrics, s.acmeExternalCallCheck)
+	svchealthz, err := initSvcHealthz(ctx, cfg, metrics, s.acmeExternalCallCheck)
+	if err != nil {
+		return err
+	}
 	svcstatus := initSvcStatusUpdater(ctx, s.Client)
 	cache := createCacheFacade(ctx, s.Client, cfg, tracker, sslCerts, dynConfig, svcstatus.update)
 	svcstatusing := initSvcStatusIng(ctx, cfg, s.Client, cache, svcstatus.update)

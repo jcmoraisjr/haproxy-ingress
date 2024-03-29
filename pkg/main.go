@@ -43,7 +43,10 @@ func run() {
 	fs := flag.NewFlagSet("HAProxy Ingress", flag.ExitOnError)
 	opt := config.NewOptions()
 	opt.AddFlags(fs)
-	fs.Parse(os.Args[1:])
+	err := fs.Parse(os.Args[1:])
+	if err != nil {
+		log.Fatalf("unable to parse command-line arguments: %s\n", err)
+	}
 	cfg, err := config.Create(opt)
 	if err != nil {
 		log.Fatalf("unable to parse static config: %s\n", err)

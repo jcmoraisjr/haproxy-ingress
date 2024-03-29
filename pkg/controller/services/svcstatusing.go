@@ -103,7 +103,10 @@ func (s *svcStatusIng) changed(ctx context.Context, changed *convtypes.ChangedOb
 			s.status(&ing)
 		} else if strings.HasSuffix(obj, svcPublSuffix) {
 			s.log.Info("publish service updated, updating all ingress status", "name", s.cfg.PublishService)
-			s.update(ctx, s.curr)
+			if err := s.update(ctx, s.curr); err != nil {
+				errs = append(errs, err)
+				continue
+			}
 		}
 	}
 	if len(errs) > 0 {

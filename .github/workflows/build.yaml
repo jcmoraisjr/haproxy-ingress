@@ -11,14 +11,19 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/setup-go@v4
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
       with:
         go-version: "1.21.6"
-    - uses: actions/checkout@v4
-    - name: golangci-lint
-      uses: golangci/golangci-lint-action@v4
     - name: Run build
       run: make build
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v4
+      with:
+        version: latest
+        args: --verbose
+        skip-pkg-cache: true
+        skip-build-cache: true
     - name: Run unit tests
       run: make test
   integration:
@@ -33,10 +38,9 @@ jobs:
         branch: "2.2"
         use_openssl: yes
         use_lua: yes
-    - name: Install Go
-      uses: actions/setup-go@v4
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
       with:
         go-version: "1.21.6"
-    - uses: actions/checkout@v4
     - name: Run integration tests
       run: make test-integration

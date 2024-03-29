@@ -43,12 +43,14 @@ type connections struct {
 	idleChk      socket.HAProxySocket
 }
 
-func (c *connections) TrackCurrentInstance(timeoutStopDur, closeSessDur time.Duration) {
+func (c *connections) TrackCurrentInstance(timeoutStopDur, closeSessDur time.Duration) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	c.shrinkConns()
 	sock := socket.NewSocketConcurrent(c.adminSock, true)
-	sock.Unlistening()
+	if err := sock.Unlistening(); err != nil {
+		return err
+	}
 	c.oldInstances = append(c.oldInstances, sock)
 
 	if closeSessDur > 0 && closeSessDur < timeoutStopDur {
@@ -65,6 +67,7 @@ func (c *connections) TrackCurrentInstance(timeoutStopDur, closeSessDur time.Dur
 		// responsible for closing it if closeSessDur wasn't configured.
 		time.AfterFunc(timeoutStopDur, func() { sock.Close() })
 	}
+	return nil
 }
 
 func (c *connections) ReleaseLastInstance() {

@@ -89,7 +89,9 @@ func (s *server) Listen(stopCh <-chan struct{}) error {
 		}
 	}
 	s.logger.Info("acme: listening on unix socket: %s", s.socket)
-	go s.server.Serve(l)
+	go func() {
+		_ = s.server.Serve(l)
+	}()
 	go func() {
 		<-stopCh
 		if s.server == nil {

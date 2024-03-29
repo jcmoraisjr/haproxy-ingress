@@ -80,7 +80,9 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 			return nil, fmt.Errorf("--log-dev, --log-caller, --log-enable-stacktrace --log-encoder and --log-encode-time are only supported if --log-zap is enabled")
 		}
 		var level klog.Level
-		level.Set(strconv.Itoa(opt.LogLevel - 1))
+		if err := level.Set(strconv.Itoa(opt.LogLevel - 1)); err != nil {
+			return nil, err
+		}
 		ctrl.SetLogger(klog.NewKlogr())
 	} else {
 		logger, err := newZapLogger(opt.LogDev, opt.LogLevel, opt.LogCaller, opt.LogEnableStacktrace, opt.LogEncoder, opt.LogEncodeTime)
@@ -555,7 +557,10 @@ func newZapLogger(logDev bool, logLevel int, logCaller, logEnableStacktrace bool
 	zc.Encoding = klogEncoderName
 	zc.Level = zap.NewAtomicLevelAt(zapcore.Level(1 - logLevel))
 	zc.DisableStacktrace = !logEnableStacktrace
-	zc.EncoderConfig.EncodeTime.UnmarshalText([]byte(encodeTime))
+	err := zc.EncoderConfig.EncodeTime.UnmarshalText([]byte(encodeTime))
+	if err != nil {
+		return logr.Logger{}, fmt.Errorf("error unmarshalling encode time: %v", err)
+	}
 
 	zl, err := zc.Build(
 		zap.WithCaller(logCaller),

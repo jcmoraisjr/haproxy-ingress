@@ -15,6 +15,7 @@ CONTROLLER_ARGS?=
 
 LOCALBIN?=$(shell pwd)/bin
 LOCAL_GOTESTSUM=$(LOCALBIN)/gotestsum
+LOCAL_GOLANGCI_LINT=$(LOCALBIN)/golangci-lint
 LOCAL_SETUP_ENVTEST=$(LOCALBIN)/setup-envtest
 
 .PHONY: build
@@ -40,14 +41,18 @@ run: build
 gotestsum:
 	test -x $(LOCAL_GOTESTSUM) || GOBIN=$(LOCALBIN) go install gotest.tools/gotestsum@latest
 
-.PHONY: lint
-lint:
-	golangci-lint run
-
 .PHONY: test
-test: lint gotestsum
+test: gotestsum
 	## fix race and add -race param
 	$(LOCAL_GOTESTSUM) --format=testname -- -tags=cgo ./pkg/...
+
+.PHONY: golangci-lint
+golangci-lint:
+	test -x $(LOCAL_GOLANGCI_LINT) || GOBIN=$(LOCALBIN) go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+.PHONY: lint
+lint: golangci-lint
+	$(LOCAL_GOLANGCI_LINT) run --verbose
 
 .PHONY: setup-envtest
 setup-envtest:
