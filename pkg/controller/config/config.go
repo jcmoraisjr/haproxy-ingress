@@ -202,9 +202,10 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		configLog.Info("watching for Gateway API resources - --watch-gateway is true")
 	}
 
-	var hasGatewayV1, hasGatewayB1, hasGatewayA2 bool
+	var hasGatewayV1, hasGatewayB1, hasGatewayA2, hasTCPRouteA2 bool
 	if opt.WatchGateway {
 		gwapis := []string{"gatewayclass", "gateway", "httproute"}
+		tcpapis := []string{"tcproute"}
 
 		gwV1 := configHasAPI(clientGateway.Discovery(), gatewayv1.GroupVersion, gwapis...)
 		if gwV1 {
@@ -221,9 +222,20 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 
 		// only one GatewayClass/Gateway/HTTPRoute version should be enabled at the same time,
 		// otherwise we'd be retrieving the same duplicated resource from distinct api endpoints.
+		gw := gwV1 || gwB1 || gwA2
 		hasGatewayV1 = gwV1
 		hasGatewayB1 = gwB1 && !hasGatewayV1
 		hasGatewayA2 = gwA2 && !hasGatewayB1
+
+		tcpA2 := configHasAPI(clientGateway.Discovery(), gatewayv1alpha2.GroupVersion, tcpapis...)
+		if tcpA2 {
+			configLog.Info("found custom resource definition for TCPRoute API v1alpha2")
+		}
+
+		// TODO: cannot enable TCPRoute without Gateway and GatewayClass, but currently HTTPRoute
+		// discovery is coupled and its CRD should be installed as well, even if not used.
+		// We should use a distinct flag for HTTPRoute.
+		hasTCPRouteA2 = tcpA2 && gw
 	}
 
 	if opt.EnableEndpointSlicesAPI {
@@ -475,6 +487,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		HasGatewayA2:             hasGatewayA2,
 		HasGatewayB1:             hasGatewayB1,
 		HasGatewayV1:             hasGatewayV1,
+		HasTCPRouteA2:            hasTCPRouteA2,
 		HealthzAddr:              healthz,
 		HealthzURL:               opt.HealthzURL,
 		IngressClass:             opt.IngressClass,
@@ -657,6 +670,7 @@ type Config struct {
 	HasGatewayA2             bool
 	HasGatewayB1             bool
 	HasGatewayV1             bool
+	HasTCPRouteA2            bool
 	HealthzAddr              string
 	HealthzURL               string
 	IngressClass             string

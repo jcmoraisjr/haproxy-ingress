@@ -222,6 +222,7 @@ func (c *k8scache) hasGateway() bool {
 var errGatewayA2Disabled = fmt.Errorf("gateway API v1alpha2 wasn't initialized")
 var errGatewayB1Disabled = fmt.Errorf("legacy controller does not support Gateway API v1beta1")
 var errGatewayV1Disabled = fmt.Errorf("legacy controller does not support Gateway API v1")
+var errTCPRouteA2Disabled = fmt.Errorf("legacy controller does not support TCPRoute API")
 
 func (c *k8scache) GetGatewayA2(namespace, name string) (*gatewayv1alpha2.Gateway, error) {
 	if !c.hasGateway() {
@@ -270,6 +271,10 @@ func (c *k8scache) GetHTTPRouteB1List() ([]*gatewayv1beta1.HTTPRoute, error) {
 
 func (c *k8scache) GetHTTPRouteList() ([]*gatewayv1.HTTPRoute, error) {
 	return nil, errGatewayV1Disabled
+}
+
+func (c *k8scache) GetTCPRouteList() ([]*gatewayv1alpha2.TCPRoute, error) {
+	return nil, errTCPRouteA2Disabled
 }
 
 func (c *k8scache) GetService(defaultNamespace, serviceName string) (*api.Service, error) {

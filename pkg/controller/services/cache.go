@@ -72,6 +72,7 @@ type c struct {
 var errGatewayA2Disabled = fmt.Errorf("gateway API v1alpha2 wasn't initialized")
 var errGatewayB1Disabled = fmt.Errorf("gateway API v1beta1 wasn't initialized")
 var errGatewayV1Disabled = fmt.Errorf("gateway API v1 wasn't initialized")
+var errTCPRouteA2Disabled = fmt.Errorf("TCPRoute API v1alpha2 wasn't initialized")
 
 func (c *c) get(key string, obj client.Object) error {
 	ns, n, err := cache.SplitMetaNamespaceKey(key)
@@ -375,6 +376,22 @@ func (c *c) GetHTTPRouteList() ([]*gatewayv1.HTTPRoute, error) {
 		return nil, err
 	}
 	rlist := make([]*gatewayv1.HTTPRoute, len(list.Items))
+	for i := range list.Items {
+		rlist[i] = &list.Items[i]
+	}
+	return rlist, nil
+}
+
+func (c *c) GetTCPRouteList() ([]*gatewayv1alpha2.TCPRoute, error) {
+	if !c.config.HasTCPRouteA2 {
+		return nil, errTCPRouteA2Disabled
+	}
+	list := gatewayv1alpha2.TCPRouteList{}
+	err := c.client.List(c.ctx, &list)
+	if err != nil {
+		return nil, err
+	}
+	rlist := make([]*gatewayv1alpha2.TCPRoute, len(list.Items))
 	for i := range list.Items {
 		rlist[i] = &list.Items[i]
 	}

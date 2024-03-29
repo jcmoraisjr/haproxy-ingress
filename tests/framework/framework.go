@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -263,6 +264,22 @@ func (f *framework) Request(ctx context.Context, t *testing.T, method, host, pat
 	}
 }
 
+func (f *framework) TCPRequest(ctx context.Context, t *testing.T, tcpPort int32, data string) string {
+	var conn net.Conn
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		var err error
+		conn, err = net.Dial("tcp", fmt.Sprintf(":%d", tcpPort))
+		assert.NoError(collect, err)
+	}, 5*time.Second, time.Second)
+	_, err := conn.Write([]byte(data))
+	require.NoError(t, err)
+	buf := make([]byte, 256)
+	n, err := conn.Read(buf)
+	require.NoError(t, err)
+	conn.Close()
+	return string(buf[:n])
+}
+
 func (f *framework) Client() client.WithWatch {
 	return f.cli
 }
@@ -448,6 +465,14 @@ func (f *framework) CreateGatewayV1(ctx context.Context, t *testing.T, gc *gatew
 
 func (f *framework) CreateGateway(ctx context.Context, t *testing.T, version string, gc *gatewayv1.GatewayClass, o ...options.Object) client.Object {
 	opt := options.ParseObjectOptions(o...)
+	if opt.Listeners == nil {
+		opt.Listeners = []options.ListenerOpt{{
+			Name:  "echoserver-gw",
+			Port:  80,
+			Proto: "HTTP",
+		}}
+	}
+
 	api := v1.GroupVersion{Group: gatewayv1.GroupName, Version: version}.String()
 	data := fmt.Sprintf(`
 apiVersion: %s
@@ -457,10 +482,6 @@ metadata:
   namespace: default
 spec:
   gatewayClassName: ""
-  listeners:
-  - protocol: HTTP
-    port: 80
-    name: echoserver-gw
 `, api)
 	name := randomName("gw")
 
@@ -468,6 +489,13 @@ spec:
 	gw.SetName(name)
 	spec := reflect.ValueOf(gw).Elem().FieldByName("Spec").Addr().Interface().(*gatewayv1.GatewaySpec)
 	spec.GatewayClassName = gatewayv1.ObjectName(gc.Name)
+	for _, l := range opt.Listeners {
+		spec.Listeners = append(spec.Listeners, gatewayv1.Listener{
+			Name:     gatewayv1.SectionName(l.Name),
+			Protocol: gatewayv1.ProtocolType(l.Proto),
+			Port:     gatewayv1.PortNumber(l.Port),
+		})
+	}
 	opt.Apply(gw)
 
 	t.Logf("creating Gateway %s/%s\n", gw.GetNamespace(), gw.GetName())
@@ -550,6 +578,57 @@ spec:
 	return route, hostname
 }
 
+func (f *framework) CreateTCPRouteA2(ctx context.Context, t *testing.T, gw *gatewayv1.Gateway, svc *corev1.Service, o ...options.Object) *gatewayv1alpha2.TCPRoute {
+	route := f.CreateTCPRoute(ctx, t, gatewayv1alpha2.GroupVersion.Version, gw, svc, o...)
+	return route.(*gatewayv1alpha2.TCPRoute)
+}
+
+func (f *framework) CreateTCPRoute(ctx context.Context, t *testing.T, version string, gw *gatewayv1.Gateway, svc *corev1.Service, o ...options.Object) client.Object {
+	opt := options.ParseObjectOptions(o...)
+	api := v1.GroupVersion{Group: gatewayv1.GroupName, Version: version}.String()
+	data := fmt.Sprintf(`
+apiVersion: %s
+kind: TCPRoute
+metadata:
+  name: ""
+  namespace: default
+spec:
+  parentRefs:
+  - name: ""
+  hostnames:
+  - ""
+  rules:
+  - backendRefs:
+    - name: ""
+      port: 0
+`, api)
+	name := randomName("tcproute")
+
+	route := f.CreateObject(t, data)
+	route.SetName(name)
+	spec := reflect.ValueOf(route).Elem().FieldByName("Spec").Addr().Interface().(*gatewayv1alpha2.TCPRouteSpec)
+	spec.ParentRefs[0].Name = gatewayv1.ObjectName(gw.Name)
+	spec.Rules[0].BackendRefs[0].Name = gatewayv1.ObjectName(svc.Name)
+	spec.Rules[0].BackendRefs[0].Port = (*gatewayv1.PortNumber)(&svc.Spec.Ports[0].Port)
+	opt.Apply(route)
+
+	t.Logf("creating TCPRoute %s/%s\n", route.GetNamespace(), route.GetName())
+
+	err := f.cli.Create(ctx, route)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		route := unstructured.Unstructured{}
+		route.SetAPIVersion(api)
+		route.SetKind("TCPRoute")
+		route.SetNamespace("default")
+		route.SetName(name)
+		err := f.cli.Delete(ctx, &route)
+		assert.NoError(t, client.IgnoreNotFound(err))
+	})
+	return route
+}
+
 func (f *framework) CreateObject(t *testing.T, data string) client.Object {
 	obj, _, err := f.codec.UniversalDeserializer().Decode([]byte(data), nil, nil)
 	require.NoError(t, err)
@@ -587,6 +666,25 @@ func (f *framework) CreateHTTPServer(ctx context.Context, t *testing.T) int32 {
 		assert.NoError(t, err)
 		<-done
 	})
+	return serverPort
+}
+
+func (f *framework) CreateTCPServer(ctx context.Context, t *testing.T) int32 {
+	serverPort := int32(32768 + rand.Intn(32767))
+	listen, err := net.Listen("tcp", fmt.Sprintf(":%d", serverPort))
+	require.NoError(t, err)
+	go func() {
+		for {
+			conn, err := listen.Accept()
+			require.NoError(t, err)
+			buf := make([]byte, 256)
+			n, err := conn.Read(buf)
+			require.NoError(t, err)
+			_, err = conn.Write(buf[:n])
+			require.NoError(t, err)
+			conn.Close()
+		}
+	}()
 	return serverPort
 }
 
