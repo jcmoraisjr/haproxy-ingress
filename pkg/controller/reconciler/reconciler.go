@@ -68,11 +68,7 @@ func (r *IngressReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manag
 		return err
 	}
 	for _, handler := range r.watchers.getHandlers() {
-		if err := c.Watch(
-			handler.getSource(mgr.GetCache()),
-			handler.getEventHandler(),
-			handler.getPredicates()...,
-		); err != nil {
+		if err := c.Watch(handler.getSource(mgr.GetCache())); err != nil {
 			return err
 		}
 	}

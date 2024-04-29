@@ -163,8 +163,9 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 	global.Namespace = "default"
 	global.Name = "ingress-controller"
 	global.Data = map[string]string{
-		"http-port":  "18080",
-		"https-port": "18443",
+		"http-port":       "18080",
+		"https-port":      "18443",
+		"max-connections": "20",
 	}
 	err = f.cli.Create(ctx, &global)
 	require.NoError(t, err)

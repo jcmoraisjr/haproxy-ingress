@@ -30,7 +30,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -505,11 +504,7 @@ type hdlr struct {
 }
 
 func (h *hdlr) getSource(c cache.Cache) source.Source {
-	return source.Kind(c, h.typ)
-}
-
-func (h *hdlr) getEventHandler() handler.EventHandler {
-	return h
+	return source.Kind(c, h.typ, h, h.getPredicates()...)
 }
 
 func (h *hdlr) getPredicates() []predicate.Predicate {
