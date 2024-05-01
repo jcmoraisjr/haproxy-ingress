@@ -2,6 +2,7 @@ package framework
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"math/rand"
@@ -217,13 +218,22 @@ func (f *framework) Request(ctx context.Context, t *testing.T, method, host, pat
 	t.Logf("request method=%s host=%s path=%s\n", method, host, path)
 	opt := options.ParseRequestOptions(o...)
 
-	req, err := http.NewRequestWithContext(ctx, method, "http://127.0.0.1:18080", nil)
+	url := "http://127.0.0.1:18080"
+	if opt.HTTPS {
+		url = "https://127.0.0.1:18443"
+	}
+	req, err := http.NewRequestWithContext(ctx, method, url, nil)
 	require.NoError(t, err)
 	req.Host = host
 	req.URL.Path = path
 	cli := http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
+		},
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: opt.TLSSkipVerify,
+			},
 		},
 	}
 	var res *http.Response
