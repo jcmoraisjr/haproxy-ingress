@@ -71,8 +71,8 @@ func initSvcLeader(ctx context.Context, cfg *config.Config) (*svcLeader, error) 
 			RenewDeadline: defaultRenewDeadline,
 			RetryPeriod:   defaultRetryPeriod,
 			Callbacks: leaderelection.LeaderCallbacks{
-				OnStartedLeading: s.OnStartedLeading,
-				OnStoppedLeading: s.OnStoppedLeading,
+				OnStartedLeading: s.onStartedLeading,
+				OnStoppedLeading: s.onStoppedLeading,
 			},
 		})
 		if err != nil {
@@ -101,7 +101,7 @@ func (s *svcLeader) Start(ctx context.Context) error {
 	return nil
 }
 
-func (s *svcLeader) OnStartedLeading(ctx context.Context) {
+func (s *svcLeader) onStartedLeading(ctx context.Context) {
 	s.log.Info("leader acquired")
 
 	ctxwg, cancel := context.WithCancel(ctx)
@@ -120,7 +120,7 @@ func (s *svcLeader) OnStartedLeading(ctx context.Context) {
 	}
 }
 
-func (s *svcLeader) OnStoppedLeading() {
+func (s *svcLeader) onStoppedLeading() {
 	for _, f := range s.subscribers {
 		go f(s.ctx, false)
 	}

@@ -2,7 +2,7 @@
 default: build
 
 GOOS=linux
-GOARCH?=amd64
+GOARCH?=$(shell go env GOARCH)
 GIT_REPO=$(shell git config --get remote.origin.url)
 GIT_COMMIT=git-$(shell git rev-parse --short HEAD)
 VERSION_PKG=github.com/jcmoraisjr/haproxy-ingress/pkg/version
