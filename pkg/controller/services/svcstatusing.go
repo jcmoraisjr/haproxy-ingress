@@ -253,10 +253,17 @@ func (s *svcStatusIng) getControllerPodList(ctx context.Context) ([]api.Pod, err
 	if err := s.cli.Get(ctx, types.NamespacedName{Namespace: s.cfg.PodNamespace, Name: s.cfg.PodName}, &pod); err != nil {
 		return nil, err
 	}
+
+	// remove labels that uniquely identify a pod
+	podLabels := pod.GetLabels()
+	delete(podLabels, "controller-revision-hash")
+	delete(podLabels, "pod-template-generation")
+	delete(podLabels, "pod-template-hash")
+
 	// read all controller's pod
 	podList := api.PodList{}
 	if err := s.cli.List(ctx, &podList, &client.ListOptions{
-		LabelSelector: labels.SelectorFromSet(pod.GetLabels()),
+		LabelSelector: labels.SelectorFromSet(podLabels),
 		Namespace:     s.cfg.PodNamespace,
 	}); err != nil {
 		return nil, err
