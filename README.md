@@ -61,7 +61,7 @@ Dependencies to run locally:
 
 **Building container image:**
 
-Fast build - cross compile for linux/amd64 (locally) and generate `localhost/haproxy-ingress:latest`:
+Fast build - cross compile for linux (locally) and generate `localhost/haproxy-ingress:latest`:
 
 ```
 make image
