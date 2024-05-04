@@ -19,6 +19,7 @@ package annotations
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
@@ -200,6 +201,21 @@ func (cv *ConfigValue) String() string {
 	return cv.Value
 }
 
+// NamespacedName ...
+func (cv *ConfigValue) NamespacedName() (namespace, name string, err error) {
+	value := strings.Split(cv.Value, "/")
+	if len(value) > 2 {
+		return "", "", fmt.Errorf("unpexpected format for resource name: %s", cv.Value)
+	}
+	if len(value) == 2 {
+		return value[0], value[1], nil
+	}
+	if s := cv.Source; s != nil {
+		return s.Namespace, value[0], nil
+	}
+	return "", "", fmt.Errorf("a globally configured resource name is missing the namespace: %s", cv.Value)
+}
+
 // Bool ...
 func (cv *ConfigValue) Bool() bool {
 	value, _ := strconv.ParseBool(cv.Value)
@@ -230,5 +246,8 @@ func (m *PathConfig) String() string {
 
 // String ...
 func (s *Source) String() string {
+	if s == nil {
+		return "<global>"
+	}
 	return fmt.Sprintf("%s '%s'", s.Type, s.FullName())
 }
