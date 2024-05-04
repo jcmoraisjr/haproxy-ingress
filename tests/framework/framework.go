@@ -46,6 +46,11 @@ const (
 	PublishSvcName  = "default/publish"
 	PublishAddress  = "10.0.1.1"
 	PublishHostname = "ingress.local"
+
+	TestPortHTTP       = 28080
+	TestPortHTTPS      = 28443
+	TestPortStat       = 21936
+	TestPortTCPService = 25432
 )
 
 func NewFramework(ctx context.Context, t *testing.T, o ...options.Framework) *framework {
@@ -164,8 +169,9 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 	global.Namespace = "default"
 	global.Name = "ingress-controller"
 	global.Data = map[string]string{
-		"http-port":       "18080",
-		"https-port":      "18443",
+		"http-port":       strconv.Itoa(TestPortHTTP),
+		"https-port":      strconv.Itoa(TestPortHTTPS),
+		"stats-port":      strconv.Itoa(TestPortStat),
 		"max-connections": "20",
 	}
 	err = f.cli.Create(ctx, &global)
@@ -218,9 +224,9 @@ func (f *framework) Request(ctx context.Context, t *testing.T, method, host, pat
 	t.Logf("request method=%s host=%s path=%s\n", method, host, path)
 	opt := options.ParseRequestOptions(o...)
 
-	url := "http://127.0.0.1:18080"
+	url := fmt.Sprintf("http://127.0.0.1:%d", TestPortHTTP)
 	if opt.HTTPS {
-		url = "https://127.0.0.1:18443"
+		url = fmt.Sprintf("https://127.0.0.1:%d", TestPortHTTPS)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, url, nil)
 	require.NoError(t, err)

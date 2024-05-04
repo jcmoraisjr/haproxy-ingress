@@ -304,12 +304,12 @@ func TestIntegrationGateway(t *testing.T) {
 
 		t.Run("expose TCPRoute", func(t *testing.T) {
 			t.Parallel()
-			gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("pgserver", "TCP", 15432))
+			gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("pgserver", "TCP", framework.TestPortTCPService))
 			svc := f.CreateService(ctx, t, tcpServerPort)
 			_ = f.CreateTCPRouteA2(ctx, t, gw, svc)
-			res1 := f.TCPRequest(ctx, t, 15432, "ping")
+			res1 := f.TCPRequest(ctx, t, framework.TestPortTCPService, "ping")
 			assert.Equal(t, "ping", res1)
-			res2 := f.TCPRequest(ctx, t, 15432, "reply")
+			res2 := f.TCPRequest(ctx, t, framework.TestPortTCPService, "reply")
 			assert.Equal(t, "reply", res2)
 		})
 	})

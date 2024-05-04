@@ -32,12 +32,13 @@ func createDefaults() map[string]string {
 	return map[string]string{
 		types.TCPTCPServiceLogFormat: "default",
 		//
-		types.HostAuthTLSStrict:     "true",
-		types.HostSSLAlwaysAddHTTPS: "false",
-		types.HostSSLCiphers:        defaultSSLCiphers,
-		types.HostSSLCipherSuites:   defaultSSLCipherSuites,
-		types.HostSSLOptionsHost:    "",
-		types.HostTLSALPN:           "h2,http/1.1",
+		types.HostAuthTLSStrict:           "true",
+		types.HostSSLAlwaysAddHTTPS:       "false",
+		types.HostSSLAlwaysFollowRedirect: "true",
+		types.HostSSLCiphers:              defaultSSLCiphers,
+		types.HostSSLCipherSuites:         defaultSSLCipherSuites,
+		types.HostSSLOptionsHost:          "",
+		types.HostTLSALPN:                 "h2,http/1.1",
 		//
 		types.BackAuthExternalPlacement:  "backend",
 		types.BackAuthHeadersFail:        "*",

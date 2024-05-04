@@ -260,8 +260,9 @@ func (h *Host) AddRedirect(path string, match MatchType, redirTo string) {
 }
 
 type hostResolver struct {
-	useDefaultCrt *bool
-	crtFilename   *string
+	useDefaultCrt  *bool
+	followRedirect *bool
+	crtFilename    *string
 }
 
 func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo string) *HostPath {
@@ -281,8 +282,9 @@ func (h *Host) addLink(backend *Backend, link *PathLink, redirTo string) *HostPa
 		}
 		bpath := backend.AddBackendPath(link)
 		bpath.Host = &hostResolver{
-			useDefaultCrt: &h.TLS.UseDefaultCrt,
-			crtFilename:   &h.TLS.TLSFilename,
+			useDefaultCrt:  &h.TLS.UseDefaultCrt,
+			followRedirect: &h.TLS.FollowRedirect,
+			crtFilename:    &h.TLS.TLSFilename,
 		}
 	} else if redirTo == "" {
 		hback = HostBackend{ID: "_error404"}
@@ -327,8 +329,14 @@ func (h *Host) HasTLS() bool {
 	return h.TLS.UseDefaultCrt || h.TLS.TLSHash != ""
 }
 
-func (h *hostResolver) HasTLS() bool {
-	return *h.useDefaultCrt || *h.crtFilename != ""
+func (h *hostResolver) UseTLS() bool {
+	// whether the ingress resource has the `tls:` entry for the host
+	hasTLSEntry := *h.crtFilename != ""
+
+	// whether the user has globally or locally configured auto TLS for the host
+	autoTLSEnabled := *h.useDefaultCrt && *h.followRedirect
+
+	return hasTLSEntry || autoTLSEnabled
 }
 
 // HasTLSAuth ...
