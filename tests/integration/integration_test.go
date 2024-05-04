@@ -50,7 +50,7 @@ func TestIntegrationIngress(t *testing.T) {
 		svc := f.CreateService(ctx, t, httpServerPort)
 		_, hostname := f.CreateIngress(ctx, t, svc,
 			options.DefaultHostTLS(),
-			options.AddConfigKeyAnnotations(map[string]string{ingtypes.BackSSLRedirect: "false"}),
+			options.AddConfigKeyAnnotation(ingtypes.BackSSLRedirect, "false"),
 		)
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
 		assert.True(t, res.EchoResponse)
@@ -61,7 +61,7 @@ func TestIntegrationIngress(t *testing.T) {
 		svc := f.CreateService(ctx, t, httpServerPort)
 		_, hostname := f.CreateIngress(ctx, t, svc,
 			options.DefaultHostTLS(),
-			options.AddConfigKeyAnnotations(map[string]string{ingtypes.BackSSLRedirect: "true"}),
+			options.AddConfigKeyAnnotation(ingtypes.BackSSLRedirect, "true"),
 		)
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusFound))
 		assert.False(t, res.EchoResponse)
@@ -101,6 +101,24 @@ func TestIntegrationIngress(t *testing.T) {
 			"x-real-ip":         "127.0.0.1",
 		}
 		assert.Equal(t, reqHeaders, res.ReqHeaders)
+	})
+
+	t.Run("should redirect to https before app-root", func(t *testing.T) {
+		t.Parallel()
+		svc := f.CreateService(ctx, t, httpServerPort)
+		_, hostname := f.CreateIngress(ctx, t, svc,
+			options.DefaultHostTLS(),
+			options.AddConfigKeyAnnotation(ingtypes.BackSSLRedirect, "true"),
+			options.AddConfigKeyAnnotation(ingtypes.HostAppRoot, "/app"),
+		)
+
+		res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusFound))
+		assert.False(t, res.EchoResponse)
+		assert.Equal(t, fmt.Sprintf("https://%s/", hostname), res.HTTPResponse.Header.Get("location"))
+
+		res = f.Request(ctx, t, http.MethodGet, hostname, "/", options.HTTPSRequest(true))
+		assert.False(t, res.EchoResponse)
+		assert.Equal(t, "/app", res.HTTPResponse.Header.Get("location"))
 	})
 
 	t.Run("should take leader", func(t *testing.T) {

@@ -8,15 +8,13 @@ import (
 
 type Object func(o *objectOpt)
 
-func AddConfigKeyAnnotations(ann map[string]string) Object {
+func AddConfigKeyAnnotation(key, value string) Object {
 	annprefix := "haproxy-ingress.github.io/"
 	return func(o *objectOpt) {
 		if o.Ann == nil {
 			o.Ann = make(map[string]string)
 		}
-		for k, v := range ann {
-			o.Ann[annprefix+k] = v
-		}
+		o.Ann[annprefix+key] = value
 	}
 }
 

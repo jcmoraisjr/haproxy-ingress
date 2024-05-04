@@ -405,6 +405,12 @@ func (l *PathLink) Equals(other *PathLink) bool {
 	return l.hash == other.hash
 }
 
+// ComposeMatch returns true if the pathLink has composing match,
+// by adding method, header or cookie match.
+func (l *PathLink) ComposeMatch() bool {
+	return len(l.headers) > 0
+}
+
 // WithHostname ...
 func (l *PathLink) WithHostname(hostname string) *PathLink {
 	l.hostname = hostname
