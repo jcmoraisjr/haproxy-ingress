@@ -314,6 +314,7 @@ func (c *updater) buildGlobalSSL(d *globalData) {
 	ssl.ModeAsync = d.mapper.Get(ingtypes.GlobalSSLModeAsync).Bool()
 	ssl.Options = d.mapper.Get(ingtypes.GlobalSSLOptions).Value
 	ssl.RedirectCode = d.mapper.Get(ingtypes.GlobalSSLRedirectCode).Int()
+	ssl.SSLRedirect = d.mapper.Get(ingtypes.BackSSLRedirect).Bool()
 }
 
 func (c *updater) buildGlobalHTTPStoHTTP(d *globalData) {
