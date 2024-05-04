@@ -141,6 +141,7 @@ type SSLConfig struct {
 	ModeAsync           bool
 	Options             string
 	RedirectCode        int
+	SSLRedirect         bool
 }
 
 // DHParamConfig ...
@@ -366,6 +367,7 @@ type FrontendMaps struct {
 	HTTPSSNIMap  *HostsMap
 	//
 	RedirFromRootMap  *HostsMap
+	RedirRootSSLMap   *HostsMap
 	RedirFromMap      *HostsMap
 	RedirToMap        *HostsMap
 	SSLPassthroughMap *HostsMap

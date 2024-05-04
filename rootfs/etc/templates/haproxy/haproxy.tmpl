@@ -1153,8 +1153,19 @@ frontend {{ $proxy__front_http }}
     http-request set-var(req.host) hdr(host),field(1,:),lower
     http-request set-var(req.base) var(req.host),concat(\#,req.path)
 
-{{- /*------------------------------------*/}}
 {{- $acmeexclusive := and $global.Acme.Enabled (not $global.Acme.Shared) }}
+
+{{- /*------------------------------------*/}}
+{{- if $fmaps.RedirRootSSLMap.HasHost }}
+{{- range $match := $fmaps.RedirRootSSLMap.MatchFiles }}
+    http-request redirect scheme https
+        {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
+        {{- "" }} if{{ if $acmeexclusive }} !acme-challenge{{ end }}
+        {{- "" }} { path / } { var(req.host) -i -m {{ $match.Method }} -f {{ $match.Filename }} }
+{{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
 {{- if $fmaps.RedirFromRootMap.HasHost }}
 {{- range $match := $fmaps.RedirFromRootMap.MatchFiles }}
     http-request set-var(req.rootredir) var(req.host)
