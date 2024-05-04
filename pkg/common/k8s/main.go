@@ -91,10 +91,18 @@ func GetPodDetails(kubeClient clientset.Interface) (*PodInfo, error) {
 		return nil, fmt.Errorf("unable to get POD information")
 	}
 
+	podNodeIP := GetNodeIP(kubeClient, pod.Spec.NodeName, true)
+	podLabels := pod.GetLabels()
+
+	// remove labels that uniquely identify a pod
+	delete(podLabels, "controller-revision-hash")
+	delete(podLabels, "pod-template-generation")
+	delete(podLabels, "pod-template-hash")
+
 	return &PodInfo{
 		Name:      podName,
 		Namespace: podNs,
-		NodeIP:    GetNodeIP(kubeClient, pod.Spec.NodeName, true),
-		Labels:    pod.GetLabels(),
+		NodeIP:    podNodeIP,
+		Labels:    podLabels,
 	}, nil
 }
