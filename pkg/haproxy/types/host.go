@@ -239,8 +239,9 @@ func (h *Host) AddRedirect(path string, match MatchType, redirTo string) {
 }
 
 type hostResolver struct {
-	useDefaultCrt *bool
-	crtFilename   *string
+	useDefaultCrt  *bool
+	followRedirect *bool
+	crtFilename    *string
 }
 
 func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo string) {
@@ -256,8 +257,9 @@ func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo s
 		}
 		bpath := backend.AddBackendPath(link)
 		bpath.Host = &hostResolver{
-			useDefaultCrt: &h.TLS.UseDefaultCrt,
-			crtFilename:   &h.TLS.TLSFilename,
+			useDefaultCrt:  &h.TLS.UseDefaultCrt,
+			followRedirect: &h.TLS.FollowRedirect,
+			crtFilename:    &h.TLS.TLSFilename,
 		}
 	} else if redirTo == "" {
 		hback = HostBackend{ID: "_error404"}
@@ -302,8 +304,10 @@ func (h *Host) HasTLS() bool {
 	return h.TLS.UseDefaultCrt || h.TLS.TLSHash != ""
 }
 
-func (h *hostResolver) HasTLS() bool {
-	return *h.useDefaultCrt || *h.crtFilename != ""
+func (h *hostResolver) UseTLS() bool {
+	// hasTLS - whether the host should be added or not in the HTTPS map.
+	// useTLS - whether the proxy should be used or not the `hasTLS` info to configure a ssl-redirect.
+	return (*h.useDefaultCrt && *h.followRedirect) || *h.crtFilename != ""
 }
 
 // HasTLSAuth ...

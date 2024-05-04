@@ -170,7 +170,7 @@ const testingHostname = "host.local"
 
 type hostResolver struct{}
 
-func (h *hostResolver) HasTLS() bool {
+func (h *hostResolver) UseTLS() bool {
 	return true
 }
 

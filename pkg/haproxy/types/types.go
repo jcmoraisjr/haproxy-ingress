@@ -547,8 +547,9 @@ type HostRedirectConfig struct {
 // HostTLSConfig ...
 type HostTLSConfig struct {
 	TLSConfig
-	CAErrorPage   string
-	UseDefaultCrt bool
+	CAErrorPage    string
+	UseDefaultCrt  bool
+	FollowRedirect bool
 }
 
 // EndpointNaming ...
@@ -668,7 +669,7 @@ type BackendPathItem struct {
 
 // HostResolver ...
 type HostResolver interface {
-	HasTLS() bool
+	UseTLS() bool
 }
 
 // BackendPath ...
