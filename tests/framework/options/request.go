@@ -8,8 +8,17 @@ func ExpectResponseCode(code int) Request {
 	}
 }
 
+func HTTPSRequest(skipVerify bool) Request {
+	return func(o *requestOpt) {
+		o.HTTPS = true
+		o.TLSSkipVerify = skipVerify
+	}
+}
+
 type requestOpt struct {
 	ExpectResponseCode int
+	HTTPS              bool
+	TLSSkipVerify      bool
 }
 
 func ParseRequestOptions(opts ...Request) (opt requestOpt) {

@@ -68,6 +68,41 @@ func TestIntegrationIngress(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("https://%s/", hostname), res.HTTPResponse.Header.Get("location"))
 	})
 
+	t.Run("should send default http headers on http request", func(t *testing.T) {
+		t.Parallel()
+		svc := f.CreateService(ctx, t, httpServerPort)
+		_, hostname := f.CreateIngress(ctx, t, svc)
+		res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
+		assert.True(t, res.EchoResponse)
+		reqHeaders := map[string]string{
+			"accept-encoding":   "gzip",
+			"user-agent":        "Go-http-client/1.1",
+			"x-forwarded-for":   "127.0.0.1",
+			"x-forwarded-proto": "http",
+			"x-real-ip":         "127.0.0.1",
+		}
+		assert.Equal(t, reqHeaders, res.ReqHeaders)
+	})
+
+	t.Run("should send default http headers on https request", func(t *testing.T) {
+		t.Parallel()
+		svc := f.CreateService(ctx, t, httpServerPort)
+		_, hostname := f.CreateIngress(ctx, t, svc, options.DefaultHostTLS())
+		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
+			options.ExpectResponseCode(http.StatusOK),
+			options.HTTPSRequest(true),
+		)
+		assert.True(t, res.EchoResponse)
+		reqHeaders := map[string]string{
+			"accept-encoding":   "gzip",
+			"user-agent":        "Go-http-client/1.1",
+			"x-forwarded-for":   "127.0.0.1",
+			"x-forwarded-proto": "https",
+			"x-real-ip":         "127.0.0.1",
+		}
+		assert.Equal(t, reqHeaders, res.ReqHeaders)
+	})
+
 	t.Run("should take leader", func(t *testing.T) {
 		t.Parallel()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
