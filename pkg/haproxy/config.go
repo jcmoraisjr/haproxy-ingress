@@ -153,6 +153,7 @@ func (c *config) WriteFrontendMaps() error {
 		HTTPSSNIMap:  mapBuilder.AddMap(mapsDir + "/_front_https_sni.map"),
 		//
 		RedirFromRootMap:  mapBuilder.AddMap(mapsDir + "/_front_redir_fromroot.map"),
+		RedirRootSSLMap:   mapBuilder.AddMap(mapsDir + "/_front_redir_root_ssl.map"),
 		SSLPassthroughMap: mapBuilder.AddMap(mapsDir + "/_front_sslpassthrough.map"),
 		VarNamespaceMap:   mapBuilder.AddMap(mapsDir + "/_front_namespace.map"),
 		//
@@ -237,6 +238,19 @@ func (c *config) WriteFrontendMaps() error {
 		// TODO wildcard/alias/alias-regex hostname can overlap
 		// a configured domain which doesn't have rootRedirect
 		if host.RootRedirect != "" {
+			// looking for root path configuration - if ssl redirect is enabled,
+			// we need to redirect to https before redirect the path.
+			redir := c.global.SSL.SSLRedirect
+			if path := host.FindPath("/"); path != nil {
+				if backend := c.backends.Items()[path.Backend.ID]; backend != nil {
+					if bpath := backend.FindBackendPath(path.Link); bpath != nil {
+						redir = bpath.SSLRedirect
+					}
+				}
+			}
+			if redir {
+				fmaps.RedirRootSSLMap.AddHostnameMapping(host.Hostname, "")
+			}
 			fmaps.RedirFromRootMap.AddHostnameMapping(host.Hostname, host.RootRedirect)
 		}
 		//
