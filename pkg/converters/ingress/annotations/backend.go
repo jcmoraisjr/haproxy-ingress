@@ -796,15 +796,20 @@ func (c *updater) buildBackendProtocol(d *backData) {
 		return
 	}
 	if crt := d.mapper.Get(ingtypes.BackSecureCrtSecret); crt.Value != "" {
-		if crtFile, err := c.cache.GetTLSSecretPath(
-			crt.Source.Namespace,
-			crt.Value,
-			convtypes.TrackingTarget{Backend: d.backend.BackendID()},
-		); err == nil {
+		var crtFile convtypes.CrtFile
+		namespace, name, err := crt.NamespacedName()
+		if err == nil {
+			crtFile, err = c.cache.GetTLSSecretPath(
+				namespace,
+				name,
+				convtypes.TrackingTarget{Backend: d.backend.BackendID()},
+			)
+		}
+		if err == nil {
 			d.backend.Server.CrtFilename = crtFile.Filename
 			d.backend.Server.CrtHash = crtFile.SHA1Hash
 		} else {
-			c.logger.Warn("skipping client certificate on %v: %v", crt.Source, err)
+			c.logger.Warn("skipping client certificate on %s: %v", crt.Source.String(), err)
 		}
 	}
 	if sni := d.mapper.Get(ingtypes.BackSecureSNI); sni.Value != "" {
@@ -829,17 +834,22 @@ func (c *updater) buildBackendProtocol(d *backData) {
 		}
 	}
 	if ca := d.mapper.Get(ingtypes.BackSecureVerifyCASecret); ca.Value != "" {
-		if caFile, crlFile, err := c.cache.GetCASecretPath(
-			ca.Source.Namespace,
-			ca.Value,
-			convtypes.TrackingTarget{Backend: d.backend.BackendID()},
-		); err == nil {
+		var caFile, crlFile convtypes.File
+		namespace, name, err := ca.NamespacedName()
+		if err == nil {
+			caFile, crlFile, err = c.cache.GetCASecretPath(
+				namespace,
+				name,
+				convtypes.TrackingTarget{Backend: d.backend.BackendID()},
+			)
+		}
+		if err == nil {
 			d.backend.Server.CAFilename = caFile.Filename
 			d.backend.Server.CAHash = caFile.SHA1Hash
 			d.backend.Server.CRLFilename = crlFile.Filename
 			d.backend.Server.CRLHash = crlFile.SHA1Hash
 		} else {
-			c.logger.Warn("skipping CA on %v: %v", ca.Source, err)
+			c.logger.Warn("skipping CA on %s: %v", ca.Source.String(), err)
 		}
 	}
 }
