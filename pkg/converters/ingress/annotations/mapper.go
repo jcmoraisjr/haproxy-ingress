@@ -240,5 +240,8 @@ func (m *PathConfig) String() string {
 
 // String ...
 func (s *Source) String() string {
+	if s == nil {
+		return "<global>"
+	}
 	return fmt.Sprintf("%s '%s'", s.Type, s.FullName())
 }
