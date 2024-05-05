@@ -118,7 +118,7 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 	for _, path := range d.backend.Paths {
 		config := d.mapper.GetConfig(path.Link)
 		url := config.Get(ingtypes.BackAuthURL)
-		if url.Source == nil || url.Value == "" {
+		if url.Value == "" {
 			continue
 		}
 
@@ -128,13 +128,13 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 
 		external := c.haproxy.Global().External
 		if external.IsExternal && !external.HasLua {
-			c.logger.Warn("external authentication on %v needs Lua json module, install lua-json4 and enable 'external-has-lua' global config", url.Source)
+			c.logger.Warn("external authentication on %s needs Lua json module, install lua-json4 and enable 'external-has-lua' global config", url.Source.String())
 			continue
 		}
 
 		urlProto, urlHost, urlPort, urlPath, err := ingutils.ParseURL(url.Value)
 		if err != nil {
-			c.logger.Warn("ignoring URL on %v: %v", url.Source, err)
+			c.logger.Warn("ignoring URL on %s: %v", url.Source.String(), err)
 			continue
 		}
 
@@ -149,7 +149,7 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 			} else {
 				var err error
 				if ipList, err = lookupHost(urlHost); err != nil {
-					c.logger.Warn("ignoring auth URL with an invalid domain on %v: %v", url.Source, err)
+					c.logger.Warn("ignoring auth URL with an invalid domain on %s: %v", url.Source.String(), err)
 					continue
 				}
 				hostname = urlHost
@@ -170,15 +170,21 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 			}
 		case "service", "svc":
 			if urlPort == "" {
-				c.logger.Warn("skipping auth-url on %v: missing service port: %s", url.Source, url.Value)
+				c.logger.Warn("skipping auth-url on %s: missing service port: %s", url.Source.String(), url.Value)
 				continue
 			}
 			ssvc := strings.Split(urlHost, "/")
-			namespace := url.Source.Namespace
+			var namespace string
 			name := ssvc[0]
 			if len(ssvc) == 2 {
 				namespace = ssvc[0]
 				name = ssvc[1]
+			} else if url.Source != nil {
+				namespace = url.Source.Namespace
+			}
+			if namespace == "" {
+				c.logger.Warn("skipping auth-url on %s: a globally configured auth-url is missing the namespace", url.Source.String())
+				continue
 			}
 			backend = c.haproxy.Backends().FindBackend(namespace, name, urlPort)
 			if backend == nil {
@@ -186,11 +192,11 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 				// but we still need to add a warning here because, in the current code base,
 				// a valid named service can lead to a broken configuration. See ingress'
 				// counterpart code.
-				c.logger.Warn("skipping auth-url on %v: service '%s:%s' was not found", url.Source, name, urlPort)
+				c.logger.Warn("skipping auth-url on %s: service '%s:%s' was not found", url.Source.String(), name, urlPort)
 				continue
 			}
 		default:
-			c.logger.Warn("ignoring auth URL with an invalid protocol on %v: %s", url.Source, urlProto)
+			c.logger.Warn("ignoring auth URL with an invalid protocol on %s: %s", url.Source.String(), urlProto)
 			continue
 		}
 		// TODO track
@@ -202,7 +208,7 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 			authBackendName, err = c.haproxy.Frontend().AcquireAuthBackendName(backend.BackendID())
 			if err != nil {
 				// TODO remove backend if not used elsewhere
-				c.logger.Warn("ignoring auth URL on %v: %v", url.Source, err)
+				c.logger.Warn("ignoring auth URL on %s: %v", url.Source.String(), err)
 				continue
 			}
 		}
@@ -210,14 +216,14 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 		m := config.Get(ingtypes.BackAuthMethod)
 		method := m.Value
 		if !validMethodRegex.MatchString(method) {
-			c.logger.Warn("invalid request method '%s' on %s, using GET instead", method, m.Source)
+			c.logger.Warn("invalid request method '%s' on %s, using GET instead", method, m.Source.String())
 			method = "GET"
 		}
 
 		s := config.Get(ingtypes.BackAuthSignin)
 		signin := s.Value
 		if signin != "" && !validURLRegex.MatchString(signin) {
-			c.logger.Warn("ignoring invalid sign-in URL in %v: %s", s.Source, signin)
+			c.logger.Warn("ignoring invalid sign-in URL on %s: %s", s.Source.String(), signin)
 			signin = ""
 		}
 
@@ -239,7 +245,7 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 
 		if signin != "" {
 			if !reflect.DeepEqual(hdrFail, []string{"*"}) {
-				c.logger.Warn("ignoring '%s' on %v due to signin (redirect) configuration", ingtypes.BackAuthHeadersFail, s.Source)
+				c.logger.Warn("ignoring '%s' on %s due to signin (redirect) configuration", ingtypes.BackAuthHeadersFail, s.Source.String())
 			}
 			// `-` instructs auth-request to not terminate the transaction,
 			// so HAProxy has the chance to configure the redirect.
