@@ -40,9 +40,10 @@ rules:
       - list
       - watch
   - apiGroups:
-      - "extensions"
-      - "networking.k8s.io"
+      - extensions
+      - networking.k8s.io
     resources:
+      - ingressclasses
       - ingresses
     verbs:
       - get
@@ -56,8 +57,8 @@ rules:
       - create
       - patch
   - apiGroups:
-      - "extensions"
-      - "networking.k8s.io"
+      - extensions
+      - networking.k8s.io
     resources:
       - ingresses/status
     verbs:
@@ -69,6 +70,14 @@ metadata:
   name: ingress-controller
   namespace: ingress-controller
 rules:
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - create
+      - update
   - apiGroups:
       - ""
     resources:
