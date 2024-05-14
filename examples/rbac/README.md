@@ -41,9 +41,11 @@ The Role permissions are:
 * `endpoints`: create, get, update
 
 Furthermore to support leader-election, the ingress controller needs to
-have access to a `configmap` in the `ingress-controller` namespace:
+have access to both the `configmap` and `leases` resources in the
+`ingress-controller` namespace:
 
 * `configmaps`: get, update, create
+* `coordination.k8s.io/leases`: get, update, create
 
 ## Namespace created in this example
 
