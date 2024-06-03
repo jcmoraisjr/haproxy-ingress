@@ -213,6 +213,7 @@ func (c *updater) UpdateHostConfig(host *hatypes.Host, mapper *Mapper) {
 	host.Alias.AliasName = mapper.Get(ingtypes.HostServerAlias).Value
 	host.Alias.AliasRegex = mapper.Get(ingtypes.HostServerAliasRegex).Value
 	host.TLS.UseDefaultCrt = mapper.Get(ingtypes.HostSSLAlwaysAddHTTPS).Bool()
+	host.TLS.FollowRedirect = mapper.Get(ingtypes.HostSSLAlwaysFollowRedirect).Bool()
 	host.VarNamespace = mapper.Get(ingtypes.HostVarNamespace).Bool()
 	c.buildHostAuthExternal(data)
 	c.buildHostAuthTLS(data)
