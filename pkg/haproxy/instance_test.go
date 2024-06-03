@@ -4042,6 +4042,8 @@ func TestInstanceRootRedirect(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
+	c.config.global.SSL.SSLRedirect = true
+
 	var h *hatypes.Host
 	var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 	h = c.config.Hosts().AcquireHost("*.d1.local")
@@ -4081,6 +4083,7 @@ frontend _front_http
     mode http
     bind :80
     <<set-req-base>>
+    http-request redirect scheme https if { path / } { var(req.host) -i -m str -f /etc/haproxy/maps/_front_redir_root_ssl__exact.map }
     http-request set-var(req.rootredir) var(req.host),map_str(/etc/haproxy/maps/_front_redir_fromroot__exact.map)
     http-request set-var(req.rootredir) var(req.host),map_reg(/etc/haproxy/maps/_front_redir_fromroot__regex.map) if !{ var(req.rootredir) -m found }
     http-request redirect location %[var(req.rootredir)] if { path / } { var(req.rootredir) -m found }
@@ -4116,6 +4119,9 @@ d2.local#/app1 d2_app_8080
 `)
 	c.checkMap("_front_redir_fromroot__exact.map", `
 d2.local /app1
+`)
+	c.checkMap("_front_redir_root_ssl__exact.map", `
+d2.local
 `)
 	c.checkMap("_front_redir_fromroot__regex.map", `
 ^[^.]+\.d1\.local$ /app
