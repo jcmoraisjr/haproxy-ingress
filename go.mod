@@ -6,7 +6,7 @@ toolchain go1.22.2
 
 require (
 	github.com/Masterminds/sprig/v3 v3.2.3
-	github.com/go-logr/logr v1.4.1
+	github.com/go-logr/logr v1.4.2
 	github.com/go-logr/zapr v1.3.0
 	github.com/imdario/mergo v0.3.16
 	github.com/jinzhu/copier v0.4.0
