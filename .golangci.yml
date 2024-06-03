@@ -1,9 +1,9 @@
 run:
-  deadline: 5m
-  skip-dirs:
+  timeout: 5m
+issues:
+  exclude-dirs:
     - pkg/acme/x
     - pkg/common
-
 linters:
   disable-all: true
   enable:
@@ -14,7 +14,5 @@ linters:
     - ineffassign
     - misspell
     - staticcheck
-    - structcheck
     - typecheck
     - unconvert
-    - varcheck
