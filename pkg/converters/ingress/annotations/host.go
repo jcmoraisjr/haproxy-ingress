@@ -25,7 +25,7 @@ import (
 func (c *updater) buildHostAuthExternal(d *hostData) {
 	isFrontend := d.mapper.Get(ingtypes.BackAuthExternalPlacement).ToLower() == "frontend"
 	url := d.mapper.Get(ingtypes.BackAuthURL)
-	if isFrontend && url.Source != nil && url.Value != "" {
+	if isFrontend && url.Value != "" {
 		for _, path := range d.host.Paths {
 			path.AuthExt = &types.AuthExternal{}
 			c.setAuthExternal(d.mapper, path.AuthExt, url)
