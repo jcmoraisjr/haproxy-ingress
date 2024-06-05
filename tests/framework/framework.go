@@ -3,6 +3,7 @@ package framework
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"math/rand"
@@ -234,6 +235,12 @@ func (f *framework) Request(ctx context.Context, t *testing.T, method, host, pat
 			ServerName:         opt.SNI,
 		},
 	}
+	if opt.ClientCA != nil {
+		pool := x509.NewCertPool()
+		ok := pool.AppendCertsFromPEM(opt.ClientCA)
+		require.True(t, ok)
+		transport.TLSClientConfig.RootCAs = pool
+	}
 	if opt.ClientCrtPEM != nil && opt.ClientKeyPEM != nil {
 		cert, err := tls.X509KeyPair(opt.ClientCrtPEM, opt.ClientKeyPEM)
 		require.NoError(t, err)
@@ -254,7 +261,8 @@ func (f *framework) Request(ctx context.Context, t *testing.T, method, host, pat
 		Transport: transport,
 	}
 	var res *http.Response
-	if opt.ExpectResponseCode > 0 {
+	switch {
+	case opt.ExpectResponseCode > 0:
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
 			res, err = cli.Do(req)
 			if !assert.NoError(collect, err) {
@@ -262,7 +270,16 @@ func (f *framework) Request(ctx context.Context, t *testing.T, method, host, pat
 			}
 			assert.Equal(collect, opt.ExpectResponseCode, res.StatusCode)
 		}, 5*time.Second, time.Second)
-	} else {
+	case opt.ExpectX509Error != "":
+		require.EventuallyWithT(t, func(collect *assert.CollectT) {
+			_, err := cli.Do(req)
+			// better if matching some x509.<...>Error{} instead,
+			// but error.Is() does not render to true due to the server's
+			// x509 certificate attached to the error instance.
+			assert.ErrorContains(collect, err, opt.ExpectX509Error)
+		}, 5*time.Second, time.Second)
+		return Response{EchoResponse: buildEchoResponse(t, "")}
+	default:
 		res, err = cli.Do(req)
 		require.NoError(t, err)
 	}
@@ -327,6 +344,13 @@ metadata:
 		assert.NoError(t, client.IgnoreNotFound(err))
 	})
 	return secret
+}
+
+func (f *framework) CreateSecretTLS(ctx context.Context, t *testing.T, crt, key []byte, o ...options.Object) *corev1.Secret {
+	return f.CreateSecret(ctx, t, map[string][]byte{
+		corev1.TLSCertKey:       crt,
+		corev1.TLSPrivateKeyKey: key,
+	})
 }
 
 func (f *framework) CreateService(ctx context.Context, t *testing.T, serverPort int32, o ...options.Object) *corev1.Service {
@@ -425,14 +449,22 @@ spec:
               number: 8080
 `
 	name := randomName("ing")
-	hostname := name + ".local"
+	hostname := opt.IngressOpt.CustomHostName
+	if hostname == "" {
+		hostname = name + ".local"
+	}
 
 	ing := f.CreateObject(t, data).(*networking.Ingress)
 	ing.Name = name
 	ing.Spec.Rules[0].Host = hostname
 	ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name = svc.Name
 	opt.Apply(ing)
-	if opt.IngressOpt.DefaultTLS {
+	if opt.IngressOpt.CustomTLSSecret != "" {
+		ing.Spec.TLS = []networking.IngressTLS{{
+			Hosts:      []string{hostname},
+			SecretName: opt.IngressOpt.CustomTLSSecret,
+		}}
+	} else if opt.IngressOpt.DefaultTLS {
 		ing.Spec.TLS = []networking.IngressTLS{{Hosts: []string{hostname}}}
 	}
 
@@ -682,7 +714,7 @@ func (f *framework) CreateObject(t *testing.T, data string) client.Object {
 
 type EchoResponse struct {
 	Parsed     bool
-	Name       string
+	ServerName string
 	Port       int
 	Path       string
 	ReqHeaders map[string]string
@@ -700,7 +732,7 @@ func buildEchoResponse(t *testing.T, body string) EchoResponse {
 	require.NoError(t, err)
 	res := EchoResponse{
 		Parsed:     true,
-		Name:       header[1],
+		ServerName: header[1],
 		Port:       port,
 		Path:       header[3],
 		ReqHeaders: make(map[string]string),

@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/jcmoraisjr/haproxy-ingress/tests/framework/options"
 )
 
 const (
@@ -18,7 +20,7 @@ const (
 	CertificateClientCN = "HAProxy Ingress client"
 )
 
-func CreateCA(t *testing.T, dns ...string) (ca, key []byte) {
+func CreateCA(t *testing.T, cn string) (ca, key []byte) {
 	serial, err := rand.Int(rand.Reader, big.NewInt(2^63))
 	require.NoError(t, err)
 	notBefore := time.Now().Add(-time.Hour)
@@ -26,11 +28,10 @@ func CreateCA(t *testing.T, dns ...string) (ca, key []byte) {
 	template := x509.Certificate{
 		SerialNumber: serial,
 		Subject: pkix.Name{
-			CommonName: CertificateIssuerCN,
+			CommonName: cn,
 		},
 		NotBefore:             notBefore,
 		NotAfter:              notAfter,
-		DNSNames:              dns,
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 		MaxPathLen:            1,
@@ -45,7 +46,9 @@ func CreateCA(t *testing.T, dns ...string) (ca, key []byte) {
 	return ca, key
 }
 
-func CreateCertificate(t *testing.T, ca, cakey []byte, dns ...string) (crt, key []byte) {
+func CreateCertificate(t *testing.T, ca, cakey []byte, cn string, o ...options.Certificate) (crt, key []byte) {
+	opt := options.ParseCertificateOptions(o...)
+
 	cakeyder, _ := pem.Decode(cakey)
 	cakeyrsa, err := x509.ParsePKCS1PrivateKey(cakeyder.Bytes)
 	require.NoError(t, err)
@@ -56,16 +59,23 @@ func CreateCertificate(t *testing.T, ca, cakey []byte, dns ...string) (crt, key 
 
 	serial, err := rand.Int(rand.Reader, big.NewInt(2^63))
 	require.NoError(t, err)
-	notBefore := time.Now().Add(-time.Hour)
-	notAfter := notBefore.Add(24 * time.Hour)
+
+	var notBefore, notAfter time.Time
+	if opt.InvalidDates {
+		notBefore = time.Now().Add(-24 * time.Hour)
+		notAfter = notBefore.Add(12 * time.Hour)
+	} else {
+		notBefore = time.Now().Add(-time.Hour)
+		notAfter = notBefore.Add(24 * time.Hour)
+	}
 	template := x509.Certificate{
 		SerialNumber: serial,
 		Subject: pkix.Name{
-			CommonName: CertificateClientCN,
+			CommonName: cn,
 		},
 		NotBefore: notBefore,
 		NotAfter:  notAfter,
-		DNSNames:  dns,
+		DNSNames:  opt.DNS,
 	}
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)

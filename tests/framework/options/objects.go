@@ -18,12 +18,23 @@ func AddConfigKeyAnnotation(key, value string) Object {
 	}
 }
 
-func DefaultHostTLS() Object {
+func DefaultTLS() Object {
 	return func(o *objectOpt) {
 		o.IngressOpt.DefaultTLS = true
 	}
 }
 
+func CustomTLS(secret string) Object {
+	return func(o *objectOpt) {
+		o.IngressOpt.CustomTLSSecret = secret
+	}
+}
+
+func CustomHostName(hostname string) Object {
+	return func(o *objectOpt) {
+		o.IngressOpt.CustomHostName = hostname
+	}
+}
 func Listener(name, proto string, port int32) Object {
 	return func(o *objectOpt) {
 		o.GatewayOpt.Listeners = append(o.GatewayOpt.Listeners, ListenerOpt{
@@ -45,7 +56,9 @@ type objectOpt struct {
 }
 
 type IngressOpt struct {
-	DefaultTLS bool
+	DefaultTLS      bool
+	CustomTLSSecret string
+	CustomHostName  string
 }
 
 type GatewayOpt struct {

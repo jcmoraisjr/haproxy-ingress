@@ -38,12 +38,20 @@ func TestIntegrationIngress(t *testing.T) {
 	err := f.Client().Status().Update(ctx, ingpre1)
 	require.NoError(t, err)
 
-	caValid, cakeyValid := framework.CreateCA(t)
-	crtValid, keyValid := framework.CreateCertificate(t, caValid, cakeyValid)
+	caValid, cakeyValid := framework.CreateCA(t, framework.CertificateIssuerCN)
+	crtValid, keyValid := framework.CreateCertificate(t, caValid, cakeyValid, framework.CertificateClientCN)
 	secretCA := f.CreateSecret(ctx, t, map[string][]byte{"ca.crt": caValid})
 
-	caFake, cakeyFake := framework.CreateCA(t)
-	crtFake, keyFake := framework.CreateCertificate(t, caFake, cakeyFake)
+	caFake, cakeyFake := framework.CreateCA(t, framework.CertificateIssuerCN)
+	crtFake, keyFake := framework.CreateCertificate(t, caFake, cakeyFake, framework.CertificateClientCN)
+
+	commonReqHeaders := map[string]string{
+		"accept-encoding":   "gzip",
+		"user-agent":        "Go-http-client/1.1",
+		"x-forwarded-for":   "127.0.0.1",
+		"x-forwarded-proto": "https",
+		"x-real-ip":         "127.0.0.1",
+	}
 
 	f.StartController(ctx, t)
 
@@ -60,7 +68,7 @@ func TestIntegrationIngress(t *testing.T) {
 		t.Parallel()
 		svc := f.CreateService(ctx, t, httpServerPort)
 		_, hostname := f.CreateIngress(ctx, t, svc,
-			options.DefaultHostTLS(),
+			options.DefaultTLS(),
 			options.AddConfigKeyAnnotation(ingtypes.BackSSLRedirect, "false"),
 		)
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
@@ -71,7 +79,7 @@ func TestIntegrationIngress(t *testing.T) {
 		t.Parallel()
 		svc := f.CreateService(ctx, t, httpServerPort)
 		_, hostname := f.CreateIngress(ctx, t, svc,
-			options.DefaultHostTLS(),
+			options.DefaultTLS(),
 			options.AddConfigKeyAnnotation(ingtypes.BackSSLRedirect, "true"),
 		)
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusFound))
@@ -85,41 +93,30 @@ func TestIntegrationIngress(t *testing.T) {
 		_, hostname := f.CreateIngress(ctx, t, svc)
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
 		assert.True(t, res.EchoResponse.Parsed)
-		reqHeaders := map[string]string{
-			"accept-encoding":   "gzip",
-			"user-agent":        "Go-http-client/1.1",
-			"x-forwarded-for":   "127.0.0.1",
+		reqHeaders := framework.AppendStringMap(commonReqHeaders, map[string]string{
 			"x-forwarded-proto": "http",
-			"x-real-ip":         "127.0.0.1",
-		}
+		})
 		assert.Equal(t, reqHeaders, res.EchoResponse.ReqHeaders)
 	})
 
 	t.Run("should send default http headers on https request", func(t *testing.T) {
 		t.Parallel()
 		svc := f.CreateService(ctx, t, httpServerPort)
-		_, hostname := f.CreateIngress(ctx, t, svc, options.DefaultHostTLS())
+		_, hostname := f.CreateIngress(ctx, t, svc, options.DefaultTLS())
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
 			options.ExpectResponseCode(http.StatusOK),
-			options.HTTPSRequest(true),
-			options.TLSSkipVerify(true),
+			options.HTTPSRequest(),
+			options.TLSSkipVerify(),
 		)
 		assert.True(t, res.EchoResponse.Parsed)
-		reqHeaders := map[string]string{
-			"accept-encoding":   "gzip",
-			"user-agent":        "Go-http-client/1.1",
-			"x-forwarded-for":   "127.0.0.1",
-			"x-forwarded-proto": "https",
-			"x-real-ip":         "127.0.0.1",
-		}
-		assert.Equal(t, reqHeaders, res.EchoResponse.ReqHeaders)
+		assert.Equal(t, commonReqHeaders, res.EchoResponse.ReqHeaders)
 	})
 
 	t.Run("should redirect to https before app-root", func(t *testing.T) {
 		t.Parallel()
 		svc := f.CreateService(ctx, t, httpServerPort)
 		_, hostname := f.CreateIngress(ctx, t, svc,
-			options.DefaultHostTLS(),
+			options.DefaultTLS(),
 			options.AddConfigKeyAnnotation(ingtypes.BackSSLRedirect, "true"),
 			options.AddConfigKeyAnnotation(ingtypes.HostAppRoot, "/app"),
 		)
@@ -131,28 +128,89 @@ func TestIntegrationIngress(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("https://%s/", hostname), res.HTTPResponse.Header.Get("location"))
 
 		res = f.Request(ctx, t, http.MethodGet, hostname, "/",
-			options.HTTPSRequest(true),
-			options.TLSSkipVerify(true),
+			options.HTTPSRequest(),
+			options.TLSSkipVerify(),
 		)
 		assert.False(t, res.EchoResponse.Parsed)
 		assert.Equal(t, "/app", res.HTTPResponse.Header.Get("location"))
 	})
 
-	// should fail TLS connection on default fake server crt and valid local ca
-	// should fail TLS connection on custom server crt and invalid local ca
-	// should succeed TLS connection on custom server crt and valid local ca
+	t.Run("should fail TLS connection on default fake server crt and valid local ca", func(t *testing.T) {
+		t.Parallel()
+		svc := f.CreateService(ctx, t, httpServerPort)
+		_, hostname := f.CreateIngress(ctx, t, svc,
+			options.DefaultTLS(),
+		)
+
+		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
+			options.HTTPSRequest(),
+			options.SNI("localhost"), // fake certificate has `localhost` in certificates's SAN
+			options.ExpectX509Error("x509: certificate signed by unknown authority"),
+		)
+		assert.False(t, res.EchoResponse.Parsed)
+	})
+
+	t.Run("should fail TLS connection on custom server crt with invalid dates", func(t *testing.T) {
+		t.Parallel()
+		hostname := framework.RandomHostName()
+		ca, cakey := framework.CreateCA(t, "custom CA")
+		crt, key := framework.CreateCertificate(t, ca, cakey, hostname,
+			options.DNS(hostname),
+			options.InvalidDates(),
+		)
+		secret := f.CreateSecretTLS(ctx, t, crt, key)
+
+		svc := f.CreateService(ctx, t, httpServerPort)
+		_, _ = f.CreateIngress(ctx, t, svc,
+			options.CustomHostName(hostname),
+			options.CustomTLS(secret.Name),
+		)
+
+		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
+			options.HTTPSRequest(),
+			options.ClientCA(ca),
+			options.SNI(hostname),
+			options.ExpectX509Error("x509: certificate has expired or is not yet valid"),
+		)
+		assert.False(t, res.EchoResponse.Parsed)
+	})
+
+	t.Run("should succeed TLS connection on custom server crt and valid local ca", func(t *testing.T) {
+		t.Parallel()
+		hostname := framework.RandomHostName()
+		ca, cakey := framework.CreateCA(t, "custom CA")
+		crt, key := framework.CreateCertificate(t, ca, cakey, hostname,
+			options.DNS(hostname),
+		)
+		secret := f.CreateSecretTLS(ctx, t, crt, key)
+
+		svc := f.CreateService(ctx, t, httpServerPort)
+		_, _ = f.CreateIngress(ctx, t, svc,
+			options.CustomHostName(hostname),
+			options.CustomTLS(secret.Name),
+		)
+
+		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
+			options.HTTPSRequest(),
+			options.ClientCA(ca),
+			options.SNI(hostname),
+			options.ExpectResponseCode(200),
+		)
+		assert.True(t, res.EchoResponse.Parsed)
+		assert.Equal(t, commonReqHeaders, res.EchoResponse.ReqHeaders)
+	})
 
 	t.Run("should deny 496 mTLS with no client crt", func(t *testing.T) {
 		t.Parallel()
 		svc := f.CreateService(ctx, t, httpServerPort)
 		_, hostname := f.CreateIngress(ctx, t, svc,
-			options.DefaultHostTLS(),
+			options.DefaultTLS(),
 			options.AddConfigKeyAnnotation(ingtypes.HostAuthTLSSecret, secretCA.Name),
 		)
 
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
-			options.HTTPSRequest(true),
-			options.TLSSkipVerify(true),
+			options.HTTPSRequest(),
+			options.TLSSkipVerify(),
 			options.SNI(hostname),
 			options.ExpectResponseCode(496),
 		)
@@ -163,13 +221,13 @@ func TestIntegrationIngress(t *testing.T) {
 		t.Parallel()
 		svc := f.CreateService(ctx, t, httpServerPort)
 		_, hostname := f.CreateIngress(ctx, t, svc,
-			options.DefaultHostTLS(),
+			options.DefaultTLS(),
 			options.AddConfigKeyAnnotation(ingtypes.HostAuthTLSSecret, secretCA.Name),
 		)
 
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
-			options.HTTPSRequest(true),
-			options.TLSSkipVerify(true),
+			options.HTTPSRequest(),
+			options.TLSSkipVerify(),
 			options.SNI(hostname),
 			options.ClientCertificateKeyPEM(crtFake, keyFake),
 			options.ExpectResponseCode(495),
@@ -181,13 +239,13 @@ func TestIntegrationIngress(t *testing.T) {
 		t.Parallel()
 		svc := f.CreateService(ctx, t, httpServerPort)
 		_, hostname := f.CreateIngress(ctx, t, svc,
-			options.DefaultHostTLS(),
+			options.DefaultTLS(),
 			options.AddConfigKeyAnnotation(ingtypes.HostAuthTLSSecret, "do not exist"),
 		)
 
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
-			options.HTTPSRequest(true),
-			options.TLSSkipVerify(true),
+			options.HTTPSRequest(),
+			options.TLSSkipVerify(),
 			options.SNI(hostname),
 			options.ClientCertificateKeyPEM(crtValid, keyValid),
 			options.ExpectResponseCode(495),
@@ -199,13 +257,13 @@ func TestIntegrationIngress(t *testing.T) {
 		t.Parallel()
 		svc := f.CreateService(ctx, t, httpServerPort)
 		_, hostname := f.CreateIngress(ctx, t, svc,
-			options.DefaultHostTLS(),
+			options.DefaultTLS(),
 			options.AddConfigKeyAnnotation(ingtypes.HostAuthTLSSecret, secretCA.Name),
 		)
 
 		res := f.Request(ctx, t, http.MethodGet, "trying-bypass.local", "/",
-			options.HTTPSRequest(true),
-			options.TLSSkipVerify(true),
+			options.HTTPSRequest(),
+			options.TLSSkipVerify(),
 			options.SNI(hostname),
 			options.ClientCertificateKeyPEM(crtValid, keyValid),
 			options.ExpectResponseCode(421),
@@ -217,28 +275,23 @@ func TestIntegrationIngress(t *testing.T) {
 		t.Parallel()
 		svc := f.CreateService(ctx, t, httpServerPort)
 		_, hostname := f.CreateIngress(ctx, t, svc,
-			options.DefaultHostTLS(),
+			options.DefaultTLS(),
 			options.AddConfigKeyAnnotation(ingtypes.HostAuthTLSSecret, secretCA.Name),
 			options.AddConfigKeyAnnotation(ingtypes.HostAuthTLSVerifyClient, "optional"),
 		)
 
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
-			options.HTTPSRequest(true),
-			options.TLSSkipVerify(true),
+			options.HTTPSRequest(),
+			options.TLSSkipVerify(),
 			options.SNI(hostname),
 			options.ExpectResponseCode(200),
 		)
 		assert.True(t, res.EchoResponse.Parsed)
-		reqHeaders := map[string]string{
-			"accept-encoding":   "gzip",
-			"user-agent":        "Go-http-client/1.1",
-			"x-forwarded-for":   "127.0.0.1",
-			"x-forwarded-proto": "https",
-			"x-real-ip":         "127.0.0.1",
+		reqHeaders := framework.AppendStringMap(commonReqHeaders, map[string]string{
 			"x-ssl-client-cn":   "",
 			"x-ssl-client-dn":   "",
 			"x-ssl-client-sha1": "",
-		}
+		})
 		assert.Equal(t, reqHeaders, res.EchoResponse.ReqHeaders)
 	})
 
@@ -246,13 +299,13 @@ func TestIntegrationIngress(t *testing.T) {
 		t.Parallel()
 		svc := f.CreateService(ctx, t, httpServerPort)
 		_, hostname := f.CreateIngress(ctx, t, svc,
-			options.DefaultHostTLS(),
+			options.DefaultTLS(),
 			options.AddConfigKeyAnnotation(ingtypes.HostAuthTLSSecret, secretCA.Name),
 		)
 
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
-			options.HTTPSRequest(true),
-			options.TLSSkipVerify(true),
+			options.HTTPSRequest(),
+			options.TLSSkipVerify(),
 			options.SNI(hostname),
 			options.ClientCertificateKeyPEM(crtValid, keyValid),
 			options.ExpectResponseCode(200),
@@ -260,16 +313,11 @@ func TestIntegrationIngress(t *testing.T) {
 		assert.True(t, res.EchoResponse.Parsed)
 		crtder, _ := pem.Decode(crtValid)
 		sha1sum := sha1.Sum(crtder.Bytes)
-		reqHeaders := map[string]string{
-			"accept-encoding":   "gzip",
-			"user-agent":        "Go-http-client/1.1",
-			"x-forwarded-for":   "127.0.0.1",
-			"x-forwarded-proto": "https",
-			"x-real-ip":         "127.0.0.1",
+		reqHeaders := framework.AppendStringMap(commonReqHeaders, map[string]string{
 			"x-ssl-client-cn":   framework.CertificateClientCN,
 			"x-ssl-client-dn":   "/CN=" + framework.CertificateClientCN,
 			"x-ssl-client-sha1": strings.ToUpper(hex.EncodeToString(sha1sum[:])),
-		}
+		})
 		assert.Equal(t, reqHeaders, res.EchoResponse.ReqHeaders)
 	})
 

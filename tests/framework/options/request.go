@@ -8,15 +8,27 @@ func ExpectResponseCode(code int) Request {
 	}
 }
 
-func HTTPSRequest(https bool) Request {
+func ExpectX509Error(msg string) Request {
 	return func(o *requestOpt) {
-		o.HTTPS = https
+		o.ExpectX509Error = msg
 	}
 }
 
-func TLSSkipVerify(skipVerify bool) Request {
+func HTTPSRequest() Request {
 	return func(o *requestOpt) {
-		o.TLSSkipVerify = skipVerify
+		o.HTTPS = true
+	}
+}
+
+func TLSSkipVerify() Request {
+	return func(o *requestOpt) {
+		o.TLSSkipVerify = true
+	}
+}
+
+func ClientCA(ca []byte) Request {
+	return func(o *requestOpt) {
+		o.ClientCA = ca
 	}
 }
 
@@ -35,8 +47,10 @@ func ClientCertificateKeyPEM(crt, key []byte) Request {
 
 type requestOpt struct {
 	ExpectResponseCode int
+	ExpectX509Error    string
 	HTTPS              bool
 	TLSSkipVerify      bool
+	ClientCA           []byte
 	SNI                string
 	ClientCrtPEM       []byte
 	ClientKeyPEM       []byte
