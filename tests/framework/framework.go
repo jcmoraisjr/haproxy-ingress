@@ -78,14 +78,12 @@ func NewFramework(ctx context.Context, t *testing.T, o ...options.Framework) *fr
 	utilruntime.Must(gatewayv1alpha2.AddToScheme(scheme))
 	utilruntime.Must(gatewayv1beta1.AddToScheme(scheme))
 	utilruntime.Must(gatewayv1.AddToScheme(scheme))
-	codec := serializer.NewCodecFactory(scheme)
 
 	cli, err := client.NewWithWatch(config, client.Options{Scheme: scheme})
 	require.NoError(t, err)
 
 	return &framework{
 		scheme: scheme,
-		codec:  codec,
 		config: config,
 		cli:    cli,
 	}
@@ -93,7 +91,6 @@ func NewFramework(ctx context.Context, t *testing.T, o ...options.Framework) *fr
 
 type framework struct {
 	scheme *runtime.Scheme
-	codec  serializer.CodecFactory
 	config *rest.Config
 	cli    client.WithWatch
 }
@@ -216,8 +213,7 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 type Response struct {
 	HTTPResponse *http.Response
 	Body         string
-	EchoResponse bool
-	ReqHeaders   map[string]string
+	EchoResponse EchoResponse
 }
 
 func (f *framework) Request(ctx context.Context, t *testing.T, method, host, path string, o ...options.Request) Response {
@@ -232,15 +228,30 @@ func (f *framework) Request(ctx context.Context, t *testing.T, method, host, pat
 	require.NoError(t, err)
 	req.Host = host
 	req.URL.Path = path
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: opt.TLSSkipVerify,
+			ServerName:         opt.SNI,
+		},
+	}
+	if opt.ClientCrtPEM != nil && opt.ClientKeyPEM != nil {
+		cert, err := tls.X509KeyPair(opt.ClientCrtPEM, opt.ClientKeyPEM)
+		require.NoError(t, err)
+
+		// transport.TLSClientConfig.Certificates is also an option, but when using it,
+		// http client filters out client side certificates whose issuer's DN does not
+		// match the DN from the CAs provided by the server. If any certificate matches,
+		// no certificate is provided in the TLS handshake. We don't want this behavior,
+		// our tests expect that the certificate is always sent when provided.
+		transport.TLSClientConfig.GetClientCertificate = func(cri *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			return &cert, nil
+		}
+	}
 	cli := http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: opt.TLSSkipVerify,
-			},
-		},
+		Transport: transport,
 	}
 	var res *http.Response
 	if opt.ExpectResponseCode > 0 {
@@ -255,29 +266,15 @@ func (f *framework) Request(ctx context.Context, t *testing.T, method, host, pat
 		res, err = cli.Do(req)
 		require.NoError(t, err)
 	}
-	require.NotNil(t, res, "request closure reassigned the response")
+	require.NotNil(t, res, "request closure should reassign the response")
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	reqHeaders := make(map[string]string)
 	t.Logf("response body:\n%s\n", body)
 	strbody := string(body)
-	echoResponse := strings.HasPrefix(strbody, "echoserver:\n")
-	if echoResponse {
-		for _, l := range strings.Split(strbody, "\n")[1:] {
-			if l == "" {
-				continue
-			}
-			eq := strings.Index(l, "=")
-			k := strings.ToLower(l[:eq])
-			v := l[eq+1:]
-			reqHeaders[k] = v
-		}
-	}
 	return Response{
 		HTTPResponse: res,
 		Body:         strbody,
-		EchoResponse: echoResponse,
-		ReqHeaders:   reqHeaders,
+		EchoResponse: buildEchoResponse(t, strbody),
 	}
 }
 
@@ -301,11 +298,42 @@ func (f *framework) Client() client.WithWatch {
 	return f.cli
 }
 
+func (f *framework) CreateSecret(ctx context.Context, t *testing.T, secretData map[string][]byte, o ...options.Object) *corev1.Secret {
+	opt := options.ParseObjectOptions(o...)
+	data := `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ""
+  namespace: default
+`
+	name := randomName("secret")
+
+	secret := f.CreateObject(t, data).(*corev1.Secret)
+	secret.Name = name
+	secret.Data = secretData
+	opt.Apply(secret)
+
+	t.Logf("creating Secret %s/%s\n", secret.Namespace, secret.Name)
+
+	err := f.cli.Create(ctx, secret)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		secret := corev1.Secret{}
+		secret.Namespace = "default"
+		secret.Name = name
+		err := f.cli.Delete(ctx, &secret)
+		assert.NoError(t, client.IgnoreNotFound(err))
+	})
+	return secret
+}
+
 func (f *framework) CreateService(ctx context.Context, t *testing.T, serverPort int32, o ...options.Object) *corev1.Service {
 	opt := options.ParseObjectOptions(o...)
 	data := `
 apiVersion: v1
-Kind: Service
+kind: Service
 metadata:
   name: ""
   namespace: default
@@ -340,7 +368,7 @@ spec:
 func (f *framework) CreateEndpoints(ctx context.Context, t *testing.T, serverPort int32) *corev1.Endpoints {
 	data := `
 apiVersion: v1
-Kind: Endpoints
+kind: Endpoints
 metadata:
   annotations:
     haproxy-ingress.github.io/ip-override: 127.0.0.1
@@ -647,15 +675,57 @@ spec:
 }
 
 func (f *framework) CreateObject(t *testing.T, data string) client.Object {
-	obj, _, err := f.codec.UniversalDeserializer().Decode([]byte(data), nil, nil)
+	obj, _, err := serializer.NewCodecFactory(f.scheme).UniversalDeserializer().Decode([]byte(data), nil, nil)
 	require.NoError(t, err)
 	return obj.(client.Object)
 }
 
-func (f *framework) CreateHTTPServer(ctx context.Context, t *testing.T) int32 {
+type EchoResponse struct {
+	Parsed     bool
+	Name       string
+	Port       int
+	Path       string
+	ReqHeaders map[string]string
+}
+
+func buildEchoResponse(t *testing.T, body string) EchoResponse {
+	if !strings.HasPrefix(body, "echoserver: ") {
+		// instantiate all pointers, so we can use assert on tests
+		// without leading to nil pointer deref.
+		return EchoResponse{ReqHeaders: make(map[string]string)}
+	}
+	lines := strings.Split(body, "\n")
+	header := echoHeaderRegex.FindStringSubmatch(lines[0])
+	port, err := strconv.Atoi(header[2])
+	require.NoError(t, err)
+	res := EchoResponse{
+		Parsed:     true,
+		Name:       header[1],
+		Port:       port,
+		Path:       header[3],
+		ReqHeaders: make(map[string]string),
+	}
+	for _, l := range lines[1:] {
+		if l == "" {
+			continue
+		}
+		eq := strings.Index(l, "=")
+		k := strings.ToLower(l[:eq])
+		v := l[eq+1:]
+		res.ReqHeaders[k] = v
+	}
+	return res
+}
+
+// Example: echoserver: service-name 8080 /app
+var echoHeaderRegex = regexp.MustCompile(`^echoserver: ([a-z0-9-]+) ([0-9]+) ([a-z0-9/]+)$`)
+
+func (f *framework) CreateHTTPServer(ctx context.Context, t *testing.T, serverName string) int32 {
+	serverPort := int32(32768 + rand.Intn(32767))
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		content := "echoserver:\n"
+		content := fmt.Sprintf("echoserver: %s %d %s\n", serverName, serverPort, r.URL.Path)
 		for name, values := range r.Header {
 			for _, value := range values {
 				content += fmt.Sprintf("%s=%s\n", name, value)
@@ -665,7 +735,6 @@ func (f *framework) CreateHTTPServer(ctx context.Context, t *testing.T) int32 {
 		assert.NoError(t, err)
 	})
 
-	serverPort := int32(32768 + rand.Intn(32767))
 	server := http.Server{
 		Addr:    fmt.Sprintf(":%d", serverPort),
 		Handler: mux,
@@ -674,7 +743,8 @@ func (f *framework) CreateHTTPServer(ctx context.Context, t *testing.T) int32 {
 
 	done := make(chan bool)
 	go func() {
-		_ = server.ListenAndServe()
+		err := server.ListenAndServe()
+		assert.ErrorIs(t, err, http.ErrServerClosed)
 		done <- true
 	}()
 

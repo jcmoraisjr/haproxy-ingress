@@ -8,10 +8,28 @@ func ExpectResponseCode(code int) Request {
 	}
 }
 
-func HTTPSRequest(skipVerify bool) Request {
+func HTTPSRequest(https bool) Request {
 	return func(o *requestOpt) {
-		o.HTTPS = true
+		o.HTTPS = https
+	}
+}
+
+func TLSSkipVerify(skipVerify bool) Request {
+	return func(o *requestOpt) {
 		o.TLSSkipVerify = skipVerify
+	}
+}
+
+func SNI(servername string) Request {
+	return func(o *requestOpt) {
+		o.SNI = servername
+	}
+}
+
+func ClientCertificateKeyPEM(crt, key []byte) Request {
+	return func(o *requestOpt) {
+		o.ClientCrtPEM = crt
+		o.ClientKeyPEM = key
 	}
 }
 
@@ -19,6 +37,9 @@ type requestOpt struct {
 	ExpectResponseCode int
 	HTTPS              bool
 	TLSSkipVerify      bool
+	SNI                string
+	ClientCrtPEM       []byte
+	ClientKeyPEM       []byte
 }
 
 func ParseRequestOptions(opts ...Request) (opt requestOpt) {
