@@ -45,4 +45,7 @@ RUN deluser haproxy\
  && chmod 0 /var/empty
 
 STOPSIGNAL SIGTERM
+
+# dumb-init reaps the old haproxy process in the embedded, non master-worker mode,
+# after receiving SIGUSR1, avoiding it to become a zombie.
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "/start.sh"]

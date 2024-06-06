@@ -639,6 +639,7 @@ func (i *instance) startHAProxySync() {
 		"-f", i.options.HAProxyCfgDir)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if err := cmd.Start(); err != nil {
 		i.logger.Error("error starting haproxy: %v", err)
 		return
