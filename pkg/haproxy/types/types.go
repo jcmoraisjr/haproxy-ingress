@@ -400,7 +400,6 @@ type HostsMaps struct {
 type FrontendMaps struct {
 	HTTPHostMap  *HostsMap
 	HTTPSHostMap *HostsMap
-	HTTPSSNIMap  *HostsMap
 	//
 	RedirFromRootMap  *HostsMap
 	RedirRootSSLMap   *HostsMap

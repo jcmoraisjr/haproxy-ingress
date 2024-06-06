@@ -1397,23 +1397,6 @@ frontend {{ $frontend.Name }}
     acl tls-check-crt ssl_fc_sni -i -m {{ $match.Method }} -f {{ $match.Filename }}
 {{- end }}
 
-{{- if $fmaps.HTTPSSNIMap.HasHost }}
-    http-request set-var(req.snibase) ssl_fc_sni,lower,concat(\#,req.path)
-{{- range $match := $fmaps.HTTPSSNIMap.MatchFiles }}
-    http-request set-var(req.snibackend) var(req.snibase)
-        {{- if $match.Lower }},lower{{ end }}
-        {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
-        {{- if not $match.First }} if !{ var(req.snibackend) -m found }{{ end }}
-{{- end }}
-{{- range $match := $fmaps.HTTPSSNIMap.MatchFiles }}
-    http-request set-var(req.snibackend) var(req.base)
-        {{- if $match.Lower }},lower{{ end }}
-        {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
-        {{- "" }} if !{ var(req.snibackend) -m found } !tls-has-crt
-        {{- if $fmaps.TLSNeedCrtList.HasHost }} !tls-host-need-crt{{ end }}
-{{- end }}
-{{- end }}
-
 {{- if $mandatory }}
 {{- if not $fmaps.TLSMissingCrtPagesMap.HasHost }}
     http-request set-var(req.tls_nocrt_redir) str(_internal) if !tls-has-crt tls-need-crt

@@ -176,7 +176,6 @@ func (c *config) WriteFrontendMaps() error {
 	fmaps := &hatypes.FrontendMaps{
 		HTTPHostMap:  mapBuilder.AddMap(mapsDir + "/_front_http_host.map"),
 		HTTPSHostMap: mapBuilder.AddMap(mapsDir + "/_front_https_host.map"),
-		HTTPSSNIMap:  mapBuilder.AddMap(mapsDir + "/_front_https_sni.map"),
 		//
 		RedirFromRootMap:  mapBuilder.AddMap(mapsDir + "/_front_redir_fromroot.map"),
 		RedirFromMap:      mapBuilder.AddMap(mapsDir + "/_front_redir_from.map"),
@@ -223,13 +222,8 @@ func (c *config) WriteFrontendMaps() error {
 					}
 				} else if host.HasTLS() {
 					// ssl offload in place
-					if host.HasTLSAuth() {
-						fmaps.HTTPSSNIMap.AddHostnamePathMapping(host.Hostname, path, backendID)
-						fmaps.HTTPSSNIMap.AddAliasPathMapping(host.Alias, path, backendID)
-					} else {
-						fmaps.HTTPSHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
-						fmaps.HTTPSHostMap.AddAliasPathMapping(host.Alias, path, backendID)
-					}
+					fmaps.HTTPSHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
+					fmaps.HTTPSHostMap.AddAliasPathMapping(host.Alias, path, backendID)
 				}
 				fmaps.HTTPHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
 				fmaps.HTTPHostMap.AddAliasPathMapping(host.Alias, path, backendID)
