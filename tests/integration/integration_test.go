@@ -321,6 +321,64 @@ func TestIntegrationIngress(t *testing.T) {
 		assert.Equal(t, reqHeaders, res.EchoResponse.ReqHeaders)
 	})
 
+	// should match wildcard host
+	// should match domain conflicting with wildcard host
+
+	t.Run("should give priority on specific domains over wildcard", func(t *testing.T) {
+		t.Parallel()
+		hostname := framework.RandomHostName()
+		hostSubdomain := "sub." + hostname
+		hostWildcard := "*." + hostname
+
+		backend1 := f.CreateHTTPServer(ctx, t, "backend1")
+		svc1 := f.CreateService(ctx, t, backend1)
+		backend2 := f.CreateHTTPServer(ctx, t, "backend2")
+		svc2 := f.CreateService(ctx, t, backend2)
+
+		_, _ = f.CreateIngress(ctx, t, svc1,
+			options.DefaultTLS(),
+			options.CustomHostName(hostSubdomain),
+			options.AddConfigKeyAnnotation(ingtypes.HostAuthTLSSecret, secretCA.Name),
+		)
+		_, _ = f.CreateIngress(ctx, t, svc2,
+			options.DefaultTLS(),
+			options.CustomHostName(hostWildcard),
+		)
+
+		res := f.Request(ctx, t, http.MethodGet, hostSubdomain, "/",
+			options.HTTPSRequest(),
+			options.TLSSkipVerify(),
+			options.SNI(hostSubdomain),
+			options.ExpectResponseCode(496),
+		)
+		assert.False(t, res.EchoResponse.Parsed)
+
+		res = f.Request(ctx, t, http.MethodGet, hostSubdomain, "/",
+			options.HTTPSRequest(),
+			options.TLSSkipVerify(),
+			options.SNI(hostSubdomain),
+			options.ClientCertificateKeyPEM(crtValid, keyValid),
+			options.ExpectResponseCode(200),
+		)
+		assert.True(t, res.EchoResponse.Parsed)
+		assert.Equal(t, "backend1", res.EchoResponse.ServerName)
+
+		res = f.Request(ctx, t, http.MethodGet, "another."+hostname, "/",
+			options.HTTPSRequest(),
+			options.TLSSkipVerify(),
+			options.ExpectResponseCode(200),
+		)
+		assert.True(t, res.EchoResponse.Parsed)
+		assert.Equal(t, "backend2", res.EchoResponse.ServerName)
+
+		res = f.Request(ctx, t, http.MethodGet, hostname, "/",
+			options.HTTPSRequest(),
+			options.TLSSkipVerify(),
+			options.ExpectResponseCode(404),
+		)
+		assert.False(t, res.EchoResponse.Parsed)
+	})
+
 	t.Run("should take leader", func(t *testing.T) {
 		t.Parallel()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
