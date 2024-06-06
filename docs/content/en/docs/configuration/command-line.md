@@ -360,9 +360,10 @@ Since v0.14
 
 Defines if haproxy should be configured in master-worker mode. If `false`, one single process
 is forked in the background. If `true`, a master process is started in the foreground and can
-be used to manage current and old worker processes. The default value is `false`, which
-preserves historical behavior of HAProxy Ingress. External HAProxy deployment needs
-master-worker mode and will enforce `--master-worker` as `true` if configured.
+be used to manage current and old worker processes. The default value is `false` in v0.14, which
+preserves historical behavior of HAProxy Ingress. v0.15 and newer defaults to `true` if not
+declared. External HAProxy deployment needs master-worker mode and will enforce
+`--master-worker` as `true` if configured.
 
 ---
 
