@@ -2480,6 +2480,11 @@ Logging configurations.
 * `syslog-length`: The maximum line length, log lines larger than this value will be truncated. Defaults to `1024`.
 * `syslog-tag`: Configure the tag field in the syslog header to the supplied string.
 
+The HAProxy process can also send logs to stdout, instead of an external syslog endpoint or a syslog sidecar, by following the steps below:
+
+* Configure `syslog-endpoint` as `stdout` and `syslog-format` as `raw`
+* From v0.12 and newer, configure HAProxy to run as a sidecar, see the [example page]({{% relref "../examples/external-haproxy" %}})
+
 See also:
 
 * https://cbonte.github.io/haproxy-dconv/2.2/configuration.html#3.1-log
