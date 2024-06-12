@@ -36,16 +36,12 @@ Docsy has a shortcut for you:
 If you want to run your own local Hugo server to preview your changes as you work:
 
 1. Install [Hugo](https://gohugo.io/getting-started/installing) and any other tools you need. You'll need at least **Hugo version 0.110.0** (we recommend using the most recent available version), and it must be the **extended** version, which supports SCSS.
-1. Fork the [HAProxy Ingress](https://github.com/jcmoraisjr/haproxy-ingress) repo into your own project, then create a local copy using `git clone`. Don’t forget to use `--recurse-submodules` or you won’t pull down some of the code you need to generate a working site. The clone may take a while since the docsy submodules are large.
+1. Fork the [HAProxy Ingress](https://github.com/jcmoraisjr/haproxy-ingress) repo into your own project, then create a local copy using `git clone`.
 
-       git clone --recurse-submodules --depth 1 https://github.com/jcmoraisjr/haproxy-ingress.git
+       $ git clone --depth 1\
+         https://github.com/jcmoraisjr/haproxy-ingress.git
 
-       # Or if you already have the repo cloned, you can run this instead:
-       git submodule update --init --recursive --recommend-shallow
-
-1. From inside the `/docs` directory, install the node modules: `npm install`
-1. You'll also need to install Docsy's node modules: `cd themes/docsy && npm install`
-1. Run `hugo server` in the `/docs` subdirectory. By default your site will be available at http://localhost:1313/. Now that you're serving your site locally, Hugo will watch for changes to the content and automatically refresh your site.
+1. Run `hugo server` from inside the `/docs` directory. By default your site will be available at http://localhost:1313/. Now that you're serving your site locally, Hugo will watch for changes to the content and automatically refresh your site.
     - On macOS, if you get a `pipe failed` error, you may need to add the `--watch=false` flag.
 1. Continue with the usual GitHub workflow to edit files, commit them, push the changes up to your fork, and create a pull request.
 

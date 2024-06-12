@@ -1,7 +1,14 @@
 {
-  "dependencies": {},
+  "name": "haproxy-ingress-docs",
+  "scripts": {
+    "clean": "rm -rf public/ resources/ node_modules/",
+    "build": "npm run clean && npm i && HUGO_ENV=production hugo",
+    "server": "npm run clean && hugo server",
+    "public": "npm run clean && npm run build && cd public/ && python3 -m http.server",
+    "update": "npm i --save-dev autoprefixer@latest postcss-cli@latest"
+  },
   "devDependencies": {
-    "autoprefixer": "^10.4.13",
-    "postcss-cli": "^10.0.0"
+    "autoprefixer": "^10.4.19",
+    "postcss-cli": "^11.0.0"
   }
 }

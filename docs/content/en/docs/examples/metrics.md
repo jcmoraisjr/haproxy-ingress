@@ -47,9 +47,9 @@ helm install prometheus prometheus-community/kube-prometheus-stack\
   -f prometheus-operator-values.yaml
 ```
 
-{{% alert title="Note" %}}
+{{< alert title="Note" >}}
 Bitnami has also a Prometheus Operator [helm chart](https://github.com/bitnami/charts/tree/master/bitnami/kube-prometheus) and it's also a good option. Note however that the values file has a different syntax.
-{{% /alert %}}
+{{< /alert >}}
 
 ## Configure HAProxy Ingress
 

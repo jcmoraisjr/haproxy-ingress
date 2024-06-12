@@ -3,70 +3,64 @@ title: HAProxy Ingress
 linkTitle: HAProxy Ingress
 ---
 
-{{< blocks/cover title="Welcome to HAProxy Ingress!" image_anchor="top" height="full" color="orange" >}}
-<div class="mx-auto">
-	<a class="btn btn-lg btn-primary mr-3 mb-4" href="{{< relref "/docs" >}}">
-		Learn More <i class="fas fa-arrow-alt-circle-right ml-2"></i>
-	</a>
-	<p class="lead mt-5">The first and most complete ingress controller implementation for HAProxy.</p>
-	<div class="mx-auto mt-5">{{< blocks/link-down color="info" >}}</div>
-</div>
+{{< blocks/cover image_anchor="top" height="full" >}}
+<h1 class="display-5 mt-md-5 pb-4" style="font-weight: 600;">Welcome to HAProxy Ingress!</h1>
+<a class="btn btn-lg btn-primary me-3 mb-4" href="/docs/">
+  Learn More <i class="fas fa-arrow-alt-circle-right ms-2"></i>
+</a>
+<p class="lead mt-5 mb-5">The first and most complete ingress controller implementation for HAProxy.</p>
+{{< blocks/link-down color="info" >}}
 {{< /blocks/cover >}}
 
 
-{{% blocks/lead color="primary" %}}
-<div class="col-12">
-	<h1 class="text-center">Why HAProxy Ingress</h1>
-</div>
-{{% /blocks/lead %}}
+{{< blocks/lead color="primary" >}}
+<h1 class="text-center">Why HAProxy Ingress</h1>
+{{< /blocks/lead >}}
 
-{{< blocks/section color="dark" >}}
 
-{{% blocks/feature icon="fa fa-bolt" title="Fast" %}}
+{{< blocks/section color="dark" type="row" >}}
+
+{{< blocks/feature icon="fa fa-bolt" title="Fast" >}}
 Carefully built on top of the battle-tested HAProxy load balancer.
-{{% /blocks/feature %}}
+{{< /blocks/feature >}}
 
-{{% blocks/feature icon="fa fa-shield-alt" title="Reliable" %}}
+{{< blocks/feature icon="fa fa-shield-alt" title="Reliable" >}}
 Making uptime happen across mission-critical clusters and services around the world.
-{{% /blocks/feature %}}
+{{< /blocks/feature >}}
 
-{{% blocks/feature icon="fa fa-cogs" title="Highly customizable" url="/docs/configuration" %}}
+{{< blocks/feature icon="fa fa-cogs" title="Highly customizable" url="/docs/configuration" >}}
 200+ configuration options and growing. Ingress and Gateway API resources.
-{{% /blocks/feature %}}
+{{< /blocks/feature >}}
 
 {{< /blocks/section >}}
 
 
 {{< blocks/section >}}
-<div class="col-12">
-	<h1 class="text-center">Get involved!</h1>
-</div>
+<h1 class="text-center">Get involved!</h1>
 {{< /blocks/section >}}
 
 
-{{< blocks/section >}}
+{{< blocks/section type="row" >}}
 
-{{% blocks/feature icon="fab fa-slack" title="Slack" url="https://kubernetes.slack.com/channels/haproxy-ingress" %}}
-We're in the #haproxy-ingress channel on Kubernetes Slack. Take an invite <a target="_blank" href="https://slack.k8s.io">here</a> if not subscribed yet.
-{{% /blocks/feature %}}
+{{< blocks/feature icon="fab fa-slack" title="Slack" url="https://kubernetes.slack.com/channels/haproxy-ingress" >}}
+We're in the #haproxy-ingress channel on Kubernetes Slack. Take an invite <a href="https://slack.k8s.io" target="_blank" rel="noopener">here</a> if not subscribed yet.
+{{< /blocks/feature >}}
 
-{{% blocks/feature icon="fa fa-envelope" title="Mailing list" url="https://groups.google.com/forum/#!forum/haproxy-ingress" %}}
+{{< blocks/feature icon="fa fa-envelope" title="Mailing list" url="https://groups.google.com/forum/#!forum/haproxy-ingress" >}}
 Follow announcements and mailing discussion.
-{{% /blocks/feature %}}
+{{< /blocks/feature >}}
 
-{{% blocks/feature icon="fab fa-github" title="Contributions welcome!" url="https://github.com/jcmoraisjr/haproxy-ingress" %}}
+{{< blocks/feature icon="fab fa-github" title="Contributions welcome!" url="https://github.com/jcmoraisjr/haproxy-ingress" >}}
 We do a [Pull Request](https://github.com/jcmoraisjr/haproxy-ingress/pulls) contributions workflow on **GitHub**. New users are always welcome!
-{{% /blocks/feature %}}
+{{< /blocks/feature >}}
 
 {{< /blocks/section >}}
 
 
-{{< blocks/section >}}
-<div class="col-12">
-	<h1 class="text-center">See HAProxy Ingress in action</h1>
-</div>
-<div class="mx-auto">
-	<a class="btn btn-lg btn-secondary mr-3 mb-4" href="{{< relref "/docs/getting-started" >}}">
+{{< blocks/section type="row" >}}
+<h1 class="text-center pb-4">See HAProxy Ingress in action</h1>
+<div class="text-center">
+	<a class="btn btn-lg btn-secondary" href="{{% relref "/docs/getting-started" %}}">
 		Get started! <i class="fas fa-arrow-alt-circle-right ml-2"></i>
 	</a>
 </div>

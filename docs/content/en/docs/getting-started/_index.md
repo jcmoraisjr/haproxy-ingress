@@ -24,13 +24,13 @@ HAProxy Ingress uses [Helm](https://helm.sh) chart to install and configure the 
 
 2) Add the HAProxy Ingress' Helm repository. This will instruct Helm to find all available packages:
 
-```shell
+```
 $ helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
 ```
 
 3) Check if kubeconfig points to the right cluster:
 
-```shell
+```
 $ kubectl cluster-info
 ```
 
@@ -51,16 +51,17 @@ HAProxy Ingress chart [documentation](https://github.com/haproxy-ingress/charts/
 
 5) Install HAProxy Ingress using `haproxy-ingress` as the release name and `haproxy-ingress-values.yaml` file as the custom parameters:
 
-```shell
-$ helm install haproxy-ingress haproxy-ingress/haproxy-ingress\
+```
+$ helm upgrade haproxy-ingress haproxy-ingress/haproxy-ingress\
+  --install\
   --create-namespace --namespace ingress-controller\
   --version 0.15.0-alpha.2 --devel\
   -f haproxy-ingress-values.yaml
 ```
 
-{{% alert title="Note" %}}
-The command `install` above can be changed to `upgrade` to start a rolling update of HAProxy Ingress version or configuration. `template` can be used instead to generate the manifests without installing them - add either a redirect `... >haproxy-ingress-install.yaml` to save the output, or `--output-dir output/` command line option to save one file per manifest.
-{{% /alert %}}
+{{< alert title="Note" >}}
+The command `upgrade` above, along with the `--install` command-line option, starts a new HAProxy Ingress deployment if it is missing, or starts a rolling update if HAProxy Ingress is already installed. `template` can be used instead to generate the manifests without installing them - add either a redirect `... >haproxy-ingress-install.yaml` to save the output, or `--output-dir output/` command line option to save one file per manifest.
+{{< /alert >}}
 
 The controller should be running in a few seconds. There are four important customizations made in the example above:
 
@@ -77,14 +78,14 @@ The following steps deploy an echoserver image and exposes it in the current nam
 
 1) Create the echoserver's deployment and service:
 
-```shell
+```
 $ kubectl --namespace default create deployment echoserver --image k8s.gcr.io/echoserver:1.3
 $ kubectl --namespace default expose deployment echoserver --port=8080
 ```
 
 2) Check if echoserver is up and running:
 
-```shell
+```
 $ kubectl -n default get pod -w
 NAME                          READY   STATUS    RESTARTS   AGE
 echoserver-5b6fb6dd96-68jwp   1/1     Running   0          27s
@@ -94,7 +95,7 @@ echoserver-5b6fb6dd96-68jwp   1/1     Running   0          27s
 
 Obs.: `nip.io` is a convenient service which converts a valid domain name to any IP, either public or local. See [here](https://nip.io) how it works.
 
-```shell
+```
 $ kubectl --namespace default create ingress echoserver \
   --class=haproxy \
   --rule="echoserver.local/*=echoserver:8080,tls"
@@ -102,7 +103,7 @@ $ kubectl --namespace default create ingress echoserver \
 
 4) Send a request to our echoserver.
 
-```shell
+```
 $ curl -k https://echoserver.local
 $ wget -qO- --no-check-certificate https://echoserver.local
 ```
