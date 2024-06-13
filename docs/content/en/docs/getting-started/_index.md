@@ -20,54 +20,69 @@ HAProxy Ingress uses [TLS SNI extension](https://en.wikipedia.org/wiki/Server_Na
 
 HAProxy Ingress uses [Helm](https://helm.sh) chart to install and configure the controller. See below some deployment instructions:
 
-1) Install `helm`, HAProxy Ingress requires version 3. See the installation instructions [here](https://helm.sh/docs/intro/install/).
+1. Install `helm`, HAProxy Ingress requires version 3. See the installation instructions [here](https://helm.sh/docs/intro/install/).
 
-2) Add the HAProxy Ingress' Helm repository. This will instruct Helm to find all available packages:
+1. Add the HAProxy Ingress' Helm repository. This will instruct Helm to find all available packages:
 
-```shell
-$ helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
-```
+    ```
+    $ helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
+    ```
 
-3) Check if kubeconfig points to the right cluster:
+1. Check if kubeconfig points to the right cluster:
 
-```shell
-$ kubectl cluster-info
-```
+    ```
+    $ kubectl cluster-info
+    ```
 
-The default cluster can be changed either via `kubectl config set-context <cluster-context>` or adding `--kube-context <cluster-context>` in the helm command-line options.
+    The default cluster can be changed either via `kubectl config set-context <cluster-context>` or adding `--kube-context <cluster-context>` in the helm command-line options.
 
-Note that the user needs administrative privileges in the cluster to properly installs the controller.
+    Note that the user needs administrative privileges in the cluster to properly install the controller.
 
-4) Create a `haproxy-ingress-values.yaml` file with custom parameters:
+1. Create a `haproxy-ingress-values.yaml` file with custom parameters:
 
-```yaml
-controller:
-  hostNetwork: true
-  ingressClassResource:
-    enabled: true
-```
+    > Use the content below if HAProxy Ingress should expose HAProxy via a service loadbalancer, like ELB, kube-vip, ServiceLB (k3s), etc.
 
-HAProxy Ingress chart [documentation](https://github.com/haproxy-ingress/charts/blob/release-0.14/haproxy-ingress/README.md#configuration) has all the available options. See also further documentation in the [default values](https://github.com/haproxy-ingress/charts/blob/release-0.14/haproxy-ingress/values.yaml) file.
+    ```yaml
+    # Expose HAProxy via a service loadbalancer
+    controller:
+      ingressClassResource:
+        enabled: true
+    ```
 
-5) Install HAProxy Ingress using `haproxy-ingress` as the release name and `haproxy-ingress-values.yaml` file as the custom parameters:
+    > Use the content below to expose HAProxy via host port on all cluster nodes.
 
-```shell
-$ helm install haproxy-ingress haproxy-ingress/haproxy-ingress\
-  --create-namespace --namespace ingress-controller\
-  --version 0.14.6\
-  -f haproxy-ingress-values.yaml
-```
+    ```yaml
+    # Expose HAProxy via host port on all cluster nodes
+    controller:
+      ingressClassResource:
+        enabled: true
+      kind: DaemonSet
+      daemonset:
+        useHostPort: true
+      service:
+        type: ClusterIP
+    ```
 
-{{% alert title="Note" %}}
-The command `install` above can be changed to `upgrade` to start a rolling update of HAProxy Ingress version or configuration. `template` can be used instead to generate the manifests without installing them - add either a redirect `... >haproxy-ingress-install.yaml` to save the output, or `--output-dir output/` command line option to save one file per manifest.
-{{% /alert %}}
+    HAProxy Ingress chart [documentation](https://github.com/haproxy-ingress/charts/blob/release-0.15/haproxy-ingress/README.md#configuration) has all the available options. See also further documentation in the [default values](https://github.com/haproxy-ingress/charts/blob/release-0.15/haproxy-ingress/values.yaml) file.
+
+1. Install HAProxy Ingress using `haproxy-ingress` as the release name and `haproxy-ingress-values.yaml` file as the custom parameters:
+
+    ```
+    $ helm upgrade haproxy-ingress haproxy-ingress/haproxy-ingress\
+      --install\
+      --create-namespace --namespace ingress-controller\
+      --version 0.14.6\
+      -f haproxy-ingress-values.yaml
+    ```
+
+    > Note that the command `upgrade` above, along with the `--install` command-line option, starts a new HAProxy Ingress deployment if it is missing, or starts a rolling update if HAProxy Ingress is already installed. `template` can be used instead to generate the manifests without installing them - add either a redirect `... >haproxy-ingress-install.yaml` to save the output, or `--output-dir output/` command line option to save one file per manifest.
 
 The controller should be running in a few seconds. There are four important customizations made in the example above:
 
-* version: a good practice, this will ensure that you'll have the same version installed even if a new release issued.
-* namespace: we're instructing helm to install HAProxy Ingress in the `ingress-controller` namespace. This namespace will be created if it does not exist yet. The default behavior, if namespace is not provided, is to deploy the controller in the kubectl's current namespace.
-* hostNetwork: we're configuring the deployment to expose haproxy in the host network, which means bind all haproxy ports, including but not limited to 80 and 443, in the node's IPs. Maybe this isn't a proper configuration for your production - it depends on the options you have to expose a Kubernetes' service, but doing so we'll be able to send http/s requests on local development environments, or even baremetal and on premise deployments that doesn't have a fronting router or load balancer to expose the controller. In any case a service is also configured in the `ingress-controller` namespace which tries to expose haproxy.
-* ingressClassResource.enabled: This causes the helm chart to apply an [IngressClass](https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-class) to your cluster. IngressClasses are how HAProxy Ingress knows which of your Ingresses that it should control. IngressClasses replace the [kubernetes.io/ingress.class](https://kubernetes.io/docs/concepts/services-networking/ingress/#deprecated-annotation) annotation used in Kubernetes versions before v1.18.
+* `--version`: a good practice, this will ensure that you'll have the same version installed even if a new release issued.
+* `--namespace`: we're instructing helm to install HAProxy Ingress in the `ingress-controller` namespace. This namespace will be created if it does not exist yet. The default behavior, if namespace is not provided, is to deploy the controller in the kubectl's current namespace.
+* `ingressClassResource.enabled`: This causes the helm chart to apply an [IngressClass](https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-class) to your cluster. IngressClasses are how HAProxy Ingress knows which of your Ingresses it should control. IngressClasses replace the [kubernetes.io/ingress.class](https://kubernetes.io/docs/concepts/services-networking/ingress/#deprecated-annotation) annotation used in Kubernetes versions before v1.18.
+* `kind`, `daemonset.useHostPort` and `service.type`, only used when service loadbalancer should not be used: disables service load balancer and exposes HAProxy via host port on all cluster nodes.
 
 HAProxy Ingress' Helm chart has a few more configuration options, see all of them in the chart [documentation](https://github.com/haproxy-ingress/charts/blob/release-0.14/haproxy-ingress/README.md) and in the [default values](https://github.com/haproxy-ingress/charts/blob/release-0.14/haproxy-ingress/values.yaml) file.
 
@@ -75,37 +90,37 @@ HAProxy Ingress' Helm chart has a few more configuration options, see all of the
 
 The following steps deploy an echoserver image and exposes it in the current namespace using an Ingress resource. See [here]({{% relref "/docs/configuration/gateway-api" %}}) how to expose using Gateway API.
 
-1) Create the echoserver's deployment and service:
+1. Create the echoserver's deployment and service:
 
-```shell
-$ kubectl --namespace default create deployment echoserver --image k8s.gcr.io/echoserver:1.3
-$ kubectl --namespace default expose deployment echoserver --port=8080
-```
+    ```
+    $ kubectl --namespace default create deployment echoserver --image k8s.gcr.io/echoserver:1.3
+    $ kubectl --namespace default expose deployment echoserver --port=8080
+    ```
 
-2) Check if echoserver is up and running:
+1. Check if echoserver is up and running:
 
-```shell
-$ kubectl -n default get pod -w
-NAME                          READY   STATUS    RESTARTS   AGE
-echoserver-5b6fb6dd96-68jwp   1/1     Running   0          27s
-```
+    ```
+    $ kubectl -n default get pod -w
+    NAME                          READY   STATUS    RESTARTS   AGE
+    echoserver-5b6fb6dd96-68jwp   1/1     Running   0          27s
+    ```
 
-3) Make HAProxy Ingress exposes the echoserver service. Change `echoserver.local` value in the `--rule` option below to a hostname that resolves to an ingress controller node.
+1. Make HAProxy Ingress expose the echoserver service. Change `echoserver.local` value in the `--rule` option below to a hostname that resolves to an ingress controller node.
 
-Obs.: `nip.io` is a convenient service which converts a valid domain name to any IP, either public or local. See [here](https://nip.io) how it works.
+    > Obs.: `nip.io` is a convenient service which converts a valid domain name to any IP, either public or local. See [here](https://nip.io) how it works.
 
-```shell
-$ kubectl --namespace default create ingress echoserver \
-  --class=haproxy \
-  --rule="echoserver.local/*=echoserver:8080,tls"
-```
+    ```
+    $ kubectl --namespace default create ingress echoserver \
+      --class=haproxy \
+      --rule="echoserver.local/*=echoserver:8080,tls"
+    ```
 
-4) Send a request to our echoserver.
+1. Send a request to our echoserver.
 
-```shell
-$ curl -k https://echoserver.local
-$ wget -qO- --no-check-certificate https://echoserver.local
-```
+    ```
+    $ curl -k https://echoserver.local
+    $ wget -qO- --no-check-certificate https://echoserver.local
+    ```
 
 ## What's next
 
