@@ -38,9 +38,6 @@ import (
 )
 
 func initSvcStatusIng(ctx context.Context, config *config.Config, client client.Client, cache *c, status svcStatusUpdateFnc) *svcStatusIng {
-	// TODO this service mimics the old controller behavior but it might worth
-	// to make a refactor, e.g. watching ingress pod updates or lb service,
-	// depending on how the hostname/ip are read
 	return &svcStatusIng{
 		log:    logr.FromContextOrDiscard(ctx).WithName("status").WithName("ingress"),
 		cfg:    config,

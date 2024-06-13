@@ -56,13 +56,12 @@ Dependencies to run locally:
 
 * Golang
 * HAProxy compiled with `USE_OPENSSL=1` and `USE_LUA=1`
-* [golangci-lint](https://golangci-lint.run/) is used when running `make lint` or `make test` targets
 * Lua with `lua-json` (`luarocks install lua-json`) if using Auth External or OAuth
 * Kubernetes network should be reachable from the local machine for a proper e2e test
 
 **Building container image:**
 
-Fast build - cross compile for linux/amd64 (locally) and generate `localhost/haproxy-ingress:latest`:
+Fast build - cross compile for linux (locally) and generate `localhost/haproxy-ingress:latest`:
 
 ```
 make image
