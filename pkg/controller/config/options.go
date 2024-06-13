@@ -14,6 +14,7 @@ func NewOptions() *Options {
 		IngressClass:            "haproxy",
 		ReloadStrategy:          "reusesocket",
 		WatchGateway:            true,
+		MasterWorker:            true,
 		AcmeCheckPeriod:         24 * time.Hour,
 		AcmeFailInitialDuration: 5 * time.Minute,
 		AcmeFailMaxDuration:     8 * time.Hour,
