@@ -102,7 +102,9 @@ See also:
 
 ---
 
-## --allow-cross-namespace
+## allow-cross-namespace
+
+* `--allow-cross-namespace`
 
 `--allow-cross-namespace` argument, if added, will allow reading secrets from one namespace to an
 ingress resource of another namespace. The default behavior is to deny such cross namespace reading.
@@ -115,7 +117,9 @@ See also:
 
 ---
 
-## --annotations-prefix
+## annotations-prefix
+
+* `--annotations-prefix`
 
 Configures a comma-separated list of annotations prefix that the controller should look for when
 parsing services and ingress objects. The default value is `haproxy-ingress.github.io,ingress.kubernetes.io`.
@@ -133,7 +137,9 @@ other.
 
 ---
 
-## --apiserver-host
+## apiserver-host
+
+* `--apiserver-host`
 
 Allows you to specify an explicit host for the Kubernetes API server, in the format of
 `protocol://address:port`, e.g., `http://localhost:8080`.  If this value isn't specified, the
@@ -142,7 +148,9 @@ attempted.
 
 ---
 
-## --backend-shards
+## backend-shards
+
+* `--backend-shards`
 
 Defines how many files should be used to configure the haproxy backends. The default value is
 0 (zero) which uses one single file to configure the whole haproxy process. Values greater than
@@ -152,13 +160,17 @@ services.
 
 ---
 
-## --buckets-response-time
+## buckets-response-time
+
+* `--buckets-response-time`
 
 Configures the buckets of the histogram `haproxyingress_haproxy_response_time_seconds`, used to compute the response time of the haproxy's admin socket. The response time unit is in seconds. The default value is `.0005,.001,.002,.005,.01` (`500µs`, `1ms`, `2ms`, `5ms`, `10ms`) if not configured.
 
 ---
 
-## --configmap
+## configmap
+
+* `--configmap`
 
 The name of the ConfigMap that contains the custom configuration to use, in the format
 `namespace/configmapname`.  Beware that in version 0.12 and below, an incorrect value here will
@@ -170,7 +182,9 @@ See also:
 
 ---
 
-## --default-backend-service
+## default-backend-service
+
+* `--default-backend-service`
 
 Defines the `namespace/servicename` that should be used if the incoming request doesn't match any
 hostname, or the requested path doesn't match any location within the desired hostname. An internal
@@ -178,7 +192,9 @@ hostname, or the requested path doesn't match any location within the desired ho
 
 ---
 
-## --default-ssl-certificate
+## default-ssl-certificate
+
+* `--default-ssl-certificate`
 
 Defines the `namespace/secretname` of the default certificate that should be used if ingress
 resources using TLS configuration doesn't provide it's own certificate.  A filename prefixed
@@ -189,7 +205,9 @@ A self-signed fake certificate is used if not declared, the secret or the file i
 
 ---
 
-## --disable-api-warnings
+## disable-api-warnings
+
+* `--disable-api-warnings`
 
 Since v0.12.4
 
@@ -198,7 +216,9 @@ deprecation. The default behavior is to log all API server warnings.
 
 ---
 
-## --disable-config-keywords
+## disable-config-keywords
+
+* `--disable-config-keywords`
 
 Since v0.10.9
 
@@ -210,7 +230,9 @@ The default value is an empty string, enabling the configuration and accepting a
 
 ---
 
-## --disable-external-name
+## disable-external-name
+
+* `--disable-external-name`
 
 Since v0.10.9
 
@@ -218,7 +240,9 @@ Services of type ExternalName uses DNS lookup to define the target server IP lis
 
 ---
 
-## --disable-pod-list
+## disable-pod-list
+
+* `--disable-pod-list`
 
 Since v0.11, deprecated since v0.15
 
@@ -226,7 +250,9 @@ Disables in memory pod list and also pod watch for changes. Pod list and watch i
 
 ---
 
-## --election-id
+## election-id
+
+* `--election-id`
 
 The ID to be used for electing ingress controller leader. A leader needs to be elected in the following use cases:
 
@@ -242,7 +268,9 @@ Election ID defaults to `class-%s.haproxy-ingress.github.io` if not configured, 
 
 ---
 
-## --force-namespace-isolation
+## force-namespace-isolation
+
+* `--force-namespace-isolation`
 
 Deprecated since v0.15
 
@@ -295,7 +323,9 @@ See also:
 
 ---
 
-## --kubeconfig
+## kubeconfig
+
+* `--kubeconfig`
 
 Ingress controller will try to connect to the Kubernetes master using environment variables and a
 service account. This behavior can be changed using `--kubeconfig` argument that reference a
@@ -304,7 +334,9 @@ is deployed outside of the Kubernetes cluster.
 
 ---
 
-## --local-filesystem-prefix
+## local-filesystem-prefix
+
+* `--local-filesystem-prefix`
 
 Since v0.14
 
@@ -331,7 +363,9 @@ Logging configuration options.
 
 ---
 
-## --master-socket
+## master-socket
+
+* `--master-socket`
 
 Since v0.12
 
@@ -354,7 +388,9 @@ See also:
 
 ---
 
-## --master-worker
+## master-worker
+
+* `--master-worker`
 
 Since v0.14
 
@@ -367,7 +403,9 @@ declared. External HAProxy deployment needs master-worker mode and will enforce
 
 ---
 
-## --max-old-config-files
+## max-old-config-files
+
+* `--max-old-config-files`
 
 Everytime a configuration change need to update HAProxy, a configuration file is rewritten even if
 dynamic update is used. By default the same file is recreated and the old configuration is lost.
@@ -376,7 +414,9 @@ remove old configuration files. If `0`, the default value, a single `haproxy.cfg
 
 ---
 
-## --publish-address
+## publish-address
+
+* `--publish-address`
 
 Since v0.15
 
@@ -390,11 +430,13 @@ See also:
 
 ---
 
-## --publish-service
+## publish-service
+
+* `--publish-service`
 
 Some infrastructure tools like `external-DNS` relay in the ingress status to created access routes to the services exposed with ingress object.
 
-```
+```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 ...
@@ -413,7 +455,9 @@ See also:
 
 ---
 
-## --rate-limit-update
+## rate-limit-update
+
+* `--rate-limit-update`
 
 Use `--rate-limit-update` to change how much time to wait between two consecutive configuration updates.
 A configuration update is the process of read all enqueued Kubernetes events, reflect in the HAProxy
@@ -432,7 +476,9 @@ See also [`--reload-interval`](#reload-interval).
 
 ---
 
-## --reload-interval
+## reload-interval
+
+* `--reload-interval`
 
 Since v0.13
 
@@ -449,7 +495,9 @@ one will delay up to the configured duration to be reflected by HAProxy.
 
 ---
 
-## --reload-strategy
+## reload-strategy
+
+* `--reload-strategy`
 
 The `--reload-strategy` command-line argument is used to select which reload strategy
 HAProxy should use. The following options are available:
@@ -461,7 +509,9 @@ describes how it works.
 
 ---
 
-## --report-node-internal-ip-address
+## report-node-internal-ip-address
+
+* `--report-node-internal-ip-address`
 
 Sets whether the node's IP address returned in the ingress status should be the node's internal
 instead of the external IP address. Defaults to `false`. This option is ignored if either [`--publish-service`](#publish-service) or [`--publish-address`](#publish-address) are configured.
@@ -472,7 +522,9 @@ See also:
 
 ---
 
-## --shutdown-timeout
+## shutdown-timeout
+
+* `--shutdown-timeout`
 
 Defines the amount of time the controller should wait, after receiving a
 SIGINT or a SIGTERM, for all of its internal services to gracefully stop before
@@ -481,7 +533,9 @@ been passed, if configured. Defaults to `25s`.
 
 ---
 
-## --sort-backends
+## sort-backends
+
+* `--sort-backends`
 
 Defines if backend's endpoints should be sorted by name. Since v0.8 the endpoints will stay in the
 same order found in the Kubernetes' endpoint objects if `--sort-backends` is missing. This option
@@ -500,7 +554,9 @@ See also:
 
 ---
 
-## --sort-endpoints-by
+## sort-endpoints-by
+
+* `--sort-endpoints-by`
 
 Since v0.11
 
@@ -513,7 +569,9 @@ Defines in which order the endpoints of a backend should be sorted.
 
 ---
 
-## --enable-endpointslices-api
+## enable-endpointslices-api
+
+* `--enable-endpointslices-api`
 
 Since v0.14
 
@@ -544,24 +602,28 @@ Options:
 
 ---
 
-## --sync-period
+## sync-period
+
+* `--sync-period`
 
 Configures the default resync period of the Kubernetes client's informer factory. Defaults to 10
 minutes.
 
 ---
 
-## --tcp-services-configmap
+## tcp-services-configmap
+
+* `--tcp-services-configmap`
 
 Configure `--tcp-services-configmap` argument with `namespace/configmapname` resource with TCP
 services and ports that HAProxy should listen to. Use the HAProxy's port number as the key of the
 ConfigMap.
 
-{{% alert title="Note" %}}
+{{< alert title="Note" >}}
 Starting on v0.13, `--tcp-services-configmap` is deprecated. Use [`tcp-service-port`]({{% relref "keys#tcp-services" %}}) configuration key instead.
 
 The documentation refers to "ConfigMap based TCP" when taking about this configuration options, and it refers to "TCP Service" when talking about to the new, annotation based TCP configuration.
-{{% /alert %}}
+{{< /alert >}}
 
 The value of the ConfigMap entry is a colon separated list of the following arguments:
 
@@ -606,7 +668,9 @@ See also:
 
 ---
 
-## --track-old-instances
+## track-old-instances
+
+* `--track-old-instances`
 
 Since v0.14
 
@@ -624,7 +688,9 @@ See also:
 
 ---
 
-## --update-status
+## update-status
+
+* `--update-status`
 
 Indicates whether the ingress controller should update the `status` attribute of all the Ingress
 resources that this controller is tracking. The default value is `true`. Ingress status is updated
@@ -647,7 +713,9 @@ See also:
 
 ---
 
-## --update-status-on-shutdown
+## update-status-on-shutdown
+
+* `--update-status-on-shutdown`
 
 Indicates whether the ingress controller should update the `status` attribute of all the Ingress
 resources that this controller is tracking when the controller is being stopped.  Defaults to
@@ -659,7 +727,9 @@ See also:
 
 ---
 
-## --validate-config
+## validate-config
+
+* `--validate-config`
 
 Determines whether the resulting configuration files should be validated when a dynamic update was
 applied. Default value is `false`, which means the validation will only happen when HAProxy needs to
@@ -670,7 +740,9 @@ If validation fails, HAProxy Ingress will log the error and set the metric
 
 ---
 
-## --verify-hostname
+## verify-hostname
+
+* `--verify-hostname`
 
 Ingress resources has `spec/tls[]/secretName` attribute to override the default X509 certificate.
 As a default behavior the certificates are validated against the hostname in order to match the
@@ -682,13 +754,17 @@ the certificate declared in the `secretName` ignoring if the certificate is or i
 
 ---
 
-## --version
+## version
+
+* `--version`
 
 Show release information about the ingress controller.
 
 ---
 
-## --wait-before-shutdown
+## wait-before-shutdown
+
+* `--wait-before-shutdown`
 
 If argument `--wait-before-shutdown` is defined, controller will wait defined time in seconds
 before it starts shutting down components when SIGTERM was received. By default, it's 0, which means
@@ -696,7 +772,9 @@ the controller starts shutting down itself right after signal was sent.
 
 ---
 
-## --wait-before-update
+## wait-before-update
+
+* `--wait-before-update`
 
 Since v0.11
 
@@ -706,7 +784,9 @@ changes in one single shot. The default value is `200ms`.
 
 ---
 
-## --watch-gateway
+## watch-gateway
+
+* `--watch-gateway`
 
 Since v0.13
 
@@ -720,7 +800,9 @@ When enabled, `--watch-gateway` enforces a leader election. A leader must be ele
 
 ---
 
-## --watch-namespace
+## watch-namespace
+
+* `--watch-namespace`
 
 By default the proxy will be configured using all namespaces from the Kubernetes cluster. Use
 `--watch-namespace` with the name of a namespace to watch and build the configuration of a

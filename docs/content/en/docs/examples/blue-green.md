@@ -259,7 +259,7 @@ Running 100 requests...
 Choose `green` group:
 
 ```
-$ GROUP=blue
+$ GROUP=green
 $ hareq
 Running 100 requests...
  100 green

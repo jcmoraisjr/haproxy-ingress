@@ -6,7 +6,8 @@ menu:
     weight: 10
 ---
 
-{{< blocks/cover title="About HAProxy Ingress" image_anchor="bottom" height="min" >}}
+{{< blocks/cover image_anchor="bottom" height="min" >}}
+<h1 class="display-5 mt-md-5 pb-4" style="font-weight: 600;">About HAProxy Ingress</h1>
 <p class="lead mt-5">
   HAProxy Ingress watches gateway, ingress and other resources from a Kubernetes cluster,
   and configures a HAProxy instance which will route incoming requests to the pods.
@@ -14,20 +15,26 @@ menu:
 </p>
 {{< /blocks/cover >}}
 
-{{% blocks/lead %}}
+{{< blocks/lead >}}
+<p>
   HAProxy is a fast and reliable TCP and HTTP reverse proxy and load balancer.
   HAProxy Ingress carefully build an optimized HAProxy configuration, which allows
   thousands of requests per second per proxy, despite the size of your cluster,
   with a very low latency.
-
+</p>
+<p>
   Kubernetes is a system which automates the deployment of containerized applications.
   HAProxy Ingress uses deployment and exposing spec from the Kubernetes cluster
   to build routing rules, allowing incoming requests from an external network
   to the in-cluster applications.
-{{% /blocks/lead %}}
+</p>
+{{< /blocks/lead >}}
 
-{{% blocks/lead color="dark" %}}
-See HAProxy Ingress in action!
-
-Visit our [documentation]({{% relref "/docs" %}}) to get started.
-{{% /blocks/lead %}}
+{{< blocks/lead color="dark" >}}
+<p>
+  See HAProxy Ingress in action!
+</p>
+<p>
+  Visit our <a href="{{% relref "/docs" %}}">documentation</a> to get started.
+</p>
+{{< /blocks/lead >}}

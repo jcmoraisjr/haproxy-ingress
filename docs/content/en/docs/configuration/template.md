@@ -14,9 +14,9 @@ All templates support [Sprig](https://masterminds.github.io/sprig/) template lib
 This library provides a group of commonly used template functions to work with dictionaries, 
 lists, math etc.
 
-{{% alert title="Note" %}}
+{{< alert title="Note" >}}
 Starting from v0.11, all template files were moved from `/etc/haproxy` to `/etc/templates`. Change to an older doc version if using HAProxy Ingress up to v0.10.
-{{% /alert %}}
+{{< /alert >}}
 
 Overwriting a template file:
 
@@ -26,9 +26,9 @@ Overwriting a template file:
 * Paste the content to a ConfigMap, use the file name as the content key
 * Mount the ConfigMap into the Mounting directory (see below) of the HAProxy Ingress pod
 
-{{% alert title="Warning" color="warning" %}}
+{{< alert title="Warning" color="warning" >}}
 Consider overwriting the template files as a last resort. Templates change a lot between HAProxy Ingress versions and the overwrite should be updated on every controller update. Try to use a [configuration snippet]({{% relref "keys/#configuration-snippet" %}}) instead or file a new [feature request](https://github.com/jcmoraisjr/haproxy-ingress/issues/new?template=fr.md).
-{{% /alert %}}
+{{< /alert >}}
 
 | Mounting directory (v0.11+)  | ConfigMap keys     | Source (v0.11+) | Source (up to v0.10) |
 |------------------------------|--------------------|--------|----------------------|

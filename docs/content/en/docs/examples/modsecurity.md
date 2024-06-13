@@ -33,10 +33,10 @@ $ kubectl create -f https://haproxy-ingress.github.io/resources/modsecurity-depl
 deployment.apps/modsecurity-spoa created
 ```
 
-{{% alert title="Note" %}}
+{{< alert title="Note" >}}
 This deployment configures a small amount of requests and limits resources,
 remember to adjust them before moving to production.
-{{% /alert %}}
+{{< /alert >}}
 
 
 Check if the agent is up and running:
@@ -202,9 +202,9 @@ You may require different `modsecurity-args` depending on your Coraza config and
 
 Second, you'll need to change the spoa-modsecurity container image to a coraza-spoa image and create a configmap to hold the Coraza config.yaml. A complete example with all the changes can be found [here](/resources/coraza-deployment.yaml).
 
-{{% alert title="Warning" color="warning" %}}
+{{< alert title="Warning" color="warning" >}}
 The coraza-spoa image that we provide in the above example is based on [an experimental branch of coraza-spoa](https://github.com/corazawaf/coraza-spoa/pull/36). For production environments, it would be best to wait until the experimental changes are merged and [an official image is released](https://github.com/corazawaf/coraza-spoa/issues/37).
-{{% /alert %}}
+{{< /alert >}}
 
 ### Troubleshooting Coraza
 

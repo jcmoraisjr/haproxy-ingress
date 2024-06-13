@@ -1,0 +1,8 @@
+<small class="td-footer__authors">
+  {{- $c := .Site.Params.copyright }}
+  {{- $img := $c.image }}
+  Made with <div class="fa fa-heart"></div> &amp; <div class="fa fa-coffee"></div>
+  | &copy; {{ $c.from_year }}&ndash;{{ now.Year}} {{ $c.authors }}
+  | Image by <a href="{{ $img.author_url }}" target="_blank" rel="noopener">{{ $img.author_name }}</a>
+    from <a href="{{ $img.provider_url }}" target="_blank" rel="noopener">{{ $img.provider_name }}</a>
+</small>

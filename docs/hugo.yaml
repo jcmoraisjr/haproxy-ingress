@@ -1,0 +1,81 @@
+baseURL: /
+title: HAProxy Ingress
+
+contentDir: content/en
+disableKinds: [taxonomy,term,rss]
+enableRobotsTXT: true
+enableGitInfo: true
+
+module:
+  hugoVersion:
+    extended: true
+    min: 0.110.0
+  imports:
+  - path: github.com/google/docsy
+
+markup:
+  highlight:
+    # required for dark mode, fix color scheme of syntax highlight outputs
+    noClasses: false
+
+imaging:
+  resampleFilter: CatmullRom
+  quality: 75
+  anchor: smart
+
+params:
+  description: "Ingress controller implementation for HAProxy load balancer"
+  github_repo: https://github.com/jcmoraisjr/haproxy-ingress
+  github_subdir: docs
+  github_branch: master
+  copyright:
+    authors: The HAProxy Ingress Controller Authors
+    from_year: 2017
+    image:
+      author_name: Pete Linforth
+      author_url: "https://pixabay.com/users/TheDigitalArtist-202249/?utm_source=link-attribution&utm_medium=referral&utm_campaign=image&utm_content=3866609"
+      provider_name: Pixabay
+      provider_url: "https://pixabay.com/?utm_source=link-attribution&utm_medium=referral&utm_campaign=image&utm_content=3866609"
+  ui:
+    breadcrumb_disable: false
+    sidebar_menu_compact: false
+    sidebar_search_disable: false
+    footer_about_enable: true
+    showLightDarkModeMenu: true
+    feedback:
+      enable: false
+    readingtime:
+      enable: false
+  version_menu: "v0.15"
+  versions:
+  - version: "Latest"
+    url: "/docs"
+  - version: "v0.15"
+    url: "/v0.15/docs"
+  - version: "v0.14"
+    url: "/v0.14/docs"
+  - version: "v0.13"
+    url: "/v0.13/docs"
+  - version: "v0.12"
+    url: "/v0.12/docs"
+  - version: "v0.10"
+    url: "/v0.10/docs"
+  links:
+    user:
+    - name: "Slack"
+      url: "https://kubernetes.slack.com/channels/haproxy-ingress"
+      icon: "fab fa-slack"
+      desc: "We're in the #haproxy-ingress channel on Kubernetes Slack. Invites at https://slack.k8s.io if not subscribed."
+    - name: "Users mailing list"
+      url: "https://groups.google.com/forum/#!forum/haproxy-ingress"
+      icon: "fa fa-envelope"
+      desc: "Announcements and discussion on a mailing list"
+    - name: "Stack Overflow"
+      url: "https://stackoverflow.com/questions/tagged/haproxy-ingress"
+      icon: "fab fa-stack-overflow"
+      desc: "Practical questions and curated answers"
+    developer:
+    - name: "GitHub"
+      url: "https://github.com/jcmoraisjr/haproxy-ingress"
+      icon: "fab fa-github"
+      desc: "Development takes place here!"

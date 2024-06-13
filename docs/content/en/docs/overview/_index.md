@@ -8,15 +8,15 @@ description: >
 
 ## HAProxy
 
-{{% alert title="TODO" %}}
+{{< alert title="TODO" >}}
 About the HAProxy load balancer itself and why HAProxy.
-{{% /alert %}}
+{{< /alert >}}
 
 ## Ingress Controllers
 
-{{% alert title="TODO" %}}
+{{< alert title="TODO" >}}
 About the Kubernetes' ingress controllers, what HAProxy Ingress watches in the k8s cluster and how it builds HAProxy configuration.
-{{% /alert %}}
+{{< /alert >}}
 
 ## Releases
 

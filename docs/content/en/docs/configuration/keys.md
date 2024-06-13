@@ -25,7 +25,7 @@ The following sections describe in a few more details how HAProxy Ingress classi
 an Ingress to be part of the final configuration, and how it reads the configuration
 from Kubernetes resources.
 
-# Class matter
+## Class matter
 
 HAProxy Ingress by default does not listen to Ingress resources, until one or more of
 the following conditions are met:
@@ -51,7 +51,7 @@ Ingress to the final configuration - i.e. add Ingress resources that does not ha
 field. Note that this is a new behavior since v0.12. Up to v0.11 HAProxy Ingress listen
 to "unclassified" Ingress by default.
 
-# Strategies
+## Strategies
 
 HAProxy Ingress reads configuration on three distinct ways:
 
@@ -67,7 +67,7 @@ keys, and this is what the rest of this documentation page is all about.
 
 The following sections describe in a few more details about configuration strategies.
 
-## ConfigMap
+### ConfigMap
 
 ConfigMap key/value options are read in the following conditions:
 
@@ -90,7 +90,7 @@ metadata:
   namespace: ingress-controller
 ```
 
-## Annotation
+### Annotation
 
 Annotations are read in the following conditions:
 
@@ -118,7 +118,7 @@ spec:
   ...
 ```
 
-## IngressClass
+### IngressClass
 
 IngressClass configurations are read when the `ingressClassName` field of an Ingress
 resource links to an IngressClass that configures its `parameters` field.
@@ -126,10 +126,10 @@ resource links to an IngressClass that configures its `parameters` field.
 The IngressClass' `parameters` field currently only accepts ConfigMap resources, and
 the ConfigMap must be declared in the same namespace of the controller.
 
-{{% alert title="Note" %}}
+{{< alert title="Note" >}}
 Even though a ConfigMap is used, configuration keys of the `Global` scope cannot be
 used and will be ignored.
-{{% /alert %}}
+{{< /alert >}}
 
 The following resources create the same final configuration of the Annotation
 section [above](#annotation), with the benefit of allowing the reuse of the
@@ -170,7 +170,7 @@ spec:
   ...
 ```
 
-## Updates
+### Updates
 
 Changes to any configuration in any classified `Ingress` resources (annotations
 or spec), `Service` resources (annotations) or any referenced `ConfigMap` will
@@ -179,7 +179,7 @@ reflect in the update of the final HAProxy configuration.
 If the new state cannot be dynamically applied and requires HAProxy to be reloaded,
 this will happen preserving the in progress requests and the long running connections.
 
-## Fragmentation
+### Fragmentation
 
 Ingress resources can be fragmented in order to add distinct configurations
 to distinct routes. For example:
@@ -233,7 +233,7 @@ There is no hard limit to the number of Ingresses or Services - clusters with
 tens of thousands of Ingress and Service resources report to work smoothly and
 fast with HAProxy Ingress.
 
-# Scope
+## Scope
 
 HAProxy Ingress configuration keys may be in one of five distinct scopes:
 `Global`, `Host`, `Backend`, `Path`, `TCP`. A scope defines where a configuration
@@ -244,7 +244,7 @@ the scenarios in the `Host`, `Backend` and `TCP` scopes below. A warning will
 be logged in the case of a conflict, and the used value will be of the Ingress
 resource that was created first.
 
-## Global
+### Global
 
 Defines configuration keys that apply for all hostnames and backend
 services, and should be declared only in the Global config ConfigMap
@@ -252,7 +252,7 @@ resource. Configuration keys of the Global scope declared as Ingress
 or Service annotations, and also in the IngressClass ConfigMap are
 ignored. Configuration keys of the Global scope never conflict.
 
-## Host
+### Host
 
 Defines configuration keys that bind to the hostname. Configuration
 keys of the host scope can be declared in any ConfigMap, or in any Ingress
@@ -260,7 +260,7 @@ resource. A conflict happens when the same host configuration key with
 distinct values are declared in distinct Ingress resources but to the same
 hostname.
 
-## Backend
+### Backend
 
 Defines configuration keys that bind to the Service resource, which
 is converted to a HAProxy backend after the configuration parsing. Configuration
@@ -269,14 +269,14 @@ annotation. A conflict happens when the same backend configuration key with dist
 values are declared in distinct Ingress resources but to the same Service or HAProxy
 backend.
 
-## Path
+### Path
 
 Defines configuration keys that bind to the hostname and the HTTP path.
 Configuration keys of the Path scope can be declared in any ConfigMap as a default
 value, or as Ingress or Service annotation. Configuration keys of the Path scope
 never conflict.
 
-## TCP
+### TCP
 
 Defines configuration keys that bind on the port number of a TCP service.
 Configuration keys of the TCP scope can be declared in any ConfigMap as a default
@@ -284,7 +284,7 @@ value, or as Ingress annotation. A conflict happens when the same TCP configurat
 key with distinct values are declared in distinct Ingress resources but to the same
 TCP port number.
 
-# Keys
+## Keys
 
 The table below describes all supported configuration keys.
 
@@ -515,7 +515,7 @@ The table below describes all supported configuration keys.
 
 ---
 
-## Acme
+### Acme
 
 | Configuration key      | Scope    | Default | Since   |
 |------------------------|----------|---------|---------|
@@ -555,12 +555,12 @@ The following configuration keys are mandatory: `acme-emails`, `acme-endpoint`,
 A cluster-wide permission to `create` and `update` the `secrets` resources should
 also be made.
 
-{{% alert title="Note" %}}
+{{< alert title="Note" >}}
 haproxy-ingress need cluster-wide permissions `create` and `update` on resource
 `secrets` to store the client private key (new account) and the generated certificate
 and its private key. The default clusterrole configuration doesn't provide these
 permissions.
-{{% /alert %}}
+{{< /alert >}}
 
 **How it works**
 
@@ -600,7 +600,7 @@ See also:
 
 ---
 
-## Affinity
+### Affinity
 
 | Configuration key               | Scope     | Default                     | Since   |
 |---------------------------------|-----------|-----------------------------|---------|
@@ -646,7 +646,7 @@ See also:
 
 ---
 
-## Agent check
+### Agent check
 
 | Configuration key         | Scope     | Default | Since |
 |---------------------------|-----------|---------|-------|
@@ -660,10 +660,10 @@ check that is run independently of a regular health check and can be used to
 control the reported status of a server as well as the weight to be used for
 load balancing.
 
-{{% alert title="Note" %}}
+{{< alert title="Note" >}}
 * `agent-check-port` must be provided for any of the agent check options to be applied
 * define [`initial-weight`](#initial-weight) if using `agent-check` to change the server weight
-{{% /alert %}}
+{{< /alert >}}
 
 * `agent-check-port`: Defines the port on which the agent is listening. This
 option is required in order to use an agent check.
@@ -691,7 +691,7 @@ See also:
 
 ---
 
-## Allowlist
+### Allowlist
 
 | Configuration key        | Scope  | Default | Since   |
 |--------------------------|--------|---------|---------|
@@ -728,10 +728,10 @@ still want to control access to separate paths from ingress configuration.
 Allowlist and denylist can be used together. The request will be denied if the
 configurations overlap and a source IP matches both the allowlist and denylist.
 
-{{% alert title="Warning" color="warning" %}}
+{{< alert title="Warning" color="warning" >}}
 Setting a `allowlist-source-header` comes with a security risk. You must ensure that
 the selected header can be trusted!
-{{% /alert %}}
+{{< /alert >}}
 
 See also:
 
@@ -740,7 +740,7 @@ See also:
 
 ---
 
-## App root
+### App root
 
 | Configuration key | Scope  | Default | Since  |
 |-------------------|--------|---------|--------|
@@ -757,7 +757,7 @@ See also:
 
 ---
 
-## Auth Basic
+### Auth Basic
 
 | Configuration key | Scope   | Default   | Since  |
 |-------------------|---------|-----------|--------|
@@ -774,9 +774,9 @@ The secret referenced by `auth-secret` should have a key named `auth` with users
 * `<user>::<password>`: User and password are separated by 2 (two) colons. The password will be copied verbatim, stored in the configuration file in an insecure way.
 * `<user>:<password-hash>`: User and password are separated by 1 (one) colon. This syntax needs a password hash that can be generated with `mkpasswd`.
 
-{{% alert title="Note" %}}
+{{< alert title="Note" >}}
 Up to v0.12 the configuration key `auth-type` was mandatory, it enabled the only supported authentication type `basic`. Since v0.13 this configuration is deprecated and both Basic and External authentication types can be enabled at the same time: configure `auth-secret` to enable basic authentication, and configure `auth-url` to enable external authentication.
-{{% /alert %}}
+{{< /alert >}}
 
 See also:
 
@@ -786,7 +786,7 @@ See also:
 
 ---
 
-## Auth External
+### Auth External
 
 | Configuration key         | Scope    | Default   | Since |
 |---------------------------|--------- |-----------|-------|
@@ -851,9 +851,9 @@ Configuration examples:
 
 HAProxy Ingress uses [`auth-request.lua`](https://github.com/TimWolla/haproxy-auth-request) script, which in turn uses HAProxy Technologies' [`haproxy-lua-http`](https://github.com/haproxytech/haproxy-lua-http/) to perform the authentication request and wait for the response. The request is managed by an internal haproxy frontend/backend pair, which can be fine tuned with `auth-proxy`. The default value is `_front__auth:14415-14499`: `_front__auth` is the name of the frontend helper and `14415-14499` is an [unassigned TCP port range](https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.txt) that `haproxy-lua-http` uses to connect and send the authentication request. Requests to this proxy can be added to the log, see [`auth-log-format`](#log-format") configuration key.
 
-{{% alert title="Note" %}}
+{{< alert title="Note" >}}
 Auth External needs [`external-has-lua`](#external) enabled if running on an external haproxy deployment. The external haproxy needs Lua json module installed (Alpine's `lua-json4` package)
-{{% /alert %}}
+{{< /alert >}}
 
 See also:
 
@@ -863,7 +863,7 @@ See also:
 
 ---
 
-## Auth TLS
+### Auth TLS
 
 | Configuration key           | Scope     | Default | Since  |
 |-----------------------------|-----------|---------|--------|
@@ -909,7 +909,7 @@ See also:
 
 ---
 
-## Backend protocol
+### Backend protocol
 
 | Configuration key  | Scope     | Default | Since |
 |--------------------|-----------|---------|-------|
@@ -935,7 +935,7 @@ See also:
 
 ---
 
-## Backend server naming
+### Backend server naming
 
 | Configuration key       | Scope     | Default    | Since    |
 |-------------------------|-----------|------------|----------|
@@ -947,13 +947,13 @@ Configures how to name backend servers.
 * `pod`: Uses the k8s pod name as the backend server name. This option doesn't work on backends whose [`service-upstream`](#service-upstream) is `true`, falling back to `sequence`.
 * `ip`: Uses target's `<ip>:<port>` as the server name.
 
-{{% alert title="Note" %}}
+{{< alert title="Note" >}}
 HAProxy Ingress won't refuse to change the default naming if dynamic update is `true`, this would however lead to undesired behaviour: empty slots would still be named as sequences, old-named backend servers will dynamically receive new workloads with new pod names or IP numbers which do not relate with the name anymore, making the naming useless, if not wrong. If you have [cookie affinity](#affinity) enabled, dynamic updating can cause the cookie values to get out of sync with the servers. This can be avoided by using `session-cookie-preserve` with a value of `true`.
-{{% /alert %}}
+{{< /alert >}}
 
 ---
 
-## Backend server ID
+### Backend server ID
 
 | Configuration key          | Scope     | Default | Since   |
 |----------------------------|-----------|---------|---------|
@@ -965,7 +965,7 @@ Server IDs can't dynamically updated, so if this option is enabled, adding or re
 
 ---
 
-## Balance algorithm
+### Balance algorithm
 
 | Configuration key   | Scope     | Default      | Since |
 |---------------------|-----------|--------------|-------|
@@ -979,7 +979,7 @@ See also:
 
 ---
 
-## Bind
+### Bind
 
 | Configuration key      | Scope    | Default | Since |
 |------------------------|----------|---------|-------|
@@ -1002,17 +1002,17 @@ Configuration examples:
 * `bind-http: ":80,:::80"` and `bind-https:  ":443,:::443"`: Listen all IPv4 and IPv6 addresses
 * `bind-https: ":443,:8443"`: accept https connections on `443` and also `8443` port numbers
 
-{{% alert title="Note" %}}
+{{< alert title="Note" >}}
 `bind-fronting-proxy` and `bind-http` can share the same port number, provided
 that the whole configuration key match, not only the port number.
 See [Fronting proxy](#fronting-proxy-port) doc.
-{{% /alert %}}
+{{< /alert >}}
 
-{{% alert title="Warning" color="warning" %}}
+{{< alert title="Warning" color="warning" >}}
 Special care should be taken on port number overlap, nether haproxy itself nor
 haproxy-ingress will warn if the same port number is used in more than one
 configuration key.
-{{% /alert %}}
+{{< /alert >}}
 
 See also:
 
@@ -1022,7 +1022,7 @@ See also:
 
 ---
 
-## Bind IP addr
+### Bind IP addr
 
 | Configuration key         | Scope    | Default | Since |
 |---------------------------|----------|---------|-------|
@@ -1050,7 +1050,7 @@ See also:
 
 ---
 
-## Bind port
+### Bind port
 
 | Configuration key | Scope    | Default | Since |
 |-------------------|----------|---------|-------|
@@ -1064,7 +1064,7 @@ See also:
 * `https-port`: Define the port number of encrypted HTTPS connections.
 * `prometheus-port`: Define the port number of the haproxy's internal Prometheus exporter. Defaults to not create the listener. A listener without being scraped does not use system resources, except for the listening port. The internal exporter supports scope filter as a query string, eg `/metrics?scope=frontend&scope=backend` will only export frontends and backends. See the full description in the [HAProxy's Prometheus exporter doc](https://git.haproxy.org/?p=haproxy-2.0.git;a=blob;f=contrib/prometheus-exporter/README;hb=HEAD).
 
-{{% alert title="Note" %}}
+{{< alert title="Note" >}}
 The internal Prometheus exporter runs concurrently with request processing, and it is
 about 5x slower and 20x more verbose than the CSV exporter. See the haproxy's exporter
 [doc](https://github.com/haproxy/haproxy/blob/v2.0.0/contrib/prometheus-exporter/README#L44).
@@ -1074,7 +1074,7 @@ converts to the Prometheus syntax outside the haproxy process. On the other side
 exporter supports scope filtering, which should make at least the processing time between csv
 and prometheus exporter very close if servers are filtered out. Make your own tests before
 choosing between one or the other.
-{{% /alert %}}
+{{< /alert >}}
 
 See also:
 
@@ -1084,7 +1084,7 @@ See also:
 
 ---
 
-## Blue-green
+### Blue-green
 
 | Configuration key    | Scope     | Default  | Since |
 |----------------------|-----------|----------|-------|
@@ -1177,7 +1177,7 @@ See also:
 
 ---
 
-## Close sessions duration
+### Close sessions duration
 
 | Configuration key         | Scope    | Default  | Since |
 |---------------------------|----------|----------|-------|
@@ -1214,7 +1214,7 @@ See also:
 
 ---
 
-## Configuration snippet
+### Configuration snippet
 
 | Configuration key       | Scope     | Default  | Since |
 |-------------------------|-----------|----------|-------|
@@ -1318,7 +1318,7 @@ Annotations:
 
 ---
 
-## Connection
+### Connection
 
 | Configuration key | Scope     | Default | Since |
 |-------------------|-----------|---------|-------|
@@ -1340,7 +1340,7 @@ See also:
 
 ---
 
-## CORS
+### CORS
 
 | Configuration key        | Scope  | Default      | Since |
 |--------------------------|--------|--------------|-------|
@@ -1370,7 +1370,7 @@ See also:
 
 ---
 
-## CPU map
+### CPU map
 
 | Configuration key | Scope    | Default | Since |
 |-------------------|----------|---------|-------|
@@ -1391,7 +1391,7 @@ See also:
 
 ---
 
-## Cross Namespace
+### Cross Namespace
 
 | Configuration key                | Scope    | Default | Since |
 |----------------------------------|----------|---------|-------|
@@ -1407,13 +1407,13 @@ Defines if resources declared on a namespace can read resources declared on anot
 * `cross-namespace-secrets-passwd`: Allows or denies cross namespace reading of password files, used by [`auth-secret`](#auth-basic) configuration key.
 * `cross-namespace-services`: Allows or denies cross namespace reading of Kubernetes Service resources, used by [`auth-url`](#auth-external) configuration key.
 
-{{% alert title="Note" %}}
+{{< alert title="Note" >}}
 [`--allow-cross-namespace`]({{% relref "command-line#allow-cross-namespace" %}}) command-line option, if declared, overrides all the secret related configuration keys.
-{{% /alert %}}
+{{< /alert >}}
 
 ---
 
-## Default Redirect
+### Default Redirect
 
 | Configuration key                | Scope    | Default | Since |
 |----------------------------------|----------|---------|-------|
@@ -1433,7 +1433,7 @@ a user. Defaults to 302 (Moved Temporarily)
 
 ---
 
-## DNS resolvers
+### DNS resolvers
 
 | Configuration key           | Scope     | Default         | Since |
 |-----------------------------|-----------|-----------------|-------|
@@ -1457,10 +1457,10 @@ The following keys are supported:
 * `dns-cluster-domain`: K8s cluster domain, defaults to `cluster.local`
 * `use-resolver`: Name of the resolver that the backend should use
 
-{{% alert title="Important advices" %}}
+{{< alert title="Important advices" >}}
 * Use resolver with **headless** services, see [k8s doc](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services), otherwise HAProxy will reference the service IP instead of the endpoints.
 * Beware of DNS cache, eg kube-dns has `--max-ttl` and `--max-cache-ttl` to change its default cache of `30s`.
-{{% /alert %}}
+{{< /alert >}}
 
 See also:
 
@@ -1472,7 +1472,7 @@ See also:
 
 ---
 
-## Drain support
+### Drain support
 
 | Configuration key          | Scope     | Default | Since |
 |----------------------------|-----------|---------|-------|
@@ -1493,7 +1493,7 @@ See also:
 
 ---
 
-## Dynamic scaling
+### Dynamic scaling
 
 | Configuration key                   | Scope     | Default | Since |
 |-------------------------------------|-----------|---------|-------|
@@ -1535,7 +1535,7 @@ See also:
 
 ---
 
-## External
+### External
 
 | Configuration key  | Scope    | Default | Since |
 |--------------------|----------|---------|-------|
@@ -1558,7 +1558,7 @@ See also:
 
 ---
 
-## Forwardfor
+### Forwardfor
 
 | Configuration key            | Scope     | Default                    | Since   |
 |------------------------------|-----------|----------------------------|---------|
@@ -1586,7 +1586,7 @@ See also:
 
 ---
 
-## Fronting proxy port
+### Fronting proxy port
 
 | Configuration key     | Scope    | Default | Since   |
 |-----------------------|----------|---------|---------|
@@ -1620,21 +1620,21 @@ port number evaluate the `X-Forwarded-Proto` header to decide how to handle the 
   * If `fronting-proxy-port` has its own port --- HAProxy will redirect scheme to https
   * If `fronting-proxy-port` shares the HTTP port --- the request will be handled as plain http, being redirected to https only if `ssl-redirect` is `true`, just like if `fronting-proxy-port` wasn't configured.
 
-{{% alert title="Warning on v0.7 and older" color="warning" %}}
+{{< alert title="Warning on v0.7 and older" color="warning" >}}
 On v0.7 and older and only if the `X-Forwarded-Proto` is missing: the
 connecting port number was used to define which socket received the request, so
 the fronting proxy should connect to the same port number defined in
 `https-to-http-port`, eg cannot have any proxy like Kubernetes' `NodePort`
 between the load balancer and HAProxy which changes the connecting port number.
 This limitation doesn't exist on v0.8 or above.
-{{% /alert %}}
+{{< /alert >}}
 
 See also:
 
 * [Bind](#bind)
 * [Bind port](#bind-port)
 
-## Headers
+### Headers
 
 | Configuration key | Scope     | Default | Since  |
 |-------------------|-----------|---------|--------|
@@ -1658,7 +1658,7 @@ Configuration example:
 
 ---
 
-## Health check
+### Health check
 
 | Configuration key         | Scope     | Default | Since |
 |---------------------------|-----------|---------|-------|
@@ -1690,7 +1690,7 @@ See also:
 
 ---
 
-## HSTS
+### HSTS
 
 | Configuration key         | Scope  | Default    | Since |
 |---------------------------|--------|------------|-------|
@@ -1712,7 +1712,7 @@ See also:
 
 ---
 
-## HTTP Match
+### HTTP Match
 
 | Configuration key               | Scope    | Default | Since |
 |---------------------------------|----------|---------|-------|
@@ -1760,7 +1760,7 @@ See also:
 
 ---
 
-## HTTP Response
+### HTTP Response
 
 | Configuration key               | Scope    | Default | Since |
 |---------------------------------|----------|---------|-------|
@@ -1776,9 +1776,9 @@ Overwrites the default response payload for all the HAProxy's generated HTTP res
 
 The following list has all the HTTP status codes supported by the controller:
 
-{{% alert title="Note" %}}
+{{< alert title="Note" >}}
 All the overwrites refer to HAProxy or HAProxy Ingress generated responses, e.g. a 403 response overwrite will not change a 403 response generated by a backend server, but instead only 403 responses that HAProxy generates itself, such as when an allow list rule denies a request to reach a backend server.
-{{% /alert %}}
+{{< /alert >}}
 
 > All descriptions with `[haproxy]` refers to internal HAProxy responses, described in the [HAProxy documentation](https://docs.haproxy.org/2.4/configuration.html#1.3.1) or in the [MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status). All the others are handled and issued by HAProxy Ingress configurations.
 
@@ -1880,7 +1880,7 @@ See also:
 
 ---
 
-## Initial weight
+### Initial weight
 
 | Configuration key | Scope     | Default | Since  |
 |-------------------|-----------|---------|--------|
@@ -1904,7 +1904,7 @@ See also:
 
 ---
 
-## Limit
+### Limit
 
 | Configuration key   | Scope     | Default | Since |
 |---------------------|-----------|---------|-------|
@@ -1924,7 +1924,7 @@ The following annotations are supported:
 
 ---
 
-## Load server state
+### Load server state
 
 | Configuration key   | Scope    | Default | Since |
 |---------------------|----------|---------|-------|
@@ -1943,7 +1943,7 @@ See also:
 
 ---
 
-## Log format
+### Log format
 
 | Configuration key        | Scope    | Default | Since |
 |--------------------------|----------|---------|-------|
@@ -1971,7 +1971,7 @@ See also:
 
 ---
 
-## Master-worker
+### Master-worker
 
 | Configuration key        | Scope    | Default | Since |
 |--------------------------|----------|---------|-------|
@@ -1999,7 +1999,7 @@ See also:
 
 ---
 
-## Modsecurity
+### Modsecurity
 
 | Configuration key                | Scope    | Default | Since |
 |----------------------------------|----------|---------|-------|
@@ -2045,15 +2045,15 @@ See also:
 
 ---
 
-## Nbproc
+### Nbproc
 
 | Configuration key | Scope    | Default | Since |
 |-------------------|----------|---------|-------|
 | `nbproc-ssl`      | `Global` | `0`     |       |
 
-{{% alert title="Warning" color="warning" %}}
+{{< alert title="Warning" color="warning" >}}
 This option works only on v0.7 or below. Since v0.8 the only supported value is `0` zero.
-{{% /alert %}}
+{{< /alert >}}
 
 Define the number of dedicated HAProxy process to the SSL/TLS handshake and
 offloading. The default value is 0 (zero) which means HAProxy should process all
@@ -2079,7 +2079,7 @@ See also:
 
 ---
 
-## Nbthread
+### Nbthread
 
 | Configuration key | Scope    | Default | Since |
 |-------------------|----------|---------|-------|
@@ -2100,7 +2100,7 @@ See also:
 
 ---
 
-## OAuth
+### OAuth
 
 | Configuration key | Scope  | Default                | Since |
 |-------------------|--------|------------------------|-------|
@@ -2118,9 +2118,9 @@ OAuth2 expects [oauth2-proxy](https://github.com/oauth2-proxy/oauth2-proxy),
 or any other compatible implementation running as a backend of the same domain that should be protected.
 `oauth2-proxy` has support to GitHub, Google, Facebook, OIDC and [others](https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/oauth_provider).
 
-{{% alert title="Note" %}}
+{{< alert title="Note" >}}
 OAuth2 needs [`external-has-lua`](#external) enabled if running on an external haproxy deployment. The external haproxy needs Lua json module installed (Alpine's `lua-json4` package)
-{{% /alert %}}
+{{< /alert >}}
 
 Since v0.13 these same options can be used with [Auth External](#auth-external) configuration keys. Change `<oauth2-proxy-service>` below with the oauth2-proxy service name, and `<hostname>` to the hostname of the oauth2-proxy and the backend servers:
 
@@ -2138,7 +2138,7 @@ See also:
 
 ---
 
-## Path type
+### Path type
 
 | Configuration key | Scope    | Default                    | Since |
 |-------------------|----------|----------------------------|-------|
@@ -2150,9 +2150,9 @@ Defines how the path of an incoming request should match a declared path in the 
 * `path-type`: Configures the path type. Case insensitive, so `Begin` and `begin` configures the same path type option. The ingress spec has priority, this option will only be used if the `pathType` attribute from the ingress spec is declared as `ImplementationSpecific`.
 * `path-type-order`: Defines a comma-separated list of the order that non overlapping paths should be matched, which means that `/dir/sub` will always be checked before `/dir` despite their type and the configured order. Mostly used to define when `regex` path types should be checked for incoming requests, since HAProxy Ingress doesn't calculate overlapping from regex paths. All path types must be provided. Case insensitive, use all path types in lowercase.
 
-{{% alert title="Warning" color="warning" %}}
+{{< alert title="Warning" color="warning" >}}
 Wildcard hostnames and alias-regex match incoming requests using the regex path type, even if the path itself has a distinct one. This happens because hostname and path are checked for a match in a single step. So, changing the precedence order of paths also changes the precedence order of hostnames. See also [server-alias-regex](#server-alias) and [strict host](#strict-host).
-{{% /alert %}}
+{{< /alert >}}
 
 Supported `path-type` values:
 
@@ -2174,7 +2174,7 @@ Request and match examples:
 
 ---
 
-## Proxy body size
+### Proxy body size
 
 | Configuration key | Scope  | Default | Since |
 |-------------------|--------|---------|-------|
@@ -2195,7 +2195,7 @@ See also:
 
 ---
 
-## Proxy protocol
+### Proxy protocol
 
 | Configuration key            | Scope     | Default | Since |
 |------------------------------|-----------|---------|-------|
@@ -2220,7 +2220,7 @@ See also:
 
 ---
 
-## Redirect
+### Redirect
 
 | Configuration key       | Scope    | Default                       | Since   |
 |-------------------------|----------|-------------------------------|---------|
@@ -2248,7 +2248,7 @@ examples below.
 The following configuration redirects `app.local` to `www.app.local`, preserving protocol,
 path and query string:
 
-```
+```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -2283,7 +2283,7 @@ without preserving protocol, path or query string:
 Note: `www.app.local` should be configured on another ingress resource, and app service
 below will not be used.
 
-```
+```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -2310,7 +2310,7 @@ See also:
 
 ---
 
-## Rewrite target
+### Rewrite target
 
 | Configuration key | Scope  | Default | Since |
 |-------------------|--------|---------|-------|
@@ -2333,7 +2333,7 @@ The following table shows some examples:
 
 ---
 
-## Secure backend
+### Secure backend
 
 | Configuration key         | Scope     | Default | Since |
 |---------------------------|-----------|---------|-------|
@@ -2360,7 +2360,7 @@ See also:
 
 ---
 
-## Security
+### Security
 
 | Configuration key  | Scope    | Default | Since |
 |--------------------|----------|---------|-------|
@@ -2369,9 +2369,9 @@ See also:
 | `use-haproxy-user` | `Global` | `false` | v0.9  |
 | `username`         | `Global` |         | v0.12 |
 
-{{% alert title="Warning" color="warning" %}}
+{{< alert title="Warning" color="warning" >}}
 Since v0.15 HAProxy Ingress starts as the non root user `haproxy`, UID `99`, so all the configurations below can only be used if deployment's security context is changed to run the container as UID `0`.
-{{% /alert %}}
+{{< /alert >}}
 
 Change security options for deployments starting as root user.
 
@@ -2407,14 +2407,14 @@ controller:
 
 Beware of some chroot limitations:
 
-{{% alert title="Note" %}}
+{{< alert title="Note" >}}
 HAProxy does not have access to the file system after configure a `chroot()`. Unix sockets located outside the chroot directory are used in the following conditions:
 
 * At least one `ssl-passthrough` is used. It enforces the creation of a fronting TCP proxy inside haproxy, which uses an unix socket to communicate with the HTTP frontend.
 * Internal ACME signer is used. HAProxy Ingress creates an internal server to answer the ACME challenge, and haproxy forwards the challenge requests to this server using an unix socket.
 
 So only enable `use-chroot` if not using these features.
-{{% /alert %}}
+{{< /alert >}}
 
 See also:
 
@@ -2426,7 +2426,7 @@ See also:
 
 ---
 
-## Server alias
+### Server alias
 
 | Configuration key    | Scope  | Default | Since |
 |----------------------|--------|---------|-------|
@@ -2442,7 +2442,7 @@ attribute in the same ACL, and any of them might be used to match SNI extensions
 
 ---
 
-## Service upstream
+### Service upstream
 
 | Configuration key  | Scope     | Default | Since |
 |--------------------|-----------|---------|-------|
@@ -2455,7 +2455,7 @@ service's ClusterIP is used instead.
 
 ---
 
-## Source Address Intf
+### Source Address Intf
 
 | Configuration key     | Scope     | Default | Since |
 |-----------------------|-----------|---------|-------|
@@ -2471,13 +2471,13 @@ HAProxy Ingress will list all IPv4 from all provided interfaces, ignoring interf
 
 Update also `/proc/sys/net/ipv4/ip_local_port_range` in the HAProxy hosts to allow each source IP use more than its default 28k ephemeral ports.
 
-{{% alert title="Note" %}}
+{{< alert title="Note" >}}
 Neither HAProxy Ingress nor HAProxy will validate if the configured network interface and/or their IPs are valid sources for the outgoing connection, its up to the admin to ensure that the correct interface is properly configured.
-{{% /alert %}}
+{{< /alert >}}
 
-{{% alert title="Warning" color="warning" %}}
+{{< alert title="Warning" color="warning" >}}
 The source IP is a static configuration added on each backend server. This configuration cannot be used on backends that use DNS resolver.
-{{% /alert %}}
+{{< /alert >}}
 
 See also:
 
@@ -2487,7 +2487,7 @@ See also:
 
 ---
 
-## SSL always add HTTPS
+### SSL always add HTTPS
 
 | Configuration key            | Scope | Default | Since   |
 |------------------------------|-------|---------|---------|
@@ -2506,7 +2506,7 @@ These options are implemented to help teams upgrade from older controller versio
 
 ---
 
-## SSL ciphers
+### SSL ciphers
 
 | Configuration key           | Scope     | Default | Since |
 |-----------------------------|-----------|---------|-------|
@@ -2543,7 +2543,7 @@ See also:
 
 ---
 
-## SSL DH
+### SSL DH
 
 | Configuration key         | Scope    | Default | Since |
 |---------------------------|----------|---------|-------|
@@ -2562,7 +2562,7 @@ See also:
 
 ---
 
-## SSL engine
+### SSL engine
 
 | Configuration key  | Scope    | Default | Since |
 |--------------------|----------|---------|-------|
@@ -2582,7 +2582,7 @@ Reference:
 
 ---
 
-## SSL options
+### SSL options
 
 | Configuration key     | Scope     | Default | Since |
 |-----------------------|-----------|---------|-------|
@@ -2626,7 +2626,7 @@ See also:
 
 ---
 
-## SSL passthrough
+### SSL passthrough
 
 | Configuration key           | Scope    | Default | Since |
 |-----------------------------|----------|---------|-------|
@@ -2637,9 +2637,9 @@ Defines if HAProxy should work in TCP proxy mode and leave the SSL offload to th
 SSL passthrough is a per domain configuration, which means that other domains can be
 configured to SSL offload on HAProxy.
 
-{{% alert title="Note" %}}
+{{< alert title="Note" >}}
 Up to v0.12, `ssl-passthrough` supports only root `/` path. Since v0.13, non root paths are also supported and configured in the HAProxy's HTTP port.
-{{% /alert %}}
+{{< /alert >}}
 
 * `ssl-passthrough`: Enable SSL passthrough if defined as `true`. The backend is then expected to SSL offload the incoming traffic. The default value is `false`, which means HAProxy should do the SSL handshake.
 * `ssl-passthrough-http-port`: Optional HTTP port number of the backend. If defined, connections to the HAProxy's HTTP port, defaults to `80`, is sent to the configured port number of the backend, which expects to speak plain HTTP. If not defined, connections to the HTTP port will redirect the client to HTTPS.
@@ -2651,7 +2651,7 @@ Hostnames configured as `ssl-passthrough` configures HAProxy in the following wa
 
 ---
 
-## SSL redirect
+### SSL redirect
 
 | Configuration key           | Scope    | Default                       | Since |
 |-----------------------------|----------|-------------------------------|-------|
@@ -2672,7 +2672,7 @@ See also:
 
 ---
 
-## Stats
+### Stats
 
 | Configuration key           | Scope     | Default | Since |
 |-----------------------------|-----------|---------|-------|
@@ -2690,7 +2690,7 @@ Configurations of the HAProxy statistics page:
 
 ---
 
-## Strict host
+### Strict host
 
 | Configuration key | Scope     | Default | Since |
 |-------------------|-----------|---------|-------|
@@ -2704,7 +2704,7 @@ if a path couldn't be matched.
 
 Using the following configuration:
 
-```
+```yaml
   spec:
     rules:
     - host: my.domain.com
@@ -2730,7 +2730,7 @@ A request to `my.domain.com/b` would serve:
 
 ---
 
-## Syslog
+### Syslog
 
 | Configuration key | Scope     | Default    | Since |
 |-------------------|-----------|------------|-------|
@@ -2753,7 +2753,7 @@ See also:
 
 ---
 
-## TCP Services
+### TCP Services
 
 | Configuration key            | Scope | Default | Since |
 |------------------------------|-------|---------|-------|
@@ -2779,9 +2779,9 @@ Every TCP service port creates a dedicated haproxy frontend that can be [customi
 * `config-tcp-service` as an Ingress annotation, this will add the snippet in one TCP service
 * `config-proxy` in the global ConfigMap using `_front_tcp_<port-number>` as the proxy name, see in the [configuration snippet](#configuration-snippet) documentation how it works
 
-{{% alert title="Note" %}}
+{{< alert title="Note" >}}
 The documentation continues to refer to the old, and now deprecated [`--tcp-services-configmap`]({{% relref "command-line#tcp-services-configmap" %}}) configuration options. Whenever we are talking about the deprecated option, we will refer it as the "ConfigMap based TCP".
-{{% /alert %}}
+{{< /alert >}}
 
 See also:
 
@@ -2790,7 +2790,7 @@ See also:
 
 ---
 
-## Timeout
+### Timeout
 
 | Configuration key      | Scope     | Default | Since |
 |------------------------|-----------|---------|-------|
@@ -2807,9 +2807,9 @@ See also:
 
 Define timeout configurations. The unit defaults to milliseconds if missing, change the unit with `s`, `m`, `h`, ... suffix.
 
-{{% alert title="Note" %}}
+{{< alert title="Note" >}}
 Since `v0.11`, `timeout-client` and `timeout-client-fin` are global configuration keys and cannot be configured per hostname.
-{{% /alert %}}
+{{< /alert >}}
 
 The following keys are supported:
 
@@ -2831,7 +2831,7 @@ See also:
 
 ---
 
-## TLS ALPN
+### TLS ALPN
 
 | Configuration key | Scope    | Default       | Since |
 |-------------------|----------|---------------|-------|
@@ -2848,7 +2848,7 @@ See also:
 
 ---
 
-## Use HTX
+### Use HTX
 
 | Configuration key | Scope    | Default | Since |
 |-------------------|----------|---------|-------|
@@ -2864,7 +2864,7 @@ See also:
 
 ---
 
-## Var namespace
+### Var namespace
 
 | Configuration key | Scope    | Default | Since |
 |-------------------|----------|---------|-------|
@@ -2880,7 +2880,7 @@ See also:
 
 ---
 
-## WAF
+### WAF
 
 | Configuration key | Scope  | Default | Since |
 |-------------------|--------|---------|-------|

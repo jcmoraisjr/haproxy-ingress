@@ -51,13 +51,13 @@ Add the following steps to the [Getting Started guide]({{% relref "/docs/getting
 [Manually install](https://gateway-api.sigs.k8s.io/v1alpha2/guides/getting-started/#installing-gateway-api-crds-manually) the Gateway API CRDs:
 
 ```
-kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.0.0/experimental-install.yaml
+$ kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.0.0/experimental-install.yaml
 ```
 
 Restart HAProxy Ingress so it can find the just installed APIs:
 
 ```
-kubectl --namespace ingress-controller delete pod -lapp.kubernetes.io/name=haproxy-ingress
+$ kubectl --namespace ingress-controller delete pod -lapp.kubernetes.io/name=haproxy-ingress
 ```
 
 A GatewayClass enables Gateways to be read and parsed by HAProxy Ingress. Create a GatewayClass with the following content:
@@ -76,8 +76,8 @@ spec:
 Add the following deployment and service if echoserver isn't running yet:
 
 ```
-kubectl --namespace default create deployment echoserver --image k8s.gcr.io/echoserver:1.3
-kubectl --namespace default expose deployment echoserver --port=8080
+$ kubectl --namespace default create deployment echoserver --image k8s.gcr.io/echoserver:1.3
+$ kubectl --namespace default expose deployment echoserver --port=8080
 ```
 
 Gateways create listeners and allow to configure hostnames for HTTP workloads. Create a Gateway with the following content:
@@ -120,8 +120,8 @@ spec:
 Send a request to our just configured route:
 
 ```
-curl http://echoserver-from-gateway.local
-wget -qO- http://echoserver-from-gateway.local
+$ curl http://echoserver-from-gateway.local
+$ wget -qO- http://echoserver-from-gateway.local
 ```
 
 ### Deploy TCP workload
@@ -129,13 +129,13 @@ wget -qO- http://echoserver-from-gateway.local
 Add the following deployment and service:
 
 ```
-kubectl --namespace default create deployment redis --image docker.io/redis
-kubectl --namespace default expose deployment redis --port=6379
+$ kubectl --namespace default create deployment redis --image docker.io/redis
+$ kubectl --namespace default expose deployment redis --port=6379
 ```
 
 A new port need to be added if HAProxy Ingress is not configured in the host network. If so, add the following snippet in `values.yaml` and apply it using Helm:
 
-```
+```yaml
 controller:
   ...
   service:
@@ -181,7 +181,7 @@ spec:
 Send a ping to the Redis server using `curl`. Change `192.168.106.2` below to the IP address of HAProxy Ingress:
 
 ```
-curl -v telnet://192.168.106.2:6379
+$ curl -v telnet://192.168.106.2:6379
 *   Trying 192.168.106.2:6379...
 * Connected to 192.168.106.2 (192.168.106.2) port 6379
 ping
