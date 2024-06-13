@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.2" width="36px" height="36px" viewBox="2190 2386 12742 12810" preserveAspectRatio="xMidYMid" fill-rule="evenodd" stroke-width="28.222" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg" xmlns:ooo="http://xml.openoffice.org/svg/export" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:presentation="http://sun.com/xmlns/staroffice/presentation" xmlns:smil="http://www.w3.org/2001/SMIL20/" xmlns:anim="urn:oasis:names:tc:opendocument:xmlns:animation:1.0" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" xml:space="preserve">
+ <g class="Page">
+  <g class="com.sun.star.drawing.ClosedBezierShape">
+   <g id="id3">
+    <path fill="#FFF" stroke="none" d="M 7970,3999 L 9137,5094 C 8532,6720 7871,8262 7238,9653 L 9802,9262 11506,4731 12668,5898 11229,8941 12646,8496 C 12412,8996 12109,9510 11768,9836 L 10708,9988 C 10091,11262 9440,12519 8761,13666 8548,13421 8302,13225 8020,13105 7834,11913 7394,11088 6970,10250 L 5344,13485 4540,12887 C 5999,10004 6990,7060 7970,3999 Z M 3809,2387 L 3810,2387 C 3526,2387 3246,2462 3000,2604 2754,2746 2549,2951 2407,3197 2265,3443 2190,3723 2190,4007 L 2190,13574 2190,13574 C 2190,13858 2265,14138 2407,14384 2549,14630 2754,14835 3000,14977 3246,15119 3526,15194 3810,15194 L 13310,15194 13311,15194 C 13595,15194 13875,15119 14121,14977 14367,14835 14572,14630 14714,14384 14856,14138 14931,13858 14931,13574 L 14930,4007 14931,4007 14931,4007 C 14931,3723 14856,3443 14714,3197 14572,2951 14367,2746 14121,2604 13875,2462 13595,2387 13311,2387 L 3809,2387 Z M 7596,10381 C 8198,10311 8801,10240 9403,10170 L 8467,12225 C 8219,11556 7935,10996 7596,10381 Z"/>
+   </g>
+  </g>
+ </g>
+</svg>
