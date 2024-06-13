@@ -44,4 +44,7 @@ RUN mkdir -p /var/empty /etc/haproxy /var/lib/haproxy /var/run/haproxy\
 
 STOPSIGNAL SIGTERM
 USER haproxy
+
+# dumb-init reaps the old haproxy process in the embedded, non master-worker mode,
+# after receiving SIGUSR1, avoiding it to become a zombie.
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "/start.sh"]
