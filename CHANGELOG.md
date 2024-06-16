@@ -5,17 +5,17 @@ Supported versions:
 * [v0.15](CHANGELOG/CHANGELOG-v0.15.md)
 * [v0.14](CHANGELOG/CHANGELOG-v0.14.md)
 * [v0.13](CHANGELOG/CHANGELOG-v0.13.md)
-* [v0.12](CHANGELOG/CHANGELOG-v0.12.md)
-* [v0.10](CHANGELOG/CHANGELOG-v0.10.md)
 
 Critical fixes:
 
-* [v0.8](#v08)
+* [v0.12](CHANGELOG/CHANGELOG-v0.12.md)
 
 Unsupported:
 
 * [v0.11](#v011)
+* [v0.10](CHANGELOG/CHANGELOG-v0.10.md)
 * [v0.9](#v09)
+* [v0.8](#v08)
 * [v0.7](#v07)
 * [v0.6](#v06)
 * [v0.5](#v05)
