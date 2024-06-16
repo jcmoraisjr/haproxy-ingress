@@ -6,6 +6,11 @@
   * [Upgrading with embedded Acme](#upgrading-with-embedded-acme)
   * [Upgrading with custom repositories](#upgrading-with-custom-repositories)
 * [Contributors](#contributors)
+* [v0.15.0-alpha.3](#v0150-alpha3)
+  * [Reference](#reference-a3)
+  * [Release notes](#release-notes-a3)
+  * [Improvements](#improvements-a3)
+  * [Fixes](#fixes-a3)
 * [v0.15.0-alpha.2](#v0150-alpha2)
   * [Reference](#reference-a2)
   * [Release notes](#release-notes-a2)
@@ -19,11 +24,13 @@
 
 ## Major improvements
 
-Highlights of this version
+Highlights of this version:
 
 * Embedded HAProxy upgrade from 2.4 to 2.6.
 * Change from a legacy controller engine component to [controller-runtime](https://github.com/kubernetes-sigs/controller-runtime).
-* Full Gateway API support (v0.15 feature, under development)
+* Improvements on Gateway API: v1 API and TCPRoute support
+* Integration tests
+* Dark theme in the documentation
 
 ## Upgrade notes
 
@@ -32,6 +39,7 @@ Breaking backward compatibility from v0.14:
 * HAProxy Ingress used to start as root by default up to v0.14. Starting on v0.15 the controller container starts as the non root user `haproxy`, UID `99`. This change should impact deployments that need to start as root, e.g. chroot enabled, binding on privileged TCP ports (1024 or below) on old container runtimes, etc. Workloads that need to run as root can, despite the security risk, configure the security context in the deployment resource or Helm chart to enforce starting user as root. See the [security doc](https://haproxy-ingress.github.io/v0.15/docs/configuration/keys/#security) for configuration examples.
 * Besides starting as non root, the `haproxy` user ID changed from `1001` to `99`. The former `1001` UID was chosen and created in a day `docker.io/haproxy` container image started as root (2.3 and older). Starting from 2.4 the `haproxy` user was added as UID `99`. In v0.15 we started to use the same UID, so file systems shared between controller and haproxy doesn't have permission issues.
 * Election ID was changed, see the [documentation](https://haproxy-ingress.github.io/v0.15/docs/configuration/command-line/#election-id) for customization options. Election ID is used by embedded Acme signer and status updater to, respectively, request certificates and update ingress status. A cluster of HAProxy Ingress controllers will elect two controllers at the same time during the rolling update from any other version to v0.15. Ingress status does not have an impact. See [Upgrading with embedded Acme](#upgrading-with-embedded-acme) below for details about upgrading with embedded Acme signer enabled.
+* Master worker mode is now enabled by default, see the [documentation](https://haproxy-ingress.github.io/v0.15/docs/configuration/command-line/#master-worker). This mode starts a master HAProxy process in foreground, which controls the worker processes.
 * Helm chart has now a distinct field for the registry of an image, which should impact charts that configure custom repositories. See [Upgrading with custom repositories](#upgrading-with-custom-repositories) below for the details.
 * Log debug level is enabled by default. HAProxy Ingress has a good balance between low verbosity and useful information on its debug level.
 * Default image for the log sidecar changed from `whereisaaron/kube-syslog-sidecar` to `ghcr.io/crisu1710/kube-syslog-sidecar:0.2.0`. It is the same codebase, just adding support for multiple architectures.
@@ -82,18 +90,122 @@ See the full syntax and default values in the [README.md](https://github.com/hap
 
 ## Contributors
 
+* Ali Afsharzadeh ([guoard](https://github.com/guoard))
 * Andrej Baran ([andrejbaran](https://github.com/andrejbaran))
 * Błażej Frydlewicz ([blafry](https://github.com/blafry))
 * Chris Boot ([bootc](https://github.com/bootc))
 * Dmitry Misharov ([quarckster](https://github.com/quarckster))
+* Dmitry Spikhalsky ([Spikhalskiy](https://github.com/Spikhalskiy))
 * genofire ([genofire](https://github.com/genofire))
+* Jan Bebendorf ([JanHolger](https://github.com/JanHolger))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
+* Jop Zinkweg ([jzinkweg](https://github.com/jzinkweg))
+* Julien Torrielli ([Jul13nT](https://github.com/Jul13nT))
+* Jurriaan Wijnberg ([jr01](https://github.com/jr01))
 * Karan Chaudhary ([lafolle](https://github.com/lafolle))
 * Mac Chaffee ([mac-chaffee](https://github.com/mac-chaffee))
+* Matt Low ([mlow](https://github.com/mlow))
 * Manuel Rüger ([mrueg](https://github.com/mrueg))
 * Michele Palazzi ([ironashram](https://github.com/ironashram))
 * Robin Schneider ([Crisu1710](https://github.com/Crisu1710))
+* tomklapka ([tomklapka](https://github.com/tomklapka))
 * Tomasz Zurkowski ([doriath](https://github.com/doriath))
+
+# v0.15.0-alpha.3
+
+## Reference (a3)
+
+* Release date: `2024-06-16`
+* Helm chart: `--version 0.15.0-alpha.3 --devel`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.15.0-alpha.3`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.15.0-alpha.3`
+* Embedded HAProxy version: `2.6.17`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.15.0-alpha.3`
+
+## Release notes (a3)
+
+This is the third and last alpha version of the v0.15 branch. We'll start beta versions soon, when v0.15 will be forked to its own branch, so v0.16 improvements can start shortly in parallel. Regarding v0.16, we are planning to make a really short release, mostly dropping old code base, updating core dependencies, and adding some nice to have features we are still missing. From v0.17 and beyond the plan is to continue with 2 or 3 minor releases per year we used to have.
+
+Find below a list of improvements made since `alpha.2`.
+
+Exclusive v0.15 changes include:
+
+- Master worker mode is true by default, even if external haproxy is not configured. In this mode HAProxy Ingress has a few more configuration options, and it also watches the embedded haproxy process, restarting it in the case it crashes.
+- Integration tests
+- Gateway API v1 support
+- TCPRoute support, from Gateway API
+- New leader election implementation, since leader election provided by controller-runtime causes outages when controller looses an election
+- New documentation theme version: integration without the need of git submodules, dark theme support, improvements in the design
+
+Other changes already merged to the stable branches:
+
+- Added the steps to configure the embedded HAProxy process to log to stdout, along with controller, useful on dev or small test environments. See [doc](https://haproxy-ingress.github.io/v0.15/docs/configuration/keys/#syslog)
+- Added two distinct helm configurations on the getting started guide: one that uses a service load balancer, another one that uses http/s ports assigned to the cluster nodes. See [doc](https://haproxy-ingress.github.io/v0.15/docs/getting-started/)
+
+Fixes merged to stable branches:
+
+- Julien fixed the Vary response header, from Cors, when the backend server returns two or more headers
+- tomklapka and Jan implemented a more fine grained response from Coraza WAF
+- HAProxy process, when embedded and in master-worker mode, was being prematurelly stopped on rolling updates because it was configured in the same pid group of the controller
+- Fix backend selection, when a more generic wildcard hostname was being incorrectly chosen, and it colides with a more specific one which uses mTLS
+- Secure backend configuration, like backend protocol and client side mTLS, can now be configured globally for all ingress resources
+- Auth external configuration can now be configured globally
+- Make sure https redirect happens before path redirect when `app-root` is configured
+
+Dependencies:
+
+- embedded haproxy from 2.6.14 to 2.6.17
+- client-go from v0.26.6 to v0.30.2
+- controller-runtime from v0.14.6 to v0.18.4
+- go from 1.19.11 to 1.22.4
+
+## Improvements (a3)
+
+New features and improvements since `v0.15.0-alpha.2`:
+
+* Add gateway version v1beta1 [#994](https://github.com/jcmoraisjr/haproxy-ingress/pull/994) (jcmoraisjr)
+* Add a framework for integration tests [#1081](https://github.com/jcmoraisjr/haproxy-ingress/pull/1081) (jcmoraisjr)
+* Move leader election to a self managed service [#1087](https://github.com/jcmoraisjr/haproxy-ingress/pull/1087) (jcmoraisjr)
+* Status update via merge-patch strategy [#1091](https://github.com/jcmoraisjr/haproxy-ingress/pull/1091) (jcmoraisjr)
+* Add Gateway API v1 support [#1102](https://github.com/jcmoraisjr/haproxy-ingress/pull/1102) (jcmoraisjr)
+* Update linter [#1104](https://github.com/jcmoraisjr/haproxy-ingress/pull/1104) (jcmoraisjr)
+* Add TCPRoute support from Gateway API [#1103](https://github.com/jcmoraisjr/haproxy-ingress/pull/1103) (jcmoraisjr)
+* Add net bind capability to haproxy bin [#1096](https://github.com/jcmoraisjr/haproxy-ingress/pull/1096) (jcmoraisjr)
+* Add tests for http header generation [#1115](https://github.com/jcmoraisjr/haproxy-ingress/pull/1115) (jcmoraisjr)
+* Update RBAC configuration and docs to include leases resource for leader election [#1127](https://github.com/jcmoraisjr/haproxy-ingress/pull/1127) (jzinkweg)
+* Add ssl-always-follow-redirect option [#1118](https://github.com/jcmoraisjr/haproxy-ingress/pull/1118) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.15/docs/configuration/keys/#ssl-always-add-https)
+  * Configuration keys:
+    * `ssl-always-follow-redirect`
+* Add TLS related integration tests [#1132](https://github.com/jcmoraisjr/haproxy-ingress/pull/1132) (jcmoraisjr)
+* Cleanup outdated properties of golangci-lint gh actions plugin [#1140](https://github.com/jcmoraisjr/haproxy-ingress/pull/1140) (Spikhalskiy)
+* Upgrade golang from 1.22.2 to 1.22.4 [#1137](https://github.com/jcmoraisjr/haproxy-ingress/pull/1137) (guoard)
+* Upgrade embedded haproxy from 2.6.16 to 2.6.17 [#1139](https://github.com/jcmoraisjr/haproxy-ingress/pull/1139) (guoard)
+* Change default master-worker config to true [#1134](https://github.com/jcmoraisjr/haproxy-ingress/pull/1134) (jcmoraisjr)
+* doc: update docsy from v0.6.0 to v0.10.0 [#1143](https://github.com/jcmoraisjr/haproxy-ingress/pull/1143) (jcmoraisjr)
+* Local building improvements [#1135](https://github.com/jcmoraisjr/haproxy-ingress/pull/1135) (jcmoraisjr)
+* doc: add haproxy logging to stdout [#1138](https://github.com/jcmoraisjr/haproxy-ingress/pull/1138) (jcmoraisjr)
+* update client-go from v0.30.1 to v0.30.2 [0cb2584](https://github.com/jcmoraisjr/haproxy-ingress/commit/0cb2584df1032230f97a75b8c44cecc25ecc7eb8) (Joao Morais)
+* doc: add a light weight version of haproxy ingress logo [#1144](https://github.com/jcmoraisjr/haproxy-ingress/pull/1144) (jcmoraisjr)
+* doc: reorg items and improve helm values in getting started [#1145](https://github.com/jcmoraisjr/haproxy-ingress/pull/1145) (jcmoraisjr)
+* update dependencies [914b581](https://github.com/jcmoraisjr/haproxy-ingress/commit/914b58192a0a76fefc52f46d3a65a608f21ced90) (Joao Morais)
+
+Chart improvements since `v0.15.0-alpha.2`:
+
+* Add support to disable automountServiceAccountToken [#74](https://github.com/haproxy-ingress/charts/pull/74) (jr01)
+* Use of automount service account on v1.22 and newer [#75](https://github.com/haproxy-ingress/charts/pull/75) (jcmoraisjr)
+* Allow setting the spec.loadBalancerClass of created Services [#77](https://github.com/haproxy-ingress/charts/pull/77) (mlow)
+* Allow controller to patch ingress status [#80](https://github.com/haproxy-ingress/charts/pull/80) (jcmoraisjr)
+* Fix install output message [#81](https://github.com/haproxy-ingress/charts/pull/81) (jcmoraisjr)
+
+## Fixes (a3)
+
+* Keep all vary header values when adding Origin [#1083](https://github.com/jcmoraisjr/haproxy-ingress/pull/1083) (Jul13nT)
+* Fix coraza configuration to use the action variable [#1094](https://github.com/jcmoraisjr/haproxy-ingress/pull/1094) (tomklapka,JanHolger)
+* Fix label generation for node discovery [#1116](https://github.com/jcmoraisjr/haproxy-ingress/pull/1116) (jcmoraisjr)
+* Ensure https redirect happens before root redirect [#1117](https://github.com/jcmoraisjr/haproxy-ingress/pull/1117) (jcmoraisjr)
+* Allows secure backend configuration from global [#1119](https://github.com/jcmoraisjr/haproxy-ingress/pull/1119) (jcmoraisjr)
+* Allows to configure auth-url globally [#1120](https://github.com/jcmoraisjr/haproxy-ingress/pull/1120) (jcmoraisjr)
+* Move embedded haproxy process to a distinct pid group [#1136](https://github.com/jcmoraisjr/haproxy-ingress/pull/1136) (jcmoraisjr)
 
 # v0.15.0-alpha.2
 
