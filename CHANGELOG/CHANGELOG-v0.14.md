@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.13!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.14.7](#v0147)
+  * [Reference](#reference-r7)
+  * [Release notes](#release-notes-r7)
+  * [Fixes and improvements](#fixes-and-improvements-r7)
 * [v0.14.6](#v0146)
   * [Reference](#reference-r6)
   * [Release notes](#release-notes-r6)
@@ -103,6 +107,60 @@ Breaking backward compatibility from v0.13:
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
 * wolf-cosmose ([wolf-cosmose](https://github.com/wolf-cosmose))
+
+# v0.14.7
+
+## Reference (r7)
+
+* Release date: `2024-06-16`
+* Helm chart: `--version 0.14.7`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.14.7`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.14.7`
+* Embedded HAProxy version: `2.4.26`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.14.7`
+
+## Release notes (r7)
+
+This release updates the embedded haproxy version, and fixes some issues found in the v0.14 branch:
+
+- Julien fixed the Vary response header, from Cors, when the backend server returns two or more headers
+- tomklapka and Jan implemented a more fine grained response from Coraza WAF
+- HAProxy process, when embedded and in master-worker mode, was being prematurelly stopped on rolling updates because it was configured in the same pid group of the controller
+- Fix backend selection, when a more generic wildcard hostname was being incorrectly chosen, and it colides with a more specific one which uses mTLS
+- Secure backend configuration, like backend protocol and client side mTLS, can now be configured globally for all ingress resources
+- Auth external configuration can now be configured globally
+- Make sure https redirect happens before path redirect when `app-root` is configured
+- Added the steps to configure the embedded HAProxy process to log to stdout, along with controller, useful on dev or small test environments. See [doc](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#syslog)
+- Added two distinct helm configurations on the getting started guide: one that uses a service load balancer, another one that uses http/s ports assigned to the cluster nodes. See [doc](https://haproxy-ingress.github.io/v0.14/docs/getting-started/)
+
+Dependencies:
+
+- embedded haproxy from 2.4.25 to 2.4.26
+
+## Fixes and improvements (r7)
+
+Fixes and improvements since `v0.14.6`:
+
+* Keep all vary header values when adding Origin [#1083](https://github.com/jcmoraisjr/haproxy-ingress/pull/1083) (Jul13nT)
+* Fix coraza configuration to use the action variable [#1094](https://github.com/jcmoraisjr/haproxy-ingress/pull/1094) (tomklapka,JanHolger)
+* Ensure https redirect happens before root redirect [#1117](https://github.com/jcmoraisjr/haproxy-ingress/pull/1117) (jcmoraisjr)
+* Add ssl-always-follow-redirect option [#1118](https://github.com/jcmoraisjr/haproxy-ingress/pull/1118) (jcmoraisjr) - [doc](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#ssl-always-add-https)
+  * Configuration keys:
+    * `ssl-always-follow-redirect`
+* Allows secure backend configuration from global [#1119](https://github.com/jcmoraisjr/haproxy-ingress/pull/1119) (jcmoraisjr)
+* Allows to configure auth-url globally [#1120](https://github.com/jcmoraisjr/haproxy-ingress/pull/1120) (jcmoraisjr)
+* Remove dedicated maps for SNI match [#1133](https://github.com/jcmoraisjr/haproxy-ingress/pull/1133) (jcmoraisjr)
+* Move embedded haproxy process to a distinct pid group [#1136](https://github.com/jcmoraisjr/haproxy-ingress/pull/1136) (jcmoraisjr)
+* Local building improvements [#1135](https://github.com/jcmoraisjr/haproxy-ingress/pull/1135) (jcmoraisjr)
+* Update linter [#1104](https://github.com/jcmoraisjr/haproxy-ingress/pull/1104) (jcmoraisjr)
+* doc: add haproxy logging to stdout [#1138](https://github.com/jcmoraisjr/haproxy-ingress/pull/1138) (jcmoraisjr)
+* doc: reorg items and improve helm values in getting started [#1145](https://github.com/jcmoraisjr/haproxy-ingress/pull/1145) (jcmoraisjr)
+* update embedded haproxy from 2.4.25 to 2.4.26 [5d51114](https://github.com/jcmoraisjr/haproxy-ingress/commit/5d511144f605671c0117dadd591a23ec826d3a7a) (Joao Morais)
+* update dependencies due to cve [b454bfd](https://github.com/jcmoraisjr/haproxy-ingress/commit/b454bfd9b9f9c63cb77e655f477c9dc99c607278) (Joao Morais)
+
+Chart improvements since `v0.14.6`:
+
+* Fix install output message [#81](https://github.com/haproxy-ingress/charts/pull/81) (jcmoraisjr)
 
 # v0.14.6
 
