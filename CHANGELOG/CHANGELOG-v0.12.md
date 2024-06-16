@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.11!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.12.21](#v01221)
+  * [Reference](#reference-r21)
+  * [Release notes](#release-notes-r21)
+  * [Fixes and improvements](#fixes-and-improvements-r21)
 * [v0.12.20](#v01220)
   * [Reference](#reference-r20)
   * [Release notes](#release-notes-r20)
@@ -126,6 +130,44 @@ Breaking backward compatibility from v0.11
 * paul ([toothbrush](https://github.com/toothbrush))
 * pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.12.21
+
+## Reference (r21)
+
+* Release date: `2024-06-16`
+* Helm chart: `--version 0.12.21`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.12.21`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.12.21`
+* Embedded HAProxy version: `2.2.33`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.12.21`
+
+## Release notes (r21)
+
+This release updates the embedded haproxy version, and fixes some issues found in the v0.12 branch:
+
+- Secure backend configuration, like backend protocol and client side mTLS, can now be configured globally for all ingress resources
+- Make sure https redirect happens before path redirect when `app-root` is configured
+
+Dependencies:
+
+- embedded haproxy from 2.2.32 to 2.2.33
+- go from 1.17.13 to 1.18.10
+
+## Fixes and improvements (r21)
+
+New features and improvements since `v0.12.20`:
+
+* Ensure https redirect happens before root redirect [#1117](https://github.com/jcmoraisjr/haproxy-ingress/pull/1117) (jcmoraisjr)
+* Allows secure backend configuration from global [#1119](https://github.com/jcmoraisjr/haproxy-ingress/pull/1119) (jcmoraisjr)
+* doc: add haproxy logging to stdout [#1138](https://github.com/jcmoraisjr/haproxy-ingress/pull/1138) (jcmoraisjr)
+* update embedded haproxy from 2.2.32 to 2.2.33 [1c3d273](https://github.com/jcmoraisjr/haproxy-ingress/commit/1c3d2734a613221f84425805fa70844d5abd9887) (Joao Morais)
+* update dependencies due to cve [b510fe2](https://github.com/jcmoraisjr/haproxy-ingress/commit/b510fe29c569f1e37bfaf0c893af542d2086377e) (Joao Morais)
+* update go from 1.17.13 to 1.18.10 as a x/net dependency [7fd9b1d](https://github.com/jcmoraisjr/haproxy-ingress/commit/7fd9b1db7d0cb3d4002e7fe3e07c34ca0113b064) (Joao Morais)
+
+Chart improvements since `v0.12.20`:
+
+* Fix install output message [#81](https://github.com/haproxy-ingress/charts/pull/81) (jcmoraisjr)
 
 # v0.12.20
 
