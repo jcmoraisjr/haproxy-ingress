@@ -1685,17 +1685,9 @@ func TestInstanceFrontingProxy(t *testing.T) {
     http-request set-header X-SSL-Client-SHA1 %{+Q}[ssl_c_sha1,hex]
     http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload"`
 		setvarBegin = `
-    http-request set-var(req.snibase) ssl_fc_sni,lower,concat(\#,req.path)
-    http-request set-var(req.snibackend) var(req.snibase),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin.map)
-    http-request set-var(req.snibackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt
-    http-request set-var(req.tls_nocrt_redir) str(_internal) if !tls-has-crt tls-need-crt
-    http-request set-var(req.tls_invalidcrt_redir) str(_internal) if tls-has-invalid-crt tls-check-crt`
+    http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map)`
 		setvarRegex = `
-    http-request set-var(req.snibase) ssl_fc_sni,lower,concat(\#,req.path)
-    http-request set-var(req.snibackend) var(req.snibase),map_reg(/etc/haproxy/maps/_front_https_sni__regex.map)
-    http-request set-var(req.snibackend) var(req.base),map_reg(/etc/haproxy/maps/_front_https_sni__regex.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt
-    http-request set-var(req.tls_nocrt_redir) str(_internal) if !tls-has-crt tls-need-crt
-    http-request set-var(req.tls_invalidcrt_redir) str(_internal) if tls-has-invalid-crt tls-check-crt`
+    http-request set-var(req.hostbackend) var(req.base),map_reg(/etc/haproxy/maps/_front_https_host__regex.map)`
 	)
 	testCases := []struct {
 		frontingBind      string
@@ -1943,13 +1935,15 @@ frontend _front_http` + test.expectedFront + `
 frontend _front_https
     mode http
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
-    <<set-req-base>>
+    <<set-req-base>>` + test.expectedSetvar + `
     http-request set-header X-Forwarded-Proto https
     http-request del-header X-SSL-Client-CN
     http-request del-header X-SSL-Client-DN
     http-request del-header X-SSL-Client-SHA1
     http-request del-header X-SSL-Client-SHA2
-    http-request del-header X-SSL-Client-Cert` + test.expectedACLFront + test.expectedSetvar + `
+    http-request del-header X-SSL-Client-Cert` + test.expectedACLFront + `
+    http-request set-var(req.tls_nocrt_redir) str(_internal) if !tls-has-crt tls-need-crt
+    http-request set-var(req.tls_invalidcrt_redir) str(_internal) if tls-has-invalid-crt tls-check-crt
     http-request use-service lua.send-421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
     http-request use-service lua.send-496 if { var(req.tls_nocrt_redir) -m str _internal }
     http-request use-service lua.send-421 if !tls-has-crt tls-host-need-crt
@@ -2918,13 +2912,6 @@ frontend _front_https
     acl tls-host-need-crt var(req.host) -i -m str -f /etc/haproxy/maps/_front_tls_needcrt__exact.list
     acl tls-has-invalid-crt ssl_c_verify gt 0
     acl tls-check-crt ssl_fc_sni -i -m str -f /etc/haproxy/maps/_front_tls_auth__exact.list
-    http-request set-var(req.snibase) ssl_fc_sni,lower,concat(\#,req.path)
-    http-request set-var(req.snibackend) var(req.snibase),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin_01.map) if { hdr(x-user) -- 'id' } { hdr(x-version) -m reg -- '^[Ss]taging$' }
-    http-request set-var(req.snibackend) var(req.snibase),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin_02.map) if !{ var(req.snibackend) -m found } { hdr(x-version) -m reg -- '^[Tt]est$' }
-    http-request set-var(req.snibackend) var(req.snibase),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin.map) if !{ var(req.snibackend) -m found }
-    http-request set-var(req.snibackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin_01.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt { hdr(x-user) -- 'id' } { hdr(x-version) -m reg -- '^[Ss]taging$' }
-    http-request set-var(req.snibackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin_02.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt { hdr(x-version) -m reg -- '^[Tt]est$' }
-    http-request set-var(req.snibackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt
     http-request set-var(req.tls_nocrt_redir) str(_internal) if !tls-has-crt tls-need-crt
     http-request set-var(req.tls_invalidcrt_redir) str(_internal) if tls-has-invalid-crt tls-check-crt
     http-request use-service lua.send-421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
@@ -2963,25 +2950,19 @@ h5.local#/ b1_app_8080
 `)
 	c.checkMap("_front_https_host__begin_01.map", `
 h2.local#/ b1_app_8080
+h4.local#/ b1_app_8080
 h5.local#/ b1_app_8080
 `)
 	c.checkMap("_front_https_host__begin_02.map", `
 h2.local#/app2 b21_app_8080
+h4.local#/app2 b21_app_8080
 h5.local#/app2 b21_app_8080
 `)
 	c.checkMap("_front_https_host__begin.map", `
 h2.local#/ b1_app_8080
 h3.local#/ b1_app_8080
+h4.local#/ b1_app_8080
 h5.local#/ b1_app_8080
-`)
-	c.checkMap("_front_https_sni__begin_01.map", `
-h4.local#/ b1_app_8080
-`)
-	c.checkMap("_front_https_sni__begin_02.map", `
-h4.local#/app2 b21_app_8080
-`)
-	c.checkMap("_front_https_sni__begin.map", `
-h4.local#/ b1_app_8080
 `)
 	c.checkMap("_front_namespace__begin_01.map", `
 h2.local#/ -
@@ -3113,6 +3094,7 @@ frontend _front_https
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
     <<set-req-base>>
     http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map)
+    http-request set-var(req.hostbackend) var(req.base),map_reg(/etc/haproxy/maps/_front_https_host__regex.map) if !{ var(req.hostbackend) -m found }
     <<https-headers>>
     acl tls-has-crt ssl_c_used
     acl tls-need-crt ssl_fc_sni -i -m str -f /etc/haproxy/maps/_front_tls_needcrt__exact.list
@@ -3122,11 +3104,6 @@ frontend _front_https
     acl tls-has-invalid-crt ssl_c_verify gt 0
     acl tls-check-crt ssl_fc_sni -i -m str -f /etc/haproxy/maps/_front_tls_auth__exact.list
     acl tls-check-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front_tls_auth__regex.list
-    http-request set-var(req.snibase) ssl_fc_sni,lower,concat(\#,req.path)
-    http-request set-var(req.snibackend) var(req.snibase),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin.map)
-    http-request set-var(req.snibackend) var(req.snibase),map_reg(/etc/haproxy/maps/_front_https_sni__regex.map) if !{ var(req.snibackend) -m found }
-    http-request set-var(req.snibackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt
-    http-request set-var(req.snibackend) var(req.base),map_reg(/etc/haproxy/maps/_front_https_sni__regex.map) if !{ var(req.snibackend) -m found } !tls-has-crt !tls-host-need-crt
     http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower,map_str(/etc/haproxy/maps/_front_tls_missingcrt_pages__exact.map,_internal) if !tls-has-crt tls-need-crt
     http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower,map_reg(/etc/haproxy/maps/_front_tls_missingcrt_pages__regex.map,_internal) if { var(req.tls_nocrt_redir) -m str _internal }
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map_str(/etc/haproxy/maps/_front_tls_invalidcrt_pages__exact.map,_internal) if tls-has-invalid-crt tls-check-crt
@@ -3163,15 +3140,13 @@ d6.local#/ d_app_8080
 /var/haproxy/ssl/certs/default.pem [ssl-min-ver TLSv1.0 ssl-max-ver TLSv1.2] d6.local
 `)
 	c.checkMap("_front_https_host__begin.map", `
+d2.local#/ d_app_8080
 d3.local#/ d_app_8080
 d4.local#/ d_app_8080
 d5.local#/ d_app_8080
 d6.local#/ d_app_8080
 `)
-	c.checkMap("_front_https_sni__begin.map", `
-d2.local#/ d_app_8080
-`)
-	c.checkMap("_front_https_sni__regex.map", `
+	c.checkMap("_front_https_host__regex.map", `
 ^[^.]+\.d1\.local#/ d_app_8080
 `)
 	c.checkMap("_front_tls_needcrt__exact.list", `
@@ -5261,9 +5236,6 @@ frontend _front_https
     acl tls-has-crt ssl_c_used
     acl tls-has-invalid-crt ssl_c_verify gt 0
     acl tls-check-crt ssl_fc_sni -i -m reg -f /etc/haproxy/maps/_front_tls_auth__regex.list
-    http-request set-var(req.snibase) ssl_fc_sni,lower,concat(\#,req.path)
-    http-request set-var(req.snibackend) var(req.snibase),map_reg(/etc/haproxy/maps/_front_https_sni__regex.map)
-    http-request set-var(req.snibackend) var(req.base),map_reg(/etc/haproxy/maps/_front_https_sni__regex.map) if !{ var(req.snibackend) -m found } !tls-has-crt
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower,map_reg(/etc/haproxy/maps/_front_tls_invalidcrt_pages__regex.map,_internal) if tls-has-invalid-crt tls-check-crt
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303 if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) -m str _internal }
     http-request use-service lua.send-421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
@@ -5290,13 +5262,11 @@ d1.local#/ d1_app_8080
 `)
 	c.checkMap("_front_https_host__regex.map", `
 ^[^.]+\.app\.d1\.local#/ d1_app_8080
+^[^.]+\.sub\.d1\.local#/ d1_app_8080
 ^[^.]+\.d2\.local#/ d2_app_8080
 `)
 	c.checkMap("_front_redir_fromroot__regex.map", `
 ^[^.]+\.d2\.local$ /app
-`)
-	c.checkMap("_front_https_sni__regex.map", `
-^[^.]+\.sub\.d1\.local#/ d1_app_8080
 `)
 	c.checkMap("_front_tls_auth__regex.list", `
 ^[^.]+\.sub\.d1\.local$
@@ -5349,12 +5319,10 @@ frontend _front_https
     mode http
     bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
     <<set-req-base>>
+    http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map)
     <<https-headers>>
     acl tls-has-crt ssl_c_used
     acl tls-has-invalid-crt ssl_c_verify gt 0
-    http-request set-var(req.snibase) ssl_fc_sni,lower,concat(\#,req.path)
-    http-request set-var(req.snibackend) var(req.snibase),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin.map)
-    http-request set-var(req.snibackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_sni__begin.map) if !{ var(req.snibackend) -m found } !tls-has-crt
     http-request use-service lua.send-421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     use_backend %[var(req.snibackend)] if { var(req.snibackend) -m found }
@@ -5369,7 +5337,7 @@ d1.local#/ d1_app_8080
 /var/haproxy/ssl/certs/default.pem !*
 /var/haproxy/ssl/certs/default.pem [ca-file /var/haproxy/ssl/ca/d1.local.pem verify optional] d1.local
 `)
-	c.checkMap("_front_https_sni__begin.map", `
+	c.checkMap("_front_https_host__begin.map", `
 d1.local#/ d1_app_8080
 `)
 
