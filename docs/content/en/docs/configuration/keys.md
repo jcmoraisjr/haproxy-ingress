@@ -2540,6 +2540,7 @@ See also:
 * https://docs.haproxy.org/2.4/configuration.html#3.1-ssl-default-bind-ciphersuites
 * https://docs.haproxy.org/2.4/configuration.html#5.2-ciphers
 * https://docs.haproxy.org/2.4/configuration.html#5.2-ciphersuites
+* https://stellastra.com/cipher-suite
 
 ---
 
