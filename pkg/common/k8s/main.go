@@ -86,9 +86,9 @@ func GetPodDetails(kubeClient clientset.Interface) (*PodInfo, error) {
 	}
 
 	ctx := context.Background()
-	pod, _ := kubeClient.CoreV1().Pods(podNs).Get(ctx, podName, metav1.GetOptions{})
-	if pod == nil {
-		return nil, fmt.Errorf("unable to get POD information")
+	pod, err := kubeClient.CoreV1().Pods(podNs).Get(ctx, podName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("unable to get POD information: %w", err)
 	}
 
 	podNodeIP := GetNodeIP(kubeClient, pod.Spec.NodeName, true)
