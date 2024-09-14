@@ -126,7 +126,7 @@ func (i *instance) AcmeCheck(source string) (int, error) {
 	if !le.IsLeader() {
 		msg := fmt.Sprintf("skipping acme periodic check, leader is %s", le.LeaderName())
 		i.logger.Info(msg)
-		return count, fmt.Errorf(msg)
+		return count, fmt.Errorf("%s", msg)
 	}
 	i.logger.Info("starting certificate check (%s)", source)
 	for _, storage := range i.config.AcmeData().Storages().BuildAcmeStorages() {
@@ -573,7 +573,7 @@ func (i *instance) check() error {
 		out, err := exec.Command("haproxy", "-c", "-f", i.options.HAProxyCfgDir).CombinedOutput()
 		outstr := string(out)
 		if err != nil {
-			return fmt.Errorf(outstr)
+			return fmt.Errorf("%s", outstr)
 		}
 	}
 	return nil
