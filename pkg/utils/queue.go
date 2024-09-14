@@ -45,8 +45,8 @@ type QueueFacade interface {
 
 type queue struct {
 	mutex       sync.Mutex
-	buildQueue  func() workqueue.RateLimitingInterface
-	workqueue   workqueue.RateLimitingInterface
+	buildQueue  func() workqueue.TypedRateLimitingInterface[any]
+	workqueue   workqueue.TypedRateLimitingInterface[any]
 	rateLimiter flowcontrol.RateLimiter
 	running     chan struct{}
 	shutdown    chan bool
@@ -66,9 +66,9 @@ func NewQueue(sync func(item interface{})) Queue {
 
 // NewRateLimitingQueue ...
 func NewRateLimitingQueue(rate float32, syncfn func(item interface{})) Queue {
-	queue := newQueue(func() workqueue.RateLimitingInterface {
-		return workqueue.NewRateLimitingQueue(
-			workqueue.DefaultItemBasedRateLimiter(),
+	queue := newQueue(func() workqueue.TypedRateLimitingInterface[any] {
+		return workqueue.NewTypedRateLimitingQueue(
+			workqueue.DefaultTypedItemBasedRateLimiter[any](),
 		)
 	})
 	queue.sync = syncfn
@@ -80,16 +80,16 @@ func NewRateLimitingQueue(rate float32, syncfn func(item interface{})) Queue {
 
 // NewFailureRateLimitingQueue ...
 func NewFailureRateLimitingQueue(failInitialWait, failMaxWait time.Duration, syncfn func(item interface{}) error) Queue {
-	queue := newQueue(func() workqueue.RateLimitingInterface {
-		return workqueue.NewRateLimitingQueue(
-			workqueue.NewItemExponentialFailureRateLimiter(failInitialWait, failMaxWait),
+	queue := newQueue(func() workqueue.TypedRateLimitingInterface[any] {
+		return workqueue.NewTypedRateLimitingQueue(
+			workqueue.NewTypedItemExponentialFailureRateLimiter[any](failInitialWait, failMaxWait),
 		)
 	})
 	queue.syncFailure = syncfn
 	return queue
 }
 
-func newQueue(builder func() workqueue.RateLimitingInterface) *queue {
+func newQueue(builder func() workqueue.TypedRateLimitingInterface[any]) *queue {
 	return &queue{
 		mutex:      sync.Mutex{},
 		buildQueue: builder,

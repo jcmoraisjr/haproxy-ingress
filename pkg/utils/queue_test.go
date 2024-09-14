@@ -291,7 +291,7 @@ func TestClearQueue(t *testing.T) {
 			t.Errorf("on %d, expected count=%d but was %d", id, c, count)
 		}
 	}
-	q.Add(nil)
+	q.Add(1)
 	time.Sleep(45 * time.Millisecond)
 	checkCount(1, 2)
 	q.Clear()
@@ -299,7 +299,7 @@ func TestClearQueue(t *testing.T) {
 	time.Sleep(210 * time.Millisecond)
 	checkCount(2, 0)
 	count = 0
-	q.Add(nil)
+	q.Add(1)
 	time.Sleep(120 * time.Millisecond)
 	checkCount(3, 3)
 	q.ShutDown()

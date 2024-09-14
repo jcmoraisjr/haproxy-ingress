@@ -20,12 +20,13 @@ import (
 	"sync"
 	"time"
 
-	"sigs.k8s.io/controller-runtime/pkg/ratelimiter"
+	"k8s.io/client-go/util/workqueue"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 )
 
-func createRateLimiter(cfg *config.Config) ratelimiter.RateLimiter {
+func createRateLimiter(cfg *config.Config) workqueue.TypedRateLimiter[reconcile.Request] {
 	return &rateLimiter{
 		delta: time.Duration(float64(time.Second) / cfg.RateLimitUpdate),
 		wait:  cfg.WaitBeforeUpdate,
@@ -39,7 +40,7 @@ type rateLimiter struct {
 	last  time.Time
 }
 
-func (r *rateLimiter) When(_ interface{}) time.Duration {
+func (r *rateLimiter) When(_ reconcile.Request) time.Duration {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	now := time.Now()
@@ -62,9 +63,9 @@ func (r *rateLimiter) When(_ interface{}) time.Duration {
 	return next.Sub(now)
 }
 
-func (r *rateLimiter) NumRequeues(item interface{}) int {
+func (r *rateLimiter) NumRequeues(_ reconcile.Request) int {
 	return 0
 }
 
-func (r *rateLimiter) Forget(item interface{}) {
+func (r *rateLimiter) Forget(_ reconcile.Request) {
 }
