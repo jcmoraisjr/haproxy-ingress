@@ -5,7 +5,7 @@ go 1.22.0
 toolchain go1.22.4
 
 require (
-	github.com/Masterminds/sprig/v3 v3.2.3
+	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/go-logr/logr v1.4.2
 	github.com/go-logr/zapr v1.3.0
 	github.com/imdario/mergo v0.3.16
@@ -31,8 +31,9 @@ require (
 )
 
 require (
+	dario.cat/mergo v1.0.1 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver/v3 v3.2.1 // indirect
+	github.com/Masterminds/semver/v3 v3.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -67,7 +68,7 @@ require (
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
-	github.com/spf13/cast v1.6.0 // indirect
+	github.com/spf13/cast v1.7.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8 // indirect
