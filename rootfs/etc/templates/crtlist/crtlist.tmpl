@@ -1,0 +1,24 @@
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# #
+# #   HAProxy Ingress Controller
+# #   --------------------------
+# #   This file is automatically updated, do not edit
+# #
+#
+{{- range . }}
+{{ .TLSFilename }}
+    {{- if or .ALPN .CAFilename .Ciphers .CipherSuites .Options }} [{{ " " }}
+        {{- with .ALPN }}alpn {{ . }} {{ end }}
+        {{- if .CAFilename }}ca-file {{ .CAFilename }}{{ " " -}}
+            verify {{ if .CAVerifyOptional }}optional {{ else }}required {{ end }}
+            {{- if eq .CAVerify "skip-check" }}ca-ignore-err all crt-ignore-err all {{ end }}
+            {{- if .CRLFilename }}crl-file {{ .CRLFilename }} {{ end }}
+        {{- end }}            
+        {{- with .Ciphers }}ciphers {{ . }} {{ end }}
+        {{- with .CipherSuites }}ciphersuites {{ . }} {{ end }}
+        {{- with .Options }}{{ . }} {{ end }}
+        {{- "" }}]
+    {{- end }}
+    {{- " " }}{{ if ne .Hostname "<default>" }}{{ .Hostname }}{{ else }}!*{{ end }}
+{{- end }}

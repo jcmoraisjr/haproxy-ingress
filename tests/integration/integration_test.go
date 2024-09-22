@@ -3,10 +3,12 @@ package integration_test
 import (
 	"context"
 	"crypto/sha1"
+	"crypto/tls"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -105,7 +107,7 @@ func TestIntegrationIngress(t *testing.T) {
 		_, hostname := f.CreateIngress(ctx, t, svc, options.DefaultTLS())
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
 			options.ExpectResponseCode(http.StatusOK),
-			options.HTTPSRequest(),
+			options.TLSRequest(),
 			options.TLSSkipVerify(),
 		)
 		assert.True(t, res.EchoResponse.Parsed)
@@ -128,7 +130,7 @@ func TestIntegrationIngress(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("https://%s/", hostname), res.HTTPResponse.Header.Get("location"))
 
 		res = f.Request(ctx, t, http.MethodGet, hostname, "/",
-			options.HTTPSRequest(),
+			options.TLSRequest(),
 			options.TLSSkipVerify(),
 		)
 		assert.False(t, res.EchoResponse.Parsed)
@@ -143,7 +145,7 @@ func TestIntegrationIngress(t *testing.T) {
 		)
 
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
-			options.HTTPSRequest(),
+			options.TLSRequest(),
 			options.SNI("localhost"), // fake certificate has `localhost` in certificates's SAN
 			options.ExpectX509Error("x509: certificate signed by unknown authority"),
 		)
@@ -167,7 +169,7 @@ func TestIntegrationIngress(t *testing.T) {
 		)
 
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
-			options.HTTPSRequest(),
+			options.TLSRequest(),
 			options.ClientCA(ca),
 			options.SNI(hostname),
 			options.ExpectX509Error("x509: certificate has expired or is not yet valid"),
@@ -191,7 +193,7 @@ func TestIntegrationIngress(t *testing.T) {
 		)
 
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
-			options.HTTPSRequest(),
+			options.TLSRequest(),
 			options.ClientCA(ca),
 			options.SNI(hostname),
 			options.ExpectResponseCode(200),
@@ -209,7 +211,7 @@ func TestIntegrationIngress(t *testing.T) {
 		)
 
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
-			options.HTTPSRequest(),
+			options.TLSRequest(),
 			options.TLSSkipVerify(),
 			options.SNI(hostname),
 			options.ExpectResponseCode(496),
@@ -226,7 +228,7 @@ func TestIntegrationIngress(t *testing.T) {
 		)
 
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
-			options.HTTPSRequest(),
+			options.TLSRequest(),
 			options.TLSSkipVerify(),
 			options.SNI(hostname),
 			options.ClientCertificateKeyPEM(crtFake, keyFake),
@@ -244,7 +246,7 @@ func TestIntegrationIngress(t *testing.T) {
 		)
 
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
-			options.HTTPSRequest(),
+			options.TLSRequest(),
 			options.TLSSkipVerify(),
 			options.SNI(hostname),
 			options.ClientCertificateKeyPEM(crtValid, keyValid),
@@ -262,7 +264,7 @@ func TestIntegrationIngress(t *testing.T) {
 		)
 
 		res := f.Request(ctx, t, http.MethodGet, "trying-bypass.local", "/",
-			options.HTTPSRequest(),
+			options.TLSRequest(),
 			options.TLSSkipVerify(),
 			options.SNI(hostname),
 			options.ClientCertificateKeyPEM(crtValid, keyValid),
@@ -281,7 +283,7 @@ func TestIntegrationIngress(t *testing.T) {
 		)
 
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
-			options.HTTPSRequest(),
+			options.TLSRequest(),
 			options.TLSSkipVerify(),
 			options.SNI(hostname),
 			options.ExpectResponseCode(200),
@@ -304,7 +306,7 @@ func TestIntegrationIngress(t *testing.T) {
 		)
 
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
-			options.HTTPSRequest(),
+			options.TLSRequest(),
 			options.TLSSkipVerify(),
 			options.SNI(hostname),
 			options.ClientCertificateKeyPEM(crtValid, keyValid),
@@ -346,7 +348,7 @@ func TestIntegrationIngress(t *testing.T) {
 		)
 
 		res := f.Request(ctx, t, http.MethodGet, hostSubdomain, "/",
-			options.HTTPSRequest(),
+			options.TLSRequest(),
 			options.TLSSkipVerify(),
 			options.SNI(hostSubdomain),
 			options.ExpectResponseCode(496),
@@ -354,7 +356,7 @@ func TestIntegrationIngress(t *testing.T) {
 		assert.False(t, res.EchoResponse.Parsed)
 
 		res = f.Request(ctx, t, http.MethodGet, hostSubdomain, "/",
-			options.HTTPSRequest(),
+			options.TLSRequest(),
 			options.TLSSkipVerify(),
 			options.SNI(hostSubdomain),
 			options.ClientCertificateKeyPEM(crtValid, keyValid),
@@ -364,7 +366,7 @@ func TestIntegrationIngress(t *testing.T) {
 		assert.Equal(t, "backend1", res.EchoResponse.ServerName)
 
 		res = f.Request(ctx, t, http.MethodGet, "another."+hostname, "/",
-			options.HTTPSRequest(),
+			options.TLSRequest(),
 			options.TLSSkipVerify(),
 			options.ExpectResponseCode(200),
 		)
@@ -372,7 +374,7 @@ func TestIntegrationIngress(t *testing.T) {
 		assert.Equal(t, "backend2", res.EchoResponse.ServerName)
 
 		res = f.Request(ctx, t, http.MethodGet, hostname, "/",
-			options.HTTPSRequest(),
+			options.TLSRequest(),
 			options.TLSSkipVerify(),
 			options.ExpectResponseCode(404),
 		)
@@ -499,6 +501,101 @@ func TestIntegrationIngress(t *testing.T) {
 		}, 5*time.Second, time.Second)
 	})
 
+	t.Run("should connect on TCP service", func(t *testing.T) {
+		t.Parallel()
+		tcpServerPort := f.CreateTCPServer(ctx, t)
+		tcpIngressPort := framework.RandomPort()
+		svc := f.CreateService(ctx, t, tcpServerPort)
+		_, _ = f.CreateIngress(ctx, t, svc,
+			options.AddConfigKeyAnnotation(ingtypes.TCPTCPServicePort, strconv.Itoa(int(tcpIngressPort))),
+			options.CustomHostName(""),
+		)
+		res := f.TCPRequest(ctx, t, tcpIngressPort, "ping")
+		assert.Equal(t, "ping", res)
+	})
+
+	t.Run("should connect on TLS TCP service", func(t *testing.T) {
+		t.Parallel()
+		tcpServerPort := f.CreateTCPServer(ctx, t)
+		tcpIngressPort := framework.RandomPort()
+		svc := f.CreateService(ctx, t, tcpServerPort)
+		_, _ = f.CreateIngress(ctx, t, svc,
+			options.AddConfigKeyAnnotation(ingtypes.TCPTCPServicePort, strconv.Itoa(int(tcpIngressPort))),
+			options.CustomHostName(""),
+			options.DefaultTLS(),
+		)
+		res := f.TCPRequest(ctx, t, tcpIngressPort, "ping", options.TLSRequest())
+		assert.Equal(t, "ping", res)
+	})
+
+	t.Run("should connect on hostnamed TLS TCP service", func(t *testing.T) {
+		t.SkipNow() // TODO: TLS server
+		t.Parallel()
+		tcpServerPort := f.CreateTCPServer(ctx, t)
+		tcpIngressPort := framework.RandomPort()
+		svc := f.CreateService(ctx, t, tcpServerPort)
+		_, _ = f.CreateIngress(ctx, t, svc,
+			options.AddConfigKeyAnnotation(ingtypes.TCPTCPServicePort, strconv.Itoa(int(tcpIngressPort))),
+			options.DefaultTLS(),
+		)
+		res := f.TCPRequest(ctx, t, tcpIngressPort, "ping", options.TLSRequest())
+		assert.Equal(t, "ping", res)
+	})
+
+	t.Run("should select the correct certificate on TLS TCP service", func(t *testing.T) {
+		t.Parallel()
+		tcpServerPort := f.CreateTCPServer(ctx, t)
+		tcpIngressPort := framework.RandomPort()
+		crt0, key0 := framework.CreateCertificate(t, caValid, cakeyValid, "tcphost0")
+		crt1, key1 := framework.CreateCertificate(t, caValid, cakeyValid, "tcphost1")
+		secret0 := f.CreateSecretTLS(ctx, t, crt0, key0)
+		secret1 := f.CreateSecretTLS(ctx, t, crt1, key1)
+		svc := f.CreateService(ctx, t, tcpServerPort)
+		_, _ = f.CreateIngress(ctx, t, svc,
+			options.AddConfigKeyAnnotation(ingtypes.TCPTCPServicePort, strconv.Itoa(int(tcpIngressPort))),
+			options.Custom(func(o client.Object) {
+				ing := o.(*networkingv1.Ingress)
+				rule0 := ing.Spec.Rules[0].DeepCopy()
+				rule1 := rule0.DeepCopy()
+				rule0.Host = "tcphost0.local"
+				rule1.Host = "tcphost1.local"
+				ing.Spec.Rules = []networkingv1.IngressRule{*rule0, *rule1}
+				ing.Spec.TLS = []networkingv1.IngressTLS{{
+					Hosts:      []string{"tcphost0.local"},
+					SecretName: secret0.Name,
+				}, {
+					Hosts:      []string{"tcphost1.local"},
+					SecretName: secret1.Name,
+				}}
+			}),
+		)
+
+		connect := func(collect assert.TestingT, host string) *tls.Conn {
+			c, err := tls.Dial("tcp", fmt.Sprintf(":%d", tcpIngressPort), &tls.Config{InsecureSkipVerify: true, ServerName: host})
+			assert.NoError(collect, err)
+			return c
+		}
+
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			_ = connect(collect, "localhost")
+		}, 5*time.Second, time.Second)
+
+		conn := connect(t, "localhost")
+		require.NotNil(t, conn)
+		assert.Equal(t, "tcphost0", conn.ConnectionState().PeerCertificates[0].Subject.CommonName)
+		require.NoError(t, conn.Close())
+
+		conn0 := connect(t, "tcphost0.local")
+		require.NotNil(t, conn0)
+		assert.Equal(t, "tcphost0", conn0.ConnectionState().PeerCertificates[0].Subject.CommonName)
+		require.NoError(t, conn0.Close())
+
+		conn1 := connect(t, "tcphost1.local")
+		require.NotNil(t, conn1)
+		assert.Equal(t, "tcphost1", conn1.ConnectionState().PeerCertificates[0].Subject.CommonName)
+		require.NoError(t, conn1.Close())
+	})
+
 	// should update status on class update
 
 	// should limit read and update when watching namespace
@@ -562,12 +659,13 @@ func TestIntegrationGateway(t *testing.T) {
 
 		t.Run("expose TCPRoute", func(t *testing.T) {
 			t.Parallel()
-			gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("pgserver", "TCP", framework.TestPortTCPService))
+			listenerPort := framework.RandomPort()
+			gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("tcpserver", "TCP", listenerPort))
 			svc := f.CreateService(ctx, t, tcpServerPort)
 			_ = f.CreateTCPRouteA2(ctx, t, gw, svc)
-			res1 := f.TCPRequest(ctx, t, framework.TestPortTCPService, "ping")
+			res1 := f.TCPRequest(ctx, t, listenerPort, "ping")
 			assert.Equal(t, "ping", res1)
-			res2 := f.TCPRequest(ctx, t, framework.TestPortTCPService, "reply")
+			res2 := f.TCPRequest(ctx, t, listenerPort, "reply")
 			assert.Equal(t, "reply", res2)
 		})
 	})

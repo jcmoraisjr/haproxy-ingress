@@ -2779,6 +2779,14 @@ Due to the limited data that can be inspected on TCP requests, a limited number 
   * on v0.13, all `Host` scoped configuration keys are unsupported
   * on v0.14, [auth-tls](#auth-tls) are supported
 
+TLS configuration is also applied to the TCP service if configured, making HAProxy to ssl offload requests on that port. Default certificate can be used by leaving `.spec.tls[].secretName` empty. Up to `v0.14.7`, a single certificate can be configured for all incoming requests. Since `v0.14.8`, distinct TLS hosts sections can configure distinct certificates for the TLS handshake, chosen based on the provided TLS SNI extension. The first declared secret act as the default certificate if an incoming SNI does not match any host entry. Distinct TLS related configurations, via annotations, can be applied to distinct secrets by splitting the TCP service configuration into distinct ingress resources.
+
+{{< alert title="Note" >}}
+Note that hostname based selection relies on SNI, so it works only on TLS requests. The encrypted content can be offloaded either by HAProxy, providing the hostname in `.spec.rules[].host` and `.spec.tls`, or offloaded by the backend server, providing the hostname only in `.spec.rules[].host`. Non TLS content cannot be multiplexed on the same TCP port for more than one backend.
+
+Note also that, in the case a hostname does not match, HAProxy will select a backend only if `.spec.defaultBackend` or an empty `.spec.rules[].host` is configured, otherwise the connection is closed without a response.
+{{< /alert >}}
+
 Every TCP service port creates a dedicated haproxy frontend that can be [customized](#configuration-snippet) in three distinct ways:
 
 * `config-tcp-service` in the global ConfigMap, this will add the same configurations to all the TCP service frontends

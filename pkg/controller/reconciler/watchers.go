@@ -504,11 +504,7 @@ type hdlr struct {
 }
 
 func (h *hdlr) getSource(c cache.Cache) source.Source {
-	return source.Kind(c, h.typ, h, h.getPredicates()...)
-}
-
-func (h *hdlr) getPredicates() []predicate.Predicate {
-	return h.pr
+	return source.Kind(c, h.typ, h, h.pr...)
 }
 
 func (h *hdlr) Create(ctx context.Context, e event.TypedCreateEvent[client.Object], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {

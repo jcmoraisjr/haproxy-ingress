@@ -76,7 +76,7 @@ type (
 		DefaultBackend string
 		Port           int
 		ProxyProt      bool
-		TLS            tlsMock
+		TLS            []tlsMock
 	}
 )
 
@@ -179,10 +179,12 @@ func MarshalTCPServices(hatcpserviceports ...*hatypes.TCPServicePort) string {
 			DefaultBackend: defaultBackend,
 			Port:           hasvc.Port(),
 			ProxyProt:      hasvc.ProxyProt,
-			TLS: tlsMock{
-				TLSFilename: hasvc.TLS.TLSFilename,
-				CAFilename:  hasvc.TLS.CAFilename,
-			},
+		}
+		for _, tls := range hasvc.BuildSortedTLSConfig() {
+			svc.TLS = append(svc.TLS, tlsMock{
+				TLSFilename: tls.TLSFilename,
+				CAFilename:  tls.CAFilename,
+			})
 		}
 		tcpServices = append(tcpServices, svc)
 	}
