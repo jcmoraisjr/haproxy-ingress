@@ -1987,7 +1987,8 @@ func TestInstanceTCPServices(t *testing.T) {
 		hostname  string
 		backend   hatypes.BackendID
 		proxyProt bool
-		tls       hatypes.TLSConfig
+		tls       *hatypes.TLSConfig
+		tcptls    []*hatypes.TCPServiceTLSConfig
 		custom    []string
 	}{
 		{
@@ -2006,21 +2007,21 @@ func TestInstanceTCPServices(t *testing.T) {
 			port:      7003,
 			backend:   b.BackendID(),
 			proxyProt: true,
-			tls: hatypes.TLSConfig{
+			tls: &hatypes.TLSConfig{
 				TLSFilename: "/ssl/7003.pem",
 			},
 		},
 		{
 			port:    7004,
 			backend: b.BackendID(),
-			tls: hatypes.TLSConfig{
+			tls: &hatypes.TLSConfig{
 				TLSFilename: "/ssl/7004.pem",
 			},
 		},
 		{
 			port:    7005,
 			backend: b.BackendID(),
-			tls: hatypes.TLSConfig{
+			tls: &hatypes.TLSConfig{
 				TLSFilename: "/ssl/7005.pem",
 				CAFilename:  "/ssl/ca-7005.pem",
 			},
@@ -2028,7 +2029,7 @@ func TestInstanceTCPServices(t *testing.T) {
 		{
 			port:    7006,
 			backend: b.BackendID(),
-			tls: hatypes.TLSConfig{
+			tls: &hatypes.TLSConfig{
 				TLSFilename: "/ssl/7006.pem",
 				CAFilename:  "/ssl/ca-7006.pem",
 				CRLFilename: "/ssl/crl-7006.pem",
@@ -2037,7 +2038,7 @@ func TestInstanceTCPServices(t *testing.T) {
 		{
 			port:    7007,
 			backend: b.BackendID(),
-			tls: hatypes.TLSConfig{
+			tls: &hatypes.TLSConfig{
 				ALPN:        "h2,http/1.1",
 				TLSFilename: "/ssl/7007.pem",
 			},
@@ -2045,7 +2046,7 @@ func TestInstanceTCPServices(t *testing.T) {
 		{
 			port:    7008,
 			backend: b.BackendID(),
-			tls: hatypes.TLSConfig{
+			tls: &hatypes.TLSConfig{
 				TLSFilename: "/ssl/7008.pem",
 				CAFilename:  "/ssl/ca-7008.pem",
 				CAVerify:    hatypes.CAVerifySkipCheck,
@@ -2054,7 +2055,7 @@ func TestInstanceTCPServices(t *testing.T) {
 		{
 			port:    7009,
 			backend: b.BackendID(),
-			tls: hatypes.TLSConfig{
+			tls: &hatypes.TLSConfig{
 				TLSFilename:  "/ssl/7009.pem",
 				Ciphers:      "ECDHE-ECDSA-AES128-GCM-SHA256",
 				CipherSuites: "TLS_AES_128_GCM_SHA256",
@@ -2063,7 +2064,7 @@ func TestInstanceTCPServices(t *testing.T) {
 		{
 			port:    7010,
 			backend: b.BackendID(),
-			tls: hatypes.TLSConfig{
+			tls: &hatypes.TLSConfig{
 				TLSFilename: "/ssl/7010.pem",
 				Options:     "force-tlsv13",
 			},
@@ -2091,7 +2092,7 @@ func TestInstanceTCPServices(t *testing.T) {
 			port:     7012,
 			hostname: "local1",
 			backend:  b.BackendID(),
-			tls: hatypes.TLSConfig{
+			tls: &hatypes.TLSConfig{
 				TLSFilename: "/ssl/7012.pem",
 			},
 		},
@@ -2105,6 +2106,22 @@ func TestInstanceTCPServices(t *testing.T) {
 			backend: b.BackendID(),
 			custom:  []string{"## custom for TCP 7014", "## multi line"},
 		},
+		{
+			port:    7015,
+			backend: b.BackendID(),
+			tcptls: []*hatypes.TCPServiceTLSConfig{{
+				Hostname: "host1.local",
+				TLSConfig: hatypes.TLSConfig{
+					TLSFilename: "/ssl/7015-1.pem",
+				},
+			}, {
+				Hostname: "host2.local",
+				TLSConfig: hatypes.TLSConfig{
+					TLSFilename: "/ssl/7015-2.pem",
+					CAFilename:  "/ssl/7015-2-ca.pem",
+				},
+			}},
+		},
 	}
 
 	for _, svc := range services {
@@ -2114,7 +2131,14 @@ func TestInstanceTCPServices(t *testing.T) {
 		}
 		p, h := c.config.TCPServices().AcquireTCPService(fmt.Sprintf("%s:%d", hostname, svc.port))
 		p.ProxyProt = svc.proxyProt
-		p.TLS = svc.tls
+		if svc.tls != nil {
+			p.TLS[hostname] = &hatypes.TCPServiceTLSConfig{Hostname: hostname, TLSConfig: *svc.tls}
+		}
+		if svc.tcptls != nil {
+			for _, tls := range svc.tcptls {
+				p.TLS[tls.Hostname] = tls
+			}
+		}
 		p.CustomConfig = svc.custom
 		h.Backend = svc.backend
 	}
@@ -2147,35 +2171,35 @@ frontend _front_tcp_7002
     mode tcp
     default_backend d1_app_8080
 frontend _front_tcp_7003
-    bind :7003 accept-proxy ssl crt /ssl/7003.pem
+    bind :7003 accept-proxy ssl crt-list /etc/haproxy/crtlist_tcp_7003.list ca-ignore-err all crt-ignore-err all
     mode tcp
     default_backend d1_app_8080
 frontend _front_tcp_7004
-    bind :7004 ssl crt /ssl/7004.pem
+    bind :7004 ssl crt-list /etc/haproxy/crtlist_tcp_7004.list ca-ignore-err all crt-ignore-err all
     mode tcp
     default_backend d1_app_8080
 frontend _front_tcp_7005
-    bind :7005 ssl crt /ssl/7005.pem ca-file /ssl/ca-7005.pem verify required
+    bind :7005 ssl crt-list /etc/haproxy/crtlist_tcp_7005.list ca-ignore-err all crt-ignore-err all
     mode tcp
     default_backend d1_app_8080
 frontend _front_tcp_7006
-    bind :7006 ssl crt /ssl/7006.pem ca-file /ssl/ca-7006.pem verify required crl-file /ssl/crl-7006.pem
+    bind :7006 ssl crt-list /etc/haproxy/crtlist_tcp_7006.list ca-ignore-err all crt-ignore-err all
     mode tcp
     default_backend d1_app_8080
 frontend _front_tcp_7007
-    bind :7007 ssl crt /ssl/7007.pem alpn h2,http/1.1
+    bind :7007 ssl crt-list /etc/haproxy/crtlist_tcp_7007.list ca-ignore-err all crt-ignore-err all
     mode tcp
     default_backend d1_app_8080
 frontend _front_tcp_7008
-    bind :7008 ssl crt /ssl/7008.pem ca-file /ssl/ca-7008.pem verify optional ca-ignore-err all crt-ignore-err all
+    bind :7008 ssl crt-list /etc/haproxy/crtlist_tcp_7008.list ca-ignore-err all crt-ignore-err all
     mode tcp
     default_backend d1_app_8080
 frontend _front_tcp_7009
-    bind :7009 ssl crt /ssl/7009.pem ciphers ECDHE-ECDSA-AES128-GCM-SHA256 ciphersuites TLS_AES_128_GCM_SHA256
+    bind :7009 ssl crt-list /etc/haproxy/crtlist_tcp_7009.list ca-ignore-err all crt-ignore-err all
     mode tcp
     default_backend d1_app_8080
 frontend _front_tcp_7010
-    bind :7010 ssl crt /ssl/7010.pem force-tlsv13
+    bind :7010 ssl crt-list /etc/haproxy/crtlist_tcp_7010.list ca-ignore-err all crt-ignore-err all
     mode tcp
     default_backend d1_app_8080
 frontend _front_tcp_7011
@@ -2188,7 +2212,7 @@ frontend _front_tcp_7011
     use_backend %[var(req.tcpback)] if { var(req.tcpback) -m found }
     default_backend d1_app_8080
 frontend _front_tcp_7012
-    bind :7012 ssl crt /ssl/7012.pem
+    bind :7012 ssl crt-list /etc/haproxy/crtlist_tcp_7012.list ca-ignore-err all crt-ignore-err all
     mode tcp
     tcp-request content set-var(req.tcpback) ssl_fc_sni,lower,map_str(/etc/haproxy/maps/_tcp_sni_7012__exact.map)
     use_backend %[var(req.tcpback)] if { var(req.tcpback) -m found }
@@ -2203,6 +2227,10 @@ frontend _front_tcp_7014
     ## custom for TCP 7014
     ## multi line
     default_backend d1_app_8080
+frontend _front_tcp_7015
+    bind :7015 ssl crt-list /etc/haproxy/crtlist_tcp_7015.list ca-ignore-err all crt-ignore-err all
+    mode tcp
+    default_backend d1_app_8080
 <<frontends-default>>
 <<support>>
 `)
@@ -2213,6 +2241,37 @@ local3 d3_app_8080`)
 ^[^.]+\.local4$ d3_app_8080`)
 	c.checkMap("_tcp_sni_7012__exact.map", `
 local1 d1_app_8080`)
+	c.checkMap("crtlist_tcp_7003.list", `
+/ssl/7003.pem !*
+`)
+	c.checkMap("crtlist_tcp_7004.list", `
+/ssl/7004.pem !*
+`)
+	c.checkMap("crtlist_tcp_7005.list", `
+/ssl/7005.pem [ ca-file /ssl/ca-7005.pem verify required ] !*
+`)
+	c.checkMap("crtlist_tcp_7006.list", `
+/ssl/7006.pem [ ca-file /ssl/ca-7006.pem verify required crl-file /ssl/crl-7006.pem ] !*
+`)
+	c.checkMap("crtlist_tcp_7007.list", `
+/ssl/7007.pem [ alpn h2,http/1.1 ] !*
+`)
+	c.checkMap("crtlist_tcp_7008.list", `
+/ssl/7008.pem [ ca-file /ssl/ca-7008.pem verify optional ca-ignore-err all crt-ignore-err all ] !*
+`)
+	c.checkMap("crtlist_tcp_7009.list", `
+/ssl/7009.pem [ ciphers ECDHE-ECDSA-AES128-GCM-SHA256 ciphersuites TLS_AES_128_GCM_SHA256 ] !*
+`)
+	c.checkMap("crtlist_tcp_7010.list", `
+/ssl/7010.pem [ force-tlsv13 ] !*
+`)
+	c.checkMap("crtlist_tcp_7012.list", `
+/ssl/7012.pem local1
+`)
+	c.checkMap("crtlist_tcp_7015.list", `
+/ssl/7015-1.pem host1.local
+/ssl/7015-2.pem [ ca-file /ssl/7015-2-ca.pem verify required ] host2.local
+`)
 	c.logger.CompareLogging(defaultLogging)
 }
 
@@ -5455,6 +5514,15 @@ func setupOptions(options testOptions) *testConfig {
 		2048,
 	); err != nil {
 		t.Errorf("error parsing map.tmpl: %v", err)
+	}
+	if err := instance.crtlistTmpl.NewTemplate(
+		"crtlist.tmpl",
+		"../../rootfs/etc/templates/crtlist/crtlist.tmpl",
+		"",
+		0,
+		2048,
+	); err != nil {
+		t.Errorf("error parsing crtlist.tmpl: %v", err)
 	}
 	if err := instance.haResponseTmpl.NewTemplate(
 		"response.http.tmpl",

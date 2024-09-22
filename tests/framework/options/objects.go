@@ -1,19 +1,18 @@
 package options
 
 import (
-	"math/rand"
-
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Object func(o *objectOpt)
 
 func AddConfigKeyAnnotation(key, value string) Object {
-	annprefix := "haproxy-ingress.github.io/"
 	return func(o *objectOpt) {
 		if o.Ann == nil {
 			o.Ann = make(map[string]string)
 		}
+		annprefix := "haproxy-ingress.github.io/"
 		o.Ann[annprefix+key] = value
 	}
 }
@@ -32,7 +31,7 @@ func CustomTLS(secret string) Object {
 
 func CustomHostName(hostname string) Object {
 	return func(o *objectOpt) {
-		o.IngressOpt.CustomHostName = hostname
+		o.IngressOpt.CustomHostName = ptr.To(hostname)
 	}
 }
 func Listener(name, proto string, port int32) Object {
@@ -44,21 +43,25 @@ func Listener(name, proto string, port int32) Object {
 		})
 	}
 }
-
-func TCPListener() Object {
-	return Listener("tcpservice-gw", "TCP", int32(32768+rand.Intn(32767)))
+func Custom(custom CustomCallback) Object {
+	return func(o *objectOpt) {
+		o.custom = custom
+	}
 }
+
+type CustomCallback func(client.Object)
 
 type objectOpt struct {
 	Ann map[string]string
 	IngressOpt
 	GatewayOpt
+	custom CustomCallback
 }
 
 type IngressOpt struct {
 	DefaultTLS      bool
 	CustomTLSSecret string
-	CustomHostName  string
+	CustomHostName  *string
 }
 
 type GatewayOpt struct {
@@ -80,6 +83,9 @@ func (o *objectOpt) Apply(obj client.Object) {
 		ann[k] = v
 	}
 	obj.SetAnnotations(ann)
+	if o.custom != nil {
+		o.custom(obj)
+	}
 }
 
 func ParseObjectOptions(opts ...Object) (opt objectOpt) {

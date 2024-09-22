@@ -543,7 +543,7 @@ func TestSyncTCPRouteCore(t *testing.T) {
   defaultbackend: default_pg__tcprule0
   port: 5432
   proxyprot: false
-  tls: {}
+  tls: []
 `,
 			expBackends: `
 - id: default_pg__tcprule0

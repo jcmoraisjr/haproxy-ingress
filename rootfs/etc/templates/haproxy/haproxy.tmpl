@@ -979,20 +979,12 @@ frontend {{ $proxy.Name }}
 {{- range $tcpport := $tcpservices }}
 {{- $proxy_name := printf "_front_tcp_%d" $tcpport.Port }}
 frontend {{ $proxy_name }}
-{{- $tls := $tcpport.TLS }}
+{{- $hasTLS := $tcpport.HasTLS }}
     bind {{ $global.Bind.TCPBindIP }}:{{ $tcpport.Port }}
         {{- if $tcpport.ProxyProt }} accept-proxy{{ end }}
-        {{- if $tls.TLSFilename }}
-            {{- "" }} ssl crt {{ $tls.TLSFilename }}
-            {{- if $tls.ALPN }} alpn {{ $tls.ALPN }}{{ end }}
-            {{- if $tls.CAFilename }}
-                {{- "" }} ca-file {{ $tls.CAFilename }} verify {{ if $tls.CAVerifyOptional}}optional{{ else }}required{{ end }}
-                {{- if (eq $tls.CAVerify "skip-check") }} ca-ignore-err all crt-ignore-err all{{ end }}
-                {{- if $tls.CRLFilename }} crl-file {{ $tls.CRLFilename }}{{ end }}
-            {{- end }}
-            {{- if $tls.Ciphers }} ciphers {{ $tls.Ciphers }}{{ end }}
-            {{- if $tls.CipherSuites }} ciphersuites {{ $tls.CipherSuites }}{{ end }}
-            {{- if $tls.Options }} {{ $tls.Options }}{{ end }}
+        {{- if $hasTLS }}
+            {{- "" }} ssl crt-list {{ $global.LocalFSPrefix }}/etc/haproxy/crtlist_tcp_{{ $tcpport.Port }}.list
+            {{- "" }} ca-ignore-err all crt-ignore-err all
         {{- end }}
     mode tcp
 
@@ -1008,12 +1000,14 @@ frontend {{ $proxy_name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- /* it is possible to have SNIMap without TLS, this means a SNI based hostname */}}
+{{- /* selection for TLS content, whose ssl offload is made in the backend. */}}
 {{- if $tcpport.SNIMap.HasHost }}
-{{- if not $tls.TLSFilename }}
+{{- if not $hasTLS }}
     tcp-request inspect-delay 5s
 {{- end }}
 {{- range $match := $tcpport.SNIMap.MatchFiles }}
-    tcp-request content set-var(req.tcpback) {{ if $tls.TLSFilename }}ssl_fc_sni{{ else }}req.ssl_sni{{ end }},lower
+    tcp-request content set-var(req.tcpback) {{ if $hasTLS }}ssl_fc_sni{{ else }}req.ssl_sni{{ end }},lower
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- if not $match.First }} if !{ var(req.tcpback) -m found }{{ end }}
 {{- end }}
@@ -1029,7 +1023,7 @@ frontend {{ $proxy_name }}
 
 {{- /*------------------------------------*/}}
 {{- if $tcpport.SNIMap.HasHost }}
-{{- if not $tls.TLSFilename }}
+{{- if not $hasTLS }}
     tcp-request content accept if { req.ssl_hello_type 1 }
 {{- end }}
     use_backend %[var(req.tcpback)] if { var(req.tcpback) -m found }
