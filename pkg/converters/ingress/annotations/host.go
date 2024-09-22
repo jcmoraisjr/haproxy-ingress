@@ -67,7 +67,12 @@ func (c *updater) setAuthTLSConfig(mapper *Mapper, target *types.TLSConfig, host
 }
 
 func (c *updater) buildTCPAuthTLS(d *tcpData) {
-	_ = c.setAuthTLSConfig(d.mapper, &d.tcpPort.TLS, d.tcpHost.Hostname())
+	hostname := d.tcpHost.Hostname()
+	tcpTLSConfig := d.tcpPort.TLS[hostname]
+	if tcpTLSConfig != nil {
+		// only exists on TLS TCP services
+		_ = c.setAuthTLSConfig(d.mapper, &tcpTLSConfig.TLSConfig, hostname)
+	}
 }
 
 func (c *updater) buildHostAuthTLS(d *hostData) {

@@ -498,7 +498,7 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 func (c *converter) syncIngressTCP(source *annotations.Source, ing *networking.Ingress, tcpServicePort int, annTCP, annBack map[string]string) {
 	addIngressBackend := func(rawHostname string, ingressBackend *networking.IngressBackend) error {
 		hostname := normalizeHostname(rawHostname, tcpServicePort)
-		tcpService, err := c.addTCPService(source, hostname, tcpServicePort, annTCP)
+		tcpService, err := c.addTCPService(source, hostname, annTCP)
 		if err != nil {
 			return err
 		}
@@ -554,17 +554,30 @@ func (c *converter) syncIngressTCP(source *annotations.Source, ing *networking.I
 			return
 		}
 		tlsPath := c.addTLS(source, secretName)
-		if tcpPort.TLS.TLSHash == "" {
-			tcpPort.TLS.TLSFilename = tlsPath.Filename
-			tcpPort.TLS.TLSHash = tlsPath.SHA1Hash
-			tcpPort.TLS.TLSCommonName = tlsPath.CommonName
-			tcpPort.TLS.TLSNotAfter = tlsPath.NotAfter
-		} else if tcpPort.TLS.TLSHash != tlsPath.SHA1Hash {
-			msg := fmt.Sprintf("TLS of tcp service port '%d' was already assigned", tcpServicePort)
-			if secretName != "" {
-				c.logger.Warn("skipping TLS secret '%s' of %v: %s", secretName, source, msg)
+		tlsHosts := tls.Hosts
+		if len(tlsHosts) == 0 {
+			// configures default host if none is declared
+			tlsHosts = []string{hatypes.DefaultHost}
+		}
+		for _, tlsHost := range tlsHosts {
+			if _, found := tcpPort.TLS[tlsHost]; !found {
+				tcpPort.TLS[tlsHost] = &hatypes.TCPServiceTLSConfig{
+					Hostname: tlsHost,
+					TLSConfig: hatypes.TLSConfig{
+						TLSFilename:   tlsPath.Filename,
+						TLSHash:       tlsPath.SHA1Hash,
+						TLSCommonName: tlsPath.CommonName,
+						TLSNotAfter:   tlsPath.NotAfter,
+						// tcp updater fills other tlsConfig fields, reading from annotation config
+					},
+				}
 			} else {
-				c.logger.Warn("skipping default TLS secret of %v: %s", source, msg)
+				msg := fmt.Sprintf("hostname on tcp service port :%d was already assigned", tcpServicePort)
+				if secretName != "" {
+					c.logger.Warn("skipping TLS secret '%s' on %v: %s", secretName, source, msg)
+				} else {
+					c.logger.Warn("skipping default TLS secret of %v: %s", source, msg)
+				}
 			}
 		}
 	}
@@ -691,7 +704,7 @@ func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcNam
 	return nil
 }
 
-func (c *converter) addTCPService(source *annotations.Source, hostname string, port int, ann map[string]string) (*hatypes.TCPServiceHost, error) {
+func (c *converter) addTCPService(source *annotations.Source, hostname string, ann map[string]string) (*hatypes.TCPServiceHost, error) {
 	tcpPort, tcpHost := c.haproxy.TCPServices().AcquireTCPService(hostname)
 	if !tcpHost.Backend.IsEmpty() {
 		tcpservice := strings.TrimPrefix(hostname, hatypes.DefaultHost)

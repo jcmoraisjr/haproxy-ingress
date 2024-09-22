@@ -86,6 +86,7 @@ func CreateInstance(logger types.Logger, options InstanceOptions) Instance {
 		//
 		haproxyTmpl:     template.CreateConfig(),
 		mapsTmpl:        template.CreateConfig(),
+		crtlistTmpl:     template.CreateConfig(),
 		modsecTmpl:      template.CreateConfig(),
 		haResponseTmpl:  template.CreateConfig(),
 		luaResponseTmpl: template.CreateConfig(),
@@ -104,6 +105,7 @@ type instance struct {
 	//
 	haproxyTmpl     *template.Config
 	mapsTmpl        *template.Config
+	crtlistTmpl     *template.Config
 	modsecTmpl      *template.Config
 	haResponseTmpl  *template.Config
 	luaResponseTmpl *template.Config
@@ -166,6 +168,7 @@ func (i *instance) acmeRemoveStorage(storage string) {
 func (i *instance) ParseTemplates() error {
 	i.haproxyTmpl.ClearTemplates()
 	i.mapsTmpl.ClearTemplates()
+	i.crtlistTmpl.ClearTemplates()
 	i.modsecTmpl.ClearTemplates()
 	i.haResponseTmpl.ClearTemplates()
 	i.luaResponseTmpl.ClearTemplates()
@@ -191,6 +194,15 @@ func (i *instance) ParseTemplates() error {
 	if err := i.mapsTmpl.NewTemplate(
 		"map.tmpl",
 		templatesDir+"/map/map.tmpl",
+		"",
+		0,
+		2048,
+	); err != nil {
+		return err
+	}
+	if err := i.crtlistTmpl.NewTemplate(
+		"crtlist.tmpl",
+		templatesDir+"/crtlist/crtlist.tmpl",
 		"",
 		0,
 		2048,
@@ -306,6 +318,11 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	}
 	if err := i.config.WriteBackendMaps(); err != nil {
 		i.logger.Error("error building backend maps: %v", err)
+		i.metrics.IncUpdateNoop()
+		return
+	}
+	if err := i.writeCrtLists(); err != nil {
+		i.logger.Error("error building certificates lists: %v", err)
 		i.metrics.IncUpdateNoop()
 		return
 	}
@@ -461,6 +478,25 @@ func (i *instance) logChanged() {
 	} else {
 		i.logger.InfoV(2, "updating %d backends", len(backsAdd))
 	}
+}
+
+func (i *instance) writeCrtLists() error {
+	// TODO: move here the frontend certificates list from the frontend map writer
+	for port, tcpPort := range i.config.TCPServices().Items() {
+		if len(tcpPort.TLS) == 0 {
+			// no TLS at all, no crt-list file
+			continue
+		}
+		crtListFile := fmt.Sprintf("%s/crtlist_tcp_%d.list", i.options.HAProxyCfgDir, port)
+		err := i.crtlistTmpl.WriteOutput(
+			tcpPort.BuildSortedTLSConfig(),
+			crtListFile,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (i *instance) writeConfig() (err error) {

@@ -1608,7 +1608,7 @@ func TestSyncPartialTCPService(t *testing.T) {
   defaultbackend: default_echo1_8080
   port: 7001
   proxyprot: false
-  tls: {}
+  tls: []
 `)
 	c.logger.CompareLogging(`INFO-V(2) syncing 0 host(s) and 1 backend(s)`)
 }
@@ -1663,7 +1663,7 @@ func TestSyncTCPServicePort(t *testing.T) {
   defaultbackend: default_echo1_8080
   port: 7001
   proxyprot: false
-  tls: {}`,
+  tls: []`,
 		},
 		// 2
 		{
@@ -1691,7 +1691,7 @@ func TestSyncTCPServicePort(t *testing.T) {
   defaultbackend: default_echo1_8080
   port: 7001
   proxyprot: false
-  tls: {}`,
+  tls: []`,
 		},
 		// 5
 		{
@@ -1704,7 +1704,7 @@ func TestSyncTCPServicePort(t *testing.T) {
   defaultbackend: default_echo1_8080
   port: 7001
   proxyprot: false
-  tls: {}`,
+  tls: []`,
 			logging: `WARN skipping path declaration on Ingress 'default/echo2': tcp service :7001 was already assigned to default_echo1_8080`,
 		},
 		// 6
@@ -1718,7 +1718,7 @@ func TestSyncTCPServicePort(t *testing.T) {
   port: 7001
   proxyprot: false
   tls:
-    tlsfilename: /tls/default/tls1.pem`,
+  - tlsfilename: /tls/default/tls1.pem`,
 		},
 		// 7
 		{
@@ -1731,7 +1731,7 @@ func TestSyncTCPServicePort(t *testing.T) {
   port: 7001
   proxyprot: false
   tls:
-    tlsfilename: /tls/tls-default.pem`,
+  - tlsfilename: /tls/tls-default.pem`,
 			logging: `WARN using default certificate due to an error reading secret 'tls-invalid' on Ingress 'default/echo1': secret not found: 'default/tls-invalid'`,
 		},
 		// 8
@@ -1754,8 +1754,11 @@ func TestSyncTCPServicePort(t *testing.T) {
   port: 7001
   proxyprot: false
   tls:
-    tlsfilename: /tls/default/tls1.pem`,
-			logging: `WARN skipping path declaration on Ingress 'default/echo2': tcp service :7001 was already assigned to default_echo1_8080`,
+  - tlsfilename: /tls/default/tls1.pem`,
+			logging: `
+WARN skipping path declaration on Ingress 'default/echo2': tcp service :7001 was already assigned to default_echo1_8080
+WARN skipping TLS secret 'tls1' on Ingress 'default/echo2': hostname on tcp service port :7001 was already assigned
+`,
 		},
 		// 10
 		{
@@ -1769,10 +1772,10 @@ func TestSyncTCPServicePort(t *testing.T) {
   port: 7001
   proxyprot: false
   tls:
-    tlsfilename: /tls/default/tls1.pem`,
+  - tlsfilename: /tls/default/tls1.pem`,
 			logging: `
 WARN skipping path declaration on Ingress 'default/echo2': tcp service :7001 was already assigned to default_echo1_8080
-WARN skipping TLS secret 'tls2' of Ingress 'default/echo2': TLS of tcp service port '7001' was already assigned`,
+WARN skipping TLS secret 'tls2' on Ingress 'default/echo2': hostname on tcp service port :7001 was already assigned`,
 		},
 		// 11
 		{
@@ -1786,7 +1789,7 @@ WARN skipping TLS secret 'tls2' of Ingress 'default/echo2': TLS of tcp service p
   port: 7001
   proxyprot: false
   tls:
-    tlsfilename: /tls/default/tls1.pem`,
+  - tlsfilename: /tls/default/tls1.pem`,
 		},
 		// 12
 		{
@@ -1799,7 +1802,7 @@ WARN skipping TLS secret 'tls2' of Ingress 'default/echo2': TLS of tcp service p
   defaultbackend: ""
   port: 7001
   proxyprot: false
-  tls: {}`,
+  tls: []`,
 			logging: `WARN skipping path declaration on Ingress 'default/echo1': tcp service echo.local:7001 was already assigned to default_echo1_8080`,
 		},
 		// 13
@@ -1815,7 +1818,7 @@ WARN skipping TLS secret 'tls2' of Ingress 'default/echo2': TLS of tcp service p
   defaultbackend: ""
   port: 7001
   proxyprot: false
-  tls: {}`,
+  tls: []`,
 		},
 		// 14
 		{
@@ -1831,7 +1834,7 @@ WARN skipping TLS secret 'tls2' of Ingress 'default/echo2': TLS of tcp service p
   defaultbackend: ""
   port: 7001
   proxyprot: false
-  tls: {}`,
+  tls: []`,
 			logging: `WARN skipping path declaration on Ingress 'default/echo3': tcp service echo2.local:7001 was already assigned to default_echo2_8080`,
 		},
 		// 15
@@ -1848,7 +1851,7 @@ WARN skipping TLS secret 'tls2' of Ingress 'default/echo2': TLS of tcp service p
   defaultbackend: default_echo1_8080
   port: 7001
   proxyprot: false
-  tls: {}`,
+  tls: []`,
 		},
 		// 16
 		{
@@ -1870,18 +1873,18 @@ WARN skipping TLS secret 'tls2' of Ingress 'default/echo2': TLS of tcp service p
   defaultbackend: default_echo1_8080
   port: 7001
   proxyprot: false
-  tls: {}
+  tls: []
 - backends: []
   defaultbackend: default_echo1_8080
   port: 7002
   proxyprot: true
   tls:
-    tlsfilename: /tls/default/tls2.pem
+  - tlsfilename: /tls/default/tls2.pem
 - backends: []
   defaultbackend: default_echo2_8080
   port: 7003
   proxyprot: false
-  tls: {}`,
+  tls: []`,
 		},
 		// 18
 		{
@@ -1894,7 +1897,7 @@ WARN skipping TLS secret 'tls2' of Ingress 'default/echo2': TLS of tcp service p
   port: 7001
   proxyprot: false
   tls:
-    tlsfilename: /tls/default/tls1.pem
+  - tlsfilename: /tls/default/tls1.pem
     cafilename: /tls/default/ca.pem`,
 		},
 	}
@@ -2671,7 +2674,7 @@ func (c *testConfig) createIngTLS1(name, hostname, path, service, secretHostName
 		if len(ssecret) > 1 {
 			hosts = append(hosts, strings.Split(ssecret[1], ",")...)
 		}
-		if len(hosts) == 0 {
+		if len(hosts) == 0 && hostname != "" {
 			hosts = []string{hostname}
 		}
 		tls = append(tls, networking.IngressTLS{
@@ -2731,7 +2734,10 @@ func (u *updaterMock) UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *a
 func (u *updaterMock) UpdateTCPHostConfig(tcpPort *hatypes.TCPServicePort, tcpHost *hatypes.TCPServiceHost, mapper *annotations.Mapper) {
 	caSecret := mapper.Get(ingtypes.HostAuthTLSSecret).Value
 	if caSecret != "" {
-		tcpPort.TLS.CAFilename = fmt.Sprintf("/tls/default/%s.pem", caSecret)
+		tcpConfig, found := tcpPort.TLS[tcpHost.Hostname()]
+		if found {
+			tcpConfig.CAFilename = fmt.Sprintf("/tls/default/%s.pem", caSecret)
+		}
 	}
 }
 
