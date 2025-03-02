@@ -12,6 +12,7 @@ LOCAL_FS_PREFIX?=/tmp/haproxy-ingress
 KUBECONFIG?=$(HOME)/.kube/config
 CONTROLLER_CONFIGMAP?=
 CONTROLLER_ARGS?=
+HAPROXY_INGRESS_ENVTEST?=1.32.0
 
 LOCALBIN?=$(shell pwd)/bin
 LOCAL_GOTESTSUM=$(LOCALBIN)/gotestsum
@@ -57,19 +58,13 @@ lint: golangci-lint
 .PHONY: setup-envtest
 setup-envtest:
 	test -x $(LOCAL_SETUP_ENVTEST) || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
-	$(LOCAL_SETUP_ENVTEST) use 1.23.5 --bin-dir $(LOCALBIN)
-	$(LOCAL_SETUP_ENVTEST) use 1.32.0 --bin-dir $(LOCALBIN)
+	$(LOCAL_SETUP_ENVTEST) use $(HAPROXY_INGRESS_ENVTEST) --bin-dir $(LOCALBIN)
 
 .PHONY: test-integration
 test-integration: gotestsum setup-envtest
 	@echo
-	@echo "Running Kubernetes 1.23.5"
-	KUBEBUILDER_ASSETS="$(shell $(LOCAL_SETUP_ENVTEST) use 1.23.5 --bin-dir $(LOCALBIN) -i -p path)"\
-		$(LOCAL_GOTESTSUM) --format=testname -- -count=1 -tags=cgo ./tests/integration/...
-
-	@echo
-	@echo "Running Kubernetes 1.32.0"
-	KUBEBUILDER_ASSETS="$(shell $(LOCAL_SETUP_ENVTEST) use 1.32.0 --bin-dir $(LOCALBIN) -i -p path)"\
+	@echo "Running Kubernetes $(HAPROXY_INGRESS_ENVTEST)"
+	KUBEBUILDER_ASSETS="$(shell $(LOCAL_SETUP_ENVTEST) use $(HAPROXY_INGRESS_ENVTEST) --bin-dir $(LOCALBIN) -i -p path)"\
 		$(LOCAL_GOTESTSUM) --format=testname -- -count=1 -tags=cgo ./tests/integration/...
 
 .PHONY: linux-build
