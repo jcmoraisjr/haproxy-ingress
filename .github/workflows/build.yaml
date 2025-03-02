@@ -26,19 +26,29 @@ jobs:
       run: make test
   integration:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        haproxy-version:
+        - "2.2" # minimum supported
+        - "2.6" # embedded version
+        - "3.1" # latest
+        envtest-version:
+        - "1.23.5" # oldest supported version
+        - "1.32.0" # latest Kubernetes version
+      fail-fast: false
     steps:
     - name: Install dependencies
       run: sudo apt-get install -y lua-json
-    - name: Install HAProxy
+    - name: Install HAProxy ${{ matrix.haproxy-version }}
       uses: timwolla/action-install-haproxy@main
       id: install-haproxy
       with:
-        branch: "2.2"
+        branch: ${{ matrix.haproxy-version }}
         use_openssl: yes
         use_lua: yes
     - uses: actions/checkout@v4
     - uses: actions/setup-go@v5
       with:
-        go-version: "1.22.4"
-    - name: Run integration tests
-      run: make test-integration
+        go-version: "1.23.6"
+    - name: Run integration tests on Kubernetes ${{ matrix.envtest-version }}
+      run: HAPROXY_INGRESS_ENVTEST=${{ matrix.envtest-version }} make test-integration
