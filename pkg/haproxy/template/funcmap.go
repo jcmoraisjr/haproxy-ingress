@@ -22,8 +22,8 @@ import (
 	"strings"
 	gotemplate "text/template"
 
+	"dario.cat/mergo"
 	"github.com/Masterminds/sprig/v3"
-	"github.com/imdario/mergo"
 	"k8s.io/klog/v2"
 )
 
