@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang:1.22.4-alpine AS builder
+FROM golang:1.23.6-alpine AS builder
 
 ARG GIT_TAG
 WORKDIR /src
@@ -28,7 +28,7 @@ RUN GIT_TAG=${GIT_TAG:-latest}\
     -ldflags "-s -w -X ${VERSION_PKG}.RELEASE=${GIT_TAG} -X ${VERSION_PKG}.COMMIT=${GIT_COMMIT} -X ${VERSION_PKG}.REPO=${GIT_REPO}"\
     -o haproxy-ingress pkg/main.go
 
-FROM haproxy:2.6.17-alpine
+FROM haproxy:2.6.21-alpine
 
 USER root
 

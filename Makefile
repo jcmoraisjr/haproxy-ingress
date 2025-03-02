@@ -57,11 +57,19 @@ lint: golangci-lint
 .PHONY: setup-envtest
 setup-envtest:
 	test -x $(LOCAL_SETUP_ENVTEST) || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
-	$(LOCAL_SETUP_ENVTEST) use 1.30.0 --bin-dir $(LOCALBIN)
+	$(LOCAL_SETUP_ENVTEST) use 1.23.5 --bin-dir $(LOCALBIN)
+	$(LOCAL_SETUP_ENVTEST) use 1.32.0 --bin-dir $(LOCALBIN)
 
 .PHONY: test-integration
 test-integration: gotestsum setup-envtest
-	KUBEBUILDER_ASSETS="$(shell $(LOCAL_SETUP_ENVTEST) use 1.30.0 --bin-dir $(LOCALBIN) -i -p path)"\
+	@echo
+	@echo "Running Kubernetes 1.23.5"
+	KUBEBUILDER_ASSETS="$(shell $(LOCAL_SETUP_ENVTEST) use 1.23.5 --bin-dir $(LOCALBIN) -i -p path)"\
+		$(LOCAL_GOTESTSUM) --format=testname -- -count=1 -tags=cgo ./tests/integration/...
+
+	@echo
+	@echo "Running Kubernetes 1.32.0"
+	KUBEBUILDER_ASSETS="$(shell $(LOCAL_SETUP_ENVTEST) use 1.32.0 --bin-dir $(LOCALBIN) -i -p path)"\
 		$(LOCAL_GOTESTSUM) --format=testname -- -count=1 -tags=cgo ./tests/integration/...
 
 .PHONY: linux-build

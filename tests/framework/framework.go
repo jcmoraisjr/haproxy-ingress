@@ -96,13 +96,14 @@ type framework struct {
 	cli    client.WithWatch
 }
 
-// HAProxy version 3.0-dev4-dec0175 2024/02/23 - https://haproxy.org/
-// HAProxy version 2.9.5-260dbb8 2024/02/15 - https://haproxy.org/
-// HAProxy version 2.8.6-f6bd011 2024/02/15 - https://haproxy.org/
-// HAProxy version 2.6.16-c6a7346 2023/12/13 - https://haproxy.org/
-// HAProxy version 2.4.25-6cfe787 2023/12/14 - https://haproxy.org/
-// HA-Proxy version 2.2.32-4081d5a 2023/12/19 - https://haproxy.org/
-// HA-Proxy version 2.0.34-868040b 2023/12/19 - https://haproxy.org/
+// HAProxy version 3.2-dev6-4ef6be4 2025/02/19 - https://haproxy.org/
+// HAProxy version 3.1.5-076df02 2025/02/20 - https://haproxy.org/
+// HAProxy version 3.0.8-6036c31 2025/01/29 - https://haproxy.org/
+// HAProxy version 2.9.14-7c591d5 2025/01/29 - https://haproxy.org/
+// HAProxy version 2.8.14-c23fe91 2025/01/29 - https://haproxy.org/
+// HAProxy version 2.6.21-5d6f8e1 2025/01/29 - https://haproxy.org/
+// HAProxy version 2.4.28-6b47cb7 2024/11/08 - https://haproxy.org/
+// HA-Proxy version 2.2.33-f7cac83 2024/04/05 - https://haproxy.org/
 var haproxyVersionRegex = regexp.MustCompile(`^HA-?Proxy version ([0-9]+)\.([0-9]+)([.-][dev0-9]+)`)
 
 func haproxyVersion(t *testing.T) (major, minor int, full string) {
@@ -126,7 +127,7 @@ func startApiserver(t *testing.T, crdPaths []string) *rest.Config {
 
 	e := envtest.Environment{
 		// run `make setup-envtest` to download envtest binaries.
-		BinaryAssetsDirectory: filepath.Join("bin", "k8s", fmt.Sprintf("1.30.0-%s-%s", goruntime.GOOS, goruntime.GOARCH)),
+		BinaryAssetsDirectory: filepath.Join("bin", "k8s", fmt.Sprintf("1.32.0-%s-%s", goruntime.GOOS, goruntime.GOARCH)),
 		CRDDirectoryPaths:     crdPaths,
 		ErrorIfCRDPathMissing: true,
 	}
