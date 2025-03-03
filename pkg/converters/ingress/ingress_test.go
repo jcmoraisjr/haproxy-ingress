@@ -1900,6 +1900,22 @@ WARN skipping TLS secret 'tls2' on Ingress 'default/echo2': hostname on tcp serv
   - tlsfilename: /tls/default/tls1.pem
     cafilename: /tls/default/ca.pem`,
 		},
+		// 19
+		{
+			ing: [][]string{
+				{"7001", "/", "echo1:8080:echo1.local;echo2:8080:echo2.local", "tls1:echo1.local;tls2:echo2.local"},
+			},
+			expect: `
+- backends:
+  - default_echo1_8080
+  - default_echo2_8080
+  defaultbackend: ""
+  port: 7001
+  proxyprot: false
+  tls:
+  - tlsfilename: /tls/default/tls1.pem
+  - tlsfilename: /tls/default/tls2.pem`,
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
@@ -2602,25 +2618,38 @@ func createServicePort(port string) networking.ServiceBackendPort {
 	}
 }
 
-func (c *testConfig) createIng1(name, hostname, path, service string) *networking.Ingress {
+func (c *testConfig) createIng1(name, hostname, path, services string) *networking.Ingress {
 	sname := strings.Split(name, "/")
-	sservice := strings.Split(service, ":")
 	ing := c.createObject(`
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: ` + sname[1] + `
-  namespace: ` + sname[0] + `
-spec:
-  rules:
-  - host: ` + hostname + `
-    http:
-      paths:
-      - path: ` + path + `
-        backend:
-          service:
-            name: ` + sservice[0]).(*networking.Ingress)
-	ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port = createServicePort(sservice[1])
+  namespace: ` + sname[0]).(*networking.Ingress)
+	for _, service := range strings.Split(services, ";") {
+		sservice := strings.Split(service, ":")
+		host := hostname
+		if len(sservice) == 3 {
+			host = sservice[2]
+		}
+		rule := networking.IngressRule{
+			Host: host,
+			IngressRuleValue: networking.IngressRuleValue{
+				HTTP: &networking.HTTPIngressRuleValue{
+					Paths: []networking.HTTPIngressPath{{
+						Path: path,
+						Backend: networking.IngressBackend{
+							Service: &networking.IngressServiceBackend{
+								Name: sservice[0],
+							},
+						},
+					}},
+				},
+			},
+		}
+		rule.HTTP.Paths[0].Backend.Service.Port = createServicePort(sservice[1])
+		ing.Spec.Rules = append(ing.Spec.Rules, rule)
+	}
 	return ing
 }
 
@@ -2666,7 +2695,7 @@ spec:
   - http:`).(*networking.Ingress)
 }
 
-func (c *testConfig) createIngTLS1(name, hostname, path, service, secretHostName string) *networking.Ingress {
+func (c *testConfig) createIngTLS1(name, hostname, path, services, secretHostName string) *networking.Ingress {
 	tls := []networking.IngressTLS{}
 	for _, secret := range strings.Split(secretHostName, ";") {
 		ssecret := strings.Split(secret, ":")
@@ -2682,7 +2711,7 @@ func (c *testConfig) createIngTLS1(name, hostname, path, service, secretHostName
 			SecretName: ssecret[0],
 		})
 	}
-	ing := c.createIng1(name, hostname, path, service)
+	ing := c.createIng1(name, hostname, path, services)
 	ing.Spec.TLS = tls
 	return ing
 }
