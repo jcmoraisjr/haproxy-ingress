@@ -25,6 +25,7 @@ jobs:
     - name: Run unit tests
       run: make test
   integration:
+    if: github.ref_name != 'master'
     runs-on: ubuntu-latest
     strategy:
       matrix:
