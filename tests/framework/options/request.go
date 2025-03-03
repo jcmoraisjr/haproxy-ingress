@@ -14,9 +14,9 @@ func ExpectX509Error(msg string) Request {
 	}
 }
 
-func HTTPSRequest() Request {
+func TLSRequest() Request {
 	return func(o *requestOpt) {
-		o.HTTPS = true
+		o.TLS = true
 	}
 }
 
@@ -48,7 +48,7 @@ func ClientCertificateKeyPEM(crt, key []byte) Request {
 type requestOpt struct {
 	ExpectResponseCode int
 	ExpectX509Error    string
-	HTTPS              bool
+	TLS                bool
 	TLSSkipVerify      bool
 	ClientCA           []byte
 	SNI                string

@@ -48,10 +48,9 @@ const (
 	PublishAddress  = "10.0.1.1"
 	PublishHostname = "ingress.local"
 
-	TestPortHTTP       = 28080
-	TestPortHTTPS      = 28443
-	TestPortStat       = 21936
-	TestPortTCPService = 25432
+	TestPortHTTP  = 28080
+	TestPortHTTPS = 28443
+	TestPortStat  = 21936
 )
 
 func NewFramework(ctx context.Context, t *testing.T, o ...options.Framework) *framework {
@@ -210,6 +209,19 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 		cancel()
 		<-done
 	})
+
+	t.Log("waiting for controller and haproxy to be ready")
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		// ensuring controller is up and running avoids all the tests to fail due to misconfiguration
+		url := fmt.Sprintf("http://127.0.0.1:%d", TestPortHTTP)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if !assert.NoError(collect, err) {
+			return
+		}
+		req.URL.Path = "/"
+		_, err = http.DefaultClient.Do(req)
+		assert.NoError(collect, err)
+	}, 10*time.Second, time.Second)
 }
 
 type Response struct {
@@ -218,12 +230,12 @@ type Response struct {
 	EchoResponse EchoResponse
 }
 
-func (f *framework) Request(ctx context.Context, t *testing.T, method, host, path string, o ...options.Request) Response {
+func (*framework) Request(ctx context.Context, t *testing.T, method, host, path string, o ...options.Request) Response {
 	t.Logf("request method=%s host=%s path=%s\n", method, host, path)
 	opt := options.ParseRequestOptions(o...)
 
 	url := fmt.Sprintf("http://127.0.0.1:%d", TestPortHTTP)
-	if opt.HTTPS {
+	if opt.TLS {
 		url = fmt.Sprintf("https://127.0.0.1:%d", TestPortHTTPS)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, url, nil)
@@ -296,19 +308,26 @@ func (f *framework) Request(ctx context.Context, t *testing.T, method, host, pat
 	}
 }
 
-func (f *framework) TCPRequest(ctx context.Context, t *testing.T, tcpPort int32, data string) string {
+func (*framework) TCPRequest(ctx context.Context, t *testing.T, tcpPort int32, data string, o ...options.Request) string {
+	// TODO: missing most of options.Request
+	opt := options.ParseRequestOptions(o...)
+
 	var conn net.Conn
 	require.EventuallyWithT(t, func(collect *assert.CollectT) {
 		var err error
-		conn, err = net.Dial("tcp", fmt.Sprintf(":%d", tcpPort))
+		if opt.TLS {
+			conn, err = tls.Dial("tcp", fmt.Sprintf(":%d", tcpPort), &tls.Config{InsecureSkipVerify: true})
+		} else {
+			conn, err = net.Dial("tcp", fmt.Sprintf(":%d", tcpPort))
+		}
 		assert.NoError(collect, err)
 	}, 5*time.Second, time.Second)
+	defer conn.Close()
 	_, err := conn.Write([]byte(data))
 	require.NoError(t, err)
 	buf := make([]byte, 256)
 	n, err := conn.Read(buf)
 	require.NoError(t, err)
-	conn.Close()
 	return string(buf[:n])
 }
 
@@ -325,7 +344,7 @@ metadata:
   name: ""
   namespace: default
 `
-	name := randomName("secret")
+	name := RandomName("secret")
 
 	secret := f.CreateObject(t, data).(*corev1.Secret)
 	secret.Name = name
@@ -364,7 +383,7 @@ metadata:
   namespace: default
 spec:
   ports:
-  - port: 8080
+  - port: 9999 ## meaningless, just need to match ingress' one
     targetPort: 0
 `
 	ep := f.CreateEndpoints(ctx, t, serverPort)
@@ -405,7 +424,7 @@ subsets:
   ports:
   - port: 0
 `
-	name := randomName("svc")
+	name := RandomName("svc")
 
 	ep := f.CreateObject(t, data).(*corev1.Endpoints)
 	ep.Name = name
@@ -447,11 +466,13 @@ spec:
           service:
             name: ""
             port:
-              number: 8080
+              number: 9999 ## meaningless, just need to match service's one
 `
-	name := randomName("ing")
-	hostname := opt.IngressOpt.CustomHostName
-	if hostname == "" {
+	name := RandomName("ing")
+	var hostname string
+	if opt.IngressOpt.CustomHostName != nil {
+		hostname = *opt.IngressOpt.CustomHostName
+	} else {
 		hostname = name + ".local"
 	}
 
@@ -459,15 +480,17 @@ spec:
 	ing.Name = name
 	ing.Spec.Rules[0].Host = hostname
 	ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name = svc.Name
-	opt.Apply(ing)
 	if opt.IngressOpt.CustomTLSSecret != "" {
 		ing.Spec.TLS = []networking.IngressTLS{{
-			Hosts:      []string{hostname},
 			SecretName: opt.IngressOpt.CustomTLSSecret,
 		}}
 	} else if opt.IngressOpt.DefaultTLS {
-		ing.Spec.TLS = []networking.IngressTLS{{Hosts: []string{hostname}}}
+		ing.Spec.TLS = []networking.IngressTLS{{SecretName: ""}}
 	}
+	if len(ing.Spec.TLS) > 0 && hostname != "" {
+		ing.Spec.TLS[0].Hosts = []string{hostname}
+	}
+	opt.Apply(ing)
 
 	t.Logf("creating ingress %s/%s host=%s\n", ing.Namespace, ing.Name, ing.Spec.Rules[0].Host)
 
@@ -507,7 +530,7 @@ metadata:
 spec:
   controllerName: haproxy-ingress.github.io/controller
 `, api)
-	name := randomName("gc")
+	name := RandomName("gc")
 
 	gc := f.CreateObject(t, data)
 	gc.SetName(name)
@@ -561,7 +584,7 @@ metadata:
 spec:
   gatewayClassName: ""
 `, api)
-	name := randomName("gw")
+	name := RandomName("gw")
 
 	gw := f.CreateObject(t, data)
 	gw.SetName(name)
@@ -627,7 +650,7 @@ spec:
     - name: ""
       port: 0
 `, api)
-	name := randomName("httproute")
+	name := RandomName("httproute")
 	hostname := name + ".local"
 
 	route := f.CreateObject(t, data)
@@ -680,7 +703,7 @@ spec:
     - name: ""
       port: 0
 `, api)
-	name := randomName("tcproute")
+	name := RandomName("tcproute")
 
 	route := f.CreateObject(t, data)
 	route.SetName(name)
@@ -753,8 +776,8 @@ func buildEchoResponse(t *testing.T, body string) EchoResponse {
 // Example: echoserver: service-name 8080 /app
 var echoHeaderRegex = regexp.MustCompile(`^echoserver: ([a-z0-9-]+) ([0-9]+) ([a-z0-9/]+)$`)
 
-func (f *framework) CreateHTTPServer(ctx context.Context, t *testing.T, serverName string) int32 {
-	serverPort := int32(32768 + rand.Intn(32767))
+func (*framework) CreateHTTPServer(ctx context.Context, t *testing.T, serverName string) int32 {
+	serverPort := RandomPort()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -789,25 +812,26 @@ func (f *framework) CreateHTTPServer(ctx context.Context, t *testing.T, serverNa
 	return serverPort
 }
 
-func (f *framework) CreateTCPServer(ctx context.Context, t *testing.T) int32 {
-	serverPort := int32(32768 + rand.Intn(32767))
+func (*framework) CreateTCPServer(ctx context.Context, t *testing.T) int32 {
+	serverPort := RandomPort()
 	listen, err := net.Listen("tcp", fmt.Sprintf(":%d", serverPort))
 	require.NoError(t, err)
 	go func() {
 		for {
-			conn, err := listen.Accept()
-			require.NoError(t, err)
+			conn, _ := listen.Accept()
 			buf := make([]byte, 256)
-			n, err := conn.Read(buf)
-			require.NoError(t, err)
-			_, err = conn.Write(buf[:n])
-			require.NoError(t, err)
-			conn.Close()
+			n, _ := conn.Read(buf)
+			_, _ = conn.Write(buf[:n])
+			_ = conn.Close()
 		}
 	}()
 	return serverPort
 }
 
-func randomName(prefix string) string {
+func RandomName(prefix string) string {
 	return fmt.Sprintf("%s-%08d", prefix, rand.Intn(1e8))
+}
+
+func RandomPort() int32 {
+	return int32(32768 + rand.Intn(32767))
 }

@@ -45,7 +45,8 @@ func (s *TCPServices) acquireTCPPort(port int) *TCPServicePort {
 	if !found {
 		tcpPort = &TCPServicePort{
 			port:  port,
-			hosts: map[string]*TCPServiceHost{},
+			hosts: make(map[string]*TCPServiceHost),
+			TLS:   make(map[string]*TCPServiceTLSConfig),
 		}
 		s.items[port] = tcpPort
 		s.changed = true
@@ -172,6 +173,25 @@ func (s *TCPServicePort) BuildSortedItems() []*TCPServiceHost {
 		return items[i].hostname < items[j].hostname
 	})
 	return items
+}
+
+// BuildSortedTLSConfig ...
+func (s *TCPServicePort) BuildSortedTLSConfig() []*TCPServiceTLSConfig {
+	keys := make([]string, 0, len(s.TLS))
+	for hostname := range s.TLS {
+		keys = append(keys, hostname)
+	}
+	sort.Strings(keys)
+	config := make([]*TCPServiceTLSConfig, 0, len(keys))
+	for _, key := range keys {
+		config = append(config, s.TLS[key])
+	}
+	return config
+}
+
+// HasTLS ...
+func (s *TCPServicePort) HasTLS() bool {
+	return len(s.TLS) > 0
 }
 
 // DefaultHost ...

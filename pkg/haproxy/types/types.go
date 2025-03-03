@@ -283,7 +283,7 @@ type TCPServicePort struct {
 	CustomConfig []string
 	LogFormat    string
 	ProxyProt    bool
-	TLS          TLSConfig
+	TLS          map[string]*TCPServiceTLSConfig
 	//
 	SNIMap *HostsMap
 }
@@ -292,6 +292,11 @@ type TCPServicePort struct {
 type TCPServiceHost struct {
 	hostname string
 	Backend  BackendID
+}
+
+type TCPServiceTLSConfig struct {
+	TLSConfig
+	Hostname string
 }
 
 // CAVerify ...
