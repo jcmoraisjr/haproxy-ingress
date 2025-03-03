@@ -17,6 +17,7 @@ import (
 	goruntime "runtime"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -829,9 +830,11 @@ func (*framework) CreateTCPServer(ctx context.Context, t *testing.T) int32 {
 }
 
 func RandomName(prefix string) string {
-	return fmt.Sprintf("%s-%08d", prefix, rand.Intn(1e8))
+	return fmt.Sprintf("%s-%08x", prefix, rand.Intn(1e8))
 }
 
+var currentPortOffset atomic.Int32
+
 func RandomPort() int32 {
-	return int32(32768 + rand.Intn(32767))
+	return 49152 + currentPortOffset.Add(1)
 }
