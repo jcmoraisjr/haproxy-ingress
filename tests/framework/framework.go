@@ -33,6 +33,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -177,8 +178,7 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 	require.NoError(t, err)
 
 	publishService := corev1.Service{}
-	publishService.Namespace = "default"
-	publishService.Name = "publish"
+	publishService.Namespace, publishService.Name, _ = cache.SplitMetaNamespaceKey(PublishSvcName)
 	publishService.Spec.Type = corev1.ServiceTypeLoadBalancer
 	publishService.Spec.Ports = []corev1.ServicePort{{Port: 80}}
 	err = f.cli.Create(ctx, &publishService)

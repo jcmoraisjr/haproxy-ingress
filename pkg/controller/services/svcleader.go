@@ -73,6 +73,7 @@ func initSvcLeader(ctx context.Context, cfg *config.Config) (*svcLeader, error) 
 			Callbacks: leaderelection.LeaderCallbacks{
 				OnStartedLeading: s.onStartedLeading,
 				OnStoppedLeading: s.onStoppedLeading,
+				OnNewLeader:      s.onNewLeader,
 			},
 		})
 		if err != nil {
@@ -94,8 +95,12 @@ type svcLeader struct {
 }
 
 func (s *svcLeader) Start(ctx context.Context) error {
-	if s.le != nil {
+	for s.le != nil {
 		s.le.Run(ctx)
+		if ctx.Err() != nil {
+			return nil
+		}
+		s.log.Info("restarting leader election")
 	}
 	<-ctx.Done()
 	return nil
@@ -138,6 +143,10 @@ func (s *svcLeader) onStoppedLeading() {
 	s.rgroup = nil
 
 	s.log.Info("stopped leading")
+}
+
+func (s *svcLeader) onNewLeader(identity string) {
+	s.log.Info("leader changed to " + identity)
 }
 
 func (s *svcLeader) addRunnable(r manager.Runnable) error {
