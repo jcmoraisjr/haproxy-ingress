@@ -557,6 +557,22 @@ func TestSyncTCPRouteCore(t *testing.T) {
 	})
 }
 
+func TestSyncGateway(t *testing.T) {
+	runTestSync(t, []testCaseSync{
+		{
+			id: "ignore-missing-gateway-class",
+			config: func(c *testConfig) {
+				c.createGateway0("default/web")
+				c.createHTTPRoute1("default/web", "web:l1", "echoserver:8080")
+				c.createService1("default/echoserver", "8080", "172.17.0.11")
+			},
+			expLogging:     "",
+			expDefaultHost: "",
+			expBackends:    "",
+		},
+	})
+}
+
 func TestSyncGatewayTLS(t *testing.T) {
 	defaultBackend := `
 - id: default_web__rule0
@@ -1048,6 +1064,20 @@ func (c *testConfig) createService1(name, port, ip string) (*api.Service, *api.E
 	c.cache.SvcList = append(c.cache.SvcList, svc)
 	c.cache.EpList[name] = ep
 	return svc, ep
+}
+
+func (c *testConfig) createGateway0(name string) *gatewayv1.Gateway {
+	n := strings.Split(name, "/")
+	gw := CreateObject(`
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: ` + n[1] + `
+  namespace: ` + n[0] + `
+spec:
+  gatewayClassName: missing`).(*gatewayv1.Gateway)
+	c.cache.GatewayList = append(c.cache.GatewayList, gw)
+	return gw
 }
 
 func (c *testConfig) createGateway1(name, listeners string) *gatewayv1.Gateway {
