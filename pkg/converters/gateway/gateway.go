@@ -257,11 +257,15 @@ func (c *converter) newGatewaySource(namespace, name string, gwtyp client.Object
 		c.logger.Error("error reading gateway: %v", err)
 		return nil
 	}
-	if gw == nil {
+	vgw := reflect.ValueOf(gw)
+	if vgw.IsNil() {
+		// Checking via reflection, since `gw` will always be `!= nil`
+		// because all cache methods return a pointer to the underlying struct.
+		// https://go.dev/doc/faq#nil_error
 		return nil
 	}
 	return &gatewaySource{
-		spec:   reflect.ValueOf(gw).Elem().FieldByName("Spec").Addr().Interface().(*gatewayv1.GatewaySpec),
+		spec:   vgw.Elem().FieldByName("Spec").Addr().Interface().(*gatewayv1.GatewaySpec),
 		source: newSource(gw),
 	}
 }
