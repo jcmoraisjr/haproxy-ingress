@@ -22,7 +22,6 @@ import (
 	"reflect"
 	"sort"
 	"strings"
-	"time"
 )
 
 // BackendID ...
@@ -122,7 +121,6 @@ func (b *Backend) sortEndpoints(sortBy string) {
 
 func (b *Backend) shuffleEndpoints() {
 	ep := b.Endpoints
-	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(ep), func(i, j int) {
 		ep[i], ep[j] = ep[j], ep[i]
 	})
