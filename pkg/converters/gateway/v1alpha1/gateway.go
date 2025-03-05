@@ -296,7 +296,7 @@ func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha1.
 			h := c.haproxy.Hosts().AcquireHost(hstr)
 			h.TLS.UseDefaultCrt = false
 			h.AddPath(backend, path, haMatch)
-			handlePassthrough(path, h, backend)
+			c.handlePassthrough(path, h, backend)
 			hosts = append(hosts, h)
 			pathLinks = append(pathLinks, hatypes.CreatePathLink(hstr, path, haMatch))
 		}
@@ -306,7 +306,7 @@ func (c *converter) createHTTPHosts(source *Source, hostnames []gatewayv1alpha1.
 	return hosts, pathLinks
 }
 
-func handlePassthrough(path string, h *hatypes.Host, b *hatypes.Backend) {
+func (c *converter) handlePassthrough(path string, h *hatypes.Host, b *hatypes.Backend) {
 	// Special handling for TLS passthrough due to current haproxy.Host limitation
 	// v0.14 will refactor haproxy.Host, allowing to remove this whole func
 	if path != "/" || (!b.ModeTCP && !h.SSLPassthrough()) {
@@ -316,8 +316,8 @@ func handlePassthrough(path string, h *hatypes.Host, b *hatypes.Backend) {
 		return
 	}
 	for _, hpath := range h.FindPath("/") {
-		modeTCP := hpath.Backend.ModeTCP
-		if modeTCP != nil && !*modeTCP {
+		backend := c.haproxy.Backends().FindBackend(hpath.Backend.Namespace, hpath.Backend.Name, hpath.Backend.Port)
+		if backend != nil && !backend.ModeTCP {
 			// current path has a HTTP backend in the root path of a passthrough
 			// domain, and the current haproxy.Host implementation uses this as the
 			// target HTTPS backend. So we need to:
