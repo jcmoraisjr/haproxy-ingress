@@ -5674,7 +5674,7 @@ INFO haproxy successfully reloaded (embedded daemon)`
 func (c *testConfig) Update() {
 	timer := utils.NewTimer(nil)
 	c.instance.AcmeUpdate()
-	c.instance.HAProxyUpdate(timer)
+	_ = c.instance.HAProxyUpdate(timer)
 }
 
 func (c *testConfig) checkConfig(expected string) {
