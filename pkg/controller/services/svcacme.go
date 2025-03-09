@@ -18,16 +18,17 @@ package services
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
+	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils/workqueue"
 )
 
 type svcAcmeCheckFnc func() (count int, err error)
@@ -57,11 +58,9 @@ func (s *svcAcmeServer) Start(ctx context.Context) error {
 
 func initSvcAcmeClient(ctx context.Context, config *config.Config, logger *lfactory, cache acme.Cache, metrics types.Metrics, svcleader *svcLeader, checkCallback svcAcmeCheckFnc) *svcAcmeClient {
 	signer := acme.NewSigner(logger.new("acme.client"), cache, metrics)
-	queue := utils.NewFailureRateLimitingQueue(
-		config.AcmeFailInitialDuration,
-		config.AcmeFailMaxDuration,
-		signer.Notify,
-	)
+	callback := func(_ context.Context, item any) error { return signer.Notify(item) }
+	ratelimiter := workqueue.ExponentialFailureRateLimiter[any](config.AcmeFailInitialDuration, config.AcmeFailMaxDuration)
+	queue := workqueue.New(callback, ratelimiter)
 	return &svcAcmeClient{
 		log:    logr.FromContextOrDiscard(ctx).WithName("acme").WithName("client"),
 		leader: svcleader,
@@ -78,18 +77,16 @@ type svcAcmeClient struct {
 	check  svcAcmeCheckFnc
 	config *config.Config
 	signer acme.Signer
-	queue  utils.Queue
+	queue  utils.QueueFacade
 }
 
 func (s *svcAcmeClient) Start(ctx context.Context) error {
 	s.log.Info("starting")
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-	go func() {
-		s.queue.RunWithContext(ctx)
-		wg.Done()
-	}()
-	go func() {
+	group := errgroup.Group{}
+	group.Go(func() error {
+		return s.queue.Start(ctx)
+	})
+	group.Go(func() error {
 		period := s.config.AcmeCheckPeriod
 		s.log.Info("checking expiring certificates", "period", period)
 		// we start from the second check, the first one
@@ -102,14 +99,15 @@ func (s *svcAcmeClient) Start(ctx context.Context) error {
 		wait.JitterUntilWithContext(ctx, func(ctx context.Context) {
 			_, _ = s.check()
 		}, period, 0, false)
-		wg.Done()
-	}()
-	wg.Wait()
+		return nil
+	})
+	err := group.Wait()
 	s.log.Info("stopped")
-	return nil
+	return err
 }
 
 // implements utils.QueueFacade
+// TODO: Can be converted to `item string` after removing legacy controller.
 func (s *svcAcmeClient) Add(item interface{}) {
 	if s.leader.isLeader() {
 		s.queue.Add(item)
@@ -121,8 +119,10 @@ func (s *svcAcmeClient) Remove(item interface{}) {
 	s.queue.Remove(item)
 }
 
-// svcAcmeClient just satisfies LeaderElector interface. The new controller controls wether
+// svcAcmeClient just satisfies LeaderElector interface. The new controller controls if
 // we're leading by other means, so from the instance perspective we're always the leader.
+//
+// TODO: Can be removed after removing legacy controller.
 
 func (s *svcAcmeClient) IsLeader() bool             { return true }
 func (s *svcAcmeClient) LeaderName() string         { return "<unknown>" }

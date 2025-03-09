@@ -434,7 +434,7 @@ func TestIntegrationIngress(t *testing.T) {
 	})
 
 	t.Run("should sync ingress status from publish service", func(t *testing.T) {
-		t.Parallel()
+		// t.Parallel() // non parallel, since it changes global config and could affect other tests
 		svc := f.CreateService(ctx, t, httpServerPort)
 		ing, _ := f.CreateIngress(ctx, t, svc)
 

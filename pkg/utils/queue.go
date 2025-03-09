@@ -41,6 +41,7 @@ type Queue interface {
 type QueueFacade interface {
 	Add(item interface{})
 	Remove(item interface{})
+	Start(context.Context) error
 }
 
 type queue struct {
@@ -125,6 +126,11 @@ func (q *queue) Remove(item interface{}) {
 
 func (q *queue) Run() {
 	q.RunWithContext(context.TODO())
+}
+
+func (q *queue) Start(ctx context.Context) error {
+	q.RunWithContext(ctx)
+	return nil
 }
 
 func (q *queue) RunWithContext(ctx context.Context) {
