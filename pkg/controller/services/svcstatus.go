@@ -24,9 +24,11 @@ import (
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	controllerutils "github.com/jcmoraisjr/haproxy-ingress/pkg/controller/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
+var _ controllerutils.DelayedService = &svcStatusUpdater{}
 var _ svcStatusUpdateFnc = (&svcStatusUpdater{}).update
 
 type svcStatusUpdateFnc func(client.Object)
@@ -50,7 +52,9 @@ type svcStatusUpdater struct {
 func (s *svcStatusUpdater) Start(ctx context.Context) error {
 	s.ctx = ctx
 	s.run = true
+	s.log.Info("starting working queue")
 	s.queue.RunWithContext(ctx)
+	s.log.Info("working queue stopped")
 	s.run = false
 	return nil
 }
