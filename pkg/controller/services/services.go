@@ -34,6 +34,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils/workqueue"
 )
 
 // Services ...
@@ -52,7 +53,7 @@ type Services struct {
 	metrics      *metrics
 	modelMutex   sync.Mutex
 	reloadCount  int
-	reloadQueue  utils.Queue
+	reloadQueue  utils.QueueFacade
 	svcleader    *svcLeader
 	svchealthz   *svcHealthz
 	svcstatus    *svcStatusUpdater
@@ -92,9 +93,13 @@ func (s *Services) setup(ctx context.Context) error {
 	if cfg.LocalFSPrefix != "" {
 		rootFSPrefix = "rootfs"
 	}
-	var reloadQueue utils.Queue
+
+	// When refactoring, give these initializations a special attention to avoid https://go.dev/doc/faq#nil_error
+	// This happens when a nil struct pointer is assigned to an interface var: that interface will render `intf != nil` as true.
+
+	var reloadQueue utils.QueueFacade
 	if cfg.ReloadInterval > 0 {
-		reloadQueue = utils.NewRateLimitingQueue(float32(1/cfg.ReloadInterval.Seconds()), s.reloadHAProxy)
+		reloadQueue = workqueue.New(s.reloadHAProxy, workqueue.ReloadHAProxyRateLimiter(cfg.ReloadInterval))
 	}
 	tracker := tracker.NewTracker()
 	metrics := createMetrics(cfg.BucketsResponseTime)
@@ -207,9 +212,7 @@ func (s *Services) withManager(mgr ctrl.Manager) error {
 		}
 	}
 	if s.reloadQueue != nil {
-		if err := mgr.Add(&svcReloadQueue{
-			queue: s.reloadQueue,
-		}); err != nil {
+		if err := mgr.Add(s.reloadQueue); err != nil {
 			return err
 		}
 	}
@@ -287,7 +290,8 @@ func (s *Services) acmeCheck(source string) (count int, err error) {
 	return count, err
 }
 
-func (s *Services) reloadHAProxy(interface{}) {
+func (s *Services) reloadHAProxy(context.Context, any) error {
+	s.log.Info("acquiring haproxy reload lock")
 	s.modelMutex.Lock()
 	defer s.modelMutex.Unlock()
 	s.reloadCount++
@@ -295,4 +299,5 @@ func (s *Services) reloadHAProxy(interface{}) {
 	timer := utils.NewTimer(s.metrics.ControllerProcTime)
 	s.instance.Reload(timer)
 	s.log.WithValues("id", s.reloadCount).WithValues(timer.AsValues("total")...).Info("finish haproxy reload")
+	return nil
 }

@@ -54,7 +54,7 @@ type InstanceOptions struct {
 	AcmeSocket        string
 	MaxOldConfigFiles int
 	Metrics           types.Metrics
-	ReloadQueue       utils.Queue
+	ReloadQueue       utils.QueueFacade
 	ReloadStrategy    string
 	SortEndpointsBy   string
 	StopCh            <-chan struct{}
@@ -374,7 +374,7 @@ func (i *instance) HAProxyUpdate(timer *utils.Timer) {
 		return
 	}
 	if i.options.ReloadQueue != nil {
-		i.options.ReloadQueue.Notify()
+		i.options.ReloadQueue.Add(nil)
 		i.logger.InfoV(2, "haproxy reload enqueued")
 	} else {
 		i.Reload(timer)

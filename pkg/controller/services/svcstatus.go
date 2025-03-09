@@ -25,7 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	controllerutils "github.com/jcmoraisjr/haproxy-ingress/pkg/controller/utils"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils/workqueue"
 )
 
 var _ controllerutils.DelayedService = &svcStatusUpdater{}
@@ -33,10 +33,10 @@ var _ svcStatusUpdateFnc = (&svcStatusUpdater{}).update
 
 type svcStatusUpdateFnc func(client.Object)
 
-func initSvcStatusUpdater(ctx context.Context, client client.Client) *svcStatusUpdater {
+func initSvcStatusUpdater(ctx context.Context, cli client.Client) *svcStatusUpdater {
 	s := &svcStatusUpdater{}
-	s.client = client
-	s.queue = utils.NewFailureRateLimitingQueue(250*time.Millisecond, 2*time.Minute, s.notify)
+	s.client = cli
+	s.queue = workqueue.New(s.notify, workqueue.ExponentialFailureRateLimiter[client.Object](250*time.Millisecond, 2*time.Minute))
 	s.log = logr.FromContextOrDiscard(ctx).WithName("status")
 	return s
 }
@@ -46,17 +46,17 @@ type svcStatusUpdater struct {
 	ctx    context.Context
 	run    bool
 	log    logr.Logger
-	queue  utils.Queue
+	queue  *workqueue.WorkQueue[client.Object]
 }
 
 func (s *svcStatusUpdater) Start(ctx context.Context) error {
 	s.ctx = ctx
 	s.run = true
 	s.log.Info("starting working queue")
-	s.queue.RunWithContext(ctx)
+	err := s.queue.Start(ctx)
 	s.log.Info("working queue stopped")
 	s.run = false
-	return nil
+	return err
 }
 
 func (s *svcStatusUpdater) CanShutdown() bool {
@@ -69,8 +69,7 @@ func (s *svcStatusUpdater) update(obj client.Object) {
 	}
 }
 
-func (s *svcStatusUpdater) notify(item interface{}) error {
-	obj := item.(client.Object)
+func (s *svcStatusUpdater) notify(ctx context.Context, obj client.Object) error {
 	namespace := obj.GetNamespace()
 	name := obj.GetName()
 	log := s.log.WithValues("kind", reflect.TypeOf(obj), "namespace", namespace, "name", name)

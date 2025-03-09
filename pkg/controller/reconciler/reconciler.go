@@ -28,6 +28,7 @@ import (
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/services"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils/workqueue"
 )
 
 // IngressReconciler ...
@@ -59,7 +60,7 @@ func (r *IngressReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manag
 	r.watchers = createWatchers(ctx, r.Config, r.Services.GetIsValidResource())
 	opt := controller.Options{
 		LogConstructor:     func(*reconcile.Request) logr.Logger { return logr.FromContextOrDiscard(ctx).WithName("reconciler") },
-		RateLimiter:        createRateLimiter(r.Config),
+		RateLimiter:        workqueue.IngressReconcilerRateLimiter(r.Config.RateLimitUpdate, r.Config.WaitBeforeUpdate),
 		Reconciler:         r,
 		RecoverPanic:       ptr.To(true),
 		SkipNameValidation: ptr.To(true), // TODO: need to param for test if we add more controllers
