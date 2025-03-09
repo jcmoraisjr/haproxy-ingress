@@ -5212,7 +5212,7 @@ INFO haproxy successfully reloaded (embedded daemon)`
 
 func (c *testConfig) Update() {
 	timer := utils.NewTimer(nil)
-	c.instance.Update(timer)
+	_ = c.instance.Update(timer)
 }
 
 func (c *testConfig) checkConfig(expected string) {

@@ -27,6 +27,7 @@ import (
 // Queue ...
 type Queue interface {
 	Add(item interface{})
+	AddAfter(item interface{}, duration time.Duration)
 	Clear()
 	Notify()
 	Remove(item interface{})
@@ -95,6 +96,13 @@ func (q *queue) Add(item interface{}) {
 	defer q.mutex.Unlock()
 	delete(q.forget, item)
 	q.workqueue.Add(item)
+}
+
+func (q *queue) AddAfter(item interface{}, duration time.Duration) {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
+	delete(q.forget, item)
+	q.workqueue.AddAfter(item, duration)
 }
 
 func (q *queue) Notify() {

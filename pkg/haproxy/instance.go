@@ -70,8 +70,8 @@ type Instance interface {
 	ParseTemplates() error
 	Config() Config
 	CalcIdleMetric()
-	Update(timer *utils.Timer)
-	Reload(timer *utils.Timer)
+	Update(timer *utils.Timer) error
+	Reload(timer *utils.Timer) error
 	Shutdown()
 }
 
@@ -265,9 +265,9 @@ func (i *instance) CalcIdleMetric() {
 	i.metrics.AddIdleFactor(idle)
 }
 
-func (i *instance) Update(timer *utils.Timer) {
+func (i *instance) Update(timer *utils.Timer) error {
 	i.acmeUpdate()
-	i.haproxyUpdate(timer)
+	return i.haproxyUpdate(timer)
 }
 
 func (i *instance) acmeUpdate() {
@@ -292,10 +292,10 @@ func (i *instance) acmeUpdate() {
 	}
 }
 
-func (i *instance) haproxyUpdate(timer *utils.Timer) {
+func (i *instance) haproxyUpdate(timer *utils.Timer) error {
 	// nil config, just ignore
 	if i.config == nil {
-		return
+		return nil
 	}
 	//
 	// this should be taken into account when refactoring this func:
@@ -307,24 +307,20 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 	i.config.SyncConfig()
 	i.config.Shrink()
 	if err := i.config.WriteTCPServicesMaps(); err != nil {
-		i.logger.Error("error building tcp services maps: %v", err)
 		i.metrics.IncUpdateNoop()
-		return
+		return fmt.Errorf("error building tcp services maps: %w", err)
 	}
 	if err := i.config.WriteFrontendMaps(); err != nil {
-		i.logger.Error("error building frontend maps: %v", err)
 		i.metrics.IncUpdateNoop()
-		return
+		return fmt.Errorf("error building frontend maps: %w", err)
 	}
 	if err := i.config.WriteBackendMaps(); err != nil {
-		i.logger.Error("error building backend maps: %v", err)
 		i.metrics.IncUpdateNoop()
-		return
+		return fmt.Errorf("error building backend maps: %w", err)
 	}
 	if err := i.writeCrtLists(); err != nil {
-		i.logger.Error("error building certificates lists: %v", err)
 		i.metrics.IncUpdateNoop()
-		return
+		return fmt.Errorf("error building certificates lists: %w", err)
 	}
 	timer.Tick("write_maps")
 	if !i.options.fake {
@@ -348,9 +344,8 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 		err := i.writeConfig()
 		timer.Tick("write_config")
 		if err != nil {
-			i.logger.Error("error writing configuration: %v", err)
 			i.metrics.IncUpdateNoop()
-			return
+			return fmt.Errorf("error writing configuration: %w", err)
 		}
 	}
 	i.updateCertExpiring()
@@ -375,17 +370,17 @@ func (i *instance) haproxyUpdate(timer *utils.Timer) {
 			i.logger.Info("old and new configurations match")
 			i.metrics.IncUpdateNoop()
 		}
-		return
+		return nil
 	}
 	if i.options.ReloadQueue != nil {
 		i.options.ReloadQueue.Notify()
 		i.logger.InfoV(2, "haproxy reload enqueued")
-	} else {
-		i.Reload(timer)
+		return nil
 	}
+	return i.Reload(timer)
 }
 
-func (i *instance) Reload(timer *utils.Timer) {
+func (i *instance) Reload(timer *utils.Timer) error {
 	i.metrics.IncUpdateFull()
 	if i.options.TrackInstances {
 		timeoutStopDur := i.config.Global().TimeoutStopDuration
@@ -397,12 +392,11 @@ func (i *instance) Reload(timer *utils.Timer) {
 	err := i.reloadHAProxy()
 	timer.Tick("reload_haproxy")
 	if err != nil {
-		i.logger.Error("error reloading server: %v", err)
 		i.updateSuccessful(false)
 		if i.options.TrackInstances {
 			i.conns.ReleaseLastInstance()
 		}
-		return
+		return fmt.Errorf("error reloading server: %w", err)
 	}
 	i.up = true
 	i.updateSuccessful(true)
@@ -418,6 +412,7 @@ func (i *instance) Reload(timer *utils.Timer) {
 		message += "; tracked instance(s): " + strconv.Itoa(i.conns.OldInstancesCount())
 	}
 	i.logger.Info(message)
+	return nil
 }
 
 func (i *instance) Shutdown() {
