@@ -155,7 +155,10 @@ func (c *CacheMock) GetGatewayB1(namespace, name string) (*gatewayv1beta1.Gatewa
 func (c *CacheMock) GetGateway(namespace, name string) (*gatewayv1.Gateway, error) {
 	for _, gw := range c.GatewayList {
 		if gw.Namespace == namespace && gw.Name == name {
-			return gw, nil
+			if gw.Spec.GatewayClassName == "haproxy" {
+				return gw, nil
+			}
+			return nil, nil
 		}
 	}
 	return nil, fmt.Errorf("gateway not found: %s/%s", namespace, name)
