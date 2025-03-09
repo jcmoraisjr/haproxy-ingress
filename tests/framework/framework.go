@@ -836,5 +836,5 @@ func RandomName(prefix string) string {
 var currentPortOffset atomic.Int32
 
 func RandomPort() int32 {
-	return 49152 + currentPortOffset.Add(1)
+	return 16384 + currentPortOffset.Add(1)
 }

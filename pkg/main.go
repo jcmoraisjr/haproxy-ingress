@@ -14,7 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+//go:debug default=go1.18
 package main
+
+// TODO remove go1.18 compatibility after dropping legacy mode
 
 import (
 	"flag"

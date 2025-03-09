@@ -40,6 +40,7 @@ type Queue interface {
 // QueueFacade ...
 type QueueFacade interface {
 	Add(item interface{})
+	AddAfter(item interface{}, duration time.Duration)
 	Remove(item interface{})
 	Start(context.Context) error
 }
@@ -104,6 +105,13 @@ func (q *queue) Add(item interface{}) {
 	defer q.mutex.Unlock()
 	delete(q.forget, item)
 	q.workqueue.Add(item)
+}
+
+func (q *queue) AddAfter(item interface{}, duration time.Duration) {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
+	delete(q.forget, item)
+	q.workqueue.AddAfter(item, duration)
 }
 
 func (q *queue) Notify() {

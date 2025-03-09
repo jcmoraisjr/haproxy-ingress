@@ -345,8 +345,13 @@ func (hc *HAProxyController) syncIngress(item interface{}) {
 	// update proxy
 	//
 	hc.instance.AcmeUpdate()
-	hc.instance.HAProxyUpdate(timer)
-	hc.logger.Info("finish haproxy update id=%d: %s", hc.updateCount, timer.AsString("total"))
+	err := hc.instance.HAProxyUpdate(timer)
+	if err != nil {
+		hc.logger.Error("error trying to update haproxy id=%d, retrying in 30s: %s err=%s", hc.reloadCount, timer.AsString("total"), err)
+		hc.ingressQueue.AddAfter(nil, 30*time.Second)
+	} else {
+		hc.logger.Info("finish haproxy update id=%d: %s", hc.updateCount, timer.AsString("total"))
+	}
 }
 
 func (hc *HAProxyController) acmeCheck(source string) (int, error) {
@@ -363,6 +368,11 @@ func (hc *HAProxyController) reloadHAProxy(item interface{}) {
 	hc.logger.Info("starting haproxy reload id=%d", hc.reloadCount)
 	timer := utils.NewTimer(hc.metrics.ControllerProcTime)
 
-	hc.instance.Reload(timer)
-	hc.logger.Info("finish haproxy reload id=%d: %s", hc.reloadCount, timer.AsString("total"))
+	err := hc.instance.Reload(timer)
+	if err != nil {
+		hc.logger.Error("error trying to reload haproxy id=%d, retrying in 30s: %s err=%s", hc.reloadCount, timer.AsString("total"), err)
+		hc.reloadQueue.AddAfter(nil, 30*time.Second)
+	} else {
+		hc.logger.Info("finish haproxy reload id=%d: %s", hc.reloadCount, timer.AsString("total"))
+	}
 }

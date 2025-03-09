@@ -256,7 +256,7 @@ func (s *Services) GetIsValidResource() IsValidResource {
 }
 
 // ReconcileIngress ...
-func (s *Services) ReconcileIngress(ctx context.Context, changed *convtypes.ChangedObjects) {
+func (s *Services) ReconcileIngress(ctx context.Context, changed *convtypes.ChangedObjects) error {
 	s.modelMutex.Lock()
 	defer s.modelMutex.Unlock()
 	s.updateCount++
@@ -266,9 +266,15 @@ func (s *Services) ReconcileIngress(ctx context.Context, changed *convtypes.Chan
 	if s.svcleader.isLeader() {
 		s.instance.AcmeUpdate()
 	}
-	s.instance.HAProxyUpdate(timer)
+	err := s.instance.HAProxyUpdate(timer)
 	s.svcstatusing.changed(ctx, changed)
-	s.log.WithValues("id", s.updateCount).WithValues(timer.AsValues("total")...).Info("finish haproxy update")
+	updatelogger := s.log.WithValues("id", s.updateCount).WithValues(timer.AsValues("total")...)
+	if err != nil {
+		updatelogger.Error(err, fmt.Sprintf("error trying to update haproxy, retrying in %s", s.Config.ReloadRetry.String()))
+	} else {
+		updatelogger.Info("finish haproxy update")
+	}
+	return err
 }
 
 func (s *Services) acmeCheck(source string) (count int, err error) {
@@ -297,7 +303,15 @@ func (s *Services) reloadHAProxy(context.Context, any) error {
 	s.reloadCount++
 	s.log.Info("starting haproxy reload", "id", s.reloadCount)
 	timer := utils.NewTimer(s.metrics.ControllerProcTime)
-	s.instance.Reload(timer)
-	s.log.WithValues("id", s.reloadCount).WithValues(timer.AsValues("total")...).Info("finish haproxy reload")
+	err := s.instance.Reload(timer)
+	reloadlogger := s.log.WithValues("id", s.reloadCount).WithValues(timer.AsValues("total")...)
+	if err != nil {
+		reloadlogger.Error(err, fmt.Sprintf("error trying to reload haproxy, retrying in %s", s.Config.ReloadRetry.String()))
+		s.reloadQueue.AddAfter(nil, s.Config.ReloadRetry)
+	} else {
+		reloadlogger.Info("finish haproxy reload")
+	}
+	// return err!=nil adds another event into the queue, we're reloading manually
+	// in the case an error happens in order to override the rate limit of the reload queue.
 	return nil
 }

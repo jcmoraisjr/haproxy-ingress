@@ -18,8 +18,10 @@ package reconciler
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
+	k8sworkqueue "k8s.io/client-go/util/workqueue"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -37,29 +39,41 @@ type IngressReconciler struct {
 	Config   *config.Config
 	Services *services.Services
 	//
+	log      logr.Logger
 	watchers *watchers
+	queue    k8sworkqueue.TypedRateLimitingInterface[ctrl.Request]
 }
 
 // Reconcile ...
 func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	changed := r.watchers.getChangedObjects()
-	r.Services.ReconcileIngress(ctx, changed)
+	err := r.Services.ReconcileIngress(ctx, changed)
+	if err != nil {
+		r.log.Error(err, fmt.Sprintf("error reconciling ingress, retrying in %s", r.Config.ReloadRetry.String()))
+		return ctrl.Result{RequeueAfter: r.Config.ReloadRetry}, nil
+	}
 	return ctrl.Result{}, nil
 }
 
 func (r *IngressReconciler) leaderChanged(ctx context.Context, isLeader bool) {
 	if isLeader && r.watchers.running() {
-		changed := r.watchers.getChangedObjects()
-		changed.NeedFullSync = true
-		r.Services.ReconcileIngress(ctx, changed)
+		r.log.Info("enqueue reconciliation due to leader acquired")
+		r.queue.AddRateLimited(reconcile.Request{})
 	}
 }
 
 // SetupWithManager ...
 func (r *IngressReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
+	r.log = logr.FromContextOrDiscard(ctx).WithName("ingress")
 	r.watchers = createWatchers(ctx, r.Config, r.Services.GetIsValidResource())
 	opt := controller.Options{
-		LogConstructor:     func(*reconcile.Request) logr.Logger { return logr.FromContextOrDiscard(ctx).WithName("reconciler") },
+		LogConstructor: func(*reconcile.Request) logr.Logger { return logr.FromContextOrDiscard(ctx).WithName("reconciler") },
+		NewQueue: func(controllerName string, rateLimiter k8sworkqueue.TypedRateLimiter[reconcile.Request]) k8sworkqueue.TypedRateLimitingInterface[reconcile.Request] {
+			r.queue = k8sworkqueue.NewTypedRateLimitingQueueWithConfig(rateLimiter, k8sworkqueue.TypedRateLimitingQueueConfig[ctrl.Request]{
+				Name: controllerName,
+			})
+			return r.queue
+		},
 		RateLimiter:        workqueue.IngressReconcilerRateLimiter(r.Config.RateLimitUpdate, r.Config.WaitBeforeUpdate),
 		Reconciler:         r,
 		RecoverPanic:       ptr.To(true),

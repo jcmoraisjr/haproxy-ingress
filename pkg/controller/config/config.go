@@ -506,6 +506,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		RateLimitUpdate:          opt.RateLimitUpdate,
 		ReadyzURL:                opt.ReadyzURL,
 		ReloadInterval:           opt.ReloadInterval,
+		ReloadRetry:              opt.ReloadRetry,
 		ReloadStrategy:           opt.ReloadStrategy,
 		ResyncPeriod:             &opt.ResyncPeriod,
 		RootContext:              rootcontext,
@@ -689,6 +690,7 @@ type Config struct {
 	RateLimitUpdate          float64
 	ReadyzURL                string
 	ReloadInterval           time.Duration
+	ReloadRetry              time.Duration
 	ReloadStrategy           string
 	ResyncPeriod             *time.Duration
 	RootContext              context.Context

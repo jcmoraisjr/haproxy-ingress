@@ -53,8 +53,9 @@ The following command-line options are supported:
 | [`--publish-address`](#publish-address)                 | list of hostname/IP        |                         | v0.15 |
 | [`--publish-service`](#publish-service)                 | namespace/servicename      |                         |       |
 | [`--rate-limit-update`](#rate-limit-update)             | uploads per second (float) | `0.5`                   |       |
-| [`--reload-interval`](#reload-interval)                 | time                       | `0`                     | v0.13 |
 | [`--ready-check-path`](#stats)                          | path                       | `/readyz`               | v0.15 |
+| [`--reload-interval`](#reload-interval)                 | time                       | `0`                     | v0.13 |
+| [`--reload-retry`](#reload-retry)                       | time                       | `30s`                   | v0.15 |
 | [`--reload-strategy`](#reload-strategy)                 | [native\|reusesocket]      | `reusesocket`           |       |
 | [`--report-node-internal-ip-address`](#report-node-internal-ip-address) | [true\|false] | `false`              |       |
 | [`--sort-backends`](#sort-backends)                     | [true\|false]              | `false`                 |       |
@@ -492,6 +493,14 @@ this interval.
 Higher values help to limit the number of active instances and save some memory on large clusters
 with long connections. Note however that, if two consecutive updates require a reload, the second
 one will delay up to the configured duration to be reflected by HAProxy.
+
+---
+
+## reload-retry
+
+* `--reload-retry`
+
+How long HAProxy Ingress should wait before trying to reload HAProxy if an error happens. Defaults to `30s`.
 
 ---
 
