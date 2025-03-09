@@ -26,7 +26,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/services"
@@ -41,12 +40,19 @@ type IngressReconciler struct {
 	//
 	log      logr.Logger
 	watchers *watchers
-	queue    k8sworkqueue.TypedRateLimitingInterface[ctrl.Request]
+	queue    k8sworkqueue.TypedRateLimitingInterface[rparam]
+}
+
+// rparam defines reconciliation parameters
+type rparam struct {
+	// fullsync defines if fullsync reconciliation should be enabled
+	fullsync bool
 }
 
 // Reconcile ...
-func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *IngressReconciler) Reconcile(ctx context.Context, req rparam) (ctrl.Result, error) {
 	changed := r.watchers.getChangedObjects()
+	changed.NeedFullSync = req.fullsync
 	err := r.Services.ReconcileIngress(ctx, changed)
 	if err != nil {
 		r.log.Error(err, fmt.Sprintf("error reconciling ingress, retrying in %s", r.Config.ReloadRetry.String()))
@@ -58,7 +64,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 func (r *IngressReconciler) leaderChanged(ctx context.Context, isLeader bool) {
 	if isLeader && r.watchers.running() {
 		r.log.Info("enqueue reconciliation due to leader acquired")
-		r.queue.AddRateLimited(reconcile.Request{})
+		r.queue.AddRateLimited(rparam{fullsync: true})
 	}
 }
 
@@ -66,20 +72,20 @@ func (r *IngressReconciler) leaderChanged(ctx context.Context, isLeader bool) {
 func (r *IngressReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
 	r.log = logr.FromContextOrDiscard(ctx).WithName("ingress")
 	r.watchers = createWatchers(ctx, r.Config, r.Services.GetIsValidResource())
-	opt := controller.Options{
-		LogConstructor: func(*reconcile.Request) logr.Logger { return logr.FromContextOrDiscard(ctx).WithName("reconciler") },
-		NewQueue: func(controllerName string, rateLimiter k8sworkqueue.TypedRateLimiter[reconcile.Request]) k8sworkqueue.TypedRateLimitingInterface[reconcile.Request] {
-			r.queue = k8sworkqueue.NewTypedRateLimitingQueueWithConfig(rateLimiter, k8sworkqueue.TypedRateLimitingQueueConfig[ctrl.Request]{
+	opt := controller.TypedOptions[rparam]{
+		LogConstructor: func(*rparam) logr.Logger { return logr.FromContextOrDiscard(ctx).WithName("reconciler") },
+		NewQueue: func(controllerName string, rateLimiter k8sworkqueue.TypedRateLimiter[rparam]) k8sworkqueue.TypedRateLimitingInterface[rparam] {
+			r.queue = k8sworkqueue.NewTypedRateLimitingQueueWithConfig(rateLimiter, k8sworkqueue.TypedRateLimitingQueueConfig[rparam]{
 				Name: controllerName,
 			})
 			return r.queue
 		},
-		RateLimiter:        workqueue.IngressReconcilerRateLimiter(r.Config.RateLimitUpdate, r.Config.WaitBeforeUpdate),
+		RateLimiter:        workqueue.IngressReconcilerRateLimiter[rparam](r.Config.RateLimitUpdate, r.Config.WaitBeforeUpdate),
 		Reconciler:         r,
 		RecoverPanic:       ptr.To(true),
 		SkipNameValidation: ptr.To(true), // TODO: need to param for test if we add more controllers
 	}
-	c, err := controller.NewUnmanaged("ingress", mgr, opt)
+	c, err := controller.NewTypedUnmanaged("ingress", mgr, opt)
 	if err != nil {
 		return err
 	}

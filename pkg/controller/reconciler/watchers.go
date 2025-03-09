@@ -31,7 +31,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
@@ -503,11 +502,11 @@ type hdlr struct {
 	full bool
 }
 
-func (h *hdlr) getSource(c cache.Cache) source.Source {
-	return source.Kind(c, h.typ, h, h.pr...)
+func (h *hdlr) getSource(c cache.Cache) source.TypedSource[rparam] {
+	return source.TypedKind(c, h.typ, h, h.pr...)
 }
 
-func (h *hdlr) Create(ctx context.Context, e event.TypedCreateEvent[client.Object], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+func (h *hdlr) Create(ctx context.Context, e event.TypedCreateEvent[client.Object], q workqueue.TypedRateLimitingInterface[rparam]) {
 	h.w.mu.Lock()
 	defer h.w.mu.Unlock()
 	if h.add != nil {
@@ -517,7 +516,7 @@ func (h *hdlr) Create(ctx context.Context, e event.TypedCreateEvent[client.Objec
 	h.notify("create", e.Object, q)
 }
 
-func (h *hdlr) Update(ctx context.Context, e event.TypedUpdateEvent[client.Object], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+func (h *hdlr) Update(ctx context.Context, e event.TypedUpdateEvent[client.Object], q workqueue.TypedRateLimitingInterface[rparam]) {
 	h.w.mu.Lock()
 	defer h.w.mu.Unlock()
 	if h.upd != nil {
@@ -527,7 +526,7 @@ func (h *hdlr) Update(ctx context.Context, e event.TypedUpdateEvent[client.Objec
 	h.notify("update", e.ObjectNew, q)
 }
 
-func (h *hdlr) Delete(ctx context.Context, e event.TypedDeleteEvent[client.Object], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+func (h *hdlr) Delete(ctx context.Context, e event.TypedDeleteEvent[client.Object], q workqueue.TypedRateLimitingInterface[rparam]) {
 	h.w.mu.Lock()
 	defer h.w.mu.Unlock()
 	if h.del != nil {
@@ -537,7 +536,7 @@ func (h *hdlr) Delete(ctx context.Context, e event.TypedDeleteEvent[client.Objec
 	h.notify("delete", e.Object, q)
 }
 
-func (h *hdlr) Generic(ctx context.Context, e event.TypedGenericEvent[client.Object], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+func (h *hdlr) Generic(ctx context.Context, e event.TypedGenericEvent[client.Object], q workqueue.TypedRateLimitingInterface[rparam]) {
 	h.w.mu.Lock()
 	defer h.w.mu.Unlock()
 	h.w.ch.NeedFullSync = true
@@ -559,11 +558,11 @@ func (h *hdlr) compose(ev string, obj client.Object) {
 	ch.Objects = appenddedup(ch.Objects, fmt.Sprintf("%s/%s:%s", ev, h.res, fullname))
 }
 
-func (h *hdlr) notify(event string, o client.Object, q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+func (h *hdlr) notify(event string, o client.Object, q workqueue.TypedRateLimitingInterface[rparam]) {
 	if h.full {
 		h.w.ch.NeedFullSync = true
 	}
-	q.AddRateLimited(reconcile.Request{})
+	q.AddRateLimited(rparam{fullsync: h.full})
 	if h.w.run {
 		h.w.log.Info("notify", "event", event, "kind", reflect.TypeOf(o), "namespace", o.GetNamespace(), "name", o.GetName())
 	}
