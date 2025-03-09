@@ -595,8 +595,8 @@ func (c *converter) handlePassthrough(path string, h *hatypes.Host, b *hatypes.B
 		return
 	}
 	for _, hpath := range h.FindPath("/") {
-		modeTCP := hpath.Backend.ModeTCP
-		if modeTCP != nil && !*modeTCP {
+		backend := c.haproxy.Backends().FindBackend(hpath.Backend.Namespace, hpath.Backend.Name, hpath.Backend.Port)
+		if backend != nil && !backend.ModeTCP {
 			// current path has a HTTP backend in the root path of a passthrough
 			// domain, and the current haproxy.Host implementation uses this as the
 			// target HTTPS backend. So we need to:

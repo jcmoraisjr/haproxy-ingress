@@ -278,7 +278,6 @@ func (h *Host) addLink(backend *Backend, link *PathLink, redirTo string) *HostPa
 			Namespace: backend.Namespace,
 			Name:      backend.Name,
 			Port:      backend.Port,
-			ModeTCP:   &backend.ModeTCP,
 		}
 		bpath := backend.AddBackendPath(link)
 		bpath.Host = &hostResolver{
