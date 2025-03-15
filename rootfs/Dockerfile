@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM haproxy:2.4.26-alpine
+FROM haproxy:2.4.28-alpine
 
 USER root
 
