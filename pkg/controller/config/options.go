@@ -24,6 +24,7 @@ func NewOptions() *Options {
 		AnnPrefix:               "haproxy-ingress.github.io,ingress.kubernetes.io",
 		RateLimitUpdate:         0.5,
 		WaitBeforeUpdate:        200 * time.Millisecond,
+		ReloadRetry:             30 * time.Second,
 		ResyncPeriod:            10 * time.Hour,
 		WatchNamespace:          corev1.NamespaceAll,
 		StatsCollectProcPeriod:  500 * time.Millisecond,
@@ -71,6 +72,7 @@ type Options struct {
 	AnnPrefix                string
 	RateLimitUpdate          float64
 	ReloadInterval           time.Duration
+	ReloadRetry              time.Duration
 	WaitBeforeUpdate         time.Duration
 	ResyncPeriod             time.Duration
 	WatchNamespace           string
@@ -287,6 +289,10 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 		"the second reload will be enqueued until 30 seconds have passed from the first "+
 		"one, applying every new configuration changes made between this interval.",
 	)
+
+	fs.DurationVar(&o.ReloadRetry, "reload-retry", o.ReloadRetry, ""+
+		"How long HAProxy Ingress should wait before trying to reload HAProxy if an error "+
+		"happens.")
 
 	fs.DurationVar(&o.WaitBeforeUpdate, "wait-before-update", o.WaitBeforeUpdate, ""+
 		"Amount of time to wait before start a reconciliation and update haproxy, giving "+

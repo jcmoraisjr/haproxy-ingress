@@ -115,6 +115,13 @@ func (s *svcAcmeClient) Add(item interface{}) {
 }
 
 // implements utils.QueueFacade
+func (s *svcAcmeClient) AddAfter(item interface{}, duration time.Duration) {
+	if s.leader.isLeader() {
+		s.queue.AddAfter(item, duration)
+	}
+}
+
+// implements utils.QueueFacade
 func (s *svcAcmeClient) Remove(item interface{}) {
 	s.queue.Remove(item)
 }
