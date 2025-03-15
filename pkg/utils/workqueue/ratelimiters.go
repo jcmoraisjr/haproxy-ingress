@@ -21,11 +21,10 @@ import (
 	"time"
 
 	"k8s.io/client-go/util/workqueue"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func IngressReconcilerRateLimiter(rateLimitUpdate float64, waitBeforeUpdate time.Duration) workqueue.TypedRateLimiter[reconcile.Request] {
-	return &ingressReconciler{
+func IngressReconcilerRateLimiter[T comparable](rateLimitUpdate float64, waitBeforeUpdate time.Duration) workqueue.TypedRateLimiter[T] {
+	return &ingressReconciler[T]{
 		delta: time.Duration(float64(time.Second) / rateLimitUpdate),
 		wait:  waitBeforeUpdate,
 	}
@@ -41,14 +40,14 @@ func ExponentialFailureRateLimiter[T comparable](failInitialWait, failMaxWait ti
 	return workqueue.NewTypedItemExponentialFailureRateLimiter[T](failInitialWait, failMaxWait)
 }
 
-type ingressReconciler struct {
+type ingressReconciler[T comparable] struct {
 	mu    sync.Mutex
 	delta time.Duration
 	wait  time.Duration
 	last  time.Time
 }
 
-func (r *ingressReconciler) When(_ reconcile.Request) time.Duration {
+func (r *ingressReconciler[T]) When(_ T) time.Duration {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -72,11 +71,11 @@ func (r *ingressReconciler) When(_ reconcile.Request) time.Duration {
 	return next.Sub(now)
 }
 
-func (r *ingressReconciler) NumRequeues(_ reconcile.Request) int {
+func (r *ingressReconciler[T]) NumRequeues(_ T) int {
 	return 0
 }
 
-func (r *ingressReconciler) Forget(_ reconcile.Request) {
+func (r *ingressReconciler[T]) Forget(_ T) {
 }
 
 type reloadHAProxy struct {
