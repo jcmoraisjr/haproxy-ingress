@@ -121,9 +121,8 @@ func (s *svcHealthz) createBuildHandler(cfg *config.Config) http.HandlerFunc {
 
 func (s *svcHealthz) createMetricsHandler(metrics *metrics) (http.Handler, error) {
 	registry := prometheus.NewRegistry()
-	if err := registry.Register(collectors.NewGoCollector()); err != nil {
-		return nil, err
-	}
+	registry.MustRegister(collectors.NewGoCollector())
+	registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	metrics.register(registry)
 	return promhttp.HandlerFor(registry, promhttp.HandlerOpts{}), nil
 }
