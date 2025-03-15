@@ -87,9 +87,10 @@ There are two important configurations in the snippet above:
 * Added a label `release: prometheus` in the ServiceMonitor. HAProxy Ingress metrics will share the same Prometheus instance installed by Prometheus Operator. This can be changed to another dedicated instance, and must be checked if using another customized Prometheus Operator deployment.
 * Added relabels to HAProxy and HAProxy Ingress metrics. The HAProxy Ingress dashboard uses `hostname` label as a way to distinguish two controller instances, and also `cluster` label to distinguish controllers running on distinct clusters. The source of the name can be adjusted but the label name should be the same.
 
-Now upgrade the chart - change `upgrade` to `install` if HAProxy Ingress isn't installed yet:
+Now install or upgrade the chart:
 ```
 helm upgrade haproxy-ingress haproxy-ingress/haproxy-ingress\
+  --install\
   --create-namespace --namespace ingress-controller\
   -f haproxy-ingress-values.yaml
 ```
@@ -121,7 +122,7 @@ Import [this](https://grafana.com/grafana/dashboards/12056) Grafana dashboard. I
 
 * Open Grafana page - the URL is the same provided in the `prometheus-operator-values.yaml` file and should resolve to the ingress deployment
 * Log in to Grafana, user is `admin` and the first password is `prom-operator`
-* Click the big plus `+` sign in the left side, Import, type `12056` as the Grafana.com ID, Load, select a Prometheus datasource, Import
+* Click `Dashboards`, `New`, `Import`, type `12056` as the Grafana.com ID, Load, select a Prometheus datasource, Import
 
 If everything worked as expected, the dashboard should look like this:
 

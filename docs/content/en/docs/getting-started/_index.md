@@ -124,6 +124,10 @@ The following steps deploy an echoserver image and exposes it in the current nam
 
 ## What's next
 
+Expose HAProxy Ingress metrics:
+
+* See the [metrics example page]({{% relref "../examples/metrics" %}})
+
 See what differs to expose services using Gateway API:
 
 * [Gateway API introduction](https://gateway-api.sigs.k8s.io/) from Kubernetes' SIG-Network documentation

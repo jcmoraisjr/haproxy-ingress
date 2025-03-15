@@ -1381,7 +1381,7 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "exemplar": true,
-              "expr": "rate(process_cpu_seconds_total{cluster=~\"$cluster\",hostname=~\"$hostname\"}[1m])",
+              "expr": "rate(process_cpu_seconds_total{cluster=~\"$cluster\",hostname=~\"$hostname\",job=\"haproxy-ingress\"}[1m])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -3020,7 +3020,7 @@
         "type": "query"
       },
       {
-        "allValue": ".+",
+        "allValue": ".*",
         "current": {},
         "datasource": {
           "type": "prometheus",
