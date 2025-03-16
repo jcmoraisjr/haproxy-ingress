@@ -6,6 +6,11 @@
   * [Upgrading with embedded Acme](#upgrading-with-embedded-acme)
   * [Upgrading with custom repositories](#upgrading-with-custom-repositories)
 * [Contributors](#contributors)
+* [v0.15.0-beta.1](#v0150-beta1)
+  * [Reference](#reference-b1)
+  * [Release notes](#release-notes-b1)
+  * [Improvements](#improvements-b1)
+  * [Fixes](#fixes-b1)
 * [v0.15.0-alpha.3](#v0150-alpha3)
   * [Reference](#reference-a3)
   * [Release notes](#release-notes-a3)
@@ -43,6 +48,10 @@ Breaking backward compatibility from v0.14:
 * Helm chart has now a distinct field for the registry of an image, which should impact charts that configure custom repositories. See [Upgrading with custom repositories](#upgrading-with-custom-repositories) below for the details.
 * Log debug level is enabled by default. HAProxy Ingress has a good balance between low verbosity and useful information on its debug level.
 * Default image for the log sidecar changed from `whereisaaron/kube-syslog-sidecar` to `ghcr.io/crisu1710/kube-syslog-sidecar:0.2.0`. It is the same codebase, just adding support for multiple architectures.
+
+### New controller engine
+
+HAProxy Ingress starting from v0.15 uses [controller-runtime](https://github.com/kubernetes-sigs/controller-runtime) as its watch and notification engine for Ingress and Gateway API resources. This is an internal implementation that shouldn't change controller behavior. v0.15 still preserves the legacy controller, it can be enabled by configuring envvar `HAPROXY_INGRESS_RUNTIME` as `LEGACY`, and can be used on debugging, when checking a misbehavior in the new controller. Please file an [issue at GitHub](https://github.com/jcmoraisjr/haproxy-ingress/issues/new?template=bug.md) in the case you find a problem in the new controller, even if the issue is solved moving to the old one. v0.16 will remove the old controller engine implementation.
 
 ### Deprecated command-line options
 
@@ -92,11 +101,14 @@ See the full syntax and default values in the [README.md](https://github.com/hap
 
 * Ali Afsharzadeh ([guoard](https://github.com/guoard))
 * Andrej Baran ([andrejbaran](https://github.com/andrejbaran))
+* Arrigo Zanette ([zanettea](https://github.com/zanettea))
 * Błażej Frydlewicz ([blafry](https://github.com/blafry))
 * Chris Boot ([bootc](https://github.com/bootc))
 * Dmitry Misharov ([quarckster](https://github.com/quarckster))
 * Dmitry Spikhalsky ([Spikhalskiy](https://github.com/Spikhalskiy))
+* Fredrik Wendel ([fredrik-w](https://github.com/fredrik-w))
 * genofire ([genofire](https://github.com/genofire))
+* Grzegorz Dziwoki ([gdziwoki](https://github.com/gdziwoki))
 * Jan Bebendorf ([JanHolger](https://github.com/JanHolger))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
 * Jop Zinkweg ([jzinkweg](https://github.com/jzinkweg))
@@ -107,9 +119,93 @@ See the full syntax and default values in the [README.md](https://github.com/hap
 * Matt Low ([mlow](https://github.com/mlow))
 * Manuel Rüger ([mrueg](https://github.com/mrueg))
 * Michele Palazzi ([ironashram](https://github.com/ironashram))
+* Philipp Hossner ([phihos](https://github.com/phihos))
 * Robin Schneider ([Crisu1710](https://github.com/Crisu1710))
+* RT ([hedgieinsocks](https://github.com/hedgieinsocks))
 * tomklapka ([tomklapka](https://github.com/tomklapka))
 * Tomasz Zurkowski ([doriath](https://github.com/doriath))
+
+# v0.15.0-beta.1
+
+## Reference (b1)
+
+* Release date: `2025-03-22`
+* Helm chart: `--version 0.15.0-beta.1 --devel`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.15.0-beta.1`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.15.0-beta.1`
+* Embedded HAProxy version: `2.6.21`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.15.0-beta.1`
+
+## Release notes (b1)
+
+This is the first beta version of the v0.15 branch, having important stability changes and vulnerability fixes since alpha.3. The main branch now is open for v0.16 development, including but not limited to code cleanup, better Gateway API support, and quic/h3.
+
+Find below a list of improvements made since `alpha.3`.
+
+Exclusive v0.15 changes include:
+
+- Robert found a misbehavior on status update, due to a misconfigured leader election. A controller instance that lost leader didn't start an election, so didn't have a chance to be the leader anymore.
+- Gateway API now supports multiple certificates on a single Gateway Listener.
+
+Other changes already merged to the stable branches:
+
+- Controller now retries to apply a haproxy reload in the case of a failure. Older controller versions didn't retry because all the failures are related with misconfiguration, but since master-worker and external modes are options, other network or socket related issues might happen.
+- TCP services now supports a list of TLS certificates.
+
+Fixes merged to stable branches:
+
+- Robson, Moacir and Fabio found a memory leak on Gateway API reconciliation. Depending on the changes being applied, an older in memory representation of the load balancer state is referenced by the new one, creating a chain of old representations not having a chance to be collected by GC.
+- rdavyd found an endpoint configuration overwrite in the case the same service, or a distinct service with the same endpoints are added in a single rule of a single HTTPRoute on Gateway API.
+- All known vulnerable components were updated, like go's stdlib and `golang.org/x/crypto`
+
+Dependencies:
+
+- embedded haproxy from 2.6.17 to 2.6.21
+- client-go from v0.30.2 to v0.32.3
+- controller-runtime from v0.18.4 to v0.20.3
+- go from 1.22.4 to 1.23.7, having `//go:debug default=go1.19` for backward compatibility (legacy controller)
+
+## Improvements (b1)
+
+New features and improvements since `v0.15.0-alpha.3`:
+
+* Bump golang.org/x/crypto from 0.24.0 to 0.27.0 [d768c6e](https://github.com/jcmoraisjr/haproxy-ingress/commit/d768c6e6981fdf6f11d543cdc9bb4c21f89055d0)
+* Update client-go and controller-runtime dependencies [#1168](https://github.com/jcmoraisjr/haproxy-ingress/pull/1168) (jcmoraisjr)
+* Bump github.com/Masterminds/sprig/v3 from 3.2.3 to 3.3.0 [d949e8e](https://github.com/jcmoraisjr/haproxy-ingress/commit/d949e8e64f1e5b9c40c04d1a51b37369e8b86f9e)
+* Bump github.com/prometheus/client_golang from 1.19.1 to 1.20.3 [47b7542](https://github.com/jcmoraisjr/haproxy-ingress/commit/47b75426b3f9c7bc01c183030022eed6de6789ca)
+* Bump github.com/prometheus/client_golang from 1.20.3 to 1.20.4 [19d1d95](https://github.com/jcmoraisjr/haproxy-ingress/commit/19d1d957817e21e5f12d6f20f2885490edf46919)
+* bump dependencies [#1206](https://github.com/jcmoraisjr/haproxy-ingress/pull/1206) (jcmoraisjr)
+* Bump golang.org/x/net from 0.30.0 to 0.33.0 [#1207](https://github.com/jcmoraisjr/haproxy-ingress/pull/1207)
+* configure test matrix for haproxy and kubernetes [#1208](https://github.com/jcmoraisjr/haproxy-ingress/pull/1208) (jcmoraisjr)
+* update dependencies [f9240c6](https://github.com/jcmoraisjr/haproxy-ingress/commit/f9240c67bcff0796e0f073e2da7958669d01e6b2) (Joao Morais)
+* Support list of server crt on tls tcp service [#1171](https://github.com/jcmoraisjr/haproxy-ingress/pull/1171) (jcmoraisjr)
+* change integration tests from random ports to sequential [#1209](https://github.com/jcmoraisjr/haproxy-ingress/pull/1209) (jcmoraisjr)
+* update docsy to v0.11.0 [29ce839](https://github.com/jcmoraisjr/haproxy-ingress/commit/29ce8398cf003fbb26c78e78b68bee794ed4fcfa) (Joao Morais)
+* modernize work queue implementation [#1213](https://github.com/jcmoraisjr/haproxy-ingress/pull/1213) (jcmoraisjr)
+* update dependencies [#1221](https://github.com/jcmoraisjr/haproxy-ingress/pull/1221) (jcmoraisjr)
+* update go from 1.23.6 to 1.23.7 [fe1f6aa](https://github.com/jcmoraisjr/haproxy-ingress/commit/fe1f6aa7506f18a3646b8a701fa3e6a4687446bd) (Joao Morais)
+* change reconciler to a custom type [#1222](https://github.com/jcmoraisjr/haproxy-ingress/pull/1222) (jcmoraisjr)
+* improve metrics doc and configuration [#1223](https://github.com/jcmoraisjr/haproxy-ingress/pull/1223) (jcmoraisjr)
+* adjust backward compatible debug default version [3259854](https://github.com/jcmoraisjr/haproxy-ingress/commit/3259854c4111a5e9338a4f28accdf393f758ace9) (Joao Morais)
+* update k8s dependencies [#1229](https://github.com/jcmoraisjr/haproxy-ingress/pull/1229) (jcmoraisjr)
+* allow multiple certificates [#1029](https://github.com/jcmoraisjr/haproxy-ingress/pull/1029) (zanettea)
+
+Chart improvements since `v0.15.0-alpha.3`:
+
+* Allow adding annotations on the ServiceAccount [#82](https://github.com/haproxy-ingress/charts/pull/82) (fredrik-w)
+* Set securityContext for haproxy init container [#84](https://github.com/haproxy-ingress/charts/pull/84) (phihos)
+* update registry of default backend image [#87](https://github.com/haproxy-ingress/charts/pull/87) (jcmoraisjr)
+* Enable deploying external HPA [#89](https://github.com/haproxy-ingress/charts/pull/89) (gdziwoki)
+* add gateway status update authorization [#90](https://github.com/haproxy-ingress/charts/pull/90) (jcmoraisjr)
+* Add controller.extraServices list [#86](https://github.com/haproxy-ingress/charts/pull/86) (hedgieinsocks)
+
+## Fixes (b1)
+
+* keep restarting leader election [#1210](https://github.com/jcmoraisjr/haproxy-ingress/pull/1210) (jcmoraisjr)
+* fix panic if gw does not have a valid class [#1211](https://github.com/jcmoraisjr/haproxy-ingress/pull/1211) (jcmoraisjr)
+* fix memory leak on gateway reconciliation [#1212](https://github.com/jcmoraisjr/haproxy-ingress/pull/1212) (jcmoraisjr)
+* retry reload haproxy if failed [#1214](https://github.com/jcmoraisjr/haproxy-ingress/pull/1214) (jcmoraisjr)
+* add endpoints even if duplicated [#1224](https://github.com/jcmoraisjr/haproxy-ingress/pull/1224) (jcmoraisjr)
 
 # v0.15.0-alpha.3
 
