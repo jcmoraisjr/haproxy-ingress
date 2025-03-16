@@ -489,7 +489,7 @@ func (c *converter) createBackend(routeSource *source, index string, backendRefs
 	convutils.RebalanceWeight(cl, 128)
 	for i := range backends {
 		for _, addr := range backends[i].epready {
-			ep := habackend.AcquireEndpoint(addr.IP, addr.Port, addr.TargetRef)
+			ep := habackend.AddEndpoint(addr.IP, addr.Port, addr.TargetRef)
 			ep.Weight = cl[i].Weight
 		}
 	}
