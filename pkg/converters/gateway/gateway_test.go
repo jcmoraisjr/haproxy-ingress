@@ -26,6 +26,7 @@ import (
 	api "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gwapischeme "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/scheme"
@@ -294,6 +295,34 @@ WARN skipping redeclared path '/' type 'prefix' on HTTPRoute 'default/web2'
   - ip: 172.17.0.12
     port: 8080
     weight: 128
+`,
+		},
+		{
+			id: "duplicate-endpoint",
+			config: func(c *testConfig) {
+				c.createGateway1("default/web", "l1,l2")
+				c.createService1("default/echoserver1", "8080", "172.17.0.11")
+				c.createService1("default/echoserver2", "8080", "172.17.0.11")
+				r := c.createHTTPRoute1("default/web1", "web:l1", "echoserver1:8080,echoserver2:8080")
+				r.Spec.Rules[0].BackendRefs[0].Weight = ptr.To[int32](1)
+				r.Spec.Rules[0].BackendRefs[1].Weight = ptr.To[int32](0)
+			},
+			expDefaultHost: `
+hostname: <default>
+paths:
+- path: /
+  match: prefix
+  backend: default_web1__rule0
+`,
+			expBackends: `
+- id: default_web1__rule0
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+    weight: 128
+  - ip: 172.17.0.11
+    port: 8080
+    drain: true
 `,
 		},
 	})
@@ -1147,7 +1176,7 @@ func (c *testConfig) createGateway2(name, listeners, secretName string) *gateway
 	return gw
 }
 
-func splitRouteInfo(name, parent, service string) (n, svc []string, pns, pn, ps string) {
+func splitRouteInfo(name, parent, services string) (n []string, svcs [][]string, pns, pn, ps string) {
 	n = strings.Split(name, "/")
 	if i := strings.Index(parent, "/"); i >= 0 {
 		pns = parent[:i]
@@ -1159,15 +1188,17 @@ func splitRouteInfo(name, parent, service string) (n, svc []string, pns, pn, ps 
 		ps = pn[i+1:]
 		pn = pn[:i]
 	}
-	svc = strings.Split(service, ":")
+	for _, svc := range strings.Split(services, ",") {
+		svcs = append(svcs, strings.Split(svc, ":"))
+	}
 	return
 }
 
-func (c *testConfig) createHTTPRoute1(name, parent, service string) *gatewayv1.HTTPRoute {
-	n, svc, pns, pn, ps := splitRouteInfo(name, parent, service)
-	r := CreateObject(`
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
+func (c *testConfig) createRoute(kind, version, name, parent, services string) string {
+	n, svcs, pns, pn, ps := splitRouteInfo(name, parent, services)
+	r := `
+apiVersion: gateway.networking.k8s.io/` + version + `
+kind: ` + kind + `
 metadata:
   name: ` + n[1] + `
   namespace: ` + n[0] + `
@@ -1177,9 +1208,19 @@ spec:
     namespace: ` + pns + `
     sectionName: ` + ps + `
   rules:
-  - backendRefs:
+  - backendRefs:`
+
+	for _, svc := range svcs {
+		r += `
     - name: ` + svc[0] + `
-      port: ` + svc[1]).(*gatewayv1.HTTPRoute)
+      port: ` + svc[1]
+	}
+
+	return r
+}
+
+func (c *testConfig) createHTTPRoute1(name, parent, service string) *gatewayv1.HTTPRoute {
+	r := CreateObject(c.createRoute("HTTPRoute", "v1", name, parent, service)).(*gatewayv1.HTTPRoute)
 	c.cache.HTTPRouteList = append(c.cache.HTTPRouteList, r)
 	return r
 }
@@ -1200,23 +1241,8 @@ func (c *testConfig) createHTTPRoute2(name, parent, service, paths string) *gate
 	return r
 }
 
-func (c *testConfig) createTCPRoute1(name, parent, service string) *gatewayv1alpha2.TCPRoute {
-	n, svc, pns, pn, ps := splitRouteInfo(name, parent, service)
-	r := CreateObject(`
-apiVersion: gateway.networking.k8s.io/v1alpha2
-kind: TCPRoute
-metadata:
-  name: ` + n[1] + `
-  namespace: ` + n[0] + `
-spec:
-  parentRefs:
-  - name: ` + pn + `
-    namespace: ` + pns + `
-    sectionName: ` + ps + `
-  rules:
-  - backendRefs:
-    - name: ` + svc[0] + `
-      port: ` + svc[1]).(*gatewayv1alpha2.TCPRoute)
+func (c *testConfig) createTCPRoute1(name, parent, services string) *gatewayv1alpha2.TCPRoute {
+	r := CreateObject(c.createRoute("TCPRoute", "v1alpha2", name, parent, services)).(*gatewayv1alpha2.TCPRoute)
 	c.cache.TCPRouteList = append(c.cache.TCPRouteList, r)
 	return r
 }
