@@ -292,6 +292,36 @@ WARN skipping redeclared path '/' type 'prefix' on HTTPRoute 'default/web2'
     weight: 128
 `,
 		},
+		{
+			id: "duplicate-endpoint",
+			config: func(c *testConfig) {
+				c.createGateway1("default/web", "l1,l2")
+				c.createService1("default/echoserver1", "8080", "172.17.0.11")
+				c.createService1("default/echoserver2", "8080", "172.17.0.11")
+				r := c.createHTTPRoute1("default/web1", "web:l1", "echoserver1:8080,echoserver2:8080")
+				w1 := int32(1)
+				w0 := int32(0)
+				r.Spec.Rules[0].BackendRefs[0].Weight = &w1
+				r.Spec.Rules[0].BackendRefs[1].Weight = &w0
+			},
+			expDefaultHost: `
+hostname: <default>
+paths:
+- path: /
+  match: prefix
+  backend: default_web1__rule0
+`,
+			expBackends: `
+- id: default_web1__rule0
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8080
+    weight: 128
+  - ip: 172.17.0.11
+    port: 8080
+    drain: true
+`,
+		},
 	})
 }
 
@@ -1073,9 +1103,8 @@ func (c *testConfig) createGateway2(name, listeners, secretName string) *gateway
 	return gw
 }
 
-func (c *testConfig) createHTTPRoute1(name, parent, service string) *gateway.HTTPRoute {
-	n := strings.Split(name, "/")
-	var pns, pn, ps string
+func splitRouteInfo(name, parent, services string) (n []string, svcs [][]string, pns, pn, ps string) {
+	n = strings.Split(name, "/")
 	if i := strings.Index(parent, "/"); i >= 0 {
 		pns = parent[:i]
 		pn = parent[i+1:]
@@ -1086,10 +1115,17 @@ func (c *testConfig) createHTTPRoute1(name, parent, service string) *gateway.HTT
 		ps = pn[i+1:]
 		pn = pn[:i]
 	}
-	svc := strings.Split(service, ":")
-	r := CreateObject(`
-apiVersion: gateway.networking.k8s.io/v1alpha2
-kind: HTTPRoute
+	for _, svc := range strings.Split(services, ",") {
+		svcs = append(svcs, strings.Split(svc, ":"))
+	}
+	return
+}
+
+func (c *testConfig) createRoute(kind, version, name, parent, services string) string {
+	n, svcs, pns, pn, ps := splitRouteInfo(name, parent, services)
+	r := `
+apiVersion: gateway.networking.k8s.io/` + version + `
+kind: ` + kind + `
 metadata:
   name: ` + n[1] + `
   namespace: ` + n[0] + `
@@ -1099,9 +1135,19 @@ spec:
     namespace: ` + pns + `
     sectionName: ` + ps + `
   rules:
-  - backendRefs:
+  - backendRefs:`
+
+	for _, svc := range svcs {
+		r += `
     - name: ` + svc[0] + `
-      port: ` + svc[1]).(*gateway.HTTPRoute)
+      port: ` + svc[1]
+	}
+
+	return r
+}
+
+func (c *testConfig) createHTTPRoute1(name, parent, service string) *gateway.HTTPRoute {
+	r := CreateObject(c.createRoute("HTTPRoute", "v1alpha2", name, parent, service)).(*gateway.HTTPRoute)
 	c.cache.HTTPRouteList = append(c.cache.HTTPRouteList, r)
 	return r
 }

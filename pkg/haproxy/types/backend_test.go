@@ -318,3 +318,51 @@ func TestPathIDs(t *testing.T) {
 		c.teardown()
 	}
 }
+
+func TestEndpointDeduplication(t *testing.T) {
+	c := setup(t)
+	b := createBackend(0, "default", "echoserver", "8080")
+	b.EpNaming = EpIPPort
+	testCases := []struct {
+		ip   string
+		port int
+		name string
+	}{
+		{
+			ip:   "10.0.0.1",
+			port: 8080,
+			name: "10.0.0.1:8080",
+		},
+		{
+			ip:   "10.0.0.2",
+			port: 8080,
+			name: "10.0.0.2:8080",
+		},
+		{
+			ip:   "10.0.0.1",
+			port: 8080,
+			name: "10.0.0.1:8080__2",
+		},
+		{
+			ip:   "10.0.0.1",
+			port: 8080,
+			name: "10.0.0.1:8080__3",
+		},
+		{
+			ip:   "10.0.0.2",
+			port: 8080,
+			name: "10.0.0.2:8080__2",
+		},
+		{
+			ip:   "10.0.0.3",
+			port: 8080,
+			name: "10.0.0.3:8080",
+		},
+	}
+	for i, test := range testCases {
+		ep := b.AddEndpoint(test.ip, test.port, "")
+		c.compareObjects("ep", i, ep.Name, test.name)
+	}
+	c.compareObjects("len(ep)", 0, len(b.Endpoints), 6)
+	c.teardown()
+}

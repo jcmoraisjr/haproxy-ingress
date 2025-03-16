@@ -51,12 +51,12 @@ func (b *Backend) AcquireEndpoint(ip string, port int, targetRef string) *Endpoi
 	if endpoint != nil {
 		return endpoint
 	}
-	return b.addEndpoint(ip, port, targetRef)
+	return b.AddEndpoint(ip, port, targetRef)
 }
 
 // AddEmptyEndpoint ...
 func (b *Backend) AddEmptyEndpoint() *Endpoint {
-	endpoint := b.addEndpoint("127.0.0.1", 1023, "")
+	endpoint := b.AddEndpoint("127.0.0.1", 1023, "")
 	endpoint.Enabled = false
 	// we need to set the cookie value to something here so that when dynamic
 	// update enables these endpoints without a reload, they will use cookie
@@ -66,7 +66,7 @@ func (b *Backend) AddEmptyEndpoint() *Endpoint {
 	return endpoint
 }
 
-func (b *Backend) addEndpoint(ip string, port int, targetRef string) *Endpoint {
+func (b *Backend) AddEndpoint(ip string, port int, targetRef string) *Endpoint {
 	var name string
 	switch b.EpNaming {
 	case EpTargetRef:
@@ -77,11 +77,8 @@ func (b *Backend) addEndpoint(ip string, port int, targetRef string) *Endpoint {
 			name = fmt.Sprintf("%s:%d", ip, port)
 		}
 	}
-	if name == "" {
-		name = fmt.Sprintf("srv%03d", len(b.Endpoints)+1)
-	}
 	endpoint := &Endpoint{
-		Name:      name,
+		Name:      b.sanitizeName(name, 1),
 		IP:        ip,
 		Port:      port,
 		Target:    fmt.Sprintf("%s:%d", ip, port),
@@ -91,6 +88,22 @@ func (b *Backend) addEndpoint(ip string, port int, targetRef string) *Endpoint {
 	}
 	b.Endpoints = append(b.Endpoints, endpoint)
 	return endpoint
+}
+
+func (b *Backend) sanitizeName(name string, idx int) string {
+	if name == "" {
+		return fmt.Sprintf("srv%03d", len(b.Endpoints)+1)
+	}
+	sname := name
+	if idx > 1 {
+		sname = fmt.Sprintf("%s__%d", name, idx)
+	}
+	for _, ep := range b.Endpoints {
+		if ep.Name == sname {
+			return b.sanitizeName(name, idx+1)
+		}
+	}
+	return sname
 }
 
 func (b *Backend) fillSourceIPs() {

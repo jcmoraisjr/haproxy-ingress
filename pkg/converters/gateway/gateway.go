@@ -319,7 +319,7 @@ func (c *converter) createBackend(source *Source, index string, backendRefs []ga
 	convutils.RebalanceWeight(cl, 128)
 	for i := range backends {
 		for _, addr := range backends[i].epready {
-			ep := habackend.AcquireEndpoint(addr.IP, addr.Port, addr.TargetRef)
+			ep := habackend.AddEndpoint(addr.IP, addr.Port, addr.TargetRef)
 			ep.Weight = cl[i].Weight
 		}
 	}
