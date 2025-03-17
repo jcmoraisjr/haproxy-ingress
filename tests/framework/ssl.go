@@ -3,13 +3,16 @@ package framework
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/jcmoraisjr/haproxy-ingress/tests/framework/options"
@@ -19,6 +22,12 @@ const (
 	CertificateIssuerCN = "HAProxy Ingress issuer"
 	CertificateClientCN = "HAProxy Ingress client"
 )
+
+func TLSConnection(collect assert.TestingT, host string, port int32) *tls.Conn {
+	c, err := tls.Dial("tcp", fmt.Sprintf(":%d", port), &tls.Config{InsecureSkipVerify: true, ServerName: host})
+	assert.NoError(collect, err)
+	return c
+}
 
 func CreateCA(t *testing.T, cn string) (ca, key []byte) {
 	serial, err := rand.Int(rand.Reader, big.NewInt(2^63))

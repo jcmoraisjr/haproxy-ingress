@@ -3,7 +3,6 @@ package integration_test
 import (
 	"context"
 	"crypto/sha1"
-	"crypto/tls"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
@@ -19,6 +18,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	"github.com/jcmoraisjr/haproxy-ingress/tests/framework"
@@ -570,27 +570,21 @@ func TestIntegrationIngress(t *testing.T) {
 			}),
 		)
 
-		connect := func(collect assert.TestingT, host string) *tls.Conn {
-			c, err := tls.Dial("tcp", fmt.Sprintf(":%d", tcpIngressPort), &tls.Config{InsecureSkipVerify: true, ServerName: host})
-			assert.NoError(collect, err)
-			return c
-		}
-
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			_ = connect(collect, "localhost")
+			_ = framework.TLSConnection(collect, "localhost", tcpIngressPort)
 		}, 5*time.Second, time.Second)
 
-		conn := connect(t, "localhost")
+		conn := framework.TLSConnection(t, "localhost", tcpIngressPort)
 		require.NotNil(t, conn)
 		assert.Equal(t, "tcphost0", conn.ConnectionState().PeerCertificates[0].Subject.CommonName)
 		require.NoError(t, conn.Close())
 
-		conn0 := connect(t, "tcphost0.local")
+		conn0 := framework.TLSConnection(t, "tcphost0.local", tcpIngressPort)
 		require.NotNil(t, conn0)
 		assert.Equal(t, "tcphost0", conn0.ConnectionState().PeerCertificates[0].Subject.CommonName)
 		require.NoError(t, conn0.Close())
 
-		conn1 := connect(t, "tcphost1.local")
+		conn1 := framework.TLSConnection(t, "tcphost1.local", tcpIngressPort)
 		require.NotNil(t, conn1)
 		assert.Equal(t, "tcphost1", conn1.ConnectionState().PeerCertificates[0].Subject.CommonName)
 		require.NoError(t, conn1.Close())
@@ -667,6 +661,63 @@ func TestIntegrationGateway(t *testing.T) {
 			assert.Equal(t, "ping", res1)
 			res2 := f.TCPRequest(ctx, t, listenerPort, "reply")
 			assert.Equal(t, "reply", res2)
+		})
+
+		t.Run("multi certificates on listener", func(t *testing.T) {
+			t.Parallel()
+			caCrt, caKey := framework.CreateCA(t, framework.CertificateIssuerCN)
+			crt1, key1 := framework.CreateCertificate(t, caCrt, caKey, "host1", options.DNS("host1.local"))
+			crt2, key2 := framework.CreateCertificate(t, caCrt, caKey, "host2", options.DNS("host2.local"))
+			secret1 := f.CreateSecretTLS(ctx, t, crt1, key1)
+			secret2 := f.CreateSecretTLS(ctx, t, crt2, key2)
+			gw := f.CreateGatewayV1(ctx, t, gc,
+				options.Custom(func(o client.Object) {
+					g := o.(*gatewayv1.Gateway)
+					g.Spec.Listeners = []gatewayv1.Listener{{
+						Name:     "l1",
+						Port:     443,
+						Protocol: gatewayv1.HTTPSProtocolType,
+						TLS: &gatewayv1.GatewayTLSConfig{
+							CertificateRefs: []gatewayv1.SecretObjectReference{
+								{Name: gatewayv1.ObjectName(secret1.Name)},
+								{Name: gatewayv1.ObjectName(secret2.Name)},
+							},
+						},
+					}}
+				}),
+			)
+			svc := f.CreateService(ctx, t, httpServerPort)
+			_, _ = f.CreateHTTPRouteV1(ctx, t, gw, svc,
+				options.Custom(func(o client.Object) {
+					h := o.(*gatewayv1.HTTPRoute)
+					h.Spec.Hostnames = []gatewayv1.Hostname{
+						"host1.local",
+						"host2.local",
+						"host3.local",
+					}
+				}),
+			)
+			hostsExpectedCN := map[string]string{
+				"host1.local": "host1",
+				"host2.local": "host2",
+				"host3.local": "host1",
+			}
+			for h, expCN := range hostsExpectedCN {
+				res := f.Request(ctx, t, http.MethodGet, h, "/",
+					options.TLSRequest(),
+					options.ClientCA(caCrt),
+					options.SNI(h),
+					options.TLSVerify(h != "host3.local"), // host3.local uses an invalid crt
+					options.ExpectResponseCode(http.StatusOK),
+				)
+				assert.True(t, res.EchoResponse.Parsed)
+				assert.Equal(t, "https", res.EchoResponse.ReqHeaders["x-forwarded-proto"])
+
+				conn := framework.TLSConnection(t, h, framework.TestPortHTTPS)
+				require.NotNil(t, conn)
+				assert.Equal(t, expCN, conn.ConnectionState().PeerCertificates[0].Subject.CommonName)
+				require.NoError(t, conn.Close())
+			}
 		})
 	})
 }

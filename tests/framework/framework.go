@@ -235,9 +235,11 @@ func (*framework) Request(ctx context.Context, t *testing.T, method, host, path 
 	t.Logf("request method=%s host=%s path=%s\n", method, host, path)
 	opt := options.ParseRequestOptions(o...)
 
-	url := fmt.Sprintf("http://127.0.0.1:%d", TestPortHTTP)
+	var url string
 	if opt.TLS {
 		url = fmt.Sprintf("https://127.0.0.1:%d", TestPortHTTPS)
+	} else {
+		url = fmt.Sprintf("http://127.0.0.1:%d", TestPortHTTP)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, url, nil)
 	require.NoError(t, err)

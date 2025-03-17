@@ -521,10 +521,9 @@ func (c *c) GetTLSSecretPath(defaultNamespace, secretName string, track []convty
 		return file, fmt.Errorf("secret '%s/%s' does not have keys 'tls.crt' and 'tls.key'", namespace, name)
 	}
 	file = convtypes.CrtFile{
-		Filename:   sslCert.PemFileName,
-		SHA1Hash:   sslCert.PemSHA,
-		CommonName: sslCert.Certificate.Subject.CommonName,
-		NotAfter:   sslCert.Certificate.NotAfter,
+		Filename:    sslCert.PemFileName,
+		SHA1Hash:    sslCert.PemSHA,
+		Certificate: sslCert.Certificate,
 	}
 	return file, nil
 }

@@ -19,10 +19,8 @@ package gateway
 import (
 	"fmt"
 	"reflect"
-	"regexp"
 	"sort"
 	"strconv"
-	"strings"
 
 	api "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -649,6 +647,7 @@ func (c *converter) applyCertRef(source *gatewaySource, listener *gatewayv1.List
 			source, listener.Name)
 		return
 	}
+	var defaultCrtFile *convtypes.CrtFile
 	// iterate over all certRefs
 	for i := range certRefs {
 		certRef := certRefs[i]
@@ -658,38 +657,36 @@ func (c *converter) applyCertRef(source *gatewaySource, listener *gatewayv1.List
 				source, listener.Name, err)
 			return
 		}
-		// in crtFile.CommonName replace wildcards * with common regex wildcard .*
-		crtFilePattern := strings.ReplaceAll(crtFile.CommonName, "*", ".*")
+		if defaultCrtFile == nil {
+			// first certificate, use later on hosts with missing ones
+			defaultCrtFile = &crtFile
+		}
 		for _, host := range hosts {
-
-			// if host.TLS.TLSCommonName matches regex patter crtFilePattern
-			if ok, _ := regexp.MatchString(crtFilePattern, host.Hostname); ok {
+			if crtFile.Certificate.VerifyHostname(host.Hostname) == nil {
 				if host.TLS.TLSHash != "" && host.TLS.TLSHash != crtFile.SHA1Hash {
 					c.logger.Warn("skipping certificate reference on %s listener '%s' for hostname '%s': a TLS certificate was already assigned",
 						source, listener.Name, host.Hostname)
 					continue
 				}
-				host.TLS.TLSCommonName = crtFile.CommonName
+				host.TLS.TLSCommonName = crtFile.Certificate.Subject.CommonName
 				host.TLS.TLSFilename = crtFile.Filename
 				host.TLS.TLSHash = crtFile.SHA1Hash
 			}
 		}
 	}
-	// Use first certificate to fix all missing hosts (legacy behavior)
-	certRef := &certRefs[0]
-	crtFile, err := c.readCertRef(source.namespace, certRef)
-	if err != nil {
-		c.logger.Warn("skipping certificate reference on %s listener '%s': %s",
-			source, listener.Name, err)
+	if defaultCrtFile == nil {
+		c.logger.Warn("skipping certificate reference on %s listener '%s': listener has no valid certificate reference",
+			source, listener.Name)
 		return
 	}
+	// Use first valid certificate to fix all missing hosts
 	for _, host := range hosts {
 		if host.TLS.TLSHash != "" {
 			continue
 		}
-		host.TLS.TLSCommonName = crtFile.CommonName
-		host.TLS.TLSFilename = crtFile.Filename
-		host.TLS.TLSHash = crtFile.SHA1Hash
+		host.TLS.TLSCommonName = defaultCrtFile.Certificate.Subject.CommonName
+		host.TLS.TLSFilename = defaultCrtFile.Filename
+		host.TLS.TLSHash = defaultCrtFile.SHA1Hash
 	}
 }
 

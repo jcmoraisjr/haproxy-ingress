@@ -252,10 +252,9 @@ func (s *SSL) createFakeCertAndCA() (crtFile, caFile convtypes.CrtFile, err erro
 		return crtFile, caFile, err
 	}
 	crtFile = convtypes.CrtFile{
-		Filename:   sslCrt.PemFileName,
-		SHA1Hash:   sslCrt.PemSHA,
-		CommonName: sslCrt.Certificate.Subject.CommonName,
-		NotAfter:   sslCrt.Certificate.NotAfter,
+		Filename:    sslCrt.PemFileName,
+		SHA1Hash:    sslCrt.PemSHA,
+		Certificate: sslCrt.Certificate,
 	}
 	caFile = convtypes.CrtFile{
 		Filename: sslCA.PemFileName,
