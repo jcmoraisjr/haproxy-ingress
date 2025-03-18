@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.13!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.14.8](#v0148)
+  * [Reference](#reference-r8)
+  * [Release notes](#release-notes-r8)
+  * [Fixes and improvements](#fixes-and-improvements-r8)
 * [v0.14.7](#v0147)
   * [Reference](#reference-r7)
   * [Release notes](#release-notes-r7)
@@ -107,6 +111,56 @@ Breaking backward compatibility from v0.13:
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
 * wolf-cosmose ([wolf-cosmose](https://github.com/wolf-cosmose))
+
+# v0.14.8
+
+## Reference (r8)
+
+* Release date: `2025-03-18`
+* Helm chart: `--version 0.14.8`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.14.8`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.14.8`
+* Embedded HAProxy version: `2.4.28`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.14.8`
+
+## Release notes (r8)
+
+This release updates the embedded haproxy version, and fixes issues and vulnerable components found in the v0.14 branch.
+
+- Robson, Moacir and Fabio found a memory leak on Gateway API reconciliation. Depending on the changes being applied, an older in memory representation of the load balancer state is referenced by the new one, creating a chain of old representations not having a chance to be collected by GC.
+- rdavyd found an endpoint configuration overwrite in the case the same service, or a distinct service with the same endpoints are added in a single rule of a single HTTPRoute on Gateway API.
+- Controller now retries to apply a haproxy reload in the case of a failure. Older controller versions didn't retry because all the failures are related with misconfiguration, but since master-worker and external modes are options, other network or socket related issues might happen.
+- TCP services now supports a list of TLS certificates.
+- All known vulnerable components were updated, like go's stdlib and `golang.org/x/crypto`
+
+Dependencies:
+
+- embedded haproxy from 2.4.26 to 2.4.28
+- go from 1.19.13 to 1.23.7, having `//go:debug default=go1.19` for backward compatibility
+
+## Fixes and improvements (r8)
+
+Fixes and improvements since `v0.14.7`:
+
+* bump vulnerable components [0668bf5](https://github.com/jcmoraisjr/haproxy-ingress/commit/0668bf5c4d02aa5cf5a519e779b639a56d0629f6) (Joao Morais)
+* update embedded haproxy from 2.4.26 to 2.4.28 [2ba342c](https://github.com/jcmoraisjr/haproxy-ingress/commit/2ba342c15061217f2229ec22db22c3f568060906) (Joao Morais)
+* Support list of server crt on tls tcp service [#1171](https://github.com/jcmoraisjr/haproxy-ingress/pull/1171) (jcmoraisjr)
+* ingress tcp test improvement [37ba454](https://github.com/jcmoraisjr/haproxy-ingress/commit/37ba454ba118444859670936dc53e7fa718a9dd1) (Joao Morais)
+* fix memory leak on gateway reconciliation [#1212](https://github.com/jcmoraisjr/haproxy-ingress/pull/1212) (jcmoraisjr)
+* fix lint [b6b9e24](https://github.com/jcmoraisjr/haproxy-ingress/commit/b6b9e249d6c223772f2244d97ddfa829f3fd3562) (Joao Morais)
+* retry reload haproxy if failed [#1214](https://github.com/jcmoraisjr/haproxy-ingress/pull/1214) (jcmoraisjr)
+* bump vulnerable components [91c51f6](https://github.com/jcmoraisjr/haproxy-ingress/commit/91c51f6b8b508de43ea385e40bcf571f84dd2ca6) (Joao Morais)
+* update go from 1.23.6 to 1.23.7 [e8e8129](https://github.com/jcmoraisjr/haproxy-ingress/commit/e8e8129518f92b64ad26b33e3e63d7e747417fc3) (Joao Morais)
+* add endpoints even if duplicated [#1224](https://github.com/jcmoraisjr/haproxy-ingress/pull/1224) (jcmoraisjr)
+* adjust backward compatible debug default version [5830c78](https://github.com/jcmoraisjr/haproxy-ingress/commit/5830c78d7ad4232bb243e6a276957821c7d9b9e2) (Joao Morais)
+
+Chart improvements since `v0.14.7`:
+
+* Allow adding annotations on the ServiceAccount [#82](https://github.com/haproxy-ingress/charts/pull/82) (fredrik-w)
+* Set securityContext for haproxy init container [#84](https://github.com/haproxy-ingress/charts/pull/84) (phihos)
+* update registry of default backend image [#87](https://github.com/haproxy-ingress/charts/pull/87) (jcmoraisjr)
+* Enable deploying external HPA [#89](https://github.com/haproxy-ingress/charts/pull/89) (gdziwoki)
+* Add controller.extraServices list [#86](https://github.com/haproxy-ingress/charts/pull/86) (hedgieinsocks)
 
 # v0.14.7
 
