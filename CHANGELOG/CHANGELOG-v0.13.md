@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.12!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.13.17](#v01317)
+  * [Reference](#reference-r17)
+  * [Release notes](#release-notes-r17)
+  * [Fixes and improvements](#fixes-and-improvements-r17)
 * [v0.13.16](#v01316)
   * [Reference](#reference-r16)
   * [Release notes](#release-notes-r16)
@@ -139,6 +143,35 @@ Breaking backward compatibility from v0.12
 * Roman Gherta ([rgherta](https://github.com/rgherta))
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
+
+# v0.13.17
+
+## Reference (r17)
+
+* Release date: `2025-03-18`
+* Helm chart: `--version 0.13.17`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.17`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.13.17`
+* Embedded HAProxy version: `2.4.28`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.13.17`
+
+## Release notes (r17)
+
+This release updates the embedded haproxy version, and fixes vulnerable components found in the v0.13 branch.
+
+Dependencies:
+
+- embedded haproxy from 2.4.26 to 2.4.28
+- go from 1.18.10 to 1.23.7, having `//go:debug default=go1.18` for backward compatibility
+
+## Fixes and improvements (r17)
+
+Fixes and improvements since `v0.13.16`:
+
+* update embedded haproxy from 2.4.26 to 2.4.28 [873035d](https://github.com/jcmoraisjr/haproxy-ingress/commit/873035d521cac050f88141348f35a7efa2c6eb23) (Joao Morais)
+* update go from 1.18.10 to 1.22.12 [ad83fed](https://github.com/jcmoraisjr/haproxy-ingress/commit/ad83fed49661f1ac2a9d7578c58dd500a3d67edb) (Joao Morais)
+* bump vulnerable components [9b0536a](https://github.com/jcmoraisjr/haproxy-ingress/commit/9b0536ac12da17ad0f5ee29dae31f5dc246f4cb3) (Joao Morais)
+* update go from 1.22.12 to 1.23.7 [8053abe](https://github.com/jcmoraisjr/haproxy-ingress/commit/8053abeeac276d860096e3b000d575a2efd1cbf6) (Joao Morais)
 
 # v0.13.16
 
