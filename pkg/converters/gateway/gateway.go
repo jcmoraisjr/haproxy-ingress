@@ -18,8 +18,10 @@ package gateway
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 
 	api "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -451,12 +453,32 @@ func (c *converter) applyCertRef(source *Source, listener *gatewayv1alpha2.Liste
 			source, listener.Name)
 		return
 	}
-	// TODO Support more certificates
-	if len(certRefs) > 1 {
-		err := fmt.Errorf("listener currently supports only the first referenced certificate")
-		c.logger.Warn("skipping one or more certificate references on %s listener '%s': %s",
-			source, listener.Name, err)
+	// iterate over all certRefs
+	for _, certRef := range certRefs {
+		crtFile, err := c.readCertRef(source.namespace, certRef)
+		if err != nil {
+			c.logger.Warn("skipping certificate reference on %s listener '%s': %s",
+				source, listener.Name, err)
+			return
+		}
+		// in crtFile.CommonName replace wildcards * with common regex wildcard .*
+		crtFilePattern := strings.ReplaceAll(crtFile.CommonName, "*", ".*")
+		for _, host := range hosts {
+
+			// if host.TLS.TLSCommonName matches regex patter crtFilePattern
+			if ok, _ := regexp.MatchString(crtFilePattern, host.Hostname); ok {
+				if host.TLS.TLSHash != "" && host.TLS.TLSHash != crtFile.SHA1Hash {
+					c.logger.Warn("skipping certificate reference on %s listener '%s' for hostname '%s': a TLS certificate was already assigned",
+						source, listener.Name, host.Hostname)
+					continue
+				}
+				host.TLS.TLSCommonName = crtFile.CommonName
+				host.TLS.TLSFilename = crtFile.Filename
+				host.TLS.TLSHash = crtFile.SHA1Hash
+			}
+		}
 	}
+	// Use first certificate to fix all missing hosts (legacy behavior)
 	certRef := certRefs[0]
 	crtFile, err := c.readCertRef(source.namespace, certRef)
 	if err != nil {
@@ -465,9 +487,7 @@ func (c *converter) applyCertRef(source *Source, listener *gatewayv1alpha2.Liste
 		return
 	}
 	for _, host := range hosts {
-		if host.TLS.TLSHash != "" && host.TLS.TLSHash != crtFile.SHA1Hash {
-			c.logger.Warn("skipping certificate reference on %s listener '%s' for hostname '%s': a TLS certificate was already assigned",
-				source, listener.Name, host.Hostname)
+		if host.TLS.TLSHash != "" {
 			continue
 		}
 		host.TLS.TLSCommonName = crtFile.CommonName
