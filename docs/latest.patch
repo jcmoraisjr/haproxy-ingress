@@ -10,7 +10,7 @@
  [[params.versions]]
 -version = "Latest"
 -url = "/docs"
-+version = "v0.15 (snapshot)"
++version = "v0.15 (beta)"
 +url = "/v0.15/docs"
  
  [[params.versions]]
