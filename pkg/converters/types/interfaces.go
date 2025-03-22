@@ -17,8 +17,8 @@ limitations under the License.
 package types
 
 import (
+	"crypto/x509"
 	"net"
-	"time"
 
 	api "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
@@ -165,8 +165,7 @@ type File struct {
 
 // CrtFile ...
 type CrtFile struct {
-	Filename   string
-	SHA1Hash   string
-	CommonName string
-	NotAfter   time.Time
+	Filename    string
+	SHA1Hash    string
+	Certificate *x509.Certificate
 }

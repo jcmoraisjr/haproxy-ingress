@@ -128,7 +128,7 @@ type ingressClassConfig struct {
 
 func (c *converter) NeedFullSync() bool {
 	needFullSync := c.defaultCrtNeedFullSync() || c.globalConfigNeedFullSync()
-	if needFullSync && c.defaultCrt == c.options.FakeCrtFile {
+	if needFullSync && c.defaultCrt.SHA1Hash == c.options.FakeCrtFile.SHA1Hash {
 		c.logger.Info("using auto generated fake certificate")
 	}
 	return needFullSync
@@ -463,8 +463,8 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 			if host.TLS.TLSHash == "" {
 				host.TLS.TLSFilename = tlsPath.Filename
 				host.TLS.TLSHash = tlsPath.SHA1Hash
-				host.TLS.TLSCommonName = tlsPath.CommonName
-				host.TLS.TLSNotAfter = tlsPath.NotAfter
+				host.TLS.TLSCommonName = tlsPath.Certificate.Subject.CommonName
+				host.TLS.TLSNotAfter = tlsPath.Certificate.NotAfter
 			} else if host.TLS.TLSHash != tlsPath.SHA1Hash {
 				msg := fmt.Sprintf("TLS of host '%s' was already assigned", host.Hostname)
 				if tls.SecretName != "" {
@@ -574,8 +574,8 @@ func (c *converter) syncIngressTCP(source *annotations.Source, ing *networking.I
 					TLSConfig: hatypes.TLSConfig{
 						TLSFilename:   tlsPath.Filename,
 						TLSHash:       tlsPath.SHA1Hash,
-						TLSCommonName: tlsPath.CommonName,
-						TLSNotAfter:   tlsPath.NotAfter,
+						TLSCommonName: tlsPath.Certificate.Subject.CommonName,
+						TLSNotAfter:   tlsPath.Certificate.NotAfter,
 						// tcp updater fills other tlsConfig fields, reading from annotation config
 					},
 				}

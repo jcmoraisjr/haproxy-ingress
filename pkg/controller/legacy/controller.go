@@ -219,10 +219,9 @@ func (hc *HAProxyController) stopServices() {
 func (hc *HAProxyController) createFakeCrtFile() (tlsFile convtypes.CrtFile) {
 	path, hash, crt := hc.controller.CreateDefaultSSLCertificate()
 	return convtypes.CrtFile{
-		Filename:   path,
-		SHA1Hash:   hash,
-		CommonName: crt.Subject.CommonName,
-		NotAfter:   crt.NotAfter,
+		Filename:    path,
+		SHA1Hash:    hash,
+		Certificate: crt,
 	}
 }
 

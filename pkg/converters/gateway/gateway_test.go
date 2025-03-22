@@ -660,9 +660,6 @@ WARN skipping certificate reference on Gateway 'default/web' listener 'l1': secr
 				c.createHTTPRoute1("default/web", "web:l1", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 			},
-			expLogging: `
-WARN skipping one or more certificate references on Gateway 'default/web' listener 'l1': listener currently supports only the first referenced certificate
-`,
 			expDefaultHost: defaultHTTPSHost,
 			expBackends:    defaultBackend,
 		},

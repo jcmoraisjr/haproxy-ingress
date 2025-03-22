@@ -18,10 +18,10 @@ package helper_test
 
 import (
 	"crypto/sha1"
+	"crypto/x509"
 	"fmt"
 	"net"
 	"strings"
-	"time"
 
 	api "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
@@ -231,10 +231,9 @@ func (c *CacheMock) GetTLSSecretPath(defaultNamespace, secretName string, track 
 	c.tracker.TrackRefName(track, convtypes.ResourceSecret, fullname)
 	if path, found := c.SecretTLSPath[fullname]; found {
 		return convtypes.CrtFile{
-			Filename:   path,
-			SHA1Hash:   fmt.Sprintf("%x", sha1.Sum([]byte(path))),
-			CommonName: "localhost.localdomain",
-			NotAfter:   time.Now().AddDate(0, 0, 30),
+			Filename:    path,
+			SHA1Hash:    fmt.Sprintf("%x", sha1.Sum([]byte(path))),
+			Certificate: &x509.Certificate{},
 		}, nil
 	}
 	return convtypes.CrtFile{}, fmt.Errorf("secret not found: '%s'", fullname)

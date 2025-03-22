@@ -20,6 +20,12 @@ func TLSRequest() Request {
 	}
 }
 
+func TLSVerify(verify bool) Request {
+	return func(o *requestOpt) {
+		o.TLSSkipVerify = !verify
+	}
+}
+
 func TLSSkipVerify() Request {
 	return func(o *requestOpt) {
 		o.TLSSkipVerify = true
