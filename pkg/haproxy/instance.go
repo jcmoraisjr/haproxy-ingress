@@ -28,25 +28,26 @@ import (
 	"syscall"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/wait"
+
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/socket"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
-	"k8s.io/apimachinery/pkg/util/wait"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils/workqueue"
 )
 
 // InstanceOptions ...
 type InstanceOptions struct {
 	AcmeSigner        acme.Signer
-	AcmeQueue         utils.QueueFacade
+	AcmeQueue         acme.Queue
 	RootFSPrefix      string
 	LocalFSPrefix     string
 	BackendShards     int
 	HAProxyCfgDir     string
 	HAProxyMapsDir    string
-	LeaderElector     types.LeaderElector
 	IsMasterWorker    bool
 	IsExternal        bool
 	MasterSocket      string
@@ -54,7 +55,7 @@ type InstanceOptions struct {
 	AcmeSocket        string
 	MaxOldConfigFiles int
 	Metrics           types.Metrics
-	ReloadQueue       utils.QueueFacade
+	ReloadQueue       *workqueue.WorkQueue[any]
 	ReloadStrategy    string
 	SortEndpointsBy   string
 	StopCh            <-chan struct{}
@@ -123,12 +124,6 @@ func (i *instance) AcmeCheck(source string) (int, error) {
 	hasAccount := i.acmeEnsureConfig(i.config.AcmeData())
 	if !hasAccount {
 		return count, fmt.Errorf("cannot create or retrieve the acme client account")
-	}
-	le := i.options.LeaderElector
-	if !le.IsLeader() {
-		msg := fmt.Sprintf("skipping acme periodic check, leader is %s", le.LeaderName())
-		i.logger.Info(msg)
-		return count, fmt.Errorf("%s", msg)
 	}
 	i.logger.Info("starting certificate check (%s)", source)
 	for _, storage := range i.config.AcmeData().Storages().BuildAcmeStorages() {
@@ -271,20 +266,15 @@ func (i *instance) AcmeUpdate() {
 		return
 	}
 	storages := i.config.AcmeData().Storages()
-	le := i.options.LeaderElector
-	if le.IsLeader() {
-		hasAccount := i.acmeEnsureConfig(i.config.AcmeData())
-		if !hasAccount {
-			return
-		}
-		for _, add := range storages.BuildAcmeStoragesAdd() {
-			i.acmeAddStorage(add)
-		}
-		for _, del := range storages.BuildAcmeStoragesDel() {
-			i.acmeRemoveStorage(del)
-		}
-	} else if storages.Updated() {
-		i.logger.InfoV(2, "skipping acme update check, leader is %s", le.LeaderName())
+	hasAccount := i.acmeEnsureConfig(i.config.AcmeData())
+	if !hasAccount {
+		return
+	}
+	for _, add := range storages.BuildAcmeStoragesAdd() {
+		i.acmeAddStorage(add)
+	}
+	for _, del := range storages.BuildAcmeStoragesDel() {
+		i.acmeRemoveStorage(del)
 	}
 }
 

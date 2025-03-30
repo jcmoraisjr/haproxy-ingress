@@ -32,7 +32,6 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils/workqueue"
 )
@@ -53,7 +52,7 @@ type Services struct {
 	metrics      *metrics
 	modelMutex   sync.Mutex
 	reloadCount  int
-	reloadQueue  utils.QueueFacade
+	reloadQueue  *workqueue.WorkQueue[any]
 	svcleader    *svcLeader
 	svchealthz   *svcHealthz
 	svcstatus    *svcStatusUpdater
@@ -97,7 +96,7 @@ func (s *Services) setup(ctx context.Context) error {
 	// When refactoring, give these initializations a special attention to avoid https://go.dev/doc/faq#nil_error
 	// This happens when a nil struct pointer is assigned to an interface var: that interface will render `intf != nil` as true.
 
-	var reloadQueue utils.QueueFacade
+	var reloadQueue *workqueue.WorkQueue[any]
 	if cfg.ReloadInterval > 0 {
 		reloadQueue = workqueue.New(s.reloadHAProxy, workqueue.ReloadHAProxyRateLimiter(cfg.ReloadInterval))
 	}
@@ -117,14 +116,12 @@ func (s *Services) setup(ctx context.Context) error {
 	var acmeClient *svcAcmeClient
 	var acmeServer *svcAcmeServer
 	var acmeSigner acme.Signer
-	var acmeQueue utils.QueueFacade
-	var acmeLeaderElector types.LeaderElector
+	var acmeQueue acme.Queue
 	if cfg.AcmeServer {
 		acmeClient = initSvcAcmeClient(ctx, s.Config, s.legacylogger, cache, metrics, svcleader, s.acmePeriodicCheck)
 		acmeServer = initSvcAcmeServer(ctx, s.legacylogger, cache, acmeSocket)
 		acmeSigner = acmeClient.signer
 		acmeQueue = acmeClient
-		acmeLeaderElector = acmeClient
 	}
 	instanceOptions := haproxy.InstanceOptions{
 		RootFSPrefix:      rootFSPrefix,
@@ -147,7 +144,6 @@ func (s *Services) setup(ctx context.Context) error {
 		ValidateConfig:    cfg.ValidateConfig,
 		AcmeSigner:        acmeSigner,
 		AcmeQueue:         acmeQueue,
-		LeaderElector:     acmeLeaderElector,
 	}
 	converterOptions := &convtypes.ConverterOptions{
 		Logger:           s.legacylogger.new("converter"),
