@@ -27,7 +27,6 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils/workqueue"
 )
 
@@ -77,7 +76,7 @@ type svcAcmeClient struct {
 	check  svcAcmeCheckFnc
 	config *config.Config
 	signer acme.Signer
-	queue  utils.QueueFacade
+	queue  *workqueue.WorkQueue[any]
 }
 
 func (s *svcAcmeClient) Start(ctx context.Context) error {
@@ -125,12 +124,3 @@ func (s *svcAcmeClient) AddAfter(item interface{}, duration time.Duration) {
 func (s *svcAcmeClient) Remove(item interface{}) {
 	s.queue.Remove(item)
 }
-
-// svcAcmeClient just satisfies LeaderElector interface. The new controller controls if
-// we're leading by other means, so from the instance perspective we're always the leader.
-//
-// TODO: Can be removed after removing legacy controller.
-
-func (s *svcAcmeClient) IsLeader() bool             { return true }
-func (s *svcAcmeClient) LeaderName() string         { return "<unknown>" }
-func (s *svcAcmeClient) Run(stopCh <-chan struct{}) {}

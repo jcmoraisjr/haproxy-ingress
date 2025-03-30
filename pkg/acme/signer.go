@@ -43,6 +43,11 @@ type Signer interface {
 	Notify(item interface{}) error
 }
 
+type Queue interface {
+	Add(item any)
+	Remove(item any)
+}
+
 // Cache ...
 type Cache interface {
 	ClientResolver
