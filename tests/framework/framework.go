@@ -473,8 +473,8 @@ spec:
 `
 	name := RandomName("ing")
 	var hostname string
-	if opt.IngressOpt.CustomHostName != nil {
-		hostname = *opt.IngressOpt.CustomHostName
+	if opt.CustomHostName != nil {
+		hostname = *opt.CustomHostName
 	} else {
 		hostname = name + ".local"
 	}
@@ -483,11 +483,11 @@ spec:
 	ing.Name = name
 	ing.Spec.Rules[0].Host = hostname
 	ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name = svc.Name
-	if opt.IngressOpt.CustomTLSSecret != "" {
+	if opt.CustomTLSSecret != "" {
 		ing.Spec.TLS = []networking.IngressTLS{{
-			SecretName: opt.IngressOpt.CustomTLSSecret,
+			SecretName: opt.CustomTLSSecret,
 		}}
-	} else if opt.IngressOpt.DefaultTLS {
+	} else if opt.DefaultTLS {
 		ing.Spec.TLS = []networking.IngressTLS{{SecretName: ""}}
 	}
 	if len(ing.Spec.TLS) > 0 && hostname != "" {

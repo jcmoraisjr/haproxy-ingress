@@ -307,7 +307,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		configLog.Info("running embedded haproxy", "mode", "daemon")
 	}
 
-	if !(opt.ReloadStrategy == "native" || opt.ReloadStrategy == "reusesocket" || opt.ReloadStrategy == "multibinder") {
+	if opt.ReloadStrategy != "native" && opt.ReloadStrategy != "reusesocket" && opt.ReloadStrategy != "multibinder" {
 		return nil, fmt.Errorf("unsupported reload strategy: %s", opt.ReloadStrategy)
 	}
 	if opt.ReloadStrategy == "multibinder" {
