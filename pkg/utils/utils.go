@@ -92,12 +92,12 @@ func SizeSuffixToInt64(size string) (int64, error) {
 		return value, nil
 	}
 	if len(size) == 0 {
-		return 0, fmt.Errorf("Cannot convert empty string to int64")
+		return 0, fmt.Errorf("cannot convert empty string to int64")
 	}
 	valueStr := size[:len(size)-1]
 	value, err = strconv.ParseInt(valueStr, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("Cannot convert %v to int64", valueStr)
+		return 0, fmt.Errorf("cannot convert %v to int64", valueStr)
 	}
 	suffix := size[len(size)-1:]
 	var mult int64
@@ -109,7 +109,7 @@ func SizeSuffixToInt64(size string) (int64, error) {
 	case "g", "G":
 		mult = 1024 * 1024 * 1024
 	default:
-		return value, fmt.Errorf("Invalid suffix: %v", suffix)
+		return value, fmt.Errorf("invalid suffix: %v", suffix)
 	}
 	return value * mult, nil
 }

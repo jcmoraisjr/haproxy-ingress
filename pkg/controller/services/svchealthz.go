@@ -136,7 +136,7 @@ func (s *svcHealthz) createStopHandler() http.HandlerFunc {
 		err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte(fmt.Sprintf("failed to stop process: %s\n", err)))
+			_, _ = fmt.Fprintf(w, "failed to stop process: %s\n", err)
 		} else {
 			_, _ = w.Write([]byte("controller process is stopping now\n"))
 		}

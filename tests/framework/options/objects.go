@@ -19,24 +19,24 @@ func AddConfigKeyAnnotation(key, value string) Object {
 
 func DefaultTLS() Object {
 	return func(o *objectOpt) {
-		o.IngressOpt.DefaultTLS = true
+		o.DefaultTLS = true
 	}
 }
 
 func CustomTLS(secret string) Object {
 	return func(o *objectOpt) {
-		o.IngressOpt.CustomTLSSecret = secret
+		o.CustomTLSSecret = secret
 	}
 }
 
 func CustomHostName(hostname string) Object {
 	return func(o *objectOpt) {
-		o.IngressOpt.CustomHostName = ptr.To(hostname)
+		o.CustomHostName = ptr.To(hostname)
 	}
 }
 func Listener(name, proto string, port int32) Object {
 	return func(o *objectOpt) {
-		o.GatewayOpt.Listeners = append(o.GatewayOpt.Listeners, ListenerOpt{
+		o.Listeners = append(o.Listeners, ListenerOpt{
 			Name:  name,
 			Proto: proto,
 			Port:  port,
