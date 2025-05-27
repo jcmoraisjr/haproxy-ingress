@@ -1,0 +1,17 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: haproxy-ingress
+nodes:
+- role: control-plane
+  extraPortMappings:
+  # haproxy-ingress
+  - containerPort: 80
+    hostPort: 8080
+  - containerPort: 443
+    hostPort: 8181
+  # haproxy-stats
+  - containerPort: 1936
+    hostPort: 1936
+  # tcp-service
+  - containerPort: 1111
+    hostPort: 1111
