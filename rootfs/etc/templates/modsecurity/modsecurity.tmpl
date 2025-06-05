@@ -12,6 +12,8 @@ spoe-agent modsecurity-agent
 {{- if .Global.ModSecurity.UseCoraza }}
     messages     coraza-req
     option       var-prefix  coraza
+    no option    async
+    no option    pipelining
 {{- else }}
     messages     check-request
     option       var-prefix  modsec
