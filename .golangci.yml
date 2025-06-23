@@ -15,6 +15,11 @@ linters:
       - third_party$
       - builtin$
       - examples$
+    ## TODO: drop Endpoints api
+    rules:
+      - linters:
+          - staticcheck
+        text: "SA1019: [a-z0-9]+.Endpoints is deprecated"
 formatters:
   enable:
     - gofmt
