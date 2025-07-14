@@ -1,0 +1,20 @@
+controller:
+  extraArgs:
+    watch-ingress-without-class: "true"
+    acme-server: "false"
+    acme-track-tls-annotation: "false"
+  ingressClassResource:
+    enabled: false
+  kind: DaemonSet
+  daemonset:
+    useHostPort: true
+    hostPorts:
+      tcp: ["1111"]
+  tcp:
+    "1111": "namespace/service:1111"
+  service:
+    type: ClusterIP
+  stats:
+    enabled: true
+    port: 1936
+    hostPort: 1936
