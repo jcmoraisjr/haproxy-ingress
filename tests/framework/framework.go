@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networking "k8s.io/api/networking/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -192,6 +193,7 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 	opt := ctrlconfig.NewOptions()
 	opt.MasterWorker = true
 	opt.LocalFSPrefix = "/tmp/haproxy-ingress"
+	opt.EnableEndpointSlicesAPI = true
 	opt.PublishService = PublishSvcName
 	opt.ConfigMap = "default/ingress-controller"
 	os.Setenv("POD_NAMESPACE", "default")
@@ -389,8 +391,12 @@ spec:
   - port: 9999 ## meaningless, just need to match ingress' one
     targetPort: 0
 `
-	ep := f.CreateEndpoints(ctx, t, serverPort)
-	name := ep.Name
+	name := RandomName("svc")
+
+	// we don't have real pods, so we don't have ep/eps along with the service,
+	// so we need to create them manually.
+	_ = f.CreateEndpoints(ctx, t, name, serverPort)
+	_ = f.CreateEndpointSlice(ctx, t, name, serverPort)
 
 	svc := f.CreateObject(t, data).(*corev1.Service)
 	svc.Name = name
@@ -412,7 +418,7 @@ spec:
 	return svc
 }
 
-func (f *framework) CreateEndpoints(ctx context.Context, t *testing.T, serverPort int32) *corev1.Endpoints {
+func (f *framework) CreateEndpoints(ctx context.Context, t *testing.T, svcname string, serverPort int32) *corev1.Endpoints {
 	data := `
 apiVersion: v1
 kind: Endpoints
@@ -423,14 +429,13 @@ metadata:
   namespace: default
 subsets:
 - addresses:
-  - ip: ::ffff
+  - ip: ::ffff ## will change to loopback via ip-override annotation
   ports:
   - port: 0
 `
-	name := RandomName("svc")
 
 	ep := f.CreateObject(t, data).(*corev1.Endpoints)
-	ep.Name = name
+	ep.Name = svcname
 	ep.Subsets[0].Ports[0].Port = serverPort
 
 	t.Logf("creating endpoints %s/%s\n", ep.Namespace, ep.Name)
@@ -441,11 +446,52 @@ subsets:
 	t.Cleanup(func() {
 		ep := corev1.Endpoints{}
 		ep.Namespace = "default"
-		ep.Name = name
+		ep.Name = svcname
 		err := f.cli.Delete(ctx, &ep)
 		assert.NoError(t, client.IgnoreNotFound(err))
 	})
 	return ep
+}
+
+func (f *framework) CreateEndpointSlice(ctx context.Context, t *testing.T, svcname string, serverPort int32) *discoveryv1.EndpointSlice {
+	data := `
+kind: EndpointSlice
+apiVersion: discovery.k8s.io/v1
+addressType: IPv4
+endpoints:
+- addresses:
+  - 0.0.0.255 ## will change to loopback via ip-override annotation
+  conditions:
+    ready: true
+metadata:
+  annotations:
+    haproxy-ingress.github.io/ip-override: 127.0.0.1
+  labels: {}
+  generateName: ""
+  namespace: default
+ports:
+- port: 0
+`
+
+	eps := f.CreateObject(t, data).(*discoveryv1.EndpointSlice)
+	eps.GenerateName = svcname + "-"
+	eps.Labels["kubernetes.io/service-name"] = svcname
+	eps.Ports[0].Port = &serverPort
+
+	t.Logf("creating endpointslice %s/%s\n", eps.Namespace, eps.Name)
+
+	err := f.cli.Create(ctx, eps)
+	require.NoError(t, err)
+	epname := eps.Name
+
+	t.Cleanup(func() {
+		ep := discoveryv1.EndpointSlice{}
+		ep.Namespace = "default"
+		ep.Name = epname
+		err := f.cli.Delete(ctx, &ep)
+		assert.NoError(t, client.IgnoreNotFound(err))
+	})
+	return eps
 }
 
 func (f *framework) CreateIngress(ctx context.Context, t *testing.T, svc *corev1.Service, o ...options.Object) (*networking.Ingress, string) {
