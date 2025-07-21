@@ -22,9 +22,10 @@ import (
 	"strconv"
 
 	api "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
-	discoveryv1 "k8s.io/api/discovery/v1"
 )
 
 // FindServicePort ...
@@ -76,25 +77,15 @@ type Endpoint struct {
 }
 
 func createEndpoints(endpoints *api.Endpoints, svcPort *api.ServicePort) (ready, notReady []*Endpoint, err error) {
-	var ipOverride string
-	if ann := endpoints.Annotations; ann != nil {
-		ipOverride = ann["haproxy-ingress.github.io/ip-override"]
-	}
-	resolveIP := func(ip string) string {
-		if ipOverride != "" {
-			return ipOverride
-		}
-		return ip
-	}
 	for _, subset := range endpoints.Subsets {
 		for _, epPort := range subset.Ports {
 			if matchPort(svcPort, &epPort) {
 				port := int(epPort.Port)
 				for _, addr := range subset.Addresses {
-					ready = append(ready, newEndpoint(resolveIP(addr.IP), port, addr.TargetRef))
+					ready = append(ready, newEndpoint(resolveIP(endpoints, addr.IP), port, addr.TargetRef))
 				}
 				for _, addr := range subset.NotReadyAddresses {
-					notReady = append(notReady, newEndpoint(resolveIP(addr.IP), port, addr.TargetRef))
+					notReady = append(notReady, newEndpoint(resolveIP(endpoints, addr.IP), port, addr.TargetRef))
 				}
 			}
 		}
@@ -131,7 +122,7 @@ func createEndpointSlices(endpointSlices []*discoveryv1.EndpointSlice, svcPort *
 				// https://github.com/kubernetes/kubernetes/issues/106267
 				// Using that as an argument to justify why we are using first
 				// address here.
-				domainEndpoint := newEndpoint(endpoint.Addresses[0], int(*epPort.Port), endpoint.TargetRef)
+				domainEndpoint := newEndpoint(resolveIP(endpointSlice, endpoint.Addresses[0]), int(*epPort.Port), endpoint.TargetRef)
 
 				// From the API docs of EndpointConditions:
 				//
@@ -152,6 +143,15 @@ func createEndpointSlices(endpointSlices []*discoveryv1.EndpointSlice, svcPort *
 		}
 	}
 	return ready, notReady, nil
+}
+
+func resolveIP(ep metav1.Object, configuredIPAddress string) string {
+	if ann := ep.GetAnnotations(); ann != nil {
+		if ipOverride := ann["haproxy-ingress.github.io/ip-override"]; ipOverride != "" {
+			return ipOverride
+		}
+	}
+	return configuredIPAddress
 }
 
 // CreateEndpoints ...

@@ -410,9 +410,21 @@ func (c *c) GetService(defaultNamespace, serviceName string) (*api.Service, erro
 }
 
 func (c *c) GetEndpointSlices(service *api.Service) ([]*discoveryv1.EndpointSlice, error) {
-	// TODO: endpoint slices to be implemented for new controller runtime. For now
-	// only exists in legacy controller.
-	return nil, nil
+	eplist := discoveryv1.EndpointSliceList{}
+	serviceSelector := labels.SelectorFromSet(map[string]string{"kubernetes.io/service-name": service.Name})
+	err := c.client.List(c.ctx, &eplist,
+		client.InNamespace(service.Namespace),
+		client.MatchingLabelsSelector{Selector: serviceSelector},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	var eps []*discoveryv1.EndpointSlice
+	for i := range eplist.Items {
+		eps = append(eps, &eplist.Items[i])
+	}
+	return eps, err
 }
 
 func (c *c) GetEndpoints(service *api.Service) (*api.Endpoints, error) {

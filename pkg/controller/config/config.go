@@ -240,6 +240,8 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 
 	if opt.EnableEndpointSlicesAPI {
 		configLog.Info("watching endpointslices - --enable-endpointslices-api is true")
+	} else {
+		configLog.Info("watching endpoints - --enable-endpointslices-api is false")
 	}
 
 	if opt.PublishService != "" && opt.PublishAddress != "" {
