@@ -85,7 +85,7 @@ func (r *IngressReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manag
 		RecoverPanic:       ptr.To(true),
 		SkipNameValidation: ptr.To(true), // TODO: need to param for test if we add more controllers
 	}
-	c, err := controller.NewTypedUnmanaged("ingress", mgr, opt)
+	c, err := controller.NewTypedUnmanaged("ingress", opt)
 	if err != nil {
 		return err
 	}
