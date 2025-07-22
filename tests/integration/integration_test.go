@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -323,6 +324,111 @@ func TestIntegrationIngress(t *testing.T) {
 		assert.Equal(t, reqHeaders, res.EchoResponse.ReqHeaders)
 	})
 
+	t.Run("should authorize request", func(t *testing.T) {
+		t.Parallel()
+
+		svc := f.CreateService(ctx, t, httpServerPort)
+		authzPort := f.CreateAuthzServer(ctx, t,
+			options.AuthzPasskey("x-token", "123"),
+		)
+		_, hostname := f.CreateIngress(ctx, t, svc,
+			options.AddConfigKeyAnnotation(ingtypes.BackAuthURL, fmt.Sprintf("http://127.0.0.1:%d", authzPort)),
+		)
+
+		req := func(tokenValue string, authorized bool) framework.Response {
+			expcode := http.StatusOK
+			if !authorized {
+				expcode = http.StatusUnauthorized
+			}
+			res := f.Request(ctx, t, http.MethodGet, hostname, "/",
+				options.ExpectResponseCode(expcode),
+				options.CustomRequest(func(req *http.Request) {
+					req.Header.Set("x-token", tokenValue)
+				}),
+			)
+			if authorized {
+				for _, key := range []string{"date", "connection", "accept-encoding", "user-agent", "x-forwarded-for", "x-forwarded-proto", "x-real-ip"} {
+					delete(res.EchoResponse.ReqHeaders, key)
+				}
+				assert.True(t, res.EchoResponse.Parsed)
+			} else {
+				assert.False(t, res.EchoResponse.Parsed)
+			}
+			return res
+		}
+
+		// invalid token, forbidden
+		_ = req("132", false)
+
+		// valid token, authorized
+		res := req("123", true)
+		assert.Equal(t, map[string]string{"x-token": "123", "x-authz": "Authorized"}, res.EchoResponse.ReqHeaders)
+	})
+
+	t.Run("should authorize websocket", func(t *testing.T) {
+		t.Parallel()
+
+		// configure ws backend, along with a service and ingress
+		svc := f.CreateService(ctx, t, httpServerPort)
+		authzPort := f.CreateAuthzServer(ctx, t,
+			options.AuthzPasskey("x-token", "123"),
+		)
+		_, hostname := f.CreateIngress(ctx, t, svc,
+			options.AddConfigKeyAnnotation(ingtypes.BackAuthURL, fmt.Sprintf("http://127.0.0.1:%d", authzPort)),
+		)
+
+		// wait controller to synchronize ingress configuration
+		_ = f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusUnauthorized))
+
+		// configure ws client, missing authz token
+		header := make(http.Header)
+		header.Set("Host", hostname)
+		_, _, err := websocket.DefaultDialer.DialContext(ctx, fmt.Sprintf("ws://127.0.0.1:%d/echo", framework.TestPortHTTP), header)
+		require.EqualError(t, err, "websocket: bad handshake")
+
+		// configure ws client
+		header.Set("x-token", "123")
+		ws, _, err := websocket.DefaultDialer.DialContext(ctx, fmt.Sprintf("ws://127.0.0.1:%d/echo", framework.TestPortHTTP), header)
+		require.NoError(t, err)
+		defer ws.Close()
+
+		// read from server
+		var messages []string
+		done := make(chan struct{})
+		go func() {
+			for {
+				typ, msg, err := ws.ReadMessage()
+				if err != nil {
+					t.Logf("error reading message: %s", err.Error())
+					close(done)
+					break
+				}
+				t.Logf("client read socket / message (%d): %s", typ, msg)
+				messages = append(messages, string(msg))
+			}
+		}()
+
+		// write to server
+		err = ws.WriteMessage(websocket.TextMessage, []byte("message 1"))
+		require.NoError(t, err)
+		err = ws.WriteMessage(websocket.TextMessage, []byte("message 2"))
+		require.NoError(t, err)
+		err = ws.WriteMessage(websocket.TextMessage, []byte("message 3"))
+		require.NoError(t, err)
+		err = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		require.NoError(t, err)
+
+		// wait reader to consume all messages
+		<-done
+
+		expected := []string{
+			"message 1",
+			"message 2",
+			"message 3",
+		}
+		assert.Equal(t, expected, messages)
+	})
+
 	// should match wildcard host
 	// should match domain conflicting with wildcard host
 
@@ -553,7 +659,7 @@ func TestIntegrationIngress(t *testing.T) {
 		svc := f.CreateService(ctx, t, tcpServerPort)
 		_, _ = f.CreateIngress(ctx, t, svc,
 			options.AddConfigKeyAnnotation(ingtypes.TCPTCPServicePort, strconv.Itoa(int(tcpIngressPort))),
-			options.Custom(func(o client.Object) {
+			options.CustomObject(func(o client.Object) {
 				ing := o.(*networkingv1.Ingress)
 				rule0 := ing.Spec.Rules[0].DeepCopy()
 				rule1 := rule0.DeepCopy()
@@ -671,7 +777,7 @@ func TestIntegrationGateway(t *testing.T) {
 			secret1 := f.CreateSecretTLS(ctx, t, crt1, key1)
 			secret2 := f.CreateSecretTLS(ctx, t, crt2, key2)
 			gw := f.CreateGatewayV1(ctx, t, gc,
-				options.Custom(func(o client.Object) {
+				options.CustomObject(func(o client.Object) {
 					g := o.(*gatewayv1.Gateway)
 					g.Spec.Listeners = []gatewayv1.Listener{{
 						Name:     "l1",
@@ -688,7 +794,7 @@ func TestIntegrationGateway(t *testing.T) {
 			)
 			svc := f.CreateService(ctx, t, httpServerPort)
 			_, _ = f.CreateHTTPRouteV1(ctx, t, gw, svc,
-				options.Custom(func(o client.Object) {
+				options.CustomObject(func(o client.Object) {
 					h := o.(*gatewayv1.HTTPRoute)
 					h.Spec.Hostnames = []gatewayv1.Hostname{
 						"host1.local",
