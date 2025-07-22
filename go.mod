@@ -7,7 +7,7 @@ toolchain go1.23.7
 require (
 	dario.cat/mergo v1.0.1
 	github.com/Masterminds/sprig/v3 v3.3.0
-	github.com/go-logr/logr v1.4.2
+	github.com/go-logr/logr v1.4.3
 	github.com/go-logr/zapr v1.3.0
 	github.com/jinzhu/copier v0.4.0
 	github.com/kylelemons/godebug v1.1.0
