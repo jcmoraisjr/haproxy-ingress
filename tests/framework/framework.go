@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -129,7 +130,7 @@ func startApiserver(t *testing.T, crdPaths []string) *rest.Config {
 
 	e := envtest.Environment{
 		// run `make setup-envtest` to download envtest binaries.
-		BinaryAssetsDirectory: filepath.Join("bin", "k8s", fmt.Sprintf("1.32.0-%s-%s", goruntime.GOOS, goruntime.GOARCH)),
+		BinaryAssetsDirectory: filepath.Join("bin", "k8s", fmt.Sprintf("1.33.0-%s-%s", goruntime.GOOS, goruntime.GOARCH)),
 		CRDDirectoryPaths:     crdPaths,
 		ErrorIfCRDPathMissing: true,
 	}
@@ -170,6 +171,8 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 	global.Namespace = "default"
 	global.Name = "ingress-controller"
 	global.Data = map[string]string{
+		"syslog-endpoint": "stdout",
+		"syslog-format":   "raw",
 		"http-port":       strconv.Itoa(TestPortHTTP),
 		"https-port":      strconv.Itoa(TestPortHTTPS),
 		"stats-port":      strconv.Itoa(TestPortStat),
@@ -277,6 +280,9 @@ func (*framework) Request(ctx context.Context, t *testing.T, method, host, path 
 			return http.ErrUseLastResponse
 		},
 		Transport: transport,
+	}
+	if opt.CustomRequest != nil {
+		opt.CustomRequest(req)
 	}
 	var res *http.Response
 	switch {
@@ -822,6 +828,25 @@ func buildEchoResponse(t *testing.T, body string) EchoResponse {
 	return res
 }
 
+func (*framework) CreateAuthzServer(ctx context.Context, t *testing.T, o ...options.Authz) int32 {
+	opt := options.ParseAuthzOptions(o...)
+	serverPort := RandomPort()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if opt.AuthzKey != "" && r.Header.Get(opt.AuthzKey) != opt.AuthzValue {
+			w.Header().Set("x-Authz", "Unauthorized")
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("x-Authz", "Authorized")
+		w.WriteHeader(http.StatusOK)
+	})
+	startHTTPServer(t, mux, serverPort)
+
+	return serverPort
+}
+
 // Example: echoserver: service-name 8080 /app
 var echoHeaderRegex = regexp.MustCompile(`^echoserver: ([a-z0-9-]+) ([0-9]+) ([a-z0-9/]+)$`)
 
@@ -839,7 +864,33 @@ func (*framework) CreateHTTPServer(ctx context.Context, t *testing.T, serverName
 		_, err := w.Write([]byte(content))
 		assert.NoError(t, err)
 	})
+	mux.HandleFunc("/echo", func(w http.ResponseWriter, r *http.Request) {
+		upgrader := websocket.Upgrader{}
+		ws, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			t.Logf("error upgrading websocket: %s\n", err.Error())
+			return
+		}
+		defer ws.Close()
+		for {
+			typ, msg, err := ws.ReadMessage()
+			if err != nil {
+				t.Logf("error reading from ws: %s\n", err.Error())
+				break
+			}
+			if err := ws.WriteMessage(websocket.TextMessage, msg); err != nil {
+				t.Logf("error writing to ws: %s\n", err.Error())
+				break
+			}
+			t.Logf("ws message (%d): %s\n", typ, msg)
+		}
+	})
+	startHTTPServer(t, mux, serverPort)
 
+	return serverPort
+}
+
+func startHTTPServer(t *testing.T, mux *http.ServeMux, serverPort int32) {
 	server := http.Server{
 		Addr:    fmt.Sprintf(":%d", serverPort),
 		Handler: mux,
@@ -858,7 +909,6 @@ func (*framework) CreateHTTPServer(ctx context.Context, t *testing.T, serverName
 		assert.NoError(t, err)
 		<-done
 	})
-	return serverPort
 }
 
 func (*framework) CreateTCPServer(ctx context.Context, t *testing.T) int32 {

@@ -1,5 +1,7 @@
 package options
 
+import "net/http"
+
 type Request func(o *requestOpt)
 
 func ExpectResponseCode(code int) Request {
@@ -51,6 +53,14 @@ func ClientCertificateKeyPEM(crt, key []byte) Request {
 	}
 }
 
+func CustomRequest(custom CustomRequestCallback) Request {
+	return func(o *requestOpt) {
+		o.CustomRequest = custom
+	}
+}
+
+type CustomRequestCallback func(req *http.Request)
+
 type requestOpt struct {
 	ExpectResponseCode int
 	ExpectX509Error    string
@@ -60,6 +70,7 @@ type requestOpt struct {
 	SNI                string
 	ClientCrtPEM       []byte
 	ClientKeyPEM       []byte
+	CustomRequest      CustomRequestCallback
 }
 
 func ParseRequestOptions(opts ...Request) (opt requestOpt) {

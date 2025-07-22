@@ -43,19 +43,19 @@ func Listener(name, proto string, port int32) Object {
 		})
 	}
 }
-func Custom(custom CustomCallback) Object {
+func CustomObject(custom CustomObjectCallback) Object {
 	return func(o *objectOpt) {
 		o.custom = custom
 	}
 }
 
-type CustomCallback func(client.Object)
+type CustomObjectCallback func(client.Object)
 
 type objectOpt struct {
 	Ann map[string]string
 	IngressOpt
 	GatewayOpt
-	custom CustomCallback
+	custom CustomObjectCallback
 }
 
 type IngressOpt struct {

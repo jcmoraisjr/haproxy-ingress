@@ -35,7 +35,7 @@ jobs:
         - "3.1" # latest
         envtest-version:
         - "1.23.5" # oldest supported version
-        - "1.32.0" # latest Kubernetes version
+        - "1.33.0" # latest Kubernetes version
       fail-fast: false
     steps:
     - name: Install dependencies
