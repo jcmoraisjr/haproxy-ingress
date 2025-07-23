@@ -642,12 +642,13 @@ func (i *instance) reloadEmbeddedMasterWorker() error {
 		if err := i.waitMaster(); err != nil {
 			return err
 		}
-	} else {
-		if err := i.reloadWorker(); err != nil {
-			return err
-		}
+		return i.waitWorker(-1) // very first check, current reload count is 0, so "previous" is "-1"
 	}
-	return i.waitWorker()
+	prevReloads, err := i.reloadWorker()
+	if err != nil {
+		return err
+	}
+	return i.waitWorker(prevReloads)
 }
 
 func (i *instance) startHAProxySync() {
@@ -695,10 +696,11 @@ func (i *instance) reloadExternal() error {
 			return err
 		}
 	}
-	if err := i.reloadWorker(); err != nil {
+	prevReloads, err := i.reloadWorker()
+	if err != nil {
 		return err
 	}
-	return i.waitWorker()
+	return i.waitWorker(prevReloads)
 }
 
 func (i *instance) waitMaster() error {
@@ -725,20 +727,43 @@ func (i *instance) waitMaster() error {
 	}
 }
 
-func (i *instance) reloadWorker() error {
+func (i *instance) reloadWorker() (int, error) {
 	if i.config.Global().LoadServerState {
 		if err := i.persistServersState(); err != nil {
 			i.logger.Warn("failed to persist servers state before worker reload: %w", err)
 		}
 	}
-	if _, err := i.conns.Master().Send(nil, "reload"); err != nil {
-		return fmt.Errorf("error sending reload to master socket: %w", err)
+	procs, err := socket.HAProxyProcs(i.conns.Master())
+	if err != nil {
+		return 0, fmt.Errorf("error reading haproxy procs: %w", err)
 	}
-	return nil
+	out, err := i.conns.Master().Send(nil, "reload")
+	if err != nil {
+		return 0, fmt.Errorf("error sending reload to master socket: %w", err)
+	}
+	if len(out) > 0 && strings.HasPrefix(out[0], "Success=0") {
+		// Taking advantage of the response on haproxy 2.7+
+		// Note that on 2.6 and older the response is empty, so we need to compare
+		// a failure output instead, since empty is also considered valid.
+		// `procs.Master.Reloads` checks for proper reload on 2.6 and older.
+		return 0, fmt.Errorf("error reloading haproxy: %s", strings.Join(out, "\n"))
+	}
+	return procs.Master.Reloads, nil
 }
 
-func (i *instance) waitWorker() error {
+func (i *instance) waitWorker(prevReloads int) error {
 	out, err := socket.HAProxyProcs(i.conns.Master())
+	for err == nil && out.Master.Reloads <= prevReloads {
+		// Continues to wait until we can see `Reloads` greater than the previous one.
+		// This is needed on 2.6 and older, whose `reload` command runs async.
+		select {
+		case <-time.After(time.Second):
+		case <-i.options.StopCh:
+			return fmt.Errorf("received sigterm")
+		}
+		i.logger.Info("reconnecting master socket. current-reloads=%d prev-reloads=%d", out.Master.Reloads, prevReloads)
+		out, err = socket.HAProxyProcs(i.conns.Master())
+	}
 	if err != nil {
 		return fmt.Errorf("error reading procs from master socket: %w", err)
 	}
