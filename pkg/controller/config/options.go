@@ -37,6 +37,7 @@ func NewOptions() *Options {
 		ElectionID:              "class-%s.haproxy-ingress.github.io",
 		ShutdownTimeout:         25 * time.Second,
 		UpdateStatusOnShutdown:  true,
+		EnableEndpointSlicesAPI: true,
 		LogLevel:                2,
 	}
 }

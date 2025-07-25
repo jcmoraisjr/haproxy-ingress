@@ -193,7 +193,6 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 	opt := ctrlconfig.NewOptions()
 	opt.MasterWorker = true
 	opt.LocalFSPrefix = "/tmp/haproxy-ingress"
-	opt.EnableEndpointSlicesAPI = true
 	opt.PublishService = PublishSvcName
 	opt.ConfigMap = "default/ingress-controller"
 	os.Setenv("POD_NAMESPACE", "default")
