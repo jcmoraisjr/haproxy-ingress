@@ -99,14 +99,18 @@ type framework struct {
 	cli    client.WithWatch
 }
 
-// HAProxy version 3.2-dev6-4ef6be4 2025/02/19 - https://haproxy.org/
-// HAProxy version 3.1.5-076df02 2025/02/20 - https://haproxy.org/
-// HAProxy version 3.0.8-6036c31 2025/01/29 - https://haproxy.org/
-// HAProxy version 2.9.14-7c591d5 2025/01/29 - https://haproxy.org/
-// HAProxy version 2.8.14-c23fe91 2025/01/29 - https://haproxy.org/
-// HAProxy version 2.6.21-5d6f8e1 2025/01/29 - https://haproxy.org/
-// HAProxy version 2.4.28-6b47cb7 2024/11/08 - https://haproxy.org/
-// HA-Proxy version 2.2.33-f7cac83 2024/04/05 - https://haproxy.org/
+// HAProxy version 3.3-dev3-d4d72e2 2025/07/11 - https://haproxy.org/
+// HAProxy version 3.2.3-1844da7 2025/07/09 - https://haproxy.org/
+// HAProxy version 3.1.8-4391242 2025/06/02 - https://haproxy.org/
+// HAProxy version 3.0.11-9e587df 2025/06/02 - https://haproxy.org/
+// HAProxy version 2.9.15-e872a3f 2025/03/21 - https://haproxy.org/
+// HAProxy version 2.8.15-a9aef56 2025/04/22 - https://haproxy.org/
+// HAProxy version 2.7.12-5e21fc9 2024/04/05 - https://haproxy.org/
+// HAProxy version 2.6.22-fb0dde3 2025/04/22 - https://haproxy.org/
+// HAProxy version 2.5.14-52b556a 2023/05/02 - https://haproxy.org/
+// HAProxy version 2.4.29-a7ae2bf 2025/04/22 - https://haproxy.org/
+// HA-Proxy version 2.2.34-bfc4296 2025/04/23 - https://haproxy.org/
+// HA-Proxy version 2.0.35-9627b47 2024/04/05 - https://haproxy.org/
 var haproxyVersionRegex = regexp.MustCompile(`^HA-?Proxy version ([0-9]+)\.([0-9]+)([.-][dev0-9]+)`)
 
 func haproxyVersion(t *testing.T) (major, minor int, full string) {
