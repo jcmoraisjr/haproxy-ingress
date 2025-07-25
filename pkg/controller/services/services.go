@@ -139,7 +139,7 @@ func (s *Services) setup(ctx context.Context) error {
 		ReloadStrategy:    cfg.ReloadStrategy,
 		MaxOldConfigFiles: cfg.MaxOldConfigFiles,
 		SortEndpointsBy:   cfg.SortEndpointsBy,
-		StopCh:            ctx.Done(),
+		StopCtx:           ctx,
 		TrackInstances:    cfg.TrackOldInstances,
 		ValidateConfig:    cfg.ValidateConfig,
 		AcmeSigner:        acmeSigner,

@@ -51,6 +51,9 @@ type rparam struct {
 
 // Reconcile ...
 func (r *IngressReconciler) Reconcile(ctx context.Context, req rparam) (ctrl.Result, error) {
+	if err := ctx.Err(); err != nil {
+		return ctrl.Result{}, err
+	}
 	changed := r.watchers.getChangedObjects()
 	changed.NeedFullSync = req.fullsync
 	err := r.Services.ReconcileIngress(ctx, changed)
