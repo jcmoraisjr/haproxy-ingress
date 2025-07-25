@@ -17,6 +17,7 @@ limitations under the License.
 package socket
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -129,13 +130,14 @@ func testSocket(t *testing.T, keepalive bool) {
 			},
 		},
 	}
+	ctx := context.Background()
 	clientSocket := make([]HAProxySocket, len(testCases))
 	clientSocketPos := make([]HAProxySocket, len(testCases))
 	masterSocket := make([]HAProxySocket, len(testCases))
 	for i, test := range testCases {
-		clientSocket[i] = NewSocket(clisock, keepalive)
-		clientSocketPos[i] = NewSocket(clisock, false)
-		masterSocket[i] = NewSocket(mastersock, keepalive)
+		clientSocket[i] = NewSocket(ctx, clisock, keepalive)
+		clientSocketPos[i] = NewSocket(ctx, clisock, false)
+		masterSocket[i] = NewSocket(ctx, mastersock, keepalive)
 		time.Sleep(test.waitBefore)
 		var sock, sockPos HAProxySocket
 		if test.master {
@@ -406,6 +408,7 @@ func TestHAProxyProcs(t *testing.T) {
 			},
 		},
 	}
+	ctx := context.Background()
 	for i, test := range testCases {
 		c := setup(t)
 		cli := &clientMock{
@@ -413,7 +416,7 @@ func TestHAProxyProcs(t *testing.T) {
 			cmdError:  test.cmdError,
 			hasSock:   test.hasSock,
 		}
-		out, err := HAProxyProcs(cli)
+		out, err := HAProxyProcs(ctx, cli)
 		if !reflect.DeepEqual(out, test.expOutput) {
 			t.Errorf("output differs on %d - expected: %+v, actual: %+v", i, test.expOutput, out)
 		}
@@ -433,7 +436,7 @@ func TestHAProxyProcsLoop(t *testing.T) {
 		// 0
 		{
 			reload:   0,
-			minDelay: 1 * time.Millisecond,
+			minDelay: 0 * time.Millisecond,
 			maxCnt:   1,
 		},
 		// 1
@@ -444,11 +447,12 @@ func TestHAProxyProcsLoop(t *testing.T) {
 		},
 		// 2
 		{
-			reload:   450 * time.Millisecond,
-			minDelay: (1 + 2 + 4 + 8 + 16 + 32 + 64 + 96 + 128 + 160) * time.Millisecond,
+			reload:   650 * time.Millisecond,
+			minDelay: (1 + 2 + 4 + 8 + 16 + 32 + 64 + 128 + 192 + 256) * time.Millisecond,
 			maxCnt:   10,
 		},
 	}
+	ctx := context.Background()
 	for i, test := range testCases {
 		c := setup(t)
 		cli := &clientMock{
@@ -456,7 +460,7 @@ func TestHAProxyProcsLoop(t *testing.T) {
 		}
 		time.AfterFunc(test.reload, func() { cli.cmdError = nil })
 		start := time.Now()
-		_, err := HAProxyProcs(cli)
+		_, err := HAProxyProcs(ctx, cli)
 		if err != nil {
 			t.Errorf("%d should not return an error: %v", i, err)
 		}
