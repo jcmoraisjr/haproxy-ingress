@@ -64,8 +64,9 @@ setup-envtest:
 test-integration: gotestsum setup-envtest
 	@echo
 	@echo "Running Kubernetes $(HAPROXY_INGRESS_ENVTEST)"
+	haproxy -v
 	KUBEBUILDER_ASSETS="$(shell $(LOCAL_SETUP_ENVTEST) use $(HAPROXY_INGRESS_ENVTEST) --bin-dir $(LOCALBIN) -i -p path)"\
-		$(LOCAL_GOTESTSUM) --format=testname -- -count=1 -tags=cgo ./tests/integration/...
+		$(LOCAL_GOTESTSUM) --format=testname --hide-summary=output -- -count=1 -tags=cgo ./tests/integration/...
 
 .PHONY: linux-build
 linux-build:

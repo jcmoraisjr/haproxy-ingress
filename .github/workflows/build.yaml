@@ -32,7 +32,7 @@ jobs:
         haproxy-version:
         - "2.2" # minimum supported
         - "2.6" # embedded version
-        - "3.1" # latest
+        - "3.2" # latest
         envtest-version:
         - "1.23.5" # oldest supported version
         - "1.33.0" # latest Kubernetes version

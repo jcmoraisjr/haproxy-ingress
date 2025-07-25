@@ -43,13 +43,14 @@ func TestSocket(t *testing.T) {
 	//     rm crt key
 	// start with:
 	//     haproxy -f h.cfg -W -S /tmp/m.sock
-	// TODO create a test and temp server where socket commands can connect to
 	//
-	// testSocket(t, false)
-	// testSocket(t, true)
+	// TODO create a test and temp server where socket commands can connect to
+	// - although integration tests do a really good job already
+	t.SkipNow()
+	testSocket(t, false)
+	testSocket(t, true)
 }
 
-//nolint:unused
 func testSocket(t *testing.T, keepalive bool) {
 	clisock := "/tmp/h.sock"
 	mastersock := "/tmp/m.sock"
@@ -169,7 +170,6 @@ func testSocket(t *testing.T, keepalive bool) {
 	}
 }
 
-//nolint:unused
 const crtPayload = `-----BEGIN CERTIFICATE-----
 MIICpDCCAYwCCQDIBIkh7vGNLTANBgkqhkiG9w0BAQsFADAUMRIwEAYDVQQDDAls
 b2NhbGhvc3QwHhcNMjEwNzMxMjE1MTE4WhcNMjEwODMwMjE1MTE4WjAUMRIwEAYD
