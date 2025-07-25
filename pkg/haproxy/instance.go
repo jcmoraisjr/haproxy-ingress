@@ -25,6 +25,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -97,6 +98,7 @@ func CreateInstance(logger types.Logger, options InstanceOptions) Instance {
 
 type instance struct {
 	up          bool
+	embdStart   sync.Once
 	waitProc    chan struct{}
 	failedSince *time.Time
 	logger      types.Logger
@@ -634,11 +636,13 @@ func (i *instance) reloadEmbeddedDaemon() error {
 }
 
 func (i *instance) reloadEmbeddedMasterWorker() error {
-	if !i.up {
+	i.embdStart.Do(func() {
 		go func() {
 			wait.Until(i.startHAProxySync, 4*time.Second, i.options.StopCh)
 			close(i.waitProc)
 		}()
+	})
+	if !i.up {
 		if err := i.waitMaster(); err != nil {
 			return err
 		}
