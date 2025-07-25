@@ -17,6 +17,7 @@ limitations under the License.
 package socket
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -33,19 +34,20 @@ import (
 )
 
 // NewSocket ...
-func NewSocket(address string, keepalive bool) HAProxySocket {
-	return newSocket(address, keepalive)
+func NewSocket(ctx context.Context, address string, keepalive bool) HAProxySocket {
+	return newSocket(ctx, address, keepalive)
 }
 
 // NewSocketConcurrent ...
-func NewSocketConcurrent(address string, keepalive bool) HAProxySocket {
-	s := newSocket(address, keepalive)
+func NewSocketConcurrent(ctx context.Context, address string, keepalive bool) HAProxySocket {
+	s := newSocket(ctx, address, keepalive)
 	s.mutex = &sync.Mutex{}
 	return s
 }
 
-func newSocket(address string, keepalive bool) *sock {
+func newSocket(ctx context.Context, address string, keepalive bool) *sock {
 	return &sock{
+		ctx:       ctx,
 		address:   address,
 		listening: true,
 		keepalive: keepalive,
@@ -63,6 +65,7 @@ type HAProxySocket interface {
 }
 
 type sock struct {
+	ctx       context.Context
 	mutex     *sync.Mutex
 	address   string
 	listening bool
@@ -200,7 +203,8 @@ func (s *sock) acquireConn() (net.Conn, error) {
 		if !s.listening {
 			return nil, fmt.Errorf("cannot connect to '%s': listening is down", s.address)
 		}
-		c, err := net.Dial("unix", s.address)
+		var d net.Dialer
+		c, err := d.DialContext(s.ctx, "unix", s.address)
 		if err != nil {
 			return nil, err
 		}
@@ -244,17 +248,20 @@ type Proc struct {
 // instance. Waits for the reload to complete while master CLI is down and the
 // attempt to connect leads to a connection refused. Some context:
 // https://www.mail-archive.com/haproxy@formilux.org/msg38415.html
-// The amount of time between attempts increases exponentially between 1ms and 64ms,
-// and arithmetically between 128ms and 1s in order to save CPU on long reload events
+// The amount of time between attempts increases exponentially between 1ms and 256ms,
+// and arithmetically between 256ms and 1s in order to save CPU on long reload events
 // and quit fast on the fastest ones. The whole processing time can be calculated by
 // the caller as the haproxy reload time.
-func HAProxyProcs(masterSocket HAProxySocket) (*ProcTable, error) {
-	maxLogWait := 64 * time.Millisecond
+func HAProxyProcs(ctx context.Context, masterSocket HAProxySocket) (*ProcTable, error) {
+	maxLogWait := 128 * time.Millisecond
 	logFactor := 2
 	maxArithWait := 1024 * time.Millisecond
-	arithFactor := 32 * time.Millisecond
+	arithFactor := 64 * time.Millisecond
 	wait := time.Millisecond
 	for {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		time.Sleep(wait)
 		out, err := masterSocket.Send(nil, "show proc")
 		if !waitHAProxy(masterSocket, err) {

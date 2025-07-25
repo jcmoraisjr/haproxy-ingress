@@ -145,7 +145,7 @@ func (hc *HAProxyController) configController() {
 		ReloadStrategy:    hc.cfg.ReloadStrategy,
 		MaxOldConfigFiles: hc.cfg.MaxOldConfigFiles,
 		SortEndpointsBy:   hc.cfg.SortEndpointsBy,
-		StopCh:            hc.stopCh,
+		StopCtx:           wait.ContextForChannel(hc.stopCh),
 		TrackInstances:    hc.cfg.TrackOldInstances,
 		ValidateConfig:    hc.cfg.ValidateConfig,
 	}

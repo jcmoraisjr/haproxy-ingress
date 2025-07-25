@@ -17,6 +17,7 @@ limitations under the License.
 package haproxy
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -58,7 +59,7 @@ type InstanceOptions struct {
 	ReloadQueue       utils.QueueFacade
 	ReloadStrategy    string
 	SortEndpointsBy   string
-	StopCh            <-chan struct{}
+	StopCtx           context.Context
 	TrackInstances    bool
 	ValidateConfig    bool
 	// TODO Fake is used to skip real haproxy calls. Use a mock instead.
@@ -83,7 +84,7 @@ func CreateInstance(logger types.Logger, options InstanceOptions) Instance {
 		waitProc: make(chan struct{}),
 		logger:   logger,
 		options:  &options,
-		conns:    newConnections(options.MasterSocket, options.AdminSocket),
+		conns:    newConnections(options.StopCtx, options.MasterSocket, options.AdminSocket),
 		metrics:  options.Metrics,
 		//
 		haproxyTmpl:     template.CreateConfig(),
@@ -648,7 +649,7 @@ func (i *instance) reloadEmbeddedDaemon() error {
 func (i *instance) reloadEmbeddedMasterWorker() error {
 	i.embdStart.Do(func() {
 		go func() {
-			wait.Until(i.startHAProxySync, 4*time.Second, i.options.StopCh)
+			wait.UntilWithContext(i.options.StopCtx, i.startHAProxySync, 4*time.Second)
 			close(i.waitProc)
 		}()
 	})
@@ -665,7 +666,7 @@ func (i *instance) reloadEmbeddedMasterWorker() error {
 	return i.waitWorker(prevReloads)
 }
 
-func (i *instance) startHAProxySync() {
+func (i *instance) startHAProxySync(ctx context.Context) {
 	cmd := exec.Command(
 		"haproxy",
 		"-W",
@@ -692,7 +693,7 @@ func (i *instance) startHAProxySync() {
 		close(wait)
 	}()
 	select {
-	case <-i.options.StopCh:
+	case <-ctx.Done():
 		i.logger.Info("stopping haproxy master process (pid: %d)", cmd.Process.Pid)
 		if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
 			i.logger.Error("error stopping haproxy process: %v", err)
@@ -726,14 +727,14 @@ func (i *instance) waitMaster() error {
 	errCh := make(chan error)
 	masterSock := i.conns.Master()
 	go func() {
-		_, err := socket.HAProxyProcs(masterSock)
+		_, err := socket.HAProxyProcs(i.options.StopCtx, masterSock)
 		errCh <- err
 	}()
 	for {
 		select {
 		case err := <-errCh:
 			return err
-		case <-i.options.StopCh:
+		case <-i.options.StopCtx.Done():
 			return fmt.Errorf("received sigterm")
 		case <-time.After(10 * time.Second):
 			i.logger.Info("... still waiting for the master socket '%s'", masterSock.Address())
@@ -747,7 +748,7 @@ func (i *instance) reloadWorker() (int, error) {
 			i.logger.Warn("failed to persist servers state before worker reload: %w", err)
 		}
 	}
-	procs, err := socket.HAProxyProcs(i.conns.Master())
+	procs, err := socket.HAProxyProcs(i.options.StopCtx, i.conns.Master())
 	if err != nil {
 		return 0, fmt.Errorf("error reading haproxy procs: %w", err)
 	}
@@ -758,12 +759,17 @@ func (i *instance) reloadWorker() (int, error) {
 }
 
 func (i *instance) waitWorker(prevReloads int) error {
-	out, err := socket.HAProxyProcs(i.conns.Master())
+	out, err := socket.HAProxyProcs(i.options.StopCtx, i.conns.Master())
 	for err == nil && out.Master.Reloads <= prevReloads {
-		// continues to wait until we can see `reloads` greater than the previous one.
-		time.Sleep(time.Second)
-		i.logger.Info("reconnecting to master socket. current-reloads=%d prev-reloads=%d", out.Master.Reloads, prevReloads)
-		out, err = socket.HAProxyProcs(i.conns.Master())
+		// Continues to wait until we can see `Reloads` greater than the previous one.
+		// This is needed on 2.6 and older, whose `reload` command runs async.
+		select {
+		case <-time.After(time.Second):
+		case <-i.options.StopCtx.Done():
+			return fmt.Errorf("received sigterm")
+		}
+		i.logger.Info("reconnecting master socket. current-reloads=%d prev-reloads=%d", out.Master.Reloads, prevReloads)
+		out, err = socket.HAProxyProcs(i.options.StopCtx, i.conns.Master())
 	}
 	if err != nil {
 		return fmt.Errorf("error reading procs from master socket: %w", err)
