@@ -32,6 +32,7 @@ The following command-line options are supported:
 | [`--disable-external-name`](#disable-external-name)     | [true\|false]              | `false`                 | v0.10 |
 | [`--disable-pod-list`](#disable-pod-list)               | [true\|false]              | `false`                 | v0.11 |
 | [`--election-id`](#election-id)                         | identifier                 | `ingress-controller-leader` |   |
+| [`--enable-endpointslices-api`](#enable-endpointslices-api) | [true\|false]          | `true`                  | v0.14 |
 | [`--force-namespace-isolation`](#force-namespace-isolation) | [true\|false]          | `false`                 |       |
 | [`--health-check-path`](#stats)                         | path                       | `/healthz`              |       |
 | [`--healthz-addr`](#stats)                              | tcp address                | `:10254`                | v0.15 |
@@ -61,7 +62,6 @@ The following command-line options are supported:
 | [`--sort-backends`](#sort-backends)                     | [true\|false]              | `false`                 |       |
 | [`--shutdown-timeout`](#shutdown-timeout)               | time                       | `25s`                   | v0.15 |
 | [`--sort-endpoints-by`](#sort-endpoints-by)             | [endpoint\|ip\|name\|random] | `endpoint`            | v0.11 |
-| [`--enable-endpointslices-api`](#enable-endpointslices-api)             | [true\|false] | `false`              | v0.14 |
 | [`--stats-collect-processing-period`](#stats)           | time                       | `500ms`                 | v0.10 |
 | [`--stop-handler`](#stats)                              | [true\|false]              | `false`                 | v0.15 |
 | [`--sync-period`](#sync-period)                         | time                       | `10m`                   |       |
@@ -266,6 +266,16 @@ Election ID configuration has no efect if none of Ingress Status update, Embedde
 Since v0.15 a `%s` placeholder is used to define where the IngressClass value should be added to the election ID. Up to v0.14 the IngressClass was concatenated in the end of the provided value to compose the real election ID value. Ingress class is added to the election ID name to avoid conflict when two or more HAProxy Ingress controllers are running in the same cluster.
 
 Election ID defaults to `class-%s.haproxy-ingress.github.io` if not configured, which is rendered to `class-haproxy.haproxy-ingress.github.io` if the IngressClass is not changed from the default value.
+
+---
+
+## enable-endpointslices-api
+
+* `--enable-endpointslices-api`
+
+Since v0.14
+
+Uses EndpointSlices API info, rather than Endpoints API, to fetch service endpoints info. It is disabled on v0.14, and defaults to enabled on v0.15. EndpointSlices API was stablised from Kubernetes v1.21.
 
 ---
 
@@ -575,16 +585,6 @@ Defines in which order the endpoints of a backend should be sorted.
 * `ip`: sort endpoints by the IP and port of the destination server
 * `name`: sort the endpoints by the name given to the server, see also [backend-server-naming]({{% relref "keys#backend-server-naming" %}})
 * `random`: randomly shuffle the endpoints every time haproxy needs to be reloaded, this option avoids to always send requests to the same endpoints depending on the balancing algorithm
-
----
-
-## enable-endpointslices-api
-
-* `--enable-endpointslices-api`
-
-Since v0.14
-
-Uses EndpointSlices API info, rather than Endpoints API, to fetch service endpoints info. By default it is disabled. EndpointSlices API was stablised from Kubernetes v1.21.
 
 ---
 
