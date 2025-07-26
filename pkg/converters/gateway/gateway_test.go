@@ -43,7 +43,6 @@ type testCaseSync struct {
 	id             string
 	resConfig      []string
 	config         func(c *testConfig)
-	configTrack    func(c *testConfig)
 	expFullSync    bool
 	expDefaultHost string
 	expHosts       string
@@ -337,9 +336,7 @@ func TestSyncHTTPRouteTracking(t *testing.T) {
 				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 				c.cache.SecretTLSPath["default/crt"] = "/tls/crt.pem"
-			},
-			configTrack: func(c *testConfig) {
-				c.cache.Changed.SecretsDel = append(c.cache.Changed.SecretsDel, c.createSecret1("default/crt1"))
+				tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceSecret, "default/crt1")
 			},
 			expFullSync: false,
 		},
@@ -350,9 +347,7 @@ func TestSyncHTTPRouteTracking(t *testing.T) {
 				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 				c.cache.SecretTLSPath["default/crt"] = "/tls/crt.pem"
-			},
-			configTrack: func(c *testConfig) {
-				c.cache.Changed.SecretsDel = append(c.cache.Changed.SecretsDel, c.createSecret1("default/crt"))
+				tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceSecret, "default/crt")
 			},
 			expFullSync: true,
 		},
@@ -362,9 +357,8 @@ func TestSyncHTTPRouteTracking(t *testing.T) {
 				c.createGateway2("default/web", "l1", "crt")
 				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
-			},
-			configTrack: func(c *testConfig) {
-				c.cache.Changed.SecretsAdd = append(c.cache.Changed.SecretsDel, c.createSecret1("default/crt1"))
+				c.createSecret1("default/crt1")
+				tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceSecret, "default/crt1")
 			},
 			expFullSync: false,
 			expLogging: `
@@ -377,9 +371,7 @@ WARN skipping certificate reference on Gateway 'default/web' listener 'l1': secr
 				c.createGateway2("default/web", "l1", "crt")
 				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
-			},
-			configTrack: func(c *testConfig) {
-				c.cache.Changed.SecretsAdd = append(c.cache.Changed.SecretsDel, c.createSecret1("default/crt"))
+				tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceSecret, "default/crt")
 			},
 			expFullSync: true,
 			expLogging: `
@@ -393,9 +385,7 @@ WARN skipping certificate reference on Gateway 'default/web' listener 'l1': secr
 				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 				c.cache.SecretTLSPath["default/crt"] = "/tls/crt.pem"
-			},
-			configTrack: func(c *testConfig) {
-				c.cache.Changed.SecretsUpd = append(c.cache.Changed.SecretsUpd, c.createSecret1("default/crt"))
+				tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceSecret, "default/crt")
 			},
 			expFullSync: true,
 		},
@@ -405,10 +395,7 @@ WARN skipping certificate reference on Gateway 'default/web' listener 'l1': secr
 				c.createGateway1("default/web", "l1")
 				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
-			},
-			configTrack: func(c *testConfig) {
-				svc, _ := c.createService1("default/echoserver1", "8080", "172.17.0.11")
-				c.cache.Changed.ServicesDel = append(c.cache.Changed.ServicesDel, svc)
+				tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceService, "default/echoserver1")
 			},
 			expFullSync: false,
 		},
@@ -418,10 +405,7 @@ WARN skipping certificate reference on Gateway 'default/web' listener 'l1': secr
 				c.createGateway1("default/web", "l1")
 				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
-			},
-			configTrack: func(c *testConfig) {
-				svc, _ := c.createService1("default/echoserver", "8080", "172.17.0.11")
-				c.cache.Changed.ServicesDel = append(c.cache.Changed.ServicesDel, svc)
+				tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceService, "default/echoserver")
 			},
 			expFullSync: true,
 		},
@@ -430,10 +414,7 @@ WARN skipping certificate reference on Gateway 'default/web' listener 'l1': secr
 			config: func(c *testConfig) {
 				c.createGateway1("default/web", "l1")
 				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
-			},
-			configTrack: func(c *testConfig) {
-				svc, _ := c.createService1("default/echoserver", "8080", "172.17.0.11")
-				c.cache.Changed.ServicesDel = append(c.cache.Changed.ServicesDel, svc)
+				tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceService, "default/echoserver")
 			},
 			expFullSync: true,
 			expLogging: `
@@ -446,10 +427,7 @@ WARN skipping service 'echoserver' on HTTPRoute 'default/web': service not found
 				c.createGateway1("default/web", "l1")
 				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
-			},
-			configTrack: func(c *testConfig) {
-				_, ep := c.createService1("default/echoserver", "8080", "172.17.0.12")
-				c.cache.Changed.EndpointsNew = append(c.cache.Changed.EndpointsNew, ep)
+				tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceEndpoints, "default/echoserver")
 			},
 			expFullSync: true,
 		},
@@ -990,12 +968,13 @@ func runTestSync(t *testing.T, testCases []testCaseSync) {
 			if test.config != nil {
 				test.config(c)
 			}
-			c.sync()
+			// ch.Links reflects changes made by the watcher
+			hasChanges := len(c.cache.Changed.Links) > 0
+			conv := c.createConverter()
+			conv.Sync(true, &gatewayv1.Gateway{})
 
-			if test.configTrack != nil {
+			if hasChanges {
 				c.hconfig.Commit()
-				test.configTrack(c)
-				conv := c.createConverter()
 				fullSync := conv.NeedFullSync()
 				if fullSync != test.expFullSync {
 					t.Errorf("%s: full sync differ, expected %t, actual: %t", test.id, test.expFullSync, fullSync)
@@ -1046,11 +1025,6 @@ func setup(t *testing.T) *testConfig {
 		c.logger.CompareLogging("")
 	})
 	return c
-}
-
-func (c *testConfig) sync() {
-	conv := c.createConverter()
-	conv.Sync(true, &gatewayv1.Gateway{})
 }
 
 func (c *testConfig) createConverter() gateway.Config {

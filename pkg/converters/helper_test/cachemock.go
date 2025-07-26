@@ -31,6 +31,7 @@ import (
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 )
 
@@ -69,7 +70,7 @@ type CacheMock struct {
 func NewCacheMock(tracker convtypes.Tracker) *CacheMock {
 	return &CacheMock{
 		tracker:     tracker,
-		Changed:     &convtypes.ChangedObjects{},
+		Changed:     &convtypes.ChangedObjects{Links: make(convtypes.TrackingLinks)},
 		SvcList:     []*api.Service{},
 		GatewayList: []*gatewayv1.Gateway{},
 		NsList:      map[string]*api.Namespace{},
@@ -295,12 +296,12 @@ func (c *CacheMock) SwapChangedObjects() *convtypes.ChangedObjects {
 	c.Changed = &convtypes.ChangedObjects{
 		GlobalConfigMapDataCur: changed.GlobalConfigMapDataNew,
 		TCPConfigMapDataCur:    changed.TCPConfigMapDataNew,
+		Links:                  make(convtypes.TrackingLinks),
 	}
 	// update changed.Links based on notifications
-	changedLinks := convtypes.TrackingLinks{}
 	addChanges := func(ctx convtypes.ResourceType, ns, n string) {
 		fullname := ns + "/" + n
-		changedLinks[ctx] = append(changedLinks[ctx], fullname)
+		tracker.TrackChanges(changed.Links, ctx, fullname)
 	}
 	for _, ing := range changed.IngressesDel {
 		addChanges(convtypes.ResourceIngress, ing.Namespace, ing.Name)
@@ -311,28 +312,6 @@ func (c *CacheMock) SwapChangedObjects() *convtypes.ChangedObjects {
 	for _, ing := range changed.IngressesAdd {
 		addChanges(convtypes.ResourceIngress, ing.Namespace, ing.Name)
 	}
-	for _, svc := range changed.ServicesDel {
-		addChanges(convtypes.ResourceService, svc.Namespace, svc.Name)
-	}
-	for _, svc := range changed.ServicesUpd {
-		addChanges(convtypes.ResourceService, svc.Namespace, svc.Name)
-	}
-	for _, svc := range changed.ServicesAdd {
-		addChanges(convtypes.ResourceService, svc.Namespace, svc.Name)
-	}
-	for _, secret := range changed.SecretsDel {
-		addChanges(convtypes.ResourceSecret, secret.Namespace, secret.Name)
-	}
-	for _, secret := range changed.SecretsUpd {
-		addChanges(convtypes.ResourceSecret, secret.Namespace, secret.Name)
-	}
-	for _, secret := range changed.SecretsAdd {
-		addChanges(convtypes.ResourceSecret, secret.Namespace, secret.Name)
-	}
-	for _, ep := range changed.EndpointsNew {
-		addChanges(convtypes.ResourceEndpoints, ep.Namespace, ep.Name)
-	}
-	changed.Links = changedLinks
 	// update c.IngList based on notifications
 	for i, ing := range c.IngList {
 		for _, ingUpd := range changed.IngressesUpd {
@@ -348,34 +327,6 @@ func (c *CacheMock) SwapChangedObjects() *convtypes.ChangedObjects {
 	}
 	c.IngList = c.IngList[:len(c.IngList)-len(changed.IngressesDel)]
 	c.IngList = append(c.IngList, changed.IngressesAdd...)
-	// update c.SvcList based on notifications
-	for i, svc := range c.SvcList {
-		for _, svcUpd := range changed.ServicesUpd {
-			if svc.Namespace == svcUpd.Namespace && svc.Name == svcUpd.Name {
-				c.SvcList[i] = svcUpd
-			}
-		}
-		for j, svcDel := range changed.ServicesDel {
-			if svc.Namespace == svcDel.Namespace && svc.Name == svcDel.Name {
-				c.SvcList[i] = c.SvcList[len(c.SvcList)-j-1]
-				delete(c.EpList, svc.Namespace+"/"+svc.Name)
-			}
-		}
-	}
-	// update c.SecretList based on notification
-	for _, secret := range changed.SecretsDel {
-		delete(c.SecretTLSPath, secret.Namespace+"/"+secret.Name)
-	}
-	for _, secret := range changed.SecretsAdd {
-		name := secret.Namespace + "/" + secret.Name
-		c.SecretTLSPath[name] = "/tls/" + name + ".pem"
-	}
-	// update c.EpList based on notifications
-	for _, ep := range changed.EndpointsNew {
-		c.EpList[ep.Namespace+"/"+ep.Name] = ep
-	}
-	c.SvcList = c.SvcList[:len(c.SvcList)-len(changed.ServicesDel)]
-	c.SvcList = append(c.SvcList, changed.ServicesAdd...)
 	return changed
 }
 

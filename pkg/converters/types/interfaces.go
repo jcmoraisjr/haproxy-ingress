@@ -62,45 +62,19 @@ type Cache interface {
 
 // ChangedObjects ...
 type ChangedObjects struct {
+	GlobalConfigMapDataCur,
+	GlobalConfigMapDataNew map[string]string
 	//
-	GlobalConfigMapDataCur, GlobalConfigMapDataNew map[string]string
+	TCPConfigMapDataCur,
+	TCPConfigMapDataNew map[string]string
 	//
-	TCPConfigMapDataCur, TCPConfigMapDataNew map[string]string
-	//
-	IngressesDel, IngressesUpd, IngressesAdd []*networking.Ingress
-	//
-	IngressClassesDel, IngressClassesUpd, IngressClassesAdd []*networking.IngressClass
-	//
-	//
-	GatewaysA2Del, GatewaysA2Upd, GatewaysA2Add []*gatewayv1alpha2.Gateway
-	//
-	GatewayClassesA2Del, GatewayClassesA2Upd, GatewayClassesA2Add []*gatewayv1alpha2.GatewayClass
-	//
-	HTTPRoutesA2Del, HTTPRoutesA2Upd, HTTPRoutesA2Add []*gatewayv1alpha2.HTTPRoute
-	//
-	GatewaysB1Del, GatewaysB1Upd, GatewaysB1Add []*gatewayv1beta1.Gateway
-	//
-	GatewayClassesB1Del, GatewayClassesB1Upd, GatewayClassesB1Add []*gatewayv1beta1.GatewayClass
-	//
-	HTTPRoutesB1Del, HTTPRoutesB1Upd, HTTPRoutesB1Add []*gatewayv1beta1.HTTPRoute
-	//
-	//
-	EndpointsNew []*api.Endpoints
-	//
-	EndpointSlicesUpd []*discoveryv1.EndpointSlice
-	//
-	ServicesDel, ServicesUpd, ServicesAdd []*api.Service
-	//
-	SecretsDel, SecretsUpd, SecretsAdd []*api.Secret
-	//
-	ConfigMapsDel, ConfigMapsUpd, ConfigMapsAdd []*api.ConfigMap
-	//
-	PodsNew []*api.Pod
+	IngressesDel,
+	IngressesUpd,
+	IngressesAdd []*networking.Ingress
 	//
 	NeedFullSync bool
-	//
-	Objects []string
-	Links   TrackingLinks
+	Objects      []string
+	Links        TrackingLinks
 }
 
 // ResourceType ...
