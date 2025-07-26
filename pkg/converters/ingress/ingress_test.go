@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -1529,34 +1530,35 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
 				*slice = append(*slice, ing)
 			}
 		}
-		svcs := func(slice *[]*api.Service, params [][]string) {
-			for _, param := range params {
-				svc, _ := c.createSvc1(param[0], param[1], param[2])
-				*slice = append(*slice, svc)
-			}
-		}
-		secs := func(slice *[]*api.Secret, params [][]string) {
-			for _, param := range params {
-				secret := c.createSecretTLS2(param[0])
-				*slice = append(*slice, secret)
-			}
-		}
-		endp := func(slice *[]*api.Endpoints, params [][]string) {
-			for _, param := range params {
-				_, ep, _ := conv_helper.CreateService(param[0], param[1], param[2])
-				*slice = append(*slice, ep)
-			}
-		}
 		ings(&c.cache.Changed.IngressesAdd, test.ingAdd)
 		ings(&c.cache.Changed.IngressesUpd, test.ingUpd)
 		ings(&c.cache.Changed.IngressesDel, test.ingDel)
-		svcs(&c.cache.Changed.ServicesAdd, test.svcAdd)
-		svcs(&c.cache.Changed.ServicesUpd, test.svcUpd)
-		svcs(&c.cache.Changed.ServicesDel, test.svcDel)
-		secs(&c.cache.Changed.SecretsAdd, test.secAdd)
-		secs(&c.cache.Changed.SecretsUpd, test.secUpd)
-		secs(&c.cache.Changed.SecretsDel, test.secDel)
-		endp(&c.cache.Changed.EndpointsNew, test.endpoints)
+		for _, param := range append(test.svcAdd, test.svcUpd...) {
+			_, _ = c.createSvc1(param[0], param[1], param[2])
+			tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceService, param[0])
+		}
+		for _, param := range test.svcDel {
+			for i, svc := range c.cache.SvcList {
+				if svc.Namespace+"/"+svc.Name == param[0] {
+					c.cache.SvcList = slices.Delete(c.cache.SvcList, i, i+1)
+					break
+				}
+			}
+			tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceService, param[0])
+		}
+		for _, param := range append(test.secAdd, test.secUpd...) {
+			_ = c.createSecretTLS2(param[0])
+			tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceSecret, param[0])
+		}
+		for _, param := range test.secDel {
+			delete(c.cache.SecretTLSPath, param[0])
+			tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceSecret, param[0])
+		}
+		for _, param := range test.endpoints {
+			_, ep, _ := conv_helper.CreateService(param[0], param[1], param[2])
+			c.cache.EpList[param[0]] = ep
+			tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceEndpoints, param[0])
+		}
 		c.Sync()
 
 		if test.expFront == "" {
@@ -1586,7 +1588,8 @@ func TestSyncPartialTCPService(t *testing.T) {
 	c.logger.Logging = []string{}
 
 	_, ep, _ := conv_helper.CreateService("default/echo1", "8080", "172.17.0.11,172.17.0.21")
-	c.cache.Changed.EndpointsNew = []*api.Endpoints{ep}
+	c.cache.EpList[ep.Namespace+"/"+ep.Name] = ep
+	tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceEndpoints, "default/echo1")
 	c.Sync()
 
 	c.compareConfigFront(`[]`)
@@ -1624,7 +1627,8 @@ func TestSyncPartialDefaultBackend(t *testing.T) {
 
 	// the mock of the default backend is hardcoded to system/default:8080 at 172.17.0.99
 	_, ep, _ := conv_helper.CreateService("system/default", "8080", "172.17.0.90")
-	c.cache.Changed.EndpointsNew = []*api.Endpoints{ep}
+	c.cache.EpList[ep.Namespace+"/"+ep.Name] = ep
+	tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceEndpoints, "system/default")
 	c.Sync()
 
 	c.compareConfigFront(`[]`)
@@ -2612,6 +2616,7 @@ func (c *testConfig) createSecretTLS1(secretName string) {
 }
 
 func (c *testConfig) createSecretTLS2(secretName string) *api.Secret {
+	c.createSecretTLS1(secretName)
 	return conv_helper.CreateSecret(secretName)
 }
 

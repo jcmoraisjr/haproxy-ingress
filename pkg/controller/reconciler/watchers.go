@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 	"sync"
 
 	"github.com/go-logr/logr"
@@ -38,6 +39,7 @@ import (
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/services"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 )
 
@@ -284,51 +286,13 @@ func (w *watchers) handlersGatewayv1alpha2() []*hdlr {
 			typ:  &gatewayv1alpha2.Gateway{},
 			res:  types.ResourceGateway,
 			full: true,
-			add: func(o client.Object) {
-				w.ch.GatewaysA2Add = append(w.ch.GatewaysA2Add, o.(*gatewayv1alpha2.Gateway))
-			},
-			upd: func(old, new client.Object) {
-				oldgw := old.(*gatewayv1alpha2.Gateway)
-				newgw := new.(*gatewayv1alpha2.Gateway)
-				oldValid := w.val.IsValidGatewayA2(oldgw)
-				newValid := w.val.IsValidGatewayA2(newgw)
-				if oldValid && newValid {
-					w.ch.GatewaysA2Upd = append(w.ch.GatewaysA2Upd, newgw)
-				} else if !oldValid && newValid {
-					w.ch.GatewaysA2Add = append(w.ch.GatewaysA2Add, newgw)
-				} else if oldValid && !newValid {
-					w.ch.GatewaysA2Del = append(w.ch.GatewaysA2Del, oldgw)
-				}
-			},
-			del: func(o client.Object) {
-				w.ch.GatewaysA2Del = append(w.ch.GatewaysA2Del, o.(*gatewayv1alpha2.Gateway))
-			},
 			pr: []predicate.Predicate{
 				predicate.GenerationChangedPredicate{},
 			},
 		},
 		{
-			typ: &gatewayv1alpha2.GatewayClass{},
-			res: types.ResourceGatewayClass,
-			add: func(o client.Object) {
-				w.ch.GatewayClassesA2Add = append(w.ch.GatewayClassesA2Add, o.(*gatewayv1alpha2.GatewayClass))
-			},
-			upd: func(old, new client.Object) {
-				oldgwcls := old.(*gatewayv1alpha2.GatewayClass)
-				newgwcls := new.(*gatewayv1alpha2.GatewayClass)
-				oldValid := w.val.IsValidGatewayClassA2(oldgwcls)
-				newValid := w.val.IsValidGatewayClassA2(newgwcls)
-				if oldValid && newValid {
-					w.ch.GatewayClassesA2Upd = append(w.ch.GatewayClassesA2Upd, newgwcls)
-				} else if !oldValid && newValid {
-					w.ch.GatewayClassesA2Add = append(w.ch.GatewayClassesA2Add, newgwcls)
-				} else if oldValid && !newValid {
-					w.ch.GatewayClassesA2Del = append(w.ch.GatewayClassesA2Del, oldgwcls)
-				}
-			},
-			del: func(o client.Object) {
-				w.ch.GatewayClassesA2Del = append(w.ch.GatewayClassesA2Del, o.(*gatewayv1alpha2.GatewayClass))
-			},
+			typ:  &gatewayv1alpha2.GatewayClass{},
+			res:  types.ResourceGatewayClass,
 			full: true,
 			pr: []predicate.Predicate{
 				predicate.GenerationChangedPredicate{},
@@ -363,51 +327,13 @@ func (w *watchers) handlersGatewayv1beta1() []*hdlr {
 			typ:  &gatewayv1beta1.Gateway{},
 			res:  types.ResourceGateway,
 			full: true,
-			add: func(o client.Object) {
-				w.ch.GatewaysB1Add = append(w.ch.GatewaysB1Add, o.(*gatewayv1beta1.Gateway))
-			},
-			upd: func(old, new client.Object) {
-				oldgw := old.(*gatewayv1beta1.Gateway)
-				newgw := new.(*gatewayv1beta1.Gateway)
-				oldValid := w.val.IsValidGatewayB1(oldgw)
-				newValid := w.val.IsValidGatewayB1(newgw)
-				if oldValid && newValid {
-					w.ch.GatewaysB1Upd = append(w.ch.GatewaysB1Upd, newgw)
-				} else if !oldValid && newValid {
-					w.ch.GatewaysB1Add = append(w.ch.GatewaysB1Add, newgw)
-				} else if oldValid && !newValid {
-					w.ch.GatewaysB1Del = append(w.ch.GatewaysB1Del, oldgw)
-				}
-			},
-			del: func(o client.Object) {
-				w.ch.GatewaysB1Del = append(w.ch.GatewaysB1Del, o.(*gatewayv1beta1.Gateway))
-			},
 			pr: []predicate.Predicate{
 				predicate.GenerationChangedPredicate{},
 			},
 		},
 		{
-			typ: &gatewayv1beta1.GatewayClass{},
-			res: types.ResourceGatewayClass,
-			add: func(o client.Object) {
-				w.ch.GatewayClassesB1Add = append(w.ch.GatewayClassesB1Add, o.(*gatewayv1beta1.GatewayClass))
-			},
-			upd: func(old, new client.Object) {
-				oldgwcls := old.(*gatewayv1beta1.GatewayClass)
-				newgwcls := new.(*gatewayv1beta1.GatewayClass)
-				oldValid := w.val.IsValidGatewayClassB1(oldgwcls)
-				newValid := w.val.IsValidGatewayClassB1(newgwcls)
-				if oldValid && newValid {
-					w.ch.GatewayClassesB1Upd = append(w.ch.GatewayClassesB1Upd, newgwcls)
-				} else if !oldValid && newValid {
-					w.ch.GatewayClassesB1Add = append(w.ch.GatewayClassesB1Add, newgwcls)
-				} else if oldValid && !newValid {
-					w.ch.GatewayClassesB1Del = append(w.ch.GatewayClassesB1Del, oldgwcls)
-				}
-			},
-			del: func(o client.Object) {
-				w.ch.GatewayClassesB1Del = append(w.ch.GatewayClassesB1Del, o.(*gatewayv1beta1.GatewayClass))
-			},
+			typ:  &gatewayv1beta1.GatewayClass{},
+			res:  types.ResourceGatewayClass,
 			full: true,
 			pr: []predicate.Predicate{
 				predicate.GenerationChangedPredicate{},
@@ -554,8 +480,10 @@ func (h *hdlr) compose(ev string, obj client.Object) {
 		fullname = ns + "/" + fullname
 	}
 	ch := h.w.ch
-	ch.Links[h.res] = appenddedup(ch.Links[h.res], fullname)
-	ch.Objects = appenddedup(ch.Objects, fmt.Sprintf("%s/%s:%s", ev, h.res, fullname))
+	tracker.TrackChanges(ch.Links, h.res, fullname)
+	if ref := fmt.Sprintf("%s/%s:%s", ev, h.res, fullname); !slices.Contains(ch.Objects, ref) {
+		ch.Objects = append(ch.Objects, ref)
+	}
 }
 
 func (h *hdlr) notify(event string, o client.Object, q workqueue.TypedRateLimitingInterface[rparam]) {
@@ -566,13 +494,4 @@ func (h *hdlr) notify(event string, o client.Object, q workqueue.TypedRateLimiti
 	if h.w.run {
 		h.w.log.Info("notify", "event", event, "kind", reflect.TypeOf(o), "namespace", o.GetNamespace(), "name", o.GetName())
 	}
-}
-
-func appenddedup(slice []string, s string) []string {
-	for _, item := range slice {
-		if item == s {
-			return slice
-		}
-	}
-	return append(slice, s)
 }

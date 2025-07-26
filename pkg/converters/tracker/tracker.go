@@ -17,6 +17,7 @@ limitations under the License.
 package tracker
 
 import (
+	"slices"
 	"sort"
 
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
@@ -34,6 +35,12 @@ type trackingMap map[convtypes.ResourceType]map[string]map[convtypes.TrackingRef
 
 type tracker struct {
 	tracking trackingMap
+}
+
+func TrackChanges(links convtypes.TrackingLinks, context convtypes.ResourceType, fullname string) {
+	if llink := links[context]; !slices.Contains(llink, fullname) {
+		links[context] = append(llink, fullname)
+	}
 }
 
 func (t *tracker) TrackNames(leftContext convtypes.ResourceType, leftName string, rightContext convtypes.ResourceType, rightName string) {
