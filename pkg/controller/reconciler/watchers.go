@@ -161,24 +161,9 @@ func (w *watchers) handlersCore() []*hdlr {
 			},
 		},
 		{
-			typ: &api.Endpoints{},
-			res: types.ResourceEndpoints,
-			pr: []predicate.Predicate{
-				predicate.NewPredicateFuncs(func(object client.Object) bool { return !w.cfg.EnableEndpointSliceAPI }),
-				predicate.Funcs{
-					UpdateFunc: func(ue event.UpdateEvent) bool {
-						old := ue.ObjectOld.(*api.Endpoints)
-						new := ue.ObjectNew.(*api.Endpoints)
-						return !reflect.DeepEqual(old.Subsets, new.Subsets)
-					},
-				},
-			},
-		},
-		{
 			typ: &discoveryv1.EndpointSlice{},
 			res: types.ResourceEndpoints,
 			pr: []predicate.Predicate{
-				predicate.NewPredicateFuncs(func(object client.Object) bool { return w.cfg.EnableEndpointSliceAPI }),
 				predicate.Funcs{
 					UpdateFunc: func(ue event.UpdateEvent) bool {
 						old := ue.ObjectOld.(*discoveryv1.EndpointSlice)
@@ -187,7 +172,7 @@ func (w *watchers) handlersCore() []*hdlr {
 					},
 				},
 			},
-			name: func(obj client.Object) string {
+			trkn: func(obj client.Object) string {
 				if labels := obj.GetLabels(); labels != nil {
 					if name := labels["kubernetes.io/service-name"]; name != "" {
 						return name
@@ -424,7 +409,7 @@ type hdlr struct {
 	add,
 	del func(o client.Object)
 	upd  func(old, new client.Object)
-	name func(obj client.Object) string
+	trkn func(obj client.Object) string
 	full bool
 }
 
@@ -470,19 +455,19 @@ func (h *hdlr) Generic(ctx context.Context, e event.TypedGenericEvent[client.Obj
 }
 
 func (h *hdlr) compose(ev string, obj client.Object) {
-	var fullname string
-	if h.name != nil {
-		fullname = h.name(obj)
-	} else {
-		fullname = obj.GetName()
+	resourcename := obj.GetName()
+	trackingname := resourcename
+	if h.trkn != nil {
+		trackingname = h.trkn(obj)
 	}
 	if ns := obj.GetNamespace(); ns != "" {
-		fullname = ns + "/" + fullname
+		resourcename = ns + "/" + resourcename
+		trackingname = ns + "/" + trackingname
 	}
 	ch := h.w.ch
-	tracker.TrackChanges(ch.Links, h.res, fullname)
-	if ref := fmt.Sprintf("%s/%s:%s", ev, h.res, fullname); !slices.Contains(ch.Objects, ref) {
-		ch.Objects = append(ch.Objects, ref)
+	tracker.TrackChanges(ch.Links, h.res, trackingname)
+	if objname := fmt.Sprintf("%s/%s:%s", ev, h.res, resourcename); !slices.Contains(ch.Objects, objname) {
+		ch.Objects = append(ch.Objects, objname)
 	}
 }
 

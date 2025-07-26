@@ -427,15 +427,6 @@ func (c *c) GetEndpointSlices(service *api.Service) ([]*discoveryv1.EndpointSlic
 	return eps, err
 }
 
-func (c *c) GetEndpoints(service *api.Service) (*api.Endpoints, error) {
-	ep := api.Endpoints{}
-	err := c.client.Get(c.ctx, types.NamespacedName{
-		Namespace: service.Namespace,
-		Name:      service.Name,
-	}, &ep)
-	return &ep, err
-}
-
 func (c *c) GetConfigMap(configMapName string) (*api.ConfigMap, error) {
 	cm := api.ConfigMap{}
 	err := c.get(configMapName, &cm)

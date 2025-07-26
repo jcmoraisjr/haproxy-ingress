@@ -45,7 +45,6 @@ type Cache interface {
 	GetHTTPRouteList() ([]*gatewayv1.HTTPRoute, error)
 	GetTCPRouteList() ([]*gatewayv1alpha2.TCPRoute, error)
 	GetService(defaultNamespace, serviceName string) (*api.Service, error)
-	GetEndpoints(service *api.Service) (*api.Endpoints, error)
 	GetConfigMap(configMapName string) (*api.ConfigMap, error)
 	GetNamespace(name string) (*api.Namespace, error)
 	GetTerminatingPods(service *api.Service, track []TrackingRef) ([]*api.Pod, error)

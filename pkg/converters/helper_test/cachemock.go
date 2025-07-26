@@ -54,7 +54,6 @@ type CacheMock struct {
 	//
 	NsList        map[string]*api.Namespace
 	LookupList    map[string][]net.IP
-	EpList        map[string]*api.Endpoints
 	EpsList       map[string][]*discoveryv1.EndpointSlice
 	ConfigMapList map[string]*api.ConfigMap
 	TermPodList   map[string][]*api.Pod
@@ -75,7 +74,7 @@ func NewCacheMock(tracker convtypes.Tracker) *CacheMock {
 		GatewayList: []*gatewayv1.Gateway{},
 		NsList:      map[string]*api.Namespace{},
 		LookupList:  map[string][]net.IP{},
-		EpList:      map[string]*api.Endpoints{},
+		EpsList:     map[string][]*discoveryv1.EndpointSlice{},
 		TermPodList: map[string][]*api.Pod{},
 		SecretTLSPath: map[string]string{
 			"system/ingress-default": "/tls/tls-default.pem",
@@ -179,13 +178,13 @@ func (c *CacheMock) GetService(defaultNamespace, serviceName string) (*api.Servi
 	return nil, fmt.Errorf("service not found: '%s'", serviceName)
 }
 
-// GetEndpoints ...
-func (c *CacheMock) GetEndpoints(service *api.Service) (*api.Endpoints, error) {
+// GetEndpointSlices ...
+func (c *CacheMock) GetEndpointSlices(service *api.Service) ([]*discoveryv1.EndpointSlice, error) {
 	serviceName := service.Namespace + "/" + service.Name
-	if ep, found := c.EpList[serviceName]; found {
-		return ep, nil
+	if eps, found := c.EpsList[serviceName]; found {
+		return eps, nil
 	}
-	return nil, fmt.Errorf("could not find endpoints for service '%s'", serviceName)
+	return nil, fmt.Errorf("could not find endpointslices for service '%s'", serviceName)
 }
 
 // GetConfigMap ...
@@ -333,12 +332,4 @@ func (c *CacheMock) SwapChangedObjects() *convtypes.ChangedObjects {
 // NeedFullSync ...
 func (c *CacheMock) NeedFullSync() bool {
 	return false
-}
-
-func (c *CacheMock) GetEndpointSlices(service *api.Service) ([]*discoveryv1.EndpointSlice, error) {
-	serviceName := service.Namespace + "/" + service.Name
-	if ep, found := c.EpsList[serviceName]; found {
-		return ep, nil
-	}
-	return nil, fmt.Errorf("could not find endpointslices for service '%s'", serviceName)
 }

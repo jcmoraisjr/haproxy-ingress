@@ -98,7 +98,6 @@ type Options struct {
 	SortEndpointsBy          string
 	TrackOldInstances        bool
 	UseNodeInternalIP        bool
-	EnableEndpointSlicesAPI  bool
 	LogZap                   bool
 	LogDev                   bool
 	LogCaller                bool
@@ -119,6 +118,8 @@ type Options struct {
 	ForceIsolation bool
 	// Deprecated option
 	IgnoreIngressWithoutClass bool
+	// Deprecated option
+	EnableEndpointSlicesAPI bool
 
 	//
 	Version bool
@@ -419,11 +420,6 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 		"the internal instead of the external IP address.",
 	)
 
-	fs.BoolVar(&o.EnableEndpointSlicesAPI, "enable-endpointslices-api", o.EnableEndpointSlicesAPI, ""+
-		"Enables EndpointSlices API and disables watching Endpoints API. Only enable in "+
-		"k8s >=1.21+",
-	)
-
 	fs.BoolVar(&o.LogZap, "log-zap", o.LogZap, ""+
 		"Enables zap as the log sink for all the logging outputs.",
 	)
@@ -490,6 +486,12 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 	fs.BoolVar(&o.IgnoreIngressWithoutClass, "ignore-ingress-without-class", o.IgnoreIngressWithoutClass, ""+
 		"DEPRECATED: Use --watch-ingress-without-class command-line option instead to "+
 		"define if ingress without class should be tracked.",
+	)
+
+	fs.BoolVar(&o.EnableEndpointSlicesAPI, "enable-endpointslices-api", o.EnableEndpointSlicesAPI, ""+
+		"DEPRECATED: Enables EndpointSlices API and disables watching Endpoints API. "+
+		"Endpoints is deprecated since 1.33, so endpointslices is always enabled and "+
+		"this option is ignored.",
 	)
 
 	//

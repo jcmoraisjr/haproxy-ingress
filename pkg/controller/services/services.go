@@ -167,7 +167,6 @@ func (s *Services) setup(ctx context.Context) error {
 		HasGatewayB1:     cfg.HasGatewayB1,
 		HasGatewayV1:     cfg.HasGatewayV1,
 		HasTCPRouteA2:    cfg.HasTCPRouteA2,
-		EnableEPSlices:   cfg.EnableEndpointSliceAPI,
 	}
 	instance := haproxy.CreateInstance(s.legacylogger.new("haproxy"), instanceOptions)
 	if err := instance.ParseTemplates(); err != nil {

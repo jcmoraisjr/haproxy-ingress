@@ -27,12 +27,14 @@ import (
 
 	"github.com/kylelemons/godebug/diff"
 	api "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networking "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/utils/ptr"
 
 	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/annotations"
@@ -180,7 +182,7 @@ func TestSyncSvcUpstream(t *testing.T) {
 
 func TestSyncSvcExternalName(t *testing.T) {
 	createSvc := func(c *testConfig, port string) *api.Service {
-		svc, _, _ := conv_helper.CreateService("default/echo", port, "")
+		svc, _ := conv_helper.CreateService("default/echo", port, "")
 		if port == "" {
 			svc.Spec.Ports = nil
 		}
@@ -324,7 +326,7 @@ func TestSyncInvalidEndpoint(t *testing.T) {
 	defer c.teardown()
 
 	c.createSvc1Auto()
-	delete(c.cache.EpList, "default/echo")
+	delete(c.cache.EpsList, "default/echo")
 	c.Sync(c.createIng1("default/echo", "echo.example.com", "/", "echo:8080"))
 
 	c.compareConfigFront(`
@@ -337,19 +339,16 @@ func TestSyncInvalidEndpoint(t *testing.T) {
 - id: default_echo_8080` + defaultBackendConfig)
 
 	c.logger.CompareLogging(`
-ERROR error adding endpoints of service 'default/echo': could not find endpoints for service 'default/echo'`)
+ERROR error adding endpoints of service 'default/echo': could not find endpointslices for service 'default/echo'`)
 }
 
 func TestSyncDrainSupport(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	svc, ep := c.createSvc1("default/echo", "http:8080:http", "172.17.1.101,172.17.1.102")
+	svc, eps := c.createSvc1("default/echo", "http:8080:http", "172.17.1.101,172.17.1.102")
 	svcName := svc.Namespace + "/" + svc.Name
-	ss := &ep.Subsets[0]
-	addr := ss.Addresses
-	ss.Addresses = []api.EndpointAddress{addr[0]}
-	ss.NotReadyAddresses = []api.EndpointAddress{addr[1]}
+	eps[0].Endpoints[1].Conditions.Ready = ptr.To(false)
 	pod1 := c.createPod1("default/echo-xxxxx", "172.17.1.103", "http:8080")
 	pod2 := c.createPod1("default/echo-yyyyy", "172.17.1.104", "none:8080")
 	c.cache.TermPodList[svcName] = []*api.Pod{pod1, pod2}
@@ -389,10 +388,10 @@ func TestSyncServerIDs(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	svc, ep := c.createSvc1("default/echo", "8080", "172.17.1.101,172.17.1.102,172.17.1.103")
-	ep.Subsets[0].Addresses[0].TargetRef.Name = "echo-1"
-	ep.Subsets[0].Addresses[1].TargetRef.Name = "echo-2"
-	ep.Subsets[0].Addresses[2].TargetRef.Name = "echo-3"
+	svc, eps := c.createSvc1("default/echo", "8080", "172.17.1.101,172.17.1.102,172.17.1.103")
+	eps[0].Endpoints[0].TargetRef = &api.ObjectReference{Namespace: "default", Name: "echo-1"}
+	eps[0].Endpoints[1].TargetRef = &api.ObjectReference{Namespace: "default", Name: "echo-2"}
+	eps[0].Endpoints[2].TargetRef = &api.ObjectReference{Namespace: "default", Name: "echo-3"}
 
 	c.cache.PodList = make(map[string]*api.Pod)
 	c.cache.PodList["default/echo-1"] = c.createPod1("default/echo-1", "172.17.1.101", "http:8080")
@@ -1555,8 +1554,8 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
 			tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceSecret, param[0])
 		}
 		for _, param := range test.endpoints {
-			_, ep, _ := conv_helper.CreateService(param[0], param[1], param[2])
-			c.cache.EpList[param[0]] = ep
+			_, eps := conv_helper.CreateService(param[0], param[1], param[2])
+			c.cache.EpsList[param[0]] = eps
 			tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceEndpoints, param[0])
 		}
 		c.Sync()
@@ -1587,8 +1586,8 @@ func TestSyncPartialTCPService(t *testing.T) {
 	c.hconfig.Commit()
 	c.logger.Logging = []string{}
 
-	_, ep, _ := conv_helper.CreateService("default/echo1", "8080", "172.17.0.11,172.17.0.21")
-	c.cache.EpList[ep.Namespace+"/"+ep.Name] = ep
+	_, eps := conv_helper.CreateService("default/echo1", "8080", "172.17.0.11,172.17.0.21")
+	c.cache.EpsList["default/echo1"] = eps
 	tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceEndpoints, "default/echo1")
 	c.Sync()
 
@@ -1626,8 +1625,8 @@ func TestSyncPartialDefaultBackend(t *testing.T) {
 	c.logger.Logging = []string{}
 
 	// the mock of the default backend is hardcoded to system/default:8080 at 172.17.0.99
-	_, ep, _ := conv_helper.CreateService("system/default", "8080", "172.17.0.90")
-	c.cache.EpList[ep.Namespace+"/"+ep.Name] = ep
+	_, eps := conv_helper.CreateService("system/default", "8080", "172.17.0.90")
+	c.cache.EpsList["system/default"] = eps
 	tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceEndpoints, "system/default")
 	c.Sync()
 
@@ -2382,19 +2381,19 @@ func TestSyncAnnPassthrough(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	svc, ep := c.createSvc1("default/echo", "http:8080", "172.17.1.101")
+	svc, eps := c.createSvc1("default/echo", "http:8080", "172.17.1.101")
 	svcPort := api.ServicePort{
 		Name:       "https",
 		Port:       8443,
 		TargetPort: intstr.FromInt(8443),
 	}
-	epPort := api.EndpointPort{
-		Name:     "https",
-		Port:     8443,
-		Protocol: api.ProtocolTCP,
+	epPort := discoveryv1.EndpointPort{
+		Name:     ptr.To("https"),
+		Port:     ptr.To[int32](8443),
+		Protocol: ptr.To(api.ProtocolTCP),
 	}
 	svc.Spec.Ports = append(svc.Spec.Ports, svcPort)
-	ep.Subsets[0].Ports = append(ep.Subsets[0].Ports, epPort)
+	eps[0].Ports = append(eps[0].Ports, epPort)
 	c.Sync(
 		c.createIng1Ann("default/echo1", "echo1.example.com", "/", "echo:8443",
 			map[string]string{
@@ -2556,24 +2555,24 @@ func (c *testConfig) createConverter() *converter {
 	).(*converter)
 }
 
-func (c *testConfig) createSvc1Auto() (*api.Service, *api.Endpoints) {
+func (c *testConfig) createSvc1Auto() (*api.Service, []*discoveryv1.EndpointSlice) {
 	return c.createSvc1("default/echo", "8080", "172.17.0.11")
 }
 
-func (c *testConfig) createSvc1AutoAnn(ann map[string]string) (*api.Service, *api.Endpoints) {
+func (c *testConfig) createSvc1AutoAnn(ann map[string]string) (*api.Service, []*discoveryv1.EndpointSlice) {
 	svc, ep := c.createSvc1Auto()
 	svc.SetAnnotations(ann)
 	return svc, ep
 }
 
-func (c *testConfig) createSvc1Ann(name, port, endpoints string, ann map[string]string) (*api.Service, *api.Endpoints) {
+func (c *testConfig) createSvc1Ann(name, port, endpoints string, ann map[string]string) (*api.Service, []*discoveryv1.EndpointSlice) {
 	svc, ep := c.createSvc1(name, port, endpoints)
 	svc.SetAnnotations(ann)
 	return svc, ep
 }
 
-func (c *testConfig) createSvc1(name, port, endpoints string) (*api.Service, *api.Endpoints) {
-	svc, ep, _ := conv_helper.CreateService(name, port, endpoints)
+func (c *testConfig) createSvc1(name, port, endpoints string) (*api.Service, []*discoveryv1.EndpointSlice) {
+	svc, eps := conv_helper.CreateService(name, port, endpoints)
 	// TODO change SvcList to map
 	var has bool
 	for i, svc1 := range c.cache.SvcList {
@@ -2586,8 +2585,8 @@ func (c *testConfig) createSvc1(name, port, endpoints string) (*api.Service, *ap
 	if !has {
 		c.cache.SvcList = append(c.cache.SvcList, svc)
 	}
-	c.cache.EpList[name] = ep
-	return svc, ep
+	c.cache.EpsList[name] = eps
+	return svc, eps
 }
 
 func (c *testConfig) createPod1(name, ip, port string) *api.Pod {
