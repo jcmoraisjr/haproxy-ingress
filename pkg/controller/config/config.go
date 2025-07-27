@@ -147,6 +147,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		"controller-repo", versionInfo.Repository,
 	)
 
+	// deprecated area
 	if opt.AcmeElectionID != "" {
 		configLog.Info("DEPRECATED: --acme-election-id is ignored, acme and status update leader uses the same ID from --election-id command-line option.")
 	}
@@ -167,6 +168,11 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 	}
 	if !opt.EnableEndpointSlicesAPI {
 		configLog.Info("DEPRECATED: Endpoints API is deprecated since Kubernetes 1.33, --enable-endpointslices-api cannot be disabled and EndpointSlices API will always be used.")
+	}
+
+	// warning area
+	if opt.ShutdownTimeout < opt.HAProxyGracePeriod {
+		configLog.Info(fmt.Sprintf("WARNING: --shutdown-timeout=%s is lesser than --haproxy-grace-period=%s", opt.ShutdownTimeout.String(), opt.HAProxyGracePeriod.String()))
 	}
 
 	if opt.IngressClass != "" {
@@ -300,9 +306,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 
 	masterWorkerCfg := opt.MasterWorker
 	if !masterWorkerCfg && opt.MasterSocket != "" {
-		// TODO Change to FATAL when default masterWorker changes to true
-		configLog.Info("WARN: changing --master-worker=true due to external haproxy configuration")
-		masterWorkerCfg = true
+		return nil, fmt.Errorf("master-worker mode cannot be disabled when using external haproxy configuration")
 	}
 	if opt.MasterSocket != "" {
 		configLog.Info("running external haproxy", "master-unix-socket", opt.MasterSocket)
@@ -516,6 +520,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		RootContext:              rootcontext,
 		Scheme:                   scheme,
 		ShutdownTimeout:          &opt.ShutdownTimeout,
+		HAProxyGracePeriod:       opt.HAProxyGracePeriod,
 		SortEndpointsBy:          sortEndpoints,
 		StatsCollectProcPeriod:   opt.StatsCollectProcPeriod,
 		StopHandler:              opt.StopHandler,
@@ -603,7 +608,7 @@ func (e klogEncoder) EncodeEntry(entry zapcore.Entry, fields []zapcore.Field) (*
 func createRootContext(ctx context.Context, rootLogger logr.Logger, waitShutdown time.Duration) context.Context {
 	ctx, cancel := context.WithCancel(ctx)
 	c := make(chan os.Signal, 3)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(c, syscall.SIGUSR1, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		log := rootLogger.WithName("signal")
 		s := <-c
@@ -699,6 +704,7 @@ type Config struct {
 	RootContext              context.Context
 	Scheme                   *runtime.Scheme
 	ShutdownTimeout          *time.Duration
+	HAProxyGracePeriod       time.Duration
 	SortEndpointsBy          string
 	StatsCollectProcPeriod   time.Duration
 	StopHandler              bool

@@ -36,6 +36,7 @@ func NewOptions() *Options {
 		UpdateStatus:            true,
 		ElectionID:              "class-%s.haproxy-ingress.github.io",
 		ShutdownTimeout:         25 * time.Second,
+		HAProxyGracePeriod:      20 * time.Second,
 		UpdateStatusOnShutdown:  true,
 		EnableEndpointSlicesAPI: true,
 		LogLevel:                2,
@@ -89,6 +90,7 @@ type Options struct {
 	ElectionID               string
 	WaitBeforeShutdown       string
 	ShutdownTimeout          time.Duration
+	HAProxyGracePeriod       time.Duration
 	AllowCrossNamespace      bool
 	DisableExternalName      bool
 	DisableConfigKeywords    string
@@ -370,6 +372,13 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 		"SIGINT or a SIGTERM, for all of its internal services to gracefully stop before "+
 		"shutting down the process. It starts to count after --wait-before-shutdown has "+
 		"been passed, if configured.",
+	)
+
+	fs.DurationVar(&o.HAProxyGracePeriod, "haproxy-grace-period", o.HAProxyGracePeriod, ""+
+		"Configures the amount of time HAProxy should wait for all the active connections "+
+		"to finish, after HAProxy Ingress receives the signal from Kubernetes to "+
+		"terminate. This option is only used on embedded HAProxy configured as "+
+		"master-worker.",
 	)
 
 	fs.BoolVar(&o.AllowCrossNamespace, "allow-cross-namespace", o.AllowCrossNamespace, ""+
