@@ -34,6 +34,7 @@ The following command-line options are supported:
 | [`--election-id`](#election-id)                         | identifier                 | `ingress-controller-leader` |   |
 | [`--enable-endpointslices-api`](#enable-endpointslices-api) | [true\|false]          | `true`                  | v0.14 |
 | [`--force-namespace-isolation`](#force-namespace-isolation) | [true\|false]          | `false`                 |       |
+| [`--haproxy-grace-period`](#haproxy-grace-period)       | time                       | `20s`                   | v0.16 |
 | [`--health-check-path`](#stats)                         | path                       | `/healthz`              |       |
 | [`--healthz-addr`](#stats)                              | tcp address                | `:10254`                | v0.15 |
 | [`--healthz-port`](#stats)                              | port number                | `10254`                 |       |
@@ -301,6 +302,24 @@ See also:
 
 ---
 
+## haproxy-grace-period
+
+* `--haproxy-grace-period`
+
+Since v0.16
+
+Defines the duration HAProxy should wait all requests to finish before terminates its process. This option is only used on embedded, master-worker configured proxy, see [`--master-worker`](#master-worker). Daemon mode cannot have grace period configured, and external mode should be configured directly on HAProxy container. Defaults to `20s`.
+
+This option should be below the controller shutdown timeout, since it will terminate the controller process despite any other internal grace period.
+
+On [External HAProxy]({{% relref "../examples/external-haproxy" %}}), its container already uses SIGUSR1 as the stop signal, which makes HAProxy to wait for active connections to finish, just need to configure the container's grace period if need to change from its default of 30s.
+
+See also:
+
+* [`--shutdown-timeout`](#shutdown-timeout) command-line option.
+
+---
+
 ## Ingress Class
 
 More than one ingress controller is supported per Kubernetes cluster. These options allow to
@@ -547,10 +566,14 @@ See also:
 
 * `--shutdown-timeout`
 
-Defines the amount of time the controller should wait, after receiving a
-SIGINT or a SIGTERM, for all of its internal services to gracefully stop before
-shutting down the process. It starts to count after --wait-before-shutdown has
-been passed, if configured. Defaults to `25s`.
+Defines the amount of time the controller should wait, after receiving a SIGUSR1, SIGINT or SIGTERM, for all of its internal services to gracefully stop before shutting down the process. It starts to count after [`--wait-before-shutdown`](#wait-before-shutdown) has been passed, if configured. Defaults to `25s`.
+
+If changing its default value, consider also to change [`--haproxy-grace-period`](#haproxy-grace-period) to at most `1s` less than the shutdown timeout. If changing the shutdown timeout to `30s` or more, remember to also configure controller's pod grace period to at least `1s` more than the sum of the `--wait-before-shutdown` and the `--shutdown-timeout`.
+
+See also:
+
+* [`--wait-before-shutdown`](#wait-before-shutdown) command-line option.
+* [`--haproxy-grace-period`](#haproxy-grace-period) command-line option.
 
 ---
 
@@ -780,6 +803,12 @@ Show release information about the ingress controller.
 If argument `--wait-before-shutdown` is defined, controller will wait defined time in seconds
 before it starts shutting down components when SIGTERM was received. By default, it's 0, which means
 the controller starts shutting down itself right after signal was sent.
+
+This option, along with [`--shutdown-timeout`](#shutdown-timeout), should be lesser than the controller's pod grace period, otherwise controller should be SIGKILLed before its timeout expires.
+
+See also:
+
+* [`--shutdown-timeout`](#shutdown-timeout) command-line option.
 
 ---
 

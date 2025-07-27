@@ -130,6 +130,7 @@ func (s *Services) setup(ctx context.Context) error {
 		HAProxyMapsDir:    cfg.DefaultDirMaps,
 		IsMasterWorker:    cfg.MasterWorker,
 		IsExternal:        cfg.MasterSocket != "",
+		GracePeriod:       cfg.HAProxyGracePeriod,
 		MasterSocket:      masterSocket,
 		AdminSocket:       adminSocket,
 		AcmeSocket:        acmeSocket,
@@ -228,6 +229,9 @@ func (s *Services) withManager(mgr ctrl.Manager) error {
 		if err := mgr.Add(s.svchealthz); err != nil {
 			return err
 		}
+	}
+	if err := mgr.Add(&svcShutdown{instance: s.instance}); err != nil {
+		return err
 	}
 	return nil
 }

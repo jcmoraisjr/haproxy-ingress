@@ -52,6 +52,7 @@ type InstanceOptions struct {
 	HAProxyMapsDir    string
 	IsMasterWorker    bool
 	IsExternal        bool
+	GracePeriod       time.Duration
 	MasterSocket      string
 	AdminSocket       string
 	AcmeSocket        string
@@ -639,8 +640,8 @@ func (i *instance) reloadEmbeddedDaemon() error {
 func (i *instance) reloadEmbeddedMasterWorker() error {
 	i.embdStart.Do(func() {
 		go func() {
+			defer close(i.waitProc)
 			wait.UntilWithContext(i.options.StopCtx, i.startHAProxySync, 4*time.Second)
-			close(i.waitProc)
 		}()
 	})
 	if !i.up {
@@ -671,6 +672,7 @@ func (i *instance) startHAProxySync(ctx context.Context) {
 	}
 	wait := make(chan struct{})
 	go func() {
+		defer close(wait)
 		if err := cmd.Wait(); err != nil {
 			if exitError, ok := err.(*exec.ExitError); ok {
 				i.logger.Info("haproxy stopped (exit code: %d)", exitError.ExitCode())
@@ -680,16 +682,23 @@ func (i *instance) startHAProxySync(ctx context.Context) {
 		} else {
 			i.logger.Info("haproxy stopped")
 		}
-		close(wait)
 	}()
 	select {
+	case <-wait:
 	case <-ctx.Done():
-		i.logger.Info("stopping haproxy master process (pid: %d)", cmd.Process.Pid)
-		if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+		i.logger.Info("sending SIGUSR1 to haproxy master process (pid: %d)", cmd.Process.Pid)
+		if err := cmd.Process.Signal(syscall.SIGUSR1); err != nil {
 			i.logger.Error("error stopping haproxy process: %v", err)
 		}
-		<-wait
-	case <-wait:
+		select {
+		case <-wait:
+		case <-time.After(i.options.GracePeriod):
+			i.logger.Info("stopping haproxy timed out after %s, sending SIGTERM to haproxy master process (pid: %d)", i.options.GracePeriod.String(), cmd.Process.Pid)
+			if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+				i.logger.Error("error stopping haproxy process: %v", err)
+			}
+			<-wait
+		}
 	}
 }
 
