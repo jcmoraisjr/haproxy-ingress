@@ -290,9 +290,9 @@ func TestTCPSvcSync(t *testing.T) {
 		c := setup(t)
 		for svckey, endpoints := range test.svcmock {
 			svcport := strings.Split(svckey, ":")
-			svc, ep, _ := conv_helper.CreateService(svcport[0], svcport[1], endpoints)
+			svc, eps := conv_helper.CreateService(svcport[0], svcport[1], endpoints)
 			c.cache.SvcList = append(c.cache.SvcList, svc)
-			c.cache.EpList[svcport[0]] = ep
+			c.cache.EpsList[svcport[0]] = eps
 		}
 		c.cache.SecretTLSPath = test.secretCertMock
 		c.cache.SecretCAPath = test.secretCAMock

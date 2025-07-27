@@ -44,7 +44,6 @@ type ConverterOptions struct {
 	HasGatewayB1     bool
 	HasGatewayV1     bool
 	HasTCPRouteA2    bool
-	EnableEPSlices   bool
 }
 
 // DynamicConfig ...

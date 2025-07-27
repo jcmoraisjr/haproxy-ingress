@@ -27,7 +27,7 @@ import (
 )
 
 // CreateService ...
-func CreateService(name, port, endpoints string) (*api.Service, *api.Endpoints, []*discoveryv1.EndpointSlice) {
+func CreateService(name, port, endpoints string) (*api.Service, []*discoveryv1.EndpointSlice) {
 	sname := strings.Split(name, "/") // namespace/name of the service
 	sport := strings.Split(port, ":") // numeric-port -or- name:numeric-port -or- name:numeric-port:named-port
 	if len(sport) < 2 {
@@ -54,38 +54,12 @@ spec:
     port: ` + portNumber + `
     targetPort: ` + targetRef).(*api.Service)
 
-	ep := CreateObject(`
-apiVersion: v1
-kind: Endpoints
-metadata:
-  name: ` + metaName + `
-  namespace: ` + namespace + `
-subsets:
-- addresses: []
-  ports:
-  - name: ` + portName + `
-    port: ` + portNumber + `
-    protocol: TCP`).(*api.Endpoints)
-
-	addr := []api.EndpointAddress{}
-	for _, e := range strings.Split(endpoints, ",") {
-		if e != "" {
-			target := &api.ObjectReference{
-				Kind:      "Pod",
-				Name:      metaName + "-xxxxx",
-				Namespace: namespace,
-			}
-			addr = append(addr, api.EndpointAddress{IP: e, TargetRef: target})
-		}
-	}
-	ep.Subsets[0].Addresses = addr
-
 	eps := []*discoveryv1.EndpointSlice{}
 	if len(endpoints) > 0 {
 		eps = createEndpointSlices(metaName, namespace, portName, portNumber, endpoints)
 	}
 
-	return svc, ep, eps
+	return svc, eps
 }
 
 // CreateSecret ...

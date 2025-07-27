@@ -24,6 +24,7 @@ import (
 
 	"github.com/kylelemons/godebug/diff"
 	api "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
@@ -1059,11 +1060,11 @@ func (c *testConfig) createSecret1(secretName string) *api.Secret {
 	return s
 }
 
-func (c *testConfig) createService1(name, port, ip string) (*api.Service, *api.Endpoints) {
-	svc, ep, _ := conv_helper.CreateService(name, port, ip)
+func (c *testConfig) createService1(name, port, ip string) (*api.Service, []*discoveryv1.EndpointSlice) {
+	svc, eps := conv_helper.CreateService(name, port, ip)
 	c.cache.SvcList = append(c.cache.SvcList, svc)
-	c.cache.EpList[name] = ep
-	return svc, ep
+	c.cache.EpsList[name] = eps
+	return svc, eps
 }
 
 func (c *testConfig) createGateway0(name string) *gatewayv1.Gateway {

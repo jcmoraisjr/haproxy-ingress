@@ -76,23 +76,6 @@ type Endpoint struct {
 	TargetRef string
 }
 
-func createEndpoints(endpoints *api.Endpoints, svcPort *api.ServicePort) (ready, notReady []*Endpoint, err error) {
-	for _, subset := range endpoints.Subsets {
-		for _, epPort := range subset.Ports {
-			if matchPort(svcPort, &epPort) {
-				port := int(epPort.Port)
-				for _, addr := range subset.Addresses {
-					ready = append(ready, newEndpoint(resolveIP(endpoints, addr.IP), port, addr.TargetRef))
-				}
-				for _, addr := range subset.NotReadyAddresses {
-					notReady = append(notReady, newEndpoint(resolveIP(endpoints, addr.IP), port, addr.TargetRef))
-				}
-			}
-		}
-	}
-	return ready, notReady, nil
-}
-
 func createEndpointSlices(endpointSlices []*discoveryv1.EndpointSlice, svcPort *api.ServicePort) (ready, notReady []*Endpoint, err error) {
 	for _, endpointSlice := range endpointSlices {
 		for _, epPort := range endpointSlice.Ports {
@@ -155,22 +138,16 @@ func resolveIP(ep metav1.Object, configuredIPAddress string) string {
 }
 
 // CreateEndpoints ...
-func CreateEndpoints(cache types.Cache, svc *api.Service, svcPort *api.ServicePort, useEndpointSlices bool) (ready, notReady []*Endpoint, err error) {
-	switch {
-	case svc.Spec.Type == api.ServiceTypeExternalName:
+func CreateEndpoints(cache types.Cache, svc *api.Service, svcPort *api.ServicePort) (ready, notReady []*Endpoint, err error) {
+	switch svc.Spec.Type {
+	case api.ServiceTypeExternalName:
 		ready, err = createEndpointsExternalName(cache, svc, svcPort)
-	case useEndpointSlices:
+	default:
 		endpoints, err1 := cache.GetEndpointSlices(svc)
 		if err1 != nil {
 			return nil, nil, err1
 		}
 		ready, notReady, err = createEndpointSlices(endpoints, svcPort)
-	default:
-		endpoints, err1 := cache.GetEndpoints(svc)
-		if err1 != nil {
-			return nil, nil, err1
-		}
-		ready, notReady, err = createEndpoints(endpoints, svcPort)
 	}
 	// ensures predictable result, allowing to compare old and new states
 	sort.Slice(ready, func(i, j int) bool {
@@ -180,13 +157,6 @@ func CreateEndpoints(cache types.Cache, svc *api.Service, svcPort *api.ServicePo
 		return notReady[i].Target < notReady[j].Target
 	})
 	return ready, notReady, err
-}
-
-func matchPort(svcPort *api.ServicePort, epPort *api.EndpointPort) bool {
-	if epPort.Protocol != api.ProtocolTCP {
-		return false
-	}
-	return svcPort.Name == "" || svcPort.Name == epPort.Name
 }
 
 // CreateSvcEndpoint ...
@@ -218,7 +188,6 @@ func newEndpoint(ip string, port int, targetRef *api.ObjectReference) *Endpoint 
 	var targetRefStr string
 	if targetRef != nil {
 		targetRefStr = fmt.Sprintf("%s/%s", targetRef.Namespace, targetRef.Name)
-
 	}
 	return &Endpoint{
 		IP:        ip,

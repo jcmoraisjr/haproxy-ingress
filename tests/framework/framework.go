@@ -402,9 +402,8 @@ spec:
 `
 	name := RandomName("svc")
 
-	// we don't have real pods, so we don't have ep/eps along with the service,
+	// we don't have real pods, so we don't have eps along with the service,
 	// so we need to create them manually.
-	_ = f.CreateEndpoints(ctx, t, name, serverPort)
 	_ = f.CreateEndpointSlice(ctx, t, name, serverPort)
 
 	svc := f.CreateObject(t, data).(*corev1.Service)
@@ -425,41 +424,6 @@ spec:
 		assert.NoError(t, client.IgnoreNotFound(err))
 	})
 	return svc
-}
-
-func (f *framework) CreateEndpoints(ctx context.Context, t *testing.T, svcname string, serverPort int32) *corev1.Endpoints {
-	data := `
-apiVersion: v1
-kind: Endpoints
-metadata:
-  annotations:
-    haproxy-ingress.github.io/ip-override: 127.0.0.1
-  name: ""
-  namespace: default
-subsets:
-- addresses:
-  - ip: ::ffff ## will change to loopback via ip-override annotation
-  ports:
-  - port: 0
-`
-
-	ep := f.CreateObject(t, data).(*corev1.Endpoints)
-	ep.Name = svcname
-	ep.Subsets[0].Ports[0].Port = serverPort
-
-	t.Logf("creating endpoints %s/%s\n", ep.Namespace, ep.Name)
-
-	err := f.cli.Create(ctx, ep)
-	require.NoError(t, err)
-
-	t.Cleanup(func() {
-		ep := corev1.Endpoints{}
-		ep.Namespace = "default"
-		ep.Name = svcname
-		err := f.cli.Delete(ctx, &ep)
-		assert.NoError(t, client.IgnoreNotFound(err))
-	})
-	return ep
 }
 
 func (f *framework) CreateEndpointSlice(ctx context.Context, t *testing.T, svcname string, serverPort int32) *discoveryv1.EndpointSlice {

@@ -165,6 +165,9 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 	if opt.ForceIsolation {
 		configLog.Info("DEPRECATED: --force-namespace-isolation is ignored, use allow-cross-namespace command-line options or cross-namespace configuration keys instead.")
 	}
+	if !opt.EnableEndpointSlicesAPI {
+		configLog.Info("DEPRECATED: Endpoints API is deprecated since Kubernetes 1.33, --enable-endpointslices-api cannot be disabled and EndpointSlices API will always be used.")
+	}
 
 	if opt.IngressClass != "" {
 		configLog.Info("watching for ingress resources with 'kubernetes.io/ingress.class'", "annotation", opt.IngressClass)
@@ -484,7 +487,6 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		Election:                 election,
 		ElectionID:               electionID,
 		ElectionNamespace:        podNamespace,
-		EnableEndpointSliceAPI:   opt.EnableEndpointSlicesAPI,
 		ForceNamespaceIsolation:  opt.ForceIsolation,
 		HasGatewayA2:             hasGatewayA2,
 		HasGatewayB1:             hasGatewayB1,
@@ -668,7 +670,6 @@ type Config struct {
 	Election                 bool
 	ElectionID               string
 	ElectionNamespace        string
-	EnableEndpointSliceAPI   bool
 	ForceNamespaceIsolation  bool
 	HasGatewayA2             bool
 	HasGatewayB1             bool

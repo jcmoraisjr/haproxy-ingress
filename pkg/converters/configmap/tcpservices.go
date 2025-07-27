@@ -36,20 +36,18 @@ type TCPServicesConverter interface {
 // NewTCPServicesConverter ...
 func NewTCPServicesConverter(options *convtypes.ConverterOptions, haproxy haproxy.Config, changed *convtypes.ChangedObjects) TCPServicesConverter {
 	return &tcpSvcConverter{
-		logger:                  options.Logger,
-		cache:                   options.Cache,
-		haproxy:                 haproxy,
-		changed:                 changed,
-		enableEndpointSlicesAPI: options.EnableEPSlices,
+		logger:  options.Logger,
+		cache:   options.Cache,
+		haproxy: haproxy,
+		changed: changed,
 	}
 }
 
 type tcpSvcConverter struct {
-	logger                  types.Logger
-	cache                   convtypes.Cache
-	haproxy                 haproxy.Config
-	changed                 *convtypes.ChangedObjects
-	enableEndpointSlicesAPI bool
+	logger  types.Logger
+	cache   convtypes.Cache
+	haproxy haproxy.Config
+	changed *convtypes.ChangedObjects
 }
 
 var regexValidTime = regexp.MustCompile(`^[0-9]+(us|ms|s|m|h|d)$`)
@@ -92,7 +90,7 @@ func (c *tcpSvcConverter) Sync() {
 			c.logger.Warn("skipping TCP service on public port %d: port not found: %s:%s", publicport, svc.name, svc.port)
 			continue
 		}
-		addrs, _, err := convutils.CreateEndpoints(c.cache, service, svcport, c.enableEndpointSlicesAPI)
+		addrs, _, err := convutils.CreateEndpoints(c.cache, service, svcport)
 		if err != nil {
 			c.logger.Warn("skipping TCP service on public port %d: %v", svc.port, err)
 			continue
