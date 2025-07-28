@@ -1,8 +1,8 @@
 module github.com/jcmoraisjr/haproxy-ingress
 
-go 1.23
+go 1.23.0
 
-toolchain go1.23.7
+toolchain go1.23.11
 
 require (
 	github.com/Masterminds/sprig v2.22.0+incompatible
