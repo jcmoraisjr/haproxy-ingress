@@ -19,6 +19,7 @@ package annotations
 import (
 	"fmt"
 	"net"
+	"path"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -561,17 +562,24 @@ func (c *updater) buildBackendCustomConfig(d *backData) {
 	if config.Source != nil {
 		source = config.Source.String()
 	}
-	for _, keyword := range c.options.DisableKeywords {
-		if keyword == "" {
-			continue
+	for _, line := range lines {
+		for _, token := range strings.Fields(line) {
+			if strings.Contains(path.Clean(token), "secrets/kubernetes.io/serviceaccount") {
+				// attempt to read the the well known path to Kubernetes credentials
+				c.logger.Warn("skipping configuration snippet on %s: attempt to read cluster credentials", source)
+				return
+			}
 		}
-		if keyword == "*" {
-			c.logger.Warn("skipping configuration snippet on %s: custom configuration is disabled", source)
-			return
-		}
-		for _, line := range lines {
-			if firstToken(line) == keyword {
-				c.logger.Warn("skipping configuration snippet on %s: keyword '%s' not allowed", source, keyword)
+		for _, disableKeyword := range c.options.DisableKeywords {
+			if disableKeyword == "" {
+				continue
+			}
+			if disableKeyword == "*" {
+				c.logger.Warn("skipping configuration snippet on %s: custom configuration is disabled", source)
+				return
+			}
+			if firstToken(line) == disableKeyword {
+				c.logger.Warn("skipping configuration snippet on %s: keyword '%s' not allowed", source, disableKeyword)
 				return
 			}
 		}
