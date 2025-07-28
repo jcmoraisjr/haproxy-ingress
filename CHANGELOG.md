@@ -2,6 +2,7 @@
 
 Supported versions:
 
+* [v0.16](CHANGELOG/CHANGELOG-v0.16.md)
 * [v0.15](CHANGELOG/CHANGELOG-v0.15.md)
 * [v0.14](CHANGELOG/CHANGELOG-v0.14.md)
 * [v0.13](CHANGELOG/CHANGELOG-v0.13.md)
