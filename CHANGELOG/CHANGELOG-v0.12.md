@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.11!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.12.22](#v01222)
+  * [Reference](#reference-r22)
+  * [Release notes](#release-notes-r22)
+  * [Fixes and improvements](#fixes-and-improvements-r22)
 * [v0.12.21](#v01221)
   * [Reference](#reference-r21)
   * [Release notes](#release-notes-r21)
@@ -130,6 +134,37 @@ Breaking backward compatibility from v0.11
 * paul ([toothbrush](https://github.com/toothbrush))
 * pawelb ([pbabilas](https://github.com/pbabilas))
 * Ricardo Katz ([rikatz](https://github.com/rikatz))
+
+# v0.12.22
+
+## Reference (r22)
+
+* Release date: `2025-07-29`
+* Helm chart: `--version 0.12.22`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.12.22`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.12.22`
+* Embedded HAProxy version: `2.2.33`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.12.22`
+
+## Release notes (r22)
+
+This release updates dependencies, and fixes a vulnerability found in the v0.12 branch:
+
+- An user with update ingress privilege can escalate their own privilege to the controller one, by exploring the config snippet annotation if it was not disabled via `--disable-config-keywords=*` command-line option. Mitigate this vulnerability by updating controller version, or disabling config snippet.
+
+Note that this is the last v0.12 release, please consider moving to v0.14 after reading v0.13 and v0.14 release and upgrade notes.
+
+Dependencies:
+
+- go from 1.18.10 to 1.23.11, having `//go:debug default=go1.18` for backward compatibility
+
+## Fixes and improvements (r22)
+
+New features and improvements since `v0.12.21`:
+
+* block attempt to read cluster credentials [#1273](https://github.com/jcmoraisjr/haproxy-ingress/pull/1273) (jcmoraisjr)
+* update go from 1.18.10 to 1.23.11 [6907f16](https://github.com/jcmoraisjr/haproxy-ingress/commit/6907f16d4bce9174307c50a8d1f001a9e3022fcb) (Joao Morais)
+* update dependencies [b5bb131](https://github.com/jcmoraisjr/haproxy-ingress/commit/b5bb131304f91ff8a5d7398c8fd09c8ef1214df6) (Joao Morais)
 
 # v0.12.21
 
