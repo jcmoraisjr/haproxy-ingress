@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.12!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.13.18](#v01318)
+  * [Reference](#reference-r18)
+  * [Release notes](#release-notes-r18)
+  * [Fixes and improvements](#fixes-and-improvements-r18)
 * [v0.13.17](#v01317)
   * [Reference](#reference-r17)
   * [Release notes](#release-notes-r17)
@@ -143,6 +147,37 @@ Breaking backward compatibility from v0.12
 * Roman Gherta ([rgherta](https://github.com/rgherta))
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
+
+# v0.13.18
+
+## Reference (r18)
+
+* Release date: `2025-07-29`
+* Helm chart: `--version 0.13.18`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.13.18`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.13.18`
+* Embedded HAProxy version: `2.4.29`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.13.18`
+
+## Release notes (r18)
+
+This release updates the embedded haproxy version, dependencies, and fixes a vulnerability found in the v0.13 branch.
+
+- An user with update ingress privilege can escalate their own privilege to the controller one, by exploring the config snippet annotation if it was not disabled via `--disable-config-keywords=*` command-line option. Mitigate this vulnerability by updating controller version, or disabling config snippet.
+
+Dependencies:
+
+- embedded haproxy from 2.4.28 to 2.4.29
+- go from 1.23.7 to 1.23.11
+
+## Fixes and improvements (r18)
+
+Fixes and improvements since `v0.13.17`:
+
+* block attempt to read cluster credentials [#1273](https://github.com/jcmoraisjr/haproxy-ingress/pull/1273) (jcmoraisjr)
+* update embedded haproxy from 2.4.28 to 2.4.29 [7420ded](https://github.com/jcmoraisjr/haproxy-ingress/commit/7420deda97eda8b01a560b7dc756da3e75215e8a) (Joao Morais)
+* update go from 1.23.7 to 1.23.11 [a8b369b](https://github.com/jcmoraisjr/haproxy-ingress/commit/a8b369b37462963bc41e3d95b84ee59492cf6cf3) (Joao Morais)
+* update dependencies [1357b6b](https://github.com/jcmoraisjr/haproxy-ingress/commit/1357b6b15137ea8b5fafc20b575715b572eb1b76) (Joao Morais)
 
 # v0.13.17
 
