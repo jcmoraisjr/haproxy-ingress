@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.13!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.14.9](#v0149)
+  * [Reference](#reference-r9)
+  * [Release notes](#release-notes-r9)
+  * [Fixes and improvements](#fixes-and-improvements-r9)
 * [v0.14.8](#v0148)
   * [Reference](#reference-r8)
   * [Release notes](#release-notes-r8)
@@ -93,6 +97,7 @@ Breaking backward compatibility from v0.13:
 * Chris Boot ([bootc](https://github.com/bootc))
 * Dmitry Misharov ([quarckster](https://github.com/quarckster))
 * genofire ([genofire](https://github.com/genofire))
+* Gerald  Barker ([gezb](https://github.com/gezb))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
 * Josh Soref ([jsoref](https://github.com/jsoref))
 * Jurriaan Wijnberg ([jr01](https://github.com/jr01))
@@ -111,6 +116,45 @@ Breaking backward compatibility from v0.13:
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
 * wolf-cosmose ([wolf-cosmose](https://github.com/wolf-cosmose))
+
+# v0.14.9
+
+## Reference (r9)
+
+* Release date: `2025-07-29`
+* Helm chart: `--version 0.14.9`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.14.9`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.14.9`
+* Embedded HAProxy version: `2.4.29`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.14.9`
+
+## Release notes (r9)
+
+This release updates the embedded haproxy version, dependencies, and fixes issues and vulnerabilities found in the v0.14 branch.
+
+- An user with update ingress privilege can escalate their own privilege to the controller one, by exploring the config snippet annotation if it was not disabled via `--disable-config-keywords=*` command-line option. Mitigate this vulnerability by updating controller version, or disabling config snippet.
+- Fixes a panic on controller shutdown due to closing the same connection twice, if its startup failed the very first reconciliation.
+- Fixes a race during haproxy reload, when the controller connects fast enough via the master socket, finds the old instance still running and thinks it's the new one already. If this happens, it might lead to problems in the synchronization of the in-memory model to the running instance, sometimes making haproxy to reflect an older state.
+
+Dependencies:
+
+- embedded haproxy from 2.4.28 to 2.4.29
+- go from 1.23.7 to 1.23.11
+
+## Fixes and improvements (r9)
+
+Fixes and improvements since `v0.14.8`:
+
+* check if haproxy reloaded already [#1265](https://github.com/jcmoraisjr/haproxy-ingress/pull/1265) (jcmoraisjr)
+* ensure that embedded haproxy starts just once [#1266](https://github.com/jcmoraisjr/haproxy-ingress/pull/1266) (jcmoraisjr)
+* block attempt to read cluster credentials [#1273](https://github.com/jcmoraisjr/haproxy-ingress/pull/1273) (jcmoraisjr)
+* update embedded haproxy from 2.4.28 to 2.4.29 [dda1554](https://github.com/jcmoraisjr/haproxy-ingress/commit/dda1554ca95831cda9e934d17bda0077baca1c5c) (Joao Morais)
+* update go from 1.23.7 to 1.23.11 [d8a7712](https://github.com/jcmoraisjr/haproxy-ingress/commit/d8a77122ba72b6166864d238f555c33abb377f53) (Joao Morais)
+* update dependencies [752b502](https://github.com/jcmoraisjr/haproxy-ingress/commit/752b5026acd392832e57ffe3396c42e0ea8acd16) (Joao Morais)
+
+Chart improvements since `v0.14.8`:
+
+* Allow custom labels to be added to the controllers DaemonSet/Deployment [#93](https://github.com/haproxy-ingress/charts/pull/93) (gezb)
 
 # v0.14.8
 
