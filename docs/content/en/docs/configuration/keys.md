@@ -378,6 +378,8 @@ The table below describes all supported configuration keys.
 | [`drain-support-redispatch`](#drain-support)         | [true\|false]                           | Global  | `true`             |
 | [`dynamic-scaling`](#dynamic-scaling)                | [true\|false]                           | Backend | `true`             |
 | [`external-has-lua`](#external)                      | [true\|false]                           | Global  | `false`            |
+| [`fcgi-app`](#fastcgi)                               | fcgi-app section name                   | Backend |                    |
+| [`fcgi-enabled-apps`](#fastcgi)                      | comma-separated list of names           | Global  | `*`                |
 | [`forwardfor`](#forwardfor)                          | [add\|ignore\|ifmissing]                | Global  | `add`              |
 | [`fronting-proxy-port`](#fronting-proxy-port)        | port number                             | Global  | 0 (do not listen)  |
 | [`groupname`](#security)                             | haproxy group name                      | Global  | `haproxy`          |
@@ -918,7 +920,7 @@ See also:
 Defines the HTTP protocol version of the backend. Note that HTTP/2 is only supported if HTX is enabled.
 A case insensitive match is used, so either `h1` or `H1` configures HTTP/1 protocol. A non SSL/TLS
 configuration does not overrides [secure-backends](#secure-backend), so `h1` and secure-backends `true`
-will still configures SSL/TLS.
+will still configure SSL/TLS.
 
 Options:
 
@@ -926,11 +928,16 @@ Options:
 * `h1-ssl`: configures HTTP/1 over SSL/TLS. `https` is an alias to `h1-ssl`.
 * `h2`: configures HTTP/2 protocol. `grpc` is an alias to `h2`.
 * `h2-ssl`: configures HTTP/2 over SSL/TLS. `grpcs` is an alias to `h2-ssl`.
+* `fcgi`: since v0.16 - configures FastCGI protocol.
+* `fcgi-ssl`: since v0.16 - configures FastCGI over SSL/TLS.
+
+FastCGI protocol needs a reference to valid haproxy's fcgi-app section via [`fcgi-app`](#fastcgi) configuration key, either inheriting from the global ConfigMap or via annotation.
 
 See also:
 
 * [use-htx](#use-htx) configuration key to enable HTTP/2 backends.
 * [secure-backend](#secure-backend) configuration keys to configure optional client certificate and certificate authority bundle of SSL/TLS connections.
+* [FastCGI](#fastcgi) configuration keys.
 * https://docs.haproxy.org/2.4/configuration.html#5.2-proto
 
 ---
@@ -1555,6 +1562,45 @@ See also:
 * [Auth External](#auth-external) configuration keys.
 * [OAuth](#oauth) configuration keys.
 * [master-socket]({{% relref "command-line#master-socket" %}}) command-line option
+
+---
+
+### FastCGI
+
+| Configuration key   | Scope     | Default | Since |
+|---------------------|-----------|---------|-------|
+| `fcgi-app`          | `Backend` |         | v0.16 |
+| `fcgi-enabled-apps` | `Global`  | `*`     | v0.16 |
+
+Configures FastCGI applications.
+
+* `fcgi-enabled-apps`: Comma separated list of haproxy's fcgi-app sections already declared via `config-sections` configuration key. Only these app identifiers are allowed to be used by backends. If ommited, defaults to allow all configured fcgi-app sections.
+* `fcgi-app`: Defines the haproxy's fcgi-app section a backend should use. It must be one of the apps in `fcgi-enabled-apps` if configured, or any of the declared ones in `config-sections` otherwise. `fcgi-app` is a mandatory configuration if fcgi server protocol is used, either declaring as an annotation along with the protocol itself, or as a global configuration that should be inherited by all FastCGI backends.
+
+FastCGI related configurations are only used on backends whose server protocol is configured as fcgi, they are ignored otherwise.
+
+Currently there is no helper to configure the haproxy's fcgi-app section, it should be done via the global [`config-sections`](#configuration-snippet) configuration key. Configure as much fcgi-app sections as needed in the same key. See an example below:
+
+```yaml
+    config-sections: |
+      fcgi-app app1
+          log-stderr global
+          docroot /var/www/app1
+          index index.php
+      fcgi-app app2
+          log-stderr global
+          docroot /var/www/app2
+          index index.php
+      cache icons
+          total-max-size 4
+          max-age 240
+      ...
+```
+
+See also:
+
+* [`backend-protocol`](#backend-protocol) configuration key.
+* https://docs.haproxy.org/2.4/configuration.html#10
 
 ---
 

@@ -1017,6 +1017,16 @@ d1.local#/ path01`,
 		},
 		{
 			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
+				b.Server.FastCGIApp = "app1"
+				b.Server.Protocol = "fcgi"
+			},
+			srvsuffix: "proto fcgi",
+			expected: `
+    filter fcgi-app app1
+    use-fcgi-app app1`,
+		},
+		{
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				link1 := hatypes.CreatePathLink("/app1", hatypes.MatchPrefix).
 					WithHeadersMatch(hatypes.HTTPHeaderMatch{{Name: "x-user", Value: "myusr1"}})
 				link2 := hatypes.CreatePathLink("/app2", hatypes.MatchPrefix).

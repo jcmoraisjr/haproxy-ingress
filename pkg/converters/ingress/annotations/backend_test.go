@@ -28,6 +28,7 @@ import (
 
 	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
@@ -2151,6 +2152,7 @@ func TestBackendProtocol(t *testing.T) {
 	testCase := []struct {
 		source     *Source
 		useHTX     bool
+		fcgiapps   []string
 		annDefault map[string]string
 		ann        map[string]map[string]string
 		paths      []string
@@ -2297,6 +2299,79 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 		},
 		// 9
 		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackFCGIApp:         "app1",
+					ingtypes.BackBackendProtocol: "fcgi",
+				},
+			},
+			fcgiapps: []string{"app1", "app2"},
+			expected: hatypes.ServerConfig{
+				Protocol:   "fcgi",
+				FastCGIApp: "app1",
+				Secure:     false,
+			},
+		},
+		// 10
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackFCGIApp:         "app2",
+					ingtypes.BackBackendProtocol: "fcgi-ssl",
+				},
+			},
+			fcgiapps: []string{"app1", "app2"},
+			expected: hatypes.ServerConfig{
+				Protocol:   "fcgi",
+				FastCGIApp: "app2",
+				Secure:     true,
+			},
+		},
+		// 11
+		{
+			source: &Source{Namespace: "default", Name: "ing1", Type: types.ResourceIngress},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackBackendProtocol: "fcgi",
+				},
+			},
+			logging: `WARN FastCGI application is missing on Ingress 'default/ing1', configure via fcgi-app key`,
+		},
+		// 12
+		{
+			source: &Source{Namespace: "default", Name: "ing1", Type: types.ResourceIngress},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackBackendProtocol: "fcgi-ssl",
+				},
+			},
+			logging: `WARN FastCGI application is missing on Ingress 'default/ing1', configure via fcgi-app key`,
+		},
+		// 13
+		{
+			source: &Source{Namespace: "default", Name: "ing1", Type: types.ResourceIngress},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackFCGIApp:         "app1",
+					ingtypes.BackBackendProtocol: "fcgi",
+				},
+			},
+			logging: `WARN FastCGI application 'app1' on Ingress 'default/ing1' was not found or was not allowed to be used`,
+		},
+		// 14
+		{
+			source: &Source{Namespace: "default", Name: "ing1", Type: types.ResourceIngress},
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackFCGIApp:         "app2",
+					ingtypes.BackBackendProtocol: "fcgi-ssl",
+				},
+			},
+			fcgiapps: []string{"app1"},
+			logging:  `WARN FastCGI application 'app2' on Ingress 'default/ing1' was not found or was not allowed to be used`,
+		},
+		// 15
+		{
 			useHTX: true,
 			ann: map[string]map[string]string{
 				"/": {
@@ -2308,7 +2383,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 				Secure:   true,
 			},
 		},
-		// 10
+		// 16
 		{
 			source: &Source{Namespace: "default", Name: "app1", Type: "service"},
 			ann: map[string]map[string]string{
@@ -2319,7 +2394,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 			expected: hatypes.ServerConfig{},
 			logging:  `WARN ignoring invalid backend protocol on service 'default/app1': invalid-ssl`,
 		},
-		// 11
+		// 17
 		{
 			source: &Source{Namespace: "default", Name: "app1", Type: "service"},
 			ann: map[string]map[string]string{
@@ -2332,7 +2407,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 			},
 			logging: `WARN ignoring h2 protocol on service 'default/app1' due to HTX disabled, changing to h1`,
 		},
-		// 12
+		// 18
 		{
 			ann: map[string]map[string]string{
 				"/": {
@@ -2346,7 +2421,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 				SNI:      "ssl_fc_sni",
 			},
 		},
-		// 13
+		// 19
 		{
 			ann: map[string]map[string]string{
 				"/": {
@@ -2360,7 +2435,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 				SNI:      "var(req.host)",
 			},
 		},
-		// 14
+		// 20
 		{
 			ann: map[string]map[string]string{
 				"/": {
@@ -2374,7 +2449,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 				SNI:      "str(domain.tld)",
 			},
 		},
-		// 15
+		// 21
 		{
 			source: &Source{Namespace: "default", Name: "app", Type: "ingress"},
 			ann: map[string]map[string]string{
@@ -2389,7 +2464,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 			},
 			logging: `WARN skipping invalid domain (SNI) on ingress 'default/app': invalid/domain`,
 		},
-		// 16
+		// 22
 		{
 			ann: map[string]map[string]string{
 				"/": {
@@ -2403,7 +2478,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 				VerifyHost: "domain.tld",
 			},
 		},
-		// 17
+		// 23
 		{
 			source: &Source{Namespace: "default", Name: "app", Type: "ingress"},
 			ann: map[string]map[string]string{
@@ -2418,7 +2493,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 			},
 			logging: `WARN skipping invalid domain (verify-hostname) on ingress 'default/app': invalid/domain`,
 		},
-		// 18
+		// 24
 		{
 			ann: map[string]map[string]string{
 				"/": {
@@ -2432,7 +2507,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 				VerifyHost: "valid-domain.tld",
 			},
 		},
-		// 19
+		// 25
 		{
 			ann: map[string]map[string]string{
 				"/": {
@@ -2446,7 +2521,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 				VerifyHost: "sub.valid-domain.tld",
 			},
 		},
-		// 20
+		// 26
 		{
 			source: &Source{Namespace: "default", Name: "app", Type: "ingress"},
 			ann: map[string]map[string]string{
@@ -2461,7 +2536,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 			},
 			logging: `WARN skipping invalid domain (verify-hostname) on ingress 'default/app': invalid-domain`,
 		},
-		// 21
+		// 27
 		{
 			ann: map[string]map[string]string{
 				"/": {
@@ -2485,7 +2560,7 @@ WARN skipping client certificate on <global>: a globally configured resource nam
 WARN skipping CA on <global>: a globally configured resource name is missing the namespace: ca
 `,
 		},
-		// 22
+		// 28
 		{
 			ann: map[string]map[string]string{
 				"/": {
@@ -2514,6 +2589,7 @@ WARN skipping CA on <global>: a globally configured resource name is missing the
 		c := setup(t)
 		d := c.createBackendMappingData("default/app", test.source, test.annDefault, test.ann, test.paths)
 		c.haproxy.Global().UseHTX = test.useHTX
+		c.haproxy.Global().FastCGIApps = test.fcgiapps
 		c.cache.SecretTLSPath = test.tlsSecrets
 		c.cache.SecretCAPath = test.caSecrets
 		c.createUpdater().buildBackendProtocol(d)
