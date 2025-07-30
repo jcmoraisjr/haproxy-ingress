@@ -21,6 +21,7 @@ import (
 	"net"
 	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -791,9 +792,27 @@ func (c *updater) buildBackendProtocol(d *backData) {
 	case "h2-ssl", "grpcs":
 		protocol = "h2"
 		secure = true
+	case "fcgi":
+		protocol = "fcgi"
+		secure = false
+	case "fcgi-ssl":
+		protocol = "fcgi"
+		secure = true
 	default:
 		c.logger.Warn("ignoring invalid backend protocol on %v: %s", proto.Source, proto.Value)
 		return
+	}
+	var fcgiapp string
+	if protocol == "fcgi" {
+		fcgiapp = d.mapper.Get(ingtypes.BackFCGIApp).Value
+		if fcgiapp == "" {
+			c.logger.Warn("FastCGI application is missing on %v, configure via fcgi-app key", proto.Source)
+			return
+		}
+		if !slices.Contains(c.haproxy.Global().FastCGIApps, fcgiapp) {
+			c.logger.Warn("FastCGI application '%s' on %v was not found or was not allowed to be used", fcgiapp, proto.Source)
+			return
+		}
 	}
 	if protocol == "h2" && !c.haproxy.Global().UseHTX {
 		c.logger.Warn("ignoring h2 protocol on %v due to HTX disabled, changing to h1", proto.Source)
@@ -803,6 +822,7 @@ func (c *updater) buildBackendProtocol(d *backData) {
 		secure = d.mapper.Get(ingtypes.BackSecureBackends).Bool()
 	}
 	d.backend.Server.Protocol = protocol
+	d.backend.Server.FastCGIApp = fcgiapp
 	d.backend.Server.Secure = secure
 	if !secure {
 		return
