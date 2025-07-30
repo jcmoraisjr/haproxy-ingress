@@ -30,6 +30,7 @@ The following command-line options are supported:
 | [`--disable-api-warnings`](#disable-api-warnings)       | [true\|false]              | `false`                 | v0.12 |
 | [`--disable-config-keywords`](#disable-config-keywords) | comma-separated list of keywords | `""`              | v0.10 |
 | [`--disable-external-name`](#disable-external-name)     | [true\|false]              | `false`                 | v0.10 |
+| [`--disable-ingress-class-api`](#disable-ingress-class-api) | [true\|false]          | `false`                 | v0.16 |
 | [`--disable-pod-list`](#disable-pod-list)               | [true\|false]              | `false`                 | v0.11 |
 | [`--election-id`](#election-id)                         | identifier                 | `ingress-controller-leader` |   |
 | [`--enable-endpointslices-api`](#enable-endpointslices-api) | [true\|false]          | `true`                  | v0.14 |
@@ -345,6 +346,7 @@ kubernetes.io/ingress.class annotation if both are defined and conflicting.
 that doesn't declare neither the `kubernetes.io/ingress.class` annotation nor the
 `<ingress>.spec.ingressClassName` field. The default since v0.12 is to ignore ingress without class
 annotation and class name.
+* `--disable-ingress-class-api`: Since v0.16. Configures controller to not list or watch IngressClass API, useful on deployments that cannot allow controller to have cluster permission. If configured, the only way to watch ingress resources is using the deprecated, but still supported `kubernetes.io/ingress.class` annotation, or use `--watch-ingress-without-class`.
 * `--ignore-ingress-without-class`: this option is ignored since v0.12. Use
 `--watch-ingress-without-class` instead.
 
