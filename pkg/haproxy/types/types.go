@@ -73,6 +73,7 @@ type Global struct {
 	Healthz                 HealthzConfig
 	Master                  MasterConfig
 	MatchOrder              []MatchType
+	Peers                   PeersConfig
 	Prometheus              PromConfig
 	Security                SecurityConfig
 	Stats                   StatsConfig
@@ -87,6 +88,7 @@ type Global struct {
 	CustomDefaults          []string
 	CustomFrontendEarly     []string
 	CustomFrontendLate      []string
+	CustomPeers             []string
 	CustomProxy             map[string][]string
 	CustomHTTPLuaResponses  []HTTPResponse
 	CustomHTTPHAResponses   []HTTPResponse
@@ -218,6 +220,19 @@ type MasterConfig struct {
 	ExitOnFailure    bool
 	IsMasterWorker   bool
 	WorkerMaxReloads int
+}
+
+// PeersConfig ...
+type PeersConfig struct {
+	SectionName string
+	LocalPeer   PeersServer
+	Servers     []PeersServer
+}
+
+// PeersServer ...
+type PeersServer struct {
+	Name     string
+	Endpoint string
 }
 
 // PromConfig ...

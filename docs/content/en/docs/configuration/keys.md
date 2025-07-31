@@ -347,6 +347,7 @@ The table below describes all supported configuration keys.
 | [`config-frontend-early`](#configuration-snippet)    | multiline HTTP and HTTPS frontend config, applied before any builtin logic | Global  |                   |
 | [`config-frontend-late`](#configuration-snippet)     | multiline HTTP and HTTPS frontend config, same as `config-frontend` | Global  |                   |
 | [`config-global`](#configuration-snippet)            | multiline config for the global section | Global  |                    |
+| [`config-peers`](#configuration-snippet)             | multiline config for the peers section  | Global  |                    |
 | [`config-proxy`](#configuration-snippet)             | multiline config for any proxy          | Global  |                    |
 | [`config-sections`](#configuration-snippet)          | multiline custom sections declaration   | Global  |                    |
 | [`config-tcp`](#configuration-snippet)               | multiline ConfigMap based TCP config    | Global  |                    |
@@ -427,6 +428,8 @@ The table below describes all supported configuration keys.
 | [`original-forwarded-for-hdr`](#forwardfor)          | header name                             | Global  | `X-Original-Forwarded-For` |
 | [`path-type`](#path-type)                            | path matching type                      | Path    | `begin`            |
 | [`path-type-order`](#path-type)                      | comma-separated path type list          | Global  | `exact,prefix,begin,regex` |
+| [`peers-name`](#peers)                               | peers section name                      | Global  | `ingress`          |
+| [`peers-port`](#peers)                               | port number                             | Global  |                    |
 | [`prometheus-port`](#bind-port)                      | port number                             | Global  |                    |
 | [`proxy-body-size`](#proxy-body-size)                | size (bytes)                            | Path    | unlimited          |
 | [`proxy-protocol`](#proxy-protocol)                  | [v1\|v2\|v2-ssl\|v2-ssl-cn]             | Backend |                    |
@@ -1224,6 +1227,7 @@ See also:
 | `config-frontend-early` | `Global`  |          | v0.14 |
 | `config-frontend-late`  | `Global`  |          | v0.14 |
 | `config-global`         | `Global`  |          |       |
+| `config-peers`          | `Global`  |          | v0.16 |
 | `config-proxy`          | `Global`  |          | v0.13 |
 | `config-sections`       | `Global`  |          | v0.13 |
 | `config-tcp`            | `Global`  |          | v0.13 |
@@ -1238,6 +1242,7 @@ to add more than one line of configuration.
 * `config-frontend-early`: Adds a configuration snippet to the HTTP and HTTPS frontend sections, before any builtin logic.
 * `config-frontend-late`: Adds a configuration snippet to the HTTP and HTTPS frontend sections, same as `config-frontend`.
 * `config-global`: Adds a configuration snippet to the end of the HAProxy global section.
+* `config-peers`: Adds a configuration snippet to the Peers section.
 * `config-proxy`: Adds a configuration snippet to any HAProxy proxy - listen, frontend or backend. It accepts a multi section configuration, where the name of the section is the name of a HAProxy proxy without the listen/frontend/backend prefix. A section whose proxy is not found is ignored. The content of each section should be indented, the first line without indentation is the start of a new section which will configure another proxy.
 * `config-sections`: Allows to declare new HAProxy sections. The configuration is used verbatim, without any indentation or validation.
 * `config-tcp`: Adds a configuration snippet to the ConfigMap based TCP sections.
@@ -1258,6 +1263,11 @@ Examples - ConfigMap:
 ```yaml
     config-tcp: |
       tcp-request content reject if !{ src 10.0.0.0/8 }
+```
+
+```yaml
+    config-peers: |
+      log stdout format raw local0
 ```
 
 ```yaml
@@ -2171,6 +2181,53 @@ Request and match examples:
 | `regex`   | `/app[0-9]+`   | `/app1` <br/> `/app15/sub` <br/> `/app25xx/sub` | `/App1` <br/> `/app/15` |
 | `regex`   | `/app[0-9]+$`  | `/app1` <br/> `/app15`              | `/App1` <br/> `/app15/`             |
 | `regex`   | `/app[0-9]+/?` | `/app1` <br/> `/app15/` <br/> `/app25/sub` | `/App15` <br/> `/app/25sub`  |
+
+---
+
+### Peers
+
+| Configuration key | Scope    | Default   | Since |
+|-------------------|----------|-----------|-------|
+| `peers-name`      | `Global` | `ingress` | v0.16 |
+| `peers-port`      | `Global` |           | v0.16 |
+
+Configures a HAProxy `peers` section having the endpoint of all HAProxy instances.
+
+* `peers-port`: Port number the HAProxy instances should use to communicate each other. Peers will not be configured if this option is not provided.
+* `peers-name`: Name of the peers section, defaults to `ingress`. The peers section name is used on stick-table configurations.
+
+HAProxy uses stick tables to track a number of metrics, including counters and rate for requests, sessions, bytes in/out and many others. Peers configuration is the ability to group all those metrics together, from all the instances of a HAProxy cluster, so every single instance can deal with them having the perspective of the whole ingress cluster.
+
+Here are some notes about enabling peers:
+
+* There is not a centralized data, instead, all the instances of the ingress cluster will talk with each other.
+* Because of the former, the connectivity via the configured TCP port should be allowed in the cluster.
+* The Kubernetes node will listen to the configured TCP port on its IP address if HAProxy Ingress is deployed in the host network.
+
+**Usage**
+
+The peers section is ready to be used by a stick-table once it is configured. See below an example that can be used on an early frontend or backend config:
+
+```
+    stick-table type ip size 100k expire 1m peers ingress store http_req_rate(10s)
+    http-request track-sc0 src
+    http-request deny if { sc0_http_req_rate gt 100 }
+```
+
+The configuration above will:
+
+1. Define a stick table in the section where it is declared, either a frontend or a backend one. `peers` parameter ensures the data from the table is shared among all the servers declared in the `ingress` peers section, maintained by HAProxy Ingress.
+1. Assigns the predefined stick counter `sc0` to the declared table, using `src` fetch sample as the key of the collected data.
+1. Reads the actual `http_req_rate` from the `sc0` counter - the `sc0_http_req_rate` fetch sample, using the already provided `src` key, and denies the request if the recovered value is greater than 100
+
+This will deny requests from source IPs issuing more than 10rps in average over the last 10 seconds. Since peers is configured, the 10rps limit corresponds to the sum of all the rate requests from all the proxies of the cluster over that same source IP, instead of an isolated metric from the proxy that received the request.
+
+See also:
+
+* [`config-peers`](#configuration-snippet) configuration key
+* http://docs.haproxy.org/2.4/configuration.html#3.5
+* http://docs.haproxy.org/2.4/configuration.html#4-stick-table
+* https://www.haproxy.com/blog/introduction-to-haproxy-stick-tables
 
 ---
 

@@ -2756,6 +2756,9 @@ type updaterMock struct{}
 func (u *updaterMock) UpdateGlobalConfig(haproxyConfig haproxy.Config, config *annotations.Mapper) {
 }
 
+func (u *updaterMock) UpdatePeers(haproxyConfig haproxy.Config, config *annotations.Mapper) {
+}
+
 func (u *updaterMock) UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *annotations.Mapper) {
 	tcp.ProxyProt = mapper.Get(ingtypes.TCPTCPServiceProxyProto).Bool()
 }

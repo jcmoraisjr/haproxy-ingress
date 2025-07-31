@@ -439,6 +439,33 @@ func (c *c) GetNamespace(name string) (*api.Namespace, error) {
 	return &ns, err
 }
 
+func (c *c) GetControllerPodList() ([]api.Pod, error) {
+	// read controller's pod - we need the pod's template labels to find all the other pods
+	if c.config.PodName == "" {
+		return nil, fmt.Errorf("POD_NAME envvar was not configured")
+	}
+	pod := api.Pod{}
+	if err := c.client.Get(c.ctx, types.NamespacedName{Namespace: c.config.PodNamespace, Name: c.config.PodName}, &pod); err != nil {
+		return nil, err
+	}
+
+	// remove labels that uniquely identify a pod
+	podLabels := pod.GetLabels()
+	delete(podLabels, "controller-revision-hash")
+	delete(podLabels, "pod-template-generation")
+	delete(podLabels, "pod-template-hash")
+
+	// read all controller's pod
+	podList := api.PodList{}
+	if err := c.client.List(c.ctx, &podList, &client.ListOptions{
+		LabelSelector: labels.SelectorFromSet(podLabels),
+		Namespace:     c.config.PodNamespace,
+	}); err != nil {
+		return nil, err
+	}
+	return podList.Items, nil
+}
+
 func isTerminatingPod(svc *api.Service, pod *api.Pod) bool {
 	if svc.GetNamespace() != pod.GetNamespace() {
 		return false
@@ -484,8 +511,8 @@ func (c *c) GetPod(podName string) (*api.Pod, error) {
 	return &pod, err
 }
 
-func (c *c) GetPodNamespace() string {
-	return c.config.ElectionNamespace
+func (c *c) GetPodNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Namespace: c.config.PodNamespace, Name: c.config.PodName}
 }
 
 var contentProtocolRegex = regexp.MustCompile(`^([a-z]+)://(.*)$`)
