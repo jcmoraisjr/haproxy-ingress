@@ -26,6 +26,7 @@ import (
 	api "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	networking "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
@@ -203,6 +204,11 @@ func (c *CacheMock) GetNamespace(name string) (*api.Namespace, error) {
 	return nil, fmt.Errorf("namespace not found: %s", name)
 }
 
+// GetControllerPodList ...
+func (c *CacheMock) GetControllerPodList() ([]api.Pod, error) {
+	return nil, nil
+}
+
 // GetTerminatingPods ...
 func (c *CacheMock) GetTerminatingPods(service *api.Service, track []convtypes.TrackingRef) ([]*api.Pod, error) {
 	serviceName := service.Namespace + "/" + service.Name
@@ -221,8 +227,8 @@ func (c *CacheMock) GetPod(podName string) (*api.Pod, error) {
 }
 
 // GetPodNamespace ...
-func (c *CacheMock) GetPodNamespace() string {
-	return "ingress-controller"
+func (c *CacheMock) GetPodNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Namespace: "ingress-controller", Name: "haproxy-ingress"}
 }
 
 // GetTLSSecretPath ...

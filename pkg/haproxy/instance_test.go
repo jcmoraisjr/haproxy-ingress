@@ -4655,6 +4655,53 @@ frontend _front_https
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestPeers(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	peers := &c.config.global.Peers
+	peers.SectionName = "ingress"
+	peers.LocalPeer.Name = "srv2"
+	peers.LocalPeer.Endpoint = "172.17.0.12:9001"
+	peers.Servers = []hatypes.PeersServer{
+		{Name: "srv1", Endpoint: "172.17.0.11:9001"},
+		{Name: "srv2", Endpoint: "172.17.0.12:9002"},
+		{Name: "srv3", Endpoint: "172.17.0.13:9003"},
+	}
+	c.config.global.CustomPeers = []string{"log stdout format raw local0"}
+
+	c.Update()
+	c.checkConfig(`
+global
+    localpeer srv2
+    <<global-default>>
+<<defaults>>
+peers ingress
+    bind 172.17.0.12:9001
+    log stdout format raw local0
+    server srv1 172.17.0.11:9001
+    server srv2
+    server srv3 172.17.0.13:9003
+<<backends-default>>
+frontend _front_http
+    mode http
+    bind :80
+    <<set-req-base>>
+    <<http-headers>>
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
+    default_backend _error404
+frontend _front_https
+    mode http
+    bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
+    <<set-req-base>>
+    <<https-headers>>
+    use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
+    default_backend _error404
+<<support>>
+`)
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestDNS(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
@@ -5685,7 +5732,8 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
 	actual := strings.ReplaceAll(c.readConfig(filepath.Join(c.tempdir, fileName)), c.tempdir, "/etc/haproxy/maps")
 	replace := map[string]string{
 		"<<global>>": `global
-    daemon
+    <<global-default>>`,
+		"    <<global-default>>": `    daemon
     unix-bind mode 0600
     stats socket /var/run/haproxy.sock level admin expose-fd listeners mode 600
     maxconn 2000
