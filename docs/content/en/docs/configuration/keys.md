@@ -1219,6 +1219,8 @@ See also:
 | Configuration key       | Scope     | Default  | Since |
 |-------------------------|-----------|----------|-------|
 | `config-backend`        | `Backend` |          |       |
+| `config-backend-early`  | `Backend` |          | v0.16 |
+| `config-backend-late`   | `Backend` |          | v0.16 |
 | `config-defaults`       | `Global`  |          | v0.8  |
 | `config-frontend`       | `Global`  |          |       |
 | `config-frontend-early` | `Global`  |          | v0.14 |
@@ -1232,7 +1234,9 @@ See also:
 Add HAProxy configuration snippet to the configuration file. Use multiline content
 to add more than one line of configuration.
 
-* `config-backend`: Adds a configuration snippet to a HAProxy backend section.
+* `config-backend`: Adds a configuration snippet to a HAProxy backend section, alias for `config-backend-late`.
+* `config-backend-early`: Adds a configuration snippet to a HAProxy backend section, before any builtin logic.
+* `config-backend-late`: Adds a configuration snippet to a HAProxy backend section, same as `config-backend`.
 * `config-defaults`: Adds a configuration snippet to the end of the HAProxy defaults section.
 * `config-frontend`: Adds a configuration snippet to the HTTP and HTTPS frontend sections, alias for `config-frontend-late`.
 * `config-frontend-early`: Adds a configuration snippet to the HTTP and HTTPS frontend sections, before any builtin logic.
@@ -1307,6 +1311,20 @@ Annotations:
         http-request set-var(txn.path) path
         http-request cache-use icons if { var(txn.path) -m end .ico }
         http-response cache-store icons if { var(txn.path) -m end .ico }
+```
+
+```yaml
+    annotations:
+      haproxy-ingress.github.io/config-backend-early: |
+        stick-table type ip size 100k expire 1m store http_req_rate(10s)
+        http-request track-sc1 src
+        http-request deny if { sc1_http_req_rate gt 100 } # average of 10rps per source IP, over the last 10s
+```
+
+```yaml
+    annotations:
+      haproxy-ingress.github.io/config-backend-late: |
+        http-request deny if { path /internal }
 ```
 
 ```yaml

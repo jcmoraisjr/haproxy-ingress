@@ -1078,11 +1078,22 @@ frontend _front_https
 		},
 		{
 			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
-				b.ModeTCP = true
-				b.CustomConfig = []string{"## custom for TCP backend"}
+				b.CustomConfigEarly = []string{"## early custom for HTTP backend"}
+				b.CustomConfigLate = []string{"## late custom for HTTP backend"}
 			},
 			expected: `
-    ## custom for TCP backend`,
+    ## early custom for HTTP backend
+    ## late custom for HTTP backend`,
+		},
+		{
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
+				b.ModeTCP = true
+				b.CustomConfigEarly = []string{"## early custom for TCP backend"}
+				b.CustomConfigLate = []string{"## late custom for TCP backend"}
+			},
+			expected: `
+    ## early custom for TCP backend
+    ## late custom for TCP backend`,
 		},
 	}
 	for _, test := range testCases {
