@@ -1471,51 +1471,54 @@ func TestCustomConfig(t *testing.T) {
 		Name:      "app",
 	}
 	testCases := []struct {
-		disabled []string
-		config   string
-		source   *Source
-		expected []string
-		logging  string
+		disabled    []string
+		earlyConfig string
+		lateConfig  string
+		config      string
+		source      *Source
+		expEarly    []string
+		expLate     []string
+		logging     string
 	}{
 		// 0
 		{
-			config:   "  server srv001 127.0.0.1:8080",
-			expected: []string{"  server srv001 127.0.0.1:8080"},
+			lateConfig: "  server srv001 127.0.0.1:8080",
+			expLate:    []string{"  server srv001 127.0.0.1:8080"},
 		},
 		// 1
 		{
-			disabled: []string{"server"},
-			config:   "  server srv001 127.0.0.1:8080",
-			source:   defaultSource,
-			logging:  `WARN skipping configuration snippet on Ingress 'default/app': keyword 'server' not allowed`,
+			disabled:   []string{"server"},
+			lateConfig: "  server srv001 127.0.0.1:8080",
+			source:     defaultSource,
+			logging:    `WARN skipping configuration snippet on Ingress 'default/app': keyword 'server' not allowed`,
 		},
 		// 2
 		{
-			disabled: []string{"*"},
-			config:   "  server srv001 127.0.0.1:8080",
-			logging:  `WARN skipping configuration snippet on global config: custom configuration is disabled`,
+			disabled:   []string{"*"},
+			lateConfig: "  server srv001 127.0.0.1:8080",
+			logging:    `WARN skipping configuration snippet on global config: custom configuration is disabled`,
 		},
 		// 3
 		{
 			disabled: []string{"http-response"},
-			config: `
+			lateConfig: `
   http-request set-header x-id 1 if { path / }
 `,
-			expected: []string{"", "  http-request set-header x-id 1 if { path / }"},
+			expLate: []string{"", "  http-request set-header x-id 1 if { path / }"},
 		},
 		// 4
 		{
 			disabled: []string{"http-response"},
-			config: `
+			lateConfig: `
   acl rootpath path /
   http-request set-header x-id 1 if rootpath
 `,
-			expected: []string{"", "  acl rootpath path /", "  http-request set-header x-id 1 if rootpath"},
+			expLate: []string{"", "  acl rootpath path /", "  http-request set-header x-id 1 if rootpath"},
 		},
 		// 5
 		{
 			disabled: []string{"http-response", "acl"},
-			config: `
+			lateConfig: `
   acl rootpath path /
   http-request set-header x-id 1 if rootpath
 `,
@@ -1524,32 +1527,47 @@ func TestCustomConfig(t *testing.T) {
 		},
 		// 6
 		{
-			disabled: []string{"http"},
-			config:   "  http-request set-header x-id 1 if { path / }",
-			expected: []string{"  http-request set-header x-id 1 if { path / }"},
+			disabled:   []string{"http"},
+			lateConfig: "  http-request set-header x-id 1 if { path / }",
+			expLate:    []string{"  http-request set-header x-id 1 if { path / }"},
 		},
 		// 7
 		{
 			disabled: []string{"server", ""},
-			config: `
+			lateConfig: `
   acl rootpath path /
 
   http-request set-header x-id 1 if rootpath
 `,
-			source:   defaultSource,
-			expected: []string{"", "  acl rootpath path /", "", "  http-request set-header x-id 1 if rootpath"},
+			source:  defaultSource,
+			expLate: []string{"", "  acl rootpath path /", "", "  http-request set-header x-id 1 if rootpath"},
+		},
+		// 8
+		{
+			config:      "http-request set-header x-id 1 if { path /api }",
+			earlyConfig: "http-request deny if { path /internal }",
+			lateConfig:  "http-request set-header x-id 2 if { path /static }",
+			source:      defaultSource,
+			expEarly:    []string{"http-request deny if { path /internal }"},
+			expLate:     []string{"http-request set-header x-id 2 if { path /static }"},
+			logging:     `WARN both config-backend and config-backend-late were used on Ingress 'default/app', ignoring config-backend`,
 		},
 	}
 	for i, test := range testCases {
 		c := setup(t)
 		ann := map[string]map[string]string{
-			"/": {ingtypes.BackConfigBackend: test.config},
+			"/": {
+				ingtypes.BackConfigBackend:      test.config,
+				ingtypes.BackConfigBackendEarly: test.earlyConfig,
+				ingtypes.BackConfigBackendLate:  test.lateConfig,
+			},
 		}
 		d := c.createBackendMappingData("default/app", test.source, map[string]string{}, ann, []string{"/"})
 		updater := c.createUpdater()
 		updater.options.DisableKeywords = test.disabled
 		updater.buildBackendCustomConfig(d)
-		c.compareObjects("custom config", i, d.backend.CustomConfig, test.expected)
+		c.compareObjects("custom config early", i, d.backend.CustomConfigEarly, test.expEarly)
+		c.compareObjects("custom config late", i, d.backend.CustomConfigLate, test.expLate)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}

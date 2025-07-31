@@ -293,8 +293,8 @@ func TestBackendsMatch(t *testing.T) {
 		},
 		// 3
 		{
-			back1:    &Backend{CustomConfig: []string{"http-request"}, Endpoints: []*Endpoint{ep0_1}},
-			back2:    &Backend{CustomConfig: []string{"http-response"}, Endpoints: []*Endpoint{ep0_2}},
+			back1:    &Backend{CustomConfigLate: []string{"http-request"}, Endpoints: []*Endpoint{ep0_1}},
+			back2:    &Backend{CustomConfigLate: []string{"http-response"}, Endpoints: []*Endpoint{ep0_2}},
 			expected: false,
 		},
 		// 4

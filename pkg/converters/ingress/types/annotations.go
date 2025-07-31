@@ -127,6 +127,8 @@ const (
 	BackBlueGreenHeader        = "blue-green-header"
 	BackBlueGreenMode          = "blue-green-mode"
 	BackConfigBackend          = "config-backend"
+	BackConfigBackendEarly     = "config-backend-early"
+	BackConfigBackendLate      = "config-backend-late"
 	BackCorsAllowCredentials   = "cors-allow-credentials"
 	BackCorsAllowHeaders       = "cors-allow-headers"
 	BackCorsAllowMethods       = "cors-allow-methods"
