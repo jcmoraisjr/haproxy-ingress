@@ -922,7 +922,7 @@ payload
 		{
 			config: map[string]string{
 				ingtypes.GlobalHTTPResponse404: `404`,
-				ingtypes.GlobalHTTPResponse413: `413 Too Large
+				ingtypes.BackHTTPResponse413: `413 Too Large
 
 <h1>
   413 two spaces left
@@ -949,7 +949,7 @@ send-413 413 'Too Large'
 				ingtypes.GlobalHTTPResponse404: `999 Invalid Code`,
 			},
 			expected: default404,
-			logging:  `WARN ignoring 'http-response-404' due to a malformed response: invalid status code: 999`,
+			logging:  `WARN ignoring 'http-response-404' on <global> due to a malformed response: invalid status code: 999`,
 		},
 		// 4
 		{
@@ -959,7 +959,7 @@ h space: value
 `,
 			},
 			expected: default404,
-			logging:  `WARN ignoring 'http-response-404' due to a malformed response: invalid chars in the header name: 'h space'`,
+			logging:  `WARN ignoring 'http-response-404' on <global> due to a malformed response: invalid chars in the header name: 'h space'`,
 		},
 		// 5
 		{
@@ -969,7 +969,7 @@ h invalid
 `,
 			},
 			expected: default404,
-			logging:  `WARN ignoring 'http-response-404' due to a malformed response: missing a colon ':' in the header declaration: h invalid`,
+			logging:  `WARN ignoring 'http-response-404' on <global> due to a malformed response: missing a colon ':' in the header declaration: h invalid`,
 		},
 		// 6
 		{
@@ -979,7 +979,7 @@ h: "invalid"
 `,
 			},
 			expected: default404,
-			logging:  `WARN ignoring 'http-response-404' due to a malformed response: invalid chars in the header value: '"invalid"'`,
+			logging:  `WARN ignoring 'http-response-404' on <global> due to a malformed response: invalid chars in the header value: '"invalid"'`,
 		},
 		// 7
 		{
@@ -989,7 +989,7 @@ h:
 `,
 			},
 			expected: default404,
-			logging:  `WARN ignoring 'http-response-404' due to a malformed response: header name and value must not be empty: 'h:'`,
+			logging:  `WARN ignoring 'http-response-404' on <global> due to a malformed response: header name and value must not be empty: 'h:'`,
 		},
 		// 8
 		{
@@ -999,7 +999,7 @@ h:
 `,
 			},
 			expected: default404,
-			logging:  `WARN ignoring 'http-response-404' due to a malformed response: header name and value must not be empty: ': v'`,
+			logging:  `WARN ignoring 'http-response-404' on <global> due to a malformed response: header name and value must not be empty: ': v'`,
 		},
 		// 9
 		{
@@ -1011,12 +1011,12 @@ payload lua ]==] conflict
 `,
 			},
 			expected: default404,
-			logging:  `WARN ignoring 'http-response-404' due to a malformed response: the string ']==]' cannot be used in the body`,
+			logging:  `WARN ignoring 'http-response-404' on <global> due to a malformed response: the string ']==]' cannot be used in the body`,
 		},
 		// 10
 		{
 			config: map[string]string{
-				ingtypes.GlobalHTTPResponse413: `
+				ingtypes.BackHTTPResponse413: `
 body`,
 			},
 			expected: `
@@ -1029,7 +1029,7 @@ body
 		// 11
 		{
 			config: map[string]string{
-				ingtypes.GlobalHTTPResponse421: `h1: value1`,
+				ingtypes.HostHTTPResponse421: `h1: value1`,
 			},
 			expected: `
 ---
@@ -1040,7 +1040,7 @@ send-421 421 'Misdirected Request'
 		// 12
 		{
 			config: map[string]string{
-				ingtypes.GlobalHTTPResponse495: `h1: value1
+				ingtypes.HostHTTPResponse495: `h1: value1
 
 body`,
 			},
@@ -1054,7 +1054,7 @@ body
 		// 13
 		{
 			config: map[string]string{
-				ingtypes.GlobalHTTPResponse503: `h1: value1
+				ingtypes.BackHTTPResponse503: `h1: value1
 
 body`,
 			},
@@ -1068,7 +1068,7 @@ body
 		// 14
 		{
 			config: map[string]string{
-				ingtypes.GlobalHTTPResponse403: `Content-length: 10
+				ingtypes.BackHTTPResponse403: `Content-length: 10
 
 body`,
 			},
@@ -1093,7 +1093,7 @@ body
 			}
 		}
 		var actual string
-		for _, response := range append(d.global.CustomHTTPLuaResponses, d.global.CustomHTTPHAResponses...) {
+		for _, response := range append(d.global.CustomHTTPResponses.Lua, d.global.CustomHTTPResponses.HAProxy...) {
 			if !strings.Contains(has, response.Name) {
 				continue
 			}

@@ -7,20 +7,41 @@
 -- # #
 -- #
 
-{{- range $response := . }}
+{{- range $i, $res := . }}
+{{- $global := $res.LuaDefault }}
+{{- if $global.ID }}
 
-core.register_service("{{ $response.Name }}", "http", function(applet)
-    response = [==[
-{{- range $line := $response.Body }}
-{{ $line }}
+core.register_service("{{ $res.ResponseName }}", "http", function(applet)
+{{- if $res.Lua }}
+    local scope = applet:get_var("req.lua_scope")
+    local response = ""
+{{- range $i, $lua := $res.Lua }}
+    {{ if gt $i 0 }}el{{ end }}if scope == "{{ $lua.ID }}" then
+        {{- template "lua_response" map $lua 8 }}
 {{- end }}
-]==]
-    applet:set_status({{ $response.StatusCode }}, "{{ $response.StatusReason }}")
-{{- range $h := $response.Headers }}
-    applet:add_header("{{ $h.Name }}", "{{ $h.Value }}")
+    else
+        {{- template "lua_response" map $global 8 }}
+    end
+{{- else }}
+    {{- template "lua_response" map $global 4 }}
 {{- end }}
     applet:start_response()
     applet:send(response)
 end)
 
+{{- end }}
+{{- end }}
+
+{{- define "lua_response" }}
+{{- $res := .p1 }}
+{{- $indent := .p2 }}
+    {{- nindent $indent "" }}response = [==[
+{{- range $res.Body }}
+{{ . }}
+{{- end }}
+]==]
+    {{- nindent $indent "" }}applet:set_status({{ $res.StatusCode }}, "{{ $res.StatusReason }}")
+{{- range $h := $res.Headers }}
+    {{- nindent $indent "" }}applet:add_header("{{ $h.Name }}", "{{ $h.Value }}")
+{{- end }}
 {{- end }}

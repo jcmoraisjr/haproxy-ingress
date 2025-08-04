@@ -88,8 +88,7 @@ type Global struct {
 	CustomFrontendEarly     []string
 	CustomFrontendLate      []string
 	CustomProxy             map[string][]string
-	CustomHTTPLuaResponses  []HTTPResponse
-	CustomHTTPHAResponses   []HTTPResponse
+	CustomHTTPResponses     HTTPResponses
 	CustomSections          []string
 	CustomTCP               []string
 }
@@ -252,6 +251,15 @@ type ModSecurityTimeoutConfig struct {
 	Hello      string
 	Idle       string
 	Processing string
+}
+
+const HTTPResponseGlobalID = "global"
+
+// HTTPResponses ...
+type HTTPResponses struct {
+	ID      string
+	HAProxy []HTTPResponse
+	Lua     []HTTPResponse
 }
 
 // HTTPResponse ...
@@ -482,6 +490,7 @@ type Host struct {
 	Paths    []*HostPath
 	//
 	Alias                  HostAliasConfig
+	CustomHTTPResponses    HTTPResponses
 	Redirect               HostRedirectConfig
 	HTTPPassthroughBackend string
 	RootRedirect           string
@@ -644,23 +653,24 @@ type Backend struct {
 	//
 	// per backend config
 	//
-	AgentCheck       AgentCheck
-	AllowedIPTCP     AccessConfig
-	BalanceAlgorithm string
-	BlueGreen        BlueGreenConfig
-	Cookie           Cookie
-	CustomConfig     []string
-	DeniedIPTCP      AccessConfig
-	Dynamic          DynBackendConfig
-	EpCookieStrategy EndpointCookieStrategy
-	Headers          []*BackendHeader
-	HealthCheck      HealthCheck
-	Limit            BackendLimit
-	ModeTCP          bool
-	Resolver         string
-	Server           ServerConfig
-	Timeout          BackendTimeoutConfig
-	TLS              BackendTLSConfig
+	AgentCheck          AgentCheck
+	AllowedIPTCP        AccessConfig
+	BalanceAlgorithm    string
+	BlueGreen           BlueGreenConfig
+	Cookie              Cookie
+	CustomConfig        []string
+	CustomHTTPResponses HTTPResponses
+	DeniedIPTCP         AccessConfig
+	Dynamic             DynBackendConfig
+	EpCookieStrategy    EndpointCookieStrategy
+	Headers             []*BackendHeader
+	HealthCheck         HealthCheck
+	Limit               BackendLimit
+	ModeTCP             bool
+	Resolver            string
+	Server              ServerConfig
+	Timeout             BackendTimeoutConfig
+	TLS                 BackendTLSConfig
 }
 
 // Endpoint ...

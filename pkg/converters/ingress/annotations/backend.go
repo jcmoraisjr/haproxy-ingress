@@ -616,6 +616,10 @@ func firstToken(s string) string {
 	return s[start:end]
 }
 
+func (c *updater) buildBackendCustomResponses(d *backData) {
+	d.backend.CustomHTTPResponses = c.buildHTTPResponses(d.backend.ID, d.mapper, keyScopeBackend)
+}
+
 func (c *updater) buildBackendDNS(d *backData) {
 	resolverName := d.mapper.Get(ingtypes.BackUseResolver).Value
 	if resolverName == "" {
