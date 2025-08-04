@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
@@ -548,6 +550,52 @@ WARN ignoring invalid value 'fail' on global 'cross-namespace-secrets-crt', usin
 		}
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
+	}
+}
+
+func TestFastCGI(t *testing.T) {
+	testCases := map[string]struct {
+		config  map[string]string
+		expapps []string
+		logging string
+	}{
+		"should ignore apps missing all configs": {
+			config: map[string]string{
+				ingtypes.GlobalFCGIEnabledApps: "app1,app2",
+			},
+			logging: `
+WARN ignoring FastCGI app(s) declared as enabled but not configured via config-sections: app1, app2
+`,
+		},
+		"should ignore apps missing one config": {
+			config: map[string]string{
+				ingtypes.GlobalConfigSections:  "fcgi-app app2",
+				ingtypes.GlobalFCGIEnabledApps: "app1,app2",
+			},
+			expapps: []string{"app2"},
+			logging: `
+WARN ignoring FastCGI app(s) declared as enabled but not configured via config-sections: app1
+`,
+		},
+		"should work having configs": {
+			config: map[string]string{
+				ingtypes.GlobalConfigSections:  "fcgi-app app1\nfcgi-app app2",
+				ingtypes.GlobalFCGIEnabledApps: "app1,app2",
+			},
+			expapps: []string{"app1", "app2"},
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			c := setup(t)
+			defer c.teardown()
+			d := c.createGlobalData(test.config)
+			u := c.createUpdater()
+			u.buildGlobalFastCGI(d)
+			assert.Equal(t, test.expapps, d.global.FastCGIApps)
+			assert.Equal(t, strings.TrimSpace(test.logging), strings.Join(c.logger.Logging, "\n"))
+			c.logger.Logging = nil
+		})
 	}
 }
 

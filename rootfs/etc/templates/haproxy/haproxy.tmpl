@@ -347,6 +347,10 @@ backend {{ $backend.ID }}
 {{- if or $backend.Limit.Connections $backend.Limit.RPS }}
     stick-table type ip size 200k expire 5m store conn_cur,conn_rate(1s)
 {{- end }}
+{{- with $backend.Server.FastCGIApp }}
+    filter fcgi-app {{ . }}
+    use-fcgi-app {{ . }}
+{{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $backend.HealthCheck.URI }}
@@ -816,7 +820,7 @@ backend {{ $backend.ID }}
     {{- $server := $backend.Server }}
     {{- if eq $server.Protocol "h2" }} proto h2
         {{- if $server.Secure }} alpn h2{{ end }}
-    {{- end }}
+    {{- else if eq $server.Protocol "fcgi" }} proto {{ $server.Protocol }}{{ end }}
     {{- if $server.MaxConn }} maxconn {{ $server.MaxConn }}{{ end }}
     {{- if $server.MaxQueue }} maxqueue {{ $server.MaxQueue }}{{ end }}
     {{- if $server.Secure }} ssl
