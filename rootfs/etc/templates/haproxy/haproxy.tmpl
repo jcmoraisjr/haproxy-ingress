@@ -116,6 +116,9 @@ global
 {{- end }}
     lua-load {{ $global.LocalFSPrefix }}/etc/haproxy/lua/services.lua
     lua-load {{ $global.LocalFSPrefix }}/etc/haproxy/lua/responses.lua
+{{- if $global.Peers.Table }}
+    lua-load {{ $global.LocalFSPrefix }}/etc/haproxy/lua/peers.lua
+{{- end }}
 {{- if $global.SSL.DHParam.Filename }}
     ssl-dh-param-file {{ $global.SSL.DHParam.Filename }}
 {{- else }}
@@ -213,9 +216,19 @@ peers {{ $peers.SectionName }}
 {{- range $snippet := $global.CustomPeers }}
     {{ $snippet }}
 {{- end }}
-{{- range $server := $global.Peers.Servers }}
+{{- range $server := $peers.Servers }}
     server {{ $server.Name }}{{ if ne $peers.LocalPeer.Name $server.Name }} {{ $server.Endpoint }}{{ end }}
 {{- end }}
+
+{{- if $peers.Table }}
+
+# Local stick tables
+{{- range $server := $peers.Servers }}
+backend {{ $peers.TableNamePrefix }}{{ $server.Name }}
+    {{ $peers.Table }}
+{{- end }}
+{{- end }}
+
 {{- end }}
 
 

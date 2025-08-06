@@ -95,6 +95,7 @@ func CreateInstance(logger types.Logger, options InstanceOptions) Instance {
 		modsecTmpl:      template.CreateConfig(),
 		haResponseTmpl:  template.CreateConfig(),
 		luaResponseTmpl: template.CreateConfig(),
+		luaPeersTmpl:    template.CreateConfig(),
 	}
 }
 
@@ -115,6 +116,7 @@ type instance struct {
 	modsecTmpl      *template.Config
 	haResponseTmpl  *template.Config
 	luaResponseTmpl *template.Config
+	luaPeersTmpl    *template.Config
 }
 
 func (i *instance) AcmeCheck(source string) (int, error) {
@@ -172,6 +174,7 @@ func (i *instance) ParseTemplates() error {
 	i.modsecTmpl.ClearTemplates()
 	i.haResponseTmpl.ClearTemplates()
 	i.luaResponseTmpl.ClearTemplates()
+	i.luaPeersTmpl.ClearTemplates()
 	templatesDir := i.options.RootFSPrefix + "/etc/templates"
 	if err := i.modsecTmpl.NewTemplate(
 		"modsecurity.tmpl",
@@ -222,6 +225,15 @@ func (i *instance) ParseTemplates() error {
 		"responses.lua.tmpl",
 		templatesDir+"/responses/responses.lua.tmpl",
 		i.options.HAProxyCfgDir+"/lua/responses.lua",
+		0,
+		2048,
+	); err != nil {
+		return err
+	}
+	if err := i.luaPeersTmpl.NewTemplate(
+		"peers.lua.tmpl",
+		templatesDir+"/peers/peers.lua.tmpl",
+		i.options.HAProxyCfgDir+"/lua/peers.lua",
 		0,
 		2048,
 	); err != nil {
@@ -508,6 +520,15 @@ func (i *instance) writeConfig() (err error) {
 	err = i.luaResponseTmpl.Write(i.config.Global().CustomHTTPLuaResponses)
 	if err != nil {
 		return err
+	}
+	//
+	// Peers
+	//
+	if i.config.Global().Peers.Table != "" {
+		err = i.luaPeersTmpl.Write(i.config.Global().Peers)
+		if err != nil {
+			return err
+		}
 	}
 	//
 	// haproxy template execution

@@ -228,7 +228,7 @@ func (c *CacheMock) GetPod(podName string) (*api.Pod, error) {
 
 // GetPodNamespace ...
 func (c *CacheMock) GetPodNamespacedName() types.NamespacedName {
-	return types.NamespacedName{Namespace: "ingress-controller", Name: "haproxy-ingress"}
+	return types.NamespacedName{Namespace: "ingress-controller", Name: "haproxy-ingress-srv1"}
 }
 
 // GetTLSSecretPath ...

@@ -222,11 +222,15 @@ type MasterConfig struct {
 	WorkerMaxReloads int
 }
 
+const PeersTableNamePrefix = "_peers_"
+
 // PeersConfig ...
 type PeersConfig struct {
-	SectionName string
-	LocalPeer   PeersServer
-	Servers     []PeersServer
+	SectionName     string
+	LocalPeer       PeersServer
+	Servers         []PeersServer
+	Table           string
+	TableNamePrefix string
 }
 
 // PeersServer ...

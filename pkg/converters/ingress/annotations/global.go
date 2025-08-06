@@ -216,9 +216,12 @@ func (c *updater) buildGlobalPeers(d *globalData) {
 	sort.Slice(peers, func(i, j int) bool { return peers[i].Name < peers[j].Name })
 
 	// this is being called on partial parsing without a previous cleanup, so it should be idempotent
-	c.haproxy.Global().Peers.SectionName = d.mapper.Get(ingtypes.GlobalPeersName).Value
-	c.haproxy.Global().Peers.LocalPeer = *localPeer
-	c.haproxy.Global().Peers.Servers = peers
+	globalPeers := &c.haproxy.Global().Peers
+	globalPeers.SectionName = d.mapper.Get(ingtypes.GlobalPeersName).Value
+	globalPeers.Table = d.mapper.Get(ingtypes.GlobalPeersTable).Value
+	globalPeers.TableNamePrefix = hatypes.PeersTableNamePrefix
+	globalPeers.LocalPeer = *localPeer
+	globalPeers.Servers = peers
 }
 
 func (c *updater) buildGlobalProc(d *globalData) {
@@ -490,13 +493,14 @@ func (c *updater) buildGlobalForwardFor(d *globalData) {
 }
 
 func (c *updater) buildGlobalCustomConfig(d *globalData) {
-	d.global.CustomConfig = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigGlobal).Value)
-	d.global.CustomDefaults = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigDefaults).Value)
-	d.global.CustomFrontendEarly = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigFrontendEarly).Value)
+	pattern := c.commonConfigPatterns()
+	d.global.CustomConfig = utils.PatternLineToSlice(pattern, d.mapper.Get(ingtypes.GlobalConfigGlobal).Value)
+	d.global.CustomDefaults = utils.PatternLineToSlice(pattern, d.mapper.Get(ingtypes.GlobalConfigDefaults).Value)
+	d.global.CustomFrontendEarly = utils.PatternLineToSlice(pattern, d.mapper.Get(ingtypes.GlobalConfigFrontendEarly).Value)
 	// Keep old behavior for config-frontend mapping it to config-frontend-late
 	// If both are specified a warning is returned and config-frontend-late is used instead
-	customFrontendLate := utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigFrontendLate).Value)
-	customFrontend := utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigFrontend).Value)
+	customFrontendLate := utils.PatternLineToSlice(pattern, d.mapper.Get(ingtypes.GlobalConfigFrontendLate).Value)
+	customFrontend := utils.PatternLineToSlice(pattern, d.mapper.Get(ingtypes.GlobalConfigFrontend).Value)
 	selectedCustomFrontendConf := customFrontendLate
 
 	if len(customFrontendLate) == 0 {
@@ -506,12 +510,12 @@ func (c *updater) buildGlobalCustomConfig(d *globalData) {
 	}
 	d.global.CustomFrontendLate = selectedCustomFrontendConf
 
-	d.global.CustomPeers = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigPeers).Value)
-	d.global.CustomSections = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigSections).Value)
-	d.global.CustomTCP = utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigTCP).Value)
+	d.global.CustomPeers = utils.PatternLineToSlice(pattern, d.mapper.Get(ingtypes.GlobalConfigPeers).Value)
+	d.global.CustomSections = utils.PatternLineToSlice(pattern, d.mapper.Get(ingtypes.GlobalConfigSections).Value)
+	d.global.CustomTCP = utils.PatternLineToSlice(pattern, d.mapper.Get(ingtypes.GlobalConfigTCP).Value)
 	proxy := map[string][]string{}
 	var curSection string
-	for _, line := range utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigProxy).Value) {
+	for _, line := range utils.PatternLineToSlice(pattern, d.mapper.Get(ingtypes.GlobalConfigProxy).Value) {
 		if line == "" {
 			continue
 		}

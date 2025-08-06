@@ -430,6 +430,7 @@ The table below describes all supported configuration keys.
 | [`path-type-order`](#path-type)                      | comma-separated path type list          | Global  | `exact,prefix,begin,regex` |
 | [`peers-name`](#peers)                               | peers section name                      | Global  | `ingress`          |
 | [`peers-port`](#peers)                               | port number                             | Global  |                    |
+| [`peers-table`](#peers)                              | stick-table declaration                 | Global  |                    |
 | [`prometheus-port`](#bind-port)                      | port number                             | Global  |                    |
 | [`proxy-body-size`](#proxy-body-size)                | size (bytes)                            | Path    | unlimited          |
 | [`proxy-protocol`](#proxy-protocol)                  | [v1\|v2\|v2-ssl\|v2-ssl-cn]             | Backend |                    |
@@ -2190,37 +2191,53 @@ Request and match examples:
 |-------------------|----------|-----------|-------|
 | `peers-name`      | `Global` | `ingress` | v0.16 |
 | `peers-port`      | `Global` |           | v0.16 |
+| `peers-table`     | `Global` |           | v0.16 |
 
-Configures a HAProxy `peers` section having the endpoint of all HAProxy instances.
+Configures HAProxy `peers` section and stick tables.
 
-* `peers-port`: Port number the HAProxy instances should use to communicate each other. Peers will not be configured if this option is not provided.
+* `peers-port`: Port number the HAProxy instances should use to communicate each other. This is a mandatory option.
 * `peers-name`: Name of the peers section, defaults to `ingress`. The peers section name is used on stick-table configurations.
+* `peers-table`: stick-table declaration to be shared on all ingress instances. This is a required option if using local aggregation.
 
 HAProxy uses stick tables to track a number of metrics, including counters and rate for requests, sessions, bytes in/out and many others. Peers configuration is the ability to group all those metrics together, from all the instances of a HAProxy cluster, so every single instance can deal with them having the perspective of the whole ingress cluster.
 
 Here are some notes about enabling peers:
 
-* There is not a centralized data, instead, all the instances of the ingress cluster will talk with each other.
-* Because of the former, the connectivity via the configured TCP port should be allowed in the cluster.
+* There is not a centralized data, instead, all the instances of the ingress cluster will talk with each other, sharing their data.
+* Because of the former, the connectivity between all the HAProxy pods via the configured TCP port should be allowed in the cluster.
 * The Kubernetes node will listen to the configured TCP port on its IP address if HAProxy Ingress is deployed in the host network.
+
+Aggregation is made locally, which adds some caveats about metrics aggregation:
+
+* HAProxy ingress creates one table per instance, which means that from a cluster of 5 ingress nodes, HAProxy Ingress will create 5 tables on every single instance.
+* Every table on every instance has the metrics of a single instance, so everytime an aggregate value is needed, haproxy will make a lookup on every table and sum the required metric from all of them.
 
 **Usage**
 
-The peers section is ready to be used by a stick-table once it is configured. See below an example that can be used on an early frontend or backend config:
+The peers section, the shared tables and the aggregation script are ready to be used once the listening port and the table declaration are configured. See an example below:
 
+```yaml
+    peers-table: "stick-table type ip size 100k expire 1m peers ingress store http_req_rate(10s)"
+    config-frontend-early: |
+      ...
+      http-request track-sc0 src table %[peers_local_table]
+      http-request deny if { src,lua.peers_sum(http_req_rate) gt 100 }
 ```
-    stick-table type ip size 100k expire 1m peers ingress store http_req_rate(10s)
-    http-request track-sc0 src
-    http-request deny if { sc0_http_req_rate gt 100 }
-```
 
-The configuration above will:
+Regarding configuration above:
 
-1. Define a stick table in the section where it is declared, either a frontend or a backend one. `peers` parameter ensures the data from the table is shared among all the servers declared in the `ingress` peers section, maintained by HAProxy Ingress.
-1. Assigns the predefined stick counter `sc0` to the declared table, using `src` fetch sample as the key of the collected data.
-1. Reads the actual `http_req_rate` from the `sc0` counter - the `sc0_http_req_rate` fetch sample, using the already provided `src` key, and denies the request if the recovered value is greater than 100
+1. `peers-table` defines one stick table per existing ingress instance, automatically updated when the cluster scales.
+1. The first line of the configuration snippet tracks the current request and uses the source IP address as the key of the collected data. It is assigned to the stick table dedicated to the local requests.
+1. The second line uses the HAProxy Ingress converter to calculate the sum of the request rate, denying the request if it goes beyond of a threshold.
 
 This will deny requests from source IPs issuing more than 10rps in average over the last 10 seconds. Since peers is configured, the 10rps limit corresponds to the sum of all the rate requests from all the proxies of the cluster over that same source IP, instead of an isolated metric from the proxy that received the request.
+
+Useful notes:
+
+* Always use the same fetch sample, `src` in the example above, on tracking configuration and as the incoming value of the `lua.peers_sum` converter.
+* `lua.peers_sum` converter is only available if `peers-table` is configured.
+* HAProxy Ingress converts the literal `%[peers_local_table]` into the name of the correct local table, which should be a different one on every ingress instance. This option works on any configuration snippet, including the annotation based ones.
+* `peers-table` configuration expects a fully configured stick-table, so the `peers` parameter should be added either to the automatically created one, or another one created manually.
 
 See also:
 

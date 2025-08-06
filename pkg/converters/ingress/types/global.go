@@ -110,6 +110,7 @@ const (
 	GlobalPathTypeOrder                = "path-type-order"
 	GlobalPeersName                    = "peers-name"
 	GlobalPeersPort                    = "peers-port"
+	GlobalPeersTable                   = "peers-table"
 	GlobalPrometheusPort               = "prometheus-port"
 	GlobalRealIPHdr                    = "real-ip-hdr"
 	GlobalRedirectFromCode             = "redirect-from-code"

@@ -143,6 +143,12 @@ func (c *updater) splitDualCIDR(cidrlist *ConfigValue) (allow, deny []string) {
 	return allow, deny
 }
 
+func (c *updater) commonConfigPatterns() map[string]string {
+	return map[string]string{
+		"%[peers_local_table]": hatypes.PeersTableNamePrefix + c.cache.GetPodNamespacedName().Name,
+	}
+}
+
 func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mapper) {
 	d := &globalData{
 		acmeData: haproxyConfig.AcmeData(),

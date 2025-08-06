@@ -4661,6 +4661,8 @@ func TestPeers(t *testing.T) {
 
 	peers := &c.config.global.Peers
 	peers.SectionName = "ingress"
+	peers.Table = "stick-table type ip size 100k expire 1m peers ingress store http_req_rate(10s)"
+	peers.TableNamePrefix = hatypes.PeersTableNamePrefix
 	peers.LocalPeer.Name = "srv2"
 	peers.LocalPeer.Endpoint = "172.17.0.12:9001"
 	peers.Servers = []hatypes.PeersServer{
@@ -4674,7 +4676,22 @@ func TestPeers(t *testing.T) {
 	c.checkConfig(`
 global
     localpeer srv2
-    <<global-default>>
+    daemon
+    unix-bind mode 0600
+    stats socket /var/run/haproxy.sock level admin expose-fd listeners mode 600
+    maxconn 2000
+    hard-stop-after 15m
+    lua-prepend-path /etc/haproxy/lua/?.lua
+    lua-load /etc/haproxy/lua/auth-request.lua
+    lua-load /etc/haproxy/lua/services.lua
+    lua-load /etc/haproxy/lua/responses.lua
+    lua-load /etc/haproxy/lua/peers.lua
+    ssl-dh-param-file /var/haproxy/tls/dhparam.pem
+    ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
+    ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
+    ssl-default-bind-options no-sslv3
+    ssl-default-server-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
+    ssl-default-server-ciphersuites TLS_AES_128_GCM_SHA256
 <<defaults>>
 peers ingress
     bind 172.17.0.12:9001
@@ -4682,6 +4699,12 @@ peers ingress
     server srv1 172.17.0.11:9001
     server srv2
     server srv3 172.17.0.13:9003
+backend _peers_srv1
+    stick-table type ip size 100k expire 1m peers ingress store http_req_rate(10s)
+backend _peers_srv2
+    stick-table type ip size 100k expire 1m peers ingress store http_req_rate(10s)
+backend _peers_srv3
+    stick-table type ip size 100k expire 1m peers ingress store http_req_rate(10s)
 <<backends-default>>
 frontend _front_http
     mode http
@@ -4699,6 +4722,21 @@ frontend _front_https
     default_backend _error404
 <<support>>
 `)
+
+	c.compareText("peers.lua", c.readConfig(c.tempdir+"/peers.lua"), `
+core.register_converters("peers_sum", function(key, field)
+    total = 0
+    be = {"_peers_srv1", "_peers_srv2", "_peers_srv3"}
+    for i = 1, #be do
+        item = core.backends[be[i]].stktable:lookup(key)
+        if item then
+            total = total + item[field]
+        end
+    end
+    return total
+end)
+`)
+
 	c.logger.CompareLogging(defaultLogging)
 }
 
@@ -5589,6 +5627,15 @@ func setupOptions(options testOptions) *testConfig {
 	); err != nil {
 		t.Errorf("error parsing responses.lua.tmpl: %v", err)
 	}
+	if err := instance.luaPeersTmpl.NewTemplate(
+		"peers.lua.tmpl",
+		"../../rootfs/etc/templates/peers/peers.lua.tmpl",
+		filepath.Join(tempdir, "peers.lua"),
+		0,
+		2048,
+	); err != nil {
+		t.Errorf("error parsing responses.lua.tmpl: %v", err)
+	}
 	if err := instance.modsecTmpl.NewTemplate(
 		"modsecurity.tmpl",
 		"../../rootfs/etc/templates/modsecurity/modsecurity.tmpl",
@@ -5732,8 +5779,7 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
 	actual := strings.ReplaceAll(c.readConfig(filepath.Join(c.tempdir, fileName)), c.tempdir, "/etc/haproxy/maps")
 	replace := map[string]string{
 		"<<global>>": `global
-    <<global-default>>`,
-		"    <<global-default>>": `    daemon
+    daemon
     unix-bind mode 0600
     stats socket /var/run/haproxy.sock level admin expose-fd listeners mode 600
     maxconn 2000
