@@ -3909,7 +3909,7 @@ func TestCustomResponseLua(t *testing.T) {
 <<defaults>>
 backend default_server1_8080
     mode http
-    http-request set-var(req.lua_scope) str(default_server1_8080)
+    http-request set-var(txn.lua_scope) str(default_server1_8080)
     http-request use-service lua.send-413 if { req.body_size,sub(1024) gt 0 }
 backend default_server2_8080
     mode http
@@ -3927,7 +3927,7 @@ frontend _front_https
     <<https-headers>>
     acl tls-has-crt ssl_c_used
     acl tls-has-invalid-crt ssl_c_verify gt 0
-    http-request set-var(req.lua_scope) var(req.host)
+    http-request set-var(txn.lua_scope) var(req.host)
     http-request use-service lua.send-421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     use_backend %[var(req.snibackend)] if { var(req.snibackend) -m found }
@@ -3949,7 +3949,7 @@ core.register_service("send-404", "http", function(applet)
     applet:send(response)
 end)
 core.register_service("send-413", "http", function(applet)
-    local scope = applet:get_var("req.lua_scope")
+    local scope = applet:get_var("txn.lua_scope")
     local response = ""
     if scope == "default_server1_8080" then
         response = [==[
@@ -3977,7 +3977,7 @@ request to server2 has a large payload
     applet:send(response)
 end)
 core.register_service("send-495", "http", function(applet)
-    local scope = applet:get_var("req.lua_scope")
+    local scope = applet:get_var("txn.lua_scope")
     local response = ""
     if scope == "server1.local" then
         response = [==[

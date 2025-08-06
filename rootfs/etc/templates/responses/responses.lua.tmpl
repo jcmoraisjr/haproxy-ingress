@@ -13,7 +13,7 @@
 
 core.register_service("{{ $res.ResponseName }}", "http", function(applet)
 {{- if $res.Lua }}
-    local scope = applet:get_var("req.lua_scope")
+    local scope = applet:get_var("txn.lua_scope")
     local response = ""
 {{- range $i, $lua := $res.Lua }}
     {{ if gt $i 0 }}el{{ end }}if scope == "{{ $lua.ID }}" then

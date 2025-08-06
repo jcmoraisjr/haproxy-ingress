@@ -581,7 +581,7 @@ backend {{ $backend.ID }}
 {{- /*------------------------------------*/}}
 {{- $maxbodyCfg := $backend.PathConfig "MaxBodySize" }}
 {{- if and $backend.CustomHTTPResponses.Lua $maxbodyCfg.Items }}
-    http-request set-var(req.lua_scope) str({{ $backend.ID }})
+    http-request set-var(txn.lua_scope) str({{ $backend.ID }})
 {{- end }}
 {{- range $i, $maxbody := $maxbodyCfg.Items }}
 {{- if $maxbody }}
@@ -1417,7 +1417,7 @@ frontend {{ $frontend.Name }}
 {{- /*------------------------------------*/}}
 {{- if $hasTLSAuth }}
 {{- if $hosts.BuildHTTPResponses }}
-    http-request set-var(req.lua_scope) var(req.host)
+    http-request set-var(txn.lua_scope) var(req.host)
 {{- end }}
     http-request use-service lua.send-421 if
         {{- "" }} tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
