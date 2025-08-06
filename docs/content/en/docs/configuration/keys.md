@@ -397,7 +397,7 @@ The table below describes all supported configuration keys.
 | [`http-header-match-regex`](#http-match)             | header name and value, regex match      | Path    |                    |
 | [`http-log-format`](#log-format)                     | http log format                         | Global  | HAProxy default log format |
 | [`http-port`](#bind-port)                            | port number                             | Global  | `80`               |
-| [`http-response-<code>`](#http-response)             | response output                         | Global  |                    |
+| [`http-response-<code>`](#http-response)             | response output                         | vary    |                    |
 | [`http-response-prometheus-root`](#http-response)    | response output                         | Global  |                    |
 | [`https-log-format`](#log-format)                    | https(tcp) log format\|`default`        | Global  | do not log         |
 | [`https-port`](#bind-port)                           | port number                             | Global  | `443`              |
