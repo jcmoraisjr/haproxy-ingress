@@ -30,7 +30,7 @@ The following command-line options are supported:
 | [`--disable-api-warnings`](#disable-api-warnings)       | [true\|false]              | `false`                 | v0.12 |
 | [`--disable-config-keywords`](#disable-config-keywords) | comma-separated list of keywords | `""`              | v0.10 |
 | [`--disable-external-name`](#disable-external-name)     | [true\|false]              | `false`                 | v0.10 |
-| [`--disable-ingress-class-api`](#disable-ingress-class-api) | [true\|false]          | `false`                 | v0.16 |
+| [`--disable-ingress-class-api`](#ingress-class)         | [true\|false]              | `false`                 | v0.16 |
 | [`--disable-pod-list`](#disable-pod-list)               | [true\|false]              | `false`                 | v0.11 |
 | [`--election-id`](#election-id)                         | identifier                 | `ingress-controller-leader` |   |
 | [`--enable-endpointslices-api`](#enable-endpointslices-api) | [true\|false]          | `true`                  | v0.14 |
