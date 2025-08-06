@@ -70,8 +70,8 @@ func NewFramework(ctx context.Context, t *testing.T, o ...options.Framework) *fr
 	require.NoError(t, err)
 
 	major, minor, full := haproxyVersion(t)
-	if major < 2 || (major == 2 && minor < 2) {
-		require.Fail(t, "unsupported haproxy version", "need haproxy 2.2 or newer, found %s", full)
+	if major < 2 || (major == 2 && minor < 4) {
+		require.Fail(t, "unsupported haproxy version", "need haproxy 2.4 or newer, found %s", full)
 	}
 	t.Logf("using haproxy %s\n", full)
 

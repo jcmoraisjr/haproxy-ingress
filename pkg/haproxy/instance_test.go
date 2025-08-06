@@ -1309,9 +1309,9 @@ global
     maxconn 2000
     hard-stop-after 15m
     lua-prepend-path /etc/haproxy/lua/?.lua
-    lua-load /etc/haproxy/lua/auth-request.lua
-    lua-load /etc/haproxy/lua/services.lua
-    lua-load /etc/haproxy/lua/responses.lua
+    lua-load-per-thread /etc/haproxy/lua/auth-request.lua
+    lua-load-per-thread /etc/haproxy/lua/services.lua
+    lua-load-per-thread /etc/haproxy/lua/responses.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -1368,9 +1368,9 @@ global
     maxconn 2000
     hard-stop-after 15m
     lua-prepend-path /etc/haproxy/lua/?.lua
-    lua-load /etc/haproxy/lua/auth-request.lua
-    lua-load /etc/haproxy/lua/services.lua
-    lua-load /etc/haproxy/lua/responses.lua
+    lua-load-per-thread /etc/haproxy/lua/auth-request.lua
+    lua-load-per-thread /etc/haproxy/lua/services.lua
+    lua-load-per-thread /etc/haproxy/lua/responses.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -1434,8 +1434,8 @@ global
     maxconn 2000
     hard-stop-after 15m
     mworker-max-reloads 20
-    lua-load /etc/haproxy/lua/services.lua
-    lua-load /etc/haproxy/lua/responses.lua
+    lua-load-per-thread /etc/haproxy/lua/services.lua
+    lua-load-per-thread /etc/haproxy/lua/responses.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -1565,9 +1565,9 @@ global
     maxconn 2000
     hard-stop-after 15m
     lua-prepend-path /etc/haproxy/lua/?.lua
-    lua-load /etc/haproxy/lua/auth-request.lua
-    lua-load /etc/haproxy/lua/services.lua
-    lua-load /etc/haproxy/lua/responses.lua
+    lua-load-per-thread /etc/haproxy/lua/auth-request.lua
+    lua-load-per-thread /etc/haproxy/lua/services.lua
+    lua-load-per-thread /etc/haproxy/lua/responses.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -4608,9 +4608,9 @@ global
     log 127.0.0.1:1514 len 2048 format rfc3164 local0
     log-tag ingress
     lua-prepend-path /etc/haproxy/lua/?.lua
-    lua-load /etc/haproxy/lua/auth-request.lua
-    lua-load /etc/haproxy/lua/services.lua
-    lua-load /etc/haproxy/lua/responses.lua
+    lua-load-per-thread /etc/haproxy/lua/auth-request.lua
+    lua-load-per-thread /etc/haproxy/lua/services.lua
+    lua-load-per-thread /etc/haproxy/lua/responses.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -5691,9 +5691,9 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     maxconn 2000
     hard-stop-after 15m
     lua-prepend-path /etc/haproxy/lua/?.lua
-    lua-load /etc/haproxy/lua/auth-request.lua
-    lua-load /etc/haproxy/lua/services.lua
-    lua-load /etc/haproxy/lua/responses.lua
+    lua-load-per-thread /etc/haproxy/lua/auth-request.lua
+    lua-load-per-thread /etc/haproxy/lua/services.lua
+    lua-load-per-thread /etc/haproxy/lua/responses.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256

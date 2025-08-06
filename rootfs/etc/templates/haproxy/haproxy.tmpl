@@ -106,10 +106,10 @@ global
 {{- end }}
 {{- if or (not $global.External.IsExternal) $global.External.HasLua }}
     lua-prepend-path {{ $global.LocalFSPrefix }}/etc/haproxy/lua/?.lua
-    lua-load {{ $global.LocalFSPrefix }}/etc/haproxy/lua/auth-request.lua
+    lua-load-per-thread {{ $global.LocalFSPrefix }}/etc/haproxy/lua/auth-request.lua
 {{- end }}
-    lua-load {{ $global.LocalFSPrefix }}/etc/haproxy/lua/services.lua
-    lua-load {{ $global.LocalFSPrefix }}/etc/haproxy/lua/responses.lua
+    lua-load-per-thread {{ $global.LocalFSPrefix }}/etc/haproxy/lua/services.lua
+    lua-load-per-thread {{ $global.LocalFSPrefix }}/etc/haproxy/lua/responses.lua
 {{- if $global.SSL.DHParam.Filename }}
     ssl-dh-param-file {{ $global.SSL.DHParam.Filename }}
 {{- else }}
