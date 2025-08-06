@@ -221,6 +221,7 @@ func (c *updater) UpdateHostConfig(host *hatypes.Host, mapper *Mapper) {
 	c.buildHostRedirect(data)
 	c.buildHostSSLPassthrough(data)
 	c.buildHostTLSConfig(data)
+	c.buildHostCustomResponses(data)
 }
 
 func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) {
@@ -240,6 +241,7 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) 
 	c.buildBackendBodySize(data)
 	c.buildBackendCors(data)
 	c.buildBackendCustomConfig(data)
+	c.buildBackendCustomResponses(data)
 	c.buildBackendDNS(data)
 	c.buildBackendDynamic(data)
 	c.buildBackendAgentCheck(data)

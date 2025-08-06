@@ -162,3 +162,7 @@ func (c *updater) buildHostTLSConfig(d *hostData) {
 	}
 	d.host.TLS.Options = d.mapper.Get(ingtypes.HostSSLOptionsHost).Value
 }
+
+func (c *updater) buildHostCustomResponses(d *hostData) {
+	d.host.CustomHTTPResponses = c.buildHTTPResponses(d.host.Hostname, d.mapper, keyScopeHost)
+}

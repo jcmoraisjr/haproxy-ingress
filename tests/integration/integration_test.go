@@ -429,6 +429,86 @@ func TestIntegrationIngress(t *testing.T) {
 		assert.Equal(t, expected, messages)
 	})
 
+	t.Run("should override lua and host based http response", func(t *testing.T) {
+		t.Parallel()
+
+		req := func(body string, o ...options.Object) {
+			svc := f.CreateService(ctx, t, httpServerPort)
+			o = append(o, options.DefaultTLS(), options.AddConfigKeyAnnotation(ingtypes.HostAuthTLSSecret, secretCA.Name))
+			_, hostname := f.CreateIngress(ctx, t, svc, o...)
+			res := f.Request(ctx, t, http.MethodGet, hostname, "/",
+				options.TLSRequest(),
+				options.SNI(hostname),
+				options.TLSSkipVerify(),
+				options.ExpectResponseCode(496),
+			)
+			assert.False(t, res.EchoResponse.Parsed)
+			assert.Equal(t, strings.TrimSpace(body), strings.TrimSpace(res.Body))
+		}
+
+		req(`
+<html><body><h1>496 SSL Certificate Required</h1>
+A client certificate must be provided.
+</body></html>
+`)
+		req("here 496",
+			options.AddConfigKeyAnnotation(ingtypes.HostHTTPResponse496, "content-type: text/plain\n\nhere 496"),
+		)
+	})
+
+	t.Run("should override lua and backend based http response", func(t *testing.T) {
+		t.Parallel()
+
+		req := func(body string, o ...options.Object) {
+			svc := f.CreateService(ctx, t, httpServerPort)
+			o = append(o, options.AddConfigKeyAnnotation(ingtypes.BackProxyBodySize, "5"))
+			_, hostname := f.CreateIngress(ctx, t, svc, o...)
+			_ = f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
+			res := f.Request(ctx, t, http.MethodPost, hostname, "/",
+				options.ExpectResponseCode(http.StatusRequestEntityTooLarge),
+				options.Body("not-that-long"),
+				options.CustomRequest(func(req *http.Request) {
+					req.Header.Set("content-type", "text/plain")
+				}),
+			)
+			assert.False(t, res.EchoResponse.Parsed)
+			assert.Equal(t, strings.TrimSpace(body), strings.TrimSpace(res.Body))
+		}
+
+		req(`
+<html><body><h1>413 Request Entity Too Large</h1>
+The request is too large.
+</body></html>
+`)
+		req("here 413",
+			options.AddConfigKeyAnnotation(ingtypes.BackHTTPResponse413, "content-type: text/plain\n\nhere 413"),
+		)
+	})
+
+	t.Run("should override haproxy based http response", func(t *testing.T) {
+		t.Parallel()
+
+		req := func(body string, o ...options.Object) {
+			svc := f.CreateService(ctx, t, httpServerPort)
+			o = append(o, options.AddConfigKeyAnnotation(ingtypes.BackAllowlistSourceRange, "1.1.1.1/32"))
+			_, hostname := f.CreateIngress(ctx, t, svc, o...)
+			res := f.Request(ctx, t, http.MethodPost, hostname, "/",
+				options.ExpectResponseCode(http.StatusForbidden),
+			)
+			assert.False(t, res.EchoResponse.Parsed)
+			assert.Equal(t, strings.TrimSpace(body), strings.TrimSpace(res.Body))
+		}
+
+		req(`
+<html><body><h1>403 Forbidden</h1>
+Request forbidden by administrative rules.
+</body></html>
+`)
+		req("here 403",
+			options.AddConfigKeyAnnotation(ingtypes.BackHTTPResponse403, "content-type: text/plain\n\nhere 403"),
+		)
+	})
+
 	// should match wildcard host
 	// should match domain conflicting with wildcard host
 
