@@ -1591,10 +1591,7 @@ Currently there is no helper to configure the haproxy's fcgi-app section, it sho
           log-stderr global
           docroot /var/www/app2
           index index.php
-      cache icons
-          total-max-size 4
-          max-age 240
-      ...
+      ... (other custom haproxy sections)
 ```
 
 See also:
