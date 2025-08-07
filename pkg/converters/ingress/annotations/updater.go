@@ -205,7 +205,9 @@ func (c *updater) UpdatePeers(haproxyConfig haproxy.Config, mapper *Mapper) {
 }
 
 func (c *updater) UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *Mapper) {
-	tcp.CustomConfig = utils.LineToSlice(mapper.Get(ingtypes.TCPConfigTCPService).Value)
+	if config := mapper.Get(ingtypes.TCPConfigTCPService).Value; config != "" {
+		tcp.CustomConfig = utils.PatternLineToSlice(c.commonConfigPatterns(), config)
+	}
 	tcp.LogFormat = mapper.Get(ingtypes.TCPTCPServiceLogFormat).Value
 	tcp.ProxyProt = mapper.Get(ingtypes.TCPTCPServiceProxyProto).Bool()
 }
