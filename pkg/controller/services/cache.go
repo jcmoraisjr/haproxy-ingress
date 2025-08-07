@@ -137,13 +137,17 @@ func (c *c) IsValidIngress(ing *networking.Ingress) bool {
 	// check if ingress `hasClass` and, if so, if it's valid `fromClass` perspective
 	var hasClass, fromClass bool
 	if className := ing.Spec.IngressClassName; className != nil {
-		hasClass = true
-		if ingClass, err := c.GetIngressClass(*className); ingClass != nil {
-			fromClass = c.IsValidIngressClass(ingClass)
-		} else if err != nil {
-			c.log.Error(err, "error reading IngressClass", "ingressclass", *className)
+		if c.config.DisableIngressClassAPI {
+			c.log.Info("ignored ingress validation using IngressClass: IngressClass API is disabled", "ingress", ing.Namespace+"/"+ing.Name, "ingressclass", *className)
 		} else {
-			c.log.Info("IngressClass not found", "ingressclass", *className)
+			hasClass = true
+			if ingClass, err := c.GetIngressClass(*className); ingClass != nil {
+				fromClass = c.IsValidIngressClass(ingClass)
+			} else if err != nil {
+				c.log.Error(err, "error reading IngressClass", "ingressclass", *className)
+			} else {
+				c.log.Info("IngressClass not found", "ingressclass", *className)
+			}
 		}
 	}
 

@@ -51,6 +51,7 @@ type Options struct {
 	DefaultSvc               string
 	IngressClass             string
 	IngressClassPrecedence   bool
+	DisableIngressClassAPI   bool
 	ReloadStrategy           string
 	MaxOldConfigFiles        int
 	ValidateConfig           bool
@@ -189,6 +190,13 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 		"IngressClass is 'haproxy-ingress.github.io/controller'. Non-empty values add a "+
 		"new /path, e.g., controller-class=staging will make this controller look for "+
 		"'haproxy-ingress.github.io/controller/staging'",
+	)
+
+	fs.BoolVar(&o.DisableIngressClassAPI, "disable-ingress-class-api", o.DisableIngressClassAPI, ""+
+		"Configures controller to not list or watch IngressClass API, useful on "+
+		"deployments that cannot allow controller to have cluster permission. If "+
+		"configured, the only way to configure ingress resources is using "+
+		"kubernetes.io/ingress.class annotation or enabling --watch-ingress-without-class",
 	)
 
 	fs.BoolVar(&o.WatchIngressWithoutClass, "watch-ingress-without-class", o.WatchIngressWithoutClass, ""+
