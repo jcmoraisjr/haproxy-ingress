@@ -321,6 +321,11 @@ func TestCustomConfigFrontendLate(t *testing.T) {
 			expected: []string{"# New Header", "http-response set-header X-Server HAProxy"},
 			logging:  `WARN both config-frontend and config-frontend-late were used, ignoring config-frontend`,
 		},
+		// 4
+		{
+			config:   "http-request track-sc0 src table %[peers_local_table]",
+			expected: []string{"http-request track-sc0 src table _peers_haproxy-ingress-srv1"},
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)

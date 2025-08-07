@@ -48,6 +48,20 @@ func LineToSlice(s string) []string {
 	return strings.Split(strings.TrimRight(s, "\n"), "\n")
 }
 
+// PatternLineToSlice converts POSIX line breaks to a string slice,
+// and replaces patterns found in the source string to the resulting slice.
+func PatternLineToSlice(patterns map[string]string, s string) []string {
+	lines := LineToSlice(s)
+	out := make([]string, len(lines))
+	for i, line := range lines {
+		for pattern, value := range patterns {
+			line = strings.ReplaceAll(line, pattern, value)
+		}
+		out[i] = line
+	}
+	return out
+}
+
 // SplitHeaderNameValue splits a header line declaration into header name and value.
 // Note that name and value might be empty for an empty input.
 func SplitHeaderNameValue(header string) (name, value string, err error) {

@@ -1,0 +1,27 @@
+-- # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+-- # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+-- # #
+-- # #   HAProxy Ingress Controller
+-- # #   --------------------------
+-- # #   This file is automatically updated, do not edit
+-- # #
+-- #
+
+{{- $peers := . }}
+
+core.register_converters("peers_sum", function(key, field)
+    total = 0
+    be = {
+{{- range $i, $server := $peers.Servers -}}
+    {{- if ne $i 0 }}, {{ end -}}
+    "{{ $peers.TableNamePrefix }}{{ $server.Name }}"
+{{- end -}}
+}
+    for i = 1, #be do
+        item = core.backends[be[i]].stktable:lookup(key)
+        if item then
+            total = total + item[field]
+        end
+    end
+    return total
+end)

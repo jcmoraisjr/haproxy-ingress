@@ -28,7 +28,6 @@ import (
 	"github.com/go-logr/logr"
 	api "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -131,7 +130,7 @@ func (s *svcStatusIng) shutdown(ctx context.Context) {
 		s.log.Info("skipping status update due to --update-status-on-shutdown=false")
 		return
 	}
-	if podList, err := s.getControllerPodList(ctx); len(podList) > 1 {
+	if podList, err := s.cache.GetControllerPodList(); len(podList) > 1 {
 		s.log.Info(fmt.Sprintf("running %d controller replicas, leaving the status update to the next leader", len(podList)))
 		return
 	} else if err != nil {
@@ -199,7 +198,7 @@ func (s *svcStatusIng) sync(ctx context.Context) {
 // getNodeIPs reads external node IP, or internal if
 // config.UseNodeInternalIP == true, from every controller pod.
 func (s *svcStatusIng) getNodeIPs(ctx context.Context) []string {
-	podList, err := s.getControllerPodList(ctx)
+	podList, err := s.cache.GetControllerPodList()
 	if err != nil {
 		s.log.Error(err, "failed reading the list of controller's pods")
 		return nil
@@ -239,31 +238,4 @@ func (s *svcStatusIng) getNodeIPs(ctx context.Context) []string {
 		}
 	}
 	return iplist
-}
-
-func (s *svcStatusIng) getControllerPodList(ctx context.Context) ([]api.Pod, error) {
-	// read controller's pod - we need the pod's template labels to find all the other pods
-	if s.cfg.PodName == "" {
-		return nil, fmt.Errorf("POD_NAME envvar was not configured")
-	}
-	pod := api.Pod{}
-	if err := s.cli.Get(ctx, types.NamespacedName{Namespace: s.cfg.PodNamespace, Name: s.cfg.PodName}, &pod); err != nil {
-		return nil, err
-	}
-
-	// remove labels that uniquely identify a pod
-	podLabels := pod.GetLabels()
-	delete(podLabels, "controller-revision-hash")
-	delete(podLabels, "pod-template-generation")
-	delete(podLabels, "pod-template-hash")
-
-	// read all controller's pod
-	podList := api.PodList{}
-	if err := s.cli.List(ctx, &podList, &client.ListOptions{
-		LabelSelector: labels.SelectorFromSet(podLabels),
-		Namespace:     s.cfg.PodNamespace,
-	}); err != nil {
-		return nil, err
-	}
-	return podList.Items, nil
 }
