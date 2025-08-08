@@ -265,11 +265,16 @@ func (s *Services) ReconcileIngress(ctx context.Context, changed *convtypes.Chan
 	if s.svcleader.isLeader() {
 		s.instance.AcmeUpdate()
 	}
-	err := s.instance.HAProxyUpdate(timer)
-	s.svcstatusing.changed(ctx, changed)
+	var err error
+	var errmsg string
+	if err = s.instance.HAProxyUpdate(timer); err != nil {
+		errmsg = "error trying to update haproxy"
+	} else if err = s.svcstatusing.changed(ctx, timer, changed); err != nil {
+		errmsg = "error trying to synchronize ingress status"
+	}
 	updatelogger := s.log.WithValues("id", s.updateCount).WithValues(timer.AsValues("total")...)
 	if err != nil {
-		updatelogger.Error(err, fmt.Sprintf("error trying to update haproxy, retrying in %s", s.Config.ReloadRetry.String()))
+		updatelogger.Error(err, fmt.Sprintf("%s, retrying in %s", errmsg, s.Config.ReloadRetry.String()))
 	} else {
 		updatelogger.Info("finish haproxy update")
 	}

@@ -18,6 +18,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"time"
 
@@ -36,7 +37,8 @@ type svcStatusUpdateFnc func(client.Object)
 func initSvcStatusUpdater(ctx context.Context, cli client.Client) *svcStatusUpdater {
 	s := &svcStatusUpdater{}
 	s.client = cli
-	s.queue = workqueue.New(s.notify, workqueue.ExponentialFailureRateLimiter[client.Object](250*time.Millisecond, 2*time.Minute))
+	// initialize with a valid queue, even if not the leader, so we don't need to deal with races checking for nil
+	s.initQueue()
 	s.log = logr.FromContextOrDiscard(ctx).WithName("status")
 	return s
 }
@@ -50,6 +52,8 @@ type svcStatusUpdater struct {
 }
 
 func (s *svcStatusUpdater) Start(ctx context.Context) error {
+	// need a fresh new queue instance in the case this process becomes the leader again
+	s.initQueue()
 	s.ctx = ctx
 	s.run = true
 	s.log.Info("starting working queue")
@@ -63,9 +67,15 @@ func (s *svcStatusUpdater) CanShutdown() bool {
 	return s.queue.Len() == 0
 }
 
+func (s *svcStatusUpdater) initQueue() {
+	s.queue = workqueue.New(s.notify, workqueue.ExponentialFailureRateLimiter[client.Object](250*time.Millisecond, 2*time.Minute))
+}
+
 func (s *svcStatusUpdater) update(obj client.Object) {
 	if s.run {
 		s.queue.Add(obj)
+	} else {
+		s.log.Info("ignoring status update, I am not the leader", "obj", fmt.Sprintf("%s %s/%s", reflect.TypeOf(obj).String(), obj.GetNamespace(), obj.GetName()))
 	}
 }
 
