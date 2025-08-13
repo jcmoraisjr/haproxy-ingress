@@ -282,7 +282,7 @@ func (b *Backends) AcquireAuthBackend(ipList []string, port int, hostname string
 		name := fmt.Sprintf("backend%03d", len(b.authBackends)+1)
 		backend = b.AcquireBackend("_auth", name, strconv.Itoa(port))
 		if hostname != "" {
-			backend.CustomConfig = []string{"http-request set-header Host " + hostname}
+			backend.CustomConfigLate = []string{"http-request set-header Host " + hostname}
 		}
 		for _, ip := range ipList {
 			_ = backend.AcquireEndpoint(ip, port, "")

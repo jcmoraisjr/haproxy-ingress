@@ -19,6 +19,7 @@ package annotations
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -468,6 +469,32 @@ func (c *updater) buildGlobalCustomConfig(d *globalData) {
 
 func (c *updater) buildGlobalCustomResponses(d *globalData) {
 	d.global.CustomHTTPResponses = c.buildHTTPResponses(hatypes.HTTPResponseGlobalID, d.mapper, keyScopeGlobal)
+}
+
+func (c *updater) buildGlobalFastCGI(d *globalData) {
+	var configuredApps []string
+	for _, line := range utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigSections).Value) {
+		keywords := strings.Fields(line)
+		if len(keywords) >= 2 && keywords[0] == "fcgi-app" {
+			configuredApps = append(configuredApps, keywords[1])
+		}
+	}
+	var enabledApps, notFoundApps []string
+	if apps := d.mapper.Get(ingtypes.GlobalFCGIEnabledApps).Value; apps == "*" {
+		enabledApps = configuredApps
+	} else {
+		for _, app := range utils.Split(apps, ",") {
+			if slices.Contains(configuredApps, app) {
+				enabledApps = append(enabledApps, app)
+			} else {
+				notFoundApps = append(notFoundApps, app)
+			}
+		}
+	}
+	if len(notFoundApps) > 0 {
+		c.logger.Warn("ignoring FastCGI app(s) declared as enabled but not configured via config-sections: %s", strings.Join(notFoundApps, ", "))
+	}
+	d.global.FastCGIApps = enabledApps
 }
 
 // TODO these defaults should be in default.go but currently ingress parsing

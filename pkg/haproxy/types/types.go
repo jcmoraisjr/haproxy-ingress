@@ -79,6 +79,7 @@ type Global struct {
 	CloseSessionsDuration   time.Duration
 	TimeoutStopDuration     time.Duration
 	StrictHost              bool
+	FastCGIApps             []string
 	UseHTX                  bool
 	DefaultBackendRedir     string
 	DefaultBackendRedirCode int
@@ -658,7 +659,8 @@ type Backend struct {
 	BalanceAlgorithm    string
 	BlueGreen           BlueGreenConfig
 	Cookie              Cookie
-	CustomConfig        []string
+	CustomConfigEarly   []string
+	CustomConfigLate    []string
 	CustomHTTPResponses HTTPResponses
 	DeniedIPTCP         AccessConfig
 	Dynamic             DynBackendConfig
@@ -788,6 +790,7 @@ type ServerConfig struct {
 	CRLHash       string
 	CrtFilename   string
 	CrtHash       string
+	FastCGIApp    string
 	InitialWeight int
 	MaxConn       int
 	MaxQueue      int

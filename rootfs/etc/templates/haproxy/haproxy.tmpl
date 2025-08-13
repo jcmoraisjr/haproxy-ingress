@@ -106,10 +106,10 @@ global
 {{- end }}
 {{- if or (not $global.External.IsExternal) $global.External.HasLua }}
     lua-prepend-path {{ $global.LocalFSPrefix }}/etc/haproxy/lua/?.lua
-    lua-load {{ $global.LocalFSPrefix }}/etc/haproxy/lua/auth-request.lua
+    lua-load-per-thread {{ $global.LocalFSPrefix }}/etc/haproxy/lua/auth-request.lua
 {{- end }}
-    lua-load {{ $global.LocalFSPrefix }}/etc/haproxy/lua/services.lua
-    lua-load {{ $global.LocalFSPrefix }}/etc/haproxy/lua/responses.lua
+    lua-load-per-thread {{ $global.LocalFSPrefix }}/etc/haproxy/lua/services.lua
+    lua-load-per-thread {{ $global.LocalFSPrefix }}/etc/haproxy/lua/responses.lua
 {{- if $global.SSL.DHParam.Filename }}
     ssl-dh-param-file {{ $global.SSL.DHParam.Filename }}
 {{- else }}
@@ -347,8 +347,15 @@ backend {{ $backend.ID }}
 {{- range $response := $backend.CustomHTTPResponses.HAProxy }}
     errorfile {{ $response.Name }} {{ $global.LocalFSPrefix }}/etc/haproxy/errorfiles/{{ $response.Name }}-{{ $backend.CustomHTTPResponses.ID }}.http
 {{- end }}
+{{- range $snippet := $backend.CustomConfigEarly }}
+    {{ $snippet }}
+{{- end }}
 {{- if or $backend.Limit.Connections $backend.Limit.RPS }}
     stick-table type ip size 200k expire 5m store conn_cur,conn_rate(1s)
+{{- end }}
+{{- with $backend.Server.FastCGIApp }}
+    filter fcgi-app {{ . }}
+    use-fcgi-app {{ . }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -407,7 +414,7 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- range $snippet := $backend.CustomConfig }}
+{{- range $snippet := $backend.CustomConfigLate }}
     {{ $snippet }}
 {{- end }}
 {{- range $snippet := index $global.CustomProxy $backend.ID }}
@@ -684,7 +691,7 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- range $snippet := $backend.CustomConfig }}
+{{- range $snippet := $backend.CustomConfigLate }}
     {{ $snippet }}
 {{- end }}
 {{- range $snippet := index $global.CustomProxy $backend.ID }}
@@ -822,7 +829,7 @@ backend {{ $backend.ID }}
     {{- $server := $backend.Server }}
     {{- if eq $server.Protocol "h2" }} proto h2
         {{- if $server.Secure }} alpn h2{{ end }}
-    {{- end }}
+    {{- else if eq $server.Protocol "fcgi" }} proto {{ $server.Protocol }}{{ end }}
     {{- if $server.MaxConn }} maxconn {{ $server.MaxConn }}{{ end }}
     {{- if $server.MaxQueue }} maxqueue {{ $server.MaxQueue }}{{ end }}
     {{- if $server.Secure }} ssl

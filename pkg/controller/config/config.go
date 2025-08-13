@@ -398,7 +398,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 	}
 
 	if opt.WatchNamespace != corev1.NamespaceAll && opt.AllowCrossNamespace {
-		return nil, fmt.Errorf("cannot use --watch-namespace if --force-namespace-isolation is true")
+		return nil, fmt.Errorf("cannot use --watch-namespace if --allow-cross-namespace is true")
 	}
 
 	var annPrefixList []string
@@ -488,6 +488,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		DefaultSSLCertificate:    opt.DefSSLCertificate,
 		DisableExternalName:      opt.DisableExternalName,
 		DisableKeywords:          disableKeywords,
+		DisableIngressClassAPI:   opt.DisableIngressClassAPI,
 		Election:                 election,
 		ElectionID:               electionID,
 		ElectionNamespace:        podNamespace,
@@ -672,6 +673,7 @@ type Config struct {
 	DefaultSSLCertificate    string
 	DisableExternalName      bool
 	DisableKeywords          []string
+	DisableIngressClassAPI   bool
 	Election                 bool
 	ElectionID               string
 	ElectionNamespace        string

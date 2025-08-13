@@ -59,6 +59,7 @@ const (
 	GlobalDrainSupport                 = "drain-support"
 	GlobalDrainSupportRedispatch       = "drain-support-redispatch"
 	GlobalExternalHasLua               = "external-has-lua"
+	GlobalFCGIEnabledApps              = "fcgi-enabled-apps"
 	GlobalForwardfor                   = "forwardfor"
 	GlobalFrontingProxyPort            = "fronting-proxy-port"
 	GlobalGroupname                    = "groupname"

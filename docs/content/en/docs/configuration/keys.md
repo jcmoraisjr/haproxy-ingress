@@ -325,7 +325,7 @@ The table below describes all supported configuration keys.
 | [`backend-protocol`](#backend-protocol)              | [h1\|h2\|h1-ssl\|h2-ssl]                | Backend | `h1`               |
 | [`backend-server-naming`](#backend-server-naming)    | [sequence\|ip\|pod]                     | Backend | `sequence`         |
 | [`backend-server-slots-increment`](#dynamic-scaling) | number of slots                         | Backend | `1`                |
-| [`balance-algorithm`](#balance-algorithm)            | algorithm name                          | Backend | `roundrobin`       |
+| [`balance-algorithm`](#balance-algorithm)            | algorithm name                          | Backend | `random(2)`        |
 | [`bind-fronting-proxy`](#bind)                       | ip + port                               | Global  |                    |
 | [`bind-http`](#bind)                                 | ip + port                               | Global  |                    |
 | [`bind-https`](#bind)                                | ip + port                               | Global  |                    |
@@ -378,6 +378,8 @@ The table below describes all supported configuration keys.
 | [`drain-support-redispatch`](#drain-support)         | [true\|false]                           | Global  | `true`             |
 | [`dynamic-scaling`](#dynamic-scaling)                | [true\|false]                           | Backend | `true`             |
 | [`external-has-lua`](#external)                      | [true\|false]                           | Global  | `false`            |
+| [`fcgi-app`](#fastcgi)                               | fcgi-app section name                   | Backend |                    |
+| [`fcgi-enabled-apps`](#fastcgi)                      | comma-separated list of names           | Global  | `*`                |
 | [`forwardfor`](#forwardfor)                          | [add\|ignore\|ifmissing]                | Global  | `add`              |
 | [`fronting-proxy-port`](#fronting-proxy-port)        | port number                             | Global  | 0 (do not listen)  |
 | [`groupname`](#security)                             | haproxy group name                      | Global  | `haproxy`          |
@@ -918,7 +920,7 @@ See also:
 Defines the HTTP protocol version of the backend. Note that HTTP/2 is only supported if HTX is enabled.
 A case insensitive match is used, so either `h1` or `H1` configures HTTP/1 protocol. A non SSL/TLS
 configuration does not overrides [secure-backends](#secure-backend), so `h1` and secure-backends `true`
-will still configures SSL/TLS.
+will still configure SSL/TLS.
 
 Options:
 
@@ -926,11 +928,16 @@ Options:
 * `h1-ssl`: configures HTTP/1 over SSL/TLS. `https` is an alias to `h1-ssl`.
 * `h2`: configures HTTP/2 protocol. `grpc` is an alias to `h2`.
 * `h2-ssl`: configures HTTP/2 over SSL/TLS. `grpcs` is an alias to `h2-ssl`.
+* `fcgi`: since v0.16 - configures FastCGI protocol.
+* `fcgi-ssl`: since v0.16 - configures FastCGI over SSL/TLS.
+
+FastCGI protocol needs a reference to valid haproxy's fcgi-app section via [`fcgi-app`](#fastcgi) configuration key, either inheriting from the global ConfigMap or via annotation.
 
 See also:
 
 * [use-htx](#use-htx) configuration key to enable HTTP/2 backends.
 * [secure-backend](#secure-backend) configuration keys to configure optional client certificate and certificate authority bundle of SSL/TLS connections.
+* [FastCGI](#fastcgi) configuration keys.
 * https://docs.haproxy.org/2.4/configuration.html#5.2-proto
 
 ---
@@ -967,15 +974,17 @@ Server IDs can't dynamically updated, so if this option is enabled, adding or re
 
 ### Balance algorithm
 
-| Configuration key   | Scope     | Default      | Since |
-|---------------------|-----------|--------------|-------|
-| `balance-algorithm` | `Backend` | `roundrobin` |       |
+| Configuration key   | Scope     | Default     | Since |
+|---------------------|-----------|-------------|-------|
+| `balance-algorithm` | `Backend` | `random(2)` |       |
 
-Defines a valid HAProxy load balancing algorithm. The default value is `roundrobin`.
+Defines a valid HAProxy load balancing algorithm. Since v0.16 the default value is `random(2)`, also known as the Power of Two Random Choices.
 
 See also:
 
 * https://docs.haproxy.org/2.4/configuration.html#4-balance
+* https://www.mail-archive.com/haproxy@formilux.org/msg46011.html
+* https://www.eecs.harvard.edu/~michaelm/postscripts/handbook2001.pdf
 
 ---
 
@@ -1219,6 +1228,8 @@ See also:
 | Configuration key       | Scope     | Default  | Since |
 |-------------------------|-----------|----------|-------|
 | `config-backend`        | `Backend` |          |       |
+| `config-backend-early`  | `Backend` |          | v0.16 |
+| `config-backend-late`   | `Backend` |          | v0.16 |
 | `config-defaults`       | `Global`  |          | v0.8  |
 | `config-frontend`       | `Global`  |          |       |
 | `config-frontend-early` | `Global`  |          | v0.14 |
@@ -1232,7 +1243,9 @@ See also:
 Add HAProxy configuration snippet to the configuration file. Use multiline content
 to add more than one line of configuration.
 
-* `config-backend`: Adds a configuration snippet to a HAProxy backend section.
+* `config-backend`: Adds a configuration snippet to a HAProxy backend section, alias for `config-backend-late`.
+* `config-backend-early`: Adds a configuration snippet to a HAProxy backend section, before any builtin logic.
+* `config-backend-late`: Adds a configuration snippet to a HAProxy backend section, same as `config-backend`.
 * `config-defaults`: Adds a configuration snippet to the end of the HAProxy defaults section.
 * `config-frontend`: Adds a configuration snippet to the HTTP and HTTPS frontend sections, alias for `config-frontend-late`.
 * `config-frontend-early`: Adds a configuration snippet to the HTTP and HTTPS frontend sections, before any builtin logic.
@@ -1307,6 +1320,20 @@ Annotations:
         http-request set-var(txn.path) path
         http-request cache-use icons if { var(txn.path) -m end .ico }
         http-response cache-store icons if { var(txn.path) -m end .ico }
+```
+
+```yaml
+    annotations:
+      haproxy-ingress.github.io/config-backend-early: |
+        stick-table type ip size 100k expire 1m store http_req_rate(10s)
+        http-request track-sc1 src
+        http-request deny if { sc1_http_req_rate gt 100 } # average of 10rps per source IP, over the last 10s
+```
+
+```yaml
+    annotations:
+      haproxy-ingress.github.io/config-backend-late: |
+        http-request deny if { path /internal }
 ```
 
 ```yaml
@@ -1555,6 +1582,42 @@ See also:
 * [Auth External](#auth-external) configuration keys.
 * [OAuth](#oauth) configuration keys.
 * [master-socket]({{% relref "command-line#master-socket" %}}) command-line option
+
+---
+
+### FastCGI
+
+| Configuration key   | Scope     | Default | Since |
+|---------------------|-----------|---------|-------|
+| `fcgi-app`          | `Backend` |         | v0.16 |
+| `fcgi-enabled-apps` | `Global`  | `*`     | v0.16 |
+
+Configures FastCGI applications.
+
+* `fcgi-enabled-apps`: Comma separated list of haproxy's fcgi-app sections already declared via `config-sections` configuration key. Only these app identifiers are allowed to be used by backends. If ommited, defaults to allow all configured fcgi-app sections.
+* `fcgi-app`: Defines the haproxy's fcgi-app section a backend should use. It must be one of the apps in `fcgi-enabled-apps` if configured, or any of the declared ones in `config-sections` otherwise. `fcgi-app` is a mandatory configuration if fcgi server protocol is used, either declaring as an annotation along with the protocol itself, or as a global configuration that should be inherited by all FastCGI backends.
+
+FastCGI related configurations are only used on backends whose server protocol is configured as fcgi, they are ignored otherwise.
+
+Currently there is no helper to configure the haproxy's fcgi-app section, it should be done via the global [`config-sections`](#configuration-snippet) configuration key. Configure as much fcgi-app sections as needed in the same key. See an example below:
+
+```yaml
+    config-sections: |
+      fcgi-app app1
+          log-stderr global
+          docroot /var/www/app1
+          index index.php
+      fcgi-app app2
+          log-stderr global
+          docroot /var/www/app2
+          index index.php
+      ... (other custom haproxy sections)
+```
+
+See also:
+
+* [`backend-protocol`](#backend-protocol) configuration key.
+* https://docs.haproxy.org/2.4/configuration.html#10
 
 ---
 
