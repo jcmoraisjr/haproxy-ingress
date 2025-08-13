@@ -137,6 +137,7 @@ const (
 	BackCorsMaxAge             = "cors-max-age"
 	BackDenylistSourceRange    = "denylist-source-range"
 	BackDynamicScaling         = "dynamic-scaling"
+	BackFCGIApp                = "fcgi-app"
 	BackHeaders                = "headers"
 	BackHealthCheckAddr        = "health-check-addr"
 	BackHealthCheckFallCount   = "health-check-fall-count"

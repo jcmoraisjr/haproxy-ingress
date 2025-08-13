@@ -79,6 +79,7 @@ type Global struct {
 	CloseSessionsDuration   time.Duration
 	TimeoutStopDuration     time.Duration
 	StrictHost              bool
+	FastCGIApps             []string
 	UseHTX                  bool
 	DefaultBackendRedir     string
 	DefaultBackendRedirCode int
@@ -778,6 +779,7 @@ type ServerConfig struct {
 	CRLHash       string
 	CrtFilename   string
 	CrtHash       string
+	FastCGIApp    string
 	InitialWeight int
 	MaxConn       int
 	MaxQueue      int

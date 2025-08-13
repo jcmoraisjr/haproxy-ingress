@@ -177,6 +177,7 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	c.buildGlobalCustomResponses(d)
 	c.buildGlobalDNS(d)
 	c.buildGlobalDynamic(d)
+	c.buildGlobalFastCGI(d)
 	c.buildGlobalForwardFor(d)
 	c.buildGlobalHTTPStoHTTP(d)
 	c.buildGlobalModSecurity(d)

@@ -86,6 +86,7 @@ func createDefaults() map[string]string {
 		types.GlobalDNSHoldValid:                 "1s",
 		types.GlobalDNSTimeoutRetry:              "1s",
 		types.GlobalDrainSupportRedispatch:       "true",
+		types.GlobalFCGIEnabledApps:              "*",
 		types.GlobalForwardfor:                   "add",
 		types.GlobalHealthzPort:                  "10253",
 		types.GlobalHTTPPort:                     "80",
