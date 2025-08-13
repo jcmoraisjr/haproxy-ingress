@@ -43,7 +43,7 @@ func initRecorderProvider(cfg *config.Config) (*recorderProvider, error) {
 
 	return &recorderProvider{
 		cli:        cli,
-		namespace:  cfg.PodNamespace,
+		namespace:  cfg.ControllerPod.Namespace,
 		hostname:   hostname,
 		electionID: cfg.ElectionID,
 	}, nil

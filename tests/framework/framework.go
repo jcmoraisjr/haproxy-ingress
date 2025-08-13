@@ -203,6 +203,7 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 	opt.PublishService = PublishSvcName
 	opt.ConfigMap = "default/ingress-controller"
 	os.Setenv("POD_NAMESPACE", "default")
+	os.Setenv("POD_NAME", "haproxy-ingress")
 	ctx, cancel := context.WithCancel(ctx)
 	cfg, err := ctrlconfig.CreateWithConfig(ctx, f.config, opt)
 	require.NoError(t, err)

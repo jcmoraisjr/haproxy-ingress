@@ -37,6 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
@@ -269,15 +270,20 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		}
 	}
 
-	podNamespace := os.Getenv("POD_NAMESPACE")
-	podName := os.Getenv("POD_NAME")
+	controllerPod := types.NamespacedName{
+		Namespace: os.Getenv("POD_NAMESPACE"),
+		Name:      os.Getenv("POD_NAME"),
+	}
+	if controllerPod.Namespace == "" {
+		return nil, fmt.Errorf("POD_NAMESPACE envvar is a mandatory configuration")
+	}
+	if controllerPod.Name == "" {
+		return nil, fmt.Errorf("POD_NAME envvar is a mandatory configuration")
+	}
 
 	// we could `|| hasGateway[version...]` instead of `|| opt.WatchGateway` here,
 	// but we're choosing a consistent startup behavior despite of the cluster configuration.
 	election := opt.UpdateStatus || opt.AcmeServer || opt.WatchGateway
-	if election && podNamespace == "" {
-		return nil, fmt.Errorf("POD_NAMESPACE envvar should be configured when --update-status=true, --acme-server=true, or --watch-gateway=true")
-	}
 	if election && opt.IngressClass == "" {
 		return nil, fmt.Errorf("--ingress-class should not be empty when --update-status=true, --acme-server=true, or --watch-gateway=true")
 	}
@@ -291,17 +297,13 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		}
 	}
 
-	if opt.UpdateStatus && podName == "" && opt.PublishService == "" && len(publishAddressHostnames)+len(publishAddressIPs) == 0 {
-		return nil, fmt.Errorf("one of --publish-service, --publish-address or POD_NAME envvar should be configured when --update-status=true")
-	}
-
 	acmeSecretKeyNamespaceName := opt.AcmeSecretKeyName
 	if !strings.Contains(acmeSecretKeyNamespaceName, "/") {
-		acmeSecretKeyNamespaceName = podNamespace + "/" + acmeSecretKeyNamespaceName
+		acmeSecretKeyNamespaceName = controllerPod.Namespace + "/" + acmeSecretKeyNamespaceName
 	}
 	acmeTokenConfigMapNamespaceName := opt.AcmeTokenConfigMapName
 	if !strings.Contains(acmeTokenConfigMapNamespaceName, "/") {
-		acmeTokenConfigMapNamespaceName = podNamespace + "/" + acmeTokenConfigMapNamespaceName
+		acmeTokenConfigMapNamespaceName = controllerPod.Namespace + "/" + acmeTokenConfigMapNamespaceName
 	}
 
 	masterWorkerCfg := opt.MasterWorker
@@ -478,6 +480,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		BucketsResponseTime:      opt.BucketsResponseTime,
 		ConfigMapName:            opt.ConfigMap,
 		ControllerName:           controllerName,
+		ControllerPod:            controllerPod,
 		DefaultDirCACerts:        defaultDirCACerts,
 		DefaultDirCerts:          defaultDirCerts,
 		DefaultDirCrl:            defaultDirCrl,
@@ -491,7 +494,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		DisableIngressClassAPI:   opt.DisableIngressClassAPI,
 		Election:                 election,
 		ElectionID:               electionID,
-		ElectionNamespace:        podNamespace,
+		ElectionNamespace:        controllerPod.Namespace,
 		ForceNamespaceIsolation:  opt.ForceIsolation,
 		HasGatewayA2:             hasGatewayA2,
 		HasGatewayB1:             hasGatewayB1,
@@ -506,8 +509,6 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		MasterSocket:             opt.MasterSocket,
 		MasterWorker:             masterWorkerCfg,
 		MaxOldConfigFiles:        opt.MaxOldConfigFiles,
-		PodName:                  podName,
-		PodNamespace:             podNamespace,
 		Profiling:                opt.Profiling,
 		PublishAddressHostnames:  publishAddressHostnames,
 		PublishAddressIPs:        publishAddressIPs,
@@ -663,6 +664,7 @@ type Config struct {
 	BucketsResponseTime      []float64
 	ConfigMapName            string
 	ControllerName           string
+	ControllerPod            types.NamespacedName
 	DefaultDirCerts          string
 	DefaultDirCACerts        string
 	DefaultDirCrl            string
@@ -691,8 +693,6 @@ type Config struct {
 	MasterSocket             string
 	MasterWorker             bool
 	MaxOldConfigFiles        int
-	PodName                  string
-	PodNamespace             string
 	Profiling                bool
 	PublishAddressHostnames  []string
 	PublishAddressIPs        []string
