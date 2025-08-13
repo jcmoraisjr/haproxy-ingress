@@ -256,6 +256,8 @@ func (s *svcStatusIng) getControllerPodList(ctx context.Context) ([]api.Pod, err
 	delete(podLabels, "controller-revision-hash")
 	delete(podLabels, "pod-template-generation")
 	delete(podLabels, "pod-template-hash")
+	delete(podLabels, "apps.kubernetes.io/pod-index")
+	delete(podLabels, "statefulset.kubernetes.io/pod-name")
 
 	// read all controller's pod
 	podList := api.PodList{}
