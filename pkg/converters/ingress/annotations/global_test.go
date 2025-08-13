@@ -584,6 +584,13 @@ WARN ignoring FastCGI app(s) declared as enabled but not configured via config-s
 			},
 			expapps: []string{"app1", "app2"},
 		},
+		"should list all sections": {
+			config: map[string]string{
+				ingtypes.GlobalConfigSections:  "fcgi-app app1\nfcgi-app app2\nfcgi-app app3",
+				ingtypes.GlobalFCGIEnabledApps: "*",
+			},
+			expapps: []string{"app1", "app2", "app3"},
+		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
