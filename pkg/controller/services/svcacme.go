@@ -58,17 +58,15 @@ func (s *svcAcmeServer) Start(ctx context.Context) error {
 
 func initSvcAcmeClient(ctx context.Context, config *config.Config, logger *lfactory, cache acme.Cache, metrics types.Metrics, svcleader *svcLeader, checkCallback svcAcmeCheckFnc) *svcAcmeClient {
 	signer := acme.NewSigner(logger.new("acme.client"), cache, metrics)
-	callback := func(_ context.Context, item any) error { return signer.Notify(item) }
-	ratelimiter := workqueue.ExponentialFailureRateLimiter[any](config.AcmeFailInitialDuration, config.AcmeFailMaxDuration)
-	queue := workqueue.New(callback, ratelimiter)
-	return &svcAcmeClient{
+	s := &svcAcmeClient{
 		log:    logr.FromContextOrDiscard(ctx).WithName("acme").WithName("client"),
 		leader: svcleader,
 		check:  checkCallback,
 		config: config,
 		signer: signer,
-		queue:  queue,
 	}
+	s.initQueue()
+	return s
 }
 
 type svcAcmeClient struct {
@@ -80,8 +78,15 @@ type svcAcmeClient struct {
 	queue  utils.QueueFacade
 }
 
+func (s *svcAcmeClient) initQueue() {
+	callback := func(_ context.Context, item any) error { return s.signer.Notify(item) }
+	ratelimiter := workqueue.ExponentialFailureRateLimiter[any](s.config.AcmeFailInitialDuration, s.config.AcmeFailMaxDuration)
+	s.queue = workqueue.New(callback, ratelimiter)
+}
+
 func (s *svcAcmeClient) Start(ctx context.Context) error {
 	s.log.Info("starting")
+	s.initQueue()
 	group := errgroup.Group{}
 	group.Go(func() error {
 		return s.queue.Start(ctx)
