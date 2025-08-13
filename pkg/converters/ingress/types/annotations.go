@@ -43,6 +43,9 @@ const (
 	HostAuthTLSStrict           = "auth-tls-strict"
 	HostAuthTLSVerifyClient     = "auth-tls-verify-client"
 	HostCertSigner              = "cert-signer"
+	HostHTTPResponse421         = "http-response-421"
+	HostHTTPResponse495         = "http-response-495"
+	HostHTTPResponse496         = "http-response-496"
 	HostRedirectFrom            = "redirect-from"
 	HostRedirectFromRegex       = "redirect-from-regex"
 	HostServerAlias             = "server-alias"
@@ -68,9 +71,12 @@ var (
 		HostAuthTLSStrict:          {},
 		HostAuthTLSVerifyClient:    {},
 		HostCertSigner:             {},
-		HostServerAlias:            {},
+		HostHTTPResponse421:        {},
+		HostHTTPResponse495:        {},
+		HostHTTPResponse496:        {},
 		HostRedirectFrom:           {},
 		HostRedirectFromRegex:      {},
+		HostServerAlias:            {},
 		HostServerAliasRegex:       {},
 		HostSSLAlwaysAddHTTPS:      {},
 		HostSSLCiphers:             {},
@@ -153,6 +159,22 @@ const (
 	BackHSTSPreload            = "hsts-preload"
 	BackHTTPHeaderMatch        = "http-header-match"
 	BackHTTPHeaderMatchRegex   = "http-header-match-regex"
+	BackHTTPResponse200        = "http-response-200"
+	BackHTTPResponse400        = "http-response-400"
+	BackHTTPResponse401        = "http-response-401"
+	BackHTTPResponse403        = "http-response-403"
+	BackHTTPResponse405        = "http-response-405"
+	BackHTTPResponse407        = "http-response-407"
+	BackHTTPResponse408        = "http-response-408"
+	BackHTTPResponse410        = "http-response-410"
+	BackHTTPResponse413        = "http-response-413"
+	BackHTTPResponse425        = "http-response-425"
+	BackHTTPResponse429        = "http-response-429"
+	BackHTTPResponse500        = "http-response-500"
+	BackHTTPResponse501        = "http-response-501"
+	BackHTTPResponse502        = "http-response-502"
+	BackHTTPResponse503        = "http-response-503"
+	BackHTTPResponse504        = "http-response-504"
 	BackInitialWeight          = "initial-weight"
 	BackLimitConnections       = "limit-connections"
 	BackLimitRPS               = "limit-rps"

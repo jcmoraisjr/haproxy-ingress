@@ -160,8 +160,8 @@ defaults
 {{- if not $global.UseHTX }}
     no option http-use-htx
 {{- end }}
-{{- range $response := $global.CustomHTTPHAResponses }}
-    errorfile {{ $response.Name }} {{ $global.LocalFSPrefix }}/etc/haproxy/errorfiles/{{ $response.Name }}.http
+{{- range $response := $global.CustomHTTPResponses.HAProxy }}
+    errorfile {{ $response.Name }} {{ $global.LocalFSPrefix }}/etc/haproxy/errorfiles/{{ $response.Name }}-{{ $global.CustomHTTPResponses.ID }}.http
 {{- end }}
     timeout client          {{ default "--" $global.Timeout.Client }}
 {{- if $global.Timeout.ClientFin }}
@@ -344,6 +344,9 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- range $response := $backend.CustomHTTPResponses.HAProxy }}
+    errorfile {{ $response.Name }} {{ $global.LocalFSPrefix }}/etc/haproxy/errorfiles/{{ $response.Name }}-{{ $backend.CustomHTTPResponses.ID }}.http
+{{- end }}
 {{- range $snippet := $backend.CustomConfigEarly }}
     {{ $snippet }}
 {{- end }}
@@ -584,6 +587,9 @@ backend {{ $backend.ID }}
 
 {{- /*------------------------------------*/}}
 {{- $maxbodyCfg := $backend.PathConfig "MaxBodySize" }}
+{{- if and $backend.CustomHTTPResponses.Lua $maxbodyCfg.Items }}
+    http-request set-var(txn.lua_scope) str({{ $backend.ID }})
+{{- end }}
 {{- range $i, $maxbody := $maxbodyCfg.Items }}
 {{- if $maxbody }}
 {{- range $pathIDs := $maxbodyCfg.PathIDs $i }}
@@ -1417,6 +1423,9 @@ frontend {{ $frontend.Name }}
 
 {{- /*------------------------------------*/}}
 {{- if $hasTLSAuth }}
+{{- if $hosts.BuildHTTPResponses }}
+    http-request set-var(txn.lua_scope) var(req.host)
+{{- end }}
     http-request use-service lua.send-421 if
         {{- "" }} tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
 {{- if $fmaps.TLSAuthList.HasHost }}

@@ -250,7 +250,11 @@ func (*framework) Request(ctx context.Context, t *testing.T, method, host, path 
 	} else {
 		url = fmt.Sprintf("http://127.0.0.1:%d", TestPortHTTP)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, url, nil)
+	var reqBody io.Reader
+	if opt.Body != "" {
+		reqBody = strings.NewReader(opt.Body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, url, reqBody)
 	require.NoError(t, err)
 	req.Host = host
 	req.URL.Path = path
@@ -312,10 +316,10 @@ func (*framework) Request(ctx context.Context, t *testing.T, method, host, path 
 		require.NoError(t, err)
 	}
 	require.NotNil(t, res, "request closure should reassign the response")
-	body, err := io.ReadAll(res.Body)
+	resBody, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	t.Logf("response body:\n%s\n", body)
-	strbody := string(body)
+	t.Logf("response body:\n%s\n", resBody)
+	strbody := string(resBody)
 	return Response{
 		HTTPResponse: res,
 		Body:         strbody,

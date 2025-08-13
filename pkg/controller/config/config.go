@@ -439,8 +439,8 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 	defaultDirDHParam := "/var/lib/haproxy/dhparam"
 	defaultDirVarRun := "/var/run/haproxy"
 	defaultDirMaps := "/etc/haproxy/maps"
-	// defaultDirErrorfiles := "/etc/haproxy/errorfiles"
-	// defaultDirLuaScripts := "/etc/haproxy/lua"
+	defaultDirErrorfiles := "/etc/haproxy/errorfiles"
+	defaultDirLuaScripts := "/etc/haproxy/lua"
 
 	for _, dir := range []*string{
 		&defaultDirCerts,
@@ -449,8 +449,8 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		&defaultDirDHParam,
 		&defaultDirVarRun,
 		&defaultDirMaps,
-		// &defaultDirErrorfiles,
-		// &defaultDirLuaScripts,
+		&defaultDirErrorfiles,
+		&defaultDirLuaScripts,
 	} {
 		*dir = opt.LocalFSPrefix + *dir
 		if err := os.MkdirAll(*dir, 0755); err != nil {
