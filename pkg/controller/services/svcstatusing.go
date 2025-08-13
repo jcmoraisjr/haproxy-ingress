@@ -35,6 +35,7 @@ import (
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
 func initSvcStatusIng(ctx context.Context, config *config.Config, client client.Client, cache *c, status svcStatusUpdateFnc) *svcStatusIng {
@@ -73,17 +74,24 @@ func (s *svcStatusIng) Start(ctx context.Context) error {
 	return nil
 }
 
-func (s *svcStatusIng) changed(ctx context.Context, changed *convtypes.ChangedObjects) {
-	if !s.run {
-		return
-	}
-	s.sync(ctx)
+// changed.Objects ([]string) has currently the following syntax:
+// <add|update|del>/<resourceType>:[<namespace>/]<name>
+// Need to move to a structured type.
+const addIngPrefix = "add/" + string(convtypes.ResourceIngress) + ":"
 
-	// Objects ([]string) has currently the following syntax:
-	// <add|update|del>/<resourceType>:[<namespace>/]<name>
-	// Need to move to a structured type.
-	addIngPrefix := "add/" + string(convtypes.ResourceIngress) + ":"
-	svcPublSuffix := "/" + string(convtypes.ResourceService) + ":" + s.cfg.PublishService
+func (s *svcStatusIng) changed(ctx context.Context, timer *utils.Timer, changed *convtypes.ChangedObjects) error {
+	if !s.run {
+		if s.cfg.UpdateStatus {
+			s.log.Info("skipping check for ingress status changes, I am not the leader")
+		}
+		return nil
+	}
+	defer timer.Tick("enqueue-status-update")
+
+	// check if lb address(es) changed, updating s.curr and resyncing all ingress if so.
+	if err := s.syncCurrentLB(ctx); err != nil {
+		return err
+	}
 
 	var errs []error
 	for _, obj := range changed.Objects {
@@ -98,20 +106,16 @@ func (s *svcStatusIng) changed(ctx context.Context, changed *convtypes.ChangedOb
 			}
 			ing.Status.LoadBalancer.Ingress = s.curr
 			s.status(&ing)
-		} else if strings.HasSuffix(obj, svcPublSuffix) {
-			s.log.Info("publish service updated, updating all ingress status", "name", s.cfg.PublishService)
-			if err := s.update(ctx, s.curr); err != nil {
-				errs = append(errs, err)
-				continue
-			}
 		}
 	}
 	if len(errs) > 0 {
-		if len(errs) > 5 {
-			errs = errs[:5]
+		if len(errs) > 6 {
+			errs = errs[:6]
+			errs[5] = fmt.Errorf("<...>")
 		}
-		s.log.Error(errors.Join(errs...), "error syncing ingress status")
+		return fmt.Errorf("error syncing ingress status: %w", errors.Join(errs...))
 	}
+	return nil
 }
 
 func (s *svcStatusIng) update(_ context.Context, lb []networking.IngressLoadBalancerIngress) error {
@@ -144,15 +148,14 @@ func (s *svcStatusIng) shutdown(ctx context.Context) {
 	}
 }
 
-func (s *svcStatusIng) sync(ctx context.Context) {
+func (s *svcStatusIng) syncCurrentLB(ctx context.Context) error {
 	var lb []networking.IngressLoadBalancerIngress
 	if s.cfg.PublishService != "" {
 		// read Hostnames and IPs from the configured service
 		svc := api.Service{}
 		ns, n, _ := cache.SplitMetaNamespaceKey(s.cfg.PublishService)
 		if err := s.cli.Get(ctx, types.NamespacedName{Namespace: ns, Name: n}, &svc); err != nil {
-			s.log.Error(err, "failed to read load balancer service")
-			return
+			return fmt.Errorf("failed to read load balancer service: %w", err)
 		}
 		for _, ing := range svc.Status.LoadBalancer.Ingress {
 			lb = append(lb, networking.IngressLoadBalancerIngress{IP: ing.IP, Hostname: ing.Hostname})
@@ -188,12 +191,13 @@ func (s *svcStatusIng) sync(ctx context.Context) {
 		return lb[i].Hostname < lb[j].Hostname
 	})
 	if !reflect.DeepEqual(s.curr, lb) {
+		s.log.Info("list of load balancers changed, updating all ingress status", "old", s.curr, "new", lb)
 		if err := s.update(ctx, lb); err != nil {
-			s.log.Error(err, "error updating ingress resources")
-			return
+			return fmt.Errorf("error updating ingress resources: %w", err)
 		}
 		s.curr = lb
 	}
+	return nil
 }
 
 // getNodeIPs reads external node IP, or internal if
