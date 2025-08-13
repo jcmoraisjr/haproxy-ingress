@@ -563,10 +563,25 @@ func (c *updater) buildBackendCors(d *backData) {
 }
 
 func (c *updater) buildBackendCustomConfig(d *backData) {
-	config := d.mapper.Get(ingtypes.BackConfigBackend)
+	configBackendEarly := d.mapper.Get(ingtypes.BackConfigBackendEarly)
+	configBackendLate := d.mapper.Get(ingtypes.BackConfigBackendLate)
+	configBackend := d.mapper.Get(ingtypes.BackConfigBackend)
+
+	if configBackendLate.Value == "" {
+		// act as an alias for backward compatibility
+		configBackendLate = configBackend
+	} else if configBackend.Value != "" {
+		c.logger.Warn("both config-backend and config-backend-late were used on %v, ignoring config-backend", configBackend.Source)
+	}
+
+	d.backend.CustomConfigEarly = c.generateBackendSnippet(configBackendEarly)
+	d.backend.CustomConfigLate = c.generateBackendSnippet(configBackendLate)
+}
+
+func (c *updater) generateBackendSnippet(config *ConfigValue) []string {
 	lines := utils.LineToSlice(config.Value)
 	if len(lines) == 0 {
-		return
+		return nil
 	}
 	source := "global config"
 	if config.Source != nil {
@@ -577,7 +592,7 @@ func (c *updater) buildBackendCustomConfig(d *backData) {
 			if strings.Contains(path.Clean(token), "secrets/kubernetes.io/serviceaccount") {
 				// attempt to read the the well known path to Kubernetes credentials
 				c.logger.Warn("skipping configuration snippet on %s: attempt to read cluster credentials", source)
-				return
+				return nil
 			}
 		}
 		for _, disableKeyword := range c.options.DisableKeywords {
@@ -586,15 +601,15 @@ func (c *updater) buildBackendCustomConfig(d *backData) {
 			}
 			if disableKeyword == "*" {
 				c.logger.Warn("skipping configuration snippet on %s: custom configuration is disabled", source)
-				return
+				return nil
 			}
 			if firstToken(line) == disableKeyword {
 				c.logger.Warn("skipping configuration snippet on %s: keyword '%s' not allowed", source, disableKeyword)
-				return
+				return nil
 			}
 		}
 	}
-	d.backend.CustomConfig = lines
+	return lines
 }
 
 // kindly provided by strings/strings.go

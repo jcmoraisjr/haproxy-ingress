@@ -645,23 +645,24 @@ type Backend struct {
 	//
 	// per backend config
 	//
-	AgentCheck       AgentCheck
-	AllowedIPTCP     AccessConfig
-	BalanceAlgorithm string
-	BlueGreen        BlueGreenConfig
-	Cookie           Cookie
-	CustomConfig     []string
-	DeniedIPTCP      AccessConfig
-	Dynamic          DynBackendConfig
-	EpCookieStrategy EndpointCookieStrategy
-	Headers          []*BackendHeader
-	HealthCheck      HealthCheck
-	Limit            BackendLimit
-	ModeTCP          bool
-	Resolver         string
-	Server           ServerConfig
-	Timeout          BackendTimeoutConfig
-	TLS              BackendTLSConfig
+	AgentCheck        AgentCheck
+	AllowedIPTCP      AccessConfig
+	BalanceAlgorithm  string
+	BlueGreen         BlueGreenConfig
+	Cookie            Cookie
+	CustomConfigEarly []string
+	CustomConfigLate  []string
+	DeniedIPTCP       AccessConfig
+	Dynamic           DynBackendConfig
+	EpCookieStrategy  EndpointCookieStrategy
+	Headers           []*BackendHeader
+	HealthCheck       HealthCheck
+	Limit             BackendLimit
+	ModeTCP           bool
+	Resolver          string
+	Server            ServerConfig
+	Timeout           BackendTimeoutConfig
+	TLS               BackendTLSConfig
 }
 
 // Endpoint ...

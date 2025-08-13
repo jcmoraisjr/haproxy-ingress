@@ -344,6 +344,9 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- range $snippet := $backend.CustomConfigEarly }}
+    {{ $snippet }}
+{{- end }}
 {{- if or $backend.Limit.Connections $backend.Limit.RPS }}
     stick-table type ip size 200k expire 5m store conn_cur,conn_rate(1s)
 {{- end }}
@@ -408,7 +411,7 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- range $snippet := $backend.CustomConfig }}
+{{- range $snippet := $backend.CustomConfigLate }}
     {{ $snippet }}
 {{- end }}
 {{- range $snippet := index $global.CustomProxy $backend.ID }}
@@ -682,7 +685,7 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- range $snippet := $backend.CustomConfig }}
+{{- range $snippet := $backend.CustomConfigLate }}
     {{ $snippet }}
 {{- end }}
 {{- range $snippet := index $global.CustomProxy $backend.ID }}
