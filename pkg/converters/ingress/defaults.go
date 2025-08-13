@@ -48,7 +48,7 @@ func createDefaults() map[string]string {
 		types.BackBackendServerNaming:    "sequence",
 		types.BackBackendServerSlotsInc:  "1",
 		types.BackSlotsMinFree:           "6",
-		types.BackBalanceAlgorithm:       "roundrobin",
+		types.BackBalanceAlgorithm:       "random(2)",
 		types.BackCorsAllowHeaders:       "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization",
 		types.BackCorsAllowMethods:       "GET, PUT, POST, DELETE, PATCH, OPTIONS",
 		types.BackCorsAllowOrigin:        "*",

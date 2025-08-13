@@ -325,7 +325,7 @@ The table below describes all supported configuration keys.
 | [`backend-protocol`](#backend-protocol)              | [h1\|h2\|h1-ssl\|h2-ssl]                | Backend | `h1`               |
 | [`backend-server-naming`](#backend-server-naming)    | [sequence\|ip\|pod]                     | Backend | `sequence`         |
 | [`backend-server-slots-increment`](#dynamic-scaling) | number of slots                         | Backend | `1`                |
-| [`balance-algorithm`](#balance-algorithm)            | algorithm name                          | Backend | `roundrobin`       |
+| [`balance-algorithm`](#balance-algorithm)            | algorithm name                          | Backend | `random(2)`        |
 | [`bind-fronting-proxy`](#bind)                       | ip + port                               | Global  |                    |
 | [`bind-http`](#bind)                                 | ip + port                               | Global  |                    |
 | [`bind-https`](#bind)                                | ip + port                               | Global  |                    |
@@ -974,15 +974,17 @@ Server IDs can't dynamically updated, so if this option is enabled, adding or re
 
 ### Balance algorithm
 
-| Configuration key   | Scope     | Default      | Since |
-|---------------------|-----------|--------------|-------|
-| `balance-algorithm` | `Backend` | `roundrobin` |       |
+| Configuration key   | Scope     | Default     | Since |
+|---------------------|-----------|-------------|-------|
+| `balance-algorithm` | `Backend` | `random(2)` |       |
 
-Defines a valid HAProxy load balancing algorithm. The default value is `roundrobin`.
+Defines a valid HAProxy load balancing algorithm. Since v0.16 the default value is `random(2)`, also known as the Power of Two Random Choices.
 
 See also:
 
 * https://docs.haproxy.org/2.4/configuration.html#4-balance
+* https://www.mail-archive.com/haproxy@formilux.org/msg46011.html
+* https://www.eecs.harvard.edu/~michaelm/postscripts/handbook2001.pdf
 
 ---
 
