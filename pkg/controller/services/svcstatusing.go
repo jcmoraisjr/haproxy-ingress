@@ -242,12 +242,8 @@ func (s *svcStatusIng) getNodeIPs(ctx context.Context) []string {
 }
 
 func (s *svcStatusIng) getControllerPodList(ctx context.Context) ([]api.Pod, error) {
-	// read controller's pod - we need the pod's template labels to find all the other pods
-	if s.cfg.PodName == "" {
-		return nil, fmt.Errorf("POD_NAME envvar was not configured")
-	}
 	pod := api.Pod{}
-	if err := s.cli.Get(ctx, types.NamespacedName{Namespace: s.cfg.PodNamespace, Name: s.cfg.PodName}, &pod); err != nil {
+	if err := s.cli.Get(ctx, s.cfg.ControllerPod, &pod); err != nil {
 		return nil, err
 	}
 
@@ -261,7 +257,7 @@ func (s *svcStatusIng) getControllerPodList(ctx context.Context) ([]api.Pod, err
 	podList := api.PodList{}
 	if err := s.cli.List(ctx, &podList, &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(podLabels),
-		Namespace:     s.cfg.PodNamespace,
+		Namespace:     s.cfg.ControllerPod.Namespace,
 	}); err != nil {
 		return nil, err
 	}
