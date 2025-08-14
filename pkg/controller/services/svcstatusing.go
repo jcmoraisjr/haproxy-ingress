@@ -246,6 +246,10 @@ func (s *svcStatusIng) getNodeIPs(ctx context.Context) []string {
 }
 
 func (s *svcStatusIng) getControllerPodList(ctx context.Context) ([]api.Pod, error) {
+	// read controller's pod - we need the pod's template labels to find all the other pods
+	if s.cfg.ControllerPod.Name == "" {
+		return nil, fmt.Errorf("POD_NAME envvar was not configured")
+	}
 	pod := api.Pod{}
 	if err := s.cli.Get(ctx, s.cfg.ControllerPod, &pod); err != nil {
 		return nil, err
