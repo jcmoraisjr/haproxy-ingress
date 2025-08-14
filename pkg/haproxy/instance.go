@@ -505,19 +505,19 @@ func (i *instance) writeConfig() (err error) {
 		return err
 	}
 	//
-	// custom responses template execution, raw HTTP HAProxy based
+	// custom responses template execution, raw HTTP HAProxy and Lua script based
 	//
-	for _, response := range i.config.Global().CustomHTTPHAResponses {
-		err = i.haResponseTmpl.WriteOutput(
-			response, fmt.Sprintf("%s/errorfiles/%s.http", i.options.HAProxyCfgDir, response.Name))
-		if err != nil {
-			return err
+	responsesList := i.buildCustomHTTPResponses()
+	for _, responses := range responsesList {
+		for _, response := range responses.HAProxy {
+			err = i.haResponseTmpl.WriteOutput(
+				response, fmt.Sprintf("%s/errorfiles/%s-%s.http", i.options.HAProxyCfgDir, response.Name, response.ID))
+			if err != nil {
+				return err
+			}
 		}
 	}
-	//
-	// custom responses template execution, Lua script based
-	//
-	err = i.luaResponseTmpl.Write(i.config.Global().CustomHTTPLuaResponses)
+	err = i.luaResponseTmpl.Write(responsesList)
 	if err != nil {
 		return err
 	}
@@ -568,6 +568,65 @@ func (i *instance) writeConfig() (err error) {
 		}
 	}
 	return err
+}
+
+type httpResponse struct {
+	ID string
+	hatypes.HTTPResponse
+}
+
+type httpResponseOverride struct {
+	ResponseName string
+	HAProxy      []httpResponse
+	Lua          []httpResponse
+	LuaDefault   httpResponse
+}
+
+// buildCustomHTTPResponses converts all the custom HTTP responses from Global, Host and Backend
+// into a list grouped by the response code, which is the way the templates consume them.
+func (i *instance) buildCustomHTTPResponses() (responsesList []httpResponseOverride) {
+	responsesMap := make(map[string]httpResponseOverride)
+	addHa := func(id string, ha hatypes.HTTPResponse) {
+		res := responsesMap[ha.Name]
+		res.ResponseName = ha.Name
+		res.HAProxy = append(res.HAProxy, httpResponse{ID: id, HTTPResponse: ha})
+		responsesMap[ha.Name] = res
+	}
+	addLua := func(id string, lua hatypes.HTTPResponse) {
+		res := responsesMap[lua.Name]
+		res.ResponseName = lua.Name
+		luares := httpResponse{ID: id, HTTPResponse: lua}
+		if id == hatypes.HTTPResponseGlobalID {
+			res.LuaDefault = luares
+		} else {
+			res.Lua = append(res.Lua, luares)
+		}
+		responsesMap[lua.Name] = res
+	}
+	addAll := func(res *hatypes.HTTPResponses) {
+		for _, ha := range res.HAProxy {
+			addHa(res.ID, ha)
+		}
+		for _, lua := range res.Lua {
+			addLua(res.ID, lua)
+		}
+	}
+
+	for _, beResponse := range i.config.Backends().BuildHTTPResponses() {
+		addAll(&beResponse)
+	}
+	for _, hostResponse := range i.config.Hosts().BuildHTTPResponses() {
+		addAll(&hostResponse)
+	}
+	addAll(&i.config.Global().CustomHTTPResponses)
+
+	for _, response := range responsesMap {
+		responsesList = append(responsesList, response)
+	}
+	sort.Slice(responsesList, func(i, j int) bool {
+		return responsesList[i].ResponseName < responsesList[j].ResponseName
+	})
+	return responsesList
 }
 
 func (i *instance) updateSuccessful(success bool) {

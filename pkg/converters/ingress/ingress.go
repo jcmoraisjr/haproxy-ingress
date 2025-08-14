@@ -234,7 +234,7 @@ func (c *converter) syncPartial() {
 
 	// looking for controller pod changes, used by peers.
 	// missing a better tracking and global update approach.
-	ctrlNamespace := c.cache.GetPodNamespacedName().Namespace + "/"
+	ctrlNamespace := c.cache.GetControllerPod().Namespace + "/"
 	changedPods := c.changed.Links[convtypes.ResourcePod]
 	for _, pod := range changedPods {
 		if strings.HasPrefix(pod, ctrlNamespace) {
@@ -1104,7 +1104,7 @@ func (c *converter) parseParameters(ingressClass *networking.IngressClass) *ingr
 		c.logger.Warn("unsupported Parameters' Kind on IngressClass '%s': %s", ingressClass.Name, parameters.Kind)
 		return nil
 	}
-	podNamespace := c.cache.GetPodNamespacedName().Namespace
+	podNamespace := c.cache.GetControllerPod().Namespace
 	if podNamespace == "" {
 		c.logger.Warn("need to configure POD_NAMESPACE to use ConfigMap on IngressClass '%s'", ingressClass.Name)
 		return nil

@@ -11,7 +11,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: actions/setup-go@v5
       with:
         go-version: "1.23.7"
@@ -30,7 +30,7 @@ jobs:
     strategy:
       matrix:
         haproxy-version:
-        - "2.2" # minimum supported
+        - "2.4" # minimum supported
         - "2.6" # embedded version
         - "3.2" # latest
         envtest-version:
@@ -47,7 +47,7 @@ jobs:
         branch: ${{ matrix.haproxy-version }}
         use_openssl: yes
         use_lua: yes
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: actions/setup-go@v5
       with:
         go-version: "1.23.6"

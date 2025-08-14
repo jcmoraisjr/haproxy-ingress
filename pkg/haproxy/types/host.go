@@ -213,6 +213,24 @@ func (h *Hosts) HasVarNamespace() bool {
 	return false
 }
 
+func (h *Hosts) BuildHTTPResponses() (responses []HTTPResponses) {
+	for _, host := range h.items {
+		res := &host.CustomHTTPResponses
+		if len(res.HAProxy) > 0 || len(res.Lua) > 0 {
+			responses = append(responses, HTTPResponses{
+				ID:      res.ID,
+				HAProxy: res.HAProxy,
+				Lua:     res.Lua,
+			})
+		}
+	}
+	// predictable response
+	sort.Slice(responses, func(i, j int) bool {
+		return responses[i].ID < responses[j].ID
+	})
+	return responses
+}
+
 // FindPath ...
 func (h *Host) FindPath(path string, match ...MatchType) (paths []*HostPath) {
 	for _, p := range h.Paths {

@@ -16,6 +16,12 @@ func ExpectX509Error(msg string) Request {
 	}
 }
 
+func Body(body string) Request {
+	return func(o *requestOpt) {
+		o.Body = body
+	}
+}
+
 func TLSRequest() Request {
 	return func(o *requestOpt) {
 		o.TLS = true
@@ -64,6 +70,7 @@ type CustomRequestCallback func(req *http.Request)
 type requestOpt struct {
 	ExpectResponseCode int
 	ExpectX509Error    string
+	Body               string
 	TLS                bool
 	TLSSkipVerify      bool
 	ClientCA           []byte

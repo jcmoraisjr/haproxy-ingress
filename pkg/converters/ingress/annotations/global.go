@@ -19,6 +19,7 @@ package annotations
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -169,7 +170,7 @@ func (c *updater) buildGlobalPeers(d *globalData) {
 
 	var peers []hatypes.PeersServer
 	var localPeer *hatypes.PeersServer
-	localPodName := c.cache.GetPodNamespacedName()
+	localPod := c.cache.GetControllerPod()
 	if pods, err := c.cache.GetControllerPodList(); err == nil {
 		for _, pod := range pods {
 			if pod.Status.PodIP == "" {
@@ -181,7 +182,7 @@ func (c *updater) buildGlobalPeers(d *globalData) {
 				Endpoint: fmt.Sprintf("%s:%d", pod.Status.PodIP, port),
 			}
 			peers = append(peers, peer)
-			if pod.Name == localPodName.Name {
+			if pod.Name == localPod.Name {
 				localPeer = &peer
 			}
 		}
@@ -196,7 +197,7 @@ func (c *updater) buildGlobalPeers(d *globalData) {
 			}
 			c.logger.Error(
 				"error building peers config: current pod '%s' was not found in the list of controller pods '%s/%s'",
-				localPodName.String(), localPodName.Namespace, strings.Join(podNames, ","))
+				localPod.String(), localPod.Namespace, strings.Join(podNames, ","))
 		}
 	} else {
 		c.logger.Error("error building peers config: error reading controller pods: %s", err.Error())
@@ -206,7 +207,7 @@ func (c *updater) buildGlobalPeers(d *globalData) {
 	// is created and we avoid errors on stick tables pointing to it.
 	if localPeer == nil || len(peers) == 0 {
 		localPeer = &hatypes.PeersServer{
-			Name:     localPodName.Name,
+			Name:     localPod.Name,
 			Endpoint: fmt.Sprintf(":%d", port),
 		}
 		peers = []hatypes.PeersServer{*localPeer}
@@ -532,6 +533,36 @@ func (c *updater) buildGlobalCustomConfig(d *globalData) {
 	d.global.CustomProxy = proxy
 }
 
+func (c *updater) buildGlobalCustomResponses(d *globalData) {
+	d.global.CustomHTTPResponses = c.buildHTTPResponses(hatypes.HTTPResponseGlobalID, d.mapper, keyScopeGlobal)
+}
+
+func (c *updater) buildGlobalFastCGI(d *globalData) {
+	var configuredApps []string
+	for _, line := range utils.LineToSlice(d.mapper.Get(ingtypes.GlobalConfigSections).Value) {
+		keywords := strings.Fields(line)
+		if len(keywords) >= 2 && keywords[0] == "fcgi-app" {
+			configuredApps = append(configuredApps, keywords[1])
+		}
+	}
+	var enabledApps, notFoundApps []string
+	if apps := d.mapper.Get(ingtypes.GlobalFCGIEnabledApps).Value; apps == "*" {
+		enabledApps = configuredApps
+	} else {
+		for _, app := range utils.Split(apps, ",") {
+			if slices.Contains(configuredApps, app) {
+				enabledApps = append(enabledApps, app)
+			} else {
+				notFoundApps = append(notFoundApps, app)
+			}
+		}
+	}
+	if len(notFoundApps) > 0 {
+		c.logger.Warn("ignoring FastCGI app(s) declared as enabled but not configured via config-sections: %s", strings.Join(notFoundApps, ", "))
+	}
+	d.global.FastCGIApps = enabledApps
+}
+
 // TODO these defaults should be in default.go but currently ingress parsing
 // doesn't preserve the hardcoded default, overwriting it with the user's
 // provided one. We need it in the case the user input has some error.
@@ -594,54 +625,65 @@ Cache-Control: no-cache
 `
 )
 
+type keyScope int
+
+const (
+	keyScopeHost keyScope = iota
+	keyScopeBackend
+	keyScopeGlobal
+)
+
 var customHTTPResponses = []struct {
 	name   string
 	code   int
+	scope  keyScope
 	reason string
 	key    string
 	def    string
 }{
 	// Lua based
-	{"send-prometheus-root", 200, "OK", ingtypes.GlobalHTTPResponsePrometheusRoot, httpResponsePrometheusRoot},
-	{"send-404", 404, "Not Found", ingtypes.GlobalHTTPResponse404, httpResponse404},
-	{"send-413", 413, "Payload Too Large", ingtypes.GlobalHTTPResponse413, httpResponse413},
-	{"send-421", 421, "Misdirected Request", ingtypes.GlobalHTTPResponse421, httpResponse421},
-	{"send-495", 495, "SSL Certificate Error", ingtypes.GlobalHTTPResponse495, httpResponse495},
-	{"send-496", 496, "SSL Certificate Required", ingtypes.GlobalHTTPResponse496, httpResponse496},
+	{"send-prometheus-root", 200, keyScopeGlobal, "OK", ingtypes.GlobalHTTPResponsePrometheusRoot, httpResponsePrometheusRoot},
+	{"send-404", 404, keyScopeGlobal, "Not Found", ingtypes.GlobalHTTPResponse404, httpResponse404},
+	{"send-413", 413, keyScopeBackend, "Payload Too Large", ingtypes.BackHTTPResponse413, httpResponse413},
+	{"send-421", 421, keyScopeHost, "Misdirected Request", ingtypes.HostHTTPResponse421, httpResponse421},
+	{"send-495", 495, keyScopeHost, "SSL Certificate Error", ingtypes.HostHTTPResponse495, httpResponse495},
+	{"send-496", 496, keyScopeHost, "SSL Certificate Required", ingtypes.HostHTTPResponse496, httpResponse496},
 	// HAProxy based, default isn't used because the response will be ignored if conf is missing
 	// This configuration assumes that:
 	//  - `name` will be used as the internal status code, `code` is the real status that should be returned
 	//  - `def` should always be empty, this is used to distinguish between Lua and HAProxy based config
-	{"200", 200, "OK", ingtypes.GlobalHTTPResponse200, ""},
-	{"400", 400, "Bad Request", ingtypes.GlobalHTTPResponse400, ""},
-	{"401", 401, "Unauthorized", ingtypes.GlobalHTTPResponse401, ""},
-	{"403", 403, "Forbidden", ingtypes.GlobalHTTPResponse403, ""},
-	{"405", 405, "Method Not Allowed", ingtypes.GlobalHTTPResponse405, ""},
-	{"407", 407, "Proxy Authentication Required", ingtypes.GlobalHTTPResponse407, ""},
-	{"408", 408, "Request Timeout", ingtypes.GlobalHTTPResponse408, ""},
-	{"410", 410, "Gone", ingtypes.GlobalHTTPResponse410, ""},
-	{"425", 425, "Too Early", ingtypes.GlobalHTTPResponse425, ""},
-	{"429", 429, "Too Many Requests", ingtypes.GlobalHTTPResponse429, ""},
-	{"500", 500, "Internal Server Error", ingtypes.GlobalHTTPResponse500, ""},
-	{"501", 501, "Not Implemented", ingtypes.GlobalHTTPResponse501, ""},
-	{"502", 502, "Bad Gateway", ingtypes.GlobalHTTPResponse502, ""},
-	{"503", 503, "Service Unavailable", ingtypes.GlobalHTTPResponse503, ""},
-	{"504", 504, "Gateway Timeout", ingtypes.GlobalHTTPResponse504, ""},
+	{"200", 200, keyScopeBackend, "OK", ingtypes.BackHTTPResponse200, ""},
+	{"400", 400, keyScopeBackend, "Bad Request", ingtypes.BackHTTPResponse400, ""},
+	{"401", 401, keyScopeBackend, "Unauthorized", ingtypes.BackHTTPResponse401, ""},
+	{"403", 403, keyScopeBackend, "Forbidden", ingtypes.BackHTTPResponse403, ""},
+	{"405", 405, keyScopeBackend, "Method Not Allowed", ingtypes.BackHTTPResponse405, ""},
+	{"407", 407, keyScopeBackend, "Proxy Authentication Required", ingtypes.BackHTTPResponse407, ""},
+	{"408", 408, keyScopeBackend, "Request Timeout", ingtypes.BackHTTPResponse408, ""},
+	{"410", 410, keyScopeBackend, "Gone", ingtypes.BackHTTPResponse410, ""},
+	{"425", 425, keyScopeBackend, "Too Early", ingtypes.BackHTTPResponse425, ""},
+	{"429", 429, keyScopeBackend, "Too Many Requests", ingtypes.BackHTTPResponse429, ""},
+	{"500", 500, keyScopeBackend, "Internal Server Error", ingtypes.BackHTTPResponse500, ""},
+	{"501", 501, keyScopeBackend, "Not Implemented", ingtypes.BackHTTPResponse501, ""},
+	{"502", 502, keyScopeBackend, "Bad Gateway", ingtypes.BackHTTPResponse502, ""},
+	{"503", 503, keyScopeBackend, "Service Unavailable", ingtypes.BackHTTPResponse503, ""},
+	{"504", 504, keyScopeBackend, "Gateway Timeout", ingtypes.BackHTTPResponse504, ""},
 }
 
-func (c *updater) buildGlobalCustomResponses(d *globalData) {
-	var haResponses []hatypes.HTTPResponse
-	var luaResponses []hatypes.HTTPResponse
+func (c *updater) buildHTTPResponses(id string, mapper *Mapper, scope keyScope) hatypes.HTTPResponses {
+	var haResponses, luaResponses []hatypes.HTTPResponse
 	for _, data := range customHTTPResponses {
+		if scope != keyScopeGlobal && data.scope != scope {
+			continue
+		}
 		var response *hatypes.HTTPResponse
 		var err error
-		if content := d.mapper.Get(data.key).Value; content != "" {
-			response, err = parseHeadAndBody(content)
+		if content := mapper.Get(data.key); content.Value != "" {
+			response, err = parseHeadAndBody(content.Value)
 			if err != nil {
-				c.logger.Warn("ignoring '%s' due to a malformed response: %v", data.key, err)
+				c.logger.Warn("ignoring '%s' on %s due to a malformed response: %s", data.key, content.Source.String(), err.Error())
 			}
 		}
-		if data.def != "" {
+		if scope == keyScopeGlobal && data.def != "" {
 			// there is a default value, so a valid response should
 			// always be provided -- used by Lua script based responses
 			if response == nil || err != nil {
@@ -671,8 +713,15 @@ func (c *updater) buildGlobalCustomResponses(d *globalData) {
 			luaResponses = append(luaResponses, *response)
 		}
 	}
-	d.global.CustomHTTPHAResponses = haResponses
-	d.global.CustomHTTPLuaResponses = luaResponses
+	var res hatypes.HTTPResponses
+	if len(haResponses) > 0 || len(luaResponses) > 0 {
+		res = hatypes.HTTPResponses{
+			ID:      id,
+			HAProxy: haResponses,
+			Lua:     luaResponses,
+		}
+	}
+	return res
 }
 
 var statusCodeRegex = regexp.MustCompile(`^([0-9]{3})( [A-Za-z ]+)?$`)

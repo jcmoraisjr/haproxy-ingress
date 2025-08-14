@@ -51,7 +51,7 @@ type Cache interface {
 	GetControllerPodList() ([]api.Pod, error)
 	GetTerminatingPods(service *api.Service, track []TrackingRef) ([]*api.Pod, error)
 	GetPod(podName string) (*api.Pod, error)
-	GetPodNamespacedName() types.NamespacedName
+	GetControllerPod() types.NamespacedName
 	GetTLSSecretPath(defaultNamespace, secretName string, track []TrackingRef) (CrtFile, error)
 	GetCASecretPath(defaultNamespace, secretName string, track []TrackingRef) (ca, crl File, err error)
 	GetDHSecretPath(defaultNamespace, secretName string) (File, error)

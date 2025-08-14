@@ -70,8 +70,8 @@ func NewFramework(ctx context.Context, t *testing.T, o ...options.Framework) *fr
 	require.NoError(t, err)
 
 	major, minor, full := haproxyVersion(t)
-	if major < 2 || (major == 2 && minor < 2) {
-		require.Fail(t, "unsupported haproxy version", "need haproxy 2.2 or newer, found %s", full)
+	if major < 2 || (major == 2 && minor < 4) {
+		require.Fail(t, "unsupported haproxy version", "need haproxy 2.4 or newer, found %s", full)
 	}
 	t.Logf("using haproxy %s\n", full)
 
@@ -203,6 +203,7 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 	opt.PublishService = PublishSvcName
 	opt.ConfigMap = "default/ingress-controller"
 	os.Setenv("POD_NAMESPACE", "default")
+	os.Setenv("POD_NAME", "haproxy-ingress")
 	ctx, cancel := context.WithCancel(ctx)
 	cfg, err := ctrlconfig.CreateWithConfig(ctx, f.config, opt)
 	require.NoError(t, err)
@@ -249,7 +250,11 @@ func (*framework) Request(ctx context.Context, t *testing.T, method, host, path 
 	} else {
 		url = fmt.Sprintf("http://127.0.0.1:%d", TestPortHTTP)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, url, nil)
+	var reqBody io.Reader
+	if opt.Body != "" {
+		reqBody = strings.NewReader(opt.Body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, url, reqBody)
 	require.NoError(t, err)
 	req.Host = host
 	req.URL.Path = path
@@ -311,10 +316,10 @@ func (*framework) Request(ctx context.Context, t *testing.T, method, host, path 
 		require.NoError(t, err)
 	}
 	require.NotNil(t, res, "request closure should reassign the response")
-	body, err := io.ReadAll(res.Body)
+	resBody, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	t.Logf("response body:\n%s\n", body)
-	strbody := string(body)
+	t.Logf("response body:\n%s\n", resBody)
+	strbody := string(resBody)
 	return Response{
 		HTTPResponse: res,
 		Body:         strbody,

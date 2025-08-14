@@ -137,13 +137,17 @@ func (c *c) IsValidIngress(ing *networking.Ingress) bool {
 	// check if ingress `hasClass` and, if so, if it's valid `fromClass` perspective
 	var hasClass, fromClass bool
 	if className := ing.Spec.IngressClassName; className != nil {
-		hasClass = true
-		if ingClass, err := c.GetIngressClass(*className); ingClass != nil {
-			fromClass = c.IsValidIngressClass(ingClass)
-		} else if err != nil {
-			c.log.Error(err, "error reading IngressClass", "ingressclass", *className)
+		if c.config.DisableIngressClassAPI {
+			c.log.Info("ignored ingress validation using IngressClass: IngressClass API is disabled", "ingress", ing.Namespace+"/"+ing.Name, "ingressclass", *className)
 		} else {
-			c.log.Info("IngressClass not found", "ingressclass", *className)
+			hasClass = true
+			if ingClass, err := c.GetIngressClass(*className); ingClass != nil {
+				fromClass = c.IsValidIngressClass(ingClass)
+			} else if err != nil {
+				c.log.Error(err, "error reading IngressClass", "ingressclass", *className)
+			} else {
+				c.log.Info("IngressClass not found", "ingressclass", *className)
+			}
 		}
 	}
 
@@ -441,11 +445,11 @@ func (c *c) GetNamespace(name string) (*api.Namespace, error) {
 
 func (c *c) GetControllerPodList() ([]api.Pod, error) {
 	// read controller's pod - we need the pod's template labels to find all the other pods
-	if c.config.PodName == "" {
+	if c.config.ControllerPod.Name == "" {
 		return nil, fmt.Errorf("POD_NAME envvar was not configured")
 	}
 	pod := api.Pod{}
-	if err := c.client.Get(c.ctx, types.NamespacedName{Namespace: c.config.PodNamespace, Name: c.config.PodName}, &pod); err != nil {
+	if err := c.client.Get(c.ctx, c.config.ControllerPod, &pod); err != nil {
 		return nil, err
 	}
 
@@ -459,7 +463,7 @@ func (c *c) GetControllerPodList() ([]api.Pod, error) {
 	podList := api.PodList{}
 	if err := c.client.List(c.ctx, &podList, &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(podLabels),
-		Namespace:     c.config.PodNamespace,
+		Namespace:     c.config.ControllerPod.Namespace,
 	}); err != nil {
 		return nil, err
 	}
@@ -511,8 +515,8 @@ func (c *c) GetPod(podName string) (*api.Pod, error) {
 	return &pod, err
 }
 
-func (c *c) GetPodNamespacedName() types.NamespacedName {
-	return types.NamespacedName{Namespace: c.config.PodNamespace, Name: c.config.PodName}
+func (c *c) GetControllerPod() types.NamespacedName {
+	return c.config.ControllerPod
 }
 
 var contentProtocolRegex = regexp.MustCompile(`^([a-z]+)://(.*)$`)

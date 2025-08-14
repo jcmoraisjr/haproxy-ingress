@@ -237,6 +237,26 @@ func (b *Backends) BuildUsedAuthBackends() map[string]bool {
 	return usedNames
 }
 
+func (b *Backends) BuildHTTPResponses() (responses []HTTPResponses) {
+	// TODO this should be a bit noisy on deployments having tens of thousands of backends.
+	// Cache? Need to handle partial update. Leave it simple? Make at least some performance tests.
+	for _, backend := range b.items {
+		res := &backend.CustomHTTPResponses
+		if len(res.HAProxy) > 0 || len(res.Lua) > 0 {
+			responses = append(responses, HTTPResponses{
+				ID:      res.ID,
+				HAProxy: res.HAProxy,
+				Lua:     res.Lua,
+			})
+		}
+	}
+	// predictable response
+	sort.Slice(responses, func(i, j int) bool {
+		return responses[i].ID < responses[j].ID
+	})
+	return responses
+}
+
 // AcquireBackend ...
 func (b *Backends) AcquireBackend(namespace, name, port string) *Backend {
 	if backend := b.FindBackend(namespace, name, port); backend != nil {
@@ -262,7 +282,7 @@ func (b *Backends) AcquireAuthBackend(ipList []string, port int, hostname string
 		name := fmt.Sprintf("backend%03d", len(b.authBackends)+1)
 		backend = b.AcquireBackend("_auth", name, strconv.Itoa(port))
 		if hostname != "" {
-			backend.CustomConfig = []string{"http-request set-header Host " + hostname}
+			backend.CustomConfigLate = []string{"http-request set-header Host " + hostname}
 		}
 		for _, ip := range ipList {
 			_ = backend.AcquireEndpoint(ip, port, "")

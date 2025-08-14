@@ -325,7 +325,7 @@ The table below describes all supported configuration keys.
 | [`backend-protocol`](#backend-protocol)              | [h1\|h2\|h1-ssl\|h2-ssl]                | Backend | `h1`               |
 | [`backend-server-naming`](#backend-server-naming)    | [sequence\|ip\|pod]                     | Backend | `sequence`         |
 | [`backend-server-slots-increment`](#dynamic-scaling) | number of slots                         | Backend | `1`                |
-| [`balance-algorithm`](#balance-algorithm)            | algorithm name                          | Backend | `roundrobin`       |
+| [`balance-algorithm`](#balance-algorithm)            | algorithm name                          | Backend | `random(2)`        |
 | [`bind-fronting-proxy`](#bind)                       | ip + port                               | Global  |                    |
 | [`bind-http`](#bind)                                 | ip + port                               | Global  |                    |
 | [`bind-https`](#bind)                                | ip + port                               | Global  |                    |
@@ -379,6 +379,8 @@ The table below describes all supported configuration keys.
 | [`drain-support-redispatch`](#drain-support)         | [true\|false]                           | Global  | `true`             |
 | [`dynamic-scaling`](#dynamic-scaling)                | [true\|false]                           | Backend | `true`             |
 | [`external-has-lua`](#external)                      | [true\|false]                           | Global  | `false`            |
+| [`fcgi-app`](#fastcgi)                               | fcgi-app section name                   | Backend |                    |
+| [`fcgi-enabled-apps`](#fastcgi)                      | comma-separated list of names           | Global  | `*`                |
 | [`forwardfor`](#forwardfor)                          | [add\|ignore\|ifmissing]                | Global  | `add`              |
 | [`fronting-proxy-port`](#fronting-proxy-port)        | port number                             | Global  | 0 (do not listen)  |
 | [`groupname`](#security)                             | haproxy group name                      | Global  | `haproxy`          |
@@ -398,7 +400,7 @@ The table below describes all supported configuration keys.
 | [`http-header-match-regex`](#http-match)             | header name and value, regex match      | Path    |                    |
 | [`http-log-format`](#log-format)                     | http log format                         | Global  | HAProxy default log format |
 | [`http-port`](#bind-port)                            | port number                             | Global  | `80`               |
-| [`http-response-<code>`](#http-response)             | response output                         | Global  |                    |
+| [`http-response-<code>`](#http-response)             | response output                         | vary    |                    |
 | [`http-response-prometheus-root`](#http-response)    | response output                         | Global  |                    |
 | [`https-log-format`](#log-format)                    | https(tcp) log format\|`default`        | Global  | do not log         |
 | [`https-port`](#bind-port)                           | port number                             | Global  | `443`              |
@@ -922,7 +924,7 @@ See also:
 Defines the HTTP protocol version of the backend. Note that HTTP/2 is only supported if HTX is enabled.
 A case insensitive match is used, so either `h1` or `H1` configures HTTP/1 protocol. A non SSL/TLS
 configuration does not overrides [secure-backends](#secure-backend), so `h1` and secure-backends `true`
-will still configures SSL/TLS.
+will still configure SSL/TLS.
 
 Options:
 
@@ -930,11 +932,16 @@ Options:
 * `h1-ssl`: configures HTTP/1 over SSL/TLS. `https` is an alias to `h1-ssl`.
 * `h2`: configures HTTP/2 protocol. `grpc` is an alias to `h2`.
 * `h2-ssl`: configures HTTP/2 over SSL/TLS. `grpcs` is an alias to `h2-ssl`.
+* `fcgi`: since v0.16 - configures FastCGI protocol.
+* `fcgi-ssl`: since v0.16 - configures FastCGI over SSL/TLS.
+
+FastCGI protocol needs a reference to valid haproxy's fcgi-app section via [`fcgi-app`](#fastcgi) configuration key, either inheriting from the global ConfigMap or via annotation.
 
 See also:
 
 * [use-htx](#use-htx) configuration key to enable HTTP/2 backends.
 * [secure-backend](#secure-backend) configuration keys to configure optional client certificate and certificate authority bundle of SSL/TLS connections.
+* [FastCGI](#fastcgi) configuration keys.
 * https://docs.haproxy.org/2.4/configuration.html#5.2-proto
 
 ---
@@ -971,15 +978,17 @@ Server IDs can't dynamically updated, so if this option is enabled, adding or re
 
 ### Balance algorithm
 
-| Configuration key   | Scope     | Default      | Since |
-|---------------------|-----------|--------------|-------|
-| `balance-algorithm` | `Backend` | `roundrobin` |       |
+| Configuration key   | Scope     | Default     | Since |
+|---------------------|-----------|-------------|-------|
+| `balance-algorithm` | `Backend` | `random(2)` |       |
 
-Defines a valid HAProxy load balancing algorithm. The default value is `roundrobin`.
+Defines a valid HAProxy load balancing algorithm. Since v0.16 the default value is `random(2)`, also known as the Power of Two Random Choices.
 
 See also:
 
 * https://docs.haproxy.org/2.4/configuration.html#4-balance
+* https://www.mail-archive.com/haproxy@formilux.org/msg46011.html
+* https://www.eecs.harvard.edu/~michaelm/postscripts/handbook2001.pdf
 
 ---
 
@@ -1223,6 +1232,8 @@ See also:
 | Configuration key       | Scope     | Default  | Since |
 |-------------------------|-----------|----------|-------|
 | `config-backend`        | `Backend` |          |       |
+| `config-backend-early`  | `Backend` |          | v0.16 |
+| `config-backend-late`   | `Backend` |          | v0.16 |
 | `config-defaults`       | `Global`  |          | v0.8  |
 | `config-frontend`       | `Global`  |          |       |
 | `config-frontend-early` | `Global`  |          | v0.14 |
@@ -1237,7 +1248,9 @@ See also:
 Add HAProxy configuration snippet to the configuration file. Use multiline content
 to add more than one line of configuration.
 
-* `config-backend`: Adds a configuration snippet to a HAProxy backend section.
+* `config-backend`: Adds a configuration snippet to a HAProxy backend section, alias for `config-backend-late`.
+* `config-backend-early`: Adds a configuration snippet to a HAProxy backend section, before any builtin logic.
+* `config-backend-late`: Adds a configuration snippet to a HAProxy backend section, same as `config-backend`.
 * `config-defaults`: Adds a configuration snippet to the end of the HAProxy defaults section.
 * `config-frontend`: Adds a configuration snippet to the HTTP and HTTPS frontend sections, alias for `config-frontend-late`.
 * `config-frontend-early`: Adds a configuration snippet to the HTTP and HTTPS frontend sections, before any builtin logic.
@@ -1318,6 +1331,20 @@ Annotations:
         http-request set-var(txn.path) path
         http-request cache-use icons if { var(txn.path) -m end .ico }
         http-response cache-store icons if { var(txn.path) -m end .ico }
+```
+
+```yaml
+    annotations:
+      haproxy-ingress.github.io/config-backend-early: |
+        stick-table type ip size 100k expire 1m store http_req_rate(10s)
+        http-request track-sc1 src
+        http-request deny if { sc1_http_req_rate gt 100 } # average of 10rps per source IP, over the last 10s
+```
+
+```yaml
+    annotations:
+      haproxy-ingress.github.io/config-backend-late: |
+        http-request deny if { path /internal }
 ```
 
 ```yaml
@@ -1569,6 +1596,42 @@ See also:
 
 ---
 
+### FastCGI
+
+| Configuration key   | Scope     | Default | Since |
+|---------------------|-----------|---------|-------|
+| `fcgi-app`          | `Backend` |         | v0.16 |
+| `fcgi-enabled-apps` | `Global`  | `*`     | v0.16 |
+
+Configures FastCGI applications.
+
+* `fcgi-enabled-apps`: Comma separated list of haproxy's fcgi-app sections already declared via `config-sections` configuration key. Only these app identifiers are allowed to be used by backends. If ommited, defaults to allow all configured fcgi-app sections.
+* `fcgi-app`: Defines the haproxy's fcgi-app section a backend should use. It must be one of the apps in `fcgi-enabled-apps` if configured, or any of the declared ones in `config-sections` otherwise. `fcgi-app` is a mandatory configuration if fcgi server protocol is used, either declaring as an annotation along with the protocol itself, or as a global configuration that should be inherited by all FastCGI backends.
+
+FastCGI related configurations are only used on backends whose server protocol is configured as fcgi, they are ignored otherwise.
+
+Currently there is no helper to configure the haproxy's fcgi-app section, it should be done via the global [`config-sections`](#configuration-snippet) configuration key. Configure as much fcgi-app sections as needed in the same key. See an example below:
+
+```yaml
+    config-sections: |
+      fcgi-app app1
+          log-stderr global
+          docroot /var/www/app1
+          index index.php
+      fcgi-app app2
+          log-stderr global
+          docroot /var/www/app2
+          index index.php
+      ... (other custom haproxy sections)
+```
+
+See also:
+
+* [`backend-protocol`](#backend-protocol) configuration key.
+* https://docs.haproxy.org/2.4/configuration.html#10
+
+---
+
 ### Forwardfor
 
 | Configuration key            | Scope     | Default                    | Since   |
@@ -1775,17 +1838,17 @@ See also:
 
 | Configuration key               | Scope    | Default | Since |
 |---------------------------------|----------|---------|-------|
-| `http-response-<code>`          | `Global` |         | v0.14 |
+| `http-response-<code>`          | vary     |         | v0.14 |
 | `http-response-prometheus-root` | `Global` |         | v0.14 |
 
 Overwrites the default response payload for all the HAProxy's generated HTTP responses.
 
-* `http-response-<code>`: represents all the payload of HAProxy or HAProxy Ingress generated HTTP responses. Change `<code>` to one of the supported HTTP status code, see Supported codes below.
-* `http-response-prometheus-root`: response used on requests sent to the root context of the prometheus exporter port.
+* `http-response-<code>`: Represents all the payload of HAProxy or HAProxy Ingress generated HTTP responses. Used to be a global option up to v0.15, since v0.16 their scope vary depending on the status code. Change `<code>` to one of the supported HTTP status code. See Supported codes below.
+* `http-response-prometheus-root`: Response used on requests sent to the root context of the prometheus exporter port.
 
 **Supported codes**
 
-The following list has all the HTTP status codes supported by the controller:
+The following list has all the HTTP status codes supported by the controller, as well as the scope it is applied:
 
 {{< alert title="Note" >}}
 All the overwrites refer to HAProxy or HAProxy Ingress generated responses, e.g. a 403 response overwrite will not change a 403 response generated by a backend server, but instead only 403 responses that HAProxy generates itself, such as when an allow list rule denies a request to reach a backend server.
@@ -1793,28 +1856,28 @@ All the overwrites refer to HAProxy or HAProxy Ingress generated responses, e.g.
 
 > All descriptions with `[haproxy]` refers to internal HAProxy responses, described in the [HAProxy documentation](https://docs.haproxy.org/2.4/configuration.html#1.3.1) or in the [MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status). All the others are handled and issued by HAProxy Ingress configurations.
 
-| Code  | Reason | Description |
-|-------|--------|-------------|
-| `200` | OK | `[haproxy]` |
-| `400` | Bad Request | `[haproxy]` |
-| `401` | Unauthorized | `[haproxy]` |
-| `403` | Forbidden | `[haproxy]` |
-| `404` | Not Found | The requested host and path was not found, the `--default-backend-service` command-line is not used and there is no ingress configured as the default backend with a matching path. |
-| `405` | Method Not Allowed | `[haproxy]` |
-| `407` | Proxy Authentication Required | `[haproxy]` |
-| `408` | Request Timeout | `[haproxy]` |
-| `410` | Gone | `[haproxy]` |
-| `413` | Payload Too Large | A request is bigger than specified in the `proxy-body-size` configuration key. |
-| `421` | Misdirected Request | Incoming SNI was used to match a hostname and the Host header has a distinct value. |
-| `425` | Too Early | `[haproxy]` |
-| `429` | Too Many Requests | `[haproxy]` |
-| `495` | SSL Certificate Error | An invalid certificate was used on a mTLS connection. |
-| `496` | SSL Certificate Required | A certificate wasn't used on a mTLS connection but a certificate is mandatory. |
-| `500` | Internal Server Error | `[haproxy]` |
-| `501` | Not Implemented | `[haproxy]` |
-| `502` | Bad Gateway | `[haproxy]` |
-| `503` | Service Unavailable | `[haproxy]` |
-| `504` | Gateway Timeout | `[haproxy]` |
+| Code  | Scope     | Reason | Description |
+|-------|-----------|--------|-------------|
+| `200` | `Backend` | OK | `[haproxy]` |
+| `400` | `Backend` | Bad Request | `[haproxy]` |
+| `401` | `Backend` | Unauthorized | `[haproxy]` |
+| `403` | `Backend` | Forbidden | `[haproxy]` |
+| `404` | `Global`  | Not Found | Request does not match a host and path, and neither `--default-backend-service`, nor ingress default backend or root path was configured. |
+| `405` | `Backend` | Method Not Allowed | `[haproxy]` |
+| `407` | `Backend` | Proxy Authentication Required | `[haproxy]` |
+| `408` | `Backend` | Request Timeout | `[haproxy]` |
+| `410` | `Backend` | Gone | `[haproxy]` |
+| `413` | `Backend` | Payload Too Large | A request is bigger than specified in the `proxy-body-size` configuration key. |
+| `421` | `Host`    | Misdirected Request | Incoming SNI was used to match a hostname and the Host header has a distinct value. |
+| `425` | `Backend` | Too Early | `[haproxy]` |
+| `429` | `Backend` | Too Many Requests | `[haproxy]` |
+| `495` | `Host`    | SSL Certificate Error | An invalid certificate was used on a mTLS connection. |
+| `496` | `Host`    | SSL Certificate Required | A certificate wasn't used on a mTLS connection but a certificate is mandatory. |
+| `500` | `Backend` | Internal Server Error | `[haproxy]` |
+| `501` | `Backend` | Not Implemented | `[haproxy]` |
+| `502` | `Backend` | Bad Gateway | `[haproxy]` |
+| `503` | `Backend` | Service Unavailable | `[haproxy]` |
+| `504` | `Backend` | Gateway Timeout | `[haproxy]` |
 
 **Syntax**
 

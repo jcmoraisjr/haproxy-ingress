@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/kylelemons/godebug/diff"
+	"github.com/stretchr/testify/require"
 
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types/helper_test"
@@ -1017,6 +1018,16 @@ d1.local#/ path01`,
 		},
 		{
 			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
+				b.Server.FastCGIApp = "app1"
+				b.Server.Protocol = "fcgi"
+			},
+			srvsuffix: "proto fcgi",
+			expected: `
+    filter fcgi-app app1
+    use-fcgi-app app1`,
+		},
+		{
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
 				link1 := hatypes.CreatePathLink("/app1", hatypes.MatchPrefix).
 					WithHeadersMatch(hatypes.HTTPHeaderMatch{{Name: "x-user", Value: "myusr1"}})
 				link2 := hatypes.CreatePathLink("/app2", hatypes.MatchPrefix).
@@ -1078,11 +1089,22 @@ frontend _front_https
 		},
 		{
 			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
-				b.ModeTCP = true
-				b.CustomConfig = []string{"## custom for TCP backend"}
+				b.CustomConfigEarly = []string{"## early custom for HTTP backend"}
+				b.CustomConfigLate = []string{"## late custom for HTTP backend"}
 			},
 			expected: `
-    ## custom for TCP backend`,
+    ## early custom for HTTP backend
+    ## late custom for HTTP backend`,
+		},
+		{
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
+				b.ModeTCP = true
+				b.CustomConfigEarly = []string{"## early custom for TCP backend"}
+				b.CustomConfigLate = []string{"## late custom for TCP backend"}
+			},
+			expected: `
+    ## early custom for TCP backend
+    ## late custom for TCP backend`,
 		},
 	}
 	for _, test := range testCases {
@@ -1309,9 +1331,9 @@ global
     maxconn 2000
     hard-stop-after 15m
     lua-prepend-path /etc/haproxy/lua/?.lua
-    lua-load /etc/haproxy/lua/auth-request.lua
-    lua-load /etc/haproxy/lua/services.lua
-    lua-load /etc/haproxy/lua/responses.lua
+    lua-load-per-thread /etc/haproxy/lua/auth-request.lua
+    lua-load-per-thread /etc/haproxy/lua/services.lua
+    lua-load-per-thread /etc/haproxy/lua/responses.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -1368,9 +1390,9 @@ global
     maxconn 2000
     hard-stop-after 15m
     lua-prepend-path /etc/haproxy/lua/?.lua
-    lua-load /etc/haproxy/lua/auth-request.lua
-    lua-load /etc/haproxy/lua/services.lua
-    lua-load /etc/haproxy/lua/responses.lua
+    lua-load-per-thread /etc/haproxy/lua/auth-request.lua
+    lua-load-per-thread /etc/haproxy/lua/services.lua
+    lua-load-per-thread /etc/haproxy/lua/responses.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -1434,8 +1456,8 @@ global
     maxconn 2000
     hard-stop-after 15m
     mworker-max-reloads 20
-    lua-load /etc/haproxy/lua/services.lua
-    lua-load /etc/haproxy/lua/responses.lua
+    lua-load-per-thread /etc/haproxy/lua/services.lua
+    lua-load-per-thread /etc/haproxy/lua/responses.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -1565,9 +1587,9 @@ global
     maxconn 2000
     hard-stop-after 15m
     lua-prepend-path /etc/haproxy/lua/?.lua
-    lua-load /etc/haproxy/lua/auth-request.lua
-    lua-load /etc/haproxy/lua/services.lua
-    lua-load /etc/haproxy/lua/responses.lua
+    lua-load-per-thread /etc/haproxy/lua/auth-request.lua
+    lua-load-per-thread /etc/haproxy/lua/services.lua
+    lua-load-per-thread /etc/haproxy/lua/responses.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -3809,7 +3831,8 @@ func TestCustomResponseLua(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	c.config.global.CustomHTTPLuaResponses = []hatypes.HTTPResponse{
+	c.config.global.CustomHTTPResponses.ID = hatypes.HTTPResponseGlobalID
+	c.config.global.CustomHTTPResponses.Lua = []hatypes.HTTPResponse{
 		{
 			Name: "send-404",
 			Headers: []hatypes.HTTPHeader{
@@ -3819,6 +3842,26 @@ func TestCustomResponseLua(t *testing.T) {
 			Body:         []string{"<p>", "  404 Not Found", "</p>"},
 			StatusCode:   404,
 			StatusReason: "Not Found",
+		},
+		{
+			Name: "send-413",
+			Headers: []hatypes.HTTPHeader{
+				{Name: "content-length", Value: "36"},
+				{Name: "server", Value: "haproxy"},
+			},
+			Body:         []string{"<p>", "  413 Payload Too Large", "</p>"},
+			StatusCode:   413,
+			StatusReason: "Payload Too Large",
+		},
+		{
+			Name: "send-495",
+			Headers: []hatypes.HTTPHeader{
+				{Name: "content-length", Value: "36"},
+				{Name: "server", Value: "haproxy"},
+			},
+			Body:         []string{"<p>", "  495 SSL Certificate Error", "</p>"},
+			StatusCode:   495,
+			StatusReason: "SSL Certificate Error",
 		},
 		{
 			Name: "send-496",
@@ -3832,14 +3875,83 @@ func TestCustomResponseLua(t *testing.T) {
 		},
 	}
 
+	host1 := c.config.hosts.AcquireHost("server1.local")
+	host1.TLS.CAFilename = "/var/haproxy/ssl/ca/ca.pem" // adds mTLS, all host based lua services are being called from there
+	host1.CustomHTTPResponses.ID = host1.Hostname
+	host1.CustomHTTPResponses.Lua = []hatypes.HTTPResponse{
+		{
+			Name:         "send-495",
+			Headers:      []hatypes.HTTPHeader{{Name: "content-length", Value: "9"}},
+			Body:         []string{"crt error"},
+			StatusCode:   495,
+			StatusReason: "SSL Certificate Error",
+		},
+	}
+
+	backend1 := c.config.Backends().AcquireBackend("default", "server1", "8080")
+	path1 := host1.AddPath(backend1, "/", hatypes.MatchBegin)
+	backend1.FindBackendPath(path1.Link).MaxBodySize = 1024
+	backend1.CustomHTTPResponses.ID = backend1.ID
+	backend1.CustomHTTPResponses.Lua = []hatypes.HTTPResponse{
+		{
+			Name:         "send-413",
+			Headers:      []hatypes.HTTPHeader{{Name: "content-length", Value: "13"}},
+			Body:         []string{"large payload"},
+			StatusCode:   413,
+			StatusReason: "Payload Too Large",
+		},
+	}
+	backend2 := c.config.Backends().AcquireBackend("default", "server2", "8080")
+	backend2.CustomHTTPResponses.ID = backend2.ID
+	backend2.CustomHTTPResponses.Lua = []hatypes.HTTPResponse{
+		{
+			Name:         "send-413",
+			Headers:      []hatypes.HTTPHeader{{Name: "content-length", Value: "38"}},
+			Body:         []string{"request to server2 has a large payload"},
+			StatusCode:   413,
+			StatusReason: "Payload Too Large",
+		},
+	}
+	backend3 := c.config.Backends().AcquireBackend("default", "server3", "8080")
+	backend3.CustomHTTPResponses.ID = backend3.ID
+	backend3.CustomHTTPResponses.HAProxy = []hatypes.HTTPResponse{
+		{
+			Name:         "503",
+			Headers:      []hatypes.HTTPHeader{{Name: "content-length", Value: "22"}},
+			Body:         []string{"<strong>error</strong>"},
+			StatusCode:   503,
+			StatusReason: "Service Unavailable",
+		},
+	}
+
 	c.Update()
 	c.checkConfig(`
 <<global>>
 <<defaults>>
+backend default_server1_8080
+    mode http
+    http-request set-var(txn.lua_scope) str(default_server1_8080)
+    http-request use-service lua.send-413 if { req.body_size,sub(1024) gt 0 }
+backend default_server2_8080
+    mode http
+backend default_server3_8080
+    mode http
+    errorfile 503 /etc/haproxy/errorfiles/503-default_server3_8080.http
 <<backends-default>>
-<<frontend-http-clean>>
+<<frontend-http>>
     default_backend _error404
-<<frontend-https-clean>>
+frontend _front_https
+    mode http
+    bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_bind_crt.list ca-ignore-err all crt-ignore-err all
+    <<set-req-base>>
+    http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map)
+    <<https-headers>>
+    acl tls-has-crt ssl_c_used
+    acl tls-has-invalid-crt ssl_c_verify gt 0
+    http-request set-var(txn.lua_scope) var(req.host)
+    http-request use-service lua.send-421 if tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
+    use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
+    use_backend %[var(req.snibackend)] if { var(req.snibackend) -m found }
     default_backend _error404
 <<support>>
 `)
@@ -3854,6 +3966,56 @@ core.register_service("send-404", "http", function(applet)
     applet:set_status(404, "Not Found")
     applet:add_header("content-length", "25")
     applet:add_header("server", "haproxy")
+    applet:start_response()
+    applet:send(response)
+end)
+core.register_service("send-413", "http", function(applet)
+    local scope = applet:get_var("txn.lua_scope")
+    local response = ""
+    if scope == "default_server1_8080" then
+        response = [==[
+large payload
+]==]
+        applet:set_status(413, "Payload Too Large")
+        applet:add_header("content-length", "13")
+    elif scope == "default_server2_8080" then
+        response = [==[
+request to server2 has a large payload
+]==]
+        applet:set_status(413, "Payload Too Large")
+        applet:add_header("content-length", "38")
+    else
+        response = [==[
+<p>
+  413 Payload Too Large
+</p>
+]==]
+        applet:set_status(413, "Payload Too Large")
+        applet:add_header("content-length", "36")
+        applet:add_header("server", "haproxy")
+    end
+    applet:start_response()
+    applet:send(response)
+end)
+core.register_service("send-495", "http", function(applet)
+    local scope = applet:get_var("txn.lua_scope")
+    local response = ""
+    if scope == "server1.local" then
+        response = [==[
+crt error
+]==]
+        applet:set_status(495, "SSL Certificate Error")
+        applet:add_header("content-length", "9")
+    else
+        response = [==[
+<p>
+  495 SSL Certificate Error
+</p>
+]==]
+        applet:set_status(495, "SSL Certificate Error")
+        applet:add_header("content-length", "36")
+        applet:add_header("server", "haproxy")
+    end
     applet:start_response()
     applet:send(response)
 end)
@@ -3878,7 +4040,8 @@ func TestCustomResponseHAProxy(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	c.config.global.CustomHTTPHAResponses = []hatypes.HTTPResponse{
+	c.config.global.CustomHTTPResponses.ID = hatypes.HTTPResponseGlobalID
+	c.config.global.CustomHTTPResponses.HAProxy = []hatypes.HTTPResponse{
 		{
 			Name: "403",
 			Headers: []hatypes.HTTPHeader{
@@ -3910,6 +4073,25 @@ func TestCustomResponseHAProxy(t *testing.T) {
 		},
 	}
 
+	backend1 := c.config.backends.AcquireBackend("default", "server1", "8080")
+	backend1.CustomHTTPResponses.ID = backend1.ID
+	backend1.CustomHTTPResponses.HAProxy = []hatypes.HTTPResponse{
+		{
+			Name:         "403",
+			Headers:      []hatypes.HTTPHeader{{Name: "content-length", Value: "21"}},
+			Body:         []string{"forbidden on server1"},
+			StatusCode:   403,
+			StatusReason: "Forbidden",
+		},
+		{
+			Name:         "503",
+			Headers:      []hatypes.HTTPHeader{{Name: "content-length", Value: "18"}},
+			Body:         []string{"failure on server1"},
+			StatusCode:   503,
+			StatusReason: "Service Unavailable",
+		},
+	}
+
 	c.Update()
 	c.checkConfig(`
 <<global>>
@@ -3920,9 +4102,9 @@ defaults
     option dontlognull
     option http-server-close
     option http-keep-alive
-    errorfile 403 /etc/haproxy/errorfiles/403.http
-    errorfile 503 /etc/haproxy/errorfiles/503.http
-    errorfile 504 /etc/haproxy/errorfiles/504.http
+    errorfile 403 /etc/haproxy/errorfiles/403-global.http
+    errorfile 503 /etc/haproxy/errorfiles/503-global.http
+    errorfile 504 /etc/haproxy/errorfiles/504-global.http
     timeout client          50s
     timeout client-fin      50s
     timeout connect         5s
@@ -3932,6 +4114,10 @@ defaults
     timeout server          50s
     timeout server-fin      50s
     timeout tunnel          1h
+backend default_server1_8080
+    mode http
+    errorfile 403 /etc/haproxy/errorfiles/403-default_server1_8080.http
+    errorfile 503 /etc/haproxy/errorfiles/503-default_server1_8080.http
 <<backends-default>>
 <<frontend-http-clean>>
     default_backend _error404
@@ -3940,7 +4126,13 @@ defaults
 <<support>>
 `)
 
-	c.compareRawText("haproxy-403.http", c.readRawConfig(c.tempdir+"/errorfiles/403.http"),
+	c.compareRawText("haproxy-403-default_server1_8080.http", c.readRawConfig(c.tempdir+"/errorfiles/403-default_server1_8080.http"),
+		`HTTP/1.1 403 Forbidden
+content-length: 21
+
+forbidden on server1
+`)
+	c.compareRawText("haproxy-403-global.http", c.readRawConfig(c.tempdir+"/errorfiles/403-global.http"),
 		`HTTP/1.1 403 Forbidden
 content-length: 25
 server: haproxy
@@ -3949,7 +4141,13 @@ server: haproxy
   403 Forbidden
 </p>
 `)
-	c.compareRawText("haproxy-503.http", c.readRawConfig(c.tempdir+"/errorfiles/503.http"),
+	c.compareRawText("haproxy-503-default_server1_8080.http", c.readRawConfig(c.tempdir+"/errorfiles/503-default_server1_8080.http"),
+		`HTTP/1.1 503 Service Unavailable
+content-length: 18
+
+failure on server1
+`)
+	c.compareRawText("haproxy-503-global.http", c.readRawConfig(c.tempdir+"/errorfiles/503-global.http"),
 		`HTTP/1.1 503 Service Unavailable
 content-length: 35
 server: haproxy
@@ -3958,7 +4156,7 @@ server: haproxy
   503 Service Unavailable
 </p>
 `)
-	c.compareRawText("haproxy-504.http", c.readRawConfig(c.tempdir+"/errorfiles/504.http"),
+	c.compareRawText("haproxy-504-global.http", c.readRawConfig(c.tempdir+"/errorfiles/504-global.http"),
 		`HTTP/1.1 302 Found
 content-length: 0
 location: https://other.local
@@ -4608,9 +4806,9 @@ global
     log 127.0.0.1:1514 len 2048 format rfc3164 local0
     log-tag ingress
     lua-prepend-path /etc/haproxy/lua/?.lua
-    lua-load /etc/haproxy/lua/auth-request.lua
-    lua-load /etc/haproxy/lua/services.lua
-    lua-load /etc/haproxy/lua/responses.lua
+    lua-load-per-thread /etc/haproxy/lua/auth-request.lua
+    lua-load-per-thread /etc/haproxy/lua/services.lua
+    lua-load-per-thread /etc/haproxy/lua/responses.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -4682,10 +4880,10 @@ global
     maxconn 2000
     hard-stop-after 15m
     lua-prepend-path /etc/haproxy/lua/?.lua
-    lua-load /etc/haproxy/lua/auth-request.lua
-    lua-load /etc/haproxy/lua/services.lua
-    lua-load /etc/haproxy/lua/responses.lua
-    lua-load /etc/haproxy/lua/peers.lua
+    lua-load-per-thread /etc/haproxy/lua/auth-request.lua
+    lua-load-per-thread /etc/haproxy/lua/services.lua
+    lua-load-per-thread /etc/haproxy/lua/responses.lua
+    lua-load-per-thread /etc/haproxy/lua/peers.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256
@@ -5768,7 +5966,8 @@ INFO haproxy successfully reloaded (embedded daemon)`
 func (c *testConfig) Update() {
 	timer := utils.NewTimer(nil)
 	c.instance.AcmeUpdate()
-	_ = c.instance.HAProxyUpdate(timer)
+	err := c.instance.HAProxyUpdate(timer)
+	require.NoError(c.t, err)
 }
 
 func (c *testConfig) checkConfig(expected string) {
@@ -5785,9 +5984,9 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     maxconn 2000
     hard-stop-after 15m
     lua-prepend-path /etc/haproxy/lua/?.lua
-    lua-load /etc/haproxy/lua/auth-request.lua
-    lua-load /etc/haproxy/lua/services.lua
-    lua-load /etc/haproxy/lua/responses.lua
+    lua-load-per-thread /etc/haproxy/lua/auth-request.lua
+    lua-load-per-thread /etc/haproxy/lua/services.lua
+    lua-load-per-thread /etc/haproxy/lua/responses.lua
     ssl-dh-param-file /var/haproxy/tls/dhparam.pem
     ssl-default-bind-ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256
     ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256

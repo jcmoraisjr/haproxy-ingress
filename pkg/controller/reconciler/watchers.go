@@ -192,10 +192,10 @@ func (w *watchers) handlersCore() []*hdlr {
 				predicate.Funcs{
 					CreateFunc: func(e event.CreateEvent) bool {
 						// peers
-						return e.Object.GetNamespace() == w.cfg.PodNamespace
+						return e.Object.GetNamespace() == w.cfg.ControllerPod.Namespace
 					},
 					UpdateFunc: func(e event.UpdateEvent) bool {
-						if e.ObjectNew.GetNamespace() == w.cfg.PodNamespace {
+						if e.ObjectNew.GetNamespace() == w.cfg.ControllerPod.Namespace {
 							// peers
 							objOld := e.ObjectOld.(*api.Pod)
 							objNew := e.ObjectNew.(*api.Pod)
@@ -210,7 +210,7 @@ func (w *watchers) handlersCore() []*hdlr {
 }
 
 func (w *watchers) handlersIngress() []*hdlr {
-	return []*hdlr{
+	h := []*hdlr{
 		{
 			typ: &networking.Ingress{},
 			res: types.ResourceIngress,
@@ -252,7 +252,9 @@ func (w *watchers) handlersIngress() []*hdlr {
 				},
 			},
 		},
-		{
+	}
+	if !w.cfg.DisableIngressClassAPI {
+		h = append(h, &hdlr{
 			typ: &networking.IngressClass{},
 			res: types.ResourceIngressClass,
 			pr: []predicate.Predicate{
@@ -270,8 +272,9 @@ func (w *watchers) handlersIngress() []*hdlr {
 					},
 				},
 			},
-		},
+		})
 	}
+	return h
 }
 
 func (w *watchers) handlersGatewayv1alpha2() []*hdlr {

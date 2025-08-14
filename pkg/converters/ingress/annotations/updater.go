@@ -145,7 +145,7 @@ func (c *updater) splitDualCIDR(cidrlist *ConfigValue) (allow, deny []string) {
 
 func (c *updater) commonConfigPatterns() map[string]string {
 	return map[string]string{
-		"%[peers_local_table]": hatypes.PeersTableNamePrefix + c.cache.GetPodNamespacedName().Name,
+		"%[peers_local_table]": hatypes.PeersTableNamePrefix + c.cache.GetControllerPod().Name,
 	}
 }
 
@@ -184,6 +184,7 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	c.buildGlobalCustomResponses(d)
 	c.buildGlobalDNS(d)
 	c.buildGlobalDynamic(d)
+	c.buildGlobalFastCGI(d)
 	c.buildGlobalForwardFor(d)
 	c.buildGlobalHTTPStoHTTP(d)
 	c.buildGlobalModSecurity(d)
@@ -238,6 +239,7 @@ func (c *updater) UpdateHostConfig(host *hatypes.Host, mapper *Mapper) {
 	c.buildHostRedirect(data)
 	c.buildHostSSLPassthrough(data)
 	c.buildHostTLSConfig(data)
+	c.buildHostCustomResponses(data)
 }
 
 func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) {
@@ -257,6 +259,7 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) 
 	c.buildBackendBodySize(data)
 	c.buildBackendCors(data)
 	c.buildBackendCustomConfig(data)
+	c.buildBackendCustomResponses(data)
 	c.buildBackendDNS(data)
 	c.buildBackendDynamic(data)
 	c.buildBackendAgentCheck(data)
