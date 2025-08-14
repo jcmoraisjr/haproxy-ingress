@@ -2283,7 +2283,7 @@ The peers section, the shared tables and the aggregation script are ready to be 
     peers-table: "stick-table type ip size 100k expire 1m peers ingress store http_req_rate(10s)"
     config-frontend-early: |
       ...
-      http-request track-sc0 src table %[peers_local_table]
+      http-request track-sc0 src table %[peers_table_global]
       http-request deny if { src,lua.peers_sum(http_req_rate) gt 100 }
 ```
 
@@ -2299,7 +2299,7 @@ Useful notes:
 
 * Always use the same fetch sample, `src` in the example above, on tracking configuration and as the incoming value of the `lua.peers_sum` converter.
 * `lua.peers_sum` converter is only available if `peers-table` is configured.
-* HAProxy Ingress converts the literal `%[peers_local_table]` into the name of the correct local table, which should be a different one on every ingress instance. This option works on any configuration snippet, including the annotation based ones.
+* HAProxy Ingress converts the literal `%[peers_table_global]` into the name of the correct local table, which should be a different one on every ingress instance. This option works on any configuration snippet, including the annotation based ones.
 * `peers-table` configuration expects a fully configured stick-table, so the `peers` parameter should be added either to the automatically created one, or another one created manually.
 
 See also:

@@ -145,7 +145,7 @@ func (c *updater) splitDualCIDR(cidrlist *ConfigValue) (allow, deny []string) {
 
 func (c *updater) commonConfigPatterns() map[string]string {
 	return map[string]string{
-		"%[peers_local_table]": hatypes.PeersTableNamePrefix + c.cache.GetControllerPod().Name,
+		"%[peers_table_global]": hatypes.PeersTableNamePrefix + c.cache.GetControllerPod().Name,
 	}
 }
 

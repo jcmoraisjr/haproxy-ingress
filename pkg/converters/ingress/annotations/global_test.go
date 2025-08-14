@@ -325,7 +325,7 @@ func TestCustomConfigFrontendLate(t *testing.T) {
 		},
 		// 4
 		{
-			config:   "http-request track-sc0 src table %[peers_local_table]",
+			config:   "http-request track-sc0 src table %[peers_table_global]",
 			expected: []string{"http-request track-sc0 src table _peers_haproxy-ingress-srv1"},
 		},
 	}
