@@ -274,16 +274,13 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		Namespace: os.Getenv("POD_NAMESPACE"),
 		Name:      os.Getenv("POD_NAME"),
 	}
-	if controllerPod.Namespace == "" {
-		return nil, fmt.Errorf("POD_NAMESPACE envvar is a mandatory configuration")
-	}
-	if controllerPod.Name == "" {
-		return nil, fmt.Errorf("POD_NAME envvar is a mandatory configuration")
-	}
 
 	// we could `|| hasGateway[version...]` instead of `|| opt.WatchGateway` here,
 	// but we're choosing a consistent startup behavior despite of the cluster configuration.
 	election := opt.UpdateStatus || opt.AcmeServer || opt.WatchGateway
+	if election && controllerPod.Namespace == "" {
+		return nil, fmt.Errorf("POD_NAMESPACE envvar should be configured when --update-status=true, --acme-server=true, or --watch-gateway=true")
+	}
 	if election && opt.IngressClass == "" {
 		return nil, fmt.Errorf("--ingress-class should not be empty when --update-status=true, --acme-server=true, or --watch-gateway=true")
 	}
@@ -295,6 +292,10 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 			// backward compatibility behavior
 			electionID = opt.ElectionID + "-" + opt.IngressClass
 		}
+	}
+
+	if opt.UpdateStatus && controllerPod.Name == "" && opt.PublishService == "" && len(publishAddressHostnames)+len(publishAddressIPs) == 0 {
+		return nil, fmt.Errorf("one of --publish-service, --publish-address or POD_NAME envvar should be configured when --update-status=true")
 	}
 
 	acmeSecretKeyNamespaceName := opt.AcmeSecretKeyName
