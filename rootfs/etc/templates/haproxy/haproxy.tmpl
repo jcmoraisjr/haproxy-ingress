@@ -28,6 +28,9 @@
     {{- $fmaps := $frontend.Maps }}
     {{- $hosts := $cfg.Hosts }}
     {{- template "global" map $global }}
+    {{- if $global.Peers.Servers }}
+        {{- template "peers" map $global }}
+    {{- end }}
     {{- if $global.DNS.Resolvers }}
         {{- template "dnresolvers" map $global.DNS.Resolvers }}
     {{- end }}
@@ -61,6 +64,9 @@
 {{- define "global" }}
 {{- $global := .p1 }}
 global
+{{- with $global.Peers.LocalPeer.Name }}
+    localpeer {{ . }}
+{{- end }}
 {{- if $global.Master.IsMasterWorker }}
     master-worker{{ if not $global.Master.ExitOnFailure }} no-exit-on-failure{{ end }}
 {{- else }}
@@ -110,6 +116,9 @@ global
 {{- end }}
     lua-load-per-thread {{ $global.LocalFSPrefix }}/etc/haproxy/lua/services.lua
     lua-load-per-thread {{ $global.LocalFSPrefix }}/etc/haproxy/lua/responses.lua
+{{- if $global.Peers.Table }}
+    lua-load-per-thread {{ $global.LocalFSPrefix }}/etc/haproxy/lua/peers.lua
+{{- end }}
 {{- if $global.SSL.DHParam.Filename }}
     ssl-dh-param-file {{ $global.SSL.DHParam.Filename }}
 {{- else }}
@@ -192,6 +201,35 @@ defaults
     {{ $snippet }}
 {{- end }}
 {{- end }}{{/* define "global" */}}
+
+
+{{- define "peers" }}
+{{- $global := .p1 }}
+{{- $peers := $global.Peers }}
+
+  # # # # # # # # # # # # # # # # # # #
+# #
+#     Peers
+#
+peers {{ $peers.SectionName }}
+    bind {{ $peers.LocalPeer.Endpoint }}
+{{- range $snippet := $global.CustomPeers }}
+    {{ $snippet }}
+{{- end }}
+{{- range $server := $peers.Servers }}
+    server {{ $server.Name }}{{ if ne $peers.LocalPeer.Name $server.Name }} {{ $server.Endpoint }}{{ end }}
+{{- end }}
+
+{{- if $peers.Table }}
+
+# Local stick tables
+{{- range $server := $peers.Servers }}
+backend {{ $peers.TableNamePrefix }}{{ $server.Name }}
+    {{ $peers.Table }}
+{{- end }}
+{{- end }}
+
+{{- end }}
 
 
 {{- define "dnresolvers" }}

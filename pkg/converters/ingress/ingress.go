@@ -231,6 +231,18 @@ func (c *converter) syncPartial() {
 	c.haproxy.Backends().RemoveAll(dirtyBacks)
 	c.haproxy.Userlists().RemoveAll(dirtyUsers)
 	c.haproxy.AcmeData().Storages().RemoveAll(dirtyStorages)
+
+	// looking for controller pod changes, used by peers.
+	// missing a better tracking and global update approach.
+	ctrlNamespace := c.cache.GetControllerPod().Namespace + "/"
+	changedPods := c.changed.Links[convtypes.ResourcePod]
+	for _, pod := range changedPods {
+		if strings.HasPrefix(pod, ctrlNamespace) {
+			c.updater.UpdatePeers(c.haproxy, c.globalConfig)
+			break
+		}
+	}
+
 	c.logger.InfoV(2, "syncing %d host(s) and %d backend(s)", len(dirtyHosts), len(dirtyBacks))
 
 	// merge dirty and added ingress objects into a single list
@@ -1092,7 +1104,7 @@ func (c *converter) parseParameters(ingressClass *networking.IngressClass) *ingr
 		c.logger.Warn("unsupported Parameters' Kind on IngressClass '%s': %s", ingressClass.Name, parameters.Kind)
 		return nil
 	}
-	podNamespace := c.cache.GetPodNamespace()
+	podNamespace := c.cache.GetControllerPod().Namespace
 	if podNamespace == "" {
 		c.logger.Warn("need to configure POD_NAMESPACE to use ConfigMap on IngressClass '%s'", ingressClass.Name)
 		return nil

@@ -579,7 +579,7 @@ func (c *updater) buildBackendCustomConfig(d *backData) {
 }
 
 func (c *updater) generateBackendSnippet(config *ConfigValue) []string {
-	lines := utils.LineToSlice(config.Value)
+	lines := utils.PatternLineToSlice(c.commonConfigPatterns(), config.Value)
 	if len(lines) == 0 {
 		return nil
 	}
@@ -689,7 +689,11 @@ func (c *updater) buildBackendHeaders(d *backData) {
 	if headers.Value == "" {
 		return
 	}
-	for _, header := range utils.LineToSlice(headers.Value) {
+	pattern := map[string]string{
+		"%[service]":   d.backend.Name,
+		"%[namespace]": d.backend.Namespace,
+	}
+	for _, header := range utils.PatternLineToSlice(pattern, headers.Value) {
 		name, value, err := utils.SplitHeaderNameValue(header)
 		if err != nil {
 			c.logger.Warn("ignoring header on %s: %v", headers.Source, err)
@@ -698,9 +702,6 @@ func (c *updater) buildBackendHeaders(d *backData) {
 		if name == "" {
 			continue
 		}
-		// TODO this should use a structured type and a smart match/replace if growing a bit more
-		value = strings.ReplaceAll(value, "%[service]", d.backend.Name)
-		value = strings.ReplaceAll(value, "%[namespace]", d.backend.Namespace)
 		d.backend.Headers = append(d.backend.Headers, &hatypes.BackendHeader{
 			Name:  name,
 			Value: value,

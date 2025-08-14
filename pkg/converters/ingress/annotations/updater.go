@@ -32,6 +32,7 @@ import (
 // Updater ...
 type Updater interface {
 	UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mapper)
+	UpdatePeers(haproxyConfig haproxy.Config, mapper *Mapper)
 	UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *Mapper)
 	UpdateTCPHostConfig(tcpPort *hatypes.TCPServicePort, tcpHost *hatypes.TCPServiceHost, mapper *Mapper)
 	UpdateHostConfig(host *hatypes.Host, mapper *Mapper)
@@ -142,6 +143,12 @@ func (c *updater) splitDualCIDR(cidrlist *ConfigValue) (allow, deny []string) {
 	return allow, deny
 }
 
+func (c *updater) commonConfigPatterns() map[string]string {
+	return map[string]string{
+		"%[peers_table_global]": hatypes.PeersTableNamePrefix + c.cache.GetControllerPod().Name,
+	}
+}
+
 func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mapper) {
 	d := &globalData{
 		acmeData: haproxyConfig.AcmeData(),
@@ -182,6 +189,7 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	c.buildGlobalHTTPStoHTTP(d)
 	c.buildGlobalModSecurity(d)
 	c.buildGlobalPathTypeOrder(d)
+	c.buildGlobalPeers(d)
 	c.buildGlobalProc(d)
 	c.buildSecurity(d)
 	c.buildGlobalSSL(d)
@@ -190,8 +198,17 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	c.buildGlobalTimeout(d)
 }
 
+func (c *updater) UpdatePeers(haproxyConfig haproxy.Config, mapper *Mapper) {
+	c.buildGlobalPeers(&globalData{
+		global: haproxyConfig.Global(),
+		mapper: mapper,
+	})
+}
+
 func (c *updater) UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *Mapper) {
-	tcp.CustomConfig = utils.LineToSlice(mapper.Get(ingtypes.TCPConfigTCPService).Value)
+	if config := mapper.Get(ingtypes.TCPConfigTCPService).Value; config != "" {
+		tcp.CustomConfig = utils.PatternLineToSlice(c.commonConfigPatterns(), config)
+	}
 	tcp.LogFormat = mapper.Get(ingtypes.TCPTCPServiceLogFormat).Value
 	tcp.ProxyProt = mapper.Get(ingtypes.TCPTCPServiceProxyProto).Bool()
 }

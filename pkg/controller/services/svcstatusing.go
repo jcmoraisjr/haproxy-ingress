@@ -134,7 +134,7 @@ func (s *svcStatusIng) shutdown(ctx context.Context) {
 		s.log.Info("skipping status update due to --update-status-on-shutdown=false")
 		return
 	}
-	if podList, err := s.getControllerPodList(ctx); len(podList) > 1 {
+	if podList, err := s.cache.GetControllerPodList(); len(podList) > 1 {
 		s.log.Info(fmt.Sprintf("running %d controller replicas, leaving the status update to the next leader", len(podList)))
 		return
 	} else if err != nil {
@@ -202,7 +202,7 @@ func (s *svcStatusIng) syncCurrentLB(ctx context.Context) error {
 // getNodeIPs reads external node IP, or internal if
 // config.UseNodeInternalIP == true, from every controller pod.
 func (s *svcStatusIng) getNodeIPs(ctx context.Context) []string {
-	podList, err := s.getControllerPodList(ctx)
+	podList, err := s.cache.GetControllerPodList()
 	if err != nil {
 		s.log.Error(err, "failed reading the list of controller's pods")
 		return nil
@@ -242,21 +242,4 @@ func (s *svcStatusIng) getNodeIPs(ctx context.Context) []string {
 		}
 	}
 	return iplist
-}
-
-func (s *svcStatusIng) getControllerPodList(ctx context.Context) ([]api.Pod, error) {
-	if s.cfg.ControllerPodSelector == nil {
-		// POD_NAME envvar is a pre-requisite for pod selector
-		return nil, fmt.Errorf("cannot list controller pods, POD_NAME envvar was not configured")
-	}
-
-	// read all controller's pod
-	podList := api.PodList{}
-	if err := s.cli.List(ctx, &podList, &client.ListOptions{
-		LabelSelector: s.cfg.ControllerPodSelector,
-		Namespace:     s.cfg.ControllerPod.Namespace,
-	}); err != nil {
-		return nil, err
-	}
-	return podList.Items, nil
 }

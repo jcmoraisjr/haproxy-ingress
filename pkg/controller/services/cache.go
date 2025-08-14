@@ -443,6 +443,23 @@ func (c *c) GetNamespace(name string) (*api.Namespace, error) {
 	return &ns, err
 }
 
+func (c *c) GetControllerPodList() ([]api.Pod, error) {
+	if c.config.ControllerPodSelector == nil {
+		// POD_NAME envvar is a pre-requisite for pod selector
+		return nil, fmt.Errorf("cannot list controller pods, POD_NAME envvar was not configured")
+	}
+
+	// read all controller's pod
+	podList := api.PodList{}
+	if err := c.client.List(c.ctx, &podList, &client.ListOptions{
+		LabelSelector: c.config.ControllerPodSelector,
+		Namespace:     c.config.ControllerPod.Namespace,
+	}); err != nil {
+		return nil, err
+	}
+	return podList.Items, nil
+}
+
 func isTerminatingPod(svc *api.Service, pod *api.Pod) bool {
 	if svc.GetNamespace() != pod.GetNamespace() {
 		return false
@@ -488,8 +505,8 @@ func (c *c) GetPod(podName string) (*api.Pod, error) {
 	return &pod, err
 }
 
-func (c *c) GetPodNamespace() string {
-	return c.config.ElectionNamespace
+func (c *c) GetControllerPod() types.NamespacedName {
+	return c.config.ControllerPod
 }
 
 var contentProtocolRegex = regexp.MustCompile(`^([a-z]+)://(.*)$`)

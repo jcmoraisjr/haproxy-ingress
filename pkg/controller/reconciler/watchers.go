@@ -190,8 +190,17 @@ func (w *watchers) handlersCore() []*hdlr {
 			res: types.ResourcePod,
 			pr: []predicate.Predicate{
 				predicate.Funcs{
-					CreateFunc: func(e event.CreateEvent) bool { return false },
+					CreateFunc: func(e event.CreateEvent) bool {
+						// peers
+						return e.Object.GetNamespace() == w.cfg.ControllerPod.Namespace
+					},
 					UpdateFunc: func(e event.UpdateEvent) bool {
+						if e.ObjectNew.GetNamespace() == w.cfg.ControllerPod.Namespace {
+							// peers
+							objOld := e.ObjectOld.(*api.Pod)
+							objNew := e.ObjectNew.(*api.Pod)
+							return objOld.Status.PodIP != objNew.Status.PodIP
+						}
 						return e.ObjectOld.GetDeletionTimestamp() != e.ObjectNew.GetDeletionTimestamp()
 					},
 				},

@@ -23,6 +23,7 @@ import (
 	api "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	networking "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
@@ -47,9 +48,10 @@ type Cache interface {
 	GetService(defaultNamespace, serviceName string) (*api.Service, error)
 	GetConfigMap(configMapName string) (*api.ConfigMap, error)
 	GetNamespace(name string) (*api.Namespace, error)
+	GetControllerPodList() ([]api.Pod, error)
 	GetTerminatingPods(service *api.Service, track []TrackingRef) ([]*api.Pod, error)
 	GetPod(podName string) (*api.Pod, error)
-	GetPodNamespace() string
+	GetControllerPod() types.NamespacedName
 	GetTLSSecretPath(defaultNamespace, secretName string, track []TrackingRef) (CrtFile, error)
 	GetCASecretPath(defaultNamespace, secretName string, track []TrackingRef) (ca, crl File, err error)
 	GetDHSecretPath(defaultNamespace, secretName string) (File, error)

@@ -104,6 +104,7 @@ func createDefaults() map[string]string {
 		types.GlobalNoTLSRedirectLocations:       "/.well-known/acme-challenge",
 		types.GlobalOriginalForwardedForHdr:      "X-Original-Forwarded-For",
 		types.GlobalPathTypeOrder:                "exact,prefix,begin,regex",
+		types.GlobalPeersName:                    "ingress",
 		types.GlobalRealIPHdr:                    "X-Real-IP",
 		types.GlobalRedirectFromCode:             "302",
 		types.GlobalRedirectToCode:               "302",
