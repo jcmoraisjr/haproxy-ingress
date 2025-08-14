@@ -444,25 +444,15 @@ func (c *c) GetNamespace(name string) (*api.Namespace, error) {
 }
 
 func (c *c) GetControllerPodList() ([]api.Pod, error) {
-	// read controller's pod - we need the pod's template labels to find all the other pods
-	if c.config.ControllerPod.Name == "" {
-		return nil, fmt.Errorf("POD_NAME envvar was not configured")
+	if c.config.ControllerPodSelector == nil {
+		// POD_NAME envvar is a pre-requisite for pod selector
+		return nil, fmt.Errorf("cannot list controller pods, POD_NAME envvar was not configured")
 	}
-	pod := api.Pod{}
-	if err := c.client.Get(c.ctx, c.config.ControllerPod, &pod); err != nil {
-		return nil, err
-	}
-
-	// remove labels that uniquely identify a pod
-	podLabels := pod.GetLabels()
-	delete(podLabels, "controller-revision-hash")
-	delete(podLabels, "pod-template-generation")
-	delete(podLabels, "pod-template-hash")
 
 	// read all controller's pod
 	podList := api.PodList{}
 	if err := c.client.List(c.ctx, &podList, &client.ListOptions{
-		LabelSelector: labels.SelectorFromSet(podLabels),
+		LabelSelector: c.config.ControllerPodSelector,
 		Namespace:     c.config.ControllerPod.Namespace,
 	}); err != nil {
 		return nil, err

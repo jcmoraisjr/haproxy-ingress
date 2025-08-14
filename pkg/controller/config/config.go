@@ -36,6 +36,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -274,16 +275,18 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		Namespace: os.Getenv("POD_NAMESPACE"),
 		Name:      os.Getenv("POD_NAME"),
 	}
-	if controllerPod.Namespace == "" {
-		return nil, fmt.Errorf("POD_NAMESPACE envvar is a mandatory configuration")
-	}
-	if controllerPod.Name == "" {
-		return nil, fmt.Errorf("POD_NAME envvar is a mandatory configuration")
+
+	controllerPodSelector, err := getControllerPodSelector(ctx, configLog, client, controllerPod)
+	if err != nil {
+		return nil, fmt.Errorf("error getting controller pod selector: %w", err)
 	}
 
 	// we could `|| hasGateway[version...]` instead of `|| opt.WatchGateway` here,
 	// but we're choosing a consistent startup behavior despite of the cluster configuration.
 	election := opt.UpdateStatus || opt.AcmeServer || opt.WatchGateway
+	if election && controllerPod.Namespace == "" {
+		return nil, fmt.Errorf("POD_NAMESPACE envvar should be configured when --update-status=true, --acme-server=true, or --watch-gateway=true")
+	}
 	if election && opt.IngressClass == "" {
 		return nil, fmt.Errorf("--ingress-class should not be empty when --update-status=true, --acme-server=true, or --watch-gateway=true")
 	}
@@ -295,6 +298,10 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 			// backward compatibility behavior
 			electionID = opt.ElectionID + "-" + opt.IngressClass
 		}
+	}
+
+	if opt.UpdateStatus && controllerPod.Name == "" && opt.PublishService == "" && len(publishAddressHostnames)+len(publishAddressIPs) == 0 {
+		return nil, fmt.Errorf("one of --publish-service, --publish-address or POD_NAME envvar should be configured when --update-status=true")
 	}
 
 	acmeSecretKeyNamespaceName := opt.AcmeSecretKeyName
@@ -481,6 +488,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		ConfigMapName:            opt.ConfigMap,
 		ControllerName:           controllerName,
 		ControllerPod:            controllerPod,
+		ControllerPodSelector:    controllerPodSelector,
 		DefaultDirCACerts:        defaultDirCACerts,
 		DefaultDirCerts:          defaultDirCerts,
 		DefaultDirCrl:            defaultDirCrl,
@@ -649,6 +657,77 @@ func configHasAPI(discovery discovery.DiscoveryInterface, gv metav1.GroupVersion
 	return false
 }
 
+func getControllerPodSelector(ctx context.Context, configLog logr.Logger, client kubernetes.Interface, controllerPod types.NamespacedName) (labels.Selector, error) {
+	if controllerPod.Name == "" || controllerPod.Namespace == "" {
+		// a missing selector is fine, everyone that needs it
+		// (status, peers) should validate on config processing.
+		return nil, nil
+	}
+
+	pod, err := client.CoreV1().Pods(controllerPod.Namespace).Get(ctx, controllerPod.Name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	var owner *metav1.OwnerReference
+	for i := range pod.OwnerReferences {
+		owner = &pod.OwnerReferences[i]
+		if *owner.Controller {
+			break
+		}
+	}
+
+	var podSelector labels.Selector
+	if owner != nil {
+		var labelSelector *metav1.LabelSelector
+		switch owner.Kind {
+		case "ReplicaSet":
+			rs, err := client.AppsV1().ReplicaSets(controllerPod.Namespace).Get(ctx, owner.Name, metav1.GetOptions{})
+			if err != nil {
+				configLog.Error(err, "error reading controller's ReplicaSet, falling back to the default selector")
+			} else {
+				labelSelector = rs.Spec.Selector
+				// we want old and new pods during rolling updates
+				delete(labelSelector.MatchLabels, "pod-template-hash")
+			}
+		case "DaemonSet":
+			ds, err := client.AppsV1().DaemonSets(controllerPod.Namespace).Get(ctx, owner.Name, metav1.GetOptions{})
+			if err != nil {
+				configLog.Error(err, "error reading controller's DaemonSet, falling back to the default selector")
+			} else {
+				labelSelector = ds.Spec.Selector
+			}
+		default:
+			configLog.Info("controller pod owner is of an unsupported kind, falling back to the default selector", "kind", owner.Kind)
+		}
+		if labelSelector != nil {
+			var err error
+			podSelector, err = metav1.LabelSelectorAsSelector(labelSelector)
+			if err != nil {
+				return nil, fmt.Errorf("error parsing controller pod selector: %w", err)
+			}
+		}
+	} else {
+		configLog.Info("controller pod owner was not found, falling back to the default selector", "controller-pod", controllerPod.String())
+	}
+
+	if podSelector == nil {
+		// we failed to identify a proper selector, lets use controller's labels
+		// and remove the ones that uniquely identify a pod or a replicaSet.
+		podLabels := pod.GetLabels()
+		delete(podLabels, "controller-revision-hash")
+		delete(podLabels, "pod-template-generation")
+		delete(podLabels, "pod-template-hash")
+		delete(podLabels, "apps.kubernetes.io/pod-index")
+		delete(podLabels, "statefulset.kubernetes.io/pod-name")
+		podSelector = labels.SelectorFromSet(podLabels)
+	}
+
+	configLog.Info("controller pod selector configured", "selector", podSelector.String(), "namespace", controllerPod.Namespace)
+
+	return podSelector, nil
+}
+
 // Config ...
 type Config struct {
 	AcmeCheckPeriod          time.Duration
@@ -665,6 +744,7 @@ type Config struct {
 	ConfigMapName            string
 	ControllerName           string
 	ControllerPod            types.NamespacedName
+	ControllerPodSelector    labels.Selector
 	DefaultDirCerts          string
 	DefaultDirCACerts        string
 	DefaultDirCrl            string
