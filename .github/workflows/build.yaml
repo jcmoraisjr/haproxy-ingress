@@ -14,7 +14,7 @@ jobs:
     - uses: actions/checkout@v5
     - uses: actions/setup-go@v5
       with:
-        go-version: "1.23.7"
+        go-version: "1.24.6"
     - name: Run build
       run: make build
     - name: golangci-lint
@@ -50,6 +50,6 @@ jobs:
     - uses: actions/checkout@v5
     - uses: actions/setup-go@v5
       with:
-        go-version: "1.23.6"
+        go-version: "1.24.6"
     - name: Run integration tests on Kubernetes ${{ matrix.envtest-version }}
       run: HAPROXY_INGRESS_ENVTEST=${{ matrix.envtest-version }} make test-integration
