@@ -6,6 +6,11 @@
   * [Upgrading with embedded Acme](#upgrading-with-embedded-acme)
   * [Upgrading with custom repositories](#upgrading-with-custom-repositories)
 * [Contributors](#contributors)
+* [v0.15.0-beta.2](#v0150-beta2)
+  * [Reference](#reference-b2)
+  * [Release notes](#release-notes-b2)
+  * [Improvements](#improvements-b2)
+  * [Fixes](#fixes-b2)
 * [v0.15.0-beta.1](#v0150-beta1)
   * [Reference](#reference-b1)
   * [Release notes](#release-notes-b1)
@@ -47,6 +52,7 @@ Breaking backward compatibility from v0.14:
 * Master worker mode is now enabled by default, see the [documentation](https://haproxy-ingress.github.io/v0.15/docs/configuration/command-line/#master-worker). This mode starts a master HAProxy process in foreground, which controls the worker processes.
 * Helm chart has now a distinct field for the registry of an image, which should impact charts that configure custom repositories. See [Upgrading with custom repositories](#upgrading-with-custom-repositories) below for the details.
 * Log debug level is enabled by default. HAProxy Ingress has a good balance between low verbosity and useful information on its debug level.
+* EndpointSlices API is enabled by default, anticipating the deprecation of Endpoints API since Kubernetes 1.33.
 * Default image for the log sidecar changed from `whereisaaron/kube-syslog-sidecar` to `ghcr.io/crisu1710/kube-syslog-sidecar:0.2.0`. It is the same codebase, just adding support for multiple architectures.
 
 ### New controller engine
@@ -108,6 +114,7 @@ See the full syntax and default values in the [README.md](https://github.com/hap
 * Dmitry Spikhalsky ([Spikhalskiy](https://github.com/Spikhalskiy))
 * Fredrik Wendel ([fredrik-w](https://github.com/fredrik-w))
 * genofire ([genofire](https://github.com/genofire))
+* Gerald Barker ([gezb](https://github.com/gezb))
 * Grzegorz Dziwoki ([gdziwoki](https://github.com/gdziwoki))
 * Jan Bebendorf ([JanHolger](https://github.com/JanHolger))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
@@ -124,6 +131,69 @@ See the full syntax and default values in the [README.md](https://github.com/hap
 * RT ([hedgieinsocks](https://github.com/hedgieinsocks))
 * tomklapka ([tomklapka](https://github.com/tomklapka))
 * Tomasz Zurkowski ([doriath](https://github.com/doriath))
+
+# v0.15.0-beta.2
+
+## Reference (b2)
+
+* Release date: `2025-08-15`
+* Helm chart: `--version 0.15.0-beta.2 --devel`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.15.0-beta.2`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.15.0-beta.2`
+* Embedded HAProxy version: `2.6.22`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.15.0-beta.2`
+
+## Release notes (b2)
+
+This is the second and last beta version of the v0.15 branch. Find below a list of improvements made since `beta.1`.
+
+Exclusive v0.15 changes include:
+
+- Robert Paschedag found an event queue misbehavior when controller looses the leader and acquire it again later. This was preventing Status update and ACME check events to happen.
+- Kara reported that controller pod listing is misbehaving on some deployments that uses DaemonSet. This prevents ingress status to be updated with all node IPs where the controller is running.
+- EndpointSlice API were missing in the new controller engine. This is now the default API used to watch service endpoints, since the Endpoints API is deprecated in Kubernetes 1.33.
+- A race was preventing HAProxy Ingress to stop fast on a rolling update or scale down event, due to a failure to identify if haproxy is restarting or has already stopped.
+
+Fixes merged to stable branches:
+
+- An user with update ingress privilege can escalate their own privilege to the controller one, by exploring the config snippet annotation if it was not disabled via `--disable-config-keywords=*` command-line option. Mitigate this vulnerability by updating controller version, or disabling config snippet.
+- Fixes a panic on controller shutdown due to closing the same connection twice, if its startup failed the very first reconciliation.
+- Fixes a race during haproxy reload, when the controller connects fast enough via the master socket, finds the old instance still running and thinks it's the new one already. If this happens, it might lead to problems in the synchronization of the in-memory model to the running instance, sometimes making haproxy to reflect an older state.
+
+Dependencies:
+
+- embedded haproxy from 2.6.21 to 2.6.22
+- client-go from v0.32.3 to v0.32.8
+- controller-runtime from v0.20.3 to v0.20.4
+- go from 1.23.7 to 1.23.12
+
+## Improvements (b2)
+
+New features and improvements since `v0.15.0-beta.1`:
+
+* add endpointslice api on new controller [#1260](https://github.com/jcmoraisjr/haproxy-ingress/pull/1260) (jcmoraisjr)
+* Bump sigs.k8s.io/controller-runtime from 0.20.3 to 0.20.4 [#1232](https://github.com/jcmoraisjr/haproxy-ingress/pull/1232) (dependabot)
+* Bump github.com/go-logr/logr from 1.4.2 to 1.4.3 [#1262](https://github.com/jcmoraisjr/haproxy-ingress/pull/1262) (dependabot)
+* move to endpointslice by default [#1269](https://github.com/jcmoraisjr/haproxy-ingress/pull/1269) (jcmoraisjr)
+* update client-go from v0.32.3 to v0.32.8 [c7b2b5d](https://github.com/jcmoraisjr/haproxy-ingress/commit/c7b2b5d8de1608c79cf2e22fc9311f8f384a9aa9) (Joao Morais)
+* update dependencies [8df7b5b](https://github.com/jcmoraisjr/haproxy-ingress/commit/8df7b5b4c648f3d8afb9f1e0a45f0e15ded297e3) (Joao Morais)
+* update go from 1.23.7 to 1.23.12 [deace06](https://github.com/jcmoraisjr/haproxy-ingress/commit/deace06d8cdcdcbd784f42141ff6aed37628265c) (Joao Morais)
+* update embedded haproxy from 2.6.21 to 2.6.22 [47b145d](https://github.com/jcmoraisjr/haproxy-ingress/commit/47b145d1b49686239dc3a4b8cae4a13da8402a20) (Joao Morais)
+* update docsy from v0.11.0 to v0.12.0 [f9e0f8e](https://github.com/jcmoraisjr/haproxy-ingress/commit/f9e0f8e0cdf19e770b9b38de7345101dd6083537) (Joao Morais)
+
+Chart improvements since `v0.15.0-beta.1`:
+
+* Allow custom labels to be added to the controllers DaemonSet/Deployment [#93](https://github.com/haproxy-ingress/charts/pull/93) (gezb)
+* add permission to replicasets and daemonsets [#94](https://github.com/haproxy-ingress/charts/pull/94) (jcmoraisjr)
+
+## Fixes (b2)
+
+* check if haproxy reloaded already [#1265](https://github.com/jcmoraisjr/haproxy-ingress/pull/1265) (jcmoraisjr)
+* ensure that embedded haproxy starts just once [#1266](https://github.com/jcmoraisjr/haproxy-ingress/pull/1266) (jcmoraisjr)
+* add context on socket calls [#1267](https://github.com/jcmoraisjr/haproxy-ingress/pull/1267) (jcmoraisjr)
+* block attempt to read cluster credentials [#1273](https://github.com/jcmoraisjr/haproxy-ingress/pull/1273) (jcmoraisjr)
+* create new event queues when leader is acquired [#1283](https://github.com/jcmoraisjr/haproxy-ingress/pull/1283) (jcmoraisjr)
+* read controller pod selector from owner [#1288](https://github.com/jcmoraisjr/haproxy-ingress/pull/1288) (jcmoraisjr)
 
 # v0.15.0-beta.1
 
