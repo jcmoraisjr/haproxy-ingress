@@ -10,7 +10,7 @@ The following sections walk through steps to have HAProxy Ingress working, watch
 
 ## Prerequisites
 
-HAProxy Ingress needs a running Kubernetes cluster. Controller version v0.15 needs Kubernetes 1.19 or newer, see other supported versions in the [README](https://github.com/jcmoraisjr/haproxy-ingress/#use-haproxy-ingress) file. HAProxy Ingress also works fine on local k8s deployments like [minikube](https://minikube.sigs.k8s.io), [kind](https://kind.sigs.k8s.io), [k3s](https://k3s.io), [k3d](https://k3d.io) or [colima](https://github.com/abiosoft/colima).
+HAProxy Ingress needs a running Kubernetes cluster. Controller version v0.16 needs Kubernetes 1.21 or newer, see other supported versions in the [README](https://github.com/jcmoraisjr/haproxy-ingress/#use-haproxy-ingress) file. HAProxy Ingress also works fine on local k8s deployments like [minikube](https://minikube.sigs.k8s.io), [kind](https://kind.sigs.k8s.io), [k3s](https://k3s.io), [k3d](https://k3d.io) or [colima](https://github.com/abiosoft/colima).
 
 An ingress controller works exposing internal services to the external world, so another pre-requisite is that at least one cluster node is accessible externally. On cloud environments, a cloud load balancer can be configured to reach the ingress controller nodes.
 
@@ -63,7 +63,7 @@ HAProxy Ingress uses [Helm](https://helm.sh) chart to install and configure the 
         type: ClusterIP
     ```
 
-    HAProxy Ingress chart [documentation](https://github.com/haproxy-ingress/charts/blob/release-0.15/haproxy-ingress/README.md#configuration) has all the available options. See also further documentation in the [default values](https://github.com/haproxy-ingress/charts/blob/release-0.15/haproxy-ingress/values.yaml) file.
+    HAProxy Ingress chart [documentation](https://github.com/haproxy-ingress/charts/blob/release-0.16/haproxy-ingress/README.md#configuration) has all the available options. See also further documentation in the [default values](https://github.com/haproxy-ingress/charts/blob/release-0.16/haproxy-ingress/values.yaml) file.
 
 1. Install HAProxy Ingress using `haproxy-ingress` as the release name and `haproxy-ingress-values.yaml` file as the custom parameters:
 
@@ -84,7 +84,7 @@ The controller should be running in a few seconds. There are four important cust
 * `ingressClassResource.enabled`: This causes the helm chart to apply an [IngressClass](https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-class) to your cluster. IngressClasses are how HAProxy Ingress knows which of your Ingresses it should control. IngressClasses replace the [kubernetes.io/ingress.class](https://kubernetes.io/docs/concepts/services-networking/ingress/#deprecated-annotation) annotation used in Kubernetes versions before v1.18.
 * `kind`, `daemonset.useHostPort` and `service.type`, only used when service loadbalancer should not be used: disables service load balancer and exposes HAProxy via host port on all cluster nodes.
 
-HAProxy Ingress' Helm chart has a few more configuration options, see all of them in the chart [documentation](https://github.com/haproxy-ingress/charts/blob/release-0.15/haproxy-ingress/README.md) and in the [default values](https://github.com/haproxy-ingress/charts/blob/release-0.15/haproxy-ingress/values.yaml) file.
+HAProxy Ingress' Helm chart has a few more configuration options, see all of them in the chart [documentation](https://github.com/haproxy-ingress/charts/blob/release-0.16/haproxy-ingress/README.md) and in the [default values](https://github.com/haproxy-ingress/charts/blob/release-0.16/haproxy-ingress/values.yaml) file.
 
 ## Deploy and expose
 
