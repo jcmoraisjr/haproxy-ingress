@@ -43,7 +43,7 @@ and `:443`. By default haproxy container is started as UID `99`.
 haproxy historically started as root so it has the permissions needed to bind to privileged ports,
 configure chroot, configure file descriptor limits, and other administrative tasks. haproxy then
 drops its own privileges just before starting its event loop. See
-[Security Considerations](https://docs.haproxy.org/2.4/management.html#13) from the documentation.
+[Security Considerations](https://docs.haproxy.org/2.8/management.html#13) from the documentation.
 
 Since 2.4, haproxy container has been started as UID `99`. There are a few ways to give it
 permissions to bind privileged port, none of them is provided by default by HAProxy Ingress Helm

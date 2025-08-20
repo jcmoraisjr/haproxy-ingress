@@ -645,10 +645,10 @@ limitation was removed on v0.6.
 See also:
 
 * https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie
-* https://docs.haproxy.org/2.4/configuration.html#4-cookie
-* https://docs.haproxy.org/2.4/configuration.html#5.2-cookie
+* https://docs.haproxy.org/2.8/configuration.html#4-cookie
+* https://docs.haproxy.org/2.8/configuration.html#5.2-cookie
 * https://www.haproxy.com/blog/load-balancing-affinity-persistence-sticky-sessions-what-you-need-to-know/
-* https://docs.haproxy.org/2.4/configuration.html#dynamic-cookie-key
+* https://docs.haproxy.org/2.8/configuration.html#dynamic-cookie-key
 
 ---
 
@@ -690,10 +690,10 @@ overwrite the weight defined from the agent
 
 See also:
 
-* https://docs.haproxy.org/2.4/configuration.html#5.2-agent-check
-* https://docs.haproxy.org/2.4/configuration.html#5.2-agent-port
-* https://docs.haproxy.org/2.4/configuration.html#5.2-agent-inter
-* https://docs.haproxy.org/2.4/configuration.html#5.2-agent-send
+* https://docs.haproxy.org/2.8/configuration.html#5.2-agent-check
+* https://docs.haproxy.org/2.8/configuration.html#5.2-agent-port
+* https://docs.haproxy.org/2.8/configuration.html#5.2-agent-inter
+* https://docs.haproxy.org/2.8/configuration.html#5.2-agent-send
 
 ---
 
@@ -741,8 +741,8 @@ the selected header can be trusted!
 
 See also:
 
-* https://docs.haproxy.org/2.4/configuration.html#4.2-http-request%20deny
-* https://docs.haproxy.org/2.4/configuration.html#4.2-http-request%20set-src
+* https://docs.haproxy.org/2.8/configuration.html#4.2-http-request%20deny
+* https://docs.haproxy.org/2.8/configuration.html#4.2-http-request%20set-src
 
 ---
 
@@ -813,7 +813,7 @@ Configures External Authentication options.
 * `auth-headers-request`: Configures a comma-separated list of header names that should be copied from the client to the authentication service. All HTTP headers will be copied if not declared.
 * `auth-headers-succeed`: Configures a comma-separated list of header names that should be copied from the authentication service to the backend server if the authentication succeed. All HTTP headers will be copied if not declared.
 * `auth-headers-fail`: Configures a comma-separated list of header names that should be copied from the authentication service to the client if the authentication fail. This option is ignored if `auth-signin` is used. All HTTP headers will be copied if not declared.
-* `auth-signin`: Optional, configures the endpoint of the sign in server used to redirect failed requests. The content is parsed by haproxy as a [log-format](https://docs.haproxy.org/2.4/configuration.html#8.2.4) string and the result is copied verbatim to the `Location` header of a HTTP 302 response. The default behavior is to use the authentication service response.
+* `auth-signin`: Optional, configures the endpoint of the sign in server used to redirect failed requests. The content is parsed by haproxy as a [log-format](https://docs.haproxy.org/2.8/configuration.html#8.2.4) string and the result is copied verbatim to the `Location` header of a HTTP 302 response. The default behavior is to use the authentication service response.
 * `auth-proxy`: Optional, changes the name of a frontend proxy and a free TCP port range, used by `auth-request.lua` script to query the external authentication endpoint.
 
 **External service URL**
@@ -942,7 +942,7 @@ See also:
 * [use-htx](#use-htx) configuration key to enable HTTP/2 backends.
 * [secure-backend](#secure-backend) configuration keys to configure optional client certificate and certificate authority bundle of SSL/TLS connections.
 * [FastCGI](#fastcgi) configuration keys.
-* https://docs.haproxy.org/2.4/configuration.html#5.2-proto
+* https://docs.haproxy.org/2.8/configuration.html#5.2-proto
 
 ---
 
@@ -986,7 +986,7 @@ Defines a valid HAProxy load balancing algorithm. Since v0.16 the default value 
 
 See also:
 
-* https://docs.haproxy.org/2.4/configuration.html#4-balance
+* https://docs.haproxy.org/2.8/configuration.html#4-balance
 * https://www.mail-archive.com/haproxy@formilux.org/msg46011.html
 * https://www.eecs.harvard.edu/~michaelm/postscripts/handbook2001.pdf
 
@@ -1007,7 +1007,7 @@ The bind configuration keys in this section have precedence if declared.
 
 Any HAProxy supported option can be used, this will be copied verbatim to the
 bind keyword. See HAProxy
-[bind keyword doc](#https://docs.haproxy.org/2.4/configuration.html#4-bind).
+[bind keyword doc](#https://docs.haproxy.org/2.8/configuration.html#4-bind).
 
 Configuration examples:
 
@@ -1029,7 +1029,7 @@ configuration key.
 
 See also:
 
-* https://docs.haproxy.org/2.4/configuration.html#4-bind
+* https://docs.haproxy.org/2.8/configuration.html#4-bind
 * [Bind IP addr](#bind-ip-addr)
 * [Bind port](#bind-port)
 
@@ -1057,7 +1057,7 @@ binds on all IPv4 address.
 
 See also:
 
-* https://docs.haproxy.org/2.4/configuration.html#4-bind
+* https://docs.haproxy.org/2.8/configuration.html#4-bind
 * [Bind](#bind)
 * [Bind port](#bind-port)
 
@@ -1092,7 +1092,7 @@ choosing between one or the other.
 See also:
 
 * [Bind](#bind) configuration key
-* https://docs.haproxy.org/2.4/configuration.html#4-monitor-uri (`healthz-port`)
+* https://docs.haproxy.org/2.8/configuration.html#4-monitor-uri (`healthz-port`)
 * https://git.haproxy.org/?p=haproxy-2.0.git;a=blob;f=contrib/prometheus-exporter/README;hb=HEAD (`prometheus-port`)
 
 ---
@@ -1185,8 +1185,8 @@ See also:
 
 * [example]({{% relref "../examples/blue-green" %}}) page.
 * [disable-pod-list]({{% relref "command-line/#disable-pod-list" %}}) command-line option doc.
-* https://docs.haproxy.org/2.4/configuration.html#5.2-weight (`weight` based balance)
-* https://docs.haproxy.org/2.4/configuration.html#4-use-server (`use-server` based selector)
+* https://docs.haproxy.org/2.8/configuration.html#5.2-weight (`weight` based balance)
+* https://docs.haproxy.org/2.8/configuration.html#4-use-server (`use-server` based selector)
 
 ---
 
@@ -1372,9 +1372,9 @@ Configuration of connection limits.
 
 See also:
 
-* https://docs.haproxy.org/2.4/configuration.html#3.2-maxconn (`max-connections`)
-* https://docs.haproxy.org/2.4/configuration.html#5.2-maxconn (`maxconn-server`)
-* https://docs.haproxy.org/2.4/configuration.html#5.2-maxqueue (`maxqueue-server`)
+* https://docs.haproxy.org/2.8/configuration.html#3.2-maxconn (`max-connections`)
+* https://docs.haproxy.org/2.8/configuration.html#5.2-maxconn (`maxconn-server`)
+* https://docs.haproxy.org/2.8/configuration.html#5.2-maxqueue (`maxqueue-server`)
 
 ---
 
@@ -1418,14 +1418,14 @@ See also:
 Define how processes/threads map to CPUs. The default value is generated based
 on [nbthread](#nbthread) and [nbproc](#nbproc).
 
-* `cpu-map`: Custom override specifying the cpu mapping behaviour in the format described [here](https://docs.haproxy.org/2.4/configuration.html#3.1-cpu-map).
+* `cpu-map`: Custom override specifying the cpu mapping behaviour in the format described [here](https://docs.haproxy.org/2.8/configuration.html#3.1-cpu-map).
 * `use-cpu-map`: Set to `false` to prevent any cpu mapping
 
 See also:
 
 * [nbthread](#nbthread) configuration key
 * [nbproc](#nbproc) configuration key
-* https://docs.haproxy.org/2.4/configuration.html#3.1-cpu-map
+* https://docs.haproxy.org/2.8/configuration.html#3.1-cpu-map
 
 ---
 
@@ -1503,8 +1503,8 @@ The following keys are supported:
 See also:
 
 * [example](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/dns-service-discovery) page.
-* https://docs.haproxy.org/2.4/configuration.html#5.3.2
-* https://docs.haproxy.org/2.4/configuration.html#5.2-resolvers
+* https://docs.haproxy.org/2.8/configuration.html#5.3.2
+* https://docs.haproxy.org/2.8/configuration.html#5.2-resolvers
 * https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/
 * https://kubernetes.io/docs/concepts/services-networking/service/#headless-services
 
@@ -1569,7 +1569,7 @@ The following keys are supported:
 
 See also:
 
-* https://docs.haproxy.org/2.4/management.html#9.3
+* https://docs.haproxy.org/2.8/management.html#9.3
 
 ---
 
@@ -1628,7 +1628,7 @@ Currently there is no helper to configure the haproxy's fcgi-app section, it sho
 See also:
 
 * [`backend-protocol`](#backend-protocol) configuration key.
-* https://docs.haproxy.org/2.4/configuration.html#10
+* https://docs.haproxy.org/2.8/configuration.html#10
 
 ---
 
@@ -1655,7 +1655,7 @@ Defines `X-Forwarded-For` header and source address handling.
 
 See also:
 
-* https://docs.haproxy.org/2.4/configuration.html#4-option%20forwardfor
+* https://docs.haproxy.org/2.8/configuration.html#4-option%20forwardfor
 * https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
 
 ---
@@ -1755,12 +1755,12 @@ Controls server health checks on a per-backend basis.
 
 See also:
 
-* https://docs.haproxy.org/2.4/configuration.html#4.2-option%20httpchk
-* https://docs.haproxy.org/2.4/configuration.html#5.2-addr
-* https://docs.haproxy.org/2.4/configuration.html#5.2-port
-* https://docs.haproxy.org/2.4/configuration.html#5.2-inter
-* https://docs.haproxy.org/2.4/configuration.html#5.2-rise
-* https://docs.haproxy.org/2.4/configuration.html#5.2-fall
+* https://docs.haproxy.org/2.8/configuration.html#4.2-option%20httpchk
+* https://docs.haproxy.org/2.8/configuration.html#5.2-addr
+* https://docs.haproxy.org/2.8/configuration.html#5.2-port
+* https://docs.haproxy.org/2.8/configuration.html#5.2-inter
+* https://docs.haproxy.org/2.8/configuration.html#5.2-rise
+* https://docs.haproxy.org/2.8/configuration.html#5.2-fall
 
 ---
 
@@ -1854,7 +1854,7 @@ The following list has all the HTTP status codes supported by the controller, as
 All the overwrites refer to HAProxy or HAProxy Ingress generated responses, e.g. a 403 response overwrite will not change a 403 response generated by a backend server, but instead only 403 responses that HAProxy generates itself, such as when an allow list rule denies a request to reach a backend server.
 {{< /alert >}}
 
-> All descriptions with `[haproxy]` refers to internal HAProxy responses, described in the [HAProxy documentation](https://docs.haproxy.org/2.4/configuration.html#1.3.1) or in the [MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status). All the others are handled and issued by HAProxy Ingress configurations.
+> All descriptions with `[haproxy]` refers to internal HAProxy responses, described in the [HAProxy documentation](https://docs.haproxy.org/2.8/configuration.html#1.3.1) or in the [MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status). All the others are handled and issued by HAProxy Ingress configurations.
 
 | Code  | Scope     | Reason | Description |
 |-------|-----------|--------|-------------|
@@ -1889,7 +1889,7 @@ A multi-line configuration is used to customize the response payload on all the 
 
 Some general hints about response overwriting:
 
-* Do not create huge responses, the whole overwrite must fit into the internal buffer, which is 16k by default, leaving some room to configured downstream rules to operate. See [HAProxy's errorfile doc](https://docs.haproxy.org/2.4/configuration.html#4-errorfile).
+* Do not create huge responses, the whole overwrite must fit into the internal buffer, which is 16k by default, leaving some room to configured downstream rules to operate. See [HAProxy's errorfile doc](https://docs.haproxy.org/2.8/configuration.html#4-errorfile).
 * Take care with external links, e.g. the overwrite of a 503 error page might lead to another 503 error.
 * Only add the status code line if changing the code, otherwise let the controller configure with default values.
 * A missing status code and status reason will lead to default values, but missing headers and missing body will lead to, respectively, only the `content-length` header and an empty body.
@@ -1948,8 +1948,8 @@ See also:
 * [`--default-backend-service`]({{% relref "command-line#default-backend-service" %}}) command-line option
 * [`proxy-body-size`](#proxy-body-size) configuration key
 * [mTLS](#auth-tls) related configuration keys
-* https://docs.haproxy.org/2.4/configuration.html#4-errorfile
-* HAProxy's HTTP response at [HAProxy documentation](https://docs.haproxy.org/2.4/configuration.html#1.3.1)
+* https://docs.haproxy.org/2.8/configuration.html#4-errorfile
+* HAProxy's HTTP response at [HAProxy documentation](https://docs.haproxy.org/2.8/configuration.html#1.3.1)
 * HTTP response status codes at [MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status)
 
 ---
@@ -1974,7 +1974,7 @@ provided that the maximum is lesser than or equal `256`.
 See also:
 
 * [`agent-check`](#agent-check)
-* https://docs.haproxy.org/2.4/configuration.html#5.2-weight
+* https://docs.haproxy.org/2.8/configuration.html#5.2-weight
 
 ---
 
@@ -2012,8 +2012,8 @@ an old state with disabled servers will disable them in the new configuration.
 
 See also:
 
-* https://docs.haproxy.org/2.4/configuration.html#3.1-server-state-file
-* https://docs.haproxy.org/2.4/configuration.html#4-load-server-state-from-file
+* https://docs.haproxy.org/2.8/configuration.html#3.1-server-state-file
+* https://docs.haproxy.org/2.8/configuration.html#4-load-server-state-from-file
 
 ---
 
@@ -2038,7 +2038,7 @@ Customize the tcp, http or https log format using log format variables. Only use
 
 See also:
 
-* https://docs.haproxy.org/2.4/configuration.html#8.2.4
+* https://docs.haproxy.org/2.8/configuration.html#8.2.4
 * [`syslog`](#syslog)
 * [Auth External](#auth-external) configuration keys.
 * [TCP Services](#tcp-services) configuration keys.
@@ -2067,8 +2067,8 @@ websockets, and clusters that frequently changes and forces haproxy to reload.
 See also:
 
 * [External HAProxy example]({{% relref "/docs/examples/external-haproxy" %}}) page
-* https://docs.haproxy.org/2.4/configuration.html#3.1-master-worker
-* https://docs.haproxy.org/2.4/configuration.html#mworker-max-reloads
+* https://docs.haproxy.org/2.8/configuration.html#3.1-master-worker
+* https://docs.haproxy.org/2.8/configuration.html#mworker-max-reloads
 * [master-socket]({{% relref "command-line#master-socket" %}}) and [master-worker]({{% relref "command-line#master-worker" %}}) command-line options
 
 ---
@@ -2114,7 +2114,7 @@ See also:
 * [modsecurity example]({{% relref "../examples/modsecurity" %}}) page.
 * [`waf`](#waf) configuration key.
 * https://www.haproxy.org/download/2.0/doc/SPOE.txt
-* https://docs.haproxy.org/2.4/configuration.html#9.3
+* https://docs.haproxy.org/2.8/configuration.html#9.3
 * https://github.com/jcmoraisjr/modsecurity-spoa
 
 ---
@@ -2147,9 +2147,9 @@ See also:
 
 * [nbthread](#nbthread) configuration key
 * [cpu-map](#cpu-map) configuration key
-* https://docs.haproxy.org/2.4/configuration.html#3.1-nbproc
-* https://docs.haproxy.org/2.4/configuration.html#4-bind-process
-* https://docs.haproxy.org/2.4/configuration.html#3.1-cpu-map
+* https://docs.haproxy.org/2.8/configuration.html#3.1-nbproc
+* https://docs.haproxy.org/2.8/configuration.html#4-bind-process
+* https://docs.haproxy.org/2.8/configuration.html#3.1-cpu-map
 
 ---
 
@@ -2169,8 +2169,8 @@ thread on its own CPU core.
 See also:
 
 * [cpu-map](#cpu-map) configuration key
-* https://docs.haproxy.org/2.4/configuration.html#3.1-nbthread
-* https://docs.haproxy.org/2.4/configuration.html#3.1-cpu-map
+* https://docs.haproxy.org/2.8/configuration.html#3.1-nbthread
+* https://docs.haproxy.org/2.8/configuration.html#3.1-cpu-map
 
 ---
 
@@ -2199,7 +2199,7 @@ OAuth2 needs [`external-has-lua`](#external) enabled if running on an external h
 Since v0.13 these same options can be used with [Auth External](#auth-external) configuration keys. Change `<oauth2-proxy-service>` below with the oauth2-proxy service name, and `<hostname>` to the hostname of the oauth2-proxy and the backend servers:
 
 * `auth-url: "svc://<oauth2-proxy-service>/oauth2/auth"`.
-* `auth-signin: "https://<hostname>/oauth2/start?rd=%[path]"` - the content is parsed by haproxy as a [log-format](https://docs.haproxy.org/2.4/configuration.html#8.2.4) string and the result is copied verbatim to the `Location` header of a HTTP 302 response. The `rd` query field asks oauth2-proxy to preserve the path provided by the client.
+* `auth-signin: "https://<hostname>/oauth2/start?rd=%[path]"` - the content is parsed by haproxy as a [log-format](https://docs.haproxy.org/2.8/configuration.html#8.2.4) string and the result is copied verbatim to the `Location` header of a HTTP 302 response. The `rd` query field asks oauth2-proxy to preserve the path provided by the client.
 * `auth-headers-succeed: "X-Auth-Request-Email"` - copy the `X-Auth-Request-Email` HTTP header with the user email from oauth2-proxy to the backend server.
 
 Configure oauth2 on a distinct ingress, without the `auth-url` annotation, otherwise it will endless loop in a HTTP 403 error.
@@ -2305,8 +2305,8 @@ Useful notes:
 See also:
 
 * [`config-peers`](#configuration-snippet) configuration key
-* http://docs.haproxy.org/2.4/configuration.html#3.5
-* http://docs.haproxy.org/2.4/configuration.html#4-stick-table
+* http://docs.haproxy.org/2.8/configuration.html#3.5
+* http://docs.haproxy.org/2.8/configuration.html#4-stick-table
 * https://www.haproxy.com/blog/introduction-to-haproxy-stick-tables
 
 ---
@@ -2328,7 +2328,7 @@ Since 0.7 `unlimited` can also be used to overwrite any global body size limit.
 
 See also:
 
-* https://docs.haproxy.org/2.4/configuration.html#7.3.6-req.body_size
+* https://docs.haproxy.org/2.8/configuration.html#7.3.6-req.body_size
 
 ---
 
@@ -2349,11 +2349,11 @@ Configures PROXY protocol in frontends and backends.
 See also:
 
 * https://www.haproxy.org/download/2.0/doc/proxy-protocol.txt
-* https://docs.haproxy.org/2.4/configuration.html#5.1-accept-proxy
-* https://docs.haproxy.org/2.4/configuration.html#5.2-send-proxy
-* https://docs.haproxy.org/2.4/configuration.html#5.2-send-proxy-v2
-* https://docs.haproxy.org/2.4/configuration.html#5.2-send-proxy-v2-ssl
-* https://docs.haproxy.org/2.4/configuration.html#5.2-send-proxy-v2-ssl-cn
+* https://docs.haproxy.org/2.8/configuration.html#5.1-accept-proxy
+* https://docs.haproxy.org/2.8/configuration.html#5.2-send-proxy
+* https://docs.haproxy.org/2.8/configuration.html#5.2-send-proxy-v2
+* https://docs.haproxy.org/2.8/configuration.html#5.2-send-proxy-v2-ssl
+* https://docs.haproxy.org/2.8/configuration.html#5.2-send-proxy-v2-ssl-cn
 
 ---
 
@@ -2491,9 +2491,9 @@ Configure secure (TLS) connection to the backends.
 See also:
 
 * [Backend protocol](#backend-protocol) configuration key.
-* https://docs.haproxy.org/2.4/configuration.html#5.2-verify
-* https://docs.haproxy.org/2.4/configuration.html#5.2-verifyhost
-* https://docs.haproxy.org/2.4/configuration.html#5.2-sni
+* https://docs.haproxy.org/2.8/configuration.html#5.2-verify
+* https://docs.haproxy.org/2.8/configuration.html#5.2-verifyhost
+* https://docs.haproxy.org/2.8/configuration.html#5.2-sni
 
 ---
 
@@ -2520,7 +2520,7 @@ Change security options for deployments starting as root user.
 
 In the default configuration HAProxy Ingress container starts as the non root user `haproxy`, UID `99`. Since its 2.4 version, `docker.io/haproxy` image starts as the same user and UID.
 
-Starting as root can be useful to configure chroot, and [Security Considerations](https://docs.haproxy.org/2.4/management.html#13) from the HAProxy doc describes some other use cases.
+Starting as root can be useful to configure chroot, and [Security Considerations](https://docs.haproxy.org/2.8/management.html#13) from the HAProxy doc describes some other use cases.
 
 The starting user can be changed in the deployment or daemonset's pod template using the following configuration:
 
@@ -2555,11 +2555,11 @@ So only enable `use-chroot` if not using these features.
 
 See also:
 
-* https://docs.haproxy.org/2.4/management.html#13
-* https://docs.haproxy.org/2.4/configuration.html#3.1-chroot
-* https://docs.haproxy.org/2.4/configuration.html#3.1-uid
-* https://docs.haproxy.org/2.4/configuration.html#3.1-gid
-* https://docs.haproxy.org/2.4/configuration.html#3.1-unix-bind
+* https://docs.haproxy.org/2.8/management.html#13
+* https://docs.haproxy.org/2.8/configuration.html#3.1-chroot
+* https://docs.haproxy.org/2.8/configuration.html#3.1-uid
+* https://docs.haproxy.org/2.8/configuration.html#3.1-gid
+* https://docs.haproxy.org/2.8/configuration.html#3.1-unix-bind
 
 ---
 
@@ -2618,8 +2618,8 @@ The source IP is a static configuration added on each backend server. This confi
 
 See also:
 
-* https://docs.haproxy.org/2.4/configuration.html#4-source
-* https://docs.haproxy.org/2.4/configuration.html#5.2-source
+* https://docs.haproxy.org/2.8/configuration.html#4-source
+* https://docs.haproxy.org/2.8/configuration.html#5.2-source
 * https://www.kernel.org/doc/html/v5.12/networking/ip-sysctl.html#ip-variables
 
 ---
@@ -2673,10 +2673,10 @@ Default values on HAProxy Ingress v0.9 and newer:
 See also:
 
 * https://ssl-config.mozilla.org/#server=haproxy
-* https://docs.haproxy.org/2.4/configuration.html#3.1-ssl-default-bind-ciphers
-* https://docs.haproxy.org/2.4/configuration.html#3.1-ssl-default-bind-ciphersuites
-* https://docs.haproxy.org/2.4/configuration.html#5.2-ciphers
-* https://docs.haproxy.org/2.4/configuration.html#5.2-ciphersuites
+* https://docs.haproxy.org/2.8/configuration.html#3.1-ssl-default-bind-ciphers
+* https://docs.haproxy.org/2.8/configuration.html#3.1-ssl-default-bind-ciphersuites
+* https://docs.haproxy.org/2.8/configuration.html#5.2-ciphers
+* https://docs.haproxy.org/2.8/configuration.html#5.2-ciphersuites
 
 ---
 
@@ -2694,8 +2694,8 @@ Configures Diffie-Hellman key exchange parameters.
 
 See also:
 
-* https://docs.haproxy.org/2.4/configuration.html#tune.ssl.default-dh-param
-* https://docs.haproxy.org/2.4/configuration.html#3.1-ssl-dh-param-file
+* https://docs.haproxy.org/2.8/configuration.html#tune.ssl.default-dh-param
+* https://docs.haproxy.org/2.8/configuration.html#3.1-ssl-dh-param-file
 
 ---
 
@@ -2714,8 +2714,8 @@ the ssl-engine used supports it.
 
 Reference:
 
-* https://docs.haproxy.org/2.4/configuration.html#ssl-engine
-* https://docs.haproxy.org/2.4/configuration.html#ssl-mode-async
+* https://docs.haproxy.org/2.8/configuration.html#ssl-engine
+* https://docs.haproxy.org/2.8/configuration.html#ssl-mode-async
 
 ---
 
@@ -2759,7 +2759,7 @@ New supported options since v0.9 for `ssl-options` and `ssl-options-backend`:
 
 See also:
 
-* https://docs.haproxy.org/2.4/configuration.html#5.1-crt-list
+* https://docs.haproxy.org/2.8/configuration.html#5.1-crt-list
 
 ---
 
@@ -2805,7 +2805,7 @@ Configures if an encrypted connection should be used.
 See also:
 
 * [`ssl-always-add-https`](#ssl-always-add-https) configuration key
-* https://docs.haproxy.org/2.4/configuration.html#redirect
+* https://docs.haproxy.org/2.8/configuration.html#redirect
 
 ---
 
@@ -2891,8 +2891,8 @@ The HAProxy process can also send logs to stdout, instead of an external syslog 
 
 See also:
 
-* https://docs.haproxy.org/2.4/configuration.html#3.1-log
-* https://docs.haproxy.org/2.4/configuration.html#3.1-log-tag
+* https://docs.haproxy.org/2.8/configuration.html#3.1-log
+* https://docs.haproxy.org/2.8/configuration.html#3.1-log-tag
 
 ---
 
@@ -2977,8 +2977,8 @@ The following keys are supported:
 
 See also:
 
-* https://docs.haproxy.org/2.4/configuration.html#3.1-hard-stop-after (`timeout-stop`)
-* https://docs.haproxy.org/2.4/configuration.html#2.4 (time suffix)
+* https://docs.haproxy.org/2.8/configuration.html#3.1-hard-stop-after (`timeout-stop`)
+* https://docs.haproxy.org/2.8/configuration.html#2.5 (time suffix)
 
 ---
 
@@ -2995,7 +2995,7 @@ HTTP/2 on the client side.
 
 See also:
 
-* https://docs.haproxy.org/2.4/configuration.html#5.1-alpn
+* https://docs.haproxy.org/2.8/configuration.html#5.1-alpn
 
 ---
 
@@ -3011,7 +3011,7 @@ is `true` since v0.10, it was `false` on v0.9. HTX should be used to enable HTTP
 See also:
 
 * [backend-protocol](#backend-protocol) configuration keys
-* https://docs.haproxy.org/2.4/configuration.html#4-option%20http-use-htx
+* https://docs.haproxy.org/2.8/configuration.html#4-option%20http-use-htx
 
 ---
 
