@@ -1553,6 +1553,15 @@ func TestCustomConfig(t *testing.T) {
 			expLate:     []string{"http-request set-header x-id 2 if { path /static }"},
 			logging:     `WARN both config-backend and config-backend-late were used on Ingress 'default/app', ignoring config-backend`,
 		},
+		// 9
+		{
+			earlyConfig: `http-request track-sc0 src table %[peers_table_backend]
+http-request deny if { src,lua.peers_sum(%[peers_group_backend],http_req_rate) gt 100 }`,
+			expEarly: []string{
+				"http-request track-sc0 src table _peers_default_app_8080_proxy01",
+				"http-request deny if { src,lua.peers_sum(default_app_8080,http_req_rate) gt 100 }",
+			},
+		},
 	}
 	for i, test := range testCases {
 		c := setup(t)

@@ -524,8 +524,9 @@ func (i *instance) writeConfig() (err error) {
 	//
 	// Peers
 	//
-	if i.config.Global().Peers.Table != "" {
-		err = i.luaPeersTmpl.Write(i.config.Global().Peers)
+	peers := i.config.Global().Peers
+	if len(peers.Tables) > 0 {
+		err = i.luaPeersTmpl.Write(peers)
 		if err != nil {
 			return err
 		}

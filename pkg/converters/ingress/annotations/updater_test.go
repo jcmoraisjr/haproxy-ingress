@@ -121,9 +121,11 @@ type testConfig struct {
 func setup(t *testing.T) *testConfig {
 	logger := &types_helper.LoggerMock{T: t}
 	tracker := tracker.NewTracker()
+	instance := haproxy.CreateInstance(logger, haproxy.InstanceOptions{}).Config()
+	instance.Global().Peers.LocalPeer.BESuffix = "proxy01" // we need this to properly initialize updater's vars map
 	return &testConfig{
 		t:       t,
-		haproxy: haproxy.CreateInstance(logger, haproxy.InstanceOptions{}).Config(),
+		haproxy: instance,
 		cache:   conv_helper.NewCacheMock(tracker),
 		tracker: tracker,
 		logger:  logger,
@@ -147,6 +149,7 @@ func (c *testConfig) createUpdater() *updater {
 		options: &convtypes.ConverterOptions{
 			DynamicConfig: &convtypes.DynamicConfig{},
 		},
+		vars: buildGlobalVars(c.haproxy.Global()),
 	}
 }
 
@@ -156,13 +159,16 @@ func (c *testConfig) createBackendData(svcFullName string, source *Source, ann, 
 	svcName := strings.Split(svcFullName, "/")
 	namespace := svcName[0]
 	name := svcName[1]
+	backend := &hatypes.Backend{
+		ID:        fmt.Sprintf("%s_%s_%d", namespace, name, 8080),
+		Namespace: namespace,
+		Name:      name,
+	}
+	global := c.haproxy.Global()
 	return &backData{
-		backend: &hatypes.Backend{
-			ID:        fmt.Sprintf("%s_%s_%d", namespace, name, 8080),
-			Namespace: namespace,
-			Name:      name,
-		},
-		mapper: mapper,
+		backend: backend,
+		mapper:  mapper,
+		vars:    buildBackendVars(global, backend, buildGlobalVars(global)),
 	}
 }
 
