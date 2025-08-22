@@ -1028,17 +1028,18 @@ d1.local#/ path01`,
 		},
 		{
 			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
+				df := c.frontends.Default()
 				link1 := hatypes.CreatePathLink("/app1", hatypes.MatchPrefix).
 					WithHeadersMatch(hatypes.HTTPHeaderMatch{{Name: "x-user", Value: "myusr1"}})
 				link2 := hatypes.CreatePathLink("/app2", hatypes.MatchPrefix).
 					WithHeadersMatch(hatypes.HTTPHeaderMatch{{Name: "x-user", Value: "myusr2"}})
 
-				hdef := c.hosts.AcquireHost(hatypes.DefaultHost)
-				b.FindBackendPath(hdef.AddLink(b, link1)).MaxBodySize = 1048576
-				b.FindBackendPath(hdef.AddLink(b, link2)).MaxBodySize = 2097152
+				hdef := df.AcquireHost(hatypes.DefaultHost)
+				b.FindBackendPath(hdef.AddLink(b, link1).Link).MaxBodySize = 1048576
+				b.FindBackendPath(hdef.AddLink(b, link2).Link).MaxBodySize = 2097152
 
-				b.FindBackendPath(h.AddLink(b, link1)).MaxBodySize = 1048576
-				b.FindBackendPath(h.AddLink(b, link2)).MaxBodySize = 2097152
+				b.FindBackendPath(h.AddLink(b, link1).Link).MaxBodySize = 1048576
+				b.FindBackendPath(h.AddLink(b, link2).Link).MaxBodySize = 2097152
 			},
 			expected: `
     # path02 = <default>/app1
@@ -1121,7 +1122,7 @@ frontend _front_https
 		var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 		ep := *endpointS1
 		b.Endpoints = []*hatypes.Endpoint{&ep}
-		h = c.config.Hosts().AcquireHost("d1.local")
+		h = c.df.AcquireHost("d1.local")
 		for j, p := range test.path {
 			match := hatypes.MatchBegin
 			if test.match != nil {
@@ -1198,7 +1199,7 @@ func TestInstanceBare(t *testing.T) {
 	var h *hatypes.Host
 	var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	h = c.config.Hosts().AcquireHost("d1.local")
+	h = c.df.AcquireHost("d1.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 
 	c.Update()
@@ -1222,7 +1223,7 @@ func TestInstanceBareHTTP(t *testing.T) {
 	var h *hatypes.Host
 	var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	h = c.config.Hosts().AcquireHost("d1.local")
+	h = c.df.AcquireHost("d1.local")
 	h.TLS.UseDefaultCrt = false
 	h.AddPath(b, "/", hatypes.MatchBegin)
 
@@ -1276,7 +1277,7 @@ func TestInstanceGlobalBind(t *testing.T) {
 		var h *hatypes.Host
 		var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 		b.Endpoints = []*hatypes.Endpoint{endpointS1}
-		h = c.config.Hosts().AcquireHost("d1.local")
+		h = c.df.AcquireHost("d1.local")
 		h.AddPath(b, "/", hatypes.MatchBegin)
 
 		c.config.Global().Bind = test.bind
@@ -1320,7 +1321,7 @@ func TestInstanceEmpty(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	c.config.Hosts().AcquireHost("empty").AddPath(c.config.Backends().AcquireBackend("default", "empty", "8080"), "/", hatypes.MatchBegin)
+	c.df.AcquireHost("empty").AddPath(c.config.Backends().AcquireBackend("default", "empty", "8080"), "/", hatypes.MatchBegin)
 	c.Update()
 
 	c.checkConfig(`
@@ -1378,7 +1379,7 @@ func TestDefaultBackendRedir(t *testing.T) {
 	defer c.teardown()
 
 	c.config.Global().DefaultBackendRedir = "https://example.tld"
-	c.config.Hosts().AcquireHost("empty").AddPath(c.config.Backends().AcquireBackend("default", "empty", "8080"), "/", hatypes.MatchBegin)
+	c.df.AcquireHost("empty").AddPath(c.config.Backends().AcquireBackend("default", "empty", "8080"), "/", hatypes.MatchBegin)
 
 	c.Update()
 
@@ -1443,7 +1444,7 @@ func TestInstanceEmptyExternal(t *testing.T) {
 	c.config.global.Security.Username = "external"
 	c.config.global.Security.Groupname = "external"
 
-	c.config.Hosts().AcquireHost("empty").AddPath(c.config.Backends().AcquireBackend("default", "empty", "8080"), "/", hatypes.MatchBegin)
+	c.df.AcquireHost("empty").AddPath(c.config.Backends().AcquireBackend("default", "empty", "8080"), "/", hatypes.MatchBegin)
 	c.Update()
 
 	c.checkConfig(`
@@ -1487,7 +1488,7 @@ func TestPathIDsSplit(t *testing.T) {
 
 	max := 32
 	for i := 1; i <= max; i++ {
-		h := c.config.Hosts().AcquireHost(fmt.Sprintf("h%02d.local", i))
+		h := c.df.AcquireHost(fmt.Sprintf("h%02d.local", i))
 		h.AddPath(b, "/", hatypes.MatchBegin)
 		path := b.FindBackendPath(h.FindPath("/")[0].Link)
 		path.SSLRedirect = true
@@ -1574,7 +1575,7 @@ func TestInstanceSecurity(t *testing.T) {
 	c.config.global.Security.Username = "haproxy"
 	c.config.global.Security.Groupname = "haproxy"
 
-	c.config.Hosts().AcquireHost("empty").AddPath(c.config.Backends().AcquireBackend("default", "empty", "8080"), "/", hatypes.MatchBegin)
+	c.df.AcquireHost("empty").AddPath(c.config.Backends().AcquireBackend("default", "empty", "8080"), "/", hatypes.MatchBegin)
 	c.Update()
 
 	c.checkConfig(`
@@ -1614,7 +1615,7 @@ func TestInstanceMatch(t *testing.T) {
 
 	b := c.config.Backends().AcquireBackend("default", "d1", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	h := c.config.Hosts().AcquireHost("d1.local")
+	h := c.df.AcquireHost("d1.local")
 	h.AddPath(b, "/app", hatypes.MatchPrefix)
 	h.AddPath(b, "/api/v[0-9]+/", hatypes.MatchRegex)
 	c.Update()
@@ -1915,7 +1916,7 @@ func TestInstanceFrontingProxy(t *testing.T) {
 
 			var h *hatypes.Host
 			var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
-			h = c.config.Hosts().AcquireHost(test.domain)
+			h = c.df.AcquireHost(test.domain)
 			h.AddPath(b, "/", hatypes.MatchBegin)
 			b.Endpoints = []*hatypes.Endpoint{endpointS1}
 			b.FindBackendPath(h.FindPath("/")[0].Link).SSLRedirect = test.sslRedirect
@@ -1983,7 +1984,7 @@ func TestInstanceTCPServices(t *testing.T) {
 	var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 	b.ModeTCP = true
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	h = c.config.Hosts().AcquireHost("d1.local")
+	h = c.df.AcquireHost("d1.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 
 	b2 := c.config.Backends().AcquireBackend("d2", "app", "8080")
@@ -2417,11 +2418,11 @@ func TestInstanceDefaultHost(t *testing.T) {
 
 	var h *hatypes.Host
 	var b *hatypes.Backend
-	hdef := c.config.Hosts().AcquireHost(hatypes.DefaultHost)
+	hdef := c.df.AcquireHost(hatypes.DefaultHost)
 
 	b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	h = c.config.Hosts().AcquireHost("d1.local")
+	h = c.df.AcquireHost("d1.local")
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
 	h.TLS.TLSHash = "0"
 	h.VarNamespace = true
@@ -2434,7 +2435,7 @@ func TestInstanceDefaultHost(t *testing.T) {
 
 	b = c.config.Backends().AcquireBackend("d2", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	h = c.config.Hosts().AcquireHost("d2.local")
+	h = c.df.AcquireHost("d2.local")
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
 	h.TLS.TLSHash = "0"
 	h.VarNamespace = true
@@ -2554,13 +2555,13 @@ func TestInstanceUseDefaultCrt(t *testing.T) {
 
 	b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	h = c.config.Hosts().AcquireHost("d1.local")
+	h = c.df.AcquireHost("d1.local")
 	h.TLS.UseDefaultCrt = false
 	h.AddPath(b, "/", hatypes.MatchBegin)
 
 	b = c.config.Backends().AcquireBackend("d2", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS21}
-	h = c.config.Hosts().AcquireHost("d2.local")
+	h = c.df.AcquireHost("d2.local")
 	h.TLS.UseDefaultCrt = true
 	h.AddPath(b, "/", hatypes.MatchBegin)
 
@@ -2594,7 +2595,7 @@ func TestInstanceStrictHost(t *testing.T) {
 	var h *hatypes.Host
 	var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	h = c.config.Hosts().AcquireHost("d1.local")
+	h = c.df.AcquireHost("d1.local")
 	h.AddPath(b, "/path", hatypes.MatchBegin)
 	c.config.Global().StrictHost = true
 
@@ -2629,12 +2630,12 @@ func TestInstanceStrictHostDefaultHost(t *testing.T) {
 
 	b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	h = c.config.Hosts().AcquireHost("d1.local")
+	h = c.df.AcquireHost("d1.local")
 	h.AddPath(b, "/path", hatypes.MatchBegin)
 
 	b = c.config.Backends().AcquireBackend("d2", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS21}
-	h = c.config.Hosts().AcquireHost(hatypes.DefaultHost)
+	h = c.df.AcquireHost(hatypes.DefaultHost)
 	h.AddPath(b, "/", hatypes.MatchBegin)
 
 	c.config.Global().StrictHost = true
@@ -2705,7 +2706,7 @@ func TestInstanceFrontend(t *testing.T) {
 	var b *hatypes.Backend
 
 	b = c.config.Backends().AcquireBackend("d1", "app", "8080")
-	h = c.config.Hosts().AcquireHost("d1.local")
+	h = c.df.AcquireHost("d1.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 	b.FindBackendPath(h.FindPath("/")[0].Link).SSLRedirect = true
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
@@ -2714,7 +2715,7 @@ func TestInstanceFrontend(t *testing.T) {
 	h.TLS.TLSHash = "1"
 
 	b = c.config.Backends().AcquireBackend("d2", "app", "8080")
-	h = c.config.Hosts().AcquireHost("d2.local")
+	h = c.df.AcquireHost("d2.local")
 	h.AddPath(b, "/app", hatypes.MatchPrefix)
 	b.FindBackendPath(h.FindPath("/app")[0].Link).SSLRedirect = true
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
@@ -2805,7 +2806,7 @@ func TestInstanceFrontendMatchHeader(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	c.config.frontend.RedirectToCode = 302
+	c.df.RedirectToCode = 302
 
 	def := c.config.Backends().AcquireBackend("default", "default-backend", "8080")
 	def.Endpoints = []*hatypes.Endpoint{endpointS0}
@@ -2870,15 +2871,15 @@ func TestInstanceFrontendMatchHeader(t *testing.T) {
 	b21 = c.config.Backends().AcquireBackend("b21", "app", "8080")
 	b1.Endpoints = []*hatypes.Endpoint{endpointS1}
 	b21.Endpoints = []*hatypes.Endpoint{endpointS21}
-	h1 = c.config.Hosts().AcquireHost(hatypes.DefaultHost)
-	h2 = c.config.Hosts().AcquireHost("h2.local")
+	h1 = c.df.AcquireHost(hatypes.DefaultHost)
+	h2 = c.df.AcquireHost("h2.local")
 	h2.TLS.TLSFilename = "/var/haproxy/ssl/certs/h2.pem"
-	h3 = c.config.hosts.AcquireHost("h3.local")
-	h4 = c.config.hosts.AcquireHost("h4.local")
+	h3 = c.df.AcquireHost("h3.local")
+	h4 = c.df.AcquireHost("h4.local")
 	h4.TLS.TLSFilename = "/var/haproxy/ssl/certs/h4.pem"
 	h4.TLS.CAFilename = "/var/haproxy/ssl/cacerts/h4.pem"
 	h4.TLS.CAHash = "1"
-	h5 = c.config.hosts.AcquireHost("h5.local")
+	h5 = c.df.AcquireHost("h5.local")
 	h5.VarNamespace = true
 
 	h1.AddPath(b1, "/", hatypes.MatchBegin)
@@ -3082,7 +3083,7 @@ func TestInstanceFrontendCA(t *testing.T) {
 
 	var h *hatypes.Host
 	var b = c.config.Backends().AcquireBackend("d", "app", "8080")
-	h = c.config.Hosts().AcquireHost("*.d1.local")
+	h = c.df.AcquireHost("*.d1.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
 	h.TLS.TLSHash = "0"
@@ -3090,7 +3091,7 @@ func TestInstanceFrontendCA(t *testing.T) {
 	h.TLS.CAHash = "1"
 	h.TLS.CAErrorPage = "http://d1.local/error.html"
 
-	h = c.config.Hosts().AcquireHost("d2.local")
+	h = c.df.AcquireHost("d2.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
 	h.TLS.TLSHash = "0"
@@ -3100,25 +3101,25 @@ func TestInstanceFrontendCA(t *testing.T) {
 	h.TLS.CRLHash = "2"
 	h.TLS.CAErrorPage = "http://d2.local/error.html"
 
-	h = c.config.Hosts().AcquireHost("d3.local")
+	h = c.df.AcquireHost("d3.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
 	h.TLS.TLSHash = "0"
 	h.TLS.Ciphers = "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384"
 
-	h = c.config.Hosts().AcquireHost("d4.local")
+	h = c.df.AcquireHost("d4.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
 	h.TLS.TLSHash = "0"
 	h.TLS.CipherSuites = "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
 
-	h = c.config.Hosts().AcquireHost("d5.local")
+	h = c.df.AcquireHost("d5.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
 	h.TLS.TLSHash = "0"
 	h.TLS.ALPN = "h2"
 
-	h = c.config.Hosts().AcquireHost("d6.local")
+	h = c.df.AcquireHost("d6.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
 	h.TLS.TLSHash = "0"
@@ -3314,17 +3315,17 @@ frontend _front__auth
 		var h *hatypes.Host
 		var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 		b.Endpoints = []*hatypes.Endpoint{endpointS1}
-		h = c.config.Hosts().AcquireHost("d1.local")
+		h = c.df.AcquireHost("d1.local")
 		h.AddPath(b, "/", hatypes.MatchBegin)
 
-		auth := &c.config.Frontend().AuthProxy
+		auth := &c.df.AuthProxy
 		auth.Name = "_front__auth"
 		auth.RangeStart = 4001
 		auth.RangeEnd = 4010
 
 		for _, back := range test.backs {
 			backend := c.config.Backends().AcquireAuthBackend(back.iplist, back.port, back.hostname)
-			_, _ = c.config.Frontend().AcquireAuthBackendName(backend.BackendID())
+			_, _ = c.df.AcquireAuthBackendName(backend.BackendID())
 		}
 
 		c.Update()
@@ -3433,7 +3434,7 @@ func TestInstanceFrontendAuthExternal(t *testing.T) {
 		c := setup(t)
 		defer c.teardown()
 
-		h := c.config.Hosts().AcquireHost("d.local")
+		h := c.df.AcquireHost("d.local")
 		b := c.config.Backends().AcquireBackend("d", "app1", "8080")
 
 		path := h.AddPath(b, "/", hatypes.MatchBegin)
@@ -3485,7 +3486,7 @@ func TestInstanceSomePaths(t *testing.T) {
 	var b *hatypes.Backend
 
 	b = c.config.Backends().AcquireBackend("d", "app0", "8080")
-	h = c.config.Hosts().AcquireHost("d.local")
+	h = c.df.AcquireHost("d.local")
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
 	h.TLS.TLSHash = "0"
 	h.AddPath(b, "/", hatypes.MatchBegin)
@@ -3561,7 +3562,7 @@ func TestInstanceCustomFrontend(t *testing.T) {
 	var h *hatypes.Host
 	var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	h = c.config.Hosts().AcquireHost("d1.local")
+	h = c.df.AcquireHost("d1.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 	c.config.Global().CustomFrontendEarly = []string{
 		"# dummy tcp-request",
@@ -3621,7 +3622,7 @@ func TestInstanceCustomSections(t *testing.T) {
 	var h *hatypes.Host
 	var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	h = c.config.Hosts().AcquireHost("d1.local")
+	h = c.df.AcquireHost("d1.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 
 	c.config.Global().CustomSections = []string{
@@ -3683,24 +3684,24 @@ func TestInstanceCustomProxy(t *testing.T) {
 	var h *hatypes.Host
 	var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	h = c.config.Hosts().AcquireHost("d1.local")
+	h = c.df.AcquireHost("d1.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
-	h.SetSSLPassthrough(true)
+	h.SSLPassthrough = true
 
 	var h2 *hatypes.Host
 	var b2 = c.config.Backends().AcquireBackend("d2", "app", "8080")
 	b2.Endpoints = []*hatypes.Endpoint{endpointS21}
 	b2.ModeTCP = true
-	h2 = c.config.Hosts().AcquireHost("d2.local")
+	h2 = c.df.AcquireHost("d2.local")
 	h2.AddPath(b, "/", hatypes.MatchBegin)
-	h2.SetSSLPassthrough(true)
+	h2.SSLPassthrough = true
 
-	auth := &c.config.Frontend().AuthProxy
+	auth := &c.df.AuthProxy
 	auth.Name = "_front__auth"
 	auth.RangeStart = 4001
 	auth.RangeEnd = 4010
 	authBackend := c.config.Backends().AcquireAuthBackend([]string{"172.17.100.11"}, 5000, "")
-	_, _ = c.config.Frontend().AcquireAuthBackendName(authBackend.BackendID())
+	_, _ = c.df.AcquireAuthBackendName(authBackend.BackendID())
 
 	tcp := c.config.tcpbackends.Acquire("default_pgsql", 5432)
 	tcp.AddEndpoint("172.17.0.21", 5432)
@@ -3864,7 +3865,7 @@ func TestCustomResponseLua(t *testing.T) {
 		},
 	}
 
-	host1 := c.config.hosts.AcquireHost("server1.local")
+	host1 := c.df.AcquireHost("server1.local")
 	host1.TLS.CAFilename = "/var/haproxy/ssl/ca/ca.pem" // adds mTLS, all host based lua services are being called from there
 	host1.CustomHTTPResponses.ID = host1.Hostname
 	host1.CustomHTTPResponses.Lua = []hatypes.HTTPResponse{
@@ -4161,20 +4162,20 @@ func TestInstanceSSLPassthrough(t *testing.T) {
 
 	var h *hatypes.Host
 	var b = c.config.Backends().AcquireBackend("d2", "app", "8080")
-	h = c.config.Hosts().AcquireHost("d2.local")
+	h = c.df.AcquireHost("d2.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 	b.FindBackendPath(h.FindPath("/")[0].Link).SSLRedirect = true
 	b.Endpoints = []*hatypes.Endpoint{endpointS31}
 	// TODO should ingress converter configure mode tcp?
 	b.ModeTCP = true
-	h.SetSSLPassthrough(true)
+	h.SSLPassthrough = true
 
 	b = c.config.Backends().AcquireBackend("d3", "app-ssl", "8443")
-	h = c.config.Hosts().AcquireHost("d3.local")
+	h = c.df.AcquireHost("d3.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 	b.Endpoints = []*hatypes.Endpoint{endpointS41s}
 	b.ModeTCP = true
-	h.SetSSLPassthrough(true)
+	h.SSLPassthrough = true
 
 	b = c.config.Backends().AcquireBackend("d3", "app1-http", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS41h}
@@ -4185,11 +4186,11 @@ func TestInstanceSSLPassthrough(t *testing.T) {
 	h.AddPath(b, "/app", hatypes.MatchBegin)
 
 	b = c.config.Backends().AcquireBackend("d4", "app4-ssl", "8443")
-	h = c.config.Hosts().AcquireHost(hatypes.DefaultHost)
+	h = c.df.AcquireHost(hatypes.DefaultHost)
 	h.AddPath(b, "/", hatypes.MatchBegin)
 	b.Endpoints = []*hatypes.Endpoint{endpointS41s}
 	b.ModeTCP = true
-	h.SetSSLPassthrough(true)
+	h.SSLPassthrough = true
 
 	b = c.config.Backends().AcquireBackend("d4", "app4-http", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS41h}
@@ -4267,7 +4268,7 @@ func TestInstanceRootRedirect(t *testing.T) {
 
 	var h *hatypes.Host
 	var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
-	h = c.config.Hosts().AcquireHost("*.d1.local")
+	h = c.df.AcquireHost("*.d1.local")
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
 	h.TLS.TLSHash = "0"
 	h.AddPath(b, "/", hatypes.MatchBegin)
@@ -4275,7 +4276,7 @@ func TestInstanceRootRedirect(t *testing.T) {
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 
 	b = c.config.Backends().AcquireBackend("d2", "app", "8080")
-	h = c.config.Hosts().AcquireHost("d2.local")
+	h = c.df.AcquireHost("d2.local")
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
 	h.TLS.TLSHash = "0"
 	h.AddPath(b, "/app1", hatypes.MatchBegin)
@@ -4365,20 +4366,20 @@ func TestInstanceAlias(t *testing.T) {
 	var h *hatypes.Host
 	var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	h = c.config.Hosts().AcquireHost("d1.local")
+	h = c.df.AcquireHost("d1.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 	h.Alias.AliasName = "*.d1.local"
 
 	b = c.config.Backends().AcquireBackend("d2", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS21}
-	h = c.config.Hosts().AcquireHost("d2.local")
+	h = c.df.AcquireHost("d2.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 	h.Alias.AliasName = "sub.d2.local"
 	h.Alias.AliasRegex = "^[a-z]+\\.d2\\.local$"
 
 	b = c.config.Backends().AcquireBackend("d3", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS31}
-	h = c.config.Hosts().AcquireHost("d3.local")
+	h = c.df.AcquireHost("d3.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 	h.Alias.AliasRegex = "d3\\.local$"
 
@@ -4520,26 +4521,26 @@ sub.d2.local d2.local
 		var h *hatypes.Host
 		var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 		b.Endpoints = []*hatypes.Endpoint{endpointS1}
-		h = c.config.Hosts().AcquireHost("d1.local")
+		h = c.df.AcquireHost("d1.local")
 		h.AddPath(b, "/", hatypes.MatchBegin)
 		h.Redirect = test.data[0]
 
 		b = c.config.Backends().AcquireBackend("d2", "app", "8080")
 		b.Endpoints = []*hatypes.Endpoint{endpointS21}
-		h = c.config.Hosts().AcquireHost("d2.local")
+		h = c.df.AcquireHost("d2.local")
 		h.AddPath(b, "/", hatypes.MatchBegin)
 		h.Redirect = test.data[1]
 
 		b = c.config.Backends().AcquireBackend("d3", "app", "8080")
 		b.Endpoints = []*hatypes.Endpoint{endpointS31}
-		h = c.config.Hosts().AcquireHost("d3.local")
+		h = c.df.AcquireHost("d3.local")
 		h.AddPath(b, "/", hatypes.MatchBegin)
 		h.Redirect = test.data[2]
 
 		if test.code != 0 {
-			c.config.frontend.RedirectFromCode = test.code
+			c.df.RedirectFromCode = test.code
 		} else {
-			c.config.frontend.RedirectFromCode = 302
+			c.df.RedirectFromCode = 302
 		}
 
 		c.Update()
@@ -4676,7 +4677,7 @@ d1.local#/ https://app.local
 
 		c.config.global.NoRedirects = test.noredirs
 
-		var h = c.config.Hosts().AcquireHost("d1.local")
+		var h = c.df.AcquireHost("d1.local")
 		var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 		b.Endpoints = []*hatypes.Endpoint{endpointS1}
 		if test.to[0] != "" {
@@ -4702,9 +4703,9 @@ d1.local#/ https://app.local
 		}
 
 		if test.code != 0 {
-			c.config.frontend.RedirectToCode = test.code
+			c.df.RedirectToCode = test.code
 		} else {
-			c.config.frontend.RedirectToCode = 302
+			c.df.RedirectToCode = 302
 		}
 
 		c.Update()
@@ -4767,7 +4768,7 @@ func TestInstanceSyslog(t *testing.T) {
 	var h *hatypes.Host
 	var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	h = c.config.Hosts().AcquireHost("d1.local")
+	h = c.df.AcquireHost("d1.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 
 	tcpPort1, tcpHost1 := c.config.tcpservices.AcquireTCPService("<default>:7001")
@@ -4978,20 +4979,20 @@ func TestDNS(t *testing.T) {
 	b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS21, endpointS22}
 	b.Resolver = "k8s"
-	h = c.config.Hosts().AcquireHost("d1.local")
+	h = c.df.AcquireHost("d1.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 
 	b = c.config.Backends().AcquireBackend("d2", "app", "http")
 	b.Endpoints = []*hatypes.Endpoint{endpointS21, endpointS22}
 	b.Resolver = "k8s"
-	h = c.config.Hosts().AcquireHost("d2.local")
+	h = c.df.AcquireHost("d2.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 
 	b = c.config.Backends().AcquireBackend("d3", "app", "http")
 	b.DNSPort = "named"
 	b.Endpoints = []*hatypes.Endpoint{endpointS21, endpointS22}
 	b.Resolver = "k8s"
-	h = c.config.Hosts().AcquireHost("d3.local")
+	h = c.df.AcquireHost("d3.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 
 	c.Update()
@@ -5094,7 +5095,7 @@ userlist default_auth2
 		var h *hatypes.Host
 		var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 		b.Endpoints = []*hatypes.Endpoint{endpointS1}
-		h = c.config.Hosts().AcquireHost("d1.local")
+		h = c.df.AcquireHost("d1.local")
 		h.AddPath(b, "/", hatypes.MatchBegin)
 		h.AddPath(b, "/admin", hatypes.MatchBegin)
 
@@ -5171,7 +5172,7 @@ frontend _front_http
 		var h *hatypes.Host
 		var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 		b.Endpoints = []*hatypes.Endpoint{endpointS1}
-		h = c.config.Hosts().AcquireHost("d1.local")
+		h = c.df.AcquireHost("d1.local")
 		h.AddPath(b, "/", hatypes.MatchBegin)
 
 		acme := &c.config.Global().Acme
@@ -5445,7 +5446,7 @@ spoe-message coraza-req
 		var h *hatypes.Host
 		var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 		b.Endpoints = []*hatypes.Endpoint{endpointS1}
-		h = c.config.Hosts().AcquireHost("d1.local")
+		h = c.df.AcquireHost("d1.local")
 		if test.path == "" {
 			test.path = "/"
 		}
@@ -5514,15 +5515,15 @@ func TestInstanceWildcardHostname(t *testing.T) {
 	var h *hatypes.Host
 
 	var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
-	h = c.config.Hosts().AcquireHost("d1.local")
+	h = c.df.AcquireHost("d1.local")
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
 	h.TLS.TLSHash = "0"
 	h.AddPath(b, "/", hatypes.MatchBegin)
-	h = c.config.Hosts().AcquireHost("*.app.d1.local")
+	h = c.df.AcquireHost("*.app.d1.local")
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
 	h.TLS.TLSHash = "0"
 	h.AddPath(b, "/", hatypes.MatchBegin)
-	h = c.config.Hosts().AcquireHost("*.sub.d1.local")
+	h = c.df.AcquireHost("*.sub.d1.local")
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
 	h.TLS.TLSHash = "0"
 	h.AddPath(b, "/", hatypes.MatchBegin)
@@ -5536,7 +5537,7 @@ func TestInstanceWildcardHostname(t *testing.T) {
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 
 	b = c.config.Backends().AcquireBackend("d2", "app", "8080")
-	h = c.config.Hosts().AcquireHost("*.d2.local")
+	h = c.df.AcquireHost("*.d2.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 	h.RootRedirect = "/app"
 	b.Endpoints = []*hatypes.Endpoint{endpointS21}
@@ -5632,7 +5633,7 @@ func TestCAVerifySkip(t *testing.T) {
 	var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
 
-	h = c.config.Hosts().AcquireHost("d1.local")
+	h = c.df.AcquireHost("d1.local")
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
 	h.TLS.TLSHash = "0"
 	h.AddPath(b, "/", hatypes.MatchBegin)
@@ -5700,17 +5701,17 @@ func TestShards(t *testing.T) {
 
 	var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS1}
-	h = c.config.Hosts().AcquireHost("d1.local")
+	h = c.df.AcquireHost("d1.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 
 	b = c.config.Backends().AcquireBackend("d2", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS21}
-	h = c.config.Hosts().AcquireHost("d2.local")
+	h = c.df.AcquireHost("d2.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 
 	b = c.config.Backends().AcquireBackend("d3", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS31}
-	h = c.config.Hosts().AcquireHost("d3.local")
+	h = c.df.AcquireHost("d3.local")
 	h.AddPath(b, "/", hatypes.MatchBegin)
 
 	c.Update()
@@ -5752,6 +5753,7 @@ type testConfig struct {
 	logger   *helper_test.LoggerMock
 	instance *instance
 	config   *config
+	df       *hatypes.Frontend
 	tempdir  string
 }
 
@@ -5847,12 +5849,14 @@ func setupOptions(options testOptions) *testConfig {
 		t.Errorf("error parsing modsecurity.tmpl: %v", err)
 	}
 	config := instance.Config().(*config)
-	config.frontend.DefaultCrtFile = "/var/haproxy/ssl/certs/default.pem"
+	df := config.frontends.Default()
+	df.DefaultCrtFile = "/var/haproxy/ssl/certs/default.pem"
 	c := &testConfig{
 		t:        t,
 		logger:   logger,
 		instance: instance,
 		config:   config,
+		df:       df,
 		tempdir:  tempdir,
 	}
 	c.configGlobal(c.config.Global())

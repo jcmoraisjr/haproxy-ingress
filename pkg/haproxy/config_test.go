@@ -25,14 +25,15 @@ func TestEmptyFrontend(t *testing.T) {
 	if err := c.WriteFrontendMaps(); err != nil {
 		t.Errorf("error creating frontends: %v", err)
 	}
-	if maps := c.frontend.Maps; maps == nil {
+	df := c.frontends.Default()
+	if maps := df.Maps; maps == nil {
 		t.Error("expected frontend.Maps != nil")
 	}
-	c.hosts.AcquireHost("empty")
+	df.AcquireHost("empty")
 	if err := c.WriteFrontendMaps(); err != nil {
 		t.Errorf("error creating frontends: %v", err)
 	}
-	maps := c.frontend.Maps
+	maps := df.Maps
 	if maps == nil {
 		t.Error("expected frontend.Maps != nil")
 	}
@@ -40,8 +41,9 @@ func TestEmptyFrontend(t *testing.T) {
 
 func TestAcquireHostDiff(t *testing.T) {
 	c := createConfig(options{})
-	f1 := c.hosts.AcquireHost("h1")
-	f2 := c.hosts.AcquireHost("h2")
+	df := c.frontends.Default()
+	f1 := df.AcquireHost("h1")
+	f2 := df.AcquireHost("h2")
 	if f1.Hostname != "h1" {
 		t.Errorf("expected %v but was %v", "h1", f1.Hostname)
 	}
@@ -52,8 +54,9 @@ func TestAcquireHostDiff(t *testing.T) {
 
 func TestAcquireHostSame(t *testing.T) {
 	c := createConfig(options{})
-	f1 := c.hosts.AcquireHost("h1")
-	f2 := c.hosts.AcquireHost("h1")
+	df := c.frontends.Default()
+	f1 := df.AcquireHost("h1")
+	f2 := df.AcquireHost("h1")
 	if f1 != f2 {
 		t.Errorf("expected same host but was different")
 	}
@@ -63,22 +66,24 @@ func TestClear(t *testing.T) {
 	c := createConfig(options{
 		mapsDir: "/tmp/maps",
 	})
-	c.Hosts().AcquireHost("app.local")
+	df := c.frontends.Default()
+	df.AcquireHost("app.local")
 	c.Backends().AcquireBackend("default", "app", "8080")
 	if c.options.mapsDir != "/tmp/maps" {
 		t.Error("expected mapsDir == /tmp/maps")
 	}
-	if len(c.Hosts().Items()) != 1 {
+	if len(df.Hosts()) != 1 {
 		t.Error("expected len(hosts) == 1")
 	}
 	if len(c.Backends().Items()) != 1 {
 		t.Error("expected len(backends) == 1")
 	}
 	c.Clear()
+	df = c.frontends.Default() // `c` itself is updated after `Clear()`, updating df reference.
 	if c.options.mapsDir != "/tmp/maps" {
 		t.Error("expected mapsDir == /tmp/maps")
 	}
-	if len(c.Hosts().Items()) != 0 {
+	if len(df.Hosts()) != 0 {
 		t.Error("expected len(hosts) == 0")
 	}
 	if len(c.Backends().Items()) != 0 {

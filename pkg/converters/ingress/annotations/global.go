@@ -67,7 +67,7 @@ var authProxyRegex = regexp.MustCompile(`^([A-Za-z_-]+):([0-9]{1,5})-([0-9]{1,5}
 func (c *updater) buildGlobalAuthProxy(d *globalData) {
 	proxystr := d.mapper.Get(ingtypes.GlobalAuthProxy).Value
 	proxy := authProxyRegex.FindStringSubmatch(proxystr)
-	authproxy := &c.haproxy.Frontend().AuthProxy
+	authproxy := &c.haproxy.Frontends().Default().AuthProxy
 	if len(proxy) < 4 {
 		c.logger.Warn("invalid auth proxy configuration: %s", proxystr)
 		// start>end ensures that trying to create a frontend bind will fail

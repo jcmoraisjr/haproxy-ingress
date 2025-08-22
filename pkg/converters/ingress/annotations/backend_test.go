@@ -525,8 +525,9 @@ func TestAuthExternal(t *testing.T) {
 	for i, test := range testCase {
 		c := setup(t)
 		u := c.createUpdater()
-		c.haproxy.Frontend().AuthProxy.RangeStart = 4001
-		c.haproxy.Frontend().AuthProxy.RangeEnd = 4009
+		df := c.haproxy.Frontends().Default()
+		df.AuthProxy.RangeStart = 4001
+		df.AuthProxy.RangeEnd = 4009
 		if test.isExternal {
 			c.haproxy.Global().External.IsExternal = true
 		}
@@ -567,7 +568,7 @@ func TestAuthExternal(t *testing.T) {
 		u.buildBackendAuthExternal(d)
 		back := d.backend.Paths[0].AuthExternal
 		var iplist []string
-		bindList := c.haproxy.Frontend().AuthProxy.BindList
+		bindList := df.AuthProxy.BindList
 		if len(bindList) > 0 {
 			auth := c.haproxy.Backends().FindBackendID(bindList[0].Backend)
 			for _, ep := range auth.Endpoints {
@@ -2064,7 +2065,7 @@ WARN oauth2_proxy on ingress 'default/ing1' needs Lua json module, install lua-j
 		if test.backend != "" {
 			b := strings.Split(test.backend, ":")
 			backend := c.haproxy.Backends().AcquireBackend(b[0], b[1], "8080")
-			c.haproxy.Hosts().AcquireHost("app.local").AddPath(backend, b[2], hatypes.MatchBegin)
+			c.haproxy.Frontends().Default().AcquireHost("app.local").AddPath(backend, b[2], hatypes.MatchBegin)
 		}
 		c.createUpdater().buildBackendOAuth(d)
 		actual := map[string]hatypes.AuthExternal{}
@@ -2123,8 +2124,8 @@ func TestRewriteURL(t *testing.T) {
 			ann = map[string]string{ingtypes.BackRewriteTarget: test.input}
 		}
 		d := c.createBackendData("default/app", &test.source, map[string]string{}, map[string]string{})
-		d.backend.AddBackendPath(hatypes.CreateHostPathLink("d1.local", "/", hatypes.MatchBegin))
-		d.mapper.AddAnnotations(&test.source, hatypes.CreateHostPathLink("d1.local", "/", hatypes.MatchBegin), ann)
+		d.backend.AddBackendPath(hatypes.CreatePathLink("/", hatypes.MatchBegin))
+		d.mapper.AddAnnotations(&test.source, hatypes.CreatePathLink("/", hatypes.MatchBegin), ann)
 		c.createUpdater().buildBackendRewriteURL(d)
 		actual := d.backend.Paths[0].RewriteURL
 		c.compareObjects("rewrite", i, actual, test.expected)

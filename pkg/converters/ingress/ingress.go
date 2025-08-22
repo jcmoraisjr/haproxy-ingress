@@ -144,9 +144,9 @@ func (c *converter) Sync(full bool) {
 }
 
 func (c *converter) defaultCrtNeedFullSync() bool {
-	frontend := c.haproxy.Frontend()
-	return frontend.DefaultCrtFile != c.defaultCrt.Filename ||
-		frontend.DefaultCrtHash != c.defaultCrt.SHA1Hash
+	df := c.haproxy.Frontends().Default()
+	return df.DefaultCrtFile != c.defaultCrt.Filename ||
+		df.DefaultCrtHash != c.defaultCrt.SHA1Hash
 }
 
 func (c *converter) globalConfigNeedFullSync() bool {
@@ -181,15 +181,17 @@ func (c *converter) readDefaultCertificate() {
 }
 
 func (c *converter) syncDefaultCrt() {
-	frontend := c.haproxy.Frontend()
-	frontend.DefaultCrtFile = c.defaultCrt.Filename
-	frontend.DefaultCrtHash = c.defaultCrt.SHA1Hash
+	df := c.haproxy.Frontends().Default()
+	df.DefaultCrtFile = c.defaultCrt.Filename
+	df.DefaultCrtHash = c.defaultCrt.SHA1Hash
 }
+
+// bareLink creates a pathlink with default path and match type params, used to create generic, TCP, or hostname based pathlinks.
+func bareLink() *hatypes.PathLink { return hatypes.CreatePathLink("/", hatypes.MatchExact) }
 
 func (c *converter) syncDefaultBackend() {
 	if c.options.DefaultBackend != "" {
-		pathLink := hatypes.CreateHostPathLink(hatypes.DefaultHost, "/", hatypes.MatchBegin)
-		if backend, err := c.addBackend(&c.defaultBackSource, pathLink, c.options.DefaultBackend, "", map[string]string{}); err == nil {
+		if backend, err := c.addBackend(&c.defaultBackSource, bareLink(), c.options.DefaultBackend, "", map[string]string{}); err == nil {
 			c.haproxy.Backends().DefaultBackend = backend
 			c.tracker.TrackNames(c.defaultBackSource.Type, c.defaultBackSource.FullName(), convtypes.ResourceHAHostname, hatypes.DefaultHost)
 		} else {
@@ -226,8 +228,8 @@ func (c *converter) syncPartial() {
 	dirtyStorages := trackedLinks[convtypes.ResourceAcmeData]
 
 	c.haproxy.TCPServices().RemoveAll(dirtyTCPServices)
-	c.haproxy.Hosts().RemoveAll(dirtyHosts)
-	c.haproxy.Frontend().RemoveAuthBackendByTarget(dirtyBacks)
+	c.haproxy.Frontends().RemoveAllHosts(dirtyHosts)
+	c.haproxy.Frontends().RemoveAuthBackendByTarget(dirtyBacks)
 	c.haproxy.Backends().RemoveAll(dirtyBacks)
 	c.haproxy.Userlists().RemoveAll(dirtyUsers)
 	c.haproxy.AcmeData().Storages().RemoveAll(dirtyStorages)
@@ -408,7 +410,7 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 				uri = "/"
 			}
 			match := c.readPathType(path, annBack[ingtypes.BackPathType])
-			pathLink := hatypes.CreateHostPathLink(hostname, uri, match)
+			pathLink := hatypes.CreatePathLink(uri, match).WithHTTPHost(host)
 			if headerMatch := annBack[ingtypes.BackHTTPHeaderMatch]; headerMatch != "" {
 				c.addHeaderMatch(source, pathLink, headerMatch, false)
 			}
@@ -519,7 +521,7 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 func (c *converter) syncIngressTCP(source *annotations.Source, ing *networking.Ingress, tcpServicePort int, annTCP, annBack map[string]string) {
 	addIngressBackend := func(rawHostname string, ingressBackend *networking.IngressBackend) error {
 		hostname := normalizeHostname(rawHostname, tcpServicePort)
-		tcpService, err := c.addTCPService(source, hostname, annTCP)
+		tcpService, tcpLink, err := c.addTCPService(source, hostname, annTCP)
 		if err != nil {
 			return err
 		}
@@ -536,9 +538,8 @@ func (c *converter) syncIngressTCP(source *annotations.Source, ing *networking.I
 			return fmt.Errorf("service '%s' on %v: backend for port '%d' was already assigned", svcName, source, tcpServicePort)
 		}
 		fullSvcName := ing.Namespace + "/" + svcName
-		pathLink := hatypes.CreateHostPathLink(hostname, "/", hatypes.MatchExact)
 		ingressClass := c.readIngressClass(source, ing.Spec.IngressClassName)
-		backend, err := c.addBackendWithClass(source, pathLink, fullSvcName, svcPort, annBack, ingressClass)
+		backend, err := c.addBackendWithClass(source, tcpLink, fullSvcName, svcPort, annBack, ingressClass)
 		if err != nil {
 			return err
 		}
@@ -634,7 +635,7 @@ func (c *converter) fullSyncTCP() {
 
 func (c *converter) fullSyncAnnotations() {
 	c.fullSyncTCP()
-	for _, host := range c.haproxy.Hosts().Items() {
+	for _, host := range c.haproxy.Frontends().Default().Hosts() {
 		if ann, found := c.hostAnnotations[host]; found {
 			c.updater.UpdateHostConfig(host, ann)
 		}
@@ -648,7 +649,7 @@ func (c *converter) fullSyncAnnotations() {
 
 func (c *converter) partialSyncAnnotations() {
 	c.fullSyncTCP()
-	for _, host := range c.haproxy.Hosts().ItemsAdd() {
+	for _, host := range c.haproxy.Frontends().Default().HostsAdd() {
 		if ann, found := c.hostAnnotations[host]; found {
 			c.updater.UpdateHostConfig(host, ann)
 		}
@@ -709,27 +710,39 @@ func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcNam
 	hostname := hatypes.DefaultHost
 	uri := "/"
 	match := hatypes.MatchBegin
-	if fr := c.haproxy.Hosts().FindHost(hostname); fr != nil {
-		if fr.FindPath(uri, match) != nil {
+	df := c.haproxy.Frontends().Default()
+
+	// existing stores if the host already existed before calling this func
+	var existing bool
+	if host := df.FindHost(hostname); host != nil {
+		if host.FindPath(uri, match) != nil {
 			return fmt.Errorf("path %s was already defined on default host", uri)
 		}
+		existing = true
 	}
-	pathLink := hatypes.CreateHostPathLink(hostname, uri, match)
+
+	host := df.AcquireHost(hostname)
+	pathLink := hatypes.CreatePathLink(uri, match).WithHTTPHost(host)
 	backend, err := c.addBackend(source, pathLink, fullSvcName, svcPort, annBack)
 	if err != nil {
 		c.tracker.TrackNames(source.Type, source.FullName(), convtypes.ResourceService, fullSvcName)
+		if !existing {
+			// we needed to create it in order to configure a pathLink,
+			// so reverting the creation since we are not going to use it.
+			df.RemoveAllHosts([]string{hostname})
+		}
 		return err
 	}
-	host := c.addHost(hostname, source, annHost)
+	host = c.addHost(hostname, source, annHost)
 	host.AddPath(backend, uri, match)
 	return nil
 }
 
-func (c *converter) addTCPService(source *annotations.Source, hostname string, ann map[string]string) (*hatypes.TCPServiceHost, error) {
+func (c *converter) addTCPService(source *annotations.Source, hostname string, ann map[string]string) (*hatypes.TCPServiceHost, *hatypes.PathLink, error) {
 	tcpPort, tcpHost := c.haproxy.TCPServices().AcquireTCPService(hostname)
 	if !tcpHost.Backend.IsEmpty() {
 		tcpservice := strings.TrimPrefix(hostname, hatypes.DefaultHost)
-		return nil, fmt.Errorf("tcp service %s was already assigned to %s", tcpservice, tcpHost.Backend)
+		return nil, nil, fmt.Errorf("tcp service %s was already assigned to %s", tcpservice, tcpHost.Backend)
 	}
 	c.tracker.TrackNames(source.Type, source.FullName(), convtypes.ResourceHATCPService, hostname)
 	mapper, found := c.tcpsvcAnnotations[tcpPort]
@@ -737,23 +750,24 @@ func (c *converter) addTCPService(source *annotations.Source, hostname string, a
 		mapper = c.mapBuilder.NewMapper()
 		c.tcpsvcAnnotations[tcpPort] = mapper
 	}
-	conflict := mapper.AddAnnotations(source, hatypes.CreateHostPathLink(hostname, "/", hatypes.MatchExact), ann)
+	tcpLink := bareLink().WithTCPHost(tcpHost)
+	conflict := mapper.AddAnnotations(source, tcpLink, ann)
 	if len(conflict) > 0 {
 		c.logger.Warn("skipping tcp service annotation(s) from %v due to conflict: %v", source, conflict)
 	}
-	return tcpHost, nil
+	return tcpHost, tcpLink, nil
 }
 
 func (c *converter) addHost(hostname string, source *annotations.Source, ann map[string]string) *hatypes.Host {
 	// TODO build a stronger tracking
-	host := c.haproxy.Hosts().AcquireHost(hostname)
+	host := c.haproxy.Frontends().Default().AcquireHost(hostname)
 	c.tracker.TrackNames(source.Type, source.FullName(), convtypes.ResourceHAHostname, hostname)
 	mapper, found := c.hostAnnotations[host]
 	if !found {
 		mapper = c.mapBuilder.NewMapper()
 		c.hostAnnotations[host] = mapper
 	}
-	conflict := mapper.AddAnnotations(source, hatypes.CreateHostPathLink(hostname, "/", hatypes.MatchExact), ann)
+	conflict := mapper.AddAnnotations(source, bareLink().WithHTTPHost(host), ann)
 	if len(conflict) > 0 {
 		c.logger.Warn("skipping host annotation(s) from %v due to conflict: %v", source, conflict)
 	}

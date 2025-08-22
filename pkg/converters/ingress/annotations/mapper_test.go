@@ -55,10 +55,10 @@ var (
 )
 
 func TestAddAnnotation(t *testing.T) {
-	pathRoot := hatypes.CreateHostPathLink("domain.local", "/", hatypes.MatchBegin)
-	pathApp := hatypes.CreateHostPathLink("domain.local", "/app", hatypes.MatchBegin)
-	pathPath := hatypes.CreateHostPathLink("domain.local", "/path", hatypes.MatchBegin)
-	pathURL := hatypes.CreateHostPathLink("domain.local", "/url", hatypes.MatchBegin)
+	pathRoot := hatypes.CreatePathLink("/", hatypes.MatchBegin)
+	pathApp := hatypes.CreatePathLink("/app", hatypes.MatchBegin)
+	pathPath := hatypes.CreatePathLink("/path", hatypes.MatchBegin)
+	pathURL := hatypes.CreatePathLink("/url", hatypes.MatchBegin)
 	testCases := []struct {
 		ann     []ann
 		getKey  string
@@ -150,8 +150,8 @@ func TestAddAnnotation(t *testing.T) {
 }
 
 func TestGetAnnotation(t *testing.T) {
-	pathRoot := hatypes.CreateHostPathLink("domain.local", "/", hatypes.MatchBegin)
-	pathURL := hatypes.CreateHostPathLink("domain.local", "/url", hatypes.MatchBegin)
+	pathRoot := hatypes.CreatePathLink("/", hatypes.MatchBegin)
+	pathURL := hatypes.CreatePathLink("/url", hatypes.MatchBegin)
 	testCases := []struct {
 		ann       []ann
 		getKey    string
@@ -282,7 +282,7 @@ func TestGetDefault(t *testing.T) {
 			},
 		},
 	}
-	pathRoot := hatypes.CreateHostPathLink("domain.local", "/", hatypes.MatchBegin)
+	pathRoot := hatypes.CreatePathLink("/", hatypes.MatchBegin)
 	for i, test := range testCases {
 		c := setup(t)
 		mapper := NewMapBuilder(c.logger, test.annDefaults).NewMapper()

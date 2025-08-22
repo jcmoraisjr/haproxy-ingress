@@ -115,8 +115,9 @@ func TestBuildHostRedirect(t *testing.T) {
 		b := c.haproxy.Backends().AcquireBackend("default", "d", "8080")
 		dprev := c.createHostData(sprev, test.annPrev, test.annDefault)
 		d := c.createHostData(source, test.ann, test.annDefault)
-		dprev.host = c.haproxy.Hosts().AcquireHost("dprev.local")
-		d.host = c.haproxy.Hosts().AcquireHost("d.local")
+		df := c.haproxy.Frontends().Default()
+		dprev.host = df.AcquireHost("dprev.local")
+		d.host = df.AcquireHost("d.local")
 		if !test.nopath {
 			dprev.host.AddPath(b, "/", hatypes.MatchPrefix)
 			d.host.AddPath(b, "/", hatypes.MatchPrefix)

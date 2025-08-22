@@ -32,54 +32,54 @@ func TestAddBackendPath(t *testing.T) {
 		{
 			input: []string{"/"},
 			expected: []*BackendPath{
-				{ID: "path01", Link: CreateHostPathLink("d1.local", "/", MatchBegin)},
+				{ID: "path01", Link: CreatePathLink("/", MatchBegin)},
 			},
 		},
 		// 1
 		{
 			input: []string{"/app", "/app"},
 			expected: []*BackendPath{
-				{ID: "path01", Link: CreateHostPathLink("d1.local", "/app", MatchBegin)},
+				{ID: "path01", Link: CreatePathLink("/app", MatchBegin)},
 			},
 		},
 		// 2
 		{
 			input: []string{"/app", "/root"},
 			expected: []*BackendPath{
-				{ID: "path01", Link: CreateHostPathLink("d1.local", "/app", MatchBegin)},
-				{ID: "path02", Link: CreateHostPathLink("d1.local", "/root", MatchBegin)},
+				{ID: "path01", Link: CreatePathLink("/app", MatchBegin)},
+				{ID: "path02", Link: CreatePathLink("/root", MatchBegin)},
 			},
 		},
 		// 3
 		{
 			input: []string{"/app", "/root", "/root"},
 			expected: []*BackendPath{
-				{ID: "path01", Link: CreateHostPathLink("d1.local", "/app", MatchBegin)},
-				{ID: "path02", Link: CreateHostPathLink("d1.local", "/root", MatchBegin)},
+				{ID: "path01", Link: CreatePathLink("/app", MatchBegin)},
+				{ID: "path02", Link: CreatePathLink("/root", MatchBegin)},
 			},
 		},
 		// 4
 		{
 			input: []string{"/app", "/root", "/app"},
 			expected: []*BackendPath{
-				{ID: "path01", Link: CreateHostPathLink("d1.local", "/app", MatchBegin)},
-				{ID: "path02", Link: CreateHostPathLink("d1.local", "/root", MatchBegin)},
+				{ID: "path01", Link: CreatePathLink("/app", MatchBegin)},
+				{ID: "path02", Link: CreatePathLink("/root", MatchBegin)},
 			},
 		},
 		// 5
 		{
 			input: []string{"/", "/app", "/root"},
 			expected: []*BackendPath{
-				{ID: "path01", Link: CreateHostPathLink("d1.local", "/", MatchBegin)},
-				{ID: "path02", Link: CreateHostPathLink("d1.local", "/app", MatchBegin)},
-				{ID: "path03", Link: CreateHostPathLink("d1.local", "/root", MatchBegin)},
+				{ID: "path01", Link: CreatePathLink("/", MatchBegin)},
+				{ID: "path02", Link: CreatePathLink("/app", MatchBegin)},
+				{ID: "path03", Link: CreatePathLink("/root", MatchBegin)},
 			},
 		},
 	}
 	for i, test := range testCases {
 		b := &Backend{}
 		for _, p := range test.input {
-			b.AddBackendPath(CreateHostPathLink("d1.local", p, MatchBegin))
+			b.AddBackendPath(CreatePathLink(p, MatchBegin))
 		}
 		if !reflect.DeepEqual(b.Paths, test.expected) {
 			t.Errorf("backend.Paths differs on %d - actual: %v - expected: %v", i, b.Paths, test.expected)

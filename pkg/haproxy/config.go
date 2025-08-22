@@ -30,7 +30,7 @@ import (
 
 // Config ...
 type Config interface {
-	Frontend() *hatypes.Frontend
+	Frontends() *hatypes.Frontends
 	SyncConfig()
 	WriteTCPServicesMaps() error
 	WriteFrontendMaps() error
@@ -39,7 +39,6 @@ type Config interface {
 	Global() *hatypes.Global
 	TCPBackends() *hatypes.TCPBackends
 	TCPServices() *hatypes.TCPServices
-	Hosts() *hatypes.Hosts
 	Backends() *hatypes.Backends
 	Userlists() *hatypes.Userlists
 	Clear()
@@ -54,8 +53,7 @@ type config struct {
 	// haproxy internal state
 	globalOld   *hatypes.Global
 	global      *hatypes.Global
-	frontend    *hatypes.Frontend
-	hosts       *hatypes.Hosts
+	frontends   *hatypes.Frontends
 	backends    *hatypes.Backends
 	tcpbackends *hatypes.TCPBackends
 	tcpservices *hatypes.TCPServices
@@ -76,8 +74,7 @@ func createConfig(options options) *config {
 		options:     options,
 		acmeData:    &hatypes.AcmeData{},
 		global:      &hatypes.Global{},
-		frontend:    &hatypes.Frontend{},
-		hosts:       hatypes.CreateHosts(),
+		frontends:   hatypes.CreateFrontends(),
 		backends:    hatypes.CreateBackends(options.shardCount),
 		tcpbackends: hatypes.CreateTCPBackends(),
 		tcpservices: hatypes.CreateTCPServices(),
@@ -85,8 +82,8 @@ func createConfig(options options) *config {
 	}
 }
 
-func (c *config) Frontend() *hatypes.Frontend {
-	return c.frontend
+func (c *config) Frontends() *hatypes.Frontends {
+	return c.frontends
 }
 
 // SyncConfig does final synchronization, just before write
@@ -94,23 +91,24 @@ func (c *config) Frontend() *hatypes.Frontend {
 // during ingress, services and endpoint parsing, but most of
 // them need to start after all objects are parsed.
 func (c *config) SyncConfig() {
-	if c.hosts.HasSSLPassthrough() {
+	df := c.frontends.Default()
+	if df.HasSSLPassthrough() {
 		// using ssl-passthrough config, so need a `mode tcp`
 		// frontend with `inspect-delay` and `req.ssl_sni`
 		bindName := "_https_socket"
-		c.frontend.Name = "_front_https__local"
-		c.frontend.BindName = bindName
-		c.frontend.BindSocket = fmt.Sprintf("unix@%s/var/run/haproxy/%s.sock", c.global.LocalFSPrefix, bindName)
-		c.frontend.AcceptProxy = true
+		df.Name = "_front_https__local"
+		df.BindName = bindName
+		df.BindSocket = fmt.Sprintf("unix@%s/var/run/haproxy/%s.sock", c.global.LocalFSPrefix, bindName)
+		df.AcceptProxy = true
 	} else {
 		// One single HAProxy's frontend and bind
-		c.frontend.Name = "_front_https"
-		c.frontend.BindName = "_public"
-		c.frontend.BindSocket = c.global.Bind.HTTPSBind
-		c.frontend.AcceptProxy = c.global.Bind.AcceptProxy
+		df.Name = "_front_https"
+		df.BindName = "_public"
+		df.BindSocket = c.global.Bind.HTTPSBind
+		df.AcceptProxy = c.global.Bind.AcceptProxy
 	}
-	for _, host := range c.hosts.ItemsAdd() {
-		if host.SSLPassthrough() {
+	for _, host := range df.HostsAdd() {
+		if host.SSLPassthrough {
 			// no action if ssl-passthrough
 			continue
 		}
@@ -124,7 +122,7 @@ func (c *config) SyncConfig() {
 		}
 		if c.global.StrictHost && host.FindPath("/", hatypes.MatchBegin) == nil {
 			var back *hatypes.Backend
-			defaultHost := c.hosts.DefaultHost()
+			defaultHost := df.DefaultHost()
 			if defaultHost != nil {
 				if path := defaultHost.FindPath("/"); len(path) > 0 {
 					hback := path[0].Backend
@@ -195,7 +193,8 @@ func (c *config) WriteTCPServicesMaps() error {
 // config file. This func doesn't change model state, except the
 // link to the frontend maps.
 func (c *config) WriteFrontendMaps() error {
-	if c.frontend.Maps != nil && !c.hosts.Changed() {
+	df := c.frontends.Default()
+	if df.Maps != nil && !df.HostsChanged() {
 		// TODO Maps!=nil just to preserve the current behavior. Check if this can be removed.
 		// hosts are clean, maps are updated
 		return nil
@@ -221,23 +220,23 @@ func (c *config) WriteFrontendMaps() error {
 		DefaultHostMap: mapBuilder.AddMap(mapsDir + "/_front_defaulthost.map"),
 	}
 	// TODO crtList* to be removed after implement a template to the crt list
-	c.frontend.CrtListFile = mapsDir + "/_front_bind_crt.list"
+	df.CrtListFile = mapsDir + "/_front_bind_crt.list"
 	var crtListItems []*hatypes.HostsMapEntry
-	crtListItems = append(crtListItems, &hatypes.HostsMapEntry{Key: c.frontend.DefaultCrtFile + " !*"})
-	hasVarNamespace := c.hosts.HasVarNamespace()
-	defaultHost := c.hosts.DefaultHost()
-	if defaultHost != nil && !defaultHost.SSLPassthrough() {
+	crtListItems = append(crtListItems, &hatypes.HostsMapEntry{Key: df.DefaultCrtFile + " !*"})
+	hasVarNamespace := df.HasVarNamespace()
+	defaultHost := df.DefaultHost()
+	if defaultHost != nil && !defaultHost.SSLPassthrough {
 		for _, path := range defaultHost.Paths {
 			// using DefaultHost ID as hostname, see types.maps.go/buildMapKey()
 			fmaps.DefaultHostMap.AddHostnamePathMapping(hatypes.DefaultHost, path, path.Backend.ID)
 		}
 	}
-	for _, host := range c.hosts.BuildSortedItems() {
+	for _, host := range df.BuildSortedHosts() {
 		for _, path := range host.Paths {
 			backendID := path.Backend.ID
 			// IMPLEMENT check if host.Alias.AliasName was already used as a hostname
 			if backendID != "" {
-				if host.SSLPassthrough() {
+				if host.SSLPassthrough {
 					// no ssl offload, cannot inspect incoming path, so tracking root only
 					if path.Path() == "/" {
 						fmaps.SSLPassthroughMap.AddHostnameMapping(host.Hostname, backendID)
@@ -271,7 +270,7 @@ func (c *config) WriteFrontendMaps() error {
 				fmaps.VarNamespaceMap.AddHostnamePathMapping(host.Hostname, path, ns)
 			}
 		}
-		if host.SSLPassthrough() {
+		if host.SSLPassthrough {
 			continue
 		}
 		if host.Redirect.RedirectHost != "" {
@@ -306,7 +305,7 @@ func (c *config) WriteFrontendMaps() error {
 					if backend := c.backends.Items()[path.Backend.ID]; backend != nil {
 						if bpath := backend.FindBackendPath(path.Link); bpath != nil {
 							redir = bpath.SSLRedirect
-							if !path.Link.ComposeMatch() {
+							if !path.Link.IsComposeMatch() {
 								// give precedence for root path without method, header or cookie matching
 								return redir
 							}
@@ -324,9 +323,9 @@ func (c *config) WriteFrontendMaps() error {
 		tls := host.TLS
 		crtFile := tls.TLSFilename
 		if crtFile == "" {
-			crtFile = c.frontend.DefaultCrtFile
+			crtFile = df.DefaultCrtFile
 		}
-		if crtFile != c.frontend.DefaultCrtFile ||
+		if crtFile != df.DefaultCrtFile ||
 			tls.ALPN != "" ||
 			tls.CAFilename != "" ||
 			tls.Ciphers != "" ||
@@ -366,13 +365,13 @@ func (c *config) WriteFrontendMaps() error {
 			crtListItems = append(crtListItems, &hatypes.HostsMapEntry{Key: crtListEntry})
 		}
 	}
-	if err := c.options.mapsTemplate.WriteOutput(crtListItems, c.frontend.CrtListFile); err != nil {
+	if err := c.options.mapsTemplate.WriteOutput(crtListItems, df.CrtListFile); err != nil {
 		return err
 	}
 	if err := writeMaps(mapBuilder, c.options.mapsTemplate); err != nil {
 		return err
 	}
-	c.frontend.Maps = fmaps
+	df.Maps = fmaps
 	return nil
 }
 
@@ -387,6 +386,7 @@ func (c *config) WriteBackendMaps() error {
 		return nil
 	}
 	mapBuilder := hatypes.CreateMaps(c.global.MatchOrder)
+	df := c.frontends.Default()
 	for _, backend := range c.backends.ItemsAdd() {
 		if backend.NeedACL() {
 			mapsPrefix := c.options.mapsDir + "/_back_" + backend.ID
@@ -394,7 +394,7 @@ func (c *config) WriteBackendMaps() error {
 			pathsDefaultHostMap := mapBuilder.AddMap(mapsPrefix + "_idpathdef.map")
 			for _, path := range backend.Paths {
 				// IMPLEMENT add HostPath link into the backend path
-				h := c.hosts.FindHost(path.Hostname())
+				h := df.FindHost(path.Hostname())
 				if h == nil {
 					continue
 				}
@@ -403,7 +403,7 @@ func (c *config) WriteBackendMaps() error {
 					continue
 				}
 				if path.IsDefaultHost() {
-					// using DefaultHost ID as hostname, see types.maps.go/buildMapKey()
+					// using DefaultHost ID as hostname, see types/maps.go/buildMapKey()
 					pathsDefaultHostMap.AddHostnamePathMapping(hatypes.DefaultHost, p, path.ID)
 				} else {
 					pathsMap.AddHostnamePathMapping(path.Hostname(), p, path.ID)
@@ -444,10 +444,6 @@ func (c *config) TCPServices() *hatypes.TCPServices {
 	return c.tcpservices
 }
 
-func (c *config) Hosts() *hatypes.Hosts {
-	return c.hosts
-}
-
 func (c *config) Backends() *hatypes.Backends {
 	return c.backends
 }
@@ -468,7 +464,7 @@ func (c *config) Clear() {
 }
 
 func (c *config) Shrink() {
-	c.hosts.Shrink()
+	c.frontends.Default().ShrinkHosts()
 	c.backends.Shrink()
 }
 
@@ -481,8 +477,7 @@ func (c *config) Commit() {
 		}
 		c.globalOld = &globalOld
 	}
-	c.frontend.Commit()
-	c.hosts.Commit()
+	c.frontends.Commit()
 	c.backends.Commit()
 	c.tcpbackends.Commit()
 	c.tcpservices.Commit()

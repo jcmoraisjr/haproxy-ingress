@@ -24,9 +24,8 @@
     {{- $tcpservices := $cfg.TCPServices.BuildSortedItems }}
     {{- $backends := $cfg.Backends }}
     {{- $backendItems := $backends.BuildSortedItems }}
-    {{- $frontend := $cfg.Frontend }}
+    {{- $frontend := $cfg.Frontends.Default }}
     {{- $fmaps := $frontend.Maps }}
-    {{- $hosts := $cfg.Hosts }}
     {{- template "global" map $global }}
     {{- if $global.Peers.Servers }}
         {{- template "peers" map $global }}
@@ -46,8 +45,8 @@
     {{- if $backendItems }}
         {{- template "backends" map $global $backendItems true }}
     {{- end }}
-    {{- template "backend-support" map $global $hosts $backends }}
-    {{- template "frontends" map $global $frontend $hosts $fmaps $backends.DefaultBackend $tcpservices }}
+    {{- template "backend-support" map $global $frontend $backends }}
+    {{- template "frontends" map $global $frontend $fmaps $backends.DefaultBackend $tcpservices }}
     {{- template "frontend-support" map $global }}
 {{- else if and .Global .Backends }}
     {{- $global := .Global }}
@@ -903,10 +902,10 @@ backend {{ $backend.ID }}
 
 {{- define "backend-support" }}
 {{- $global := .p1 }}
-{{- $hosts := .p2 }}
+{{- $frontend := .p2 }}
 {{- $backends := .p3 }}
 
-{{- if $hosts.HasSSLPassthrough }}
+{{- if $frontend.HasSSLPassthrough }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
@@ -959,10 +958,9 @@ backend _error404
 {{- define "frontends" }}
 {{- $global := .p1 }}
 {{- $frontend := .p2 }}
-{{- $hosts := .p3 }}
-{{- $fmaps := .p4 }}
-{{- $defaultbackend := .p5 }}
-{{- $tcpservices := .p6 }}
+{{- $fmaps := .p3 }}
+{{- $defaultbackend := .p4 }}
+{{- $tcpservices := .p5 }}
 
 
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -1091,7 +1089,7 @@ frontend {{ $proxy_name }}
 {{- end }}{{/* range $tcpservices */}}
 {{- end }}{{/* has $tcpservices */}}
 
-{{- if $hosts.HasSSLPassthrough }}
+{{- if $frontend.HasSSLPassthrough }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
@@ -1133,7 +1131,7 @@ listen {{ $proxy__front__tls }}
 
 {{- /*------------------------------------*/}}
     use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
-{{- $defaultHost := $hosts.DefaultHost }}
+{{- $defaultHost := $frontend.DefaultHost }}
 {{- if $defaultHost }}
 {{- if $defaultHost.SSLPassthrough }}
 {{- range $path := $defaultHost.Paths }}
@@ -1261,7 +1259,7 @@ frontend {{ $proxy__front_http }}
 {{- template "redirectTo" map $global $frontend $fmaps }}
 
 {{- /*------------------------------------*/}}
-{{- template "authExternalFrontend" map $hosts }}
+{{- template "authExternalFrontend" map $frontend }}
 
 {{- /*------------------------------------*/}}
 {{- range $match := $fmaps.HTTPHostMap.MatchFiles }}
@@ -1301,12 +1299,12 @@ frontend {{ $proxy__front_http }}
     use_backend _acme_challenge if acme-challenge
 {{- end }}
 
-{{- if $hosts.DefaultHost }}
-{{- if $hosts.DefaultHost.HTTPPassthroughBackend }}
-    use_backend {{ $hosts.DefaultHost.HTTPPassthroughBackend }}
+{{- if $frontend.DefaultHost }}
+{{- if $frontend.DefaultHost.HTTPPassthroughBackend }}
+    use_backend {{ $frontend.DefaultHost.HTTPPassthroughBackend }}
 {{- end }}
 {{- end }}
-{{- template "defaultbackend" map $hosts $defaultbackend }}
+{{- template "defaultbackend" map $frontend $defaultbackend }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
@@ -1348,7 +1346,7 @@ frontend {{ $frontend.Name }}
 {{- template "redirectTo" map $global $frontend $fmaps }}
 
 {{- /*------------------------------------*/}}
-{{- template "authExternalFrontend" map $hosts }}
+{{- template "authExternalFrontend" map $frontend }}
 
 {{- /*------------------------------------*/}}
 {{- range $match := $fmaps.HTTPSHostMap.MatchFiles }}
@@ -1402,7 +1400,7 @@ frontend {{ $frontend.Name }}
 {{- template "sourceIP" map $global }}
 
 {{- /*------------------------------------*/}}
-{{- $hasTLSAuth := or $hosts.HasTLSAuth  }}
+{{- $hasTLSAuth := or $frontend.HasTLSAuth  }}
 {{- if $hasTLSAuth }}
 {{- $mandatory := $fmaps.TLSNeedCrtList.HasHost }}
     acl tls-has-crt ssl_c_used
@@ -1465,7 +1463,7 @@ frontend {{ $frontend.Name }}
 
 {{- /*------------------------------------*/}}
 {{- if $hasTLSAuth }}
-{{- if $hosts.BuildHTTPResponses }}
+{{- if $frontend.BuildHTTPResponses }}
     http-request set-var(txn.lua_scope) var(req.host)
 {{- end }}
     http-request use-service lua.send-421 if
@@ -1491,7 +1489,7 @@ frontend {{ $frontend.Name }}
     use_backend %[var(req.snibackend)]
         {{- "" }} if { var(req.snibackend) -m found }
 {{- end }}
-{{- template "defaultbackend" map $hosts $defaultbackend }}
+{{- template "defaultbackend" map $frontend $defaultbackend }}
 
 {{- end }}{{/* has $fmaps */}}
 {{- end }}{{/* define "frontends" */}}
@@ -1598,8 +1596,8 @@ frontend {{ $frontend.Name }}
 {{- /*------------------------------------*/}}
 {{- /*------------------------------------*/}}
 {{- define "authExternalFrontend" }}
-{{- $hosts := .p1 }}
-{{- range $host := $hosts.Items }}
+{{- $frontend := .p1 }}
+{{- range $host := $frontend.Hosts }}
 {{- range $path := $host.Paths }}
 {{- if $path.AuthExt }}
 {{- template "authExternal" map $path.AuthExt (printf "{ var(req.base) -m str %s '%s' }" $path.Link.HAMatch $path.Link.Key) }}
@@ -1628,9 +1626,9 @@ frontend {{ $frontend.Name }}
 {{- /*------------------------------------*/}}
 {{- /*------------------------------------*/}}
 {{- define "defaultbackend" }}
-{{- $hosts := .p1 }}
+{{- $frontend := .p1 }}
 {{- $defaultbackend := .p2 }}
-{{- $defaultHost := $hosts.DefaultHost }}
+{{- $defaultHost := $frontend.DefaultHost }}
 {{- if $defaultHost }}
 {{- if not $defaultHost.SSLPassthrough }}
     use_backend %[var(req.defaultbackend)]

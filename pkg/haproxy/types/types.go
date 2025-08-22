@@ -326,6 +326,7 @@ type TCPServicePort struct {
 
 // TCPServiceHost ...
 type TCPServiceHost struct {
+	tcpport  *TCPServicePort
 	hostname string
 	Backend  BackendID
 }
@@ -477,6 +478,11 @@ type AuthProxyBind struct {
 	SocketID        int
 }
 
+// Frontends ...
+type Frontends struct {
+	items []*Frontend
+}
+
 // Frontend ...
 type Frontend struct {
 	changed     bool
@@ -494,18 +500,16 @@ type Frontend struct {
 	//
 	RedirectFromCode int
 	RedirectToCode   int
+	//
+	// hosts
+	hosts,
+	hostsAdd,
+	hostsDel map[string]*Host
+	hasCommit bool
 }
 
 // DefaultHost ...
 const DefaultHost = "<default>"
-
-// Hosts ...
-type Hosts struct {
-	items, itemsAdd, itemsDel map[string]*Host
-	//
-	sslPassthroughCount int
-	hasCommit           bool
-}
 
 // Host ...
 //
@@ -522,11 +526,11 @@ type Host struct {
 	Redirect               HostRedirectConfig
 	HTTPPassthroughBackend string
 	RootRedirect           string
+	SSLPassthrough         bool
 	TLS                    HostTLSConfig
 	VarNamespace           bool
 	//
-	hosts          *Hosts
-	sslPassthrough bool
+	frontend *Frontend
 }
 
 // MatchType ...
@@ -569,6 +573,7 @@ type PathLinkHash string
 // or should not be applied.
 type PathLink struct {
 	hash     PathLinkHash
+	frontend string
 	hostname string
 	path     string
 	match    MatchType
