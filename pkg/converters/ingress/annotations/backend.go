@@ -195,12 +195,13 @@ func (c *updater) setAuthExternal(config ConfigValueGetter, auth *hatypes.AuthEx
 		return
 	}
 	// TODO track
-	authBackendName, err := c.haproxy.Frontend().AcquireAuthBackendName(backend.BackendID())
+	df := c.haproxy.Frontends().Default()
+	authBackendName, err := df.AcquireAuthBackendName(backend.BackendID())
 	if err != nil {
 		// clean up and try again
 		used := c.haproxy.Backends().BuildUsedAuthBackends()
-		c.haproxy.Frontend().RemoveAuthBackendExcept(used)
-		authBackendName, err = c.haproxy.Frontend().AcquireAuthBackendName(backend.BackendID())
+		df.RemoveAuthBackendExcept(used)
+		authBackendName, err = df.AcquireAuthBackendName(backend.BackendID())
 		if err != nil {
 			// TODO remove backend if not used elsewhere
 			c.logger.Warn("ignoring auth URL on %s: %v", url.Source.String(), err)
@@ -791,7 +792,7 @@ func (c *updater) buildBackendOAuth(d *backData) {
 }
 
 func (c *updater) findBackend(namespace, uriPrefix string) *hatypes.HostBackend {
-	for _, host := range c.haproxy.Hosts().Items() {
+	for _, host := range c.haproxy.Frontends().Default().Hosts() {
 		for _, path := range host.Paths {
 			if strings.TrimRight(path.Path(), "/") == uriPrefix && path.Backend.Namespace == namespace {
 				return &path.Backend

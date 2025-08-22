@@ -79,7 +79,7 @@ func TestAuthProxy(t *testing.T) {
 			ingtypes.GlobalAuthProxy: test.input,
 		})
 		c.createUpdater().buildGlobalAuthProxy(d)
-		c.compareObjects("bind", i, c.haproxy.Frontend().AuthProxy, test.expected)
+		c.compareObjects("bind", i, c.haproxy.Frontends().Default().AuthProxy, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
@@ -147,7 +147,7 @@ func TestBind(t *testing.T) {
 			ingtypes.GlobalHTTPSPort:      "443",
 			ingtypes.GlobalBindIPAddrHTTP: "*",
 		})
-		d.mapper.AddAnnotations(nil, hatypes.CreateHostPathLink("-", "-", hatypes.MatchBegin), test.ann)
+		d.mapper.AddAnnotations(nil, hatypes.CreatePathLink("-", hatypes.MatchBegin), test.ann)
 		c.createUpdater().buildGlobalBind(d)
 		c.compareObjects("bind", i, d.global.Bind, test.expected)
 		c.teardown()

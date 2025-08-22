@@ -88,7 +88,7 @@ func (d *dynUpdater) checkConfigChange() bool {
 	if d.config.tcpservices.Changed() {
 		diff = append(diff, "tcp-services")
 	}
-	if d.config.frontend.Changed() {
+	if d.config.frontends.FrontendsChanged() {
 		diff = append(diff, "frontend")
 	}
 	if d.config.userlists.Changed() {
@@ -110,11 +110,12 @@ func (d *dynUpdater) checkConfigChange() bool {
 func (d *dynUpdater) frontendUpdated() bool {
 	updated := true
 
-	hosts := make(map[string]*hostPair, len(d.config.hosts.ItemsDel()))
-	for _, host := range d.config.hosts.ItemsDel() {
+	df := d.config.frontends.Default()
+	hosts := make(map[string]*hostPair, len(df.HostsDel()))
+	for _, host := range df.HostsDel() {
 		hosts[host.Hostname] = &hostPair{old: host}
 	}
-	for _, host := range d.config.hosts.ItemsAdd() {
+	for _, host := range df.HostsAdd() {
 		id := host.Hostname
 		h, found := hosts[id]
 		if !found {
