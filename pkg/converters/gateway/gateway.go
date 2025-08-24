@@ -533,8 +533,8 @@ func (c *converter) createHTTPHosts(routeSource *source, hostnames []gatewayv1.H
 			if hstr == "" || hstr == "*" {
 				hstr = hatypes.DefaultHost
 			}
-			h := c.haproxy.Hosts().AcquireHost(hstr)
-			pathlink := hatypes.CreateHostPathLink(hstr, path, haMatch)
+			h := c.haproxy.Frontends().Default().AcquireHost(hstr)
+			pathlink := hatypes.CreatePathLink(path, haMatch).WithHTTPHost(h)
 			var haheaders hatypes.HTTPHeaderMatch
 			for _, header := range match.Headers {
 				haheaders = append(haheaders, hatypes.HTTPMatch{
@@ -545,11 +545,11 @@ func (c *converter) createHTTPHosts(routeSource *source, hostnames []gatewayv1.H
 			}
 			pathlink.WithHeadersMatch(haheaders)
 			if h.FindPathWithLink(pathlink) != nil {
-				if backend.ModeTCP && h.SSLPassthrough() {
+				if backend.ModeTCP && h.SSLPassthrough {
 					c.logger.Warn("skipping redeclared ssl-passthrough root path on %s", routeSource)
 					continue
 				}
-				if !backend.ModeTCP && !h.SSLPassthrough() {
+				if !backend.ModeTCP && !h.SSLPassthrough {
 					c.logger.Warn("skipping redeclared path '%s' type '%s' on %s", path, haMatch, routeSource)
 					continue
 				}
@@ -581,14 +581,14 @@ func (c *converter) createTCPService(port gatewayv1.PortNumber, backend *hatypes
 	}
 	c.tracker.TrackNames(convtypes.ResourceHAHostname, hostname, convtypes.ResourceGateway, "gw")
 	tcphost.Backend = backend.BackendID()
-	pathLink := hatypes.CreateHostPathLink(hostname, "/", hatypes.MatchExact)
+	pathLink := hatypes.CreatePathLink("/", hatypes.MatchExact).WithTCPHost(tcphost)
 	return []*hatypes.PathLink{pathLink}
 }
 
 func (c *converter) handlePassthrough(path string, h *hatypes.Host, b *hatypes.Backend, routeSource *source) {
 	// Special handling for TLS passthrough due to current haproxy.Host limitation
 	// TODO: haproxy.Host refactor, allowing to remove this whole func
-	if path != "/" || (!b.ModeTCP && !h.SSLPassthrough()) {
+	if path != "/" || (!b.ModeTCP && !h.SSLPassthrough) {
 		// only matter if root path
 		// we also don't care if both present (b.ModeTCP) and past
 		// (h.SSLPassthrough()) passthrough isn't/wasn't configured
@@ -637,7 +637,7 @@ func (c *converter) applyCertRef(source *gatewaySource, listener *gatewayv1.List
 		for _, host := range hosts {
 			// backend was already changed to ModeTCP; hosts.match was already
 			// changed to root path only and a warning was already logged if needed
-			host.SetSSLPassthrough(true)
+			host.SSLPassthrough = true
 		}
 		return
 	}

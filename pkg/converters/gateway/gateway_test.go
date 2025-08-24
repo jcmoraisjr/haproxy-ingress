@@ -1253,7 +1253,7 @@ func (c *testConfig) compareText(id string, actual, expected string) {
 }
 
 func (c *testConfig) compareConfigDefaultHost(id string, expected string) {
-	host := c.hconfig.Hosts().DefaultHost()
+	host := c.hconfig.Frontends().Default().DefaultHost()
 	if host != nil {
 		c.compareText(id, conv_helper.MarshalHost(host), expected)
 	} else {
@@ -1262,7 +1262,7 @@ func (c *testConfig) compareConfigDefaultHost(id string, expected string) {
 }
 
 func (c *testConfig) compareConfigHosts(id string, expected string) {
-	c.compareText(id, conv_helper.MarshalHosts(c.hconfig.Hosts().BuildSortedItems()...), expected)
+	c.compareText(id, conv_helper.MarshalHosts(c.hconfig.Frontends().Default().BuildSortedHosts()...), expected)
 }
 
 func (c *testConfig) compareConfigTCPServices(id string, expected string) {
