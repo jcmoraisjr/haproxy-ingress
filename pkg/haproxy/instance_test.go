@@ -4859,16 +4859,18 @@ func TestPeers(t *testing.T) {
 
 	peers := &c.config.global.Peers
 	peers.SectionName = "ingress"
-	peers.Table = "stick-table type ip size 100k expire 1m peers ingress store http_req_rate(10s)"
-	peers.TableNamePrefix = hatypes.PeersTableNamePrefix
+	peers.GlobalTable = "stick-table type ip size 100k expire 1m peers ingress store http_req_rate(10s)"
 	peers.LocalPeer.Name = "srv2"
 	peers.LocalPeer.Endpoint = "172.17.0.12:9001"
 	peers.Servers = []hatypes.PeersServer{
-		{Name: "srv1", Endpoint: "172.17.0.11:9001"},
-		{Name: "srv2", Endpoint: "172.17.0.12:9002"},
-		{Name: "srv3", Endpoint: "172.17.0.13:9003"},
+		{BESuffix: "proxy01", Name: "srv1", Endpoint: "172.17.0.11:9001"},
+		{BESuffix: "proxy02", Name: "srv2", Endpoint: "172.17.0.12:9002"},
+		{BESuffix: "proxy03", Name: "srv3", Endpoint: "172.17.0.13:9003"},
 	}
 	c.config.global.CustomPeers = []string{"log stdout format raw local0"}
+
+	back1 := c.config.backends.AcquireBackend("default", "app1", "8080")
+	back1.PeersTable = "stick-table type ip size 10k expire 1m peers ingress store gpc0,http_req_rate(10s)"
 
 	c.Update()
 	c.checkConfig(`
@@ -4897,12 +4899,20 @@ peers ingress
     server srv1 172.17.0.11:9001
     server srv2
     server srv3 172.17.0.13:9003
-backend _peers_srv1
+backend _peers_global_proxy01
     stick-table type ip size 100k expire 1m peers ingress store http_req_rate(10s)
-backend _peers_srv2
+backend _peers_global_proxy02
     stick-table type ip size 100k expire 1m peers ingress store http_req_rate(10s)
-backend _peers_srv3
+backend _peers_global_proxy03
     stick-table type ip size 100k expire 1m peers ingress store http_req_rate(10s)
+backend _peers_default_app1_8080_proxy01
+    stick-table type ip size 10k expire 1m peers ingress store gpc0,http_req_rate(10s)
+backend _peers_default_app1_8080_proxy02
+    stick-table type ip size 10k expire 1m peers ingress store gpc0,http_req_rate(10s)
+backend _peers_default_app1_8080_proxy03
+    stick-table type ip size 10k expire 1m peers ingress store gpc0,http_req_rate(10s)
+backend default_app1_8080
+    mode http
 <<backends-default>>
 frontend _front_http
     mode http
@@ -4922,9 +4932,13 @@ frontend _front_https
 `)
 
 	c.compareText("peers.lua", c.readConfig(c.tempdir+"/peers.lua"), `
-core.register_converters("peers_sum", function(key, field)
+tables = {
+    ["global"] = {"_peers_global_proxy01", "_peers_global_proxy02", "_peers_global_proxy03"},
+    ["default_app1_8080"] = {"_peers_default_app1_8080_proxy01", "_peers_default_app1_8080_proxy02", "_peers_default_app1_8080_proxy03"},
+}
+core.register_converters("peers_sum", function(key, group, field)
     total = 0
-    be = {"_peers_srv1", "_peers_srv2", "_peers_srv3"}
+    be = tables[group]
     for i = 1, #be do
         item = core.backends[be[i]].stktable:lookup(key)
         if item then
