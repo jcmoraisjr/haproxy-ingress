@@ -18,6 +18,7 @@ package annotations
 
 import (
 	"fmt"
+	"maps"
 	"net"
 	"path"
 	"reflect"
@@ -33,6 +34,17 @@ import (
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
+
+func buildBackendVars(global *hatypes.Global, backend *hatypes.Backend, globalVars map[string]string) map[string]string {
+	vars := map[string]string{
+		"%[service]":             backend.Name,
+		"%[namespace]":           backend.Namespace,
+		"%[peers_group_backend]": backend.ID,
+		"%[peers_table_backend]": buildPeersTableName(backend.ID, global.Peers.LocalPeer.BESuffix),
+	}
+	maps.Copy(vars, globalVars)
+	return vars
+}
 
 func (c *updater) buildBackendAffinity(d *backData) {
 	affinity := d.mapper.Get(ingtypes.BackAffinity)
@@ -574,12 +586,12 @@ func (c *updater) buildBackendCustomConfig(d *backData) {
 		c.logger.Warn("both config-backend and config-backend-late were used on %v, ignoring config-backend", configBackend.Source)
 	}
 
-	d.backend.CustomConfigEarly = c.generateBackendSnippet(configBackendEarly)
-	d.backend.CustomConfigLate = c.generateBackendSnippet(configBackendLate)
+	d.backend.CustomConfigEarly = c.generateBackendSnippet(d, configBackendEarly)
+	d.backend.CustomConfigLate = c.generateBackendSnippet(d, configBackendLate)
 }
 
-func (c *updater) generateBackendSnippet(config *ConfigValue) []string {
-	lines := utils.PatternLineToSlice(c.commonConfigPatterns(), config.Value)
+func (c *updater) generateBackendSnippet(d *backData, config *ConfigValue) []string {
+	lines := utils.PatternLineToSlice(d.vars, config.Value)
 	if len(lines) == 0 {
 		return nil
 	}
@@ -689,11 +701,7 @@ func (c *updater) buildBackendHeaders(d *backData) {
 	if headers.Value == "" {
 		return
 	}
-	pattern := map[string]string{
-		"%[service]":   d.backend.Name,
-		"%[namespace]": d.backend.Namespace,
-	}
-	for _, header := range utils.PatternLineToSlice(pattern, headers.Value) {
+	for _, header := range utils.PatternLineToSlice(d.vars, headers.Value) {
 		name, value, err := utils.SplitHeaderNameValue(header)
 		if err != nil {
 			c.logger.Warn("ignoring header on %s: %v", headers.Source, err)
@@ -788,6 +796,21 @@ func (c *updater) buildBackendOAuth(d *backData) {
 		path.AuthExternal.Method = "HEAD"
 		path.AuthExternal.RedirectOnFail = uriPrefix + "/start?rd=%[path]"
 	}
+}
+
+func (c *updater) buildBackendPeers(d *backData) {
+	table := d.mapper.Get(ingtypes.BackPeersTable)
+	if table.Value == "" {
+		return
+	}
+	if len(c.haproxy.Global().Peers.Servers) == 0 {
+		if table.Source != nil {
+			// missing source - global config; only log if this is a backend config.
+			c.logger.Warn("peers-table ignored on %s: global peers-port was not configured", table.Source.String())
+		}
+		return
+	}
+	d.backend.PeersTable = table.Value
 }
 
 func (c *updater) findBackend(namespace, uriPrefix string) *hatypes.HostBackend {

@@ -116,7 +116,7 @@ global
 {{- end }}
     lua-load-per-thread {{ $global.LocalFSPrefix }}/etc/haproxy/lua/services.lua
     lua-load-per-thread {{ $global.LocalFSPrefix }}/etc/haproxy/lua/responses.lua
-{{- if $global.Peers.Table }}
+{{- if $global.Peers.Servers }}
     lua-load-per-thread {{ $global.LocalFSPrefix }}/etc/haproxy/lua/peers.lua
 {{- end }}
 {{- if $global.SSL.DHParam.Filename }}
@@ -220,12 +220,18 @@ peers {{ $peers.SectionName }}
     server {{ $server.Name }}{{ if ne $peers.LocalPeer.Name $server.Name }} {{ $server.Endpoint }}{{ end }}
 {{- end }}
 
-{{- if $peers.Table }}
+{{- if $peers.Tables }}
+{{- /* backend naming follows rules implemented on `updater.buildPeersTableName()` */}}
 
 # Local stick tables
 {{- range $server := $peers.Servers }}
-backend {{ $peers.TableNamePrefix }}{{ $server.Name }}
-    {{ $peers.Table }}
+# {{ $server.BESuffix }}: haproxy pod "{{ $server.Name }}"
+{{- end }}
+{{- range $table := $peers.Tables }}
+{{- range $server := $peers.Servers }}
+backend _peers_{{ $table.GroupName }}_{{ $server.BESuffix }}
+    {{ $table.Table }}
+{{- end }}
 {{- end }}
 {{- end }}
 

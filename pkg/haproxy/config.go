@@ -19,6 +19,7 @@ package haproxy
 import (
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/jinzhu/copier"
@@ -138,6 +139,34 @@ func (c *config) SyncConfig() {
 			}
 			host.AddPath(back, "/", hatypes.MatchBegin)
 		}
+	}
+
+	peers := &c.global.Peers
+	if len(peers.Servers) > 0 {
+		// aggregating global and backend tables in a way haproxy.tmpl and peers.lua.tmpl can use.
+		peers.Tables = []hatypes.PeersTable{{
+			GroupName: hatypes.PeersGroupNameGlobal,
+			Table:     peers.GlobalTable,
+		}}
+		for _, back := range c.backends.Items() {
+			if back.PeersTable != "" {
+				peers.Tables = append(peers.Tables, hatypes.PeersTable{
+					GroupName: back.ID,
+					Table:     back.PeersTable,
+				})
+			}
+		}
+		sort.Slice(peers.Tables, func(i, j int) bool {
+			g1 := peers.Tables[i].GroupName
+			g2 := peers.Tables[j].GroupName
+			if g1 == hatypes.PeersGroupNameGlobal {
+				return true
+			}
+			if g2 == hatypes.PeersGroupNameGlobal {
+				return false
+			}
+			return g1 < g2
+		})
 	}
 }
 
