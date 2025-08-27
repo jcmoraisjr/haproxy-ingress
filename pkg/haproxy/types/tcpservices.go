@@ -33,7 +33,7 @@ func CreateTCPServices() *TCPServices {
 func (s *TCPServices) AcquireTCPService(service string) (*TCPServicePort, *TCPServiceHost) {
 	hostname, port := splitService(service)
 	tcpPort := s.acquireTCPPort(port)
-	tcpHost, found := tcpPort.acquireHost(hostname)
+	tcpHost, found := tcpPort.acquireHost(tcpPort, hostname)
 	if !found {
 		s.changed = true
 	}
@@ -134,13 +134,13 @@ func (s *TCPServicePort) isEmpty() bool {
 	return s.defaultHost == nil && len(s.hosts) == 0
 }
 
-func (s *TCPServicePort) acquireHost(hostname string) (tcpHost *TCPServiceHost, found bool) {
+func (s *TCPServicePort) acquireHost(tcpport *TCPServicePort, hostname string) (tcpHost *TCPServiceHost, found bool) {
 	if hostname == DefaultHost && s.defaultHost != nil {
 		return s.defaultHost, true
 	}
 	tcpHost, found = s.hosts[hostname]
 	if !found {
-		tcpHost = &TCPServiceHost{hostname: hostname}
+		tcpHost = &TCPServiceHost{tcpport: tcpport, hostname: hostname}
 		if hostname == DefaultHost {
 			s.defaultHost = tcpHost
 		} else {

@@ -896,7 +896,7 @@ func TestPathType(t *testing.T) {
 		ing := c.createIng1Ann("default/echo", "echo.localdomain", "/", "echo:8080", ann)
 		ing.Spec.Rules[0].HTTP.Paths[0].PathType = test.pathType
 		c.Sync(ing)
-		match := c.hconfig.Hosts().AcquireHost("echo.localdomain").FindPath("/", test.expected)
+		match := c.hconfig.Frontends().Default().AcquireHost("echo.localdomain").FindPath("/", test.expected)
 		if len(match) == 0 {
 			c.t.Errorf("path type does not match in %d: expected '%s', but wasn't found", i, test.expected)
 		}
@@ -912,7 +912,7 @@ func TestSyncBackendDefault(t *testing.T) {
 	c.createSvc1Auto()
 	c.Sync(c.createIng2("default/echo", "echo:8080"))
 
-	c.compareConfigDefaultFront(`
+	c.compareConfigDefaultHost(`
 hostname: <default>
 paths:
 - path: /
@@ -951,7 +951,7 @@ func TestSyncBackendReuseDefaultSvc(t *testing.T) {
   - path: /app
     backend: system_default_8080`)
 
-	c.compareConfigDefaultFront(`[]`)
+	c.compareConfigDefaultHost(`[]`)
 	c.compareConfigBack(defaultBackendConfig)
 }
 
@@ -966,7 +966,7 @@ func TestSyncDefaultBackendReusedPath1(t *testing.T) {
 		c.createIng2("default/echo2", "echo2:8080"),
 	)
 
-	c.compareConfigDefaultFront(defaultDefaultFrontendConfig)
+	c.compareConfigDefaultHost(defaultDefaultFrontendConfig)
 
 	c.compareConfigBack(`
 - id: default_echo1_8080
@@ -989,7 +989,7 @@ func TestSyncDefaultBackendReusedPath2(t *testing.T) {
 		c.createIng1("default/echo2", hatypes.DefaultHost, "/", "echo2:8080"),
 	)
 
-	c.compareConfigDefaultFront(defaultDefaultFrontendConfig)
+	c.compareConfigDefaultHost(defaultDefaultFrontendConfig)
 
 	c.compareConfigBack(`
 - id: default_echo1_8080
@@ -1016,7 +1016,7 @@ func TestSyncEmptyHost(t *testing.T) {
 	c.createSvc1Auto()
 	c.Sync(c.createIng1("default/echo", "", "/", "echo:8080"))
 
-	c.compareConfigDefaultFront(`
+	c.compareConfigDefaultHost(`
 hostname: <default>
 paths:
 - path: /
@@ -1567,7 +1567,7 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
 		if test.expDefaultFront == "" {
 			test.expDefaultFront = "[]"
 		}
-		c.compareConfigDefaultFront(test.expDefaultFront)
+		c.compareConfigDefaultHost(test.expDefaultFront)
 		c.compareConfigBack(test.expBack)
 		c.logger.CompareLogging(test.logging)
 
@@ -2435,7 +2435,7 @@ func TestSyncAnnPassthrough(t *testing.T) {
     backend: default_echo_8443
 `)
 
-	c.compareConfigDefaultFront(`
+	c.compareConfigDefaultHost(`
 hostname: <default>
 paths:
 - path: /
@@ -2791,11 +2791,11 @@ func (c *testConfig) compareConfigTCPService(expected string) {
 }
 
 func (c *testConfig) compareConfigFront(expected string) {
-	c.compareText(conv_helper.MarshalHosts(c.hconfig.Hosts().BuildSortedItems()...), expected)
+	c.compareText(conv_helper.MarshalHosts(c.hconfig.Frontends().Default().BuildSortedHosts()...), expected)
 }
 
-func (c *testConfig) compareConfigDefaultFront(expected string) {
-	host := c.hconfig.Hosts().DefaultHost()
+func (c *testConfig) compareConfigDefaultHost(expected string) {
+	host := c.hconfig.Frontends().Default().DefaultHost()
 	if host != nil {
 		c.compareText(conv_helper.MarshalHost(host), expected)
 	} else {
