@@ -48,6 +48,8 @@ import (
 )
 
 const (
+	LocalFSPrefix = "/tmp/haproxy-ingress"
+
 	PublishSvcName  = "default/publish"
 	PublishAddress  = "10.0.1.1"
 	PublishHostname = "ingress.local"
@@ -150,9 +152,9 @@ func startApiserver(t *testing.T, crdPaths []string) *rest.Config {
 func (f *framework) StartController(ctx context.Context, t *testing.T) {
 	t.Log("starting controller")
 
-	err := os.RemoveAll("/tmp/haproxy-ingress")
+	err := os.RemoveAll(LocalFSPrefix)
 	require.NoError(t, err)
-	err = os.MkdirAll("/tmp/haproxy-ingress/etc/haproxy/lua/", 0755)
+	err = os.MkdirAll(LocalFSPrefix+"/etc/haproxy/lua/", 0755)
 	require.NoError(t, err)
 	luadir, err := os.ReadDir("rootfs/etc/lua/")
 	require.NoError(t, err)
@@ -163,7 +165,7 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 		f1, err := os.Open(filepath.Join("rootfs/etc/lua", d.Name()))
 		require.NoError(t, err)
 		f2, err := os.OpenFile(
-			filepath.Join("/tmp/haproxy-ingress/etc/haproxy/lua", d.Name()),
+			filepath.Join(LocalFSPrefix+"/etc/haproxy/lua", d.Name()),
 			os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
 			0644)
 		require.NoError(t, err)
@@ -821,7 +823,7 @@ func (*framework) CreateAuthzServer(ctx context.Context, t *testing.T, o ...opti
 // Example: echoserver: service-name 8080 /app
 var echoHeaderRegex = regexp.MustCompile(`^echoserver: ([a-z0-9-]+) ([0-9]+) ([a-z0-9/]+)$`)
 
-func (*framework) CreateHTTPServer(ctx context.Context, t *testing.T, serverName string) int32 {
+func (*framework) CreateHTTPServer(ctx context.Context, t *testing.T, serverName string, o ...options.Server) int32 {
 	serverPort := RandomPort()
 
 	mux := http.NewServeMux()
@@ -856,21 +858,38 @@ func (*framework) CreateHTTPServer(ctx context.Context, t *testing.T, serverName
 			t.Logf("ws message (%d): %s\n", typ, msg)
 		}
 	})
-	startHTTPServer(t, mux, serverPort)
+	startHTTPServer(t, mux, serverPort, o...)
 
 	return serverPort
 }
 
-func startHTTPServer(t *testing.T, mux *http.ServeMux, serverPort int32) {
+func startHTTPServer(t *testing.T, mux *http.ServeMux, serverPort int32, o ...options.Server) {
+	opt := options.ParseServerOptions(o...)
+	var tlsConfig *tls.Config
+	if len(opt.Certs) > 0 {
+		tlsConfig = &tls.Config{Certificates: opt.Certs}
+		if opt.ClientCA != nil {
+			ca := x509.NewCertPool()
+			ca.AddCert(opt.ClientCA)
+			tlsConfig.ClientCAs = ca
+			tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+		}
+	}
 	server := http.Server{
-		Addr:    fmt.Sprintf(":%d", serverPort),
-		Handler: mux,
+		Addr:      fmt.Sprintf(":%d", serverPort),
+		Handler:   mux,
+		TLSConfig: tlsConfig,
 	}
 	t.Logf("creating http server at :%d\n", serverPort)
 
 	done := make(chan bool)
 	go func() {
-		err := server.ListenAndServe()
+		var err error
+		if tlsConfig != nil {
+			err = server.ListenAndServeTLS("", "")
+		} else {
+			err = server.ListenAndServe()
+		}
 		assert.ErrorIs(t, err, http.ErrServerClosed)
 		done <- true
 	}()
