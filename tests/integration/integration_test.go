@@ -3,10 +3,12 @@ package integration_test
 import (
 	"context"
 	"crypto/sha1"
+	"crypto/tls"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -42,6 +44,8 @@ func TestIntegrationIngress(t *testing.T) {
 	require.NoError(t, err)
 
 	caValid, cakeyValid := framework.CreateCA(t, framework.CertificateIssuerCN)
+	caValidKeyPair, err := tls.X509KeyPair(caValid, cakeyValid)
+	require.NoError(t, err)
 	crtValid, keyValid := framework.CreateCertificate(t, caValid, cakeyValid, framework.CertificateClientCN)
 	secretCA := f.CreateSecret(ctx, t, map[string][]byte{"ca.crt": caValid})
 
@@ -509,9 +513,6 @@ Request forbidden by administrative rules.
 		)
 	})
 
-	// should match wildcard host
-	// should match domain conflicting with wildcard host
-
 	t.Run("should give priority on specific domains over wildcard", func(t *testing.T) {
 		t.Parallel()
 		hostname := framework.RandomHostName()
@@ -775,6 +776,42 @@ Request forbidden by administrative rules.
 		assert.Equal(t, "tcphost1", conn1.ConnectionState().PeerCertificates[0].Subject.CommonName)
 		require.NoError(t, conn1.Close())
 	})
+
+	t.Run("should configure TLS backend using crt files", func(t *testing.T) {
+		t.Parallel()
+		crtPem, keyPem := framework.CreateCertificate(t, caValid, cakeyValid, "localhost")
+		crt, err := tls.X509KeyPair(crtPem, keyPem)
+		require.NoError(t, err)
+		port := f.CreateHTTPServer(ctx, t, "https1",
+			options.ClientCACertificate(caValidKeyPair.Leaf),
+			options.ServerCertificates([]tls.Certificate{crt}),
+		)
+
+		fileCA, err := os.CreateTemp(framework.LocalFSPrefix, "ca")
+		require.NoError(t, err)
+		err = os.WriteFile(fileCA.Name(), caValid, 0644)
+		require.NoError(t, err)
+
+		fileCrt, err := os.CreateTemp(framework.LocalFSPrefix, "crt")
+		require.NoError(t, err)
+		err = os.WriteFile(fileCrt.Name(), append(crtPem, keyPem...), 0644)
+		require.NoError(t, err)
+
+		svc := f.CreateService(ctx, t, port)
+		_, hostname := f.CreateIngress(ctx, t, svc,
+			options.AddConfigKeyAnnotation(ingtypes.BackBackendProtocol, "https"),
+			options.AddConfigKeyAnnotation(ingtypes.BackSecureCrtSecret, "file://"+fileCrt.Name()),
+			options.AddConfigKeyAnnotation(ingtypes.BackSecureVerifyCASecret, "file://"+fileCA.Name()),
+		)
+
+		res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
+		assert.True(t, res.EchoResponse.Parsed)
+		assert.Equal(t, "https1", res.EchoResponse.ServerName)
+	})
+
+	// should match wildcard host
+
+	// should match domain conflicting with wildcard host
 
 	// should update status on class update
 
