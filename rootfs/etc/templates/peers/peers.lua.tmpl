@@ -8,15 +8,22 @@
 -- #
 
 {{- $peers := . }}
+{{- /* table naming follows rules implemented on `updater.buildPeersTableName()` */}}
 
-core.register_converters("peers_sum", function(key, field)
-    total = 0
-    be = {
+tables = {
+{{- range $table := $peers.Tables }}
+    ["{{ $table.GroupName }}"] = {
 {{- range $i, $server := $peers.Servers -}}
     {{- if ne $i 0 }}, {{ end -}}
-    "{{ $peers.TableNamePrefix }}{{ $server.Name }}"
+    "_peers_{{ $table.GroupName }}_{{ $server.BESuffix }}"
 {{- end -}}
+},
+{{- end }}
 }
+
+core.register_converters("peers_sum", function(key, group, field)
+    total = 0
+    be = tables[group]
     for i = 1, #be do
         item = core.backends[be[i]].stktable:lookup(key)
         if item then

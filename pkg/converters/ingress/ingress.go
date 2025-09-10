@@ -238,6 +238,7 @@ func (c *converter) syncPartial() {
 	changedPods := c.changed.Links[convtypes.ResourcePod]
 	for _, pod := range changedPods {
 		if strings.HasPrefix(pod, ctrlNamespace) {
+			c.logger.Info("updating peers due to changes in controller pods")
 			c.updater.UpdatePeers(c.haproxy, c.globalConfig)
 			break
 		}

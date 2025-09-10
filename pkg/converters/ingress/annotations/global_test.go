@@ -325,8 +325,12 @@ func TestCustomConfigFrontendLate(t *testing.T) {
 		},
 		// 4
 		{
-			config:   "http-request track-sc0 src table %[peers_table_global]",
-			expected: []string{"http-request track-sc0 src table _peers_haproxy-ingress-srv1"},
+			config: `http-request track-sc0 src table %[peers_table_global]
+http-request deny if { src,lua.peers_sum(%[peers_group_global],http_req_rate) gt 100 }`,
+			expected: []string{
+				"http-request track-sc0 src table _peers_global_proxy01",
+				"http-request deny if { src,lua.peers_sum(global,http_req_rate) gt 100 }",
+			},
 		},
 	}
 	for i, test := range testCases {

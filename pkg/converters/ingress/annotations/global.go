@@ -30,6 +30,13 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
+func buildGlobalVars(global *hatypes.Global) map[string]string {
+	return map[string]string{
+		"%[peers_group_global]": hatypes.PeersGroupNameGlobal,
+		"%[peers_table_global]": buildPeersTableName(hatypes.PeersGroupNameGlobal, global.Peers.LocalPeer.BESuffix),
+	}
+}
+
 func (c *updater) buildGlobalAcme(d *globalData) {
 	endpoint := d.mapper.Get(ingtypes.GlobalAcmeEndpoint).Value
 	if endpoint == "" {
@@ -172,9 +179,14 @@ func (c *updater) buildGlobalPeers(d *globalData) {
 	var localPeer *hatypes.PeersServer
 	localPod := c.cache.GetControllerPod()
 	if pods, err := c.cache.GetControllerPodList(); err == nil {
+		var peerNames []string
 		for _, pod := range pods {
 			if pod.Status.PodIP == "" {
-				// missing IP, wait for the next update
+				c.logger.InfoV(2, "ignoring pod %s, missing IP address", pod.Name)
+				continue
+			}
+			if pod.DeletionTimestamp != nil {
+				c.logger.InfoV(2, "ignoring pod %s, deleting", pod.Name)
 				continue
 			}
 			peer := hatypes.PeersServer{
@@ -185,20 +197,25 @@ func (c *updater) buildGlobalPeers(d *globalData) {
 			if pod.Name == localPod.Name {
 				localPeer = &peer
 			}
+			peerNames = append(peerNames, peer.Name)
 		}
 		if len(pods) == 0 {
-			// probably an issue on our side, like not using proper labels when filtering
+			// maybe an issue on our side, like not using proper labels when filtering,
+			// or cluster is bootstrapping, new reconciliations should fix.
 			c.logger.Error("error building peers config: no controller pod was found")
 		}
-		if localPeer == nil {
-			var podNames []string
-			for _, pod := range pods {
-				podNames = append(podNames, pod.Name)
-			}
-			c.logger.Error(
-				"error building peers config: current pod '%s' was not found in the list of controller pods '%s/%s'",
-				localPod.String(), localPod.Namespace, strings.Join(podNames, ","))
+		var localPeerName string
+		if localPeer != nil {
+			localPeerName = localPeer.Name
+		} else {
+			localPeerName = "<not-found>"
+			// this might happen in the very beginning, when this instance does not have an IP address,
+			// or in the end, just after this instance is scheduled to be deleted.
+			c.logger.Warn(
+				"current pod '%s' was not found in the list of configured peers: %s",
+				localPod.String(), strings.Join(peerNames, ","))
 		}
+		c.logger.Info("updating peers - local: '%s' list: '%s'", localPeerName, strings.Join(peerNames, ","))
 	} else {
 		c.logger.Error("error building peers config: error reading controller pods: %s", err.Error())
 	}
@@ -216,13 +233,21 @@ func (c *updater) buildGlobalPeers(d *globalData) {
 	// predictable output, and same order on all haproxy instances
 	sort.Slice(peers, func(i, j int) bool { return peers[i].Name < peers[j].Name })
 
+	for i := range peers {
+		id := fmt.Sprintf("proxy%02d", i+1) // used to name local backend/stick tables, avoiding too long names
+		peers[i].BESuffix = id
+		if localPeer.Name == peers[i].Name {
+			localPeer.BESuffix = id
+		}
+	}
+
 	// this is being called on partial parsing without a previous cleanup, so it should be idempotent
 	globalPeers := &c.haproxy.Global().Peers
 	globalPeers.SectionName = d.mapper.Get(ingtypes.GlobalPeersName).Value
-	globalPeers.Table = d.mapper.Get(ingtypes.GlobalPeersTable).Value
-	globalPeers.TableNamePrefix = hatypes.PeersTableNamePrefix
+	globalPeers.GlobalTable = d.mapper.Get(ingtypes.GlobalPeersTableGlobal).Value
 	globalPeers.LocalPeer = *localPeer
 	globalPeers.Servers = peers
+	globalPeers.Tables = nil // config.SyncConfig() takes care of this one, after running all the backend updaters
 }
 
 func (c *updater) buildGlobalProc(d *globalData) {
@@ -494,14 +519,13 @@ func (c *updater) buildGlobalForwardFor(d *globalData) {
 }
 
 func (c *updater) buildGlobalCustomConfig(d *globalData) {
-	pattern := c.commonConfigPatterns()
-	d.global.CustomConfig = utils.PatternLineToSlice(pattern, d.mapper.Get(ingtypes.GlobalConfigGlobal).Value)
-	d.global.CustomDefaults = utils.PatternLineToSlice(pattern, d.mapper.Get(ingtypes.GlobalConfigDefaults).Value)
-	d.global.CustomFrontendEarly = utils.PatternLineToSlice(pattern, d.mapper.Get(ingtypes.GlobalConfigFrontendEarly).Value)
+	d.global.CustomConfig = utils.PatternLineToSlice(c.vars, d.mapper.Get(ingtypes.GlobalConfigGlobal).Value)
+	d.global.CustomDefaults = utils.PatternLineToSlice(c.vars, d.mapper.Get(ingtypes.GlobalConfigDefaults).Value)
+	d.global.CustomFrontendEarly = utils.PatternLineToSlice(c.vars, d.mapper.Get(ingtypes.GlobalConfigFrontendEarly).Value)
 	// Keep old behavior for config-frontend mapping it to config-frontend-late
 	// If both are specified a warning is returned and config-frontend-late is used instead
-	customFrontendLate := utils.PatternLineToSlice(pattern, d.mapper.Get(ingtypes.GlobalConfigFrontendLate).Value)
-	customFrontend := utils.PatternLineToSlice(pattern, d.mapper.Get(ingtypes.GlobalConfigFrontend).Value)
+	customFrontendLate := utils.PatternLineToSlice(c.vars, d.mapper.Get(ingtypes.GlobalConfigFrontendLate).Value)
+	customFrontend := utils.PatternLineToSlice(c.vars, d.mapper.Get(ingtypes.GlobalConfigFrontend).Value)
 	selectedCustomFrontendConf := customFrontendLate
 
 	if len(customFrontendLate) == 0 {
@@ -511,12 +535,12 @@ func (c *updater) buildGlobalCustomConfig(d *globalData) {
 	}
 	d.global.CustomFrontendLate = selectedCustomFrontendConf
 
-	d.global.CustomPeers = utils.PatternLineToSlice(pattern, d.mapper.Get(ingtypes.GlobalConfigPeers).Value)
-	d.global.CustomSections = utils.PatternLineToSlice(pattern, d.mapper.Get(ingtypes.GlobalConfigSections).Value)
-	d.global.CustomTCP = utils.PatternLineToSlice(pattern, d.mapper.Get(ingtypes.GlobalConfigTCP).Value)
+	d.global.CustomPeers = utils.PatternLineToSlice(c.vars, d.mapper.Get(ingtypes.GlobalConfigPeers).Value)
+	d.global.CustomSections = utils.PatternLineToSlice(c.vars, d.mapper.Get(ingtypes.GlobalConfigSections).Value)
+	d.global.CustomTCP = utils.PatternLineToSlice(c.vars, d.mapper.Get(ingtypes.GlobalConfigTCP).Value)
 	proxy := map[string][]string{}
 	var curSection string
-	for _, line := range utils.PatternLineToSlice(pattern, d.mapper.Get(ingtypes.GlobalConfigProxy).Value) {
+	for _, line := range utils.PatternLineToSlice(c.vars, d.mapper.Get(ingtypes.GlobalConfigProxy).Value) {
 		if line == "" {
 			continue
 		}

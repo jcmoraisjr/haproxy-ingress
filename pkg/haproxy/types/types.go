@@ -223,20 +223,28 @@ type MasterConfig struct {
 }
 
 const PeersTableNamePrefix = "_peers_"
+const PeersGroupNameGlobal = "global"
 
 // PeersConfig ...
 type PeersConfig struct {
-	SectionName     string
-	LocalPeer       PeersServer
-	Servers         []PeersServer
-	Table           string
-	TableNamePrefix string
+	SectionName string
+	LocalPeer   PeersServer
+	GlobalTable string // used by global updater
+	Servers     []PeersServer
+	Tables      []PeersTable // updated on config.SyncConfig(), including global and backend tables
 }
 
 // PeersServer ...
 type PeersServer struct {
+	BESuffix string
 	Name     string
 	Endpoint string
+}
+
+// PeersTable ...
+type PeersTable struct {
+	GroupName string
+	Table     string
 }
 
 // PromConfig ...
@@ -688,6 +696,7 @@ type Backend struct {
 	HealthCheck         HealthCheck
 	Limit               BackendLimit
 	ModeTCP             bool
+	PeersTable          string
 	Resolver            string
 	Server              ServerConfig
 	Timeout             BackendTimeoutConfig

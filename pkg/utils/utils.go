@@ -52,6 +52,9 @@ func LineToSlice(s string) []string {
 // and replaces patterns found in the source string to the resulting slice.
 func PatternLineToSlice(patterns map[string]string, s string) []string {
 	lines := LineToSlice(s)
+	if patterns == nil {
+		return lines
+	}
 	out := make([]string, len(lines))
 	for i, line := range lines {
 		for pattern, value := range patterns {
