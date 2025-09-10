@@ -79,7 +79,7 @@ func TestAuthProxy(t *testing.T) {
 			ingtypes.GlobalAuthProxy: test.input,
 		})
 		c.createUpdater().buildGlobalAuthProxy(d)
-		c.compareObjects("bind", i, c.haproxy.Frontend().AuthProxy, test.expected)
+		c.compareObjects("bind", i, c.haproxy.Frontends().Default().AuthProxy, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}
@@ -147,7 +147,7 @@ func TestBind(t *testing.T) {
 			ingtypes.GlobalHTTPSPort:      "443",
 			ingtypes.GlobalBindIPAddrHTTP: "*",
 		})
-		d.mapper.AddAnnotations(nil, hatypes.CreateHostPathLink("-", "-", hatypes.MatchBegin), test.ann)
+		d.mapper.AddAnnotations(nil, hatypes.CreatePathLink("-", hatypes.MatchBegin), test.ann)
 		c.createUpdater().buildGlobalBind(d)
 		c.compareObjects("bind", i, d.global.Bind, test.expected)
 		c.teardown()
@@ -708,7 +708,8 @@ func TestFrontingProxy(t *testing.T) {
 				ingtypes.GlobalHTTPStoHTTPPort: "8000",
 			},
 			expected: hatypes.GlobalBindConfig{
-				FrontingBind: ":8000",
+				IsFrontingProxy: true,
+				HTTPBind:        ":8000",
 			},
 		},
 		// 1
@@ -717,7 +718,8 @@ func TestFrontingProxy(t *testing.T) {
 				ingtypes.GlobalFrontingProxyPort: "9000",
 			},
 			expected: hatypes.GlobalBindConfig{
-				FrontingBind: ":9000",
+				IsFrontingProxy: true,
+				HTTPBind:        ":9000",
 			},
 		},
 		// 2
@@ -727,7 +729,8 @@ func TestFrontingProxy(t *testing.T) {
 				ingtypes.GlobalBindFrontingProxy: ":7000",
 			},
 			expected: hatypes.GlobalBindConfig{
-				FrontingBind: ":7000",
+				IsFrontingProxy: true,
+				HTTPBind:        ":7000",
 			},
 		},
 		// 3
@@ -737,16 +740,15 @@ func TestFrontingProxy(t *testing.T) {
 				ingtypes.GlobalBindFrontingProxy: "127.0.0.1:7000",
 			},
 			expected: hatypes.GlobalBindConfig{
-				FrontingBind: "127.0.0.1:7000",
+				IsFrontingProxy: true,
+				HTTPBind:        "127.0.0.1:7000",
 			},
 		},
 	}
-	frontingSockID := 10011
 	for i, test := range testCases {
 		c := setup(t)
 		d := c.createGlobalData(test.ann)
-		c.createUpdater().buildGlobalHTTPStoHTTP(d)
-		test.expected.FrontingSockID = frontingSockID
+		c.createUpdater().buildGlobalFrontingProxy(d)
 		c.compareObjects("fronting proxy", i, d.global.Bind, test.expected)
 		c.teardown()
 	}

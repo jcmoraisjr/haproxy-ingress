@@ -53,6 +53,7 @@ const (
 	PublishHostname = "ingress.local"
 
 	TestPortHTTP  = 28080
+	TestPortFHTTP = 28180
 	TestPortHTTPS = 28443
 	TestPortStat  = 21936
 )
@@ -244,7 +245,9 @@ func (*framework) Request(ctx context.Context, t *testing.T, method, host, path 
 	opt := options.ParseRequestOptions(o...)
 
 	var url string
-	if opt.TLS {
+	if opt.URL != "" {
+		url = opt.URL
+	} else if opt.TLS {
 		url = fmt.Sprintf("https://127.0.0.1:%d", TestPortHTTPS)
 	} else {
 		url = fmt.Sprintf("http://127.0.0.1:%d", TestPortHTTP)

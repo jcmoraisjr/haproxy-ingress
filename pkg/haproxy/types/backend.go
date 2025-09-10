@@ -254,6 +254,38 @@ func (b *Backend) HasSSLRedirectPaths(paths []*BackendPath) bool {
 	return false
 }
 
+type Has int
+
+const (
+	HasNone Has = iota
+	HasSome
+	HasOnly
+)
+
+func (b *Backend) HasFrontingProxy() Has {
+	return b.hasInPath(func(path *BackendPath) bool { return path.Host != nil && path.Host.HasFrontingProxy() })
+}
+
+func (b *Backend) HasFrontingUseProto() Has {
+	return b.hasInPath(func(path *BackendPath) bool { return path.Host != nil && path.Host.HasFrontingUseProto() })
+}
+
+func (b *Backend) hasInPath(has func(path *BackendPath) bool) Has {
+	var count int
+	for i, path := range b.Paths {
+		if has(path) {
+			count++
+		}
+		if i > 0 && count > 0 && i >= count {
+			return HasSome
+		}
+	}
+	if count == 0 {
+		return HasNone
+	}
+	return HasOnly
+}
+
 // PathConfig ...
 func (b *Backend) PathConfig(attr string) *BackendPathConfig {
 	b.ensurePathConfig(attr)
