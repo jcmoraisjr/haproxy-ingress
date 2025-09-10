@@ -178,6 +178,14 @@ func (h *hostResolver) UseTLS() bool {
 	return true
 }
 
+func (h *hostResolver) HasFrontingProxy() bool {
+	return false
+}
+
+func (h *hostResolver) HasFrontingUseProto() bool {
+	return false
+}
+
 func (c *testConfig) createBackendMappingData(
 	svcFullName string,
 	source *Source,

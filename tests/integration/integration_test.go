@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
+	"maps"
 	"net/http"
 	"os"
 	"strconv"
@@ -630,7 +631,7 @@ Request forbidden by administrative rules.
 		}
 
 		hport := framework.TestPortHTTP
-		fport := framework.TestPortFront
+		fport := framework.TestPortFHTTP
 		testCases := []struct {
 			frontingPort  int
 			useXFPHeader  bool
@@ -677,7 +678,7 @@ Request forbidden by administrative rules.
 			apply(t, 0)
 			_ = f.Request(ctx, t, http.MethodGet, hostname, "/",
 				options.CustomRequest(func(req *http.Request) {
-					req.URL.Host = fmt.Sprintf("127.0.0.1:%d", framework.TestPortFront)
+					req.URL.Host = fmt.Sprintf("127.0.0.1:%d", framework.TestPortFHTTP)
 				}),
 				options.ExpectError("connection refused"),
 			)
@@ -932,6 +933,59 @@ Request forbidden by administrative rules.
 	// should match wildcard host
 
 	// should match domain conflicting with wildcard host
+
+	t.Run("should use x-forward-proto to redirect on frontint-proxy", func(t *testing.T) {
+		// TODO we can make this parallel as soon as we can configure a distinct frontend,
+		// as a fronting-proxy one, via annotation, for the fronting-proxy test.
+		//
+		// t.Parallel()
+
+		global := corev1.ConfigMap{}
+		err := f.Client().Get(ctx, types.NamespacedName{Namespace: "default", Name: "ingress-controller"}, &global)
+		require.NoError(t, err)
+		global.Data[ingtypes.GlobalFrontingProxyPort] = strconv.Itoa(framework.TestPortFHTTP)
+		global.Data[ingtypes.GlobalUseForwardedProto] = "True"
+		err = f.Client().Update(ctx, &global)
+		require.NoError(t, err)
+
+		defer func() {
+			delete(global.Data, ingtypes.GlobalFrontingProxyPort)
+			delete(global.Data, ingtypes.GlobalUseForwardedProto)
+			err = f.Client().Update(ctx, &global)
+			require.NoError(t, err)
+		}()
+
+		fproxyUrl := fmt.Sprintf("http://127.0.0.1:%d", framework.TestPortFHTTP)
+		svc := f.CreateService(ctx, t, httpServerPort)
+		_, hostname := f.CreateIngress(ctx, t, svc)
+
+		res1 := f.Request(ctx, t, http.MethodGet, hostname, "/",
+			options.URL(fproxyUrl),
+			options.ExpectResponseCode(302),
+		)
+		assert.False(t, res1.EchoResponse.Parsed)
+
+		headers2 := map[string]string{
+			"x-ssl-client-cn":   "localhost",
+			"x-ssl-client-dn":   "/CN=localhost",
+			"x-ssl-client-sha1": "abc123",
+			"x-ssl-client-sha2": "abcd1234",
+			"x-ssl-client-cert": "LS0tLS1CRUdJT...",
+		}
+		res2 := f.Request(ctx, t, http.MethodGet, hostname, "/",
+			options.URL(fproxyUrl),
+			options.ExpectResponseCode(200),
+			options.CustomRequest(func(req *http.Request) {
+				req.Header.Set("X-Forwarded-Proto", "https")
+				for h, v := range headers2 {
+					req.Header.Set(h, v)
+				}
+			}),
+		)
+		assert.True(t, res2.EchoResponse.Parsed)
+		maps.Copy(headers2, commonReqHeaders)
+		assert.Equal(t, headers2, res2.EchoResponse.ReqHeaders)
+	})
 
 	// should update status on class update
 

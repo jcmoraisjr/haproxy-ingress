@@ -17,10 +17,13 @@ limitations under the License.
 package types
 
 import (
+	"fmt"
 	"net"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAddBackendPath(t *testing.T) {
@@ -365,4 +368,62 @@ func TestEndpointDeduplication(t *testing.T) {
 	}
 	c.compareObjects("len(ep)", 0, len(b.Endpoints), 6)
 	c.teardown()
+}
+
+func TestHasInPath(t *testing.T) {
+	testCases := map[string]struct {
+		has []bool
+		exp Has
+	}{
+		"test01": {
+			exp: HasNone,
+		},
+		"test02": {
+			has: []bool{false},
+			exp: HasNone,
+		},
+		"test03": {
+			has: []bool{false, false},
+			exp: HasNone,
+		},
+		"test04": {
+			has: []bool{false, false, true},
+			exp: HasSome,
+		},
+		"test05": {
+			has: []bool{true},
+			exp: HasOnly,
+		},
+		"test06": {
+			has: []bool{true, true},
+			exp: HasOnly,
+		},
+		"test07": {
+			has: []bool{true, true, false},
+			exp: HasSome,
+		},
+		"test08": {
+			has: []bool{true, false, true},
+			exp: HasSome,
+		},
+		"test09": {
+			has: []bool{false, true, false},
+			exp: HasSome,
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			c := setup(t)
+			defer c.teardown()
+			b := createBackend(0, "default", "server", "8080")
+			for i, has := range test.has {
+				link := CreatePathLink(fmt.Sprintf("/%d", i), MatchExact)
+				b.AddBackendPath(link).SSLRedirect = has
+			}
+			has := b.hasInPath(func(path *BackendPath) bool {
+				return path.SSLRedirect
+			})
+			assert.Equal(t, test.exp, has, "0=HasNone; 1=HasSome; 2=HasOnly")
+		})
+	}
 }

@@ -98,13 +98,12 @@ type Global struct {
 
 // GlobalBindConfig ...
 type GlobalBindConfig struct {
-	AcceptProxy      bool
-	HTTPBind         string
-	HTTPSBind        string
-	TCPBindIP        string
-	FrontingBind     string
-	FrontingSockID   int
-	FrontingUseProto bool
+	AcceptProxy        bool
+	HTTPBind           string
+	HTTPSBind          string
+	TCPBindIP          string
+	IsFrontingProxy    bool
+	IsFrontingUseProto bool
 }
 
 // ProcsConfig ...
@@ -501,6 +500,9 @@ type Frontend struct {
 	RedirectFromCode int
 	RedirectToCode   int
 	//
+	IsFrontingProxy    bool
+	IsFrontingUseProto bool
+	//
 	// hosts
 	hosts,
 	hostsAdd,
@@ -743,6 +745,8 @@ type BackendPathItem struct {
 // HostResolver ...
 type HostResolver interface {
 	UseTLS() bool
+	HasFrontingProxy() bool
+	HasFrontingUseProto() bool
 }
 
 // BackendPath ...

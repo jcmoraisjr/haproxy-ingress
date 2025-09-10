@@ -16,6 +16,12 @@ func ExpectError(msg string) Request {
 	}
 }
 
+func URL(url string) Request {
+	return func(o *requestOpt) {
+		o.URL = url
+	}
+}
+
 func Body(body string) Request {
 	return func(o *requestOpt) {
 		o.Body = body
@@ -70,6 +76,7 @@ type CustomRequestCallback func(req *http.Request)
 type requestOpt struct {
 	ExpectResponseCode int
 	ExpectError        string
+	URL                string
 	Body               string
 	TLS                bool
 	TLSSkipVerify      bool

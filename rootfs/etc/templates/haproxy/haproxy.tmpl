@@ -470,24 +470,25 @@ backend {{ $backend.ID }}
 {{- else }}{{/*** if $backend.ModeTCP ***/}}
 
 {{- /*------------------------------------*/}}
-{{- $hasPlainHTTPSocket := not $global.Bind.ShareHTTPPort }}
-{{- $hasFrontingProxy := $global.Bind.HasFrontingProxy }}
-{{- $frontingUseProto := and $hasFrontingProxy $global.Bind.FrontingUseProto }}
-{{- $frontingIgnoreProto := and $hasFrontingProxy (not $global.Bind.FrontingUseProto) }}
-{{- if $frontingUseProto }}
-{{- if $hasPlainHTTPSocket }}
-    acl fronting-proxy so_id {{ $global.Bind.FrontingSockID }}
-{{- else }}
-    acl fronting-proxy var(txn.proto) -m found
+{{- $hasNone := 0 }}
+{{- $hasSome := 1 }}
+{{- $hasOnly := 2 }}
+{{- $hasFrontingProxy := $backend.HasFrontingProxy }}
+{{- $hasFrontingUseProto := $backend.HasFrontingUseProto }}
+{{- if $hasFrontingProxy }}
+{{- if eq $hasFrontingProxy $hasSome }}
+    acl fronting-proxy var(req.fronting-proxy) -m found
 {{- end }}
+{{- if eq $hasFrontingUseProto $hasSome }}
+    acl https-request var(req.fronting-proto) -m str ignore
 {{- end }}
-{{- if and (not $frontingIgnoreProto) (or $backend.HasHSTS $backend.HasSSLRedirect) }}
+{{- if $hasFrontingUseProto }}
+    acl https-request hdr(X-Forwarded-Proto) https
+{{- end }}
+{{- else if or $backend.HasHSTS $backend.HasSSLRedirect }}
     acl https-request ssl_fc
-{{- if $frontingUseProto }}
-    acl https-request var(txn.proto) -m str https
 {{- end }}
-{{- end }}
-{{- if $backend.TLS.HasTLSAuth }}
+{{- if and ($backend.TLS.HasTLSAuth) (not $backend.HasSSLRedirect) }}
     acl local-offload ssl_fc
 {{- end }}
 
@@ -525,21 +526,24 @@ backend {{ $backend.ID }}
    * */}}
 
 {{- /*------------------------------------*/}}
-{{- if $frontingUseProto }}
+{{- if $hasFrontingUseProto }}
     http-request redirect scheme https
         {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
-        {{- "" }} if fronting-proxy !{ var(txn.proto) -m str https }
+        {{- if or (eq $hasFrontingProxy $hasSome) ($hasFrontingUseProto) }} if
+            {{- if eq $hasFrontingProxy $hasSome }} fronting-proxy{{ end }}
+            {{- if $hasFrontingUseProto }} !https-request{{ end }}
+        {{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if not $frontingIgnoreProto }}
+{{- if ne $hasFrontingProxy $hasOnly }}
 {{- $sslredirCfg := $backend.PathConfig "SSLRedirect" }}
 {{- range $i, $sslredir := $sslredirCfg.Items }}
 {{- if $sslredir }}
 {{- range $pathIDs := $sslredirCfg.PathIDs $i }}
     http-request redirect scheme https
         {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
-        {{- "" }} if{{ if $hasFrontingProxy }} !fronting-proxy{{ end }} !https-request
+        {{- "" }} if {{ if $hasFrontingProxy }}!fronting-proxy{{ else }}!https-request{{ end }}
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- end }}
@@ -758,12 +762,13 @@ backend {{ $backend.ID }}
 {{- range $i, $hsts := $hstsCfg.Items }}
 {{- if $hsts.Enabled }}
 {{- $paths := $hstsCfg.Paths $i }}
-{{- $needSSLACL := and (not $frontingIgnoreProto) (not ($backend.HasSSLRedirectPaths $paths)) }}
+{{- $needSSLACL := not ($backend.HasSSLRedirectPaths $paths) }}
 {{- range $pathIDs := $hstsCfg.PathIDs $i }}
     http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}
         {{- if $hsts.Subdomains }}; includeSubDomains{{ end }}
         {{- if $hsts.Preload }}; preload{{ end }}"
-        {{- if or $needSSLACL $pathIDs }} if
+        {{- if or $needSSLACL $pathIDs (eq $hasFrontingProxy $hasSome) }} if
+            {{- if eq $hasFrontingProxy $hasSome }} !fronting-proxy{{ end }}
             {{- if $needSSLACL }} https-request{{ end }}
             {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
         {{- end }}
@@ -1146,34 +1151,20 @@ listen {{ $proxy__front__tls }}
 
 {{- if $fmaps }}
 
-{{- $hasFrontingProxy := $global.Bind.HasFrontingProxy }}
-{{- $frontingUseProto := and $hasFrontingProxy $global.Bind.FrontingUseProto }}
-{{- $frontingIgnoreProto := and $hasFrontingProxy (not $global.Bind.FrontingUseProto) }}
+{{- $isFrontingProxy := $global.Bind.IsFrontingProxy }}
+{{- $isFrontingUseProto := $global.Bind.IsFrontingUseProto }}
+{{- $hasSomeFrontingProxy := false }}
+{{- $hasSomeFrontingUseProto := false }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
-#     HTTP{{ if $hasFrontingProxy }} & Fronting Proxy{{ end }} frontend
+#     {{ if $isFrontingProxy }}Fronting Proxy{{ else }}HTTP{{ end }} frontend
 #
 {{- $proxy__front_http := "_front_http" }}
 frontend {{ $proxy__front_http }}
     mode http
-{{- $hasPlainHTTPSocket := not $global.Bind.ShareHTTPPort }}
-{{- if and $global.Bind.HTTPBind $hasPlainHTTPSocket }}
-    bind {{ $global.Bind.HTTPBind }}{{ if $global.Bind.AcceptProxy }} accept-proxy{{ end }}
-{{- end }}
-{{- if $global.Bind.FrontingBind }}
-    bind {{ $global.Bind.FrontingBind }}
-        {{- if and $hasPlainHTTPSocket $global.Bind.FrontingSockID }} id {{ $global.Bind.FrontingSockID }}{{ end }}
-        {{- if $global.Bind.AcceptProxy }} accept-proxy{{ end }}
-{{- end }}
-
-{{- /*------------------------------------*/}}
-{{- if $frontingUseProto }}
-{{- if $hasPlainHTTPSocket }}
-    acl fronting-proxy so_id {{ $global.Bind.FrontingSockID }}
-{{- else }}
-    acl fronting-proxy var(txn.proto) -m found
-{{- end }}
+{{- with $global.Bind.HTTPBind }}
+    bind {{ . }}{{ if $global.Bind.AcceptProxy }} accept-proxy{{ end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -1196,12 +1187,15 @@ frontend {{ $proxy__front_http }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- if $hasSomeFrontingProxy }}
+    http-request set-var(req.fronting-proxy) str(1)
+{{- end }}
+{{- if $hasSomeFrontingUseProto }}
+    http-request set-var(req.fronting-proto) str({{ if $isFrontingUseProto }}use{{ else }}ignore{{ end }})
+{{- end }}
     http-request set-var(req.path) path
     http-request set-var(req.host) hdr(host),field(1,:),lower
     http-request set-var(req.base) var(req.host),concat(\#,req.path)
-{{- if $frontingUseProto }}
-    http-request set-var(txn.proto) hdr(X-Forwarded-Proto)
-{{- end }}
 
 {{- $acmeexclusive := and $global.Acme.Enabled (not $global.Acme.Shared) }}
 
@@ -1240,19 +1234,13 @@ frontend {{ $proxy__front_http }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if not $frontingIgnoreProto }}
+{{- if not $isFrontingProxy }}
     http-request set-header X-Forwarded-Proto http
-        {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-CN
-        {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-DN
-        {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1
-        {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-SHA2
-        {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-Cert
-        {{- if $hasFrontingProxy }} if !fronting-proxy{{ end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}

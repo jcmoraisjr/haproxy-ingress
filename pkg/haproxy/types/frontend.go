@@ -23,13 +23,19 @@ import (
 )
 
 func CreateFrontends() *Frontends {
-	return &Frontends{
-		items: []*Frontend{{
-			hosts:    map[string]*Host{},
-			hostsAdd: map[string]*Host{},
-			hostsDel: map[string]*Host{},
-		}},
+	f := &Frontends{}
+	_ = f.CreateFrontend()
+	return f
+}
+
+func (f *Frontends) CreateFrontend() *Frontend {
+	frontend := &Frontend{
+		hosts:    map[string]*Host{},
+		hostsAdd: map[string]*Host{},
+		hostsDel: map[string]*Host{},
 	}
+	f.items = append(f.items, frontend)
+	return frontend
 }
 
 func (f *Frontends) Default() *Frontend {

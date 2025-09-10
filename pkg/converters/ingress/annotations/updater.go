@@ -191,7 +191,7 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	c.buildGlobalDynamic(d)
 	c.buildGlobalFastCGI(d)
 	c.buildGlobalForwardFor(d)
-	c.buildGlobalHTTPStoHTTP(d)
+	c.buildGlobalFrontingProxy(d)
 	c.buildGlobalModSecurity(d)
 	c.buildGlobalPathTypeOrder(d)
 	c.buildGlobalProc(d)
@@ -200,6 +200,9 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	c.buildGlobalStats(d)
 	c.buildGlobalSyslog(d)
 	c.buildGlobalTimeout(d)
+	//
+	df.IsFrontingProxy = d.global.Bind.IsFrontingProxy
+	df.IsFrontingUseProto = d.global.Bind.IsFrontingUseProto
 }
 
 func (c *updater) UpdatePeers(haproxyConfig haproxy.Config, mapper *Mapper) {

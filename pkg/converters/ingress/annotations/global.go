@@ -407,7 +407,7 @@ func (c *updater) buildGlobalSSL(d *globalData) {
 	ssl.SSLRedirect = d.mapper.Get(ingtypes.BackSSLRedirect).Bool()
 }
 
-func (c *updater) buildGlobalHTTPStoHTTP(d *globalData) {
+func (c *updater) buildGlobalFrontingProxy(d *globalData) {
 	bind := d.mapper.Get(ingtypes.GlobalBindFrontingProxy).Value
 	if bind == "" {
 		port := d.mapper.Get(ingtypes.GlobalFrontingProxyPort).Int()
@@ -419,13 +419,9 @@ func (c *updater) buildGlobalHTTPStoHTTP(d *globalData) {
 		}
 		bind = fmt.Sprintf("%s:%d", d.mapper.Get(ingtypes.GlobalBindIPAddrHTTP).Value, port)
 	}
-	// TODO Change all `ToHTTP` naming to `FrontingProxy`
-	d.global.Bind.FrontingBind = bind
-	d.global.Bind.FrontingUseProto = d.mapper.Get(ingtypes.GlobalUseForwardedProto).Bool()
-	// Socket ID should be a high number to avoid collision
-	// between the same socket ID from distinct frontends
-	// TODO match socket and frontend ID in the backend
-	d.global.Bind.FrontingSockID = 10011
+	d.global.Bind.IsFrontingProxy = true
+	d.global.Bind.IsFrontingUseProto = d.mapper.Get(ingtypes.GlobalUseForwardedProto).Bool()
+	d.global.Bind.HTTPBind = bind
 }
 
 func (c *updater) buildGlobalModSecurity(d *globalData) {
