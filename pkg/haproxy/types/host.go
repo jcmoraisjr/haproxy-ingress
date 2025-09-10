@@ -64,9 +64,11 @@ func (h *Host) AddLinkRedirect(link *PathLink, redirTo string) *HostPath {
 }
 
 type hostResolver struct {
-	useDefaultCrt  *bool
-	followRedirect *bool
-	crtFilename    *string
+	useDefaultCrt       *bool
+	followRedirect      *bool
+	crtFilename         *string
+	hasFrontingProxy    *bool
+	hasFrontingUseProto *bool
 }
 
 func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo string) *HostPath {
@@ -86,9 +88,11 @@ func (h *Host) addLink(backend *Backend, link *PathLink, redirTo string) *HostPa
 		}
 		bpath := backend.AddBackendPath(link)
 		bpath.Host = &hostResolver{
-			useDefaultCrt:  &h.TLS.UseDefaultCrt,
-			followRedirect: &h.TLS.FollowRedirect,
-			crtFilename:    &h.TLS.TLSFilename,
+			useDefaultCrt:       &h.TLS.UseDefaultCrt,
+			followRedirect:      &h.TLS.FollowRedirect,
+			crtFilename:         &h.TLS.TLSFilename,
+			hasFrontingProxy:    &h.frontend.IsFrontingProxy,
+			hasFrontingUseProto: &h.frontend.IsFrontingUseProto,
 		}
 	} else if redirTo == "" {
 		hback = HostBackend{ID: "_error404"}
@@ -141,6 +145,14 @@ func (h *hostResolver) UseTLS() bool {
 	autoTLSEnabled := *h.useDefaultCrt && *h.followRedirect
 
 	return hasTLSEntry || autoTLSEnabled
+}
+
+func (h *hostResolver) HasFrontingProxy() bool {
+	return *h.hasFrontingProxy
+}
+
+func (h *hostResolver) HasFrontingUseProto() bool {
+	return *h.hasFrontingUseProto
 }
 
 // HasTLSAuth ...
