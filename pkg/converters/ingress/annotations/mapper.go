@@ -203,6 +203,18 @@ func (cv *ConfigValue) String() string {
 
 // NamespacedName ...
 func (cv *ConfigValue) NamespacedName() (namespace, name string, err error) {
+	// TODO this fixes updater.buildBackendProtocol() by allowing a proto://content approach, supported by the cache.
+	// This however seems to be wrongly implemented, since cache method signature does not match this behavior.
+	// Removing the proto parsing code from the cache seems to be a better approach, so callers have a better idea on
+	// what is happening under the hood.
+	if strings.Contains(cv.Value, "://") {
+		var ns string
+		if s := cv.Source; s != nil {
+			ns = s.Namespace
+		}
+		return ns, cv.Value, nil
+	}
+
 	value := strings.Split(cv.Value, "/")
 	if len(value) > 2 {
 		return "", "", fmt.Errorf("unpexpected format for resource name: %s", cv.Value)
