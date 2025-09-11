@@ -17,6 +17,7 @@ limitations under the License.
 package annotations
 
 import (
+	"fmt"
 	"net"
 	"regexp"
 	"strings"
@@ -48,6 +49,7 @@ func NewUpdater(haproxy haproxy.Config, options *convtypes.ConverterOptions) Upd
 		cache:   options.Cache,
 		tracker: options.Tracker,
 		fakeCA:  options.FakeCAFile,
+		vars:    buildGlobalVars(haproxy.Global()),
 	}
 }
 
@@ -59,6 +61,7 @@ type updater struct {
 	tracker convtypes.Tracker
 	fakeCA  convtypes.CrtFile
 	srcIPs  map[string][]net.IP
+	vars    map[string]string
 }
 
 type globalData struct {
@@ -81,6 +84,12 @@ type hostData struct {
 type backData struct {
 	backend *hatypes.Backend
 	mapper  *Mapper
+	vars    map[string]string
+}
+
+func buildPeersTableName(group, besuffix string) string {
+	// keep in mind that this logic is also implemented on haproxy.tmpl and peers.lua.tmpl.
+	return fmt.Sprintf("%s%s_%s", hatypes.PeersTableNamePrefix, group, besuffix)
 }
 
 var regexValidTime = regexp.MustCompile(`^[0-9]+(us|ms|s|m|h|d)$`)
@@ -143,13 +152,8 @@ func (c *updater) splitDualCIDR(cidrlist *ConfigValue) (allow, deny []string) {
 	return allow, deny
 }
 
-func (c *updater) commonConfigPatterns() map[string]string {
-	return map[string]string{
-		"%[peers_table_global]": hatypes.PeersTableNamePrefix + c.cache.GetControllerPod().Name,
-	}
-}
-
 func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mapper) {
+	c.UpdatePeers(haproxyConfig, mapper)
 	d := &globalData{
 		acmeData: haproxyConfig.AcmeData(),
 		global:   haproxyConfig.Global(),
@@ -190,7 +194,6 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	c.buildGlobalFrontingProxy(d)
 	c.buildGlobalModSecurity(d)
 	c.buildGlobalPathTypeOrder(d)
-	c.buildGlobalPeers(d)
 	c.buildGlobalProc(d)
 	c.buildSecurity(d)
 	c.buildGlobalSSL(d)
@@ -203,15 +206,18 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 }
 
 func (c *updater) UpdatePeers(haproxyConfig haproxy.Config, mapper *Mapper) {
+	global := haproxyConfig.Global()
 	c.buildGlobalPeers(&globalData{
-		global: haproxyConfig.Global(),
+		global: global,
 		mapper: mapper,
 	})
+	// peers is currently a silly dependency to build global vars
+	c.vars = buildGlobalVars(global)
 }
 
 func (c *updater) UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *Mapper) {
 	if config := mapper.Get(ingtypes.TCPConfigTCPService).Value; config != "" {
-		tcp.CustomConfig = utils.PatternLineToSlice(c.commonConfigPatterns(), config)
+		tcp.CustomConfig = utils.PatternLineToSlice(c.vars, config)
 	}
 	tcp.LogFormat = mapper.Get(ingtypes.TCPTCPServiceLogFormat).Value
 	tcp.ProxyProt = mapper.Get(ingtypes.TCPTCPServiceProxyProto).Bool()
@@ -250,6 +256,7 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) 
 	data := &backData{
 		backend: backend,
 		mapper:  mapper,
+		vars:    buildBackendVars(c.haproxy.Global(), backend, c.vars),
 	}
 	// TODO check ModeTCP with HTTP annotations
 	backend.BalanceAlgorithm = mapper.Get(ingtypes.BackBalanceAlgorithm).Value
@@ -272,6 +279,7 @@ func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) 
 	c.buildBackendHSTS(data)
 	c.buildBackendLimit(data)
 	c.buildBackendOAuth(data)
+	c.buildBackendPeers(data)
 	c.buildBackendProtocol(data)
 	c.buildBackendProxyProtocol(data)
 	c.buildBackendRewriteURL(data)

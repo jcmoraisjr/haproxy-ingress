@@ -185,6 +185,7 @@ const (
 	BackOAuthHeaders           = "oauth-headers"
 	BackOAuthURIPrefix         = "oauth-uri-prefix"
 	BackPathType               = "path-type"
+	BackPeersTable             = "peers-table"
 	BackProxyBodySize          = "proxy-body-size"
 	BackProxyProtocol          = "proxy-protocol"
 	BackRedirectTo             = "redirect-to"

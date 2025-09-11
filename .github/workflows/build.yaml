@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
-    - uses: actions/setup-go@v5
+    - uses: actions/setup-go@v6
       with:
         go-version: "1.24.6"
     - name: Run build
@@ -48,7 +48,7 @@ jobs:
         use_openssl: yes
         use_lua: yes
     - uses: actions/checkout@v5
-    - uses: actions/setup-go@v5
+    - uses: actions/setup-go@v6
       with:
         go-version: "1.24.6"
     - name: Run integration tests on Kubernetes ${{ matrix.envtest-version }}
