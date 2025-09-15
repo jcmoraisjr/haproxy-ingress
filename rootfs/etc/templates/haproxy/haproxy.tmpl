@@ -302,7 +302,7 @@ userlist {{ $userlist.Name }}
 {{- $proxy_name := printf "_tcp_%s_%d" $backend.Name $backend.Port }}
 listen {{ $proxy_name }}
 {{- $ssl := $backend.SSL }}
-    bind {{ $global.Bind.TCPBindIP }}:{{ $backend.Port }}
+    bind {{ $global.TCPBindIP }}:{{ $backend.Port }}
         {{- if $ssl.Filename }} ssl crt {{ $ssl.Filename }}
             {{- if $ssl.CAFilename }} ca-file {{ $ssl.CAFilename }} verify required
                 {{- if $ssl.CRLFilename }} crl-file {{ $ssl.CRLFilename }}{{ end }}
@@ -1035,7 +1035,7 @@ frontend {{ $proxy.Name }}
 {{- $proxy_name := printf "_front_tcp_%d" $tcpport.Port }}
 frontend {{ $proxy_name }}
 {{- $hasTLS := $tcpport.HasTLS }}
-    bind {{ $global.Bind.TCPBindIP }}:{{ $tcpport.Port }}
+    bind {{ $global.TCPBindIP }}:{{ $tcpport.Port }}
         {{- if $tcpport.ProxyProt }} accept-proxy{{ end }}
         {{- if $hasTLS }}
             {{- "" }} ssl crt-list {{ $global.LocalFSPrefix }}/etc/haproxy/crtlist_tcp_{{ $tcpport.Port }}.list
@@ -1103,7 +1103,7 @@ frontend {{ $proxy_name }}
 {{- $proxy__front__tls := "_front__tls" }}
 listen {{ $proxy__front__tls }}
     mode tcp
-    bind {{ $global.Bind.HTTPSBind }}{{ if $global.Bind.AcceptProxy }} accept-proxy{{ end }}
+    bind {{ $frontend.HTTPSBind }}{{ if $frontend.AcceptProxy }} accept-proxy{{ end }}
 
 {{- /*------------------------------------*/}}
 {{- if $global.Syslog.Endpoint }}
@@ -1146,13 +1146,13 @@ listen {{ $proxy__front__tls }}
 {{- end }}
 {{- end }}
 {{- end }}
-    server _default_server{{ $frontend.BindName }} {{ $frontend.BindSocket }} send-proxy-v2
+    server _default_server{{ $frontend.BindName }} {{ $frontend.HTTPSSocket }} send-proxy-v2
 {{- end }}{{/* HasSSLPassthrough */}}
 
 {{- if $fmaps }}
 
-{{- $isFrontingProxy := $global.Bind.IsFrontingProxy }}
-{{- $isFrontingUseProto := $global.Bind.IsFrontingUseProto }}
+{{- $isFrontingProxy := $frontend.IsFrontingProxy }}
+{{- $isFrontingUseProto := $frontend.IsFrontingUseProto }}
 {{- $hasSomeFrontingProxy := false }}
 {{- $hasSomeFrontingUseProto := false }}
 
@@ -1163,8 +1163,8 @@ listen {{ $proxy__front__tls }}
 {{- $proxy__front_http := "_front_http" }}
 frontend {{ $proxy__front_http }}
     mode http
-{{- with $global.Bind.HTTPBind }}
-    bind {{ . }}{{ if $global.Bind.AcceptProxy }} accept-proxy{{ end }}
+{{- with $frontend.HTTPBind }}
+    bind {{ . }}{{ if $frontend.AcceptProxy }} accept-proxy{{ end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -1302,14 +1302,12 @@ frontend {{ $frontend.Name }}
     mode http
 
 {{- /*------------------------------------*/}}
-{{- if $frontend.BindSocket }}
-    bind {{ $frontend.BindSocket }}
+    bind {{ default $frontend.HTTPSBind $frontend.HTTPSSocket }}
         {{- if $frontend.BindID }} id {{ $frontend.BindID }}{{ end }}
-        {{- if $frontend.AcceptProxy }} accept-proxy{{ end }}
+        {{- if $frontend.HTTPSProxy }} accept-proxy{{ end }}
         {{- "" }} ssl alpn {{ $global.SSL.ALPN }}
         {{- "" }} crt-list {{ $frontend.CrtListFile }}
         {{- "" }} ca-ignore-err all crt-ignore-err all
-{{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $global.Syslog.Endpoint }}

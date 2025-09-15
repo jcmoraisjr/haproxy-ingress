@@ -98,14 +98,13 @@ func (c *config) SyncConfig() {
 		bindName := "_https_socket"
 		df.Name = "_front_https__local"
 		df.BindName = bindName
-		df.BindSocket = fmt.Sprintf("unix@%s/var/run/haproxy/%s.sock", c.global.LocalFSPrefix, bindName)
-		df.AcceptProxy = true
+		df.HTTPSSocket = fmt.Sprintf("unix@%s/var/run/haproxy/%s.sock", c.global.LocalFSPrefix, bindName)
+		df.HTTPSProxy = true
 	} else {
 		// One single HAProxy's frontend and bind
 		df.Name = "_front_https"
 		df.BindName = "_public"
-		df.BindSocket = c.global.Bind.HTTPSBind
-		df.AcceptProxy = c.global.Bind.AcceptProxy
+		df.HTTPSProxy = df.AcceptProxy
 	}
 	for _, host := range df.HostsAdd() {
 		if host.SSLPassthrough {

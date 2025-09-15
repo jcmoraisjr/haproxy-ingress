@@ -80,25 +80,6 @@ func (c *updater) buildGlobalAuthProxy(d *globalData) {
 	authproxy.RangeEnd, _ = strconv.Atoi(proxy[3])
 }
 
-func (c *updater) buildGlobalBind(d *globalData) {
-	d.global.Bind.AcceptProxy = d.mapper.Get(ingtypes.GlobalUseProxyProtocol).Bool()
-	d.global.Bind.TCPBindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrTCP).Value
-	if bindHTTP := d.mapper.Get(ingtypes.GlobalBindHTTP).Value; bindHTTP != "" {
-		d.global.Bind.HTTPBind = bindHTTP
-	} else {
-		ip := d.mapper.Get(ingtypes.GlobalBindIPAddrHTTP).Value
-		port := d.mapper.Get(ingtypes.GlobalHTTPPort).Int()
-		d.global.Bind.HTTPBind = fmt.Sprintf("%s:%d", ip, port)
-	}
-	if bindHTTPS := d.mapper.Get(ingtypes.GlobalBindHTTPS).Value; bindHTTPS != "" {
-		d.global.Bind.HTTPSBind = bindHTTPS
-	} else {
-		ip := d.mapper.Get(ingtypes.GlobalBindIPAddrHTTP).Value
-		port := d.mapper.Get(ingtypes.GlobalHTTPSPort).Int()
-		d.global.Bind.HTTPSBind = fmt.Sprintf("%s:%d", ip, port)
-	}
-}
-
 func (c *updater) buildGlobalCloseSessions(d *globalData) {
 	durationCfg := d.mapper.Get(ingtypes.GlobalCloseSessionsDuration).Value
 	if durationCfg == "" {
@@ -362,7 +343,7 @@ func (c *updater) buildGlobalTimeout(d *globalData) {
 	}
 }
 
-func (c *updater) buildSecurity(d *globalData) {
+func (c *updater) buildGlobalSecurity(d *globalData) {
 	username := d.mapper.Get(ingtypes.GlobalUsername).Value
 	groupname := d.mapper.Get(ingtypes.GlobalGroupname).Value
 	if (username == "") != (groupname == "") {
@@ -405,23 +386,6 @@ func (c *updater) buildGlobalSSL(d *globalData) {
 	ssl.Options = d.mapper.Get(ingtypes.GlobalSSLOptions).Value
 	ssl.RedirectCode = d.mapper.Get(ingtypes.GlobalSSLRedirectCode).Int()
 	ssl.SSLRedirect = d.mapper.Get(ingtypes.BackSSLRedirect).Bool()
-}
-
-func (c *updater) buildGlobalFrontingProxy(d *globalData) {
-	bind := d.mapper.Get(ingtypes.GlobalBindFrontingProxy).Value
-	if bind == "" {
-		port := d.mapper.Get(ingtypes.GlobalFrontingProxyPort).Int()
-		if port == 0 {
-			port = d.mapper.Get(ingtypes.GlobalHTTPStoHTTPPort).Int()
-		}
-		if port == 0 {
-			return
-		}
-		bind = fmt.Sprintf("%s:%d", d.mapper.Get(ingtypes.GlobalBindIPAddrHTTP).Value, port)
-	}
-	d.global.Bind.IsFrontingProxy = true
-	d.global.Bind.IsFrontingUseProto = d.mapper.Get(ingtypes.GlobalUseForwardedProto).Bool()
-	d.global.Bind.HTTPBind = bind
 }
 
 func (c *updater) buildGlobalModSecurity(d *globalData) {

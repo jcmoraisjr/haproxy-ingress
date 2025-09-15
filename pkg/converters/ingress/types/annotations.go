@@ -34,6 +34,44 @@ var (
 	}
 )
 
+// Frontend Annotations
+const (
+	FrontBindFrontingProxy = "bind-fronting-proxy"
+	FrontBindHTTP          = "bind-http"
+	FrontBindHTTPS         = "bind-https"
+	FrontBindIPAddrHTTP    = "bind-ip-addr-http"
+	FrontFrontendPort      = "frontend-port"
+	FrontFrontendType      = "frontend-type"
+	FrontFrontingProxyPort = "fronting-proxy-port"
+	FrontHTTPPort          = "http-port"
+	FrontHTTPSPort         = "https-port"
+	FrontHTTPStoHTTPPort   = "https-to-http-port"
+	FrontRedirectFromCode  = "redirect-from-code"
+	FrontRedirectToCode    = "redirect-to-code"
+	FrontUseForwardedProto = "use-forwarded-proto"
+	FrontUseProxyProtocol  = "use-proxy-protocol"
+)
+
+var (
+	// AnnFront ...
+	AnnFront = map[string]struct{}{
+		FrontBindFrontingProxy: {},
+		FrontBindHTTP:          {},
+		FrontBindHTTPS:         {},
+		FrontBindIPAddrHTTP:    {},
+		FrontFrontendPort:      {},
+		FrontFrontendType:      {},
+		FrontFrontingProxyPort: {},
+		FrontHTTPPort:          {},
+		FrontHTTPSPort:         {},
+		FrontHTTPStoHTTPPort:   {},
+		FrontRedirectFromCode:  {},
+		FrontRedirectToCode:    {},
+		FrontUseForwardedProto: {},
+		FrontUseProxyProtocol:  {},
+	}
+)
+
 // Host Annotations
 const (
 	HostAcmePreferredChain      = "acme-preferred-chain"
@@ -64,28 +102,29 @@ const (
 var (
 	// AnnHost ...
 	AnnHost = map[string]struct{}{
-		HostAcmePreferredChain:     {},
-		HostAppRoot:                {},
-		HostAuthTLSErrorPage:       {},
-		HostAuthTLSSecret:          {},
-		HostAuthTLSStrict:          {},
-		HostAuthTLSVerifyClient:    {},
-		HostCertSigner:             {},
-		HostHTTPResponse421:        {},
-		HostHTTPResponse495:        {},
-		HostHTTPResponse496:        {},
-		HostRedirectFrom:           {},
-		HostRedirectFromRegex:      {},
-		HostServerAlias:            {},
-		HostServerAliasRegex:       {},
-		HostSSLAlwaysAddHTTPS:      {},
-		HostSSLCiphers:             {},
-		HostSSLCipherSuites:        {},
-		HostSSLOptionsHost:         {},
-		HostSSLPassthrough:         {},
-		HostSSLPassthroughHTTPPort: {},
-		HostTLSALPN:                {},
-		HostVarNamespace:           {},
+		HostAcmePreferredChain:      {},
+		HostAppRoot:                 {},
+		HostAuthTLSErrorPage:        {},
+		HostAuthTLSSecret:           {},
+		HostAuthTLSStrict:           {},
+		HostAuthTLSVerifyClient:     {},
+		HostCertSigner:              {},
+		HostHTTPResponse421:         {},
+		HostHTTPResponse495:         {},
+		HostHTTPResponse496:         {},
+		HostRedirectFrom:            {},
+		HostRedirectFromRegex:       {},
+		HostServerAlias:             {},
+		HostServerAliasRegex:        {},
+		HostSSLAlwaysAddHTTPS:       {},
+		HostSSLAlwaysFollowRedirect: {},
+		HostSSLCiphers:              {},
+		HostSSLCipherSuites:         {},
+		HostSSLOptionsHost:          {},
+		HostSSLPassthrough:          {},
+		HostSSLPassthroughHTTPPort:  {},
+		HostTLSALPN:                 {},
+		HostVarNamespace:            {},
 	}
 
 	// AnnDuo is the list of annotations that should be added

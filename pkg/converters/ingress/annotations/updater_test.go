@@ -214,6 +214,15 @@ func (c *testConfig) createBackendMappingData(
 	return d
 }
 
+func (c *testConfig) createFrontData(source *Source, ann, annDefault map[string]string) *frontData {
+	mapper := NewMapBuilder(c.logger, annDefault).NewMapper()
+	mapper.AddAnnotations(source, hatypes.CreatePathLink("/", hatypes.MatchBegin), ann)
+	return &frontData{
+		front:  &hatypes.Frontend{},
+		mapper: mapper,
+	}
+}
+
 func (c *testConfig) createHostData(source *Source, ann, annDefault map[string]string) *hostData {
 	mapper := NewMapBuilder(c.logger, annDefault).NewMapper()
 	mapper.AddAnnotations(source, hatypes.CreatePathLink("/", hatypes.MatchBegin), ann)

@@ -85,75 +85,6 @@ func TestAuthProxy(t *testing.T) {
 	}
 }
 
-func TestBind(t *testing.T) {
-	testCases := []struct {
-		ann      map[string]string
-		expected hatypes.GlobalBindConfig
-	}{
-		// 0
-		{
-			ann: map[string]string{},
-			expected: hatypes.GlobalBindConfig{
-				HTTPBind:  "*:80",
-				HTTPSBind: "*:443",
-			},
-		},
-		// 1
-		{
-			ann: map[string]string{
-				ingtypes.GlobalBindHTTP: ":80,:8080",
-			},
-			expected: hatypes.GlobalBindConfig{
-				HTTPBind:  ":80,:8080",
-				HTTPSBind: "*:443",
-			},
-		},
-		// 2
-		{
-			ann: map[string]string{
-				ingtypes.GlobalBindHTTPS: ":443,:8443",
-			},
-			expected: hatypes.GlobalBindConfig{
-				HTTPBind:  "*:80",
-				HTTPSBind: ":443,:8443",
-			},
-		},
-		// 3
-		{
-			ann: map[string]string{
-				ingtypes.GlobalBindIPAddrHTTP: "127.0.0.1",
-			},
-			expected: hatypes.GlobalBindConfig{
-				HTTPBind:  "127.0.0.1:80",
-				HTTPSBind: "127.0.0.1:443",
-			},
-		},
-		// 4
-		{
-			ann: map[string]string{
-				ingtypes.GlobalHTTPPort:  "8080",
-				ingtypes.GlobalHTTPSPort: "8443",
-			},
-			expected: hatypes.GlobalBindConfig{
-				HTTPBind:  "*:8080",
-				HTTPSBind: "*:8443",
-			},
-		},
-	}
-	for i, test := range testCases {
-		c := setup(t)
-		d := c.createGlobalData(map[string]string{
-			ingtypes.GlobalHTTPPort:       "80",
-			ingtypes.GlobalHTTPSPort:      "443",
-			ingtypes.GlobalBindIPAddrHTTP: "*",
-		})
-		d.mapper.AddAnnotations(nil, hatypes.CreatePathLink("-", hatypes.MatchBegin), test.ann)
-		c.createUpdater().buildGlobalBind(d)
-		c.compareObjects("bind", i, d.global.Bind, test.expected)
-		c.teardown()
-	}
-}
-
 func TestCloseSessions(t *testing.T) {
 	testCases := []struct {
 		annDuration string
@@ -701,63 +632,6 @@ func TestForwardFor(t *testing.T) {
 	}
 }
 
-func TestFrontingProxy(t *testing.T) {
-	testCases := []struct {
-		ann      map[string]string
-		expected hatypes.GlobalBindConfig
-	}{
-		// 0
-		{
-			ann: map[string]string{
-				ingtypes.GlobalHTTPStoHTTPPort: "8000",
-			},
-			expected: hatypes.GlobalBindConfig{
-				IsFrontingProxy: true,
-				HTTPBind:        ":8000",
-			},
-		},
-		// 1
-		{
-			ann: map[string]string{
-				ingtypes.GlobalFrontingProxyPort: "9000",
-			},
-			expected: hatypes.GlobalBindConfig{
-				IsFrontingProxy: true,
-				HTTPBind:        ":9000",
-			},
-		},
-		// 2
-		{
-			ann: map[string]string{
-				ingtypes.GlobalHTTPStoHTTPPort:   "9000",
-				ingtypes.GlobalBindFrontingProxy: ":7000",
-			},
-			expected: hatypes.GlobalBindConfig{
-				IsFrontingProxy: true,
-				HTTPBind:        ":7000",
-			},
-		},
-		// 3
-		{
-			ann: map[string]string{
-				ingtypes.GlobalFrontingProxyPort: "8000",
-				ingtypes.GlobalBindFrontingProxy: "127.0.0.1:7000",
-			},
-			expected: hatypes.GlobalBindConfig{
-				IsFrontingProxy: true,
-				HTTPBind:        "127.0.0.1:7000",
-			},
-		},
-	}
-	for i, test := range testCases {
-		c := setup(t)
-		d := c.createGlobalData(test.ann)
-		c.createUpdater().buildGlobalFrontingProxy(d)
-		c.compareObjects("fronting proxy", i, d.global.Bind, test.expected)
-		c.teardown()
-	}
-}
-
 func TestDisableCpuMap(t *testing.T) {
 	testCases := []struct {
 		ann      map[string]string
@@ -932,7 +806,7 @@ func TestSecurity(t *testing.T) {
 	for i, test := range testCases {
 		c := setup(t)
 		d := c.createGlobalData(test.ann)
-		c.createUpdater().buildSecurity(d)
+		c.createUpdater().buildGlobalSecurity(d)
 		c.compareObjects("fronting proxy", i, d.global.Security, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()

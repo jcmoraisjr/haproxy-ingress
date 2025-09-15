@@ -52,7 +52,6 @@ type Acme struct {
 
 // Global ...
 type Global struct {
-	Bind                    GlobalBindConfig
 	Procs                   ProcsConfig
 	Syslog                  SyslogConfig
 	MaxConn                 int
@@ -77,6 +76,7 @@ type Global struct {
 	Prometheus              PromConfig
 	Security                SecurityConfig
 	Stats                   StatsConfig
+	TCPBindIP               string
 	CloseSessionsDuration   time.Duration
 	TimeoutStopDuration     time.Duration
 	StrictHost              bool
@@ -94,16 +94,6 @@ type Global struct {
 	CustomHTTPResponses     HTTPResponses
 	CustomSections          []string
 	CustomTCP               []string
-}
-
-// GlobalBindConfig ...
-type GlobalBindConfig struct {
-	AcceptProxy        bool
-	HTTPBind           string
-	HTTPSBind          string
-	TCPBindIP          string
-	IsFrontingProxy    bool
-	IsFrontingUseProto bool
 }
 
 // ProcsConfig ...
@@ -484,26 +474,33 @@ type Frontends struct {
 
 // Frontend ...
 type Frontend struct {
-	changed     bool
-	Maps        *FrontendMaps
-	Name        string
+	changed bool
+	Maps    *FrontendMaps
+	Name    string
+	//
+	// Bind related
 	BindName    string
-	BindSocket  string
 	BindID      int
+	HTTPBind    string
+	HTTPSBind   string
 	AcceptProxy bool
 	AuthProxy   AuthProxy
 	//
+	// HTTPS related
 	DefaultCrtFile string
 	DefaultCrtHash string
 	CrtListFile    string
 	//
-	RedirectFromCode int
-	RedirectToCode   int
+	// Passthrough related
+	HTTPSSocket string
+	HTTPSProxy  bool
 	//
 	IsFrontingProxy    bool
 	IsFrontingUseProto bool
+	RedirectFromCode   int
+	RedirectToCode     int
 	//
-	// hosts
+	// Hosts related
 	hosts,
 	hostsAdd,
 	hostsDel map[string]*Host
