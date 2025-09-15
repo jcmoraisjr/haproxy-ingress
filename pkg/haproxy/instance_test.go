@@ -1185,6 +1185,10 @@ frontend _front_https
 				p2.HSTS.Enabled = true
 			},
 			path: []string{},
+			expFronts: `<<frontend-fronting-http>>
+    default_backend _error404
+<<frontend-https>>
+    default_backend _error404`,
 			expected: `
     http-response set-header Strict-Transport-Security "max-age=0"`,
 		},
@@ -1203,6 +1207,10 @@ frontend _front_https
 				p2.HSTS.Enabled = true
 			},
 			path: []string{},
+			expFronts: `<<frontend-fronting-http>>
+    default_backend _error404
+<<frontend-https>>
+    default_backend _error404`,
 			expected: `
     acl https-request var(req.fronting-proto) -m str ignore
     acl https-request hdr(X-Forwarded-Proto) https
@@ -1225,6 +1233,10 @@ frontend _front_https
 				p2.HSTS.Enabled = true
 			},
 			path: []string{},
+			expFronts: `<<frontend-fronting-http>>
+    default_backend _error404
+<<frontend-https>>
+    default_backend _error404`,
 			expected: `
     acl https-request hdr(X-Forwarded-Proto) https
     http-request redirect scheme https if !https-request
@@ -1369,17 +1381,15 @@ backend d1_app_8080
 	c.logger.CompareLogging(defaultLogging)
 }
 
-func TestInstanceGlobalBind(t *testing.T) {
+func TestInstanceFrontendBind(t *testing.T) {
 	testCases := []struct {
-		bind          hatypes.GlobalBindConfig
+		bind          hatypes.Frontend
 		expectedHTTP  string
 		expectedHTTPS string
 	}{
-		// 0
-		{},
 		// 1
 		{
-			bind: hatypes.GlobalBindConfig{
+			bind: hatypes.Frontend{
 				HTTPBind:    ":80",
 				HTTPSBind:   ":443",
 				AcceptProxy: true,
@@ -1389,7 +1399,7 @@ func TestInstanceGlobalBind(t *testing.T) {
 		},
 		// 2
 		{
-			bind: hatypes.GlobalBindConfig{
+			bind: hatypes.Frontend{
 				HTTPBind:  "127.0.0.1:80",
 				HTTPSBind: "127.0.0.1:443",
 			},
@@ -1405,13 +1415,11 @@ func TestInstanceGlobalBind(t *testing.T) {
 		h = c.df.AcquireHost("d1.local")
 		h.AddPath(b, "/", hatypes.MatchBegin)
 
-		c.config.Global().Bind = test.bind
-		if test.expectedHTTP != "" {
-			test.expectedHTTP = "\n    " + test.expectedHTTP
-		}
-		if test.expectedHTTPS != "" {
-			test.expectedHTTPS = "\n    " + test.expectedHTTPS
-		}
+		c.df.HTTPBind = test.bind.HTTPBind
+		c.df.HTTPSBind = test.bind.HTTPSBind
+		c.df.AcceptProxy = test.bind.AcceptProxy
+		test.expectedHTTP = "\n    " + test.expectedHTTP
+		test.expectedHTTPS = "\n    " + test.expectedHTTPS
 
 		c.Update()
 		c.checkConfig(`
@@ -1813,9 +1821,7 @@ func TestInstanceFrontingProxy(t *testing.T) {
 			b.Endpoints = []*hatypes.Endpoint{endpointS1}
 			c.df.IsFrontingProxy = true
 			c.df.IsFrontingUseProto = test.useProto
-			c.config.global.Bind.IsFrontingProxy = true
-			c.config.global.Bind.IsFrontingUseProto = test.useProto
-			c.config.global.Bind.HTTPBind = ":8000"
+			c.df.HTTPBind = ":8000"
 
 			c.Update()
 			c.checkConfig(`
@@ -2221,7 +2227,7 @@ listen _tcp_pq_5432
 				b.ProxyProt.Decode = true
 				b.ProxyProt.EncodeVersion = "v1"
 				b.CheckInterval = "2s"
-				c.config.Global().Bind.TCPBindIP = "127.0.0.1"
+				c.config.Global().TCPBindIP = "127.0.0.1"
 			},
 			expected: `
 listen _tcp_pq_5432
@@ -5727,6 +5733,8 @@ func setupOptions(options testOptions) *testConfig {
 	config := instance.Config().(*config)
 	df := config.frontends.Default()
 	df.DefaultCrtFile = "/var/haproxy/ssl/certs/default.pem"
+	df.HTTPBind = ":80"
+	df.HTTPSBind = ":443"
 	c := &testConfig{
 		t:        t,
 		logger:   logger,
@@ -5748,8 +5756,6 @@ func (c *testConfig) teardown() {
 
 func (c *testConfig) configGlobal(global *hatypes.Global) {
 	global.AdminSocket = "/var/run/haproxy.sock"
-	global.Bind.HTTPBind = ":80"
-	global.Bind.HTTPSBind = ":443"
 	global.Cookie.Key = "Ingress"
 	global.DefaultBackendRedirCode = 301
 	global.Healthz.Port = 10253
@@ -5915,6 +5921,12 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     bind :80
     <<set-req-base>>
     <<http-headers>>
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }`,
+		"<<frontend-fronting-http>>": `frontend _front_http
+    mode http
+    bind :80
+    <<set-req-base>>
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
     use_backend %[var(req.backend)] if { var(req.backend) -m found }`,
 		"<<frontend-http-match-4>>": `frontend _front_http

@@ -820,14 +820,14 @@ Request forbidden by administrative rules.
 		global := corev1.ConfigMap{}
 		err := f.Client().Get(ctx, types.NamespacedName{Namespace: "default", Name: "ingress-controller"}, &global)
 		require.NoError(t, err)
-		global.Data[ingtypes.GlobalFrontingProxyPort] = strconv.Itoa(framework.TestPortFHTTP)
-		global.Data[ingtypes.GlobalUseForwardedProto] = "True"
+		global.Data[ingtypes.FrontFrontingProxyPort] = strconv.Itoa(framework.TestPortFHTTP)
+		global.Data[ingtypes.FrontUseForwardedProto] = "True"
 		err = f.Client().Update(ctx, &global)
 		require.NoError(t, err)
 
 		defer func() {
-			delete(global.Data, ingtypes.GlobalFrontingProxyPort)
-			delete(global.Data, ingtypes.GlobalUseForwardedProto)
+			delete(global.Data, ingtypes.FrontFrontingProxyPort)
+			delete(global.Data, ingtypes.FrontUseForwardedProto)
 			err = f.Client().Update(ctx, &global)
 			require.NoError(t, err)
 		}()

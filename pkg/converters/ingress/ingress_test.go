@@ -2773,6 +2773,9 @@ func (u *updaterMock) UpdateTCPHostConfig(tcpPort *hatypes.TCPServicePort, tcpHo
 	}
 }
 
+func (u *updaterMock) UpdateFrontConfig(front *hatypes.Frontend, mapper *annotations.Mapper) {
+}
+
 func (u *updaterMock) UpdateHostConfig(host *hatypes.Host, mapper *annotations.Mapper) {
 	host.RootRedirect = mapper.Get(ingtypes.HostAppRoot).Value
 }

@@ -60,9 +60,16 @@ func (l *PathLink) IsComposeMatch() bool {
 	return len(l.headers) > 0
 }
 
+// WithHTTPFront ...
+func (l *PathLink) WithHTTPFront(front *Frontend) *PathLink {
+	l.frontend = front.Name
+	l.updatehash()
+	return l
+}
+
 // WithHTTPHost ...
 func (l *PathLink) WithHTTPHost(host *Host) *PathLink {
-	l.frontend = "_http"
+	l.frontend = host.frontend.Name
 	l.hostname = host.Hostname
 	l.updatehash()
 	return l

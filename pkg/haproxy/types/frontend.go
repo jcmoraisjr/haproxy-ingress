@@ -42,6 +42,10 @@ func (f *Frontends) Default() *Frontend {
 	return f.items[0]
 }
 
+func (f *Frontends) Items() []*Frontend {
+	return f.items
+}
+
 func (f *Frontends) Commit() {
 	f.items[0].Commit()
 }
