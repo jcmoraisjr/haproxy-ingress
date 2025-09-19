@@ -1017,15 +1017,11 @@ Configuration examples:
 * `bind-https: ":443,:8443"`: accept https connections on `443` and also `8443` port numbers
 
 {{< alert title="Note" >}}
-`bind-fronting-proxy` and `bind-http` can share the same port number, provided
-that the whole configuration key match, not only the port number.
-See [Fronting proxy](#fronting-proxy-port) doc.
+Since v0.16, `bind-fronting-proxy` and `bind-http` cannot share neither the same frontend, nor the same TCP port anymore.
 {{< /alert >}}
 
 {{< alert title="Warning" color="warning" >}}
-Special care should be taken on port number overlap, nether haproxy itself nor
-haproxy-ingress will warn if the same port number is used in more than one
-configuration key.
+Special care should be taken on port number overlap, neither haproxy itself nor haproxy-ingress will warn if the same port number is used on more than one configuration key.
 {{< /alert >}}
 
 See also:
@@ -1669,45 +1665,20 @@ See also:
 | `https-to-http-port`  | `Global` |         |         |
 | `use-forwarded-proto` | `Global` | `true`  | `v0.10` |
 
-A port number to listen to http requests from a fronting proxy that does the ssl
-offload, eg haproxy ingress behind a cloud load balancers that manages the TLS
-certificates. `https-to-http-port` is an alias to `fronting-proxy-port`.
+Configures HAProxy Ingress to accept plain HTTP requests from a fronting load balancer doing the SSL offload.
 
-`fronting-proxy-port` and [`http-port`](#bind-port) can share the same port number, see below
-what changes in the behaviour.
+* `fronting-proxy-port`: configures the port number that should accept the HTTP requests. This configuration was allowed to collide with `http-port` up to v0.15, but since v0.16 fronting-proxy is a flag to the whole frontend. Configure distinct frontends to support both regular HTTP and Fronting Proxy requests on the same deployment, and the port number cannot collide anymore.
+* `use-forwarded-proto`: if `true`, the default value, configures HAProxy to redirect the request to https if the `X-Forwarded-Proto` header is not `https`. If `false`, `X-Forwarded-Proto` header is ignored and passed as is to the backend.
+* `https-to-http-port`: old and deprecated key, now an alias to `fronting-proxy-port`.
 
-`use-forwarded-proto` defines if haproxy should use `X-Forwarded-Proto` header to decide
-how to handle requests made to `fronting-proxy-port` port number.
-
-If `use-forwarded-proto` is `false`, the request takes the `https` route and is handled as if
-`X-Forwarded-Proto` header is `https`, see below. The actual header content is ignored by
-haproxy and forwarded to the backend if provided.
-
-If `use-forwarded-proto` is `true`, the default value, requests made to `fronting-proxy-port`
-port number evaluate the `X-Forwarded-Proto` header to decide how to handle the request:
-
-* If `X-Forwarded-Proto` header is `https`:
-  * HAProxy will handle the request just like the ssl-offload was made by HAProxy itself - HSTS header is provided if configured and
-`X-SSL-*` headers won't be changed or removed if provided.
-* If `X-Forwarded-Proto` header is `http` or any other value except `https`:
-  * HAProxy will redirect scheme to https
-* If `X-Forwarded-Proto` header is missing:
-  * If `fronting-proxy-port` has its own port --- HAProxy will redirect scheme to https
-  * If `fronting-proxy-port` shares the HTTP port --- the request will be handled as plain http, being redirected to https only if `ssl-redirect` is `true`, just like if `fronting-proxy-port` wasn't configured.
-
-{{< alert title="Warning on v0.7 and older" color="warning" >}}
-On v0.7 and older and only if the `X-Forwarded-Proto` is missing: the
-connecting port number was used to define which socket received the request, so
-the fronting proxy should connect to the same port number defined in
-`https-to-http-port`, eg cannot have any proxy like Kubernetes' `NodePort`
-between the load balancer and HAProxy which changes the connecting port number.
-This limitation doesn't exist on v0.8 or above.
+HAProxy Ingress has a few differences on HTTP and HTTPS configurations, like, redirect from HTTP if `ssl-redirect` is `true`, add HSTS headers (when configured) only on HTTPS responses, and drop incoming `X-SSL-*` headers for security reasons. Configuring a fronting proxy port makes HAProxy Ingress to have HTTPS behavior over HTTP connection, allowing a fronting load balancer to SSL offload the TLS requests, talking plain HTTP with HAProxy.
+{{< alert title="Security warning" color="warning" >}}
+This option must only be used if the network from the fronting load balancer and the ingress nodes are trusted, since the communication happens on plain HTTP, and all the communication is visible via tools like tcpdump. Give also the configured port a special attention and block it from external access: an user can easily add the `X-SSL-*` headers, authenticating itself as any user on applications using mTLS.
 {{< /alert >}}
 
 See also:
 
 * [Bind](#bind)
-* [Bind port](#bind-port)
 
 ### Headers
 

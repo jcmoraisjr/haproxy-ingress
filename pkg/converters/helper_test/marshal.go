@@ -154,7 +154,7 @@ func marshalHosts(hafronts ...*hatypes.Host) []hostMock {
 			Paths:        paths,
 			RootRedirect: f.RootRedirect,
 			TLS:          tlsMock{TLSFilename: f.TLS.TLSFilename},
-			Passthrough:  f.SSLPassthrough(),
+			Passthrough:  f.SSLPassthrough,
 			HTTPPassBack: f.HTTPPassthroughBackend,
 		})
 	}

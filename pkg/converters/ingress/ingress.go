@@ -75,7 +75,7 @@ func NewIngressConverter(options *convtypes.ConverterOptions, haproxy haproxy.Co
 		updater:            annotations.NewUpdater(haproxy, options),
 		globalConfig:       annotations.NewMapBuilder(options.Logger, defaultConfig).NewMapper(),
 		tcpsvcAnnotations:  map[*hatypes.TCPServicePort]*annotations.Mapper{},
-		hostAnnotations:    map[*hatypes.Host]*annotations.Mapper{},
+		frontAnnotations:   map[*hatypes.Frontend]frontMapper{},
 		backendAnnotations: map[*hatypes.Backend]*annotations.Mapper{},
 		ingressClasses:     map[string]*ingressClassConfig{},
 	}
@@ -96,9 +96,14 @@ type converter struct {
 	updater            annotations.Updater
 	globalConfig       *annotations.Mapper
 	tcpsvcAnnotations  map[*hatypes.TCPServicePort]*annotations.Mapper
-	hostAnnotations    map[*hatypes.Host]*annotations.Mapper
+	frontAnnotations   map[*hatypes.Frontend]frontMapper
 	backendAnnotations map[*hatypes.Backend]*annotations.Mapper
 	ingressClasses     map[string]*ingressClassConfig
+}
+
+type frontMapper struct {
+	mapper *annotations.Mapper
+	hosts  map[*hatypes.Host]*annotations.Mapper
 }
 
 func (c *converter) ReadAnnotations(backend *hatypes.Backend, services []*api.Service, pathLinks []*hatypes.PathLink) {
@@ -109,7 +114,7 @@ func (c *converter) ReadAnnotations(backend *hatypes.Backend, services []*api.Se
 			Name:      service.Name,
 			Type:      convtypes.ResourceService,
 		}
-		_, _, ann := c.readAnnotations(source, service.Annotations)
+		_, _, _, ann := c.readAnnotations(source, service.Annotations)
 		for _, pathLink := range pathLinks {
 			conflict := mapper.AddAnnotations(source, pathLink, ann)
 			if len(conflict) > 0 {
@@ -144,9 +149,9 @@ func (c *converter) Sync(full bool) {
 }
 
 func (c *converter) defaultCrtNeedFullSync() bool {
-	frontend := c.haproxy.Frontend()
-	return frontend.DefaultCrtFile != c.defaultCrt.Filename ||
-		frontend.DefaultCrtHash != c.defaultCrt.SHA1Hash
+	df := c.haproxy.Frontends().Default()
+	return df.DefaultCrtFile != c.defaultCrt.Filename ||
+		df.DefaultCrtHash != c.defaultCrt.SHA1Hash
 }
 
 func (c *converter) globalConfigNeedFullSync() bool {
@@ -181,15 +186,17 @@ func (c *converter) readDefaultCertificate() {
 }
 
 func (c *converter) syncDefaultCrt() {
-	frontend := c.haproxy.Frontend()
-	frontend.DefaultCrtFile = c.defaultCrt.Filename
-	frontend.DefaultCrtHash = c.defaultCrt.SHA1Hash
+	df := c.haproxy.Frontends().Default()
+	df.DefaultCrtFile = c.defaultCrt.Filename
+	df.DefaultCrtHash = c.defaultCrt.SHA1Hash
 }
+
+// bareLink creates a pathlink with default path and match type params, used to create generic, TCP, or hostname based pathlinks.
+func bareLink() *hatypes.PathLink { return hatypes.CreatePathLink("/", hatypes.MatchExact) }
 
 func (c *converter) syncDefaultBackend() {
 	if c.options.DefaultBackend != "" {
-		pathLink := hatypes.CreateHostPathLink(hatypes.DefaultHost, "/", hatypes.MatchBegin)
-		if backend, err := c.addBackend(&c.defaultBackSource, pathLink, c.options.DefaultBackend, "", map[string]string{}); err == nil {
+		if backend, err := c.addBackend(&c.defaultBackSource, bareLink(), c.options.DefaultBackend, "", map[string]string{}); err == nil {
 			c.haproxy.Backends().DefaultBackend = backend
 			c.tracker.TrackNames(c.defaultBackSource.Type, c.defaultBackSource.FullName(), convtypes.ResourceHAHostname, hatypes.DefaultHost)
 		} else {
@@ -226,8 +233,8 @@ func (c *converter) syncPartial() {
 	dirtyStorages := trackedLinks[convtypes.ResourceAcmeData]
 
 	c.haproxy.TCPServices().RemoveAll(dirtyTCPServices)
-	c.haproxy.Hosts().RemoveAll(dirtyHosts)
-	c.haproxy.Frontend().RemoveAuthBackendByTarget(dirtyBacks)
+	c.haproxy.Frontends().RemoveAllHosts(dirtyHosts)
+	c.haproxy.Frontends().RemoveAuthBackendByTarget(dirtyBacks)
 	c.haproxy.Backends().RemoveAll(dirtyBacks)
 	c.haproxy.Userlists().RemoveAll(dirtyUsers)
 	c.haproxy.AcmeData().Storages().RemoveAll(dirtyStorages)
@@ -375,20 +382,20 @@ func (c *converter) syncIngress(ing *networking.Ingress) {
 		Name:      ing.Name,
 		Type:      convtypes.ResourceIngress,
 	}
-	annTCP, annHost, annBack := c.readAnnotations(source, ing.Annotations)
+	annTCP, annFront, annHost, annBack := c.readAnnotations(source, ing.Annotations)
 	tcpServicePort, _ := strconv.Atoi(annTCP[ingtypes.TCPTCPServicePort])
 	if tcpServicePort == 0 {
-		c.syncIngressHTTP(source, ing, annHost, annBack)
+		c.syncIngressHTTP(source, ing, annFront, annHost, annBack)
 	} else {
 		c.syncIngressTCP(source, ing, tcpServicePort, annTCP, annBack)
 	}
 }
 
-func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.Ingress, annHost, annBack map[string]string) {
+func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.Ingress, annFront, annHost, annBack map[string]string) {
 	if ing.Spec.DefaultBackend != nil {
 		svcName, svcPort, err := readServiceNamePort(ing.Spec.DefaultBackend)
 		if err == nil {
-			err = c.addDefaultHostBackend(source, ing.Namespace+"/"+svcName, svcPort, annHost, annBack)
+			err = c.addDefaultHostBackend(source, ing.Namespace+"/"+svcName, svcPort, annFront, annHost, annBack)
 		}
 		if err != nil {
 			c.logger.Warn("skipping default backend of %v: %v", source, err)
@@ -401,14 +408,14 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 		hostname := normalizeHostname(rule.Host, 0)
 		ingressClass := c.readIngressClass(source, ing.Spec.IngressClassName)
 		sslpassthrough, _ := strconv.ParseBool(annHost[ingtypes.HostSSLPassthrough])
-		host := c.addHost(hostname, source, annHost)
+		host := c.addHost(hostname, source, annFront, annHost)
 		for _, path := range rule.HTTP.Paths {
 			uri := path.Path
 			if uri == "" {
 				uri = "/"
 			}
 			match := c.readPathType(path, annBack[ingtypes.BackPathType])
-			pathLink := hatypes.CreateHostPathLink(hostname, uri, match)
+			pathLink := hatypes.CreatePathLink(uri, match).WithHTTPHost(host)
 			if headerMatch := annBack[ingtypes.BackHTTPHeaderMatch]; headerMatch != "" {
 				c.addHeaderMatch(source, pathLink, headerMatch, false)
 			}
@@ -471,7 +478,7 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 	for _, tls := range ing.Spec.TLS {
 		// tls secret
 		for _, hostname := range tls.Hosts {
-			host := c.addHost(hostname, source, annHost)
+			host := c.addHost(hostname, source, annFront, annHost)
 			tlsPath := c.addTLS(source, tls.SecretName)
 			if host.TLS.TLSHash == "" {
 				host.TLS.TLSFilename = tlsPath.Filename
@@ -519,7 +526,7 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 func (c *converter) syncIngressTCP(source *annotations.Source, ing *networking.Ingress, tcpServicePort int, annTCP, annBack map[string]string) {
 	addIngressBackend := func(rawHostname string, ingressBackend *networking.IngressBackend) error {
 		hostname := normalizeHostname(rawHostname, tcpServicePort)
-		tcpService, err := c.addTCPService(source, hostname, annTCP)
+		tcpService, tcpLink, err := c.addTCPService(source, hostname, annTCP)
 		if err != nil {
 			return err
 		}
@@ -536,9 +543,8 @@ func (c *converter) syncIngressTCP(source *annotations.Source, ing *networking.I
 			return fmt.Errorf("service '%s' on %v: backend for port '%d' was already assigned", svcName, source, tcpServicePort)
 		}
 		fullSvcName := ing.Namespace + "/" + svcName
-		pathLink := hatypes.CreateHostPathLink(hostname, "/", hatypes.MatchExact)
 		ingressClass := c.readIngressClass(source, ing.Spec.IngressClassName)
-		backend, err := c.addBackendWithClass(source, pathLink, fullSvcName, svcPort, annBack, ingressClass)
+		backend, err := c.addBackendWithClass(source, tcpLink, fullSvcName, svcPort, annBack, ingressClass)
 		if err != nil {
 			return err
 		}
@@ -634,9 +640,16 @@ func (c *converter) fullSyncTCP() {
 
 func (c *converter) fullSyncAnnotations() {
 	c.fullSyncTCP()
-	for _, host := range c.haproxy.Hosts().Items() {
-		if ann, found := c.hostAnnotations[host]; found {
-			c.updater.UpdateHostConfig(host, ann)
+	for _, front := range c.haproxy.Frontends().Items() {
+		mapperFront, foundFront := c.frontAnnotations[front]
+		if !foundFront {
+			continue
+		}
+		c.updater.UpdateFrontConfig(front, mapperFront.mapper)
+		for _, host := range front.Hosts() {
+			if mapperHost, foundHost := mapperFront.hosts[host]; foundHost {
+				c.updater.UpdateHostConfig(host, mapperHost)
+			}
 		}
 	}
 	for _, backend := range c.haproxy.Backends().Items() {
@@ -648,14 +661,22 @@ func (c *converter) fullSyncAnnotations() {
 
 func (c *converter) partialSyncAnnotations() {
 	c.fullSyncTCP()
-	for _, host := range c.haproxy.Hosts().ItemsAdd() {
-		if ann, found := c.hostAnnotations[host]; found {
-			c.updater.UpdateHostConfig(host, ann)
+	for _, front := range c.haproxy.Frontends().Items() {
+		// look for added hosts on all frontends
+		mapperFront, foundFront := c.frontAnnotations[front]
+		if !foundFront {
+			continue
+		}
+		c.updater.UpdateFrontConfig(front, mapperFront.mapper)
+		for _, host := range front.HostsAdd() {
+			if mapperHost, foundHost := mapperFront.hosts[host]; foundHost {
+				c.updater.UpdateHostConfig(host, mapperHost)
+			}
 		}
 	}
 	for _, backend := range c.haproxy.Backends().ItemsAdd() {
-		if ann, found := c.backendAnnotations[backend]; found {
-			c.updater.UpdateBackendConfig(backend, ann)
+		if mapper, found := c.backendAnnotations[backend]; found {
+			c.updater.UpdateBackendConfig(backend, mapper)
 		}
 	}
 }
@@ -705,31 +726,43 @@ func (c *converter) readIngressClass(source *annotations.Source, ingressClassNam
 	return nil
 }
 
-func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcName, svcPort string, annHost, annBack map[string]string) error {
+func (c *converter) addDefaultHostBackend(source *annotations.Source, fullSvcName, svcPort string, annFront, annHost, annBack map[string]string) error {
 	hostname := hatypes.DefaultHost
 	uri := "/"
 	match := hatypes.MatchBegin
-	if fr := c.haproxy.Hosts().FindHost(hostname); fr != nil {
-		if fr.FindPath(uri, match) != nil {
+	df := c.haproxy.Frontends().Default()
+
+	// existing stores if the host already existed before calling this func
+	var existing bool
+	if host := df.FindHost(hostname); host != nil {
+		if host.FindPath(uri, match) != nil {
 			return fmt.Errorf("path %s was already defined on default host", uri)
 		}
+		existing = true
 	}
-	pathLink := hatypes.CreateHostPathLink(hostname, uri, match)
+
+	host := df.AcquireHost(hostname)
+	pathLink := hatypes.CreatePathLink(uri, match).WithHTTPHost(host)
 	backend, err := c.addBackend(source, pathLink, fullSvcName, svcPort, annBack)
 	if err != nil {
 		c.tracker.TrackNames(source.Type, source.FullName(), convtypes.ResourceService, fullSvcName)
+		if !existing {
+			// we needed to create it in order to configure a pathLink,
+			// so reverting the creation since we are not going to use it.
+			df.RemoveAllHosts([]string{hostname})
+		}
 		return err
 	}
-	host := c.addHost(hostname, source, annHost)
+	host = c.addHost(hostname, source, annFront, annHost)
 	host.AddPath(backend, uri, match)
 	return nil
 }
 
-func (c *converter) addTCPService(source *annotations.Source, hostname string, ann map[string]string) (*hatypes.TCPServiceHost, error) {
+func (c *converter) addTCPService(source *annotations.Source, hostname string, ann map[string]string) (*hatypes.TCPServiceHost, *hatypes.PathLink, error) {
 	tcpPort, tcpHost := c.haproxy.TCPServices().AcquireTCPService(hostname)
 	if !tcpHost.Backend.IsEmpty() {
 		tcpservice := strings.TrimPrefix(hostname, hatypes.DefaultHost)
-		return nil, fmt.Errorf("tcp service %s was already assigned to %s", tcpservice, tcpHost.Backend)
+		return nil, nil, fmt.Errorf("tcp service %s was already assigned to %s", tcpservice, tcpHost.Backend)
 	}
 	c.tracker.TrackNames(source.Type, source.FullName(), convtypes.ResourceHATCPService, hostname)
 	mapper, found := c.tcpsvcAnnotations[tcpPort]
@@ -737,25 +770,41 @@ func (c *converter) addTCPService(source *annotations.Source, hostname string, a
 		mapper = c.mapBuilder.NewMapper()
 		c.tcpsvcAnnotations[tcpPort] = mapper
 	}
-	conflict := mapper.AddAnnotations(source, hatypes.CreateHostPathLink(hostname, "/", hatypes.MatchExact), ann)
+	tcpLink := bareLink().WithTCPHost(tcpHost)
+	conflict := mapper.AddAnnotations(source, tcpLink, ann)
 	if len(conflict) > 0 {
 		c.logger.Warn("skipping tcp service annotation(s) from %v due to conflict: %v", source, conflict)
 	}
-	return tcpHost, nil
+	return tcpHost, tcpLink, nil
 }
 
-func (c *converter) addHost(hostname string, source *annotations.Source, ann map[string]string) *hatypes.Host {
+func (c *converter) addHost(hostname string, source *annotations.Source, annFront, annHost map[string]string) *hatypes.Host {
 	// TODO build a stronger tracking
-	host := c.haproxy.Hosts().AcquireHost(hostname)
 	c.tracker.TrackNames(source.Type, source.FullName(), convtypes.ResourceHAHostname, hostname)
-	mapper, found := c.hostAnnotations[host]
-	if !found {
-		mapper = c.mapBuilder.NewMapper()
-		c.hostAnnotations[host] = mapper
+	df := c.haproxy.Frontends().Default()
+	host := df.AcquireHost(hostname)
+
+	mapperFront, foundFront := c.frontAnnotations[df]
+	if !foundFront {
+		mapperFront = frontMapper{
+			mapper: c.mapBuilder.NewMapper(),
+			hosts:  make(map[*hatypes.Host]*annotations.Mapper),
+		}
+		c.frontAnnotations[df] = mapperFront
 	}
-	conflict := mapper.AddAnnotations(source, hatypes.CreateHostPathLink(hostname, "/", hatypes.MatchExact), ann)
-	if len(conflict) > 0 {
-		c.logger.Warn("skipping host annotation(s) from %v due to conflict: %v", source, conflict)
+	conflictFront := mapperFront.mapper.AddAnnotations(source, bareLink().WithHTTPFront(df), annFront)
+	if len(conflictFront) > 0 {
+		c.logger.Warn("skipping frontend annotation(s) from %v due to conflict: %v", source, conflictFront)
+	}
+
+	mapperHost, foundHost := mapperFront.hosts[host]
+	if !foundHost {
+		mapperHost = c.mapBuilder.NewMapper()
+		mapperFront.hosts[host] = mapperHost
+	}
+	conflictHost := mapperHost.AddAnnotations(source, bareLink().WithHTTPHost(host), annHost)
+	if len(conflictHost) > 0 {
+		c.logger.Warn("skipping host annotation(s) from %v due to conflict: %v", source, conflictHost)
 	}
 	return host
 }
@@ -843,7 +892,7 @@ func (c *converter) addBackendWithClass(source *annotations.Source, pathLink *ha
 		c.backendAnnotations[backend] = mapper
 	}
 	// Starting with service annotations, giving precedence
-	_, _, svcann := c.readAnnotations(source, svc.Annotations)
+	_, _, _, svcann := c.readAnnotations(source, svc.Annotations)
 	mapper.AddAnnotations(&annotations.Source{
 		Namespace: namespace,
 		Name:      svcName,
@@ -1023,14 +1072,17 @@ func (c *converter) addEndpoints(svc *api.Service, svcPort *api.ServicePort, bac
 	return nil
 }
 
-func (c *converter) readAnnotations(source *annotations.Source, ann map[string]string) (annTCP, annHost, annBack map[string]string) {
+func (c *converter) readAnnotations(source *annotations.Source, ann map[string]string) (annTCP, annFront, annHost, annBack map[string]string) {
 	keys := c.readConfigKeys(source, ann)
 	annTCP = make(map[string]string, len(keys))
+	annFront = make(map[string]string, len(keys))
 	annHost = make(map[string]string, len(keys))
 	annBack = make(map[string]string, len(keys))
 	for key, value := range keys {
 		if _, isTCPAnn := ingtypes.AnnTCP[key]; isTCPAnn {
 			annTCP[key] = value
+		} else if _, isFrontAnn := ingtypes.AnnFront[key]; isFrontAnn {
+			annFront[key] = value
 		} else if _, isHostAnn := ingtypes.AnnHost[key]; isHostAnn {
 			annHost[key] = value
 			// TCP services read both TCP and Host scoped configuration keys
@@ -1045,7 +1097,7 @@ func (c *converter) readAnnotations(source *annotations.Source, ann map[string]s
 			annBack[key] = value
 		}
 	}
-	return annTCP, annHost, annBack
+	return annTCP, annFront, annHost, annBack
 }
 
 func (c *converter) readConfigKey(ann map[string]string, key string) string {

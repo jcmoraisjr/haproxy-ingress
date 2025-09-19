@@ -862,19 +862,19 @@ WARN unrecognized response disabling endpoint default_app_8080/srv003: No such s
 INFO-V(2) need to reload due to config changes: [backends]
 `,
 		},
-		// 28
+		// 30
 		{
 			doconfig1: func(c *testConfig) {
-				h1 := c.config.Hosts().AcquireHost("domain1.local")
-				h2 := c.config.Hosts().AcquireHost("domain2.local")
+				h1 := c.df.AcquireHost("domain1.local")
+				h2 := c.df.AcquireHost("domain2.local")
 				h1.TLS.TLSFilename = "/tmp/domain1.pem"
 				h2.TLS.TLSFilename = "/tmp/domain2.pem"
 				h1.TLS.TLSHash = "1"
 				h2.TLS.TLSHash = "2"
 			},
 			doconfig2: func(c *testConfig) {
-				h1 := c.config.Hosts().AcquireHost("domain1.local")
-				h2 := c.config.Hosts().AcquireHost("domain2.local")
+				h1 := c.df.AcquireHost("domain1.local")
+				h2 := c.df.AcquireHost("domain2.local")
 				h1.TLS.TLSFilename = "/tmp/domain1.pem"
 				h2.TLS.TLSFilename = "/tmp/domain2.pem"
 				h1.TLS.TLSHash = "1"
@@ -897,15 +897,15 @@ INFO-V(2) response from server: Committing /tmp/domain2.pem. \\ Success!
 INFO certificate updated for domain2.local
 `,
 		},
-		// 29
+		// 31
 		{
 			doconfig1: func(c *testConfig) {
-				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				h1 := c.df.AcquireHost("domain1.local")
 				h1.TLS.TLSFilename = "/tmp/domain1.pem"
 				h1.TLS.TLSHash = "1"
 			},
 			doconfig2: func(c *testConfig) {
-				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				h1 := c.df.AcquireHost("domain1.local")
 				h1.TLS.TLSFilename = "/tmp/domain2.pem"
 				h1.TLS.TLSHash = "2"
 			},
@@ -915,19 +915,19 @@ INFO-V(2) diff outside server certificate of host 'domain1.local'
 INFO-V(2) need to reload due to config changes: [hosts]
 `,
 		},
-		// 30
+		// 32
 		{
 			doconfig1: func(c *testConfig) {
-				h1 := c.config.Hosts().AcquireHost("domain1.local")
-				h2 := c.config.Hosts().AcquireHost("domain2.local")
+				h1 := c.df.AcquireHost("domain1.local")
+				h2 := c.df.AcquireHost("domain2.local")
 				h1.TLS.TLSFilename = "/tmp/domain1.pem"
 				h2.TLS.TLSFilename = ""
 				h1.TLS.TLSHash = "1"
 				h2.TLS.TLSHash = "2"
 			},
 			doconfig2: func(c *testConfig) {
-				h1 := c.config.Hosts().AcquireHost("domain1.local")
-				h2 := c.config.Hosts().AcquireHost("domain2.local")
+				h1 := c.df.AcquireHost("domain1.local")
+				h2 := c.df.AcquireHost("domain2.local")
 				h1.TLS.TLSFilename = "/tmp/domain1.pem"
 				h2.TLS.TLSFilename = ""
 				h1.TLS.TLSHash = "3"
@@ -950,15 +950,15 @@ INFO-V(2) response from server: Committing /tmp/domain1.pem. \\ Success!
 INFO certificate updated for domain1.local
 `,
 		},
-		// 31
+		// 33
 		{
 			doconfig1: func(c *testConfig) {
-				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				h1 := c.df.AcquireHost("domain1.local")
 				h1.TLS.TLSFilename = "/tmp/domain1.pem"
 				h1.TLS.TLSHash = "1"
 			},
 			doconfig2: func(c *testConfig) {
-				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				h1 := c.df.AcquireHost("domain1.local")
 				h1.TLS.TLSFilename = "/tmp/domain1.pem"
 				h1.TLS.TLSHash = "2"
 			},
@@ -980,16 +980,16 @@ WARN cannot update certificate for domain1.local
 INFO-V(2) need to reload due to config changes: [hosts]
 `,
 		},
-		// 32
+		// 34
 		{
 			doconfig1: func(c *testConfig) {
-				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				h1 := c.df.AcquireHost("domain1.local")
 				h1.TLS.TLSFilename = "/tmp/domain1.pem"
 				h1.TLS.TLSHash = "1"
-				c.config.Hosts().AcquireHost("domain2.local")
+				c.df.AcquireHost("domain2.local")
 			},
 			doconfig2: func(c *testConfig) {
-				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				h1 := c.df.AcquireHost("domain1.local")
 				h1.TLS.TLSFilename = "/tmp/domain1.pem"
 				h1.TLS.TLSHash = "1"
 			},
@@ -1010,10 +1010,10 @@ INFO-V(2) need to reload due to config changes: [hosts]
 		}
 		c.instance.config.Commit()
 		hostnames := []string{}
-		for hostname := range c.config.hosts.Items() {
+		for hostname := range c.df.Hosts() {
 			hostnames = append(hostnames, hostname)
 		}
-		c.config.Hosts().RemoveAll(hostnames)
+		c.df.RemoveAllHosts(hostnames)
 		backendIDs := []string{}
 		for _, backend := range c.config.Backends().Items() {
 			backendIDs = append(backendIDs, backend.ID)

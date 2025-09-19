@@ -441,9 +441,10 @@ func (i *instance) Shutdown() {
 }
 
 func (i *instance) logChanged() {
-	hostsAdd := i.config.Hosts().ItemsAdd()
+	df := i.config.Frontends().Default()
+	hostsAdd := df.HostsAdd()
 	if len(hostsAdd) < 100 {
-		hostsDel := i.config.Hosts().ItemsDel()
+		hostsDel := df.HostsDel()
 		hosts := make([]string, 0, len(hostsAdd))
 		for host := range hostsAdd {
 			hosts = append(hosts, host)
@@ -616,7 +617,7 @@ func (i *instance) buildCustomHTTPResponses() (responsesList []httpResponseOverr
 	for _, beResponse := range i.config.Backends().BuildHTTPResponses() {
 		addAll(&beResponse)
 	}
-	for _, hostResponse := range i.config.Hosts().BuildHTTPResponses() {
+	for _, hostResponse := range i.config.Frontends().Default().BuildHTTPResponses() {
 		addAll(&hostResponse)
 	}
 	addAll(&i.config.Global().CustomHTTPResponses)
@@ -641,9 +642,10 @@ func (i *instance) updateSuccessful(success bool) {
 }
 
 func (i *instance) updateCertExpiring() {
-	hostsAdd := i.config.Hosts().ItemsAdd()
-	hostsDel := i.config.Hosts().ItemsDel()
-	if !i.config.Hosts().HasCommit() {
+	df := i.config.Frontends().Default()
+	hostsAdd := df.HostsAdd()
+	hostsDel := df.HostsDel()
+	if !df.HasCommit() {
 		// TODO the time between this reset and finishing to repopulate the gauge would lead
 		// to incomplete data scraped by Prometheus. This however happens only when a full parsing
 		// happens - edit globals, edit default crt, invalid data coming from lister events

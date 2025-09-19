@@ -17,10 +17,47 @@ limitations under the License.
 package annotations
 
 import (
+	"fmt"
+
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
+
+func (c *updater) buildFrontBind(d *frontData) {
+	d.front.AcceptProxy = d.mapper.Get(ingtypes.FrontUseProxyProtocol).Bool()
+	if bindHTTP := d.mapper.Get(ingtypes.FrontBindHTTP).Value; bindHTTP != "" {
+		d.front.HTTPBind = bindHTTP
+	} else {
+		ip := d.mapper.Get(ingtypes.FrontBindIPAddrHTTP).Value
+		port := d.mapper.Get(ingtypes.FrontHTTPPort).Int()
+		d.front.HTTPBind = fmt.Sprintf("%s:%d", ip, port)
+	}
+	if bindHTTPS := d.mapper.Get(ingtypes.FrontBindHTTPS).Value; bindHTTPS != "" {
+		d.front.HTTPSBind = bindHTTPS
+	} else {
+		ip := d.mapper.Get(ingtypes.FrontBindIPAddrHTTP).Value
+		port := d.mapper.Get(ingtypes.FrontHTTPSPort).Int()
+		d.front.HTTPSBind = fmt.Sprintf("%s:%d", ip, port)
+	}
+}
+
+func (c *updater) buildFrontFrontingProxy(d *frontData) {
+	bind := d.mapper.Get(ingtypes.FrontBindFrontingProxy).Value
+	if bind == "" {
+		port := d.mapper.Get(ingtypes.FrontFrontingProxyPort).Int()
+		if port == 0 {
+			port = d.mapper.Get(ingtypes.FrontHTTPStoHTTPPort).Int()
+		}
+		if port == 0 {
+			return
+		}
+		bind = fmt.Sprintf("%s:%d", d.mapper.Get(ingtypes.FrontBindIPAddrHTTP).Value, port)
+	}
+	d.front.IsFrontingProxy = true
+	d.front.IsFrontingUseProto = d.mapper.Get(ingtypes.FrontUseForwardedProto).Bool()
+	d.front.HTTPBind = bind
+}
 
 func (c *updater) buildHostAuthExternal(d *hostData) {
 	isFrontend := d.mapper.Get(ingtypes.BackAuthExternalPlacement).ToLower() == "frontend"
@@ -111,15 +148,16 @@ func (c *updater) buildHostCertSigner(d *hostData) {
 
 func (c *updater) buildHostRedirect(d *hostData) {
 	// TODO need a host<->host tracking if a target is found
+	df := c.haproxy.Frontends().Default()
 	redir := d.mapper.Get(ingtypes.HostRedirectFrom)
-	if target := c.haproxy.Hosts().FindTargetRedirect(redir.Value, false); target != nil {
+	if target := df.FindTargetRedirect(redir.Value, false); target != nil {
 		c.logger.Warn("ignoring redirect from '%s' on %v, it's already targeting to '%s'",
 			redir.Value, redir.Source, target.Hostname)
 	} else if len(d.host.Paths) > 0 {
 		d.host.Redirect.RedirectHost = redir.Value
 	}
 	redirRegex := d.mapper.Get(ingtypes.HostRedirectFromRegex)
-	if target := c.haproxy.Hosts().FindTargetRedirect(redirRegex.Value, true); target != nil {
+	if target := df.FindTargetRedirect(redirRegex.Value, true); target != nil {
 		c.logger.Warn("ignoring regex redirect from '%s' on %v, it's already targeting to '%s'",
 			redirRegex.Value, redirRegex.Source, target.Hostname)
 	} else if len(d.host.Paths) > 0 {
@@ -147,7 +185,7 @@ func (c *updater) buildHostSSLPassthrough(d *hostData) {
 	}
 	backend := c.haproxy.Backends().AcquireBackend(hostBackend.Namespace, hostBackend.Name, hostBackend.Port)
 	backend.ModeTCP = true
-	d.host.SetSSLPassthrough(true)
+	d.host.SSLPassthrough = true
 }
 
 func (c *updater) buildHostTLSConfig(d *hostData) {
