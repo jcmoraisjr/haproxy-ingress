@@ -4,6 +4,11 @@
 * [Upgrade notes - read before upgrade from v0.15!](#upgrade-notes)
   * [Deprecated command-line options](#deprecated-command-line-options)
 * [Contributors](#contributors)
+* [v0.16.0-alpha.2](#v0160-alpha2)
+  * [Reference](#reference-a2)
+  * [Release notes](#release-notes-a2)
+  * [Improvements](#improvements-a2)
+  * [Fixes](#fixes-a2)
 * [v0.16.0-alpha.1](#v0160-alpha1)
   * [Reference](#reference-a1)
   * [Release notes](#release-notes-a1)
@@ -34,6 +39,50 @@ The `--enable-endpointslices-api` command-line option was deprecated on v0.16 an
 * Gerald Barker ([gezb](https://github.com/gezb))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
 * Till! ([till](https://github.com/till))
+
+# v0.16.0-alpha.2
+
+## Reference (a2)
+
+* Release date: `2025-09-15`
+* Helm chart: `--version 0.16.0-alpha.2 --devel`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.16.0-alpha.2`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.16.0-alpha.2`
+* Embedded HAProxy version: `2.8.15`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.16.0-alpha.2`
+
+## Release notes (a2)
+
+This is the second and last alpha version of the v0.16 branch. All the new functionalities are already implemented, we should start the beta releases as soon as we identify this release good enough for the new phase.
+
+See below the highlights since the first alpha version:
+
+- Peers configuration is now backend scoped, so distinct backends can have their own stick-tables synchronized on all HAProxy instances. There is a backward incompatibility change from the alpha.1 syntax: `peers-table` now is backend scoped, so use instead `peers-table-global` if a single global one is desired. See its new documentation here: https://haproxy-ingress.github.io/v0.16/docs/configuration/keys/#peers
+- Chitoku found a regression on CA secrets configured via `file://`, this syntax was not working since a change that made it possible to configure CA secrets globally.
+
+Changes in dependencies:
+
+- client-go from v0.33.4 to v0.34.1
+- controller-runtime from v0.21.0 to v0.22.1
+- go from 1.24.6 to 1.25.1
+
+## Improvements (a2)
+
+New features and improvements since `v0.16.0-alpha.1`:
+
+* Bump github.com/stretchr/testify from 1.10.0 to 1.11.0 [#1296](https://github.com/jcmoraisjr/haproxy-ingress/pull/1296) (dependabot[bot])
+* Bump actions/stale from 8 to 10 [#1299](https://github.com/jcmoraisjr/haproxy-ingress/pull/1299) (dependabot[bot])
+* Bump actions/setup-go from 5 to 6 [#1300](https://github.com/jcmoraisjr/haproxy-ingress/pull/1300) (dependabot[bot])
+* Bump golang.org/x/sync from 0.16.0 to 0.17.0 [#1302](https://github.com/jcmoraisjr/haproxy-ingress/pull/1302) (dependabot[bot])
+* Bump k8s.io/client-go from 0.33.4 to 0.34.0 [#1305](https://github.com/jcmoraisjr/haproxy-ingress/pull/1305) (dependabot[bot])
+* Bump sigs.k8s.io/controller-runtime from 0.21.0 to 0.22.1 [#1301](https://github.com/jcmoraisjr/haproxy-ingress/pull/1301) (dependabot[bot])
+* add backend scoped stick tables [#1293](https://github.com/jcmoraisjr/haproxy-ingress/pull/1293) (jcmoraisjr)
+* update dependencies [c713328](https://github.com/jcmoraisjr/haproxy-ingress/commit/c7133283daa25e1f6f7004f1016add7398d0ef09) (Joao Morais)
+* update go from 1.24.6 to 1.25.1 [#1306](https://github.com/jcmoraisjr/haproxy-ingress/pull/1306) (jcmoraisjr)
+
+## Fixes (a2)
+
+* fix reading backend ca certificate from file [#1297](https://github.com/jcmoraisjr/haproxy-ingress/pull/1297) (jcmoraisjr)
 
 # v0.16.0-alpha.1
 
