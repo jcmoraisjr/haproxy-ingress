@@ -1592,6 +1592,7 @@ func TestInstanceFrontingProxy(t *testing.T) {
 	var (
 		frontUseProto = `
     <<set-req-base>>
+    http-request set-var(txn.proto) hdr(X-Forwarded-Proto)
     http-request set-header X-Forwarded-Proto http if !fronting-proxy
     http-request del-header X-SSL-Client-CN if !fronting-proxy
     http-request del-header X-SSL-Client-DN if !fronting-proxy
@@ -1617,7 +1618,7 @@ func TestInstanceFrontingProxy(t *testing.T) {
     acl https-request ssl_fc
     acl https-request var(txn.proto) -m str https`
 		aclBackWithHdr = `
-    acl fronting-proxy hdr(X-Forwarded-Proto) -m found
+    acl fronting-proxy var(txn.proto) -m found
     acl https-request ssl_fc
     acl https-request var(txn.proto) -m str https`
 		setHeaderWithACL = `
@@ -1640,7 +1641,7 @@ func TestInstanceFrontingProxy(t *testing.T) {
 		setvarRegex = `
     http-request set-var(req.hostbackend) var(req.base),map_reg(/etc/haproxy/maps/_front_https_host__regex.map)`
 	)
-	testCases := []struct {
+	testCases := map[string]struct {
 		frontingBind      string
 		domain            string
 		useProto          bool
@@ -1653,16 +1654,14 @@ func TestInstanceFrontingProxy(t *testing.T) {
 		expectedACLFront  string
 		expectedSetvar    string
 	}{
-		// 0
-		{
+		"test01": {
 			frontingBind:    ":8000",
 			domain:          "d1.local",
 			useProto:        true,
 			sslRedirect:     false,
 			expectedACLBack: aclBackWithSockID,
 			expectedSetHeader: `
-    http-request set-var(txn.proto) hdr(X-Forwarded-Proto)
-    http-request redirect scheme https if fronting-proxy !{ hdr(X-Forwarded-Proto) https }` + setHeaderWithACL,
+    http-request redirect scheme https if fronting-proxy !{ var(txn.proto) -m str https }` + setHeaderWithACL,
 			expectedFront: `
     mode http
     bind :80
@@ -1672,22 +1671,21 @@ func TestInstanceFrontingProxy(t *testing.T) {
 			expectedACLFront: aclFrontExact,
 			expectedSetvar:   setvarBegin,
 		},
-		// 1
-		{
+		"test02": {
 			frontingBind:    ":8000",
 			domain:          "*.d1.local",
 			useProto:        true,
 			sslRedirect:     false,
 			expectedACLBack: aclBackWithSockID,
 			expectedSetHeader: `
-    http-request set-var(txn.proto) hdr(X-Forwarded-Proto)
-    http-request redirect scheme https if fronting-proxy !{ hdr(X-Forwarded-Proto) https }` + setHeaderWithACL,
+    http-request redirect scheme https if fronting-proxy !{ var(txn.proto) -m str https }` + setHeaderWithACL,
 			expectedFront: `
     mode http
     bind :80
     bind :8000 id 11
     acl fronting-proxy so_id 11
     <<set-req-base>>
+    http-request set-var(txn.proto) hdr(X-Forwarded-Proto)
     http-request set-header X-Forwarded-Proto http if !fronting-proxy
     http-request del-header X-SSL-Client-CN if !fronting-proxy
     http-request del-header X-SSL-Client-DN if !fronting-proxy
@@ -1700,26 +1698,23 @@ func TestInstanceFrontingProxy(t *testing.T) {
 			expectedACLFront: aclFrontRegex,
 			expectedSetvar:   setvarRegex,
 		},
-		// 2
-		{
+		"test03": {
 			frontingBind:    ":80",
 			domain:          "d1.local",
 			useProto:        true,
 			sslRedirect:     false,
 			expectedACLBack: aclBackWithHdr,
 			expectedSetHeader: `
-    http-request set-var(txn.proto) hdr(X-Forwarded-Proto)
-    http-request redirect scheme https if fronting-proxy !{ hdr(X-Forwarded-Proto) https }` + setHeaderWithACL,
+    http-request redirect scheme https if fronting-proxy !{ var(txn.proto) -m str https }` + setHeaderWithACL,
 			expectedFront: `
     mode http
     bind :80
-    acl fronting-proxy hdr(X-Forwarded-Proto) -m found` + frontUseProto,
+    acl fronting-proxy var(txn.proto) -m found` + frontUseProto,
 			expectedMap:      "d1.local#/ d1_app_8080",
 			expectedACLFront: aclFrontExact,
 			expectedSetvar:   setvarBegin,
 		},
-		// 3
-		{
+		"test04": {
 			frontingBind:      ":8000",
 			domain:            "d1.local",
 			useProto:          false,
@@ -1737,8 +1732,7 @@ func TestInstanceFrontingProxy(t *testing.T) {
 			expectedACLFront: aclFrontExact,
 			expectedSetvar:   setvarBegin,
 		},
-		// 4
-		{
+		"test05": {
 			frontingBind:      ":8000",
 			domain:            "*.d1.local",
 			useProto:          false,
@@ -1756,8 +1750,7 @@ func TestInstanceFrontingProxy(t *testing.T) {
 			expectedACLFront: aclFrontRegex,
 			expectedSetvar:   setvarRegex,
 		},
-		// 5
-		{
+		"test06": {
 			frontingBind:      ":80",
 			domain:            "d1.local",
 			useProto:          false,
@@ -1774,16 +1767,14 @@ func TestInstanceFrontingProxy(t *testing.T) {
 			expectedACLFront: aclFrontExact,
 			expectedSetvar:   setvarBegin,
 		},
-		// 6
-		{
+		"test07": {
 			frontingBind:    ":8000",
 			domain:          "d1.local",
 			useProto:        true,
 			sslRedirect:     true,
 			expectedACLBack: aclBackWithSockID,
 			expectedSetHeader: `
-    http-request set-var(txn.proto) hdr(X-Forwarded-Proto)
-    http-request redirect scheme https if fronting-proxy !{ hdr(X-Forwarded-Proto) https }
+    http-request redirect scheme https if fronting-proxy !{ var(txn.proto) -m str https }
     http-request redirect scheme https if !fronting-proxy !https-request` + setHeaderNoACL,
 			expectedFront: `
     mode http
@@ -1794,27 +1785,24 @@ func TestInstanceFrontingProxy(t *testing.T) {
 			expectedACLFront: aclFrontExact,
 			expectedSetvar:   setvarBegin,
 		},
-		// 7
-		{
+		"test08": {
 			frontingBind:    ":80",
 			domain:          "d1.local",
 			useProto:        true,
 			sslRedirect:     true,
 			expectedACLBack: aclBackWithHdr,
 			expectedSetHeader: `
-    http-request set-var(txn.proto) hdr(X-Forwarded-Proto)
-    http-request redirect scheme https if fronting-proxy !{ hdr(X-Forwarded-Proto) https }
+    http-request redirect scheme https if fronting-proxy !{ var(txn.proto) -m str https }
     http-request redirect scheme https if !fronting-proxy !https-request` + setHeaderNoACL,
 			expectedFront: `
     mode http
     bind :80
-    acl fronting-proxy hdr(X-Forwarded-Proto) -m found` + frontUseProto,
+    acl fronting-proxy var(txn.proto) -m found` + frontUseProto,
 			expectedMap:      "d1.local#/ d1_app_8080",
 			expectedACLFront: aclFrontExact,
 			expectedSetvar:   setvarBegin,
 		},
-		// 8
-		{
+		"test09": {
 			frontingBind:      ":8000",
 			domain:            "d1.local",
 			useProto:          false,
@@ -1832,8 +1820,7 @@ func TestInstanceFrontingProxy(t *testing.T) {
 			expectedACLFront: aclFrontExact,
 			expectedSetvar:   setvarBegin,
 		},
-		// 9
-		{
+		"test10": {
 			frontingBind:      ":80",
 			domain:            "d1.local",
 			useProto:          false,
@@ -1851,29 +1838,30 @@ func TestInstanceFrontingProxy(t *testing.T) {
 			expectedSetvar:   setvarBegin,
 		},
 	}
-	for _, test := range testCases {
-		c := setup(t)
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			c := setup(t)
 
-		var h *hatypes.Host
-		var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
-		h = c.config.Hosts().AcquireHost(test.domain)
-		h.AddPath(b, "/", hatypes.MatchBegin)
-		b.Endpoints = []*hatypes.Endpoint{endpointS1}
-		b.FindBackendPath(h.FindPath("/")[0].Link).SSLRedirect = test.sslRedirect
-		b.FindBackendPath(h.FindPath("/")[0].Link).HSTS = hatypes.HSTS{
-			Enabled:    true,
-			MaxAge:     15768000,
-			Subdomains: true,
-			Preload:    true,
-		}
-		h.TLS.CAHash = "1"
-		h.TLS.CAFilename = "/var/haproxy/ssl/ca.pem"
-		c.config.Global().Bind.FrontingBind = test.frontingBind
-		c.config.Global().Bind.FrontingSockID = 11
-		c.config.Global().Bind.FrontingUseProto = test.useProto
+			var h *hatypes.Host
+			var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
+			h = c.config.Hosts().AcquireHost(test.domain)
+			h.AddPath(b, "/", hatypes.MatchBegin)
+			b.Endpoints = []*hatypes.Endpoint{endpointS1}
+			b.FindBackendPath(h.FindPath("/")[0].Link).SSLRedirect = test.sslRedirect
+			b.FindBackendPath(h.FindPath("/")[0].Link).HSTS = hatypes.HSTS{
+				Enabled:    true,
+				MaxAge:     15768000,
+				Subdomains: true,
+				Preload:    true,
+			}
+			h.TLS.CAHash = "1"
+			h.TLS.CAFilename = "/var/haproxy/ssl/ca.pem"
+			c.config.Global().Bind.FrontingBind = test.frontingBind
+			c.config.Global().Bind.FrontingSockID = 11
+			c.config.Global().Bind.FrontingUseProto = test.useProto
 
-		c.Update()
-		c.checkConfig(`
+			c.Update()
+			c.checkConfig(`
 <<global>>
 <<defaults>>
 backend d1_app_8080
@@ -1904,14 +1892,15 @@ frontend _front_https
     default_backend _error404
 <<support>>
 `)
-		if test.expectedMap != "" {
-			c.checkMap("_front_http_host__begin.map", test.expectedMap)
-		}
-		if test.expectedRegexMap != "" {
-			c.checkMap("_front_http_host__regex.map", test.expectedRegexMap)
-		}
-		c.logger.CompareLogging(defaultLogging)
-		c.teardown()
+			if test.expectedMap != "" {
+				c.checkMap("_front_http_host__begin.map", test.expectedMap)
+			}
+			if test.expectedRegexMap != "" {
+				c.checkMap("_front_http_host__regex.map", test.expectedRegexMap)
+			}
+			c.logger.CompareLogging(defaultLogging)
+			c.teardown()
+		})
 	}
 }
 
