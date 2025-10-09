@@ -414,7 +414,7 @@ backend {{ $backend.ID }}
 {{- if $hasPlainHTTPSocket }}
     acl fronting-proxy so_id {{ $global.Bind.FrontingSockID }}
 {{- else }}
-    acl fronting-proxy hdr(X-Forwarded-Proto) -m found
+    acl fronting-proxy var(txn.proto) -m found
 {{- end }}
 {{- end }}
 {{- if and (not $frontingIgnoreProto) (or $backend.HasHSTS $backend.HasSSLRedirect) }}
@@ -425,11 +425,6 @@ backend {{ $backend.ID }}
 {{- end }}
 {{- if $backend.TLS.HasTLSAuth }}
     acl local-offload ssl_fc
-{{- end }}
-
-{{- /*------------------------------------*/}}
-{{- if and $frontingUseProto $backend.HasHSTS }}
-    http-request set-var(txn.proto) hdr(X-Forwarded-Proto)
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -469,7 +464,7 @@ backend {{ $backend.ID }}
 {{- if $frontingUseProto }}
     http-request redirect scheme https
         {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
-        {{- "" }} if fronting-proxy !{ hdr(X-Forwarded-Proto) https }
+        {{- "" }} if fronting-proxy !{ var(txn.proto) -m str https }
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -1130,7 +1125,7 @@ frontend {{ $proxy__front_http }}
 {{- if $hasPlainHTTPSocket }}
     acl fronting-proxy so_id {{ $global.Bind.FrontingSockID }}
 {{- else }}
-    acl fronting-proxy hdr(X-Forwarded-Proto) -m found
+    acl fronting-proxy var(txn.proto) -m found
 {{- end }}
 {{- end }}
 
@@ -1152,6 +1147,9 @@ frontend {{ $proxy__front_http }}
     http-request set-var(req.path) path
     http-request set-var(req.host) hdr(host),field(1,:),lower
     http-request set-var(req.base) var(req.host),concat(\#,req.path)
+{{- if $frontingUseProto }}
+    http-request set-var(txn.proto) hdr(X-Forwarded-Proto)
+{{- end }}
 
 {{- $acmeexclusive := and $global.Acme.Enabled (not $global.Acme.Shared) }}
 
