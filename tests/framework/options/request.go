@@ -10,9 +10,9 @@ func ExpectResponseCode(code int) Request {
 	}
 }
 
-func ExpectX509Error(msg string) Request {
+func ExpectError(msg string) Request {
 	return func(o *requestOpt) {
-		o.ExpectX509Error = msg
+		o.ExpectError = msg
 	}
 }
 
@@ -69,7 +69,7 @@ type CustomRequestCallback func(req *http.Request)
 
 type requestOpt struct {
 	ExpectResponseCode int
-	ExpectX509Error    string
+	ExpectError        string
 	Body               string
 	TLS                bool
 	TLSSkipVerify      bool
