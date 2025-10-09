@@ -137,7 +137,7 @@ func startApiserver(t *testing.T, crdPaths []string) *rest.Config {
 
 	e := envtest.Environment{
 		// run `make setup-envtest` to download envtest binaries.
-		BinaryAssetsDirectory: filepath.Join("bin", "k8s", fmt.Sprintf("1.33.0-%s-%s", goruntime.GOOS, goruntime.GOARCH)),
+		BinaryAssetsDirectory: filepath.Join("bin", "k8s", fmt.Sprintf("1.34.0-%s-%s", goruntime.GOOS, goruntime.GOARCH)),
 		CRDDirectoryPaths:     crdPaths,
 		ErrorIfCRDPathMissing: true,
 	}
