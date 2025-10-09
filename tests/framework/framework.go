@@ -54,6 +54,7 @@ const (
 	PublishHostname = "ingress.local"
 
 	TestPortHTTP  = 28080
+	TestPortFront = 28081
 	TestPortHTTPS = 28443
 	TestPortStat  = 21936
 )
@@ -279,6 +280,9 @@ func (*framework) Request(ctx context.Context, t *testing.T, method, host, path 
 		},
 		Transport: transport,
 	}
+	if opt.CustomRequest != nil {
+		opt.CustomRequest(req)
+	}
 	var res *http.Response
 	switch {
 	case opt.ExpectResponseCode > 0:
@@ -289,13 +293,13 @@ func (*framework) Request(ctx context.Context, t *testing.T, method, host, path 
 			}
 			assert.Equal(collect, opt.ExpectResponseCode, res.StatusCode)
 		}, 5*time.Second, time.Second)
-	case opt.ExpectX509Error != "":
+	case opt.ExpectError != "":
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
 			_, err := cli.Do(req)
 			// better if matching some x509.<...>Error{} instead,
 			// but error.Is() does not render to true due to the server's
 			// x509 certificate attached to the error instance.
-			assert.ErrorContains(collect, err, opt.ExpectX509Error)
+			assert.ErrorContains(collect, err, opt.ExpectError)
 		}, 5*time.Second, time.Second)
 		return Response{EchoResponse: buildEchoResponse(t, "")}
 	default:

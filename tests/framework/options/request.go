@@ -1,5 +1,7 @@
 package options
 
+import "net/http"
+
 type Request func(o *requestOpt)
 
 func ExpectResponseCode(code int) Request {
@@ -8,9 +10,9 @@ func ExpectResponseCode(code int) Request {
 	}
 }
 
-func ExpectX509Error(msg string) Request {
+func ExpectError(msg string) Request {
 	return func(o *requestOpt) {
-		o.ExpectX509Error = msg
+		o.ExpectError = msg
 	}
 }
 
@@ -51,15 +53,24 @@ func ClientCertificateKeyPEM(crt, key []byte) Request {
 	}
 }
 
+func CustomRequest(custom CustomRequestCallback) Request {
+	return func(o *requestOpt) {
+		o.CustomRequest = custom
+	}
+}
+
+type CustomRequestCallback func(req *http.Request)
+
 type requestOpt struct {
 	ExpectResponseCode int
-	ExpectX509Error    string
+	ExpectError        string
 	TLS                bool
 	TLSSkipVerify      bool
 	ClientCA           []byte
 	SNI                string
 	ClientCrtPEM       []byte
 	ClientKeyPEM       []byte
+	CustomRequest      CustomRequestCallback
 }
 
 func ParseRequestOptions(opts ...Request) (opt requestOpt) {

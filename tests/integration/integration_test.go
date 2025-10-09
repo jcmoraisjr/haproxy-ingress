@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -151,7 +152,7 @@ func TestIntegrationIngress(t *testing.T) {
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
 			options.TLSRequest(),
 			options.SNI("localhost"), // fake certificate has `localhost` in certificates's SAN
-			options.ExpectX509Error("x509: certificate signed by unknown authority"),
+			options.ExpectError("x509: certificate signed by unknown authority"),
 		)
 		assert.False(t, res.EchoResponse.Parsed)
 	})
@@ -176,7 +177,7 @@ func TestIntegrationIngress(t *testing.T) {
 			options.TLSRequest(),
 			options.ClientCA(ca),
 			options.SNI(hostname),
-			options.ExpectX509Error("x509: certificate has expired or is not yet valid"),
+			options.ExpectError("x509: certificate has expired or is not yet valid"),
 		)
 		assert.False(t, res.EchoResponse.Parsed)
 	})
@@ -380,6 +381,122 @@ func TestIntegrationIngress(t *testing.T) {
 			options.ExpectResponseCode(404),
 		)
 		assert.False(t, res.EchoResponse.Parsed)
+	})
+
+	t.Run("should handle proto header on fronting proxy", func(t *testing.T) {
+		// t.Parallel() // fronting proxy configuration changed, cannot run in parallel
+
+		svc := f.CreateService(ctx, t, httpServerPort)
+		_, hostname := f.CreateIngress(ctx, t, svc)
+
+		// global config to be changed
+		cm := corev1.ConfigMap{}
+		err := f.Client().Get(ctx, types.NamespacedName{Namespace: "default", Name: "ingress-controller"}, &cm)
+		require.NoError(t, err)
+
+		apply := func(t *testing.T, port int, useXFPHeader ...bool) {
+			if port > 0 {
+				cm.Data[ingtypes.GlobalFrontingProxyPort] = strconv.Itoa(port)
+				should := map[bool]string{false: "false", true: "true"}
+				cm.Data[ingtypes.GlobalUseForwardedProto] = should[useXFPHeader[0]]
+			} else {
+				delete(cm.Data, ingtypes.GlobalFrontingProxyPort)
+				delete(cm.Data, ingtypes.GlobalUseForwardedProto)
+			}
+			err = f.Client().Update(ctx, &cm)
+			require.NoError(t, err)
+			time.Sleep(3 * time.Second) // TODO need a better way to ensure the config was already applied
+		}
+
+		type reqtype string
+		const (
+			xfp = "X-Forwarded-Proto"
+
+			reqempty reqtype = ""
+			reqhttp  reqtype = "http"
+			reqhttps reqtype = "https"
+			reqredir reqtype = "<redir>"
+		)
+
+		req := func(t *testing.T, port int, xfpHeader string, expHeader reqtype) {
+			expcode := http.StatusOK
+			if expHeader == reqredir {
+				expcode = http.StatusFound
+			}
+			res := f.Request(ctx, t, http.MethodGet, hostname, "/",
+				options.CustomRequest(func(req *http.Request) {
+					if xfpHeader != "" {
+						req.Header.Set(xfp, xfpHeader)
+					}
+					req.URL.Host = fmt.Sprintf("127.0.0.1:%d", port)
+				}),
+				options.ExpectResponseCode(expcode),
+			)
+			if expHeader != reqredir {
+				assert.True(t, res.EchoResponse.Parsed)
+				assert.Equal(t, string(expHeader), res.EchoResponse.ReqHeaders[strings.ToLower(xfp)])
+			} else {
+				assert.False(t, res.EchoResponse.Parsed)
+			}
+		}
+
+		hport := framework.TestPortHTTP
+		fport := framework.TestPortFront
+		testCases := []struct {
+			frontingPort  int
+			useXFPHeader  bool
+			requestPort   int
+			expXFPMissing reqtype
+			expXFPHTTP    reqtype
+			expXFPHTTPS   reqtype
+		}{
+			// shared port
+			{frontingPort: hport, useXFPHeader: false, requestPort: hport, expXFPMissing: reqempty, expXFPHTTP: reqhttp, expXFPHTTPS: reqhttps},
+			{frontingPort: hport, useXFPHeader: true, requestPort: hport, expXFPMissing: reqhttp, expXFPHTTP: reqredir, expXFPHTTPS: reqhttps},
+
+			// dedicated port, calling `http` port
+			{frontingPort: fport, useXFPHeader: false, requestPort: hport, expXFPMissing: reqempty, expXFPHTTP: reqhttp, expXFPHTTPS: reqhttps},
+			{frontingPort: fport, useXFPHeader: true, requestPort: hport, expXFPMissing: reqhttp, expXFPHTTP: reqhttp, expXFPHTTPS: reqhttp},
+
+			// dedicated port, calling `fronting-proxy` port
+			{frontingPort: fport, useXFPHeader: false, requestPort: fport, expXFPMissing: reqempty, expXFPHTTP: reqhttp, expXFPHTTPS: reqhttps},
+			{frontingPort: fport, useXFPHeader: true, requestPort: fport, expXFPMissing: reqredir, expXFPHTTP: reqredir, expXFPHTTPS: reqhttps},
+		}
+		for _, test := range testCases {
+			nport := "shared"
+			if test.frontingPort != framework.TestPortHTTP {
+				nport = "dedicated"
+			}
+			rport := "http"
+			if test.requestPort != framework.TestPortHTTP {
+				rport = "fronting-proxy"
+			}
+			prefix := fmt.Sprintf("port=%s usexfp=%t reqport=%s reqxfp=", nport, test.useXFPHeader, rport)
+			apply(t, test.frontingPort, test.useXFPHeader)
+			t.Run(prefix+"missing", func(t *testing.T) {
+				req(t, test.requestPort, "", test.expXFPMissing)
+			})
+			t.Run(prefix+"http", func(t *testing.T) {
+				req(t, test.requestPort, "http", test.expXFPHTTP)
+			})
+			t.Run(prefix+"https", func(t *testing.T) {
+				req(t, test.requestPort, "https", test.expXFPHTTPS)
+			})
+		}
+
+		t.Run("restore global config", func(t *testing.T) {
+			apply(t, 0)
+			_ = f.Request(ctx, t, http.MethodGet, hostname, "/",
+				options.CustomRequest(func(req *http.Request) {
+					req.URL.Host = fmt.Sprintf("127.0.0.1:%d", framework.TestPortFront)
+				}),
+				options.ExpectError("connection refused"),
+			)
+
+			req(t, framework.TestPortHTTP, "", reqhttp)
+			req(t, framework.TestPortHTTP, "http", reqhttp)
+			req(t, framework.TestPortHTTP, "https", reqhttp)
+		})
 	})
 
 	t.Run("should take leader", func(t *testing.T) {
