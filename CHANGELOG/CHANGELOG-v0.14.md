@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.13!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.14.10](#v01410)
+  * [Reference](#reference-r10)
+  * [Release notes](#release-notes-r10)
+  * [Fixes and improvements](#fixes-and-improvements-r10)
 * [v0.14.9](#v0149)
   * [Reference](#reference-r9)
   * [Release notes](#release-notes-r9)
@@ -116,6 +120,40 @@ Breaking backward compatibility from v0.13:
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
 * wolf-cosmose ([wolf-cosmose](https://github.com/wolf-cosmose))
+
+# v0.14.10
+
+## Reference (r10)
+
+* Release date: `2025-10-10`
+* Helm chart: `--version 0.14.10`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.14.10`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.14.10`
+* Embedded HAProxy version: `2.4.30`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.14.10`
+
+## Release notes (r10)
+
+This release updates the embedded haproxy version, which fixes CVE-2025-11230, see HAProxy release notes https://www.mail-archive.com/haproxy@formilux.org/msg46188.html . This CVE cannot be exploited on HAProxy Ingress because it does not use any of the vulnerable converters. A proxy without the fix can however be exploited by an internal user having access to the Ingress API, from a controller that does not deny configuration snippets via annotations.
+
+Other issues were also found and fixed:
+
+- Chitoku found a regression on some certificate related annotations not working with the `file://` protocol, after implementing global support on those annotations.
+- Artyom found the fronting-proxy configuration overwriting the `X-Forwarded-Proto` header when both the fronting proxy and the regular HTTP shares the same TCP port number.
+
+Dependencies:
+
+- embedded haproxy from 2.4.29 to 2.4.30
+- go from 1.23.11 to 1.23.12
+
+## Fixes and improvements (r10)
+
+Fixes and improvements since `v0.14.9`:
+
+* fix reading backend ca certificate from file [#1297](https://github.com/jcmoraisjr/haproxy-ingress/pull/1297) (jcmoraisjr)
+* fix xfp header on fronting proxy shared port [#1310](https://github.com/jcmoraisjr/haproxy-ingress/pull/1310) (jcmoraisjr)
+* update go from 1.23.11 to 1.23.12 [6fcdcc9](https://github.com/jcmoraisjr/haproxy-ingress/commit/6fcdcc94204d701ab14ce15be776b27471d0f377) (Joao Morais)
+* update haproxy from 2.4.29 to 2.4.30 [b0a68e4](https://github.com/jcmoraisjr/haproxy-ingress/commit/b0a68e4d1e5eaa27ab861e953aca2f3920648af5) (Joao Morais)
 
 # v0.14.9
 
