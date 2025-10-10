@@ -71,7 +71,7 @@ HAProxy Ingress uses [Helm](https://helm.sh) chart to install and configure the 
     $ helm upgrade haproxy-ingress haproxy-ingress/haproxy-ingress\
       --install\
       --create-namespace --namespace ingress-controller\
-      --version 0.14.9\
+      --version 0.14.10\
       -f haproxy-ingress-values.yaml
     ```
 
