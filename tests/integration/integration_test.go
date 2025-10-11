@@ -441,6 +441,7 @@ func TestIntegrationIngress(t *testing.T) {
 			svc := f.CreateService(ctx, t, httpServerPort)
 			o = append(o, options.DefaultTLS(), options.AddConfigKeyAnnotation(ingtypes.HostAuthTLSSecret, secretCA.Name))
 			_, hostname := f.CreateIngress(ctx, t, svc, o...)
+			_, _ = f.CreateIngress(ctx, t, svc, o...) // second ingress adds an `elseif`, using another part of the Lua template
 			res := f.Request(ctx, t, http.MethodGet, hostname, "/",
 				options.TLSRequest(),
 				options.SNI(hostname),
@@ -465,9 +466,11 @@ A client certificate must be provided.
 		t.Parallel()
 
 		req := func(body string, o ...options.Object) {
-			svc := f.CreateService(ctx, t, httpServerPort)
+			svc1 := f.CreateService(ctx, t, httpServerPort)
+			svc2 := f.CreateService(ctx, t, httpServerPort) // second service adds an `elseif`, using another part of the Lua template
 			o = append(o, options.AddConfigKeyAnnotation(ingtypes.BackProxyBodySize, "5"))
-			_, hostname := f.CreateIngress(ctx, t, svc, o...)
+			_, hostname := f.CreateIngress(ctx, t, svc1, o...)
+			_, _ = f.CreateIngress(ctx, t, svc2, o...)
 			_ = f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
 			res := f.Request(ctx, t, http.MethodPost, hostname, "/",
 				options.ExpectResponseCode(http.StatusRequestEntityTooLarge),
