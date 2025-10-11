@@ -3967,7 +3967,7 @@ large payload
 ]==]
         applet:set_status(413, "Payload Too Large")
         applet:add_header("content-length", "13")
-    elif scope == "default_server2_8080" then
+    elseif scope == "default_server2_8080" then
         response = [==[
 request to server2 has a large payload
 ]==]

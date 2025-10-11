@@ -16,7 +16,7 @@ core.register_service("{{ $res.ResponseName }}", "http", function(applet)
     local scope = applet:get_var("txn.lua_scope")
     local response = ""
 {{- range $i, $lua := $res.Lua }}
-    {{ if gt $i 0 }}el{{ end }}if scope == "{{ $lua.ID }}" then
+    {{ if gt $i 0 }}else{{ end }}if scope == "{{ $lua.ID }}" then
         {{- template "lua_response" map $lua 8 }}
 {{- end }}
     else
