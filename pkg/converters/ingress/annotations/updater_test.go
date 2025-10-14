@@ -172,20 +172,6 @@ func (c *testConfig) createBackendData(svcFullName string, source *Source, ann, 
 	}
 }
 
-type hostResolver struct{}
-
-func (h *hostResolver) UseTLS() bool {
-	return true
-}
-
-func (h *hostResolver) HasFrontingProxy() bool {
-	return false
-}
-
-func (h *hostResolver) HasFrontingUseProto() bool {
-	return false
-}
-
 func (c *testConfig) createBackendMappingData(
 	svcFullName string,
 	source *Source,
@@ -201,12 +187,15 @@ func (c *testConfig) createBackendMappingData(
 	for _, path := range addPaths {
 		paths[path] = struct{}{}
 	}
-	for path := range paths {
-		b := d.backend.AddBackendPath(hatypes.CreatePathLink(path, hatypes.MatchBegin))
-		// ignoring ID which isn't the focus of the test
-		// removing on createBackendPaths() as well
-		b.ID = ""
-		b.Host = &hostResolver{}
+	for p := range paths {
+		httpPath := &hatypes.Path{
+			Link: hatypes.CreatePathLink(p, hatypes.MatchBegin),
+		}
+		httpsPath := &hatypes.Path{
+			Link: hatypes.CreatePathLink(p, hatypes.MatchBegin),
+		}
+		httpsPath.HTTPSOf(httpPath)
+		d.backend.AddPath(httpPath)
 	}
 	for uri, ann := range urlAnnValue {
 		d.mapper.AddAnnotations(source, hatypes.CreatePathLink(uri, hatypes.MatchBegin), ann)

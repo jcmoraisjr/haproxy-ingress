@@ -22,7 +22,7 @@ import (
 )
 
 func TestCreatePathLink(t *testing.T) {
-	df := CreateFrontends().Default()
+	df := (&Frontends{}).AcquireFrontend(8000, false)
 	host0 := df.AcquireHost("domain.local")
 	host1 := df.AcquireHost("domain1.local")
 	host2 := df.AcquireHost("domain2.local")
@@ -99,7 +99,7 @@ func TestShrinkHosts(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		df := CreateFrontends().Default()
+		df := (&Frontends{}).AcquireFrontend(8000, false)
 		for _, add := range test.add {
 			df.hostsAdd[add.Hostname] = add
 		}
@@ -189,7 +189,7 @@ func TestAddFindPath(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		df := CreateFrontends().Default()
+		df := (&Frontends{}).AcquireFrontend(8000, false)
 		h := df.AcquireHost("d1.local")
 		for _, p := range test.paths {
 			h.AddPath(p.backend, p.path, p.match)
@@ -259,7 +259,7 @@ func TestRemovePath(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		df := CreateFrontends().Default()
+		df := (&Frontends{}).AcquireFrontend(8000, false)
 		b := CreateBackends(0).AcquireBackend("default", "b", "8080")
 		h := df.AcquireHost("d1.local")
 		for _, path := range strings.Split(test.addPaths, ",") {

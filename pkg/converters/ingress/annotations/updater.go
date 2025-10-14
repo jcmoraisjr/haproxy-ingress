@@ -200,10 +200,6 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	c.buildGlobalStats(d)
 	c.buildGlobalSyslog(d)
 	c.buildGlobalTimeout(d)
-
-	// TODO this can be removed from here as soon as gateway does its own bind configurations,
-	// which should happen only after frontends become a real list.
-	c.buildFrontBind(&frontData{front: c.haproxy.Frontends().Default(), mapper: mapper})
 }
 
 func (c *updater) UpdatePeers(haproxyConfig haproxy.Config, mapper *Mapper) {
@@ -245,28 +241,32 @@ func (c *updater) UpdateFrontConfig(front *hatypes.Frontend, mapper *Mapper) {
 	}
 	front.RedirectFromCode = mapper.Get(ingtypes.FrontRedirectFromCode).Int()
 	front.RedirectToCode = mapper.Get(ingtypes.FrontRedirectToCode).Int()
-	c.buildFrontBind(d)
-	c.buildFrontFrontingProxy(d)
+	if front.IsHTTPS {
+		c.buildHTTPSFrontBind(d)
+	} else {
+		c.buildHTTPFrontBind(d)
+		c.buildHTTPFrontFrontingProxy(d)
+	}
 }
 
 func (c *updater) UpdateHostConfig(host *hatypes.Host, mapper *Mapper) {
-	data := &hostData{
+	d := &hostData{
 		host:   host,
 		mapper: mapper,
 	}
 	host.RootRedirect = mapper.Get(ingtypes.HostAppRoot).Value
 	host.Alias.AliasName = mapper.Get(ingtypes.HostServerAlias).Value
 	host.Alias.AliasRegex = mapper.Get(ingtypes.HostServerAliasRegex).Value
-	host.TLS.UseDefaultCrt = mapper.Get(ingtypes.HostSSLAlwaysAddHTTPS).Bool()
-	host.TLS.FollowRedirect = mapper.Get(ingtypes.HostSSLAlwaysFollowRedirect).Bool()
 	host.VarNamespace = mapper.Get(ingtypes.HostVarNamespace).Bool()
-	c.buildHostAuthExternal(data)
-	c.buildHostAuthTLS(data)
-	c.buildHostCertSigner(data)
-	c.buildHostRedirect(data)
-	c.buildHostSSLPassthrough(data)
-	c.buildHostTLSConfig(data)
-	c.buildHostCustomResponses(data)
+	c.buildHostAuthExternal(d)
+	c.buildHostCertSigner(d)
+	c.buildHostRedirect(d)
+	c.buildHostSSLPassthrough(d)
+	c.buildHostCustomResponses(d)
+	if host.IsHTTPS() {
+		c.buildHostAuthTLS(d)
+		c.buildHostTLSConfig(d)
+	}
 }
 
 func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) {

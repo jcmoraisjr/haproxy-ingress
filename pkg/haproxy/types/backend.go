@@ -144,30 +144,10 @@ func (b *Backend) CookieAffinity() bool {
 	return !b.ModeTCP && b.Cookie.Name != "" && !b.Cookie.Dynamic
 }
 
-// FindBackendPath ...
-func (b *Backend) FindBackendPath(link *PathLink) *BackendPath {
-	// IMPLEMENT change to a map
-	for _, p := range b.Paths {
-		if p.Link.Equals(link) {
-			return p
-		}
-	}
-	return nil
-}
-
-// AddBackendPath ...
-func (b *Backend) AddBackendPath(link *PathLink) *BackendPath {
-	backendPath := b.FindBackendPath(link)
-	if backendPath != nil {
-		return backendPath
-	}
-	backendPath = &BackendPath{
-		ID:   fmt.Sprintf("path%02d", len(b.Paths)+1),
-		Link: link,
-	}
-	b.Paths = append(b.Paths, backendPath)
+func (b *Backend) AddPath(path *Path) {
+	path.ID = fmt.Sprintf("path%02d", len(b.Paths)+1)
+	b.Paths = append(b.Paths, path)
 	sortPaths(b.Paths, false)
-	return backendPath
 }
 
 // Hostnames ...
@@ -188,19 +168,22 @@ func (b *Backend) Hostnames() []string {
 	return hosts
 }
 
-func sortPaths(paths []*BackendPath, pathReverse bool) {
-	// Ascending order of hostnames and reverse order (if pathReverse) of paths within the same hostname
+func sortPaths(paths []*Path, pathReverse bool) {
+	// Ascending order of frontend+hostnames and reverse order (if pathReverse) of paths within the same hostname
 	// reverse order in order to avoid overlap of sub-paths
 	sort.Slice(paths, func(i, j int) bool {
 		l1 := paths[i].Link
 		l2 := paths[j].Link
-		if l1.hostname == l2.hostname {
-			if pathReverse {
-				return l1.path > l2.path
+		if l1.frontend == l2.frontend {
+			if l1.hostname == l2.hostname {
+				if pathReverse {
+					return l1.path > l2.path
+				}
+				return l1.path < l2.path
 			}
-			return l1.path < l2.path
+			return l1.hostname < l2.hostname
 		}
-		return l1.hostname < l2.hostname
+		return l1.frontend < l2.frontend
 	})
 }
 
@@ -234,6 +217,15 @@ func (b *Backend) HasModsec() bool {
 	return false
 }
 
+func (b *Backend) HasHTTPRequests() bool {
+	for _, path := range b.Paths {
+		if !path.Host.frontend.IsHTTPS {
+			return true
+		}
+	}
+	return false
+}
+
 // HasSSLRedirect ...
 func (b *Backend) HasSSLRedirect() bool {
 	for _, path := range b.Paths {
@@ -245,9 +237,18 @@ func (b *Backend) HasSSLRedirect() bool {
 }
 
 // HasSSLRedirectPaths ...
-func (b *Backend) HasSSLRedirectPaths(paths []*BackendPath) bool {
+func (b *Backend) HasSSLRedirectPaths(paths []*Path) bool {
 	for _, path := range paths {
 		if path.SSLRedirect {
+			return true
+		}
+	}
+	return false
+}
+
+func (b *Backend) HasTLSAuth() bool {
+	for _, path := range b.Paths {
+		if path.Host.HasTLSAuth() {
 			return true
 		}
 	}
@@ -263,14 +264,14 @@ const (
 )
 
 func (b *Backend) HasFrontingProxy() Has {
-	return b.hasInPath(func(path *BackendPath) bool { return path.Host != nil && path.Host.HasFrontingProxy() })
+	return b.hasInPath(func(path *Path) bool { return path.Host.frontend.IsFrontingProxy })
 }
 
 func (b *Backend) HasFrontingUseProto() Has {
-	return b.hasInPath(func(path *BackendPath) bool { return path.Host != nil && path.Host.HasFrontingUseProto() })
+	return b.hasInPath(func(path *Path) bool { return path.Host.frontend.IsFrontingUseProto })
 }
 
-func (b *Backend) hasInPath(has func(path *BackendPath) bool) Has {
+func (b *Backend) hasInPath(has func(path *Path) bool) Has {
 	var count int
 	for i, path := range b.Paths {
 		if has(path) {
@@ -284,6 +285,16 @@ func (b *Backend) hasInPath(has func(path *BackendPath) bool) Has {
 		return HasNone
 	}
 	return HasOnly
+}
+
+func (b *Backend) ActivePaths() []*Path {
+	paths := make([]*Path, 0, len(b.Paths))
+	for _, path := range b.Paths {
+		if !path.beskip {
+			paths = append(paths, path)
+		}
+	}
+	return paths
 }
 
 // PathConfig ...
@@ -317,15 +328,17 @@ func (b *Backend) ensurePathConfig(attr string) {
 
 func (b *Backend) createPathConfig() map[string]*BackendPathConfig {
 	pathconfig := make(map[string]*BackendPathConfig, len(b.Paths))
-	pathType := reflect.TypeOf(BackendPath{})
+	pathType := reflect.TypeOf(Path{})
 	for i := 0; i < pathType.NumField(); i++ {
 		name := pathType.Field(i).Name
 		// filter out core fields
-		if name != "ID" && name != "Link" && name != "Host" {
+		switch name {
+		case "beskip", "hashttps", "order", "Host", "Backend", "ID", "Link":
+		default:
 			pathconfig[name] = &BackendPathConfig{}
 		}
 	}
-	for _, path := range b.Paths {
+	for _, path := range b.ActivePaths() {
 		pathValue := reflect.ValueOf(*path)
 		for name, config := range pathconfig {
 			newconfig := pathValue.FieldByName(name).Interface()
@@ -339,7 +352,7 @@ func (b *Backend) createPathConfig() map[string]*BackendPathConfig {
 			}
 			if !hasconfig {
 				config.items = append(config.items, &BackendPathItem{
-					paths:  []*BackendPath{path},
+					paths:  []*Path{path},
 					config: newconfig,
 				})
 			}
@@ -363,7 +376,7 @@ func (b *BackendPathConfig) Items() []interface{} {
 }
 
 // Paths ...
-func (b *BackendPathConfig) Paths(index int) []*BackendPath {
+func (b *BackendPathConfig) Paths(index int) []*Path {
 	return b.items[index].paths
 }
 
@@ -414,23 +427,44 @@ func (ep *Endpoint) IsEmpty() bool {
 	return ep.IP == "127.0.0.1"
 }
 
+// HTTPSOf links this path as the TLS side of the other path. Linking them only makes sense
+// if both paths share the same pathlink data (except the frontend), the former comes from a
+// TLS frontend, and the other comes from a plain HTTP one. This is a supporting method to
+// allow building Ingress friendly configuration by deduplicating backend entry and flagging
+// HasTLS() as true, helping to properly configure SSLRedirect. Future improvements can infer
+// this option automatically.
+func (p *Path) HTTPSOf(other *Path) {
+	p.beskip = true
+	p.hashttps = true
+	other.hashttps = true
+}
+
+func (p *Path) HasHTTPS() bool {
+	return p.hashttps
+}
+
+// FrontendName ...
+func (p *Path) FrontendName() string {
+	return p.Link.frontend
+}
+
 // Hostname ...
-func (p *BackendPath) Hostname() string {
+func (p *Path) Hostname() string {
 	return p.Link.hostname
 }
 
 // IsDefaultHost ...
-func (p *BackendPath) IsDefaultHost() bool {
+func (p *Path) IsDefaultHost() bool {
 	return p.Link.IsDefaultHost()
 }
 
 // Path ...
-func (p *BackendPath) Path() string {
+func (p *Path) Path() string {
 	return p.Link.path
 }
 
 // Match ...
-func (p *BackendPath) Match() MatchType {
+func (p *Path) Match() MatchType {
 	return p.Link.match
 }
 
@@ -445,7 +479,7 @@ func (ep *TCPEndpoint) String() string {
 }
 
 // String ...
-func (p *BackendPath) String() string {
+func (p *Path) String() string {
 	return fmt.Sprintf("%+v", *p)
 }
 

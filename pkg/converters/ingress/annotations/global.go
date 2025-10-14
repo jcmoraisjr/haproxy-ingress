@@ -67,7 +67,7 @@ var authProxyRegex = regexp.MustCompile(`^([A-Za-z_-]+):([0-9]{1,5})-([0-9]{1,5}
 func (c *updater) buildGlobalAuthProxy(d *globalData) {
 	proxystr := d.mapper.Get(ingtypes.GlobalAuthProxy).Value
 	proxy := authProxyRegex.FindStringSubmatch(proxystr)
-	authproxy := &c.haproxy.Frontends().Default().AuthProxy
+	authproxy := &c.haproxy.Frontends().AuthProxy
 	if len(proxy) < 4 {
 		c.logger.Warn("invalid auth proxy configuration: %s", proxystr)
 		// start>end ensures that trying to create a frontend bind will fail
@@ -518,7 +518,9 @@ func (c *updater) buildGlobalCustomConfig(d *globalData) {
 }
 
 func (c *updater) buildGlobalCustomResponses(d *globalData) {
-	d.global.CustomHTTPResponses = c.buildHTTPResponses(hatypes.HTTPResponseGlobalID, d.mapper, keyScopeGlobal)
+	res := c.buildHTTPResponses(d.mapper, keyScopeGlobal)
+	res.ID = hatypes.HTTPResponseGlobalID
+	d.global.CustomHTTPResponses = res
 }
 
 func (c *updater) buildGlobalFastCGI(d *globalData) {
@@ -653,7 +655,7 @@ var customHTTPResponses = []struct {
 	{"504", 504, keyScopeBackend, "Gateway Timeout", ingtypes.BackHTTPResponse504, ""},
 }
 
-func (c *updater) buildHTTPResponses(id string, mapper *Mapper, scope keyScope) hatypes.HTTPResponses {
+func (c *updater) buildHTTPResponses(mapper *Mapper, scope keyScope) hatypes.HTTPResponses {
 	var haResponses, luaResponses []hatypes.HTTPResponse
 	for _, data := range customHTTPResponses {
 		if scope != keyScopeGlobal && data.scope != scope {
@@ -700,7 +702,7 @@ func (c *updater) buildHTTPResponses(id string, mapper *Mapper, scope keyScope) 
 	var res hatypes.HTTPResponses
 	if len(haResponses) > 0 || len(luaResponses) > 0 {
 		res = hatypes.HTTPResponses{
-			ID:      id,
+			ID:      "", // this is being configured when listed on Frontends()/Backends().BuildHTTPResponses(), which is closer to the real usage
 			HAProxy: haResponses,
 			Lua:     luaResponses,
 		}

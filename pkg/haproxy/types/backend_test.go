@@ -29,50 +29,27 @@ import (
 func TestAddBackendPath(t *testing.T) {
 	testCases := []struct {
 		input    []string
-		expected []*BackendPath
+		expected []*Path
 	}{
 		// 0
 		{
 			input: []string{"/"},
-			expected: []*BackendPath{
+			expected: []*Path{
 				{ID: "path01", Link: CreatePathLink("/", MatchBegin)},
 			},
 		},
 		// 1
 		{
-			input: []string{"/app", "/app"},
-			expected: []*BackendPath{
+			input: []string{"/app", "/root"},
+			expected: []*Path{
 				{ID: "path01", Link: CreatePathLink("/app", MatchBegin)},
+				{ID: "path02", Link: CreatePathLink("/root", MatchBegin)},
 			},
 		},
 		// 2
 		{
-			input: []string{"/app", "/root"},
-			expected: []*BackendPath{
-				{ID: "path01", Link: CreatePathLink("/app", MatchBegin)},
-				{ID: "path02", Link: CreatePathLink("/root", MatchBegin)},
-			},
-		},
-		// 3
-		{
-			input: []string{"/app", "/root", "/root"},
-			expected: []*BackendPath{
-				{ID: "path01", Link: CreatePathLink("/app", MatchBegin)},
-				{ID: "path02", Link: CreatePathLink("/root", MatchBegin)},
-			},
-		},
-		// 4
-		{
-			input: []string{"/app", "/root", "/app"},
-			expected: []*BackendPath{
-				{ID: "path01", Link: CreatePathLink("/app", MatchBegin)},
-				{ID: "path02", Link: CreatePathLink("/root", MatchBegin)},
-			},
-		},
-		// 5
-		{
 			input: []string{"/", "/app", "/root"},
-			expected: []*BackendPath{
+			expected: []*Path{
 				{ID: "path01", Link: CreatePathLink("/", MatchBegin)},
 				{ID: "path02", Link: CreatePathLink("/app", MatchBegin)},
 				{ID: "path03", Link: CreatePathLink("/root", MatchBegin)},
@@ -82,11 +59,12 @@ func TestAddBackendPath(t *testing.T) {
 	for i, test := range testCases {
 		b := &Backend{}
 		for _, p := range test.input {
-			b.AddBackendPath(CreatePathLink(p, MatchBegin))
+			path := &Path{
+				Link: CreatePathLink(p, MatchBegin),
+			}
+			b.AddPath(path)
 		}
-		if !reflect.DeepEqual(b.Paths, test.expected) {
-			t.Errorf("backend.Paths differs on %d - actual: %v - expected: %v", i, b.Paths, test.expected)
-		}
+		assert.Equal(t, test.expected, b.Paths, fmt.Sprintf("backend.Paths differs on %d", i))
 	}
 }
 
@@ -168,7 +146,7 @@ func TestCreatePathConfig(t *testing.T) {
 		config interface{}
 	}
 	testCases := []struct {
-		paths    []*BackendPath
+		paths    []*Path
 		filter   string
 		expected map[string][]pathConfig
 	}{
@@ -181,7 +159,7 @@ func TestCreatePathConfig(t *testing.T) {
 		},
 		// 1
 		{
-			paths:  []*BackendPath{{ID: "path1"}},
+			paths:  []*Path{{ID: "path1"}},
 			filter: "SSLRedirect",
 			expected: map[string][]pathConfig{
 				"SSLRedirect": {
@@ -191,7 +169,7 @@ func TestCreatePathConfig(t *testing.T) {
 		},
 		// 2
 		{
-			paths: []*BackendPath{
+			paths: []*Path{
 				{ID: "path1", HSTS: HSTS{Enabled: true, MaxAge: 10}},
 				{ID: "path2", HSTS: HSTS{Enabled: true, MaxAge: 10}},
 				{ID: "path3", HSTS: HSTS{Enabled: true, MaxAge: 20}},
@@ -212,7 +190,7 @@ func TestCreatePathConfig(t *testing.T) {
 		},
 		// 3
 		{
-			paths: []*BackendPath{
+			paths: []*Path{
 				{ID: "path1", HSTS: HSTS{Enabled: true, MaxAge: 10}, AllowedIPHTTP: AccessConfig{Rule: []string{"10.0.0.0/8"}}},
 				{ID: "path2", HSTS: HSTS{Enabled: true, MaxAge: 20}, AllowedIPHTTP: AccessConfig{Rule: []string{"10.0.0.0/8"}}},
 				{ID: "path3", HSTS: HSTS{Enabled: true, MaxAge: 20}},
@@ -307,9 +285,9 @@ func TestPathIDs(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		paths := make([]*BackendPath, len(test.paths))
+		paths := make([]*Path, len(test.paths))
 		for j, path := range test.paths {
-			paths[j] = &BackendPath{ID: path}
+			paths[j] = &Path{ID: path}
 		}
 		b := BackendPathConfig{
 			items: []*BackendPathItem{{paths: paths}, {}},
@@ -417,10 +395,13 @@ func TestHasInPath(t *testing.T) {
 			defer c.teardown()
 			b := createBackend(0, "default", "server", "8080")
 			for i, has := range test.has {
-				link := CreatePathLink(fmt.Sprintf("/%d", i), MatchExact)
-				b.AddBackendPath(link).SSLRedirect = has
+				path := &Path{
+					Link:        CreatePathLink(fmt.Sprintf("/%d", i), MatchExact),
+					SSLRedirect: has,
+				}
+				b.AddPath(path)
 			}
-			has := b.hasInPath(func(path *BackendPath) bool {
+			has := b.hasInPath(func(path *Path) bool {
 				return path.SSLRedirect
 			})
 			assert.Equal(t, test.exp, has, "0=HasNone; 1=HasSome; 2=HasOnly")

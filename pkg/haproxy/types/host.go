@@ -24,7 +24,7 @@ import (
 )
 
 // FindPath ...
-func (h *Host) FindPath(path string, match ...MatchType) (paths []*HostPath) {
+func (h *Host) FindPath(path string, match ...MatchType) (paths []*Path) {
 	for _, p := range h.Paths {
 		if p.Link.path == path && p.Link.headers == nil && p.hasMatch(match) {
 			paths = append(paths, p)
@@ -34,7 +34,7 @@ func (h *Host) FindPath(path string, match ...MatchType) (paths []*HostPath) {
 }
 
 // FindPathWithLink ...
-func (h *Host) FindPathWithLink(link *PathLink) (path *HostPath) {
+func (h *Host) FindPathWithLink(link *PathLink) (path *Path) {
 	for _, p := range h.Paths {
 		if p.Link.Equals(link) {
 			return p
@@ -44,64 +44,40 @@ func (h *Host) FindPathWithLink(link *PathLink) (path *HostPath) {
 }
 
 // AddPath ...
-func (h *Host) AddPath(backend *Backend, path string, match MatchType) *HostPath {
-	return h.addPath(path, match, backend, "")
+func (h *Host) AddPath(backend *Backend, path string, match MatchType) *Path {
+	return h.addLink(backend, CreatePathLink(path, match), "")
 }
 
 // AddRedirect ...
-func (h *Host) AddRedirect(path string, match MatchType, redirTo string) {
-	_ = h.addPath(path, match, nil, redirTo)
+func (h *Host) AddRedirect(path string, match MatchType, redirTo string) *Path {
+	return h.addLink(nil, CreatePathLink(path, match), redirTo)
 }
 
 // AddLink ...
-func (h *Host) AddLink(backend *Backend, link *PathLink) *HostPath {
+func (h *Host) AddLink(backend *Backend, link *PathLink) *Path {
 	return h.addLink(backend, link, "")
 }
 
 // AddLinkRedirect ...
-func (h *Host) AddLinkRedirect(link *PathLink, redirTo string) *HostPath {
+func (h *Host) AddLinkRedirect(link *PathLink, redirTo string) *Path {
 	return h.addLink(nil, link, redirTo)
 }
 
-type hostResolver struct {
-	useDefaultCrt       *bool
-	followRedirect      *bool
-	crtFilename         *string
-	hasFrontingProxy    *bool
-	hasFrontingUseProto *bool
+func (h *Host) IsHTTPS() bool {
+	return h.frontend.IsHTTPS
 }
 
-func (h *Host) addPath(path string, match MatchType, backend *Backend, redirTo string) *HostPath {
-	link := CreatePathLink(path, match)
-	return h.addLink(backend, link, redirTo)
-}
-
-func (h *Host) addLink(backend *Backend, link *PathLink, redirTo string) *HostPath {
+func (h *Host) addLink(backend *Backend, link *PathLink, redirTo string) *Path {
 	link = ptr.To(*link).WithHTTPHost(h)
-	var hback HostBackend
-	if backend != nil {
-		hback = HostBackend{
-			ID:        backend.ID,
-			Namespace: backend.Namespace,
-			Name:      backend.Name,
-			Port:      backend.Port,
-		}
-		bpath := backend.AddBackendPath(link)
-		bpath.Host = &hostResolver{
-			useDefaultCrt:       &h.TLS.UseDefaultCrt,
-			followRedirect:      &h.TLS.FollowRedirect,
-			crtFilename:         &h.TLS.TLSFilename,
-			hasFrontingProxy:    &h.frontend.IsFrontingProxy,
-			hasFrontingUseProto: &h.frontend.IsFrontingUseProto,
-		}
-	} else if redirTo == "" {
-		hback = HostBackend{ID: "_error404"}
-	}
-	path := &HostPath{
+	path := &Path{
 		Link:    link,
-		Backend: hback,
+		Host:    h,
 		RedirTo: redirTo,
 		order:   len(h.Paths),
+	}
+	if backend != nil {
+		backend.AddPath(path)
+		path.Backend = backend
 	}
 	h.Paths = append(h.Paths, path)
 	// reverse order in order to avoid overlap of sub-paths
@@ -117,7 +93,7 @@ func (h *Host) addLink(backend *Backend, link *PathLink, redirTo string) *HostPa
 }
 
 // RemovePath ...
-func (h *Host) RemovePath(hpath *HostPath) {
+func (h *Host) RemovePath(hpath *Path) {
 	var j int
 	for i := range h.Paths {
 		if j < i {
@@ -132,50 +108,17 @@ func (h *Host) RemovePath(hpath *HostPath) {
 	}
 }
 
-// HasTLS ...
-func (h *Host) HasTLS() bool {
-	return h.TLS.UseDefaultCrt || h.TLS.TLSHash != ""
-}
-
-func (h *hostResolver) UseTLS() bool {
-	// whether the ingress resource has the `tls:` entry for the host
-	hasTLSEntry := *h.crtFilename != ""
-
-	// whether the user has globally or locally configured auto TLS for the host
-	autoTLSEnabled := *h.useDefaultCrt && *h.followRedirect
-
-	return hasTLSEntry || autoTLSEnabled
-}
-
-func (h *hostResolver) HasFrontingProxy() bool {
-	return *h.hasFrontingProxy
-}
-
-func (h *hostResolver) HasFrontingUseProto() bool {
-	return *h.hasFrontingUseProto
-}
-
 // HasTLSAuth ...
 func (h *Host) HasTLSAuth() bool {
 	return h.TLS.CAHash != ""
 }
 
-// Path ...
-func (h *HostPath) Path() string {
-	return h.Link.path
-}
-
 // Headers ...
-func (h *HostPath) Headers() HTTPHeaderMatch {
+func (h *Path) Headers() HTTPHeaderMatch {
 	return h.Link.headers
 }
 
-// Match ...
-func (h *HostPath) Match() MatchType {
-	return h.Link.match
-}
-
-func (h *HostPath) hasMatch(match []MatchType) bool {
+func (h *Path) hasMatch(match []MatchType) bool {
 	if len(match) == 0 {
 		return true
 	}

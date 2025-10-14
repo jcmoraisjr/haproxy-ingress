@@ -207,13 +207,13 @@ func (c *updater) setAuthExternal(config ConfigValueGetter, auth *hatypes.AuthEx
 		return
 	}
 	// TODO track
-	df := c.haproxy.Frontends().Default()
-	authBackendName, err := df.AcquireAuthBackendName(backend.BackendID())
+	proxy := &c.haproxy.Frontends().AuthProxy
+	authBackendName, err := proxy.AcquireAuthBackendName(backend.BackendID())
 	if err != nil {
 		// clean up and try again
 		used := c.haproxy.Backends().BuildUsedAuthBackends()
-		df.RemoveAuthBackendExcept(used)
-		authBackendName, err = df.AcquireAuthBackendName(backend.BackendID())
+		proxy.RemoveAuthBackendExcept(used)
+		authBackendName, err = proxy.AcquireAuthBackendName(backend.BackendID())
 		if err != nil {
 			// TODO remove backend if not used elsewhere
 			c.logger.Warn("ignoring auth URL on %s: %v", url.Source.String(), err)
@@ -280,7 +280,7 @@ func (c *updater) buildBackendAuthExternal(d *backData) {
 		isBackend := config.Get(ingtypes.BackAuthExternalPlacement).ToLower() == "backend"
 		url := config.Get(ingtypes.BackAuthURL)
 		if isBackend && url.Value != "" {
-			c.setAuthExternal(config, &path.AuthExternal, url)
+			c.setAuthExternal(config, &path.AuthExtBack, url)
 		}
 	}
 }
@@ -646,7 +646,7 @@ func firstToken(s string) string {
 }
 
 func (c *updater) buildBackendCustomResponses(d *backData) {
-	d.backend.CustomHTTPResponses = c.buildHTTPResponses(d.backend.ID, d.mapper, keyScopeBackend)
+	d.backend.CustomHTTPResponses = c.buildHTTPResponses(d.mapper, keyScopeBackend)
 }
 
 func (c *updater) buildBackendDNS(d *backData) {
@@ -741,10 +741,11 @@ func (c *updater) buildBackendOAuth(d *backData) {
 		if oauth.Source == nil {
 			continue
 		}
+		authext := &path.AuthExtBack
 
 		// starting here the auth backend should be configured or requests should be denied
 		// AlwaysDeny will be changed to false if the configuration succeed
-		path.AuthExternal.AlwaysDeny = true
+		authext.AlwaysDeny = true
 
 		if oauth.Value != "oauth2_proxy" && oauth.Value != "oauth2-proxy" {
 			c.logger.Warn("ignoring invalid oauth implementation '%s' on %v", oauth, oauth.Source)
@@ -757,7 +758,7 @@ func (c *updater) buildBackendOAuth(d *backData) {
 		}
 		if authURL := d.mapper.Get(ingtypes.BackAuthURL); authURL.Value != "" {
 			c.logger.Warn("ignoring oauth configuration on %v: auth-url was configured and has precedence", authURL.Source)
-			path.AuthExternal.AlwaysDeny = false
+			authext.AlwaysDeny = false
 			continue
 		}
 		uriPrefix := "/oauth2"
@@ -766,7 +767,7 @@ func (c *updater) buildBackendOAuth(d *backData) {
 		}
 		uriPrefix = strings.TrimRight(uriPrefix, "/")
 		namespace := oauth.Source.Namespace
-		backend := c.findBackend(namespace, uriPrefix)
+		backend := c.findOAuthBackend(namespace, uriPrefix)
 		if backend == nil {
 			c.logger.Error("path '%s' was not found on namespace '%s'", uriPrefix, namespace)
 			continue
@@ -786,17 +787,28 @@ func (c *updater) buildBackendOAuth(d *backData) {
 			headersMap[h[0]] = buildAuthRequestVarName(h[len(h)-1])
 		}
 
-		path.AuthExternal.AlwaysDeny = false
-		path.AuthExternal.AuthBackendName = backend.ID
-		path.AuthExternal.AllowedPath = uriPrefix + "/"
-		path.AuthExternal.AuthPath = uriPrefix + "/auth"
-		path.AuthExternal.HeadersRequest = []string{"*"}
-		path.AuthExternal.HeadersSucceed = []string{"-"}
-		path.AuthExternal.HeadersFail = []string{"-"}
-		path.AuthExternal.HeadersVars = headersMap
-		path.AuthExternal.Method = "HEAD"
-		path.AuthExternal.RedirectOnFail = uriPrefix + "/start?rd=%[path]"
+		authext.AlwaysDeny = false
+		authext.AuthBackendName = backend.ID
+		authext.AllowedPath = uriPrefix + "/"
+		authext.AuthPath = uriPrefix + "/auth"
+		authext.HeadersRequest = []string{"*"}
+		authext.HeadersSucceed = []string{"-"}
+		authext.HeadersFail = []string{"-"}
+		authext.HeadersVars = headersMap
+		authext.Method = "HEAD"
+		authext.RedirectOnFail = uriPrefix + "/start?rd=%[path]"
 	}
+}
+
+func (c *updater) findOAuthBackend(namespace, uriPrefix string) *hatypes.Backend {
+	for _, backend := range c.haproxy.Backends().Items() {
+		for _, path := range backend.ActivePaths() {
+			if path.Backend.Namespace == namespace && strings.TrimRight(path.Path(), "/") == uriPrefix {
+				return path.Backend
+			}
+		}
+	}
+	return nil
 }
 
 func (c *updater) buildBackendPeers(d *backData) {
@@ -812,17 +824,6 @@ func (c *updater) buildBackendPeers(d *backData) {
 		return
 	}
 	d.backend.PeersTable = table.Value
-}
-
-func (c *updater) findBackend(namespace, uriPrefix string) *hatypes.HostBackend {
-	for _, host := range c.haproxy.Frontends().Default().Hosts() {
-		for _, path := range host.Paths {
-			if strings.TrimRight(path.Path(), "/") == uriPrefix && path.Backend.Namespace == namespace {
-				return &path.Backend
-			}
-		}
-	}
-	return nil
 }
 
 var validDomainRegex = regexp.MustCompile(`^([A-Za-z0-9-]{1,63}\.)+[A-Za-z]{2,6}$`)
@@ -1049,8 +1050,7 @@ func (c *updater) buildBackendSSL(d *backData) {
 func (c *updater) buildBackendSSLRedirect(d *backData) {
 	noTLSRedir := utils.Split(d.mapper.Get(ingtypes.GlobalNoTLSRedirectLocations).Value, ",")
 	for _, path := range d.backend.Paths {
-		redir := path.Host != nil && path.Host.UseTLS() &&
-			d.mapper.GetConfig(path.Link).Get(ingtypes.BackSSLRedirect).Bool()
+		redir := path.HasHTTPS() && d.mapper.GetConfig(path.Link).Get(ingtypes.BackSSLRedirect).Bool()
 		if redir {
 			for _, noredir := range noTLSRedir {
 				if strings.HasPrefix(path.Path(), noredir) {

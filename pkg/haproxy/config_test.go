@@ -20,28 +20,9 @@ import (
 	"testing"
 )
 
-func TestEmptyFrontend(t *testing.T) {
-	c := createConfig(options{})
-	if err := c.WriteFrontendMaps(); err != nil {
-		t.Errorf("error creating frontends: %v", err)
-	}
-	df := c.frontends.Default()
-	if maps := df.Maps; maps == nil {
-		t.Error("expected frontend.Maps != nil")
-	}
-	df.AcquireHost("empty")
-	if err := c.WriteFrontendMaps(); err != nil {
-		t.Errorf("error creating frontends: %v", err)
-	}
-	maps := df.Maps
-	if maps == nil {
-		t.Error("expected frontend.Maps != nil")
-	}
-}
-
 func TestAcquireHostDiff(t *testing.T) {
 	c := createConfig(options{})
-	df := c.frontends.Default()
+	df := c.frontends.AcquireFrontend(8000, false)
 	f1 := df.AcquireHost("h1")
 	f2 := df.AcquireHost("h2")
 	if f1.Hostname != "h1" {
@@ -54,7 +35,7 @@ func TestAcquireHostDiff(t *testing.T) {
 
 func TestAcquireHostSame(t *testing.T) {
 	c := createConfig(options{})
-	df := c.frontends.Default()
+	df := c.frontends.AcquireFrontend(8000, false)
 	f1 := df.AcquireHost("h1")
 	f2 := df.AcquireHost("h1")
 	if f1 != f2 {
@@ -66,7 +47,7 @@ func TestClear(t *testing.T) {
 	c := createConfig(options{
 		mapsDir: "/tmp/maps",
 	})
-	df := c.frontends.Default()
+	df := c.frontends.AcquireFrontend(8000, false)
 	df.AcquireHost("app.local")
 	c.Backends().AcquireBackend("default", "app", "8080")
 	if c.options.mapsDir != "/tmp/maps" {
@@ -79,12 +60,11 @@ func TestClear(t *testing.T) {
 		t.Error("expected len(backends) == 1")
 	}
 	c.Clear()
-	df = c.frontends.Default() // `c` itself is updated after `Clear()`, updating df reference.
 	if c.options.mapsDir != "/tmp/maps" {
 		t.Error("expected mapsDir == /tmp/maps")
 	}
-	if len(df.Hosts()) != 0 {
-		t.Error("expected len(hosts) == 0")
+	if len(c.Frontends().Items()) != 0 {
+		t.Error("expected len(Frontends) == 0")
 	}
 	if len(c.Backends().Items()) != 0 {
 		t.Error("expected len(backends) == 0")

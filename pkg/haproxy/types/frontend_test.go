@@ -55,16 +55,14 @@ func TestAcquireAuthFrontendLocalPort(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		frontend := &Frontend{
-			AuthProxy: AuthProxy{
-				RangeStart: test.rangeStart,
-				RangeEnd:   test.rangeEnd,
-			},
+		authProxy := AuthProxy{
+			RangeStart: test.rangeStart,
+			RangeEnd:   test.rangeEnd,
 		}
 		authBackendNames := make([]string, len(test.backends))
 		errs := make([]string, len(test.backends))
 		for j, back := range test.backends {
-			authBackendName, err := frontend.AcquireAuthBackendName(BackendID{Name: back})
+			authBackendName, err := authProxy.AcquireAuthBackendName(BackendID{Name: back})
 			authBackendNames[j] = authBackendName
 			if err != nil {
 				errs[j] = err.Error()
@@ -115,15 +113,15 @@ func TestRemoveAuthBackendExcept(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		frontend := Frontend{}
+		authProxy := AuthProxy{}
 		for _, input := range test.input {
-			frontend.AuthProxy.BindList = append(frontend.AuthProxy.BindList, &AuthProxyBind{
+			authProxy.BindList = append(authProxy.BindList, &AuthProxyBind{
 				AuthBackendName: input,
 			})
 		}
-		frontend.RemoveAuthBackendExcept(test.used)
+		authProxy.RemoveAuthBackendExcept(test.used)
 		actual := []string{}
-		for _, item := range frontend.AuthProxy.BindList {
+		for _, item := range authProxy.BindList {
 			actual = append(actual, item.AuthBackendName)
 		}
 		c.compareObjects("remove", i, actual, test.expected)
@@ -173,15 +171,15 @@ func TestRemoveAuthBackendByTarget(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		frontend := Frontend{}
+		authProxy := AuthProxy{}
 		for _, input := range test.input {
-			frontend.AuthProxy.BindList = append(frontend.AuthProxy.BindList, &AuthProxyBind{
+			authProxy.BindList = append(authProxy.BindList, &AuthProxyBind{
 				Backend: input,
 			})
 		}
-		frontend.RemoveAuthBackendByTarget(test.removed)
+		authProxy.RemoveAuthBackendByTarget(test.removed)
 		actual := []BackendID{}
-		for _, item := range frontend.AuthProxy.BindList {
+		for _, item := range authProxy.BindList {
 			actual = append(actual, item.Backend)
 		}
 		c.compareObjects("remove", i, actual, test.expected)

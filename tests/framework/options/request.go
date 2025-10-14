@@ -16,12 +16,6 @@ func ExpectError(msg string) Request {
 	}
 }
 
-func URL(url string) Request {
-	return func(o *requestOpt) {
-		o.URL = url
-	}
-}
-
 func Body(body string) Request {
 	return func(o *requestOpt) {
 		o.Body = body
@@ -65,6 +59,12 @@ func ClientCertificateKeyPEM(crt, key []byte) Request {
 	}
 }
 
+func RequestPort(port int32) Request {
+	return func(o *requestOpt) {
+		o.RequestPort = port
+	}
+}
+
 func CustomRequest(custom CustomRequestCallback) Request {
 	return func(o *requestOpt) {
 		o.CustomRequest = custom
@@ -76,7 +76,6 @@ type CustomRequestCallback func(req *http.Request)
 type requestOpt struct {
 	ExpectResponseCode int
 	ExpectError        string
-	URL                string
 	Body               string
 	TLS                bool
 	TLSSkipVerify      bool
@@ -84,6 +83,7 @@ type requestOpt struct {
 	SNI                string
 	ClientCrtPEM       []byte
 	ClientKeyPEM       []byte
+	RequestPort        int32
 	CustomRequest      CustomRequestCallback
 }
 

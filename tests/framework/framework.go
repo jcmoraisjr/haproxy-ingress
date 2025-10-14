@@ -54,10 +54,10 @@ const (
 	PublishAddress  = "10.0.1.1"
 	PublishHostname = "ingress.local"
 
-	TestPortHTTP  = 28080
-	TestPortFHTTP = 28180
-	TestPortHTTPS = 28443
-	TestPortStat  = 21936
+	TestPortHealthz = 28081
+	TestPortHTTP    = 28080
+	TestPortHTTPS   = 28443
+	TestPortStat    = 21936
 )
 
 func NewFramework(ctx context.Context, t *testing.T, o ...options.Framework) *framework {
@@ -180,6 +180,7 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 	global.Data = map[string]string{
 		"syslog-endpoint": "stdout",
 		"syslog-format":   "raw",
+		"healthz-port":    strconv.Itoa(TestPortHealthz),
 		"http-port":       strconv.Itoa(TestPortHTTP),
 		"https-port":      strconv.Itoa(TestPortHTTPS),
 		"stats-port":      strconv.Itoa(TestPortStat),
@@ -225,7 +226,7 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 	t.Log("waiting for controller and haproxy to be ready")
 	require.EventuallyWithT(t, func(collect *assert.CollectT) {
 		// ensuring controller is up and running avoids all the tests to fail due to misconfiguration
-		url := fmt.Sprintf("http://127.0.0.1:%d", TestPortHTTP)
+		url := fmt.Sprintf("http://127.0.0.1:%d", TestPortHealthz)
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if !assert.NoError(collect, err) {
 			return
@@ -246,14 +247,19 @@ func (*framework) Request(ctx context.Context, t *testing.T, method, host, path 
 	t.Logf("request method=%s host=%s path=%s\n", method, host, path)
 	opt := options.ParseRequestOptions(o...)
 
-	var url string
-	if opt.URL != "" {
-		url = opt.URL
-	} else if opt.TLS {
-		url = fmt.Sprintf("https://127.0.0.1:%d", TestPortHTTPS)
+	var proto string
+	var port int32
+	if opt.TLS {
+		proto = "https"
+		port = TestPortHTTPS
 	} else {
-		url = fmt.Sprintf("http://127.0.0.1:%d", TestPortHTTP)
+		proto = "http"
+		port = TestPortHTTP
 	}
+	if opt.RequestPort > 0 {
+		port = opt.RequestPort
+	}
+	url := fmt.Sprintf("%s://127.0.0.1:%d", proto, port)
 	var reqBody io.Reader
 	if opt.Body != "" {
 		reqBody = strings.NewReader(opt.Body)
@@ -600,7 +606,7 @@ func (f *framework) CreateGateway(ctx context.Context, t *testing.T, version str
 	if opt.Listeners == nil {
 		opt.Listeners = []options.ListenerOpt{{
 			Name:  "echoserver-gw",
-			Port:  80,
+			Port:  TestPortHTTP,
 			Proto: "HTTP",
 		}}
 	}

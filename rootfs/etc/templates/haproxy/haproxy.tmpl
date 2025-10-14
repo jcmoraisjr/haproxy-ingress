@@ -24,8 +24,7 @@
     {{- $tcpservices := $cfg.TCPServices.BuildSortedItems }}
     {{- $backends := $cfg.Backends }}
     {{- $backendItems := $backends.BuildSortedItems }}
-    {{- $frontend := $cfg.Frontends.Default }}
-    {{- $fmaps := $frontend.Maps }}
+    {{- $frontends := $cfg.Frontends }}
     {{- template "global" map $global }}
     {{- if $global.Peers.Servers }}
         {{- template "peers" map $global }}
@@ -45,8 +44,8 @@
     {{- if $backendItems }}
         {{- template "backends" map $global $backendItems true }}
     {{- end }}
-    {{- template "backend-support" map $global $frontend $backends }}
-    {{- template "frontends" map $global $frontend $fmaps $backends.DefaultBackend $tcpservices }}
+    {{- template "backend-support" map $global $backends }}
+    {{- template "frontends" map $global $frontends $backends $tcpservices }}
     {{- template "frontend-support" map $global }}
 {{- else if and .Global .Backends }}
     {{- $global := .Global }}
@@ -477,10 +476,10 @@ backend {{ $backend.ID }}
 {{- $hasFrontingUseProto := $backend.HasFrontingUseProto }}
 {{- if $hasFrontingProxy }}
 {{- if eq $hasFrontingProxy $hasSome }}
-    acl fronting-proxy var(req.fronting-proxy) -m found
+    acl fronting-proxy var(req.fronting_proxy) -m found
 {{- end }}
 {{- if eq $hasFrontingUseProto $hasSome }}
-    acl https-request var(req.fronting-proto) -m str ignore
+    acl https-request var(req.fronting_proto) -m str ignore
 {{- end }}
 {{- if $hasFrontingUseProto }}
     acl https-request hdr(X-Forwarded-Proto) https
@@ -488,13 +487,15 @@ backend {{ $backend.ID }}
 {{- else if or $backend.HasHSTS $backend.HasSSLRedirect }}
     acl https-request ssl_fc
 {{- end }}
-{{- if and ($backend.TLS.HasTLSAuth) (not $backend.HasSSLRedirect) }}
+{{- $needOffloadACL := and ($backend.HasHTTPRequests) (not $backend.HasSSLRedirect) }}
+{{- $hasTLSAuth := $backend.HasTLSAuth }}
+{{- if and $needOffloadACL $hasTLSAuth }}
     acl local-offload ssl_fc
 {{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $backend.NeedACL }}
-{{- range $path := $backend.Paths }}
+{{- range $path := $backend.ActivePaths }}
     # {{ $path.ID }} = {{ $path.Hostname }}{{ $path.Path }}
 {{- end }}
 {{- range $match := $backend.PathsMap.MatchFiles }}
@@ -673,20 +674,19 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $backend.TLS.HasTLSAuth }}
-{{- $needSSLACL := not $backend.HasSSLRedirect }}
-    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-CN   %{+Q}[ssl_c_s_dn(cn)]{{ if $needSSLACL }}   if local-offload{{ end }}
-    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-DN   %{+Q}[ssl_c_s_dn]{{ if $needSSLACL }}       if local-offload{{ end }}
+{{- if $hasTLSAuth }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-CN   %{+Q}[ssl_c_s_dn(cn)]{{ if $needOffloadACL }}   if local-offload{{ end }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-DN   %{+Q}[ssl_c_s_dn]{{ if $needOffloadACL }}       if local-offload{{ end }}
     http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-SHA1 %{+Q}[ssl_c_sha1,hex
         {{- if $backend.TLS.FingerprintLower }},lower{{ end }}]
-        {{- if $needSSLACL }}   if local-offload{{ end }}
+        {{- if $needOffloadACL }}   if local-offload{{ end }}
 {{- if $backend.TLS.Sha2Bits }}
     http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-SHA2 %{+Q}[ssl_c_der,sha2({{ $backend.TLS.Sha2Bits }}),hex
         {{- if $backend.TLS.FingerprintLower }},lower{{ end }}]
-        {{- if $needSSLACL }} if local-offload{{ end }}
+        {{- if $needOffloadACL }} if local-offload{{ end }}
 {{- end }}
 {{- if $backend.TLS.AddCertHeader }}
-    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-Cert %{+Q}[ssl_c_der,base64]{{ if $needSSLACL }} if local-offload{{ end }}
+    http-request set-header {{ $global.SSL.HeadersPrefix }}-Client-Cert %{+Q}[ssl_c_der,base64]{{ if $needOffloadACL }} if local-offload{{ end }}
 {{- end }}
 {{- end }}
 
@@ -708,7 +708,7 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- $authCfg := $backend.PathConfig "AuthExternal" }}
+{{- $authCfg := $backend.PathConfig "AuthExtBack" }}
 {{- range $i, $auth := $authCfg.Items }}
 {{- range $pathIDs := $authCfg.PathIDs $i }}
 {{- template "authExternal" map $auth (iif (eq $pathIDs "") "" (printf "{ var(txn.pathID) -m str %s }" $pathIDs)) }}
@@ -745,7 +745,7 @@ backend {{ $backend.ID }}
 {{- $needACL := $rewriteCfg.NeedACL }}
 {{- range $i, $rewrite := $rewriteCfg.Items }}
 {{- if $rewrite }}
-{{- range $path := ($rewriteCfg.Paths $i) }}
+{{- range $path := $rewriteCfg.Paths $i }}
 {{- if eq $rewrite "/" }}
     http-request replace-path ^{{ $path.Path }}/?(.*)$     {{ $rewrite }}\1
         {{- if $needACL }}     if { var(txn.pathID) -m str {{ $path.ID }} }{{ end }}
@@ -769,7 +769,7 @@ backend {{ $backend.ID }}
         {{- if $hsts.Preload }}; preload{{ end }}"
         {{- if or $needSSLACL $pathIDs (eq $hasFrontingProxy $hasSome) }} if
             {{- if eq $hasFrontingProxy $hasSome }} !fronting-proxy{{ end }}
-            {{- if $needSSLACL }} https-request{{ end }}
+            {{- if and (not $hasFrontingProxy) $needSSLACL }} https-request{{ end }}
             {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
         {{- end }}
 {{- end }}
@@ -907,10 +907,9 @@ backend {{ $backend.ID }}
 
 {{- define "backend-support" }}
 {{- $global := .p1 }}
-{{- $frontend := .p2 }}
-{{- $backends := .p3 }}
+{{- $backends := .p2 }}
 
-{{- if $frontend.HasSSLPassthrough }}
+{{- if $backends.HasBackend "_redirect_https" }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
@@ -939,7 +938,7 @@ backend _acme_challenge
     server _acme_server unix@{{ $global.Acme.Socket }}
 {{- end }}
 
-{{- if not $backends.DefaultBackend }}
+{{- if $backends.HasBackend "_error404" }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
@@ -962,10 +961,9 @@ backend _error404
 
 {{- define "frontends" }}
 {{- $global := .p1 }}
-{{- $frontend := .p2 }}
-{{- $fmaps := .p3 }}
-{{- $defaultbackend := .p4 }}
-{{- $tcpservices := .p5 }}
+{{- $frontends := .p2 }}
+{{- $backends := .p3 }}
+{{- $tcpservices := .p4 }}
 
 
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -974,9 +972,9 @@ backend _error404
 # #   FRONTENDS
 # #
 #
-{{- if $frontend.AuthProxy.BindList }}
+{{- if $frontends.AuthProxy.BindList }}
 
-{{- $proxy := $frontend.AuthProxy }}
+{{- $proxy := $frontends.AuthProxy }}
 {{- $use_socket := gt (len $proxy.BindList) 1 }}
 
   # # # # # # # # # # # # # # # # # # #
@@ -1094,7 +1092,11 @@ frontend {{ $proxy_name }}
 {{- end }}{{/* range $tcpservices */}}
 {{- end }}{{/* has $tcpservices */}}
 
-{{- if $frontend.HasSSLPassthrough }}
+{{- $hasHTTPResponses := $frontends.HasHTTPResponses }}
+{{- range $frontend := $frontends.Items }}
+
+{{- $hasSSLPassthrough := $frontend.HasSSLPassthrough }}
+{{- if and $frontend.IsHTTPS $hasSSLPassthrough }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
@@ -1103,7 +1105,7 @@ frontend {{ $proxy_name }}
 {{- $proxy__front__tls := "_front__tls" }}
 listen {{ $proxy__front__tls }}
     mode tcp
-    bind {{ $frontend.HTTPSBind }}{{ if $frontend.AcceptProxy }} accept-proxy{{ end }}
+    bind {{ $frontend.Bind }}{{ if $frontend.AcceptProxy }} accept-proxy{{ end }}
 
 {{- /*------------------------------------*/}}
 {{- if $global.Syslog.Endpoint }}
@@ -1120,7 +1122,7 @@ listen {{ $proxy__front__tls }}
     tcp-request inspect-delay 5s
 
 {{- /*------------------------------------*/}}
-{{- range $match := $fmaps.SSLPassthroughMap.MatchFiles }}
+{{- range $match := $frontend.HTTPSMaps.SSLPassthroughMap.MatchFiles }}
     tcp-request content set-var(req.sslpassback) req.ssl_sni,lower
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- if not $match.First }} if !{ var(req.sslpassback) -m found }{{ end }}
@@ -1146,24 +1148,25 @@ listen {{ $proxy__front__tls }}
 {{- end }}
 {{- end }}
 {{- end }}
-    server _default_server{{ $frontend.BindName }} {{ $frontend.HTTPSSocket }} send-proxy-v2
+    server _default_server{{ $frontend.Name }}_socket {{ $frontend.HTTPSSocket }} send-proxy-v2
 {{- end }}{{/* HasSSLPassthrough */}}
-
-{{- if $fmaps }}
 
 {{- $isFrontingProxy := $frontend.IsFrontingProxy }}
 {{- $isFrontingUseProto := $frontend.IsFrontingUseProto }}
 {{- $hasSomeFrontingProxy := false }}
 {{- $hasSomeFrontingUseProto := false }}
+{{- $httpmaps := $frontend.HTTPMaps }}
+{{- $httpsmaps := $frontend.HTTPSMaps }}
+
+{{- if $httpmaps }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
 #     {{ if $isFrontingProxy }}Fronting Proxy{{ else }}HTTP{{ end }} frontend
 #
-{{- $proxy__front_http := "_front_http" }}
-frontend {{ $proxy__front_http }}
+frontend {{ $frontend.Name }}
     mode http
-{{- with $frontend.HTTPBind }}
+{{- with $frontend.Bind }}
     bind {{ . }}{{ if $frontend.AcceptProxy }} accept-proxy{{ end }}
 {{- end }}
 
@@ -1188,10 +1191,10 @@ frontend {{ $proxy__front_http }}
 
 {{- /*------------------------------------*/}}
 {{- if $hasSomeFrontingProxy }}
-    http-request set-var(req.fronting-proxy) str(1)
+    http-request set-var(req.fronting_proxy) str(1)
 {{- end }}
 {{- if $hasSomeFrontingUseProto }}
-    http-request set-var(req.fronting-proto) str({{ if $isFrontingUseProto }}use{{ else }}ignore{{ end }})
+    http-request set-var(req.fronting_proto) str({{ if $isFrontingUseProto }}use{{ else }}ignore{{ end }})
 {{- end }}
     http-request set-var(req.path) path
     http-request set-var(req.host) hdr(host),field(1,:),lower
@@ -1200,8 +1203,8 @@ frontend {{ $proxy__front_http }}
 {{- $acmeexclusive := and $global.Acme.Enabled (not $global.Acme.Shared) }}
 
 {{- /*------------------------------------*/}}
-{{- if $fmaps.RedirRootSSLMap.HasHost }}
-{{- range $match := $fmaps.RedirRootSSLMap.MatchFiles }}
+{{- if $httpmaps.RedirRootSSLMap.HasHost }}
+{{- range $match := $httpmaps.RedirRootSSLMap.MatchFiles }}
     http-request redirect scheme https
         {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
         {{- "" }} if{{ if $acmeexclusive }} !acme-challenge{{ end }}
@@ -1210,8 +1213,8 @@ frontend {{ $proxy__front_http }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $fmaps.RedirFromRootMap.HasHost }}
-{{- range $match := $fmaps.RedirFromRootMap.MatchFiles }}
+{{- if $httpmaps.RedirFromRootMap.HasHost }}
+{{- range $match := $httpmaps.RedirFromRootMap.MatchFiles }}
     http-request set-var(req.rootredir) var(req.host)
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- if not $match.First }} if !{ var(req.rootredir) -m found }{{ end }}
@@ -1222,8 +1225,8 @@ frontend {{ $proxy__front_http }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $fmaps.VarNamespaceMap.HasHost }}
-{{- range $match := $fmaps.VarNamespaceMap.MatchFiles }}
+{{- if $httpmaps.VarNamespaceMap.HasHost }}
+{{- range $match := $httpmaps.VarNamespaceMap.MatchFiles }}
     http-request set-var(txn.namespace) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
@@ -1244,19 +1247,19 @@ frontend {{ $proxy__front_http }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- template "redirectTo" map $global $frontend $fmaps }}
+{{- template "redirectTo" map $global $frontend $httpmaps }}
 
 {{- /*------------------------------------*/}}
 {{- template "authExternalFrontend" map $frontend }}
 
 {{- /*------------------------------------*/}}
-{{- range $match := $fmaps.HTTPHostMap.MatchFiles }}
+{{- range $match := $httpmaps.HTTPHostMap.MatchFiles }}
     http-request set-var(req.backend) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- template "httpFilters" map $match "req.backend" 1 }}
 {{- end }}
-{{- range $match := $fmaps.DefaultHostMap.MatchFiles }}
+{{- range $match := $httpmaps.DefaultHostMap.MatchFiles }}
     http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
@@ -1265,7 +1268,7 @@ frontend {{ $proxy__front_http }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- template "redirectFrom" map $global $frontend $fmaps "req.backend" }}
+{{- template "redirectFrom" map $global $frontend $httpmaps "req.backend" }}
 
 {{- /*------------------------------------*/}}
 {{- template "sourceIP" map $global }}
@@ -1274,7 +1277,7 @@ frontend {{ $proxy__front_http }}
 {{- range $snippet := $global.CustomFrontendLate }}
     {{ $snippet }}
 {{- end }}
-{{- range $snippet := index $global.CustomProxy $proxy__front_http }}
+{{- range $snippet := index $global.CustomProxy $frontend.Name }}
     {{ $snippet }}
 {{- end }}
 
@@ -1287,23 +1290,21 @@ frontend {{ $proxy__front_http }}
     use_backend _acme_challenge if acme-challenge
 {{- end }}
 
-{{- if $frontend.DefaultHost }}
-{{- if $frontend.DefaultHost.HTTPPassthroughBackend }}
-    use_backend {{ $frontend.DefaultHost.HTTPPassthroughBackend }}
-{{- end }}
-{{- end }}
-{{- template "defaultbackend" map $frontend $defaultbackend }}
+{{- template "defaultbackend" map $frontend $backends }}
+{{- end }}{{/* if $httpmaps */}}
+
+{{- if $httpsmaps }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
 #     HTTPS frontend
 #
-frontend {{ $frontend.Name }}
+{{- $httpsFrontendName := printf "%s%s" $frontend.Name (iif $hasSSLPassthrough "__local" "") }}
+frontend {{ $httpsFrontendName }}
     mode http
 
 {{- /*------------------------------------*/}}
-    bind {{ default $frontend.HTTPSBind $frontend.HTTPSSocket }}
-        {{- if $frontend.BindID }} id {{ $frontend.BindID }}{{ end }}
+    bind {{ default $frontend.Bind $frontend.HTTPSSocket }}
         {{- if $frontend.HTTPSProxy }} accept-proxy{{ end }}
         {{- "" }} ssl alpn {{ $global.SSL.ALPN }}
         {{- "" }} crt-list {{ $frontend.CrtListFile }}
@@ -1329,19 +1330,19 @@ frontend {{ $frontend.Name }}
     http-request set-var(req.base) var(req.host),concat(\#,req.path)
 
 {{- /*------------------------------------*/}}
-{{- template "redirectTo" map $global $frontend $fmaps }}
+{{- template "redirectTo" map $global $frontend $httpsmaps }}
 
 {{- /*------------------------------------*/}}
 {{- template "authExternalFrontend" map $frontend }}
 
 {{- /*------------------------------------*/}}
-{{- range $match := $fmaps.HTTPSHostMap.MatchFiles }}
+{{- range $match := $httpsmaps.HTTPSHostMap.MatchFiles }}
     http-request set-var(req.hostbackend) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- template "httpFilters" map $match "req.hostbackend" 1 }}
 {{- end }}
-{{- range $match := $fmaps.DefaultHostMap.MatchFiles }}
+{{- range $match := $httpsmaps.DefaultHostMap.MatchFiles }}
     http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
@@ -1350,11 +1351,11 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- template "redirectFrom" map $global $frontend $fmaps "req.hostbackend" }}
+{{- template "redirectFrom" map $global $frontend $httpsmaps "req.hostbackend" }}
 
 {{- /*------------------------------------*/}}
-{{- if $fmaps.RedirFromRootMap.HasHost }}
-{{- range $match := $fmaps.RedirFromRootMap.MatchFiles }}
+{{- if $httpsmaps.RedirFromRootMap.HasHost }}
+{{- range $match := $httpsmaps.RedirFromRootMap.MatchFiles }}
     http-request set-var(req.rootredir) var(req.host)
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- if not $match.First }} if !{ var(req.rootredir) -m found }{{ end }}
@@ -1363,8 +1364,8 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $fmaps.VarNamespaceMap.HasHost }}
-{{- range $match := $fmaps.VarNamespaceMap.MatchFiles }}
+{{- if $httpsmaps.VarNamespaceMap.HasHost }}
+{{- range $match := $httpsmaps.VarNamespaceMap.MatchFiles }}
     http-request set-var(txn.namespace) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
@@ -1388,28 +1389,28 @@ frontend {{ $frontend.Name }}
 {{- /*------------------------------------*/}}
 {{- $hasTLSAuth := or $frontend.HasTLSAuth  }}
 {{- if $hasTLSAuth }}
-{{- $mandatory := $fmaps.TLSNeedCrtList.HasHost }}
+{{- $mandatory := $httpsmaps.TLSNeedCrtList.HasHost }}
     acl tls-has-crt ssl_c_used
 
 {{- if $mandatory }}
-{{- range $match := $fmaps.TLSNeedCrtList.MatchFiles }}
+{{- range $match := $httpsmaps.TLSNeedCrtList.MatchFiles }}
     acl tls-need-crt ssl_fc_sni -i -m {{ $match.Method }} -f {{ $match.Filename }}
 {{- end }}
 {{- end }}
 
-{{- range $match := $fmaps.TLSNeedCrtList.MatchFiles }}
+{{- range $match := $httpsmaps.TLSNeedCrtList.MatchFiles }}
     acl tls-host-need-crt var(req.host) -i -m {{ $match.Method }} -f {{ $match.Filename }}
 {{- end }}
     acl tls-has-invalid-crt ssl_c_verify gt 0
-{{- range $match := $fmaps.TLSAuthList.MatchFiles }}
+{{- range $match := $httpsmaps.TLSAuthList.MatchFiles }}
     acl tls-check-crt ssl_fc_sni -i -m {{ $match.Method }} -f {{ $match.Filename }}
 {{- end }}
 
 {{- if $mandatory }}
-{{- if not $fmaps.TLSMissingCrtPagesMap.HasHost }}
+{{- if not $httpsmaps.TLSMissingCrtPagesMap.HasHost }}
     http-request set-var(req.tls_nocrt_redir) str(_internal) if !tls-has-crt tls-need-crt
 {{- end }}
-{{- range $match := $fmaps.TLSMissingCrtPagesMap.MatchFiles }}
+{{- range $match := $httpsmaps.TLSMissingCrtPagesMap.MatchFiles }}
     http-request set-var(req.tls_nocrt_redir) ssl_fc_sni,lower
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }},_internal) if
         {{- if $match.First }} !tls-has-crt tls-need-crt
@@ -1417,21 +1418,21 @@ frontend {{ $frontend.Name }}
 {{- end }}
 {{- end }}
 
-{{- if $fmaps.TLSAuthList.HasHost }}
-{{- if not $fmaps.TLSInvalidCrtPagesMap.HasHost }}
+{{- if $httpsmaps.TLSAuthList.HasHost }}
+{{- if not $httpsmaps.TLSInvalidCrtPagesMap.HasHost }}
     http-request set-var(req.tls_invalidcrt_redir) str(_internal) if tls-has-invalid-crt tls-check-crt
 {{- end }}
-{{- range $match := $fmaps.TLSInvalidCrtPagesMap.MatchFiles }}
+{{- range $match := $httpsmaps.TLSInvalidCrtPagesMap.MatchFiles }}
     http-request set-var(req.tls_invalidcrt_redir) ssl_fc_sni,lower
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }},_internal) if
         {{- if $match.First }} tls-has-invalid-crt tls-check-crt
         {{- else }} { var(req.tls_invalidcrt_redir) -m str _internal }{{ end }}
 {{- end }}
-{{- if and $mandatory $fmaps.TLSMissingCrtPagesMap.HasHost }}
+{{- if and $mandatory $httpsmaps.TLSMissingCrtPagesMap.HasHost }}
     http-request redirect location %[var(req.tls_nocrt_redir)] code 303
         {{- "" }} if { var(req.tls_nocrt_redir) -m found } !{ var(req.tls_nocrt_redir) -m str _internal }
 {{- end }}
-{{- if $fmaps.TLSInvalidCrtPagesMap.HasHost }}
+{{- if $httpsmaps.TLSInvalidCrtPagesMap.HasHost }}
     http-request redirect location %[var(req.tls_invalidcrt_redir)] code 303
         {{- "" }} if { var(req.tls_invalidcrt_redir) -m found } !{ var(req.tls_invalidcrt_redir) -m str _internal }
 {{- end }}
@@ -1443,19 +1444,19 @@ frontend {{ $frontend.Name }}
 {{- range $snippet := $global.CustomFrontendLate }}
     {{ $snippet }}
 {{- end }}
-{{- range $snippet := index $global.CustomProxy $frontend.Name }}
+{{- range $snippet := index $global.CustomProxy $httpsFrontendName }}
     {{ $snippet }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
 {{- if $hasTLSAuth }}
-{{- if $frontend.BuildHTTPResponses }}
-    http-request set-var(txn.lua_scope) var(req.host)
+{{- if $hasHTTPResponses }}
+    http-request set-var(txn.lua_scope) str({{ $frontend.Name }}),concat(--,req.host)
 {{- end }}
     http-request use-service lua.send-421 if
         {{- "" }} tls-has-crt { ssl_fc_has_sni } !{ ssl_fc_sni,strcmp(req.host) eq 0 }
-{{- if $fmaps.TLSAuthList.HasHost }}
-{{- if $fmaps.TLSNeedCrtList.HasHost }}
+{{- if $httpsmaps.TLSAuthList.HasHost }}
+{{- if $httpsmaps.TLSNeedCrtList.HasHost }}
     http-request use-service lua.send-496 if
         {{- "" }} { var(req.tls_nocrt_redir) -m str _internal }
 {{- /* HTTP 421 instead of 404 if missing sni or the provided one doesn't read client crt. */}}
@@ -1475,9 +1476,10 @@ frontend {{ $frontend.Name }}
     use_backend %[var(req.snibackend)]
         {{- "" }} if { var(req.snibackend) -m found }
 {{- end }}
-{{- template "defaultbackend" map $frontend $defaultbackend }}
+{{- template "defaultbackend" map $frontend $backends }}
 
-{{- end }}{{/* has $fmaps */}}
+{{- end }}{{/* if $httpsmaps */}}
+{{- end }}{{/* range $frontends */}}
 {{- end }}{{/* define "frontends" */}}
 
 {{- /*------------------------------------*/}}
@@ -1585,8 +1587,8 @@ frontend {{ $frontend.Name }}
 {{- $frontend := .p1 }}
 {{- range $host := $frontend.Hosts }}
 {{- range $path := $host.Paths }}
-{{- if $path.AuthExt }}
-{{- template "authExternal" map $path.AuthExt (printf "{ var(req.base) -m str %s '%s' }" $path.Link.HAMatch $path.Link.Key) }}
+{{- if $path.AuthExtFront.AuthPath }}
+{{- template "authExternal" map $path.AuthExtFront (printf "{ var(req.base) -m str %s '%s' }" $path.Link.HAMatch $path.Link.Key) }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -1613,18 +1615,15 @@ frontend {{ $frontend.Name }}
 {{- /*------------------------------------*/}}
 {{- define "defaultbackend" }}
 {{- $frontend := .p1 }}
-{{- $defaultbackend := .p2 }}
+{{- $backends := .p2 }}
 {{- $defaultHost := $frontend.DefaultHost }}
+{{- $defaultBackend := $backends.DefaultBackend }}
 {{- if $defaultHost }}
 {{- if not $defaultHost.SSLPassthrough }}
     use_backend %[var(req.defaultbackend)]
 {{- end }}
 {{- end }}
-{{- if $defaultbackend }}
-    default_backend {{ $defaultbackend.ID }}
-{{- else }}
-    default_backend _error404
-{{- end }}
+    default_backend {{ $defaultBackend.ID }}
 {{- end }}
 
 {{- define "frontend-support" }}

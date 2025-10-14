@@ -22,14 +22,30 @@ import (
 	"sort"
 )
 
-func CreateFrontends() *Frontends {
-	f := &Frontends{}
-	_ = f.CreateFrontend()
-	return f
-}
-
-func (f *Frontends) CreateFrontend() *Frontend {
+func (f *Frontends) AcquireFrontend(port int32, isHTTPS bool) *Frontend {
+	var has bool
+	for _, frontend := range f.items {
+		if frontend.port == port {
+			return frontend
+		}
+		if !has && frontend.IsHTTPS == isHTTPS {
+			has = true
+		}
+	}
+	var name string
+	if isHTTPS {
+		name = "_front_https"
+	} else {
+		name = "_front_http"
+	}
+	if has {
+		name = fmt.Sprintf("%s_%d", name, port)
+	}
 	frontend := &Frontend{
+		Name:     name,
+		Bind:     fmt.Sprintf(":%d", port),
+		IsHTTPS:  isHTTPS,
+		port:     port,
 		hosts:    map[string]*Host{},
 		hostsAdd: map[string]*Host{},
 		hostsDel: map[string]*Host{},
@@ -38,8 +54,13 @@ func (f *Frontends) CreateFrontend() *Frontend {
 	return frontend
 }
 
-func (f *Frontends) Default() *Frontend {
-	return f.items[0]
+func (f *Frontends) FindFrontend(port int32) *Frontend {
+	for _, frontend := range f.items {
+		if frontend.port == port {
+			return frontend
+		}
+	}
+	return nil
 }
 
 func (f *Frontends) Items() []*Frontend {
@@ -47,19 +68,68 @@ func (f *Frontends) Items() []*Frontend {
 }
 
 func (f *Frontends) Commit() {
-	f.items[0].Commit()
+	for _, frontend := range f.items {
+		frontend.Commit()
+	}
+	f.AuthProxy.changed = false
 }
 
-func (f *Frontends) FrontendsChanged() bool {
-	return f.items[0].FrontendChanged()
+func (f *Frontends) HasCommit() bool {
+	for _, frontend := range f.items {
+		if frontend.HasCommit() {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *Frontends) Changed() bool {
+	return f.AuthProxy.changed
+}
+
+func (f *Frontends) HasHTTPResponses() bool {
+	for _, f := range f.items {
+		for _, host := range f.hosts {
+			res := &host.CustomHTTPResponses
+			if len(res.HAProxy) > 0 || len(res.Lua) > 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (f *Frontends) BuildHTTPResponses() (responses []HTTPResponses) {
+	for _, f := range f.items {
+		for _, host := range f.hosts {
+			res := &host.CustomHTTPResponses
+			res.ID = fmt.Sprintf("%s--%s", f.Name, host.Hostname)
+			if len(res.HAProxy) > 0 || len(res.Lua) > 0 {
+				responses = append(responses, HTTPResponses{
+					ID:      res.ID,
+					HAProxy: res.HAProxy,
+					Lua:     res.Lua,
+				})
+			}
+		}
+	}
+	// predictable response
+	sort.Slice(responses, func(i, j int) bool {
+		return responses[i].ID < responses[j].ID
+	})
+	return responses
 }
 
 func (f *Frontends) RemoveAllHosts(hostnames []string) {
-	f.items[0].RemoveAllHosts(hostnames)
+	for _, frontend := range f.items {
+		frontend.RemoveAllHosts(hostnames)
+	}
 }
 
-func (f *Frontends) RemoveAuthBackendByTarget(backends []string) {
-	f.items[0].RemoveAuthBackendByTarget(backends)
+func (f *Frontends) Shrink() {
+	for _, frontend := range f.items {
+		frontend.ShrinkHosts()
+	}
 }
 
 // AcquireHost ...
@@ -131,17 +201,11 @@ func (f *Frontend) Commit() {
 	f.hostsAdd = map[string]*Host{}
 	f.hostsDel = map[string]*Host{}
 	f.hasCommit = true
-	f.changed = false
 }
 
 // HasCommit ...
 func (f *Frontend) HasCommit() bool {
 	return f.hasCommit
-}
-
-// FrontendChanged ...
-func (f *Frontend) FrontendChanged() bool {
-	return f.changed
 }
 
 // HostsChanged ...
@@ -153,10 +217,6 @@ func (f *Frontend) createHost(hostname string) *Host {
 	return &Host{
 		Hostname: hostname,
 		frontend: f,
-		TLS: HostTLSConfig{
-			// TODO revisit instance_test to allow change this default value to `false`
-			UseDefaultCrt: true,
-		},
 	}
 }
 
@@ -203,7 +263,7 @@ func (f *Frontend) DefaultHost() *Host {
 // HasTLSAuth ...
 func (f *Frontend) HasTLSAuth() bool {
 	for _, host := range f.hosts {
-		if host.TLS.CAFilename != "" {
+		if host.HasTLSAuth() {
 			return true
 		}
 	}
@@ -230,27 +290,8 @@ func (f *Frontend) HasVarNamespace() bool {
 	return false
 }
 
-func (f *Frontend) BuildHTTPResponses() (responses []HTTPResponses) {
-	for _, host := range f.hosts {
-		res := &host.CustomHTTPResponses
-		if len(res.HAProxy) > 0 || len(res.Lua) > 0 {
-			responses = append(responses, HTTPResponses{
-				ID:      res.ID,
-				HAProxy: res.HAProxy,
-				Lua:     res.Lua,
-			})
-		}
-	}
-	// predictable response
-	sort.Slice(responses, func(i, j int) bool {
-		return responses[i].ID < responses[j].ID
-	})
-	return responses
-}
-
 // AcquireAuthBackendName ...
-func (f *Frontend) AcquireAuthBackendName(backend BackendID) (authBackendName string, err error) {
-	proxy := &f.AuthProxy
+func (proxy *AuthProxy) AcquireAuthBackendName(backend BackendID) (authBackendName string, err error) {
 	freePort := proxy.RangeStart
 	for _, bind := range proxy.BindList {
 		if bind.Backend == backend {
@@ -274,13 +315,13 @@ func (f *Frontend) AcquireAuthBackendName(backend BackendID) (authBackendName st
 	sort.Slice(proxy.BindList, func(i, j int) bool {
 		return proxy.BindList[i].LocalPort < proxy.BindList[j].LocalPort
 	})
-	f.changed = true
+	proxy.changed = true
 	return bind.AuthBackendName, nil
 }
 
 // RemoveAuthBackendExcept ...
-func (f *Frontend) RemoveAuthBackendExcept(used map[string]bool) {
-	bindList := f.AuthProxy.BindList
+func (proxy *AuthProxy) RemoveAuthBackendExcept(used map[string]bool) {
+	bindList := proxy.BindList
 	var i int
 	for _, bind := range bindList {
 		if used[bind.AuthBackendName] {
@@ -288,12 +329,12 @@ func (f *Frontend) RemoveAuthBackendExcept(used map[string]bool) {
 			i++
 		}
 	}
-	f.AuthProxy.BindList = bindList[:i]
+	proxy.BindList = bindList[:i]
 }
 
 // RemoveAuthBackendByTarget ...
-func (f *Frontend) RemoveAuthBackendByTarget(backends []string) {
-	bindList := f.AuthProxy.BindList
+func (proxy *AuthProxy) RemoveAuthBackendByTarget(backends []string) {
+	bindList := proxy.BindList
 	var i int
 	for _, bind := range bindList {
 		if !hasBackend(backends, bind.Backend.String()) {
@@ -301,7 +342,7 @@ func (f *Frontend) RemoveAuthBackendByTarget(backends []string) {
 			i++
 		}
 	}
-	f.AuthProxy.BindList = bindList[:i]
+	proxy.BindList = bindList[:i]
 }
 
 func hasBackend(backends []string, backend string) bool {

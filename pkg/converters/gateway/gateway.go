@@ -19,6 +19,7 @@ package gateway
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 
@@ -105,8 +106,8 @@ func (c *converter) syncHTTPRoutes(gwtyp client.Object) {
 
 	sortHTTPRoutes(httpRoutesSource)
 	for _, httpRoute := range httpRoutesSource {
-		c.syncRoute(&httpRoute.source, httpRoute.spec.ParentRefs, gwtyp, func(gatewaySource *gatewaySource, sectionName *gatewayv1.SectionName) error {
-			return c.syncHTTPRouteGateway(httpRoute, gatewaySource, sectionName)
+		c.syncRoute(&httpRoute.source, httpRoute.spec.ParentRefs, gwtyp, func(gatewaySource *gatewaySource, sectionName *gatewayv1.SectionName) {
+			c.syncHTTPRouteGateway(httpRoute, gatewaySource, sectionName)
 		})
 	}
 }
@@ -162,8 +163,8 @@ func (c *converter) syncTCPRoutes(gwtyp client.Object) {
 	}
 	sortTCPRoutes(tcpRoutesSource)
 	for _, tcpRoute := range tcpRoutesSource {
-		c.syncRoute(&tcpRoute.source, tcpRoute.spec.ParentRefs, gwtyp, func(gatewaySource *gatewaySource, sectionName *gatewayv1.SectionName) error {
-			return c.syncTCPRouteGateway(tcpRoute, gatewaySource, sectionName)
+		c.syncRoute(&tcpRoute.source, tcpRoute.spec.ParentRefs, gwtyp, func(gatewaySource *gatewaySource, sectionName *gatewayv1.SectionName) {
+			c.syncTCPRouteGateway(tcpRoute, gatewaySource, sectionName)
 		})
 	}
 }
@@ -275,7 +276,7 @@ var (
 	gatewayKind  = gatewayv1.Kind("Gateway")
 )
 
-func (c *converter) syncRoute(routeSource *source, parentRefs []gatewayv1.ParentReference, gwtyp client.Object, syncGateway func(gatewaySource *gatewaySource, sectionName *gatewayv1.SectionName) error) {
+func (c *converter) syncRoute(routeSource *source, parentRefs []gatewayv1.ParentReference, gwtyp client.Object, syncGateway func(gatewaySource *gatewaySource, sectionName *gatewayv1.SectionName)) {
 	for _, parentRef := range parentRefs {
 		parentGroup := gatewayGroup
 		parentKind := gatewayKind
@@ -299,16 +300,16 @@ func (c *converter) syncRoute(routeSource *source, parentRefs []gatewayv1.Parent
 			continue
 		}
 		// TODO implement gateway.Spec.Addresses
-		err := syncGateway(gatewaySource, parentRef.SectionName)
-		if err != nil {
-			c.logger.Warn("cannot attach %s to %s: %s", routeSource, gatewaySource, err)
-		}
+		syncGateway(gatewaySource, parentRef.SectionName)
 	}
 }
 
-func (c *converter) syncHTTPRouteGateway(httpRouteSource *httpRouteSource, gatewaySource *gatewaySource, sectionName *gatewayv1.SectionName) error {
+func (c *converter) syncHTTPRouteGateway(httpRouteSource *httpRouteSource, gatewaySource *gatewaySource, sectionName *gatewayv1.SectionName) {
 	for _, listener := range gatewaySource.spec.Listeners {
 		if sectionName != nil && *sectionName != listener.Name {
+			continue
+		}
+		if !c.checkProtocol(gatewaySource, &httpRouteSource.source, listener, gatewayv1.HTTPProtocolType, gatewayv1.HTTPSProtocolType) {
 			continue
 		}
 		if err := c.checkListenerAllowed(gatewaySource, &httpRouteSource.source, &listener); err != nil {
@@ -329,7 +330,7 @@ func (c *converter) syncHTTPRouteGateway(httpRouteSource *httpRouteSource, gatew
 					backend.ModeTCP = true
 				}
 				hostnames := c.filterHostnames(listener.Hostname, httpRouteSource.spec.Hostnames)
-				hosts, pathLinks := c.createHTTPHosts(&httpRouteSource.source, hostnames, rule.Matches, backend)
+				hosts, pathLinks := c.createHTTPHosts(&httpRouteSource.source, listener, hostnames, rule.Matches, backend)
 				c.applyCertRef(gatewaySource, &listener, hosts)
 				if c.ann != nil {
 					c.ann.ReadAnnotations(backend, services, pathLinks)
@@ -337,12 +338,14 @@ func (c *converter) syncHTTPRouteGateway(httpRouteSource *httpRouteSource, gatew
 			}
 		}
 	}
-	return nil
 }
 
-func (c *converter) syncTCPRouteGateway(tcpRouteSource *tcpRouteSource, gatewaySource *gatewaySource, sectionName *gatewayv1.SectionName) error {
+func (c *converter) syncTCPRouteGateway(tcpRouteSource *tcpRouteSource, gatewaySource *gatewaySource, sectionName *gatewayv1.SectionName) {
 	for _, listener := range gatewaySource.spec.Listeners {
 		if sectionName != nil && *sectionName != listener.Name {
+			continue
+		}
+		if !c.checkProtocol(gatewaySource, &tcpRouteSource.source, listener, gatewayv1.TCPProtocolType) {
 			continue
 		}
 		if err := c.checkListenerAllowed(gatewaySource, &tcpRouteSource.source, &listener); err != nil {
@@ -361,7 +364,18 @@ func (c *converter) syncTCPRouteGateway(tcpRouteSource *tcpRouteSource, gatewayS
 			}
 		}
 	}
-	return nil
+}
+
+func (c *converter) checkProtocol(gatewaySource *gatewaySource, source *source, listener gatewayv1.Listener, proto ...gatewayv1.ProtocolType) bool {
+	if listener.Protocol == "" {
+		c.logger.Warn("missing protocol on %v listener '%s' for %v", gatewaySource, listener.Name, source)
+		return false
+	}
+	if !slices.Contains(proto, listener.Protocol) {
+		c.logger.Warn("invalid protocol on %v listener '%s' for %v: '%s'", gatewaySource, listener.Name, source, listener.Protocol)
+		return false
+	}
+	return true
 }
 
 var errRouteNotAllowed = fmt.Errorf("listener does not allow the route")
@@ -496,7 +510,7 @@ func (c *converter) createBackend(routeSource *source, index string, backendRefs
 	return habackend, svclist
 }
 
-func (c *converter) createHTTPHosts(routeSource *source, hostnames []gatewayv1.Hostname, matches []gatewayv1.HTTPRouteMatch, backend *hatypes.Backend) (hosts []*hatypes.Host, pathLinks []*hatypes.PathLink) {
+func (c *converter) createHTTPHosts(routeSource *source, listener gatewayv1.Listener, hostnames []gatewayv1.Hostname, matches []gatewayv1.HTTPRouteMatch, backend *hatypes.Backend) (hosts []*hatypes.Host, pathLinks []*hatypes.PathLink) {
 	if backend.ModeTCP && len(matches) > 0 {
 		c.logger.Warn("ignoring match from %s: backend is TCP or SSL Passthrough", routeSource)
 		matches = nil
@@ -533,7 +547,7 @@ func (c *converter) createHTTPHosts(routeSource *source, hostnames []gatewayv1.H
 			if hstr == "" || hstr == "*" {
 				hstr = hatypes.DefaultHost
 			}
-			h := c.haproxy.Frontends().Default().AcquireHost(hstr)
+			h := c.haproxy.Frontends().AcquireFrontend(int32(listener.Port), listener.Protocol == gatewayv1.HTTPSProtocolType).AcquireHost(hstr)
 			pathlink := hatypes.CreatePathLink(path, haMatch).WithHTTPHost(h)
 			var haheaders hatypes.HTTPHeaderMatch
 			for _, header := range match.Headers {
@@ -557,7 +571,6 @@ func (c *converter) createHTTPHosts(routeSource *source, hostnames []gatewayv1.H
 			c.tracker.TrackRefName([]convtypes.TrackingRef{
 				{Context: convtypes.ResourceHAHostname, UniqueName: h.Hostname},
 			}, convtypes.ResourceGateway, "gw")
-			h.TLS.UseDefaultCrt = false
 			h.AddLink(backend, pathlink)
 			c.handlePassthrough(path, h, backend, routeSource)
 			hosts = append(hosts, h)
@@ -595,22 +608,25 @@ func (c *converter) handlePassthrough(path string, h *hatypes.Host, b *hatypes.B
 		return
 	}
 	for _, hpath := range h.FindPath("/") {
-		backend := c.haproxy.Backends().FindBackend(hpath.Backend.Namespace, hpath.Backend.Name, hpath.Backend.Port)
-		if backend != nil && !backend.ModeTCP {
+		if hpath.Backend != nil && !hpath.Backend.ModeTCP {
 			// current path has a HTTP backend in the root path of a passthrough
 			// domain, and the current haproxy.Host implementation uses this as the
 			// target HTTPS backend. So we need to:
 			//
 			// 1. copy the backend ID to b.HTTPPassthroughBackend if not configured
-			if h.HTTPPassthroughBackend == "" {
-				if b.ModeTCP {
-					h.HTTPPassthroughBackend = hpath.Backend.ID
-				} else {
-					h.HTTPPassthroughBackend = b.ID
-				}
-			} else {
-				c.logger.Warn("skipping redeclared http root path on %s", routeSource)
-			}
+			//
+			// TODO passthrough mode is broken, move to TLSRoute
+			//
+			//// if h.HTTPPassthroughBackend == "" {
+			//// 	if b.ModeTCP {
+			//// 		h.HTTPPassthroughBackend = hpath.Backend.ID
+			//// 	} else {
+			//// 		h.HTTPPassthroughBackend = b.ID
+			//// 	}
+			//// } else {
+			//// 	c.logger.Warn("skipping redeclared http root path on %s", routeSource)
+			//// }
+			//
 			// and
 			// 2. remove it from the target HTTPS configuration
 			h.RemovePath(hpath)

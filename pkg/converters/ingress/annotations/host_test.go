@@ -21,6 +21,7 @@ import (
 
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,7 +36,7 @@ func TestFrontingProxy(t *testing.T) {
 			},
 			expected: hatypes.Frontend{
 				IsFrontingProxy: true,
-				HTTPBind:        ":8000",
+				Bind:            ":8000",
 			},
 		},
 		"02": {
@@ -44,7 +45,7 @@ func TestFrontingProxy(t *testing.T) {
 			},
 			expected: hatypes.Frontend{
 				IsFrontingProxy: true,
-				HTTPBind:        ":9000",
+				Bind:            ":9000",
 			},
 		},
 		"03": {
@@ -54,7 +55,7 @@ func TestFrontingProxy(t *testing.T) {
 			},
 			expected: hatypes.Frontend{
 				IsFrontingProxy: true,
-				HTTPBind:        ":7000",
+				Bind:            ":7000",
 			},
 		},
 		"04": {
@@ -64,7 +65,7 @@ func TestFrontingProxy(t *testing.T) {
 			},
 			expected: hatypes.Frontend{
 				IsFrontingProxy: true,
-				HTTPBind:        "127.0.0.1:7000",
+				Bind:            "127.0.0.1:7000",
 			},
 		},
 	}
@@ -74,7 +75,7 @@ func TestFrontingProxy(t *testing.T) {
 			c := setup(t)
 			defer c.teardown()
 			d := c.createFrontData(source, test.ann, map[string]string{})
-			c.createUpdater().buildFrontFrontingProxy(d)
+			c.createUpdater().buildHTTPFrontFrontingProxy(d)
 			require.Equal(t, &test.expected, d.front)
 		})
 	}
@@ -83,51 +84,42 @@ func TestFrontingProxy(t *testing.T) {
 func TestFrontendBind(t *testing.T) {
 	testCases := map[string]struct {
 		ann      map[string]string
-		expected hatypes.Frontend
+		expHTTP  hatypes.Frontend
+		expHTTPS hatypes.Frontend
 	}{
 		"01": {
-			ann: map[string]string{},
-			expected: hatypes.Frontend{
-				HTTPBind:  "*:80",
-				HTTPSBind: "*:443",
-			},
+			ann:      map[string]string{},
+			expHTTP:  hatypes.Frontend{Bind: "*:80"},
+			expHTTPS: hatypes.Frontend{Bind: "*:443"},
 		},
 		"02": {
 			ann: map[string]string{
 				ingtypes.FrontBindHTTP: ":80,:8080",
 			},
-			expected: hatypes.Frontend{
-				HTTPBind:  ":80,:8080",
-				HTTPSBind: "*:443",
-			},
+			expHTTP:  hatypes.Frontend{Bind: ":80,:8080"},
+			expHTTPS: hatypes.Frontend{Bind: "*:443"},
 		},
 		"03": {
 			ann: map[string]string{
 				ingtypes.FrontBindHTTPS: ":443,:8443",
 			},
-			expected: hatypes.Frontend{
-				HTTPBind:  "*:80",
-				HTTPSBind: ":443,:8443",
-			},
+			expHTTP:  hatypes.Frontend{Bind: "*:80"},
+			expHTTPS: hatypes.Frontend{Bind: ":443,:8443"},
 		},
 		"04": {
 			ann: map[string]string{
 				ingtypes.FrontBindIPAddrHTTP: "127.0.0.1",
 			},
-			expected: hatypes.Frontend{
-				HTTPBind:  "127.0.0.1:80",
-				HTTPSBind: "127.0.0.1:443",
-			},
+			expHTTP:  hatypes.Frontend{Bind: "127.0.0.1:80"},
+			expHTTPS: hatypes.Frontend{Bind: "127.0.0.1:443"},
 		},
 		"05": {
 			ann: map[string]string{
 				ingtypes.FrontHTTPPort:  "8080",
 				ingtypes.FrontHTTPSPort: "8443",
 			},
-			expected: hatypes.Frontend{
-				HTTPBind:  "*:8080",
-				HTTPSBind: "*:8443",
-			},
+			expHTTP:  hatypes.Frontend{Bind: "*:8080"},
+			expHTTPS: hatypes.Frontend{Bind: "*:8443"},
 		},
 	}
 	source := &Source{Namespace: "default", Name: "ing1", Type: "ingress"}
@@ -141,20 +133,21 @@ func TestFrontendBind(t *testing.T) {
 			c := setup(t)
 			defer c.teardown()
 			d := c.createFrontData(source, test.ann, annDefault)
-			c.createUpdater().buildFrontBind(d)
-			require.Equal(t, &test.expected, d.front)
+			c.createUpdater().buildHTTPFrontBind(d)
+			assert.Equal(t, &test.expHTTP, d.front, "HTTPbind")
+			c.createUpdater().buildHTTPSFrontBind(d)
+			assert.Equal(t, &test.expHTTPS, d.front, "HTTPSbind")
 		})
 	}
 }
 
 func TestBuildHostRedirect(t *testing.T) {
 	testCases := []struct {
-		annPrev    map[string]string
-		ann        map[string]string
-		annDefault map[string]string
-		nopath     bool
-		expected   hatypes.HostRedirectConfig
-		logging    string
+		annPrev  map[string]string
+		ann      map[string]string
+		nopath   bool
+		expected hatypes.HostRedirectConfig
+		logging  string
 	}{
 		// 0
 		{
@@ -178,7 +171,7 @@ func TestBuildHostRedirect(t *testing.T) {
 			ann: map[string]string{
 				ingtypes.HostRedirectFrom: "www.d.local",
 			},
-			logging: `WARN ignoring redirect from 'www.d.local' on ingress 'default/ing1', it's already targeting to 'dprev.local'`,
+			logging: `WARN ignoring redirect from 'www.d.local' port 8080 on ingress 'default/ing1', it's already targeting to 'dprev.local'`,
 		},
 		// 3
 		{
@@ -198,7 +191,7 @@ func TestBuildHostRedirect(t *testing.T) {
 			ann: map[string]string{
 				ingtypes.HostRedirectFromRegex: "[a-z]+\\.d\\.local",
 			},
-			logging: `WARN ignoring regex redirect from '[a-z]+\.d\.local' on ingress 'default/ing1', it's already targeting to 'dprev.local'`,
+			logging: `WARN ignoring regex redirect from '[a-z]+\.d\.local' port 8080 on ingress 'default/ing1', it's already targeting to 'dprev.local'`,
 		},
 		// 5
 		{
@@ -216,7 +209,7 @@ func TestBuildHostRedirect(t *testing.T) {
 			ann: map[string]string{
 				ingtypes.HostRedirectFrom: "*.d.local",
 			},
-			logging: `WARN ignoring redirect from '*.d.local' on ingress 'default/ing1', it's already targeting to 'dprev.local'`,
+			logging: `WARN ignoring redirect from '*.d.local' port 8080 on ingress 'default/ing1', it's already targeting to 'dprev.local'`,
 		},
 		// 7
 		{
@@ -231,17 +224,18 @@ func TestBuildHostRedirect(t *testing.T) {
 	}
 	sprev := &Source{Namespace: "prev", Name: "ingprev", Type: "ingress"}
 	source := &Source{Namespace: "default", Name: "ing1", Type: "ingress"}
+	annDefault := map[string]string{
+		ingtypes.FrontHTTPPort:  "8080",
+		ingtypes.FrontHTTPSPort: "8443",
+	}
 	for i, test := range testCases {
 		c := setup(t)
-		if test.annDefault == nil {
-			test.annDefault = map[string]string{}
-		}
 		b := c.haproxy.Backends().AcquireBackend("default", "d", "8080")
-		dprev := c.createHostData(sprev, test.annPrev, test.annDefault)
-		d := c.createHostData(source, test.ann, test.annDefault)
-		df := c.haproxy.Frontends().Default()
-		dprev.host = df.AcquireHost("dprev.local")
-		d.host = df.AcquireHost("d.local")
+		dprev := c.createHostData(sprev, test.annPrev, annDefault)
+		d := c.createHostData(source, test.ann, annDefault)
+		f := c.haproxy.Frontends().AcquireFrontend(8080, false)
+		dprev.host = f.AcquireHost("dprev.local")
+		d.host = f.AcquireHost("d.local")
 		if !test.nopath {
 			dprev.host.AddPath(b, "/", hatypes.MatchPrefix)
 			d.host.AddPath(b, "/", hatypes.MatchPrefix)

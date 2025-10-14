@@ -31,7 +31,7 @@ func CreateBackends(shardCount int) *Backends {
 	for i := range shards {
 		shards[i] = map[string]*Backend{}
 	}
-	return &Backends{
+	backends := &Backends{
 		items:         map[string]*Backend{},
 		itemsAdd:      map[string]*Backend{},
 		itemsDel:      map[string]*Backend{},
@@ -39,6 +39,8 @@ func CreateBackends(shardCount int) *Backends {
 		shards:        shards,
 		changedShards: map[int]bool{},
 	}
+	backends.DefaultBackend = backends.AcquireNotFoundBackend()
+	return backends
 }
 
 // Items ...
@@ -228,7 +230,7 @@ func (b *Backends) BuildUsedAuthBackends() map[string]bool {
 	usedNames := map[string]bool{}
 	for _, backend := range b.items {
 		for _, path := range backend.Paths {
-			name := path.AuthExternal.AuthBackendName
+			name := path.AuthExtBack.AuthBackendName
 			if name != "" {
 				usedNames[name] = true
 			}
@@ -242,6 +244,7 @@ func (b *Backends) BuildHTTPResponses() (responses []HTTPResponses) {
 	// Cache? Need to handle partial update. Leave it simple? Make at least some performance tests.
 	for _, backend := range b.items {
 		res := &backend.CustomHTTPResponses
+		res.ID = backend.ID
 		if len(res.HAProxy) > 0 || len(res.Lua) > 0 {
 			responses = append(responses, HTTPResponses{
 				ID:      res.ID,
@@ -271,6 +274,32 @@ func (b *Backends) AcquireBackend(namespace, name, port string) *Backend {
 	}
 	b.BackendChanged(backend)
 	return backend
+}
+
+func (b *Backends) HasBackend(name string) bool {
+	switch name {
+	case "_redirect_https":
+		return b.httpsRedir != nil
+	case "_error404":
+		return b.error404 != nil
+	}
+	return false
+}
+
+// AcquireHTTPSRedirectBackend ...
+func (b *Backends) AcquireRedirectHTTPSBackend() *Backend {
+	if b.httpsRedir == nil {
+		b.httpsRedir = createBackend(0, "_redirect_https", "", "") // this is hardcoded in the template, outside the backend list
+	}
+	return b.httpsRedir
+}
+
+// AcquireNotFoundBackend ...
+func (b *Backends) AcquireNotFoundBackend() *Backend {
+	if b.error404 == nil {
+		b.error404 = createBackend(0, "_error404", "", "") // this is also hardcoded in the template
+	}
+	return b.error404
 }
 
 // AcquireAuthBackend ...
@@ -367,5 +396,8 @@ func createBackend(shards int, namespace, name, port string) *Backend {
 }
 
 func buildID(namespace, name, port string) string {
+	if name == "" && port == "" {
+		return namespace
+	}
 	return namespace + "_" + name + "_" + port
 }

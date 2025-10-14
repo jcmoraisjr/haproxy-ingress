@@ -46,6 +46,11 @@ import (
 	types_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/types/helper_test"
 )
 
+const (
+	TestPortHTTP  = 28080
+	TestPortHTTPS = 28443
+)
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *
  *  CORE INGRESS
@@ -896,7 +901,7 @@ func TestPathType(t *testing.T) {
 		ing := c.createIng1Ann("default/echo", "echo.localdomain", "/", "echo:8080", ann)
 		ing.Spec.Rules[0].HTTP.Paths[0].PathType = test.pathType
 		c.Sync(ing)
-		match := c.hconfig.Frontends().Default().AcquireHost("echo.localdomain").FindPath("/", test.expected)
+		match := c.hconfig.Frontends().AcquireFrontend(TestPortHTTP, false).AcquireHost("echo.localdomain").FindPath("/", test.expected)
 		if len(match) == 0 {
 			c.t.Errorf("path type does not match in %d: expected '%s', but wasn't found", i, test.expected)
 		}
@@ -2537,6 +2542,8 @@ func (c *testConfig) createConverter() *converter {
 	defaultConfig := func() map[string]string {
 		return map[string]string{
 			ingtypes.BackInitialWeight: "100",
+			ingtypes.FrontHTTPPort:     strconv.Itoa(TestPortHTTP),
+			ingtypes.FrontHTTPSPort:    strconv.Itoa(TestPortHTTPS),
 		}
 	}
 	return NewIngressConverter(
@@ -2793,17 +2800,29 @@ func (c *testConfig) compareConfigTCPService(expected string) {
 	c.compareText(conv_helper.MarshalTCPServices(c.hconfig.TCPServices().BuildSortedItems()...), expected)
 }
 
+func (c *testConfig) findFrontend() *hatypes.Frontend {
+	if f := c.hconfig.Frontends().FindFrontend(TestPortHTTPS); f != nil {
+		return f
+	}
+	return c.hconfig.Frontends().FindFrontend(TestPortHTTP)
+}
+
 func (c *testConfig) compareConfigFront(expected string) {
-	c.compareText(conv_helper.MarshalHosts(c.hconfig.Frontends().Default().BuildSortedHosts()...), expected)
+	var hosts []*hatypes.Host
+	if f := c.findFrontend(); f != nil {
+		hosts = f.BuildSortedHosts()
+	}
+	c.compareText(conv_helper.MarshalHosts(hosts...), expected)
 }
 
 func (c *testConfig) compareConfigDefaultHost(expected string) {
-	host := c.hconfig.Frontends().Default().DefaultHost()
-	if host != nil {
-		c.compareText(conv_helper.MarshalHost(host), expected)
-	} else {
-		c.compareText("[]", expected)
+	hoststr := "[]"
+	if f := c.findFrontend(); f != nil {
+		if h := f.DefaultHost(); h != nil {
+			hoststr = conv_helper.MarshalHost(h)
+		}
 	}
+	c.compareText(hoststr, expected)
 }
 
 func (c *testConfig) compareConfigBack(expected string) {

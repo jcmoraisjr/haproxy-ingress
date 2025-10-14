@@ -18,6 +18,7 @@ package haproxy
 
 import (
 	"fmt"
+	"path"
 	"reflect"
 	"sort"
 	"strings"
@@ -33,7 +34,7 @@ type Config interface {
 	Frontends() *hatypes.Frontends
 	SyncConfig()
 	WriteTCPServicesMaps() error
-	WriteFrontendMaps() error
+	WriteFrontendsMaps() error
 	WriteBackendMaps() error
 	AcmeData() *hatypes.AcmeData
 	Global() *hatypes.Global
@@ -74,7 +75,7 @@ func createConfig(options options) *config {
 		options:     options,
 		acmeData:    &hatypes.AcmeData{},
 		global:      &hatypes.Global{},
-		frontends:   hatypes.CreateFrontends(),
+		frontends:   &hatypes.Frontends{},
 		backends:    hatypes.CreateBackends(options.shardCount),
 		tcpbackends: hatypes.CreateTCPBackends(),
 		tcpservices: hatypes.CreateTCPServices(),
@@ -91,53 +92,43 @@ func (c *config) Frontends() *hatypes.Frontends {
 // during ingress, services and endpoint parsing, but most of
 // them need to start after all objects are parsed.
 func (c *config) SyncConfig() {
-	df := c.frontends.Default()
-	if df.HasSSLPassthrough() {
-		// using ssl-passthrough config, so need a `mode tcp`
-		// frontend with `inspect-delay` and `req.ssl_sni`
-		bindName := "_https_socket"
-		df.Name = "_front_https__local"
-		df.BindName = bindName
-		df.HTTPSSocket = fmt.Sprintf("unix@%s/var/run/haproxy/%s.sock", c.global.LocalFSPrefix, bindName)
-		df.HTTPSProxy = true
-	} else {
-		// One single HAProxy's frontend and bind
-		df.Name = "_front_https"
-		df.BindName = "_public"
-		df.HTTPSProxy = df.AcceptProxy
+	for _, f := range c.frontends.Items() {
+		c.syncFrontend(f)
 	}
-	for _, host := range df.HostsAdd() {
-		if host.SSLPassthrough {
-			// no action if ssl-passthrough
-			continue
+	c.syncPeers()
+}
+
+func (c *config) syncFrontend(f *hatypes.Frontend) {
+	if f.IsHTTPS {
+		if f.HasSSLPassthrough() {
+			// using ssl-passthrough config, so need a `mode tcp`
+			// frontend with `inspect-delay` and `req.ssl_sni`
+			f.HTTPSSocket = fmt.Sprintf("unix@%s/var/run/haproxy/%s_socket.sock", c.global.LocalFSPrefix, f.Name)
+			f.HTTPSProxy = true
+		} else {
+			// One single HAProxy's frontend and bind
+			f.HTTPSProxy = f.AcceptProxy
 		}
-		if host.HasTLSAuth() {
-			for _, path := range host.Paths {
-				backend := c.backends.FindBackend(path.Backend.Namespace, path.Backend.Name, path.Backend.Port)
-				if backend != nil {
-					backend.TLS.HasTLSAuth = true
-				}
-			}
-		}
-		if c.global.StrictHost && host.FindPath("/", hatypes.MatchBegin) == nil {
-			var back *hatypes.Backend
-			defaultHost := df.DefaultHost()
+	}
+	for _, host := range f.HostsAdd() {
+		if !host.SSLPassthrough && c.global.StrictHost && host.FindPath("/", hatypes.MatchBegin) == nil {
+			back := c.backends.DefaultBackend
+			defaultHost := f.DefaultHost()
 			if defaultHost != nil {
-				if path := defaultHost.FindPath("/"); len(path) > 0 {
-					hback := path[0].Backend
-					back = c.backends.FindBackend(hback.Namespace, hback.Name, hback.Port)
+				path := defaultHost.FindPath("/")
+				if len(path) > 0 {
+					back = path[0].Backend
 				}
 			}
 			if back == nil {
-				// TODO c.defaultBackend can be nil; create a valid
-				// _error404 backend, remove `if nil` from host.AddPath()
-				// and from `for range host.Paths` on map building.
-				back = c.backends.DefaultBackend
+				back = c.backends.AcquireNotFoundBackend()
 			}
 			host.AddPath(back, "/", hatypes.MatchBegin)
 		}
 	}
+}
 
+func (c *config) syncPeers() {
 	peers := &c.global.Peers
 	if len(peers.Servers) > 0 {
 		// aggregating global and backend tables in a way haproxy.tmpl and peers.lua.tmpl can use.
@@ -191,72 +182,84 @@ func (c *config) WriteTCPServicesMaps() error {
 // used in the frontend. Should be called before write the main
 // config file. This func doesn't change model state, except the
 // link to the frontend maps.
-func (c *config) WriteFrontendMaps() error {
-	df := c.frontends.Default()
-	if df.Maps != nil && !df.HostsChanged() {
-		// TODO Maps!=nil just to preserve the current behavior. Check if this can be removed.
-		// hosts are clean, maps are updated
-		return nil
+func (c *config) WriteFrontendsMaps() error {
+	for _, f := range c.frontends.Items() {
+		if f.HTTPMaps == nil || f.HTTPSMaps == nil || f.HostsChanged() {
+			if err := c.writeFrontendMaps(f); err != nil {
+				return err
+			}
+		}
 	}
+	return nil
+}
+
+func (c *config) writeFrontendMaps(f *hatypes.Frontend) error {
+	// This method is being called once per frontend, having distinct calls for HTTP and HTTPS.
+	// TODO Bear with us, we know this is currently not ideal. Work in progress, this is part
+	// of a major refactor that is decoupling the plain HTTP/s model used up to v0.16.
 	mapBuilder := hatypes.CreateMaps(c.global.MatchOrder)
-	mapsDir := c.options.mapsDir
-	fmaps := &hatypes.FrontendMaps{
-		HTTPHostMap:  mapBuilder.AddMap(mapsDir + "/_front_http_host.map"),
-		HTTPSHostMap: mapBuilder.AddMap(mapsDir + "/_front_https_host.map"),
-		//
-		RedirFromRootMap:  mapBuilder.AddMap(mapsDir + "/_front_redir_fromroot.map"),
-		RedirFromMap:      mapBuilder.AddMap(mapsDir + "/_front_redir_from.map"),
-		RedirRootSSLMap:   mapBuilder.AddMap(mapsDir + "/_front_redir_root_ssl.map"),
-		RedirToMap:        mapBuilder.AddMap(mapsDir + "/_front_redir_to.map"),
-		SSLPassthroughMap: mapBuilder.AddMap(mapsDir + "/_front_sslpassthrough.map"),
-		VarNamespaceMap:   mapBuilder.AddMap(mapsDir + "/_front_namespace.map"),
-		//
-		TLSAuthList:           mapBuilder.AddMap(mapsDir + "/_front_tls_auth.list"),
-		TLSNeedCrtList:        mapBuilder.AddMap(mapsDir + "/_front_tls_needcrt.list"),
-		TLSInvalidCrtPagesMap: mapBuilder.AddMap(mapsDir + "/_front_tls_invalidcrt_pages.map"),
-		TLSMissingCrtPagesMap: mapBuilder.AddMap(mapsDir + "/_front_tls_missingcrt_pages.map"),
-		//
-		DefaultHostMap: mapBuilder.AddMap(mapsDir + "/_front_defaulthost.map"),
+	mapsFilenamePrefix := path.Join(c.options.mapsDir, f.Name)
+	commonMaps := hatypes.FrontendCommonMaps{
+		DefaultHostMap:   mapBuilder.AddMap(mapsFilenamePrefix + "_defaulthost.map"),
+		RedirFromRootMap: mapBuilder.AddMap(mapsFilenamePrefix + "_redir_fromroot.map"),
+		RedirFromMap:     mapBuilder.AddMap(mapsFilenamePrefix + "_redir_from.map"),
+		RedirToMap:       mapBuilder.AddMap(mapsFilenamePrefix + "_redir_to.map"),
+		VarNamespaceMap:  mapBuilder.AddMap(mapsFilenamePrefix + "_namespace.map"),
 	}
-	// TODO crtList* to be removed after implement a template to the crt list
-	df.CrtListFile = mapsDir + "/_front_bind_crt.list"
-	var crtListItems []*hatypes.HostsMapEntry
-	crtListItems = append(crtListItems, &hatypes.HostsMapEntry{Key: df.DefaultCrtFile + " !*"})
-	hasVarNamespace := df.HasVarNamespace()
-	defaultHost := df.DefaultHost()
+	var httpMaps *hatypes.FrontendHTTPMaps
+	var httpsMaps *hatypes.FrontendHTTPSMaps
+	if f.IsHTTPS {
+		httpsMaps = &hatypes.FrontendHTTPSMaps{
+			FrontendCommonMaps:    commonMaps,
+			HTTPSHostMap:          mapBuilder.AddMap(mapsFilenamePrefix + "_host.map"),
+			SSLPassthroughMap:     mapBuilder.AddMap(mapsFilenamePrefix + "_sslpassthrough.map"),
+			TLSAuthList:           mapBuilder.AddMap(mapsFilenamePrefix + "_tls_auth.list"),
+			TLSNeedCrtList:        mapBuilder.AddMap(mapsFilenamePrefix + "_tls_needcrt.list"),
+			TLSInvalidCrtPagesMap: mapBuilder.AddMap(mapsFilenamePrefix + "_tls_invalidcrt_pages.map"),
+			TLSMissingCrtPagesMap: mapBuilder.AddMap(mapsFilenamePrefix + "_tls_missingcrt_pages.map"),
+		}
+	} else {
+		httpMaps = &hatypes.FrontendHTTPMaps{
+			FrontendCommonMaps: commonMaps,
+			HTTPHostMap:        mapBuilder.AddMap(mapsFilenamePrefix + "_host.map"),
+			RedirRootSSLMap:    mapBuilder.AddMap(mapsFilenamePrefix + "_redir_root_ssl.map"),
+		}
+	}
+	hasVarNamespace := f.HasVarNamespace()
+	defaultHost := f.DefaultHost()
 	if defaultHost != nil && !defaultHost.SSLPassthrough {
 		for _, path := range defaultHost.Paths {
 			// using DefaultHost ID as hostname, see types.maps.go/buildMapKey()
-			fmaps.DefaultHostMap.AddHostnamePathMapping(hatypes.DefaultHost, path, path.Backend.ID)
+			commonMaps.DefaultHostMap.AddHostnamePathMapping(hatypes.DefaultHost, path, path.Backend.ID)
 		}
 	}
-	for _, host := range df.BuildSortedHosts() {
+	defaultCrtFile := c.frontends.DefaultCrtFile
+	var crtListItems []*hatypes.HostsMapEntry
+	if f.IsHTTPS {
+		// TODO crtList* to be removed after implement a template to the crt list
+		f.CrtListFile = mapsFilenamePrefix + "_bind_crt.list"
+		crtListItems = append(crtListItems, &hatypes.HostsMapEntry{Key: defaultCrtFile + " !*"})
+	}
+	for _, host := range f.BuildSortedHosts() {
 		for _, path := range host.Paths {
-			backendID := path.Backend.ID
 			// IMPLEMENT check if host.Alias.AliasName was already used as a hostname
-			if backendID != "" {
-				if host.SSLPassthrough {
+			if path.Backend != nil {
+				backendID := path.Backend.ID
+				if f.IsHTTPS && host.SSLPassthrough {
 					// no ssl offload, cannot inspect incoming path, so tracking root only
 					if path.Path() == "/" {
-						fmaps.SSLPassthroughMap.AddHostnameMapping(host.Hostname, backendID)
-						// the backend of the root path is the ssl-passthrough, which speaks TLS,
-						// so we cannot use it in the HTTP map. Change to the configured HTTP port
-						// in that server (if declared) or use a redirect otherwise.
-						backendID = host.HTTPPassthroughBackend
-						if backendID == "" {
-							backendID = "_redirect_https"
-						}
+						httpsMaps.SSLPassthroughMap.AddHostnameMapping(host.Hostname, backendID)
 					}
-				} else if host.HasTLS() {
-					// ssl offload in place
-					fmaps.HTTPSHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
-					fmaps.HTTPSHostMap.AddAliasPathMapping(host.Alias, path, backendID)
+				} else if f.IsHTTPS {
+					httpsMaps.HTTPSHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
+					httpsMaps.HTTPSHostMap.AddAliasPathMapping(host.Alias, path, backendID)
+				} else {
+					httpMaps.HTTPHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
+					httpMaps.HTTPHostMap.AddAliasPathMapping(host.Alias, path, backendID)
 				}
-				fmaps.HTTPHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
-				fmaps.HTTPHostMap.AddAliasPathMapping(host.Alias, path, backendID)
 			} else if path.RedirTo != "" {
-				fmaps.RedirToMap.AddHostnamePathMapping(host.Hostname, path, path.RedirTo)
-				fmaps.RedirToMap.AddAliasPathMapping(host.Alias, path, path.RedirTo)
+				commonMaps.RedirToMap.AddHostnamePathMapping(host.Hostname, path, path.RedirTo)
+				commonMaps.RedirToMap.AddAliasPathMapping(host.Alias, path, path.RedirTo)
 			}
 			if hasVarNamespace {
 				// add "-" on missing paths to avoid overlap
@@ -266,30 +269,30 @@ func (c *config) WriteFrontendMaps() error {
 				} else {
 					ns = "-"
 				}
-				fmaps.VarNamespaceMap.AddHostnamePathMapping(host.Hostname, path, ns)
+				commonMaps.VarNamespaceMap.AddHostnamePathMapping(host.Hostname, path, ns)
 			}
 		}
 		if host.SSLPassthrough {
 			continue
 		}
 		if host.Redirect.RedirectHost != "" {
-			fmaps.RedirFromMap.AddHostnameMapping(host.Redirect.RedirectHost, host.Hostname)
+			commonMaps.RedirFromMap.AddHostnameMapping(host.Redirect.RedirectHost, host.Hostname)
 		}
 		if host.Redirect.RedirectHostRegex != "" {
-			fmaps.RedirFromMap.AddHostnameMappingRegex(host.Redirect.RedirectHostRegex, host.Hostname)
+			commonMaps.RedirFromMap.AddHostnameMappingRegex(host.Redirect.RedirectHostRegex, host.Hostname)
 		}
-		if host.HasTLSAuth() {
+		if f.IsHTTPS && host.HasTLSAuth() {
 			if host.TLS.CAVerify != hatypes.CAVerifySkipCheck {
-				fmaps.TLSAuthList.AddHostnameMapping(host.Hostname, "")
+				httpsMaps.TLSAuthList.AddHostnameMapping(host.Hostname, "")
 			}
 			if !host.TLS.CAVerifyOptional() {
-				fmaps.TLSNeedCrtList.AddHostnameMapping(host.Hostname, "")
+				httpsMaps.TLSNeedCrtList.AddHostnameMapping(host.Hostname, "")
 			}
 			page := host.TLS.CAErrorPage
 			if page != "" {
-				fmaps.TLSInvalidCrtPagesMap.AddHostnameMapping(host.Hostname, page)
+				httpsMaps.TLSInvalidCrtPagesMap.AddHostnameMapping(host.Hostname, page)
 				if !host.TLS.CAVerifyOptional() {
-					fmaps.TLSMissingCrtPagesMap.AddHostnameMapping(host.Hostname, page)
+					httpsMaps.TLSMissingCrtPagesMap.AddHostnameMapping(host.Hostname, page)
 				}
 			}
 		}
@@ -301,30 +304,30 @@ func (c *config) WriteFrontendMaps() error {
 			redirectssl := func() bool {
 				redir := c.global.SSL.SSLRedirect
 				for _, path := range host.FindPath("/") {
-					if backend := c.backends.Items()[path.Backend.ID]; backend != nil {
-						if bpath := backend.FindBackendPath(path.Link); bpath != nil {
-							redir = bpath.SSLRedirect
-							if !path.Link.IsComposeMatch() {
-								// give precedence for root path without method, header or cookie matching
-								return redir
-							}
-						}
+					// any root path `/` is fine ...
+					redir = path.SSLRedirect
+					if !path.Link.IsComposeMatch() {
+						// ... but gives precedence for a root path `/` without method, header or cookie matching
+						return redir
 					}
 				}
 				return redir
 			}
-			if redirectssl() {
-				fmaps.RedirRootSSLMap.AddHostnameMapping(host.Hostname, "")
+			if !f.IsHTTPS && redirectssl() {
+				httpMaps.RedirRootSSLMap.AddHostnameMapping(host.Hostname, "")
 			}
-			fmaps.RedirFromRootMap.AddHostnameMapping(host.Hostname, host.RootRedirect)
+			commonMaps.RedirFromRootMap.AddHostnameMapping(host.Hostname, host.RootRedirect)
+		}
+		if !f.IsHTTPS {
+			continue
 		}
 		//
 		tls := host.TLS
 		crtFile := tls.TLSFilename
 		if crtFile == "" {
-			crtFile = df.DefaultCrtFile
+			crtFile = defaultCrtFile
 		}
-		if crtFile != df.DefaultCrtFile ||
+		if crtFile != defaultCrtFile ||
 			tls.ALPN != "" ||
 			tls.CAFilename != "" ||
 			tls.Ciphers != "" ||
@@ -364,13 +367,16 @@ func (c *config) WriteFrontendMaps() error {
 			crtListItems = append(crtListItems, &hatypes.HostsMapEntry{Key: crtListEntry})
 		}
 	}
-	if err := c.options.mapsTemplate.WriteOutput(crtListItems, df.CrtListFile); err != nil {
-		return err
+	if f.IsHTTPS {
+		if err := c.options.mapsTemplate.WriteOutput(crtListItems, f.CrtListFile); err != nil {
+			return err
+		}
 	}
 	if err := writeMaps(mapBuilder, c.options.mapsTemplate); err != nil {
 		return err
 	}
-	df.Maps = fmaps
+	f.HTTPMaps = httpMaps
+	f.HTTPSMaps = httpsMaps
 	return nil
 }
 
@@ -385,32 +391,23 @@ func (c *config) WriteBackendMaps() error {
 		return nil
 	}
 	mapBuilder := hatypes.CreateMaps(c.global.MatchOrder)
-	df := c.frontends.Default()
 	for _, backend := range c.backends.ItemsAdd() {
-		if backend.NeedACL() {
-			mapsPrefix := c.options.mapsDir + "/_back_" + backend.ID
-			pathsMap := mapBuilder.AddMap(mapsPrefix + "_idpath.map")
-			pathsDefaultHostMap := mapBuilder.AddMap(mapsPrefix + "_idpathdef.map")
-			for _, path := range backend.Paths {
-				// IMPLEMENT add HostPath link into the backend path
-				h := df.FindHost(path.Hostname())
-				if h == nil {
-					continue
-				}
-				p := h.FindPathWithLink(path.Link)
-				if p == nil {
-					continue
-				}
-				if path.IsDefaultHost() {
-					// using DefaultHost ID as hostname, see types/maps.go/buildMapKey()
-					pathsDefaultHostMap.AddHostnamePathMapping(hatypes.DefaultHost, p, path.ID)
-				} else {
-					pathsMap.AddHostnamePathMapping(path.Hostname(), p, path.ID)
-				}
-			}
-			backend.PathsMap = pathsMap
-			backend.PathsDefaultHostMap = pathsDefaultHostMap
+		if !backend.NeedACL() {
+			continue
 		}
+		mapsFilenamePrefix := path.Join(c.options.mapsDir, "_back_"+backend.ID)
+		pathsMap := mapBuilder.AddMap(mapsFilenamePrefix + "_idpath.map")
+		pathsDefaultHostMap := mapBuilder.AddMap(mapsFilenamePrefix + "_idpathdef.map")
+		for _, path := range backend.ActivePaths() {
+			if path.IsDefaultHost() {
+				// using DefaultHost ID as hostname, see types/maps.go/buildMapKey()
+				pathsDefaultHostMap.AddHostnamePathMapping(hatypes.DefaultHost, path, path.ID)
+			} else {
+				pathsMap.AddHostnamePathMapping(path.Hostname(), path, path.ID)
+			}
+		}
+		backend.PathsMap = pathsMap
+		backend.PathsDefaultHostMap = pathsDefaultHostMap
 	}
 	return writeMaps(mapBuilder, c.options.mapsTemplate)
 }
@@ -418,8 +415,7 @@ func (c *config) WriteBackendMaps() error {
 func writeMaps(maps *hatypes.HostsMaps, template *template.Config) error {
 	for _, hmap := range maps.Items {
 		for _, matchFile := range hmap.MatchFiles() {
-			filename := matchFile.Filename()
-			if err := template.WriteOutput(matchFile.Values(), filename); err != nil {
+			if err := template.WriteOutput(matchFile.Values(), matchFile.Filename()); err != nil {
 				return err
 			}
 		}
@@ -463,7 +459,7 @@ func (c *config) Clear() {
 }
 
 func (c *config) Shrink() {
-	c.frontends.Default().ShrinkHosts()
+	c.frontends.Shrink()
 	c.backends.Shrink()
 }
 

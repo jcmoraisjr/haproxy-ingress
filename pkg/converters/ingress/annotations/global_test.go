@@ -79,7 +79,7 @@ func TestAuthProxy(t *testing.T) {
 			ingtypes.GlobalAuthProxy: test.input,
 		})
 		c.createUpdater().buildGlobalAuthProxy(d)
-		c.compareObjects("bind", i, c.haproxy.Frontends().Default().AuthProxy, test.expected)
+		c.compareObjects("bind", i, c.haproxy.Frontends().AuthProxy, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}

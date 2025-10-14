@@ -53,7 +53,6 @@ type (
 		RootRedirect string  `yaml:",omitempty"`
 		TLS          tlsMock `yaml:",omitempty"`
 		Passthrough  bool    `yaml:",omitempty"`
-		HTTPPassBack string  `yaml:",omitempty"`
 	}
 	pathMock struct {
 		Path      string
@@ -155,7 +154,6 @@ func marshalHosts(hafronts ...*hatypes.Host) []hostMock {
 			RootRedirect: f.RootRedirect,
 			TLS:          tlsMock{TLSFilename: f.TLS.TLSFilename},
 			Passthrough:  f.SSLPassthrough,
-			HTTPPassBack: f.HTTPPassthroughBackend,
 		})
 	}
 	return hosts
