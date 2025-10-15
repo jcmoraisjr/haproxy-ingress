@@ -2427,26 +2427,39 @@ func TestSyncAnnPassthrough(t *testing.T) {
 			}),
 	)
 
-	c.compareConfigFront(`
+	c.compareConfigFrontPort(TestPortHTTP, `
 - hostname: echo1.example.com
   paths:
   - path: /app
     backend: default_echo_8080
   - path: /
+    backend: default_echo_8080
+- hostname: echo2.example.com
+  paths:
+  - path: /
+    backend: _redirect_https
+`)
+	c.compareConfigFrontPort(TestPortHTTPS, `
+- hostname: echo1.example.com
+  paths:
+  - path: /
     backend: default_echo_8443
+  passthrough: true
 - hostname: echo2.example.com
   paths:
   - path: /
     backend: default_echo_8443
+  passthrough: true
 `)
 
-	c.compareConfigDefaultHost(`
+	c.compareConfigDefaultHostPort(TestPortHTTP, `
 hostname: <default>
 paths:
 - path: /
   backend: default_echo_8443
 rootredirect: /login
 `)
+	c.compareConfigDefaultHostPort(TestPortHTTPS, `[]`)
 
 	c.compareConfigBack(`
 - id: default_echo_8080
@@ -2457,6 +2470,7 @@ rootredirect: /login
   endpoints:
   - ip: 172.17.1.101
     port: 8443
+  modetcp: true
 - id: system_default_8080
   endpoints:
   - ip: 172.17.0.99
@@ -2815,9 +2829,27 @@ func (c *testConfig) compareConfigFront(expected string) {
 	c.compareText(conv_helper.MarshalHosts(hosts...), expected)
 }
 
+func (c *testConfig) compareConfigFrontPort(port int32, expected string) {
+	var hosts []*hatypes.Host
+	if f := c.hconfig.Frontends().FindFrontend(port); f != nil {
+		hosts = f.BuildSortedHosts()
+	}
+	c.compareText(conv_helper.MarshalHosts(hosts...), expected)
+}
+
 func (c *testConfig) compareConfigDefaultHost(expected string) {
 	hoststr := "[]"
 	if f := c.findFrontend(); f != nil {
+		if h := f.DefaultHost(); h != nil {
+			hoststr = conv_helper.MarshalHost(h)
+		}
+	}
+	c.compareText(hoststr, expected)
+}
+
+func (c *testConfig) compareConfigDefaultHostPort(port int32, expected string) {
+	hoststr := "[]"
+	if f := c.hconfig.Frontends().FindFrontend(port); f != nil {
 		if h := f.DefaultHost(); h != nil {
 			hoststr = conv_helper.MarshalHost(h)
 		}

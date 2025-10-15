@@ -19,6 +19,7 @@ package types
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 )
 
@@ -154,6 +155,18 @@ func (f *Frontend) RemoveAllHosts(hostnames []string) {
 		if item, found := f.hosts[hostname]; found {
 			f.hostsDel[hostname] = item
 			delete(f.hosts, hostname)
+		}
+	}
+}
+
+func (f *Frontend) RemoveAllLinks(pathlinks ...*PathLink) {
+	for _, link := range pathlinks {
+		h := f.AcquireHost(link.hostname)
+		if h != nil {
+			h.Paths = slices.DeleteFunc(h.Paths, func(p *Path) bool { return p.Link.Equals(link) })
+		}
+		if len(h.Paths) == 0 {
+			f.RemoveAllHosts([]string{link.hostname})
 		}
 	}
 }

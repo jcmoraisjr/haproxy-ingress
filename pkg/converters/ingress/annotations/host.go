@@ -175,29 +175,6 @@ func (c *updater) buildHostRedirect(d *hostData) {
 	redirOnPort(d.mapper.Get(ingtypes.FrontHTTPSPort).Int32())
 }
 
-func (c *updater) buildHostSSLPassthrough(d *hostData) {
-	sslpassthrough := d.mapper.Get(ingtypes.HostSSLPassthrough)
-	if !sslpassthrough.Bool() {
-		return
-	}
-	rootPaths := d.host.FindPath("/")
-	if len(rootPaths) == 0 {
-		c.logger.Warn("skipping SSL of %s: root path was not configured", sslpassthrough.Source)
-		return
-	}
-	backend := rootPaths[0].Backend
-	sslpassHTTPPort := d.mapper.Get(ingtypes.HostSSLPassthroughHTTPPort)
-	if sslpassHTTPPort.Source != nil {
-		httpBackend := c.haproxy.Backends().FindBackend(backend.Namespace, backend.Name, sslpassHTTPPort.Value)
-		if httpBackend != nil {
-			// d.host.HTTPPassthroughBackend = httpBackend.ID
-			d.host.Alias.AliasName = ""
-		}
-	}
-	backend.ModeTCP = true
-	d.host.SSLPassthrough = true
-}
-
 func (c *updater) buildHostTLSConfig(d *hostData) {
 	if cfg := d.mapper.Get(ingtypes.HostSSLCiphers); cfg.Source != nil {
 		d.host.TLS.Ciphers = cfg.Value

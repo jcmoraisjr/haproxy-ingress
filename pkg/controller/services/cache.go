@@ -73,6 +73,7 @@ var errGatewayA2Disabled = fmt.Errorf("gateway API v1alpha2 wasn't initialized")
 var errGatewayB1Disabled = fmt.Errorf("gateway API v1beta1 wasn't initialized")
 var errGatewayV1Disabled = fmt.Errorf("gateway API v1 wasn't initialized")
 var errTCPRouteA2Disabled = fmt.Errorf("TCPRoute API v1alpha2 wasn't initialized")
+var errTLSRouteA2Disabled = fmt.Errorf("TLSRoute API v1alpha2 wasn't initialized")
 
 func (c *c) get(key string, obj client.Object) error {
 	ns, n, err := cache.SplitMetaNamespaceKey(key)
@@ -396,6 +397,22 @@ func (c *c) GetTCPRouteList() ([]*gatewayv1alpha2.TCPRoute, error) {
 		return nil, err
 	}
 	rlist := make([]*gatewayv1alpha2.TCPRoute, len(list.Items))
+	for i := range list.Items {
+		rlist[i] = &list.Items[i]
+	}
+	return rlist, nil
+}
+
+func (c *c) GetTLSRouteList() ([]*gatewayv1alpha2.TLSRoute, error) {
+	if !c.config.HasTLSRouteA2 {
+		return nil, errTLSRouteA2Disabled
+	}
+	list := gatewayv1alpha2.TLSRouteList{}
+	err := c.client.List(c.ctx, &list)
+	if err != nil {
+		return nil, err
+	}
+	rlist := make([]*gatewayv1alpha2.TLSRoute, len(list.Items))
 	for i := range list.Items {
 		rlist[i] = &list.Items[i]
 	}

@@ -302,6 +302,7 @@ type TCPServices struct {
 
 // TCPServicePort ...
 type TCPServicePort struct {
+	svc          *TCPServices
 	port         int
 	hosts        map[string]*TCPServiceHost
 	defaultHost  *TCPServiceHost

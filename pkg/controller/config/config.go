@@ -213,10 +213,11 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		configLog.Info("watching for Gateway API resources - --watch-gateway is true")
 	}
 
-	var hasGatewayV1, hasGatewayB1, hasGatewayA2, hasTCPRouteA2 bool
+	var hasGatewayV1, hasGatewayB1, hasGatewayA2, hasTCPRouteA2, hasTLSRouteA2 bool
 	if opt.WatchGateway {
 		gwapis := []string{"gatewayclass", "gateway", "httproute"}
 		tcpapis := []string{"tcproute"}
+		tlsapis := []string{"tlsroute"}
 
 		gwV1 := configHasAPI(clientGateway.Discovery(), gatewayv1.GroupVersion, gwapis...)
 		if gwV1 {
@@ -243,10 +244,16 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 			configLog.Info("found custom resource definition for TCPRoute API v1alpha2")
 		}
 
-		// TODO: cannot enable TCPRoute without Gateway and GatewayClass, but currently HTTPRoute
-		// discovery is coupled and its CRD should be installed as well, even if not used.
+		tlsA2 := configHasAPI(clientGateway.Discovery(), gatewayv1alpha2.GroupVersion, tlsapis...)
+		if tlsA2 {
+			configLog.Info("found custom resource definition for TLSRoute API v1alpha2")
+		}
+
+		// TODO: cannot enable TCPRoute or TLSRoute without Gateway and GatewayClass, but currently
+		// HTTPRoute discovery is coupled and its CRD should be installed as well, even if not used.
 		// We should use a distinct flag for HTTPRoute.
 		hasTCPRouteA2 = tcpA2 && gw
+		hasTLSRouteA2 = tlsA2 && gw
 	}
 
 	if opt.EnableEndpointSlicesAPI {
@@ -508,6 +515,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		HasGatewayB1:             hasGatewayB1,
 		HasGatewayV1:             hasGatewayV1,
 		HasTCPRouteA2:            hasTCPRouteA2,
+		HasTLSRouteA2:            hasTLSRouteA2,
 		HealthzAddr:              healthz,
 		HealthzURL:               opt.HealthzURL,
 		IngressClass:             opt.IngressClass,
@@ -764,6 +772,7 @@ type Config struct {
 	HasGatewayB1             bool
 	HasGatewayV1             bool
 	HasTCPRouteA2            bool
+	HasTLSRouteA2            bool
 	HealthzAddr              string
 	HealthzURL               string
 	IngressClass             string

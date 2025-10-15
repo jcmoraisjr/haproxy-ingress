@@ -261,7 +261,6 @@ func (c *updater) UpdateHostConfig(host *hatypes.Host, mapper *Mapper) {
 	c.buildHostAuthExternal(d)
 	c.buildHostCertSigner(d)
 	c.buildHostRedirect(d)
-	c.buildHostSSLPassthrough(d)
 	c.buildHostCustomResponses(d)
 	if host.IsHTTPS() {
 		c.buildHostAuthTLS(d)

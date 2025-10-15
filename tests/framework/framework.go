@@ -305,13 +305,16 @@ func (*framework) Request(ctx context.Context, t *testing.T, method, host, path 
 	var res *http.Response
 	switch {
 	case opt.ExpectResponseCode > 0:
-		require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		// assert the correct response code ...
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 			res, err = cli.Do(req)
 			if !assert.NoError(collect, err) {
 				return
 			}
 			assert.Equal(collect, opt.ExpectResponseCode, res.StatusCode)
 		}, 5*time.Second, time.Second)
+		// ... but requires that no request error happened.
+		require.NoError(t, err)
 	case opt.ExpectError != "":
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
 			_, err := cli.Do(req)
@@ -412,19 +415,20 @@ metadata:
   namespace: default
 spec:
   ports:
-  - port: 9999 ## meaningless, just need to match ingress' one
+  - name: port1
+    port: 9999 ## meaningless, just need to match ingress' one
     targetPort: 0
 `
 	name := RandomName("svc")
-
-	// we don't have real pods, so we don't have eps along with the service,
-	// so we need to create them manually.
-	_ = f.CreateEndpointSlice(ctx, t, name, serverPort)
 
 	svc := f.CreateObject(t, data).(*corev1.Service)
 	svc.Name = name
 	svc.Spec.Ports[0].TargetPort = intstr.IntOrString{IntVal: serverPort}
 	opt.Apply(svc)
+
+	// we don't have real pods, so we don't have eps along with the service,
+	// so we need to create them manually.
+	_ = f.CreateEndpointSlice(ctx, t, svc)
 
 	t.Logf("creating service %s/%s\n", svc.Namespace, svc.Name)
 
@@ -441,7 +445,7 @@ spec:
 	return svc
 }
 
-func (f *framework) CreateEndpointSlice(ctx context.Context, t *testing.T, svcname string, serverPort int32) *discoveryv1.EndpointSlice {
+func (f *framework) CreateEndpointSlice(ctx context.Context, t *testing.T, svc *corev1.Service) *discoveryv1.EndpointSlice {
 	data := `
 kind: EndpointSlice
 apiVersion: discovery.k8s.io/v1
@@ -457,14 +461,18 @@ metadata:
   labels: {}
   generateName: ""
   namespace: default
-ports:
-- port: 0
+ports: []
 `
 
 	eps := f.CreateObject(t, data).(*discoveryv1.EndpointSlice)
-	eps.GenerateName = svcname + "-"
-	eps.Labels["kubernetes.io/service-name"] = svcname
-	eps.Ports[0].Port = &serverPort
+	eps.GenerateName = svc.Name + "-"
+	eps.Labels["kubernetes.io/service-name"] = svc.Name
+	for _, svcport := range svc.Spec.Ports {
+		eps.Ports = append(eps.Ports, discoveryv1.EndpointPort{
+			Name: &svcport.Name,
+			Port: &svcport.TargetPort.IntVal,
+		})
+	}
 
 	t.Logf("creating endpointslice %s/%s\n", eps.Namespace, eps.Name)
 
@@ -628,11 +636,28 @@ spec:
 	spec := reflect.ValueOf(gw).Elem().FieldByName("Spec").Addr().Interface().(*gatewayv1.GatewaySpec)
 	spec.GatewayClassName = gatewayv1.ObjectName(gc.Name)
 	for _, l := range opt.Listeners {
-		spec.Listeners = append(spec.Listeners, gatewayv1.Listener{
-			Name:     gatewayv1.SectionName(l.Name),
-			Protocol: gatewayv1.ProtocolType(l.Proto),
-			Port:     gatewayv1.PortNumber(l.Port),
-		})
+		listener := gatewayv1.Listener{
+			Name:     l.Name,
+			Protocol: l.Proto,
+			Port:     l.Port,
+		}
+		var mode gatewayv1.TLSModeType
+		switch listener.Protocol {
+		case gatewayv1.HTTPSProtocolType:
+			mode = gatewayv1.TLSModeTerminate
+		case gatewayv1.TLSProtocolType:
+			mode = gatewayv1.TLSModePassthrough
+			if len(l.Certs) > 0 {
+				mode = gatewayv1.TLSModeTerminate
+			}
+		}
+		if mode != "" {
+			listener.TLS = &gatewayv1.GatewayTLSConfig{
+				Mode:            &mode,
+				CertificateRefs: l.Certs,
+			}
+		}
+		spec.Listeners = append(spec.Listeners, listener)
 	}
 	opt.Apply(gw)
 
@@ -688,7 +713,12 @@ spec:
       port: 0
 `, api)
 	name := RandomName("httproute")
-	hostname := name + ".local"
+	var hostname string
+	if opt.CustomHostName != nil {
+		hostname = *opt.CustomHostName
+	} else {
+		hostname = name + ".local"
+	}
 
 	route := f.CreateObject(t, data)
 	route.SetName(name)
@@ -714,6 +744,59 @@ spec:
 		assert.NoError(t, client.IgnoreNotFound(err))
 	})
 	return route, hostname
+}
+
+func (f *framework) CreateTLSRouteA2(ctx context.Context, t *testing.T, gw *gatewayv1.Gateway, svc *corev1.Service, o ...options.Object) *gatewayv1alpha2.TLSRoute {
+	route := f.CreateTLSRoute(ctx, t, gatewayv1alpha2.GroupVersion.Version, gw, svc, o...)
+	return route.(*gatewayv1alpha2.TLSRoute)
+}
+
+func (f *framework) CreateTLSRoute(ctx context.Context, t *testing.T, version string, gw *gatewayv1.Gateway, svc *corev1.Service, o ...options.Object) client.Object {
+	opt := options.ParseObjectOptions(o...)
+	api := v1.GroupVersion{Group: gatewayv1.GroupName, Version: version}.String()
+	data := fmt.Sprintf(`
+apiVersion: %s
+kind: TLSRoute
+metadata:
+  name: ""
+  namespace: default
+spec:
+  parentRefs:
+  - name: ""
+  rules:
+  - backendRefs:
+    - name: ""
+      port: 0
+`, api)
+	name := RandomName("tlsroute")
+
+	route := f.CreateObject(t, data)
+	route.SetName(name)
+	spec := reflect.ValueOf(route).Elem().FieldByName("Spec").Addr().Interface().(*gatewayv1alpha2.TLSRouteSpec)
+	if opt.CustomHostName != nil {
+		spec.Hostnames = []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(*opt.CustomHostName)}
+	}
+	spec.ParentRefs[0].Name = gatewayv1.ObjectName(gw.Name)
+	spec.Rules[0].BackendRefs[0].Name = gatewayv1.ObjectName(svc.Name)
+	spec.Rules[0].BackendRefs[0].Port = (*gatewayv1.PortNumber)(&svc.Spec.Ports[0].Port)
+	opt.Apply(route)
+
+	t.Logf("creating TLSRoute %s/%s\n", route.GetNamespace(), route.GetName())
+
+	err := f.cli.Create(ctx, route)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		route := unstructured.Unstructured{}
+		route.SetAPIVersion(api)
+		route.SetKind("TLSRoute")
+		route.SetNamespace("default")
+		route.SetName(name)
+		err := f.cli.Delete(ctx, &route)
+		assert.NoError(t, client.IgnoreNotFound(err))
+	})
+	return route
+
 }
 
 func (f *framework) CreateTCPRouteA2(ctx context.Context, t *testing.T, gw *gatewayv1.Gateway, svc *corev1.Service, o ...options.Object) *gatewayv1alpha2.TCPRoute {

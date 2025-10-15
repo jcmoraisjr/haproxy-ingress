@@ -107,6 +107,7 @@ func (c *config) syncFrontend(f *hatypes.Frontend) {
 			f.HTTPSProxy = true
 		} else {
 			// One single HAProxy's frontend and bind
+			f.HTTPSSocket = ""
 			f.HTTPSProxy = f.AcceptProxy
 		}
 	}

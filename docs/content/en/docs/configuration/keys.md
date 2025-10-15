@@ -2782,7 +2782,7 @@ Up to v0.12, `ssl-passthrough` supports only root `/` path. Since v0.13, non roo
 {{< /alert >}}
 
 * `ssl-passthrough`: Enable SSL passthrough if defined as `true`. The backend is then expected to SSL offload the incoming traffic. The default value is `false`, which means HAProxy should do the SSL handshake.
-* `ssl-passthrough-http-port`: Optional HTTP port number of the backend. If defined, connections to the HAProxy's HTTP port, defaults to `80`, is sent to the configured port number of the backend, which expects to speak plain HTTP. If not defined, connections to the HTTP port will redirect the client to HTTPS.
+* `ssl-passthrough-http-port`: Optional HTTP port number of the ssl-passthrough backend. If defined, connections to the HAProxy's HTTP port, defaults to `80`, is sent to the configured port number of the backend, which expects to speak plain HTTP. If not defined, connections to the HTTP port will redirect the client to HTTPS. Note that this configuration only applies to the root path, since any non root path under ssl-passthrough configuration is already configured under the plain HTTP frontend.
 
 Hostnames configured as `ssl-passthrough` configures HAProxy in the following way:
 

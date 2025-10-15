@@ -32,18 +32,16 @@ func CreateTCPServices() *TCPServices {
 // AcquireTCPService ...
 func (s *TCPServices) AcquireTCPService(service string) (*TCPServicePort, *TCPServiceHost) {
 	hostname, port := splitService(service)
-	tcpPort := s.acquireTCPPort(port)
-	tcpHost, found := tcpPort.acquireHost(tcpPort, hostname)
-	if !found {
-		s.changed = true
-	}
+	tcpPort := s.AcquireTCPPort(port)
+	tcpHost := tcpPort.AcquireTLSHost(hostname)
 	return tcpPort, tcpHost
 }
 
-func (s *TCPServices) acquireTCPPort(port int) *TCPServicePort {
+func (s *TCPServices) AcquireTCPPort(port int) *TCPServicePort {
 	tcpPort, found := s.items[port]
 	if !found {
 		tcpPort = &TCPServicePort{
+			svc:   s,
 			port:  port,
 			hosts: make(map[string]*TCPServiceHost),
 			TLS:   make(map[string]*TCPServiceTLSConfig),
@@ -120,6 +118,12 @@ func (s *TCPServices) RemoveAll(services []string) {
 	}
 }
 
+func (s *TCPServices) RemoveAllLinks(pathlinks ...*PathLink) {
+	for _, link := range pathlinks {
+		s.RemoveService(link.hostname)
+	}
+}
+
 // Changed ...
 func (s *TCPServices) Changed() bool {
 	return s.changed
@@ -134,20 +138,25 @@ func (s *TCPServicePort) isEmpty() bool {
 	return s.defaultHost == nil && len(s.hosts) == 0
 }
 
-func (s *TCPServicePort) acquireHost(tcpport *TCPServicePort, hostname string) (tcpHost *TCPServiceHost, found bool) {
+func (s *TCPServicePort) AcquireDefaultHost() *TCPServiceHost {
+	return s.AcquireTLSHost(DefaultHost)
+}
+
+func (s *TCPServicePort) AcquireTLSHost(hostname string) *TCPServiceHost {
 	if hostname == DefaultHost && s.defaultHost != nil {
-		return s.defaultHost, true
+		return s.defaultHost
 	}
-	tcpHost, found = s.hosts[hostname]
+	tcpHost, found := s.hosts[hostname]
 	if !found {
-		tcpHost = &TCPServiceHost{tcpport: tcpport, hostname: hostname}
+		tcpHost = &TCPServiceHost{tcpport: s, hostname: hostname}
 		if hostname == DefaultHost {
 			s.defaultHost = tcpHost
 		} else {
 			s.hosts[hostname] = tcpHost
 		}
+		s.svc.changed = true
 	}
-	return tcpHost, found
+	return tcpHost
 }
 
 // Port ...

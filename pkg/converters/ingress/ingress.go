@@ -533,12 +533,33 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 				c.logger.Warn("skipping backend config of %v: %v", source, err)
 				continue
 			}
-			host.AddLink(backend, pathLink)
-			sslpasshttpport := annHost[ingtypes.HostSSLPassthroughHTTPPort]
-			if sslpassthrough && sslpasshttpport != "" {
-				if _, err := c.addBackend(source, pathLink, fullSvcName, sslpasshttpport, annBack); err != nil {
-					c.logger.Warn("skipping http port config of ssl-passthrough on %v: %v", source, err)
+			if sslpassthrough {
+				// TODO missing a better abstraction for ssl-passthrough handling
+				host := f.AcquireHostHTTPS(hostname)
+				host.innerHTTPS.SSLPassthrough = true
+				if uri == "/" {
+					// regular passthrough configuration
+					backend.ModeTCP = true
+					host.innerHTTPS.AddLink(backend, pathLink)
+					var hback *hatypes.Backend
+					if hport := annHost[ingtypes.HostSSLPassthroughHTTPPort]; hport != "" {
+						hback, err = c.addBackend(source, pathLink, fullSvcName, hport, annBack)
+						if err != nil {
+							c.logger.Warn("skipping http port config of ssl-passthrough on %v: %v", source, err)
+							hback = nil
+						}
+					}
+					if hback == nil {
+						hback = c.haproxy.Backends().AcquireRedirectHTTPSBackend()
+					}
+					host.inner.AddLink(hback, pathLink)
+				} else {
+					// non root path, configure it on HTTP only
+					host.inner.AddLink(backend, pathLink)
 				}
+			} else {
+				// regular http/s request, non ssl-passthrough
+				host.AddLink(backend, pathLink)
 			}
 			// pre-building the auth-url backend
 			// TODO move to updater.buildBackendAuthExternal()
