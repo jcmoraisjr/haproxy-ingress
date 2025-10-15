@@ -22,11 +22,10 @@ Updates made to the cluster are applied on the fly to the HAProxy instance.
 
 | HAProxy Ingress                                      | Embedded<br/>HAProxy | Supported<br/>Kubernetes | External<br/>HAProxy (*) |
 |------------------------------------------------------|----------------------|--------------------------|--------------------------|
-| [`v0.16`](CHANGELOG/CHANGELOG-v0.16.md) (alpha)      | `2.8`                | `1.21+`                  | `2.4+`                   |
-| [`v0.15`](CHANGELOG/CHANGELOG-v0.15.md) (beta)       | `2.6`                | `1.21+`                  | `2.2+`                   |
-| [`v0.14`](CHANGELOG/CHANGELOG-v0.14.md) **(latest)** | `2.4`                | `1.19+`                  | `2.2+`                   |
-| [`v0.13`](CHANGELOG/CHANGELOG-v0.13.md)              | `2.3` up to `v0.13.10`<br/>`2.4` on `v0.13.11`+   | `1.19+`   | `2.2+`     |
-| [`v0.12`](CHANGELOG/CHANGELOG-v0.12.md) (critical fixes)  | `2.2`           | `1.18` - `1.21`          | `2.0+`                   |
+| [`v0.16`](CHANGELOG/CHANGELOG-v0.16.md) (beta)       | `2.8`                | `1.21+`                  | `2.4+`                   |
+| [`v0.15`](CHANGELOG/CHANGELOG-v0.15.md) **(latest)** | `2.6`                | `1.21+`                  | `2.2+`                   |
+| [`v0.14`](CHANGELOG/CHANGELOG-v0.14.md)              | `2.4`                | `1.19+`                  | `2.2+`                   |
+| [`v0.13`](CHANGELOG/CHANGELOG-v0.13.md) (critical fixes) | `2.3` up to `v0.13.10`<br/>`2.4` on `v0.13.11`+   | `1.19+`   | `2.2+`     |
 
 * Beta quality versions (`beta` / `canary` tags) has some new, but battle tested features, usually running on some of our production clusters
 * Development versions (`alpha` / `snapshot` tags) has major changes with few tests, usually not recommended for production
