@@ -4,6 +4,11 @@
 * [Upgrade notes - read before upgrade from v0.15!](#upgrade-notes)
   * [Deprecated command-line options](#deprecated-command-line-options)
 * [Contributors](#contributors)
+* [v0.16.0-beta.1](#v0160-beta1)
+  * [Reference](#reference-b1)
+  * [Release notes](#release-notes-b1)
+  * [Improvements](#improvements-b1)
+  * [Fixes](#fixes-b1)
 * [v0.16.0-alpha.2](#v0160-alpha2)
   * [Reference](#reference-a2)
   * [Release notes](#release-notes-a2)
@@ -39,6 +44,45 @@ The `--enable-endpointslices-api` command-line option was deprecated on v0.16 an
 * Gerald Barker ([gezb](https://github.com/gezb))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
 * Till! ([till](https://github.com/till))
+
+# v0.16.0-beta.1
+
+## Reference (b1)
+
+* Release date: `2025-10-15`
+* Helm chart: `--version 0.16.0-beta.1 --devel`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.16.0-beta.1`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.16.0-beta.1`
+* Embedded HAProxy version: `2.8.16`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.16.0-beta.1`
+
+## Release notes (b1)
+
+This is the first beta version of the v0.16 branch. It updates the embedded haproxy version, which fixes CVE-2025-11230, see HAProxy release notes https://www.mail-archive.com/haproxy@formilux.org/msg46190.html . Other issues were also found and fixed:
+
+- Artyom found the fronting-proxy configuration overwriting the `X-Forwarded-Proto` header when both the fronting proxy and the regular HTTP shares the same TCP port number.
+- Lua response was broken if more than one custom response need to be handled to the same HTTP response code.
+
+Changes in dependencies:
+
+- embedded haproxy from 2.8.15 to 2.8.16
+- controller-runtime from v0.22.1 to v0.22.3
+- go from 1.25.1 to 1.25.3
+
+## Improvements (b1)
+
+New features and improvements since `v0.16.0-alpha.2`:
+
+* Bump sigs.k8s.io/controller-runtime from 0.22.1 to 0.22.2 [#1309](https://github.com/jcmoraisjr/haproxy-ingress/pull/1309) (dependabot[bot])
+* update dependencies [0613cc5](https://github.com/jcmoraisjr/haproxy-ingress/commit/0613cc5a2317bf44e84f2df783db682a5ece7890) (Joao Morais)
+* Bump sigs.k8s.io/controller-runtime from 0.22.2 to 0.22.3 [#1312](https://github.com/jcmoraisjr/haproxy-ingress/pull/1312) (dependabot[bot])
+* update go from 1.25.1 to 1.25.3 [1826091](https://github.com/jcmoraisjr/haproxy-ingress/commit/18260913e2fdc77ce15a19309ab4ef08458208f1) (Joao Morais)
+* update embedded haproxy from 2.8.15 to 2.8.16 [d6c28b4](https://github.com/jcmoraisjr/haproxy-ingress/commit/d6c28b4966a738aa1b42000e8ba93092d36a5ef7) (Joao Morais)
+
+## Fixes (b1)
+
+* fix xfp header on fronting proxy shared port [#1310](https://github.com/jcmoraisjr/haproxy-ingress/pull/1310) (jcmoraisjr)
+* fix lua http response having two or more options [#1311](https://github.com/jcmoraisjr/haproxy-ingress/pull/1311) (jcmoraisjr)
 
 # v0.16.0-alpha.2
 
