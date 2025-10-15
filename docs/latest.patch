@@ -10,7 +10,7 @@
 -  - version: "Latest"
 -    url: "/docs"
 -  - version: "v0.15"
-+  - version: "v0.16 (alpha)"
++  - version: "v0.16 (beta)"
 +    url: "/v0.16/docs"
 +  - version: "v0.15 (latest)"
      url: "/v0.15/docs"
