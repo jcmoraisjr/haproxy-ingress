@@ -6,6 +6,10 @@
   * [Upgrading with embedded Acme](#upgrading-with-embedded-acme)
   * [Upgrading with custom repositories](#upgrading-with-custom-repositories)
 * [Contributors](#contributors)
+* [v0.15.0](#v0150)
+  * [Reference](#reference-r0)
+  * [Release notes](#release-notes-r0)
+  * [Fixes and improvements](#fixes-and-improvements-r0)
 * [v0.15.0-beta.2](#v0150-beta2)
   * [Reference](#reference-b2)
   * [Release notes](#release-notes-b2)
@@ -53,6 +57,7 @@ Breaking backward compatibility from v0.14:
 * Helm chart has now a distinct field for the registry of an image, which should impact charts that configure custom repositories. See [Upgrading with custom repositories](#upgrading-with-custom-repositories) below for the details.
 * Log debug level is enabled by default. HAProxy Ingress has a good balance between low verbosity and useful information on its debug level.
 * EndpointSlices API is enabled by default, anticipating the deprecation of Endpoints API since Kubernetes 1.33.
+* Due to EndpointSlices API enabled by default, the minimal supported Kubernetes version is 1.21 in the default configuration.
 * Default image for the log sidecar changed from `whereisaaron/kube-syslog-sidecar` to `ghcr.io/crisu1710/kube-syslog-sidecar:0.2.0`. It is the same codebase, just adding support for multiple architectures.
 
 ### New controller engine
@@ -131,6 +136,41 @@ See the full syntax and default values in the [README.md](https://github.com/hap
 * RT ([hedgieinsocks](https://github.com/hedgieinsocks))
 * tomklapka ([tomklapka](https://github.com/tomklapka))
 * Tomasz Zurkowski ([doriath](https://github.com/doriath))
+
+# v0.15.0
+
+## Reference (r0)
+
+* Release date: `2025-10-15`
+* Helm chart: `--version 0.15.0`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.15.0`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.15.0`
+* Embedded HAProxy version: `2.6.23`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.15.0`
+
+## Release notes (r0)
+
+This is the first stable release of the v0.15 branch. See above the [major improvements](#major-improvements) and [breaking changes](#upgrade-notes) regarding changes from the `v0.14` version.
+
+From `v0.15.0-beta.2`, this release updates the embedded haproxy version, which fixes CVE-2025-11230, see HAProxy release notes https://www.mail-archive.com/haproxy@formilux.org/msg46189.html . Other issues were also found and fixed:
+
+- Chitoku found a regression on some certificate related annotations not working with the `file://` protocol, after implementing global support on those annotations.
+- Artyom found the fronting-proxy configuration overwriting the `X-Forwarded-Proto` header when both the fronting proxy and the regular HTTP shares the same TCP port number.
+
+Dependencies:
+
+- embedded haproxy from 2.6.22 to 2.6.23
+- go from 1.23.12 to 1.24.7
+
+## Fixes and improvements (r0)
+
+New fixes and improvements since `v0.15.0-beta.2`:
+
+* fix reading backend ca certificate from file [#1297](https://github.com/jcmoraisjr/haproxy-ingress/pull/1297) (jcmoraisjr)
+* fix xfp header on fronting proxy shared port [#1310](https://github.com/jcmoraisjr/haproxy-ingress/pull/1310) (jcmoraisjr)
+* update dependencies [a97f3c3](https://github.com/jcmoraisjr/haproxy-ingress/commit/a97f3c34c5b25aace579d9162957bc5e5d61a2c0) (Joao Morais)
+* update haproxy from 2.6.22 to 2.6.23 [27cda7c](https://github.com/jcmoraisjr/haproxy-ingress/commit/27cda7c8f23f6734cf2ee7f7a4aa65cfebab2bdc) (Joao Morais)
+* update go from 1.23.12 to 1.24.7 [266cbba](https://github.com/jcmoraisjr/haproxy-ingress/commit/266cbba2000ae7d99d6e5221dd63490757e32a81) (Joao Morais)
 
 # v0.15.0-beta.2
 
