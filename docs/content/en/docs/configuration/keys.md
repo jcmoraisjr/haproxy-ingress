@@ -235,290 +235,283 @@ fast with HAProxy Ingress.
 
 ## Scope
 
-HAProxy Ingress configuration keys may be in one of five distinct scopes:
-`Global`, `Host`, `Backend`, `Path`, `TCP`. A scope defines where a configuration
-key can be declared and how it interacts with Ingress and Service resources.
+HAProxy Ingress configuration keys may be in one of six distinct scopes: `Global`, `Frontend`, `Host`, `Backend`, `Path`, `TCP`. A scope defines where a configuration key value is applied in the HAProxy configuration, described in the sections below.
 
-Configuration keys declared in `Ingress` resources might conflict. More about
-the scenarios in the `Host`, `Backend` and `TCP` scopes below. A warning will
-be logged in the case of a conflict, and the used value will be of the Ingress
-resource that was created first.
+Configuration keys declared in `Ingress` resources might conflict in the case the same `Frontend` ports, `Host` hostname, `Backend` service, or the `TCP` port number is used on distinct ingress resources, and those ingress resources configure the same key with distinct values. In the case this happens, a warning will be logged and the used value will be of the Ingress resource that was created first.
 
 ### Global
 
-Defines configuration keys that apply for all hostnames and backend
-services, and should be declared only in the Global config ConfigMap
-resource. Configuration keys of the Global scope declared as Ingress
-or Service annotations, and also in the IngressClass ConfigMap are
-ignored. Configuration keys of the Global scope never conflict.
+Configuration keys from this scope are global for the whole HAProxy instance, and it is usually configured in the global area of the configuration file.
+
+The only way to configure global scoped keys are via the global config ConfigMap resource. They are ignored if declared elsewhere. Since these keys cannot be configured via Ingress resources, they will also never conflict.
+
+### Frontend
+
+Configuration keys from this scope are applied per HAProxy frontend, so it is always related with the current `http-port` and `https-port` values, which will indicate the correct frontend receiving the configuration. Distinct frontends can receive distinct values from keys of this scope.
+
+Frontend scoped keys can be declared in global or IngressClass related ConfigMaps as default values, or in any Ingress resource for a more granular configuration. They can conflict since they can be configured via Ingress resource.
+
+When a frontend scoped key is used as an annotation, they should always be configured along with both `http-port` and `https-port`, and those ports should have a distinct value from the global one, otherwise the global and frontend scoped configurations will conflict.
 
 ### Host
 
-Defines configuration keys that bind to the hostname. Configuration
-keys of the host scope can be declared in any ConfigMap, or in any Ingress
-resource. A conflict happens when the same host configuration key with
-distinct values are declared in distinct Ingress resources but to the same
-hostname.
+Configuration keys from the host scope are applied per hostname, which is more a Kubernetes API and HAProxy Ingress concept than a HAProxy one. Distinct hostnames can receive distinct values from keys of this scope.
+
+Host scoped keys can be declared in global or IngressClass related ConfigMaps as default values, or in any Ingress resource for a more granular configuration. They can conflict since they can be configured via Ingress resource.
 
 ### Backend
 
-Defines configuration keys that bind to the Service resource, which
-is converted to a HAProxy backend after the configuration parsing. Configuration
-keys of the backend scope can be declared in any ConfigMap or as Ingress or Service
-annotation. A conflict happens when the same backend configuration key with distinct
-values are declared in distinct Ingress resources but to the same Service or HAProxy
-backend.
+Configuration keys from this scope are applied per HAProxy backend, which has an one-to-one relationship with the Kubernetes Service when configured via Ingress API. So, distinct referenced services can receive distinct values from keys of this scope.
+
+Backend scoped keys can be declared in global or IngressClass related ConfigMaps as default values, or in any Ingress or Service resources for a more granular configuration. They can conflict when configured via Ingress, and will never conflict when configured via Service. In the case of a conflict between a Service and an Ingress, the Service configuration is used.
 
 ### Path
 
-Defines configuration keys that bind to the hostname and the HTTP path.
-Configuration keys of the Path scope can be declared in any ConfigMap as a default
-value, or as Ingress or Service annotation. Configuration keys of the Path scope
-never conflict.
+Configuration keys from this scope are applied per a combination of the hostname and the HTTP path. Just like the `Host` scope, it is more a Kubernetes API and HAProxy Ingress concept than a HAProxy one. Distinct combinations of hostname and path can receive distinct values from keys of this scope.
+
+Path scoped keys can be declared in global or IngressClass related ConfigMaps as default values, or in any Ingress or Service resource for a more granular configuration. They can only conflict in the case the same key is configured both in an Ingress and the Service it points to. They will never conflict if configured exclusively via Ingress, since the same path, with the same match type, under the same hostname cannot be configured more than once. If this happens, HAProxy Ingress will reject the path declaration instead of conflict the configuration key value.
 
 ### TCP
 
-Defines configuration keys that bind on the port number of a TCP service.
-Configuration keys of the TCP scope can be declared in any ConfigMap as a default
-value, or as Ingress annotation. A conflict happens when the same TCP configuration
-key with distinct values are declared in distinct Ingress resources but to the same
-TCP port number.
+Keys from this scope are applied per configured TCP port, assigned via the `tcp-service-port`. Every distinct TCP port creates a distinct HAProxy frontend, so distinct TCP port numbers, consequently their frontends, can receive distinct values from keys of this scope.
+
+TCP scoped keys can be declared in global or IngressClass related ConfigMaps as default values, or in any Ingress resource for a more granular configuration. They can conflict since they can be configured via Ingress resource.
 
 ## Keys
 
 The table below describes all supported configuration keys.
 
-| Configuration key                                    | Data type                               | Scope   | Default value      |
-|------------------------------------------------------|-----------------------------------------|---------|--------------------|
-| [`acme-emails`](#acme)                               | email1,email2,...                       | Global  |                    |
-| [`acme-endpoint`](#acme)                             | [`v2-staging`\|`v2`\|`endpoint`]        | Global  |                    |
-| [`acme-expiring`](#acme)                             | number of days                          | Global  | `30`               |
-| [`acme-preferred-chain`](#acme)                      | CN (Common Name) of the issuer          | Host    |                    |
-| [`acme-shared`](#acme)                               | [true\|false]                           | Global  | `false`            |
-| [`acme-terms-agreed`](#acme)                         | [true\|false]                           | Global  | `false`            |
-| [`affinity`](#affinity)                              | affinity type                           | Backend |                    |
-| [`agent-check-addr`](#agent-check)                   | address for agent checks                | Backend |                    |
-| [`agent-check-interval`](#agent-check)               | time with suffix                        | Backend |                    |
-| [`agent-check-port`](#agent-check)                   | backend agent listen port               | Backend |                    |
-| [`agent-check-send`](#agent-check)                   | string to send upon agent connection    | Backend |                    |
-| [`allowlist-source-range`](#allowlist)               | Comma-separated IPs or CIDRs            | Path    |                    |
-| [`allowlist-source-header`](#allowlist)              | Header name that will be used as a src  | Path    |                    |
-| [`app-root`](#app-root)                              | /url                                    | Host    |                    |
-| [`assign-backend-server-id`](#backend-server-id)     | [true\|false]                           | Backend | `false`            |
-| [`auth-external-placement`](#auth-external)          | [backend\|frontend]                     | Path    | `backend`          |
-| [`auth-headers-fail`](#auth-external)                | `<header>,...`                          | Path    | `*`                |
-| [`auth-headers-request`](#auth-external)             | `<header>,...`                          | Path    | `*`                |
-| [`auth-headers-succeed`](#auth-external)             | `<header>,...`                          | Path    | `*`                |
-| [`auth-log-format`](#log-format)                     | http log format for auth external       | Global  | do not log         |
-| [`auth-method`](#auth-external)                      | http request method                     | Path    | `GET`              |
-| [`auth-proxy`](#auth-external)                       | frontend name and tcp port interval     | Global  | `_front__auth:14415-14499` |
-| [`auth-realm`](#auth-basic)                          | realm string                            | Path    |                    |
-| [`auth-secret`](#auth-basic)                         | secret name                             | Path    |                    |
-| [`auth-signin`](#auth-external)                      | Sign in URL                             | Path    |                    |
-| [`auth-tls-cert-header`](#auth-tls)                  | [true\|false]                           | Backend |                    |
-| [`auth-tls-error-page`](#auth-tls)                   | url                                     | Host    |                    |
-| [`auth-tls-secret`](#auth-tls)                       | namespace/secret name                   | Host    |                    |
-| [`auth-tls-strict`](#auth-tls)                       | [true\|false]                           | Host    |                    |
-| [`auth-tls-verify-client`](#auth-tls)                | [off\|optional\|on\|optional_no_ca]     | Host    |                    |
-| [`auth-url`](#auth-external)                         | Authentication URL                      | Path    |                    |
-| [`backend-check-interval`](#health-check)            | time with suffix                        | Backend | `2s`               |
-| [`backend-protocol`](#backend-protocol)              | [h1\|h2\|h1-ssl\|h2-ssl]                | Backend | `h1`               |
-| [`backend-server-naming`](#backend-server-naming)    | [sequence\|ip\|pod]                     | Backend | `sequence`         |
-| [`backend-server-slots-increment`](#dynamic-scaling) | number of slots                         | Backend | `1`                |
-| [`balance-algorithm`](#balance-algorithm)            | algorithm name                          | Backend | `random(2)`        |
-| [`bind-fronting-proxy`](#bind)                       | ip + port                               | Global  |                    |
-| [`bind-http`](#bind)                                 | ip + port                               | Global  |                    |
-| [`bind-https`](#bind)                                | ip + port                               | Global  |                    |
-| [`bind-ip-addr-healthz`](#bind-ip-addr)              | IP address                              | Global  |                    |
-| [`bind-ip-addr-http`](#bind-ip-addr)                 | IP address                              | Global  |                    |
-| [`bind-ip-addr-prometheus`](#bind-ip-addr)           | IP address                              | Global  |                    |
-| [`bind-ip-addr-stats`](#bind-ip-addr)                | IP address                              | Global  |                    |
-| [`bind-ip-addr-tcp`](#bind-ip-addr)                  | IP address                              | Global  |                    |
-| [`blue-green-balance`](#blue-green)                  | label=value=weight,...                  | Backend |                    |
-| [`blue-green-cookie`](#blue-green)                   | `CookieName:LabelName` pair             | Backend |                    |
-| [`blue-green-deploy`](#blue-green)                   | label=value=weight,...                  | Backend |                    |
-| [`blue-green-header`](#blue-green)                   | `HeaderName:LabelName` pair             | Backend |                    |
-| [`blue-green-mode`](#blue-green)                     | [pod\|deploy]                           | Backend |                    |
-| [`cert-signer`](#acme)                               | "acme"                                  | Host    |                    |
-| [`close-sessions-duration`](#close-sessions-duration) | time with suffix or percentage         | Global  | leave sessions open |
-| [`config-backend`](#configuration-snippet)           | multiline backend config                | Backend |                    |
-| [`config-defaults`](#configuration-snippet)          | multiline config for the defaults section | Global |                   |
-| [`config-frontend`](#configuration-snippet)          | multiline HTTP and HTTPS frontend config | Global | |
-| [`config-frontend-early`](#configuration-snippet)    | multiline HTTP and HTTPS frontend config, applied before any builtin logic | Global  |                   |
-| [`config-frontend-late`](#configuration-snippet)     | multiline HTTP and HTTPS frontend config, same as `config-frontend` | Global  |                   |
-| [`config-global`](#configuration-snippet)            | multiline config for the global section | Global  |                    |
-| [`config-peers`](#configuration-snippet)             | multiline config for the peers section  | Global  |                    |
-| [`config-proxy`](#configuration-snippet)             | multiline config for any proxy          | Global  |                    |
-| [`config-sections`](#configuration-snippet)          | multiline custom sections declaration   | Global  |                    |
-| [`config-tcp`](#configuration-snippet)               | multiline ConfigMap based TCP config    | Global  |                    |
-| [`config-tcp-service`](#configuration-snippet)       | multiline TCP service config            | TCP     |                    |
-| [`cookie-key`](#affinity)                            | secret key                              | Global  | `Ingress`          |
-| [`cors-allow-credentials`](#cors)                    | [true\|false]                           | Path    |                    |
-| [`cors-allow-headers`](#cors)                        | headers list                            | Path    |                    |
-| [`cors-allow-methods`](#cors)                        | methods list                            | Path    |                    |
-| [`cors-allow-origin`](#cors)                         | URL                                     | Path    |                    |
-| [`cors-allow-origin-regex`](#cors)                   | regex                                   | Path    |                    |
-| [`cors-enable`](#cors)                               | [true\|false]                           | Path    |                    |
-| [`cors-expose-headers`](#cors)                       | headers                                 | Path    |                    |
-| [`cors-max-age`](#cors)                              | time (seconds)                          | Path    |                    |
-| [`cpu-map`](#cpu-map)                                | haproxy CPU Map format                  | Global  |                    |
-| [`cross-namespace-secrets-ca`](#cross-namespace)     | [allow\|deny]                           | Global  | `deny`             |
-| [`cross-namespace-secrets-crt`](#cross-namespace)    | [allow\|deny]                           | Global  | `deny`             |
-| [`cross-namespace-secrets-passwd`](#cross-namespace) | [allow\|deny]                           | Global  | `deny`             |
-| [`cross-namespace-services`](#cross-namespace)       | [allow\|deny]                           | Global  | `deny`             |
-| [`default-backend-redirect`](#default-redirect)      | Location                                | Global  |                    |
-| [`default-backend-redirect-code`](#default-redirect) | HTTP status code                        | Global  | `302`              |
-| [`denylist-source-range`](#allowlist)                | Comma-separated IPs or CIDRs            | Path    |                    |
-| [`dns-accepted-payload-size`](#dns-resolvers)        | number                                  | Global  | `8192`             |
-| [`dns-cluster-domain`](#dns-resolvers)               | cluster name                            | Global  | `cluster.local`    |
-| [`dns-hold-obsolete`](#dns-resolvers)                | time with suffix                        | Global  | `0s`               |
-| [`dns-hold-valid`](#dns-resolvers)                   | time with suffix                        | Global  | `1s`               |
-| [`dns-resolvers`](#dns-resolvers)                    | multiline resolver=ip[:port]            | Global  |                    |
-| [`dns-timeout-retry`](#dns-resolvers)                | time with suffix                        | Global  | `1s`               |
-| [`drain-support`](#drain-support)                    | [true\|false]                           | Global  | `false`            |
-| [`drain-support-redispatch`](#drain-support)         | [true\|false]                           | Global  | `true`             |
-| [`dynamic-scaling`](#dynamic-scaling)                | [true\|false]                           | Backend | `true`             |
-| [`external-has-lua`](#external)                      | [true\|false]                           | Global  | `false`            |
-| [`fcgi-app`](#fastcgi)                               | fcgi-app section name                   | Backend |                    |
-| [`fcgi-enabled-apps`](#fastcgi)                      | comma-separated list of names           | Global  | `*`                |
-| [`forwardfor`](#forwardfor)                          | [add\|ignore\|ifmissing]                | Global  | `add`              |
-| [`fronting-proxy-port`](#fronting-proxy-port)        | port number                             | Global  | 0 (do not listen)  |
-| [`groupname`](#security)                             | haproxy group name                      | Global  | `haproxy`          |
-| [`headers`](#headers)                                | multiline header:value pair             | Backend |                    |
-| [`health-check-addr`](#health-check)                 | address for health checks               | Backend |                    |
-| [`health-check-fall-count`](#health-check)           | number of failures                      | Backend |                    |
-| [`health-check-interval`](#health-check)             | time with suffix                        | Backend |                    |
-| [`health-check-port`](#health-check)                 | port for health checks                  | Backend |                    |
-| [`health-check-rise-count`](#health-check)           | number of successes                     | Backend |                    |
-| [`health-check-uri`](#health-check)                  | uri for http health checks              | Backend |                    |
-| [`healthz-port`](#bind-port)                         | port number                             | Global  | `10253`            |
-| [`hsts`](#hsts)                                      | [true\|false]                           | Path    | `true`             |
-| [`hsts-include-subdomains`](#hsts)                   | [true\|false]                           | Path    | `false`            |
-| [`hsts-max-age`](#hsts)                              | number of seconds                       | Path    | `15768000`         |
-| [`hsts-preload`](#hsts)                              | [true\|false]                           | Path    | `false`            |
-| [`http-header-match`](#http-match)                   | header name and value, exact match      | Path    |                    |
-| [`http-header-match-regex`](#http-match)             | header name and value, regex match      | Path    |                    |
-| [`http-log-format`](#log-format)                     | http log format                         | Global  | HAProxy default log format |
-| [`http-port`](#bind-port)                            | port number                             | Global  | `80`               |
-| [`http-response-<code>`](#http-response)             | response output                         | vary    |                    |
-| [`http-response-prometheus-root`](#http-response)    | response output                         | Global  |                    |
-| [`https-log-format`](#log-format)                    | https(tcp) log format\|`default`        | Global  | do not log         |
-| [`https-port`](#bind-port)                           | port number                             | Global  | `443`              |
-| [`https-to-http-port`](#fronting-proxy-port)         | port number                             | Global  | 0 (do not listen)  |
-| [`initial-weight`](#initial-weight)                  | weight value                            | Backend | `1`                |
-| [`limit-connections`](#limit)                        | qty                                     | Backend |                    |
-| [`limit-rps`](#limit)                                | rate per second                         | Backend |                    |
-| [`limit-whitelist`](#limit)                          | cidr list                               | Backend |                    |
-| [`load-server-state`](#load-server-state) (experimental) |[true\|false]                        | Global  | `false`            |
-| [`master-exit-on-failure`](#master-worker)           | [true\|false]                           | Global  | `true`             |
-| [`max-connections`](#connection)                     | number                                  | Global  | `2000`             |
-| [`maxconn-server`](#connection)                      | qty                                     | Backend |                    |
-| [`maxqueue-server`](#connection)                     | qty                                     | Backend |                    |
-| [`modsecurity-args`](#modsecurity)                   | space-separated list of strings         | Global  | `unique-id method path query req.ver req.hdrs_bin req.body_size req.body` |
-| [`modsecurity-endpoints`](#modsecurity)              | comma-separated list of IP:port (spoa)  | Global  | no waf config      |
-| [`modsecurity-timeout-hello`](#modsecurity)          | time with suffix                        | Global  | `100ms`            |
-| [`modsecurity-timeout-idle`](#modsecurity)           | time with suffix                        | Global  | `30s`              |
-| [`modsecurity-timeout-processing`](#modsecurity)     | time with suffix                        | Global  | `1s`               |
-| [`modsecurity-use-coraza`](#modsecurity)             | [true\|false]                           | Global  | `false`               |
-| [`nbproc-ssl`](#nbproc)                              | number of process                       | Global  | `0`                |
-| [`nbthread`](#nbthread)                              | number of threads                       | Global  |                    |
-| [`no-redirect-locations`](#redirect)                 | comma-separated list of URIs            | Global  | `/.well-known/acme-challenge` |
-| [`no-tls-redirect-locations`](#ssl-redirect)         | comma-separated list of URIs            | Global  | `/.well-known/acme-challenge` |
-| [`oauth`](#oauth)                                    | "oauth2_proxy"                          | Path    |                    |
-| [`oauth-headers`](#oauth)                            | `<header>:<var>,...`                    | Path    |                    |
-| [`oauth-uri-prefix`](#oauth)                         | URI prefix                              | Path    |                    |
-| [`original-forwarded-for-hdr`](#forwardfor)          | header name                             | Global  | `X-Original-Forwarded-For` |
-| [`path-type`](#path-type)                            | path matching type                      | Path    | `begin`            |
-| [`path-type-order`](#path-type)                      | comma-separated path type list          | Global  | `exact,prefix,begin,regex` |
-| [`peers-name`](#peers)                               | peers section name                      | Global  | `ingress`          |
-| [`peers-port`](#peers)                               | port number                             | Global  |                    |
-| [`peers-table`](#peers)                              | stick-table declaration                 | Backend |                    |
-| [`peers-table-global`](#peers)                       | stick-table declaration                 | Global  |                    |
-| [`prometheus-port`](#bind-port)                      | port number                             | Global  |                    |
-| [`proxy-body-size`](#proxy-body-size)                | size (bytes)                            | Path    | unlimited          |
-| [`proxy-protocol`](#proxy-protocol)                  | [v1\|v2\|v2-ssl\|v2-ssl-cn]             | Backend |                    |
-| [`real-ip-hdr`](#forwardfor)                         | header name                             | Global  | `X-Real-IP`        |
-| [`redirect-from`](#redirect)                         | domain name                             | Host    |                    |
-| [`redirect-from-code`](#redirect)                    | http status code                        | Global  | `302`              |
-| [`redirect-from-regex`](#redirect)                   | regex                                   | Host    |                    |
-| [`redirect-to`](#redirect)                           | fully qualified URL                     | Path    |                    |
-| [`redirect-to-code`](#redirect)                      | http status code                        | Global  | `302`              |
-| [`rewrite-target`](#rewrite-target)                  | path string                             | Path    |                    |
-| [`secure-backends`](#secure-backend)                 | [true\|false]                           | Backend |                    |
-| [`secure-crt-secret`](#secure-backend)               | secret name                             | Backend |                    |
-| [`secure-sni`](#secure-backend)                      | [`sni`\|`host`\|`<hostname>`]           | Backend |                    |
-| [`secure-verify-ca-secret`](#secure-backend)         | secret name                             | Backend |                    |
-| [`secure-verify-hostname`](#secure-backend)          | hostname                                | Backend |                    |
-| [`server-alias`](#server-alias)                      | domain name                             | Host    |                    |
-| [`server-alias-regex`](#server-alias)                | regex                                   | Host    |                    |
-| [`service-upstream`](#service-upstream)              | [true\|false]                           | Backend | `false`            |
-| [`session-cookie-domain`](#affinity)                 | domain name                             | Backend |                    |
-| [`session-cookie-dynamic`](#affinity)                | [true\|false]                           | Backend |                    |
-| [`session-cookie-keywords`](#affinity)               | cookie options                          | Backend | `indirect nocache httponly`     |
-| [`session-cookie-name`](#affinity)                   | cookie name                             | Backend |                    |
-| [`session-cookie-preserve`](#affinity)               | [true\|false]                           | Backend | `false`            |
-| [`session-cookie-shared`](#affinity)                 | [true\|false]                           | Backend | `false`            |
-| [`session-cookie-strategy`](#affinity)               | [insert\|prefix\|rewrite]               | Backend |                    |
-| [`session-cookie-value-strategy`](#affinity)         | [server-name\|pod-uid]                  | Backend | `server-name`      |
-| [`slots-min-free`](#dynamic-scaling)                 | minimum number of free slots            | Backend | `0`                |
-| [`source-address-intf`](#source-address-intf)        | `<intf1>[,<intf2>...]`                  | Backend |                    |
-| [`ssl-always-add-https`](#ssl-always-add-https)      | [true\|false]                           | Host    | `false`            |
-| [`ssl-always-follow-redirect`](#ssl-always-add-https) | [true\|false]                          | Host    | `true`             |
-| [`ssl-cipher-suites`](#ssl-ciphers)                  | colon-separated list                    | Host    | [see description](#ssl-ciphers) |
-| [`ssl-cipher-suites-backend`](#ssl-ciphers)          | colon-separated list                    | Backend | [see description](#ssl-ciphers) |
-| [`ssl-ciphers`](#ssl-ciphers)                        | colon-separated list                    | Host    | [see description](#ssl-ciphers) |
-| [`ssl-ciphers-backend`](#ssl-ciphers)                | colon-separated list                    | Backend | [see description](#ssl-ciphers) |
-| [`ssl-dh-default-max-size`](#ssl-dh)                 | number                                  | Global  | `1024`             |
-| [`ssl-dh-param`](#ssl-dh)                            | namespace/secret name                   | Global  | no custom DH param |
-| [`ssl-engine`](#ssl-engine)                          | OpenSSL engine name and parameters      | Global  | no engine set      |
-| [`ssl-fingerprint-lower`](#auth-tls)                 | [true\|false]                           | Backend | `false`            |
-| [`ssl-fingerprint-sha2-bits`](#auth-tls)             | Bits of the SHA-2 fingerprint           | Backend |                    |
-| [`ssl-headers-prefix`](#auth-tls)                    | prefix                                  | Global  | `X-SSL`            |
-| [`ssl-mode-async`](#ssl-engine)                      | [true\|false]                           | Global  | `false`            |
-| [`ssl-options`](#ssl-options)                        | space-separated list                    | Global  | [see description](#ssl-options) |
-| [`ssl-options-backend`](#ssl-options)                | space-separated list                    | Backend | [see description](#ssl-options) |
-| [`ssl-options-host`](#ssl-options)                   | space-separated list                    | Host    | [see description](#ssl-options) |
-| [`ssl-passthrough`](#ssl-passthrough)                | [true\|false]                           | Host    |                    |
-| [`ssl-passthrough-http-port`](#ssl-passthrough)      | backend port                            | Host    |                    |
-| [`ssl-redirect`](#ssl-redirect)                      | [true\|false]                           | Path    | `true`             |
-| [`ssl-redirect-code`](#ssl-redirect)                 | http status code                        | Global  | `302`              |
-| [`stats-auth`](#stats)                               | user:passwd                             | Global  | no auth            |
-| [`stats-port`](#stats)                               | port number                             | Global  | `1936`             |
-| [`stats-proxy-protocol`](#stats)                     | [true\|false]                           | Global  | `false`            |
-| [`stats-ssl-cert`](#stats)                           | namespace/secret name                   | Global  | no ssl/plain http  |
-| [`strict-host`](#strict-host)                        | [true\|false]                           | Global  | `false`            |
-| [`syslog-endpoint`](#syslog)                         | IP:port (udp)                           | Global  | do not log         |
-| [`syslog-format`](#syslog)                           | rfc5424\|rfc3164                        | Global  | `rfc5424`          |
-| [`syslog-length`](#syslog)                           | maximum length                          | Global  | `1024`             |
-| [`syslog-tag`](#syslog)                              | syslog tag field string                 | Global  | `ingress`          |
-| [`tcp-log-format`](#log-format)                      | ConfigMap based TCP log format          | Global  |                    |
-| [`tcp-service-log-format`](#log-format)              | TCP service log format                  | TCP     | HAProxy default log format |
-| [`tcp-service-port`](#tcp-services)                  | TCP service port number                 | TCP     |                    |
-| [`tcp-service-proxy-protocol`](#proxy-protocol)      | [true\|false]                           | TCP     | `false`            |
-| [`timeout-client`](#timeout)                         | time with suffix                        | Global  | `50s`              |
-| [`timeout-client-fin`](#timeout)                     | time with suffix                        | Global  | `50s`              |
-| [`timeout-connect`](#timeout)                        | time with suffix                        | Backend | `5s`               |
-| [`timeout-http-request`](#timeout)                   | time with suffix                        | Backend | `5s`               |
-| [`timeout-keep-alive`](#timeout)                     | time with suffix                        | Backend | `1m`               |
-| [`timeout-queue`](#timeout)                          | time with suffix                        | Backend | `5s`               |
-| [`timeout-server`](#timeout)                         | time with suffix                        | Backend | `50s`              |
-| [`timeout-server-fin`](#timeout)                     | time with suffix                        | Backend | `50s`              |
-| [`timeout-stop`](#timeout)                           | time with suffix                        | Global  | `10m`              |
-| [`timeout-tunnel`](#timeout)                         | time with suffix                        | Backend | `1h`               |
-| [`tls-alpn`](#tls-alpn)                              | TLS ALPN advertisement                  | Host    | `h2,http/1.1`      |
-| [`use-chroot`](#security)                            | [true\|false]                           | Global  | `false`            |
-| [`use-cpu-map`](#cpu-map)                            | [true\|false]                           | Global  | `true`             |
-| [`use-forwarded-proto`](#fronting-proxy-port)        | [true\|false]                           | Global  | `true`             |
-| [`use-haproxy-user`](#security)                      | [true\|false]                           | Global  | `false`            |
-| [`use-htx`](#use-htx)                                | [true\|false]                           | Global  | `false`            |
-| [`use-proxy-protocol`](#proxy-protocol)              | [true\|false]                           | Global  | `false`            |
-| [`use-resolver`](#dns-resolvers)                     | resolver name                           | Backend |                    |
-| [`username`](#security)                              | haproxy user name                       | Global  | `haproxy`          |
-| [`var-namespace`](#var-namespace)                    | [true\|false]                           | Host    | `false`            |
-| [`waf`](#waf)                                        | "modsecurity"                           | Path    |                    |
-| [`waf-mode`](#waf)                                   | [deny\|detect]                          | Path    | `deny` (if waf is set) |
-| [`whitelist-source-range`](#allowlist)               | Comma-separated IPs or CIDRs            | Path    |                    |
-| [`worker-max-reloads`](#master-worker)               | number of reloads                       | Global  | `0`                |
+| Configuration key                                    | Data type                               | Scope    | Default value                    |
+|------------------------------------------------------|-----------------------------------------|----------|----------------------------------|
+| [`acme-emails`](#acme)                               | email1,email2,...                       | Global   |                                  |
+| [`acme-endpoint`](#acme)                             | [`v2-staging`\|`v2`\|`endpoint`]        | Global   |                                  |
+| [`acme-expiring`](#acme)                             | number of days                          | Global   | `30`                             |
+| [`acme-preferred-chain`](#acme)                      | CN (Common Name) of the issuer          | Host     |                                  |
+| [`acme-shared`](#acme)                               | [true\|false]                           | Global   | `false`                          |
+| [`acme-terms-agreed`](#acme)                         | [true\|false]                           | Global   | `false`                          |
+| [`affinity`](#affinity)                              | affinity type                           | Backend  |                                  |
+| [`agent-check-addr`](#agent-check)                   | address for agent checks                | Backend  |                                  |
+| [`agent-check-interval`](#agent-check)               | time with suffix                        | Backend  |                                  |
+| [`agent-check-port`](#agent-check)                   | backend agent listen port               | Backend  |                                  |
+| [`agent-check-send`](#agent-check)                   | string to send upon agent connection    | Backend  |                                  |
+| [`allowlist-source-range`](#allowlist)               | Comma-separated IPs or CIDRs            | Path     |                                  |
+| [`allowlist-source-header`](#allowlist)              | Header name that will be used as a src  | Path     |                                  |
+| [`app-root`](#app-root)                              | /url                                    | Host     |                                  |
+| [`assign-backend-server-id`](#backend-server-id)     | [true\|false]                           | Backend  | `false`                          |
+| [`auth-external-placement`](#auth-external)          | [backend\|frontend]                     | Path     | `backend`                        |
+| [`auth-headers-fail`](#auth-external)                | `<header>,...`                          | Path     | `*`                              |
+| [`auth-headers-request`](#auth-external)             | `<header>,...`                          | Path     | `*`                              |
+| [`auth-headers-succeed`](#auth-external)             | `<header>,...`                          | Path     | `*`                              |
+| [`auth-log-format`](#log-format)                     | http log format for auth external       | Global   | do not log                       |
+| [`auth-method`](#auth-external)                      | http request method                     | Path     | `GET`                            |
+| [`auth-proxy`](#auth-external)                       | frontend name and tcp port interval     | Global   | `_front__auth:14415-14499`       |
+| [`auth-realm`](#auth-basic)                          | realm string                            | Path     |                                  |
+| [`auth-secret`](#auth-basic)                         | secret name                             | Path     |                                  |
+| [`auth-signin`](#auth-external)                      | Sign in URL                             | Path     |                                  |
+| [`auth-tls-cert-header`](#auth-tls)                  | [true\|false]                           | Backend  |                                  |
+| [`auth-tls-error-page`](#auth-tls)                   | url                                     | Host     |                                  |
+| [`auth-tls-secret`](#auth-tls)                       | namespace/secret name                   | Host     |                                  |
+| [`auth-tls-strict`](#auth-tls)                       | [true\|false]                           | Host     |                                  |
+| [`auth-tls-verify-client`](#auth-tls)                | [off\|optional\|on\|optional_no_ca]     | Host     |                                  |
+| [`auth-url`](#auth-external)                         | Authentication URL                      | Path     |                                  |
+| [`backend-check-interval`](#health-check)            | time with suffix                        | Backend  | `2s`                             |
+| [`backend-protocol`](#backend-protocol)              | [h1\|h2\|h1-ssl\|h2-ssl]                | Backend  | `h1`                             |
+| [`backend-server-naming`](#backend-server-naming)    | [sequence\|ip\|pod]                     | Backend  | `sequence`                       |
+| [`backend-server-slots-increment`](#dynamic-scaling) | number of slots                         | Backend  | `1`                              |
+| [`balance-algorithm`](#balance-algorithm)            | algorithm name                          | Backend  | `random(2)`                      |
+| [`bind-fronting-proxy`](#bind)                       | ip + port                               | Frontend |                                  |
+| [`bind-http`](#bind)                                 | ip + port                               | Frontend |                                  |
+| [`bind-https`](#bind)                                | ip + port                               | Frontend |                                  |
+| [`bind-ip-addr-healthz`](#bind-ip-addr)              | IP address                              | Global   |                                  |
+| [`bind-ip-addr-http`](#bind-ip-addr)                 | IP address                              | Frontend |                                  |
+| [`bind-ip-addr-prometheus`](#bind-ip-addr)           | IP address                              | Global   |                                  |
+| [`bind-ip-addr-stats`](#bind-ip-addr)                | IP address                              | Global   |                                  |
+| [`bind-ip-addr-tcp`](#bind-ip-addr)                  | IP address                              | Global   |                                  |
+| [`blue-green-balance`](#blue-green)                  | label=value=weight,...                  | Backend  |                                  |
+| [`blue-green-cookie`](#blue-green)                   | `CookieName:LabelName` pair             | Backend  |                                  |
+| [`blue-green-deploy`](#blue-green)                   | label=value=weight,...                  | Backend  |                                  |
+| [`blue-green-header`](#blue-green)                   | `HeaderName:LabelName` pair             | Backend  |                                  |
+| [`blue-green-mode`](#blue-green)                     | [pod\|deploy]                           | Backend  |                                  |
+| [`cert-signer`](#acme)                               | "acme"                                  | Host     |                                  |
+| [`close-sessions-duration`](#close-sessions-duration) | time with suffix or percentage         | Global   | leave sessions open              |
+| [`config-backend`](#configuration-snippet)           | multiline backend config                | Backend  |                                  |
+| [`config-defaults`](#configuration-snippet)          | multiline config for the defaults section | Global |                                  |
+| [`config-frontend`](#configuration-snippet)          | multiline HTTP and HTTPS frontend config | Global  |                                  |
+| [`config-frontend-early`](#configuration-snippet)    | multiline HTTP and HTTPS frontend config, applied before any builtin logic | Global | |
+| [`config-frontend-late`](#configuration-snippet)     | multiline HTTP and HTTPS frontend config, same as `config-frontend` | Global |        |
+| [`config-global`](#configuration-snippet)            | multiline config for the global section | Global   |                                  |
+| [`config-peers`](#configuration-snippet)             | multiline config for the peers section  | Global   |                                  |
+| [`config-proxy`](#configuration-snippet)             | multiline config for any proxy          | Global   |                                  |
+| [`config-sections`](#configuration-snippet)          | multiline custom sections declaration   | Global   |                                  |
+| [`config-tcp`](#configuration-snippet)               | multiline ConfigMap based TCP config    | Global   |                                  |
+| [`config-tcp-service`](#configuration-snippet)       | multiline TCP service config            | TCP      |                                  |
+| [`cookie-key`](#affinity)                            | secret key                              | Global   | `Ingress`                        |
+| [`cors-allow-credentials`](#cors)                    | [true\|false]                           | Path     |                                  |
+| [`cors-allow-headers`](#cors)                        | headers list                            | Path     |                                  |
+| [`cors-allow-methods`](#cors)                        | methods list                            | Path     |                                  |
+| [`cors-allow-origin`](#cors)                         | URL                                     | Path     |                                  |
+| [`cors-allow-origin-regex`](#cors)                   | regex                                   | Path     |                                  |
+| [`cors-enable`](#cors)                               | [true\|false]                           | Path     |                                  |
+| [`cors-expose-headers`](#cors)                       | headers                                 | Path     |                                  |
+| [`cors-max-age`](#cors)                              | time (seconds)                          | Path     |                                  |
+| [`cpu-map`](#cpu-map)                                | haproxy CPU Map format                  | Global   |                                  |
+| [`cross-namespace-secrets-ca`](#cross-namespace)     | [allow\|deny]                           | Global   | `deny`                           |
+| [`cross-namespace-secrets-crt`](#cross-namespace)    | [allow\|deny]                           | Global   | `deny`                           |
+| [`cross-namespace-secrets-passwd`](#cross-namespace) | [allow\|deny]                           | Global   | `deny`                           |
+| [`cross-namespace-services`](#cross-namespace)       | [allow\|deny]                           | Global   | `deny`                           |
+| [`default-backend-redirect`](#default-redirect)      | Location                                | Global   |                                  |
+| [`default-backend-redirect-code`](#default-redirect) | HTTP status code                        | Global   | `302`                            |
+| [`denylist-source-range`](#allowlist)                | Comma-separated IPs or CIDRs            | Path     |                                  |
+| [`dns-accepted-payload-size`](#dns-resolvers)        | number                                  | Global   | `8192`                           |
+| [`dns-cluster-domain`](#dns-resolvers)               | cluster name                            | Global   | `cluster.local`                  |
+| [`dns-hold-obsolete`](#dns-resolvers)                | time with suffix                        | Global   | `0s`                             |
+| [`dns-hold-valid`](#dns-resolvers)                   | time with suffix                        | Global   | `1s`                             |
+| [`dns-resolvers`](#dns-resolvers)                    | multiline resolver=ip[:port]            | Global   |                                  |
+| [`dns-timeout-retry`](#dns-resolvers)                | time with suffix                        | Global   | `1s`                             |
+| [`drain-support`](#drain-support)                    | [true\|false]                           | Global   | `false`                          |
+| [`drain-support-redispatch`](#drain-support)         | [true\|false]                           | Global   | `true`                           |
+| [`dynamic-scaling`](#dynamic-scaling)                | [true\|false]                           | Backend  | `true`                           |
+| [`external-has-lua`](#external)                      | [true\|false]                           | Global   | `false`                          |
+| [`fcgi-app`](#fastcgi)                               | fcgi-app section name                   | Backend  |                                  |
+| [`fcgi-enabled-apps`](#fastcgi)                      | comma-separated list of names           | Global   | `*`                              |
+| [`forwardfor`](#forwardfor)                          | [add\|ignore\|ifmissing]                | Global   | `add`                            |
+| [`fronting-proxy-port`](#fronting-proxy-port)        | port number                             | Frontend | 0 (do not listen)                |
+| [`groupname`](#security)                             | haproxy group name                      | Global   | `haproxy`                        |
+| [`headers`](#headers)                                | multiline header:value pair             | Backend  |                                  |
+| [`health-check-addr`](#health-check)                 | address for health checks               | Backend  |                                  |
+| [`health-check-fall-count`](#health-check)           | number of failures                      | Backend  |                                  |
+| [`health-check-interval`](#health-check)             | time with suffix                        | Backend  |                                  |
+| [`health-check-port`](#health-check)                 | port for health checks                  | Backend  |                                  |
+| [`health-check-rise-count`](#health-check)           | number of successes                     | Backend  |                                  |
+| [`health-check-uri`](#health-check)                  | uri for http health checks              | Backend  |                                  |
+| [`healthz-port`](#bind-port)                         | port number                             | Global   | `10253`                          |
+| [`hsts`](#hsts)                                      | [true\|false]                           | Path     | `true`                           |
+| [`hsts-include-subdomains`](#hsts)                   | [true\|false]                           | Path     | `false`                          |
+| [`hsts-max-age`](#hsts)                              | number of seconds                       | Path     | `15768000`                       |
+| [`hsts-preload`](#hsts)                              | [true\|false]                           | Path     | `false`                          |
+| [`http-header-match`](#http-match)                   | header name and value, exact match      | Path     |                                  |
+| [`http-header-match-regex`](#http-match)             | header name and value, regex match      | Path     |                                  |
+| [`http-log-format`](#log-format)                     | http log format                         | Global   | HAProxy default log format       |
+| [`http-port`](#bind-port)                            | port number                             | Frontend | `80`                             |
+| [`http-response-<code>`](#http-response)             | response output                         | vary     |                                  |
+| [`http-response-prometheus-root`](#http-response)    | response output                         | Global   |                                  |
+| [`https-log-format`](#log-format)                    | https(tcp) log format\|`default`        | Global   | do not log                       |
+| [`https-port`](#bind-port)                           | port number                             | Frontend | `443`                            |
+| [`https-to-http-port`](#fronting-proxy-port)         | port number                             | Frontend | 0 (do not listen)                |
+| [`initial-weight`](#initial-weight)                  | weight value                            | Backend  | `1`                              |
+| [`limit-connections`](#limit)                        | qty                                     | Backend  |                                  |
+| [`limit-rps`](#limit)                                | rate per second                         | Backend  |                                  |
+| [`limit-whitelist`](#limit)                          | cidr list                               | Backend  |                                  |
+| [`load-server-state`](#load-server-state) (experimental) |[true\|false]                        | Global   | `false`                          |
+| [`master-exit-on-failure`](#master-worker)           | [true\|false]                           | Global   | `true`                           |
+| [`max-connections`](#connection)                     | number                                  | Global   | `2000`                           |
+| [`maxconn-server`](#connection)                      | qty                                     | Backend  |                                  |
+| [`maxqueue-server`](#connection)                     | qty                                     | Backend  |                                  |
+| [`modsecurity-args`](#modsecurity)                   | space-separated list of strings         | Global   | `unique-id method path query req.ver req.hdrs_bin req.body_size req.body` |
+| [`modsecurity-endpoints`](#modsecurity)              | comma-separated list of IP:port (spoa)  | Global   | no waf config                    |
+| [`modsecurity-timeout-hello`](#modsecurity)          | time with suffix                        | Global   | `100ms`                          |
+| [`modsecurity-timeout-idle`](#modsecurity)           | time with suffix                        | Global   | `30s`                            |
+| [`modsecurity-timeout-processing`](#modsecurity)     | time with suffix                        | Global   | `1s`                             |
+| [`modsecurity-use-coraza`](#modsecurity)             | [true\|false]                           | Global   | `false`                          |
+| [`nbproc-ssl`](#nbproc)                              | number of process                       | Global   | `0`                              |
+| [`nbthread`](#nbthread)                              | number of threads                       | Global   |                                  |
+| [`no-redirect-locations`](#redirect)                 | comma-separated list of URIs            | Global   | `/.well-known/acme-challenge`    |
+| [`no-tls-redirect-locations`](#ssl-redirect)         | comma-separated list of URIs            | Global   | `/.well-known/acme-challenge`    |
+| [`oauth`](#oauth)                                    | "oauth2_proxy"                          | Path     |                                  |
+| [`oauth-headers`](#oauth)                            | `<header>:<var>,...`                    | Path     |                                  |
+| [`oauth-uri-prefix`](#oauth)                         | URI prefix                              | Path     |                                  |
+| [`original-forwarded-for-hdr`](#forwardfor)          | header name                             | Global   | `X-Original-Forwarded-For`       |
+| [`path-type`](#path-type)                            | path matching type                      | Path     | `begin`                          |
+| [`path-type-order`](#path-type)                      | comma-separated path type list          | Global   | `exact,prefix,begin,regex`       |
+| [`peers-name`](#peers)                               | peers section name                      | Global   | `ingress`                        |
+| [`peers-port`](#peers)                               | port number                             | Global   |                                  |
+| [`peers-table`](#peers)                              | stick-table declaration                 | Backend  |                                  |
+| [`peers-table-global`](#peers)                       | stick-table declaration                 | Global   |                                  |
+| [`prometheus-port`](#bind-port)                      | port number                             | Global   |                                  |
+| [`proxy-body-size`](#proxy-body-size)                | size (bytes)                            | Path     | unlimited                        |
+| [`proxy-protocol`](#proxy-protocol)                  | [v1\|v2\|v2-ssl\|v2-ssl-cn]             | Backend  |                                  |
+| [`real-ip-hdr`](#forwardfor)                         | header name                             | Global   | `X-Real-IP`                      |
+| [`redirect-from`](#redirect)                         | domain name                             | Host     |                                  |
+| [`redirect-from-code`](#redirect)                    | http status code                        | Frontend | `302`                            |
+| [`redirect-from-regex`](#redirect)                   | regex                                   | Host     |                                  |
+| [`redirect-to`](#redirect)                           | fully qualified URL                     | Path     |                                  |
+| [`redirect-to-code`](#redirect)                      | http status code                        | Frontend | `302`                            |
+| [`rewrite-target`](#rewrite-target)                  | path string                             | Path     |                                  |
+| [`secure-backends`](#secure-backend)                 | [true\|false]                           | Backend  |                                  |
+| [`secure-crt-secret`](#secure-backend)               | secret name                             | Backend  |                                  |
+| [`secure-sni`](#secure-backend)                      | [`sni`\|`host`\|`<hostname>`]           | Backend  |                                  |
+| [`secure-verify-ca-secret`](#secure-backend)         | secret name                             | Backend  |                                  |
+| [`secure-verify-hostname`](#secure-backend)          | hostname                                | Backend  |                                  |
+| [`server-alias`](#server-alias)                      | domain name                             | Host     |                                  |
+| [`server-alias-regex`](#server-alias)                | regex                                   | Host     |                                  |
+| [`service-upstream`](#service-upstream)              | [true\|false]                           | Backend  | `false`                          |
+| [`session-cookie-domain`](#affinity)                 | domain name                             | Backend  |                                  |
+| [`session-cookie-dynamic`](#affinity)                | [true\|false]                           | Backend  |                                  |
+| [`session-cookie-keywords`](#affinity)               | cookie options                          | Backend  | `indirect nocache httponly`      |
+| [`session-cookie-name`](#affinity)                   | cookie name                             | Backend  |                                  |
+| [`session-cookie-preserve`](#affinity)               | [true\|false]                           | Backend  | `false`                          |
+| [`session-cookie-shared`](#affinity)                 | [true\|false]                           | Backend  | `false`                          |
+| [`session-cookie-strategy`](#affinity)               | [insert\|prefix\|rewrite]               | Backend  |                                  |
+| [`session-cookie-value-strategy`](#affinity)         | [server-name\|pod-uid]                  | Backend  | `server-name`                    |
+| [`slots-min-free`](#dynamic-scaling)                 | minimum number of free slots            | Backend  | `0`                              |
+| [`source-address-intf`](#source-address-intf)        | `<intf1>[,<intf2>...]`                  | Backend  |                                  |
+| [`ssl-always-add-https`](#ssl-always-add-https)      | [true\|false]                           | Host     | `false`                          |
+| [`ssl-always-follow-redirect`](#ssl-always-add-https) | [true\|false]                          | Host     | `true`                           |
+| [`ssl-cipher-suites`](#ssl-ciphers)                  | colon-separated list                    | Host     | [see description](#ssl-ciphers)  |
+| [`ssl-cipher-suites-backend`](#ssl-ciphers)          | colon-separated list                    | Backend  | [see description](#ssl-ciphers)  |
+| [`ssl-ciphers`](#ssl-ciphers)                        | colon-separated list                    | Host     | [see description](#ssl-ciphers)  |
+| [`ssl-ciphers-backend`](#ssl-ciphers)                | colon-separated list                    | Backend  | [see description](#ssl-ciphers)  |
+| [`ssl-dh-default-max-size`](#ssl-dh)                 | number                                  | Global   | `1024`                           |
+| [`ssl-dh-param`](#ssl-dh)                            | namespace/secret name                   | Global   | no custom DH param               |
+| [`ssl-engine`](#ssl-engine)                          | OpenSSL engine name and parameters      | Global   | no engine set                    |
+| [`ssl-fingerprint-lower`](#auth-tls)                 | [true\|false]                           | Backend  | `false`                          |
+| [`ssl-fingerprint-sha2-bits`](#auth-tls)             | Bits of the SHA-2 fingerprint           | Backend  |                                  |
+| [`ssl-headers-prefix`](#auth-tls)                    | prefix                                  | Global   | `X-SSL`                          |
+| [`ssl-mode-async`](#ssl-engine)                      | [true\|false]                           | Global   | `false`                          |
+| [`ssl-options`](#ssl-options)                        | space-separated list                    | Global   | [see description](#ssl-options)  |
+| [`ssl-options-backend`](#ssl-options)                | space-separated list                    | Backend  | [see description](#ssl-options)  |
+| [`ssl-options-host`](#ssl-options)                   | space-separated list                    | Host     | [see description](#ssl-options)  |
+| [`ssl-passthrough`](#ssl-passthrough)                | [true\|false]                           | Host     |                                  |
+| [`ssl-passthrough-http-port`](#ssl-passthrough)      | backend port                            | Host     |                                  |
+| [`ssl-redirect`](#ssl-redirect)                      | [true\|false]                           | Path     | `true`                           |
+| [`ssl-redirect-code`](#ssl-redirect)                 | http status code                        | Global   | `302`                            |
+| [`stats-auth`](#stats)                               | user:passwd                             | Global   | no auth                          |
+| [`stats-port`](#stats)                               | port number                             | Global   | `1936`                           |
+| [`stats-proxy-protocol`](#stats)                     | [true\|false]                           | Global   | `false`                          |
+| [`stats-ssl-cert`](#stats)                           | namespace/secret name                   | Global   | no ssl/plain http                |
+| [`strict-host`](#strict-host)                        | [true\|false]                           | Global   | `false`                          |
+| [`syslog-endpoint`](#syslog)                         | IP:port (udp)                           | Global   | do not log                       |
+| [`syslog-format`](#syslog)                           | rfc5424\|rfc3164                        | Global   | `rfc5424`                        |
+| [`syslog-length`](#syslog)                           | maximum length                          | Global   | `1024`                           |
+| [`syslog-tag`](#syslog)                              | syslog tag field string                 | Global   | `ingress`                        |
+| [`tcp-log-format`](#log-format)                      | ConfigMap based TCP log format          | Global   |                                  |
+| [`tcp-service-log-format`](#log-format)              | TCP service log format                  | TCP      | HAProxy default log format       |
+| [`tcp-service-port`](#tcp-services)                  | TCP service port number                 | TCP      |                                  |
+| [`tcp-service-proxy-protocol`](#proxy-protocol)      | [true\|false]                           | TCP      | `false`                          |
+| [`timeout-client`](#timeout)                         | time with suffix                        | Global   | `50s`                            |
+| [`timeout-client-fin`](#timeout)                     | time with suffix                        | Global   | `50s`                            |
+| [`timeout-connect`](#timeout)                        | time with suffix                        | Backend  | `5s`                             |
+| [`timeout-http-request`](#timeout)                   | time with suffix                        | Backend  | `5s`                             |
+| [`timeout-keep-alive`](#timeout)                     | time with suffix                        | Backend  | `1m`                             |
+| [`timeout-queue`](#timeout)                          | time with suffix                        | Backend  | `5s`                             |
+| [`timeout-server`](#timeout)                         | time with suffix                        | Backend  | `50s`                            |
+| [`timeout-server-fin`](#timeout)                     | time with suffix                        | Backend  | `50s`                            |
+| [`timeout-stop`](#timeout)                           | time with suffix                        | Global   | `10m`                            |
+| [`timeout-tunnel`](#timeout)                         | time with suffix                        | Backend  | `1h`                             |
+| [`tls-alpn`](#tls-alpn)                              | TLS ALPN advertisement                  | Host     | `h2,http/1.1`                    |
+| [`use-chroot`](#security)                            | [true\|false]                           | Global   | `false`                          |
+| [`use-cpu-map`](#cpu-map)                            | [true\|false]                           | Global   | `true`                           |
+| [`use-forwarded-proto`](#fronting-proxy-port)        | [true\|false]                           | Frontend | `true`                           |
+| [`use-haproxy-user`](#security)                      | [true\|false]                           | Global   | `false`                          |
+| [`use-htx`](#use-htx)                                | [true\|false]                           | Global   | `false`                          |
+| [`use-proxy-protocol`](#proxy-protocol)              | [true\|false]                           | Frontend | `false`                          |
+| [`use-resolver`](#dns-resolvers)                     | resolver name                           | Backend  |                                  |
+| [`username`](#security)                              | haproxy user name                       | Global   | `haproxy`                        |
+| [`var-namespace`](#var-namespace)                    | [true\|false]                           | Host     | `false`                          |
+| [`waf`](#waf)                                        | "modsecurity"                           | Path     |                                  |
+| [`waf-mode`](#waf)                                   | [deny\|detect]                          | Path     | `deny` (if waf is set)           |
+| [`whitelist-source-range`](#allowlist)               | Comma-separated IPs or CIDRs            | Path     |                                  |
+| [`worker-max-reloads`](#master-worker)               | number of reloads                       | Global   | `0`                              |
 
 ---
 
@@ -995,11 +988,11 @@ See also:
 
 ### Bind
 
-| Configuration key      | Scope    | Default | Since |
-|------------------------|----------|---------|-------|
-| `bind-fronting-proxy`  | `Global` |         | v0.8  |
-| `bind-http`            | `Global` |         | v0.8  |
-| `bind-https`           | `Global` |         | v0.8  |
+| Configuration key      | Scope      | Default | Since |
+|------------------------|------------|---------|-------|
+| `bind-fronting-proxy`  | `Frontend` |         | v0.8  |
+| `bind-http`            | `Frontend` |         | v0.8  |
+| `bind-https`           | `Frontend` |         | v0.8  |
 
 Configures listening IP and port for HTTP/s incoming requests. These
 configuration keys have backward compatibility with [Bind IP addr](#bind-ip-addr),
@@ -1017,11 +1010,11 @@ Configuration examples:
 * `bind-https: ":443,:8443"`: accept https connections on `443` and also `8443` port numbers
 
 {{< alert title="Note" >}}
-Since v0.16, `bind-fronting-proxy` and `bind-http` cannot share neither the same frontend, nor the same TCP port anymore.
+Since v0.17, `bind-fronting-proxy` and `bind-http` cannot share neither the same frontend nor the same TCP port anymore.
 {{< /alert >}}
 
 {{< alert title="Warning" color="warning" >}}
-Special care should be taken on port number overlap, neither haproxy itself nor haproxy-ingress will warn if the same port number is used on more than one configuration key.
+Special care should be taken on port number overlap, neither haproxy itself nor haproxy-ingress will warn if the same port number is used on more than one configuration key. Moreover, although it is possible to configure a binding address completely unrelated with the configured `http-port` or `https-port`, the suggestion is that both configurations match somehow.
 {{< /alert >}}
 
 See also:
@@ -1034,13 +1027,13 @@ See also:
 
 ### Bind IP addr
 
-| Configuration key         | Scope    | Default | Since |
-|---------------------------|----------|---------|-------|
-| `bind-ip-addr-healthz`    | `Global` |         |       |
-| `bind-ip-addr-http`       | `Global` |         |       |
-| `bind-ip-addr-prometheus` | `Global` |         | v0.10 |
-| `bind-ip-addr-stats`      | `Global` |         |       |
-| `bind-ip-addr-tcp`        | `Global` |         |       |
+| Configuration key         | Scope      | Default | Since |
+|---------------------------|------------|---------|-------|
+| `bind-ip-addr-healthz`    | `Global`   |         |       |
+| `bind-ip-addr-http`       | `Frontend` |         |       |
+| `bind-ip-addr-prometheus` | `Global`   |         | v0.10 |
+| `bind-ip-addr-stats`      | `Global`   |         |       |
+| `bind-ip-addr-tcp`        | `Global`   |         |       |
 
 Define listening IPv4/IPv6 address on public HAProxy frontends. Since v0.10 the default
 value changed from `*` to an empty string, which haproxy interprets in the same way and
@@ -1048,7 +1041,7 @@ binds on all IPv4 address.
 
 * `bind-ip-addr-tcp`: IP address of all ConfigMap based TCP services declared on [`tcp-services-configmap`]({{% relref "command-line#tcp-services-configmap" %}}) command-line option.
 * `bind-ip-addr-healthz`: IP address of the health check URL.
-* `bind-ip-addr-http`: IP address of all HTTP/s frontends, port `:80` and `:443`, and also [`fronting-proxy-port`](#fronting-proxy-port) if declared.
+* `bind-ip-addr-http`: IP address of HTTP/s frontends.
 * `bind-ip-addr-prometheus`: IP address of the haproxy's internal Prometheus exporter.
 * `bind-ip-addr-stats`: IP address of the statistics page. See also [`stats-port`](#stats).
 
@@ -1062,12 +1055,12 @@ See also:
 
 ### Bind port
 
-| Configuration key | Scope    | Default | Since |
-|-------------------|----------|---------|-------|
-| `healthz-port`    | `Global` | `10253` |       |
-| `http-port`       | `Global` | `80`    |       |
-| `https-port`      | `Global` | `443`   |       |
-| `prometheus-port` | `Global` |         | v0.10 |
+| Configuration key | Scope      | Default | Since |
+|-------------------|------------|---------|-------|
+| `healthz-port`    | `Global`   | `10253` |       |
+| `http-port`       | `Frontend` | `80`    |       |
+| `https-port`      | `Frontend` | `443`   |       |
+| `prometheus-port` | `Global`   |         | v0.10 |
 
 * `healthz-port`: Define the port number HAProxy should listen to in order to answer for health checking requests. Use `/healthz` as the request path.
 * `http-port`: Define the port number of unencrypted HTTP connections.
@@ -1659,21 +1652,22 @@ See also:
 
 ### Fronting proxy port
 
-| Configuration key     | Scope    | Default | Since   |
-|-----------------------|----------|---------|---------|
-| `fronting-proxy-port` | `Global` |         | `v0.8`  |
-| `https-to-http-port`  | `Global` |         |         |
-| `use-forwarded-proto` | `Global` | `true`  | `v0.10` |
+| Configuration key     | Scope      | Default | Since   |
+|-----------------------|------------|---------|---------|
+| `fronting-proxy-port` | `Frontend` |         | `v0.8`  |
+| `https-to-http-port`  | `Frontend` |         |         |
+| `use-forwarded-proto` | `Frontend` | `true`  | `v0.10` |
 
 Configures HAProxy Ingress to accept plain HTTP requests from a fronting load balancer doing the SSL offload.
 
-* `fronting-proxy-port`: configures the port number that should accept the HTTP requests. This configuration was allowed to collide with `http-port` up to v0.15, but since v0.16 fronting-proxy is a flag to the whole frontend. Configure distinct frontends to support both regular HTTP and Fronting Proxy requests on the same deployment, and the port number cannot collide anymore.
+* `fronting-proxy-port`: configures the port number that should accept the HTTP requests. This configuration was allowed to collide with `http-port` up to v0.16, but since v0.17 fronting-proxy is a flag to the whole frontend. Configure distinct frontends to support both regular HTTP and Fronting Proxy requests on the same deployment, and the port number cannot collide anymore.
 * `use-forwarded-proto`: if `true`, the default value, configures HAProxy to redirect the request to https if the `X-Forwarded-Proto` header is not `https`. If `false`, `X-Forwarded-Proto` header is ignored and passed as is to the backend.
 * `https-to-http-port`: old and deprecated key, now an alias to `fronting-proxy-port`.
 
 HAProxy Ingress has a few differences on HTTP and HTTPS configurations, like, redirect from HTTP if `ssl-redirect` is `true`, add HSTS headers (when configured) only on HTTPS responses, and drop incoming `X-SSL-*` headers for security reasons. Configuring a fronting proxy port makes HAProxy Ingress to have HTTPS behavior over HTTP connection, allowing a fronting load balancer to SSL offload the TLS requests, talking plain HTTP with HAProxy.
+
 {{< alert title="Security warning" color="warning" >}}
-This option must only be used if the network from the fronting load balancer and the ingress nodes are trusted, since the communication happens on plain HTTP, and all the communication is visible via tools like tcpdump. Give also the configured port a special attention and block it from external access: an user can easily add the `X-SSL-*` headers, authenticating itself as any user on applications using mTLS.
+This option must only be used if the network from the fronting load balancer and the ingress nodes is trusted, since the communication happens on plain HTTP, and all the communication is visible via tools like tcpdump. Give also the configured port a special attention and block it from external access: an user can easily add the `X-SSL-*` headers, authenticating itself as any user on applications using mTLS.
 {{< /alert >}}
 
 See also:
@@ -2337,16 +2331,16 @@ See also:
 
 ### Proxy protocol
 
-| Configuration key            | Scope     | Default | Since |
-|------------------------------|-----------|---------|-------|
-| `proxy-protocol`             | `Backend` | `no`    |       |
-| `tcp-service-proxy-protocol` | `TCP`     | `false` | v0.13 |
-| `use-proxy-protocol`         | `Global`  | `false` |       |
+| Configuration key            | Scope      | Default | Since |
+|------------------------------|------------|---------|-------|
+| `proxy-protocol`             | `Backend`  | `no`    |       |
+| `tcp-service-proxy-protocol` | `TCP`      | `false` | v0.13 |
+| `use-proxy-protocol`         | `Frontend` | `false` |       |
 
 Configures PROXY protocol in frontends and backends.
 
 * `proxy-protocol`: Define if the upstream backends support proxy protocol and what version of the protocol should be used. Supported values are `v1`, `v2`, `v2-ssl`, `v2-ssl-cn` or `no`. The default behavior if not declared is that the protocol is not supported by the backends and should not be used.
-* `use-proxy-protocol`: Define if HTTP services are behind another proxy that uses the PROXY protocol. If `true`, HTTP ports which defaults to `80` and `443` will expect the PROXY protocol, version 1 or 2. The stats endpoint (defaults to port `1936`) has its own [`stats-proxy-protocol`](#stats) configuration key.
+* `use-proxy-protocol`: Define if HTTP services are behind another proxy that uses the PROXY protocol. If `true`, HTTP ports will expect the PROXY protocol, version 1 or 2. The stats endpoint (defaults to port `1936`) has its own [`stats-proxy-protocol`](#stats) configuration key.
 * `tcp-service-proxy-protocol`: Define if the TCP service is behind another proxy that uses the PROXY protocol. Configures as `"true"` if the proxy should expect requests using the PROXY protocol, version 1 or 2. The default value is `"false"`.
 
 See also:
@@ -2362,14 +2356,14 @@ See also:
 
 ### Redirect
 
-| Configuration key       | Scope    | Default                       | Since   |
-|-------------------------|----------|-------------------------------|---------|
-| `no-redirect-locations` | `Global` | `/.well-known/acme-challenge` | v0.14.3 |
-| `redirect-from`         | `Host`   |                               | v0.13   |
-| `redirect-from-code`    | `Global` | `302`                         | v0.13   |
-| `redirect-from-regex`   | `Host`   |                               | v0.13   |
-| `redirect-to`           | `Path`   |                               | v0.13   |
-| `redirect-to-code`      | `Global` | `302`                         | v0.13   |
+| Configuration key       | Scope      | Default                       | Since   |
+|-------------------------|------------|-------------------------------|---------|
+| `no-redirect-locations` | `Global`   | `/.well-known/acme-challenge` | v0.14.3 |
+| `redirect-from`         | `Host`     |                               | v0.13   |
+| `redirect-from-code`    | `Frontend` | `302`                         | v0.13   |
+| `redirect-from-regex`   | `Host`     |                               | v0.13   |
+| `redirect-to`           | `Path`     |                               | v0.13   |
+| `redirect-to-code`      | `Frontend` | `302`                         | v0.13   |
 
 Configures HTTP redirect. Redirect *from* matches source hostnames that should be redirected
 to the hostname declared in the ingress spec. Redirect *to* uses the hostname declared in the

@@ -6,7 +6,7 @@ description: >
   Configure HAProxy using Gateway API resources.
 ---
 
-[Gateway API](https://gateway-api.sigs.k8s.io/) is a collection of Kubernetes resources that can be installed as [Custom Resource Definitions](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/). Just like Ingress resources, Gateway API resources are used to configure incoming HTTP/s and TCP requests to the in cluster applications. HAProxy Ingress v0.15 partially supports the Gateway API spec, `v1alpha2`, `v1beta1` and `v1` versions.
+[Gateway API](https://gateway-api.sigs.k8s.io/) is a collection of Kubernetes resources that can be installed as [Custom Resource Definitions](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/). Just like Ingress resources, Gateway API resources are used to configure incoming HTTP/s, TLS and TCP requests to the in cluster applications. HAProxy Ingress v0.17 partially supports the Gateway API spec, `v1alpha2`, `v1beta1` and `v1` versions.
 
 ## Installation
 
@@ -21,13 +21,12 @@ See below the [getting started steps](#getting-started).
 
 ## Conformance
 
-Gateway API `v1alpha2`, `v1beta1` and `v1` specs are partially implemented in v0.15 release. The following list describes what is (or is not) supported:
+Gateway API `v1alpha2`, `v1beta1` and `v1` specs are partially implemented in v0.17 release. The following list describes what is (or is not) supported:
 
 * Target Services can be annotated with [Backend or Path scoped]({{% relref "keys#scope" %}}) configuration keys, this will continue to be supported.
 * Gateway API resources doesn't support annotations, this is planned to continue to be unsupported. Extensions to the Gateway API spec will be added in the extension points of the API.
-* Only the `GatewayClass`, `Gateway`, `TCPRoute` and `HTTPRoute` resource definitions are implemented.
+* `GatewayClass`, `Gateway`, `TCPRoute`, `TLSRoute` and `HTTPRoute` are the only implemented resources.
 * The controller doesn't implement partial parsing yet for Gateway API resources, changes should be a bit slow on clusters with thousands of Ingress, Gateway API resources or Services.
-* Gateway's Listener Port and Protocol are implemented for TCPRoute, but they are not implemented for HTTPRoute - for HTTP workloads, Port uses the global [bind-port]({{% relref "keys#bind-port" %}}) configuration and Protocol is based on the presence or absence of the TLS attribute.
 * Gateway's Addresses is not implemented - binding addresses use the global [bind-ip-addr]({{% relref "keys#bind-ip-addr" %}}) configuration.
 * Gateway's Hostname only supports empty/absence of Hostname or a single `*`, any other string will override the HTTPRoute Hostnames configuration without any merging.
 * HTTPRoute's Rules and BackendRefs don't support Filters.

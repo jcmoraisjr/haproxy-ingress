@@ -669,6 +669,7 @@ func (i *instance) updateCertExpiring() {
 		}
 	}
 }
+
 func (i *instance) check() error {
 	if i.options.fake {
 		i.logger.Info("(test) check was skipped")

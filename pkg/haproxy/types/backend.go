@@ -258,6 +258,7 @@ func (b *Backend) HasTLSAuth() bool {
 
 type Has int
 
+// these same consts are also used in haproxy.tmpl, change there if changing here.
 const (
 	HasNone Has = iota
 	HasSome

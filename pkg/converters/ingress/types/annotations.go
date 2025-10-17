@@ -40,8 +40,6 @@ const (
 	FrontBindHTTP          = "bind-http"
 	FrontBindHTTPS         = "bind-https"
 	FrontBindIPAddrHTTP    = "bind-ip-addr-http"
-	FrontFrontendPort      = "frontend-port"
-	FrontFrontendType      = "frontend-type"
 	FrontFrontingProxyPort = "fronting-proxy-port"
 	FrontHTTPPort          = "http-port"
 	FrontHTTPSPort         = "https-port"
@@ -59,8 +57,6 @@ var (
 		FrontBindHTTP:          {},
 		FrontBindHTTPS:         {},
 		FrontBindIPAddrHTTP:    {},
-		FrontFrontendPort:      {},
-		FrontFrontendType:      {},
 		FrontFrontingProxyPort: {},
 		FrontHTTPPort:          {},
 		FrontHTTPSPort:         {},
