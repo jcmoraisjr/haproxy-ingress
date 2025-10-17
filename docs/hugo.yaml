@@ -46,10 +46,12 @@ params:
       enable: false
     readingtime:
       enable: false
-  version_menu: "v0.16"
+  version_menu: "v0.17"
   versions:
   - version: "Latest"
     url: "/docs"
+  - version: "v0.17"
+    url: "/v0.17/docs"
   - version: "v0.16"
     url: "/v0.16/docs"
   - version: "v0.15"
