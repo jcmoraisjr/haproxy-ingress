@@ -152,7 +152,7 @@ frontend _front_http_8000
     # path02 = d1.local/api
     # path03 = d1.local/app
     # path04 = d1.local/sub
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
     http-request set-var(txn.hdr_origin0) req.hdr(Origin)
     http-request set-var(txn.cors_max_age) str(86400) if METH_OPTIONS { var(txn.pathID) -m str path01 path02 }
     http-request use-service lua.send-cors-preflight if METH_OPTIONS { var(txn.pathID) -m str path01 path02 }
@@ -369,7 +369,7 @@ frontend _front_http_8000
 			expected: `
     # path01 = d1.local/
     # path02 = d1.local/sub
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
     http-request set-var(txn.cors_max_age) str(86400) if METH_OPTIONS { var(txn.pathID) -m str path01 }
     http-request use-service lua.send-cors-preflight if METH_OPTIONS { var(txn.pathID) -m str path01 }
     http-response set-header Access-Control-Allow-Origin  "*" if { var(txn.pathID) -m str path01 }
@@ -377,7 +377,7 @@ frontend _front_http_8000
     http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if { var(txn.pathID) -m str path01 }
     http-response set-header Access-Control-Allow-Credentials "true" if { var(txn.pathID) -m str path01 }`,
 			expCheck: map[string]string{
-				"_back_d1_app_8080_idpath__begin.map": `
+				"_back_d1_app_8080_front_http_req__begin.map": `
 d1.local#/sub path02
 d1.local#/ path01`,
 			},
@@ -409,11 +409,11 @@ d1.local#/ path01`,
     # path01 = d1.local/
     # path02 = d1.local/path
     # path03 = d1.local/uri
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
     http-response set-header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload" if https-request { var(txn.pathID) -m str path01 }
     http-response set-header Strict-Transport-Security "max-age=15768000" if https-request { var(txn.pathID) -m str path02 path03 }`,
 			expCheck: map[string]string{
-				"_back_d1_app_8080_idpath__begin.map": `
+				"_back_d1_app_8080_front_http_req__begin.map": `
 d1.local#/uri path03
 d1.local#/path path02
 d1.local#/ path01`,
@@ -456,12 +456,12 @@ d1.local#/ path01`,
     # path01 = d1.local/path1
     # path02 = d1.local/path2
     # path03 = d1.local/path3
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
     http-request replace-path ^/path1(.*)$       /sub1\1     if { var(txn.pathID) -m str path01 }
     http-request replace-path ^/path2(.*)$       /sub2\1     if { var(txn.pathID) -m str path02 }
     http-request replace-path ^/path3(.*)$       /sub2\1     if { var(txn.pathID) -m str path03 }`,
 			expCheck: map[string]string{
-				"_back_d1_app_8080_idpath__begin.map": `
+				"_back_d1_app_8080_front_http_req__begin.map": `
 d1.local#/path3 path03
 d1.local#/path2 path02
 d1.local#/path1 path01`,
@@ -476,7 +476,7 @@ d1.local#/path1 path01`,
     acl https-request ssl_fc
     # path01 = d1.local/app
     # path02 = d1.local/path
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
     http-request redirect scheme https if !https-request { var(txn.pathID) -m str path01 }`,
 		},
 		"test22": {
@@ -489,7 +489,7 @@ d1.local#/path1 path01`,
     acl https-request ssl_fc
     # path01 = d1.local/app
     # path02 = d1.local/path
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
     http-request redirect scheme https code 301 if !https-request { var(txn.pathID) -m str path01 }`,
 		},
 		"test23": {
@@ -504,7 +504,7 @@ d1.local#/path1 path01`,
     # path02 = d1.local/api
     # path01 = d1.local/app
     # path03 = d1.local/path
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
     acl allow_rule_src0 src 10.0.0.0/8 192.168.0.0/16
     http-request deny if { var(txn.pathID) -m str path01 path02 } !allow_rule_src0
     acl allow_rule_src1 src 192.168.95.0/24
@@ -512,7 +512,7 @@ d1.local#/path1 path01`,
     http-request deny if { var(txn.pathID) -m str path03 } allow_exception_src1
     http-request deny if { var(txn.pathID) -m str path03 } !allow_rule_src1`,
 			expCheck: map[string]string{
-				"_back_d1_app_8080_idpath__begin.map": `
+				"_back_d1_app_8080_front_http_req__begin.map": `
 d1.local#/path path03
 d1.local#/app path01
 d1.local#/api path02`,
@@ -534,10 +534,10 @@ d1.local#/api path02`,
     # path05 = d1.local/api/v[0-9]+/
     # path02 = d1.local/app
     # path04 = d1.local/path
-    http-request set-var(txn.pathID) var(req.base),map_str(/etc/haproxy/maps/_back_d1_app_8080_idpath__exact.map)
-    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpath__prefix_02.map) if !{ var(txn.pathID) -m found }
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map) if !{ var(txn.pathID) -m found }
-    http-request set-var(txn.pathID) var(req.base),map_reg(/etc/haproxy/maps/_back_d1_app_8080_idpath__regex.map) if !{ var(txn.pathID) -m found }
+    http-request set-var(txn.pathID) var(req.base),map_str(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__exact.map)
+    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__prefix_02.map) if !{ var(txn.pathID) -m found }
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map) if !{ var(txn.pathID) -m found }
+    http-request set-var(txn.pathID) var(req.base),map_reg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__regex.map) if !{ var(txn.pathID) -m found }
     acl allow_rule_src0 src 172.17.0.0/16
     http-request deny if { var(txn.pathID) -m str path01 } !allow_rule_src0
     acl allow_rule_src1 src 10.0.0.0/8 192.168.0.0/16
@@ -554,14 +554,14 @@ d1.local#/api path02`,
     use_backend %[var(req.backend)] if { var(req.backend) -m found }
     default_backend _error404`,
 			expCheck: map[string]string{
-				"_back_d1_app_8080_idpath__exact.map": `
+				"_back_d1_app_8080_front_http_req__exact.map": `
 d1.local#/app path02`,
-				"_back_d1_app_8080_idpath__prefix_02.map": `
+				"_back_d1_app_8080_front_http_req__prefix_02.map": `
 d1.local#/path path04`,
-				"_back_d1_app_8080_idpath__begin.map": `
+				"_back_d1_app_8080_front_http_req__begin.map": `
 d1.local#/api path03
 d1.local#/ path01`,
-				"_back_d1_app_8080_idpath__regex.map": `
+				"_back_d1_app_8080_front_http_req__regex.map": `
 ^d1\.local#/api/v[0-9]+/ path05`,
 			},
 		},
@@ -577,7 +577,7 @@ d1.local#/ path01`,
     # path01 = d1.local/app1
     # path02 = d1.local/app2
     # path03 = d1.local/app3
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
     acl allow_rule_src0 src 10.0.0.0/8
     acl allow_exception_src0 src 10.0.110.0/24
     http-request deny if { var(txn.pathID) -m str path01 } allow_exception_src0
@@ -586,7 +586,7 @@ d1.local#/ path01`,
     acl deny_exception_src1 src 192.168.95.128/28
     http-request deny if { var(txn.pathID) -m str path02 } deny_rule_src1 !deny_exception_src1`,
 			expCheck: map[string]string{
-				"_back_d1_app_8080_idpath__begin.map": `
+				"_back_d1_app_8080_front_http_req__begin.map": `
 d1.local#/app3 path03
 d1.local#/app2 path02
 d1.local#/app1 path01`,
@@ -605,7 +605,7 @@ d1.local#/app1 path01`,
     # path02 = d1.local/app2
     # path03 = d1.local/app3
     # path04 = d1.local/app4
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
     acl allow_rule_src0 src 10.0.0.0/8
     http-request deny if { var(txn.pathID) -m str path01 } !allow_rule_src0
     acl allow_exception_src1 src 10.0.110.0/24
@@ -615,7 +615,7 @@ d1.local#/app1 path01`,
     acl deny_exception_src2 src 192.168.95.128/28
     http-request deny if { var(txn.pathID) -m str path04 } !deny_exception_src2`,
 			expCheck: map[string]string{
-				"_back_d1_app_8080_idpath__begin.map": `
+				"_back_d1_app_8080_front_http_req__begin.map": `
 d1.local#/app4 path04
 d1.local#/app3 path03
 d1.local#/app2 path02
@@ -635,12 +635,12 @@ d1.local#/app1 path01`,
     # path02 = d1.local/api
     # path01 = d1.local/app
     # path03 = d1.local/path
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
     acl allow_rule_src1 src 1.1.1.1 1.1.1.2 1.1.1.3 1.1.1.4 1.1.1.5 1.1.1.6 1.1.1.7 1.1.1.8 1.1.1.9 1.1.1.10
     acl allow_rule_src1 src 1.1.1.11
     http-request deny if { var(txn.pathID) -m str path03 } !allow_rule_src1`,
 			expCheck: map[string]string{
-				"_back_d1_app_8080_idpath__begin.map": `
+				"_back_d1_app_8080_front_http_req__begin.map": `
 d1.local#/path path03
 d1.local#/app path01
 d1.local#/api path02`,
@@ -695,10 +695,10 @@ d1.local#/api path02`,
 			expected: `
     # path01 = d1.local/
     # path02 = d1.local/app
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
     http-request use-service lua.send-413 if { var(txn.pathID) -m str path02 } { req.body_size,sub(2048) gt 0 }`,
 			expCheck: map[string]string{
-				"_back_d1_app_8080_idpath__begin.map": `
+				"_back_d1_app_8080_front_http_req__begin.map": `
 d1.local#/app path02
 d1.local#/ path01`,
 			},
@@ -737,7 +737,7 @@ d1.local#/ path01`,
 			expected: `
     # path01 = d1.local/app1
     # path02 = d1.local/app2
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
     http-request lua.auth-intercept _auth_4001 /oauth2/auth GET '*' '*' '*' if { var(txn.pathID) -m str path01 }
     http-request deny if !{ var(txn.auth_response_successful) -m bool } { var(txn.pathID) -m str path01 }`,
 		},
@@ -756,7 +756,7 @@ d1.local#/ path01`,
 			expected: `
     # path01 = d1.local/app1
     # path02 = d1.local/app2
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
     http-request lua.auth-intercept _auth_4001 /oauth2/auth GET 'X-UserID1,X-Token1' 'X-UserID2,X-Token2' 'X-UserID3,X-Token3' if { var(txn.pathID) -m str path01 }
     http-request redirect location http://auth.local/auth1 if !{ var(txn.auth_response_successful) -m bool } { var(txn.pathID) -m str path01 }`,
 		},
@@ -776,7 +776,7 @@ d1.local#/ path01`,
 			expected: `
     # path01 = d1.local/app1
     # path02 = d1.local/app2
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
     http-request lua.auth-intercept _auth_4001 /oauth2/auth HEAD '*' '-' '-' if { var(txn.pathID) -m str path01 }
     http-request redirect location http://auth.local/login if !{ var(txn.auth_response_successful) -m bool } { var(txn.pathID) -m str path01 }
     http-request set-header X-Auth-Request-Email %[var(req.auth_response_header.x_auth_request_email)] if { var(req.auth_response_header.x_auth_request_email) -m found } { var(txn.pathID) -m str path01 }`,
@@ -790,7 +790,7 @@ d1.local#/ path01`,
 			expected: `
     # path01 = d1.local/app1
     # path02 = d1.local/app2
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
     http-request deny if { var(txn.pathID) -m str path01 }`,
 		},
 		"test39": {
@@ -1078,11 +1078,11 @@ d1.local#/ path01`,
     # path01 = d1.local/
     # path04 = d1.local/app1
     # path05 = d1.local/app2
-    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpath__prefix_01.map) if { hdr(x-user) -- 'myusr2' }
-    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpath__prefix_02.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- 'myusr1' }
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map) if !{ var(txn.pathID) -m found }
-    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__prefix_01.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- 'myusr2' }
-    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__prefix_02.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- 'myusr1' }
+    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__prefix_01.map) if { hdr(x-user) -- 'myusr2' }
+    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__prefix_02.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- 'myusr1' }
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map) if !{ var(txn.pathID) -m found }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_d1_app_8080_front_http_def__prefix_01.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- 'myusr2' }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_d1_app_8080_front_http_def__prefix_02.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- 'myusr1' }
     http-request use-service lua.send-413 if { var(txn.pathID) -m str path02 path04 } { req.body_size,sub(1048576) gt 0 }
     http-request use-service lua.send-413 if { var(txn.pathID) -m str path03 path05 } { req.body_size,sub(2097152) gt 0 }`,
 			expFronts: `frontend _front_http
@@ -1099,11 +1099,11 @@ d1.local#/ path01`,
     use_backend %[var(req.defaultbackend)]
     default_backend _error404`,
 			expCheck: map[string]string{
-				"_back_d1_app_8080_idpath__prefix_01.map":    "d1.local#/app2 path05",
-				"_back_d1_app_8080_idpath__prefix_02.map":    "d1.local#/app1 path04",
-				"_back_d1_app_8080_idpath__begin.map":        "d1.local#/ path01",
-				"_back_d1_app_8080_idpathdef__prefix_01.map": "<default>#/app2 path03",
-				"_back_d1_app_8080_idpathdef__prefix_02.map": "<default>#/app1 path02",
+				"_back_d1_app_8080_front_http_req__prefix_01.map": "d1.local#/app2 path05",
+				"_back_d1_app_8080_front_http_req__prefix_02.map": "d1.local#/app1 path04",
+				"_back_d1_app_8080_front_http_req__begin.map":     "d1.local#/ path01",
+				"_back_d1_app_8080_front_http_def__prefix_01.map": "<default>#/app2 path03",
+				"_back_d1_app_8080_front_http_def__prefix_02.map": "<default>#/app1 path02",
 			},
 		},
 		"test68": {
@@ -1257,28 +1257,38 @@ d1.local#/ path01`,
 		"test76 paths from distinct frontends": {
 			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
 				f1 := c.httpFrontend(80)
-				f2 := c.httpFrontend(8000)
-				p1 := f1.AcquireHost("d1.local").AddPath(b, "/app1", hatypes.MatchBegin)
-				p2 := f2.AcquireHost("d2.local").AddPath(b, "/app2", hatypes.MatchBegin)
-				p1.SSLRedirect = true
-				p2.HSTS.Enabled = true
+				f2 := c.httpFrontend(8001)
+				f3 := c.httpFrontend(8002)
+				f1.AcquireHost("d1.local").AddPath(b, "/app1", hatypes.MatchBegin).SSLRedirect = true
+				f2.AcquireHost("d1.local").AddPath(b, "/app1", hatypes.MatchBegin).HSTS.Enabled = true
+				f3.AcquireHost("d1.local").AddPath(b, "/app1", hatypes.MatchBegin).HSTS.Enabled = true
 			},
 			path: []string{},
 			expFronts: `<<frontend-http>>
     default_backend _error404
-frontend _front_http_8000
+frontend _front_http_8001
     mode http
-    bind :8000
+    bind :8001
     <<set-req-base>>
     <<http-headers>>
-    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_8000_host__begin.map)
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_8001_host__begin.map)
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
+    default_backend _error404
+frontend _front_http_8002
+    mode http
+    bind :8002
+    <<set-req-base>>
+    <<http-headers>>
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_8002_host__begin.map)
     use_backend %[var(req.backend)] if { var(req.backend) -m found }
     default_backend _error404`,
 			expected: `
     acl https-request ssl_fc
-    # path01 = d1.local/app1
-    # path02 = d2.local/app2
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    # path01 = fe:_front_http -- host/path:d1.local/app1
+    # path02 = fe:_front_http_8001/_front_http_8002 -- host/path:d1.local/app1
+    http-request set-var-fmt(req.fe) "%f"
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map) if { var(req.fe) -m str _front_http }
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_8001_req__begin.map) if { var(req.fe) -m str _front_http_8001 _front_http_8002 }
     http-request redirect scheme https if !https-request { var(txn.pathID) -m str path01 }
     http-response set-header Strict-Transport-Security "max-age=0" if https-request { var(txn.pathID) -m str path02 }`,
 		},
@@ -1420,6 +1430,236 @@ backend d1_app_8080
 d1.local#/ d1_app_8080`)
 	c.checkMap("_front_https_host__begin.map", `
 d1.local#/ d1_app_8080`)
+
+	c.logger.CompareLogging(defaultLogging)
+}
+
+func TestInstanceFrontendList(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	b1 := c.config.Backends().AcquireBackend("d1", "app", "8080")
+	b1.Endpoints = []*hatypes.Endpoint{endpointS1}
+	b2 := c.config.Backends().AcquireBackend("d2", "app", "8080")
+	b2.Endpoints = []*hatypes.Endpoint{endpointS21}
+	bssl := c.config.Backends().AcquireBackend("d3", "app", "8443")
+	bssl.ModeTCP = true
+	bssl.Endpoints = []*hatypes.Endpoint{endpointS41s}
+
+	frontends := []*hatypes.Frontend{
+		c.httpFrontend(8080),  // http, default http name
+		c.httpFrontend(8081),  // http
+		c.httpsFrontend(8443), // https d2.local passthrough, default https name
+		c.httpsFrontend(8444), // https d2.local passthrough
+		c.httpsFrontend(8543), // https
+		c.httpsFrontend(8544), // https
+	}
+	domains := []string{"d1.local", "d2.local"}
+	backhttp := []*hatypes.Backend{b1, b2}
+	backssl := []*hatypes.Backend{bssl}
+	paths := []string{"/", "/api", "/static"}
+	for _, f := range frontends {
+		for _, d := range domains {
+			h := f.AcquireHost(d)
+			sslpassthrough := d == "d2.local" && f.Port() > 8400 && f.Port() < 8500
+			if sslpassthrough {
+				h.SSLPassthrough = true
+				for _, b := range backssl {
+					h.AddPath(b, "/", hatypes.MatchBegin)
+				}
+			} else {
+				for _, b := range backhttp {
+					for _, p := range paths {
+						h.AddPath(b, p, hatypes.MatchBegin)
+					}
+				}
+			}
+		}
+	}
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+backend d2_app_8080
+    mode http
+    server s21 172.17.0.121:8080 weight 100
+backend d3_app_8443
+    mode tcp
+    server s41s 172.17.0.141:8443 weight 100
+<<backends-default>>
+frontend _front_http
+    mode http
+    bind :8080
+    <<set-req-base>>
+    <<http-headers>>
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
+    default_backend _error404
+frontend _front_http_8081
+    mode http
+    bind :8081
+    <<set-req-base>>
+    <<http-headers>>
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_8081_host__begin.map)
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
+    default_backend _error404
+listen _front__tls
+    mode tcp
+    bind :8443
+    tcp-request inspect-delay 5s
+    tcp-request content set-var(req.sslpassback) req.ssl_sni,lower,map_str(/etc/haproxy/maps/_front_https_sslpassthrough__exact.map)
+    tcp-request content accept if { req.ssl_hello_type 1 }
+    use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
+    server _default_server_front_https_socket unix@/var/run/haproxy/_front_https_socket.sock send-proxy-v2
+frontend _front_https__local
+    mode http
+    bind unix@/var/run/haproxy/_front_https_socket.sock accept-proxy ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_https_bind_crt.list ca-ignore-err all crt-ignore-err all
+    <<set-req-base>>
+    http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map)
+    <<https-headers>>
+    use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
+    default_backend _error404
+listen _front__tls_8444
+    mode tcp
+    bind :8444
+    tcp-request inspect-delay 5s
+    tcp-request content set-var(req.sslpassback) req.ssl_sni,lower,map_str(/etc/haproxy/maps/_front_https_8444_sslpassthrough__exact.map)
+    tcp-request content accept if { req.ssl_hello_type 1 }
+    use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
+    server _default_server_front_https_8444_socket unix@/var/run/haproxy/_front_https_8444_socket.sock send-proxy-v2
+frontend _front_https_8444__local
+    mode http
+    bind unix@/var/run/haproxy/_front_https_8444_socket.sock accept-proxy ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_https_8444_bind_crt.list ca-ignore-err all crt-ignore-err all
+    <<set-req-base>>
+    http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_8444_host__begin.map)
+    <<https-headers>>
+    use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
+    default_backend _error404
+frontend _front_https_8543
+    mode http
+    bind :8543 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_https_8543_bind_crt.list ca-ignore-err all crt-ignore-err all
+    <<set-req-base>>
+    http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_8543_host__begin.map)
+    <<https-headers>>
+    use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
+    default_backend _error404
+frontend _front_https_8544
+    mode http
+    bind :8544 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_https_8544_bind_crt.list ca-ignore-err all crt-ignore-err all
+    <<set-req-base>>
+    http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_8544_host__begin.map)
+    <<https-headers>>
+    use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
+    default_backend _error404
+<<support>>
+`)
+
+	c.logger.CompareLogging(defaultLogging)
+}
+
+func TestInstanceFrontendScopedBackend(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	b := c.config.Backends().AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+
+	f1 := c.httpFrontend(8080)
+	f1.Name = "_front_http_8080"
+	h11 := f1.AcquireHost("d1.local")
+	h12 := f1.AcquireHost("d2.local")
+
+	f2 := c.httpFrontend(8081)
+	f2.Name = "_front_http_8081"
+	h21 := f2.AcquireHost("d1.local")
+	h22 := f2.AcquireHost("d2.local")
+
+	h11.AddPath(b, "/", hatypes.MatchBegin).AllowedIPHTTP.Rule = []string{"10.0.0.11"}
+	h11.AddPath(b, "/static", hatypes.MatchBegin).Cors.Enabled = true
+	h12.AddPath(b, "/", hatypes.MatchBegin).AllowedIPHTTP.Rule = []string{"10.0.0.12"}
+	h12.AddPath(b, "/api", hatypes.MatchBegin).HSTS.Enabled = true
+	h21.AddPath(b, "/", hatypes.MatchBegin).AllowedIPHTTP.Rule = []string{"10.0.0.11"}
+	h21.AddPath(b, "/static", hatypes.MatchBegin).MaxBodySize = 1048576
+	h22.AddPath(b, "/", hatypes.MatchBegin).AllowedIPHTTP.Rule = []string{"10.0.0.12"}
+	h22.AddPath(b, "/api", hatypes.MatchBegin).RewriteURL = "/apiv1"
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    acl https-request ssl_fc
+    # path01 = fe:_front_http_8080 -- host/path:d1.local/
+    # path02 = fe:_front_http_8080 -- host/path:d1.local/static
+    # path03 = fe:_front_http_8080 -- host/path:d2.local/
+    # path04 = fe:_front_http_8080 -- host/path:d2.local/api
+    # path05 = fe:_front_http_8081 -- host/path:d1.local/
+    # path06 = fe:_front_http_8081 -- host/path:d1.local/static
+    # path07 = fe:_front_http_8081 -- host/path:d2.local/
+    # path08 = fe:_front_http_8081 -- host/path:d2.local/api
+    http-request set-var-fmt(req.fe) "%f"
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_8080_req__begin.map) if { var(req.fe) -m str _front_http_8080 }
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_8081_req__begin.map) if { var(req.fe) -m str _front_http_8081 }
+    acl allow_rule_src0 src 10.0.0.11
+    http-request deny if { var(txn.pathID) -m str path01 path05 } !allow_rule_src0
+    acl allow_rule_src2 src 10.0.0.12
+    http-request deny if { var(txn.pathID) -m str path03 path07 } !allow_rule_src2
+    http-request use-service lua.send-413 if { var(txn.pathID) -m str path06 } { req.body_size,sub(1048576) gt 0 }
+    http-request replace-path ^/api(.*)$       /apiv1\1     if { var(txn.pathID) -m str path08 }
+    http-response set-header Strict-Transport-Security "max-age=0" if https-request { var(txn.pathID) -m str path04 }
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+frontend _front_http_8080
+    mode http
+    bind :8080
+    <<set-req-base>>
+    <<http-headers>>
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_8080_host__begin.map)
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
+    default_backend _error404
+frontend _front_http_8081
+    mode http
+    bind :8081
+    <<set-req-base>>
+    <<http-headers>>
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_8081_host__begin.map)
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
+    default_backend _error404
+<<support>>
+`)
+
+	c.checkMap("_back_d1_app_8080_front_http_8080_req__begin.map", `
+d1.local#/static path02
+d1.local#/ path01
+d2.local#/api path04
+d2.local#/ path03
+`)
+
+	c.checkMap("_back_d1_app_8080_front_http_8081_req__begin.map", `
+d1.local#/static path06
+d1.local#/ path05
+d2.local#/api path08
+d2.local#/ path07
+`)
+
+	c.checkMap("_front_http_8080_host__begin.map", `
+d1.local#/static d1_app_8080
+d1.local#/ d1_app_8080
+d2.local#/api d1_app_8080
+d2.local#/ d1_app_8080
+`)
+
+	c.checkMap("_front_http_8081_host__begin.map", `
+d1.local#/static d1_app_8080
+d1.local#/ d1_app_8080
+d2.local#/api d1_app_8080
+d2.local#/ d1_app_8080
+`)
 
 	c.logger.CompareLogging(defaultLogging)
 }
@@ -1720,7 +1960,7 @@ backend d1_app_8080
     # path30 = h30.local/
     # path31 = h31.local/
     # path32 = h32.local/
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
     http-request redirect scheme https if !https-request
     acl allow_rule_src0 src 10.0.0.0/8
     http-request deny if !allow_rule_src0
@@ -2360,9 +2600,9 @@ func TestInstanceDefaultHost(t *testing.T) {
 	hhttps.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
 	hhttps.TLS.TLSHash = "0"
 	hhttps.VarNamespace = true
-	hdefhttps.AddPath(b, "/", hatypes.MatchBegin).HTTPSOf(p1)
-	hdefhttps.AddPath(b, "/app1", hatypes.MatchExact).HTTPSOf(p2)
-	hdefhttps.AddPath(b, "/app2", hatypes.MatchPrefix).HTTPSOf(p3)
+	hdefhttps.AddPath(b, "/", hatypes.MatchBegin).SSLRedirect = true
+	hdefhttps.AddPath(b, "/app1", hatypes.MatchExact).RewriteURL = "/"
+	hdefhttps.AddPath(b, "/app2", hatypes.MatchPrefix).MaxBodySize = 32768
 
 	//
 
@@ -2382,9 +2622,9 @@ func TestInstanceDefaultHost(t *testing.T) {
 	hhttps.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
 	hhttps.TLS.TLSHash = "0"
 	hhttps.VarNamespace = true
-	hhttps.AddPath(b, "/app11", hatypes.MatchBegin).HTTPSOf(p1)
-	hdefhttps.AddPath(b, "/app12", hatypes.MatchExact).HTTPSOf(p2)
-	hdefhttps.AddPath(b, "/app13", hatypes.MatchPrefix).HTTPSOf(p3)
+	hhttps.AddPath(b, "/app11", hatypes.MatchBegin).SSLRedirect = true
+	hdefhttps.AddPath(b, "/app12", hatypes.MatchExact).RewriteURL = "/"
+	hdefhttps.AddPath(b, "/app13", hatypes.MatchPrefix).MaxBodySize = 65536
 
 	c.Update()
 	c.checkConfig(`
@@ -2396,9 +2636,9 @@ backend d1_app_8080
     # path01 = <default>/
     # path02 = <default>/app1
     # path03 = <default>/app2
-    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_str(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__exact.map)
-    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__prefix_02.map) if !{ var(txn.pathID) -m found }
-    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__begin.map) if !{ var(txn.pathID) -m found }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_str(/etc/haproxy/maps/_back_d1_app_8080_front_http_def__exact.map)
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_d1_app_8080_front_http_def__prefix_02.map) if !{ var(txn.pathID) -m found }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_def__begin.map) if !{ var(txn.pathID) -m found }
     http-request redirect scheme https if !https-request { var(txn.pathID) -m str path01 }
     http-request use-service lua.send-413 if { var(txn.pathID) -m str path03 } { req.body_size,sub(32768) gt 0 }
     http-request replace-path ^/app1/?(.*)$     /\1     if { var(txn.pathID) -m str path02 }
@@ -2409,9 +2649,9 @@ backend d2_app_8080
     # path02 = <default>/app12
     # path03 = <default>/app13
     # path01 = d2.local/app11
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d2_app_8080_idpath__begin.map)
-    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_str(/etc/haproxy/maps/_back_d2_app_8080_idpathdef__exact.map) if !{ var(txn.pathID) -m found }
-    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_d2_app_8080_idpathdef__prefix.map) if !{ var(txn.pathID) -m found }
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d2_app_8080_front_http_req__begin.map)
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_str(/etc/haproxy/maps/_back_d2_app_8080_front_http_def__exact.map) if !{ var(txn.pathID) -m found }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_d2_app_8080_front_http_def__prefix.map) if !{ var(txn.pathID) -m found }
     http-request redirect scheme https if !https-request { var(txn.pathID) -m str path01 }
     http-request use-service lua.send-413 if { var(txn.pathID) -m str path03 } { req.body_size,sub(65536) gt 0 }
     http-request replace-path ^/app12/?(.*)$     /\1     if { var(txn.pathID) -m str path02 }
@@ -2455,17 +2695,17 @@ frontend _front_https
 /var/haproxy/ssl/certs/default.pem !*
 `)
 
-	c.checkMap("_back_d1_app_8080_idpathdef__exact.map", `
+	c.checkMap("_back_d1_app_8080_front_http_def__exact.map", `
 <default>#/app1 path02`)
-	c.checkMap("_back_d1_app_8080_idpathdef__prefix_02.map", `
+	c.checkMap("_back_d1_app_8080_front_http_def__prefix_02.map", `
 <default>#/app2 path03`)
-	c.checkMap("_back_d1_app_8080_idpathdef__begin.map", `
+	c.checkMap("_back_d1_app_8080_front_http_def__begin.map", `
 <default>#/ path01`)
-	c.checkMap("_back_d2_app_8080_idpathdef__exact.map", `
+	c.checkMap("_back_d2_app_8080_front_http_def__exact.map", `
 <default>#/app12 path02`)
-	c.checkMap("_back_d2_app_8080_idpathdef__prefix.map", `
+	c.checkMap("_back_d2_app_8080_front_http_def__prefix.map", `
 <default>#/app13 path03`)
-	c.checkMap("_back_d2_app_8080_idpath__begin.map", `
+	c.checkMap("_back_d2_app_8080_front_http_req__begin.map", `
 d2.local#/app11 path01`)
 
 	c.checkMap("_front_http_host__begin.map", `
@@ -2499,6 +2739,221 @@ d2.local#/app11 d2_app_8080
 <default>#/ d1_app_8080`)
 
 	c.logger.CompareLogging(defaultLogging)
+}
+
+func TestInstanceDefaultHostMultiFrontend(t *testing.T) {
+	// boilerplate to path ID comments
+	pathsNoreqNoacl := `
+    # path01 = <default>/app1
+    # path02 = <default>/app2`
+	pathsNoreqHasacl := `
+    # path01 = fe:_front_http_8001 -- host/path:<default>/app1
+    # path02 = fe:_front_http_8001 -- host/path:<default>/app2
+    # path03 = fe:_front_http_8002 -- host/path:<default>/app1
+    # path04 = fe:_front_http_8002 -- host/path:<default>/app2`
+	pathsHasreqNoacl := `
+    # path01 = <default>/app1
+    # path02 = <default>/app2
+    # path03 = d1.local/app1
+    # path04 = d1.local/app2`
+	pathsHasreqHasacl := `
+    # path01 = fe:_front_http_8001 -- host/path:<default>/app1
+    # path02 = fe:_front_http_8001 -- host/path:<default>/app2
+    # path03 = fe:_front_http_8001 -- host/path:d1.local/app1
+    # path04 = fe:_front_http_8001 -- host/path:d1.local/app2
+    # path05 = fe:_front_http_8002 -- host/path:<default>/app1
+    # path06 = fe:_front_http_8002 -- host/path:<default>/app2
+    # path07 = fe:_front_http_8002 -- host/path:d1.local/app1
+    # path08 = fe:_front_http_8002 -- host/path:d1.local/app2`
+
+	// boilerplate to backend request actions
+	has2paths := `
+    http-request use-service lua.send-413 if { var(txn.pathID) -m str path01 } { req.body_size,sub(1048576) gt 0 }
+    http-request use-service lua.send-413 if { var(txn.pathID) -m str path02 } { req.body_size,sub(2097152) gt 0 }`
+	has4pathsv1 := has2paths + `
+    http-request use-service lua.send-413 if { var(txn.pathID) -m str path03 } { req.body_size,sub(3145728) gt 0 }
+    http-request use-service lua.send-413 if { var(txn.pathID) -m str path04 } { req.body_size,sub(4194304) gt 0 }`
+	has4pathsv2 := has2paths + `
+    http-request use-service lua.send-413 if { var(txn.pathID) -m str path03 } { req.body_size,sub(5242880) gt 0 }
+    http-request use-service lua.send-413 if { var(txn.pathID) -m str path04 } { req.body_size,sub(6291456) gt 0 }`
+	has8paths := has4pathsv1 + `
+    http-request use-service lua.send-413 if { var(txn.pathID) -m str path05 } { req.body_size,sub(5242880) gt 0 }
+    http-request use-service lua.send-413 if { var(txn.pathID) -m str path06 } { req.body_size,sub(6291456) gt 0 }
+    http-request use-service lua.send-413 if { var(txn.pathID) -m str path07 } { req.body_size,sub(7340032) gt 0 }
+    http-request use-service lua.send-413 if { var(txn.pathID) -m str path08 } { req.body_size,sub(8388608) gt 0 }`
+
+	// frontend related checks
+	frontNofilterNoreq := `
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_http_8001_defaulthost__prefix.map) if !{ var(req.backend) -m found }`
+	frontNofilterHasreq := `
+    http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_8001_host__prefix.map)
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_http_8001_defaulthost__prefix.map) if !{ var(req.backend) -m found }`
+	frontHasfilterNoreq := `
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_http_8001_defaulthost__prefix_01.map) if !{ var(req.backend) -m found } { hdr(x-user) -- 'user1' }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_http_8001_defaulthost__prefix_02.map) if !{ var(req.backend) -m found } !{ var(req.defaultbackend) -m found } { hdr(x-user) -- 'user2' }`
+	frontHasfilterHasreq := `
+    http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_8001_host__prefix_01.map) if { hdr(x-user) -- 'user1' }
+    http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_8001_host__prefix_02.map) if !{ var(req.backend) -m found } { hdr(x-user) -- 'user2' }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_http_8001_defaulthost__prefix_01.map) if !{ var(req.backend) -m found } { hdr(x-user) -- 'user1' }
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_http_8001_defaulthost__prefix_02.map) if !{ var(req.backend) -m found } !{ var(req.defaultbackend) -m found } { hdr(x-user) -- 'user2' }`
+
+	// backend related checks -- also binding everything together
+	testCases := map[string]struct {
+		hasHTTPFilter bool // ACLs matching HTTP headers
+		hasReqHost    bool // actions to configured (non default) hostnames, which adds additional ACLs
+		hasFrontACL   bool // two distinct frontends selecting a single backend, adding frontend check ACLs in the backend side
+		expFront      string
+		expBack       string
+	}{
+		"test01": {
+			hasHTTPFilter: false, hasReqHost: false, hasFrontACL: false,
+			expFront: frontNofilterNoreq,
+			expBack: pathsNoreqNoacl + `
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_def__prefix.map)` +
+				has2paths,
+		},
+		"test02": {
+			hasHTTPFilter: false, hasReqHost: false, hasFrontACL: true,
+			expFront: frontNofilterNoreq,
+			expBack: pathsNoreqHasacl + `
+    http-request set-var-fmt(req.fe) "%f"
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_def__prefix.map) if { var(req.fe) -m str _front_http_8001 }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8002_def__prefix.map) if { var(req.fe) -m str _front_http_8002 }` +
+				has4pathsv2,
+		},
+		"test03": {
+			hasHTTPFilter: false, hasReqHost: true, hasFrontACL: false,
+			expFront: frontNofilterHasreq,
+			expBack: pathsHasreqNoacl + `
+    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_req__prefix.map)
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_def__prefix.map) if !{ var(txn.pathID) -m found }` +
+				has4pathsv1,
+		},
+		"test04": {
+			hasHTTPFilter: false, hasReqHost: true, hasFrontACL: true,
+			expFront: frontNofilterHasreq,
+			expBack: pathsHasreqHasacl + `
+    http-request set-var-fmt(req.fe) "%f"
+    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_req__prefix.map) if { var(req.fe) -m str _front_http_8001 }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_def__prefix.map) if { var(req.fe) -m str _front_http_8001 } !{ var(txn.pathID) -m found }
+    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8002_req__prefix.map) if { var(req.fe) -m str _front_http_8002 }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8002_def__prefix.map) if { var(req.fe) -m str _front_http_8002 } !{ var(txn.pathID) -m found }` +
+				has8paths,
+		},
+		"test05": {
+			hasHTTPFilter: true, hasReqHost: false, hasFrontACL: false,
+			expFront: frontHasfilterNoreq,
+			expBack: pathsNoreqNoacl + `
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_def__prefix_01.map) if { hdr(x-user) -- 'user2' }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_def__prefix_02.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- 'user1' }` +
+				has2paths,
+		},
+		"test06": {
+			hasHTTPFilter: true, hasReqHost: false, hasFrontACL: true,
+			expFront: frontHasfilterNoreq,
+			expBack: pathsNoreqHasacl + `
+    http-request set-var-fmt(req.fe) "%f"
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_def__prefix_01.map) if { var(req.fe) -m str _front_http_8001 } { hdr(x-user) -- 'user2' }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_def__prefix_02.map) if { var(req.fe) -m str _front_http_8001 } !{ var(txn.pathID) -m found } { hdr(x-user) -- 'user1' }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8002_def__prefix_01.map) if { var(req.fe) -m str _front_http_8002 } { hdr(x-user) -- 'user2' }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8002_def__prefix_02.map) if { var(req.fe) -m str _front_http_8002 } !{ var(txn.pathID) -m found } { hdr(x-user) -- 'user1' }` +
+				has4pathsv2,
+		},
+		"test07": {
+			hasHTTPFilter: true, hasReqHost: true, hasFrontACL: false,
+			expFront: frontHasfilterHasreq,
+			expBack: pathsHasreqNoacl + `
+    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_req__prefix_01.map) if { hdr(x-user) -- 'user2' }
+    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_req__prefix_02.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- 'user1' }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_def__prefix_01.map) if { hdr(x-user) -- 'user2' }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_def__prefix_02.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- 'user1' }` +
+				has4pathsv1,
+		},
+		"test08": {
+			hasHTTPFilter: true, hasReqHost: true, hasFrontACL: true,
+			expFront: frontHasfilterHasreq,
+			expBack: pathsHasreqHasacl + `
+    http-request set-var-fmt(req.fe) "%f"
+    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_req__prefix_01.map) if { var(req.fe) -m str _front_http_8001 } { hdr(x-user) -- 'user2' }
+    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_req__prefix_02.map) if { var(req.fe) -m str _front_http_8001 } !{ var(txn.pathID) -m found } { hdr(x-user) -- 'user1' }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_def__prefix_01.map) if { var(req.fe) -m str _front_http_8001 } { hdr(x-user) -- 'user2' }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_def__prefix_02.map) if { var(req.fe) -m str _front_http_8001 } !{ var(txn.pathID) -m found } { hdr(x-user) -- 'user1' }
+    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8002_req__prefix_01.map) if { var(req.fe) -m str _front_http_8002 } { hdr(x-user) -- 'user2' }
+    http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8002_req__prefix_02.map) if { var(req.fe) -m str _front_http_8002 } !{ var(txn.pathID) -m found } { hdr(x-user) -- 'user1' }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8002_def__prefix_01.map) if { var(req.fe) -m str _front_http_8002 } { hdr(x-user) -- 'user2' }
+    http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8002_def__prefix_02.map) if { var(req.fe) -m str _front_http_8002 } !{ var(txn.pathID) -m found } { hdr(x-user) -- 'user1' }` +
+				has8paths,
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			c := setup(t)
+			defer c.teardown()
+
+			b := c.config.backends.AcquireBackend("default", "app", "8080")
+			b.Endpoints = []*hatypes.Endpoint{endpointS1}
+
+			f1 := c.httpFrontend(8001)
+			f1.Name = "_front_http_8001"
+			f1h1 := f1.AcquireHost(hatypes.DefaultHost)
+			link1 := hatypes.CreatePathLink("/app1", hatypes.MatchPrefix)
+			link2 := hatypes.CreatePathLink("/app2", hatypes.MatchPrefix)
+			if test.hasHTTPFilter {
+				link1.WithHeadersMatch(hatypes.HTTPHeaderMatch{{Name: "x-user", Value: "user1"}})
+				link2.WithHeadersMatch(hatypes.HTTPHeaderMatch{{Name: "x-user", Value: "user2"}})
+			}
+			f1h1.AddLink(b, link1).MaxBodySize = 1048576
+			f1h1.AddLink(b, link2).MaxBodySize = 2097152
+			if test.hasReqHost {
+				f1h2 := f1.AcquireHost("d1.local")
+				f1h2.AddLink(b, link1).MaxBodySize = 3145728
+				f1h2.AddLink(b, link2).MaxBodySize = 4194304
+			}
+			var frontend2 string
+			if test.hasFrontACL {
+				f2 := c.httpFrontend(8002)
+				f2.Name = "_front_http_8002"
+				f2h1 := f2.AcquireHost(hatypes.DefaultHost)
+				f2h1.AddLink(b, link1).MaxBodySize = 5242880
+				f2h1.AddLink(b, link2).MaxBodySize = 6291456
+				if test.hasReqHost {
+					f2h2 := f2.AcquireHost("d1.local")
+					f2h2.AddLink(b, link1).MaxBodySize = 7340032
+					f2h2.AddLink(b, link2).MaxBodySize = 8388608
+				}
+				frontend2 = `
+frontend _front_http_8002
+    mode http
+    bind :8002
+    <<set-req-base>>
+    <<http-headers>>` + strings.ReplaceAll(test.expFront, "_front_http_8001_", "_front_http_8002_") + `
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
+    use_backend %[var(req.defaultbackend)]
+    default_backend _error404`
+			}
+
+			c.Update()
+			c.checkConfig(`
+<<global>>
+<<defaults>>
+backend default_app_8080
+    mode http` + test.expBack + `
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+frontend _front_http_8001
+    mode http
+    bind :8001
+    <<set-req-base>>
+    <<http-headers>>` + test.expFront + `
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
+    use_backend %[var(req.defaultbackend)]
+    default_backend _error404` + frontend2 + `
+<<support>>
+`)
+			c.logger.CompareLogging(defaultLogging)
+		})
+	}
+
 }
 
 func TestInstanceStrictHost(t *testing.T) {
@@ -4200,8 +4655,9 @@ func TestInstanceRootRedirect(t *testing.T) {
 	app2path.SSLRedirect = true
 
 	h = fhttps.AcquireHost("d2.local")
-	h.AddPath(b, "/app1", hatypes.MatchBegin).HTTPSOf(app1path)
-	h.AddPath(b, "/app2", hatypes.MatchBegin).HTTPSOf(app2path)
+	h.AddPath(b, "/app1", hatypes.MatchBegin).SSLRedirect = true // mimic ingress API by making http and https identical
+	h.AddPath(b, "/app2", hatypes.MatchBegin).SSLRedirect = true
+
 	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
 	h.TLS.TLSHash = "0"
 	h.RootRedirect = "/app1"
@@ -4969,7 +5425,7 @@ backend d1_app_8080
     mode http
     # path01 = d1.local/
     # path02 = d1.local/admin
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
     http-request auth` + realm + ` if { var(txn.pathID) -m str path02 } !{ http_auth(` + test.listname + `) }
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
@@ -5223,7 +5679,7 @@ func TestModSecurity(t *testing.T) {
 			backendExp: `
     # path02 = d1.local/
     # path01 = d1.local/sub
-    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
     filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
     http-request deny if { var(txn.modsec.code) -m int gt 0 } { var(txn.pathID) -m str path01 }`,
 			modsecExp: `

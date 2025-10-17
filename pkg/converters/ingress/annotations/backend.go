@@ -802,7 +802,7 @@ func (c *updater) buildBackendOAuth(d *backData) {
 
 func (c *updater) findOAuthBackend(namespace, uriPrefix string) *hatypes.Backend {
 	for _, backend := range c.haproxy.Backends().Items() {
-		for _, path := range backend.ActivePaths() {
+		for _, path := range backend.Paths {
 			if path.Backend.Namespace == namespace && strings.TrimRight(path.Path(), "/") == uriPrefix {
 				return path.Backend
 			}
@@ -1050,7 +1050,7 @@ func (c *updater) buildBackendSSL(d *backData) {
 func (c *updater) buildBackendSSLRedirect(d *backData) {
 	noTLSRedir := utils.Split(d.mapper.Get(ingtypes.GlobalNoTLSRedirectLocations).Value, ",")
 	for _, path := range d.backend.Paths {
-		redir := path.HasHTTPS() && d.mapper.GetConfig(path.Link).Get(ingtypes.BackSSLRedirect).Bool()
+		redir := path.HasHTTPS && (path.Host == nil || !path.Host.IsHTTPS()) && d.mapper.GetConfig(path.Link).Get(ingtypes.BackSSLRedirect).Bool()
 		if redir {
 			for _, noredir := range noTLSRedir {
 				if strings.HasPrefix(path.Path(), noredir) {

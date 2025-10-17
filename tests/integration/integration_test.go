@@ -969,6 +969,51 @@ Request forbidden by administrative rules.
 		assert.Equal(t, "https-server2", res2https.EchoResponse.ServerName)
 	})
 
+	t.Run("should distinguish same hostname and path from distinct frontends", func(t *testing.T) {
+		t.Parallel()
+
+		hostname := framework.RandomHostName()
+		svc := f.CreateService(ctx, t, httpServerPort)
+		ing := func(httpport, httpsport int32, location string) {
+			_, _ = f.CreateIngress(ctx, t, svc,
+				options.DefaultTLS(),
+				options.CustomHostName(hostname),
+				options.AddConfigKeyAnnotation(ingtypes.FrontHTTPPort, strconv.Itoa(int(httpport))),
+				options.AddConfigKeyAnnotation(ingtypes.FrontHTTPSPort, strconv.Itoa(int(httpsport))),
+				options.AddConfigKeyAnnotation(ingtypes.BackSSLRedirect, "false"),
+				options.AddConfigKeyAnnotation(ingtypes.BackRewriteTarget, location),
+			)
+		}
+		req := func(port int32, ssl bool, location string) {
+			opt := []options.Request{
+				options.RequestPort(port),
+				options.ExpectResponseCode(http.StatusOK),
+			}
+			if ssl {
+				opt = append(opt,
+					options.TLSRequest(),
+					options.TLSSkipVerify(),
+				)
+			}
+			res := f.Request(ctx, t, http.MethodGet, hostname, "/", opt...)
+			assert.True(t, res.EchoResponse.Parsed)
+			assert.Equal(t, location, res.EchoResponse.Path)
+		}
+
+		http1 := framework.RandomPort()
+		https1 := framework.RandomPort()
+		http2 := framework.RandomPort()
+		https2 := framework.RandomPort()
+
+		ing(http1, https1, "/api1")
+		ing(http2, https2, "/api2")
+
+		req(http1, false, "/api1/")
+		req(https1, true, "/api1/")
+		req(http2, false, "/api2/")
+		req(https2, true, "/api2/")
+	})
+
 	// should match wildcard host
 
 	// should match domain conflicting with wildcard host

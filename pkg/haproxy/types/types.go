@@ -500,8 +500,9 @@ type Frontend struct {
 	CrtListFile string
 	//
 	// Passthrough related
-	HTTPSSocket string
-	HTTPSProxy  bool
+	TLSProxyName string
+	HTTPSSocket  string
+	HTTPSProxy   bool
 	//
 	IsFrontingProxy    bool
 	IsFrontingUseProto bool
@@ -664,10 +665,9 @@ type Backend struct {
 	//
 	// Paths
 	//
-	Paths               []*Path
-	PathsMap            *HostsMap
-	PathsDefaultHostMap *HostsMap
-	pathConfig          map[string]*BackendPathConfig
+	Paths      []*Path
+	pathsMaps  []*BackendMaps
+	pathConfig map[string]*BackendPathConfig
 	//
 	// per backend config
 	//
@@ -714,6 +714,13 @@ type BlueGreenConfig struct {
 	HeaderName string
 }
 
+type BackendMaps struct {
+	Frontends []string
+	ReqMap    *HostsMap
+	DefMap    *HostsMap
+	Paths     []*Path
+}
+
 // BackendPathConfig ...
 type BackendPathConfig struct {
 	items []*BackendPathItem
@@ -728,15 +735,14 @@ type BackendPathItem struct {
 // BackendPath ...
 type Path struct {
 	//
-	// core fields, filter out new fields in `Backend.createPathConfig()`
+	// core fields
 	//
-	beskip   bool
-	hashttps bool
-	order    int
-	Host     *Host
-	Backend  *Backend
-	ID       string
-	Link     *PathLink
+	order    int       `class:"core"`
+	ID       string    `class:"core"`
+	Link     *PathLink `class:"core"`
+	Host     *Host     `class:"core"`
+	Backend  *Backend  `class:"core"`
+	HasHTTPS bool      `class:"core"`
 	//
 	// config fields
 	//

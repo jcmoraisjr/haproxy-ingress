@@ -253,6 +253,10 @@ func (f *Frontend) BuildSortedHosts() []*Host {
 	return items
 }
 
+func (f *Frontend) Port() int32 {
+	return f.port
+}
+
 // Hosts ...
 func (f *Frontend) Hosts() map[string]*Host {
 	return f.hosts

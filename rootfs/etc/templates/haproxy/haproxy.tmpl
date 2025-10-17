@@ -495,22 +495,36 @@ backend {{ $backend.ID }}
 
 {{- /*------------------------------------*/}}
 {{- if $backend.NeedACL }}
-{{- range $path := $backend.ActivePaths }}
-    # {{ $path.ID }} = {{ $path.Hostname }}{{ $path.Path }}
+{{- $needFrontendACL := $backend.NeedFrontendACL }}
+{{- range $pathsMap := $backend.PathsMaps }}
+{{- range $path := $pathsMap.Paths }}
+    # {{ $path.ID }} = {{ if $needFrontendACL }}fe:{{ join "/" $pathsMap.Frontends }} -- host/path:{{ end }}{{ $path.Hostname }}{{ $path.Path }}
 {{- end }}
-{{- range $match := $backend.PathsMap.MatchFiles }}
+{{- end }}
+{{- if $needFrontendACL }}
+    http-request set-var-fmt(req.fe) "%f"
+{{- end }}
+{{- range $pathsMap := $backend.PathsMaps }}
+{{- range $match := $pathsMap.ReqMap.MatchFiles }}
     http-request set-var(txn.pathID) var(req.base)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
-        {{- template "httpFilters" map $match "txn.pathID" 1 }}
+        {{- if $needFrontendACL }} if { var(req.fe) -m str {{ join " " $pathsMap.Frontends }} }{{ end }}
+        {{- template "httpFilters" map $match "txn.pathID" (not $needFrontendACL) }}
 {{- end }}
-{{- $pathsHasHost := $backend.PathsMap.HasHost }}
-{{- range $match := $backend.PathsDefaultHostMap.MatchFiles }}
+{{- $pathsHasHost := $pathsMap.ReqMap.HasHost }}
+{{- range $match := $pathsMap.DefMap.MatchFiles }}
     http-request set-var(txn.pathID) str(<default>\#),concat(,req.path)
         {{- if $match.Lower }},lower{{ end }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
-        {{- if or $pathsHasHost (not $match.First) }} if !{ var(txn.pathID) -m found }{{ end }}
-        {{- template "httpFilters" map $match "" 0 }}
+        {{- if or $needFrontendACL $pathsHasHost (not $match.First) }} if
+            {{- if $needFrontendACL }} { var(req.fe) -m str {{ join " " $pathsMap.Frontends }} }{{ end }}
+            {{- if or $pathsHasHost (not $match.First) }} !{ var(txn.pathID) -m found }{{ end }}
+            {{- template "httpFilters" map $match "" 0 }}
+        {{- else }}
+            {{- template "httpFilters" map $match "" 1 }}
+        {{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
 
@@ -1102,8 +1116,7 @@ frontend {{ $proxy_name }}
 # #
 #     TCP/TLS frontend
 #
-{{- $proxy__front__tls := "_front__tls" }}
-listen {{ $proxy__front__tls }}
+listen {{ $frontend.TLSProxyName }}
     mode tcp
     bind {{ $frontend.Bind }}{{ if $frontend.AcceptProxy }} accept-proxy{{ end }}
 
@@ -1129,7 +1142,7 @@ listen {{ $proxy__front__tls }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- range $snippet := index $global.CustomProxy $proxy__front__tls }}
+{{- range $snippet := index $global.CustomProxy $frontend.TLSProxyName }}
     {{ $snippet }}
 {{- end }}
 
@@ -1599,13 +1612,11 @@ frontend {{ $httpsFrontendName }}
 {{- define "httpFilters" }}
 {{- $match := .p1 }}
 {{- $varbe := .p2 }}
-{{- $needIfStmt := .p3 }}
-{{- if $varbe }}
-{{- if $needIfStmt }}
-    {{- if or (not $match.First) $match.Headers }} if{{ end }}
+{{- $missingIfStmt := .p3 }}
+{{- if $missingIfStmt }}
+    {{- if or $match.Headers (and $varbe (not $match.First)) }} if{{ end }}
 {{- end }}
-    {{- if not $match.First }} !{ var({{ $varbe }}) -m found }{{ end }}
-{{- end }}
+{{- if and $varbe (not $match.First) }} !{ var({{ $varbe }}) -m found }{{ end }}
 {{- if $match.Headers }}
     {{- range $header := $match.Headers }} { hdr({{ $header.Name }}){{ if $header.Regex }} -m reg{{ end }} -- {{ $header.Value | haquote }} }{{ end }}
 {{- end }}

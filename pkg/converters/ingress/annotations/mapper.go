@@ -166,6 +166,10 @@ func (c *Mapper) GetConfig(path *hatypes.PathLink) *KeyConfig {
 	return config
 }
 
+func (c *Mapper) CopyConfig(dst, src *hatypes.PathLink) {
+	c.configByPath[dst.Hash()] = c.GetConfig(src)
+}
+
 // Get ...
 func (c *Mapper) Get(key string) *ConfigValue {
 	configs, found := c.findPathConfig(key)

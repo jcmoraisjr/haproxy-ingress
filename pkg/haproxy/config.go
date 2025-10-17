@@ -103,10 +103,16 @@ func (c *config) syncFrontend(f *hatypes.Frontend) {
 		if f.HasSSLPassthrough() {
 			// using ssl-passthrough config, so need a `mode tcp`
 			// frontend with `inspect-delay` and `req.ssl_sni`
+			if f.Name == "_front_https" {
+				f.TLSProxyName = "_front__tls" // backward compatible name
+			} else {
+				f.TLSProxyName = fmt.Sprintf("_front__tls_%d", f.Port())
+			}
 			f.HTTPSSocket = fmt.Sprintf("unix@%s/var/run/haproxy/%s_socket.sock", c.global.LocalFSPrefix, f.Name)
 			f.HTTPSProxy = true
 		} else {
 			// One single HAProxy's frontend and bind
+			f.TLSProxyName = ""
 			f.HTTPSSocket = ""
 			f.HTTPSProxy = f.AcceptProxy
 		}
@@ -397,18 +403,19 @@ func (c *config) WriteBackendMaps() error {
 			continue
 		}
 		mapsFilenamePrefix := path.Join(c.options.mapsDir, "_back_"+backend.ID)
-		pathsMap := mapBuilder.AddMap(mapsFilenamePrefix + "_idpath.map")
-		pathsDefaultHostMap := mapBuilder.AddMap(mapsFilenamePrefix + "_idpathdef.map")
-		for _, path := range backend.ActivePaths() {
-			if path.IsDefaultHost() {
-				// using DefaultHost ID as hostname, see types/maps.go/buildMapKey()
-				pathsDefaultHostMap.AddHostnamePathMapping(hatypes.DefaultHost, path, path.ID)
-			} else {
-				pathsMap.AddHostnamePathMapping(path.Hostname(), path, path.ID)
+		for _, pathsMap := range backend.PathsMaps() {
+			frontend := pathsMap.Frontends[0]
+			pathsMap.ReqMap = mapBuilder.AddMap(mapsFilenamePrefix + frontend + "_req.map")
+			pathsMap.DefMap = mapBuilder.AddMap(mapsFilenamePrefix + frontend + "_def.map")
+			for _, path := range pathsMap.Paths {
+				if path.IsDefaultHost() {
+					// using DefaultHost ID as hostname, see types/maps.go/buildMapKey()
+					pathsMap.DefMap.AddHostnamePathMapping(hatypes.DefaultHost, path, path.ID)
+				} else {
+					pathsMap.ReqMap.AddHostnamePathMapping(path.Hostname(), path, path.ID)
+				}
 			}
 		}
-		backend.PathsMap = pathsMap
-		backend.PathsDefaultHostMap = pathsDefaultHostMap
 	}
 	return writeMaps(mapBuilder, c.options.mapsTemplate)
 }

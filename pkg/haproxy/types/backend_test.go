@@ -222,6 +222,9 @@ func TestCreatePathConfig(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
+		for _, path := range test.paths {
+			path.Link = CreatePathLink("/", MatchPrefix)
+		}
 		backend := Backend{Paths: test.paths}
 		actualConfig := map[string][]pathConfig{}
 		for _, attr := range strings.Split(test.filter, ",") {

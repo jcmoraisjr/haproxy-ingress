@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -287,16 +288,6 @@ func (b *Backend) hasInPath(has func(path *Path) bool) Has {
 	return HasOnly
 }
 
-func (b *Backend) ActivePaths() []*Path {
-	paths := make([]*Path, 0, len(b.Paths))
-	for _, path := range b.Paths {
-		if !path.beskip {
-			paths = append(paths, path)
-		}
-	}
-	return paths
-}
-
 // PathConfig ...
 func (b *Backend) PathConfig(attr string) *BackendPathConfig {
 	b.ensurePathConfig(attr)
@@ -314,6 +305,46 @@ func (b *Backend) NeedACL() bool {
 	return false
 }
 
+func (b *Backend) NeedFrontendACL() bool {
+	return len(b.PathsMaps()) > 1
+}
+
+func (b *Backend) PathsMaps() []*BackendMaps {
+	if b.pathsMaps == nil {
+		b.pathsMaps = b.createPathsMaps()
+	}
+	return b.pathsMaps
+}
+
+func (b *Backend) createPathsMaps() []*BackendMaps {
+	var pathsMaps []*BackendMaps
+	for _, path := range b.Paths {
+		frontend := path.FrontendName()
+		i := slices.IndexFunc(pathsMaps, func(b *BackendMaps) bool { return slices.Contains(b.Frontends, frontend) })
+		if i < 0 {
+			i = len(pathsMaps)
+			pathsMaps = append(pathsMaps, &BackendMaps{
+				Frontends: []string{frontend},
+			})
+		}
+		backMap := pathsMaps[i]
+		backMap.Paths = append(backMap.Paths, path)
+	}
+	// Deduplicate maps with the exact same paths, a common pattern on models configured via Ingress API.
+	// This deduplication reduces the size of the backend configuration.
+	pathsMaps = slices.CompactFunc(pathsMaps, func(m1, m2 *BackendMaps) bool {
+		if slices.EqualFunc(m1.Paths, m2.Paths, func(p1, p2 *Path) bool { return p1.Equals(p2) }) {
+			m2.Frontends = append(m2.Frontends, m1.Frontends...)
+			return true
+		}
+		return false
+	})
+	sort.Slice(pathsMaps, func(i, j int) bool {
+		return pathsMaps[i].Frontends[0] < pathsMaps[j].Frontends[0]
+	})
+	return pathsMaps
+}
+
 func (b *Backend) ensurePathConfig(attr string) {
 	if b.pathConfig == nil {
 		b.pathConfig = b.createPathConfig()
@@ -329,32 +360,31 @@ func (b *Backend) ensurePathConfig(attr string) {
 func (b *Backend) createPathConfig() map[string]*BackendPathConfig {
 	pathconfig := make(map[string]*BackendPathConfig, len(b.Paths))
 	pathType := reflect.TypeOf(Path{})
-	for i := 0; i < pathType.NumField(); i++ {
-		name := pathType.Field(i).Name
-		// filter out core fields
-		switch name {
-		case "beskip", "hashttps", "order", "Host", "Backend", "ID", "Link":
-		default:
-			pathconfig[name] = &BackendPathConfig{}
+	for i := range pathType.NumField() {
+		field := pathType.Field(i)
+		if field.Tag.Get("class") != "core" {
+			pathconfig[field.Name] = &BackendPathConfig{}
 		}
 	}
-	for _, path := range b.ActivePaths() {
-		pathValue := reflect.ValueOf(*path)
-		for name, config := range pathconfig {
-			newconfig := pathValue.FieldByName(name).Interface()
-			hasconfig := false
-			for _, item := range config.items {
-				if reflect.DeepEqual(item.config, newconfig) {
-					item.paths = append(item.paths, path)
-					hasconfig = true
-					break
+	for _, pathsMap := range b.PathsMaps() {
+		for _, path := range pathsMap.Paths {
+			pathValue := reflect.ValueOf(*path)
+			for name, config := range pathconfig {
+				newconfig := pathValue.FieldByName(name).Interface()
+				hasconfig := false
+				for _, item := range config.items {
+					if reflect.DeepEqual(item.config, newconfig) {
+						item.paths = append(item.paths, path)
+						hasconfig = true
+						break
+					}
 				}
-			}
-			if !hasconfig {
-				config.items = append(config.items, &BackendPathItem{
-					paths:  []*Path{path},
-					config: newconfig,
-				})
+				if !hasconfig {
+					config.items = append(config.items, &BackendPathItem{
+						paths:  []*Path{path},
+						config: newconfig,
+					})
+				}
 			}
 		}
 	}
@@ -427,20 +457,17 @@ func (ep *Endpoint) IsEmpty() bool {
 	return ep.IP == "127.0.0.1"
 }
 
-// HTTPSOf links this path as the TLS side of the other path. Linking them only makes sense
-// if both paths share the same pathlink data (except the frontend), the former comes from a
-// TLS frontend, and the other comes from a plain HTTP one. This is a supporting method to
-// allow building Ingress friendly configuration by deduplicating backend entry and flagging
-// HasTLS() as true, helping to properly configure SSLRedirect. Future improvements can infer
-// this option automatically.
-func (p *Path) HTTPSOf(other *Path) {
-	p.beskip = true
-	p.hashttps = true
-	other.hashttps = true
-}
-
-func (p *Path) HasHTTPS() bool {
-	return p.hashttps
+func (p *Path) Equals(other *Path) bool {
+	pathType := reflect.TypeOf(Path{})
+	for i := range pathType.NumField() {
+		if pathType.Field(i).Tag.Get("class") == "core" {
+			continue
+		}
+		if !reflect.DeepEqual(reflect.ValueOf(*p).Field(i).Interface(), reflect.ValueOf(*other).Field(i).Interface()) {
+			return false
+		}
+	}
+	return true
 }
 
 // FrontendName ...

@@ -188,14 +188,10 @@ func (c *testConfig) createBackendMappingData(
 		paths[path] = struct{}{}
 	}
 	for p := range paths {
-		httpPath := &hatypes.Path{
-			Link: hatypes.CreatePathLink(p, hatypes.MatchBegin),
-		}
-		httpsPath := &hatypes.Path{
-			Link: hatypes.CreatePathLink(p, hatypes.MatchBegin),
-		}
-		httpsPath.HTTPSOf(httpPath)
-		d.backend.AddPath(httpPath)
+		d.backend.AddPath(&hatypes.Path{
+			Link:     hatypes.CreatePathLink(p, hatypes.MatchBegin),
+			HasHTTPS: true,
+		})
 	}
 	for uri, ann := range urlAnnValue {
 		d.mapper.AddAnnotations(source, hatypes.CreatePathLink(uri, hatypes.MatchBegin), ann)
