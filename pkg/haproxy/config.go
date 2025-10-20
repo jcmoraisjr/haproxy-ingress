@@ -206,18 +206,20 @@ func (c *config) writeFrontendMaps(f *hatypes.Frontend) error {
 	// of a major refactor that is decoupling the plain HTTP/s model used up to v0.16.
 	mapBuilder := hatypes.CreateMaps(c.global.MatchOrder)
 	mapsFilenamePrefix := path.Join(c.options.mapsDir, f.Name)
-	commonMaps := hatypes.FrontendCommonMaps{
-		DefaultHostMap:   mapBuilder.AddMap(mapsFilenamePrefix + "_defaulthost.map"),
-		RedirFromRootMap: mapBuilder.AddMap(mapsFilenamePrefix + "_redir_fromroot.map"),
-		RedirFromMap:     mapBuilder.AddMap(mapsFilenamePrefix + "_redir_from.map"),
-		RedirToMap:       mapBuilder.AddMap(mapsFilenamePrefix + "_redir_to.map"),
-		VarNamespaceMap:  mapBuilder.AddMap(mapsFilenamePrefix + "_namespace.map"),
+	buildCommonMaps := func(m *hatypes.FrontendCommonMaps) {
+		*m = hatypes.FrontendCommonMaps{
+			DefaultHostMap:   mapBuilder.AddMap(mapsFilenamePrefix + "_defaulthost.map"),
+			RedirFromRootMap: mapBuilder.AddMap(mapsFilenamePrefix + "_redir_fromroot.map"),
+			RedirFromMap:     mapBuilder.AddMap(mapsFilenamePrefix + "_redir_from.map"),
+			RedirToMap:       mapBuilder.AddMap(mapsFilenamePrefix + "_redir_to.map"),
+			VarNamespaceMap:  mapBuilder.AddMap(mapsFilenamePrefix + "_namespace.map"),
+		}
 	}
 	var httpMaps *hatypes.FrontendHTTPMaps
 	var httpsMaps *hatypes.FrontendHTTPSMaps
+	var commonMaps *hatypes.FrontendCommonMaps
 	if f.IsHTTPS {
 		httpsMaps = &hatypes.FrontendHTTPSMaps{
-			FrontendCommonMaps:    commonMaps,
 			HTTPSHostMap:          mapBuilder.AddMap(mapsFilenamePrefix + "_host.map"),
 			SSLPassthroughMap:     mapBuilder.AddMap(mapsFilenamePrefix + "_sslpassthrough.map"),
 			TLSAuthList:           mapBuilder.AddMap(mapsFilenamePrefix + "_tls_auth.list"),
@@ -225,12 +227,15 @@ func (c *config) writeFrontendMaps(f *hatypes.Frontend) error {
 			TLSInvalidCrtPagesMap: mapBuilder.AddMap(mapsFilenamePrefix + "_tls_invalidcrt_pages.map"),
 			TLSMissingCrtPagesMap: mapBuilder.AddMap(mapsFilenamePrefix + "_tls_missingcrt_pages.map"),
 		}
+		commonMaps = &httpsMaps.FrontendCommonMaps
+		buildCommonMaps(commonMaps)
 	} else {
 		httpMaps = &hatypes.FrontendHTTPMaps{
-			FrontendCommonMaps: commonMaps,
-			HTTPHostMap:        mapBuilder.AddMap(mapsFilenamePrefix + "_host.map"),
-			RedirRootSSLMap:    mapBuilder.AddMap(mapsFilenamePrefix + "_redir_root_ssl.map"),
+			HTTPHostMap:     mapBuilder.AddMap(mapsFilenamePrefix + "_host.map"),
+			RedirRootSSLMap: mapBuilder.AddMap(mapsFilenamePrefix + "_redir_root_ssl.map"),
 		}
+		commonMaps = &httpMaps.FrontendCommonMaps
+		buildCommonMaps(commonMaps)
 	}
 	hasVarNamespace := f.HasVarNamespace()
 	defaultHost := f.DefaultHost()

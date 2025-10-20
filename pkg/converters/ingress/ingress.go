@@ -232,7 +232,7 @@ func (c *converter) syncPartial() {
 	dirtyStorages := trackedLinks[convtypes.ResourceAcmeData]
 
 	c.haproxy.TCPServices().RemoveAll(dirtyTCPServices)
-	c.haproxy.Frontends().RemoveAllHosts(dirtyHosts) // TODO need to link frontend ref as well //
+	c.haproxy.Frontends().RemoveAllHosts(dirtyHosts)
 	c.haproxy.Frontends().AuthProxy.RemoveAuthBackendByTarget(dirtyBacks)
 	c.haproxy.Backends().RemoveAll(dirtyBacks)
 	c.haproxy.Userlists().RemoveAll(dirtyUsers)

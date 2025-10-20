@@ -288,16 +288,24 @@ func (b *Backend) hasInPath(has func(path *Path) bool) Has {
 	return HasOnly
 }
 
+func (b *Backend) PathConfigs() map[string]*BackendPathConfig {
+	if b.pathsConfigs == nil {
+		b.pathsConfigs = b.createPathConfig()
+	}
+	return b.pathsConfigs
+}
+
 // PathConfig ...
 func (b *Backend) PathConfig(attr string) *BackendPathConfig {
-	b.ensurePathConfig(attr)
-	return b.pathConfig[attr]
+	if _, found := b.PathConfigs()[attr]; !found {
+		panic(fmt.Errorf("field does not exist: %s", attr))
+	}
+	return b.pathsConfigs[attr]
 }
 
 // NeedACL ...
 func (b *Backend) NeedACL() bool {
-	b.ensurePathConfig("")
-	for _, path := range b.pathConfig {
+	for _, path := range b.PathConfigs() {
 		if path.NeedACL() {
 			return true
 		}
@@ -309,21 +317,21 @@ func (b *Backend) NeedFrontendACL() bool {
 	return len(b.PathsMaps()) > 1
 }
 
-func (b *Backend) PathsMaps() []*BackendMaps {
+func (b *Backend) PathsMaps() []*BackendPathsMaps {
 	if b.pathsMaps == nil {
 		b.pathsMaps = b.createPathsMaps()
 	}
 	return b.pathsMaps
 }
 
-func (b *Backend) createPathsMaps() []*BackendMaps {
-	var pathsMaps []*BackendMaps
+func (b *Backend) createPathsMaps() []*BackendPathsMaps {
+	var pathsMaps []*BackendPathsMaps
 	for _, path := range b.Paths {
 		frontend := path.FrontendName()
-		i := slices.IndexFunc(pathsMaps, func(b *BackendMaps) bool { return slices.Contains(b.Frontends, frontend) })
+		i := slices.IndexFunc(pathsMaps, func(b *BackendPathsMaps) bool { return slices.Contains(b.Frontends, frontend) })
 		if i < 0 {
 			i = len(pathsMaps)
-			pathsMaps = append(pathsMaps, &BackendMaps{
+			pathsMaps = append(pathsMaps, &BackendPathsMaps{
 				Frontends: []string{frontend},
 			})
 		}
@@ -332,7 +340,7 @@ func (b *Backend) createPathsMaps() []*BackendMaps {
 	}
 	// Deduplicate maps with the exact same paths, a common pattern on models configured via Ingress API.
 	// This deduplication reduces the size of the backend configuration.
-	pathsMaps = slices.CompactFunc(pathsMaps, func(m1, m2 *BackendMaps) bool {
+	pathsMaps = slices.CompactFunc(pathsMaps, func(m1, m2 *BackendPathsMaps) bool {
 		if slices.EqualFunc(m1.Paths, m2.Paths, func(p1, p2 *Path) bool { return p1.Equals(p2) }) {
 			m2.Frontends = append(m2.Frontends, m1.Frontends...)
 			return true
@@ -343,18 +351,6 @@ func (b *Backend) createPathsMaps() []*BackendMaps {
 		return pathsMaps[i].Frontends[0] < pathsMaps[j].Frontends[0]
 	})
 	return pathsMaps
-}
-
-func (b *Backend) ensurePathConfig(attr string) {
-	if b.pathConfig == nil {
-		b.pathConfig = b.createPathConfig()
-	}
-	if attr == "" {
-		return
-	}
-	if _, found := b.pathConfig[attr]; !found {
-		panic(fmt.Errorf("field does not exist: %s", attr))
-	}
 }
 
 func (b *Backend) createPathConfig() map[string]*BackendPathConfig {
@@ -458,12 +454,14 @@ func (ep *Endpoint) IsEmpty() bool {
 }
 
 func (p *Path) Equals(other *Path) bool {
+	vthis := reflect.ValueOf(*p)
+	vother := reflect.ValueOf(*other)
 	pathType := reflect.TypeOf(Path{})
 	for i := range pathType.NumField() {
 		if pathType.Field(i).Tag.Get("class") == "core" {
 			continue
 		}
-		if !reflect.DeepEqual(reflect.ValueOf(*p).Field(i).Interface(), reflect.ValueOf(*other).Field(i).Interface()) {
+		if !reflect.DeepEqual(vthis.Field(i).Interface(), vother.Field(i).Interface()) {
 			return false
 		}
 	}

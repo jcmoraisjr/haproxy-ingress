@@ -30,7 +30,7 @@ func TestFrontingProxy(t *testing.T) {
 		ann      map[string]string
 		expected hatypes.Frontend
 	}{
-		"01": {
+		"test01": {
 			ann: map[string]string{
 				ingtypes.FrontHTTPStoHTTPPort: "8000",
 			},
@@ -39,7 +39,7 @@ func TestFrontingProxy(t *testing.T) {
 				Bind:            ":8000",
 			},
 		},
-		"02": {
+		"test02": {
 			ann: map[string]string{
 				ingtypes.FrontFrontingProxyPort: "9000",
 			},
@@ -48,7 +48,7 @@ func TestFrontingProxy(t *testing.T) {
 				Bind:            ":9000",
 			},
 		},
-		"03": {
+		"test03": {
 			ann: map[string]string{
 				ingtypes.FrontHTTPStoHTTPPort:   "9000",
 				ingtypes.FrontBindFrontingProxy: ":7000",
@@ -58,7 +58,7 @@ func TestFrontingProxy(t *testing.T) {
 				Bind:            ":7000",
 			},
 		},
-		"04": {
+		"test04": {
 			ann: map[string]string{
 				ingtypes.FrontFrontingProxyPort: "8000",
 				ingtypes.FrontBindFrontingProxy: "127.0.0.1:7000",

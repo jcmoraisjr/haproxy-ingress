@@ -665,9 +665,9 @@ type Backend struct {
 	//
 	// Paths
 	//
-	Paths      []*Path
-	pathsMaps  []*BackendMaps
-	pathConfig map[string]*BackendPathConfig
+	Paths        []*Path
+	pathsMaps    []*BackendPathsMaps
+	pathsConfigs map[string]*BackendPathConfig
 	//
 	// per backend config
 	//
@@ -714,7 +714,7 @@ type BlueGreenConfig struct {
 	HeaderName string
 }
 
-type BackendMaps struct {
+type BackendPathsMaps struct {
 	Frontends []string
 	ReqMap    *HostsMap
 	DefMap    *HostsMap

@@ -72,6 +72,7 @@ func (f *Frontends) Commit() {
 	for _, frontend := range f.items {
 		frontend.Commit()
 	}
+	f.items = slices.DeleteFunc(f.items, func(f *Frontend) bool { return len(f.hosts) == 0 })
 	f.AuthProxy.changed = false
 }
 
@@ -183,12 +184,12 @@ func (f *Frontend) RemoveAllHosts(hostnames []string) {
 
 func (f *Frontend) RemoveAllLinks(pathlinks ...*PathLink) {
 	for _, link := range pathlinks {
-		h := f.AcquireHost(link.hostname)
+		h := f.FindHost(link.hostname)
 		if h != nil {
 			h.Paths = slices.DeleteFunc(h.Paths, func(p *Path) bool { return p.Link.Equals(link) })
-		}
-		if len(h.Paths) == 0 {
-			f.RemoveAllHosts([]string{link.hostname})
+			if len(h.Paths) == 0 {
+				f.RemoveAllHosts([]string{link.hostname})
+			}
 		}
 	}
 }
@@ -266,12 +267,12 @@ func (f *Frontend) BuildSortedHosts() []*Host {
 		}
 	}
 	items = items[:i]
-	sort.Slice(items, func(i, j int) bool {
-		return items[i].Hostname < items[j].Hostname
-	})
 	if len(items) == 0 {
 		return nil
 	}
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].Hostname < items[j].Hostname
+	})
 	return items
 }
 

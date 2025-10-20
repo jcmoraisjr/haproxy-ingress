@@ -22,23 +22,23 @@ import (
 
 func TestAcquireHostDiff(t *testing.T) {
 	c := createConfig(options{})
-	df := c.frontends.AcquireFrontend(8000, false)
-	f1 := df.AcquireHost("h1")
-	f2 := df.AcquireHost("h2")
-	if f1.Hostname != "h1" {
-		t.Errorf("expected %v but was %v", "h1", f1.Hostname)
+	f := c.frontends.AcquireFrontend(8000, false)
+	h1 := f.AcquireHost("h1")
+	h2 := f.AcquireHost("h2")
+	if h1.Hostname != "h1" {
+		t.Errorf("expected %v but was %v", "h1", h1.Hostname)
 	}
-	if f2.Hostname != "h2" {
-		t.Errorf("expected %v but was %v", "h2", f2.Hostname)
+	if h2.Hostname != "h2" {
+		t.Errorf("expected %v but was %v", "h2", h2.Hostname)
 	}
 }
 
 func TestAcquireHostSame(t *testing.T) {
 	c := createConfig(options{})
-	df := c.frontends.AcquireFrontend(8000, false)
-	f1 := df.AcquireHost("h1")
-	f2 := df.AcquireHost("h1")
-	if f1 != f2 {
+	f := c.frontends.AcquireFrontend(8000, false)
+	h1 := f.AcquireHost("h1")
+	h2 := f.AcquireHost("h1")
+	if h1 != h2 {
 		t.Errorf("expected same host but was different")
 	}
 }
@@ -47,13 +47,13 @@ func TestClear(t *testing.T) {
 	c := createConfig(options{
 		mapsDir: "/tmp/maps",
 	})
-	df := c.frontends.AcquireFrontend(8000, false)
-	df.AcquireHost("app.local")
+	f := c.frontends.AcquireFrontend(8000, false)
+	_ = f.AcquireHost("app.local")
 	c.Backends().AcquireBackend("default", "app", "8080")
 	if c.options.mapsDir != "/tmp/maps" {
 		t.Error("expected mapsDir == /tmp/maps")
 	}
-	if len(df.Hosts()) != 1 {
+	if len(f.Hosts()) != 1 {
 		t.Error("expected len(hosts) == 1")
 	}
 	if len(c.Backends().Items()) != 1 {

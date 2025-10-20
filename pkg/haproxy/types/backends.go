@@ -115,7 +115,7 @@ func backendsMatch(back1, back2 *Backend) bool {
 	}
 	b1copy := *back1
 	b1copy.pathsMaps = back2.pathsMaps
-	b1copy.pathConfig = back2.pathConfig
+	b1copy.pathsConfigs = back2.pathsConfigs
 	b1copy.Endpoints = back2.Endpoints
 	if !reflect.DeepEqual(&b1copy, back2) {
 		return false
