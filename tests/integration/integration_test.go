@@ -598,6 +598,9 @@ Request forbidden by administrative rules.
 
 		fres := f.Request(ctx, t, http.MethodGet, fproxy, "/",
 			options.RequestPort(port),
+			options.CustomRequest(func(req *http.Request) {
+				req.Header.Set("X-Forwarded-Proto", "https")
+			}),
 			options.ExpectResponseCode(http.StatusOK),
 		)
 		assert.True(t, fres.EchoResponse.Parsed)

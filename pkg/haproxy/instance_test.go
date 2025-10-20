@@ -40,27 +40,6 @@ import (
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 func TestBackends(t *testing.T) {
-	expFrontingProxyFrontendTmpl := `
-    http-request set-var(req.path) path
-    http-request set-var(req.host) hdr(host),field(1,:),lower
-    http-request set-var(req.base) var(req.host),concat(\#,req.path)
-    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/%s_host__begin.map)
-    use_backend %%[var(req.backend)] if { var(req.backend) -m found }
-    default_backend _error404`
-
-	expFrontend8000FrontingProxy := `<<frontend-http>>
-    default_backend _error404
-frontend _front_http_8000
-    mode http
-    bind :8000` + fmt.Sprintf(expFrontingProxyFrontendTmpl, "_front_http_8000")
-
-	expFrontend80and8000FrontingProxy := `frontend _front_http
-    mode http
-    bind :80` + fmt.Sprintf(expFrontingProxyFrontendTmpl, "_front_http") + `
-frontend _front_http_8000
-    mode http
-    bind :8000` + fmt.Sprintf(expFrontingProxyFrontendTmpl, "_front_http_8000")
-
 	testCases := map[string]struct {
 		doconfig  func(c *testConfig, h *hatypes.Host, b *hatypes.Backend)
 		path      []string
@@ -1125,136 +1104,7 @@ d1.local#/ path01`,
     ## early custom for TCP backend
     ## late custom for TCP backend`,
 		},
-		"test70 some fronting-proxy none use-proto": {
-			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
-				f1 := c.httpFrontend(80)
-				f2 := c.httpFrontend(8000)
-				f2.IsFrontingProxy = true
-				p1 := f1.AcquireHost("d1.local").AddPath(b, "/app1", hatypes.MatchBegin)
-				p2 := f2.AcquireHost("d2.local").AddPath(b, "/app2", hatypes.MatchBegin)
-				p1.SSLRedirect = true
-				p1.HSTS.Enabled = true
-				p2.SSLRedirect = true
-				p2.HSTS.Enabled = true
-			},
-			path: []string{},
-			expected: `
-    acl fronting-proxy var(req.fronting_proxy) -m found
-    http-request redirect scheme https if !fronting-proxy
-    http-response set-header Strict-Transport-Security "max-age=0" if !fronting-proxy`,
-			expFronts: expFrontend8000FrontingProxy,
-		},
-		"test71 some fronting-proxy some use-proto": {
-			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
-				f1 := c.httpFrontend(80)
-				f2 := c.httpFrontend(8000)
-				f1.IsFrontingUseProto = true
-				f2.IsFrontingProxy = true
-				p1 := f1.AcquireHost("d1.local").AddPath(b, "/app1", hatypes.MatchBegin)
-				p2 := f2.AcquireHost("d2.local").AddPath(b, "/app2", hatypes.MatchBegin)
-				p1.SSLRedirect = true
-				p1.HSTS.Enabled = true
-				p2.SSLRedirect = true
-				p2.HSTS.Enabled = true
-			},
-			path: []string{},
-			// This test and the next one describe a non optimal config, it's hard to make them better on a clean way.
-			// But they are also corner cases, we expect backends to be fully dedicated to a single fronting config.
-			expected: `
-    acl fronting-proxy var(req.fronting_proxy) -m found
-    acl https-request var(req.fronting_proto) -m str ignore
-    acl https-request hdr(X-Forwarded-Proto) https
-    http-request redirect scheme https if fronting-proxy !https-request
-    http-request redirect scheme https if !fronting-proxy
-    http-response set-header Strict-Transport-Security "max-age=0" if !fronting-proxy`,
-			expFronts: expFrontend8000FrontingProxy,
-		},
-		"test72 some fronting-proxy only use-proto": {
-			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
-				f1 := c.httpFrontend(80)
-				f2 := c.httpFrontend(8000)
-				f1.IsFrontingUseProto = true
-				f2.IsFrontingProxy = true
-				f2.IsFrontingUseProto = true
-				p1 := f1.AcquireHost("d1.local").AddPath(b, "/app1", hatypes.MatchBegin)
-				p2 := f2.AcquireHost("d2.local").AddPath(b, "/app2", hatypes.MatchBegin)
-				p1.SSLRedirect = true
-				p1.HSTS.Enabled = true
-				p2.SSLRedirect = true
-				p2.HSTS.Enabled = true
-			},
-			path: []string{},
-			expected: `
-    acl fronting-proxy var(req.fronting_proxy) -m found
-    acl https-request hdr(X-Forwarded-Proto) https
-    http-request redirect scheme https if fronting-proxy !https-request
-    http-request redirect scheme https if !fronting-proxy
-    http-response set-header Strict-Transport-Security "max-age=0" if !fronting-proxy`,
-			expFronts: expFrontend8000FrontingProxy,
-		},
-		"test73 only fronting-proxy none use-proto": {
-			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
-				f1 := c.httpFrontend(80)
-				f2 := c.httpFrontend(8000)
-				f1.IsFrontingProxy = true
-				f2.IsFrontingProxy = true
-				p1 := f1.AcquireHost("d1.local").AddPath(b, "/app1", hatypes.MatchBegin)
-				p2 := f2.AcquireHost("d2.local").AddPath(b, "/app2", hatypes.MatchBegin)
-				p1.SSLRedirect = true
-				p1.HSTS.Enabled = true
-				p2.SSLRedirect = true
-				p2.HSTS.Enabled = true
-			},
-			path:      []string{},
-			expFronts: expFrontend80and8000FrontingProxy,
-			expected: `
-    http-response set-header Strict-Transport-Security "max-age=0"`,
-		},
-		"test74 only fronting-proxy some use-proto": {
-			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
-				f1 := c.httpFrontend(80)
-				f2 := c.httpFrontend(8000)
-				f1.IsFrontingProxy = true
-				f2.IsFrontingProxy = true
-				f2.IsFrontingUseProto = true
-				p1 := f1.AcquireHost("d1.local").AddPath(b, "/app1", hatypes.MatchBegin)
-				p2 := f2.AcquireHost("d2.local").AddPath(b, "/app2", hatypes.MatchBegin)
-				p1.SSLRedirect = true
-				p1.HSTS.Enabled = true
-				p2.SSLRedirect = true
-				p2.HSTS.Enabled = true
-			},
-			path:      []string{},
-			expFronts: expFrontend80and8000FrontingProxy,
-			expected: `
-    acl https-request var(req.fronting_proto) -m str ignore
-    acl https-request hdr(X-Forwarded-Proto) https
-    http-request redirect scheme https if !https-request
-    http-response set-header Strict-Transport-Security "max-age=0"`,
-		},
-		"test75 only fronting-proxy only use-proto": {
-			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
-				f1 := c.httpFrontend(80)
-				f2 := c.httpFrontend(8000)
-				f1.IsFrontingProxy = true
-				f1.IsFrontingUseProto = true
-				f2.IsFrontingProxy = true
-				f2.IsFrontingUseProto = true
-				p1 := f1.AcquireHost("d1.local").AddPath(b, "/app1", hatypes.MatchBegin)
-				p2 := f2.AcquireHost("d2.local").AddPath(b, "/app2", hatypes.MatchBegin)
-				p1.SSLRedirect = true
-				p1.HSTS.Enabled = true
-				p2.SSLRedirect = true
-				p2.HSTS.Enabled = true
-			},
-			path:      []string{},
-			expFronts: expFrontend80and8000FrontingProxy,
-			expected: `
-    acl https-request hdr(X-Forwarded-Proto) https
-    http-request redirect scheme https if !https-request
-    http-response set-header Strict-Transport-Security "max-age=0"`,
-		},
-		"test76 paths from distinct frontends": {
+		"test70 paths from distinct frontends": {
 			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
 				f1 := c.httpFrontend(80)
 				f2 := c.httpFrontend(8001)
@@ -2085,15 +1935,78 @@ d1.local#/app default_d1_8080`)
 
 func TestInstanceFrontingProxy(t *testing.T) {
 	testCases := map[string]struct {
-		useProto bool
-		expBack  string
+		f1UseFronting bool
+		f2UseFronting bool
+		f1UseProto    bool
+		f2UseProto    bool
+		expFront1     string
+		expFront2     string
+		expBack       string
 	}{
-		"test01": {
-			useProto: false,
-			expBack:  ``,
+		"test01 fronting=none useproto=none": {
+			f1UseFronting: false, f2UseFronting: false, f1UseProto: false, f2UseProto: false,
+			expFront1: `
+    <<set-req-base>>
+    <<http-headers>>`,
+			expFront2: `
+    <<set-req-base>>
+    <<http-headers>>`,
+			expBack: ``,
 		},
-		"test02": {
-			useProto: true,
+		"test02 fronting=some useproto=none": {
+			f1UseFronting: true, f2UseFronting: false, f1UseProto: false, f2UseProto: false,
+			expFront1: `
+    http-request set-var(req.fronting_proxy) str(1)
+    <<set-req-base>>`,
+			expFront2: `
+    <<set-req-base>>
+    <<http-headers>>`,
+			expBack: `
+    acl fronting-proxy var(req.fronting_proxy) -m found`,
+		},
+		"test03 fronting=some useproto=some": {
+			f1UseFronting: true, f2UseFronting: false, f1UseProto: true, f2UseProto: false,
+			expFront1: `
+    http-request set-var(req.fronting_proxy) str(1)
+    http-request set-var(req.fronting_proto) str(use)
+    <<set-req-base>>`,
+			expFront2: `
+    http-request set-var(req.fronting_proto) str(ignore)
+    <<set-req-base>>
+    <<http-headers>>`,
+			expBack: `
+    acl fronting-proxy var(req.fronting_proxy) -m found
+    acl https-request var(req.fronting_proto) -m str ignore
+    acl https-request hdr(X-Forwarded-Proto) https
+    http-request redirect scheme https if fronting-proxy !https-request`,
+		},
+		"test04 fronting=all useproto=none": {
+			f1UseFronting: true, f2UseFronting: true, f1UseProto: false, f2UseProto: false,
+			expFront1: `
+    <<set-req-base>>`,
+			expFront2: `
+    <<set-req-base>>`,
+			expBack: ``,
+		},
+		"test05 fronting=all useproto=some": {
+			f1UseFronting: true, f2UseFronting: true, f1UseProto: true, f2UseProto: false,
+			expFront1: `
+    http-request set-var(req.fronting_proto) str(use)
+    <<set-req-base>>`,
+			expFront2: `
+    http-request set-var(req.fronting_proto) str(ignore)
+    <<set-req-base>>`,
+			expBack: `
+    acl https-request var(req.fronting_proto) -m str ignore
+    acl https-request hdr(X-Forwarded-Proto) https
+    http-request redirect scheme https if !https-request`,
+		},
+		"test06 fronting=all useproto=all": {
+			f1UseFronting: true, f2UseFronting: true, f1UseProto: true, f2UseProto: true,
+			expFront1: `
+    <<set-req-base>>`,
+			expFront2: `
+    <<set-req-base>>`,
 			expBack: `
     acl https-request hdr(X-Forwarded-Proto) https
     http-request redirect scheme https if !https-request`,
@@ -2104,16 +2017,24 @@ func TestInstanceFrontingProxy(t *testing.T) {
 			c := setup(t)
 			defer c.teardown()
 
-			f := c.httpFrontend(80)
-
-			var h *hatypes.Host
-			var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
-			h = f.AcquireHost("d1.local")
-			h.AddPath(b, "/", hatypes.MatchBegin)
+			b := c.config.Backends().AcquireBackend("d1", "app", "8080")
 			b.Endpoints = []*hatypes.Endpoint{endpointS1}
-			f.IsFrontingProxy = true
-			f.IsFrontingUseProto = test.useProto
-			f.Bind = ":8000"
+
+			f1 := c.httpFrontend(8081)
+			f1.Name = "_front_http_8081"
+			f1.Bind = ":8081"
+			f1.IsFrontingProxy = test.f1UseFronting
+			f1.IsFrontingUseProto = test.f1UseProto
+			h1 := f1.AcquireHost("d1.local")
+			h1.AddPath(b, "/", hatypes.MatchBegin)
+
+			f2 := c.httpFrontend(8082)
+			f2.Name = "_front_http_8082"
+			f2.Bind = ":8082"
+			f2.IsFrontingProxy = test.f2UseFronting
+			f2.IsFrontingUseProto = test.f2UseProto
+			h2 := f2.AcquireHost("d2.local")
+			h2.AddPath(b, "/", hatypes.MatchBegin)
 
 			c.Update()
 			c.checkConfig(`
@@ -2123,13 +2044,16 @@ backend d1_app_8080
     mode http` + test.expBack + `
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
-frontend _front_http
+frontend _front_http_8081
     mode http
-    bind :8000
-    http-request set-var(req.path) path
-    http-request set-var(req.host) hdr(host),field(1,:),lower
-    http-request set-var(req.base) var(req.host),concat(\#,req.path)
-    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
+    bind :8081` + test.expFront1 + `
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_8081_host__begin.map)
+    use_backend %[var(req.backend)] if { var(req.backend) -m found }
+    default_backend _error404
+frontend _front_http_8082
+    mode http
+    bind :8082` + test.expFront2 + `
+    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_8082_host__begin.map)
     use_backend %[var(req.backend)] if { var(req.backend) -m found }
     default_backend _error404
 <<support>>

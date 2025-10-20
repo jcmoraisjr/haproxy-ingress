@@ -1107,9 +1107,16 @@ frontend {{ $proxy_name }}
 {{- end }}{{/* has $tcpservices */}}
 
 {{- $hasHTTPResponses := $frontends.HasHTTPResponses }}
+{{- $hasSomeFrontingProxy := $frontends.HasSomeFrontingProxy }}
+{{- $hasSomeFrontingUseProto := $frontends.HasSomeFrontingUseProto }}
 {{- range $frontend := $frontends.Items }}
 
+{{- $isFrontingProxy := $frontend.IsFrontingProxy }}
+{{- $isFrontingUseProto := $frontend.IsFrontingUseProto }}
+{{- $httpmaps := $frontend.HTTPMaps }}
+{{- $httpsmaps := $frontend.HTTPSMaps }}
 {{- $hasSSLPassthrough := $frontend.HasSSLPassthrough }}
+
 {{- if and $frontend.IsHTTPS $hasSSLPassthrough }}
 
   # # # # # # # # # # # # # # # # # # #
@@ -1164,13 +1171,6 @@ listen {{ $frontend.TLSProxyName }}
     server _default_server{{ $frontend.Name }}_socket {{ $frontend.HTTPSSocket }} send-proxy-v2
 {{- end }}{{/* HasSSLPassthrough */}}
 
-{{- $isFrontingProxy := $frontend.IsFrontingProxy }}
-{{- $isFrontingUseProto := $frontend.IsFrontingUseProto }}
-{{- $hasSomeFrontingProxy := false }}
-{{- $hasSomeFrontingUseProto := false }}
-{{- $httpmaps := $frontend.HTTPMaps }}
-{{- $httpsmaps := $frontend.HTTPSMaps }}
-
 {{- if $httpmaps }}
 
   # # # # # # # # # # # # # # # # # # #
@@ -1203,7 +1203,7 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if $hasSomeFrontingProxy }}
+{{- if and $isFrontingProxy $hasSomeFrontingProxy }}
     http-request set-var(req.fronting_proxy) str(1)
 {{- end }}
 {{- if $hasSomeFrontingUseProto }}

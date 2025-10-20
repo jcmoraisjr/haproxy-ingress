@@ -100,6 +100,28 @@ func (f *Frontends) HasHTTPResponses() bool {
 	return false
 }
 
+func (f *Frontends) HasSomeFrontingProxy() bool {
+	total := len(f.items)
+	var count int
+	for _, front := range f.items {
+		if front.IsFrontingProxy {
+			count++
+		}
+	}
+	return count > 0 && count < total
+}
+
+func (f *Frontends) HasSomeFrontingUseProto() bool {
+	total := len(f.items)
+	var count int
+	for _, front := range f.items {
+		if front.IsFrontingProxy && front.IsFrontingUseProto {
+			count++
+		}
+	}
+	return count > 0 && count < total
+}
+
 func (f *Frontends) BuildHTTPResponses() (responses []HTTPResponses) {
 	for _, f := range f.items {
 		for _, host := range f.hosts {
