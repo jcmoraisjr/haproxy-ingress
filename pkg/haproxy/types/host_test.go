@@ -22,37 +22,41 @@ import (
 )
 
 func TestCreatePathLink(t *testing.T) {
-	l1 := CreateHostPathLink("domain.local", "/app", MatchBegin)
-	l2 := CreateHostPathLink("domain.local", "/app", MatchBegin)
+	f := (&Frontends{}).AcquireFrontend(8000, false)
+	h0 := f.AcquireHost("domain.local")
+	h1 := f.AcquireHost("domain1.local")
+	h2 := f.AcquireHost("domain2.local")
+	l1 := CreatePathLink("/app", MatchBegin).WithHTTPHost(h0)
+	l2 := CreatePathLink("/app", MatchBegin).WithHTTPHost(h0)
 	if !l1.Equals(l2) {
 		t.Errorf("two distinct path links with same host and path should match")
 	}
-	l3 := CreateHostPathLink("domain1.local", "/app", MatchBegin)
-	l4 := CreateHostPathLink("domain2.local", "/app", MatchBegin)
+	l3 := CreatePathLink("/app", MatchBegin).WithHTTPHost(h1)
+	l4 := CreatePathLink("/app", MatchBegin).WithHTTPHost(h2)
 	if l3.Equals(l4) {
 		t.Errorf("path links with distinct domains should not match")
 	}
-	l5 := CreateHostPathLink("domain.local", "/app1", MatchBegin)
-	l6 := CreateHostPathLink("domain.local", "/app2", MatchBegin)
+	l5 := CreatePathLink("/app1", MatchBegin).WithHTTPHost(h0)
+	l6 := CreatePathLink("/app2", MatchBegin).WithHTTPHost(h0)
 	if l5.Equals(l6) {
 		t.Errorf("path links with distinct paths should not match")
 	}
-	l7 := CreateHostPathLink("domain.local", "/app", MatchBegin)
+	l7 := CreatePathLink("/app", MatchBegin).WithHTTPHost(h0)
 	l7.WithHeadersMatch(HTTPHeaderMatch{
 		{Name: "h1", Value: "v1", Regex: true},
 	})
-	l8 := CreateHostPathLink("domain.local", "/app", MatchBegin)
+	l8 := CreatePathLink("/app", MatchBegin).WithHTTPHost(h0)
 	l8.WithHeadersMatch(HTTPHeaderMatch{
 		{Name: "h1", Value: "v1", Regex: true},
 	})
 	if !l7.Equals(l8) {
 		t.Errorf("path links with same headers should match")
 	}
-	l9 := CreateHostPathLink("domain.local", "/app", MatchBegin)
+	l9 := CreatePathLink("/app", MatchBegin).WithHTTPHost(h0)
 	l9.WithHeadersMatch(HTTPHeaderMatch{
 		{Name: "h1", Value: "v1", Regex: true},
 	})
-	l10 := CreateHostPathLink("domain.local", "/app", MatchBegin)
+	l10 := CreatePathLink("/app", MatchBegin).WithHTTPHost(h0)
 	l10.WithHeadersMatch(HTTPHeaderMatch{
 		{Name: "h1", Value: "v2", Regex: true},
 	})
@@ -95,12 +99,12 @@ func TestShrinkHosts(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		h := CreateHosts()
+		f := (&Frontends{}).AcquireFrontend(8000, false)
 		for _, add := range test.add {
-			h.itemsAdd[add.Hostname] = add
+			f.hostsAdd[add.Hostname] = add
 		}
 		for _, del := range test.del {
-			h.itemsDel[del.Hostname] = del
+			f.hostsDel[del.Hostname] = del
 		}
 		expAdd := map[string]*Host{}
 		for _, add := range test.expAdd {
@@ -110,9 +114,9 @@ func TestShrinkHosts(t *testing.T) {
 		for _, del := range test.expDel {
 			expDel[del.Hostname] = del
 		}
-		h.Shrink()
-		c.compareObjects("add", i, h.itemsAdd, expAdd)
-		c.compareObjects("del", i, h.itemsDel, expDel)
+		f.ShrinkHosts()
+		c.compareObjects("add", i, f.hostsAdd, expAdd)
+		c.compareObjects("del", i, f.hostsDel, expDel)
 		c.teardown()
 	}
 }
@@ -185,7 +189,8 @@ func TestAddFindPath(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		h := CreateHosts().AcquireHost("d1.local")
+		f := (&Frontends{}).AcquireFrontend(8000, false)
+		h := f.AcquireHost("d1.local")
 		for _, p := range test.paths {
 			h.AddPath(p.backend, p.path, p.match)
 		}
@@ -254,8 +259,9 @@ func TestRemovePath(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
+		f := (&Frontends{}).AcquireFrontend(8000, false)
 		b := CreateBackends(0).AcquireBackend("default", "b", "8080")
-		h := CreateHosts().AcquireHost("d1.local")
+		h := f.AcquireHost("d1.local")
 		for _, path := range strings.Split(test.addPaths, ",") {
 			h.AddPath(b, path, MatchPrefix)
 		}

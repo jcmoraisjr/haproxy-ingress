@@ -46,6 +46,11 @@ import (
 	types_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/types/helper_test"
 )
 
+const (
+	TestPortHTTP  = 28080
+	TestPortHTTPS = 28443
+)
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *
  *  CORE INGRESS
@@ -896,7 +901,7 @@ func TestPathType(t *testing.T) {
 		ing := c.createIng1Ann("default/echo", "echo.localdomain", "/", "echo:8080", ann)
 		ing.Spec.Rules[0].HTTP.Paths[0].PathType = test.pathType
 		c.Sync(ing)
-		match := c.hconfig.Hosts().AcquireHost("echo.localdomain").FindPath("/", test.expected)
+		match := c.hconfig.Frontends().AcquireFrontend(TestPortHTTP, false).AcquireHost("echo.localdomain").FindPath("/", test.expected)
 		if len(match) == 0 {
 			c.t.Errorf("path type does not match in %d: expected '%s', but wasn't found", i, test.expected)
 		}
@@ -912,7 +917,7 @@ func TestSyncBackendDefault(t *testing.T) {
 	c.createSvc1Auto()
 	c.Sync(c.createIng2("default/echo", "echo:8080"))
 
-	c.compareConfigDefaultFront(`
+	c.compareConfigDefaultHost(`
 hostname: <default>
 paths:
 - path: /
@@ -951,7 +956,7 @@ func TestSyncBackendReuseDefaultSvc(t *testing.T) {
   - path: /app
     backend: system_default_8080`)
 
-	c.compareConfigDefaultFront(`[]`)
+	c.compareConfigDefaultHost(`[]`)
 	c.compareConfigBack(defaultBackendConfig)
 }
 
@@ -966,7 +971,7 @@ func TestSyncDefaultBackendReusedPath1(t *testing.T) {
 		c.createIng2("default/echo2", "echo2:8080"),
 	)
 
-	c.compareConfigDefaultFront(defaultDefaultFrontendConfig)
+	c.compareConfigDefaultHost(defaultDefaultFrontendConfig)
 
 	c.compareConfigBack(`
 - id: default_echo1_8080
@@ -989,7 +994,7 @@ func TestSyncDefaultBackendReusedPath2(t *testing.T) {
 		c.createIng1("default/echo2", hatypes.DefaultHost, "/", "echo2:8080"),
 	)
 
-	c.compareConfigDefaultFront(defaultDefaultFrontendConfig)
+	c.compareConfigDefaultHost(defaultDefaultFrontendConfig)
 
 	c.compareConfigBack(`
 - id: default_echo1_8080
@@ -1016,7 +1021,7 @@ func TestSyncEmptyHost(t *testing.T) {
 	c.createSvc1Auto()
 	c.Sync(c.createIng1("default/echo", "", "/", "echo:8080"))
 
-	c.compareConfigDefaultFront(`
+	c.compareConfigDefaultHost(`
 hostname: <default>
 paths:
 - path: /
@@ -1567,7 +1572,7 @@ WARN using default certificate due to an error reading secret 'default/tls1' on 
 		if test.expDefaultFront == "" {
 			test.expDefaultFront = "[]"
 		}
-		c.compareConfigDefaultFront(test.expDefaultFront)
+		c.compareConfigDefaultHost(test.expDefaultFront)
 		c.compareConfigBack(test.expBack)
 		c.logger.CompareLogging(test.logging)
 
@@ -2422,26 +2427,39 @@ func TestSyncAnnPassthrough(t *testing.T) {
 			}),
 	)
 
-	c.compareConfigFront(`
+	c.compareConfigFrontPort(TestPortHTTP, `
 - hostname: echo1.example.com
   paths:
   - path: /app
     backend: default_echo_8080
   - path: /
+    backend: default_echo_8080
+- hostname: echo2.example.com
+  paths:
+  - path: /
+    backend: _redirect_https
+`)
+	c.compareConfigFrontPort(TestPortHTTPS, `
+- hostname: echo1.example.com
+  paths:
+  - path: /
     backend: default_echo_8443
+  passthrough: true
 - hostname: echo2.example.com
   paths:
   - path: /
     backend: default_echo_8443
+  passthrough: true
 `)
 
-	c.compareConfigDefaultFront(`
+	c.compareConfigDefaultHostPort(TestPortHTTP, `
 hostname: <default>
 paths:
 - path: /
   backend: default_echo_8443
 rootredirect: /login
 `)
+	c.compareConfigDefaultHostPort(TestPortHTTPS, `[]`)
 
 	c.compareConfigBack(`
 - id: default_echo_8080
@@ -2452,6 +2470,7 @@ rootredirect: /login
   endpoints:
   - ip: 172.17.1.101
     port: 8443
+  modetcp: true
 - id: system_default_8080
   endpoints:
   - ip: 172.17.0.99
@@ -2537,6 +2556,8 @@ func (c *testConfig) createConverter() *converter {
 	defaultConfig := func() map[string]string {
 		return map[string]string{
 			ingtypes.BackInitialWeight: "100",
+			ingtypes.FrontHTTPPort:     strconv.Itoa(TestPortHTTP),
+			ingtypes.FrontHTTPSPort:    strconv.Itoa(TestPortHTTPS),
 		}
 	}
 	return NewIngressConverter(
@@ -2773,6 +2794,9 @@ func (u *updaterMock) UpdateTCPHostConfig(tcpPort *hatypes.TCPServicePort, tcpHo
 	}
 }
 
+func (u *updaterMock) UpdateFrontConfig(front *hatypes.Frontend, mapper *annotations.Mapper) {
+}
+
 func (u *updaterMock) UpdateHostConfig(host *hatypes.Host, mapper *annotations.Mapper) {
 	host.RootRedirect = mapper.Get(ingtypes.HostAppRoot).Value
 }
@@ -2790,17 +2814,47 @@ func (c *testConfig) compareConfigTCPService(expected string) {
 	c.compareText(conv_helper.MarshalTCPServices(c.hconfig.TCPServices().BuildSortedItems()...), expected)
 }
 
-func (c *testConfig) compareConfigFront(expected string) {
-	c.compareText(conv_helper.MarshalHosts(c.hconfig.Hosts().BuildSortedItems()...), expected)
+func (c *testConfig) findFrontend() *hatypes.Frontend {
+	if f := c.hconfig.Frontends().FindFrontend(TestPortHTTPS); f != nil {
+		return f
+	}
+	return c.hconfig.Frontends().FindFrontend(TestPortHTTP)
 }
 
-func (c *testConfig) compareConfigDefaultFront(expected string) {
-	host := c.hconfig.Hosts().DefaultHost()
-	if host != nil {
-		c.compareText(conv_helper.MarshalHost(host), expected)
-	} else {
-		c.compareText("[]", expected)
+func (c *testConfig) compareConfigFront(expected string) {
+	var hosts []*hatypes.Host
+	if f := c.findFrontend(); f != nil {
+		hosts = f.BuildSortedHosts()
 	}
+	c.compareText(conv_helper.MarshalHosts(hosts...), expected)
+}
+
+func (c *testConfig) compareConfigFrontPort(port int32, expected string) {
+	var hosts []*hatypes.Host
+	if f := c.hconfig.Frontends().FindFrontend(port); f != nil {
+		hosts = f.BuildSortedHosts()
+	}
+	c.compareText(conv_helper.MarshalHosts(hosts...), expected)
+}
+
+func (c *testConfig) compareConfigDefaultHost(expected string) {
+	hoststr := "[]"
+	if f := c.findFrontend(); f != nil {
+		if h := f.DefaultHost(); h != nil {
+			hoststr = conv_helper.MarshalHost(h)
+		}
+	}
+	c.compareText(hoststr, expected)
+}
+
+func (c *testConfig) compareConfigDefaultHostPort(port int32, expected string) {
+	hoststr := "[]"
+	if f := c.hconfig.Frontends().FindFrontend(port); f != nil {
+		if h := f.DefaultHost(); h != nil {
+			hoststr = conv_helper.MarshalHost(h)
+		}
+	}
+	c.compareText(hoststr, expected)
 }
 
 func (c *testConfig) compareConfigBack(expected string) {

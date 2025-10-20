@@ -155,7 +155,7 @@ func (c *testConfig) createUpdater() *updater {
 
 func (c *testConfig) createBackendData(svcFullName string, source *Source, ann, annDefault map[string]string) *backData {
 	mapper := NewMapBuilder(c.logger, annDefault).NewMapper()
-	mapper.AddAnnotations(source, hatypes.CreateHostPathLink("domain.local", "/", hatypes.MatchBegin), ann)
+	mapper.AddAnnotations(source, hatypes.CreatePathLink("/", hatypes.MatchBegin), ann)
 	svcName := strings.Split(svcFullName, "/")
 	namespace := svcName[0]
 	name := svcName[1]
@@ -170,14 +170,6 @@ func (c *testConfig) createBackendData(svcFullName string, source *Source, ann, 
 		mapper:  mapper,
 		vars:    buildBackendVars(global, backend, buildGlobalVars(global)),
 	}
-}
-
-const testingHostname = "host.local"
-
-type hostResolver struct{}
-
-func (h *hostResolver) UseTLS() bool {
-	return true
 }
 
 func (c *testConfig) createBackendMappingData(
@@ -195,22 +187,30 @@ func (c *testConfig) createBackendMappingData(
 	for _, path := range addPaths {
 		paths[path] = struct{}{}
 	}
-	for path := range paths {
-		b := d.backend.AddBackendPath(hatypes.CreateHostPathLink(testingHostname, path, hatypes.MatchBegin))
-		// ignoring ID which isn't the focus of the test
-		// removing on createBackendPaths() as well
-		b.ID = ""
-		b.Host = &hostResolver{}
+	for p := range paths {
+		d.backend.AddPath(&hatypes.Path{
+			Link:     hatypes.CreatePathLink(p, hatypes.MatchBegin),
+			HasHTTPS: true,
+		})
 	}
 	for uri, ann := range urlAnnValue {
-		d.mapper.AddAnnotations(source, hatypes.CreateHostPathLink(testingHostname, uri, hatypes.MatchBegin), ann)
+		d.mapper.AddAnnotations(source, hatypes.CreatePathLink(uri, hatypes.MatchBegin), ann)
 	}
 	return d
 }
 
+func (c *testConfig) createFrontData(source *Source, ann, annDefault map[string]string) *frontData {
+	mapper := NewMapBuilder(c.logger, annDefault).NewMapper()
+	mapper.AddAnnotations(source, hatypes.CreatePathLink("/", hatypes.MatchBegin), ann)
+	return &frontData{
+		front:  &hatypes.Frontend{},
+		mapper: mapper,
+	}
+}
+
 func (c *testConfig) createHostData(source *Source, ann, annDefault map[string]string) *hostData {
 	mapper := NewMapBuilder(c.logger, annDefault).NewMapper()
-	mapper.AddAnnotations(source, hatypes.CreateHostPathLink("domain.local", "/", hatypes.MatchBegin), ann)
+	mapper.AddAnnotations(source, hatypes.CreatePathLink("/", hatypes.MatchBegin), ann)
 	return &hostData{
 		host:   &hatypes.Host{},
 		mapper: mapper,

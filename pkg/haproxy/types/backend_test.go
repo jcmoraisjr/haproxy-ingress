@@ -17,73 +17,54 @@ limitations under the License.
 package types
 
 import (
+	"fmt"
 	"net"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAddBackendPath(t *testing.T) {
 	testCases := []struct {
 		input    []string
-		expected []*BackendPath
+		expected []*Path
 	}{
 		// 0
 		{
 			input: []string{"/"},
-			expected: []*BackendPath{
-				{ID: "path01", Link: CreateHostPathLink("d1.local", "/", MatchBegin)},
+			expected: []*Path{
+				{ID: "path01", Link: CreatePathLink("/", MatchBegin)},
 			},
 		},
 		// 1
 		{
-			input: []string{"/app", "/app"},
-			expected: []*BackendPath{
-				{ID: "path01", Link: CreateHostPathLink("d1.local", "/app", MatchBegin)},
+			input: []string{"/app", "/root"},
+			expected: []*Path{
+				{ID: "path01", Link: CreatePathLink("/app", MatchBegin)},
+				{ID: "path02", Link: CreatePathLink("/root", MatchBegin)},
 			},
 		},
 		// 2
 		{
-			input: []string{"/app", "/root"},
-			expected: []*BackendPath{
-				{ID: "path01", Link: CreateHostPathLink("d1.local", "/app", MatchBegin)},
-				{ID: "path02", Link: CreateHostPathLink("d1.local", "/root", MatchBegin)},
-			},
-		},
-		// 3
-		{
-			input: []string{"/app", "/root", "/root"},
-			expected: []*BackendPath{
-				{ID: "path01", Link: CreateHostPathLink("d1.local", "/app", MatchBegin)},
-				{ID: "path02", Link: CreateHostPathLink("d1.local", "/root", MatchBegin)},
-			},
-		},
-		// 4
-		{
-			input: []string{"/app", "/root", "/app"},
-			expected: []*BackendPath{
-				{ID: "path01", Link: CreateHostPathLink("d1.local", "/app", MatchBegin)},
-				{ID: "path02", Link: CreateHostPathLink("d1.local", "/root", MatchBegin)},
-			},
-		},
-		// 5
-		{
 			input: []string{"/", "/app", "/root"},
-			expected: []*BackendPath{
-				{ID: "path01", Link: CreateHostPathLink("d1.local", "/", MatchBegin)},
-				{ID: "path02", Link: CreateHostPathLink("d1.local", "/app", MatchBegin)},
-				{ID: "path03", Link: CreateHostPathLink("d1.local", "/root", MatchBegin)},
+			expected: []*Path{
+				{ID: "path01", Link: CreatePathLink("/", MatchBegin)},
+				{ID: "path02", Link: CreatePathLink("/app", MatchBegin)},
+				{ID: "path03", Link: CreatePathLink("/root", MatchBegin)},
 			},
 		},
 	}
 	for i, test := range testCases {
 		b := &Backend{}
 		for _, p := range test.input {
-			b.AddBackendPath(CreateHostPathLink("d1.local", p, MatchBegin))
+			path := &Path{
+				Link: CreatePathLink(p, MatchBegin),
+			}
+			b.AddPath(path)
 		}
-		if !reflect.DeepEqual(b.Paths, test.expected) {
-			t.Errorf("backend.Paths differs on %d - actual: %v - expected: %v", i, b.Paths, test.expected)
-		}
+		assert.Equal(t, test.expected, b.Paths, fmt.Sprintf("backend.Paths differs on %d", i))
 	}
 }
 
@@ -165,7 +146,7 @@ func TestCreatePathConfig(t *testing.T) {
 		config interface{}
 	}
 	testCases := []struct {
-		paths    []*BackendPath
+		paths    []*Path
 		filter   string
 		expected map[string][]pathConfig
 	}{
@@ -178,7 +159,7 @@ func TestCreatePathConfig(t *testing.T) {
 		},
 		// 1
 		{
-			paths:  []*BackendPath{{ID: "path1"}},
+			paths:  []*Path{{ID: "path1"}},
 			filter: "SSLRedirect",
 			expected: map[string][]pathConfig{
 				"SSLRedirect": {
@@ -188,7 +169,7 @@ func TestCreatePathConfig(t *testing.T) {
 		},
 		// 2
 		{
-			paths: []*BackendPath{
+			paths: []*Path{
 				{ID: "path1", HSTS: HSTS{Enabled: true, MaxAge: 10}},
 				{ID: "path2", HSTS: HSTS{Enabled: true, MaxAge: 10}},
 				{ID: "path3", HSTS: HSTS{Enabled: true, MaxAge: 20}},
@@ -209,7 +190,7 @@ func TestCreatePathConfig(t *testing.T) {
 		},
 		// 3
 		{
-			paths: []*BackendPath{
+			paths: []*Path{
 				{ID: "path1", HSTS: HSTS{Enabled: true, MaxAge: 10}, AllowedIPHTTP: AccessConfig{Rule: []string{"10.0.0.0/8"}}},
 				{ID: "path2", HSTS: HSTS{Enabled: true, MaxAge: 20}, AllowedIPHTTP: AccessConfig{Rule: []string{"10.0.0.0/8"}}},
 				{ID: "path3", HSTS: HSTS{Enabled: true, MaxAge: 20}},
@@ -241,6 +222,9 @@ func TestCreatePathConfig(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
+		for _, path := range test.paths {
+			path.Link = CreatePathLink("/", MatchPrefix)
+		}
 		backend := Backend{Paths: test.paths}
 		actualConfig := map[string][]pathConfig{}
 		for _, attr := range strings.Split(test.filter, ",") {
@@ -304,9 +288,9 @@ func TestPathIDs(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
-		paths := make([]*BackendPath, len(test.paths))
+		paths := make([]*Path, len(test.paths))
 		for j, path := range test.paths {
-			paths[j] = &BackendPath{ID: path}
+			paths[j] = &Path{ID: path}
 		}
 		b := BackendPathConfig{
 			items: []*BackendPathItem{{paths: paths}, {}},
@@ -365,4 +349,65 @@ func TestEndpointDeduplication(t *testing.T) {
 	}
 	c.compareObjects("len(ep)", 0, len(b.Endpoints), 6)
 	c.teardown()
+}
+
+func TestHasInPath(t *testing.T) {
+	testCases := map[string]struct {
+		has []bool
+		exp Has
+	}{
+		"test01": {
+			exp: HasNone,
+		},
+		"test02": {
+			has: []bool{false},
+			exp: HasNone,
+		},
+		"test03": {
+			has: []bool{false, false},
+			exp: HasNone,
+		},
+		"test04": {
+			has: []bool{false, false, true},
+			exp: HasSome,
+		},
+		"test05": {
+			has: []bool{true},
+			exp: HasOnly,
+		},
+		"test06": {
+			has: []bool{true, true},
+			exp: HasOnly,
+		},
+		"test07": {
+			has: []bool{true, true, false},
+			exp: HasSome,
+		},
+		"test08": {
+			has: []bool{true, false, true},
+			exp: HasSome,
+		},
+		"test09": {
+			has: []bool{false, true, false},
+			exp: HasSome,
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			c := setup(t)
+			defer c.teardown()
+			b := createBackend(0, "default", "server", "8080")
+			for i, has := range test.has {
+				path := &Path{
+					Link:        CreatePathLink(fmt.Sprintf("/%d", i), MatchExact),
+					SSLRedirect: has,
+				}
+				b.AddPath(path)
+			}
+			has := b.hasInPath(func(path *Path) bool {
+				return path.SSLRedirect
+			})
+			assert.Equal(t, test.exp, has, "0=HasNone; 1=HasSome; 2=HasOnly")
+		})
+	}
 }

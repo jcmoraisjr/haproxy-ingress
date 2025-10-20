@@ -59,6 +59,12 @@ func ClientCertificateKeyPEM(crt, key []byte) Request {
 	}
 }
 
+func RequestPort(port int32) Request {
+	return func(o *requestOpt) {
+		o.RequestPort = port
+	}
+}
+
 func CustomRequest(custom CustomRequestCallback) Request {
 	return func(o *requestOpt) {
 		o.CustomRequest = custom
@@ -77,6 +83,7 @@ type requestOpt struct {
 	SNI                string
 	ClientCrtPEM       []byte
 	ClientKeyPEM       []byte
+	RequestPort        int32
 	CustomRequest      CustomRequestCallback
 }
 

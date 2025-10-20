@@ -37,6 +37,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
+	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	types_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/types/helper_test"
 )
 
@@ -77,6 +78,24 @@ paths:
     port: 8080
     weight: 128
 `,
+		},
+		{
+			id: "missing-proto",
+			resConfig: []string{`
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: web
+  namespace: default
+spec:
+  gatewayClassName: haproxy
+  listeners:
+  - name: h1
+`},
+			config: func(c *testConfig) {
+				c.createHTTPRoute1("default/web", "default/web", "echoserver:8080")
+			},
+			expLogging: `WARN missing protocol on Gateway 'default/web' listener 'h1' for HTTPRoute 'default/web'`,
 		},
 		{
 			id: "cross-namespace-1",
@@ -226,10 +245,12 @@ spec:
   gatewayClassName: haproxy
   listeners:
   - name: h1
+    protocol: HTTP
     allowedRoutes:
       namespaces:
         from: Same
   - name: h2
+    protocol: HTTP
     allowedRoutes:
       namespaces:
         from: Same
@@ -538,6 +559,14 @@ paths:
 }
 
 func TestSyncTCPRouteCore(t *testing.T) {
+	defaultBackend := `
+- id: default_pg__tcprule0
+  endpoints:
+  - ip: 172.17.0.11
+    port: 15432
+    weight: 128
+  modetcp: true
+`
 	runTestSync(t, []testCaseSync{
 		{
 			id: "minimum",
@@ -553,14 +582,35 @@ func TestSyncTCPRouteCore(t *testing.T) {
   proxyprot: false
   tls: []
 `,
-			expBackends: `
-- id: default_pg__tcprule0
-  endpoints:
-  - ip: 172.17.0.11
-    port: 15432
-    weight: 128
-  modetcp: true
-`,
+			expBackends: defaultBackend,
+		},
+		{
+			id: "missing-proto",
+			resConfig: []string{`
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: web
+  namespace: default
+spec:
+  gatewayClassName: haproxy
+  listeners:
+  - name: h1
+`},
+			config: func(c *testConfig) {
+				c.createTCPRoute1("default/web", "default/web", "echoserver:8080")
+			},
+			expLogging: `WARN missing protocol on Gateway 'default/web' listener 'h1' for TCPRoute 'default/web'`,
+		},
+		{
+			id: "missing-secret-1",
+			config: func(c *testConfig) {
+				c.createGateway2("default/pg", "l1:5432", "crt")
+				c.createTCPRoute1("default/pg", "pg", "postgres:15432")
+				c.createService1("default/postgres", "15432", "172.17.0.11")
+			},
+			expBackends: defaultBackend,
+			expLogging:  `WARN skipping certificate reference on Gateway 'default/pg' listener 'l1': secret not found: 'default/crt'`,
 		},
 	})
 }
@@ -589,13 +639,6 @@ func TestSyncGatewayTLS(t *testing.T) {
     port: 8080
     weight: 128
 `
-	defaultHTTPHost := `
-hostname: <default>
-paths:
-- path: /
-  match: prefix
-  backend: default_web__rule0
-`
 	defaultHTTPSHost := `
 hostname: <default>
 paths:
@@ -616,8 +659,7 @@ tls:
 			expLogging: `
 WARN skipping certificate reference on Gateway 'default/web' listener 'l1': secret not found: 'default/crt'
 `,
-			expDefaultHost: defaultHTTPHost,
-			expBackends:    defaultBackend,
+			expBackends: defaultBackend,
 		},
 		{
 			id: "tls-listener-1",
@@ -654,8 +696,7 @@ WARN skipping certificate reference on Gateway 'default/web' listener 'l1': secr
 			expLogging: `
 WARN skipping certificate reference on Gateway 'default/web' listener 'l1': listener has no certificate reference
 `,
-			expDefaultHost: defaultHTTPHost,
-			expBackends:    defaultBackend,
+			expBackends: defaultBackend,
 		},
 		{
 			id: "tls-listener-reassign-crt-1",
@@ -704,8 +745,8 @@ func TestSyncGatewayTLSPassthrough(t *testing.T) {
 		{
 			id: "passthrough-1",
 			config: func(c *testConfig) {
-				g := c.createGateway1("default/web", "l1")
-				r := c.createHTTPRoute1("default/web", "web", "echoserver:8443")
+				g := c.createGateway1("default/web", "l1:8443")
+				r := c.createTLSRoute1("default/web", "web", "echoserver:8443")
 				c.createService1("default/echoserver", "8443", "172.17.0.11")
 				g.Spec.Listeners[0].TLS = &gatewayv1.GatewayTLSConfig{Mode: &passthrough}
 				r.Spec.Hostnames = append(r.Spec.Hostnames, "domain.local")
@@ -715,11 +756,11 @@ func TestSyncGatewayTLSPassthrough(t *testing.T) {
   paths:
   - path: /
     match: prefix
-    backend: default_web__rule0
+    backend: default_web__tlsrule0
   passthrough: true
 `,
 			expBackends: `
-- id: default_web__rule0
+- id: default_web__tlsrule0
   endpoints:
   - ip: 172.17.0.11
     port: 8443
@@ -728,217 +769,61 @@ func TestSyncGatewayTLSPassthrough(t *testing.T) {
 `,
 		},
 		{
-			id: "passthrough-and-http-first-1",
+			id: "passthrough-dup-1",
 			config: func(c *testConfig) {
-				g := c.createGateway1("default/web", "l1,l2")
-				r1 := c.createHTTPRoute2("default/web1", "web:l1", "echoserver1:8080", "/")
-				r2 := c.createHTTPRoute1("default/web2", "web:l2", "echoserver2:8443")
+				g := c.createGateway1("default/web", "l1:8443,l2:8443")
+				r1 := c.createTLSRoute1("default/web1", "web:l1", "echoserver1:8443")
+				r2 := c.createTLSRoute1("default/web2", "web:l2", "echoserver2:8443")
+				c.createService1("default/echoserver1", "8443", "172.17.0.11")
+				c.createService1("default/echoserver2", "8443", "172.17.0.12")
+				g.Spec.Listeners[0].TLS = &gatewayv1.GatewayTLSConfig{Mode: &passthrough}
+				g.Spec.Listeners[1].TLS = &gatewayv1.GatewayTLSConfig{Mode: &passthrough}
+				r1.Spec.Hostnames = []gatewayv1.Hostname{"domain.local"}
+				r2.Spec.Hostnames = []gatewayv1.Hostname{"domain.local"}
+			},
+			expLogging: `
+WARN skipping redeclared ssl-passthrough hostname 'domain.local' on TLSRoute 'default/web2'
+`,
+			expHosts: `
+- hostname: domain.local
+  paths:
+  - path: /
+    match: prefix
+    backend: default_web1__tlsrule0
+  passthrough: true
+`,
+			expBackends: `
+- id: default_web1__tlsrule0
+  endpoints:
+  - ip: 172.17.0.11
+    port: 8443
+    weight: 128
+  modetcp: true
+- id: default_web2__tlsrule0
+  endpoints:
+  - ip: 172.17.0.12
+    port: 8443
+    weight: 128
+  modetcp: true
+`,
+		},
+		{
+			// HTTPRoute is always processed first, so we have test on one single direction
+			id: "passthrough-having-matching-http-1",
+			config: func(c *testConfig) {
+				c.createSecret1("default/crt")
+				g := c.createGateway2("default/web", "l0:8443,l1:8443", "crt")
+				r1 := c.createHTTPRoute1("default/web", "web:l0", "echoserver1:8080")
+				r2 := c.createTLSRoute1("default/web", "web:l1", "echoserver2:8443")
 				c.createService1("default/echoserver1", "8080", "172.17.0.11")
 				c.createService1("default/echoserver2", "8443", "172.17.0.12")
+				g.Spec.Listeners[0].Protocol = gatewayv1.HTTPSProtocolType
 				g.Spec.Listeners[1].TLS = &gatewayv1.GatewayTLSConfig{Mode: &passthrough}
 				r1.Spec.Hostnames = []gatewayv1.Hostname{"domain.local"}
 				r2.Spec.Hostnames = []gatewayv1.Hostname{"domain.local"}
 			},
-			expHosts: `
-- hostname: domain.local
-  paths:
-  - path: /
-    match: prefix
-    backend: default_web2__rule0
-  passthrough: true
-  httppassback: default_web1__rule0
-`,
-			expBackends: `
-- id: default_web1__rule0
-  endpoints:
-  - ip: 172.17.0.11
-    port: 8080
-    weight: 128
-- id: default_web2__rule0
-  endpoints:
-  - ip: 172.17.0.12
-    port: 8443
-    weight: 128
-  modetcp: true
-`,
-		},
-		{
-			id: "passthrough-and-http-last-1",
-			config: func(c *testConfig) {
-				g := c.createGateway1("default/web", "l1,l2")
-				r1 := c.createHTTPRoute1("default/web1", "web:l1", "echoserver1:8443")
-				r2 := c.createHTTPRoute2("default/web2", "web:l2", "echoserver2:8080", "/")
-				c.createService1("default/echoserver1", "8443", "172.17.0.11")
-				c.createService1("default/echoserver2", "8080", "172.17.0.12")
-				g.Spec.Listeners[0].TLS = &gatewayv1.GatewayTLSConfig{Mode: &passthrough}
-				r1.Spec.Hostnames = []gatewayv1.Hostname{"domain.local"}
-				r2.Spec.Hostnames = []gatewayv1.Hostname{"domain.local"}
-			},
-			expHosts: `
-- hostname: domain.local
-  paths:
-  - path: /
-    match: prefix
-    backend: default_web1__rule0
-  passthrough: true
-  httppassback: default_web2__rule0
-`,
-			expBackends: `
-- id: default_web1__rule0
-  endpoints:
-  - ip: 172.17.0.11
-    port: 8443
-    weight: 128
-  modetcp: true
-- id: default_web2__rule0
-  endpoints:
-  - ip: 172.17.0.12
-    port: 8080
-    weight: 128
-`,
-		},
-		{
-			id: "passthrough-and-http-dup-passthrough-1",
-			config: func(c *testConfig) {
-				g := c.createGateway1("default/web", "l1,l2,l3")
-				r1 := c.createHTTPRoute1("default/web1", "web:l1", "echoserver1:8443")
-				r2 := c.createHTTPRoute1("default/web2", "web:l2", "echoserver2:8443")
-				r3 := c.createHTTPRoute2("default/web3", "web:l3", "echoserver3:8080", "/")
-				c.createService1("default/echoserver1", "8443", "172.17.0.11")
-				c.createService1("default/echoserver2", "8443", "172.17.0.12")
-				c.createService1("default/echoserver3", "8080", "172.17.0.13")
-				g.Spec.Listeners[0].TLS = &gatewayv1.GatewayTLSConfig{Mode: &passthrough}
-				g.Spec.Listeners[1].TLS = &gatewayv1.GatewayTLSConfig{Mode: &passthrough}
-				r1.Spec.Hostnames = []gatewayv1.Hostname{"domain.local"}
-				r2.Spec.Hostnames = []gatewayv1.Hostname{"domain.local"}
-				r3.Spec.Hostnames = []gatewayv1.Hostname{"domain.local"}
-			},
 			expLogging: `
-WARN skipping redeclared ssl-passthrough root path on HTTPRoute 'default/web2'
-`,
-			expHosts: `
-- hostname: domain.local
-  paths:
-  - path: /
-    match: prefix
-    backend: default_web1__rule0
-  passthrough: true
-  httppassback: default_web3__rule0
-`,
-			expBackends: `
-- id: default_web1__rule0
-  endpoints:
-  - ip: 172.17.0.11
-    port: 8443
-    weight: 128
-  modetcp: true
-- id: default_web2__rule0
-  endpoints:
-  - ip: 172.17.0.12
-    port: 8443
-    weight: 128
-  modetcp: true
-- id: default_web3__rule0
-  endpoints:
-  - ip: 172.17.0.13
-    port: 8080
-    weight: 128
-`,
-		},
-		{
-			id: "passthrough-and-http-dup-http-1",
-			config: func(c *testConfig) {
-				g := c.createGateway1("default/web", "l1,l2,l3")
-				r1 := c.createHTTPRoute1("default/web1", "web:l1", "echoserver1:8443")
-				r2 := c.createHTTPRoute2("default/web2", "web:l2", "echoserver2:8080", "/")
-				r3 := c.createHTTPRoute2("default/web3", "web:l3", "echoserver3:8080", "/")
-				c.createService1("default/echoserver1", "8443", "172.17.0.11")
-				c.createService1("default/echoserver2", "8080", "172.17.0.12")
-				c.createService1("default/echoserver3", "8080", "172.17.0.13")
-				g.Spec.Listeners[0].TLS = &gatewayv1.GatewayTLSConfig{Mode: &passthrough}
-				r1.Spec.Hostnames = []gatewayv1.Hostname{"domain.local"}
-				r2.Spec.Hostnames = []gatewayv1.Hostname{"domain.local"}
-				r3.Spec.Hostnames = []gatewayv1.Hostname{"domain.local"}
-			},
-			expLogging: `
-WARN skipping redeclared http root path on HTTPRoute 'default/web3'
-`,
-			expHosts: `
-- hostname: domain.local
-  paths:
-  - path: /
-    match: prefix
-    backend: default_web1__rule0
-  passthrough: true
-  httppassback: default_web2__rule0
-`,
-			expBackends: `
-- id: default_web1__rule0
-  endpoints:
-  - ip: 172.17.0.11
-    port: 8443
-    weight: 128
-  modetcp: true
-- id: default_web2__rule0
-  endpoints:
-  - ip: 172.17.0.12
-    port: 8080
-    weight: 128
-- id: default_web3__rule0
-  endpoints:
-  - ip: 172.17.0.13
-    port: 8080
-    weight: 128
-`,
-		},
-		{
-			id: "passthrough-and-http-path-1",
-			config: func(c *testConfig) {
-				g := c.createGateway1("default/web", "l1,l2")
-				r1 := c.createHTTPRoute2("default/web1", "web:l1", "echoserver1:8080", "/app")
-				r2 := c.createHTTPRoute1("default/web2", "web:l2", "echoserver2:8443")
-				c.createService1("default/echoserver1", "8080", "172.17.0.11")
-				c.createService1("default/echoserver2", "8443", "172.17.0.12")
-				g.Spec.Listeners[1].TLS = &gatewayv1.GatewayTLSConfig{Mode: &passthrough}
-				r1.Spec.Hostnames = []gatewayv1.Hostname{"domain.local"}
-				r2.Spec.Hostnames = []gatewayv1.Hostname{"domain.local"}
-			},
-			expHosts: `
-- hostname: domain.local
-  paths:
-  - path: /app
-    match: prefix
-    backend: default_web1__rule0
-  - path: /
-    match: prefix
-    backend: default_web2__rule0
-  passthrough: true
-`,
-			expBackends: `
-- id: default_web1__rule0
-  endpoints:
-  - ip: 172.17.0.11
-    port: 8080
-    weight: 128
-- id: default_web2__rule0
-  endpoints:
-  - ip: 172.17.0.12
-    port: 8443
-    weight: 128
-  modetcp: true
-`,
-		},
-		{
-			id: "passthrough-with-match-1",
-			config: func(c *testConfig) {
-				g := c.createGateway1("default/web", "l1")
-				r1 := c.createHTTPRoute2("default/web", "web", "echoserver:8443", "/app")
-				c.createService1("default/echoserver", "8443", "172.17.0.11")
-				g.Spec.Listeners[0].TLS = &gatewayv1.GatewayTLSConfig{Mode: &passthrough}
-				r1.Spec.Hostnames = []gatewayv1.Hostname{"domain.local"}
-			},
-			expLogging: `
-WARN ignoring match from HTTPRoute 'default/web': backend is TCP or SSL Passthrough
+WARN skipping hostname 'domain.local' on TLSRoute 'default/web': hostname already declared as HTTP
 `,
 			expHosts: `
 - hostname: domain.local
@@ -946,12 +831,18 @@ WARN ignoring match from HTTPRoute 'default/web': backend is TCP or SSL Passthro
   - path: /
     match: prefix
     backend: default_web__rule0
-  passthrough: true
+  tls:
+    tlsfilename: /tls/default/crt.pem
 `,
 			expBackends: `
 - id: default_web__rule0
   endpoints:
   - ip: 172.17.0.11
+    port: 8080
+    weight: 128
+- id: default_web__tlsrule0
+  endpoints:
+  - ip: 172.17.0.12
     port: 8443
     weight: 128
   modetcp: true
@@ -1034,6 +925,7 @@ func (c *testConfig) createConverter() gateway.Config {
 			Cache:         c.cache,
 			Logger:        c.logger,
 			Tracker:       c.tracker,
+			HasTLSRouteA2: true,
 			HasTCPRouteA2: true,
 		},
 		c.hconfig,
@@ -1110,6 +1002,15 @@ spec:
 		}
 		l.Name = gatewayv1.SectionName(lname)
 		l.Port = lport
+		// TODO hardcoded for now, use integration test's framework instead in the future
+		switch lport {
+		case 5432:
+			l.Protocol = gatewayv1.TCPProtocolType
+		case 8443:
+			l.Protocol = gatewayv1.TLSProtocolType
+		default:
+			l.Protocol = gatewayv1.HTTPProtocolType
+		}
 		from := gatewayv1.NamespacesFromSame
 		var selector *v1.LabelSelector
 		if lselector != "" {
@@ -1213,6 +1114,12 @@ func (c *testConfig) createHTTPRoute2(name, parent, service, paths string) *gate
 	return r
 }
 
+func (c *testConfig) createTLSRoute1(name, parent, services string) *gatewayv1alpha2.TLSRoute {
+	r := CreateObject(c.createRoute("TLSRoute", "v1alpha2", name, parent, services)).(*gatewayv1alpha2.TLSRoute)
+	c.cache.TLSRouteList = append(c.cache.TLSRouteList, r)
+	return r
+}
+
 func (c *testConfig) createTCPRoute1(name, parent, services string) *gatewayv1alpha2.TCPRoute {
 	r := CreateObject(c.createRoute("TCPRoute", "v1alpha2", name, parent, services)).(*gatewayv1alpha2.TCPRoute)
 	c.cache.TCPRouteList = append(c.cache.TCPRouteList, r)
@@ -1253,7 +1160,10 @@ func (c *testConfig) compareText(id string, actual, expected string) {
 }
 
 func (c *testConfig) compareConfigDefaultHost(id string, expected string) {
-	host := c.hconfig.Hosts().DefaultHost()
+	var host *hatypes.Host
+	if f := c.hconfig.Frontends().Items(); len(f) > 0 {
+		host = f[0].DefaultHost()
+	}
 	if host != nil {
 		c.compareText(id, conv_helper.MarshalHost(host), expected)
 	} else {
@@ -1262,7 +1172,11 @@ func (c *testConfig) compareConfigDefaultHost(id string, expected string) {
 }
 
 func (c *testConfig) compareConfigHosts(id string, expected string) {
-	c.compareText(id, conv_helper.MarshalHosts(c.hconfig.Hosts().BuildSortedItems()...), expected)
+	var hosts []*hatypes.Host
+	if f := c.hconfig.Frontends().Items(); len(f) > 0 {
+		hosts = f[0].BuildSortedHosts()
+	}
+	c.compareText(id, conv_helper.MarshalHosts(hosts...), expected)
 }
 
 func (c *testConfig) compareConfigTCPServices(id string, expected string) {

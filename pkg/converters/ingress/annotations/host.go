@@ -17,18 +17,58 @@ limitations under the License.
 package annotations
 
 import (
+	"fmt"
+
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
+
+func (c *updater) buildHTTPFrontBind(d *frontData) {
+	d.front.AcceptProxy = d.mapper.Get(ingtypes.FrontUseProxyProtocol).Bool()
+	if bindHTTP := d.mapper.Get(ingtypes.FrontBindHTTP).Value; bindHTTP != "" {
+		d.front.Bind = bindHTTP
+	} else {
+		ip := d.mapper.Get(ingtypes.FrontBindIPAddrHTTP).Value
+		port := d.mapper.Get(ingtypes.FrontHTTPPort).Int()
+		d.front.Bind = fmt.Sprintf("%s:%d", ip, port)
+	}
+}
+
+func (c *updater) buildHTTPSFrontBind(d *frontData) {
+	d.front.AcceptProxy = d.mapper.Get(ingtypes.FrontUseProxyProtocol).Bool()
+	if bindHTTPS := d.mapper.Get(ingtypes.FrontBindHTTPS).Value; bindHTTPS != "" {
+		d.front.Bind = bindHTTPS
+	} else {
+		ip := d.mapper.Get(ingtypes.FrontBindIPAddrHTTP).Value
+		port := d.mapper.Get(ingtypes.FrontHTTPSPort).Int()
+		d.front.Bind = fmt.Sprintf("%s:%d", ip, port)
+	}
+}
+
+func (c *updater) buildHTTPFrontFrontingProxy(d *frontData) {
+	bind := d.mapper.Get(ingtypes.FrontBindFrontingProxy).Value
+	if bind == "" {
+		port := d.mapper.Get(ingtypes.FrontFrontingProxyPort).Int()
+		if port == 0 {
+			port = d.mapper.Get(ingtypes.FrontHTTPStoHTTPPort).Int()
+		}
+		if port == 0 {
+			return
+		}
+		bind = fmt.Sprintf("%s:%d", d.mapper.Get(ingtypes.FrontBindIPAddrHTTP).Value, port)
+	}
+	d.front.IsFrontingProxy = true
+	d.front.IsFrontingUseProto = d.mapper.Get(ingtypes.FrontUseForwardedProto).Bool()
+	d.front.Bind = bind
+}
 
 func (c *updater) buildHostAuthExternal(d *hostData) {
 	isFrontend := d.mapper.Get(ingtypes.BackAuthExternalPlacement).ToLower() == "frontend"
 	url := d.mapper.Get(ingtypes.BackAuthURL)
 	if isFrontend && url.Value != "" {
 		for _, path := range d.host.Paths {
-			path.AuthExt = &types.AuthExternal{}
-			c.setAuthExternal(d.mapper, path.AuthExt, url)
+			c.setAuthExternal(d.mapper, &path.AuthExtFront, url)
 		}
 	}
 }
@@ -111,43 +151,28 @@ func (c *updater) buildHostCertSigner(d *hostData) {
 
 func (c *updater) buildHostRedirect(d *hostData) {
 	// TODO need a host<->host tracking if a target is found
-	redir := d.mapper.Get(ingtypes.HostRedirectFrom)
-	if target := c.haproxy.Hosts().FindTargetRedirect(redir.Value, false); target != nil {
-		c.logger.Warn("ignoring redirect from '%s' on %v, it's already targeting to '%s'",
-			redir.Value, redir.Source, target.Hostname)
-	} else if len(d.host.Paths) > 0 {
-		d.host.Redirect.RedirectHost = redir.Value
-	}
-	redirRegex := d.mapper.Get(ingtypes.HostRedirectFromRegex)
-	if target := c.haproxy.Hosts().FindTargetRedirect(redirRegex.Value, true); target != nil {
-		c.logger.Warn("ignoring regex redirect from '%s' on %v, it's already targeting to '%s'",
-			redirRegex.Value, redirRegex.Source, target.Hostname)
-	} else if len(d.host.Paths) > 0 {
-		d.host.Redirect.RedirectHostRegex = redirRegex.Value
-	}
-}
-
-func (c *updater) buildHostSSLPassthrough(d *hostData) {
-	sslpassthrough := d.mapper.Get(ingtypes.HostSSLPassthrough)
-	if !sslpassthrough.Bool() {
-		return
-	}
-	rootPaths := d.host.FindPath("/")
-	if len(rootPaths) == 0 {
-		c.logger.Warn("skipping SSL of %s: root path was not configured", sslpassthrough.Source)
-		return
-	}
-	hostBackend := rootPaths[0].Backend
-	sslpassHTTPPort := d.mapper.Get(ingtypes.HostSSLPassthroughHTTPPort)
-	if sslpassHTTPPort.Source != nil {
-		httpBackend := c.haproxy.Backends().FindBackend(hostBackend.Namespace, hostBackend.Name, sslpassHTTPPort.Value)
-		if httpBackend != nil {
-			d.host.HTTPPassthroughBackend = httpBackend.ID
+	redirOnPort := func(port int32) {
+		f := c.haproxy.Frontends().FindFrontend(port)
+		if f == nil {
+			return
+		}
+		redir := d.mapper.Get(ingtypes.HostRedirectFrom)
+		if target := f.FindTargetRedirect(redir.Value, false); target != nil {
+			c.logger.Warn("ignoring redirect from '%s' port %d on %v, it's already targeting to '%s'",
+				redir.Value, port, redir.Source, target.Hostname)
+		} else if len(d.host.Paths) > 0 {
+			d.host.Redirect.RedirectHost = redir.Value
+		}
+		redirRegex := d.mapper.Get(ingtypes.HostRedirectFromRegex)
+		if target := f.FindTargetRedirect(redirRegex.Value, true); target != nil {
+			c.logger.Warn("ignoring regex redirect from '%s' port %d on %v, it's already targeting to '%s'",
+				redirRegex.Value, port, redirRegex.Source, target.Hostname)
+		} else if len(d.host.Paths) > 0 {
+			d.host.Redirect.RedirectHostRegex = redirRegex.Value
 		}
 	}
-	backend := c.haproxy.Backends().AcquireBackend(hostBackend.Namespace, hostBackend.Name, hostBackend.Port)
-	backend.ModeTCP = true
-	d.host.SetSSLPassthrough(true)
+	redirOnPort(d.mapper.Get(ingtypes.FrontHTTPPort).Int32())
+	redirOnPort(d.mapper.Get(ingtypes.FrontHTTPSPort).Int32())
 }
 
 func (c *updater) buildHostTLSConfig(d *hostData) {
@@ -164,5 +189,5 @@ func (c *updater) buildHostTLSConfig(d *hostData) {
 }
 
 func (c *updater) buildHostCustomResponses(d *hostData) {
-	d.host.CustomHTTPResponses = c.buildHTTPResponses(d.host.Hostname, d.mapper, keyScopeHost)
+	d.host.CustomHTTPResponses = c.buildHTTPResponses(d.mapper, keyScopeHost)
 }

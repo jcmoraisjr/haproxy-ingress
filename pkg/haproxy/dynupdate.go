@@ -88,14 +88,16 @@ func (d *dynUpdater) checkConfigChange() bool {
 	if d.config.tcpservices.Changed() {
 		diff = append(diff, "tcp-services")
 	}
-	if d.config.frontend.Changed() {
-		diff = append(diff, "frontend")
+	if d.config.frontends.Changed() {
+		diff = append(diff, "frontends")
 	}
 	if d.config.userlists.Changed() {
 		diff = append(diff, "userlists")
 	}
-	if !d.frontendUpdated() {
-		diff = append(diff, "hosts")
+	for _, f := range d.config.frontends.Items() {
+		if !d.frontendUpdated(f) {
+			diff = append(diff, fmt.Sprintf("hosts (%s)", f.Name))
+		}
 	}
 	if !d.backendUpdated() {
 		diff = append(diff, "backends")
@@ -107,14 +109,14 @@ func (d *dynUpdater) checkConfigChange() bool {
 	return true
 }
 
-func (d *dynUpdater) frontendUpdated() bool {
+func (d *dynUpdater) frontendUpdated(f *hatypes.Frontend) bool {
 	updated := true
 
-	hosts := make(map[string]*hostPair, len(d.config.hosts.ItemsDel()))
-	for _, host := range d.config.hosts.ItemsDel() {
+	hosts := make(map[string]*hostPair, len(f.HostsDel()))
+	for _, host := range f.HostsDel() {
 		hosts[host.Hostname] = &hostPair{old: host}
 	}
-	for _, host := range d.config.hosts.ItemsAdd() {
+	for _, host := range f.HostsAdd() {
 		id := host.Hostname
 		h, found := hosts[id]
 		if !found {

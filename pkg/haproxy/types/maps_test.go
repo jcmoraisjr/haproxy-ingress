@@ -182,10 +182,10 @@ func TestAddHostnamePathMapping(t *testing.T) {
 	}
 	for i, test := range testCases {
 		hm := CreateMaps(matchOrder).AddMap(test.filename)
-		hostPath := &HostPath{
+		path := &Path{
 			Link: CreatePathLink(test.path, test.match),
 		}
-		hm.AddHostnamePathMapping(test.hostname, hostPath, "backend")
+		hm.AddHostnamePathMapping(test.hostname, path, "backend")
 		entries := hm.rawfiles[test.expmatch].entries
 		if len(entries) != 1 {
 			t.Errorf("item %d, invalid match or value: %v", i, hm.rawfiles)
@@ -284,14 +284,14 @@ func TestAddAliasPathMapping(t *testing.T) {
 	}
 	for i, test := range testCases {
 		hm := CreateMaps(matchOrder).AddMap(test.filename)
-		hostPath := &HostPath{
+		path := &Path{
 			Link: CreatePathLink(test.path, test.match),
 		}
 		alias := HostAliasConfig{
 			AliasName:  test.aliasName,
 			AliasRegex: test.aliasRegex,
 		}
-		hm.AddAliasPathMapping(alias, hostPath, "backend")
+		hm.AddAliasPathMapping(alias, path, "backend")
 		actual := map[MatchType][]string{}
 		for match := range hm.rawfiles {
 			for _, entry := range hm.rawfiles[match].entries {
@@ -674,7 +674,7 @@ local1.tld /a2 prefix
 			if item.path == "" {
 				hm.AddHostnameMapping(item.hostname, item.target)
 			} else {
-				hm.AddHostnamePathMapping(item.hostname, &HostPath{Link: CreatePathLink(item.path, item.match).WithHeadersMatch(item.headers)}, item.target)
+				hm.AddHostnamePathMapping(item.hostname, &Path{Link: CreatePathLink(item.path, item.match).WithHeadersMatch(item.headers)}, item.target)
 			}
 		}
 		var output string

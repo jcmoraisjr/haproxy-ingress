@@ -20,41 +20,25 @@ import (
 	"testing"
 )
 
-func TestEmptyFrontend(t *testing.T) {
-	c := createConfig(options{})
-	if err := c.WriteFrontendMaps(); err != nil {
-		t.Errorf("error creating frontends: %v", err)
-	}
-	if maps := c.frontend.Maps; maps == nil {
-		t.Error("expected frontend.Maps != nil")
-	}
-	c.hosts.AcquireHost("empty")
-	if err := c.WriteFrontendMaps(); err != nil {
-		t.Errorf("error creating frontends: %v", err)
-	}
-	maps := c.frontend.Maps
-	if maps == nil {
-		t.Error("expected frontend.Maps != nil")
-	}
-}
-
 func TestAcquireHostDiff(t *testing.T) {
 	c := createConfig(options{})
-	f1 := c.hosts.AcquireHost("h1")
-	f2 := c.hosts.AcquireHost("h2")
-	if f1.Hostname != "h1" {
-		t.Errorf("expected %v but was %v", "h1", f1.Hostname)
+	f := c.frontends.AcquireFrontend(8000, false)
+	h1 := f.AcquireHost("h1")
+	h2 := f.AcquireHost("h2")
+	if h1.Hostname != "h1" {
+		t.Errorf("expected %v but was %v", "h1", h1.Hostname)
 	}
-	if f2.Hostname != "h2" {
-		t.Errorf("expected %v but was %v", "h2", f2.Hostname)
+	if h2.Hostname != "h2" {
+		t.Errorf("expected %v but was %v", "h2", h2.Hostname)
 	}
 }
 
 func TestAcquireHostSame(t *testing.T) {
 	c := createConfig(options{})
-	f1 := c.hosts.AcquireHost("h1")
-	f2 := c.hosts.AcquireHost("h1")
-	if f1 != f2 {
+	f := c.frontends.AcquireFrontend(8000, false)
+	h1 := f.AcquireHost("h1")
+	h2 := f.AcquireHost("h1")
+	if h1 != h2 {
 		t.Errorf("expected same host but was different")
 	}
 }
@@ -63,12 +47,13 @@ func TestClear(t *testing.T) {
 	c := createConfig(options{
 		mapsDir: "/tmp/maps",
 	})
-	c.Hosts().AcquireHost("app.local")
+	f := c.frontends.AcquireFrontend(8000, false)
+	_ = f.AcquireHost("app.local")
 	c.Backends().AcquireBackend("default", "app", "8080")
 	if c.options.mapsDir != "/tmp/maps" {
 		t.Error("expected mapsDir == /tmp/maps")
 	}
-	if len(c.Hosts().Items()) != 1 {
+	if len(f.Hosts()) != 1 {
 		t.Error("expected len(hosts) == 1")
 	}
 	if len(c.Backends().Items()) != 1 {
@@ -78,8 +63,8 @@ func TestClear(t *testing.T) {
 	if c.options.mapsDir != "/tmp/maps" {
 		t.Error("expected mapsDir == /tmp/maps")
 	}
-	if len(c.Hosts().Items()) != 0 {
-		t.Error("expected len(hosts) == 0")
+	if len(c.Frontends().Items()) != 0 {
+		t.Error("expected len(Frontends) == 0")
 	}
 	if len(c.Backends().Items()) != 0 {
 		t.Error("expected len(backends) == 0")

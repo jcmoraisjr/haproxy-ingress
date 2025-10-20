@@ -65,24 +65,24 @@ func (hm *HostsMap) addHostnameMappingMatch(hostname, target string, match Match
 }
 
 // AddHostnamePathMapping ...
-func (hm *HostsMap) AddHostnamePathMapping(hostname string, hostPath *HostPath, target string) {
+func (hm *HostsMap) AddHostnamePathMapping(hostname string, path *Path, target string) {
 	hostname, hasWildcard := convertWildcardToRegex(hostname)
-	path := hostPath.Path()
-	match := hostPath.Match()
+	strpath := path.Path()
+	match := path.Match()
 	// TODO paths of a wildcard hostname will always have less precedence
 	// despite the match type because the whole hostname+path will fill a
 	// MatchRegex map, which has the lesser precedence in the template.
 	if hasWildcard {
-		path = convertPathToRegex(hostPath)
+		strpath = convertPathToRegex(path)
 		match = MatchRegex
 	} else if match == MatchRegex {
 		hostname = "^" + regexp.QuoteMeta(hostname) + "$"
 	}
-	hm.addTarget(hostname, path, hostPath.Link.headers, hostPath.order, target, match)
+	hm.addTarget(hostname, strpath, path.Link.headers, path.order, target, match)
 }
 
 // AddAliasPathMapping ...
-func (hm *HostsMap) AddAliasPathMapping(alias HostAliasConfig, path *HostPath, target string) {
+func (hm *HostsMap) AddAliasPathMapping(alias HostAliasConfig, path *Path, target string) {
 	if alias.AliasName != "" {
 		hm.AddHostnamePathMapping(alias.AliasName, path, target)
 	}
@@ -106,21 +106,21 @@ func convertWildcardToRegex(hostname string) (h string, hasWildcard bool) {
 // regex has an implicit starting `^` char due to ingress path
 // validation - paths need to start with a slash. There is no
 // implicit `$`, so regex behaves pretty much like `begin`.
-func convertPathToRegex(hostPath *HostPath) string {
-	path := hostPath.Path()
-	switch hostPath.Match() {
+func convertPathToRegex(path *Path) string {
+	strpath := path.Path()
+	switch path.Match() {
 	case MatchBegin:
-		return regexp.QuoteMeta(path)
+		return regexp.QuoteMeta(strpath)
 	case MatchExact:
-		return regexp.QuoteMeta(path) + "$"
+		return regexp.QuoteMeta(strpath) + "$"
 	case MatchPrefix:
-		path = regexp.QuoteMeta(path)
-		if strings.HasSuffix(path, "/") {
-			return path
+		strpath = regexp.QuoteMeta(strpath)
+		if strings.HasSuffix(strpath, "/") {
+			return strpath
 		}
-		return path + "(/.*)?"
+		return strpath + "(/.*)?"
 	case MatchRegex:
-		return path
+		return strpath
 	}
 	panic("unsupported match type")
 }

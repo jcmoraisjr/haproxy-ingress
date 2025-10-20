@@ -36,6 +36,7 @@ type Updater interface {
 	UpdatePeers(haproxyConfig haproxy.Config, mapper *Mapper)
 	UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *Mapper)
 	UpdateTCPHostConfig(tcpPort *hatypes.TCPServicePort, tcpHost *hatypes.TCPServiceHost, mapper *Mapper)
+	UpdateFrontConfig(front *hatypes.Frontend, mapper *Mapper)
 	UpdateHostConfig(host *hatypes.Host, mapper *Mapper)
 	UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper)
 }
@@ -74,6 +75,11 @@ type tcpData struct {
 	tcpPort *hatypes.TCPServicePort
 	tcpHost *hatypes.TCPServiceHost
 	mapper  *Mapper
+}
+
+type frontData struct {
+	front  *hatypes.Frontend
+	mapper *Mapper
 }
 
 type hostData struct {
@@ -160,6 +166,7 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 		mapper:   mapper,
 	}
 	d.global.AdminSocket = c.options.AdminSocket
+	d.global.TCPBindIP = d.mapper.Get(ingtypes.GlobalBindIPAddrTCP).String()
 	d.global.LocalFSPrefix = c.options.LocalFSPrefix
 	d.global.MaxConn = mapper.Get(ingtypes.GlobalMaxConnections).Int()
 	d.global.DefaultBackendRedir = mapper.Get(ingtypes.GlobalDefaultBackendRedirect).String()
@@ -176,13 +183,8 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	d.global.Master.WorkerMaxReloads = mapper.Get(ingtypes.GlobalWorkerMaxReloads).Int()
 	d.global.StrictHost = mapper.Get(ingtypes.GlobalStrictHost).Bool()
 	d.global.UseHTX = mapper.Get(ingtypes.GlobalUseHTX).Bool()
-	//
-	c.haproxy.Frontend().RedirectFromCode = mapper.Get(ingtypes.GlobalRedirectFromCode).Int()
-	c.haproxy.Frontend().RedirectToCode = mapper.Get(ingtypes.GlobalRedirectToCode).Int()
-	//
 	c.buildGlobalAcme(d)
 	c.buildGlobalAuthProxy(d)
-	c.buildGlobalBind(d)
 	c.buildGlobalCloseSessions(d)
 	c.buildGlobalCustomConfig(d)
 	c.buildGlobalCustomResponses(d)
@@ -190,11 +192,10 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	c.buildGlobalDynamic(d)
 	c.buildGlobalFastCGI(d)
 	c.buildGlobalForwardFor(d)
-	c.buildGlobalHTTPStoHTTP(d)
 	c.buildGlobalModSecurity(d)
 	c.buildGlobalPathTypeOrder(d)
 	c.buildGlobalProc(d)
-	c.buildSecurity(d)
+	c.buildGlobalSecurity(d)
 	c.buildGlobalSSL(d)
 	c.buildGlobalStats(d)
 	c.buildGlobalSyslog(d)
@@ -202,16 +203,19 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 }
 
 func (c *updater) UpdatePeers(haproxyConfig haproxy.Config, mapper *Mapper) {
+	// NOTE - Peers is updated without cleanup, so all the methods should be idempotent.
 	global := haproxyConfig.Global()
-	c.buildGlobalPeers(&globalData{
+	d := &globalData{
 		global: global,
 		mapper: mapper,
-	})
+	}
+	c.buildGlobalPeers(d)
 	// peers is currently a silly dependency to build global vars
 	c.vars = buildGlobalVars(global)
 }
 
 func (c *updater) UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *Mapper) {
+	// NOTE - TCPPortConfig is updated without cleanup, so all the methods should be idempotent.
 	if config := mapper.Get(ingtypes.TCPConfigTCPService).Value; config != "" {
 		tcp.CustomConfig = utils.PatternLineToSlice(c.vars, config)
 	}
@@ -220,32 +224,48 @@ func (c *updater) UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *Mappe
 }
 
 func (c *updater) UpdateTCPHostConfig(tcpPort *hatypes.TCPServicePort, tcpHost *hatypes.TCPServiceHost, mapper *Mapper) {
-	data := &tcpData{
+	// NOTE - TCPHostConfig is updated without cleanup, so all the methods should be idempotent.
+	d := &tcpData{
 		tcpPort: tcpPort,
 		tcpHost: tcpHost,
 		mapper:  mapper,
 	}
-	c.buildTCPAuthTLS(data)
+	c.buildTCPAuthTLS(d)
+}
+
+func (c *updater) UpdateFrontConfig(front *hatypes.Frontend, mapper *Mapper) {
+	// NOTE - FrontConfig is updated without cleanup, so all the methods should be idempotent.
+	d := &frontData{
+		front:  front,
+		mapper: mapper,
+	}
+	front.RedirectFromCode = mapper.Get(ingtypes.FrontRedirectFromCode).Int()
+	front.RedirectToCode = mapper.Get(ingtypes.FrontRedirectToCode).Int()
+	if front.IsHTTPS {
+		c.buildHTTPSFrontBind(d)
+	} else {
+		c.buildHTTPFrontBind(d)
+		c.buildHTTPFrontFrontingProxy(d)
+	}
 }
 
 func (c *updater) UpdateHostConfig(host *hatypes.Host, mapper *Mapper) {
-	data := &hostData{
+	d := &hostData{
 		host:   host,
 		mapper: mapper,
 	}
 	host.RootRedirect = mapper.Get(ingtypes.HostAppRoot).Value
 	host.Alias.AliasName = mapper.Get(ingtypes.HostServerAlias).Value
 	host.Alias.AliasRegex = mapper.Get(ingtypes.HostServerAliasRegex).Value
-	host.TLS.UseDefaultCrt = mapper.Get(ingtypes.HostSSLAlwaysAddHTTPS).Bool()
-	host.TLS.FollowRedirect = mapper.Get(ingtypes.HostSSLAlwaysFollowRedirect).Bool()
 	host.VarNamespace = mapper.Get(ingtypes.HostVarNamespace).Bool()
-	c.buildHostAuthExternal(data)
-	c.buildHostAuthTLS(data)
-	c.buildHostCertSigner(data)
-	c.buildHostRedirect(data)
-	c.buildHostSSLPassthrough(data)
-	c.buildHostTLSConfig(data)
-	c.buildHostCustomResponses(data)
+	c.buildHostAuthExternal(d)
+	c.buildHostCertSigner(d)
+	c.buildHostRedirect(d)
+	c.buildHostCustomResponses(d)
+	if host.IsHTTPS() {
+		c.buildHostAuthTLS(d)
+		c.buildHostTLSConfig(d)
+	}
 }
 
 func (c *updater) UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper) {

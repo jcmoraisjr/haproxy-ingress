@@ -3,6 +3,7 @@ package options
 import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 type Object func(o *objectOpt)
@@ -34,12 +35,17 @@ func CustomHostName(hostname string) Object {
 		o.CustomHostName = ptr.To(hostname)
 	}
 }
-func Listener(name, proto string, port int32) Object {
+
+// Listener creates a new listener on a Gateway object. certs is ignored on HTTP, TCP and UDP protos.
+// HTTPS proto requires len(certs)>0. TLS proto infers Terminate mode if len(certs)>0, Passthrough is
+// used otherwise.
+func Listener(name gatewayv1.SectionName, proto gatewayv1.ProtocolType, port gatewayv1.PortNumber, certs []gatewayv1.SecretObjectReference) Object {
 	return func(o *objectOpt) {
 		o.Listeners = append(o.Listeners, ListenerOpt{
 			Name:  name,
 			Proto: proto,
 			Port:  port,
+			Certs: certs,
 		})
 	}
 }
@@ -69,9 +75,10 @@ type GatewayOpt struct {
 }
 
 type ListenerOpt struct {
-	Name  string
-	Proto string
-	Port  int32
+	Name  gatewayv1.SectionName
+	Proto gatewayv1.ProtocolType
+	Port  gatewayv1.PortNumber
+	Certs []gatewayv1.SecretObjectReference
 }
 
 func (o *objectOpt) Apply(obj client.Object) {

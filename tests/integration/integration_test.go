@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -70,6 +70,15 @@ func TestIntegrationIngress(t *testing.T) {
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
 		assert.True(t, res.EchoResponse.Parsed)
 		assert.Equal(t, "http", res.EchoResponse.ReqHeaders["x-forwarded-proto"])
+	})
+
+	t.Run("bare", func(t *testing.T) {
+		t.Parallel()
+		res := f.Request(ctx, t, http.MethodGet, "", "/healthz",
+			options.RequestPort(framework.TestPortHealthz),
+			options.ExpectResponseCode(http.StatusOK),
+		)
+		assert.Contains(t, res.Body, "Service ready")
 	})
 
 	t.Run("should not redirect to https", func(t *testing.T) {
@@ -572,120 +581,97 @@ Request forbidden by administrative rules.
 		assert.False(t, res.EchoResponse.Parsed)
 	})
 
-	t.Run("should handle proto header on fronting proxy", func(t *testing.T) {
-		// t.Parallel() // fronting proxy configuration changed, cannot run in parallel
+	t.Run("should cohexist regular and fronting-proxy http frontends", func(t *testing.T) {
+		t.Parallel()
 
+		port := framework.RandomPort()
 		svc := f.CreateService(ctx, t, httpServerPort)
-		_, hostname := f.CreateIngress(ctx, t, svc)
-
-		// global config to be changed
-		cm := corev1.ConfigMap{}
-		err := f.Client().Get(ctx, types.NamespacedName{Namespace: "default", Name: "ingress-controller"}, &cm)
-		require.NoError(t, err)
-
-		apply := func(t *testing.T, port int, useXFPHeader ...bool) {
-			if port > 0 {
-				cm.Data[ingtypes.GlobalFrontingProxyPort] = strconv.Itoa(port)
-				should := map[bool]string{false: "false", true: "true"}
-				cm.Data[ingtypes.GlobalUseForwardedProto] = should[useXFPHeader[0]]
-			} else {
-				delete(cm.Data, ingtypes.GlobalFrontingProxyPort)
-				delete(cm.Data, ingtypes.GlobalUseForwardedProto)
-			}
-			err = f.Client().Update(ctx, &cm)
-			require.NoError(t, err)
-			time.Sleep(3 * time.Second) // TODO need a better way to ensure the config was already applied
-		}
-
-		type reqtype string
-		const (
-			xfp = "X-Forwarded-Proto"
-
-			reqempty reqtype = ""
-			reqhttp  reqtype = "http"
-			reqhttps reqtype = "https"
-			reqredir reqtype = "<redir>"
+		_, hproxy := f.CreateIngress(ctx, t, svc)
+		_, fproxy := f.CreateIngress(ctx, t, svc,
+			options.AddConfigKeyAnnotation(ingtypes.FrontFrontingProxyPort, strconv.Itoa(int(port))),
 		)
 
-		req := func(t *testing.T, port int, xfpHeader string, expHeader reqtype) {
-			expcode := http.StatusOK
-			if expHeader == reqredir {
-				expcode = http.StatusFound
-			}
-			res := f.Request(ctx, t, http.MethodGet, hostname, "/",
-				options.CustomRequest(func(req *http.Request) {
-					if xfpHeader != "" {
-						req.Header.Set(xfp, xfpHeader)
-					}
-					req.URL.Host = fmt.Sprintf("127.0.0.1:%d", port)
-				}),
-				options.ExpectResponseCode(expcode),
-			)
-			if expHeader != reqredir {
-				assert.True(t, res.EchoResponse.Parsed)
-				assert.Equal(t, string(expHeader), res.EchoResponse.ReqHeaders[strings.ToLower(xfp)])
-			} else {
-				assert.False(t, res.EchoResponse.Parsed)
-			}
-		}
+		hres := f.Request(ctx, t, http.MethodGet, hproxy, "/",
+			options.ExpectResponseCode(http.StatusOK),
+		)
+		assert.True(t, hres.EchoResponse.Parsed)
 
-		hport := framework.TestPortHTTP
-		fport := framework.TestPortFront
+		fres := f.Request(ctx, t, http.MethodGet, fproxy, "/",
+			options.RequestPort(port),
+			options.CustomRequest(func(req *http.Request) {
+				req.Header.Set("X-Forwarded-Proto", "https")
+			}),
+			options.ExpectResponseCode(http.StatusOK),
+		)
+		assert.True(t, fres.EchoResponse.Parsed)
+	})
+
+	t.Run("should handle proto header on fronting proxy", func(t *testing.T) {
+		t.Parallel()
+
+		const xfp = "X-Forwarded-Proto"
+		const reqredir = "<redir>"
 		testCases := []struct {
-			frontingPort  int
-			useXFPHeader  bool
-			requestPort   int
-			expXFPMissing reqtype
-			expXFPHTTP    reqtype
-			expXFPHTTPS   reqtype
+			useXFPHeader bool
+			xfpContent   string
+			expRecHeader string
 		}{
-			// shared port
-			{frontingPort: hport, useXFPHeader: false, requestPort: hport, expXFPMissing: reqempty, expXFPHTTP: reqhttp, expXFPHTTPS: reqhttps},
-			{frontingPort: hport, useXFPHeader: true, requestPort: hport, expXFPMissing: reqhttp, expXFPHTTP: reqredir, expXFPHTTPS: reqhttps},
-
-			// dedicated port, calling `http` port
-			{frontingPort: fport, useXFPHeader: false, requestPort: hport, expXFPMissing: reqempty, expXFPHTTP: reqhttp, expXFPHTTPS: reqhttps},
-			{frontingPort: fport, useXFPHeader: true, requestPort: hport, expXFPMissing: reqhttp, expXFPHTTP: reqhttp, expXFPHTTPS: reqhttp},
-
-			// dedicated port, calling `fronting-proxy` port
-			{frontingPort: fport, useXFPHeader: false, requestPort: fport, expXFPMissing: reqempty, expXFPHTTP: reqhttp, expXFPHTTPS: reqhttps},
-			{frontingPort: fport, useXFPHeader: true, requestPort: fport, expXFPMissing: reqredir, expXFPHTTP: reqredir, expXFPHTTPS: reqhttps},
+			{useXFPHeader: false, xfpContent: "", expRecHeader: ""},
+			{useXFPHeader: false, xfpContent: "http", expRecHeader: "http"},
+			{useXFPHeader: false, xfpContent: "https", expRecHeader: "https"},
+			{useXFPHeader: true, xfpContent: "", expRecHeader: reqredir},
+			{useXFPHeader: true, xfpContent: "http", expRecHeader: reqredir},
+			{useXFPHeader: true, xfpContent: "https", expRecHeader: "https"},
+		}
+		should := map[bool]string{false: "false", true: "true"}
+		reqHeaders := map[string]string{
+			"x-ssl-client-cn":   "localhost",
+			"x-ssl-client-dn":   "/CN=localhost",
+			"x-ssl-client-sha1": "abc123",
+			"x-ssl-client-sha2": "abcd1234",
+			"x-ssl-client-cert": "LS0tLS1CRUdJT...",
 		}
 		for _, test := range testCases {
-			nport := "shared"
-			if test.frontingPort != framework.TestPortHTTP {
-				nport = "dedicated"
+			reqxfp := "missing"
+			if test.xfpContent != "" {
+				reqxfp = test.xfpContent
 			}
-			rport := "http"
-			if test.requestPort != framework.TestPortHTTP {
-				rport = "fronting-proxy"
-			}
-			prefix := fmt.Sprintf("port=%s usexfp=%t reqport=%s reqxfp=", nport, test.useXFPHeader, rport)
-			apply(t, test.frontingPort, test.useXFPHeader)
-			t.Run(prefix+"missing", func(t *testing.T) {
-				req(t, test.requestPort, "", test.expXFPMissing)
-			})
-			t.Run(prefix+"http", func(t *testing.T) {
-				req(t, test.requestPort, "http", test.expXFPHTTP)
-			})
-			t.Run(prefix+"https", func(t *testing.T) {
-				req(t, test.requestPort, "https", test.expXFPHTTPS)
+			name := fmt.Sprintf("usexfp=%t reqxfp=%s", test.useXFPHeader, reqxfp)
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+				port := framework.RandomPort()
+				svc := f.CreateService(ctx, t, httpServerPort)
+				_, hostname := f.CreateIngress(ctx, t, svc,
+					options.AddConfigKeyAnnotation(ingtypes.FrontFrontingProxyPort, strconv.Itoa(int(port))),
+					options.AddConfigKeyAnnotation(ingtypes.FrontUseForwardedProto, should[test.useXFPHeader]),
+				)
+				expcode := http.StatusOK
+				if test.expRecHeader == reqredir {
+					expcode = http.StatusFound
+				}
+				res := f.Request(ctx, t, http.MethodGet, hostname, "/",
+					options.RequestPort(port),
+					options.CustomRequest(func(req *http.Request) {
+						for h, v := range reqHeaders {
+							req.Header.Set(h, v)
+						}
+						if test.xfpContent != "" {
+							req.Header.Set(xfp, test.xfpContent)
+						}
+					}),
+					options.ExpectResponseCode(expcode),
+				)
+				if test.expRecHeader != reqredir {
+					assert.True(t, res.EchoResponse.Parsed)
+					assert.Equal(t, test.expRecHeader, res.EchoResponse.ReqHeaders[strings.ToLower(xfp)])
+					for header, value := range reqHeaders {
+						assert.Equal(t, value, res.EchoResponse.ReqHeaders[header])
+					}
+				} else {
+					assert.False(t, res.EchoResponse.Parsed)
+				}
 			})
 		}
-
-		t.Run("restore global config", func(t *testing.T) {
-			apply(t, 0)
-			_ = f.Request(ctx, t, http.MethodGet, hostname, "/",
-				options.CustomRequest(func(req *http.Request) {
-					req.URL.Host = fmt.Sprintf("127.0.0.1:%d", framework.TestPortFront)
-				}),
-				options.ExpectError("connection refused"),
-			)
-
-			req(t, framework.TestPortHTTP, "", reqhttp)
-			req(t, framework.TestPortHTTP, "http", reqhttp)
-			req(t, framework.TestPortHTTP, "https", reqhttp)
-		})
 	})
 
 	t.Run("should take leader", func(t *testing.T) {
@@ -929,6 +915,108 @@ Request forbidden by administrative rules.
 		assert.Equal(t, "https1", res.EchoResponse.ServerName)
 	})
 
+	t.Run("should ssl-passthrough", func(t *testing.T) {
+		t.Parallel()
+
+		serverCrtPem, serverKeyPem := framework.CreateCertificate(t, caValid, cakeyValid, "localhost")
+		serverCrt, err := tls.X509KeyPair(serverCrtPem, serverKeyPem)
+		require.NoError(t, err)
+		httpsServer1Port := f.CreateHTTPServer(ctx, t, "https-server1",
+			options.ServerCertificates([]tls.Certificate{serverCrt}),
+		)
+		httpsServer2Port := f.CreateHTTPServer(ctx, t, "https-server2",
+			options.ServerCertificates([]tls.Certificate{serverCrt}),
+		)
+
+		svc1 := f.CreateService(ctx, t, httpsServer1Port)
+		svc2 := f.CreateService(ctx, t, httpsServer2Port, options.CustomObject(func(o client.Object) {
+			svc := o.(*corev1.Service)
+			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+				Name:       "port2",
+				Port:       8080,
+				TargetPort: intstr.IntOrString{IntVal: httpServerPort},
+			})
+		}))
+		_, hostname1 := f.CreateIngress(ctx, t, svc1,
+			options.AddConfigKeyAnnotation(ingtypes.HostSSLPassthrough, "True"),
+		)
+
+		_, hostname2 := f.CreateIngress(ctx, t, svc2,
+			options.AddConfigKeyAnnotation(ingtypes.HostSSLPassthrough, "True"),
+			options.AddConfigKeyAnnotation(ingtypes.HostSSLPassthroughHTTPPort, strconv.Itoa(int(httpServerPort))),
+		)
+
+		res1http := f.Request(ctx, t, http.MethodGet, hostname1, "/", options.ExpectResponseCode(http.StatusFound))
+		assert.False(t, res1http.EchoResponse.Parsed)
+
+		res1https := f.Request(ctx, t, http.MethodGet, hostname1, "/",
+			options.TLSRequest(),
+			options.TLSSkipVerify(),
+			options.SNI(hostname1),
+			options.ExpectResponseCode(http.StatusOK),
+		)
+		assert.True(t, res1https.EchoResponse.Parsed)
+		assert.Equal(t, "https-server1", res1https.EchoResponse.ServerName)
+
+		res2http := f.Request(ctx, t, http.MethodGet, hostname2, "/", options.ExpectResponseCode(http.StatusOK))
+		assert.True(t, res2http.EchoResponse.Parsed)
+		assert.Equal(t, "default", res2http.EchoResponse.ServerName)
+
+		res2https := f.Request(ctx, t, http.MethodGet, hostname2, "/",
+			options.TLSRequest(),
+			options.TLSSkipVerify(),
+			options.SNI(hostname2),
+			options.ExpectResponseCode(http.StatusOK),
+		)
+		assert.True(t, res2https.EchoResponse.Parsed)
+		assert.Equal(t, "https-server2", res2https.EchoResponse.ServerName)
+	})
+
+	t.Run("should distinguish same hostname and path from distinct frontends", func(t *testing.T) {
+		t.Parallel()
+
+		hostname := framework.RandomHostName()
+		svc := f.CreateService(ctx, t, httpServerPort)
+		ing := func(httpport, httpsport int32, location string) {
+			_, _ = f.CreateIngress(ctx, t, svc,
+				options.DefaultTLS(),
+				options.CustomHostName(hostname),
+				options.AddConfigKeyAnnotation(ingtypes.FrontHTTPPort, strconv.Itoa(int(httpport))),
+				options.AddConfigKeyAnnotation(ingtypes.FrontHTTPSPort, strconv.Itoa(int(httpsport))),
+				options.AddConfigKeyAnnotation(ingtypes.BackSSLRedirect, "false"),
+				options.AddConfigKeyAnnotation(ingtypes.BackRewriteTarget, location),
+			)
+		}
+		req := func(port int32, ssl bool, location string) {
+			opt := []options.Request{
+				options.RequestPort(port),
+				options.ExpectResponseCode(http.StatusOK),
+			}
+			if ssl {
+				opt = append(opt,
+					options.TLSRequest(),
+					options.TLSSkipVerify(),
+				)
+			}
+			res := f.Request(ctx, t, http.MethodGet, hostname, "/", opt...)
+			assert.True(t, res.EchoResponse.Parsed)
+			assert.Equal(t, location, res.EchoResponse.Path)
+		}
+
+		http1 := framework.RandomPort()
+		https1 := framework.RandomPort()
+		http2 := framework.RandomPort()
+		https2 := framework.RandomPort()
+
+		ing(http1, https1, "/api1")
+		ing(http2, https2, "/api2")
+
+		req(http1, false, "/api1/")
+		req(https1, true, "/api1/")
+		req(http2, false, "/api2/")
+		req(https2, true, "/api2/")
+	})
+
 	// should match wildcard host
 
 	// should match domain conflicting with wildcard host
@@ -980,9 +1068,13 @@ func TestIntegrationGateway(t *testing.T) {
 	t.Run("v1", func(t *testing.T) {
 		f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v100-v1-experimental"))
 		f.StartController(ctx, t)
-		httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1")
+
+		httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1-http")
 		tcpServerPort := f.CreateTCPServer(ctx, t)
 		gc := f.CreateGatewayClassV1(ctx, t)
+
+		caValid, cakeyValid := framework.CreateCA(t, framework.CertificateIssuerCN)
+		crtValidPem, keyValidPem := framework.CreateCertificate(t, caValid, cakeyValid, framework.CertificateClientCN)
 
 		t.Run("hello world", func(t *testing.T) {
 			t.Parallel()
@@ -997,12 +1089,26 @@ func TestIntegrationGateway(t *testing.T) {
 		t.Run("expose TCPRoute", func(t *testing.T) {
 			t.Parallel()
 			listenerPort := framework.RandomPort()
-			gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("tcpserver", "TCP", listenerPort))
+			gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("tcpserver", gatewayv1.TCPProtocolType, gatewayv1.PortNumber(listenerPort), nil))
 			svc := f.CreateService(ctx, t, tcpServerPort)
 			_ = f.CreateTCPRouteA2(ctx, t, gw, svc)
 			res1 := f.TCPRequest(ctx, t, listenerPort, "ping")
 			assert.Equal(t, "ping", res1)
 			res2 := f.TCPRequest(ctx, t, listenerPort, "reply")
+			assert.Equal(t, "reply", res2)
+		})
+
+		t.Run("expose TLSRoute", func(t *testing.T) {
+			t.Parallel()
+			secret := f.CreateSecretTLS(ctx, t, crtValidPem, keyValidPem)
+			certs := []gatewayv1.SecretObjectReference{{Name: gatewayv1.ObjectName(secret.Name)}}
+			listenerPort := framework.RandomPort()
+			gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("tlsserver", gatewayv1.TLSProtocolType, gatewayv1.PortNumber(listenerPort), certs))
+			svc := f.CreateService(ctx, t, tcpServerPort)
+			_ = f.CreateTLSRouteA2(ctx, t, gw, svc)
+			res1 := f.TCPRequest(ctx, t, listenerPort, "ping", options.TLSRequest())
+			assert.Equal(t, "ping", res1)
+			res2 := f.TCPRequest(ctx, t, listenerPort, "reply", options.TLSRequest())
 			assert.Equal(t, "reply", res2)
 		})
 
@@ -1018,7 +1124,7 @@ func TestIntegrationGateway(t *testing.T) {
 					g := o.(*gatewayv1.Gateway)
 					g.Spec.Listeners = []gatewayv1.Listener{{
 						Name:     "l1",
-						Port:     443,
+						Port:     framework.TestPortHTTPS,
 						Protocol: gatewayv1.HTTPSProtocolType,
 						TLS: &gatewayv1.GatewayTLSConfig{
 							CertificateRefs: []gatewayv1.SecretObjectReference{
@@ -1061,6 +1167,57 @@ func TestIntegrationGateway(t *testing.T) {
 				assert.Equal(t, expCN, conn.ConnectionState().PeerCertificates[0].Subject.CommonName)
 				require.NoError(t, conn.Close())
 			}
+		})
+
+		t.Run("should ssl-passthrough", func(t *testing.T) {
+			t.Parallel()
+
+			hostnamehttp := framework.RandomName("httproute") + ".local"
+			hostnametls := framework.RandomName("tlsroute") + ".local"
+			crtPem, keyPem := framework.CreateCertificate(t, caValid, cakeyValid, "localhost", options.DNS(hostnamehttp, hostnametls))
+			crt, err := tls.X509KeyPair(crtPem, keyPem)
+			require.NoError(t, err)
+			httpsServerPort := f.CreateHTTPServer(ctx, t, "gw-v1-https",
+				options.ServerCertificates([]tls.Certificate{crt}),
+			)
+
+			// configure ssl offload ...
+			secret := f.CreateSecretTLS(ctx, t, crtPem, keyPem)
+			certs := []gatewayv1.SecretObjectReference{{Name: gatewayv1.ObjectName(secret.Name)}}
+			gwhttp := f.CreateGatewayV1(ctx, t, gc,
+				options.Listener("gw-https", gatewayv1.HTTPSProtocolType, framework.TestPortHTTPS, certs),
+			)
+			svchttp := f.CreateService(ctx, t, httpServerPort)
+			_, _ = f.CreateHTTPRouteV1(ctx, t, gwhttp, svchttp, options.CustomHostName(hostnamehttp))
+
+			// ... along with ssl passthrough
+			gwtls := f.CreateGatewayV1(ctx, t, gc,
+				options.Listener("gw-passthrough", gatewayv1.TLSProtocolType, framework.TestPortHTTPS, nil),
+			)
+			svctls := f.CreateService(ctx, t, httpsServerPort)
+			_ = f.CreateTLSRouteA2(ctx, t, gwtls, svctls,
+				options.CustomHostName(hostnametls),
+			)
+
+			// TLS request on both hostnames
+			req := func(hostname string) framework.Response {
+				res := f.Request(ctx, t, http.MethodGet, hostname, "/",
+					options.TLSRequest(),
+					options.TLSVerify(true),
+					options.ClientCA(caValid),
+					options.SNI(hostname),
+					options.ExpectResponseCode(http.StatusOK),
+				)
+				assert.True(t, res.EchoResponse.Parsed)
+				return res
+			}
+
+			reshttp := req(hostnamehttp)
+			assert.Equal(t, "https", reshttp.EchoResponse.ReqHeaders["x-forwarded-proto"])
+			assert.Equal(t, "gw-v1-http", reshttp.EchoResponse.ServerName)
+
+			restls := req(hostnametls)
+			assert.Equal(t, "gw-v1-https", restls.EchoResponse.ServerName)
 		})
 	})
 }

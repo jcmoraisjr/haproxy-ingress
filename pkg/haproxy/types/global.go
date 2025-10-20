@@ -141,13 +141,3 @@ func (dns *DNSResolver) String() string {
 func (dns *DNSNameserver) String() string {
 	return fmt.Sprintf("%+v", *dns)
 }
-
-// ShareHTTPPort ...
-func (b GlobalBindConfig) ShareHTTPPort() bool {
-	return b.HasFrontingProxy() && b.HTTPBind == b.FrontingBind
-}
-
-// HasFrontingProxy ...
-func (b GlobalBindConfig) HasFrontingProxy() bool {
-	return b.FrontingBind != ""
-}

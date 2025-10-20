@@ -525,8 +525,9 @@ func TestAuthExternal(t *testing.T) {
 	for i, test := range testCase {
 		c := setup(t)
 		u := c.createUpdater()
-		c.haproxy.Frontend().AuthProxy.RangeStart = 4001
-		c.haproxy.Frontend().AuthProxy.RangeEnd = 4009
+		f := c.haproxy.Frontends()
+		f.AuthProxy.RangeStart = 4001
+		f.AuthProxy.RangeEnd = 4009
 		if test.isExternal {
 			c.haproxy.Global().External.IsExternal = true
 		}
@@ -565,9 +566,9 @@ func TestAuthExternal(t *testing.T) {
 		}
 		d := c.createBackendMappingData("default/app", source, defaults, ann, []string{"/"})
 		u.buildBackendAuthExternal(d)
-		back := d.backend.Paths[0].AuthExternal
+		back := d.backend.Paths[0].AuthExtBack
 		var iplist []string
-		bindList := c.haproxy.Frontend().AuthProxy.BindList
+		bindList := f.AuthProxy.BindList
 		if len(bindList) > 0 {
 			auth := c.haproxy.Backends().FindBackendID(bindList[0].Backend)
 			for _, ep := range auth.Endpoints {
@@ -2053,7 +2054,10 @@ WARN oauth2_proxy on ingress 'default/ing1' needs Lua json module, install lua-j
 		Name:      "ing1",
 		Type:      "ingress",
 	}
-	annDefault := map[string]string{ingtypes.BackOAuthHeaders: "X-Auth-Request-Email"}
+	annDefault := map[string]string{
+		ingtypes.FrontHTTPPort:    "8080",
+		ingtypes.BackOAuthHeaders: "X-Auth-Request-Email",
+	}
 	for i, test := range testCases {
 		c := setup(t)
 		d := c.createBackendMappingData("default/app", source, annDefault, test.ann, []string{})
@@ -2064,12 +2068,12 @@ WARN oauth2_proxy on ingress 'default/ing1' needs Lua json module, install lua-j
 		if test.backend != "" {
 			b := strings.Split(test.backend, ":")
 			backend := c.haproxy.Backends().AcquireBackend(b[0], b[1], "8080")
-			c.haproxy.Hosts().AcquireHost("app.local").AddPath(backend, b[2], hatypes.MatchBegin)
+			c.haproxy.Frontends().AcquireFrontend(8080, false).AcquireHost("app.local").AddPath(backend, b[2], hatypes.MatchBegin)
 		}
 		c.createUpdater().buildBackendOAuth(d)
 		actual := map[string]hatypes.AuthExternal{}
 		for _, path := range d.backend.Paths {
-			actual[path.Path()] = path.AuthExternal
+			actual[path.Path()] = path.AuthExtBack
 		}
 		for k, v := range test.authExp {
 			if v.AuthBackendName != "" {
@@ -2123,8 +2127,8 @@ func TestRewriteURL(t *testing.T) {
 			ann = map[string]string{ingtypes.BackRewriteTarget: test.input}
 		}
 		d := c.createBackendData("default/app", &test.source, map[string]string{}, map[string]string{})
-		d.backend.AddBackendPath(hatypes.CreateHostPathLink("d1.local", "/", hatypes.MatchBegin))
-		d.mapper.AddAnnotations(&test.source, hatypes.CreateHostPathLink("d1.local", "/", hatypes.MatchBegin), ann)
+		d.backend.AddPath(&hatypes.Path{Link: hatypes.CreatePathLink("/", hatypes.MatchBegin)})
+		d.mapper.AddAnnotations(&test.source, hatypes.CreatePathLink("/", hatypes.MatchBegin), ann)
 		c.createUpdater().buildBackendRewriteURL(d)
 		actual := d.backend.Paths[0].RewriteURL
 		c.compareObjects("rewrite", i, actual, test.expected)

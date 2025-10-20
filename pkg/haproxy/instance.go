@@ -312,7 +312,7 @@ func (i *instance) HAProxyUpdate(timer *utils.Timer) error {
 		i.metrics.IncUpdateNoop()
 		return fmt.Errorf("error building tcp services maps: %w", err)
 	}
-	if err := i.config.WriteFrontendMaps(); err != nil {
+	if err := i.config.WriteFrontendsMaps(); err != nil {
 		i.metrics.IncUpdateNoop()
 		return fmt.Errorf("error building frontend maps: %w", err)
 	}
@@ -441,22 +441,24 @@ func (i *instance) Shutdown() {
 }
 
 func (i *instance) logChanged() {
-	hostsAdd := i.config.Hosts().ItemsAdd()
-	if len(hostsAdd) < 100 {
-		hostsDel := i.config.Hosts().ItemsDel()
-		hosts := make([]string, 0, len(hostsAdd))
-		for host := range hostsAdd {
-			hosts = append(hosts, host)
-		}
-		for host := range hostsDel {
-			if _, found := hostsAdd[host]; !found {
+	for _, f := range i.config.Frontends().Items() {
+		hostsAdd := f.HostsAdd()
+		if len(hostsAdd) < 100 {
+			hostsDel := f.HostsDel()
+			hosts := make([]string, 0, len(hostsAdd))
+			for host := range hostsAdd {
 				hosts = append(hosts, host)
 			}
+			for host := range hostsDel {
+				if _, found := hostsAdd[host]; !found {
+					hosts = append(hosts, host)
+				}
+			}
+			sort.Strings(hosts)
+			i.logger.InfoV(2, "updating %d host(s) on frontend %s: %v", len(hosts), f.Name, hosts)
+		} else {
+			i.logger.InfoV(2, "updating %d hosts on frontend %s", len(hostsAdd), f.Name)
 		}
-		sort.Strings(hosts)
-		i.logger.InfoV(2, "updating %d host(s): %v", len(hosts), hosts)
-	} else {
-		i.logger.InfoV(2, "updating %d hosts", len(hostsAdd))
 	}
 	backsAdd := i.config.Backends().ItemsAdd()
 	if len(backsAdd) < 100 {
@@ -616,7 +618,7 @@ func (i *instance) buildCustomHTTPResponses() (responsesList []httpResponseOverr
 	for _, beResponse := range i.config.Backends().BuildHTTPResponses() {
 		addAll(&beResponse)
 	}
-	for _, hostResponse := range i.config.Hosts().BuildHTTPResponses() {
+	for _, hostResponse := range i.config.Frontends().BuildHTTPResponses() {
 		addAll(&hostResponse)
 	}
 	addAll(&i.config.Global().CustomHTTPResponses)
@@ -641,24 +643,25 @@ func (i *instance) updateSuccessful(success bool) {
 }
 
 func (i *instance) updateCertExpiring() {
-	hostsAdd := i.config.Hosts().ItemsAdd()
-	hostsDel := i.config.Hosts().ItemsDel()
-	if !i.config.Hosts().HasCommit() {
+	if !i.config.Frontends().HasCommit() {
 		// TODO the time between this reset and finishing to repopulate the gauge would lead
 		// to incomplete data scraped by Prometheus. This however happens only when a full parsing
 		// happens - edit globals, edit default crt, invalid data coming from lister events
 		i.metrics.ClearCertExpire()
 	}
-	for hostname, oldHost := range hostsDel {
-		if oldHost.TLS.HasTLS() {
+	for _, f := range i.config.Frontends().Items() {
+		if !f.IsHTTPS {
+			continue
+		}
+		hostsAdd := f.HostsAdd()
+		hostsDel := f.HostsDel()
+		for hostname, oldHost := range hostsDel {
 			curHost, found := hostsAdd[hostname]
 			if !found || oldHost.TLS.TLSCommonName != curHost.TLS.TLSCommonName {
 				i.metrics.SetCertExpireDate(hostname, oldHost.TLS.TLSCommonName, nil)
 			}
 		}
-	}
-	for hostname, curHost := range hostsAdd {
-		if curHost.TLS.HasTLS() {
+		for hostname, curHost := range hostsAdd {
 			oldHost, found := hostsDel[hostname]
 			if !found || oldHost.TLS.TLSCommonName != curHost.TLS.TLSCommonName || oldHost.TLS.TLSNotAfter != curHost.TLS.TLSNotAfter {
 				i.metrics.SetCertExpireDate(hostname, curHost.TLS.TLSCommonName, &curHost.TLS.TLSNotAfter)

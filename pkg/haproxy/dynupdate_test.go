@@ -18,16 +18,15 @@ package haproxy
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/kylelemons/godebug/diff"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDynUpdate(t *testing.T) {
-	testCases := []struct {
+	testCases := map[string]struct {
 		doconfig1 func(c *testConfig)
 		doconfig2 func(c *testConfig)
 		expected  []string
@@ -36,20 +35,17 @@ func TestDynUpdate(t *testing.T) {
 		cmdOutput []string
 		logging   string
 	}{
-		// 0
-		{
+		"test01": {
 			dynamic: true,
 		},
-		// 1
-		{
+		"test02": {
 			doconfig2: func(c *testConfig) {
 				c.config.Global().MaxConn = 1
 			},
 			dynamic: false,
 			logging: `INFO-V(2) need to reload due to config changes: [global]`,
 		},
-		// 2
-		{
+		"test03": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
@@ -72,8 +68,7 @@ set server default_app_8080/srv002 state ready
 set server default_app_8080/srv002 weight 1`,
 			logging: `INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
 		},
-		// 3
-		{
+		"test04": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
@@ -98,8 +93,7 @@ set server default_app_8080/srv002 state ready
 set server default_app_8080/srv002 weight 1`,
 			logging: `INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
 		},
-		// 4
-		{
+		"test05": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
@@ -122,8 +116,7 @@ set server default_app_8080/srv001 state ready
 set server default_app_8080/srv001 weight 1`,
 			logging: `INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv001'`,
 		},
-		// 5
-		{
+		"test06": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
@@ -150,8 +143,7 @@ set server default_app_8080/srv001 weight 1`,
 INFO-V(2) added endpoints on backend 'default_app_8080'
 INFO-V(2) need to reload due to config changes: [backends]`,
 		},
-		// 6
-		{
+		"test07": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
@@ -174,8 +166,7 @@ set server default_app_8080/srv001 weight 0
 `,
 			logging: `INFO-V(2) disabled endpoint '172.17.0.2:8080' on backend/server 'default_app_8080/srv001'`,
 		},
-		// 7
-		{
+		"test08": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
@@ -197,8 +188,7 @@ set server default_app_8080/srv001 weight 2
 `,
 			logging: `INFO-V(2) updated endpoint '172.17.0.2:8080' weight '2' state 'ready' on backend/server 'default_app_8080/srv001'`,
 		},
-		// 8
-		{
+		"test09": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AddEmptyEndpoint()
@@ -222,8 +212,7 @@ set server default_app_8080/srv001 weight 1
 `,
 			logging: `INFO-V(2) added endpoint '172.17.0.2:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv001'`,
 		},
-		// 9
-		{
+		"test10": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AddEmptyEndpoint()
@@ -247,8 +236,7 @@ set server default_app_8080/srv001 weight 1
 `,
 			logging: `INFO-V(2) added endpoint '172.17.0.3:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv001'`,
 		},
-		// 10
-		{
+		"test11": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
@@ -306,8 +294,7 @@ INFO-V(2) disabled endpoint '172.17.0.8:8080' on backend/server 'default_app_808
 INFO-V(2) disabled endpoint '172.17.0.9:8080' on backend/server 'default_app_8080/srv008'
 `,
 		},
-		// 11
-		{
+		"test12": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
@@ -340,8 +327,7 @@ INFO-V(2) disabled endpoint '172.17.0.3:8080' on backend/server 'default_app_808
 INFO-V(2) disabled endpoint '172.17.0.4:8080' on backend/server 'default_app_8080/srv003'
 `,
 		},
-		// 12
-		{
+		"test13": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
@@ -369,8 +355,7 @@ INFO-V(2) disabled endpoint '172.17.0.4:8080' on backend/server 'default_app_808
 INFO-V(2) added endpoints on backend 'default_app_8080'
 INFO-V(2) need to reload due to config changes: [backends]`,
 		},
-		// 13
-		{
+		"test14": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
@@ -397,8 +382,7 @@ set server default_app_8080/srv002 weight 1
 `,
 			logging: `INFO-V(2) added endpoint '172.17.0.3:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
 		},
-		// 14
-		{
+		"test15": {
 			doconfig1: func(c *testConfig) {
 				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
 				c.config.Backends().DefaultBackend = b1
@@ -425,8 +409,7 @@ set server default_app_8080/srv002 weight 1
 INFO-V(2) added endpoints on backend 'default_app_8080'
 INFO-V(2) need to reload due to config changes: [backends]`,
 		},
-		// 15
-		{
+		"test16": {
 			doconfig2: func(c *testConfig) {
 				c.config.Backends().AcquireBackend("default", "app", "8080").Dynamic.DynUpdate = true
 			},
@@ -439,8 +422,7 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 INFO-V(2) added backend 'default_app_8080'
 INFO-V(2) need to reload due to config changes: [backends]`,
 		},
-		// 16
-		{
+		"test17": {
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.Dynamic.DynUpdate = true
@@ -458,8 +440,7 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 INFO-V(2) added backend 'default_app_8080'
 INFO-V(2) need to reload due to config changes: [backends]`,
 		},
-		// 17
-		{
+		"test18": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
@@ -482,8 +463,7 @@ set server default_app_8080/srv002 state ready
 set server default_app_8080/srv002 weight 1`,
 			logging: `INFO-V(2) added endpoint '172.17.0.3:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
 		},
-		// 18
-		{
+		"test19": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
@@ -508,8 +488,7 @@ set server default_app_8080/srv002 weight 1`,
 INFO-V(2) added endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'
 INFO-V(2) need to reload due to config changes: [backends]`,
 		},
-		// 19
-		{
+		"test20": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
@@ -533,8 +512,7 @@ set server default_app_8080/srv002 weight 0`,
 INFO-V(2) disabled endpoint '172.17.0.3:8080' on backend/server 'default_app_8080/srv002'
 INFO-V(2) need to reload due to config changes: [backends]`,
 		},
-		// 20
-		{
+		"test21": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
@@ -565,8 +543,7 @@ INFO-V(2) response from server: IP changed from '172.17.0.3' to '172.17.0.4', no
 INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'
 INFO-V(2) need to reload due to config changes: [backends]`,
 		},
-		// 21
-		{
+		"test22": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
@@ -586,8 +563,7 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 INFO-V(2) backend 'default_app_8080' changed and its dynamic-scaling is 'false'
 INFO-V(2) need to reload due to config changes: [backends]`,
 		},
-		// 22
-		{
+		"test23": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
@@ -605,10 +581,10 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 			},
 			dynamic: true,
 		},
-		// 23 - test that we're able to update when a cookie value of acquired
+		// test that we're able to update when a cookie value of acquired
 		// existing endpoint exactly matches and cookie affinity is enabled
 		// even with "preserve" cookie mode
-		{
+		"test24": {
 			doconfig1: func(c *testConfig) {
 				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
 				c.config.Backends().DefaultBackend = b1
@@ -655,9 +631,9 @@ set server default_app_8080/srv002 weight 1
 `,
 			logging: `INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
 		},
-		// 24 - test that we're unable to update when a cookie value of acquired
+		// test that we're unable to update when a cookie value of acquired
 		// existing endpoint doesn't match and "preserve" cookie mode is enabled
-		{
+		"test25": {
 			doconfig1: func(c *testConfig) {
 				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
 				c.config.Backends().DefaultBackend = b1
@@ -700,10 +676,10 @@ set server default_app_8080/srv002 weight 1
 			cmd:     ``,
 			logging: `INFO-V(2) need to reload due to config changes: [backends]`,
 		},
-		// 25 - test that we're able to update when a cookie value of acquired
+		// test that we're able to update when a cookie value of acquired
 		// existing endpoint doesn't match and "preserve" cookie mode is not enabled
 		// (eg. it doesn't care to preserve the cookie value, so still updates)
-		{
+		"test26": {
 			doconfig1: func(c *testConfig) {
 				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
 				c.config.Backends().DefaultBackend = b1
@@ -749,8 +725,7 @@ set server default_app_8080/srv002 state ready
 set server default_app_8080/srv002 weight 1`,
 			logging: `INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
 		},
-		// 26
-		{
+		"test27": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				c.config.backends.DefaultBackend = b
@@ -772,8 +747,7 @@ set server default_app_8080/srv001 state ready
 set server default_app_8080/srv001 weight 1`,
 			logging: `INFO-V(2) updated endpoint '172.17.0.3:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv001'`,
 		},
-		// 27
-		{
+		"test28": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.Resolver = "k8s"
@@ -792,8 +766,7 @@ set server default_app_8080/srv001 weight 1`,
 			},
 			dynamic: true,
 		},
-		// 28
-		{
+		"test29": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "").Name = "srv002"
@@ -828,8 +801,7 @@ WARN unrecognized response adding/updating endpoint default_app_8080/srv003: No 
 INFO-V(2) need to reload due to config changes: [backends]
 `,
 		},
-		// 29
-		{
+		"test30": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "").Name = "srv002"
@@ -862,19 +834,20 @@ WARN unrecognized response disabling endpoint default_app_8080/srv003: No such s
 INFO-V(2) need to reload due to config changes: [backends]
 `,
 		},
-		// 28
-		{
+		"test31": {
 			doconfig1: func(c *testConfig) {
-				h1 := c.config.Hosts().AcquireHost("domain1.local")
-				h2 := c.config.Hosts().AcquireHost("domain2.local")
+				f := c.httpFrontend(80)
+				h1 := f.AcquireHost("domain1.local")
+				h2 := f.AcquireHost("domain2.local")
 				h1.TLS.TLSFilename = "/tmp/domain1.pem"
 				h2.TLS.TLSFilename = "/tmp/domain2.pem"
 				h1.TLS.TLSHash = "1"
 				h2.TLS.TLSHash = "2"
 			},
 			doconfig2: func(c *testConfig) {
-				h1 := c.config.Hosts().AcquireHost("domain1.local")
-				h2 := c.config.Hosts().AcquireHost("domain2.local")
+				f := c.httpFrontend(80)
+				h1 := f.AcquireHost("domain1.local")
+				h2 := f.AcquireHost("domain2.local")
 				h1.TLS.TLSFilename = "/tmp/domain1.pem"
 				h2.TLS.TLSFilename = "/tmp/domain2.pem"
 				h1.TLS.TLSHash = "1"
@@ -897,37 +870,39 @@ INFO-V(2) response from server: Committing /tmp/domain2.pem. \\ Success!
 INFO certificate updated for domain2.local
 `,
 		},
-		// 29
-		{
+		"test32": {
 			doconfig1: func(c *testConfig) {
-				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				f := c.httpFrontend(80)
+				h1 := f.AcquireHost("domain1.local")
 				h1.TLS.TLSFilename = "/tmp/domain1.pem"
 				h1.TLS.TLSHash = "1"
 			},
 			doconfig2: func(c *testConfig) {
-				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				f := c.httpFrontend(80)
+				h1 := f.AcquireHost("domain1.local")
 				h1.TLS.TLSFilename = "/tmp/domain2.pem"
 				h1.TLS.TLSHash = "2"
 			},
 			dynamic: false,
 			logging: `
 INFO-V(2) diff outside server certificate of host 'domain1.local'
-INFO-V(2) need to reload due to config changes: [hosts]
+INFO-V(2) need to reload due to config changes: [hosts (_front_http)]
 `,
 		},
-		// 30
-		{
+		"test33": {
 			doconfig1: func(c *testConfig) {
-				h1 := c.config.Hosts().AcquireHost("domain1.local")
-				h2 := c.config.Hosts().AcquireHost("domain2.local")
+				f := c.httpFrontend(80)
+				h1 := f.AcquireHost("domain1.local")
+				h2 := f.AcquireHost("domain2.local")
 				h1.TLS.TLSFilename = "/tmp/domain1.pem"
 				h2.TLS.TLSFilename = ""
 				h1.TLS.TLSHash = "1"
 				h2.TLS.TLSHash = "2"
 			},
 			doconfig2: func(c *testConfig) {
-				h1 := c.config.Hosts().AcquireHost("domain1.local")
-				h2 := c.config.Hosts().AcquireHost("domain2.local")
+				f := c.httpFrontend(80)
+				h1 := f.AcquireHost("domain1.local")
+				h2 := f.AcquireHost("domain2.local")
 				h1.TLS.TLSFilename = "/tmp/domain1.pem"
 				h2.TLS.TLSFilename = ""
 				h1.TLS.TLSHash = "3"
@@ -950,15 +925,16 @@ INFO-V(2) response from server: Committing /tmp/domain1.pem. \\ Success!
 INFO certificate updated for domain1.local
 `,
 		},
-		// 31
-		{
+		"test34": {
 			doconfig1: func(c *testConfig) {
-				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				f := c.httpFrontend(80)
+				h1 := f.AcquireHost("domain1.local")
 				h1.TLS.TLSFilename = "/tmp/domain1.pem"
 				h1.TLS.TLSHash = "1"
 			},
 			doconfig2: func(c *testConfig) {
-				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				f := c.httpFrontend(80)
+				h1 := f.AcquireHost("domain1.local")
 				h1.TLS.TLSFilename = "/tmp/domain1.pem"
 				h1.TLS.TLSHash = "2"
 			},
@@ -977,75 +953,72 @@ commit ssl cert /tmp/domain1.pem
 INFO-V(2) response from server: Can't replace a certificate which is not referenced by the configuration! \\ Can't update /tmp/domain1.pem!
 INFO-V(2) response from server: No ongoing transaction! ! \\ Can't commit /tmp/domain1.pem!
 WARN cannot update certificate for domain1.local
-INFO-V(2) need to reload due to config changes: [hosts]
+INFO-V(2) need to reload due to config changes: [hosts (_front_http)]
 `,
 		},
-		// 32
-		{
+		"test35": {
 			doconfig1: func(c *testConfig) {
-				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				f := c.httpFrontend(80)
+				h1 := f.AcquireHost("domain1.local")
 				h1.TLS.TLSFilename = "/tmp/domain1.pem"
 				h1.TLS.TLSHash = "1"
-				c.config.Hosts().AcquireHost("domain2.local")
+				f.AcquireHost("domain2.local")
 			},
 			doconfig2: func(c *testConfig) {
-				h1 := c.config.Hosts().AcquireHost("domain1.local")
+				f := c.httpFrontend(80)
+				h1 := f.AcquireHost("domain1.local")
 				h1.TLS.TLSFilename = "/tmp/domain1.pem"
 				h1.TLS.TLSHash = "1"
 			},
 			dynamic: false,
 			logging: `
 INFO-V(2) removed host 'domain2.local'
-INFO-V(2) need to reload due to config changes: [hosts]
+INFO-V(2) need to reload due to config changes: [hosts (_front_http)]
 `,
 		},
 	}
 	readFile = func(_ string) ([]byte, error) {
 		return []byte("<content>"), nil
 	}
-	for i, test := range testCases {
-		c := setup(t)
-		if test.doconfig1 != nil {
-			test.doconfig1(c)
-		}
-		c.instance.config.Commit()
-		hostnames := []string{}
-		for hostname := range c.config.hosts.Items() {
-			hostnames = append(hostnames, hostname)
-		}
-		c.config.Hosts().RemoveAll(hostnames)
-		backendIDs := []string{}
-		for _, backend := range c.config.Backends().Items() {
-			backendIDs = append(backendIDs, backend.ID)
-		}
-		c.config.Backends().RemoveAll(backendIDs)
-		if test.doconfig2 != nil {
-			test.doconfig2(c)
-		}
-		clientMock := &clientMock{
-			cmdOutput: test.cmdOutput,
-		}
-		dynUpdater := c.instance.newDynUpdater()
-		dynUpdater.socket = clientMock
-		dynamic := dynUpdater.update()
-		var actual []string
-		for _, ep := range c.config.Backends().AcquireBackend("default", "app", "8080").Endpoints {
-			actual = append(actual, fmt.Sprintf("%s:%s:%d:%d", ep.Name, ep.IP, ep.Port, ep.Weight))
-		}
-		if !reflect.DeepEqual(actual, test.expected) {
-			t.Errorf("endpoints expected and actual differs on %d -- expected: %v -- actual: %v",
-				i, test.expected, actual)
-		}
-		if dynamic != test.dynamic {
-			t.Errorf("dynamic expected as '%t' on %d, but was '%t'", test.dynamic, i, dynamic)
-		}
-		cmd := strings.TrimSpace(clientMock.cmd)
-		test.cmd = strings.TrimSpace(test.cmd)
-		if cmd != test.cmd {
-			t.Errorf("cmd differs on %d:\n%s", i, diff.Diff(test.cmd, cmd))
-		}
-		c.logger.CompareLogging(test.logging)
-		c.teardown()
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			c := setup(t)
+			f := c.httpFrontend(80)
+			if test.doconfig1 != nil {
+				test.doconfig1(c)
+			}
+			c.instance.config.Commit()
+			hostnames := []string{}
+			for hostname := range f.Hosts() {
+				hostnames = append(hostnames, hostname)
+			}
+			f.RemoveAllHosts(hostnames)
+			backendIDs := []string{}
+			for _, backend := range c.config.Backends().Items() {
+				backendIDs = append(backendIDs, backend.ID)
+			}
+			c.config.Backends().RemoveAll(backendIDs)
+			if test.doconfig2 != nil {
+				test.doconfig2(c)
+			}
+			clientMock := &clientMock{
+				cmdOutput: test.cmdOutput,
+			}
+			dynUpdater := c.instance.newDynUpdater()
+			dynUpdater.socket = clientMock
+			dynamic := dynUpdater.update()
+			var actual []string
+			for _, ep := range c.config.Backends().AcquireBackend("default", "app", "8080").Endpoints {
+				actual = append(actual, fmt.Sprintf("%s:%s:%d:%d", ep.Name, ep.IP, ep.Port, ep.Weight))
+			}
+			assert.Equal(t, test.expected, actual, "endpoints differ")
+			assert.Equal(t, test.dynamic, dynamic, "dynamic differ")
+			cmd := strings.TrimSpace(clientMock.cmd)
+			test.cmd = strings.TrimSpace(test.cmd)
+			assert.Equal(t, test.cmd, cmd, "cmd differ")
+			c.logger.CompareLogging(test.logging)
+			c.teardown()
+		})
 	}
 }
 

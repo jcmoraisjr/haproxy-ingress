@@ -45,6 +45,7 @@ type Cache interface {
 	GetHTTPRouteB1List() ([]*gatewayv1beta1.HTTPRoute, error)
 	GetHTTPRouteList() ([]*gatewayv1.HTTPRoute, error)
 	GetTCPRouteList() ([]*gatewayv1alpha2.TCPRoute, error)
+	GetTLSRouteList() ([]*gatewayv1alpha2.TLSRoute, error)
 	GetService(defaultNamespace, serviceName string) (*api.Service, error)
 	GetConfigMap(configMapName string) (*api.ConfigMap, error)
 	GetNamespace(name string) (*api.Namespace, error)
