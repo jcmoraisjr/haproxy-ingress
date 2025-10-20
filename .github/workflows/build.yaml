@@ -31,7 +31,7 @@ jobs:
       matrix:
         haproxy-version:
         - "2.6" # minimum supported
-        - "2.8" # embedded version
+        - "3.0" # embedded version
         - "3.2" # latest
         envtest-version:
         - "1.23.5" # oldest supported version
