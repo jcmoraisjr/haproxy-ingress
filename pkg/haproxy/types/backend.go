@@ -220,7 +220,7 @@ func (b *Backend) HasModsec() bool {
 
 func (b *Backend) HasHTTPRequests() bool {
 	for _, path := range b.Paths {
-		if !path.Host.frontend.IsHTTPS {
+		if !path.Host.Frontend.IsHTTPS {
 			return true
 		}
 	}
@@ -266,11 +266,11 @@ const (
 )
 
 func (b *Backend) HasFrontingProxy() Has {
-	return b.hasInPath(func(path *Path) bool { return path.Host.frontend.IsFrontingProxy })
+	return b.hasInPath(func(path *Path) bool { return path.Host.Frontend.IsFrontingProxy })
 }
 
 func (b *Backend) HasFrontingUseProto() Has {
-	return b.hasInPath(func(path *Path) bool { return path.Host.frontend.IsFrontingUseProto })
+	return b.hasInPath(func(path *Path) bool { return path.Host.Frontend.IsFrontingUseProto })
 }
 
 func (b *Backend) hasInPath(has func(path *Path) bool) Has {
@@ -328,12 +328,12 @@ func (b *Backend) PathsMaps() []*BackendPathsMaps {
 func (b *Backend) createPathsMaps() []*BackendPathsMaps {
 	var pathsMaps []*BackendPathsMaps
 	for _, path := range b.Paths {
-		frontend := path.FrontendName()
-		i := slices.IndexFunc(pathsMaps, func(b *BackendPathsMaps) bool { return slices.Contains(b.Frontends, frontend) })
+		frontendName := path.Host.Frontend.Name
+		i := slices.IndexFunc(pathsMaps, func(b *BackendPathsMaps) bool { return slices.Contains(b.Frontends, frontendName) })
 		if i < 0 {
 			i = len(pathsMaps)
 			pathsMaps = append(pathsMaps, &BackendPathsMaps{
-				Frontends: []string{frontend},
+				Frontends: []string{frontendName},
 			})
 		}
 		backMap := pathsMaps[i]
@@ -467,11 +467,6 @@ func (p *Path) Equals(other *Path) bool {
 		}
 	}
 	return true
-}
-
-// FrontendName ...
-func (p *Path) FrontendName() string {
-	return p.Link.frontend
 }
 
 // Hostname ...

@@ -63,10 +63,6 @@ func (h *Host) AddLinkRedirect(link *PathLink, redirTo string) *Path {
 	return h.addLink(nil, link, redirTo)
 }
 
-func (h *Host) IsHTTPS() bool {
-	return h.frontend.IsHTTPS
-}
-
 func (h *Host) addLink(backend *Backend, link *PathLink, redirTo string) *Path {
 	link = ptr.To(*link).WithHTTPHost(h)
 	path := &Path{
