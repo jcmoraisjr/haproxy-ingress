@@ -642,6 +642,7 @@ Request forbidden by administrative rules.
 				port := framework.RandomPort()
 				svc := f.CreateService(ctx, t, httpServerPort)
 				_, hostname := f.CreateIngress(ctx, t, svc,
+					options.AddConfigKeyAnnotation(ingtypes.FrontHTTPPortsLocal, fmt.Sprintf("%d/%d", port, framework.TestPortHTTPS)),
 					options.AddConfigKeyAnnotation(ingtypes.FrontFrontingProxyPort, strconv.Itoa(int(port))),
 					options.AddConfigKeyAnnotation(ingtypes.FrontUseForwardedProto, should[test.useXFPHeader]),
 				)
@@ -981,8 +982,7 @@ Request forbidden by administrative rules.
 			_, _ = f.CreateIngress(ctx, t, svc,
 				options.DefaultTLS(),
 				options.CustomHostName(hostname),
-				options.AddConfigKeyAnnotation(ingtypes.FrontHTTPPort, strconv.Itoa(int(httpport))),
-				options.AddConfigKeyAnnotation(ingtypes.FrontHTTPSPort, strconv.Itoa(int(httpsport))),
+				options.AddConfigKeyAnnotation(ingtypes.FrontHTTPPortsLocal, fmt.Sprintf("%d/%d", httpport, httpsport)),
 				options.AddConfigKeyAnnotation(ingtypes.BackSSLRedirect, "false"),
 				options.AddConfigKeyAnnotation(ingtypes.BackRewriteTarget, location),
 			)

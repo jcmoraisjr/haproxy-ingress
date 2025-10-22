@@ -2556,8 +2556,8 @@ func (c *testConfig) createConverter() *converter {
 	defaultConfig := func() map[string]string {
 		return map[string]string{
 			ingtypes.BackInitialWeight: "100",
-			ingtypes.FrontHTTPPort:     strconv.Itoa(TestPortHTTP),
-			ingtypes.FrontHTTPSPort:    strconv.Itoa(TestPortHTTPS),
+			ingtypes.GlobalHTTPPort:    strconv.Itoa(TestPortHTTP),
+			ingtypes.GlobalHTTPSPort:   strconv.Itoa(TestPortHTTPS),
 		}
 	}
 	return NewIngressConverter(
