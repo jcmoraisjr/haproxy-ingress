@@ -21,125 +21,7 @@ import (
 
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
-
-func TestFrontingProxy(t *testing.T) {
-	testCases := map[string]struct {
-		ann      map[string]string
-		expected hatypes.Frontend
-	}{
-		"test01": {
-			ann: map[string]string{
-				ingtypes.FrontHTTPStoHTTPPort: "8000",
-			},
-			expected: hatypes.Frontend{
-				IsFrontingProxy: true,
-				Bind:            ":8000",
-			},
-		},
-		"test02": {
-			ann: map[string]string{
-				ingtypes.FrontFrontingProxyPort: "9000",
-			},
-			expected: hatypes.Frontend{
-				IsFrontingProxy: true,
-				Bind:            ":9000",
-			},
-		},
-		"test03": {
-			ann: map[string]string{
-				ingtypes.FrontHTTPStoHTTPPort:   "9000",
-				ingtypes.FrontBindFrontingProxy: ":7000",
-			},
-			expected: hatypes.Frontend{
-				IsFrontingProxy: true,
-				Bind:            ":7000",
-			},
-		},
-		"test04": {
-			ann: map[string]string{
-				ingtypes.FrontFrontingProxyPort: "8000",
-				ingtypes.FrontBindFrontingProxy: "127.0.0.1:7000",
-			},
-			expected: hatypes.Frontend{
-				IsFrontingProxy: true,
-				Bind:            "127.0.0.1:7000",
-			},
-		},
-	}
-	source := &Source{Namespace: "default", Name: "ing1", Type: "ingress"}
-	for name, test := range testCases {
-		t.Run(name, func(t *testing.T) {
-			c := setup(t)
-			defer c.teardown()
-			d := c.createFrontData(source, test.ann, map[string]string{})
-			c.createUpdater().buildHTTPFrontFrontingProxy(d)
-			require.Equal(t, &test.expected, d.front)
-		})
-	}
-}
-
-func TestFrontendBind(t *testing.T) {
-	testCases := map[string]struct {
-		ann      map[string]string
-		expHTTP  hatypes.Frontend
-		expHTTPS hatypes.Frontend
-	}{
-		"01": {
-			ann:      map[string]string{},
-			expHTTP:  hatypes.Frontend{Bind: "*:80"},
-			expHTTPS: hatypes.Frontend{Bind: "*:443"},
-		},
-		"02": {
-			ann: map[string]string{
-				ingtypes.FrontBindHTTP: ":80,:8080",
-			},
-			expHTTP:  hatypes.Frontend{Bind: ":80,:8080"},
-			expHTTPS: hatypes.Frontend{Bind: "*:443"},
-		},
-		"03": {
-			ann: map[string]string{
-				ingtypes.FrontBindHTTPS: ":443,:8443",
-			},
-			expHTTP:  hatypes.Frontend{Bind: "*:80"},
-			expHTTPS: hatypes.Frontend{Bind: ":443,:8443"},
-		},
-		"04": {
-			ann: map[string]string{
-				ingtypes.FrontBindIPAddrHTTP: "127.0.0.1",
-			},
-			expHTTP:  hatypes.Frontend{Bind: "127.0.0.1:80"},
-			expHTTPS: hatypes.Frontend{Bind: "127.0.0.1:443"},
-		},
-		"05": {
-			ann: map[string]string{
-				ingtypes.FrontHTTPPort:  "8080",
-				ingtypes.FrontHTTPSPort: "8443",
-			},
-			expHTTP:  hatypes.Frontend{Bind: "*:8080"},
-			expHTTPS: hatypes.Frontend{Bind: "*:8443"},
-		},
-	}
-	source := &Source{Namespace: "default", Name: "ing1", Type: "ingress"}
-	annDefault := map[string]string{
-		ingtypes.FrontHTTPPort:       "80",
-		ingtypes.FrontHTTPSPort:      "443",
-		ingtypes.FrontBindIPAddrHTTP: "*",
-	}
-	for name, test := range testCases {
-		t.Run(name, func(t *testing.T) {
-			c := setup(t)
-			defer c.teardown()
-			d := c.createFrontData(source, test.ann, annDefault)
-			c.createUpdater().buildHTTPFrontBind(d)
-			assert.Equal(t, &test.expHTTP, d.front, "HTTPbind")
-			c.createUpdater().buildHTTPSFrontBind(d)
-			assert.Equal(t, &test.expHTTPS, d.front, "HTTPSbind")
-		})
-	}
-}
 
 func TestBuildHostRedirect(t *testing.T) {
 	testCases := []struct {
@@ -225,8 +107,8 @@ func TestBuildHostRedirect(t *testing.T) {
 	sprev := &Source{Namespace: "prev", Name: "ingprev", Type: "ingress"}
 	source := &Source{Namespace: "default", Name: "ing1", Type: "ingress"}
 	annDefault := map[string]string{
-		ingtypes.FrontHTTPPort:  "8080",
-		ingtypes.FrontHTTPSPort: "8443",
+		ingtypes.GlobalHTTPPort:  "8080",
+		ingtypes.GlobalHTTPSPort: "8443",
 	}
 	for i, test := range testCases {
 		c := setup(t)

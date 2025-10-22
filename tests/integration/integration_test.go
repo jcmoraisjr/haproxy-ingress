@@ -588,13 +588,18 @@ Request forbidden by administrative rules.
 		svc := f.CreateService(ctx, t, httpServerPort)
 		_, hproxy := f.CreateIngress(ctx, t, svc)
 		_, fproxy := f.CreateIngress(ctx, t, svc,
+			options.AddConfigKeyAnnotation(ingtypes.FrontHTTPPortsLocal, fmt.Sprintf("%d/%d", port, framework.TestPortHTTPS)),
 			options.AddConfigKeyAnnotation(ingtypes.FrontFrontingProxyPort, strconv.Itoa(int(port))),
 		)
 
 		hres := f.Request(ctx, t, http.MethodGet, hproxy, "/",
+			options.CustomRequest(func(req *http.Request) {
+				req.Header.Set("X-Forwarded-Proto", "https")
+			}),
 			options.ExpectResponseCode(http.StatusOK),
 		)
 		assert.True(t, hres.EchoResponse.Parsed)
+		assert.Equal(t, hres.EchoResponse.ReqHeaders["x-forwarded-proto"], "http")
 
 		fres := f.Request(ctx, t, http.MethodGet, fproxy, "/",
 			options.RequestPort(port),
@@ -604,6 +609,7 @@ Request forbidden by administrative rules.
 			options.ExpectResponseCode(http.StatusOK),
 		)
 		assert.True(t, fres.EchoResponse.Parsed)
+		assert.Equal(t, fres.EchoResponse.ReqHeaders["x-forwarded-proto"], "https")
 	})
 
 	t.Run("should handle proto header on fronting proxy", func(t *testing.T) {
@@ -642,6 +648,7 @@ Request forbidden by administrative rules.
 				port := framework.RandomPort()
 				svc := f.CreateService(ctx, t, httpServerPort)
 				_, hostname := f.CreateIngress(ctx, t, svc,
+					options.AddConfigKeyAnnotation(ingtypes.FrontHTTPPortsLocal, fmt.Sprintf("%d/%d", port, framework.TestPortHTTPS)),
 					options.AddConfigKeyAnnotation(ingtypes.FrontFrontingProxyPort, strconv.Itoa(int(port))),
 					options.AddConfigKeyAnnotation(ingtypes.FrontUseForwardedProto, should[test.useXFPHeader]),
 				)
@@ -981,8 +988,7 @@ Request forbidden by administrative rules.
 			_, _ = f.CreateIngress(ctx, t, svc,
 				options.DefaultTLS(),
 				options.CustomHostName(hostname),
-				options.AddConfigKeyAnnotation(ingtypes.FrontHTTPPort, strconv.Itoa(int(httpport))),
-				options.AddConfigKeyAnnotation(ingtypes.FrontHTTPSPort, strconv.Itoa(int(httpsport))),
+				options.AddConfigKeyAnnotation(ingtypes.FrontHTTPPortsLocal, fmt.Sprintf("%d/%d", httpport, httpsport)),
 				options.AddConfigKeyAnnotation(ingtypes.BackSSLRedirect, "false"),
 				options.AddConfigKeyAnnotation(ingtypes.BackRewriteTarget, location),
 			)

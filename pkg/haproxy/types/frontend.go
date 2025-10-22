@@ -251,8 +251,8 @@ func (f *Frontend) HostsChanged() bool {
 
 func (f *Frontend) createHost(hostname string) *Host {
 	return &Host{
+		Frontend: f,
 		Hostname: hostname,
-		frontend: f,
 	}
 }
 
