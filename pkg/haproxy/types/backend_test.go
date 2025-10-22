@@ -222,8 +222,10 @@ func TestCreatePathConfig(t *testing.T) {
 	}
 	for i, test := range testCases {
 		c := setup(t)
+		h := &Host{Frontend: &Frontend{Name: "_front_http"}}
 		for _, path := range test.paths {
-			path.Link = CreatePathLink("/", MatchPrefix)
+			path.Host = h
+			path.Link = CreatePathLink("/", MatchPrefix).WithHTTPHost(h)
 		}
 		backend := Backend{Paths: test.paths}
 		actualConfig := map[string][]pathConfig{}

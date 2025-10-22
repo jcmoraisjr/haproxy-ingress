@@ -41,8 +41,7 @@ const (
 	FrontBindHTTPS         = "bind-https"
 	FrontBindIPAddrHTTP    = "bind-ip-addr-http"
 	FrontFrontingProxyPort = "fronting-proxy-port"
-	FrontHTTPPort          = "http-port"
-	FrontHTTPSPort         = "https-port"
+	FrontHTTPPortsLocal    = "http-ports-local"
 	FrontHTTPStoHTTPPort   = "https-to-http-port"
 	FrontRedirectFromCode  = "redirect-from-code"
 	FrontRedirectToCode    = "redirect-to-code"
@@ -58,8 +57,7 @@ var (
 		FrontBindHTTPS:         {},
 		FrontBindIPAddrHTTP:    {},
 		FrontFrontingProxyPort: {},
-		FrontHTTPPort:          {},
-		FrontHTTPSPort:         {},
+		FrontHTTPPortsLocal:    {},
 		FrontHTTPStoHTTPPort:   {},
 		FrontRedirectFromCode:  {},
 		FrontRedirectToCode:    {},

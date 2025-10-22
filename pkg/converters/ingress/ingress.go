@@ -78,6 +78,7 @@ func NewIngressConverter(options *convtypes.ConverterOptions, haproxy haproxy.Co
 		globalConfig:       annotations.NewMapBuilder(options.Logger, defaultConfig).NewMapper(),
 		tcpsvcAnnotations:  map[*hatypes.TCPServicePort]*annotations.Mapper{},
 		frontAnnotations:   map[*hatypes.Frontend]*annotations.Mapper{},
+		frontLocalPorts:    map[*hatypes.Frontend]bool{},
 		hostAnnotations:    map[*hatypes.Host]*annotations.Mapper{},
 		backendAnnotations: map[*hatypes.Backend]*annotations.Mapper{},
 		ingressClasses:     map[string]*ingressClassConfig{},
@@ -100,6 +101,7 @@ type converter struct {
 	globalConfig       *annotations.Mapper
 	tcpsvcAnnotations  map[*hatypes.TCPServicePort]*annotations.Mapper
 	frontAnnotations   map[*hatypes.Frontend]*annotations.Mapper
+	frontLocalPorts    map[*hatypes.Frontend]bool
 	hostAnnotations    map[*hatypes.Host]*annotations.Mapper
 	backendAnnotations map[*hatypes.Backend]*annotations.Mapper
 	ingressClasses     map[string]*ingressClassConfig
@@ -395,14 +397,12 @@ func (c *converter) acquireFrontend(source *annotations.Source, annFront, annHos
 	_ = mapper.AddAnnotations(source, link, annFront)
 	_ = mapper.AddAnnotations(source, link, annHost)
 	f := c.haproxy.Frontends()
-	httpPort := mapper.Get(ingtypes.FrontFrontingProxyPort).Int32()
-	if httpPort == 0 {
-		httpPort = mapper.Get(ingtypes.FrontHTTPPort).Int32()
-	}
+	httpPort, httpsPort, local := annotations.AcquireFrontendPorts(c.logger, mapper)
 	return &frontend{
 		f:           f,
 		innerHTTP:   f.AcquireFrontend(httpPort, false),
-		httpsPort:   mapper.Get(ingtypes.FrontHTTPSPort).Int32(),
+		httpsPort:   httpsPort,
+		localPorts:  local,
 		alwaysTLS:   mapper.Get(ingtypes.HostSSLAlwaysAddHTTPS).Bool(),
 		followRedir: mapper.Get(ingtypes.HostSSLAlwaysFollowRedirect).Bool(),
 		hosts:       make(map[string]*host),
@@ -414,6 +414,7 @@ type frontend struct {
 	innerHTTP,
 	innerHTTPS *hatypes.Frontend
 	httpsPort   int32
+	localPorts  bool
 	alwaysTLS   bool
 	followRedir bool
 	hosts       map[string]*host
@@ -756,7 +757,7 @@ func (c *converter) syncConfig() {
 		}
 	}
 	for front, mapper := range c.frontAnnotations {
-		c.updater.UpdateFrontConfig(front, mapper)
+		c.updater.UpdateFrontConfig(front, mapper, c.frontLocalPorts[front])
 	}
 	for host, mapper := range c.hostAnnotations {
 		c.updater.UpdateHostConfig(host, mapper)
@@ -869,7 +870,7 @@ func (c *converter) addHost(f *frontend, hostname string, source *annotations.So
 	c.tracker.TrackNames(source.Type, source.FullName(), convtypes.ResourceHAHostname, hostname)
 	host := f.AcquireHost(hostname)
 
-	if conflicts := c.addFrontAnnotations(f.innerHTTP, source, annFront); len(conflicts) > 0 {
+	if conflicts := c.addFrontAnnotations(f, f.innerHTTP, source, annFront); len(conflicts) > 0 {
 		c.logger.Warn("skipping frontend annotation(s) from %v due to conflict: %v", source, conflicts)
 	}
 	if conflicts := c.addHostAnnotations(host.inner, source, annHost); len(conflicts) > 0 {
@@ -878,18 +879,21 @@ func (c *converter) addHost(f *frontend, hostname string, source *annotations.So
 
 	if https {
 		host := f.AcquireHostHTTPS(hostname)
-		_ = c.addFrontAnnotations(f.innerHTTPS, source, annFront)
+		_ = c.addFrontAnnotations(f, f.innerHTTPS, source, annFront)
 		_ = c.addHostAnnotations(host.innerHTTPS, source, annHost)
 	}
 
 	return host
 }
 
-func (c *converter) addFrontAnnotations(frontend *hatypes.Frontend, source *annotations.Source, annFront map[string]string) (conflicts []string) {
+func (c *converter) addFrontAnnotations(f *frontend, frontend *hatypes.Frontend, source *annotations.Source, annFront map[string]string) (conflicts []string) {
 	mapperFront, foundFront := c.frontAnnotations[frontend]
 	if !foundFront {
 		mapperFront = c.mapBuilder.NewMapper()
 		c.frontAnnotations[frontend] = mapperFront
+		if f.localPorts {
+			c.frontLocalPorts[frontend] = true
+		}
 	}
 	return mapperFront.AddAnnotations(source, bareLink().WithHTTPFront(frontend), annFront)
 }

@@ -32,8 +32,6 @@ func createDefaults() map[string]string {
 	return map[string]string{
 		types.TCPTCPServiceLogFormat: "default",
 		//
-		types.FrontHTTPPort:          "80",
-		types.FrontHTTPSPort:         "443",
 		types.FrontRedirectFromCode:  "302",
 		types.FrontRedirectToCode:    "302",
 		types.FrontUseForwardedProto: "true",
@@ -95,6 +93,8 @@ func createDefaults() map[string]string {
 		types.GlobalFCGIEnabledApps:              "*",
 		types.GlobalForwardfor:                   "add",
 		types.GlobalHealthzPort:                  "10253",
+		types.GlobalHTTPPort:                     "80",
+		types.GlobalHTTPSPort:                    "443",
 		types.GlobalMasterExitOnFailure:          "true",
 		types.GlobalMaxConnections:               "2000",
 		types.GlobalModsecurityArgs:              "unique-id method path query req.ver req.hdrs_bin req.body_size req.body", // Ref: https://github.com/haproxy/spoa-modsecurity/blob/3c895f3e7dd291dba19d57ba054b277e6fb80ca4/README#L70
