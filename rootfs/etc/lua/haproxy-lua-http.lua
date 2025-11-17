@@ -28,7 +28,7 @@
 --
 -- SPDX-License-Identifier: Apache-2.0
 
-local _author = "Adis Nezirovic <anezirovic@haproxy.com>"
+local _author = "Adis Nezirović <anezirovic@haproxy.com>"
 local _copyright = "Copyright 2017-2020. HAProxy Technologies, LLC."
 local _version = "1.0.0"
 
