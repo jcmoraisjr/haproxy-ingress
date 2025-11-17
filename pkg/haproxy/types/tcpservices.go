@@ -79,7 +79,7 @@ func (s *TCPServices) BuildSortedItems() []*TCPServicePort {
 
 // The convention is to name tcp services as domain:port, all TCPServices receive
 // service name or hostname in this format. This convention is mostly used by
-// hostname tracking which is a ingress converter feature. Such convention and
+// hostname tracking which is an ingress converter feature. Such convention and
 // tracking stuff shouldn't be reflecting here. Time to use a proper type without
 // conventions and assumptions.
 // TODO Use a proper service name or hostname type

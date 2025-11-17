@@ -100,7 +100,7 @@ func convertWildcardToRegex(hostname string) (h string, hasWildcard bool) {
 }
 
 // convertPathToRegex converts a path of any match type that
-// needs to be added to a regex list, eg when a alias regex
+// needs to be added to a regex list, eg when an alias regex
 // or a wildcard hostname is used.
 //
 // regex has an implicit starting `^` char due to ingress path

@@ -107,7 +107,7 @@ The following steps deploy an echoserver image and exposes it in the current nam
 
 1. Make HAProxy Ingress expose the echoserver service. Change `echoserver.local` value in the `--rule` option below to a hostname that resolves to an ingress controller node.
 
-    > Obs.: [`nip.io`](https://nip.io) is a convenient service which converts a valid domain name to any IP, either public or local.
+    > Obs.: [`nip.io`](https://nip.io) is a convenient service which converts a valid domain name to an IP, either public or local.
 
     ```
     $ kubectl --namespace default create ingress echoserver \
