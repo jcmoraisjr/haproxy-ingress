@@ -200,7 +200,7 @@ hostname, or the requested path doesn't match any location within the desired ho
 * `--default-ssl-certificate`
 
 Defines the `namespace/secretname` of the default certificate that should be used if ingress
-resources using TLS configuration doesn't provide it's own certificate.  A filename prefixed
+resources using TLS configuration doesn't provide its own certificate.  A filename prefixed
 with `file://` can be used, containing both certificate and private key in PEM format, eg
 `file:///dir/crt.pem`.
 
