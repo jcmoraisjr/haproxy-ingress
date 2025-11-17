@@ -4,7 +4,7 @@ An example configuration to proxy a TCP service with haproxy-ingress.
 
 ## Setup
 
-First, setup a kind cluster using the [example config](kind.yaml):
+First, set up a kind cluster using the [example config](kind.yaml):
 
 ```sh
 kind create cluster --config kind.yaml

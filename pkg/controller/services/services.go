@@ -77,7 +77,7 @@ func (s *Services) setup(ctx context.Context) error {
 	sslCerts := CreateSSLCerts(cfg)
 	fakeCrt, fakeCA, err := sslCerts.createFakeCertAndCA()
 	if err != nil {
-		return fmt.Errorf("error generating self signed fake certificate and certificate authority: %w", err)
+		return fmt.Errorf("error generating self-signed fake certificate and certificate authority: %w", err)
 	}
 	dynConfig := &convtypes.DynamicConfig{
 		StaticCrossNamespaceSecrets: cfg.AllowCrossNamespace,
