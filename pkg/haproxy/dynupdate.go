@@ -375,7 +375,7 @@ func (d *dynUpdater) alignSlots() {
 			// this behavior but this can be expanded to another scenarios in the future,
 			// so this should be properly handled by the model.
 			//
-			// TODO move to the model the responsibility to know that a backend was changed.
+			// TODO move responsibility to know that a backend was changed to the model.
 			backends.BackendChanged(back)
 		}
 	}
