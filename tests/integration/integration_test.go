@@ -581,7 +581,7 @@ Request forbidden by administrative rules.
 		assert.False(t, res.EchoResponse.Parsed)
 	})
 
-	t.Run("should cohexist regular and fronting-proxy http frontends", func(t *testing.T) {
+	t.Run("should coexist regular and fronting-proxy http frontends", func(t *testing.T) {
 		t.Parallel()
 
 		port := framework.RandomPort()
