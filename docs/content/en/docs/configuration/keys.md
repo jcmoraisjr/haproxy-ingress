@@ -546,8 +546,8 @@ Supported acme configuration keys:
 **Minimum setup**
 
 The command-line option `--acme-server` need to be declared to start the local
-server and the work queue used to authorize and sign new certificates. See other
-command-line options [here]({{% relref "command-line/#acme" %}}).
+server and the work queue used to authorize and sign new certificates. See [other
+command-line options]({{% relref "command-line/#acme" %}}).
 
 The following configuration keys are mandatory: `acme-emails`, `acme-endpoint`,
 `acme-terms-agreed`.
