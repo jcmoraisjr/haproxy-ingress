@@ -1381,7 +1381,7 @@ See also:
 | `cors-expose-headers`    | `Path` |              | v0.8  |
 | `cors-max-age`           | `Path` | `86400`      |       |
 
-Add CORS headers on OPTIONS http command (preflight) and reponses.
+Add CORS headers on OPTIONS http command (preflight) and responses.
 
 * `cors-enable`: Enable CORS if defined as `true`.
 * `cors-allow-origin`: Optional, configures `Access-Control-Allow-Origin` header which defines the URL that may access the resource. Defaults to `*`. This option accepts a comma-separated list of origins, the response will be dynamically built based on the `Origin` request header. If `Origin` belongs to the list, its content will be sent back to the client in the `Access-Control-Allow-Origin` header; otherwise, the first item of the list will be used.
