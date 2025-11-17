@@ -1595,7 +1595,7 @@ See also:
 
 Configures FastCGI applications.
 
-* `fcgi-enabled-apps`: Comma separated list of haproxy's fcgi-app sections already declared via `config-sections` configuration key. Only these app identifiers are allowed to be used by backends. If ommited, defaults to allow all configured fcgi-app sections.
+* `fcgi-enabled-apps`: Comma separated list of haproxy's fcgi-app sections already declared via `config-sections` configuration key. Only these app identifiers are allowed to be used by backends. If omitted, defaults to allow all configured fcgi-app sections.
 * `fcgi-app`: Defines the haproxy's fcgi-app section a backend should use. It must be one of the apps in `fcgi-enabled-apps` if configured, or any of the declared ones in `config-sections` otherwise. `fcgi-app` is a mandatory configuration if fcgi server protocol is used, either declaring as an annotation along with the protocol itself, or as a global configuration that should be inherited by all FastCGI backends.
 
 FastCGI related configurations are only used on backends whose server protocol is configured as fcgi, they are ignored otherwise.
