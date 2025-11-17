@@ -531,7 +531,7 @@ func (c *converter) createBackend(routeSource *source, index string, modeTCP boo
 	type backend struct {
 		service gatewayv1.ObjectName
 		port    string
-		epready []*convutils.Endpoint
+		epReady []*convutils.Endpoint
 		cl      convutils.WeightCluster
 	}
 	var backends []backend
@@ -561,7 +561,7 @@ func (c *converter) createBackend(routeSource *source, index string, modeTCP boo
 			c.logger.Warn("skipping service '%s' on %s: port '%s' not found", back.Name, routeSource, portStr)
 			continue
 		}
-		epready, _, err := convutils.CreateEndpoints(c.cache, svc, svcport)
+		epReady, _, err := convutils.CreateEndpoints(c.cache, svc, svcport)
 		if err != nil {
 			c.logger.Warn("skipping service '%s' on %s: %v", back.Name, routeSource, err)
 			continue
@@ -573,10 +573,10 @@ func (c *converter) createBackend(routeSource *source, index string, modeTCP boo
 		backends = append(backends, backend{
 			service: back.Name,
 			port:    svcport.TargetPort.String(),
-			epready: epready,
+			epReady: epReady,
 			cl: convutils.WeightCluster{
 				Weight: weight,
-				Length: len(epready),
+				Length: len(epReady),
 			},
 		})
 		// TODO implement back.BackendRef
@@ -593,7 +593,7 @@ func (c *converter) createBackend(routeSource *source, index string, modeTCP boo
 	}
 	convutils.RebalanceWeight(cl, 128)
 	for i := range backends {
-		for _, addr := range backends[i].epready {
+		for _, addr := range backends[i].epReady {
 			ep := habackend.AddEndpoint(addr.IP, addr.Port, addr.TargetRef)
 			ep.Weight = cl[i].Weight
 		}
