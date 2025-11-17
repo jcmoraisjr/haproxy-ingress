@@ -101,7 +101,7 @@ func CreateInstance(logger types.Logger, options InstanceOptions) Instance {
 
 type instance struct {
 	up          bool
-	embdStart   sync.Once
+	embedStart  sync.Once
 	waitProc    chan struct{}
 	failedSince *time.Time
 	logger      types.Logger
@@ -722,7 +722,7 @@ func (i *instance) reloadEmbeddedDaemon() error {
 }
 
 func (i *instance) reloadEmbeddedMasterWorker() error {
-	i.embdStart.Do(func() {
+	i.embedStart.Do(func() {
 		go func() {
 			defer close(i.waitProc)
 			wait.UntilWithContext(i.options.StopCtx, i.startHAProxySync, 4*time.Second)
