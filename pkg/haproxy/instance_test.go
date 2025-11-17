@@ -2712,10 +2712,10 @@ func TestInstanceDefaultHostMultiFrontend(t *testing.T) {
 	frontNofilterHasreq := `
     http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_8001_host__prefix.map)
     http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_http_8001_defaulthost__prefix.map) if !{ var(req.backend) -m found }`
-	frontHasfilterNoreq := `
+	frontHasFilterNoreq := `
     http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_http_8001_defaulthost__prefix_01.map) if !{ var(req.backend) -m found } { hdr(x-user) -- 'user1' }
     http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_http_8001_defaulthost__prefix_02.map) if !{ var(req.backend) -m found } !{ var(req.defaultbackend) -m found } { hdr(x-user) -- 'user2' }`
-	frontHasfilterHasreq := `
+	frontHasFilterHasreq := `
     http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_8001_host__prefix_01.map) if { hdr(x-user) -- 'user1' }
     http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_8001_host__prefix_02.map) if !{ var(req.backend) -m found } { hdr(x-user) -- 'user2' }
     http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_http_8001_defaulthost__prefix_01.map) if !{ var(req.backend) -m found } { hdr(x-user) -- 'user1' }
@@ -2766,7 +2766,7 @@ func TestInstanceDefaultHostMultiFrontend(t *testing.T) {
 		},
 		"test05": {
 			hasHTTPFilter: true, hasReqHost: false, hasFrontACL: false,
-			expFront: frontHasfilterNoreq,
+			expFront: frontHasFilterNoreq,
 			expBack: pathsNoreqNoacl + `
     http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_def__prefix_01.map) if { hdr(x-user) -- 'user2' }
     http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_def__prefix_02.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- 'user1' }` +
@@ -2774,7 +2774,7 @@ func TestInstanceDefaultHostMultiFrontend(t *testing.T) {
 		},
 		"test06": {
 			hasHTTPFilter: true, hasReqHost: false, hasFrontACL: true,
-			expFront: frontHasfilterNoreq,
+			expFront: frontHasFilterNoreq,
 			expBack: pathsNoreqHasacl + `
     http-request set-var-fmt(req.fe) "%f"
     http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_def__prefix_01.map) if { var(req.fe) -m str _front_http_8001 } { hdr(x-user) -- 'user2' }
@@ -2785,7 +2785,7 @@ func TestInstanceDefaultHostMultiFrontend(t *testing.T) {
 		},
 		"test07": {
 			hasHTTPFilter: true, hasReqHost: true, hasFrontACL: false,
-			expFront: frontHasfilterHasreq,
+			expFront: frontHasFilterHasreq,
 			expBack: pathsHasreqNoacl + `
     http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_req__prefix_01.map) if { hdr(x-user) -- 'user2' }
     http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_req__prefix_02.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- 'user1' }
@@ -2795,7 +2795,7 @@ func TestInstanceDefaultHostMultiFrontend(t *testing.T) {
 		},
 		"test08": {
 			hasHTTPFilter: true, hasReqHost: true, hasFrontACL: true,
-			expFront: frontHasfilterHasreq,
+			expFront: frontHasFilterHasreq,
 			expBack: pathsHasreqHasacl + `
     http-request set-var-fmt(req.fe) "%f"
     http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_req__prefix_01.map) if { var(req.fe) -m str _front_http_8001 } { hdr(x-user) -- 'user2' }
