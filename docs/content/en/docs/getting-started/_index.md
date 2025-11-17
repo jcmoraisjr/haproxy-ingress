@@ -88,7 +88,7 @@ HAProxy Ingress' Helm chart has a few more configuration options, see all of the
 
 ## Deploy and expose
 
-The following steps deploy an echoserver image and exposes it in the current namespace using an Ingress resource. See [here]({{% relref "/docs/configuration/gateway-api" %}}) how to expose using Gateway API.
+The following steps deploy an echoserver image and exposes it in the current namespace using an Ingress resource. Learn how to expose using [Gateway API]({{% relref "/docs/configuration/gateway-api" %}}).
 
 1. Create the echoserver's deployment and service:
 
