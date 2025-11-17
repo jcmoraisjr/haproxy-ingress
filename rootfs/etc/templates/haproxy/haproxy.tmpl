@@ -1501,7 +1501,7 @@ frontend {{ $httpsFrontendName }}
 {{- $global := .p1 }}
 {{- $frontend := .p2 }}
 {{- $fmaps := .p3 }}
-{{- $varbe := .p4 }}
+{{- $varBe := .p4 }}
 {{- if $fmaps.RedirFromMap.MatchFiles }}
 {{- range $match := $fmaps.RedirFromMap.MatchFiles }}
     http-request set-var(req.redirdest) var(req.host)
@@ -1509,7 +1509,7 @@ frontend {{ $httpsFrontendName }}
         {{- "" }},map_{{ $match.Method }}({{ $match.Filename }})
         {{- "" }} if
         {{- if $global.NoRedirects }} !{ path_beg{{ range $global.NoRedirects }} "{{ . }}"{{ end }} }{{ end }}
-        {{- "" }} !{ var({{ $varbe }}) -m found }
+        {{- "" }} !{ var({{ $varBe }}) -m found }
         {{- if not $match.First }} !{ var(req.redirdest) -m found }{{ end }}
 {{- end }}
     http-request redirect prefix //%[var(req.redirdest)]
@@ -1611,12 +1611,12 @@ frontend {{ $httpsFrontendName }}
 {{- /*------------------------------------*/}}
 {{- define "httpFilters" }}
 {{- $match := .p1 }}
-{{- $varbe := .p2 }}
+{{- $varBe := .p2 }}
 {{- $missingIfStmt := .p3 }}
 {{- if $missingIfStmt }}
-    {{- if or $match.Headers (and $varbe (not $match.First)) }} if{{ end }}
+    {{- if or $match.Headers (and $varBe (not $match.First)) }} if{{ end }}
 {{- end }}
-{{- if and $varbe (not $match.First) }} !{ var({{ $varbe }}) -m found }{{ end }}
+{{- if and $varBe (not $match.First) }} !{ var({{ $varBe }}) -m found }{{ end }}
 {{- if $match.Headers }}
     {{- range $header := $match.Headers }} { hdr({{ $header.Name }}){{ if $header.Regex }} -m reg{{ end }} -- {{ $header.Value | haquote }} }{{ end }}
 {{- end }}
