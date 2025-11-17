@@ -83,7 +83,7 @@ func (c *converter) Sync(full bool, gwtyp client.Object) {
 	}
 
 	// we're not testing TLSRoute hostname declaration collision on HTTPRoute,
-	// so a validation should be added in the case the order changes and
+	// so a validation should be added in case the order changes and
 	// syncTLSRoutes() come first.
 	c.syncHTTPRoutes(gwtyp)
 	c.syncTLSRoutes(gwtyp)
