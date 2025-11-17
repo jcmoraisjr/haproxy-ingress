@@ -211,7 +211,7 @@ func (c *Client) CreateOrder(ctx context.Context, order *Order) (*Order, error) 
 // Callers are encouraged to parse the returned certificate chain to ensure it
 // is valid and has the expected attributes.
 //
-// altcn, if not empty, sbould have the Issuer's CN of the topmost certificate of
+// altcn, if not empty, should have the Issuer's CN of the topmost certificate of
 // the chain, if the acme server offers multiple certificate chains. If a match
 // isn't found, an error will be returned along with the default certificate.
 func (c *Client) FinalizeOrder(ctx context.Context, finalizeURL string, csr []byte, altcn string) (der [][]byte, err error) {
