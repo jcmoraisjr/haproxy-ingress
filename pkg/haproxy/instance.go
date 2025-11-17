@@ -586,7 +586,7 @@ type httpResponseOverride struct {
 }
 
 // buildCustomHTTPResponses converts all the custom HTTP responses from Global, Host and Backend
-// into a list grouped by the response code, which is the way the templates consume them.
+// into a list grouped by the response code, which is the way that templates consume them.
 func (i *instance) buildCustomHTTPResponses() (responsesList []httpResponseOverride) {
 	responsesMap := make(map[string]httpResponseOverride)
 	addHa := func(id string, ha hatypes.HTTPResponse) {

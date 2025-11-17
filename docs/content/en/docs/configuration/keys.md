@@ -2918,7 +2918,7 @@ TLS configuration is also applied to the TCP service if configured, making HAPro
 {{< alert title="Note" >}}
 Note that hostname based selection relies on SNI, so it works only on TLS requests. The encrypted content can be offloaded either by HAProxy, providing the hostname in `.spec.rules[].host` and `.spec.tls`, or offloaded by the backend server, providing the hostname only in `.spec.rules[].host`. Non TLS content cannot be multiplexed on the same TCP port for more than one backend.
 
-Note also that, in the case a hostname does not match, HAProxy will select a backend only if `.spec.defaultBackend` or an empty `.spec.rules[].host` is configured; otherwise, the connection is closed without a response.
+Note also that, in the case that a hostname does not match, HAProxy will select a backend only if `.spec.defaultBackend` or an empty `.spec.rules[].host` is configured; otherwise, the connection is closed without a response.
 {{< /alert >}}
 
 Every TCP service port creates a dedicated haproxy frontend that can be [customized](#configuration-snippet) in three distinct ways:
