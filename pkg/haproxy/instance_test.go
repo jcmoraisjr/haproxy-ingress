@@ -5431,12 +5431,12 @@ backend _acme_challenge
 
 func TestStats(t *testing.T) {
 	testCases := []struct {
-		stats          hatypes.StatsConfig
-		prom           hatypes.PromConfig
-		healtz         hatypes.HealthzConfig
-		expectedStats  string
-		expectedProm   string
-		expectedHealtz string
+		stats           hatypes.StatsConfig
+		prom            hatypes.PromConfig
+		healthz         hatypes.HealthzConfig
+		expectedStats   string
+		expectedProm    string
+		expectedHealthz string
 	}{
 		// 0
 		{},
@@ -5472,11 +5472,11 @@ func TestStats(t *testing.T) {
 		},
 		// 4
 		{
-			healtz: hatypes.HealthzConfig{
+			healthz: hatypes.HealthzConfig{
 				BindIP: "127.0.0.1",
 				Port:   10253,
 			},
-			expectedHealtz: "127.0.0.1:10253",
+			expectedHealthz: "127.0.0.1:10253",
 		},
 		// 5
 		{
@@ -5497,12 +5497,12 @@ frontend prometheus
 		c := setup(t)
 		c.config.Global().Stats = test.stats
 		c.config.Global().Prometheus = test.prom
-		c.config.Global().Healthz = test.healtz
+		c.config.Global().Healthz = test.healthz
 		if test.expectedStats == "" {
 			test.expectedStats = "\n    bind :0"
 		}
-		if test.expectedHealtz == "" {
-			test.expectedHealtz = ":0"
+		if test.expectedHealthz == "" {
+			test.expectedHealthz = ":0"
 		}
 		c.Update()
 		c.checkConfig(`
@@ -5518,7 +5518,7 @@ listen stats
     stats show-legends` + test.expectedProm + `
 frontend healthz
     mode http
-    bind ` + test.expectedHealtz + `
+    bind ` + test.expectedHealthz + `
     monitor-uri /healthz
     http-request use-service lua.send-404
     no log
