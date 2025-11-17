@@ -128,7 +128,7 @@ func convertPathToRegex(path *Path) string {
 func (hm *HostsMap) addTarget(hostname, path string, headers []HTTPMatch, order int, target string, match MatchType) {
 	hostname = strings.ToLower(hostname)
 	if match == MatchBegin {
-		// this is the only match that uses case insensitive path
+		// this is the only match that uses case-insensitive path
 		path = strings.ToLower(path)
 	}
 	entry := &HostsMapEntry{

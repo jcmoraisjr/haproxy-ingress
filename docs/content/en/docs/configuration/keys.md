@@ -916,7 +916,7 @@ See also:
 | `backend-protocol` | `Backend` | `h1`    | v0.9  |
 
 Defines the HTTP protocol version of the backend. Note that HTTP/2 is only supported if HTX is enabled.
-A case insensitive match is used, so either `h1` or `H1` configures HTTP/1 protocol. A non SSL/TLS
+A case-insensitive match is used, so either `h1` or `H1` configures HTTP/1 protocol. A non SSL/TLS
 configuration does not overrides [secure-backends](#secure-backend), so `h1` and secure-backends `true`
 will still configure SSL/TLS.
 
@@ -1761,7 +1761,7 @@ See also:
 
 Add HTTP constraints for request routing.
 
-* `http-header-match`: Add HTTP header with exact match, one header name and value pair per line. The first white space, or colon followed by an optional white space, separates the header name and the match value. the header name is case insensitive while the value is case sensitive.
+* `http-header-match`: Add HTTP header with exact match, one header name and value pair per line. The first white space, or colon followed by an optional white space, separates the header name and the match value. the header name is case-insensitive while the value is case sensitive.
 * `http-header-match-regex`: Same as `http-header-match` but using regex match. Anchors are not added, so the value `bar` would match with `foobar` and `barbaz`, while `^bar` would only match with `barbaz`.
 
 More than one annotation can be used at the same time, and more than one match can be used in the same annotation. All the matches from all the annotations will be grouped together, and all of them must evaluate to true in order to the request be accepted and sent to the backend.
@@ -1770,7 +1770,7 @@ Note that any match that potentially changes the backend of a request, like HTTP
 
 **Examples**
 
-Match the header `X-Env` with value `staging` - header name is case insensitive, header value is case sensitive:
+Match the header `X-Env` with value `staging` - header name is case-insensitive, header value is case sensitive:
 
 ```yaml
     annotations:
@@ -2569,7 +2569,7 @@ See also:
 
 Configure hostname alias. All annotations will be combined together with the host
 attribute in the same ACL, and any of them might be used to match SNI extensions
-(TLS) or Host HTTP header. The matching is case insensitive.
+(TLS) or Host HTTP header. The matching is case-insensitive.
 
 * `server-alias`: Defines an alias with hostname-like syntax. On v0.6 and older, wildcard `*` wasn't converted to match a subdomain. Regular expression was also accepted but dots were escaped, making this alias less useful as a regex. Starting v0.7 the same hostname syntax is used, so `*.my.domain` will match `app.my.domain` but won't match `sub.app.my.domain`.
 * `server-alias-regex`: Only in v0.7 and newer. Match hostname using a POSIX extended regular expression. The regex will be used verbatim, so add `^` and `$` if strict hostname is desired and escape `\.` dots in order to strictly match them. Some HTTP clients add the port number in the Host header, so remember to add `(:[0-9]+)?$` in the end of the regex if a dollar sign `$` is being used to match the end of the string.
