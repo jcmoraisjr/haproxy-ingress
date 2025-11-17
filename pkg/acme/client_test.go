@@ -47,7 +47,7 @@ const (
 	// an optional preferred chain - note that currently (oct/2021) Let's Encrypt
 	// staging doesn't have an alternate chain
 	chain = ``
-	// a local path where the response of the challenge should be writted
+	// a local path where the response of the challenge should be written
 	// if empty the challenge will be written to /tmp/out and the test will
 	// wait 20s to continue
 	wwwpublic = ``
