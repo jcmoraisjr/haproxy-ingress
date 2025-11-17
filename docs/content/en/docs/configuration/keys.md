@@ -1408,7 +1408,7 @@ See also:
 Define how processes/threads map to CPUs. The default value is generated based
 on [nbthread](#nbthread) and [nbproc](#nbproc).
 
-* `cpu-map`: Custom override specifying the cpu mapping behaviour in the format described [here](https://docs.haproxy.org/2.8/configuration.html#3.1-cpu-map).
+* `cpu-map`: Custom override specifying the [cpu mapping behaviour](https://docs.haproxy.org/2.8/configuration.html#3.1-cpu-map).
 * `use-cpu-map`: Set to `false` to prevent any cpu mapping
 
 See also:
