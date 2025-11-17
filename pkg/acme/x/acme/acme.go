@@ -60,12 +60,11 @@ const (
 // The only required field is Key. An example of creating a client with a new key
 // is as follows:
 //
-// 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	client := &Client{Key: key}
-//
+//	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	client := &Client{Key: key}
 type Client struct {
 	// Key is the account key used to register with a CA and sign requests.
 	// Key.Public() must return a *rsa.PublicKey or *ecdsa.PublicKey.
@@ -205,7 +204,7 @@ func (c *Client) CreateOrder(ctx context.Context, order *Order) (*Order, error) 
 // encoded in DER format. If the order has not been fully authorized,
 // an OrderPendingError will be returned.
 //
-// After requesting finalization, FinalizOrder polls the order using WaitOrder
+// After requesting finalization, FinalizeOrder polls the order using WaitOrder
 // until it is finalized and then fetches the associated certificate and returns
 // it.
 //
