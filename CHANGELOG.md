@@ -864,7 +864,7 @@ Fixes and improvements since [v0.5](#v05):
 * HAProxy 1.8
 * Dynamic cookies on cookie based server affinity
 * HTTP/2 support - [#129](https://github.com/jcmoraisjr/haproxy-ingress/pull/129)
-* Share http/s connections on the same frontend/socket - [#130](https://github.com/jcmoraisjr/haproxy-ingress/pull/130)
+* Share http(s) connections on the same frontend/socket - [#130](https://github.com/jcmoraisjr/haproxy-ingress/pull/130)
 * Add clear userlist on misconfigured basic auth - [#71](https://github.com/jcmoraisjr/haproxy-ingress/issues/71)
 * Fix copy endpoints to fullslots - [#84](https://github.com/jcmoraisjr/haproxy-ingress/issues/84)
 * Equality improvement on dynamic scaling  - [#138](https://github.com/jcmoraisjr/haproxy-ingress/issues/138) and [#140](https://github.com/jcmoraisjr/haproxy-ingress/issues/140)

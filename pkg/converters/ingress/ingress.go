@@ -558,7 +558,7 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 					host.inner.AddLink(backend, pathLink)
 				}
 			} else {
-				// regular http/s request, non ssl-passthrough
+				// regular http(s) request, non ssl-passthrough
 				host.AddLink(backend, pathLink)
 			}
 			// pre-building the auth-url backend

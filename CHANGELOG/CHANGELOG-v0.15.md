@@ -346,7 +346,7 @@ Exclusive v0.15 changes include:
 Other changes already merged to the stable branches:
 
 - Added the steps to configure the embedded HAProxy process to log to stdout, along with controller, useful on dev or small test environments. See [doc](https://haproxy-ingress.github.io/v0.15/docs/configuration/keys/#syslog)
-- Added two distinct helm configurations on the getting started guide: one that uses a service load balancer, another one that uses http/s ports assigned to the cluster nodes. See [doc](https://haproxy-ingress.github.io/v0.15/docs/getting-started/)
+- Added two distinct helm configurations on the getting started guide: one that uses a service load balancer, another one that uses http(s) ports assigned to the cluster nodes. See [doc](https://haproxy-ingress.github.io/v0.15/docs/getting-started/)
 
 Fixes merged to stable branches:
 

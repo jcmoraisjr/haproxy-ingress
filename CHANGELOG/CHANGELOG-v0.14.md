@@ -267,7 +267,7 @@ This release updates the embedded haproxy version, and fixes some issues found i
 - Auth external configuration can now be configured globally
 - Make sure https redirect happens before path redirect when `app-root` is configured
 - Added the steps to configure the embedded HAProxy process to log to stdout, along with controller, useful on dev or small test environments. See [doc](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#syslog)
-- Added two distinct helm configurations on the getting started guide: one that uses a service load balancer, another one that uses http/s ports assigned to the cluster nodes. See [doc](https://haproxy-ingress.github.io/v0.14/docs/getting-started/)
+- Added two distinct helm configurations on the getting started guide: one that uses a service load balancer, another one that uses http(s) ports assigned to the cluster nodes. See [doc](https://haproxy-ingress.github.io/v0.14/docs/getting-started/)
 
 Dependencies:
 
