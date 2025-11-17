@@ -317,6 +317,6 @@ func (s *Services) reloadHAProxy(context.Context, any) error {
 		reloadlogger.Info("finish haproxy reload")
 	}
 	// return err!=nil adds another event into the queue, we're reloading manually
-	// in the case an error happens in order to override the rate limit of the reload queue.
+	// in the case when an error happens in order to override the rate limit of the reload queue.
 	return nil
 }
