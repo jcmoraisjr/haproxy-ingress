@@ -158,7 +158,7 @@ Besides that, the following areas had some improvement since v0.15:
 - Clustered metrics, non centralized, via peers configuration. HAProxy Ingress configures every HAProxy instance to talk to each other to share their local metrics. Note that alpha.1 supports only global configuration with a single shared stick table, a backend scoped configuration should be done for alpha.2. See its [documentation](https://haproxy-ingress.github.io/v0.16/docs/configuration/keys/#peers).
 - Customized proxy HTTP responses are now Host/Backend scoped, so they can be configured per hostname or backend via ingress or service annotation. See its [documentation](https://haproxy-ingress.github.io/v0.16/docs/configuration/keys/#http-response).
 - Better support for a namespaced controller by adding the `--disable-ingress-class-api` command-line option. See its [documentation](https://haproxy-ingress.github.io/v0.16/docs/configuration/command-line/#ingress-class).
-- Code cleanup: legacy controller code (on behalf of controller-runtime), deprecated Endspoins API (on behalf of EndpointSlice), and deprecated structs used to track changes on a former HAProxy Ingress version.
+- Code cleanup: legacy controller code (on behalf of controller-runtime), deprecated Endpoints API (on behalf of EndpointSlice), and deprecated structs used to track changes on a former HAProxy Ingress version.
 
 Dependencies:
 
