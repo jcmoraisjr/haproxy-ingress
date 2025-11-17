@@ -162,23 +162,23 @@ func marshalHosts(hafronts ...*hatypes.Host) []hostMock {
 // MarshalTCPServices ...
 func MarshalTCPServices(hatcpserviceports ...*hatypes.TCPServicePort) string {
 	tcpServices := []tcpServiceMock{}
-	for _, hasvc := range hatcpserviceports {
+	for _, haSvc := range hatcpserviceports {
 		var backends []string
-		for _, h := range hasvc.Hosts() {
+		for _, h := range haSvc.Hosts() {
 			backends = append(backends, h.Backend.String())
 		}
 		sort.Strings(backends)
 		var defaultBackend string
-		if hasvc.DefaultHost() != nil {
-			defaultBackend = hasvc.DefaultHost().Backend.String()
+		if haSvc.DefaultHost() != nil {
+			defaultBackend = haSvc.DefaultHost().Backend.String()
 		}
 		svc := tcpServiceMock{
 			Backends:       backends,
 			DefaultBackend: defaultBackend,
-			Port:           hasvc.Port(),
-			ProxyProt:      hasvc.ProxyProt,
+			Port:           haSvc.Port(),
+			ProxyProt:      haSvc.ProxyProt,
 		}
-		for _, tls := range hasvc.BuildSortedTLSConfig() {
+		for _, tls := range haSvc.BuildSortedTLSConfig() {
 			svc.TLS = append(svc.TLS, tlsMock{
 				TLSFilename: tls.TLSFilename,
 				CAFilename:  tls.CAFilename,
