@@ -20,7 +20,7 @@ HAProxy Ingress uses [TLS SNI extension](https://en.wikipedia.org/wiki/Server_Na
 
 HAProxy Ingress uses [Helm](https://helm.sh) chart to install and configure the controller. See below some deployment instructions:
 
-1. Install `helm`, HAProxy Ingress requires version 3. See the installation instructions [here](https://helm.sh/docs/intro/install/).
+1. Install `helm`, HAProxy Ingress requires version 3. See the [installation instructions](https://helm.sh/docs/intro/install/).
 
 1. Add the HAProxy Ingress' Helm repository. This will instruct Helm to find all available packages:
 
