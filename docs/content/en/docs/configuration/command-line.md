@@ -249,7 +249,7 @@ Services of type ExternalName uses DNS lookup to define the target server IP lis
 
 Since v0.11, deprecated since v0.15
 
-Disables in memory pod list and also pod watch for changes. Pod list and watch is used by the `drain-support` and `assign-backend-server-id` options, which will not work if pod list is disabled. Blue/green and `session-cookie-value-strategy` set to `pod-uid` also use pod list if enabled, otherwise k8s api is called if needed. The default value is `false`, which means pods will be watched and listed in memory. Since v0.15 all the listers are managed by controller-runtime, making this option deprecated.
+Disables in memory pod list and also pod watch for changes. Pod list and watch is used by the `drain-support` and `assign-backend-server-id` options, which will not work if pod list is disabled. Blue/green and `session-cookie-value-strategy` set to `pod-uid` also use pod list if enabled; otherwise, k8s api is called if needed. The default value is `false`, which means pods will be watched and listed in memory. Since v0.15 all the listers are managed by controller-runtime, making this option deprecated.
 
 ---
 
@@ -806,7 +806,7 @@ If argument `--wait-before-shutdown` is defined, controller will wait defined ti
 before it starts shutting down components when SIGTERM was received. By default, it's 0, which means
 the controller starts shutting down itself right after signal was sent.
 
-This option, along with [`--shutdown-timeout`](#shutdown-timeout), should be lesser than the controller's pod grace period, otherwise controller should be SIGKILLed before its timeout expires.
+This option, along with [`--shutdown-timeout`](#shutdown-timeout), should be lesser than the controller's pod grace period; otherwise, controller should be SIGKILLed before its timeout expires.
 
 See also:
 

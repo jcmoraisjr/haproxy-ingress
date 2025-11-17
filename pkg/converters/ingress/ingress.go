@@ -937,7 +937,7 @@ func (c *converter) addBackend(source *annotations.Source, pathLink *hatypes.Pat
 	if strings.Contains(hostname, ":") {
 		// TODO this is the wrong way to identify if this is a tcp service. But
 		// it works. There is a refactor to be made in some haproxy model types
-		// to better fit gateway api, this should help here, otherwise we'll
+		// to better fit gateway api, this should help here; otherwise, we'll
 		// need to evolve to an implementation that's not based on assumptions.
 		ctx = convtypes.ResourceHATCPService
 	}

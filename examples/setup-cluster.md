@@ -121,7 +121,7 @@ $ kubectl -n ingress-controller edit configmap haproxy-ingress
 $ kubectl -n ingress-controller edit ds haproxy-ingress
 ```
 
-Label at least one node, otherwise the controller won't run:
+Label at least one node; otherwise, the controller won't run:
 
 ```console
 $ kubectl get node

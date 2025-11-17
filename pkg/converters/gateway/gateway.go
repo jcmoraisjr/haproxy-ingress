@@ -751,7 +751,7 @@ func (c *converter) createTCPService(gatewaySource *gatewaySource, listener *gat
 // reference to the real TLSConfig.
 //
 // Special handling of the added hosts or services should be done in the case of an error: the caller should
-// revert all the changes, otherwise haproxy would lead to an incomplete/invalid configuration due to the
+// revert all the changes; otherwise, haproxy would lead to an incomplete/invalid configuration due to the
 // missing of some TLS certificates.
 func (c *converter) readCertRefs(source *gatewaySource, listener *gatewayv1.Listener, hostsTLS map[string]*hatypes.TLSConfig) error {
 	certRefs := listener.TLS.CertificateRefs
