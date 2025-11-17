@@ -633,7 +633,7 @@ Options:
 * `--healthz-port`: (deprecated since v0.15) Defines the port number haproxy-ingress should listen to. Use `--healthz-addr` instead. Defaults to `10254`.
 * `--profiling`: Configures if the profiling URI should be enabled. Defaults to `true`.
 * `--ready-check-path`: Defines the URL to be used as a readiness check for haproxy ingress. Defaults to `/readyz`.
-* `--stats-collect-processing-period`: Defines the interval between two consecutive readings of haproxy's `Idle_pct`, used to generate `haproxy_processing_seconds_total` metric. haproxy updates Idle_pct every `500ms`, which makes that the best configuration value, and it's also the default if not configured. Values higher than `500ms` will produce a less accurate collect. Change to 0 (zero) to disable this metric.
+* `--stats-collect-processing-period`: Defines the interval between two consecutive readings of haproxy's `Idle_pct`, used to generate `haproxy_processing_seconds_total` metric. haproxy updates Idle_pct every `500ms`, which makes that the best configuration value, and it's also the default if not configured. Values greater than `500ms` will produce a less accurate collect. Change to 0 (zero) to disable this metric.
 * `--stop-handler`: Allows to stop the controller via a POST request to `<host>:<healthzport>/stop` endpoint. Default value is `false`.
 
 ---
