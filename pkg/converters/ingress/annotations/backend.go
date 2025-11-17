@@ -603,7 +603,7 @@ func (c *updater) generateBackendSnippet(d *backData, config *ConfigValue) []str
 	for _, line := range lines {
 		for _, token := range strings.Fields(line) {
 			if strings.Contains(path.Clean(token), "secrets/kubernetes.io/serviceaccount") {
-				// attempt to read the the well known path to Kubernetes credentials
+				// attempt to read the well known path to Kubernetes credentials
 				c.logger.Warn("skipping configuration snippet on %s: attempt to read cluster credentials", source)
 				return nil
 			}
