@@ -2073,7 +2073,7 @@ The following keys are supported:
 * `modsecurity-timeout-idle`: Defines the maximum time to wait before close an idle connection. Default value is `30s`.
 * `modsecurity-timeout-processing`: Defines the maximum time to wait for the whole ModSecurity processing. Default value is `1s`.
 * `modsecurity-timeout-server`: Defines the maximum time to wait for an agent response. Configures the haproxy's timeout server. Defaults to `5s` if not configured.
-* `modsecurity-use-coraza`: Defines whether the generated SPOE config should include Coraza-specific values. In order to use Coraza instead of Modsecurity, you must set this to "true" and also set `modsecurity-args` based on the instructions in the [coraza-spoa repository](https://github.com/corazawaf/coraza-spoa). A full example can be found [here]({{% relref "../examples/modsecurity#using-coraza-instead-of-modsecurity" %}}).
+* `modsecurity-use-coraza`: Defines whether the generated SPOE config should include Coraza-specific values. In order to use Coraza instead of Modsecurity, you must set this to "true" and also set `modsecurity-args` based on the instructions in the [coraza-spoa repository](https://github.com/corazawaf/coraza-spoa). See a [full example using coraza instead of modsecurity]({{% relref "../examples/modsecurity#using-coraza-instead-of-modsecurity" %}}).
 
 See also:
 
