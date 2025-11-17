@@ -540,7 +540,7 @@ New features and improvements since `v0.14.0`:
 This is the first v0.14 release graduated as GA, which adds these major improvements since v0.13:
 
 - [Coraza](https://coraza.io/) Web Application Firewall (WAF) support, see the [example page](https://haproxy-ingress.github.io/v0.14/docs/examples/modsecurity/#using-coraza-instead-of-modsecurity).
-- Customization of all HAProxy generated response payload, see the documentation [here](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#http-response).
+- Customization of all [HAProxy generated response payload](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#http-response).
 - Gateway API support improvement - although we're not fully compliant yet, see the documentation [here](https://haproxy-ingress.github.io/v0.14/docs/configuration/gateway-api/).
 
 The following improvements have been made since the last beta version:
