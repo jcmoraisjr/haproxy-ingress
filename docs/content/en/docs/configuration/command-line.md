@@ -263,7 +263,7 @@ The ID to be used for electing ingress controller leader. A leader needs to be e
 * Embedded Acme signer, see [acme](#acme)
 * Gateway API, see [`--watch-gateway`](#watch-gateway)
 
-Election ID configuration has no efect if none of Ingress Status update, Embedded Acme signer, or Gateway API are enabled.
+Election ID configuration has no effect if none of Ingress Status update, Embedded Acme signer, or Gateway API are enabled.
 
 Since v0.15 a `%s` placeholder is used to define where the IngressClass value should be added to the election ID. Up to v0.14 the IngressClass was concatenated in the end of the provided value to compose the real election ID value. Ingress class is added to the election ID name to avoid conflict when two or more HAProxy Ingress controllers are running in the same cluster.
 
