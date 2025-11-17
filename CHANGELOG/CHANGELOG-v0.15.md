@@ -352,7 +352,7 @@ Fixes merged to stable branches:
 
 - Julien fixed the Vary response header, from Cors, when the backend server returns two or more headers
 - tomklapka and Jan implemented a more fine-grained response from Coraza WAF
-- HAProxy process, when embedded and in master-worker mode, was being prematurelly stopped on rolling updates because it was configured in the same pid group of the controller
+- HAProxy process, when embedded and in master-worker mode, was being prematurely stopped on rolling updates because it was configured in the same pid group of the controller
 - Fix backend selection, when a more generic wildcard hostname was being incorrectly chosen, and it collides with a more specific one which uses mTLS
 - Secure backend configuration, like backend protocol and client side mTLS, can now be configured globally for all ingress resources
 - Auth external configuration can now be configured globally
