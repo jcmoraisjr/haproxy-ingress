@@ -806,7 +806,7 @@ If argument `--wait-before-shutdown` is defined, controller will wait defined ti
 before it starts shutting down components when SIGTERM was received. By default, it's 0, which means
 the controller starts shutting down itself right after signal was sent.
 
-This option, along with [`--shutdown-timeout`](#shutdown-timeout), should be lesser than the controller's pod grace period; otherwise, controller should be SIGKILLed before its timeout expires.
+This option, along with [`--shutdown-timeout`](#shutdown-timeout), should be less than the controller's pod grace period; otherwise, controller should be SIGKILLed before its timeout expires.
 
 See also:
 

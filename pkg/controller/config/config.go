@@ -174,7 +174,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 
 	// warning area
 	if opt.ShutdownTimeout < opt.HAProxyGracePeriod {
-		configLog.Info(fmt.Sprintf("WARNING: --shutdown-timeout=%s is lesser than --haproxy-grace-period=%s", opt.ShutdownTimeout.String(), opt.HAProxyGracePeriod.String()))
+		configLog.Info(fmt.Sprintf("WARNING: --shutdown-timeout=%s is less than --haproxy-grace-period=%s", opt.ShutdownTimeout.String(), opt.HAProxyGracePeriod.String()))
 	}
 
 	if opt.IngressClass != "" {
