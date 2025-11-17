@@ -753,7 +753,7 @@ M.base64 = {}
 
 --- URL safe base64 encoder
 --
--- Padding ('=') is omitted, as permited per RFC
+-- Padding ('=') is omitted, as permitted per RFC
 --   https://tools.ietf.org/html/rfc4648
 -- in order to follow JSON Web Signature RFC
 --   https://tools.ietf.org/html/rfc7515
