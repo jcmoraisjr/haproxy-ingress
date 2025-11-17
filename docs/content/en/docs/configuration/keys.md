@@ -1761,7 +1761,7 @@ See also:
 
 Add HTTP constraints for request routing.
 
-* `http-header-match`: Add HTTP header with exact match, one header name and value pair per line. The first white space, or colon followed by an optional white space, separates the header name and the match value. the header name is case-insensitive while the value is case sensitive.
+* `http-header-match`: Add HTTP header with exact match, one header name and value pair per line. The first white space, or colon followed by an optional white space, separates the header name and the match value. the header name is case-insensitive while the value is case-sensitive.
 * `http-header-match-regex`: Same as `http-header-match` but using regex match. Anchors are not added, so the value `bar` would match with `foobar` and `barbaz`, while `^bar` would only match with `barbaz`.
 
 More than one annotation can be used at the same time, and more than one match can be used in the same annotation. All the matches from all the annotations will be grouped together, and all of them must evaluate to true in order to the request be accepted and sent to the backend.
@@ -1770,7 +1770,7 @@ Note that any match that potentially changes the backend of a request, like HTTP
 
 **Examples**
 
-Match the header `X-Env` with value `staging` - header name is case-insensitive, header value is case sensitive:
+Match the header `X-Env` with value `staging` - header name is case-insensitive, header value is case-sensitive:
 
 ```yaml
     annotations:
