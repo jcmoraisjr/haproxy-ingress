@@ -997,7 +997,7 @@ func (c *converter) addBackend(source *annotations.Source, pathLink *hatypes.Pat
 	// Merging IngressClass Parameters with less priority
 	if ingressClass != nil {
 		if cfg := c.readParameters(ingressClass); cfg != nil {
-			// Using a work around to add a per resource default config:
+			// Using a workaround to add a per resource default config:
 			// we add IngressClass Parameters after service and ingress annotations,
 			// ignoring conflicts. This would really conflict with other Parameters
 			// only if the same host+path is declared twice, but such duplication is
