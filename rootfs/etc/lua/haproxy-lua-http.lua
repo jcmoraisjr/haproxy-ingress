@@ -342,7 +342,7 @@ function M.request.parse(applet)
 
     self.cookies = parse_request_cookies(self.headers["cookie"])
 
-    -- TODO: Patch ApletHTTP and add schema of request
+    -- TODO: Patch AppletHTTP and add schema of request
     local schema = applet.schema or "http"
     local url = {schema, "://", self.headers["host"], applet.path}
 
