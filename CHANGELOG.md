@@ -122,7 +122,7 @@ Fixes and improvements since [v0.11](#v011):
 
 * Kubernetes version 1.14 or newer
 * HAProxy Ingress service account need `get`, `list`, `watch` and `update` access to `networking.k8s.io` api group - which was the same permissions granted to `extensions/v1beta1` api group. Update your k8s role configuration before deploy v0.11. See an updated version of the [deployment manifest](https://raw.githubusercontent.com/jcmoraisjr/haproxy-ingress/2b3cc6701b27866acd9db35cbbd0c4de114aaec2/docs/static/resources/haproxy-ingress.yaml).
-* Major refactor in the haproxy's frontents with the following visible changes:
+* Major refactor in the haproxy's frontends with the following visible changes:
   * Internal proxy names changed, which will impact metric dashboards that use these names
   * Internal map file names changed, which will impact configuration snippets that use them
 * `timeout-client` and `timeout-client-fin` are global scoped only - cannot use as an ingress annotation.
