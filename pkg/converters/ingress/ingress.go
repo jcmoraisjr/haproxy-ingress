@@ -974,7 +974,7 @@ func (c *converter) addBackend(source *annotations.Source, pathLink *hatypes.Pat
 	}
 	backend := c.haproxy.Backends().AcquireBackend(namespace, svcName, port.TargetPort.String())
 	c.tracker.TrackNames(source.Type, source.FullName(), convtypes.ResourceHABackend, backend.ID)
-	// TODO converg backend Port and DNSPort; see also tmpl's server-template
+	// TODO convert backend Port and DNSPort; see also tmpl's server-template
 	backend.DNSPort = readDNSPort(svc.Spec.ClusterIP == api.ClusterIPNone, port)
 	mapper, found := c.backendAnnotations[backend]
 	if !found {
