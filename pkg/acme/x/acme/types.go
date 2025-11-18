@@ -220,7 +220,7 @@ type Order struct {
 	// StatusProcessing, StatusValid, and StatusInvalid.
 	Status string
 
-	// Expires is the teimstamp after which the server will consider the order invalid.
+	// Expires is the timestamp after which the server will consider the order invalid.
 	Expires time.Time
 
 	// Identifiers is a list of identifiers that the order pertains to.

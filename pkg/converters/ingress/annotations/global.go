@@ -551,7 +551,7 @@ func (c *updater) buildGlobalFastCGI(d *globalData) {
 
 // TODO these defaults should be in default.go but currently ingress parsing
 // doesn't preserve the hardcoded default, overwriting it with the user's
-// provided one. We need it in the case the user input has some error.
+// provided one. We need it in the case that the user input has some error.
 // Need to improve this behavior and then we can move this to the defaults.
 const (
 	httpResponse404 = `404

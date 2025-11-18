@@ -83,7 +83,7 @@ func (c *converter) Sync(full bool, gwtyp client.Object) {
 	}
 
 	// we're not testing TLSRoute hostname declaration collision on HTTPRoute,
-	// so a validation should be added in the case the order changes and
+	// so a validation should be added in case the order changes and
 	// syncTLSRoutes() come first.
 	c.syncHTTPRoutes(gwtyp)
 	c.syncTLSRoutes(gwtyp)
@@ -531,7 +531,7 @@ func (c *converter) createBackend(routeSource *source, index string, modeTCP boo
 	type backend struct {
 		service gatewayv1.ObjectName
 		port    string
-		epready []*convutils.Endpoint
+		epReady []*convutils.Endpoint
 		cl      convutils.WeightCluster
 	}
 	var backends []backend
@@ -561,7 +561,7 @@ func (c *converter) createBackend(routeSource *source, index string, modeTCP boo
 			c.logger.Warn("skipping service '%s' on %s: port '%s' not found", back.Name, routeSource, portStr)
 			continue
 		}
-		epready, _, err := convutils.CreateEndpoints(c.cache, svc, svcport)
+		epReady, _, err := convutils.CreateEndpoints(c.cache, svc, svcport)
 		if err != nil {
 			c.logger.Warn("skipping service '%s' on %s: %v", back.Name, routeSource, err)
 			continue
@@ -573,10 +573,10 @@ func (c *converter) createBackend(routeSource *source, index string, modeTCP boo
 		backends = append(backends, backend{
 			service: back.Name,
 			port:    svcport.TargetPort.String(),
-			epready: epready,
+			epReady: epReady,
 			cl: convutils.WeightCluster{
 				Weight: weight,
-				Length: len(epready),
+				Length: len(epReady),
 			},
 		})
 		// TODO implement back.BackendRef
@@ -593,7 +593,7 @@ func (c *converter) createBackend(routeSource *source, index string, modeTCP boo
 	}
 	convutils.RebalanceWeight(cl, 128)
 	for i := range backends {
-		for _, addr := range backends[i].epready {
+		for _, addr := range backends[i].epReady {
 			ep := habackend.AddEndpoint(addr.IP, addr.Port, addr.TargetRef)
 			ep.Weight = cl[i].Weight
 		}
@@ -751,7 +751,7 @@ func (c *converter) createTCPService(gatewaySource *gatewaySource, listener *gat
 // reference to the real TLSConfig.
 //
 // Special handling of the added hosts or services should be done in the case of an error: the caller should
-// revert all the changes, otherwise haproxy would lead to an incomplete/invalid configuration due to the
+// revert all the changes; otherwise, haproxy would lead to an incomplete/invalid configuration due to the
 // missing of some TLS certificates.
 func (c *converter) readCertRefs(source *gatewaySource, listener *gatewayv1.Listener, hostsTLS map[string]*hatypes.TLSConfig) error {
 	certRefs := listener.TLS.CertificateRefs

@@ -346,14 +346,14 @@ Exclusive v0.15 changes include:
 Other changes already merged to the stable branches:
 
 - Added the steps to configure the embedded HAProxy process to log to stdout, along with controller, useful on dev or small test environments. See [doc](https://haproxy-ingress.github.io/v0.15/docs/configuration/keys/#syslog)
-- Added two distinct helm configurations on the getting started guide: one that uses a service load balancer, another one that uses http/s ports assigned to the cluster nodes. See [doc](https://haproxy-ingress.github.io/v0.15/docs/getting-started/)
+- Added two distinct helm configurations on the getting started guide: one that uses a service load balancer, another one that uses http(s) ports assigned to the cluster nodes. See [doc](https://haproxy-ingress.github.io/v0.15/docs/getting-started/)
 
 Fixes merged to stable branches:
 
 - Julien fixed the Vary response header, from Cors, when the backend server returns two or more headers
-- tomklapka and Jan implemented a more fine grained response from Coraza WAF
-- HAProxy process, when embedded and in master-worker mode, was being prematurelly stopped on rolling updates because it was configured in the same pid group of the controller
-- Fix backend selection, when a more generic wildcard hostname was being incorrectly chosen, and it colides with a more specific one which uses mTLS
+- tomklapka and Jan implemented a more fine-grained response from Coraza WAF
+- HAProxy process, when embedded and in master-worker mode, was being prematurely stopped on rolling updates because it was configured in the same pid group of the controller
+- Fix backend selection, when a more generic wildcard hostname was being incorrectly chosen, and it collides with a more specific one which uses mTLS
 - Secure backend configuration, like backend protocol and client side mTLS, can now be configured globally for all ingress resources
 - Auth external configuration can now be configured globally
 - Make sure https redirect happens before path redirect when `app-root` is configured

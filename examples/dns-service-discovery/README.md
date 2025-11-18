@@ -26,9 +26,9 @@ $ kubectl apply -f haproxy-config-map.yml
 $ kubectl apply -f all-options-haproxy-config-map.yml
 ```
 
-*Note: If using kube-dns, the cache ttl defaults to 30s. Add --max-ttl and --max-cache-ttl to the dns container to a proper value, otherwise the HAProxy backend could take up to 30s to update*
+*Note: If using kube-dns, the cache ttl defaults to 30s. Add --max-ttl and --max-cache-ttl to the dns container to a proper value; otherwise, the HAProxy backend could take up to 30s to update*
 
-* Install pods [replication-controler](/examples/dns-service-discovery/web-rc.yml)
+* Install pods [replication-controller](/examples/dns-service-discovery/web-rc.yml)
 
 ```console
 $ kubectl apply -f web-rc.yml

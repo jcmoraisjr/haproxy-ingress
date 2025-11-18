@@ -62,7 +62,7 @@ if [ "$PARAM_STATE" != "0" ]; then
 fi
 
 # Any strategy != `native` means `reusesocket` or `multibinder`
-# If there isn't a unix socket (eg first start) fallback to native
+# If there isn't a unix socket (e.g., first start) fall back to native
 if [ "$PARAM_STRATEGY" != "native" ] && [ -S "$HAPROXY_SOCKET" ]; then
     haproxy -f "$PARAM_CFG" -p "$HAPROXY_PID" -D -sf $OLD_PID -x "$HAPROXY_SOCKET"
 else

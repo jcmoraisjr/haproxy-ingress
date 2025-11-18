@@ -370,12 +370,12 @@ func (d *dynUpdater) alignSlots() {
 			changed = true
 		}
 		if changed {
-			// backends from the Items() map are read only and their changes might not be
+			// backends from the Items() map are read-only and their changes might not be
 			// reflected in the final configuration. Currently only sharded backends have
 			// this behavior but this can be expanded to another scenarios in the future,
 			// so this should be properly handled by the model.
 			//
-			// TODO move to the model the responsibility to know that a backend was changed.
+			// TODO move responsibility to know that a backend was changed to the model.
 			backends.BackendChanged(back)
 		}
 	}

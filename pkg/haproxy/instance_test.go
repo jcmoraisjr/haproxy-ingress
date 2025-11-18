@@ -2712,10 +2712,10 @@ func TestInstanceDefaultHostMultiFrontend(t *testing.T) {
 	frontNofilterHasreq := `
     http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_8001_host__prefix.map)
     http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_http_8001_defaulthost__prefix.map) if !{ var(req.backend) -m found }`
-	frontHasfilterNoreq := `
+	frontHasFilterNoreq := `
     http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_http_8001_defaulthost__prefix_01.map) if !{ var(req.backend) -m found } { hdr(x-user) -- 'user1' }
     http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_http_8001_defaulthost__prefix_02.map) if !{ var(req.backend) -m found } !{ var(req.defaultbackend) -m found } { hdr(x-user) -- 'user2' }`
-	frontHasfilterHasreq := `
+	frontHasFilterHasreq := `
     http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_8001_host__prefix_01.map) if { hdr(x-user) -- 'user1' }
     http-request set-var(req.backend) var(req.base),map_dir(/etc/haproxy/maps/_front_http_8001_host__prefix_02.map) if !{ var(req.backend) -m found } { hdr(x-user) -- 'user2' }
     http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_front_http_8001_defaulthost__prefix_01.map) if !{ var(req.backend) -m found } { hdr(x-user) -- 'user1' }
@@ -2766,7 +2766,7 @@ func TestInstanceDefaultHostMultiFrontend(t *testing.T) {
 		},
 		"test05": {
 			hasHTTPFilter: true, hasReqHost: false, hasFrontACL: false,
-			expFront: frontHasfilterNoreq,
+			expFront: frontHasFilterNoreq,
 			expBack: pathsNoreqNoacl + `
     http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_def__prefix_01.map) if { hdr(x-user) -- 'user2' }
     http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_def__prefix_02.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- 'user1' }` +
@@ -2774,7 +2774,7 @@ func TestInstanceDefaultHostMultiFrontend(t *testing.T) {
 		},
 		"test06": {
 			hasHTTPFilter: true, hasReqHost: false, hasFrontACL: true,
-			expFront: frontHasfilterNoreq,
+			expFront: frontHasFilterNoreq,
 			expBack: pathsNoreqHasacl + `
     http-request set-var-fmt(req.fe) "%f"
     http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_def__prefix_01.map) if { var(req.fe) -m str _front_http_8001 } { hdr(x-user) -- 'user2' }
@@ -2785,7 +2785,7 @@ func TestInstanceDefaultHostMultiFrontend(t *testing.T) {
 		},
 		"test07": {
 			hasHTTPFilter: true, hasReqHost: true, hasFrontACL: false,
-			expFront: frontHasfilterHasreq,
+			expFront: frontHasFilterHasreq,
 			expBack: pathsHasreqNoacl + `
     http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_req__prefix_01.map) if { hdr(x-user) -- 'user2' }
     http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_req__prefix_02.map) if !{ var(txn.pathID) -m found } { hdr(x-user) -- 'user1' }
@@ -2795,7 +2795,7 @@ func TestInstanceDefaultHostMultiFrontend(t *testing.T) {
 		},
 		"test08": {
 			hasHTTPFilter: true, hasReqHost: true, hasFrontACL: true,
-			expFront: frontHasfilterHasreq,
+			expFront: frontHasFilterHasreq,
 			expBack: pathsHasreqHasacl + `
     http-request set-var-fmt(req.fe) "%f"
     http-request set-var(txn.pathID) var(req.base),map_dir(/etc/haproxy/maps/_back_default_app_8080_front_http_8001_req__prefix_01.map) if { var(req.fe) -m str _front_http_8001 } { hdr(x-user) -- 'user2' }
@@ -5431,12 +5431,12 @@ backend _acme_challenge
 
 func TestStats(t *testing.T) {
 	testCases := []struct {
-		stats          hatypes.StatsConfig
-		prom           hatypes.PromConfig
-		healtz         hatypes.HealthzConfig
-		expectedStats  string
-		expectedProm   string
-		expectedHealtz string
+		stats           hatypes.StatsConfig
+		prom            hatypes.PromConfig
+		healthz         hatypes.HealthzConfig
+		expectedStats   string
+		expectedProm    string
+		expectedHealthz string
 	}{
 		// 0
 		{},
@@ -5472,11 +5472,11 @@ func TestStats(t *testing.T) {
 		},
 		// 4
 		{
-			healtz: hatypes.HealthzConfig{
+			healthz: hatypes.HealthzConfig{
 				BindIP: "127.0.0.1",
 				Port:   10253,
 			},
-			expectedHealtz: "127.0.0.1:10253",
+			expectedHealthz: "127.0.0.1:10253",
 		},
 		// 5
 		{
@@ -5497,12 +5497,12 @@ frontend prometheus
 		c := setup(t)
 		c.config.Global().Stats = test.stats
 		c.config.Global().Prometheus = test.prom
-		c.config.Global().Healthz = test.healtz
+		c.config.Global().Healthz = test.healthz
 		if test.expectedStats == "" {
 			test.expectedStats = "\n    bind :0"
 		}
-		if test.expectedHealtz == "" {
-			test.expectedHealtz = ":0"
+		if test.expectedHealthz == "" {
+			test.expectedHealthz = ":0"
 		}
 		c.Update()
 		c.checkConfig(`
@@ -5518,7 +5518,7 @@ listen stats
     stats show-legends` + test.expectedProm + `
 frontend healthz
     mode http
-    bind ` + test.expectedHealtz + `
+    bind ` + test.expectedHealthz + `
     monitor-uri /healthz
     http-request use-service lua.send-404
     no log

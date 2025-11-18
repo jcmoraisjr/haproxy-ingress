@@ -89,7 +89,7 @@ Breaking backward compatibility from v0.13:
 
 * Default `auth-tls-strict` configuration key value changed from `false` to `true`. This update will change the behavior of misconfigured client auth configurations: when `false` misconfigured mTLS send requests to the backend without any authentication, when `true` misconfigured mTLS will always fail the request. See also the [auth TLS documentation](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#auth-tls).
 * `auth-tls-verify-client`, when configured as `optional_no_ca`, used to validate client certificates against the configured CA bundle. This happens on controller versions from v0.8 to v0.13. Since v0.14 `optional_no_ca` will bypass certificate validation. Change `auth-tls-verify-client` to `optional` in order to preserve the old behavior.
-* Default `--watch-gateway` command-line option changed from `false` to `true`. On v0.13 this option can only be enabled if the Gateway API CRDs are installed, otherwise the controller would refuse to start. Since v0.14 the controller will always check if the CRDs are installed. This will change the behavior on clusters that has Gateway API resources and doesn't declare the command-line option: v0.13 would ignore the resources and v0.14 would find and apply them. See also the [watch gateway documentation](https://haproxy-ingress.github.io/v0.14/docs/configuration/command-line/#watch-gateway).
+* Default `--watch-gateway` command-line option changed from `false` to `true`. On v0.13 this option can only be enabled if the Gateway API CRDs are installed; otherwise, the controller would refuse to start. Since v0.14 the controller will always check if the CRDs are installed. This will change the behavior on clusters that has Gateway API resources and doesn't declare the command-line option: v0.13 would ignore the resources and v0.14 would find and apply them. See also the [watch gateway documentation](https://haproxy-ingress.github.io/v0.14/docs/configuration/command-line/#watch-gateway).
 * All the response payload managed by the controller using Lua script was rewritten in a backward compatible behavior, however deployments that overrides the `services.lua` script might break. See the [HTTP Responses](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#http-response) documentation on how to customize HTTP responses using controller's configuration keys.
 * Two frontends changed their names, which can break deployments that uses the frontend name on metrics, logging, or in the `config-proxy` global configuration key. Frontends changed are: `_front_https`, changed its name to `_front_https__local` if at least one ssl-passthrough is configured, and `_front__auth`, changed its default value to `_front__auth__local`. These changes were made to make the metric's dashboard consistent despite the ssl-passthrough configuration. See the new [metrics example page](https://haproxy-ingress.github.io/v0.14/docs/examples/metrics/) and update your dashboard if using HAProxy Ingress' one.
 
@@ -260,14 +260,14 @@ Chart improvements since `v0.14.7`:
 This release updates the embedded haproxy version, and fixes some issues found in the v0.14 branch:
 
 - Julien fixed the Vary response header, from Cors, when the backend server returns two or more headers
-- tomklapka and Jan implemented a more fine grained response from Coraza WAF
-- HAProxy process, when embedded and in master-worker mode, was being prematurelly stopped on rolling updates because it was configured in the same pid group of the controller
-- Fix backend selection, when a more generic wildcard hostname was being incorrectly chosen, and it colides with a more specific one which uses mTLS
+- tomklapka and Jan implemented a more fine-grained response from Coraza WAF
+- HAProxy process, when embedded and in master-worker mode, was being prematurely stopped on rolling updates because it was configured in the same pid group of the controller
+- Fix backend selection, when a more generic wildcard hostname was being incorrectly chosen, and it collides with a more specific one which uses mTLS
 - Secure backend configuration, like backend protocol and client side mTLS, can now be configured globally for all ingress resources
 - Auth external configuration can now be configured globally
 - Make sure https redirect happens before path redirect when `app-root` is configured
 - Added the steps to configure the embedded HAProxy process to log to stdout, along with controller, useful on dev or small test environments. See [doc](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#syslog)
-- Added two distinct helm configurations on the getting started guide: one that uses a service load balancer, another one that uses http/s ports assigned to the cluster nodes. See [doc](https://haproxy-ingress.github.io/v0.14/docs/getting-started/)
+- Added two distinct helm configurations on the getting started guide: one that uses a service load balancer, another one that uses http(s) ports assigned to the cluster nodes. See [doc](https://haproxy-ingress.github.io/v0.14/docs/getting-started/)
 
 Dependencies:
 
@@ -539,9 +539,9 @@ New features and improvements since `v0.14.0`:
 
 This is the first v0.14 release graduated as GA, which adds these major improvements since v0.13:
 
-- [Coraza](https://coraza.io/) Web Application Firewall (WAF) support, see the example page [here](https://haproxy-ingress.github.io/v0.14/docs/examples/modsecurity/#using-coraza-instead-of-modsecurity).
-- Customization of all HAProxy generated response payload, see the documentation [here](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#http-response).
-- Gateway API support improvement - although we're not fully compliant yet, see the documentation [here](https://haproxy-ingress.github.io/v0.14/docs/configuration/gateway-api/).
+- [Coraza](https://coraza.io/) Web Application Firewall (WAF) support, see the [example page](https://haproxy-ingress.github.io/v0.14/docs/examples/modsecurity/#using-coraza-instead-of-modsecurity).
+- Customization of all [HAProxy generated response payload](https://haproxy-ingress.github.io/v0.14/docs/configuration/keys/#http-response).
+- [Gateway API support improvement](https://haproxy-ingress.github.io/v0.14/docs/configuration/gateway-api/) - although we're not fully compliant yet.
 
 The following improvements have been made since the last beta version:
 

@@ -28,7 +28,7 @@
 --
 -- SPDX-License-Identifier: Apache-2.0
 
-local _author = "Adis Nezirovic <anezirovic@haproxy.com>"
+local _author = "Adis Nezirović <anezirovic@haproxy.com>"
 local _copyright = "Copyright 2017-2020. HAProxy Technologies, LLC."
 local _version = "1.0.0"
 
@@ -342,7 +342,7 @@ function M.request.parse(applet)
 
     self.cookies = parse_request_cookies(self.headers["cookie"])
 
-    -- TODO: Patch ApletHTTP and add schema of request
+    -- TODO: Patch AppletHTTP and add schema of request
     local schema = applet.schema or "http"
     local url = {schema, "://", self.headers["host"], applet.path}
 
@@ -753,7 +753,7 @@ M.base64 = {}
 
 --- URL safe base64 encoder
 --
--- Padding ('=') is omited, as permited per RFC
+-- Padding ('=') is omitted, as permitted per RFC
 --   https://tools.ietf.org/html/rfc4648
 -- in order to follow JSON Web Signature RFC
 --   https://tools.ietf.org/html/rfc7515

@@ -4,7 +4,7 @@ An example configuration to proxy a TCP service with haproxy-ingress.
 
 ## Setup
 
-First, setup a kind cluster using the [example config](kind.yaml):
+First, set up a kind cluster using the [example config](kind.yaml):
 
 ```sh
 kind create cluster --config kind.yaml
@@ -60,7 +60,7 @@ The important parts:
 
 The list in `controller.tcp` is used to add ports to the service in front of your haproxy-ingress daemonset (or deployment).
 
-In contrast to our example above, the service should not be of type `ClusterIP` and should to be backed by a e.g. a cloud loadbalancer.
+In contrast to our example above, the service should not be of type `ClusterIP` and should to be backed by, e.g., a cloud loadbalancer.
 
 You can inspect the service with `kubectl` to ensure all relevant ports are assigned:
 

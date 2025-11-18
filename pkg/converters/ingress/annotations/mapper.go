@@ -225,7 +225,7 @@ func (cv *ConfigValue) NamespacedName() (namespace, name string, err error) {
 
 	value := strings.Split(cv.Value, "/")
 	if len(value) > 2 {
-		return "", "", fmt.Errorf("unpexpected format for resource name: %s", cv.Value)
+		return "", "", fmt.Errorf("unexpected format for resource name: %s", cv.Value)
 	}
 	if len(value) == 2 {
 		return value[0], value[1], nil

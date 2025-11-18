@@ -101,7 +101,7 @@ func CreateInstance(logger types.Logger, options InstanceOptions) Instance {
 
 type instance struct {
 	up          bool
-	embdStart   sync.Once
+	embedStart  sync.Once
 	waitProc    chan struct{}
 	failedSince *time.Time
 	logger      types.Logger
@@ -586,7 +586,7 @@ type httpResponseOverride struct {
 }
 
 // buildCustomHTTPResponses converts all the custom HTTP responses from Global, Host and Backend
-// into a list grouped by the response code, which is the way the templates consume them.
+// into a list grouped by the response code, which is the way that templates consume them.
 func (i *instance) buildCustomHTTPResponses() (responsesList []httpResponseOverride) {
 	responsesMap := make(map[string]httpResponseOverride)
 	addHa := func(id string, ha hatypes.HTTPResponse) {
@@ -722,7 +722,7 @@ func (i *instance) reloadEmbeddedDaemon() error {
 }
 
 func (i *instance) reloadEmbeddedMasterWorker() error {
-	i.embdStart.Do(func() {
+	i.embedStart.Do(func() {
 		go func() {
 			defer close(i.waitProc)
 			wait.UntilWithContext(i.options.StopCtx, i.startHAProxySync, 4*time.Second)

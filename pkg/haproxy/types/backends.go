@@ -64,7 +64,7 @@ func (b *Backends) Clear() {
 		if len(nb.shards[i]) > 0 {
 			// flag only shards with at least one backend associated,
 			// so it has the chance to be updated (removed or cleaned)
-			// in the case the new state doesn't add any backend to it.
+			// in the case that the new state doesn't add any backends.
 			b.backendShardChanged(i)
 		}
 	}

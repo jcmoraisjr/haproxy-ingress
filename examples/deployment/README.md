@@ -75,8 +75,7 @@ configmap "haproxy-ingress" created
 A ConfigMap is used to provide global or default configuration like
 timeouts, SSL/TLS settings, a syslog service endpoint and so on. The
 ConfigMap can be edited or replaced later in order to apply new
-configuration on a running ingress controller. All supported options
-are [here](https://github.com/jcmoraisjr/haproxy-ingress#configmap).
+configuration on a running ingress controller. See the [list of supported options](https://github.com/jcmoraisjr/haproxy-ingress#configmap).
 
 ## RBAC Authorization
 

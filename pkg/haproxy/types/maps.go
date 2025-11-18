@@ -100,7 +100,7 @@ func convertWildcardToRegex(hostname string) (h string, hasWildcard bool) {
 }
 
 // convertPathToRegex converts a path of any match type that
-// needs to be added to a regex list, eg when a alias regex
+// needs to be added to a regex list, eg when an alias regex
 // or a wildcard hostname is used.
 //
 // regex has an implicit starting `^` char due to ingress path
@@ -128,7 +128,7 @@ func convertPathToRegex(path *Path) string {
 func (hm *HostsMap) addTarget(hostname, path string, headers []HTTPMatch, order int, target string, match MatchType) {
 	hostname = strings.ToLower(hostname)
 	if match == MatchBegin {
-		// this is the only match that uses case insensitive path
+		// this is the only match that uses case-insensitive path
 		path = strings.ToLower(path)
 	}
 	entry := &HostsMapEntry{

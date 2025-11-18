@@ -12,7 +12,7 @@ The following sections walk through steps to have HAProxy Ingress working, watch
 
 HAProxy Ingress needs a running Kubernetes cluster. Controller version v0.16 needs Kubernetes 1.21 or newer, see other supported versions in the [README](https://github.com/jcmoraisjr/haproxy-ingress/#use-haproxy-ingress) file. HAProxy Ingress also works fine on local k8s deployments like [minikube](https://minikube.sigs.k8s.io), [kind](https://kind.sigs.k8s.io), [k3s](https://k3s.io), [k3d](https://k3d.io) or [colima](https://github.com/abiosoft/colima).
 
-An ingress controller works exposing internal services to the external world, so another pre-requisite is that at least one cluster node is accessible externally. On cloud environments, a cloud load balancer can be configured to reach the ingress controller nodes.
+An ingress controller works exposing internal services to the external world, so another prerequisite is that at least one cluster node is accessible externally. On cloud environments, a cloud load balancer can be configured to reach the ingress controller nodes.
 
 HAProxy Ingress uses [TLS SNI extension](https://en.wikipedia.org/wiki/Server_Name_Indication) and the [Host header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Host) to associate requests and ingress' `host`s. The easiest way to accomplish this on local environment is using [nip.io](https://nip.io). A production environment should consider a [dynamic DNS](https://en.wikipedia.org/wiki/Dynamic_DNS) solution or a [wildcard DNS record](https://en.wikipedia.org/wiki/Wildcard_DNS_record).
 
@@ -20,7 +20,7 @@ HAProxy Ingress uses [TLS SNI extension](https://en.wikipedia.org/wiki/Server_Na
 
 HAProxy Ingress uses [Helm](https://helm.sh) chart to install and configure the controller. See below some deployment instructions:
 
-1. Install `helm`, HAProxy Ingress requires version 3. See the installation instructions [here](https://helm.sh/docs/intro/install/).
+1. Install `helm`, HAProxy Ingress requires version 3. See the [installation instructions](https://helm.sh/docs/intro/install/).
 
 1. Add the HAProxy Ingress' Helm repository. This will instruct Helm to find all available packages:
 
@@ -88,7 +88,7 @@ HAProxy Ingress' Helm chart has a few more configuration options, see all of the
 
 ## Deploy and expose
 
-The following steps deploy an echoserver image and exposes it in the current namespace using an Ingress resource. See [here]({{% relref "/docs/configuration/gateway-api" %}}) how to expose using Gateway API.
+The following steps deploy an echoserver image and exposes it in the current namespace using an Ingress resource. Learn how to expose using [Gateway API]({{% relref "/docs/configuration/gateway-api" %}}).
 
 1. Create the echoserver's deployment and service:
 
@@ -107,7 +107,7 @@ The following steps deploy an echoserver image and exposes it in the current nam
 
 1. Make HAProxy Ingress expose the echoserver service. Change `echoserver.local` value in the `--rule` option below to a hostname that resolves to an ingress controller node.
 
-    > Obs.: `nip.io` is a convenient service which converts a valid domain name to any IP, either public or local. See [here](https://nip.io) how it works.
+    > Obs.: [`nip.io`](https://nip.io) is a convenient service which converts a valid domain name to an IP, either public or local.
 
     ```
     $ kubectl --namespace default create ingress echoserver \

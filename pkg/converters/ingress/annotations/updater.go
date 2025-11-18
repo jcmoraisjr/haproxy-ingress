@@ -93,9 +93,9 @@ type backData struct {
 	vars    map[string]string
 }
 
-func buildPeersTableName(group, besuffix string) string {
+func buildPeersTableName(group, beSuffix string) string {
 	// keep in mind that this logic is also implemented on haproxy.tmpl and peers.lua.tmpl.
-	return fmt.Sprintf("%s%s_%s", hatypes.PeersTableNamePrefix, group, besuffix)
+	return fmt.Sprintf("%s%s_%s", hatypes.PeersTableNamePrefix, group, beSuffix)
 }
 
 var regexValidTime = regexp.MustCompile(`^[0-9]+(us|ms|s|m|h|d)$`)

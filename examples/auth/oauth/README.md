@@ -21,7 +21,7 @@ his email to the application.
 If the user authenticate and authorize to share his email address, the provider
 will redirect back to the application and the oauth2 proxy will provide a signed
 token to the user. If the cookie expires, is removed or its token has an invalid
-signature, the OAuth provider will be used again, otherwise only the local oauth2
+signature, the OAuth provider will be used again; otherwise, only the local oauth2
 proxy is used.
 
 The whole process is transparent to the application, all the access control is

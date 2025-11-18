@@ -251,7 +251,7 @@ Configuration keys from this scope are applied per HAProxy frontend, so it is al
 
 Frontend scoped keys can be declared in global or IngressClass related ConfigMaps as default values, or in any Ingress resource for a more granular configuration. They can conflict since they can be configured via Ingress resource.
 
-When a frontend scoped key is used as an annotation, they should always be configured along with both `http-port` and `https-port`, and those ports should have a distinct value from the global one, otherwise the global and frontend scoped configurations will conflict.
+When a frontend scoped key is used as an annotation, they should always be configured along with both `http-port` and `https-port`, and those ports should have a distinct value from the global one; otherwise, the global and frontend scoped configurations will conflict.
 
 ### Host
 
@@ -540,14 +540,14 @@ Supported acme configuration keys:
 * `acme-expiring`: how many days before expiring a certificate should be considered old and should be updated. Defaults to `30` days.
 * `acme-preferred-chain`: optional, defines the Issuer's CN (Common Name) of the topmost certificate in the chain, if the acme server offers multiple certificate chains. The default certificate chain will be used if empty or no match is found. Note that changing this option will not force a new certificate to be issued if a valid one is already in place and actual and preferred chains differ. A new certificate can be emitted by changing the secret name in the ingress resource, or removing the secret being referenced.
 * `acme-shared`: defines if another certificate signer is running in the cluster. If `false`, the default value, any request to `/.well-known/acme-challenge/` is sent to the local acme server despite any ingress object configuration. Otherwise, if `true`, a configured ingress object would take precedence.
-* `acme-terms-agreed`: mandatory, it should be defined as `true`, otherwise certificates won't be issued.
+* `acme-terms-agreed`: mandatory, it should be defined as `true`; otherwise, certificates won't be issued.
 * `cert-signer`: defines the certificate signer that should be used to authorize and sign new certificates. The only supported value is `"acme"`. Add this config as an annotation in the ingress object that should have its certificate managed by haproxy-ingress and signed by the configured acme environment. The annotation `kubernetes.io/tls-acme: "true"` is also supported if the command-line option `--acme-track-tls-annotation` is used.
 
 **Minimum setup**
 
 The command-line option `--acme-server` need to be declared to start the local
-server and the work queue used to authorize and sign new certificates. See other
-command-line options [here]({{% relref "command-line/#acme" %}}).
+server and the work queue used to authorize and sign new certificates. See [other
+command-line options]({{% relref "command-line/#acme" %}}).
 
 The following configuration keys are mandatory: `acme-emails`, `acme-endpoint`,
 `acme-terms-agreed`.
@@ -618,9 +618,9 @@ See also:
 
 Configure if HAProxy should maintain client requests to the same backend server.
 
-* `affinity`: the only supported option is `cookie`. If declared, clients will receive a cookie with a hash of the server it should be fidelized to.
+* `affinity`: the only supported option is `cookie`. If declared, clients will receive a cookie with a hash of the backend server to enable persistent connections to it. If the backend server cannot be found or reached, haproxy takes the load balance algorithm route and chooses another one, and the cookie value is updated accordingly.
 * `cookie-key`: defines a secret key used with the IP address and port number of a backend server to dynamically create a cookie to that server. Defaults to `Ingress` if not provided.
-* `session-cookie-domain`: configures the domain to which the persistence cookie should be sent. All subdomains of the configured domain will also receive the cookie. The ingress' hostname must match this configuration, or should be a subdomain, otherwise modern browsers will refuse to accept the cookie. E.g. if the ingress is configured as `sub.example.com`, the `session-cookie-domain` value must be only `sub.example.com` or `example.com`. If `example.com` is used, all of its subdomains will receive the cookie. This option has precedence over `session-cookie-shared`. Note that, although hostname related, this is a backend scoped configuration key, so the configuration will conflict if used in two or more distinct ingress, with distinct values, pointing to the same Kubernetes service. See [backend scope](#backend) for further information about configuration conflict.
+* `session-cookie-domain`: configures the domain to which the persistence cookie should be sent. All subdomains of the configured domain will also receive the cookie. The ingress' hostname must match this configuration, or should be a subdomain; otherwise, modern browsers will refuse to accept the cookie. E.g. if the ingress is configured as `sub.example.com`, the `session-cookie-domain` value must be only `sub.example.com` or `example.com`. If `example.com` is used, all of its subdomains will receive the cookie. This option has precedence over `session-cookie-shared`. Note that, although hostname related, this is a backend scoped configuration key, so the configuration will conflict if used in two or more distinct ingress, with distinct values, pointing to the same Kubernetes service. See [backend scope](#backend) for further information about configuration conflict.
 * `session-cookie-dynamic`: indicates whether or not dynamic cookie value will be used. With the default of `true`, a cookie value will be generated by HAProxy using a hash of the server IP address, TCP port, and dynamic cookie secret key. When `false`, the server name will be used as the cookie name. Note that setting this to `false` will have no impact if [use-resolver](#dns-resolvers) is set.
 * `session-cookie-keywords`: additional options to the `cookie` option like `nocache`, `httponly`. For the sake of backwards compatibility the default is `indirect nocache httponly` if not declared and `strategy` is `insert`.
 * `session-cookie-name`: the name of the cookie. `INGRESSCOOKIE` is the default value if not declared.
@@ -801,8 +801,8 @@ See also:
 
 Configures External Authentication options.
 
-* `auth-url`: Configures the endpoint(s) of the authentication service. All requests made to the target backend server will be validated by the authentication service before continue, which should respond with `2xx` HTTP status code, otherwise the request is considered as failed. In the case of a failure, the backend server is not used and the client receives the response from the authentication service.
-* `auth-external-placement`: Defines where the external service call should be configured. Options are `backend` and `frontend`. Default value is `backend` and this is the value that has the better performance. Use `frontend` if the external service create HTTP headers used on early stages, e.g. [HTTP header routing constraints](#http-match). Note that placing the external authentication configuration in the frontend comes with a performance penalty, because all the incomming requests will need to evaluate the ACLs of this configuration. Avoid placing too much (dozens) paths in the frontend on high loaded proxies.
+* `auth-url`: Configures the endpoint(s) of the authentication service. All requests made to the target backend server will be validated by the authentication service before continue, which should respond with `2xx` HTTP status code; otherwise, the request is considered as failed. In the case of a failure, the backend server is not used and the client receives the response from the authentication service.
+* `auth-external-placement`: Defines where the external service call should be configured. Options are `backend` and `frontend`. Default value is `backend` and this is the value that has the better performance. Use `frontend` if the external service create HTTP headers used on early stages, e.g. [HTTP header routing constraints](#http-match). Note that placing the external authentication configuration in the frontend comes with a performance penalty, because all the incoming requests will need to evaluate the ACLs of this configuration. Avoid placing too much (dozens) paths in the frontend on high loaded proxies.
 * `auth-method`: Configures the HTTP method used in the request to the external authentication service. Use an asterisk `*` to copy the same method used in the client request. The default value is `GET`.
 * `auth-headers-request`: Configures a comma-separated list of header names that should be copied from the client to the authentication service. All HTTP headers will be copied if not declared.
 * `auth-headers-succeed`: Configures a comma-separated list of header names that should be copied from the authentication service to the backend server if the authentication succeed. All HTTP headers will be copied if not declared.
@@ -916,7 +916,7 @@ See also:
 | `backend-protocol` | `Backend` | `h1`    | v0.9  |
 
 Defines the HTTP protocol version of the backend. Note that HTTP/2 is only supported if HTX is enabled.
-A case insensitive match is used, so either `h1` or `H1` configures HTTP/1 protocol. A non SSL/TLS
+A case-insensitive match is used, so either `h1` or `H1` configures HTTP/1 protocol. A non SSL/TLS
 configuration does not overrides [secure-backends](#secure-backend), so `h1` and secure-backends `true`
 will still configure SSL/TLS.
 
@@ -1357,8 +1357,8 @@ Annotations:
 Configuration of connection limits.
 
 * `max-connections`: Define the maximum concurrent connections on all proxies. Defaults to `2000` connections, which is also the HAProxy default configuration.
-* `maxconn-server`: Defines the maximum concurrent connections each server of a backend should receive. If not specified or a value lesser than or equal zero is used, an unlimited number of connections will be allowed. When the limit is reached, new connections will wait on a queue.
-* `maxqueue-server`: Defines the maximum number of connections should wait in the queue of a server. When this number is reached, new requests will be redispatched to another server, breaking sticky session if configured. The queue will be unlimited if the annotation is not specified or a value lesser than or equal to zero is used.
+* `maxconn-server`: Defines the maximum concurrent connections each server of a backend should receive. If not specified or a value less than or equal zero is used, an unlimited number of connections will be allowed. When the limit is reached, new connections will wait on a queue.
+* `maxqueue-server`: Defines the maximum number of connections should wait in the queue of a server. When this number is reached, new requests will be redispatched to another server, breaking sticky session if configured. The queue will be unlimited if the annotation is not specified or a value less than or equal to zero is used.
 
 See also:
 
@@ -1381,11 +1381,11 @@ See also:
 | `cors-expose-headers`    | `Path` |              | v0.8  |
 | `cors-max-age`           | `Path` | `86400`      |       |
 
-Add CORS headers on OPTIONS http command (preflight) and reponses.
+Add CORS headers on OPTIONS http command (preflight) and responses.
 
 * `cors-enable`: Enable CORS if defined as `true`.
-* `cors-allow-origin`: Optional, configures `Access-Control-Allow-Origin` header which defines the URL that may access the resource. Defaults to `*`. This option accepts a comma-separated list of origins, the response will be dynamically built based on the `Origin` request header. If `Origin` belogs to the list, its content will be sent back to the client in the `Access-Control-Allow-Origin` header, otherwise the first item of the list will be used.
-* `cors-allow-origin-regex`: Optional, like `cors-allow-origin` but with regex matching. Defaults to empty. This option accepts a space-separated list of origin regexes, the response will be dynamically built based on the `Origin` request header. If `Origin` matches any regex in the list, its content will be sent back to the client in the `Access-Control-Allow-Origin` header, otherwise `cors-allow-origin` will be considered. This is why you **must also set** `cors-allow-origin` (probably to something other than `*`) when using this option.
+* `cors-allow-origin`: Optional, configures `Access-Control-Allow-Origin` header which defines the URL that may access the resource. Defaults to `*`. This option accepts a comma-separated list of origins, the response will be dynamically built based on the `Origin` request header. If `Origin` belongs to the list, its content will be sent back to the client in the `Access-Control-Allow-Origin` header; otherwise, the first item of the list will be used.
+* `cors-allow-origin-regex`: Optional, like `cors-allow-origin` but with regex matching. Defaults to empty. This option accepts a space-separated list of origin regexes, the response will be dynamically built based on the `Origin` request header. If `Origin` matches any regex in the list, its content will be sent back to the client in the `Access-Control-Allow-Origin` header; otherwise, `cors-allow-origin` will be considered. This is why you **must also set** `cors-allow-origin` (probably to something other than `*`) when using this option.
 * `cors-allow-methods`: Optional, configures `Access-Control-Allow-Methods` header which defines the allowed methods. Default value is `GET, PUT, POST, DELETE, PATCH, OPTIONS`.
 * `cors-allow-headers`: Optional, configures `Access-Control-Allow-Headers` header which defines the allowed headers. Default value is `DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization`.
 * `cors-allow-credentials`: Optional, configures `Access-Control-Allow-Credentials` header which defines whether or not credentials (cookies, authorization headers or client certificates) should be exposed. Defaults to `true`.
@@ -1408,7 +1408,7 @@ See also:
 Define how processes/threads map to CPUs. The default value is generated based
 on [nbthread](#nbthread) and [nbproc](#nbproc).
 
-* `cpu-map`: Custom override specifying the cpu mapping behaviour in the format described [here](https://docs.haproxy.org/2.8/configuration.html#3.1-cpu-map).
+* `cpu-map`: Custom override specifying the [cpu mapping behaviour](https://docs.haproxy.org/2.8/configuration.html#3.1-cpu-map).
 * `use-cpu-map`: Set to `false` to prevent any cpu mapping
 
 See also:
@@ -1486,7 +1486,7 @@ The following keys are supported:
 * `use-resolver`: Name of the resolver that the backend should use
 
 {{< alert title="Important advices" >}}
-* Use resolver with **headless** services, see [k8s doc](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services), otherwise HAProxy will reference the service IP instead of the endpoints.
+* Use resolver with **headless** services, see [k8s doc](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services); otherwise, HAProxy will reference the service IP instead of the endpoints.
 * Beware of DNS cache, eg kube-dns has `--max-ttl` and `--max-cache-ttl` to change its default cache of `30s`.
 {{< /alert >}}
 
@@ -1595,7 +1595,7 @@ See also:
 
 Configures FastCGI applications.
 
-* `fcgi-enabled-apps`: Comma separated list of haproxy's fcgi-app sections already declared via `config-sections` configuration key. Only these app identifiers are allowed to be used by backends. If ommited, defaults to allow all configured fcgi-app sections.
+* `fcgi-enabled-apps`: Comma separated list of haproxy's fcgi-app sections already declared via `config-sections` configuration key. Only these app identifiers are allowed to be used by backends. If omitted, defaults to allow all configured fcgi-app sections.
 * `fcgi-app`: Defines the haproxy's fcgi-app section a backend should use. It must be one of the apps in `fcgi-enabled-apps` if configured, or any of the declared ones in `config-sections` otherwise. `fcgi-app` is a mandatory configuration if fcgi server protocol is used, either declaring as an annotation along with the protocol itself, or as a global configuration that should be inherited by all FastCGI backends.
 
 FastCGI related configurations are only used on backends whose server protocol is configured as fcgi, they are ignored otherwise.
@@ -1761,7 +1761,7 @@ See also:
 
 Add HTTP constraints for request routing.
 
-* `http-header-match`: Add HTTP header with exact match, one header name and value pair per line. The first white space, or colon followed by an optional white space, separates the header name and the match value. the header name is case insensitive while the value is case sensitive.
+* `http-header-match`: Add HTTP header with exact match, one header name and value pair per line. The first white space, or colon followed by an optional white space, separates the header name and the match value. the header name is case-insensitive while the value is case-sensitive.
 * `http-header-match-regex`: Same as `http-header-match` but using regex match. Anchors are not added, so the value `bar` would match with `foobar` and `barbaz`, while `^bar` would only match with `barbaz`.
 
 More than one annotation can be used at the same time, and more than one match can be used in the same annotation. All the matches from all the annotations will be grouped together, and all of them must evaluate to true in order to the request be accepted and sent to the backend.
@@ -1770,7 +1770,7 @@ Note that any match that potentially changes the backend of a request, like HTTP
 
 **Examples**
 
-Match the header `X-Env` with value `staging` - header name is case insensitive, header value is case sensitive:
+Match the header `X-Env` with value `staging` - header name is case-insensitive, header value is case-sensitive:
 
 ```yaml
     annotations:
@@ -1857,7 +1857,7 @@ Some general hints about response overwriting:
 
 * Do not create huge responses, the whole overwrite must fit into the internal buffer, which is 16k by default, leaving some room to configured downstream rules to operate. See [HAProxy's errorfile doc](https://docs.haproxy.org/2.8/configuration.html#4-errorfile).
 * Take care with external links, e.g. the overwrite of a 503 error page might lead to another 503 error.
-* Only add the status code line if changing the code, otherwise let the controller configure with default values.
+* Only add the status code line if changing the code; otherwise, let the controller configure with default values.
 * A missing status code and status reason will lead to default values, but missing headers and missing body will lead to, respectively, only the `content-length` header and an empty body.
 * Always add at least the HTTP header `content-type` with the correct value.
 * The HTTP header `content-length` will be overwritten if used.
@@ -1935,7 +1935,7 @@ Change the default value to a higher number, eg `100`, if using with
 [`agent-check`](#agent-check) and the agent is used to change the weight of the server.
 
 Blue/green on `deploy` mode also uses `initial-weight` as its minimum weight value,
-provided that the maximum is lesser than or equal `256`.
+provided that the maximum is less than or equal `256`.
 
 See also:
 
@@ -2073,7 +2073,7 @@ The following keys are supported:
 * `modsecurity-timeout-idle`: Defines the maximum time to wait before close an idle connection. Default value is `30s`.
 * `modsecurity-timeout-processing`: Defines the maximum time to wait for the whole ModSecurity processing. Default value is `1s`.
 * `modsecurity-timeout-server`: Defines the maximum time to wait for an agent response. Configures the haproxy's timeout server. Defaults to `5s` if not configured.
-* `modsecurity-use-coraza`: Defines whether the generated SPOE config should include Coraza-specific values. In order to use Coraza instead of Modsecurity, you must set this to "true" and also set `modsecurity-args` based on the instructions in the [coraza-spoa repository](https://github.com/corazawaf/coraza-spoa). A full example can be found [here]({{% relref "../examples/modsecurity#using-coraza-instead-of-modsecurity" %}}).
+* `modsecurity-use-coraza`: Defines whether the generated SPOE config should include Coraza-specific values. In order to use Coraza instead of Modsecurity, you must set this to "true" and also set `modsecurity-args` based on the instructions in the [coraza-spoa repository](https://github.com/corazawaf/coraza-spoa). See a [full example using coraza instead of modsecurity]({{% relref "../examples/modsecurity#using-coraza-instead-of-modsecurity" %}}).
 
 See also:
 
@@ -2168,7 +2168,7 @@ Since v0.13 these same options can be used with [Auth External](#auth-external) 
 * `auth-signin: "https://<hostname>/oauth2/start?rd=%[path]"` - the content is parsed by haproxy as a [log-format](https://docs.haproxy.org/2.8/configuration.html#8.2.4) string and the result is copied verbatim to the `Location` header of a HTTP 302 response. The `rd` query field asks oauth2-proxy to preserve the path provided by the client.
 * `auth-headers-succeed: "X-Auth-Request-Email"` - copy the `X-Auth-Request-Email` HTTP header with the user email from oauth2-proxy to the backend server.
 
-Configure oauth2 on a distinct ingress, without the `auth-url` annotation, otherwise it will endless loop in a HTTP 403 error.
+Configure oauth2 on a distinct ingress, without the `auth-url` annotation; otherwise, it will endless loop in a HTTP 403 error.
 
 See also:
 
@@ -2569,7 +2569,7 @@ See also:
 
 Configure hostname alias. All annotations will be combined together with the host
 attribute in the same ACL, and any of them might be used to match SNI extensions
-(TLS) or Host HTTP header. The matching is case insensitive.
+(TLS) or Host HTTP header. The matching is case-insensitive.
 
 * `server-alias`: Defines an alias with hostname-like syntax. On v0.6 and older, wildcard `*` wasn't converted to match a subdomain. Regular expression was also accepted but dots were escaped, making this alias less useful as a regex. Starting v0.7 the same hostname syntax is used, so `*.my.domain` will match `app.my.domain` but won't match `sub.app.my.domain`.
 * `server-alias-regex`: Only in v0.7 and newer. Match hostname using a POSIX extended regular expression. The regex will be used verbatim, so add `^` and `$` if strict hostname is desired and escape `\.` dots in order to strictly match them. Some HTTP clients add the port number in the Host header, so remember to add `(:[0-9]+)?$` in the end of the regex if a dollar sign `$` is being used to match the end of the string.
@@ -2918,7 +2918,7 @@ TLS configuration is also applied to the TCP service if configured, making HAPro
 {{< alert title="Note" >}}
 Note that hostname based selection relies on SNI, so it works only on TLS requests. The encrypted content can be offloaded either by HAProxy, providing the hostname in `.spec.rules[].host` and `.spec.tls`, or offloaded by the backend server, providing the hostname only in `.spec.rules[].host`. Non TLS content cannot be multiplexed on the same TCP port for more than one backend.
 
-Note also that, in the case a hostname does not match, HAProxy will select a backend only if `.spec.defaultBackend` or an empty `.spec.rules[].host` is configured, otherwise the connection is closed without a response.
+Note also that, in the case that a hostname does not match, HAProxy will select a backend only if `.spec.defaultBackend` or an empty `.spec.rules[].host` is configured; otherwise, the connection is closed without a response.
 {{< /alert >}}
 
 Every TCP service port creates a dedicated haproxy frontend that can be [customized](#configuration-snippet) in three distinct ways:

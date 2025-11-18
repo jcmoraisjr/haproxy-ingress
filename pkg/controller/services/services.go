@@ -77,7 +77,7 @@ func (s *Services) setup(ctx context.Context) error {
 	sslCerts := CreateSSLCerts(cfg)
 	fakeCrt, fakeCA, err := sslCerts.createFakeCertAndCA()
 	if err != nil {
-		return fmt.Errorf("error generating self signed fake certificate and certificate authority: %w", err)
+		return fmt.Errorf("error generating self-signed fake certificate and certificate authority: %w", err)
 	}
 	dynConfig := &convtypes.DynamicConfig{
 		StaticCrossNamespaceSecrets: cfg.AllowCrossNamespace,
@@ -317,6 +317,6 @@ func (s *Services) reloadHAProxy(context.Context, any) error {
 		reloadlogger.Info("finish haproxy reload")
 	}
 	// return err!=nil adds another event into the queue, we're reloading manually
-	// in the case an error happens in order to override the rate limit of the reload queue.
+	// in the case when an error happens in order to override the rate limit of the reload queue.
 	return nil
 }

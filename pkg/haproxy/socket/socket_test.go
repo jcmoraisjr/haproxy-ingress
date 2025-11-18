@@ -38,7 +38,7 @@ func TestSocket(t *testing.T) {
 	//     listen l1
 	//         bind :8000
 	//         bind :8443 ssl crt /tmp/crt.pem
-	// create a self signed certificate:
+	// create a self-signed certificate:
 	//     openssl req -x509 -newkey rsa:2048 -subj /CN=localhost -nodes -out crt -keyout key
 	//     cat crt key >/tmp/crt.pem
 	//     rm crt key

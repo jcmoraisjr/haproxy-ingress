@@ -65,7 +65,7 @@ func RebalanceWeight(clusters []*WeightCluster, initialWeight int) {
 	}
 	// Agent works better if weight is `initial-weight` or
 	// at least the higher value weightFactor will let it to be
-	// weightFactorMin has how many times minWeight is lesser than `initial-weight`.
+	// weightFactorMin has how many times minWeight is less than `initial-weight`.
 	weightFactorMin := float32(initialWeight*gcdClusterWeight) / float32(minWeight)
 	// HAProxy weight must be between 0..256.
 	// weightFactor has how many times the max weight will be greater than 256.

@@ -558,7 +558,7 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 					host.inner.AddLink(backend, pathLink)
 				}
 			} else {
-				// regular http/s request, non ssl-passthrough
+				// regular http(s) request, non ssl-passthrough
 				host.AddLink(backend, pathLink)
 			}
 			// pre-building the auth-url backend
@@ -937,7 +937,7 @@ func (c *converter) addBackend(source *annotations.Source, pathLink *hatypes.Pat
 	if strings.Contains(hostname, ":") {
 		// TODO this is the wrong way to identify if this is a tcp service. But
 		// it works. There is a refactor to be made in some haproxy model types
-		// to better fit gateway api, this should help here, otherwise we'll
+		// to better fit gateway api, this should help here; otherwise, we'll
 		// need to evolve to an implementation that's not based on assumptions.
 		ctx = convtypes.ResourceHATCPService
 	}
@@ -974,7 +974,7 @@ func (c *converter) addBackend(source *annotations.Source, pathLink *hatypes.Pat
 	}
 	backend := c.haproxy.Backends().AcquireBackend(namespace, svcName, port.TargetPort.String())
 	c.tracker.TrackNames(source.Type, source.FullName(), convtypes.ResourceHABackend, backend.ID)
-	// TODO converg backend Port and DNSPort; see also tmpl's server-template
+	// TODO convert backend Port and DNSPort; see also tmpl's server-template
 	backend.DNSPort = readDNSPort(svc.Spec.ClusterIP == api.ClusterIPNone, port)
 	mapper, found := c.backendAnnotations[backend]
 	if !found {
@@ -997,7 +997,7 @@ func (c *converter) addBackend(source *annotations.Source, pathLink *hatypes.Pat
 	// Merging IngressClass Parameters with less priority
 	if ingressClass != nil {
 		if cfg := c.readParameters(ingressClass); cfg != nil {
-			// Using a work around to add a per resource default config:
+			// Using a workaround to add a per resource default config:
 			// we add IngressClass Parameters after service and ingress annotations,
 			// ignoring conflicts. This would really conflict with other Parameters
 			// only if the same host+path is declared twice, but such duplication is

@@ -104,7 +104,7 @@ func (c *converters) Sync() {
 		// We always need to run configmap based tcp sync, when configured, because
 		// we don't have any tracking in place asking us to do it on, e.g., endpoint
 		// or secret updates. Although cur is always assigned if configmap based tcp
-		// is configured, only new is assigned in the very first run. Otoh new is
+		// is configured, only new is assigned in the very first run. OTOH, new is
 		// only assigned when the configmap is changed. So we need to check both.
 		tcpSvcConverter := configmap.NewTCPServicesConverter(c.options, c.haproxy, changed)
 		tcpSvcConverter.Sync()

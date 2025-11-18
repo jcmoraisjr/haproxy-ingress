@@ -200,7 +200,7 @@ hostname, or the requested path doesn't match any location within the desired ho
 * `--default-ssl-certificate`
 
 Defines the `namespace/secretname` of the default certificate that should be used if ingress
-resources using TLS configuration doesn't provide it's own certificate.  A filename prefixed
+resources using TLS configuration doesn't provide its own certificate.  A filename prefixed
 with `file://` can be used, containing both certificate and private key in PEM format, eg
 `file:///dir/crt.pem`.
 
@@ -249,7 +249,7 @@ Services of type ExternalName uses DNS lookup to define the target server IP lis
 
 Since v0.11, deprecated since v0.15
 
-Disables in memory pod list and also pod watch for changes. Pod list and watch is used by the `drain-support` and `assign-backend-server-id` options, which will not work if pod list is disabled. Blue/green and `session-cookie-value-strategy` set to `pod-uid` also use pod list if enabled, otherwise k8s api is called if needed. The default value is `false`, which means pods will be watched and listed in memory. Since v0.15 all the listers are managed by controller-runtime, making this option deprecated.
+Disables in memory pod list and also pod watch for changes. Pod list and watch is used by the `drain-support` and `assign-backend-server-id` options, which will not work if pod list is disabled. Blue/green and `session-cookie-value-strategy` set to `pod-uid` also use pod list if enabled; otherwise, k8s api is called if needed. The default value is `false`, which means pods will be watched and listed in memory. Since v0.15 all the listers are managed by controller-runtime, making this option deprecated.
 
 ---
 
@@ -263,7 +263,7 @@ The ID to be used for electing ingress controller leader. A leader needs to be e
 * Embedded Acme signer, see [acme](#acme)
 * Gateway API, see [`--watch-gateway`](#watch-gateway)
 
-Election ID configuration has no efect if none of Ingress Status update, Embedded Acme signer, or Gateway API are enabled.
+Election ID configuration has no effect if none of Ingress Status update, Embedded Acme signer, or Gateway API are enabled.
 
 Since v0.15 a `%s` placeholder is used to define where the IngressClass value should be added to the election ID. Up to v0.14 the IngressClass was concatenated in the end of the provided value to compose the real election ID value. Ingress class is added to the election ID name to avoid conflict when two or more HAProxy Ingress controllers are running in the same cluster.
 
@@ -546,7 +546,7 @@ HAProxy should use. The following options are available:
 
 * `native`: Uses native HAProxy reload option `-sf`.
 * `reusesocket`: (starting on v0.6) Uses HAProxy `-x` command-line option to pass the listening sockets between old and new HAProxy process, allowing hitless reloads. This is the default option since v0.8.
-* `multibinder`: (deprecated on v0.6) Uses GitHub's [multibinder](https://github.com/github/multibinder). This [link](https://githubengineering.com/glb-part-2-haproxy-zero-downtime-zero-delay-reloads-with-multibinder/)
+* `multibinder`: (deprecated on v0.6) Uses GitHub's [multibinder](https://github.com/github/multibinder). [GLB part 2: HAProxy zero-downtime, zero-delay reloads with multibinder](https://githubengineering.com/glb-part-2-haproxy-zero-downtime-zero-delay-reloads-with-multibinder/)
 describes how it works.
 
 ---
@@ -633,7 +633,7 @@ Options:
 * `--healthz-port`: (deprecated since v0.15) Defines the port number haproxy-ingress should listen to. Use `--healthz-addr` instead. Defaults to `10254`.
 * `--profiling`: Configures if the profiling URI should be enabled. Defaults to `true`.
 * `--ready-check-path`: Defines the URL to be used as a readiness check for haproxy ingress. Defaults to `/readyz`.
-* `--stats-collect-processing-period`: Defines the interval between two consecutive readings of haproxy's `Idle_pct`, used to generate `haproxy_processing_seconds_total` metric. haproxy updates Idle_pct every `500ms`, which makes that the best configuration value, and it's also the default if not configured. Values higher than `500ms` will produce a less accurate collect. Change to 0 (zero) to disable this metric.
+* `--stats-collect-processing-period`: Defines the interval between two consecutive readings of haproxy's `Idle_pct`, used to generate `haproxy_processing_seconds_total` metric. haproxy updates Idle_pct every `500ms`, which makes that the best configuration value, and it's also the default if not configured. Values greater than `500ms` will produce a less accurate collect. Change to 0 (zero) to disable this metric.
 * `--stop-handler`: Allows to stop the controller via a POST request to `<host>:<healthzport>/stop` endpoint. Default value is `false`.
 
 ---
@@ -806,7 +806,7 @@ If argument `--wait-before-shutdown` is defined, controller will wait defined ti
 before it starts shutting down components when SIGTERM was received. By default, it's 0, which means
 the controller starts shutting down itself right after signal was sent.
 
-This option, along with [`--shutdown-timeout`](#shutdown-timeout), should be lesser than the controller's pod grace period, otherwise controller should be SIGKILLed before its timeout expires.
+This option, along with [`--shutdown-timeout`](#shutdown-timeout), should be less than the controller's pod grace period; otherwise, controller should be SIGKILLed before its timeout expires.
 
 See also:
 

@@ -462,7 +462,7 @@ func (c *c) GetNamespace(name string) (*api.Namespace, error) {
 
 func (c *c) GetControllerPodList() ([]api.Pod, error) {
 	if c.config.ControllerPodSelector == nil {
-		// POD_NAME envvar is a pre-requisite for pod selector
+		// POD_NAME envvar is a prerequisite for pod selector
 		return nil, fmt.Errorf("cannot list controller pods, POD_NAME envvar was not configured")
 	}
 

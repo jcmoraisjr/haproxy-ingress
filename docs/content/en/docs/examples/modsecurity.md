@@ -200,7 +200,7 @@ In order to use Coraza, the process is essentially the same as described in the 
 
 You may require different `modsecurity-args` depending on your Coraza config and your version of coraza-spoa. Check the [coraza-spoa README](https://github.com/corazawaf/coraza-spoa) for full details.
 
-Second, you'll need to change the spoa-modsecurity container image to a coraza-spoa image and create a configmap to hold the Coraza config.yaml. A complete example with all the changes can be found [here](/resources/coraza-deployment.yaml).
+Second, you'll need to change the spoa-modsecurity container image to a coraza-spoa image and create a configmap to hold the Coraza config.yaml. See a [complete example with all the changes](/resources/coraza-deployment.yaml).
 
 {{< alert title="Warning" color="warning" >}}
 The coraza-spoa image that we provide in the above example is based on [an experimental branch of coraza-spoa](https://github.com/corazawaf/coraza-spoa/pull/36). For production environments, it would be best to wait until the experimental changes are merged and [an official image is released](https://github.com/corazawaf/coraza-spoa/issues/37).

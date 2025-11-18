@@ -1,7 +1,7 @@
 # Cluster Getting Started
 
-This doc outlines the steps needed to setup a local dev cluster within which you
-can deploy/test an ingress controller. Note that you can also setup the ingress controller
+This doc outlines the steps needed to set up a local dev cluster within which you
+can deploy/test an ingress controller. Note that you can also set up the ingress controller
 locally.
 
 ## Deploy a Development cluster
@@ -102,7 +102,7 @@ The following steps will create an HAProxy Ingress with the following configurat
 * Create and use `ingress-controller` namespace
 * Create `ingress-controller` service account and rbac permissions - this will also work if the cluster doesn't use rbac authorization
 * In-cluster configuration and service account token
-* Default TLS certificate is self signed and created on the fly
+* Default TLS certificate is self-signed and created on the fly
 * Deployed on every node labeled with `role=ingress-controller` via DaemonSet
 * Use `hostNetwork`, so the node should not be using the following ports: `80`, `443`, `1936`, `8181`, `10253` and `10254`
 
@@ -121,7 +121,7 @@ $ kubectl -n ingress-controller edit configmap haproxy-ingress
 $ kubectl -n ingress-controller edit ds haproxy-ingress
 ```
 
-Label at least one node, otherwise the controller won't run:
+Label at least one node; otherwise, the controller won't run:
 
 ```console
 $ kubectl get node

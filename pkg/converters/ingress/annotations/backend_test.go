@@ -2887,7 +2887,7 @@ func TestTimeout(t *testing.T) {
 			annDefault: map[string]string{
 				"timeout-server": "10s",
 			},
-			// use only if declared as svc/ing annotation, otherwise defaults to HAProxy's defaults section
+			// use only if declared as svc/ing annotation; otherwise, defaults to HAProxy's defaults section
 			expected: hatypes.BackendTimeoutConfig{},
 		},
 	}

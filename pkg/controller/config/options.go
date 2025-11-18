@@ -335,7 +335,7 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 	)
 
 	fs.StringVar(&o.ReadyzURL, "ready-check-path", o.ReadyzURL, ""+
-		"Defines the URL to be used as readyness check.",
+		"Defines the URL to be used as readiness check.",
 	)
 
 	fs.BoolVar(&o.Profiling, "profiling", o.Profiling, ""+
