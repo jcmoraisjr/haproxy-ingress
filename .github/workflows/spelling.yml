@@ -1,0 +1,82 @@
+name: Check Spelling
+
+# SARIF reporting
+#
+# Access to SARIF reports is generally restricted (by GitHub) to members of the repository.
+#
+# Requires enabling `security-events: write`
+# and configuring the action with `use_sarif: 1`
+#
+#   For information on the feature, see: https://github.com/check-spelling/check-spelling/wiki/Feature:-SARIF-output
+
+# Minimal workflow structure:
+#
+# on:
+#   push:
+#     ...
+#   pull_request_target:
+#     ...
+# jobs:
+#   spelling:
+#     # remove `security-events: write` and `use_sarif: 1`
+#     ... otherwise, adjust the `with:` as you wish
+
+on:
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
+  pull_request_target:
+    branches:
+      - '**'
+    types:
+      - 'opened'
+      - 'reopened'
+      - 'synchronize'
+
+permissions: {}
+
+jobs:
+  spelling:
+    name: Check Spelling
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+      security-events: write
+    outputs:
+      followup: ${{ steps.spelling.outputs.followup }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: check-spelling
+        id: spelling
+        uses: check-spelling/check-spelling@v0.0.25
+        with:
+          suppress_push_for_open_pull_request: ${{ github.actor != 'dependabot[bot]' && 1 }}
+          checkout: true
+          check_file_names: 1
+          post_comment: 0
+          use_sarif: 1
+          check_extra_dictionaries: ''
+          dictionary_source_prefixes: >
+            {
+            "cspell": "https://raw.githubusercontent.com/check-spelling/cspell-dicts/v20241114/dictionaries/",
+            "census": "https://raw.githubusercontent.com/check-spelling-sandbox/census/dictionaries-d90e686f89dd241ad61d30f26619e54d73e73c6e/dictionaries/"
+            }
+          extra_dictionaries: |
+            census:census-5.txt
+            cspell:software-terms/softwareTerms.txt
+            cspell:golang/go.txt
+            cspell:php/php.txt
+            cspell:k8s/k8s.txt
+            cspell:node/node.txt
+            cspell:lua/lua.txt
+            cspell:filetypes/filetypes.txt
+            cspell:html/html.txt
+            cspell:python/common/extra.txt
+            cspell:python/python/python-lib.txt
+            cspell:dart/dart.txt
+            cspell:aws/aws.txt
+            cspell:django/django.txt
+            cspell:fullstack/fullstack.txt
