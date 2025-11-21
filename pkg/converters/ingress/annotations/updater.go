@@ -80,6 +80,7 @@ type tcpData struct {
 type frontData struct {
 	front  *hatypes.Frontend
 	mapper *Mapper
+	logger types.Logger
 }
 
 type hostData struct {
@@ -235,17 +236,19 @@ func (c *updater) UpdateTCPHostConfig(tcpPort *hatypes.TCPServicePort, tcpHost *
 
 func (c *updater) UpdateFrontConfig(front *hatypes.Frontend, mapper *Mapper) {
 	// NOTE - FrontConfig is updated without cleanup, so all the methods should be idempotent.
+	// NOTE - Any frontend scoped key should be configured only if `http-ports-local` is also configured - d.get() ensures this.
 	d := &frontData{
 		front:  front,
 		mapper: mapper,
+		logger: c.logger,
 	}
-	front.RedirectFromCode = mapper.Get(ingtypes.FrontRedirectFromCode).Int()
-	front.RedirectToCode = mapper.Get(ingtypes.FrontRedirectToCode).Int()
+	front.RedirectFromCode = d.get(ingtypes.FrontRedirectFromCode).Int()
+	front.RedirectToCode = d.get(ingtypes.FrontRedirectToCode).Int()
 	if front.IsHTTPS {
-		c.buildHTTPSFrontBind(d)
+		c.buildFrontBindHTTPS(d)
 	} else {
-		c.buildHTTPFrontBind(d)
-		c.buildHTTPFrontFrontingProxy(d)
+		c.buildFrontBindHTTP(d)
+		c.buildFrontFrontingProxy(d)
 	}
 }
 
@@ -262,7 +265,7 @@ func (c *updater) UpdateHostConfig(host *hatypes.Host, mapper *Mapper) {
 	c.buildHostCertSigner(d)
 	c.buildHostRedirect(d)
 	c.buildHostCustomResponses(d)
-	if host.IsHTTPS() {
+	if host.Frontend.IsHTTPS {
 		c.buildHostAuthTLS(d)
 		c.buildHostTLSConfig(d)
 	}

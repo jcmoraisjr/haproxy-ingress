@@ -395,14 +395,11 @@ func (c *converter) acquireFrontend(source *annotations.Source, annFront, annHos
 	_ = mapper.AddAnnotations(source, link, annFront)
 	_ = mapper.AddAnnotations(source, link, annHost)
 	f := c.haproxy.Frontends()
-	httpPort := mapper.Get(ingtypes.FrontFrontingProxyPort).Int32()
-	if httpPort == 0 {
-		httpPort = mapper.Get(ingtypes.FrontHTTPPort).Int32()
-	}
+	httpPort, httpsPort := annotations.AcquireFrontendPorts(c.logger, mapper)
 	return &frontend{
 		f:           f,
 		innerHTTP:   f.AcquireFrontend(httpPort, false),
-		httpsPort:   mapper.Get(ingtypes.FrontHTTPSPort).Int32(),
+		httpsPort:   httpsPort,
 		alwaysTLS:   mapper.Get(ingtypes.HostSSLAlwaysAddHTTPS).Bool(),
 		followRedir: mapper.Get(ingtypes.HostSSLAlwaysFollowRedirect).Bool(),
 		hosts:       make(map[string]*host),

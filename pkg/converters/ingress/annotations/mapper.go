@@ -193,15 +193,20 @@ func (c *Mapper) Get(key string) *ConfigValue {
 	return value
 }
 
+func (c *Mapper) GetDefault(key string) *ConfigValue {
+	return &ConfigValue{Value: c.annDefaults[key]}
+}
+
 // Get ...
 func (c *KeyConfig) Get(key string) *ConfigValue {
 	if value, found := c.keys[key]; found {
 		return value
 	}
-	if value, found := c.mapper.annDefaults[key]; found {
-		return &ConfigValue{Value: value}
-	}
-	return &ConfigValue{}
+	return c.GetDefault(key)
+}
+
+func (c *KeyConfig) GetDefault(key string) *ConfigValue {
+	return &ConfigValue{Value: c.mapper.annDefaults[key]}
 }
 
 // String ...

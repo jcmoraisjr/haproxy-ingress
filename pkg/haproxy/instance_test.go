@@ -6246,12 +6246,6 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     <<http-headers>>
     http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
     use_backend %[var(req.backend)] if { var(req.backend) -m found }`,
-		"<<frontend-fronting-http>>": `frontend _front_http
-    mode http
-    bind :80
-    <<set-req-base>>
-    http-request set-var(req.backend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_http_host__begin.map)
-    use_backend %[var(req.backend)] if { var(req.backend) -m found }`,
 		"<<frontend-http-clean>>": `frontend _front_http
     mode http
     bind :80
