@@ -34,12 +34,23 @@ import (
 
 const (
 	acmeChallengeHTTP01     = "http-01"
+	acmeChallengeDNS01      = "dns-01"
 	acmeErrAcctDoesNotExist = "urn:ietf:params:acme:error:accountDoesNotExist"
 )
 
 var (
 	acmeUserAgent = "haproxy-ingress/" + version.RELEASE
 )
+
+// hasWildcardDomain returns true if any domain in the list is a wildcard domain
+func hasWildcardDomain(domains []string) bool {
+	for _, domain := range domains {
+		if strings.HasPrefix(domain, "*.") {
+			return true
+		}
+	}
+	return false
+}
 
 // NewClient ...
 func NewClient(logger types.Logger, resolver ClientResolver, account *Account) (Client, error) {
@@ -52,12 +63,13 @@ func NewClient(logger types.Logger, resolver ClientResolver, account *Account) (
 	for i, email := range emails {
 		contact[i] = "mailto:" + email
 	}
+	acmeClient := &acme.Client{
+		DirectoryURL: account.Endpoint + "/directory",
+		Key:          key,
+		UserAgent:    acmeUserAgent,
+	}
 	client := &client{
-		client: &acme.Client{
-			DirectoryURL: account.Endpoint + "/directory",
-			Key:          key,
-			UserAgent:    acmeUserAgent,
-		},
+		client:      acmeClient,
 		ctx:         context.Background(),
 		contact:     contact,
 		endpoint:    account.Endpoint,
@@ -78,6 +90,20 @@ type Account struct {
 	TermsAgreed bool
 }
 
+// ACMEClient interface for mocking ACME client operations
+type ACMEClient interface {
+	GetAccount(ctx context.Context) (*acme.Account, error)
+	CreateAccount(ctx context.Context, a *acme.Account) (*acme.Account, error)
+	UpdateAccount(ctx context.Context, a *acme.Account) (*acme.Account, error)
+	CreateOrder(ctx context.Context, order *acme.Order) (*acme.Order, error)
+	GetAuthorization(ctx context.Context, url string) (*acme.Authorization, error)
+	AcceptChallenge(ctx context.Context, challenge *acme.Challenge) (*acme.Challenge, error)
+	WaitAuthorization(ctx context.Context, url string) (*acme.Authorization, error)
+	HTTP01ChallengePath(token string) string
+	HTTP01ChallengeResponse(token string) (string, error)
+	FinalizeOrder(ctx context.Context, finalizeURL string, csr []byte, altcn string) ([][]byte, error)
+}
+
 // ClientResolver ...
 type ClientResolver interface {
 	GetKey() (crypto.Signer, error)
@@ -90,7 +116,7 @@ type Client interface {
 }
 
 type client struct {
-	client      *acme.Client
+	client      ACMEClient
 	contact     []string
 	ctx         context.Context
 	endpoint    string
@@ -151,6 +177,36 @@ func (c *client) authorize(dnsnames []string, order *acme.Order) error {
 		if err != nil {
 			return err
 		}
+
+		// Check available challenges
+		hasHTTP01 := false
+		hasDNS01 := false
+		for _, challenge := range auth.Challenges {
+			switch challenge.Type {
+			case acmeChallengeHTTP01:
+				hasHTTP01 = true
+			case acmeChallengeDNS01:
+				hasDNS01 = true
+			}
+		}
+
+		// If we have wildcard domains, ALWAYS error because HAProxy Ingress doesn't support DNS-01
+		if hasWildcardDomain(dnsnames) {
+			return fmt.Errorf("acme: DNS-01 challenge required for wildcard domain %s, but haproxy-ingress only supports HTTP-01 challenges. "+
+				"Please configure your DNS provider to add a TXT record '_acme-challenge.%s' with the value provided by your ACME client, "+
+				"or use a non-wildcard domain", auth.Identifier.Value, auth.Identifier.Value)
+		}
+
+		// If no HTTP-01 challenge is available, warn the user
+		if !hasHTTP01 {
+			if hasDNS01 {
+				return fmt.Errorf("acme: HTTP-01 challenge not available for domain %s, only DNS-01 challenge is supported by the ACME server. "+
+					"haproxy-ingress only supports HTTP-01 challenges. Please ensure your domain is accessible via HTTP for ACME challenges", auth.Identifier.Value)
+			} else {
+				return fmt.Errorf("acme: no supported challenge type available for domain %s. haproxy-ingress supports HTTP-01 challenges only", auth.Identifier.Value)
+			}
+		}
+
 		for _, challenge := range auth.Challenges {
 			if challenge.Type == acmeChallengeHTTP01 {
 				checkURI := c.client.HTTP01ChallengePath(challenge.Token)

@@ -21,6 +21,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -34,60 +35,97 @@ const dumbwildcardcrt = `MIIFODCCAyCgAwIBAgIUO88O7K5Ruu2c5CYCTGalRLRK29QwDQYJKoZ
 
 func TestNotifyVerify(t *testing.T) {
 	testCases := []struct {
-		input     string
-		expiresIn time.Duration
-		cert      string
-		logging   string
+		input       string
+		expiresIn   time.Duration
+		cert        string
+		logging     string
+		expectError bool
 	}{
 		// 0
 		{
-			input:     "s1,,d1.local",
-			expiresIn: 10 * 24 * time.Hour,
-			cert:      dumbcrt,
+			input:       "s1,,d1.local",
+			expiresIn:   10 * 24 * time.Hour,
+			cert:        dumbcrt,
+			expectError: false,
 			logging: `
 INFO-V(2) acme: skipping sign, certificate is updated: secret=s1 domain(s)=d1.local`,
 		},
 		// 1
 		{
-			input:     "s1,,d2.local",
-			expiresIn: -10 * 24 * time.Hour,
-			cert:      dumbcrt,
+			input:       "s1,,d2.local",
+			expiresIn:   -10 * 24 * time.Hour,
+			cert:        dumbcrt,
+			expectError: false,
 			logging: `
 INFO acme: authorizing: id=1 secret=s1 domain(s)=d2.local endpoint=https://acme-v2.local reason='certificate expires in 2020-12-01 16:33:14 +0000 UTC'
 INFO acme: new certificate issued: id=1 secret=s1 domain(s)=d2.local preferred-chain=`,
 		},
 		// 2
 		{
-			input:     "s1,,d3.local",
-			expiresIn: 10 * 24 * time.Hour,
-			cert:      dumbcrt,
+			input:       "s1,,d3.local",
+			expiresIn:   10 * 24 * time.Hour,
+			cert:        dumbcrt,
+			expectError: false,
 			logging: `
 INFO acme: authorizing: id=1 secret=s1 domain(s)=d3.local endpoint=https://acme-v2.local reason='added one or more domains to an existing certificate'
 INFO acme: new certificate issued: id=1 secret=s1 domain(s)=d3.local preferred-chain=`,
 		},
 		// 3
 		{
-			input:     "s2,,d1.local",
-			expiresIn: 10 * 24 * time.Hour,
-			cert:      dumbcrt,
+			input:       "s2,,d1.local",
+			expiresIn:   10 * 24 * time.Hour,
+			cert:        dumbcrt,
+			expectError: false,
 			logging: `
 INFO acme: authorizing: id=1 secret=s2 domain(s)=d1.local endpoint=https://acme-v2.local reason='certificate does not exist (secret not found: s2)'
 INFO acme: new certificate issued: id=1 secret=s2 domain(s)=d1.local preferred-chain=`,
 		},
 		{
-			input:     "s1,,s3.dev.local",
-			expiresIn: 10 * 24 * time.Hour,
-			cert:      dumbwildcardcrt,
+			input:       "s1,,s3.dev.local",
+			expiresIn:   10 * 24 * time.Hour,
+			cert:        dumbwildcardcrt,
+			expectError: false,
 			logging: `
 INFO-V(2) acme: skipping sign, certificate is updated: secret=s1 domain(s)=s3.dev.local`,
 		},
 		{
-			input:     "s1,,other.s3.dev.local",
-			expiresIn: 10 * 24 * time.Hour,
-			cert:      dumbwildcardcrt,
+			input:       "s1,,other.s3.dev.local",
+			expiresIn:   10 * 24 * time.Hour,
+			cert:        dumbwildcardcrt,
+			expectError: false,
 			logging: `
 INFO acme: authorizing: id=1 secret=s1 domain(s)=other.s3.dev.local endpoint=https://acme-v2.local reason='added one or more domains to an existing certificate'
 INFO acme: new certificate issued: id=1 secret=s1 domain(s)=other.s3.dev.local preferred-chain=`,
+		},
+		// 6
+		{
+			input:       "s3,,*.example.com",
+			expiresIn:   10 * 24 * time.Hour,
+			cert:        dumbcrt,
+			expectError: true,
+			logging: `
+INFO acme: authorizing: id=1 secret=s3 domain(s)=*.example.com endpoint=https://acme-v2.local reason='certificate does not exist (secret not found: s3)'
+WARN acme: error signing new certificate: id=1 secret=s3 domain(s)=*.example.com error=acme: DNS-01 challenge required for wildcard domain *.example.com, but haproxy-ingress only supports HTTP-01 challenges. Please configure your DNS provider to add a TXT record '_acme-challenge.*.example.com' with the value provided by your ACME client, or use a non-wildcard domain`,
+		},
+		// 7 - Test mixed domains with wildcard
+		{
+			input:       "s4,,example.com,*.example.com",
+			expiresIn:   10 * 24 * time.Hour,
+			cert:        dumbcrt,
+			expectError: true,
+			logging: `
+INFO acme: authorizing: id=1 secret=s4 domain(s)=example.com,*.example.com endpoint=https://acme-v2.local reason='certificate does not exist (secret not found: s4)'
+WARN acme: error signing new certificate: id=1 secret=s4 domain(s)=example.com,*.example.com error=acme: DNS-01 challenge required for wildcard domain *.example.com, but haproxy-ingress only supports HTTP-01 challenges. Please configure your DNS provider to add a TXT record '_acme-challenge.*.example.com' with the value provided by your ACME client, or use a non-wildcard domain`,
+		},
+		// 8 - Test domain without HTTP-01 challenge available
+		{
+			input:       "s5,,nohttp.example.com",
+			expiresIn:   10 * 24 * time.Hour,
+			cert:        dumbcrt,
+			expectError: true,
+			logging: `
+INFO acme: authorizing: id=1 secret=s5 domain(s)=nohttp.example.com endpoint=https://acme-v2.local reason='certificate does not exist (secret not found: s5)'
+WARN acme: error signing new certificate: id=1 secret=s5 domain(s)=nohttp.example.com error=acme: HTTP-01 challenge not available for domain nohttp.example.com, only DNS-01 challenge is supported by the ACME server. haproxy-ingress only supports HTTP-01 challenges. Please ensure your domain is accessible via HTTP for ACME challenges`,
 		},
 	}
 	c := setup(t)
@@ -100,7 +138,11 @@ INFO acme: new certificate issued: id=1 secret=s1 domain(s)=other.s3.dev.local p
 		signer.account.Endpoint = "https://acme-v2.local"
 		signer.expiring = x509.NotAfter.Sub(time.Now().Add(test.expiresIn))
 		err := signer.Notify(test.input)
-		require.NoError(t, err)
+		if test.expectError {
+			require.Error(t, err)
+		} else {
+			require.NoError(t, err)
+		}
 		c.logger.CompareLogging(test.logging)
 	}
 }
@@ -136,6 +178,18 @@ func (c *config) newSigner() *signer {
 type clientMock struct{}
 
 func (c *clientMock) Sign(domains []string, preferredChain string) (crt, key []byte, err error) {
+	// Simulate DNS-01 required error for wildcard domains
+	for _, domain := range domains {
+		if strings.HasPrefix(domain, "*.") {
+			return nil, nil, fmt.Errorf("acme: DNS-01 challenge required for wildcard domain %s, but haproxy-ingress only supports HTTP-01 challenges. "+
+				"Please configure your DNS provider to add a TXT record '_acme-challenge.%s' with the value provided by your ACME client, "+
+				"or use a non-wildcard domain", domain, domain)
+		}
+		if domain == "nohttp.example.com" {
+			return nil, nil, fmt.Errorf("acme: HTTP-01 challenge not available for domain %s, only DNS-01 challenge is supported by the ACME server. "+
+				"haproxy-ingress only supports HTTP-01 challenges. Please ensure your domain is accessible via HTTP for ACME challenges", domain)
+		}
+	}
 	return []byte("fake-crt"), []byte("fake-key"), nil
 }
 
