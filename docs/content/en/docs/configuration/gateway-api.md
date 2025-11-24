@@ -12,8 +12,8 @@ description: >
 
 The following steps configure the Kubernetes cluster and HAProxy Ingress to read and parse Gateway API resources:
 
-* Manually install the Gateway API CRDs from the experimental channel - HAProxy Ingress supports TCPRoute which is not included in the standard channel. See the Gateway API [documentation](https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api)
-    * ... or simply `kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/experimental-install.yaml`
+* Manually install the Gateway API CRDs from the experimental channel - HAProxy Ingress supports TCPRoute and TLSRoute, they are not included in the standard channel. See the Gateway API [documentation](https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api)
+    * ... or simply `kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/experimental-install.yaml`
 * Start (or restart) the controller
 
 See below the [getting started steps](#getting-started).
