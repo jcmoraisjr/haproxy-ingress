@@ -36,7 +36,7 @@ type Updater interface {
 	UpdatePeers(haproxyConfig haproxy.Config, mapper *Mapper)
 	UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *Mapper)
 	UpdateTCPHostConfig(tcpPort *hatypes.TCPServicePort, tcpHost *hatypes.TCPServiceHost, mapper *Mapper)
-	UpdateFrontConfig(front *hatypes.Frontend, mapper *Mapper)
+	UpdateFrontConfig(front *hatypes.Frontend, mapper *Mapper, localPorts bool)
 	UpdateHostConfig(host *hatypes.Host, mapper *Mapper)
 	UpdateBackendConfig(backend *hatypes.Backend, mapper *Mapper)
 }
@@ -78,8 +78,10 @@ type tcpData struct {
 }
 
 type frontData struct {
-	front  *hatypes.Frontend
-	mapper *Mapper
+	front      *hatypes.Frontend
+	localPorts bool
+	mapper     *Mapper
+	logger     types.Logger
 }
 
 type hostData struct {
@@ -233,19 +235,22 @@ func (c *updater) UpdateTCPHostConfig(tcpPort *hatypes.TCPServicePort, tcpHost *
 	c.buildTCPAuthTLS(d)
 }
 
-func (c *updater) UpdateFrontConfig(front *hatypes.Frontend, mapper *Mapper) {
+func (c *updater) UpdateFrontConfig(front *hatypes.Frontend, mapper *Mapper, localPorts bool) {
 	// NOTE - FrontConfig is updated without cleanup, so all the methods should be idempotent.
+	// NOTE - Any frontend scoped key should be configured only if `http-ports-local` is also configured - d.get() ensures this.
 	d := &frontData{
-		front:  front,
-		mapper: mapper,
+		front:      front,
+		localPorts: localPorts,
+		mapper:     mapper,
+		logger:     c.logger,
 	}
-	front.RedirectFromCode = mapper.Get(ingtypes.FrontRedirectFromCode).Int()
-	front.RedirectToCode = mapper.Get(ingtypes.FrontRedirectToCode).Int()
+	front.RedirectFromCode = d.get(ingtypes.FrontRedirectFromCode).Int()
+	front.RedirectToCode = d.get(ingtypes.FrontRedirectToCode).Int()
 	if front.IsHTTPS {
-		c.buildHTTPSFrontBind(d)
+		c.buildFrontBindHTTPS(d)
 	} else {
-		c.buildHTTPFrontBind(d)
-		c.buildHTTPFrontFrontingProxy(d)
+		c.buildFrontBindHTTP(d)
+		c.buildFrontFrontingProxy(d)
 	}
 }
 
@@ -262,7 +267,7 @@ func (c *updater) UpdateHostConfig(host *hatypes.Host, mapper *Mapper) {
 	c.buildHostCertSigner(d)
 	c.buildHostRedirect(d)
 	c.buildHostCustomResponses(d)
-	if host.IsHTTPS() {
+	if host.Frontend.IsHTTPS {
 		c.buildHostAuthTLS(d)
 		c.buildHostTLSConfig(d)
 	}

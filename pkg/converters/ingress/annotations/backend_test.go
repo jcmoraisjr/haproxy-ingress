@@ -2055,7 +2055,7 @@ WARN oauth2_proxy on ingress 'default/ing1' needs Lua json module, install lua-j
 		Type:      "ingress",
 	}
 	annDefault := map[string]string{
-		ingtypes.FrontHTTPPort:    "8080",
+		ingtypes.GlobalHTTPPort:   "8080",
 		ingtypes.BackOAuthHeaders: "X-Auth-Request-Email",
 	}
 	for i, test := range testCases {

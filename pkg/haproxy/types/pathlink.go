@@ -69,7 +69,7 @@ func (l *PathLink) WithHTTPFront(front *Frontend) *PathLink {
 
 // WithHTTPHost ...
 func (l *PathLink) WithHTTPHost(host *Host) *PathLink {
-	l.frontend = host.frontend.Name
+	l.frontend = host.Frontend.Name
 	l.hostname = host.Hostname
 	l.updatehash()
 	return l
