@@ -56,6 +56,7 @@ coldeasy
 configfound
 configmap
 configmapname
+Containerd
 controllerutils
 convtypes
 convutils
@@ -112,6 +113,7 @@ eplist
 epmap
 epname
 Equifax
+errexit
 errgroup
 errorfile
 expapps
@@ -320,6 +322,7 @@ noredir
 Noreq
 noservice
 notvalidport
+nounset
 objname
 origexp
 orighdr
@@ -368,6 +371,7 @@ redirectssl
 redirfrom
 redirto
 redispatched
+refactors
 relabelings
 reloadlogger
 relref
@@ -395,7 +399,6 @@ roundrobin
 rparam
 rpid
 Sankul
-Sbind
 secretname
 serviceaccount
 servicemonitor
@@ -428,6 +431,7 @@ statefulset
 stktable
 Sto
 stopctx
+STOPSIGNAL
 stracktraces
 strbody
 strdomains
@@ -510,6 +514,7 @@ wlist
 Wojciech
 workqueue
 WSL
+wslpath
 wwwpublic
 xauthrequest
 xbs
