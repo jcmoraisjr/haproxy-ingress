@@ -164,7 +164,6 @@ func (s *Services) setup(ctx context.Context) error {
 		DisableKeywords:  cfg.DisableKeywords,
 		AcmeTrackTLSAnn:  cfg.AcmeTrackTLSAnn,
 		TrackInstances:   cfg.TrackOldInstances,
-		HasGatewayA2:     cfg.HasGatewayA2,
 		HasGatewayB1:     cfg.HasGatewayB1,
 		HasGatewayV1:     cfg.HasGatewayV1,
 		HasTCPRouteA2:    cfg.HasTCPRouteA2,

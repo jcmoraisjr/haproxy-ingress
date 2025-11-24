@@ -125,11 +125,6 @@ func (c *CacheMock) GetIngressClass(className string) (*networking.IngressClass,
 }
 
 // GetHTTPRouteList ...
-func (c *CacheMock) GetHTTPRouteA2List() ([]*gatewayv1alpha2.HTTPRoute, error) {
-	return nil, fmt.Errorf("missing implementation")
-}
-
-// GetHTTPRouteList ...
 func (c *CacheMock) GetHTTPRouteB1List() ([]*gatewayv1beta1.HTTPRoute, error) {
 	return nil, fmt.Errorf("missing implementation")
 }
@@ -145,11 +140,6 @@ func (c *CacheMock) GetTCPRouteList() ([]*gatewayv1alpha2.TCPRoute, error) {
 
 func (c *CacheMock) GetTLSRouteList() ([]*gatewayv1alpha2.TLSRoute, error) {
 	return c.TLSRouteList, nil
-}
-
-// GetGatewayA2 ...
-func (c *CacheMock) GetGatewayA2(namespace, name string) (*gatewayv1alpha2.Gateway, error) {
-	return nil, fmt.Errorf("missing implementation")
 }
 
 // GetGatewayB1 ...

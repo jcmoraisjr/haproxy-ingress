@@ -65,9 +65,6 @@ type watchers struct {
 func (w *watchers) getHandlers() []*hdlr {
 	handlers := w.handlersCore()
 	handlers = append(handlers, w.handlersIngress()...)
-	if w.cfg.HasGatewayA2 {
-		handlers = append(handlers, w.handlersGatewayv1alpha2()...)
-	}
 	if w.cfg.HasGatewayB1 {
 		handlers = append(handlers, w.handlersGatewayv1beta1()...)
 	}
@@ -275,47 +272,6 @@ func (w *watchers) handlersIngress() []*hdlr {
 		})
 	}
 	return h
-}
-
-func (w *watchers) handlersGatewayv1alpha2() []*hdlr {
-	return []*hdlr{
-		{
-			typ:  &gatewayv1alpha2.Gateway{},
-			res:  types.ResourceGateway,
-			full: true,
-			pr: []predicate.Predicate{
-				predicate.GenerationChangedPredicate{},
-			},
-		},
-		{
-			typ:  &gatewayv1alpha2.GatewayClass{},
-			res:  types.ResourceGatewayClass,
-			full: true,
-			pr: []predicate.Predicate{
-				predicate.GenerationChangedPredicate{},
-				predicate.Funcs{
-					CreateFunc: func(ce event.CreateEvent) bool {
-						return w.val.IsValidGatewayClassA2(ce.Object.(*gatewayv1alpha2.GatewayClass))
-					},
-					DeleteFunc: func(de event.DeleteEvent) bool {
-						return w.val.IsValidGatewayClassA2(de.Object.(*gatewayv1alpha2.GatewayClass))
-					},
-					UpdateFunc: func(ue event.UpdateEvent) bool {
-						return w.val.IsValidGatewayClassA2(ue.ObjectOld.(*gatewayv1alpha2.GatewayClass)) ||
-							w.val.IsValidGatewayClassA2(ue.ObjectNew.(*gatewayv1alpha2.GatewayClass))
-					},
-				},
-			},
-		},
-		{
-			typ:  &gatewayv1alpha2.HTTPRoute{},
-			res:  types.ResourceHTTPRoute,
-			full: true,
-			pr: []predicate.Predicate{
-				predicate.GenerationChangedPredicate{},
-			},
-		},
-	}
 }
 
 func (w *watchers) handlersGatewayv1beta1() []*hdlr {

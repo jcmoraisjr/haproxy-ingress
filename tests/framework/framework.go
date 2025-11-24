@@ -82,9 +82,9 @@ func NewFramework(ctx context.Context, t *testing.T, o ...options.Framework) *fr
 
 	scheme := runtime.NewScheme()
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(gatewayv1alpha2.AddToScheme(scheme))
-	utilruntime.Must(gatewayv1beta1.AddToScheme(scheme))
-	utilruntime.Must(gatewayv1.AddToScheme(scheme))
+	utilruntime.Must(gatewayv1alpha2.Install(scheme))
+	utilruntime.Must(gatewayv1beta1.Install(scheme))
+	utilruntime.Must(gatewayv1.Install(scheme))
 
 	cli, err := client.NewWithWatch(config, client.Options{Scheme: scheme})
 	require.NoError(t, err)
@@ -552,10 +552,6 @@ spec:
 	return ing, hostname
 }
 
-func (f *framework) CreateGatewayClassA2(ctx context.Context, t *testing.T, o ...options.Object) *gatewayv1alpha2.GatewayClass {
-	return f.CreateGatewayClass(ctx, t, gatewayv1alpha2.GroupVersion.Version, o...).(*gatewayv1alpha2.GatewayClass)
-}
-
 func (f *framework) CreateGatewayClassB1(ctx context.Context, t *testing.T, o ...options.Object) *gatewayv1beta1.GatewayClass {
 	return f.CreateGatewayClass(ctx, t, gatewayv1beta1.GroupVersion.Version, o...).(*gatewayv1beta1.GatewayClass)
 }
@@ -595,10 +591,6 @@ spec:
 		assert.NoError(t, client.IgnoreNotFound(err))
 	})
 	return gc
-}
-
-func (f *framework) CreateGatewayA2(ctx context.Context, t *testing.T, gc *gatewayv1alpha2.GatewayClass, o ...options.Object) *gatewayv1alpha2.Gateway {
-	return f.CreateGateway(ctx, t, gatewayv1alpha2.GroupVersion.Version, (*gatewayv1.GatewayClass)(gc), o...).(*gatewayv1alpha2.Gateway)
 }
 
 func (f *framework) CreateGatewayB1(ctx context.Context, t *testing.T, gc *gatewayv1beta1.GatewayClass, o ...options.Object) *gatewayv1beta1.Gateway {
@@ -652,7 +644,7 @@ spec:
 			}
 		}
 		if mode != "" {
-			listener.TLS = &gatewayv1.GatewayTLSConfig{
+			listener.TLS = &gatewayv1.ListenerTLSConfig{
 				Mode:            &mode,
 				CertificateRefs: l.Certs,
 			}
@@ -676,11 +668,6 @@ spec:
 		assert.NoError(t, client.IgnoreNotFound(err))
 	})
 	return gw
-}
-
-func (f *framework) CreateHTTPRouteA2(ctx context.Context, t *testing.T, gw *gatewayv1alpha2.Gateway, svc *corev1.Service, o ...options.Object) (*gatewayv1alpha2.HTTPRoute, string) {
-	route, hostname := f.CreateHTTPRoute(ctx, t, gatewayv1alpha2.GroupVersion.Version, (*gatewayv1.Gateway)(gw), svc, o...)
-	return route.(*gatewayv1alpha2.HTTPRoute), hostname
 }
 
 func (f *framework) CreateHTTPRouteB1(ctx context.Context, t *testing.T, gw *gatewayv1beta1.Gateway, svc *corev1.Service, o ...options.Object) (*gatewayv1beta1.HTTPRoute, string) {
@@ -726,7 +713,7 @@ spec:
 	spec.ParentRefs[0].Name = gatewayv1.ObjectName(gw.Name)
 	spec.Hostnames[0] = gatewayv1.Hostname(hostname)
 	spec.Rules[0].BackendRefs[0].Name = gatewayv1.ObjectName(svc.Name)
-	spec.Rules[0].BackendRefs[0].Port = (*gatewayv1.PortNumber)(&svc.Spec.Ports[0].Port)
+	spec.Rules[0].BackendRefs[0].Port = &svc.Spec.Ports[0].Port
 	opt.Apply(route)
 
 	t.Logf("creating HTTPRoute %s/%s\n", route.GetNamespace(), route.GetName())
@@ -778,7 +765,7 @@ spec:
 	}
 	spec.ParentRefs[0].Name = gatewayv1.ObjectName(gw.Name)
 	spec.Rules[0].BackendRefs[0].Name = gatewayv1.ObjectName(svc.Name)
-	spec.Rules[0].BackendRefs[0].Port = (*gatewayv1.PortNumber)(&svc.Spec.Ports[0].Port)
+	spec.Rules[0].BackendRefs[0].Port = &svc.Spec.Ports[0].Port
 	opt.Apply(route)
 
 	t.Logf("creating TLSRoute %s/%s\n", route.GetNamespace(), route.GetName())
@@ -830,7 +817,7 @@ spec:
 	spec := reflect.ValueOf(route).Elem().FieldByName("Spec").Addr().Interface().(*gatewayv1alpha2.TCPRouteSpec)
 	spec.ParentRefs[0].Name = gatewayv1.ObjectName(gw.Name)
 	spec.Rules[0].BackendRefs[0].Name = gatewayv1.ObjectName(svc.Name)
-	spec.Rules[0].BackendRefs[0].Port = (*gatewayv1.PortNumber)(&svc.Spec.Ports[0].Port)
+	spec.Rules[0].BackendRefs[0].Port = &svc.Spec.Ports[0].Port
 	opt.Apply(route)
 
 	t.Logf("creating TCPRoute %s/%s\n", route.GetNamespace(), route.GetName())

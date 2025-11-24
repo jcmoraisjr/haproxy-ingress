@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils/workqueue"
 	"github.com/stretchr/testify/require"
+
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils/workqueue"
 )
 
 func TestQueue(t *testing.T) {
