@@ -82,8 +82,10 @@
 \.zip$
 ^\.github/actions/spelling/
 ^\Q.github/workflows/spelling.yml\E$
-^docs/assets/icons/logo\.odg$
-^pkg/acme/signer_test\.go$
-^pkg/acme/x/acme/jws_test\.go$
-^tests/framework/crds
-ignore$
+^\.gitignore$
+^bin/
+^docs/assets/icons/
+^pkg/acme/x/
+^rootfs/etc/lua/auth-request\.lua$
+^rootfs/etc/lua/haproxy-lua-http\.lua$
+^tests/framework/crds/

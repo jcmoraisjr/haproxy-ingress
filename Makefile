@@ -18,6 +18,7 @@ LOCALBIN?=$(shell pwd)/bin
 LOCAL_GOTESTSUM=$(LOCALBIN)/gotestsum
 LOCAL_GOLANGCI_LINT=$(LOCALBIN)/golangci-lint
 LOCAL_SETUP_ENVTEST=$(LOCALBIN)/setup-envtest
+LOCAL_CHECK_SPELLING=$(LOCALBIN)/check-spelling
 
 .PHONY: build
 build:
@@ -54,6 +55,10 @@ golangci-lint:
 .PHONY: lint
 lint: golangci-lint
 	$(LOCAL_GOLANGCI_LINT) run --verbose
+
+.PHONY: check-spelling
+check-spelling:
+	LOCAL_CHECK_SPELLING=$(LOCAL_CHECK_SPELLING) CHECK_SPELLING_VERSION="v0.0.25" ./scripts/spelling.sh
 
 .PHONY: setup-envtest
 setup-envtest:

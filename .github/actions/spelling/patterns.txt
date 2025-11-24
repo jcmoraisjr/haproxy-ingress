@@ -186,3 +186,9 @@ go install(?:\s+[a-z]+\.[-@\w/.]+)+
 
 # ignore long runs of a single character:
 \b([A-Za-z])\g{-1}{3,}\b
+
+# base64 encoded content
+([`'"])[-a-zA-Z=;:/0-9+]{3,}=\g{-1}
+
+# version-with-short-sha
+\b\d+\.\d+\.\d+-[0-9a-f]{7,}\b
