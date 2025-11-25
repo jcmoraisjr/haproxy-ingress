@@ -85,10 +85,6 @@ const (
 	ResourceIngress      ResourceType = "Ingress"
 	ResourceIngressClass ResourceType = "IngressClass"
 
-	ResourceGatewayA1      ResourceType = "GatewayA1"
-	ResourceGatewayClassA1 ResourceType = "GatewayClassA1"
-	ResourceHTTPRouteA1    ResourceType = "HTTPRouteA1"
-
 	ResourceGateway      ResourceType = "Gateway"
 	ResourceGatewayClass ResourceType = "GatewayClass"
 	ResourceHTTPRoute    ResourceType = "HTTPRoute"
