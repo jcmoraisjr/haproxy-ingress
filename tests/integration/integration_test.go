@@ -1039,24 +1039,7 @@ Request forbidden by administrative rules.
 func TestIntegrationGateway(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("v1alpha2", func(t *testing.T) {
-		f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v040-v1alpha2"))
-		f.StartController(ctx, t)
-		httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1alpha2")
-		gc := f.CreateGatewayClassA2(ctx, t)
-
-		t.Run("hello world", func(t *testing.T) {
-			t.Parallel()
-			gw := f.CreateGatewayA2(ctx, t, gc)
-			svc := f.CreateService(ctx, t, httpServerPort)
-			_, hostname := f.CreateHTTPRouteA2(ctx, t, gw, svc)
-			res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
-			assert.True(t, res.EchoResponse.Parsed)
-			assert.Equal(t, "http", res.EchoResponse.ReqHeaders["x-forwarded-proto"])
-		})
-	})
-
-	t.Run("v1beta1", func(t *testing.T) {
+	t.Run("v050-v1beta1-experimental", func(t *testing.T) {
 		f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v050-v1beta1-experimental"))
 		f.StartController(ctx, t)
 		httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1beta1")
@@ -1073,8 +1056,25 @@ func TestIntegrationGateway(t *testing.T) {
 		})
 	})
 
-	t.Run("v1", func(t *testing.T) {
+	t.Run("v100-v1-experimental", func(t *testing.T) {
 		f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v100-v1-experimental"))
+		f.StartController(ctx, t)
+		httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1-http")
+		gc := f.CreateGatewayClassV1(ctx, t)
+
+		t.Run("hello world", func(t *testing.T) {
+			t.Parallel()
+			gw := f.CreateGatewayV1(ctx, t, gc)
+			svc := f.CreateService(ctx, t, httpServerPort)
+			_, hostname := f.CreateHTTPRouteV1(ctx, t, gw, svc)
+			res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
+			assert.True(t, res.EchoResponse.Parsed)
+			assert.Equal(t, "http", res.EchoResponse.ReqHeaders["x-forwarded-proto"])
+		})
+	})
+
+	t.Run("v140-v1-experimental", func(t *testing.T) {
+		f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v140-v1-experimental"))
 		f.StartController(ctx, t)
 
 		httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1-http")
@@ -1097,7 +1097,7 @@ func TestIntegrationGateway(t *testing.T) {
 		t.Run("expose TCPRoute", func(t *testing.T) {
 			t.Parallel()
 			listenerPort := framework.RandomPort()
-			gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("tcpserver", gatewayv1.TCPProtocolType, gatewayv1.PortNumber(listenerPort), nil))
+			gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("tcpserver", gatewayv1.TCPProtocolType, listenerPort, nil))
 			svc := f.CreateService(ctx, t, tcpServerPort)
 			_ = f.CreateTCPRouteA2(ctx, t, gw, svc)
 			res1 := f.TCPRequest(ctx, t, listenerPort, "ping")
@@ -1111,7 +1111,7 @@ func TestIntegrationGateway(t *testing.T) {
 			secret := f.CreateSecretTLS(ctx, t, crtValidPem, keyValidPem)
 			certs := []gatewayv1.SecretObjectReference{{Name: gatewayv1.ObjectName(secret.Name)}}
 			listenerPort := framework.RandomPort()
-			gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("tlsserver", gatewayv1.TLSProtocolType, gatewayv1.PortNumber(listenerPort), certs))
+			gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("tlsserver", gatewayv1.TLSProtocolType, listenerPort, certs))
 			svc := f.CreateService(ctx, t, tcpServerPort)
 			_ = f.CreateTLSRouteA2(ctx, t, gw, svc)
 			res1 := f.TCPRequest(ctx, t, listenerPort, "ping", options.TLSRequest())
@@ -1134,7 +1134,7 @@ func TestIntegrationGateway(t *testing.T) {
 						Name:     "l1",
 						Port:     framework.TestPortHTTPS,
 						Protocol: gatewayv1.HTTPSProtocolType,
-						TLS: &gatewayv1.GatewayTLSConfig{
+						TLS: &gatewayv1.ListenerTLSConfig{
 							CertificateRefs: []gatewayv1.SecretObjectReference{
 								{Name: gatewayv1.ObjectName(secret1.Name)},
 								{Name: gatewayv1.ObjectName(secret2.Name)},

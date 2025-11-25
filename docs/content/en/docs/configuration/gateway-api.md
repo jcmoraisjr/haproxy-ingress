@@ -6,22 +6,21 @@ description: >
   Configure HAProxy using Gateway API resources.
 ---
 
-[Gateway API](https://gateway-api.sigs.k8s.io/) is a collection of Kubernetes resources that can be installed as [Custom Resource Definitions](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/). Just like Ingress resources, Gateway API resources are used to configure incoming HTTP/s, TLS and TCP requests to the in cluster applications. HAProxy Ingress v0.17 partially supports the Gateway API spec, `v1alpha2`, `v1beta1` and `v1` versions.
+[Gateway API](https://gateway-api.sigs.k8s.io/) is a collection of Kubernetes resources that can be installed as [Custom Resource Definitions](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/). Just like Ingress resources, Gateway API resources are used to configure incoming HTTP/s, TLS and TCP requests to the in cluster applications. HAProxy Ingress v0.17 partially supports the Gateway API spec, `v1beta1` and `v1` versions.
 
 ## Installation
 
 The following steps configure the Kubernetes cluster and HAProxy Ingress to read and parse Gateway API resources:
 
-* Manually install the Gateway API CRDs from the experimental channel - HAProxy Ingress supports TCPRoute which is not included in the standard channel. See the Gateway API [documentation](https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api)
-    * ... or simply `kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.0.0/experimental-install.yaml`
-    * `v1.0.0` is just a reference for a fresh new deployment, Gateway API `v0.4.0` or any newer versions are supported.
+* Manually install the Gateway API CRDs from the experimental channel - HAProxy Ingress supports TCPRoute and TLSRoute, they are not included in the standard channel. See the Gateway API [documentation](https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api)
+    * ... or simply `kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/experimental-install.yaml`
 * Start (or restart) the controller
 
 See below the [getting started steps](#getting-started).
 
 ## Conformance
 
-Gateway API `v1alpha2`, `v1beta1` and `v1` specs are partially implemented in v0.17 release. The following list describes what is (or is not) supported:
+Gateway API `v1beta1` and `v1` specs are partially implemented in v0.17 release. The following list describes what is (or is not) supported:
 
 * Target Services can be annotated with [Backend or Path scoped]({{% relref "keys#scope" %}}) configuration keys, this will continue to be supported.
 * Gateway API resources doesn't support annotations, this is planned to continue to be unsupported. Extensions to the Gateway API spec will be added in the extension points of the API.
@@ -32,16 +31,9 @@ Gateway API `v1alpha2`, `v1beta1` and `v1` specs are partially implemented in v0
 * HTTPRoute's Rules and BackendRefs don't support Filters.
 * Resources status are not updated.
 
-### Roadmap
-
-* Version `v1alpha1` support was dropped on v0.15.
-* Versions `v1beta1` and `v1` support was added on v0.15.
-* `v1alpha2`, `v1beta1` and `v1` versions will continue to be supported on future HAProxy Ingress releases.
-* Spec conformance will be gradually incremented on newer HAProxy Ingress versions.
-
 ## Ingress
 
-A single HAProxy Ingress deployment can manage Ingress, and also `v1alpha2`, `v1beta1` and `v1` Gateway API resources in the same Kubernetes cluster. If the same hostname and path with the same path type is declared in the Gateway API and Ingress, the Gateway API wins and a warning is logged. Ingress resources will continue to be supported in future controller versions, without side effects, and without the need to install the Gateway API CRDs.
+A single HAProxy Ingress deployment can manage Ingress, and also `v1beta1` and `v1` Gateway API resources in the same Kubernetes cluster. If the same hostname and path with the same path type is declared in the Gateway API and Ingress, the Gateway API wins and a warning is logged. Ingress resources will continue to be supported in future controller versions, without side effects, and without the need to install the Gateway API CRDs.
 
 ## Getting started
 

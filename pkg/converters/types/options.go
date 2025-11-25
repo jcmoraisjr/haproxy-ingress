@@ -40,7 +40,6 @@ type ConverterOptions struct {
 	DisableKeywords  []string
 	AcmeTrackTLSAnn  bool
 	TrackInstances   bool
-	HasGatewayA2     bool
 	HasGatewayB1     bool
 	HasGatewayV1     bool
 	HasTCPRouteA2    bool
