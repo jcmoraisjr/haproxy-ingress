@@ -94,8 +94,6 @@ func (c *converter) syncHTTPRoutes(gwtyp client.Object) {
 	var httpRoutesSource []*httpRouteSource
 	var err error
 	switch gwtyp.(type) {
-	case *gatewayv1alpha2.Gateway:
-		httpRoutesSource, err = c.getHTTPRoutesSourceA2()
 	case *gatewayv1beta1.Gateway:
 		httpRoutesSource, err = c.getHTTPRoutesSourceB1()
 	case *gatewayv1.Gateway:
@@ -114,18 +112,6 @@ func (c *converter) syncHTTPRoutes(gwtyp client.Object) {
 			c.syncHTTPRouteGateway(httpRoute, gatewaySource, sectionName)
 		})
 	}
-}
-
-func (c *converter) getHTTPRoutesSourceA2() ([]*httpRouteSource, error) {
-	httpRoutes, err := c.cache.GetHTTPRouteA2List()
-	if err != nil {
-		return nil, fmt.Errorf("error reading httpRoute list: %w", err)
-	}
-	httpRoutesSource := make([]*httpRouteSource, len(httpRoutes))
-	for i := range httpRoutes {
-		httpRoutesSource[i] = newHTTPRouteSource(httpRoutes[i], &httpRoutes[i].Spec)
-	}
-	return httpRoutesSource, nil
 }
 
 func (c *converter) getHTTPRoutesSourceB1() ([]*httpRouteSource, error) {
@@ -293,8 +279,6 @@ func (c *converter) newGatewaySource(namespace, name string, gwtyp client.Object
 	var gw client.Object
 	var err error
 	switch gwtyp.(type) {
-	case *gatewayv1alpha2.Gateway:
-		gw, err = c.cache.GetGatewayA2(namespace, name)
 	case *gatewayv1beta1.Gateway:
 		gw, err = c.cache.GetGatewayB1(namespace, name)
 	case *gatewayv1.Gateway:
@@ -609,7 +593,7 @@ func (c *converter) createHTTPHosts(gatewaySource *gatewaySource, routeSource *s
 	if listener.TLS != nil {
 		hostsTLS = make(map[string]*hatypes.TLSConfig)
 	}
-	frontend := c.haproxy.Frontends().AcquireFrontend(int32(listener.Port), listener.Protocol == gatewayv1.HTTPSProtocolType)
+	frontend := c.haproxy.Frontends().AcquireFrontend(listener.Port, listener.Protocol == gatewayv1.HTTPSProtocolType)
 	for _, match := range matches {
 		var path string
 		var haMatch hatypes.MatchType
@@ -683,7 +667,7 @@ func (c *converter) createTLSHosts(gatewaySource *gatewaySource, routeSource *tl
 		return c.createTCPService(gatewaySource, listener, hostnames, backend)
 	}
 	// ssl-passthrough, backend is TLS, just SNI inspection on haproxy without ssl-offload
-	f := c.haproxy.Frontends().AcquireFrontend(int32(listener.Port), true)
+	f := c.haproxy.Frontends().AcquireFrontend(listener.Port, true)
 	for _, hostname := range hostnames {
 		h := f.FindHost(string(hostname))
 		if h != nil && !h.SSLPassthrough {

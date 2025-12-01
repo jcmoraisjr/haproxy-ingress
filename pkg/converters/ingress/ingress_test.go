@@ -2572,7 +2572,7 @@ func (c *testConfig) createConverter() *converter {
 			AnnotationPrefix: []string{"ingress.kubernetes.io"},
 		},
 		c.hconfig,
-		c.cache.SwapChangedObjects(),
+		c.cache.LegacySwapObjects(),
 	).(*converter)
 }
 

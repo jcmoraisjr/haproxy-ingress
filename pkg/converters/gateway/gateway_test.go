@@ -748,7 +748,7 @@ func TestSyncGatewayTLSPassthrough(t *testing.T) {
 				g := c.createGateway1("default/web", "l1:8443")
 				r := c.createTLSRoute1("default/web", "web", "echoserver:8443")
 				c.createService1("default/echoserver", "8443", "172.17.0.11")
-				g.Spec.Listeners[0].TLS = &gatewayv1.GatewayTLSConfig{Mode: &passthrough}
+				g.Spec.Listeners[0].TLS = &gatewayv1.ListenerTLSConfig{Mode: &passthrough}
 				r.Spec.Hostnames = append(r.Spec.Hostnames, "domain.local")
 			},
 			expHosts: `
@@ -776,8 +776,8 @@ func TestSyncGatewayTLSPassthrough(t *testing.T) {
 				r2 := c.createTLSRoute1("default/web2", "web:l2", "echoserver2:8443")
 				c.createService1("default/echoserver1", "8443", "172.17.0.11")
 				c.createService1("default/echoserver2", "8443", "172.17.0.12")
-				g.Spec.Listeners[0].TLS = &gatewayv1.GatewayTLSConfig{Mode: &passthrough}
-				g.Spec.Listeners[1].TLS = &gatewayv1.GatewayTLSConfig{Mode: &passthrough}
+				g.Spec.Listeners[0].TLS = &gatewayv1.ListenerTLSConfig{Mode: &passthrough}
+				g.Spec.Listeners[1].TLS = &gatewayv1.ListenerTLSConfig{Mode: &passthrough}
 				r1.Spec.Hostnames = []gatewayv1.Hostname{"domain.local"}
 				r2.Spec.Hostnames = []gatewayv1.Hostname{"domain.local"}
 			},
@@ -818,7 +818,7 @@ WARN skipping redeclared ssl-passthrough hostname 'domain.local' on TLSRoute 'de
 				c.createService1("default/echoserver1", "8080", "172.17.0.11")
 				c.createService1("default/echoserver2", "8443", "172.17.0.12")
 				g.Spec.Listeners[0].Protocol = gatewayv1.HTTPSProtocolType
-				g.Spec.Listeners[1].TLS = &gatewayv1.GatewayTLSConfig{Mode: &passthrough}
+				g.Spec.Listeners[1].TLS = &gatewayv1.ListenerTLSConfig{Mode: &passthrough}
 				r1.Spec.Hostnames = []gatewayv1.Hostname{"domain.local"}
 				r2.Spec.Hostnames = []gatewayv1.Hostname{"domain.local"}
 			},
@@ -929,7 +929,7 @@ func (c *testConfig) createConverter() gateway.Config {
 			HasTCPRouteA2: true,
 		},
 		c.hconfig,
-		c.cache.SwapChangedObjects(),
+		c.cache.LegacySwapObjects(),
 		nil,
 	)
 }
@@ -1038,7 +1038,7 @@ spec:
 func (c *testConfig) createGateway2(name, listeners, secretName string) *gatewayv1.Gateway {
 	gw := c.createGateway1(name, listeners)
 	for l := range gw.Spec.Listeners {
-		tls := &gatewayv1.GatewayTLSConfig{}
+		tls := &gatewayv1.ListenerTLSConfig{}
 		for _, s := range strings.Split(secretName, ",") {
 			tls.CertificateRefs = append(tls.CertificateRefs, gatewayv1.SecretObjectReference{
 				Name: gatewayv1.ObjectName(s),

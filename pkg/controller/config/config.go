@@ -100,9 +100,9 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 
 	scheme := runtime.NewScheme()
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(gatewayv1alpha2.AddToScheme(scheme))
-	utilruntime.Must(gatewayv1beta1.AddToScheme(scheme))
-	utilruntime.Must(gatewayv1.AddToScheme(scheme))
+	utilruntime.Must(gatewayv1alpha2.Install(scheme))
+	utilruntime.Must(gatewayv1beta1.Install(scheme))
+	utilruntime.Must(gatewayv1.Install(scheme))
 
 	var kubeConfig *rest.Config
 	switch {
@@ -213,7 +213,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		configLog.Info("watching for Gateway API resources - --watch-gateway is true")
 	}
 
-	var hasGatewayV1, hasGatewayB1, hasGatewayA2, hasTCPRouteA2, hasTLSRouteA2 bool
+	var hasGatewayV1, hasGatewayB1, hasTCPRouteA2, hasTLSRouteA2 bool
 	if opt.WatchGateway {
 		gwapis := []string{"gatewayclass", "gateway", "httproute"}
 		tcpapis := []string{"tcproute"}
@@ -227,17 +227,12 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		if gwB1 {
 			configLog.Info("found custom resource definition for gateway API v1beta1")
 		}
-		gwA2 := configHasAPI(clientGateway.Discovery(), gatewayv1alpha2.GroupVersion, gwapis...)
-		if gwA2 {
-			configLog.Info("found custom resource definition for gateway API v1alpha2")
-		}
 
 		// only one GatewayClass/Gateway/HTTPRoute version should be enabled at the same time,
 		// otherwise we'd be retrieving the same duplicated resource from distinct api endpoints.
-		gw := gwV1 || gwB1 || gwA2
+		gw := gwV1 || gwB1
 		hasGatewayV1 = gwV1
 		hasGatewayB1 = gwB1 && !hasGatewayV1
-		hasGatewayA2 = gwA2 && !hasGatewayB1
 
 		tcpA2 := configHasAPI(clientGateway.Discovery(), gatewayv1alpha2.GroupVersion, tcpapis...)
 		if tcpA2 {
@@ -511,7 +506,6 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		ElectionID:               electionID,
 		ElectionNamespace:        controllerPod.Namespace,
 		ForceNamespaceIsolation:  opt.ForceIsolation,
-		HasGatewayA2:             hasGatewayA2,
 		HasGatewayB1:             hasGatewayB1,
 		HasGatewayV1:             hasGatewayV1,
 		HasTCPRouteA2:            hasTCPRouteA2,
@@ -768,7 +762,6 @@ type Config struct {
 	ElectionID               string
 	ElectionNamespace        string
 	ForceNamespaceIsolation  bool
-	HasGatewayA2             bool
 	HasGatewayB1             bool
 	HasGatewayV1             bool
 	HasTCPRouteA2            bool

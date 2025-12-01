@@ -38,10 +38,8 @@ type Cache interface {
 	GetIngress(ingressName string) (*networking.Ingress, error)
 	GetIngressList() ([]*networking.Ingress, error)
 	GetIngressClass(className string) (*networking.IngressClass, error)
-	GetGatewayA2(namespace, name string) (*gatewayv1alpha2.Gateway, error)
 	GetGatewayB1(namespace, name string) (*gatewayv1beta1.Gateway, error)
 	GetGateway(namespace, name string) (*gatewayv1.Gateway, error)
-	GetHTTPRouteA2List() ([]*gatewayv1alpha2.HTTPRoute, error)
 	GetHTTPRouteB1List() ([]*gatewayv1beta1.HTTPRoute, error)
 	GetHTTPRouteList() ([]*gatewayv1.HTTPRoute, error)
 	GetTCPRouteList() ([]*gatewayv1alpha2.TCPRoute, error)
@@ -57,7 +55,6 @@ type Cache interface {
 	GetCASecretPath(defaultNamespace, secretName string, track []TrackingRef) (ca, crl File, err error)
 	GetDHSecretPath(defaultNamespace, secretName string) (File, error)
 	GetPasswdSecretContent(defaultNamespace, secretName string, track []TrackingRef) ([]byte, error)
-	SwapChangedObjects() *ChangedObjects
 	UpdateStatus(obj client.Object)
 	GetEndpointSlices(service *api.Service) ([]*discoveryv1.EndpointSlice, error)
 }
@@ -87,14 +84,11 @@ const (
 	ResourceIngress      ResourceType = "Ingress"
 	ResourceIngressClass ResourceType = "IngressClass"
 
-	ResourceGatewayA1      ResourceType = "GatewayA1"
-	ResourceGatewayClassA1 ResourceType = "GatewayClassA1"
-	ResourceHTTPRouteA1    ResourceType = "HTTPRouteA1"
-
 	ResourceGateway      ResourceType = "Gateway"
 	ResourceGatewayClass ResourceType = "GatewayClass"
 	ResourceHTTPRoute    ResourceType = "HTTPRoute"
 	ResourceTCPRoute     ResourceType = "TCPRoute"
+	ResourceTLSRoute     ResourceType = "TLSRoute"
 
 	ResourceConfigMap ResourceType = "ConfigMap"
 	ResourceService   ResourceType = "Service"

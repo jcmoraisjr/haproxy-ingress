@@ -69,7 +69,6 @@ type c struct {
 	status    svcStatusUpdateFnc
 }
 
-var errGatewayA2Disabled = fmt.Errorf("gateway API v1alpha2 wasn't initialized")
 var errGatewayB1Disabled = fmt.Errorf("gateway API v1beta1 wasn't initialized")
 var errGatewayV1Disabled = fmt.Errorf("gateway API v1 wasn't initialized")
 var errTCPRouteA2Disabled = fmt.Errorf("TCPRoute API v1alpha2 wasn't initialized")
@@ -180,10 +179,6 @@ func (c *c) IsValidIngressClass(ingressClass *networking.IngressClass) bool {
 
 func (c *c) validateGatewayAPI(api string) error {
 	switch api {
-	case gatewayv1alpha2.GroupVersion.Version:
-		if !c.config.HasGatewayA2 {
-			return errGatewayA2Disabled
-		}
 	case gatewayv1beta1.GroupVersion.Version:
 		if !c.config.HasGatewayB1 {
 			return errGatewayB1Disabled
@@ -203,10 +198,6 @@ func (c *c) getGatewayClass(api, className string) (class *gatewayv1.GatewayClas
 		return nil, err
 	}
 	switch api {
-	case gatewayv1alpha2.GroupVersion.Version:
-		cl := gatewayv1alpha2.GatewayClass{}
-		err = c.get(className, &cl)
-		class = (*gatewayv1.GatewayClass)(&cl)
 	case gatewayv1beta1.GroupVersion.Version:
 		cl := gatewayv1beta1.GatewayClass{}
 		err = c.get(className, &cl)
@@ -217,10 +208,6 @@ func (c *c) getGatewayClass(api, className string) (class *gatewayv1.GatewayClas
 		class = &cl
 	}
 	return class, err
-}
-
-func (c *c) IsValidGatewayA2(gw *gatewayv1alpha2.Gateway) bool {
-	return c.isValidGateway(gatewayv1alpha2.GroupVersion.Version, (*gatewayv1.Gateway)(gw))
 }
 
 func (c *c) IsValidGatewayB1(gw *gatewayv1beta1.Gateway) bool {
@@ -242,10 +229,6 @@ func (c *c) isValidGateway(api string, gw *gatewayv1.Gateway) bool {
 		return false
 	}
 	return c.IsValidGatewayClass(gwClass)
-}
-
-func (c *c) IsValidGatewayClassA2(gwClass *gatewayv1alpha2.GatewayClass) bool {
-	return gwClass.Spec.ControllerName == gatewayv1alpha2.GatewayController(c.config.ControllerName)
 }
 
 func (c *c) IsValidGatewayClassB1(gwClass *gatewayv1beta1.GatewayClass) bool {
@@ -303,18 +286,6 @@ func buildLabelSelector(match map[string]string) (labels.Selector, error) {
 	return labels.Parse(strings.Join(list, ","))
 }
 
-func (c *c) GetGatewayA2(namespace, name string) (*gatewayv1alpha2.Gateway, error) {
-	if !c.config.HasGatewayA2 {
-		return nil, errGatewayA2Disabled
-	}
-	gw := gatewayv1alpha2.Gateway{}
-	err := c.client.Get(c.ctx, types.NamespacedName{Namespace: namespace, Name: name}, &gw)
-	if err == nil && !c.IsValidGatewayA2(&gw) {
-		return nil, nil
-	}
-	return &gw, err
-}
-
 func (c *c) GetGatewayB1(namespace, name string) (*gatewayv1beta1.Gateway, error) {
 	if !c.config.HasGatewayB1 {
 		return nil, errGatewayB1Disabled
@@ -337,22 +308,6 @@ func (c *c) GetGateway(namespace, name string) (*gatewayv1.Gateway, error) {
 		return nil, nil
 	}
 	return &gw, err
-}
-
-func (c *c) GetHTTPRouteA2List() ([]*gatewayv1alpha2.HTTPRoute, error) {
-	if !c.config.HasGatewayA2 {
-		return nil, errGatewayA2Disabled
-	}
-	list := gatewayv1alpha2.HTTPRouteList{}
-	err := c.client.List(c.ctx, &list)
-	if err != nil {
-		return nil, err
-	}
-	refList := make([]*gatewayv1alpha2.HTTPRoute, len(list.Items))
-	for i := range list.Items {
-		refList[i] = &list.Items[i]
-	}
-	return refList, nil
 }
 
 func (c *c) GetHTTPRouteB1List() ([]*gatewayv1beta1.HTTPRoute, error) {
@@ -680,13 +635,6 @@ func (c *c) GetPasswdSecretContent(defaultNamespace, secretName string, track []
 		return nil, fmt.Errorf("secret '%s/%s' does not have key '%s'", namespace, name, keyName)
 	}
 	return data, nil
-}
-
-func (c *c) SwapChangedObjects() *convtypes.ChangedObjects {
-	// deprecated func
-	// converter is adapted to not call this facade
-	// when using the new controller
-	return nil
 }
 
 func (c *c) UpdateStatus(obj client.Object) {
