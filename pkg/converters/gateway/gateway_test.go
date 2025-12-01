@@ -863,7 +863,7 @@ func runTestSync(t *testing.T, testCases []testCaseSync) {
 			// ch.Links reflects changes made by the watcher
 			hasChanges := len(c.cache.Changed.Links) > 0
 			conv := c.createConverter()
-			conv.Sync(true, &gatewayv1.Gateway{})
+			conv.SyncFull()
 
 			if hasChanges {
 				c.hconfig.Commit()
@@ -922,11 +922,10 @@ func setup(t *testing.T) *testConfig {
 func (c *testConfig) createConverter() gateway.Config {
 	return gateway.NewGatewayConverter(
 		&convtypes.ConverterOptions{
-			Cache:         c.cache,
-			Logger:        c.logger,
-			Tracker:       c.tracker,
-			HasTLSRouteA2: true,
-			HasTCPRouteA2: true,
+			Cache:      c.cache,
+			Logger:     c.logger,
+			Tracker:    c.tracker,
+			HasGateway: true,
 		},
 		c.hconfig,
 		c.cache.LegacySwapObjects(),

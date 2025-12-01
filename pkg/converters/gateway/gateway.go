@@ -18,7 +18,6 @@ package gateway
 
 import (
 	"fmt"
-	"reflect"
 	"slices"
 	"sort"
 	"strconv"
@@ -28,8 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	convutils "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/utils"
@@ -41,7 +38,7 @@ import (
 // Config ...
 type Config interface {
 	NeedFullSync() bool
-	Sync(full bool, gwtyp client.Object)
+	SyncFull()
 }
 
 // NewGatewayConverter ...
@@ -76,167 +73,17 @@ func (c *converter) NeedFullSync() bool {
 	return changed
 }
 
-func (c *converter) Sync(full bool, gwtyp client.Object) {
-	// TODO partial parsing
-	if !full {
-		return
-	}
-
+func (c *converter) SyncFull() {
 	// we're not testing TLSRoute hostname declaration collision on HTTPRoute,
 	// so a validation should be added in case the order changes and
 	// syncTLSRoutes() come first.
-	c.syncHTTPRoutes(gwtyp)
-	c.syncTLSRoutes(gwtyp)
-	c.syncTCPRoutes(gwtyp)
-}
-
-func (c *converter) syncHTTPRoutes(gwtyp client.Object) {
-	var httpRoutesSource []*httpRouteSource
-	var err error
-	switch gwtyp.(type) {
-	case *gatewayv1beta1.Gateway:
-		httpRoutesSource, err = c.getHTTPRoutesSourceB1()
-	case *gatewayv1.Gateway:
-		httpRoutesSource, err = c.getHTTPRoutesSource()
-	default:
-		panic(fmt.Errorf("unsupported gateway api type: %T", gwtyp))
-	}
-	if err != nil {
-		c.logger.Error(err.Error())
-		return
-	}
-
-	sortHTTPRoutes(httpRoutesSource)
-	for _, httpRoute := range httpRoutesSource {
-		c.syncRoute(&httpRoute.source, httpRoute.spec.ParentRefs, gwtyp, func(gatewaySource *gatewaySource, sectionName *gatewayv1.SectionName) {
-			c.syncHTTPRouteGateway(httpRoute, gatewaySource, sectionName)
-		})
-	}
-}
-
-func (c *converter) getHTTPRoutesSourceB1() ([]*httpRouteSource, error) {
-	httpRoutes, err := c.cache.GetHTTPRouteB1List()
-	if err != nil {
-		return nil, fmt.Errorf("error reading httpRoute list: %w", err)
-	}
-	httpRoutesSource := make([]*httpRouteSource, len(httpRoutes))
-	for i := range httpRoutes {
-		httpRoutesSource[i] = newHTTPRouteSource(httpRoutes[i], &httpRoutes[i].Spec)
-	}
-	return httpRoutesSource, nil
-}
-
-func (c *converter) getHTTPRoutesSource() ([]*httpRouteSource, error) {
-	httpRoutes, err := c.cache.GetHTTPRouteList()
-	if err != nil {
-		return nil, fmt.Errorf("error reading httpRoute list: %w", err)
-	}
-	httpRoutesSource := make([]*httpRouteSource, len(httpRoutes))
-	for i := range httpRoutes {
-		httpRoutesSource[i] = newHTTPRouteSource(httpRoutes[i], &httpRoutes[i].Spec)
-	}
-	return httpRoutesSource, nil
-}
-
-func (c *converter) syncTLSRoutes(gwtyp client.Object) {
-	if !c.options.HasTLSRouteA2 {
-		return
-	}
-	tlsRoutes, err := c.cache.GetTLSRouteList()
-	if err != nil {
-		c.logger.Warn("error reading tlsRoute list: %v", err)
-		return
-	}
-	tlsRoutesSource := make([]*tlsRouteSource, len(tlsRoutes))
-	for i := range tlsRoutes {
-		tlsRoutesSource[i] = newTLSRouteSource(tlsRoutes[i], &tlsRoutes[i].Spec)
-	}
-	sortTLSRoutes(tlsRoutesSource)
-	for _, tlsRoute := range tlsRoutesSource {
-		c.syncRoute(&tlsRoute.source, tlsRoute.spec.ParentRefs, gwtyp, func(gatewaySource *gatewaySource, sectionName *gatewayv1.SectionName) {
-			c.syncTLSRouteGateway(tlsRoute, gatewaySource, sectionName)
-		})
-	}
-}
-
-func (c *converter) syncTCPRoutes(gwtyp client.Object) {
-	if !c.options.HasTCPRouteA2 {
-		return
-	}
-	tcpRoutes, err := c.cache.GetTCPRouteList()
-	if err != nil {
-		c.logger.Warn("error reading tcpRoute list: %v", err)
-		return
-	}
-	tcpRoutesSource := make([]*tcpRouteSource, len(tcpRoutes))
-	for i := range tcpRoutes {
-		tcpRoutesSource[i] = newTCPRouteSource(tcpRoutes[i], &tcpRoutes[i].Spec)
-	}
-	sortTCPRoutes(tcpRoutesSource)
-	for _, tcpRoute := range tcpRoutesSource {
-		c.syncRoute(&tcpRoute.source, tcpRoute.spec.ParentRefs, gwtyp, func(gatewaySource *gatewaySource, sectionName *gatewayv1.SectionName) {
-			c.syncTCPRouteGateway(tcpRoute, gatewaySource, sectionName)
-		})
-	}
-}
-
-func sortHTTPRoutes(httpRoutesSource []*httpRouteSource) {
-	sort.Slice(httpRoutesSource, func(i, j int) bool {
-		h1 := httpRoutesSource[i].obj
-		h2 := httpRoutesSource[j].obj
-		if h1.GetCreationTimestamp() != h2.GetCreationTimestamp() {
-			return h1.GetCreationTimestamp().Time.Before(h2.GetCreationTimestamp().Time)
-		}
-		return h1.GetNamespace()+"/"+h1.GetName() < h2.GetNamespace()+"/"+h2.GetName()
-	})
-}
-
-func sortTLSRoutes(tlsRoutesSource []*tlsRouteSource) {
-	sort.Slice(tlsRoutesSource, func(i, j int) bool {
-		r1 := tlsRoutesSource[i].obj
-		r2 := tlsRoutesSource[j].obj
-		if r1.GetCreationTimestamp() != r2.GetCreationTimestamp() {
-			return r1.GetCreationTimestamp().Time.Before(r2.GetCreationTimestamp().Time)
-		}
-		return r1.GetNamespace()+"/"+r1.GetName() < r2.GetNamespace()+"/"+r2.GetName()
-	})
-}
-
-func sortTCPRoutes(tcpRoutesSource []*tcpRouteSource) {
-	sort.Slice(tcpRoutesSource, func(i, j int) bool {
-		r1 := tcpRoutesSource[i].obj
-		r2 := tcpRoutesSource[j].obj
-		if r1.GetCreationTimestamp() != r2.GetCreationTimestamp() {
-			return r1.GetCreationTimestamp().Time.Before(r2.GetCreationTimestamp().Time)
-		}
-		return r1.GetNamespace()+"/"+r1.GetName() < r2.GetNamespace()+"/"+r2.GetName()
-	})
+	c.syncHTTPRoutes()
+	c.syncTLSRoutes()
+	c.syncTCPRoutes()
 }
 
 type source struct {
-	obj client.Object
-	//
 	kind, namespace, name string
-}
-
-type httpRouteSource struct {
-	source
-	spec *gatewayv1.HTTPRouteSpec
-}
-
-type tlsRouteSource struct {
-	source
-	spec *gatewayv1alpha2.TLSRouteSpec
-}
-
-type tcpRouteSource struct {
-	source
-	spec *gatewayv1alpha2.TCPRouteSpec
-}
-
-type gatewaySource struct {
-	source
-	spec *gatewayv1.GatewaySpec
 }
 
 func (s *source) String() string {
@@ -245,61 +92,109 @@ func (s *source) String() string {
 
 func newSource(obj client.Object) source {
 	return source{
-		obj:       obj,
 		kind:      obj.GetObjectKind().GroupVersionKind().Kind,
 		namespace: obj.GetNamespace(),
 		name:      obj.GetName(),
 	}
 }
 
-func newHTTPRouteSource(obj client.Object, spec *gatewayv1.HTTPRouteSpec) *httpRouteSource {
-	return &httpRouteSource{
-		spec:   spec,
-		source: newSource(obj),
-	}
-}
-
-func newTLSRouteSource(obj client.Object, spec *gatewayv1alpha2.TLSRouteSpec) *tlsRouteSource {
-	return &tlsRouteSource{
-		spec:   spec,
-		source: newSource(obj),
-	}
-}
-
-func newTCPRouteSource(obj client.Object, spec *gatewayv1alpha2.TCPRouteSpec) *tcpRouteSource {
-	return &tcpRouteSource{
-		spec:   spec,
-		source: newSource(obj),
-	}
-}
-
-func (c *converter) newGatewaySource(namespace, name string, gwtyp client.Object) *gatewaySource {
-	// TODO: we can simplify all these abstract gw/route fetching code after v0.16,
-	// when the old controller is going to be dropped and we can redesign the cache interface.
-	var gw client.Object
-	var err error
-	switch gwtyp.(type) {
-	case *gatewayv1beta1.Gateway:
-		gw, err = c.cache.GetGatewayB1(namespace, name)
-	case *gatewayv1.Gateway:
-		gw, err = c.cache.GetGateway(namespace, name)
-	default:
-		panic(fmt.Errorf("unsupported Gateway type: %T", gwtyp))
-	}
+func (c *converter) syncHTTPRoutes() {
+	routes, err := c.cache.GetHTTPRouteList()
 	if err != nil {
-		c.logger.Error("error reading gateway: %v", err)
-		return nil
+		c.logger.Warn("error reading httpRoute list: %v", err)
+		return
 	}
-	vgw := reflect.ValueOf(gw)
-	if vgw.IsNil() {
-		// Checking via reflection, since `gw` will always be `!= nil`
-		// because all cache methods return a pointer to the underlying struct.
-		// https://go.dev/doc/faq#nil_error
-		return nil
+	sort.Slice(routes, func(i, j int) bool {
+		r1 := routes[i]
+		r2 := routes[j]
+		if r1.CreationTimestamp != r2.CreationTimestamp {
+			return r1.CreationTimestamp.Time.Before(r2.CreationTimestamp.Time)
+		}
+		return r1.Namespace+"/"+r1.Name < r2.Namespace+"/"+r2.Name
+	})
+	for _, route := range routes {
+		routeSource := newSource(route)
+		c.syncRoute(&routeSource, route.Spec.ParentRefs, []gatewayv1.ProtocolType{gatewayv1.HTTPProtocolType, gatewayv1.HTTPSProtocolType}, func(gatewaySource *source, listener *gatewayv1.Listener) {
+			for index, rule := range route.Spec.Rules {
+				// TODO implement rule.Filters
+				backendRefs := make([]gatewayv1.BackendRef, len(rule.BackendRefs))
+				for i := range rule.BackendRefs {
+					// TODO implement HTTPBackendRef.Filters
+					backendRefs[i] = rule.BackendRefs[i].BackendRef
+				}
+				backend, services := c.createBackend(&routeSource, fmt.Sprintf("_rule%d", index), false, backendRefs)
+				if backend != nil {
+					hostnames := c.filterHostnames(listener.Hostname, route.Spec.Hostnames)
+					pathLinks := c.createHTTPHosts(gatewaySource, &routeSource, listener, hostnames, rule.Matches, backend)
+					if c.ann != nil {
+						c.ann.ReadAnnotations(backend, services, pathLinks)
+					}
+				}
+			}
+		})
 	}
-	return &gatewaySource{
-		spec:   vgw.Elem().FieldByName("Spec").Addr().Interface().(*gatewayv1.GatewaySpec),
-		source: newSource(gw),
+}
+
+func (c *converter) syncTLSRoutes() {
+	routes, err := c.cache.GetTLSRouteList()
+	if err != nil {
+		c.logger.Warn("error reading tlsRoute list: %v", err)
+		return
+	}
+	sort.Slice(routes, func(i, j int) bool {
+		r1 := routes[i]
+		r2 := routes[j]
+		if r1.CreationTimestamp != r2.CreationTimestamp {
+			return r1.CreationTimestamp.Time.Before(r2.CreationTimestamp.Time)
+		}
+		return r1.Namespace+"/"+r1.Name < r2.Namespace+"/"+r2.Name
+	})
+	for _, route := range routes {
+		routeSource := newSource(route)
+		c.syncRoute(&routeSource, route.Spec.ParentRefs, []gatewayv1.ProtocolType{gatewayv1.TLSProtocolType}, func(gatewaySource *source, listener *gatewayv1.Listener) {
+			for index, rule := range route.Spec.Rules {
+				// TODO implement rule.Filters
+				backend, services := c.createBackend(&routeSource, fmt.Sprintf("_tlsrule%d", index), true, rule.BackendRefs)
+				if backend != nil {
+					hostnames := c.filterHostnames(listener.Hostname, route.Spec.Hostnames)
+					pathLinks := c.createTLSHosts(gatewaySource, &routeSource, listener, hostnames, backend)
+					if c.ann != nil {
+						c.ann.ReadAnnotations(backend, services, pathLinks)
+					}
+				}
+			}
+		})
+	}
+}
+
+func (c *converter) syncTCPRoutes() {
+	routes, err := c.cache.GetTCPRouteList()
+	if err != nil {
+		c.logger.Warn("error reading tcpRoute list: %v", err)
+		return
+	}
+	sort.Slice(routes, func(i, j int) bool {
+		r1 := routes[i]
+		r2 := routes[j]
+		if r1.CreationTimestamp != r2.CreationTimestamp {
+			return r1.CreationTimestamp.Time.Before(r2.CreationTimestamp.Time)
+		}
+		return r1.Namespace+"/"+r1.Name < r2.Namespace+"/"+r2.Name
+	})
+	for _, route := range routes {
+		routeSource := newSource(route)
+		c.syncRoute(&routeSource, route.Spec.ParentRefs, []gatewayv1.ProtocolType{gatewayv1.TCPProtocolType}, func(gatewaySource *source, listener *gatewayv1.Listener) {
+			for index, rule := range route.Spec.Rules {
+				// TODO implement rule.Filters
+				backend, services := c.createBackend(&routeSource, fmt.Sprintf("_tcprule%d", index), true, rule.BackendRefs)
+				if backend != nil {
+					pathLinks := c.createTCPService(gatewaySource, listener, nil, backend)
+					if c.ann != nil {
+						c.ann.ReadAnnotations(backend, services, pathLinks)
+					}
+				}
+			}
+		})
 	}
 }
 
@@ -308,7 +203,7 @@ var (
 	gatewayKind  = gatewayv1.Kind("Gateway")
 )
 
-func (c *converter) syncRoute(routeSource *source, parentRefs []gatewayv1.ParentReference, gwtyp client.Object, syncGateway func(gatewaySource *gatewaySource, sectionName *gatewayv1.SectionName)) {
+func (c *converter) syncRoute(routeSource *source, parentRefs []gatewayv1.ParentReference, protos []gatewayv1.ProtocolType, syncRouteListener func(gatewaySource *source, listener *gatewayv1.Listener)) {
 	for _, parentRef := range parentRefs {
 		parentGroup := gatewayGroup
 		parentKind := gatewayKind
@@ -327,122 +222,49 @@ func (c *converter) syncRoute(routeSource *source, parentRefs []gatewayv1.Parent
 		if parentRef.Namespace != nil && *parentRef.Namespace != "" {
 			namespace = string(*parentRef.Namespace)
 		}
-		gatewaySource := c.newGatewaySource(namespace, string(parentRef.Name), gwtyp)
-		if gatewaySource == nil {
+		gateway, err := c.cache.GetGateway(namespace, string(parentRef.Name))
+		if err != nil {
+			c.logger.Error("error reading gateway: %v", err)
 			continue
 		}
-		// TODO implement gateway.Spec.Addresses
-		syncGateway(gatewaySource, parentRef.SectionName)
-	}
-}
-
-func (c *converter) syncHTTPRouteGateway(httpRouteSource *httpRouteSource, gatewaySource *gatewaySource, sectionName *gatewayv1.SectionName) {
-	for _, listener := range gatewaySource.spec.Listeners {
-		if sectionName != nil && *sectionName != listener.Name {
+		if gateway == nil {
 			continue
 		}
-		if !c.checkProtocol(gatewaySource, &httpRouteSource.source, listener, gatewayv1.HTTPProtocolType, gatewayv1.HTTPSProtocolType) {
-			continue
-		}
-		if err := c.checkListenerAllowed(gatewaySource, &httpRouteSource.source, &listener); err != nil {
-			c.logger.Warn("skipping attachment of %s to %s listener '%s': %s",
-				httpRouteSource, gatewaySource, listener.Name, err)
-			continue
-		}
-		for index, rule := range httpRouteSource.spec.Rules {
-			// TODO implement rule.Filters
-			backendRefs := make([]gatewayv1.BackendRef, len(rule.BackendRefs))
-			for i := range rule.BackendRefs {
-				// TODO implement HTTPBackendRef.Filters
-				backendRefs[i] = rule.BackendRefs[i].BackendRef
+		gatewaySource := newSource(gateway)
+		sectionName := parentRef.SectionName
+		for i := range gateway.Spec.Listeners {
+			listener := &gateway.Spec.Listeners[i]
+			if sectionName != nil && *sectionName != listener.Name {
+				continue
 			}
-			backend, services := c.createBackend(&httpRouteSource.source, fmt.Sprintf("_rule%d", index), false, backendRefs)
-			if backend != nil {
-				hostnames := c.filterHostnames(listener.Hostname, httpRouteSource.spec.Hostnames)
-				pathLinks := c.createHTTPHosts(gatewaySource, &httpRouteSource.source, &listener, hostnames, rule.Matches, backend)
-				if c.ann != nil {
-					c.ann.ReadAnnotations(backend, services, pathLinks)
+			if listener.Protocol == "" {
+				c.logger.Warn("missing protocol on %s listener '%s' for %s", gatewaySource.String(), listener.Name, routeSource.String())
+				continue
+			}
+			if !slices.Contains(protos, listener.Protocol) {
+				c.logger.Warn("invalid protocol on %s listener '%s' for %s: '%s'", gatewaySource.String(), listener.Name, routeSource.String(), listener.Protocol)
+				continue
+			}
+			switch listener.Protocol {
+			case gatewayv1.HTTPSProtocolType, gatewayv1.TLSProtocolType:
+				if listener.TLS == nil {
+					c.logger.Warn("protocol '%s' on %s listener '%s' is missing TLS configuration", listener.Protocol, gatewaySource.String(), listener.Name)
+					continue
 				}
 			}
-		}
-	}
-}
-
-func (c *converter) syncTLSRouteGateway(tlsRouteSource *tlsRouteSource, gatewaySource *gatewaySource, sectionName *gatewayv1.SectionName) {
-	for _, listener := range gatewaySource.spec.Listeners {
-		if sectionName != nil && *sectionName != listener.Name {
-			continue
-		}
-		if !c.checkProtocol(gatewaySource, &tlsRouteSource.source, listener, gatewayv1.TLSProtocolType) {
-			continue
-		}
-		if err := c.checkListenerAllowed(gatewaySource, &tlsRouteSource.source, &listener); err != nil {
-			c.logger.Warn("skipping attachment of %s to %s listener '%s': %s",
-				tlsRouteSource, gatewaySource, listener.Name, err)
-			continue
-		}
-		for index, rule := range tlsRouteSource.spec.Rules {
-			// TODO implement rule.Filters
-			backend, services := c.createBackend(&tlsRouteSource.source, fmt.Sprintf("_tlsrule%d", index), true, rule.BackendRefs)
-			if backend != nil {
-				hostnames := c.filterHostnames(listener.Hostname, tlsRouteSource.spec.Hostnames)
-				pathLinks := c.createTLSHosts(gatewaySource, tlsRouteSource, &listener, hostnames, backend)
-				if c.ann != nil {
-					c.ann.ReadAnnotations(backend, services, pathLinks)
-				}
+			if err := c.checkListenerAllowed(&gatewaySource, routeSource, listener); err != nil {
+				c.logger.Warn("skipping attachment of %s to %s listener '%s': %s", routeSource.String(), gatewaySource.String(), listener.Name, err)
+				continue
 			}
+			// TODO implement gateway.Spec.Addresses
+			syncRouteListener(&gatewaySource, listener)
 		}
 	}
-}
-
-func (c *converter) syncTCPRouteGateway(tcpRouteSource *tcpRouteSource, gatewaySource *gatewaySource, sectionName *gatewayv1.SectionName) {
-	for _, listener := range gatewaySource.spec.Listeners {
-		if sectionName != nil && *sectionName != listener.Name {
-			continue
-		}
-		if !c.checkProtocol(gatewaySource, &tcpRouteSource.source, listener, gatewayv1.TCPProtocolType) {
-			continue
-		}
-		if err := c.checkListenerAllowed(gatewaySource, &tcpRouteSource.source, &listener); err != nil {
-			c.logger.Warn("skipping attachment of %s to %s listener '%s': %s",
-				tcpRouteSource, gatewaySource, listener.Name, err)
-			continue
-		}
-		for index, rule := range tcpRouteSource.spec.Rules {
-			// TODO implement rule.Filters
-			backend, services := c.createBackend(&tcpRouteSource.source, fmt.Sprintf("_tcprule%d", index), true, rule.BackendRefs)
-			if backend != nil {
-				pathLinks := c.createTCPService(gatewaySource, &listener, nil, backend)
-				if c.ann != nil {
-					c.ann.ReadAnnotations(backend, services, pathLinks)
-				}
-			}
-		}
-	}
-}
-
-func (c *converter) checkProtocol(gatewaySource *gatewaySource, source *source, listener gatewayv1.Listener, proto ...gatewayv1.ProtocolType) bool {
-	if listener.Protocol == "" {
-		c.logger.Warn("missing protocol on %v listener '%s' for %v", gatewaySource, listener.Name, source)
-		return false
-	}
-	if !slices.Contains(proto, listener.Protocol) {
-		c.logger.Warn("invalid protocol on %v listener '%s' for %v: '%s'", gatewaySource, listener.Name, source, listener.Protocol)
-		return false
-	}
-	switch listener.Protocol {
-	case gatewayv1.HTTPSProtocolType, gatewayv1.TLSProtocolType:
-		if listener.TLS == nil {
-			c.logger.Warn("protocol '%s' on %v listener '%s' is missing TLS configuration", listener.Protocol, gatewaySource, listener.Name)
-			return false
-		}
-	}
-	return true
 }
 
 var errRouteNotAllowed = fmt.Errorf("listener does not allow the route")
 
-func (c *converter) checkListenerAllowed(gatewaySource *gatewaySource, routeSource *source, listener *gatewayv1.Listener) error {
+func (c *converter) checkListenerAllowed(gatewaySource, routeSource *source, listener *gatewayv1.Listener) error {
 	if listener == nil || listener.AllowedRoutes == nil {
 		return errRouteNotAllowed
 	}
@@ -467,7 +289,7 @@ func checkListenerAllowedKind(routeSource *source, kinds []gatewayv1.RouteGroupK
 	return fmt.Errorf("listener does not allow route of Kind '%s'", routeSource.kind)
 }
 
-func (c *converter) checkListenerAllowedNamespace(gatewaySource *gatewaySource, routeSource *source, namespaces *gatewayv1.RouteNamespaces) error {
+func (c *converter) checkListenerAllowedNamespace(gatewaySource, routeSource *source, namespaces *gatewayv1.RouteNamespaces) error {
 	if namespaces == nil || namespaces.From == nil {
 		return errRouteNotAllowed
 	}
@@ -585,7 +407,7 @@ func (c *converter) createBackend(routeSource *source, index string, modeTCP boo
 	return habackend, svclist
 }
 
-func (c *converter) createHTTPHosts(gatewaySource *gatewaySource, routeSource *source, listener *gatewayv1.Listener, hostnames []gatewayv1.Hostname, matches []gatewayv1.HTTPRouteMatch, backend *hatypes.Backend) (pathLinks []*hatypes.PathLink) {
+func (c *converter) createHTTPHosts(gatewaySource, routeSource *source, listener *gatewayv1.Listener, hostnames []gatewayv1.Hostname, matches []gatewayv1.HTTPRouteMatch, backend *hatypes.Backend) (pathLinks []*hatypes.PathLink) {
 	if len(matches) == 0 {
 		matches = []gatewayv1.HTTPRouteMatch{{}}
 	}
@@ -654,14 +476,14 @@ func (c *converter) createHTTPHosts(gatewaySource *gatewaySource, routeSource *s
 		if err != nil {
 			// avoid partial (i.e. broken) configuration by reverting all the added paths in the case of an error
 			frontend.RemoveAllLinks(pathLinks...)
-			c.logger.Warn("skipping certificate reference on %s listener '%s': %v", gatewaySource, listener.Name, err)
+			c.logger.Warn("skipping certificate reference on %s listener '%s': %v", gatewaySource.String(), listener.Name, err)
 			return nil
 		}
 	}
 	return pathLinks
 }
 
-func (c *converter) createTLSHosts(gatewaySource *gatewaySource, routeSource *tlsRouteSource, listener *gatewayv1.Listener, hostnames []gatewayv1.Hostname, backend *hatypes.Backend) []*hatypes.PathLink {
+func (c *converter) createTLSHosts(gatewaySource, routeSource *source, listener *gatewayv1.Listener, hostnames []gatewayv1.Hostname, backend *hatypes.Backend) []*hatypes.PathLink {
 	if mode := listener.TLS.Mode; mode == nil || *mode == gatewayv1.TLSModeTerminate {
 		// ssl-offload on haproxy, backend is a plain TCP service
 		return c.createTCPService(gatewaySource, listener, hostnames, backend)
@@ -689,7 +511,7 @@ func (c *converter) createTLSHosts(gatewaySource *gatewaySource, routeSource *tl
 	return nil
 }
 
-func (c *converter) createTCPService(gatewaySource *gatewaySource, listener *gatewayv1.Listener, hostnames []gatewayv1.Hostname, backend *hatypes.Backend) []*hatypes.PathLink {
+func (c *converter) createTCPService(gatewaySource *source, listener *gatewayv1.Listener, hostnames []gatewayv1.Hostname, backend *hatypes.Backend) []*hatypes.PathLink {
 	tcpport := c.haproxy.TCPServices().AcquireTCPPort(int(listener.Port))
 	if len(hostnames) == 0 || listener.TLS == nil {
 		// defaults to wildcard (len==0); overwrite hostnames if non TLS (TLS==nil)
@@ -723,7 +545,7 @@ func (c *converter) createTCPService(gatewaySource *gatewaySource, listener *gat
 		if err != nil {
 			// avoid partial (i.e. broken) configuration by reverting all the added services in the case of an error
 			c.haproxy.TCPServices().RemoveAllLinks(pathlinks...)
-			c.logger.Warn("skipping certificate reference on %s listener '%s': %v", gatewaySource, listener.Name, err)
+			c.logger.Warn("skipping certificate reference on %s listener '%s': %v", gatewaySource.String(), listener.Name, err)
 			return nil
 		}
 	}
@@ -737,7 +559,7 @@ func (c *converter) createTCPService(gatewaySource *gatewaySource, listener *gat
 // Special handling of the added hosts or services should be done in the case of an error: the caller should
 // revert all the changes; otherwise, haproxy would lead to an incomplete/invalid configuration due to the
 // missing of some TLS certificates.
-func (c *converter) readCertRefs(source *gatewaySource, listener *gatewayv1.Listener, hostsTLS map[string]*hatypes.TLSConfig) error {
+func (c *converter) readCertRefs(gatewaySource *source, listener *gatewayv1.Listener, hostsTLS map[string]*hatypes.TLSConfig) error {
 	certRefs := listener.TLS.CertificateRefs
 	if len(certRefs) == 0 {
 		return fmt.Errorf("listener has no certificate reference")
@@ -745,7 +567,7 @@ func (c *converter) readCertRefs(source *gatewaySource, listener *gatewayv1.List
 	var defaultCrtFile *convtypes.CrtFile
 	for i := range certRefs {
 		certRef := certRefs[i]
-		crtFile, err := c.readCertRef(source.namespace, &certRef)
+		crtFile, err := c.readCertRef(gatewaySource.namespace, &certRef)
 		if err != nil {
 			return err
 		}
@@ -757,7 +579,7 @@ func (c *converter) readCertRefs(source *gatewaySource, listener *gatewayv1.List
 			if crtFile.Certificate.VerifyHostname(hostname) == nil {
 				if hostTLS.TLSHash != "" && hostTLS.TLSHash != crtFile.SHA1Hash {
 					c.logger.Warn("skipping certificate reference on %s listener '%s' for hostname '%s': a TLS certificate was already assigned",
-						source, listener.Name, hostname)
+						gatewaySource.String(), listener.Name, hostname)
 					continue
 				}
 				hostTLS.TLSCommonName = crtFile.Certificate.Subject.CommonName

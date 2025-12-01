@@ -213,7 +213,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		configLog.Info("watching for Gateway API resources - --watch-gateway is true")
 	}
 
-	var hasGatewayV1, hasGatewayB1, hasTCPRouteA2, hasTLSRouteA2 bool
+	var hasGateway, hasGatewayV1, hasGatewayB1, hasTCPRouteA2, hasTLSRouteA2 bool
 	if opt.WatchGateway {
 		gwapis := []string{"gatewayclass", "gateway", "httproute"}
 		tcpapis := []string{"tcproute"}
@@ -233,6 +233,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		gw := gwV1 || gwB1
 		hasGatewayV1 = gwV1
 		hasGatewayB1 = gwB1 && !hasGatewayV1
+		hasGateway = hasGatewayV1 || hasGatewayB1
 
 		tcpA2 := configHasAPI(clientGateway.Discovery(), gatewayv1alpha2.GroupVersion, tcpapis...)
 		if tcpA2 {
@@ -506,6 +507,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		ElectionID:               electionID,
 		ElectionNamespace:        controllerPod.Namespace,
 		ForceNamespaceIsolation:  opt.ForceIsolation,
+		HasGateway:               hasGateway,
 		HasGatewayB1:             hasGatewayB1,
 		HasGatewayV1:             hasGatewayV1,
 		HasTCPRouteA2:            hasTCPRouteA2,
@@ -762,6 +764,7 @@ type Config struct {
 	ElectionID               string
 	ElectionNamespace        string
 	ForceNamespaceIsolation  bool
+	HasGateway               bool
 	HasGatewayB1             bool
 	HasGatewayV1             bool
 	HasTCPRouteA2            bool
