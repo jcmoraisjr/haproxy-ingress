@@ -637,13 +637,6 @@ func (c *c) GetPasswdSecretContent(defaultNamespace, secretName string, track []
 	return data, nil
 }
 
-func (c *c) SwapChangedObjects() *convtypes.ChangedObjects {
-	// deprecated func
-	// converter is adapted to not call this facade
-	// when using the new controller
-	return nil
-}
-
 func (c *c) UpdateStatus(obj client.Object) {
 	c.status(obj)
 }

@@ -929,7 +929,7 @@ func (c *testConfig) createConverter() gateway.Config {
 			HasTCPRouteA2: true,
 		},
 		c.hconfig,
-		c.cache.SwapChangedObjects(),
+		c.cache.LegacySwapObjects(),
 		nil,
 	)
 }

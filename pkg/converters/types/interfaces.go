@@ -55,7 +55,6 @@ type Cache interface {
 	GetCASecretPath(defaultNamespace, secretName string, track []TrackingRef) (ca, crl File, err error)
 	GetDHSecretPath(defaultNamespace, secretName string) (File, error)
 	GetPasswdSecretContent(defaultNamespace, secretName string, track []TrackingRef) ([]byte, error)
-	SwapChangedObjects() *ChangedObjects
 	UpdateStatus(obj client.Object)
 	GetEndpointSlices(service *api.Service) ([]*discoveryv1.EndpointSlice, error)
 }

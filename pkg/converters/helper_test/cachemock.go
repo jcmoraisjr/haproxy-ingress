@@ -290,8 +290,8 @@ func (c *CacheMock) GetPasswdSecretContent(defaultNamespace, secretName string, 
 // UpdateStatus ...
 func (c *CacheMock) UpdateStatus(client.Object) {}
 
-// SwapChangedObjects ...
-func (c *CacheMock) SwapChangedObjects() *convtypes.ChangedObjects {
+// LegacySwapObjects ...
+func (c *CacheMock) LegacySwapObjects() *convtypes.ChangedObjects {
 	changed := c.Changed
 	c.Changed = &convtypes.ChangedObjects{
 		GlobalConfigMapDataCur: changed.GlobalConfigMapDataNew,
