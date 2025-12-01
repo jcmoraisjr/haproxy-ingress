@@ -88,6 +88,7 @@ const (
 	ResourceGatewayClass ResourceType = "GatewayClass"
 	ResourceHTTPRoute    ResourceType = "HTTPRoute"
 	ResourceTCPRoute     ResourceType = "TCPRoute"
+	ResourceTLSRoute     ResourceType = "TLSRoute"
 
 	ResourceConfigMap ResourceType = "ConfigMap"
 	ResourceService   ResourceType = "Service"
