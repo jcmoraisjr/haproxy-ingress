@@ -293,7 +293,7 @@ func (c *CacheMock) GetPasswdSecretContent(defaultNamespace, secretName string, 
 }
 
 // UpdateStatus ...
-func (c *CacheMock) UpdateStatus(client.Object) {}
+func (c *CacheMock) UpdateStatus(namedObj client.Object, apply func() bool) error { return nil }
 
 // SwapChangedObjects ...
 func (c *CacheMock) SwapChangedObjects() *convtypes.ChangedObjects {

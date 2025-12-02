@@ -57,7 +57,7 @@ type Cache interface {
 	GetDHSecretPath(defaultNamespace, secretName string) (File, error)
 	GetPasswdSecretContent(defaultNamespace, secretName string, track []TrackingRef) ([]byte, error)
 	SwapChangedObjects() *ChangedObjects
-	UpdateStatus(obj client.Object)
+	UpdateStatus(namedObj client.Object, apply func() bool) error
 	GetEndpointSlices(service *api.Service) ([]*discoveryv1.EndpointSlice, error)
 }
 

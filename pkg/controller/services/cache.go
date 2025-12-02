@@ -35,6 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
@@ -45,8 +46,8 @@ import (
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 )
 
-func createCacheFacade(ctx context.Context, client client.Client, config *config.Config, tracker convtypes.Tracker, sslCerts *SSL, dynconfig *convtypes.DynamicConfig, status svcStatusUpdateFnc) *c {
-	return &c{
+func createCacheFacade(ctx context.Context, client client.Client, config *config.Config, tracker convtypes.Tracker, sslCerts *SSL, dynconfig *convtypes.DynamicConfig, svcleader *svcLeader) *c {
+	c := &c{
 		ctx:       ctx,
 		log:       logr.FromContextOrDiscard(ctx).WithName("cache"),
 		config:    config,
@@ -54,8 +55,9 @@ func createCacheFacade(ctx context.Context, client client.Client, config *config
 		tracker:   tracker,
 		sslCerts:  sslCerts,
 		dynconfig: dynconfig,
-		status:    status,
 	}
+	svcleader.addSubscriber(func(_ context.Context, isLeader bool) { c.leader = isLeader })
+	return c
 }
 
 type c struct {
@@ -66,7 +68,7 @@ type c struct {
 	tracker   convtypes.Tracker
 	sslCerts  *SSL
 	dynconfig *convtypes.DynamicConfig
-	status    svcStatusUpdateFnc
+	leader    bool
 }
 
 var errGatewayA2Disabled = fmt.Errorf("gateway API v1alpha2 wasn't initialized")
@@ -672,8 +674,20 @@ func (c *c) SwapChangedObjects() *convtypes.ChangedObjects {
 	return nil
 }
 
-func (c *c) UpdateStatus(obj client.Object) {
-	c.status(obj)
+func (c *c) UpdateStatus(namedObj client.Object, apply func() bool) error {
+	if !c.leader {
+		return nil
+	}
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		if err := c.client.Get(c.ctx, client.ObjectKeyFromObject(namedObj), namedObj); err != nil {
+			return err
+		}
+		if apply() {
+			return c.client.Status().Update(c.ctx, namedObj)
+		}
+		return nil
+	})
+	return client.IgnoreNotFound(err)
 }
 
 //
