@@ -772,7 +772,7 @@ func (c *k8scache) IsValidConfigMap(cm *api.ConfigMap) bool {
 
 // A noop func just to implement the Cache intf, this is not
 // used by this version of the controller.
-func (c *k8scache) UpdateStatus(client.Object) {}
+func (c *k8scache) UpdateStatus(namedObj client.Object, apply func() bool) error { return nil }
 
 // implements ListerEvents
 func (c *k8scache) Notify(old, cur interface{}) {
