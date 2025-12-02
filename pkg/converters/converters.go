@@ -23,9 +23,6 @@ import (
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
-
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 // Config ...
@@ -74,13 +71,8 @@ func (c *converters) Sync() {
 	//
 	// gateway converter
 	//
-	if c.options.HasGatewayV1 {
-		gatewayConverter.Sync(needFullSync, &gatewayv1.Gateway{})
-	}
-	if c.options.HasGatewayB1 {
-		gatewayConverter.Sync(needFullSync, &gatewayv1beta1.Gateway{})
-	}
-	if c.options.HasGatewayB1 || c.options.HasGatewayV1 {
+	if c.options.HasGateway && needFullSync {
+		gatewayConverter.SyncFull()
 		c.timer.Tick("parse_gateway")
 	}
 

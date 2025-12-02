@@ -27,7 +27,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
@@ -38,9 +37,7 @@ type Cache interface {
 	GetIngress(ingressName string) (*networking.Ingress, error)
 	GetIngressList() ([]*networking.Ingress, error)
 	GetIngressClass(className string) (*networking.IngressClass, error)
-	GetGatewayB1(namespace, name string) (*gatewayv1beta1.Gateway, error)
 	GetGateway(namespace, name string) (*gatewayv1.Gateway, error)
-	GetHTTPRouteB1List() ([]*gatewayv1beta1.HTTPRoute, error)
 	GetHTTPRouteList() ([]*gatewayv1.HTTPRoute, error)
 	GetTCPRouteList() ([]*gatewayv1alpha2.TCPRoute, error)
 	GetTLSRouteList() ([]*gatewayv1alpha2.TLSRoute, error)

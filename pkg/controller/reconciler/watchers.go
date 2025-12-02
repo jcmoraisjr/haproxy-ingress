@@ -295,14 +295,14 @@ func (w *watchers) handlersGatewayv1beta1() []*hdlr {
 				predicate.GenerationChangedPredicate{},
 				predicate.Funcs{
 					CreateFunc: func(ce event.CreateEvent) bool {
-						return w.val.IsValidGatewayClassB1(ce.Object.(*gatewayv1beta1.GatewayClass))
+						return w.val.IsValidGatewayClass((*gatewayv1.GatewayClass)(ce.Object.(*gatewayv1beta1.GatewayClass)))
 					},
 					DeleteFunc: func(de event.DeleteEvent) bool {
-						return w.val.IsValidGatewayClassB1(de.Object.(*gatewayv1beta1.GatewayClass))
+						return w.val.IsValidGatewayClass((*gatewayv1.GatewayClass)(de.Object.(*gatewayv1beta1.GatewayClass)))
 					},
 					UpdateFunc: func(ue event.UpdateEvent) bool {
-						return w.val.IsValidGatewayClassB1(ue.ObjectOld.(*gatewayv1beta1.GatewayClass)) ||
-							w.val.IsValidGatewayClassB1(ue.ObjectNew.(*gatewayv1beta1.GatewayClass))
+						return w.val.IsValidGatewayClass((*gatewayv1.GatewayClass)(ue.ObjectOld.(*gatewayv1beta1.GatewayClass))) ||
+							w.val.IsValidGatewayClass((*gatewayv1.GatewayClass)(ue.ObjectNew.(*gatewayv1beta1.GatewayClass)))
 					},
 				},
 			},
