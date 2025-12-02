@@ -27,7 +27,6 @@ import (
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/acme"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
-	ctrlutils "github.com/jcmoraisjr/haproxy-ingress/pkg/controller/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
@@ -55,8 +54,7 @@ type Services struct {
 	reloadQueue  *workqueue.WorkQueue[any]
 	svcleader    *svcLeader
 	svchealthz   *svcHealthz
-	svcstatus    *svcStatusUpdater
-	svcstatusing *svcStatusIng
+	svcaddress   *svcAddress
 	updateCount  int
 }
 
@@ -110,9 +108,8 @@ func (s *Services) setup(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	svcstatus := initSvcStatusUpdater(ctx, s.Client)
-	cache := createCacheFacade(ctx, s.Client, cfg, tracker, sslCerts, dynConfig, svcstatus.update)
-	svcstatusing := initSvcStatusIng(ctx, cfg, s.Client, cache, svcstatus.update)
+	cache := createCacheFacade(ctx, s.Client, cfg, tracker, sslCerts, dynConfig, svcleader)
+	svcaddress := initSvcAddress(ctx, cfg, s.Client, cache)
 	var acmeClient *svcAcmeClient
 	var acmeServer *svcAcmeServer
 	var acmeSigner acme.Signer
@@ -180,8 +177,7 @@ func (s *Services) setup(ctx context.Context) error {
 	s.reloadQueue = reloadQueue
 	s.svcleader = svcleader
 	s.svchealthz = svchealthz
-	s.svcstatus = svcstatus
-	s.svcstatusing = svcstatusing
+	s.svcaddress = svcaddress
 	return nil
 }
 
@@ -190,11 +186,8 @@ func (s *Services) withManager(mgr ctrl.Manager) error {
 		if err := mgr.Add(s.svcleader); err != nil {
 			return err
 		}
-		if err := s.svcleader.addRunnable(ctrlutils.DelayedShutdown(s.svcstatus)); err != nil {
-			return err
-		}
 		if s.Config.UpdateStatus {
-			if err := s.svcleader.addRunnable(s.svcstatusing); err != nil {
+			if err := s.svcleader.addRunnable(s.svcaddress); err != nil {
 				return err
 			}
 		}
@@ -266,8 +259,8 @@ func (s *Services) ReconcileIngress(ctx context.Context, changed *convtypes.Chan
 	var errmsg string
 	if err = s.instance.HAProxyUpdate(timer); err != nil {
 		errmsg = "error trying to update haproxy"
-	} else if err = s.svcstatusing.changed(ctx, timer, changed); err != nil {
-		errmsg = "error trying to synchronize ingress status"
+	} else if err = s.svcaddress.changed(ctx, timer, changed); err != nil {
+		errmsg = "error trying to synchronize address status"
 	}
 	updatelogger := s.log.WithValues("id", s.updateCount).WithValues(timer.AsValues("total")...)
 	if err != nil {

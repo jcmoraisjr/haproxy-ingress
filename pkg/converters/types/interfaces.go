@@ -52,7 +52,7 @@ type Cache interface {
 	GetCASecretPath(defaultNamespace, secretName string, track []TrackingRef) (ca, crl File, err error)
 	GetDHSecretPath(defaultNamespace, secretName string) (File, error)
 	GetPasswdSecretContent(defaultNamespace, secretName string, track []TrackingRef) ([]byte, error)
-	UpdateStatus(obj client.Object)
+	UpdateStatus(namedObj client.Object, apply func() bool) error
 	GetEndpointSlices(service *api.Service) ([]*discoveryv1.EndpointSlice, error)
 }
 

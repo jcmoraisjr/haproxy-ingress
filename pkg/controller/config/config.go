@@ -377,7 +377,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 			}
 			configLog.Info("service validated as assigned with externalIP", "service", svc)
 		} else {
-			configLog.Info("service validated as source of Ingress status", "service", svc)
+			configLog.Info("service validated as source of address status", "service", svc)
 		}
 	}
 
