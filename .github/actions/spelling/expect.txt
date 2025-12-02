@@ -438,6 +438,7 @@ strdomains
 strpath
 strshards
 svcacme
+svcaddress
 svcann
 svccalcidle
 svcctx
@@ -456,7 +457,6 @@ svcpublb
 svcs
 svcshutdown
 svcstatus
-svcstatusing
 svctls
 sworkqueue
 syslogsrv
