@@ -38,6 +38,7 @@ func CreateBackends(shardCount int) *Backends {
 		authBackends:  map[string]*Backend{},
 		shards:        shards,
 		changedShards: map[int]bool{},
+		statusCode:    map[int]*Backend{},
 	}
 	backends.DefaultBackend = backends.AcquireNotFoundBackend()
 	return backends
@@ -212,6 +213,19 @@ func (b *Backends) BuildSortedShard(shardRef int) []*Backend {
 	return b.buildSortedItems(b.shards[shardRef])
 }
 
+func (b *Backends) BuildStatusCodeItems() []*Backend {
+	items := make([]*Backend, len(b.statusCode))
+	var i int
+	for _, item := range b.statusCode {
+		items[i] = item
+		i++
+	}
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].ID < items[j].ID
+	})
+	return items
+}
+
 func (b *Backends) buildSortedItems(backendItems map[string]*Backend) []*Backend {
 	items := make([]*Backend, len(backendItems))
 	var i int
@@ -300,6 +314,21 @@ func (b *Backends) AcquireNotFoundBackend() *Backend {
 		b.error404 = createBackend(0, "_error404", "", "") // this is also hardcoded in the template
 	}
 	return b.error404
+}
+
+// AcquireStatusCodeBackend ...
+//
+// TODO: It currently supports only the following codes:
+// 200, 400, 403, 404, 405, 408, 410, 413, 425, 429, 500, 501, 502, 503, 504
+// Need to improve the template to support others.
+func (b *Backends) AcquireStatusCodeBackend(code int) *Backend {
+	backend, found := b.statusCode[code]
+	if !found {
+		backend = createBackend(0, "_status"+strconv.Itoa(code), "", "")
+		backend.Code = code
+		b.statusCode[code] = backend
+	}
+	return backend
 }
 
 // AcquireAuthBackend ...
