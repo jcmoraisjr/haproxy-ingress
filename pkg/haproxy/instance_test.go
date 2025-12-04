@@ -19,6 +19,7 @@ package haproxy
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -3938,6 +3939,8 @@ func TestInstanceCustomProxy(t *testing.T) {
 	fhttps := c.httpsFrontend(443)
 	_ = c.config.backends.AcquireRedirectHTTPSBackend()
 	_ = c.config.backends.AcquireNotFoundBackend()
+	_ = c.config.backends.AcquireStatusCodeBackend(http.StatusInternalServerError) // 500
+	_ = c.config.backends.AcquireStatusCodeBackend(http.StatusBadRequest)          // 400
 
 	var h *hatypes.Host
 	var b = c.config.Backends().AcquireBackend("d1", "app", "8080")
@@ -3974,6 +3977,8 @@ func TestInstanceCustomProxy(t *testing.T) {
 		"d2_app_8080":             {"## custom for d2_app_8080"},
 		"_redirect_https":         {"## custom for _redirect_https"},
 		"_error404":               {"## custom for _error404", "## line 2"},
+		"_status400":              {"## custom for _status400"},
+		"_status500":              {"## custom for _status500"},
 		"_auth_4001":              {"## custom for _auth_4001"},
 		"_front__auth":            {"## custom for _front__auth"},
 		"_front_tcp_7001":         {"## custom for _front_tcp_7001"},
@@ -4014,6 +4019,14 @@ backend _error404
     ## custom for _error404
     ## line 2
     http-request use-service lua.send-404
+backend _status400
+    mode http
+    ## custom for _status400
+    http-request return status 400 default-errorfiles
+backend _status500
+    mode http
+    ## custom for _status500
+    http-request return status 500 default-errorfiles
 backend _auth_4001
     mode http
     ## custom for _auth_4001

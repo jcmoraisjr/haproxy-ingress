@@ -952,12 +952,16 @@ backend _acme_challenge
     server _acme_server unix@{{ $global.Acme.Socket }}
 {{- end }}
 
-{{- if $backends.HasBackend "_error404" }}
+{{- $has404 := $backends.HasBackend "_error404" }}
+{{- $statusBackends := $backends.BuildStatusCodeItems }}
+{{- if or $has404 $statusBackends }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
-#     Error pages
+#     Status pages
 #
+
+{{- if $has404 }}
 backend _error404
     mode http
 {{- range $snippet := index $global.CustomProxy "_error404" }}
@@ -968,6 +972,16 @@ backend _error404
 {{- else }}
     http-request use-service lua.send-404
 {{- end }}
+{{- end }}
+{{- end }}
+
+{{- range $statusBackend := $statusBackends }}
+backend {{ $statusBackend.ID }}
+    mode http
+{{- range $snippet := index $global.CustomProxy $statusBackend.ID }}
+    {{ $snippet }}
+{{- end }}
+    http-request return status {{ $statusBackend.Code }} default-errorfiles
 {{- end }}
 
 {{- end }}{{/* define "backend-support" */}}

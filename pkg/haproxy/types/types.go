@@ -633,6 +633,7 @@ type Backends struct {
 	changedShards  map[int]bool
 	httpsRedir     *Backend
 	error404       *Backend
+	statusCode     map[int]*Backend
 	DefaultBackend *Backend
 }
 
@@ -654,6 +655,7 @@ type Backend struct {
 	hash64    uint64
 	shard     int
 	ID        string
+	Code      int
 	Namespace string
 	Name      string
 	Port      string
