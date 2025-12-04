@@ -43,6 +43,7 @@ import (
 
 func createWatchers(ctx context.Context, cfg *config.Config, val services.IsValidResource) *watchers {
 	w := &watchers{
+		q:   make(chan event.GenericEvent),
 		log: logr.FromContextOrDiscard(ctx).WithName("watchers"),
 		cfg: cfg,
 		val: val,
@@ -53,6 +54,7 @@ func createWatchers(ctx context.Context, cfg *config.Config, val services.IsVali
 
 type watchers struct {
 	mu  sync.Mutex
+	q   chan event.GenericEvent
 	ch  *types.ChangedObjects
 	log logr.Logger
 	cfg *config.Config
@@ -114,6 +116,15 @@ func (w *watchers) running() bool {
 	return w.run
 }
 
+func (w *watchers) addRateLimited(fullsync bool) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if fullsync {
+		w.ch.NeedFullSync = true
+	}
+	w.q <- event.GenericEvent{}
+}
+
 func (w *watchers) handlersCore() []*hdlr {
 	cmChange := func(o client.Object) {
 		cm := o.(*api.ConfigMap)
@@ -126,6 +137,9 @@ func (w *watchers) handlersCore() []*hdlr {
 		}
 	}
 	return []*hdlr{
+		{
+			q: w.q,
+		},
 		{
 			typ: &api.ConfigMap{},
 			res: types.ResourceConfigMap,
@@ -492,6 +506,7 @@ func (w *watchers) handlersTCPRoutev1alpha2() []*hdlr {
 
 type hdlr struct {
 	w   *watchers
+	q   <-chan event.GenericEvent
 	typ client.Object
 	res types.ResourceType
 	pr  []predicate.Predicate
@@ -503,7 +518,13 @@ type hdlr struct {
 }
 
 func (h *hdlr) getSource(c cache.Cache) source.TypedSource[rparam] {
-	return source.TypedKind(c, h.typ, h, h.pr...)
+	switch {
+	case h.q != nil:
+		return source.TypedChannel(h.q, h)
+	case h.typ != nil:
+		return source.TypedKind(c, h.typ, h, h.pr...)
+	}
+	panic(fmt.Errorf("either queue channel or resource type should be configured in controller handler"))
 }
 
 func (h *hdlr) Create(ctx context.Context, e event.TypedCreateEvent[client.Object], q workqueue.TypedRateLimitingInterface[rparam]) {
@@ -539,7 +560,6 @@ func (h *hdlr) Delete(ctx context.Context, e event.TypedDeleteEvent[client.Objec
 func (h *hdlr) Generic(ctx context.Context, e event.TypedGenericEvent[client.Object], q workqueue.TypedRateLimitingInterface[rparam]) {
 	h.w.mu.Lock()
 	defer h.w.mu.Unlock()
-	h.w.ch.NeedFullSync = true
 	h.notify("generic", e.Object, q)
 }
 
@@ -562,9 +582,13 @@ func (h *hdlr) notify(event string, o client.Object, q workqueue.TypedRateLimiti
 	if h.full {
 		h.w.ch.NeedFullSync = true
 	}
-	q.AddRateLimited(rparam{fullsync: h.full})
+	q.AddRateLimited(rparam{})
 	if h.w.run {
-		h.w.log.Info("notify", "event", event, "kind", reflect.TypeOf(o), "namespace", o.GetNamespace(), "name", o.GetName())
+		log := h.w.log.WithValues("event", event)
+		if o != nil {
+			log = log.WithValues("kind", reflect.TypeOf(o).String(), "namespace", o.GetNamespace(), "name", o.GetName())
+		}
+		log.Info("notify")
 	}
 }
 
