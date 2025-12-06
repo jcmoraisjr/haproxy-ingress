@@ -28,6 +28,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gwapischeme "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/scheme"
@@ -50,6 +51,7 @@ type testCaseSync struct {
 	expHosts       string
 	expTCPServices string
 	expBackends    string
+	expGWStatus    string
 	expLogging     string
 }
 
@@ -78,24 +80,6 @@ paths:
     port: 8080
     weight: 128
 `,
-		},
-		{
-			id: "missing-proto",
-			resConfig: []string{`
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: web
-  namespace: default
-spec:
-  gatewayClassName: haproxy
-  listeners:
-  - name: h1
-`},
-			config: func(c *testConfig) {
-				c.createHTTPRoute1("default/web", "default/web", "echoserver:8080")
-			},
-			expLogging: `WARN missing protocol on Gateway 'default/web' listener 'h1' for HTTPRoute 'default/web'`,
 		},
 		{
 			id: "cross-namespace-1",
@@ -174,8 +158,8 @@ paths:
 				c.createHTTPRoute1("ns2/web", "ns1/web", "echoserver:8080")
 				c.createService1("ns2/echoserver", "8080", "172.17.0.11")
 			},
-			expLogging: `
-ERROR error reading gateway: gateway not found: ns1/web`,
+			expDefaultHost: ``, // route points to a missing gw; not our
+			expBackends:    ``, // business, so just missing routing configs.
 		},
 		{
 			id: "allowed-kind-1",
@@ -194,6 +178,9 @@ ERROR error reading gateway: gateway not found: ns1/web`,
 					{Group: &gatewayGroup, Kind: "OtherRoute"},
 				}
 			},
+			expLogging: `
+WARN Route kinds (gateway.networking.k8s.io/OtherRoute) not supported on Gateway 'default/web' listener 'l2'
+`,
 			expDefaultHost: `
 hostname: <default>
 paths:
@@ -230,6 +217,7 @@ paths:
 				}
 			},
 			expLogging: `
+WARN Route kinds (gateway.networking.k8s.io/OtherRoute) not supported on Gateway 'default/web' listener 'l1'
 WARN skipping attachment of HTTPRoute 'default/web' to Gateway 'default/web' listener 'l1': listener does not allow route of Kind 'HTTPRoute'
 `,
 		},
@@ -354,7 +342,7 @@ func TestSyncHTTPRouteTracking(t *testing.T) {
 		{
 			id: "remove-secret-1",
 			config: func(c *testConfig) {
-				c.createGateway2("default/web", "l1", "crt")
+				c.createGateway2("default/web", "l1:443", "crt")
 				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 				c.cache.SecretTLSPath["default/crt"] = "/tls/crt.pem"
@@ -365,7 +353,7 @@ func TestSyncHTTPRouteTracking(t *testing.T) {
 		{
 			id: "remove-secret-2",
 			config: func(c *testConfig) {
-				c.createGateway2("default/web", "l1", "crt")
+				c.createGateway2("default/web", "l1:443", "crt")
 				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 				c.cache.SecretTLSPath["default/crt"] = "/tls/crt.pem"
@@ -376,7 +364,7 @@ func TestSyncHTTPRouteTracking(t *testing.T) {
 		{
 			id: "add-secret-1",
 			config: func(c *testConfig) {
-				c.createGateway2("default/web", "l1", "crt")
+				c.createGateway2("default/web", "l1:443", "crt")
 				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 				c.createSecret1("default/crt1")
@@ -390,7 +378,7 @@ WARN skipping certificate reference on Gateway 'default/web' listener 'l1': secr
 		{
 			id: "add-secret-2",
 			config: func(c *testConfig) {
-				c.createGateway2("default/web", "l1", "crt")
+				c.createGateway2("default/web", "l1:443", "crt")
 				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 				tracker.TrackChanges(c.cache.Changed.Links, convtypes.ResourceSecret, "default/crt")
@@ -403,7 +391,7 @@ WARN skipping certificate reference on Gateway 'default/web' listener 'l1': secr
 		{
 			id: "update-secret-1",
 			config: func(c *testConfig) {
-				c.createGateway2("default/web", "l1", "crt")
+				c.createGateway2("default/web", "l1:443", "crt")
 				c.createHTTPRoute1("default/web", "web", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 				c.cache.SecretTLSPath["default/crt"] = "/tls/crt.pem"
@@ -584,34 +572,6 @@ func TestSyncTCPRouteCore(t *testing.T) {
 `,
 			expBackends: defaultBackend,
 		},
-		{
-			id: "missing-proto",
-			resConfig: []string{`
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: web
-  namespace: default
-spec:
-  gatewayClassName: haproxy
-  listeners:
-  - name: h1
-`},
-			config: func(c *testConfig) {
-				c.createTCPRoute1("default/web", "default/web", "echoserver:8080")
-			},
-			expLogging: `WARN missing protocol on Gateway 'default/web' listener 'h1' for TCPRoute 'default/web'`,
-		},
-		{
-			id: "missing-secret-1",
-			config: func(c *testConfig) {
-				c.createGateway2("default/pg", "l1:5432", "crt")
-				c.createTCPRoute1("default/pg", "pg", "postgres:15432")
-				c.createService1("default/postgres", "15432", "172.17.0.11")
-			},
-			expBackends: defaultBackend,
-			expLogging:  `WARN skipping certificate reference on Gateway 'default/pg' listener 'l1': secret not found: 'default/crt'`,
-		},
 	})
 }
 
@@ -652,7 +612,7 @@ tls:
 		{
 			id: "tls-listener-missing-secret-1",
 			config: func(c *testConfig) {
-				c.createGateway2("default/web", "l1", "crt")
+				c.createGateway2("default/web", "l1:443", "crt")
 				c.createHTTPRoute1("default/web", "web:l1", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 			},
@@ -665,7 +625,7 @@ WARN skipping certificate reference on Gateway 'default/web' listener 'l1': secr
 			id: "tls-listener-1",
 			config: func(c *testConfig) {
 				c.createSecret1("default/crt")
-				c.createGateway2("default/web", "l1", "crt")
+				c.createGateway2("default/web", "l1:443", "crt")
 				c.createHTTPRoute1("default/web", "web:l1", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 			},
@@ -677,7 +637,7 @@ WARN skipping certificate reference on Gateway 'default/web' listener 'l1': secr
 			config: func(c *testConfig) {
 				c.createSecret1("default/crt")
 				c.createSecret1("default/crt2")
-				c.createGateway2("default/web", "l1", "crt,crt2")
+				c.createGateway2("default/web", "l1:443", "crt,crt2")
 				c.createHTTPRoute1("default/web", "web:l1", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 			},
@@ -688,7 +648,7 @@ WARN skipping certificate reference on Gateway 'default/web' listener 'l1': secr
 			id: "tls-listener-no-refs-1",
 			config: func(c *testConfig) {
 				c.createSecret1("default/crt1")
-				g := c.createGateway2("default/web", "l1", "crt1")
+				g := c.createGateway2("default/web", "l1:443", "crt1")
 				c.createHTTPRoute1("default/web", "web:l1", "echoserver:8080")
 				c.createService1("default/echoserver", "8080", "172.17.0.11")
 				g.Spec.Listeners[0].TLS.CertificateRefs = nil
@@ -703,7 +663,7 @@ WARN skipping certificate reference on Gateway 'default/web' listener 'l1': list
 			config: func(c *testConfig) {
 				c.createSecret1("default/crt1")
 				c.createSecret1("default/crt2")
-				c.createGateway2("default/web", "l1,l2", "crt1").Spec.Listeners[1].TLS.CertificateRefs[0].Name = "crt2"
+				c.createGateway2("default/web", "l1:443,l2:443", "crt1").Spec.Listeners[1].TLS.CertificateRefs[0].Name = "crt2"
 				r1 := c.createHTTPRoute1("default/web1", "web:l1", "echoserver1:8080")
 				r2 := c.createHTTPRoute1("default/web2", "web:l2", "echoserver2:8080")
 				c.createService1("default/echoserver1", "8080", "172.17.0.11")
@@ -851,10 +811,180 @@ WARN skipping hostname 'domain.local' on TLSRoute 'default/web': hostname alread
 	})
 }
 
+func TestGatewayClassStatus(t *testing.T) {
+	c := setup(t)
+	gwcls := c.createGatewayClass("haproxy")
+	_ = c.createConverter().SyncFull()
+	c.compareStatus("gatewayclass", gwcls, `
+conditions:
+- lastTransitionTime: "-"
+  message: Class accepted by HAProxy Ingress
+  reason: Accepted
+  status: "True"
+  type: Accepted
+`)
+}
+
+func TestGatewayStatus(t *testing.T) {
+	testCases := map[string]struct {
+		create     func(c *testConfig) *gatewayv1.Gateway
+		expLogging string
+		expStatus  string
+	}{
+		"test01": {
+			create: func(c *testConfig) *gatewayv1.Gateway {
+				return c.createGateway1("default/gateway1", "")
+			},
+			expStatus: `
+conditions:
+- lastTransitionTime: "-"
+  message: Gateway accepted by HAProxy Ingress
+  reason: Accepted
+  status: "True"
+  type: Accepted
+- lastTransitionTime: "-"
+  message: ""
+  reason: Programmed
+  status: "True"
+  type: Programmed
+`,
+		},
+		"test02": {
+			create: func(c *testConfig) *gatewayv1.Gateway {
+				return c.createGateway1("default/gateway1", "l1")
+			},
+			expStatus: `
+conditions:
+- lastTransitionTime: "-"
+  message: Gateway accepted by HAProxy Ingress
+  reason: Accepted
+  status: "True"
+  type: Accepted
+- lastTransitionTime: "-"
+  message: ""
+  reason: Programmed
+  status: "True"
+  type: Programmed
+listeners:
+- attachedRoutes: 0
+  conditions:
+  - lastTransitionTime: "-"
+    message: ""
+    reason: ResolvedRefs
+    status: "True"
+    type: ResolvedRefs
+  - lastTransitionTime: "-"
+    message: ""
+    reason: Programmed
+    status: "True"
+    type: Programmed
+  - lastTransitionTime: "-"
+    message: ""
+    reason: Accepted
+    status: "True"
+    type: Accepted
+  - lastTransitionTime: "-"
+    message: ""
+    reason: NoConflicts
+    status: "False"
+    type: Conflicted
+  name: l1
+  supportedKinds:
+  - kind: HTTPRoute
+`,
+		},
+		"test03": {
+			create: func(c *testConfig) *gatewayv1.Gateway {
+				return c.createGateway2("default/gateway1", "l1:443", "notfound")
+			},
+			expLogging: `WARN skipping certificate reference on Gateway 'default/gateway1' listener 'l1': secret not found: 'default/notfound'`,
+			expStatus: `
+conditions:
+- lastTransitionTime: "-"
+  message: Gateway accepted by HAProxy Ingress
+  reason: Accepted
+  status: "True"
+  type: Accepted
+- lastTransitionTime: "-"
+  message: ""
+  reason: Programmed
+  status: "True"
+  type: Programmed
+listeners:
+- attachedRoutes: 0
+  conditions:
+  - lastTransitionTime: "-"
+    message: 'secret not found: ''default/notfound'''
+    reason: InvalidCertificateRef
+    status: "False"
+    type: ResolvedRefs
+  - lastTransitionTime: "-"
+    message: ResolvedRefs condition has a failure status
+    reason: Pending
+    status: "False"
+    type: Programmed
+  name: l1
+  supportedKinds:
+  - kind: HTTPRoute
+`,
+		},
+		"test04": {
+			create: func(c *testConfig) *gatewayv1.Gateway {
+				gw := c.createGateway1("default/gateway1", "l1")
+				gw.Spec.Listeners[0].AllowedRoutes.Kinds = []gatewayv1.RouteGroupKind{{Kind: "Invalid"}}
+				return gw
+			},
+			expLogging: `
+WARN None of the configured route kinds are supported on Gateway 'default/gateway1' listener 'l1': gateway.networking.k8s.io/Invalid
+`,
+			expStatus: `
+conditions:
+- lastTransitionTime: "-"
+  message: Gateway accepted by HAProxy Ingress
+  reason: Accepted
+  status: "True"
+  type: Accepted
+- lastTransitionTime: "-"
+  message: ""
+  reason: Programmed
+  status: "True"
+  type: Programmed
+listeners:
+- attachedRoutes: 0
+  conditions:
+  - lastTransitionTime: "-"
+    message: None of the configured route kinds are supported
+    reason: InvalidRouteKinds
+    status: "False"
+    type: ResolvedRefs
+  - lastTransitionTime: "-"
+    message: ResolvedRefs condition has a failure status
+    reason: Pending
+    status: "False"
+    type: Programmed
+  name: l1
+  supportedKinds: []
+`,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			c := setup(t)
+			_ = c.createGatewayClass("haproxy")
+			gw := test.create(c)
+			_ = c.createConverter().SyncFull()
+			c.compareStatus("gateway", gw, test.expStatus)
+			c.logger.CompareLogging(test.expLogging)
+		})
+	}
+}
+
 func runTestSync(t *testing.T, testCases []testCaseSync) {
 	for _, test := range testCases {
 		t.Run(test.id, func(t *testing.T) {
 			c := setup(t)
+			_ = c.createGatewayClass("haproxy")
 
 			c.createGatewayResources(test.resConfig)
 			if test.config != nil {
@@ -863,7 +993,7 @@ func runTestSync(t *testing.T, testCases []testCaseSync) {
 			// ch.Links reflects changes made by the watcher
 			hasChanges := len(c.cache.Changed.Links) > 0
 			conv := c.createConverter()
-			conv.SyncFull()
+			_ = conv.SyncFull()
 
 			if hasChanges {
 				c.hconfig.Commit()
@@ -887,6 +1017,13 @@ func runTestSync(t *testing.T, testCases []testCaseSync) {
 				c.compareConfigDefaultHost(test.id, test.expDefaultHost)
 				c.compareConfigHosts(test.id, test.expHosts)
 				c.compareConfigTCPServices(test.id, test.expTCPServices)
+				if test.expGWStatus != "" {
+					var status []string
+					for _, gw := range c.cache.GatewayList {
+						status = append(status, conv_helper.MarshalStatus(gw))
+					}
+					c.compareText(test.id, strings.Join(status, "\n---\n"), test.expGWStatus)
+				}
 				c.compareConfigBacks(test.id, test.expBackends)
 			}
 
@@ -958,6 +1095,18 @@ func (c *testConfig) createService1(name, port, ip string) (*api.Service, []*dis
 	return svc, eps
 }
 
+func (c *testConfig) createGatewayClass(name string) *gatewayv1.GatewayClass {
+	gwcls := CreateObject(`
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: ` + name + `
+spec:
+  controllerName: haproxy-ingress.github.io/controller`).(*gatewayv1.GatewayClass)
+	c.cache.GatewayClassMap[gatewayv1.ObjectName(gwcls.Name)] = gwcls
+	return gwcls
+}
+
 func (c *testConfig) createGateway0(name string) *gatewayv1.Gateway {
 	n := strings.Split(name, "/")
 	gw := CreateObject(`
@@ -984,6 +1133,9 @@ spec:
   gatewayClassName: haproxy
   listeners: []`).(*gatewayv1.Gateway)
 	for _, listener := range strings.Split(listeners, ",") {
+		if listener == "" {
+			continue
+		}
 		l := gatewayv1.Listener{}
 		var lname, lselector string
 		var lport gatewayv1.PortNumber
@@ -998,6 +1150,8 @@ spec:
 				panic(err)
 			}
 			lport = gatewayv1.PortNumber(port)
+		} else {
+			lport = 80
 		}
 		l.Name = gatewayv1.SectionName(lname)
 		l.Port = lport
@@ -1007,6 +1161,8 @@ spec:
 			l.Protocol = gatewayv1.TCPProtocolType
 		case 8443:
 			l.Protocol = gatewayv1.TLSProtocolType
+		case 443:
+			l.Protocol = gatewayv1.HTTPSProtocolType
 		default:
 			l.Protocol = gatewayv1.HTTPProtocolType
 		}
@@ -1037,13 +1193,19 @@ spec:
 func (c *testConfig) createGateway2(name, listeners, secretName string) *gatewayv1.Gateway {
 	gw := c.createGateway1(name, listeners)
 	for l := range gw.Spec.Listeners {
-		tls := &gatewayv1.ListenerTLSConfig{}
+		listener := &gw.Spec.Listeners[l]
+		if listener.Protocol != gatewayv1.HTTPSProtocolType && listener.Protocol != gatewayv1.TLSProtocolType {
+			continue
+		}
+		tls := &gatewayv1.ListenerTLSConfig{
+			Mode: ptr.To(gatewayv1.TLSModeTerminate),
+		}
 		for _, s := range strings.Split(secretName, ",") {
 			tls.CertificateRefs = append(tls.CertificateRefs, gatewayv1.SecretObjectReference{
 				Name: gatewayv1.ObjectName(s),
 			})
 		}
-		gw.Spec.Listeners[l].TLS = tls
+		listener.TLS = tls
 	}
 	return gw
 }
@@ -1184,4 +1346,8 @@ func (c *testConfig) compareConfigTCPServices(id string, expected string) {
 
 func (c *testConfig) compareConfigBacks(id string, expected string) {
 	c.compareText(id, conv_helper.MarshalBackendsWeight(c.hconfig.Backends().BuildSortedItems()...), expected)
+}
+
+func (c *testConfig) compareStatus(id string, obj client.Object, expected string) {
+	c.compareText(id, conv_helper.MarshalStatus(obj), expected)
 }

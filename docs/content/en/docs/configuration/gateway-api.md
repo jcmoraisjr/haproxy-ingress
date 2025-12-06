@@ -13,23 +13,25 @@ description: >
 The following steps configure the Kubernetes cluster and HAProxy Ingress to read and parse Gateway API resources:
 
 * Manually install the Gateway API CRDs from the experimental channel - HAProxy Ingress supports TCPRoute and TLSRoute, they are not included in the standard channel. See the Gateway API [documentation](https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api)
-    * ... or simply `kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/experimental-install.yaml`
+    * ... or simply `kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.1/experimental-install.yaml`
 * Start (or restart) the controller
 
 See below the [getting started steps](#getting-started).
 
+### Command-line tool
+
+Gateway API has also a command-line tool, see how it works and installation instructions: https://github.com/kubernetes-sigs/gwctl
+
 ## Conformance
 
-Gateway API `v1beta1` and `v1` specs are partially implemented in v0.17 release. The following list describes what is (or is not) supported:
+Most of the Gateway API `v1beta1` and `v1` specs are implemented in v0.17 release. The following list describes what is not supported:
 
 * Target Services can be annotated with [Backend or Path scoped]({{% relref "keys#scope" %}}) configuration keys, this will continue to be supported.
-* Gateway API resources doesn't support annotations, this is planned to continue to be unsupported. Extensions to the Gateway API spec will be added in the extension points of the API.
-* `GatewayClass`, `Gateway`, `TCPRoute`, `TLSRoute` and `HTTPRoute` are the only implemented resources.
+* Gateway API resources don't support annotations, this should continue to be unsupported. Extensions to the Gateway API spec will be added in the extension points of the API.
 * The controller doesn't implement partial parsing yet for Gateway API resources, changes should be a bit slow on clusters with thousands of Ingress, Gateway API resources or Services.
 * Gateway's Addresses is not implemented - binding addresses use the global [bind-ip-addr]({{% relref "keys#bind-ip-addr" %}}) configuration.
 * Gateway's Hostname only supports empty/absence of Hostname or a single `*`, any other string will override the HTTPRoute Hostnames configuration without any merging.
 * HTTPRoute's Rules and BackendRefs don't support Filters.
-* Resources status are not updated.
 
 ## Ingress
 

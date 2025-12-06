@@ -94,6 +94,12 @@ func (w *watchers) getChangedObjects() *types.ChangedObjects {
 	return &ch
 }
 
+func (w *watchers) needFullSync() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.ch.NeedFullSync = true
+}
+
 func (w *watchers) initCh() {
 	newch := new(types.ChangedObjects)
 	if w.ch != nil {
@@ -481,10 +487,10 @@ func (h *hdlr) notify(event string, o client.Object, q workqueue.TypedRateLimiti
 	}
 	q.AddRateLimited(rparam{})
 	if h.w.run {
-		log := h.w.log.WithValues("event", event)
+		logger := h.w.log.WithValues("event", event)
 		if o != nil {
-			log = log.WithValues("kind", reflect.TypeOf(o).String(), "namespace", o.GetNamespace(), "name", o.GetName())
+			logger = logger.WithValues("kind", reflect.TypeOf(o).String(), "namespace", o.GetNamespace(), "name", o.GetName())
 		}
-		log.Info("notify")
+		logger.Info("notify")
 	}
 }
