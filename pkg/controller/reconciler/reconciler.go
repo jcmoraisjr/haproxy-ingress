@@ -51,9 +51,13 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req rparam) (ctrl.Res
 		return ctrl.Result{}, err
 	}
 	changed := r.watchers.getChangedObjects()
-	err := r.Services.ReconcileIngress(ctx, changed)
+	synchronized, err := r.Services.ReconcileIngress(ctx, changed)
+	if !synchronized {
+		// failed synchronizing resources, need to fully reconcile in the next loop.
+		r.watchers.needFullSync()
+	}
 	if err != nil {
-		r.log.Error(err, fmt.Sprintf("error reconciling ingress, retrying in %s", r.Config.ReloadRetry.String()))
+		r.log.Error(err, fmt.Sprintf("error reconciling resources, retrying in %s", r.Config.ReloadRetry.String()))
 		return ctrl.Result{RequeueAfter: r.Config.ReloadRetry}, nil
 	}
 	return ctrl.Result{}, nil

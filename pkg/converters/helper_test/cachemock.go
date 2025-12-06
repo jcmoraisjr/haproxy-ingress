@@ -21,6 +21,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net"
+	"slices"
 	"strings"
 
 	api "k8s.io/api/core/v1"
@@ -47,11 +48,11 @@ type CacheMock struct {
 	IngClassList []*networking.IngressClass
 	SvcList      []*api.Service
 	//
-	HTTPRouteList    []*gatewayv1.HTTPRoute
-	TLSRouteList     []*gatewayv1alpha2.TLSRoute
-	TCPRouteList     []*gatewayv1alpha2.TCPRoute
-	GatewayList      []*gatewayv1.Gateway
-	GatewayClassList []*gatewayv1.GatewayClass
+	HTTPRouteList   []*gatewayv1.HTTPRoute
+	TLSRouteList    []*gatewayv1alpha2.TLSRoute
+	TCPRouteList    []*gatewayv1alpha2.TCPRoute
+	GatewayList     []*gatewayv1.Gateway
+	GatewayClassMap map[gatewayv1.ObjectName]*gatewayv1.GatewayClass
 	//
 	NsList        map[string]*api.Namespace
 	LookupList    map[string][]net.IP
@@ -69,14 +70,15 @@ type CacheMock struct {
 // NewCacheMock ...
 func NewCacheMock(tracker convtypes.Tracker) *CacheMock {
 	return &CacheMock{
-		tracker:     tracker,
-		Changed:     &convtypes.ChangedObjects{Links: make(convtypes.TrackingLinks)},
-		SvcList:     []*api.Service{},
-		GatewayList: []*gatewayv1.Gateway{},
-		NsList:      map[string]*api.Namespace{},
-		LookupList:  map[string][]net.IP{},
-		EpsList:     map[string][]*discoveryv1.EndpointSlice{},
-		TermPodList: map[string][]*api.Pod{},
+		tracker:         tracker,
+		Changed:         &convtypes.ChangedObjects{Links: make(convtypes.TrackingLinks)},
+		SvcList:         []*api.Service{},
+		GatewayList:     []*gatewayv1.Gateway{},
+		GatewayClassMap: map[gatewayv1.ObjectName]*gatewayv1.GatewayClass{},
+		NsList:          map[string]*api.Namespace{},
+		LookupList:      map[string][]net.IP{},
+		EpsList:         map[string][]*discoveryv1.EndpointSlice{},
+		TermPodList:     map[string][]*api.Pod{},
 		SecretTLSPath: map[string]string{
 			"system/ingress-default": "/tls/tls-default.pem",
 		},
@@ -136,17 +138,16 @@ func (c *CacheMock) GetTLSRouteList() ([]*gatewayv1alpha2.TLSRoute, error) {
 	return c.TLSRouteList, nil
 }
 
-// GetGateway ...
-func (c *CacheMock) GetGateway(namespace, name string) (*gatewayv1.Gateway, error) {
-	for _, gw := range c.GatewayList {
-		if gw.Namespace == namespace && gw.Name == name {
-			if gw.Spec.GatewayClassName == "haproxy" {
-				return gw, nil
-			}
-			return nil, nil
-		}
-	}
-	return nil, fmt.Errorf("gateway not found: %s/%s", namespace, name)
+func (c *CacheMock) GetGatewayClassMap() (map[gatewayv1.ObjectName]*gatewayv1.GatewayClass, error) {
+	return c.GatewayClassMap, nil
+}
+
+// GetGatewayList ...
+func (c *CacheMock) GetGatewayList() ([]*gatewayv1.Gateway, error) {
+	list := slices.DeleteFunc(c.GatewayList, func(gateway *gatewayv1.Gateway) bool {
+		return gateway.Spec.GatewayClassName != "haproxy"
+	})
+	return list, nil
 }
 
 // GetService ...
@@ -277,7 +278,38 @@ func (c *CacheMock) GetPasswdSecretContent(defaultNamespace, secretName string, 
 }
 
 // UpdateStatus ...
-func (c *CacheMock) UpdateStatus(namedObj client.Object, apply func() bool) error { return nil }
+func (c *CacheMock) UpdateStatus(namedObj client.Object, apply func() bool) error {
+	switch obj := namedObj.(type) {
+	case *gatewayv1.GatewayClass:
+		if gc, found := c.GatewayClassMap[gatewayv1.ObjectName(obj.Name)]; found {
+			*obj = *gc
+			if apply() {
+				*gc = *obj
+			}
+		}
+	case *gatewayv1.Gateway:
+		if i := slices.IndexFunc(c.GatewayList, func(gw *gatewayv1.Gateway) bool { return gw.Namespace == obj.Namespace && gw.Name == obj.Name }); i >= 0 {
+			*obj = *c.GatewayList[i]
+			if apply() {
+				*c.GatewayList[i] = *obj
+			}
+		}
+	case *gatewayv1.HTTPRoute:
+		if i := slices.IndexFunc(c.HTTPRouteList, func(route *gatewayv1.HTTPRoute) bool {
+			return route.Namespace == obj.Namespace && route.Name == obj.Name
+		}); i >= 0 {
+			*obj = *c.HTTPRouteList[i]
+			if apply() {
+				*c.HTTPRouteList[i] = *obj
+			}
+		}
+	case *gatewayv1alpha2.TLSRoute:
+	case *gatewayv1alpha2.TCPRoute:
+	default:
+		return fmt.Errorf("unknown object type: (%T) %s/%s", namedObj, namedObj.GetNamespace(), namedObj.GetName())
+	}
+	return nil
+}
 
 // LegacySwapObjects ...
 func (c *CacheMock) LegacySwapObjects() *convtypes.ChangedObjects {
@@ -289,7 +321,10 @@ func (c *CacheMock) LegacySwapObjects() *convtypes.ChangedObjects {
 	}
 	// update changed.Links based on notifications
 	addChanges := func(ctx convtypes.ResourceType, ns, n string) {
-		fullname := ns + "/" + n
+		fullname := n
+		if ns != "" {
+			fullname = ns + "/" + n
+		}
 		tracker.TrackChanges(changed.Links, ctx, fullname)
 	}
 	for _, ing := range changed.IngressesDel {
@@ -316,6 +351,18 @@ func (c *CacheMock) LegacySwapObjects() *convtypes.ChangedObjects {
 	}
 	c.IngList = c.IngList[:len(c.IngList)-len(changed.IngressesDel)]
 	c.IngList = append(c.IngList, changed.IngressesAdd...)
+
+	// TODO: Always adding the same list, like "everybody changed". Need a refactor to work
+	// based on change notification, and after that, remove the remaining Ingress* fields
+	// from ChangedObjects. A k8s fake client should be a good approach. Better to make this
+	// change after cache intf refactor to better reflect controller-runtime's client intf.
+	for _, gwcls := range c.GatewayClassMap {
+		addChanges(convtypes.ResourceGatewayClass, "", gwcls.Name)
+	}
+	for _, gw := range c.GatewayList {
+		addChanges(convtypes.ResourceGateway, gw.Namespace, gw.Name)
+	}
+
 	return changed
 }
 

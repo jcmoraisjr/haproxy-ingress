@@ -245,30 +245,33 @@ func (s *Services) GetIsValidResource() IsValidResource {
 }
 
 // ReconcileIngress ...
-func (s *Services) ReconcileIngress(ctx context.Context, changed *convtypes.ChangedObjects) error {
+func (s *Services) ReconcileIngress(ctx context.Context, changed *convtypes.ChangedObjects) (synchronized bool, err error) {
 	s.modelMutex.Lock()
 	defer s.modelMutex.Unlock()
 	s.updateCount++
-	s.log.Info("starting haproxy update", "id", s.updateCount)
+	s.log.Info("starting reconciliation", "id", s.updateCount)
 	timer := utils.NewTimer(s.metrics.ControllerProcTime)
-	converters.NewConverter(timer, s.instance.Config(), changed, s.converterOpt).Sync()
-	if s.svcleader.isLeader() {
-		s.instance.AcmeUpdate()
-	}
-	var err error
 	var errmsg string
-	if err = s.instance.HAProxyUpdate(timer); err != nil {
-		errmsg = "error trying to update haproxy"
-	} else if err = s.svcaddress.changed(ctx, timer, changed); err != nil {
-		errmsg = "error trying to synchronize address status"
+	converter := converters.NewConverter(timer, s.instance.Config(), changed, s.converterOpt)
+	if err = converter.Sync(); err != nil {
+		errmsg = "error parsing resources"
 	}
-	updatelogger := s.log.WithValues("id", s.updateCount).WithValues(timer.AsValues("total")...)
-	if err != nil {
-		updatelogger.Error(err, fmt.Sprintf("%s, retrying in %s", errmsg, s.Config.ReloadRetry.String()))
-	} else {
-		updatelogger.Info("finish haproxy update")
+	if err == nil {
+		synchronized = true
+		if s.svcleader.isLeader() {
+			s.instance.AcmeUpdate()
+		}
+		if err = s.instance.HAProxyUpdate(timer); err != nil {
+			errmsg = "error trying to update haproxy"
+		} else if err = s.svcaddress.checkChanged(ctx, timer, changed); err != nil {
+			errmsg = "error trying to synchronize address status"
+		}
 	}
-	return err
+	s.log.WithValues("id", s.updateCount, "success", err == nil).WithValues(timer.AsValues("total")...).Info("finish reconciliation")
+	if err != nil && errmsg != "" {
+		err = fmt.Errorf("%s: %w", errmsg, err)
+	}
+	return synchronized, err
 }
 
 func (s *Services) acmeCheck(source string) (count int, err error) {

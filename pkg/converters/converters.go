@@ -27,7 +27,7 @@ import (
 
 // Config ...
 type Config interface {
-	Sync()
+	Sync() error
 }
 
 // NewConverter ...
@@ -47,7 +47,8 @@ type converters struct {
 	options *convtypes.ConverterOptions
 }
 
-func (c *converters) Sync() {
+func (c *converters) Sync() error {
+	logger := c.options.Logger
 	changed := c.changed
 	ingressConverter := ingress.NewIngressConverter(c.options, c.haproxy, changed)
 	gatewayConverter := gateway.NewGatewayConverter(c.options, c.haproxy, changed, ingressConverter)
@@ -61,24 +62,29 @@ func (c *converters) Sync() {
 	}
 	l := len(changed.Objects)
 	if l > 100 {
-		c.options.Logger.InfoV(2, "applying %d change notifications", l)
+		logger.InfoV(2, "applying %d change notifications", l)
 	} else if l > 1 {
-		c.options.Logger.InfoV(2, "applying %d change notifications: %v", l, changed.Objects)
+		logger.InfoV(2, "applying %d change notifications: %v", l, changed.Objects)
 	} else if l == 1 {
-		c.options.Logger.InfoV(2, "applying 1 change notification: %v", changed.Objects)
+		logger.InfoV(2, "applying 1 change notification: %v", changed.Objects)
 	}
 
 	//
 	// gateway converter
 	//
 	if c.options.HasGateway && needFullSync {
-		gatewayConverter.SyncFull()
+		logger.Info("syncing Gateway API resources")
+		err := gatewayConverter.SyncFull()
 		c.timer.Tick("parse_gateway")
+		if err != nil {
+			return err
+		}
 	}
 
 	//
 	// ingress converter
 	//
+	logger.Info("syncing Ingress API resources")
 	ingressConverter.Sync(needFullSync)
 	c.timer.Tick("parse_ingress")
 
@@ -96,4 +102,5 @@ func (c *converters) Sync() {
 		c.timer.Tick("parse_tcp_svc")
 	}
 
+	return nil
 }

@@ -272,7 +272,8 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 
 	fs.StringVar(&o.PublishAddress, "publish-address", o.PublishAddress, ""+
 		"Comma separated list of hostname/IP addresses that should be used to configure "+
-		"ingress status. This option cannot be used if --publish-service is configured.",
+		"Ingress and Gateway API status. This option cannot be used if --publish-service is "+
+		"configured.",
 	)
 
 	fs.StringVar(&o.TCPConfigMapName, "tcp-services-configmap", o.TCPConfigMapName, ""+
@@ -406,8 +407,8 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 	)
 
 	fs.BoolVar(&o.UpdateStatusOnShutdown, "update-status-on-shutdown", o.UpdateStatusOnShutdown, ""+
-		"Indicates if the ingress controller should update the Ingress status "+
-		"IP/hostname when the controller is being stopped.",
+		"Indicates if the ingress controller should update the Ingress and Gateway API "+
+		"status IP/hostname when the controller is being stopped.",
 	)
 
 	fs.IntVar(&o.BackendShards, "backend-shards", o.BackendShards, ""+
@@ -433,8 +434,8 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 	)
 
 	fs.BoolVar(&o.UseNodeInternalIP, "report-node-internal-ip-address", o.UseNodeInternalIP, ""+
-		"Defines if the nodes IP address to be returned in the ingress status should be "+
-		"the internal instead of the external IP address.",
+		"Defines if the nodes IP address to be returned in the Ingress and Gateway API "+
+		"status should be the internal instead of the external IP address.",
 	)
 
 	fs.BoolVar(&o.LogZap, "log-zap", o.LogZap, ""+
