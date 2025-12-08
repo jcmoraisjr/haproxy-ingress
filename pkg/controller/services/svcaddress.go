@@ -110,15 +110,16 @@ func (s *svcAddress) updateAllResources(lb []networking.IngressLoadBalancerIngre
 	if err != nil {
 		return err
 	}
+	gwList, err := s.cache.GetGatewayList()
+	if err != nil {
+		return err
+	}
+	s.log.Info("checking address status", "ingress-count", len(ingList), "gateway-count", len(gwList))
 	var errs []error
 	for _, ing := range ingList {
 		if err := s.updateIngressStatus(ing.Namespace, ing.Name, lb); err != nil {
 			errs = append(errs, err)
 		}
-	}
-	gwList, err := s.cache.GetGatewayList()
-	if err != nil {
-		return err
 	}
 	for _, gw := range gwList {
 		if err := s.updateGatewayStatus(gw.Namespace, gw.Name, gwAddress(lb)); err != nil {
@@ -165,7 +166,7 @@ func (s *svcAddress) updateStatus(namedObj client.Object, apply func() bool) err
 		}
 		changed = true
 		return true
-	})
+	}, convtypes.CacheOptions{SkipLeaderCheck: true})
 	if err == nil && changed {
 		s.log.WithValues("kind", reflect.TypeOf(namedObj), "namespace", namedObj.GetNamespace(), "name", namedObj.GetName()).V(1).Info("address status updated")
 	}

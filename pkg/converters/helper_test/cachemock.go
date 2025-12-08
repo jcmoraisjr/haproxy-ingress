@@ -278,7 +278,7 @@ func (c *CacheMock) GetPasswdSecretContent(defaultNamespace, secretName string, 
 }
 
 // UpdateStatus ...
-func (c *CacheMock) UpdateStatus(namedObj client.Object, apply func() bool) error {
+func (c *CacheMock) UpdateStatus(namedObj client.Object, apply func() bool, opt ...convtypes.CacheOptions) error {
 	switch obj := namedObj.(type) {
 	case *gatewayv1.GatewayClass:
 		if gc, found := c.GatewayClassMap[gatewayv1.ObjectName(obj.Name)]; found {

@@ -630,9 +630,24 @@ func (c *c) GetPasswdSecretContent(defaultNamespace, secretName string, track []
 	return data, nil
 }
 
-func (c *c) UpdateStatus(namedObj client.Object, apply func() bool) error {
-	if !c.leader {
+func (c *c) UpdateStatus(namedObj client.Object, apply func() bool, opts ...convtypes.CacheOptions) error {
+	var opt convtypes.CacheOptions
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	// should proceed only if this controller is the leader, or in the case it is not, caller asked to skip this check
+	proceed := c.leader || opt.SkipLeaderCheck
+	if !proceed {
 		return nil
+	}
+	ctx := c.ctx
+	if ctx.Err() != nil {
+		// Controller is shutting down, need a new context to write the status.
+		// Read comes from the cache, so it does not use context.
+		// TODO: Cache refactor should consider dropping the internal context, asking one from the caller.
+		var cancel func()
+		ctx, cancel = context.WithTimeout(context.Background(), *c.config.ShutdownTimeout/5) // 5s in the default config
+		defer cancel()
 	}
 	// We support Gateway API v1beta1, but outside the cache everything is v1.
 	// So, in the case only v1beta1 is available in apiserver (`HasGatewayB1` is true):
@@ -654,7 +669,7 @@ func (c *c) UpdateStatus(namedObj client.Object, apply func() bool) error {
 			typedObj.SetNamespace(namedObj.GetNamespace())
 			typedObj.SetName(namedObj.GetName())
 		}
-		if err := c.client.Get(c.ctx, client.ObjectKeyFromObject(typedObj), typedObj); err != nil {
+		if err := c.client.Get(ctx, client.ObjectKeyFromObject(typedObj), typedObj); err != nil {
 			return err
 		}
 		if c.config.HasGatewayB1 {
@@ -678,7 +693,7 @@ func (c *c) UpdateStatus(namedObj client.Object, apply func() bool) error {
 					*obj = *(*gatewayv1beta1.HTTPRoute)(namedObj.(*gatewayv1.HTTPRoute))
 				}
 			}
-			return c.client.Status().Update(c.ctx, typedObj)
+			return c.client.Status().Update(ctx, typedObj)
 		}
 		return nil
 	})
