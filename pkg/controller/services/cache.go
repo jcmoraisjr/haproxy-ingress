@@ -33,7 +33,6 @@ import (
 	networking "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
@@ -224,16 +223,14 @@ func (c *c) GetIngressList() ([]*networking.Ingress, error) {
 	if err := c.client.List(c.ctx, &list); err != nil {
 		return nil, err
 	}
-	items := make([]*networking.Ingress, len(list.Items))
-	var i int
-	for j := range list.Items {
-		ing := &list.Items[j]
+	items := make([]*networking.Ingress, 0, len(list.Items))
+	for i := range list.Items {
+		ing := &list.Items[i]
 		if c.IsValidIngress(ing) {
-			items[i] = ing
-			i++
+			items = append(items, ing)
 		}
 	}
-	return items[:i], nil
+	return items, nil
 }
 
 func (c *c) GetIngressClass(className string) (*networking.IngressClass, error) {
@@ -250,27 +247,68 @@ func buildLabelSelector(match map[string]string) (labels.Selector, error) {
 	return labels.Parse(strings.Join(list, ","))
 }
 
-func (c *c) GetGateway(namespace, name string) (*gatewayv1.Gateway, error) {
+func (c *c) GetGatewayClassMap() (map[gatewayv1.ObjectName]*gatewayv1.GatewayClass, error) {
 	if c.config.HasGatewayB1 {
-		gw1 := gatewayv1beta1.Gateway{}
-		if err := c.client.Get(c.ctx, types.NamespacedName{Namespace: namespace, Name: name}, &gw1); err != nil {
+		list1 := gatewayv1beta1.GatewayClassList{}
+		if err := c.client.List(c.ctx, &list1); err != nil {
 			return nil, err
 		}
-		gw := (gatewayv1.Gateway)(gw1)
-		if c.IsValidGateway(&gw) {
-			return &gw, nil
+		list := make(map[gatewayv1.ObjectName]*gatewayv1.GatewayClass, len(list1.Items))
+		for i := range list1.Items {
+			class := (*gatewayv1.GatewayClass)(&list1.Items[i])
+			if c.IsValidGatewayClass(class) {
+				list[gatewayv1.ObjectName(class.Name)] = class
+			}
 		}
+		return list, nil
 	}
 	if c.config.HasGatewayV1 {
-		gw := gatewayv1.Gateway{}
-		if err := c.client.Get(c.ctx, types.NamespacedName{Namespace: namespace, Name: name}, &gw); err != nil {
+		list1 := gatewayv1.GatewayClassList{}
+		if err := c.client.List(c.ctx, &list1); err != nil {
 			return nil, err
 		}
-		if c.IsValidGateway(&gw) {
-			return &gw, nil
+		list := make(map[gatewayv1.ObjectName]*gatewayv1.GatewayClass, len(list1.Items))
+		for i := range list1.Items {
+			class := &list1.Items[i]
+			if c.IsValidGatewayClass(class) {
+				list[gatewayv1.ObjectName(class.Name)] = class
+			}
 		}
+		return list, nil
 	}
-	return nil, errors.NewNotFound(schema.GroupResource{Group: gatewayv1.GroupVersion.Group, Resource: "Gateway"}, namespace+"/"+name)
+	return nil, nil
+}
+
+func (c *c) GetGatewayList() ([]*gatewayv1.Gateway, error) {
+	if c.config.HasGatewayB1 {
+		list1 := gatewayv1beta1.GatewayList{}
+		if err := c.client.List(c.ctx, &list1); err != nil {
+			return nil, err
+		}
+		list := make([]*gatewayv1.Gateway, 0, len(list1.Items))
+		for i := range list1.Items {
+			gw := (*gatewayv1.Gateway)(&list1.Items[i])
+			if c.IsValidGateway(gw) {
+				list = append(list, gw)
+			}
+		}
+		return list, nil
+	}
+	if c.config.HasGatewayV1 {
+		list1 := gatewayv1.GatewayList{}
+		if err := c.client.List(c.ctx, &list1); err != nil {
+			return nil, err
+		}
+		list := make([]*gatewayv1.Gateway, 0, len(list1.Items))
+		for i := range list1.Items {
+			gw := &list1.Items[i]
+			if c.IsValidGateway(gw) {
+				list = append(list, gw)
+			}
+		}
+		return list, nil
+	}
+	return nil, nil
 }
 
 func (c *c) GetHTTPRouteList() ([]*gatewayv1.HTTPRoute, error) {
@@ -611,12 +649,51 @@ func (c *c) UpdateStatus(namedObj client.Object, apply func() bool, opts ...conv
 		ctx, cancel = context.WithTimeout(context.Background(), *c.config.ShutdownTimeout/5) // 5s in the default config
 		defer cancel()
 	}
+	// We support Gateway API v1beta1, but outside the cache everything is v1.
+	// So, in the case only v1beta1 is available in apiserver (`HasGatewayB1` is true):
+	// * recreate resource in v1beta1;
+	// * typecast the result to v1 and send to apply();
+	// * if there's any change, typecast back to v1beta1 before calling status.Update().
+	// It should have a better way to implement this.
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		if err := c.client.Get(ctx, client.ObjectKeyFromObject(namedObj), namedObj); err != nil {
+		typedObj := namedObj
+		if c.config.HasGatewayB1 {
+			switch namedObj.(type) {
+			case *gatewayv1.GatewayClass:
+				typedObj = &gatewayv1beta1.GatewayClass{}
+			case *gatewayv1.Gateway:
+				typedObj = &gatewayv1beta1.Gateway{}
+			case *gatewayv1.HTTPRoute:
+				typedObj = &gatewayv1beta1.HTTPRoute{}
+			}
+			typedObj.SetNamespace(namedObj.GetNamespace())
+			typedObj.SetName(namedObj.GetName())
+		}
+		if err := c.client.Get(ctx, client.ObjectKeyFromObject(typedObj), typedObj); err != nil {
 			return err
 		}
+		if c.config.HasGatewayB1 {
+			switch obj := namedObj.(type) {
+			case *gatewayv1.GatewayClass:
+				*obj = *(*gatewayv1.GatewayClass)(typedObj.(*gatewayv1beta1.GatewayClass))
+			case *gatewayv1.Gateway:
+				*obj = *(*gatewayv1.Gateway)(typedObj.(*gatewayv1beta1.Gateway))
+			case *gatewayv1.HTTPRoute:
+				*obj = *(*gatewayv1.HTTPRoute)(typedObj.(*gatewayv1beta1.HTTPRoute))
+			}
+		}
 		if apply() {
-			return c.client.Status().Update(ctx, namedObj)
+			if c.config.HasGatewayB1 {
+				switch obj := typedObj.(type) {
+				case *gatewayv1beta1.GatewayClass:
+					*obj = *(*gatewayv1beta1.GatewayClass)(namedObj.(*gatewayv1.GatewayClass))
+				case *gatewayv1beta1.Gateway:
+					*obj = *(*gatewayv1beta1.Gateway)(namedObj.(*gatewayv1.Gateway))
+				case *gatewayv1beta1.HTTPRoute:
+					*obj = *(*gatewayv1beta1.HTTPRoute)(namedObj.(*gatewayv1.HTTPRoute))
+				}
+			}
+			return c.client.Status().Update(ctx, typedObj)
 		}
 		return nil
 	})

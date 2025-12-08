@@ -57,7 +57,6 @@ configfound
 configmap
 configmapname
 Containerd
-controllerutils
 convtypes
 convutils
 coraza
@@ -75,7 +74,6 @@ crtder
 crtfile
 crtlist
 ctrlconfig
-ctrlutils
 ctxrun
 ctxwg
 customsections
@@ -85,7 +83,6 @@ DCk
 defaultbackend
 defaulthost
 defbackend
-delayedshutdown
 denycfg
 dercrt
 derkey
@@ -98,13 +95,13 @@ docsy
 dontlog
 dontlognull
 dprev
-dsd
 dtdurations
 duedate
 dynconfig
 dynupdate
 echonotfound
 echoserver
+egk
 encpwd
 endpointslice
 endpointslicesapi
@@ -144,6 +141,7 @@ funcmap
 gatewayclass
 gcr
 genofire
+gks
 glbc
 glog
 gnet
@@ -152,6 +150,7 @@ gomod
 goruntime
 gotemplate
 gotestsum
+goyaml
 grpcs
 gvstr
 gwapis
@@ -159,8 +158,8 @@ gwapischeme
 gwapiversioned
 gwcls
 gwhttp
+gwref
 gwtls
-gwtyp
 habackend
 hafront
 haheaders
@@ -344,6 +343,7 @@ pawelb
 pcre
 percentunit
 Pixabay
+pkgtypes
 pns
 portnumber
 pport
@@ -389,7 +389,6 @@ restls
 reusesocket
 rgroup
 rikatz
-rlist
 Rodland
 rootcontext
 rootfs
@@ -441,7 +440,6 @@ svcacme
 svcaddress
 svcann
 svccalcidle
-svcctx
 svchealthz
 svchttp
 svckey
@@ -456,9 +454,7 @@ svcpub
 svcpublb
 svcs
 svcshutdown
-svcstatus
 svctls
-sworkqueue
 syslogsrv
 taging
 targetrefs
@@ -491,7 +487,6 @@ uber
 Unichron
 unmarshalling
 updatehash
-updatelogger
 useproto
 userb
 userlists

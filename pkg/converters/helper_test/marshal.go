@@ -17,9 +17,13 @@ limitations under the License.
 package helper_test
 
 import (
+	"reflect"
+	"regexp"
 	"sort"
 
-	yaml "gopkg.in/yaml.v2"
+	goyaml "gopkg.in/yaml.v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
@@ -189,7 +193,16 @@ func MarshalTCPServices(hatcpserviceports ...*hatypes.TCPServicePort) string {
 	return yamlMarshal(tcpServices)
 }
 
+var transitionTimeRegex = regexp.MustCompile(`(lastTransitionTime): "[-0-9TZ:]+"`)
+
+func MarshalStatus(in client.Object) string {
+	out, _ := yaml.Marshal(reflect.ValueOf(in).Elem().FieldByName("Status").Addr().Interface())
+	outstr := string(out)
+	outstr = transitionTimeRegex.ReplaceAllString(outstr, `$1: "-"`) // allows to compare raw output; better ideas?
+	return outstr
+}
+
 func yamlMarshal(in interface{}) string {
-	out, _ := yaml.Marshal(in)
+	out, _ := goyaml.Marshal(in)
 	return string(out)
 }

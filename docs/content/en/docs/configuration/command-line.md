@@ -259,11 +259,11 @@ Disables in memory pod list and also pod watch for changes. Pod list and watch i
 
 The ID to be used for electing ingress controller leader. A leader needs to be elected in the following use cases:
 
-* Ingress Status update, see [`--update-status`](#update-status)
+* Address update on Ingress and Gateway API status, see [`--update-status`](#update-status)
 * Embedded Acme signer, see [acme](#acme)
 * Gateway API, see [`--watch-gateway`](#watch-gateway)
 
-Election ID configuration has no effect if none of Ingress Status update, Embedded Acme signer, or Gateway API are enabled.
+Election ID configuration has no effect if none of Address status update, Embedded Acme signer, or Gateway API are enabled.
 
 Since v0.15 a `%s` placeholder is used to define where the IngressClass value should be added to the election ID. Up to v0.14 the IngressClass was concatenated in the end of the provided value to compose the real election ID value. Ingress class is added to the election ID name to avoid conflict when two or more HAProxy Ingress controllers are running in the same cluster.
 
@@ -454,8 +454,8 @@ remove old configuration files. If `0`, the default value, a single `haproxy.cfg
 
 Since v0.15
 
-Defines a comma separated list of hostname or IP addresses that should be used to configure
-ingress status. This option cannot be used if [`--publish-service`](#publish-service) is configured.
+Defines a comma separated list of hostname or IP addresses that should be used to configure address status
+on Ingress and Gateway API. This option cannot be used if [`--publish-service`](#publish-service) is configured.
 
 See also:
 
@@ -468,7 +468,7 @@ See also:
 
 * `--publish-service`
 
-Some infrastructure tools like `external-DNS` relay in the ingress status to created access routes to the services exposed with ingress object.
+Some infrastructure tools like `external-DNS` relay in the address from Ingress or Gateway API status to created access routes to the services exposed with ingress object.
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -480,7 +480,7 @@ status:
     - hostname: <ingressControllerLoadbalancerFQDN>
 ```
 
-Use `--publish-service=namespace/servicename` to indicate the services fronting the ingress controller. The controller mirrors the address of this service's endpoints to the load-balancer status of all Ingress objects it satisfies. This option cannot be used if [`--publish-address`](#publish-address) is configured.
+Use `--publish-service=namespace/servicename` to indicate the service fronting the ingress controller. The controller mirrors the address of this service's endpoints to the load-balancer status of all Ingress objects it satisfies, as well as the addresses status from Gateway API resources. This option cannot be used if [`--publish-address`](#publish-address) is configured.
 
 See also:
 
@@ -555,8 +555,7 @@ describes how it works.
 
 * `--report-node-internal-ip-address`
 
-Sets whether the node's IP address returned in the ingress status should be the node's internal
-instead of the external IP address. Defaults to `false`. This option is ignored if either [`--publish-service`](#publish-service) or [`--publish-address`](#publish-address) are configured.
+Sets whether the node's IP address returned in the Ingress and Gateway API status should be the node's internal instead of the external IP address. Defaults to `false`. This option is ignored if either [`--publish-service`](#publish-service) or [`--publish-address`](#publish-address) are configured.
 
 See also:
 
@@ -728,9 +727,10 @@ See also:
 
 * `--update-status`
 
-Indicates whether the ingress controller should update the `status` attribute of all the Ingress
-resources that this controller is tracking. The default value is `true`. Ingress status is updated
-with the external IPs of the ingress endpoints, and these IPs can be generated on distinct ways:
+Indicates whether the ingress controller should update the Address status attribute of all the Ingress
+and Gateway API resources that this controller is tracking. The default value is `true`. Ingress and
+GatewayAPI status are updated with the external IPs of the ingress endpoints, and these IPs can be
+generated on distinct ways:
 
 * Configuring [`--publish-service`](#publish-service) with a Kubernetes service resource name
 fronting the ingress controller pods
@@ -738,7 +738,9 @@ fronting the ingress controller pods
 * Node IP where ingress controllers are running are used if neither `--publish-service` nor `--publish-address` are configured. Node's External IP is used by default, add [`--report-node-internal-ip-address`](#report-node-internal-ip-address) to use internal IP instead.
 
 When enabled, `--update-status` enforces a leader election. A leader must be elected to update
-Ingress API. See also [`--election-id`](#election-id).
+Ingress and Gateway API. See also [`--election-id`](#election-id).
+
+Note that other Gateway API status are always updated despite of the `--update-status` configuration.
 
 See also:
 

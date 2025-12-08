@@ -22,15 +22,15 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
-	"strings"
-	"time"
 
 	"github.com/go-logr/logr"
 	api "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
@@ -39,44 +39,31 @@ import (
 
 func initSvcAddress(ctx context.Context, config *config.Config, client client.Client, cache *c) *svcAddress {
 	return &svcAddress{
-		log:    logr.FromContextOrDiscard(ctx).WithName("address"),
-		cfg:    config,
-		cli:    client,
-		cache:  cache,
-		period: time.Minute,
+		log:   logr.FromContextOrDiscard(ctx).WithName("address"),
+		cfg:   config,
+		cli:   client,
+		cache: cache,
 	}
 }
 
 type svcAddress struct {
-	log    logr.Logger
-	cfg    *config.Config
-	cli    client.Client
-	run    bool
-	cache  *c
-	period time.Duration
-	curr   []networking.IngressLoadBalancerIngress
+	log   logr.Logger
+	cfg   *config.Config
+	cli   client.Client
+	run   bool
+	cache *c
+	curr  []networking.IngressLoadBalancerIngress
 }
 
 func (s *svcAddress) Start(ctx context.Context) error {
 	s.run = true
 	<-ctx.Done()
 	s.run = false
-
-	// we need a new context, the one provided by the controller is canceled already.
-	// this context's timeout is 90% of the manager's shutdown timeout
-	timeout := *s.cfg.ShutdownTimeout * 9 / 10
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), timeout)
-	s.shutdown(shutdownCtx)
-	cancel()
+	s.shutdown()
 	return nil
 }
 
-// changed.Objects ([]string) has currently the following syntax:
-// <add|update|del>/<resourceType>:[<namespace>/]<name>
-// Need to move to a structured type.
-const addIngPrefix = "add/" + string(convtypes.ResourceIngress) + ":"
-
-func (s *svcAddress) changed(ctx context.Context, timer *utils.Timer, changed *convtypes.ChangedObjects) error {
+func (s *svcAddress) checkChanged(ctx context.Context, timer *utils.Timer, changed *convtypes.ChangedObjects) error {
 	if !s.run {
 		if s.cfg.UpdateStatus {
 			s.log.Info("skipping check for address status changes, I am not the leader")
@@ -85,19 +72,31 @@ func (s *svcAddress) changed(ctx context.Context, timer *utils.Timer, changed *c
 	}
 	defer timer.Tick("address-status-update")
 
-	// check if lb address(es) changed, updating s.curr and resyncing all ingress if so.
-	if err := s.syncCurrentLB(ctx); err != nil {
+	lb, err := s.readCurrentLB(ctx)
+	if err != nil {
 		return err
+	}
+	if !reflect.DeepEqual(s.curr, lb) {
+		s.log.Info("list of load balancers changed, checking all address status", "old", s.curr, "new", lb)
+		if err := s.updateAllResources(lb); err != nil {
+			return fmt.Errorf("error updating resources: %w", err)
+		}
+		s.log.Info("all address status are updated")
+		s.curr = lb
+		return nil
 	}
 
 	var errs []error
-	for _, obj := range changed.Objects {
-		if strings.HasPrefix(obj, addIngPrefix) {
-			fullname := obj[len(addIngPrefix):]
-			namespace, name, _ := cache.SplitMetaNamespaceKey(fullname)
-			if err := s.updateIngressStatus(namespace, name, s.curr); err != nil {
-				errs = append(errs, err)
-			}
+	for _, fullname := range changed.Links[convtypes.ResourceIngress] {
+		namespace, name, _ := cache.SplitMetaNamespaceKey(fullname)
+		if err := s.updateIngressStatus(namespace, name, lb); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	for _, fullname := range changed.Links[convtypes.ResourceGateway] {
+		namespace, name, _ := cache.SplitMetaNamespaceKey(fullname)
+		if err := s.updateGatewayStatus(namespace, name, gwAddress(lb)); err != nil {
+			errs = append(errs, err)
 		}
 	}
 	if len(errs) > 0 {
@@ -106,15 +105,24 @@ func (s *svcAddress) changed(ctx context.Context, timer *utils.Timer, changed *c
 	return nil
 }
 
-func (s *svcAddress) update(_ context.Context, lb []networking.IngressLoadBalancerIngress) error {
+func (s *svcAddress) updateAllResources(lb []networking.IngressLoadBalancerIngress) error {
 	ingList, err := s.cache.GetIngressList()
 	if err != nil {
 		return err
 	}
-	s.log.Info("checking address status", "ingress-count", len(ingList))
+	gwList, err := s.cache.GetGatewayList()
+	if err != nil {
+		return err
+	}
+	s.log.Info("checking address status", "ingress-count", len(ingList), "gateway-count", len(gwList))
 	var errs []error
 	for _, ing := range ingList {
 		if err := s.updateIngressStatus(ing.Namespace, ing.Name, lb); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	for _, gw := range gwList {
+		if err := s.updateGatewayStatus(gw.Namespace, gw.Name, gwAddress(lb)); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -122,6 +130,65 @@ func (s *svcAddress) update(_ context.Context, lb []networking.IngressLoadBalanc
 		return fmt.Errorf("error syncing address status: %w", shrinkErrors(errs))
 	}
 	return nil
+}
+
+func (s *svcAddress) updateIngressStatus(namespace, name string, lb []networking.IngressLoadBalancerIngress) error {
+	ing := &networking.Ingress{}
+	ing.Namespace = namespace
+	ing.Name = name
+	return s.updateStatus(ing, func() bool {
+		if reflect.DeepEqual(ing.Status.LoadBalancer.Ingress, lb) {
+			return false
+		}
+		ing.Status.LoadBalancer.Ingress = lb
+		return true
+	})
+}
+
+func (s *svcAddress) updateGatewayStatus(namespace, name string, lb []gatewayv1.GatewayStatusAddress) error {
+	gw := &gatewayv1.Gateway{}
+	gw.Namespace = namespace
+	gw.Name = name
+	return s.updateStatus(gw, func() bool {
+		if reflect.DeepEqual(gw.Status.Addresses, lb) {
+			return false
+		}
+		gw.Status.Addresses = lb
+		return true
+	})
+}
+
+func (s *svcAddress) updateStatus(namedObj client.Object, apply func() bool) error {
+	var changed bool
+	err := s.cache.UpdateStatus(namedObj, func() bool {
+		if !apply() {
+			return false
+		}
+		changed = true
+		return true
+	}, convtypes.CacheOptions{SkipLeaderCheck: true})
+	if err == nil && changed {
+		s.log.WithValues("kind", reflect.TypeOf(namedObj), "namespace", namedObj.GetNamespace(), "name", namedObj.GetName()).V(1).Info("address status updated")
+	}
+	return err
+}
+
+func gwAddress(lb []networking.IngressLoadBalancerIngress) (address []gatewayv1.GatewayStatusAddress) {
+	for _, addr := range lb {
+		if addr.Hostname != "" {
+			address = append(address, gatewayv1.GatewayStatusAddress{
+				Type:  ptr.To(gatewayv1.HostnameAddressType),
+				Value: addr.Hostname,
+			})
+		}
+		if addr.IP != "" {
+			address = append(address, gatewayv1.GatewayStatusAddress{
+				Type:  ptr.To(gatewayv1.IPAddressType),
+				Value: addr.IP,
+			})
+		}
+	}
+	return address
 }
 
 func shrinkErrors(errs []error) error {
@@ -132,29 +199,7 @@ func shrinkErrors(errs []error) error {
 	return errors.Join(errs...)
 }
 
-func (s *svcAddress) updateIngressStatus(namespace, name string, lb []networking.IngressLoadBalancerIngress) error {
-	ing := &networking.Ingress{}
-	ing.Namespace = namespace
-	ing.Name = name
-	var changed bool
-	err := s.cache.UpdateStatus(ing, func() bool {
-		if reflect.DeepEqual(ing.Status.LoadBalancer.Ingress, lb) {
-			return false
-		}
-		ing.Status.LoadBalancer.Ingress = lb
-		changed = true
-		return true
-	}, convtypes.CacheOptions{SkipLeaderCheck: true})
-	if err != nil {
-		return err
-	}
-	if changed {
-		s.log.WithValues("kind", reflect.TypeOf(ing), "namespace", namespace, "name", name).V(1).Info("address status updated")
-	}
-	return nil
-}
-
-func (s *svcAddress) shutdown(ctx context.Context) {
+func (s *svcAddress) shutdown() {
 	if !s.cfg.UpdateStatusOnShutdown {
 		s.log.Info("skipping status update due to --update-status-on-shutdown=false")
 		return
@@ -167,19 +212,18 @@ func (s *svcAddress) shutdown(ctx context.Context) {
 		return
 	}
 	s.log.Info("no other controller running, removing address from status")
-	if err := s.update(ctx, nil); err != nil {
+	if err := s.updateAllResources(nil); err != nil {
 		s.log.Error(err, "error updating resources")
 	}
 }
 
-func (s *svcAddress) syncCurrentLB(ctx context.Context) error {
-	var lb []networking.IngressLoadBalancerIngress
+func (s *svcAddress) readCurrentLB(ctx context.Context) (lb []networking.IngressLoadBalancerIngress, err error) {
 	if s.cfg.PublishService != "" {
 		// read Hostnames and IPs from the configured service
 		svc := api.Service{}
 		ns, n, _ := cache.SplitMetaNamespaceKey(s.cfg.PublishService)
 		if err := s.cli.Get(ctx, types.NamespacedName{Namespace: ns, Name: n}, &svc); err != nil {
-			return fmt.Errorf("failed to read load balancer service: %w", err)
+			return nil, fmt.Errorf("failed to read load balancer service: %w", err)
 		}
 		for _, ing := range svc.Status.LoadBalancer.Ingress {
 			lb = append(lb, networking.IngressLoadBalancerIngress{IP: ing.IP, Hostname: ing.Hostname})
@@ -214,15 +258,7 @@ func (s *svcAddress) syncCurrentLB(ctx context.Context) error {
 		}
 		return lb[i].Hostname < lb[j].Hostname
 	})
-	if !reflect.DeepEqual(s.curr, lb) {
-		s.log.Info("list of load balancers changed, checking all address status", "old", s.curr, "new", lb)
-		if err := s.update(ctx, lb); err != nil {
-			return fmt.Errorf("error updating resources: %w", err)
-		}
-		s.log.Info("address status up to date")
-		s.curr = lb
-	}
-	return nil
+	return lb, nil
 }
 
 // getNodeIPs reads external node IP, or internal if
