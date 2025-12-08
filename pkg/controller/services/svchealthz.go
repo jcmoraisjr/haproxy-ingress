@@ -13,7 +13,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"k8s.io/apiserver/pkg/server/healthz"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 )
@@ -27,9 +26,9 @@ func initSvcHealthz(ctx context.Context, cfg *config.Config, metrics *metrics, a
 		cfg: cfg,
 	}
 	mux := http.NewServeMux()
-	healthz.InstallPathHandler(mux, cfg.HealthzURL)
-	healthz.InstallPathHandler(mux, cfg.ReadyzURL)
 	mux.Handle("/", s.createRootHealthzHandler())
+	mux.Handle(cfg.HealthzURL, s.readyHandler())
+	mux.Handle(cfg.ReadyzURL, s.readyHandler())
 	mux.Handle("/acme/check", s.createAcmeHandler(acmeCheck))
 	mux.Handle("/build", s.createBuildHandler(cfg))
 	if cfg.Profiling {
@@ -84,6 +83,13 @@ func (s *svcHealthz) createRootHealthzHandler() http.HandlerFunc {
 		}
 		w.Header().Set("Content-Type", contentType)
 		_, _ = w.Write([]byte(page))
+	}
+}
+
+func (s *svcHealthz) readyHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		_, _ = w.Write([]byte("ok"))
 	}
 }
 
