@@ -662,16 +662,31 @@ func (c *c) SwapChangedObjects() *convtypes.ChangedObjects {
 	return nil
 }
 
-func (c *c) UpdateStatus(namedObj client.Object, apply func() bool) error {
-	if !c.leader {
+func (c *c) UpdateStatus(namedObj client.Object, apply func() bool, opts ...convtypes.CacheOptions) error {
+	var opt convtypes.CacheOptions
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	// should proceed only if this controller is the leader, or in the case it is not, caller asked to skip this check
+	proceed := c.leader || opt.SkipLeaderCheck
+	if !proceed {
 		return nil
 	}
+	ctx := c.ctx
+	if ctx.Err() != nil {
+		// Controller is shutting down, need a new context to write the status.
+		// Read comes from the cache, so it does not use context.
+		// TODO: Cache refactor should consider dropping the internal context, asking one from the caller.
+		var cancel func()
+		ctx, cancel = context.WithTimeout(context.Background(), *c.config.ShutdownTimeout/5) // 5s in the default config
+		defer cancel()
+	}
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		if err := c.client.Get(c.ctx, client.ObjectKeyFromObject(namedObj), namedObj); err != nil {
+		if err := c.client.Get(ctx, client.ObjectKeyFromObject(namedObj), namedObj); err != nil {
 			return err
 		}
 		if apply() {
-			return c.client.Status().Update(c.ctx, namedObj)
+			return c.client.Status().Update(ctx, namedObj)
 		}
 		return nil
 	})

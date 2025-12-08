@@ -111,6 +111,7 @@ func (s *svcAddress) update(_ context.Context, lb []networking.IngressLoadBalanc
 	if err != nil {
 		return err
 	}
+	s.log.Info("checking address status", "ingress-count", len(ingList))
 	var errs []error
 	for _, ing := range ingList {
 		if err := s.updateIngressStatus(ing.Namespace, ing.Name, lb); err != nil {
@@ -143,7 +144,7 @@ func (s *svcAddress) updateIngressStatus(namespace, name string, lb []networking
 		ing.Status.LoadBalancer.Ingress = lb
 		changed = true
 		return true
-	})
+	}, convtypes.CacheOptions{SkipLeaderCheck: true})
 	if err != nil {
 		return err
 	}
