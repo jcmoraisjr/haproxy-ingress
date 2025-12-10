@@ -250,7 +250,7 @@ func (c *updater) UpdateFrontConfig(front *hatypes.Frontend, mapper *Mapper, loc
 		c.buildFrontBindHTTPS(d)
 	} else {
 		c.buildFrontBindHTTP(d)
-		c.buildFrontFrontingProxy(d)
+		c.buildFrontHTTPPassthrough(d)
 	}
 }
 

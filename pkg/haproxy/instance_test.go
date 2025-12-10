@@ -1934,18 +1934,18 @@ d1.local#/app default_d1_8080`)
 	c.logger.CompareLogging(defaultLogging)
 }
 
-func TestInstanceFrontingProxy(t *testing.T) {
+func TestInstanceHTTPPassthrough(t *testing.T) {
 	testCases := map[string]struct {
-		f1UseFronting bool
-		f2UseFronting bool
+		f1UseHTTPPass bool
+		f2UseHTTPPass bool
 		f1UseProto    bool
 		f2UseProto    bool
 		expFront1     string
 		expFront2     string
 		expBack       string
 	}{
-		"test01 fronting=none useproto=none": {
-			f1UseFronting: false, f2UseFronting: false, f1UseProto: false, f2UseProto: false,
+		"test01 httppass=none useproto=none": {
+			f1UseHTTPPass: false, f2UseHTTPPass: false, f1UseProto: false, f2UseProto: false,
 			expFront1: `
     <<set-req-base>>
     <<http-headers>>`,
@@ -1954,56 +1954,56 @@ func TestInstanceFrontingProxy(t *testing.T) {
     <<http-headers>>`,
 			expBack: ``,
 		},
-		"test02 fronting=some useproto=none": {
-			f1UseFronting: true, f2UseFronting: false, f1UseProto: false, f2UseProto: false,
+		"test02 httppass=some useproto=none": {
+			f1UseHTTPPass: true, f2UseHTTPPass: false, f1UseProto: false, f2UseProto: false,
 			expFront1: `
-    http-request set-var(req.fronting_proxy) str(1)
+    http-request set-var(req.http_passthrough) str(1)
     <<set-req-base>>`,
 			expFront2: `
     <<set-req-base>>
     <<http-headers>>`,
 			expBack: `
-    acl fronting-proxy var(req.fronting_proxy) -m found`,
+    acl http-passthrough var(req.http_passthrough) -m found`,
 		},
-		"test03 fronting=some useproto=some": {
-			f1UseFronting: true, f2UseFronting: false, f1UseProto: true, f2UseProto: false,
+		"test03 httppass=some useproto=some": {
+			f1UseHTTPPass: true, f2UseHTTPPass: false, f1UseProto: true, f2UseProto: false,
 			expFront1: `
-    http-request set-var(req.fronting_proxy) str(1)
-    http-request set-var(req.fronting_proto) str(use)
+    http-request set-var(req.http_passthrough) str(1)
+    http-request set-var(req.http_pass_proto) str(use)
     <<set-req-base>>`,
 			expFront2: `
-    http-request set-var(req.fronting_proto) str(ignore)
+    http-request set-var(req.http_pass_proto) str(ignore)
     <<set-req-base>>
     <<http-headers>>`,
 			expBack: `
-    acl fronting-proxy var(req.fronting_proxy) -m found
-    acl https-request var(req.fronting_proto) -m str ignore
+    acl http-passthrough var(req.http_passthrough) -m found
+    acl https-request var(req.http_pass_proto) -m str ignore
     acl https-request hdr(X-Forwarded-Proto) https
-    http-request redirect scheme https if fronting-proxy !https-request`,
+    http-request redirect scheme https if http-passthrough !https-request`,
 		},
-		"test04 fronting=all useproto=none": {
-			f1UseFronting: true, f2UseFronting: true, f1UseProto: false, f2UseProto: false,
+		"test04 httppass=all useproto=none": {
+			f1UseHTTPPass: true, f2UseHTTPPass: true, f1UseProto: false, f2UseProto: false,
 			expFront1: `
     <<set-req-base>>`,
 			expFront2: `
     <<set-req-base>>`,
 			expBack: ``,
 		},
-		"test05 fronting=all useproto=some": {
-			f1UseFronting: true, f2UseFronting: true, f1UseProto: true, f2UseProto: false,
+		"test05 httppass=all useproto=some": {
+			f1UseHTTPPass: true, f2UseHTTPPass: true, f1UseProto: true, f2UseProto: false,
 			expFront1: `
-    http-request set-var(req.fronting_proto) str(use)
+    http-request set-var(req.http_pass_proto) str(use)
     <<set-req-base>>`,
 			expFront2: `
-    http-request set-var(req.fronting_proto) str(ignore)
+    http-request set-var(req.http_pass_proto) str(ignore)
     <<set-req-base>>`,
 			expBack: `
-    acl https-request var(req.fronting_proto) -m str ignore
+    acl https-request var(req.http_pass_proto) -m str ignore
     acl https-request hdr(X-Forwarded-Proto) https
     http-request redirect scheme https if !https-request`,
 		},
-		"test06 fronting=all useproto=all": {
-			f1UseFronting: true, f2UseFronting: true, f1UseProto: true, f2UseProto: true,
+		"test06 httppass=all useproto=all": {
+			f1UseHTTPPass: true, f2UseHTTPPass: true, f1UseProto: true, f2UseProto: true,
 			expFront1: `
     <<set-req-base>>`,
 			expFront2: `
@@ -2024,16 +2024,16 @@ func TestInstanceFrontingProxy(t *testing.T) {
 			f1 := c.httpFrontend(8081)
 			f1.Name = "_front_http_8081"
 			f1.Bind = ":8081"
-			f1.IsFrontingProxy = test.f1UseFronting
-			f1.IsFrontingUseProto = test.f1UseProto
+			f1.HTTPPassthrough = test.f1UseHTTPPass
+			f1.HTTPPassUseProto = test.f1UseProto
 			h1 := f1.AcquireHost("d1.local")
 			h1.AddPath(b, "/", hatypes.MatchBegin)
 
 			f2 := c.httpFrontend(8082)
 			f2.Name = "_front_http_8082"
 			f2.Bind = ":8082"
-			f2.IsFrontingProxy = test.f2UseFronting
-			f2.IsFrontingUseProto = test.f2UseProto
+			f2.HTTPPassthrough = test.f2UseHTTPPass
+			f2.HTTPPassUseProto = test.f2UseProto
 			h2 := f2.AcquireHost("d2.local")
 			h2.AddPath(b, "/", hatypes.MatchBegin)
 

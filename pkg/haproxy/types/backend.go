@@ -265,12 +265,12 @@ const (
 	HasOnly
 )
 
-func (b *Backend) HasFrontingProxy() Has {
-	return b.hasInPath(func(path *Path) bool { return path.Host.Frontend.IsFrontingProxy })
+func (b *Backend) HasHTTPPassthrough() Has {
+	return b.hasInPath(func(path *Path) bool { return path.Host.Frontend.HTTPPassthrough })
 }
 
-func (b *Backend) HasFrontingUseProto() Has {
-	return b.hasInPath(func(path *Path) bool { return path.Host.Frontend.IsFrontingUseProto })
+func (b *Backend) HasHTTPPassUseProto() Has {
+	return b.hasInPath(func(path *Path) bool { return path.Host.Frontend.HTTPPassUseProto })
 }
 
 func (b *Backend) hasInPath(has func(path *Path) bool) Has {

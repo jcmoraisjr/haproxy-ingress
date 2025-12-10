@@ -26,36 +26,78 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )
 
-func AcquireFrontendPorts(logger types.Logger, mapper *Mapper) (httpPort, httpsPort int32, localPorts bool) {
-	httpPort = mapper.Get(ingtypes.GlobalHTTPPort).Int32()
-	httpsPort = mapper.Get(ingtypes.GlobalHTTPSPort).Int32()
+type FrontendPorts struct {
+	logger types.Logger
+	httpPort,
+	httpsPort,
+	httpPassPort int32
+	denyPorts    []int32
+	denyPortsStr string
+}
+
+func NewFrontendPorts(logger types.Logger, globalMapper *Mapper) *FrontendPorts {
+	// global ports
+	httpPort := globalMapper.Get(ingtypes.GlobalHTTPPort).Int32()
+	httpsPort := globalMapper.Get(ingtypes.GlobalHTTPSPort).Int32()
+	httpPassPort := globalMapper.Get(ingtypes.GlobalHTTPPassthroughPort).Int32()
+	if httpPassPort == 0 {
+		httpPassPort = globalMapper.Get(ingtypes.GlobalFrontingProxyPort).Int32()
+	}
+	if httpPassPort == 0 {
+		httpPassPort = globalMapper.Get(ingtypes.GlobalHTTPStoHTTPPort).Int32()
+	}
+
+	// denied ports
+	denyPorts := []int32{httpPort, httpsPort}
+	denyPortsStr := []string{strconv.Itoa(int(httpPort)), strconv.Itoa(int(httpsPort))}
+	if httpPassPort > 0 {
+		denyPorts = append(denyPorts, httpPassPort)
+		denyPortsStr = append(denyPortsStr, strconv.Itoa(int(httpPassPort)))
+	}
+
+	return &FrontendPorts{
+		logger:       logger,
+		httpPort:     httpPort,
+		httpsPort:    httpsPort,
+		httpPassPort: httpPassPort,
+		denyPorts:    denyPorts,
+		denyPortsStr: strings.Join(denyPortsStr, "/"),
+	}
+}
+
+func (fp *FrontendPorts) AcquirePorts(mapper *Mapper) (httpPort, httpsPort, httpPassPort int32, localPorts bool) {
+	// reading globals as default values
+	httpPort = fp.httpPort
+	httpsPort = fp.httpsPort
+	httpPassPort = fp.httpPassPort
+	localPorts = false
+
+	// defaults already in place, starting local config check
 	localPortsConfig := mapper.Get(ingtypes.FrontHTTPPortsLocal)
-	if localPortsConfig.Source != nil {
-		ports := strings.Split(localPortsConfig.Value, "/")
-		var p0, p1 int32
-		if len(ports) == 2 {
-			p0i, _ := strconv.Atoi(ports[0])
-			p1i, _ := strconv.Atoi(ports[1])
-			p0 = int32(p0i)
-			p1 = int32(p1i)
-		}
-		denyPorts := []int32{httpPort, httpsPort}
-		switch {
-		case p0 == 0 || p1 == 0:
-			logger.Warn("ignoring invalid http/https ports configuration '%s' on %v", localPortsConfig.Value, localPortsConfig.Source)
-		case slices.Contains(denyPorts, p0) || slices.Contains(denyPorts, p1):
-			logger.Warn("ignoring http/https ports configuration on %v: local http(s) ports cannot collide with global '%d/%d' ones", localPortsConfig.Source, httpPort, httpsPort)
-		default:
-			httpPort = p0
-			httpsPort = p1
-			localPorts = true
-		}
+	if localPortsConfig.Source == nil {
+		// use default if local-config is configured globally, or not configured at all
+		return
 	}
-	frontingPort := mapper.Get(ingtypes.FrontFrontingProxyPort).Int32()
-	if frontingPort > 0 {
-		httpPort = frontingPort
+	ports := strings.Split(localPortsConfig.Value, "/")
+	var localPortHTTP, localPortHTTPS int32
+	if len(ports) == 2 {
+		portHTTP, _ := strconv.Atoi(ports[0])
+		portHTTPS, _ := strconv.Atoi(ports[1])
+		localPortHTTP = int32(portHTTP)
+		localPortHTTPS = int32(portHTTPS)
 	}
-	return httpPort, httpsPort, localPorts
+	if localPortHTTP <= 0 || localPortHTTPS <= 0 {
+		fp.logger.Warn("ignoring http/https ports configuration on %v: invalid configuration: '%s'", localPortsConfig.Source, localPortsConfig.Value)
+		return
+	}
+
+	// local port configuration allowed, checking now for invalid or overlapping config
+	if slices.Contains(fp.denyPorts, localPortHTTP) || slices.Contains(fp.denyPorts, localPortHTTPS) {
+		fp.logger.Warn("ignoring http/https ports configuration on %v: local http(s) ports cannot collide with global '%s' ones", localPortsConfig.Source, fp.denyPortsStr)
+		return
+	}
+
+	return localPortHTTP, localPortHTTPS, httpPassPort, true
 }
 
 func (c *frontData) get(key string) *ConfigValue {
@@ -63,7 +105,10 @@ func (c *frontData) get(key string) *ConfigValue {
 	if config.Source != nil && !c.localPorts {
 		// malformed configuration: a frontend key was configured via annotation (config.Source not nil)
 		// and there is not a valid local port configuration, warn and use default/global instead.
-		c.logger.Warn("skipping '%s' configuration on %s: missing '%s' key", key, config.Source, ingtypes.FrontHTTPPortsLocal)
+		if c.mapper.Get(ingtypes.FrontHTTPPortsLocal).Source == nil {
+			// logging only in case http-ports-local is missing; otherwise the reason why c.localPorts is false is already logged.
+			c.logger.Warn("skipping '%s' configuration on %s: missing '%s' key", key, config.Source, ingtypes.FrontHTTPPortsLocal)
+		}
 		return c.mapper.GetDefault(key)
 	}
 	return config
@@ -89,19 +134,20 @@ func (c *updater) buildFrontBindHTTPS(d *frontData) {
 	}
 }
 
-func (c *updater) buildFrontFrontingProxy(d *frontData) {
-	bind := d.get(ingtypes.FrontBindFrontingProxy).Value
-	if bind == "" {
-		port := d.get(ingtypes.FrontFrontingProxyPort).Int()
-		if port == 0 {
-			port = d.get(ingtypes.FrontHTTPStoHTTPPort).Int()
-		}
-		if port == 0 {
-			return
-		}
-		bind = fmt.Sprintf("%s:%d", d.get(ingtypes.FrontBindIPAddrHTTP).Value, port)
+func (c *updater) buildFrontHTTPPassthrough(d *frontData) {
+	if !d.front.HTTPPassthrough && !d.get(ingtypes.FrontHTTPPassthrough).Bool() {
+		return
 	}
-	d.front.IsFrontingProxy = true
-	d.front.IsFrontingUseProto = d.get(ingtypes.FrontUseForwardedProto).Bool()
+
+	httpPort := d.front.Port()
+	bind := d.get(ingtypes.FrontBindHTTPPassthrough).Value
+	if bind == "" {
+		bind = d.get(ingtypes.FrontBindFrontingProxy).Value
+	}
+	if bind == "" {
+		bind = fmt.Sprintf("%s:%d", d.get(ingtypes.FrontBindIPAddrHTTP).Value, httpPort)
+	}
+	d.front.HTTPPassthrough = true
+	d.front.HTTPPassUseProto = d.get(ingtypes.FrontUseForwardedProto).Bool()
 	d.front.Bind = bind
 }

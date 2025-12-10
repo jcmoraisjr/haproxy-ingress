@@ -202,6 +202,7 @@ httpchk
 httpclose
 httplog
 httpmaps
+httppass
 httpport
 httproute
 httpsmaps

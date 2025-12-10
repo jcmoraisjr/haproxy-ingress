@@ -101,22 +101,22 @@ func (f *Frontends) HasHTTPResponses() bool {
 	return false
 }
 
-func (f *Frontends) HasSomeFrontingProxy() bool {
+func (f *Frontends) HasSomeHTTPPassthrough() bool {
 	total := len(f.items)
 	var count int
 	for _, front := range f.items {
-		if front.IsFrontingProxy {
+		if front.HTTPPassthrough {
 			count++
 		}
 	}
 	return count > 0 && count < total
 }
 
-func (f *Frontends) HasSomeFrontingUseProto() bool {
+func (f *Frontends) HasSomeHTTPPassUseProto() bool {
 	total := len(f.items)
 	var count int
 	for _, front := range f.items {
-		if front.IsFrontingProxy && front.IsFrontingUseProto {
+		if front.HTTPPassthrough && front.HTTPPassUseProto {
 			count++
 		}
 	}

@@ -21,21 +21,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 )
 
 func TestFrontendLocalConfig(t *testing.T) {
-	c := setup(t)
-	defer c.teardown()
 
 	source := &Source{Type: types.ResourceIngress, Namespace: "default", Name: "ing1"}
-	annDefault := map[string]string{
-		ingtypes.GlobalHTTPPort:  "80",
-		ingtypes.GlobalHTTPSPort: "443",
-	}
 
 	keyOverride := map[string]struct {
 		skipHTTP  bool
@@ -44,12 +37,12 @@ func TestFrontendLocalConfig(t *testing.T) {
 	}{
 		ingtypes.FrontBindHTTPS: {skipHTTP: true},
 		//
-		ingtypes.FrontBindFrontingProxy: {skipHTTPS: true},
-		ingtypes.FrontBindHTTP:          {skipHTTPS: true},
-		ingtypes.FrontFrontingProxyPort: {skipHTTPS: true},
-		ingtypes.FrontHTTPStoHTTPPort:   {skipHTTPS: true},
+		ingtypes.FrontHTTPPassthrough: {skipHTTPS: true},
+		ingtypes.FrontBindHTTP:        {skipHTTPS: true},
 		//
-		ingtypes.FrontUseForwardedProto: {skipHTTP: true, skipHTTPS: true}, // it is always behind fronting proxy port
+		ingtypes.FrontBindHTTPPassthrough: {skipHTTP: true, skipHTTPS: true}, // they are always behind proper http passthrough config
+		ingtypes.FrontBindFrontingProxy:   {skipHTTP: true, skipHTTPS: true},
+		ingtypes.FrontUseForwardedProto:   {skipHTTP: true, skipHTTPS: true},
 	}
 
 	for key := range ingtypes.AnnFront {
@@ -57,16 +50,22 @@ func TestFrontendLocalConfig(t *testing.T) {
 			continue
 		}
 		t.Run(key, func(t *testing.T) {
+			c := setup(t)
+			defer c.teardown()
 			config := keyOverride[key]
 			value := config.value
 			if value == "" {
 				value = "1"
 			}
+			global := map[string]string{
+				ingtypes.GlobalHTTPPort:  "80",
+				ingtypes.GlobalHTTPSPort: "443",
+			}
 			ann := map[string]string{key: value}
 
 			u := c.createUpdater()
 			check := func(isHTTPS bool, expLogging string) {
-				d := c.createFrontData(source, isHTTPS, ann, annDefault)
+				d := c.createFrontData(source, isHTTPS, ann, global)
 				u.UpdateFrontConfig(d.front, d.mapper, d.localPorts)
 				c.logger.CompareLogging(expLogging)
 			}
@@ -89,41 +88,80 @@ func TestFrontendLocalConfig(t *testing.T) {
 	}
 }
 
-func TestFrontingProxy(t *testing.T) {
+func TestHTTPPassthrough(t *testing.T) {
 	testCases := map[string]struct {
-		ann              map[string]string
-		expFrontingProxy bool
-		expBind          string
+		global      map[string]string
+		ann         map[string]string
+		expHTTPPass bool
+		expBind     string
+		logging     string
 	}{
 		"test01": {
-			ann: map[string]string{
-				ingtypes.FrontHTTPStoHTTPPort: "8000",
+			global: map[string]string{
+				ingtypes.GlobalHTTPStoHTTPPort: "8000",
 			},
-			expFrontingProxy: true,
-			expBind:          ":8000",
+			expHTTPPass: true,
+			expBind:     ":8000",
 		},
 		"test02": {
-			ann: map[string]string{
-				ingtypes.FrontFrontingProxyPort: "9000",
+			global: map[string]string{
+				ingtypes.GlobalFrontingProxyPort: "8000",
 			},
-			expFrontingProxy: true,
-			expBind:          ":9000",
+			expHTTPPass: true,
+			expBind:     ":8000",
 		},
 		"test03": {
-			ann: map[string]string{
-				ingtypes.FrontHTTPStoHTTPPort:   "9000",
-				ingtypes.FrontBindFrontingProxy: ":7000",
+			global: map[string]string{
+				ingtypes.GlobalHTTPPassthroughPort: "8000",
 			},
-			expFrontingProxy: true,
-			expBind:          ":7000",
+			expHTTPPass: true,
+			expBind:     ":8000",
 		},
 		"test04": {
-			ann: map[string]string{
-				ingtypes.FrontFrontingProxyPort: "8000",
-				ingtypes.FrontBindFrontingProxy: "127.0.0.1:7000",
+			global: map[string]string{
+				ingtypes.GlobalHTTPPassthroughPort: "8000",
+				ingtypes.FrontBindFrontingProxy:    ":8000,:7000",
 			},
-			expFrontingProxy: true,
-			expBind:          "127.0.0.1:7000",
+			expHTTPPass: true,
+			expBind:     ":8000,:7000",
+		},
+		"test05": {
+			ann: map[string]string{
+				ingtypes.FrontHTTPPassthrough: "true",
+			},
+			expBind: ":80",
+			logging: `WARN skipping 'http-passthrough' configuration on ingress 'default/ing1': missing 'http-ports-local' key`,
+		},
+		"test06": {
+			ann: map[string]string{
+				ingtypes.FrontHTTPPortsLocal:    "7000/-8443",
+				ingtypes.FrontBindFrontingProxy: ":7000",
+			},
+			expBind: ":80",
+			logging: `WARN ignoring http/https ports configuration on ingress 'default/ing1': invalid configuration: '7000/-8443'`,
+		},
+		"test07": {
+			global: map[string]string{
+				ingtypes.GlobalHTTPPassthroughPort: "8000",
+			},
+			ann: map[string]string{
+				ingtypes.FrontHTTPPortsLocal:    "7000/8443",
+				ingtypes.FrontBindFrontingProxy: ":7000",
+			},
+			expHTTPPass: true,
+			expBind:     ":7000",
+		},
+		"test08": {
+			global: map[string]string{
+				ingtypes.GlobalHTTPPassthroughPort: "9000",
+			},
+			ann: map[string]string{
+				ingtypes.FrontHTTPPortsLocal:  "9000/9443",
+				ingtypes.FrontHTTPPassthrough: "true",
+			},
+			expHTTPPass: true,
+			expBind:     ":9000",
+			logging:     `WARN ignoring http/https ports configuration on ingress 'default/ing1': local http(s) ports cannot collide with global '80/443/9000' ones`,
 		},
 	}
 	source := &Source{Namespace: "default", Name: "ing1", Type: "ingress"}
@@ -131,11 +169,20 @@ func TestFrontingProxy(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			c := setup(t)
 			defer c.teardown()
-			test.ann[ingtypes.FrontHTTPPortsLocal] = "9090/9443"
-			d := c.createFrontData(source, false, test.ann, map[string]string{})
-			c.createUpdater().buildFrontFrontingProxy(d)
-			require.Equal(t, test.expFrontingProxy, d.front.IsFrontingProxy, "FrontingProxy")
-			require.Equal(t, test.expBind, d.front.Bind, "Bind")
+			if test.global == nil {
+				test.global = make(map[string]string)
+			}
+			if test.global[ingtypes.GlobalHTTPPort] == "" {
+				test.global[ingtypes.GlobalHTTPPort] = "80"
+			}
+			if test.global[ingtypes.GlobalHTTPSPort] == "" {
+				test.global[ingtypes.GlobalHTTPSPort] = "443"
+			}
+			d := c.createFrontData(source, false, test.ann, test.global)
+			c.createUpdater().buildFrontHTTPPassthrough(d)
+			assert.Equal(t, test.expHTTPPass, d.front.HTTPPassthrough, "HTTPPassthrough")
+			assert.Equal(t, test.expBind, d.front.Bind, "Bind")
+			c.logger.CompareLogging(test.logging)
 		})
 	}
 }
@@ -208,8 +255,8 @@ func TestFrontendBind(t *testing.T) {
 			},
 			expHTTPBind:  "*:80",
 			expHTTPSBind: "*:443",
-			expHTTPLog:   `WARN ignoring invalid http/https ports configuration '9090' on ingress 'default/ing1'`,
-			expHTTPSLog:  `WARN ignoring invalid http/https ports configuration '9090' on ingress 'default/ing1'`,
+			expHTTPLog:   `WARN ignoring http/https ports configuration on ingress 'default/ing1': invalid configuration: '9090'`,
+			expHTTPSLog:  `WARN ignoring http/https ports configuration on ingress 'default/ing1': invalid configuration: '9090'`,
 		},
 		"test10": {
 			ann: map[string]string{
@@ -217,8 +264,8 @@ func TestFrontendBind(t *testing.T) {
 			},
 			expHTTPBind:  "*:80",
 			expHTTPSBind: "*:443",
-			expHTTPLog:   `WARN ignoring invalid http/https ports configuration '9090/https' on ingress 'default/ing1'`,
-			expHTTPSLog:  `WARN ignoring invalid http/https ports configuration '9090/https' on ingress 'default/ing1'`,
+			expHTTPLog:   `WARN ignoring http/https ports configuration on ingress 'default/ing1': invalid configuration: '9090/https'`,
+			expHTTPSLog:  `WARN ignoring http/https ports configuration on ingress 'default/ing1': invalid configuration: '9090/https'`,
 		},
 		"test11": {
 			ann: map[string]string{
@@ -226,8 +273,8 @@ func TestFrontendBind(t *testing.T) {
 			},
 			expHTTPBind:  "*:80",
 			expHTTPSBind: "*:443",
-			expHTTPLog:   `WARN ignoring invalid http/https ports configuration '80/9090/9443' on ingress 'default/ing1'`,
-			expHTTPSLog:  `WARN ignoring invalid http/https ports configuration '80/9090/9443' on ingress 'default/ing1'`,
+			expHTTPLog:   `WARN ignoring http/https ports configuration on ingress 'default/ing1': invalid configuration: '80/9090/9443'`,
+			expHTTPSLog:  `WARN ignoring http/https ports configuration on ingress 'default/ing1': invalid configuration: '80/9090/9443'`,
 		},
 		"test12": {
 			ann: map[string]string{
@@ -279,11 +326,8 @@ func TestFrontendBind(t *testing.T) {
 			},
 			expHTTPBind:  "*:80",
 			expHTTPSBind: "*:443",
-			expHTTPLog: `
-WARN ignoring invalid http/https ports configuration '9090/invalid' on ingress 'default/ing1'
-WARN skipping 'bind-http' configuration on ingress 'default/ing1': missing 'http-ports-local' key
-`,
-			expHTTPSLog: `WARN ignoring invalid http/https ports configuration '9090/invalid' on ingress 'default/ing1'`,
+			expHTTPLog:   `WARN ignoring http/https ports configuration on ingress 'default/ing1': invalid configuration: '9090/invalid'`,
+			expHTTPSLog:  `WARN ignoring http/https ports configuration on ingress 'default/ing1': invalid configuration: '9090/invalid'`,
 		},
 		"test18": {
 			ann: map[string]string{

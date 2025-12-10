@@ -504,10 +504,10 @@ type Frontend struct {
 	HTTPSSocket  string
 	HTTPSProxy   bool
 	//
-	IsFrontingProxy    bool
-	IsFrontingUseProto bool
-	RedirectFromCode   int
-	RedirectToCode     int
+	HTTPPassthrough  bool
+	HTTPPassUseProto bool
+	RedirectFromCode int
+	RedirectToCode   int
 	//
 	// Hosts related
 	hosts,
