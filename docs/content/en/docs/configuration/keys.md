@@ -319,8 +319,9 @@ The table below describes all supported configuration keys.
 | [`backend-server-naming`](#backend-server-naming)    | [sequence\|ip\|pod]                     | Backend  | `sequence`                       |
 | [`backend-server-slots-increment`](#dynamic-scaling) | number of slots                         | Backend  | `1`                              |
 | [`balance-algorithm`](#balance-algorithm)            | algorithm name                          | Backend  | `random(2)`                      |
-| [`bind-fronting-proxy`](#bind)                       | ip + port                               | Frontend |                                  |
+| [~~`bind-fronting-proxy`~~](#bind)                   | ip + port                               | Frontend |                                  |
 | [`bind-http`](#bind)                                 | ip + port                               | Frontend |                                  |
+| [`bind-http-passthrough`](#bind)                     | ip + port                               | Frontend |                                  |
 | [`bind-https`](#bind)                                | ip + port                               | Frontend |                                  |
 | [`bind-ip-addr-healthz`](#bind-ip-addr)              | IP address                              | Global   |                                  |
 | [`bind-ip-addr-http`](#bind-ip-addr)                 | IP address                              | Frontend |                                  |
@@ -375,7 +376,7 @@ The table below describes all supported configuration keys.
 | [`fcgi-app`](#fastcgi)                               | fcgi-app section name                   | Backend  |                                  |
 | [`fcgi-enabled-apps`](#fastcgi)                      | comma-separated list of names           | Global   | `*`                              |
 | [`forwardfor`](#forwardfor)                          | [add\|ignore\|ifmissing]                | Global   | `add`                            |
-| [`fronting-proxy-port`](#fronting-proxy-port)        | port number                             | Frontend | 0 (do not listen)                |
+| [~~`fronting-proxy-port`~~](#http-passthrough)       | port number                             | Global   | 0 (do not listen)                |
 | [`groupname`](#security)                             | haproxy group name                      | Global   | `haproxy`                        |
 | [`headers`](#headers)                                | multiline header:value pair             | Backend  |                                  |
 | [`health-check-addr`](#health-check)                 | address for health checks               | Backend  |                                  |
@@ -392,13 +393,15 @@ The table below describes all supported configuration keys.
 | [`http-header-match`](#http-match)                   | header name and value, exact match      | Path     |                                  |
 | [`http-header-match-regex`](#http-match)             | header name and value, regex match      | Path     |                                  |
 | [`http-log-format`](#log-format)                     | http log format                         | Global   | HAProxy default log format       |
+| [`http-passthrough`](#http-passthrough)              | [true\|false]                           | Frontend | `false`                          |
+| [`http-passthrough-port`](#http-passthrough)         | port number                             | Global   |                                  |
 | [`http-port`](#bind-port)                            | port number                             | Global   | `80`                             |
 | [`http-ports-local`](#bind-port)                     | http(s) port numbers                    | Frontend |                                  |
 | [`http-response-<code>`](#http-response)             | response output                         | vary     |                                  |
 | [`http-response-prometheus-root`](#http-response)    | response output                         | Global   |                                  |
 | [`https-log-format`](#log-format)                    | https(tcp) log format\|`default`        | Global   | do not log                       |
 | [`https-port`](#bind-port)                           | port number                             | Global   | `443`                            |
-| [`https-to-http-port`](#fronting-proxy-port)         | port number                             | Frontend | 0 (do not listen)                |
+| [~~`https-to-http-port`~~](#http-passthrough)        | port number                             | Global   | 0 (do not listen)                |
 | [`initial-weight`](#initial-weight)                  | weight value                            | Backend  | `1`                              |
 | [`limit-connections`](#limit)                        | qty                                     | Backend  |                                  |
 | [`limit-rps`](#limit)                                | rate per second                         | Backend  |                                  |
@@ -502,7 +505,7 @@ The table below describes all supported configuration keys.
 | [`tls-alpn`](#tls-alpn)                              | TLS ALPN advertisement                  | Host     | `h2,http/1.1`                    |
 | [`use-chroot`](#security)                            | [true\|false]                           | Global   | `false`                          |
 | [`use-cpu-map`](#cpu-map)                            | [true\|false]                           | Global   | `true`                           |
-| [`use-forwarded-proto`](#fronting-proxy-port)        | [true\|false]                           | Frontend | `true`                           |
+| [`use-forwarded-proto`](#http-passthrough)           | [true\|false]                           | Frontend | `true`                           |
 | [`use-haproxy-user`](#security)                      | [true\|false]                           | Global   | `false`                          |
 | [`use-htx`](#use-htx)                                | [true\|false]                           | Global   | `false`                          |
 | [`use-proxy-protocol`](#proxy-protocol)              | [true\|false]                           | Frontend | `false`                          |
@@ -989,15 +992,16 @@ See also:
 
 ### Bind
 
-| Configuration key      | Scope      | Default | Since |
-|------------------------|------------|---------|-------|
-| `bind-fronting-proxy`  | `Frontend` |         | v0.8  |
-| `bind-http`            | `Frontend` |         | v0.8  |
-| `bind-https`           | `Frontend` |         | v0.8  |
+| Configuration key         | Scope      | Default | Since |
+|---------------------------|------------|---------|-------|
+| `bind-http`               | `Frontend` |         | v0.8  |
+| `bind-http-passthrough`   | `Frontend` |         | v0.17 |
+| `bind-https`              | `Frontend` |         | v0.8  |
+| ~~`bind-fronting-proxy`~~ | `Frontend` |         | v0.8  |
 
 Configures listening IP and port for HTTP(S) incoming requests. These
 configuration keys have backward compatibility with [Bind IP addr](#bind-ip-addr),
-[Bind port](#bind-port) and [Fronting proxy](#fronting-proxy-port) keys.
+[Bind port](#bind-port) and [HTTP Passthrough](#http-passthrough) keys.
 The bind configuration keys in this section have precedence if declared.
 
 Any HAProxy supported option can be used, this will be copied verbatim to the
@@ -1013,11 +1017,11 @@ Configuration examples:
 * `bind-https: ":443,:8443"`: accept https connections on `443` and also `8443` port numbers
 
 {{< alert title="Note" >}}
-Since v0.17, `bind-fronting-proxy` and `bind-http` cannot share neither the same frontend nor the same TCP port anymore.
+Since v0.17, `bind-http-passthrough` and `bind-http` cannot share neither the same frontend nor the same TCP port anymore.
 {{< /alert >}}
 
 {{< alert title="Warning" color="warning" >}}
-Special care should be taken on port number overlap, neither haproxy itself nor haproxy-ingress will warn if the same port number is used on more than one configuration key. Moreover, although it is possible to configure a binding address completely unrelated with the configured `http-port`, `https-port` or `http-ports-local`, the suggestion is that configurations match somehow.
+Special care should be taken on port number overlap on global, and annotation based configuration if allowed. Neither haproxy itself nor haproxy-ingress will warn if the same port number is used on more than one configuration key. Moreover, although it is possible to configure a binding address completely unrelated with the configured `http-port`, `https-port` or `http-ports-local`, the suggestion is that configurations match somehow.
 {{< /alert >}}
 
 See also:
@@ -1659,29 +1663,9 @@ See also:
 
 ### Fronting proxy port
 
-| Configuration key     | Scope      | Default | Since   |
-|-----------------------|------------|---------|---------|
-| `fronting-proxy-port` | `Frontend` |         | `v0.8`  |
-| `https-to-http-port`  | `Frontend` |         |         |
-| `use-forwarded-proto` | `Frontend` | `true`  | `v0.10` |
+See [HTTP Passthrough](#http-passthrough)
 
-Configures HAProxy Ingress to accept plain HTTP requests from a fronting load balancer doing the SSL offload.
-
-* `fronting-proxy-port`: configures the port number that should accept the HTTP requests. This configuration was allowed to collide with `http-port` up to v0.16, but since v0.17 fronting-proxy is a flag to the whole frontend. Configure distinct frontends to support both regular HTTP and Fronting Proxy requests on the same deployment, and the port number cannot collide anymore.
-* `use-forwarded-proto`: if `true`, the default value, configures HAProxy to redirect the request to https if the `X-Forwarded-Proto` header is not `https`. If `false`, `X-Forwarded-Proto` header is ignored and passed as is to the backend.
-* `https-to-http-port`: old and deprecated key, now an alias to `fronting-proxy-port`.
-
-HAProxy Ingress has a few differences on HTTP and HTTPS configurations, like, redirect from HTTP if `ssl-redirect` is `true`, add HSTS headers (when configured) only on HTTPS responses, and drop incoming `X-SSL-*` headers for security reasons. Configuring a fronting proxy port makes HAProxy Ingress to have HTTPS behavior over HTTP connection, allowing a fronting load balancer to SSL offload the TLS requests, talking plain HTTP with HAProxy.
-
-On v0.17 these configuration keys changed from `Global` to `Frontend` scope, which means they can be used now as Ingress annotations. If used as annotation, they need to be used along with [`http-ports-local`](#bind-port) in order to not overwrite the global configuration.
-
-{{< alert title="Security warning" color="warning" >}}
-This option must only be used if the network from the fronting load balancer and the ingress nodes is trusted, since the communication happens on plain HTTP, and all the communication is visible via tools like tcpdump. Give also the configured port a special attention and block it from external access: an user can easily add the `X-SSL-*` headers, authenticating themselves as any user on applications using mTLS.
-{{< /alert >}}
-
-See also:
-
-* [Bind](#bind)
+---
 
 ### Headers
 
@@ -1806,6 +1790,42 @@ Match the header `X-Env` with value that matches the regex `^(test|staging)$`:
 See also:
 
 * [`auth-external-placement`](#auth-external) configuration key
+
+---
+
+### HTTP Passthrough
+
+| Configuration key         | Scope      | Default | Since |
+|---------------------------|------------|---------|-------|
+| `http-passthrough`        | `Frontend` | `false` | v0.17 |
+| `http-passthrough-port`   | `Global`   |         | v0.17 |
+| `use-forwarded-proto`     | `Frontend` | `true`  | v0.10 |
+| ~~`fronting-proxy-port`~~ | `Global`   |         | v0.8  |
+| ~~`https-to-http-port`~~  | `Global`   |         |       |
+
+Configures HAProxy to pass plain HTTP requests straight to the backends, without further checks, usually from a fronting load balancer doing the SSL offload.
+
+* `http-passthrough`: configures the HTTP frontend as HTTP passthrough. This behavior is achieved globally if both `http-port` and `http-passthrough-port` configure the same TCP port number.
+* `http-passthrough-port`: configures the port number for the HTTP passthrough frontend. If regular HTTP port (via `http-port`) and `http-passthrough-port` differ, HAProxy Ingress configures distinct frontends for regular HTTP and passthrough one, automatically populating ingress routes on both. If their ports match, a single HTTP frontend will be created and it will be configured as HTTP passthrough.
+* `use-forwarded-proto`: if `true`, the default value, configures HAProxy to redirect the request to https if the `X-Forwarded-Proto` header is not `https`. If `false`, `X-Forwarded-Proto` header is ignored and passed as is to the backend.
+* `fronting-proxy-port` and `https-to-http-port`: deprecated keys, alias to `http-passthrough-port`.
+
+HAProxy Ingress configures HTTP and HTTPS frontends with a few differences, like handling `X-Forwarded-Proto` header, redirect from HTTP if `ssl-redirect` is `true`, add HSTS headers (when configured) only on HTTPS responses, and drop incoming `X-SSL-*` headers for security reasons. Configuring HTTP passthrough makes HAProxy Ingress to have HTTPS behavior over HTTP connection, skipping regular HTTP checks, which allows e.g. a fronting load balancer to SSL offload the TLS requests, talking plain HTTP with HAProxy.
+
+Since v0.17, `http-passthrough` and `use-forwarded-proto` are `Frontend` scoped, which means they can be used as Ingress annotations. See [authorize frontends](#authorize-frontends) on how to authorize this configuration via annotation.
+
+{{< alert title="Note" >}}
+HAProxy Ingress v0.16 and older uses a mix behavior in the case `http-port` and `http-passthrough-port` share the same port number. Since v0.17 this mixed mode is not supported anymore, so a single frontend can be either a regular HTTP or a passthrough one.
+{{< /alert >}}
+
+{{< alert title="Security warning" color="warning" >}}
+This option must only be used if the network from a fronting load balancer and the ingress nodes is trusted, since the communication happens on plain HTTP, and all the communication is visible via tools like tcpdump. Give also the configured port a special attention and block it from external access: an user can easily add the `X-SSL-*` headers, authenticating themselves as any user on applications using mTLS.
+{{< /alert >}}
+
+See also:
+
+* [Bind](#bind)
+* [Bind port](#bind-port)
 
 ---
 

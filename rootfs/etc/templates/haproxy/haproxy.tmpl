@@ -472,16 +472,16 @@ backend {{ $backend.ID }}
 {{- $hasNone := 0 }}
 {{- $hasSome := 1 }}
 {{- $hasOnly := 2 }}
-{{- $hasFrontingProxy := $backend.HasFrontingProxy }}
-{{- $hasFrontingUseProto := $backend.HasFrontingUseProto }}
-{{- if $hasFrontingProxy }}
-{{- if eq $hasFrontingProxy $hasSome }}
-    acl fronting-proxy var(req.fronting_proxy) -m found
+{{- $hasHTTPPassthrough := $backend.HasHTTPPassthrough }}
+{{- $hasHTTPPassUseProto := $backend.HasHTTPPassUseProto }}
+{{- if $hasHTTPPassthrough }}
+{{- if eq $hasHTTPPassthrough $hasSome }}
+    acl http-passthrough var(req.http_passthrough) -m found
 {{- end }}
-{{- if eq $hasFrontingUseProto $hasSome }}
-    acl https-request var(req.fronting_proto) -m str ignore
+{{- if eq $hasHTTPPassUseProto $hasSome }}
+    acl https-request var(req.http_pass_proto) -m str ignore
 {{- end }}
-{{- if $hasFrontingUseProto }}
+{{- if $hasHTTPPassUseProto }}
     acl https-request hdr(X-Forwarded-Proto) https
 {{- end }}
 {{- else if or $backend.HasHSTS $backend.HasSSLRedirect }}
@@ -541,24 +541,24 @@ backend {{ $backend.ID }}
    * */}}
 
 {{- /*------------------------------------*/}}
-{{- if $hasFrontingUseProto }}
+{{- if $hasHTTPPassUseProto }}
     http-request redirect scheme https
         {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
-        {{- if or (eq $hasFrontingProxy $hasSome) ($hasFrontingUseProto) }} if
-            {{- if eq $hasFrontingProxy $hasSome }} fronting-proxy{{ end }}
-            {{- if $hasFrontingUseProto }} !https-request{{ end }}
+        {{- if or (eq $hasHTTPPassthrough $hasSome) ($hasHTTPPassUseProto) }} if
+            {{- if eq $hasHTTPPassthrough $hasSome }} http-passthrough{{ end }}
+            {{- if $hasHTTPPassUseProto }} !https-request{{ end }}
         {{- end }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if ne $hasFrontingProxy $hasOnly }}
+{{- if ne $hasHTTPPassthrough $hasOnly }}
 {{- $sslredirCfg := $backend.PathConfig "SSLRedirect" }}
 {{- range $i, $sslredir := $sslredirCfg.Items }}
 {{- if $sslredir }}
 {{- range $pathIDs := $sslredirCfg.PathIDs $i }}
     http-request redirect scheme https
         {{- if $global.SSL.RedirectCode }} code {{ $global.SSL.RedirectCode }}{{ end }}
-        {{- "" }} if {{ if $hasFrontingProxy }}!fronting-proxy{{ else }}!https-request{{ end }}
+        {{- "" }} if {{ if $hasHTTPPassthrough }}!http-passthrough{{ else }}!https-request{{ end }}
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- end }}
@@ -781,9 +781,9 @@ backend {{ $backend.ID }}
     http-response set-header Strict-Transport-Security "max-age={{ $hsts.MaxAge }}
         {{- if $hsts.Subdomains }}; includeSubDomains{{ end }}
         {{- if $hsts.Preload }}; preload{{ end }}"
-        {{- if or $needSSLACL $pathIDs (eq $hasFrontingProxy $hasSome) }} if
-            {{- if eq $hasFrontingProxy $hasSome }} !fronting-proxy{{ end }}
-            {{- if and (not $hasFrontingProxy) $needSSLACL }} https-request{{ end }}
+        {{- if or $needSSLACL $pathIDs (eq $hasHTTPPassthrough $hasSome) }} if
+            {{- if eq $hasHTTPPassthrough $hasSome }} !http-passthrough{{ end }}
+            {{- if and (not $hasHTTPPassthrough) $needSSLACL }} https-request{{ end }}
             {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
         {{- end }}
 {{- end }}
@@ -1121,12 +1121,12 @@ frontend {{ $proxy_name }}
 {{- end }}{{/* has $tcpservices */}}
 
 {{- $hasHTTPResponses := $frontends.HasHTTPResponses }}
-{{- $hasSomeFrontingProxy := $frontends.HasSomeFrontingProxy }}
-{{- $hasSomeFrontingUseProto := $frontends.HasSomeFrontingUseProto }}
+{{- $hasSomeHTTPPassthrough := $frontends.HasSomeHTTPPassthrough }}
+{{- $hasSomeHTTPPassUseProto := $frontends.HasSomeHTTPPassUseProto }}
 {{- range $frontend := $frontends.Items }}
 
-{{- $isFrontingProxy := $frontend.IsFrontingProxy }}
-{{- $isFrontingUseProto := $frontend.IsFrontingUseProto }}
+{{- $httpPassthrough := $frontend.HTTPPassthrough }}
+{{- $httpPassUseProto := $frontend.HTTPPassUseProto }}
 {{- $httpmaps := $frontend.HTTPMaps }}
 {{- $httpsmaps := $frontend.HTTPSMaps }}
 {{- $hasSSLPassthrough := $frontend.HasSSLPassthrough }}
@@ -1189,7 +1189,7 @@ listen {{ $frontend.TLSProxyName }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
-#     {{ if $isFrontingProxy }}Fronting Proxy{{ else }}HTTP{{ end }} frontend
+#     HTTP {{ if $httpPassthrough }}Passthrough {{ end }}frontend
 #
 frontend {{ $frontend.Name }}
     mode http
@@ -1217,11 +1217,11 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if and $isFrontingProxy $hasSomeFrontingProxy }}
-    http-request set-var(req.fronting_proxy) str(1)
+{{- if and $httpPassthrough $hasSomeHTTPPassthrough }}
+    http-request set-var(req.http_passthrough) str(1)
 {{- end }}
-{{- if $hasSomeFrontingUseProto }}
-    http-request set-var(req.fronting_proto) str({{ if $isFrontingUseProto }}use{{ else }}ignore{{ end }})
+{{- if $hasSomeHTTPPassUseProto }}
+    http-request set-var(req.http_pass_proto) str({{ if $httpPassUseProto }}use{{ else }}ignore{{ end }})
 {{- end }}
     http-request set-var(req.path) path
     http-request set-var(req.host) hdr(host),field(1,:),lower
@@ -1264,7 +1264,7 @@ frontend {{ $frontend.Name }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- if not $isFrontingProxy }}
+{{- if not $httpPassthrough }}
     http-request set-header X-Forwarded-Proto http
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-CN
     http-request del-header {{ $global.SSL.HeadersPrefix }}-Client-DN

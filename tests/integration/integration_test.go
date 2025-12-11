@@ -581,7 +581,7 @@ Request forbidden by administrative rules.
 		assert.False(t, res.EchoResponse.Parsed)
 	})
 
-	t.Run("should coexist regular and fronting-proxy http frontends", func(t *testing.T) {
+	t.Run("should coexist regular and http passthrough frontends", func(t *testing.T) {
 		t.Parallel()
 
 		portHTTP := framework.RandomPort()
@@ -590,7 +590,7 @@ Request forbidden by administrative rules.
 		_, hproxy := f.CreateIngress(ctx, t, svc)
 		_, fproxy := f.CreateIngress(ctx, t, svc,
 			options.AddConfigKeyAnnotation(ingtypes.FrontHTTPPortsLocal, fmt.Sprintf("%d/%d", portHTTP, portHTTPS)),
-			options.AddConfigKeyAnnotation(ingtypes.FrontFrontingProxyPort, strconv.Itoa(int(portHTTP))),
+			options.AddConfigKeyAnnotation(ingtypes.FrontHTTPPassthrough, "true"),
 		)
 
 		hres := f.Request(ctx, t, http.MethodGet, hproxy, "/",
@@ -613,7 +613,7 @@ Request forbidden by administrative rules.
 		assert.Equal(t, fres.EchoResponse.ReqHeaders["x-forwarded-proto"], "https")
 	})
 
-	t.Run("should handle proto header on fronting proxy", func(t *testing.T) {
+	t.Run("should handle proto header on http passthrough", func(t *testing.T) {
 		t.Parallel()
 
 		const xfp = "X-Forwarded-Proto"
@@ -651,7 +651,7 @@ Request forbidden by administrative rules.
 				svc := f.CreateService(ctx, t, httpServerPort)
 				_, hostname := f.CreateIngress(ctx, t, svc,
 					options.AddConfigKeyAnnotation(ingtypes.FrontHTTPPortsLocal, fmt.Sprintf("%d/%d", portHTTP, portHTTPS)),
-					options.AddConfigKeyAnnotation(ingtypes.FrontFrontingProxyPort, strconv.Itoa(int(portHTTP))),
+					options.AddConfigKeyAnnotation(ingtypes.FrontHTTPPassthrough, "true"),
 					options.AddConfigKeyAnnotation(ingtypes.FrontUseForwardedProto, should[test.useXFPHeader]),
 				)
 				expcode := http.StatusOK

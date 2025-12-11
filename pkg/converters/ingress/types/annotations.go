@@ -36,33 +36,33 @@ var (
 
 // Frontend Annotations
 const (
-	FrontBindFrontingProxy = "bind-fronting-proxy"
-	FrontBindHTTP          = "bind-http"
-	FrontBindHTTPS         = "bind-https"
-	FrontBindIPAddrHTTP    = "bind-ip-addr-http"
-	FrontFrontingProxyPort = "fronting-proxy-port"
-	FrontHTTPPortsLocal    = "http-ports-local"
-	FrontHTTPStoHTTPPort   = "https-to-http-port"
-	FrontRedirectFromCode  = "redirect-from-code"
-	FrontRedirectToCode    = "redirect-to-code"
-	FrontUseForwardedProto = "use-forwarded-proto"
-	FrontUseProxyProtocol  = "use-proxy-protocol"
+	FrontBindFrontingProxy   = "bind-fronting-proxy"
+	FrontBindHTTP            = "bind-http"
+	FrontBindHTTPPassthrough = "bind-http-passthrough"
+	FrontBindHTTPS           = "bind-https"
+	FrontBindIPAddrHTTP      = "bind-ip-addr-http"
+	FrontHTTPPassthrough     = "http-passthrough"
+	FrontHTTPPortsLocal      = "http-ports-local"
+	FrontRedirectFromCode    = "redirect-from-code"
+	FrontRedirectToCode      = "redirect-to-code"
+	FrontUseForwardedProto   = "use-forwarded-proto"
+	FrontUseProxyProtocol    = "use-proxy-protocol"
 )
 
 var (
 	// AnnFront ...
 	AnnFront = map[string]struct{}{
-		FrontBindFrontingProxy: {},
-		FrontBindHTTP:          {},
-		FrontBindHTTPS:         {},
-		FrontBindIPAddrHTTP:    {},
-		FrontFrontingProxyPort: {},
-		FrontHTTPPortsLocal:    {},
-		FrontHTTPStoHTTPPort:   {},
-		FrontRedirectFromCode:  {},
-		FrontRedirectToCode:    {},
-		FrontUseForwardedProto: {},
-		FrontUseProxyProtocol:  {},
+		FrontBindFrontingProxy:   {},
+		FrontBindHTTP:            {},
+		FrontBindHTTPPassthrough: {},
+		FrontBindHTTPS:           {},
+		FrontBindIPAddrHTTP:      {},
+		FrontHTTPPassthrough:     {},
+		FrontHTTPPortsLocal:      {},
+		FrontRedirectFromCode:    {},
+		FrontRedirectToCode:      {},
+		FrontUseForwardedProto:   {},
+		FrontUseProxyProtocol:    {},
 	}
 )
 

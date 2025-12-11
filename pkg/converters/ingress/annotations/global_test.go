@@ -807,7 +807,7 @@ func TestSecurity(t *testing.T) {
 		c := setup(t)
 		d := c.createGlobalData(test.ann)
 		c.createUpdater().buildGlobalSecurity(d)
-		c.compareObjects("fronting proxy", i, d.global.Security, test.expected)
+		c.compareObjects("security", i, d.global.Security, test.expected)
 		c.logger.CompareLogging(test.logging)
 		c.teardown()
 	}

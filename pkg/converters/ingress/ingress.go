@@ -65,6 +65,7 @@ func NewIngressConverter(options *convtypes.ConverterOptions, haproxy haproxy.Co
 	for key, value := range globalConfig {
 		defaultConfig[key] = value
 	}
+	globalConfigMapper := annotations.NewMapBuilder(options.Logger, defaultConfig).NewMapper()
 	c := &converter{
 		options:            options,
 		haproxy:            haproxy,
@@ -75,7 +76,8 @@ func NewIngressConverter(options *convtypes.ConverterOptions, haproxy haproxy.Co
 		defaultBackSource:  annotations.Source{Name: "<default-backend>", Type: convtypes.ResourceIngress},
 		mapBuilder:         annotations.NewMapBuilder(options.Logger, defaultConfig),
 		updater:            annotations.NewUpdater(haproxy, options),
-		globalConfig:       annotations.NewMapBuilder(options.Logger, defaultConfig).NewMapper(),
+		globalConfig:       globalConfigMapper,
+		frontendPorts:      annotations.NewFrontendPorts(options.Logger, globalConfigMapper),
 		tcpsvcAnnotations:  map[*hatypes.TCPServicePort]*annotations.Mapper{},
 		frontAnnotations:   map[*hatypes.Frontend]*annotations.Mapper{},
 		frontLocalPorts:    map[*hatypes.Frontend]bool{},
@@ -99,6 +101,7 @@ type converter struct {
 	mapBuilder         *annotations.MapBuilder
 	updater            annotations.Updater
 	globalConfig       *annotations.Mapper
+	frontendPorts      *annotations.FrontendPorts
 	tcpsvcAnnotations  map[*hatypes.TCPServicePort]*annotations.Mapper
 	frontAnnotations   map[*hatypes.Frontend]*annotations.Mapper
 	frontLocalPorts    map[*hatypes.Frontend]bool
@@ -393,26 +396,36 @@ func (c *converter) syncIngress(ing *networking.Ingress) {
 
 func (c *converter) acquireFrontend(source *annotations.Source, annFront, annHost map[string]string) *frontend {
 	link := bareLink()
-	mapper := c.mapBuilder.NewMapper()
-	_ = mapper.AddAnnotations(source, link, annFront)
-	_ = mapper.AddAnnotations(source, link, annHost)
+	localMapper := c.mapBuilder.NewMapper()
+	_ = localMapper.AddAnnotations(source, link, annFront)
+	_ = localMapper.AddAnnotations(source, link, annHost)
+	httpPort, httpsPort, httpPassPort, localPorts := c.frontendPorts.AcquirePorts(localMapper)
 	f := c.haproxy.Frontends()
-	httpPort, httpsPort, local := annotations.AcquireFrontendPorts(c.logger, mapper)
+	innerHTTP := f.AcquireFrontend(httpPort, false)
+	var innerHTTPPass *hatypes.Frontend
+	if httpPort == httpPassPort {
+		innerHTTP.HTTPPassthrough = true
+	} else if httpPassPort > 0 {
+		innerHTTPPass = f.AcquireFrontend(httpPassPort, false)
+		innerHTTPPass.HTTPPassthrough = true
+	}
 	return &frontend{
-		f:           f,
-		innerHTTP:   f.AcquireFrontend(httpPort, false),
-		httpsPort:   httpsPort,
-		localPorts:  local,
-		alwaysTLS:   mapper.Get(ingtypes.HostSSLAlwaysAddHTTPS).Bool(),
-		followRedir: mapper.Get(ingtypes.HostSSLAlwaysFollowRedirect).Bool(),
-		hosts:       make(map[string]*host),
+		f:             f,
+		innerHTTP:     innerHTTP,
+		innerHTTPPass: innerHTTPPass,
+		httpsPort:     httpsPort,
+		localPorts:    localPorts,
+		alwaysTLS:     localMapper.Get(ingtypes.HostSSLAlwaysAddHTTPS).Bool(),
+		followRedir:   localMapper.Get(ingtypes.HostSSLAlwaysFollowRedirect).Bool(),
+		hosts:         make(map[string]*host),
 	}
 }
 
 type frontend struct {
 	f *hatypes.Frontends
 	innerHTTP,
-	innerHTTPS *hatypes.Frontend
+	innerHTTPS,
+	innerHTTPPass *hatypes.Frontend
 	httpsPort   int32
 	localPorts  bool
 	alwaysTLS   bool
@@ -479,7 +492,7 @@ func (h *host) AddRedirect(path string, match hatypes.MatchType, redirTo string)
 
 func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.Ingress, annFront, annHost, annBack map[string]string) {
 	f := c.acquireFrontend(source, annFront, annHost)
-	defer c.syncHTTPS(f)
+	defer c.syncMissingFrontends(f)
 	if ing.Spec.DefaultBackend != nil {
 		svcName, svcPort, err := readServiceNamePort(ing.Spec.DefaultBackend)
 		if err == nil {
@@ -633,28 +646,33 @@ func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.
 	}
 }
 
-func (c *converter) syncHTTPS(f *frontend) {
+func (c *converter) syncMissingFrontends(f *frontend) {
 	var https *hatypes.Frontend
 	for hostname, host := range f.hosts {
-		if f.alwaysTLS || host.innerHTTPS != nil {
-			if https == nil {
-				https = c.haproxy.Frontends().AcquireFrontend(f.httpsPort, true)
-			}
-			h := https.AcquireHost(hostname)
+		addPaths := func(h *hatypes.Host) {
 			for _, srcpath := range host.paths {
-				srcpath.HasHTTPS = true
 				dstpath := h.AddPath(srcpath.Backend, srcpath.Path(), srcpath.Match())
 				c.backendAnnotations[srcpath.Backend].CopyConfig(dstpath.Link, srcpath.Link)
 			}
 			for _, srcpath := range host.links {
-				srcpath.HasHTTPS = true
 				dstpath := h.AddLink(srcpath.Backend, srcpath.Link)
 				c.backendAnnotations[srcpath.Backend].CopyConfig(dstpath.Link, srcpath.Link)
 			}
 			for _, srcpath := range host.redir {
-				srcpath.HasHTTPS = true
 				_ = h.AddRedirect(srcpath.Path(), srcpath.Match(), srcpath.RedirTo)
 			}
+		}
+		if f.alwaysTLS || host.innerHTTPS != nil {
+			if https == nil {
+				https = c.haproxy.Frontends().AcquireFrontend(f.httpsPort, true)
+			}
+			addPaths(https.AcquireHost(hostname))
+			for _, srcpath := range slices.Concat(host.paths, host.links, host.redir) {
+				srcpath.HasHTTPS = true
+			}
+		}
+		if f.innerHTTPPass != nil {
+			addPaths(f.innerHTTPPass.AcquireHost(hostname))
 		}
 	}
 }
