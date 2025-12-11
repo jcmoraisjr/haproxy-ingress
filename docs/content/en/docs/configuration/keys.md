@@ -1811,7 +1811,7 @@ Ingress resources that don't declare a frontend ID will configure the frontends 
 
 Roles of frontend ID declaration:
 
-* ID should have up to 20 chars, being letters or numbers, and should start with a number.
+* ID should have up to 20 chars, being letters or numbers, and should start with a letter.
 * ID is case-sensitive.
 * Declare the whole line without any spaces.
 * Separate two or more frontend declarations with line breaks.
