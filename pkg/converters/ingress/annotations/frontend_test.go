@@ -194,7 +194,7 @@ func TestHTTPPassthrough(t *testing.T) {
 			expHTTPPass: true,
 			expBind:     ":9000",
 			expFrontErr: `frontend ID not found on ingress 'default/ing1': 'Front7000'`,
-			logging:     `WARN ignoring local frontend configuration: local frontend ports cannot collide with global ones [80 443 9000]`,
+			logging:     `WARN ignoring local frontend configuration: local frontend ports 7000/443 cannot collide with other already declared ports: [80 443 9000]`,
 		},
 	}
 	source := &Source{Namespace: "default", Name: "ing1", Type: "ingress"}
@@ -320,11 +320,23 @@ func TestFrontendBind(t *testing.T) {
 			expHTTPErr:   `frontend ID not found on ingress 'default/ing1': 'Front9000'`,
 			expHTTPSErr:  `frontend ID not found on ingress 'default/ing1': 'Front9000'`,
 		},
+		"test10": {
+			global: map[string]string{
+				ingtypes.GlobalHTTPFrontends: `
+Front8000=8080/8443
+Front9000=9090/8443
+`,
+			},
+			expHTTPBind:  "*:80",
+			expHTTPSBind: "*:443",
+			expHTTPLog:   `WARN ignoring local frontend configuration: local frontend ports 9090/8443 cannot collide with other already declared ports: [80 443 8080 8443]`,
+			expHTTPSLog:  `WARN ignoring local frontend configuration: local frontend ports 9090/8443 cannot collide with other already declared ports: [80 443 8080 8443]`,
+		},
 		"test11": {
 			global: map[string]string{
 				ingtypes.GlobalHTTPFrontends: `
 Front8000=8080/8443
-Front8000=9090/8443
+Front8000=9090/9443
 `,
 			},
 			expHTTPBind:  "*:80",
@@ -343,8 +355,8 @@ Front8000=9090/8443
 			expHTTPSBind: "*:443",
 			expHTTPErr:   `frontend ID not found on ingress 'default/ing1': 'Front9000'`,
 			expHTTPSErr:  `frontend ID not found on ingress 'default/ing1': 'Front9000'`,
-			expHTTPLog:   `WARN ignoring local frontend configuration: local frontend ports cannot collide with global ones [80 443]`,
-			expHTTPSLog:  `WARN ignoring local frontend configuration: local frontend ports cannot collide with global ones [80 443]`,
+			expHTTPLog:   `WARN ignoring local frontend configuration: local frontend ports 9090/443 cannot collide with other already declared ports: [80 443]`,
+			expHTTPSLog:  `WARN ignoring local frontend configuration: local frontend ports 9090/443 cannot collide with other already declared ports: [80 443]`,
 		},
 		"test13": {
 			global: map[string]string{
@@ -357,8 +369,8 @@ Front8000=9090/8443
 			expHTTPSBind: "*:443",
 			expHTTPErr:   `frontend ID not found on ingress 'default/ing1': 'Front9000'`,
 			expHTTPSErr:  `frontend ID not found on ingress 'default/ing1': 'Front9000'`,
-			expHTTPLog:   `WARN ignoring local frontend configuration: local frontend ports cannot collide with global ones [80 443]`,
-			expHTTPSLog:  `WARN ignoring local frontend configuration: local frontend ports cannot collide with global ones [80 443]`,
+			expHTTPLog:   `WARN ignoring local frontend configuration: local frontend ports 80/9443 cannot collide with other already declared ports: [80 443]`,
+			expHTTPSLog:  `WARN ignoring local frontend configuration: local frontend ports 80/9443 cannot collide with other already declared ports: [80 443]`,
 		},
 		"test14": {
 			global: map[string]string{

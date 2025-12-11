@@ -103,10 +103,11 @@ func NewFrontendsPorts(logger types.Logger, globalMapper *Mapper) *FrontendsPort
 			continue
 		}
 		if slices.Contains(denyPorts, int32(frontHTTP)) || slices.Contains(denyPorts, int32(frontHTTPS)) {
-			logger.Warn("ignoring local frontend configuration: local frontend ports cannot collide with global ones %v", denyPorts)
+			logger.Warn("ignoring local frontend configuration: local frontend ports %d/%d cannot collide with other already declared ports: %v", frontHTTP, frontHTTPS, denyPorts)
 			continue
 		}
 		frontends[frontID] = httpPorts{http: int32(frontHTTP), https: int32(frontHTTPS)}
+		denyPorts = append(denyPorts, int32(frontHTTP), int32(frontHTTPS))
 	}
 
 	return &FrontendsPorts{
