@@ -41,8 +41,8 @@ const (
 	FrontBindHTTPPassthrough = "bind-http-passthrough"
 	FrontBindHTTPS           = "bind-https"
 	FrontBindIPAddrHTTP      = "bind-ip-addr-http"
+	FrontHTTPFrontend        = "http-frontend"
 	FrontHTTPPassthrough     = "http-passthrough"
-	FrontHTTPPortsLocal      = "http-ports-local"
 	FrontRedirectFromCode    = "redirect-from-code"
 	FrontRedirectToCode      = "redirect-to-code"
 	FrontUseForwardedProto   = "use-forwarded-proto"
@@ -57,8 +57,8 @@ var (
 		FrontBindHTTPPassthrough: {},
 		FrontBindHTTPS:           {},
 		FrontBindIPAddrHTTP:      {},
+		FrontHTTPFrontend:        {},
 		FrontHTTPPassthrough:     {},
-		FrontHTTPPortsLocal:      {},
 		FrontRedirectFromCode:    {},
 		FrontRedirectToCode:      {},
 		FrontUseForwardedProto:   {},

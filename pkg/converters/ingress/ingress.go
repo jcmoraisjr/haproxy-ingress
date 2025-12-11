@@ -77,7 +77,7 @@ func NewIngressConverter(options *convtypes.ConverterOptions, haproxy haproxy.Co
 		mapBuilder:         annotations.NewMapBuilder(options.Logger, defaultConfig),
 		updater:            annotations.NewUpdater(haproxy, options),
 		globalConfig:       globalConfigMapper,
-		frontendPorts:      annotations.NewFrontendPorts(options.Logger, globalConfigMapper),
+		frontendPorts:      annotations.NewFrontendsPorts(options.Logger, globalConfigMapper),
 		tcpsvcAnnotations:  map[*hatypes.TCPServicePort]*annotations.Mapper{},
 		frontAnnotations:   map[*hatypes.Frontend]*annotations.Mapper{},
 		frontLocalPorts:    map[*hatypes.Frontend]bool{},
@@ -101,7 +101,7 @@ type converter struct {
 	mapBuilder         *annotations.MapBuilder
 	updater            annotations.Updater
 	globalConfig       *annotations.Mapper
-	frontendPorts      *annotations.FrontendPorts
+	frontendPorts      *annotations.FrontendsPorts
 	tcpsvcAnnotations  map[*hatypes.TCPServicePort]*annotations.Mapper
 	frontAnnotations   map[*hatypes.Frontend]*annotations.Mapper
 	frontLocalPorts    map[*hatypes.Frontend]bool
@@ -394,31 +394,34 @@ func (c *converter) syncIngress(ing *networking.Ingress) {
 	}
 }
 
-func (c *converter) acquireFrontend(source *annotations.Source, annFront, annHost map[string]string) *frontend {
+func (c *converter) acquireFrontend(source *annotations.Source, annFront, annHost map[string]string) (*frontend, error) {
 	link := bareLink()
 	localMapper := c.mapBuilder.NewMapper()
 	_ = localMapper.AddAnnotations(source, link, annFront)
 	_ = localMapper.AddAnnotations(source, link, annHost)
-	httpPort, httpsPort, httpPassPort, localPorts := c.frontendPorts.AcquirePorts(localMapper)
+	ports, err := c.frontendPorts.AcquirePorts(localMapper)
+	if err != nil {
+		return nil, err
+	}
 	f := c.haproxy.Frontends()
-	innerHTTP := f.AcquireFrontend(httpPort, false)
+	innerHTTP := f.AcquireFrontend(ports.HTTP, false)
 	var innerHTTPPass *hatypes.Frontend
-	if httpPort == httpPassPort {
+	if ports.HTTP == ports.HTTPPassthrough {
 		innerHTTP.HTTPPassthrough = true
-	} else if httpPassPort > 0 {
-		innerHTTPPass = f.AcquireFrontend(httpPassPort, false)
+	} else if ports.HTTPPassthrough > 0 {
+		innerHTTPPass = f.AcquireFrontend(ports.HTTPPassthrough, false)
 		innerHTTPPass.HTTPPassthrough = true
 	}
 	return &frontend{
 		f:             f,
 		innerHTTP:     innerHTTP,
 		innerHTTPPass: innerHTTPPass,
-		httpsPort:     httpsPort,
-		localPorts:    localPorts,
+		httpsPort:     ports.HTTPS,
+		localPorts:    ports.LocalPorts,
 		alwaysTLS:     localMapper.Get(ingtypes.HostSSLAlwaysAddHTTPS).Bool(),
 		followRedir:   localMapper.Get(ingtypes.HostSSLAlwaysFollowRedirect).Bool(),
 		hosts:         make(map[string]*host),
-	}
+	}, nil
 }
 
 type frontend struct {
@@ -491,7 +494,11 @@ func (h *host) AddRedirect(path string, match hatypes.MatchType, redirTo string)
 }
 
 func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.Ingress, annFront, annHost, annBack map[string]string) {
-	f := c.acquireFrontend(source, annFront, annHost)
+	f, err := c.acquireFrontend(source, annFront, annHost)
+	if err != nil {
+		c.logger.Warn("skipping %v configuration: %s", source, err.Error())
+		return
+	}
 	defer c.syncMissingFrontends(f)
 	if ing.Spec.DefaultBackend != nil {
 		svcName, svcPort, err := readServiceNamePort(ing.Spec.DefaultBackend)

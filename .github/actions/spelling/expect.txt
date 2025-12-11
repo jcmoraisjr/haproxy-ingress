@@ -203,10 +203,8 @@ httpclose
 httplog
 httpmaps
 httppass
-httpport
 httproute
 httpsmaps
-httpsport
 htx
 hwidth
 idlist

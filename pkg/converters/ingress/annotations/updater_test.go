@@ -199,29 +199,32 @@ func (c *testConfig) createBackendMappingData(
 	return d
 }
 
-func (c *testConfig) createFrontData(source *Source, isHTTPS bool, ann, annDefault map[string]string) *frontData {
+func (c *testConfig) createFrontData(source *Source, isHTTPS bool, ann, annDefault map[string]string) (data *frontData, err error) {
 	mapper := NewMapBuilder(c.logger, annDefault).NewMapper()
-	fp := NewFrontendPorts(c.logger, mapper) // mapper having defaults only
+	fp := NewFrontendsPorts(c.logger, mapper) // mapper having defaults only
 	mapper.AddAnnotations(source, hatypes.CreatePathLink("/", hatypes.MatchBegin), ann)
-	httpPort, httpsPort, httpPassPort, localPorts := fp.AcquirePorts(mapper) // now mapper having also annotation level keys
+	ports, err := fp.AcquirePorts(mapper) // now mapper having also annotation level keys
+	if err != nil {
+		return nil, err
+	}
 	var port int32
 	if isHTTPS {
-		port = httpsPort
-	} else if httpPassPort != 0 {
-		port = httpPassPort
+		port = ports.HTTPS
+	} else if ports.HTTPPassthrough != 0 {
+		port = ports.HTTPPassthrough
 	} else {
-		port = httpPort
+		port = ports.HTTP
 	}
 	front := c.haproxy.Frontends().AcquireFrontend(port, isHTTPS)
-	if httpPassPort != 0 {
+	if ports.HTTPPassthrough != 0 {
 		front.HTTPPassthrough = true
 	}
 	return &frontData{
 		front:      front,
-		localPorts: localPorts,
+		localPorts: ports.LocalPorts,
 		mapper:     mapper,
 		logger:     c.logger,
-	}
+	}, nil
 }
 
 func (c *testConfig) createHostData(source *Source, ann, annDefault map[string]string) *hostData {

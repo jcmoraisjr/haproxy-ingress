@@ -18,9 +18,11 @@ package annotations
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
@@ -46,7 +48,7 @@ func TestFrontendLocalConfig(t *testing.T) {
 	}
 
 	for key := range ingtypes.AnnFront {
-		if key == ingtypes.FrontHTTPPortsLocal {
+		if key == ingtypes.FrontHTTPFrontend {
 			continue
 		}
 		t.Run(key, func(t *testing.T) {
@@ -65,23 +67,35 @@ func TestFrontendLocalConfig(t *testing.T) {
 
 			u := c.createUpdater()
 			check := func(isHTTPS bool, expLogging string) {
-				d := c.createFrontData(source, isHTTPS, ann, global)
+				d, err := c.createFrontData(source, isHTTPS, ann, global)
+				require.NoError(t, err)
 				u.UpdateFrontConfig(d.front, d.mapper, d.localPorts)
 				c.logger.CompareLogging(expLogging)
 			}
+			httpCheck := func(expLogging string) {
+				if !config.skipHTTP {
+					check(false, expLogging)
+				}
+				if !config.skipHTTPS {
+					check(true, expLogging)
+				}
+			}
 
 			// missing local key
-			// we're skipping keys that will not be called - they will not produce warning logs
-			expLogging := fmt.Sprintf("WARN skipping '%s' configuration on Ingress 'default/ing1': missing 'http-ports-local' key", key)
-			if !config.skipHTTP {
-				check(false, expLogging)
-			}
-			if !config.skipHTTPS {
-				check(true, expLogging)
+			// we're skipping keys that will not be called, short-circuited due to validations - they will not produce warning logs so we'll skip them here
+			httpCheck(fmt.Sprintf("WARN skipping '%s' configuration on %s: missing 'http-frontend' key", key, source))
+
+			// first, declare local http(s) ports
+			global[ingtypes.GlobalHTTPFrontends] = "Front8000=8080/8443"
+			ann[ingtypes.FrontHTTPFrontend] = "Front8000"
+
+			// ... and test the custom bind keys first
+			if slices.Contains(listeningBindFrontendKeys, key) {
+				httpCheck(fmt.Sprintf("WARN skipping '%s' configuration on %s: custom bind configuration not allowed", key, source))
+				global[ingtypes.GlobalAllowLocalBind] = "true"
 			}
 
-			// declare local http(s) ports, which should make all the keys to succeed, so now checking all of them
-			ann[ingtypes.FrontHTTPPortsLocal] = "8080/8443"
+			// now the key configuration should succeed
 			check(false, "")
 			check(true, "")
 		})
@@ -92,6 +106,7 @@ func TestHTTPPassthrough(t *testing.T) {
 	testCases := map[string]struct {
 		global      map[string]string
 		ann         map[string]string
+		expFrontErr string
 		expHTTPPass bool
 		expBind     string
 		logging     string
@@ -127,41 +142,59 @@ func TestHTTPPassthrough(t *testing.T) {
 		},
 		"test05": {
 			ann: map[string]string{
+				ingtypes.FrontHTTPFrontend:    "Front7000",
+				ingtypes.FrontHTTPPassthrough: "true",
+			},
+			expBind:     ":80",
+			expFrontErr: `frontend ID not found on ingress 'default/ing1': 'Front7000'`,
+		},
+		"test06": {
+			global: map[string]string{
+				ingtypes.GlobalHTTPFrontends: "Front7000=7000/8443",
+			},
+			ann: map[string]string{
 				ingtypes.FrontHTTPPassthrough: "true",
 			},
 			expBind: ":80",
-			logging: `WARN skipping 'http-passthrough' configuration on ingress 'default/ing1': missing 'http-ports-local' key`,
-		},
-		"test06": {
-			ann: map[string]string{
-				ingtypes.FrontHTTPPortsLocal:    "7000/-8443",
-				ingtypes.FrontBindFrontingProxy: ":7000",
-			},
-			expBind: ":80",
-			logging: `WARN ignoring http/https ports configuration on ingress 'default/ing1': invalid configuration: '7000/-8443'`,
+			logging: `WARN skipping 'http-passthrough' configuration on ingress 'default/ing1': missing 'http-frontend' key`,
 		},
 		"test07": {
 			global: map[string]string{
-				ingtypes.GlobalHTTPPassthroughPort: "8000",
+				ingtypes.GlobalHTTPFrontends: "Front7000=7000/8443",
 			},
 			ann: map[string]string{
-				ingtypes.FrontHTTPPortsLocal:    "7000/8443",
+				ingtypes.FrontHTTPFrontend:      "Front700",
 				ingtypes.FrontBindFrontingProxy: ":7000",
 			},
-			expHTTPPass: true,
-			expBind:     ":7000",
+			expBind:     ":80",
+			expFrontErr: `frontend ID not found on ingress 'default/ing1': 'Front700'`,
 		},
 		"test08": {
 			global: map[string]string{
+				ingtypes.GlobalHTTPFrontends:       "Front7000=7000/8443",
+				ingtypes.GlobalHTTPPassthroughPort: "8000",
+			},
+			ann: map[string]string{
+				ingtypes.FrontHTTPFrontend:      "Front7000",
+				ingtypes.FrontBindFrontingProxy: ":7000",
+			},
+			expHTTPPass: true,
+			expBind:     ":8000",
+			logging:     `WARN skipping 'bind-fronting-proxy' configuration on ingress 'default/ing1': custom bind configuration not allowed`,
+		},
+		"test09": {
+			global: map[string]string{
+				ingtypes.GlobalHTTPFrontends:       "Front7000=7000/443",
 				ingtypes.GlobalHTTPPassthroughPort: "9000",
 			},
 			ann: map[string]string{
-				ingtypes.FrontHTTPPortsLocal:  "9000/9443",
+				ingtypes.FrontHTTPFrontend:    "Front7000",
 				ingtypes.FrontHTTPPassthrough: "true",
 			},
 			expHTTPPass: true,
 			expBind:     ":9000",
-			logging:     `WARN ignoring http/https ports configuration on ingress 'default/ing1': local http(s) ports cannot collide with global '80/443/9000' ones`,
+			expFrontErr: `frontend ID not found on ingress 'default/ing1': 'Front7000'`,
+			logging:     `WARN ignoring local frontend configuration: local frontend ports cannot collide with global ones [80 443 9000]`,
 		},
 	}
 	source := &Source{Namespace: "default", Name: "ing1", Type: "ingress"}
@@ -178,10 +211,13 @@ func TestHTTPPassthrough(t *testing.T) {
 			if test.global[ingtypes.GlobalHTTPSPort] == "" {
 				test.global[ingtypes.GlobalHTTPSPort] = "443"
 			}
-			d := c.createFrontData(source, false, test.ann, test.global)
-			c.createUpdater().buildFrontHTTPPassthrough(d)
-			assert.Equal(t, test.expHTTPPass, d.front.HTTPPassthrough, "HTTPPassthrough")
-			assert.Equal(t, test.expBind, d.front.Bind, "Bind")
+			if d, err := c.createFrontData(source, false, test.ann, test.global); err == nil {
+				c.createUpdater().buildFrontHTTPPassthrough(d)
+				assert.Equal(t, test.expHTTPPass, d.front.HTTPPassthrough, "HTTPPassthrough")
+				assert.Equal(t, test.expBind, d.front.Bind, "Bind")
+			} else {
+				assert.EqualError(t, err, test.expFrontErr)
+			}
 			c.logger.CompareLogging(test.logging)
 		})
 	}
@@ -189,9 +225,11 @@ func TestHTTPPassthrough(t *testing.T) {
 
 func TestFrontendBind(t *testing.T) {
 	testCases := map[string]struct {
-		ann          map[string]string
+		global, ann  map[string]string
 		expHTTPBind  string
 		expHTTPSBind string
+		expHTTPErr   string
+		expHTTPSErr  string
 		expHTTPLog   string
 		expHTTPSLog  string
 	}{
@@ -206,7 +244,7 @@ func TestFrontendBind(t *testing.T) {
 			},
 			expHTTPBind:  "*:80",
 			expHTTPSBind: "*:443",
-			expHTTPLog:   `WARN skipping 'bind-http' configuration on ingress 'default/ing1': missing 'http-ports-local' key`,
+			expHTTPLog:   `WARN skipping 'bind-http' configuration on ingress 'default/ing1': missing 'http-frontend' key`,
 		},
 		"test03": {
 			ann: map[string]string{
@@ -214,7 +252,7 @@ func TestFrontendBind(t *testing.T) {
 			},
 			expHTTPBind:  "*:80",
 			expHTTPSBind: "*:443",
-			expHTTPSLog:  `WARN skipping 'bind-https' configuration on ingress 'default/ing1': missing 'http-ports-local' key`,
+			expHTTPSLog:  `WARN skipping 'bind-https' configuration on ingress 'default/ing1': missing 'http-frontend' key`,
 		},
 		"test04": {
 			ann: map[string]string{
@@ -222,28 +260,52 @@ func TestFrontendBind(t *testing.T) {
 			},
 			expHTTPBind:  "*:80",
 			expHTTPSBind: "*:443",
-			expHTTPLog:   `WARN skipping 'bind-ip-addr-http' configuration on ingress 'default/ing1': missing 'http-ports-local' key`,
-			expHTTPSLog:  `WARN skipping 'bind-ip-addr-http' configuration on ingress 'default/ing1': missing 'http-ports-local' key`,
+			expHTTPLog:   `WARN skipping 'bind-ip-addr-http' configuration on ingress 'default/ing1': missing 'http-frontend' key`,
+			expHTTPSLog:  `WARN skipping 'bind-ip-addr-http' configuration on ingress 'default/ing1': missing 'http-frontend' key`,
 		},
 		"test05": {
+			global: map[string]string{
+				ingtypes.GlobalHTTPFrontends: "Front9000=9090/9443",
+			},
 			ann: map[string]string{
-				ingtypes.FrontHTTPPortsLocal: "9090/9443",
-				ingtypes.FrontBindHTTP:       ":80,:8080",
+				ingtypes.FrontHTTPFrontend: "Front9000",
+				ingtypes.FrontBindHTTP:     ":80,:8080",
+			},
+			expHTTPBind:  "*:9090",
+			expHTTPSBind: "*:9443",
+			expHTTPLog:   `WARN skipping 'bind-http' configuration on ingress 'default/ing1': custom bind configuration not allowed`,
+		},
+		"test06": {
+			global: map[string]string{
+				ingtypes.GlobalAllowLocalBind: "true",
+				ingtypes.GlobalHTTPFrontends:  "Front9000=9090/9443",
+			},
+			ann: map[string]string{
+				ingtypes.FrontHTTPFrontend: "Front9000",
+				ingtypes.FrontBindHTTP:     ":80,:8080",
 			},
 			expHTTPBind:  ":80,:8080",
 			expHTTPSBind: "*:9443",
 		},
-		"test06": {
+		"test07": {
+			global: map[string]string{
+				ingtypes.GlobalAllowLocalBind: "true",
+				ingtypes.GlobalHTTPFrontends:  "Front9000=9090/9443",
+			},
 			ann: map[string]string{
-				ingtypes.FrontHTTPPortsLocal: "9090/9443",
-				ingtypes.FrontBindHTTPS:      ":443,:8443",
+				ingtypes.FrontHTTPFrontend: "Front9000",
+				ingtypes.FrontBindHTTPS:    ":443,:8443",
 			},
 			expHTTPBind:  "*:9090",
 			expHTTPSBind: ":443,:8443",
 		},
-		"test07": {
+		"test08": {
+			global: map[string]string{
+				ingtypes.GlobalAllowLocalBind: "true",
+				ingtypes.GlobalHTTPFrontends:  "Front9000=9090/9443",
+			},
 			ann: map[string]string{
-				ingtypes.FrontHTTPPortsLocal: "9090/9443",
+				ingtypes.FrontHTTPFrontend:   "Front9000",
 				ingtypes.FrontBindIPAddrHTTP: "127.0.0.1",
 			},
 			expHTTPBind:  "127.0.0.1:9090",
@@ -251,112 +313,163 @@ func TestFrontendBind(t *testing.T) {
 		},
 		"test09": {
 			ann: map[string]string{
-				ingtypes.FrontHTTPPortsLocal: "9090",
+				ingtypes.FrontHTTPFrontend: "Front9000",
 			},
 			expHTTPBind:  "*:80",
 			expHTTPSBind: "*:443",
-			expHTTPLog:   `WARN ignoring http/https ports configuration on ingress 'default/ing1': invalid configuration: '9090'`,
-			expHTTPSLog:  `WARN ignoring http/https ports configuration on ingress 'default/ing1': invalid configuration: '9090'`,
-		},
-		"test10": {
-			ann: map[string]string{
-				ingtypes.FrontHTTPPortsLocal: "9090/https",
-			},
-			expHTTPBind:  "*:80",
-			expHTTPSBind: "*:443",
-			expHTTPLog:   `WARN ignoring http/https ports configuration on ingress 'default/ing1': invalid configuration: '9090/https'`,
-			expHTTPSLog:  `WARN ignoring http/https ports configuration on ingress 'default/ing1': invalid configuration: '9090/https'`,
+			expHTTPErr:   `frontend ID not found on ingress 'default/ing1': 'Front9000'`,
+			expHTTPSErr:  `frontend ID not found on ingress 'default/ing1': 'Front9000'`,
 		},
 		"test11": {
-			ann: map[string]string{
-				ingtypes.FrontHTTPPortsLocal: "80/9090/9443",
+			global: map[string]string{
+				ingtypes.GlobalHTTPFrontends: `
+Front8000=8080/8443
+Front8000=9090/8443
+`,
 			},
 			expHTTPBind:  "*:80",
 			expHTTPSBind: "*:443",
-			expHTTPLog:   `WARN ignoring http/https ports configuration on ingress 'default/ing1': invalid configuration: '80/9090/9443'`,
-			expHTTPSLog:  `WARN ignoring http/https ports configuration on ingress 'default/ing1': invalid configuration: '80/9090/9443'`,
+			expHTTPLog:   `WARN ignoring local frontend configuration: frontend ID already in use: 'Front8000'`,
+			expHTTPSLog:  `WARN ignoring local frontend configuration: frontend ID already in use: 'Front8000'`,
 		},
 		"test12": {
+			global: map[string]string{
+				ingtypes.GlobalHTTPFrontends: "Front9000=9090/443",
+			},
 			ann: map[string]string{
-				ingtypes.FrontHTTPPortsLocal: "9090/443",
+				ingtypes.FrontHTTPFrontend: "Front9000",
 			},
 			expHTTPBind:  "*:80",
 			expHTTPSBind: "*:443",
-			expHTTPLog:   `WARN ignoring http/https ports configuration on ingress 'default/ing1': local http(s) ports cannot collide with global '80/443' ones`,
-			expHTTPSLog:  `WARN ignoring http/https ports configuration on ingress 'default/ing1': local http(s) ports cannot collide with global '80/443' ones`,
+			expHTTPErr:   `frontend ID not found on ingress 'default/ing1': 'Front9000'`,
+			expHTTPSErr:  `frontend ID not found on ingress 'default/ing1': 'Front9000'`,
+			expHTTPLog:   `WARN ignoring local frontend configuration: local frontend ports cannot collide with global ones [80 443]`,
+			expHTTPSLog:  `WARN ignoring local frontend configuration: local frontend ports cannot collide with global ones [80 443]`,
 		},
 		"test13": {
+			global: map[string]string{
+				ingtypes.GlobalHTTPFrontends: "Front9000=80/9443",
+			},
 			ann: map[string]string{
-				ingtypes.FrontHTTPPortsLocal: "80/9443",
+				ingtypes.FrontHTTPFrontend: "Front9000",
 			},
 			expHTTPBind:  "*:80",
 			expHTTPSBind: "*:443",
-			expHTTPLog:   `WARN ignoring http/https ports configuration on ingress 'default/ing1': local http(s) ports cannot collide with global '80/443' ones`,
-			expHTTPSLog:  `WARN ignoring http/https ports configuration on ingress 'default/ing1': local http(s) ports cannot collide with global '80/443' ones`,
+			expHTTPErr:   `frontend ID not found on ingress 'default/ing1': 'Front9000'`,
+			expHTTPSErr:  `frontend ID not found on ingress 'default/ing1': 'Front9000'`,
+			expHTTPLog:   `WARN ignoring local frontend configuration: local frontend ports cannot collide with global ones [80 443]`,
+			expHTTPSLog:  `WARN ignoring local frontend configuration: local frontend ports cannot collide with global ones [80 443]`,
 		},
 		"test14": {
+			global: map[string]string{
+				ingtypes.GlobalHTTPFrontends: "Front9000=9090/-9443",
+			},
 			ann: map[string]string{
-				ingtypes.FrontHTTPPortsLocal: "80/443",
+				ingtypes.FrontHTTPFrontend: "Front9000",
 			},
 			expHTTPBind:  "*:80",
 			expHTTPSBind: "*:443",
-			expHTTPLog:   `WARN ignoring http/https ports configuration on ingress 'default/ing1': local http(s) ports cannot collide with global '80/443' ones`,
-			expHTTPSLog:  `WARN ignoring http/https ports configuration on ingress 'default/ing1': local http(s) ports cannot collide with global '80/443' ones`,
+			expHTTPErr:   `frontend ID not found on ingress 'default/ing1': 'Front9000'`,
+			expHTTPSErr:  `frontend ID not found on ingress 'default/ing1': 'Front9000'`,
+			expHTTPLog:   `WARN ignoring local frontend configuration: invalid port numbers: '9090/-9443'`,
+			expHTTPSLog:  `WARN ignoring local frontend configuration: invalid port numbers: '9090/-9443'`,
 		},
 		"test15": {
+			global: map[string]string{
+				ingtypes.GlobalHTTPFrontends: "Front9000=9090/invalid",
+			},
 			ann: map[string]string{
-				ingtypes.FrontHTTPPortsLocal: "443/8080",
+				ingtypes.FrontHTTPFrontend: "Front9000",
 			},
 			expHTTPBind:  "*:80",
 			expHTTPSBind: "*:443",
-			expHTTPLog:   `WARN ignoring http/https ports configuration on ingress 'default/ing1': local http(s) ports cannot collide with global '80/443' ones`,
-			expHTTPSLog:  `WARN ignoring http/https ports configuration on ingress 'default/ing1': local http(s) ports cannot collide with global '80/443' ones`,
+			expHTTPErr:   `frontend ID not found on ingress 'default/ing1': 'Front9000'`,
+			expHTTPSErr:  `frontend ID not found on ingress 'default/ing1': 'Front9000'`,
+			expHTTPLog:   `WARN ignoring local frontend configuration: invalid port numbers: '9090/invalid'`,
+			expHTTPSLog:  `WARN ignoring local frontend configuration: invalid port numbers: '9090/invalid'`,
 		},
 		"test16": {
+			global: map[string]string{
+				ingtypes.GlobalHTTPFrontends: "Front9000=9090/9443",
+			},
 			ann: map[string]string{
-				ingtypes.FrontHTTPPortsLocal: "9090/9443",
+				ingtypes.FrontHTTPFrontend: "Front900",
+			},
+			expHTTPBind:  "*:80",
+			expHTTPSBind: "*:443",
+			expHTTPErr:   `frontend ID not found on ingress 'default/ing1': 'Front900'`,
+			expHTTPSErr:  `frontend ID not found on ingress 'default/ing1': 'Front900'`,
+		},
+		"test17": {
+			global: map[string]string{
+				ingtypes.GlobalHTTPFrontends: "Front9000=9090/9443",
+			},
+			ann: map[string]string{
+				ingtypes.FrontHTTPFrontend: "Front9000",
 			},
 			expHTTPBind:  "*:9090",
 			expHTTPSBind: "*:9443",
 		},
-		"test17": {
+		"test19": {
+			global: map[string]string{
+				ingtypes.GlobalAllowLocalBind: "true",
+				ingtypes.GlobalHTTPFrontends:  "Front9000=9090",
+			},
 			ann: map[string]string{
-				ingtypes.FrontHTTPPortsLocal: "9090/invalid",
-				ingtypes.FrontBindHTTP:       "127.0.0.1:9090",
+				ingtypes.FrontHTTPFrontend: "Front9000",
+				ingtypes.FrontBindHTTP:     "127.0.0.1:9090",
 			},
 			expHTTPBind:  "*:80",
 			expHTTPSBind: "*:443",
-			expHTTPLog:   `WARN ignoring http/https ports configuration on ingress 'default/ing1': invalid configuration: '9090/invalid'`,
-			expHTTPSLog:  `WARN ignoring http/https ports configuration on ingress 'default/ing1': invalid configuration: '9090/invalid'`,
+			expHTTPErr:   `frontend ID not found on ingress 'default/ing1': 'Front9000'`,
+			expHTTPSErr:  `frontend ID not found on ingress 'default/ing1': 'Front9000'`,
+			expHTTPLog:   `WARN ignoring local frontend configuration: invalid port declaration syntax: 'Front9000=9090'`,
+			expHTTPSLog:  `WARN ignoring local frontend configuration: invalid port declaration syntax: 'Front9000=9090'`,
 		},
-		"test18": {
+		"test20": {
+			global: map[string]string{
+				ingtypes.GlobalAllowLocalBind: "true",
+				ingtypes.GlobalHTTPFrontends:  "Front9000=9090/9443",
+			},
 			ann: map[string]string{
-				ingtypes.FrontHTTPPortsLocal: "9090/9443",
-				ingtypes.FrontBindHTTP:       "127.0.0.1:9090",
+				ingtypes.FrontHTTPFrontend: "Front9000",
+				ingtypes.FrontBindHTTP:     "127.0.0.1:9090",
 			},
 			expHTTPBind:  "127.0.0.1:9090",
 			expHTTPSBind: "*:9443",
 		},
 	}
 	source := &Source{Namespace: "default", Name: "ing1", Type: "ingress"}
-	annDefault := map[string]string{
-		ingtypes.GlobalHTTPPort:      "80",
-		ingtypes.GlobalHTTPSPort:     "443",
-		ingtypes.FrontBindIPAddrHTTP: "*",
-	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			c := setup(t)
 			defer c.teardown()
-
-			dHTTP := c.createFrontData(source, false, test.ann, annDefault)
-			c.createUpdater().buildFrontBindHTTP(dHTTP)
-			assert.Equal(t, test.expHTTPBind, dHTTP.front.Bind, "HTTPBind")
+			if test.global == nil {
+				test.global = make(map[string]string)
+			}
+			if test.global[ingtypes.GlobalHTTPPort] == "" {
+				test.global[ingtypes.GlobalHTTPPort] = "80"
+			}
+			if test.global[ingtypes.GlobalHTTPSPort] == "" {
+				test.global[ingtypes.GlobalHTTPSPort] = "443"
+			}
+			if test.global[ingtypes.FrontBindIPAddrHTTP] == "" {
+				test.global[ingtypes.FrontBindIPAddrHTTP] = "*"
+			}
+			if dHTTP, err := c.createFrontData(source, false, test.ann, test.global); err == nil {
+				c.createUpdater().buildFrontBindHTTP(dHTTP)
+				assert.Equal(t, test.expHTTPBind, dHTTP.front.Bind, "HTTPBind")
+			} else {
+				assert.EqualError(t, err, test.expHTTPErr, "HTTPBind")
+			}
 			c.logger.CompareLogging(test.expHTTPLog)
 
-			dHTTPS := c.createFrontData(source, true, test.ann, annDefault)
-			c.createUpdater().buildFrontBindHTTPS(dHTTPS)
-			assert.Equal(t, test.expHTTPSBind, dHTTPS.front.Bind, "HTTPSBind")
+			if dHTTPS, err := c.createFrontData(source, true, test.ann, test.global); err == nil {
+				c.createUpdater().buildFrontBindHTTPS(dHTTPS)
+				assert.Equal(t, test.expHTTPSBind, dHTTPS.front.Bind, "HTTPSBind")
+			} else {
+				assert.EqualError(t, err, test.expHTTPSErr, "HTTPSBind")
+			}
 			c.logger.CompareLogging(test.expHTTPSLog)
 		})
 	}
