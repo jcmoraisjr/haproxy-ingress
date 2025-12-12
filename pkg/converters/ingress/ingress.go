@@ -216,7 +216,7 @@ func (c *converter) syncFull() {
 	sortIngress(ingList)
 	c.updater.UpdateGlobalConfig(c.haproxy, c.globalConfig)
 	c.syncDefaultBackend()
-	fp := annotations.NewFrontendsPorts(c.logger, c.haproxy, c.globalConfig)
+	fp := annotations.NewFrontendPorts(c.logger, c.haproxy, c.globalConfig)
 	for _, ing := range ingList {
 		c.syncIngress(fp, ing)
 	}
@@ -287,7 +287,7 @@ func (c *converter) syncPartial() {
 
 	// reinclude changed/added data
 	sortIngress(ingList)
-	fp := annotations.NewFrontendsPorts(c.logger, c.haproxy, c.globalConfig)
+	fp := annotations.NewFrontendPorts(c.logger, c.haproxy, c.globalConfig)
 	for _, ing := range ingList {
 		c.syncIngress(fp, ing)
 	}
@@ -378,7 +378,7 @@ func sortIngress(ingress []*networking.Ingress) {
 	})
 }
 
-func (c *converter) syncIngress(fp *annotations.FrontendsPorts, ing *networking.Ingress) {
+func (c *converter) syncIngress(fp *annotations.FrontendPorts, ing *networking.Ingress) {
 	source := &annotations.Source{
 		Namespace: ing.Namespace,
 		Name:      ing.Name,
@@ -393,7 +393,7 @@ func (c *converter) syncIngress(fp *annotations.FrontendsPorts, ing *networking.
 	}
 }
 
-func (c *converter) acquireFrontend(fp *annotations.FrontendsPorts, source *annotations.Source, annFront, annHost map[string]string) (*frontend, error) {
+func (c *converter) acquireFrontend(fp *annotations.FrontendPorts, source *annotations.Source, annFront, annHost map[string]string) (*frontend, error) {
 	link := bareLink()
 	localMapper := c.mapBuilder.NewMapper()
 	_ = localMapper.AddAnnotations(source, link, annFront)
@@ -492,7 +492,7 @@ func (h *host) AddRedirect(path string, match hatypes.MatchType, redirTo string)
 	h.redir = append(h.redir, h.inner.AddRedirect(path, match, redirTo))
 }
 
-func (c *converter) syncIngressHTTP(fp *annotations.FrontendsPorts, source *annotations.Source, ing *networking.Ingress, annFront, annHost, annBack map[string]string) {
+func (c *converter) syncIngressHTTP(fp *annotations.FrontendPorts, source *annotations.Source, ing *networking.Ingress, annFront, annHost, annBack map[string]string) {
 	f, err := c.acquireFrontend(fp, source, annFront, annHost)
 	if err != nil {
 		c.logger.Warn("skipping %v configuration: %s", source, err.Error())

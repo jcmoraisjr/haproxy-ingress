@@ -978,9 +978,14 @@ Request forbidden by administrative rules.
 		assert.Equal(t, "https-server2", res2https.EchoResponse.ServerName)
 	})
 
-	t.Run("should ignore ingress if frontend ID is not found", func(t *testing.T) {
+	t.Run("should ignore ingress if frontend id is not found", func(t *testing.T) {
+		t.Parallel()
 		svc := f.CreateService(ctx, t, httpServerPort)
+
+		// to be tested
 		ing, hostname := f.CreateIngress(ctx, t, svc)
+		// another one, valid, deployed, just to ensure the frontend is not empty so it does not get removed
+		_, _ = f.CreateIngress(ctx, t, svc)
 
 		// default frontends
 		res1 := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))

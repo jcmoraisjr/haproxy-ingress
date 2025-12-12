@@ -28,7 +28,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
-type FrontendsPorts struct {
+type FrontendPorts struct {
 	logger types.Logger
 	httpPort,
 	httpsPort,
@@ -36,7 +36,7 @@ type FrontendsPorts struct {
 	frontends map[string]httpPorts
 }
 
-type FrontendPorts struct {
+type FrontendLocalPorts struct {
 	HTTP,
 	HTTPS,
 	HTTPPassthrough int32
@@ -51,7 +51,7 @@ type httpPorts struct {
 var frontendSyntaxRegex = regexp.MustCompile(`^([^=]+)=([^/]+)/([^/]+)$`)
 var frontendIDRegex = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9]{0,19}$`)
 
-func NewFrontendsPorts(logger types.Logger, haproxy haproxy.Config, globalMapper *Mapper) *FrontendsPorts {
+func NewFrontendPorts(logger types.Logger, haproxy haproxy.Config, globalMapper *Mapper) *FrontendPorts {
 	// global ports
 	httpPort := globalMapper.Get(ingtypes.GlobalHTTPPort).Int32()
 	httpsPort := globalMapper.Get(ingtypes.GlobalHTTPSPort).Int32()
@@ -63,7 +63,8 @@ func NewFrontendsPorts(logger types.Logger, haproxy haproxy.Config, globalMapper
 		httpPassPort = globalMapper.Get(ingtypes.GlobalHTTPStoHTTPPort).Int32()
 	}
 
-	if globalMapper.Get(ingtypes.GlobalCreateDefaultFrontends).Bool() {
+	createFrontends := globalMapper.Get(ingtypes.GlobalCreateDefaultFrontends).Bool()
+	if createFrontends {
 		// backward compatible behavior, in case user asks for it
 		_ = haproxy.Frontends().AcquireFrontend(httpPort, false)
 		_ = haproxy.Frontends().AcquireFrontend(httpsPort, true)
@@ -93,12 +94,14 @@ func NewFrontendsPorts(logger types.Logger, haproxy haproxy.Config, globalMapper
 		}
 		f := frontendSyntaxRegex.FindStringSubmatch(frontend)
 		if len(f) != 4 {
-			logger.Warn("ignoring local frontend configuration: invalid port declaration syntax: '%s'", frontend)
+			logger.Warn("ignoring local frontend configuration: invalid frontend declaration syntax: '%s'", frontend)
 			continue
 		}
 		frontID := f[1]
-		frontHTTP, _ := strconv.Atoi(f[2])
-		frontHTTPS, _ := strconv.Atoi(f[3])
+		f2, _ := strconv.Atoi(f[2])
+		f3, _ := strconv.Atoi(f[3])
+		frontHTTP := int32(f2)
+		frontHTTPS := int32(f3)
 		if !frontendIDRegex.MatchString(frontID) {
 			logger.Warn("ignoring local frontend configuration: invalid frontend ID, expected at most 20 letters and numbers, starting with letter: '%s'", frontID)
 			continue
@@ -115,15 +118,20 @@ func NewFrontendsPorts(logger types.Logger, haproxy haproxy.Config, globalMapper
 			logger.Warn("ignoring local frontend configuration: HTTP and HTTPS ports cannot share the same value: '%d/%d'", frontHTTP, frontHTTPS)
 			continue
 		}
-		if slices.Contains(denyPorts, int32(frontHTTP)) || slices.Contains(denyPorts, int32(frontHTTPS)) {
+		if slices.Contains(denyPorts, frontHTTP) || slices.Contains(denyPorts, frontHTTPS) {
 			logger.Warn("ignoring local frontend configuration: local frontend ports %d/%d cannot collide with other already declared ports: %v", frontHTTP, frontHTTPS, denyPorts)
 			continue
 		}
-		frontends[frontID] = httpPorts{http: int32(frontHTTP), https: int32(frontHTTPS)}
-		denyPorts = append(denyPorts, int32(frontHTTP), int32(frontHTTPS))
+		frontends[frontID] = httpPorts{http: frontHTTP, https: frontHTTPS}
+		denyPorts = append(denyPorts, frontHTTP, frontHTTPS)
+		if createFrontends {
+			// custom frontends are always available, despite of being empty
+			_ = haproxy.Frontends().AcquireFrontend(frontHTTP, false)
+			_ = haproxy.Frontends().AcquireFrontend(frontHTTPS, true)
+		}
 	}
 
-	return &FrontendsPorts{
+	return &FrontendPorts{
 		logger:       logger,
 		httpPort:     httpPort,
 		httpsPort:    httpsPort,
@@ -145,8 +153,8 @@ var listeningBindFrontendKeys = []string{
 	ingtypes.FrontBindFrontingProxy,
 }
 
-func (fp *FrontendsPorts) AcquirePorts(mapper *Mapper) (FrontendPorts, error) {
-	defaultPorts := FrontendPorts{
+func (fp *FrontendPorts) AcquirePorts(mapper *Mapper) (FrontendLocalPorts, error) {
+	defaultPorts := FrontendLocalPorts{
 		HTTP:            fp.httpPort,
 		HTTPS:           fp.httpsPort,
 		HTTPPassthrough: fp.httpPassPort,
@@ -162,7 +170,7 @@ func (fp *FrontendsPorts) AcquirePorts(mapper *Mapper) (FrontendPorts, error) {
 		return defaultPorts, fmt.Errorf("frontend ID not found on %v: '%s'", frontendConfig.Source, frontendConfig.Value)
 	}
 
-	return FrontendPorts{
+	return FrontendLocalPorts{
 		HTTP:            frontendPorts.http,
 		HTTPS:           frontendPorts.https,
 		HTTPPassthrough: fp.httpPassPort,

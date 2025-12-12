@@ -73,6 +73,7 @@ func TestFrontendLocalConfig(t *testing.T) {
 				c.logger.CompareLogging(expLogging)
 			}
 			httpCheck := func(expLogging string) {
+				// we're skipping keys that will not be called, short-circuited due to validations - they will not produce warning logs so we'll skip them here
 				if !config.skipHTTP {
 					check(false, expLogging)
 				}
@@ -82,20 +83,17 @@ func TestFrontendLocalConfig(t *testing.T) {
 			}
 
 			// missing local key
-			// we're skipping keys that will not be called, short-circuited due to validations - they will not produce warning logs so we'll skip them here
 			httpCheck(fmt.Sprintf("WARN skipping '%s' configuration on %s: missing 'http-frontend' key", key, source))
 
-			// first, declare local http(s) ports
+			// declare local http(s) ports and test the custom bind keys first, they need special permissions
 			global[ingtypes.GlobalHTTPFrontends] = "Front8000=8080/8443"
 			ann[ingtypes.FrontHTTPFrontend] = "Front8000"
-
-			// ... and test the custom bind keys first
 			if slices.Contains(listeningBindFrontendKeys, key) {
 				httpCheck(fmt.Sprintf("WARN skipping '%s' configuration on %s: custom bind configuration not allowed", key, source))
 				global[ingtypes.GlobalAllowLocalBind] = "true"
 			}
 
-			// now the key configuration should succeed
+			// now the key configuration should succeed, including custom binding
 			check(false, "")
 			check(true, "")
 		})
@@ -435,8 +433,8 @@ Front8000=9090/9443
 			expHTTPSBind: "*:443",
 			expHTTPErr:   `frontend ID not found on ingress 'default/ing1': 'Front9000'`,
 			expHTTPSErr:  `frontend ID not found on ingress 'default/ing1': 'Front9000'`,
-			expHTTPLog:   `WARN ignoring local frontend configuration: invalid port declaration syntax: 'Front9000=9090'`,
-			expHTTPSLog:  `WARN ignoring local frontend configuration: invalid port declaration syntax: 'Front9000=9090'`,
+			expHTTPLog:   `WARN ignoring local frontend configuration: invalid frontend declaration syntax: 'Front9000=9090'`,
+			expHTTPSLog:  `WARN ignoring local frontend configuration: invalid frontend declaration syntax: 'Front9000=9090'`,
 		},
 		"test20": {
 			global: map[string]string{
