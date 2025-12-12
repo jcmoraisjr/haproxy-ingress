@@ -156,6 +156,12 @@ func (f *Frontends) Shrink() {
 	}
 }
 
+func (f *Frontends) RemoveEmptyFrontends() {
+	f.items = slices.DeleteFunc(f.items, func(f *Frontend) bool {
+		return len(f.hosts) == 0
+	})
+}
+
 // AcquireHost ...
 func (f *Frontend) AcquireHost(hostname string) *Host {
 	if host := f.FindHost(hostname); host != nil {
@@ -178,18 +184,6 @@ func (f *Frontend) RemoveAllHosts(hostnames []string) {
 		if item, found := f.hosts[hostname]; found {
 			f.hostsDel[hostname] = item
 			delete(f.hosts, hostname)
-		}
-	}
-}
-
-func (f *Frontend) RemoveAllLinks(pathlinks ...*PathLink) {
-	for _, link := range pathlinks {
-		h := f.FindHost(link.hostname)
-		if h != nil {
-			h.Paths = slices.DeleteFunc(h.Paths, func(p *Path) bool { return p.Link.Equals(link) })
-			if len(h.Paths) == 0 {
-				f.RemoveAllHosts([]string{link.hostname})
-			}
 		}
 	}
 }

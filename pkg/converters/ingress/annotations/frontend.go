@@ -48,21 +48,24 @@ func NewFrontendsPorts(logger types.Logger, haproxy haproxy.Config, globalMapper
 		httpPassPort = globalMapper.Get(ingtypes.GlobalHTTPStoHTTPPort).Int32()
 	}
 
+	if globalMapper.Get(ingtypes.GlobalCreateDefaultFrontends).Bool() {
+		// backward compatible behavior, in case user asks for it
+		_ = haproxy.Frontends().AcquireFrontend(httpPort, false)
+		_ = haproxy.Frontends().AcquireFrontend(httpsPort, true)
+		if httpPassPort > 0 && httpPassPort != httpPort {
+			_ = haproxy.Frontends().AcquireFrontend(httpPassPort, false)
+		}
+	} else {
+		// ensures empty frontends are removed on partial parsing
+		haproxy.Frontends().RemoveEmptyFrontends()
+	}
+
 	// denied ports
 	denyPorts := []int32{httpPort, httpsPort}
 	denyPortsStr := []string{strconv.Itoa(int(httpPort)), strconv.Itoa(int(httpsPort))}
 	if httpPassPort > 0 {
 		denyPorts = append(denyPorts, httpPassPort)
 		denyPortsStr = append(denyPortsStr, strconv.Itoa(int(httpPassPort)))
-	}
-
-	// backward compatible behavior, in case user asks for it
-	if globalMapper.Get(ingtypes.GlobalCreateDefaultFrontends).Bool() {
-		_ = haproxy.Frontends().AcquireFrontend(httpPort, false)
-		_ = haproxy.Frontends().AcquireFrontend(httpsPort, true)
-		if httpPassPort > 0 && httpPassPort != httpPort {
-			_ = haproxy.Frontends().AcquireFrontend(httpPassPort, false)
-		}
 	}
 
 	return &FrontendsPorts{
