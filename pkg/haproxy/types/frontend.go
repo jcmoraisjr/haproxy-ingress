@@ -86,7 +86,7 @@ func (f *Frontends) HasCommit() bool {
 }
 
 func (f *Frontends) Changed() bool {
-	return f.AuthProxy.changed
+	return f.changed || f.AuthProxy.changed
 }
 
 func (f *Frontends) HasHTTPResponses() bool {
@@ -157,9 +157,13 @@ func (f *Frontends) Shrink() {
 }
 
 func (f *Frontends) RemoveEmptyFrontends() {
-	f.items = slices.DeleteFunc(f.items, func(f *Frontend) bool {
-		return len(f.hosts) == 0
+	previous := len(f.items)
+	f.items = slices.DeleteFunc(f.items, func(frontend *Frontend) bool {
+		return len(frontend.hosts) == 0
 	})
+	if len(f.items) != previous {
+		f.changed = true
+	}
 }
 
 // AcquireHost ...
