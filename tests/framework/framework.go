@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -58,6 +59,10 @@ const (
 	TestPortHTTP    = 28080
 	TestPortHTTPS   = 28443
 	TestPortStat    = 21936
+)
+
+var (
+	GlobalConfigMap = types.NamespacedName{Namespace: "default", Name: "ingress-controller"}
 )
 
 func NewFramework(ctx context.Context, t *testing.T, o ...options.Framework) *framework {
@@ -205,7 +210,7 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 	opt.MasterWorker = true
 	opt.LocalFSPrefix = "/tmp/haproxy-ingress"
 	opt.PublishService = PublishSvcName
-	opt.ConfigMap = "default/ingress-controller"
+	opt.ConfigMap = GlobalConfigMap.String()
 	os.Setenv("POD_NAMESPACE", "default")
 	ctx, cancel := context.WithCancel(ctx)
 	cfg, err := ctrlconfig.CreateWithConfig(ctx, f.config, opt)

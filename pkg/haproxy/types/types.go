@@ -482,7 +482,8 @@ type Frontends struct {
 	DefaultCrtFile string
 	DefaultCrtHash string
 	//
-	items []*Frontend
+	items   []*Frontend
+	changed bool
 }
 
 // Frontend ...

@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )
 
@@ -35,7 +36,7 @@ type FrontendPorts struct {
 	denyPortsStr string
 }
 
-func NewFrontendPorts(logger types.Logger, globalMapper *Mapper) *FrontendPorts {
+func NewFrontendPorts(logger types.Logger, haproxy haproxy.Config, globalMapper *Mapper) *FrontendPorts {
 	// global ports
 	httpPort := globalMapper.Get(ingtypes.GlobalHTTPPort).Int32()
 	httpsPort := globalMapper.Get(ingtypes.GlobalHTTPSPort).Int32()
@@ -45,6 +46,18 @@ func NewFrontendPorts(logger types.Logger, globalMapper *Mapper) *FrontendPorts 
 	}
 	if httpPassPort == 0 {
 		httpPassPort = globalMapper.Get(ingtypes.GlobalHTTPStoHTTPPort).Int32()
+	}
+
+	if globalMapper.Get(ingtypes.GlobalCreateDefaultFrontends).Bool() {
+		// backward compatible behavior, in case user asks for it
+		_ = haproxy.Frontends().AcquireFrontend(httpPort, false)
+		_ = haproxy.Frontends().AcquireFrontend(httpsPort, true)
+		if httpPassPort > 0 && httpPassPort != httpPort {
+			_ = haproxy.Frontends().AcquireFrontend(httpPassPort, false)
+		}
+	} else {
+		// ensures empty frontends are removed on partial parsing
+		haproxy.Frontends().RemoveEmptyFrontends()
 	}
 
 	// denied ports

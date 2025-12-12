@@ -356,6 +356,7 @@ The table below describes all supported configuration keys.
 | [`cors-expose-headers`](#cors)                       | headers                                 | Path     |                                  |
 | [`cors-max-age`](#cors)                              | time (seconds)                          | Path     |                                  |
 | [`cpu-map`](#cpu-map)                                | haproxy CPU Map format                  | Global   |                                  |
+| [`create-default-frontends`](#bind-port)             | [true\|false]                           | Global   | `False`                          |
 | [`cross-namespace-secrets-ca`](#cross-namespace)     | [allow\|deny]                           | Global   | `deny`                           |
 | [`cross-namespace-secrets-crt`](#cross-namespace)    | [allow\|deny]                           | Global   | `deny`                           |
 | [`cross-namespace-secrets-passwd`](#cross-namespace) | [allow\|deny]                           | Global   | `deny`                           |
@@ -1064,14 +1065,18 @@ See also:
 
 ### Bind port
 
-| Configuration key  | Scope      | Default | Since |
-|--------------------|------------|---------|-------|
-| `healthz-port`     | `Global`   | `10253` |       |
-| `http-port`        | `Global`   | `80`    |       |
-| `http-ports-local` | `Frontend` |         | v0.17 |
-| `https-port`       | `Global`   | `443`   |       |
-| `prometheus-port`  | `Global`   |         | v0.10 |
+| Configuration key          | Scope      | Default | Since |
+|----------------------------|------------|---------|-------|
+| `create-default-frontends` | `Global`   | `False` | v0.17 |
+| `healthz-port`             | `Global`   | `10253` |       |
+| `http-port`                | `Global`   | `80`    |       |
+| `http-ports-local`         | `Frontend` |         | v0.17 |
+| `https-port`               | `Global`   | `443`   |       |
+| `prometheus-port`          | `Global`   |         | v0.10 |
 
+Binding port configuration.
+
+* `create-default-frontends`: Define if the default HTTP and HTTPS frontends should always be created, even if neither ingress or gateway resources are using them. This option brings v0.16 behavior if configured as `True`, always creating the default frontends, despite of having assigned resources or not.
 * `http-port`: Define the port number of unencrypted HTTP connections.
 * `https-port`: Define the port number of encrypted HTTPS connections.
 * `http-ports-local`: Define alternative HTTP and HTTPS ports to configure an Ingress resource, overriding the default `http-port` and `https-port` from the global configuration. Both HTTP and HTTPS ports should be used, separate them using a slash, e.g. `"8080/8443"`. This is a mandatory option on every Ingress resource that configures a `Frontend` scoped key.

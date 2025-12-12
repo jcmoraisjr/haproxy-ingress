@@ -35,15 +35,6 @@ func TestIntegrationIngress(t *testing.T) {
 	f := framework.NewFramework(ctx, t)
 	httpServerPort := f.CreateHTTPServer(ctx, t, "default")
 
-	lbingpre1 := "127.0.0.1"
-	require.NotEqual(t, framework.PublishAddress, lbingpre1)
-
-	svcpre1 := f.CreateService(ctx, t, httpServerPort)
-	ingpre1, _ := f.CreateIngress(ctx, t, svcpre1)
-	ingpre1.Status.LoadBalancer.Ingress = []networkingv1.IngressLoadBalancerIngress{{IP: lbingpre1}}
-	err := f.Client().Status().Update(ctx, ingpre1)
-	require.NoError(t, err)
-
 	caValid, cakeyValid := framework.CreateCA(t, framework.CertificateIssuerCN)
 	caValidKeyPair, err := tls.X509KeyPair(caValid, cakeyValid)
 	require.NoError(t, err)
@@ -794,6 +785,16 @@ Request forbidden by administrative rules.
 
 	t.Run("should override old status", func(t *testing.T) {
 		t.Parallel()
+
+		lbingpre1 := "127.0.0.1"
+		require.NotEqual(t, framework.PublishAddress, lbingpre1)
+
+		svcpre1 := f.CreateService(ctx, t, httpServerPort)
+		ingpre1, _ := f.CreateIngress(ctx, t, svcpre1)
+		ingpre1.Status.LoadBalancer.Ingress = []networkingv1.IngressLoadBalancerIngress{{IP: lbingpre1}}
+		err := f.Client().Status().Update(ctx, ingpre1)
+		require.NoError(t, err)
+
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 			err := f.Client().Get(ctx, client.ObjectKeyFromObject(ingpre1), ingpre1)
 			if !assert.NoError(collect, err) {
@@ -1023,6 +1024,44 @@ Request forbidden by administrative rules.
 		req(https1, true, "/api1/")
 		req(http2, false, "/api2/")
 		req(https2, true, "/api2/")
+	})
+
+	t.Run("should handle empty frontends", func(t *testing.T) {
+		// t.Parallel() // changing global, cannot run in parallel
+
+		cm := corev1.ConfigMap{}
+		err := f.Client().Get(ctx, framework.GlobalConfigMap, &cm)
+		require.NoError(t, err)
+		hostname := framework.RandomHostName()
+		req := func(o ...options.Request) {
+			_ = f.Request(ctx, t, http.MethodGet, hostname, "/", o...)
+		}
+		connRefusedOpt := options.ExpectError("connection refused")
+
+		// frontend should not be there by default
+		req(connRefusedOpt)
+
+		// changing to always create frontends
+		cm.Data[ingtypes.GlobalCreateDefaultFrontends] = "True"
+		err = f.Client().Update(ctx, &cm)
+		require.NoError(t, err)
+		req(options.ExpectResponseCode(http.StatusNotFound))
+
+		// move back to the default of not creating empty frontends
+		delete(cm.Data, ingtypes.GlobalCreateDefaultFrontends)
+		err = f.Client().Update(ctx, &cm)
+		require.NoError(t, err)
+		req(connRefusedOpt)
+
+		// create an ingress, should create a frontend
+		svc := f.CreateService(ctx, t, httpServerPort)
+		ing, _ := f.CreateIngress(ctx, t, svc, options.CustomHostName(hostname))
+		req(options.ExpectResponseCode(http.StatusOK))
+
+		// remove ingress, should remove the frontend
+		err = f.Client().Delete(ctx, ing)
+		require.NoError(t, err)
+		req(connRefusedOpt)
 	})
 
 	// should match wildcard host
