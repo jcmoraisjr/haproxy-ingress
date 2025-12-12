@@ -86,7 +86,7 @@ func (f *Frontends) HasCommit() bool {
 }
 
 func (f *Frontends) Changed() bool {
-	return f.AuthProxy.changed
+	return f.changed || f.AuthProxy.changed
 }
 
 func (f *Frontends) HasHTTPResponses() bool {
@@ -156,6 +156,16 @@ func (f *Frontends) Shrink() {
 	}
 }
 
+func (f *Frontends) RemoveEmptyFrontends() {
+	previous := len(f.items)
+	f.items = slices.DeleteFunc(f.items, func(frontend *Frontend) bool {
+		return len(frontend.hosts) == 0
+	})
+	if len(f.items) != previous {
+		f.changed = true
+	}
+}
+
 // AcquireHost ...
 func (f *Frontend) AcquireHost(hostname string) *Host {
 	if host := f.FindHost(hostname); host != nil {
@@ -178,18 +188,6 @@ func (f *Frontend) RemoveAllHosts(hostnames []string) {
 		if item, found := f.hosts[hostname]; found {
 			f.hostsDel[hostname] = item
 			delete(f.hosts, hostname)
-		}
-	}
-}
-
-func (f *Frontend) RemoveAllLinks(pathlinks ...*PathLink) {
-	for _, link := range pathlinks {
-		h := f.FindHost(link.hostname)
-		if h != nil {
-			h.Paths = slices.DeleteFunc(h.Paths, func(p *Path) bool { return p.Link.Equals(link) })
-			if len(h.Paths) == 0 {
-				f.RemoveAllHosts([]string{link.hostname})
-			}
 		}
 	}
 }

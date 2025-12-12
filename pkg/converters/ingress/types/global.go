@@ -42,6 +42,7 @@ const (
 	GlobalConfigTCP                    = "config-tcp"
 	GlobalCookieKey                    = "cookie-key"
 	GlobalCPUMap                       = "cpu-map"
+	GlobalCreateDefaultFrontends       = "create-default-frontends"
 	GlobalCrossNamespaceSecretsCA      = "cross-namespace-secrets-ca"
 	GlobalCrossNamespaceSecretsCrt     = "cross-namespace-secrets-crt"
 	GlobalCrossNamespaceSecretsPasswd  = "cross-namespace-secrets-passwd"
