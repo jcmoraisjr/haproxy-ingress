@@ -27,7 +27,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )
 
-type FrontendsPorts struct {
+type FrontendPorts struct {
 	logger types.Logger
 	httpPort,
 	httpsPort,
@@ -36,7 +36,7 @@ type FrontendsPorts struct {
 	denyPortsStr string
 }
 
-func NewFrontendsPorts(logger types.Logger, haproxy haproxy.Config, globalMapper *Mapper) *FrontendsPorts {
+func NewFrontendPorts(logger types.Logger, haproxy haproxy.Config, globalMapper *Mapper) *FrontendPorts {
 	// global ports
 	httpPort := globalMapper.Get(ingtypes.GlobalHTTPPort).Int32()
 	httpsPort := globalMapper.Get(ingtypes.GlobalHTTPSPort).Int32()
@@ -68,7 +68,7 @@ func NewFrontendsPorts(logger types.Logger, haproxy haproxy.Config, globalMapper
 		denyPortsStr = append(denyPortsStr, strconv.Itoa(int(httpPassPort)))
 	}
 
-	return &FrontendsPorts{
+	return &FrontendPorts{
 		logger:       logger,
 		httpPort:     httpPort,
 		httpsPort:    httpsPort,
@@ -78,7 +78,7 @@ func NewFrontendsPorts(logger types.Logger, haproxy haproxy.Config, globalMapper
 	}
 }
 
-func (fp *FrontendsPorts) AcquirePorts(mapper *Mapper) (httpPort, httpsPort, httpPassPort int32, localPorts bool) {
+func (fp *FrontendPorts) AcquirePorts(mapper *Mapper) (httpPort, httpsPort, httpPassPort int32, localPorts bool) {
 	// reading globals as default values
 	httpPort = fp.httpPort
 	httpsPort = fp.httpsPort

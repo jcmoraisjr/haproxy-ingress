@@ -216,9 +216,9 @@ func (c *converter) syncFull() {
 	sortIngress(ingList)
 	c.updater.UpdateGlobalConfig(c.haproxy, c.globalConfig)
 	c.syncDefaultBackend()
-	frontendsPorts := annotations.NewFrontendsPorts(c.logger, c.haproxy, c.globalConfig)
+	fp := annotations.NewFrontendPorts(c.logger, c.haproxy, c.globalConfig)
 	for _, ing := range ingList {
-		c.syncIngress(frontendsPorts, ing)
+		c.syncIngress(fp, ing)
 	}
 	c.syncConfig()
 }
@@ -287,9 +287,9 @@ func (c *converter) syncPartial() {
 
 	// reinclude changed/added data
 	sortIngress(ingList)
-	frontendsPorts := annotations.NewFrontendsPorts(c.logger, c.haproxy, c.globalConfig)
+	fp := annotations.NewFrontendPorts(c.logger, c.haproxy, c.globalConfig)
 	for _, ing := range ingList {
-		c.syncIngress(frontendsPorts, ing)
+		c.syncIngress(fp, ing)
 	}
 	c.syncConfig()
 }
@@ -378,7 +378,7 @@ func sortIngress(ingress []*networking.Ingress) {
 	})
 }
 
-func (c *converter) syncIngress(frontendsPorts *annotations.FrontendsPorts, ing *networking.Ingress) {
+func (c *converter) syncIngress(fp *annotations.FrontendPorts, ing *networking.Ingress) {
 	source := &annotations.Source{
 		Namespace: ing.Namespace,
 		Name:      ing.Name,
@@ -387,18 +387,18 @@ func (c *converter) syncIngress(frontendsPorts *annotations.FrontendsPorts, ing 
 	annTCP, annFront, annHost, annBack := c.readAnnotations(source, ing.Annotations)
 	tcpServicePort, _ := strconv.Atoi(annTCP[ingtypes.TCPTCPServicePort])
 	if tcpServicePort == 0 {
-		c.syncIngressHTTP(frontendsPorts, source, ing, annFront, annHost, annBack)
+		c.syncIngressHTTP(fp, source, ing, annFront, annHost, annBack)
 	} else {
 		c.syncIngressTCP(source, ing, tcpServicePort, annTCP, annBack)
 	}
 }
 
-func (c *converter) acquireFrontend(frontendsPorts *annotations.FrontendsPorts, source *annotations.Source, annFront, annHost map[string]string) *frontend {
+func (c *converter) acquireFrontend(fp *annotations.FrontendPorts, source *annotations.Source, annFront, annHost map[string]string) *frontend {
 	link := bareLink()
 	localMapper := c.mapBuilder.NewMapper()
 	_ = localMapper.AddAnnotations(source, link, annFront)
 	_ = localMapper.AddAnnotations(source, link, annHost)
-	httpPort, httpsPort, httpPassPort, localPorts := frontendsPorts.AcquirePorts(localMapper)
+	httpPort, httpsPort, httpPassPort, localPorts := fp.AcquirePorts(localMapper)
 	f := c.haproxy.Frontends()
 	innerHTTP := f.AcquireFrontend(httpPort, false)
 	var innerHTTPPass *hatypes.Frontend
@@ -489,8 +489,8 @@ func (h *host) AddRedirect(path string, match hatypes.MatchType, redirTo string)
 	h.redir = append(h.redir, h.inner.AddRedirect(path, match, redirTo))
 }
 
-func (c *converter) syncIngressHTTP(frontendsPorts *annotations.FrontendsPorts, source *annotations.Source, ing *networking.Ingress, annFront, annHost, annBack map[string]string) {
-	f := c.acquireFrontend(frontendsPorts, source, annFront, annHost)
+func (c *converter) syncIngressHTTP(fp *annotations.FrontendPorts, source *annotations.Source, ing *networking.Ingress, annFront, annHost, annBack map[string]string) {
+	f := c.acquireFrontend(fp, source, annFront, annHost)
 	defer c.syncMissingFrontends(f)
 	if ing.Spec.DefaultBackend != nil {
 		svcName, svcPort, err := readServiceNamePort(ing.Spec.DefaultBackend)
