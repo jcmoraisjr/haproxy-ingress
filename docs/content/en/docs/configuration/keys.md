@@ -1764,26 +1764,29 @@ See also:
 | `http-frontend`   | `Frontend` |         | v0.17 |
 | `http-frontends`  | `Global`   |         | v0.17 |
 
-Create new HTTP and HTTPS frontends.
+Create new HTTP and HTTPS frontends. A new pair of HTTP and HTTPS frontends adds the ability to configure hostnames and paths that don't conflict each other, under the same controller and ingress class.
 
-* `http-frontend`: ID of a frontend declared via `http-frontends`. The ingress resource will be fully ignored if the ID is not found, which avoids to add unintended changes on the default frontends in case an ID is removed or misconfigured.
 * `http-frontends`: declare a list of frontend IDs to be used on ingress resources.
+* `http-frontend`: ID of a frontend declared via `http-frontends`.
 
-Creating a new pair of HTTP and HTTPS frontends adds the ability to configure hostnames and paths that don't conflict each other, under the same controller and ingress class.
+**Frontend declaration**
 
-The steps to create new pair of frontends are as follow:
+Declare frontends via `http-frontends` key. They are immediately available once declared, despite of having ingress or gateway resources connected to them. Missing URIs are configured with the default 404 page. Declare as many HTTP and HTTPS frontend pairs as desired, one per line, provided that their IDs don't repeat and their port numbers don't conflict.
 
-* Declare one or more frontend IDs using `http-frontends` key in the global ConfigMap. See below an example. New declared frontends are immediately available, leading to 404 status if no ingress resource configures them.
-* Reference the declared frontend ID on ingress resources using `http-frontend` key. Hostnames, paths and other frontend scoped annotations on that ingress resource will refer to the declared frontend, instead of the default one.
+* Each HTTP and HTTPS pair has the following syntax, without any space: `<ID>=<http-port>/<https-port>`.
+* ID is case-sensitive, should have up to 20 letters or numbers, and should start with a letter.
+* Separate two or more frontend declarations with line breaks.
+* None of the port declarations can match with any other, including global declared ones like default HTTP/HTTPS, Healthz or Prometheus port.
+* Failures on the frontend declaration syntax will lead to an error to find it from ingress resources.
 
-Here is a configuration example:
-
-Global ConfigMap:
+The example below declares two pairs of HTTP/HTTPS frontends named `Front7` and `Front8`, having respectively `7070` and `8080` as their HTTP ports, and `7443` and `8443` as the HTTPS ones:
 
 ```yaml
 apiVersion: v1
 data:
-  http-frontends: "Front8=8080,8443"
+  http-frontends: |
+    Front7=7070/7443
+    Front8=8080/8443
   ...
 kind: ConfigMap
 metadata:
@@ -1791,7 +1794,32 @@ metadata:
   namespace: ingress-controller
 ```
 
-Here is the ingress resource. All the annotations and specs will be configured to the `Front8` frontends, listening on `8080` (HTTP) and `8443` (HTTPS), instead of the default HTTP and HTTPS ports.
+**Frontend usage**
+
+Ingress resources can reference a frontend pair using `http-frontend` key. If missing, the default HTTP and HTTPS will be used, and if pointing to a missing or invalid ID, the whole ingress resource will be ignored.
+
+{{< alert "Note" >}}
+Ingress resources that don't declare a frontend ID will use the default HTTP and HTTPS ports for the frontend related configurations, like hostnames and paths, frontend scoped keys, etc. This is the backward compatible behavior.
+
+However, once declared, the frontend ID should match a valid one. The whole ingress resource will be removed from the configuration if there isn't a frontend ID match. This behavior prevents unintended changes on the default frontends if a frontend ID is removed or misconfigured.
+{{< /alert >}}
+
+See below a configuration example:
+
+Global ConfigMap:
+
+```yaml
+apiVersion: v1
+data:
+  http-frontends: "Front8=8080/8443"
+  ...
+kind: ConfigMap
+metadata:
+  name: haproxy-ingress
+  namespace: ingress-controller
+```
+
+Ingress resource adding its spec and frontend related annotations to `Front8` frontends pair:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -1804,38 +1832,6 @@ metadata:
   namespace: default
 spec:
   ...
-```
-
-{{< alert "Note" >}}
-Ingress resources that don't declare a frontend ID will configure the frontends on the default HTTP and HTTPS ports, as usual. But once declared, the frontend ID should match a valid one; otherwise the whole ingress resource will be removed from the configuration. This behavior prevents unintended changes on the default frontends if a frontend ID is removed or misconfigured.
-{{< /alert >}}
-
-**Frontend ID Syntax**
-
-`http-frontends` expects a list of new frontend declarations, one per line, each of them declared as `<ID>=<http-port>/<https-port>`.
-
-Roles of frontend ID declaration:
-
-* ID should have up to 20 chars, being letters or numbers, and should start with a letter.
-* ID is case-sensitive.
-* Declare the whole line without any spaces.
-* Separate two or more frontend declarations with line breaks.
-* None of the port declarations can match with any other, including global declared ones like default HTTP/HTTPS, Healthz or Prometheus port.
-* Failures on the frontend declaration syntax will lead to an error to find it from ingress resources.
-
-The example below declares two pairs of HTTP/HTTPS frontends named `Front7` and `Front8`, having respectively `7070` and `8080` as HTTP ports, and `7443` and `8443` as HTTPS ones:
-
-```yaml
-apiVersion: v1
-data:
-  http-frontends: |
-    Front7=7070,7443
-    Front8=8080,8443
-  ...
-kind: ConfigMap
-metadata:
-  name: haproxy-ingress
-  namespace: ingress-controller
 ```
 
 ---
