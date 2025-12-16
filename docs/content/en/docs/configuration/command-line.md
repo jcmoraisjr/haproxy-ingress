@@ -24,6 +24,7 @@ The following command-line options are supported:
 | [`--backend-shards`](#backend-shards)                   | int                        | `0`                     | v0.11 |
 | [`--buckets-response-time`](#buckets-response-time)     | float64 slice           | `.0005,.001,.002,.005,.01` | v0.10 |
 | [`--configmap`](#configmap)                             | namespace/configmapname    |                         |       |
+| [`--connection-timeout`](#timeout)                      | duration                   | `30s`                   | v0.14.11 |
 | [`--controller-class`](#ingress-class)                  | suffix                     | `""`                    | v0.12 |
 | [`--default-backend-service`](#default-backend-service) | namespace/servicename      | haproxy's 404 page      |       |
 | [`--default-ssl-certificate`](#default-ssl-certificate) | namespace/secretname       | fake, auto generated    |       |
@@ -701,6 +702,14 @@ Note: Check interval was added in v0.10 and defaults to `2s`. All declared servi
 See also:
 
 * [TCP Services]({{% relref "keys#tcp-services" %}}) configuration keys
+
+---
+
+## Timeout
+
+Timeout configuration.
+
+* `--connection-timeout`: (since v0.14.11) Defines the maximum amount of time HAProxy Ingress should wait for HAProxy responses when connecting to its master or admin sockets. This configuration is specially useful on HAProxy v2.7+ and large configurations, since its `reload` command became synchronous and should take some time to finish. Defaults to `30s` if not configured.
 
 ---
 
