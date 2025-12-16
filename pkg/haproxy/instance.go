@@ -50,6 +50,7 @@ type InstanceOptions struct {
 	LeaderElector     types.LeaderElector
 	IsMasterWorker    bool
 	IsExternal        bool
+	ConnectionTimeout time.Duration
 	MasterSocket      string
 	AdminSocket       string
 	AcmeSocket        string
@@ -82,7 +83,7 @@ func CreateInstance(logger types.Logger, options InstanceOptions) Instance {
 		waitProc: make(chan struct{}),
 		logger:   logger,
 		options:  &options,
-		conns:    newConnections(options.MasterSocket, options.AdminSocket),
+		conns:    newConnections(options.MasterSocket, options.AdminSocket, options.ConnectionTimeout),
 		metrics:  options.Metrics,
 		//
 		haproxyTmpl:     template.CreateConfig(),

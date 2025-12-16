@@ -107,6 +107,11 @@ processes.`)
 			`Defines the master CLI unix socket of an external HAProxy running in
 master-worker mode. Defaults to use the embedded HAProxy if not declared.`)
 
+		connectionTimeout = flags.Duration("connection-timeout", 30*time.Second,
+			`Defines the maximum amount of time HAProxy Ingress should wait for HAProxy
+responses when connecting to its master or admin sockets.`,
+		)
+
 		configMap = flags.String("configmap", "",
 			`Name of the ConfigMap that contains the custom configuration to use`)
 
@@ -540,6 +545,7 @@ k8s >=1.21+`)
 		Client:                   kubeClient,
 		MasterWorker:             masterWorkerCfg,
 		MasterSocket:             *masterSocket,
+		ConnectionTimeout:        *connectionTimeout,
 		AcmeServer:               *acmeServer,
 		AcmeCheckPeriod:          *acmeCheckPeriod,
 		AcmeElectionID:           *acmeElectionID,

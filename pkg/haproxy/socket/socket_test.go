@@ -133,9 +133,9 @@ func testSocket(t *testing.T, keepalive bool) {
 	clientSocketPos := make([]HAProxySocket, len(testCases))
 	masterSocket := make([]HAProxySocket, len(testCases))
 	for i, test := range testCases {
-		clientSocket[i] = NewSocket(clisock, keepalive)
-		clientSocketPos[i] = NewSocket(clisock, false)
-		masterSocket[i] = NewSocket(mastersock, keepalive)
+		clientSocket[i] = NewSocket(clisock, 30*time.Second, keepalive)
+		clientSocketPos[i] = NewSocket(clisock, 30*time.Second, false)
+		masterSocket[i] = NewSocket(mastersock, 30*time.Second, keepalive)
 		time.Sleep(test.waitBefore)
 		var sock, sockPos HAProxySocket
 		if test.master {

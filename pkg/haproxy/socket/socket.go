@@ -33,23 +33,23 @@ import (
 )
 
 // NewSocket ...
-func NewSocket(address string, keepalive bool) HAProxySocket {
-	return newSocket(address, keepalive)
+func NewSocket(address string, timeout time.Duration, keepalive bool) HAProxySocket {
+	return newSocket(address, timeout, keepalive)
 }
 
 // NewSocketConcurrent ...
-func NewSocketConcurrent(address string, keepalive bool) HAProxySocket {
-	s := newSocket(address, keepalive)
+func NewSocketConcurrent(address string, timeout time.Duration, keepalive bool) HAProxySocket {
+	s := newSocket(address, timeout, keepalive)
 	s.mutex = &sync.Mutex{}
 	return s
 }
 
-func newSocket(address string, keepalive bool) *sock {
+func newSocket(address string, timeout time.Duration, keepalive bool) *sock {
 	return &sock{
 		address:   address,
 		listening: true,
 		keepalive: keepalive,
-		timeout:   5 * time.Second,
+		timeout:   timeout,
 	}
 }
 
