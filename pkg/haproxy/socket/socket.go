@@ -34,24 +34,24 @@ import (
 )
 
 // NewSocket ...
-func NewSocket(ctx context.Context, address string, keepalive bool) HAProxySocket {
-	return newSocket(ctx, address, keepalive)
+func NewSocket(ctx context.Context, address string, timeout time.Duration, keepalive bool) HAProxySocket {
+	return newSocket(ctx, address, timeout, keepalive)
 }
 
 // NewSocketConcurrent ...
-func NewSocketConcurrent(ctx context.Context, address string, keepalive bool) HAProxySocket {
-	s := newSocket(ctx, address, keepalive)
+func NewSocketConcurrent(ctx context.Context, address string, timeout time.Duration, keepalive bool) HAProxySocket {
+	s := newSocket(ctx, address, timeout, keepalive)
 	s.mutex = &sync.Mutex{}
 	return s
 }
 
-func newSocket(ctx context.Context, address string, keepalive bool) *sock {
+func newSocket(ctx context.Context, address string, timeout time.Duration, keepalive bool) *sock {
 	return &sock{
 		ctx:       ctx,
 		address:   address,
 		listening: true,
 		keepalive: keepalive,
-		timeout:   5 * time.Second,
+		timeout:   timeout,
 	}
 }
 

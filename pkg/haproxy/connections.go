@@ -25,9 +25,10 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/socket"
 )
 
-func newConnections(ctx context.Context, masterSock, adminSock string) *connections {
+func newConnections(ctx context.Context, masterSock, adminSock string, timeout time.Duration) *connections {
 	return &connections{
 		ctx:        ctx,
+		timeout:    timeout,
 		mutex:      sync.Mutex{},
 		masterSock: masterSock,
 		adminSock:  adminSock,
@@ -36,6 +37,7 @@ func newConnections(ctx context.Context, masterSock, adminSock string) *connecti
 
 type connections struct {
 	ctx          context.Context
+	timeout      time.Duration
 	mutex        sync.Mutex
 	masterSock   string
 	adminSock    string
@@ -50,7 +52,7 @@ func (c *connections) TrackCurrentInstance(timeoutStopDur, closeSessDur time.Dur
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	c.shrinkConns()
-	sock := socket.NewSocketConcurrent(c.ctx, c.adminSock, true)
+	sock := socket.NewSocketConcurrent(c.ctx, c.adminSock, c.timeout, true)
 	if err := sock.Unlistening(); err != nil {
 		return err
 	}
@@ -135,14 +137,14 @@ func shutdownSessionsSync(sock socket.HAProxySocket, duration time.Duration) {
 
 func (c *connections) Admin() socket.HAProxySocket {
 	if c.admin == nil {
-		c.admin = socket.NewSocket(c.ctx, c.adminSock, false)
+		c.admin = socket.NewSocket(c.ctx, c.adminSock, c.timeout, false)
 	}
 	return c.admin
 }
 
 func (c *connections) Master() socket.HAProxySocket {
 	if c.master == nil {
-		c.master = socket.NewSocket(c.ctx, c.masterSock, false)
+		c.master = socket.NewSocket(c.ctx, c.masterSock, c.timeout, false)
 	}
 	return c.master
 }
@@ -151,14 +153,14 @@ func (c *connections) DynUpdate() socket.HAProxySocket {
 	if c.dynUpdate == nil {
 		// using a non persistent connection (keep alive false)
 		// to ensure that the current instance will be used
-		c.dynUpdate = socket.NewSocket(c.ctx, c.adminSock, false)
+		c.dynUpdate = socket.NewSocket(c.ctx, c.adminSock, c.timeout, false)
 	}
 	return c.dynUpdate
 }
 
 func (c *connections) IdleChk() socket.HAProxySocket {
 	if c.idleChk == nil {
-		c.idleChk = socket.NewSocket(c.ctx, c.adminSock, false)
+		c.idleChk = socket.NewSocket(c.ctx, c.adminSock, c.timeout, false)
 	}
 	return c.idleChk
 }
