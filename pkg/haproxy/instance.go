@@ -455,8 +455,10 @@ func (i *instance) logChanged() {
 					hosts = append(hosts, host)
 				}
 			}
-			sort.Strings(hosts)
-			i.logger.InfoV(2, "updating %d host(s) on frontend %s: %v", len(hosts), f.Name, hosts)
+			if len(hosts) > 0 {
+				sort.Strings(hosts)
+				i.logger.InfoV(2, "updating %d host(s) on frontend %s: %v", len(hosts), f.Name, hosts)
+			}
 		} else {
 			i.logger.InfoV(2, "updating %d hosts on frontend %s", len(hostsAdd), f.Name)
 		}
@@ -473,8 +475,10 @@ func (i *instance) logChanged() {
 				backs = append(backs, back)
 			}
 		}
-		sort.Strings(backs)
-		i.logger.InfoV(2, "updating %d backend(s): %v", len(backs), backs)
+		if len(backs) > 0 {
+			sort.Strings(backs)
+			i.logger.InfoV(2, "updating %d backend(s): %v", len(backs), backs)
+		}
 	} else {
 		i.logger.InfoV(2, "updating %d backends", len(backsAdd))
 	}

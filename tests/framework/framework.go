@@ -45,11 +45,13 @@ import (
 
 	ctrlconfig "github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/launch"
+	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	"github.com/jcmoraisjr/haproxy-ingress/tests/framework/options"
 )
 
 const (
-	LocalFSPrefix = "/tmp/haproxy-ingress"
+	AnnotationPrefix = "haproxy-ingress.github.io/"
+	LocalFSPrefix    = "/tmp/haproxy-ingress"
 
 	PublishSvcName  = "default/publish"
 	PublishAddress  = "10.0.1.1"
@@ -63,6 +65,14 @@ const (
 
 var (
 	GlobalConfigMap = types.NamespacedName{Namespace: "default", Name: "ingress-controller"}
+
+	FrontLocal1Name  = "FrontLocal1"
+	FrontLocal1HTTP  = RandomPort()
+	FrontLocal1HTTPS = RandomPort()
+
+	FrontLocal2Name  = "FrontLocal2"
+	FrontLocal2HTTP  = RandomPort()
+	FrontLocal2HTTPS = RandomPort()
 )
 
 func NewFramework(ctx context.Context, t *testing.T, o ...options.Framework) *framework {
@@ -183,13 +193,14 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 	global.Namespace = "default"
 	global.Name = "ingress-controller"
 	global.Data = map[string]string{
-		"syslog-endpoint": "stdout",
-		"syslog-format":   "raw",
-		"healthz-port":    strconv.Itoa(TestPortHealthz),
-		"http-port":       strconv.Itoa(TestPortHTTP),
-		"https-port":      strconv.Itoa(TestPortHTTPS),
-		"stats-port":      strconv.Itoa(TestPortStat),
-		"max-connections": "20",
+		ingtypes.GlobalSyslogEndpoint: "stdout",
+		ingtypes.GlobalSyslogFormat:   "raw",
+		ingtypes.GlobalHTTPFrontends:  fmt.Sprintf("%s=%d/%d\n%s=%d/%d", FrontLocal1Name, FrontLocal1HTTP, FrontLocal1HTTPS, FrontLocal2Name, FrontLocal2HTTP, FrontLocal2HTTPS),
+		ingtypes.GlobalHealthzPort:    strconv.Itoa(TestPortHealthz),
+		ingtypes.GlobalHTTPPort:       strconv.Itoa(TestPortHTTP),
+		ingtypes.GlobalHTTPSPort:      strconv.Itoa(TestPortHTTPS),
+		ingtypes.GlobalStatsPort:      strconv.Itoa(TestPortStat),
+		ingtypes.GlobalMaxConnections: "20",
 	}
 	err = f.cli.Create(ctx, &global)
 	require.NoError(t, err)

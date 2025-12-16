@@ -575,12 +575,10 @@ Request forbidden by administrative rules.
 	t.Run("should coexist regular and http passthrough frontends", func(t *testing.T) {
 		t.Parallel()
 
-		portHTTP := framework.RandomPort()
-		portHTTPS := framework.RandomPort()
 		svc := f.CreateService(ctx, t, httpServerPort)
 		_, hproxy := f.CreateIngress(ctx, t, svc)
 		_, fproxy := f.CreateIngress(ctx, t, svc,
-			options.AddConfigKeyAnnotation(ingtypes.FrontHTTPPortsLocal, fmt.Sprintf("%d/%d", portHTTP, portHTTPS)),
+			options.AddConfigKeyAnnotation(ingtypes.FrontHTTPFrontend, framework.FrontLocal1Name),
 			options.AddConfigKeyAnnotation(ingtypes.FrontHTTPPassthrough, "true"),
 		)
 
@@ -594,7 +592,7 @@ Request forbidden by administrative rules.
 		assert.Equal(t, hres.EchoResponse.ReqHeaders["x-forwarded-proto"], "http")
 
 		fres := f.Request(ctx, t, http.MethodGet, fproxy, "/",
-			options.RequestPort(portHTTP),
+			options.RequestPort(framework.FrontLocal1HTTP),
 			options.CustomRequest(func(req *http.Request) {
 				req.Header.Set("X-Forwarded-Proto", "https")
 			}),
@@ -636,12 +634,10 @@ Request forbidden by administrative rules.
 			}
 			name := fmt.Sprintf("usexfp=%t reqxfp=%s", test.useXFPHeader, reqxfp)
 			t.Run(name, func(t *testing.T) {
-				t.Parallel()
-				portHTTP := framework.RandomPort()
-				portHTTPS := framework.RandomPort()
+				// t.Parallel() // cannot run in parallel, sharing the same custom frontend
 				svc := f.CreateService(ctx, t, httpServerPort)
 				_, hostname := f.CreateIngress(ctx, t, svc,
-					options.AddConfigKeyAnnotation(ingtypes.FrontHTTPPortsLocal, fmt.Sprintf("%d/%d", portHTTP, portHTTPS)),
+					options.AddConfigKeyAnnotation(ingtypes.FrontHTTPFrontend, framework.FrontLocal2Name),
 					options.AddConfigKeyAnnotation(ingtypes.FrontHTTPPassthrough, "true"),
 					options.AddConfigKeyAnnotation(ingtypes.FrontUseForwardedProto, should[test.useXFPHeader]),
 				)
@@ -650,7 +646,7 @@ Request forbidden by administrative rules.
 					expcode = http.StatusFound
 				}
 				res := f.Request(ctx, t, http.MethodGet, hostname, "/",
-					options.RequestPort(portHTTP),
+					options.RequestPort(framework.FrontLocal2HTTP),
 					options.CustomRequest(func(req *http.Request) {
 						for h, v := range reqHeaders {
 							req.Header.Set(h, v)
@@ -982,16 +978,40 @@ Request forbidden by administrative rules.
 		assert.Equal(t, "https-server2", res2https.EchoResponse.ServerName)
 	})
 
-	t.Run("should distinguish same hostname and path from distinct frontends", func(t *testing.T) {
+	t.Run("should ignore ingress if frontend id is not found", func(t *testing.T) {
 		t.Parallel()
+		svc := f.CreateService(ctx, t, httpServerPort)
+
+		// to be tested
+		ing, hostname := f.CreateIngress(ctx, t, svc)
+		// another one, valid, deployed, just to ensure the frontend is not empty so it does not get removed
+		_, _ = f.CreateIngress(ctx, t, svc)
+
+		// default frontends
+		res1 := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
+		assert.True(t, res1.EchoResponse.Parsed)
+
+		err := f.Client().Get(ctx, client.ObjectKeyFromObject(ing), ing)
+		require.NoError(t, err)
+		ing.Annotations[framework.AnnotationPrefix+ingtypes.FrontHTTPFrontend] = "doesNotExist"
+		err = f.Client().Update(ctx, ing)
+		require.NoError(t, err)
+
+		// nonexistent frontend ID
+		res2 := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusNotFound))
+		assert.False(t, res2.EchoResponse.Parsed)
+	})
+
+	t.Run("should distinguish same hostname and path from distinct frontends", func(t *testing.T) {
+		// t.Parallel() // cannot run in parallel, sharing the same custom frontends
 
 		hostname := framework.RandomHostName()
 		svc := f.CreateService(ctx, t, httpServerPort)
-		ing := func(httpport, httpsport int32, location string) {
+		ing := func(frontendID, location string) {
 			_, _ = f.CreateIngress(ctx, t, svc,
 				options.DefaultTLS(),
 				options.CustomHostName(hostname),
-				options.AddConfigKeyAnnotation(ingtypes.FrontHTTPPortsLocal, fmt.Sprintf("%d/%d", httpport, httpsport)),
+				options.AddConfigKeyAnnotation(ingtypes.FrontHTTPFrontend, frontendID),
 				options.AddConfigKeyAnnotation(ingtypes.BackSSLRedirect, "false"),
 				options.AddConfigKeyAnnotation(ingtypes.BackRewriteTarget, location),
 			)
@@ -1012,18 +1032,13 @@ Request forbidden by administrative rules.
 			assert.Equal(t, location, res.EchoResponse.Path)
 		}
 
-		http1 := framework.RandomPort()
-		https1 := framework.RandomPort()
-		http2 := framework.RandomPort()
-		https2 := framework.RandomPort()
+		ing(framework.FrontLocal1Name, "/api1")
+		ing(framework.FrontLocal2Name, "/api2")
 
-		ing(http1, https1, "/api1")
-		ing(http2, https2, "/api2")
-
-		req(http1, false, "/api1/")
-		req(https1, true, "/api1/")
-		req(http2, false, "/api2/")
-		req(https2, true, "/api2/")
+		req(framework.FrontLocal1HTTP, false, "/api1/")
+		req(framework.FrontLocal1HTTPS, true, "/api1/")
+		req(framework.FrontLocal2HTTP, false, "/api2/")
+		req(framework.FrontLocal2HTTPS, true, "/api2/")
 	})
 
 	t.Run("should handle empty frontends", func(t *testing.T) {

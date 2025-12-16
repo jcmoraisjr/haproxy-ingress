@@ -238,7 +238,7 @@ func (c *updater) UpdateTCPHostConfig(tcpPort *hatypes.TCPServicePort, tcpHost *
 
 func (c *updater) UpdateFrontConfig(front *hatypes.Frontend, mapper *Mapper, localPorts bool) {
 	// NOTE - FrontConfig is updated without cleanup, so all the methods should be idempotent.
-	// NOTE - Any frontend scoped key should be configured only if `http-ports-local` is also configured - d.get() ensures this.
+	// NOTE - Any frontend scoped key should be configured only if `http-frontend` is also configured - d.get() ensures this.
 	d := &frontData{
 		front:      front,
 		localPorts: localPorts,

@@ -251,7 +251,7 @@ Configuration keys from this scope are applied per HAProxy frontend, so it is al
 
 Frontend scoped keys can be declared in global or IngressClass related ConfigMaps as default values, or in any Ingress resource for a more granular configuration. They can conflict since they can be configured via Ingress resource, see [scope](#scope).
 
-When frontend scoped keys are used as an annotation, they should always be configured along with [`http-ports-local`](#bind-port) to define the frontends that should receive the configuration. Frontends from the globally configured HTTP(S) ports cannot be reconfigured via ingress annotation.
+When frontend scoped keys are used as an annotation, they should always be configured along with [`http-frontend`](#http-frontends) to define the frontends that should receive the configuration. The globally configured default frontends, ports 80 and 443 by default, cannot be reconfigured via ingress annotations from the Frontend scope.
 
 ### Host
 
@@ -294,6 +294,7 @@ The table below describes all supported configuration keys.
 | [`agent-check-interval`](#agent-check)               | time with suffix                        | Backend  |                                  |
 | [`agent-check-port`](#agent-check)                   | backend agent listen port               | Backend  |                                  |
 | [`agent-check-send`](#agent-check)                   | string to send upon agent connection    | Backend  |                                  |
+| [`allow-local-bind`](#bind)                          | [true\|false]                           | Global   | `false`                          |
 | [`allowlist-source-range`](#allowlist)               | Comma-separated IPs or CIDRs            | Path     |                                  |
 | [`allowlist-source-header`](#allowlist)              | Header name that will be used as a src  | Path     |                                  |
 | [`app-root`](#app-root)                              | /url                                    | Host     |                                  |
@@ -391,13 +392,14 @@ The table below describes all supported configuration keys.
 | [`hsts-include-subdomains`](#hsts)                   | [true\|false]                           | Path     | `false`                          |
 | [`hsts-max-age`](#hsts)                              | number of seconds                       | Path     | `15768000`                       |
 | [`hsts-preload`](#hsts)                              | [true\|false]                           | Path     | `false`                          |
+| [`http-frontend`](#http-frontends)                   | frontend ID                             | Frontend |                                  |
+| [`http-frontends`](#http-frontends)                  | frontend ID declarations                | Global   |                                  |
 | [`http-header-match`](#http-match)                   | header name and value, exact match      | Path     |                                  |
 | [`http-header-match-regex`](#http-match)             | header name and value, regex match      | Path     |                                  |
 | [`http-log-format`](#log-format)                     | http log format                         | Global   | HAProxy default log format       |
 | [`http-passthrough`](#http-passthrough)              | [true\|false]                           | Frontend | `false`                          |
 | [`http-passthrough-port`](#http-passthrough)         | port number                             | Global   |                                  |
 | [`http-port`](#bind-port)                            | port number                             | Global   | `80`                             |
-| [`http-ports-local`](#bind-port)                     | http(s) port numbers                    | Frontend |                                  |
 | [`http-response-<code>`](#http-response)             | response output                         | vary     |                                  |
 | [`http-response-prometheus-root`](#http-response)    | response output                         | Global   |                                  |
 | [`https-log-format`](#log-format)                    | https(tcp) log format\|`default`        | Global   | do not log                       |
@@ -995,6 +997,7 @@ See also:
 
 | Configuration key         | Scope      | Default | Since |
 |---------------------------|------------|---------|-------|
+| `allow-local-bind`        | `Global`   | `False` | v0.17 |
 | `bind-http`               | `Frontend` |         | v0.8  |
 | `bind-http-passthrough`   | `Frontend` |         | v0.17 |
 | `bind-https`              | `Frontend` |         | v0.8  |
@@ -1009,7 +1012,11 @@ Any HAProxy supported option can be used, this will be copied verbatim to the
 bind keyword. See HAProxy
 [bind keyword doc](#https://docs.haproxy.org/2.8/configuration.html#4-bind).
 
-On v0.17 these configuration keys changed from `Global` to `Frontend` scope, which means they can be used now as Ingress annotations. If used as annotation, they need to be used along with [`http-ports-local`](#bind-port) in order to not overwrite the global configuration.
+On v0.17 these configuration keys changed from `Global` to `Frontend` scope, which means they can be used now as Ingress annotations, provided that the ingress resource references a custom frontend. See [HTTP Frontends](#http-frontends) on how to reference a custom frontend using annotation. Listening bind keys need also `allow-local-bind` as `True` in order to allow configuration from ingress annotations. Note that allowing listening bind via annotation can lead to overlap if the user configures, in the ingress resource level, the same listening port used by another frontend.
+
+{{< alert title="Warning" color="warning" >}}
+`allow-local-bind` allows to customize the bind declaration using ingress annotations. Note that HAProxy Ingress applies the bind configuration verbatim, without validating if it conflicts with other frontends. If this configuration is allowed, an user having write access to ingress resources can create a listening bind configuration that conflicts with the global ones.
+{{< /alert >}}
 
 Configuration examples:
 
@@ -1022,7 +1029,7 @@ Since v0.17, `bind-http-passthrough` and `bind-http` cannot share neither the sa
 {{< /alert >}}
 
 {{< alert title="Warning" color="warning" >}}
-Special care should be taken on port number overlap on global, and annotation based configuration if allowed. Neither haproxy itself nor haproxy-ingress will warn if the same port number is used on more than one configuration key. Moreover, although it is possible to configure a binding address completely unrelated with the configured `http-port`, `https-port` or `http-ports-local`, the suggestion is that configurations match somehow.
+Special care should be taken on port number overlap on global, and annotation based configuration if allowed. Neither haproxy itself nor HAProxy Ingress will warn if the same port number is used on more than one configuration key. Moreover, although it is possible to configure a binding address completely unrelated with the configured `http-port`, `https-port` or `http-frontends`, the suggestion is that configurations match somehow.
 {{< /alert >}}
 
 See also:
@@ -1030,6 +1037,7 @@ See also:
 * https://docs.haproxy.org/2.8/configuration.html#4-bind
 * [Bind IP addr](#bind-ip-addr)
 * [Bind port](#bind-port)
+* [HTTP Frontends](#http-frontends) configuration keys
 
 ---
 
@@ -1053,7 +1061,7 @@ binds on all IPv4 address.
 * `bind-ip-addr-prometheus`: IP address of the haproxy's internal Prometheus exporter.
 * `bind-ip-addr-stats`: IP address of the statistics page. See also [`stats-port`](#stats).
 
-On v0.17 `bind-ip-addr-http` changed from `Global` to `Frontend` scope, which means it can be used now as Ingress annotation. If used as annotation, it needs to be used along with [`http-ports-local`](#bind-port) in order to not overwrite the global configuration.
+On v0.17 `bind-ip-addr-http` changed from `Global` to `Frontend` scope, which means it can be used now as Ingress annotation, provided that the ingress resource references a custom frontend. See [HTTP Frontends](#http-frontends) on how to reference a custom frontend using annotation.
 
 See also:
 
@@ -1070,7 +1078,6 @@ See also:
 | `create-default-frontends` | `Global`   | `False` | v0.17 |
 | `healthz-port`             | `Global`   | `10253` |       |
 | `http-port`                | `Global`   | `80`    |       |
-| `http-ports-local`         | `Frontend` |         | v0.17 |
 | `https-port`               | `Global`   | `443`   |       |
 | `prometheus-port`          | `Global`   |         | v0.10 |
 
@@ -1079,7 +1086,6 @@ Binding port configuration.
 * `create-default-frontends`: Define if the default HTTP and HTTPS frontends should always be created, even if neither ingress or gateway resources are using them. This option brings v0.16 behavior if configured as `True`, always creating the default frontends, despite of having assigned resources or not.
 * `http-port`: Define the port number of unencrypted HTTP connections.
 * `https-port`: Define the port number of encrypted HTTPS connections.
-* `http-ports-local`: Define alternative HTTP and HTTPS ports to configure an Ingress resource, overriding the default `http-port` and `https-port` from the global configuration. Both HTTP and HTTPS ports should be used, separate them using a slash, e.g. `"8080/8443"`. This is a mandatory option on every Ingress resource that configures a `Frontend` scoped key.
 * `healthz-port`: Define the port number HAProxy should listen to in order to answer for health checking requests. Use `/healthz` as the request path.
 * `prometheus-port`: Define the port number of the haproxy's internal Prometheus exporter. Defaults to not create the listener. A listener without being scraped does not use system resources, except for the listening port. The internal exporter supports scope filter as a query string, eg `/metrics?scope=frontend&scope=backend` will only export frontends and backends. See the full description in the [HAProxy's Prometheus exporter doc](https://git.haproxy.org/?p=haproxy-2.0.git;a=blob;f=contrib/prometheus-exporter/README;hb=HEAD).
 
@@ -1097,7 +1103,8 @@ choosing between one or the other.
 
 See also:
 
-* [Bind](#bind) configuration key
+* [Bind](#bind) configuration keys
+* [HTTP frontend](#http-frontends) configuration keys
 * https://docs.haproxy.org/2.8/configuration.html#4-monitor-uri (`healthz-port`)
 * https://git.haproxy.org/?p=haproxy-2.0.git;a=blob;f=contrib/prometheus-exporter/README;hb=HEAD (`prometheus-port`)
 
@@ -1750,6 +1757,85 @@ See also:
 
 ---
 
+### HTTP Frontends
+
+| Configuration key | Scope      | Default | Since |
+|-------------------|------------|---------|-------|
+| `http-frontend`   | `Frontend` |         | v0.17 |
+| `http-frontends`  | `Global`   |         | v0.17 |
+
+Create new HTTP and HTTPS frontends. A new pair of HTTP and HTTPS frontends adds the ability to configure hostnames and paths that don't conflict each other, under the same controller and ingress class.
+
+* `http-frontends`: declare a list of frontend IDs to be used on ingress resources.
+* `http-frontend`: ID of a frontend declared via `http-frontends`.
+
+**Frontend declaration**
+
+Declare frontends via `http-frontends` key. They are immediately available once declared, despite of having ingress or gateway resources connected to them. Missing URIs are configured with the default 404 page. Declare as many HTTP and HTTPS frontend pairs as desired, one per line, provided that their IDs don't repeat and their port numbers don't conflict.
+
+* Each HTTP and HTTPS pair has the following syntax, without any space: `<ID>=<http-port>/<https-port>`.
+* ID is case-sensitive, should have up to 20 letters or numbers, and should start with a letter.
+* Separate two or more frontend declarations with line breaks.
+* None of the port declarations can match with any other, including global declared ones like default HTTP/HTTPS, Healthz or Prometheus port.
+* Failures on the frontend declaration syntax will lead to an error to find it from ingress resources.
+
+The example below declares two pairs of HTTP/HTTPS frontends named `Front7` and `Front8`, having respectively `7070` and `8080` as their HTTP ports, and `7443` and `8443` as the HTTPS ones:
+
+```yaml
+apiVersion: v1
+data:
+  http-frontends: |
+    Front7=7070/7443
+    Front8=8080/8443
+  ...
+kind: ConfigMap
+metadata:
+  name: haproxy-ingress
+  namespace: ingress-controller
+```
+
+**Frontend usage**
+
+Ingress resources can reference a frontend pair using `http-frontend` key. If missing, the default HTTP and HTTPS will be used, and if pointing to a missing or invalid ID, the whole ingress resource will be ignored.
+
+{{< alert "Note" >}}
+Ingress resources that don't declare a frontend ID will use the default HTTP and HTTPS ports for the frontend related configurations, like hostnames and paths, frontend scoped keys, etc. This is the backward compatible behavior.
+
+However, once declared, the frontend ID should match a valid one. The whole ingress resource will be removed from the configuration if there isn't a frontend ID match. This behavior prevents unintended changes on the default frontends if a frontend ID is removed or misconfigured.
+{{< /alert >}}
+
+See below a configuration example:
+
+Global ConfigMap:
+
+```yaml
+apiVersion: v1
+data:
+  http-frontends: "Front8=8080/8443"
+  ...
+kind: ConfigMap
+metadata:
+  name: haproxy-ingress
+  namespace: ingress-controller
+```
+
+Ingress resource adding its spec and frontend related annotations to `Front8` frontends pair:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    haproxy-ingress.github.io/http-frontend: "Front8"
+    ...
+  name: app
+  namespace: default
+spec:
+  ...
+```
+
+---
+
 ### HTTP Match
 
 | Configuration key               | Scope    | Default | Since |
@@ -1817,7 +1903,7 @@ Configures HAProxy to pass plain HTTP requests straight to the backends, without
 
 HAProxy Ingress configures HTTP and HTTPS frontends with a few differences, like handling `X-Forwarded-Proto` header, redirect from HTTP if `ssl-redirect` is `true`, add HSTS headers (when configured) only on HTTPS responses, and drop incoming `X-SSL-*` headers for security reasons. Configuring HTTP passthrough makes HAProxy Ingress to have HTTPS behavior over HTTP connection, skipping regular HTTP checks, which allows e.g. a fronting load balancer to SSL offload the TLS requests, talking plain HTTP with HAProxy.
 
-Since v0.17, `http-passthrough` and `use-forwarded-proto` are `Frontend` scoped, which means they can be used as Ingress annotations. See [authorize frontends](#authorize-frontends) on how to authorize this configuration via annotation.
+Since v0.17, `http-passthrough` and `use-forwarded-proto` are `Frontend` scoped, which means they can be used as Ingress annotations, provided that the ingress resource references a custom frontend. See [HTTP Frontends](#http-frontends) on how to reference a custom frontend using annotation.
 
 {{< alert title="Note" >}}
 HAProxy Ingress v0.16 and older uses a mix behavior in the case `http-port` and `http-passthrough-port` share the same port number. Since v0.17 this mixed mode is not supported anymore, so a single frontend can be either a regular HTTP or a passthrough one.
@@ -1831,6 +1917,7 @@ See also:
 
 * [Bind](#bind)
 * [Bind port](#bind-port)
+* [HTTP Frontends](#http-frontends)
 
 ---
 
@@ -2377,10 +2464,11 @@ Configures PROXY protocol in frontends and backends.
 * `use-proxy-protocol`: Define if HTTP services are behind another proxy that uses the PROXY protocol. If `true`, HTTP ports will expect the PROXY protocol, version 1 or 2. The stats endpoint (defaults to port `1936`) has its own [`stats-proxy-protocol`](#stats) configuration key.
 * `tcp-service-proxy-protocol`: Define if the TCP service is behind another proxy that uses the PROXY protocol. Configures as `"true"` if the proxy should expect requests using the PROXY protocol, version 1 or 2. The default value is `"false"`.
 
-On v0.17 `use-proxy-protocol` changed from `Global` to `Frontend` scope, which means it can be used now as Ingress annotation. If used as annotation, it needs to be used along with [`http-ports-local`](#bind-port) in order to not overwrite the global configuration.
+On v0.17 `use-proxy-protocol` changed from `Global` to `Frontend` scope, which means it can be used now as Ingress annotation, provided that the ingress resource references a custom frontend. See [HTTP Frontends](#http-frontends) on how to reference a custom frontend using annotation.
 
 See also:
 
+* [HTTP Frontends](#http-frontends) configuration keys
 * https://www.haproxy.org/download/2.0/doc/proxy-protocol.txt
 * https://docs.haproxy.org/2.8/configuration.html#5.1-accept-proxy
 * https://docs.haproxy.org/2.8/configuration.html#5.2-send-proxy
@@ -2413,7 +2501,7 @@ examples below.
 * `redirect-to-code`: Which HTTP status code should be used in the redirect to. A `302` response is used by default if not configured.
 * `no-redirect-locations`: Defines a comma-separated list of paths that should be ignored by all the redirects. Default value is `/.well-known/acme-challenge`, used by ACME protocol. Configure as an empty string to make the redirect happen on all paths, including the ACME challenge.
 
-On v0.17, both `redirect-from-code` and `redirect-to-code` changed from `Global` to `Frontend` scope, which means they can be used now as Ingress annotations. If used as annotation, they need to be used along with [`http-ports-local`](#bind-port) in order to not overwrite the global configuration.
+On v0.17, both `redirect-from-code` and `redirect-to-code` changed from `Global` to `Frontend` scope, which means they can be used now as Ingress annotations, provided that the ingress resource references a custom frontend. See [HTTP Frontends](#http-frontends) on how to reference a custom frontend using annotation.
 
 **Using redirect-from**
 
@@ -2479,6 +2567,7 @@ spec:
 See also:
 
 * [`app-root`](#app-root) configuration key.
+* [HTTP Frontends](#http-frontends) configuration keys.
 
 ---
 
