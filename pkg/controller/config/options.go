@@ -15,6 +15,7 @@ func NewOptions() *Options {
 		ReloadStrategy:          "reusesocket",
 		WatchGateway:            true,
 		MasterWorker:            true,
+		ConnectionTimeout:       30 * time.Second,
 		AcmeCheckPeriod:         24 * time.Hour,
 		AcmeFailInitialDuration: 5 * time.Minute,
 		AcmeFailMaxDuration:     8 * time.Hour,
@@ -58,6 +59,7 @@ type Options struct {
 	WatchGateway             bool
 	MasterWorker             bool
 	MasterSocket             string
+	ConnectionTimeout        time.Duration
 	ConfigMap                string
 	AcmeServer               bool
 	AcmeCheckPeriod          time.Duration
@@ -208,6 +210,11 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 	fs.StringVar(&o.MasterSocket, "master-socket", o.MasterSocket, ""+
 		"Defines the master CLI unix socket of an external HAProxy running in "+
 		"master-worker mode. Defaults to use the embedded HAProxy if not declared.",
+	)
+
+	fs.DurationVar(&o.ConnectionTimeout, "connection-timeout", o.ConnectionTimeout, ""+
+		"Defines the maximum amount of time HAProxy Ingress should wait for HAProxy "+
+		"responses when connecting to its master or admin sockets.",
 	)
 
 	fs.StringVar(&o.ConfigMap, "configmap", o.ConfigMap, ""+

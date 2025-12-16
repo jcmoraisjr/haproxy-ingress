@@ -130,7 +130,9 @@ func (c *updater) buildGlobalCloseSessions(d *globalData) {
 		}
 	}
 	d.global.CloseSessionsDuration = duration
-	d.global.Timeout.Stats = timeoutCfg
+	if timeout > c.options.ConnTimeout {
+		d.global.Timeout.Stats = timeoutCfg
+	}
 }
 
 func (c *updater) buildGlobalPathTypeOrder(d *globalData) {
@@ -267,6 +269,7 @@ func (c *updater) buildGlobalTimeout(d *globalData) {
 	d.global.Timeout.ServerFin = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutServerFin))
 	d.global.Timeout.Stop = c.validateTime(d.mapper.Get(ingtypes.GlobalTimeoutStop))
 	d.global.Timeout.Tunnel = c.validateTime(d.mapper.Get(ingtypes.BackTimeoutTunnel))
+	d.global.Timeout.Stats = fmt.Sprintf("%ds", c.options.ConnTimeout.Milliseconds()/1000)
 	if timeoutStop, err := time.ParseDuration(d.global.Timeout.Stop); err == nil {
 		d.global.TimeoutStopDuration = timeoutStop
 	}
