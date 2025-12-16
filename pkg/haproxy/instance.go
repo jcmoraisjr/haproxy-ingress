@@ -52,6 +52,7 @@ type InstanceOptions struct {
 	HAProxyMapsDir    string
 	IsMasterWorker    bool
 	IsExternal        bool
+	ConnectionTimeout time.Duration
 	GracePeriod       time.Duration
 	MasterSocket      string
 	AdminSocket       string
@@ -86,7 +87,7 @@ func CreateInstance(logger types.Logger, options InstanceOptions) Instance {
 		waitProc: make(chan struct{}),
 		logger:   logger,
 		options:  &options,
-		conns:    newConnections(options.StopCtx, options.MasterSocket, options.AdminSocket),
+		conns:    newConnections(options.StopCtx, options.MasterSocket, options.AdminSocket, options.ConnectionTimeout),
 		metrics:  options.Metrics,
 		//
 		haproxyTmpl:     template.CreateConfig(),
