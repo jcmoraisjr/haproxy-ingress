@@ -9,12 +9,12 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -347,9 +347,7 @@ func TestIntegrationIngress(t *testing.T) {
 			}
 			res := f.Request(ctx, t, http.MethodGet, hostname, "/",
 				options.ExpectResponseCode(expcode),
-				options.CustomRequest(func(req *http.Request) {
-					req.Header.Set("x-token", tokenValue)
-				}),
+				options.SetHeader("x-token", tokenValue),
 			)
 			if authorized {
 				for _, key := range []string{"date", "connection", "accept-encoding", "user-agent", "x-forwarded-for", "x-forwarded-proto", "x-real-ip"} {
@@ -382,46 +380,25 @@ func TestIntegrationIngress(t *testing.T) {
 			options.AddConfigKeyAnnotation(ingtypes.BackAuthURL, fmt.Sprintf("http://127.0.0.1:%d", authzPort)),
 		)
 
-		// wait controller to synchronize ingress configuration
-		_ = f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusUnauthorized))
+		// failure without authentication
+		_ = f.Websocket(ctx, t, hostname, "/echo", options.ExpectError("websocket: bad handshake"))
 
-		// configure ws client, missing authz token
-		header := make(http.Header)
-		header.Set("Host", hostname)
-		_, _, err := websocket.DefaultDialer.DialContext(ctx, fmt.Sprintf("ws://127.0.0.1:%d/echo", framework.TestPortHTTP), header)
-		require.EqualError(t, err, "websocket: bad handshake")
+		// succeed after adding credentials
+		ws := f.Websocket(ctx, t, hostname, "/echo", options.SetHeader("x-token", "123"))
 
-		// configure ws client
-		header.Set("x-token", "123")
-		ws, _, err := websocket.DefaultDialer.DialContext(ctx, fmt.Sprintf("ws://127.0.0.1:%d/echo", framework.TestPortHTTP), header)
-		require.NoError(t, err)
-		defer ws.Close()
-
-		// read from server
+		// read responses client received from server
 		var messages []string
 		done := make(chan struct{})
 		go func() {
-			for {
-				typ, msg, err := ws.ReadMessage()
-				if err != nil {
-					t.Logf("error reading message: %s", err.Error())
-					close(done)
-					break
-				}
-				t.Logf("client read socket / message (%d): %s", typ, msg)
-				messages = append(messages, string(msg))
-			}
+			messages = ws.ReadClientMessages(t)
+			close(done)
 		}()
 
 		// write to server
-		err = ws.WriteMessage(websocket.TextMessage, []byte("message 1"))
-		require.NoError(t, err)
-		err = ws.WriteMessage(websocket.TextMessage, []byte("message 2"))
-		require.NoError(t, err)
-		err = ws.WriteMessage(websocket.TextMessage, []byte("message 3"))
-		require.NoError(t, err)
-		err = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-		require.NoError(t, err)
+		ws.Write(t, "message 1")
+		ws.Write(t, "message 2")
+		ws.Write(t, "message 3")
+		ws.Close(t)
 
 		// wait reader to consume all messages
 		<-done
@@ -432,6 +409,81 @@ func TestIntegrationIngress(t *testing.T) {
 			"message 3",
 		}
 		assert.Equal(t, expected, messages)
+	})
+
+	t.Run("should support websocket connected after reloading", func(t *testing.T) {
+		t.Parallel()
+
+		msgChan := make(chan string)
+		defer close(msgChan)
+		var messages []string
+		go func() {
+			for msg := range msgChan {
+				messages = append(messages, msg)
+			}
+		}()
+
+		port := f.CreateHTTPServer(ctx, t, "websocket", options.WebsocketMessages(msgChan))
+		svc := f.CreateService(ctx, t, port)
+		cli := f.Client()
+
+		t.Logf("creating hostname1")
+		ing1, hostname1 := f.CreateIngress(ctx, t, svc)
+		ws1 := f.Websocket(ctx, t, hostname1, "/echo")
+
+		t.Logf("creating hostname1 and removing hostname2")
+		err = cli.Delete(ctx, ing1)
+		require.NoError(t, err)
+		ing2, hostname2 := f.CreateIngress(ctx, t, svc)
+		ws2 := f.Websocket(ctx, t, hostname2, "/echo")
+
+		// ensure there is a new instance, by checking if hostname1 is not available anymore
+		_ = f.Request(ctx, t, http.MethodGet, hostname1, "/", options.ExpectResponseCode(http.StatusNotFound))
+		_ = f.Request(ctx, t, http.MethodGet, hostname2, "/", options.ExpectResponseCode(http.StatusOK))
+
+		t.Logf("creating hostname2 and removing hostname3")
+		err = cli.Delete(ctx, ing2)
+		require.NoError(t, err)
+		_, hostname3 := f.CreateIngress(ctx, t, svc)
+		ws3 := f.Websocket(ctx, t, hostname3, "/echo")
+
+		// ensure there is another instance, by checking if both hostname1 and hostname2 are not available anymore
+		_ = f.Request(ctx, t, http.MethodGet, hostname1, "/", options.ExpectResponseCode(http.StatusNotFound))
+		_ = f.Request(ctx, t, http.MethodGet, hostname2, "/", options.ExpectResponseCode(http.StatusNotFound))
+		_ = f.Request(ctx, t, http.MethodGet, hostname3, "/", options.ExpectResponseCode(http.StatusOK))
+
+		// all the connections should be healthy after a while
+		time.Sleep(2 * time.Second)
+		t.Logf("starting first round of messages")
+		ws1.Write(t, "msg 1")
+		ws2.Write(t, "msg 2")
+		ws3.Write(t, "msg 3")
+
+		// all the connections should continue to be healthy after a few more time
+		time.Sleep(5 * time.Second)
+		t.Logf("starting second round of messages")
+		ws1.Write(t, "msg 4")
+		ws2.Write(t, "msg 5")
+		ws3.Write(t, "msg 6")
+
+		// send a close message to the channel
+		ws1.Close(t)
+		ws2.Close(t)
+		ws3.Close(t)
+
+		// server should receive all the messages from all the connections
+		expected := []string{"msg 1", "msg 2", "msg 3", "msg 4", "msg 5", "msg 6"}
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			// might be out of order
+			for _, msg := range expected {
+				assert.True(collect, slices.Contains(messages, msg), "message not found: "+msg)
+			}
+		}, 5*time.Second, time.Second)
+
+		// each client should receive their responses as well
+		assert.Equal(t, []string{"msg 1", "msg 4"}, ws1.ReadClientMessages(t))
+		assert.Equal(t, []string{"msg 2", "msg 5"}, ws2.ReadClientMessages(t))
+		assert.Equal(t, []string{"msg 3", "msg 6"}, ws3.ReadClientMessages(t))
 	})
 
 	t.Run("should override lua and host based http response", func(t *testing.T) {
@@ -475,9 +527,7 @@ A client certificate must be provided.
 			res := f.Request(ctx, t, http.MethodPost, hostname, "/",
 				options.ExpectResponseCode(http.StatusRequestEntityTooLarge),
 				options.Body("not-that-long"),
-				options.CustomRequest(func(req *http.Request) {
-					req.Header.Set("content-type", "text/plain")
-				}),
+				options.SetHeader("content-type", "text/plain"),
 			)
 			assert.False(t, res.EchoResponse.Parsed)
 			assert.Equal(t, strings.TrimSpace(body), strings.TrimSpace(res.Body))
@@ -583,9 +633,7 @@ Request forbidden by administrative rules.
 		)
 
 		hres := f.Request(ctx, t, http.MethodGet, hproxy, "/",
-			options.CustomRequest(func(req *http.Request) {
-				req.Header.Set("X-Forwarded-Proto", "https")
-			}),
+			options.SetHeader("X-Forwarded-Proto", "https"),
 			options.ExpectResponseCode(http.StatusOK),
 		)
 		assert.True(t, hres.EchoResponse.Parsed)
@@ -593,9 +641,7 @@ Request forbidden by administrative rules.
 
 		fres := f.Request(ctx, t, http.MethodGet, fproxy, "/",
 			options.RequestPort(framework.FrontLocal1HTTP),
-			options.CustomRequest(func(req *http.Request) {
-				req.Header.Set("X-Forwarded-Proto", "https")
-			}),
+			options.SetHeader("X-Forwarded-Proto", "https"),
 			options.ExpectResponseCode(http.StatusOK),
 		)
 		assert.True(t, fres.EchoResponse.Parsed)
