@@ -19,9 +19,16 @@ func ClientCACertificate(ca *x509.Certificate) Server {
 	}
 }
 
+func WebsocketMessages(ch chan<- string) Server {
+	return func(o *serverOpt) {
+		o.WSMessage = ch
+	}
+}
+
 type serverOpt struct {
-	Certs    []tls.Certificate
-	ClientCA *x509.Certificate
+	Certs     []tls.Certificate
+	ClientCA  *x509.Certificate
+	WSMessage chan<- string
 }
 
 func ParseServerOptions(opts ...Server) (opt serverOpt) {

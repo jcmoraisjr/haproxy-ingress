@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -315,6 +316,11 @@ func (*framework) Request(ctx context.Context, t *testing.T, method, host, path 
 		},
 		Transport: transport,
 	}
+	if opt.ReqHeaders != nil {
+		for k, v := range opt.ReqHeaders {
+			req.Header.Set(k, v)
+		}
+	}
 	if opt.CustomRequest != nil {
 		opt.CustomRequest(req)
 	}
@@ -334,9 +340,6 @@ func (*framework) Request(ctx context.Context, t *testing.T, method, host, path 
 	case opt.ExpectError != "":
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
 			_, err := cli.Do(req)
-			// better if matching some x509.<...>Error{} instead,
-			// but error.Is() does not render to true due to the server's
-			// x509 certificate attached to the error instance.
 			assert.ErrorContains(collect, err, opt.ExpectError)
 		}, 5*time.Second, time.Second)
 		return Response{EchoResponse: buildEchoResponse(t, "")}
@@ -377,6 +380,70 @@ func (*framework) TCPRequest(ctx context.Context, t *testing.T, tcpPort int32, d
 	n, err := conn.Read(buf)
 	require.NoError(t, err)
 	return string(buf[:n])
+}
+
+type WSConn struct {
+	*websocket.Conn
+}
+
+// ReadClientMessages read messages from the client.
+// It blocks and returns only after a Close() message.
+func (c *WSConn) ReadClientMessages(t *testing.T) (messages []string) {
+	for {
+		typ, msg, err := c.ReadMessage()
+		if err != nil {
+			t.Logf("error reading message: %s", err.Error())
+			break
+		}
+		t.Logf("client read socket / message (%d): %s", typ, msg)
+		messages = append(messages, string(msg))
+	}
+	return messages
+}
+
+func (c *WSConn) Write(t *testing.T, message string) {
+	err := c.WriteMessage(websocket.TextMessage, []byte(message))
+	assert.NoError(t, err)
+}
+
+func (c *WSConn) Close(t *testing.T) {
+	err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	assert.NoError(t, err)
+}
+
+func (*framework) Websocket(ctx context.Context, t *testing.T, host, path string, o ...options.Request) *WSConn {
+	t.Logf("websocket host=%s path=%s\n", host, path)
+	opt := options.ParseRequestOptions(o...) // partially implemented
+
+	url, err := url.Parse(fmt.Sprintf("ws://127.0.0.1:%d", TestPortHTTP))
+	require.NoError(t, err)
+	url.Path = path
+
+	header := make(http.Header)
+	header.Set("Host", host)
+	if opt.ReqHeaders != nil {
+		for k, v := range opt.ReqHeaders {
+			header.Set(k, v)
+		}
+	}
+
+	if opt.ExpectError != "" {
+		require.EventuallyWithT(t, func(collect *assert.CollectT) {
+			_, _, err := websocket.DefaultDialer.DialContext(ctx, url.String(), header)
+			assert.ErrorContains(collect, err, opt.ExpectError)
+		}, 5*time.Second, time.Second)
+		return nil
+	}
+
+	var ws *websocket.Conn
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		var err error
+		ws, _, err = websocket.DefaultDialer.DialContext(ctx, url.String(), header)
+		assert.NoError(collect, err)
+	}, 5*time.Second, time.Second)
+	t.Cleanup(func() { ws.Close() })
+
+	return &WSConn{ws}
 }
 
 func (f *framework) Client() client.WithWatch {
@@ -919,6 +986,7 @@ func (*framework) CreateAuthzServer(ctx context.Context, t *testing.T, o ...opti
 var echoHeaderRegex = regexp.MustCompile(`^echoserver: ([a-z0-9-]+) ([0-9]+) ([a-z0-9/]+)$`)
 
 func (*framework) CreateHTTPServer(ctx context.Context, t *testing.T, serverName string, o ...options.Server) int32 {
+	opt := options.ParseServerOptions(o...)
 	serverPort := RandomPort()
 
 	mux := http.NewServeMux()
@@ -951,6 +1019,9 @@ func (*framework) CreateHTTPServer(ctx context.Context, t *testing.T, serverName
 				break
 			}
 			t.Logf("ws message (%d): %s\n", typ, msg)
+			if opt.WSMessage != nil {
+				opt.WSMessage <- string(msg)
+			}
 		}
 	})
 	startHTTPServer(t, mux, serverPort, o...)

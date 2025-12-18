@@ -16,6 +16,15 @@ func ExpectError(msg string) Request {
 	}
 }
 
+func SetHeader(key, value string) Request {
+	return func(o *requestOpt) {
+		if o.ReqHeaders == nil {
+			o.ReqHeaders = make(map[string]string)
+		}
+		o.ReqHeaders[key] = value
+	}
+}
+
 func Body(body string) Request {
 	return func(o *requestOpt) {
 		o.Body = body
@@ -76,6 +85,7 @@ type CustomRequestCallback func(req *http.Request)
 type requestOpt struct {
 	ExpectResponseCode int
 	ExpectError        string
+	ReqHeaders         map[string]string
 	Body               string
 	TLS                bool
 	TLSSkipVerify      bool
