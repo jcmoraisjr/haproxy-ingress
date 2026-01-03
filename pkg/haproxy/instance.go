@@ -661,13 +661,13 @@ func (i *instance) reloadEmbeddedMasterWorker() error {
 		if err := i.waitMaster(); err != nil {
 			return err
 		}
-		return i.waitWorker(-1) // very first check, current reload count is 0, so "previous" is "-1"
+		return i.waitWorker(socket.Proc{Reloads: -1}) // very first check, current reload count is 0, so "previous" is "-1"
 	}
-	prevReloads, err := i.reloadWorker()
+	prevProc, err := i.reloadWorker()
 	if err != nil {
 		return err
 	}
-	return i.waitWorker(prevReloads)
+	return i.waitWorker(prevProc)
 }
 
 func (i *instance) startHAProxySync() {
@@ -715,11 +715,11 @@ func (i *instance) reloadExternal() error {
 			return err
 		}
 	}
-	prevReloads, err := i.reloadWorker()
+	prevProc, err := i.reloadWorker()
 	if err != nil {
 		return err
 	}
-	return i.waitWorker(prevReloads)
+	return i.waitWorker(prevProc)
 }
 
 func (i *instance) waitMaster() error {
@@ -746,7 +746,7 @@ func (i *instance) waitMaster() error {
 	}
 }
 
-func (i *instance) reloadWorker() (int, error) {
+func (i *instance) reloadWorker() (socket.Proc, error) {
 	if i.config.Global().LoadServerState {
 		if err := i.persistServersState(); err != nil {
 			i.logger.Warn("failed to persist servers state before worker reload: %w", err)
@@ -754,20 +754,20 @@ func (i *instance) reloadWorker() (int, error) {
 	}
 	procs, err := socket.HAProxyProcs(i.conns.Master())
 	if err != nil {
-		return 0, fmt.Errorf("error reading haproxy procs: %w", err)
+		return socket.Proc{}, fmt.Errorf("error reading haproxy procs: %w", err)
 	}
 	if _, err := i.conns.Master().Send(nil, "reload"); err != nil {
-		return 0, fmt.Errorf("error sending reload to master socket: %w", err)
+		return socket.Proc{}, fmt.Errorf("error sending reload to master socket: %w", err)
 	}
-	return procs.Master.Reloads, nil
+	return procs.Master, nil
 }
 
-func (i *instance) waitWorker(prevReloads int) error {
+func (i *instance) waitWorker(prevProc socket.Proc) error {
 	out, err := socket.HAProxyProcs(i.conns.Master())
-	for err == nil && out.Master.Reloads <= prevReloads {
+	for err == nil && out.Master.PID == prevProc.PID && out.Master.Reloads <= prevProc.Reloads {
 		// continues to wait until we can see `reloads` greater than the previous one.
 		time.Sleep(time.Second)
-		i.logger.Info("reconnecting to master socket. current-reloads=%d prev-reloads=%d", out.Master.Reloads, prevReloads)
+		i.logger.Info("reconnecting master socket. pid=%d current-reloads=%d prev-reloads=%d", out.Master.PID, out.Master.Reloads, prevProc.Reloads)
 		out, err = socket.HAProxyProcs(i.conns.Master())
 	}
 	if err != nil {
