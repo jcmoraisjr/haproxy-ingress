@@ -2,7 +2,7 @@ module github.com/jcmoraisjr/haproxy-ingress
 
 go 1.24.0
 
-toolchain go1.24.7
+toolchain go1.24.11
 
 require (
 	dario.cat/mergo v1.0.2
