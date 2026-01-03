@@ -17,6 +17,8 @@ limitations under the License.
 package types
 
 import (
+	"time"
+
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )
 
@@ -31,6 +33,7 @@ type ConverterOptions struct {
 	MasterSocket     string
 	AdminSocket      string
 	AcmeSocket       string
+	ConnTimeout      time.Duration
 	DefaultConfig    func() map[string]string
 	DefaultBackend   string
 	DefaultCrtSecret string

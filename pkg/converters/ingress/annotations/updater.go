@@ -172,7 +172,6 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	c.buildGlobalAcme(d)
 	c.buildGlobalAuthProxy(d)
 	c.buildGlobalBind(d)
-	c.buildGlobalCloseSessions(d)
 	c.buildGlobalCustomConfig(d)
 	c.buildGlobalCustomResponses(d)
 	c.buildGlobalDNS(d)
@@ -187,6 +186,8 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	c.buildGlobalStats(d)
 	c.buildGlobalSyslog(d)
 	c.buildGlobalTimeout(d)
+
+	c.buildGlobalCloseSessions(d) // last one, it conditionally overrides timeout config
 }
 
 func (c *updater) UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *Mapper) {
