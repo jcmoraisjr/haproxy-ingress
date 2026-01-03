@@ -28,7 +28,7 @@ RUN GIT_TAG=${GIT_TAG:-latest}\
     -ldflags "-s -w -X ${VERSION_PKG}.RELEASE=${GIT_TAG} -X ${VERSION_PKG}.COMMIT=${GIT_COMMIT} -X ${VERSION_PKG}.REPO=${GIT_REPO}"\
     -o haproxy-ingress pkg/main.go
 
-FROM haproxy:2.8.16-alpine
+FROM haproxy:2.8.18-alpine
 
 USER root
 
