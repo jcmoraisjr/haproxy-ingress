@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.13!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.14.11](#v01411)
+  * [Reference](#reference-r11)
+  * [Release notes](#release-notes-r11)
+  * [Fixes and improvements](#fixes-and-improvements-r11)
 * [v0.14.10](#v01410)
   * [Reference](#reference-r10)
   * [Release notes](#release-notes-r10)
@@ -120,6 +124,46 @@ Breaking backward compatibility from v0.13:
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
 * wolf-cosmose ([wolf-cosmose](https://github.com/wolf-cosmose))
+
+# v0.14.11
+
+## Reference (r11)
+
+* Release date: `2026-01-04`
+* Helm chart: `--version 0.14.11`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.14.11`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.14.11`
+* Embedded HAProxy version: `2.4.30`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.14.11`
+
+## Release notes (r11)
+
+This release fixes some issues found on v0.14 branch:
+
+- Nirajan found an endless reconciliation loop, which happens due to a hardcoded timeout of `5s` when using haproxy v2.7+ in master-worker or external mode. The `reload` api command is synchronous since this version, and reloads taking more than 5 seconds were being recognized as a failure for HAProxy Ingress, although it succeeds in the haproxy side.
+- Hasnain identified that if the embedded haproxy process in master-worker mode is killed during a reload command, HAProxy Ingress fails to recognize the reload count of the new instance, leading to an endless failing loop.
+
+Last but not least stdlib and a few controller dependencies were updated in order to fix some known CVEs.
+
+Dependencies:
+
+- go from 1.23.12 to 1.24.11
+
+## Fixes and improvements (r11)
+
+Fixes and improvements since `v0.14.10`:
+
+* Add connection timeout command-line option [#1348](https://github.com/jcmoraisjr/haproxy-ingress/pull/1348) [doc](https://haproxy-ingress.github.io/v0.14/docs/configuration/command-line/#timeout) (jcmoraisjr)
+  * Command-line option:
+    * `--connection-timeout`
+* check if process is the same waiting for reload [#1355](https://github.com/jcmoraisjr/haproxy-ingress/pull/1355) (jcmoraisjr)
+* update go from 1.23.12 to 1.24.11 [20d49aa](https://github.com/jcmoraisjr/haproxy-ingress/commit/20d49aab6b6acd4ae72348feb28e161ac33013ae) (Joao Morais)
+* update dependencies [#1339](https://github.com/jcmoraisjr/haproxy-ingress/pull/1339) (githubMichaelYang)
+
+Chart improvements since `v0.14.10`:
+
+* Add feature to control PDB via maxUnavailable as well [#95](https://github.com/haproxy-ingress/charts/pull/95) (PerGon)
+* Toggle controller service [#99](https://github.com/haproxy-ingress/charts/pull/99) (kozhukalov)
 
 # v0.14.10
 
