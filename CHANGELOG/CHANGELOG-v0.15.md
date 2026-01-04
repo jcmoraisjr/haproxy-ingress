@@ -6,6 +6,10 @@
   * [Upgrading with embedded Acme](#upgrading-with-embedded-acme)
   * [Upgrading with custom repositories](#upgrading-with-custom-repositories)
 * [Contributors](#contributors)
+* [v0.15.1](#v0151)
+  * [Reference](#reference-r1)
+  * [Release notes](#release-notes-r1)
+  * [Fixes and improvements](#fixes-and-improvements-r1)
 * [v0.15.0](#v0150)
   * [Reference](#reference-r0)
   * [Release notes](#release-notes-r0)
@@ -136,6 +140,51 @@ See the full syntax and default values in the [README.md](https://github.com/hap
 * RT ([hedgieinsocks](https://github.com/hedgieinsocks))
 * tomklapka ([tomklapka](https://github.com/tomklapka))
 * Tomasz Zurkowski ([doriath](https://github.com/doriath))
+
+# v0.15.1
+
+## Reference (r1)
+
+* Release date: `2026-01-04`
+* Helm chart: `--version 0.15.1`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.15.1`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.15.1`
+* Embedded HAProxy version: `2.6.23`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.15.1`
+
+## Release notes (r1)
+
+This release fixes some issues found on v0.15 branch:
+
+- Nirajan found an endless reconciliation loop, which happens due to a hardcoded timeout of `5s` when using haproxy v2.7+ in master-worker or external mode. The `reload` api command is synchronous since this version, and reloads taking more than 5 seconds were being recognized as a failure for HAProxy Ingress, although it succeeds in the haproxy side.
+- Hasnain identified that if the embedded haproxy process in master-worker mode is killed during a reload command, HAProxy Ingress fails to recognize the reload count of the new instance, leading to an endless failing loop.
+- Status update changed to a synchronous approach, which avoids overriding changes made on concurrent updates.
+
+Last but not least stdlib and a few controller dependencies were updated in order to fix some known CVEs.
+
+Dependencies:
+
+- go from 1.24.7 to 1.24.11
+
+## Fixes and improvements (r1)
+
+New fixes and improvements since `v0.15.0`:
+
+* fix full-sync trigger [#1331](https://github.com/jcmoraisjr/haproxy-ingress/pull/1331) (jcmoraisjr)
+* make status update synchronous [#1330](https://github.com/jcmoraisjr/haproxy-ingress/pull/1330) (jcmoraisjr)
+* fix status update during shutdown [#1335](https://github.com/jcmoraisjr/haproxy-ingress/pull/1335) (jcmoraisjr)
+* Add connection timeout command-line option [#1348](https://github.com/jcmoraisjr/haproxy-ingress/pull/1348) [doc](https://haproxy-ingress.github.io/v0.15/docs/configuration/command-line/#timeout) (jcmoraisjr)
+  * Command-line option:
+    * `--connection-timeout`
+* check if process is the same waiting for reload [#1355](https://github.com/jcmoraisjr/haproxy-ingress/pull/1355) (jcmoraisjr)
+* update dependencies [5ac6490](https://github.com/jcmoraisjr/haproxy-ingress/commit/5ac6490697d7388fef3f1545cae407cd8fe2e821) (Joao Morais)
+* update go from 1.24.7 to 1.24.11 [ee41cee](https://github.com/jcmoraisjr/haproxy-ingress/commit/ee41ceec31ec70275fb78720f759da856ae241d3) (Joao Morais)
+
+Chart improvements since `v0.15.0`:
+
+* Add feature to control PDB via maxUnavailable as well [#95](https://github.com/haproxy-ingress/charts/pull/95) (PerGon)
+* Toggle controller service [#99](https://github.com/haproxy-ingress/charts/pull/99) (kozhukalov)
+* add list and watch permission to namespace and node apis [#101](https://github.com/haproxy-ingress/charts/pull/101) (jcmoraisjr)
 
 # v0.15.0
 
