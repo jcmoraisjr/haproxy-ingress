@@ -4,6 +4,11 @@
 * [Upgrade notes - read before upgrade from v0.15!](#upgrade-notes)
   * [Deprecated command-line options](#deprecated-command-line-options)
 * [Contributors](#contributors)
+* [v0.16.0-beta.2](#v0160-beta2)
+  * [Reference](#reference-b2)
+  * [Release notes](#release-notes-b2)
+  * [Improvements](#improvements-b2)
+  * [Fixes](#fixes-b2)
 * [v0.16.0-beta.1](#v0160-beta1)
   * [Reference](#reference-b1)
   * [Release notes](#release-notes-b1)
@@ -43,7 +48,60 @@ The `--enable-endpointslices-api` command-line option was deprecated on v0.16 an
 
 * Gerald Barker ([gezb](https://github.com/gezb))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
+* Pedro Gonçalves ([PerGon](https://github.com/PerGon))
 * Till! ([till](https://github.com/till))
+* Vladimir Kozhukalov ([kozhukalov](https://github.com/kozhukalov))
+
+# v0.16.0-beta.2
+
+## Reference (b2)
+
+* Release date: `2026-01-04`
+* Helm chart: `--version 0.16.0-beta.2 --devel`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.16.0-beta.2`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.16.0-beta.2`
+* Embedded HAProxy version: `2.8.18`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.16.0-beta.2`
+
+## Release notes (b2)
+
+This is the second beta version of the v0.16 branch, which fixes some issues found since the first beta version:
+
+- Nirajan found an endless reconciliation loop, which happens due to a hardcoded timeout of `5s` when using haproxy v2.7+ in master-worker or external mode. The `reload` api command is synchronous since this version, and reloads taking more than 5 seconds were being recognized as a failure for HAProxy Ingress, although it succeeds in the haproxy side.
+- Hasnain identified that if the embedded haproxy process in master-worker mode is killed during a reload command, HAProxy Ingress fails to recognize the reload count of the new instance, leading to an endless failing loop.
+- Status update changed to a synchronous approach, which avoids overriding changes made on concurrent updates.
+
+Last but not least stdlib and a few controller dependencies were updated in order to fix some known CVEs.
+
+Changes in dependencies:
+
+- embedded haproxy from 2.8.16 to 2.8.18
+- controller-runtime from v0.22.3 to v0.22.4
+- go from 1.25.3 to 1.25.5
+
+## Improvements (b2)
+
+New features and improvements since `v0.16.0-beta.1`:
+
+* make status update synchronous [#1330](https://github.com/jcmoraisjr/haproxy-ingress/pull/1330) (jcmoraisjr)
+* Add connection timeout command-line option [#1348](https://github.com/jcmoraisjr/haproxy-ingress/pull/1348) [doc](https://haproxy-ingress.github.io/v0.15/docs/configuration/command-line/#timeout) (jcmoraisjr)
+  * Command-line option:
+    * `--connection-timeout`
+* update dependencies [be866c5](https://github.com/jcmoraisjr/haproxy-ingress/commit/be866c505d047e577813a557726356a2aa022773) (Joao Morais)
+* update go from 1.25.3 to 1.25.5 [b9f30df](https://github.com/jcmoraisjr/haproxy-ingress/commit/b9f30dfc7e30b69ed6bf5b848a46007254cb7c47) (Joao Morais)
+* update embedded haproxy from 2.8.16 to 2.8.18 [1409b7f](https://github.com/jcmoraisjr/haproxy-ingress/commit/1409b7f9658a124423cbbbdefaabba166a0ce3aa) (Joao Morais)
+
+Chart improvements since `v0.16.0-beta.1`:
+
+* Add feature to control PDB via maxUnavailable as well [#95](https://github.com/haproxy-ingress/charts/pull/95) (PerGon)
+* Toggle controller service [#99](https://github.com/haproxy-ingress/charts/pull/99) (kozhukalov)
+* add list and watch permission to namespace and node apis [#101](https://github.com/haproxy-ingress/charts/pull/101) (jcmoraisjr)
+
+## Fixes (b2)
+
+* fix full-sync trigger [#1331](https://github.com/jcmoraisjr/haproxy-ingress/pull/1331) (jcmoraisjr)
+* fix status update during shutdown [#1335](https://github.com/jcmoraisjr/haproxy-ingress/pull/1335) (jcmoraisjr)
+* check if process is the same waiting for reload [#1355](https://github.com/jcmoraisjr/haproxy-ingress/pull/1355) (jcmoraisjr)
 
 # v0.16.0-beta.1
 
