@@ -24,6 +24,7 @@ import (
 
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
+	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
@@ -61,19 +62,6 @@ func NewFrontendPorts(logger types.Logger, haproxy haproxy.Config, globalMapper 
 	}
 	if httpPassPort == 0 {
 		httpPassPort = globalMapper.Get(ingtypes.GlobalHTTPStoHTTPPort).Int32()
-	}
-
-	createFrontends := globalMapper.Get(ingtypes.GlobalCreateDefaultFrontends).Bool()
-	if createFrontends {
-		// backward compatible behavior, in case user asks for it
-		_ = haproxy.Frontends().AcquireFrontend(httpPort, false)
-		_ = haproxy.Frontends().AcquireFrontend(httpsPort, true)
-		if httpPassPort > 0 && httpPassPort != httpPort {
-			_ = haproxy.Frontends().AcquireFrontend(httpPassPort, false)
-		}
-	} else {
-		// ensures empty frontends are removed on partial parsing
-		haproxy.Frontends().RemoveEmptyFrontends()
 	}
 
 	// denied ports
@@ -124,11 +112,6 @@ func NewFrontendPorts(logger types.Logger, haproxy haproxy.Config, globalMapper 
 		}
 		frontends[frontID] = httpPorts{http: frontHTTP, https: frontHTTPS}
 		denyPorts = append(denyPorts, frontHTTP, frontHTTPS)
-		if createFrontends {
-			// custom frontends are always available, despite of being empty
-			_ = haproxy.Frontends().AcquireFrontend(frontHTTP, false)
-			_ = haproxy.Frontends().AcquireFrontend(frontHTTPS, true)
-		}
 	}
 
 	return &FrontendPorts{
@@ -176,6 +159,18 @@ func (fp *FrontendPorts) AcquirePorts(mapper *Mapper) (FrontendLocalPorts, error
 		HTTPPassthrough: fp.httpPassPort,
 		LocalPorts:      true,
 	}, nil
+}
+
+func (fp *FrontendPorts) EnsureEmptyFrontends(frontends *hatypes.Frontends) {
+	_ = frontends.AcquireFrontend(fp.httpPort, false)
+	_ = frontends.AcquireFrontend(fp.httpsPort, true)
+	if fp.httpPassPort > 0 && fp.httpPassPort != fp.httpPort {
+		_ = frontends.AcquireFrontend(fp.httpPassPort, false)
+	}
+	for _, f := range fp.frontends {
+		_ = frontends.AcquireFrontend(f.http, false)
+		_ = frontends.AcquireFrontend(f.https, true)
+	}
 }
 
 func (c *frontData) get(key string) *ConfigValue {

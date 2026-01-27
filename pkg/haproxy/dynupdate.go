@@ -21,7 +21,6 @@ import (
 	"os"
 	"reflect"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -178,12 +177,11 @@ func (d *dynUpdater) checkHostPair(pair *hostPair) bool {
 	updated := true
 
 	// check equality of everything but server certificate
-	// TODO move this check to the host type
 	oldHostCopy := *oldHost
 	oldHostCopy.TLS.TLSCommonName = curHost.TLS.TLSCommonName
 	oldHostCopy.TLS.TLSHash = curHost.TLS.TLSHash
 	oldHostCopy.TLS.TLSNotAfter = curHost.TLS.TLSNotAfter
-	if !reflect.DeepEqual(&oldHostCopy, curHost) {
+	if !oldHostCopy.Equals(curHost) {
 		d.logger.InfoV(2, "diff outside server certificate of host '%s'", curHost.Hostname)
 		updated = false
 	}
@@ -208,18 +206,15 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 	updated := true
 
 	// check equality of everything but endpoints
-	// TODO move this check to the backend type
 	oldBackCopy := *oldBack
-	oldBackCopy.ID = curBack.ID
-	oldBackCopy.Dynamic = curBack.Dynamic
 	oldBackCopy.Endpoints = curBack.Endpoints
-	if !reflect.DeepEqual(&oldBackCopy, curBack) {
+	if !oldBackCopy.Equals(curBack) {
 		d.logger.InfoV(2, "diff outside endpoints of backend '%s'", curBack.ID)
 		updated = false
 	}
 
-	// can decrease endpoints, cannot increase
-	if len(oldBack.Endpoints) < len(curBack.Endpoints) {
+	// can decrease endpoints, cannot increase on classic dynamic scaling
+	if curBack.Dynamic.DynScaling == hatypes.DynScalingSlots && len(oldBack.Endpoints) < len(curBack.Endpoints) {
 		d.logger.InfoV(2, "added endpoints on backend '%s'", curBack.ID)
 		// cannot continue -- missing empty slots in the backend
 		return false
@@ -237,15 +232,25 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 		return updated
 	}
 
-	// DynUpdate is disabled, check if differs and quit
-	// TODO check if endpoints are the same and only the order differ
-	if !curBack.Dynamic.DynUpdate {
+	switch curBack.Dynamic.DynScaling {
+	case hatypes.DynScalingAdd:
+		updated = d.dynamicallyAddRemoveServers(pair) && updated
+	case hatypes.DynScalingSlots:
+		updated = d.dynamicallySyncSlots(pair) && updated
+	default:
+		// TODO check if endpoints are the same and only the order differ
 		if updated && !reflect.DeepEqual(oldBack.Endpoints, curBack.Endpoints) {
-			d.logger.InfoV(2, "backend '%s' changed and its dynamic-scaling is 'false'", curBack.ID)
+			d.logger.InfoV(2, "backend '%s' changed and its dynamic update is 'false'", curBack.ID)
 			return false
 		}
-		return updated
 	}
+	return updated
+}
+
+func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
+	oldBack := pair.old
+	curBack := pair.cur
+	updated := true
 
 	// map endpoints of old and new config together
 	endpoints := make(map[string]*epPair, len(oldBack.Endpoints))
@@ -312,6 +317,47 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 	return updated
 }
 
+func (d *dynUpdater) dynamicallyAddRemoveServers(pair *backendPair) bool {
+	oldBack := pair.old
+	curBack := pair.cur
+	updated := true
+
+	// group endpoints by name
+	endpoints := make(map[string]*epPair, len(curBack.Endpoints))
+	for _, endpoint := range oldBack.Endpoints {
+		endpoints[endpoint.Name] = &epPair{old: endpoint}
+	}
+	for _, endpoint := range curBack.Endpoints {
+		if eppair, found := endpoints[endpoint.Name]; !found {
+			endpoints[endpoint.Name] = &epPair{cur: endpoint}
+		} else {
+			eppair.cur = endpoint
+		}
+	}
+
+	// iterate the old and cur endpoint pairs, removing the missing and creating the new ones
+	for _, eppair := range endpoints {
+		switch {
+		case eppair.old != nil && eppair.cur != nil:
+			if d.checkEndpointPair(curBack, eppair) {
+				// either identical or update succeeded, go to the next endpoint
+				continue
+			}
+			// cannot update, trying now to delete + add
+			updated = d.execDeleteEndpoint(curBack.ID, eppair.old) &&
+				d.execAddEndpoint(curBack.ID, eppair.cur) && updated
+		case eppair.old != nil:
+			// trying to delete, and it should be put in maintenance mode
+			// in case of existing connections.
+			updated = d.execDeleteEndpoint(curBack.ID, eppair.old) && updated
+		case eppair.cur != nil:
+			updated = d.execAddEndpoint(curBack.ID, eppair.cur) && updated
+		}
+	}
+
+	return updated
+}
+
 func (d *dynUpdater) checkEndpointPair(backend *hatypes.Backend, pair *epPair) bool {
 	oldEPCopy := *pair.old
 	// SourceIP is lazily updated via FillSourceIPs() after dynupdate run
@@ -335,8 +381,8 @@ func (d *dynUpdater) checkEndpointPair(backend *hatypes.Backend, pair *epPair) b
 func (d *dynUpdater) alignSlots() {
 	backends := d.config.Backends()
 	for _, back := range backends.Items() {
-		if !back.Dynamic.DynUpdate {
-			// no need to add empty slots if won't dynamically update
+		if back.Dynamic.DynScaling != hatypes.DynScalingSlots {
+			// no need to add empty slots if won't dynamically update them
 			continue
 		}
 		minFreeSlots := back.Dynamic.MinFreeSlots
@@ -408,7 +454,7 @@ func (d *dynUpdater) execUpdateCert(hostname, filename string) bool {
 			d.logger.InfoV(2, "response from server: %s", outmsg)
 		}
 	}
-	if !cmdResponseOK("commit ssl cert", msg[1]) {
+	if !cmdResponseOK(cmdCommitCrt, msg[1]) {
 		d.logger.Warn("cannot update certificate for %s", hostname)
 		return false
 	}
@@ -417,55 +463,123 @@ func (d *dynUpdater) execUpdateCert(hostname, filename string) bool {
 }
 
 func (d *dynUpdater) execDisableEndpoint(backname string, ep *hatypes.Endpoint) bool {
-	server := fmt.Sprintf("set server %s/%s ", backname, ep.Name)
-	cmd := []string{
-		server + "state maint",
-		server + "addr 127.0.0.1 port 1023",
-		server + "weight 0",
-	}
-	msg, err := d.execCommand(d.metrics.HAProxySetServerResponseTime, cmd)
-	if err != nil {
-		d.logger.Error("error disabling endpoint %s/%s: %v", backname, ep.Name, err)
+	if !d.execDisableServer(backname, ep) {
 		return false
-	}
-	for _, m := range msg {
-		if m != "" {
-			if !cmdResponseOK("set server", m) {
-				d.logger.Warn("unrecognized response disabling endpoint %s/%s: %s", backname, ep.Name, m)
-				return false
-			}
-			d.logger.InfoV(2, "response from server: %s", m)
-		}
 	}
 	d.logger.InfoV(2, "disabled endpoint '%s' on backend/server '%s/%s'", ep.Target, backname, ep.Name)
 	return true
 }
 
 func (d *dynUpdater) execEnableEndpoint(backname string, oldEP, curEP *hatypes.Endpoint) bool {
-	state := map[bool]string{true: "ready", false: "drain"}[curEP.Weight > 0]
-	server := fmt.Sprintf("set server %s/%s ", backname, curEP.Name)
-	cmd := []string{
-		server + "addr " + curEP.IP + " port " + strconv.Itoa(curEP.Port),
-		server + "state " + state,
-		server + "weight " + strconv.Itoa(curEP.Weight),
-	}
-	msg, err := d.execCommand(d.metrics.HAProxySetServerResponseTime, cmd)
-	if err != nil {
-		d.logger.Error("error adding/updating endpoint %s/%s: %v", backname, curEP.Name, err)
+	if !d.execSetAddrServer(backname, curEP) || !d.execSetWeightServer(backname, curEP) || !d.execEnableServer(backname, curEP) {
 		return false
 	}
-	for _, m := range msg {
-		if m != "" {
-			if !cmdResponseOK("set server", m) {
-				d.logger.Warn("unrecognized response adding/updating endpoint %s/%s: %s", backname, curEP.Name, m)
-				return false
-			}
-			d.logger.InfoV(2, "response from server: %s", m)
+	event := "updated"
+	if oldEP == nil {
+		event = "added"
+	}
+	d.logger.InfoV(2, "%s endpoint '%s' weight '%d' on backend/server '%s/%s'", event, curEP.Target, curEP.Weight, backname, curEP.Name)
+	return true
+}
+
+func (d *dynUpdater) execAddEndpoint(backname string, ep *hatypes.Endpoint) bool {
+	if !d.execAddServer(backname, ep) {
+		if !d.execDeleteServer(backname, ep) {
+			return false
+		}
+		if !d.execAddServer(backname, ep) {
+			return false
 		}
 	}
-	event := map[bool]string{true: "updated", false: "added"}[oldEP != nil]
-	d.logger.InfoV(2, "%s endpoint '%s' weight '%d' state '%s' on backend/server '%s/%s'",
-		event, curEP.Target, curEP.Weight, state, backname, curEP.Name)
+	if !d.execEnableServer(backname, ep) {
+		return false
+	}
+	d.logger.InfoV(2, "registered new endpoint '%s' weight '%d' on backend/server '%s/%s'", ep.Target, ep.Weight, backname, ep.Name)
+	return true
+}
+
+func (d *dynUpdater) execDeleteEndpoint(backname string, curEP *hatypes.Endpoint) bool {
+	if !d.execDisableServer(backname, curEP) {
+		return false
+	}
+	if !d.execDeleteServer(backname, curEP) {
+		return false
+	}
+	d.logger.InfoV(2, "deleted endpoint '%s' backend/server '%s/%s'", curEP.Target, curEP.Weight, backname, curEP.Name)
+	return true
+}
+
+func (d *dynUpdater) execAddServer(backname string, ep *hatypes.Endpoint) bool {
+	cmd := fmt.Sprintf("add server %s/%s %s:%d", backname, ep.Name, ep.IP, ep.Port)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdAddServer)
+}
+
+func (d *dynUpdater) execDisableServer(backname string, ep *hatypes.Endpoint) bool {
+	cmd := fmt.Sprintf("set server %s/%s state maint", backname, ep.Name)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerState)
+}
+
+func (d *dynUpdater) execSetAddrServer(backname string, ep *hatypes.Endpoint) bool {
+	cmd := fmt.Sprintf("set server %s/%s addr %s port %d", backname, ep.Name, ep.IP, ep.Port)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerAddr)
+}
+
+func (d *dynUpdater) execSetWeightServer(backname string, ep *hatypes.Endpoint) bool {
+	cmd := fmt.Sprintf("set server %s/%s weight %d", backname, ep.Name, ep.Weight)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerWeight)
+}
+
+func (d *dynUpdater) execEnableServer(backname string, ep *hatypes.Endpoint) bool {
+	state := "ready"
+	if ep.Weight == 0 {
+		state = "drain"
+	}
+	cmd := fmt.Sprintf("set server %s/%s state %s", backname, ep.Name, state)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerState)
+}
+
+func (d *dynUpdater) execDeleteServer(backname string, ep *hatypes.Endpoint) bool {
+	cmd := fmt.Sprintf("del server %s/%s", backname, ep.Name)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdDelServer)
+}
+
+type cmdClass int
+
+const (
+	cmdAddServer cmdClass = iota
+	cmdSetServerAddr
+	cmdSetServerWeight
+	cmdSetServerState
+	cmdDelServer
+	cmdCommitCrt
+)
+
+var backendServerCmdAction = map[cmdClass]string{
+	cmdAddServer:       "adding",
+	cmdSetServerAddr:   "updating (address)",
+	cmdSetServerWeight: "updating (weight)",
+	cmdSetServerState:  "updating (state)",
+	cmdDelServer:       "deleting",
+}
+
+func (d *dynUpdater) execCommandBackendServer(observer func(duration time.Duration), backname string, ep *hatypes.Endpoint, cmd string, cmdcls cmdClass) bool {
+	action := backendServerCmdAction[cmdcls]
+	if action == "" {
+		panic(fmt.Errorf("invalid cmd ID: %d", cmdcls))
+	}
+	msgs, err := d.execCommand(observer, []string{cmd})
+	if err != nil {
+		d.logger.Error("error %s backend server %s/%s: %s", action, backname, ep.Name, err.Error())
+		return false
+	}
+	msg := msgs[0]
+	if !cmdResponseOK(cmdcls, msg) {
+		d.logger.Warn("unrecognized response %s backend server %s/%s: %s", action, backname, ep.Name, msg)
+		return false
+	}
+	if msg != "" {
+		d.logger.InfoV(2, "response from server: %s", msg)
+	}
 	return true
 }
 
@@ -475,13 +589,18 @@ func (d *dynUpdater) execCommand(observer func(duration time.Duration), cmd []st
 	return msg, err
 }
 
-func cmdResponseOK(cmd, response string) bool {
-	switch cmd {
-	case "set server":
-		return response == "" || strings.HasPrefix(response, "IP changed from ") || strings.HasPrefix(response, "no need to change ")
-	case "commit ssl cert":
+func cmdResponseOK(cmdcls cmdClass, response string) bool {
+	switch cmdcls {
+	case cmdAddServer:
+		return response == "New server registered." || response == "Already exists a server with the same name in backend."
+	case cmdSetServerAddr:
+		return response == "nothing changed" || strings.HasPrefix(response, "IP changed from ") || strings.HasPrefix(response, "no need to change ")
+	case cmdSetServerWeight, cmdSetServerState:
+		return response == ""
+	case cmdDelServer:
+		return response == "Server deleted."
+	case cmdCommitCrt:
 		return strings.Contains(response, "Success")
-	default:
-		panic(fmt.Errorf("invalid cmd: %s", cmd))
 	}
+	panic(fmt.Errorf("invalid cmd ID: %d", cmdcls))
 }

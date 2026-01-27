@@ -23,6 +23,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
 
 func TestDynUpdate(t *testing.T) {
@@ -53,7 +55,7 @@ func TestDynUpdate(t *testing.T) {
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.Dynamic.DynUpdate = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AcquireEndpoint("172.17.0.4", 8080, "")
 			},
@@ -64,9 +66,16 @@ func TestDynUpdate(t *testing.T) {
 			dynamic: true,
 			cmd: `
 set server default_app_8080/srv002 addr 172.17.0.4 port 8080
+set server default_app_8080/srv002 weight 1
 set server default_app_8080/srv002 state ready
-set server default_app_8080/srv002 weight 1`,
-			logging: `INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
+`,
+			cmdOutput: []string{
+				"IP changed from '172.17.0.3' to '172.17.0.4' by 'stats socket command'",
+			},
+			logging: `
+INFO-V(2) response from server: IP changed from '172.17.0.3' to '172.17.0.4' by 'stats socket command'
+INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/srv002'
+`,
 		},
 		"test04": {
 			doconfig1: func(c *testConfig) {
@@ -77,7 +86,7 @@ set server default_app_8080/srv002 weight 1`,
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.Dynamic.DynUpdate = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AcquireEndpoint("172.17.0.4", 8080, "")
 			},
@@ -89,9 +98,16 @@ set server default_app_8080/srv002 weight 1`,
 			dynamic: true,
 			cmd: `
 set server default_app_8080/srv002 addr 172.17.0.4 port 8080
+set server default_app_8080/srv002 weight 1
 set server default_app_8080/srv002 state ready
-set server default_app_8080/srv002 weight 1`,
-			logging: `INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
+`,
+			cmdOutput: []string{
+				"IP changed from '172.17.0.3' to '172.17.0.4' by 'stats socket command'",
+			},
+			logging: `
+INFO-V(2) response from server: IP changed from '172.17.0.3' to '172.17.0.4' by 'stats socket command'
+INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/srv002'
+`,
 		},
 		"test05": {
 			doconfig1: func(c *testConfig) {
@@ -101,7 +117,7 @@ set server default_app_8080/srv002 weight 1`,
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.Dynamic.DynUpdate = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 				b.AcquireEndpoint("172.17.0.4", 8080, "")
 			},
@@ -112,9 +128,16 @@ set server default_app_8080/srv002 weight 1`,
 			dynamic: true,
 			cmd: `
 set server default_app_8080/srv001 addr 172.17.0.4 port 8080
+set server default_app_8080/srv001 weight 1
 set server default_app_8080/srv001 state ready
-set server default_app_8080/srv001 weight 1`,
-			logging: `INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv001'`,
+`,
+			cmdOutput: []string{
+				"IP changed from '172.17.0.2' to '172.17.0.4' by 'stats socket command'",
+			},
+			logging: `
+INFO-V(2) response from server: IP changed from '172.17.0.2' to '172.17.0.4' by 'stats socket command'
+INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/srv001'
+`,
 		},
 		"test06": {
 			doconfig1: func(c *testConfig) {
@@ -123,7 +146,7 @@ set server default_app_8080/srv001 weight 1`,
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.Dynamic.DynUpdate = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
 				b.Dynamic.BlockSize = 8
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
@@ -151,7 +174,7 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.Dynamic.DynUpdate = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
 			expected: []string{
@@ -161,8 +184,6 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 			dynamic: true,
 			cmd: `
 set server default_app_8080/srv001 state maint
-set server default_app_8080/srv001 addr 127.0.0.1 port 1023
-set server default_app_8080/srv001 weight 0
 `,
 			logging: `INFO-V(2) disabled endpoint '172.17.0.2:8080' on backend/server 'default_app_8080/srv001'`,
 		},
@@ -173,7 +194,7 @@ set server default_app_8080/srv001 weight 0
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.Dynamic.DynUpdate = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
 				ep := b.AcquireEndpoint("172.17.0.2", 8080, "")
 				ep.Weight = 2
 			},
@@ -183,10 +204,15 @@ set server default_app_8080/srv001 weight 0
 			dynamic: true,
 			cmd: `
 set server default_app_8080/srv001 addr 172.17.0.2 port 8080
-set server default_app_8080/srv001 state ready
 set server default_app_8080/srv001 weight 2
+set server default_app_8080/srv001 state ready
 `,
-			logging: `INFO-V(2) updated endpoint '172.17.0.2:8080' weight '2' state 'ready' on backend/server 'default_app_8080/srv001'`,
+			cmdOutput: []string{
+				"nothing changed",
+			},
+			logging: `
+INFO-V(2) response from server: nothing changed
+INFO-V(2) updated endpoint '172.17.0.2:8080' weight '2' on backend/server 'default_app_8080/srv001'`,
 		},
 		"test09": {
 			doconfig1: func(c *testConfig) {
@@ -196,7 +222,7 @@ set server default_app_8080/srv001 weight 2
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.Dynamic.DynUpdate = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
@@ -207,10 +233,16 @@ set server default_app_8080/srv001 weight 2
 			dynamic: true,
 			cmd: `
 set server default_app_8080/srv001 addr 172.17.0.2 port 8080
-set server default_app_8080/srv001 state ready
 set server default_app_8080/srv001 weight 1
+set server default_app_8080/srv001 state ready
 `,
-			logging: `INFO-V(2) added endpoint '172.17.0.2:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv001'`,
+			cmdOutput: []string{
+				"IP changed from '127.0.0.1' to '172.17.0.3', port changed from '1023' to '8080' by 'stats socket command'",
+			},
+			logging: `
+INFO-V(2) response from server: IP changed from '127.0.0.1' to '172.17.0.3', port changed from '1023' to '8080' by 'stats socket command'
+INFO-V(2) added endpoint '172.17.0.2:8080' weight '1' on backend/server 'default_app_8080/srv001'
+`,
 		},
 		"test10": {
 			doconfig1: func(c *testConfig) {
@@ -220,7 +252,7 @@ set server default_app_8080/srv001 weight 1
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.Dynamic.DynUpdate = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
@@ -231,10 +263,16 @@ set server default_app_8080/srv001 weight 1
 			dynamic: true,
 			cmd: `
 set server default_app_8080/srv001 addr 172.17.0.3 port 8080
-set server default_app_8080/srv001 state ready
 set server default_app_8080/srv001 weight 1
+set server default_app_8080/srv001 state ready
 `,
-			logging: `INFO-V(2) added endpoint '172.17.0.3:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv001'`,
+			cmdOutput: []string{
+				"IP changed from '127.0.0.1' to '172.17.0.3' by 'stats socket command'",
+			},
+			logging: `
+INFO-V(2) response from server: IP changed from '127.0.0.1' to '172.17.0.3' by 'stats socket command'
+INFO-V(2) added endpoint '172.17.0.3:8080' weight '1' on backend/server 'default_app_8080/srv001'
+`,
 		},
 		"test11": {
 			doconfig1: func(c *testConfig) {
@@ -250,7 +288,7 @@ set server default_app_8080/srv001 weight 1
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.Dynamic.DynUpdate = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
 				b.AcquireEndpoint("172.17.0.5", 8080, "")
 				b.AcquireEndpoint("172.17.0.7", 8080, "")
 			},
@@ -267,23 +305,11 @@ set server default_app_8080/srv001 weight 1
 			dynamic: true,
 			cmd: `
 set server default_app_8080/srv001 state maint
-set server default_app_8080/srv001 addr 127.0.0.1 port 1023
-set server default_app_8080/srv001 weight 0
 set server default_app_8080/srv002 state maint
-set server default_app_8080/srv002 addr 127.0.0.1 port 1023
-set server default_app_8080/srv002 weight 0
 set server default_app_8080/srv003 state maint
-set server default_app_8080/srv003 addr 127.0.0.1 port 1023
-set server default_app_8080/srv003 weight 0
 set server default_app_8080/srv005 state maint
-set server default_app_8080/srv005 addr 127.0.0.1 port 1023
-set server default_app_8080/srv005 weight 0
 set server default_app_8080/srv007 state maint
-set server default_app_8080/srv007 addr 127.0.0.1 port 1023
-set server default_app_8080/srv007 weight 0
 set server default_app_8080/srv008 state maint
-set server default_app_8080/srv008 addr 127.0.0.1 port 1023
-set server default_app_8080/srv008 weight 0
 `,
 			logging: `
 INFO-V(2) disabled endpoint '172.17.0.2:8080' on backend/server 'default_app_8080/srv001'
@@ -302,7 +328,7 @@ INFO-V(2) disabled endpoint '172.17.0.9:8080' on backend/server 'default_app_808
 				b.AcquireEndpoint("172.17.0.4", 8080, "")
 			},
 			doconfig2: func(c *testConfig) {
-				c.config.Backends().AcquireBackend("default", "app", "8080").Dynamic.DynUpdate = true
+				c.config.Backends().AcquireBackend("default", "app", "8080").Dynamic.DynScaling = types.DynScalingSlots
 			},
 			expected: []string{
 				"srv001:127.0.0.1:1023:1",
@@ -312,14 +338,8 @@ INFO-V(2) disabled endpoint '172.17.0.9:8080' on backend/server 'default_app_808
 			dynamic: true,
 			cmd: `
 set server default_app_8080/srv001 state maint
-set server default_app_8080/srv001 addr 127.0.0.1 port 1023
-set server default_app_8080/srv001 weight 0
 set server default_app_8080/srv002 state maint
-set server default_app_8080/srv002 addr 127.0.0.1 port 1023
-set server default_app_8080/srv002 weight 0
 set server default_app_8080/srv003 state maint
-set server default_app_8080/srv003 addr 127.0.0.1 port 1023
-set server default_app_8080/srv003 weight 0
 `,
 			logging: `
 INFO-V(2) disabled endpoint '172.17.0.2:8080' on backend/server 'default_app_8080/srv001'
@@ -335,7 +355,7 @@ INFO-V(2) disabled endpoint '172.17.0.4:8080' on backend/server 'default_app_808
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.Dynamic.DynUpdate = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
 				b.Dynamic.MinFreeSlots = 4
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
@@ -364,7 +384,7 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.Dynamic.DynUpdate = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
 				b.Dynamic.MinFreeSlots = 4
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
@@ -377,10 +397,16 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 			dynamic: true,
 			cmd: `
 set server default_app_8080/srv002 addr 172.17.0.3 port 8080
-set server default_app_8080/srv002 state ready
 set server default_app_8080/srv002 weight 1
+set server default_app_8080/srv002 state ready
 `,
-			logging: `INFO-V(2) added endpoint '172.17.0.3:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
+			cmdOutput: []string{
+				"IP changed from '127.0.0.1' to '172.17.0.3' by 'stats socket command'",
+			},
+			logging: `
+INFO-V(2) response from server: IP changed from '127.0.0.1' to '172.17.0.3' by 'stats socket command'
+INFO-V(2) added endpoint '172.17.0.3:8080' weight '1' on backend/server 'default_app_8080/srv002'
+`,
 		},
 		"test15": {
 			doconfig1: func(c *testConfig) {
@@ -391,11 +417,11 @@ set server default_app_8080/srv002 weight 1
 			},
 			doconfig2: func(c *testConfig) {
 				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
-				b1.Dynamic.DynUpdate = true
+				b1.Dynamic.DynScaling = types.DynScalingSlots
 				b1.Dynamic.MinFreeSlots = 1
 				c.config.Backends().DefaultBackend = b1
 				b2 := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b2.Dynamic.DynUpdate = true
+				b2.Dynamic.DynScaling = types.DynScalingSlots
 				b2.AcquireEndpoint("172.17.0.2", 8080, "")
 				b2.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
@@ -411,7 +437,7 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 		},
 		"test16": {
 			doconfig2: func(c *testConfig) {
-				c.config.Backends().AcquireBackend("default", "app", "8080").Dynamic.DynUpdate = true
+				c.config.Backends().AcquireBackend("default", "app", "8080").Dynamic.DynScaling = types.DynScalingSlots
 			},
 			expected: []string{
 				"srv001:127.0.0.1:1023:1",
@@ -425,7 +451,7 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 		"test17": {
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.Dynamic.DynUpdate = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
 				b.Dynamic.BlockSize = 4
 			},
 			expected: []string{
@@ -448,7 +474,7 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.Dynamic.DynUpdate = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
 				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
@@ -459,9 +485,16 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 			dynamic: true,
 			cmd: `
 set server default_app_8080/srv002 addr 172.17.0.3 port 8080
+set server default_app_8080/srv002 weight 1
 set server default_app_8080/srv002 state ready
-set server default_app_8080/srv002 weight 1`,
-			logging: `INFO-V(2) added endpoint '172.17.0.3:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
+`,
+			cmdOutput: []string{
+				"IP changed from '127.0.0.1' to '172.17.0.3' by 'stats socket command'",
+			},
+			logging: `
+INFO-V(2) response from server: IP changed from '127.0.0.1' to '172.17.0.3' by 'stats socket command'
+INFO-V(2) added endpoint '172.17.0.3:8080' weight '1' on backend/server 'default_app_8080/srv002'
+`,
 		},
 		"test19": {
 			doconfig1: func(c *testConfig) {
@@ -471,7 +504,7 @@ set server default_app_8080/srv002 weight 1`,
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.Dynamic.DynUpdate = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
 				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
 				b.AcquireEndpoint("172.17.0.4", 8080, "").Label = "green"
 			},
@@ -482,11 +515,17 @@ set server default_app_8080/srv002 weight 1`,
 			dynamic: false,
 			cmd: `
 set server default_app_8080/srv002 addr 172.17.0.4 port 8080
+set server default_app_8080/srv002 weight 1
 set server default_app_8080/srv002 state ready
-set server default_app_8080/srv002 weight 1`,
+`,
+			cmdOutput: []string{
+				"IP changed from '127.0.0.1' to '172.17.0.4' by 'stats socket command'",
+			},
 			logging: `
-INFO-V(2) added endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'
-INFO-V(2) need to reload due to config changes: [backends]`,
+INFO-V(2) response from server: IP changed from '127.0.0.1' to '172.17.0.4' by 'stats socket command'
+INFO-V(2) added endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/srv002'
+INFO-V(2) need to reload due to config changes: [backends]
+`,
 		},
 		"test20": {
 			doconfig1: func(c *testConfig) {
@@ -496,7 +535,7 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.Dynamic.DynUpdate = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
 				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
 			},
 			expected: []string{
@@ -505,9 +544,7 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 			},
 			dynamic: false,
 			cmd: `
-set server default_app_8080/srv002 state maint
-set server default_app_8080/srv002 addr 127.0.0.1 port 1023
-set server default_app_8080/srv002 weight 0`,
+set server default_app_8080/srv002 state maint`,
 			logging: `
 INFO-V(2) disabled endpoint '172.17.0.3:8080' on backend/server 'default_app_8080/srv002'
 INFO-V(2) need to reload due to config changes: [backends]`,
@@ -520,7 +557,7 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.Dynamic.DynUpdate = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
 				b.AcquireEndpoint("172.17.0.2", 8080, "").Label = "green"
 				b.AcquireEndpoint("172.17.0.4", 8080, "").Label = "green"
 			},
@@ -531,16 +568,15 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 			dynamic: false,
 			cmd: `
 set server default_app_8080/srv002 addr 172.17.0.4 port 8080
+set server default_app_8080/srv002 weight 1
 set server default_app_8080/srv002 state ready
-set server default_app_8080/srv002 weight 1`,
+`,
 			cmdOutput: []string{
-				"IP changed from '172.17.0.3' to '172.17.0.4', no need to change the port by 'stats socket command'",
-				"",
-				"",
+				"IP changed from '172.17.0.3' to '172.17.0.4' by 'stats socket command'",
 			},
 			logging: `
-INFO-V(2) response from server: IP changed from '172.17.0.3' to '172.17.0.4', no need to change the port by 'stats socket command'
-INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'
+INFO-V(2) response from server: IP changed from '172.17.0.3' to '172.17.0.4' by 'stats socket command'
+INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/srv002'
 INFO-V(2) need to reload due to config changes: [backends]`,
 		},
 		"test22": {
@@ -551,7 +587,7 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.Dynamic.DynUpdate = false
+				b.Dynamic.DynScaling = types.DynScalingNone
 				b.Dynamic.MinFreeSlots = 4
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
@@ -560,19 +596,19 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 			},
 			dynamic: false,
 			logging: `
-INFO-V(2) backend 'default_app_8080' changed and its dynamic-scaling is 'false'
+INFO-V(2) backend 'default_app_8080' changed and its dynamic update is 'false'
 INFO-V(2) need to reload due to config changes: [backends]`,
 		},
 		"test23": {
 			doconfig1: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
-				b.Dynamic.DynUpdate = false
+				b.Dynamic.DynScaling = types.DynScalingNone
 				b.Dynamic.MinFreeSlots = 4
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.Dynamic.DynUpdate = false
+				b.Dynamic.DynScaling = types.DynScalingNone
 				b.Dynamic.MinFreeSlots = 4
 				b.AcquireEndpoint("172.17.0.2", 8080, "")
 			},
@@ -602,10 +638,10 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 			},
 			doconfig2: func(c *testConfig) {
 				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
-				b1.Dynamic.DynUpdate = true
+				b1.Dynamic.DynScaling = types.DynScalingSlots
 				c.config.Backends().DefaultBackend = b1
 				b2 := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b2.Dynamic.DynUpdate = true
+				b2.Dynamic.DynScaling = types.DynScalingSlots
 				// some of these are unnecessary but the attempt is to have as
 				// realistic config as possible for a more reliable test
 				b2.Cookie.Name = "serverId"
@@ -626,10 +662,16 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 			dynamic: true,
 			cmd: `
 set server default_app_8080/srv002 addr 172.17.0.4 port 8080
-set server default_app_8080/srv002 state ready
 set server default_app_8080/srv002 weight 1
+set server default_app_8080/srv002 state ready
 `,
-			logging: `INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
+			cmdOutput: []string{
+				"IP changed from '172.17.0.3' to '172.17.0.4' by 'stats socket command'",
+			},
+			logging: `
+INFO-V(2) response from server: IP changed from '172.17.0.3' to '172.17.0.4' by 'stats socket command'
+INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/srv002'
+`,
 		},
 		// test that we're unable to update when a cookie value of acquired
 		// existing endpoint doesn't match and "preserve" cookie mode is enabled
@@ -651,10 +693,10 @@ set server default_app_8080/srv002 weight 1
 			},
 			doconfig2: func(c *testConfig) {
 				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
-				b1.Dynamic.DynUpdate = true
+				b1.Dynamic.DynScaling = types.DynScalingSlots
 				c.config.Backends().DefaultBackend = b1
 				b2 := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b2.Dynamic.DynUpdate = true
+				b2.Dynamic.DynScaling = types.DynScalingSlots
 				// some of these are unnecessary but the attempt is to have as
 				// realistic config as possible for a more reliable test
 				b2.Cookie.Name = "serverId"
@@ -697,10 +739,10 @@ set server default_app_8080/srv002 weight 1
 			},
 			doconfig2: func(c *testConfig) {
 				b1 := c.config.Backends().AcquireBackend("default", "default_backend", "8080")
-				b1.Dynamic.DynUpdate = true
+				b1.Dynamic.DynScaling = types.DynScalingSlots
 				c.config.Backends().DefaultBackend = b1
 				b2 := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b2.Dynamic.DynUpdate = true
+				b2.Dynamic.DynScaling = types.DynScalingSlots
 				// some of these are unnecessary but the attempt is to have as
 				// realistic config as possible for a more reliable test
 				b2.Cookie.Name = "serverId"
@@ -721,9 +763,16 @@ set server default_app_8080/srv002 weight 1
 			dynamic: true,
 			cmd: `
 set server default_app_8080/srv002 addr 172.17.0.4 port 8080
+set server default_app_8080/srv002 weight 1
 set server default_app_8080/srv002 state ready
-set server default_app_8080/srv002 weight 1`,
-			logging: `INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv002'`,
+`,
+			cmdOutput: []string{
+				"IP changed from '172.17.0.3' to '172.17.0.4' by 'stats socket command'",
+			},
+			logging: `
+INFO-V(2) response from server: IP changed from '172.17.0.3' to '172.17.0.4' by 'stats socket command'
+INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/srv002'
+`,
 		},
 		"test27": {
 			doconfig1: func(c *testConfig) {
@@ -734,7 +783,7 @@ set server default_app_8080/srv002 weight 1`,
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				c.config.backends.DefaultBackend = b
-				b.Dynamic.DynUpdate = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
 			expected: []string{
@@ -743,9 +792,16 @@ set server default_app_8080/srv002 weight 1`,
 			dynamic: true,
 			cmd: `
 set server default_app_8080/srv001 addr 172.17.0.3 port 8080
+set server default_app_8080/srv001 weight 1
 set server default_app_8080/srv001 state ready
-set server default_app_8080/srv001 weight 1`,
-			logging: `INFO-V(2) updated endpoint '172.17.0.3:8080' weight '1' state 'ready' on backend/server 'default_app_8080/srv001'`,
+`,
+			cmdOutput: []string{
+				"IP changed from '172.17.0.2' to '172.17.0.3' by 'stats socket command'",
+			},
+			logging: `
+INFO-V(2) response from server: IP changed from '172.17.0.2' to '172.17.0.3' by 'stats socket command'
+INFO-V(2) updated endpoint '172.17.0.3:8080' weight '1' on backend/server 'default_app_8080/srv001'
+`,
 		},
 		"test28": {
 			doconfig1: func(c *testConfig) {
@@ -757,7 +813,7 @@ set server default_app_8080/srv001 weight 1`,
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
 				b.Resolver = "k8s"
-				b.Dynamic.DynUpdate = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
 				b.AcquireEndpoint("172.17.0.3", 8080, "")
 			},
 			expected: []string{
@@ -774,7 +830,7 @@ set server default_app_8080/srv001 weight 1`,
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.Dynamic.DynUpdate = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
 				b.AcquireEndpoint("172.17.0.4", 8080, "").Name = "srv004"
 				b.AcquireEndpoint("172.17.0.5", 8080, "").Name = "srv005"
 			},
@@ -785,19 +841,15 @@ set server default_app_8080/srv001 weight 1`,
 			dynamic: false,
 			cmd: `
 set server default_app_8080/srv002 addr 172.17.0.4 port 8080
-set server default_app_8080/srv002 state ready
-set server default_app_8080/srv002 weight 1
 set server default_app_8080/srv003 addr 172.17.0.5 port 8080
-set server default_app_8080/srv003 state ready
-set server default_app_8080/srv003 weight 1
 `,
 			cmdOutput: []string{
 				"No such server.",
 				"No such server.",
 			},
 			logging: `
-WARN unrecognized response adding/updating endpoint default_app_8080/srv002: No such server.
-WARN unrecognized response adding/updating endpoint default_app_8080/srv003: No such server.
+WARN unrecognized response updating (address) backend server default_app_8080/srv002: No such server.
+WARN unrecognized response updating (address) backend server default_app_8080/srv003: No such server.
 INFO-V(2) need to reload due to config changes: [backends]
 `,
 		},
@@ -809,7 +861,7 @@ INFO-V(2) need to reload due to config changes: [backends]
 			},
 			doconfig2: func(c *testConfig) {
 				b := c.config.Backends().AcquireBackend("default", "app", "8080")
-				b.Dynamic.DynUpdate = true
+				b.Dynamic.DynScaling = types.DynScalingSlots
 			},
 			expected: []string{
 				"srv002:127.0.0.1:1023:1",
@@ -818,19 +870,15 @@ INFO-V(2) need to reload due to config changes: [backends]
 			dynamic: false,
 			cmd: `
 set server default_app_8080/srv002 state maint
-set server default_app_8080/srv002 addr 127.0.0.1 port 1023
-set server default_app_8080/srv002 weight 0
 set server default_app_8080/srv003 state maint
-set server default_app_8080/srv003 addr 127.0.0.1 port 1023
-set server default_app_8080/srv003 weight 0
 `,
 			cmdOutput: []string{
 				"No such server.",
 				"No such server.",
 			},
 			logging: `
-WARN unrecognized response disabling endpoint default_app_8080/srv002: No such server.
-WARN unrecognized response disabling endpoint default_app_8080/srv003: No such server.
+WARN unrecognized response updating (state) backend server default_app_8080/srv002: No such server.
+WARN unrecognized response updating (state) backend server default_app_8080/srv003: No such server.
 INFO-V(2) need to reload due to config changes: [backends]
 `,
 		},
@@ -1039,7 +1087,12 @@ func (cli *clientMock) Send(observer func(duration time.Duration), command ...st
 	for _, c := range command {
 		cli.cmd = cli.cmd + c + "\n"
 	}
-	return cli.cmdOutput, nil
+	for range len(command) - len(cli.cmdOutput) {
+		cli.cmdOutput = append(cli.cmdOutput, "")
+	}
+	output := cli.cmdOutput[:len(command)]
+	cli.cmdOutput = cli.cmdOutput[len(command):]
+	return output, nil
 }
 
 func (cli *clientMock) Unlistening() error {
