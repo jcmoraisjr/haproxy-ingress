@@ -185,7 +185,7 @@ INFO-V(2) need to reload due to config changes: [backends]`,
 			cmd: `
 set server default_app_8080/srv001 state maint
 `,
-			logging: `INFO-V(2) disabled endpoint '172.17.0.2:8080' on backend/server 'default_app_8080/srv001'`,
+			logging: `INFO-V(2) disabled endpoint '172.17.0.2:8080' weight '1' on backend/server 'default_app_8080/srv001'`,
 		},
 		"test08": {
 			doconfig1: func(c *testConfig) {
@@ -312,12 +312,12 @@ set server default_app_8080/srv007 state maint
 set server default_app_8080/srv008 state maint
 `,
 			logging: `
-INFO-V(2) disabled endpoint '172.17.0.2:8080' on backend/server 'default_app_8080/srv001'
-INFO-V(2) disabled endpoint '172.17.0.3:8080' on backend/server 'default_app_8080/srv002'
-INFO-V(2) disabled endpoint '172.17.0.4:8080' on backend/server 'default_app_8080/srv003'
-INFO-V(2) disabled endpoint '172.17.0.6:8080' on backend/server 'default_app_8080/srv005'
-INFO-V(2) disabled endpoint '172.17.0.8:8080' on backend/server 'default_app_8080/srv007'
-INFO-V(2) disabled endpoint '172.17.0.9:8080' on backend/server 'default_app_8080/srv008'
+INFO-V(2) disabled endpoint '172.17.0.2:8080' weight '1' on backend/server 'default_app_8080/srv001'
+INFO-V(2) disabled endpoint '172.17.0.3:8080' weight '1' on backend/server 'default_app_8080/srv002'
+INFO-V(2) disabled endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/srv003'
+INFO-V(2) disabled endpoint '172.17.0.6:8080' weight '1' on backend/server 'default_app_8080/srv005'
+INFO-V(2) disabled endpoint '172.17.0.8:8080' weight '1' on backend/server 'default_app_8080/srv007'
+INFO-V(2) disabled endpoint '172.17.0.9:8080' weight '1' on backend/server 'default_app_8080/srv008'
 `,
 		},
 		"test12": {
@@ -342,9 +342,9 @@ set server default_app_8080/srv002 state maint
 set server default_app_8080/srv003 state maint
 `,
 			logging: `
-INFO-V(2) disabled endpoint '172.17.0.2:8080' on backend/server 'default_app_8080/srv001'
-INFO-V(2) disabled endpoint '172.17.0.3:8080' on backend/server 'default_app_8080/srv002'
-INFO-V(2) disabled endpoint '172.17.0.4:8080' on backend/server 'default_app_8080/srv003'
+INFO-V(2) disabled endpoint '172.17.0.2:8080' weight '1' on backend/server 'default_app_8080/srv001'
+INFO-V(2) disabled endpoint '172.17.0.3:8080' weight '1' on backend/server 'default_app_8080/srv002'
+INFO-V(2) disabled endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/srv003'
 `,
 		},
 		"test13": {
@@ -546,7 +546,7 @@ INFO-V(2) need to reload due to config changes: [backends]
 			cmd: `
 set server default_app_8080/srv002 state maint`,
 			logging: `
-INFO-V(2) disabled endpoint '172.17.0.3:8080' on backend/server 'default_app_8080/srv002'
+INFO-V(2) disabled endpoint '172.17.0.3:8080' weight '1' on backend/server 'default_app_8080/srv002'
 INFO-V(2) need to reload due to config changes: [backends]`,
 		},
 		"test21": {

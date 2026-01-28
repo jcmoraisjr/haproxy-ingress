@@ -466,7 +466,7 @@ func (d *dynUpdater) execDisableEndpoint(backname string, ep *hatypes.Endpoint) 
 	if !d.execDisableServer(backname, ep) {
 		return false
 	}
-	d.logger.InfoV(2, "disabled endpoint '%s' on backend/server '%s/%s'", ep.Target, backname, ep.Name)
+	d.logger.InfoV(2, "disabled endpoint '%s' weight '%d' on backend/server '%s/%s'", ep.Target, ep.Weight, backname, ep.Name)
 	return true
 }
 
@@ -502,10 +502,11 @@ func (d *dynUpdater) execDeleteEndpoint(backname string, curEP *hatypes.Endpoint
 	if !d.execDisableServer(backname, curEP) {
 		return false
 	}
+	state := "deleted"
 	if !d.execDeleteServer(backname, curEP) {
-		return false
+		state = "disabled"
 	}
-	d.logger.InfoV(2, "deleted endpoint '%s' backend/server '%s/%s'", curEP.Target, curEP.Weight, backname, curEP.Name)
+	d.logger.InfoV(2, "%s endpoint '%s' weight '%d' backend/server '%s/%s'", state, curEP.Target, curEP.Weight, backname, curEP.Name)
 	return true
 }
 
@@ -592,7 +593,7 @@ func (d *dynUpdater) execCommand(observer func(duration time.Duration), cmd []st
 func cmdResponseOK(cmdcls cmdClass, response string) bool {
 	switch cmdcls {
 	case cmdAddServer:
-		return response == "New server registered." || response == "Already exists a server with the same name in backend."
+		return response == "New server registered."
 	case cmdSetServerAddr:
 		return response == "nothing changed" || strings.HasPrefix(response, "IP changed from ") || strings.HasPrefix(response, "no need to change ")
 	case cmdSetServerWeight, cmdSetServerState:
