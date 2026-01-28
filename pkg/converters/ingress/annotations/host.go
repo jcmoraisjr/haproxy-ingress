@@ -145,5 +145,5 @@ func (c *updater) buildHostTLSConfig(d *hostData) {
 }
 
 func (c *updater) buildHostCustomResponses(d *hostData) {
-	d.host.CustomHTTPResponses = c.buildHTTPResponses(d.mapper, keyScopeHost)
+	d.host.CustomHTTPResponses = c.buildHTTPResponses(d.host.ID, d.mapper, keyScopeHost)
 }

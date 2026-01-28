@@ -52,6 +52,7 @@ clisock
 closeissues
 CLUSTERIP
 clusterrole
+cmdcls
 coldeasy
 configfound
 configmap
@@ -110,6 +111,7 @@ envtest
 eplist
 epmap
 epname
+eppair
 Equifax
 errexit
 errgroup
@@ -502,8 +504,6 @@ vcookie
 vegeta
 verifyhost
 vheader
-vother
-vthis
 wafmode
 whereisaaron
 whitecfg
