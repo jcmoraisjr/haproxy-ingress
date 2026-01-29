@@ -176,6 +176,7 @@ Hasnain
 Hasreq
 HATCP
 hatcpserviceports
+hatmpl
 hatypes
 hback
 hconfig
@@ -436,6 +437,7 @@ Sto
 stopctx
 STOPSIGNAL
 stracktraces
+strbld
 strbody
 strdomains
 strpath

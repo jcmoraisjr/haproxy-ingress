@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/socket"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )
@@ -32,6 +33,7 @@ import (
 type dynUpdater struct {
 	logger  types.Logger
 	config  *config
+	hatmpl  *template.Config
 	socket  socket.HAProxySocket
 	cmdCnt  int
 	metrics types.Metrics
@@ -56,6 +58,7 @@ func (i *instance) newDynUpdater() *dynUpdater {
 	return &dynUpdater{
 		logger:  i.logger,
 		config:  i.config.(*config),
+		hatmpl:  i.haproxyTmpl,
 		socket:  i.conns.DynUpdate(),
 		metrics: i.metrics,
 	}
@@ -335,8 +338,17 @@ func (d *dynUpdater) dynamicallyAddRemoveServers(pair *backendPair) bool {
 		}
 	}
 
+	// creating a predictable list of endpoint names, not only for unit tests,
+	// but also as a way to have the same API calls being done in the same order.
+	epnames := make([]string, 0, len(endpoints))
+	for epname := range endpoints {
+		epnames = append(epnames, epname)
+	}
+	sort.Strings(epnames)
+
 	// iterate the old and cur endpoint pairs, removing the missing and creating the new ones
-	for _, eppair := range endpoints {
+	for _, epname := range epnames {
+		eppair := endpoints[epname]
 		switch {
 		case eppair.old != nil && eppair.cur != nil:
 			if d.checkEndpointPair(curBack, eppair) {
@@ -344,14 +356,11 @@ func (d *dynUpdater) dynamicallyAddRemoveServers(pair *backendPair) bool {
 				continue
 			}
 			// cannot update, trying now to delete + add
-			updated = d.execDeleteEndpoint(curBack.ID, eppair.old) &&
-				d.execAddEndpoint(curBack.ID, eppair.cur) && updated
+			updated = d.execDeleteEndpoint(curBack.ID, eppair.old) && d.execAddEndpoint(curBack, eppair.cur) && updated
 		case eppair.old != nil:
-			// trying to delete, and it should be put in maintenance mode
-			// in case of existing connections.
 			updated = d.execDeleteEndpoint(curBack.ID, eppair.old) && updated
 		case eppair.cur != nil:
-			updated = d.execAddEndpoint(curBack.ID, eppair.cur) && updated
+			updated = d.execAddEndpoint(curBack, eppair.cur) && updated
 		}
 	}
 
@@ -462,6 +471,11 @@ func (d *dynUpdater) execUpdateCert(hostname, filename string) bool {
 	return true
 }
 
+//
+// Here starts the exec<...>Endpoint family, a higher level façade to do what needs
+// to be done on a single step, eventually orchestrating more than one API call.
+//
+
 func (d *dynUpdater) execDisableEndpoint(backname string, ep *hatypes.Endpoint) bool {
 	if !d.execDisableServer(backname, ep) {
 		return false
@@ -482,12 +496,16 @@ func (d *dynUpdater) execEnableEndpoint(backname string, oldEP, curEP *hatypes.E
 	return true
 }
 
-func (d *dynUpdater) execAddEndpoint(backname string, ep *hatypes.Endpoint) bool {
-	if !d.execAddServer(backname, ep) {
+func (d *dynUpdater) execAddEndpoint(backend *hatypes.Backend, ep *hatypes.Endpoint) bool {
+	backname := backend.ID
+	if !d.execAddServer(backend, ep) {
+		// it should be disabled already, so just remove, and if it
+		// fails due to the missing maintenance mode, we're messing
+		// something so better to return and ask for a reload.
 		if !d.execDeleteServer(backname, ep) {
 			return false
 		}
-		if !d.execAddServer(backname, ep) {
+		if !d.execAddServer(backend, ep) {
 			return false
 		}
 	}
@@ -504,15 +522,29 @@ func (d *dynUpdater) execDeleteEndpoint(backname string, curEP *hatypes.Endpoint
 	}
 	state := "deleted"
 	if !d.execDeleteServer(backname, curEP) {
+		// trying to delete, and it should be left in maintenance/disabled mode due to
+		// existing connections, which is fine. a reload will remove it, and we'll try
+		// to delete again in case we need this name in the future and before a reload.
 		state = "disabled"
 	}
 	d.logger.InfoV(2, "%s endpoint '%s' weight '%d' backend/server '%s/%s'", state, curEP.Target, curEP.Weight, backname, curEP.Name)
 	return true
 }
 
-func (d *dynUpdater) execAddServer(backname string, ep *hatypes.Endpoint) bool {
-	cmd := fmt.Sprintf("add server %s/%s %s:%d", backname, ep.Name, ep.IP, ep.Port)
-	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdAddServer)
+//
+// Here starts the exec<...>Server family, a lower level abstraction that makes one API call at a time.
+//
+
+func (d *dynUpdater) execAddServer(backend *hatypes.Backend, ep *hatypes.Endpoint) bool {
+	// TODO this isn't called so frequently, but still missing some benchmark since out hatmpl is really big.
+	// regarding p1 and p2 below, see template/funcmap.go, "map" func, having the syntax expected by all template definitions
+	cmd, err := d.hatmpl.WriteTemplate("server", map[string]any{"p1": backend, "p2": ep})
+	if err != nil {
+		// this is a dev error in case it happens, maybe we should panic instead?
+		d.logger.Error("error building backend server template: %s", err.Error())
+		return false
+	}
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backend.Name, ep, "add "+cmd, cmdAddServer)
 }
 
 func (d *dynUpdater) execDisableServer(backname string, ep *hatypes.Endpoint) bool {
@@ -568,6 +600,7 @@ func (d *dynUpdater) execCommandBackendServer(observer func(duration time.Durati
 	if action == "" {
 		panic(fmt.Errorf("invalid cmd ID: %d", cmdcls))
 	}
+	d.logger.InfoV(2, "api call: %s", cmd)
 	msgs, err := d.execCommand(observer, []string{cmd})
 	if err != nil {
 		d.logger.Error("error %s backend server %s/%s: %s", action, backname, ep.Name, err.Error())
@@ -575,10 +608,15 @@ func (d *dynUpdater) execCommandBackendServer(observer func(duration time.Durati
 	}
 	msg := msgs[0]
 	if !cmdResponseOK(cmdcls, msg) {
+		if msg == "" {
+			msg = "<empty>"
+		}
 		d.logger.Warn("unrecognized response %s backend server %s/%s: %s", action, backname, ep.Name, msg)
 		return false
 	}
-	if msg != "" {
+	if msg == "" {
+		d.logger.InfoV(2, "empty response from server")
+	} else {
 		d.logger.InfoV(2, "response from server: %s", msg)
 	}
 	return true

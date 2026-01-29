@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strings"
 	gotemplate "text/template"
 )
 
@@ -72,6 +73,16 @@ func (c *Config) WriteOutput(data interface{}, output string) error {
 		}
 	}
 	return nil
+}
+
+func (c *Config) WriteTemplate(tmplDef string, data any) (string, error) {
+	strbld := &strings.Builder{}
+	for _, t := range c.templates {
+		if err := t.tmpl.ExecuteTemplate(strbld, tmplDef, data); err != nil {
+			return "", err
+		}
+	}
+	return strbld.String(), nil
 }
 
 type template struct {

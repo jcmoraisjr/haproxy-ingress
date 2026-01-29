@@ -850,7 +850,7 @@ backend {{ $backend.ID }}
         {{- if $portIsNumber }}:{{ $dnsPort }}{{ end }}
         {{- "" }} resolvers {{ $backend.Resolver }} resolve-prefer ipv4 init-addr none
         {{- "" }} weight {{ $backend.Server.InitialWeight }}
-        {{- template "backend" map $backend }}
+        {{- template "server_options" map $backend }}
 {{- else }}
 {{- /* Iterate twice because header takes precedence */}}
 {{- if $backend.BlueGreen.HeaderName }}
@@ -868,20 +868,31 @@ backend {{ $backend.ID }}
 {{- end }}
 {{- end }}
 {{- range $ep := $backend.Endpoints }}
-    server {{ $ep.Name }} {{ $ep.IP }}:{{ $ep.Port }}
-        {{- if not $ep.Enabled }} disabled{{ end }}
-        {{- "" }} weight {{ $ep.Weight }}
-        {{- if and ($backend.CookieAffinity) ($ep.CookieValue) }} cookie {{ $ep.CookieValue }}{{ end }}
-        {{- if $ep.SourceIP }} source {{ $ep.SourceIP }}{{ end }}
-        {{- if $ep.PUID }} id {{ $ep.PUID }}{{ end }}
-        {{- template "backend" map $backend }}
+    {{ template "server" map $backend $ep }}
 {{- end }}
 {{- end }}
 {{- end }}
 
 {{- end }}{{/* define "backends" */}}
 
-{{- define "backend" }}
+{{- /*
+    Server options on both "server" and "server_options" template definitions
+    must be options supported in `add server` API command.
+*/}}
+
+{{- define "server" }}
+    {{- $backend := .p1 }}
+    {{- $ep := .p2 -}}
+    server {{ $ep.Name }} {{ $ep.IP }}:{{ $ep.Port }}
+        {{- if not $ep.Enabled }} disabled{{ end }}
+        {{- "" }} weight {{ $ep.Weight }}
+        {{- if and ($backend.CookieAffinity) ($ep.CookieValue) }} cookie {{ $ep.CookieValue }}{{ end }}
+        {{- if $ep.SourceIP }} source {{ $ep.SourceIP }}{{ end }}
+        {{- if $ep.PUID }} id {{ $ep.PUID }}{{ end }}
+        {{- template "server_options" map $backend }}
+{{- end }}
+
+{{- define "server_options" }}
     {{- $backend := .p1 }}
     {{- $server := $backend.Server }}
     {{- if eq $server.Protocol "h2" }} proto h2
