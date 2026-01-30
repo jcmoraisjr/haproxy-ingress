@@ -882,8 +882,9 @@ backend {{ $backend.ID }}
 
 {{- define "server" }}
     {{- $backend := .p1 }}
-    {{- $ep := .p2 -}}
-    server {{ $ep.Name }} {{ $ep.IP }}:{{ $ep.Port }}
+    {{- $ep := .p2 }}
+    {{- $backname := .p3 -}}
+    server {{ with $backname }}{{ . }}/{{ end }}{{ $ep.Name }} {{ $ep.IP }}:{{ $ep.Port }}
         {{- if not $ep.Enabled }} disabled{{ end }}
         {{- "" }} weight {{ $ep.Weight }}
         {{- if and ($backend.CookieAffinity) ($ep.CookieValue) }} cookie {{ $ep.CookieValue }}{{ end }}

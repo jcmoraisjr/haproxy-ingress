@@ -512,6 +512,13 @@ func (d *dynUpdater) execAddEndpoint(backend *hatypes.Backend, ep *hatypes.Endpo
 	if !d.execEnableServer(backname, ep) {
 		return false
 	}
+	zeroHealthCheck := hatypes.HealthCheck{}
+	if backend.HealthCheck != zeroHealthCheck && !d.execSetHealthServer(backname, ep) {
+		return false
+	}
+	if backend.AgentCheck.Port != 0 && !d.execSetAgentServer(backname, ep) {
+		return false
+	}
 	d.logger.InfoV(2, "registered new endpoint '%s' weight '%d' on backend/server '%s/%s'", ep.Target, ep.Weight, backname, ep.Name)
 	return true
 }
@@ -538,7 +545,7 @@ func (d *dynUpdater) execDeleteEndpoint(backname string, curEP *hatypes.Endpoint
 func (d *dynUpdater) execAddServer(backend *hatypes.Backend, ep *hatypes.Endpoint) bool {
 	// TODO this isn't called so frequently, but still missing some benchmark since out hatmpl is really big.
 	// regarding p1 and p2 below, see template/funcmap.go, "map" func, having the syntax expected by all template definitions
-	cmd, err := d.hatmpl.WriteTemplate("server", map[string]any{"p1": backend, "p2": ep})
+	cmd, err := d.hatmpl.WriteTemplate("server", map[string]any{"p1": backend, "p2": ep, "p3": backend.ID})
 	if err != nil {
 		// this is a dev error in case it happens, maybe we should panic instead?
 		d.logger.Error("error building backend server template: %s", err.Error())
@@ -559,6 +566,16 @@ func (d *dynUpdater) execSetAddrServer(backname string, ep *hatypes.Endpoint) bo
 
 func (d *dynUpdater) execSetWeightServer(backname string, ep *hatypes.Endpoint) bool {
 	cmd := fmt.Sprintf("set server %s/%s weight %d", backname, ep.Name, ep.Weight)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerWeight)
+}
+
+func (d *dynUpdater) execSetHealthServer(backname string, ep *hatypes.Endpoint) bool {
+	cmd := fmt.Sprintf("enable health %s/%s", backname, ep.Name)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerWeight)
+}
+
+func (d *dynUpdater) execSetAgentServer(backname string, ep *hatypes.Endpoint) bool {
+	cmd := fmt.Sprintf("enable agent %s/%s", backname, ep.Name)
 	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerWeight)
 }
 

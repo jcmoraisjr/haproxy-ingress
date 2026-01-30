@@ -1138,16 +1138,19 @@ INFO-V(2) need to reload due to config changes: [hosts (_front_http)]
 				"srv002:172.17.0.3:8080:1",
 			},
 			cmd: `
-add server srv002 172.17.0.3:8080 weight 1 check inter 5s
+add server default_app_8080/srv002 172.17.0.3:8080 weight 1 check inter 5s
 set server default_app_8080/srv002 state ready
+enable health default_app_8080/srv002
 `,
 			cmdOutput: []string{
 				"New server registered.",
 			},
 			logging: `
-INFO-V(2) api call: add server srv002 172.17.0.3:8080 weight 1 check inter 5s
+INFO-V(2) api call: add server default_app_8080/srv002 172.17.0.3:8080 weight 1 check inter 5s
 INFO-V(2) response from server: New server registered.
 INFO-V(2) api call: set server default_app_8080/srv002 state ready
+INFO-V(2) empty response from server
+INFO-V(2) api call: enable health default_app_8080/srv002
 INFO-V(2) empty response from server
 INFO-V(2) registered new endpoint '172.17.0.3:8080' weight '1' on backend/server 'default_app_8080/srv002'
 `,
@@ -1275,7 +1278,7 @@ INFO-V(2) updated endpoint '172.17.0.4:8080' weight '1' on backend/server 'defau
 			cmd: `
 set server default_app_8080/pod2 state maint
 del server default_app_8080/pod2
-add server pod3 172.17.0.4:8080 weight 1
+add server default_app_8080/pod3 172.17.0.4:8080 weight 1
 set server default_app_8080/pod3 state ready
 `,
 			cmdOutput: []string{
@@ -1289,7 +1292,7 @@ INFO-V(2) empty response from server
 INFO-V(2) api call: del server default_app_8080/pod2
 WARN unrecognized response deleting backend server default_app_8080/pod2: Server still has connections attached to it, cannot remove it.
 INFO-V(2) disabled endpoint '172.17.0.3:8080' weight '1' backend/server 'default_app_8080/pod2'
-INFO-V(2) api call: add server pod3 172.17.0.4:8080 weight 1
+INFO-V(2) api call: add server default_app_8080/pod3 172.17.0.4:8080 weight 1
 INFO-V(2) response from server: New server registered.
 INFO-V(2) api call: set server default_app_8080/pod3 state ready
 INFO-V(2) empty response from server
@@ -1317,7 +1320,7 @@ INFO-V(2) registered new endpoint '172.17.0.4:8080' weight '1' on backend/server
 				"pod2:172.17.0.4:8080:1",
 			},
 			cmd: `
-add server pod2 172.17.0.4:8080 weight 1
+add server default_app_8080/pod2 172.17.0.4:8080 weight 1
 set server default_app_8080/pod2 state ready
 set server default_app_8080/pod3 state maint
 del server default_app_8080/pod3
@@ -1329,7 +1332,7 @@ del server default_app_8080/pod3
 				"Server still has connections attached to it, cannot remove it.",
 			},
 			logging: `
-INFO-V(2) api call: add server pod2 172.17.0.4:8080 weight 1
+INFO-V(2) api call: add server default_app_8080/pod2 172.17.0.4:8080 weight 1
 INFO-V(2) response from server: New server registered.
 INFO-V(2) api call: set server default_app_8080/pod2 state ready
 INFO-V(2) empty response from server
