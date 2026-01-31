@@ -369,22 +369,35 @@ func (d *dynUpdater) dynamicallyAddRemoveServers(pair *backendPair) bool {
 
 func (d *dynUpdater) checkEndpointPair(backend *hatypes.Backend, pair *epPair) bool {
 	oldEPCopy := *pair.old
-	// SourceIP is lazily updated via FillSourceIPs() after dynupdate run
-	// A reload is already scheduled due to backend.SourceIPs changed
+
+	// SourceIP is lazily updated via FillSourceIPs() after dynupdate run.
+	// A reload is already scheduled due to backend.SourceIPs changed.
 	oldEPCopy.SourceIP = pair.cur.SourceIP
+	// Enablement is handled before this point.
+	oldEPCopy.Enabled = pair.cur.Enabled
 	if reflect.DeepEqual(&oldEPCopy, pair.cur) {
 		return true
 	}
-	if backend.Cookie.Preserve && pair.old.CookieValue != pair.cur.CookieValue {
-		// if cookie doesn't match here and preserving the value is
-		// important, don't even enable the endpoint before reloading
-		return false
+
+	// These fields are handled in the execEnableEndpoint() call; all the others,
+	// if changed, should skip enabling it and ask for a reload or delete+add call.
+	oldEPCopy.IP = pair.cur.IP
+	oldEPCopy.Port = pair.cur.Port
+	oldEPCopy.Target = pair.cur.Target
+	oldEPCopy.Weight = pair.cur.Weight
+	if !backend.Cookie.Preserve {
+		// if preserving the cookie value is not important, we can
+		// ignore it as a criteria to enable without remove.
+		oldEPCopy.CookieValue = pair.cur.CookieValue
 	}
-	updated := d.execEnableEndpoint(backend.ID, pair.old, pair.cur)
-	if !updated || pair.old.Label != "" || pair.cur.Label != "" {
-		return false
+	if reflect.DeepEqual(&oldEPCopy, pair.cur) {
+		// TODO revisit Label check, this is related with blue/green deployment
+		return d.execEnableEndpoint(backend.ID, pair.old, pair.cur) && pair.old.Label == "" && pair.cur.Label == ""
 	}
-	return true
+
+	// cannot handle via enablement, need to either delete+add or reload,
+	// depending on who is calling this method.
+	return false
 }
 
 func (d *dynUpdater) alignSlots() {
@@ -490,7 +503,7 @@ func (d *dynUpdater) execEnableEndpoint(backname string, oldEP, curEP *hatypes.E
 	}
 	event := "updated"
 	if oldEP == nil {
-		event = "added"
+		event = "enabled"
 	}
 	d.logger.InfoV(2, "%s endpoint '%s' weight '%d' on backend/server '%s/%s'", event, curEP.Target, curEP.Weight, backname, curEP.Name)
 	return true
@@ -543,7 +556,7 @@ func (d *dynUpdater) execDeleteEndpoint(backname string, curEP *hatypes.Endpoint
 //
 
 func (d *dynUpdater) execAddServer(backend *hatypes.Backend, ep *hatypes.Endpoint) bool {
-	// TODO this isn't called so frequently, but still missing some benchmark since out hatmpl is really big.
+	// TODO this isn't called so frequently, but still missing some benchmark since our hatmpl is really big.
 	// regarding p1 and p2 below, see template/funcmap.go, "map" func, having the syntax expected by all template definitions
 	cmd, err := d.hatmpl.WriteTemplate("server", map[string]any{"p1": backend, "p2": ep, "p3": backend.ID})
 	if err != nil {

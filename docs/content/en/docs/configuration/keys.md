@@ -1569,7 +1569,7 @@ The `dynamic-scaling` option supports three distinct modes:
 Notes about dynamic scaling:
 
 * The HAProxy config files will stay in sync with in memory configuration, despite of a reload happening or not.
-* Scaling in the backend will disable and put the servers in maintenance state, being removed as soon as HAProxy needs to be reloaded.
+* Scaling-in the backend (removing servers) will disable and put the removed servers in maintenance state, being removed as soon as HAProxy needs to be reloaded. On `Add` mode, HAProxy Ingress tries to delete the backend server, which will be left behind in the case of a failure, like having active sessions.
 * Dynamic updates are ignored if the backend uses [DNS resolver](#dns-resolvers).
 
 ---

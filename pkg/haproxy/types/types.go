@@ -706,6 +706,7 @@ type Backend struct {
 
 // Endpoint ...
 type Endpoint struct {
+	// revisit dynupdate.go/checkEndpointPair() whenever need to update these fields
 	Enabled     bool
 	Label       string
 	IP          string

@@ -909,6 +909,7 @@ backend {{ $backend.ID }}
 {{- /*
     Server options on both "server" and "server_options" template definitions
     must be options supported in `add server` API command.
+    New EP based options should be handled in dynupdate.go/checkEndpointPair() as well.
 */}}
 
 {{- define "server" }}

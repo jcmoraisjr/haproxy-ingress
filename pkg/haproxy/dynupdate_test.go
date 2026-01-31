@@ -271,7 +271,7 @@ INFO-V(2) api call: set server default_app_8080/srv001 weight 1
 INFO-V(2) empty response from server
 INFO-V(2) api call: set server default_app_8080/srv001 state ready
 INFO-V(2) empty response from server
-INFO-V(2) added endpoint '172.17.0.2:8080' weight '1' on backend/server 'default_app_8080/srv001'
+INFO-V(2) enabled endpoint '172.17.0.2:8080' weight '1' on backend/server 'default_app_8080/srv001'
 `,
 		},
 		"test10": {
@@ -306,7 +306,7 @@ INFO-V(2) api call: set server default_app_8080/srv001 weight 1
 INFO-V(2) empty response from server
 INFO-V(2) api call: set server default_app_8080/srv001 state ready
 INFO-V(2) empty response from server
-INFO-V(2) added endpoint '172.17.0.3:8080' weight '1' on backend/server 'default_app_8080/srv001'
+INFO-V(2) enabled endpoint '172.17.0.3:8080' weight '1' on backend/server 'default_app_8080/srv001'
 `,
 		},
 		"test11": {
@@ -463,7 +463,7 @@ INFO-V(2) api call: set server default_app_8080/srv002 weight 1
 INFO-V(2) empty response from server
 INFO-V(2) api call: set server default_app_8080/srv002 state ready
 INFO-V(2) empty response from server
-INFO-V(2) added endpoint '172.17.0.3:8080' weight '1' on backend/server 'default_app_8080/srv002'
+INFO-V(2) enabled endpoint '172.17.0.3:8080' weight '1' on backend/server 'default_app_8080/srv002'
 `,
 		},
 		"test15": {
@@ -556,7 +556,7 @@ INFO-V(2) api call: set server default_app_8080/srv002 weight 1
 INFO-V(2) empty response from server
 INFO-V(2) api call: set server default_app_8080/srv002 state ready
 INFO-V(2) empty response from server
-INFO-V(2) added endpoint '172.17.0.3:8080' weight '1' on backend/server 'default_app_8080/srv002'
+INFO-V(2) enabled endpoint '172.17.0.3:8080' weight '1' on backend/server 'default_app_8080/srv002'
 `,
 		},
 		"test19": {
@@ -591,7 +591,7 @@ INFO-V(2) api call: set server default_app_8080/srv002 weight 1
 INFO-V(2) empty response from server
 INFO-V(2) api call: set server default_app_8080/srv002 state ready
 INFO-V(2) empty response from server
-INFO-V(2) added endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/srv002'
+INFO-V(2) enabled endpoint '172.17.0.4:8080' weight '1' on backend/server 'default_app_8080/srv002'
 INFO-V(2) need to reload due to config changes: [backends]
 `,
 		},
