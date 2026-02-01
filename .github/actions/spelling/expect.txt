@@ -81,6 +81,7 @@ CVEs
 daemonset
 dario
 DCk
+defaultback
 defaultbackend
 defaulthost
 defbackend
@@ -122,6 +123,7 @@ expfront
 explogging
 expmatch
 extfile
+extwild
 fcgiapp
 feb
 ffconf
@@ -152,6 +154,7 @@ goruntime
 gotemplate
 gotestsum
 goyaml
+grantapis
 grpcs
 gvstr
 gwapis
@@ -316,6 +319,8 @@ Nirajan
 Noacl
 nocrt
 Nofilter
+nogrants
+nohostname
 nonroot
 nopath
 nopwd
@@ -374,6 +379,7 @@ redirfrom
 redirto
 redispatched
 refactors
+referencegrant
 relabelings
 reloadlogger
 relref
@@ -478,6 +484,7 @@ tcptls
 TLSALPN
 tlsapis
 tlsfilename
+TLSHTTP
 tlsroute
 tlsrule
 tlsserver

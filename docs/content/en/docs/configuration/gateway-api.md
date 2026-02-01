@@ -24,14 +24,14 @@ Gateway API has also a command-line tool, see how it works and installation inst
 
 ## Conformance
 
-Most of the Gateway API `v1beta1` and `v1` specs are implemented in v0.17 release. The following list describes what is not supported:
+Most of the Gateway API `v1beta1` and `v1` specs are implemented in v0.17 release. The following list describes what is not implemented yet:
 
-* Target Services can be annotated with [Backend or Path scoped]({{% relref "keys#scope" %}}) configuration keys, this will continue to be supported.
-* Gateway API resources don't support annotations, this should continue to be unsupported. Extensions to the Gateway API spec will be added in the extension points of the API.
-* The controller doesn't implement partial parsing yet for Gateway API resources, changes should be a bit slow on clusters with thousands of Ingress, Gateway API resources or Services.
 * Gateway's Addresses is not implemented - binding addresses use the global [bind-ip-addr]({{% relref "keys#bind-ip-addr" %}}) configuration.
-* Gateway's Hostname only supports empty/absence of Hostname or a single `*`, any other string will override the HTTPRoute Hostnames configuration without any merging.
 * HTTPRoute's Rules and BackendRefs don't support Filters.
+* The following APIs are currently unsupported: BackendTLSPolicy and GRPCRoute.
+* HAProxy does not support UDP routing, so the UDPRoute API will continue to be unsupported on future releases.
+
+Gateway API resources don't support annotations, this should continue to be unsupported. Extensions to the Gateway API spec will be added in the extension points of the API. However, target Services can be annotated with [Backend or Path scoped]({{% relref "keys#scope" %}}) configuration keys, this will continue to be supported.
 
 ## Ingress
 
@@ -183,3 +183,7 @@ ping
 ```
 
 Type `ping` and see a `+PONG` response. Press `^C` to close the connection.
+
+## What's next
+
+See also the [Gateway API documentation](https://gateway-api.sigs.k8s.io/)

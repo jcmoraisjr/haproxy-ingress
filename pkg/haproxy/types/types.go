@@ -532,6 +532,8 @@ type Host struct {
 	Hostname string
 	Paths    []*Path
 	//
+	ExtendedWildcard    bool
+	DefaultBackend      *Backend
 	Alias               HostAliasConfig
 	CustomHTTPResponses HTTPResponses
 	Redirect            HostRedirectConfig
