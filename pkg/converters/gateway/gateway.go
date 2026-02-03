@@ -711,7 +711,7 @@ func (c *converter) acquireCertificateRefs(gatewaySource *source, listener *gate
 		}
 		eventRefs.certFiles = append(eventRefs.certFiles, crtFile)
 	}
-	if len(eventRefs.certFiles) > 0 && !eventRefs.passthrough {
+	if listener.Protocol == gatewayv1.HTTPSProtocolType && !eventRefs.passthrough && len(eventRefs.certFiles) > 0 {
 		f := c.haproxy.Frontends().AcquireFrontend(listener.Port, true)
 		var hostname string
 		if listener.Hostname != nil {
