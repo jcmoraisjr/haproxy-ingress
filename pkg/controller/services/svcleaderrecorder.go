@@ -17,21 +17,35 @@ limitations under the License.
 package services
 
 import (
+	"context"
 	"os"
 
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/apimachinery/pkg/runtime"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+	eventsv1client "k8s.io/client-go/kubernetes/typed/events/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/tools/record"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 )
 
-func initRecorderProvider(cfg *config.Config) (*recorderProvider, error) {
+func initRecorderProvider(ctx context.Context, cfg *config.Config) (*recorderProvider, error) {
 	config := rest.CopyConfig(cfg.KubeConfig)
 
 	cli, err := corev1client.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	httpClient, err := rest.HTTPClientFor(config)
+	if err != nil {
+		return nil, err
+	}
+
+	evCli, err := eventsv1client.NewForConfigAndClient(config, httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +56,11 @@ func initRecorderProvider(cfg *config.Config) (*recorderProvider, error) {
 	}
 
 	return &recorderProvider{
+		ctx:        ctx,
+		log:        logr.FromContextOrDiscard(ctx).WithName("leader_recorder"),
+		scheme:     cfg.Scheme,
 		cli:        cli,
+		evCli:      evCli,
 		namespace:  cfg.ControllerPod.Namespace,
 		hostname:   hostname,
 		electionID: cfg.ElectionID,
@@ -50,7 +68,11 @@ func initRecorderProvider(cfg *config.Config) (*recorderProvider, error) {
 }
 
 type recorderProvider struct {
+	ctx        context.Context
+	log        logr.Logger
+	scheme     *runtime.Scheme
 	cli        *corev1client.CoreV1Client
+	evCli      *eventsv1client.EventsV1Client
 	namespace  string
 	hostname   string
 	electionID string
@@ -59,8 +81,16 @@ type recorderProvider struct {
 func (r *recorderProvider) GetEventRecorderFor(name string) record.EventRecorder {
 	broadcaster := record.NewBroadcaster()
 	_ = broadcaster.StartRecordingToSink(&corev1client.EventSinkImpl{Interface: r.cli.Events(r.namespace)})
-	return broadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{
+	return broadcaster.NewRecorder(r.scheme, corev1.EventSource{
 		Component: r.electionID + "_" + name,
 		Host:      r.hostname,
 	})
+}
+
+func (r *recorderProvider) GetEventRecorder(name string) events.EventRecorder {
+	broadcaster := events.NewBroadcaster(&events.EventSinkImpl{Interface: r.evCli})
+	if err := broadcaster.StartRecordingToSinkWithContext(r.ctx); err != nil {
+		r.log.Error(err, "error starting recording for broadcaster")
+	}
+	return broadcaster.NewRecorder(r.scheme, name)
 }
