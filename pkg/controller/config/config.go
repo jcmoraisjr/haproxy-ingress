@@ -213,11 +213,12 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		configLog.Info("watching for Gateway API resources - --watch-gateway is true")
 	}
 
-	var hasGateway, hasGatewayV1, hasGatewayB1, hasTCPRouteA2, hasTLSRouteA2 bool
+	var hasGateway, hasGatewayV1, hasGatewayB1, hasTCPRouteA2, hasTLSRouteA2, hasGrantB1 bool
 	if opt.WatchGateway {
 		gwapis := []string{"gatewayclass", "gateway", "httproute"}
 		tcpapis := []string{"tcproute"}
 		tlsapis := []string{"tlsroute"}
+		grantapis := []string{"referencegrant"}
 
 		gwV1 := configHasAPI(clientGateway.Discovery(), gatewayv1.GroupVersion, gwapis...)
 		if gwV1 {
@@ -244,12 +245,17 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		if tlsA2 {
 			configLog.Info("found custom resource definition for TLSRoute API v1alpha2")
 		}
+		grantB1 := configHasAPI(clientGateway.Discovery(), gatewayv1beta1.GroupVersion, grantapis...)
+		if grantB1 {
+			configLog.Info("found custom resource definition for ReferenceGrant API v1beta1")
+		}
 
 		// TODO: cannot enable TCPRoute or TLSRoute without Gateway and GatewayClass, but currently
 		// HTTPRoute discovery is coupled and its CRD should be installed as well, even if not used.
 		// We should use a distinct flag for HTTPRoute.
 		hasTCPRouteA2 = tcpA2 && gw
 		hasTLSRouteA2 = tlsA2 && gw
+		hasGrantB1 = grantB1 && gw
 	}
 
 	if opt.EnableEndpointSlicesAPI {
@@ -511,6 +517,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		HasGateway:               hasGateway,
 		HasGatewayB1:             hasGatewayB1,
 		HasGatewayV1:             hasGatewayV1,
+		HasGrantB1:               hasGrantB1,
 		HasTCPRouteA2:            hasTCPRouteA2,
 		HasTLSRouteA2:            hasTLSRouteA2,
 		HealthzAddr:              healthz,
@@ -769,6 +776,7 @@ type Config struct {
 	HasGateway               bool
 	HasGatewayB1             bool
 	HasGatewayV1             bool
+	HasGrantB1               bool
 	HasTCPRouteA2            bool
 	HasTLSRouteA2            bool
 	HealthzAddr              string

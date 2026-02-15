@@ -118,19 +118,18 @@ func (c *config) syncFrontend(f *hatypes.Frontend) {
 		}
 	}
 	for _, host := range f.HostsAdd() {
-		if !host.SSLPassthrough && c.global.StrictHost && host.FindPath("/", hatypes.MatchBegin) == nil {
-			back := c.backends.DefaultBackend
-			defaultHost := f.DefaultHost()
-			if defaultHost != nil {
-				path := defaultHost.FindPath("/")
-				if len(path) > 0 {
-					back = path[0].Backend
-				}
+		if c.global.StrictHost && host.DefaultBackend == nil && !host.SSLPassthrough {
+			var back *hatypes.Backend
+			if defaultHost := f.DefaultHost(); defaultHost != nil {
+				back = defaultHost.DefaultBackend
+			}
+			if back == nil {
+				back = c.backends.DefaultBackend
 			}
 			if back == nil {
 				back = c.backends.AcquireNotFoundBackend()
 			}
-			host.AddPath(back, "/", hatypes.MatchBegin)
+			host.DefaultBackend = back
 		}
 	}
 }
@@ -177,7 +176,7 @@ func (c *config) WriteTCPServicesMaps() error {
 	for _, tcpPort := range c.tcpservices.Items() {
 		sniMap := mapBuilder.AddMap(fmt.Sprintf("%s/_tcp_sni_%d.map", c.options.mapsDir, tcpPort.Port()))
 		for _, tcpHost := range tcpPort.BuildSortedItems() {
-			sniMap.AddHostnameMapping(tcpHost.Hostname(), tcpHost.Backend.String())
+			sniMap.AddHostnameMapping(tcpHost.Hostname(), false, tcpHost.Backend.String())
 		}
 		tcpPort.SNIMap = sniMap
 	}
@@ -245,7 +244,13 @@ func (c *config) writeFrontendMaps(f *hatypes.Frontend) error {
 			commonMaps.DefaultHostMap.AddHostnamePathMapping(hatypes.DefaultHost, path, path.Backend.ID)
 		}
 	}
+	if defaultHost != nil && defaultHost.DefaultBackend != nil {
+		commonMaps.DefaultHostMap.AddTargetIfMissing(hatypes.DefaultHost, "/", defaultHost.DefaultBackend.ID, hatypes.MatchBegin)
+	}
 	defaultCrtFile := c.frontends.DefaultCrtFile
+	if defaultHost != nil && defaultHost.TLS.TLSFilename != "" {
+		defaultCrtFile = defaultHost.TLS.TLSFilename
+	}
 	var crtListItems []*hatypes.HostsMapEntry
 	if f.IsHTTPS {
 		// TODO crtList* to be removed after implement a template to the crt list
@@ -260,7 +265,7 @@ func (c *config) writeFrontendMaps(f *hatypes.Frontend) error {
 				if f.IsHTTPS && host.SSLPassthrough {
 					// no ssl offload, cannot inspect incoming path, so tracking root only
 					if path.Path() == "/" {
-						httpsMaps.SSLPassthroughMap.AddHostnameMapping(host.Hostname, backendID)
+						httpsMaps.SSLPassthroughMap.AddHostnameMapping(host.Hostname, host.ExtendedWildcard, backendID)
 					}
 				} else if f.IsHTTPS {
 					httpsMaps.HTTPSHostMap.AddHostnamePathMapping(host.Hostname, path, backendID)
@@ -287,24 +292,31 @@ func (c *config) writeFrontendMaps(f *hatypes.Frontend) error {
 		if host.SSLPassthrough {
 			continue
 		}
+		if host.DefaultBackend != nil {
+			if f.IsHTTPS {
+				httpsMaps.HTTPSHostMap.AddTargetIfMissing(host.Hostname, "/", host.DefaultBackend.ID, hatypes.MatchBegin)
+			} else {
+				httpMaps.HTTPHostMap.AddTargetIfMissing(host.Hostname, "/", host.DefaultBackend.ID, hatypes.MatchBegin)
+			}
+		}
 		if host.Redirect.RedirectHost != "" {
-			commonMaps.RedirFromMap.AddHostnameMapping(host.Redirect.RedirectHost, host.Hostname)
+			commonMaps.RedirFromMap.AddHostnameMapping(host.Redirect.RedirectHost, host.ExtendedWildcard, host.Hostname)
 		}
 		if host.Redirect.RedirectHostRegex != "" {
 			commonMaps.RedirFromMap.AddHostnameMappingRegex(host.Redirect.RedirectHostRegex, host.Hostname)
 		}
 		if f.IsHTTPS && host.HasTLSAuth() {
 			if host.TLS.CAVerify != hatypes.CAVerifySkipCheck {
-				httpsMaps.TLSAuthList.AddHostnameMapping(host.Hostname, "")
+				httpsMaps.TLSAuthList.AddHostnameMapping(host.Hostname, host.ExtendedWildcard, "")
 			}
 			if !host.TLS.CAVerifyOptional() {
-				httpsMaps.TLSNeedCrtList.AddHostnameMapping(host.Hostname, "")
+				httpsMaps.TLSNeedCrtList.AddHostnameMapping(host.Hostname, host.ExtendedWildcard, "")
 			}
 			page := host.TLS.CAErrorPage
 			if page != "" {
-				httpsMaps.TLSInvalidCrtPagesMap.AddHostnameMapping(host.Hostname, page)
+				httpsMaps.TLSInvalidCrtPagesMap.AddHostnameMapping(host.Hostname, host.ExtendedWildcard, page)
 				if !host.TLS.CAVerifyOptional() {
-					httpsMaps.TLSMissingCrtPagesMap.AddHostnameMapping(host.Hostname, page)
+					httpsMaps.TLSMissingCrtPagesMap.AddHostnameMapping(host.Hostname, host.ExtendedWildcard, page)
 				}
 			}
 		}
@@ -326,9 +338,9 @@ func (c *config) writeFrontendMaps(f *hatypes.Frontend) error {
 				return redir
 			}
 			if !f.IsHTTPS && redirectssl() {
-				httpMaps.RedirRootSSLMap.AddHostnameMapping(host.Hostname, "")
+				httpMaps.RedirRootSSLMap.AddHostnameMapping(host.Hostname, host.ExtendedWildcard, "")
 			}
-			commonMaps.RedirFromRootMap.AddHostnameMapping(host.Hostname, host.RootRedirect)
+			commonMaps.RedirFromRootMap.AddHostnameMapping(host.Hostname, host.ExtendedWildcard, host.RootRedirect)
 		}
 		if !f.IsHTTPS {
 			continue

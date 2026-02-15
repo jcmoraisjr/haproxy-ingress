@@ -17,10 +17,12 @@ limitations under the License.
 package types
 
 import (
+	"cmp"
 	"container/list"
 	"fmt"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -45,19 +47,19 @@ func (hm *HostsMaps) AddMap(basename string) *HostsMap {
 }
 
 // AddHostnameMapping ...
-func (hm *HostsMap) AddHostnameMapping(hostname, target string) {
-	hm.addHostnameMappingMatch(hostname, target, MatchExact)
+func (hm *HostsMap) AddHostnameMapping(hostname string, extendedWildcard bool, target string) {
+	hm.addHostnameMappingMatch(hostname, extendedWildcard, target, MatchExact)
 }
 
 // AddHostnameMappingRegex ...
 func (hm *HostsMap) AddHostnameMappingRegex(hostname, target string) {
-	hm.addHostnameMappingMatch(hostname, target, MatchRegex)
+	hm.addHostnameMappingMatch(hostname, false, target, MatchRegex)
 }
 
-func (hm *HostsMap) addHostnameMappingMatch(hostname, target string, match MatchType) {
+func (hm *HostsMap) addHostnameMappingMatch(hostname string, extendedWildcard bool, target string, match MatchType) {
 	if match != MatchRegex {
 		var hasWildcard bool
-		if hostname, hasWildcard = convertWildcardToRegex(hostname); hasWildcard {
+		if hostname, hasWildcard = convertWildcardToRegex(hostname, extendedWildcard); hasWildcard {
 			match = MatchRegex
 		}
 	}
@@ -66,7 +68,11 @@ func (hm *HostsMap) addHostnameMappingMatch(hostname, target string, match Match
 
 // AddHostnamePathMapping ...
 func (hm *HostsMap) AddHostnamePathMapping(hostname string, path *Path, target string) {
-	hostname, hasWildcard := convertWildcardToRegex(hostname)
+	var extendedMatch bool
+	if path.Host != nil {
+		extendedMatch = path.Host.ExtendedWildcard
+	}
+	hostname, hasWildcard := convertWildcardToRegex(hostname, extendedMatch)
 	strpath := path.Path()
 	match := path.Match()
 	// TODO paths of a wildcard hostname will always have less precedence
@@ -92,11 +98,27 @@ func (hm *HostsMap) AddAliasPathMapping(alias HostAliasConfig, path *Path, targe
 	}
 }
 
-func convertWildcardToRegex(hostname string) (h string, hasWildcard bool) {
+// AddTargetIfMissing ...
+func (hm *HostsMap) AddTargetIfMissing(hostname, path string, target string, match MatchType) {
+	if h := hm.rawhosts[hostname]; h != nil {
+		for _, entry := range h {
+			if entry.path == path && entry.match == match && entry.Value == target {
+				return
+			}
+		}
+	}
+	hm.addTarget(hostname, path, nil, 0, target, match)
+}
+
+func convertWildcardToRegex(hostname string, extendedMatch bool) (h string, hasWildcard bool) {
 	if !strings.HasPrefix(hostname, "*.") {
 		return hostname, false
 	}
-	return "^[^.]+" + regexp.QuoteMeta(hostname[1:]) + "$", true
+	prefix := "^[^.]+"
+	if extendedMatch {
+		prefix = "^.+"
+	}
+	return prefix + regexp.QuoteMeta(hostname[1:]) + "$", true
 }
 
 // convertPathToRegex converts a path of any match type that
@@ -207,14 +229,16 @@ func (hm *HostsMap) rebuildMatchFiles() (matchFiles []*MatchFile) {
 	for _, entryList := range hm.rawhosts {
 		// priorities should be processed first:
 		// - /sub/dir need to be processed before /sub
-		// - with-filters need to be processed before without-filters
-		sort.Slice(entryList, func(i, j int) bool {
-			e1 := entryList[i]
-			e2 := entryList[j]
-			if e1.headers.equals(e2.headers) {
-				return e1.path > e2.path
+		// - order of the filters from the most specific to the least one
+		// - the least specific must be an entry without filter
+		slices.SortStableFunc(entryList, func(e1, e2 *HostsMapEntry) int {
+			if e1.hasSameFilter(e2) {
+				return strings.Compare(e2.path, e1.path)
 			}
-			return e1.hasFilter()
+			if cmpFilter := e1.compareFilters(e2); cmpFilter != 0 {
+				return cmpFilter
+			}
+			return cmp.Compare(e1.order, e2.order)
 		})
 		if len(entryList) == 1 {
 			e1 := entryList[0]
@@ -469,11 +493,15 @@ func (m MatchFile) Values() []*HostsMapEntry {
 }
 
 func (he *HostsMapEntry) hasFilter() bool {
-	return he.headers != nil
+	return len(he.headers) > 0
 }
 
 func (he *HostsMapEntry) hasSameFilter(other *HostsMapEntry) bool {
 	return he.headers.equals(other.headers)
+}
+
+func (he *HostsMapEntry) compareFilters(other *HostsMapEntry) int {
+	return cmp.Compare(len(other.headers), len(he.headers))
 }
 
 func (h HTTPHeaderMatch) equals(other HTTPHeaderMatch) bool {

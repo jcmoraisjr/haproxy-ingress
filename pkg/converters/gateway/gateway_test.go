@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package gateway_test
+package gateway
 
 import (
 	"fmt"
@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/kylelemons/godebug/diff"
+	"github.com/stretchr/testify/assert"
 	api "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,7 +34,6 @@ import (
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gwapischeme "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/scheme"
 
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/gateway"
 	conv_helper "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/helper_test"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
@@ -599,8 +599,16 @@ func TestSyncGatewayTLS(t *testing.T) {
     port: 8080
     weight: 128
 `
+	defaultHost := `
+hostname: <default>
+defaultback: _error404
+paths: []
+tls:
+  tlsfilename: /tls/default/crt2.pem
+`
 	defaultHTTPSHost := `
 hostname: <default>
+defaultback: _error404
 paths:
 - path: /
   match: prefix
@@ -683,6 +691,7 @@ WARN skipping redeclared path '/' type 'prefix' on HTTPRoute 'default/web2'
   tls:
     tlsfilename: /tls/default/crt1.pem
 `,
+			expDefaultHost: defaultHost,
 			expBackends: `
 - id: default_web1__rule0
   endpoints:
@@ -793,6 +802,13 @@ WARN skipping hostname 'domain.local' on TLSRoute 'default/web': hostname alread
     backend: default_web__rule0
   tls:
     tlsfilename: /tls/default/crt.pem
+`,
+			expDefaultHost: `
+hostname: <default>
+defaultback: _error404
+paths: []
+tls:
+  tlsfilename: /tls/default/crt.pem
 `,
 			expBackends: `
 - id: default_web__rule0
@@ -980,6 +996,196 @@ listeners:
 	}
 }
 
+func TestMatchingHostnames(t *testing.T) {
+	testCases := map[string]struct {
+		listenerTCPProto bool
+		listenerHostname *gatewayv1.Hostname
+		routerHostnames  []gatewayv1.Hostname
+		expMatch         bool
+		expHostnames     []gatewayv1.Hostname
+	}{
+		//
+		// TCP listener
+		"test_TCP_01": {
+			listenerTCPProto: true,
+			listenerHostname: nil,
+			routerHostnames:  nil,
+			expMatch:         true,
+			expHostnames:     nil,
+		},
+		//
+		// HTTP and TLS listeners
+		//
+		// listener without restriction
+		"test_TLSHTTP_any_01": {
+			listenerHostname: nil,
+			routerHostnames:  nil,
+			expMatch:         true,
+			expHostnames:     []gatewayv1.Hostname{"*"},
+		},
+		"test_TLSHTTP_any_02": {
+			listenerHostname: nil,
+			routerHostnames:  []gatewayv1.Hostname{"example.com", "sub.example.com"},
+			expMatch:         true,
+			expHostnames:     []gatewayv1.Hostname{"example.com", "sub.example.com"},
+		},
+		//
+		// listener with "example.com" hostname
+		"test_TLSHTTP_domain_01": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("example.com")),
+			routerHostnames:  nil,
+			expMatch:         true,
+			expHostnames:     []gatewayv1.Hostname{"example.com"},
+		},
+		"test_TLSHTTP_domain_02": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("example.com")),
+			routerHostnames:  []gatewayv1.Hostname{"example.com"},
+			expMatch:         true,
+			expHostnames:     []gatewayv1.Hostname{"example.com"},
+		},
+		"test_TLSHTTP_domain_03": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("example.com")),
+			routerHostnames:  []gatewayv1.Hostname{"example.com", "*.example.com"},
+			expMatch:         true,
+			expHostnames:     []gatewayv1.Hostname{"example.com"},
+		},
+		"test_TLSHTTP_domain_04": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("example.com")),
+			routerHostnames:  []gatewayv1.Hostname{"*.example.com", "sub.example.com"},
+			expMatch:         false,
+			expHostnames:     nil,
+		},
+		"test_TLSHTTP_domain_05": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("example.com")),
+			routerHostnames:  []gatewayv1.Hostname{"example.com", "sub.example.com", "some.sub.example.com"},
+			expMatch:         true,
+			expHostnames:     []gatewayv1.Hostname{"example.com"},
+		},
+		"test_TLSHTTP_domain_06": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("example.com")),
+			routerHostnames:  []gatewayv1.Hostname{"example.com", "example.com", "*.example.com", "*.example.com", "sub.example.com", "sub.example.com"},
+			expMatch:         true,
+			expHostnames:     []gatewayv1.Hostname{"example.com"},
+		},
+		"test_TLSHTTP_domain_07": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("example.com")),
+			routerHostnames:  []gatewayv1.Hostname{"example.net", "*.example.net", "sub.example.net", "some.sub.example.net"},
+			expMatch:         false,
+			expHostnames:     nil,
+		},
+		//
+		// listener with "sub.example.com" hostname
+		"test_TLSHTTP_subdomain_01": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("sub.example.com")),
+			routerHostnames:  nil,
+			expMatch:         true,
+			expHostnames:     []gatewayv1.Hostname{"sub.example.com"},
+		},
+		"test_TLSHTTP_subdomain_02": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("sub.example.com")),
+			routerHostnames:  []gatewayv1.Hostname{"example.com"},
+			expMatch:         false,
+			expHostnames:     nil,
+		},
+		"test_TLSHTTP_subdomain_03": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("sub.example.com")),
+			routerHostnames:  []gatewayv1.Hostname{"example.com", "*.example.com"},
+			expMatch:         true,
+			expHostnames:     []gatewayv1.Hostname{"sub.example.com"},
+		},
+		"test_TLSHTTP_subdomain_04": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("sub.example.com")),
+			routerHostnames:  []gatewayv1.Hostname{"*.example.com", "sub.example.com"},
+			expMatch:         true,
+			expHostnames:     []gatewayv1.Hostname{"sub.example.com"},
+		},
+		"test_TLSHTTP_subdomain_05": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("sub.example.com")),
+			routerHostnames:  []gatewayv1.Hostname{"example.com", "sub.example.com", "some.sub.example.com"},
+			expMatch:         true,
+			expHostnames:     []gatewayv1.Hostname{"sub.example.com"},
+		},
+		"test_TLSHTTP_subdomain_06": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("sub.example.com")),
+			routerHostnames:  []gatewayv1.Hostname{"example.com", "example.com", "*.example.com", "*.example.com", "sub.example.com", "sub.example.com"},
+			expMatch:         true,
+			expHostnames:     []gatewayv1.Hostname{"sub.example.com"},
+		},
+		"test_TLSHTTP_subdomain_07": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("sub.example.com")),
+			routerHostnames:  []gatewayv1.Hostname{"example.net", "*.example.net", "sub.example.net", "some.sub.example.net"},
+			expMatch:         false,
+			expHostnames:     nil,
+		},
+		//
+		// listener with "*.example.com" hostname
+		"test_TLSHTTP_wildcard_01": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("*.example.com")),
+			routerHostnames:  nil,
+			expMatch:         true,
+			expHostnames:     []gatewayv1.Hostname{"*.example.com"},
+		},
+		"test_TLSHTTP_wildcard_02": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("*.example.com")),
+			routerHostnames:  []gatewayv1.Hostname{"example.com"},
+			expMatch:         false,
+			expHostnames:     nil,
+		},
+		"test_TLSHTTP_wildcard_03": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("*.example.com")),
+			routerHostnames:  []gatewayv1.Hostname{"example.com", "*.example.com"},
+			expMatch:         true,
+			expHostnames:     []gatewayv1.Hostname{"*.example.com"},
+		},
+		"test_TLSHTTP_wildcard_04": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("*.example.com")),
+			routerHostnames:  []gatewayv1.Hostname{"*.example.com", "sub.example.com"},
+			expMatch:         true,
+			expHostnames:     []gatewayv1.Hostname{"*.example.com", "sub.example.com"},
+		},
+		"test_TLSHTTP_wildcard_05": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("*.example.com")),
+			routerHostnames:  []gatewayv1.Hostname{"example.com", "sub.example.com", "some.sub.example.com"},
+			expMatch:         true,
+			expHostnames:     []gatewayv1.Hostname{"sub.example.com", "some.sub.example.com"},
+		},
+		"test_TLSHTTP_wildcard_06": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("*.example.com")),
+			routerHostnames:  []gatewayv1.Hostname{"example.com", "example.com", "*.example.com", "*.example.com", "sub.example.com", "sub.example.com"},
+			expMatch:         true,
+			expHostnames:     []gatewayv1.Hostname{"*.example.com", "sub.example.com"},
+		},
+		"test_TLSHTTP_wildcard_07": {
+			listenerHostname: ptr.To(gatewayv1.Hostname("*.example.com")),
+			routerHostnames:  []gatewayv1.Hostname{"example.net", "*.example.net", "sub.example.net", "some.sub.example.net"},
+			expMatch:         false,
+			expHostnames:     nil,
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			var protocols []gatewayv1.ProtocolType
+			if test.listenerTCPProto {
+				protocols = []gatewayv1.ProtocolType{gatewayv1.TCPProtocolType}
+			} else {
+				protocols = []gatewayv1.ProtocolType{gatewayv1.TLSProtocolType, gatewayv1.HTTPProtocolType}
+			}
+			for _, protocol := range protocols {
+				t.Run("protocol="+string(protocol), func(t *testing.T) {
+					c := setup(t)
+					conv := c.createConverter()
+					listener := gatewayv1.Listener{}
+					listener.Protocol = protocol
+					listener.Hostname = test.listenerHostname
+					match, hostnames := conv.checkMatchingHostnames(&listener, test.routerHostnames)
+					assert.Equal(t, test.expMatch, match, "hostname match")
+					assert.Equal(t, test.expHostnames, hostnames, "hostname list")
+				})
+			}
+		})
+	}
+}
+
 func runTestSync(t *testing.T, testCases []testCaseSync) {
 	for _, test := range testCases {
 		t.Run(test.id, func(t *testing.T) {
@@ -1056,8 +1262,8 @@ func setup(t *testing.T) *testConfig {
 	return c
 }
 
-func (c *testConfig) createConverter() gateway.Config {
-	return gateway.NewGatewayConverter(
+func (c *testConfig) createConverter() *converter {
+	return NewGatewayConverter(
 		&convtypes.ConverterOptions{
 			Cache:      c.cache,
 			Logger:     c.logger,
@@ -1067,7 +1273,7 @@ func (c *testConfig) createConverter() gateway.Config {
 		c.hconfig,
 		c.cache.LegacySwapObjects(),
 		nil,
-	)
+	).(*converter)
 }
 
 func (c *testConfig) createNamespace(name, labels string) *api.Namespace {

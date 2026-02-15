@@ -133,7 +133,6 @@ func TestAddFindPath(t *testing.T) {
 	}
 	testCases := []struct {
 		paths     []path
-		order     []string
 		findPath  string
 		findMatch []MatchType
 		found     []string
@@ -145,7 +144,6 @@ func TestAddFindPath(t *testing.T) {
 				{backend: b2, path: "/app", match: MatchBegin},
 				{backend: b3, path: "/login", match: MatchBegin},
 			},
-			order:     []string{"b3", "b2", "b1"},
 			findPath:  "/",
 			findMatch: []MatchType{MatchExact},
 			found:     []string{},
@@ -157,7 +155,6 @@ func TestAddFindPath(t *testing.T) {
 				{backend: b2, path: "/", match: MatchExact},
 				{backend: b3, path: "/login", match: MatchExact},
 			},
-			order:     []string{"b3", "b1", "b2"},
 			findPath:  "/",
 			findMatch: []MatchType{MatchBegin},
 			found:     []string{"b1"},
@@ -169,7 +166,6 @@ func TestAddFindPath(t *testing.T) {
 				{backend: b2, path: "/", match: MatchExact},
 				{backend: b3, path: "/login", match: MatchExact},
 			},
-			order:     []string{"b3", "b1", "b2"},
 			findPath:  "/",
 			findMatch: []MatchType{},
 			found:     []string{"b1", "b2"},
@@ -181,7 +177,6 @@ func TestAddFindPath(t *testing.T) {
 				{backend: b2, path: "/", match: MatchBegin},
 				{backend: b3, path: "/login", match: MatchBegin},
 			},
-			order:     []string{"b3", "b1", "b2"},
 			findPath:  "/",
 			findMatch: []MatchType{MatchBegin},
 			found:     []string{"b1", "b2"},
@@ -194,15 +189,10 @@ func TestAddFindPath(t *testing.T) {
 		for _, p := range test.paths {
 			h.AddPath(p.backend, p.path, p.match)
 		}
-		actualOrder := []string{}
-		for _, p := range h.Paths {
-			actualOrder = append(actualOrder, p.Backend.Name)
-		}
 		actualFound := []string{}
 		for _, p := range h.FindPath(test.findPath, test.findMatch...) {
 			actualFound = append(actualFound, p.Backend.Name)
 		}
-		c.compareObjects("order", i, actualOrder, test.order)
 		c.compareObjects("find", i, actualFound, test.found)
 		c.teardown()
 	}
@@ -248,7 +238,7 @@ func TestRemovePath(t *testing.T) {
 		{
 			addPaths:    "/app1,/app2",
 			removePaths: "/app3",
-			expPaths:    "/app2,/app1",
+			expPaths:    "/app1,/app2",
 		},
 		// 6
 		{

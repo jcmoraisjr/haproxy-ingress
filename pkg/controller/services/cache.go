@@ -367,6 +367,21 @@ func (c *c) GetTLSRouteList() ([]*gatewayv1alpha2.TLSRoute, error) {
 	return nil, nil
 }
 
+func (c *c) GetReferenceGrantList() ([]*gatewayv1beta1.ReferenceGrant, error) {
+	if c.config.HasGrantB1 {
+		list1 := gatewayv1beta1.ReferenceGrantList{}
+		if err := c.client.List(c.ctx, &list1); err != nil {
+			return nil, err
+		}
+		list := make([]*gatewayv1beta1.ReferenceGrant, len(list1.Items))
+		for i := range list1.Items {
+			list[i] = &list1.Items[i]
+		}
+		return list, nil
+	}
+	return nil, nil
+}
+
 func (c *c) GetService(defaultNamespace, serviceName string) (*api.Service, error) {
 	namespace, name, err := buildResourceName(defaultNamespace, "service", serviceName, c.dynconfig.CrossNamespaceServices)
 	if err != nil {
