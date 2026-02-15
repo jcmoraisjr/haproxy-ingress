@@ -646,7 +646,7 @@ func firstToken(s string) string {
 }
 
 func (c *updater) buildBackendCustomResponses(d *backData) {
-	d.backend.CustomHTTPResponses = c.buildHTTPResponses(d.mapper, keyScopeBackend)
+	d.backend.CustomHTTPResponses = c.buildHTTPResponses(d.backend.ID, d.mapper, keyScopeBackend)
 }
 
 func (c *updater) buildBackendDNS(d *backData) {
@@ -670,8 +670,29 @@ func (c *updater) buildBackendDNS(d *backData) {
 }
 
 func (c *updater) buildBackendDynamic(d *backData) {
+	dynScalingVal := d.mapper.Get(ingtypes.BackDynamicScaling)
+	var dynScaling hatypes.DynScaling
+	switch strings.ToLower(dynScalingVal.Value) {
+	case "none":
+		dynScaling = hatypes.DynScalingNone
+	case "slots":
+		dynScaling = hatypes.DynScalingSlots
+	case "add":
+		dynScaling = hatypes.DynScalingAdd
+	default:
+		b, err := strconv.ParseBool(dynScalingVal.Value)
+		if err != nil {
+			c.logger.Warn("error configuring dynamic scaling on %v: invalid dynamic mode or boolean value: %s", dynScalingVal.Source, dynScalingVal.Value)
+		}
+		// configure despite an error, which will mimic backward compatible behavior.
+		if b {
+			dynScaling = hatypes.DynScalingSlots
+		} else {
+			dynScaling = hatypes.DynScalingNone
+		}
+	}
 	d.backend.Dynamic = hatypes.DynBackendConfig{
-		DynUpdate:    d.mapper.Get(ingtypes.BackDynamicScaling).Bool(),
+		DynScaling:   dynScaling,
 		BlockSize:    d.mapper.Get(ingtypes.BackBackendServerSlotsInc).Int(),
 		MinFreeSlots: d.mapper.Get(ingtypes.BackSlotsMinFree).Int(),
 	}

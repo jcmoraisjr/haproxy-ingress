@@ -1584,6 +1584,58 @@ http-request deny if { src,lua.peers_sum(%[peers_group_backend],http_req_rate) g
 	}
 }
 
+func TestDynamicScaling(t *testing.T) {
+	testCases := map[string]struct {
+		ann string
+		exp hatypes.DynScaling
+		log string
+	}{
+		"test01": {
+			ann: "none",
+			exp: hatypes.DynScalingNone,
+		},
+		"test02": {
+			ann: "false",
+			exp: hatypes.DynScalingNone,
+		},
+		"test03": {
+			ann: "slots",
+			exp: hatypes.DynScalingSlots,
+		},
+		"test04": {
+			ann: "true",
+			exp: hatypes.DynScalingSlots,
+		},
+		"test05": {
+			ann: "add",
+			exp: hatypes.DynScalingAdd,
+		},
+		"test06": {
+			ann: "Add",
+			exp: hatypes.DynScalingAdd,
+		},
+		"test07": {
+			ann: "bar",
+			exp: hatypes.DynScalingNone,
+			log: `WARN error configuring dynamic scaling on Ingress 'default/app': invalid dynamic mode or boolean value: bar`,
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			c := setup(t)
+			ann := map[string]map[string]string{
+				"/": {ingtypes.BackDynamicScaling: test.ann},
+			}
+			d := c.createBackendMappingData("default/app", &Source{Type: types.ResourceIngress, Namespace: "default", Name: "app"}, map[string]string{}, ann, nil)
+			updater := c.createUpdater()
+			updater.buildBackendDynamic(d)
+			c.compareObjects("dynamic scaling", 0, d.backend.Dynamic, hatypes.DynBackendConfig{DynScaling: test.exp})
+			c.logger.CompareLogging(test.log)
+			c.teardown()
+		})
+	}
+}
+
 func TestFirstToken(t *testing.T) {
 	testCases := []struct {
 		line     string

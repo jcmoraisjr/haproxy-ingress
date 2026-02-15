@@ -258,7 +258,6 @@ func (b *Backends) BuildHTTPResponses() (responses []HTTPResponses) {
 	// Cache? Need to handle partial update. Leave it simple? Make at least some performance tests.
 	for _, backend := range b.items {
 		res := &backend.CustomHTTPResponses
-		res.ID = backend.ID
 		if len(res.HAProxy) > 0 || len(res.Lua) > 0 {
 			responses = append(responses, HTTPResponses{
 				ID:      res.ID,
