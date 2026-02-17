@@ -503,8 +503,3 @@ func (ep *TCPEndpoint) String() string {
 func (p *Path) String() string {
 	return fmt.Sprintf("%+v", *p)
 }
-
-// String ...
-func (h *BackendHeader) String() string {
-	return fmt.Sprintf("%+v", *h)
-}

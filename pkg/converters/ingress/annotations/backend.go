@@ -698,24 +698,34 @@ func (c *updater) buildBackendHealthCheck(d *backData) {
 }
 
 func (c *updater) buildBackendHeaders(d *backData) {
-	headers := d.mapper.Get(ingtypes.BackHeaders)
-	if headers.Value == "" {
-		return
-	}
-	for _, header := range utils.PatternLineToSlice(d.vars, headers.Value) {
-		name, value, err := utils.SplitHeaderNameValue(header)
-		if err != nil {
-			c.logger.Warn("ignoring header on %s: %v", headers.Source, err)
-			continue
+	defineHeaders := func(config *ConfigValue, headers *[]hatypes.HTTPHeader) {
+		for _, header := range utils.PatternLineToSlice(d.vars, config.Value) {
+			name, value, err := utils.SplitHeaderNameValue(header)
+			if err != nil {
+				c.logger.Warn("ignoring header on %s: %v", config.Source, err)
+				continue
+			}
+			if name == "" {
+				continue
+			}
+			*headers = append(*headers, hatypes.HTTPHeader{
+				Name:  name,
+				Value: value,
+			})
 		}
-		if name == "" {
-			continue
-		}
-		d.backend.Headers = append(d.backend.Headers, &hatypes.BackendHeader{
-			Name:  name,
-			Value: value,
-		})
 	}
+
+	defineHeaders(d.mapper.Get(ingtypes.BackRequestAddHeaders), &d.backend.RequestHeadersAdd)
+	reqSetHeaders := d.mapper.Get(ingtypes.BackRequestSetHeaders)
+	if reqSetHeaders.Value == "" {
+		reqSetHeaders = d.mapper.Get(ingtypes.BackHeaders)
+	}
+	defineHeaders(reqSetHeaders, &d.backend.RequestHeadersSet)
+	defineHeaders(d.mapper.Get(ingtypes.BackResponseAddHeaders), &d.backend.ResponseHeadersAdd)
+	defineHeaders(d.mapper.Get(ingtypes.BackResponseSetHeaders), &d.backend.ResponseHeadersSet)
+
+	d.backend.RequestHeadersDel = utils.Split(d.mapper.Get(ingtypes.BackRequestDelHeaders).Value, ",")
+	d.backend.ResponseHeadersDel = utils.Split(d.mapper.Get(ingtypes.BackResponseDelHeaders).Value, ",")
 }
 
 func (c *updater) buildBackendHSTS(d *backData) {
