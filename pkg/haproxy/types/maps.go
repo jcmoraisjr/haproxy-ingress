@@ -17,10 +17,12 @@ limitations under the License.
 package types
 
 import (
+	"cmp"
 	"container/list"
 	"fmt"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -207,14 +209,16 @@ func (hm *HostsMap) rebuildMatchFiles() (matchFiles []*MatchFile) {
 	for _, entryList := range hm.rawhosts {
 		// priorities should be processed first:
 		// - /sub/dir need to be processed before /sub
-		// - with-filters need to be processed before without-filters
-		sort.Slice(entryList, func(i, j int) bool {
-			e1 := entryList[i]
-			e2 := entryList[j]
-			if e1.headers.equals(e2.headers) {
-				return e1.path > e2.path
+		// - order of the filters from the most specific to the least one
+		// - the least specific must be an entry without filter
+		slices.SortStableFunc(entryList, func(e1, e2 *HostsMapEntry) int {
+			if e1.hasSameFilter(e2) {
+				return strings.Compare(e2.path, e1.path)
 			}
-			return e1.hasFilter()
+			if cmpFilter := e1.compareFilters(e2); cmpFilter != 0 {
+				return cmpFilter
+			}
+			return cmp.Compare(e1.order, e2.order)
 		})
 		if len(entryList) == 1 {
 			e1 := entryList[0]
@@ -469,11 +473,15 @@ func (m MatchFile) Values() []*HostsMapEntry {
 }
 
 func (he *HostsMapEntry) hasFilter() bool {
-	return he.headers != nil
+	return len(he.headers) > 0
 }
 
 func (he *HostsMapEntry) hasSameFilter(other *HostsMapEntry) bool {
 	return he.headers.equals(other.headers)
+}
+
+func (he *HostsMapEntry) compareFilters(other *HostsMapEntry) int {
+	return cmp.Compare(len(other.headers), len(he.headers))
 }
 
 func (h HTTPHeaderMatch) equals(other HTTPHeaderMatch) bool {
