@@ -98,6 +98,18 @@ func (hm *HostsMap) AddAliasPathMapping(alias HostAliasConfig, path *Path, targe
 	}
 }
 
+// AddTargetIfMissing ...
+func (hm *HostsMap) AddTargetIfMissing(hostname, path string, target string, match MatchType) {
+	if h := hm.rawhosts[hostname]; h != nil {
+		for _, entry := range h {
+			if entry.path == path && entry.match == match && entry.Value == target {
+				return
+			}
+		}
+	}
+	hm.addTarget(hostname, path, nil, 0, target, match)
+}
+
 func convertWildcardToRegex(hostname string, extendedMatch bool) (h string, hasWildcard bool) {
 	if !strings.HasPrefix(hostname, "*.") {
 		return hostname, false

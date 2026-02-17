@@ -2881,6 +2881,47 @@ frontend _front_http_8001
 
 }
 
+func TestInstanceDefaultHostDefaultBackend(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	f := c.httpsFrontend(443)
+	b := c.config.Backends().AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+	h := f.AcquireHost(hatypes.DefaultHost)
+	h.AddPath(b, "/path", hatypes.MatchBegin)
+	h.DefaultBackend = c.config.backends.AcquireNotFoundBackend()
+	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/d1.pem"
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+frontend _front_https
+    mode http
+    bind :443 ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_https_bind_crt.list ca-ignore-err all crt-ignore-err all
+    <<set-req-base>>
+    http-request set-var(req.defaultbackend) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_front_https_defaulthost__begin.map) if !{ var(req.hostbackend) -m found }
+    <<https-headers>>
+    use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
+    use_backend %[var(req.defaultbackend)]
+    default_backend _error404
+<<support>>
+`)
+	c.checkMap("_front_https_bind_crt.list", `
+/var/haproxy/ssl/certs/d1.pem !*
+`)
+	c.checkMap("_front_https_defaulthost__begin.map", `
+<default>#/path d1_app_8080
+<default>#/ _error404
+`)
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestInstanceStrictHost(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
@@ -2960,10 +3001,12 @@ frontend _front_http
 `)
 	c.checkMap("_front_http_host__begin.map", `
 d1.local#/path d1_app_8080
-d1.local#/ d2_app_8080
+d1.local#/ _error404
 `)
 	c.checkMap("_front_http_defaulthost__begin.map", `
-<default>#/ d2_app_8080`)
+<default>#/ d2_app_8080
+<default>#/ _error404
+`)
 	c.logger.CompareLogging(defaultLogging)
 }
 
