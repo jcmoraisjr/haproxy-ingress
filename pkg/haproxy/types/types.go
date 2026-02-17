@@ -534,6 +534,8 @@ type Host struct {
 	//
 	Alias               HostAliasConfig
 	CustomHTTPResponses HTTPResponses
+	DefaultBackend      *Backend
+	ExtendedWildcard    bool
 	Redirect            HostRedirectConfig
 	RootRedirect        string
 	SSLPassthrough      bool
@@ -684,11 +686,17 @@ type Backend struct {
 	DeniedIPTCP         AccessConfig
 	Dynamic             DynBackendConfig
 	EpCookieStrategy    EndpointCookieStrategy
-	Headers             []*BackendHeader
 	HealthCheck         HealthCheck
 	Limit               BackendLimit
 	ModeTCP             bool
 	PeersTable          string
+	Redirect            BackendRedirect
+	RequestHeadersAdd   []HTTPHeader
+	RequestHeadersSet   []HTTPHeader
+	RequestHeadersDel   []string
+	ResponseHeadersAdd  []HTTPHeader
+	ResponseHeadersSet  []HTTPHeader
+	ResponseHeadersDel  []string
 	Resolver            string
 	Server              ServerConfig
 	Timeout             BackendTimeoutConfig
@@ -762,12 +770,6 @@ type Path struct {
 	WAF           WAF
 }
 
-// BackendHeader ...
-type BackendHeader struct {
-	Name  string
-	Value string
-}
-
 // AgentCheck ...
 type AgentCheck struct {
 	Addr     string
@@ -798,6 +800,14 @@ type BackendLimit struct {
 	Connections int
 	RPS         int
 	Whitelist   []string
+}
+
+type BackendRedirect struct {
+	Scheme   string
+	Hostname string
+	Path     string
+	Port     int
+	Code     int
 }
 
 // AccessConfig ...

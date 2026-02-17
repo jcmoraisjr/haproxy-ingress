@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
@@ -136,6 +137,10 @@ func (c *CacheMock) GetTCPRouteList() ([]*gatewayv1alpha2.TCPRoute, error) {
 
 func (c *CacheMock) GetTLSRouteList() ([]*gatewayv1alpha2.TLSRoute, error) {
 	return c.TLSRouteList, nil
+}
+
+func (c *CacheMock) GetReferenceGrantList() ([]*gatewayv1beta1.ReferenceGrant, error) {
+	return nil, nil
 }
 
 func (c *CacheMock) GetGatewayClassMap() (map[gatewayv1.ObjectName]*gatewayv1.GatewayClass, error) {

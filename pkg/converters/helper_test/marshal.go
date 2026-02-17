@@ -53,6 +53,7 @@ type (
 	// host
 	hostMock struct {
 		Hostname     string
+		DefaultBack  string `yaml:",omitempty"`
 		Paths        []pathMock
 		RootRedirect string  `yaml:",omitempty"`
 		TLS          tlsMock `yaml:",omitempty"`
@@ -151,9 +152,20 @@ func marshalHosts(hafronts ...*hatypes.Host) []hostMock {
 				})
 			}
 			paths = append(paths, pathMock{Path: p.Path(), Match: match, Headers: hmock, BackendID: p.Backend.ID})
+			// TODO: We used to sort on hosts.go/addLink(), but this ordering was moved deeper inside haproxy model.
+			// Lots of our converter tests consider sorted paths, but probably it is better to remove this sort from
+			// here and fix the tests instead.
+			sort.Slice(paths, func(i, j int) bool {
+				return paths[i].Path > paths[j].Path
+			})
+		}
+		var defaultBack string
+		if back := f.DefaultBackend; back != nil {
+			defaultBack = back.ID
 		}
 		hosts = append(hosts, hostMock{
 			Hostname:     f.Hostname,
+			DefaultBack:  defaultBack,
 			Paths:        paths,
 			RootRedirect: f.RootRedirect,
 			TLS:          tlsMock{TLSFilename: f.TLS.TLSFilename},
