@@ -153,6 +153,7 @@ goruntime
 gotemplate
 gotestsum
 goyaml
+grantapis
 grpcs
 gvstr
 gwapis
@@ -318,6 +319,7 @@ Nirajan
 Noacl
 nocrt
 Nofilter
+nogrants
 nonroot
 nopath
 nopwd
@@ -376,6 +378,7 @@ redirfrom
 redirto
 redispatched
 refactors
+referencegrant
 relabelings
 reloadlogger
 relref
