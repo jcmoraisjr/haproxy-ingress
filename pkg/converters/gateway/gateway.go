@@ -784,6 +784,7 @@ func (c *converter) createHTTPHosts(gatewaySource, routeSource *source, listener
 				hstr = hatypes.DefaultHost
 			}
 			h := frontend.AcquireHost(hstr)
+			h.ExtendedWildcard = true
 			pathlink := hatypes.CreatePathLink(path, haMatch).WithHTTPHost(h)
 			var haheaders hatypes.HTTPHeaderMatch
 			for _, header := range match.Headers {
