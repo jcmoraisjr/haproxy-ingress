@@ -683,8 +683,14 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- range $header := $backend.Headers }}
+{{- range $header := $backend.RequestHeadersSet }}
     http-request set-header {{ $header.Name }} {{ $header.Value }}
+{{- end }}
+{{- range $header := $backend.RequestHeadersAdd }}
+    http-request add-header {{ $header.Name }} {{ $header.Value }}
+{{- end }}
+{{- range $header := $backend.RequestHeadersDel }}
+    http-request del-header {{ $header }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
@@ -836,6 +842,17 @@ backend {{ $backend.ID }}
 {{- end }}
 {{- end }}
 {{- end }}
+{{- end }}
+
+{{- /*------------------------------------*/}}
+{{- range $header := $backend.ResponseHeadersSet }}
+    http-response set-header {{ $header.Name }} {{ $header.Value }}
+{{- end }}
+{{- range $header := $backend.ResponseHeadersAdd }}
+    http-response add-header {{ $header.Name }} {{ $header.Value }}
+{{- end }}
+{{- range $header := $backend.ResponseHeadersDel }}
+    http-response del-header {{ $header }}
 {{- end }}
 
 {{- end }}{{/*** if $backend.ModeTCP ***/}}

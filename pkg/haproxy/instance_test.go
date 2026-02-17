@@ -685,23 +685,37 @@ d1.local#/ path01`,
 		},
 		"test33": {
 			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
-				b.Headers = []*hatypes.BackendHeader{
+				b.RequestHeadersAdd = []hatypes.HTTPHeader{
 					{Name: "Name", Value: "Value"},
 				}
+				b.RequestHeadersDel = []string{"x-token"}
+				b.ResponseHeadersAdd = []hatypes.HTTPHeader{
+					{Name: "x-token", Value: "value"},
+				}
+				b.ResponseHeadersDel = []string{"x-user"}
 			},
 			expected: `
-    http-request set-header Name Value`,
+    http-request add-header Name Value
+    http-request del-header x-token
+    http-response add-header x-token value
+    http-response del-header x-user`,
 		},
 		"test34": {
 			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
-				b.Headers = []*hatypes.BackendHeader{
+				b.RequestHeadersSet = []hatypes.HTTPHeader{
 					{Name: "X-ID", Value: "abc"},
 					{Name: "Host", Value: "app.domain"},
+				}
+				b.ResponseHeadersSet = []hatypes.HTTPHeader{
+					{Name: "x-user", Value: "someone"},
+					{Name: "name", Value: "value"},
 				}
 			},
 			expected: `
     http-request set-header X-ID abc
-    http-request set-header Host app.domain`,
+    http-request set-header Host app.domain
+    http-response set-header x-user someone
+    http-response set-header name value`,
 		},
 		"test35": {
 			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {

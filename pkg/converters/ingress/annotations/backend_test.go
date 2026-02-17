@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	api "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -1628,56 +1629,56 @@ func TestFirstToken(t *testing.T) {
 }
 
 func TestHeaders(t *testing.T) {
-	testCases := []struct {
-		headers  string
-		expected []*hatypes.BackendHeader
-		logging  string
+	testCases := map[string]struct {
+		addSet    string
+		del       string
+		expAddSet []hatypes.HTTPHeader
+		expDel    []string
+		logging   string
 	}{
-		// 0
-		{
-			headers: `invalid`,
+		"test01": {
+			addSet:  `invalid`,
 			logging: `WARN ignoring header on ingress 'ing1/app': missing header name or value: invalid`,
 		},
-		// 1
-		{
-			headers: `key value`,
-			expected: []*hatypes.BackendHeader{
+		"test02": {
+			addSet: `key value`,
+			expAddSet: []hatypes.HTTPHeader{
 				{Name: "key", Value: "value"},
 			},
 		},
-		// 2
-		{
-			headers: `name: content`,
-			expected: []*hatypes.BackendHeader{
+		"test03": {
+			addSet: `name: content`,
+			expAddSet: []hatypes.HTTPHeader{
 				{Name: "name", Value: "content"},
 			},
 		},
-		// 3
-		{
-			headers: `k:v`,
-			expected: []*hatypes.BackendHeader{
+		"test04": {
+			addSet: `k:v`,
+			expAddSet: []hatypes.HTTPHeader{
 				{Name: "k", Value: "v"},
 			},
 		},
-		// 4
-		{
-			headers: `host: %[service].%[namespace].svc.cluster.local`,
-			expected: []*hatypes.BackendHeader{
+		"test05": {
+			addSet: `host: %[service].%[namespace].svc.cluster.local`,
+			expAddSet: []hatypes.HTTPHeader{
 				{Name: "host", Value: "app.default.svc.cluster.local"},
 			},
 		},
-		// 5
-		{
-			headers: `
+		"test06": {
+			addSet: `
 k8snamespace: %[namespace]
 k8sservice: %[service]
 host: %[service].%[namespace].svc.cluster.local
 `,
-			expected: []*hatypes.BackendHeader{
+			expAddSet: []hatypes.HTTPHeader{
 				{Name: "k8snamespace", Value: "default"},
 				{Name: "k8sservice", Value: "app"},
 				{Name: "host", Value: "app.default.svc.cluster.local"},
 			},
+		},
+		"test07": {
+			del:    "x-user, server",
+			expDel: []string{"x-user", "server"},
 		},
 	}
 	source := &Source{
@@ -1685,16 +1686,47 @@ host: %[service].%[namespace].svc.cluster.local
 		Name:      "app",
 		Type:      "ingress",
 	}
-	for i, test := range testCases {
-		c := setup(t)
-		ann := map[string]map[string]string{
-			"/": {ingtypes.BackHeaders: test.headers},
-		}
-		d := c.createBackendMappingData("default/app", source, map[string]string{}, ann, []string{"/"})
-		c.createUpdater().buildBackendHeaders(d)
-		c.compareObjects("headers", i, d.backend.Headers, test.expected)
-		c.logger.CompareLogging(test.logging)
-		c.teardown()
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			c := setup(t)
+
+			buildHeaders := func(annotation, value string) *backData {
+				ann := map[string]map[string]string{
+					"/": {annotation: value},
+				}
+				d := c.createBackendMappingData("default/app", source, map[string]string{}, ann, []string{"/"})
+				c.createUpdater().buildBackendHeaders(d)
+				c.logger.CompareLogging(test.logging)
+				return d
+			}
+
+			if test.addSet != "" {
+				dataHeaders := buildHeaders(ingtypes.BackHeaders, test.addSet)
+				assert.Equal(t, test.expAddSet, dataHeaders.backend.RequestHeadersSet, "Headers (alias)")
+
+				dataReqAdd := buildHeaders(ingtypes.BackRequestAddHeaders, test.addSet)
+				assert.Equal(t, test.expAddSet, dataReqAdd.backend.RequestHeadersAdd, "RequestHeadersAdd")
+
+				dataReqSet := buildHeaders(ingtypes.BackRequestSetHeaders, test.addSet)
+				assert.Equal(t, test.expAddSet, dataReqSet.backend.RequestHeadersSet, "RequestHeadersSet")
+
+				dataResAdd := buildHeaders(ingtypes.BackResponseAddHeaders, test.addSet)
+				assert.Equal(t, test.expAddSet, dataResAdd.backend.ResponseHeadersAdd, "ResponseHeadersAdd")
+
+				dataResSet := buildHeaders(ingtypes.BackResponseSetHeaders, test.addSet)
+				assert.Equal(t, test.expAddSet, dataResSet.backend.ResponseHeadersSet, "ResponseHeadersSet")
+			}
+
+			if test.del != "" {
+				dataReqDel := buildHeaders(ingtypes.BackRequestDelHeaders, test.del)
+				assert.Equal(t, test.expDel, dataReqDel.backend.RequestHeadersDel, "RequestHeadersDel")
+
+				dataResDel := buildHeaders(ingtypes.BackResponseDelHeaders, test.del)
+				assert.Equal(t, test.expDel, dataResDel.backend.ResponseHeadersDel, "ResponseHeadersDel")
+			}
+
+			c.teardown()
+		})
 	}
 }
 

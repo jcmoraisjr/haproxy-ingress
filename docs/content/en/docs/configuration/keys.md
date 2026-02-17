@@ -443,6 +443,12 @@ The table below describes all supported configuration keys.
 | [`redirect-from-regex`](#redirect)                   | regex                                   | Host     |                                  |
 | [`redirect-to`](#redirect)                           | fully qualified URL                     | Path     |                                  |
 | [`redirect-to-code`](#redirect)                      | http status code                        | Frontend | `302`                            |
+| [`request-add-headers`](#headers)                    | multiline header:value pair             | Backend  |                                  |
+| [`request-del-headers`](#headers)                    | comma-separated list of header names    | Backend  |                                  |
+| [`request-set-headers`](#headers)                    | multiline header:value pair             | Backend  |                                  |
+| [`response-add-headers`](#headers)                   | multiline header:value pair             | Backend  |                                  |
+| [`response-del-headers`](#headers)                   | comma-separated list of header names    | Backend  |                                  |
+| [`response-set-headers`](#headers)                   | multiline header:value pair             | Backend  |                                  |
 | [`rewrite-target`](#rewrite-target)                  | path string                             | Path     |                                  |
 | [`secure-backends`](#secure-backend)                 | [true\|false]                           | Backend  |                                  |
 | [`secure-crt-secret`](#secure-backend)               | secret name                             | Backend  |                                  |
@@ -1681,13 +1687,29 @@ See [HTTP Passthrough](#http-passthrough)
 
 ### Headers
 
-| Configuration key | Scope     | Default | Since  |
-|-------------------|-----------|---------|--------|
-| `headers`         | `Backend` |         | v0.11  |
+| Configuration key      | Scope     | Default | Since  |
+|------------------------|-----------|---------|--------|
+| `headers`              | `Backend` |         | v0.11  |
+| `request-add-headers`  | `Backend` |         | v0.17  |
+| `request-del-headers`  | `Backend` |         | v0.17  |
+| `request-set-headers`  | `Backend` |         | v0.17  |
+| `response-add-headers` | `Backend` |         | v0.17  |
+| `response-del-headers` | `Backend` |         | v0.17  |
+| `response-set-headers` | `Backend` |         | v0.17  |
 
-Configures a list of HTTP header names and the value it should be configured with. More than one header can be configured using a multi-line configuration value. The name of the header and its value should be separated with a colon and/or any amount of spaces.
+Configure request or response headers.
 
-The following variables can be used in the value:
+* `request-add-headers`: Defines headers that should be added to the backend request. The header is always added with the provided value, even if it already exists in the client request.
+* `request-del-headers`: Defines a comma-separated list of headers that should be removed from the client request.
+* `request-set-headers`: Defines headers that should be set to the backend request. The header value is overwritten in case it already exists in the client request.
+* `response-add-headers`: Defines headers that should be added to the client response. The header is always added with the provided value, even if it already exists in the backend response.
+* `response-set-headers`: Defines a comma-separated list of headers that should be removed from the backend response.
+* `response-del-headers`: Defines headers that should be set to the client response. The header value is overwritten in case it already exists in the backend response.
+* `headers`: Alias to `request-set-headers`, its value is ignored if `request-set-headers` is defined.
+
+Adding and setting headers should be configured using a multi-line configuration value. The name of the header and its value should be separated with a colon and/or any amount of spaces.
+
+The following variables can be used in the header value:
 
 * `%[namespace]`: namespace of the ingress or service
 * `%[service]`: name of the service which received the request
@@ -1696,6 +1718,7 @@ Configuration example:
 
 ```yaml
     annotations:
+      haproxy-ingress.github.io/response-del-headers: x-userid,server
       haproxy-ingress.github.io/headers: |
         x-path: /
         host: %[service].%[namespace].svc.cluster.local

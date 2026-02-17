@@ -686,11 +686,16 @@ type Backend struct {
 	DeniedIPTCP         AccessConfig
 	Dynamic             DynBackendConfig
 	EpCookieStrategy    EndpointCookieStrategy
-	Headers             []*BackendHeader
 	HealthCheck         HealthCheck
 	Limit               BackendLimit
 	ModeTCP             bool
 	PeersTable          string
+	RequestHeadersAdd   []HTTPHeader
+	RequestHeadersSet   []HTTPHeader
+	RequestHeadersDel   []string
+	ResponseHeadersAdd  []HTTPHeader
+	ResponseHeadersSet  []HTTPHeader
+	ResponseHeadersDel  []string
 	Resolver            string
 	Server              ServerConfig
 	Timeout             BackendTimeoutConfig
@@ -762,12 +767,6 @@ type Path struct {
 	RewriteURL    string
 	SSLRedirect   bool
 	WAF           WAF
-}
-
-// BackendHeader ...
-type BackendHeader struct {
-	Name  string
-	Value string
 }
 
 // AgentCheck ...
