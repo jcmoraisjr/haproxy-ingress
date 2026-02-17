@@ -629,11 +629,11 @@ local1.tld /a1 exact
 				{hostname: "local1.tld", path: "/a0", match: MatchExact, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname2"}}},
 			},
 			expected: `
-hosts__exact_01.map first:true,lower:false,method:str headers=['x-user':'myname2',regex:false]
-local1.tld /a0 exact
-
-hosts__exact_02.map first:false,lower:false,method:str headers=['x-user':'myname1',regex:false]
+hosts__exact_01.map first:true,lower:false,method:str headers=['x-user':'myname1',regex:false]
 local1.tld /a1 exact
+
+hosts__exact_02.map first:false,lower:false,method:str headers=['x-user':'myname2',regex:false]
+local1.tld /a0 exact
 
 hosts__exact.map first:false,lower:false,method:str
 local1.tld /a2 exact
@@ -680,12 +680,30 @@ local1.tld /a0 prefix
 				{hostname: "local1.tld", path: "/a0", match: MatchPrefix, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
 			},
 			expected: `
-hosts__prefix_01.map first:true,lower:false,method:dir headers=['x-user':'myname1',regex:false]
+hosts__prefix_01.map first:true,lower:false,method:dir headers=['x-user':'myname2',regex:false]
+local1.tld /a2 prefix
+
+hosts__prefix_02.map first:false,lower:false,method:dir headers=['x-user':'myname1',regex:false]
 local1.tld /a1 prefix
+local1.tld /a0 prefix
+`,
+		},
+		// 18
+		{
+			data: []data{
+				{hostname: "local1.tld", path: "/a0", match: MatchPrefix, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname2"}}},
+				{hostname: "local1.tld", path: "/a0", match: MatchPrefix, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+				{hostname: "local1.tld", path: "/a0", match: MatchPrefix, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}, {Name: "x-env", Value: "staging"}}},
+			},
+			expected: `
+hosts__prefix_01.map first:true,lower:false,method:dir headers=['x-user':'myname1',regex:false;'x-env':'staging',regex:false]
 local1.tld /a0 prefix
 
 hosts__prefix_02.map first:false,lower:false,method:dir headers=['x-user':'myname2',regex:false]
-local1.tld /a2 prefix
+local1.tld /a0 prefix
+
+hosts__prefix_03.map first:false,lower:false,method:dir headers=['x-user':'myname1',regex:false]
+local1.tld /a0 prefix
 `,
 		},
 	}

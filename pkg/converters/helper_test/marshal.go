@@ -151,6 +151,12 @@ func marshalHosts(hafronts ...*hatypes.Host) []hostMock {
 				})
 			}
 			paths = append(paths, pathMock{Path: p.Path(), Match: match, Headers: hmock, BackendID: p.Backend.ID})
+			// TODO: We used to sort on hosts.go/addLink(), but this ordering was moved deeper inside haproxy model.
+			// Lots of our converter tests consider sorted paths, but probably it is better to remove this sort from
+			// here and fix the tests instead.
+			sort.Slice(paths, func(i, j int) bool {
+				return paths[i].Path > paths[j].Path
+			})
 		}
 		hosts = append(hosts, hostMock{
 			Hostname:     f.Hostname,
