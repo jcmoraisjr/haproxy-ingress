@@ -203,6 +203,7 @@ hres
 hstr
 httpchk
 httpclose
+HTTPCORS
 httplog
 httpmaps
 httppass

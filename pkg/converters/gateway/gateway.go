@@ -320,32 +320,74 @@ func (c *converter) syncHTTPRoutes() {
 				}
 				backendSuffix := fmt.Sprintf("_rule%d", index)
 				backend, services := c.createBackend(routeSource, refEvent, backendSuffix, false, backendRefs)
+				var haCORS *hatypes.Cors
 				for _, filter := range rule.Filters {
 					switch filter.Type {
 					case gatewayv1.HTTPRouteFilterRequestRedirect:
 						if backend == nil {
 							backend = c.haproxy.Backends().AcquireBackend(route.Namespace, route.Name, backendSuffix)
 						}
-						r := filter.RequestRedirect
-						backend.Redirect.Scheme = ptr.Deref(r.Scheme, "")
-						backend.Redirect.Hostname = string(ptr.Deref(r.Hostname, ""))
-						// backend.Redirect.Path = r.Path.ReplaceFullPath
-						backend.Redirect.Port = int(ptr.Deref(r.Port, 0))
-						backend.Redirect.Code = ptr.Deref(r.StatusCode, 302)
+						c.syncHTTPRoutesFilterRequestRedirect(backend, filter.RequestRedirect)
+					case gatewayv1.HTTPRouteFilterCORS:
+						if backend != nil {
+							haCORS = ptr.To(c.syncHTTPRoutesFilterCORS(filter.CORS))
+						}
 					default:
 						refEvent.unsupportedValue = "Unsupported filter type: " + string(filter.Type)
 					}
 				}
 				if backend != nil {
 					hostnames := c.filterHostnames(listener.Hostname, route.Spec.Hostnames)
-					pathLinks := c.createHTTPHosts(gatewaySource, routeSource, listener, hostnames, rule.Matches, backend)
+					paths, pathLinks := c.createHTTPHosts(gatewaySource, routeSource, listener, hostnames, rule.Matches, backend)
 					if c.ann != nil {
 						c.ann.ReadAnnotations(backend, services, pathLinks)
+					}
+					if haCORS != nil {
+						for _, path := range paths {
+							path.Cors = *haCORS
+						}
 					}
 				}
 			}
 		})
 	}
+}
+
+func (c *converter) syncHTTPRoutesFilterRequestRedirect(backend *hatypes.Backend, redirect *gatewayv1.HTTPRequestRedirectFilter) {
+	backend.Redirect.Scheme = ptr.Deref(redirect.Scheme, "")
+	backend.Redirect.Hostname = string(ptr.Deref(redirect.Hostname, ""))
+	// backend.Redirect.Path = redirect.Path.ReplaceFullPath
+	backend.Redirect.Port = int(ptr.Deref(redirect.Port, 0))
+	backend.Redirect.Code = ptr.Deref(redirect.StatusCode, 302)
+}
+
+func (c *converter) syncHTTPRoutesFilterCORS(cors *gatewayv1.HTTPCORSFilter) (haCORS hatypes.Cors) {
+	haCORS.Enabled = true
+	haCORS.AllowOrigin = make([]string, len(cors.AllowOrigins))
+	for i, origin := range cors.AllowOrigins {
+		haCORS.AllowOrigin[i] = string(origin)
+	}
+	haCORS.AllowCredentials = ptr.Deref(cors.AllowCredentials, false)
+	methods := make([]string, len(cors.AllowMethods))
+	for i, method := range cors.AllowMethods {
+		methods[i] = string(method)
+	}
+	haCORS.AllowMethods = strings.Join(methods, ",")
+	headers := make([]string, len(cors.AllowHeaders))
+	for i, header := range cors.AllowHeaders {
+		headers[i] = string(header)
+	}
+	haCORS.AllowHeaders = strings.Join(headers, ",")
+	expHeaders := make([]string, len(cors.ExposeHeaders))
+	for i, header := range cors.ExposeHeaders {
+		expHeaders[i] = string(header)
+	}
+	haCORS.ExposeHeaders = strings.Join(expHeaders, ",")
+	haCORS.MaxAge = int(cors.MaxAge)
+	if haCORS.MaxAge == 0 {
+		haCORS.MaxAge = 5
+	}
+	return haCORS
 }
 
 func (c *converter) syncTLSRoutes() {
@@ -759,7 +801,7 @@ func (c *converter) createBackend(routeSource *source, refEvent *routeParentRefE
 	return habackend, svclist
 }
 
-func (c *converter) createHTTPHosts(gatewaySource, routeSource *source, listener *gatewayv1.Listener, hostnames []gatewayv1.Hostname, matches []gatewayv1.HTTPRouteMatch, backend *hatypes.Backend) (pathLinks []*hatypes.PathLink) {
+func (c *converter) createHTTPHosts(gatewaySource, routeSource *source, listener *gatewayv1.Listener, hostnames []gatewayv1.Hostname, matches []gatewayv1.HTTPRouteMatch, backend *hatypes.Backend) (paths []*hatypes.Path, pathLinks []*hatypes.PathLink) {
 	if len(matches) == 0 {
 		matches = []gatewayv1.HTTPRouteMatch{{}}
 	}
@@ -767,7 +809,7 @@ func (c *converter) createHTTPHosts(gatewaySource, routeSource *source, listener
 	var hostsTLS map[string]*hatypes.TLSConfig
 	if listener.TLS != nil {
 		if certRefs = c.acquireCertificateRefs(gatewaySource, listener); len(certRefs.certFiles) == 0 {
-			return nil
+			return nil, nil
 		}
 		hostsTLS = make(map[string]*hatypes.TLSConfig)
 	}
@@ -820,7 +862,8 @@ func (c *converter) createHTTPHosts(gatewaySource, routeSource *source, listener
 			c.tracker.TrackRefName([]convtypes.TrackingRef{
 				{Context: convtypes.ResourceHAHostname, UniqueName: h.Hostname},
 			}, convtypes.ResourceGateway, "gw")
-			h.AddLink(backend, pathlink)
+			path := h.AddLink(backend, pathlink)
+			paths = append(paths, path)
 			pathLinks = append(pathLinks, pathlink)
 			if hostsTLS != nil {
 				hostsTLS[h.Hostname] = &h.TLS.TLSConfig
@@ -831,7 +874,7 @@ func (c *converter) createHTTPHosts(gatewaySource, routeSource *source, listener
 	if listener.TLS != nil {
 		c.readCertRefs(certRefs, hostsTLS)
 	}
-	return pathLinks
+	return paths, pathLinks
 }
 
 func (c *converter) createTLSHosts(gatewaySource, routeSource *source, listener *gatewayv1.Listener, hostnames []gatewayv1.Hostname, backend *hatypes.Backend) []*hatypes.PathLink {
