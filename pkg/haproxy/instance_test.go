@@ -1157,6 +1157,23 @@ frontend _front_http_8002
     http-request redirect scheme https if !https-request { var(txn.pathID) -m str path01 }
     http-response set-header Strict-Transport-Security "max-age=0" if https-request { var(txn.pathID) -m str path02 }`,
 		},
+		"test71": {
+			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
+				b.Redirect.Scheme = "https"
+				b.Redirect.Hostname = "another.local"
+			},
+			expected: `
+    http-request redirect location https://another.local%[path] code 302`,
+		},
+		"test72": {
+			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
+				b.Redirect.Port = 9000
+				b.Redirect.Path = "/api"
+				b.Redirect.Code = 301
+			},
+			expected: `
+    http-request redirect location //%[var(req.host)]:9000/api code 301`,
+		},
 	}
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {

@@ -690,6 +690,7 @@ type Backend struct {
 	Limit               BackendLimit
 	ModeTCP             bool
 	PeersTable          string
+	Redirect            BackendRedirect
 	RequestHeadersAdd   []HTTPHeader
 	RequestHeadersSet   []HTTPHeader
 	RequestHeadersDel   []string
@@ -799,6 +800,14 @@ type BackendLimit struct {
 	Connections int
 	RPS         int
 	Whitelist   []string
+}
+
+type BackendRedirect struct {
+	Scheme   string
+	Hostname string
+	Path     string
+	Port     int
+	Code     int
 }
 
 // AccessConfig ...

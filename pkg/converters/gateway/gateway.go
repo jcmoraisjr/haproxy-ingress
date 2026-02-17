@@ -117,12 +117,13 @@ type routeEvent struct {
 }
 
 type routeParentRefEvent struct {
-	ref        parentReference
-	gateway    *gatewayEvent
-	listener   string
-	match      bool
-	notAllowed string
-	backendRef string
+	ref              parentReference
+	gateway          *gatewayEvent
+	listener         string
+	match            bool
+	notAllowed       string
+	backendRef       string
+	unsupportedValue string
 }
 
 type parentReference struct {
@@ -317,7 +318,24 @@ func (c *converter) syncHTTPRoutes() {
 					// TODO implement HTTPBackendRef.Filters
 					backendRefs[i] = rule.BackendRefs[i].BackendRef
 				}
-				backend, services := c.createBackend(routeSource, refEvent, fmt.Sprintf("_rule%d", index), false, backendRefs)
+				backendSuffix := fmt.Sprintf("_rule%d", index)
+				backend, services := c.createBackend(routeSource, refEvent, backendSuffix, false, backendRefs)
+				for _, filter := range rule.Filters {
+					switch filter.Type {
+					case gatewayv1.HTTPRouteFilterRequestRedirect:
+						if backend == nil {
+							backend = c.haproxy.Backends().AcquireBackend(route.Namespace, route.Name, backendSuffix)
+						}
+						r := filter.RequestRedirect
+						backend.Redirect.Scheme = ptr.Deref(r.Scheme, "")
+						backend.Redirect.Hostname = string(ptr.Deref(r.Hostname, ""))
+						// backend.Redirect.Path = r.Path.ReplaceFullPath
+						backend.Redirect.Port = int(ptr.Deref(r.Port, 0))
+						backend.Redirect.Code = ptr.Deref(r.StatusCode, 302)
+					default:
+						refEvent.unsupportedValue = "Unsupported filter type: " + string(filter.Type)
+					}
+				}
 				if backend != nil {
 					hostnames := c.filterHostnames(listener.Hostname, route.Spec.Hostnames)
 					pathLinks := c.createHTTPHosts(gatewaySource, routeSource, listener, hostnames, rule.Matches, backend)
@@ -1197,6 +1215,10 @@ func (c *converter) syncRouteStatus(route client.Object) error {
 					conditionAccepted.Status = metav1.ConditionFalse
 					conditionAccepted.Reason = string(gatewayv1.RouteReasonNoMatchingParent)
 					conditionAccepted.Message = "No matching parent"
+				} else if eventParent.unsupportedValue != "" {
+					conditionAccepted.Status = metav1.ConditionFalse
+					conditionAccepted.Reason = string(gatewayv1.RouteReasonUnsupportedValue)
+					conditionAccepted.Message = eventParent.unsupportedValue
 				}
 				changed = meta.SetStatusCondition(&statusParent.Conditions, conditionAccepted) || changed
 
