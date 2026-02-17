@@ -550,6 +550,12 @@ backend {{ $backend.ID }}
         {{- end }}
 {{- end }}
 
+{{- with $backend.Redirect }}
+{{- if or .Scheme .Hostname .Path .Port .Code }}
+    http-request redirect location {{ with .Scheme }}{{ . }}:{{ end }}//{{ with .Hostname }}{{ . }}{{ else }}%[var(req.host)]{{ end }}{{ with .Port }}:{{ . }}{{ end }}{{ with .Path }}{{ . }}{{ else }}%[path]{{ end }} code {{ with .Code }}{{ . }}{{ else }}302{{ end }}
+{{- end }}
+{{- end }}
+
 {{- /*------------------------------------*/}}
 {{- if ne $hasHTTPPassthrough $hasOnly }}
 {{- $sslredirCfg := $backend.PathConfig "SSLRedirect" }}
