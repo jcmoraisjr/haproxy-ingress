@@ -534,6 +534,7 @@ type Host struct {
 	//
 	Alias               HostAliasConfig
 	CustomHTTPResponses HTTPResponses
+	DefaultBackend      *Backend
 	ExtendedWildcard    bool
 	Redirect            HostRedirectConfig
 	RootRedirect        string

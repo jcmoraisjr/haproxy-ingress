@@ -118,19 +118,18 @@ func (c *config) syncFrontend(f *hatypes.Frontend) {
 		}
 	}
 	for _, host := range f.HostsAdd() {
-		if !host.SSLPassthrough && c.global.StrictHost && host.FindPath("/", hatypes.MatchBegin) == nil {
-			back := c.backends.DefaultBackend
-			defaultHost := f.DefaultHost()
-			if defaultHost != nil {
-				path := defaultHost.FindPath("/")
-				if len(path) > 0 {
-					back = path[0].Backend
-				}
+		if c.global.StrictHost && host.DefaultBackend == nil && !host.SSLPassthrough {
+			var back *hatypes.Backend
+			if defaultHost := f.DefaultHost(); defaultHost != nil {
+				back = defaultHost.DefaultBackend
+			}
+			if back == nil {
+				back = c.backends.DefaultBackend
 			}
 			if back == nil {
 				back = c.backends.AcquireNotFoundBackend()
 			}
-			host.AddPath(back, "/", hatypes.MatchBegin)
+			host.DefaultBackend = back
 		}
 	}
 }
@@ -246,6 +245,14 @@ func (c *config) writeFrontendMaps(f *hatypes.Frontend) error {
 		}
 	}
 	defaultCrtFile := c.frontends.DefaultCrtFile
+	if defaultHost != nil {
+		if defaultHost.DefaultBackend != nil {
+			commonMaps.DefaultHostMap.AddTargetIfMissing(hatypes.DefaultHost, "/", defaultHost.DefaultBackend.ID, hatypes.MatchBegin)
+		}
+		if defaultHost.TLS.TLSFilename != "" {
+			defaultCrtFile = defaultHost.TLS.TLSFilename
+		}
+	}
 	var crtListItems []*hatypes.HostsMapEntry
 	if f.IsHTTPS {
 		// TODO crtList* to be removed after implement a template to the crt list
@@ -286,6 +293,13 @@ func (c *config) writeFrontendMaps(f *hatypes.Frontend) error {
 		}
 		if host.SSLPassthrough {
 			continue
+		}
+		if host.DefaultBackend != nil {
+			if f.IsHTTPS {
+				httpsMaps.HTTPSHostMap.AddTargetIfMissing(host.Hostname, "/", host.DefaultBackend.ID, hatypes.MatchBegin)
+			} else {
+				httpMaps.HTTPHostMap.AddTargetIfMissing(host.Hostname, "/", host.DefaultBackend.ID, hatypes.MatchBegin)
+			}
 		}
 		if host.Redirect.RedirectHost != "" {
 			commonMaps.RedirFromMap.AddHostnameMapping(host.Redirect.RedirectHost, host.ExtendedWildcard, host.Hostname)
