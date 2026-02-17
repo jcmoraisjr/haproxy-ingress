@@ -31,6 +31,7 @@ func TestAddHostnameMapping(t *testing.T) {
 	testCases := []struct {
 		filename string
 		hostname string
+		extwild  bool
 		expmatch MatchType
 		expected string
 	}{
@@ -54,6 +55,13 @@ func TestAddHostnameMapping(t *testing.T) {
 		},
 		// 3
 		{
+			hostname: "*.example.Local",
+			extwild:  true,
+			expmatch: MatchRegex,
+			expected: "^.+\\.example\\.local$",
+		},
+		// 4
+		{
 			hostname: "*.Example.Local",
 			expmatch: MatchRegex,
 			expected: "^[^.]+\\.example\\.local$",
@@ -61,7 +69,7 @@ func TestAddHostnameMapping(t *testing.T) {
 	}
 	for i, test := range testCases {
 		hm := CreateMaps(matchOrder).AddMap(test.filename)
-		hm.AddHostnameMapping(test.hostname, "backend")
+		hm.AddHostnameMapping(test.hostname, test.extwild, "backend")
 		entries := hm.rawfiles[test.expmatch].entries
 		if len(entries) != 1 {
 			t.Errorf("item %d, invalid match or value: %v", i, hm.rawfiles)
@@ -80,6 +88,7 @@ func TestAddHostnamePathMapping(t *testing.T) {
 		hostname string
 		path     string
 		match    MatchType
+		extwild  bool
 		expmatch MatchType
 		expected string
 	}{
@@ -179,10 +188,22 @@ func TestAddHostnamePathMapping(t *testing.T) {
 			expmatch: MatchRegex,
 			expected: "^[^.]+\\.example\\.local#/path$",
 		},
+		// 12
+		{
+			hostname: "*.example.local",
+			path:     "/path",
+			match:    MatchExact,
+			extwild:  true,
+			expmatch: MatchRegex,
+			expected: "^.+\\.example\\.local#/path$",
+		},
 	}
 	for i, test := range testCases {
 		hm := CreateMaps(matchOrder).AddMap(test.filename)
 		path := &Path{
+			Host: &Host{
+				ExtendedWildcard: test.extwild,
+			},
 			Link: CreatePathLink(test.path, test.match),
 		}
 		hm.AddHostnamePathMapping(test.hostname, path, "backend")
@@ -672,7 +693,7 @@ local1.tld /a2 prefix
 		hm := CreateMaps(matchOrder).AddMap("hosts.map")
 		for _, item := range test.data {
 			if item.path == "" {
-				hm.AddHostnameMapping(item.hostname, item.target)
+				hm.AddHostnameMapping(item.hostname, false, item.target)
 			} else {
 				hm.AddHostnamePathMapping(item.hostname, &Path{Link: CreatePathLink(item.path, item.match).WithHeadersMatch(item.headers)}, item.target)
 			}

@@ -45,19 +45,19 @@ func (hm *HostsMaps) AddMap(basename string) *HostsMap {
 }
 
 // AddHostnameMapping ...
-func (hm *HostsMap) AddHostnameMapping(hostname, target string) {
-	hm.addHostnameMappingMatch(hostname, target, MatchExact)
+func (hm *HostsMap) AddHostnameMapping(hostname string, extendedWildcard bool, target string) {
+	hm.addHostnameMappingMatch(hostname, extendedWildcard, target, MatchExact)
 }
 
 // AddHostnameMappingRegex ...
 func (hm *HostsMap) AddHostnameMappingRegex(hostname, target string) {
-	hm.addHostnameMappingMatch(hostname, target, MatchRegex)
+	hm.addHostnameMappingMatch(hostname, false, target, MatchRegex)
 }
 
-func (hm *HostsMap) addHostnameMappingMatch(hostname, target string, match MatchType) {
+func (hm *HostsMap) addHostnameMappingMatch(hostname string, extendedWildcard bool, target string, match MatchType) {
 	if match != MatchRegex {
 		var hasWildcard bool
-		if hostname, hasWildcard = convertWildcardToRegex(hostname); hasWildcard {
+		if hostname, hasWildcard = convertWildcardToRegex(hostname, extendedWildcard); hasWildcard {
 			match = MatchRegex
 		}
 	}
@@ -66,7 +66,11 @@ func (hm *HostsMap) addHostnameMappingMatch(hostname, target string, match Match
 
 // AddHostnamePathMapping ...
 func (hm *HostsMap) AddHostnamePathMapping(hostname string, path *Path, target string) {
-	hostname, hasWildcard := convertWildcardToRegex(hostname)
+	var extendedMatch bool
+	if path.Host != nil {
+		extendedMatch = path.Host.ExtendedWildcard
+	}
+	hostname, hasWildcard := convertWildcardToRegex(hostname, extendedMatch)
 	strpath := path.Path()
 	match := path.Match()
 	// TODO paths of a wildcard hostname will always have less precedence
@@ -92,11 +96,15 @@ func (hm *HostsMap) AddAliasPathMapping(alias HostAliasConfig, path *Path, targe
 	}
 }
 
-func convertWildcardToRegex(hostname string) (h string, hasWildcard bool) {
+func convertWildcardToRegex(hostname string, extendedMatch bool) (h string, hasWildcard bool) {
 	if !strings.HasPrefix(hostname, "*.") {
 		return hostname, false
 	}
-	return "^[^.]+" + regexp.QuoteMeta(hostname[1:]) + "$", true
+	prefix := "^[^.]+"
+	if extendedMatch {
+		prefix = "^.+"
+	}
+	return prefix + regexp.QuoteMeta(hostname[1:]) + "$", true
 }
 
 // convertPathToRegex converts a path of any match type that

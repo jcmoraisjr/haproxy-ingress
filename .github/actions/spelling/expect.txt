@@ -122,6 +122,7 @@ expfront
 explogging
 expmatch
 extfile
+extwild
 fcgiapp
 feb
 ffconf

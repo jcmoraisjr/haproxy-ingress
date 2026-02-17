@@ -534,6 +534,7 @@ type Host struct {
 	//
 	Alias               HostAliasConfig
 	CustomHTTPResponses HTTPResponses
+	ExtendedWildcard    bool
 	Redirect            HostRedirectConfig
 	RootRedirect        string
 	SSLPassthrough      bool
