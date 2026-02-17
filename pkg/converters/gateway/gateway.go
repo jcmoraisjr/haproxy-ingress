@@ -132,6 +132,7 @@ type routeParentRefEvent struct {
 	listener          string
 	match             bool
 	notAllowed        string
+	nohostname        bool
 	backendRef        string
 	backendRefNoGrant []string
 	invalidKind       string
@@ -349,12 +350,11 @@ func (c *converter) syncHTTPRoutes() {
 	})
 	for _, route := range routes {
 		routeSource := newSource(route)
-		c.syncRoute(routeSource, route.Spec.ParentRefs, func(gatewaySource *source, listener *gatewayv1.Listener, refEvent *routeParentRefEvent) {
+		c.syncRoute(routeSource, route.Spec.Hostnames, route.Spec.ParentRefs, func(gatewaySource *source, listener *gatewayv1.Listener, hostnames []gatewayv1.Hostname, refEvent *routeParentRefEvent) {
 			for index, rule := range route.Spec.Rules {
-				// TODO implement rule.Filters
+				// TODO implement httpRoute.Spec.Rules[].BackendRefs[].Filters[]
 				backendRefs := make([]gatewayv1.BackendRef, len(rule.BackendRefs))
 				for i := range rule.BackendRefs {
-					// TODO implement HTTPBackendRef.Filters
 					backendRefs[i] = rule.BackendRefs[i].BackendRef
 				}
 				backendSuffix := fmt.Sprintf("_rule%d", index)
@@ -384,7 +384,6 @@ func (c *converter) syncHTTPRoutes() {
 					}
 				}
 				if backend != nil {
-					hostnames := c.filterHostnames(listener.Hostname, route.Spec.Hostnames)
 					paths, pathLinks := c.createHTTPHosts(gatewaySource, routeSource, listener, hostnames, rule.Matches, backend)
 					if c.ann != nil {
 						c.ann.ReadAnnotations(backend, services, pathLinks)
@@ -469,12 +468,10 @@ func (c *converter) syncTLSRoutes() {
 	})
 	for _, route := range routes {
 		routeSource := newSource(route)
-		c.syncRoute(routeSource, route.Spec.ParentRefs, func(gatewaySource *source, listener *gatewayv1.Listener, refEvent *routeParentRefEvent) {
+		c.syncRoute(routeSource, route.Spec.Hostnames, route.Spec.ParentRefs, func(gatewaySource *source, listener *gatewayv1.Listener, hostnames []gatewayv1.Hostname, refEvent *routeParentRefEvent) {
 			for index, rule := range route.Spec.Rules {
-				// TODO implement rule.Filters
 				backend, services := c.createBackend(routeSource, refEvent, fmt.Sprintf("_tlsrule%d", index), true, rule.BackendRefs)
 				if backend != nil {
-					hostnames := c.filterHostnames(listener.Hostname, route.Spec.Hostnames)
 					pathLinks := c.createTLSHosts(gatewaySource, routeSource, listener, hostnames, backend)
 					if c.ann != nil {
 						c.ann.ReadAnnotations(backend, services, pathLinks)
@@ -501,9 +498,8 @@ func (c *converter) syncTCPRoutes() {
 	})
 	for _, route := range routes {
 		routeSource := newSource(route)
-		c.syncRoute(routeSource, route.Spec.ParentRefs, func(gatewaySource *source, listener *gatewayv1.Listener, refEvent *routeParentRefEvent) {
+		c.syncRoute(routeSource, nil, route.Spec.ParentRefs, func(gatewaySource *source, listener *gatewayv1.Listener, _ []gatewayv1.Hostname, refEvent *routeParentRefEvent) {
 			for index, rule := range route.Spec.Rules {
-				// TODO implement rule.Filters
 				backend, services := c.createBackend(routeSource, refEvent, fmt.Sprintf("_tcprule%d", index), true, rule.BackendRefs)
 				if backend != nil {
 					pathLinks := c.createTCPService(gatewaySource, listener, nil, backend)
@@ -524,7 +520,7 @@ const (
 	tcpRouteKind  = gatewayv1.Kind("TCPRoute")
 )
 
-func (c *converter) syncRoute(routeSource *source, parentRefs []gatewayv1.ParentReference, syncRouteListener func(gatewaySource *source, listener *gatewayv1.Listener, refEvent *routeParentRefEvent)) {
+func (c *converter) syncRoute(routeSource *source, routeHostnames []gatewayv1.Hostname, parentRefs []gatewayv1.ParentReference, syncRouteListener func(gatewaySource *source, listener *gatewayv1.Listener, hostnames []gatewayv1.Hostname, refEvent *routeParentRefEvent)) {
 	for i := range parentRefs {
 		parentRef := &parentRefs[i]
 		parentGroup := gatewayGroup
@@ -556,10 +552,12 @@ func (c *converter) syncRoute(routeSource *source, parentRefs []gatewayv1.Parent
 		}
 		gateway := gatewayEvent.gateway
 		gatewaySource := gatewayEvent.source
+		routeEvent := c.acquireRouteEvent(routeSource)
 		sectionName := ptr.Deref(parentRef.SectionName, "")
 		portNumber := ptr.Deref(parentRef.Port, 0)
 		if sectionName != "" || portNumber > 0 {
-			_ = c.acquireRouteParentRefEvent(routeSource, gatewayEvent, sectionName, portNumber)
+			// ensures that there is either a matching listener (refEvent.match=true) or otherwise a failing status
+			_ = routeEvent.acquireParentRefEvent(gatewayEvent, sectionName, portNumber)
 		}
 		for i := range gateway.Spec.Listeners {
 			listener := &gateway.Spec.Listeners[i]
@@ -569,19 +567,60 @@ func (c *converter) syncRoute(routeSource *source, parentRefs []gatewayv1.Parent
 			if portNumber > 0 && portNumber != listener.Port {
 				continue
 			}
-			refEvent := c.acquireRouteParentRefEvent(routeSource, gatewayEvent, listener.Name, portNumber)
+			refEvent := routeEvent.acquireParentRefEvent(gatewayEvent, listener.Name, portNumber)
+			refEvent.match = true
 			if err := c.checkListenerAllowed(gatewaySource, routeSource, listener); err != nil {
 				refEvent.notAllowed = err.Error()
 				refEvent.listener = string(listener.Name)
 				continue
 			}
-			refEvent.match = true
+			matchingHostname, hostnames := c.checkMatchingHostnames(listener, routeHostnames)
+			if !matchingHostname {
+				refEvent.nohostname = true
+				continue
+			}
 			lstEvent := c.acquireListenerEvent(gatewaySource, listener)
 			lstEvent.attachedRoutes += 1
-			// TODO implement gateway.Spec.Addresses
-			syncRouteListener(gatewaySource, listener, refEvent)
+			// TODO implement gateway.Spec.Addresses[]
+			syncRouteListener(gatewaySource, listener, hostnames, refEvent)
 		}
+		routeEvent.shrinkNoHostnames(gatewayEvent)
 	}
+}
+
+func (c *converter) checkMatchingHostnames(listener *gatewayv1.Listener, routeHostnames []gatewayv1.Hostname) (match bool, matchingHostnames []gatewayv1.Hostname) {
+	if listener.Protocol == gatewayv1.TCPProtocolType {
+		// TCP does not use hostname at all
+		return true, nil
+	}
+	if listener.Hostname == nil || *listener.Hostname == "" || *listener.Hostname == "*" {
+		// always allowed by the listener side, return the route configuration
+		if len(routeHostnames) == 0 {
+			// we create the frontend entries by iterating over the hostnames list, so need at least one item
+			routeHostnames = []gatewayv1.Hostname{"*"}
+		}
+		return true, routeHostnames
+	}
+	if len(routeHostnames) == 0 {
+		// route accepts any hostname, returns the listener configuration
+		return true, []gatewayv1.Hostname{*listener.Hostname}
+	}
+
+	// both sides have configuration, lets merge them
+	addIfMatch := func(matchRule, matchingPattern gatewayv1.Hostname) (matches bool) {
+		matches = matchRule == matchingPattern || (strings.HasPrefix(string(matchRule), "*.") && strings.HasSuffix(string(matchingPattern), string(matchRule[1:])))
+		if matches && !slices.Contains(matchingHostnames, matchingPattern) {
+			matchingHostnames = append(matchingHostnames, matchingPattern)
+		}
+		return matches
+	}
+	for _, routeHostname := range routeHostnames {
+		// check equality or the wildcard in the listener side ...
+		_ = addIfMatch(*listener.Hostname, routeHostname) ||
+			// ... and if does not match, check the wildcard in the route side
+			addIfMatch(routeHostname, *listener.Hostname)
+	}
+	return len(matchingHostnames) > 0, matchingHostnames
 }
 
 var errRouteNotAllowed = fmt.Errorf("listener does not allow the route")
@@ -636,27 +675,38 @@ func (c *converter) referenceIsPermitted(groupFrom gatewayv1.Group, kindFrom gat
 	})
 }
 
+func (c *converter) acquireRouteEvent(routeSource *source) *routeEvent {
+	event, found := c.events.route[routeSource.NamespacedName]
+	if !found {
+		event = &routeEvent{
+			route: routeSource,
+		}
+		c.events.route[routeSource.NamespacedName] = event
+	}
+	return event
+}
+
 func (c *converter) acquireListenerEvent(gatewaySource *source, listener *gatewayv1.Listener) *listenerEvent {
 	gwEvent := c.events.gateway[gatewaySource.NamespacedName]
 	lstEvent, found := gwEvent.listeners[listener.Name]
 	if !found {
 		lstEvent = &listenerEvent{}
 		gwEvent.listeners[listener.Name] = lstEvent
-		var mode gatewayv1.TLSModeType
+		var tlsMode gatewayv1.TLSModeType
 		if listener.TLS != nil && listener.TLS.Mode != nil {
-			mode = *listener.TLS.Mode
+			tlsMode = *listener.TLS.Mode
 		}
 		var protoSupportedKinds []gatewayv1.Kind
 		switch listener.Protocol {
 		case gatewayv1.HTTPProtocolType:
-			switch mode {
+			switch tlsMode {
 			case "": // Non TLS mode
 				protoSupportedKinds = []gatewayv1.Kind{httpRouteKind}
 			default:
 				lstEvent.unsupportedProto = "HTTP proto does not support TLS mode"
 			}
 		case gatewayv1.HTTPSProtocolType:
-			switch mode {
+			switch tlsMode {
 			case gatewayv1.TLSModeTerminate:
 				protoSupportedKinds = []gatewayv1.Kind{httpRouteKind}
 			case gatewayv1.TLSModePassthrough:
@@ -665,7 +715,7 @@ func (c *converter) acquireListenerEvent(gatewaySource *source, listener *gatewa
 				lstEvent.unsupportedProto = "HTTPS proto needs listener.tls configured"
 			}
 		case gatewayv1.TLSProtocolType:
-			switch mode {
+			switch tlsMode {
 			case gatewayv1.TLSModeTerminate:
 				protoSupportedKinds = []gatewayv1.Kind{tcpRouteKind}
 			case gatewayv1.TLSModePassthrough:
@@ -674,7 +724,7 @@ func (c *converter) acquireListenerEvent(gatewaySource *source, listener *gatewa
 				lstEvent.unsupportedProto = "TLS proto needs listener.tls configured"
 			}
 		case gatewayv1.TCPProtocolType:
-			switch mode {
+			switch tlsMode {
 			case gatewayv1.TLSModeTerminate:
 				protoSupportedKinds = []gatewayv1.Kind{tcpRouteKind}
 			case gatewayv1.TLSModePassthrough:
@@ -745,34 +795,57 @@ func (c *converter) acquireCertificateRefs(gatewaySource *source, listener *gate
 		}
 		eventRefs.certFiles = append(eventRefs.certFiles, crtFile)
 	}
+	if listener.Protocol == gatewayv1.HTTPSProtocolType && !eventRefs.passthrough && len(eventRefs.certFiles) > 0 {
+		// configures the listener hostname in the HTTPS frontend, so its certificate is
+		// served during TLS handshake even if there is no published path and backend.
+		f := c.haproxy.Frontends().AcquireFrontend(listener.Port, true)
+		var hostname string
+		if listener.Hostname != nil {
+			hostname = string(*listener.Hostname)
+		}
+		if hostname == "" || hostname == "*" {
+			hostname = hatypes.DefaultHost
+		}
+		h := f.AcquireHost(hostname)
+		h.ExtendedWildcard = true
+		h.DefaultBackend = c.haproxy.Backends().AcquireNotFoundBackend()
+		configCertRef(&h.TLS.TLSConfig, eventRefs.certFiles[0])
+	}
 	return eventRefs
 }
 
-func (c *converter) acquireRouteParentRefEvent(routeSource *source, gatewayEvent *gatewayEvent, section gatewayv1.SectionName, port gatewayv1.PortNumber) *routeParentRefEvent {
-	event, found := c.events.route[routeSource.NamespacedName]
-	if !found {
-		event = &routeEvent{
-			route: routeSource,
-		}
-		c.events.route[routeSource.NamespacedName] = event
-	}
+func (e *routeEvent) acquireParentRefEvent(gatewayEvent *gatewayEvent, section gatewayv1.SectionName, port gatewayv1.PortNumber) *routeParentRefEvent {
 	parentRef := parentReference{
 		namespace: gatewayv1.Namespace(gatewayEvent.gateway.Namespace),
 		name:      gatewayv1.ObjectName(gatewayEvent.gateway.Name),
 		section:   section,
 		port:      port,
 	}
-	parentIdx := slices.IndexFunc(event.parent, func(e *routeParentRefEvent) bool {
+	parentIdx := slices.IndexFunc(e.parent, func(e *routeParentRefEvent) bool {
 		return e.ref == parentRef
 	})
 	if parentIdx < 0 {
-		parentIdx = len(event.parent)
-		event.parent = append(event.parent, &routeParentRefEvent{
+		parentIdx = len(e.parent)
+		e.parent = append(e.parent, &routeParentRefEvent{
 			ref:     parentRef,
 			gateway: gatewayEvent,
 		})
 	}
-	return event.parent[parentIdx]
+	return e.parent[parentIdx]
+}
+
+func (e *routeEvent) shrinkNoHostnames(gatewayEvent *gatewayEvent) {
+	// The "no hostname matching" errors from parentRefs should be removed from the resulting status.
+	// If all the failures are due to "no hostname matching", they should be simplified to a single
+	// one, despite the number of parentRefs.
+	e.parent = slices.DeleteFunc(e.parent, func(p *routeParentRefEvent) bool {
+		return p.nohostname
+	})
+	if len(e.parent) == 0 {
+		e.parent = nil
+		refEvent := e.acquireParentRefEvent(gatewayEvent, "", 0)
+		refEvent.nohostname = true
+	}
 }
 
 func checkListenerAllowedKind(routeSource *source, kinds []gatewayv1.RouteGroupKind) error {
@@ -814,17 +887,6 @@ func (c *converter) checkListenerAllowedNamespace(gatewaySource, routeSource *so
 		}
 	}
 	return errRouteNotAllowed
-}
-
-func (c *converter) filterHostnames(listenerHostname *gatewayv1.Hostname, routeHostnames []gatewayv1.Hostname) []gatewayv1.Hostname {
-	if listenerHostname == nil || *listenerHostname == "" || *listenerHostname == "*" {
-		if len(routeHostnames) == 0 {
-			return []gatewayv1.Hostname{"*"}
-		}
-		return routeHostnames
-	}
-	// TODO implement proper filter to wildcard based listenerHostnames -- `*.domain.local`
-	return []gatewayv1.Hostname{*listenerHostname}
 }
 
 func (c *converter) createBackend(routeSource *source, refEvent *routeParentRefEvent, index string, modeTCP bool, backendRefs []gatewayv1.BackendRef) (*hatypes.Backend, []*corev1.Service) {
@@ -905,8 +967,6 @@ func (c *converter) createBackend(routeSource *source, refEvent *routeParentRefE
 				Length: len(epReady),
 			},
 		})
-		// TODO implement back.BackendRef
-		// TODO implement back.Filters (HTTPBackendRef only)
 	}
 	if len(backends) == 0 && len(backendRefs) == 0 {
 		return nil, nil
@@ -998,7 +1058,6 @@ func (c *converter) createHTTPHosts(gatewaySource, routeSource *source, listener
 				hostsTLS[h.Hostname] = &h.TLS.TLSConfig
 			}
 		}
-		// TODO implement match.ExtensionRef
 	}
 	if listener.TLS != nil {
 		c.readCertRefs(certRefs, hostsTLS)
@@ -1021,6 +1080,7 @@ func (c *converter) createTLSHosts(gatewaySource, routeSource *source, listener 
 		}
 		if h == nil {
 			h = f.AcquireHost(string(hostname))
+			h.ExtendedWildcard = true
 			h.SSLPassthrough = true
 		}
 		link := hatypes.CreatePathLink("/", hatypes.MatchPrefix).WithHTTPHost(h)
@@ -1089,20 +1149,22 @@ func (c *converter) readCertRefs(certRefs *certificateRefs, hostsTLS map[string]
 					certRefs.conflictingHostnames = append(certRefs.conflictingHostnames, hostname)
 					continue
 				}
-				hostTLS.TLSCommonName = crtFile.Certificate.Subject.CommonName
-				hostTLS.TLSFilename = crtFile.Filename
-				hostTLS.TLSHash = crtFile.SHA1Hash
+				configCertRef(hostTLS, crtFile)
 			}
 		}
 	}
 	defaultCrtFile := certRefs.certFiles[0]
 	for _, hostTLS := range hostsTLS {
 		if hostTLS.TLSHash == "" {
-			hostTLS.TLSCommonName = defaultCrtFile.Certificate.Subject.CommonName
-			hostTLS.TLSFilename = defaultCrtFile.Filename
-			hostTLS.TLSHash = defaultCrtFile.SHA1Hash
+			configCertRef(hostTLS, defaultCrtFile)
 		}
 	}
+}
+
+func configCertRef(hostTLS *hatypes.TLSConfig, crtFile convtypes.CrtFile) {
+	hostTLS.TLSCommonName = crtFile.Certificate.Subject.CommonName
+	hostTLS.TLSFilename = crtFile.Filename
+	hostTLS.TLSHash = crtFile.SHA1Hash
 }
 
 func (c *converter) syncGatewayClassStatus() error {
@@ -1381,7 +1443,11 @@ func (c *converter) syncRouteStatus(route client.Object) error {
 					Reason:             string(gatewayv1.RouteReasonAccepted),
 					ObservedGeneration: routeGeneration,
 				}
-				if eventParent.notAllowed != "" {
+				if eventParent.nohostname {
+					conditionAccepted.Status = metav1.ConditionFalse
+					conditionAccepted.Reason = string(gatewayv1.RouteReasonNoMatchingListenerHostname)
+					conditionAccepted.Message = "No matching listener hostname"
+				} else if eventParent.notAllowed != "" {
 					conditionAccepted.Status = metav1.ConditionFalse
 					conditionAccepted.Reason = string(gatewayv1.RouteReasonNotAllowedByListeners)
 					conditionAccepted.Message = eventParent.notAllowed

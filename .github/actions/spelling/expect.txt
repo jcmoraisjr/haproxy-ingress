@@ -81,6 +81,7 @@ CVEs
 daemonset
 dario
 DCk
+defaultback
 defaultbackend
 defaulthost
 defbackend
@@ -320,6 +321,7 @@ Noacl
 nocrt
 Nofilter
 nogrants
+nohostname
 nonroot
 nopath
 nopwd
@@ -483,6 +485,7 @@ tcptls
 TLSALPN
 tlsapis
 tlsfilename
+TLSHTTP
 tlsroute
 tlsrule
 tlsserver
