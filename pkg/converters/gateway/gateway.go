@@ -332,6 +332,14 @@ func (c *converter) syncHTTPRoutes() {
 						if backend != nil {
 							haCORS = ptr.To(c.syncHTTPRoutesFilterCORS(filter.CORS))
 						}
+					case gatewayv1.HTTPRouteFilterRequestHeaderModifier:
+						if backend != nil {
+							c.syncHTTPRoutesFilterHeaderModifier(filter.RequestHeaderModifier, &backend.RequestHeadersAdd, &backend.RequestHeadersSet, &backend.RequestHeadersDel)
+						}
+					case gatewayv1.HTTPRouteFilterResponseHeaderModifier:
+						if backend != nil {
+							c.syncHTTPRoutesFilterHeaderModifier(filter.ResponseHeaderModifier, &backend.ResponseHeadersAdd, &backend.ResponseHeadersSet, &backend.ResponseHeadersDel)
+						}
 					default:
 						refEvent.unsupportedValue = "Unsupported filter type: " + string(filter.Type)
 					}
@@ -388,6 +396,22 @@ func (c *converter) syncHTTPRoutesFilterCORS(cors *gatewayv1.HTTPCORSFilter) (ha
 		haCORS.MaxAge = 5
 	}
 	return haCORS
+}
+
+func (c *converter) syncHTTPRoutesFilterHeaderModifier(headerModifier *gatewayv1.HTTPHeaderFilter, addList, setList *[]hatypes.HTTPHeader, delList *[]string) {
+	for _, hdrAdd := range headerModifier.Add {
+		*addList = append(*addList, hatypes.HTTPHeader{
+			Name:  string(hdrAdd.Name),
+			Value: hdrAdd.Value,
+		})
+	}
+	for _, hdrSet := range headerModifier.Set {
+		*setList = append(*setList, hatypes.HTTPHeader{
+			Name:  string(hdrSet.Name),
+			Value: hdrSet.Value,
+		})
+	}
+	*delList = append(*delList, headerModifier.Remove...)
 }
 
 func (c *converter) syncTLSRoutes() {

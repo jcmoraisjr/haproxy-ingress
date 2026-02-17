@@ -724,8 +724,8 @@ func (c *updater) buildBackendHeaders(d *backData) {
 	defineHeaders(d.mapper.Get(ingtypes.BackResponseAddHeaders), &d.backend.ResponseHeadersAdd)
 	defineHeaders(d.mapper.Get(ingtypes.BackResponseSetHeaders), &d.backend.ResponseHeadersSet)
 
-	d.backend.RequestHeadersDel = utils.Split(d.mapper.Get(ingtypes.BackRequestDelHeaders).Value, ",")
-	d.backend.ResponseHeadersDel = utils.Split(d.mapper.Get(ingtypes.BackResponseDelHeaders).Value, ",")
+	d.backend.RequestHeadersDel = append(d.backend.RequestHeadersDel, utils.Split(d.mapper.Get(ingtypes.BackRequestDelHeaders).Value, ",")...)
+	d.backend.ResponseHeadersDel = append(d.backend.ResponseHeadersDel, utils.Split(d.mapper.Get(ingtypes.BackResponseDelHeaders).Value, ",")...)
 }
 
 func (c *updater) buildBackendHSTS(d *backData) {
