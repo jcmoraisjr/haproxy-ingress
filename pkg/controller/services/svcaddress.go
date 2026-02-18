@@ -261,46 +261,37 @@ func (s *svcAddress) readCurrentLB(ctx context.Context) (lb []networking.Ingress
 	return lb, nil
 }
 
-// getNodeIPs reads external node IP, or internal if
+// getNodeIPs reads external node IPs, or internal if
 // config.UseNodeInternalIP == true, from every controller pod.
+// On dual-stack nodes, all addresses of the matching type are collected,
+// allowing both IPv4 and IPv6 addresses to be reported in the status.
 func (s *svcAddress) getNodeIPs(ctx context.Context) []string {
 	podList, err := s.cache.GetControllerPodList()
 	if err != nil {
 		s.log.Error(err, "failed reading the list of controller's pods")
 		return nil
 	}
+	targetType := api.NodeExternalIP
+	if s.cfg.UseNodeInternalIP {
+		targetType = api.NodeInternalIP
+	}
 	// read node IPs where the controller replicas are running
 	var iplist []string
+	seen := make(map[string]bool)
 	for _, ctr := range podList {
 		node := api.Node{}
 		if err := s.cli.Get(ctx, types.NamespacedName{Name: ctr.Spec.NodeName}, &node); err != nil {
 			s.log.Error(err, "failed reading node info")
 			return nil
 		}
-		ipnode := func() string {
-			for _, addr := range node.Status.Addresses {
-				if addr.Address == "" {
-					continue
-				}
-				if s.cfg.UseNodeInternalIP && addr.Type == api.NodeInternalIP {
-					return addr.Address
-				}
-				if !s.cfg.UseNodeInternalIP && addr.Type == api.NodeExternalIP {
-					return addr.Address
-				}
+		for _, addr := range node.Status.Addresses {
+			if addr.Address == "" || addr.Type != targetType {
+				continue
 			}
-			return ""
-		}()
-		exists := func() bool {
-			for _, ip := range iplist {
-				if ip == ipnode {
-					return true
-				}
+			if !seen[addr.Address] {
+				seen[addr.Address] = true
+				iplist = append(iplist, addr.Address)
 			}
-			return false
-		}()
-		if !exists {
-			iplist = append(iplist, ipnode)
 		}
 	}
 	return iplist
