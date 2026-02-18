@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 )
@@ -42,6 +43,7 @@ type Cache interface {
 	GetHTTPRouteList() ([]*gatewayv1.HTTPRoute, error)
 	GetTCPRouteList() ([]*gatewayv1alpha2.TCPRoute, error)
 	GetTLSRouteList() ([]*gatewayv1alpha2.TLSRoute, error)
+	GetReferenceGrantList() ([]*gatewayv1beta1.ReferenceGrant, error)
 	GetService(defaultNamespace, serviceName string) (*api.Service, error)
 	GetConfigMap(configMapName string) (*api.ConfigMap, error)
 	GetNamespace(name string) (*api.Namespace, error)
@@ -86,11 +88,12 @@ const (
 	ResourceIngress      ResourceType = "Ingress"
 	ResourceIngressClass ResourceType = "IngressClass"
 
-	ResourceGateway      ResourceType = "Gateway"
-	ResourceGatewayClass ResourceType = "GatewayClass"
-	ResourceHTTPRoute    ResourceType = "HTTPRoute"
-	ResourceTCPRoute     ResourceType = "TCPRoute"
-	ResourceTLSRoute     ResourceType = "TLSRoute"
+	ResourceGateway        ResourceType = "Gateway"
+	ResourceGatewayClass   ResourceType = "GatewayClass"
+	ResourceHTTPRoute      ResourceType = "HTTPRoute"
+	ResourceTCPRoute       ResourceType = "TCPRoute"
+	ResourceTLSRoute       ResourceType = "TLSRoute"
+	ResourceReferenceGrant ResourceType = "ReferenceGrant"
 
 	ResourceConfigMap ResourceType = "ConfigMap"
 	ResourceService   ResourceType = "Service"

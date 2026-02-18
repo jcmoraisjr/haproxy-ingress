@@ -43,7 +43,7 @@ const (
 type SvcLeaderChangedFnc func(ctx context.Context, isLeader bool)
 
 func initSvcLeader(ctx context.Context, cfg *config.Config) (*svcLeader, error) {
-	r, err := initRecorderProvider(cfg)
+	r, err := initRecorderProvider(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}

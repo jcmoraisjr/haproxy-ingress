@@ -18,7 +18,6 @@ package types
 
 import (
 	"fmt"
-	"sort"
 
 	"k8s.io/utils/ptr"
 
@@ -78,15 +77,8 @@ func (h *Host) addLink(backend *Backend, link *PathLink, redirTo string) *Path {
 		path.Backend = backend
 	}
 	h.Paths = append(h.Paths, path)
-	// reverse order in order to avoid overlap of sub-paths
-	sort.Slice(h.Paths, func(i, j int) bool {
-		p1 := h.Paths[i]
-		p2 := h.Paths[j]
-		if p1.Link.path == p2.Link.path {
-			return p1.order < p2.order
-		}
-		return p1.Link.path > p2.Link.path
-	})
+	// paths must be sorted to avoid misbehavior due to overlap,
+	// this is happening later on maps.go/rebuildMatchFiles()
 	return path
 }
 

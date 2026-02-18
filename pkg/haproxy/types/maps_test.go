@@ -31,6 +31,7 @@ func TestAddHostnameMapping(t *testing.T) {
 	testCases := []struct {
 		filename string
 		hostname string
+		extwild  bool
 		expmatch MatchType
 		expected string
 	}{
@@ -54,6 +55,13 @@ func TestAddHostnameMapping(t *testing.T) {
 		},
 		// 3
 		{
+			hostname: "*.example.Local",
+			extwild:  true,
+			expmatch: MatchRegex,
+			expected: "^.+\\.example\\.local$",
+		},
+		// 4
+		{
 			hostname: "*.Example.Local",
 			expmatch: MatchRegex,
 			expected: "^[^.]+\\.example\\.local$",
@@ -61,7 +69,7 @@ func TestAddHostnameMapping(t *testing.T) {
 	}
 	for i, test := range testCases {
 		hm := CreateMaps(matchOrder).AddMap(test.filename)
-		hm.AddHostnameMapping(test.hostname, "backend")
+		hm.AddHostnameMapping(test.hostname, test.extwild, "backend")
 		entries := hm.rawfiles[test.expmatch].entries
 		if len(entries) != 1 {
 			t.Errorf("item %d, invalid match or value: %v", i, hm.rawfiles)
@@ -80,6 +88,7 @@ func TestAddHostnamePathMapping(t *testing.T) {
 		hostname string
 		path     string
 		match    MatchType
+		extwild  bool
 		expmatch MatchType
 		expected string
 	}{
@@ -179,10 +188,22 @@ func TestAddHostnamePathMapping(t *testing.T) {
 			expmatch: MatchRegex,
 			expected: "^[^.]+\\.example\\.local#/path$",
 		},
+		// 12
+		{
+			hostname: "*.example.local",
+			path:     "/path",
+			match:    MatchExact,
+			extwild:  true,
+			expmatch: MatchRegex,
+			expected: "^.+\\.example\\.local#/path$",
+		},
 	}
 	for i, test := range testCases {
 		hm := CreateMaps(matchOrder).AddMap(test.filename)
 		path := &Path{
+			Host: &Host{
+				ExtendedWildcard: test.extwild,
+			},
 			Link: CreatePathLink(test.path, test.match),
 		}
 		hm.AddHostnamePathMapping(test.hostname, path, "backend")
@@ -608,11 +629,11 @@ local1.tld /a1 exact
 				{hostname: "local1.tld", path: "/a0", match: MatchExact, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname2"}}},
 			},
 			expected: `
-hosts__exact_01.map first:true,lower:false,method:str headers=['x-user':'myname2',regex:false]
-local1.tld /a0 exact
-
-hosts__exact_02.map first:false,lower:false,method:str headers=['x-user':'myname1',regex:false]
+hosts__exact_01.map first:true,lower:false,method:str headers=['x-user':'myname1',regex:false]
 local1.tld /a1 exact
+
+hosts__exact_02.map first:false,lower:false,method:str headers=['x-user':'myname2',regex:false]
+local1.tld /a0 exact
 
 hosts__exact.map first:false,lower:false,method:str
 local1.tld /a2 exact
@@ -659,12 +680,30 @@ local1.tld /a0 prefix
 				{hostname: "local1.tld", path: "/a0", match: MatchPrefix, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
 			},
 			expected: `
-hosts__prefix_01.map first:true,lower:false,method:dir headers=['x-user':'myname1',regex:false]
+hosts__prefix_01.map first:true,lower:false,method:dir headers=['x-user':'myname2',regex:false]
+local1.tld /a2 prefix
+
+hosts__prefix_02.map first:false,lower:false,method:dir headers=['x-user':'myname1',regex:false]
 local1.tld /a1 prefix
+local1.tld /a0 prefix
+`,
+		},
+		// 18
+		{
+			data: []data{
+				{hostname: "local1.tld", path: "/a0", match: MatchPrefix, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname2"}}},
+				{hostname: "local1.tld", path: "/a0", match: MatchPrefix, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}}},
+				{hostname: "local1.tld", path: "/a0", match: MatchPrefix, headers: HTTPHeaderMatch{{Name: "x-user", Value: "myname1"}, {Name: "x-env", Value: "staging"}}},
+			},
+			expected: `
+hosts__prefix_01.map first:true,lower:false,method:dir headers=['x-user':'myname1',regex:false;'x-env':'staging',regex:false]
 local1.tld /a0 prefix
 
 hosts__prefix_02.map first:false,lower:false,method:dir headers=['x-user':'myname2',regex:false]
-local1.tld /a2 prefix
+local1.tld /a0 prefix
+
+hosts__prefix_03.map first:false,lower:false,method:dir headers=['x-user':'myname1',regex:false]
+local1.tld /a0 prefix
 `,
 		},
 	}
@@ -672,7 +711,7 @@ local1.tld /a2 prefix
 		hm := CreateMaps(matchOrder).AddMap("hosts.map")
 		for _, item := range test.data {
 			if item.path == "" {
-				hm.AddHostnameMapping(item.hostname, item.target)
+				hm.AddHostnameMapping(item.hostname, false, item.target)
 			} else {
 				hm.AddHostnamePathMapping(item.hostname, &Path{Link: CreatePathLink(item.path, item.match).WithHeadersMatch(item.headers)}, item.target)
 			}
