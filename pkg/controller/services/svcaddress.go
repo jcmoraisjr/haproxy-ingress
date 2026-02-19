@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 
 	"github.com/go-logr/logr"
@@ -277,7 +278,6 @@ func (s *svcAddress) getNodeIPs(ctx context.Context) []string {
 	}
 	// read node IPs where the controller replicas are running
 	var iplist []string
-	seen := make(map[string]bool)
 	for _, ctr := range podList {
 		node := api.Node{}
 		if err := s.cli.Get(ctx, types.NamespacedName{Name: ctr.Spec.NodeName}, &node); err != nil {
@@ -288,8 +288,7 @@ func (s *svcAddress) getNodeIPs(ctx context.Context) []string {
 			if addr.Address == "" || addr.Type != targetType {
 				continue
 			}
-			if !seen[addr.Address] {
-				seen[addr.Address] = true
+			if !slices.Contains(iplist, addr.Address) {
 				iplist = append(iplist, addr.Address)
 			}
 		}
