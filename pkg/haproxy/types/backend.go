@@ -23,6 +23,8 @@ import (
 	"slices"
 	"sort"
 	"strings"
+
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
 // BackendID ...
@@ -188,6 +190,13 @@ func sortPaths(paths []*Path, pathReverse bool) {
 	})
 }
 
+func (b *Backend) Equals(other *Backend) bool {
+	if !pathsEqual(b.Paths, other.Paths) {
+		return false
+	}
+	return utils.StructEquals(b, other, "Paths", "Dynamic")
+}
+
 // HasCorsEnabled ...
 func (b *Backend) HasCorsEnabled() bool {
 	for _, path := range b.Paths {
@@ -342,7 +351,7 @@ func (b *Backend) createPathsMaps() []*BackendPathsMaps {
 	// Deduplicate maps with the exact same paths, a common pattern on models configured via Ingress API.
 	// This deduplication reduces the size of the backend configuration.
 	pathsMaps = slices.CompactFunc(pathsMaps, func(m1, m2 *BackendPathsMaps) bool {
-		if slices.EqualFunc(m1.Paths, m2.Paths, func(p1, p2 *Path) bool { return p1.Equals(p2) }) {
+		if slices.EqualFunc(m1.Paths, m2.Paths, func(p1, p2 *Path) bool { return utils.StructEquals(p1, p2, "ID", "Link", "Host", "Backend") }) {
 			m2.Frontends = append(m2.Frontends, m1.Frontends...)
 			return true
 		}
@@ -354,9 +363,10 @@ func (b *Backend) createPathsMaps() []*BackendPathsMaps {
 	return pathsMaps
 }
 
+var pathType = reflect.TypeFor[Path]()
+
 func (b *Backend) createPathConfig() map[string]*BackendPathConfig {
 	pathconfig := make(map[string]*BackendPathConfig, len(b.Paths))
-	pathType := reflect.TypeOf(Path{})
 	for i := range pathType.NumField() {
 		field := pathType.Field(i)
 		if field.Tag.Get("class") != "core" {
@@ -454,15 +464,12 @@ func (ep *Endpoint) IsEmpty() bool {
 	return ep.IP == "127.0.0.1"
 }
 
-func (p *Path) Equals(other *Path) bool {
-	vthis := reflect.ValueOf(*p)
-	vother := reflect.ValueOf(*other)
-	pathType := reflect.TypeOf(Path{})
-	for i := range pathType.NumField() {
-		if pathType.Field(i).Tag.Get("class") == "core" {
-			continue
-		}
-		if !reflect.DeepEqual(vthis.Field(i).Interface(), vother.Field(i).Interface()) {
+func pathsEqual(paths1, paths2 []*Path) bool {
+	if len(paths1) != len(paths2) {
+		return false
+	}
+	for i := range paths1 {
+		if !utils.StructEquals(paths1[i], paths2[i], "Host", "Backend") {
 			return false
 		}
 	}

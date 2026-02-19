@@ -373,7 +373,7 @@ The table below describes all supported configuration keys.
 | [`dns-timeout-retry`](#dns-resolvers)                | time with suffix                        | Global   | `1s`                             |
 | [`drain-support`](#drain-support)                    | [true\|false]                           | Global   | `false`                          |
 | [`drain-support-redispatch`](#drain-support)         | [true\|false]                           | Global   | `true`                           |
-| [`dynamic-scaling`](#dynamic-scaling)                | [true\|false]                           | Backend  | `true`                           |
+| [`dynamic-scaling`](#dynamic-scaling)                | [None\|Slots\|Add]                      | Backend  | `Slots`                          |
 | [`external-has-lua`](#external)                      | [true\|false]                           | Global   | `false`                          |
 | [`fcgi-app`](#fastcgi)                               | fcgi-app section name                   | Backend  |                                  |
 | [`fcgi-enabled-apps`](#fastcgi)                      | comma-separated list of names           | Global   | `*`                              |
@@ -642,12 +642,6 @@ Configure if HAProxy should maintain client requests to the same backend server.
 * `session-cookie-shared`: defines if the persistence cookie should be shared between all domains that uses this backend. Defaults to `false`. If `true` the `Set-Cookie` response will declare all the domains that shares this backend, indicating to the HTTP agent that all of them should use the same backend server. Note that this option is active only for backward compatibility: modern browsers accept only one domain attribute, deprecating how this option builds the persistence cookie configuration. Use `session-cookie-domain` instead.
 * `session-cookie-strategy`: the cookie strategy to use (insert, rewrite, prefix). `insert` is the default value if not declared.
 * `session-cookie-value-strategy`: the strategy to use to calculate the cookie value of a server (`server-name`, `pod-uid`). `server-name` is the default if not declared, and indicates that the cookie will be set based on the name defined in `backend-server-naming`. `pod-uid` indicates that the cookie will be set to the `UID` of the pod running the target server.
-
-Note for `dynamic-scaling` users only, v0.5 or older: the hash of the server is built based on it's name.
-When the slots are scaled down, the remaining servers might change it's server name on
-HAProxy configuration. In order to circumvent this, always configure the slot increment at
-least as much as the number of replicas of the deployment that need to use affinity. This
-limitation was removed on v0.6.
 
 See also:
 
@@ -961,12 +955,14 @@ See also:
 
 Configures how to name backend servers.
 
-* `sequence`: Names backend servers with a prefixed number sequence: `srv001`, `srv002`, and so on. This is the default configuration and the preferred option if dynamic update is used. `seq` is an alias to `sequence`.
+* `sequence`: Names backend servers with a prefixed number sequence: `srv001`, `srv002`, and so on. This is the default configuration and the preferred option if [`dynamic-scaling`](#dynamic-scaling) is `Slots`. `seq` is an alias to `sequence`.
 * `pod`: Uses the k8s pod name as the backend server name. This option doesn't work on backends whose [`service-upstream`](#service-upstream) is `true`, falling back to `sequence`.
 * `ip`: Uses target's `<ip>:<port>` as the server name.
 
 {{< alert title="Note" >}}
-HAProxy Ingress won't refuse to change the default naming if dynamic update is `true`, this would however lead to undesired behaviour: empty slots would still be named as sequences, old-named backend servers will dynamically receive new workloads with new pod names or IP numbers which do not relate with the name anymore, making the naming useless, if not wrong. If you have [cookie affinity](#affinity) enabled, dynamic updating can cause the cookie values to get out of sync with the servers. This can be avoided by using `session-cookie-preserve` with a value of `true`.
+HAProxy Ingress won't refuse to change the default naming if [dynamic scaling](#dynamic-scaling) is `Slots`, this would however lead to undesired behaviour: empty slots would still be named as sequences, old-named backend servers will dynamically receive new workloads with new pod names or IP numbers which do not relate with the name anymore, making the naming useless, if not wrong. Dynamic scaling as `Add` does not have this limitation.
+
+If you have [cookie affinity](#affinity) enabled, dynamic scaling as `Slots` can cause the cookie values to get out of sync with the servers. This can be avoided by using `session-cookie-preserve` with a value of `true`.
 {{< /alert >}}
 
 ---
@@ -979,7 +975,7 @@ HAProxy Ingress won't refuse to change the default naming if dynamic update is `
 
 When `true`, each backend server will receive an `id` in HAProxy config based on the Kubernetes UID of the pod backing it. When using a hash-based [`balance-algorithm`](#balance-algorithm) (for example `uri` or `source`) together with consistent hashing, this will maintain the stability of assignments when pods are added or removed — that is, a given URI component or source IP will mostly keep hashing to the same server. When this setting is `false`, an addition or deletion in the server list may disturb the hash assignments of some or all of the remaining servers.
 
-Server IDs can't dynamically updated, so if this option is enabled, adding or removing a server will cause a reload even when [`dynamic-scaling`](#dynamic-scaling) is true.
+If this option is enabled, adding or removing a server will cause a reload when [`dynamic-scaling`](#dynamic-scaling) is `Slots`, because ID cannot be dynamically updated. Dynamic scaling as `Add` does not have this limitation.
 
 ---
 
@@ -1555,40 +1551,26 @@ See also:
 | Configuration key                   | Scope     | Default | Since |
 |-------------------------------------|-----------|---------|-------|
 | `backend-server-slots-increment`    | `Backend` | `1`     |       |
-| `dynamic-scaling`                   | `Global`  | `true`  |       |
+| `dynamic-scaling`                   | `Backend` | `Slots` |       |
 | `slots-min-free`                    | `Backend` | `6`     | v0.8  |
 
-The `dynamic-scaling` option defines if backend updates should always be made starting
-a new HAProxy instance that will read the new config file (`false`), or updating the
-running HAProxy via a Unix socket (`true`) whenever possible. Despite the configuration,
-the config files will stay in sync with in memory config. The default value was `false`
-up to v0.7 if not declared, changed to `true` since v0.8.
+Configures dynamic backend server updates.
 
-`dynamic-scaling` is ignored if the backend uses [DNS resolver](#dns-resolvers).
+* `dynamic-scaling`: Defines if dynamic scaling should be enabled. Options are `None`, `Slots` and `Add`. Defaults to `Slots`. Values `False` and `True` are also supported for backward compatibility, meaning respectively `None` and `Slots`.
+* `backend-server-slots-increment`: Defines a base multiplier in `Slots` mode. The total number of backend servers will always be an integer multiple of it - e.g., a value of 3 allows 3, 6, 9, ... servers.
+* `slots-min-free`: Configures the minimum number of empty servers a backend should have on `Slots` mode everytime HAProxy reloads.
 
-If `true` HAProxy Ingress will create at least `backend-server-slots-increment`
-servers on each backend and update them via a Unix socket without reloading HAProxy.
-Unused servers will stay in a disabled state. If the change cannot be made via socket,
-a new HAProxy instance will be started.
+The `dynamic-scaling` option supports three distinct modes:
 
-Starting on v0.8, a new ConfigMap option `slots-min-free` can be used to configure the
-minimum number of free/empty servers per backend. If HAProxy need to be restarted and
-an backend has less than `slots-min-free` available servers, another
-`backend-server-slots-increment` new empty servers would be created.
+* `None`: no API calls are made and HAProxy is always reloaded to apply changes in the backend server, like adding or removing endpoint and weight. `False` is an alias for `None` for backward compatibility.
+* `Slots`: Classic dynamic scaling configuration, implemented on HAProxy Ingress v0.4. Free backend server slots are created on each backend and updated later via API call without reloading HAProxy. Unused servers will stay in a disabled state. HAProxy is reloaded if the change cannot be made via API, or the number of free slots is not enough. `True` is an alias for `Slots` for backward compatibility.
+* `Add`: New backend servers are added when needed via API. No empty slots are created beforehand.
 
-Starting on v0.6, `dynamic-scaling` config will only force a reloading of HAProxy if
-the number of servers on a backend need to be increased. Before v0.6 a reload will
-also happen when the number of servers could be reduced.
+Notes about dynamic scaling:
 
-The following keys are supported:
-
-* `dynamic-scaling`: Define if dynamic scaling should be used whenever possible
-* `backend-server-slots-increment`: Configures the minimum number of servers, the size of the increment when growing and the size of the decrement when shrinking of each HAProxy backend
-* `slots-min-free`: Configures the minimum number of empty servers a backend should have on every HAProxy restarts
-
-See also:
-
-* https://docs.haproxy.org/2.8/management.html#9.3
+* The HAProxy config files will stay in sync with in memory configuration, despite of a reload happening or not.
+* Scaling-in the backend (removing servers) will disable and put the removed servers in maintenance state, being removed as soon as HAProxy needs to be reloaded. On `Add` mode, HAProxy Ingress tries to delete the backend server, which will be left behind in the case of a failure, like having active sessions.
+* Dynamic updates are ignored if the backend uses [DNS resolver](#dns-resolvers).
 
 ---
 
@@ -2117,7 +2099,7 @@ The following annotations are supported:
 Define if HAProxy should save and reload it's current state between server reloads, like
 uptime of backends, qty of requests and so on.
 
-This is an experimental feature and has currently some issues if using with `dynamic-scaling`:
+This is an experimental feature and has currently some issues if using with [`dynamic-scaling`](#dynamic-scaling):
 an old state with disabled servers will disable them in the new configuration.
 
 See also:

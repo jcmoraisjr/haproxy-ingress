@@ -521,7 +521,7 @@ func (c *updater) buildGlobalCustomConfig(d *globalData) {
 }
 
 func (c *updater) buildGlobalCustomResponses(d *globalData) {
-	res := c.buildHTTPResponses(d.mapper, keyScopeGlobal)
+	res := c.buildHTTPResponses("", d.mapper, keyScopeGlobal)
 	res.ID = hatypes.HTTPResponseGlobalID
 	d.global.CustomHTTPResponses = res
 }
@@ -658,7 +658,7 @@ var customHTTPResponses = []struct {
 	{"504", 504, keyScopeBackend, "Gateway Timeout", ingtypes.BackHTTPResponse504, ""},
 }
 
-func (c *updater) buildHTTPResponses(mapper *Mapper, scope keyScope) hatypes.HTTPResponses {
+func (c *updater) buildHTTPResponses(id string, mapper *Mapper, scope keyScope) hatypes.HTTPResponses {
 	var haResponses, luaResponses []hatypes.HTTPResponse
 	for _, data := range customHTTPResponses {
 		if scope != keyScopeGlobal && data.scope != scope {
@@ -705,7 +705,7 @@ func (c *updater) buildHTTPResponses(mapper *Mapper, scope keyScope) hatypes.HTT
 	var res hatypes.HTTPResponses
 	if len(haResponses) > 0 || len(luaResponses) > 0 {
 		res = hatypes.HTTPResponses{
-			ID:      "", // this is being configured when listed on Frontends()/Backends().BuildHTTPResponses(), which is closer to the real usage
+			ID:      id,
 			HAProxy: haResponses,
 			Lua:     luaResponses,
 		}

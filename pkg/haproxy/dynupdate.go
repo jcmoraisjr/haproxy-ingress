@@ -21,11 +21,11 @@ import (
 	"os"
 	"reflect"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/socket"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/template"
 	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )
@@ -33,6 +33,7 @@ import (
 type dynUpdater struct {
 	logger  types.Logger
 	config  *config
+	hatmpl  *template.Config
 	socket  socket.HAProxySocket
 	cmdCnt  int
 	metrics types.Metrics
@@ -57,6 +58,7 @@ func (i *instance) newDynUpdater() *dynUpdater {
 	return &dynUpdater{
 		logger:  i.logger,
 		config:  i.config.(*config),
+		hatmpl:  i.haproxyTmpl,
 		socket:  i.conns.DynUpdate(),
 		metrics: i.metrics,
 	}
@@ -178,12 +180,11 @@ func (d *dynUpdater) checkHostPair(pair *hostPair) bool {
 	updated := true
 
 	// check equality of everything but server certificate
-	// TODO move this check to the host type
 	oldHostCopy := *oldHost
 	oldHostCopy.TLS.TLSCommonName = curHost.TLS.TLSCommonName
 	oldHostCopy.TLS.TLSHash = curHost.TLS.TLSHash
 	oldHostCopy.TLS.TLSNotAfter = curHost.TLS.TLSNotAfter
-	if !reflect.DeepEqual(&oldHostCopy, curHost) {
+	if !oldHostCopy.Equals(curHost) {
 		d.logger.InfoV(2, "diff outside server certificate of host '%s'", curHost.Hostname)
 		updated = false
 	}
@@ -208,18 +209,15 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 	updated := true
 
 	// check equality of everything but endpoints
-	// TODO move this check to the backend type
 	oldBackCopy := *oldBack
-	oldBackCopy.ID = curBack.ID
-	oldBackCopy.Dynamic = curBack.Dynamic
 	oldBackCopy.Endpoints = curBack.Endpoints
-	if !reflect.DeepEqual(&oldBackCopy, curBack) {
+	if !oldBackCopy.Equals(curBack) {
 		d.logger.InfoV(2, "diff outside endpoints of backend '%s'", curBack.ID)
 		updated = false
 	}
 
-	// can decrease endpoints, cannot increase
-	if len(oldBack.Endpoints) < len(curBack.Endpoints) {
+	// can decrease endpoints, cannot increase on classic dynamic scaling
+	if curBack.Dynamic.DynScaling == hatypes.DynScalingSlots && len(oldBack.Endpoints) < len(curBack.Endpoints) {
 		d.logger.InfoV(2, "added endpoints on backend '%s'", curBack.ID)
 		// cannot continue -- missing empty slots in the backend
 		return false
@@ -237,15 +235,25 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 		return updated
 	}
 
-	// DynUpdate is disabled, check if differs and quit
-	// TODO check if endpoints are the same and only the order differ
-	if !curBack.Dynamic.DynUpdate {
+	switch curBack.Dynamic.DynScaling {
+	case hatypes.DynScalingAdd:
+		updated = d.dynamicallyAddRemoveServers(pair) && updated
+	case hatypes.DynScalingSlots:
+		updated = d.dynamicallySyncSlots(pair) && updated
+	default:
+		// TODO check if endpoints are the same and only the order differ
 		if updated && !reflect.DeepEqual(oldBack.Endpoints, curBack.Endpoints) {
-			d.logger.InfoV(2, "backend '%s' changed and its dynamic-scaling is 'false'", curBack.ID)
+			d.logger.InfoV(2, "backend '%s' changed and its dynamic update is 'false'", curBack.ID)
 			return false
 		}
-		return updated
 	}
+	return updated
+}
+
+func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
+	oldBack := pair.old
+	curBack := pair.cur
+	updated := true
 
 	// map endpoints of old and new config together
 	endpoints := make(map[string]*epPair, len(oldBack.Endpoints))
@@ -312,31 +320,91 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 	return updated
 }
 
+func (d *dynUpdater) dynamicallyAddRemoveServers(pair *backendPair) bool {
+	oldBack := pair.old
+	curBack := pair.cur
+	updated := true
+
+	// group endpoints by name
+	endpoints := make(map[string]*epPair, len(curBack.Endpoints))
+	for _, endpoint := range oldBack.Endpoints {
+		endpoints[endpoint.Name] = &epPair{old: endpoint}
+	}
+	for _, endpoint := range curBack.Endpoints {
+		if eppair, found := endpoints[endpoint.Name]; !found {
+			endpoints[endpoint.Name] = &epPair{cur: endpoint}
+		} else {
+			eppair.cur = endpoint
+		}
+	}
+
+	// creating a predictable list of endpoint names, not only for unit tests,
+	// but also as a way to have the same API calls being done in the same order.
+	epnames := make([]string, 0, len(endpoints))
+	for epname := range endpoints {
+		epnames = append(epnames, epname)
+	}
+	sort.Strings(epnames)
+
+	// iterate the old and cur endpoint pairs, removing the missing and creating the new ones
+	for _, epname := range epnames {
+		eppair := endpoints[epname]
+		switch {
+		case eppair.old != nil && eppair.cur != nil:
+			if d.checkEndpointPair(curBack, eppair) {
+				// either identical or update succeeded, go to the next endpoint
+				continue
+			}
+			// cannot update, trying now to delete + add
+			updated = d.execDeleteEndpoint(curBack.ID, eppair.old) && d.execAddEndpoint(curBack, eppair.cur) && updated
+		case eppair.old != nil:
+			updated = d.execDeleteEndpoint(curBack.ID, eppair.old) && updated
+		case eppair.cur != nil:
+			updated = d.execAddEndpoint(curBack, eppair.cur) && updated
+		}
+	}
+
+	return updated
+}
+
 func (d *dynUpdater) checkEndpointPair(backend *hatypes.Backend, pair *epPair) bool {
 	oldEPCopy := *pair.old
-	// SourceIP is lazily updated via FillSourceIPs() after dynupdate run
-	// A reload is already scheduled due to backend.SourceIPs changed
+
+	// SourceIP is lazily updated via FillSourceIPs() after dynupdate run.
+	// A reload is already scheduled due to backend.SourceIPs changed.
 	oldEPCopy.SourceIP = pair.cur.SourceIP
+	// Enablement is handled before this point.
+	oldEPCopy.Enabled = pair.cur.Enabled
 	if reflect.DeepEqual(&oldEPCopy, pair.cur) {
 		return true
 	}
-	if backend.Cookie.Preserve && pair.old.CookieValue != pair.cur.CookieValue {
-		// if cookie doesn't match here and preserving the value is
-		// important, don't even enable the endpoint before reloading
-		return false
+
+	// These fields are handled in the execEnableEndpoint() call; all the others,
+	// if changed, should skip enabling it and ask for a reload or delete+add call.
+	oldEPCopy.IP = pair.cur.IP
+	oldEPCopy.Port = pair.cur.Port
+	oldEPCopy.Target = pair.cur.Target
+	oldEPCopy.Weight = pair.cur.Weight
+	if !backend.Cookie.Preserve {
+		// if preserving the cookie value is not important, we can
+		// ignore it as a criteria to enable without remove.
+		oldEPCopy.CookieValue = pair.cur.CookieValue
 	}
-	updated := d.execEnableEndpoint(backend.ID, pair.old, pair.cur)
-	if !updated || pair.old.Label != "" || pair.cur.Label != "" {
-		return false
+	if reflect.DeepEqual(&oldEPCopy, pair.cur) {
+		// TODO revisit Label check, this is related with blue/green deployment
+		return d.execEnableEndpoint(backend.ID, pair.old, pair.cur) && pair.old.Label == "" && pair.cur.Label == ""
 	}
-	return true
+
+	// cannot handle via enablement, need to either delete+add or reload,
+	// depending on who is calling this method.
+	return false
 }
 
 func (d *dynUpdater) alignSlots() {
 	backends := d.config.Backends()
 	for _, back := range backends.Items() {
-		if !back.Dynamic.DynUpdate {
-			// no need to add empty slots if won't dynamically update
+		if back.Dynamic.DynScaling != hatypes.DynScalingSlots {
+			// no need to add empty slots if won't dynamically update them
 			continue
 		}
 		minFreeSlots := back.Dynamic.MinFreeSlots
@@ -408,7 +476,7 @@ func (d *dynUpdater) execUpdateCert(hostname, filename string) bool {
 			d.logger.InfoV(2, "response from server: %s", outmsg)
 		}
 	}
-	if !cmdResponseOK("commit ssl cert", msg[1]) {
+	if !cmdResponseOK(cmdCommitCrt, msg[1]) {
 		d.logger.Warn("cannot update certificate for %s", hostname)
 		return false
 	}
@@ -416,56 +484,171 @@ func (d *dynUpdater) execUpdateCert(hostname, filename string) bool {
 	return true
 }
 
+//
+// Here starts the exec<...>Endpoint family, a higher level façade to do what needs
+// to be done on a single step, eventually orchestrating more than one API call.
+//
+
 func (d *dynUpdater) execDisableEndpoint(backname string, ep *hatypes.Endpoint) bool {
-	server := fmt.Sprintf("set server %s/%s ", backname, ep.Name)
-	cmd := []string{
-		server + "state maint",
-		server + "addr 127.0.0.1 port 1023",
-		server + "weight 0",
-	}
-	msg, err := d.execCommand(d.metrics.HAProxySetServerResponseTime, cmd)
-	if err != nil {
-		d.logger.Error("error disabling endpoint %s/%s: %v", backname, ep.Name, err)
+	if !d.execDisableServer(backname, ep) {
 		return false
 	}
-	for _, m := range msg {
-		if m != "" {
-			if !cmdResponseOK("set server", m) {
-				d.logger.Warn("unrecognized response disabling endpoint %s/%s: %s", backname, ep.Name, m)
-				return false
-			}
-			d.logger.InfoV(2, "response from server: %s", m)
-		}
-	}
-	d.logger.InfoV(2, "disabled endpoint '%s' on backend/server '%s/%s'", ep.Target, backname, ep.Name)
+	d.logger.InfoV(2, "disabled endpoint '%s' weight '%d' on backend/server '%s/%s'", ep.Target, ep.Weight, backname, ep.Name)
 	return true
 }
 
 func (d *dynUpdater) execEnableEndpoint(backname string, oldEP, curEP *hatypes.Endpoint) bool {
-	state := map[bool]string{true: "ready", false: "drain"}[curEP.Weight > 0]
-	server := fmt.Sprintf("set server %s/%s ", backname, curEP.Name)
-	cmd := []string{
-		server + "addr " + curEP.IP + " port " + strconv.Itoa(curEP.Port),
-		server + "state " + state,
-		server + "weight " + strconv.Itoa(curEP.Weight),
-	}
-	msg, err := d.execCommand(d.metrics.HAProxySetServerResponseTime, cmd)
-	if err != nil {
-		d.logger.Error("error adding/updating endpoint %s/%s: %v", backname, curEP.Name, err)
+	if !d.execSetAddrServer(backname, curEP) || !d.execSetWeightServer(backname, curEP) || !d.execEnableServer(backname, curEP) {
 		return false
 	}
-	for _, m := range msg {
-		if m != "" {
-			if !cmdResponseOK("set server", m) {
-				d.logger.Warn("unrecognized response adding/updating endpoint %s/%s: %s", backname, curEP.Name, m)
-				return false
-			}
-			d.logger.InfoV(2, "response from server: %s", m)
+	event := "updated"
+	if oldEP == nil {
+		event = "enabled"
+	}
+	d.logger.InfoV(2, "%s endpoint '%s' weight '%d' on backend/server '%s/%s'", event, curEP.Target, curEP.Weight, backname, curEP.Name)
+	return true
+}
+
+func (d *dynUpdater) execAddEndpoint(backend *hatypes.Backend, ep *hatypes.Endpoint) bool {
+	backname := backend.ID
+	if !d.execAddServer(backend, ep) {
+		// it should be disabled already, so just remove, and if it
+		// fails due to the missing maintenance mode, we're messing
+		// something so better to return and ask for a reload.
+		if !d.execDeleteServer(backname, ep) {
+			return false
+		}
+		if !d.execAddServer(backend, ep) {
+			return false
 		}
 	}
-	event := map[bool]string{true: "updated", false: "added"}[oldEP != nil]
-	d.logger.InfoV(2, "%s endpoint '%s' weight '%d' state '%s' on backend/server '%s/%s'",
-		event, curEP.Target, curEP.Weight, state, backname, curEP.Name)
+	if !d.execEnableServer(backname, ep) {
+		return false
+	}
+	zeroHealthCheck := hatypes.HealthCheck{}
+	if backend.HealthCheck != zeroHealthCheck && !d.execSetHealthServer(backname, ep) {
+		return false
+	}
+	if backend.AgentCheck.Port != 0 && !d.execSetAgentServer(backname, ep) {
+		return false
+	}
+	d.logger.InfoV(2, "registered new endpoint '%s' weight '%d' on backend/server '%s/%s'", ep.Target, ep.Weight, backname, ep.Name)
+	return true
+}
+
+func (d *dynUpdater) execDeleteEndpoint(backname string, curEP *hatypes.Endpoint) bool {
+	if !d.execDisableServer(backname, curEP) {
+		return false
+	}
+	state := "deleted"
+	if !d.execDeleteServer(backname, curEP) {
+		// trying to delete, and it should be left in maintenance/disabled mode due to
+		// existing connections, which is fine. a reload will remove it, and we'll try
+		// to delete again in case we need this name in the future and before a reload.
+		state = "disabled"
+	}
+	d.logger.InfoV(2, "%s endpoint '%s' weight '%d' backend/server '%s/%s'", state, curEP.Target, curEP.Weight, backname, curEP.Name)
+	return true
+}
+
+//
+// Here starts the exec<...>Server family, a lower level abstraction that makes one API call at a time.
+//
+
+func (d *dynUpdater) execAddServer(backend *hatypes.Backend, ep *hatypes.Endpoint) bool {
+	// TODO this isn't called so frequently, but still missing some benchmark since our hatmpl is really big.
+	// regarding p1 and p2 below, see template/funcmap.go, "map" func, having the syntax expected by all template definitions
+	cmd, err := d.hatmpl.WriteTemplate("server", map[string]any{"p1": backend, "p2": ep, "p3": backend.ID})
+	if err != nil {
+		// this is a dev error in case it happens, maybe we should panic instead?
+		d.logger.Error("error building backend server template: %s", err.Error())
+		return false
+	}
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backend.Name, ep, "add "+cmd, cmdAddServer)
+}
+
+func (d *dynUpdater) execDisableServer(backname string, ep *hatypes.Endpoint) bool {
+	cmd := fmt.Sprintf("set server %s/%s state maint", backname, ep.Name)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerState)
+}
+
+func (d *dynUpdater) execSetAddrServer(backname string, ep *hatypes.Endpoint) bool {
+	cmd := fmt.Sprintf("set server %s/%s addr %s port %d", backname, ep.Name, ep.IP, ep.Port)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerAddr)
+}
+
+func (d *dynUpdater) execSetWeightServer(backname string, ep *hatypes.Endpoint) bool {
+	cmd := fmt.Sprintf("set server %s/%s weight %d", backname, ep.Name, ep.Weight)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerWeight)
+}
+
+func (d *dynUpdater) execSetHealthServer(backname string, ep *hatypes.Endpoint) bool {
+	cmd := fmt.Sprintf("enable health %s/%s", backname, ep.Name)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerWeight)
+}
+
+func (d *dynUpdater) execSetAgentServer(backname string, ep *hatypes.Endpoint) bool {
+	cmd := fmt.Sprintf("enable agent %s/%s", backname, ep.Name)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerWeight)
+}
+
+func (d *dynUpdater) execEnableServer(backname string, ep *hatypes.Endpoint) bool {
+	state := "ready"
+	if ep.Weight == 0 {
+		state = "drain"
+	}
+	cmd := fmt.Sprintf("set server %s/%s state %s", backname, ep.Name, state)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerState)
+}
+
+func (d *dynUpdater) execDeleteServer(backname string, ep *hatypes.Endpoint) bool {
+	cmd := fmt.Sprintf("del server %s/%s", backname, ep.Name)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdDelServer)
+}
+
+type cmdClass int
+
+const (
+	cmdAddServer cmdClass = iota
+	cmdSetServerAddr
+	cmdSetServerWeight
+	cmdSetServerState
+	cmdDelServer
+	cmdCommitCrt
+)
+
+var backendServerCmdAction = map[cmdClass]string{
+	cmdAddServer:       "adding",
+	cmdSetServerAddr:   "updating (address)",
+	cmdSetServerWeight: "updating (weight)",
+	cmdSetServerState:  "updating (state)",
+	cmdDelServer:       "deleting",
+}
+
+func (d *dynUpdater) execCommandBackendServer(observer func(duration time.Duration), backname string, ep *hatypes.Endpoint, cmd string, cmdcls cmdClass) bool {
+	action := backendServerCmdAction[cmdcls]
+	if action == "" {
+		panic(fmt.Errorf("invalid cmd ID: %d", cmdcls))
+	}
+	d.logger.InfoV(2, "api call: %s", cmd)
+	msgs, err := d.execCommand(observer, []string{cmd})
+	if err != nil {
+		d.logger.Error("error %s backend server %s/%s: %s", action, backname, ep.Name, err.Error())
+		return false
+	}
+	msg := msgs[0]
+	if !cmdResponseOK(cmdcls, msg) {
+		if msg == "" {
+			msg = "<empty>"
+		}
+		d.logger.Warn("unrecognized response %s backend server %s/%s: %s", action, backname, ep.Name, msg)
+		return false
+	}
+	if msg == "" {
+		d.logger.InfoV(2, "empty response from server")
+	} else {
+		d.logger.InfoV(2, "response from server: %s", msg)
+	}
 	return true
 }
 
@@ -475,13 +658,18 @@ func (d *dynUpdater) execCommand(observer func(duration time.Duration), cmd []st
 	return msg, err
 }
 
-func cmdResponseOK(cmd, response string) bool {
-	switch cmd {
-	case "set server":
-		return response == "" || strings.HasPrefix(response, "IP changed from ") || strings.HasPrefix(response, "no need to change ")
-	case "commit ssl cert":
+func cmdResponseOK(cmdcls cmdClass, response string) bool {
+	switch cmdcls {
+	case cmdAddServer:
+		return response == "New server registered."
+	case cmdSetServerAddr:
+		return response == "nothing changed" || strings.HasPrefix(response, "IP changed from ") || strings.HasPrefix(response, "no need to change ")
+	case cmdSetServerWeight, cmdSetServerState:
+		return response == ""
+	case cmdDelServer:
+		return response == "Server deleted."
+	case cmdCommitCrt:
 		return strings.Contains(response, "Success")
-	default:
-		panic(fmt.Errorf("invalid cmd: %s", cmd))
 	}
+	panic(fmt.Errorf("invalid cmd ID: %d", cmdcls))
 }

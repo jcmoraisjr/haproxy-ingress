@@ -52,6 +52,7 @@ clisock
 closeissues
 CLUSTERIP
 clusterrole
+cmdcls
 coldeasy
 configfound
 configmap
@@ -111,6 +112,7 @@ envtest
 eplist
 epmap
 epname
+eppair
 Equifax
 errexit
 errgroup
@@ -177,6 +179,7 @@ Hasnain
 Hasreq
 HATCP
 hatcpserviceports
+hatmpl
 hatypes
 hback
 hconfig
@@ -441,6 +444,7 @@ Sto
 stopctx
 STOPSIGNAL
 stracktraces
+strbld
 strbody
 strdomains
 strpath
@@ -510,8 +514,6 @@ vcookie
 vegeta
 verifyhost
 vheader
-vother
-vthis
 wafmode
 whereisaaron
 whitecfg
