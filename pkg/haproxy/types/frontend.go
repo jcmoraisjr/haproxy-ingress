@@ -74,6 +74,7 @@ func (f *Frontends) Commit() {
 	}
 	f.items = slices.DeleteFunc(f.items, func(f *Frontend) bool { return len(f.hosts) == 0 })
 	f.AuthProxy.changed = false
+	f.changed = false
 }
 
 func (f *Frontends) HasCommit() bool {

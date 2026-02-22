@@ -200,9 +200,9 @@ func TestAcquireAuthBackend(t *testing.T) {
 }
 
 func TestShrinkBackends(t *testing.T) {
-	ep0 := &Endpoint{IP: "127.0.0.1"}
-	ep11 := &Endpoint{IP: "192.168.0.11"}
-	ep21 := &Endpoint{IP: "192.168.0.21"}
+	ep0 := &Endpoint{IP: "127.0.0.1", Port: 1023}
+	ep11 := &Endpoint{IP: "192.168.0.11", Port: 1023}
+	ep21 := &Endpoint{IP: "192.168.0.21", Port: 8080}
 	app11 := &Backend{Name: "default_app1_8080", Endpoints: []*Endpoint{ep11}}
 	app12 := &Backend{Name: "default_app1_8080", Endpoints: []*Endpoint{ep11, ep0}}
 	app21 := &Backend{Name: "default_app2_8080", Endpoints: []*Endpoint{ep21}}

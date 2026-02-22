@@ -25,6 +25,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	networking "k8s.io/api/networking/v1"
@@ -35,9 +36,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/wait"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/retry"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -47,6 +52,8 @@ import (
 	ctrlconfig "github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/launch"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/socket"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/tests/framework/options"
 )
 
@@ -113,9 +120,10 @@ func NewFramework(ctx context.Context, t *testing.T, o ...options.Framework) *fr
 }
 
 type framework struct {
-	scheme *runtime.Scheme
-	config *rest.Config
-	cli    client.WithWatch
+	scheme  *runtime.Scheme
+	config  *rest.Config
+	cli     client.WithWatch
+	admsock socket.HAProxySocket
 }
 
 // HAProxy version 3.3-dev3-d4d72e2 2025/07/11 - https://haproxy.org/
@@ -191,8 +199,8 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 	}
 
 	global := corev1.ConfigMap{}
-	global.Namespace = "default"
-	global.Name = "ingress-controller"
+	global.Namespace = GlobalConfigMap.Namespace
+	global.Name = GlobalConfigMap.Name
 	global.Data = map[string]string{
 		ingtypes.GlobalSyslogEndpoint: "stdout",
 		ingtypes.GlobalSyslogFormat:   "raw",
@@ -201,7 +209,7 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 		ingtypes.GlobalHTTPPort:       strconv.Itoa(TestPortHTTP),
 		ingtypes.GlobalHTTPSPort:      strconv.Itoa(TestPortHTTPS),
 		ingtypes.GlobalStatsPort:      strconv.Itoa(TestPortStat),
-		ingtypes.GlobalMaxConnections: "20",
+		ingtypes.GlobalMaxConnections: "100",
 	}
 	err = f.cli.Create(ctx, &global)
 	require.NoError(t, err)
@@ -223,7 +231,7 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 	opt.LocalFSPrefix = "/tmp/haproxy-ingress"
 	opt.PublishService = PublishSvcName
 	opt.ConfigMap = GlobalConfigMap.String()
-	os.Setenv("POD_NAMESPACE", "default")
+	os.Setenv("POD_NAMESPACE", GlobalConfigMap.Namespace)
 	ctx, cancel := context.WithCancel(ctx)
 	cfg, err := ctrlconfig.CreateWithConfig(ctx, f.config, opt)
 	require.NoError(t, err)
@@ -252,6 +260,8 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 		_, err = http.DefaultClient.Do(req)
 		assert.NoError(collect, err)
 	}, 10*time.Second, time.Second)
+
+	f.admsock = socket.NewSocket(ctx, "/tmp/haproxy-ingress/var/run/haproxy/admin.sock", 5*time.Second, false)
 }
 
 type Response struct {
@@ -349,6 +359,8 @@ func (*framework) Request(ctx context.Context, t *testing.T, method, host, path 
 	}
 	require.NotNil(t, res, "request closure should reassign the response")
 	resBody, err := io.ReadAll(res.Body)
+	res.Body.Close()
+	cli.CloseIdleConnections()
 	require.NoError(t, err)
 	t.Logf("response body:\n%s\n", resBody)
 	strbody := string(resBody)
@@ -450,6 +462,114 @@ func (f *framework) Client() client.WithWatch {
 	return f.cli
 }
 
+var expectedIngressStatus = networking.IngressStatus{
+	LoadBalancer: networking.IngressLoadBalancerStatus{
+		Ingress: []networking.IngressLoadBalancerIngress{
+			{IP: PublishAddress, Hostname: PublishHostname},
+		},
+	},
+}
+
+func (f *framework) RequireIngressStatus(ctx context.Context, t *testing.T, ing *networking.Ingress) {
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		err := f.Client().Get(ctx, client.ObjectKeyFromObject(ing), ing)
+		if !assert.NoError(collect, err) {
+			return
+		}
+		assert.Equal(collect, expectedIngressStatus, ing.Status)
+	}, 5*time.Second, time.Second)
+}
+
+var pidRegex = regexp.MustCompile(`Pid: ([0-9]+)`)
+
+func (f *framework) HAProxyPid(t *testing.T) int {
+	info, err := f.admsock.Send(nil, "show info")
+	require.NoError(t, err)
+	pidstr := pidRegex.FindStringSubmatch(info[0])
+	require.Len(t, pidstr, 2)
+	pidval, err := strconv.Atoi(pidstr[1])
+	require.NoError(t, err)
+	return pidval
+}
+
+func (f *framework) ReadNumBackendServers(t *testing.T, svc *corev1.Service) (count int) {
+	backendName := fmt.Sprintf("%s_%s_%s", svc.Namespace, svc.Name, svc.Spec.Ports[0].TargetPort.String())
+	output, err := f.admsock.Send(nil, "show servers conn "+backendName)
+	require.NoError(t, err)
+	lines := utils.Split(output[0], "\n")
+	for _, l := range lines {
+		if strings.HasPrefix(l, backendName+"/") {
+			count++
+		}
+	}
+	return count
+}
+
+func (f *framework) ReadNumActiveBackendServers(ctx context.Context, hostname string, loops int) (int, error) {
+	g := errgroup.Group{}
+	backends := sets.NewString()
+	for range loops {
+		g.Go(func() error {
+			res := f.Request(ctx, &testing.T{}, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
+			if !res.EchoResponse.Parsed {
+				return fmt.Errorf("request failed")
+			}
+			backends.Insert(res.EchoResponse.ServerName)
+			return nil
+		})
+		time.Sleep(50 * time.Millisecond)
+	}
+	err := g.Wait()
+	return backends.Len(), err
+}
+
+func (f *framework) ParallelRequests(ctx, stopCtx context.Context, hostname string, period time.Duration) error {
+	g := errgroup.Group{}
+	wait.UntilWithContext(stopCtx, func(_ context.Context) {
+		g.Go(func() error {
+			res := f.Request(ctx, &testing.T{}, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
+			if !res.EchoResponse.Parsed {
+				return fmt.Errorf("request failed")
+			}
+			return nil
+		})
+	}, period)
+	return g.Wait()
+}
+
+func (f *framework) AddReplicas(ctx context.Context, t *testing.T, ep *discoveryv1.EndpointSlice, count int, o ...options.Server) {
+	base := len(ep.Ports)
+	replicaID := base
+	var servers []int32
+	for range count {
+		replicaID++
+		svcport := f.CreateHTTPServer(ctx, t, fmt.Sprintf("server-%d", replicaID), o...)
+		servers = append(servers, svcport)
+	}
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		if err := f.Client().Get(ctx, client.ObjectKeyFromObject(ep), ep); err != nil {
+			return err
+		}
+		for i := range servers {
+			server := servers[i]
+			ep.Ports = append(ep.Ports, discoveryv1.EndpointPort{Name: ptr.To(fmt.Sprintf("server-%d", base+i+1)), Port: &server})
+		}
+		return f.Client().Update(ctx, ep)
+	})
+	require.NoError(t, err)
+}
+
+func (f *framework) RemoveReplicas(ctx context.Context, t *testing.T, ep *discoveryv1.EndpointSlice, count int) {
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		if err := f.Client().Get(ctx, client.ObjectKeyFromObject(ep), ep); err != nil {
+			return err
+		}
+		ep.Ports = ep.Ports[:len(ep.Ports)-count]
+		return f.Client().Update(ctx, ep)
+	})
+	require.NoError(t, err)
+}
+
 func (f *framework) CreateSecret(ctx context.Context, t *testing.T, secretData map[string][]byte, o ...options.Object) *corev1.Secret {
 	opt := options.ParseObjectOptions(o...)
 	data := `
@@ -489,6 +609,11 @@ func (f *framework) CreateSecretTLS(ctx context.Context, t *testing.T, crt, key 
 }
 
 func (f *framework) CreateService(ctx context.Context, t *testing.T, serverPort int32, o ...options.Object) *corev1.Service {
+	svc, _ := f.CreateServiceEndpoint(ctx, t, serverPort, o...)
+	return svc
+}
+
+func (f *framework) CreateServiceEndpoint(ctx context.Context, t *testing.T, serverPort int32, o ...options.Object) (*corev1.Service, *discoveryv1.EndpointSlice) {
 	opt := options.ParseObjectOptions(o...)
 	data := `
 apiVersion: v1
@@ -498,7 +623,7 @@ metadata:
   namespace: default
 spec:
   ports:
-  - name: port1
+  - name: server-1 ## every new port means a new replica if opt.EndpointPortsAsReplicas is enabled.
     port: 9999 ## meaningless, just need to match ingress' one
     targetPort: 0
 `
@@ -511,7 +636,7 @@ spec:
 
 	// we don't have real pods, so we don't have eps along with the service,
 	// so we need to create them manually.
-	_ = f.CreateEndpointSlice(ctx, t, svc)
+	ep := f.CreateEndpointSlice(ctx, t, svc, opt.EndpointPortsAsReplicas)
 
 	t.Logf("creating service %s/%s\n", svc.Namespace, svc.Name)
 
@@ -525,22 +650,21 @@ spec:
 		err := f.cli.Delete(ctx, &svc)
 		assert.NoError(t, client.IgnoreNotFound(err))
 	})
-	return svc
+	return svc, ep
 }
 
-func (f *framework) CreateEndpointSlice(ctx context.Context, t *testing.T, svc *corev1.Service) *discoveryv1.EndpointSlice {
+func (f *framework) CreateEndpointSlice(ctx context.Context, t *testing.T, svc *corev1.Service, portsAsReplicas bool) *discoveryv1.EndpointSlice {
 	data := `
 kind: EndpointSlice
 apiVersion: discovery.k8s.io/v1
 addressType: IPv4
 endpoints:
 - addresses:
-  - 0.0.0.255 ## will change to loopback via ip-override annotation
+  - 0.0.0.255 ## ignored due to loopback-endpoint/ports-as-replicas annotations
   conditions:
     ready: true
 metadata:
-  annotations:
-    haproxy-ingress.github.io/ip-override: 127.0.0.1
+  annotations: {}
   labels: {}
   generateName: ""
   namespace: default
@@ -549,6 +673,11 @@ ports: []
 
 	eps := f.CreateObject(t, data).(*discoveryv1.EndpointSlice)
 	eps.GenerateName = svc.Name + "-"
+	if portsAsReplicas {
+		eps.Annotations["internal.haproxy-ingress.github.io/ports-as-replicas"] = "1"
+	} else {
+		eps.Annotations["internal.haproxy-ingress.github.io/loopback-endpoint"] = "1"
+	}
 	eps.Labels["kubernetes.io/service-name"] = svc.Name
 	for _, svcport := range svc.Spec.Ports {
 		eps.Ports = append(eps.Ports, discoveryv1.EndpointPort{
@@ -991,6 +1120,7 @@ func (*framework) CreateHTTPServer(ctx context.Context, t *testing.T, serverName
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(opt.ResponseDelay)
 		content := fmt.Sprintf("echoserver: %s %d %s\n", serverName, serverPort, r.URL.Path)
 		for name, values := range r.Header {
 			for _, value := range values {

@@ -461,7 +461,7 @@ func (b *BackendPathConfig) PathIDs(index int) []string {
 
 // IsEmpty ...
 func (ep *Endpoint) IsEmpty() bool {
-	return ep.IP == "127.0.0.1"
+	return ep.IP == "127.0.0.1" && ep.Port == 1023
 }
 
 func pathsEqual(paths1, paths2 []*Path) bool {

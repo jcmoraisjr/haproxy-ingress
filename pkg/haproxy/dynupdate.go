@@ -663,7 +663,7 @@ func cmdResponseOK(cmdcls cmdClass, response string) bool {
 	case cmdAddServer:
 		return response == "New server registered."
 	case cmdSetServerAddr:
-		return response == "nothing changed" || strings.HasPrefix(response, "IP changed from ") || strings.HasPrefix(response, "no need to change ")
+		return response == "nothing changed" || strings.HasPrefix(response, "IP changed from ") || strings.HasPrefix(response, "port changed from ") || strings.HasPrefix(response, "no need to change ")
 	case cmdSetServerWeight, cmdSetServerState:
 		return response == ""
 	case cmdDelServer:

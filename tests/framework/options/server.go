@@ -3,6 +3,7 @@ package options
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"time"
 )
 
 type Server func(o *serverOpt)
@@ -25,10 +26,17 @@ func WebsocketMessages(ch chan<- string) Server {
 	}
 }
 
+func ResponseDelay(delay time.Duration) Server {
+	return func(o *serverOpt) {
+		o.ResponseDelay = delay
+	}
+}
+
 type serverOpt struct {
-	Certs     []tls.Certificate
-	ClientCA  *x509.Certificate
-	WSMessage chan<- string
+	Certs         []tls.Certificate
+	ClientCA      *x509.Certificate
+	WSMessage     chan<- string
+	ResponseDelay time.Duration
 }
 
 func ParseServerOptions(opts ...Server) (opt serverOpt) {
