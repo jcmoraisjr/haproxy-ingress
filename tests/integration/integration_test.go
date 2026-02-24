@@ -1094,13 +1094,13 @@ Request forbidden by administrative rules.
 		requestDuration := time.Second
 		serverOpts := []options.Server{options.ResponseDelay(requestDuration)}
 
-		type ingdata struct {
+		type ingData struct {
 			svc      *corev1.Service
 			ep       *discoveryv1.EndpointSlice
 			hostname string
 		}
 
-		prepareIngress := func(o ...options.Object) ingdata {
+		prepareIngress := func(o ...options.Object) ingData {
 			svcport := f.CreateHTTPServer(ctx, t, "server-1", serverOpts...)
 			svc, ep := f.CreateServiceEndpoint(ctx, t, svcport, options.EndpointPortsAsReplicas(true))
 			o = append(o,
@@ -1113,14 +1113,14 @@ Request forbidden by administrative rules.
 			f.RequireIngressStatus(ctx, t, ing)
 			res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
 			require.True(t, res.EchoResponse.Parsed)
-			return ingdata{
+			return ingData{
 				svc:      svc,
 				ep:       ep,
 				hostname: hostname,
 			}
 		}
 
-		// servers and replicas hendling helpers
+		// servers and replicas handling helpers
 		eventuallyServerCount := func(t *testing.T, svc *corev1.Service, expectedServerCount int) {
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				assert.Equal(collect, expectedServerCount, f.ReadNumBackendServers(t, svc))
@@ -1143,21 +1143,21 @@ Request forbidden by administrative rules.
 				f.RemoveReplicas(ctx, t, ep, -addRemove)
 			}
 		}
-		changeReplicasAndWait := func(t *testing.T, preparedIngress ingdata, addRemove, expectedServers, expectedServing int) {
+		changeReplicasAndWait := func(t *testing.T, preparedIngress ingData, addRemove, expectedServers, expectedServing int) {
 			changeReplicas(preparedIngress.ep, addRemove)
 			eventuallyServerCount(t, preparedIngress.svc, expectedServers)
 			eventuallyBalanceCount(t, preparedIngress.hostname, expectedServing)
 		}
-		changeReplicasParallel := func(t *testing.T, preparedIngress ingdata, addRemove, expectedServers, expectedServing int) {
-			ctxreq, cancelreq := context.WithCancel(ctx)
-			defer cancelreq()
+		changeReplicasParallel := func(t *testing.T, preparedIngress ingData, addRemove, expectedServers, expectedServing int) {
+			ctxReq, cancelReq := context.WithCancel(ctx)
+			defer cancelReq()
 
-			errch := make(chan error)
+			errCh := make(chan error)
 			go func() {
 				// ensures 2 parallel requests per backend server, maintaining all of them busy
 				oldReplicas := expectedServing - addRemove
 				period := time.Duration(int(requestDuration) / oldReplicas / 2)
-				errch <- f.ParallelRequests(ctx, ctxreq, preparedIngress.hostname, period)
+				errCh <- f.ParallelRequests(ctx, ctxReq, preparedIngress.hostname, period)
 			}()
 
 			// wait all the servers to start handling requests from the parallel requests above
@@ -1170,8 +1170,8 @@ Request forbidden by administrative rules.
 			eventuallyServerCount(t, preparedIngress.svc, expectedServers)
 			eventuallyBalanceCount(t, preparedIngress.hostname, expectedServing)
 
-			cancelreq()
-			require.NoError(t, <-errch)
+			cancelReq()
+			require.NoError(t, <-errCh)
 		}
 
 		t.Run("slots strategy", func(t *testing.T) {

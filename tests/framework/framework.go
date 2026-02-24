@@ -123,7 +123,7 @@ type framework struct {
 	scheme  *runtime.Scheme
 	config  *rest.Config
 	cli     client.WithWatch
-	admsock socket.HAProxySocket
+	admSock socket.HAProxySocket
 }
 
 // HAProxy version 3.3-dev3-d4d72e2 2025/07/11 - https://haproxy.org/
@@ -261,7 +261,7 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 		assert.NoError(collect, err)
 	}, 10*time.Second, time.Second)
 
-	f.admsock = socket.NewSocket(ctx, "/tmp/haproxy-ingress/var/run/haproxy/admin.sock", 5*time.Second, false)
+	f.admSock = socket.NewSocket(ctx, "/tmp/haproxy-ingress/var/run/haproxy/admin.sock", 5*time.Second, false)
 }
 
 type Response struct {
@@ -483,18 +483,18 @@ func (f *framework) RequireIngressStatus(ctx context.Context, t *testing.T, ing 
 var pidRegex = regexp.MustCompile(`Pid: ([0-9]+)`)
 
 func (f *framework) HAProxyPid(t *testing.T) int {
-	info, err := f.admsock.Send(nil, "show info")
+	info, err := f.admSock.Send(nil, "show info")
 	require.NoError(t, err)
-	pidstr := pidRegex.FindStringSubmatch(info[0])
-	require.Len(t, pidstr, 2)
-	pidval, err := strconv.Atoi(pidstr[1])
+	pidStr := pidRegex.FindStringSubmatch(info[0])
+	require.Len(t, pidStr, 2)
+	pidVal, err := strconv.Atoi(pidStr[1])
 	require.NoError(t, err)
-	return pidval
+	return pidVal
 }
 
 func (f *framework) ReadNumBackendServers(t *testing.T, svc *corev1.Service) (count int) {
 	backendName := fmt.Sprintf("%s_%s_%s", svc.Namespace, svc.Name, svc.Spec.Ports[0].TargetPort.String())
-	output, err := f.admsock.Send(nil, "show servers conn "+backendName)
+	output, err := f.admSock.Send(nil, "show servers conn "+backendName)
 	require.NoError(t, err)
 	lines := utils.Split(output[0], "\n")
 	for _, l := range lines {
