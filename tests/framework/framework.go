@@ -118,16 +118,17 @@ type framework struct {
 	cli    client.WithWatch
 }
 
-// HAProxy version 3.3-dev3-d4d72e2 2025/07/11 - https://haproxy.org/
-// HAProxy version 3.2.3-1844da7 2025/07/09 - https://haproxy.org/
-// HAProxy version 3.1.8-4391242 2025/06/02 - https://haproxy.org/
-// HAProxy version 3.0.11-9e587df 2025/06/02 - https://haproxy.org/
+// HAProxy version 3.4-dev5-028940725 2026/02/19 - https://haproxy.org/
+// HAProxy version 3.3.4-c2bffae0a 2026/02/19 - https://haproxy.org/
+// HAProxy version 3.2.13-8bd310ca4 2026/02/19 - https://haproxy.org/
+// HAProxy version 3.1.15-5b3abb2d1 2026/02/19 - https://haproxy.org/
+// HAProxy version 3.0.17-3ad091172 2026/02/19 - https://haproxy.org/
 // HAProxy version 2.9.15-e872a3f 2025/03/21 - https://haproxy.org/
-// HAProxy version 2.8.15-a9aef56 2025/04/22 - https://haproxy.org/
+// HAProxy version 2.8.18-ae90be6 2025/12/25 - https://haproxy.org/
 // HAProxy version 2.7.12-5e21fc9 2024/04/05 - https://haproxy.org/
-// HAProxy version 2.6.22-fb0dde3 2025/04/22 - https://haproxy.org/
+// HAProxy version 2.6.23-c3bf1ac 2025/10/03 - https://haproxy.org/
 // HAProxy version 2.5.14-52b556a 2023/05/02 - https://haproxy.org/
-// HAProxy version 2.4.29-a7ae2bf 2025/04/22 - https://haproxy.org/
+// HAProxy version 2.4.30-bfe53a9 2025/10/03 - https://haproxy.org/
 // HA-Proxy version 2.2.34-bfc4296 2025/04/23 - https://haproxy.org/
 // HA-Proxy version 2.0.35-9627b47 2024/04/05 - https://haproxy.org/
 var haproxyVersionRegex = regexp.MustCompile(`^HA-?Proxy version ([0-9]+)\.([0-9]+)([.-][dev0-9]+)`)
@@ -135,7 +136,7 @@ var haproxyVersionRegex = regexp.MustCompile(`^HA-?Proxy version ([0-9]+)\.([0-9
 func haproxyVersion(t *testing.T) (major, minor int, full string) {
 	cmd := exec.Command("haproxy", "-v")
 	out, err := cmd.CombinedOutput()
-	require.NoError(t, err, "need haproxy 2.2 or newer installed")
+	require.NoError(t, err, "need haproxy 2.6 or newer installed")
 	digits := haproxyVersionRegex.FindStringSubmatch(string(out))
 	atoi := func(s string) int {
 		i, err := strconv.Atoi(s)
@@ -153,7 +154,7 @@ func startApiserver(t *testing.T, crdPaths []string) *rest.Config {
 
 	e := envtest.Environment{
 		// run `make setup-envtest` to download envtest binaries.
-		BinaryAssetsDirectory: filepath.Join("bin", "k8s", fmt.Sprintf("1.34.0-%s-%s", goruntime.GOOS, goruntime.GOARCH)),
+		BinaryAssetsDirectory: filepath.Join("bin", "k8s", fmt.Sprintf("1.35.0-%s-%s", goruntime.GOOS, goruntime.GOARCH)),
 		CRDDirectoryPaths:     crdPaths,
 		ErrorIfCRDPathMissing: true,
 	}
