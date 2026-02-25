@@ -900,7 +900,7 @@ Request forbidden by administrative rules.
 
 	t.Run("should configure TLS backend using crt files", func(t *testing.T) {
 		t.Parallel()
-		crtPem, keyPem := framework.CreateCertificate(t, caValid, cakeyValid, "localhost")
+		crtPem, keyPem := framework.CreateCertificate(t, caValid, cakeyValid, "localhost", options.DNS("localhost.local"))
 		crt, err := tls.X509KeyPair(crtPem, keyPem)
 		require.NoError(t, err)
 		port := f.CreateHTTPServer(ctx, t, "https1",
@@ -923,6 +923,7 @@ Request forbidden by administrative rules.
 			options.AddConfigKeyAnnotation(ingtypes.BackBackendProtocol, "https"),
 			options.AddConfigKeyAnnotation(ingtypes.BackSecureCrtSecret, "file://"+fileCrt.Name()),
 			options.AddConfigKeyAnnotation(ingtypes.BackSecureVerifyCASecret, "file://"+fileCA.Name()),
+			options.AddConfigKeyAnnotation(ingtypes.BackSecureSNI, "localhost.local"),
 		)
 
 		res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
