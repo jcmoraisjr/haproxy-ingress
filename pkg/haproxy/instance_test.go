@@ -4219,7 +4219,7 @@ func TestCustomResponseLua(t *testing.T) {
 	host1 := f.AcquireHost("server1.local")
 	host1.TLS.CAFilename = "/var/haproxy/ssl/ca/ca.pem" // adds mTLS, all host based lua services are being called from there
 	host1.TLS.CAHash = "1"
-	host1.CustomHTTPResponses.ID = host1.Hostname
+	host1.CustomHTTPResponses.ID = host1.ID
 	host1.CustomHTTPResponses.Lua = []hatypes.HTTPResponse{
 		{
 			Name:         "send-495",

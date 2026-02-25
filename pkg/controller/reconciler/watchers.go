@@ -191,7 +191,7 @@ func (w *watchers) handlersCore() []*hdlr {
 					UpdateFunc: func(ue event.UpdateEvent) bool {
 						old := ue.ObjectOld.(*discoveryv1.EndpointSlice)
 						new := ue.ObjectNew.(*discoveryv1.EndpointSlice)
-						return !reflect.DeepEqual(old.Endpoints, new.Endpoints)
+						return !reflect.DeepEqual(old.Endpoints, new.Endpoints) || !reflect.DeepEqual(old.Ports, new.Ports)
 					},
 				},
 			},

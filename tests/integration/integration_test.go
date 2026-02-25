@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/cache"
@@ -736,36 +737,16 @@ Request forbidden by administrative rules.
 		}, 10*time.Second, time.Second)
 	})
 
-	expectedIngressStatus := networkingv1.IngressStatus{
-		LoadBalancer: networkingv1.IngressLoadBalancerStatus{
-			Ingress: []networkingv1.IngressLoadBalancerIngress{
-				{IP: framework.PublishAddress, Hostname: framework.PublishHostname},
-			},
-		},
-	}
-
 	t.Run("should update ingress status", func(t *testing.T) {
 		t.Parallel()
 		svc := f.CreateService(ctx, t, httpServerPort)
 
 		ing1, _ := f.CreateIngress(ctx, t, svc)
-		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			err := f.Client().Get(ctx, client.ObjectKeyFromObject(ing1), ing1)
-			if !assert.NoError(collect, err) {
-				return
-			}
-			assert.Equal(collect, expectedIngressStatus, ing1.Status)
-		}, 5*time.Second, time.Second)
+		f.RequireIngressStatus(ctx, t, ing1)
 
 		// testing two consecutive syncs
 		ing2, _ := f.CreateIngress(ctx, t, svc)
-		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			err := f.Client().Get(ctx, client.ObjectKeyFromObject(ing2), ing2)
-			if !assert.NoError(collect, err) {
-				return
-			}
-			assert.Equal(collect, expectedIngressStatus, ing2.Status)
-		}, 5*time.Second, time.Second)
+		f.RequireIngressStatus(ctx, t, ing2)
 	})
 
 	t.Run("should sync ingress status from publish service", func(t *testing.T) {
@@ -774,13 +755,7 @@ Request forbidden by administrative rules.
 		ing, _ := f.CreateIngress(ctx, t, svc)
 
 		// check initial status
-		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			err := f.Client().Get(ctx, client.ObjectKeyFromObject(ing), ing)
-			if !assert.NoError(collect, err) {
-				return
-			}
-			assert.Equal(collect, expectedIngressStatus, ing.Status)
-		}, 5*time.Second, time.Second)
+		f.RequireIngressStatus(ctx, t, ing)
 
 		tmpChangingIP := "127.0.0.1"
 		require.NotEqual(t, framework.PublishAddress, tmpChangingIP)
@@ -816,13 +791,7 @@ Request forbidden by administrative rules.
 		require.NoError(t, err)
 
 		// check recovered svc status
-		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			err := f.Client().Get(ctx, client.ObjectKeyFromObject(ing), ing)
-			if !assert.NoError(collect, err) {
-				return
-			}
-			assert.Equal(collect, expectedIngressStatus, ing.Status)
-		}, 5*time.Second, time.Second)
+		f.RequireIngressStatus(ctx, t, ing)
 	})
 
 	t.Run("should override old status", func(t *testing.T) {
@@ -837,13 +806,7 @@ Request forbidden by administrative rules.
 		err := f.Client().Status().Update(ctx, ingpre1)
 		require.NoError(t, err)
 
-		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			err := f.Client().Get(ctx, client.ObjectKeyFromObject(ingpre1), ingpre1)
-			if !assert.NoError(collect, err) {
-				return
-			}
-			assert.Equal(collect, expectedIngressStatus, ingpre1.Status)
-		}, 5*time.Second, time.Second)
+		f.RequireIngressStatus(ctx, t, ingpre1)
 	})
 
 	t.Run("should connect on TCP service", func(t *testing.T) {
@@ -1124,6 +1087,157 @@ Request forbidden by administrative rules.
 		err = f.Client().Delete(ctx, ing)
 		require.NoError(t, err)
 		req(connRefusedOpt)
+	})
+
+	t.Run("should dynamically update", func(t *testing.T) {
+		// t.Parallel() // Dynamic update test, cannot run in parallel
+
+		requestDuration := time.Second
+		serverOpts := []options.Server{options.ResponseDelay(requestDuration)}
+
+		type ingData struct {
+			svc      *corev1.Service
+			ep       *discoveryv1.EndpointSlice
+			hostname string
+		}
+
+		prepareIngress := func(o ...options.Object) ingData {
+			svcport := f.CreateHTTPServer(ctx, t, "server-1", serverOpts...)
+			svc, ep := f.CreateServiceEndpoint(ctx, t, svcport, options.EndpointPortsAsReplicas(true))
+			o = append(o,
+				// "roundrobin" is easier to make all backend servers busy on parallel requests test
+				options.AddConfigKeyAnnotation(ingtypes.BackBalanceAlgorithm, "roundrobin"),
+			)
+			ing, hostname := f.CreateIngress(ctx, t, svc, o...)
+			// waits for leader, in case of the only or the first test to run,
+			// as a way to avoid unrelated reloads during the test
+			f.RequireIngressStatus(ctx, t, ing)
+			res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
+			require.True(t, res.EchoResponse.Parsed)
+			return ingData{
+				svc:      svc,
+				ep:       ep,
+				hostname: hostname,
+			}
+		}
+
+		// servers and replicas handling helpers
+		eventuallyServerCount := func(t *testing.T, svc *corev1.Service, expectedServerCount int) {
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				assert.Equal(collect, expectedServerCount, f.ReadNumBackendServers(t, svc))
+			}, 5*time.Second, time.Second)
+		}
+		eventuallyBalanceCount := func(t *testing.T, hostname string, expectedServerCount int) {
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				count, err := f.ReadNumActiveBackendServers(ctx, hostname, 5*expectedServerCount)
+				if !assert.NoError(collect, err) {
+					return
+				}
+				assert.Equal(collect, expectedServerCount, count)
+			}, 15*time.Second, 3*time.Second)
+		}
+		changeReplicas := func(ep *discoveryv1.EndpointSlice, addRemove int) {
+			switch {
+			case addRemove > 0:
+				f.AddReplicas(ctx, t, ep, addRemove, serverOpts...)
+			case addRemove < 0:
+				f.RemoveReplicas(ctx, t, ep, -addRemove)
+			}
+		}
+		changeReplicasAndWait := func(t *testing.T, preparedIngress ingData, addRemove, expectedServers, expectedServing int) {
+			changeReplicas(preparedIngress.ep, addRemove)
+			eventuallyServerCount(t, preparedIngress.svc, expectedServers)
+			eventuallyBalanceCount(t, preparedIngress.hostname, expectedServing)
+		}
+		changeReplicasParallel := func(t *testing.T, preparedIngress ingData, addRemove, expectedServers, expectedServing int) {
+			ctxReq, cancelReq := context.WithCancel(ctx)
+			defer cancelReq()
+
+			errCh := make(chan error)
+			go func() {
+				// ensures 2 parallel requests per backend server, maintaining all of them busy
+				oldReplicas := expectedServing - addRemove
+				period := time.Duration(int(requestDuration) / oldReplicas / 2)
+				errCh <- f.ParallelRequests(ctx, ctxReq, preparedIngress.hostname, period)
+			}()
+
+			// wait all the servers to start handling requests from the parallel requests above
+			time.Sleep(requestDuration)
+			// ... then add or remove replicas
+			changeReplicas(preparedIngress.ep, addRemove)
+
+			// giving some time for some unexpected async update to (not-)happen
+			time.Sleep(2 * requestDuration)
+			eventuallyServerCount(t, preparedIngress.svc, expectedServers)
+			eventuallyBalanceCount(t, preparedIngress.hostname, expectedServing)
+
+			cancelReq()
+			require.NoError(t, <-errCh)
+		}
+
+		t.Run("slots strategy", func(t *testing.T) {
+			preparedIngress := prepareIngress(
+				options.AddConfigKeyAnnotation(ingtypes.BackDynamicScaling, "slots"),
+				options.AddConfigKeyAnnotation(ingtypes.BackSlotsMinFree, "3"),
+				options.AddConfigKeyAnnotation(ingtypes.BackBackendServerSlotsInc, "1"),
+			)
+
+			// check initial state
+			changeReplicasAndWait(t, preparedIngress, 0, 4, 1)
+			expectedPid := f.HAProxyPid(t)
+
+			// has 1 replica
+			// add 3 replicas and check
+			changeReplicasAndWait(t, preparedIngress, 3, 4, 4)
+			require.Equal(t, expectedPid, f.HAProxyPid(t))
+
+			// has 4 replicas
+			// add 1 replica and check, should reload
+			changeReplicasAndWait(t, preparedIngress, 1, 8, 5)
+			newPid1 := f.HAProxyPid(t)
+			require.NotEqual(t, expectedPid, newPid1)
+			expectedPid = newPid1
+
+			// has 5 replicas
+			// remove 2 replicas and check
+			changeReplicasAndWait(t, preparedIngress, -2, 8, 3)
+			require.Equal(t, expectedPid, f.HAProxyPid(t))
+
+			// has 3 replicas
+			// remove 2 replicas and check running requests succeeding
+			changeReplicasParallel(t, preparedIngress, -2, 8, 1)
+			require.Equal(t, expectedPid, f.HAProxyPid(t))
+		})
+
+		t.Run("add strategy", func(t *testing.T) {
+			preparedIngress := prepareIngress(
+				options.AddConfigKeyAnnotation(ingtypes.BackDynamicScaling, "add"),
+			)
+
+			// check initial state
+			changeReplicasAndWait(t, preparedIngress, 0, 1, 1)
+			expectedPid := f.HAProxyPid(t)
+
+			// has 1 replica
+			// add 1 replica and check
+			changeReplicasAndWait(t, preparedIngress, 1, 2, 2)
+			require.Equal(t, expectedPid, f.HAProxyPid(t))
+
+			// has 2 replicas
+			// add 3 replicas and check
+			changeReplicasAndWait(t, preparedIngress, 3, 5, 5)
+			require.Equal(t, expectedPid, f.HAProxyPid(t))
+
+			// has 5 replicas
+			// remove 2 replicas and check
+			changeReplicasAndWait(t, preparedIngress, -2, 3, 3)
+			require.Equal(t, expectedPid, f.HAProxyPid(t))
+
+			// has 3 replicas
+			// remove 2 replicas and check running requests succeeding
+			changeReplicasParallel(t, preparedIngress, -2, 3, 1)
+			require.Equal(t, expectedPid, f.HAProxyPid(t))
+		})
 	})
 
 	// should match wildcard host

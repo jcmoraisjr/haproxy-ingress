@@ -23,7 +23,6 @@ import (
 
 	api "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 )
@@ -78,7 +77,21 @@ type Endpoint struct {
 
 func createEndpointSlices(endpointSlices []*discoveryv1.EndpointSlice, svcPort *api.ServicePort) (ready, notReady []*Endpoint, err error) {
 	for _, endpointSlice := range endpointSlices {
+		var loopbackEndpoint, portsAsReplicas bool
+		if ann := endpointSlice.GetAnnotations(); ann != nil {
+			loopbackEndpoint = ann["internal.haproxy-ingress.github.io/loopback-endpoint"] == "1"
+			portsAsReplicas = ann["internal.haproxy-ingress.github.io/ports-as-replicas"] == "1"
+		}
 		for _, epPort := range endpointSlice.Ports {
+			if portsAsReplicas {
+				// portsAsReplicas is a special test condition, HAProxy Servers are represented
+				// from distinct port numbers instead of distinct endpoints+addresses. Endpoint
+				// is hardcoded to loopback and no other Service and EndpointSlice configuration
+				// is checked.
+				ready = append(ready, newEndpoint("127.0.0.1", int(*epPort.Port), nil))
+				continue
+			}
+
 			// A pod corresponding to an endpoint slice can expose multiple ports.
 			// In current case we are only interested in those ports in which the
 			// service is interested in. Service's interest is reflected by svcPort.
@@ -105,7 +118,11 @@ func createEndpointSlices(endpointSlices []*discoveryv1.EndpointSlice, svcPort *
 				// https://github.com/kubernetes/kubernetes/issues/106267
 				// Using that as an argument to justify why we are using first
 				// address here.
-				domainEndpoint := newEndpoint(resolveIP(endpointSlice, endpoint.Addresses[0]), int(*epPort.Port), endpoint.TargetRef)
+				addr := endpoint.Addresses[0]
+				if loopbackEndpoint {
+					addr = "127.0.0.1"
+				}
+				domainEndpoint := newEndpoint(addr, int(*epPort.Port), endpoint.TargetRef)
 
 				// From the API docs of EndpointConditions:
 				//
@@ -126,15 +143,6 @@ func createEndpointSlices(endpointSlices []*discoveryv1.EndpointSlice, svcPort *
 		}
 	}
 	return ready, notReady, nil
-}
-
-func resolveIP(ep metav1.Object, configuredIPAddress string) string {
-	if ann := ep.GetAnnotations(); ann != nil {
-		if ipOverride := ann["haproxy-ingress.github.io/ip-override"]; ipOverride != "" {
-			return ipOverride
-		}
-	}
-	return configuredIPAddress
 }
 
 // CreateEndpoints ...

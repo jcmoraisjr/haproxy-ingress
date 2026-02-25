@@ -19,6 +19,8 @@ package utils
 import (
 	"fmt"
 	"net"
+	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -149,4 +151,26 @@ func SendToSocket(socket string, command string) error {
 		klog.Infof("haproxy stat socket response: \"%s\"", string(readBuffer[:rcvd-2]))
 	}
 	return nil
+}
+
+func StructEquals[T any](v1, v2 *T, skipFields ...string) bool {
+	vv1 := reflect.ValueOf(v1).Elem()
+	vv2 := reflect.ValueOf(v2).Elem()
+	vt1 := vv1.Type()
+	vt2 := vv2.Type()
+	if vt1 != vt2 {
+		return false
+	}
+	for i := range vt1.NumField() {
+		if slices.Contains(skipFields, vt1.Field(i).Name) {
+			continue
+		}
+		f1 := vv1.Field(i)
+		f2 := vv2.Field(i)
+		exported := f1.CanInterface()
+		if exported && !reflect.DeepEqual(f1.Interface(), f2.Interface()) {
+			return false
+		}
+	}
+	return true
 }

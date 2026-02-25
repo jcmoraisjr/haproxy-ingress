@@ -220,7 +220,7 @@ func (c *converter) syncFull() {
 	for _, ing := range ingList {
 		c.syncIngress(fp, ing)
 	}
-	c.syncConfig()
+	c.syncConfig(fp)
 }
 
 func (c *converter) syncPartial() {
@@ -291,7 +291,7 @@ func (c *converter) syncPartial() {
 	for _, ing := range ingList {
 		c.syncIngress(fp, ing)
 	}
-	c.syncConfig()
+	c.syncConfig(fp)
 }
 
 // trackAddedIngress add tracking hostnames and backends to new ingress objects
@@ -770,7 +770,7 @@ func (c *converter) syncIngressTCP(source *annotations.Source, ing *networking.I
 	}
 }
 
-func (c *converter) syncConfig() {
+func (c *converter) syncConfig(fp *annotations.FrontendPorts) {
 	for tcpPort, mapper := range c.tcpsvcAnnotations {
 		c.updater.UpdateTCPPortConfig(tcpPort, mapper)
 		if tcpHost := tcpPort.DefaultHost(); tcpHost != nil {
@@ -790,6 +790,11 @@ func (c *converter) syncConfig() {
 		c.updater.UpdateBackendConfig(backend, mapper)
 		c.syncBackendEndpointCookies(backend)
 		c.syncBackendEndpointHashes(backend)
+	}
+	if c.globalConfig.Get(ingtypes.GlobalCreateDefaultFrontends).Bool() {
+		fp.EnsureEmptyFrontends(c.haproxy.Frontends())
+	} else {
+		c.haproxy.Frontends().RemoveEmptyFrontends()
 	}
 }
 

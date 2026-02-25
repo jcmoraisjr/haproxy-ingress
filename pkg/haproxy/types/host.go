@@ -20,6 +20,8 @@ import (
 	"fmt"
 
 	"k8s.io/utils/ptr"
+
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 )
 
 // FindPath ...
@@ -99,6 +101,13 @@ func (h *Host) RemovePath(hpath *Path) {
 // HasTLSAuth ...
 func (h *Host) HasTLSAuth() bool {
 	return h.TLS.CAHash != ""
+}
+
+func (h *Host) Equals(other *Host) bool {
+	if !pathsEqual(h.Paths, other.Paths) {
+		return false
+	}
+	return utils.StructEquals(h, other, "Paths")
 }
 
 // Headers ...

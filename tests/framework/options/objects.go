@@ -49,6 +49,13 @@ func Listener(name gatewayv1.SectionName, proto gatewayv1.ProtocolType, port gat
 		})
 	}
 }
+
+func EndpointPortsAsReplicas(val bool) Object {
+	return func(o *objectOpt) {
+		o.EndpointPortsAsReplicas = val
+	}
+}
+
 func CustomObject(custom CustomObjectCallback) Object {
 	return func(o *objectOpt) {
 		o.custom = custom
@@ -61,6 +68,7 @@ type objectOpt struct {
 	Ann map[string]string
 	IngressOpt
 	GatewayOpt
+	ServiceOpt
 	custom CustomObjectCallback
 }
 
@@ -72,6 +80,10 @@ type IngressOpt struct {
 
 type GatewayOpt struct {
 	Listeners []ListenerOpt
+}
+
+type ServiceOpt struct {
+	EndpointPortsAsReplicas bool
 }
 
 type ListenerOpt struct {

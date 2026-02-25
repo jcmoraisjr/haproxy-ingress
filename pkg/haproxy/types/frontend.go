@@ -74,6 +74,7 @@ func (f *Frontends) Commit() {
 	}
 	f.items = slices.DeleteFunc(f.items, func(f *Frontend) bool { return len(f.hosts) == 0 })
 	f.AuthProxy.changed = false
+	f.changed = false
 }
 
 func (f *Frontends) HasCommit() bool {
@@ -127,7 +128,6 @@ func (f *Frontends) BuildHTTPResponses() (responses []HTTPResponses) {
 	for _, f := range f.items {
 		for _, host := range f.hosts {
 			res := &host.CustomHTTPResponses
-			res.ID = fmt.Sprintf("%s--%s", f.Name, host.Hostname)
 			if len(res.HAProxy) > 0 || len(res.Lua) > 0 {
 				responses = append(responses, HTTPResponses{
 					ID:      res.ID,
@@ -249,6 +249,9 @@ func (f *Frontend) HostsChanged() bool {
 
 func (f *Frontend) createHost(hostname string) *Host {
 	return &Host{
+		// ID logic should match frontend's `set-var(txn.lua_scope)` on haproxy template
+		ID: fmt.Sprintf("%s--%s", f.Name, hostname),
+		//
 		Frontend: f,
 		Hostname: hostname,
 	}
