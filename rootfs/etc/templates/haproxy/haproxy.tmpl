@@ -818,10 +818,8 @@ backend {{ $backend.ID }}
     http-response set-header Access-Control-Allow-Origin
         {{- if or $dynamicOrigin $wildcardWithCreds }}  "%[var(txn.hdr_origin{{ $i }})]"{{ else }}  "{{ index $cors.AllowOrigin 0 }}"{{ end }}
         {{- "" }} if cors_has_origin{{ $i }}
-        {{- if or $dynamicOrigin $pathIDs }}
-            {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
-            {{- if $dynamicOrigin }} cors_allow_origin{{ $i }}{{ end }}
-        {{- end }}
+        {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
+        {{- if $dynamicOrigin }} cors_allow_origin{{ $i }}{{ end }}
 {{- if $dynamicOrigin }}
     http-response set-header Access-Control-Allow-Origin  "{{ index $cors.AllowOrigin 0 }}"
         {{- "" }} if cors_has_origin{{ $i }}
@@ -841,10 +839,8 @@ backend {{ $backend.ID }}
 {{- if $cors.AllowCredentials }}
     http-response set-header Access-Control-Allow-Credentials "{{ $cors.AllowCredentials }}"
         {{- "" }} if cors_has_origin{{ $i }}
-        {{- if or $dynamicCreds $pathIDs }}
-            {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
-            {{- if $dynamicCreds }} cors_allow_origin{{ $i }}{{ end }}
-        {{- end }}
+        {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
+        {{- if $dynamicCreds }} cors_allow_origin{{ $i }}{{ end }}
 {{- end }}
 {{- if $cors.ExposeHeaders }}
     http-response set-header Access-Control-Expose-Headers "{{ $cors.ExposeHeaders }}"
