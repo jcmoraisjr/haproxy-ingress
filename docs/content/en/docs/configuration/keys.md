@@ -1408,9 +1408,11 @@ See also:
 
 Add CORS headers on OPTIONS http command (preflight) and responses.
 
+Since v0.17, HAProxy Ingress does not include CORS headers in case the request does not have the `Origin` header, or it is provided but not configured in the allowed lists.
+
 * `cors-enable`: Enable CORS if defined as `true`.
-* `cors-allow-origin`: Optional, configures `Access-Control-Allow-Origin` header which defines the URL that may access the resource. Defaults to `*`. This option accepts a comma-separated list of origins, the response will be dynamically built based on the `Origin` request header. If `Origin` belongs to the list, its content will be sent back to the client in the `Access-Control-Allow-Origin` header; otherwise, the first item of the list will be used.
-* `cors-allow-origin-regex`: Optional, like `cors-allow-origin` but with regex matching. Defaults to empty. This option accepts a space-separated list of origin regexes, the response will be dynamically built based on the `Origin` request header. If `Origin` matches any regex in the list, its content will be sent back to the client in the `Access-Control-Allow-Origin` header; otherwise, `cors-allow-origin` will be considered. This is why you **must also set** `cors-allow-origin` (probably to something other than `*`) when using this option.
+* `cors-allow-origin`: Optional, configures the `Origin` URLs that may access the resource. Defaults to `*`, representing any URL. The `Access-Control-Allow-Origin` response header will always copy the content received from the `Origin` request header.
+* `cors-allow-origin-regex`: Optional, defines the allowed `Origin` based on regex matching. This option accepts a space-separated list of origin regexes, and no other matching is added in case it is not declared.
 * `cors-allow-methods`: Optional, configures `Access-Control-Allow-Methods` header which defines the allowed methods. Default value is `GET, PUT, POST, DELETE, PATCH, OPTIONS`.
 * `cors-allow-headers`: Optional, configures `Access-Control-Allow-Headers` header which defines the allowed headers. Default value is `DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization`.
 * `cors-allow-credentials`: Optional, configures `Access-Control-Allow-Credentials` header which defines whether or not credentials (cookies, authorization headers or client certificates) should be exposed. Defaults to `true`.

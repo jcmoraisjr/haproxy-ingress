@@ -200,7 +200,7 @@ func (b *Backend) Equals(other *Backend) bool {
 // HasCorsEnabled ...
 func (b *Backend) HasCorsEnabled() bool {
 	for _, path := range b.Paths {
-		if path.Cors.Enabled {
+		if path.Cors.Enabled && (len(path.Cors.AllowOrigin) > 0 || len(path.Cors.AllowOriginRegex) > 0) {
 			return true
 		}
 	}

@@ -650,9 +650,11 @@ backend {{ $backend.ID }}
 
 {{- /*------------------------------------*/}}
 {{- $corsCfg := $backend.PathConfig "Cors" }}
+{{- if $backend.HasCorsEnabled }}
+    http-request set-var(txn.hdr_origin) req.hdr(Origin) if { req.hdr(Origin) -m found }
+{{- end }}
 {{- range $i, $cors := $corsCfg.Items }}
-{{- if and $cors.Enabled $cors.AllowOrigin }}
-    http-request set-var(txn.hdr_origin{{ $i }}) req.hdr(Origin) if { req.hdr(Origin) -m found }
+{{- if and $cors.Enabled (or $cors.AllowOrigin $cors.AllowOriginRegex) }}
 {{- range $pathIDs := $corsCfg.PathIDs $i }}
     http-request set-var(txn.cors_max_age) str({{ $cors.MaxAge }}) if METH_OPTIONS
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
@@ -801,58 +803,49 @@ backend {{ $backend.ID }}
 
 {{- /*------------------------------------*/}}
 {{- range $i, $cors := $corsCfg.Items }}
-{{- if and $cors.Enabled $cors.AllowOrigin }}
-{{- $wildcardWithCreds := and (eq (index $cors.AllowOrigin 0) "*") $cors.AllowCredentials }}
-{{- $dynamicOrigin := or $cors.AllowOriginRegex (gt (len $cors.AllowOrigin) 1) }}
-{{- $dynamicCreds := or $dynamicOrigin (ne (index $cors.AllowOrigin 0) "*") }}
-    acl cors_has_origin{{ $i }} var(txn.hdr_origin{{ $i }}) -m found
-{{- if or $dynamicOrigin $dynamicCreds }}
-{{- range $a1 := short 5 $cors.AllowOrigin }}
-    acl cors_allow_origin{{ $i }} var(txn.hdr_origin{{ $i }}) -m str{{ range $a := $a1 }} {{ $a }}{{ end }}
+{{- if and $cors.Enabled (or $cors.AllowOrigin $cors.AllowOriginRegex) }}
+{{- $allowOrigin := without $cors.AllowOrigin "*" }}
+{{- range $a1 := short 5 $allowOrigin }}
+    acl cors_allow_origin{{ $i }} var(txn.hdr_origin) -m str{{ range $a := $a1 }} {{ $a }}{{ end }}
 {{- end }}
 {{- range $a1 := short 5 $cors.AllowOriginRegex }}
-    acl cors_allow_origin{{ $i }} var(txn.hdr_origin{{ $i }}) -m reg{{ range $a := $a1 }} {{ $a |haquote }}{{ end }}
+    acl cors_allow_origin{{ $i }} var(txn.hdr_origin) -m reg{{ range $a := $a1 }} {{ $a |haquote }}{{ end }}
 {{- end }}
+{{- if and (not $allowOrigin) (not $cors.AllowOriginRegex) }}
+    acl cors_allow_origin{{ $i }} always_true
 {{- end }}
 {{- range $pathIDs := $corsCfg.PathIDs $i }}
-    http-response set-header Access-Control-Allow-Origin
-        {{- if or $dynamicOrigin $wildcardWithCreds }}  "%[var(txn.hdr_origin{{ $i }})]"{{ else }}  "{{ index $cors.AllowOrigin 0 }}"{{ end }}
-        {{- "" }} if cors_has_origin{{ $i }}
+    http-response set-header Access-Control-Allow-Origin "%[var(txn.hdr_origin)]"
+        {{- "" }} if cors_allow_origin{{ $i }}
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
-        {{- if $dynamicOrigin }} cors_allow_origin{{ $i }}{{ end }}
-{{- if $dynamicOrigin }}
-    http-response set-header Access-Control-Allow-Origin  "{{ index $cors.AllowOrigin 0 }}"
-        {{- "" }} if cors_has_origin{{ $i }}
-        {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
-        {{- "" }} !cors_allow_origin{{ $i }}
-{{- end }}
 {{- if $cors.AllowMethods }}
     http-response set-header Access-Control-Allow-Methods "{{ $cors.AllowMethods }}"
-        {{- "" }} if cors_has_origin{{ $i }}
+        {{- "" }} if cors_allow_origin{{ $i }}
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- if $cors.AllowHeaders }}
     http-response set-header Access-Control-Allow-Headers "{{ $cors.AllowHeaders }}"
-        {{- "" }} if cors_has_origin{{ $i }}
+        {{- "" }} if cors_allow_origin{{ $i }}
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- if $cors.AllowCredentials }}
     http-response set-header Access-Control-Allow-Credentials "{{ $cors.AllowCredentials }}"
-        {{- "" }} if cors_has_origin{{ $i }}
+        {{- "" }} if cors_allow_origin{{ $i }}
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
-        {{- if $dynamicCreds }} cors_allow_origin{{ $i }}{{ end }}
 {{- end }}
 {{- if $cors.ExposeHeaders }}
     http-response set-header Access-Control-Expose-Headers "{{ $cors.ExposeHeaders }}"
-        {{- "" }} if cors_has_origin{{ $i }}
+        {{- "" }} if cors_allow_origin{{ $i }}
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
-{{- if or $dynamicOrigin $wildcardWithCreds }}
+{{- if without $cors.AllowOrigin "*" }}
     http-response set-header Vary %[res.fhdr(Vary)],Origin
-        {{- "" }} if { res.hdr(Vary) -m found } ! { res.hdr(Vary) -m str "Origin" }
+        {{- "" }} if cors_allow_origin{{ $i }}
+        {{- "" }} { res.hdr(Vary) -m found } !{ res.hdr(Vary) -m str "Origin" }
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
     http-response set-header Vary Origin
-        {{- "" }} if ! { res.hdr(Vary) -m found }
+        {{- "" }} if cors_allow_origin{{ $i }}
+        {{- "" }} !{ res.hdr(Vary) -m found }
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- end }}
