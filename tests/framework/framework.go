@@ -380,7 +380,11 @@ func (*framework) TCPRequest(ctx context.Context, t *testing.T, tcpPort int32, d
 	require.EventuallyWithT(t, func(collect *assert.CollectT) {
 		var err error
 		if opt.TLS {
-			conn, err = tls.Dial("tcp", fmt.Sprintf(":%d", tcpPort), &tls.Config{InsecureSkipVerify: true})
+			tlsConfig := &tls.Config{
+				InsecureSkipVerify: true,
+				ServerName:         opt.SNI,
+			}
+			conn, err = tls.Dial("tcp", fmt.Sprintf(":%d", tcpPort), tlsConfig)
 		} else {
 			conn, err = net.Dial("tcp", fmt.Sprintf(":%d", tcpPort))
 		}
@@ -951,6 +955,11 @@ func (f *framework) CreateTLSRouteA2(ctx context.Context, t *testing.T, gw *gate
 	return route.(*gatewayv1alpha2.TLSRoute)
 }
 
+func (f *framework) CreateTLSRouteV1(ctx context.Context, t *testing.T, gw *gatewayv1.Gateway, svc *corev1.Service, o ...options.Object) *gatewayv1.TLSRoute {
+	route := f.CreateTLSRoute(ctx, t, gatewayv1.GroupVersion.Version, gw, svc, o...)
+	return route.(*gatewayv1.TLSRoute)
+}
+
 func (f *framework) CreateTLSRoute(ctx context.Context, t *testing.T, version string, gw *gatewayv1.Gateway, svc *corev1.Service, o ...options.Object) client.Object {
 	opt := options.ParseObjectOptions(o...)
 	api := v1.GroupVersion{Group: gatewayv1.GroupName, Version: version}.String()
@@ -972,13 +981,24 @@ spec:
 
 	route := f.CreateObject(t, data)
 	route.SetName(name)
-	spec := reflect.ValueOf(route).Elem().FieldByName("Spec").Addr().Interface().(*gatewayv1alpha2.TLSRouteSpec)
-	if opt.CustomHostName != nil {
-		spec.Hostnames = []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(*opt.CustomHostName)}
+	// distinct structs, cannot typecast TLSRouteSpec :/ better ideas?
+	if version == gatewayv1.GroupVersion.Version {
+		spec := reflect.ValueOf(route).Elem().FieldByName("Spec").Addr().Interface().(*gatewayv1.TLSRouteSpec)
+		if opt.CustomHostName != nil {
+			spec.Hostnames = []gatewayv1.Hostname{gatewayv1alpha2.Hostname(*opt.CustomHostName)}
+		}
+		spec.ParentRefs[0].Name = gatewayv1.ObjectName(gw.Name)
+		spec.Rules[0].BackendRefs[0].Name = gatewayv1.ObjectName(svc.Name)
+		spec.Rules[0].BackendRefs[0].Port = &svc.Spec.Ports[0].Port
+	} else {
+		spec := reflect.ValueOf(route).Elem().FieldByName("Spec").Addr().Interface().(*gatewayv1alpha2.TLSRouteSpec)
+		if opt.CustomHostName != nil {
+			spec.Hostnames = []gatewayv1alpha2.Hostname{gatewayv1alpha2.Hostname(*opt.CustomHostName)}
+		}
+		spec.ParentRefs[0].Name = gatewayv1.ObjectName(gw.Name)
+		spec.Rules[0].BackendRefs[0].Name = gatewayv1.ObjectName(svc.Name)
+		spec.Rules[0].BackendRefs[0].Port = &svc.Spec.Ports[0].Port
 	}
-	spec.ParentRefs[0].Name = gatewayv1.ObjectName(gw.Name)
-	spec.Rules[0].BackendRefs[0].Name = gatewayv1.ObjectName(svc.Name)
-	spec.Rules[0].BackendRefs[0].Port = &svc.Spec.Ports[0].Port
 	opt.Apply(route)
 
 	t.Logf("creating TLSRoute %s/%s\n", route.GetNamespace(), route.GetName())
