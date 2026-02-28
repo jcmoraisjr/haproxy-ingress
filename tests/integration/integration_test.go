@@ -1288,8 +1288,8 @@ func TestIntegrationGateway(t *testing.T) {
 		})
 	})
 
-	t.Run("v141-v1-experimental", func(t *testing.T) {
-		f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v141-v1-experimental"))
+	t.Run("v150-v1-experimental", func(t *testing.T) {
+		f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v150-v1-experimental"))
 		f.StartController(ctx, t)
 
 		httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1-http")
