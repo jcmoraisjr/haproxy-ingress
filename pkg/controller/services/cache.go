@@ -352,30 +352,86 @@ func (c *c) GetTCPRouteList() ([]*gatewayv1alpha2.TCPRoute, error) {
 	return nil, nil
 }
 
-func (c *c) GetTLSRouteList() ([]*gatewayv1alpha2.TLSRoute, error) {
+func (c *c) GetTLSRouteList() ([]*gatewayv1.TLSRoute, error) {
+	if c.config.HasTLSRouteV1 {
+		list1 := gatewayv1.TLSRouteList{}
+		if err := c.client.List(c.ctx, &list1); err != nil {
+			return nil, err
+		}
+		list := make([]*gatewayv1.TLSRoute, len(list1.Items))
+		for i := range list1.Items {
+			list[i] = &list1.Items[i]
+		}
+		return list, nil
+	}
 	if c.config.HasTLSRouteA2 {
 		list1 := gatewayv1alpha2.TLSRouteList{}
 		if err := c.client.List(c.ctx, &list1); err != nil {
 			return nil, err
 		}
-		list := make([]*gatewayv1alpha2.TLSRoute, len(list1.Items))
+		list := make([]*gatewayv1.TLSRoute, len(list1.Items))
 		for i := range list1.Items {
-			list[i] = &list1.Items[i]
+			list[i] = tlsRoutev1alpha2Tov1(&list1.Items[i])
 		}
 		return list, nil
 	}
 	return nil, nil
 }
 
-func (c *c) GetReferenceGrantList() ([]*gatewayv1beta1.ReferenceGrant, error) {
+func tlsRoutev1alpha2Tov1(route *gatewayv1alpha2.TLSRoute) *gatewayv1.TLSRoute {
+	out := &gatewayv1.TLSRoute{
+		TypeMeta:   route.TypeMeta,
+		ObjectMeta: route.ObjectMeta,
+		Spec: gatewayv1.TLSRouteSpec{
+			CommonRouteSpec: route.Spec.CommonRouteSpec,
+			Hostnames:       route.Spec.Hostnames,
+			Rules:           make([]gatewayv1.TLSRouteRule, len(route.Spec.Rules)),
+		},
+		Status: gatewayv1.TLSRouteStatus(route.Status),
+	}
+	for i, rule := range route.Spec.Rules {
+		out.Spec.Rules[i] = gatewayv1.TLSRouteRule(rule)
+	}
+	return out
+}
+
+func tlsRoutev1Tov1alpha2(route *gatewayv1.TLSRoute) *gatewayv1alpha2.TLSRoute {
+	out := &gatewayv1alpha2.TLSRoute{
+		TypeMeta:   route.TypeMeta,
+		ObjectMeta: route.ObjectMeta,
+		Spec: gatewayv1alpha2.TLSRouteSpec{
+			CommonRouteSpec: route.Spec.CommonRouteSpec,
+			Hostnames:       route.Spec.Hostnames,
+			Rules:           make([]gatewayv1alpha2.TLSRouteRule, len(route.Spec.Rules)),
+		},
+		Status: gatewayv1alpha2.TLSRouteStatus(route.Status),
+	}
+	for i, rule := range route.Spec.Rules {
+		out.Spec.Rules[i] = gatewayv1alpha2.TLSRouteRule(rule)
+	}
+	return out
+}
+
+func (c *c) GetReferenceGrantList() ([]*gatewayv1.ReferenceGrant, error) {
+	if c.config.HasGrantV1 {
+		list1 := gatewayv1.ReferenceGrantList{}
+		if err := c.client.List(c.ctx, &list1); err != nil {
+			return nil, err
+		}
+		list := make([]*gatewayv1.ReferenceGrant, len(list1.Items))
+		for i := range list1.Items {
+			list[i] = &list1.Items[i]
+		}
+		return list, nil
+	}
 	if c.config.HasGrantB1 {
 		list1 := gatewayv1beta1.ReferenceGrantList{}
 		if err := c.client.List(c.ctx, &list1); err != nil {
 			return nil, err
 		}
-		list := make([]*gatewayv1beta1.ReferenceGrant, len(list1.Items))
+		list := make([]*gatewayv1.ReferenceGrant, len(list1.Items))
 		for i := range list1.Items {
-			list[i] = &list1.Items[i]
+			list[i] = (*gatewayv1.ReferenceGrant)(&list1.Items[i])
 		}
 		return list, nil
 	}
@@ -664,11 +720,11 @@ func (c *c) UpdateStatus(namedObj client.Object, apply func() bool, opts ...conv
 		ctx, cancel = context.WithTimeout(context.Background(), *c.config.ShutdownTimeout/5) // 5s in the default config
 		defer cancel()
 	}
-	// We support Gateway API v1beta1, but outside the cache everything is v1.
-	// So, in the case only v1beta1 is available in apiserver (`HasGatewayB1` is true):
-	// * recreate resource in v1beta1;
-	// * typecast the result to v1 and send to apply();
-	// * if there's any change, typecast back to v1beta1 before calling status.Update().
+	// We support some Gateway API versions, but outside the cache everything is the most recent one.
+	// So, in case apiserver has not the one we are using outside the cache:
+	// * recreate resource in the apiserver supported version;
+	// * typecast the result to the one used outside the cache and send to apply();
+	// * if there's any change, typecast back to the apiserver compatible one before calling status.Update().
 	// It should have a better way to implement this.
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		typedObj := namedObj
@@ -681,9 +737,15 @@ func (c *c) UpdateStatus(namedObj client.Object, apply func() bool, opts ...conv
 			case *gatewayv1.HTTPRoute:
 				typedObj = &gatewayv1beta1.HTTPRoute{}
 			}
-			typedObj.SetNamespace(namedObj.GetNamespace())
-			typedObj.SetName(namedObj.GetName())
 		}
+		if c.config.HasTLSRouteA2 {
+			switch namedObj.(type) {
+			case *gatewayv1.TLSRoute:
+				typedObj = &gatewayv1alpha2.TLSRoute{}
+			}
+		}
+		typedObj.SetNamespace(namedObj.GetNamespace())
+		typedObj.SetName(namedObj.GetName())
 		if err := c.client.Get(ctx, client.ObjectKeyFromObject(typedObj), typedObj); err != nil {
 			return err
 		}
@@ -697,6 +759,12 @@ func (c *c) UpdateStatus(namedObj client.Object, apply func() bool, opts ...conv
 				*obj = *(*gatewayv1.HTTPRoute)(typedObj.(*gatewayv1beta1.HTTPRoute))
 			}
 		}
+		if c.config.HasTLSRouteA2 {
+			switch obj := namedObj.(type) {
+			case *gatewayv1.TLSRoute:
+				*obj = *tlsRoutev1alpha2Tov1(typedObj.(*gatewayv1alpha2.TLSRoute))
+			}
+		}
 		if apply() {
 			if c.config.HasGatewayB1 {
 				switch obj := typedObj.(type) {
@@ -706,6 +774,12 @@ func (c *c) UpdateStatus(namedObj client.Object, apply func() bool, opts ...conv
 					*obj = *(*gatewayv1beta1.Gateway)(namedObj.(*gatewayv1.Gateway))
 				case *gatewayv1beta1.HTTPRoute:
 					*obj = *(*gatewayv1beta1.HTTPRoute)(namedObj.(*gatewayv1.HTTPRoute))
+				}
+			}
+			if c.config.HasTLSRouteA2 {
+				switch obj := typedObj.(type) {
+				case *gatewayv1alpha2.TLSRoute:
+					*obj = *tlsRoutev1Tov1alpha2(namedObj.(*gatewayv1.TLSRoute))
 				}
 			}
 			return c.client.Status().Update(ctx, typedObj)

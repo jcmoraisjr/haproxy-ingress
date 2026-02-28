@@ -79,8 +79,14 @@ func (w *watchers) getHandlers() []*hdlr {
 	if w.cfg.HasTLSRouteA2 {
 		handlers = append(handlers, w.handlersTLSRoutev1alpha2()...)
 	}
+	if w.cfg.HasTLSRouteV1 {
+		handlers = append(handlers, w.handlersTLSRoutev1()...)
+	}
 	if w.cfg.HasGrantB1 {
 		handlers = append(handlers, w.handlersReferenceGrantv1beta1()...)
+	}
+	if w.cfg.HasGrantV1 {
+		handlers = append(handlers, w.handlersReferenceGrantv1()...)
 	}
 	for _, h := range handlers {
 		h.w = w
@@ -408,10 +414,36 @@ func (w *watchers) handlersTLSRoutev1alpha2() []*hdlr {
 	}
 }
 
+func (w *watchers) handlersTLSRoutev1() []*hdlr {
+	return []*hdlr{
+		{
+			typ:  &gatewayv1.TLSRoute{},
+			res:  types.ResourceTLSRoute,
+			full: true,
+			pr: []predicate.Predicate{
+				predicate.GenerationChangedPredicate{},
+			},
+		},
+	}
+}
+
 func (w *watchers) handlersReferenceGrantv1beta1() []*hdlr {
 	return []*hdlr{
 		{
 			typ:  &gatewayv1beta1.ReferenceGrant{},
+			res:  types.ResourceReferenceGrant,
+			full: true,
+			pr: []predicate.Predicate{
+				predicate.GenerationChangedPredicate{},
+			},
+		},
+	}
+}
+
+func (w *watchers) handlersReferenceGrantv1() []*hdlr {
+	return []*hdlr{
+		{
+			typ:  &gatewayv1.ReferenceGrant{},
 			res:  types.ResourceReferenceGrant,
 			full: true,
 			pr: []predicate.Predicate{

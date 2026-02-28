@@ -1481,8 +1481,8 @@ func (c *testConfig) createHTTPRoute2(name, parent, service, paths string) *gate
 	return r
 }
 
-func (c *testConfig) createTLSRoute1(name, parent, services string) *gatewayv1alpha2.TLSRoute {
-	r := CreateObject(c.createRoute("TLSRoute", "v1alpha2", name, parent, services)).(*gatewayv1alpha2.TLSRoute)
+func (c *testConfig) createTLSRoute1(name, parent, services string) *gatewayv1.TLSRoute {
+	r := CreateObject(c.createRoute("TLSRoute", "v1", name, parent, services)).(*gatewayv1.TLSRoute)
 	c.cache.TLSRouteList = append(c.cache.TLSRouteList, r)
 	return r
 }

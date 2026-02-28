@@ -31,7 +31,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
@@ -50,7 +49,7 @@ type CacheMock struct {
 	SvcList      []*api.Service
 	//
 	HTTPRouteList   []*gatewayv1.HTTPRoute
-	TLSRouteList    []*gatewayv1alpha2.TLSRoute
+	TLSRouteList    []*gatewayv1.TLSRoute
 	TCPRouteList    []*gatewayv1alpha2.TCPRoute
 	GatewayList     []*gatewayv1.Gateway
 	GatewayClassMap map[gatewayv1.ObjectName]*gatewayv1.GatewayClass
@@ -135,11 +134,11 @@ func (c *CacheMock) GetTCPRouteList() ([]*gatewayv1alpha2.TCPRoute, error) {
 	return c.TCPRouteList, nil
 }
 
-func (c *CacheMock) GetTLSRouteList() ([]*gatewayv1alpha2.TLSRoute, error) {
+func (c *CacheMock) GetTLSRouteList() ([]*gatewayv1.TLSRoute, error) {
 	return c.TLSRouteList, nil
 }
 
-func (c *CacheMock) GetReferenceGrantList() ([]*gatewayv1beta1.ReferenceGrant, error) {
+func (c *CacheMock) GetReferenceGrantList() ([]*gatewayv1.ReferenceGrant, error) {
 	return nil, nil
 }
 

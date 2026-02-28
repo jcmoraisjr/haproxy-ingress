@@ -263,7 +263,7 @@ func (c *converter) SyncFull() error {
 	if err := c.syncRouteStatus(&gatewayv1alpha2.TCPRoute{}); err != nil {
 		return err
 	}
-	if err := c.syncRouteStatus(&gatewayv1alpha2.TLSRoute{}); err != nil {
+	if err := c.syncRouteStatus(&gatewayv1.TLSRoute{}); err != nil {
 		return err
 	}
 
@@ -1382,7 +1382,7 @@ func (c *converter) syncRouteStatus(route client.Object) error {
 			switch r := route.(type) {
 			case *gatewayv1.HTTPRoute:
 				routeStatus = &r.Status.RouteStatus
-			case *gatewayv1alpha2.TLSRoute:
+			case *gatewayv1.TLSRoute:
 				routeStatus = &r.Status.RouteStatus
 			case *gatewayv1alpha2.TCPRoute:
 				routeStatus = &r.Status.RouteStatus

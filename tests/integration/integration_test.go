@@ -1274,8 +1274,13 @@ func TestIntegrationGateway(t *testing.T) {
 	t.Run("v100-v1-experimental", func(t *testing.T) {
 		f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v100-v1-experimental"))
 		f.StartController(ctx, t)
+
 		httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1-http")
+		tcpServerPort := f.CreateTCPServer(ctx, t)
 		gc := f.CreateGatewayClassV1(ctx, t)
+
+		caValid, cakeyValid := framework.CreateCA(t, framework.CertificateIssuerCN)
+		crtValidPem, keyValidPem := framework.CreateCertificate(t, caValid, cakeyValid, framework.CertificateClientCN)
 
 		t.Run("hello world", func(t *testing.T) {
 			t.Parallel()
@@ -1286,6 +1291,21 @@ func TestIntegrationGateway(t *testing.T) {
 			assert.True(t, res.EchoResponse.Parsed)
 			assert.Equal(t, "http", res.EchoResponse.ReqHeaders["x-forwarded-proto"])
 		})
+
+		t.Run("expose TLSRoute", func(t *testing.T) {
+			t.Parallel()
+			secret := f.CreateSecretTLS(ctx, t, crtValidPem, keyValidPem)
+			certs := []gatewayv1.SecretObjectReference{{Name: gatewayv1.ObjectName(secret.Name)}}
+			listenerPort := framework.RandomPort()
+			gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("tlsserver", gatewayv1.TLSProtocolType, listenerPort, certs))
+			svc := f.CreateService(ctx, t, tcpServerPort)
+			_ = f.CreateTLSRouteA2(ctx, t, gw, svc)
+			res1 := f.TCPRequest(ctx, t, listenerPort, "ping", options.TLSRequest())
+			assert.Equal(t, "ping", res1)
+			res2 := f.TCPRequest(ctx, t, listenerPort, "reply", options.TLSRequest())
+			assert.Equal(t, "reply", res2)
+		})
+
 	})
 
 	t.Run("v150-v1-experimental", func(t *testing.T) {
@@ -1328,10 +1348,10 @@ func TestIntegrationGateway(t *testing.T) {
 			listenerPort := framework.RandomPort()
 			gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("tlsserver", gatewayv1.TLSProtocolType, listenerPort, certs))
 			svc := f.CreateService(ctx, t, tcpServerPort)
-			_ = f.CreateTLSRouteA2(ctx, t, gw, svc)
-			res1 := f.TCPRequest(ctx, t, listenerPort, "ping", options.TLSRequest())
+			_ = f.CreateTLSRouteV1(ctx, t, gw, svc, options.CustomHostName("domain.local"))
+			res1 := f.TCPRequest(ctx, t, listenerPort, "ping", options.TLSRequest(), options.SNI("domain.local"))
 			assert.Equal(t, "ping", res1)
-			res2 := f.TCPRequest(ctx, t, listenerPort, "reply", options.TLSRequest())
+			res2 := f.TCPRequest(ctx, t, listenerPort, "reply", options.TLSRequest(), options.SNI("domain.local"))
 			assert.Equal(t, "reply", res2)
 		})
 
@@ -1418,7 +1438,7 @@ func TestIntegrationGateway(t *testing.T) {
 				options.Listener("gw-passthrough", gatewayv1.TLSProtocolType, framework.TestPortHTTPS, nil),
 			)
 			svctls := f.CreateService(ctx, t, httpsServerPort)
-			_ = f.CreateTLSRouteA2(ctx, t, gwtls, svctls,
+			_ = f.CreateTLSRouteV1(ctx, t, gwtls, svctls,
 				options.CustomHostName(hostnametls),
 			)
 

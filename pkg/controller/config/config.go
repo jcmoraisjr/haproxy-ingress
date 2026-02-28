@@ -213,7 +213,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		configLog.Info("watching for Gateway API resources - --watch-gateway is true")
 	}
 
-	var hasGateway, hasGatewayV1, hasGatewayB1, hasTCPRouteA2, hasTLSRouteA2, hasGrantB1 bool
+	var hasGateway, hasGatewayV1, hasGatewayB1, hasTCPRouteA2, hasTLSRouteV1, hasTLSRouteA2, hasGrantV1, hasGrantB1 bool
 	if opt.WatchGateway {
 		gwapis := []string{"gatewayclass", "gateway", "httproute"}
 		tcpapis := []string{"tcproute"}
@@ -228,34 +228,39 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		if gwB1 {
 			configLog.Info("found custom resource definition for gateway API v1beta1")
 		}
-
-		// only one GatewayClass/Gateway/HTTPRoute version should be enabled at the same time,
-		// otherwise we'd be retrieving the same duplicated resource from distinct api endpoints.
-		gw := gwV1 || gwB1
-		hasGatewayV1 = gwV1
-		hasGatewayB1 = gwB1 && !hasGatewayV1
-		hasGateway = hasGatewayV1 || hasGatewayB1
-
 		tcpA2 := configHasAPI(clientGateway.Discovery(), gatewayv1alpha2.GroupVersion, tcpapis...)
 		if tcpA2 {
 			configLog.Info("found custom resource definition for TCPRoute API v1alpha2")
 		}
-
+		tlsV1 := configHasAPI(clientGateway.Discovery(), gatewayv1.GroupVersion, tlsapis...)
+		if tlsV1 {
+			configLog.Info("found custom resource definition for TLSRoute API v1")
+		}
 		tlsA2 := configHasAPI(clientGateway.Discovery(), gatewayv1alpha2.GroupVersion, tlsapis...)
 		if tlsA2 {
 			configLog.Info("found custom resource definition for TLSRoute API v1alpha2")
+		}
+		grantV1 := configHasAPI(clientGateway.Discovery(), gatewayv1.GroupVersion, grantapis...)
+		if grantV1 {
+			configLog.Info("found custom resource definition for ReferenceGrant API v1")
 		}
 		grantB1 := configHasAPI(clientGateway.Discovery(), gatewayv1beta1.GroupVersion, grantapis...)
 		if grantB1 {
 			configLog.Info("found custom resource definition for ReferenceGrant API v1beta1")
 		}
 
-		// TODO: cannot enable TCPRoute or TLSRoute without Gateway and GatewayClass, but currently
-		// HTTPRoute discovery is coupled and its CRD should be installed as well, even if not used.
-		// We should use a distinct flag for HTTPRoute.
+		// only one API version should be enabled at the same time,
+		// otherwise we'd be retrieving the same duplicated resource
+		// from distinct api endpoints.
+		gw := gwV1 || gwB1
+		hasGatewayV1 = gwV1
+		hasGatewayB1 = gwB1 && !hasGatewayV1
+		hasGateway = hasGatewayV1 || hasGatewayB1
 		hasTCPRouteA2 = tcpA2 && gw
-		hasTLSRouteA2 = tlsA2 && gw
-		hasGrantB1 = grantB1 && gw
+		hasTLSRouteV1 = tlsV1 && gw
+		hasTLSRouteA2 = tlsA2 && gw && !hasTLSRouteV1
+		hasGrantV1 = grantV1 && gw
+		hasGrantB1 = grantB1 && gw && !hasGrantV1
 	}
 
 	if opt.EnableEndpointSlicesAPI {
@@ -518,8 +523,10 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		HasGatewayB1:             hasGatewayB1,
 		HasGatewayV1:             hasGatewayV1,
 		HasGrantB1:               hasGrantB1,
+		HasGrantV1:               hasGrantV1,
 		HasTCPRouteA2:            hasTCPRouteA2,
 		HasTLSRouteA2:            hasTLSRouteA2,
+		HasTLSRouteV1:            hasTLSRouteV1,
 		HealthzAddr:              healthz,
 		HealthzURL:               opt.HealthzURL,
 		IngressClass:             opt.IngressClass,
@@ -777,8 +784,10 @@ type Config struct {
 	HasGatewayB1             bool
 	HasGatewayV1             bool
 	HasGrantB1               bool
+	HasGrantV1               bool
 	HasTCPRouteA2            bool
 	HasTLSRouteA2            bool
+	HasTLSRouteV1            bool
 	HealthzAddr              string
 	HealthzURL               string
 	IngressClass             string
