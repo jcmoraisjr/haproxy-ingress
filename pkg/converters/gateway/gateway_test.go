@@ -939,6 +939,11 @@ listeners:
     reason: Pending
     status: "False"
     type: Programmed
+  - lastTransitionTime: "-"
+    message: ResolvedRefs condition has a failure status
+    reason: UnsupportedValue
+    status: "False"
+    type: Accepted
   name: l1
   supportedKinds:
   - kind: HTTPRoute
@@ -978,6 +983,11 @@ listeners:
     reason: Pending
     status: "False"
     type: Programmed
+  - lastTransitionTime: "-"
+    message: ResolvedRefs condition has a failure status
+    reason: UnsupportedValue
+    status: "False"
+    type: Accepted
   name: l1
   supportedKinds: []
 `,
