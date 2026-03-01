@@ -1336,6 +1336,33 @@ d1.local#/ d1_app_8080`)
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestInstanceSupportBackend(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	_ = c.config.Backends().AcquireStatusCodeBackend(429)
+	_ = c.config.Backends().AcquireStatusCodeBackend(500)
+	_ = c.config.Backends().AcquireTCPRejectBackend()
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+<<backends-default>>
+backend _status429
+    mode http
+    http-request return status 429 default-errorfiles
+backend _status500
+    mode http
+    http-request return status 500 default-errorfiles
+backend _tcp_reject
+    mode tcp
+    tcp-request content reject
+<<support>>
+`)
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestInstanceFrontendList(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()

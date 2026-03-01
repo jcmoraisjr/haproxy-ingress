@@ -213,12 +213,15 @@ func (b *Backends) BuildSortedShard(shardRef int) []*Backend {
 	return b.buildSortedItems(b.shards[shardRef])
 }
 
-func (b *Backends) BuildStatusCodeItems() []*Backend {
+func (b *Backends) BuildSupportBackendItems() []*Backend {
 	items := make([]*Backend, len(b.statusCode))
 	var i int
 	for _, item := range b.statusCode {
 		items[i] = item
 		i++
+	}
+	if b.tcpReject != nil {
+		items = append(items, b.tcpReject)
 	}
 	sort.Slice(items, func(i, j int) bool {
 		return items[i].ID < items[j].ID
@@ -313,6 +316,15 @@ func (b *Backends) AcquireNotFoundBackend() *Backend {
 		b.error404 = createBackend(0, "_error404", "", "") // this is also hardcoded in the template
 	}
 	return b.error404
+}
+
+func (b *Backends) AcquireTCPRejectBackend() *Backend {
+	if b.tcpReject == nil {
+		backend := createBackend(0, "_tcp_reject", "", "")
+		backend.ModeTCP = true
+		b.tcpReject = backend
+	}
+	return b.tcpReject
 }
 
 // AcquireStatusCodeBackend ...
