@@ -289,7 +289,6 @@ func TestBackends(t *testing.T) {
 			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
 				config := hatypes.Cors{
 					Enabled:      true,
-					AllowOrigin:  []string{"*"},
 					AllowHeaders: "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization",
 					AllowMethods: "GET, PUT, POST, DELETE, PATCH, OPTIONS",
 					MaxAge:       86400,
@@ -311,7 +310,6 @@ func TestBackends(t *testing.T) {
 			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
 				config := hatypes.Cors{
 					Enabled:          true,
-					AllowOrigin:      []string{"*"},
 					AllowHeaders:     "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization",
 					AllowMethods:     "GET, PUT, POST, DELETE, PATCH, OPTIONS",
 					MaxAge:           86400,
@@ -1467,9 +1465,14 @@ backend d1_app_8080
     http-request deny if { var(txn.pathID) -m str path01 path05 } !allow_rule_src0
     acl allow_rule_src2 src 10.0.0.12
     http-request deny if { var(txn.pathID) -m str path03 path07 } !allow_rule_src2
+    http-request set-var(txn.hdr_origin) req.hdr(Origin) if { req.hdr(Origin) -m found }
+    http-request set-var(txn.cors_max_age) str(0) if METH_OPTIONS { var(txn.pathID) -m str path02 }
+    http-request use-service lua.send-cors-preflight if METH_OPTIONS { var(txn.pathID) -m str path02 }
     http-request use-service lua.send-413 if { var(txn.pathID) -m str path06 } { req.body_size,sub(1048576) gt 0 }
     http-request replace-path ^/api(.*)$       /apiv1\1     if { var(txn.pathID) -m str path08 }
     http-response set-header Strict-Transport-Security "max-age=0" if https-request { var(txn.pathID) -m str path04 }
+    acl cors_allow_origin1 always_true
+    http-response set-header Access-Control-Allow-Origin "%[var(txn.hdr_origin)]" if cors_allow_origin1 { var(txn.pathID) -m str path02 }
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
 frontend _front_http_8080
@@ -1771,7 +1774,6 @@ func TestPathIDsSplit(t *testing.T) {
 		if i < max {
 			path.HSTS.Enabled = true
 			path.Cors.Enabled = true
-			path.Cors.AllowOrigin = []string{"*"}
 			path.Cors.AllowMethods = "GET, PUT, POST, DELETE, PATCH, OPTIONS"
 			path.Cors.AllowHeaders = "DNT,X-CustomHeader,Keep-Alive,User-Agent"
 		}

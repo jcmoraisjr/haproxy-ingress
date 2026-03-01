@@ -654,7 +654,7 @@ backend {{ $backend.ID }}
     http-request set-var(txn.hdr_origin) req.hdr(Origin) if { req.hdr(Origin) -m found }
 {{- end }}
 {{- range $i, $cors := $corsCfg.Items }}
-{{- if and $cors.Enabled (or $cors.AllowOrigin $cors.AllowOriginRegex) }}
+{{- if and $cors.Enabled }}
 {{- range $pathIDs := $corsCfg.PathIDs $i }}
     http-request set-var(txn.cors_max_age) str({{ $cors.MaxAge }}) if METH_OPTIONS
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
@@ -803,7 +803,7 @@ backend {{ $backend.ID }}
 
 {{- /*------------------------------------*/}}
 {{- range $i, $cors := $corsCfg.Items }}
-{{- if and $cors.Enabled (or $cors.AllowOrigin $cors.AllowOriginRegex) }}
+{{- if and $cors.Enabled }}
 {{- $allowOrigin := without $cors.AllowOrigin "*" }}
 {{- range $a1 := short 5 $allowOrigin }}
     acl cors_allow_origin{{ $i }} var(txn.hdr_origin) -m str{{ range $a := $a1 }} {{ $a }}{{ end }}

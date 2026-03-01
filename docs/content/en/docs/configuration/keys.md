@@ -1408,16 +1408,18 @@ See also:
 
 Add CORS headers on OPTIONS http command (preflight) and responses.
 
-Since v0.17, HAProxy Ingress does not include CORS headers in case the request does not have the `Origin` header, or it is provided but not configured in the allowed lists.
+Since v0.17, HAProxy Ingress does not include CORS headers in case the request does not provide the `Origin` header having an allowed URL.
 
 * `cors-enable`: Enable CORS if defined as `true`.
-* `cors-allow-origin`: Optional, configures the `Origin` URLs that may access the resource. Defaults to `*`, representing any URL. The `Access-Control-Allow-Origin` response header will always copy the content received from the `Origin` request header.
-* `cors-allow-origin-regex`: Optional, defines the allowed `Origin` based on regex matching. This option accepts a space-separated list of origin regexes, and no other matching is added in case it is not declared.
+* `cors-allow-origin`: Optional, defines a comma-separated list of `Origin` URLs that may access the resource. The expected syntax is `proto://subdomain.tld` followed by an optional `:portnumber`. `proto` should be either `http` or `https`.
+* `cors-allow-origin-regex`: Optional, defines a space-separated list of the allowed `Origin` based on regex matching. Anchors are not included, so a strict match should use `^proto://subdomain\.tld$` syntax.
 * `cors-allow-methods`: Optional, configures `Access-Control-Allow-Methods` header which defines the allowed methods. Default value is `GET, PUT, POST, DELETE, PATCH, OPTIONS`.
 * `cors-allow-headers`: Optional, configures `Access-Control-Allow-Headers` header which defines the allowed headers. Default value is `DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization`.
 * `cors-allow-credentials`: Optional, configures `Access-Control-Allow-Credentials` header which defines whether or not credentials (cookies, authorization headers or client certificates) should be exposed. Defaults to `true`.
 * `cors-max-age`: Optional, configures `Access-Control-Max-Age` header which defines the time in seconds the result should be cached. Defaults to `86400` (1 day).
 * `cors-expose-headers`: Optional, configures `Access-Control-Expose-Headers` header which defines what headers are allowed to be passed through to the CORS application. Defaults to not add the header.
+
+Allow origin defaults to `*` if neither `cors-allow-origin` nor `cors-allow-origin-regex` are provided, which means allowing any origin. The `Access-Control-Allow-Origin` response header will always copy the content received from the `Origin` request header, despite on how allow origin is configured.
 
 See also:
 
