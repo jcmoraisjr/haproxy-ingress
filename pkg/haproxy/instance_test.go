@@ -1456,7 +1456,7 @@ listen _front__tls
     tcp-request inspect-delay 5s
     tcp-request content set-var(req.sslpassback) req.ssl_sni,lower,map_str(/etc/haproxy/maps/_front_https_sslpassthrough__exact.map)
     tcp-request content accept if { req.ssl_hello_type 1 }
-    use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
+    use_backend %[var(req.sslpassback)]
     server _default_server_front_https_socket unix@/var/run/haproxy/_front_https_socket.sock send-proxy-v2
 frontend _front_https__local
     mode http
@@ -1472,7 +1472,7 @@ listen _front__tls_8444
     tcp-request inspect-delay 5s
     tcp-request content set-var(req.sslpassback) req.ssl_sni,lower,map_str(/etc/haproxy/maps/_front_https_8444_sslpassthrough__exact.map)
     tcp-request content accept if { req.ssl_hello_type 1 }
-    use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
+    use_backend %[var(req.sslpassback)]
     server _default_server_front_https_8444_socket unix@/var/run/haproxy/_front_https_8444_socket.sock send-proxy-v2
 frontend _front_https_8444__local
     mode http
@@ -4275,7 +4275,7 @@ listen _front__tls
     tcp-request content set-var(req.sslpassback) req.ssl_sni,lower,map_str(/etc/haproxy/maps/_front_https_sslpassthrough__exact.map)
     ## custom for _front__tls
     tcp-request content accept if { req.ssl_hello_type 1 }
-    use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
+    use_backend %[var(req.sslpassback)]
     server _default_server_front_https_socket unix@/var/run/haproxy/_front_https_socket.sock send-proxy-v2
 frontend _front_https__local
     mode http
@@ -4654,11 +4654,13 @@ func TestInstanceSSLPassthrough(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()
 
-	var hhttp, hhttps *hatypes.Host
+	var hhttp, hhttps, hhttpsStrict *hatypes.Host
 	var b *hatypes.Backend
 
 	fhttp := c.httpFrontend(80)
 	fhttps := c.httpsFrontend(443)
+	fhttpsStrict := c.httpsFrontend(9443)
+	fhttpsStrict.StrictTLS = true
 	redir := c.config.Backends().AcquireRedirectHTTPSBackend()
 
 	hhttp = fhttp.AcquireHost("d2.local")
@@ -4666,10 +4668,24 @@ func TestInstanceSSLPassthrough(t *testing.T) {
 
 	b = c.config.Backends().AcquireBackend("d2", "app", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS31}
-	b.ModeTCP = true // TODO should ingress converter configure mode tcp?
+	b.ModeTCP = true // TODO should converters configure mode tcp?
 	hhttps = fhttps.AcquireHost("d2.local")
 	hhttps.AddPath(b, "/", hatypes.MatchBegin)
 	hhttps.SSLPassthrough = true
+
+	b = c.config.Backends().AcquireBackend("d2", "app2", "8443")
+	b.Endpoints = []*hatypes.Endpoint{endpointS32}
+	b.ModeTCP = true // TODO should converters configure mode tcp?
+	hhttpsStrict = fhttpsStrict.AcquireHost("d2.app2strict.local")
+	hhttpsStrict.AddPath(b, "/", hatypes.MatchBegin)
+	hhttpsStrict.SSLPassthrough = true
+
+	b = c.config.Backends().AcquireBackend("d2", "app3", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS33}
+	hhttpsStrict = fhttpsStrict.AcquireHost("d2.app3strict.local")
+	hhttpsStrict.AddPath(b, "/", hatypes.MatchBegin)
+	hhttpsStrict = fhttpsStrict.AcquireHost("*.d2.app3strict.local")
+	hhttpsStrict.AddPath(b, "/app", hatypes.MatchBegin)
 
 	b = c.config.Backends().AcquireBackend("d3", "app1-http", "8080")
 	b.Endpoints = []*hatypes.Endpoint{endpointS41h}
@@ -4703,6 +4719,12 @@ func TestInstanceSSLPassthrough(t *testing.T) {
 	c.checkConfig(`
 <<global>>
 <<defaults>>
+backend d2_app2_8443
+    mode tcp
+    server s32 172.17.0.132:8080 weight 100
+backend d2_app3_8080
+    mode http
+    server s33 172.17.0.133:8080 weight 100
 backend d2_app_8080
     mode tcp
     server s31 172.17.0.131:8080 weight 100
@@ -4741,7 +4763,7 @@ listen _front__tls
     tcp-request inspect-delay 5s
     tcp-request content set-var(req.sslpassback) req.ssl_sni,lower,map_str(/etc/haproxy/maps/_front_https_sslpassthrough__exact.map)
     tcp-request content accept if { req.ssl_hello_type 1 }
-    use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
+    use_backend %[var(req.sslpassback)]
     use_backend d4_app4-ssl_8443
     server _default_server_front_https_socket unix@/var/run/haproxy/_front_https_socket.sock send-proxy-v2
 frontend _front_https__local
@@ -4751,9 +4773,40 @@ frontend _front_https__local
     <<https-headers>>
     use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
     default_backend _error404
+listen _front__tls_9443
+    mode tcp
+    bind :9443
+    tcp-request inspect-delay 5s
+    tcp-request content set-var(req.sslpassback) req.ssl_sni,lower,map_str(/etc/haproxy/maps/_front_https_9443_sslpassthrough__exact.map)
+    acl has-tls-offload req.ssl_sni -i -m str -f /etc/haproxy/maps/_front_https_9443_tls_offload__exact.list
+    acl has-tls-offload req.ssl_sni -i -m reg -f /etc/haproxy/maps/_front_https_9443_tls_offload__regex.list
+    tcp-request content reject if { req.ssl_hello_type 1 } !{ var(req.sslpassback) -m found } !has-tls-offload
+    use_backend %[var(req.sslpassback)]
+    server _default_server_front_https_9443_socket unix@/var/run/haproxy/_front_https_9443_socket.sock send-proxy-v2
+frontend _front_https_9443__local
+    mode http
+    bind unix@/var/run/haproxy/_front_https_9443_socket.sock accept-proxy ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_https_9443_bind_crt.list ca-ignore-err all crt-ignore-err all
+    <<set-req-base>>
+    http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_9443_host__begin.map)
+    http-request set-var(req.hostbackend) var(req.base),map_reg(/etc/haproxy/maps/_front_https_9443_host__regex.map) if !{ var(req.hostbackend) -m found }
+    <<https-headers>>
+    use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
+    default_backend _error404
 <<support>>
 `)
 
+	c.checkMap("_front_https_9443_tls_offload__exact.list", `
+d2.app3strict.local
+`)
+	c.checkMap("_front_https_9443_tls_offload__regex.list", `
+^[^.]+\.d2\.app3strict\.local$
+`)
+	c.checkMap("_front_https_9443_host__begin.map", `
+d2.app3strict.local#/ d2_app3_8080
+`)
+	c.checkMap("_front_https_9443_host__regex.map", `
+^[^.]+\.d2\.app3strict\.local#/app d2_app3_8080
+`)
 	c.checkMap("_front_https_sslpassthrough__exact.map", `
 d2.local d2_app_8080
 d3.local d3_app-ssl_8443

@@ -1213,10 +1213,17 @@ listen {{ $frontend.TLSProxyName }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
+{{- range $match := $frontend.HTTPSMaps.TLSOffloadMap.MatchFiles }}
+    acl has-tls-offload req.ssl_sni -i -m {{ $match.Method }} -f {{ $match.Filename }}
+{{- end }}
+{{- if $frontend.HTTPSMaps.TLSOffloadMap.HasHost }}
+    tcp-request content reject if { req.ssl_hello_type 1 } !{ var(req.sslpassback) -m found } !has-tls-offload
+{{- else }}
     tcp-request content accept if { req.ssl_hello_type 1 }
+{{- end }}
 
 {{- /*------------------------------------*/}}
-    use_backend %[var(req.sslpassback)] if { var(req.sslpassback) -m found }
+    use_backend %[var(req.sslpassback)]
 {{- $defaultHost := $frontend.DefaultHost }}
 {{- if $defaultHost }}
 {{- if $defaultHost.SSLPassthrough }}
