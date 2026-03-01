@@ -943,6 +943,7 @@ Request forbidden by administrative rules.
 		httpsServer2Port := f.CreateHTTPServer(ctx, t, "https-server2",
 			options.ServerCertificates([]tls.Certificate{serverCrt}),
 		)
+		httpServer3Port := f.CreateHTTPServer(ctx, t, "http-server3")
 
 		svc1 := f.CreateService(ctx, t, httpsServer1Port)
 		svc2 := f.CreateService(ctx, t, httpsServer2Port, options.CustomObject(func(o client.Object) {
@@ -953,13 +954,18 @@ Request forbidden by administrative rules.
 				TargetPort: intstr.IntOrString{IntVal: httpServerPort},
 			})
 		}))
+		svc3 := f.CreateService(ctx, t, httpServer3Port)
+
 		_, hostname1 := f.CreateIngress(ctx, t, svc1,
 			options.AddConfigKeyAnnotation(ingtypes.HostSSLPassthrough, "True"),
 		)
-
 		_, hostname2 := f.CreateIngress(ctx, t, svc2,
 			options.AddConfigKeyAnnotation(ingtypes.HostSSLPassthrough, "True"),
 			options.AddConfigKeyAnnotation(ingtypes.HostSSLPassthroughHTTPPort, strconv.Itoa(int(httpServerPort))),
+		)
+		_, hostname3 := f.CreateIngress(ctx, t, svc3,
+			options.DefaultTLS(),
+			options.AddConfigKeyAnnotation(ingtypes.HostSSLPassthrough, "False"),
 		)
 
 		res1http := f.Request(ctx, t, http.MethodGet, hostname1, "/", options.ExpectResponseCode(http.StatusFound))
@@ -986,6 +992,15 @@ Request forbidden by administrative rules.
 		)
 		assert.True(t, res2https.EchoResponse.Parsed)
 		assert.Equal(t, "https-server2", res2https.EchoResponse.ServerName)
+
+		res3https := f.Request(ctx, t, http.MethodGet, hostname3, "/",
+			options.TLSRequest(),
+			options.TLSSkipVerify(),
+			options.SNI(hostname3),
+			options.ExpectResponseCode(http.StatusOK),
+		)
+		assert.True(t, res3https.EchoResponse.Parsed)
+		assert.Equal(t, "http-server3", res3https.EchoResponse.ServerName)
 	})
 
 	t.Run("should ignore ingress if frontend id is not found", func(t *testing.T) {

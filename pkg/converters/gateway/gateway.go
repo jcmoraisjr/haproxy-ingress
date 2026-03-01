@@ -1072,6 +1072,7 @@ func (c *converter) createTLSHosts(gatewaySource, routeSource *source, listener 
 	}
 	// ssl-passthrough, backend is TLS, just SNI inspection on haproxy without ssl-offload
 	f := c.haproxy.Frontends().AcquireFrontend(listener.Port, true)
+	f.StrictTLS = true
 	for _, hostname := range hostnames {
 		h := f.FindHost(string(hostname))
 		if h != nil && !h.SSLPassthrough {

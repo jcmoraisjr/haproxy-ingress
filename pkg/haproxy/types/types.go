@@ -453,6 +453,7 @@ type FrontendHTTPSMaps struct {
 	FrontendCommonMaps
 	HTTPSHostMap          *HostsMap
 	SSLPassthroughMap     *HostsMap
+	TLSOffloadMap         *HostsMap
 	TLSAuthList           *HostsMap
 	TLSInvalidCrtPagesMap *HostsMap
 	TLSMissingCrtPagesMap *HostsMap
@@ -499,6 +500,7 @@ type Frontend struct {
 	//
 	// HTTPS related
 	CrtListFile string
+	StrictTLS   bool
 	//
 	// Passthrough related
 	TLSProxyName string
