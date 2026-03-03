@@ -137,6 +137,7 @@ type routeParentRefEvent struct {
 	backendRef        string
 	backendRefNoGrant []string
 	invalidKind       string
+	invalidProto      string
 	unsupportedValue  string
 }
 
@@ -588,6 +589,14 @@ func (c *converter) syncRoute(routeSource *source, routeHostnames []gatewayv1.Ho
 				continue
 			}
 			lstEvent := c.acquireListenerEvent(gatewaySource, listener)
+			supported := slices.ContainsFunc(lstEvent.supportedKinds, func(gk routeGroupKind) bool {
+				return gk.kind == gatewayv1.Kind(routeSource.Kind)
+			})
+			if !supported {
+				refEvent.notAllowed = errRouteNotAllowed.Error()
+				refEvent.invalidProto = "route does not support listener protocol " + string(listener.Protocol)
+				continue
+			}
 			lstEvent.attachedRoutes += 1
 			// TODO implement gateway.Spec.Addresses[]
 			syncRouteListener(gatewaySource, listener, hostnames, refEvent)
@@ -725,7 +734,7 @@ func (c *converter) acquireListenerEvent(gatewaySource *source, listener *gatewa
 		case gatewayv1.TLSProtocolType:
 			switch tlsMode {
 			case gatewayv1.TLSModeTerminate:
-				protoSupportedKinds = []gatewayv1.Kind{tcpRouteKind}
+				protoSupportedKinds = []gatewayv1.Kind{tlsRouteKind}
 			case gatewayv1.TLSModePassthrough:
 				protoSupportedKinds = []gatewayv1.Kind{tlsRouteKind}
 			default: // Non TLS mode
@@ -1206,19 +1215,26 @@ func (c *converter) syncGatewayStatus() error {
 		gwGeneration := gwEvent.source.generation
 		err := c.cache.UpdateStatus(gw, func() bool {
 			var changed bool
-			changed = meta.SetStatusCondition(&gw.Status.Conditions, metav1.Condition{
+
+			// condition GatewayConditionAccepted
+			conditionGatewayAccepted := metav1.Condition{
 				Type:               string(gatewayv1.GatewayConditionAccepted),
 				Status:             metav1.ConditionTrue,
 				Reason:             string(gatewayv1.GatewayReasonAccepted),
 				Message:            "Gateway accepted by HAProxy Ingress",
 				ObservedGeneration: gwGeneration,
-			}) || changed
-			changed = meta.SetStatusCondition(&gw.Status.Conditions, metav1.Condition{
+			}
+			changed = meta.SetStatusCondition(&gw.Status.Conditions, conditionGatewayAccepted) || changed
+
+			// condition GatewayConditionProgrammed
+			conditionGatewayProgrammed := metav1.Condition{
 				Type:               string(gatewayv1.GatewayConditionProgrammed),
 				Status:             metav1.ConditionTrue,
 				Reason:             string(gatewayv1.GatewayReasonProgrammed),
 				ObservedGeneration: gwGeneration,
-			}) || changed
+			}
+			changed = meta.SetStatusCondition(&gw.Status.Conditions, conditionGatewayProgrammed) || changed
+
 			gw.Status.Listeners = slices.DeleteFunc(gw.Status.Listeners, func(listenerStatus gatewayv1.ListenerStatus) bool {
 				found := slices.ContainsFunc(gw.Spec.Listeners, func(listener gatewayv1.Listener) bool {
 					return listenerStatus.Name == listener.Name
@@ -1302,17 +1318,22 @@ func (c *converter) syncGatewayStatus() error {
 				}
 				changed = meta.SetStatusCondition(&listenerStatus.Conditions, conditionProgrammed) || changed
 
-				if conditionResolvedRefs.Status == metav1.ConditionTrue {
-					// condition ListenerConditionAccepted
-					conditionAccepted := metav1.Condition{
-						Type:               string(gatewayv1.ListenerConditionAccepted),
-						Status:             metav1.ConditionTrue,
-						Reason:             string(gatewayv1.ListenerReasonAccepted),
-						ObservedGeneration: gwGeneration,
-					}
-					changed = meta.SetStatusCondition(&listenerStatus.Conditions, conditionAccepted) || changed
+				// condition ListenerConditionAccepted
+				conditionAccepted := metav1.Condition{
+					Type:               string(gatewayv1.ListenerConditionAccepted),
+					Status:             metav1.ConditionTrue,
+					Reason:             string(gatewayv1.ListenerReasonAccepted),
+					ObservedGeneration: gwGeneration,
+				}
+				if conditionResolvedRefs.Status == metav1.ConditionFalse {
+					conditionAccepted.Status = metav1.ConditionFalse
+					conditionAccepted.Reason = string(gatewayv1.ListenerReasonUnsupportedValue)
+					conditionAccepted.Message = string(gatewayv1.ListenerConditionResolvedRefs) + " condition has a failure status"
+				}
+				changed = meta.SetStatusCondition(&listenerStatus.Conditions, conditionAccepted) || changed
 
-					// condition ListenerConditionConflicted
+				// condition ListenerConditionConflicted
+				if conditionResolvedRefs.Status == metav1.ConditionTrue {
 					conditionConflicted := metav1.Condition{
 						Type:               string(gatewayv1.ListenerConditionConflicted),
 						Status:             metav1.ConditionFalse,
@@ -1321,7 +1342,6 @@ func (c *converter) syncGatewayStatus() error {
 					}
 					changed = meta.SetStatusCondition(&listenerStatus.Conditions, conditionConflicted) || changed
 				} else {
-					changed = meta.RemoveStatusCondition(&listenerStatus.Conditions, string(gatewayv1.ListenerConditionAccepted)) || changed
 					changed = meta.RemoveStatusCondition(&listenerStatus.Conditions, string(gatewayv1.ListenerConditionConflicted)) || changed
 				}
 
@@ -1444,6 +1464,10 @@ func (c *converter) syncRouteStatus(route client.Object) error {
 					conditionResolvedRefs.Status = metav1.ConditionFalse
 					conditionResolvedRefs.Reason = string(gatewayv1.RouteReasonInvalidKind)
 					conditionResolvedRefs.Message = eventParent.invalidKind
+				} else if eventParent.invalidProto != "" {
+					conditionResolvedRefs.Status = metav1.ConditionFalse
+					conditionResolvedRefs.Reason = string(gatewayv1.RouteReasonUnsupportedProtocol)
+					conditionResolvedRefs.Message = eventParent.invalidProto
 				}
 				changed = meta.SetStatusCondition(&statusParent.Conditions, conditionResolvedRefs) || changed
 
