@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"slices"
 	"sort"
 	"strconv"
@@ -409,9 +410,16 @@ func (c *converter) syncHTTPRoutesFilterRequestRedirect(backend *hatypes.Backend
 
 func (c *converter) syncHTTPRoutesFilterCORS(cors *gatewayv1.HTTPCORSFilter) (haCORS hatypes.Cors) {
 	haCORS.Enabled = true
-	haCORS.AllowOrigin = make([]string, len(cors.AllowOrigins))
-	for i, origin := range cors.AllowOrigins {
-		haCORS.AllowOrigin[i] = string(origin)
+	for _, origin := range cors.AllowOrigins {
+		originStr := string(origin)
+		// matching the `proto://*.domain.tld` wildcard pattern.
+		if strings.Contains(originStr, "://*.") {
+			// escapes special chars, then convert wildcard looking for the converted version
+			originRegex := strings.Replace(regexp.QuoteMeta(originStr), `://\*\.`, `://.+\.`, 1)
+			haCORS.AllowOriginRegex = append(haCORS.AllowOriginRegex, "^"+originRegex+"$")
+		} else {
+			haCORS.AllowOrigin = append(haCORS.AllowOrigin, originStr)
+		}
 	}
 	haCORS.AllowCredentials = ptr.Deref(cors.AllowCredentials, false)
 	methods := make([]string, len(cors.AllowMethods))
