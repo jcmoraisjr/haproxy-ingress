@@ -652,9 +652,11 @@ backend {{ $backend.ID }}
 {{- $corsCfg := $backend.PathConfig "Cors" }}
 {{- if $backend.HasCorsEnabled }}
     http-request set-var(txn.hdr_origin) req.hdr(Origin) if { req.hdr(Origin) -m found }
+    http-request set-var(txn.hdr_cors_method) req.fhdr(Access-Control-Request-Method) if { req.fhdr(Access-Control-Request-Method) -m found }
+    http-request set-var(txn.hdr_cors_headers) req.fhdr(Access-Control-Request-Headers) if { req.fhdr(Access-Control-Request-Headers) -m found }
 {{- end }}
 {{- range $i, $cors := $corsCfg.Items }}
-{{- if and $cors.Enabled }}
+{{- if $cors.Enabled }}
 {{- range $pathIDs := $corsCfg.PathIDs $i }}
     http-request set-var(txn.cors_max_age) str({{ $cors.MaxAge }}) if METH_OPTIONS
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
@@ -803,7 +805,7 @@ backend {{ $backend.ID }}
 
 {{- /*------------------------------------*/}}
 {{- range $i, $cors := $corsCfg.Items }}
-{{- if and $cors.Enabled }}
+{{- if $cors.Enabled }}
 {{- $allowOrigin := without $cors.AllowOrigin "*" }}
 {{- range $a1 := short 5 $allowOrigin }}
     acl cors_allow_origin{{ $i }} var(txn.hdr_origin) -m str{{ range $a := $a1 }} {{ $a }}{{ end }}
@@ -812,20 +814,22 @@ backend {{ $backend.ID }}
     acl cors_allow_origin{{ $i }} var(txn.hdr_origin) -m reg{{ range $a := $a1 }} {{ $a |haquote }}{{ end }}
 {{- end }}
 {{- if and (not $allowOrigin) (not $cors.AllowOriginRegex) }}
-    acl cors_allow_origin{{ $i }} always_true
+    acl cors_allow_origin{{ $i }} var(txn.hdr_origin) -m found
 {{- end }}
 {{- range $pathIDs := $corsCfg.PathIDs $i }}
-    http-response set-header Access-Control-Allow-Origin "%[var(txn.hdr_origin)]"
+    http-response set-header Access-Control-Allow-Origin %[var(txn.hdr_origin)]
         {{- "" }} if cors_allow_origin{{ $i }}
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- if $cors.AllowMethods }}
-    http-response set-header Access-Control-Allow-Methods "{{ $cors.AllowMethods }}"
+    http-response set-header Access-Control-Allow-Methods {{ if eq $cors.AllowMethods "*" }}%[var(txn.hdr_cors_method)]{{ else }}"{{ $cors.AllowMethods }}"{{ end }}
         {{- "" }} if cors_allow_origin{{ $i }}
+        {{- if eq $cors.AllowMethods "*" }} { var(txn.hdr_cors_method) -m found }{{ end }}
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- if $cors.AllowHeaders }}
-    http-response set-header Access-Control-Allow-Headers "{{ $cors.AllowHeaders }}"
+    http-response set-header Access-Control-Allow-Headers {{ if eq $cors.AllowHeaders "*" }}%[var(txn.hdr_cors_headers)]{{ else }}"{{ $cors.AllowHeaders }}"{{ end }}
         {{- "" }} if cors_allow_origin{{ $i }}
+        {{- if eq $cors.AllowHeaders "*" }} { var(txn.hdr_cors_headers) -m found }{{ end }}
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- if $cors.AllowCredentials }}
