@@ -908,7 +908,10 @@ func (c *converter) createBackend(routeSource *source, refEvent *routeParentRefE
 		epReady []*convutils.Endpoint
 		cl      convutils.WeightCluster
 	}
-	http500 := func() *hatypes.Backend {
+	errorResponse := func() *hatypes.Backend {
+		if modeTCP {
+			return c.haproxy.Backends().AcquireTCPRejectBackend()
+		}
 		return c.haproxy.Backends().AcquireStatusCodeBackend(http.StatusInternalServerError)
 	}
 	var backends []backend
@@ -916,7 +919,7 @@ func (c *converter) createBackend(routeSource *source, refEvent *routeParentRefE
 	for _, back := range backendRefs {
 		if back.Port == nil {
 			refEvent.backendRef = "BackendRef is missing port number"
-			return http500(), nil
+			return errorResponse(), nil
 		}
 		namespace := routeSource.Namespace
 		if back.Namespace != nil {
@@ -928,7 +931,7 @@ func (c *converter) createBackend(routeSource *source, refEvent *routeParentRefE
 				backName = fmt.Sprintf("%s/%s", *back.Namespace, back.Name)
 			}
 			refEvent.backendRefNoGrant = append(refEvent.backendRefNoGrant, backName)
-			return http500(), nil
+			return errorResponse(), nil
 		}
 		var invalidKind []string
 		if back.Group != nil && *back.Group != "" && *back.Group != "core" {
@@ -939,7 +942,7 @@ func (c *converter) createBackend(routeSource *source, refEvent *routeParentRefE
 		}
 		if len(invalidKind) > 0 {
 			refEvent.invalidKind = strings.Join(invalidKind, "; ")
-			return http500(), nil
+			return errorResponse(), nil
 		}
 		svcName := namespace + "/" + string(back.Name)
 		c.tracker.TrackRefName([]convtypes.TrackingRef{
@@ -950,7 +953,7 @@ func (c *converter) createBackend(routeSource *source, refEvent *routeParentRefE
 		if err != nil {
 			c.logger.Warn("skipping service '%s' on %s: %v", back.Name, routeSource, err)
 			refEvent.backendRef = err.Error()
-			return http500(), nil
+			return errorResponse(), nil
 		}
 		svclist = append(svclist, svc)
 		portStr := strconv.Itoa(int(*back.Port))
@@ -958,13 +961,13 @@ func (c *converter) createBackend(routeSource *source, refEvent *routeParentRefE
 		if svcport == nil {
 			c.logger.Warn("skipping service '%s' on %s: port '%s' not found", back.Name, routeSource, portStr)
 			refEvent.backendRef = fmt.Sprintf("Port %s not found", portStr)
-			return http500(), nil
+			return errorResponse(), nil
 		}
 		epReady, _, err := convutils.CreateEndpoints(c.cache, svc, svcport)
 		if err != nil {
 			c.logger.Warn("skipping service '%s' on %s: %v", back.Name, routeSource, err)
 			refEvent.backendRef = err.Error()
-			return http500(), nil
+			return errorResponse(), nil
 		}
 		backends = append(backends, backend{
 			service: back.Name,
@@ -982,7 +985,7 @@ func (c *converter) createBackend(routeSource *source, refEvent *routeParentRefE
 	habackend := c.haproxy.Backends().AcquireBackend(routeSource.Namespace, routeSource.Name, index)
 	habackend.ModeTCP = modeTCP
 	if len(backends) == 0 {
-		return http500(), nil
+		return errorResponse(), nil
 	}
 	cl := make([]*convutils.WeightCluster, len(backends))
 	for i := range backends {

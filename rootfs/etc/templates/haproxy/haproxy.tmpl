@@ -995,8 +995,8 @@ backend _acme_challenge
 {{- end }}
 
 {{- $has404 := $backends.HasBackend "_error404" }}
-{{- $statusBackends := $backends.BuildStatusCodeItems }}
-{{- if or $has404 $statusBackends }}
+{{- $supportBackends := $backends.BuildSupportBackendItems }}
+{{- if or $has404 $supportBackends }}
 
   # # # # # # # # # # # # # # # # # # #
 # #
@@ -1017,13 +1017,18 @@ backend _error404
 {{- end }}
 {{- end }}
 
-{{- range $statusBackend := $statusBackends }}
-backend {{ $statusBackend.ID }}
-    mode http
-{{- range $snippet := index $global.CustomProxy $statusBackend.ID }}
+{{- range $supportBackend := $supportBackends }}
+backend {{ $supportBackend.ID }}
+    mode {{ if $supportBackend.ModeTCP }}tcp{{ else }}http{{ end }}
+{{- range $snippet := index $global.CustomProxy $supportBackend.ID }}
     {{ $snippet }}
 {{- end }}
-    http-request return status {{ $statusBackend.Code }} default-errorfiles
+{{- if eq $supportBackend.ID "_tcp_reject" }}
+    tcp-request content reject
+{{- end }}
+{{- if $supportBackend.Code }}
+    http-request return status {{ $supportBackend.Code }} default-errorfiles
+{{- end }}
 {{- end }}
 
 {{- end }}{{/* define "backend-support" */}}
