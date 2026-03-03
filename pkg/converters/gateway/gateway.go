@@ -412,9 +412,10 @@ func (c *converter) syncHTTPRoutesFilterCORS(cors *gatewayv1.HTTPCORSFilter) (ha
 	haCORS.Enabled = true
 	for _, origin := range cors.AllowOrigins {
 		originStr := string(origin)
-		if origin != "*" && strings.Contains(originStr, "//*") {
+		// matching the `proto://*.domain.tld` wildcard pattern.
+		if strings.Contains(originStr, "://*.") {
 			// escapes special chars, then convert wildcard looking for the converted version
-			originRegex := strings.Replace(regexp.QuoteMeta(originStr), `//\*`, `//.+`, 1)
+			originRegex := strings.Replace(regexp.QuoteMeta(originStr), `://\*\.`, `://.+\.`, 1)
 			haCORS.AllowOriginRegex = append(haCORS.AllowOriginRegex, "^"+originRegex+"$")
 		} else {
 			haCORS.AllowOrigin = append(haCORS.AllowOrigin, originStr)
