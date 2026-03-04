@@ -1672,7 +1672,6 @@ defaults
     maxconn 2000
     option redispatch
     option dontlognull
-    option http-server-close
     option http-keep-alive
     timeout client          50s
     timeout client-fin      50s
@@ -1730,7 +1729,6 @@ defaults
     maxconn 2000
     option redispatch
     option dontlognull
-    option http-server-close
     option http-keep-alive
     timeout client          50s
     timeout client-fin      50s
@@ -4472,7 +4470,6 @@ defaults
     maxconn 2000
     option redispatch
     option dontlognull
-    option http-server-close
     option http-keep-alive
     errorfile 403 /etc/haproxy/errorfiles/403-global.http
     errorfile 503 /etc/haproxy/errorfiles/503-global.http
@@ -6324,7 +6321,6 @@ func (c *testConfig) checkConfigFile(expected, fileName string) {
     maxconn 2000
     option redispatch
     option dontlognull
-    option http-server-close
     option http-keep-alive
     timeout client          50s
     timeout client-fin      50s
