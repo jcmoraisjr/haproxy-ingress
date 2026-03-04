@@ -816,37 +816,37 @@ backend {{ $backend.ID }}
     acl cors_allow_origin{{ $i }} var(txn.hdr_origin) -m found
 {{- end }}
 {{- range $pathIDs := $corsCfg.PathIDs $i }}
-    http-response set-header Access-Control-Allow-Origin %[var(txn.hdr_origin)]
+    http-after-response set-header Access-Control-Allow-Origin %[var(txn.hdr_origin)]
         {{- "" }} if cors_allow_origin{{ $i }}
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- if $cors.AllowMethods }}
-    http-response set-header Access-Control-Allow-Methods {{ if eq $cors.AllowMethods "*" }}%[var(txn.hdr_cors_method)]{{ else }}"{{ $cors.AllowMethods }}"{{ end }}
+    http-after-response set-header Access-Control-Allow-Methods {{ if eq $cors.AllowMethods "*" }}%[var(txn.hdr_cors_method)]{{ else }}"{{ $cors.AllowMethods }}"{{ end }}
         {{- "" }} if cors_allow_origin{{ $i }}
         {{- if eq $cors.AllowMethods "*" }} { var(txn.hdr_cors_method) -m found }{{ end }}
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- if $cors.AllowHeaders }}
-    http-response set-header Access-Control-Allow-Headers {{ if eq $cors.AllowHeaders "*" }}%[var(txn.hdr_cors_headers)]{{ else }}"{{ $cors.AllowHeaders }}"{{ end }}
+    http-after-response set-header Access-Control-Allow-Headers {{ if eq $cors.AllowHeaders "*" }}%[var(txn.hdr_cors_headers)]{{ else }}"{{ $cors.AllowHeaders }}"{{ end }}
         {{- "" }} if cors_allow_origin{{ $i }}
         {{- if eq $cors.AllowHeaders "*" }} { var(txn.hdr_cors_headers) -m found }{{ end }}
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- if $cors.AllowCredentials }}
-    http-response set-header Access-Control-Allow-Credentials "{{ $cors.AllowCredentials }}"
+    http-after-response set-header Access-Control-Allow-Credentials "{{ $cors.AllowCredentials }}"
         {{- "" }} if cors_allow_origin{{ $i }}
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- if $cors.ExposeHeaders }}
-    http-response set-header Access-Control-Expose-Headers "{{ $cors.ExposeHeaders }}"
+    http-after-response set-header Access-Control-Expose-Headers "{{ $cors.ExposeHeaders }}"
         {{- "" }} if cors_allow_origin{{ $i }}
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
 {{- end }}
 {{- if without $cors.AllowOrigin "*" }}
-    http-response set-header Vary %[res.fhdr(Vary)],Origin
+    http-after-response set-header Vary %[res.fhdr(Vary)],Origin
         {{- "" }} if cors_allow_origin{{ $i }}
         {{- "" }} { res.hdr(Vary) -m found } !{ res.hdr(Vary) -m str "Origin" }
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
-    http-response set-header Vary Origin
+    http-after-response set-header Vary Origin
         {{- "" }} if cors_allow_origin{{ $i }}
         {{- "" }} !{ res.hdr(Vary) -m found }
         {{- if $pathIDs }} { var(txn.pathID) -m str {{ $pathIDs }} }{{ end }}
