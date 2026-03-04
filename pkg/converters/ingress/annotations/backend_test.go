@@ -1258,8 +1258,6 @@ const (
 	corsDefaultMaxAge  = 86400
 )
 
-var corsDefaultOrigin = []string{"*"}
-
 func TestCors(t *testing.T) {
 	testCases := []struct {
 		paths    []string
@@ -1287,7 +1285,6 @@ func TestCors(t *testing.T) {
 					AllowCredentials: false,
 					AllowHeaders:     corsDefaultHeaders,
 					AllowMethods:     corsDefaultMethods,
-					AllowOrigin:      corsDefaultOrigin,
 					ExposeHeaders:    "",
 					MaxAge:           corsDefaultMaxAge,
 				},
@@ -1310,7 +1307,6 @@ func TestCors(t *testing.T) {
 					AllowCredentials: false,
 					AllowHeaders:     corsDefaultHeaders,
 					AllowMethods:     corsDefaultMethods,
-					AllowOrigin:      corsDefaultOrigin,
 					ExposeHeaders:    "",
 					MaxAge:           corsDefaultMaxAge,
 				},
@@ -1350,7 +1346,6 @@ func TestCors(t *testing.T) {
 					AllowCredentials: false,
 					AllowHeaders:     corsDefaultHeaders,
 					AllowMethods:     corsDefaultMethods,
-					AllowOrigin:      corsDefaultOrigin,
 					ExposeHeaders:    "",
 					MaxAge:           corsDefaultMaxAge,
 				},
@@ -1371,7 +1366,6 @@ func TestCors(t *testing.T) {
 					AllowCredentials: false,
 					AllowHeaders:     corsDefaultHeaders,
 					AllowMethods:     corsDefaultMethods,
-					AllowOrigin:      corsDefaultOrigin,
 					AllowOriginRegex: []string{`^http://d1\.local$`, `^https?://d[23]\.local`, `https://([a-z]*\.){0,3}d3\.local$`},
 					ExposeHeaders:    "",
 					MaxAge:           corsDefaultMaxAge,
@@ -1392,7 +1386,6 @@ func TestCors(t *testing.T) {
 					AllowCredentials: false,
 					AllowHeaders:     corsDefaultHeaders,
 					AllowMethods:     corsDefaultMethods,
-					AllowOrigin:      corsDefaultOrigin,
 					ExposeHeaders:    "",
 					MaxAge:           corsDefaultMaxAge,
 				},
@@ -1435,7 +1428,6 @@ func TestCors(t *testing.T) {
 					AllowCredentials: false,
 					AllowHeaders:     "*",
 					AllowMethods:     corsDefaultMethods,
-					AllowOrigin:      corsDefaultOrigin,
 					ExposeHeaders:    "",
 					MaxAge:           corsDefaultMaxAge,
 				},
@@ -1445,7 +1437,6 @@ func TestCors(t *testing.T) {
 	annDefault := map[string]string{
 		ingtypes.BackCorsAllowHeaders: corsDefaultHeaders,
 		ingtypes.BackCorsAllowMethods: corsDefaultMethods,
-		ingtypes.BackCorsAllowOrigin:  strings.Join(corsDefaultOrigin, ","),
 		ingtypes.BackCorsMaxAge:       strconv.Itoa(corsDefaultMaxAge),
 	}
 	source := &Source{
