@@ -57,7 +57,7 @@ if [ "$PARAM_STATE" != "0" ]; then
         echo "show servers state" | socat "$HAPROXY_SOCKET" - > /tmp/state && mv /tmp/state "$HAPROXY_STATE"
     fi
     if [ ! -s "$HAPROXY_STATE" ]; then
-        echo "#" > "$HAPROXY_STATE"
+        echo "1" > "$HAPROXY_STATE"
     fi
 fi
 
