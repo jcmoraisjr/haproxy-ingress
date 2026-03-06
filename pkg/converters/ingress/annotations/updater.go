@@ -187,6 +187,7 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	d.global.UseHTX = mapper.Get(ingtypes.GlobalUseHTX).Bool()
 	c.buildGlobalAcme(d)
 	c.buildGlobalAuthProxy(d)
+	c.buildGlobalAuthTLS(d)
 	c.buildGlobalCustomConfig(d)
 	c.buildGlobalCustomResponses(d)
 	c.buildGlobalDNS(d)

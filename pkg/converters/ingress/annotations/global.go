@@ -80,6 +80,22 @@ func (c *updater) buildGlobalAuthProxy(d *globalData) {
 	authproxy.RangeEnd, _ = strconv.Atoi(proxy[3])
 }
 
+func (c *updater) buildGlobalAuthTLS(d *globalData) {
+	tlsSecret := d.mapper.Get(ingtypes.GlobalAuthTLSDefaultSecret)
+	if tlsSecret.Value == "" {
+		return
+	}
+	cafile, crlfile, err := c.cache.GetCASecretPath("", tlsSecret.Value, nil)
+	if err == nil {
+		d.global.SSL.DefaultCAFilename = cafile.Filename
+		d.global.SSL.DefaultCAHash = cafile.SHA1Hash
+		d.global.SSL.DefaultCRLFilename = crlfile.Filename
+		d.global.SSL.DefaultCRLHash = crlfile.SHA1Hash
+	} else {
+		c.logger.Error("error building default CA secret %s: %v", tlsSecret.Source, err)
+	}
+}
+
 func (c *updater) buildGlobalCloseSessions(d *globalData) {
 	durationCfg := d.mapper.Get(ingtypes.GlobalCloseSessionsDuration).Value
 	if durationCfg == "" {

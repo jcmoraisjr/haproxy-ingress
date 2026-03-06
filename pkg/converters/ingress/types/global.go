@@ -25,6 +25,7 @@ const (
 	GlobalAcmeTermsAgreed              = "acme-terms-agreed"
 	GlobalAllowLocalBind               = "allow-local-bind"
 	GlobalAuthLogFormat                = "auth-log-format"
+	GlobalAuthTLSDefaultSecret         = "auth-tls-default-secret"
 	GlobalAuthProxy                    = "auth-proxy"
 	GlobalBindIPAddrHealthz            = "bind-ip-addr-healthz"
 	GlobalBindIPAddrPrometheus         = "bind-ip-addr-prometheus"
