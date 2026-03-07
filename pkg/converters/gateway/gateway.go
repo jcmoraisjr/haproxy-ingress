@@ -262,11 +262,15 @@ func (c *converter) SyncFull() error {
 	if err := c.syncRouteStatus(&gatewayv1.HTTPRoute{}); err != nil {
 		return err
 	}
-	if err := c.syncRouteStatus(&gatewayv1alpha2.TCPRoute{}); err != nil {
-		return err
+	if c.options.HasTCPRoute {
+		if err := c.syncRouteStatus(&gatewayv1alpha2.TCPRoute{}); err != nil {
+			return err
+		}
 	}
-	if err := c.syncRouteStatus(&gatewayv1.TLSRoute{}); err != nil {
-		return err
+	if c.options.HasTLSRoute {
+		if err := c.syncRouteStatus(&gatewayv1.TLSRoute{}); err != nil {
+			return err
+		}
 	}
 
 	return nil

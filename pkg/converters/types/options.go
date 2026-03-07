@@ -44,6 +44,8 @@ type ConverterOptions struct {
 	AcmeTrackTLSAnn  bool
 	TrackInstances   bool
 	HasGateway       bool
+	HasTLSRoute      bool
+	HasTCPRoute      bool
 }
 
 // DynamicConfig ...
