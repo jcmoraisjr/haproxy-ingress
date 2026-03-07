@@ -320,6 +320,7 @@ func TestIntegrationIngress(t *testing.T) {
 			options.ExpectResponseCode(200),
 		)
 		assert.True(t, res.EchoResponse.Parsed)
+
 		crtder, _ := pem.Decode(crtValid)
 		sha1sum := sha1.Sum(crtder.Bytes)
 		reqHeaders := framework.AppendStringMap(commonReqHeaders, map[string]string{
@@ -328,6 +329,47 @@ func TestIntegrationIngress(t *testing.T) {
 			"x-ssl-client-sha1": strings.ToUpper(hex.EncodeToString(sha1sum[:])),
 		})
 		assert.Equal(t, reqHeaders, res.EchoResponse.ReqHeaders)
+	})
+
+	t.Run("should allow mTLS without SNI", func(t *testing.T) {
+		// t.Parallel() // changing global configmap, cannot run in parallel
+
+		cm := corev1.ConfigMap{}
+		err := f.Client().Get(ctx, framework.GlobalConfigMap, &cm)
+		require.NoError(t, err)
+		cm.Data[ingtypes.GlobalAuthTLSDefaultSecret] = secretCA.Namespace + "/" + secretCA.Name
+		err = f.Client().Update(ctx, &cm)
+		require.NoError(t, err)
+
+		svc := f.CreateService(ctx, t, httpServerPort)
+		_, hostname := f.CreateIngress(ctx, t, svc,
+			options.DefaultTLS(),
+			options.AddConfigKeyAnnotation(ingtypes.HostAuthTLSSecret, secretCA.Name),
+			options.AddConfigKeyAnnotation(ingtypes.HostAuthTLSVerifyClient, "optional"),
+		)
+
+		// http request without SNI
+		res := f.Request(ctx, t, http.MethodGet, hostname, "/",
+			options.TLSRequest(),
+			options.TLSSkipVerify(),
+			options.ClientCertificateKeyPEM(crtValid, keyValid),
+			options.ExpectResponseCode(200),
+		)
+		assert.True(t, res.EchoResponse.Parsed)
+
+		crtder, _ := pem.Decode(crtValid)
+		sha1sum := sha1.Sum(crtder.Bytes)
+		reqHeaders := framework.AppendStringMap(commonReqHeaders, map[string]string{
+			"x-ssl-client-cn":   framework.CertificateClientCN,
+			"x-ssl-client-dn":   "/CN=" + framework.CertificateClientCN,
+			"x-ssl-client-sha1": strings.ToUpper(hex.EncodeToString(sha1sum[:])),
+		})
+		assert.Equal(t, reqHeaders, res.EchoResponse.ReqHeaders)
+
+		// restore global configmap
+		delete(cm.Data, ingtypes.GlobalAuthTLSDefaultSecret)
+		err = f.Client().Update(ctx, &cm)
+		require.NoError(t, err)
 	})
 
 	t.Run("should authorize request", func(t *testing.T) {

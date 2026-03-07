@@ -257,7 +257,17 @@ func (c *config) writeFrontendMaps(f *hatypes.Frontend) error {
 	if f.IsHTTPS {
 		// TODO crtList* to be removed after implement a template to the crt list
 		f.CrtListFile = mapsFilenamePrefix + "_bind_crt.list"
-		crtListItems = append(crtListItems, &hatypes.HostsMapEntry{Key: defaultCrtFile + " !*"})
+		crtListEntry := []string{defaultCrtFile}
+		if c.global.SSL.DefaultCAFilename != "" {
+			var bindConf []string
+			bindConf = append(bindConf, "ca-file", c.global.SSL.DefaultCAFilename, "verify", "optional")
+			if c.global.SSL.DefaultCRLFilename != "" {
+				bindConf = append(bindConf, "crl-file", c.global.SSL.DefaultCRLFilename)
+			}
+			crtListEntry = append(crtListEntry, fmt.Sprintf("[%s]", strings.Join(bindConf, " ")))
+		}
+		crtListEntry = append(crtListEntry, "!*")
+		crtListItems = append(crtListItems, &hatypes.HostsMapEntry{Key: strings.Join(crtListEntry, " ")})
 	}
 	for _, host := range f.BuildSortedHosts() {
 		for _, path := range host.Paths {
