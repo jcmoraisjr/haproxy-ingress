@@ -1253,214 +1253,249 @@ Request forbidden by administrative rules.
 
 func TestIntegrationGateway(t *testing.T) {
 	ctx := context.Background()
+	const channelExperimental = "experimental"
+	const channelStandard = "standard"
+	channels := []string{channelStandard, channelExperimental}
 
-	t.Run("v050-v1beta1-experimental", func(t *testing.T) {
-		f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v050-v1beta1-experimental"))
-		f.StartController(ctx, t)
-		httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1beta1")
-		gc := f.CreateGatewayClassB1(ctx, t)
+	t.Run("v050-v1beta1", func(t *testing.T) {
+		for _, channel := range channels {
+			t.Run(channel, func(t *testing.T) {
+				f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v050-v1beta1-"+channel))
+				f.StartController(ctx, t)
+				httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1beta1")
+				gc := f.CreateGatewayClassB1(ctx, t)
 
-		t.Run("hello world", func(t *testing.T) {
-			t.Parallel()
-			gw := f.CreateGatewayB1(ctx, t, gc)
-			svc := f.CreateService(ctx, t, httpServerPort)
-			_, hostname := f.CreateHTTPRouteB1(ctx, t, gw, svc)
-			res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
-			assert.True(t, res.EchoResponse.Parsed)
-			assert.Equal(t, "http", res.EchoResponse.ReqHeaders["x-forwarded-proto"])
-		})
+				t.Run("hello world", func(t *testing.T) {
+					t.Parallel()
+					gw := f.CreateGatewayB1(ctx, t, gc)
+					svc := f.CreateService(ctx, t, httpServerPort)
+					_, hostname := f.CreateHTTPRouteB1(ctx, t, gw, svc)
+					res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
+					assert.True(t, res.EchoResponse.Parsed)
+					assert.Equal(t, "http", res.EchoResponse.ReqHeaders["x-forwarded-proto"])
+				})
+			})
+		}
 	})
 
 	t.Run("v100-v1-experimental", func(t *testing.T) {
-		f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v100-v1-experimental"))
-		f.StartController(ctx, t)
+		for _, channel := range channels {
+			t.Run(channel, func(t *testing.T) {
+				f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v100-v1-"+channel))
+				f.StartController(ctx, t)
 
-		httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1-http")
-		tcpServerPort := f.CreateTCPServer(ctx, t)
-		gc := f.CreateGatewayClassV1(ctx, t)
+				httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1-http")
+				tcpServerPort := f.CreateTCPServer(ctx, t)
+				gc := f.CreateGatewayClassV1(ctx, t)
 
-		caValid, cakeyValid := framework.CreateCA(t, framework.CertificateIssuerCN)
-		crtValidPem, keyValidPem := framework.CreateCertificate(t, caValid, cakeyValid, framework.CertificateClientCN)
+				caValid, cakeyValid := framework.CreateCA(t, framework.CertificateIssuerCN)
+				crtValidPem, keyValidPem := framework.CreateCertificate(t, caValid, cakeyValid, framework.CertificateClientCN)
 
-		t.Run("hello world", func(t *testing.T) {
-			t.Parallel()
-			gw := f.CreateGatewayV1(ctx, t, gc)
-			svc := f.CreateService(ctx, t, httpServerPort)
-			_, hostname := f.CreateHTTPRouteV1(ctx, t, gw, svc)
-			res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
-			assert.True(t, res.EchoResponse.Parsed)
-			assert.Equal(t, "http", res.EchoResponse.ReqHeaders["x-forwarded-proto"])
-		})
+				t.Run("hello world", func(t *testing.T) {
+					t.Parallel()
+					gw := f.CreateGatewayV1(ctx, t, gc)
+					svc := f.CreateService(ctx, t, httpServerPort)
+					_, hostname := f.CreateHTTPRouteV1(ctx, t, gw, svc)
+					res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
+					assert.True(t, res.EchoResponse.Parsed)
+					assert.Equal(t, "http", res.EchoResponse.ReqHeaders["x-forwarded-proto"])
+				})
 
-		t.Run("expose TLSRoute", func(t *testing.T) {
-			t.Parallel()
-			secret := f.CreateSecretTLS(ctx, t, crtValidPem, keyValidPem)
-			certs := []gatewayv1.SecretObjectReference{{Name: gatewayv1.ObjectName(secret.Name)}}
-			listenerPort := framework.RandomPort()
-			gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("tlsserver", gatewayv1.TLSProtocolType, listenerPort, certs))
-			svc := f.CreateService(ctx, t, tcpServerPort)
-			_ = f.CreateTLSRouteA2(ctx, t, gw, svc)
-			res1 := f.TCPRequest(ctx, t, listenerPort, "ping", options.TLSRequest())
-			assert.Equal(t, "ping", res1)
-			res2 := f.TCPRequest(ctx, t, listenerPort, "reply", options.TLSRequest())
-			assert.Equal(t, "reply", res2)
-		})
+				t.Run("expose TCPRoute", func(t *testing.T) {
+					if channel == channelStandard {
+						t.Skip("TCPRoute is not part of standard channel")
+					}
+					t.Parallel()
+					listenerPort := framework.RandomPort()
+					gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("tcpserver", gatewayv1.TCPProtocolType, listenerPort, nil))
+					svc := f.CreateService(ctx, t, tcpServerPort)
+					_ = f.CreateTCPRouteA2(ctx, t, gw, svc)
+					res1 := f.TCPRequest(ctx, t, listenerPort, "ping")
+					assert.Equal(t, "ping", res1)
+					res2 := f.TCPRequest(ctx, t, listenerPort, "reply")
+					assert.Equal(t, "reply", res2)
+				})
 
+				t.Run("expose TLSRoute", func(t *testing.T) {
+					if channel == channelStandard {
+						t.Skip("TLSRoute is not part of standard channel")
+					}
+					t.Parallel()
+					secret := f.CreateSecretTLS(ctx, t, crtValidPem, keyValidPem)
+					certs := []gatewayv1.SecretObjectReference{{Name: gatewayv1.ObjectName(secret.Name)}}
+					listenerPort := framework.RandomPort()
+					gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("tlsserver", gatewayv1.TLSProtocolType, listenerPort, certs))
+					svc := f.CreateService(ctx, t, tcpServerPort)
+					_ = f.CreateTLSRouteA2(ctx, t, gw, svc)
+					res1 := f.TCPRequest(ctx, t, listenerPort, "ping", options.TLSRequest())
+					assert.Equal(t, "ping", res1)
+					res2 := f.TCPRequest(ctx, t, listenerPort, "reply", options.TLSRequest())
+					assert.Equal(t, "reply", res2)
+				})
+			})
+		}
 	})
 
 	t.Run("v150-v1-experimental", func(t *testing.T) {
-		f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v150-v1-experimental"))
-		f.StartController(ctx, t)
+		for _, channel := range channels {
+			t.Run(channel, func(t *testing.T) {
+				f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v150-v1-"+channel))
+				f.StartController(ctx, t)
 
-		httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1-http")
-		tcpServerPort := f.CreateTCPServer(ctx, t)
-		gc := f.CreateGatewayClassV1(ctx, t)
+				httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1-http")
+				tcpServerPort := f.CreateTCPServer(ctx, t)
+				gc := f.CreateGatewayClassV1(ctx, t)
 
-		caValid, cakeyValid := framework.CreateCA(t, framework.CertificateIssuerCN)
-		crtValidPem, keyValidPem := framework.CreateCertificate(t, caValid, cakeyValid, framework.CertificateClientCN)
+				caValid, cakeyValid := framework.CreateCA(t, framework.CertificateIssuerCN)
+				crtValidPem, keyValidPem := framework.CreateCertificate(t, caValid, cakeyValid, framework.CertificateClientCN)
 
-		t.Run("hello world", func(t *testing.T) {
-			t.Parallel()
-			gw := f.CreateGatewayV1(ctx, t, gc)
-			svc := f.CreateService(ctx, t, httpServerPort)
-			_, hostname := f.CreateHTTPRouteV1(ctx, t, gw, svc)
-			res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
-			assert.True(t, res.EchoResponse.Parsed)
-			assert.Equal(t, "http", res.EchoResponse.ReqHeaders["x-forwarded-proto"])
-		})
+				t.Run("hello world", func(t *testing.T) {
+					t.Parallel()
+					gw := f.CreateGatewayV1(ctx, t, gc)
+					svc := f.CreateService(ctx, t, httpServerPort)
+					_, hostname := f.CreateHTTPRouteV1(ctx, t, gw, svc)
+					res := f.Request(ctx, t, http.MethodGet, hostname, "/", options.ExpectResponseCode(http.StatusOK))
+					assert.True(t, res.EchoResponse.Parsed)
+					assert.Equal(t, "http", res.EchoResponse.ReqHeaders["x-forwarded-proto"])
+				})
 
-		t.Run("expose TCPRoute", func(t *testing.T) {
-			t.Parallel()
-			listenerPort := framework.RandomPort()
-			gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("tcpserver", gatewayv1.TCPProtocolType, listenerPort, nil))
-			svc := f.CreateService(ctx, t, tcpServerPort)
-			_ = f.CreateTCPRouteA2(ctx, t, gw, svc)
-			res1 := f.TCPRequest(ctx, t, listenerPort, "ping")
-			assert.Equal(t, "ping", res1)
-			res2 := f.TCPRequest(ctx, t, listenerPort, "reply")
-			assert.Equal(t, "reply", res2)
-		})
-
-		t.Run("expose TLSRoute", func(t *testing.T) {
-			t.Parallel()
-			secret := f.CreateSecretTLS(ctx, t, crtValidPem, keyValidPem)
-			certs := []gatewayv1.SecretObjectReference{{Name: gatewayv1.ObjectName(secret.Name)}}
-			listenerPort := framework.RandomPort()
-			gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("tlsserver", gatewayv1.TLSProtocolType, listenerPort, certs))
-			svc := f.CreateService(ctx, t, tcpServerPort)
-			_ = f.CreateTLSRouteV1(ctx, t, gw, svc, options.CustomHostName("domain.local"))
-			res1 := f.TCPRequest(ctx, t, listenerPort, "ping", options.TLSRequest(), options.SNI("domain.local"))
-			assert.Equal(t, "ping", res1)
-			res2 := f.TCPRequest(ctx, t, listenerPort, "reply", options.TLSRequest(), options.SNI("domain.local"))
-			assert.Equal(t, "reply", res2)
-		})
-
-		t.Run("multi certificates on listener", func(t *testing.T) {
-			t.Parallel()
-			caCrt, caKey := framework.CreateCA(t, framework.CertificateIssuerCN)
-			crt1, key1 := framework.CreateCertificate(t, caCrt, caKey, "host1", options.DNS("host1.local"))
-			crt2, key2 := framework.CreateCertificate(t, caCrt, caKey, "host2", options.DNS("host2.local"))
-			secret1 := f.CreateSecretTLS(ctx, t, crt1, key1)
-			secret2 := f.CreateSecretTLS(ctx, t, crt2, key2)
-			gw := f.CreateGatewayV1(ctx, t, gc,
-				options.CustomObject(func(o client.Object) {
-					g := o.(*gatewayv1.Gateway)
-					g.Spec.Listeners = []gatewayv1.Listener{{
-						Name:     "l1",
-						Port:     framework.TestPortHTTPS,
-						Protocol: gatewayv1.HTTPSProtocolType,
-						TLS: &gatewayv1.ListenerTLSConfig{
-							CertificateRefs: []gatewayv1.SecretObjectReference{
-								{Name: gatewayv1.ObjectName(secret1.Name)},
-								{Name: gatewayv1.ObjectName(secret2.Name)},
-							},
-						},
-					}}
-				}),
-			)
-			svc := f.CreateService(ctx, t, httpServerPort)
-			_, _ = f.CreateHTTPRouteV1(ctx, t, gw, svc,
-				options.CustomObject(func(o client.Object) {
-					h := o.(*gatewayv1.HTTPRoute)
-					h.Spec.Hostnames = []gatewayv1.Hostname{
-						"host1.local",
-						"host2.local",
-						"host3.local",
+				t.Run("expose TCPRoute", func(t *testing.T) {
+					if channel == channelStandard {
+						t.Skip("TCPRoute is not part of standard channel")
 					}
-				}),
-			)
-			hostsExpectedCN := map[string]string{
-				"host1.local": "host1",
-				"host2.local": "host2",
-				"host3.local": "host1",
-			}
-			for h, expCN := range hostsExpectedCN {
-				res := f.Request(ctx, t, http.MethodGet, h, "/",
-					options.TLSRequest(),
-					options.ClientCA(caCrt),
-					options.SNI(h),
-					options.TLSVerify(h != "host3.local"), // host3.local uses an invalid crt
-					options.ExpectResponseCode(http.StatusOK),
-				)
-				assert.True(t, res.EchoResponse.Parsed)
-				assert.Equal(t, "https", res.EchoResponse.ReqHeaders["x-forwarded-proto"])
+					t.Parallel()
+					listenerPort := framework.RandomPort()
+					gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("tcpserver", gatewayv1.TCPProtocolType, listenerPort, nil))
+					svc := f.CreateService(ctx, t, tcpServerPort)
+					_ = f.CreateTCPRouteA2(ctx, t, gw, svc)
+					res1 := f.TCPRequest(ctx, t, listenerPort, "ping")
+					assert.Equal(t, "ping", res1)
+					res2 := f.TCPRequest(ctx, t, listenerPort, "reply")
+					assert.Equal(t, "reply", res2)
+				})
 
-				conn := framework.TLSConnection(t, h, framework.TestPortHTTPS)
-				require.NotNil(t, conn)
-				assert.Equal(t, expCN, conn.ConnectionState().PeerCertificates[0].Subject.CommonName)
-				require.NoError(t, conn.Close())
-			}
-		})
+				t.Run("expose TLSRoute", func(t *testing.T) {
+					t.Parallel()
+					secret := f.CreateSecretTLS(ctx, t, crtValidPem, keyValidPem)
+					certs := []gatewayv1.SecretObjectReference{{Name: gatewayv1.ObjectName(secret.Name)}}
+					listenerPort := framework.RandomPort()
+					gw := f.CreateGatewayV1(ctx, t, gc, options.Listener("tlsserver", gatewayv1.TLSProtocolType, listenerPort, certs))
+					svc := f.CreateService(ctx, t, tcpServerPort)
+					_ = f.CreateTLSRouteV1(ctx, t, gw, svc, options.CustomHostName("domain.local"))
+					res1 := f.TCPRequest(ctx, t, listenerPort, "ping", options.TLSRequest(), options.SNI("domain.local"))
+					assert.Equal(t, "ping", res1)
+					res2 := f.TCPRequest(ctx, t, listenerPort, "reply", options.TLSRequest(), options.SNI("domain.local"))
+					assert.Equal(t, "reply", res2)
+				})
 
-		t.Run("should ssl-passthrough", func(t *testing.T) {
-			t.Parallel()
+				t.Run("multi certificates on listener", func(t *testing.T) {
+					t.Parallel()
+					caCrt, caKey := framework.CreateCA(t, framework.CertificateIssuerCN)
+					crt1, key1 := framework.CreateCertificate(t, caCrt, caKey, "host1", options.DNS("host1.local"))
+					crt2, key2 := framework.CreateCertificate(t, caCrt, caKey, "host2", options.DNS("host2.local"))
+					secret1 := f.CreateSecretTLS(ctx, t, crt1, key1)
+					secret2 := f.CreateSecretTLS(ctx, t, crt2, key2)
+					gw := f.CreateGatewayV1(ctx, t, gc,
+						options.CustomObject(func(o client.Object) {
+							g := o.(*gatewayv1.Gateway)
+							g.Spec.Listeners = []gatewayv1.Listener{{
+								Name:     "l1",
+								Port:     framework.TestPortHTTPS,
+								Protocol: gatewayv1.HTTPSProtocolType,
+								TLS: &gatewayv1.ListenerTLSConfig{
+									CertificateRefs: []gatewayv1.SecretObjectReference{
+										{Name: gatewayv1.ObjectName(secret1.Name)},
+										{Name: gatewayv1.ObjectName(secret2.Name)},
+									},
+								},
+							}}
+						}),
+					)
+					svc := f.CreateService(ctx, t, httpServerPort)
+					_, _ = f.CreateHTTPRouteV1(ctx, t, gw, svc,
+						options.CustomObject(func(o client.Object) {
+							h := o.(*gatewayv1.HTTPRoute)
+							h.Spec.Hostnames = []gatewayv1.Hostname{
+								"host1.local",
+								"host2.local",
+								"host3.local",
+							}
+						}),
+					)
+					hostsExpectedCN := map[string]string{
+						"host1.local": "host1",
+						"host2.local": "host2",
+						"host3.local": "host1",
+					}
+					for h, expCN := range hostsExpectedCN {
+						res := f.Request(ctx, t, http.MethodGet, h, "/",
+							options.TLSRequest(),
+							options.ClientCA(caCrt),
+							options.SNI(h),
+							options.TLSVerify(h != "host3.local"), // host3.local uses an invalid crt
+							options.ExpectResponseCode(http.StatusOK),
+						)
+						assert.True(t, res.EchoResponse.Parsed)
+						assert.Equal(t, "https", res.EchoResponse.ReqHeaders["x-forwarded-proto"])
 
-			hostnamehttp := framework.RandomName("httproute") + ".local"
-			hostnametls := framework.RandomName("tlsroute") + ".local"
-			crtPem, keyPem := framework.CreateCertificate(t, caValid, cakeyValid, "localhost", options.DNS(hostnamehttp, hostnametls))
-			crt, err := tls.X509KeyPair(crtPem, keyPem)
-			require.NoError(t, err)
-			httpsServerPort := f.CreateHTTPServer(ctx, t, "gw-v1-https",
-				options.ServerCertificates([]tls.Certificate{crt}),
-			)
+						conn := framework.TLSConnection(t, h, framework.TestPortHTTPS)
+						require.NotNil(t, conn)
+						assert.Equal(t, expCN, conn.ConnectionState().PeerCertificates[0].Subject.CommonName)
+						require.NoError(t, conn.Close())
+					}
+				})
 
-			// configure ssl offload ...
-			secret := f.CreateSecretTLS(ctx, t, crtPem, keyPem)
-			certs := []gatewayv1.SecretObjectReference{{Name: gatewayv1.ObjectName(secret.Name)}}
-			gwhttp := f.CreateGatewayV1(ctx, t, gc,
-				options.Listener("gw-https", gatewayv1.HTTPSProtocolType, framework.TestPortHTTPS, certs),
-			)
-			svchttp := f.CreateService(ctx, t, httpServerPort)
-			_, _ = f.CreateHTTPRouteV1(ctx, t, gwhttp, svchttp, options.CustomHostName(hostnamehttp))
+				t.Run("should ssl-passthrough", func(t *testing.T) {
+					t.Parallel()
 
-			// ... along with ssl passthrough
-			gwtls := f.CreateGatewayV1(ctx, t, gc,
-				options.Listener("gw-passthrough", gatewayv1.TLSProtocolType, framework.TestPortHTTPS, nil),
-			)
-			svctls := f.CreateService(ctx, t, httpsServerPort)
-			_ = f.CreateTLSRouteV1(ctx, t, gwtls, svctls,
-				options.CustomHostName(hostnametls),
-			)
+					hostnamehttp := framework.RandomName("httproute") + ".local"
+					hostnametls := framework.RandomName("tlsroute") + ".local"
+					crtPem, keyPem := framework.CreateCertificate(t, caValid, cakeyValid, "localhost", options.DNS(hostnamehttp, hostnametls))
+					crt, err := tls.X509KeyPair(crtPem, keyPem)
+					require.NoError(t, err)
+					httpsServerPort := f.CreateHTTPServer(ctx, t, "gw-v1-https",
+						options.ServerCertificates([]tls.Certificate{crt}),
+					)
 
-			// TLS request on both hostnames
-			req := func(hostname string) framework.Response {
-				res := f.Request(ctx, t, http.MethodGet, hostname, "/",
-					options.TLSRequest(),
-					options.TLSVerify(true),
-					options.ClientCA(caValid),
-					options.SNI(hostname),
-					options.ExpectResponseCode(http.StatusOK),
-				)
-				assert.True(t, res.EchoResponse.Parsed)
-				return res
-			}
+					// configure ssl offload ...
+					secret := f.CreateSecretTLS(ctx, t, crtPem, keyPem)
+					certs := []gatewayv1.SecretObjectReference{{Name: gatewayv1.ObjectName(secret.Name)}}
+					gwhttp := f.CreateGatewayV1(ctx, t, gc,
+						options.Listener("gw-https", gatewayv1.HTTPSProtocolType, framework.TestPortHTTPS, certs),
+					)
+					svchttp := f.CreateService(ctx, t, httpServerPort)
+					_, _ = f.CreateHTTPRouteV1(ctx, t, gwhttp, svchttp, options.CustomHostName(hostnamehttp))
 
-			reshttp := req(hostnamehttp)
-			assert.Equal(t, "https", reshttp.EchoResponse.ReqHeaders["x-forwarded-proto"])
-			assert.Equal(t, "gw-v1-http", reshttp.EchoResponse.ServerName)
+					// ... along with ssl passthrough
+					gwtls := f.CreateGatewayV1(ctx, t, gc,
+						options.Listener("gw-passthrough", gatewayv1.TLSProtocolType, framework.TestPortHTTPS, nil),
+					)
+					svctls := f.CreateService(ctx, t, httpsServerPort)
+					_ = f.CreateTLSRouteV1(ctx, t, gwtls, svctls,
+						options.CustomHostName(hostnametls),
+					)
 
-			restls := req(hostnametls)
-			assert.Equal(t, "gw-v1-https", restls.EchoResponse.ServerName)
-		})
+					// TLS request on both hostnames
+					req := func(hostname string) framework.Response {
+						res := f.Request(ctx, t, http.MethodGet, hostname, "/",
+							options.TLSRequest(),
+							options.TLSVerify(true),
+							options.ClientCA(caValid),
+							options.SNI(hostname),
+							options.ExpectResponseCode(http.StatusOK),
+						)
+						assert.True(t, res.EchoResponse.Parsed)
+						return res
+					}
+
+					reshttp := req(hostnamehttp)
+					assert.Equal(t, "https", reshttp.EchoResponse.ReqHeaders["x-forwarded-proto"])
+					assert.Equal(t, "gw-v1-http", reshttp.EchoResponse.ServerName)
+
+					restls := req(hostnametls)
+					assert.Equal(t, "gw-v1-https", restls.EchoResponse.ServerName)
+				})
+			})
+		}
 	})
 }
