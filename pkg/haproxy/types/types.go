@@ -147,6 +147,10 @@ type SSLConfig struct {
 	BackendCipherSuites string
 	Ciphers             string // TLS up to 1.2
 	CipherSuites        string // TLS 1.3
+	DefaultCAFilename   string
+	DefaultCAHash       string
+	DefaultCRLFilename  string
+	DefaultCRLHash      string
 	DHParam             DHParamConfig
 	Engine              string
 	HeadersPrefix       string

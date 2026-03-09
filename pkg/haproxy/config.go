@@ -223,7 +223,17 @@ func (c *config) WriteFrontendMaps() error {
 	// TODO crtList* to be removed after implement a template to the crt list
 	c.frontend.CrtListFile = mapsDir + "/_front_bind_crt.list"
 	var crtListItems []*hatypes.HostsMapEntry
-	crtListItems = append(crtListItems, &hatypes.HostsMapEntry{Key: c.frontend.DefaultCrtFile + " !*"})
+	crtListEntry := []string{c.frontend.DefaultCrtFile}
+	if c.global.SSL.DefaultCAFilename != "" {
+		var bindConf []string
+		bindConf = append(bindConf, "ca-file", c.global.SSL.DefaultCAFilename, "verify", "optional")
+		if c.global.SSL.DefaultCRLFilename != "" {
+			bindConf = append(bindConf, "crl-file", c.global.SSL.DefaultCRLFilename)
+		}
+		crtListEntry = append(crtListEntry, fmt.Sprintf("[%s]", strings.Join(bindConf, " ")))
+	}
+	crtListEntry = append(crtListEntry, "!*")
+	crtListItems = append(crtListItems, &hatypes.HostsMapEntry{Key: strings.Join(crtListEntry, " ")})
 	hasVarNamespace := c.hosts.HasVarNamespace()
 	defaultHost := c.hosts.DefaultHost()
 	if defaultHost != nil && !defaultHost.SSLPassthrough() {

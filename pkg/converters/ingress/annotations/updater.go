@@ -182,6 +182,7 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	//
 	c.buildGlobalAcme(d)
 	c.buildGlobalAuthProxy(d)
+	c.buildGlobalAuthTLS(d)
 	c.buildGlobalBind(d)
 	c.buildGlobalCustomConfig(d)
 	c.buildGlobalCustomResponses(d)

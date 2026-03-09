@@ -3259,6 +3259,69 @@ d2.local http://d2.local/error.html
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestInstanceFrontendDefaultCA(t *testing.T) {
+	testCases := map[string]struct {
+		cafile  string
+		crlfile string
+		expBind string
+	}{
+		"test01": {
+			cafile:  "",
+			crlfile: "",
+			expBind: `
+/var/haproxy/ssl/certs/default.pem !*
+`,
+		},
+		"test02": {
+			cafile:  "/ssl/ca.crt",
+			crlfile: "",
+			expBind: `
+/var/haproxy/ssl/certs/default.pem [ca-file /ssl/ca.crt verify optional] !*
+`,
+		},
+		"test03": {
+			cafile:  "/ssl/ca.crt",
+			crlfile: "/ssl/crl.crt",
+			expBind: `
+/var/haproxy/ssl/certs/default.pem [ca-file /ssl/ca.crt verify optional crl-file /ssl/crl.crt] !*
+`,
+		},
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+
+			c := setup(t)
+			defer c.teardown()
+
+			b := c.config.Backends().AcquireBackend("d1", "app", "8080")
+			b.Endpoints = []*hatypes.Endpoint{endpointS1}
+			h := c.config.Hosts().AcquireHost("d1.local")
+			h.AddPath(b, "/", hatypes.MatchBegin)
+
+			c.config.global.SSL.DefaultCAFilename = test.cafile
+			c.config.global.SSL.DefaultCRLFilename = test.crlfile
+
+			c.Update()
+
+			c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    server s1 172.17.0.11:8080 weight 100
+<<backends-default>>
+<<frontends-default>>
+<<support>>
+`)
+
+			c.checkMap("_front_bind_crt.list", test.expBind)
+
+			c.logger.CompareLogging(defaultLogging)
+		})
+
+	}
+}
+
 func TestInstanceFrontendAuth(t *testing.T) {
 	type back struct {
 		iplist   []string

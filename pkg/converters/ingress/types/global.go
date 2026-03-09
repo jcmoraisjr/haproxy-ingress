@@ -24,6 +24,7 @@ const (
 	GlobalAcmeShared                   = "acme-shared"
 	GlobalAcmeTermsAgreed              = "acme-terms-agreed"
 	GlobalAuthLogFormat                = "auth-log-format"
+	GlobalAuthTLSDefaultSecret         = "auth-tls-default-secret"
 	GlobalAuthProxy                    = "auth-proxy"
 	GlobalBindFrontingProxy            = "bind-fronting-proxy"
 	GlobalBindHTTP                     = "bind-http"
