@@ -179,12 +179,12 @@ func (c *c) IsValidGateway(gateway *gatewayv1.Gateway) bool {
 	var class gatewayv1.GatewayClass
 	var err error
 	switch {
+	case c.config.HasGatewayV1:
+		err = c.get(className, &class)
 	case c.config.HasGatewayB1:
 		class1 := gatewayv1beta1.GatewayClass{}
 		err = c.get(className, &class1)
 		class = (gatewayv1.GatewayClass)(class1)
-	case c.config.HasGatewayV1:
-		err = c.get(className, &class)
 	default:
 		return false
 	}
@@ -248,20 +248,6 @@ func buildLabelSelector(match map[string]string) (labels.Selector, error) {
 }
 
 func (c *c) GetGatewayClassMap() (map[gatewayv1.ObjectName]*gatewayv1.GatewayClass, error) {
-	if c.config.HasGatewayB1 {
-		list1 := gatewayv1beta1.GatewayClassList{}
-		if err := c.client.List(c.ctx, &list1); err != nil {
-			return nil, err
-		}
-		list := make(map[gatewayv1.ObjectName]*gatewayv1.GatewayClass, len(list1.Items))
-		for i := range list1.Items {
-			class := (*gatewayv1.GatewayClass)(&list1.Items[i])
-			if c.IsValidGatewayClass(class) {
-				list[gatewayv1.ObjectName(class.Name)] = class
-			}
-		}
-		return list, nil
-	}
 	if c.config.HasGatewayV1 {
 		list1 := gatewayv1.GatewayClassList{}
 		if err := c.client.List(c.ctx, &list1); err != nil {
@@ -276,24 +262,24 @@ func (c *c) GetGatewayClassMap() (map[gatewayv1.ObjectName]*gatewayv1.GatewayCla
 		}
 		return list, nil
 	}
-	return nil, nil
-}
-
-func (c *c) GetGatewayList() ([]*gatewayv1.Gateway, error) {
 	if c.config.HasGatewayB1 {
-		list1 := gatewayv1beta1.GatewayList{}
+		list1 := gatewayv1beta1.GatewayClassList{}
 		if err := c.client.List(c.ctx, &list1); err != nil {
 			return nil, err
 		}
-		list := make([]*gatewayv1.Gateway, 0, len(list1.Items))
+		list := make(map[gatewayv1.ObjectName]*gatewayv1.GatewayClass, len(list1.Items))
 		for i := range list1.Items {
-			gw := (*gatewayv1.Gateway)(&list1.Items[i])
-			if c.IsValidGateway(gw) {
-				list = append(list, gw)
+			class := (*gatewayv1.GatewayClass)(&list1.Items[i])
+			if c.IsValidGatewayClass(class) {
+				list[gatewayv1.ObjectName(class.Name)] = class
 			}
 		}
 		return list, nil
 	}
+	return nil, nil
+}
+
+func (c *c) GetGatewayList() ([]*gatewayv1.Gateway, error) {
 	if c.config.HasGatewayV1 {
 		list1 := gatewayv1.GatewayList{}
 		if err := c.client.List(c.ctx, &list1); err != nil {
@@ -308,21 +294,24 @@ func (c *c) GetGatewayList() ([]*gatewayv1.Gateway, error) {
 		}
 		return list, nil
 	}
+	if c.config.HasGatewayB1 {
+		list1 := gatewayv1beta1.GatewayList{}
+		if err := c.client.List(c.ctx, &list1); err != nil {
+			return nil, err
+		}
+		list := make([]*gatewayv1.Gateway, 0, len(list1.Items))
+		for i := range list1.Items {
+			gw := (*gatewayv1.Gateway)(&list1.Items[i])
+			if c.IsValidGateway(gw) {
+				list = append(list, gw)
+			}
+		}
+		return list, nil
+	}
 	return nil, nil
 }
 
 func (c *c) GetHTTPRouteList() ([]*gatewayv1.HTTPRoute, error) {
-	if c.config.HasGatewayB1 {
-		list1 := gatewayv1beta1.HTTPRouteList{}
-		if err := c.client.List(c.ctx, &list1); err != nil {
-			return nil, err
-		}
-		list := make([]*gatewayv1.HTTPRoute, len(list1.Items))
-		for i := range list1.Items {
-			list[i] = (*gatewayv1.HTTPRoute)(&list1.Items[i])
-		}
-		return list, nil
-	}
 	if c.config.HasGatewayV1 {
 		list1 := gatewayv1.HTTPRouteList{}
 		if err := c.client.List(c.ctx, &list1); err != nil {
@@ -331,6 +320,17 @@ func (c *c) GetHTTPRouteList() ([]*gatewayv1.HTTPRoute, error) {
 		list := make([]*gatewayv1.HTTPRoute, len(list1.Items))
 		for i := range list1.Items {
 			list[i] = &list1.Items[i]
+		}
+		return list, nil
+	}
+	if c.config.HasGatewayB1 {
+		list1 := gatewayv1beta1.HTTPRouteList{}
+		if err := c.client.List(c.ctx, &list1); err != nil {
+			return nil, err
+		}
+		list := make([]*gatewayv1.HTTPRoute, len(list1.Items))
+		for i := range list1.Items {
+			list[i] = (*gatewayv1.HTTPRoute)(&list1.Items[i])
 		}
 		return list, nil
 	}
@@ -728,7 +728,8 @@ func (c *c) UpdateStatus(namedObj client.Object, apply func() bool, opts ...conv
 	// It should have a better way to implement this.
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		typedObj := namedObj
-		if c.config.HasGatewayB1 {
+		useGatewayB1 := c.config.HasGatewayB1 && !c.config.HasGatewayV1
+		if useGatewayB1 {
 			switch namedObj.(type) {
 			case *gatewayv1.GatewayClass:
 				typedObj = &gatewayv1beta1.GatewayClass{}
@@ -749,7 +750,7 @@ func (c *c) UpdateStatus(namedObj client.Object, apply func() bool, opts ...conv
 		if err := c.client.Get(ctx, client.ObjectKeyFromObject(typedObj), typedObj); err != nil {
 			return err
 		}
-		if c.config.HasGatewayB1 {
+		if useGatewayB1 {
 			switch obj := namedObj.(type) {
 			case *gatewayv1.GatewayClass:
 				*obj = *(*gatewayv1.GatewayClass)(typedObj.(*gatewayv1beta1.GatewayClass))
@@ -766,7 +767,7 @@ func (c *c) UpdateStatus(namedObj client.Object, apply func() bool, opts ...conv
 			}
 		}
 		if apply() {
-			if c.config.HasGatewayB1 {
+			if useGatewayB1 {
 				switch obj := typedObj.(type) {
 				case *gatewayv1beta1.GatewayClass:
 					*obj = *(*gatewayv1beta1.GatewayClass)(namedObj.(*gatewayv1.GatewayClass))
