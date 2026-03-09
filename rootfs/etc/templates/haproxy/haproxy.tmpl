@@ -768,18 +768,17 @@ backend {{ $backend.ID }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
-{{- $rewriteCfg := $backend.PathConfig "RewriteURL" }}
+{{- $rewriteCfg := $backend.PathConfig "Rewrite" }}
 {{- $needACL := $rewriteCfg.NeedACL }}
 {{- range $i, $rewrite := $rewriteCfg.Items }}
-{{- if $rewrite }}
+{{- if $rewrite.Match }}
+{{- if $needACL }}
 {{- range $path := $rewriteCfg.Paths $i }}
-{{- if eq $rewrite "/" }}
-    http-request replace-path ^{{ $path.Path }}/?(.*)$     {{ $rewrite }}\1
-        {{- if $needACL }}     if { var(txn.pathID) -m str {{ $path.ID }} }{{ end }}
-{{- else }}
-    http-request replace-path ^{{ $path.Path }}(.*)$       {{ $rewrite }}{{ if hasSuffix $path.Path "/" }}/{{ end }}\1
-        {{- if $needACL }}     if { var(txn.pathID) -m str {{ $path.ID }} }{{ end }}
+    http-request replace-path {{ $rewrite.Match | haquote }} {{ $rewrite.Target | haquote }}
+        {{- "" }} if { var(txn.pathID) -m str {{ $path.ID }} }
 {{- end }}
+{{- else }}
+    http-request replace-path {{ $rewrite.Match | haquote }} {{ $rewrite.Target | haquote }}
 {{- end }}
 {{- end }}
 {{- end }}

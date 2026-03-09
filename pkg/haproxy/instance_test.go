@@ -391,35 +391,55 @@ d1.local#/ path01`,
 		},
 		"test17": {
 			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
-				h.FindPath("/app")[0].RewriteURL = "/"
+				p := h.FindPath("/app")[0]
+				p.Rewrite.Match = "^/app"
+				p.Rewrite.Target = "/"
 			},
 			path: []string{"/app"},
 			expected: `
-    http-request replace-path ^/app/?(.*)$     /\1`,
+    http-request replace-path '^/app' '/'`,
 		},
 		"test18": {
 			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
-				h.FindPath("/app")[0].RewriteURL = "/other"
-			},
-			path: []string{"/app"},
-			expected: `
-    http-request replace-path ^/app(.*)$       /other\1`,
-		},
-		"test19": {
-			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
-				h.FindPath("/app")[0].RewriteURL = "/other/"
-				h.FindPath("/app/sub")[0].RewriteURL = "/other/"
+				p1 := h.FindPath("/app")[0]
+				p1.Rewrite.Match = "^/app/"
+				p1.Rewrite.Target = "/other/"
+				p2 := h.FindPath("/app/sub")[0]
+				p2.Rewrite.Match = "^/app/"
+				p2.Rewrite.Target = "/other/"
 			},
 			path: []string{"/app", "/app/sub"},
 			expected: `
-    http-request replace-path ^/app(.*)$       /other/\1
-    http-request replace-path ^/app/sub(.*)$       /other/\1`,
+    http-request replace-path '^/app/' '/other/'`,
+		},
+		"test19": {
+			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
+				p1 := h.FindPath("/app")[0]
+				p1.Rewrite.Match = "^/app/"
+				p1.Rewrite.Target = "/other/"
+				p2 := h.FindPath("/app/sub")[0]
+				p2.Rewrite.Match = "^/app/sub/"
+				p2.Rewrite.Target = "/other/"
+			},
+			path: []string{"/app", "/app/sub"},
+			expected: `
+    # path01 = d1.local/app
+    # path02 = d1.local/app/sub
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
+    http-request replace-path '^/app/' '/other/' if { var(txn.pathID) -m str path01 }
+    http-request replace-path '^/app/sub/' '/other/' if { var(txn.pathID) -m str path02 }`,
 		},
 		"test20": {
 			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
-				h.FindPath("/path1")[0].RewriteURL = "/sub1"
-				h.FindPath("/path2")[0].RewriteURL = "/sub2"
-				h.FindPath("/path3")[0].RewriteURL = "/sub2"
+				p1 := h.FindPath("/path1")[0]
+				p1.Rewrite.Match = "^/path1"
+				p1.Rewrite.Target = "/sub1"
+				p2 := h.FindPath("/path2")[0]
+				p2.Rewrite.Match = "^/path2"
+				p2.Rewrite.Target = "/sub2"
+				p3 := h.FindPath("/path3")[0]
+				p3.Rewrite.Match = "^/path3"
+				p3.Rewrite.Target = "/sub2"
 			},
 			path: []string{"/path1", "/path2", "/path3"},
 			expected: `
@@ -427,9 +447,9 @@ d1.local#/ path01`,
     # path02 = d1.local/path2
     # path03 = d1.local/path3
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map)
-    http-request replace-path ^/path1(.*)$       /sub1\1     if { var(txn.pathID) -m str path01 }
-    http-request replace-path ^/path2(.*)$       /sub2\1     if { var(txn.pathID) -m str path02 }
-    http-request replace-path ^/path3(.*)$       /sub2\1     if { var(txn.pathID) -m str path03 }`,
+    http-request replace-path '^/path1' '/sub1' if { var(txn.pathID) -m str path01 }
+    http-request replace-path '^/path2' '/sub2' if { var(txn.pathID) -m str path02 }
+    http-request replace-path '^/path3' '/sub2' if { var(txn.pathID) -m str path03 }`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_front_http_req__begin.map": `
 d1.local#/path3 path03
@@ -1484,7 +1504,9 @@ func TestInstanceFrontendScopedBackend(t *testing.T) {
 	h21.AddPath(b, "/", hatypes.MatchBegin).AllowedIPHTTP.Rule = []string{"10.0.0.11"}
 	h21.AddPath(b, "/static", hatypes.MatchBegin).MaxBodySize = 1048576
 	h22.AddPath(b, "/", hatypes.MatchBegin).AllowedIPHTTP.Rule = []string{"10.0.0.12"}
-	h22.AddPath(b, "/api", hatypes.MatchBegin).RewriteURL = "/apiv1"
+	p22 := h22.AddPath(b, "/api", hatypes.MatchBegin)
+	p22.Rewrite.Match = "^/api"
+	p22.Rewrite.Target = "/apiv1"
 
 	c.Update()
 	c.checkConfig(`
@@ -1514,7 +1536,7 @@ backend d1_app_8080
     http-request set-var(txn.cors_max_age) str(0) if METH_OPTIONS { var(txn.pathID) -m str path02 }
     http-request use-service lua.send-cors-preflight if METH_OPTIONS { var(txn.pathID) -m str path02 }
     http-request use-service lua.send-413 if { var(txn.pathID) -m str path06 } { req.body_size,sub(1048576) gt 0 }
-    http-request replace-path ^/api(.*)$       /apiv1\1     if { var(txn.pathID) -m str path08 }
+    http-request replace-path '^/api' '/apiv1' if { var(txn.pathID) -m str path08 }
     http-response set-header Strict-Transport-Security "max-age=0" if https-request { var(txn.pathID) -m str path04 }
     acl cors_allow_origin1 var(txn.hdr_origin) -m found
     http-response set-header Access-Control-Allow-Origin %[var(txn.hdr_origin)] if cors_allow_origin1 { var(txn.pathID) -m str path02 }
@@ -2576,7 +2598,8 @@ func TestInstanceDefaultHost(t *testing.T) {
 	p2 := hdefhttp.AddPath(b, "/app1", hatypes.MatchExact)
 	p3 := hdefhttp.AddPath(b, "/app2", hatypes.MatchPrefix)
 	p1.SSLRedirect = true
-	p2.RewriteURL = "/"
+	p2.Rewrite.Match = "^/app1"
+	p2.Rewrite.Target = "/"
 	p3.MaxBodySize = 32768
 
 	hhttps = fhttps.AcquireHost("d1.local")
@@ -2584,7 +2607,9 @@ func TestInstanceDefaultHost(t *testing.T) {
 	hhttps.TLS.TLSHash = "0"
 	hhttps.VarNamespace = true
 	hdefhttps.AddPath(b, "/", hatypes.MatchBegin).SSLRedirect = true
-	hdefhttps.AddPath(b, "/app1", hatypes.MatchExact).RewriteURL = "/"
+	p1 = hdefhttps.AddPath(b, "/app1", hatypes.MatchExact)
+	p1.Rewrite.Match = "^/app1"
+	p1.Rewrite.Target = "/"
 	hdefhttps.AddPath(b, "/app2", hatypes.MatchPrefix).MaxBodySize = 32768
 
 	//
@@ -2598,7 +2623,8 @@ func TestInstanceDefaultHost(t *testing.T) {
 	p2 = hdefhttp.AddPath(b, "/app12", hatypes.MatchExact)
 	p3 = hdefhttp.AddPath(b, "/app13", hatypes.MatchPrefix)
 	p1.SSLRedirect = true
-	p2.RewriteURL = "/"
+	p2.Rewrite.Match = "^/app12"
+	p2.Rewrite.Target = "/"
 	p3.MaxBodySize = 65536
 
 	hhttps = fhttps.AcquireHost("d2.local")
@@ -2606,7 +2632,9 @@ func TestInstanceDefaultHost(t *testing.T) {
 	hhttps.TLS.TLSHash = "0"
 	hhttps.VarNamespace = true
 	hhttps.AddPath(b, "/app11", hatypes.MatchBegin).SSLRedirect = true
-	hdefhttps.AddPath(b, "/app12", hatypes.MatchExact).RewriteURL = "/"
+	p2 = hdefhttps.AddPath(b, "/app12", hatypes.MatchExact)
+	p2.Rewrite.Match = "^/app12"
+	p2.Rewrite.Target = "/"
 	hdefhttps.AddPath(b, "/app13", hatypes.MatchPrefix).MaxBodySize = 65536
 
 	c.Update()
@@ -2624,7 +2652,7 @@ backend d1_app_8080
     http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_def__begin.map) if !{ var(txn.pathID) -m found }
     http-request redirect scheme https if !https-request { var(txn.pathID) -m str path01 }
     http-request use-service lua.send-413 if { var(txn.pathID) -m str path03 } { req.body_size,sub(32768) gt 0 }
-    http-request replace-path ^/app1/?(.*)$     /\1     if { var(txn.pathID) -m str path02 }
+    http-request replace-path '^/app1' '/' if { var(txn.pathID) -m str path02 }
     server s1 172.17.0.11:8080 weight 100
 backend d2_app_8080
     mode http
@@ -2637,7 +2665,7 @@ backend d2_app_8080
     http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_d2_app_8080_front_http_def__prefix.map) if !{ var(txn.pathID) -m found }
     http-request redirect scheme https if !https-request { var(txn.pathID) -m str path01 }
     http-request use-service lua.send-413 if { var(txn.pathID) -m str path03 } { req.body_size,sub(65536) gt 0 }
-    http-request replace-path ^/app12/?(.*)$     /\1     if { var(txn.pathID) -m str path02 }
+    http-request replace-path '^/app12' '/' if { var(txn.pathID) -m str path02 }
     server s1 172.17.0.11:8080 weight 100
 backend default_default-backend_8080
     mode http
