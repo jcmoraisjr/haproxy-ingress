@@ -557,6 +557,10 @@ func (c *updater) buildBackendCors(d *backData) {
 		enabled := config.Get(ingtypes.BackCorsEnable).Bool()
 
 		if enabled {
+			var allowOrigin []string
+			if origin := config.Get(ingtypes.BackCorsAllowOrigin).Value; origin != "" {
+				allowOrigin = strings.Split(origin, ",")
+			}
 			var allowOriginRegex []string
 			if regex := config.Get(ingtypes.BackCorsAllowOriginRegex).Value; regex != "" {
 				allowOriginRegex = strings.Split(regex, " ")
@@ -566,7 +570,7 @@ func (c *updater) buildBackendCors(d *backData) {
 				AllowCredentials: config.Get(ingtypes.BackCorsAllowCredentials).Bool(),
 				AllowHeaders:     config.Get(ingtypes.BackCorsAllowHeaders).Value,
 				AllowMethods:     config.Get(ingtypes.BackCorsAllowMethods).Value,
-				AllowOrigin:      strings.Split(config.Get(ingtypes.BackCorsAllowOrigin).Value, ","),
+				AllowOrigin:      allowOrigin,
 				AllowOriginRegex: allowOriginRegex,
 				ExposeHeaders:    config.Get(ingtypes.BackCorsExposeHeaders).Value,
 				MaxAge:           config.Get(ingtypes.BackCorsMaxAge).Int(),

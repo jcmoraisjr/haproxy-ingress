@@ -297,6 +297,30 @@ func TestBackends(t *testing.T) {
     http-response set-header Vary %[res.fhdr(Vary)],Origin if cors_allow_origin0 { res.hdr(Vary) -m found } !{ res.hdr(Vary) -m str "Origin" }
     http-response set-header Vary Origin if cors_allow_origin0 !{ res.hdr(Vary) -m found }`,
 		},
+		"test12": {
+			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
+				config := hatypes.Cors{
+					Enabled:          true,
+					AllowOrigin:      []string{},
+					AllowOriginRegex: []string{},
+					AllowHeaders:     "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization",
+					AllowMethods:     "GET, PUT, POST, DELETE, PATCH, OPTIONS",
+					MaxAge:           86400,
+				}
+				h.FindPath("/")[0].Cors = config
+			},
+			path: []string{"/"},
+			expected: `
+    http-request set-var(txn.hdr_origin) req.hdr(Origin) if { req.hdr(Origin) -m found }
+    http-request set-var(txn.hdr_cors_method) req.fhdr(Access-Control-Request-Method) if { req.fhdr(Access-Control-Request-Method) -m found }
+    http-request set-var(txn.hdr_cors_headers) req.fhdr(Access-Control-Request-Headers) if { req.fhdr(Access-Control-Request-Headers) -m found }
+    http-request set-var(txn.cors_max_age) str(86400) if METH_OPTIONS
+    http-request use-service lua.send-cors-preflight if METH_OPTIONS
+    acl cors_allow_origin0 var(txn.hdr_origin) -m found
+    http-response set-header Access-Control-Allow-Origin %[var(txn.hdr_origin)] if cors_allow_origin0
+    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if cors_allow_origin0
+    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if cors_allow_origin0`,
+		},
 		"test14": {
 			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
 				config := hatypes.Cors{
