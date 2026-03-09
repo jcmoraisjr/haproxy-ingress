@@ -2103,8 +2103,14 @@ The following annotations are supported:
 Define if HAProxy should save and reload it's current state between server reloads, like
 uptime of backends, qty of requests and so on.
 
-This is an experimental feature and has currently some issues if using with [`dynamic-scaling`](#dynamic-scaling):
-an old state with disabled servers will disable them in the new configuration.
+{{< alert title="Warning" color="warning" >}}
+This feature has currently some issues if using with [`dynamic-scaling`](#dynamic-scaling):
+an old state with disabled servers will disable them in the new configuration. There are other
+reported issues with loading server state at [#2103](https://github.com/haproxy/haproxy/issues/2103),
+[#3296](https://github.com/haproxy/haproxy/issues/3296) and
+[mailing-list](https://www.mail-archive.com/haproxy@formilux.org/msg46626.html).
+Understand the risks if using with dynamic scaling before configure it.
+{{< /alert >}}
 
 See also:
 

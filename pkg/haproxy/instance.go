@@ -698,6 +698,11 @@ func (i *instance) reloadHAProxy() error {
 		i.logger.Info("(test) reload was skipped")
 		return nil
 	}
+	if i.config.Global().LoadServerState {
+		if err := i.persistServersState(); err != nil {
+			i.logger.Warn("failed to persist servers state before worker reload: %w", err)
+		}
+	}
 	if i.options.IsExternal {
 		return i.reloadExternal()
 	} else if i.options.IsMasterWorker {
@@ -831,11 +836,6 @@ func (i *instance) waitMaster() error {
 }
 
 func (i *instance) reloadWorker() (socket.Proc, error) {
-	if i.config.Global().LoadServerState {
-		if err := i.persistServersState(); err != nil {
-			i.logger.Warn("failed to persist servers state before worker reload: %w", err)
-		}
-	}
 	procs, err := socket.HAProxyProcs(i.options.StopCtx, i.conns.Master())
 	if err != nil {
 		return socket.Proc{}, fmt.Errorf("error reading haproxy procs: %w", err)
@@ -888,13 +888,23 @@ func (i *instance) retrieveServersState() (string, error) {
 }
 
 func (i *instance) persistServersState() error {
-	state, err := i.retrieveServersState()
-	if err != nil {
-		return err
+	var state []byte
+	if i.up {
+		stateStr, err := i.retrieveServersState()
+		if err != nil {
+			return err
+		}
+		// adding a trailing line break removed by our socket client,
+		// needed when saving to disk.
+		stateStr += "\n"
+		state = []byte(stateStr)
+	} else {
+		// there's no HAProxy yet, creating a dummy file
+		state = []byte("1\n")
 	}
 
 	stateFilePath := filepath.Join(i.config.Global().LocalFSPrefix, "/var/lib/haproxy/state-global")
-	if err := os.WriteFile(stateFilePath, []byte(state), 0o644); err != nil {
+	if err := os.WriteFile(stateFilePath, state, 0o644); err != nil {
 		return fmt.Errorf("failed to persist servers state to file '%s': %w", stateFilePath, err)
 	}
 
