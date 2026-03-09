@@ -311,6 +311,7 @@ The table below describes all supported configuration keys.
 | [`auth-signin`](#auth-external)                      | Sign in URL                             | Path     |                                  |
 | [`auth-tls-cert-header`](#auth-tls)                  | [true\|false]                           | Backend  |                                  |
 | [`auth-tls-error-page`](#auth-tls)                   | url                                     | Host     |                                  |
+| [`auth-tls-default-secret`](#auth-tls)               | namespace/secret name                   | Global   |                                  |
 | [`auth-tls-secret`](#auth-tls)                       | namespace/secret name                   | Host     |                                  |
 | [`auth-tls-strict`](#auth-tls)                       | [true\|false]                           | Host     |                                  |
 | [`auth-tls-verify-client`](#auth-tls)                | [off\|optional\|on\|optional_no_ca]     | Host     |                                  |
@@ -876,6 +877,7 @@ See also:
 |-----------------------------|-----------|---------|--------|
 | `auth-tls-cert-header`      | `Backend` | `false` |        |
 | `auth-tls-error-page`       | `Host`    |         |        |
+| `auth-tls-default-secret`   | `Global`  |         | v0.16  |
 | `auth-tls-secret`           | `Host`    |         |        |
 | `auth-tls-strict`           | `Host`    | `true`  | v0.8.1 |
 | `auth-tls-verify-client`    | `Host`    |         |        |
@@ -903,6 +905,7 @@ The following keys are supported:
 
 * `auth-tls-cert-header`: If `true` HAProxy will add `X-SSL-Client-Cert` http header with a base64 encoding of the X509 certificate provided by the client. Default is to not provide the client certificate.
 * `auth-tls-error-page`: Optional URL of the page to redirect the user if he doesn't provide a certificate or the certificate is invalid.
+* `auth-tls-default-secret`: Optional, defines the namespace/name of the secret with `ca.crt` key to be used if the client does not provide the SNI extension in the TLS handshake. An optional `ca.crl` key can also provide a CRL in PEM format for the server to verify against. Note that this option will also apply on requests having SNI, but unknown in the configuration, asking them to optionally provide a client certificate. Currently there is no way to make a client certificate mandatory during the TLS handshake, so if the client does not provide one, the handshake will succeed and the SSL related headers will be empty. Ingress handling this request should configure `auth-tls-verify-client` as `optional`, HAProxy will refuse the request otherwise because SNI and Host header would not match.
 * `auth-tls-secret`: Mandatory secret name with `ca.crt` key providing all certificate authority bundles used to validate client certificates. Since v0.9, an optional `ca.crl` key can also provide a CRL in PEM format for the server to verify against. A filename prefixed with `file://` can be used containing the CA bundle in PEM format, and optionally followed by a comma and the filename with the crl, eg `file:///dir/ca.pem` or `file:///dir/ca.pem,/dir/crl.pem`.
 * `auth-tls-strict`: Defines if a wrong or incomplete configuration, eg missing secret with `ca.crt`, should forbid connection attempts. If `false`, a wrong or incomplete configuration will ignore the authentication config, allowing anonymous connection. If `true`, a strict configuration is used: all requests will be rejected with HTTP 495 or 496, or redirected to the error page if configured, until a proper `ca.crt` is provided. Strict configuration will only be used if `auth-tls-secret` has a secret name and `auth-tls-verify-client` is missing or is not configured as `off`. This options used to have `false` as the default value up to v0.13, changing its default to `true` since v0.14 to improve security.
 * `auth-tls-verify-client`: Optional configuration of Client Verification behavior. Supported values are `off`, `on`, `optional` and `optional_no_ca`. The default value is `on` if a valid secret is provided, `off` otherwise. `optional` makes the certificate optional but validates it when provided by the client. From v0.8 to v0.13 controller versions, `optional_no_ca` used to validate the certificate as well, since v0.14 it makes the proxy bypass any validation.
