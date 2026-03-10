@@ -317,9 +317,9 @@ func TestBackends(t *testing.T) {
     http-request set-var(txn.cors_max_age) str(86400) if METH_OPTIONS
     http-request use-service lua.send-cors-preflight if METH_OPTIONS
     acl cors_allow_origin0 var(txn.hdr_origin) -m found
-    http-response set-header Access-Control-Allow-Origin %[var(txn.hdr_origin)] if cors_allow_origin0
-    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if cors_allow_origin0
-    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if cors_allow_origin0`,
+    http-after-response set-header Access-Control-Allow-Origin %[var(txn.hdr_origin)] if cors_allow_origin0
+    http-after-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if cors_allow_origin0
+    http-after-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if cors_allow_origin0`,
 		},
 		"test14": {
 			doconfig: func(c *testConfig, h *hatypes.Host, b *hatypes.Backend) {
