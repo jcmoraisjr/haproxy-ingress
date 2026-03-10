@@ -228,11 +228,12 @@ func TestIntegrationIngress(t *testing.T) {
 				options.AddConfigKeyAnnotation(ingtypes.BackRewriteTarget, rewrite),
 				options.AddConfigKeyAnnotation(ingtypes.BackPathType, pathType),
 			)
-			code := http.StatusOK
+			code := []int{http.StatusOK}
 			if redir {
-				code = http.StatusTemporaryRedirect
+				// status code found on go server implementations in case of a non normalized path
+				code = []int{http.StatusMovedPermanently, http.StatusTemporaryRedirect}
 			}
-			res := f.Request(ctx, t, http.MethodGet, hostname, reqPath, options.ExpectResponseCode(code))
+			res := f.Request(ctx, t, http.MethodGet, hostname, reqPath, options.ExpectResponseCode(code...))
 			if redir {
 				assert.False(t, res.EchoResponse.Parsed)
 			} else {
