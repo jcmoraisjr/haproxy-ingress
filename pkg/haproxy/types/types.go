@@ -772,7 +772,7 @@ type Path struct {
 	HSTS          HSTS
 	MaxBodySize   int64
 	RedirTo       string
-	RewriteURL    string
+	Rewrite       RewriteConfig
 	SSLRedirect   bool
 	WAF           WAF
 }
@@ -830,6 +830,12 @@ type AccessConfig struct {
 	Rule         []string
 	Exception    []string
 	SourceHeader string
+}
+
+// RewriteConfig ...
+type RewriteConfig struct {
+	Match  string
+	Target string
 }
 
 // ServerConfig ...

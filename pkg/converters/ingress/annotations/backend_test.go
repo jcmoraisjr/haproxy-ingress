@@ -2206,49 +2206,44 @@ WARN oauth2_proxy on ingress 'default/ing1' needs Lua json module, install lua-j
 }
 
 func TestRewriteURL(t *testing.T) {
-	testCases := []struct {
-		source   Source
-		input    string
-		expected string
-		logging  string
+	testCases := map[string]struct {
+		pathType  hatypes.MatchType
+		ingPath   string
+		rewrite   string
+		expMatch  string
+		expTarget string
 	}{
-		// 0
-		{
-			input:    ``,
-			expected: ``,
-		},
-		// 1
-		{
-			source: Source{
-				Namespace: "default",
-				Name:      "app1",
-				Type:      "service",
-			},
-			input:    `/"/`,
-			expected: ``,
-			logging:  `WARN rewrite-target does not allow white spaces or single/double quotes on service 'default/app1': '/"/'`,
-		},
-		// 2
-		{
-			input:    `/app`,
-			expected: `/app`,
-		},
+		"str-test01":   {pathType: hatypes.MatchBegin, ingPath: "/", rewrite: "/v1", expMatch: "^/(.*)$", expTarget: "/v1/\\1"},
+		"str-test02":   {pathType: hatypes.MatchBegin, ingPath: "/", rewrite: "/v1/", expMatch: "^/(.*)$", expTarget: "/v1/\\1"},
+		"str-test03":   {pathType: hatypes.MatchBegin, ingPath: "/app", rewrite: "/", expMatch: "^/app/?(.*)$", expTarget: "/\\1"},
+		"str-test04":   {pathType: hatypes.MatchBegin, ingPath: "/app", rewrite: "/v1", expMatch: "^/app(.*)$", expTarget: "/v1\\1"},
+		"str-test05":   {pathType: hatypes.MatchBegin, ingPath: "/app", rewrite: "/v1/", expMatch: "^/app(.*)$", expTarget: "/v1/\\1"},
+		"str-test06":   {pathType: hatypes.MatchBegin, ingPath: "/app/", rewrite: "/", expMatch: "^/app/(.*)$", expTarget: "/\\1"},
+		"str-test07":   {pathType: hatypes.MatchBegin, ingPath: "/app/", rewrite: "/v1", expMatch: "^/app/(.*)$", expTarget: "/v1/\\1"},
+		"str-test08":   {pathType: hatypes.MatchBegin, ingPath: "/app/", rewrite: "/v1/", expMatch: "^/app/(.*)$", expTarget: "/v1/\\1"},
+		"regex-test01": {pathType: hatypes.MatchRegex, ingPath: "/([^/]+)", rewrite: "/\\1/v1", expMatch: "^/([^/]+)", expTarget: "/\\1/v1"},
 	}
 
-	for i, test := range testCases {
-		c := setup(t)
-		var ann map[string]string
-		if test.input != "" {
-			ann = map[string]string{ingtypes.BackRewriteTarget: test.input}
-		}
-		d := c.createBackendData("default/app", &test.source, map[string]string{}, map[string]string{})
-		d.backend.AddPath(&hatypes.Path{Link: hatypes.CreatePathLink("/", hatypes.MatchBegin)})
-		d.mapper.AddAnnotations(&test.source, hatypes.CreatePathLink("/", hatypes.MatchBegin), ann)
-		c.createUpdater().buildBackendRewriteURL(d)
-		actual := d.backend.Paths[0].RewriteURL
-		c.compareObjects("rewrite", i, actual, test.expected)
-		c.logger.CompareLogging(test.logging)
-		c.teardown()
+	source := Source{
+		Namespace: "default",
+		Name:      "app1",
+		Type:      "Ingress",
+	}
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			c := setup(t)
+			var ann map[string]string
+			if test.rewrite != "" {
+				ann = map[string]string{ingtypes.BackRewriteTarget: test.rewrite}
+			}
+			d := c.createBackendData("default/app1", &source, map[string]string{}, map[string]string{})
+			d.backend.AddPath(&hatypes.Path{Link: hatypes.CreatePathLink(test.ingPath, test.pathType)})
+			d.mapper.AddAnnotations(&source, hatypes.CreatePathLink(test.ingPath, test.pathType), ann)
+			c.createUpdater().buildBackendRewriteURL(d)
+			assert.Equal(t, test.expMatch, d.backend.Paths[0].Rewrite.Match, "Match")
+			assert.Equal(t, test.expTarget, d.backend.Paths[0].Rewrite.Target, "Target")
+			c.teardown()
+		})
 	}
 }
 

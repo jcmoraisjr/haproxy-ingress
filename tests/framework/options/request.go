@@ -4,7 +4,7 @@ import "net/http"
 
 type Request func(o *requestOpt)
 
-func ExpectResponseCode(code int) Request {
+func ExpectResponseCode(code ...int) Request {
 	return func(o *requestOpt) {
 		o.ExpectResponseCode = code
 	}
@@ -83,7 +83,7 @@ func CustomRequest(custom CustomRequestCallback) Request {
 type CustomRequestCallback func(req *http.Request)
 
 type requestOpt struct {
-	ExpectResponseCode int
+	ExpectResponseCode []int
 	ExpectError        string
 	ReqHeaders         map[string]string
 	Body               string

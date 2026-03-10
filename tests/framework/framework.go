@@ -337,14 +337,14 @@ func (*framework) Request(ctx context.Context, t *testing.T, method, host, path 
 	}
 	var res *http.Response
 	switch {
-	case opt.ExpectResponseCode > 0:
+	case len(opt.ExpectResponseCode) > 0:
 		// assert the correct response code ...
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 			res, err = cli.Do(req)
 			if !assert.NoError(collect, err) {
 				return
 			}
-			assert.Equal(collect, opt.ExpectResponseCode, res.StatusCode)
+			assert.Contains(collect, opt.ExpectResponseCode, res.StatusCode)
 		}, 5*time.Second, time.Second)
 		// ... but requires that no request error happened.
 		require.NoError(t, err)
