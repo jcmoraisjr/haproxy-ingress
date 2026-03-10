@@ -31,6 +31,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -109,15 +110,13 @@ func (s *SSL) checkValidPEM(raw []byte, pemTypes ...string) ([]byte, error) {
 		var block *pem.Block
 		block, raw = pem.Decode(raw)
 		if block == nil {
+			// If we've already decoded at least one valid block, allow trailing non-PEM data
+			if der != nil {
+				break
+			}
 			return nil, fmt.Errorf("no valid PEM formatted block found")
 		}
-		var valid bool
-		for _, pemType := range pemTypes {
-			if block.Type == pemType {
-				valid = true
-			}
-		}
-		if !valid {
+		if !slices.Contains(pemTypes, block.Type) {
 			return nil, fmt.Errorf("expected PEM type(s) '%s', found '%s'", strings.Join(pemTypes, ","), block.Type)
 		}
 		if der == nil {
@@ -133,6 +132,10 @@ func (s *SSL) checkValidCertPEM(raw []byte) (*x509.Certificate, error) {
 		var block *pem.Block
 		block, raw = pem.Decode(raw)
 		if block == nil {
+			// If we've already decoded at least one valid certificate, allow trailing non-PEM data
+			if x509crt != nil {
+				break
+			}
 			return nil, fmt.Errorf("no valid PEM formatted block found")
 		}
 		if block.Type != "CERTIFICATE" {
@@ -150,14 +153,8 @@ func (s *SSL) checkValidCertPEM(raw []byte) (*x509.Certificate, error) {
 }
 
 func (s *SSL) buildCertFromCrtAndKey(fileName string, crt, key, ca []byte) (*sslCert, error) {
-	x509crt, err := s.checkValidCertPEM(crt)
+	tlsCrt, err := tls.X509KeyPair(crt, key)
 	if err != nil {
-		return nil, err
-	}
-	if _, err := s.checkValidPEM(key, "PRIVATE KEY", "RSA PRIVATE KEY", "EC PRIVATE KEY", "EC PARAMETERS"); err != nil {
-		return nil, err
-	}
-	if _, err := tls.X509KeyPair(crt, key); err != nil {
 		return nil, err
 	}
 	var caFileName string
@@ -175,7 +172,7 @@ func (s *SSL) buildCertFromCrtAndKey(fileName string, crt, key, ca []byte) (*ssl
 		intm := x509.NewCertPool()
 		root.AppendCertsFromPEM(ca)
 		intm.AppendCertsFromPEM(crt)
-		_, err := x509crt.Verify(x509.VerifyOptions{
+		_, err := tlsCrt.Leaf.Verify(x509.VerifyOptions{
 			Roots:         root,
 			Intermediates: intm,
 		})
@@ -193,7 +190,7 @@ func (s *SSL) buildCertFromCrtAndKey(fileName string, crt, key, ca []byte) (*ssl
 	}
 	pemSHA1 := sha1.Sum(output)
 	return &sslCert{
-		Certificate: x509crt,
+		Certificate: tlsCrt.Leaf,
 		CAFileName:  caFileName,
 		PemFileName: fileName,
 		PemSHA:      hex.EncodeToString(pemSHA1[:]),
