@@ -896,17 +896,43 @@ func (c *updater) buildBackendProxyProtocol(d *backData) {
 func (c *updater) buildBackendRewriteURL(d *backData) {
 	for _, path := range d.backend.Paths {
 		config := d.mapper.GetConfig(path.Link)
-		rewrite := config.Get(ingtypes.BackRewriteTarget)
-		if rewrite == nil || rewrite.Value == "" {
+		rewriteTarget := config.Get(ingtypes.BackRewriteTarget).Value
+		if rewriteTarget == "" {
 			continue
 		}
-		if !validURLRegex.MatchString(rewrite.Value) {
-			c.logger.Warn(
-				"rewrite-target does not allow white spaces or single/double quotes on %v: '%s'",
-				rewrite.Source, rewrite.Value)
+
+		// This implementation reproduces the classic behavior for backward compatibility
+		//
+		//     {{- if eq $rewrite "/" }}
+		//         http-request replace-path ^{{ $path.Path }}/?(.*)$     /\1
+		//             {{- if $needACL }}     if { var(txn.pathID) -m str {{ $path.ID }} }{{ end }}
+		//     {{- else }}
+		//         http-request replace-path ^{{ $path.Path }}(.*)$       {{ $rewrite | haquote }}{{ if hasSuffix $path.Path "/" }}/{{ end }}\1
+		//             {{- if $needACL }}     if { var(txn.pathID) -m str {{ $path.ID }} }{{ end }}
+		//
+
+		strpath := path.Path()
+		var strMatch string
+
+		switch path.Match() {
+		case hatypes.MatchBegin, hatypes.MatchExact, hatypes.MatchPrefix:
+			strMatch = "^" + regexp.QuoteMeta(strpath)
+			if rewriteTarget == "/" && !strings.HasSuffix(strpath, "/") {
+				strMatch += "/?"
+			}
+			if strings.HasSuffix(strpath, "/") && !strings.HasSuffix(rewriteTarget, "/") {
+				rewriteTarget += "/"
+			}
+			strMatch += "(.*)$"
+			rewriteTarget += "\\1"
+		case hatypes.MatchRegex:
+			strMatch = "^" + strpath
+		default:
 			continue
 		}
-		path.RewriteURL = rewrite.Value
+
+		path.Rewrite.Match = strMatch
+		path.Rewrite.Target = rewriteTarget
 	}
 }
 

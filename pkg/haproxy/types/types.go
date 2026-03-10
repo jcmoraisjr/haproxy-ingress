@@ -693,7 +693,7 @@ type BackendPath struct {
 	DeniedIPHTTP  AccessConfig
 	HSTS          HSTS
 	MaxBodySize   int64
-	RewriteURL    string
+	Rewrite       RewriteConfig
 	SSLRedirect   bool
 	WAF           WAF
 }
@@ -741,6 +741,12 @@ type AccessConfig struct {
 	Rule         []string
 	Exception    []string
 	SourceHeader string
+}
+
+// RewriteConfig ...
+type RewriteConfig struct {
+	Match  string
+	Target string
 }
 
 // ServerConfig ...
