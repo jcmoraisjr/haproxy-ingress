@@ -191,6 +191,9 @@ func TestIntegrationIngress(t *testing.T) {
 		crt, key := framework.CreateCertificate(t, ca, cakey, hostname,
 			options.DNS(hostname),
 		)
+		// trailing line breaks in the end of the certificate and key shouldn't be a problem
+		crt = append(crt, '\n', '\n')
+		key = append(key, '\n', '\n')
 		secret := f.CreateSecretTLS(ctx, t, crt, key)
 
 		svc := f.CreateService(ctx, t, httpServerPort)
