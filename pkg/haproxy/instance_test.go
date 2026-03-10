@@ -399,35 +399,65 @@ d1.local#/ path01`,
 		},
 		{
 			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/app")[0].Link).RewriteURL = "/"
+				p := b.FindBackendPath(h.FindPath("/app")[0].Link)
+				p.Rewrite.Match = "^/app"
+				p.Rewrite.Target = "/"
 			},
 			path: []string{"/app"},
 			expected: `
-    http-request replace-path ^/app/?(.*)$     /\1`,
+    http-request replace-path '^/app' '/'`,
 		},
 		{
 			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/app")[0].Link).RewriteURL = "/other"
+				p := b.FindBackendPath(h.FindPath("/app")[0].Link)
+				p.Rewrite.Match = "^/app"
+				p.Rewrite.Target = "/other"
 			},
 			path: []string{"/app"},
 			expected: `
-    http-request replace-path ^/app(.*)$       /other\1`,
+    http-request replace-path '^/app' '/other'`,
 		},
 		{
 			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/app")[0].Link).RewriteURL = "/other/"
-				b.FindBackendPath(h.FindPath("/app/sub")[0].Link).RewriteURL = "/other/"
+				p1 := b.FindBackendPath(h.FindPath("/app")[0].Link)
+				p1.Rewrite.Match = "^/app/"
+				p1.Rewrite.Target = "/other/"
+				p2 := b.FindBackendPath(h.FindPath("/app/sub")[0].Link)
+				p2.Rewrite.Match = "^/app/"
+				p2.Rewrite.Target = "/other/"
 			},
 			path: []string{"/app", "/app/sub"},
 			expected: `
-    http-request replace-path ^/app(.*)$       /other/\1
-    http-request replace-path ^/app/sub(.*)$       /other/\1`,
+    http-request replace-path '^/app/' '/other/'`,
 		},
 		{
 			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
-				b.FindBackendPath(h.FindPath("/path1")[0].Link).RewriteURL = "/sub1"
-				b.FindBackendPath(h.FindPath("/path2")[0].Link).RewriteURL = "/sub2"
-				b.FindBackendPath(h.FindPath("/path3")[0].Link).RewriteURL = "/sub2"
+				p1 := b.FindBackendPath(h.FindPath("/app")[0].Link)
+				p1.Rewrite.Match = "^/app/"
+				p1.Rewrite.Target = "/other/"
+				p2 := b.FindBackendPath(h.FindPath("/app/sub")[0].Link)
+				p2.Rewrite.Match = "^/app/sub/"
+				p2.Rewrite.Target = "/other/"
+			},
+			path: []string{"/app", "/app/sub"},
+			expected: `
+    # path01 = d1.local/app
+    # path02 = d1.local/app/sub
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
+    http-request replace-path '^/app/' '/other/' if { var(txn.pathID) -m str path01 }
+    http-request replace-path '^/app/sub/' '/other/' if { var(txn.pathID) -m str path02 }`,
+		},
+		{
+			doconfig: func(c *config, h *hatypes.Host, b *hatypes.Backend) {
+				p1 := b.FindBackendPath(h.FindPath("/path1")[0].Link)
+				p1.Rewrite.Match = "^/path1"
+				p1.Rewrite.Target = "/sub1"
+				p2 := b.FindBackendPath(h.FindPath("/path2")[0].Link)
+				p2.Rewrite.Match = "^/path2"
+				p2.Rewrite.Target = "/sub2"
+				p3 := b.FindBackendPath(h.FindPath("/path3")[0].Link)
+				p3.Rewrite.Match = "^/path3"
+				p3.Rewrite.Target = "/sub2"
 			},
 			path: []string{"/path1", "/path2", "/path3"},
 			expected: `
@@ -435,9 +465,9 @@ d1.local#/ path01`,
     # path02 = d1.local/path2
     # path03 = d1.local/path3
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
-    http-request replace-path ^/path1(.*)$       /sub1\1     if { var(txn.pathID) -m str path01 }
-    http-request replace-path ^/path2(.*)$       /sub2\1     if { var(txn.pathID) -m str path02 }
-    http-request replace-path ^/path3(.*)$       /sub2\1     if { var(txn.pathID) -m str path03 }`,
+    http-request replace-path '^/path1' '/sub1' if { var(txn.pathID) -m str path01 }
+    http-request replace-path '^/path2' '/sub2' if { var(txn.pathID) -m str path02 }
+    http-request replace-path '^/path3' '/sub2' if { var(txn.pathID) -m str path03 }`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
 d1.local#/path3 path03
@@ -2407,7 +2437,9 @@ func TestInstanceDefaultHost(t *testing.T) {
 	hdef.AddPath(b, "/app1", hatypes.MatchExact)
 	hdef.AddPath(b, "/app2", hatypes.MatchPrefix)
 	b.FindBackendPath(hdef.FindPath("/")[0].Link).SSLRedirect = true
-	b.FindBackendPath(hdef.FindPath("/app1")[0].Link).RewriteURL = "/"
+	p1 := b.FindBackendPath(hdef.FindPath("/app1")[0].Link)
+	p1.Rewrite.Match = "^/app1"
+	p1.Rewrite.Target = "/"
 	b.FindBackendPath(hdef.FindPath("/app2")[0].Link).MaxBodySize = 32768
 
 	b = c.config.Backends().AcquireBackend("d2", "app", "8080")
@@ -2420,7 +2452,9 @@ func TestInstanceDefaultHost(t *testing.T) {
 	hdef.AddPath(b, "/app12", hatypes.MatchExact)
 	hdef.AddPath(b, "/app13", hatypes.MatchPrefix)
 	b.FindBackendPath(h.FindPath("/app11")[0].Link).SSLRedirect = true
-	b.FindBackendPath(hdef.FindPath("/app12")[0].Link).RewriteURL = "/"
+	p1 = b.FindBackendPath(hdef.FindPath("/app12")[0].Link)
+	p1.Rewrite.Match = "^/app12"
+	p1.Rewrite.Target = "/"
 	b.FindBackendPath(hdef.FindPath("/app13")[0].Link).MaxBodySize = 65536
 
 	c.Update()
@@ -2438,7 +2472,7 @@ backend d1_app_8080
     http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpathdef__begin.map) if !{ var(txn.pathID) -m found }
     http-request redirect scheme https if !https-request { var(txn.pathID) -m str path01 }
     http-request use-service lua.send-413 if { var(txn.pathID) -m str path03 } { req.body_size,sub(32768) gt 0 }
-    http-request replace-path ^/app1/?(.*)$     /\1     if { var(txn.pathID) -m str path02 }
+    http-request replace-path '^/app1' '/' if { var(txn.pathID) -m str path02 }
     server s1 172.17.0.11:8080 weight 100
 backend d2_app_8080
     mode http
@@ -2451,7 +2485,7 @@ backend d2_app_8080
     http-request set-var(txn.pathID) str(<default>\#),concat(,req.path),map_dir(/etc/haproxy/maps/_back_d2_app_8080_idpathdef__prefix.map) if !{ var(txn.pathID) -m found }
     http-request redirect scheme https if !https-request { var(txn.pathID) -m str path01 }
     http-request use-service lua.send-413 if { var(txn.pathID) -m str path03 } { req.body_size,sub(65536) gt 0 }
-    http-request replace-path ^/app12/?(.*)$     /\1     if { var(txn.pathID) -m str path02 }
+    http-request replace-path '^/app12' '/' if { var(txn.pathID) -m str path02 }
     server s1 172.17.0.11:8080 weight 100
 backend default_default-backend_8080
     mode http

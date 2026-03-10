@@ -20,6 +20,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
@@ -140,6 +141,130 @@ func TestIntegrationIngress(t *testing.T) {
 		)
 		assert.False(t, res.EchoResponse.Parsed)
 		assert.Equal(t, "/app", res.HTTPResponse.Header.Get("location"))
+	})
+
+	t.Run("should rewrite URL", func(t *testing.T) {
+		t.Parallel()
+
+		testCases := map[string]struct {
+			strPath   string
+			regexPath string
+			rewrite   string
+			reqPath   string
+			rewrote   string
+			skipBegin bool
+			skipExact bool
+			redir     bool
+		}{
+			"classic-doc-test01": {strPath: "/abc", rewrite: "/", reqPath: "/abc", rewrote: "/"},
+			"classic-doc-test02": {strPath: "/abc", rewrite: "/", reqPath: "/abc/", rewrote: "/", skipExact: true},
+			"classic-doc-test03": {strPath: "/abc", rewrite: "/", reqPath: "/abc/x", rewrote: "/x", skipExact: true},
+			"classic-doc-test04": {strPath: "/abc", rewrite: "/y", reqPath: "/abc", rewrote: "/y"},
+			"classic-doc-test05": {strPath: "/abc", rewrite: "/y", reqPath: "/abc/", rewrote: "/y/", skipExact: true},
+			"classic-doc-test06": {strPath: "/abc", rewrite: "/y", reqPath: "/abc/x", rewrote: "/y/x", skipExact: true},
+			// "classic-doc-test07": {strPath: "/abc/", rewrite: "/", reqPath: "/abc", rewrote: "/", skipExact: true, skipBegin: true}, // TODO Prefix should pass, missing split per path type
+			"classic-doc-test09": {strPath: "/abc/", rewrite: "/", reqPath: "/abc/", rewrote: "/"},
+			"classic-doc-test10": {strPath: "/abc/", rewrite: "/", reqPath: "/abc/x", rewrote: "/x", skipExact: true},
+
+			"str-test01": {strPath: "/", rewrite: "/v1", reqPath: "/", rewrote: "/v1/"},
+			"str-test02": {strPath: "/", rewrite: "/v1", reqPath: "/app", rewrote: "/v1/app", skipExact: true},
+			"str-test03": {strPath: "/", rewrite: "/v1", reqPath: "/app/", rewrote: "/v1/app/", skipExact: true},
+			"str-test04": {strPath: "/", rewrite: "/v1", reqPath: "/app/sub", rewrote: "/v1/app/sub", skipExact: true},
+			"str-test05": {strPath: "/app", rewrite: "/", reqPath: "/app", rewrote: "/"},
+			"str-test06": {strPath: "/app", rewrite: "/", reqPath: "/app/", rewrote: "/", skipExact: true},
+			"str-test07": {strPath: "/app", rewrite: "/", reqPath: "/app/sub", rewrote: "/sub", skipExact: true},
+			"str-test08": {strPath: "/app", rewrite: "/v1", reqPath: "/app", rewrote: "/v1"},
+			"str-test09": {strPath: "/app", rewrite: "/v1", reqPath: "/app/", rewrote: "/v1/", skipExact: true},
+			"str-test10": {strPath: "/app", rewrite: "/v1", reqPath: "/app/sub", rewrote: "/v1/sub", skipExact: true},
+			"str-test11": {strPath: "/app", rewrite: "/v1/", reqPath: "/app", rewrote: "/v1/"},
+			"str-test12": {strPath: "/app", rewrite: "/v1/", reqPath: "/app/", skipExact: true, redir: true},    // /v1//
+			"str-test13": {strPath: "/app", rewrite: "/v1/", reqPath: "/app/sub", skipExact: true, redir: true}, // /v1//sub
+			// "str-test14": {strPath: "/app/", rewrite: "/", reqPath: "/app", rewrote: "/", skipExact: true, skipBegin: true}, // TODO Prefix should pass, missing split per path type
+			"str-test15": {strPath: "/app/", rewrite: "/", reqPath: "/app/", rewrote: "/"},
+			"str-test16": {strPath: "/app/", rewrite: "/", reqPath: "/app/sub", rewrote: "/sub", skipExact: true},
+			// "str-test17": {strPath: "/app/", rewrite: "/v1", reqPath: "/app", rewrote: "/v1", skipExact: true, skipBegin: true}, // TODO Prefix should pass, missing split per path type
+			"str-test18": {strPath: "/app/", rewrite: "/v1", reqPath: "/app/", rewrote: "/v1/"},
+			"str-test19": {strPath: "/app/", rewrite: "/v1", reqPath: "/app/sub", rewrote: "/v1/sub", skipExact: true},
+			// "str-test20": {strPath: "/app/", rewrite: "/v1/", reqPath: "/app", rewrote: "/v1/", skipExact: true, skipBegin: true}, // TODO Prefix should pass, missing split per path type
+			"str-test21": {strPath: "/app/", rewrite: "/v1/", reqPath: "/app/", rewrote: "/v1/"},
+			"str-test22": {strPath: "/app/", rewrite: "/v1/", reqPath: "/app/sub", rewrote: "/v1/sub", skipExact: true},
+
+			// validating possible doc examples only, pcre2 is well tested already
+			"regex-test01": {regexPath: "/(.+)", rewrite: "/\\1", reqPath: "/app", rewrote: "/app"},
+			"regex-test02": {regexPath: "/(.+)", rewrite: "/v1/\\1", reqPath: "/app", rewrote: "/v1/app"},
+			"regex-test03": {regexPath: "/(.+)", rewrite: "/v1/\\1", reqPath: "/app/", rewrote: "/v1/app/"},
+			"regex-test04": {regexPath: "/(.+)", rewrite: "/v1/\\1", reqPath: "/app/sub", rewrote: "/v1/app/sub"},
+			"regex-test05": {regexPath: "/(.+)", rewrite: "/v1/\\1", reqPath: "/app/sub/", rewrote: "/v1/app/sub/"},
+			"regex-test06": {regexPath: "/(.+)", rewrite: "/\\1/v1", reqPath: "/app", rewrote: "/app/v1"},
+			"regex-test07": {regexPath: "/(.+)", rewrite: "/\\1/v1", reqPath: "/app/", redir: true}, // /app//v1
+			"regex-test08": {regexPath: "/(.+)", rewrite: "/\\1/v1", reqPath: "/app/sub", rewrote: "/app/sub/v1"},
+			"regex-test09": {regexPath: "/(.+)", rewrite: "/\\1/v1", reqPath: "/app/sub/", redir: true}, // /app/sub//v1
+			"regex-test10": {regexPath: "/(.+)/(.*)", rewrite: "/v1/\\1/\\2", reqPath: "/app/", rewrote: "/v1/app/"},
+			"regex-test11": {regexPath: "/(.+)/(.*)", rewrite: "/v1/\\1/\\2", reqPath: "/app/sub", rewrote: "/v1/app/sub"},
+			"regex-test12": {regexPath: "/(.+)/(.*)", rewrite: "/v1/\\1/\\2", reqPath: "/app/sub/", rewrote: "/v1/app/sub/"},
+			"regex-test13": {regexPath: "/(.+)/(.*)", rewrite: "/\\1/v1/\\2", reqPath: "/app/", rewrote: "/app/v1/"},
+			"regex-test14": {regexPath: "/(.+)/(.*)", rewrite: "/\\1/v1/\\2", reqPath: "/app/sub", rewrote: "/app/v1/sub"},
+			"regex-test15": {regexPath: "/(.+)/(.*)", rewrite: "/\\1/v1/\\2", reqPath: "/app/sub/", rewrote: "/app/sub/v1/"},
+			"regex-test16": {regexPath: "/([^/]+)(/.*)?", rewrite: "/v1/\\1\\2", reqPath: "/app", rewrote: "/v1/app"},
+			"regex-test17": {regexPath: "/([^/]+)(/.*)?", rewrite: "/v1/\\1\\2", reqPath: "/app/", rewrote: "/v1/app/"},
+			"regex-test18": {regexPath: "/([^/]+)(/.*)?", rewrite: "/v1/\\1\\2", reqPath: "/app/sub", rewrote: "/v1/app/sub"},
+			"regex-test19": {regexPath: "/([^/]+)(/.*)?", rewrite: "/v1/\\1\\2", reqPath: "/app/sub/", rewrote: "/v1/app/sub/"},
+			"regex-test20": {regexPath: "/([^/]+)(/.*)?", rewrite: "/\\1/v1\\2", reqPath: "/app", rewrote: "/app/v1"},
+			"regex-test21": {regexPath: "/([^/]+)(/.*)?", rewrite: "/\\1/v1\\2", reqPath: "/app/", rewrote: "/app/v1/"},
+			"regex-test22": {regexPath: "/([^/]+)(/.*)?", rewrite: "/\\1/v1\\2", reqPath: "/app/sub", rewrote: "/app/v1/sub"},
+			"regex-test23": {regexPath: "/([^/]+)(/.*)?", rewrite: "/\\1/v1\\2", reqPath: "/app/sub/", rewrote: "/app/v1/sub/"},
+		}
+
+		req := func(t *testing.T, pathType, ingPath, rewrite, reqPath, rewrote string, redir bool) {
+			svc := f.CreateService(ctx, t, httpServerPort)
+			_, hostname := f.CreateIngress(ctx, t, svc,
+				options.Custom(func(o client.Object) {
+					httpPath := &o.(*networkingv1.Ingress).Spec.Rules[0].HTTP.Paths[0]
+					httpPath.Path = ingPath
+					httpPath.PathType = ptr.To(networkingv1.PathTypeImplementationSpecific)
+				}),
+				options.AddConfigKeyAnnotation(ingtypes.BackRewriteTarget, rewrite),
+				options.AddConfigKeyAnnotation(ingtypes.BackPathType, pathType),
+			)
+			code := []int{http.StatusOK}
+			if redir {
+				// status code found on go server implementations in case of a non normalized path
+				code = []int{http.StatusMovedPermanently, http.StatusTemporaryRedirect}
+			}
+			res := f.Request(ctx, t, http.MethodGet, hostname, reqPath, options.ExpectResponseCode(code...))
+			if redir {
+				assert.False(t, res.EchoResponse.Parsed)
+			} else {
+				assert.True(t, res.EchoResponse.Parsed)
+				assert.Equal(t, rewrote, res.EchoResponse.Path)
+			}
+		}
+
+		for name, test := range testCases {
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+				if test.strPath != "" {
+					for _, pathType := range []string{"begin", "exact", "prefix"} {
+						if pathType == "begin" && test.skipBegin {
+							continue
+						}
+						if pathType == "exact" && test.skipExact {
+							continue
+						}
+						t.Run(pathType, func(t *testing.T) {
+							t.Parallel()
+							req(t, pathType, test.strPath, test.rewrite, test.reqPath, test.rewrote, test.redir)
+						})
+					}
+				} else {
+					pathType := "regex"
+					t.Run(pathType, func(t *testing.T) {
+						t.Parallel()
+						req(t, pathType, test.regexPath, test.rewrite, test.reqPath, test.rewrote, test.redir)
+					})
+				}
+			})
+		}
 	})
 
 	t.Run("should fail TLS connection on default fake server crt and valid local ca", func(t *testing.T) {
