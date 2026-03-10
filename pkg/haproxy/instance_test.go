@@ -140,25 +140,25 @@ func TestBackends(t *testing.T) {
     http-request set-var(txn.cors_max_age) str(86400) if METH_OPTIONS { var(txn.pathID) -m str path04 }
     http-request use-service lua.send-cors-preflight if METH_OPTIONS { var(txn.pathID) -m str path04 }
     acl cors_allow_origin0 var(txn.hdr_origin0) -m str http://d11.local https://d12.local
-    http-response set-header Access-Control-Allow-Origin  "%[var(txn.hdr_origin0)]" if { var(txn.pathID) -m str path01 path02 } cors_allow_origin0
-    http-response set-header Access-Control-Allow-Origin  "http://d11.local" if { var(txn.pathID) -m str path01 path02 } !cors_allow_origin0
-    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) -m str path01 path02 }
-    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if { var(txn.pathID) -m str path01 path02 }
-    http-response set-header Vary %[res.fhdr(Vary)],Origin if { res.hdr(Vary) -m found } { var(txn.pathID) -m str path01 path02 }
-    http-response set-header Vary Origin if ! { res.hdr(Vary) -m found } { var(txn.pathID) -m str path01 path02 }
+    http-after-response set-header Access-Control-Allow-Origin  "%[var(txn.hdr_origin0)]" if { var(txn.pathID) -m str path01 path02 } cors_allow_origin0
+    http-after-response set-header Access-Control-Allow-Origin  "http://d11.local" if { var(txn.pathID) -m str path01 path02 } !cors_allow_origin0
+    http-after-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) -m str path01 path02 }
+    http-after-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if { var(txn.pathID) -m str path01 path02 }
+    http-after-response set-header Vary %[res.fhdr(Vary)],Origin if { res.hdr(Vary) -m found } { var(txn.pathID) -m str path01 path02 }
+    http-after-response set-header Vary Origin if ! { res.hdr(Vary) -m found } { var(txn.pathID) -m str path01 path02 }
     acl cors_allow_origin1 var(txn.hdr_origin1) -m str https://d21.local https://d22.local https://d23.local https://d24.local https://d25.local
     acl cors_allow_origin1 var(txn.hdr_origin1) -m str https://d26.local
     acl cors_allow_origin1 var(txn.hdr_origin1) -m reg '^http://d10\.local$' '^https?://d1[23]\.local' 'https://([a-z]*\.){0,3}d13\.local$' '^https?://d1[45]\.local' '^https?://d1[67]\.local'
     acl cors_allow_origin1 var(txn.hdr_origin1) -m reg '^https?://d1[89]\.local'
-    http-response set-header Access-Control-Allow-Origin  "%[var(txn.hdr_origin1)]" if { var(txn.pathID) -m str path03 } cors_allow_origin1
-    http-response set-header Access-Control-Allow-Origin  "https://d21.local" if { var(txn.pathID) -m str path03 } !cors_allow_origin1
-    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) -m str path03 }
-    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if { var(txn.pathID) -m str path03 }
-    http-response set-header Vary %[res.fhdr(Vary)],Origin if { res.hdr(Vary) -m found } { var(txn.pathID) -m str path03 }
-    http-response set-header Vary Origin if ! { res.hdr(Vary) -m found } { var(txn.pathID) -m str path03 }
-    http-response set-header Access-Control-Allow-Origin  "https://d31.local" if { var(txn.pathID) -m str path04 }
-    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) -m str path04 }
-    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if { var(txn.pathID) -m str path04 }`,
+    http-after-response set-header Access-Control-Allow-Origin  "%[var(txn.hdr_origin1)]" if { var(txn.pathID) -m str path03 } cors_allow_origin1
+    http-after-response set-header Access-Control-Allow-Origin  "https://d21.local" if { var(txn.pathID) -m str path03 } !cors_allow_origin1
+    http-after-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) -m str path03 }
+    http-after-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if { var(txn.pathID) -m str path03 }
+    http-after-response set-header Vary %[res.fhdr(Vary)],Origin if { res.hdr(Vary) -m found } { var(txn.pathID) -m str path03 }
+    http-after-response set-header Vary Origin if ! { res.hdr(Vary) -m found } { var(txn.pathID) -m str path03 }
+    http-after-response set-header Access-Control-Allow-Origin  "https://d31.local" if { var(txn.pathID) -m str path04 }
+    http-after-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) -m str path04 }
+    http-after-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if { var(txn.pathID) -m str path04 }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
@@ -177,12 +177,12 @@ func TestBackends(t *testing.T) {
     http-request set-var(txn.cors_max_age) str(86400) if METH_OPTIONS
     http-request use-service lua.send-cors-preflight if METH_OPTIONS
     acl cors_allow_origin0 var(txn.hdr_origin0) -m str https://d11.local https://d12.local
-    http-response set-header Access-Control-Allow-Origin  "%[var(txn.hdr_origin0)]" if cors_allow_origin0
-    http-response set-header Access-Control-Allow-Origin  "https://d11.local" if !cors_allow_origin0
-    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
-    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
-    http-response set-header Vary %[res.fhdr(Vary)],Origin if { res.hdr(Vary) -m found }
-    http-response set-header Vary Origin if ! { res.hdr(Vary) -m found }`,
+    http-after-response set-header Access-Control-Allow-Origin  "%[var(txn.hdr_origin0)]" if cors_allow_origin0
+    http-after-response set-header Access-Control-Allow-Origin  "https://d11.local" if !cors_allow_origin0
+    http-after-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+    http-after-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+    http-after-response set-header Vary %[res.fhdr(Vary)],Origin if { res.hdr(Vary) -m found }
+    http-after-response set-header Vary Origin if ! { res.hdr(Vary) -m found }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
@@ -203,12 +203,12 @@ func TestBackends(t *testing.T) {
     http-request use-service lua.send-cors-preflight if METH_OPTIONS
     acl cors_allow_origin0 var(txn.hdr_origin0) -m str https://d11.local https://d12.local
     acl cors_allow_origin0 var(txn.hdr_origin0) -m reg '^http://d10\.local$' '^https?://d1[23]\.local' 'https://([a-z]*\.){0,3}d13\.local$'
-    http-response set-header Access-Control-Allow-Origin  "%[var(txn.hdr_origin0)]" if cors_allow_origin0
-    http-response set-header Access-Control-Allow-Origin  "https://d11.local" if !cors_allow_origin0
-    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
-    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
-    http-response set-header Vary %[res.fhdr(Vary)],Origin if { res.hdr(Vary) -m found }
-    http-response set-header Vary Origin if ! { res.hdr(Vary) -m found }`,
+    http-after-response set-header Access-Control-Allow-Origin  "%[var(txn.hdr_origin0)]" if cors_allow_origin0
+    http-after-response set-header Access-Control-Allow-Origin  "https://d11.local" if !cors_allow_origin0
+    http-after-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+    http-after-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+    http-after-response set-header Vary %[res.fhdr(Vary)],Origin if { res.hdr(Vary) -m found }
+    http-after-response set-header Vary Origin if ! { res.hdr(Vary) -m found }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
@@ -229,12 +229,12 @@ func TestBackends(t *testing.T) {
     http-request use-service lua.send-cors-preflight if METH_OPTIONS
     acl cors_allow_origin0 var(txn.hdr_origin0) -m str https://d11.local
     acl cors_allow_origin0 var(txn.hdr_origin0) -m reg '^http://d12\.local$'
-    http-response set-header Access-Control-Allow-Origin  "%[var(txn.hdr_origin0)]" if cors_allow_origin0
-    http-response set-header Access-Control-Allow-Origin  "https://d11.local" if !cors_allow_origin0
-    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
-    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
-    http-response set-header Vary %[res.fhdr(Vary)],Origin if { res.hdr(Vary) -m found }
-    http-response set-header Vary Origin if ! { res.hdr(Vary) -m found }`,
+    http-after-response set-header Access-Control-Allow-Origin  "%[var(txn.hdr_origin0)]" if cors_allow_origin0
+    http-after-response set-header Access-Control-Allow-Origin  "https://d11.local" if !cors_allow_origin0
+    http-after-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+    http-after-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+    http-after-response set-header Vary %[res.fhdr(Vary)],Origin if { res.hdr(Vary) -m found }
+    http-after-response set-header Vary Origin if ! { res.hdr(Vary) -m found }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
@@ -255,12 +255,12 @@ func TestBackends(t *testing.T) {
     http-request use-service lua.send-cors-preflight if METH_OPTIONS
     acl cors_allow_origin0 var(txn.hdr_origin0) -m str https://d11.local
     acl cors_allow_origin0 var(txn.hdr_origin0) -m reg '^http://d1'"'"'2\.local$'
-    http-response set-header Access-Control-Allow-Origin  "%[var(txn.hdr_origin0)]" if cors_allow_origin0
-    http-response set-header Access-Control-Allow-Origin  "https://d11.local" if !cors_allow_origin0
-    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
-    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
-    http-response set-header Vary %[res.fhdr(Vary)],Origin if { res.hdr(Vary) -m found }
-    http-response set-header Vary Origin if ! { res.hdr(Vary) -m found }`,
+    http-after-response set-header Access-Control-Allow-Origin  "%[var(txn.hdr_origin0)]" if cors_allow_origin0
+    http-after-response set-header Access-Control-Allow-Origin  "https://d11.local" if !cors_allow_origin0
+    http-after-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+    http-after-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+    http-after-response set-header Vary %[res.fhdr(Vary)],Origin if { res.hdr(Vary) -m found }
+    http-after-response set-header Vary Origin if ! { res.hdr(Vary) -m found }`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
@@ -277,9 +277,9 @@ func TestBackends(t *testing.T) {
 			expected: `
     http-request set-var(txn.cors_max_age) str(86400) if METH_OPTIONS
     http-request use-service lua.send-cors-preflight if METH_OPTIONS
-    http-response set-header Access-Control-Allow-Origin  "https://d11.local"
-    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
-    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"`,
+    http-after-response set-header Access-Control-Allow-Origin  "https://d11.local"
+    http-after-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+    http-after-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"`,
 		},
 		// ignore AllowOriginRegex if we don't have at least one AllowOrigin
 		{
@@ -327,9 +327,9 @@ func TestBackends(t *testing.T) {
 			expected: `
     http-request set-var(txn.cors_max_age) str(86400) if METH_OPTIONS
     http-request use-service lua.send-cors-preflight if METH_OPTIONS
-    http-response set-header Access-Control-Allow-Origin  "*"
-    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
-    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"`,
+    http-after-response set-header Access-Control-Allow-Origin  "*"
+    http-after-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+    http-after-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"`,
 		},
 		{
 			doconfig: func(g *hatypes.Global, h *hatypes.Host, b *hatypes.Backend) {
@@ -350,10 +350,10 @@ func TestBackends(t *testing.T) {
     http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_idpath__begin.map)
     http-request set-var(txn.cors_max_age) str(86400) if METH_OPTIONS { var(txn.pathID) -m str path01 }
     http-request use-service lua.send-cors-preflight if METH_OPTIONS { var(txn.pathID) -m str path01 }
-    http-response set-header Access-Control-Allow-Origin  "*" if { var(txn.pathID) -m str path01 }
-    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) -m str path01 }
-    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if { var(txn.pathID) -m str path01 }
-    http-response set-header Access-Control-Allow-Credentials "true" if { var(txn.pathID) -m str path01 }`,
+    http-after-response set-header Access-Control-Allow-Origin  "*" if { var(txn.pathID) -m str path01 }
+    http-after-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) -m str path01 }
+    http-after-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization" if { var(txn.pathID) -m str path01 }
+    http-after-response set-header Access-Control-Allow-Credentials "true" if { var(txn.pathID) -m str path01 }`,
 			expCheck: map[string]string{
 				"_back_d1_app_8080_idpath__begin.map": `
 d1.local#/sub path02
@@ -1481,12 +1481,12 @@ backend d1_app_8080
     http-request use-service lua.send-cors-preflight if METH_OPTIONS { var(txn.pathID) -m str path31 }
     http-response set-header Strict-Transport-Security "max-age=0" if { var(txn.pathID) -m str ` + pathIDs01_30 + ` }
     http-response set-header Strict-Transport-Security "max-age=0" if { var(txn.pathID) -m str path31 }
-    http-response set-header Access-Control-Allow-Origin  "*" if { var(txn.pathID) -m str ` + pathIDs01_30 + ` }
-    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) -m str ` + pathIDs01_30 + ` }
-    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent" if { var(txn.pathID) -m str ` + pathIDs01_30 + ` }
-    http-response set-header Access-Control-Allow-Origin  "*" if { var(txn.pathID) -m str path31 }
-    http-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) -m str path31 }
-    http-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent" if { var(txn.pathID) -m str path31 }
+    http-after-response set-header Access-Control-Allow-Origin  "*" if { var(txn.pathID) -m str ` + pathIDs01_30 + ` }
+    http-after-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) -m str ` + pathIDs01_30 + ` }
+    http-after-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent" if { var(txn.pathID) -m str ` + pathIDs01_30 + ` }
+    http-after-response set-header Access-Control-Allow-Origin  "*" if { var(txn.pathID) -m str path31 }
+    http-after-response set-header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, PATCH, OPTIONS" if { var(txn.pathID) -m str path31 }
+    http-after-response set-header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent" if { var(txn.pathID) -m str path31 }
     server s1 172.17.0.11:8080 weight 100
 <<backends-default>>
 <<frontends-default>>
