@@ -1438,6 +1438,47 @@ func TestCors(t *testing.T) {
 				},
 			},
 		},
+		// 9
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackCorsEnable:      "true",
+					ingtypes.BackCorsAllowOrigin: "seems-invalid://domain.tld:9000",
+				},
+			},
+			expected: map[string]hatypes.Cors{
+				"/": {
+					Enabled:          true,
+					AllowCredentials: false,
+					AllowHeaders:     corsDefaultHeaders,
+					AllowMethods:     corsDefaultMethods,
+					AllowOrigin:      []string{"seems-invalid://domain.tld:9000"},
+					ExposeHeaders:    "",
+					MaxAge:           corsDefaultMaxAge,
+				},
+			},
+		},
+		// 10
+		{
+			ann: map[string]map[string]string{
+				"/": {
+					ingtypes.BackCorsEnable:      "true",
+					ingtypes.BackCorsAllowOrigin: "-really-invalid://domain.tld:9000",
+				},
+			},
+			expected: map[string]hatypes.Cors{
+				"/": {
+					Enabled:          true,
+					AllowCredentials: false,
+					AllowHeaders:     corsDefaultHeaders,
+					AllowMethods:     corsDefaultMethods,
+					AllowOrigin:      corsDefaultOrigin,
+					ExposeHeaders:    "",
+					MaxAge:           corsDefaultMaxAge,
+				},
+			},
+			logging: `WARN ignoring invalid cors origin on ingress 'default/ing': -really-invalid://domain.tld:9000`,
+		},
 	}
 	annDefault := map[string]string{
 		ingtypes.BackCorsAllowHeaders: corsDefaultHeaders,
