@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
-	apiext "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -24,13 +24,13 @@ func TestGatewayAccessorsPreferV1WhenBothVersionsAreEnabled(t *testing.T) {
 
 		cache := newGatewayCacheForTest(t,
 			&gatewayv1.GatewayClass{
-				ObjectMeta: apiext.ObjectMeta{Name: "v1-class"},
+				ObjectMeta: metav1.ObjectMeta{Name: "v1-class"},
 				Spec: gatewayv1.GatewayClassSpec{
 					ControllerName: gatewayv1.GatewayController("example.com/controller"),
 				},
 			},
 			&gatewayv1beta1.GatewayClass{
-				ObjectMeta: apiext.ObjectMeta{Name: "beta-class"},
+				ObjectMeta: metav1.ObjectMeta{Name: "beta-class"},
 				Spec: gatewayv1beta1.GatewayClassSpec{
 					ControllerName: gatewayv1beta1.GatewayController("example.com/controller"),
 				},
@@ -48,10 +48,10 @@ func TestGatewayAccessorsPreferV1WhenBothVersionsAreEnabled(t *testing.T) {
 
 		cache := newGatewayCacheForTest(t,
 			&gatewayv1.HTTPRoute{
-				ObjectMeta: apiext.ObjectMeta{Name: "v1-route", Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: "v1-route", Namespace: "default"},
 			},
 			&gatewayv1beta1.HTTPRoute{
-				ObjectMeta: apiext.ObjectMeta{Name: "beta-route", Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: "beta-route", Namespace: "default"},
 			},
 		)
 
