@@ -221,6 +221,7 @@ func (c *config) writeFrontendMaps(f *hatypes.Frontend) error {
 		httpsMaps = &hatypes.FrontendHTTPSMaps{
 			HTTPSHostMap:          mapBuilder.AddMap(mapsFilenamePrefix + "_host.map"),
 			SSLPassthroughMap:     mapBuilder.AddMap(mapsFilenamePrefix + "_sslpassthrough.map"),
+			TLSOffloadMap:         mapBuilder.AddMap(mapsFilenamePrefix + "_tls_offload.list"),
 			TLSAuthList:           mapBuilder.AddMap(mapsFilenamePrefix + "_tls_auth.list"),
 			TLSNeedCrtList:        mapBuilder.AddMap(mapsFilenamePrefix + "_tls_needcrt.list"),
 			TLSInvalidCrtPagesMap: mapBuilder.AddMap(mapsFilenamePrefix + "_tls_invalidcrt_pages.map"),
@@ -357,7 +358,12 @@ func (c *config) writeFrontendMaps(f *hatypes.Frontend) error {
 		if !f.IsHTTPS {
 			continue
 		}
-		//
+		if f.StrictTLS {
+			// TODO need to invert the logic and decouple the default host and default frontend certificate.
+			// Following this strategy it is possible to define defaults via ingress converter, and use the
+			// absence of defaults to add this strict configuration.
+			httpsMaps.TLSOffloadMap.AddHostnameMapping(host.Hostname, host.ExtendedWildcard, "")
+		}
 		tls := host.TLS
 		crtFile := tls.TLSFilename
 		if crtFile == "" {
