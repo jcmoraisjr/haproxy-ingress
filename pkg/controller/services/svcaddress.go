@@ -23,7 +23,6 @@ import (
 	"reflect"
 	"slices"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -72,11 +71,6 @@ func (s *svcAddress) Start(ctx context.Context) error {
 	return nil
 }
 
-// changed.Objects ([]string) has currently the following syntax:
-// <add|update|del>/<resourceType>:[<namespace>/]<name>
-// Need to move to a structured type.
-const addIngPrefix = "add/" + string(convtypes.ResourceIngress) + ":"
-
 func (s *svcAddress) changed(ctx context.Context, timer *utils.Timer, changed *convtypes.ChangedObjects) error {
 	if !s.run {
 		if s.cfg.UpdateStatus {
@@ -92,13 +86,10 @@ func (s *svcAddress) changed(ctx context.Context, timer *utils.Timer, changed *c
 	}
 
 	var errs []error
-	for _, obj := range changed.Objects {
-		if strings.HasPrefix(obj, addIngPrefix) {
-			fullname := obj[len(addIngPrefix):]
-			namespace, name, _ := cache.SplitMetaNamespaceKey(fullname)
-			if err := s.updateIngressStatus(namespace, name, s.curr); err != nil {
-				errs = append(errs, err)
-			}
+	for _, fullname := range changed.Links[convtypes.ResourceIngress] {
+		namespace, name, _ := cache.SplitMetaNamespaceKey(fullname)
+		if err := s.updateIngressStatus(namespace, name, s.curr); err != nil {
+			errs = append(errs, err)
 		}
 	}
 	if len(errs) > 0 {
