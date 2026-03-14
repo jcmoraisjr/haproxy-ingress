@@ -184,7 +184,6 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	d.global.Master.IsMasterWorker = c.options.MasterSocket != ""
 	d.global.Master.WorkerMaxReloads = mapper.Get(ingtypes.GlobalWorkerMaxReloads).Int()
 	d.global.StrictHost = mapper.Get(ingtypes.GlobalStrictHost).Bool()
-	d.global.UseHTX = mapper.Get(ingtypes.GlobalUseHTX).Bool()
 	c.buildGlobalAcme(d)
 	c.buildGlobalAuthProxy(d)
 	c.buildGlobalAuthTLS(d)

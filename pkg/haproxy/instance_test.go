@@ -6377,7 +6377,6 @@ func (c *testConfig) configGlobal(global *hatypes.Global) {
 	global.Timeout.ServerFin = "50s"
 	global.Timeout.Stop = "15m"
 	global.Timeout.Tunnel = "1h"
-	global.UseHTX = true
 }
 
 func (c *testConfig) httpFrontend(port int32) *hatypes.Frontend {

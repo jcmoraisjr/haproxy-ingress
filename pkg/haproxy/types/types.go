@@ -81,7 +81,6 @@ type Global struct {
 	TimeoutStopDuration     time.Duration
 	StrictHost              bool
 	FastCGIApps             []string
-	UseHTX                  bool
 	DefaultBackendRedir     string
 	DefaultBackendRedirCode int
 	NoRedirects             []string

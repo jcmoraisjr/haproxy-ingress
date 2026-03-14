@@ -2292,7 +2292,6 @@ func TestBackendServerNaming(t *testing.T) {
 func TestBackendProtocol(t *testing.T) {
 	testCase := []struct {
 		source     *Source
-		useHTX     bool
 		fcgiapps   []string
 		annDefault map[string]string
 		ann        map[string]map[string]string
@@ -2427,7 +2426,6 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 		},
 		// 8
 		{
-			useHTX: true,
 			ann: map[string]map[string]string{
 				"/": {
 					ingtypes.BackBackendProtocol: "GRPC",
@@ -2513,7 +2511,6 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 		},
 		// 15
 		{
-			useHTX: true,
 			ann: map[string]map[string]string{
 				"/": {
 					ingtypes.BackBackendProtocol: "h2-ssl",
@@ -2537,19 +2534,6 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 		},
 		// 17
 		{
-			source: &Source{Namespace: "default", Name: "app1", Type: "service"},
-			ann: map[string]map[string]string{
-				"/": {
-					ingtypes.BackBackendProtocol: "h2",
-				},
-			},
-			expected: hatypes.ServerConfig{
-				Protocol: "h1",
-			},
-			logging: `WARN ignoring h2 protocol on service 'default/app1' due to HTX disabled, changing to h1`,
-		},
-		// 18
-		{
 			ann: map[string]map[string]string{
 				"/": {
 					ingtypes.BackBackendProtocol: "h1-ssl",
@@ -2562,7 +2546,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 				SNI:      "ssl_fc_sni",
 			},
 		},
-		// 19
+		// 18
 		{
 			ann: map[string]map[string]string{
 				"/": {
@@ -2576,7 +2560,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 				SNI:      "var(req.host)",
 			},
 		},
-		// 20
+		// 19
 		{
 			ann: map[string]map[string]string{
 				"/": {
@@ -2590,7 +2574,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 				SNI:      "str(domain.tld)",
 			},
 		},
-		// 21
+		// 20
 		{
 			source: &Source{Namespace: "default", Name: "app", Type: "ingress"},
 			ann: map[string]map[string]string{
@@ -2605,7 +2589,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 			},
 			logging: `WARN skipping invalid domain (SNI) on ingress 'default/app': invalid/domain`,
 		},
-		// 22
+		// 21
 		{
 			ann: map[string]map[string]string{
 				"/": {
@@ -2619,7 +2603,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 				VerifyHost: "domain.tld",
 			},
 		},
-		// 23
+		// 22
 		{
 			source: &Source{Namespace: "default", Name: "app", Type: "ingress"},
 			ann: map[string]map[string]string{
@@ -2634,7 +2618,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 			},
 			logging: `WARN skipping invalid domain (verify-hostname) on ingress 'default/app': invalid/domain`,
 		},
-		// 24
+		// 23
 		{
 			ann: map[string]map[string]string{
 				"/": {
@@ -2648,7 +2632,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 				VerifyHost: "valid-domain.tld",
 			},
 		},
-		// 25
+		// 24
 		{
 			ann: map[string]map[string]string{
 				"/": {
@@ -2662,7 +2646,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 				VerifyHost: "sub.valid-domain.tld",
 			},
 		},
-		// 26
+		// 25
 		{
 			source: &Source{Namespace: "default", Name: "app", Type: "ingress"},
 			ann: map[string]map[string]string{
@@ -2677,7 +2661,7 @@ WARN skipping CA on service 'default/app1': secret not found: 'default/ca'`,
 			},
 			logging: `WARN skipping invalid domain (verify-hostname) on ingress 'default/app': invalid-domain`,
 		},
-		// 27
+		// 26
 		{
 			ann: map[string]map[string]string{
 				"/": {
@@ -2701,7 +2685,7 @@ WARN skipping client certificate on <global>: a globally configured resource nam
 WARN skipping CA on <global>: a globally configured resource name is missing the namespace: ca
 `,
 		},
-		// 28
+		// 27
 		{
 			ann: map[string]map[string]string{
 				"/": {
@@ -2729,7 +2713,6 @@ WARN skipping CA on <global>: a globally configured resource name is missing the
 	for i, test := range testCase {
 		c := setup(t)
 		d := c.createBackendMappingData("default/app", test.source, test.annDefault, test.ann, test.paths)
-		c.haproxy.Global().UseHTX = test.useHTX
 		c.haproxy.Global().FastCGIApps = test.fcgiapps
 		c.cache.SecretTLSPath = test.tlsSecrets
 		c.cache.SecretCAPath = test.caSecrets
