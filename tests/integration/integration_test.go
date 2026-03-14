@@ -1463,7 +1463,7 @@ func TestIntegrationGateway(t *testing.T) {
 		}
 	})
 
-	t.Run("v100-v1-experimental", func(t *testing.T) {
+	t.Run("v100-v1", func(t *testing.T) {
 		for _, channel := range channels {
 			t.Run(channel, func(t *testing.T) {
 				f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v100-v1-"+channel))
@@ -1521,10 +1521,10 @@ func TestIntegrationGateway(t *testing.T) {
 		}
 	})
 
-	t.Run("v150-v1-experimental", func(t *testing.T) {
+	t.Run("v151-v1", func(t *testing.T) {
 		for _, channel := range channels {
 			t.Run(channel, func(t *testing.T) {
-				f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v150-v1-"+channel))
+				f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v151-v1-"+channel))
 				f.StartController(ctx, t)
 
 				httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1-http")
