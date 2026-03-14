@@ -98,13 +98,8 @@ type Global struct {
 
 // ProcsConfig ...
 type ProcsConfig struct {
-	Nbproc          int
-	Nbthread        int
-	NbprocBalance   int
-	NbprocSSL       int
-	BindprocBalance string
-	BindprocSSL     string
-	CPUMap          string
+	Nbthread int
+	CPUMap   string
 }
 
 // SyslogConfig ...

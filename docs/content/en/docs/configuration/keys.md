@@ -421,7 +421,6 @@ The table below describes all supported configuration keys.
 | [`modsecurity-timeout-idle`](#modsecurity)           | time with suffix                        | Global   | `30s`                            |
 | [`modsecurity-timeout-processing`](#modsecurity)     | time with suffix                        | Global   | `1s`                             |
 | [`modsecurity-use-coraza`](#modsecurity)             | [true\|false]                           | Global   | `false`                          |
-| [`nbproc-ssl`](#nbproc)                              | number of process                       | Global   | `0`                              |
 | [`nbthread`](#nbthread)                              | number of threads                       | Global   |                                  |
 | [`no-redirect-locations`](#redirect)                 | comma-separated list of URIs            | Global   | `/.well-known/acme-challenge`    |
 | [`no-tls-redirect-locations`](#ssl-redirect)         | comma-separated list of URIs            | Global   | `/.well-known/acme-challenge`    |
@@ -1437,8 +1436,7 @@ See also:
 | `cpu-map`         | `Global` |         |       |
 | `use-cpu-map`     | `Global` | `true`  |       |
 
-Define how processes/threads map to CPUs. The default value is generated based
-on [nbthread](#nbthread) and [nbproc](#nbproc).
+Define how threads map to CPUs. The default value is generated based on [nbthread](#nbthread).
 
 * `cpu-map`: Custom override specifying the [cpu mapping behaviour](https://docs.haproxy.org/3.0/configuration.html#3.1-cpu-map).
 * `use-cpu-map`: Set to `false` to prevent any cpu mapping
@@ -1446,7 +1444,6 @@ on [nbthread](#nbthread) and [nbproc](#nbproc).
 See also:
 
 * [nbthread](#nbthread) configuration key
-* [nbproc](#nbproc) configuration key
 * https://docs.haproxy.org/3.0/configuration.html#3.1-cpu-map
 
 ---
@@ -2221,40 +2218,6 @@ See also:
 * https://www.haproxy.org/download/2.0/doc/SPOE.txt
 * https://docs.haproxy.org/3.0/configuration.html#9.3
 * https://github.com/jcmoraisjr/modsecurity-spoa
-
----
-
-### Nbproc
-
-| Configuration key | Scope    | Default | Since |
-|-------------------|----------|---------|-------|
-| `nbproc-ssl`      | `Global` | `0`     |       |
-
-{{< alert title="Warning" color="warning" >}}
-This option works only on v0.7 or below. Since v0.8 the only supported value is `0` zero.
-{{< /alert >}}
-
-Define the number of dedicated HAProxy process to the SSL/TLS handshake and
-offloading. The default value is 0 (zero) which means HAProxy should process all
-the SSL/TLS offloading, as well as the header inspection and load balancing
-within the same HAProxy process.
-
-The recommended value depends on how much CPU a single HAProxy process is
-spending. Use 0 (zero) if the amount of processing has low CPU usage. This will
-avoid a more complex topology and an inter-process communication. Use the number
-of cores of a dedicated host minus 1 (one) to distribute the SSL/TLS offloading
-process. Leave one core dedicated to header inspection and load balancing.
-
-If splitting HAProxy into two or more process and the number of threads is one,
-`cpu-map` is used to bind each process on its own CPU core.
-
-See also:
-
-* [nbthread](#nbthread) configuration key
-* [cpu-map](#cpu-map) configuration key
-* https://docs.haproxy.org/3.0/configuration.html#3.1-nbproc
-* https://docs.haproxy.org/3.0/configuration.html#4-bind-process
-* https://docs.haproxy.org/3.0/configuration.html#3.1-cpu-map
 
 ---
 
