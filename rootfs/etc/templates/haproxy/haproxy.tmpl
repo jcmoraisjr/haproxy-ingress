@@ -79,9 +79,6 @@ global
 {{- if $global.Security.UseChroot }}
     chroot /var/empty
 {{- end }}
-{{- if gt $global.Procs.Nbproc 1 }}
-    nbproc {{ $global.Procs.Nbproc }}
-{{- end }}
 {{- if $global.Procs.Nbthread }}
     nbthread {{ $global.Procs.Nbthread }}
 {{- end }}
@@ -89,7 +86,6 @@ global
     cpu-map {{ $global.Procs.CPUMap }}
 {{- end }}
     stats socket {{ default "--" $global.AdminSocket }} level admin expose-fd listeners mode 600
-        {{- if gt $global.Procs.Nbproc 1 }} process 1{{ end }}
 {{- if $global.Timeout.Stats }}
     stats timeout {{ $global.Timeout.Stats }}
 {{- end }}
@@ -1723,7 +1719,6 @@ listen stats
     bind {{ $global.Stats.BindIP }}:{{ $global.Stats.Port }}
         {{- if $global.Stats.TLSFilename }} ssl crt {{ $global.Stats.TLSFilename }}{{ end }}
         {{- if $global.Stats.AcceptProxy }} accept-proxy{{ end }}
-        {{- if gt $global.Procs.Nbproc 1 }} process 1{{ end }}
 {{- if $global.Stats.Auth }}
     stats realm HAProxy\ Statistics
     stats auth {{ $global.Stats.Auth }}

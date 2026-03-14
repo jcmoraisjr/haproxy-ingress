@@ -250,64 +250,20 @@ func (c *updater) buildGlobalPeers(d *globalData) {
 }
 
 func (c *updater) buildGlobalProc(d *globalData) {
-	balance := d.mapper.Get(ingtypes.GlobalNbprocBalance).Int()
-	if balance < 1 {
-		c.logger.Warn("invalid value of nbproc-balance configmap option (%v), using 1", balance)
-		balance = 1
-	}
-	if balance > 1 {
-		// need to visit (at least) statistics and healthz bindings as well
-		// as admin socket before using more than one balance backend
-		c.logger.Warn("nbproc-balance configmap option (%v) greater than 1 is not yet supported, using 1", balance)
-		balance = 1
-	}
-	ssl := d.mapper.Get(ingtypes.GlobalNbprocSSL).Int()
-	if ssl < 0 {
-		c.logger.Warn("invalid value of nbproc-ssl configmap option (%v), using 0", ssl)
-		ssl = 0
-	}
-	if ssl > 0 {
-		c.logger.Warn("v08 controller does not support nbproc-ssl, using 0")
-		ssl = 0
-	}
-	procs := balance + ssl
 	threads := d.mapper.Get(ingtypes.GlobalNbthread).Int()
 	if threads < 0 {
 		c.logger.Warn("ignoring invalid value of nbthread: %d", threads)
 		threads = 0
 	}
-	bindprocBalance := "1"
-	if balance > 1 {
-		bindprocBalance = fmt.Sprintf("1-%v", balance)
-	}
-	bindprocSSL := ""
-	if ssl == 0 {
-		bindprocSSL = bindprocBalance
-	} else if ssl == 1 {
-		bindprocSSL = fmt.Sprintf("%v", balance+1)
-	} else if ssl > 1 {
-		bindprocSSL = fmt.Sprintf("%v-%v", balance+1, procs)
-	}
 	useCPUMap := d.mapper.Get(ingtypes.GlobalUseCPUMap).Bool()
 	cpumap := ""
 	if useCPUMap {
 		cpumap = d.mapper.Get(ingtypes.GlobalCPUMap).Value
-		if cpumap == "" {
-			if threads > 1 {
-				if procs == 1 {
-					cpumap = fmt.Sprintf("auto:1/1-%v 0-%v", threads, threads-1)
-				}
-			} else if procs > 1 {
-				cpumap = fmt.Sprintf("auto:1-%v 0-%v", procs, procs-1)
-			}
+		if cpumap == "" && threads > 1 {
+			cpumap = fmt.Sprintf("auto:1/1-%v 0-%v", threads, threads-1)
 		}
 	}
-	d.global.Procs.Nbproc = procs
 	d.global.Procs.Nbthread = threads
-	d.global.Procs.NbprocBalance = balance
-	d.global.Procs.NbprocSSL = ssl
-	d.global.Procs.BindprocBalance = bindprocBalance
-	d.global.Procs.BindprocSSL = bindprocSSL
 	d.global.Procs.CPUMap = cpumap
 }
 

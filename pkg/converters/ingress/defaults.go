@@ -102,7 +102,6 @@ func createDefaults() map[string]string {
 		types.GlobalModsecurityTimeoutIdle:       "30s",
 		types.GlobalModsecurityTimeoutProcessing: "1s",
 		types.GlobalModsecurityTimeoutServer:     "5s",
-		types.GlobalNbprocBalance:                "1",
 		types.GlobalNoRedirectLocations:          "/.well-known/acme-challenge",
 		types.GlobalNoTLSRedirectLocations:       "/.well-known/acme-challenge",
 		types.GlobalOriginalForwardedForHdr:      "X-Original-Forwarded-For",

@@ -640,38 +640,34 @@ func TestDisableCpuMap(t *testing.T) {
 		// 0
 		{
 			ann: map[string]string{
-				ingtypes.GlobalUseCPUMap:     "false",
-				ingtypes.GlobalNbthread:      "1",
-				ingtypes.GlobalNbprocBalance: "1",
+				ingtypes.GlobalUseCPUMap: "false",
+				ingtypes.GlobalNbthread:  "1",
 			},
 			expected: "",
 		},
 		// 1
 		{
 			ann: map[string]string{
-				ingtypes.GlobalUseCPUMap:     "false",
-				ingtypes.GlobalCPUMap:        "auto 1/1 1-",
-				ingtypes.GlobalNbthread:      "1",
-				ingtypes.GlobalNbprocBalance: "1",
+				ingtypes.GlobalUseCPUMap: "false",
+				ingtypes.GlobalCPUMap:    "auto 1/1 1-",
+				ingtypes.GlobalNbthread:  "1",
 			},
 			expected: "",
 		},
 		// 2
 		{
 			ann: map[string]string{
-				ingtypes.GlobalUseCPUMap:     "true",
-				ingtypes.GlobalCPUMap:        "auto:1/1 1-",
-				ingtypes.GlobalNbthread:      "4",
-				ingtypes.GlobalNbprocBalance: "1",
+				ingtypes.GlobalUseCPUMap: "true",
+				ingtypes.GlobalCPUMap:    "auto:1/1 1-",
+				ingtypes.GlobalNbthread:  "4",
 			},
 			expected: "auto:1/1 1-",
 		},
 		// 3
 		{
 			ann: map[string]string{
-				ingtypes.GlobalUseCPUMap:     "true",
-				ingtypes.GlobalNbthread:      "2",
-				ingtypes.GlobalNbprocBalance: "1",
+				ingtypes.GlobalUseCPUMap: "true",
+				ingtypes.GlobalNbthread:  "2",
 			},
 			expected: "auto:1/1-2 0-1",
 		},
