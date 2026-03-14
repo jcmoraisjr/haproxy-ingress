@@ -902,10 +902,6 @@ func (c *updater) buildBackendProtocol(d *backData) {
 			return
 		}
 	}
-	if protocol == "h2" && !c.haproxy.Global().UseHTX {
-		c.logger.Warn("ignoring h2 protocol on %v due to HTX disabled, changing to h1", proto.Source)
-		protocol = "h1"
-	}
 	if !secure {
 		secure = d.mapper.Get(ingtypes.BackSecureBackends).Bool()
 	}

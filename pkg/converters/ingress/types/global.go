@@ -117,7 +117,6 @@ const (
 	GlobalUseChroot                    = "use-chroot"
 	GlobalUseCPUMap                    = "use-cpu-map"
 	GlobalUseHAProxyUser               = "use-haproxy-user"
-	GlobalUseHTX                       = "use-htx"
 	GlobalUsername                     = "username"
 	GlobalWorkerMaxReloads             = "worker-max-reloads"
 )

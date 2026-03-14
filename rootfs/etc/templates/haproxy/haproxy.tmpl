@@ -159,9 +159,6 @@ defaults
 {{- end }}
     option dontlognull
     option http-keep-alive
-{{- if not $global.UseHTX }}
-    no option http-use-htx
-{{- end }}
 {{- range $response := $global.CustomHTTPResponses.HAProxy }}
     errorfile {{ $response.Name }} {{ $global.LocalFSPrefix }}/etc/haproxy/errorfiles/{{ $response.Name }}-{{ $global.CustomHTTPResponses.ID }}.http
 {{- end }}

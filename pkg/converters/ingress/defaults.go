@@ -119,7 +119,6 @@ func createDefaults() map[string]string {
 		types.GlobalTimeoutClientFin:             "50s",
 		types.GlobalTimeoutStop:                  "10m",
 		types.GlobalUseCPUMap:                    "true",
-		types.GlobalUseHTX:                       "true",
 		types.GlobalDefaultBackendRedirectCode:   "302",
 	}
 }

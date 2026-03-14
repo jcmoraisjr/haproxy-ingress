@@ -516,7 +516,6 @@ The table below describes all supported configuration keys.
 | [`use-cpu-map`](#cpu-map)                            | [true\|false]                           | Global   | `true`                           |
 | [`use-forwarded-proto`](#http-passthrough)           | [true\|false]                           | Frontend | `true`                           |
 | [`use-haproxy-user`](#security)                      | [true\|false]                           | Global   | `false`                          |
-| [`use-htx`](#use-htx)                                | [true\|false]                           | Global   | `false`                          |
 | [`use-proxy-protocol`](#proxy-protocol)              | [true\|false]                           | Frontend | `false`                          |
 | [`use-resolver`](#dns-resolvers)                     | resolver name                           | Backend  |                                  |
 | [`username`](#security)                              | haproxy user name                       | Global   | `haproxy`                        |
@@ -924,10 +923,7 @@ See also:
 |--------------------|-----------|---------|-------|
 | `backend-protocol` | `Backend` | `h1`    | v0.9  |
 
-Defines the HTTP protocol version of the backend. Note that HTTP/2 is only supported if HTX is enabled.
-A case-insensitive match is used, so either `h1` or `H1` configures HTTP/1 protocol. A non SSL/TLS
-configuration does not overrides [secure-backends](#secure-backend), so `h1` and secure-backends `true`
-will still configure SSL/TLS.
+Defines the HTTP protocol version of the backend. A case-insensitive match is used, so either `h1` or `H1` configures HTTP/1 protocol. A non SSL/TLS configuration does not overrides [secure-backends](#secure-backend), so `h1` and secure-backends `true` will still configure SSL/TLS.
 
 Options:
 
@@ -942,7 +938,6 @@ FastCGI protocol needs a reference to valid haproxy's fcgi-app section via [`fcg
 
 See also:
 
-* [use-htx](#use-htx) configuration key to enable HTTP/2 backends.
 * [secure-backend](#secure-backend) configuration keys to configure optional client certificate and certificate authority bundle of SSL/TLS connections.
 * [FastCGI](#fastcgi) configuration keys.
 * https://docs.haproxy.org/3.0/configuration.html#5.2-proto
@@ -3104,22 +3099,6 @@ HTTP/2 on the client side.
 See also:
 
 * https://docs.haproxy.org/3.0/configuration.html#5.1-alpn
-
----
-
-### Use HTX
-
-| Configuration key | Scope    | Default | Since |
-|-------------------|----------|---------|-------|
-| `use-htx`         | `Global` | `true`  | v0.9  |
-
-Defines if the new HTX internal representation for HTTP elements should be used. The default value
-is `true` since v0.10, it was `false` on v0.9. HTX should be used to enable HTTP/2 protocol to backends.
-
-See also:
-
-* [backend-protocol](#backend-protocol) configuration keys
-* https://docs.haproxy.org/3.0/configuration.html#4-option%20http-use-htx
 
 ---
 
