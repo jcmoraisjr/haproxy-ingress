@@ -12,6 +12,7 @@ authsvc
 backhttp
 backname
 backssl
+Bagas
 balancealgorithm
 Baran
 barbaz
@@ -303,6 +304,7 @@ modsec
 modsecurity
 monkeymorgan
 Morais
+mouret
 multibinder
 mworker
 myhub
@@ -366,6 +368,7 @@ proxystr
 publicname
 publicport
 puid
+Purwa
 ratelimiter
 rawfiles
 rawhosts
