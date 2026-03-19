@@ -311,6 +311,15 @@ func (f *Frontend) HasTLSAuth() bool {
 	return false
 }
 
+// RenderedName returns the actual HAProxy frontend name, including the
+// "__local" suffix when the frontend is HTTPS with SSL passthrough.
+func (f *Frontend) RenderedName() string {
+	if f.IsHTTPS && f.HasSSLPassthrough() {
+		return f.Name + "__local"
+	}
+	return f.Name
+}
+
 // HasSSLPassthrough ...
 func (f *Frontend) HasSSLPassthrough() bool {
 	for _, host := range f.hosts {
