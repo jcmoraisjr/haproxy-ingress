@@ -1105,7 +1105,7 @@ func (c *converter) createTLSHosts(gatewaySource, routeSource *source, listener 
 		}
 		if h == nil {
 			h = f.AcquireHost(string(hostname))
-			h.ExtendedWildcard = true
+			h.ExtendedWildcard = false
 			h.SSLPassthrough = true
 		}
 		link := hatypes.CreatePathLink("/", hatypes.MatchPrefix).WithHTTPHost(h)
