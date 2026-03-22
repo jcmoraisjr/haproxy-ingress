@@ -221,8 +221,8 @@ func (c *k8scache) hasGateway() bool {
 	return c.listers.gatewayClassLister != nil
 }
 
-var errGatewayA1Disabled = fmt.Errorf("Gateway API v1alpha1 wasn't initialized")
-var errGatewayA2Disabled = fmt.Errorf("Gateway API v1alpha2 wasn't initialized")
+var errGatewayA1Disabled = fmt.Errorf("gateway API v1alpha1 wasn't initialized")
+var errGatewayA2Disabled = fmt.Errorf("gateway API v1alpha2 wasn't initialized")
 
 func (c *k8scache) GetGatewayA1(gatewayName string) (*gatewayv1alpha1.Gateway, error) {
 	if !c.hasGatewayA1() {

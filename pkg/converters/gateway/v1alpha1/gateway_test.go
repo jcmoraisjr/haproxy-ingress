@@ -1344,7 +1344,7 @@ spec:
       weight: 1`).(*gateway.HTTPRoute)
 	for _, label := range strings.Split(labels, ",") {
 		l := strings.Split(label, "=")
-		r.ObjectMeta.Labels[l[0]] = l[1]
+		r.Labels[l[0]] = l[1]
 	}
 	c.cache.HTTPRouteA1List = append(c.cache.HTTPRouteA1List, r)
 	return r
