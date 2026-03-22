@@ -1,18 +1,32 @@
-run:
-  timeout: 5m
-issues:
-  exclude-dirs:
-    - pkg/acme/x
-    - pkg/common
-    - pkg/controller/legacy
+version: "2"
 linters:
+  enable:
+    - misspell
+    - unconvert
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - pkg/acme/x
+      - pkg/common
+      - pkg/controller/legacy
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
   enable:
     - gofmt
     - goimports
-    - gosimple
-    - govet
-    - ineffassign
-    - misspell
-    - staticcheck
-    - typecheck
-    - unconvert
+  exclusions:
+    generated: lax
+    paths:
+      - pkg/acme/x
+      - pkg/common
+      - pkg/controller/legacy
+      - third_party$
+      - builtin$
+      - examples$

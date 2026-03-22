@@ -5705,7 +5705,7 @@ func (c *testConfig) checkConfig(expected string) {
 }
 
 func (c *testConfig) checkConfigFile(expected, fileName string) {
-	actual := strings.Replace(c.readConfig(filepath.Join(c.tempdir, fileName)), c.tempdir, "/etc/haproxy/maps", -1)
+	actual := strings.ReplaceAll(c.readConfig(filepath.Join(c.tempdir, fileName)), c.tempdir, "/etc/haproxy/maps")
 	replace := map[string]string{
 		"<<global>>": `global
     daemon
@@ -5829,7 +5829,7 @@ frontend healthz
 	for {
 		changed := false
 		for old, new := range replace {
-			after := strings.Replace(expected, old, new, -1)
+			after := strings.ReplaceAll(expected, old, new)
 			if after != expected {
 				changed = true
 			}
