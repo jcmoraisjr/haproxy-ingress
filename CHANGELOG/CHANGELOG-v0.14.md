@@ -3,6 +3,10 @@
 * [Major improvements](#major-improvements)
 * [Upgrade notes - read before upgrade from v0.13!](#upgrade-notes)
 * [Contributors](#contributors)
+* [v0.14.12](#v01412)
+  * [Reference](#reference-r12)
+  * [Release notes](#release-notes-r12)
+  * [Fixes and improvements](#fixes-and-improvements-r12)
 * [v0.14.11](#v01411)
   * [Reference](#reference-r11)
   * [Release notes](#release-notes-r11)
@@ -124,6 +128,49 @@ Breaking backward compatibility from v0.13:
 * ssanders1449 ([ssanders1449](https://github.com/ssanders1449))
 * Wojciech Chojnowski ([DCkQ6](https://github.com/DCkQ6))
 * wolf-cosmose ([wolf-cosmose](https://github.com/wolf-cosmose))
+
+# v0.14.12
+
+## Reference (r12)
+
+* Release date: `2026-03-23`
+* Helm chart: `--version 0.14.12`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.14.12`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.14.12`
+* Embedded HAProxy version: `2.4.31`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.14.12`
+
+## Release notes (r12)
+
+This release fixes some issues found on v0.14 branch:
+
+- Alex found that a strict validation in CORS Allow Origin configuration, refusing to configure protocols other than http and https, leads the configuration to the permissive `*`. Example of other protocols include `capacitor://` and `chrome-extension://`. The validation was changed to allow any protocol.
+- Ian observed that CORS generated response headers were not being added when a custom response is configured and HAProxy uses it, like a custom 5xx response. HAProxy has `http-after-response` for this purpose, and now CORS response headers are configured using it.
+- Thorsten reported that rewrite-target does not work with path match as regex. Now the rewrite configuration takes into account the match type.
+
+Also, base image and stdlib were updated in order to fix some known CVEs.
+
+Thanks to everyone who reported issues, your help makes each release better.
+
+Dependencies:
+
+- embedded haproxy from 2.4.30 to 2.4.31
+- go from 1.24.11 to 1.25.8
+
+## Fixes and improvements (r12)
+
+Fixes and improvements since `v0.14.11`:
+
+* make cors allow header rule more flexible [#1401](https://github.com/jcmoraisjr/haproxy-ingress/pull/1401) (jcmoraisjr)
+* add cors headers on proxy generated responses [#1402](https://github.com/jcmoraisjr/haproxy-ingress/pull/1402) (jcmoraisjr)
+* fix rewrite path handling for regex paths [#1411](https://github.com/jcmoraisjr/haproxy-ingress/pull/1411) (jcmoraisjr)
+* bump go from 1.24.11 to 1.25.8 [fc739d3](https://github.com/jcmoraisjr/haproxy-ingress/commit/fc739d36d0f883ead403ca108aa843118f2d73d4) (Joao Morais)
+* bump embedded haproxy from 2.4.30 to 2.4.31 [2c7be3a](https://github.com/jcmoraisjr/haproxy-ingress/commit/2c7be3a7880bf4263d5612965e5fd82700e7d2f7) (Joao Morais)
+* bump golangci-lint-action from v6 to v7 [76dd063](https://github.com/jcmoraisjr/haproxy-ingress/commit/76dd063721ebe064cc4c8d71b74f5533e363d541) (Joao Morais)
+
+Chart improvements since `v0.14.11`:
+
+* add daemonset extraHostPorts [#98](https://github.com/haproxy-ingress/charts/pull/98) (bapung)
 
 # v0.14.11
 
