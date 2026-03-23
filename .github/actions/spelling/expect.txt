@@ -25,6 +25,7 @@ bluegreen
 bodysize
 Brlr
 bssl
+BUILDPLATFORM
 cacerts
 cachemock
 CAcreateserial
@@ -472,6 +473,7 @@ svcshutdown
 svctls
 syslogsrv
 taging
+TARGETPLATFORM
 targetrefs
 tcpapis
 tcpback
@@ -497,6 +499,7 @@ tlsrule
 tlsserver
 toarray
 tomklapka
+tonistiigi
 trackingname
 trkn
 uber

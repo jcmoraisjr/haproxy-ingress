@@ -12,11 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang:1.26.1-alpine AS builder
+FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.9.0 AS xx
+
+FROM --platform=$BUILDPLATFORM golang:1.26.1-alpine AS builder-common
+COPY --from=xx / /
 
 ARG GIT_TAG
 WORKDIR /src
 RUN apk --no-cache add git
+
+COPY go.mod go.sum ./
+RUN go mod download
 
 COPY . .
 
@@ -24,9 +30,14 @@ RUN GIT_TAG=${GIT_TAG:-latest}\
  && GIT_COMMIT=git-$(git rev-parse --short HEAD)\
  && GIT_REPO=$(git config --get remote.origin.url)\
  && VERSION_PKG=github.com/jcmoraisjr/haproxy-ingress/pkg/version\
- && CGO_ENABLED=0 go build\
-    -ldflags "-s -w -X ${VERSION_PKG}.RELEASE=${GIT_TAG} -X ${VERSION_PKG}.COMMIT=${GIT_COMMIT} -X ${VERSION_PKG}.REPO=${GIT_REPO}"\
-    -o haproxy-ingress pkg/main.go
+ && echo "-X ${VERSION_PKG}.RELEASE=${GIT_TAG} -X ${VERSION_PKG}.COMMIT=${GIT_COMMIT} -X ${VERSION_PKG}.REPO=${GIT_REPO}" > /x-args
+
+FROM --platform=$BUILDPLATFORM builder-common AS builder
+ARG TARGETPLATFORM
+RUN CGO_ENABLED=0 xx-go build\
+    -ldflags "-s -w $(cat /x-args)"\
+    -o haproxy-ingress pkg/main.go\
+ && xx-verify haproxy-ingress
 
 FROM haproxy:3.0.18-alpine
 
