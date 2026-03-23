@@ -6,6 +6,10 @@
   * [Upgrading with embedded Acme](#upgrading-with-embedded-acme)
   * [Upgrading with custom repositories](#upgrading-with-custom-repositories)
 * [Contributors](#contributors)
+* [v0.15.2](#v0152)
+  * [Reference](#reference-r2)
+  * [Release notes](#release-notes-r2)
+  * [Fixes and improvements](#fixes-and-improvements-r2)
 * [v0.15.1](#v0151)
   * [Reference](#reference-r1)
   * [Release notes](#release-notes-r1)
@@ -140,6 +144,57 @@ See the full syntax and default values in the [README.md](https://github.com/hap
 * RT ([hedgieinsocks](https://github.com/hedgieinsocks))
 * tomklapka ([tomklapka](https://github.com/tomklapka))
 * Tomasz Zurkowski ([doriath](https://github.com/doriath))
+
+# v0.15.2
+
+## Reference (r2)
+
+* Release date: `2026-03-23`
+* Helm chart: `--version 0.15.2`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.15.2`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.15.2`
+* Embedded HAProxy version: `2.6.25`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.15.2`
+
+## Release notes (r2)
+
+This release fixes some issues found on v0.15 branch:
+
+- Mia found and fixed the missing of the second IP address on Ingress status, on dual stack clusters, when using node IP address. This leads the Ingress status to report only one of the A or AAAA entries, depending on the order they are listed in the node status.
+- Alex found that a strict validation in CORS Allow Origin configuration, refusing to configure protocols other than http and https, leads the configuration to the permissive `*`. Example of other protocols include `capacitor://` and `chrome-extension://`. The validation was changed to allow any protocol.
+- Wojciech reported that a PEM validation is failing to use a valid PEM formatted certificate in case the input has more than one trailing spaces or line break after the last PEM block.
+- Ian observed that CORS generated response headers were not being added when a custom response is configured and HAProxy uses it, like a custom 5xx response. HAProxy has `http-after-response` for this purpose, and now CORS response headers are configured using it.
+- Thorsten reported that rewrite-target does not work with path match as regex. Now the rewrite configuration takes into account the match type.
+- Stephan observed that Ingress status does not update the IP address when its class is changed from another controller to HAProxy Ingress. This was happening because we were tracking only Ingress creation and IP changes, but scenario happens on Ingress updates.
+
+Also, base image and stdlib were updated in order to fix some known CVEs.
+
+Thanks to everyone who reported issues and contributed fixes, your help makes each release better.
+
+Dependencies:
+
+- embedded haproxy from 2.6.23 to 2.6.25
+- go from 1.24.11 to 1.25.8
+- client-go from v0.32.11 to v0.32.13
+
+## Fixes and improvements (r2)
+
+New fixes and improvements since `v0.15.1`:
+
+* fix: report all node IPs in status for dual-stack support [#1381](https://github.com/jcmoraisjr/haproxy-ingress/pull/1381) (mia-mouret)
+* make cors allow header rule more flexible [#1401](https://github.com/jcmoraisjr/haproxy-ingress/pull/1401) (jcmoraisjr)
+* improve validation of PEM data [#1405](https://github.com/jcmoraisjr/haproxy-ingress/pull/1405) (jcmoraisjr)
+* add cors headers on proxy generated responses [#1402](https://github.com/jcmoraisjr/haproxy-ingress/pull/1402) (jcmoraisjr)
+* fix rewrite path handling for regex paths [#1411](https://github.com/jcmoraisjr/haproxy-ingress/pull/1411) (jcmoraisjr)
+* check ingress status on add and update events [#1421](https://github.com/jcmoraisjr/haproxy-ingress/pull/1421) (jcmoraisjr)
+* bump go from 1.24.11 to 1.25.8 [d78eb7f](https://github.com/jcmoraisjr/haproxy-ingress/commit/d78eb7fdbf867ccf9328283be32a872a7d3f28d5) (Joao Morais)
+* bump embedded haproxy from 2.6.23 to 2.6.25 [7a40aa4](https://github.com/jcmoraisjr/haproxy-ingress/commit/7a40aa4883ac663229df7ac830c0c132d77a0509) (Joao Morais)
+* bump client-go from v0.32.11 to v0.32.13 [c3c0f73](https://github.com/jcmoraisjr/haproxy-ingress/commit/c3c0f73d65e725b014d96f643460c596831ad9d7) (Joao Morais)
+* bump golangci-lint-action from v6 to v7 [7e9a5d7](https://github.com/jcmoraisjr/haproxy-ingress/commit/7e9a5d78f152718ee250c36273808b1167ae694d) (Joao Morais)
+
+Chart improvements since `v0.15.1`:
+
+* add daemonset extraHostPorts [#98](https://github.com/haproxy-ingress/charts/pull/98) (bapung)
 
 # v0.15.1
 
