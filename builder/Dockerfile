@@ -43,7 +43,8 @@ RUN mkdir -p /var/empty /etc/haproxy /var/lib/haproxy /var/run/haproxy\
  && setcap 'cap_net_bind_service=+ep' /usr/local/sbin/haproxy
 
 STOPSIGNAL SIGTERM
-USER haproxy
+# uid 99 = haproxy
+USER 99
 
 # dumb-init reaps the old haproxy process in the embedded, non master-worker mode,
 # after receiving SIGUSR1, avoiding it to become a zombie.
