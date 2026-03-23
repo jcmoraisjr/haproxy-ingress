@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM --platform=$BUILDPLATFORM tonistiigi/xx:latest AS xx
+FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.9.0 AS xx
 
 FROM --platform=$BUILDPLATFORM golang:1.26.1-alpine AS builder-common
 COPY --from=xx / /
