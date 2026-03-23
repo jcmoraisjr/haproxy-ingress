@@ -18,11 +18,13 @@ This section can be skipped if the Kubernetes cluster has already a running Prom
 
 HAProxy Ingress installation configures Prometheus using a ServiceMonitor custom resource. This resource is used by [Prometheus Operator](https://prometheus-operator.dev) to configure Prometheus instances. The following steps deploy Prometheus Operator via [`kube-prometheus-stack`](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack) Helm chart.
 
-Create a file named `prometheus-operator-values.yaml` - change both hostnames with a name that resolves to the Kubernetes cluster:
+Create a file named `prometheus-operator-values.yaml` - change both hostnames with a name that resolves to the Kubernetes cluster, and optionally the admin user and password:
 
 ```yaml
 grafana:
   enabled: true
+  adminUser: admin
+  adminPassword: prom-operator
   ingress:
     enabled: true
     ingressClassName: haproxy
@@ -42,7 +44,8 @@ helm repo add prometheus-community https://prometheus-community.github.io/helm-c
 Install the chart:
 
 ```
-helm install prometheus prometheus-community/kube-prometheus-stack\
+helm upgrade prometheus prometheus-community/kube-prometheus-stack\
+  --install\
   --create-namespace --namespace monitoring\
   -f prometheus-operator-values.yaml
 ```
@@ -119,9 +122,10 @@ controller:
 ## Configure the dashboard
 
 Import [this](https://grafana.com/grafana/dashboards/12056) Grafana dashboard. If Grafana was deployed using the steps provided in this walkthrough:
+> Minimum HAProxy Ingress version is v0.14, use revision 3 if using on an older one.
 
 * Open Grafana page - the URL is the same provided in the `prometheus-operator-values.yaml` file and should resolve to the ingress deployment
-* Log in to Grafana, user is `admin` and the first password is `prom-operator`
+* Log in to Grafana, the `prometheus-operator-values.yaml` file configures user as `admin` and the password as `prom-operator`
 * Click `Dashboards`, `New`, `Import`, type `12056` as the Grafana.com ID, Load, select a Prometheus datasource, Import
 
 If everything worked as expected, the dashboard should look like this:

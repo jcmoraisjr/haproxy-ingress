@@ -9,7 +9,7 @@
       "pluginName": "Prometheus"
     }
   ],
-  "__elements": [],
+  "__elements": {},
   "__requires": [
     {
       "type": "panel",
@@ -21,7 +21,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "8.4.6"
+      "version": "12.4.1"
     },
     {
       "type": "datasource",
@@ -52,7 +52,9 @@
     "list": [
       {
         "builtIn": 1,
-        "datasource": "-- Grafana --",
+        "datasource": {
+          "uid": "-- Grafana --"
+        },
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
@@ -70,10 +72,7 @@
   "description": "HAProxy Ingress dashboard",
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "gnetId": 12056,
   "graphTooltip": 0,
-  "id": null,
-  "iteration": 1652057245788,
   "links": [
     {
       "asDropdown": false,
@@ -82,20 +81,15 @@
       "keepTime": false,
       "tags": [],
       "targetBlank": true,
-      "title": "Controller's dashboard documentation",
+      "title": "Dashboard documentation",
       "tooltip": "",
       "type": "link",
       "url": "https://haproxy-ingress.github.io/docs/examples/metrics/"
     }
   ],
-  "liveNow": false,
   "panels": [
     {
       "collapsed": false,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -108,6 +102,10 @@
       "type": "row"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -130,7 +128,7 @@
             "steps": [
               {
                 "color": "dark-green",
-                "value": null
+                "value": 0
               },
               {
                 "color": "dark-orange",
@@ -153,8 +151,9 @@
         "y": 1
       },
       "id": 29,
-      "links": [],
       "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
         "orientation": "horizontal",
         "reduceOptions": {
           "calcs": [
@@ -164,9 +163,10 @@
           "values": false
         },
         "showThresholdLabels": false,
-        "showThresholdMarkers": true
+        "showThresholdMarkers": true,
+        "sizing": "auto"
       },
-      "pluginVersion": "8.4.6",
+      "pluginVersion": "12.4.1",
       "targets": [
         {
           "datasource": {
@@ -187,6 +187,10 @@
       "type": "gauge"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -214,7 +218,7 @@
             "steps": [
               {
                 "color": "dark-green",
-                "value": null
+                "value": 0
               },
               {
                 "color": "dark-red",
@@ -233,13 +237,13 @@
         "y": 1
       },
       "id": 45,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
         "justifyMode": "center",
         "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -247,9 +251,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "8.4.6",
+      "pluginVersion": "12.4.1",
       "targets": [
         {
           "datasource": {
@@ -270,6 +276,10 @@
       "type": "stat"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -283,7 +293,7 @@
             "steps": [
               {
                 "color": "dark-green",
-                "value": null
+                "value": 0
               },
               {
                 "color": "dark-orange",
@@ -306,13 +316,13 @@
         "y": 1
       },
       "id": 44,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -320,9 +330,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "8.4.6",
+      "pluginVersion": "12.4.1",
       "targets": [
         {
           "datasource": {
@@ -343,6 +355,10 @@
       "type": "stat"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -357,7 +373,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               },
               {
                 "color": "red",
@@ -376,13 +392,13 @@
         "y": 1
       },
       "id": 46,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
         "colorMode": "none",
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -390,9 +406,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "8.4.6",
+      "pluginVersion": "12.4.1",
       "targets": [
         {
           "datasource": {
@@ -400,7 +418,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "sum(rate(haproxy_frontend_connections_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy!~\"$pub_front_exclude\"}[1m]))",
+          "expr": "sum(rate(haproxy_frontend_connections_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy!~\"$front_exclude_tcp_metrics\"}[1m]))",
           "format": "time_series",
           "instant": false,
           "interval": "",
@@ -413,6 +431,10 @@
       "type": "stat"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -424,7 +446,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               }
             ]
           },
@@ -439,13 +461,13 @@
         "y": 1
       },
       "id": 55,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
         "colorMode": "none",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -453,9 +475,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "8.4.6",
+      "pluginVersion": "12.4.1",
       "targets": [
         {
           "datasource": {
@@ -476,6 +500,10 @@
       "type": "stat"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -487,7 +515,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               }
             ]
           },
@@ -502,13 +530,13 @@
         "y": 1
       },
       "id": 28,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
         "colorMode": "none",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -516,9 +544,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "8.4.6",
+      "pluginVersion": "12.4.1",
       "targets": [
         {
           "datasource": {
@@ -539,6 +569,10 @@
       "type": "stat"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -564,7 +598,7 @@
             "steps": [
               {
                 "color": "dark-green",
-                "value": null
+                "value": 0
               },
               {
                 "color": "dark-red",
@@ -583,13 +617,13 @@
         "y": 4
       },
       "id": 53,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
         "justifyMode": "center",
         "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -597,9 +631,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "8.4.6",
+      "pluginVersion": "12.4.1",
       "targets": [
         {
           "datasource": {
@@ -620,6 +656,10 @@
       "type": "stat"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -633,7 +673,7 @@
             "steps": [
               {
                 "color": "dark-red",
-                "value": null
+                "value": 0
               },
               {
                 "color": "dark-orange",
@@ -656,13 +696,13 @@
         "y": 4
       },
       "id": 38,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "center",
         "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -670,9 +710,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "value"
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
       },
-      "pluginVersion": "8.4.6",
+      "pluginVersion": "12.4.1",
       "targets": [
         {
           "datasource": {
@@ -693,6 +735,10 @@
       "type": "stat"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -707,7 +753,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               },
               {
                 "color": "red",
@@ -726,13 +772,13 @@
         "y": 4
       },
       "id": 47,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
         "colorMode": "none",
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -740,9 +786,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "8.4.6",
+      "pluginVersion": "12.4.1",
       "targets": [
         {
           "datasource": {
@@ -750,7 +798,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "sum(rate(haproxy_frontend_http_responses_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy!~\"_front__auth.*\"}[1m]))",
+          "expr": "sum(rate(haproxy_frontend_http_responses_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy!~\"$front_exclude_http_metrics\"}[1m]))",
           "format": "time_series",
           "instant": false,
           "interval": "",
@@ -763,6 +811,10 @@
       "type": "stat"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -774,7 +826,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               }
             ]
           },
@@ -789,13 +841,13 @@
         "y": 4
       },
       "id": 56,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
         "colorMode": "none",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -803,9 +855,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "8.4.6",
+      "pluginVersion": "12.4.1",
       "targets": [
         {
           "datasource": {
@@ -826,6 +880,10 @@
       "type": "stat"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -837,7 +895,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               }
             ]
           },
@@ -852,13 +910,13 @@
         "y": 4
       },
       "id": 51,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
         "colorMode": "none",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -866,9 +924,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "8.4.6",
+      "pluginVersion": "12.4.1",
       "targets": [
         {
           "datasource": {
@@ -890,10 +950,6 @@
     },
     {
       "collapsed": true,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -903,15 +959,23 @@
       "id": 50,
       "panels": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -920,6 +984,7 @@
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -927,6 +992,7 @@
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
@@ -943,7 +1009,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "transparent"
+                    "color": "transparent",
+                    "value": 0
                   },
                   {
                     "color": "dark-orange",
@@ -963,10 +1030,9 @@
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 2
+            "y": 8
           },
           "id": 34,
-          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -975,15 +1041,17 @@
               ],
               "displayMode": "table",
               "placement": "right",
+              "showLegend": true,
               "sortBy": "Mean",
               "sortDesc": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
               "datasource": {
@@ -1013,9 +1081,13 @@
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -1024,6 +1096,7 @@
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -1031,6 +1104,7 @@
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
@@ -1047,7 +1121,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": 0
                   }
                 ]
               },
@@ -1059,10 +1134,9 @@
             "h": 5,
             "w": 12,
             "x": 12,
-            "y": 2
+            "y": 8
           },
           "id": 54,
-          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -1071,17 +1145,23 @@
               ],
               "displayMode": "table",
               "placement": "right",
+              "showLegend": true,
               "sortBy": "Mean",
               "sortDesc": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "expr": "rate(haproxyingress_haproxy_response_time_seconds_sum{cluster=~\"$cluster\",hostname=~\"$hostname\",command=\"show_info\"}[1m])/rate(haproxyingress_haproxy_response_time_seconds_count{cluster=~\"$cluster\",hostname=~\"$hostname\",command=\"show_info\"}[1m])",
               "format": "time_series",
               "intervalFactor": 1,
@@ -1103,9 +1183,13 @@
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -1114,6 +1198,7 @@
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -1121,6 +1206,7 @@
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
@@ -1137,7 +1223,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": 0
                   }
                 ]
               },
@@ -1149,10 +1236,9 @@
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 7
+            "y": 13
           },
           "id": 26,
-          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -1161,17 +1247,23 @@
               ],
               "displayMode": "table",
               "placement": "right",
+              "showLegend": true,
               "sortBy": "Mean",
               "sortDesc": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "expr": "increase(haproxyingress_updates_total{cluster=~\"$cluster\",hostname=~\"$hostname\",status=\"full\"}[1m])",
               "format": "time_series",
               "intervalFactor": 1,
@@ -1183,15 +1275,23 @@
           "type": "timeseries"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -1200,6 +1300,7 @@
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -1207,6 +1308,7 @@
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
@@ -1223,7 +1325,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "transparent"
+                    "color": "transparent",
+                    "value": 0
                   },
                   {
                     "color": "red",
@@ -1239,10 +1342,9 @@
             "h": 5,
             "w": 12,
             "x": 12,
-            "y": 7
+            "y": 13
           },
           "id": 37,
-          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -1251,15 +1353,17 @@
               ],
               "displayMode": "table",
               "placement": "right",
+              "showLegend": true,
               "sortBy": "Mean",
               "sortDesc": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
               "datasource": {
@@ -1284,10 +1388,6 @@
     },
     {
       "collapsed": true,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -1297,15 +1397,23 @@
       "id": 40,
       "panels": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -1314,6 +1422,7 @@
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -1321,6 +1430,7 @@
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
@@ -1337,7 +1447,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "transparent"
+                    "color": "transparent",
+                    "value": 0
                   },
                   {
                     "color": "red",
@@ -1353,10 +1464,9 @@
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 9
+            "y": 19
           },
           "id": 52,
-          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -1365,15 +1475,17 @@
               ],
               "displayMode": "table",
               "placement": "right",
+              "showLegend": true,
               "sortBy": "Mean",
               "sortDesc": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
               "datasource": {
@@ -1403,9 +1515,13 @@
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -1414,6 +1530,7 @@
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -1421,6 +1538,7 @@
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
@@ -1437,7 +1555,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": 0
                   }
                 ]
               },
@@ -1449,10 +1568,9 @@
             "h": 5,
             "w": 12,
             "x": 12,
-            "y": 9
+            "y": 19
           },
           "id": 9,
-          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -1461,17 +1579,23 @@
               ],
               "displayMode": "table",
               "placement": "right",
+              "showLegend": true,
               "sortBy": "Mean",
               "sortDesc": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "expr": "sum(increase(haproxyingress_updates_total{cluster=~\"$cluster\",hostname=~\"$hostname\"}[1m])) by (hostname)",
               "format": "time_series",
               "intervalFactor": 1,
@@ -1488,10 +1612,6 @@
     },
     {
       "collapsed": true,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -1501,15 +1621,23 @@
       "id": 4,
       "panels": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -1518,6 +1646,7 @@
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -1525,6 +1654,7 @@
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
@@ -1541,7 +1671,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": 0
                   }
                 ]
               },
@@ -1553,10 +1684,9 @@
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 10
+            "y": 25
           },
           "id": 2,
-          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -1565,15 +1695,17 @@
               ],
               "displayMode": "table",
               "placement": "right",
+              "showLegend": true,
               "sortBy": "Mean",
               "sortDesc": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
               "datasource": {
@@ -1581,7 +1713,7 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "exemplar": true,
-              "expr": "sum(rate(haproxy_frontend_connections_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy!~\"$pub_front_exclude\"}[1m])) by (hostname)",
+              "expr": "sum(rate(haproxy_frontend_connections_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy!~\"$front_exclude_tcp_metrics\"}[1m])) by (hostname)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -1593,15 +1725,23 @@
           "type": "timeseries"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -1610,6 +1750,7 @@
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -1617,6 +1758,7 @@
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
@@ -1633,7 +1775,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": 0
                   }
                 ]
               },
@@ -1645,10 +1788,9 @@
             "h": 5,
             "w": 12,
             "x": 12,
-            "y": 10
+            "y": 25
           },
           "id": 11,
-          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -1657,15 +1799,17 @@
               ],
               "displayMode": "table",
               "placement": "right",
+              "showLegend": true,
               "sortBy": "Mean",
               "sortDesc": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
               "datasource": {
@@ -1673,7 +1817,7 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "exemplar": true,
-              "expr": "sum(rate(haproxy_frontend_http_responses_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy!~\"_front__auth.*\"}[1m])) by (hostname)",
+              "expr": "sum(rate(haproxy_frontend_http_responses_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy!~\"$front_exclude_http_metrics\"}[1m])) by (hostname)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -1695,9 +1839,13 @@
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -1706,6 +1854,7 @@
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -1713,6 +1862,7 @@
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
@@ -1729,7 +1879,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": 0
                   }
                 ]
               },
@@ -1741,10 +1892,9 @@
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 15
+            "y": 30
           },
           "id": 32,
-          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -1753,17 +1903,23 @@
               ],
               "displayMode": "table",
               "placement": "right",
+              "showLegend": true,
               "sortBy": "Mean",
               "sortDesc": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "expr": "sum(haproxy_frontend_current_sessions{cluster=~\"$cluster\",hostname=~\"$hostname\"}) by (hostname)",
               "format": "time_series",
               "intervalFactor": 1,
@@ -1775,15 +1931,23 @@
           "type": "timeseries"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -1792,6 +1956,7 @@
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -1799,6 +1964,7 @@
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
@@ -1815,7 +1981,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "transparent"
+                    "color": "transparent",
+                    "value": 0
                   },
                   {
                     "color": "dark-orange",
@@ -1835,10 +2002,9 @@
             "h": 5,
             "w": 12,
             "x": 12,
-            "y": 15
+            "y": 30
           },
           "id": 43,
-          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -1847,15 +2013,17 @@
               ],
               "displayMode": "table",
               "placement": "right",
+              "showLegend": true,
               "sortBy": "Mean",
               "sortDesc": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
               "datasource": {
@@ -1875,15 +2043,23 @@
           "type": "timeseries"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -1892,6 +2068,7 @@
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -1899,6 +2076,7 @@
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
@@ -1914,7 +2092,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": 0
                   }
                 ]
               },
@@ -1926,10 +2105,9 @@
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 20
+            "y": 35
           },
           "id": 12,
-          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -1937,15 +2115,17 @@
               ],
               "displayMode": "table",
               "placement": "right",
+              "showLegend": true,
               "sortBy": "Mean",
               "sortDesc": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
               "datasource": {
@@ -1953,7 +2133,7 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "exemplar": true,
-              "expr": "sum(rate(haproxy_frontend_bytes_in_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy!~\"$pub_front_exclude\"}[1m]))",
+              "expr": "sum(rate(haproxy_frontend_bytes_in_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy!~\"$front_exclude_tcp_metrics\"}[1m]))",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -1966,7 +2146,7 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "exemplar": true,
-              "expr": "-sum(rate(haproxy_frontend_bytes_out_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy!~\"$pub_front_exclude\"}[1m]))",
+              "expr": "-sum(rate(haproxy_frontend_bytes_out_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy!~\"$front_exclude_tcp_metrics\"}[1m]))",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -1978,15 +2158,23 @@
           "type": "timeseries"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -1995,6 +2183,7 @@
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -2002,6 +2191,7 @@
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
@@ -2017,7 +2207,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": 0
                   }
                 ]
               },
@@ -2029,10 +2220,9 @@
             "h": 5,
             "w": 12,
             "x": 12,
-            "y": 20
+            "y": 35
           },
           "id": 13,
-          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -2040,15 +2230,17 @@
               ],
               "displayMode": "table",
               "placement": "right",
+              "showLegend": true,
               "sortBy": "Mean",
               "sortDesc": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
               "datasource": {
@@ -2056,7 +2248,7 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "exemplar": true,
-              "expr": "sum(rate(haproxy_frontend_bytes_in_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy!~\"$pub_front_exclude\"}[1m])) by (hostname)",
+              "expr": "sum(rate(haproxy_frontend_bytes_in_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy!~\"$front_exclude_tcp_metrics\"}[1m])) by (hostname)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -2069,7 +2261,7 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "exemplar": true,
-              "expr": "-sum(rate(haproxy_frontend_bytes_out_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy!~\"$pub_front_exclude\"}[1m])) by (hostname)",
+              "expr": "-sum(rate(haproxy_frontend_bytes_out_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy!~\"$front_exclude_tcp_metrics\"}[1m])) by (hostname)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -2086,10 +2278,6 @@
     },
     {
       "collapsed": true,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -2109,9 +2297,13 @@
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -2120,6 +2312,7 @@
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -2127,6 +2320,7 @@
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
@@ -2142,7 +2336,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": 0
                   }
                 ]
               },
@@ -2154,10 +2349,9 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 26
+            "y": 41
           },
           "id": 18,
-          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -2166,17 +2360,23 @@
               ],
               "displayMode": "table",
               "placement": "bottom",
+              "showLegend": true,
               "sortBy": "Mean",
               "sortDesc": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "expr": "topk(5,sum(increase(haproxy_backend_http_responses_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy=~\"$backend\",code=\"4xx\"}[1m])) by (proxy,code))",
               "format": "time_series",
               "intervalFactor": 1,
@@ -2198,9 +2398,13 @@
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -2209,6 +2413,7 @@
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -2216,6 +2421,7 @@
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
@@ -2231,7 +2437,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": 0
                   }
                 ]
               },
@@ -2243,10 +2450,9 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 26
+            "y": 41
           },
           "id": 19,
-          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -2255,17 +2461,23 @@
               ],
               "displayMode": "table",
               "placement": "bottom",
+              "showLegend": true,
               "sortBy": "Mean",
               "sortDesc": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "expr": "topk(5,sum(increase(haproxy_backend_http_responses_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy=~\"$backend\",code=~\"5xx|other\"}[1m])) by (proxy,code))",
               "format": "time_series",
               "intervalFactor": 1,
@@ -2282,10 +2494,6 @@
     },
     {
       "collapsed": true,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -2305,9 +2513,13 @@
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -2316,6 +2528,7 @@
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -2323,6 +2536,7 @@
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
@@ -2339,7 +2553,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": 0
                   }
                 ]
               },
@@ -2351,10 +2566,9 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 21
+            "y": 51
           },
           "id": 6,
-          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -2363,17 +2577,23 @@
               ],
               "displayMode": "table",
               "placement": "bottom",
+              "showLegend": true,
               "sortBy": "Mean",
               "sortDesc": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "expr": "topk(5,sum(rate(haproxy_backend_http_responses_total{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy=~\"$backend\"}[1m])) by (proxy))",
               "format": "time_series",
               "intervalFactor": 1,
@@ -2385,15 +2605,23 @@
           "type": "timeseries"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -2402,6 +2630,7 @@
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -2409,6 +2638,7 @@
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
@@ -2424,7 +2654,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": 0
                   }
                 ]
               },
@@ -2436,10 +2667,9 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 21
+            "y": 51
           },
           "id": 14,
-          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -2448,15 +2678,17 @@
               ],
               "displayMode": "table",
               "placement": "bottom",
+              "showLegend": true,
               "sortBy": "Mean",
               "sortDesc": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
               "datasource": {
@@ -2497,9 +2729,13 @@
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -2508,6 +2744,7 @@
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -2515,6 +2752,7 @@
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
@@ -2531,7 +2769,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": 0
                   }
                 ]
               },
@@ -2543,10 +2782,9 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 29
+            "y": 59
           },
           "id": 24,
-          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -2555,17 +2793,23 @@
               ],
               "displayMode": "table",
               "placement": "bottom",
+              "showLegend": true,
               "sortBy": "Mean",
               "sortDesc": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "expr": "topk(5,max(haproxy_backend_connect_time_average_seconds{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy=~\"$backend\"}) by (proxy))",
               "format": "time_series",
               "intervalFactor": 1,
@@ -2587,9 +2831,13 @@
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -2598,6 +2846,7 @@
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -2605,6 +2854,7 @@
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
@@ -2620,7 +2870,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": 0
                   }
                 ]
               },
@@ -2632,10 +2883,9 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 29
+            "y": 59
           },
           "id": 10,
-          "links": [],
           "options": {
             "legend": {
               "calcs": [
@@ -2644,17 +2894,23 @@
               ],
               "displayMode": "table",
               "placement": "bottom",
+              "showLegend": true,
               "sortBy": "Mean",
               "sortDesc": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "expr": "topk(5,sum(haproxy_backend_current_sessions{cluster=~\"$cluster\",hostname=~\"$hostname\",proxy=~\"$backend\"}) by (proxy))",
               "format": "time_series",
               "intervalFactor": 1,
@@ -2671,10 +2927,6 @@
     },
     {
       "collapsed": true,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -2684,6 +2936,10 @@
       "id": 58,
       "panels": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -2691,14 +2947,21 @@
               },
               "custom": {
                 "align": "auto",
-                "displayMode": "auto"
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "footer": {
+                  "reducers": []
+                },
+                "inspect": false
               },
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": 0
                   }
                 ]
               }
@@ -2711,7 +2974,7 @@
                 },
                 "properties": [
                   {
-                    "id": "custom.hidden",
+                    "id": "custom.hideFrom.viz",
                     "value": true
                   }
                 ]
@@ -2758,20 +3021,14 @@
             "h": 7,
             "w": 10,
             "x": 0,
-            "y": 7
+            "y": 68
           },
           "id": 60,
           "options": {
-            "footer": {
-              "fields": "",
-              "reducer": [
-                "sum"
-              ],
-              "show": false
-            },
+            "cellHeight": "sm",
             "showHeader": true
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
               "datasource": {
@@ -2809,9 +3066,13 @@
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "bars",
                 "fillOpacity": 100,
                 "gradientMode": "none",
@@ -2820,6 +3081,7 @@
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -2827,6 +3089,7 @@
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
@@ -2844,7 +3107,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": 0
                   }
                 ]
               },
@@ -2856,7 +3120,7 @@
             "h": 7,
             "w": 7,
             "x": 10,
-            "y": 7
+            "y": 68
           },
           "id": 63,
           "options": {
@@ -2865,28 +3129,41 @@
                 "sum"
               ],
               "displayMode": "table",
-              "placement": "bottom"
+              "placement": "bottom",
+              "showLegend": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "expr": "sum(increase(haproxyingress_cert_signing_count{cluster=~\"$cluster\",hostname=~\"$hostname\",reason=\"missing\",success=\"true\"}[1m])) by (hostname)",
-              "hide": false,
               "instant": false,
               "legendFormat": "{{hostname}} | missing",
               "refId": "A"
             },
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "expr": "sum(increase(haproxyingress_cert_signing_count{cluster=~\"$cluster\",hostname=~\"$hostname\",reason=\"expiring\",success=\"true\"}[1m])) by (hostname)",
               "legendFormat": "{{hostname}} | expiring",
               "refId": "B"
             },
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "expr": "sum(increase(haproxyingress_cert_signing_count{cluster=~\"$cluster\",hostname=~\"$hostname\",reason=\"outdated\",success=\"true\"}[1m])) by (hostname)",
               "instant": false,
               "legendFormat": "{{hostname}} | outdated",
@@ -2907,9 +3184,13 @@
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "bars",
                 "fillOpacity": 100,
                 "gradientMode": "none",
@@ -2918,6 +3199,7 @@
                   "tooltip": false,
                   "viz": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -2925,6 +3207,7 @@
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
@@ -2942,7 +3225,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": 0
                   }
                 ]
               },
@@ -2954,7 +3238,7 @@
             "h": 7,
             "w": 7,
             "x": 17,
-            "y": 7
+            "y": 68
           },
           "id": 62,
           "options": {
@@ -2963,16 +3247,22 @@
                 "sum"
               ],
               "displayMode": "table",
-              "placement": "bottom"
+              "placement": "bottom",
+              "showLegend": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
-          "pluginVersion": "8.4.6",
+          "pluginVersion": "12.4.1",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "expr": "sum(increase(haproxyingress_cert_signing_count{cluster=~\"$cluster\",hostname=~\"$hostname\",success=\"false\"}[1m])) by (hostname,domains)",
               "legendFormat": "{{hostname}} | {{domains}}",
               "refId": "A"
@@ -2986,9 +3276,9 @@
       "type": "row"
     }
   ],
+  "preload": false,
   "refresh": "30s",
-  "schemaVersion": 35,
-  "style": "dark",
+  "schemaVersion": 42,
   "tags": [
     "haproxy",
     "ingress-controller",
@@ -3004,7 +3294,6 @@
           "uid": "${DS_PROMETHEUS}"
         },
         "definition": "label_values(haproxy_frontend_sessions_total,cluster)",
-        "hide": 0,
         "includeAll": true,
         "multi": true,
         "name": "cluster",
@@ -3015,7 +3304,7 @@
         },
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
+        "regexApplyTo": "value",
         "sort": 1,
         "type": "query"
       },
@@ -3027,7 +3316,6 @@
           "uid": "${DS_PROMETHEUS}"
         },
         "definition": "label_values(haproxy_frontend_sessions_total{cluster=~\"$cluster\"},hostname)",
-        "hide": 0,
         "includeAll": true,
         "multi": true,
         "name": "hostname",
@@ -3038,22 +3326,17 @@
         },
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
+        "regexApplyTo": "value",
         "sort": 1,
-        "tagValuesQuery": "",
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
+        "type": "query"
       },
       {
-        "allValue": "",
         "current": {},
         "datasource": {
           "type": "prometheus",
           "uid": "${DS_PROMETHEUS}"
         },
         "definition": "label_values(haproxy_backend_sessions_total{cluster=~\"$cluster\",hostname=~\"$hostname\"},proxy)",
-        "hide": 0,
         "includeAll": true,
         "multi": true,
         "name": "backend",
@@ -3064,46 +3347,49 @@
         },
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
+        "regexApplyTo": "value",
         "sort": 1,
-        "tagValuesQuery": "",
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
+        "type": "query"
       },
       {
+        "allowCustomValue": false,
         "current": {
-          "selected": true,
-          "text": "v0.14+",
-          "value": "(.*__local)"
+          "text": ".*__local",
+          "value": ".*__local"
         },
-        "description": "This configuration affect how frontend metrics are calculated",
-        "hide": 0,
-        "includeAll": false,
-        "label": "controller version",
-        "multi": false,
-        "name": "pub_front_exclude",
+        "description": "Defines the frontend name pattern to be excluded from TCP+HTTP related metrics, like connection and byte counters. These frontends are local/internal, and their metrics are already being counted from the public ones.",
+        "hide": 2,
+        "name": "front_exclude_tcp_metrics",
         "options": [
           {
-            "selected": false,
-            "text": "v0.10-v0.13",
-            "value": "(_front__auth)"
-          },
-          {
-            "selected": false,
-            "text": "v0.10-v0.13 (with ssl-passthrough)",
-            "value": "(_front__auth|_front_https)"
-          },
-          {
             "selected": true,
-            "text": "v0.14+",
-            "value": "(.*__local)"
+            "text": ".*__local",
+            "value": ".*__local"
           }
         ],
-        "query": "v0.10-v0.13 : (_front__auth) , v0.10-v0.13 (with ssl-passthrough) : (_front__auth|_front_https) , v0.14+ : (.*__local)",
-        "queryValue": "",
-        "skipUrlSync": false,
-        "type": "custom"
+        "query": ".*__local",
+        "type": "custom",
+        "valuesFormat": "csv"
+      },
+      {
+        "allowCustomValue": false,
+        "current": {
+          "text": "_front__auth.*",
+          "value": "_front__auth.*"
+        },
+        "description": "Defines the frontend name pattern to be excluded from HTTP related metrics, like HTTP responses counter. These frontends are local/internal, and their metrics are already being counted from the public HTTP ones.",
+        "hide": 2,
+        "name": "front_exclude_http_metrics",
+        "options": [
+          {
+            "selected": true,
+            "text": "_front__auth.*",
+            "value": "_front__auth.*"
+          }
+        ],
+        "query": "_front__auth.*",
+        "type": "custom",
+        "valuesFormat": "csv"
       }
     ]
   },
@@ -3111,34 +3397,10 @@
     "from": "now-1h",
     "to": "now"
   },
-  "timepicker": {
-    "refresh_intervals": [
-      "5s",
-      "10s",
-      "30s",
-      "1m",
-      "5m",
-      "15m",
-      "30m",
-      "1h",
-      "2h",
-      "1d"
-    ],
-    "time_options": [
-      "5m",
-      "15m",
-      "1h",
-      "6h",
-      "12h",
-      "24h",
-      "2d",
-      "7d",
-      "30d"
-    ]
-  },
-  "timezone": "",
+  "timepicker": {},
+  "timezone": "browser",
   "title": "HAProxy Ingress",
   "uid": "qr3JtwDWz",
-  "version": 3,
+  "version": 4,
   "weekStart": ""
 }
