@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 //go:debug default=go1.19
+//go:debug x509keypairleaf=1
 package main
 
 // TODO remove go1.19 compatibility after dropping legacy mode
