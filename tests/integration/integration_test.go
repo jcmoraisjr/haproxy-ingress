@@ -1,3 +1,5 @@
+//go:debug default=go1.19
+//go:debug x509keypairleaf=1
 package integration_test
 
 import (
