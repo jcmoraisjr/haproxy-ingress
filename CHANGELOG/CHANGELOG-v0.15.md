@@ -6,6 +6,10 @@
   * [Upgrading with embedded Acme](#upgrading-with-embedded-acme)
   * [Upgrading with custom repositories](#upgrading-with-custom-repositories)
 * [Contributors](#contributors)
+* [v0.15.3](#v0153)
+  * [Reference](#reference-r3)
+  * [Release notes](#release-notes-r3)
+  * [Fixes and improvements](#fixes-and-improvements-r3)
 * [v0.15.2](#v0152)
   * [Reference](#reference-r2)
   * [Release notes](#release-notes-r2)
@@ -144,6 +148,29 @@ See the full syntax and default values in the [README.md](https://github.com/hap
 * RT ([hedgieinsocks](https://github.com/hedgieinsocks))
 * tomklapka ([tomklapka](https://github.com/tomklapka))
 * Tomasz Zurkowski ([doriath](https://github.com/doriath))
+
+# v0.15.3
+
+## Reference (r3)
+
+* Release date: `2026-03-25`
+* Helm chart: `--version 0.15.3`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.15.3`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.15.3`
+* Embedded HAProxy version: `2.6.25`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.15.3`
+
+## Release notes (r3)
+
+This release fixes one issue found on v0.15 branch:
+
+* StopMotionCuber reported a misbehavior on TLS certificate validation. A backport that fixes a certificate validation started to use the Leaf attribute from the `X509KeyPair()` parsing. This is however a go1.23 implementation, and v0.15 branch uses go1.19 compatibility mode due to legacy code that was only removed on HAProxy Ingress v0.16. The result is an unassigned Leaf certificate, leading to failures on all TLS certificate handling.
+
+## Fixes and improvements (r3)
+
+New fixes and improvements since `v0.15.2`:
+
+* enable leaf reference on go1.19 compatibility mode [#1441](https://github.com/jcmoraisjr/haproxy-ingress/pull/1441) (jcmoraisjr)
 
 # v0.15.2
 
