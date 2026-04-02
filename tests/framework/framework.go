@@ -1120,11 +1120,15 @@ func (*framework) CreateAuthzServer(ctx context.Context, t *testing.T, o ...opti
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if opt.AuthzKey != "" && r.Header.Get(opt.AuthzKey) != opt.AuthzValue {
-			w.Header().Set("x-Authz", "Unauthorized")
+			w.Header().Set("X-Authz", "Unauthorized")
+			w.Header().Set("X-Fail", "error")
+			w.Header().Set("X-Extra", "fail")
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 		w.Header().Set("x-Authz", "Authorized")
+		w.Header().Set("X-succeed", "ok")
+		w.Header().Set("X-Extra", "succeed")
 		w.WriteHeader(http.StatusOK)
 	})
 	startHTTPServer(t, mux, serverPort)
