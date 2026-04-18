@@ -99,10 +99,12 @@ func (c *config) SyncConfig() {
 }
 
 func (c *config) syncFrontend(f *hatypes.Frontend) {
+	f.RenderedName = f.Name
 	if f.IsHTTPS {
 		if f.HasSSLPassthrough() {
 			// using ssl-passthrough config, so need a `mode tcp`
 			// frontend with `inspect-delay` and `req.ssl_sni`
+			f.RenderedName = f.Name + "__local"
 			if f.Name == "_front_https" {
 				f.TLSProxyName = "_front__tls" // backward compatible name
 			} else {

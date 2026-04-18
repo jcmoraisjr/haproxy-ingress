@@ -337,7 +337,7 @@ func (b *Backend) PathsMaps() []*BackendPathsMaps {
 func (b *Backend) createPathsMaps() []*BackendPathsMaps {
 	var pathsMaps []*BackendPathsMaps
 	for _, path := range b.Paths {
-		frontendName := path.Host.Frontend.RenderedName()
+		frontendName := path.Host.Frontend.RenderedName
 		i := slices.IndexFunc(pathsMaps, func(b *BackendPathsMaps) bool { return slices.Contains(b.Frontends, frontendName) })
 		if i < 0 {
 			i = len(pathsMaps)

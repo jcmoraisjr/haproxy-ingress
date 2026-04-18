@@ -43,13 +43,14 @@ func (f *Frontends) AcquireFrontend(port int32, isHTTPS bool) *Frontend {
 		name = fmt.Sprintf("%s_%d", name, port)
 	}
 	frontend := &Frontend{
-		Name:     name,
-		Bind:     fmt.Sprintf(":%d", port),
-		IsHTTPS:  isHTTPS,
-		port:     port,
-		hosts:    map[string]*Host{},
-		hostsAdd: map[string]*Host{},
-		hostsDel: map[string]*Host{},
+		Name:         name,
+		RenderedName: name,
+		Bind:         fmt.Sprintf(":%d", port),
+		IsHTTPS:      isHTTPS,
+		port:         port,
+		hosts:        map[string]*Host{},
+		hostsAdd:     map[string]*Host{},
+		hostsDel:     map[string]*Host{},
 	}
 	f.items = append(f.items, frontend)
 	return frontend
@@ -309,15 +310,6 @@ func (f *Frontend) HasTLSAuth() bool {
 		}
 	}
 	return false
-}
-
-// RenderedName returns the actual HAProxy frontend name, including the
-// "__local" suffix when the frontend is HTTPS with SSL passthrough.
-func (f *Frontend) RenderedName() string {
-	if f.IsHTTPS && f.HasSSLPassthrough() {
-		return f.Name + "__local"
-	}
-	return f.Name
 }
 
 // HasSSLPassthrough ...
