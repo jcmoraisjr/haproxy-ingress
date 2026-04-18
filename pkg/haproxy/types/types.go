@@ -487,10 +487,11 @@ type Frontends struct {
 
 // Frontend ...
 type Frontend struct {
-	HTTPMaps  *FrontendHTTPMaps
-	HTTPSMaps *FrontendHTTPSMaps
-	Name      string
-	IsHTTPS   bool
+	HTTPMaps     *FrontendHTTPMaps
+	HTTPSMaps    *FrontendHTTPSMaps
+	Name         string
+	RenderedName string
+	IsHTTPS      bool
 	//
 	// Bind related
 	Bind        string

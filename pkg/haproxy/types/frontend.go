@@ -43,13 +43,14 @@ func (f *Frontends) AcquireFrontend(port int32, isHTTPS bool) *Frontend {
 		name = fmt.Sprintf("%s_%d", name, port)
 	}
 	frontend := &Frontend{
-		Name:     name,
-		Bind:     fmt.Sprintf(":%d", port),
-		IsHTTPS:  isHTTPS,
-		port:     port,
-		hosts:    map[string]*Host{},
-		hostsAdd: map[string]*Host{},
-		hostsDel: map[string]*Host{},
+		Name:         name,
+		RenderedName: name,
+		Bind:         fmt.Sprintf(":%d", port),
+		IsHTTPS:      isHTTPS,
+		port:         port,
+		hosts:        map[string]*Host{},
+		hostsAdd:     map[string]*Host{},
+		hostsDel:     map[string]*Host{},
 	}
 	f.items = append(f.items, frontend)
 	return frontend

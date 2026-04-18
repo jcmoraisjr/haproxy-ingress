@@ -4826,6 +4826,81 @@ d3.local#/ d3_app1-http_8080
 	c.logger.CompareLogging(defaultLogging)
 }
 
+func TestInstanceSSLPassthroughFrontendACL(t *testing.T) {
+	c := setup(t)
+	defer c.teardown()
+
+	var h *hatypes.Host
+	var b *hatypes.Backend
+
+	fhttp := c.httpFrontend(80)
+	fhttps := c.httpsFrontend(443)
+
+	// A backend accessible from both HTTP and HTTPS frontends with
+	// different path config (SSLRedirect on HTTP) to trigger NeedFrontendACL.
+	b = c.config.Backends().AcquireBackend("d1", "app", "8080")
+	b.Endpoints = []*hatypes.Endpoint{endpointS1}
+
+	h = fhttp.AcquireHost("d1.local")
+	h.AddPath(b, "/", hatypes.MatchBegin).SSLRedirect = true
+
+	h = fhttps.AcquireHost("d1.local")
+	h.AddPath(b, "/", hatypes.MatchBegin)
+	h.TLS.TLSFilename = "/var/haproxy/ssl/certs/default.pem"
+	h.TLS.TLSHash = "0"
+
+	// SSL passthrough host on a different hostname, same HTTPS frontend.
+	// This causes the HTTPS frontend to be rendered as _front_https__local.
+	b2 := c.config.Backends().AcquireBackend("d2", "ssl-app", "8443")
+	b2.Endpoints = []*hatypes.Endpoint{endpointS21}
+	b2.ModeTCP = true
+
+	h = fhttps.AcquireHost("d2.local")
+	h.AddPath(b2, "/", hatypes.MatchBegin)
+	h.SSLPassthrough = true
+
+	c.Update()
+	c.checkConfig(`
+<<global>>
+<<defaults>>
+backend d1_app_8080
+    mode http
+    acl https-request ssl_fc
+    # path01 = fe:_front_http -- host/path:d1.local/
+    # path02 = fe:_front_https__local -- host/path:d1.local/
+    http-request set-var-fmt(req.fe) "%f"
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_http_req__begin.map) if { var(req.fe) -m str _front_http }
+    http-request set-var(txn.pathID) var(req.base),lower,map_beg(/etc/haproxy/maps/_back_d1_app_8080_front_https__local_req__begin.map) if { var(req.fe) -m str _front_https__local }
+    http-request redirect scheme https if !https-request { var(txn.pathID) -m str path01 }
+    server s1 172.17.0.11:8080 weight 100
+backend d2_ssl-app_8443
+    mode tcp
+    server s21 172.17.0.121:8080 weight 100
+<<backends-default>>
+<<frontend-http>>
+    default_backend _error404
+listen _front__tls
+    mode tcp
+    bind :443
+    tcp-request inspect-delay 5s
+    tcp-request content set-var(req.sslpassback) req.ssl_sni,lower,map_str(/etc/haproxy/maps/_front_https_sslpassthrough__exact.map)
+    tcp-request content accept if { req.ssl_hello_type 1 }
+    use_backend %[var(req.sslpassback)]
+    server _default_server_front_https_socket unix@/var/run/haproxy/_front_https_socket.sock send-proxy-v2
+frontend _front_https__local
+    mode http
+    bind unix@/var/run/haproxy/_front_https_socket.sock accept-proxy ssl alpn h2,http/1.1 crt-list /etc/haproxy/maps/_front_https_bind_crt.list ca-ignore-err all crt-ignore-err all
+    <<set-req-base>>
+    http-request set-var(req.hostbackend) var(req.base),lower,map_beg(/etc/haproxy/maps/_front_https_host__begin.map)
+    <<https-headers>>
+    use_backend %[var(req.hostbackend)] if { var(req.hostbackend) -m found }
+    default_backend _error404
+<<support>>
+`)
+
+	c.logger.CompareLogging(defaultLogging)
+}
+
 func TestInstanceRootRedirect(t *testing.T) {
 	c := setup(t)
 	defer c.teardown()

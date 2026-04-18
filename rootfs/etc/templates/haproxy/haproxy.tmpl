@@ -1371,7 +1371,7 @@ frontend {{ $frontend.Name }}
 # #
 #     HTTPS frontend
 #
-{{- $httpsFrontendName := printf "%s%s" $frontend.Name (iif $hasSSLPassthrough "__local" "") }}
+{{- $httpsFrontendName := $frontend.RenderedName }}
 frontend {{ $httpsFrontendName }}
     mode http
 
