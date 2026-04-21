@@ -274,6 +274,13 @@ func (i *instance) CalcIdleMetric() {
 	idle, err := strconv.Atoi(idleStr[1])
 	if err != nil {
 		i.logger.Error("Idle_pct has an invalid integer: %s", idleStr[1])
+		return
+	}
+	if idle < 0 || idle > 100 {
+		// https://github.com/jcmoraisjr/haproxy-ingress/issues/1452
+		// https://github.com/haproxy/haproxy/issues/3339
+		i.logger.Warn("haproxy idle metric '%d' is out of bounds (0-100), skipping the scraped data to avoid an inaccurate metric", idle)
+		return
 	}
 	i.metrics.AddIdleFactor(idle)
 }
