@@ -507,16 +507,20 @@ func TestIntegrationIngress(t *testing.T) {
 		authzPort := f.CreateAuthzServer(ctx, t,
 			options.AuthzPasskey("x-token", "123"),
 		)
-		_, hostname := f.CreateIngress(ctx, t, svc,
+		_, hostnameBack := f.CreateIngress(ctx, t, svc,
 			options.AddConfigKeyAnnotation(ingtypes.BackAuthURL, fmt.Sprintf("http://127.0.0.1:%d", authzPort)),
 		)
+		_, hostnameFront := f.CreateIngress(ctx, t, svc,
+			options.AddConfigKeyAnnotation(ingtypes.BackAuthURL, fmt.Sprintf("http://127.0.0.1:%d", authzPort)),
+			options.AddConfigKeyAnnotation(ingtypes.BackAuthExternalPlacement, "frontend"),
+		)
 
-		req := func(tokenValue string, authorized bool) framework.Response {
+		req := func(hostname, tokenValue string, authorized bool) framework.Response {
 			expcode := http.StatusOK
 			if !authorized {
 				expcode = http.StatusUnauthorized
 			}
-			res := f.Request(ctx, t, http.MethodGet, hostname, "/",
+			res := f.Request(ctx, t, http.MethodGet, hostname, "/path",
 				options.ExpectResponseCode(expcode),
 				options.SetHeader("x-token", tokenValue),
 			)
@@ -532,11 +536,18 @@ func TestIntegrationIngress(t *testing.T) {
 		}
 
 		// invalid token, forbidden
-		_ = req("132", false)
+		_ = req(hostnameBack, "132", false)
 
 		// valid token, authorized
-		res := req("123", true)
-		assert.Equal(t, map[string]string{"x-token": "123", "x-authz": "Authorized"}, res.EchoResponse.ReqHeaders)
+		resBack := req(hostnameBack, "123", true)
+		assert.Equal(t, map[string]string{"x-token": "123", "x-authz": "Authorized"}, resBack.EchoResponse.ReqHeaders)
+
+		// invalid token, forbidden
+		_ = req(hostnameFront, "132", false)
+
+		// valid token, authorized
+		resFront := req(hostnameFront, "123", true)
+		assert.Equal(t, map[string]string{"x-token": "123", "x-authz": "Authorized"}, resFront.EchoResponse.ReqHeaders)
 	})
 
 	t.Run("should authorize websocket", func(t *testing.T) {
