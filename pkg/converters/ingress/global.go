@@ -35,7 +35,9 @@ type ConfigGlobal interface {
 	Sync(full bool) error
 }
 
-// TODO: decouple global and ingress converters, and move global to its own package
+// TODO: decouple global and ingress converters, and move global to its own package.
+// Currently the configuration is already decoupled, but the global scope in the
+// updater still shares some types and methods with the ingress counterpart.
 
 // NewGlobalConverter ...
 func NewGlobalConverter(options *convtypes.ConverterOptions, haproxy haproxy.Config, changed *convtypes.ChangedObjects) ConfigGlobal {

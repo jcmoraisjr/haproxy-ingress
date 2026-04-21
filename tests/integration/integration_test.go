@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	"github.com/jcmoraisjr/haproxy-ingress/tests/framework"
 	"github.com/jcmoraisjr/haproxy-ingress/tests/framework/options"
@@ -1445,7 +1446,12 @@ func TestIntegrationGateway(t *testing.T) {
 	t.Run("v050-v1beta1", func(t *testing.T) {
 		for _, channel := range channels {
 			t.Run(channel, func(t *testing.T) {
-				f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v050-v1beta1-"+channel))
+				f := framework.NewFramework(ctx, t,
+					options.CRDs("gateway-api-v050-v1beta1-"+channel),
+					options.OptOverride(func(opt *config.Options) {
+						opt.WatchIngress = false
+					}),
+				)
 				f.StartController(ctx, t)
 				httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1beta1")
 				gc := f.CreateGatewayClassB1(ctx, t)
@@ -1466,7 +1472,12 @@ func TestIntegrationGateway(t *testing.T) {
 	t.Run("v100-v1", func(t *testing.T) {
 		for _, channel := range channels {
 			t.Run(channel, func(t *testing.T) {
-				f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v100-v1-"+channel))
+				f := framework.NewFramework(ctx, t,
+					options.CRDs("gateway-api-v100-v1-"+channel),
+					options.OptOverride(func(opt *config.Options) {
+						opt.WatchIngress = false
+					}),
+				)
 				f.StartController(ctx, t)
 
 				httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1-http")
@@ -1524,7 +1535,12 @@ func TestIntegrationGateway(t *testing.T) {
 	t.Run("v151-v1", func(t *testing.T) {
 		for _, channel := range channels {
 			t.Run(channel, func(t *testing.T) {
-				f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v151-v1-"+channel))
+				f := framework.NewFramework(ctx, t,
+					options.CRDs("gateway-api-v151-v1-"+channel),
+					options.OptOverride(func(opt *config.Options) {
+						opt.WatchIngress = false
+					}),
+				)
 				f.StartController(ctx, t)
 
 				httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1-http")

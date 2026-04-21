@@ -113,17 +113,19 @@ func NewFramework(ctx context.Context, t *testing.T, o ...options.Framework) *fr
 	require.NoError(t, err)
 
 	return &framework{
-		scheme: scheme,
-		config: config,
-		cli:    cli,
+		scheme:      scheme,
+		config:      config,
+		cli:         cli,
+		optOverride: opt.OptOverride,
 	}
 }
 
 type framework struct {
-	scheme  *runtime.Scheme
-	config  *rest.Config
-	cli     client.WithWatch
-	admSock socket.HAProxySocket
+	scheme      *runtime.Scheme
+	config      *rest.Config
+	cli         client.WithWatch
+	admSock     socket.HAProxySocket
+	optOverride options.OptOverrideCallback
 }
 
 // HAProxy version 3.4-dev5-028940725 2026/02/19 - https://haproxy.org/
@@ -232,6 +234,9 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 	opt.LocalFSPrefix = "/tmp/haproxy-ingress"
 	opt.PublishService = PublishSvcName
 	opt.ConfigMap = GlobalConfigMap.String()
+	if f.optOverride != nil {
+		f.optOverride(opt)
+	}
 	os.Setenv("POD_NAMESPACE", GlobalConfigMap.Namespace)
 	ctx, cancel := context.WithCancel(ctx)
 	cfg, err := ctrlconfig.CreateWithConfig(ctx, f.config, opt)

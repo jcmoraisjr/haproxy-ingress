@@ -66,7 +66,9 @@ type watchers struct {
 
 func (w *watchers) getHandlers() []*hdlr {
 	handlers := w.handlersCore()
-	handlers = append(handlers, w.handlersIngress()...)
+	if w.cfg.WatchIngress {
+		handlers = append(handlers, w.handlersIngress()...)
+	}
 	if w.cfg.HasGatewayB1 {
 		handlers = append(handlers, w.handlersGatewayv1beta1()...)
 	}

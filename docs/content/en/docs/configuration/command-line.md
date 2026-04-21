@@ -79,6 +79,7 @@ The following command-line options are supported:
 | [`--wait-before-shutdown`](#wait-before-shutdown)       | seconds as integer         | `0`                     | v0.8  |
 | [`--wait-before-update`](#wait-before-update)           | duration                   | `200ms`                 | v0.11 |
 | [`--watch-gateway`](#watch-gateway)                     | [true\|false]              | `true`                  | v0.13 |
+| [`--watch-ingress`](#watch-ingress)                     | [true\|false]              | `true`                  | v0.17 |
 | [`--watch-ingress-without-class`](#ingress-class)       | [true\|false]              | `false`                 | v0.12 |
 | [`--watch-namespace`](#watch-namespace)                 | namespace                  | all namespaces          |       |
 
@@ -850,6 +851,16 @@ restarted if the CRDs are installed after starting the controller. See also the 
 configuration [doc]({{% relref "gateway-api" %}}).
 
 When enabled, `--watch-gateway` enforces a leader election. A leader must be elected to update Gateway API status. See also [`--election-id`](#election-id).
+
+---
+
+# watch-ingress
+
+* `--watch-ingress`
+
+Since v0.17
+
+Enables Ingress API watch and parse. This option is enabled by default. Add `--watch-ingress=false` option to instruct the controller to not watch, parse and synchronize any ingress resource. Disabling this configuration is similar to not have neither an ingress class nor the ingress class annotation configured, with the advantage of saving memory by not caching or watching ingress resources.
 
 ---
 

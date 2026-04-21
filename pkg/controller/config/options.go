@@ -13,6 +13,7 @@ func NewOptions() *Options {
 		KubeConfig:              StringValue(""),
 		IngressClass:            "haproxy",
 		ReloadStrategy:          "reusesocket",
+		WatchIngress:            true,
 		WatchGateway:            true,
 		MasterWorker:            true,
 		ConnectionTimeout:       30 * time.Second,
@@ -58,6 +59,7 @@ type Options struct {
 	ValidateConfig           bool
 	ControllerClass          string
 	WatchIngressWithoutClass bool
+	WatchIngress             bool
 	WatchGateway             bool
 	MasterWorker             bool
 	MasterSocket             string
@@ -209,6 +211,10 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 
 	fs.BoolVar(&o.WatchGateway, "watch-gateway", o.WatchGateway, ""+
 		"Watch and parse resources from the Gateway API.",
+	)
+
+	fs.BoolVar(&o.WatchIngress, "watch-ingress", o.WatchIngress, ""+
+		"Watch and parse resources from the Ingress API.",
 	)
 
 	fs.BoolVar(&o.MasterWorker, "master-worker", o.MasterWorker, ""+
