@@ -18,7 +18,6 @@ Baran
 barbaz
 barfoo
 basicpwd
-bindproc
 Bitly
 Bitnami
 bluegreen
@@ -75,6 +74,7 @@ crleaderelection
 crlfile
 crtder
 crtfile
+ctrlclient
 crtlist
 ctrlconfig
 ctxrun
@@ -146,12 +146,12 @@ fullslots
 fullsync
 funcmap
 gatewayclass
+gatewayclasses
 gcr
 genofire
 gks
 glbc
 glog
-gnet
 goimports
 gomod
 goruntime
@@ -160,7 +160,6 @@ gotestsum
 goyaml
 grantapis
 grpcs
-gvstr
 gwapis
 gwapischeme
 gwapiversioned
@@ -386,7 +385,7 @@ redirfrom
 redirto
 redispatched
 refactors
-referencegrant
+referencegrants
 relabelings
 reloadlogger
 relref

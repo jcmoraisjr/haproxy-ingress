@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/signal"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -40,7 +41,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -49,10 +49,10 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
-	gwapiversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/version"
@@ -138,9 +138,9 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 	// `kubeConfig` is the real `*rest.Config` used
 	// by the manager to create the controller's client
 	//
-	// the clients below are just used locally to validate some config options
+	// the client below is just used locally to validate some config options
 	client := kubernetes.NewForConfigOrDie(kubeConfig)
-	clientGateway := gwapiversioned.NewForConfigOrDie(kubeConfig)
+	discovery := client.Discovery()
 
 	configLog.Info("version info",
 		"controller-publicname", versionInfo.Name,
@@ -215,36 +215,49 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 
 	var hasGateway, hasGatewayV1, hasGatewayB1, hasTCPRouteA2, hasTLSRouteV1, hasTLSRouteA2, hasGrantV1, hasGrantB1 bool
 	if opt.WatchGateway {
-		gwapis := []string{"gatewayclass", "gateway", "httproute"}
-		tcpapis := []string{"tcproute"}
-		tlsapis := []string{"tlsroute"}
-		grantapis := []string{"referencegrant"}
+		v1APIs, err := discovery.ServerResourcesForGroupVersion(gatewayv1.GroupVersion.String())
+		if ctrlclient.IgnoreNotFound(err) != nil {
+			return nil, err
+		}
+		v1beta1APIs, err := discovery.ServerResourcesForGroupVersion(gatewayv1beta1.GroupVersion.String())
+		if ctrlclient.IgnoreNotFound(err) != nil {
+			return nil, err
+		}
+		v1alpha2APIs, err := discovery.ServerResourcesForGroupVersion(gatewayv1alpha2.GroupVersion.String())
+		if ctrlclient.IgnoreNotFound(err) != nil {
+			return nil, err
+		}
 
-		gwV1 := configHasAPI(clientGateway.Discovery(), gatewayv1.GroupVersion, gwapis...)
+		gwapis := []string{"gatewayclasses", "gateways", "httproutes"}
+		tcpapis := []string{"tcproutes"}
+		tlsapis := []string{"tlsroutes"}
+		grantapis := []string{"referencegrants"}
+
+		gwV1 := hasResources(v1APIs, gwapis...)
 		if gwV1 {
-			configLog.Info("found custom resource definition for gateway API v1")
+			configLog.Info("found custom resource definition for Gateway API v1")
 		}
-		gwB1 := configHasAPI(clientGateway.Discovery(), gatewayv1beta1.GroupVersion, gwapis...)
+		gwB1 := hasResources(v1beta1APIs, gwapis...)
 		if gwB1 {
-			configLog.Info("found custom resource definition for gateway API v1beta1")
+			configLog.Info("found custom resource definition for Gateway API v1beta1")
 		}
-		tcpA2 := configHasAPI(clientGateway.Discovery(), gatewayv1alpha2.GroupVersion, tcpapis...)
+		tcpA2 := hasResources(v1alpha2APIs, tcpapis...)
 		if tcpA2 {
 			configLog.Info("found custom resource definition for TCPRoute API v1alpha2")
 		}
-		tlsV1 := configHasAPI(clientGateway.Discovery(), gatewayv1.GroupVersion, tlsapis...)
+		tlsV1 := hasResources(v1APIs, tlsapis...)
 		if tlsV1 {
 			configLog.Info("found custom resource definition for TLSRoute API v1")
 		}
-		tlsA2 := configHasAPI(clientGateway.Discovery(), gatewayv1alpha2.GroupVersion, tlsapis...)
+		tlsA2 := hasResources(v1alpha2APIs, tlsapis...)
 		if tlsA2 {
 			configLog.Info("found custom resource definition for TLSRoute API v1alpha2")
 		}
-		grantV1 := configHasAPI(clientGateway.Discovery(), gatewayv1.GroupVersion, grantapis...)
+		grantV1 := hasResources(v1APIs, grantapis...)
 		if grantV1 {
 			configLog.Info("found custom resource definition for ReferenceGrant API v1")
 		}
-		grantB1 := configHasAPI(clientGateway.Discovery(), gatewayv1beta1.GroupVersion, grantapis...)
+		grantB1 := hasResources(v1beta1APIs, grantapis...)
 		if grantB1 {
 			configLog.Info("found custom resource definition for ReferenceGrant API v1beta1")
 		}
@@ -658,22 +671,19 @@ func createRootContext(ctx context.Context, rootLogger logr.Logger, waitShutdown
 	return ctx
 }
 
-func configHasAPI(discovery discovery.DiscoveryInterface, gv metav1.GroupVersion, kind ...string) bool {
-	gvstr := gv.String()
-	resources, err := discovery.ServerResourcesForGroupVersion(gvstr)
-	if err == nil && resources != nil {
-		names := make(map[string]bool, len(resources.APIResources))
-		for _, r := range resources.APIResources {
-			names[r.SingularName] = true
-		}
-		for _, k := range kind {
-			if !names[k] {
-				return false
-			}
-		}
-		return true
+func hasResources(apis *metav1.APIResourceList, resources ...string) bool {
+	if apis == nil {
+		return false
 	}
-	return false
+	for _, resource := range resources {
+		has := slices.ContainsFunc(apis.APIResources, func(r metav1.APIResource) bool {
+			return r.Name == resource
+		})
+		if !has {
+			return false
+		}
+	}
+	return true
 }
 
 func getControllerPodSelector(ctx context.Context, configLog logr.Logger, client kubernetes.Interface, controllerPod types.NamespacedName) (labels.Selector, error) {
