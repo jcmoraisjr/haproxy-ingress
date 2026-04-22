@@ -70,7 +70,7 @@ The following command-line options are supported:
 | [`--version`](#version)                                 | [true\|false]              | `false`                 |       |
 | [`--wait-before-shutdown`](#wait-before-shutdown)       | seconds as integer         | `0`                     | v0.8  |
 | [`--wait-before-update`](#wait-before-update)           | duration                   | `200ms`                 | v0.11 |
-| [`--watch-gateway`](#watch-gateway)                     | [true\|false]              | `false`                 | v0.13 |
+| [`--watch-gateway`](#watch-gateway)                     | [true\|false]              | `true`                  | v0.13 |
 | [`--watch-ingress-without-class`](#ingress-class)       | [true\|false]              | `false`                 | v0.12 |
 | [`--watch-namespace`](#watch-namespace)                 | namespace                  | all namespaces          |       |
 
