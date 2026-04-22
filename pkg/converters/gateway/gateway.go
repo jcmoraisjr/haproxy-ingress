@@ -49,7 +49,7 @@ import (
 // Config ...
 type Config interface {
 	NeedFullSync() bool
-	SyncFull() error
+	Sync(full bool) error
 }
 
 // NewGatewayConverter ...
@@ -235,7 +235,10 @@ func (c *converter) NeedFullSync() bool {
 	return changed
 }
 
-func (c *converter) SyncFull() error {
+func (c *converter) Sync(full bool) error {
+	if !full {
+		return nil
+	}
 	if err := c.syncReferenceGrant(); err != nil {
 		return err
 	}
