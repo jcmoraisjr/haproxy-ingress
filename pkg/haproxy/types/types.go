@@ -130,6 +130,7 @@ type SSLConfig struct {
 	BackendCipherSuites string
 	Ciphers             string // TLS up to 1.2
 	CipherSuites        string // TLS 1.3
+	DefaultCrt          CertificateConfig
 	DefaultCAFilename   string
 	DefaultCAHash       string
 	DefaultCRLFilename  string
@@ -141,6 +142,14 @@ type SSLConfig struct {
 	Options             string
 	RedirectCode        int
 	SSLRedirect         bool
+}
+
+// CertificateConfig ...
+type CertificateConfig struct {
+	Filename   string
+	Hash       string
+	CommonName string
+	NotAfter   time.Time
 }
 
 // DHParamConfig ...
@@ -477,9 +486,7 @@ type AuthProxyBind struct {
 
 // Frontends ...
 type Frontends struct {
-	AuthProxy      AuthProxy
-	DefaultCrtFile string
-	DefaultCrtHash string
+	AuthProxy AuthProxy
 	//
 	items   []*Frontend
 	changed bool

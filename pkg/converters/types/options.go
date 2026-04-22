@@ -34,7 +34,7 @@ type ConverterOptions struct {
 	AdminSocket      string
 	AcmeSocket       string
 	ConnTimeout      time.Duration
-	DefaultConfig    func() map[string]string
+	DefaultsOverride map[string]string
 	DefaultBackend   string
 	DefaultCrtSecret string
 	FakeCrtFile      CrtFile

@@ -6406,7 +6406,6 @@ func setupOptions(options testOptions) *testConfig {
 		t.Errorf("error parsing modsecurity.tmpl: %v", err)
 	}
 	config := instance.Config().(*config)
-	config.frontends.DefaultCrtFile = "/var/haproxy/ssl/certs/default.pem"
 	c := &testConfig{
 		t:        t,
 		logger:   logger,
@@ -6438,6 +6437,7 @@ func (c *testConfig) configGlobal(global *hatypes.Global) {
 	global.SSL.BackendCipherSuites = "TLS_AES_128_GCM_SHA256"
 	global.SSL.Ciphers = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256"
 	global.SSL.CipherSuites = "TLS_AES_128_GCM_SHA256"
+	global.SSL.DefaultCrt.Filename = "/var/haproxy/ssl/certs/default.pem"
 	global.SSL.DHParam.Filename = "/var/haproxy/tls/dhparam.pem"
 	global.SSL.HeadersPrefix = "X-SSL"
 	global.SSL.Options = "no-sslv3"

@@ -247,7 +247,7 @@ func (c *config) writeFrontendMaps(f *hatypes.Frontend) error {
 			commonMaps.DefaultHostMap.AddHostnamePathMapping(hatypes.DefaultHost, path, path.Backend.ID)
 		}
 	}
-	defaultCrtFile := c.frontends.DefaultCrtFile
+	defaultCrtFile := c.global.SSL.DefaultCrt.Filename
 	if defaultHost != nil {
 		if defaultHost.DefaultBackend != nil {
 			commonMaps.DefaultHostMap.AddTargetIfMissing(hatypes.DefaultHost, "/", defaultHost.DefaultBackend.ID, hatypes.MatchBegin)
