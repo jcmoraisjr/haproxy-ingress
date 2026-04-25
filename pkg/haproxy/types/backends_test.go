@@ -144,43 +144,41 @@ func TestAcquireAuthBackend(t *testing.T) {
 				{iplist: []string{"10.0.0.1", "10.0.0.2"}, port: 8080},
 			},
 			expBack: map[string]string{
-				"2840b22739f2": "_auth_2840b22739f2_8080",
+				"186e4ccebfa4:8080": "_auth_186e4ccebfa4_8080",
 			},
 		},
-		// 1
+		// 1: distinct ports, same IP: same hash
 		{
 			backends: []bk{
 				{iplist: []string{"10.0.0.1"}, port: 8080},
 				{iplist: []string{"10.0.0.1"}, port: 8081},
 			},
 			expBack: map[string]string{
-				"ca178d5d8ef4": "_auth_ca178d5d8ef4_8080",
-				"801224cebbfa": "_auth_801224cebbfa_8081",
+				"f5047344122f:8080": "_auth_f5047344122f_8080",
+				"f5047344122f:8081": "_auth_f5047344122f_8081",
 			},
 		},
-		// 2
+		// 2: distinct IPs, no hostname: distinct hashes
 		{
 			backends: []bk{
 				{iplist: []string{"10.0.0.1"}, port: 8080},
 				{iplist: []string{"10.0.0.2"}, port: 8080},
-				{iplist: []string{"10.0.0.1"}, port: 8080},
+				{iplist: []string{"10.0.0.1"}, port: 8081},
 			},
 			expBack: map[string]string{
-				"73ec3188fd1e": "_auth_73ec3188fd1e_8080",
-				"ca178d5d8ef4": "_auth_ca178d5d8ef4_8080",
+				"cb5f37b47628:8080": "_auth_cb5f37b47628_8080",
+				"f5047344122f:8080": "_auth_f5047344122f_8080",
+				"f5047344122f:8081": "_auth_f5047344122f_8081",
 			},
 		},
-		// 3
+		// 3: same hostname, distinct IPs: same hash
 		{
 			backends: []bk{
-				{iplist: []string{"10.0.0.1"}, port: 8080},
-				{iplist: []string{"10.0.0.2"}, port: 8080},
 				{iplist: []string{"10.0.0.1"}, port: 8080, hostname: "app1.local"},
+				{iplist: []string{"10.0.0.2"}, port: 8080, hostname: "app1.local"},
 			},
 			expBack: map[string]string{
-				"ca178d5d8ef4": "_auth_ca178d5d8ef4_8080",
-				"73ec3188fd1e": "_auth_73ec3188fd1e_8080",
-				"dc4c3bdc64fb": "_auth_dc4c3bdc64fb_8080",
+				"1774cdf3ca22:8080": "_auth_1774cdf3ca22_8080",
 			},
 		},
 	}

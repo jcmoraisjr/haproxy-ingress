@@ -346,15 +346,28 @@ func (b *Backends) AcquireStatusCodeBackend(code int) *Backend {
 
 // AcquireAuthBackend ...
 func (b *Backends) AcquireAuthBackend(ipList []string, port int, hostname string) *Backend {
+	// Hash by hostname if provided, use the list of IPs otherwise.
+	// This ensures immutability in case of DNS update,
+	// which helps reuse in the AuthProxy counterpart.
+	//
+	// Backend name.......: "_auth_<hash>_<port>"
+	// b.authBackend key..: "<hash>:<port>"
+
 	sort.Strings(ipList)
-	data := sha256.Sum256(fmt.Appendf(nil, "%s:%d:%s", strings.Join(ipList, ","), port, hostname))
-	// We should not create more than a few tens or maybe hundreds of auth backends in the worst scenario,
-	// so 12 chars / 48 bits hash is much more than enough to avoid collision.
-	hash := fmt.Sprintf("%x", data)[:12]
-	backend := b.authBackends[hash]
+	data := hostname
+	if data == "" {
+		data = strings.Join(ipList, ",")
+	}
+
+	// We should have dozens, maybe a few hundreds of backends on really huge setups.
+	// 12 chars / 48 bits hash should be enough to avoid collision.
+	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(data)))[:12]
+	key := fmt.Sprintf("%s:%d", hash, port)
+
+	backend := b.authBackends[key]
 	if backend == nil {
 		// Using hash as part of the name, since we need it deterministic,
-		// so new reconciliations always generate the same backend name.
+		// so new reconciliations always generate the same backend.
 		backend = b.AcquireBackend("_auth", hash, strconv.Itoa(port))
 		if hostname != "" {
 			backend.CustomConfigLate = []string{"http-request set-header Host " + hostname}
@@ -362,7 +375,7 @@ func (b *Backends) AcquireAuthBackend(ipList []string, port int, hostname string
 		for _, ip := range ipList {
 			_ = backend.AcquireEndpoint(ip, port, "")
 		}
-		b.authBackends[hash] = backend
+		b.authBackends[key] = backend
 	}
 	return backend
 }

@@ -211,15 +211,8 @@ func (c *updater) setAuthExternal(config ConfigValueGetter, auth *hatypes.AuthEx
 	proxy := &c.haproxy.Frontends().AuthProxy
 	authBackendName, err := proxy.AcquireAuthBackendName(backend.BackendID())
 	if err != nil {
-		// clean up and try again
-		used := c.haproxy.Backends().BuildUsedAuthBackends()
-		proxy.RemoveAuthBackendExcept(used)
-		authBackendName, err = proxy.AcquireAuthBackendName(backend.BackendID())
-		if err != nil {
-			// TODO remove backend if not used elsewhere
-			c.logger.Warn("ignoring auth URL on %s: %v", url.Source.String(), err)
-			return
-		}
+		c.logger.Warn("ignoring auth URL on %s: %v", url.Source.String(), err)
+		return
 	}
 
 	m := config.Get(ingtypes.BackAuthMethod)

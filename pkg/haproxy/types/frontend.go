@@ -374,28 +374,6 @@ func (proxy *AuthProxy) RemoveAuthBackendExcept(used map[string]bool) {
 	proxy.BindList = bindList[:i]
 }
 
-// RemoveAuthBackendByTarget ...
-func (proxy *AuthProxy) RemoveAuthBackendByTarget(backends []string) {
-	bindList := proxy.BindList
-	var i int
-	for _, bind := range bindList {
-		if !hasBackend(backends, bind.Backend.String()) {
-			bindList[i] = bind
-			i++
-		}
-	}
-	proxy.BindList = bindList[:i]
-}
-
-func hasBackend(backends []string, backend string) bool {
-	for _, back := range backends {
-		if back == backend {
-			return true
-		}
-	}
-	return false
-}
-
 // String ...
 func (f *Frontend) String() string {
 	return fmt.Sprintf("%+v", *f)
