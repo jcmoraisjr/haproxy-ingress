@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/netip"
 	"os"
 	"os/signal"
 	"regexp"
@@ -314,6 +315,38 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		return nil, fmt.Errorf("error getting controller pod selector: %w", err)
 	}
 
+	var hasIPv4, hasIPv6 bool
+	switch opt.IPMode {
+	case "v4":
+		hasIPv4, hasIPv6 = true, false
+	case "v6":
+		hasIPv4, hasIPv6 = false, true
+	case "v4v6":
+		hasIPv4, hasIPv6 = true, true
+	case "lo":
+		var err error
+		hasIPv4, hasIPv6, err = readIPModeFromLoopback()
+		if err != nil {
+			return nil, fmt.Errorf("error reading IP mode from loopback interface: %w", err)
+		}
+	case "node", "auto":
+		var err error
+		hasIPv4, hasIPv6, err = readIPModeFromNode(ctx, client, controllerPod)
+		if err != nil {
+			if opt.IPMode == "node" {
+				return nil, fmt.Errorf("error reading IP mode from controller node: %w", err)
+			}
+			configLog.Info("error reading IP mode from controller node, using IPv4", "err", err.Error())
+			hasIPv4, hasIPv6 = true, false
+		}
+	default:
+		return nil, fmt.Errorf("unsupported IP mode: %s", opt.IPMode)
+	}
+	if !hasIPv4 && !hasIPv6 {
+		return nil, fmt.Errorf("neither v4 nor v6 stack were identified using IP mode '%s'", opt.IPMode)
+	}
+	configLog.Info("IP mode configured", "mode", opt.IPMode, "hasIPv4", hasIPv4, "hasIPv6", hasIPv6)
+
 	// we could `|| hasGateway[version...]` instead of `|| opt.WatchGateway` here,
 	// but we're choosing a consistent startup behavior despite of the cluster configuration.
 	election := opt.UpdateStatus || opt.AcmeServer || opt.WatchGateway
@@ -543,6 +576,8 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		HasGatewayV1:             hasGatewayV1,
 		HasGrantB1:               hasGrantB1,
 		HasGrantV1:               hasGrantV1,
+		HasIPv4:                  hasIPv4,
+		HasIPv6:                  hasIPv6,
 		HasTCPRouteA2:            hasTCPRouteA2,
 		HasTLSRouteA2:            hasTLSRouteA2,
 		HasTLSRouteV1:            hasTLSRouteV1,
@@ -764,6 +799,65 @@ func getControllerPodSelector(ctx context.Context, configLog logr.Logger, client
 	return podSelector, nil
 }
 
+func readIPModeFromNode(ctx context.Context, client *kubernetes.Clientset, controllerPod types.NamespacedName) (hasIPv4, hasIPv6 bool, err error) {
+	if controllerPod.Name == "" || controllerPod.Namespace == "" {
+		return false, false, fmt.Errorf("missing POD_NAMESPACE or POD_NAME envvars")
+	}
+	pod, err := client.CoreV1().Pods(controllerPod.Namespace).Get(ctx, controllerPod.Name, metav1.GetOptions{})
+	if err != nil {
+		return false, false, err
+	}
+	node, err := client.CoreV1().Nodes().Get(ctx, pod.Spec.NodeName, metav1.GetOptions{})
+	if err != nil {
+		return false, false, err
+	}
+	for _, addr := range node.Status.Addresses {
+		v4, v6 := parseIP(addr.Address)
+		hasIPv4 = hasIPv4 || v4
+		hasIPv6 = hasIPv6 || v6
+	}
+	return hasIPv4, hasIPv6, nil
+}
+
+func readIPModeFromLoopback() (hasIPv4, hasIPv6 bool, err error) {
+	intfs, err := net.Interfaces()
+	if err != nil {
+		return false, false, err
+	}
+	idx := slices.IndexFunc(intfs, func(intf net.Interface) bool {
+		// "lo" from Linux, "lo0" from macOS
+		return intf.Name == "lo" || intf.Name == "lo0"
+	})
+	if idx < 0 {
+		return false, false, fmt.Errorf("loopback interface not found")
+	}
+	addrs, err := intfs[idx].Addrs()
+	if err != nil {
+		return false, false, err
+	}
+	for _, addr := range addrs {
+		v4, v6 := parseIP(addr.String())
+		hasIPv4 = hasIPv4 || v4
+		hasIPv6 = hasIPv6 || v6
+	}
+	return hasIPv4, hasIPv6, nil
+}
+
+func parseIP(ipAddr string) (v4, v6 bool) {
+	prefix, err := netip.ParsePrefix(ipAddr)
+	if err != nil {
+		return false, false
+	}
+	addr := prefix.Addr()
+	if addr.Is4() || addr.Is4In6() {
+		return true, false
+	}
+	if addr.Is6() {
+		return false, true
+	}
+	return false, false
+}
+
 // Config ...
 type Config struct {
 	AcmeCheckPeriod          time.Duration
@@ -802,6 +896,8 @@ type Config struct {
 	HasGatewayV1             bool
 	HasGrantB1               bool
 	HasGrantV1               bool
+	HasIPv4                  bool
+	HasIPv6                  bool
 	HasTCPRouteA2            bool
 	HasTLSRouteA2            bool
 	HasTLSRouteV1            bool

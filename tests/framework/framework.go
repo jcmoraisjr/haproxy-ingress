@@ -234,6 +234,8 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 	opt.LocalFSPrefix = "/tmp/haproxy-ingress"
 	opt.PublishService = PublishSvcName
 	opt.ConfigMap = GlobalConfigMap.String()
+	// Our Request() method and EndpointSlice configuration currently uses IPv4 address only
+	opt.IPMode = "v4"
 	if f.optOverride != nil {
 		f.optOverride(opt)
 	}
@@ -670,7 +672,7 @@ apiVersion: discovery.k8s.io/v1
 addressType: IPv4
 endpoints:
 - addresses:
-  - 0.0.0.255 ## ignored due to loopback-endpoint/ports-as-replicas annotations
+  - 0.0.0.255 ## ignored due to loopbackv4-endpoint/ports-as-replicas annotations
   conditions:
     ready: true
 metadata:
@@ -686,7 +688,7 @@ ports: []
 	if portsAsReplicas {
 		eps.Annotations["internal.haproxy-ingress.github.io/ports-as-replicas"] = "1"
 	} else {
-		eps.Annotations["internal.haproxy-ingress.github.io/loopback-endpoint"] = "1"
+		eps.Annotations["internal.haproxy-ingress.github.io/loopbackv4-endpoint"] = "1"
 	}
 	eps.Labels["kubernetes.io/service-name"] = svc.Name
 	for _, svcport := range svc.Spec.Ports {

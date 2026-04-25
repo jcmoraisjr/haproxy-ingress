@@ -19,6 +19,7 @@ package types
 import (
 	"time"
 
+	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )
 
@@ -39,6 +40,7 @@ type ConverterOptions struct {
 	DefaultCrtSecret string
 	FakeCrtFile      CrtFile
 	FakeCAFile       CrtFile
+	IPMode           hatypes.IPMode
 	AnnotationPrefix []string
 	DisableKeywords  []string
 	AcmeTrackTLSAnn  bool

@@ -3830,7 +3830,7 @@ frontend _front__auth
 
 		for _, back := range test.backs {
 			backend := c.config.Backends().AcquireAuthBackend(back.iplist, back.port, back.hostname)
-			_, _ = auth.AcquireAuthBackendName(backend.BackendID())
+			_, _ = auth.AcquireAuthBackendName(backend.BackendID(), hatypes.IPModeV4)
 		}
 
 		c.Update()
@@ -4179,7 +4179,7 @@ func TestInstanceCustomProxy(t *testing.T) {
 	auth.RangeStart = 4001
 	auth.RangeEnd = 4010
 	authBackend := c.config.Backends().AcquireAuthBackend([]string{"172.17.100.11"}, 5000, "")
-	_, _ = auth.AcquireAuthBackendName(authBackend.BackendID())
+	_, _ = auth.AcquireAuthBackendName(authBackend.BackendID(), hatypes.IPModeV4)
 
 	tcp := c.config.tcpbackends.Acquire("default_pgsql", 5432)
 	tcp.AddEndpoint("172.17.0.21", 5432)
@@ -6337,6 +6337,7 @@ func setupOptions(options testOptions) *testConfig {
 		HAProxyMapsDir: tempdir,
 		Metrics:        helper_test.NewMetricsMock(),
 		BackendShards:  options.shardCount,
+		IPMode:         hatypes.IPModeV4,
 		//
 		fake: true,
 	}).(*instance)

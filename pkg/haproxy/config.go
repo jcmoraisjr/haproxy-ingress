@@ -62,6 +62,7 @@ type config struct {
 }
 
 type options struct {
+	ipMode       hatypes.IPMode
 	mapsTemplate *template.Config
 	mapsDir      string
 	shardCount   int
@@ -75,7 +76,7 @@ func createConfig(options options) *config {
 		options:     options,
 		acmeData:    &hatypes.AcmeData{},
 		global:      &hatypes.Global{},
-		frontends:   &hatypes.Frontends{},
+		frontends:   hatypes.CreateFrontends(options.ipMode),
 		backends:    hatypes.CreateBackends(options.shardCount),
 		tcpbackends: hatypes.CreateTCPBackends(),
 		tcpservices: hatypes.CreateTCPServices(),

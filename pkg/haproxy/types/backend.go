@@ -58,8 +58,8 @@ func (b *Backend) AcquireEndpoint(ip string, port int, targetRef string) *Endpoi
 }
 
 // AddEmptyEndpoint ...
-func (b *Backend) AddEmptyEndpoint() *Endpoint {
-	endpoint := b.AddEndpoint("127.0.0.1", 1023, "")
+func (b *Backend) AddEmptyEndpoint(ipMode IPMode) *Endpoint {
+	endpoint := b.AddEndpoint(loopbackAddress(ipMode), 1023, "")
 	endpoint.Enabled = false
 	// we need to set the cookie value to something here so that when dynamic
 	// update enables these endpoints without a reload, they will use cookie
@@ -76,7 +76,7 @@ func (b *Backend) AddEndpoint(ip string, port int, targetRef string) *Endpoint {
 		names := strings.Split(targetRef, "/")
 		name = names[len(names)-1]
 	case EpIPPort:
-		if ip != "127.0.0.1" {
+		if ip != LoopbackV4 && ip != LoopbackV6 {
 			name = fmt.Sprintf("%s:%d", ip, port)
 		}
 	}
@@ -461,7 +461,7 @@ func (b *BackendPathConfig) PathIDs(index int) []string {
 
 // IsEmpty ...
 func (ep *Endpoint) IsEmpty() bool {
-	return ep.IP == "127.0.0.1" && ep.Port == 1023
+	return (ep.IP == LoopbackV4 || ep.IP == LoopbackV6) && ep.Port == 1023
 }
 
 func pathsEqual(paths1, paths2 []*Path) bool {

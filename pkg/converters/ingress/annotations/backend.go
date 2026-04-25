@@ -209,7 +209,7 @@ func (c *updater) setAuthExternal(config ConfigValueGetter, auth *hatypes.AuthEx
 		return
 	}
 	proxy := &c.haproxy.Frontends().AuthProxy
-	authBackendName, err := proxy.AcquireAuthBackendName(backend.BackendID())
+	authBackendName, err := proxy.AcquireAuthBackendName(backend.BackendID(), c.options.IPMode)
 	if err != nil {
 		c.logger.Warn("ignoring auth URL on %s: %v", url.Source.String(), err)
 		return

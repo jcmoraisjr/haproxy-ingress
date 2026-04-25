@@ -1006,10 +1006,12 @@ See also:
 | `bind-https`              | `Frontend` |         | v0.8  |
 | ~~`bind-fronting-proxy`~~ | `Frontend` |         | v0.8  |
 
-Configures listening IP and port for HTTP(S) incoming requests. These
-configuration keys have backward compatibility with [Bind IP addr](#bind-ip-addr),
-[Bind port](#bind-port) and [HTTP Passthrough](#http-passthrough) keys.
-The bind configuration keys in this section have precedence if declared.
+Configures listening IP and port for HTTP(S) incoming requests. If empty, the
+configuration provided in [Bind IP addr](#bind-ip-addr),
+[Bind port](#bind-port) and [HTTP Passthrough](#http-passthrough) keys are used.
+If none of the options are declared, HAProxy Ingress configure the listening bind
+based on the IP stack defined in [`--ip-mode`]({{% relref "command-line#ip-mode" %}})
+command-line option.
 
 Any HAProxy supported option can be used, this will be copied verbatim to the
 bind keyword. See HAProxy
@@ -1038,6 +1040,7 @@ Special care should be taken on port number overlap on global, and annotation ba
 See also:
 
 * https://docs.haproxy.org/3.0/configuration.html#4-bind
+* [--ip-mode]({{% relref "command-line#ip-mode" %}}) command-line option
 * [Bind IP addr](#bind-ip-addr)
 * [Bind port](#bind-port)
 * [HTTP Frontends](#http-frontends) configuration keys
@@ -1056,7 +1059,8 @@ See also:
 
 Define listening IPv4/IPv6 address on public HAProxy frontends. Since v0.10 the default
 value changed from `*` to an empty string, which haproxy interprets in the same way and
-binds on all IPv4 address.
+binds on all IPv4 and/or IPv6 addresses, depending on the [`--ip-mode`]({{% relref "command-line#ip-mode" %}})
+command-line option.
 
 * `bind-ip-addr-tcp`: IP address of all ConfigMap based TCP services declared on [`tcp-services-configmap`]({{% relref "command-line#tcp-services-configmap" %}}) command-line option.
 * `bind-ip-addr-healthz`: IP address of the health check URL.

@@ -480,15 +480,30 @@ type AuthProxy struct {
 type AuthProxyBind struct {
 	AuthBackendName string
 	Backend         BackendID
+	Loopback        string
 	LocalPort       int
 	SocketID        int
 }
+
+type IPMode string
+
+const (
+	IPModeV4   IPMode = "IPV4"
+	IPModeV6   IPMode = "IPV6"
+	IPModeV4V6 IPMode = "IPV4V6"
+)
+
+const (
+	LoopbackV4 = "127.0.0.1"
+	LoopbackV6 = "[::1]"
+)
 
 // Frontends ...
 type Frontends struct {
 	AuthProxy AuthProxy
 	//
 	items   []*Frontend
+	ipMode  IPMode
 	changed bool
 }
 
