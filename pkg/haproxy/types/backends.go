@@ -18,7 +18,9 @@ package types
 
 import (
 	"crypto/md5"
+	"crypto/sha256"
 	"fmt"
+	"maps"
 	"reflect"
 	"sort"
 	"strconv"
@@ -345,18 +347,22 @@ func (b *Backends) AcquireStatusCodeBackend(code int) *Backend {
 // AcquireAuthBackend ...
 func (b *Backends) AcquireAuthBackend(ipList []string, port int, hostname string) *Backend {
 	sort.Strings(ipList)
-	key := fmt.Sprintf("%s:%d:%s", strings.Join(ipList, ","), port, hostname)
-	backend := b.authBackends[key]
+	data := sha256.Sum256(fmt.Appendf(nil, "%s:%d:%s", strings.Join(ipList, ","), port, hostname))
+	// We should not create more than a few tens or maybe hundreds of auth backends in the worst scenario,
+	// so 12 chars / 48 bits hash is much more than enough to avoid collision.
+	hash := fmt.Sprintf("%x", data)[:12]
+	backend := b.authBackends[hash]
 	if backend == nil {
-		name := fmt.Sprintf("backend%03d", len(b.authBackends)+1)
-		backend = b.AcquireBackend("_auth", name, strconv.Itoa(port))
+		// Using hash as part of the name, since we need it deterministic,
+		// so new reconciliations always generate the same backend name.
+		backend = b.AcquireBackend("_auth", hash, strconv.Itoa(port))
 		if hostname != "" {
 			backend.CustomConfigLate = []string{"http-request set-header Host " + hostname}
 		}
 		for _, ip := range ipList {
 			_ = backend.AcquireEndpoint(ip, port, "")
 		}
-		b.authBackends[key] = backend
+		b.authBackends[hash] = backend
 	}
 	return backend
 }
@@ -383,6 +389,9 @@ func (b *Backends) RemoveAll(backendID []string) {
 			if item == b.DefaultBackend {
 				b.DefaultBackend = nil
 			}
+			maps.DeleteFunc(b.authBackends, func(_ string, b *Backend) bool {
+				return b.ID == id
+			})
 			delete(b.items, id)
 		}
 	}

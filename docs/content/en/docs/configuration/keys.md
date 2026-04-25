@@ -829,6 +829,10 @@ Configures External Authentication options.
 
 `svc` protocol allows to use a Kubernetes service declared in the same namespace of the ingress or the service being annotated. Services on other namespaces can also be used in the form `svc://namespace/servicename:port/path` if global config [`cross-namespace-services`](#cross-namespace) was configured as `allow`. The service can be of any type and a port must always be declared - both in the `auth-url` configuration and in the service resource. Using `svc` protocol allows to configure a secure connection, see [secure](#secure-backend) configuration keys and annotate them in the target service.
 
+{{< alert title="Note" >}}
+`http` or `https` protos should only use domain names with stable IP addresses. They are not recommended for external services that scale in/out, or frequently changes their IP, and consequently updates the DNS records. HAProxy Ingress will only follow changes in the DNS records on full reconciliations or when the configured ingress or service changes, which should cause outages until a new reconciliation happens.
+{{< /alert >}}
+
 Configuration examples:
 
 * `auth-url: "http://10.0.0.2"`: Authentication service accepts plain HTTP connection, TCP port `80` and root path are used.

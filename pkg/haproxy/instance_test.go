@@ -3763,7 +3763,7 @@ func TestInstanceFrontendAuth(t *testing.T) {
 				{iplist: []string{"10.0.0.1", "10.0.0.2"}, port: 8080},
 			},
 			expback: `
-backend _auth_backend001_8080
+backend _auth_2840b22739f2_8080
     mode http
     server srv001 10.0.0.1:8080 weight 1
     server srv002 10.0.0.2:8080 weight 1`,
@@ -3774,7 +3774,7 @@ backend _auth_4001
 frontend _front__auth
     mode http
     bind 127.0.0.1:4001
-    use_backend _auth_backend001_8080`,
+    use_backend _auth_2840b22739f2_8080`,
 		},
 		{
 			backs: []back{
@@ -3783,14 +3783,14 @@ frontend _front__auth
 				{iplist: []string{"10.0.0.3"}, port: 8080, hostname: "app1.local"},
 			},
 			expback: `
-backend _auth_backend001_8080
+backend _auth_0a9f207f3051_8080
+    mode http
+    server srv001 10.0.0.3:8080 weight 1
+backend _auth_2840b22739f2_8080
     mode http
     server srv001 10.0.0.1:8080 weight 1
     server srv002 10.0.0.2:8080 weight 1
-backend _auth_backend002_8080
-    mode http
-    server srv001 10.0.0.3:8080 weight 1
-backend _auth_backend003_8080
+backend _auth_6a62ca024574_8080
     mode http
     http-request set-header Host app1.local
     server srv001 10.0.0.3:8080 weight 1`,
@@ -3809,9 +3809,9 @@ frontend _front__auth
     bind 127.0.0.1:4001 id 14001
     bind 127.0.0.1:4002 id 14002
     bind 127.0.0.1:4003 id 14003
-    use_backend _auth_backend001_8080 if { so_id 14001 }
-    use_backend _auth_backend002_8080 if { so_id 14002 }
-    use_backend _auth_backend003_8080 if { so_id 14003 }`,
+    use_backend _auth_2840b22739f2_8080 if { so_id 14001 }
+    use_backend _auth_0a9f207f3051_8080 if { so_id 14002 }
+    use_backend _auth_6a62ca024574_8080 if { so_id 14003 }`,
 		},
 	}
 	for _, test := range testCases {
@@ -4190,7 +4190,6 @@ func TestInstanceCustomProxy(t *testing.T) {
 	c.config.Global().CustomProxy = map[string][]string{
 		"missing":                 {"## comment"},
 		"_tcp_default_pgsql_5432": {"## custom for _tcp_default_pgsql_5432"},
-		"_auth_backend001_5000":   {"## custom for _auth_backend001_5000"},
 		"d1_app_8080":             {"## custom for d1_app_8080"},
 		"d2_app_8080":             {"## custom for d2_app_8080"},
 		"_redirect_https":         {"## custom for _redirect_https"},
@@ -4216,9 +4215,8 @@ listen _tcp_default_pgsql_5432
     mode tcp
     ## custom for _tcp_default_pgsql_5432
     server srv001 172.17.0.21:5432
-backend _auth_backend001_5000
+backend _auth_20e0c15293dd_5000
     mode http
-    ## custom for _auth_backend001_5000
     server srv001 172.17.100.11:5000 weight 1
 backend d1_app_8080
     mode http
@@ -4253,7 +4251,7 @@ frontend _front__auth
     mode http
     bind 127.0.0.1:4001
     ## custom for _front__auth
-    use_backend _auth_backend001_5000
+    use_backend _auth_20e0c15293dd_5000
 frontend _front_tcp_7001
     bind :7001
     mode tcp

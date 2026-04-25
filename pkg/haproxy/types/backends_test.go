@@ -144,7 +144,7 @@ func TestAcquireAuthBackend(t *testing.T) {
 				{iplist: []string{"10.0.0.1", "10.0.0.2"}, port: 8080},
 			},
 			expBack: map[string]string{
-				"10.0.0.1,10.0.0.2:8080:": "_auth_backend001_8080",
+				"2840b22739f2": "_auth_2840b22739f2_8080",
 			},
 		},
 		// 1
@@ -154,8 +154,8 @@ func TestAcquireAuthBackend(t *testing.T) {
 				{iplist: []string{"10.0.0.1"}, port: 8081},
 			},
 			expBack: map[string]string{
-				"10.0.0.1:8080:": "_auth_backend001_8080",
-				"10.0.0.1:8081:": "_auth_backend002_8081",
+				"ca178d5d8ef4": "_auth_ca178d5d8ef4_8080",
+				"801224cebbfa": "_auth_801224cebbfa_8081",
 			},
 		},
 		// 2
@@ -166,8 +166,8 @@ func TestAcquireAuthBackend(t *testing.T) {
 				{iplist: []string{"10.0.0.1"}, port: 8080},
 			},
 			expBack: map[string]string{
-				"10.0.0.1:8080:": "_auth_backend001_8080",
-				"10.0.0.2:8080:": "_auth_backend002_8080",
+				"73ec3188fd1e": "_auth_73ec3188fd1e_8080",
+				"ca178d5d8ef4": "_auth_ca178d5d8ef4_8080",
 			},
 		},
 		// 3
@@ -178,9 +178,9 @@ func TestAcquireAuthBackend(t *testing.T) {
 				{iplist: []string{"10.0.0.1"}, port: 8080, hostname: "app1.local"},
 			},
 			expBack: map[string]string{
-				"10.0.0.1:8080:":           "_auth_backend001_8080",
-				"10.0.0.2:8080:":           "_auth_backend002_8080",
-				"10.0.0.1:8080:app1.local": "_auth_backend003_8080",
+				"ca178d5d8ef4": "_auth_ca178d5d8ef4_8080",
+				"73ec3188fd1e": "_auth_73ec3188fd1e_8080",
+				"dc4c3bdc64fb": "_auth_dc4c3bdc64fb_8080",
 			},
 		},
 	}
