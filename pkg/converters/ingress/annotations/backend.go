@@ -169,8 +169,10 @@ func (c *updater) setAuthExternal(config ConfigValueGetter, auth *hatypes.AuthEx
 				port = 80
 			}
 		}
-		// TODO track
 		backend = c.haproxy.Backends().AcquireAuthBackend(ipList, port, hostname)
+		if url.Source != nil {
+			c.tracker.TrackNames(url.Source.Type, url.Source.FullName(), convtypes.ResourceHABackend, backend.ID)
+		}
 		if secure {
 			backend.Server.Secure = secure
 			backend.Server.SNI = fmt.Sprintf("str(%s)", hostname)
@@ -206,19 +208,11 @@ func (c *updater) setAuthExternal(config ConfigValueGetter, auth *hatypes.AuthEx
 		c.logger.Warn("ignoring auth URL with an invalid protocol on %s: %s", url.Source.String(), urlProto)
 		return
 	}
-	// TODO track
 	proxy := &c.haproxy.Frontends().AuthProxy
 	authBackendName, err := proxy.AcquireAuthBackendName(backend.BackendID())
 	if err != nil {
-		// clean up and try again
-		used := c.haproxy.Backends().BuildUsedAuthBackends()
-		proxy.RemoveAuthBackendExcept(used)
-		authBackendName, err = proxy.AcquireAuthBackendName(backend.BackendID())
-		if err != nil {
-			// TODO remove backend if not used elsewhere
-			c.logger.Warn("ignoring auth URL on %s: %v", url.Source.String(), err)
-			return
-		}
+		c.logger.Warn("ignoring auth URL on %s: %v", url.Source.String(), err)
+		return
 	}
 
 	m := config.Get(ingtypes.BackAuthMethod)

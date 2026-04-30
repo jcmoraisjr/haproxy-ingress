@@ -171,7 +171,6 @@ func (c *converter) syncPartial() {
 
 	c.haproxy.TCPServices().RemoveAll(dirtyTCPServices)
 	c.haproxy.Frontends().RemoveAllHosts(dirtyHosts)
-	c.haproxy.Frontends().AuthProxy.RemoveAuthBackendByTarget(dirtyBacks)
 	c.haproxy.Backends().RemoveAll(dirtyBacks)
 	c.haproxy.Userlists().RemoveAll(dirtyUsers)
 	c.haproxy.AcmeData().Storages().RemoveAll(dirtyStorages)
@@ -714,6 +713,8 @@ func (c *converter) syncConfig() {
 		c.syncBackendEndpointHashes(backend)
 	}
 	c.frontendPorts.SyncFrontends(c.haproxy.Frontends())
+	usedAuthBackends := c.haproxy.Backends().BuildUsedAuthBackends()
+	c.haproxy.Frontends().AuthProxy.RemoveAuthBackendExcept(usedAuthBackends)
 }
 
 func (c *converter) readPathType(path networking.HTTPIngressPath, ann string) hatypes.MatchType {
