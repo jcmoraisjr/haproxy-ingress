@@ -96,9 +96,11 @@ func (c *converters) Sync() error {
 	//
 	// ingress converter
 	//
-	logger.Info("syncing Ingress API resources")
-	ingressConverter.Sync(needFullSync)
-	c.timer.Tick("parse_ingress")
+	if c.options.WatchIngress {
+		logger.Info("syncing Ingress API resources")
+		ingressConverter.Sync(needFullSync)
+		c.timer.Tick("parse_ingress")
+	}
 
 	//
 	// tcpservices converter

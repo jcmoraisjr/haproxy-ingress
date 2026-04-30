@@ -177,10 +177,6 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		configLog.Info(fmt.Sprintf("WARNING: --shutdown-timeout=%s is less than --haproxy-grace-period=%s", opt.ShutdownTimeout.String(), opt.HAProxyGracePeriod.String()))
 	}
 
-	if opt.IngressClass != "" {
-		configLog.Info("watching for ingress resources with 'kubernetes.io/ingress.class'", "annotation", opt.IngressClass)
-	}
-
 	var waitShutdown time.Duration
 	if opt.WaitBeforeShutdown != "" {
 		var err error
@@ -201,16 +197,19 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 	if opt.ControllerClass != "" {
 		controllerName += "/" + strings.TrimLeft(opt.ControllerClass, "/")
 	}
-	configLog.Info("watching for ingress resources with IngressClass", "controller-name", controllerName)
 
-	if opt.WatchIngressWithoutClass {
-		configLog.Info("watching for ingress resources without any class reference - --watch-ingress-without-class is true")
+	if opt.WatchIngress {
+		configLog.Info("watching for Ingress API resources - --watch-ingress is true", "controller-name", controllerName)
+		if opt.IngressClass != "" {
+			configLog.Info("watching for ingress resources with 'kubernetes.io/ingress.class'", "annotation", opt.IngressClass)
+		}
+		if opt.WatchIngressWithoutClass {
+			configLog.Info("watching for ingress resources without any class reference - --watch-ingress-without-class is true")
+		} else {
+			configLog.Info("ignoring ingress resources without any class reference - --watch-ingress-without-class is false")
+		}
 	} else {
-		configLog.Info("ignoring ingress resources without any class reference - --watch-ingress-without-class is false")
-	}
-
-	if opt.WatchGateway {
-		configLog.Info("watching for Gateway API resources - --watch-gateway is true")
+		configLog.Info("ignoring Ingress API resources - --watch-ingress is false")
 	}
 
 	var hasGateway, hasGatewayV1, hasGatewayB1, hasTCPRouteA2, hasTLSRouteV1, hasTLSRouteA2, hasGrantV1, hasGrantB1 bool
@@ -274,6 +273,13 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		hasTLSRouteA2 = tlsA2 && gw && !hasTLSRouteV1
 		hasGrantV1 = grantV1 && gw
 		hasGrantB1 = grantB1 && gw && !hasGrantV1
+
+		configLog.Info("watching for Gateway API resources - --watch-gateway is true", "controller-name", controllerName)
+		if !hasGateway {
+			configLog.Info("Gateway API CRDs not found, ignoring")
+		}
+	} else {
+		configLog.Info("ignoring Gateway API resources - --watch-gateway is false")
 	}
 
 	if opt.EnableEndpointSlicesAPI {
@@ -575,6 +581,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		VerifyHostname:           opt.VerifyHostname,
 		VersionInfo:              versionInfo,
 		WaitBeforeUpdate:         opt.WaitBeforeUpdate,
+		WatchIngress:             opt.WatchIngress,
 		WatchIngressWithoutClass: opt.WatchIngressWithoutClass,
 		WatchNamespace:           opt.WatchNamespace,
 	}, nil
@@ -833,6 +840,7 @@ type Config struct {
 	VerifyHostname           bool
 	VersionInfo              version.Info
 	WaitBeforeUpdate         time.Duration
+	WatchIngress             bool
 	WatchIngressWithoutClass bool
 	WatchNamespace           string
 }
