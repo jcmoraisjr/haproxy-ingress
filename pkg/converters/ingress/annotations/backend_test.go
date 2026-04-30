@@ -392,7 +392,7 @@ func TestAuthExternal(t *testing.T) {
 			expBack: hatypes.AuthExternal{
 				AuthBackendName: "_auth_4001",
 				AuthPath:        "/",
-				HeadersFail:     []string{"x-uid", "X-Message"},
+				HeadersFail:     []string{"x-uid", "x-message"},
 			},
 			expIP: []string{"10.0.0.2:80"},
 		},

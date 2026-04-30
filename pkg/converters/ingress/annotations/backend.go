@@ -233,9 +233,9 @@ func (c *updater) setAuthExternal(config ConfigValueGetter, auth *hatypes.AuthEx
 	if annHdrFail == "" {
 		annHdrFail = "-"
 	}
-	hdrRequest := strings.Split(annHdrRequest, ",")
-	hdrSucceed := strings.Split(annHdrSucceed, ",")
-	hdrFail := strings.Split(annHdrFail, ",")
+	hdrRequest := strings.Split(strings.ToLower(annHdrRequest), ",")
+	hdrSucceed := strings.Split(strings.ToLower(annHdrSucceed), ",")
+	hdrFail := strings.Split(strings.ToLower(annHdrFail), ",")
 
 	if signin != "" {
 		if !reflect.DeepEqual(hdrFail, []string{"*"}) {
