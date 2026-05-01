@@ -880,7 +880,7 @@ Request forbidden by administrative rules.
 				}
 			}
 			assert.Fail(collect, "lease event not found")
-		}, 10*time.Second, time.Second)
+		}, framework.CommonTimeout, framework.CommonInterval)
 	})
 
 	expectedIngressStatus := networkingv1.IngressStatus{
@@ -902,7 +902,7 @@ Request forbidden by administrative rules.
 				return
 			}
 			assert.Equal(collect, expectedIngressStatus, ing1.Status)
-		}, 5*time.Second, time.Second)
+		}, framework.CommonTimeout, framework.CommonInterval)
 
 		// testing two consecutive syncs
 		ing2, _ := f.CreateIngress(ctx, t, svc)
@@ -912,7 +912,7 @@ Request forbidden by administrative rules.
 				return
 			}
 			assert.Equal(collect, expectedIngressStatus, ing2.Status)
-		}, 5*time.Second, time.Second)
+		}, framework.CommonTimeout, framework.CommonInterval)
 	})
 
 	t.Run("should sync ingress status from publish service", func(t *testing.T) {
@@ -927,7 +927,7 @@ Request forbidden by administrative rules.
 				return
 			}
 			assert.Equal(collect, expectedIngressStatus, ing.Status)
-		}, 5*time.Second, time.Second)
+		}, framework.CommonTimeout, framework.CommonInterval)
 
 		tmpChangingIP := "127.0.0.1"
 		require.NotEqual(t, framework.PublishAddress, tmpChangingIP)
@@ -955,7 +955,7 @@ Request forbidden by administrative rules.
 					},
 				},
 			}, ing.Status)
-		}, 5*time.Second, time.Second)
+		}, framework.CommonTimeout, framework.CommonInterval)
 
 		// recover initial svc status
 		svcpub.Status.LoadBalancer.Ingress = svcpublb
@@ -969,7 +969,7 @@ Request forbidden by administrative rules.
 				return
 			}
 			assert.Equal(collect, expectedIngressStatus, ing.Status)
-		}, 5*time.Second, time.Second)
+		}, framework.CommonTimeout, framework.CommonInterval)
 	})
 
 	t.Run("should override old status", func(t *testing.T) {
@@ -980,7 +980,7 @@ Request forbidden by administrative rules.
 				return
 			}
 			assert.Equal(collect, expectedIngressStatus, ingpre1.Status)
-		}, 5*time.Second, time.Second)
+		}, framework.CommonTimeout, framework.CommonInterval)
 	})
 
 	t.Run("should connect on TCP service", func(t *testing.T) {
@@ -1054,7 +1054,7 @@ Request forbidden by administrative rules.
 
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 			_ = framework.TLSConnection(collect, "localhost", tcpIngressPort)
-		}, 5*time.Second, time.Second)
+		}, framework.CommonTimeout, framework.CommonInterval)
 
 		conn := framework.TLSConnection(t, "localhost", tcpIngressPort)
 		require.NotNil(t, conn)

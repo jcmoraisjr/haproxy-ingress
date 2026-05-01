@@ -58,6 +58,9 @@ const (
 	TestPortFront = 28081
 	TestPortHTTPS = 28443
 	TestPortStat  = 21936
+
+	CommonTimeout  = 15 * time.Second
+	CommonInterval = 2 * time.Second
 )
 
 func NewFramework(ctx context.Context, t *testing.T, o ...options.Framework) *framework {
@@ -233,7 +236,7 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 		req.URL.Path = "/"
 		_, err = http.DefaultClient.Do(req)
 		assert.NoError(collect, err)
-	}, 10*time.Second, time.Second)
+	}, CommonTimeout, CommonInterval)
 }
 
 type Response struct {
@@ -303,7 +306,7 @@ func (*framework) Request(ctx context.Context, t *testing.T, method, host, path 
 				return
 			}
 			assert.Contains(collect, opt.ExpectResponseCode, res.StatusCode)
-		}, 5*time.Second, time.Second)
+		}, CommonTimeout, CommonInterval)
 	case opt.ExpectError != "":
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
 			_, err := cli.Do(req)
@@ -311,7 +314,7 @@ func (*framework) Request(ctx context.Context, t *testing.T, method, host, path 
 			// but error.Is() does not render to true due to the server's
 			// x509 certificate attached to the error instance.
 			assert.ErrorContains(collect, err, opt.ExpectError)
-		}, 5*time.Second, time.Second)
+		}, CommonTimeout, CommonInterval)
 		return Response{EchoResponse: buildEchoResponse(t, "")}
 	default:
 		res, err = cli.Do(req)
@@ -342,7 +345,7 @@ func (*framework) TCPRequest(ctx context.Context, t *testing.T, tcpPort int32, d
 			conn, err = net.Dial("tcp", fmt.Sprintf(":%d", tcpPort))
 		}
 		assert.NoError(collect, err)
-	}, 5*time.Second, time.Second)
+	}, CommonTimeout, CommonInterval)
 	defer conn.Close()
 	_, err := conn.Write([]byte(data))
 	require.NoError(t, err)
