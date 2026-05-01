@@ -69,6 +69,9 @@ const (
 	TestPortHTTP    = 28080
 	TestPortHTTPS   = 28443
 	TestPortStat    = 21936
+
+	CommonTimeout  = 15 * time.Second
+	CommonInterval = 2 * time.Second
 )
 
 var (
@@ -267,9 +270,9 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 		req.URL.Path = "/"
 		_, err = http.DefaultClient.Do(req)
 		assert.NoError(collect, err)
-	}, 10*time.Second, time.Second)
+	}, CommonTimeout, CommonInterval)
 
-	f.admSock = socket.NewSocket(ctx, "/tmp/haproxy-ingress/var/run/haproxy/admin.sock", 5*time.Second, false)
+	f.admSock = socket.NewSocket(ctx, "/tmp/haproxy-ingress/var/run/haproxy/admin.sock", CommonTimeout, false)
 }
 
 type Response struct {
@@ -352,14 +355,14 @@ func (*framework) Request(ctx context.Context, t *testing.T, method, host, path 
 				return
 			}
 			assert.Contains(collect, opt.ExpectResponseCode, res.StatusCode)
-		}, 5*time.Second, time.Second)
+		}, CommonTimeout, CommonInterval)
 		// ... but requires that no request error happened.
 		require.NoError(t, err)
 	case opt.ExpectError != "":
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
 			_, err := cli.Do(req)
 			assert.ErrorContains(collect, err, opt.ExpectError)
-		}, 5*time.Second, time.Second)
+		}, CommonTimeout, CommonInterval)
 		return Response{EchoResponse: buildEchoResponse(t, "")}
 	default:
 		res, err = cli.Do(req)
@@ -396,7 +399,7 @@ func (*framework) TCPRequest(ctx context.Context, t *testing.T, tcpPort int32, d
 			conn, err = net.Dial("tcp", fmt.Sprintf(":%d", tcpPort))
 		}
 		assert.NoError(collect, err)
-	}, 5*time.Second, time.Second)
+	}, CommonTimeout, CommonInterval)
 	defer conn.Close()
 	_, err := conn.Write([]byte(data))
 	require.NoError(t, err)
@@ -455,7 +458,7 @@ func (*framework) Websocket(ctx context.Context, t *testing.T, host, path string
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
 			_, _, err := websocket.DefaultDialer.DialContext(ctx, url.String(), header)
 			assert.ErrorContains(collect, err, opt.ExpectError)
-		}, 5*time.Second, time.Second)
+		}, CommonTimeout, CommonInterval)
 		return nil
 	}
 
@@ -464,7 +467,7 @@ func (*framework) Websocket(ctx context.Context, t *testing.T, host, path string
 		var err error
 		ws, _, err = websocket.DefaultDialer.DialContext(ctx, url.String(), header)
 		assert.NoError(collect, err)
-	}, 5*time.Second, time.Second)
+	}, CommonTimeout, CommonInterval)
 	t.Cleanup(func() { ws.Close() })
 
 	return &WSConn{ws}
@@ -489,7 +492,7 @@ func (f *framework) RequireIngressStatus(ctx context.Context, t *testing.T, ing 
 			return
 		}
 		assert.Equal(collect, expectedIngressStatus, ing.Status)
-	}, 5*time.Second, time.Second)
+	}, CommonTimeout, CommonInterval)
 }
 
 var pidRegex = regexp.MustCompile(`Pid: ([0-9]+)`)

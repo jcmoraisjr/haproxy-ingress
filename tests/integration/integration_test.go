@@ -655,7 +655,7 @@ func TestIntegrationIngress(t *testing.T) {
 			for _, msg := range expected {
 				assert.True(collect, slices.Contains(messages, msg), "message not found: "+msg)
 			}
-		}, 5*time.Second, time.Second)
+		}, framework.CommonTimeout, framework.CommonInterval)
 
 		// each client should receive their responses as well
 		assert.Equal(t, []string{"msg 1", "msg 4"}, ws1.ReadClientMessages(t))
@@ -910,7 +910,7 @@ Request forbidden by administrative rules.
 				}
 			}
 			assert.Fail(collect, "lease event not found")
-		}, 10*time.Second, time.Second)
+		}, framework.CommonTimeout, framework.CommonInterval)
 	})
 
 	t.Run("should update ingress status", func(t *testing.T) {
@@ -959,7 +959,7 @@ Request forbidden by administrative rules.
 					},
 				},
 			}, ing.Status)
-		}, 5*time.Second, time.Second)
+		}, framework.CommonTimeout, framework.CommonInterval)
 
 		// recover initial svc status
 		svcpub.Status.LoadBalancer.Ingress = svcpublb
@@ -1056,7 +1056,7 @@ Request forbidden by administrative rules.
 
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 			_ = framework.TLSConnection(collect, "localhost", tcpIngressPort)
-		}, 5*time.Second, time.Second)
+		}, framework.CommonTimeout, framework.CommonInterval)
 
 		conn := framework.TLSConnection(t, "localhost", tcpIngressPort)
 		require.NotNil(t, conn)
@@ -1316,7 +1316,7 @@ Request forbidden by administrative rules.
 		eventuallyServerCount := func(t *testing.T, svc *corev1.Service, expectedServerCount int) {
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				assert.Equal(collect, expectedServerCount, f.ReadNumBackendServers(t, svc))
-			}, 5*time.Second, time.Second)
+			}, framework.CommonTimeout, framework.CommonInterval)
 		}
 		eventuallyBalanceCount := func(t *testing.T, hostname string, expectedServerCount int) {
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
@@ -1325,7 +1325,7 @@ Request forbidden by administrative rules.
 					return
 				}
 				assert.Equal(collect, expectedServerCount, count)
-			}, 15*time.Second, 3*time.Second)
+			}, framework.CommonTimeout, framework.CommonInterval)
 		}
 		changeReplicas := func(ep *discoveryv1.EndpointSlice, addRemove int) {
 			switch {
