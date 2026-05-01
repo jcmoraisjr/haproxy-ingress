@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"hash/fnv"
 	"maps"
-	"reflect"
 	"regexp"
 	"slices"
 	"sort"
@@ -51,31 +50,20 @@ type Config interface {
 
 // NewIngressConverter ...
 func NewIngressConverter(options *convtypes.ConverterOptions, haproxy haproxy.Config, changed *convtypes.ChangedObjects) Config {
-	if options.DefaultConfig == nil {
-		options.DefaultConfig = createDefaults
-	}
-	// IMPLEMENT
-	// config option to allow partial parsing
-	// cache also need to know if partial parsing is enabled
-	globalConfig := changed.GlobalConfigMapDataNew
-	if globalConfig == nil {
-		globalConfig = changed.GlobalConfigMapDataCur
-	}
-	defaultConfig := options.DefaultConfig()
-	for key, value := range globalConfig {
-		defaultConfig[key] = value
-	}
-	c := &converter{
+	logger := options.Logger
+	mapBuilder := newGlobalMapBuilder(options, changed)
+	frontendPorts := annotations.NewFrontendPorts(logger, haproxy, mapBuilder.NewMapper())
+	return &converter{
 		options:            options,
 		haproxy:            haproxy,
 		changed:            changed,
-		logger:             options.Logger,
+		logger:             logger,
 		cache:              options.Cache,
 		tracker:            options.Tracker,
+		mapBuilder:         mapBuilder,
+		frontendPorts:      frontendPorts,
 		defaultBackSource:  annotations.Source{Name: "<default-backend>", Type: convtypes.ResourceIngress},
-		mapBuilder:         annotations.NewMapBuilder(options.Logger, defaultConfig),
 		updater:            annotations.NewUpdater(haproxy, options),
-		globalConfig:       annotations.NewMapBuilder(options.Logger, defaultConfig).NewMapper(),
 		tcpsvcAnnotations:  map[*hatypes.TCPServicePort]*annotations.Mapper{},
 		frontAnnotations:   map[*hatypes.Frontend]*annotations.Mapper{},
 		frontLocalPorts:    map[*hatypes.Frontend]bool{},
@@ -83,8 +71,6 @@ func NewIngressConverter(options *convtypes.ConverterOptions, haproxy haproxy.Co
 		backendAnnotations: map[*hatypes.Backend]*annotations.Mapper{},
 		ingressClasses:     map[string]*ingressClassConfig{},
 	}
-	c.readDefaultCertificate()
-	return c
 }
 
 type converter struct {
@@ -94,11 +80,10 @@ type converter struct {
 	logger             types.Logger
 	cache              convtypes.Cache
 	tracker            convtypes.Tracker
-	defaultCrt         convtypes.CrtFile
-	defaultBackSource  annotations.Source
 	mapBuilder         *annotations.MapBuilder
+	frontendPorts      *annotations.FrontendPorts
+	defaultBackSource  annotations.Source
 	updater            annotations.Updater
-	globalConfig       *annotations.Mapper
 	tcpsvcAnnotations  map[*hatypes.TCPServicePort]*annotations.Mapper
 	frontAnnotations   map[*hatypes.Frontend]*annotations.Mapper
 	frontLocalPorts    map[*hatypes.Frontend]bool
@@ -133,63 +118,15 @@ type ingressClassConfig struct {
 }
 
 func (c *converter) NeedFullSync() bool {
-	needFullSync := c.defaultCrtNeedFullSync() || c.globalConfigNeedFullSync()
-	if needFullSync && c.defaultCrt.SHA1Hash == c.options.FakeCrtFile.SHA1Hash {
-		c.logger.Info("using auto generated fake certificate")
-	}
-	return needFullSync
+	return false
 }
 
 func (c *converter) Sync(full bool) {
-	c.syncDefaultCrt()
 	if full {
 		c.syncFull()
 	} else {
 		c.syncPartial()
 	}
-}
-
-func (c *converter) defaultCrtNeedFullSync() bool {
-	f := c.haproxy.Frontends()
-	return f.DefaultCrtFile != c.defaultCrt.Filename ||
-		f.DefaultCrtHash != c.defaultCrt.SHA1Hash
-}
-
-func (c *converter) globalConfigNeedFullSync() bool {
-	// Currently if a global is changed, all the ingress objects are parsed again.
-	// This need to be done due to:
-	//
-	//   1. Default host and backend annotations. If a default value
-	//      changes, such default may impact any ingress object;
-	//   2. At the time of this writing, the following global
-	//      configuration keys are used during annotation parsing:
-	//        * GlobalDNSResolvers
-	//        * GlobalDrainSupport
-	//        * GlobalNoTLSRedirectLocations
-	//
-	// This might be improved after implement a way to guarantee that a global
-	// is just a haproxy global, default or frontend config.
-	cur, new := c.changed.GlobalConfigMapDataCur, c.changed.GlobalConfigMapDataNew
-	return new != nil && !reflect.DeepEqual(cur, new)
-}
-
-func (c *converter) readDefaultCertificate() {
-	crt := c.options.FakeCrtFile
-	if c.options.DefaultCrtSecret != "" {
-		var err error
-		crt, err = c.cache.GetTLSSecretPath("", c.options.DefaultCrtSecret, nil)
-		if err != nil {
-			crt = c.options.FakeCrtFile
-			c.logger.Warn("using auto generated fake certificate due to an error reading default TLS certificate: %v", err)
-		}
-	}
-	c.defaultCrt = crt
-}
-
-func (c *converter) syncDefaultCrt() {
-	f := c.haproxy.Frontends()
-	f.DefaultCrtFile = c.defaultCrt.Filename
-	f.DefaultCrtHash = c.defaultCrt.SHA1Hash
 }
 
 // bareLink creates a pathlink with default path and match type params,
@@ -214,13 +151,11 @@ func (c *converter) syncFull() {
 		return
 	}
 	sortIngress(ingList)
-	c.updater.UpdateGlobalConfig(c.haproxy, c.globalConfig)
 	c.syncDefaultBackend()
-	fp := annotations.NewFrontendPorts(c.logger, c.haproxy, c.globalConfig)
 	for _, ing := range ingList {
-		c.syncIngress(fp, ing)
+		c.syncIngress(ing)
 	}
-	c.syncConfig(fp)
+	c.syncConfig()
 }
 
 func (c *converter) syncPartial() {
@@ -236,22 +171,9 @@ func (c *converter) syncPartial() {
 
 	c.haproxy.TCPServices().RemoveAll(dirtyTCPServices)
 	c.haproxy.Frontends().RemoveAllHosts(dirtyHosts)
-	c.haproxy.Frontends().AuthProxy.RemoveAuthBackendByTarget(dirtyBacks)
 	c.haproxy.Backends().RemoveAll(dirtyBacks)
 	c.haproxy.Userlists().RemoveAll(dirtyUsers)
 	c.haproxy.AcmeData().Storages().RemoveAll(dirtyStorages)
-
-	// looking for controller pod changes, used by peers.
-	// missing a better tracking and global update approach.
-	ctrlNamespace := c.cache.GetControllerPod().Namespace + "/"
-	changedPods := c.changed.Links[convtypes.ResourcePod]
-	for _, pod := range changedPods {
-		if strings.HasPrefix(pod, ctrlNamespace) {
-			c.logger.Info("updating peers due to changes in controller pods")
-			c.updater.UpdatePeers(c.haproxy, c.globalConfig)
-			break
-		}
-	}
 
 	c.logger.InfoV(2, "syncing %d host(s) and %d backend(s)", len(dirtyHosts), len(dirtyBacks))
 
@@ -287,11 +209,10 @@ func (c *converter) syncPartial() {
 
 	// reinclude changed/added data
 	sortIngress(ingList)
-	fp := annotations.NewFrontendPorts(c.logger, c.haproxy, c.globalConfig)
 	for _, ing := range ingList {
-		c.syncIngress(fp, ing)
+		c.syncIngress(ing)
 	}
-	c.syncConfig(fp)
+	c.syncConfig()
 }
 
 // trackAddedIngress add tracking hostnames and backends to new ingress objects
@@ -378,7 +299,7 @@ func sortIngress(ingress []*networking.Ingress) {
 	})
 }
 
-func (c *converter) syncIngress(fp *annotations.FrontendPorts, ing *networking.Ingress) {
+func (c *converter) syncIngress(ing *networking.Ingress) {
 	source := &annotations.Source{
 		Namespace: ing.Namespace,
 		Name:      ing.Name,
@@ -387,18 +308,18 @@ func (c *converter) syncIngress(fp *annotations.FrontendPorts, ing *networking.I
 	annTCP, annFront, annHost, annBack := c.readAnnotations(source, ing.Annotations)
 	tcpServicePort, _ := strconv.Atoi(annTCP[ingtypes.TCPTCPServicePort])
 	if tcpServicePort == 0 {
-		c.syncIngressHTTP(fp, source, ing, annFront, annHost, annBack)
+		c.syncIngressHTTP(source, ing, annFront, annHost, annBack)
 	} else {
 		c.syncIngressTCP(source, ing, tcpServicePort, annTCP, annBack)
 	}
 }
 
-func (c *converter) acquireFrontend(fp *annotations.FrontendPorts, source *annotations.Source, annFront, annHost map[string]string) (*frontend, error) {
+func (c *converter) acquireFrontend(source *annotations.Source, annFront, annHost map[string]string) (*frontend, error) {
 	link := bareLink()
 	localMapper := c.mapBuilder.NewMapper()
 	_ = localMapper.AddAnnotations(source, link, annFront)
 	_ = localMapper.AddAnnotations(source, link, annHost)
-	ports, err := fp.AcquirePorts(localMapper)
+	ports, err := c.frontendPorts.AcquirePorts(localMapper)
 	if err != nil {
 		return nil, err
 	}
@@ -492,8 +413,8 @@ func (h *host) AddRedirect(path string, match hatypes.MatchType, redirTo string)
 	h.redir = append(h.redir, h.inner.AddRedirect(path, match, redirTo))
 }
 
-func (c *converter) syncIngressHTTP(fp *annotations.FrontendPorts, source *annotations.Source, ing *networking.Ingress, annFront, annHost, annBack map[string]string) {
-	f, err := c.acquireFrontend(fp, source, annFront, annHost)
+func (c *converter) syncIngressHTTP(source *annotations.Source, ing *networking.Ingress, annFront, annHost, annBack map[string]string) {
+	f, err := c.acquireFrontend(source, annFront, annHost)
 	if err != nil {
 		c.logger.Warn("skipping %v configuration: %s", source, err.Error())
 		return
@@ -607,14 +528,14 @@ func (c *converter) syncIngressHTTP(fp *annotations.FrontendPorts, source *annot
 		// tls secret
 		for _, hostname := range tls.Hosts {
 			host := c.addHost(f, hostname, source, annFront, annHost, true)
-			tlsPath := c.addTLS(source, tls.SecretName)
+			crt := c.addTLS(source, tls.SecretName)
 			hhttps := host.innerHTTPS
 			if hhttps.TLS.TLSHash == "" {
-				hhttps.TLS.TLSFilename = tlsPath.Filename
-				hhttps.TLS.TLSHash = tlsPath.SHA1Hash
-				hhttps.TLS.TLSCommonName = tlsPath.Certificate.Subject.CommonName
-				hhttps.TLS.TLSNotAfter = tlsPath.Certificate.NotAfter
-			} else if hhttps.TLS.TLSHash != tlsPath.SHA1Hash {
+				hhttps.TLS.TLSFilename = crt.Filename
+				hhttps.TLS.TLSHash = crt.Hash
+				hhttps.TLS.TLSCommonName = crt.CommonName
+				hhttps.TLS.TLSNotAfter = crt.NotAfter
+			} else if hhttps.TLS.TLSHash != crt.Hash {
 				msg := fmt.Sprintf("TLS of host '%s' was already assigned", hhttps.Hostname)
 				if tls.SecretName != "" {
 					c.logger.Warn("skipping TLS secret '%s' of %v: %s", tls.SecretName, source, msg)
@@ -740,7 +661,7 @@ func (c *converter) syncIngressTCP(source *annotations.Source, ing *networking.I
 			c.logger.Warn("skipping TLS of tcp service on %v: backend was not configured", source)
 			return
 		}
-		tlsPath := c.addTLS(source, secretName)
+		crt := c.addTLS(source, secretName)
 		tlsHosts := tls.Hosts
 		if len(tlsHosts) == 0 {
 			// configures default host if none is declared
@@ -751,10 +672,10 @@ func (c *converter) syncIngressTCP(source *annotations.Source, ing *networking.I
 				tcpPort.TLS[tlsHost] = &hatypes.TCPServiceTLSConfig{
 					Hostname: tlsHost,
 					TLSConfig: hatypes.TLSConfig{
-						TLSFilename:   tlsPath.Filename,
-						TLSHash:       tlsPath.SHA1Hash,
-						TLSCommonName: tlsPath.Certificate.Subject.CommonName,
-						TLSNotAfter:   tlsPath.Certificate.NotAfter,
+						TLSFilename:   crt.Filename,
+						TLSHash:       crt.Hash,
+						TLSCommonName: crt.CommonName,
+						TLSNotAfter:   crt.NotAfter,
 						// tcp updater fills other tlsConfig fields, reading from annotation config
 					},
 				}
@@ -770,7 +691,7 @@ func (c *converter) syncIngressTCP(source *annotations.Source, ing *networking.I
 	}
 }
 
-func (c *converter) syncConfig(fp *annotations.FrontendPorts) {
+func (c *converter) syncConfig() {
 	for tcpPort, mapper := range c.tcpsvcAnnotations {
 		c.updater.UpdateTCPPortConfig(tcpPort, mapper)
 		if tcpHost := tcpPort.DefaultHost(); tcpHost != nil {
@@ -791,11 +712,9 @@ func (c *converter) syncConfig(fp *annotations.FrontendPorts) {
 		c.syncBackendEndpointCookies(backend)
 		c.syncBackendEndpointHashes(backend)
 	}
-	if c.globalConfig.Get(ingtypes.GlobalCreateDefaultFrontends).Bool() {
-		fp.EnsureEmptyFrontends(c.haproxy.Frontends())
-	} else {
-		c.haproxy.Frontends().RemoveEmptyFrontends()
-	}
+	c.frontendPorts.SyncFrontends(c.haproxy.Frontends())
+	usedAuthBackends := c.haproxy.Backends().BuildUsedAuthBackends()
+	c.haproxy.Frontends().AuthProxy.RemoveAuthBackendExcept(usedAuthBackends)
 }
 
 func (c *converter) readPathType(path networking.HTTPIngressPath, ann string) hatypes.MatchType {
@@ -1148,7 +1067,7 @@ func (c *converter) syncBackendEndpointHashes(backend *hatypes.Backend) {
 	}
 }
 
-func (c *converter) addTLS(source *annotations.Source, secretName string) convtypes.CrtFile {
+func (c *converter) addTLS(source *annotations.Source, secretName string) hatypes.CertificateConfig {
 	if secretName != "" {
 		tlsFile, err := c.cache.GetTLSSecretPath(
 			source.Namespace,
@@ -1156,11 +1075,16 @@ func (c *converter) addTLS(source *annotations.Source, secretName string) convty
 			[]convtypes.TrackingRef{{Context: source.Type, UniqueName: source.FullName()}},
 		)
 		if err == nil {
-			return tlsFile
+			return hatypes.CertificateConfig{
+				Filename:   tlsFile.Filename,
+				Hash:       tlsFile.SHA1Hash,
+				CommonName: tlsFile.Certificate.Subject.CommonName,
+				NotAfter:   tlsFile.Certificate.NotAfter,
+			}
 		}
 		c.logger.Warn("using default certificate due to an error reading secret '%s' on %s: %v", secretName, source, err)
 	}
-	return c.defaultCrt
+	return c.haproxy.Global().SSL.DefaultCrt
 }
 
 func (c *converter) addEndpoints(svc *api.Service, svcPort *api.ServicePort, backend *hatypes.Backend) error {
@@ -1171,7 +1095,7 @@ func (c *converter) addEndpoints(svc *api.Service, svcPort *api.ServicePort, bac
 	for _, addr := range ready {
 		backend.AcquireEndpoint(addr.IP, addr.Port, addr.TargetRef)
 	}
-	if c.globalConfig.Get(ingtypes.GlobalDrainSupport).Bool() {
+	if c.haproxy.Global().DrainSupport.Drain {
 		for _, addr := range notReady {
 			ep := backend.AcquireEndpoint(addr.IP, addr.Port, addr.TargetRef)
 			ep.Weight = 0

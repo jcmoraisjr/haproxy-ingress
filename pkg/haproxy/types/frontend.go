@@ -23,6 +23,12 @@ import (
 	"sort"
 )
 
+func CreateFrontends(ipMode IPMode) *Frontends {
+	return &Frontends{
+		ipMode: ipMode,
+	}
+}
+
 func (f *Frontends) AcquireFrontend(port int32, isHTTPS bool) *Frontend {
 	var has bool
 	for _, frontend := range f.items {
@@ -42,10 +48,19 @@ func (f *Frontends) AcquireFrontend(port int32, isHTTPS bool) *Frontend {
 	if has {
 		name = fmt.Sprintf("%s_%d", name, port)
 	}
+	var bind string
+	switch f.ipMode {
+	case IPModeV4V6:
+		bind = fmt.Sprintf(":%d,:::%[1]d", port)
+	case IPModeV6:
+		bind = fmt.Sprintf(":::%d", port)
+	default:
+		bind = fmt.Sprintf(":%d", port)
+	}
 	frontend := &Frontend{
 		Name:         name,
 		RenderedName: name,
-		Bind:         fmt.Sprintf(":%d", port),
+		Bind:         bind,
 		IsHTTPS:      isHTTPS,
 		port:         port,
 		hosts:        map[string]*Host{},
@@ -333,7 +348,7 @@ func (f *Frontend) HasVarNamespace() bool {
 }
 
 // AcquireAuthBackendName ...
-func (proxy *AuthProxy) AcquireAuthBackendName(backend BackendID) (authBackendName string, err error) {
+func (proxy *AuthProxy) AcquireAuthBackendName(backend BackendID, ipMode IPMode) (authBackendName string, err error) {
 	freePort := proxy.RangeStart
 	for _, bind := range proxy.BindList {
 		if bind.Backend == backend {
@@ -350,6 +365,7 @@ func (proxy *AuthProxy) AcquireAuthBackendName(backend BackendID) (authBackendNa
 	bind := &AuthProxyBind{
 		AuthBackendName: fmt.Sprintf("_auth_%d", freePort),
 		Backend:         backend,
+		Loopback:        loopbackAddress(ipMode),
 		LocalPort:       freePort,
 		SocketID:        socketID,
 	}
@@ -374,26 +390,11 @@ func (proxy *AuthProxy) RemoveAuthBackendExcept(used map[string]bool) {
 	proxy.BindList = bindList[:i]
 }
 
-// RemoveAuthBackendByTarget ...
-func (proxy *AuthProxy) RemoveAuthBackendByTarget(backends []string) {
-	bindList := proxy.BindList
-	var i int
-	for _, bind := range bindList {
-		if !hasBackend(backends, bind.Backend.String()) {
-			bindList[i] = bind
-			i++
-		}
+func loopbackAddress(ipMode IPMode) string {
+	if ipMode == IPModeV6 {
+		return LoopbackV6
 	}
-	proxy.BindList = bindList[:i]
-}
-
-func hasBackend(backends []string, backend string) bool {
-	for _, back := range backends {
-		if back == backend {
-			return true
-		}
-	}
-	return false
+	return LoopbackV4
 }
 
 // String ...

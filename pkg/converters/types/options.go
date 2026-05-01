@@ -19,6 +19,7 @@ package types
 import (
 	"time"
 
+	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/types"
 )
 
@@ -34,15 +35,17 @@ type ConverterOptions struct {
 	AdminSocket      string
 	AcmeSocket       string
 	ConnTimeout      time.Duration
-	DefaultConfig    func() map[string]string
+	DefaultsOverride map[string]string
 	DefaultBackend   string
 	DefaultCrtSecret string
 	FakeCrtFile      CrtFile
 	FakeCAFile       CrtFile
+	IPMode           hatypes.IPMode
 	AnnotationPrefix []string
 	DisableKeywords  []string
 	AcmeTrackTLSAnn  bool
 	TrackInstances   bool
+	WatchIngress     bool
 	HasGateway       bool
 	HasTLSRoute      bool
 	HasTCPRoute      bool

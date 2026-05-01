@@ -13,6 +13,7 @@ func NewOptions() *Options {
 		KubeConfig:              StringValue(""),
 		IngressClass:            "haproxy",
 		ReloadStrategy:          "reusesocket",
+		WatchIngress:            true,
 		WatchGateway:            true,
 		MasterWorker:            true,
 		ConnectionTimeout:       30 * time.Second,
@@ -22,6 +23,7 @@ func NewOptions() *Options {
 		AcmeSecretKeyName:       "acme-private-key",
 		AcmeTokenConfigMapName:  "acme-validation-tokens",
 		BucketsResponseTime:     []float64{.0005, .001, .002, .005, .01},
+		IPMode:                  "auto",
 		AnnPrefix:               "haproxy-ingress.github.io,ingress.kubernetes.io",
 		RateLimitUpdate:         0.5,
 		WaitBeforeUpdate:        200 * time.Millisecond,
@@ -58,6 +60,7 @@ type Options struct {
 	ValidateConfig           bool
 	ControllerClass          string
 	WatchIngressWithoutClass bool
+	WatchIngress             bool
 	WatchGateway             bool
 	MasterWorker             bool
 	MasterSocket             string
@@ -73,6 +76,7 @@ type Options struct {
 	BucketsResponseTime      []float64
 	PublishService           string
 	PublishAddress           string
+	IPMode                   string
 	TCPConfigMapName         string
 	AnnPrefix                string
 	RateLimitUpdate          float64
@@ -211,6 +215,10 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 		"Watch and parse resources from the Gateway API.",
 	)
 
+	fs.BoolVar(&o.WatchIngress, "watch-ingress", o.WatchIngress, ""+
+		"Watch and parse resources from the Ingress API.",
+	)
+
 	fs.BoolVar(&o.MasterWorker, "master-worker", o.MasterWorker, ""+
 		"Defines if haproxy should be configured in master-worker mode. If 'false', one "+
 		"single process is forked in the background. If 'true', a master process is "+
@@ -281,6 +289,11 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 		"Comma separated list of hostname/IP addresses that should be used to configure "+
 		"Ingress and Gateway API status. This option cannot be used if --publish-service is "+
 		"configured.",
+	)
+
+	fs.StringVar(&o.IPMode, "ip-mode", o.IPMode, ""+
+		"Defines the IP mode used on default frontend binding, loopback address, and empty "+
+		"slots configuration. Options are: 'v4', 'v6', 'v4v6', 'lo', 'node', 'auto'.",
 	)
 
 	fs.StringVar(&o.TCPConfigMapName, "tcp-services-configmap", o.TCPConfigMapName, ""+

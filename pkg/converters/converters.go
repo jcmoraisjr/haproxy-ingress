@@ -17,9 +17,9 @@ limitations under the License.
 package converters
 
 import (
-	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/configmap"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/gateway"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress"
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tcpservices"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
@@ -50,10 +50,12 @@ type converters struct {
 func (c *converters) Sync() error {
 	logger := c.options.Logger
 	changed := c.changed
+	globalConverter := ingress.NewGlobalConverter(c.options, c.haproxy, changed)
 	ingressConverter := ingress.NewIngressConverter(c.options, c.haproxy, changed)
 	gatewayConverter := gateway.NewGatewayConverter(c.options, c.haproxy, changed, ingressConverter)
 
 	needFullSync := changed.NeedFullSync ||
+		globalConverter.NeedFullSync() ||
 		gatewayConverter.NeedFullSync() ||
 		ingressConverter.NeedFullSync()
 	if needFullSync {
@@ -70,11 +72,21 @@ func (c *converters) Sync() error {
 	}
 
 	//
+	// Global converter
+	//
+	logger.Info("syncing Global configurations")
+	err := globalConverter.Sync(needFullSync)
+	c.timer.Tick("parse_global")
+	if err != nil {
+		return err
+	}
+
+	//
 	// gateway converter
 	//
-	if c.options.HasGateway && needFullSync {
+	if c.options.HasGateway {
 		logger.Info("syncing Gateway API resources")
-		err := gatewayConverter.SyncFull()
+		err := gatewayConverter.Sync(needFullSync)
 		c.timer.Tick("parse_gateway")
 		if err != nil {
 			return err
@@ -84,12 +96,14 @@ func (c *converters) Sync() error {
 	//
 	// ingress converter
 	//
-	logger.Info("syncing Ingress API resources")
-	ingressConverter.Sync(needFullSync)
-	c.timer.Tick("parse_ingress")
+	if c.options.WatchIngress {
+		logger.Info("syncing Ingress API resources")
+		ingressConverter.Sync(needFullSync)
+		c.timer.Tick("parse_ingress")
+	}
 
 	//
-	// configmap converters
+	// tcpservices converter
 	//
 	if changed.TCPConfigMapDataCur != nil || changed.TCPConfigMapDataNew != nil {
 		// We always need to run configmap based tcp sync, when configured, because
@@ -97,7 +111,7 @@ func (c *converters) Sync() error {
 		// or secret updates. Although cur is always assigned if configmap based tcp
 		// is configured, only new is assigned in the very first run. OTOH, new is
 		// only assigned when the configmap is changed. So we need to check both.
-		tcpSvcConverter := configmap.NewTCPServicesConverter(c.options, c.haproxy, changed)
+		tcpSvcConverter := tcpservices.NewTCPServicesConverter(c.options, c.haproxy, changed)
 		tcpSvcConverter.Sync()
 		c.timer.Tick("parse_tcp_svc")
 	}

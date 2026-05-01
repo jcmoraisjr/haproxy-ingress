@@ -20,9 +20,11 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/netip"
 	"os"
 	"os/signal"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -40,7 +42,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -49,10 +50,10 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
-	gwapiversioned "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/version"
@@ -138,9 +139,9 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 	// `kubeConfig` is the real `*rest.Config` used
 	// by the manager to create the controller's client
 	//
-	// the clients below are just used locally to validate some config options
+	// the client below is just used locally to validate some config options
 	client := kubernetes.NewForConfigOrDie(kubeConfig)
-	clientGateway := gwapiversioned.NewForConfigOrDie(kubeConfig)
+	discovery := client.Discovery()
 
 	configLog.Info("version info",
 		"controller-publicname", versionInfo.Name,
@@ -177,10 +178,6 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		configLog.Info(fmt.Sprintf("WARNING: --shutdown-timeout=%s is less than --haproxy-grace-period=%s", opt.ShutdownTimeout.String(), opt.HAProxyGracePeriod.String()))
 	}
 
-	if opt.IngressClass != "" {
-		configLog.Info("watching for ingress resources with 'kubernetes.io/ingress.class'", "annotation", opt.IngressClass)
-	}
-
 	var waitShutdown time.Duration
 	if opt.WaitBeforeShutdown != "" {
 		var err error
@@ -201,50 +198,66 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 	if opt.ControllerClass != "" {
 		controllerName += "/" + strings.TrimLeft(opt.ControllerClass, "/")
 	}
-	configLog.Info("watching for ingress resources with IngressClass", "controller-name", controllerName)
 
-	if opt.WatchIngressWithoutClass {
-		configLog.Info("watching for ingress resources without any class reference - --watch-ingress-without-class is true")
+	if opt.WatchIngress {
+		configLog.Info("watching for Ingress API resources - --watch-ingress is true", "controller-name", controllerName)
+		if opt.IngressClass != "" {
+			configLog.Info("watching for ingress resources with 'kubernetes.io/ingress.class'", "annotation", opt.IngressClass)
+		}
+		if opt.WatchIngressWithoutClass {
+			configLog.Info("watching for ingress resources without any class reference - --watch-ingress-without-class is true")
+		} else {
+			configLog.Info("ignoring ingress resources without any class reference - --watch-ingress-without-class is false")
+		}
 	} else {
-		configLog.Info("ignoring ingress resources without any class reference - --watch-ingress-without-class is false")
-	}
-
-	if opt.WatchGateway {
-		configLog.Info("watching for Gateway API resources - --watch-gateway is true")
+		configLog.Info("ignoring Ingress API resources - --watch-ingress is false")
 	}
 
 	var hasGateway, hasGatewayV1, hasGatewayB1, hasTCPRouteA2, hasTLSRouteV1, hasTLSRouteA2, hasGrantV1, hasGrantB1 bool
 	if opt.WatchGateway {
-		gwapis := []string{"gatewayclass", "gateway", "httproute"}
-		tcpapis := []string{"tcproute"}
-		tlsapis := []string{"tlsroute"}
-		grantapis := []string{"referencegrant"}
+		v1APIs, err := discovery.ServerResourcesForGroupVersion(gatewayv1.GroupVersion.String())
+		if ctrlclient.IgnoreNotFound(err) != nil {
+			return nil, err
+		}
+		v1beta1APIs, err := discovery.ServerResourcesForGroupVersion(gatewayv1beta1.GroupVersion.String())
+		if ctrlclient.IgnoreNotFound(err) != nil {
+			return nil, err
+		}
+		v1alpha2APIs, err := discovery.ServerResourcesForGroupVersion(gatewayv1alpha2.GroupVersion.String())
+		if ctrlclient.IgnoreNotFound(err) != nil {
+			return nil, err
+		}
 
-		gwV1 := configHasAPI(clientGateway.Discovery(), gatewayv1.GroupVersion, gwapis...)
+		gwapis := []string{"gatewayclasses", "gateways", "httproutes"}
+		tcpapis := []string{"tcproutes"}
+		tlsapis := []string{"tlsroutes"}
+		grantapis := []string{"referencegrants"}
+
+		gwV1 := hasResources(v1APIs, gwapis...)
 		if gwV1 {
-			configLog.Info("found custom resource definition for gateway API v1")
+			configLog.Info("found custom resource definition for Gateway API v1")
 		}
-		gwB1 := configHasAPI(clientGateway.Discovery(), gatewayv1beta1.GroupVersion, gwapis...)
+		gwB1 := hasResources(v1beta1APIs, gwapis...)
 		if gwB1 {
-			configLog.Info("found custom resource definition for gateway API v1beta1")
+			configLog.Info("found custom resource definition for Gateway API v1beta1")
 		}
-		tcpA2 := configHasAPI(clientGateway.Discovery(), gatewayv1alpha2.GroupVersion, tcpapis...)
+		tcpA2 := hasResources(v1alpha2APIs, tcpapis...)
 		if tcpA2 {
 			configLog.Info("found custom resource definition for TCPRoute API v1alpha2")
 		}
-		tlsV1 := configHasAPI(clientGateway.Discovery(), gatewayv1.GroupVersion, tlsapis...)
+		tlsV1 := hasResources(v1APIs, tlsapis...)
 		if tlsV1 {
 			configLog.Info("found custom resource definition for TLSRoute API v1")
 		}
-		tlsA2 := configHasAPI(clientGateway.Discovery(), gatewayv1alpha2.GroupVersion, tlsapis...)
+		tlsA2 := hasResources(v1alpha2APIs, tlsapis...)
 		if tlsA2 {
 			configLog.Info("found custom resource definition for TLSRoute API v1alpha2")
 		}
-		grantV1 := configHasAPI(clientGateway.Discovery(), gatewayv1.GroupVersion, grantapis...)
+		grantV1 := hasResources(v1APIs, grantapis...)
 		if grantV1 {
 			configLog.Info("found custom resource definition for ReferenceGrant API v1")
 		}
-		grantB1 := configHasAPI(clientGateway.Discovery(), gatewayv1beta1.GroupVersion, grantapis...)
+		grantB1 := hasResources(v1beta1APIs, grantapis...)
 		if grantB1 {
 			configLog.Info("found custom resource definition for ReferenceGrant API v1beta1")
 		}
@@ -261,6 +274,13 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		hasTLSRouteA2 = tlsA2 && gw && !hasTLSRouteV1
 		hasGrantV1 = grantV1 && gw
 		hasGrantB1 = grantB1 && gw && !hasGrantV1
+
+		configLog.Info("watching for Gateway API resources - --watch-gateway is true", "controller-name", controllerName)
+		if !hasGateway {
+			configLog.Info("Gateway API CRDs not found, ignoring")
+		}
+	} else {
+		configLog.Info("ignoring Gateway API resources - --watch-gateway is false")
 	}
 
 	if opt.EnableEndpointSlicesAPI {
@@ -294,6 +314,38 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 	if err != nil {
 		return nil, fmt.Errorf("error getting controller pod selector: %w", err)
 	}
+
+	var hasIPv4, hasIPv6 bool
+	switch opt.IPMode {
+	case "v4":
+		hasIPv4, hasIPv6 = true, false
+	case "v6":
+		hasIPv4, hasIPv6 = false, true
+	case "v4v6":
+		hasIPv4, hasIPv6 = true, true
+	case "lo":
+		var err error
+		hasIPv4, hasIPv6, err = readIPModeFromLoopback()
+		if err != nil {
+			return nil, fmt.Errorf("error reading IP mode from loopback interface: %w", err)
+		}
+	case "node", "auto":
+		var err error
+		hasIPv4, hasIPv6, err = readIPModeFromNode(ctx, client, controllerPod)
+		if err != nil {
+			if opt.IPMode == "node" {
+				return nil, fmt.Errorf("error reading IP mode from controller node: %w", err)
+			}
+			configLog.Info("error reading IP mode from controller node, using IPv4", "err", err.Error())
+			hasIPv4, hasIPv6 = true, false
+		}
+	default:
+		return nil, fmt.Errorf("unsupported IP mode: %s", opt.IPMode)
+	}
+	if !hasIPv4 && !hasIPv6 {
+		return nil, fmt.Errorf("neither v4 nor v6 stack were identified using IP mode '%s'", opt.IPMode)
+	}
+	configLog.Info("IP mode configured", "mode", opt.IPMode, "hasIPv4", hasIPv4, "hasIPv6", hasIPv6)
 
 	// we could `|| hasGateway[version...]` instead of `|| opt.WatchGateway` here,
 	// but we're choosing a consistent startup behavior despite of the cluster configuration.
@@ -524,6 +576,8 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		HasGatewayV1:             hasGatewayV1,
 		HasGrantB1:               hasGrantB1,
 		HasGrantV1:               hasGrantV1,
+		HasIPv4:                  hasIPv4,
+		HasIPv6:                  hasIPv6,
 		HasTCPRouteA2:            hasTCPRouteA2,
 		HasTLSRouteA2:            hasTLSRouteA2,
 		HasTLSRouteV1:            hasTLSRouteV1,
@@ -562,6 +616,7 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		VerifyHostname:           opt.VerifyHostname,
 		VersionInfo:              versionInfo,
 		WaitBeforeUpdate:         opt.WaitBeforeUpdate,
+		WatchIngress:             opt.WatchIngress,
 		WatchIngressWithoutClass: opt.WatchIngressWithoutClass,
 		WatchNamespace:           opt.WatchNamespace,
 	}, nil
@@ -658,22 +713,19 @@ func createRootContext(ctx context.Context, rootLogger logr.Logger, waitShutdown
 	return ctx
 }
 
-func configHasAPI(discovery discovery.DiscoveryInterface, gv metav1.GroupVersion, kind ...string) bool {
-	gvstr := gv.String()
-	resources, err := discovery.ServerResourcesForGroupVersion(gvstr)
-	if err == nil && resources != nil {
-		names := make(map[string]bool, len(resources.APIResources))
-		for _, r := range resources.APIResources {
-			names[r.SingularName] = true
-		}
-		for _, k := range kind {
-			if !names[k] {
-				return false
-			}
-		}
-		return true
+func hasResources(apis *metav1.APIResourceList, resources ...string) bool {
+	if apis == nil {
+		return false
 	}
-	return false
+	for _, resource := range resources {
+		has := slices.ContainsFunc(apis.APIResources, func(r metav1.APIResource) bool {
+			return r.Name == resource
+		})
+		if !has {
+			return false
+		}
+	}
+	return true
 }
 
 func getControllerPodSelector(ctx context.Context, configLog logr.Logger, client kubernetes.Interface, controllerPod types.NamespacedName) (labels.Selector, error) {
@@ -747,6 +799,65 @@ func getControllerPodSelector(ctx context.Context, configLog logr.Logger, client
 	return podSelector, nil
 }
 
+func readIPModeFromNode(ctx context.Context, client *kubernetes.Clientset, controllerPod types.NamespacedName) (hasIPv4, hasIPv6 bool, err error) {
+	if controllerPod.Name == "" || controllerPod.Namespace == "" {
+		return false, false, fmt.Errorf("missing POD_NAMESPACE or POD_NAME envvars")
+	}
+	pod, err := client.CoreV1().Pods(controllerPod.Namespace).Get(ctx, controllerPod.Name, metav1.GetOptions{})
+	if err != nil {
+		return false, false, err
+	}
+	node, err := client.CoreV1().Nodes().Get(ctx, pod.Spec.NodeName, metav1.GetOptions{})
+	if err != nil {
+		return false, false, err
+	}
+	for _, addr := range node.Status.Addresses {
+		v4, v6 := parseIP(addr.Address)
+		hasIPv4 = hasIPv4 || v4
+		hasIPv6 = hasIPv6 || v6
+	}
+	return hasIPv4, hasIPv6, nil
+}
+
+func readIPModeFromLoopback() (hasIPv4, hasIPv6 bool, err error) {
+	intfs, err := net.Interfaces()
+	if err != nil {
+		return false, false, err
+	}
+	idx := slices.IndexFunc(intfs, func(intf net.Interface) bool {
+		// "lo" from Linux, "lo0" from macOS
+		return intf.Name == "lo" || intf.Name == "lo0"
+	})
+	if idx < 0 {
+		return false, false, fmt.Errorf("loopback interface not found")
+	}
+	addrs, err := intfs[idx].Addrs()
+	if err != nil {
+		return false, false, err
+	}
+	for _, addr := range addrs {
+		v4, v6 := parseIP(addr.String())
+		hasIPv4 = hasIPv4 || v4
+		hasIPv6 = hasIPv6 || v6
+	}
+	return hasIPv4, hasIPv6, nil
+}
+
+func parseIP(ipAddr string) (v4, v6 bool) {
+	prefix, err := netip.ParsePrefix(ipAddr)
+	if err != nil {
+		return false, false
+	}
+	addr := prefix.Addr()
+	if addr.Is4() || addr.Is4In6() {
+		return true, false
+	}
+	if addr.Is6() {
+		return false, true
+	}
+	return false, false
+}
+
 // Config ...
 type Config struct {
 	AcmeCheckPeriod          time.Duration
@@ -785,6 +896,8 @@ type Config struct {
 	HasGatewayV1             bool
 	HasGrantB1               bool
 	HasGrantV1               bool
+	HasIPv4                  bool
+	HasIPv6                  bool
 	HasTCPRouteA2            bool
 	HasTLSRouteA2            bool
 	HasTLSRouteV1            bool
@@ -823,6 +936,7 @@ type Config struct {
 	VerifyHostname           bool
 	VersionInfo              version.Info
 	WaitBeforeUpdate         time.Duration
+	WatchIngress             bool
 	WatchIngressWithoutClass bool
 	WatchNamespace           string
 }

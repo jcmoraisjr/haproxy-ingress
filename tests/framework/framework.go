@@ -69,6 +69,9 @@ const (
 	TestPortHTTP    = 28080
 	TestPortHTTPS   = 28443
 	TestPortStat    = 21936
+
+	CommonTimeout  = 15 * time.Second
+	CommonInterval = 2 * time.Second
 )
 
 var (
@@ -113,17 +116,19 @@ func NewFramework(ctx context.Context, t *testing.T, o ...options.Framework) *fr
 	require.NoError(t, err)
 
 	return &framework{
-		scheme: scheme,
-		config: config,
-		cli:    cli,
+		scheme:      scheme,
+		config:      config,
+		cli:         cli,
+		optOverride: opt.OptOverride,
 	}
 }
 
 type framework struct {
-	scheme  *runtime.Scheme
-	config  *rest.Config
-	cli     client.WithWatch
-	admSock socket.HAProxySocket
+	scheme      *runtime.Scheme
+	config      *rest.Config
+	cli         client.WithWatch
+	admSock     socket.HAProxySocket
+	optOverride options.OptOverrideCallback
 }
 
 // HAProxy version 3.4-dev5-028940725 2026/02/19 - https://haproxy.org/
@@ -232,6 +237,11 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 	opt.LocalFSPrefix = "/tmp/haproxy-ingress"
 	opt.PublishService = PublishSvcName
 	opt.ConfigMap = GlobalConfigMap.String()
+	// Our Request() method and EndpointSlice configuration currently uses IPv4 address only
+	opt.IPMode = "v4"
+	if f.optOverride != nil {
+		f.optOverride(opt)
+	}
 	os.Setenv("POD_NAMESPACE", GlobalConfigMap.Namespace)
 	ctx, cancel := context.WithCancel(ctx)
 	cfg, err := ctrlconfig.CreateWithConfig(ctx, f.config, opt)
@@ -260,9 +270,9 @@ func (f *framework) StartController(ctx context.Context, t *testing.T) {
 		req.URL.Path = "/"
 		_, err = http.DefaultClient.Do(req)
 		assert.NoError(collect, err)
-	}, 10*time.Second, time.Second)
+	}, CommonTimeout, CommonInterval)
 
-	f.admSock = socket.NewSocket(ctx, "/tmp/haproxy-ingress/var/run/haproxy/admin.sock", 5*time.Second, false)
+	f.admSock = socket.NewSocket(ctx, "/tmp/haproxy-ingress/var/run/haproxy/admin.sock", CommonTimeout, false)
 }
 
 type Response struct {
@@ -345,14 +355,14 @@ func (*framework) Request(ctx context.Context, t *testing.T, method, host, path 
 				return
 			}
 			assert.Contains(collect, opt.ExpectResponseCode, res.StatusCode)
-		}, 5*time.Second, time.Second)
+		}, CommonTimeout, CommonInterval)
 		// ... but requires that no request error happened.
 		require.NoError(t, err)
 	case opt.ExpectError != "":
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
 			_, err := cli.Do(req)
 			assert.ErrorContains(collect, err, opt.ExpectError)
-		}, 5*time.Second, time.Second)
+		}, CommonTimeout, CommonInterval)
 		return Response{EchoResponse: buildEchoResponse(t, "")}
 	default:
 		res, err = cli.Do(req)
@@ -389,7 +399,7 @@ func (*framework) TCPRequest(ctx context.Context, t *testing.T, tcpPort int32, d
 			conn, err = net.Dial("tcp", fmt.Sprintf(":%d", tcpPort))
 		}
 		assert.NoError(collect, err)
-	}, 5*time.Second, time.Second)
+	}, CommonTimeout, CommonInterval)
 	defer conn.Close()
 	_, err := conn.Write([]byte(data))
 	require.NoError(t, err)
@@ -448,7 +458,7 @@ func (*framework) Websocket(ctx context.Context, t *testing.T, host, path string
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
 			_, _, err := websocket.DefaultDialer.DialContext(ctx, url.String(), header)
 			assert.ErrorContains(collect, err, opt.ExpectError)
-		}, 5*time.Second, time.Second)
+		}, CommonTimeout, CommonInterval)
 		return nil
 	}
 
@@ -457,7 +467,7 @@ func (*framework) Websocket(ctx context.Context, t *testing.T, host, path string
 		var err error
 		ws, _, err = websocket.DefaultDialer.DialContext(ctx, url.String(), header)
 		assert.NoError(collect, err)
-	}, 5*time.Second, time.Second)
+	}, CommonTimeout, CommonInterval)
 	t.Cleanup(func() { ws.Close() })
 
 	return &WSConn{ws}
@@ -482,7 +492,7 @@ func (f *framework) RequireIngressStatus(ctx context.Context, t *testing.T, ing 
 			return
 		}
 		assert.Equal(collect, expectedIngressStatus, ing.Status)
-	}, 5*time.Second, time.Second)
+	}, CommonTimeout, CommonInterval)
 }
 
 var pidRegex = regexp.MustCompile(`Pid: ([0-9]+)`)
@@ -665,7 +675,7 @@ apiVersion: discovery.k8s.io/v1
 addressType: IPv4
 endpoints:
 - addresses:
-  - 0.0.0.255 ## ignored due to loopback-endpoint/ports-as-replicas annotations
+  - 0.0.0.255 ## ignored due to loopbackv4-endpoint/ports-as-replicas annotations
   conditions:
     ready: true
 metadata:
@@ -681,7 +691,7 @@ ports: []
 	if portsAsReplicas {
 		eps.Annotations["internal.haproxy-ingress.github.io/ports-as-replicas"] = "1"
 	} else {
-		eps.Annotations["internal.haproxy-ingress.github.io/loopback-endpoint"] = "1"
+		eps.Annotations["internal.haproxy-ingress.github.io/loopbackv4-endpoint"] = "1"
 	}
 	eps.Labels["kubernetes.io/service-name"] = svc.Name
 	for _, svcport := range svc.Spec.Ports {
@@ -1120,11 +1130,15 @@ func (*framework) CreateAuthzServer(ctx context.Context, t *testing.T, o ...opti
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if opt.AuthzKey != "" && r.Header.Get(opt.AuthzKey) != opt.AuthzValue {
-			w.Header().Set("x-Authz", "Unauthorized")
+			w.Header().Set("X-Authz", "Unauthorized")
+			w.Header().Set("X-Fail", "error")
+			w.Header().Set("X-Extra", "fail")
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 		w.Header().Set("x-Authz", "Authorized")
+		w.Header().Set("X-succeed", "ok")
+		w.Header().Set("X-Extra", "succeed")
 		w.WriteHeader(http.StatusOK)
 	})
 	startHTTPServer(t, mux, serverPort)

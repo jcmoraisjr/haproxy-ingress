@@ -31,6 +31,7 @@ import (
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/converters/tracker"
 	convtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy"
+	hatypes "github.com/jcmoraisjr/haproxy-ingress/pkg/haproxy/types"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils"
 	"github.com/jcmoraisjr/haproxy-ingress/pkg/utils/workqueue"
 )
@@ -120,6 +121,15 @@ func (s *Services) setup(ctx context.Context) error {
 		acmeSigner = acmeClient.signer
 		acmeQueue = acmeClient
 	}
+	var ipMode hatypes.IPMode
+	switch {
+	case cfg.HasIPv4 && cfg.HasIPv6:
+		ipMode = hatypes.IPModeV4V6
+	case cfg.HasIPv6:
+		ipMode = hatypes.IPModeV6
+	default:
+		ipMode = hatypes.IPModeV4
+	}
 	instanceOptions := haproxy.InstanceOptions{
 		RootFSPrefix:      rootFSPrefix,
 		LocalFSPrefix:     cfg.LocalFSPrefix,
@@ -133,6 +143,7 @@ func (s *Services) setup(ctx context.Context) error {
 		AdminSocket:       adminSocket,
 		AcmeSocket:        acmeSocket,
 		BackendShards:     cfg.BackendShards,
+		IPMode:            ipMode,
 		Metrics:           metrics,
 		ReloadQueue:       reloadQueue,
 		ReloadStrategy:    cfg.ReloadStrategy,
@@ -150,6 +161,7 @@ func (s *Services) setup(ctx context.Context) error {
 		Tracker:          tracker,
 		DynamicConfig:    dynConfig,
 		LocalFSPrefix:    cfg.LocalFSPrefix,
+		IPMode:           ipMode,
 		IsExternal:       instanceOptions.IsExternal,
 		MasterSocket:     instanceOptions.MasterSocket,
 		AdminSocket:      instanceOptions.AdminSocket,
@@ -163,6 +175,7 @@ func (s *Services) setup(ctx context.Context) error {
 		DisableKeywords:  cfg.DisableKeywords,
 		AcmeTrackTLSAnn:  cfg.AcmeTrackTLSAnn,
 		TrackInstances:   cfg.TrackOldInstances,
+		WatchIngress:     cfg.WatchIngress,
 		HasGateway:       cfg.HasGateway,
 		HasTLSRoute:      cfg.HasTLSRouteA2 || cfg.HasTLSRouteV1,
 		HasTCPRoute:      cfg.HasTCPRouteA2,

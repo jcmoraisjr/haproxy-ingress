@@ -121,7 +121,10 @@ type testConfig struct {
 func setup(t *testing.T) *testConfig {
 	logger := &types_helper.LoggerMock{T: t}
 	tracker := tracker.NewTracker()
-	instance := haproxy.CreateInstance(logger, haproxy.InstanceOptions{}).Config()
+	opt := haproxy.InstanceOptions{
+		IPMode: hatypes.IPModeV4,
+	}
+	instance := haproxy.CreateInstance(logger, opt).Config()
 	instance.Global().Peers.LocalPeer.BESuffix = "proxy01" // we need this to properly initialize updater's vars map
 	return &testConfig{
 		t:       t,

@@ -130,6 +130,7 @@ type SSLConfig struct {
 	BackendCipherSuites string
 	Ciphers             string // TLS up to 1.2
 	CipherSuites        string // TLS 1.3
+	DefaultCrt          CertificateConfig
 	DefaultCAFilename   string
 	DefaultCAHash       string
 	DefaultCRLFilename  string
@@ -141,6 +142,14 @@ type SSLConfig struct {
 	Options             string
 	RedirectCode        int
 	SSLRedirect         bool
+}
+
+// CertificateConfig ...
+type CertificateConfig struct {
+	Filename   string
+	Hash       string
+	CommonName string
+	NotAfter   time.Time
 }
 
 // DHParamConfig ...
@@ -471,17 +480,30 @@ type AuthProxy struct {
 type AuthProxyBind struct {
 	AuthBackendName string
 	Backend         BackendID
+	Loopback        string
 	LocalPort       int
 	SocketID        int
 }
 
+type IPMode string
+
+const (
+	IPModeV4   IPMode = "IPV4"
+	IPModeV6   IPMode = "IPV6"
+	IPModeV4V6 IPMode = "IPV4V6"
+)
+
+const (
+	LoopbackV4 = "127.0.0.1"
+	LoopbackV6 = "[::1]"
+)
+
 // Frontends ...
 type Frontends struct {
-	AuthProxy      AuthProxy
-	DefaultCrtFile string
-	DefaultCrtHash string
+	AuthProxy AuthProxy
 	//
 	items   []*Frontend
+	ipMode  IPMode
 	changed bool
 }
 

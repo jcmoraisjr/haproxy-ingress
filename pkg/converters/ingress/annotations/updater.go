@@ -32,8 +32,8 @@ import (
 
 // Updater ...
 type Updater interface {
-	UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mapper)
-	UpdatePeers(haproxyConfig haproxy.Config, mapper *Mapper)
+	UpdateGlobalConfig(mapper *Mapper)
+	UpdatePeers(mapper *Mapper)
 	UpdateTCPPortConfig(tcp *hatypes.TCPServicePort, mapper *Mapper)
 	UpdateTCPHostConfig(tcpPort *hatypes.TCPServicePort, tcpHost *hatypes.TCPServiceHost, mapper *Mapper)
 	UpdateFrontConfig(front *hatypes.Frontend, mapper *Mapper, localPorts bool)
@@ -160,11 +160,11 @@ func (c *updater) splitDualCIDR(cidrlist *ConfigValue) (allow, deny []string) {
 	return allow, deny
 }
 
-func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mapper) {
-	c.UpdatePeers(haproxyConfig, mapper)
+func (c *updater) UpdateGlobalConfig(mapper *Mapper) {
+	c.UpdatePeers(mapper)
 	d := &globalData{
-		acmeData: haproxyConfig.AcmeData(),
-		global:   haproxyConfig.Global(),
+		acmeData: c.haproxy.AcmeData(),
+		global:   c.haproxy.Global(),
 		mapper:   mapper,
 	}
 	d.global.AdminSocket = c.options.AdminSocket
@@ -205,9 +205,9 @@ func (c *updater) UpdateGlobalConfig(haproxyConfig haproxy.Config, mapper *Mappe
 	c.buildGlobalCloseSessions(d) // last one, it conditionally overrides timeout config
 }
 
-func (c *updater) UpdatePeers(haproxyConfig haproxy.Config, mapper *Mapper) {
+func (c *updater) UpdatePeers(mapper *Mapper) {
 	// NOTE - Peers is updated without cleanup, so all the methods should be idempotent.
-	global := haproxyConfig.Global()
+	global := c.haproxy.Global()
 	d := &globalData{
 		global: global,
 		mapper: mapper,

@@ -34,7 +34,8 @@ type FrontendPorts struct {
 	httpPort,
 	httpsPort,
 	httpPassPort int32
-	frontends map[string]httpPorts
+	frontends       map[string]httpPorts
+	createFrontends bool
 }
 
 type FrontendLocalPorts struct {
@@ -113,13 +114,15 @@ func NewFrontendPorts(logger types.Logger, haproxy haproxy.Config, globalMapper 
 		frontends[frontID] = httpPorts{http: frontHTTP, https: frontHTTPS}
 		denyPorts = append(denyPorts, frontHTTP, frontHTTPS)
 	}
+	createFrontends := globalMapper.Get(ingtypes.GlobalCreateDefaultFrontends).Bool()
 
 	return &FrontendPorts{
-		logger:       logger,
-		httpPort:     httpPort,
-		httpsPort:    httpsPort,
-		httpPassPort: httpPassPort,
-		frontends:    frontends,
+		logger:          logger,
+		httpPort:        httpPort,
+		httpsPort:       httpsPort,
+		httpPassPort:    httpPassPort,
+		frontends:       frontends,
+		createFrontends: createFrontends,
 	}
 }
 
@@ -161,15 +164,19 @@ func (fp *FrontendPorts) AcquirePorts(mapper *Mapper) (FrontendLocalPorts, error
 	}, nil
 }
 
-func (fp *FrontendPorts) EnsureEmptyFrontends(frontends *hatypes.Frontends) {
-	_ = frontends.AcquireFrontend(fp.httpPort, false)
-	_ = frontends.AcquireFrontend(fp.httpsPort, true)
-	if fp.httpPassPort > 0 && fp.httpPassPort != fp.httpPort {
-		_ = frontends.AcquireFrontend(fp.httpPassPort, false)
-	}
-	for _, f := range fp.frontends {
-		_ = frontends.AcquireFrontend(f.http, false)
-		_ = frontends.AcquireFrontend(f.https, true)
+func (fp *FrontendPorts) SyncFrontends(frontends *hatypes.Frontends) {
+	if fp.createFrontends {
+		_ = frontends.AcquireFrontend(fp.httpPort, false)
+		_ = frontends.AcquireFrontend(fp.httpsPort, true)
+		if fp.httpPassPort > 0 && fp.httpPassPort != fp.httpPort {
+			_ = frontends.AcquireFrontend(fp.httpPassPort, false)
+		}
+		for _, f := range fp.frontends {
+			_ = frontends.AcquireFrontend(f.http, false)
+			_ = frontends.AcquireFrontend(f.https, true)
+		}
+	} else {
+		frontends.RemoveEmptyFrontends()
 	}
 }
 
@@ -198,8 +205,7 @@ func (c *updater) buildFrontBindHTTP(d *frontData) {
 	d.front.AcceptProxy = d.get(ingtypes.FrontUseProxyProtocol).Bool()
 	if bindHTTP := d.get(ingtypes.FrontBindHTTP).Value; bindHTTP != "" {
 		d.front.Bind = bindHTTP
-	} else {
-		ip := d.get(ingtypes.FrontBindIPAddrHTTP).Value
+	} else if ip := d.get(ingtypes.FrontBindIPAddrHTTP).Value; ip != "" {
 		d.front.Bind = fmt.Sprintf("%s:%d", ip, d.front.Port())
 	}
 }
@@ -208,8 +214,7 @@ func (c *updater) buildFrontBindHTTPS(d *frontData) {
 	d.front.AcceptProxy = d.get(ingtypes.FrontUseProxyProtocol).Bool()
 	if bindHTTPS := d.get(ingtypes.FrontBindHTTPS).Value; bindHTTPS != "" {
 		d.front.Bind = bindHTTPS
-	} else {
-		ip := d.get(ingtypes.FrontBindIPAddrHTTP).Value
+	} else if ip := d.get(ingtypes.FrontBindIPAddrHTTP).Value; ip != "" {
 		d.front.Bind = fmt.Sprintf("%s:%d", ip, d.front.Port())
 	}
 }
@@ -225,9 +230,15 @@ func (c *updater) buildFrontHTTPPassthrough(d *frontData) {
 		bind = d.get(ingtypes.FrontBindFrontingProxy).Value
 	}
 	if bind == "" {
-		bind = fmt.Sprintf("%s:%d", d.get(ingtypes.FrontBindIPAddrHTTP).Value, httpPort)
+		ipaddr := d.get(ingtypes.FrontBindIPAddrHTTP).Value
+		if ipaddr != "" {
+			bind = fmt.Sprintf("%s:%d", ipaddr, httpPort)
+		}
 	}
 	d.front.HTTPPassthrough = true
 	d.front.HTTPPassUseProto = d.get(ingtypes.FrontUseForwardedProto).Bool()
-	d.front.Bind = bind
+	// Bind only overwritten if configured; otherwise using default from ip-mode
+	if bind != "" {
+		d.front.Bind = bind
+	}
 }

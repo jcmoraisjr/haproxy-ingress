@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
+	"github.com/jcmoraisjr/haproxy-ingress/pkg/controller/config"
 	ingtypes "github.com/jcmoraisjr/haproxy-ingress/pkg/converters/ingress/types"
 	"github.com/jcmoraisjr/haproxy-ingress/tests/framework"
 	"github.com/jcmoraisjr/haproxy-ingress/tests/framework/options"
@@ -509,10 +510,16 @@ func TestIntegrationIngress(t *testing.T) {
 		)
 		_, hostnameBack := f.CreateIngress(ctx, t, svc,
 			options.AddConfigKeyAnnotation(ingtypes.BackAuthURL, fmt.Sprintf("http://127.0.0.1:%d", authzPort)),
+			options.AddConfigKeyAnnotation(ingtypes.BackAuthHeadersRequest, "x-token"),
+			options.AddConfigKeyAnnotation(ingtypes.BackAuthHeadersFail, "X-Authz,X-Fail"),
+			options.AddConfigKeyAnnotation(ingtypes.BackAuthHeadersSucceed, "X-Authz,X-Succeed*"),
 		)
 		_, hostnameFront := f.CreateIngress(ctx, t, svc,
 			options.AddConfigKeyAnnotation(ingtypes.BackAuthURL, fmt.Sprintf("http://127.0.0.1:%d", authzPort)),
 			options.AddConfigKeyAnnotation(ingtypes.BackAuthExternalPlacement, "frontend"),
+			options.AddConfigKeyAnnotation(ingtypes.BackAuthHeadersRequest, "x-token"),
+			options.AddConfigKeyAnnotation(ingtypes.BackAuthHeadersFail, "X-Authz,X-Fail"),
+			options.AddConfigKeyAnnotation(ingtypes.BackAuthHeadersSucceed, "X-Authz,X-Succeed*"),
 		)
 
 		req := func(hostname, tokenValue string, authorized bool) framework.Response {
@@ -535,19 +542,21 @@ func TestIntegrationIngress(t *testing.T) {
 			return res
 		}
 
-		// invalid token, forbidden
-		_ = req(hostnameBack, "132", false)
+		// backend placement
+		resFailBack := req(hostnameBack, "132", false)
+		assert.Equal(t, "Unauthorized", resFailBack.HTTPResponse.Header.Get("x-authz"))
+		assert.Equal(t, "error", resFailBack.HTTPResponse.Header.Get("x-fail"))
 
-		// valid token, authorized
-		resBack := req(hostnameBack, "123", true)
-		assert.Equal(t, map[string]string{"x-token": "123", "x-authz": "Authorized"}, resBack.EchoResponse.ReqHeaders)
+		resValidBack := req(hostnameBack, "123", true)
+		assert.Equal(t, map[string]string{"x-token": "123", "x-authz": "Authorized", "x-succeed": "ok"}, resValidBack.EchoResponse.ReqHeaders)
 
-		// invalid token, forbidden
-		_ = req(hostnameFront, "132", false)
+		// frontend placement
+		resFailFront := req(hostnameFront, "132", false)
+		assert.Equal(t, "Unauthorized", resFailFront.HTTPResponse.Header.Get("x-authz"))
+		assert.Equal(t, "error", resFailFront.HTTPResponse.Header.Get("x-fail"))
 
-		// valid token, authorized
-		resFront := req(hostnameFront, "123", true)
-		assert.Equal(t, map[string]string{"x-token": "123", "x-authz": "Authorized"}, resFront.EchoResponse.ReqHeaders)
+		resValidFront := req(hostnameFront, "123", true)
+		assert.Equal(t, map[string]string{"x-token": "123", "x-authz": "Authorized", "x-succeed": "ok"}, resValidFront.EchoResponse.ReqHeaders)
 	})
 
 	t.Run("should authorize websocket", func(t *testing.T) {
@@ -660,7 +669,7 @@ func TestIntegrationIngress(t *testing.T) {
 			for _, msg := range expected {
 				assert.True(collect, slices.Contains(messages, msg), "message not found: "+msg)
 			}
-		}, 5*time.Second, time.Second)
+		}, framework.CommonTimeout, framework.CommonInterval)
 
 		// each client should receive their responses as well
 		assert.Equal(t, []string{"msg 1", "msg 4"}, ws1.ReadClientMessages(t))
@@ -915,7 +924,7 @@ Request forbidden by administrative rules.
 				}
 			}
 			assert.Fail(collect, "lease event not found")
-		}, 10*time.Second, time.Second)
+		}, framework.CommonTimeout, framework.CommonInterval)
 	})
 
 	t.Run("should update ingress status", func(t *testing.T) {
@@ -964,7 +973,7 @@ Request forbidden by administrative rules.
 					},
 				},
 			}, ing.Status)
-		}, 5*time.Second, time.Second)
+		}, framework.CommonTimeout, framework.CommonInterval)
 
 		// recover initial svc status
 		svcpub.Status.LoadBalancer.Ingress = svcpublb
@@ -1061,7 +1070,7 @@ Request forbidden by administrative rules.
 
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 			_ = framework.TLSConnection(collect, "localhost", tcpIngressPort)
-		}, 5*time.Second, time.Second)
+		}, framework.CommonTimeout, framework.CommonInterval)
 
 		conn := framework.TLSConnection(t, "localhost", tcpIngressPort)
 		require.NotNil(t, conn)
@@ -1321,7 +1330,7 @@ Request forbidden by administrative rules.
 		eventuallyServerCount := func(t *testing.T, svc *corev1.Service, expectedServerCount int) {
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				assert.Equal(collect, expectedServerCount, f.ReadNumBackendServers(t, svc))
-			}, 5*time.Second, time.Second)
+			}, framework.CommonTimeout, framework.CommonInterval)
 		}
 		eventuallyBalanceCount := func(t *testing.T, hostname string, expectedServerCount int) {
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
@@ -1330,7 +1339,7 @@ Request forbidden by administrative rules.
 					return
 				}
 				assert.Equal(collect, expectedServerCount, count)
-			}, 15*time.Second, 3*time.Second)
+			}, framework.CommonTimeout, framework.CommonInterval)
 		}
 		changeReplicas := func(ep *discoveryv1.EndpointSlice, addRemove int) {
 			switch {
@@ -1456,7 +1465,12 @@ func TestIntegrationGateway(t *testing.T) {
 	t.Run("v050-v1beta1", func(t *testing.T) {
 		for _, channel := range channels {
 			t.Run(channel, func(t *testing.T) {
-				f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v050-v1beta1-"+channel))
+				f := framework.NewFramework(ctx, t,
+					options.CRDs("gateway-api-v050-v1beta1-"+channel),
+					options.OptOverride(func(opt *config.Options) {
+						opt.WatchIngress = false
+					}),
+				)
 				f.StartController(ctx, t)
 				httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1beta1")
 				gc := f.CreateGatewayClassB1(ctx, t)
@@ -1477,7 +1491,12 @@ func TestIntegrationGateway(t *testing.T) {
 	t.Run("v100-v1", func(t *testing.T) {
 		for _, channel := range channels {
 			t.Run(channel, func(t *testing.T) {
-				f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v100-v1-"+channel))
+				f := framework.NewFramework(ctx, t,
+					options.CRDs("gateway-api-v100-v1-"+channel),
+					options.OptOverride(func(opt *config.Options) {
+						opt.WatchIngress = false
+					}),
+				)
 				f.StartController(ctx, t)
 
 				httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1-http")
@@ -1535,7 +1554,12 @@ func TestIntegrationGateway(t *testing.T) {
 	t.Run("v151-v1", func(t *testing.T) {
 		for _, channel := range channels {
 			t.Run(channel, func(t *testing.T) {
-				f := framework.NewFramework(ctx, t, options.CRDs("gateway-api-v151-v1-"+channel))
+				f := framework.NewFramework(ctx, t,
+					options.CRDs("gateway-api-v151-v1-"+channel),
+					options.OptOverride(func(opt *config.Options) {
+						opt.WatchIngress = false
+					}),
+				)
 				f.StartController(ctx, t)
 
 				httpServerPort := f.CreateHTTPServer(ctx, t, "gw-v1-http")
