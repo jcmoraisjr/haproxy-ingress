@@ -229,7 +229,7 @@ func (d *dynUpdater) checkBackendPair(pair *backendPair) bool {
 			// DNS based updates finishes prematurely. Ensure the ep
 			// list size of the new one is at least as big as the old one.
 			for i := len(curBack.Endpoints); i < len(oldBack.Endpoints); i++ {
-				curBack.AddEmptyEndpoint()
+				curBack.AddEmptyEndpoint(d.config.options.ipMode)
 			}
 		}
 		return updated
@@ -314,7 +314,7 @@ func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
 
 	// copy remaining empty slots from oldBack to curBack, so it can be used in a future update
 	for i := len(added); i < len(empty); i++ {
-		curBack.AddEmptyEndpoint().Name = empty[i].Name
+		curBack.AddEmptyEndpoint(d.config.options.ipMode).Name = empty[i].Name
 	}
 
 	return updated
@@ -424,7 +424,7 @@ func (d *dynUpdater) alignSlots() {
 				}
 			}
 			for i := totalFreeSlots; i < minFreeSlots; i++ {
-				back.AddEmptyEndpoint()
+				back.AddEmptyEndpoint(d.config.options.ipMode)
 				changed = true
 			}
 			// * []endpoints == group of blocks
@@ -434,7 +434,7 @@ func (d *dynUpdater) alignSlots() {
 			newFreeSlots = blockSize - (((len(back.Endpoints) + blockSize - 1) % blockSize) + 1)
 		}
 		for i := 0; i < newFreeSlots; i++ {
-			back.AddEmptyEndpoint()
+			back.AddEmptyEndpoint(d.config.options.ipMode)
 			changed = true
 		}
 		if changed {

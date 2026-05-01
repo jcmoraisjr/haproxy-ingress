@@ -124,7 +124,7 @@ func TestFillSourceIPs(t *testing.T) {
 			if e != "" {
 				b.AcquireEndpoint(e, 8080, "")
 			} else {
-				b.AddEmptyEndpoint()
+				b.AddEmptyEndpoint(IPModeV4)
 			}
 		}
 		for _, s := range test.src {

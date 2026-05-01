@@ -50,6 +50,7 @@ type InstanceOptions struct {
 	BackendShards     int
 	HAProxyCfgDir     string
 	HAProxyMapsDir    string
+	IPMode            hatypes.IPMode
 	IsMasterWorker    bool
 	IsExternal        bool
 	ConnectionTimeout time.Duration
@@ -246,6 +247,7 @@ func (i *instance) ParseTemplates() error {
 func (i *instance) Config() Config {
 	if i.config == nil {
 		config := createConfig(options{
+			ipMode:       i.options.IPMode,
 			mapsTemplate: i.mapsTmpl,
 			mapsDir:      i.options.HAProxyMapsDir,
 			shardCount:   i.options.BackendShards,

@@ -1055,14 +1055,14 @@ backend {{ $bind.AuthBackendName }}
 {{- range $snippet := index $global.CustomProxy $bind.AuthBackendName }}
     {{ $snippet }}
 {{- end }}
-    server {{ $bind.AuthBackendName }} 127.0.0.1:{{ $bind.LocalPort }}
+    server {{ $bind.AuthBackendName }} {{ $bind.Loopback }}:{{ $bind.LocalPort }}
 {{- end }}
 
 {{- /*------------------------------------*/}}
 frontend {{ $proxy.Name }}
     mode http
 {{- range $bind := $proxy.BindList }}
-    bind 127.0.0.1:{{ $bind.LocalPort }}
+    bind {{ $bind.Loopback }}:{{ $bind.LocalPort }}
         {{- if $use_socket }} id {{ $bind.SocketID }}{{ end }}
 {{- end }}
 

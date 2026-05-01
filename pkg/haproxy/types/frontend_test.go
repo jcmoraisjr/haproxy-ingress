@@ -18,7 +18,41 @@ package types
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
+
+func TestAcquireFrontend(t *testing.T) {
+	testCases := map[string]struct {
+		ipMode  IPMode
+		port    int32
+		expBind string
+	}{
+		"v4 mode": {
+			ipMode:  IPModeV4,
+			port:    8080,
+			expBind: ":8080",
+		},
+		"v6 mode": {
+			ipMode:  IPModeV6,
+			port:    8080,
+			expBind: ":::8080",
+		},
+		"v4v6 mode": {
+			ipMode:  IPModeV4V6,
+			port:    8080,
+			expBind: ":8080,:::8080",
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			frontends := CreateFrontends(test.ipMode)
+			f := frontends.AcquireFrontend(test.port, false)
+			require.Equal(t, test.expBind, f.Bind)
+		})
+	}
+}
 
 func TestAcquireAuthFrontendLocalPort(t *testing.T) {
 	testCases := []struct {
@@ -62,7 +96,7 @@ func TestAcquireAuthFrontendLocalPort(t *testing.T) {
 		authBackendNames := make([]string, len(test.backends))
 		errs := make([]string, len(test.backends))
 		for j, back := range test.backends {
-			authBackendName, err := authProxy.AcquireAuthBackendName(BackendID{Name: back})
+			authBackendName, err := authProxy.AcquireAuthBackendName(BackendID{Name: back}, IPModeV4)
 			authBackendNames[j] = authBackendName
 			if err != nil {
 				errs[j] = err.Error()

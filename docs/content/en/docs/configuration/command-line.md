@@ -42,6 +42,7 @@ The following command-line options are supported:
 | [`--healthz-port`](#stats)                              | port number                | `10254`                 |       |
 | [`--ingress-class`](#ingress-class)                     | name                       | `haproxy`               |       |
 | [`--ingress-class-precedence`](#ingress-class)          | [true\|false]              | `false`                 | v0.13.5 |
+| [`--ip-mode`](#ip-mode)                                 | [v4\|v6\|v4v6\|lo\|node\|auto] | `auto`              | v0.17 |
 | [`--kubeconfig`](#kubeconfig)                           | /path/to/kubeconfig        | in cluster config       |       |
 | [`--local-filesystem-prefix`](#local-filesystem-prefix) | temporary base directory   |                         | v0.14 |
 | [`--log-zap`](#logging)                                 | [true\|false]              | `false`                 | v0.14 |
@@ -356,6 +357,29 @@ See also:
 
 * [Class matter]({{% relref "keys/#class-matter" %}}) in the Configuration Keys doc
 * https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-class
+
+---
+
+## ip-mode
+
+* `--ip-mode`
+
+Since v0.17
+
+Defines the IP mode used on frontends (listening bind) if not configured in the frontend binding, and loopback addresses created by HAProxy Ingress (auth-proxy and empty slots). Defaults to `auto` if not configured.
+
+The following options are available:
+
+* `v4`: uses only IPv4 on default listening bind configurations, and IPv4 on loopback addresses.
+* `v6`: uses only IPv6 on default listening bind configurations, and IPv6 on loopback addresses.
+* `v4v6`: uses both IPv4 and IPv6 on default listening bind configurations, and IPv4 on loopback addresses.
+* `lo`: uses IP addresses of the loopback interface to determine the IP mode. The initialization fails in case of a failure finding and reading the loopback interface.
+* `node`: uses both Internal and External IP addresses of the Node where controller is running to determine the IP mode. The initialization fails in case the node status cannot be read.
+* `auto`: same as node, but defaults to IPv4 instead of failing the initialization in case the node status cannot be read.
+
+See also:
+
+* [Bind]({{% relref "keys#bind" %}}) configuration keys
 
 ---
 
