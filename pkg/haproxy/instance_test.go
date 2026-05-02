@@ -3484,8 +3484,8 @@ func TestInstanceFrontendAuthExternal(t *testing.T) {
 				HeadersSucceed:  allHeaders,
 			},
 			expconfig: `
-    http-request lua.auth-intercept d_app1_8080 /auth GET '*' '*' '*' if { var(req.base) -m str beg 'd.local#/' }
-    http-request deny if !{ var(txn.auth_response_successful) -m bool } { var(req.base) -m str beg 'd.local#/' }`,
+    http-request lua.auth-intercept d_app1_8080 /auth GET '*' '*' '*' if { var(req.base) -m beg 'd.local#/' }
+    http-request deny if !{ var(txn.auth_response_successful) -m bool } { var(req.base) -m beg 'd.local#/' }`,
 		},
 		// 3
 		{
@@ -3499,9 +3499,9 @@ func TestInstanceFrontendAuthExternal(t *testing.T) {
 				HeadersVars:     map[string]string{"X-UserID": "req.auth_response_header.x_user_id"},
 			},
 			expconfig: `
-    http-request lua.auth-intercept d_app1_8080 /auth POST '*' '*' 'X-Reason' if { var(req.base) -m str beg 'd.local#/' }
-    http-request deny if !{ var(txn.auth_response_successful) -m bool } { var(req.base) -m str beg 'd.local#/' }
-    http-request set-header X-UserID %[var(req.auth_response_header.x_user_id)] if { var(req.auth_response_header.x_user_id) -m found } { var(req.base) -m str beg 'd.local#/' }`,
+    http-request lua.auth-intercept d_app1_8080 /auth POST '*' '*' 'X-Reason' if { var(req.base) -m beg 'd.local#/' }
+    http-request deny if !{ var(txn.auth_response_successful) -m bool } { var(req.base) -m beg 'd.local#/' }
+    http-request set-header X-UserID %[var(req.auth_response_header.x_user_id)] if { var(req.auth_response_header.x_user_id) -m found } { var(req.base) -m beg 'd.local#/' }`,
 		},
 		// 4
 		{
@@ -3515,8 +3515,8 @@ func TestInstanceFrontendAuthExternal(t *testing.T) {
 				RedirectOnFail:  "/login",
 			},
 			expconfig: `
-    http-request lua.auth-intercept d_app1_8080 /auth POST 'X-UserID,X-GroupID' '*' '*' if { var(req.base) -m str beg 'd.local#/' }
-    http-request redirect location /login if !{ var(txn.auth_response_successful) -m bool } { var(req.base) -m str beg 'd.local#/' }`,
+    http-request lua.auth-intercept d_app1_8080 /auth POST 'X-UserID,X-GroupID' '*' '*' if { var(req.base) -m beg 'd.local#/' }
+    http-request redirect location /login if !{ var(txn.auth_response_successful) -m bool } { var(req.base) -m beg 'd.local#/' }`,
 		},
 		// 5
 		{
@@ -3531,8 +3531,8 @@ func TestInstanceFrontendAuthExternal(t *testing.T) {
 				AllowedPath:     "/login",
 			},
 			expconfig: `
-    http-request lua.auth-intercept d_app1_8080 /login POST '*' 'X-Region,X-Tenant' '*' if !{ path_beg /login } { var(req.base) -m str beg 'd.local#/' }
-    http-request redirect location /login if !{ var(txn.auth_response_successful) -m bool } !{ path_beg /login } { var(req.base) -m str beg 'd.local#/' }`,
+    http-request lua.auth-intercept d_app1_8080 /login POST '*' 'X-Region,X-Tenant' '*' if !{ path_beg /login } { var(req.base) -m beg 'd.local#/' }
+    http-request redirect location /login if !{ var(txn.auth_response_successful) -m bool } !{ path_beg /login } { var(req.base) -m beg 'd.local#/' }`,
 		},
 		// 6
 		{
@@ -3540,7 +3540,7 @@ func TestInstanceFrontendAuthExternal(t *testing.T) {
 				AlwaysDeny: true,
 			},
 			expconfig: `
-    http-request deny if { var(req.base) -m str beg 'd.local#/' }`,
+    http-request deny if { var(req.base) -m beg 'd.local#/' }`,
 		},
 	}
 
