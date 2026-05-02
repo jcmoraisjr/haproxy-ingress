@@ -1541,7 +1541,7 @@ frontend {{ $frontend.Name }}
 {{- range $host := $hosts.Items }}
 {{- range $path := $host.Paths }}
 {{- if $path.AuthExt }}
-{{- template "authExternal" map $path.AuthExt (printf "{ var(req.base) -m str %s '%s' }" $path.Link.HAMatch $path.Link.Key) }}
+{{- template "authExternal" map $path.AuthExt (printf "{ var(req.base) -m %s '%s' }" $path.Link.HAMatch $path.Link.Key) }}
 {{- end }}
 {{- end }}
 {{- end }}
