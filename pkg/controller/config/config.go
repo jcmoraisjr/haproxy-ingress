@@ -329,14 +329,21 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 		if err != nil {
 			return nil, fmt.Errorf("error reading IP mode from loopback interface: %w", err)
 		}
-	case "node", "auto":
+	case "node":
 		var err error
 		hasIPv4, hasIPv6, err = readIPModeFromNode(ctx, client, controllerPod)
 		if err != nil {
-			if opt.IPMode == "node" {
-				return nil, fmt.Errorf("error reading IP mode from controller node: %w", err)
-			}
+			return nil, fmt.Errorf("error reading IP mode from controller node: %w", err)
+		}
+	case "auto":
+		var err error
+		hasIPv4, hasIPv6, err = readIPModeFromNode(ctx, client, controllerPod)
+		if err != nil {
 			configLog.Info("error reading IP mode from controller node, using IPv4", "err", err.Error())
+			hasIPv4, hasIPv6 = true, false
+		}
+		if !hasIPv4 && !hasIPv6 {
+			configLog.Info("cannot find any valid IPv4 or IPv6 from node status, using IPv4")
 			hasIPv4, hasIPv6 = true, false
 		}
 	default:
@@ -844,12 +851,15 @@ func readIPModeFromLoopback() (hasIPv4, hasIPv6 bool, err error) {
 }
 
 func parseIP(ipAddr string) (v4, v6 bool) {
-	prefix, err := netip.ParsePrefix(ipAddr)
+	addr, err := netip.ParseAddr(ipAddr)
 	if err != nil {
-		return false, false
+		prefix, err := netip.ParsePrefix(ipAddr)
+		if err != nil {
+			return false, false
+		}
+		addr = prefix.Addr()
 	}
-	addr := prefix.Addr()
-	if addr.Is4() || addr.Is4In6() {
+	if addr.Is4() {
 		return true, false
 	}
 	if addr.Is6() {
