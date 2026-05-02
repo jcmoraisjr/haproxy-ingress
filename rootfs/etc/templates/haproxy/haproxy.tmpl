@@ -1660,7 +1660,7 @@ frontend {{ $httpsFrontendName }}
 {{- range $host := $frontend.Hosts }}
 {{- range $path := $host.Paths }}
 {{- if $path.AuthExtFront.AuthPath }}
-{{- template "authExternal" map $path.AuthExtFront (printf "{ var(req.base) -m str %s '%s' }" $path.Link.HAMatch $path.Link.Key) }}
+{{- template "authExternal" map $path.AuthExtFront (printf "{ var(req.base) -m %s '%s' }" $path.Link.HAMatch $path.Link.Key) }}
 {{- end }}
 {{- end }}
 {{- end }}
