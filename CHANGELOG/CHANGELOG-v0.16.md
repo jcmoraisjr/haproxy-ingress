@@ -4,6 +4,10 @@
 * [Upgrade notes - read before upgrade from v0.15!](#upgrade-notes)
   * [Deprecated command-line options](#deprecated-command-line-options)
 * [Contributors](#contributors)
+* [v0.16.1](#v0161)
+  * [Reference](#reference-r1)
+  * [Release notes](#release-notes-r1)
+  * [Fixes and Improvements](#fixes-and-improvements-r1)
 * [v0.16.0](#v0160)
   * [Reference](#reference-r0)
   * [Release notes](#release-notes-r0)
@@ -53,10 +57,69 @@ The `--enable-endpointslices-api` command-line option was deprecated on v0.16 an
 * Gerald Barker ([gezb](https://github.com/gezb))
 * Ian Roberts ([ianroberts](https://github.com/ianroberts))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
+* Lola Delannoy ([spnngl](https://github.com/spnngl))
 * Mia Mouret ([mia-mouret](https://github.com/mia-mouret))
+* Nadia Santalla ([nadiamoe](https://github.com/nadiamoe))
 * Pedro Gonçalves ([PerGon](https://github.com/PerGon))
 * Till! ([till](https://github.com/till))
 * Vladimir Kozhukalov ([kozhukalov](https://github.com/kozhukalov))
+
+# v0.16.1
+
+## Reference (r1)
+
+* Release date: `2026-05-04`
+* Helm chart: `--version 0.16.1`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.16.1`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.16.1`
+* Embedded HAProxy version: `2.8.22`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.16.1`
+
+## Release notes (r1)
+
+This release fixes some issues found on v0.16 branch:
+
+- Updating base image and Go, which fixes a number of reported CVEs on OS libraries and Go's stdlib.
+- Nadia reported that external authentication, if placed in the frontend via `auth-external-placement` configuration key, uses exact path match despite of the path configuration. Backend placed configuration (the default placement) does not have this problem. It is recommended to update HAProxy Ingress asap if you use external authentication placed in the frontend.
+- Florian reported that idle metric collector can crash the controller if haproxy eventually reports more than 100 on its metric. This happens because the controller did not check the boundaries and a counter metric would become negative, making Prometheus client to crash. See also https://github.com/haproxy/haproxy/issues/3339.
+- A race can happen in the controller start using master-worker mode, when checking if the master socket is already available. In case of an error reading the socket, the controller checks its presence, returning the original error if it was created in this time frame and was found. This behavior makes the controller delay 30 extra seconds to become ready.
+- Nadia reported and fixed a case-sensitive match in external authentication header match, which is expected to be case-insensitive.
+- Ian reported and fixed the starting user configured in the controller image, changing from the `haproxy` name to its UID `99`. The UID continues the same, but not using the name allows to configure the container runtime to run as non root without the need to specify an UID.
+- Logan reported that a PDB resource was always being created despite of being configured, this happened because chart was comparing the `maxUnavailable` to a declared zero, which is also the value when it is not configured.
+- Ian configured all the writable folders as emptyDir, which makes the controller to work on containers having read only file system.
+- The service account is now configured only in the controller container for security reasons, sidecar containers does not have the service account anymore.
+
+Also, Lola added VPA (VerticalPodAutoscaler) configuration option.
+
+Changes in dependencies:
+
+- embedded haproxy from 2.8.20 to 2.8.22
+- go from 1.25.8 to 1.25.9
+- client-go from v0.34.6 to v0.34.7
+
+## Fixes and improvements (r1)
+
+New fixes and improvements since `v0.16.0`:
+
+* update metrics page and dashboard [#1435](https://github.com/jcmoraisjr/haproxy-ingress/pull/1435) (jcmoraisjr)
+* Use numeric USER in Dockerfile [#1431](https://github.com/jcmoraisjr/haproxy-ingress/pull/1431) (ianroberts)
+* doc: fix default value for watch gateway [#1457](https://github.com/jcmoraisjr/haproxy-ingress/pull/1457) (jcmoraisjr)
+* pin dependencies from makefile [#1467](https://github.com/jcmoraisjr/haproxy-ingress/pull/1467) (jcmoraisjr)
+* convert user-provided auth external header names to lowercase [#1429](https://github.com/jcmoraisjr/haproxy-ingress/pull/1429) (nadiamoe)
+* parameterize the eventually timeout and interval [#1468](https://github.com/jcmoraisjr/haproxy-ingress/pull/1468) (jcmoraisjr)
+* adding boundary in the idle_pct metric [#1456](https://github.com/jcmoraisjr/haproxy-ingress/pull/1456) (jcmoraisjr)
+* fix request match on frontend based external auth [#1470](https://github.com/jcmoraisjr/haproxy-ingress/pull/1470) (jcmoraisjr)
+* fix race checking if haproxy socket is missing [#1471](https://github.com/jcmoraisjr/haproxy-ingress/pull/1471) (jcmoraisjr)
+* update embedded haproxy from 2.8.20 to 2.8.22 [0cacf6c](https://github.com/jcmoraisjr/haproxy-ingress/commit/0cacf6ce7c1dd4ac3c9f1a5698dfaaeb5903a68f) (Joao Morais)
+* update go from 1.25.8 to 1.25.9 [83a5691](https://github.com/jcmoraisjr/haproxy-ingress/commit/83a56919963d4782abdf870c837052dbdfe58555) (Joao Morais)
+* update client-go from v0.34.6 to v0.34.7 [645e897](https://github.com/jcmoraisjr/haproxy-ingress/commit/645e897484d0b82af3ec5b3ddc9ef0b45d498131) (Joao Morais)
+
+Chart improvements since `v0.16.0`:
+
+* feat: always mount writeable folders from emptyDir [#106](https://github.com/haproxy-ingress/charts/pull/106) (ianroberts)
+* feat: add VerticalPodAutoscaler resource for controller [#107](https://github.com/haproxy-ingress/charts/pull/107) (spnngl)
+* create pdb only if max unavailable is defined [#108](https://github.com/haproxy-ingress/charts/pull/108) (jcmoraisjr)
+* manually mount sa only in controller pod [#109](https://github.com/haproxy-ingress/charts/pull/109) (jcmoraisjr)
 
 # v0.16.0
 
