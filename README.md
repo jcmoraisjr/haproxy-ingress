@@ -101,6 +101,7 @@ The following `make` targets are supported:
 * `lint`: Runs [`golangci-lint`](https://golangci-lint.run/)
 * `test`: Runs unit tests.
 * `test-integration`: Runs integration tests, needs haproxy 2.2+ in the path.
+* `test-gateway-api-conformance`: Run Gateway API conformance tests, add `TEST=<Name>` to run one single test.
 * `linux-build`: Compiles HAProxy Ingress and generates an ELF (Linux) executable despite the source platform at `rootfs/haproxy-ingress-controller`. Used by `image` step.
 * `image`: Compiles HAProxy Ingress locally and generates a Docker image.
 * `docker-build`: Compiles HAProxy Ingress and generates a Docker image using a multi-stage Dockerfile.
