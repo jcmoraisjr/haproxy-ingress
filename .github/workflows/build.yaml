@@ -54,7 +54,7 @@ jobs:
     - name: Run integration tests on Kubernetes ${{ matrix.envtest-version }}
       run: HAPROXY_INGRESS_ENVTEST=${{ matrix.envtest-version }} make test-integration
   image:
-    if: github.ref_name != 'master'
+    if: github.ref_name == 'master' || startsWith(github.ref_name, 'release-') ## delayed check, PRs do not have access to secrets
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
