@@ -32,13 +32,106 @@ A refactor was made on internal HAProxy model to support multiple HTTP(S) fronte
 
 ## Contributors
 
+* Ask Bjørn Hansen ([abh](https://github.com/abh))
 * Bagas Purwa S ([bapung](https://github.com/bapung))
 * Ian Roberts ([ianroberts](https://github.com/ianroberts))
 * Joao Morais ([jcmoraisjr](https://github.com/jcmoraisjr))
 * Josh Soref ([jsoref](https://github.com/jsoref))
+* Lola Delannoy ([spnngl](https://github.com/spnngl))
 * Mia Mouret ([mia-mouret](https://github.com/mia-mouret))
+* Nadia Santalla ([nadiamoe](https://github.com/nadiamoe))
 * Pedro Gonçalves ([PerGon](https://github.com/PerGon))
 * Vladimir Kozhukalov ([kozhukalov](https://github.com/kozhukalov))
+
+# v0.17.0-alpha.2
+
+## Reference (a2)
+
+* Release date: `2026-05-17`
+* Helm chart: `--version 0.17.0-alpha.2 --devel`
+* Image (Quay): `quay.io/jcmoraisjr/haproxy-ingress:v0.17.0-alpha.2`
+* Image (Docker Hub): `docker.io/jcmoraisjr/haproxy-ingress:v0.17.0-alpha.2`
+* Embedded HAProxy version: `3.0.23`
+* GitHub release: `https://github.com/jcmoraisjr/haproxy-ingress/releases/tag/v0.17.0-alpha.2`
+
+## Release notes (a2)
+
+This is the second tag of the v0.17 branch, which brings some new features:
+
+- Ian changed the image build in a way it cross-compile to the target platform, from the build one. This change makes the image generation lightning fast: image build time decreased from more than 1 hour to about 5 minutes.
+- Added `--watch-ingress` command-line option, allowing to fully disable Ingress API watch and parsing.
+- Ian configured all the writable folders as emptyDir, which makes the controller to work on containers having read only file system.
+- Lola added VPA (VerticalPodAutoscaler) configuration option.
+
+A number of fixes were also merged, most of them already reported on v0.16 release:
+
+- Bjørn reported and fixed a frontend name matching issue on v0.17. If any of the hosts use ssl-passthrough, paths scoped configurations fail to match if the match applies only on some paths of a backend. This issue was introduced on the new multi frontends: the frontend name now comes from the configuration, instead of hardcoded, and the configuration didn't cover the ssl-passthrough naming.
+- Gabriel reported a backend leak issue that can potentially consume all the internal port numbers used by external authentication. This leak only happens on DNS based backends used by http and https protos, and only when the addresses behind the DNS use to change - e.g. using https://somesvc.somenamespace.svc from a headless service, the IP addresses will change whenever the pods behind that service scales.
+- Updating base image and Go, which fixes a number of reported CVEs on OS libraries and Go's stdlib.
+- Nadia reported that external authentication, if placed in the frontend via `auth-external-placement` configuration key, uses exact path match despite of the path configuration. Backend placed configuration (the default placement) does not have this problem. It is recommended to update HAProxy Ingress asap if you use external authentication placed in the frontend.
+- Florian reported that idle metric collector can crash the controller if haproxy eventually reports more than 100 on its metric. This happens because the controller did not check the boundaries and a counter metric would become negative, making Prometheus client to crash. See also https://github.com/haproxy/haproxy/issues/3339.
+- A race can happen in the controller start using master-worker mode, when checking if the master socket is already available. In case of an error reading the socket, the controller checks its presence, returning the original error if it was created in this time frame and was found. This behavior makes the controller delay 30 extra seconds to become ready.
+- Nadia reported and fixed a case-sensitive match in external authentication header match, which is expected to be case-insensitive.
+- Ian reported and fixed the starting user configured in the controller image, changing from the `haproxy` name to its UID `99`. The UID continues the same, but not using the name allows to configure the container runtime to run as non root without the need to specify an UID.
+- Logan reported that a PDB resource was always being created despite of being configured, this happened because chart was comparing the `maxUnavailable` to a declared zero, which is also the value when it is not configured.
+- The service account is now configured only in the controller container for security reasons, sidecar containers does not have the service account anymore.
+
+Dependencies:
+
+- embedded haproxy from 3.0.18 to 3.0.23
+- client-go from v0.35.2 to v0.36.1
+- controller-runtime from v0.23.3 to v0.24.1
+- go from 1.26.1 to 1.26.3
+
+## Improvements (a2)
+
+New features and improvements since `v0.17.0-alpha.1`:
+
+* Always run `go build` on the BUILDPLATFORM architecture [#1434](https://github.com/jcmoraisjr/haproxy-ingress/pull/1434) (ianroberts)
+* update metrics page and dashboard [#1435](https://github.com/jcmoraisjr/haproxy-ingress/pull/1435) (jcmoraisjr)
+* Bump k8s.io/client-go from 0.35.2 to 0.35.3 [#1440](https://github.com/jcmoraisjr/haproxy-ingress/pull/1440) (dependabot[bot])
+* Bump golang.org/x/crypto from 0.49.0 to 0.50.0 [#1449](https://github.com/jcmoraisjr/haproxy-ingress/pull/1449) (dependabot[bot])
+* Bump k8s.io/client-go from 0.35.3 to 0.35.4 [#1454](https://github.com/jcmoraisjr/haproxy-ingress/pull/1454) (dependabot[bot])
+* doc: fix default value for watch gateway [#1457](https://github.com/jcmoraisjr/haproxy-ingress/pull/1457) (jcmoraisjr)
+* fail initialization if the discovery client fails [#1458](https://github.com/jcmoraisjr/haproxy-ingress/pull/1458) (jcmoraisjr)
+* start decoupling global and ingress converters [#1459](https://github.com/jcmoraisjr/haproxy-ingress/pull/1459) (jcmoraisjr)
+* Bump k8s.io/client-go from 0.35.4 to 0.36.0 [#1463](https://github.com/jcmoraisjr/haproxy-ingress/pull/1463) (dependabot[bot])
+* pin dependencies from makefile [#1467](https://github.com/jcmoraisjr/haproxy-ingress/pull/1467) (jcmoraisjr)
+* add watch-ingress command line option [#1460](https://github.com/jcmoraisjr/haproxy-ingress/pull/1460) (jcmoraisjr)
+  * Command-line options:
+    * [`--watch-ingress`](https://haproxy-ingress.github.io/v0.17/docs/configuration/command-line/#watch-ingress)
+* add ip mode command-line option [#1466](https://github.com/jcmoraisjr/haproxy-ingress/pull/1466) (jcmoraisjr)
+  * Command-line options:
+    * [`--ip-mode`](https://haproxy-ingress.github.io/v0.17/docs/configuration/command-line/#ip-mode)
+* add build image step in build workflow [#1442](https://github.com/jcmoraisjr/haproxy-ingress/pull/1442) (jcmoraisjr)
+* delay test of image build [#1477](https://github.com/jcmoraisjr/haproxy-ingress/pull/1477) (jcmoraisjr)
+* Bump sigs.k8s.io/controller-runtime from 0.23.1-0.20260424122448-c8b4b9d61fbd to 0.24.1 [#1474](https://github.com/jcmoraisjr/haproxy-ingress/pull/1474) (dependabot[bot])
+* Bump go.uber.org/zap from 1.27.1 to 1.28.0 [#1475](https://github.com/jcmoraisjr/haproxy-ingress/pull/1475) (dependabot[bot])
+* Bump golang.org/x/crypto from 0.50.0 to 0.51.0 [#1476](https://github.com/jcmoraisjr/haproxy-ingress/pull/1476) (dependabot[bot])
+* docs: fix watch-ingress entry [c5b5e97](https://github.com/jcmoraisjr/haproxy-ingress/commit/c5b5e97fa897fafa3183f1caf9ee52b3ebcc5d2b) (Joao Morais)
+* bump embedded haproxy from 3.0.18 to 3.0.23 [7199d7b](https://github.com/jcmoraisjr/haproxy-ingress/commit/7199d7be3f920acf42aa3e36f230b5d2f721cd2d) (Joao Morais)
+* bump go from 1.26.1 to 1.26.3 [b9a6519](https://github.com/jcmoraisjr/haproxy-ingress/commit/b9a6519a1d0518cc30507423d03c3d0ca9d1e47b) (Joao Morais)
+* bump client-go from v0.36.0. to v0.36.1 [5d4a598](https://github.com/jcmoraisjr/haproxy-ingress/commit/5d4a59879eb3c9fa6289bbf3317206ed0754df87) (Joao Morais)
+
+Chart improvements since `v0.17.0-alpha.1`:
+
+* feat: always mount writeable folders from emptyDir [#106](https://github.com/haproxy-ingress/charts/pull/106) (ianroberts)
+* feat: add VerticalPodAutoscaler resource for controller [#107](https://github.com/haproxy-ingress/charts/pull/107) (spnngl)
+* create pdb only if max unavailable is defined [#108](https://github.com/haproxy-ingress/charts/pull/108) (jcmoraisjr)
+* manually mount sa only in controller pod [#109](https://github.com/haproxy-ingress/charts/pull/109) (jcmoraisjr)
+
+## Fixes (a2)
+
+* Use numeric USER in Dockerfile [#1431](https://github.com/jcmoraisjr/haproxy-ingress/pull/1431) (ianroberts)
+* match sni using single dns label [#1436](https://github.com/jcmoraisjr/haproxy-ingress/pull/1436) (jcmoraisjr)
+* fix HTTPS frontend name mismatch breaking backend pathID matching [#1433](https://github.com/jcmoraisjr/haproxy-ingress/pull/1433) (abh)
+* convert user-provided auth external header names to lowercase [#1429](https://github.com/jcmoraisjr/haproxy-ingress/pull/1429) (nadiamoe)
+* add tracking for http based auth backends [#1462](https://github.com/jcmoraisjr/haproxy-ingress/pull/1462) (jcmoraisjr)
+* parameterize the eventually timeout and interval [#1468](https://github.com/jcmoraisjr/haproxy-ingress/pull/1468) (jcmoraisjr)
+* adding boundary in the idle_pct metric [#1456](https://github.com/jcmoraisjr/haproxy-ingress/pull/1456) (jcmoraisjr)
+* fix ip address parsing for ip mode [#1472](https://github.com/jcmoraisjr/haproxy-ingress/pull/1472) (jcmoraisjr)
+* fix request match on frontend based external auth [#1470](https://github.com/jcmoraisjr/haproxy-ingress/pull/1470) (jcmoraisjr)
+* fix race checking if haproxy socket is missing [#1471](https://github.com/jcmoraisjr/haproxy-ingress/pull/1471) (jcmoraisjr)
 
 # v0.17.0-alpha.1
 
