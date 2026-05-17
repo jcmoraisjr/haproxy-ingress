@@ -14,7 +14,7 @@
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.9.0 AS xx
 
-FROM --platform=$BUILDPLATFORM golang:1.26.1-alpine AS builder-common
+FROM --platform=$BUILDPLATFORM golang:1.26.3-alpine AS builder-common
 COPY --from=xx / /
 
 ARG GIT_TAG
