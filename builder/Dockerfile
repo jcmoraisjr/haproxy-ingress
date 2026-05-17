@@ -39,7 +39,7 @@ RUN CGO_ENABLED=0 xx-go build\
     -o haproxy-ingress pkg/main.go\
  && xx-verify haproxy-ingress
 
-FROM haproxy:3.0.18-alpine
+FROM haproxy:3.0.23-alpine
 
 USER root
 
