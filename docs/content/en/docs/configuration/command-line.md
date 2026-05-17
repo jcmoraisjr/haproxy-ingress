@@ -878,7 +878,7 @@ When enabled, `--watch-gateway` enforces a leader election. A leader must be ele
 
 ---
 
-# watch-ingress
+## watch-ingress
 
 * `--watch-ingress`
 
