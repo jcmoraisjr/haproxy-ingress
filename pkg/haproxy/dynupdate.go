@@ -268,6 +268,19 @@ func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
 		}
 	}
 
+	// Track pending renames: when a slot is reused for a different endpoint
+	// whose desired name differs from the current HAProxy server name, we
+	// rename afterwards so that the server state file stays consistent.
+	// Only meaningful with EpIPPort or EpTargetRef naming where the name
+	// carries semantic value (IP:port or pod name).
+	type pendingRename struct {
+		ep          *hatypes.Endpoint
+		oldName     string
+		desiredName string
+	}
+	var renames []pendingRename
+	wantRename := curBack.EpNaming == hatypes.EpIPPort || curBack.EpNaming == hatypes.EpTargetRef
+
 	// reuse the backend/server which has the same target endpoint, if found,
 	// this will save some socket calls and will not mess endpoint metrics
 	var added []*hatypes.Endpoint
@@ -287,9 +300,17 @@ func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
 	for _, target := range targets {
 		pair := endpoints[target]
 		if pair.cur == nil && len(added) > 0 {
+			desiredName := added[0].Name
 			pair.cur = added[0]
 			pair.cur.Name = pair.old.Name
 			added = added[1:]
+			if wantRename && desiredName != pair.old.Name {
+				renames = append(renames, pendingRename{
+					ep:          pair.cur,
+					oldName:     pair.old.Name,
+					desiredName: desiredName,
+				})
+			}
 		}
 		if pair.cur == nil {
 			if !d.execDisableEndpoint(curBack.ID, pair.old) || pair.old.Label != "" {
@@ -302,7 +323,15 @@ func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
 	}
 	for i := range added {
 		// reusing empty slots from oldBack
+		desiredName := added[i].Name
 		added[i].Name = empty[i].Name
+		if wantRename && desiredName != empty[i].Name {
+			renames = append(renames, pendingRename{
+				ep:          added[i],
+				oldName:     empty[i].Name,
+				desiredName: desiredName,
+			})
+		}
 		if curBack.Cookie.Preserve && added[i].CookieValue != empty[i].CookieValue {
 			// if cookie doesn't match here and preserving the value is
 			// important, don't even enable the endpoint before reloading
@@ -315,6 +344,34 @@ func (d *dynUpdater) dynamicallySyncSlots(pair *backendPair) bool {
 	// copy remaining empty slots from oldBack to curBack, so it can be used in a future update
 	for i := len(added); i < len(empty); i++ {
 		curBack.AddEmptyEndpoint().Name = empty[i].Name
+	}
+
+	// Apply pending renames so that HAProxy server names stay consistent
+	// with the endpoint naming scheme, avoiding server state file mismatches.
+	for _, r := range renames {
+		if !r.ep.Enabled {
+			// endpoint was not enabled (e.g. cookie mismatch), just update
+			// the in-memory name so it will be correct after reload
+			r.ep.Name = r.desiredName
+			continue
+		}
+		if !d.execDisableServer(curBack.ID, r.ep) {
+			updated = false
+			continue
+		}
+		if !d.execSetNameServer(curBack.ID, r.ep, r.oldName, r.desiredName) {
+			// rename failed (e.g. backend doesn't have option server-rename),
+			// re-enable with old name and let a reload fix it
+			d.execEnableServer(curBack.ID, r.ep)
+			updated = false
+			continue
+		}
+		r.ep.Name = r.desiredName
+		if !d.execEnableServer(curBack.ID, r.ep) {
+			updated = false
+			continue
+		}
+		d.logger.InfoV(2, "renamed server on backend '%s' from '%s' to '%s'", curBack.ID, r.oldName, r.desiredName)
 	}
 
 	return updated
@@ -601,6 +658,11 @@ func (d *dynUpdater) execEnableServer(backname string, ep *hatypes.Endpoint) boo
 	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerState)
 }
 
+func (d *dynUpdater) execSetNameServer(backname string, ep *hatypes.Endpoint, oldName, newName string) bool {
+	cmd := fmt.Sprintf("set server %s/%s name %s", backname, oldName, newName)
+	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdSetServerName)
+}
+
 func (d *dynUpdater) execDeleteServer(backname string, ep *hatypes.Endpoint) bool {
 	cmd := fmt.Sprintf("del server %s/%s", backname, ep.Name)
 	return d.execCommandBackendServer(d.metrics.HAProxySetServerResponseTime, backname, ep, cmd, cmdDelServer)
@@ -613,6 +675,7 @@ const (
 	cmdSetServerAddr
 	cmdSetServerWeight
 	cmdSetServerState
+	cmdSetServerName
 	cmdDelServer
 	cmdCommitCrt
 )
@@ -622,6 +685,7 @@ var backendServerCmdAction = map[cmdClass]string{
 	cmdSetServerAddr:   "updating (address)",
 	cmdSetServerWeight: "updating (weight)",
 	cmdSetServerState:  "updating (state)",
+	cmdSetServerName:   "updating (name)",
 	cmdDelServer:       "deleting",
 }
 
@@ -666,6 +730,8 @@ func cmdResponseOK(cmdcls cmdClass, response string) bool {
 		return response == "nothing changed" || strings.HasPrefix(response, "IP changed from ") || strings.HasPrefix(response, "port changed from ") || strings.HasPrefix(response, "no need to change ")
 	case cmdSetServerWeight, cmdSetServerState:
 		return response == ""
+	case cmdSetServerName:
+		return response == "Server name updated."
 	case cmdDelServer:
 		return response == "Server deleted."
 	case cmdCommitCrt:
