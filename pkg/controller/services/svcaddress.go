@@ -216,6 +216,8 @@ func (s *svcAddress) shutdown() {
 	if err := s.updateAllResources(nil); err != nil {
 		s.log.Error(err, "error updating resources")
 	}
+	// Mirror the wipe so a later leadership re-acquisition repopulates status via checkChanged.
+	s.curr = nil
 }
 
 func (s *svcAddress) readCurrentLB(ctx context.Context) (lb []networking.IngressLoadBalancerIngress, err error) {
