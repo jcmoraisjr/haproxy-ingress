@@ -162,6 +162,8 @@ func (s *svcAddress) shutdown(ctx context.Context) {
 	if err := s.update(ctx, nil); err != nil {
 		s.log.Error(err, "error updating resources")
 	}
+	// Mirror the wipe so a later leadership re-acquisition repopulates status via checkChanged.
+	s.curr = nil
 }
 
 func (s *svcAddress) syncCurrentLB(ctx context.Context) error {
