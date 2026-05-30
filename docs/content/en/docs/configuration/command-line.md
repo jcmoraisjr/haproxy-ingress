@@ -36,6 +36,7 @@ The following command-line options are supported:
 | [`--election-id`](#election-id)                         | identifier                 | `ingress-controller-leader` |   |
 | [`--enable-endpointslices-api`](#enable-endpointslices-api) | [true\|false]          | `true`                  | v0.14 |
 | [`--force-namespace-isolation`](#force-namespace-isolation) | [true\|false]          | `false`                 |       |
+| [`--full-controller-name`](#ingress-class)              | fully qualified name       |                         | v0.17 |
 | [`--haproxy-grace-period`](#haproxy-grace-period)       | time                       | `20s`                   | v0.16 |
 | [`--health-check-path`](#stats)                         | path                       | `/healthz`              |       |
 | [`--healthz-addr`](#stats)                              | tcp address                | `:10254`                | v0.15 |
@@ -343,6 +344,9 @@ link to these IngressClasses will be added to the configuration. The `--controll
 command-line option customizes the controller name, allowing to run more than one HAProxy Ingress
 in the same cluster. Configuring `--controller-class=staging` would listen to IngressClasses whose
 controller name is `haproxy-ingress.github.io/controller/staging`.
+* `--full-controller-name`: Same as `--controller-class`, but defines the fully qualified controller
+name instead of just its suffix. `--controller-class` is ignored if this option is configured, and
+`haproxy-ingress.github.io/controller` is used by default if both options are missing.
 * `--ingress-class-precedence`: defines if IngressClass resource should take precedence over
 kubernetes.io/ingress.class annotation if both are defined and conflicting.
 * `--watch-ingress-without-class`: defines if this controller should also listen to ingress resources
