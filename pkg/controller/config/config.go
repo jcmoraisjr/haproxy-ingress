@@ -195,7 +195,9 @@ func CreateWithConfig(ctx context.Context, restConfig *rest.Config, opt *Options
 	rootcontext := logr.NewContext(createRootContext(ctx, rootLogger, waitShutdown), rootLogger)
 
 	controllerName := "haproxy-ingress.github.io/controller"
-	if opt.ControllerClass != "" {
+	if opt.FullControllerName != "" {
+		controllerName = opt.FullControllerName
+	} else if opt.ControllerClass != "" {
 		controllerName += "/" + strings.TrimLeft(opt.ControllerClass, "/")
 	}
 
