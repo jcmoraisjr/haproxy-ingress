@@ -87,7 +87,9 @@ The following command-line options are supported:
 
 ---
 
-## Acme
+## Options
+
+### Acme
 
 Configures the acme server and other static options used to authorize and sign certificates
 against a server which implements the acme protocol, version 2.
@@ -109,7 +111,7 @@ See also:
 
 ---
 
-## allow-cross-namespace
+### allow-cross-namespace
 
 * `--allow-cross-namespace`
 
@@ -124,7 +126,7 @@ See also:
 
 ---
 
-## annotations-prefix
+### annotations-prefix
 
 * `--annotations-prefix`
 
@@ -144,7 +146,7 @@ other.
 
 ---
 
-## apiserver-host
+### apiserver-host
 
 * `--apiserver-host`
 
@@ -155,7 +157,7 @@ attempted.
 
 ---
 
-## backend-shards
+### backend-shards
 
 * `--backend-shards`
 
@@ -167,7 +169,7 @@ services.
 
 ---
 
-## buckets-response-time
+### buckets-response-time
 
 * `--buckets-response-time`
 
@@ -175,7 +177,7 @@ Configures the buckets of the histogram `haproxyingress_haproxy_response_time_se
 
 ---
 
-## configmap
+### configmap
 
 * `--configmap`
 
@@ -185,11 +187,11 @@ silently fail.  Version 0.13 and later will crash if the ConfigMap is unreadable
 
 See also:
 
-* [custom-configuration example using `--configmap`](https://github.com/jcmoraisjr/haproxy-ingress/blob/master/examples/custom-configuration/README.md)
+* [custom-configuration example using `--configmap`](https://github.com/n42-gateway/n42-gateway/blob/master/examples/custom-configuration/README.md)
 
 ---
 
-## default-backend-service
+### default-backend-service
 
 * `--default-backend-service`
 
@@ -199,7 +201,7 @@ hostname, or the requested path doesn't match any location within the desired ho
 
 ---
 
-## default-ssl-certificate
+### default-ssl-certificate
 
 * `--default-ssl-certificate`
 
@@ -212,7 +214,7 @@ A self-signed fake certificate is used if not declared, the secret or the file i
 
 ---
 
-## disable-api-warnings
+### disable-api-warnings
 
 * `--disable-api-warnings`
 
@@ -223,7 +225,7 @@ deprecation. The default behavior is to log all API server warnings.
 
 ---
 
-## disable-config-keywords
+### disable-config-keywords
 
 * `--disable-config-keywords`
 
@@ -237,7 +239,7 @@ The default value is an empty string, enabling the configuration and accepting a
 
 ---
 
-## disable-external-name
+### disable-external-name
 
 * `--disable-external-name`
 
@@ -247,7 +249,7 @@ Services of type ExternalName uses DNS lookup to define the target server IP lis
 
 ---
 
-## disable-pod-list
+### disable-pod-list
 
 * `--disable-pod-list`
 
@@ -257,7 +259,7 @@ Disables in memory pod list and also pod watch for changes. Pod list and watch i
 
 ---
 
-## election-id
+### election-id
 
 * `--election-id`
 
@@ -275,7 +277,7 @@ Election ID defaults to `class-%s.haproxy-ingress.github.io` if not configured, 
 
 ---
 
-## enable-endpointslices-api
+### enable-endpointslices-api
 
 * `--enable-endpointslices-api`
 
@@ -287,7 +289,7 @@ Endpoints API is deprecated since Kubernetes 1.33, and HAProxy Ingress only supp
 
 ---
 
-## force-namespace-isolation
+### force-namespace-isolation
 
 * `--force-namespace-isolation`
 
@@ -307,7 +309,7 @@ See also:
 
 ---
 
-## haproxy-grace-period
+### haproxy-grace-period
 
 * `--haproxy-grace-period`
 
@@ -317,7 +319,7 @@ Defines the duration HAProxy should wait all requests to finish before terminate
 
 This option should be below the controller shutdown timeout, since it will terminate the controller process despite any other internal grace period.
 
-On [External HAProxy]({{% relref "../examples/external-haproxy" %}}), its container already uses SIGUSR1 as the stop signal, which makes HAProxy to wait for active connections to finish, just need to configure the container's grace period if need to change from its default of 30s.
+On [External HAProxy]({{% relref "/examples/external-haproxy" %}}), its container already uses SIGUSR1 as the stop signal, which makes HAProxy to wait for active connections to finish, just need to configure the container's grace period if need to change from its default of 30s.
 
 See also:
 
@@ -325,7 +327,7 @@ See also:
 
 ---
 
-## Ingress Class
+### Ingress Class
 
 More than one ingress controller is supported per Kubernetes cluster. These options allow to
 override the class of ingress resources that this instance of the controller should listen to.
@@ -364,7 +366,7 @@ See also:
 
 ---
 
-## ip-mode
+### ip-mode
 
 * `--ip-mode`
 
@@ -387,7 +389,7 @@ See also:
 
 ---
 
-## kubeconfig
+### kubeconfig
 
 * `--kubeconfig`
 
@@ -398,7 +400,7 @@ is deployed outside of the Kubernetes cluster.
 
 ---
 
-## local-filesystem-prefix
+### local-filesystem-prefix
 
 * `--local-filesystem-prefix`
 
@@ -411,7 +413,7 @@ deployment. Start HAProxy Ingress in the root directory of the repository when u
 
 ---
 
-## Logging
+### Logging
 
 Since v0.14
 
@@ -427,7 +429,7 @@ Logging configuration options.
 
 ---
 
-## master-socket
+### master-socket
 
 * `--master-socket`
 
@@ -447,12 +449,12 @@ The following conditions should be satisfied in order to an external haproxy wor
 
 See also:
 
-* [example]({{% relref "../examples/external-haproxy" %}}) page.
+* [example]({{% relref "/examples/external-haproxy" %}}) page.
 * [External]({{% relref "keys#external" %}}) and [Master-worker]({{% relref "keys#master-worker" %}}) configuration keys
 
 ---
 
-## master-worker
+### master-worker
 
 * `--master-worker`
 
@@ -467,7 +469,7 @@ declared. External HAProxy deployment needs master-worker mode and will enforce
 
 ---
 
-## max-old-config-files
+### max-old-config-files
 
 * `--max-old-config-files`
 
@@ -478,7 +480,7 @@ remove old configuration files. If `0`, the default value, a single `haproxy.cfg
 
 ---
 
-## publish-address
+### publish-address
 
 * `--publish-address`
 
@@ -494,7 +496,7 @@ See also:
 
 ---
 
-## publish-service
+### publish-service
 
 * `--publish-service`
 
@@ -519,7 +521,7 @@ See also:
 
 ---
 
-## rate-limit-update
+### rate-limit-update
 
 * `--rate-limit-update`
 
@@ -540,7 +542,7 @@ See also [`--reload-interval`](#reload-interval).
 
 ---
 
-## reload-interval
+### reload-interval
 
 * `--reload-interval`
 
@@ -559,7 +561,7 @@ one will delay up to the configured duration to be reflected by HAProxy.
 
 ---
 
-## reload-retry
+### reload-retry
 
 * `--reload-retry`
 
@@ -567,7 +569,7 @@ How long HAProxy Ingress should wait before trying to reload HAProxy if an error
 
 ---
 
-## reload-strategy
+### reload-strategy
 
 * `--reload-strategy`
 
@@ -581,7 +583,7 @@ describes how it works.
 
 ---
 
-## report-node-internal-ip-address
+### report-node-internal-ip-address
 
 * `--report-node-internal-ip-address`
 
@@ -593,7 +595,7 @@ See also:
 
 ---
 
-## shutdown-timeout
+### shutdown-timeout
 
 * `--shutdown-timeout`
 
@@ -608,7 +610,7 @@ See also:
 
 ---
 
-## sort-backends
+### sort-backends
 
 * `--sort-backends`
 
@@ -629,7 +631,7 @@ See also:
 
 ---
 
-## sort-endpoints-by
+### sort-endpoints-by
 
 * `--sort-endpoints-by`
 
@@ -644,7 +646,7 @@ Defines in which order the endpoints of a backend should be sorted.
 
 ---
 
-## Stats
+### Stats
 
 Configures an endpoint with statistics, debugging and health checks. The following URIs are provided:
 
@@ -667,7 +669,7 @@ Options:
 
 ---
 
-## sync-period
+### sync-period
 
 * `--sync-period`
 
@@ -676,7 +678,7 @@ minutes.
 
 ---
 
-## tcp-services-configmap
+### tcp-services-configmap
 
 * `--tcp-services-configmap`
 
@@ -684,11 +686,11 @@ Configure `--tcp-services-configmap` argument with `namespace/configmapname` res
 services and ports that HAProxy should listen to. Use the HAProxy's port number as the key of the
 ConfigMap.
 
-{{< alert title="Note" >}}
-Starting on v0.13, `--tcp-services-configmap` is deprecated. Use [`tcp-service-port`]({{% relref "keys#tcp-services" %}}) configuration key instead.
-
-The documentation refers to "ConfigMap based TCP" when taking about this configuration options, and it refers to "TCP Service" when talking about to the new, annotation based TCP configuration.
-{{< /alert >}}
+> [!INFO] Note
+>
+> Starting on v0.13, `--tcp-services-configmap` is deprecated. Use [`tcp-service-port`]({{% relref "keys#tcp-services" %}}) configuration key instead.
+>
+> The documentation refers to "ConfigMap based TCP" when taking about this configuration options, and it refers to "TCP Service" when talking about to the new, annotation based TCP configuration.
 
 The value of the ConfigMap entry is a colon separated list of the following arguments:
 
@@ -733,7 +735,7 @@ See also:
 
 ---
 
-## Timeout
+### Timeout
 
 Timeout configuration.
 
@@ -741,7 +743,7 @@ Timeout configuration.
 
 ---
 
-## track-old-instances
+### track-old-instances
 
 * `--track-old-instances`
 
@@ -761,7 +763,7 @@ See also:
 
 ---
 
-## update-status
+### update-status
 
 * `--update-status`
 
@@ -789,7 +791,7 @@ See also:
 
 ---
 
-## update-status-on-shutdown
+### update-status-on-shutdown
 
 * `--update-status-on-shutdown`
 
@@ -803,7 +805,7 @@ See also:
 
 ---
 
-## validate-config
+### validate-config
 
 * `--validate-config`
 
@@ -816,7 +818,7 @@ If validation fails, HAProxy Ingress will log the error and set the metric
 
 ---
 
-## verify-hostname
+### verify-hostname
 
 * `--verify-hostname`
 
@@ -830,7 +832,7 @@ the certificate declared in the `secretName` ignoring if the certificate is or i
 
 ---
 
-## version
+### version
 
 * `--version`
 
@@ -838,7 +840,7 @@ Show release information about the ingress controller.
 
 ---
 
-## wait-before-shutdown
+### wait-before-shutdown
 
 * `--wait-before-shutdown`
 
@@ -854,7 +856,7 @@ See also:
 
 ---
 
-## wait-before-update
+### wait-before-update
 
 * `--wait-before-update`
 
@@ -866,7 +868,7 @@ changes in one single shot. The default value is `200ms`.
 
 ---
 
-## watch-gateway
+### watch-gateway
 
 * `--watch-gateway`
 
@@ -882,7 +884,7 @@ When enabled, `--watch-gateway` enforces a leader election. A leader must be ele
 
 ---
 
-## watch-ingress
+### watch-ingress
 
 * `--watch-ingress`
 
@@ -892,7 +894,7 @@ Enables Ingress API watch and parse. This option is enabled by default. Add `--w
 
 ---
 
-## watch-namespace
+### watch-namespace
 
 * `--watch-namespace`
 

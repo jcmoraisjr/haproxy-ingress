@@ -1,7 +1,9 @@
 ---
 title: "External haproxy"
 linkTitle: "External haproxy"
-weight: 20
+aliases: 
+- /docs/examples/external-haproxy
+type: docs
 description: >
   Demonstrate how to configure HAProxy Ingress to use an external haproxy deployment.
 ---
@@ -122,7 +124,7 @@ to `:80` and `:443` without the need to run as root. Give it a try by removing t
 Add the HAProxy Ingress Helm repository if using HAProxy Ingress' chart for the first time:
 
 ```
-$ helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
+$ helm repo add haproxy-ingress https://n42-gateway.github.io/charts
 ```
 
 Install or upgrade HAProxy Ingress using the `haproxy-ingress-values.yaml` parameters:

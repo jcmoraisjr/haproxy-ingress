@@ -5,4 +5,7 @@
   | &copy; {{ $c.from_year }}&ndash;{{ now.Year}} {{ $c.authors }}
   | Image by <a href="{{ $img.author_url }}" target="_blank" rel="noopener">{{ $img.author_name }}</a>
     from <a href="{{ $img.provider_url }}" target="_blank" rel="noopener">{{ $img.provider_name }}</a>
+  {{- with $c.trademark }}
+  <br/> {{ . }}
+  {{- end }}
 </small>

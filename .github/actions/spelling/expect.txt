@@ -152,6 +152,7 @@ gks
 glbc
 glog
 goimports
+goldmark
 gomod
 goruntime
 gotemplate
@@ -265,7 +266,6 @@ leastconn
 legacylogger
 lfactory
 linereader
-Linforth
 listlen
 listname
 llink
@@ -353,7 +353,7 @@ pathtype
 pawelb
 pcre
 percentunit
-Pixabay
+Pexels
 pkgtypes
 pns
 portnumber
@@ -439,6 +439,7 @@ sslpassthrough
 sslredir
 sslredirect
 ssvc
+Starostin
 statefulset
 stktable
 Sto

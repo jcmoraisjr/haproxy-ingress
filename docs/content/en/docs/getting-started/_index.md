@@ -10,7 +10,7 @@ The following sections walk through steps to have HAProxy Ingress working, watch
 
 ## Prerequisites
 
-HAProxy Ingress needs a running Kubernetes cluster. Controller version v0.16 needs Kubernetes 1.21 or newer, see other supported versions in the [README](https://github.com/jcmoraisjr/haproxy-ingress/#use-haproxy-ingress) file. HAProxy Ingress also works fine on local k8s deployments like [minikube](https://minikube.sigs.k8s.io), [kind](https://kind.sigs.k8s.io), [k3s](https://k3s.io), [k3d](https://k3d.io) or [colima](https://github.com/abiosoft/colima).
+HAProxy Ingress needs a running Kubernetes cluster. Controller version v0.16 needs Kubernetes 1.21 or newer, see other supported versions in the [README](https://github.com/n42-gateway/n42-gateway/#use-haproxy-ingress) file. HAProxy Ingress also works fine on local k8s deployments like [minikube](https://minikube.sigs.k8s.io), [kind](https://kind.sigs.k8s.io), [k3s](https://k3s.io), [k3d](https://k3d.io) or [colima](https://github.com/abiosoft/colima).
 
 An ingress controller works exposing internal services to the external world, so another prerequisite is that at least one cluster node is accessible externally. On cloud environments, a cloud load balancer can be configured to reach the ingress controller nodes.
 
@@ -25,7 +25,7 @@ HAProxy Ingress uses [Helm](https://helm.sh) chart to install and configure the 
 1. Add the HAProxy Ingress' Helm repository. This will instruct Helm to find all available packages:
 
     ```
-    $ helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
+    $ helm repo add haproxy-ingress https://n42-gateway.github.io/charts
     ```
 
 1. Check if kubeconfig points to the right cluster:
@@ -126,7 +126,7 @@ The following steps deploy an echoserver image and exposes it in the current nam
 
 Expose HAProxy Ingress metrics:
 
-* See the [metrics example page]({{% relref "../examples/metrics" %}})
+* See the [metrics example page]({{% relref "/examples/metrics" %}})
 
 See what differs to expose services using Gateway API:
 
@@ -139,6 +139,6 @@ Learn more about Ingress and IngressClass resources:
 
 HAProxy Ingress has lots of configuration options. See the following tips to get started faster:
 
-* Follow some configuration instruction from the [examples]({{% relref "../examples" %}}) page
-* See how HAProxy Ingress uses ingress objects: [configuration keys]({{% relref "../configuration/keys" %}})
-* Get started with all the configuration options: [configuration]({{% relref "../configuration" %}})
+* Follow some configuration instruction from the [examples]({{% relref "/examples" %}}) page
+* See how HAProxy Ingress uses ingress objects: [configuration keys]({{% relref "/docs/configuration/keys" %}})
+* Get started with all the configuration options: [configuration]({{% relref "/docs/configuration" %}})

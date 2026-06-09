@@ -1,7 +1,9 @@
 ---
 title: "Metrics"
 linkTitle: "Metrics"
-weight: 20
+aliases: 
+- /docs/examples/metrics
+type: docs
 description: >
   Demonstrate how to collect and expose ingress controller and haproxy metrics.
 ---
@@ -50,9 +52,7 @@ helm upgrade prometheus prometheus-community/kube-prometheus-stack\
   -f prometheus-operator-values.yaml
 ```
 
-{{< alert title="Note" >}}
-Bitnami has also a Prometheus Operator [helm chart](https://github.com/bitnami/charts/tree/master/bitnami/kube-prometheus) and it's also a good option. Note however that the values file has a different syntax.
-{{< /alert >}}
+> [!NB] Bitnami has also a Prometheus Operator [helm chart](https://github.com/bitnami/charts/tree/master/bitnami/kube-prometheus) and it's also a good option. Note however that the values file has a different syntax.
 
 ## Configure HAProxy Ingress
 
@@ -130,7 +130,7 @@ Import [this](https://grafana.com/grafana/dashboards/12056) Grafana dashboard. I
 
 If everything worked as expected, the dashboard should look like this:
 
-![](/docs/examples/metrics/dashboard-1.png)
+![](/examples/metrics/dashboard-1.png)
 
 ## Test
 
