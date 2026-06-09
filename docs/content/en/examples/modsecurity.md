@@ -1,7 +1,9 @@
 ---
 title: "ModSecurity"
 linkTitle: "ModSecurity"
-weight: 20
+aliases: 
+- /docs/examples/modsecurity
+type: docs
 description: >
   Demonstrate how to configure ModSecurity web application firewall.
 ---
@@ -13,7 +15,7 @@ web application firewall on HAProxy Ingress controller.
 
 This document has the following prerequisites:
 
-* A Kubernetes cluster with a running HAProxy Ingress controller. See the [five minutes deployment](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/setup-cluster.md#five-minutes-deployment) or the [deployment example](https://github.com/jcmoraisjr/haproxy-ingress/tree/master/examples/deployment)
+* A Kubernetes cluster with a running HAProxy Ingress controller. See the [five minutes deployment](https://github.com/n42-gateway/n42-gateway/tree/master/examples/setup-cluster.md#five-minutes-deployment) or the [deployment example](https://github.com/n42-gateway/n42-gateway/tree/master/examples/deployment)
 * `ingress-controller` namespace, the default of the five minutes deployment
 
 ## Deploying agent
@@ -29,15 +31,11 @@ The ModSecurity agent used is [jcmoraisjr/modsecurity-spoa](https://github.com/j
 Create the ModSecurity agent deployment with 3 running pods:
 
 ```
-$ kubectl create -f https://haproxy-ingress.github.io/resources/modsecurity-deployment.yaml
+$ kubectl create -f https://n42-gateway.github.io/resources/modsecurity-deployment.yaml
 deployment.apps/modsecurity-spoa created
 ```
 
-{{< alert title="Note" >}}
-This deployment configures a small amount of requests and limits resources,
-remember to adjust them before moving to production.
-{{< /alert >}}
-
+> [!NB] This deployment configures a small amount of requests and limits resources, remember to adjust them before moving to production.
 
 Check if the agent is up and running:
 
@@ -173,7 +171,7 @@ In order to read information written to that file, you must add a sidecar contai
 Update the ModSecurity agent deployment to have a sidecar container to read the audit log file to STDOUT
 
 ```
-$ kubectl apply -f https://haproxy-ingress.github.io/resources/modsecurity-deployment-auditlog-sidecar.yaml
+$ kubectl apply -f https://n42-gateway.github.io/resources/modsecurity-deployment-auditlog-sidecar.yaml
 deployment "modsecurity-spoa" configured
 ```
 
@@ -202,9 +200,9 @@ You may require different `modsecurity-args` depending on your Coraza config and
 
 Second, you'll need to change the spoa-modsecurity container image to a coraza-spoa image and create a configmap to hold the Coraza config.yaml. A complete example with all the changes can be found [here](/resources/coraza-deployment.yaml).
 
-{{< alert title="Warning" color="warning" >}}
-The coraza-spoa image that we provide in the above example is based on [an experimental branch of coraza-spoa](https://github.com/corazawaf/coraza-spoa/pull/36). For production environments, it would be best to wait until the experimental changes are merged and [an official image is released](https://github.com/corazawaf/coraza-spoa/issues/37).
-{{< /alert >}}
+> [!WARNING]
+>
+> The coraza-spoa image that we provide in the above example is based on [an experimental branch of coraza-spoa](https://github.com/corazawaf/coraza-spoa/pull/36). For production environments, it would be best to wait until the experimental changes are merged and [an official image is released](https://github.com/corazawaf/coraza-spoa/issues/37).
 
 ### Troubleshooting Coraza
 
