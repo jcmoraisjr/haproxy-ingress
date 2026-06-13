@@ -1,0 +1,28 @@
+controller:
+  image:
+    registry: localhost
+    repository: haproxy-ingress
+    tag: latest
+    pullPolicy: Never
+  gatewayClassResource:
+    enabled: true
+  config:
+    syslog-endpoint: "stdout"
+    syslog-format: "raw"
+  extraArgs:
+    publish-address: 127.0.0.1
+  kind: DaemonSet
+  daemonset:
+    useHostPort: true
+    extraHostPorts:
+    - containerPort: 8443
+      hostPort: 8443
+    - containerPort: 8883
+      hostPort: 8883
+  service:
+    type: ClusterIP
+    extraPorts:
+    - port: 8443
+      targetPort: 8443
+    - port: 8883
+      targetPort: 8883

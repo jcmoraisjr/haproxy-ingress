@@ -19,6 +19,7 @@ LOCAL_GOTESTSUM=$(LOCALBIN)/gotestsum
 LOCAL_GOLANGCI_LINT=$(LOCALBIN)/golangci-lint
 LOCAL_SETUP_ENVTEST=$(LOCALBIN)/setup-envtest
 LOCAL_CHECK_SPELLING=$(LOCALBIN)/check-spelling
+LOCAL_CONFORMANCE=$(LOCALBIN)/conformance
 
 .PHONY: build
 build:
@@ -72,6 +73,10 @@ test-integration: gotestsum setup-envtest
 	haproxy -v
 	KUBEBUILDER_ASSETS="$(shell $(LOCAL_SETUP_ENVTEST) use $(HAPROXY_INGRESS_ENVTEST) --bin-dir $(LOCALBIN) -i -p path)"\
 		$(LOCAL_GOTESTSUM) --format=testname --hide-summary=output -- -count=1 -tags=cgo ./tests/integration/...
+
+.PHONY: test-gateway-api-conformance
+test-gateway-api-conformance: image
+	LOCAL_CONFORMANCE=$(LOCAL_CONFORMANCE) GATEWAY_API_RUN_TEST=$(TEST) GATEWAY_API_VERSION="v1.5.1" HELM_CHART_VERSION="release-0.17" ./scripts/gateway-api-conformance.sh
 
 .PHONY: linux-build
 linux-build:
