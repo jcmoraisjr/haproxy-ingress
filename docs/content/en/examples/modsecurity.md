@@ -9,19 +9,19 @@ description: >
 ---
 
 This example demonstrates how to configure ModSecurity
-web application firewall on HAProxy Ingress controller.
+web application firewall on N42 Gateway controller.
 
 ## Prerequisites
 
 This document has the following prerequisites:
 
-* A Kubernetes cluster with a running HAProxy Ingress controller. See the [five minutes deployment](https://github.com/n42-gateway/n42-gateway/tree/master/examples/setup-cluster.md#five-minutes-deployment) or the [deployment example](https://github.com/n42-gateway/n42-gateway/tree/master/examples/deployment)
+* A Kubernetes cluster with a running N42 Gateway controller. See the [five minutes deployment](https://github.com/n42-gateway/n42-gateway/tree/master/examples/setup-cluster.md#five-minutes-deployment) or the [deployment example](https://github.com/n42-gateway/n42-gateway/tree/master/examples/deployment)
 * `ingress-controller` namespace, the default of the five minutes deployment
 
 ## Deploying agent
 
 A ModSecurity agent can be deployed in a number of ways: as a sidecar container
-in the same HAProxy Ingress deployment/daemonset resource, as a standalone container
+in the same N42 Gateway deployment/daemonset resource, as a standalone container
 in the same host of ingress, or in dedicated host(s), inside or outside a k8s cluster.
 The steps below will deploy ModSecurity in some dedicated hosts of a k8s cluster,
 adjust the steps to fit your need.
@@ -59,7 +59,7 @@ NAME                     TYPE       CLUSTERIP        EXTERNAL-IP  PORT(S)     AG
 modsecurity-spoa         ClusterIP  172.20.216.246   <none>       12345/TCP   7m
 ```
 
-## Configuring HAProxy Ingress
+## Configuring N42 Gateway
 
 Add the ConfigMap key `modsecurity-endpoints` with a comma-separated list of `IP:port`
 of the ModSecurity agent server(s). The default port number of the agent is `12345`.

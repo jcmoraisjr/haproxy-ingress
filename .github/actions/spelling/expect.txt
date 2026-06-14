@@ -128,7 +128,6 @@ expmatch
 extfile
 extwild
 fcgiapp
-feb
 ffconf
 ffexp
 fhdr
@@ -246,7 +245,6 @@ IXYK
 jcmoraisjr
 jinzhu
 joaomora
-jul
 Jurriaan
 Karan
 keyder
@@ -281,6 +279,7 @@ lsplit
 luadir
 luares
 luarocks
+maintainership
 makepasswd
 mapstructure
 mastersock
